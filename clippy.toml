@@ -1,0 +1,69 @@
+# Workspace lint configuration (ADR-0003, docs/05-testing.md). Applies to every crate.
+# Adapters that legitimately need one of these (e.g. wall-clock timing in the CLI) must use a
+# local `#[allow(...)]` with a justification comment. Logic crates must never do so.
+
+allow-unwrap-in-tests = true
+allow-expect-in-tests = true
+allow-panic-in-tests = true
+allow-indexing-slicing-in-tests = true
+
+disallowed-types = [
+    { path = "std::collections::HashMap", reason = "unordered iteration breaks determinism (ADR-0003 §8); use Vec, BTreeMap or dense handles" },
+    { path = "std::collections::HashSet", reason = "unordered iteration breaks determinism (ADR-0003 §8); use Vec, BTreeSet or bitsets" },
+    { path = "std::time::Instant", reason = "no ambient clock in game logic (ADR-0003 §10)" },
+    { path = "std::time::SystemTime", reason = "no ambient clock in game logic (ADR-0003 §10)" },
+]
+
+disallowed-methods = [
+    # Platform transcendentals are not reproducible across targets (ADR-0003 §3). Use kernel::num.
+    { path = "f32::sin", reason = "platform transcendental (ADR-0003 §3)" },
+    { path = "f64::sin", reason = "platform transcendental (ADR-0003 §3)" },
+    { path = "f32::cos", reason = "platform transcendental (ADR-0003 §3)" },
+    { path = "f64::cos", reason = "platform transcendental (ADR-0003 §3)" },
+    { path = "f32::tan", reason = "platform transcendental (ADR-0003 §3)" },
+    { path = "f64::tan", reason = "platform transcendental (ADR-0003 §3)" },
+    { path = "f32::sin_cos", reason = "platform transcendental (ADR-0003 §3)" },
+    { path = "f64::sin_cos", reason = "platform transcendental (ADR-0003 §3)" },
+    { path = "f32::asin", reason = "platform transcendental (ADR-0003 §3)" },
+    { path = "f64::asin", reason = "platform transcendental (ADR-0003 §3)" },
+    { path = "f32::acos", reason = "platform transcendental (ADR-0003 §3)" },
+    { path = "f64::acos", reason = "platform transcendental (ADR-0003 §3)" },
+    { path = "f32::atan", reason = "platform transcendental (ADR-0003 §3)" },
+    { path = "f64::atan", reason = "platform transcendental (ADR-0003 §3)" },
+    { path = "f32::atan2", reason = "platform transcendental (ADR-0003 §3)" },
+    { path = "f64::atan2", reason = "platform transcendental (ADR-0003 §3)" },
+    { path = "f32::sinh", reason = "platform transcendental (ADR-0003 §3)" },
+    { path = "f64::sinh", reason = "platform transcendental (ADR-0003 §3)" },
+    { path = "f32::cosh", reason = "platform transcendental (ADR-0003 §3)" },
+    { path = "f64::cosh", reason = "platform transcendental (ADR-0003 §3)" },
+    { path = "f32::tanh", reason = "platform transcendental (ADR-0003 §3)" },
+    { path = "f64::tanh", reason = "platform transcendental (ADR-0003 §3)" },
+    { path = "f32::exp", reason = "platform transcendental (ADR-0003 §3)" },
+    { path = "f64::exp", reason = "platform transcendental (ADR-0003 §3)" },
+    { path = "f32::exp2", reason = "platform transcendental (ADR-0003 §3)" },
+    { path = "f64::exp2", reason = "platform transcendental (ADR-0003 §3)" },
+    { path = "f32::exp_m1", reason = "platform transcendental (ADR-0003 §3)" },
+    { path = "f64::exp_m1", reason = "platform transcendental (ADR-0003 §3)" },
+    { path = "f32::ln", reason = "platform transcendental (ADR-0003 §3)" },
+    { path = "f64::ln", reason = "platform transcendental (ADR-0003 §3)" },
+    { path = "f32::ln_1p", reason = "platform transcendental (ADR-0003 §3)" },
+    { path = "f64::ln_1p", reason = "platform transcendental (ADR-0003 §3)" },
+    { path = "f32::log", reason = "platform transcendental (ADR-0003 §3)" },
+    { path = "f64::log", reason = "platform transcendental (ADR-0003 §3)" },
+    { path = "f32::log2", reason = "platform transcendental (ADR-0003 §3)" },
+    { path = "f64::log2", reason = "platform transcendental (ADR-0003 §3)" },
+    { path = "f32::log10", reason = "platform transcendental (ADR-0003 §3)" },
+    { path = "f64::log10", reason = "platform transcendental (ADR-0003 §3)" },
+    { path = "f32::powf", reason = "platform transcendental (ADR-0003 §3)" },
+    { path = "f64::powf", reason = "platform transcendental (ADR-0003 §3)" },
+    { path = "f32::powi", reason = "codegen-dependent rounding (ADR-0003 §3)" },
+    { path = "f64::powi", reason = "codegen-dependent rounding (ADR-0003 §3)" },
+    { path = "f32::cbrt", reason = "platform transcendental (ADR-0003 §3)" },
+    { path = "f64::cbrt", reason = "platform transcendental (ADR-0003 §3)" },
+    { path = "f32::hypot", reason = "platform transcendental (ADR-0003 §3)" },
+    { path = "f64::hypot", reason = "platform transcendental (ADR-0003 §3)" },
+    { path = "f32::mul_add", reason = "fused multiply-add is not available on every target; kernel::num wraps it if ever needed (ADR-0003 §4)" },
+    { path = "f64::mul_add", reason = "fused multiply-add is not available on every target; kernel::num wraps it if ever needed (ADR-0003 §4)" },
+    { path = "std::thread::spawn", reason = "logic is single-threaded per instance (02-architecture §8)" },
+    { path = "std::env::var", reason = "no ambient inputs in game logic (ADR-0003 §10)" },
+]

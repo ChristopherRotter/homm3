@@ -1,0 +1,9 @@
+# Coverage exclusions (docs/05-testing.md, ADR-0010). The single reviewed list of files excluded
+# from the 100% line+region coverage gate on logic crates. Never add domain logic here.
+# Every entry needs a justification; `cargo xtask coverage` prints this list on every run.
+#
+# [[exclude]]
+# path   = "crates/h3-example/src/glue.rs"
+# reason = "OS glue, exercised only by integration tests on real hardware"
+
+exclude = []

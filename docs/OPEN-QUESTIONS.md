@@ -4,24 +4,9 @@ Questions waiting for the user. Agents add new ones here (context, options, reco
 
 ## Open
 
-### Q1 — License and VCMI policy (blocks the LICENSE file; does not block E01)
-
-**Context.** The user wants the project as open and permissive as possible *and* said VCMI code may be consulted because it is open source. VCMI's code is GPL-2+ ([Debian copyright file](https://metadata.ftp-master.debian.org/changelogs/contrib/v/vcmi/oldstable_copyright)). Copying, porting or translating GPL code into a permissively licensed project is not permitted: the result would have to be GPL-2+.
-
-**Options.**
-- (a) GPL-2+ project: VCMI code can be ported/adapted freely; downstream users (including commercial or closed clients) are constrained by the GPL.
-- (b) Permissive (MIT/Apache-2.0): VCMI is a **behavioral reference and black-box oracle only** — read it to learn rules, record them as rules with provenance, implement independently; never translate its code; run it as a separate process for differential tests.
-- (c) Split: permissive core (per b), GPL adapters/clients that may borrow VCMI code.
-
-**Recommendation.** (b) as the default, since it matches "as permissive as possible" and keeps options open (a project can relicense upward to GPL later, not downward). Interim rule in force: do not copy or translate VCMI code (ADR-0009).
-
 ### Q2 — Project name and crate prefix
 
 The repo is `homm3`; crates use the provisional prefix `h3-`. "Heroes of Might and Magic" is a trademark of its owner; a public project name should probably avoid implying endorsement. Decide before first public release; renaming later is cheap but not free.
-
-### Q3 — Git workflow and CI host
-
-Proposed: trunk-based, short-lived branches, `cargo xtask verify` as the single CI job on Linux and Windows (plus WASM later). Which CI host (GitHub Actions or other) and are PRs required?
 
 ### Q4 — Confirm local compute
 
@@ -53,6 +38,8 @@ Design assumes **authoritative server with per-viewer projections** (`06-securit
 
 ## Answered
 
+- *(2026-09-30, Q1)* License: **GPL-2.0-or-later** (user's choice, option (a)). VCMI code may be consulted and ported with attribution; dependencies must be GPLv2-compatible. Recorded in ADR-0009 (Accepted), `LICENSE`, `deny.toml`.
+- *(2026-09-30, Q3)* CI host: **no CI configuration yet**; `cargo xtask verify` is run locally. Work happens on short-lived feature branches (E01: `e01-walking-skeleton`) that the user fast-forwards into `master`. The Windows half of the determinism check therefore has to be run by hand until CI exists (see HANDOFF).
 - *(2026-09-30)* Configurability scope: tiers 1–3; architecture wins when in conflict.
 - *(2026-09-30)* Fidelity definition: logic equivalence, not replay equivalence; profiles welcome.
 - *(2026-09-30)* Save files: low priority, future scope.

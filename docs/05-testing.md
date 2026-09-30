@@ -28,7 +28,7 @@ One entry point, used locally and in CI; all must pass:
 
 1. `cargo fmt --check`
 2. `cargo clippy` with the workspace lint policy (deny: `unwrap_used`/`expect_used`/`panic` in logic crates; `disallowed_types` for `HashMap`/`HashSet`/time/thread in logic crates; `disallowed_methods` for platform transcendentals (`f32/f64::sin`, `cos`, `exp`, `ln`, `powf`, …) and `mul_add`; direct `f32`/`f64` use only via `kernel::num` or a module-level `allow` tied to a rule ID; `forbid(unsafe_code)` in logic crates)
-3. `cargo deny` (licenses: only permissive/compatible dependencies in the core per ADR-0009; advisories; bans)
+3. `cargo deny` (licenses: only GPLv2-compatible dependencies per ADR-0009 and `deny.toml`; advisories; bans)
 4. `xtask check-arch` — crate dependency graph matches `arch.toml`; forbidden APIs absent from logic crates
 5. `xtask check-rules` — rule-catalog traceability (see `04-rules-and-sources.md`)
 6. `xtask check-stubs` — stub registry consistency (see `08-work-process.md`)

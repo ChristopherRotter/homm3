@@ -1,0 +1,17 @@
+[package]
+name = "h3-content"
+description = "Content definitions, content-pack model and the pure Ruleset compiler."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish.workspace = true
+
+[dependencies]
+h3-kernel.workspace = true
+
+[dev-dependencies]
+proptest.workspace = true
+
+[lints]
+workspace = true

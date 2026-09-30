@@ -1,0 +1,3 @@
+# Keep LF everywhere so fixtures, packs and docs are byte-identical on every platform.
+* text=auto eol=lf
+*.bundle binary

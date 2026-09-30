@@ -1,0 +1,86 @@
+[workspace]
+resolver = "3"
+members = [
+    "crates/h3-kernel",
+    "crates/h3-content",
+    "crates/h3-contracts",
+    "crates/h3-battle",
+    "crates/h3-pack",
+    "crates/h3-sim",
+    "crates/h3-ffi",
+    "crates/h3-cli",
+    "xtask",
+]
+default-members = [
+    "crates/h3-kernel",
+    "crates/h3-content",
+    "crates/h3-contracts",
+    "crates/h3-battle",
+    "crates/h3-pack",
+    "crates/h3-sim",
+    "crates/h3-ffi",
+    "crates/h3-cli",
+]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.95"
+license = "GPL-2.0-or-later"
+publish = false
+
+[workspace.dependencies]
+# Workspace crates (paths are the single source of truth; arch.toml declares which edges are allowed).
+h3-kernel = { path = "crates/h3-kernel" }
+h3-content = { path = "crates/h3-content" }
+h3-contracts = { path = "crates/h3-contracts" }
+h3-battle = { path = "crates/h3-battle" }
+h3-pack = { path = "crates/h3-pack" }
+h3-sim = { path = "crates/h3-sim" }
+
+# External crates. Every entry must be GPL-2.0-or-later compatible (deny.toml) and listed in arch.toml
+# for the crates allowed to use it.
+serde = { version = "1", features = ["derive"] }
+toml = "0.8"
+serde_json = "1"
+proptest = { version = "1", default-features = false, features = ["std"] }
+criterion = { version = "0.5", default-features = false }
+
+# Lints shared by every crate. Logic crates add a stricter crate-level policy in their lib.rs
+# (enforced by `cargo xtask check-arch`, see docs/05-testing.md).
+[workspace.lints.rust]
+unsafe_op_in_unsafe_fn = "deny"
+missing_debug_implementations = "warn"
+rust_2018_idioms = { level = "warn", priority = -1 }
+unused_qualifications = "warn"
+
+[workspace.lints.clippy]
+all = { level = "warn", priority = -1 }
+dbg_macro = "warn"
+todo = "warn"
+unimplemented = "warn"
+disallowed_types = "deny"
+disallowed_methods = "deny"
+disallowed_macros = "deny"
+
+# Codegen settings are pinned here (ADR-0003 §5). Changing them requires re-running the
+# determinism matrix (`cargo xtask determinism`).
+[profile.dev]
+opt-level = 0
+debug = true
+overflow-checks = true
+panic = "unwind"
+
+[profile.release]
+opt-level = 3
+debug = false
+lto = "thin"
+codegen-units = 16
+# Overflow checks stay on in release so debug and release behave identically on overflow
+# (a panic that reveals a bug instead of a silent wrap that diverges). ADR-0003 §6.
+overflow-checks = true
+panic = "unwind"
+
+[profile.bench]
+inherits = "release"
+debug = true

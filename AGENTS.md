@@ -22,7 +22,7 @@ You are one of many agents working on this over time. No single session finishes
 - **Every game rule has a rule ID, a source, and a test.** Rule IDs live in `docs/rules/catalog/`. Sources are labelled (wiki pages with URL, original data, observation, VCMI behavior…). See `docs/04-rules-and-sources.md`.
 - **Known original bugs** are handled per the quirks ledger and profiles (`docs/rules/quirks-ledger.md`). Exploits and state-corrupting bugs are always fixed.
 - **100% coverage** on core crates, with an explicit, reviewed exclusion list. Plus property tests, determinism replays and the other gates in `docs/05-testing.md`.
-- **License hygiene.** Until `docs/OPEN-QUESTIONS.md` Q1 is resolved: **do not copy or translate VCMI (GPL) code.** You may read it to understand behavior; write the behavior down as a rule with provenance, then implement independently (ADR-0009). Do not commit original game assets or text.
+- **License hygiene.** The project is **GPL-2.0-or-later** (ADR-0009). VCMI (GPL-2+) may be read and its code ported or adapted, with an origin comment and a `kind = "vcmi"` rule source; ported code must still obey our purity/determinism/validation rules. Dependencies must be GPLv2-compatible (`deny.toml`). Do not commit original game assets or text.
 - **No scope creep into clients, assets, graphics or sound** inside the core.
 
 ## When to stop and ask
@@ -33,7 +33,7 @@ Stop, write the question in `docs/OPEN-QUESTIONS.md` (context, options, your rec
 - license, legal or IP doubts,
 - conflicting sources for a rule with real gameplay impact,
 - an ambiguous quirk classification (is this bug harmless-and-accepted, or must it be fixed?),
-- a dependency that is heavy, non-permissively licensed, or unmaintained,
+- a dependency that is heavy, not GPLv2-compatible (see `deny.toml`), or unmaintained,
 - anything irreversible or that would invalidate a lot of prior work,
 - being unsure whether something is "big". When in serious doubt, ask.
 

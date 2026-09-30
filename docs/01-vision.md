@@ -42,7 +42,7 @@ Build a backend engine for Heroes of Might and Magic III with **exceptional perf
 - Determinism: follow Factorio's example of deterministic cross-platform floating point (custom trig functions, determinism tests; [FFF-52](https://factorio.com/blog/post/fff-52)). Floats are allowed under the discipline in ADR-0003; integers remain the default.
 - The core exposes a **C ABI** so the RL/training side and clients can use any language; the RL implementation language is decided later.
 - Information taken from wikis must be clearly labelled and linked. Original artifacts are supplied by the user to agents. VCMI may be consulted since it is open source.
-- License should be as open and permissive as possible (see the VCMI conflict in ADR-0009 / OPEN-QUESTIONS Q1).
+- License should be as open and permissive as possible (see the VCMI conflict in ADR-0009 / OPEN-QUESTIONS Q1). *Update 2026-09-30:* the user chose **GPL-2.0-or-later**, which allows porting VCMI code (ADR-0009).
 - Hybrid AI approaches are welcome (e.g., learned top-level + deterministic lower level).
 - The user has an unfinished map-generator project that will seed the map-generation work; maps should optimize stated objectives (balanced zones, minimal teleport connections, etc.).
 - Initial compute target: Ryzen 3900-class CPU + GTX 1070 on the user's PC; longer training times are acceptable.

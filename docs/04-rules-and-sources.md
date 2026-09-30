@@ -13,7 +13,7 @@
 | 1 | `original-data` | Data files from the user's own installation (the `*.TXT` tables and similar inside the game archives: creature, spell, artifact, hero, class, skill, building, object tables; map and archive formats) | Facts. Supplied by the user. Exact file names/structure to be catalogued by the import epic — do not assume from memory. |
 | 2 | `observation` | Controlled experiments in the original game, recorded as fixtures (inputs, outcome, game version) | Final arbiter for behavior. Expensive; used for disputed/high-impact rules. |
 | 3 | `reverse-engineering` | Community technical documentation of formats and mechanics | Label with URL. |
-| 4 | `vcmi` | Behavior of the VCMI open-source engine | Reference/oracle only under the interim license policy (ADR-0009). Note version/commit. Treat as a strong but fallible source (VCMI itself deviates from the original in places). |
+| 4 | `vcmi` | Behavior of the VCMI open-source engine | Reference and oracle; code may be ported with attribution since the project is GPL-2.0-or-later (ADR-0009). Note version/commit. Treat as a strong but fallible source (VCMI itself deviates from the original in places). |
 | 5 | `wiki` | Fan wikis (e.g., the community Heroes III wikis) | Label with page title + URL + retrieval date. Good but not 100% complete or correct. |
 | 6 | `community` | Forum posts, videos, hearsay | Needs corroboration before use; never the only source for a `high` confidence rule. |
 

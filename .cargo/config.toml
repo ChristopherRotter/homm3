@@ -1,0 +1,6 @@
+[alias]
+xtask = "run --quiet --package xtask --"
+
+# No global rustflags: codegen settings live in the workspace profiles (Cargo.toml) so that every
+# build configuration is reproducible. The determinism matrix (`cargo xtask determinism`) adds
+# `-C target-cpu=native` explicitly in a separate target directory.

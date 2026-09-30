@@ -1,0 +1,19 @@
+[package]
+name = "h3-battle"
+description = "Battle bounded context: battlefield, stacks, turn order, commands, damage, retaliation, outcome."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish.workspace = true
+
+[dependencies]
+h3-kernel.workspace = true
+h3-content.workspace = true
+h3-contracts.workspace = true
+
+[dev-dependencies]
+proptest.workspace = true
+
+[lints]
+workspace = true

@@ -36,6 +36,6 @@ Decide upfront only what is expensive to change later: determinism, state/comman
 | Config tiers 1–3, compiled ruleset | Accepted | ADR-0006 |
 | Provenance, quirks ledger, profiles | Accepted | ADR-0007 |
 | Security model | Accepted | ADR-0008 |
-| License & reference-material policy | **Proposed — needs user decision** | ADR-0009, Q1 |
+| License & reference-material policy (GPL-2.0-or-later) | Accepted | ADR-0009 |
 | Testing gates & rule traceability | Accepted | ADR-0010 |
 | Portability & C ABI | Accepted | ADR-0011 |

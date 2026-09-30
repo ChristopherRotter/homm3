@@ -1,0 +1,7 @@
+# Pinned toolchain (ADR-0002). Bump deliberately and record the bump in docs/HANDOFF.md.
+# Coverage additionally needs `llvm-tools-preview` (`rustup component add llvm-tools-preview`);
+# it is not listed here so that environments without it can still build and test.
+[toolchain]
+channel = "1.95.0"
+components = ["rustfmt", "clippy"]
+profile = "minimal"

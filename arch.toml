@@ -1,0 +1,157 @@
+# Architecture declaration, enforced by `cargo xtask check-arch` (ADR-0005, docs/02-architecture.md §2).
+#
+# Layers, lowest first: shared < domain < application < adapter. `tool` crates (xtask) sit outside.
+# A dependency must point to a strictly lower layer, except shared -> shared and adapter -> adapter.
+# Domain contexts never depend on each other. Every workspace member must be declared here, and every
+# dependency edge (workspace or external, normal or build) must be listed under `deps` / `external`.
+# Dev-dependencies (tests, benches) are checked against `dev_deps` / `dev_external`.
+#
+# `logic = true` marks pure game-logic crates: no I/O, clock, threads, globals, HashMap/HashSet,
+# ad-hoc floats or unsafe; they must carry the logic lint header in src/lib.rs and pass the
+# forbidden-token scan below. They are the crates with the 100% coverage gate.
+
+[policy]
+# Crate-level attributes every logic crate's src/lib.rs must contain. `no_std` makes I/O, clocks,
+# threads, environment access and std's HashMap/HashSet unavailable at compile time.
+logic_header = [
+    "#![no_std]",
+    "#![forbid(unsafe_code)]",
+    "clippy::unwrap_used",
+    "clippy::expect_used",
+    "clippy::panic",
+    "clippy::todo",
+    "clippy::unimplemented",
+    "clippy::unreachable",
+    "clippy::float_arithmetic",
+    "clippy::print_stdout",
+    "clippy::print_stderr",
+    "clippy::exit",
+]
+
+# Token sequences forbidden in logic crate sources (comments and string literals are ignored;
+# matching is on whole tokens, so `unsafe_code` does not match `unsafe`). `allowed_in` lists the
+# files where the token is sanctioned. Lines carrying `// arch-ok: <RULE-ID or ADR> <reason>` are
+# exempt; use sparingly, the exemption shows up in review.
+[[policy.forbidden]]
+token = "HashMap"
+reason = "unordered iteration (ADR-0003 §8)"
+[[policy.forbidden]]
+token = "HashSet"
+reason = "unordered iteration (ADR-0003 §8)"
+[[policy.forbidden]]
+token = "std"
+reason = "logic crates are no_std + alloc; std access is only allowed in tests (ADR-0005)"
+[[policy.forbidden]]
+token = "static mut"
+reason = "global mutable state (ADR-0003 §10)"
+[[policy.forbidden]]
+token = "unsafe"
+reason = "unsafe in logic (ADR-0002)"
+[[policy.forbidden]]
+token = "f32"
+reason = "floats only through kernel::num (ADR-0003 §4)"
+allowed_in = ["crates/h3-kernel/src/num.rs"]
+[[policy.forbidden]]
+token = "f64"
+reason = "floats only through kernel::num (ADR-0003 §4)"
+allowed_in = ["crates/h3-kernel/src/num.rs"]
+[[policy.forbidden]]
+token = ". sort"
+reason = "sorting must use kernel::order with a unique tie-breaker (ADR-0003 §9)"
+allowed_in = ["crates/h3-kernel/src/order.rs"]
+[[policy.forbidden]]
+token = ". sort_by"
+reason = "sorting must use kernel::order with a unique tie-breaker (ADR-0003 §9)"
+allowed_in = ["crates/h3-kernel/src/order.rs"]
+[[policy.forbidden]]
+token = ". sort_by_key"
+reason = "sorting must use kernel::order with a unique tie-breaker (ADR-0003 §9)"
+allowed_in = ["crates/h3-kernel/src/order.rs"]
+[[policy.forbidden]]
+token = ". sort_unstable"
+reason = "sorting must use kernel::order with a unique tie-breaker (ADR-0003 §9)"
+allowed_in = ["crates/h3-kernel/src/order.rs"]
+[[policy.forbidden]]
+token = ". sort_unstable_by"
+reason = "sorting must use kernel::order with a unique tie-breaker (ADR-0003 §9)"
+allowed_in = ["crates/h3-kernel/src/order.rs"]
+[[policy.forbidden]]
+token = ". sort_unstable_by_key"
+reason = "sorting must use kernel::order with a unique tie-breaker (ADR-0003 §9)"
+allowed_in = ["crates/h3-kernel/src/order.rs"]
+[[policy.forbidden]]
+token = ". sort_by_cached_key"
+reason = "sorting must use kernel::order with a unique tie-breaker (ADR-0003 §9)"
+allowed_in = ["crates/h3-kernel/src/order.rs"]
+
+[crate.h3-kernel]
+layer = "shared"
+logic = true
+deps = []
+external = []
+dev_deps = []
+dev_external = ["proptest"]
+
+[crate.h3-content]
+layer = "shared"
+logic = true
+deps = ["h3-kernel"]
+external = []
+dev_deps = []
+dev_external = ["proptest"]
+
+[crate.h3-contracts]
+layer = "shared"
+logic = true
+deps = ["h3-kernel", "h3-content"]
+external = []
+dev_deps = []
+dev_external = []
+
+[crate.h3-battle]
+layer = "domain"
+logic = true
+deps = ["h3-kernel", "h3-content", "h3-contracts"]
+external = []
+dev_deps = []
+dev_external = ["proptest"]
+
+[crate.h3-pack]
+layer = "adapter"
+logic = false
+deps = ["h3-kernel", "h3-content", "h3-contracts"]
+external = ["serde", "toml"]
+dev_deps = []
+dev_external = []
+
+[crate.h3-sim]
+layer = "adapter"
+logic = false
+deps = ["h3-kernel", "h3-content", "h3-contracts", "h3-battle"]
+external = []
+dev_deps = ["h3-pack"]
+dev_external = ["proptest", "criterion"]
+
+[crate.h3-ffi]
+layer = "adapter"
+logic = false
+deps = ["h3-kernel", "h3-content", "h3-contracts", "h3-battle", "h3-pack", "h3-sim"]
+external = []
+dev_deps = []
+dev_external = []
+
+[crate.h3-cli]
+layer = "adapter"
+logic = false
+deps = ["h3-kernel", "h3-content", "h3-contracts", "h3-battle", "h3-pack", "h3-sim"]
+external = ["serde", "toml"]
+dev_deps = []
+dev_external = []
+
+[crate.xtask]
+layer = "tool"
+logic = false
+deps = []
+external = ["serde", "toml", "serde_json"]
+dev_deps = []
+dev_external = []

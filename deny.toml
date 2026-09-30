@@ -1,0 +1,44 @@
+# cargo-deny policy (docs/05-testing.md gate 3, ADR-0009).
+# The project is GPL-2.0-or-later. Dependencies must be compatible with GPL *version 2*, so
+# Apache-2.0-only crates are not accepted (Apache-2.0 is only GPLv3-compatible); dual-licensed
+# "MIT OR Apache-2.0" crates are fine because MIT is taken.
+
+[graph]
+all-features = true
+
+[advisories]
+version = 2
+ignore = []
+
+[licenses]
+version = 2
+allow = [
+    "MIT",
+    "MIT-0",
+    "BSD-2-Clause",
+    "BSD-3-Clause",
+    "ISC",
+    "Zlib",
+    "0BSD",
+    "CC0-1.0",
+    "Unlicense",
+    "BSL-1.0",
+    "Unicode-3.0",
+    "Unicode-DFS-2016",
+]
+confidence-threshold = 0.9
+
+[licenses.private]
+# Workspace crates are unpublished and licensed GPL-2.0-or-later (LICENSE); do not check them.
+ignore = true
+
+[bans]
+multiple-versions = "warn"
+wildcards = "deny"
+allow-wildcard-paths = true
+highlight = "all"
+
+[sources]
+unknown-registry = "deny"
+unknown-git = "deny"
+allow-registry = ["https://github.com/rust-lang/crates.io-index"]

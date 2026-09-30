@@ -100,7 +100,7 @@ The logic core compiles to native (Windows, Linux, macOS) and WASM (no threads/I
 
 ## 10. Observability for fidelity work
 
-A `Trace` sink can record every rule application (rule ID, inputs, RNG draws, result). This powers debugging, "explain this damage number", and differential testing against reference implementations (e.g., VCMI as a black-box oracle, ADR-0009).
+A `Trace` sink can record every rule application (rule ID, inputs, RNG draws, result). This powers debugging, "explain this damage number", and differential testing against reference implementations (e.g., VCMI run as an oracle, ADR-0009).
 
 ## 11. Error handling
 

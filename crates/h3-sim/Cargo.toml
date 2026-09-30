@@ -1,0 +1,26 @@
+[package]
+name = "h3-sim"
+description = "Adapter: reinforcement-learning simulation environments (BattleEnv), action/observation encodings, replays."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish.workspace = true
+
+[dependencies]
+h3-kernel.workspace = true
+h3-content.workspace = true
+h3-contracts.workspace = true
+h3-battle.workspace = true
+
+[dev-dependencies]
+h3-pack.workspace = true
+proptest.workspace = true
+criterion.workspace = true
+
+[[bench]]
+name = "battle"
+harness = false
+
+[lints]
+workspace = true
