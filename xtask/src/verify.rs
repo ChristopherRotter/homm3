@@ -12,27 +12,19 @@ struct Step {
     action: fn() -> Result<(), String>,
 }
 
+const fn step(name: &'static str, slow: bool, action: fn() -> Result<(), String>) -> Step {
+    Step { name, slow, action }
+}
+
+/// The gates, in order (docs/05-testing.md "Gates").
 const STEPS: &[Step] = &[
-    Step {
-        name: "fmt",
-        slow: false,
-        action: fmt,
-    },
-    Step {
-        name: "clippy",
-        slow: false,
-        action: clippy,
-    },
-    Step {
-        name: "deny",
-        slow: false,
-        action: deny,
-    },
-    Step {
-        name: "test",
-        slow: false,
-        action: test,
-    },
+    step("fmt", false, fmt),
+    step("clippy", false, clippy),
+    step("deny", false, deny),
+    step("check-arch", false, || crate::arch::run(&[])),
+    step("check-rules", false, || crate::rules::run(&[])),
+    step("check-stubs", false, || crate::stubs::run(&[])),
+    step("test", false, test),
 ];
 
 fn fmt() -> Result<(), String> {

@@ -42,3 +42,72 @@ pub fn has_cargo_subcommand(name: &str) -> bool {
         .status()
         .is_ok_and(|s| s.success())
 }
+
+/// Workspace-relative path with forward slashes, for stable messages on every platform.
+pub fn rel(root: &Path, path: &Path) -> String {
+    path.strip_prefix(root)
+        .unwrap_or(path)
+        .to_string_lossy()
+        .replace('\\', "/")
+}
+
+/// All `.rs` files below `dir`, recursively, in a stable (sorted) order. A missing directory
+/// yields an empty list.
+pub fn rs_files(dir: &Path) -> Result<Vec<PathBuf>, String> {
+    let mut out = Vec::new();
+    if !dir.exists() {
+        return Ok(out);
+    }
+    let mut stack = vec![dir.to_path_buf()];
+    while let Some(d) = stack.pop() {
+        let entries = std::fs::read_dir(&d).map_err(|e| format!("{}: {e}", d.display()))?;
+        for entry in entries {
+            let path = entry.map_err(|e| format!("{}: {e}", d.display()))?.path();
+            if path.is_dir() {
+                stack.push(path);
+            } else if path.extension().is_some_and(|e| e == "rs") {
+                out.push(path);
+            }
+        }
+    }
+    out.sort();
+    Ok(out)
+}
+
+#[cfg(test)]
+pub mod test_support {
+    use std::path::{Path, PathBuf};
+    use std::sync::atomic::{AtomicU32, Ordering};
+
+    static COUNTER: AtomicU32 = AtomicU32::new(0);
+
+    /// A temporary directory removed on drop.
+    pub struct TempDir(PathBuf);
+
+    impl TempDir {
+        pub fn new(tag: &str) -> Self {
+            let n = COUNTER.fetch_add(1, Ordering::Relaxed);
+            let path =
+                std::env::temp_dir().join(format!("h3-xtask-{tag}-{}-{n}", std::process::id()));
+            let _ = std::fs::remove_dir_all(&path);
+            std::fs::create_dir_all(&path).unwrap();
+            Self(path)
+        }
+
+        pub fn path(&self) -> &Path {
+            &self.0
+        }
+
+        pub fn write(&self, rel: &str, contents: &str) {
+            let path = self.0.join(rel);
+            std::fs::create_dir_all(path.parent().unwrap()).unwrap();
+            std::fs::write(path, contents).unwrap();
+        }
+    }
+
+    impl Drop for TempDir {
+        fn drop(&mut self) {
+            let _ = std::fs::remove_dir_all(&self.0);
+        }
+    }
+}

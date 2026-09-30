@@ -16,6 +16,7 @@
 | 4 | `vcmi` | Behavior of the VCMI open-source engine | Reference and oracle; code may be ported with attribution since the project is GPL-2.0-or-later (ADR-0009). Note version/commit. Treat as a strong but fallible source (VCMI itself deviates from the original in places). |
 | 5 | `wiki` | Fan wikis (e.g., the community Heroes III wikis) | Label with page title + URL + retrieval date. Good but not 100% complete or correct. |
 | 6 | `community` | Forum posts, videos, hearsay | Needs corroboration before use; never the only source for a `high` confidence rule. |
+| — | `design` | An engine design decision, not a fact about the original game (e.g. the PRNG algorithm, hashing, encodings) | Only for engine rules in the `kernel` context or for skeleton simplifications that are explicitly marked as such; `ref` names the ADR/doc. Never the source for original gameplay behavior. |
 
 **Conflict rule:** higher-numbered authority never overrides a lower-numbered one; if two sources of equal rank disagree, or a wiki disagrees with VCMI, record an entry in `OPEN-QUESTIONS.md` when gameplay impact is real, and/or a quirks-ledger entry when the disagreement is a known original-game oddity.
 
@@ -46,10 +47,10 @@ Status meaning: **specified** = written down with sources; **implemented** = cod
 
 **Traceability (enforced by `cargo xtask check-rules`):**
 
-- Code implementing a rule carries a `// rule: <ID>` marker; tests that cover it carry `// covers: <ID>`.
-- Every rule with status ≥ `implemented` must have ≥ 1 `covers:` test.
-- Every marker must reference an existing rule ID.
-- Every rule must have ≥ 1 source; sources of kind `wiki`, `reverse-engineering`, `community`, `vcmi` must have a URL and retrieval date.
+- Code implementing a rule carries a `// rule: <ID>` marker; tests that cover it carry `// covers: <ID>` (comma-separated lists are allowed). `rule:` markers must be in non-test code; `covers:` markers must be in test code (`#[cfg(test)]` items, `tests/`, `tests.rs`).
+- Every rule with status ≥ `implemented` must have ≥ 1 `rule:` marker and ≥ 1 `covers:` test; a rule with a `rule:` marker must not still be `specified`; `retired` rules must not be referenced.
+- Every marker must reference an existing rule ID; IDs are unique and their prefix matches `context`.
+- Every rule must have ≥ 1 source; sources of kind `wiki`, `reverse-engineering`, `community`, `vcmi` must have an http(s) URL and a `retrieved = "YYYY-MM-DD"` date; `quirks` entries must exist in the quirks ledger.
 - Wiki-derived knowledge is never "anonymous": in code the rule ID is the pointer, in the catalog is the labelled, linked source.
 
 ## 4. Quirks and profiles
