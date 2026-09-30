@@ -595,11 +595,9 @@ mod tests {
         assert!(tracked_original_data("docs/x.md\ncrates/a/src/lib.rs\n").is_empty());
         let v = tracked_original_data("original-data/H3bitmap.lod\noriginal-data\\data\\x.txt\n");
         assert_eq!(v.len(), 2, "{v:?}");
-        assert!(
-            v[0].starts_with(
-                "original-data/H3bitmap.lod: original game data must never be committed"
-            )
-        );
+        assert!(v[0].starts_with(
+            "original-data/H3bitmap.lod: original game files must never be committed"
+        ));
         // The real checkout has nothing tracked there.
         assert!(tracked_original_data(&git_tracked_files(&workspace_root())).is_empty());
     }
