@@ -25,6 +25,7 @@ const STEPS: &[Step] = &[
     step("check-rules", false, || crate::rules::run(&[])),
     step("check-stubs", false, || crate::stubs::run(&[])),
     step("test", false, test),
+    step("coverage", true, || crate::coverage::run(&[])),
 ];
 
 fn fmt() -> Result<(), String> {

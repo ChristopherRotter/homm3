@@ -1,0 +1,62 @@
+# Synthetic content pack for tests and the walking skeleton. Invented creatures with neutral names;
+# numbers are chosen to exercise the rules, not taken from the original game.
+
+[pack]
+id = "synthetic"
+version = "0.1.0"
+depends = []
+
+# Battle parameters (Tier 2). Values of the rule parameters follow the sourced rules in
+# docs/rules/catalog/battle.toml; the field and formation are skeleton choices.
+[battle]
+field_width = 17                            # BAT-GEO-001: 15 standable columns + 2 side columns
+field_height = 11
+side_columns = 1
+army_slots = 7
+damage_roll_samples = 10                    # BAT-DMG-001
+attack_bonus_per_point_percent = 5          # BAT-DMG-002
+attack_bonus_cap_percent = 300              # BAT-DMG-002 (wiki; VCMI uses 400, OPEN-QUESTIONS Q11)
+defense_reduction_per_point_permille = 25   # BAT-DMG-002
+defense_reduction_cap_permille = 700        # BAT-DMG-002
+defend_bonus_percent = 20                   # BAT-TRN-004
+defend_bonus_min = 1                        # BAT-TRN-004
+# BAT-SET-001: formation[n-1] = starting rows of an army with n stacks, in slot order.
+formation = [
+    [5],
+    [3, 7],
+    [2, 5, 8],
+    [1, 4, 6, 9],
+    [0, 2, 5, 8, 10],
+    [0, 2, 4, 6, 8, 10],
+    [0, 2, 4, 5, 6, 8, 10],
+]
+
+[[creature]]
+id = "spearman"
+attack = 4
+defense = 5
+damage = [1, 3]
+hit_points = 10
+speed = 4
+
+[[creature]]
+id = "brute"
+attack = 7
+defense = 4
+damage = [2, 5]
+hit_points = 18
+speed = 5
+
+[[creature]]
+id = "wisp"
+attack = 3
+defense = 2
+damage = [1, 2]
+hit_points = 4
+speed = 9
+
+[[profile]]
+id = "faithful"        # default: preserve/fix-optional quirks on (none exist yet)
+
+[[profile]]
+id = "strict-fixed"    # all quirks fixed (none exist yet)

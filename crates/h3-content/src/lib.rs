@@ -17,3 +17,20 @@
     clippy::exit
 )]
 #![warn(missing_docs)]
+
+extern crate alloc;
+
+mod error;
+mod key;
+mod pack;
+mod quirks;
+mod ruleset;
+
+pub use error::CompileError;
+pub use key::{ContentKey, KeyError};
+pub use pack::{BattleParamsDef, ContentPack, CreatureDef, PackManifest, ProfileDef};
+pub use quirks::{QuirkFlag, QuirkRegistry, Quirks, REGISTRY};
+pub use ruleset::{
+    BattleParams, CreatureType, CreatureTypeId, FieldParams, MAX_ARMY_SLOTS, MAX_FIELD_HEXES,
+    RULESET_HASH_VERSION, Ruleset,
+};

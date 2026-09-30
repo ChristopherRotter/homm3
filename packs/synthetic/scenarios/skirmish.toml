@@ -1,0 +1,35 @@
+# Three stacks per side; used by the CLI, replay fixtures and benchmarks.
+
+[scenario]
+id = "skirmish"
+profile = "synthetic:faithful"
+
+[[attacker]]
+slot = 0
+creature = "synthetic:spearman"
+count = 30
+
+[[attacker]]
+slot = 1
+creature = "synthetic:brute"
+count = 10
+
+[[attacker]]
+slot = 2
+creature = "synthetic:wisp"
+count = 20
+
+[[defender]]
+slot = 0
+creature = "synthetic:brute"
+count = 12
+
+[[defender]]
+slot = 2
+creature = "synthetic:spearman"
+count = 25
+
+[[defender]]
+slot = 4
+creature = "synthetic:wisp"
+count = 15

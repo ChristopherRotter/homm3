@@ -8,6 +8,7 @@
 use std::process::ExitCode;
 
 mod arch;
+mod coverage;
 mod rules;
 mod scan;
 mod stubs;
@@ -22,6 +23,7 @@ commands:
   check-arch                            crate graph + logic-crate purity (arch.toml)
   check-rules                           rule catalog + rule:/covers: traceability
   check-stubs                           stub registry vs todo!/#[ignore]/TODO markers
+  coverage                              100% line+region coverage on logic crates
   help                                  show this message
 
 `--quick` skips the slow gates (determinism matrix, coverage, benchmark regression) and is for
@@ -38,6 +40,7 @@ fn main() -> ExitCode {
         "check-arch" => arch::run(rest),
         "check-rules" => rules::run(rest),
         "check-stubs" => stubs::run(rest),
+        "coverage" => coverage::run(rest),
         "help" | "--help" | "-h" => {
             println!("{USAGE}");
             Ok(())

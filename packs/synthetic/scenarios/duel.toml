@@ -1,0 +1,15 @@
+# One stack per side.
+
+[scenario]
+id = "duel"
+profile = "synthetic:faithful"
+
+[[attacker]]
+slot = 0
+creature = "synthetic:brute"
+count = 8
+
+[[defender]]
+slot = 0
+creature = "synthetic:spearman"
+count = 20

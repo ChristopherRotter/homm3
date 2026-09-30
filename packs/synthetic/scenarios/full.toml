@@ -1,0 +1,63 @@
+# Seven stacks per side (full armies); used for benchmarks and clone-cost measurements.
+
+[scenario]
+id = "full"
+profile = "synthetic:faithful"
+
+[[attacker]]
+slot = 0
+creature = "synthetic:spearman"
+count = 40
+[[attacker]]
+slot = 1
+creature = "synthetic:brute"
+count = 12
+[[attacker]]
+slot = 2
+creature = "synthetic:wisp"
+count = 30
+[[attacker]]
+slot = 3
+creature = "synthetic:spearman"
+count = 25
+[[attacker]]
+slot = 4
+creature = "synthetic:brute"
+count = 9
+[[attacker]]
+slot = 5
+creature = "synthetic:wisp"
+count = 18
+[[attacker]]
+slot = 6
+creature = "synthetic:spearman"
+count = 33
+
+[[defender]]
+slot = 0
+creature = "synthetic:brute"
+count = 14
+[[defender]]
+slot = 1
+creature = "synthetic:spearman"
+count = 35
+[[defender]]
+slot = 2
+creature = "synthetic:wisp"
+count = 22
+[[defender]]
+slot = 3
+creature = "synthetic:brute"
+count = 10
+[[defender]]
+slot = 4
+creature = "synthetic:spearman"
+count = 28
+[[defender]]
+slot = 5
+creature = "synthetic:wisp"
+count = 26
+[[defender]]
+slot = 6
+creature = "synthetic:brute"
+count = 11
