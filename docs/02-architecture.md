@@ -43,10 +43,11 @@ Rules:
 
 ```
 crates/
-  h3-kernel/       ids, fixed-width numerics, PRNG, state hashing, errors, bonus/modifier primitives (design deferred)
-  h3-contracts/    seam types: BattleSetup, BattleOutcome, ...
-  h3-content/      definition model (creatures, spells, artifacts, ...), content-pack manifest, Ruleset compiler (pure: takes parsed data)
+  h3-kernel/       handles, FixedVec, PRNG + streams, canonical state hashing, kernel::num, order, arith; bonus/modifier primitives (design deferred)
+  h3-contracts/    seam types: BattleSide, Army, BattleSetup, BattleOutcome, ...
+  h3-content/      definition model (creatures, ...), content-pack model, quirk registry, Ruleset compiler (pure: takes parsed data)
   h3-battle/       battle context
+  h3-pack/         content-pack and scenario text format (TOML) → content definitions / BattleSetup   (adapter, E01)
   h3-adventure/    adventure-map context            (later)
   h3-town/ h3-heroes/ h3-magic/                     (later, split out when they earn it)
   h3-game/         orchestration, session, projections/visibility
@@ -59,6 +60,8 @@ xtask/             verify, check-arch, check-rules, coverage, bench gates
 ```
 
 Start with the smallest set the walking skeleton needs (kernel, content, battle, sim, cli, xtask, plus minimal game/contracts if required). Split crates when a context actually exists — but the dependency rules apply from day one.
+
+**State after E01:** `h3-kernel`, `h3-content`, `h3-contracts`, `h3-battle` (logic, `no_std` + `alloc`, 100 % coverage gate); `h3-pack`, `h3-sim`, `h3-ffi`, `h3-cli` (adapters); `xtask`. No `h3-game` yet: the sim drives the battle context directly through `BattleSetup`. The allowed graph is `arch.toml`; ADR-0005's amendment lists what `check-arch` enforces.
 
 ## 4. State, commands, events
 

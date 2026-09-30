@@ -27,3 +27,15 @@ Compile-time and CI-time protection against coupling; the adventure↔battle sea
 ## Alternatives considered
 
 Single crate with modules (boundaries erode, no compile-time enforcement); fine-grained crates from day one (premature, slows the skeleton) — crates are created when the context exists.
+
+## Amendment — E01 walking skeleton (2026-09-30)
+
+- **Crates created:** logic: `h3-kernel`, `h3-content`, `h3-contracts` (shared), `h3-battle` (domain); adapters: `h3-pack` (new: parses TOML content packs and scenarios into content definitions; the "TOML loader (adapter side)" of the E01 scope), `h3-sim`, `h3-ffi`, `h3-cli`; tool: `xtask`. `h3-game` is not needed yet (the sim drives the battle context directly). The graph is declared in `arch.toml`.
+- **Logic crates are `#![no_std]` + `alloc`.** This makes I/O, clocks, threads, environment access and `std`'s `HashMap`/`HashSet` unavailable at compile time rather than only by lint, and keeps WASM natural. Tests may use `std` (`#[cfg(test)] extern crate std`).
+- **Enforcement (`cargo xtask check-arch`):** every workspace member must be declared; every normal/build/dev dependency edge must be listed; layer rule (strictly downward, except shared→shared and adapter→adapter; domain↛domain; nothing depends on tools); logic crates must carry the lint header (`no_std`, `forbid(unsafe_code)`, deny `unwrap`/`expect`/`panic`/`todo`/`unimplemented`/`unreachable`/`float_arithmetic`/print/exit) and pass a token scan (`HashMap`, `HashSet`, `std`, `static mut`, `unsafe`, float types and literals outside `kernel::num`, raw `sort*` outside `kernel::order`), with test code exempt and a visible `// arch-ok:` escape hatch. A test proves that a violating edge and violating code are rejected.
+- The minimal-`pub`-surface point is not machine-checked yet (backlog).
+
+## Revision history
+
+- 2026-09-30: Accepted.
+- 2026-09-30: Amended by E01 (crates created, `no_std` logic crates, what `check-arch` enforces).

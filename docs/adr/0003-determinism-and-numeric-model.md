@@ -43,7 +43,19 @@ Faithful reproduction of float-based original rules without emulation gymnastics
 
 Integer/fixed-point only (the original version of this ADR: simplest to verify, but forces emulation of float-based original rules and is stricter than the evidence requires); floats with no special handling (platform libm and sort differences would break replays); soft-float everywhere (slow, unnecessary given Factorio's experience and IEEE-754 basics being deterministic on our targets).
 
+## Amendment — E01 walking skeleton (2026-09-30)
+
+Choices §7 and §11 deferred to E01, and lessons from implementing them:
+
+- **PRNG (§7):** xoshiro256\*\* seeded by SplitMix64; named stream S of master seed M is `from_seed(M ^ splitmix64_first(S))`; bounded integers by Lemire's multiply-and-reject on 32-bit draws. Ids: `RNG_ALGORITHM = "xoshiro256starstar+splitmix64"`, `RNG_VERSION = 1`, recorded in replay headers. Streams so far: `BATTLE` (1), `AGENT` (2). Test vectors from the reference C code (rule KER-RNG-001/002).
+- **State hash (§11):** 64-bit FNV-1a over a canonical little-endian encoding (`HASH_ALGORITHM = "fnv1a64-le"`, `HASH_VERSION = 1`); every hashed type documents its field order and has its own encoding version (`BATTLE_STATE_HASH_VERSION`, `RULESET_HASH_VERSION`). Chosen for simplicity and published test vectors; ≈ 1 ns/byte is fast enough for checkpoints. If search needs per-node hashing, switch algorithm and bump the version (rule KER-HSH-001).
+- **Floats (§1–4):** `kernel::num::Real` is a finite-only `f64` wrapper with checked `+ − × ÷` and integer-conversion rounding. Logic crates are `no_std` (ADR-0005 amendment), and `core` has no `floor`/`trunc`/`sqrt` there, so rounding is implemented with integer conversions and `sqrt`/transcendentals must be in-repo software implementations when first needed. Enforcement: `clippy::float_arithmetic` denied in logic crates (allowed only in `num.rs`), `f32`/`f64` tokens and untyped float literals rejected by `check-arch` outside `num.rs`, `disallowed_methods` for platform transcendentals, `powi` and `mul_add`. No battle rule uses floats yet (BAT-DMG-002 is exact in integers; see its catalog note about the original's likely float arithmetic).
+- **Overflow (§6):** `overflow-checks = true` in the release profile too, so an overflow panics identically in debug and release instead of wrapping silently in one of them.
+- **Sorting (§9):** logic crates may sort only through `kernel::order` (enforced by `check-arch`); the battle turn order uses a selection by a unique key rather than sorting.
+- **Determinism matrix (§5, §13):** without CI (OPEN-QUESTIONS Q3), `cargo xtask determinism` runs the golden replays (`fixtures/replays/`) in debug, release, and release with `-C target-cpu=native`. Verified on x86_64 Linux. Windows, macOS and wasm32 are still to be run (see HANDOFF).
+
 ## Revision history
 
 - 2026-09-30: Initial version, integer/fixed-point only.
 - 2026-09-30: Amended after user input and FFF-52: floats allowed under the `kernel::num` discipline; added sorting rule, supported-target list and CI matrix.
+- 2026-09-30: Amended by E01: PRNG and hash choices, `no_std` float consequences, release overflow checks, local determinism matrix.

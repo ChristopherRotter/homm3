@@ -43,6 +43,7 @@ const STEPS: &[Step] = &[
     step("determinism", true, || passed(crate::determinism::run(&[]))),
     step("ffi-smoke", false, crate::determinism::ffi_smoke_status),
     step("bench-check", true, crate::bench::check_status),
+    step("doc-drift", false, crate::drift::status),
 ];
 
 fn fmt() -> Result<(), String> {

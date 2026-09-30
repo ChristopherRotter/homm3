@@ -1,6 +1,6 @@
 # Documentation index
 
-Working project name: **h3** (provisional; see OPEN-QUESTIONS Q2). Last structural update: 2026-09-30.
+Working project name: **h3** (provisional; see OPEN-QUESTIONS Q2). Last structural update: 2026-09-30 (E01). Code layout and quick start: [../README.md](../README.md).
 
 ## How to read these docs
 
@@ -19,6 +19,7 @@ Working project name: **h3** (provisional; see OPEN-QUESTIONS Q2). Last structur
 | [OPEN-QUESTIONS.md](OPEN-QUESTIONS.md) | Decisions waiting for the user |
 | [epics/](epics/) | Refined epics (only those about to be worked on) |
 | [adr/](adr/) | Architecture Decision Records (binding) |
+| [pull_request_template.md](pull_request_template.md) | Definition-of-Done checklist for changes |
 | [rules/](rules/) | Rule catalog (machine-checked), quirks ledger |
 
 ## Planning philosophy

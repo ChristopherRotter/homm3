@@ -35,3 +35,16 @@ Moddability and extension room without runtime interpretation cost; a clear plac
 ## Alternatives considered
 
 Runtime scripting for all rules (flexible, slow, hard to test/secure); hard-coded rules with constants (fast, unmoddable, painful for extensions); generic data-interpreting engine everywhere (over-general and slow).
+
+## Amendment — E01 walking skeleton (2026-09-30)
+
+- **Format:** TOML packs parsed by the `h3-pack` adapter (strict: unknown fields and out-of-range numbers are errors); the pure compiler in `h3-content` validates everything again. Keys are `pack:name`; a pack may only define keys in its own namespace; packs are compiled in load order and must list dependencies loaded before them. Duplicate keys are errors (override rules are deferred, backlog).
+- **Tier 2 in the skeleton:** battle parameters (field size, side columns, army slots, damage roll samples, attack/defense rates and caps, Defend bonus, formation rows) come from exactly one pack.
+- **Profiles and quirks:** a profile selects quirk flags from a closed registry in code (`h3_content::REGISTRY`, empty in E01 because no quirk-affected rule exists yet); unknown flags are compile errors. Profile-level Tier-2 overrides are deferred (backlog).
+- **Hot path:** creature stats are copied into each battle stack at setup, so the battle never looks anything up in the ruleset during play (and later per-stack effects have a place to live). The compiled ruleset has a canonical content hash recorded in replays.
+- **Guardrails applied:** army slots and battlefield dimensions are parameters (engine capacity limits: 16 slots per side, 255 hexes), no content is matched by name in code.
+
+## Revision history
+
+- 2026-09-30: Accepted.
+- 2026-09-30: Amended by E01 (pack format, compiler rules, quirk registry, stats copied into battle state).

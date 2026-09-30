@@ -23,3 +23,13 @@ Fidelity work is traceable; agents cannot smuggle in undocumented behavior; the 
 ## Alternatives considered
 
 Trusting a single reference implementation (inherits its bugs and license constraints); no provenance (unreviewable); fixing all bugs blindly (breaks accepted gameplay); preserving all bugs (keeps exploits).
+
+## Amendment — E01 walking skeleton (2026-09-30)
+
+- Added the source kind **`design`** for engine rules that are not facts about the original game (PRNG, hashing, encodings in the `kernel` context) and for explicitly marked skeleton simplifications (e.g. BAT-SET-001's invented formation data). It never sources original gameplay behavior. Documented in `docs/04-rules-and-sources.md`.
+- `check-rules` also requires a `rule:` marker (not only a `covers:` test) for `implemented`/`verified` rules, rejects `rule:` markers on `specified` or `retired` rules, and requires `covers:` markers to be in test code and `rule:` markers outside it.
+
+## Revision history
+
+- 2026-09-30: Accepted.
+- 2026-09-30: Amended by E01 (`design` source kind, stricter traceability).

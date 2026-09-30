@@ -40,6 +40,9 @@ Other seams (town ↔ heroes, heroes ↔ magic, content ↔ all) are introduced 
 - **Adventure map**, **Tile**, **Object**, **Fog of war**.
 - **Day / Week / Month** — the calendar (weekly growth, month/week events).
 - **Battlefield**, **Hex**, **Initiative/Speed**, **Retaliation**, **Morale**, **Luck**, **Obstacle**, **War machine**.
+- **Round** — every living stack acts once (normal phase, fastest first; then the **wait phase**, slowest first). **Active stack** — the stack whose turn it is. **Wait** — postpone the turn to the wait phase (once per round). **Defend** — end the turn with a defense bonus until the stack's next turn. **Strike** — one attack's damage application (the attack itself or a retaliation). **Formation** — starting rows of an army by stack count.
+- **Side** (`BattleSide`) — attacker or defender in a battle; the battle context's actor identity.
+- Sim-layer terms (not domain language): **episode**, **step**, **truncation** (step limit), **action index**, **observation encoding**, **reward**.
 - **Command** — a player's intent, validated and applied. **Event** — a fact emitted by applying a command. **Observation** — a player-specific projection of state. **Actor** — the trusted identity issuing a command.
 - **Rule** — a specified piece of game logic with an ID in the rule catalog.
 

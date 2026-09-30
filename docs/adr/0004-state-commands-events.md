@@ -28,3 +28,22 @@ Clear security story, reproducibility, straightforward RL integration and client
 ## Alternatives considered
 
 Event sourcing (heavier, slower, unnecessary); direct state mutation APIs (bypassable validation); lockstep multiplayer (information leak, conflicts with anti-cheat goal).
+
+## Amendment — E01 walking skeleton (2026-09-30)
+
+How the model turned out in the battle context:
+
+- **Entry point:** `h3_battle::apply(&mut BattleState, &Ruleset, BattleSide, Command, &mut impl Sink)`; the actor is the side the trusted caller acts for. Validation (`plan`) completes before any mutation; after it, every stack id is known valid, so the mutation phase uses infallible accessors. `validate` exposes the same check without mutating.
+- **Commands (intent only):** `Move { to }`, `Attack { target, from }`, `Wait`, `Defend`. The acting stack is implied by the state (the active stack), so a command cannot even name a stack to act with.
+- **Events:** `RoundStarted`, `TurnStarted`, `Moved`, `Waited`, `Defended`, `Struck` (damage, kills, retaliation flag), `BattleEnded`, each with a `Visibility` (`Public` or `Side`); `project(event, viewer)` filters. All battle events are public so far. `NoopSink` compiles to nothing; `Vec<Event>` records.
+- **Observation:** the full battlefield minus the RNG state (the only hidden information so far); property-tested for hygiene.
+- **Legal commands:** enumerated into a fixed-capacity buffer (`LegalCommands`, capacity 449) from the same reachability/adjacency functions `apply` uses; consistency is property-tested in both directions.
+- **State layout:** `BattleState` is 944 bytes (32 inline stacks with creature stats copied in, round/turn bookkeeping, RNG) and clones in ≈ 90 ns; no heap allocation in `apply`/`legal_commands`.
+- **Geometry seam:** the battle context uses only `Hex` and the `Field` API (standable, neighbours, distance). It is a concrete type rather than a trait: a trait would have spread a generic parameter (or dynamic dispatch) through the hot path for no current benefit. E03 can change `Field`'s internals (obstacles, two-hex units) behind the same API.
+- **Episode limits are not game rules:** the battle has no round limit (as in the original); step limits live in the sim layer (`BattleEnv` truncation).
+- **Replays:** header (packs + versions, profile, ruleset hash, RNG/hash/encoding versions) + seed + setup + command log + a state hash every N commands + final hash; model in `h3-sim::replay`, TOML format in `h3-cli`.
+
+## Revision history
+
+- 2026-09-30: Accepted.
+- 2026-09-30: Amended by E01 (battle entry point, command set, events, geometry seam, replay contents).

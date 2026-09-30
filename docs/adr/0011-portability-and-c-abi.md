@@ -23,3 +23,16 @@ Any language can drive the engine; web clients via WASM are feasible; FFI design
 ## Alternatives considered
 
 Language-specific bindings only (locks out other ecosystems); a network protocol for everything (too slow for training hot loops); exposing Rust types directly (unstable ABI).
+
+## Amendment — E01 walking skeleton (2026-09-30)
+
+- **ABI v1** (`crates/h3-ffi`, header `crates/h3-ffi/include/h3.h`): `h3_abi_version`, `h3_action_count`, `h3_observation_len`, `h3_env_create_synthetic(scenario, seed, max_steps)`, `h3_env_destroy`, `h3_env_fork`, `h3_env_reset`, `h3_env_to_move`, `h3_env_legal_mask`, `h3_env_observe`, `h3_env_step` (→ `H3StepResult`), `h3_env_state_hash`. Error codes are negative `i32`; every entry point catches panics (`H3_ERR_PANIC`); pointer-taking functions are `unsafe extern "C"` with documented contracts.
+- The crate builds `rlib`, `cdylib` and `staticlib`. `cargo xtask ffi-smoke` compiles `crates/h3-ffi/c/smoke.c` against the static library and runs it (Linux/macOS; N/A on Windows, where the Rust-side ABI tests still run).
+- Batch stepping over many environments and loading packs/scenarios through the ABI are not there yet (E05).
+- Action and observation encodings are owned and versioned by `h3-sim` (`ACTION_ENCODING_VERSION`, `OBSERVATION_ENCODING_VERSION`), and covered by the ABI version.
+- The ABI exposes the full-state hash and is meant for trusted local consumers (training, tools); a server must not forward it to untrusted clients.
+
+## Revision history
+
+- 2026-09-30: Accepted.
+- 2026-09-30: Amended by E01 (ABI v1 surface and smoke test).

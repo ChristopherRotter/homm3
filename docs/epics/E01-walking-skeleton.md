@@ -1,6 +1,6 @@
 # E01 — Walking skeleton
 
-Status: next · Refined: 2026-09-30
+Status: done on Linux (2026-09-30); the Windows run of `cargo xtask verify` is pending (see "Status" at the end) · Refined: 2026-09-30
 
 ## Goal
 
@@ -60,3 +60,31 @@ Heroes, spells, artifacts, abilities beyond the trivial, obstacles, war machines
 ## Questions for the user during this epic
 
 Only if needed; Q1/Q2/Q3 (license/name/CI host) are the likely ones.
+
+## Status (2026-09-30, end of the E01 session)
+
+All tasks were implemented in one session on branch `e01-walking-skeleton`.
+
+| Task | State | Notes |
+|---|---|---|
+| T1 Scaffold & gates | done | toolchain 1.95.0; GPL-2.0-or-later `LICENSE`; no CI config (Q3); PR checklist in `docs/pull_request_template.md` |
+| T2 Arch & rule checks | done | `check-arch`, `check-rules`, `check-stubs` with rejection tests |
+| T3 Kernel | done | xoshiro256\*\*/SplitMix64 streams, FNV-1a state hash, `Real`, `FixedVec`, `Handle`, `order`, `arith` |
+| T4 Content & ruleset | done | `h3-content` compiler, `h3-pack` TOML adapter, synthetic pack + 3 scenarios |
+| T5 Battle state & geometry | done | 17×11 hex field, 944-byte state, ≈ 90 ns clone |
+| T6 Commands & rules | done | 13 battle rules with sources (`docs/rules/catalog/battle.toml`) |
+| T7 Legal commands & observation | done | property tests for all mandatory invariants |
+| T8 Sim & FFI & CLI | done | `BattleEnv`, C ABI v1 + C smoke, `h3 run/verify/bench`, 3 golden replays |
+| T9 Benchmarks & calibration | done | ≈ 245 k steps/s/core; instruction-count gate; numbers in `02-architecture.md` §8 |
+| T10 Coverage gate & closure | done | 100 % line + region on logic crates; docs, ADR amendments, E02/E03 refined |
+
+Exit criteria:
+
+1. `cargo xtask verify` green on Linux, 100 % line+region coverage — **met**. Windows: **not run** (no CI per Q3, and this session had no Windows toolchain). To close: run `cargo xtask verify` on the user's Windows machine (ffi-smoke and bench-check report N/A there).
+2. Replay fixtures identical across platforms — **met for x86_64 Linux** in debug, release and release + native. Windows run pending (same command as 1).
+3. Property tests (atomicity, legality consistency, ownership isolation, observation hygiene, clone equivalence, determinism, plus conservation) — **met**.
+4. A violating change is rejected, proved by xtask tests — **met** (`arch::tests::rejects_*`).
+5. Rule traceability end to end — **met** (`rules::tests::implemented_rule_without_test_fails`, `unknown_markers_fail`).
+6. Benchmarks recorded, provisional targets replaced — **met**.
+7. ADRs updated — **met** (amendments to ADR-0002/0003/0004/0005/0006/0007/0011; ADR-0009 accepted).
+8. HANDOFF, BACKLOG, stub registry, E02/E03 refined — **met**.

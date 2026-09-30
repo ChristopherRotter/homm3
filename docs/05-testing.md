@@ -38,6 +38,27 @@ One entry point, used locally and in CI; all must pass:
 
 Optional flags: `--with-original-data`, `--mutants`, `--fuzz-smoke`.
 
+**As implemented in E01** (`cargo xtask verify`; `--quick` skips the slow steps and never counts as green; `--skip <step>` makes the run explicitly not green):
+
+| Step | What | Slow |
+|---|---|---|
+| fmt | `cargo fmt --check` | |
+| clippy | `cargo clippy --workspace --all-targets -D warnings` (workspace lints + `clippy.toml` + logic-crate header) | |
+| deny | `cargo deny check` (licenses per ADR-0009, advisories, bans, sources) | |
+| check-arch | crate graph and logic-crate purity (`arch.toml`) | |
+| check-rules | rule catalog and `rule:`/`covers:` traceability | |
+| check-stubs | stub registry vs. `todo!`/`unimplemented!`/`#[ignore]`/`TODO`/`FIXME` | |
+| test | all unit, property, integration (incl. golden replays) and doc tests | |
+| coverage | `cargo llvm-cov`: 100 % lines (lcov, merged over generic instantiations) and regions (merged segments) on logic crates, minus `coverage-exclusions.toml` | yes |
+| determinism | golden replays in debug, release, release + `target-cpu=native` | yes |
+| ffi-smoke | compile and run the C smoke program against the static library (N/A on Windows) | |
+| bench-check | instruction counts (valgrind/callgrind) vs. `benches/baseline.toml`, +2 % threshold (N/A off Linux or for another toolchain/target) | yes |
+| doc-drift | warning only: logic crates changed since `master` without HANDOFF/rules/ADR/epic changes | |
+
+A step may report **N/A** only for a platform limitation (not for a tool that could be installed). Local setup: `cargo install cargo-deny cargo-llvm-cov --locked`, `rustup component add llvm-tools-preview` (or set `LLVM_COV`/`LLVM_PROFDATA` to compatible LLVM tools), a C compiler, and valgrind on Linux.
+
+**Coverage lesson (E01):** LLVM counts the implicit `else` of an `if let` and the error path of `?` as regions. Code must not contain branches that cannot execute: express invariants structurally (validated ids → infallible accessors; combinators such as `Option::inspect`/`or_else`), not as defensive dead branches.
+
 ## Mechanisms that keep agents from "forgetting" tests
 
 1. **One command, required in CI.** Nothing merges/counts as done unless `verify` is green.
