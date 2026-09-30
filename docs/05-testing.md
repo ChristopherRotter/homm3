@@ -49,7 +49,7 @@ Optional flags: `--with-original-data`, `--mutants`, `--fuzz-smoke`.
 | check-rules | rule catalog and `rule:`/`covers:` traceability | |
 | check-stubs | stub registry vs. `todo!`/`unimplemented!`/`#[ignore]`/`TODO`/`FIXME` | |
 | test | all unit, property, integration (incl. golden replays) and doc tests | |
-| coverage | `cargo llvm-cov`: 100 % lines (lcov, merged over generic instantiations) and regions (merged segments) on logic crates, minus `coverage-exclusions.toml` | yes |
+| coverage | `cargo llvm-cov`: 100 % lines (lcov, merged over generic instantiations) and regions (merged segments) on logic crates, minus `coverage-exclusions.toml`; fails if a non-test logic file with functions is missing from the report (test files are left out of the report by cargo-llvm-cov) | yes |
 | determinism | golden replays in debug, release, release + `target-cpu=native` | yes |
 | ffi-smoke | compile and run the C smoke program against the static library (N/A on Windows) | |
 | bench-check | instruction counts (valgrind/callgrind) vs. `benches/baseline.toml`, +2 % threshold (N/A off Linux or for another toolchain/target) | yes |

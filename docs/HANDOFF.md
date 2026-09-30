@@ -6,7 +6,7 @@ Living state. The last agent updates this at the end of every session; the next 
 
 ## 2026-09-30 — E01 walking skeleton (one session, with the user present at the start)
 
-**State of the repo:** branch `e01-walking-skeleton` (7 commits on top of `master`), all E01 tasks T1–T10 done. `cargo xtask verify` is **green on x86_64 Linux** (all 12 steps, none skipped). The Windows run is the only open E01 item (see "Next").
+**State of the repo:** branch `e01-walking-skeleton` (one commit per task plus a review-fix commit, on top of `master`), all E01 tasks T1–T10 done. An independent review pass at the end found no rule or validation bugs but several gate loopholes (test-code classification, header check by substring, skipped steps exiting 0, fail-open coverage/bench checks); all fixed in the last commit. `cargo xtask verify` is **green on x86_64 Linux** (all 12 steps, none skipped). The Windows run is the only open E01 item (see "Next").
 
 **What was done:**
 - Workspace: `h3-kernel`, `h3-content`, `h3-contracts`, `h3-battle` (logic, `no_std` + `alloc`, 100 % line+region coverage); `h3-pack`, `h3-sim`, `h3-ffi`, `h3-cli` (adapters); `xtask`. Graph and purity rules in `arch.toml`.
