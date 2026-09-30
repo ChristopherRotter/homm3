@@ -48,6 +48,12 @@ impl<T> Clone for Handle<T> {
     }
 }
 impl<T> Copy for Handle<T> {}
+impl<T> Default for Handle<T> {
+    /// Handle 0. Only meaningful as a placeholder in fixed-capacity storage.
+    fn default() -> Self {
+        Self::from_raw(0)
+    }
+}
 impl<T> PartialEq for Handle<T> {
     fn eq(&self, other: &Self) -> bool {
         self.raw == other.raw
@@ -88,6 +94,7 @@ mod tests {
         let a: Handle<Tag> = Handle::from_raw(3);
         let b = a;
         assert_eq!(a, b.clone());
+        assert_eq!(Handle::<Tag>::default().raw(), 0);
         assert_eq!(a.raw(), 3);
         assert_eq!(a.index(), 3);
         assert!(Handle::<Tag>::from_raw(1) < a);

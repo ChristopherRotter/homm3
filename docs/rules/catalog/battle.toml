@@ -1,0 +1,308 @@
+# Rule catalog: battle context. Format: docs/04-rules-and-sources.md §3.
+#
+# E01 (walking skeleton) implements a deliberately small subset. Simplifications that E03 must
+# revisit are stated in each summary under "Skeleton scope".
+# Wiki pages were read on 2026-09-30; VCMI references are to tag 1.7.5 (commit 6901839ae976).
+
+[[rule]]
+id       = "BAT-GEO-001"
+title    = "Battlefield hex layout, neighbours and distance"
+context  = "battle"
+status   = "implemented"
+summary  = "The field is width x height hexes (original: 17 x 11 with one non-standable side column on each edge, i.e. 15 x 11 playable), hex = x + width*y. Even rows (0-based) are shifted half a hex right: left/right neighbours are (x-1,y)/(x+1,y); on even rows the upper/lower neighbours are x and x+1, on odd rows x-1 and x. Distance: with X = x + floor(y/2), dX = X2-X1, dY = y2-y1, distance = max(|dX|,|dY|) if dX and dY have the same sign, else |dX|+|dY|. Skeleton scope: no obstacles, no two-hex creatures, no siege walls."
+numeric  = "integer"
+
+  [[rule.source]]
+  kind       = "wiki"
+  ref        = "Combat - Heroes 3 wiki: 'the battlefield, that is 11 rows of 15 hexagonal frames (hexes)'"
+  url        = "https://heroes.thelazy.net/index.php/Combat"
+  retrieved  = "2026-09-30"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "vcmi"
+  ref        = "lib/battle/BattleHex.h: 17x11 grid (id = x + 17*y), moveInDirection, getDistance"
+  url        = "https://github.com/vcmi/vcmi/blob/1.7.5/lib/battle/BattleHex.h"
+  retrieved  = "2026-09-30"
+  confidence = "high"
+  note       = "Internal 17-column layout and siege hex ids match the original numbering (medium-high that the layout is the original's)."
+
+[[rule]]
+id       = "BAT-SET-001"
+title    = "Initial placement of armies"
+context  = "battle"
+status   = "implemented"
+summary  = "Stacks of each army are taken in slot order; the attacker's stand in the first standable column, the defender's in the last. The i-th stack of an army with n stacks stands in row formation[n-1][i] (ruleset data). Stack ids: attacker stacks first, then defender stacks, each in slot order. Skeleton scope: the formation table of the synthetic pack is invented; the original loose/tight formations and tactics phase are for E03."
+numeric  = "integer"
+
+  [[rule.source]]
+  kind       = "design"
+  ref        = "E01 walking-skeleton simplification (docs/epics/E01-walking-skeleton.md); formation rows are ruleset data"
+  confidence = "medium"
+  note       = "Replace with the original formation data (E02 import) and a sourced rule in E03."
+
+[[rule]]
+id       = "BAT-TRN-001"
+title    = "Turn order within a round"
+context  = "battle"
+status   = "implemented"
+summary  = "In the normal phase living stacks that have not acted or waited act in descending speed. Speed ties: the stack of the side that did not act last goes first (the attacker at the start of the battle; the rule carries across rounds), then the lower army slot. The order is re-evaluated before every activation. Skeleton scope: no siege/war-machine phases, no morale phase, speed never changes during a round."
+numeric  = "integer"
+
+  [[rule.source]]
+  kind       = "wiki"
+  ref        = "Combat - Heroes 3 wiki: 'the creature on the army which did not have the latest chance to act will act first'; 'Creatures in the leftmost slots ... act first'"
+  url        = "https://heroes.thelazy.net/index.php/Combat"
+  retrieved  = "2026-09-30"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "wiki"
+  ref        = "Speed - Heroes 3 wiki (slot order refers to the position before the tactics phase)"
+  url        = "https://heroes.thelazy.net/index.php/Speed"
+  retrieved  = "2026-09-30"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "vcmi"
+  ref        = "lib/battle/CBattleInfoCallback.cpp battleGetTurnOrder/takeOneUnit (sideThatLastMoved, lower slot first)"
+  url        = "https://github.com/vcmi/vcmi/blob/1.7.5/lib/battle/CBattleInfoCallback.cpp"
+  retrieved  = "2026-09-30"
+  confidence = "high"
+
+[[rule]]
+id       = "BAT-TRN-002"
+title    = "Wait"
+context  = "battle"
+status   = "implemented"
+summary  = "Wait postpones the active stack's turn to the wait phase, which follows the normal phase; waiting stacks act in ascending speed, with the same tie rules as BAT-TRN-001. A stack cannot wait twice in a round; it may defend after waiting. Waiting counts as the side's chance to act for tie-breaking. Skeleton scope: the morale-and-wait phase (phase 2 on the wiki) does not exist without morale."
+numeric  = "integer"
+
+  [[rule.source]]
+  kind       = "wiki"
+  ref        = "Combat - Heroes 3 wiki: 'In the second and third phase, the creatures move in the ascending order of speed'; 'The units naturally cannot wait again'"
+  url        = "https://heroes.thelazy.net/index.php/Combat"
+  retrieved  = "2026-09-30"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "vcmi"
+  ref        = "lib/battle/CUnitState.cpp battleQueuePhase (WAIT phase slowest first); sideThatLastMoved set on activation"
+  url        = "https://github.com/vcmi/vcmi/blob/1.7.5/lib/battle/CUnitState.cpp"
+  retrieved  = "2026-09-30"
+  confidence = "high"
+
+[[rule]]
+id       = "BAT-TRN-003"
+title    = "New round"
+context  = "battle"
+status   = "implemented"
+summary  = "When every living stack has acted in the current round, a new round begins: the round number increases and every stack regains its retaliation and may act and wait again. The Defend bonus is not reset by the new round (BAT-TRN-004)."
+numeric  = "integer"
+
+  [[rule.source]]
+  kind       = "vcmi"
+  ref        = "lib/battle/CUnitState.cpp afterNewRound (counterAttacks.reset, waiting/moved flags cleared)"
+  url        = "https://github.com/vcmi/vcmi/blob/1.7.5/lib/battle/CUnitState.cpp"
+  retrieved  = "2026-09-30"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "wiki"
+  ref        = "Retaliation - Heroes 3 wiki: one retaliation per combat round"
+  url        = "https://heroes.thelazy.net/index.php/Retaliation"
+  retrieved  = "2026-09-30"
+  confidence = "high"
+
+[[rule]]
+id       = "BAT-TRN-004"
+title    = "Defend"
+context  = "battle"
+status   = "implemented"
+summary  = "Defend ends the active stack's turn. Until the stack's next activation its defense is increased by floor(defense * defend_bonus_percent / 100), at least defend_bonus_min (original: 20 %, at least +1). Skeleton scope: defense has no hero/spell bonuses yet, so the 'after bonuses and spell effects' base question does not arise."
+numeric  = "integer"
+
+  [[rule.source]]
+  kind       = "wiki"
+  ref        = "Combat - Heroes 3 wiki: 'Defending grants them a 20% bonus to their Defense rating (after bonuses and spell effects) and skips the rest of their turn'"
+  url        = "https://heroes.thelazy.net/index.php/Combat"
+  retrieved  = "2026-09-30"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "vcmi"
+  ref        = "server/battles/BattleActionProcessor.cpp doDefendAction: +20% PERCENT_TO_ALL rounded down, replacement +1 when that is 0, duration STACK_GETS_TURN"
+  url        = "https://github.com/vcmi/vcmi/blob/1.7.5/server/battles/BattleActionProcessor.cpp"
+  retrieved  = "2026-09-30"
+  confidence = "medium"
+  note       = "Rounding and the +1 minimum come from VCMI only; the wiki is silent. VCMI has a TODO about excluding spell boosts from the base, contradicting the wiki."
+
+[[rule]]
+id       = "BAT-MOV-001"
+title    = "Walking movement"
+context  = "battle"
+status   = "implemented"
+summary  = "A walking stack moves up to its speed in steps between neighbouring hexes; every step must enter a standable hex not occupied by a living stack of either side (dead stacks do not block; there is no zone of control). Moving to its own hex is not a move. Skeleton scope: no flyers, obstacles, two-hex creatures, quicksand/moat/mines."
+numeric  = "integer"
+
+  [[rule.source]]
+  kind       = "wiki"
+  ref        = "Speed - Heroes 3 wiki: 'The speed value determines how many hexes the creature can move'"
+  url        = "https://heroes.thelazy.net/index.php/Speed"
+  retrieved  = "2026-09-30"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "vcmi"
+  ref        = "lib/battle/CBattleInfoCallback.cpp makeBFS (step cost 1, occupied hexes of living stacks are not accessible)"
+  url        = "https://github.com/vcmi/vcmi/blob/1.7.5/lib/battle/CBattleInfoCallback.cpp"
+  retrieved  = "2026-09-30"
+  confidence = "high"
+
+[[rule]]
+id       = "BAT-ATK-001"
+title    = "Melee attack"
+context  = "battle"
+status   = "implemented"
+summary  = "A melee attack names an enemy stack and a hex adjacent to it: the attacker's own hex, or a hex it can walk to this turn (BAT-MOV-001). The attacker moves there, then strikes (BAT-DMG-001..003); the strike costs no movement. Then the target may retaliate (BAT-RET-001). Skeleton scope: no ranged attacks, double attacks or attack-direction effects."
+numeric  = "integer"
+
+  [[rule.source]]
+  kind       = "vcmi"
+  ref        = "server/battles/BattleActionProcessor.cpp doWalkAndAttackAction (walk, strike, retaliation, second strike)"
+  url        = "https://github.com/vcmi/vcmi/blob/1.7.5/server/battles/BattleActionProcessor.cpp"
+  retrieved  = "2026-09-30"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "wiki"
+  ref        = "Combat - Heroes 3 wiki"
+  url        = "https://heroes.thelazy.net/index.php/Combat"
+  retrieved  = "2026-09-30"
+  confidence = "high"
+
+[[rule]]
+id       = "BAT-DMG-001"
+title    = "Base damage of a stack"
+context  = "battle"
+status   = "implemented"
+summary  = "For N <= 10 creatures (damage_roll_samples), every creature rolls a uniform integer in [damage_min, damage_max] and the rolls are summed. For N > 10, 10 rolls are summed and multiplied by N/10, rounded down: floor(S10 * N / 10). The result is an integer before any modifier."
+numeric  = "integer"
+
+  [[rule.source]]
+  kind       = "wiki"
+  ref        = "Damage - Heroes 3 wiki, 'Damage calculation of creature stacks': 'If there are more than 10 creatures in a stack, 10 random integers are chosen ... multiplied by N/10 ... and rounded down'"
+  url        = "https://heroes.thelazy.net/index.php/Damage"
+  retrieved  = "2026-09-30"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "wiki"
+  ref        = "Damage (Heroes) - Might and Magic fandom wiki"
+  url        = "https://mightandmagic.fandom.com/wiki/Damage_(Heroes)"
+  retrieved  = "2026-09-30"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "vcmi"
+  ref        = "lib/battle/BattleInfo.cpp getActualDamage: averages min(10, N) draws from the modified whole-stack range (different distribution; not followed)"
+  url        = "https://github.com/vcmi/vcmi/blob/1.7.5/lib/battle/BattleInfo.cpp"
+  retrieved  = "2026-09-30"
+  confidence = "medium"
+  note       = "VCMI deviates from the wiki description here. Same mean and range, different distribution. We follow the wiki; an observation fixture should settle it (E03)."
+
+[[rule]]
+id       = "BAT-DMG-002"
+title    = "Attack/defense modifier and final rounding"
+context  = "battle"
+status   = "implemented"
+summary  = "If attack A > defense D: damage = base * (1 + min(0.05 * (A - D), 3.00)); else damage = base * (1 - min(0.025 * (D - A), 0.70)). Rates and caps are ruleset parameters (percent / per mille). The result is rounded down and is at least 1. Computed exactly in integers: floor(base * (100 + bonus%) / 100) or floor(base * (1000 - reduction permille) / 1000). Skeleton scope: no other I/R modifiers (luck, skills, spells, specialties) yet; the original likely uses floating point (see the Armorer quirk on the wiki), so exact-integer results may differ by 1 in edge cases once more factors combine - revisit with observations in E03/E04."
+numeric  = "integer"
+
+  [[rule.source]]
+  kind       = "wiki"
+  ref        = "Damage - Heroes 3 wiki: 5% per point, 'up to +300% ... reached by a positive ADD of +60'; 2.5% per point, 'up to -70% ... a negative ADD of -28'"
+  url        = "https://heroes.thelazy.net/index.php/Damage"
+  retrieved  = "2026-09-30"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "wiki"
+  ref        = "Talk:Damage - Heroes 3 wiki (testers settled the reduction cap at 70%, bonuses add and reductions multiply)"
+  url        = "https://heroes.thelazy.net/index.php/Talk:Damage"
+  retrieved  = "2026-09-30"
+  confidence = "medium"
+
+  [[rule.source]]
+  kind       = "vcmi"
+  ref        = "lib/battle/DamageCalculator.cpp: max(1, floor(base * factor)); config/gameConfig.json attackPointDamageFactorCap = 4.0"
+  url        = "https://github.com/vcmi/vcmi/blob/1.7.5/lib/battle/DamageCalculator.cpp"
+  retrieved  = "2026-09-30"
+  confidence = "medium"
+  note       = "VCMI caps the attack bonus at +400% (80 points) instead of +300%: conflict recorded as OPEN-QUESTIONS Q11. The cap is a ruleset parameter; the synthetic pack uses the wiki value."
+
+[[rule]]
+id       = "BAT-DMG-003"
+title    = "Applying damage to a stack"
+context  = "battle"
+status   = "implemented"
+summary  = "Damage goes into the top creature first. With total = (count - 1) * max_hp + top_hp: if damage >= total the stack dies (excess is lost); otherwise remaining = total - damage, count = ceil(remaining / max_hp), top_hp = remaining - (count - 1) * max_hp. Kills = old count - new count."
+numeric  = "integer"
+
+  [[rule.source]]
+  kind       = "wiki"
+  ref        = "Health - Heroes 3 wiki (pikemen example: 10 HP each, 25 damage kills 2 and leaves the top pikeman at 5 HP)"
+  url        = "https://heroes.thelazy.net/index.php/Health"
+  retrieved  = "2026-09-30"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "vcmi"
+  ref        = "lib/battle/CUnitState.cpp CHealth::damage / setFromTotal"
+  url        = "https://github.com/vcmi/vcmi/blob/1.7.5/lib/battle/CUnitState.cpp"
+  retrieved  = "2026-09-30"
+  confidence = "high"
+
+[[rule]]
+id       = "BAT-RET-001"
+title    = "Retaliation"
+context  = "battle"
+status   = "implemented"
+summary  = "After a melee strike, the target retaliates once per round if it is still alive and has not retaliated this round; the retaliation is a normal strike (BAT-DMG-001..003) with the target's remaining creatures against the attacker. Retaliations reset at the start of each round (BAT-TRN-003). Skeleton scope: no unlimited/extra retaliations, no 'no enemy retaliation' attackers, no ranged attacks, no blind/paralyze effects."
+numeric  = "integer"
+
+  [[rule.source]]
+  kind       = "wiki"
+  ref        = "Retaliation - Heroes 3 wiki: 'the counterattack of a stack that has been the target of a melee attack', once per combat round"
+  url        = "https://heroes.thelazy.net/index.php/Retaliation"
+  retrieved  = "2026-09-30"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "vcmi"
+  ref        = "lib/battle/CUnitState.cpp ableToRetaliate (alive and retaliation left); server/battles/BattleActionProcessor.cpp strike-retaliate order"
+  url        = "https://github.com/vcmi/vcmi/blob/1.7.5/lib/battle/CUnitState.cpp"
+  retrieved  = "2026-09-30"
+  confidence = "high"
+
+[[rule]]
+id       = "BAT-END-001"
+title    = "End of battle"
+context  = "battle"
+status   = "implemented"
+summary  = "After every strike, if one side has no living stacks the battle ends and the other side wins; no stack is active afterwards and every command is rejected. The outcome lists the surviving stacks per side. Skeleton scope: no retreat/surrender, no war machines or summons (which do not count as living), no simultaneous wipe-out (cannot happen with single strikes; VCMI treats it as a draw)."
+numeric  = "integer"
+
+  [[rule.source]]
+  kind       = "wiki"
+  ref        = "Combat - Heroes 3 wiki: the battle ends when one army is entirely destroyed, or a hero retreats or surrenders"
+  url        = "https://heroes.thelazy.net/index.php/Combat"
+  retrieved  = "2026-09-30"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "vcmi"
+  ref        = "lib/battle/CBattleInfoCallback.cpp battleIsFinished"
+  url        = "https://github.com/vcmi/vcmi/blob/1.7.5/lib/battle/CBattleInfoCallback.cpp"
+  retrieved  = "2026-09-30"
+  confidence = "high"

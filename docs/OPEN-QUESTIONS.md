@@ -36,6 +36,20 @@ Options: (a) import-only — stats/text are extracted from the user's install at
 
 Design assumes **authoritative server with per-viewer projections** (`06-security.md`); lockstep with full state is excluded because it leaks hidden info. Confirm this matches intent for any future multiplayer.
 
+### Q11 — Attack-bonus cap: +300 % (wiki) or +400 % (VCMI)? (blocks the base pack's parameter value, E02/E03)
+
+**Context.** BAT-DMG-002: the Heroes 3 wiki ([Damage](https://heroes.thelazy.net/index.php/Damage)), the fandom wiki and guides say the attack bonus is capped at +300 % (reached at 60 points of attack over defense). VCMI 1.7.5 uses `attackPointDamageFactorCap = 4.0`, i.e. +400 % at 80 points. By the source hierarchy in `04-rules-and-sources.md`, VCMI (rank 4) outranks a wiki (rank 5), but VCMI is known to deviate from the original in places. Impact: only battles with ≥ 60 points of attack advantage (late game, strong heroes vs. weak neutrals).
+
+**Options.** (a) +300 % (wiki, several independent descriptions); (b) +400 % (VCMI); (c) settle it with an observation fixture in the original game (rank 2, final arbiter).
+
+**Recommendation.** (c), defaulting to (a) until then. The cap is already a ruleset parameter (`attack_bonus_cap_percent`), so the decision is a data value, not code. The synthetic pack uses 300.
+
+### Q12 — Damage roll for stacks of more than 10: wiki algorithm or VCMI's? (does not block E01)
+
+**Context.** BAT-DMG-001: the wiki says 10 rolls of the per-creature range are summed and scaled by N/10, rounded down. VCMI instead takes min(10, N) uniform draws from the already-modified whole-stack range and averages them. Same mean and range, different distribution (and different RNG consumption). Per the source hierarchy VCMI outranks the wiki, but the wiki describes the original's algorithm explicitly and VCMI's looks like an approximation.
+
+**What was done.** E01 implements the wiki algorithm (catalog entry notes the conflict). **Recommendation:** keep the wiki algorithm and confirm with a statistical observation fixture in E03 (distribution of damage of a large stack against a fixed target over many hits).
+
 ## Answered
 
 - *(2026-09-30, Q1)* License: **GPL-2.0-or-later** (user's choice, option (a)). VCMI code may be consulted and ported with attribution; dependencies must be GPLv2-compatible. Recorded in ADR-0009 (Accepted), `LICENSE`, `deny.toml`.

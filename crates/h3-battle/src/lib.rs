@@ -17,3 +17,32 @@
     clippy::exit
 )]
 #![warn(missing_docs)]
+
+extern crate alloc;
+#[cfg(test)]
+extern crate std;
+
+mod command;
+mod damage;
+mod error;
+mod event;
+mod geometry;
+mod legal;
+mod movement;
+mod observe;
+mod state;
+mod turn;
+
+pub use command::{Command, apply, validate};
+pub use error::{CommandError, SetupError};
+pub use event::{Event, EventKind, NoopSink, Sink, Visibility};
+pub use geometry::{Direction, Field, Hex};
+pub use h3_contracts::{BattleOutcome, BattleSetup, BattleSide};
+pub use legal::{LegalCommands, MAX_LEGAL_COMMANDS, legal_commands};
+pub use observe::{Observation, observe, project};
+pub use state::{
+    BATTLE_STATE_HASH_VERSION, BattleState, STACK_CAPACITY, Stack, StackFlags, StackId,
+};
+
+#[cfg(test)]
+mod tests;

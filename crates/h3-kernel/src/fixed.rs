@@ -41,6 +41,15 @@ impl<T: Copy + Default, const N: usize> FixedVec<T, N> {
         }
     }
 
+    /// A vector made of the first `len` elements of `items` (`len` is clamped to `N`). Lets
+    /// callers that know their bound build a vector without a fallible `push`.
+    pub fn from_array_prefix(items: [T; N], len: usize) -> Self {
+        Self {
+            items,
+            len: len.min(N),
+        }
+    }
+
     /// A vector holding a copy of `values`.
     pub fn from_slice(values: &[T]) -> Result<Self, CapacityError> {
         let mut v = Self::new();
@@ -183,5 +192,10 @@ mod tests {
             FixedVec::<u8, 1>::from_slice(&[1, 2]),
             Err(CapacityError { capacity: 1 })
         );
+        assert_eq!(
+            FixedVec::from_array_prefix([1u8, 2, 3], 2).as_slice(),
+            &[1, 2]
+        );
+        assert_eq!(FixedVec::from_array_prefix([1u8, 2, 3], 9).len(), 3);
     }
 }
