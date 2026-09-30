@@ -120,6 +120,9 @@ fn parse(args: &[String]) -> Result<Options, String> {
     Ok(options)
 }
 
+/// Error text used to signal "passed with skipped steps" (exit code 2, see main.rs).
+pub const NOT_GREEN: &str = "verify incomplete: steps were skipped";
+
 enum Outcome {
     Passed,
     NotApplicable(String),
@@ -172,6 +175,8 @@ pub fn run_steps(args: &[String]) -> Result<(), String> {
     }
     if skipped > 0 {
         println!("\nverify passed with {skipped} skipped step(s): this is NOT a green verify.");
+        // Exit code 2: nothing failed, but the run does not count as green.
+        return Err(NOT_GREEN.to_owned());
     } else {
         println!("\nverify is green.");
     }

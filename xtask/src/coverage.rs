@@ -175,8 +175,9 @@ pub fn run(_args: &[String]) -> Result<(), String> {
         );
     }
     let root = workspace_root();
-    let json_path = root.join("target").join("coverage.json");
-    let lcov_path = root.join("target").join("coverage.lcov");
+    let target = crate::util::target_dir()?;
+    let json_path = target.join("coverage.json");
+    let lcov_path = target.join("coverage.lcov");
     let mut test = cargo();
     test.args([
         "llvm-cov",
@@ -216,6 +217,29 @@ pub fn run(_args: &[String]) -> Result<(), String> {
         println!("  {} — {}", e.path, e.reason);
     }
     let excluded: BTreeSet<String> = exclusions.iter().map(|e| e.path.clone()).collect();
+    // Every non-excluded, non-test source file of a logic crate that defines a function must
+    // appear in the report; otherwise a path mismatch (symlinks, Windows prefixes) or an
+    // uncompiled file would pass silently. (Declaration-only files have no regions, and
+    // cargo-llvm-cov leaves test files out of the report by default.)
+    let reported: BTreeSet<&str> = files.iter().map(|f| f.file.as_str()).collect();
+    let mut missing = Vec::new();
+    for p in packages
+        .iter()
+        .filter(|p| config.crates.get(&p.name).is_some_and(|c| c.logic))
+    {
+        for (file, is_test) in crate::scan::classify_crate(&p.dir)? {
+            let r = rel(&root, &file);
+            if is_test || excluded.contains(&r) || reported.contains(r.as_str()) {
+                continue;
+            }
+            let text = fs::read_to_string(&file).map_err(|e| format!("{}: {e}", file.display()))?;
+            if !crate::scan::find_pattern(&crate::scan::scan(&text, false), "fn").is_empty() {
+                missing.push(format!(
+                    "{r}: defines functions but is not in the coverage report"
+                ));
+            }
+        }
+    }
     let gated_files = files
         .iter()
         .filter(|f| gated.iter().any(|d| f.file.starts_with(d.as_str())))
@@ -224,7 +248,12 @@ pub fn run(_args: &[String]) -> Result<(), String> {
         "coverage: {gated_files} gated file(s) in {} logic crate(s)",
         gated.len()
     );
-    report("coverage", &check(&files, &gated, &excluded))
+    if gated_files == 0 {
+        missing.push("no logic-crate file found in the coverage report".to_owned());
+    }
+    let mut violations = missing;
+    violations.extend(check(&files, &gated, &excluded));
+    report("coverage", &violations)
 }
 
 #[cfg(test)]

@@ -12,7 +12,7 @@ use serde::Deserialize;
 
 use crate::arch::report;
 use crate::scan::{self, Scanned};
-use crate::util::{rel, rs_files, workspace_root};
+use crate::util::{rel, workspace_root};
 
 #[derive(Debug, Deserialize)]
 #[serde(deny_unknown_fields)]
@@ -40,8 +40,15 @@ pub fn debt_sites(scanned: &Scanned) -> Vec<(usize, &'static str)> {
         match (t.text.as_str(), next) {
             ("todo", Some("!")) => out.push((t.line, "todo!")),
             ("unimplemented", Some("!")) => out.push((t.line, "unimplemented!")),
-            ("#", Some("[")) if toks.get(i + 2).is_some_and(|n| n.text == "ignore") => {
-                out.push((t.line, "#[ignore]"));
+            // `#[ignore]`, `#[ignore = "..."]`, `#[cfg_attr(cond, ignore)]`, ...
+            ("#", Some("[" | "!")) => {
+                let end = scan::skip_attribute(toks, i);
+                if toks
+                    .get(i + 1..end)
+                    .is_some_and(|a| a.iter().any(|x| x.text == "ignore"))
+                {
+                    out.push((t.line, "#[ignore]"));
+                }
             }
             _ => {}
         }
@@ -162,10 +169,10 @@ pub fn load_registry(path: &Path) -> Result<Registry, String> {
 
 pub fn scan_crates(root: &Path, crates_dir: &Path) -> Result<Vec<(String, Scanned)>, String> {
     let mut out = Vec::new();
-    for file in rs_files(crates_dir)? {
+    for (file, is_test) in scan::classify(crates_dir)? {
         let text = fs::read_to_string(&file).map_err(|e| format!("{}: {e}", file.display()))?;
         let rel_path = rel(root, &file);
-        let scanned = scan::scan(&text, scan::is_test_path(Path::new(&rel_path)));
+        let scanned = scan::scan(&text, is_test);
         out.push((rel_path, scanned));
     }
     Ok(out)
@@ -206,7 +213,8 @@ mod tests {
 
     #[test]
     fn unmarked_debt_fails() {
-        let src = "fn f() { todo!() }\nfn g() { unimplemented!() }\n#[test]\n#[ignore]\nfn h() {}\n// TODO: later\n// FIXME\n";
+        let src = "fn f() { todo!() }\nfn g() { unimplemented!() }\n#[test]\n#[ignore]\nfn h() {}\n// TODO: later\n// FIXME\n\
+                   #[cfg_attr(unix, ignore)]\nfn i() {}\n";
         let v = check(&registry("stub = []"), &files(src));
         for needle in [
             "`todo!`",
@@ -220,6 +228,10 @@ mod tests {
                 "missing {needle}: {v:?}"
             );
         }
+        assert!(
+            v.iter().any(|m| m.contains("a.rs:8: `#[ignore]`")),
+            "cfg_attr ignore: {v:?}"
+        );
     }
 
     #[test]

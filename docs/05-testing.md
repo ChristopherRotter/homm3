@@ -55,7 +55,7 @@ Optional flags: `--with-original-data`, `--mutants`, `--fuzz-smoke`.
 | bench-check | instruction counts (valgrind/callgrind) vs. `benches/baseline.toml`, +2 % threshold (N/A off Linux or for another toolchain/target) | yes |
 | doc-drift | warning only: logic crates changed since `master` without HANDOFF/rules/ADR/epic changes | |
 
-A step may report **N/A** only for a platform limitation (not for a tool that could be installed). Local setup: `cargo install cargo-deny cargo-llvm-cov --locked`, `rustup component add llvm-tools-preview` (or set `LLVM_COV`/`LLVM_PROFDATA` to compatible LLVM tools), a C compiler, and valgrind on Linux.
+Exit codes: 0 = complete and green; 1 = a step failed; 2 = nothing failed but steps were skipped (`--quick`/`--skip`), which is not green. A step may report **N/A** only for a platform limitation (not for a tool that could be installed; a bench-check baseline for another toolchain fails rather than being N/A). Local setup: `cargo install cargo-deny cargo-llvm-cov --locked`, `rustup component add llvm-tools-preview` (or set `LLVM_COV`/`LLVM_PROFDATA` to compatible LLVM tools), a C compiler, and valgrind on Linux.
 
 **Coverage lesson (E01):** LLVM counts the implicit `else` of an `if let` and the error path of `?` as regions. Code must not contain branches that cannot execute: express invariants structurally (validated ids → infallible accessors; combinators such as `Option::inspect`/`or_else`), not as defensive dead branches.
 

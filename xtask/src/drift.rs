@@ -41,7 +41,9 @@ fn git(args: &[&str]) -> Option<String> {
 }
 
 pub fn status() -> Result<Status, String> {
-    let Some(base) = git(&["merge-base", "HEAD", "master"]) else {
+    let Some(base) = git(&["merge-base", "HEAD", "master"])
+        .or_else(|| git(&["merge-base", "HEAD", "origin/master"]))
+    else {
         return Ok(Status::NotApplicable(
             "no git or no `master` branch to compare with".to_owned(),
         ));

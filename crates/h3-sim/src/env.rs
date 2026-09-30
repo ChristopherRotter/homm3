@@ -126,7 +126,7 @@ impl BattleEnv {
             &mut NoopSink,
         )
         .map_err(StepError::Rejected)?;
-        self.steps += 1;
+        self.steps = self.steps.saturating_add(1);
         let winner = self.state.winner();
         if winner.is_none() && self.max_steps != 0 && self.steps >= self.max_steps {
             self.truncated = true;

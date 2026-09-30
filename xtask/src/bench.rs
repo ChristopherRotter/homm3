@@ -5,7 +5,8 @@
 //! instructions (`Ir`) only inside the hot function selected by `collect`, and compares them
 //! with `benches/baseline.toml`. Counts are deterministic for a given toolchain, target and
 //! source, so the baseline records the toolchain and target and is only compared when both
-//! match. valgrind exists on Linux only; elsewhere the gate is not applicable.
+//! match (a mismatch fails: re-baseline deliberately). Changes beyond the threshold fail in both
+//! directions. valgrind exists on Linux only; elsewhere the gate is not applicable.
 
 use std::fs;
 use std::path::Path;
@@ -88,15 +89,14 @@ fn toolchain_and_target() -> Result<(String, String), String> {
 }
 
 fn measure(root: &Path, w: &Workload) -> Result<u64, String> {
-    let out_file = root
-        .join("target")
-        .join(format!("callgrind.{}.out", w.name));
+    let target = crate::util::target_dir()?;
+    let out_file = target.join(format!("callgrind.{}.out", w.name));
     let mut cmd = Command::new("valgrind");
     cmd.current_dir(root)
         .arg("--tool=callgrind")
         .arg(format!("--callgrind-out-file={}", out_file.display()))
         .arg(format!("--toggle-collect={}", w.collect))
-        .arg(root.join("target/release/h3"))
+        .arg(target.join("release/h3"))
         .args(&w.args)
         .stdout(std::process::Stdio::null())
         .stderr(std::process::Stdio::null());
@@ -128,11 +128,11 @@ pub fn check(update: bool) -> Result<Status, String> {
     let mut baseline = load(&root)?;
     let (toolchain, target) = toolchain_and_target()?;
     if !update && (baseline.toolchain != toolchain || baseline.target != target) {
-        return Ok(Status::NotApplicable(format!(
+        return Err(format!(
             "baseline recorded with `{}` on {}, this is `{toolchain}` on {target}; \
-             re-baseline with `cargo xtask bench-check --update`",
+             re-baseline with `cargo xtask bench-check --update` and say why in the commit",
             baseline.toolchain, baseline.target
-        )));
+        ));
     }
     let mut build = cargo();
     build.args(["build", "--release", "--quiet", "-p", "h3-cli"]);
@@ -140,6 +140,12 @@ pub fn check(update: bool) -> Result<Status, String> {
     let mut failures = Vec::new();
     for w in &mut baseline.workload {
         let measured = measure(&root, w)?;
+        if measured == 0 {
+            return Err(format!(
+                "{}: 0 instructions measured; the collect pattern `{}` matched nothing",
+                w.name, w.collect
+            ));
+        }
         let delta =
             (measured as f64 - w.instructions as f64) / w.instructions.max(1) as f64 * 100.0;
         println!(
@@ -148,10 +154,12 @@ pub fn check(update: bool) -> Result<Status, String> {
         );
         match judge(w.instructions, measured, w.threshold_percent) {
             Verdict::Ok => {}
-            Verdict::Improved => println!(
-                "bench-check: {} improved by more than {}%; consider `cargo xtask bench-check --update`",
+            Verdict::Improved => failures.push(format!(
+                "{} dropped by {delta:+.2}% (threshold {}%): if the improvement is real, record it \
+                 with `cargo xtask bench-check --update`; a large drop can also mean the workload \
+                 no longer measures what it should",
                 w.name, w.threshold_percent
-            ),
+            )),
             Verdict::Regressed => failures.push(format!(
                 "{} regressed by {delta:+.2}% (threshold {}%)",
                 w.name, w.threshold_percent

@@ -9,7 +9,7 @@ use serde::Deserialize;
 
 use crate::arch::report;
 use crate::scan;
-use crate::util::{rel, rs_files, workspace_root};
+use crate::util::{rel, workspace_root};
 
 #[derive(Debug, Deserialize)]
 #[serde(deny_unknown_fields)]
@@ -123,10 +123,10 @@ pub fn collect_markers(
 ) -> Result<(Vec<Marker>, Vec<Marker>), String> {
     let mut rules = Vec::new();
     let mut covers = Vec::new();
-    for file in rs_files(crates_dir)? {
+    for (file, is_test) in scan::classify(crates_dir)? {
         let text = fs::read_to_string(&file).map_err(|e| format!("{}: {e}", file.display()))?;
         let rel_path = rel(root, &file);
-        let scanned = scan::scan(&text, scan::is_test_path(Path::new(&rel_path)));
+        let scanned = scan::scan(&text, is_test);
         for (line, in_test, id) in scan::markers(&scanned, "rule") {
             rules.push(Marker {
                 file: rel_path.clone(),

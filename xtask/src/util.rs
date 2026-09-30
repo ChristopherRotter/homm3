@@ -19,6 +19,26 @@ pub fn cargo() -> Command {
     cmd
 }
 
+/// Cargo's target directory (honours `CARGO_TARGET_DIR` and cargo config), via `cargo metadata`.
+pub fn target_dir() -> Result<PathBuf, String> {
+    let out = cargo()
+        .args([
+            "metadata",
+            "--format-version",
+            "1",
+            "--no-deps",
+            "--offline",
+        ])
+        .output()
+        .map_err(|e| format!("cargo metadata: {e}"))?;
+    let v: serde_json::Value =
+        serde_json::from_slice(&out.stdout).map_err(|e| format!("cargo metadata: {e}"))?;
+    v["target_directory"]
+        .as_str()
+        .map(PathBuf::from)
+        .ok_or_else(|| "cargo metadata: no target_directory".to_owned())
+}
+
 /// Runs a command, inheriting stdio, and maps a non-zero exit into an error message.
 pub fn run_cmd(mut cmd: Command) -> Result<(), String> {
     let shown = format!("{cmd:?}");

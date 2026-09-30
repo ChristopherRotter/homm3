@@ -31,7 +31,7 @@ pub fn run(_args: &[String]) -> Result<(), String> {
         .args(FIXTURE_TEST)
         .arg("--quiet")
         .arg("--target-dir")
-        .arg(workspace_root().join("target").join("native"))
+        .arg(crate::util::target_dir()?.join("native"))
         .env("RUSTFLAGS", "-C target-cpu=native");
     run_cmd(native)
 }
@@ -60,8 +60,9 @@ pub fn ffi_smoke_status() -> Result<Status, String> {
     build.args(["build", "--quiet", "-p", "h3-ffi"]);
     run_cmd(build)?;
     let cc = std::env::var("CC").unwrap_or_else(|_| "cc".to_owned());
-    let lib = root.join("target/debug/libh3_ffi.a");
-    let exe = root.join("target/debug/h3-ffi-smoke");
+    let target = crate::util::target_dir()?;
+    let lib = target.join("debug/libh3_ffi.a");
+    let exe = target.join("debug/h3-ffi-smoke");
     let mut compile = std::process::Command::new(&cc);
     compile
         .args(["-std=c11", "-Wall", "-Wextra", "-Werror", "-I"])

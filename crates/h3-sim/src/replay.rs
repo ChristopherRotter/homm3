@@ -168,7 +168,8 @@ impl std::error::Error for ReplayError {}
 
 impl Replay {
     /// Records a game played by the uniformly random legal agent (AGENT stream of `agent_seed`)
-    /// for both sides, for at most `max_steps` commands.
+    /// for both sides, for at most `max_steps` commands (0 = no limit, as everywhere in the sim
+    /// layer; a random game can take long).
     pub fn record_random(
         ruleset: &Ruleset,
         setup: BattleSetup,
@@ -183,7 +184,7 @@ impl Replay {
         let mut commands = Vec::new();
         let mut checkpoints = Vec::new();
         while let Some(side) = state.side_to_act() {
-            if commands.len() >= max_steps as usize {
+            if max_steps != 0 && commands.len() >= max_steps as usize {
                 break;
             }
             h3_battle::legal_commands(&state, ruleset, side, &mut legal);

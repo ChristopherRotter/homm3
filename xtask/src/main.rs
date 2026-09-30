@@ -35,7 +35,8 @@ commands:
   help                                  show this message
 
 `--quick` skips the slow gates (determinism matrix, coverage, benchmark regression) and is for
-inner-loop development only; it never counts as a green verify.";
+inner-loop development only; it never counts as a green verify (exit code 2 when steps were
+skipped, 1 when a step failed, 0 only for a complete green run).";
 
 fn main() -> ExitCode {
     let args: Vec<String> = std::env::args().skip(1).collect();
@@ -62,6 +63,10 @@ fn main() -> ExitCode {
     };
     match result {
         Ok(()) => ExitCode::SUCCESS,
+        Err(message) if message == verify::NOT_GREEN => {
+            eprintln!("{message} (exit code 2)");
+            ExitCode::from(2)
+        }
         Err(message) => {
             eprintln!("error: {message}");
             ExitCode::FAILURE

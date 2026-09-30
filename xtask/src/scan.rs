@@ -3,8 +3,8 @@
 //! It is not a full lexer, but it understands enough of Rust to be reliable for our checks:
 //! line/block comments (nested), string/char/byte/raw-string literals, lifetimes, identifiers,
 //! numbers and punctuation. Comments are kept separately (markers live there). Items annotated
-//! with `#[cfg(test)]` are flagged as test code, as are files under a `tests` directory, files
-//! named `tests.rs`, and files under `benches`.
+//! with `#[cfg(test)]` are flagged as test code; whole files are classified by [`classify`]
+//! (module tree from the crate root, plus Cargo's `tests/`, `benches/`, `examples/`).
 //!
 //! Float literals (`1.5`, `2e3`, `1f64`) additionally produce a synthetic `f64` token so that the
 //! float confinement rule (ADR-0003 §4) also catches untyped float literals.
@@ -41,17 +41,6 @@ pub struct Comment {
 pub struct Scanned {
     pub tokens: Vec<Token>,
     pub comments: Vec<Comment>,
-}
-
-/// Whether the file as a whole is test/bench code by its location.
-pub fn is_test_path(path: &Path) -> bool {
-    let s = path.to_string_lossy().replace('\\', "/");
-    s.contains("/tests/")
-        || s.starts_with("tests/")
-        || s.contains("/benches/")
-        || s.starts_with("benches/")
-        || s.ends_with("/tests.rs")
-        || s == "tests.rs"
 }
 
 /// Scans Rust source text.
@@ -294,24 +283,37 @@ fn mark_test_items(out: &mut Scanned, whole_file_is_test: bool) {
             while j < toks.len() && toks[j].text == "#" {
                 j = skip_attribute(toks, j);
             }
-            // Skip the item: until `;` at depth 0 or the end of the first top-level `{}` block.
+            // Skip the annotated item: it ends at `;` or `,` at depth 0 (items, fields, variants,
+            // match arms), at the end of its first top-level `{}` block, or just before a closing
+            // bracket of the enclosing construct (a last field/variant without a comma).
+            // Generic arguments are not tracked, so a `,` inside `<...>` ends the item early:
+            // that errs on the side of scanning more code, never less.
             let mut depth = 0i32;
+            let mut end = toks.len().saturating_sub(1);
             while j < toks.len() {
                 let t = toks[j].text.as_str();
                 match t {
                     "{" | "(" | "[" => depth += 1,
+                    "}" | ")" | "]" if depth == 0 => {
+                        end = j.saturating_sub(1);
+                        break;
+                    }
                     "}" | ")" | "]" => {
                         depth -= 1;
                         if depth == 0 && t == "}" {
+                            end = j;
                             break;
                         }
                     }
-                    ";" if depth == 0 => break,
+                    ";" | "," if depth == 0 => {
+                        end = j;
+                        break;
+                    }
                     _ => {}
                 }
                 j += 1;
             }
-            let end = j.min(toks.len().saturating_sub(1));
+            let end = end.max(i);
             for flag in &mut test_token[i..=end] {
                 *flag = true;
             }
@@ -335,7 +337,7 @@ fn is_cfg_test_attr(toks: &[Token], i: usize) -> bool {
 }
 
 /// Given `toks[j] == "#"`, returns the index after the attribute's closing `]`.
-fn skip_attribute(toks: &[Token], j: usize) -> usize {
+pub fn skip_attribute(toks: &[Token], j: usize) -> usize {
     let mut k = j + 1;
     if k < toks.len() && toks[k].text == "!" {
         k += 1;
@@ -358,6 +360,177 @@ fn skip_attribute(toks: &[Token], j: usize) -> usize {
         k += 1;
     }
     k
+}
+
+/// Classifies every `.rs` file of the crates below `crates_dir` as test-only (`true`) or not.
+///
+/// Files under a crate's `tests/`, `benches/` or `examples/` directory are test/bench code by
+/// Cargo convention. Files under `src/` are classified by walking the module tree from `lib.rs`
+/// / `main.rs`: a file is test-only if it is reached through a `#[cfg(test)] mod name;`
+/// declaration. Files not reached from the crate root are treated as production code, so they
+/// are scanned (and flagged) rather than silently exempted. `#[path]` attributes are not
+/// supported.
+pub fn classify(crates_dir: &Path) -> Result<Vec<(std::path::PathBuf, bool)>, String> {
+    let mut crate_dirs: Vec<std::path::PathBuf> = std::fs::read_dir(crates_dir)
+        .map_err(|e| format!("{}: {e}", crates_dir.display()))?
+        .flatten()
+        .map(|e| e.path())
+        .filter(|p| p.is_dir())
+        .collect();
+    crate_dirs.sort();
+    let mut out = Vec::new();
+    for dir in crate_dirs {
+        out.extend(classify_crate(&dir)?);
+    }
+    Ok(out)
+}
+
+/// [`classify`] for one crate directory.
+pub fn classify_crate(dir: &Path) -> Result<Vec<(std::path::PathBuf, bool)>, String> {
+    let tree = module_tree(&dir.join("src"))?;
+    let mut out = Vec::new();
+    for file in crate::util::rs_files(dir)? {
+        let rel = file
+            .strip_prefix(dir)
+            .unwrap_or(&file)
+            .to_string_lossy()
+            .replace('\\', "/");
+        let area = rel.split('/').next().unwrap_or_default().to_owned();
+        let is_test = match area.as_str() {
+            "src" => tree.get(&file).copied().unwrap_or(false),
+            "tests" | "benches" | "examples" => true,
+            _ => false,
+        };
+        out.push((file, is_test));
+    }
+    Ok(out)
+}
+
+/// Test-ness of the files reachable from `src/lib.rs` and `src/main.rs`.
+fn module_tree(src: &Path) -> Result<std::collections::BTreeMap<std::path::PathBuf, bool>, String> {
+    let mut seen = std::collections::BTreeMap::new();
+    let mut queue: Vec<(std::path::PathBuf, bool)> = ["lib.rs", "main.rs"]
+        .iter()
+        .map(|r| (src.join(r), false))
+        .filter(|(p, _)| p.exists())
+        .collect();
+    while let Some((file, is_test)) = queue.pop() {
+        if seen.contains_key(&file) {
+            continue;
+        }
+        seen.insert(file.clone(), is_test);
+        let text =
+            std::fs::read_to_string(&file).map_err(|e| format!("{}: {e}", file.display()))?;
+        let scanned = scan(&text, false);
+        let name = file
+            .file_name()
+            .map(|n| n.to_string_lossy().into_owned())
+            .unwrap_or_default();
+        let parent = file.parent().map(Path::to_path_buf).unwrap_or_default();
+        let dir = if matches!(name.as_str(), "lib.rs" | "main.rs" | "mod.rs") {
+            parent
+        } else {
+            parent.join(file.file_stem().unwrap_or_default())
+        };
+        let toks = &scanned.tokens;
+        for w in toks.windows(3) {
+            if w[0].text == "mod" && w[1].kind == Kind::Ident && w[2].text == ";" {
+                let flat = dir.join(format!("{}.rs", w[1].text));
+                let nested = dir.join(&w[1].text).join("mod.rs");
+                let child = if flat.exists() { flat } else { nested };
+                queue.push((child, is_test || w[0].in_test));
+            }
+        }
+    }
+    Ok(seen)
+}
+
+/// A lint level set by an attribute: `#[allow(clippy::x)]`, `#![deny(a, b)]`, also inside
+/// `cfg_attr(...)`.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct LintLevel {
+    /// `allow`, `expect`, `warn`, `deny` or `forbid`.
+    pub level: String,
+    /// Lint path, e.g. `clippy::unwrap_used` or `unsafe_code`.
+    pub lint: String,
+    /// Inner attribute (`#![...]`).
+    pub inner: bool,
+    pub line: usize,
+    pub in_test: bool,
+}
+
+/// Inner attribute names (`#![name]` or `#![name(...)]`), e.g. `no_std`, in non-test code.
+pub fn inner_attributes(scanned: &Scanned) -> Vec<String> {
+    let t = &scanned.tokens;
+    let mut out = Vec::new();
+    for i in 0..t.len().saturating_sub(3) {
+        if t[i].text == "#" && t[i + 1].text == "!" && t[i + 2].text == "[" && !t[i].in_test {
+            out.push(t[i + 3].text.clone());
+        }
+    }
+    out
+}
+
+/// All lint levels set by attributes in the file.
+pub fn lint_levels(scanned: &Scanned) -> Vec<LintLevel> {
+    let t = &scanned.tokens;
+    let mut out = Vec::new();
+    let mut i = 0;
+    while i < t.len() {
+        if t[i].text != "#" {
+            i += 1;
+            continue;
+        }
+        let inner = t.get(i + 1).is_some_and(|x| x.text == "!");
+        let open = if inner { i + 2 } else { i + 1 };
+        if t.get(open).is_none_or(|x| x.text != "[") {
+            i += 1;
+            continue;
+        }
+        let end = skip_attribute(t, i);
+        let mut k = open + 1;
+        while k < end {
+            let is_level = matches!(
+                t[k].text.as_str(),
+                "allow" | "expect" | "warn" | "deny" | "forbid"
+            );
+            if is_level && t.get(k + 1).is_some_and(|x| x.text == "(") {
+                let level = t[k].text.clone();
+                let mut j = k + 2;
+                let mut path = String::new();
+                while j < end && t[j].text != ")" {
+                    match t[j].text.as_str() {
+                        "," => {
+                            if !path.is_empty() {
+                                out.push(LintLevel {
+                                    level: level.clone(),
+                                    lint: std::mem::take(&mut path),
+                                    inner,
+                                    line: t[j].line,
+                                    in_test: t[j].in_test,
+                                });
+                            }
+                        }
+                        other => path.push_str(other),
+                    }
+                    j += 1;
+                }
+                if !path.is_empty() {
+                    out.push(LintLevel {
+                        level,
+                        lint: path,
+                        inner,
+                        line: t[k].line,
+                        in_test: t[k].in_test,
+                    });
+                }
+                k = j;
+            }
+            k += 1;
+        }
+        i = end.max(i + 1);
+    }
+    out
 }
 
 /// Finds occurrences of a whitespace-separated token pattern (e.g. `"static mut"`, `". sort"`,
@@ -477,11 +650,81 @@ mod tests {
     }
 
     #[test]
-    fn test_paths() {
-        assert!(is_test_path(Path::new("crates/a/tests/x.rs")));
-        assert!(is_test_path(Path::new("crates/a/src/tests.rs")));
-        assert!(is_test_path(Path::new("crates/a/benches/b.rs")));
-        assert!(!is_test_path(Path::new("crates/a/src/lib.rs")));
+    fn cfg_test_on_fields_arms_and_variants_does_not_swallow_following_code() {
+        let src = "struct S { #[cfg(test)] dbg: u8, x: u8 }\nfn prod() { HashSet }\n\
+                   enum E { A, #[cfg(test)] B }\nfn prod2() { HashSet }\n\
+                   fn m(x: u8) { match x { #[cfg(test)] 1 => {} _ => {} } }\nfn prod3() { HashSet }";
+        let s = scan(src, false);
+        assert_eq!(find_pattern(&s, "HashSet"), vec![2, 4, 6]);
+    }
+
+    #[test]
+    fn module_tree_classifies_files() {
+        use crate::util::test_support::TempDir;
+        let dir = TempDir::new("scan");
+        dir.write(
+            "crates/a/src/lib.rs",
+            "mod prod;\n#[cfg(test)]\nmod tests;\npub mod nested;\n",
+        );
+        dir.write("crates/a/src/prod.rs", "");
+        dir.write("crates/a/src/tests.rs", "mod helper;\n");
+        dir.write("crates/a/src/tests/helper.rs", "");
+        dir.write("crates/a/src/nested/mod.rs", "#[cfg(test)] mod t;\n");
+        dir.write("crates/a/src/nested/t.rs", "");
+        dir.write("crates/a/src/orphan/tests.rs", "");
+        dir.write("crates/a/tests/it.rs", "");
+        dir.write("crates/a/build.rs", "");
+        let got: Vec<(String, bool)> = classify(&dir.path().join("crates"))
+            .unwrap()
+            .into_iter()
+            .map(|(p, t)| (crate::util::rel(&dir.path().join("crates/a"), &p), t))
+            .collect();
+        let expect = [
+            ("build.rs", false),
+            ("src/lib.rs", false),
+            ("src/nested/mod.rs", false),
+            ("src/nested/t.rs", true),
+            ("src/orphan/tests.rs", false),
+            ("src/prod.rs", false),
+            ("src/tests.rs", true),
+            ("src/tests/helper.rs", true),
+            ("tests/it.rs", true),
+        ];
+        let mut got = got;
+        got.sort();
+        let expect: Vec<(String, bool)> =
+            expect.iter().map(|(p, t)| ((*p).to_owned(), *t)).collect();
+        assert_eq!(got, expect);
+    }
+
+    #[test]
+    fn extracts_attributes_and_lint_levels() {
+        let src = "//! doc\n#![no_std]\n#![forbid(unsafe_code)]\n#![deny(\n  clippy::unwrap_used,\n  clippy::panic\n)]\n\
+                   // #![allow(clippy::panic)]\n#[allow(clippy::float_arithmetic)]\nfn f() {}\n\
+                   #[cfg_attr(test, expect(clippy::todo))]\nfn g() {}\n#[cfg(test)]\n#[allow(clippy::exit)]\nmod tests {}\n";
+        let s = scan(src, false);
+        assert_eq!(inner_attributes(&s), ["no_std", "forbid", "deny"]);
+        let levels: Vec<(String, String, bool, bool)> = lint_levels(&s)
+            .into_iter()
+            .map(|l| (l.level, l.lint, l.inner, l.in_test))
+            .collect();
+        let want = [
+            ("forbid", "unsafe_code", true, false),
+            ("deny", "clippy::unwrap_used", true, false),
+            ("deny", "clippy::panic", true, false),
+            ("allow", "clippy::float_arithmetic", false, false),
+            ("expect", "clippy::todo", false, false),
+            ("allow", "clippy::exit", false, true),
+        ];
+        let want: Vec<(String, String, bool, bool)> = want
+            .iter()
+            .map(|(a, b, c, d)| ((*a).to_owned(), (*b).to_owned(), *c, *d))
+            .collect();
+        assert_eq!(levels, want);
+    }
+
+    #[test]
+    fn whole_file_test_flag() {
         let s = scan("fn a() { HashMap }", true);
         assert!(find_pattern(&s, "HashMap").is_empty());
     }

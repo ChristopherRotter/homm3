@@ -8,7 +8,7 @@ use std::path::{Path, PathBuf};
 use serde::Deserialize;
 
 use crate::scan;
-use crate::util::{cargo, rel, rs_files, workspace_root};
+use crate::util::{cargo, rel, workspace_root};
 
 #[derive(Debug, Deserialize)]
 #[serde(deny_unknown_fields)]
@@ -21,8 +21,19 @@ pub struct ArchConfig {
 #[derive(Debug, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct Policy {
-    pub logic_header: Vec<String>,
+    pub logic_attributes: Vec<String>,
+    pub logic_forbid: Vec<String>,
+    pub logic_deny: Vec<String>,
+    #[serde(default)]
+    pub lint_allow: Vec<LintAllow>,
     pub forbidden: Vec<Forbidden>,
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct LintAllow {
+    pub file: String,
+    pub lint: String,
 }
 
 #[derive(Debug, Deserialize)]
@@ -246,26 +257,50 @@ pub fn check_sources(
         if !decl.logic {
             continue;
         }
-        let lib = package.dir.join("src").join("lib.rs");
-        let lib_text = fs::read_to_string(&lib).map_err(|e| format!("{}: {e}", lib.display()))?;
-        for required in &config.policy.logic_header {
-            if !lib_text.contains(required.as_str()) {
-                violations.push(format!(
-                    "{}: logic crate header is missing `{required}` (see arch.toml [policy].logic_header)",
-                    rel(root, &lib)
-                ));
-            }
-        }
-        for file in rs_files(&package.dir.join("src"))? {
+        violations.extend(check_header(
+            config,
+            root,
+            &package.dir.join("src").join("lib.rs"),
+        )?);
+        for (file, is_test) in scan::classify_crate(&package.dir)? {
             let text = fs::read_to_string(&file).map_err(|e| format!("{}: {e}", file.display()))?;
             let rel_path = rel(root, &file);
-            let scanned = scan::scan(&text, scan::is_test_path(Path::new(&rel_path)));
-            let exempt: BTreeSet<usize> = scanned
+            let scanned = scan::scan(&text, is_test);
+            let mut exempt: BTreeSet<usize> = BTreeSet::new();
+            for c in scanned
                 .comments
                 .iter()
                 .filter(|c| c.text.contains("arch-ok:"))
-                .map(|c| c.line)
+            {
+                if has_reference(&c.text) {
+                    exempt.insert(c.line);
+                } else {
+                    violations.push(format!(
+                        "{rel_path}:{}: `arch-ok:` needs a rule id or ADR reference (e.g. `// arch-ok: ADR-0003 reason`)",
+                        c.line
+                    ));
+                }
+            }
+            let policy_lints: Vec<&String> = config
+                .policy
+                .logic_forbid
+                .iter()
+                .chain(&config.policy.logic_deny)
                 .collect();
+            for l in scan::lint_levels(&scanned) {
+                let relaxes = matches!(l.level.as_str(), "allow" | "expect" | "warn");
+                let allowed = config
+                    .policy
+                    .lint_allow
+                    .iter()
+                    .any(|a| a.file == rel_path && a.lint == l.lint);
+                if relaxes && !l.in_test && policy_lints.contains(&&l.lint) && !allowed {
+                    violations.push(format!(
+                        "{rel_path}:{}: `{}({})` relaxes a logic-crate policy lint (see arch.toml [[policy.lint_allow]])",
+                        l.line, l.level, l.lint
+                    ));
+                }
+            }
             for rule in &config.policy.forbidden {
                 if rule.allowed_in.iter().any(|a| a == &rel_path) {
                     continue;
@@ -283,6 +318,61 @@ pub fn check_sources(
         }
     }
     Ok(violations)
+}
+
+/// Checks the crate root of a logic crate for the required inner attributes and lint levels.
+fn check_header(config: &ArchConfig, root: &Path, lib: &Path) -> Result<Vec<String>, String> {
+    let text = fs::read_to_string(lib).map_err(|e| format!("{}: {e}", lib.display()))?;
+    let scanned = scan::scan(&text, false);
+    let at = rel(root, lib);
+    let attributes = scan::inner_attributes(&scanned);
+    let levels: Vec<scan::LintLevel> = scan::lint_levels(&scanned)
+        .into_iter()
+        .filter(|l| l.inner)
+        .collect();
+    let mut v = Vec::new();
+    for a in &config.policy.logic_attributes {
+        if !attributes.contains(a) {
+            v.push(format!("{at}: logic crate root must have `#![{a}]`"));
+        }
+    }
+    for lint in &config.policy.logic_forbid {
+        if !levels
+            .iter()
+            .any(|l| l.level == "forbid" && &l.lint == lint)
+        {
+            v.push(format!("{at}: logic crate root must `#![forbid({lint})]`"));
+        }
+    }
+    for lint in &config.policy.logic_deny {
+        if !levels
+            .iter()
+            .any(|l| matches!(l.level.as_str(), "deny" | "forbid") && &l.lint == lint)
+        {
+            v.push(format!("{at}: logic crate root must deny `{lint}`"));
+        }
+    }
+    Ok(v)
+}
+
+/// Whether an `arch-ok:` comment names a rule id (`BAT-DMG-001`) or an ADR (`ADR-0003`).
+fn has_reference(comment: &str) -> bool {
+    let after = comment.split("arch-ok:").nth(1).unwrap_or_default();
+    let word = after.split_whitespace().next().unwrap_or_default();
+    let parts: Vec<&str> = word.split('-').collect();
+    let digits = |p: &str, n: usize| p.len() == n && p.chars().all(|c| c.is_ascii_digit());
+    let upper = |p: &str| p.chars().all(|c| c.is_ascii_uppercase());
+    match parts.as_slice() {
+        ["ADR", n] => digits(n, 4),
+        [ctx, area, n] => {
+            ctx.len() == 3
+                && upper(ctx)
+                && (2..=4).contains(&area.len())
+                && upper(area)
+                && digits(n, 3)
+        }
+        _ => false,
+    }
 }
 
 pub fn run(_args: &[String]) -> Result<(), String> {
@@ -407,7 +497,7 @@ mod tests {
         );
     }
 
-    /// E01 exit criterion 4: forbidden APIs in a logic crate are rejected.
+    /// E01 exit criterion 4: forbidden APIs and a weakened lint header are rejected.
     #[test]
     fn rejects_forbidden_tokens_and_missing_header() {
         let (config, _) = real();
@@ -415,13 +505,16 @@ mod tests {
         let krate = dir.path().join("crates/h3-battle");
         dir.write(
             "crates/h3-battle/src/lib.rs",
-            "#![no_std]\n//! missing the rest of the header\n",
+            "#![no_std]\n// #![forbid(unsafe_code)] in a comment does not count\n\
+             #![allow(clippy::unwrap_used, clippy::panic)]\nmod bad;\n",
         );
         dir.write(
             "crates/h3-battle/src/bad.rs",
             "use std::collections::HashMap;\nfn f() -> u32 { let x = 1.5; v.sort(); 0 }\n\
-             fn g() { let t = 2.0; } // arch-ok: TEST exemption\n\
-             #[cfg(test)]\nmod tests { fn h() { let m: HashMap<u8, u8>; let f = 0.5f64; } }\n",
+             fn g() { let t = 2.0; } // arch-ok: ADR-0003 exemption\n\
+             #[cfg(test)]\nmod tests { fn h() { let m: HashMap<u8, u8>; let f = 0.5f64; } }\n\
+             fn k() { let t = 2.0; } // arch-ok: because\n\
+             #[allow(clippy::float_arithmetic)]\nfn m() { <[u8]>::sort_unstable_by_key(&mut [], |x| *x); }\n",
         );
         let packages = vec![Package {
             name: "h3-battle".to_owned(),
@@ -429,39 +522,41 @@ mod tests {
             deps: Vec::new(),
         }];
         let v = check_sources(&config, dir.path(), &packages).unwrap();
+        let has = |needle: &str| v.iter().any(|m| m.contains(needle));
+        assert!(has("must `#![forbid(unsafe_code)]`"), "{v:?}");
+        assert!(has("must deny `clippy::unwrap_used`"), "{v:?}");
         assert!(
-            v.iter()
-                .any(|m| m.contains("header is missing `#![forbid(unsafe_code)]`")),
+            has("lib.rs:3: `allow(clippy::unwrap_used)` relaxes"),
             "{v:?}"
         );
+        assert!(has("bad.rs:1: forbidden in logic crates: `std`"), "{v:?}");
         assert!(
-            v.iter()
-                .any(|m| m.contains("bad.rs:1: forbidden in logic crates: `std`")),
+            has("bad.rs:1: forbidden in logic crates: `HashMap`"),
             "{v:?}"
         );
-        assert!(
-            v.iter()
-                .any(|m| m.contains("bad.rs:1: forbidden in logic crates: `HashMap`")),
-            "{v:?}"
-        );
-        assert!(
-            v.iter()
-                .any(|m| m.contains("bad.rs:2: forbidden in logic crates: `f64`")),
-            "{v:?}"
-        );
-        assert!(
-            v.iter()
-                .any(|m| m.contains("bad.rs:2: forbidden in logic crates: `. sort`")),
-            "{v:?}"
-        );
+        assert!(has("bad.rs:2: forbidden in logic crates: `f64`"), "{v:?}");
+        assert!(has("bad.rs:2: forbidden in logic crates: `sort`"), "{v:?}");
         assert!(
             !v.iter().any(|m| m.contains("bad.rs:3:")),
-            "arch-ok exempts the line: {v:?}"
+            "arch-ok with a reference exempts the line: {v:?}"
         );
         assert!(
             !v.iter().any(|m| m.contains("bad.rs:5:")),
             "test module is exempt: {v:?}"
         );
+        assert!(has("bad.rs:6: `arch-ok:` needs a rule id"), "{v:?}");
+        assert!(has("bad.rs:6: forbidden in logic crates: `f64`"), "{v:?}");
+        assert!(
+            has("bad.rs:7: `allow(clippy::float_arithmetic)` relaxes"),
+            "{v:?}"
+        );
+        assert!(
+            has("bad.rs:8: forbidden in logic crates: `sort_unstable_by_key`"),
+            "{v:?}"
+        );
+        assert!(has_reference("// arch-ok: BAT-DMG-001 why"));
+        assert!(!has_reference("// arch-ok: bat-dmg-001"));
+        assert!(!has_reference("// arch-ok: ADR-12"));
     }
 
     #[test]

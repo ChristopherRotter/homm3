@@ -11,11 +11,14 @@
 # forbidden-token scan below. They are the crates with the 100% coverage gate.
 
 [policy]
-# Crate-level attributes every logic crate's src/lib.rs must contain. `no_std` makes I/O, clocks,
+# Inner attributes every logic crate root (src/lib.rs) must carry. `no_std` makes I/O, clocks,
 # threads, environment access and std's HashMap/HashSet unavailable at compile time.
-logic_header = [
-    "#![no_std]",
-    "#![forbid(unsafe_code)]",
+logic_attributes = ["no_std"]
+# Lints every logic crate root must set with `#![forbid(...)]`, and with `#![deny(...)]` or
+# `#![forbid(...)]`. Relaxing any of them (`allow`/`expect`/`warn`, also inside `cfg_attr`) in
+# non-test logic code is a violation unless listed under [[policy.lint_allow]].
+logic_forbid = ["unsafe_code"]
+logic_deny = [
     "clippy::unwrap_used",
     "clippy::expect_used",
     "clippy::panic",
@@ -28,10 +31,14 @@ logic_header = [
     "clippy::exit",
 ]
 
+[[policy.lint_allow]]
+file = "crates/h3-kernel/src/num.rs"
+lint = "clippy::float_arithmetic"
+
 # Token sequences forbidden in logic crate sources (comments and string literals are ignored;
 # matching is on whole tokens, so `unsafe_code` does not match `unsafe`). `allowed_in` lists the
-# files where the token is sanctioned. Lines carrying `// arch-ok: <RULE-ID or ADR> <reason>` are
-# exempt; use sparingly, the exemption shows up in review.
+# files where the token is sanctioned. A line carrying `// arch-ok: <RULE-ID or ADR-NNNN> <reason>`
+# is exempt; the reference is mandatory. Use sparingly, the exemption shows up in review.
 [[policy.forbidden]]
 token = "HashMap"
 reason = "unordered iteration (ADR-0003 §8)"
@@ -56,31 +63,31 @@ token = "f64"
 reason = "floats only through kernel::num (ADR-0003 §4)"
 allowed_in = ["crates/h3-kernel/src/num.rs"]
 [[policy.forbidden]]
-token = ". sort"
+token = "sort"
 reason = "sorting must use kernel::order with a unique tie-breaker (ADR-0003 §9)"
 allowed_in = ["crates/h3-kernel/src/order.rs"]
 [[policy.forbidden]]
-token = ". sort_by"
+token = "sort_by"
 reason = "sorting must use kernel::order with a unique tie-breaker (ADR-0003 §9)"
 allowed_in = ["crates/h3-kernel/src/order.rs"]
 [[policy.forbidden]]
-token = ". sort_by_key"
+token = "sort_by_key"
 reason = "sorting must use kernel::order with a unique tie-breaker (ADR-0003 §9)"
 allowed_in = ["crates/h3-kernel/src/order.rs"]
 [[policy.forbidden]]
-token = ". sort_unstable"
+token = "sort_unstable"
 reason = "sorting must use kernel::order with a unique tie-breaker (ADR-0003 §9)"
 allowed_in = ["crates/h3-kernel/src/order.rs"]
 [[policy.forbidden]]
-token = ". sort_unstable_by"
+token = "sort_unstable_by"
 reason = "sorting must use kernel::order with a unique tie-breaker (ADR-0003 §9)"
 allowed_in = ["crates/h3-kernel/src/order.rs"]
 [[policy.forbidden]]
-token = ". sort_unstable_by_key"
+token = "sort_unstable_by_key"
 reason = "sorting must use kernel::order with a unique tie-breaker (ADR-0003 §9)"
 allowed_in = ["crates/h3-kernel/src/order.rs"]
 [[policy.forbidden]]
-token = ". sort_by_cached_key"
+token = "sort_by_cached_key"
 reason = "sorting must use kernel::order with a unique tie-breaker (ADR-0003 §9)"
 allowed_in = ["crates/h3-kernel/src/order.rs"]
 
