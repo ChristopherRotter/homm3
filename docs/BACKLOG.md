@@ -8,7 +8,7 @@ Status: `todo` · `next` · `in-progress` · `partial` · `done`
 |---|---|---|---|
 | E00 | Foundations: vision, architecture, ADRs, process docs | done (2026-09-30) | — |
 | E01 | **Walking skeleton**: minimal battle end to end (workspace, gates, kernel, tiny content pack, battle core, commands + validation, observation, sim env, CLI, replay + hash, benchmark) | done (2026-09-30; verified on Linux and Windows) | **Refined** → [epics/E01-walking-skeleton.md](epics/E01-walking-skeleton.md) |
-| E02 | Content pipeline: catalogue the user's game archives/data tables, import into content packs, pack format v2, synthetic test packs | next (installation available read-only; Q9 answered; version to be identified in T1, Q8) | **Refined** → [epics/E02-content-pipeline.md](epics/E02-content-pipeline.md) |
+| E02 | Content pipeline: catalogue the user's game archives/data tables, harvest them once into committed `base`/`ab`/`sod` packs (toggleable expansions), pack format v2, synthetic test packs | in-progress (T1 done 2026-09-30: Complete 4.0 identified; re-planned after Q8/Q13/Q14: harvest once into committed `base`/`ab`/`sod` packs) | **Refined** → [epics/E02-content-pipeline.md](epics/E02-content-pipeline.md) |
 | E03 | Battle core (RoE rules): modifier system, abilities via Tier-3 primitives, obstacles, two-hex units, ranged, morale/luck, damage, war machines | todo | **Refined** → [epics/E03-battle-core.md](epics/E03-battle-core.md) |
 | E04 | Heroes & army, artifacts, skills, specialties, spell book; battle spells (magic) | todo | sketch |
 | E05 | Simulation env v1 + baselines: batch API, forkable envs, masks, random + heuristic bots, FFI, Python smoke binding | todo | sketch |

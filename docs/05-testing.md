@@ -83,6 +83,6 @@ Exit codes: 0 = complete and green; 1 = a step failed; 2 = nothing failed but st
 
 ## Test data policy
 
-- CI uses **synthetic content packs** (invented creatures/spells with neutral names). No original assets or text in the repo.
-- Real-data conformance lives behind `--with-original-data` and reads from the gitignored `original-data/` directory (copies from the user's installation, which itself is never written to; see AGENTS.md) or a user-provided path.
+- Unit tests of rules use **synthetic content packs** (invented creatures with neutral names and numbers chosen to exercise the rule). Tests may also load the committed harvested packs `base`/`ab`/`sod` (Q13), e.g. to check that they compile in every allowed expansion combination. No original files, assets or flavor text in the repo.
+- Real-data conformance lives behind `--with-original-data`: it re-harvests from the gitignored `original-data/` directory (copies from the user's installation, which itself is never written to; see AGENTS.md) or a user-provided path and compares with the committed packs.
 - Replay fixtures reference synthetic packs or ship self-contained minimal packs.

@@ -44,7 +44,15 @@ Runtime scripting for all rules (flexible, slow, hard to test/secure); hard-code
 - **Hot path:** creature stats are copied into each battle stack at setup, so the battle never looks anything up in the ruleset during play (and later per-stack effects have a place to live). The compiled ruleset has a canonical content hash recorded in replays.
 - **Guardrails applied:** army slots and battlefield dimensions are parameters (engine capacity limits: 16 slots per side, 255 hexes), no content is matched by name in code.
 
+## Amendment — E02 content pipeline (2026-09-30, user decisions Q8, Q13, Q14)
+
+- **Format confirmed: TOML** (Q14). Packs stay strict (unknown fields are errors); comments next to values carry sources and rule ids.
+- **Expansions are packs in a dependency graph** (Q8): `base` (RoE), `ab` (Armageddon's Blade, depends on `base`) and `sod` (Shadow of Death, depends on `ab`). A configuration selects which packs are enabled; enabling a pack whose dependencies are not enabled is a configuration error (no silent auto-enable), as are unknown packs and cycles. Load order is a topological order of the enabled packs with a deterministic tie-break (pack id).
+- **Overrides:** a pack may change fields of entities defined by packs in its dependency closure (e.g. `sod` changes the Angel's cost); overrides are partial (only the listed fields change), applied in load order, and may not target a pack outside the closure or an entity that does not exist.
+- **Configuration source:** the committed packs are generated once from the original data by the harvesting tool and then maintained as source (Q13, ADR-0009 amendment 2).
+
 ## Revision history
 
 - 2026-09-30: Accepted.
 - 2026-09-30: Amended by E01 (pack format, compiler rules, quirk registry, stats copied into battle state).
+- 2026-09-30: Amended by E02 T1 (TOML confirmed, expansion dependency graph, overrides, harvested packs).

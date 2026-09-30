@@ -41,8 +41,17 @@ On 2026-09-30 the user chose option (a): **GPL-2.0-or-later for the whole projec
 - Point 4 is decided: **import-only**. Agents may copy files from the user's installation into the repo's `original-data/` directory for inspection and import; that directory is gitignored, and `cargo xtask check-arch` fails if any file under it is tracked. Nothing derived verbatim from the original game (assets, text, data tables) is committed; CI uses synthetic packs.
 - The installation itself (on the user's machine, connected to sessions as a folder the user cannot make read-only) is **read-only by rule**: no edits, creations, moves or deletions, and no delete permission requests for it (AGENTS.md).
 
+## Amendment 2 — harvested configuration is committed (2026-09-30, user decision Q13, revises Q9)
+
+- Point 4 and the first amendment are revised: the original text tables (plus, where they lack data, the executable's static tables) are **harvested once** by a tool that lives in this repo; the tool's clean output — TOML packs `base`, `ab`, `sod` under `packs/` — **is committed** and is the configuration the engine uses. Gaps are filled from labelled wiki/VCMI sources.
+- **Committed:** gameplay data (numbers, flags, levels, factions, costs, growth, …) and English names used as display names. **Not committed:** flavor text (ability descriptions, hero biographies, event texts), graphics, sound, video, and the original files themselves. The original files stay in the gitignored `original-data/` directory (`check-arch` still fails if anything there is tracked).
+- Tests and CI may now use the committed packs; synthetic packs remain for tests that need controlled numbers.
+- The installation stays read-only by rule.
+- Consequence to watch: the committed packs contain facts and names from a trademarked game. Q2 (project naming) and any public release should keep this in mind; the user owns that decision.
+
 ## Revision history
 
 - 2026-09-30: Proposed (recommended permissive option (b), interim rule "do not copy or translate VCMI code").
 - 2026-09-30: Accepted with the user's decision for GPL-2.0-or-later (option (a)); interim rule lifted; dependency policy narrowed to GPLv2-compatible licenses.
 - 2026-09-30: Amended: Q9 answered (import-only, gitignored `original-data/`, installation read-only by rule).
+- 2026-09-30: Amended (E02 T1): Q13 revises Q9 — harvested gameplay data and names are committed as packs; original files and flavor text are not.

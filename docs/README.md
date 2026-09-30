@@ -21,6 +21,7 @@ Working project name: **h3** (provisional; see OPEN-QUESTIONS Q2). Last structur
 | [adr/](adr/) | Architecture Decision Records (binding) |
 | [pull_request_template.md](pull_request_template.md) | Definition-of-Done checklist for changes |
 | [rules/](rules/) | Rule catalog (machine-checked), quirks ledger |
+| [formats/](formats/) | Observed layouts of the original installation's files (catalogue) |
 
 ## Planning philosophy
 

@@ -10,7 +10,7 @@
 
 | # | Kind (`kind` in catalog) | What | Notes |
 |---|---|---|---|
-| 1 | `original-data` | Data files from the user's own installation (the `*.TXT` tables and similar inside the game archives: creature, spell, artifact, hero, class, skill, building, object tables; map and archive formats) | Facts. Supplied by the user (installation connected read-only; copies go to the gitignored `original-data/` directory, never committed — Q9). Exact file names/structure to be catalogued by the import epic — do not assume from memory. |
+| 1 | `original-data` | Data files from the user's own installation (the `*.TXT` tables and similar inside the game archives: creature, spell, artifact, hero, class, skill, building, object tables; map and archive formats) | Facts. Supplied by the user (installation connected read-only; copies go to the gitignored `original-data/` directory; the files are never committed, the harvested packs are — Q13). Observed layouts: `docs/formats/installation.md`; do not assume others from memory. Includes static tables inside `Heroes3.exe` (e.g. creature level/town/flags). |
 | 2 | `observation` | Controlled experiments in the original game, recorded as fixtures (inputs, outcome, game version) | Final arbiter for behavior. Expensive; used for disputed/high-impact rules. |
 | 3 | `reverse-engineering` | Community technical documentation of formats and mechanics | Label with URL. |
 | 4 | `vcmi` | Behavior of the VCMI open-source engine | Reference and oracle; code may be ported with attribution since the project is GPL-2.0-or-later (ADR-0009). Note version/commit. Treat as a strong but fallible source (VCMI itself deviates from the original in places). |
@@ -93,5 +93,5 @@ See `docs/rules/quirks-ledger.md`.
 
 ## 6. Open points
 
-- Which game version/edition the provided installation is — OPEN-QUESTIONS Q8 (the installation itself is available; E02 T1 identifies the version).
-- Base content tables are import-only (Q9, answered 2026-09-30).
+- The installation is the GOG Complete edition 4.0 (Q8, answered; `docs/formats/installation.md`). RoE, AB and SoD are all supported as packs `base`, `ab`, `sod`.
+- Content tables are harvested once and the clean packs are committed (Q13, revising Q9).

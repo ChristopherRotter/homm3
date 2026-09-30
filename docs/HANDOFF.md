@@ -4,6 +4,26 @@ Living state. The last agent updates this at the end of every session; the next 
 
 ---
 
+## 2026-09-30 — E02 in progress (session 1)
+
+**State:** E02 T1 done; E02 re-planned after user decisions (see the epic file). Work happens on branch **`e02-content-pipeline`** (from `master` at `8e913f6`, which the user had already fast-forwarded to E01).
+
+**Decisions (user, this session):**
+- Q8: installation = **GOG Complete 4.0** (evidence: `docs/formats/installation.md`). Support **RoE (base), AB and SoD**; AB and SoD are toggleable expansions in a dependency graph (SoD → AB → base). Packs `base`, `ab`, `sod`.
+- Q13 (revises Q9): harvest the original tables **once** into a clean config and **commit** it (gameplay data + names; no flavor text/assets/original files). Harvest tooling lives in the repo; gaps from labelled wiki/VCMI sources.
+- Q14: keep **TOML**.
+- Recorded in ADR-0006 (E02 amendment: dependency graph, enabled-pack config, overrides) and ADR-0009 (amendment 2).
+
+**Key findings (T1):** LOD layout verified; `H3bitmap.lod` = SoD tables, `H3ab_bmp.lod` = AB-era tables (same 71 TXT names, 23 differ; the diff is the AB→SoD change set). Level/town/flags are only in `Heroes3.exe` (static 150 × 116-byte table at file offset `0x2703B8`); the agent decided to read it (original data ranks above wiki/VCMI) — noted in Q13, not an explicit user decision. RoE-era values and AB membership are not in the installation → gap-fill file with sources (T4).
+
+**Environment notes (cloud sandbox):** `static.rust-lang.org` is blocked by the egress proxy, so `rustup` cannot install 1.95.0; the sandbox's `stable` *is* 1.95.0 and was symlinked as `~/.rustup/toolchains/1.95.0-x86_64-unknown-linux-gnu`. crates.io works. No `llvm-tools-preview`; Ubuntu's `llvm-cov` is LLVM 18.
+
+**Next:** T2 `h3-formats` (LOD + text table + exe table readers), then T3 pack v2, T4 harvester, T5 conformance.
+
+**In progress:** (updated at each task boundary — see below)
+
+---
+
 ## 2026-09-30 — E01 closed (final commit)
 
 **State:** E01 is **done**. The user ran `cargo xtask verify` on Windows: green (ffi-smoke and bench-check N/A by design). Branch `e01-walking-skeleton` is ready for the user to fast-forward into `master`.

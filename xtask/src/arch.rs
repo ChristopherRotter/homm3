@@ -375,7 +375,7 @@ fn has_reference(comment: &str) -> bool {
     }
 }
 
-/// Directory for copies of the user's original game files (gitignored, Q9 / ADR-0009).
+/// Directory for copies of the user's original game files (gitignored, ADR-0009).
 pub const ORIGINAL_DATA_DIR: &str = "original-data/";
 
 /// Violations for tracked files under [`ORIGINAL_DATA_DIR`] (given `git ls-files` output).
@@ -384,7 +384,11 @@ pub fn tracked_original_data(tracked: &str) -> Vec<String> {
         .lines()
         .map(|l| l.trim().replace('\\', "/"))
         .filter(|l| l.starts_with(ORIGINAL_DATA_DIR))
-        .map(|l| format!("{l}: original game data must never be committed (Q9, ADR-0009); `git rm --cached` it"))
+        .map(|l| {
+            format!(
+                "{l}: original game files must never be committed (ADR-0009); `git rm --cached` it"
+            )
+        })
         .collect()
 }
 
