@@ -1,0 +1,49 @@
+# Rule catalog: kernel (engine-level rules shared by all contexts). Format: docs/04-rules-and-sources.md §3.
+# Kernel rules are engine design decisions, not facts about the original game (source kind `design`).
+
+[[rule]]
+id       = "KER-RNG-001"
+title    = "Pseudo-random generator, seeding and named streams"
+context  = "kernel"
+status   = "implemented"
+summary  = "Randomness uses xoshiro256** seeded by expanding a 64-bit seed with SplitMix64 into four words. The generator for named stream S of master seed M is from_seed(M xor splitmix64_first_output(S)). next_u32 is the high half of next_u64. Algorithm id and version are recorded in replays. The original game's RNG is intentionally not reproduced (01-vision: fidelity is logic equivalence, not replay equivalence)."
+numeric  = "integer"
+
+  [[rule.source]]
+  kind       = "design"
+  ref        = "ADR-0003 §7 (amended by E01: algorithm choice)"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "reverse-engineering"
+  ref        = "Reference implementations xoshiro256starstar.c and splitmix64.c (Blackman & Vigna), used for test vectors"
+  url        = "https://prng.di.unimi.it/"
+  retrieved  = "2026-09-30"
+  confidence = "high"
+  note       = "Not a game source; cited because the test vectors come from the reference C code."
+
+[[rule]]
+id       = "KER-RNG-002"
+title    = "Uniform bounded integers"
+context  = "kernel"
+status   = "implemented"
+summary  = "below(n) returns a uniform integer in 0..n using Lemire's multiply-and-reject method on 32-bit draws: m = x*n (64-bit), accept when (m mod 2^32) >= (2^32 - n) mod n, result m >> 32. below(0) = 0. range_inclusive(lo, hi) = lo + below(hi - lo + 1), bounds swapped if hi < lo, full u32 range returns next_u32."
+numeric  = "integer"
+
+  [[rule.source]]
+  kind       = "design"
+  ref        = "ADR-0003 §7; D. Lemire, Fast Random Integer Generation in an Interval (2019)"
+  confidence = "high"
+
+[[rule]]
+id       = "KER-HSH-001"
+title    = "Canonical state hash"
+context  = "kernel"
+status   = "implemented"
+summary  = "State hashes are 64-bit FNV-1a over a canonical little-endian encoding: integers as fixed-width LE bytes, bool as one byte, Option as tag byte 0/1 then value, slices and strings as u32 length then elements. Hash algorithm id and version are recorded in replays; each state type documents its field order and bumps its own version on change."
+numeric  = "integer"
+
+  [[rule.source]]
+  kind       = "design"
+  ref        = "ADR-0003 §11 (amended by E01: algorithm choice)"
+  confidence = "high"

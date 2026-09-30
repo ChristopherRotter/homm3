@@ -17,3 +17,16 @@
     clippy::exit
 )]
 #![warn(missing_docs)]
+
+pub mod arith;
+pub mod fixed;
+pub mod handle;
+pub mod hash;
+pub mod num;
+pub mod order;
+pub mod rng;
+
+pub use fixed::{CapacityError, FixedVec};
+pub use handle::Handle;
+pub use hash::{CanonicalHash, StateHasher};
+pub use rng::{Rng, StreamId};
