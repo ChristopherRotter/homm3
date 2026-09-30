@@ -1,0 +1,55 @@
+/*
+ * h3 engine C ABI, version 1 (see crates/h3-ffi/src/lib.rs and ADR-0011).
+ * SPDX-License-Identifier: GPL-2.0-or-later
+ *
+ * Handles are opaque. Functions return H3_OK (0) or a negative error code; they never unwind.
+ * Sides: 0 = attacker, 1 = defender. A handle must not be used from two threads at once.
+ */
+#ifndef H3_H
+#define H3_H
+
+#include <stddef.h>
+#include <stdint.h>
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+#define H3_OK 0
+#define H3_ERR_NULL (-1)
+#define H3_ERR_ARGUMENT (-2)
+#define H3_ERR_INVALID_ACTION (-3)
+#define H3_ERR_REJECTED (-4)
+#define H3_ERR_EPISODE_OVER (-5)
+#define H3_ERR_PANIC (-99)
+
+typedef struct H3Env H3Env;
+
+typedef struct H3StepResult {
+    uint8_t done;
+    uint8_t truncated;
+    int32_t winner; /* 0 attacker, 1 defender, -1 none */
+    float reward_attacker;
+    float reward_defender;
+} H3StepResult;
+
+uint32_t h3_abi_version(void);
+uint32_t h3_action_count(void);
+uint32_t h3_observation_len(void);
+
+/* scenario: 0 = duel, 1 = skirmish, 2 = full armies; max_steps 0 = unlimited. NULL on error. */
+H3Env *h3_env_create_synthetic(uint32_t scenario, uint64_t seed, uint32_t max_steps);
+void h3_env_destroy(H3Env *env);
+H3Env *h3_env_fork(const H3Env *env);
+int32_t h3_env_reset(H3Env *env, uint64_t seed);
+int32_t h3_env_to_move(const H3Env *env);
+int32_t h3_env_legal_mask(H3Env *env, int32_t actor, uint8_t *out, size_t len);
+int32_t h3_env_observe(const H3Env *env, int32_t viewer, float *out, size_t len);
+int32_t h3_env_step(H3Env *env, int32_t actor, uint32_t action, H3StepResult *out);
+uint64_t h3_env_state_hash(const H3Env *env);
+
+#ifdef __cplusplus
+}
+#endif
+
+#endif /* H3_H */

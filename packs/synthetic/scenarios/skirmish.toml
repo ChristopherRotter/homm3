@@ -2,6 +2,7 @@
 
 [scenario]
 id = "skirmish"
+packs = ["synthetic"]
 profile = "synthetic:faithful"
 
 [[attacker]]

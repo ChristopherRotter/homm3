@@ -1,1 +1,25 @@
-//! Adapter crate (see Cargo.toml description).
+//! Adapter: reinforcement-learning simulation environments over the battle context
+//! (docs/07-simulation-and-ai.md).
+//!
+//! * [`BattleEnv`]: reset / step / legal mask / fork / state hash for one battle.
+//! * [`action`]: the dense, versioned action encoding (owned by the sim layer, not the domain).
+//! * [`observation`]: the flat, versioned observation encoding of a per-viewer [`Observation`].
+//! * [`replay`]: recording and verifying replays (seed + commands + state hashes).
+//!
+//! The sim layer is where rewards, episode truncation and encodings live; the domain knows
+//! nothing about them. Floats appear only in encodings and rewards and never feed back into game
+//! state (ADR-0003).
+//!
+//! [`Observation`]: h3_battle::Observation
+
+pub mod action;
+pub mod env;
+pub mod observation;
+pub mod replay;
+pub mod rollout;
+
+pub use action::{ACTION_COUNT, ACTION_ENCODING_VERSION, ActionMask};
+pub use env::{BattleEnv, StepError, StepResult};
+pub use observation::{OBSERVATION_ENCODING_VERSION, OBSERVATION_LEN};
+pub use replay::{Replay, ReplayError, ReplayHeader};
+pub use rollout::{RolloutResult, random_rollout};

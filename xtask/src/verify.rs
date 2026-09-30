@@ -26,6 +26,8 @@ const STEPS: &[Step] = &[
     step("check-stubs", false, || crate::stubs::run(&[])),
     step("test", false, test),
     step("coverage", true, || crate::coverage::run(&[])),
+    step("determinism", true, || crate::determinism::run(&[])),
+    step("ffi-smoke", false, || crate::determinism::ffi_smoke(&[])),
 ];
 
 fn fmt() -> Result<(), String> {

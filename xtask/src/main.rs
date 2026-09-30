@@ -9,6 +9,7 @@ use std::process::ExitCode;
 
 mod arch;
 mod coverage;
+mod determinism;
 mod rules;
 mod scan;
 mod stubs;
@@ -24,6 +25,8 @@ commands:
   check-rules                           rule catalog + rule:/covers: traceability
   check-stubs                           stub registry vs todo!/#[ignore]/TODO markers
   coverage                              100% line+region coverage on logic crates
+  determinism                           golden replays in debug, release, release+native
+  ffi-smoke                             build and run the C ABI smoke test (needs a C compiler)
   help                                  show this message
 
 `--quick` skips the slow gates (determinism matrix, coverage, benchmark regression) and is for
@@ -41,6 +44,8 @@ fn main() -> ExitCode {
         "check-rules" => rules::run(rest),
         "check-stubs" => stubs::run(rest),
         "coverage" => coverage::run(rest),
+        "determinism" => determinism::run(rest),
+        "ffi-smoke" => determinism::ffi_smoke(rest),
         "help" | "--help" | "-h" => {
             println!("{USAGE}");
             Ok(())

@@ -188,6 +188,7 @@ struct ScenarioFile {
 #[serde(deny_unknown_fields)]
 struct ScenarioHeader {
     id: String,
+    packs: Vec<String>,
     profile: String,
 }
 
@@ -204,6 +205,8 @@ struct StackDto {
 pub struct ScenarioDef {
     /// Scenario id.
     pub id: String,
+    /// Pack ids to load, in load order.
+    pub packs: Vec<String>,
     /// Profile key the scenario is meant to run with.
     pub profile: String,
     attacker: Vec<(u8, String, u32)>,
@@ -248,6 +251,7 @@ pub fn parse_scenario(text: &str) -> Result<ScenarioDef, PackError> {
     };
     Ok(ScenarioDef {
         id: file.scenario.id,
+        packs: file.scenario.packs,
         profile: file.scenario.profile,
         attacker: convert(file.attacker),
         defender: convert(file.defender),
@@ -358,8 +362,11 @@ mod tests {
         );
         let unknown_attacker = SYNTHETIC_DUEL.replace("synthetic:brute", "synthetic:dragon");
         assert!(synthetic(&unknown_attacker).is_err());
-        let empty = parse_scenario("[scenario]\nid = \"e\"\nprofile = \"a:b\"\n").unwrap();
+        let empty =
+            parse_scenario("[scenario]\nid = \"e\"\npacks = []\nprofile = \"a:b\"\n").unwrap();
         assert_eq!(empty.id, "e");
+        assert!(empty.packs.is_empty());
+        assert_eq!(parse_scenario(SYNTHETIC_DUEL).unwrap().packs, ["synthetic"]);
     }
 
     #[test]
