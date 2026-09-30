@@ -9,7 +9,7 @@ original game assets or text are included; tests use invented, synthetic content
 
 ## Status
 
-E01 (walking skeleton) is done: a small battle runs end to end — content pack → ruleset →
+E01 (walking skeleton) is done and verified on Linux and Windows: a small battle runs end to end — content pack → ruleset →
 validated commands → events/observations → simulation environment / C ABI / CLI replays —
 deterministically, at ≈ 245 k steps/s per core, behind a single quality gate.
 

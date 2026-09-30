@@ -1,6 +1,6 @@
 # E01 — Walking skeleton
 
-Status: done on Linux (2026-09-30); the Windows run of `cargo xtask verify` is pending (see "Status" at the end) · Refined: 2026-09-30
+Status: **done** (2026-09-30; Linux and Windows verified) · Refined: 2026-09-30
 
 ## Goal
 
@@ -80,11 +80,13 @@ All tasks were implemented in one session on branch `e01-walking-skeleton`.
 
 Exit criteria:
 
-1. `cargo xtask verify` green on Linux, 100 % line+region coverage — **met**. Windows: **not run** (no CI per Q3, and this session had no Windows toolchain). To close: run `cargo xtask verify` on the user's Windows machine (ffi-smoke and bench-check report N/A there).
-2. Replay fixtures identical across platforms — **met for x86_64 Linux** in debug, release and release + native. Windows run pending (same command as 1).
+1. `cargo xtask verify` green, 100 % line+region coverage — **met** on x86_64 Linux (agent) and on the user's Windows machine (user, 2026-09-30; ffi-smoke and bench-check N/A there by design). No CI yet (Q3), so both runs were local.
+2. Replay fixtures identical across platforms — **met**: Linux (debug, release, release + native) and Windows (the same golden replays pass in the user's `verify` run, determinism step included).
 3. Property tests (atomicity, legality consistency, ownership isolation, observation hygiene, clone equivalence, determinism, plus conservation) — **met**.
 4. A violating change is rejected, proved by xtask tests — **met** (`arch::tests::rejects_*`).
 5. Rule traceability end to end — **met** (`rules::tests::implemented_rule_without_test_fails`, `unknown_markers_fail`).
 6. Benchmarks recorded, provisional targets replaced — **met**.
 7. ADRs updated — **met** (amendments to ADR-0002/0003/0004/0005/0006/0007/0011; ADR-0009 accepted).
 8. HANDOFF, BACKLOG, stub registry, E02/E03 refined — **met**.
+
+Closing notes (2026-09-30): the user answered Q9 (import-only, gitignored `original-data/`), Q11 (attack cap +300 %) and Q12 (wiki damage roll) and made the game installation available (read-only by rule, AGENTS.md). Recorded in the final E01 commit.

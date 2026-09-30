@@ -447,6 +447,18 @@ fn large_stacks_scale_ten_rolls_rounding_down() {
 
 // covers: BAT-DMG-001
 #[test]
+fn exactly_ten_creatures_match_both_formulations() {
+    // Q12: "10 or more creatures: roll 10, sum, times N/10, round down". For N = 10 that is the
+    // same as summing ten individual rolls, and consumes the same ten draws.
+    let mut a = Rng::from_seed(77);
+    let mut b = a.clone();
+    let sum: u64 = (0..10).map(|_| u64::from(b.range_inclusive(1, 9))).sum();
+    assert_eq!(base_damage(&mut a, 10, 1, 9, 10), sum * 10 / 10);
+    assert_eq!(a, b);
+}
+
+// covers: BAT-DMG-001
+#[test]
 fn damage_rolls_cover_the_range_uniformly() {
     let mut rng = Rng::from_seed(21);
     let mut counts = [0u32; 10];

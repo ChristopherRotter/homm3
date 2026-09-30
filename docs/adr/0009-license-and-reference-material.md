@@ -20,7 +20,7 @@ On 2026-09-30 the user chose option (a): **GPL-2.0-or-later for the whole projec
    - VCMI is a strong but fallible source: it deviates from the original in places (see the source hierarchy in `docs/04-rules-and-sources.md`). Where it disagrees with other sources, the conflict rule applies.
    - VCMI may also be run as a separate process for differential (oracle) tests.
 3. **Dependencies must be compatible with GPL version 2.** `cargo deny` allows only GPLv2-compatible permissive licenses (MIT, BSD, ISC, Zlib, …; see `deny.toml`). Apache-2.0-*only* crates are rejected because Apache-2.0 is compatible with GPLv3 but not GPLv2; dual-licensed `MIT OR Apache-2.0` crates are accepted under MIT. Adding a copyleft or Apache-only dependency needs a new decision. Dev-dependencies (test/benchmark tooling that is never distributed, e.g. `criterion`, which pulls in the Apache-2.0-only `ciborium`) are excluded from the license check (`exclude-dev = true` in `deny.toml`) and reviewed by hand via `arch.toml`.
-4. **No original assets or text in the repo.** Game data is imported at setup from the user's install by an adapter. CI and tests use synthetic content packs. Whether base fact tables (numbers/IDs) may be committed is still OPEN-QUESTIONS Q9 (default: import-only).
+4. **No original assets or text in the repo.** Game data is imported at setup from the user's install by an adapter. CI and tests use synthetic content packs. Base fact tables are import-only too (Q9, decided 2026-09-30; see the amendment below).
 5. Wiki/community knowledge is used as facts with labelled, linked sources; no text is copied from them into the repo beyond short, attributed identifiers/titles.
 6. Project naming avoids implying endorsement by the trademark owner (Q2).
 
@@ -36,7 +36,13 @@ On 2026-09-30 the user chose option (a): **GPL-2.0-or-later for the whole projec
 - Split: permissive core, GPL adapters/clients (option (c)): more complex boundary management.
 - Permissive with copied VCMI code: a license violation.
 
+## Amendment — original data handling (2026-09-30, user decision on Q9)
+
+- Point 4 is decided: **import-only**. Agents may copy files from the user's installation into the repo's `original-data/` directory for inspection and import; that directory is gitignored, and `cargo xtask check-arch` fails if any file under it is tracked. Nothing derived verbatim from the original game (assets, text, data tables) is committed; CI uses synthetic packs.
+- The installation itself (on the user's machine, connected to sessions as a folder the user cannot make read-only) is **read-only by rule**: no edits, creations, moves or deletions, and no delete permission requests for it (AGENTS.md).
+
 ## Revision history
 
 - 2026-09-30: Proposed (recommended permissive option (b), interim rule "do not copy or translate VCMI code").
 - 2026-09-30: Accepted with the user's decision for GPL-2.0-or-later (option (a)); interim rule lifted; dependency policy narrowed to GPLv2-compatible licenses.
+- 2026-09-30: Amended: Q9 answered (import-only, gitignored `original-data/`, installation read-only by rule).

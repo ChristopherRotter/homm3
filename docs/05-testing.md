@@ -84,5 +84,5 @@ Exit codes: 0 = complete and green; 1 = a step failed; 2 = nothing failed but st
 ## Test data policy
 
 - CI uses **synthetic content packs** (invented creatures/spells with neutral names). No original assets or text in the repo.
-- Real-data conformance lives behind `--with-original-data` and reads from a user-provided path.
+- Real-data conformance lives behind `--with-original-data` and reads from the gitignored `original-data/` directory (copies from the user's installation, which itself is never written to; see AGENTS.md) or a user-provided path.
 - Replay fixtures reference synthetic packs or ship self-contained minimal packs.

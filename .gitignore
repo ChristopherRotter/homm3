@@ -3,3 +3,7 @@
 *.profraw
 *.profdata
 /lcov.info
+
+# Copies of files from the user's original game installation (OPEN-QUESTIONS Q9: import-only).
+# Never commit original game data; `cargo xtask check-arch` fails if anything here is tracked.
+/original-data/

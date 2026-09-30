@@ -375,12 +375,38 @@ fn has_reference(comment: &str) -> bool {
     }
 }
 
+/// Directory for copies of the user's original game files (gitignored, Q9 / ADR-0009).
+pub const ORIGINAL_DATA_DIR: &str = "original-data/";
+
+/// Violations for tracked files under [`ORIGINAL_DATA_DIR`] (given `git ls-files` output).
+pub fn tracked_original_data(tracked: &str) -> Vec<String> {
+    tracked
+        .lines()
+        .map(|l| l.trim().replace('\\', "/"))
+        .filter(|l| l.starts_with(ORIGINAL_DATA_DIR))
+        .map(|l| format!("{l}: original game data must never be committed (Q9, ADR-0009); `git rm --cached` it"))
+        .collect()
+}
+
+/// `git ls-files` of the workspace, or empty if this is not a git checkout.
+fn git_tracked_files(root: &Path) -> String {
+    std::process::Command::new("git")
+        .current_dir(root)
+        .args(["ls-files", "--", ORIGINAL_DATA_DIR])
+        .output()
+        .ok()
+        .filter(|o| o.status.success())
+        .map(|o| String::from_utf8_lossy(&o.stdout).into_owned())
+        .unwrap_or_default()
+}
+
 pub fn run(_args: &[String]) -> Result<(), String> {
     let root = workspace_root();
     let config = load_config(&root)?;
     let packages = load_packages()?;
     let mut violations = check_graph(&config, &packages);
     violations.extend(check_sources(&config, &root, &packages)?);
+    violations.extend(tracked_original_data(&git_tracked_files(&root)));
     report("check-arch", &violations)
 }
 
@@ -557,6 +583,21 @@ mod tests {
         assert!(has_reference("// arch-ok: BAT-DMG-001 why"));
         assert!(!has_reference("// arch-ok: bat-dmg-001"));
         assert!(!has_reference("// arch-ok: ADR-12"));
+    }
+
+    #[test]
+    fn original_data_must_not_be_tracked() {
+        assert!(tracked_original_data("").is_empty());
+        assert!(tracked_original_data("docs/x.md\ncrates/a/src/lib.rs\n").is_empty());
+        let v = tracked_original_data("original-data/H3bitmap.lod\noriginal-data\\data\\x.txt\n");
+        assert_eq!(v.len(), 2, "{v:?}");
+        assert!(
+            v[0].starts_with(
+                "original-data/H3bitmap.lod: original game data must never be committed"
+            )
+        );
+        // The real checkout has nothing tracked there.
+        assert!(tracked_original_data(&git_tracked_files(&workspace_root())).is_empty());
     }
 
     #[test]

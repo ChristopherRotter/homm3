@@ -24,34 +24,19 @@ Proposed: `faithful` is the default profile; `exploit-fix` quirks are always fix
 
 Proposed: native Windows, Linux, macOS and WASM compile targets for the logic crates; CI initially Linux + Windows. Confirm.
 
-### Q8 — Baseline game version for "original"
+### Q8 — Baseline game version for "original" (partly answered)
 
-Which installation/version is the reference (and will the user supply)? Original game versions, patches and re-releases differ in data and in fixed bugs. Needed before E02. Please provide the install (or its archives) and name the version.
-
-### Q9 — May base content tables be committed to the repo?
-
-Options: (a) import-only — stats/text are extracted from the user's install at setup, never committed; CI uses synthetic packs; (b) commit fact tables (numbers/IDs, no original text or art) as data; other open-source engines ship such data. Recommendation: (a) until a legal read says otherwise; it fits "user owns a legitimate copy". Decision needed before E02 completes.
+**Answered 2026-09-30:** the user's installation is available to agent sessions as an additional folder (on the user's machine at `D:\Heroes3\HoMM 3 Complete`). **Still open:** which version/edition it is (original patch level vs. a re-release). E02 T1 determines it from the files themselves (executable/version data, archive contents), records it in the format catalogue, and confirms it with the user. The installation folder is strictly read-only for agents (see AGENTS.md).
 
 ### Q10 — Multiplayer model confirmation
 
 Design assumes **authoritative server with per-viewer projections** (`06-security.md`); lockstep with full state is excluded because it leaks hidden info. Confirm this matches intent for any future multiplayer.
 
-### Q11 — Attack-bonus cap: +300 % (wiki) or +400 % (VCMI)? (blocks the base pack's parameter value, E02/E03)
-
-**Context.** BAT-DMG-002: the Heroes 3 wiki ([Damage](https://heroes.thelazy.net/index.php/Damage)), the fandom wiki and guides say the attack bonus is capped at +300 % (reached at 60 points of attack over defense). VCMI 1.7.5 uses `attackPointDamageFactorCap = 4.0`, i.e. +400 % at 80 points. By the source hierarchy in `04-rules-and-sources.md`, VCMI (rank 4) outranks a wiki (rank 5), but VCMI is known to deviate from the original in places. Impact: only battles with ≥ 60 points of attack advantage (late game, strong heroes vs. weak neutrals).
-
-**Options.** (a) +300 % (wiki, several independent descriptions); (b) +400 % (VCMI); (c) settle it with an observation fixture in the original game (rank 2, final arbiter).
-
-**Recommendation.** (c), defaulting to (a) until then. The cap is already a ruleset parameter (`attack_bonus_cap_percent`), so the decision is a data value, not code. The synthetic pack uses 300.
-
-### Q12 — Damage roll for stacks of more than 10: wiki algorithm or VCMI's? (does not block E01)
-
-**Context.** BAT-DMG-001: the wiki says 10 rolls of the per-creature range are summed and scaled by N/10, rounded down. VCMI instead takes min(10, N) uniform draws from the already-modified whole-stack range and averages them. Same mean and range, different distribution (and different RNG consumption). Per the source hierarchy VCMI outranks the wiki, but the wiki describes the original's algorithm explicitly and VCMI's looks like an approximation.
-
-**What was done.** E01 implements the wiki algorithm (catalog entry notes the conflict). **Recommendation:** keep the wiki algorithm and confirm with a statistical observation fixture in E03 (distribution of damage of a large stack against a fixed target over many hits).
-
 ## Answered
 
+- *(2026-09-30, Q9)* Base content tables: **import-only**. Files may be copied from the installation into the repo's `original-data/` directory, which is gitignored (and guarded by `check-arch`); nothing from the original game is committed. CI and tests keep using synthetic packs. Recorded in ADR-0009 (amendment), `.gitignore`, AGENTS.md.
+- *(2026-09-30, Q11)* Attack-bonus cap: **+300 %** (damage at most 4× base, reached at 60 points of attack over defense), as the wiki states; VCMI's 400 % is not followed. The base pack (E02) must set `attack_bonus_cap_percent = 300`; the synthetic pack already does. Recorded in BAT-DMG-002.
+- *(2026-09-30, Q12)* Damage roll of large stacks: **follow the wiki** — with 10 or more creatures, roll 10 integers in the damage range, sum them, multiply by N/10 and round down (for exactly 10 creatures this equals summing ten individual rolls, which is what E01 implements). Recorded in BAT-DMG-001; VCMI's averaging is not followed.
 - *(2026-09-30, Q1)* License: **GPL-2.0-or-later** (user's choice, option (a)). VCMI code may be consulted and ported with attribution; dependencies must be GPLv2-compatible. Recorded in ADR-0009 (Accepted), `LICENSE`, `deny.toml`.
 - *(2026-09-30, Q3)* CI host: **no CI configuration yet**; `cargo xtask verify` is run locally. Work happens on short-lived feature branches (E01: `e01-walking-skeleton`) that the user fast-forwards into `master`. The Windows half of the determinism check therefore has to be run by hand until CI exists (see HANDOFF).
 - *(2026-09-30)* Configurability scope: tiers 1–3; architecture wins when in conflict.

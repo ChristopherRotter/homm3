@@ -8,7 +8,7 @@ Replace the walking skeleton's simplified battle with faithful RoE battle rules 
 
 ## Starting point (from E01)
 
-`h3-battle` implements BAT-GEO-001, BAT-SET-001 (invented formation data), BAT-TRN-001..004, BAT-MOV-001, BAT-ATK-001, BAT-DMG-001..003, BAT-RET-001, BAT-END-001, each with "Skeleton scope" notes in `docs/rules/catalog/battle.toml` listing what E03 must add. Open source conflicts: Q11 (attack cap), Q12 (large-stack damage roll).
+`h3-battle` implements BAT-GEO-001, BAT-SET-001 (invented formation data), BAT-TRN-001..004, BAT-MOV-001, BAT-ATK-001, BAT-DMG-001..003, BAT-RET-001, BAT-END-001, each with "Skeleton scope" notes in `docs/rules/catalog/battle.toml` listing what E03 must add. Source conflicts Q11 (attack cap: +300 %) and Q12 (large-stack damage roll: wiki) were decided by the user at E01 closure.
 
 ## Scope
 
@@ -20,7 +20,7 @@ Replace the walking skeleton's simplified battle with faithful RoE battle rules 
 6. **Damage formula completeness:** all I/R factors that do not need heroes/spells; decide float vs. integer semantics per factor with observation fixtures (Armorer-style quirks → ledger).
 7. **War machines** (ballista, first aid tent, ammo cart; catapult with sieges later) including their turn-order phases.
 8. **End of battle** details: summoned/war-machine stacks not counting as living, simultaneous wipe-out (draw).
-9. **Observation fixtures** from the original game for disputed, high-impact rules (Q11, Q12, damage rounding), recorded per `docs/04-rules-and-sources.md` §2.
+9. **Observation fixtures** from the original game for disputed, high-impact rules (e.g. damage rounding when several float factors combine), recorded per `docs/04-rules-and-sources.md` §2.
 10. **Oracle harness (optional):** run VCMI as a separate process on generated scenarios and compare outcome distributions (ADR-0009 allows it; code may be ported with attribution).
 
 ## Non-goals
