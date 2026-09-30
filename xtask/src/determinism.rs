@@ -6,6 +6,7 @@
 //! CI (OPEN-QUESTIONS Q3) the cross-platform half is run by hand on each OS.
 
 use crate::util::{cargo, run_cmd, workspace_root};
+use crate::verify::Status;
 
 const FIXTURE_TEST: [&str; 4] = ["-p", "h3-cli", "--test", "replay_fixtures"];
 
@@ -36,13 +37,23 @@ pub fn run(_args: &[String]) -> Result<(), String> {
 }
 
 /// Builds the static library and the C smoke program (`crates/h3-ffi/c/smoke.c`) and runs it.
-/// On Windows (MSVC) there is no `cc`; the Rust-side ABI tests in `h3-ffi` still run there.
 pub fn ffi_smoke(_args: &[String]) -> Result<(), String> {
+    match ffi_smoke_status()? {
+        Status::Passed => Ok(()),
+        Status::NotApplicable(why) => {
+            println!("ffi-smoke: {why}");
+            Ok(())
+        }
+    }
+}
+
+/// [`ffi_smoke`] for the verify pipeline. On Windows (MSVC) there is no `cc`; the Rust-side ABI
+/// tests in `h3-ffi` still run there.
+pub fn ffi_smoke_status() -> Result<Status, String> {
     if cfg!(windows) {
-        println!(
-            "ffi-smoke: not run on Windows (no cc); the Rust-side ABI tests cover the functions"
-        );
-        return Ok(());
+        return Ok(Status::NotApplicable(
+            "no cc on Windows; the Rust-side ABI tests in h3-ffi cover the functions".to_owned(),
+        ));
     }
     let root = workspace_root();
     let mut build = cargo();
@@ -62,5 +73,5 @@ pub fn ffi_smoke(_args: &[String]) -> Result<(), String> {
     run_cmd(compile).map_err(|e| {
         format!("{e} (a C compiler is required; set CC or pass `--skip ffi-smoke`)")
     })?;
-    run_cmd(std::process::Command::new(&exe))
+    run_cmd(std::process::Command::new(&exe)).map(|()| Status::Passed)
 }

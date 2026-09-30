@@ -4,30 +4,45 @@ use std::time::Instant;
 
 use crate::util::{cargo, has_cargo_subcommand, run_cmd};
 
+/// How a gate ended when it did not fail.
+#[derive(Debug, PartialEq, Eq)]
+pub enum Status {
+    /// The gate ran and passed.
+    Passed,
+    /// The gate cannot run on this platform (e.g. valgrind on Windows); the reason is printed.
+    /// Only for platform limitations, never for missing tools that could be installed.
+    NotApplicable(String),
+}
+
 /// One gate of the verify pipeline.
 struct Step {
     name: &'static str,
     /// Slow steps are skipped by `--quick`.
     slow: bool,
-    action: fn() -> Result<(), String>,
+    action: fn() -> Result<Status, String>,
 }
 
-const fn step(name: &'static str, slow: bool, action: fn() -> Result<(), String>) -> Step {
+const fn step(name: &'static str, slow: bool, action: fn() -> Result<Status, String>) -> Step {
     Step { name, slow, action }
+}
+
+fn passed(r: Result<(), String>) -> Result<Status, String> {
+    r.map(|()| Status::Passed)
 }
 
 /// The gates, in order (docs/05-testing.md "Gates").
 const STEPS: &[Step] = &[
-    step("fmt", false, fmt),
-    step("clippy", false, clippy),
-    step("deny", false, deny),
-    step("check-arch", false, || crate::arch::run(&[])),
-    step("check-rules", false, || crate::rules::run(&[])),
-    step("check-stubs", false, || crate::stubs::run(&[])),
-    step("test", false, test),
-    step("coverage", true, || crate::coverage::run(&[])),
-    step("determinism", true, || crate::determinism::run(&[])),
-    step("ffi-smoke", false, || crate::determinism::ffi_smoke(&[])),
+    step("fmt", false, || passed(fmt())),
+    step("clippy", false, || passed(clippy())),
+    step("deny", false, || passed(deny())),
+    step("check-arch", false, || passed(crate::arch::run(&[]))),
+    step("check-rules", false, || passed(crate::rules::run(&[]))),
+    step("check-stubs", false, || passed(crate::stubs::run(&[]))),
+    step("test", false, || passed(test())),
+    step("coverage", true, || passed(crate::coverage::run(&[]))),
+    step("determinism", true, || passed(crate::determinism::run(&[]))),
+    step("ffi-smoke", false, crate::determinism::ffi_smoke_status),
+    step("bench-check", true, crate::bench::check_status),
 ];
 
 fn fmt() -> Result<(), String> {
@@ -106,6 +121,7 @@ fn parse(args: &[String]) -> Result<Options, String> {
 
 enum Outcome {
     Passed,
+    NotApplicable(String),
     Failed(String),
     Skipped(&'static str),
 }
@@ -125,7 +141,8 @@ pub fn run_steps(args: &[String]) -> Result<(), String> {
             let elapsed = start.elapsed();
             println!("<== {} ({:.1}s)", step.name, elapsed.as_secs_f64());
             match result {
-                Ok(()) => Outcome::Passed,
+                Ok(Status::Passed) => Outcome::Passed,
+                Ok(Status::NotApplicable(why)) => Outcome::NotApplicable(why),
                 Err(e) => Outcome::Failed(e),
             }
         };
@@ -138,6 +155,7 @@ pub fn run_steps(args: &[String]) -> Result<(), String> {
     for (name, outcome) in &results {
         match outcome {
             Outcome::Passed => println!("  PASS  {name}"),
+            Outcome::NotApplicable(why) => println!("  N/A   {name}: {why}"),
             Outcome::Failed(e) => {
                 failed += 1;
                 println!("  FAIL  {name}: {e}");

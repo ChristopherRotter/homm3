@@ -156,6 +156,11 @@ fn bench(args: &Args) -> Result<(), String> {
     let secs = start.elapsed().as_secs_f64();
     println!("games: {games}, steps: {steps}, time: {secs:.3}s");
     println!(
+        "size of BattleState: {} bytes, BattleEnv: {} bytes",
+        size_of::<h3_battle::BattleState>(),
+        size_of::<BattleEnv>()
+    );
+    println!(
         "steps/s (random legal agent incl. legal-command generation): {:.0}",
         steps as f64 / secs
     );

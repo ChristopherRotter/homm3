@@ -8,6 +8,7 @@
 use std::process::ExitCode;
 
 mod arch;
+mod bench;
 mod coverage;
 mod determinism;
 mod rules;
@@ -27,6 +28,8 @@ commands:
   coverage                              100% line+region coverage on logic crates
   determinism                           golden replays in debug, release, release+native
   ffi-smoke                             build and run the C ABI smoke test (needs a C compiler)
+  bench [criterion args]                criterion wall-time benchmarks (local, noisy)
+  bench-check [--update]                instruction-count regression gate (valgrind, Linux)
   help                                  show this message
 
 `--quick` skips the slow gates (determinism matrix, coverage, benchmark regression) and is for
@@ -46,6 +49,8 @@ fn main() -> ExitCode {
         "coverage" => coverage::run(rest),
         "determinism" => determinism::run(rest),
         "ffi-smoke" => determinism::ffi_smoke(rest),
+        "bench" => bench::run_criterion(rest),
+        "bench-check" => bench::run_check(rest),
         "help" | "--help" | "-h" => {
             println!("{USAGE}");
             Ok(())

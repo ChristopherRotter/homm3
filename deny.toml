@@ -5,6 +5,10 @@
 
 [graph]
 all-features = true
+# Dev-dependencies (test and benchmark tooling such as proptest and criterion) are never part of a
+# distributed combined work, so the GPLv2-compatibility rule does not apply to them; they are
+# excluded explicitly. Review new dev-dependencies by hand (arch.toml lists them per crate).
+exclude-dev = true
 
 [advisories]
 version = 2

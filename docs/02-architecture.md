@@ -91,8 +91,21 @@ An *extension* (AB, SoD, later WoG/HotA) is a **content pack** (Tier 1–3 data)
 - Hot-path rules: no allocation in `apply`/`legal_commands` for battle; preallocated/fixed-capacity structures; dense handles instead of strings/maps; branch-light integer math.
 - Tracing/explain mode is a generic `Sink`/`Trace` parameter monomorphized to a no-op when unused.
 - Logic is single-threaded per game instance and `Send`; parallelism comes from running many instances.
-- **Provisional targets** (calibrated in the walking skeleton, then enforced as regression thresholds): battle `apply` including legal-command mask ≥ 100k steps/s/core; state clone of a battle ≪ 1 µs-range per KB of state; adventure targets set when that context exists. These numbers are placeholders to be replaced by measurements.
-- Benchmarks: `criterion` for local wall-time, plus an instruction-count-based tool for deterministic CI regression checks (tool choice in E01).
+- **Targets (measured in E01, 2026-09-30)** — hardware: cloud vCPU, Intel Xeon @ 2.80 GHz, 1 core used; release profile; synthetic `full` scenario (7 stacks per side):
+
+  | Measure | Result | Target / threshold |
+  |---|---|---|
+  | Random legal play, `legal_commands` + agent pick + `apply` (`h3 bench --games 2000`) | ≈ 245 k steps/s (≈ 4.1 µs/step) | ≥ 100 k steps/s/core (met) |
+  | criterion `step = legal_commands + pick + apply` (mid-game states) | 4.7 µs | — |
+  | criterion `legal_commands` alone | 2.6 µs | — |
+  | criterion `BattleEnv` step via action mask (mask 449 actions + decode + apply) | 6.8 µs | — |
+  | `BattleState` size / clone | 944 bytes / ≈ 90 ns (≈ 95 ns per KB) | clone ≪ 1 µs per KB (met) |
+  | `BattleEnv::fork` (clone + two `Arc` increments) | ≈ 260 ns | — |
+  | `state_hash` (FNV-1a over the canonical encoding) | ≈ 0.5 µs | fine for per-N-step checkpoints; revisit if search needs per-node hashing |
+  | Instruction count, `random-rollouts-full` workload | 387 614 575 Ir for 10 402 steps (≈ 37 k Ir/step) | **regression gate: +2 %** (`benches/baseline.toml`) |
+
+  Wall-time numbers are indicative (shared cloud CPU, ±5 %); the deterministic gate is the instruction count. Re-measure on the user's Ryzen when convenient.
+- Benchmarks: `criterion` for local wall time (`cargo xtask bench`), plus instruction counts under valgrind/callgrind for the deterministic regression gate (`cargo xtask bench-check`, Linux only; counts are compared only for the toolchain and target recorded in the baseline). Chosen over `iai-callgrind` to avoid a runner binary that must match the library version; see ADR-0002.
 
 ## 9. Portability
 
