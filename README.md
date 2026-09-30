@@ -37,6 +37,7 @@ Tools for the full gate: `cargo install cargo-deny cargo-llvm-cov --locked`,
 | `crates/h3-sim` | RL environment, action/observation encodings, replays (adapter) |
 | `crates/h3-ffi` | C ABI (`include/h3.h`) |
 | `crates/h3-cli` | `h3` command-line tool |
+| `crates/h3-formats` | readers for the original game's files (LOD, TXT, exe tables), used by the harvester (adapter) |
 | `xtask` | `cargo xtask verify` and the individual gates |
 | `packs/`, `fixtures/`, `benches/` | synthetic content, golden replays, benchmark baselines |
 | `docs/` | vision, architecture, ADRs, rule catalog, backlog, handoff |

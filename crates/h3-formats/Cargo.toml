@@ -1,0 +1,17 @@
+[package]
+name = "h3-formats"
+description = "Adapter: bounded readers for the original game's files (LOD archives, text tables, the executable's static tables). Used by the harvesting tool only."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish.workspace = true
+
+[dependencies]
+miniz_oxide.workspace = true
+
+[dev-dependencies]
+proptest.workspace = true
+
+[lints]
+workspace = true

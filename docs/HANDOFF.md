@@ -20,7 +20,7 @@ Living state. The last agent updates this at the end of every session; the next 
 
 **Next:** T2 `h3-formats` (LOD + text table + exe table readers), then T3 pack v2, T4 harvester, T5 conformance.
 
-**In progress:** (updated at each task boundary — see below)
+**In progress:** T2 done (`crates/h3-formats`, committed). Next step: T3 pack format v2 in `h3-content`/`h3-pack` (enabled-pack config + dependency graph, overrides, new creature fields, factions/resources), then T4 harvester. In the cloud sandbox, `original-data/install` is a symlink to staged copies of `Heroes3.exe`, `H3bitmap.lod`, `H3ab_bmp.lod` (re-stage them from the user's `original-data/install/` when resuming).
 
 ---
 

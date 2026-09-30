@@ -9,6 +9,7 @@ members = [
     "crates/h3-sim",
     "crates/h3-ffi",
     "crates/h3-cli",
+    "crates/h3-formats",
     "xtask",
 ]
 default-members = [
@@ -20,6 +21,7 @@ default-members = [
     "crates/h3-sim",
     "crates/h3-ffi",
     "crates/h3-cli",
+    "crates/h3-formats",
 ]
 
 [workspace.package]
@@ -37,12 +39,15 @@ h3-contracts = { path = "crates/h3-contracts" }
 h3-battle = { path = "crates/h3-battle" }
 h3-pack = { path = "crates/h3-pack" }
 h3-sim = { path = "crates/h3-sim" }
+h3-formats = { path = "crates/h3-formats" }
 
 # External crates. Every entry must be GPL-2.0-or-later compatible (deny.toml) and listed in arch.toml
 # for the crates allowed to use it.
 serde = { version = "1", features = ["derive"] }
 toml = "0.8"
 serde_json = "1"
+# zlib inflate for LOD archive entries (h3-formats). License: MIT OR Zlib OR Apache-2.0.
+miniz_oxide = { version = "0.8", default-features = false, features = ["with-alloc"] }
 proptest = { version = "1", default-features = false, features = ["std"] }
 criterion = { version = "0.5", default-features = false, features = ["cargo_bench_support"] }
 

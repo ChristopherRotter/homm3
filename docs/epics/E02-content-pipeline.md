@@ -75,7 +75,10 @@ than creatures/factions/resources unless E03 needs them (heroes, spells, artifac
 
 - **T1 Catalogue.** ✅ 2026-09-30: `docs/formats/installation.md`, version identified (Q8),
   decisions Q8/Q13/Q14 recorded (ADR-0006, ADR-0009 amendments).
-- **T2 `h3-formats`**: LOD reader, text-table reader, exe creature table; property tests.
+- **T2 `h3-formats`** ✅ 2026-10-01: LOD reader, text-table reader, exe creature table; property
+  tests on arbitrary/mutated input. Checked against the real files: every entry of both bitmap
+  LODs (4 908 + 2 491) inflates to its declared size, all 71 tables of each parse, `CRTRAITS` is
+  185 records × 25 fields, the exe table yields 150 records.
 - **T3 Pack format v2 + compiler**: enabled-pack configuration, dependency graph, overrides, new
   fields, factions/resources; synthetic packs; tests per rule.
 - **T4 `h3-harvest` + gap-fill file**: generate and commit `base`, `ab`, `sod`.

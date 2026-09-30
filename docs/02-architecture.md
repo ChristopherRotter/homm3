@@ -51,8 +51,8 @@ crates/
   h3-adventure/    adventure-map context            (later)
   h3-town/ h3-heroes/ h3-magic/                     (later, split out when they earn it)
   h3-game/         orchestration, session, projections/visibility
-  h3-formats/      LOD/DEF/H3M/... readers (I/O, untrusted input)            (later)
-  h3-import/       extracts game data from the user's install into content packs   (later)
+  h3-formats/      readers for original files: LOD archives, TXT tables, exe static tables (adapter, E02; H3M later)
+  h3-harvest/      one-off harvester: original files → committed TOML packs base/ab/sod (tool, E02, Q13)
   h3-sim/          RL environment API (batched, fork/clone, masks, observations)
   h3-ffi/          C ABI
   h3-cli/          headless runner, replay tool
@@ -61,7 +61,7 @@ xtask/             verify, check-arch, check-rules, coverage, bench gates
 
 Start with the smallest set the walking skeleton needs (kernel, content, battle, sim, cli, xtask, plus minimal game/contracts if required). Split crates when a context actually exists — but the dependency rules apply from day one.
 
-**State after E01:** `h3-kernel`, `h3-content`, `h3-contracts`, `h3-battle` (logic, `no_std` + `alloc`, 100 % coverage gate); `h3-pack`, `h3-sim`, `h3-ffi`, `h3-cli` (adapters); `xtask`. No `h3-game` yet: the sim drives the battle context directly through `BattleSetup`. The allowed graph is `arch.toml`; ADR-0005's amendment lists what `check-arch` enforces.
+**State after E01:** `h3-kernel`, `h3-content`, `h3-contracts`, `h3-battle` (logic, `no_std` + `alloc`, 100 % coverage gate); `h3-pack`, `h3-sim`, `h3-ffi`, `h3-cli` (adapters); `xtask`. No `h3-game` yet: the sim drives the battle context directly through `BattleSetup`. **E02 adds** `h3-formats` (adapter) and the `h3-harvest` tool; the engine never reads original files at run time — it loads the committed packs (Q13). The allowed graph is `arch.toml`; ADR-0005's amendment lists what `check-arch` enforces.
 
 ## 4. State, commands, events
 

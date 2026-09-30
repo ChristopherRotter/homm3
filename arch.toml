@@ -155,6 +155,15 @@ external = ["serde", "toml"]
 dev_deps = []
 dev_external = []
 
+# Readers for the original game's files; used only by the harvesting tool (E02, Q13).
+[crate.h3-formats]
+layer = "adapter"
+logic = false
+deps = []
+external = ["miniz_oxide"]
+dev_deps = []
+dev_external = ["proptest"]
+
 [crate.xtask]
 layer = "tool"
 logic = false

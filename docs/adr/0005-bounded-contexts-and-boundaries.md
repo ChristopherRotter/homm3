@@ -35,7 +35,13 @@ Single crate with modules (boundaries erode, no compile-time enforcement); fine-
 - **Enforcement (`cargo xtask check-arch`):** every workspace member must be declared; every normal/build/dev dependency edge must be listed; layer rule (strictly downward, except shared→shared and adapter→adapter; domain↛domain; nothing depends on tools). Logic crates: the crate root must carry `#![no_std]`, `#![forbid(unsafe_code)]` and deny the policy lints (`unwrap`/`expect`/`panic`/`todo`/`unimplemented`/`unreachable`/`float_arithmetic`/print/exit) — parsed from the attribute tokens, not by substring; relaxing a policy lint (`allow`/`expect`/`warn`, also in `cfg_attr`) in non-test logic code fails unless allow-listed in `arch.toml` (only `kernel::num` may allow `float_arithmetic`); a token scan rejects `HashMap`, `HashSet`, `std`, `static mut`, `unsafe`, float types and float literals outside `kernel::num`, and any `sort*` method outside `kernel::order`. Test code is exempt: `#[cfg(test)]` items, files reached through a `#[cfg(test)] mod x;` declaration (module tree from the crate root), and Cargo's `tests/`/`benches/`/`examples/`. The `// arch-ok: <RULE-ID|ADR-NNNN> reason` escape hatch requires a reference. Tests prove that violating edges and code are rejected.
 - The minimal-`pub`-surface point is not machine-checked yet (backlog).
 
+## Amendment — E02 content pipeline (2026-10-01)
+
+- **`h3-formats`** (adapter, no workspace dependencies; external `miniz_oxide` for zlib): bounded readers for the original installation's files (LOD archives, text tables, the executable's static tables). It replaces the planned `h3-import` crate: with Q13 the original data is harvested once into committed packs, so there is no run-time import.
+- **`h3-harvest`** (tool layer, like `xtask`): the harvester binary that writes `packs/{base,ab,sod}`; nothing may depend on it.
+
 ## Revision history
 
 - 2026-09-30: Accepted.
 - 2026-09-30: Amended by E01 (crates created, `no_std` logic crates, what `check-arch` enforces).
+- 2026-10-01: Amended by E02 (`h3-formats` adapter, `h3-harvest` tool).
