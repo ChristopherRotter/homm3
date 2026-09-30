@@ -14,6 +14,8 @@ Do not over-specify. A refined epic is allowed to be wrong after first contact; 
 
 **Start:** follow the checklist in `AGENTS.md`.
 
+**Interruptions:** a session can be stopped at any time and resumed later, possibly by a fresh agent. Follow "Interruptions and resuming" in `AGENTS.md`: sync every commit to the user's repo immediately, keep HANDOFF resumable at task boundaries, checkpoint when the user announces a stop, and rebuild from the user's repo when resuming.
+
 **During:**
 - Keep the main line green. Commit small, coherent steps with messages in the ubiquitous language.
 - Write the test and the rule entry with the code, not afterwards.

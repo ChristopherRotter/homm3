@@ -47,6 +47,17 @@ If the user is not present, do the safe preparatory work, document the decision 
 - Prefer the smallest design that satisfies the current epic. Do not over-specify the future; do not paint the project into a corner either (see the guardrails in ADR-0006).
 - Keep documentation current in the same change as the code (architecture, rules catalog, quirks ledger, ADRs).
 
+## Interruptions and resuming
+
+The user may stop a session at any moment (for example by shutting down the computer) and resume later, in the same task or in a new one. Work so that an unplanned stop costs at most the step in progress:
+
+- **The user's repo folder is the only durable copy.** A cloud sandbox is temporary: it can be reclaimed while idle, and anything that exists only there (uncommitted edits, unsynced commits, installed tools) is lost with it.
+- **Sync after every commit.** If you work in a cloud clone, bring each commit into the user's repo right away (git bundle → fast-forward the user's branch). Never let more than the current step exist only in the sandbox.
+- **Keep `docs/HANDOFF.md` resumable.** At every task boundary (and before anything long-running) add or refresh a short "in progress" note in the newest entry: what is done, what is next, what is half-done and where.
+- **When the user says they are about to stop, checkpoint first:** finish or cleanly back out of the current step, commit, update HANDOFF, sync, and confirm before they shut down.
+- **Git on the user's machine:** get delete permission for the repo folder before running git there (git must be able to remove its own lock files), and never leave a `.git/*.lock` behind. Do not start a git operation on the user's machine right before an announced stop.
+- **When resuming:** read HANDOFF, then compare the user's repo (branch, last commit, working tree) with any sandbox copy. **The user's repo wins**: the user may have amended or added commits in the meantime, so rebuild your working copy from it before continuing. Re-create sandbox tooling as HANDOFF describes.
+
 ## End-of-session checklist
 
 1. `cargo xtask verify` is green (or the failure is documented in HANDOFF with cause and next step).
