@@ -1,4 +1,4 @@
-//! Damage (BAT-DMG-001..003, BAT-RNG-002/003) and the Defend bonus (BAT-TRN-004).
+//! Damage (BAT-DMG-001..003, BAT-DMG-006/008, BAT-RNG-002/003) and the Defend bonus (BAT-TRN-004).
 //!
 //! A strike's damage is its base damage (BAT-DMG-001) times the sum of its bonuses and the product
 //! of its reductions, computed exactly with one final rounding down (BAT-DMG-002):
@@ -101,6 +101,34 @@ pub(crate) fn effective_defense(stack: &Stack, params: &BattleParams) -> u16 {
     let pct = u32::from(stack.defense) * u32::from(params.defend_bonus_percent) / 100;
     let bonus = pct.max(u32::from(params.defend_bonus_min));
     u16::try_from(u32::from(stack.defense) + bonus).unwrap_or(u16::MAX)
+}
+
+/// The defense a creature that ignores `percent` % of it sees: `floor(defense · (100 − percent)
+/// / 100)` (Q19).
+// rule: BAT-DMG-006
+pub(crate) fn reduced_defense(defense: u16, percent: u8) -> u16 {
+    let kept = u32::from(defense) * u32::from(100 - percent.min(100)) / 100;
+    // `kept <= defense`.
+    u16::try_from(kept).unwrap_or(defense)
+}
+
+/// Heals the living `stack` by up to `hp` hit points, resurrecting creatures up to its count at
+/// the start of the battle; returns the hit points regained and the creatures brought back.
+// rule: BAT-DMG-008
+pub(crate) fn resurrect(stack: &mut Stack, hp: u64) -> (u64, u32) {
+    let max_hp = u64::from(stack.max_hp);
+    let total = stack.total_hp();
+    let healed = hp.min((u64::from(stack.base_count) * max_hp).saturating_sub(total));
+    if healed == 0 {
+        return (0, 0);
+    }
+    let before = stack.count;
+    let new_total = total + healed;
+    let count = new_total.div_ceil(max_hp);
+    // `0 < count <= base_count`, so the conversions cannot fail.
+    stack.count = u32::try_from(count).unwrap_or(stack.base_count);
+    stack.top_hp = u32::try_from(new_total - (count - 1) * max_hp).unwrap_or(stack.max_hp);
+    (healed, stack.count - before)
 }
 
 /// Deals `damage` to `stack`: the top creature takes damage first; returns the number of

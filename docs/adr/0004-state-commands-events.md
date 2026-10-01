@@ -58,8 +58,24 @@ How the model turned out in the battle context:
 - **Sim encodings:** action encoding v2 (attacks by target and canonical slot); replay file
   format v2 (`[setup]` table).
 
+## Amendment — E03 battle core (2026-10-01, T4–T5)
+
+- **Commands:** `Shoot { target, at }` (T4; `at` is the target's head, or for area shots any hex
+  of the target).
+- **Events:** `Struck` carries `StrikeFlags` (retaliation, ranged, secondary target, death blow)
+  instead of a retaliation bool (T4). T5 adds `LifeDrained { stack, hit_points, resurrected }`,
+  `DeathStared { attacker, target, kills }` and `Regenerated { stack, hit_points }`; strike and
+  return emits a second `Moved`. All public.
+- **Attack structure (T5):** an attack (`combat::attack`) rolls the death blow once, strikes the
+  target, then the secondary targets of its pattern in stack-id order, then applies life drain
+  and death stare; melee = attack, retaliation, second attack, return. Secondary targets are
+  computed from the positions at the start of each attack.
+- **State:** stacks carry `base_count` (resurrection limit) and retaliations per round / left;
+  state hash encoding v4.
+
 ## Revision history
 
 - 2026-09-30: Accepted.
 - 2026-09-30: Amended by E01 (battle entry point, command set, events, geometry seam, replay contents).
 - 2026-10-01: Amended by E03 T3 (footprints, obstacles, attack positions, setup/encoding changes).
+- 2026-10-01: Amended by E03 T4–T5 (shooting, strike flags, ability events, attack structure).

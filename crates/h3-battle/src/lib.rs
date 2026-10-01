@@ -42,7 +42,8 @@ pub use h3_contracts::{BattleOutcome, BattleSetup, BattleSide};
 pub use legal::{LegalCommands, MAX_LEGAL_COMMANDS, legal_commands};
 pub use observe::{Observation, observe, project};
 pub use state::{
-    BATTLE_STATE_HASH_VERSION, BattleState, STACK_CAPACITY, Stack, StackFlags, StackId, StackTraits,
+    BATTLE_STATE_HASH_VERSION, BattleState, STACK_CAPACITY, Stack, StackFlags, StackId,
+    StackTraits, UNLIMITED_RETALIATIONS,
 };
 
 #[cfg(test)]

@@ -18,7 +18,7 @@ pub enum Visibility {
     Side(BattleSide),
 }
 
-/// How a strike happened (BAT-ATK-001, BAT-RET-001, BAT-RNG-001/004).
+/// How a strike happened (BAT-ATK-001/003, BAT-RET-001, BAT-RNG-001/004, BAT-DMG-007).
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub struct StrikeFlags(u8);
 
@@ -31,6 +31,8 @@ impl StrikeFlags {
     pub const RANGED: Self = Self(1 << 1);
     /// A secondary target of a strike that hits several stacks (area shots, …).
     pub const SECONDARY: Self = Self(1 << 2);
+    /// A death blow: +100 % base damage (BAT-DMG-007).
+    pub const DEATH_BLOW: Self = Self(1 << 3);
 
     /// Whether all flags of `other` are set.
     pub const fn contains(self, other: Self) -> bool {
@@ -93,6 +95,31 @@ pub enum EventKind {
         kills: u32,
         /// How the strike happened.
         flags: StrikeFlags,
+    },
+    /// A stack healed and resurrected itself from the damage it dealt (BAT-DMG-008).
+    LifeDrained {
+        /// The draining stack.
+        stack: StackId,
+        /// Hit points regained.
+        hit_points: u64,
+        /// Creatures brought back.
+        resurrected: u32,
+    },
+    /// A death stare killed creatures outright (BAT-DMG-009).
+    DeathStared {
+        /// The staring stack.
+        attacker: StackId,
+        /// The stack that lost creatures.
+        target: StackId,
+        /// Creatures killed.
+        kills: u32,
+    },
+    /// A stack's top creature regenerated (BAT-TRN-005).
+    Regenerated {
+        /// The stack.
+        stack: StackId,
+        /// Hit points regained.
+        hit_points: u32,
     },
     /// The battle ended (BAT-END-001).
     BattleEnded {

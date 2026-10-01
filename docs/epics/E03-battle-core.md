@@ -89,10 +89,14 @@ Heroes, spells and artifacts (E04), spell-like creature abilities and the tactic
   `no_distance_penalty`); damage factors generalised (bonuses add, reductions multiply, one
   final floor); `Struck` events carry `StrikeFlags`; action encoding v3; bench re-baselined
   (+13 % Ir, synthetic wisps shoot; ≈ 225 k steps/s).
-- [ ] T5 Melee abilities and damage factors: double attack, no/extra/unlimited retaliation,
-  multi-hex attacks (hydra, Cerberus, breath), return after strike, jousting/charge immunity, hate,
-  defense reduction, death blow, life drain, regeneration, death stare; exact combination of the
-  damage factors (integer vs. float decision recorded).
+- [x] T5 Melee abilities and damage factors: double attack (BAT-ATK-002), attack patterns of
+  hydras, Cerberi and breath (BAT-ATK-003, ported from VCMI), strike and return (BAT-ATK-004), no
+  enemy retaliation and retaliations per round (BAT-RET-002/003), hate, jousting/charge immunity,
+  defense reduction, death blow, life drain, death stare (BAT-DMG-004..009), regeneration
+  (BAT-TRN-005); `combat::attack` structure; events `LifeDrained`/`DeathStared`/`Regenerated`;
+  state hash v4. Damage stays exact-integer with one rounding (open question Q23 with an
+  experiment); VCMI followed over the wiki for death stare (Q21) and jousting distance (Q22).
+  Bench unchanged (+0.3 % Ir: the synthetic scenarios have no abilities).
 - [ ] T6 Morale, luck and turn-order phases (modifiers in battle state; good morale extra action,
   bad morale freeze, wait-morale phase; luck in damage).
 - [ ] T7 Terrain: battlefield types, native-terrain bonus, obstacle catalogue and random obstacle

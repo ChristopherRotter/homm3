@@ -154,7 +154,7 @@ id       = "BAT-TRN-003"
 title    = "New round"
 context  = "battle"
 status   = "implemented"
-summary  = "When every living stack has acted in the current round, a new round begins: the round number increases and every stack regains its retaliation and may act and wait again. The Defend bonus is not reset by the new round (BAT-TRN-004)."
+summary  = "When every living stack has acted in the current round, a new round begins: the round number increases and every stack regains its retaliations (BAT-RET-003) and may act and wait again. The Defend bonus is not reset by the new round (BAT-TRN-004)."
 numeric  = "integer"
 
   [[rule.source]]
@@ -193,6 +193,36 @@ numeric  = "integer"
   retrieved  = "2026-09-30"
   confidence = "medium"
   note       = "Rounding and the +1 minimum come from VCMI only; the wiki is silent. VCMI has a TODO about excluding spell boosts from the base, contradicting the wiki."
+
+[[rule]]
+id       = "BAT-TRN-005"
+title    = "Regeneration"
+context  = "battle"
+status   = "implemented"
+summary  = "When a stack with regeneration (Wights, Wraiths, Trolls) becomes active in the normal phase of a round (not when it activates from waiting), its top creature regains all lost hit points. Following VCMI (Q20); the wiki's creature text says 'at the beginning of each combat round'."
+numeric  = "integer"
+
+  [[rule.source]]
+  kind       = "wiki"
+  ref        = "Wight - Heroes 3 wiki: 'The first wight or wraith in each troop regenerates all lost damage at the beginning of each combat round'"
+  url        = "https://heroes.thelazy.net/index.php/Wight"
+  retrieved  = "2026-10-01"
+  confidence = "medium"
+  note       = "Timing differs from VCMI; user decision Q20: the stack's own turn."
+
+  [[rule.source]]
+  kind       = "vcmi"
+  ref        = "server/battles/BattleFlowProcessor.cpp: HP_REGENERATION 'before everything else but only during first turn attempt in each round' (alive and not waiting)"
+  url        = "https://github.com/vcmi/vcmi/blob/1.7.5/server/battles/BattleFlowProcessor.cpp"
+  retrieved  = "2026-10-01"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "wiki"
+  ref        = "Troll - Heroes 3 wiki: Trolls regenerate (no details)"
+  url        = "https://heroes.thelazy.net/index.php/Troll"
+  retrieved  = "2026-10-01"
+  confidence = "low"
 
 [[rule]]
 id       = "BAT-MOV-001"
@@ -251,7 +281,7 @@ id       = "BAT-ATK-001"
 title    = "Melee attack"
 context  = "battle"
 status   = "implemented"
-summary  = "A melee attack names an enemy stack and the attacker's head position: its current one or one it can move to this turn (BAT-MOV-001/002), from which its footprint touches the target's (some hexes are neighbours, none overlap; BAT-GEO-002). So a two-hex stack can strike with its head or its tail, and a two-hex target can be hit from any of the hexes around it. The attacker moves there, then strikes (BAT-DMG-001..003); the strike costs no movement. Then the target may retaliate (BAT-RET-001). Ranged attacks, double attacks and multi-hex attacks are separate rules."
+summary  = "A melee attack names an enemy stack and the attacker's head position: its current one or one it can move to this turn (BAT-MOV-001/002), from which its footprint touches the target's (some hexes are neighbours, none overlap; BAT-GEO-002). So a two-hex stack can strike with its head or its tail, and a two-hex target can be hit from any of the hexes around it. The attacker moves there, then strikes (BAT-DMG-001..003); the strike costs no movement. Then the target may retaliate (BAT-RET-001). Ranged attacks (BAT-RNG-001), double attacks (BAT-ATK-002), multi-stack attacks (BAT-ATK-003) and strike and return (BAT-ATK-004) are separate rules."
 numeric  = "integer"
 
   [[rule.source]]
@@ -273,6 +303,105 @@ numeric  = "integer"
   ref        = "Combat - Heroes 3 wiki"
   url        = "https://heroes.thelazy.net/index.php/Combat"
   retrieved  = "2026-09-30"
+  confidence = "high"
+
+[[rule]]
+id       = "BAT-ATK-002"
+title    = "Double attack"
+context  = "battle"
+status   = "implemented"
+summary  = "A melee attacker whose creature strikes twice (flag strikes_twice) and is not a shooter attacks, receives the target's retaliation (BAT-RET-001), then attacks a second time if both stacks still live; the second attack has no charge (BAT-DMG-005) and is not retaliated. Shooters that strike twice shoot twice (BAT-RNG-001) but attack once in melee."
+numeric  = "integer"
+
+  [[rule.source]]
+  kind       = "vcmi"
+  ref        = "server/battles/BattleActionProcessor.cpp doAttackAction: totalAttacks loop, retaliation only after the first attack (i == 0), no distance on the second attack"
+  url        = "https://github.com/vcmi/vcmi/blob/1.7.5/server/battles/BattleActionProcessor.cpp"
+  retrieved  = "2026-10-01"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "vcmi"
+  ref        = "config/creatures/castle.json: the Marksman's ADDITIONAL_ATTACK has effectRange ONLY_DISTANCE_FIGHT, the Crusader's applies to melee"
+  url        = "https://github.com/vcmi/vcmi/blob/1.7.5/config/creatures/castle.json"
+  retrieved  = "2026-10-01"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe static creature table, flag 0x8000 harvested as strikes_twice (docs/formats/installation.md §5)"
+  confidence = "high"
+
+[[rule]]
+id       = "BAT-ATK-003"
+title    = "Attacks that hit several stacks"
+context  = "battle"
+status   = "implemented"
+summary  = "Some melee attacks also strike secondary targets, chosen from the positions at the time of the attack and never including the target itself: attacks_all_adjacent hits every living enemy stack whose footprint touches the attacker's; three_headed_attack hits enemy stacks on the two hexes beside the attacked hex; breath_attack hits any stack, friend or foe, on the hex behind the attacked hex. Pattern geometry (ported from VCMI): the origin is the attacker's head, or its tail if the head does not touch the target; the attack direction points from the origin to the target's tail if adjacent, else to its head; three-headed takes one step from the origin turned one sixth clockwise and one counter-clockwise from the attack direction, breath two steps in the attack direction; a walk whose first step would enter the attacker starts one step further (on the attacked hex); the attacker's own hexes are never hit. The target is struck first, then the secondary targets in stack-id order, each with its own damage roll; each stack is struck once per attack. Retaliations use the full pattern too. Secondary strikes carry the SECONDARY flag."
+numeric  = "integer"
+
+  [[rule.source]]
+  kind       = "vcmi"
+  ref        = "lib/battle/CBattleInfoCallback.cpp getPotentiallyAttackableHexes (patterns {2,6} three-headed, {11} breath; double-wide origin and tail preference) and getAttackedCreatures (hostile vs friendly positions)"
+  url        = "https://github.com/vcmi/vcmi/blob/1.7.5/lib/battle/CBattleInfoCallback.cpp"
+  retrieved  = "2026-10-01"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "vcmi"
+  ref        = "server/battles/BattleActionProcessor.cpp makeAttack: primary target first, then every other attacked stack once ('do not hit same stack twice')"
+  url        = "https://github.com/vcmi/vcmi/blob/1.7.5/server/battles/BattleActionProcessor.cpp"
+  retrieved  = "2026-10-01"
+  confidence = "high"
+  note       = "VCMI orders the secondary targets by pointer (std::set); we use stack-id order, which only changes the order of damage rolls."
+
+  [[rule.source]]
+  kind       = "wiki"
+  ref        = "Hydra - Heroes 3 wiki: 'Attacks all adjacent enemies. No enemy retaliation.'"
+  url        = "https://heroes.thelazy.net/index.php/Hydra"
+  retrieved  = "2026-10-01"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "wiki"
+  ref        = "Cerberus - Heroes 3 wiki: 'the target hex, and the ones to the left and to the right to it'; two-hex creatures do not take double damage"
+  url        = "https://heroes.thelazy.net/index.php/Cerberus"
+  retrieved  = "2026-10-01"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "wiki"
+  ref        = "Red Dragon - Heroes 3 wiki: breath attack 'may kill your own troops as well'"
+  url        = "https://heroes.thelazy.net/index.php/Red_Dragon"
+  retrieved  = "2026-10-01"
+  confidence = "medium"
+  note       = "The wiki gives no geometry for the breath; it comes from VCMI."
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe static creature table: flags multi_headed (Hydras, Cerberi) and breath_attack (dragons, Firebirds); the pattern kind is a gap-filled ability (crates/h3-harvest/data/gapfill.toml)"
+  confidence = "high"
+
+[[rule]]
+id       = "BAT-ATK-004"
+title    = "Strike and return"
+context  = "battle"
+status   = "implemented"
+summary  = "A creature with strike_and_return that moved to attack returns to the hex it started its turn on after the whole melee attack (after the retaliation and a second attack), if it is still alive; the return is a move event and costs nothing. It does not return if it did not move or died. The start hex is always free again (nothing else moves during an attack)."
+numeric  = "integer"
+
+  [[rule.source]]
+  kind       = "wiki"
+  ref        = "Harpy - Heroes 3 wiki: 'fly next to their target, attack and return to their original hex'; Harpies receive the retaliation before returning"
+  url        = "https://heroes.thelazy.net/index.php/Harpy"
+  retrieved  = "2026-10-01"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "vcmi"
+  ref        = "server/battles/BattleActionProcessor.cpp doAttackAction: RETURN_AFTER_STRIKE moves back to the starting position after the attack loop if the stack moved and is alive"
+  url        = "https://github.com/vcmi/vcmi/blob/1.7.5/server/battles/BattleActionProcessor.cpp"
+  retrieved  = "2026-10-01"
   confidence = "high"
 
 [[rule]]
@@ -419,7 +548,7 @@ id       = "BAT-DMG-002"
 title    = "Attack/defense modifier and final rounding"
 context  = "battle"
 status   = "implemented"
-summary  = "Damage = base * (1 + sum of bonuses) * product of (1 - reduction), rounded down once at the end, at least 1. Attack/defense: if attack A > defense D, a bonus of min(0.05 * (A - D), 3.00); else a reduction of min(0.025 * (D - A), 0.70). The attack bonus is capped at +300 % (at most 4x base damage, reached at 60 points), per user decision 2026-09-30 (OPEN-QUESTIONS Q11). Other bonuses (luck, jousting, hate, death blow) add to the bonus sum; other reductions (ranged/melee penalty, ...) multiply. Rates and caps are ruleset parameters (percent / per mille). Computed exactly in integers: floor(base * (100 + bonus%) * prod(1000 - reduction permille) / (100 * 1000^n)). The original likely uses floating point (see the Armorer quirk on the wiki), so exact results may differ by 1 in rare edge cases; open question for an observation (E03 T5)."
+summary  = "Damage = base * (1 + sum of bonuses) * product of (1 - reduction), rounded down once at the end, at least 1. Attack/defense: if attack A > defense D, a bonus of min(0.05 * (A - D), 3.00); else a reduction of min(0.025 * (D - A), 0.70). The attack bonus is capped at +300 % (at most 4x base damage, reached at 60 points), per user decision 2026-09-30 (OPEN-QUESTIONS Q11). Other bonuses (luck, jousting, hate, death blow) add to the bonus sum; other reductions (ranged/melee penalty, ...) multiply. Rates and caps are ruleset parameters (percent / per mille). Computed exactly in integers: floor(base * (100 + bonus%) * prod(1000 - reduction permille) / (100 * 1000^n)). The original likely uses floating point (see the Armorer quirk on the wiki), so exact results may differ by 1 in rare edge cases; open question Q23 with a prepared experiment."
 numeric  = "integer"
 
   [[rule.source]]
@@ -474,11 +603,152 @@ numeric  = "integer"
   confidence = "high"
 
 [[rule]]
+id       = "BAT-DMG-004"
+title    = "Hate"
+context  = "battle"
+status   = "implemented"
+summary  = "A creature that hates the target's creature type adds the hate percent to the strike's bonus sum (BAT-DMG-002): +50 % for (Master) Genies vs Efreet(i)/Efreet Sultans, (Arch)Angels vs (Arch) Devils and Titans vs Black Dragons, each way (data: crates/h3-harvest/data/gapfill.toml)."
+numeric  = "integer"
+
+  [[rule.source]]
+  kind       = "vcmi"
+  ref        = "lib/battle/DamageCalculator.cpp getAttackHateCreatureFactor (HATE bonus with the defender's creature as subtype, an additive factor)"
+  url        = "https://github.com/vcmi/vcmi/blob/1.7.5/lib/battle/DamageCalculator.cpp"
+  retrieved  = "2026-10-01"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "wiki"
+  ref        = "Genie, Efreet, Angel, Devil, Titan, Black Dragon - Heroes 3 wiki ('Hates ...' with +50% damage)"
+  url        = "https://heroes.thelazy.net/index.php/Genie"
+  retrieved  = "2026-10-01"
+  confidence = "high"
+
+[[rule]]
+id       = "BAT-DMG-005"
+title    = "Jousting"
+context  = "battle"
+status   = "implemented"
+summary  = "A jousting creature adds percent_per_hex % (Cavaliers and Champions: 5) per hex travelled right before its melee attack to the bonus sum, unless the target has charge_immunity (Pikemen, Halberdiers). Hexes travelled = the steps of the shortest path to the attack position (BAT-MOV-001; for flyers the hex distance); 0 when attacking without moving, on retaliations and on second attacks. Path length rather than start-to-end distance follows VCMI (Q22)."
+numeric  = "integer"
+
+  [[rule.source]]
+  kind       = "wiki"
+  ref        = "Cavalier - Heroes 3 wiki: '5% for each hex traveled to creature attacked'; not on counterattacks; Pikemen and Halberdiers are immune"
+  url        = "https://heroes.thelazy.net/index.php/Cavalier"
+  retrieved  = "2026-10-01"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "wiki"
+  ref        = "Pikeman - Heroes 3 wiki: jousting immunity"
+  url        = "https://heroes.thelazy.net/index.php/Pikeman"
+  retrieved  = "2026-10-01"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "vcmi"
+  ref        = "lib/battle/DamageCalculator.cpp getAttackJoustingFactor (chargeDistance × JOUSTING / 100 unless CHARGE_IMMUNITY); server/battles/BattleActionProcessor.cpp passes the moved path length to the first attack only"
+  url        = "https://github.com/vcmi/vcmi/blob/1.7.5/lib/battle/DamageCalculator.cpp"
+  retrieved  = "2026-10-01"
+  confidence = "high"
+
+[[rule]]
+id       = "BAT-DMG-006"
+title    = "Defense reduction"
+context  = "battle"
+status   = "implemented"
+summary  = "A creature with defense_reduction (Behemoths 40 %, Ancient Behemoths 80 %) strikes as if the target's defense were floor(D × (100 − percent) / 100), where D is the target's effective defense including the Defend bonus (BAT-TRN-004); also on retaliations."
+numeric  = "integer"
+
+  [[rule.source]]
+  kind       = "wiki"
+  ref        = "Behemoth - Heroes 3 wiki: 'Ignores 40% of enemy Defense skill' / 80%; defending is ineffective against Behemoths"
+  url        = "https://heroes.thelazy.net/index.php/Behemoth"
+  retrieved  = "2026-10-01"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "vcmi"
+  ref        = "lib/battle/DamageCalculator.cpp getTargetDefenseIgnored: floor(p × D) + 1 (not followed, Q19)"
+  url        = "https://github.com/vcmi/vcmi/blob/1.7.5/lib/battle/DamageCalculator.cpp"
+  retrieved  = "2026-10-01"
+  confidence = "medium"
+  note       = "User decision Q19: the plain formula floor(D × (100 − p) / 100); experiment prepared in OPEN-QUESTIONS."
+
+[[rule]]
+id       = "BAT-DMG-007"
+title    = "Death blow"
+context  = "battle"
+status   = "implemented"
+summary  = "A creature with death_blow (Dread Knights: 20 %) rolls once per attack (also on retaliations): with that chance the attack is a death blow and every strike of it adds +100 % to the bonus sum (doubles the base damage, not the other bonuses). Strikes carry the DEATH_BLOW flag."
+numeric  = "integer"
+
+  [[rule.source]]
+  kind       = "wiki"
+  ref        = "Dread Knight - Heroes 3 wiki: '20% chance to deal double base damage'; bonuses from Offense, Luck or attack-defense are not doubled"
+  url        = "https://heroes.thelazy.net/index.php/Dread_Knight"
+  retrieved  = "2026-10-01"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "vcmi"
+  ref        = "server/battles/BattleActionProcessor.cpp makeAttack: one DOUBLE_DAMAGE_CHANCE roll per attack (also counterattacks) applied to all targets; lib/battle/DamageCalculator.cpp getAttackDeathBlowFactor = +1.0"
+  url        = "https://github.com/vcmi/vcmi/blob/1.7.5/server/battles/BattleActionProcessor.cpp"
+  retrieved  = "2026-10-01"
+  confidence = "high"
+
+[[rule]]
+id       = "BAT-DMG-008"
+title    = "Life drain"
+context  = "battle"
+status   = "implemented"
+summary  = "After all strikes of its attack (also a retaliation), a creature with life_drain (Vampire Lords: 100 %) regains percent % of the hit points each living target (flag alive) lost, rounded down per target; a target loses at most what it had. The hit points heal the top creature and resurrect creatures, up to the stack's count at the start of the battle; nothing happens when nothing is missing. It happens before the target's retaliation."
+numeric  = "integer"
+
+  [[rule.source]]
+  kind       = "wiki"
+  ref        = "Vampire Lord - Heroes 3 wiki: drain equal to the damage dealt, after the attack and before the retaliation, cannot exceed the target's total health, resurrects, not on non-living creatures"
+  url        = "https://heroes.thelazy.net/index.php/Vampire_Lord"
+  retrieved  = "2026-10-01"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "vcmi"
+  ref        = "server/battles/BattleActionProcessor.cpp applyBattleEffects: LIFE_DRAIN heals damageAmount (capped at the target's health) × value / 100 with EHealLevel::RESURRECT on living targets; lib/battle/CUnitState.cpp CHealth::heal caps at the base amount"
+  url        = "https://github.com/vcmi/vcmi/blob/1.7.5/server/battles/BattleActionProcessor.cpp"
+  retrieved  = "2026-10-01"
+  confidence = "high"
+
+[[rule]]
+id       = "BAT-DMG-009"
+title    = "Death stare"
+context  = "battle"
+status   = "implemented"
+summary  = "After its attack (also a retaliation), if the target is alive (flag alive) and survived, each creature of a stack with death_stare (Mighty Gorgons: 10 %) independently kills one target creature with that chance, at most ceil(count × percent / 100) kills (trials stop at the cap). The kills deal kills × max_hp damage (BAT-DMG-003), so the top creature keeps its damage (Q21, VCMI); the wiki says the new top creature has full health."
+numeric  = "integer"
+
+  [[rule.source]]
+  kind       = "wiki"
+  ref        = "Mighty Gorgon - Heroes 3 wiki: 10% per Gorgon, at most 10% of the Gorgons rounded up, after attacking or retaliating, only living targets; 'the new topmost unit will always have full Health'"
+  url        = "https://heroes.thelazy.net/index.php/Mighty_Gorgon"
+  retrieved  = "2026-10-01"
+  confidence = "high"
+  note       = "The full-health statement conflicts with VCMI; open question Q21 with a prepared experiment."
+
+  [[rule.source]]
+  kind       = "vcmi"
+  ref        = "server/battles/BattleActionProcessor.cpp handleDeathStare: binomial(count, p) capped at divideAndCeil(count × p, 100); config/spells/ability.json deathStare: killByCount damage (count × max health), not on non-living/undead"
+  url        = "https://github.com/vcmi/vcmi/blob/1.7.5/server/battles/BattleActionProcessor.cpp"
+  retrieved  = "2026-10-01"
+  confidence = "high"
+
+[[rule]]
 id       = "BAT-RET-001"
 title    = "Retaliation"
 context  = "battle"
 status   = "implemented"
-summary  = "After a melee strike, the target retaliates once per round if it is still alive and has not retaliated this round; the retaliation is a normal strike (BAT-DMG-001..003) with the target's remaining creatures against the attacker. Shots are never retaliated (BAT-RNG-001). Retaliations reset at the start of each round (BAT-TRN-003). Scope: unlimited/extra retaliations and attackers without enemy retaliation are E03 T5; blind/paralyze effects E04."
+summary  = "After the first melee attack (BAT-ATK-001/002), the target retaliates if both stacks are still alive, the attacker allows retaliation (BAT-RET-002) and the target has a retaliation left this round (BAT-RET-003); the retaliation is a normal attack of the target's remaining creatures against the attacker, with its full attack pattern (BAT-ATK-003) and abilities (BAT-DMG-007..009) but no jousting. Shots are never retaliated (BAT-RNG-001). Retaliations reset at the start of each round (BAT-TRN-003). Scope: blind/paralyze effects and first strike are E04."
 numeric  = "integer"
 
   [[rule.source]]
@@ -493,6 +763,62 @@ numeric  = "integer"
   ref        = "lib/battle/CUnitState.cpp ableToRetaliate (alive and retaliation left); server/battles/BattleActionProcessor.cpp strike-retaliate order"
   url        = "https://github.com/vcmi/vcmi/blob/1.7.5/lib/battle/CUnitState.cpp"
   retrieved  = "2026-09-30"
+  confidence = "high"
+
+[[rule]]
+id       = "BAT-RET-002"
+title    = "No enemy retaliation"
+context  = "battle"
+status   = "implemented"
+summary  = "Melee attacks of a creature with flag no_enemy_retaliation are never retaliated, and the attacked stack does not use up a retaliation."
+numeric  = "integer"
+
+  [[rule.source]]
+  kind       = "wiki"
+  ref        = "Retaliation - Heroes 3 wiki: creatures with 'no enemy retaliation'; 'attacked stack will not lose one of their retaliations for that combat round'"
+  url        = "https://heroes.thelazy.net/index.php/Retaliation"
+  retrieved  = "2026-10-01"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "vcmi"
+  ref        = "server/battles/BattleActionProcessor.cpp doAttackAction: no counterattack when the attacker has BLOCKS_RETALIATION"
+  url        = "https://github.com/vcmi/vcmi/blob/1.7.5/server/battles/BattleActionProcessor.cpp"
+  retrieved  = "2026-10-01"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe static creature table, flag harvested as no_enemy_retaliation (docs/formats/installation.md §5)"
+  confidence = "high"
+
+[[rule]]
+id       = "BAT-RET-003"
+title    = "Retaliations per round"
+context  = "battle"
+status   = "implemented"
+summary  = "A stack has one retaliation per round; extra_retaliations (count n) gives 1 + n (Griffins: 2), unlimited_retaliations removes the limit (Royal Griffins). Each retaliation uses one; at 0 the stack does not retaliate until the next round (BAT-TRN-003)."
+numeric  = "integer"
+
+  [[rule.source]]
+  kind       = "wiki"
+  ref        = "Griffin - Heroes 3 wiki: Griffins 'retaliate twice', Royal Griffins have 'unlimited retaliations'"
+  url        = "https://heroes.thelazy.net/index.php/Griffin"
+  retrieved  = "2026-10-01"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "wiki"
+  ref        = "Retaliation - Heroes 3 wiki: one retaliation per combat round, with the Griffin exceptions"
+  url        = "https://heroes.thelazy.net/index.php/Retaliation"
+  retrieved  = "2026-10-01"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "vcmi"
+  ref        = "lib/battle/CUnitState.cpp CRetaliations::total (1 + ADDITIONAL_RETALIATION), UNLIMITED_RETALIATIONS, ableToRetaliate"
+  url        = "https://github.com/vcmi/vcmi/blob/1.7.5/lib/battle/CUnitState.cpp"
+  retrieved  = "2026-10-01"
   confidence = "high"
 
 [[rule]]

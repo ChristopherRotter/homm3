@@ -131,6 +131,12 @@ impl Direction {
         Self::TopLeft,
         Self::TopRight,
     ];
+
+    /// This direction turned `steps` sixths of a full turn clockwise.
+    #[must_use]
+    pub const fn turned(self, steps: u8) -> Self {
+        Self::ALL[(self as usize + steps as usize) % 6]
+    }
 }
 
 /// The battlefield shape of a ruleset.
@@ -214,6 +220,13 @@ impl Field {
             Direction::BottomRight => (x + shift + 1, y + 1),
         };
         self.hex(nx, ny)
+    }
+
+    /// The direction from `from` to its neighbour `to`, if they are neighbours.
+    pub fn direction(self, from: Hex, to: Hex) -> Option<Direction> {
+        Direction::ALL
+            .into_iter()
+            .find(|&d| self.neighbor(from, d) == Some(to))
     }
 
     /// All neighbours of `hex`, in [`Direction::ALL`] order.

@@ -16,7 +16,11 @@ T3 — footprints/two-hex, obstacles (`BattleSetup.obstacles`, scenario `obstacl
 
 T4 — ranged combat (BAT-RNG-001..004), damage factors generalised (`damage::Factors`), `combat.rs` for strike sequences, `StrikeFlags` in `Struck`, battle params `ranged_full_damage_distance`/`ranged_penalty_percent`/`melee_penalty_percent` (packs regenerated, ruleset hash v4), state hash v3, action encoding v3, CLI command `shoot`.
 
-**Next:** T5 (melee abilities and damage factors).
+T5 — melee abilities: double attack, attack patterns (all adjacent / three-headed / breath, VCMI port), strike and return, no enemy retaliation, extra/unlimited retaliations, hate, jousting (path length) + charge immunity, defense reduction (Q19), death blow, life drain, death stare, regeneration (Q20); events `LifeDrained`, `DeathStared`, `Regenerated`; `Stack.base_count`/`retaliations`/`retaliations_left`; state hash v4; property test "ownership isolation" now checks that every changed enemy stack is explained by an event. New open questions Q21 (death stare top HP), Q22 (jousting distance), Q23 (float vs exact damage rounding), each with an experiment; the agent followed VCMI / kept exact integers meanwhile.
+
+**Next:** T6 (morale, luck, turn-order phases; Q17 hero flag in `BattleSetup` + quirk; auras/minimums via modifiers).
+
+**Traps (E03):** rule code reads abilities via `ruleset.abilities(creature)` (slices, no lookups by key); cheap per-attack booleans are cached as `StackTraits` bits at setup. Coverage counts closures and `if let` else paths: keep defaults eager (`unwrap_or`, `map_or`) where a branch cannot run.
 
 **Sandbox notes (this session):** VCMI 1.7.5 is cloned at `/home/claude/ref/vcmi` (`git clone --depth 1 --branch 1.7.5 https://github.com/vcmi/vcmi.git`; github.com web pages are blocked, git works). The wiki is reachable only through WebFetch after the user approved it.
 

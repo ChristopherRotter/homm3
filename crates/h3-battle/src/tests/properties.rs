@@ -15,8 +15,10 @@ use proptest::prelude::{Just, Strategy, any, prop_assert, prop_assert_eq, prop_o
 use proptest::test_runner::Config;
 
 use super::support::{CREATURES, ruleset};
+use crate::event::StrikeFlags;
 use crate::{
-    BattleState, Command, Event, Hex, LegalCommands, StackId, apply, legal_commands, observe,
+    BattleState, Command, Event, EventKind, Hex, LegalCommands, StackId, apply, legal_commands,
+    observe,
 };
 
 /// One step of a generated game.
@@ -167,42 +169,57 @@ proptest! {
 
             let before = state.clone();
             let before_hash = state.state_hash();
-            let result = apply(&mut state, &r, actor, cmd, &mut Vec::new());
+            let mut events = Vec::new();
+            let result = apply(&mut state, &r, actor, cmd, &mut events);
             match result {
                 Err(_) => {
                     // Atomicity: a rejected command changes nothing.
                     prop_assert_eq!(&state, &before);
                     prop_assert_eq!(state.state_hash(), before_hash);
+                    prop_assert!(events.is_empty());
                     // ... and it was not in the legal set.
                     prop_assert!(!legal.iter().any(|c| *c == cmd), "legal {cmd:?} rejected");
                 }
                 Ok(()) => {
                     prop_assert!(legal.iter().any(|c| *c == cmd), "illegal {cmd:?} accepted");
+                    let mover = before.active().unwrap();
                     let target = match cmd {
                         Command::Attack { target, .. } | Command::Shoot { target, .. } => Some(target),
                         _ => None,
                     };
-                    // Area shots may also hit the stacks around the aimed hex (BAT-RNG-004).
-                    let field = crate::Field::new(r.battle().field);
-                    let area = |s: &crate::Stack| match cmd {
-                        Command::Shoot { at, .. } => {
-                            let shooter = before.active().map(|id| before.stacks()[id.index()]);
-                            shooter.is_some_and(|sh| sh.has(crate::StackTraits::AREA_SHOT))
-                                && s.footprint(field).hexes().any(|h| field.distance(h, at) <= 1)
+                    // The mover's primary strikes hit the commanded target; retaliations hit the
+                    // mover (BAT-ATK-001, BAT-RET-001).
+                    for e in &events {
+                        if let EventKind::Struck { attacker, target: hit, flags, .. } = e.kind {
+                            if flags.contains(StrikeFlags::SECONDARY) {
+                                continue;
+                            }
+                            if attacker == mover {
+                                prop_assert_eq!(Some(hit), target);
+                            } else {
+                                prop_assert!(flags.contains(StrikeFlags::RETALIATION));
+                                prop_assert_eq!(hit, mover);
+                            }
                         }
-                        _ => false,
-                    };
+                    }
+                    let mentioned = |i: usize, f: fn(&EventKind, usize) -> bool| events.iter().any(|e| f(&e.kind, i));
                     for (i, (b, a)) in before.stacks().iter().zip(state.stacks()).enumerate() {
-                        // Conservation: creatures only ever die.
-                        prop_assert!(a.count <= b.count);
+                        // Conservation: creatures only ever die, except that life drain brings
+                        // back up to the starting count (BAT-DMG-008).
+                        let drained = mentioned(i, |k, i| matches!(k, EventKind::LifeDrained { stack, .. } if stack.index() == i));
+                        prop_assert!(a.count <= b.count || (drained && a.count <= a.base_count));
                         prop_assert!(a.is_alive() || a.top_hp == 0);
                         prop_assert!(!a.is_alive() || (1..=a.max_hp).contains(&a.top_hp));
                         // Ownership isolation: the actor's command cannot move or re-stat enemy
-                        // stacks, and can only damage the attacked one.
+                        // stacks, and only changes the enemy stacks it strikes (or that
+                        // regenerate at the start of their turn, BAT-TRN-005).
                         prop_assert_eq!((a.creature, a.side, a.slot, a.attack, a.defense, a.speed), (b.creature, b.side, b.slot, b.attack, b.defense, b.speed));
                         if b.side != actor {
                             prop_assert_eq!(a.hex, b.hex);
-                            if target != Some(StackId(i as u8)) && !area(b) {
+                            let explained = mentioned(i, |k, i| matches!(k,
+                                EventKind::Struck { target, .. } | EventKind::DeathStared { target, .. } if target.index() == i))
+                                || mentioned(i, |k, i| matches!(k, EventKind::Regenerated { stack, .. } if stack.index() == i));
+                            if !explained {
                                 prop_assert_eq!((a.count, a.top_hp), (b.count, b.top_hp));
                             }
                         }

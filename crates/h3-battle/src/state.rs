@@ -15,7 +15,7 @@ use crate::turn;
 pub const STACK_CAPACITY: usize = 2 * MAX_ARMY_SLOTS;
 
 /// Version of the battle-state hash encoding ([`BattleState::state_hash`]). Bump on any change.
-pub const BATTLE_STATE_HASH_VERSION: u32 = 3;
+pub const BATTLE_STATE_HASH_VERSION: u32 = 4;
 
 /// Index of a stack in its battle (attacker stacks first, in slot order, then defender stacks).
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Default)]
@@ -37,7 +37,7 @@ impl StackFlags {
     pub const ACTED: Self = Self(1);
     /// The stack has waited this round (BAT-TRN-002).
     pub const WAITED: Self = Self(1 << 1);
-    /// The stack has used its retaliation this round (BAT-RET-001).
+    /// The stack has no retaliation left this round (BAT-RET-001, BAT-RET-003).
     pub const RETALIATED: Self = Self(1 << 2);
     /// The stack is defending until its next activation (BAT-TRN-004).
     pub const DEFENDING: Self = Self(1 << 3);
@@ -88,6 +88,22 @@ impl StackTraits {
     pub const ALIVE: Self = Self(1 << 8);
     /// Immune to fire (flag `fire_immune`).
     pub const FIRE_IMMUNE: Self = Self(1 << 9);
+    /// Its strikes are not retaliated (flag `no_enemy_retaliation`, BAT-RET-002).
+    pub const NO_ENEMY_RETALIATION: Self = Self(1 << 10);
+    /// Its melee strikes also hit the stack behind the target (flag `breath_attack`,
+    /// BAT-ATK-003).
+    pub const BREATH: Self = Self(1 << 11);
+    /// Its melee strikes hit every adjacent enemy (ability `attacks_all_adjacent`, BAT-ATK-003).
+    pub const ALL_ADJACENT: Self = Self(1 << 12);
+    /// Its melee strikes hit the target and the hexes beside it (ability
+    /// `three_headed_attack`, BAT-ATK-003).
+    pub const THREE_HEADED: Self = Self(1 << 13);
+    /// Returns to its starting hex after a melee attack (ability `strike_and_return`,
+    /// BAT-ATK-004).
+    pub const STRIKE_AND_RETURN: Self = Self(1 << 14);
+    /// Regenerates its top creature at the start of its turn (ability `regeneration`,
+    /// BAT-TRN-005).
+    pub const REGENERATES: Self = Self(1 << 15);
 
     /// Whether all traits of `other` are set.
     pub const fn contains(self, other: Self) -> bool {
@@ -140,7 +156,44 @@ impl StackTraits {
             )
             .with(Self::ALIVE, has(CreatureFlag::Alive))
             .with(Self::FIRE_IMMUNE, has(CreatureFlag::FireImmune))
+            .with(
+                Self::NO_ENEMY_RETALIATION,
+                has(CreatureFlag::NoEnemyRetaliation),
+            )
+            .with(Self::BREATH, has(CreatureFlag::BreathAttack))
+            .with(
+                Self::ALL_ADJACENT,
+                ability(|a| matches!(a, Ability::AttacksAllAdjacent)),
+            )
+            .with(
+                Self::THREE_HEADED,
+                ability(|a| matches!(a, Ability::ThreeHeadedAttack)),
+            )
+            .with(
+                Self::STRIKE_AND_RETURN,
+                ability(|a| matches!(a, Ability::StrikeAndReturn)),
+            )
+            .with(
+                Self::REGENERATES,
+                ability(|a| matches!(a, Ability::Regeneration)),
+            )
     }
+}
+
+/// `Stack::retaliations` value for unlimited retaliations (BAT-RET-003).
+pub const UNLIMITED_RETALIATIONS: u8 = u8::MAX;
+
+/// Retaliations per round of a creature: one, `1 + count` with extra retaliations, or
+/// unlimited (BAT-RET-003).
+// rule: BAT-RET-003
+pub(crate) fn retaliations_per_round(abilities: &[h3_content::CompiledAbility]) -> u8 {
+    abilities.iter().fold(1, |n, a| match a {
+        Ability::ExtraRetaliations { count } => {
+            count.saturating_add(1).min(UNLIMITED_RETALIATIONS - 1)
+        }
+        Ability::UnlimitedRetaliations => UNLIMITED_RETALIATIONS,
+        _ => n,
+    })
 }
 
 /// A stack in battle. Creature stats are copied in at setup so the hot path needs no lookups
@@ -157,6 +210,8 @@ pub struct Stack {
     pub hex: Hex,
     /// Living creatures (0 = dead).
     pub count: u32,
+    /// Creatures at the start of the battle (resurrection limit, BAT-DMG-008).
+    pub base_count: u32,
     /// Hit points of the top creature (`1..=max_hp` while alive, 0 when dead).
     pub top_hp: u32,
     /// Attack skill.
@@ -173,6 +228,10 @@ pub struct Stack {
     pub speed: u8,
     /// Shots left (BAT-RNG-001).
     pub shots: u16,
+    /// Retaliations per round (`UNLIMITED_RETALIATIONS` for unlimited, BAT-RET-003).
+    pub retaliations: u8,
+    /// Retaliations left this round.
+    pub retaliations_left: u8,
     /// Battle traits (two-hex, flying, …).
     pub traits: StackTraits,
     /// Per-round flags.
@@ -187,6 +246,7 @@ impl Default for Stack {
             slot: 0,
             hex: Hex(0),
             count: 0,
+            base_count: 0,
             top_hp: 0,
             attack: 0,
             defense: 0,
@@ -195,6 +255,8 @@ impl Default for Stack {
             max_hp: 0,
             speed: 0,
             shots: 0,
+            retaliations: 1,
+            retaliations_left: 1,
             traits: StackTraits::default(),
             flags: StackFlags::default(),
         }
@@ -244,6 +306,7 @@ impl CanonicalHash for Stack {
         h.write_u8(self.slot);
         self.hex.hash_into(h);
         h.write_u32(self.count);
+        h.write_u32(self.base_count);
         h.write_u32(self.top_hp);
         h.write_u16(self.attack);
         h.write_u16(self.defense);
@@ -252,6 +315,8 @@ impl CanonicalHash for Stack {
         h.write_u32(self.max_hp);
         h.write_u8(self.speed);
         h.write_u16(self.shots);
+        h.write_u8(self.retaliations);
+        h.write_u8(self.retaliations_left);
         h.write_u32(self.traits.bits());
         h.write_u8(self.flags.bits());
     }
@@ -322,7 +387,9 @@ impl BattleState {
                 let row = params.formation_row(n, i).unwrap_or(0);
                 // rule: BAT-SET-001
                 let desired = field.hex(column, i32::from(row)).unwrap_or_default();
-                let traits = StackTraits::of(creature, ruleset.abilities(s.creature));
+                let abilities = ruleset.abilities(s.creature);
+                let traits = StackTraits::of(creature, abilities);
+                let retaliations = retaliations_per_round(abilities);
                 let two_hex = traits.contains(StackTraits::TWO_HEX);
                 let head = closest_free(field, desired, two_hex, side, taken)
                     .ok_or(SetupError::NoRoom { side, slot: s.slot })?;
@@ -332,6 +399,7 @@ impl BattleState {
                     slot: s.slot,
                     hex: head,
                     count: s.count,
+                    base_count: s.count,
                     top_hp: creature.hit_points,
                     attack: creature.attack,
                     defense: creature.defense,
@@ -340,6 +408,8 @@ impl BattleState {
                     max_hp: creature.hit_points,
                     speed: creature.speed,
                     shots: creature.shots,
+                    retaliations,
+                    retaliations_left: retaliations,
                     traits,
                     flags: StackFlags::default(),
                 };
@@ -456,8 +526,8 @@ impl BattleState {
     /// Canonical hash of the full state, including hidden parts such as the RNG (desync detection
     /// and replay verification; never sent to untrusted clients, docs/06-security.md).
     ///
-    /// Encoding v3: version, round, active, last side, winner, stacks (each with its shots and
-    /// traits),
+    /// Encoding v4: version, round, active, last side, winner, stacks (each with base count,
+    /// shots, retaliations and traits),
     /// obstacles, RNG state.
     pub fn state_hash(&self) -> u64 {
         h3_kernel::hash::hash_of(self)

@@ -28,6 +28,18 @@ Proposed: native Windows, Linux, macOS and WASM compile targets for the logic cr
 
 Design assumes **authoritative server with per-viewer projections** (`06-security.md`); lockstep with full state is excluded because it leaks hidden info. Confirm this matches intent for any future multiplayer.
 
+### Q21 — Death stare: health of the new top creature (E03 T5)
+
+Wiki (Mighty Gorgon page): death stare kills the topmost creatures and "the new topmost unit will always have full Health". VCMI 1.7.5 applies the kills as `kills × max_hp` damage, so the top creature keeps its damage. **Implemented: VCMI** (source hierarchy: the wiki never overrides VCMI; BAT-DMG-009). Impact: small (at most one creature's health per stare). **Experiment:** in the original, let Mighty Gorgons attack a stack whose top creature is damaged (e.g. 10 Pikemen after 5 damage: top at 5 HP), repeat until a death stare happens, and read the top creature's health in the stack window: 10 HP → wiki, 5 HP → VCMI.
+
+### Q22 — Jousting: path length or start-to-end distance (E03 T5)
+
+Wiki (Cavalier page): the bonus is "calculated based on the distance between starting and ending positions". VCMI passes the length of the path actually walked. They differ when obstacles or stacks force a detour. **Implemented: path length (VCMI)** (BAT-DMG-005). **Experiment:** place a Cavalier so that its shortest path to the target detours around an obstacle (e.g. 5 steps for a straight distance of 4); compare its damage on a fixed target with a 4-step straight charge (+25 % vs +20 % of base).
+
+### Q23 — Damage rounding: one exact rounding or floating point (E03 T5)
+
+BAT-DMG-002 computes damage exactly in integers and rounds down once. VCMI (and probably the original) multiplies in floating point, so results that are exact integers mathematically (e.g. 100 × 1.15 = 114.99999…) may round down one lower there. With several bonuses (jousting, hate, death blow, luck in T6) such cases become more frequent. **Implemented: exact integers** (determinism, ADR-0003). **Experiment:** find a combination whose exact result is an integer but whose double-precision product is just below it, and check whether the original reports the integer or one less. Base damage is random, so use a creature whose damage range is a single value (e.g. 2 Archangels, 50 each = 100 base, with an attack advantage of 3 points: 100 × (1 + 3 × 0.05) = 114.99999999999999 in double precision) or log many attacks and compare with the two predicted value sets.
+
 ## Answered
 
 - *(2026-10-01, Q17, E03)* Luck without a hero: in the original, luck never triggers for creatures without a hero (wiki, Luck page, HotA section; Halfling page). **Supported as a quirk**: `BattleSetup` gets a per-side "led by a hero" flag now (E04 fills in the hero), and the quirk flag (on in `faithful`, off in `strict-fixed`) disables luck for hero-less sides. Seam change approved by the user.

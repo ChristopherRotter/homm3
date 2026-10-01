@@ -1,4 +1,4 @@
-//! Rounds and turn order (BAT-TRN-001..003).
+//! Rounds and turn order (BAT-TRN-001..003) and regeneration (BAT-TRN-005).
 //!
 //! A round has two phases. In the normal phase stacks act from fastest to slowest; stacks that
 //! waited act afterwards, from slowest to fastest. Speed ties go to the side that did not act
@@ -8,7 +8,7 @@
 use h3_contracts::BattleSide;
 
 use crate::event::{Event, EventKind, Sink};
-use crate::state::{BattleState, StackFlags, StackId};
+use crate::state::{BattleState, StackFlags, StackId, StackTraits};
 
 /// The next stack to act this round, or `None` if every living stack has acted.
 // rule: BAT-TRN-001, BAT-TRN-002
@@ -38,6 +38,7 @@ pub(crate) fn start_round<S: Sink>(state: &mut BattleState, sink: &mut S) {
         s.flags.set(StackFlags::ACTED, false);
         s.flags.set(StackFlags::WAITED, false);
         s.flags.set(StackFlags::RETALIATED, false);
+        s.retaliations_left = s.retaliations;
     }
     sink.emit(Event::public(EventKind::RoundStarted {
         round: state.round,
@@ -74,5 +75,23 @@ pub(crate) fn end_turn<S: Sink>(
         // rule: BAT-TRN-004
         state.at_mut(id).flags.set(StackFlags::DEFENDING, false);
         sink.emit(Event::public(EventKind::TurnStarted { stack: id }));
+        regenerate(state, id, sink);
     });
+}
+
+/// At the start of its turn in the normal phase (not after waiting), a regenerating stack's top
+/// creature regains all lost hit points (Q20: at the stack's own turn, as VCMI does).
+// rule: BAT-TRN-005
+fn regenerate<S: Sink>(state: &mut BattleState, id: StackId, sink: &mut S) {
+    let s = state.at_mut(id);
+    if s.has(StackTraits::REGENERATES) && !s.flags.contains(StackFlags::WAITED) {
+        let hit_points = s.max_hp - s.top_hp;
+        if hit_points > 0 {
+            s.top_hp = s.max_hp;
+            sink.emit(Event::public(EventKind::Regenerated {
+                stack: id,
+                hit_points,
+            }));
+        }
+    }
 }

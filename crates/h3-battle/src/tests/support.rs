@@ -14,8 +14,8 @@ use h3_contracts::{Army, ArmyStack, BattleSetup, BattleSide};
 use crate::{BattleState, Command, Event, Field, Hex, StackId, apply};
 
 /// `(name, attack, defense, damage_min, damage_max, hit_points, speed, traits)`; traits are
-/// creature flag names, ability names without parameters (`teleports`, …), `fireball` /
-/// `death_cloud` for an area shot, and `shots=N`.
+/// creature flag names, ability names (`teleports`, `jousting=5`, `hate=fixed:50`, …),
+/// `fireball` / `death_cloud` for an area shot, and `shots=N`.
 pub type Creature = (
     &'static str,
     u16,
@@ -84,6 +84,91 @@ pub const CREATURES: &[Creature] = &[
         ],
     ),
     ("salamander", 5, 5, 2, 3, 12, 5, &["fire_immune", "alive"]),
+    // Melee abilities (BAT-ATK-002..004, BAT-RET-002/003, BAT-DMG-004..009, BAT-TRN-005): all
+    // 10/10 with damage 2 and 10 HP, so against `fixed` or `serf` a strike deals 2 per creature.
+    ("serf", 10, 10, 2, 2, 10, 5, &["alive"]),
+    ("twin", 10, 10, 2, 2, 10, 5, &["strikes_twice"]),
+    ("naga", 10, 10, 2, 2, 10, 5, &["no_enemy_retaliation"]),
+    (
+        "griffin",
+        10,
+        10,
+        2,
+        2,
+        10,
+        5,
+        &["flying", "extra_retaliations=1"],
+    ),
+    (
+        "royal",
+        10,
+        10,
+        2,
+        2,
+        10,
+        5,
+        &["flying", "unlimited_retaliations"],
+    ),
+    (
+        "hydra",
+        10,
+        10,
+        2,
+        2,
+        10,
+        5,
+        &[
+            "two_hex",
+            "multi_headed",
+            "attacks_all_adjacent",
+            "no_enemy_retaliation",
+        ],
+    ),
+    (
+        "cerberus",
+        10,
+        10,
+        2,
+        2,
+        10,
+        5,
+        &[
+            "two_hex",
+            "multi_headed",
+            "three_headed_attack",
+            "no_enemy_retaliation",
+        ],
+    ),
+    ("drake", 10, 10, 2, 2, 10, 5, &["two_hex", "breath_attack"]),
+    (
+        "harpy",
+        10,
+        10,
+        2,
+        2,
+        10,
+        6,
+        &["flying", "strike_and_return"],
+    ),
+    ("knight", 10, 10, 2, 2, 10, 7, &["jousting=5"]),
+    ("pikeman", 10, 10, 2, 2, 10, 4, &["charge_immunity"]),
+    ("behemoth", 10, 10, 2, 2, 10, 5, &["defense_reduction=40"]),
+    ("dread", 10, 10, 2, 2, 10, 5, &["death_blow=20"]),
+    ("doom", 10, 10, 2, 2, 10, 5, &["death_blow=100"]),
+    (
+        "vampire",
+        10,
+        10,
+        2,
+        2,
+        10,
+        5,
+        &["life_drain=100", "undead"],
+    ),
+    ("gorgon", 10, 10, 2, 2, 10, 5, &["death_stare=10"]),
+    ("starer", 10, 10, 2, 2, 10, 5, &["death_stare=100"]),
+    ("wight", 10, 10, 2, 2, 10, 5, &["regeneration", "undead"]),
+    ("hater", 10, 10, 2, 2, 10, 5, &["hate=fixed:50"]),
 ];
 
 /// The abilities and other non-flag traits of a test creature.
@@ -92,18 +177,56 @@ fn parse_traits(traits: &[&str]) -> (Vec<String>, Vec<AbilityDef>, u16) {
     let mut abilities = Vec::new();
     let mut shots = 0;
     for t in traits {
-        match *t {
-            "teleports" => abilities.push(AbilityDef::Teleports),
-            "no_distance_penalty" => abilities.push(AbilityDef::NoDistancePenalty),
-            "fireball" => abilities.push(AbilityDef::AreaShot {
+        let (name, value) = t.split_once('=').unwrap_or((t, "0"));
+        let n = || value.parse::<u16>().unwrap();
+        let ability = match name {
+            "teleports" => AbilityDef::Teleports,
+            "no_distance_penalty" => AbilityDef::NoDistancePenalty,
+            "fireball" => AbilityDef::AreaShot {
                 effect: h3_content::AreaShot::Fireball,
-            }),
-            "death_cloud" => abilities.push(AbilityDef::AreaShot {
+            },
+            "death_cloud" => AbilityDef::AreaShot {
                 effect: h3_content::AreaShot::DeathCloud,
-            }),
-            t if t.starts_with("shots=") => shots = t[6..].parse().unwrap(),
-            t => flags.push(String::from(t)),
-        }
+            },
+            "hate" => {
+                let (target, percent) = value.split_once(':').unwrap();
+                AbilityDef::Hate {
+                    target: ContentKey::new("t", target).unwrap(),
+                    percent: percent.parse().unwrap(),
+                }
+            }
+            "jousting" => AbilityDef::Jousting {
+                percent_per_hex: n(),
+            },
+            "charge_immunity" => AbilityDef::ChargeImmunity,
+            "defense_reduction" => AbilityDef::DefenseReduction {
+                percent: u8::try_from(n()).unwrap(),
+            },
+            "death_blow" => AbilityDef::DeathBlow {
+                chance_percent: u8::try_from(n()).unwrap(),
+            },
+            "life_drain" => AbilityDef::LifeDrain { percent: n() },
+            "regeneration" => AbilityDef::Regeneration,
+            "death_stare" => AbilityDef::DeathStare {
+                chance_percent: u8::try_from(n()).unwrap(),
+            },
+            "extra_retaliations" => AbilityDef::ExtraRetaliations {
+                count: u8::try_from(n()).unwrap(),
+            },
+            "unlimited_retaliations" => AbilityDef::UnlimitedRetaliations,
+            "strike_and_return" => AbilityDef::StrikeAndReturn,
+            "attacks_all_adjacent" => AbilityDef::AttacksAllAdjacent,
+            "three_headed_attack" => AbilityDef::ThreeHeadedAttack,
+            "shots" => {
+                shots = n();
+                continue;
+            }
+            flag => {
+                flags.push(String::from(flag));
+                continue;
+            }
+        };
+        abilities.push(ability);
     }
     (flags, abilities, shots)
 }

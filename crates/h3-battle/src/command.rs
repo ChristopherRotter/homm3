@@ -56,6 +56,7 @@ enum Plan {
         mover: StackId,
         from: Hex,
         to: Hex,
+        charge: u8,
         target: StackId,
     },
     Shoot {
@@ -144,13 +145,20 @@ fn plan(
             if !field.touches(position, state.at(target).footprint(field)) {
                 return Err(CommandError::NotAdjacent);
             }
-            if from != mover.hex && !reachable(state, field, id, &mover).can_move_to(from) {
-                return Err(CommandError::Unreachable);
-            }
+            // The hexes travelled count for jousting (BAT-DMG-005).
+            let charge = if from == mover.hex {
+                0
+            } else {
+                let Some(steps) = reachable(state, field, id, &mover).steps(from) else {
+                    return Err(CommandError::Unreachable);
+                };
+                steps
+            };
             Ok(Plan::Attack {
                 mover: id,
                 from: mover.hex,
                 to: from,
+                charge,
                 target,
             })
         }
@@ -185,8 +193,6 @@ pub fn apply<S: Sink>(
     sink: &mut S,
 ) -> Result<(), CommandError> {
     let plan = plan(state, ruleset, actor, command)?;
-    let params = ruleset.battle();
-    let field = Field::new(params.field);
     // Validation is complete: nothing below can fail, and every stack id in the plan is valid.
     match plan {
         Plan::Wait { mover } => {
@@ -206,16 +212,17 @@ pub fn apply<S: Sink>(
             mover,
             from,
             to,
+            charge,
             target,
         } => {
             if from != to {
                 move_stack(state, mover, from, to, sink);
             }
-            melee(state, params, field, mover, target, sink);
+            melee(state, ruleset, mover, target, from, charge, sink);
             end_turn(state, mover, false, sink);
         }
         Plan::Shoot { mover, target, at } => {
-            shoot(state, params, field, mover, target, at, sink);
+            shoot(state, ruleset, mover, target, at, sink);
             end_turn(state, mover, false, sink);
         }
     }
