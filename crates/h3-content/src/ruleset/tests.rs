@@ -7,8 +7,8 @@ use std::vec::Vec;
 use super::*;
 use crate::flags::CreatureFlag;
 use crate::pack::{
-    CreatureDef, CreatureInfoDef, CreatureOverride, FactionDef, PackManifest, ProfileDef,
-    ResourceDef,
+    CreatureDef, CreatureInfoDef, CreatureOverride, FactionDef, ObstacleDef, PackManifest,
+    ProfileDef, ResourceDef, TerrainDef,
 };
 use crate::quirks::QuirkRegistry;
 
@@ -73,6 +73,18 @@ fn faction(k: &str) -> FactionDef {
     FactionDef {
         key: key(k),
         name: "F".into(),
+        native_terrain: None,
+    }
+}
+
+fn obstacle(k: &str, terrains: &[&str], blocked: &[(i8, i8)], absolute: bool) -> ObstacleDef {
+    ObstacleDef {
+        key: key(k),
+        terrains: terrains.iter().map(|t| key(t)).collect(),
+        width: 2,
+        height: 1,
+        blocked: blocked.to_vec(),
+        absolute,
     }
 }
 
@@ -84,7 +96,29 @@ fn base() -> ContentPack {
             depends: vec![],
         },
         resources: vec![resource("base:wood"), resource("base:gold")],
-        factions: vec![faction("base:castle")],
+        factions: vec![FactionDef {
+            native_terrain: Some(key("base:grass")),
+            ..faction("base:castle")
+        }],
+        terrains: vec![
+            TerrainDef {
+                key: key("base:grass"),
+                name: "Grass".into(),
+            },
+            TerrainDef {
+                key: key("base:lava"),
+                name: "Lava".into(),
+            },
+        ],
+        obstacles: vec![
+            obstacle(
+                "base:rock",
+                &["base:grass", "base:lava"],
+                &[(0, 0), (1, -1)],
+                false,
+            ),
+            obstacle("base:cliff", &["base:lava"], &[(5, 4), (6, 4)], true),
+        ],
         creatures: vec![creature("base:a"), creature("base:b")],
         creature_overrides: vec![],
         profiles: vec![
@@ -183,7 +217,7 @@ fn hash_is_stable_and_sensitive() {
     );
 }
 
-const GOLDEN_BASE_HASH: u64 = 0xe486_7e87_9ffa_4222;
+const GOLDEN_BASE_HASH: u64 = 0x3d73_2826_837d_48a6;
 
 fn expect(packs: &[ContentPack], profile: &str) -> CompileError {
     Ruleset::compile(packs, profile).unwrap_err()
@@ -427,6 +461,13 @@ fn error_messages() {
             "creature `a:x`: bad",
         ),
         (CompileError::TooManyCreatures, "too many creature types"),
+        (
+            CompileError::InvalidObstacle {
+                key: "a:o".into(),
+                reason: "bad",
+            },
+            "obstacle `a:o`: bad",
+        ),
         (
             CompileError::DependencyCycle("a".into()),
             "pack dependencies form a cycle through `a`",
@@ -681,6 +722,32 @@ fn too_many_resources_and_factions() {
     assert_eq!(
         expect(&[p], "base:faithful"),
         CompileError::TooManyEntries("faction")
+    );
+    let mut p = base();
+    p.terrains = (0..=n)
+        .map(|i| TerrainDef {
+            key: key(&std::format!("base:t{i}")),
+            name: "T".into(),
+        })
+        .collect();
+    assert_eq!(
+        expect(&[p], "base:faithful"),
+        CompileError::TooManyEntries("terrain")
+    );
+    let mut p = base();
+    p.obstacles = (0..=n)
+        .map(|i| {
+            obstacle(
+                &std::format!("base:o{i}"),
+                &["base:grass"],
+                &[(0, 0)],
+                false,
+            )
+        })
+        .collect();
+    assert_eq!(
+        expect(&[p], "base:faithful"),
+        CompileError::TooManyEntries("obstacle")
     );
 }
 
@@ -1079,4 +1146,117 @@ fn aura_values_are_keyed_and_limited() {
         expect(&[with_auras(9)], "base:faithful"),
         CompileError::TooManyEntries("distinct aura")
     );
+}
+
+#[test]
+fn terrains_native_terrains_and_obstacles() {
+    let r = Ruleset::compile(&[base()], "base:faithful").unwrap();
+    let grass = r.terrain_by_key("base:grass").unwrap();
+    let lava = r.terrain_by_key("base:lava").unwrap();
+    assert_eq!(r.terrains()[lava.index()].name, "Lava");
+    assert_eq!(r.terrain_by_key("base:snow"), None);
+    assert_eq!(r.factions()[0].native_terrain, Some(grass));
+    let o = &r.obstacles()[0];
+    assert_eq!(
+        (o.terrains.as_slice(), o.width, o.absolute),
+        (&[grass, lava][..], 2, false)
+    );
+    assert_eq!(r.obstacles()[1].blocked, vec![(5, 4), (6, 4)]);
+    // Errors: unknown terrain, duplicate key, invalid shapes.
+    let mut p = base();
+    p.factions[0].native_terrain = Some(key("base:snow"));
+    assert_eq!(
+        expect(&[p], "base:faithful"),
+        CompileError::UnknownReference {
+            kind: "terrain",
+            key: "base:snow".into()
+        }
+    );
+    let mut p = base();
+    p.terrains.push(p.terrains[0].clone());
+    assert_eq!(
+        expect(&[p], "base:faithful"),
+        CompileError::DuplicateKey("base:grass".into())
+    );
+    let mut p = base();
+    p.obstacles.push(p.obstacles[0].clone());
+    assert_eq!(
+        expect(&[p], "base:faithful"),
+        CompileError::DuplicateKey("base:rock".into())
+    );
+    let mut p = base();
+    p.obstacles[0].terrains.push(key("base:snow"));
+    assert!(matches!(
+        expect(&[p], "base:faithful"),
+        CompileError::UnknownReference {
+            kind: "terrain",
+            ..
+        }
+    ));
+    let mut p = base();
+    p.terrains[0].key = key("ext:grass");
+    assert!(matches!(
+        expect(&[p], "base:faithful"),
+        CompileError::KeyOutsidePack { .. }
+    ));
+    let mut p = base();
+    p.obstacles[0].key = key("ext:rock");
+    assert!(matches!(
+        expect(&[p], "base:faithful"),
+        CompileError::KeyOutsidePack { .. }
+    ));
+    let shapes: [(ObstacleDef, &str); 5] = [
+        (
+            obstacle("base:o", &[], &[(0, 0)], false),
+            "an obstacle needs at least one terrain and one blocked hex",
+        ),
+        (
+            obstacle("base:o", &["base:grass"], &[], false),
+            "an obstacle needs at least one terrain and one blocked hex",
+        ),
+        (
+            obstacle("base:o", &["base:grass"], &[(0, 1)], false),
+            "usual obstacles need width and height >= 1 and blocked dy <= 0",
+        ),
+        (
+            ObstacleDef {
+                height: 0,
+                ..obstacle("base:o", &["base:grass"], &[(0, 0)], false)
+            },
+            "usual obstacles need width and height >= 1 and blocked dy <= 0",
+        ),
+        (
+            obstacle("base:o", &["base:grass"], &[(0, 4)], true),
+            "absolute obstacles must block standable hexes of the field",
+        ),
+    ];
+    for (o, reason) in shapes {
+        let mut p = base();
+        p.obstacles.push(o);
+        assert_eq!(
+            expect(&[p], "base:faithful"),
+            CompileError::InvalidObstacle {
+                key: "base:o".into(),
+                reason
+            }
+        );
+    }
+    for (x, y) in [(16, 4), (5, -1), (5, 11)] {
+        let mut p = base();
+        p.obstacles
+            .push(obstacle("base:o", &["base:grass"], &[(x, y)], true));
+        assert!(matches!(
+            expect(&[p], "base:faithful"),
+            CompileError::InvalidObstacle { .. }
+        ));
+    }
+    let mut p = base();
+    p.obstacles.push(ObstacleDef {
+        width: 0,
+        ..obstacle("base:o", &["base:grass"], &[(0, 0)], false)
+    });
+    assert!(matches!(
+        expect(&[p], "base:faithful"),
+        CompileError::InvalidObstacle { .. }
+    ));
 }

@@ -43,6 +43,8 @@ pub struct Inputs {
     pub towns: TextTable,
     /// `RESTYPES.TXT`.
     pub resources: TextTable,
+    /// `TERRNAME.txt` (terrain types).
+    pub terrains: TextTable,
 }
 
 impl Inputs {
@@ -74,6 +76,7 @@ impl Inputs {
             ab_creatures: table(&ab, "H3ab_bmp.lod", "CRTRAITS.TXT")?,
             towns: table(&sod, "H3bitmap.lod", "TownType.txt")?,
             resources: table(&sod, "H3bitmap.lod", "RESTYPES.TXT")?,
+            terrains: table(&sod, "H3bitmap.lod", "TERRNAME.txt")?,
         })
     }
 }
@@ -352,6 +355,56 @@ pub fn harvest(inputs: &Inputs, gap: &GapFill) -> Result<Harvest, String> {
                 .ok_or_else(|| format!("gapfill: unknown town `{n}`"))
         })
         .collect::<Result<_, _>>()?;
+
+    // Terrains and native terrains (E03 T7).
+    let terrains: Vec<String> = inputs
+        .terrains
+        .records
+        .iter()
+        .map(|r| r[0].trim().to_owned())
+        .collect();
+    let terrain_key = |name: &str| -> Result<String, String> {
+        terrains
+            .iter()
+            .find(|t| *t == name)
+            .map(|t| key_of(t))
+            .ok_or_else(|| format!("gapfill: unknown terrain `{name}`"))
+    };
+    let mut native: BTreeMap<usize, String> = BTreeMap::new();
+    for n in &gap.native_terrain {
+        let town = towns
+            .iter()
+            .position(|t| *t == n.faction)
+            .ok_or_else(|| format!("gapfill: unknown town `{}`", n.faction))?;
+        if native.insert(town, terrain_key(&n.terrain)?).is_some() {
+            return Err(format!("gapfill: native terrain of `{}` twice", n.faction));
+        }
+    }
+    let mut obstacles = String::new();
+    for o in &gap.obstacles.list {
+        let ts = o
+            .terrains
+            .iter()
+            .map(|t| terrain_key(t).map(|k| format!("\"{k}\"")))
+            .collect::<Result<Vec<_>, _>>()?;
+        let blocked: Vec<String> = o
+            .blocked
+            .iter()
+            .map(|[a, b]| format!("[{a}, {b}]"))
+            .collect();
+        let _ = write!(
+            obstacles,
+            "\n[[obstacle]]\nid = \"obstacle_{}\"\nterrains = [{}]\n",
+            o.id,
+            ts.join(", ")
+        );
+        if o.absolute {
+            obstacles.push_str("absolute = true\n");
+        } else {
+            let _ = writeln!(obstacles, "width = {}\nheight = {}", o.width, o.height);
+        }
+        let _ = writeln!(obstacles, "blocked = [{}]", blocked.join(", "));
+    }
 
     // Creatures.
     let by_name = |name: &str| -> Result<usize, String> {
@@ -638,13 +691,27 @@ pub fn harvest(inputs: &Inputs, gap: &GapFill) -> Result<Harvest, String> {
             quote(r)
         );
     }
-    for &t in &base_towns {
+    for t in &terrains {
         let _ = write!(
             base,
+            "\n[[terrain]]\nid = \"{}\"\nname = {}\n",
+            key_of(t),
+            quote(t)
+        );
+    }
+    let faction_entry = |out: &mut String, t: usize, terrain_pack: &str| {
+        let _ = write!(
+            out,
             "\n[[faction]]\nid = \"{}\"\nname = {}\n",
             key_of(&towns[t]),
             quote(&towns[t])
         );
+        if let Some(k) = native.get(&t) {
+            let _ = writeln!(out, "native_terrain = \"{terrain_pack}{k}\"");
+        }
+    };
+    for &t in &base_towns {
+        faction_entry(&mut base, t, "");
     }
     for c in creatures.iter().filter(|c| !ab_ids.contains(&c.id)) {
         let (faction, level) = match roe.get(&c.id) {
@@ -662,6 +729,7 @@ pub fn harvest(inputs: &Inputs, gap: &GapFill) -> Result<Harvest, String> {
             base_abilities.get(&c.id).map(String::as_str),
         );
     }
+    base.push_str(&obstacles);
     write_battle(&mut base, gap);
     base.push_str(
         "\n[[profile]]\nid = \"faithful\"        # default: preserve/fix-optional quirks on\n\
@@ -675,12 +743,7 @@ pub fn harvest(inputs: &Inputs, gap: &GapFill) -> Result<Harvest, String> {
     // ab
     let mut ab = header("ab", &["base"], "Armageddon's Blade, latest patch (Q15).");
     for &t in &ab_towns {
-        let _ = write!(
-            ab,
-            "\n[[faction]]\nid = \"{}\"\nname = {}\n",
-            key_of(&towns[t]),
-            quote(&towns[t])
-        );
+        faction_entry(&mut ab, t, "base:");
     }
     for c in creatures.iter().filter(|c| ab_ids.contains(&c.id)) {
         let faction = c.faction.map(|t| town_ref(t, "ab"));

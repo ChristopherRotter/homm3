@@ -105,8 +105,14 @@ Heroes, spells and artifacts (E04), spell-like creature abilities and the tactic
   and quirk Q-0003 (Q17, first registered quirk flag); morale/luck roll tables as Tier-2
   parameters (ruleset hash v5, packs regenerated); state hash v5; scenario/replay field
   `led_by_hero`.
-- [ ] T7 Terrain: battlefield types, native-terrain bonus, obstacle catalogue and random obstacle
-  generation.
+- [x] T7 Terrain: terrain types (harvested from `TERRNAME.txt`), native terrains per faction and
+  the native-terrain bonus (BAT-TER-001), obstacle catalogue (78 types from VCMI's table via the
+  gap-fill file) and random obstacle generation (BAT-GEO-004, VCMI port, stream `OBSTACLES`,
+  run before the seam); `BattleSetup.terrain`; scenario fields `terrain`, `random_obstacles`;
+  replay field `terrain`; ruleset hash v6, state hash v6. **Scope note:** battlefield *types*
+  in E03 are the plain terrains; special battlefields (magic terrains such as Holy Ground or
+  Cursed Ground, coast, ship) with their obstacles and effects go to E04 with the map objects
+  and spells that create them (BACKLOG).
 - [ ] T8 War machines (hero-free): data, Ballista, First Aid Tent, Ammo Cart, automatic control,
   turn order.
 - [ ] T9 End-of-battle details (draw, war machines not counting as living), tight formation,

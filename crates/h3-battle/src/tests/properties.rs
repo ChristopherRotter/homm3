@@ -110,6 +110,7 @@ fn make_setup(
         defender: army(defender),
         obstacles: obstacles.to_vec(),
         led_by_hero: [true, false],
+        terrain: None,
     }
 }
 

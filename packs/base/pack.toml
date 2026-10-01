@@ -37,37 +37,85 @@ name = "Gems"
 id = "gold"
 name = "Gold"
 
+[[terrain]]
+id = "dirt"
+name = "Dirt"
+
+[[terrain]]
+id = "desert"
+name = "Desert"
+
+[[terrain]]
+id = "grass"
+name = "Grass"
+
+[[terrain]]
+id = "snow"
+name = "Snow"
+
+[[terrain]]
+id = "swamp"
+name = "Swamp"
+
+[[terrain]]
+id = "rough"
+name = "Rough"
+
+[[terrain]]
+id = "subterranean"
+name = "Subterranean"
+
+[[terrain]]
+id = "lava"
+name = "Lava"
+
+[[terrain]]
+id = "water"
+name = "Water"
+
+[[terrain]]
+id = "rock"
+name = "Rock"
+
 [[faction]]
 id = "castle"
 name = "Castle"
+native_terrain = "grass"
 
 [[faction]]
 id = "rampart"
 name = "Rampart"
+native_terrain = "grass"
 
 [[faction]]
 id = "tower"
 name = "Tower"
+native_terrain = "snow"
 
 [[faction]]
 id = "inferno"
 name = "Inferno"
+native_terrain = "lava"
 
 [[faction]]
 id = "necropolis"
 name = "Necropolis"
+native_terrain = "dirt"
 
 [[faction]]
 id = "dungeon"
 name = "Dungeon"
+native_terrain = "subterranean"
 
 [[faction]]
 id = "stronghold"
 name = "Stronghold"
+native_terrain = "rough"
 
 [[faction]]
 id = "fortress"
 name = "Fortress"
+native_terrain = "swamp"
 
 [[creature]]
 id = "pikeman"  # original id 0
@@ -2579,6 +2627,529 @@ fight_value = 775
 ai_value = 775
 adventure_count = [8, 12]
 flags = ["mind_immune", "no_morale"]
+
+[[obstacle]]
+id = "obstacle_0"
+terrains = ["dirt"]
+width = 2
+height = 1
+blocked = [[0, 0], [1, 0]]
+
+[[obstacle]]
+id = "obstacle_1"
+terrains = ["dirt", "desert", "rough", "subterranean"]
+width = 3
+height = 2
+blocked = [[0, 0], [1, 0], [2, 0]]
+
+[[obstacle]]
+id = "obstacle_2"
+terrains = ["dirt"]
+width = 4
+height = 2
+blocked = [[0, 0], [1, 0], [3, -1], [2, -1], [1, -1]]
+
+[[obstacle]]
+id = "obstacle_3"
+terrains = ["dirt", "rough"]
+width = 2
+height = 1
+blocked = [[0, 0], [1, 0]]
+
+[[obstacle]]
+id = "obstacle_4"
+terrains = ["dirt", "rough", "subterranean"]
+width = 2
+height = 1
+blocked = [[0, 0], [1, 0]]
+
+[[obstacle]]
+id = "obstacle_5"
+terrains = ["dirt"]
+width = 4
+height = 2
+blocked = [[1, 0], [2, 0], [3, 0]]
+
+[[obstacle]]
+id = "obstacle_6"
+terrains = ["dirt"]
+width = 3
+height = 2
+blocked = [[2, -1], [1, -1]]
+
+[[obstacle]]
+id = "obstacle_7"
+terrains = ["dirt"]
+width = 2
+height = 2
+blocked = [[0, 0], [1, 0]]
+
+[[obstacle]]
+id = "obstacle_8"
+terrains = ["dirt"]
+width = 2
+height = 2
+blocked = [[1, -1]]
+
+[[obstacle]]
+id = "obstacle_9"
+terrains = ["dirt"]
+width = 2
+height = 2
+blocked = [[0, 0], [1, 0]]
+
+[[obstacle]]
+id = "obstacle_10"
+terrains = ["dirt"]
+width = 2
+height = 2
+blocked = [[0, 0], [1, 0]]
+
+[[obstacle]]
+id = "obstacle_11"
+terrains = ["dirt"]
+width = 2
+height = 1
+blocked = [[0, 0], [1, 0]]
+
+[[obstacle]]
+id = "obstacle_12"
+terrains = ["dirt", "rough"]
+width = 3
+height = 3
+blocked = [[0, 0], [1, 0], [2, 0], [3, 0]]
+
+[[obstacle]]
+id = "obstacle_13"
+terrains = ["dirt", "rough"]
+width = 3
+height = 2
+blocked = [[1, 0], [2, 0], [2, -1]]
+
+[[obstacle]]
+id = "obstacle_14"
+terrains = ["dirt", "rough"]
+width = 3
+height = 2
+blocked = [[2, 0], [2, -1], [1, -1]]
+
+[[obstacle]]
+id = "obstacle_15"
+terrains = ["dirt", "rough"]
+width = 3
+height = 3
+blocked = [[1, 0], [1, -1], [1, -2]]
+
+[[obstacle]]
+id = "obstacle_16"
+terrains = ["desert"]
+width = 4
+height = 4
+blocked = [[2, -1], [1, -1], [2, -2], [1, -2], [3, -3], [2, -3]]
+
+[[obstacle]]
+id = "obstacle_17"
+terrains = ["desert"]
+width = 3
+height = 2
+blocked = [[1, 0], [2, -1], [1, -1]]
+
+[[obstacle]]
+id = "obstacle_18"
+terrains = ["desert"]
+width = 4
+height = 2
+blocked = [[1, 0], [2, 0], [3, 0], [2, -1], [1, -1]]
+
+[[obstacle]]
+id = "obstacle_19"
+terrains = ["grass", "swamp"]
+width = 2
+height = 1
+blocked = [[0, 0], [1, 0]]
+
+[[obstacle]]
+id = "obstacle_20"
+terrains = ["grass", "swamp"]
+width = 2
+height = 2
+blocked = [[0, 0], [1, 0]]
+
+[[obstacle]]
+id = "obstacle_21"
+terrains = ["grass", "swamp"]
+width = 1
+height = 1
+blocked = [[0, 0]]
+
+[[obstacle]]
+id = "obstacle_22"
+terrains = ["grass"]
+width = 6
+height = 2
+blocked = [[1, 0], [2, 0], [3, 0], [4, 0], [4, -1], [3, -1], [2, -1], [1, -1]]
+
+[[obstacle]]
+id = "obstacle_23"
+terrains = ["grass"]
+width = 7
+height = 1
+blocked = [[1, 0], [2, 0]]
+
+[[obstacle]]
+id = "obstacle_24"
+terrains = ["snow"]
+width = 3
+height = 1
+blocked = [[0, 0], [1, 0], [2, 0]]
+
+[[obstacle]]
+id = "obstacle_25"
+terrains = ["snow"]
+width = 5
+height = 1
+blocked = [[1, 0], [2, 0], [3, 0], [4, 0]]
+
+[[obstacle]]
+id = "obstacle_26"
+terrains = ["snow"]
+width = 3
+height = 3
+blocked = [[0, 0], [1, -1], [1, -2]]
+
+[[obstacle]]
+id = "obstacle_27"
+terrains = ["snow"]
+width = 3
+height = 1
+blocked = [[0, 0], [1, 0], [2, 0]]
+
+[[obstacle]]
+id = "obstacle_28"
+terrains = ["snow"]
+width = 3
+height = 1
+blocked = [[1, 0]]
+
+[[obstacle]]
+id = "obstacle_29"
+terrains = ["snow"]
+width = 3
+height = 2
+blocked = [[1, 0], [2, 0]]
+
+[[obstacle]]
+id = "obstacle_30"
+terrains = ["snow"]
+width = 2
+height = 1
+blocked = [[0, 0], [1, 0]]
+
+[[obstacle]]
+id = "obstacle_31"
+terrains = ["snow"]
+width = 3
+height = 2
+blocked = [[0, 0], [1, 0], [2, 0]]
+
+[[obstacle]]
+id = "obstacle_32"
+terrains = ["snow"]
+width = 7
+height = 2
+blocked = [[2, 0], [3, 0], [4, 0], [5, 0], [4, -1], [3, -1], [2, -1], [1, -1]]
+
+[[obstacle]]
+id = "obstacle_33"
+terrains = ["snow"]
+width = 5
+height = 5
+blocked = [[3, 0], [4, -1], [3, -1], [2, -1], [1, -2], [2, -3], [2, -4]]
+
+[[obstacle]]
+id = "obstacle_34"
+terrains = ["swamp"]
+width = 2
+height = 2
+blocked = [[0, 0]]
+
+[[obstacle]]
+id = "obstacle_35"
+terrains = ["swamp"]
+width = 8
+height = 3
+blocked = [[7, -1], [6, -1], [5, -1], [4, -1], [3, -1], [2, -1], [1, -1]]
+
+[[obstacle]]
+id = "obstacle_36"
+terrains = ["swamp"]
+width = 2
+height = 1
+blocked = [[0, 0], [1, 0]]
+
+[[obstacle]]
+id = "obstacle_37"
+terrains = ["swamp"]
+width = 3
+height = 1
+blocked = [[0, 0], [1, 0], [2, 0]]
+
+[[obstacle]]
+id = "obstacle_38"
+terrains = ["swamp"]
+width = 5
+height = 4
+blocked = [[4, -1], [3, -1], [2, -1], [1, -1], [4, -2], [3, -2], [2, -2], [1, -2]]
+
+[[obstacle]]
+id = "obstacle_39"
+terrains = ["swamp"]
+width = 4
+height = 3
+blocked = [[1, -1], [0, -1], [3, -2], [2, -2], [1, -2], [0, -2]]
+
+[[obstacle]]
+id = "obstacle_40"
+terrains = ["rough"]
+width = 2
+height = 2
+blocked = [[0, 0], [1, 0], [1, -1]]
+
+[[obstacle]]
+id = "obstacle_41"
+terrains = ["rough"]
+width = 4
+height = 3
+blocked = [[3, -1], [2, -1], [1, -1], [2, -2], [1, -2]]
+
+[[obstacle]]
+id = "obstacle_42"
+terrains = ["rough"]
+width = 3
+height = 2
+blocked = [[1, 0], [2, 0], [2, -1], [1, -1]]
+
+[[obstacle]]
+id = "obstacle_43"
+terrains = ["rough"]
+width = 3
+height = 3
+blocked = [[1, -1], [2, -2], [1, -2]]
+
+[[obstacle]]
+id = "obstacle_44"
+terrains = ["rough"]
+width = 3
+height = 3
+blocked = [[2, -1], [1, -1], [2, -2]]
+
+[[obstacle]]
+id = "obstacle_45"
+terrains = ["subterranean"]
+width = 3
+height = 3
+blocked = [[0, 0], [1, 0], [2, 0], [2, -1], [1, -1]]
+
+[[obstacle]]
+id = "obstacle_46"
+terrains = ["subterranean"]
+width = 3
+height = 2
+blocked = [[0, 0], [1, 0], [2, 0]]
+
+[[obstacle]]
+id = "obstacle_47"
+terrains = ["subterranean"]
+width = 4
+height = 3
+blocked = [[0, 0], [1, 0], [2, 0], [3, 0], [3, -1], [2, -1], [1, -1]]
+
+[[obstacle]]
+id = "obstacle_48"
+terrains = ["lava"]
+width = 4
+height = 3
+blocked = [[3, -1], [2, -2], [1, -2]]
+
+[[obstacle]]
+id = "obstacle_49"
+terrains = ["lava"]
+width = 4
+height = 2
+blocked = [[0, 0], [1, 0], [2, 0], [3, -1], [2, -1], [1, -1]]
+
+[[obstacle]]
+id = "obstacle_50"
+terrains = ["lava"]
+width = 5
+height = 3
+blocked = [[4, -1], [3, -1], [2, -1], [4, -2], [3, -2], [2, -2], [1, -2]]
+
+[[obstacle]]
+id = "obstacle_51"
+terrains = ["lava"]
+width = 3
+height = 2
+blocked = [[0, 0], [1, 0], [2, 0]]
+
+[[obstacle]]
+id = "obstacle_52"
+terrains = ["lava"]
+width = 4
+height = 4
+blocked = [[3, -1], [2, -1], [2, -2], [1, -2], [2, -3], [1, -3]]
+
+[[obstacle]]
+id = "obstacle_53"
+terrains = ["lava"]
+width = 5
+height = 3
+blocked = [[4, -1], [3, -1], [2, -1], [1, -1], [4, -2], [3, -2]]
+
+[[obstacle]]
+id = "obstacle_54"
+terrains = ["lava"]
+width = 5
+height = 3
+blocked = [[4, -1], [3, -1], [2, -1], [1, -1], [3, -2], [2, -2], [1, -2]]
+
+[[obstacle]]
+id = "obstacle_100"
+terrains = ["dirt"]
+absolute = true
+blocked = [[12, 4], [9, 5], [10, 5], [11, 5], [12, 5], [3, 6], [4, 6], [5, 6], [6, 6], [7, 6], [8, 6]]
+
+[[obstacle]]
+id = "obstacle_101"
+terrains = ["dirt"]
+absolute = true
+blocked = [[5, 4], [6, 5], [6, 6], [7, 6], [8, 6], [9, 6], [10, 6], [11, 6]]
+
+[[obstacle]]
+id = "obstacle_102"
+terrains = ["dirt"]
+absolute = true
+blocked = [[9, 3], [10, 3], [11, 3], [12, 3], [13, 3], [4, 4], [5, 4], [6, 4], [7, 4], [8, 4], [4, 8], [5, 8], [6, 8], [7, 8], [8, 8], [9, 8], [10, 8], [11, 8], [12, 8], [13, 8]]
+
+[[obstacle]]
+id = "obstacle_103"
+terrains = ["dirt"]
+absolute = true
+blocked = [[3, 5], [4, 5], [5, 5], [6, 5], [7, 5], [8, 5], [9, 5], [10, 5], [11, 5], [12, 5], [13, 5]]
+
+[[obstacle]]
+id = "obstacle_104"
+terrains = ["dirt"]
+absolute = true
+blocked = [[8, 4], [9, 4], [10, 4], [11, 4], [12, 4], [4, 5], [5, 5], [6, 5], [7, 5], [8, 5]]
+
+[[obstacle]]
+id = "obstacle_105"
+terrains = ["grass"]
+absolute = true
+blocked = [[4, 3], [5, 3], [6, 3], [7, 3], [7, 4], [8, 4], [9, 4], [10, 5], [10, 6], [11, 6], [12, 7]]
+
+[[obstacle]]
+id = "obstacle_106"
+terrains = ["grass"]
+absolute = true
+blocked = [[13, 4], [6, 5], [7, 5], [8, 5], [9, 5], [10, 5], [11, 5], [12, 5], [13, 5], [4, 6], [5, 6], [4, 7]]
+
+[[obstacle]]
+id = "obstacle_107"
+terrains = ["snow"]
+absolute = true
+blocked = [[8, 4], [9, 4], [10, 4], [11, 4], [6, 5], [7, 5], [8, 5], [12, 5], [13, 5], [4, 6], [5, 6], [6, 6]]
+
+[[obstacle]]
+id = "obstacle_108"
+terrains = ["snow"]
+absolute = true
+blocked = [[7, 2], [8, 2], [9, 2], [7, 3], [7, 4], [7, 5], [6, 6], [7, 7], [7, 8]]
+
+[[obstacle]]
+id = "obstacle_109"
+terrains = ["swamp"]
+absolute = true
+blocked = [[6, 2], [7, 2], [7, 3], [8, 3], [6, 4], [7, 4], [7, 5], [8, 5], [7, 6], [8, 6], [9, 6], [8, 7], [9, 7], [10, 7], [11, 7]]
+
+[[obstacle]]
+id = "obstacle_110"
+terrains = ["swamp"]
+absolute = true
+blocked = [[9, 2], [9, 3], [10, 3], [9, 4], [8, 5], [9, 5], [10, 5], [7, 6], [8, 6], [7, 7], [8, 7]]
+
+[[obstacle]]
+id = "obstacle_111"
+terrains = ["swamp"]
+absolute = true
+blocked = [[6, 4], [7, 4], [8, 4], [9, 4], [6, 5], [7, 5], [8, 5], [9, 5], [10, 5], [7, 6], [8, 6], [9, 6], [10, 6]]
+
+[[obstacle]]
+id = "obstacle_112"
+terrains = ["lava"]
+absolute = true
+blocked = [[9, 4], [10, 4], [11, 4], [12, 4], [13, 4], [6, 5], [7, 5], [8, 5], [9, 5], [3, 6], [4, 6], [5, 6]]
+
+[[obstacle]]
+id = "obstacle_113"
+terrains = ["lava"]
+absolute = true
+blocked = [[9, 2], [9, 3], [10, 3], [8, 4], [9, 4], [8, 5], [7, 6], [7, 7], [8, 7], [6, 8], [7, 8]]
+
+[[obstacle]]
+id = "obstacle_114"
+terrains = ["rough"]
+absolute = true
+blocked = [[4, 3], [4, 4], [5, 5], [5, 6], [6, 7], [7, 7], [8, 7], [9, 7], [10, 7], [11, 7], [12, 7], [13, 7]]
+
+[[obstacle]]
+id = "obstacle_115"
+terrains = ["rough"]
+absolute = true
+blocked = [[7, 2], [8, 3], [8, 4], [9, 5], [9, 6], [10, 7], [7, 8], [8, 8], [9, 8]]
+
+[[obstacle]]
+id = "obstacle_116"
+terrains = ["rough"]
+absolute = true
+blocked = [[6, 2], [7, 2], [8, 2], [9, 2], [7, 3], [7, 4], [8, 5], [8, 6], [9, 7], [9, 8]]
+
+[[obstacle]]
+id = "obstacle_117"
+terrains = ["rough"]
+absolute = true
+blocked = [[4, 4], [5, 4], [6, 4], [7, 4], [8, 4], [9, 4], [10, 4], [11, 4], [12, 4], [13, 4], [4, 5], [3, 6]]
+
+[[obstacle]]
+id = "obstacle_118"
+terrains = ["rough"]
+absolute = true
+blocked = [[4, 4], [5, 4], [6, 4], [7, 4], [8, 4], [9, 4], [10, 4], [11, 4], [12, 4], [5, 5], [6, 5], [7, 5], [8, 5], [9, 5], [10, 5], [11, 5], [12, 5]]
+
+[[obstacle]]
+id = "obstacle_119"
+terrains = ["rough"]
+absolute = true
+blocked = [[5, 4], [6, 4], [7, 4], [8, 4], [9, 4], [10, 4], [6, 5], [7, 5], [8, 5], [9, 5]]
+
+[[obstacle]]
+id = "obstacle_120"
+terrains = ["rough"]
+absolute = true
+blocked = [[6, 1], [6, 2], [7, 3], [7, 4], [8, 5], [8, 6], [9, 7], [9, 8], [10, 9]]
+
+[[obstacle]]
+id = "obstacle_121"
+terrains = ["rough"]
+absolute = true
+blocked = [[4, 4], [5, 4], [6, 4], [7, 4], [8, 4], [9, 4], [10, 4], [11, 4], [12, 4], [5, 5], [6, 5], [7, 5], [8, 5], [9, 5], [10, 5], [11, 5], [12, 5]]
+
+[[obstacle]]
+id = "obstacle_122"
+terrains = ["rough"]
+absolute = true
+blocked = [[5, 4], [6, 4], [7, 4], [8, 4], [9, 4], [10, 4], [11, 4], [5, 5], [6, 5], [7, 5], [8, 5], [9, 5], [10, 5], [11, 5], [12, 5], [4, 6], [5, 6], [6, 6], [7, 6], [8, 6], [9, 6], [10, 6]]
 
 # Battle parameters (Tier 2): rule ids in docs/rules/catalog/battle.toml; formation = the
 # original's loose formation (sources in the gap-fill file).

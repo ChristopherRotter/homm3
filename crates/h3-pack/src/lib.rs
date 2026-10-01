@@ -11,7 +11,7 @@ use std::fmt;
 use h3_content::{
     AbilityDef, AreaShot, AuraTarget, BattleParamsDef, CompileError, ContentKey, ContentPack,
     CreatureDef, CreatureInfoDef, CreatureOverride, CreaturePatch, FactionDef, KeyError,
-    PackManifest, ProfileDef, ResourceDef, Ruleset,
+    ObstacleDef, PackManifest, ProfileDef, ResourceDef, Ruleset, TerrainDef,
 };
 use h3_contracts::{Army, ArmyStack, BattleSetup, BattleSide};
 use serde::Deserialize;
@@ -45,6 +45,8 @@ pub enum PackError {
     Compile(CompileError),
     /// A scenario references a creature the ruleset does not define.
     UnknownCreature(String),
+    /// A scenario references a terrain the ruleset does not define.
+    UnknownTerrain(String),
 }
 
 impl fmt::Display for PackError {
@@ -54,6 +56,7 @@ impl fmt::Display for PackError {
             Self::Key(e) => write!(f, "{e}"),
             Self::Compile(e) => write!(f, "{e}"),
             Self::UnknownCreature(k) => write!(f, "unknown creature `{k}`"),
+            Self::UnknownTerrain(k) => write!(f, "unknown terrain `{k}`"),
         }
     }
 }
@@ -80,7 +83,11 @@ struct PackFile {
     #[serde(default)]
     resource: Vec<NamedDto>,
     #[serde(default)]
-    faction: Vec<NamedDto>,
+    faction: Vec<FactionDto>,
+    #[serde(default)]
+    terrain: Vec<NamedDto>,
+    #[serde(default)]
+    obstacle: Vec<ObstacleDto>,
     #[serde(default)]
     creature: Vec<CreatureDto>,
     #[serde(default)]
@@ -94,6 +101,28 @@ struct PackFile {
 struct NamedDto {
     id: String,
     name: String,
+}
+
+#[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
+struct FactionDto {
+    id: String,
+    name: String,
+    native_terrain: Option<String>,
+}
+
+#[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
+struct ObstacleDto {
+    id: String,
+    terrains: Vec<String>,
+    #[serde(default)]
+    width: u8,
+    #[serde(default)]
+    height: u8,
+    blocked: Vec<[i8; 2]>,
+    #[serde(default)]
+    absolute: bool,
 }
 
 #[derive(Deserialize)]
@@ -326,10 +355,42 @@ pub fn parse_pack(text: &str) -> Result<ContentPack, PackError> {
         .into_iter()
         .map(|(key, name)| ResourceDef { key, name })
         .collect();
-    let factions = named(file.faction)?
+    let factions = file
+        .faction
         .into_iter()
-        .map(|(key, name)| FactionDef { key, name })
+        .map(|f| {
+            Ok(FactionDef {
+                key: ContentKey::new(&pack_id, &f.id)?,
+                name: f.name,
+                native_terrain: f
+                    .native_terrain
+                    .map(|t| reference(&pack_id, &t))
+                    .transpose()?,
+            })
+        })
+        .collect::<Result<Vec<_>, KeyError>>()?;
+    let terrains = named(file.terrain)?
+        .into_iter()
+        .map(|(key, name)| TerrainDef { key, name })
         .collect();
+    let obstacles = file
+        .obstacle
+        .into_iter()
+        .map(|o| {
+            Ok(ObstacleDef {
+                key: ContentKey::new(&pack_id, &o.id)?,
+                terrains: o
+                    .terrains
+                    .iter()
+                    .map(|t| reference(&pack_id, t))
+                    .collect::<Result<_, _>>()?,
+                width: o.width,
+                height: o.height,
+                blocked: o.blocked.into_iter().map(|[a, b]| (a, b)).collect(),
+                absolute: o.absolute,
+            })
+        })
+        .collect::<Result<Vec<_>, KeyError>>()?;
     let creatures = file
         .creature
         .into_iter()
@@ -436,6 +497,8 @@ pub fn parse_pack(text: &str) -> Result<ContentPack, PackError> {
         },
         resources,
         factions,
+        terrains,
+        obstacles,
         creatures,
         creature_overrides,
         profiles,
@@ -465,6 +528,11 @@ struct ScenarioHeader {
     /// Sides led by a hero (`"attacker"`, `"defender"`; Q17).
     #[serde(default)]
     led_by_hero: Vec<String>,
+    /// Terrain key of the battlefield (BAT-TER-001).
+    terrain: Option<String>,
+    /// Generate obstacles for the terrain when the battle starts (BAT-GEO-004).
+    #[serde(default)]
+    random_obstacles: bool,
 }
 
 #[derive(Deserialize, Clone)]
@@ -488,6 +556,10 @@ pub struct ScenarioDef {
     defender: Vec<(u8, String, u32)>,
     obstacles: Vec<u8>,
     led_by_hero: [bool; 2],
+    terrain: Option<String>,
+    /// Whether obstacles are generated for the terrain when the battle starts (the caller does
+    /// it, with its seed; BAT-GEO-004). Excludes explicit obstacles.
+    pub random_obstacles: bool,
 }
 
 /// Parses a list of side names (`"attacker"`, `"defender"`, each at most once) into flags indexed
@@ -542,11 +614,21 @@ impl ScenarioDef {
                 .collect::<Result<Vec<_>, PackError>>()?;
             Ok(Army { stacks })
         };
+        let terrain = self
+            .terrain
+            .as_ref()
+            .map(|t| {
+                ruleset
+                    .terrain_by_key(t)
+                    .ok_or_else(|| PackError::UnknownTerrain(t.clone()))
+            })
+            .transpose()?;
         Ok(BattleSetup {
             attacker: army(&self.attacker)?,
             defender: army(&self.defender)?,
             obstacles: self.obstacles.clone(),
             led_by_hero: self.led_by_hero,
+            terrain,
         })
     }
 }
@@ -555,6 +637,16 @@ impl ScenarioDef {
 pub fn parse_scenario(text: &str) -> Result<ScenarioDef, PackError> {
     let file: ScenarioFile = toml::from_str(text).map_err(|e| PackError::Syntax(e.to_string()))?;
     ContentKey::parse(&file.scenario.profile)?;
+    if file.scenario.random_obstacles && !file.scenario.obstacles.is_empty() {
+        return Err(PackError::Syntax(
+            "random_obstacles excludes an obstacles list".to_owned(),
+        ));
+    }
+    if file.scenario.random_obstacles && file.scenario.terrain.is_none() {
+        return Err(PackError::Syntax(
+            "random_obstacles needs a terrain".to_owned(),
+        ));
+    }
     let convert = |v: Vec<StackDto>| {
         v.into_iter()
             .map(|s| (s.slot, s.creature, s.count))
@@ -568,6 +660,8 @@ pub fn parse_scenario(text: &str) -> Result<ScenarioDef, PackError> {
         defender: convert(file.defender),
         obstacles: file.scenario.obstacles,
         led_by_hero: parse_sides(&file.scenario.led_by_hero)?,
+        terrain: file.scenario.terrain,
+        random_obstacles: file.scenario.random_obstacles,
     })
 }
 
@@ -681,6 +775,30 @@ mod tests {
         assert!(empty.packs.is_empty());
         assert_eq!(parse_scenario(SYNTHETIC_DUEL).unwrap().packs, ["synthetic"]);
         let header = "[scenario]\nid = \"e\"\npacks = []\nprofile = \"a:b\"\n";
+        for (extra, error) in [
+            (
+                "random_obstacles = true\n",
+                "random_obstacles needs a terrain",
+            ),
+            (
+                "random_obstacles = true\nterrain = \"a:t\"\nobstacles = [40]\n",
+                "random_obstacles excludes an obstacles list",
+            ),
+        ] {
+            assert_eq!(
+                parse_scenario(&format!("{header}{extra}")),
+                Err(PackError::Syntax(error.to_owned()))
+            );
+        }
+        let duel = parse_scenario(SYNTHETIC_DUEL).unwrap();
+        assert!(duel.random_obstacles);
+        let (ruleset, setup) = synthetic(SYNTHETIC_DUEL).unwrap();
+        assert_eq!(setup.terrain, ruleset.terrain_by_key("synthetic:meadow"));
+        let elsewhere = SYNTHETIC_DUEL.replace("synthetic:meadow", "synthetic:moon");
+        assert_eq!(
+            synthetic(&elsewhere),
+            Err(PackError::UnknownTerrain("synthetic:moon".to_owned()))
+        );
         for (sides, err) in [
             ("[\"attacker\", \"defender\"]", None),
             ("[\"left\"]", Some("unknown side `left`")),
@@ -708,6 +826,34 @@ mod tests {
         let base = compile(&[SYNTHETIC_PACK], "synthetic:faithful").unwrap();
         assert_eq!(base.resources().len(), 2);
         assert_eq!(base.factions()[0].name, "Vale");
+        // Terrain content (E03): terrains, native terrain, obstacles.
+        let meadow = base.terrain_by_key("synthetic:meadow").unwrap();
+        assert_eq!(base.terrains().len(), 2);
+        assert_eq!(base.factions()[0].native_terrain, Some(meadow));
+        let obstacles: Vec<(&str, bool, usize)> = base
+            .obstacles()
+            .iter()
+            .map(|o| (o.key.as_str(), o.absolute, o.blocked.len()))
+            .collect();
+        assert_eq!(
+            obstacles,
+            [
+                ("synthetic:boulder", false, 2),
+                ("synthetic:crag", false, 3),
+                ("synthetic:ridge", true, 4)
+            ]
+        );
+        assert_eq!(base.obstacles()[1].blocked[2], (1, -1));
+        let bad_ref =
+            SYNTHETIC_PACK.replace("native_terrain = \"meadow\"", "native_terrain = \"Meadow\"");
+        assert!(matches!(parse_pack(&bad_ref), Err(PackError::Key(_))));
+        let bad_obstacle = SYNTHETIC_PACK.replace("id = \"boulder\"", "id = \"Boulder\"");
+        assert!(matches!(parse_pack(&bad_obstacle), Err(PackError::Key(_))));
+        let bad_terrain =
+            SYNTHETIC_PACK.replace("terrains = [\"meadow\"]", "terrains = [\"Meadow\"]");
+        assert!(matches!(parse_pack(&bad_terrain), Err(PackError::Key(_))));
+        let bad_faction = SYNTHETIC_PACK.replace("id = \"vale\"", "id = \"Vale\"");
+        assert!(matches!(parse_pack(&bad_faction), Err(PackError::Key(_))));
         let brute = base.creature_by_key("synthetic:brute").unwrap();
         let info = base.creature_info(brute).unwrap();
         assert_eq!(
@@ -956,6 +1102,10 @@ mod tests {
         assert_eq!(
             PackError::from(CompileError::MissingBattleParams).to_string(),
             "no pack provides battle parameters"
+        );
+        assert_eq!(
+            PackError::UnknownTerrain("a:t".into()).to_string(),
+            "unknown terrain `a:t`"
         );
     }
 }

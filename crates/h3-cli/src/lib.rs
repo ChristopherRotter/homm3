@@ -22,6 +22,7 @@
 //! [setup]                         # the rest of the setup (format 2; fields default when absent)
 //! obstacles = [40, 41]            # blocked hexes
 //! led_by_hero = ["attacker"]      # sides led by a hero (omitted when none)
+//! terrain = "base:grass"          # the battlefield's terrain (omitted when none)
 //!
 //! [[attacker]]                    # the setup, by creature key
 //! slot = 0
@@ -42,6 +43,7 @@ use std::path::{Path, PathBuf};
 use h3_battle::{Command, Hex, StackId};
 use h3_content::Ruleset;
 use h3_contracts::{Army, ArmyStack, BattleSetup, BattleSide};
+use h3_kernel::{Rng, StreamId};
 use h3_pack::{PackError, ScenarioDef};
 use h3_sim::{Replay, ReplayError, ReplayHeader};
 use serde::{Deserialize, Serialize};
@@ -90,17 +92,23 @@ pub fn load_ruleset(packs_dir: &Path, ids: &[String], profile: &str) -> Result<R
     h3_pack::compile(&refs, profile).map_err(|e| CliError::Pack(packs_dir.to_path_buf(), e))
 }
 
-/// Loads a scenario file, its packs and its setup.
+/// Loads a scenario file, its packs and its setup. A scenario with `random_obstacles` gets
+/// obstacles generated for its terrain from stream `OBSTACLES` of `seed` (BAT-GEO-004).
 pub fn load_scenario(
     path: &Path,
     packs_dir: &Path,
+    seed: u64,
 ) -> Result<(ScenarioDef, Ruleset, BattleSetup), CliError> {
     let def =
         h3_pack::parse_scenario(&read(path)?).map_err(|e| CliError::Pack(path.to_path_buf(), e))?;
     let ruleset = load_ruleset(packs_dir, &def.packs, &def.profile)?;
-    let setup = def
+    let mut setup = def
         .resolve(&ruleset)
         .map_err(|e| CliError::Pack(path.to_path_buf(), e))?;
+    if let (true, Some(terrain)) = (def.random_obstacles, setup.terrain) {
+        let mut rng = Rng::for_stream(seed, StreamId::OBSTACLES);
+        setup.obstacles = h3_battle::generate_obstacles(&ruleset, terrain, &mut rng);
+    }
     Ok((def, ruleset, setup))
 }
 
@@ -144,6 +152,8 @@ struct SetupEntry {
     obstacles: Vec<u8>,
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     led_by_hero: Vec<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    terrain: Option<String>,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -283,6 +293,11 @@ pub fn replay_to_toml(
         setup: SetupEntry {
             obstacles: replay.setup.obstacles.clone(),
             led_by_hero: h3_pack::side_names(replay.setup.led_by_hero),
+            terrain: replay
+                .setup
+                .terrain
+                .and_then(|t| ruleset.terrains().get(t.index()))
+                .map(|t| t.key.as_str().to_owned()),
         },
         attacker: stacks(&replay.setup.attacker),
         defender: stacks(&replay.setup.defender),
@@ -378,6 +393,16 @@ impl ReplayDoc {
                 obstacles: f.setup.obstacles,
                 led_by_hero: h3_pack::parse_sides(&f.setup.led_by_hero)
                     .map_err(|e| CliError::Format(e.to_string()))?,
+                terrain: f
+                    .setup
+                    .terrain
+                    .as_ref()
+                    .map(|t| {
+                        ruleset
+                            .terrain_by_key(t)
+                            .ok_or_else(|| CliError::Format(format!("unknown terrain `{t}`")))
+                    })
+                    .transpose()?,
             },
             commands: f
                 .commands
@@ -441,7 +466,7 @@ pub fn run_random(
     packs_dir: &Path,
     options: &RunOptions,
 ) -> Result<(Replay, String), CliError> {
-    let (def, ruleset, setup) = load_scenario(scenario_path, packs_dir)?;
+    let (def, ruleset, setup) = load_scenario(scenario_path, packs_dir, options.seed)?;
     let replay = Replay::record_random(
         &ruleset,
         setup,

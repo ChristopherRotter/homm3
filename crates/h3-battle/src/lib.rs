@@ -33,6 +33,7 @@ mod morale;
 mod movement;
 mod observe;
 mod state;
+mod terrain;
 mod turn;
 
 pub use command::{Command, apply, validate};
@@ -47,6 +48,7 @@ pub use state::{
     BATTLE_STATE_HASH_VERSION, BattleState, STACK_CAPACITY, Stack, StackFlags, StackId,
     StackTraits, UNLIMITED_RETALIATIONS,
 };
+pub use terrain::generate_obstacles;
 
 #[cfg(test)]
 mod tests;

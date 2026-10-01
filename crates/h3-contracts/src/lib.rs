@@ -22,7 +22,7 @@ extern crate alloc;
 
 use alloc::vec::Vec;
 
-use h3_content::CreatureTypeId;
+use h3_content::{CreatureTypeId, TerrainId};
 
 /// The two sides of a battle.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
@@ -86,6 +86,9 @@ pub struct BattleSetup {
     /// itself arrives in E04). Without a hero a side gets no lucky strikes in profiles with the
     /// quirk `quirk.battle.no_luck_without_hero` (Q-0003).
     pub led_by_hero: [bool; 2],
+    /// The battlefield's terrain, if any: creatures of factions native to it get the native
+    /// terrain bonus (BAT-TER-001). Obstacles for it are generated before the seam (BAT-GEO-004).
+    pub terrain: Option<TerrainId>,
 }
 
 impl BattleSetup {
@@ -138,6 +141,7 @@ mod tests {
             defender: Army::default(),
             obstacles: vec![],
             led_by_hero: [true, false],
+            terrain: None,
         };
         assert_eq!(setup.army(BattleSide::Attacker).stacks, [stack]);
         assert!(setup.army(BattleSide::Defender).stacks.is_empty());

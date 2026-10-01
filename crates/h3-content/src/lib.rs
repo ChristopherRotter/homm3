@@ -34,11 +34,11 @@ pub use flags::{CreatureFlag, CreatureFlags};
 pub use key::{ContentKey, KeyError};
 pub use pack::{
     BattleParamsDef, ContentPack, CreatureDef, CreatureInfoDef, CreatureOverride, CreaturePatch,
-    FactionDef, PackManifest, ProfileDef, ResourceDef,
+    FactionDef, ObstacleDef, PackManifest, ProfileDef, ResourceDef, TerrainDef,
 };
 pub use quirks::{NO_LUCK_WITHOUT_HERO, QuirkFlag, QuirkRegistry, Quirks, REGISTRY};
 pub use ruleset::{
     BattleParams, CreatureInfo, CreatureType, CreatureTypeId, FactionId, FactionInfo, FieldParams,
-    MAX_ARMY_SLOTS, MAX_AURA_VALUES, MAX_FIELD_HEXES, MAX_ROLL_LEVELS, RULESET_HASH_VERSION,
-    ResourceId, ResourceInfo, RollTable, Ruleset,
+    MAX_ARMY_SLOTS, MAX_AURA_VALUES, MAX_FIELD_HEXES, MAX_ROLL_LEVELS, ObstacleType,
+    RULESET_HASH_VERSION, ResourceId, ResourceInfo, RollTable, Ruleset, TerrainId, TerrainInfo,
 };

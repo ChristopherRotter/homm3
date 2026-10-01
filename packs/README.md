@@ -7,7 +7,7 @@ Human-editable content packs (ADR-0006), parsed by `h3-pack` and compiled into a
 |---|---|
 | `synthetic/` | Invented creatures with neutral names for tests, benchmarks, replays and the walking skeleton. **Not** original game data (docs/05-testing.md "Test data policy"). |
 | `synthetic-ext/` | Invented expansion of `synthetic`: exercises dependencies and overrides the way `ab`/`sod` do. |
-| `base/` | **Harvested**: The Restoration of Erathia, latest patch (Q15): resources, 8 factions, 118 creatures, battle parameters, profiles. |
+| `base/` | **Harvested**: The Restoration of Erathia, latest patch (Q15): resources, 10 terrains, 8 factions with native terrains, 78 obstacle types, 118 creatures, battle parameters, profiles. |
 | `ab/` | **Harvested**: Armageddon's Blade (depends on `base`): Conflux, 23 creatures, elementals moved to Conflux. |
 | `sod/` | **Harvested**: The Shadow of Death (depends on `ab`): SoD-only changes as overrides. |
 
@@ -48,9 +48,22 @@ depends = []                     # pack ids
 id = "coin"
 name = "Coin"
 
+[[terrain]]                      # terrain types (E03; base: harvested from TERRNAME.txt)
+id = "meadow"
+name = "Meadow"
+
 [[faction]]
 id = "vale"
 name = "Vale"
+native_terrain = "meadow"        # optional: +1 attack/defense/speed there (BAT-TER-001)
+
+[[obstacle]]                     # obstacle types (E03, BAT-GEO-004)
+id = "crag"
+terrains = ["meadow"]            # at least one
+width = 3                        # usual obstacles: free hexes to the right of the anchor
+height = 2                       # usual obstacles: rows needed above the anchor
+blocked = [[0, 0], [1, 0], [1, -1]]  # [dx, dy] from the anchor (bottom-left hex, dy <= 0)
+# absolute = true                # fixed position: `blocked` lists [x, y] hexes of the field
 
 [[creature]]
 id = "brute"
@@ -140,8 +153,8 @@ flags are off): the registered flags are in `h3_content::REGISTRY` and the quirk
 (`docs/rules/quirks-ledger.md`); the packs' `faithful` profiles turn Q-0003 on, `strict-fixed`
 off. Profile-level Tier-2 overrides are not implemented yet (backlog).
 
-The compiled ruleset's canonical hash (encoding v5, `RULESET_HASH_VERSION`) covers packs, profile,
-quirks, resources, factions, all creature fields including abilities, and the battle parameters;
+The compiled ruleset's canonical hash (encoding v6, `RULESET_HASH_VERSION`) covers packs, profile,
+quirks, resources, terrains, factions, obstacles, all creature fields including abilities, and the battle parameters;
 replays record it.
 
 ## Scenarios
@@ -154,6 +167,10 @@ id = "skirmish"
 packs = ["synthetic"]            # enabled packs (any order)
 profile = "synthetic:faithful"
 obstacles = [58, 75]             # optional: blocked hexes, row-major (BAT-GEO-003)
+terrain = "synthetic:meadow"     # optional: the battlefield's terrain (BAT-TER-001)
+random_obstacles = true          # optional: generate obstacles for the terrain (BAT-GEO-004;
+                                 # the tools use stream OBSTACLES of the battle seed); not
+                                 # together with `obstacles`
 led_by_hero = ["attacker"]       # optional: sides led by a hero (Q17, quirk Q-0003)
 
 [[attacker]]                     # one entry per stack

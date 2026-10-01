@@ -144,7 +144,7 @@ fn bench(args: &Args) -> Result<(), String> {
     let games: u64 = args.num("games", 2000)?;
     let seed: u64 = args.num("seed", 1)?;
     let (_, ruleset, setup) =
-        load_scenario(&scenario, &packs_dir).map_err(|e: CliError| e.to_string())?;
+        load_scenario(&scenario, &packs_dir, seed).map_err(|e: CliError| e.to_string())?;
     let mut env =
         BattleEnv::new(Arc::new(ruleset), Arc::new(setup), seed, 0).map_err(|e| e.to_string())?;
     let start = Instant::now();

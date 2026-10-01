@@ -53,6 +53,8 @@ impl StreamId {
     pub const BATTLE: Self = Self(1);
     /// Agents, bots and tie-breaking outside game rules (never feeds game state directly).
     pub const AGENT: Self = Self(2);
+    /// Random battlefield obstacles, generated before a battle starts (BAT-GEO-004).
+    pub const OBSTACLES: Self = Self(3);
 }
 
 /// The engine's random number generator (xoshiro256\*\*). All randomness in game logic goes

@@ -49,9 +49,39 @@ name = "Coin"
 id = "shard"
 name = "Shard"
 
+# Terrain (E03): terrain types, native terrains (BAT-TER-001) and obstacle types (BAT-GEO-004).
+[[terrain]]
+id = "meadow"
+name = "Meadow"
+
+[[terrain]]
+id = "ash"
+name = "Ash"
+
 [[faction]]
 id = "vale"
 name = "Vale"
+native_terrain = "meadow"
+
+[[obstacle]]
+id = "boulder"
+terrains = ["meadow", "ash"]
+width = 2
+height = 1
+blocked = [[0, 0], [1, 0]]          # [dx, dy] from the anchor (bottom-left hex)
+
+[[obstacle]]
+id = "crag"
+terrains = ["meadow"]
+width = 3
+height = 2
+blocked = [[0, 0], [1, 0], [1, -1]]
+
+[[obstacle]]
+id = "ridge"
+terrains = ["ash"]
+absolute = true
+blocked = [[8, 3], [8, 4], [8, 5], [8, 6]]   # [x, y] on the field
 
 [[creature]]
 id = "spearman"

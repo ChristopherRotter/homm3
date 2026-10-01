@@ -88,6 +88,7 @@ fn inputs() -> Inputs {
             "Gold",
             "Abandoned",
         ]),
+        terrains: single(&["Mud", "Ice"]),
     }
 }
 
@@ -164,6 +165,23 @@ sources = ["s"]
 creature = "Unit 20"
 abilities = [{ kind = "hate", creature = "Unit 2", percent = 100 }]
 sources = ["s"]
+
+[[native_terrain]]
+faction = "Alpha"
+terrain = "Mud"
+sources = ["s"]
+
+[[native_terrain]]
+faction = "Gamma"
+terrain = "Ice"
+sources = ["s"]
+
+[obstacles]
+sources = ["s"]
+list = [
+    { id = 0, terrains = ["Mud"], width = 2, height = 1, blocked = [[0, 0], [1, -1]] },
+    { id = 7, terrains = ["Mud", "Ice"], absolute = true, blocked = [[5, 4]] },
+]
 "#;
 
 fn gap() -> GapFill {
@@ -186,6 +204,14 @@ fn harvests_three_packs_that_compile_and_are_deterministic() {
     assert_eq!(r.resources().len(), 7);
     let ids: Vec<&str> = r.factions().iter().map(|f| f.key.as_str()).collect();
     assert_eq!(ids, ["base:alpha", "base:beta", "ab:gamma"]);
+    // Terrains from TERRNAME.txt, native terrains and obstacles from the gap-fill file.
+    let mud = r.terrain_by_key("base:mud").unwrap();
+    let ice = r.terrain_by_key("base:ice").unwrap();
+    let natives: Vec<_> = r.factions().iter().map(|f| f.native_terrain).collect();
+    assert_eq!(natives, [Some(mud), None, Some(ice)]);
+    assert_eq!(r.obstacles().len(), 2);
+    assert_eq!(r.obstacles()[0].blocked, vec![(0, 0), (1, -1)]);
+    assert!(r.obstacles()[1].absolute);
     // AB creatures live in `ab`, RoE creatures in `base`.
     assert!(r.creature_by_key("ab:unit_20").is_some());
     assert!(r.creature_by_key("ab:unit_30").is_some());
@@ -387,6 +413,35 @@ fn inconsistencies_are_errors() {
             .unwrap_err()
             .contains("unknown town")
     );
+    // Native terrains and obstacles: unknown town or terrain, a town listed twice.
+    for (from, to, error) in [
+        (
+            "faction = \"Alpha\"",
+            "faction = \"Delta\"",
+            "unknown town `Delta`",
+        ),
+        (
+            "terrain = \"Mud\"",
+            "terrain = \"Sand\"",
+            "unknown terrain `Sand`",
+        ),
+        (
+            "faction = \"Gamma\"\nterrain",
+            "faction = \"Alpha\"\nterrain",
+            "native terrain of `Alpha` twice",
+        ),
+        (
+            "terrains = [\"Mud\"], width",
+            "terrains = [\"Sand\"], width",
+            "unknown terrain `Sand`",
+        ),
+    ] {
+        let g = GapFill::parse(&GAP.replace(from, to)).unwrap();
+        assert!(
+            harvest(&inputs(), &g).unwrap_err().contains(error),
+            "{error}"
+        );
+    }
 }
 
 #[test]

@@ -175,6 +175,7 @@ mod tests {
             defender: stack("base:hydra", 2),
             obstacles: vec![],
             led_by_hero: [false; 2],
+            terrain: None,
         };
         let s = BattleState::new(&r, &setup, 1).unwrap();
         let side = s.side_to_act().unwrap();

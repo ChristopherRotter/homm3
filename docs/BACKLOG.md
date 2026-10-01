@@ -64,4 +64,7 @@ See `docs/stubs.toml` (empty: no registered stubs after E01).
 - 2026-10-01 (E02): abilities from the harvest report for E03 (jousting, morale ±, no wall penalty, Dragon Fly weakness from SoD/RoE 1.3, hate, …) and the unidentified exe flag bit `0x800` (Arch Mage, Beholder, Evil Eye).
 - 2026-10-01 (E02): tight formations / tactics (BAT-SET-001; VCMI layout table), and other harvested tables (spells, artifacts, heroes, buildings) when their epics come; RoE/AB patch differences outside creatures need the same gap-fill treatment (Q15).
 - 2026-10-01 (E02): `cargo-fuzz` targets for `h3-formats` (property tests cover arbitrary input today; the readers only run in the harvester on local files).
+- 2026-10-01 (E03 T7): special battlefields for E04: magic terrains (Holy Ground, Evil Fog, Clover Field, Cursed Ground, Magic Plains, Fiery Fields, Rocklands, Magic Clouds, Lucid Pools), coast and ship battles — battlefield content, their obstacles (VCMI `specialBattlefields`, left out of the gap-fill file) and effects (morale/luck by alignment, spell effects).
+- 2026-10-01 (E03 T7): harvest the obstacle table from `Heroes3.exe` (today from VCMI's `config/obstacles.json`), once its layout is known.
+- 2026-10-01 (E03 T7): `h3-sim`/C ABI: random obstacles per episode (today scenarios fix them, or the CLI generates them once per run from the seed).
 - 2026-09-30 (E01): batch stepping over many environments in `h3-sim`/C ABI, and loading packs/scenarios through the ABI (E05).

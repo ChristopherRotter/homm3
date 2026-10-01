@@ -53,7 +53,7 @@ id       = "BAT-GEO-003"
 title    = "Obstacles"
 context  = "battle"
 status   = "implemented"
-summary  = "The battle setup lists the hexes blocked by obstacles (each once, all standable hexes of the field; anything else is a setup error). No stack can stand on an obstacle hex: walkers cannot pass them (BAT-MOV-001), flyers and teleporters pass over them but cannot land on them (BAT-MOV-002), and placement avoids them (BAT-SET-001). Obstacles are public information. Scope: obstacles do not affect shooting (only siege walls do, later); which hexes are blocked is generated per battlefield in E03 T7."
+summary  = "The battle setup lists the hexes blocked by obstacles (each once, all standable hexes of the field; anything else is a setup error). No stack can stand on an obstacle hex: walkers cannot pass them (BAT-MOV-001), flyers and teleporters pass over them but cannot land on them (BAT-MOV-002), and placement avoids them (BAT-SET-001). Obstacles are public information. Scope: obstacles do not affect shooting (only siege walls do, later). Which hexes are blocked is decided before the battle, e.g. by BAT-GEO-004."
 numeric  = "integer"
 
   [[rule.source]]
@@ -76,6 +76,30 @@ numeric  = "integer"
   url        = "https://heroes.thelazy.net/index.php/Obstacle"
   retrieved  = "2026-10-01"
   confidence = "high"
+
+[[rule]]
+id       = "BAT-GEO-004"
+title    = "Random obstacles"
+context  = "battle"
+status   = "implemented"
+summary  = "Before a battle on a terrain, its obstacles are generated (the caller puts the hexes into the setup, BAT-GEO-003): pick 5..=12 hexes to block; with 40 % chance place one absolute obstacle of the terrain (fixed hexes; it counts half its hex count); then, while hexes remain to be blocked, choose a usual obstacle of the terrain uniformly and an allowed anchor uniformly, block its hexes and subtract their count; stop when the terrain has no usual obstacle or the chosen one has no allowed anchor. An anchor (the obstacle's bottom-left hex) lies in rows 1..=height-2 (row height-2 only up to column width-2), needs more rows above it than the obstacle's height, column >= 1 and column + width <= field width - 2, and must not be blocked; every blocked hex (dx, dy from the anchor; from an odd row, hexes in even rows shift one column left) must be on the field, free, and in columns 3..=field width - 4, so the two columns next to each army's starting column stay free. Obstacle types (terrains, width, height, blocked hexes, absolute flag) are content. Random numbers come from the caller's stream (OBSTACLES in the tools); the original seeds this from the map tile. Scope: special battlefields (magic terrains, coast, ship) and their obstacles are E04; sieges have no random obstacles."
+numeric  = "integer"
+
+  [[rule.source]]
+  kind       = "vcmi"
+  ref        = "lib/battle/BattleInfo.cpp setupBattle 'randomize obstacles' (tilesToBlock rand(5,12), 40 % absolute obstacle counting half, RangeGenerator over obstacles and positions 18..168, validPosition), lib/ObstacleHandler.cpp getBlocked (odd-row shift) and isAppropriate"
+  url        = "https://github.com/vcmi/vcmi/blob/1.7.5/lib/battle/BattleInfo.cpp"
+  retrieved  = "2026-10-01"
+  confidence = "high"
+  note       = "Ported with our RNG: VCMI reproduces the original's tile-seeded generator (MSVC rand); choosing uniformly among valid candidates has the same distribution as VCMI's draw-without-replacement."
+
+  [[rule.source]]
+  kind       = "vcmi"
+  ref        = "config/obstacles.json: obstacle shapes and terrains (imported via crates/h3-harvest/data/gapfill.toml)"
+  url        = "https://github.com/vcmi/vcmi/blob/1.7.5/config/obstacles.json"
+  retrieved  = "2026-10-01"
+  confidence = "medium"
+  note       = "The original keeps this table in the executable; not harvested from it yet (no layout known)."
 
 [[rule]]
 id       = "BAT-SET-001"
@@ -223,6 +247,33 @@ numeric  = "integer"
   url        = "https://heroes.thelazy.net/index.php/Troll"
   retrieved  = "2026-10-01"
   confidence = "low"
+
+[[rule]]
+id       = "BAT-TER-001"
+title    = "Native terrain"
+context  = "battle"
+status   = "implemented"
+summary  = "A battle may have a terrain (BattleSetup.terrain). Stacks of creatures whose faction's native terrain is that terrain get +1 attack, +1 defense and +1 speed for the whole battle (Castle, Rampart, Conflux: grass; Tower: snow; Inferno: lava; Necropolis: dirt; Dungeon: subterranean; Stronghold: rough; Fortress: swamp). Neutral creatures have no native terrain. Applied to the stack's stats when the battle starts."
+numeric  = "integer"
+
+  [[rule.source]]
+  kind       = "wiki"
+  ref        = "Native terrain - Heroes 3 wiki: creatures on native terrain get '+1 attack, +1 defense and +1 speed'; native terrains per town; 'Neutral creatures do not have a native terrain'"
+  url        = "https://heroes.thelazy.net/index.php/Native_terrain"
+  retrieved  = "2026-10-01"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "vcmi"
+  ref        = "lib/battle/BattleInfo.cpp setupBattle: STACKS_SPEED +1, ATTACK +1, DEFENSE +1 with the native-terrain limiter; config/factions/*.json nativeTerrain"
+  url        = "https://github.com/vcmi/vcmi/blob/1.7.5/lib/battle/BattleInfo.cpp"
+  retrieved  = "2026-10-01"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "TERRNAME.txt (terrain types, harvested); native terrains are gap-filled (crates/h3-harvest/data/gapfill.toml)"
+  confidence = "high"
 
 [[rule]]
 id       = "BAT-MOV-001"

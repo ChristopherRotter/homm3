@@ -83,6 +83,10 @@ How the model turned out in the battle context:
   the mover active after its command. Events `GoodMorale`, `BadMorale`; strike flag `LUCKY`.
 - **State:** the modifier pool (ADR-0012), stack morale and luck, flag `HAD_MORALE`; state hash
   encoding v5.
+- **T7:** `BattleSetup.terrain: Option<TerrainId>` (native-terrain bonus; in state and
+  observation; state hash v6). Random obstacles are generated *before* the seam by
+  `h3_battle::generate_obstacles(ruleset, terrain, rng)` and passed as `BattleSetup.obstacles`,
+  so the battle itself never draws them; the tools use stream `OBSTACLES`.
 
 ## Revision history
 
@@ -90,4 +94,4 @@ How the model turned out in the battle context:
 - 2026-09-30: Amended by E01 (battle entry point, command set, events, geometry seam, replay contents).
 - 2026-10-01: Amended by E03 T3 (footprints, obstacles, attack positions, setup/encoding changes).
 - 2026-10-01: Amended by E03 T4–T5 (shooting, strike flags, ability events, attack structure).
-- 2026-10-01: Amended by E03 T6 (hero flags, morale in the turn structure, morale/luck state).
+- 2026-10-01: Amended by E03 T6 (hero flags, morale in the turn structure, morale/luck state) and T7 (terrain, obstacle generation before the seam).

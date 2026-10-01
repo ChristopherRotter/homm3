@@ -27,6 +27,52 @@ pub struct GapFill {
     /// Creature abilities (E03 T2; ADR-0012): behaviour the original hard-codes per creature.
     #[serde(default)]
     pub creature_abilities: Vec<CreatureAbilities>,
+    /// Native terrains of the factions (E03 T7, BAT-TER-001).
+    #[serde(default)]
+    pub native_terrain: Vec<NativeTerrain>,
+    /// Obstacle types (E03 T7, BAT-GEO-004).
+    pub obstacles: Obstacles,
+}
+
+/// The native terrain of a faction.
+#[derive(Debug, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct NativeTerrain {
+    /// Town name (as in `TownType.txt`).
+    pub faction: String,
+    /// Terrain name (as in `TERRNAME.txt`).
+    pub terrain: String,
+    /// Source ids.
+    pub sources: Vec<String>,
+}
+
+/// The obstacle types, with their sources.
+#[derive(Debug, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct Obstacles {
+    /// Source ids.
+    pub sources: Vec<String>,
+    /// The obstacle types.
+    pub list: Vec<ObstacleSpec>,
+}
+
+/// One obstacle type (pack syntax, `packs/README.md`), terrains by name.
+#[derive(Debug, Deserialize)]
+#[serde(deny_unknown_fields)]
+#[allow(
+    missing_docs,
+    reason = "field names mirror the pack format (packs/README.md)"
+)]
+pub struct ObstacleSpec {
+    pub id: u32,
+    pub terrains: Vec<String>,
+    #[serde(default)]
+    pub width: u8,
+    #[serde(default)]
+    pub height: u8,
+    pub blocked: Vec<[i8; 2]>,
+    #[serde(default)]
+    pub absolute: bool,
 }
 
 /// The abilities of one creature (`packs/README.md`, "Abilities").
@@ -177,7 +223,9 @@ impl GapFill {
                 .chain(g.roe_creature.iter().flat_map(|r| &r.sources))
                 .chain(g.table_change.iter().flat_map(|t| &t.sources))
                 .chain(&g.battle.formation_sources)
-                .chain(g.creature_abilities.iter().flat_map(|a| &a.sources));
+                .chain(g.creature_abilities.iter().flat_map(|a| &a.sources))
+                .chain(g.native_terrain.iter().flat_map(|n| &n.sources))
+                .chain(&g.obstacles.sources);
         for r in refs {
             if !ids.contains(r.as_str()) {
                 return Err(format!("gapfill: unknown source `{r}`"));

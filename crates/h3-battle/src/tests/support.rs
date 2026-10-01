@@ -7,7 +7,7 @@ use std::vec::Vec;
 
 use h3_content::{
     AbilityDef, AuraTarget, BattleParamsDef, ContentKey, ContentPack, CreatureDef, CreatureInfoDef,
-    FactionDef, PackManifest, ProfileDef, Ruleset,
+    FactionDef, ObstacleDef, PackManifest, ProfileDef, Ruleset, TerrainDef,
 };
 use h3_contracts::{Army, ArmyStack, BattleSetup, BattleSide};
 
@@ -384,6 +384,27 @@ pub fn battle_params() -> BattleParamsDef {
     }
 }
 
+fn obstacle(
+    name: &str,
+    terrains: &[&str],
+    width: u8,
+    height: u8,
+    blocked: &[(i8, i8)],
+    absolute: bool,
+) -> ObstacleDef {
+    ObstacleDef {
+        key: ContentKey::new("t", name).unwrap(),
+        terrains: terrains
+            .iter()
+            .map(|t| ContentKey::new("t", t).unwrap())
+            .collect(),
+        width,
+        height,
+        blocked: blocked.to_vec(),
+        absolute,
+    }
+}
+
 pub fn ruleset() -> Ruleset {
     ruleset_with("t:faithful", |_| {})
 }
@@ -412,13 +433,37 @@ pub fn ruleset_with(profile: &str, edit: impl FnOnce(&mut BattleParamsDef)) -> R
     edit(&mut battle);
     let pack = ContentPack {
         creatures,
-        factions: ["castle", "inferno", "necropolis"]
+        factions: [
+            ("castle", Some("plain")),
+            ("inferno", Some("lava")),
+            ("necropolis", None),
+        ]
+        .iter()
+        .map(|&(f, native)| FactionDef {
+            key: ContentKey::new("t", f).unwrap(),
+            name: String::from(f),
+            native_terrain: native.map(|t| ContentKey::new("t", t).unwrap()),
+        })
+        .collect(),
+        terrains: ["plain", "lava", "void", "tall"]
             .iter()
-            .map(|f| FactionDef {
-                key: ContentKey::new("t", f).unwrap(),
-                name: String::from(*f),
+            .map(|t| TerrainDef {
+                key: ContentKey::new("t", t).unwrap(),
+                name: String::from(*t),
             })
             .collect(),
+        obstacles: vec![
+            obstacle("stone", &["plain", "lava"], 2, 1, &[(0, 0), (1, 0)], false),
+            obstacle(
+                "cliff",
+                &["lava"],
+                0,
+                0,
+                &[(5, 4), (6, 4), (7, 4), (8, 4)],
+                true,
+            ),
+            obstacle("tower", &["tall"], 1, 10, &[(0, 0)], false),
+        ],
         profiles: vec![
             ProfileDef {
                 key: ContentKey::new("t", "faithful").unwrap(),
@@ -461,6 +506,7 @@ pub fn setup(rules: &Ruleset, attacker: &[Spec], defender: &[Spec]) -> BattleSet
         defender: army(rules, defender),
         obstacles: vec![],
         led_by_hero: [false; 2],
+        terrain: None,
     }
 }
 

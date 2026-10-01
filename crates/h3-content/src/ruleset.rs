@@ -22,7 +22,7 @@ pub const MAX_ARMY_SLOTS: usize = 16;
 pub const MAX_FIELD_HEXES: usize = 255;
 
 /// Version of the ruleset hash encoding. Bump when the encoding below changes.
-pub const RULESET_HASH_VERSION: u32 = 5;
+pub const RULESET_HASH_VERSION: u32 = 6;
 
 /// A compiled creature type.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -165,10 +165,41 @@ pub struct FactionInfo {
     pub key: ContentKey,
     /// Display name.
     pub name: String,
+    /// Native terrain of its creatures (BAT-TER-001), if any.
+    pub native_terrain: Option<TerrainId>,
 }
 
 /// Handle of a faction in a [`Ruleset`].
 pub type FactionId = Handle<FactionInfo>;
+
+/// A compiled terrain type.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct TerrainInfo {
+    /// Key.
+    pub key: ContentKey,
+    /// Display name.
+    pub name: String,
+}
+
+/// Handle of a terrain type in a [`Ruleset`].
+pub type TerrainId = Handle<TerrainInfo>;
+
+/// A compiled obstacle type (BAT-GEO-004).
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ObstacleType {
+    /// Key.
+    pub key: ContentKey,
+    /// Terrains it can appear on.
+    pub terrains: Vec<TerrainId>,
+    /// Usual obstacles: free hexes needed to the right of the anchor.
+    pub width: u8,
+    /// Usual obstacles: rows needed above the anchor.
+    pub height: u8,
+    /// Blocked hexes: `(dx, dy)` from the anchor, or `(x, y)` for absolute obstacles.
+    pub blocked: Vec<(i8, i8)>,
+    /// Fixed position, at most once per battle.
+    pub absolute: bool,
+}
 
 /// Compiled non-battle attributes of a creature type (not needed on the battle hot path).
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -205,6 +236,9 @@ pub struct Ruleset {
     quirks: Quirks,
     resources: Vec<ResourceInfo>,
     factions: Vec<FactionInfo>,
+    terrains: Vec<TerrainInfo>,
+    terrain_index: BTreeMap<String, TerrainId>,
+    obstacles: Vec<ObstacleType>,
     creatures: Vec<CreatureType>,
     creature_info: Vec<CreatureInfo>,
     creature_abilities: Vec<Vec<CompiledAbility>>,
@@ -222,6 +256,30 @@ struct Scope<'a> {
     factions: &'a BTreeMap<String, FactionId>,
 }
 
+/// Checks that `key` belongs to a pack in `closure` (the closure of `pack`) and resolves it in
+/// `index`.
+fn resolve_in<T>(
+    pack: &str,
+    closure: &BTreeSet<String>,
+    key: &ContentKey,
+    index: &BTreeMap<String, Handle<T>>,
+    kind: &'static str,
+) -> Result<Handle<T>, CompileError> {
+    if !closure.contains(key.pack()) {
+        return Err(CompileError::ReferenceOutsideDependencies {
+            key: String::from(key.as_str()),
+            pack: String::from(pack),
+        });
+    }
+    index
+        .get(key.as_str())
+        .copied()
+        .ok_or_else(|| CompileError::UnknownReference {
+            kind,
+            key: String::from(key.as_str()),
+        })
+}
+
 impl Scope<'_> {
     /// Checks that `key` belongs to a pack in the closure and resolves it in `index`.
     fn resolve<T>(
@@ -230,19 +288,7 @@ impl Scope<'_> {
         index: &BTreeMap<String, Handle<T>>,
         kind: &'static str,
     ) -> Result<Handle<T>, CompileError> {
-        if !self.closure.contains(key.pack()) {
-            return Err(CompileError::ReferenceOutsideDependencies {
-                key: String::from(key.as_str()),
-                pack: String::from(self.pack),
-            });
-        }
-        index
-            .get(key.as_str())
-            .copied()
-            .ok_or_else(|| CompileError::UnknownReference {
-                kind,
-                key: String::from(key.as_str()),
-            })
+        resolve_in(self.pack, self.closure, key, index, kind)
     }
 
     fn faction(&self, key: Option<&ContentKey>) -> Result<Option<FactionId>, CompileError> {
@@ -310,6 +356,10 @@ impl Ruleset {
         let mut resource_index = BTreeMap::new();
         let mut factions: Vec<FactionInfo> = Vec::new();
         let mut faction_index = BTreeMap::new();
+        let mut terrains: Vec<TerrainInfo> = Vec::new();
+        let mut terrain_index = BTreeMap::new();
+        let mut obstacles: Vec<ObstacleType> = Vec::new();
+        let mut obstacle_index = BTreeMap::new();
         let mut creatures = Vec::new();
         let mut creature_info = Vec::new();
         let mut creature_abilities: Vec<Vec<CompiledAbility>> = Vec::new();
@@ -328,6 +378,18 @@ impl Ruleset {
                     name: def.name.clone(),
                 });
             }
+            for def in &pack.terrains {
+                check_namespace(&def.key, id)?;
+                let handle = TerrainId::from_index(terrains.len())
+                    .ok_or(CompileError::TooManyEntries("terrain"))?;
+                insert_unique(&mut terrain_index, &def.key, handle)?;
+                terrains.push(TerrainInfo {
+                    key: def.key.clone(),
+                    name: def.name.clone(),
+                });
+            }
+            let terrain =
+                |key: &ContentKey| resolve_in(id, closure, key, &terrain_index, "terrain");
             for def in &pack.factions {
                 check_namespace(&def.key, id)?;
                 let handle = FactionId::from_index(factions.len())
@@ -336,6 +398,21 @@ impl Ruleset {
                 factions.push(FactionInfo {
                     key: def.key.clone(),
                     name: def.name.clone(),
+                    native_terrain: def.native_terrain.as_ref().map(terrain).transpose()?,
+                });
+            }
+            for def in &pack.obstacles {
+                check_namespace(&def.key, id)?;
+                let handle = Handle::<ObstacleType>::from_index(obstacles.len())
+                    .ok_or(CompileError::TooManyEntries("obstacle"))?;
+                insert_unique(&mut obstacle_index, &def.key, handle)?;
+                obstacles.push(ObstacleType {
+                    key: def.key.clone(),
+                    terrains: def.terrains.iter().map(terrain).collect::<Result<_, _>>()?,
+                    width: def.width,
+                    height: def.height,
+                    blocked: def.blocked.clone(),
+                    absolute: def.absolute,
                 });
             }
             let scope = Scope {
@@ -427,6 +504,9 @@ impl Ruleset {
             validate_creature(key, stats, info, abils)?;
         }
         let battle = compile_battle(battle_def.ok_or(CompileError::MissingBattleParams)?)?;
+        for o in &obstacles {
+            validate_obstacle(o, &battle)?;
+        }
 
         let mut profiles = BTreeMap::new();
         for pack in &order {
@@ -466,6 +546,9 @@ impl Ruleset {
             quirks,
             resources,
             factions,
+            terrains,
+            terrain_index,
+            obstacles,
             creatures,
             creature_info,
             creature_abilities,
@@ -518,6 +601,21 @@ impl Ruleset {
     /// Factions, in load order (a [`FactionId`] indexes this slice).
     pub fn factions(&self) -> &[FactionInfo] {
         &self.factions
+    }
+
+    /// Terrain types, in load order (a [`TerrainId`] indexes this slice).
+    pub fn terrains(&self) -> &[TerrainInfo] {
+        &self.terrains
+    }
+
+    /// Looks a terrain type up by its `pack:name` key.
+    pub fn terrain_by_key(&self, key: &str) -> Option<TerrainId> {
+        self.terrain_index.get(key).copied()
+    }
+
+    /// Obstacle types, in load order.
+    pub fn obstacles(&self) -> &[ObstacleType] {
+        &self.obstacles
     }
 
     /// Battle parameters.
@@ -733,6 +831,36 @@ fn validate_creature(
     Ok(())
 }
 
+/// Checks an obstacle type against the battlefield: at least one terrain and one blocked hex;
+/// usual obstacles need a width and height of at least 1 and blocked hexes no lower than the
+/// anchor (`dy <= 0`); absolute obstacles block standable hexes of the field.
+fn validate_obstacle(o: &ObstacleType, battle: &BattleParams) -> Result<(), CompileError> {
+    let invalid = |reason| {
+        Err(CompileError::InvalidObstacle {
+            key: String::from(o.key.as_str()),
+            reason,
+        })
+    };
+    if o.terrains.is_empty() || o.blocked.is_empty() {
+        return invalid("an obstacle needs at least one terrain and one blocked hex");
+    }
+    let f = battle.field;
+    if o.absolute {
+        let standable = |&(x, y): &(i8, i8)| {
+            i32::from(x) >= i32::from(f.side_columns)
+                && i32::from(x) < i32::from(f.width) - i32::from(f.side_columns)
+                && y >= 0
+                && i32::from(y) < i32::from(f.height)
+        };
+        if !o.blocked.iter().all(standable) {
+            return invalid("absolute obstacles must block standable hexes of the field");
+        }
+    } else if o.width == 0 || o.height == 0 || o.blocked.iter().any(|&(_, dy)| dy > 0) {
+        return invalid("usual obstacles need width and height >= 1 and blocked dy <= 0");
+    }
+    Ok(())
+}
+
 fn compile_battle(def: &BattleParamsDef) -> Result<BattleParams, CompileError> {
     let invalid = |reason| Err(CompileError::InvalidBattleParams(reason));
     let w = usize::from(def.field_width);
@@ -824,8 +952,10 @@ fn compile_battle(def: &BattleParamsDef) -> Result<BattleParams, CompileError> {
 }
 
 impl CanonicalHash for Ruleset {
-    /// Encoding v4: version, packs (id, version) in load order, profile key, quirk bits,
-    /// resources and factions (key, name), creatures (key, stats in field order including shots
+    /// Encoding v6: version, packs (id, version) in load order, profile key, quirk bits,
+    /// resources (key, name), terrains (key, name), factions (key, name, native terrain as an
+    /// optional handle), obstacles (key, terrains, width, height, blocked pairs, absolute flag),
+    /// creatures (key, stats in field order including shots
     /// and flag bits, then the info fields in field order — a faction as presence flag + handle,
     /// the cost as length + pairs — then the abilities as length + each ability's encoding),
     /// battle parameters in field order (v4: with the ranged/melee penalty parameters; v5: with
@@ -845,10 +975,32 @@ impl CanonicalHash for Ruleset {
             r.key.as_str().hash_into(h);
             r.name.as_str().hash_into(h);
         }
+        h.write_len(self.terrains.len());
+        for t in &self.terrains {
+            t.key.as_str().hash_into(h);
+            t.name.as_str().hash_into(h);
+        }
         h.write_len(self.factions.len());
         for f in &self.factions {
             f.key.as_str().hash_into(h);
             f.name.as_str().hash_into(h);
+            f.native_terrain.hash_into(h);
+        }
+        h.write_len(self.obstacles.len());
+        for o in &self.obstacles {
+            o.key.as_str().hash_into(h);
+            h.write_len(o.terrains.len());
+            for t in &o.terrains {
+                t.hash_into(h);
+            }
+            h.write_u8(o.width);
+            h.write_u8(o.height);
+            h.write_len(o.blocked.len());
+            for &(a, b) in &o.blocked {
+                h.write_i32(i32::from(a));
+                h.write_i32(i32::from(b));
+            }
+            h.write_bool(o.absolute);
         }
         h.write_len(self.creatures.len());
         for (((c, info), abils), key) in self

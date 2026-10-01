@@ -4,6 +4,8 @@
 id = "duel"
 packs = ["synthetic"]
 profile = "synthetic:faithful"
+terrain = "synthetic:meadow"     # the spearmen (vale) fight on native terrain (BAT-TER-001)
+random_obstacles = true          # generated from the battle seed (BAT-GEO-004)
 
 [[attacker]]
 slot = 0

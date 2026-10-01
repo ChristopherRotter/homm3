@@ -12,6 +12,7 @@ depends = ["base"]
 [[faction]]
 id = "conflux"
 name = "Conflux"
+native_terrain = "base:grass"
 
 [[creature]]
 id = "pixie"  # original id 118

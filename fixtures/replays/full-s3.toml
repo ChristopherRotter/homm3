@@ -848,39 +848,39 @@ commands = [
     "A attack 8 54",
 ]
 checkpoints = [
-    "0x95ffb1f4320f90e5",
-    "0xf42e34a804b2483c",
-    "0x0fe40e6b321d0662",
-    "0x0a91c49b039cd5b3",
-    "0x9aa4fd6dd32a7244",
-    "0xa9c114f13905b1e1",
-    "0x7225ed7dee72fd3c",
-    "0xc954f7de5c9f6c76",
-    "0x74eaadb28735fc66",
-    "0xf868c87ca1340f94",
-    "0x3b27e5680ae25820",
-    "0x4358bd09b3989a37",
-    "0x86d0f1dd72973b22",
-    "0x93edbed8f68f5d7c",
-    "0xf5119b12e50b7b0d",
-    "0xb3dd99adfa5cc960",
-    "0xd12c1739bd8f70cd",
-    "0x68383fe692c389dd",
-    "0xac10b36ad69cf829",
-    "0xc1e0b0061cfe0207",
-    "0xa89db72aac359fd9",
-    "0x16ef13c75bd02ced",
-    "0x6eaa463ecf6a5aba",
-    "0x4a4efea701612424",
-    "0x52630f1a43c491e1",
-    "0xea4b6426b6adaf62",
-    "0x3925bb19c46dadd5",
-    "0x4b17c9e2886791cb",
-    "0xcd148a46d56cb76a",
-    "0x800759a49dd47b64",
-    "0x271d67df5454acf5",
-    "0x3b1e9c0602a543bb",
-    "0xf730cea7a660bfb5",
+    "0xd1d005c9d1c328b2",
+    "0x3c7b5c0183087103",
+    "0x3016aba0e74eca4b",
+    "0xedddfa604225f732",
+    "0x79fd01778000aba1",
+    "0xdb805bcfacf818ce",
+    "0x9f0c939d6d47af7f",
+    "0xf5a998b9752c4917",
+    "0xcbd6d7547ac27d4b",
+    "0x73c0e6ee3ee20357",
+    "0x027eeead4c76ca21",
+    "0x84f393af7482b702",
+    "0xec4b4a16386db41f",
+    "0xfb0973d257c5e37f",
+    "0xde2c09d0e0a823e2",
+    "0xf9ae846b19da990f",
+    "0x4e3bb7e486c24e08",
+    "0x56a22f755b235b5e",
+    "0x369f7b2ab174232a",
+    "0x926689b9b28484bc",
+    "0x649cd359779d326a",
+    "0xba508408e42623c0",
+    "0x6de93bb5174c26ff",
+    "0x7ccc50a0aab3c1ad",
+    "0x976eac7c5eb49a2a",
+    "0x6f79cc086cbebc0f",
+    "0x88e949dcb314836e",
+    "0xc41055f96c3d8cb4",
+    "0xd73e898eff30ecc3",
+    "0x27210e5d5abbb919",
+    "0x2525f141f5fdd422",
+    "0xb249de1b1eb87c24",
+    "0x94b56e0ebf9f4e82",
 ]
 
 [replay]
@@ -893,12 +893,12 @@ packs = [[
     "0.1.0",
 ]]
 profile = "synthetic:faithful"
-ruleset_hash = "0x6ce3b75300c2ff0e"
+ruleset_hash = "0xc9b5d35a47dcaae4"
 rng = "xoshiro256starstar+splitmix64"
 rng_version = 1
 hash = "fnv1a64-le"
 hash_version = 1
-battle_state_hash_version = 5
+battle_state_hash_version = 6
 checkpoint_every = 25
 
 [setup]
@@ -976,4 +976,4 @@ count = 11
 
 [result]
 winner = "attacker"
-final_hash = "0xa4172f106cd74dfe"
+final_hash = "0x9aa4450d3074f19d"

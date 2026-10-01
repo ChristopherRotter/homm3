@@ -3,6 +3,7 @@
 
 use h3_content::{
     Ability, AreaShot, CreatureFlag, CreatureType, CreatureTypeId, MAX_ARMY_SLOTS, Ruleset,
+    TerrainId,
 };
 use h3_contracts::{Army, ArmyStack, BattleOutcome, BattleSetup, BattleSide};
 use h3_kernel::{CanonicalHash, FixedVec, Rng, StateHasher, StreamId};
@@ -11,13 +12,13 @@ use crate::error::SetupError;
 use crate::event::NoopSink;
 use crate::geometry::{Field, Footprint, Hex, HexSet};
 use crate::morale::{self, Modifiers};
-use crate::turn;
+use crate::{terrain, turn};
 
 /// Maximum number of stacks in a battle (both sides).
 pub const STACK_CAPACITY: usize = 2 * MAX_ARMY_SLOTS;
 
 /// Version of the battle-state hash encoding ([`BattleState::state_hash`]). Bump on any change.
-pub const BATTLE_STATE_HASH_VERSION: u32 = 5;
+pub const BATTLE_STATE_HASH_VERSION: u32 = 6;
 
 /// Index of a stack in its battle (attacker stacks first, in slot order, then defender stacks).
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Default)]
@@ -355,6 +356,7 @@ pub struct BattleState {
     pub(crate) winner: Option<BattleSide>,
     pub(crate) modifiers: Modifiers,
     pub(crate) led_by_hero: [bool; 2],
+    pub(crate) terrain: Option<TerrainId>,
     pub(crate) rng: Rng,
 }
 
@@ -406,6 +408,8 @@ impl BattleState {
                 let desired = field.hex(column, i32::from(row)).unwrap_or_default();
                 let abilities = ruleset.abilities(s.creature);
                 let traits = StackTraits::of(creature, abilities);
+                // rule: BAT-TER-001
+                let native = u8::from(terrain::is_native(ruleset, s.creature, setup.terrain));
                 let retaliations = retaliations_per_round(abilities);
                 let two_hex = traits.contains(StackTraits::TWO_HEX);
                 let head = closest_free(field, desired, two_hex, side, taken)
@@ -418,12 +422,12 @@ impl BattleState {
                     count: s.count,
                     base_count: s.count,
                     top_hp: creature.hit_points,
-                    attack: creature.attack,
-                    defense: creature.defense,
+                    attack: creature.attack.saturating_add(native.into()),
+                    defense: creature.defense.saturating_add(native.into()),
                     damage_min: creature.damage_min,
                     damage_max: creature.damage_max,
                     max_hp: creature.hit_points,
-                    speed: creature.speed,
+                    speed: creature.speed.saturating_add(native),
                     shots: creature.shots,
                     retaliations,
                     retaliations_left: retaliations,
@@ -448,6 +452,7 @@ impl BattleState {
             winner: None,
             modifiers: Modifiers::new(),
             led_by_hero: setup.led_by_hero,
+            terrain: setup.terrain,
             rng: Rng::for_stream(seed, StreamId::BATTLE),
         };
         morale::setup(&mut state, ruleset);
@@ -550,9 +555,9 @@ impl BattleState {
     /// Canonical hash of the full state, including hidden parts such as the RNG (desync detection
     /// and replay verification; never sent to untrusted clients, docs/06-security.md).
     ///
-    /// Encoding v5: version, round, active, last side, winner, stacks (each with base count,
-    /// shots, retaliations, morale, luck and traits), obstacles, modifiers, hero flags, RNG
-    /// state.
+    /// Encoding v6: version, round, active, last side, winner, stacks (each with base count,
+    /// shots, retaliations, morale, luck and traits), obstacles, modifiers, hero flags, terrain,
+    /// RNG state.
     pub fn state_hash(&self) -> u64 {
         h3_kernel::hash::hash_of(self)
     }
@@ -614,6 +619,7 @@ impl CanonicalHash for BattleState {
         self.modifiers.hash_into(h);
         h.write_bool(self.led_by_hero[0]);
         h.write_bool(self.led_by_hero[1]);
+        self.terrain.hash_into(h);
         self.rng.hash_into(h);
     }
 }

@@ -39,6 +39,35 @@ pub struct FactionDef {
     pub key: ContentKey,
     /// Display name.
     pub name: String,
+    /// Native terrain of its creatures (BAT-TER-001), if any.
+    pub native_terrain: Option<ContentKey>,
+}
+
+/// A terrain type (E03): battles are fought on one (BAT-TER-001, BAT-GEO-004).
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct TerrainDef {
+    /// Namespaced key.
+    pub key: ContentKey,
+    /// Display name.
+    pub name: String,
+}
+
+/// A battlefield obstacle type (E03, BAT-GEO-004).
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ObstacleDef {
+    /// Namespaced key.
+    pub key: ContentKey,
+    /// Terrains it can appear on (at least one).
+    pub terrains: Vec<ContentKey>,
+    /// Usual obstacles: free hexes needed to the right of its anchor (including it).
+    pub width: u8,
+    /// Usual obstacles: rows needed above its anchor.
+    pub height: u8,
+    /// Blocked hexes: for usual obstacles `(dx, dy)` from the anchor (its bottom-left hex;
+    /// `dy <= 0` is upwards), for absolute ones `(x, y)` on the field.
+    pub blocked: Vec<(i8, i8)>,
+    /// Absolute obstacles have a fixed position and are placed at most once per battle.
+    pub absolute: bool,
 }
 
 /// Non-battle attributes of a creature type (E02 pack format v2). The defaults describe a
@@ -237,6 +266,10 @@ pub struct ContentPack {
     pub resources: Vec<ResourceDef>,
     /// Factions.
     pub factions: Vec<FactionDef>,
+    /// Terrain types.
+    pub terrains: Vec<TerrainDef>,
+    /// Obstacle types.
+    pub obstacles: Vec<ObstacleDef>,
     /// Creature types.
     pub creatures: Vec<CreatureDef>,
     /// Changes to creatures of packs this pack depends on.
@@ -254,6 +287,8 @@ impl ContentPack {
             manifest,
             resources: Vec::new(),
             factions: Vec::new(),
+            terrains: Vec::new(),
+            obstacles: Vec::new(),
             creatures: Vec::new(),
             creature_overrides: Vec::new(),
             profiles: Vec::new(),

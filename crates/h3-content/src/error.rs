@@ -61,6 +61,13 @@ pub enum CompileError {
     DuplicateBattleParams(String),
     /// The battle parameters are invalid.
     InvalidBattleParams(&'static str),
+    /// An obstacle type is invalid.
+    InvalidObstacle {
+        /// The obstacle's key.
+        key: String,
+        /// What is wrong.
+        reason: &'static str,
+    },
     /// The selected profile does not exist.
     UnknownProfile(String),
     /// A profile sets a quirk flag the engine does not know.
@@ -104,6 +111,7 @@ impl fmt::Display for CompileError {
                 write!(f, "pack `{pack}` provides battle parameters a second time")
             }
             Self::InvalidBattleParams(reason) => write!(f, "battle parameters: {reason}"),
+            Self::InvalidObstacle { key, reason } => write!(f, "obstacle `{key}`: {reason}"),
             Self::UnknownProfile(key) => write!(f, "unknown profile `{key}`"),
             Self::UnknownQuirk { profile, flag } => {
                 write!(f, "profile `{profile}` sets unknown quirk flag `{flag}`")

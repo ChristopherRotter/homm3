@@ -31,6 +31,8 @@ pub struct Observation {
     pub obstacles: HexSet,
     /// Which sides are led by a hero (public), indexed by [`BattleSide::index`].
     pub led_by_hero: [bool; 2],
+    /// The battlefield's terrain (public).
+    pub terrain: Option<h3_content::TerrainId>,
 }
 
 /// The observation of `state` for `viewer`.
@@ -44,6 +46,7 @@ pub fn observe(state: &BattleState, viewer: BattleSide) -> Observation {
         stacks: state.stacks,
         obstacles: state.obstacles,
         led_by_hero: state.led_by_hero,
+        terrain: state.terrain,
     }
 }
 
