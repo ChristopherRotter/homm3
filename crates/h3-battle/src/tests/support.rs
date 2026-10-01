@@ -283,7 +283,14 @@ pub const CREATURES: &[Creature] = &[
         0,
         75,
         0,
-        &["two_hex", "war_machine", "no_morale", "first_aid=1:25"],
+        // The minimum morale has no effect (no morale); it puts another ability before first aid.
+        &[
+            "two_hex",
+            "war_machine",
+            "no_morale",
+            "minimum_morale=1",
+            "first_aid=1:25",
+        ],
     ),
     (
         "cart",
