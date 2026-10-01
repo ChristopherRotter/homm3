@@ -1,15 +1,16 @@
 //! The compiled, immutable ruleset (ADR-0006): content packs are validated once and compiled into
 //! dense tables addressed by handles; the hot path never parses or looks up strings.
 
-use alloc::collections::BTreeMap;
+use alloc::collections::{BTreeMap, BTreeSet};
 use alloc::string::String;
 use alloc::vec::Vec;
 
 use h3_kernel::{CanonicalHash, Handle, StateHasher};
 
 use crate::error::CompileError;
+use crate::flags::{CreatureFlag, CreatureFlags};
 use crate::key::{ContentKey, is_valid_part};
-use crate::pack::{BattleParamsDef, ContentPack, CreatureDef};
+use crate::pack::{BattleParamsDef, ContentPack, CreaturePatch};
 use crate::quirks::{QuirkRegistry, Quirks, REGISTRY};
 
 /// Engine limit for army slots per side (the original uses 7, a ruleset parameter). The battle
@@ -20,7 +21,7 @@ pub const MAX_ARMY_SLOTS: usize = 16;
 pub const MAX_FIELD_HEXES: usize = 255;
 
 /// Version of the ruleset hash encoding. Bump when the encoding below changes.
-pub const RULESET_HASH_VERSION: u32 = 1;
+pub const RULESET_HASH_VERSION: u32 = 2;
 
 /// A compiled creature type.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -91,22 +92,141 @@ impl BattleParams {
     }
 }
 
+/// A compiled resource kind.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ResourceInfo {
+    /// Key.
+    pub key: ContentKey,
+    /// Display name.
+    pub name: String,
+}
+
+/// Handle of a resource kind in a [`Ruleset`].
+pub type ResourceId = Handle<ResourceInfo>;
+
+/// A compiled faction.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct FactionInfo {
+    /// Key.
+    pub key: ContentKey,
+    /// Display name.
+    pub name: String,
+}
+
+/// Handle of a faction in a [`Ruleset`].
+pub type FactionId = Handle<FactionInfo>;
+
+/// Compiled non-battle attributes of a creature type (not needed on the battle hot path).
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct CreatureInfo {
+    /// Display name, singular.
+    pub name: String,
+    /// Display name, plural.
+    pub plural: String,
+    /// Faction, `None` for neutral creatures.
+    pub faction: Option<FactionId>,
+    /// Level (≥ 1).
+    pub level: u8,
+    /// Cost per creature, in resource order of the pack (no resource twice).
+    pub cost: Vec<(ResourceId, u32)>,
+    /// Weekly growth.
+    pub growth: u16,
+    /// Extra weekly growth from the horde building.
+    pub horde_growth: u16,
+    /// Fight value.
+    pub fight_value: u32,
+    /// AI value.
+    pub ai_value: u32,
+    /// Ranged shots.
+    pub shots: u16,
+    /// Spell casts per battle.
+    pub casts: u8,
+    /// Adventure-map stack size range `[low, high]`.
+    pub adventure_count: [u16; 2],
+    /// Flags.
+    pub flags: CreatureFlags,
+}
+
 /// The immutable compiled ruleset.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Ruleset {
     packs: Vec<(String, String)>,
     profile: ContentKey,
     quirks: Quirks,
+    resources: Vec<ResourceInfo>,
+    factions: Vec<FactionInfo>,
     creatures: Vec<CreatureType>,
+    creature_info: Vec<CreatureInfo>,
     creature_keys: Vec<ContentKey>,
     creature_index: BTreeMap<String, CreatureTypeId>,
     battle: BattleParams,
     hash: u64,
 }
 
+/// Lookup tables and the dependency closure of the pack being compiled.
+struct Scope<'a> {
+    pack: &'a str,
+    closure: &'a BTreeSet<String>,
+    resources: &'a BTreeMap<String, ResourceId>,
+    factions: &'a BTreeMap<String, FactionId>,
+}
+
+impl Scope<'_> {
+    /// Checks that `key` belongs to a pack in the closure and resolves it in `index`.
+    fn resolve<T>(
+        &self,
+        key: &ContentKey,
+        index: &BTreeMap<String, Handle<T>>,
+        kind: &'static str,
+    ) -> Result<Handle<T>, CompileError> {
+        if !self.closure.contains(key.pack()) {
+            return Err(CompileError::ReferenceOutsideDependencies {
+                key: String::from(key.as_str()),
+                pack: String::from(self.pack),
+            });
+        }
+        index
+            .get(key.as_str())
+            .copied()
+            .ok_or_else(|| CompileError::UnknownReference {
+                kind,
+                key: String::from(key.as_str()),
+            })
+    }
+
+    fn faction(&self, key: Option<&ContentKey>) -> Result<Option<FactionId>, CompileError> {
+        key.map(|k| self.resolve(k, self.factions, "faction"))
+            .transpose()
+    }
+
+    fn cost(&self, cost: &[(ContentKey, u32)]) -> Result<Vec<(ResourceId, u32)>, CompileError> {
+        let mut out: Vec<(ResourceId, u32)> = Vec::with_capacity(cost.len());
+        for (key, amount) in cost {
+            let id = self.resolve(key, self.resources, "resource")?;
+            if out.iter().any(|(r, _)| *r == id) {
+                return Err(CompileError::DuplicateKey(String::from(key.as_str())));
+            }
+            out.push((id, *amount));
+        }
+        Ok(out)
+    }
+}
+
+/// Resolves creature flag names.
+fn flags(names: &[String]) -> Result<CreatureFlags, CompileError> {
+    names
+        .iter()
+        .try_fold(CreatureFlags::default(), |set, name| {
+            CreatureFlag::from_name(name)
+                .map(|f| set.with(f))
+                .ok_or_else(|| CompileError::UnknownFlag(name.clone()))
+        })
+}
+
 impl Ruleset {
-    /// Compiles `packs` (in load order) with the profile `profile` (a `pack:name` key), using the
-    /// engine's quirk registry.
+    /// Compiles the enabled `packs` (in any order) with the profile `profile` (a `pack:name`
+    /// key), using the engine's quirk registry. Packs are loaded in dependency order (ADR-0006,
+    /// E02 amendment).
     pub fn compile(packs: &[ContentPack], profile: &str) -> Result<Self, CompileError> {
         Self::compile_with(packs, profile, &REGISTRY)
     }
@@ -117,44 +237,101 @@ impl Ruleset {
         profile: &str,
         registry: &QuirkRegistry,
     ) -> Result<Self, CompileError> {
-        let mut pack_ids: Vec<(String, String)> = Vec::new();
-        for pack in packs {
-            let id = &pack.manifest.id;
-            if !is_valid_part(id) {
-                return Err(CompileError::InvalidPackId(id.clone()));
-            }
-            if pack_ids.iter().any(|(p, _)| p == id) {
-                return Err(CompileError::DuplicatePack(id.clone()));
-            }
-            for dep in &pack.manifest.depends {
-                if !pack_ids.iter().any(|(p, _)| p == dep) {
-                    return Err(CompileError::MissingDependency {
-                        pack: id.clone(),
-                        depends: dep.clone(),
-                    });
-                }
-            }
-            pack_ids.push((id.clone(), pack.manifest.version.clone()));
-        }
+        let (order, closures) = load_order(packs)?;
+        let pack_ids: Vec<(String, String)> = order
+            .iter()
+            .map(|p| (p.manifest.id.clone(), p.manifest.version.clone()))
+            .collect();
 
+        let mut resources: Vec<ResourceInfo> = Vec::new();
+        let mut resource_index = BTreeMap::new();
+        let mut factions: Vec<FactionInfo> = Vec::new();
+        let mut faction_index = BTreeMap::new();
         let mut creatures = Vec::new();
-        let mut creature_keys = Vec::new();
+        let mut creature_info = Vec::new();
+        let mut creature_keys: Vec<ContentKey> = Vec::new();
         let mut creature_index = BTreeMap::new();
         let mut battle_def: Option<&BattleParamsDef> = None;
-        for pack in packs {
+        for (pack, closure) in order.iter().zip(&closures) {
             let id = &pack.manifest.id;
+            for def in &pack.resources {
+                check_namespace(&def.key, id)?;
+                let handle = ResourceId::from_index(resources.len())
+                    .ok_or(CompileError::TooManyEntries("resource"))?;
+                insert_unique(&mut resource_index, &def.key, handle)?;
+                resources.push(ResourceInfo {
+                    key: def.key.clone(),
+                    name: def.name.clone(),
+                });
+            }
+            for def in &pack.factions {
+                check_namespace(&def.key, id)?;
+                let handle = FactionId::from_index(factions.len())
+                    .ok_or(CompileError::TooManyEntries("faction"))?;
+                insert_unique(&mut faction_index, &def.key, handle)?;
+                factions.push(FactionInfo {
+                    key: def.key.clone(),
+                    name: def.name.clone(),
+                });
+            }
+            let scope = Scope {
+                pack: id,
+                closure,
+                resources: &resource_index,
+                factions: &faction_index,
+            };
             for def in &pack.creatures {
                 check_namespace(&def.key, id)?;
                 let handle = CreatureTypeId::from_index(creatures.len())
                     .ok_or(CompileError::TooManyCreatures)?;
-                if creature_index
-                    .insert(String::from(def.key.as_str()), handle)
-                    .is_some()
-                {
-                    return Err(CompileError::DuplicateKey(String::from(def.key.as_str())));
-                }
-                creatures.push(compile_creature(def)?);
+                insert_unique(&mut creature_index, &def.key, handle)?;
+                creatures.push(CreatureType {
+                    attack: def.attack,
+                    defense: def.defense,
+                    damage_min: def.damage_min,
+                    damage_max: def.damage_max,
+                    hit_points: def.hit_points,
+                    speed: def.speed,
+                });
+                let info = &def.info;
+                creature_info.push(CreatureInfo {
+                    name: info.name.clone(),
+                    plural: info.plural.clone(),
+                    faction: scope.faction(info.faction.as_ref())?,
+                    level: info.level,
+                    cost: scope.cost(&info.cost)?,
+                    growth: info.growth,
+                    horde_growth: info.horde_growth,
+                    fight_value: info.fight_value,
+                    ai_value: info.ai_value,
+                    shots: info.shots,
+                    casts: info.casts,
+                    adventure_count: info.adventure_count,
+                    flags: flags(&info.flags)?,
+                });
                 creature_keys.push(def.key.clone());
+            }
+            for o in &pack.creature_overrides {
+                let target = String::from(o.target.as_str());
+                let handle = creature_index.get(&target).copied().ok_or_else(|| {
+                    CompileError::UnknownReference {
+                        kind: "creature",
+                        key: target.clone(),
+                    }
+                })?;
+                if !closure.contains(o.target.pack()) {
+                    return Err(CompileError::ReferenceOutsideDependencies {
+                        key: target,
+                        pack: id.clone(),
+                    });
+                }
+                // Handles come from `creature_index`, which only holds pushed positions, so the
+                // lookup always succeeds.
+                creatures
+                    .get_mut(handle.index())
+                    .zip(creature_info.get_mut(handle.index()))
+                    .map(|(stats, info)| apply_patch(&o.patch, stats, info, &scope))
+                    .transpose()?;
             }
             if let Some(b) = &pack.battle {
                 if battle_def.is_some() {
@@ -163,10 +340,13 @@ impl Ruleset {
                 battle_def = Some(b);
             }
         }
+        for ((stats, info), key) in creatures.iter().zip(&creature_info).zip(&creature_keys) {
+            validate_creature(key, stats, info)?;
+        }
         let battle = compile_battle(battle_def.ok_or(CompileError::MissingBattleParams)?)?;
 
         let mut profiles = BTreeMap::new();
-        for pack in packs {
+        for pack in &order {
             for p in &pack.profiles {
                 check_namespace(&p.key, &pack.manifest.id)?;
                 if profiles.insert(p.key.as_str(), p).is_some() {
@@ -192,7 +372,10 @@ impl Ruleset {
             packs: pack_ids,
             profile: selected.key.clone(),
             quirks,
+            resources,
+            factions,
             creatures,
+            creature_info,
             creature_keys,
             creature_index,
             battle,
@@ -205,6 +388,11 @@ impl Ruleset {
     /// The creature type behind a handle, if it belongs to this ruleset.
     pub fn creature(&self, id: CreatureTypeId) -> Option<&CreatureType> {
         self.creatures.get(id.index())
+    }
+
+    /// Non-battle attributes of a creature type.
+    pub fn creature_info(&self, id: CreatureTypeId) -> Option<&CreatureInfo> {
+        self.creature_info.get(id.index())
     }
 
     /// The key of a creature type.
@@ -220,6 +408,16 @@ impl Ruleset {
     /// Number of creature types.
     pub fn creature_count(&self) -> usize {
         self.creatures.len()
+    }
+
+    /// Resource kinds, in load order (a [`ResourceId`] indexes this slice).
+    pub fn resources(&self) -> &[ResourceInfo] {
+        &self.resources
+    }
+
+    /// Factions, in load order (a [`FactionId`] indexes this slice).
+    pub fn factions(&self) -> &[FactionInfo] {
+        &self.factions
     }
 
     /// Battle parameters.
@@ -249,6 +447,119 @@ impl Ruleset {
     }
 }
 
+/// Validates the pack set and returns the load order with each pack's dependency closure
+/// (itself included). Order: dependencies first; among packs whose dependencies are loaded, the
+/// smallest id first (a unique tie-break, so the order is deterministic).
+fn load_order(
+    packs: &[ContentPack],
+) -> Result<(Vec<&ContentPack>, Vec<BTreeSet<String>>), CompileError> {
+    let mut by_id: BTreeMap<&str, &ContentPack> = BTreeMap::new();
+    for pack in packs {
+        let id = pack.manifest.id.as_str();
+        if !is_valid_part(id) {
+            return Err(CompileError::InvalidPackId(String::from(id)));
+        }
+        if by_id.insert(id, pack).is_some() {
+            return Err(CompileError::DuplicatePack(String::from(id)));
+        }
+    }
+    for pack in packs {
+        for dep in &pack.manifest.depends {
+            if !by_id.contains_key(dep.as_str()) {
+                return Err(CompileError::MissingDependency {
+                    pack: pack.manifest.id.clone(),
+                    depends: dep.clone(),
+                });
+            }
+        }
+    }
+    let mut order: Vec<&ContentPack> = Vec::with_capacity(packs.len());
+    let mut closures: Vec<BTreeSet<String>> = Vec::with_capacity(packs.len());
+    let mut done: BTreeMap<&str, usize> = BTreeMap::new();
+    while order.len() < by_id.len() {
+        let next = by_id.iter().find(|(id, pack)| {
+            !done.contains_key(*id)
+                && pack
+                    .manifest
+                    .depends
+                    .iter()
+                    .all(|d| done.contains_key(d.as_str()))
+        });
+        let Some((&id, &pack)) = next else {
+            let stuck = by_id.keys().find(|id| !done.contains_key(*id));
+            return Err(CompileError::DependencyCycle(String::from(
+                stuck.copied().unwrap_or_default(),
+            )));
+        };
+        let mut closure = BTreeSet::new();
+        closure.insert(String::from(id));
+        // Every dependency is in `done` here (that is how `pack` was chosen).
+        let dep_closures: Vec<&BTreeSet<String>> = pack
+            .manifest
+            .depends
+            .iter()
+            .filter_map(|d| done.get(d.as_str()).and_then(|&i| closures.get(i)))
+            .collect();
+        for dep_closure in dep_closures {
+            closure.extend(dep_closure.iter().cloned());
+        }
+        done.insert(id, order.len());
+        order.push(pack);
+        closures.push(closure);
+    }
+    Ok((order, closures))
+}
+
+fn insert_unique<T>(
+    index: &mut BTreeMap<String, Handle<T>>,
+    key: &ContentKey,
+    handle: Handle<T>,
+) -> Result<(), CompileError> {
+    if index.insert(String::from(key.as_str()), handle).is_some() {
+        return Err(CompileError::DuplicateKey(String::from(key.as_str())));
+    }
+    Ok(())
+}
+
+fn apply_patch(
+    p: &CreaturePatch,
+    stats: &mut CreatureType,
+    info: &mut CreatureInfo,
+    scope: &Scope<'_>,
+) -> Result<(), CompileError> {
+    fn set<T: Clone>(field: &mut T, value: Option<&T>) {
+        if let Some(v) = value {
+            *field = v.clone();
+        }
+    }
+    set(&mut stats.attack, p.attack.as_ref());
+    set(&mut stats.defense, p.defense.as_ref());
+    set(&mut stats.damage_min, p.damage_min.as_ref());
+    set(&mut stats.damage_max, p.damage_max.as_ref());
+    set(&mut stats.hit_points, p.hit_points.as_ref());
+    set(&mut stats.speed, p.speed.as_ref());
+    set(&mut info.name, p.name.as_ref());
+    set(&mut info.plural, p.plural.as_ref());
+    if let Some(faction) = &p.faction {
+        info.faction = scope.faction(faction.as_ref())?;
+    }
+    set(&mut info.level, p.level.as_ref());
+    if let Some(cost) = &p.cost {
+        info.cost = scope.cost(cost)?;
+    }
+    set(&mut info.growth, p.growth.as_ref());
+    set(&mut info.horde_growth, p.horde_growth.as_ref());
+    set(&mut info.fight_value, p.fight_value.as_ref());
+    set(&mut info.ai_value, p.ai_value.as_ref());
+    set(&mut info.shots, p.shots.as_ref());
+    set(&mut info.casts, p.casts.as_ref());
+    set(&mut info.adventure_count, p.adventure_count.as_ref());
+    if let Some(names) = &p.flags {
+        info.flags = flags(names)?;
+    }
+    Ok(())
+}
+
 fn check_namespace(key: &ContentKey, pack: &str) -> Result<(), CompileError> {
     if key.pack() == pack {
         Ok(())
@@ -260,31 +571,36 @@ fn check_namespace(key: &ContentKey, pack: &str) -> Result<(), CompileError> {
     }
 }
 
-fn compile_creature(def: &CreatureDef) -> Result<CreatureType, CompileError> {
-    let invalid = |reason| CompileError::InvalidCreature {
-        key: String::from(def.key.as_str()),
-        reason,
+fn validate_creature(
+    key: &ContentKey,
+    def: &CreatureType,
+    info: &CreatureInfo,
+) -> Result<(), CompileError> {
+    let invalid = |reason| {
+        Err(CompileError::InvalidCreature {
+            key: String::from(key.as_str()),
+            reason,
+        })
     };
     if def.damage_min == 0 {
-        return Err(invalid("damage_min must be at least 1"));
+        return invalid("damage_min must be at least 1");
     }
     if def.damage_max < def.damage_min {
-        return Err(invalid("damage_max must not be below damage_min"));
+        return invalid("damage_max must not be below damage_min");
     }
     if def.hit_points == 0 {
-        return Err(invalid("hit_points must be at least 1"));
+        return invalid("hit_points must be at least 1");
     }
     if def.speed == 0 {
-        return Err(invalid("speed must be at least 1"));
+        return invalid("speed must be at least 1");
     }
-    Ok(CreatureType {
-        attack: def.attack,
-        defense: def.defense,
-        damage_min: def.damage_min,
-        damage_max: def.damage_max,
-        hit_points: def.hit_points,
-        speed: def.speed,
-    })
+    if info.level == 0 {
+        return invalid("level must be at least 1");
+    }
+    if info.adventure_count[1] < info.adventure_count[0] {
+        return invalid("adventure_count high must not be below low");
+    }
+    Ok(())
 }
 
 fn compile_battle(def: &BattleParamsDef) -> Result<BattleParams, CompileError> {
@@ -345,8 +661,10 @@ fn compile_battle(def: &BattleParamsDef) -> Result<BattleParams, CompileError> {
 }
 
 impl CanonicalHash for Ruleset {
-    /// Encoding v1: version, packs (id, version), profile key, quirk bits, creatures (key + stats in
-    /// field order), battle parameters in field order with the full formation table.
+    /// Encoding v2: version, packs (id, version) in load order, profile key, quirk bits,
+    /// resources and factions (key, name), creatures (key, stats in field order, then the info
+    /// fields in field order; a faction as presence flag + handle, the cost as length + pairs),
+    /// battle parameters in field order with the full formation table.
     fn hash_into(&self, h: &mut StateHasher) {
         h.write_u32(RULESET_HASH_VERSION);
         h.write_len(self.packs.len());
@@ -356,8 +674,23 @@ impl CanonicalHash for Ruleset {
         }
         self.profile.as_str().hash_into(h);
         h.write_u64(self.quirks.bits());
+        h.write_len(self.resources.len());
+        for r in &self.resources {
+            r.key.as_str().hash_into(h);
+            r.name.as_str().hash_into(h);
+        }
+        h.write_len(self.factions.len());
+        for f in &self.factions {
+            f.key.as_str().hash_into(h);
+            f.name.as_str().hash_into(h);
+        }
         h.write_len(self.creatures.len());
-        for (c, key) in self.creatures.iter().zip(&self.creature_keys) {
+        for ((c, info), key) in self
+            .creatures
+            .iter()
+            .zip(&self.creature_info)
+            .zip(&self.creature_keys)
+        {
             key.as_str().hash_into(h);
             h.write_u16(c.attack);
             h.write_u16(c.defense);
@@ -365,6 +698,25 @@ impl CanonicalHash for Ruleset {
             h.write_u16(c.damage_max);
             h.write_u32(c.hit_points);
             h.write_u8(c.speed);
+            info.name.as_str().hash_into(h);
+            info.plural.as_str().hash_into(h);
+            h.write_bool(info.faction.is_some());
+            h.write_u16(info.faction.map_or(0, Handle::raw));
+            h.write_u8(info.level);
+            h.write_len(info.cost.len());
+            for (r, amount) in &info.cost {
+                h.write_u16(r.raw());
+                h.write_u32(*amount);
+            }
+            h.write_u16(info.growth);
+            h.write_u16(info.horde_growth);
+            h.write_u32(info.fight_value);
+            h.write_u32(info.ai_value);
+            h.write_u16(info.shots);
+            h.write_u8(info.casts);
+            h.write_u16(info.adventure_count[0]);
+            h.write_u16(info.adventure_count[1]);
+            h.write_u32(info.flags.bits());
         }
         let b = &self.battle;
         h.write_u8(b.field.width);

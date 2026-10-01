@@ -79,8 +79,13 @@ than creatures/factions/resources unless E03 needs them (heroes, spells, artifac
   tests on arbitrary/mutated input. Checked against the real files: every entry of both bitmap
   LODs (4 908 + 2 491) inflates to its declared size, all 71 tables of each parse, `CRTRAITS` is
   185 records × 25 fields, the exe table yields 150 records.
-- **T3 Pack format v2 + compiler**: enabled-pack configuration, dependency graph, overrides, new
-  fields, factions/resources; synthetic packs; tests per rule.
+- **T3 Pack format v2 + compiler** ✅ 2026-10-01: enabled packs in any order, dependency graph
+  (missing dependency, cycles), topological load order with pack-id tie-break, dependency
+  closures for references and overrides, resources/factions, all creature fields, closed creature
+  flag set, partial overrides; ruleset hash encoding v2; `packs/synthetic` extended and
+  `packs/synthetic-ext` added; format in `packs/README.md`. Golden replays re-recorded (only the
+  ruleset hash in their headers changed; all state hashes identical). Profile-level Tier-2
+  overrides are still deferred (backlog).
 - **T4 `h3-harvest` + gap-fill file**: generate and commit `base`, `ab`, `sod`.
 - **T5 Conformance + closing**: `--with-original-data` re-harvest check, HANDOFF, refine E03 with
   the real data (abilities list, flags).

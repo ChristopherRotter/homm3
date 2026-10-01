@@ -6,7 +6,8 @@ use std::vec;
 use std::vec::Vec;
 
 use h3_content::{
-    BattleParamsDef, ContentKey, ContentPack, CreatureDef, PackManifest, ProfileDef, Ruleset,
+    BattleParamsDef, ContentKey, ContentPack, CreatureDef, CreatureInfoDef, PackManifest,
+    ProfileDef, Ruleset,
 };
 use h3_contracts::{Army, ArmyStack, BattleSetup, BattleSide};
 
@@ -63,21 +64,22 @@ pub fn ruleset() -> Ruleset {
                 damage_max,
                 hit_points,
                 speed,
+                info: CreatureInfoDef::default(),
             },
         )
         .collect();
     let pack = ContentPack {
-        manifest: PackManifest {
-            id: String::from("t"),
-            version: String::from("1"),
-            depends: vec![],
-        },
         creatures,
         profiles: vec![ProfileDef {
             key: ContentKey::new("t", "faithful").unwrap(),
             quirks: vec![],
         }],
         battle: Some(battle_params()),
+        ..ContentPack::new(PackManifest {
+            id: String::from("t"),
+            version: String::from("1"),
+            depends: vec![],
+        })
     };
     Ruleset::compile(&[pack], "t:faithful").unwrap()
 }

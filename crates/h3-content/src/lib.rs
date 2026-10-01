@@ -21,16 +21,21 @@
 extern crate alloc;
 
 mod error;
+mod flags;
 mod key;
 mod pack;
 mod quirks;
 mod ruleset;
 
 pub use error::CompileError;
+pub use flags::{CreatureFlag, CreatureFlags};
 pub use key::{ContentKey, KeyError};
-pub use pack::{BattleParamsDef, ContentPack, CreatureDef, PackManifest, ProfileDef};
+pub use pack::{
+    BattleParamsDef, ContentPack, CreatureDef, CreatureInfoDef, CreatureOverride, CreaturePatch,
+    FactionDef, PackManifest, ProfileDef, ResourceDef,
+};
 pub use quirks::{QuirkFlag, QuirkRegistry, Quirks, REGISTRY};
 pub use ruleset::{
-    BattleParams, CreatureType, CreatureTypeId, FieldParams, MAX_ARMY_SLOTS, MAX_FIELD_HEXES,
-    RULESET_HASH_VERSION, Ruleset,
+    BattleParams, CreatureInfo, CreatureType, CreatureTypeId, FactionId, FactionInfo, FieldParams,
+    MAX_ARMY_SLOTS, MAX_FIELD_HEXES, RULESET_HASH_VERSION, ResourceId, ResourceInfo, Ruleset,
 };

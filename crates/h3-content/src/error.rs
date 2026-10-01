@@ -10,13 +10,15 @@ pub enum CompileError {
     InvalidPackId(String),
     /// Two packs share an id.
     DuplicatePack(String),
-    /// A pack depends on a pack that is not loaded before it.
+    /// A pack depends on a pack that is not enabled.
     MissingDependency {
         /// The depending pack.
         pack: String,
         /// The missing dependency.
         depends: String,
     },
+    /// The dependencies of the enabled packs form a cycle; the payload is one pack on it.
+    DependencyCycle(String),
     /// A pack defines content outside its own namespace.
     KeyOutsidePack {
         /// The offending key.
@@ -35,6 +37,24 @@ pub enum CompileError {
     },
     /// More creature types than handles can address.
     TooManyCreatures,
+    /// More entries of a kind (`resource`, `faction`) than handles can address.
+    TooManyEntries(&'static str),
+    /// A reference (faction, resource, override target) names a key that is not defined.
+    UnknownReference {
+        /// What kind of entity was expected.
+        kind: &'static str,
+        /// The key.
+        key: String,
+    },
+    /// A pack refers to (or overrides) content of a pack outside its dependency closure.
+    ReferenceOutsideDependencies {
+        /// The referenced key.
+        key: String,
+        /// The referring pack.
+        pack: String,
+    },
+    /// A creature names a flag the engine does not know.
+    UnknownFlag(String),
     /// No pack provides battle parameters.
     MissingBattleParams,
     /// More than one pack provides battle parameters.
@@ -60,8 +80,11 @@ impl fmt::Display for CompileError {
             Self::MissingDependency { pack, depends } => {
                 write!(
                     f,
-                    "pack `{pack}` depends on `{depends}`, which is not loaded before it"
+                    "pack `{pack}` depends on `{depends}`, which is not enabled"
                 )
+            }
+            Self::DependencyCycle(pack) => {
+                write!(f, "pack dependencies form a cycle through `{pack}`")
             }
             Self::KeyOutsidePack { key, pack } => {
                 write!(f, "pack `{pack}` defines `{key}` outside its namespace")
@@ -69,6 +92,13 @@ impl fmt::Display for CompileError {
             Self::DuplicateKey(key) => write!(f, "`{key}` is defined twice"),
             Self::InvalidCreature { key, reason } => write!(f, "creature `{key}`: {reason}"),
             Self::TooManyCreatures => f.write_str("too many creature types"),
+            Self::TooManyEntries(kind) => write!(f, "too many {kind} entries"),
+            Self::UnknownReference { kind, key } => write!(f, "unknown {kind} `{key}`"),
+            Self::ReferenceOutsideDependencies { key, pack } => write!(
+                f,
+                "pack `{pack}` refers to `{key}`, which is not in its dependencies"
+            ),
+            Self::UnknownFlag(name) => write!(f, "unknown creature flag `{name}`"),
             Self::MissingBattleParams => f.write_str("no pack provides battle parameters"),
             Self::DuplicateBattleParams(pack) => {
                 write!(f, "pack `{pack}` provides battle parameters a second time")

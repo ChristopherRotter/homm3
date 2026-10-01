@@ -9,14 +9,17 @@ use std::collections::BTreeMap;
 use std::fmt;
 
 use h3_content::{
-    BattleParamsDef, CompileError, ContentKey, ContentPack, CreatureDef, KeyError, PackManifest,
-    ProfileDef, Ruleset,
+    BattleParamsDef, CompileError, ContentKey, ContentPack, CreatureDef, CreatureInfoDef,
+    CreatureOverride, CreaturePatch, FactionDef, KeyError, PackManifest, ProfileDef, ResourceDef,
+    Ruleset,
 };
 use h3_contracts::{Army, ArmyStack, BattleSetup};
 use serde::Deserialize;
 
 /// The synthetic content pack shipped with the repo (tests, benchmarks, FFI smoke, replays).
 pub const SYNTHETIC_PACK: &str = include_str!("../../../packs/synthetic/pack.toml");
+/// Synthetic expansion pack (depends on the synthetic pack; dependencies and overrides).
+pub const SYNTHETIC_EXT_PACK: &str = include_str!("../../../packs/synthetic-ext/pack.toml");
 /// Synthetic scenario: three stacks per side.
 pub const SYNTHETIC_SKIRMISH: &str =
     include_str!("../../../packs/synthetic/scenarios/skirmish.toml");
@@ -69,9 +72,22 @@ struct PackFile {
     pack: ManifestDto,
     battle: Option<BattleDto>,
     #[serde(default)]
+    resource: Vec<NamedDto>,
+    #[serde(default)]
+    faction: Vec<NamedDto>,
+    #[serde(default)]
     creature: Vec<CreatureDto>,
     #[serde(default)]
+    creature_override: Vec<OverrideDto>,
+    #[serde(default)]
     profile: Vec<ProfileDto>,
+}
+
+#[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
+struct NamedDto {
+    id: String,
+    name: String,
 }
 
 #[derive(Deserialize)]
@@ -109,6 +125,76 @@ struct CreatureDto {
     damage: [u16; 2],
     hit_points: u32,
     speed: u8,
+    #[serde(default)]
+    name: String,
+    #[serde(default)]
+    plural: String,
+    faction: Option<String>,
+    #[serde(default = "default_level")]
+    level: u8,
+    #[serde(default)]
+    cost: BTreeMap<String, u32>,
+    #[serde(default)]
+    growth: u16,
+    #[serde(default)]
+    horde_growth: u16,
+    #[serde(default)]
+    fight_value: u32,
+    #[serde(default)]
+    ai_value: u32,
+    #[serde(default)]
+    shots: u16,
+    #[serde(default)]
+    casts: u8,
+    #[serde(default)]
+    adventure_count: [u16; 2],
+    #[serde(default)]
+    flags: Vec<String>,
+}
+
+fn default_level() -> u8 {
+    1
+}
+
+/// `[[creature_override]]`: every field but `target` is optional. `faction = ""` makes the
+/// creature neutral.
+#[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
+struct OverrideDto {
+    target: String,
+    attack: Option<u16>,
+    defense: Option<u16>,
+    damage: Option<[u16; 2]>,
+    hit_points: Option<u32>,
+    speed: Option<u8>,
+    name: Option<String>,
+    plural: Option<String>,
+    faction: Option<String>,
+    level: Option<u8>,
+    cost: Option<BTreeMap<String, u32>>,
+    growth: Option<u16>,
+    horde_growth: Option<u16>,
+    fight_value: Option<u32>,
+    ai_value: Option<u32>,
+    shots: Option<u16>,
+    casts: Option<u8>,
+    adventure_count: Option<[u16; 2]>,
+    flags: Option<Vec<String>>,
+}
+
+/// Resolves a reference: `name` means `<own pack>:name`, `pack:name` is taken as written.
+fn reference(pack: &str, text: &str) -> Result<ContentKey, KeyError> {
+    if text.contains(':') {
+        ContentKey::parse(text)
+    } else {
+        ContentKey::new(pack, text)
+    }
+}
+
+fn cost(pack: &str, cost: BTreeMap<String, u32>) -> Result<Vec<(ContentKey, u32)>, KeyError> {
+    cost.into_iter()
+        .map(|(k, v)| Ok((reference(pack, &k)?, v)))
+        .collect()
 }
 
 #[derive(Deserialize)]
@@ -123,6 +209,20 @@ struct ProfileDto {
 pub fn parse_pack(text: &str) -> Result<ContentPack, PackError> {
     let file: PackFile = toml::from_str(text).map_err(|e| PackError::Syntax(e.to_string()))?;
     let pack_id = file.pack.id;
+    let named = |items: Vec<NamedDto>| {
+        items
+            .into_iter()
+            .map(|n| Ok((ContentKey::new(&pack_id, &n.id)?, n.name)))
+            .collect::<Result<Vec<_>, KeyError>>()
+    };
+    let resources = named(file.resource)?
+        .into_iter()
+        .map(|(key, name)| ResourceDef { key, name })
+        .collect();
+    let factions = named(file.faction)?
+        .into_iter()
+        .map(|(key, name)| FactionDef { key, name })
+        .collect();
     let creatures = file
         .creature
         .into_iter()
@@ -135,6 +235,55 @@ pub fn parse_pack(text: &str) -> Result<ContentPack, PackError> {
                 damage_max: c.damage[1],
                 hit_points: c.hit_points,
                 speed: c.speed,
+                info: CreatureInfoDef {
+                    name: c.name,
+                    plural: c.plural,
+                    faction: c.faction.map(|f| reference(&pack_id, &f)).transpose()?,
+                    level: c.level,
+                    cost: cost(&pack_id, c.cost)?,
+                    growth: c.growth,
+                    horde_growth: c.horde_growth,
+                    fight_value: c.fight_value,
+                    ai_value: c.ai_value,
+                    shots: c.shots,
+                    casts: c.casts,
+                    adventure_count: c.adventure_count,
+                    flags: c.flags,
+                },
+            })
+        })
+        .collect::<Result<Vec<_>, PackError>>()?;
+    let creature_overrides = file
+        .creature_override
+        .into_iter()
+        .map(|o| {
+            let faction = o
+                .faction
+                .map(|f| (!f.is_empty()).then(|| reference(&pack_id, &f)).transpose())
+                .transpose()?;
+            Ok(CreatureOverride {
+                target: ContentKey::parse(&o.target)?,
+                patch: CreaturePatch {
+                    attack: o.attack,
+                    defense: o.defense,
+                    damage_min: o.damage.map(|d| d[0]),
+                    damage_max: o.damage.map(|d| d[1]),
+                    hit_points: o.hit_points,
+                    speed: o.speed,
+                    name: o.name,
+                    plural: o.plural,
+                    faction,
+                    level: o.level,
+                    cost: o.cost.map(|c| cost(&pack_id, c)).transpose()?,
+                    growth: o.growth,
+                    horde_growth: o.horde_growth,
+                    fight_value: o.fight_value,
+                    ai_value: o.ai_value,
+                    shots: o.shots,
+                    casts: o.casts,
+                    adventure_count: o.adventure_count,
+                    flags: o.flags,
+                },
             })
         })
         .collect::<Result<Vec<_>, PackError>>()?;
@@ -168,7 +317,10 @@ pub fn parse_pack(text: &str) -> Result<ContentPack, PackError> {
             version: file.pack.version,
             depends: file.pack.depends,
         },
+        resources,
+        factions,
         creatures,
+        creature_overrides,
         profiles,
         battle,
     })
@@ -205,7 +357,7 @@ struct StackDto {
 pub struct ScenarioDef {
     /// Scenario id.
     pub id: String,
-    /// Pack ids to load, in load order.
+    /// Ids of the enabled packs (any order; the compiler loads dependencies first).
     pub packs: Vec<String>,
     /// Profile key the scenario is meant to run with.
     pub profile: String,
@@ -258,7 +410,7 @@ pub fn parse_scenario(text: &str) -> Result<ScenarioDef, PackError> {
     })
 }
 
-/// Parses and compiles packs (in load order) with a profile.
+/// Parses and compiles the enabled packs (any order) with a profile.
 pub fn compile(pack_texts: &[&str], profile: &str) -> Result<Ruleset, PackError> {
     let packs = pack_texts
         .iter()
@@ -367,6 +519,100 @@ mod tests {
         assert_eq!(empty.id, "e");
         assert!(empty.packs.is_empty());
         assert_eq!(parse_scenario(SYNTHETIC_DUEL).unwrap().packs, ["synthetic"]);
+    }
+
+    #[test]
+    fn format_v2_fields_and_expansion_packs() {
+        let base = compile(&[SYNTHETIC_PACK], "synthetic:faithful").unwrap();
+        assert_eq!(base.resources().len(), 2);
+        assert_eq!(base.factions()[0].name, "Vale");
+        let brute = base.creature_by_key("synthetic:brute").unwrap();
+        let info = base.creature_info(brute).unwrap();
+        assert_eq!(
+            (info.name.as_str(), info.plural.as_str()),
+            ("Brute", "Brutes")
+        );
+        assert_eq!(info.level, 2);
+        // Cost entries come in key order (`coin` before `shard`).
+        let costs: Vec<(&str, u32)> = info
+            .cost
+            .iter()
+            .map(|(r, n)| (base.resources()[r.index()].key.as_str(), *n))
+            .collect();
+        assert_eq!(costs, [("synthetic:coin", 120), ("synthetic:shard", 1)]);
+        assert!(info.flags.contains(h3_content::CreatureFlag::TwoHex));
+        let wisp = base.creature_by_key("synthetic:wisp").unwrap();
+        assert_eq!(base.creature_info(wisp).unwrap().faction, None);
+
+        // The expansion may be listed first; the compiler loads its dependency first.
+        let both = compile(&[SYNTHETIC_EXT_PACK, SYNTHETIC_PACK], "synthetic:faithful").unwrap();
+        let ids: Vec<&str> = both.packs().iter().map(|(id, _)| id.as_str()).collect();
+        assert_eq!(ids, ["synthetic", "synthetic-ext"]);
+        assert_eq!(both.creature_count(), 4);
+        let wisp_info = both.creature_info(wisp).unwrap();
+        let marsh = wisp_info.faction.unwrap();
+        assert_eq!(
+            both.factions()[marsh.index()].key.as_str(),
+            "synthetic-ext:marsh"
+        );
+        assert_eq!(wisp_info.level, 2);
+        let brute_info = both.creature_info(brute).unwrap();
+        assert_eq!((brute_info.growth, brute_info.horde_growth), (8, 3));
+        assert_eq!(brute_info.cost[0].1, 110);
+        // Battle stats are untouched by these overrides.
+        assert_eq!(both.creature(brute), base.creature(brute));
+
+        // The expansion alone is rejected: its dependency is not enabled.
+        assert_eq!(
+            compile(&[SYNTHETIC_EXT_PACK], "synthetic:faithful"),
+            Err(PackError::Compile(CompileError::MissingDependency {
+                pack: "synthetic-ext".into(),
+                depends: "synthetic".into()
+            }))
+        );
+    }
+
+    #[test]
+    fn override_syntax() {
+        let with = |extra: &str| std::format!("{SYNTHETIC_EXT_PACK}\n{extra}");
+        let full = with(
+            "[[creature_override]]\ntarget = \"synthetic:spearman\"\nattack = 9\ndefense = 9\n\
+             damage = [2, 6]\nhit_points = 12\nspeed = 5\nname = \"Pike\"\nplural = \"Pikes\"\n\
+             faction = \"\"\nshots = 1\ncasts = 2\nhorde_growth = 1\nfight_value = 1\n\
+             ai_value = 2\nadventure_count = [1, 2]\nflags = [\"undead\"]\n",
+        );
+        let r = compile(&[SYNTHETIC_PACK, &full], "synthetic:faithful").unwrap();
+        let id = r.creature_by_key("synthetic:spearman").unwrap();
+        let stats = r.creature(id).unwrap();
+        assert_eq!(
+            (
+                stats.attack,
+                stats.damage_min,
+                stats.damage_max,
+                stats.speed
+            ),
+            (9, 2, 6, 5)
+        );
+        let info = r.creature_info(id).unwrap();
+        assert_eq!(info.faction, None); // `faction = ""` makes it neutral
+        assert_eq!((info.name.as_str(), info.shots, info.casts), ("Pike", 1, 2));
+        assert!(info.flags.contains(h3_content::CreatureFlag::Undead));
+
+        let bad_target = with("[[creature_override]]\ntarget = \"spearman\"\n");
+        assert!(matches!(parse_pack(&bad_target), Err(PackError::Key(_))));
+        let bad_ref =
+            with("[[creature_override]]\ntarget = \"synthetic:spearman\"\nfaction = \"A:b\"\n");
+        assert!(matches!(parse_pack(&bad_ref), Err(PackError::Key(_))));
+        let bad_cost =
+            with("[[creature_override]]\ntarget = \"synthetic:spearman\"\ncost = { \"X\" = 1 }\n");
+        assert!(matches!(parse_pack(&bad_cost), Err(PackError::Key(_))));
+        let bad_resource = SYNTHETIC_PACK.replace("id = \"coin\"", "id = \"Coin\"");
+        assert!(matches!(parse_pack(&bad_resource), Err(PackError::Key(_))));
+        let bad_flag = SYNTHETIC_PACK.replace("flags = [\"alive\"]", "flags = [\"swims\"]");
+        assert!(matches!(
+            compile(&[&bad_flag], "synthetic:faithful"),
+            Err(PackError::Compile(CompileError::UnknownFlag(_)))
+        ));
     }
 
     #[test]

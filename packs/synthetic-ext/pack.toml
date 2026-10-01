@@ -1,0 +1,40 @@
+# Synthetic expansion pack (E02 pack format v2): exercises dependencies and overrides the way the
+# harvested `ab` and `sod` packs do. Invented names and numbers.
+
+[pack]
+id = "synthetic-ext"
+version = "0.1.0"
+depends = ["synthetic"]
+
+[[faction]]
+id = "marsh"
+name = "Marsh"
+
+[[creature]]
+id = "lurker"
+name = "Lurker"
+plural = "Lurkers"
+faction = "marsh"
+level = 3
+attack = 6
+defense = 6
+damage = [3, 4]
+hit_points = 20
+speed = 6
+cost = { "synthetic:coin" = 200 }
+growth = 5
+fight_value = 300
+ai_value = 310
+adventure_count = [8, 16]
+flags = ["alive"]
+
+# Changes to creatures of the base pack: only the listed fields change.
+[[creature_override]]
+target = "synthetic:wisp"
+faction = "marsh"           # the expansion adopts a neutral creature
+level = 2
+
+[[creature_override]]
+target = "synthetic:brute"
+growth = 8
+cost = { "synthetic:coin" = 110, "synthetic:shard" = 1 }

@@ -5,7 +5,11 @@ use std::vec;
 use std::vec::Vec;
 
 use super::*;
-use crate::pack::{PackManifest, ProfileDef};
+use crate::flags::CreatureFlag;
+use crate::pack::{
+    CreatureDef, CreatureInfoDef, CreatureOverride, FactionDef, PackManifest, ProfileDef,
+    ResourceDef,
+};
 use crate::quirks::QuirkRegistry;
 
 fn key(s: &str) -> ContentKey {
@@ -21,6 +25,7 @@ fn creature(k: &str) -> CreatureDef {
         damage_max: 3,
         hit_points: 10,
         speed: 5,
+        info: CreatureInfoDef::default(),
     }
 }
 
@@ -41,6 +46,28 @@ fn battle_def() -> BattleParamsDef {
     }
 }
 
+fn manifest(id: &str, depends: &[&str]) -> PackManifest {
+    PackManifest {
+        id: id.into(),
+        version: "1".into(),
+        depends: depends.iter().map(|d| (*d).into()).collect(),
+    }
+}
+
+fn resource(k: &str) -> ResourceDef {
+    ResourceDef {
+        key: key(k),
+        name: "R".into(),
+    }
+}
+
+fn faction(k: &str) -> FactionDef {
+    FactionDef {
+        key: key(k),
+        name: "F".into(),
+    }
+}
+
 fn base() -> ContentPack {
     ContentPack {
         manifest: PackManifest {
@@ -48,7 +75,10 @@ fn base() -> ContentPack {
             version: "1".into(),
             depends: vec![],
         },
+        resources: vec![resource("base:wood"), resource("base:gold")],
+        factions: vec![faction("base:castle")],
         creatures: vec![creature("base:a"), creature("base:b")],
+        creature_overrides: vec![],
         profiles: vec![
             ProfileDef {
                 key: key("base:faithful"),
@@ -71,8 +101,7 @@ fn ext() -> ContentPack {
             depends: vec!["base".into()],
         },
         creatures: vec![creature("ext:c")],
-        profiles: vec![],
-        battle: None,
+        ..ContentPack::new(manifest("ext", &[]))
     }
 }
 
@@ -146,7 +175,7 @@ fn hash_is_stable_and_sensitive() {
     );
 }
 
-const GOLDEN_BASE_HASH: u64 = 0x6ca4_e8e6_7843_ae40;
+const GOLDEN_BASE_HASH: u64 = 0x8f01_a9ac_8314_51d2;
 
 fn expect(packs: &[ContentPack], profile: &str) -> CompileError {
     Ruleset::compile(packs, profile).unwrap_err()
@@ -165,7 +194,7 @@ fn pack_level_errors() {
         CompileError::DuplicatePack("base".into())
     );
     assert_eq!(
-        expect(&[ext(), base()], "base:faithful"),
+        expect(&[ext()], "base:faithful"),
         CompileError::MissingDependency {
             pack: "ext".into(),
             depends: "base".into()
@@ -345,7 +374,7 @@ fn error_messages() {
                 pack: "a".into(),
                 depends: "b".into(),
             },
-            "pack `a` depends on `b`, which is not loaded before it",
+            "pack `a` depends on `b`, which is not enabled",
         ),
         (
             CompileError::KeyOutsidePack {
@@ -366,6 +395,32 @@ fn error_messages() {
             "creature `a:x`: bad",
         ),
         (CompileError::TooManyCreatures, "too many creature types"),
+        (
+            CompileError::DependencyCycle("a".into()),
+            "pack dependencies form a cycle through `a`",
+        ),
+        (
+            CompileError::TooManyEntries("resource"),
+            "too many resource entries",
+        ),
+        (
+            CompileError::UnknownReference {
+                kind: "faction",
+                key: "a:f".into(),
+            },
+            "unknown faction `a:f`",
+        ),
+        (
+            CompileError::ReferenceOutsideDependencies {
+                key: "b:x".into(),
+                pack: "a".into(),
+            },
+            "pack `a` refers to `b:x`, which is not in its dependencies",
+        ),
+        (
+            CompileError::UnknownFlag("swims".into()),
+            "unknown creature flag `swims`",
+        ),
         (
             CompileError::MissingBattleParams,
             "no pack provides battle parameters",
@@ -393,4 +448,400 @@ fn error_messages() {
     for (err, text) in cases {
         assert_eq!(err.to_string(), text);
     }
+}
+
+// ---- E02 pack format v2: load order, references, creature info, overrides ----
+
+#[test]
+fn load_order_is_topological_with_pack_id_tie_break() {
+    let first = ContentPack::new(manifest("aaa", &[]));
+    let r = Ruleset::compile(&[ext(), base(), first], "base:faithful").unwrap();
+    let ids: Vec<&str> = r.packs().iter().map(|(id, _)| id.as_str()).collect();
+    assert_eq!(ids, ["aaa", "base", "ext"]);
+    // The handle order follows the load order, not the argument order.
+    assert_eq!(r.creature_by_key("base:a").unwrap().raw(), 0);
+    assert_eq!(r.creature_by_key("ext:c").unwrap().raw(), 2);
+    // A dependency chain: `z` depends on `ext`, which depends on `base`.
+    let z = ContentPack::new(manifest("z", &["ext"]));
+    let r = Ruleset::compile(&[z, ext(), base()], "base:faithful").unwrap();
+    let ids: Vec<&str> = r.packs().iter().map(|(id, _)| id.as_str()).collect();
+    assert_eq!(ids, ["base", "ext", "z"]);
+}
+
+#[test]
+fn dependency_cycles_are_rejected() {
+    let a = ContentPack::new(manifest("a", &["b"]));
+    let b = ContentPack::new(manifest("b", &["a"]));
+    assert_eq!(
+        expect(&[base(), a, b], "base:faithful"),
+        CompileError::DependencyCycle("a".into())
+    );
+    let selfish = ContentPack::new(manifest("s", &["s"]));
+    assert_eq!(
+        expect(&[base(), selfish], "base:faithful"),
+        CompileError::DependencyCycle("s".into())
+    );
+}
+
+fn rich_base() -> ContentPack {
+    let mut p = base();
+    let info = &mut p.creatures[0].info;
+    info.name = "Alpha".into();
+    info.plural = "Alphas".into();
+    info.faction = Some(key("base:castle"));
+    info.level = 3;
+    info.cost = vec![(key("base:gold"), 60), (key("base:wood"), 1)];
+    info.growth = 14;
+    info.horde_growth = 4;
+    info.fight_value = 100;
+    info.ai_value = 80;
+    info.shots = 12;
+    info.casts = 1;
+    info.adventure_count = [20, 50];
+    info.flags = vec!["flying".into(), "two_hex".into()];
+    p
+}
+
+#[test]
+fn resources_factions_and_creature_info_compile() {
+    let r = Ruleset::compile(&[rich_base()], "base:faithful").unwrap();
+    assert_eq!(r.resources().len(), 2);
+    assert_eq!(r.resources()[1].key.as_str(), "base:gold");
+    assert_eq!(r.resources()[1].name, "R");
+    assert_eq!(r.factions()[0].key.as_str(), "base:castle");
+    assert_eq!(r.factions()[0].name, "F");
+    let a = r.creature_by_key("base:a").unwrap();
+    let info = r.creature_info(a).unwrap();
+    assert_eq!(
+        (info.name.as_str(), info.plural.as_str()),
+        ("Alpha", "Alphas")
+    );
+    assert_eq!(info.faction, Some(FactionId::from_raw(0)));
+    assert_eq!(info.level, 3);
+    assert_eq!(
+        info.cost,
+        vec![(ResourceId::from_raw(1), 60), (ResourceId::from_raw(0), 1)]
+    );
+    assert_eq!((info.growth, info.horde_growth), (14, 4));
+    assert_eq!((info.fight_value, info.ai_value), (100, 80));
+    assert_eq!(
+        (info.shots, info.casts, info.adventure_count),
+        (12, 1, [20, 50])
+    );
+    assert!(info.flags.contains(CreatureFlag::Flying));
+    assert!(info.flags.contains(CreatureFlag::TwoHex));
+    assert!(!info.flags.contains(CreatureFlag::Undead));
+    let b = r
+        .creature_info(r.creature_by_key("base:b").unwrap())
+        .unwrap();
+    assert_eq!(b.faction, None);
+    assert_eq!(b.level, 1);
+    assert_eq!(r.creature_info(CreatureTypeId::from_raw(9)), None);
+    // Info fields are part of the content hash.
+    let plain = Ruleset::compile(&[base()], "base:faithful").unwrap();
+    assert_ne!(plain.content_hash(), r.content_hash());
+}
+
+#[test]
+fn reference_errors() {
+    type Edit = fn(&mut CreatureInfoDef);
+    let cases: [(Edit, CompileError); 4] = [
+        (
+            |i| i.faction = Some(key("base:rampart")),
+            CompileError::UnknownReference {
+                kind: "faction",
+                key: "base:rampart".into(),
+            },
+        ),
+        (
+            |i| i.cost = vec![(key("base:ore"), 1)],
+            CompileError::UnknownReference {
+                kind: "resource",
+                key: "base:ore".into(),
+            },
+        ),
+        (
+            |i| i.cost = vec![(key("base:gold"), 1), (key("base:gold"), 2)],
+            CompileError::DuplicateKey("base:gold".into()),
+        ),
+        (
+            |i| i.flags = vec!["flying".into(), "swims".into()],
+            CompileError::UnknownFlag("swims".into()),
+        ),
+    ];
+    for (edit, err) in cases {
+        let mut p = base();
+        edit(&mut p.creatures[0].info);
+        assert_eq!(expect(&[p], "base:faithful"), err);
+    }
+    // A pack may only refer to content of its dependency closure, even if the other pack is
+    // enabled and loaded before it.
+    let mut stranger = ContentPack::new(manifest("stranger", &[]));
+    let mut c = creature("stranger:x");
+    c.info.faction = Some(key("base:castle"));
+    stranger.creatures.push(c);
+    assert_eq!(
+        expect(&[base(), stranger.clone()], "base:faithful"),
+        CompileError::ReferenceOutsideDependencies {
+            key: "base:castle".into(),
+            pack: "stranger".into()
+        }
+    );
+    stranger.creatures[0].info.faction = None;
+    stranger.creatures[0].info.cost = vec![(key("base:gold"), 1)];
+    assert_eq!(
+        expect(&[base(), stranger], "base:faithful"),
+        CompileError::ReferenceOutsideDependencies {
+            key: "base:gold".into(),
+            pack: "stranger".into()
+        }
+    );
+}
+
+#[test]
+fn resource_and_faction_keys_are_checked() {
+    let mut p = base();
+    p.resources.push(resource("base:gold"));
+    assert_eq!(
+        expect(&[p], "base:faithful"),
+        CompileError::DuplicateKey("base:gold".into())
+    );
+    let mut p = base();
+    p.factions.push(faction("base:castle"));
+    assert_eq!(
+        expect(&[p], "base:faithful"),
+        CompileError::DuplicateKey("base:castle".into())
+    );
+    let mut p = ext();
+    p.resources.push(resource("base:ore"));
+    assert_eq!(
+        expect(&[base(), p], "base:faithful"),
+        CompileError::KeyOutsidePack {
+            key: "base:ore".into(),
+            pack: "ext".into()
+        }
+    );
+    let mut p = ext();
+    p.factions.push(faction("base:tower"));
+    assert_eq!(
+        expect(&[base(), p], "base:faithful"),
+        CompileError::KeyOutsidePack {
+            key: "base:tower".into(),
+            pack: "ext".into()
+        }
+    );
+}
+
+#[test]
+fn too_many_resources_and_factions() {
+    let n = u32::from(u16::MAX) + 1;
+    let mut p = base();
+    p.resources = (0..=n)
+        .map(|i| resource(&std::format!("base:r{i}")))
+        .collect();
+    assert_eq!(
+        expect(&[p], "base:faithful"),
+        CompileError::TooManyEntries("resource")
+    );
+    let mut p = base();
+    p.factions = (0..=n)
+        .map(|i| faction(&std::format!("base:f{i}")))
+        .collect();
+    assert_eq!(
+        expect(&[p], "base:faithful"),
+        CompileError::TooManyEntries("faction")
+    );
+}
+
+#[test]
+fn info_validation() {
+    let mut p = base();
+    p.creatures[0].info.level = 0;
+    assert_eq!(
+        expect(&[p], "base:faithful"),
+        CompileError::InvalidCreature {
+            key: "base:a".into(),
+            reason: "level must be at least 1"
+        }
+    );
+    let mut p = base();
+    p.creatures[0].info.adventure_count = [5, 4];
+    assert_eq!(
+        expect(&[p], "base:faithful"),
+        CompileError::InvalidCreature {
+            key: "base:a".into(),
+            reason: "adventure_count high must not be below low"
+        }
+    );
+}
+
+fn full_patch() -> CreaturePatch {
+    CreaturePatch {
+        attack: Some(9),
+        defense: Some(8),
+        damage_min: Some(2),
+        damage_max: Some(7),
+        hit_points: Some(30),
+        speed: Some(11),
+        name: Some("Beta".into()),
+        plural: Some("Betas".into()),
+        faction: Some(Some(key("base:castle"))),
+        level: Some(6),
+        cost: Some(vec![(key("base:gold"), 3000), (key("ext:gems"), 1)]),
+        growth: Some(2),
+        horde_growth: Some(1),
+        fight_value: Some(5000),
+        ai_value: Some(6000),
+        shots: Some(24),
+        casts: Some(3),
+        adventure_count: Some([4, 10]),
+        flags: Some(vec!["undead".into()]),
+    }
+}
+
+fn overriding(target: &str, patch: CreaturePatch) -> ContentPack {
+    let mut p = ext();
+    p.resources.push(resource("ext:gems"));
+    p.creature_overrides.push(CreatureOverride {
+        target: key(target),
+        patch,
+    });
+    p
+}
+
+#[test]
+fn overrides_change_only_the_listed_fields() {
+    let before = Ruleset::compile(&[rich_base()], "base:faithful").unwrap();
+    // An empty patch changes nothing.
+    let r = Ruleset::compile(
+        &[rich_base(), overriding("base:a", CreaturePatch::default())],
+        "base:faithful",
+    )
+    .unwrap();
+    let a = r.creature_by_key("base:a").unwrap();
+    assert_eq!(r.creature(a), before.creature(a));
+    assert_eq!(r.creature_info(a), before.creature_info(a));
+    // A full patch changes everything.
+    let r = Ruleset::compile(
+        &[rich_base(), overriding("base:a", full_patch())],
+        "base:faithful",
+    )
+    .unwrap();
+    let stats = r.creature(a).unwrap();
+    assert_eq!(
+        (
+            stats.attack,
+            stats.defense,
+            stats.damage_min,
+            stats.damage_max
+        ),
+        (9, 8, 2, 7)
+    );
+    assert_eq!((stats.hit_points, stats.speed), (30, 11));
+    let info = r.creature_info(a).unwrap();
+    assert_eq!(
+        (info.name.as_str(), info.plural.as_str()),
+        ("Beta", "Betas")
+    );
+    assert_eq!(info.faction, Some(FactionId::from_raw(0)));
+    assert_eq!(info.level, 6);
+    assert_eq!(
+        info.cost,
+        vec![
+            (ResourceId::from_raw(1), 3000),
+            (ResourceId::from_raw(2), 1)
+        ]
+    );
+    assert_eq!((info.growth, info.horde_growth), (2, 1));
+    assert_eq!((info.fight_value, info.ai_value), (5000, 6000));
+    assert_eq!(
+        (info.shots, info.casts, info.adventure_count),
+        (24, 3, [4, 10])
+    );
+    assert!(info.flags.contains(CreatureFlag::Undead));
+    assert!(!info.flags.contains(CreatureFlag::Flying));
+    // `Some(None)` makes a creature neutral.
+    let neutral = CreaturePatch {
+        faction: Some(None),
+        ..CreaturePatch::default()
+    };
+    let r = Ruleset::compile(
+        &[rich_base(), overriding("base:a", neutral)],
+        "base:faithful",
+    )
+    .unwrap();
+    assert_eq!(r.creature_info(a).unwrap().faction, None);
+}
+
+#[test]
+fn override_errors() {
+    assert_eq!(
+        expect(
+            &[base(), overriding("base:zzz", CreaturePatch::default())],
+            "base:faithful"
+        ),
+        CompileError::UnknownReference {
+            kind: "creature",
+            key: "base:zzz".into()
+        }
+    );
+    // `abc` is enabled and loads before `ext` (id order), but is not a dependency of `ext`.
+    let mut other = ContentPack::new(manifest("abc", &[]));
+    other.creatures.push(creature("abc:o"));
+    assert_eq!(
+        expect(
+            &[base(), other, overriding("abc:o", CreaturePatch::default())],
+            "base:faithful"
+        ),
+        CompileError::ReferenceOutsideDependencies {
+            key: "abc:o".into(),
+            pack: "ext".into()
+        }
+    );
+    // References inside a patch are resolved in the overriding pack's scope.
+    let bad_faction = CreaturePatch {
+        faction: Some(Some(key("ext:nowhere"))),
+        ..CreaturePatch::default()
+    };
+    assert_eq!(
+        expect(
+            &[base(), overriding("base:a", bad_faction)],
+            "base:faithful"
+        ),
+        CompileError::UnknownReference {
+            kind: "faction",
+            key: "ext:nowhere".into()
+        }
+    );
+    let bad_cost = CreaturePatch {
+        cost: Some(vec![(key("ext:nothing"), 1)]),
+        ..CreaturePatch::default()
+    };
+    assert!(matches!(
+        expect(&[base(), overriding("base:a", bad_cost)], "base:faithful"),
+        CompileError::UnknownReference {
+            kind: "resource",
+            ..
+        }
+    ));
+    let bad_flag = CreaturePatch {
+        flags: Some(vec!["swims".into()]),
+        ..CreaturePatch::default()
+    };
+    assert_eq!(
+        expect(&[base(), overriding("base:a", bad_flag)], "base:faithful"),
+        CompileError::UnknownFlag("swims".into())
+    );
+    // The patched creature is validated like a definition.
+    let broken = CreaturePatch {
+        hit_points: Some(0),
+        ..CreaturePatch::default()
+    };
+    assert_eq!(
+        expect(&[base(), overriding("base:a", broken)], "base:faithful"),
+        CompileError::InvalidCreature {
+            key: "base:a".into(),
+            reason: "hit_points must be at least 1"
+        }
+    );
 }

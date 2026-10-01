@@ -16,8 +16,80 @@ pub struct PackManifest {
     pub id: String,
     /// Free-form version string, recorded in the ruleset identity.
     pub version: String,
-    /// Ids of packs that must be loaded before this one.
+    /// Ids of packs this pack requires. They must be enabled too; the compiler orders packs so
+    /// that dependencies load first (ADR-0006, E02 amendment).
     pub depends: Vec<String>,
+}
+
+/// A resource kind (gold, wood, …). Resource kinds are data, not a fixed enum (ADR-0006
+/// guardrails).
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ResourceDef {
+    /// Namespaced key.
+    pub key: ContentKey,
+    /// Display name.
+    pub name: String,
+}
+
+/// A faction (town type). Creatures refer to it; towns come later (E09).
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct FactionDef {
+    /// Namespaced key.
+    pub key: ContentKey,
+    /// Display name.
+    pub name: String,
+}
+
+/// Non-battle attributes of a creature type (E02 pack format v2). The defaults describe a
+/// neutral, free, level-1 creature without flags.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct CreatureInfoDef {
+    /// Display name, singular.
+    pub name: String,
+    /// Display name, plural.
+    pub plural: String,
+    /// Faction, `None` for neutral creatures.
+    pub faction: Option<ContentKey>,
+    /// Level (1 = lowest dwelling tier).
+    pub level: u8,
+    /// Recruitment cost per creature: `(resource, amount)`.
+    pub cost: Vec<(ContentKey, u32)>,
+    /// Weekly growth of the basic dwelling.
+    pub growth: u16,
+    /// Extra weekly growth from the horde building.
+    pub horde_growth: u16,
+    /// Fight value (original table column; used for army strength estimates).
+    pub fight_value: u32,
+    /// AI value (original table column).
+    pub ai_value: u32,
+    /// Ranged shots (0 = not a shooter by ammunition).
+    pub shots: u16,
+    /// Spell casts per battle.
+    pub casts: u8,
+    /// Size range of a wandering stack on the adventure map, `[low, high]`.
+    pub adventure_count: [u16; 2],
+    /// Creature flags by name, from the closed set [`crate::CreatureFlag`].
+    pub flags: Vec<String>,
+}
+
+impl Default for CreatureInfoDef {
+    fn default() -> Self {
+        Self {
+            name: String::new(),
+            plural: String::new(),
+            faction: None,
+            level: 1,
+            cost: Vec::new(),
+            growth: 0,
+            horde_growth: 0,
+            fight_value: 0,
+            ai_value: 0,
+            shots: 0,
+            casts: 0,
+            adventure_count: [0, 0],
+            flags: Vec::new(),
+        }
+    }
 }
 
 /// A creature type definition.
@@ -37,6 +109,62 @@ pub struct CreatureDef {
     pub hit_points: u32,
     /// Speed (hexes per turn; also initiative).
     pub speed: u8,
+    /// Non-battle attributes.
+    pub info: CreatureInfoDef,
+}
+
+/// A partial change to a creature defined by a pack in the overriding pack's dependency closure
+/// (e.g. SoD changing an AB creature).
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct CreatureOverride {
+    /// Key of the creature to change (`pack:name`).
+    pub target: ContentKey,
+    /// The fields to change.
+    pub patch: CreaturePatch,
+}
+
+/// The changed fields of a [`CreatureOverride`]. `None` fields stay as they are; list fields
+/// replace the whole list.
+#[derive(Debug, Clone, PartialEq, Eq, Default)]
+pub struct CreaturePatch {
+    /// New attack.
+    pub attack: Option<u16>,
+    /// New defense.
+    pub defense: Option<u16>,
+    /// New minimum damage.
+    pub damage_min: Option<u16>,
+    /// New maximum damage.
+    pub damage_max: Option<u16>,
+    /// New hit points.
+    pub hit_points: Option<u32>,
+    /// New speed.
+    pub speed: Option<u8>,
+    /// New singular name.
+    pub name: Option<String>,
+    /// New plural name.
+    pub plural: Option<String>,
+    /// New faction; `Some(None)` makes the creature neutral.
+    pub faction: Option<Option<ContentKey>>,
+    /// New level.
+    pub level: Option<u8>,
+    /// New cost (replaces the whole list).
+    pub cost: Option<Vec<(ContentKey, u32)>>,
+    /// New growth.
+    pub growth: Option<u16>,
+    /// New horde growth.
+    pub horde_growth: Option<u16>,
+    /// New fight value.
+    pub fight_value: Option<u32>,
+    /// New AI value.
+    pub ai_value: Option<u32>,
+    /// New shots.
+    pub shots: Option<u16>,
+    /// New casts.
+    pub casts: Option<u8>,
+    /// New adventure-map count range.
+    pub adventure_count: Option<[u16; 2]>,
+    /// New flags (replaces the whole list).
+    pub flags: Option<Vec<String>>,
 }
 
 /// Battle parameters (Tier 2). Exactly one pack in a ruleset provides them.
@@ -83,10 +211,31 @@ pub struct ProfileDef {
 pub struct ContentPack {
     /// Identity and dependencies.
     pub manifest: PackManifest,
+    /// Resource kinds.
+    pub resources: Vec<ResourceDef>,
+    /// Factions.
+    pub factions: Vec<FactionDef>,
     /// Creature types.
     pub creatures: Vec<CreatureDef>,
+    /// Changes to creatures of packs this pack depends on.
+    pub creature_overrides: Vec<CreatureOverride>,
     /// Profiles.
     pub profiles: Vec<ProfileDef>,
     /// Battle parameters, if this pack provides them.
     pub battle: Option<BattleParamsDef>,
+}
+
+impl ContentPack {
+    /// An empty pack with the given manifest.
+    pub fn new(manifest: PackManifest) -> Self {
+        Self {
+            manifest,
+            resources: Vec::new(),
+            factions: Vec::new(),
+            creatures: Vec::new(),
+            creature_overrides: Vec::new(),
+            profiles: Vec::new(),
+            battle: None,
+        }
+    }
 }
