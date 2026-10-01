@@ -181,6 +181,22 @@ impl<C> Ability<C> {
         }
     }
 
+    /// For morale and luck auras, a key that is equal exactly for equal aura values (kind,
+    /// amount, affected side): auras with equal keys do not stack (BAT-MOR-001, BAT-LCK-001).
+    pub const fn aura_key(&self) -> Option<u32> {
+        let (amount, affects) = match self {
+            Self::MoraleAura { amount, affects } | Self::LuckAura { amount, affects } => {
+                (*amount, *affects)
+            }
+            _ => return None,
+        };
+        let side = match affects {
+            AuraTarget::Allies => 0,
+            AuraTarget::Enemies => 1,
+        };
+        Some((self.code() as u32) << 16 | side << 8 | amount as u8 as u32)
+    }
+
     /// The name used in packs.
     pub fn name(&self) -> &'static str {
         Self::NAMES[usize::from(self.code())]

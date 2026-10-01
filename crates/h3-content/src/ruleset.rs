@@ -22,7 +22,7 @@ pub const MAX_ARMY_SLOTS: usize = 16;
 pub const MAX_FIELD_HEXES: usize = 255;
 
 /// Version of the ruleset hash encoding. Bump when the encoding below changes.
-pub const RULESET_HASH_VERSION: u32 = 4;
+pub const RULESET_HASH_VERSION: u32 = 5;
 
 /// A compiled creature type.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -59,6 +59,38 @@ pub struct FieldParams {
     pub side_columns: u8,
 }
 
+/// Most distinct morale/luck aura values (kind, amount, affected side) in a ruleset; sizes the
+/// battle's modifier pool (ADR-0012 §3).
+pub const MAX_AURA_VALUES: usize = 8;
+
+/// Most levels of a morale or luck roll table.
+pub const MAX_ROLL_LEVELS: usize = 8;
+
+/// Chances of a morale or luck roll by level: level `l` (1-based) triggers with
+/// `chance(l)` out of the die's sides (Tier 2).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub struct RollTable {
+    len: u8,
+    chances: [u8; MAX_ROLL_LEVELS],
+}
+
+impl RollTable {
+    /// The highest level (the number of entries).
+    pub const fn levels(&self) -> u8 {
+        self.len
+    }
+
+    /// The chance of level `level` (1-based, capped at the highest level), or 0 for level 0.
+    pub fn chance(&self, level: u8) -> u8 {
+        let i = usize::from(level.min(self.len));
+        // `i <= len <= MAX_ROLL_LEVELS`; level 0 has no entry.
+        i.checked_sub(1)
+            .and_then(|i| self.chances.get(i))
+            .copied()
+            .unwrap_or(0)
+    }
+}
+
 /// Compiled battle parameters (Tier 2).
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct BattleParams {
@@ -86,6 +118,17 @@ pub struct BattleParams {
     pub ranged_penalty_percent: u8,
     /// Damage reduction of shooters' melee strikes, percent (BAT-RNG-003).
     pub melee_penalty_percent: u8,
+    /// Sides of the morale die (≥ 1).
+    pub morale_dice: u8,
+    /// Good-morale chances by morale level; morale is at most `levels()` (BAT-MOR-001/003).
+    pub good_morale: RollTable,
+    /// Bad-morale chances by negative morale level; morale is at least `-levels()`
+    /// (BAT-MOR-001/004).
+    pub bad_morale: RollTable,
+    /// Sides of the luck die (≥ 1).
+    pub luck_dice: u8,
+    /// Lucky-strike chances by luck level; luck is at most `levels()` (BAT-LCK-001/002).
+    pub good_luck: RollTable,
     formation: [[u8; MAX_ARMY_SLOTS]; MAX_ARMY_SLOTS],
 }
 
@@ -393,6 +436,15 @@ impl Ruleset {
                     return Err(CompileError::DuplicateKey(String::from(p.key.as_str())));
                 }
             }
+        }
+        // Battle modifier pools are sized by the number of distinct aura values (ADR-0012 §3).
+        let auras: BTreeSet<u32> = creature_abilities
+            .iter()
+            .flatten()
+            .filter_map(Ability::aura_key)
+            .collect();
+        if auras.len() > MAX_AURA_VALUES {
+            return Err(CompileError::TooManyEntries("distinct aura"));
         }
         let selected = profiles
             .get(profile)
@@ -705,6 +757,28 @@ fn compile_battle(def: &BattleParamsDef) -> Result<BattleParams, CompileError> {
     if def.ranged_penalty_percent > 100 || def.melee_penalty_percent > 100 {
         return invalid("ranged and melee penalties must not exceed 100 percent");
     }
+    let table = |dice: u8, chances: &[u8]| -> Result<RollTable, CompileError> {
+        if dice == 0 {
+            return Err(CompileError::InvalidBattleParams(
+                "morale_dice and luck_dice must be at least 1",
+            ));
+        }
+        if chances.len() > MAX_ROLL_LEVELS || chances.iter().any(|&c| c > dice) {
+            return Err(CompileError::InvalidBattleParams(
+                "morale and luck chances: at most 8 levels, each at most the die's sides",
+            ));
+        }
+        let mut t = RollTable::default();
+        for (slot, &c) in t.chances.iter_mut().zip(chances) {
+            *slot = c;
+        }
+        // `chances.len() <= MAX_ROLL_LEVELS`.
+        t.len = u8::try_from(chances.len()).unwrap_or(0);
+        Ok(t)
+    };
+    let good_morale = table(def.morale_dice, &def.good_morale_chances)?;
+    let bad_morale = table(def.morale_dice, &def.bad_morale_chances)?;
+    let good_luck = table(def.luck_dice, &def.good_luck_chances)?;
     if def.formation.len() != slots {
         return invalid("formation needs one entry per army size 1..=army_slots");
     }
@@ -740,6 +814,11 @@ fn compile_battle(def: &BattleParamsDef) -> Result<BattleParams, CompileError> {
         ranged_full_damage_distance: def.ranged_full_damage_distance,
         ranged_penalty_percent: def.ranged_penalty_percent,
         melee_penalty_percent: def.melee_penalty_percent,
+        morale_dice: def.morale_dice,
+        good_morale,
+        bad_morale,
+        luck_dice: def.luck_dice,
+        good_luck,
         formation,
     })
 }
@@ -749,8 +828,9 @@ impl CanonicalHash for Ruleset {
     /// resources and factions (key, name), creatures (key, stats in field order including shots
     /// and flag bits, then the info fields in field order — a faction as presence flag + handle,
     /// the cost as length + pairs — then the abilities as length + each ability's encoding),
-    /// battle parameters in field order (v4: with the ranged/melee penalty parameters) with the
-    /// full formation table.
+    /// battle parameters in field order (v4: with the ranged/melee penalty parameters; v5: with
+    /// the morale and luck dice and tables, each table as length + all 8 entries) with the full
+    /// formation table.
     fn hash_into(&self, h: &mut StateHasher) {
         h.write_u32(RULESET_HASH_VERSION);
         h.write_len(self.packs.len());
@@ -824,6 +904,14 @@ impl CanonicalHash for Ruleset {
         h.write_u8(b.ranged_full_damage_distance);
         h.write_u8(b.ranged_penalty_percent);
         h.write_u8(b.melee_penalty_percent);
+        h.write_u8(b.morale_dice);
+        for t in [&b.good_morale, &b.bad_morale] {
+            h.write_u8(t.len);
+            h.write_bytes(&t.chances);
+        }
+        h.write_u8(b.luck_dice);
+        h.write_u8(b.good_luck.len);
+        h.write_bytes(&b.good_luck.chances);
         for row in &b.formation {
             h.write_bytes(row);
         }

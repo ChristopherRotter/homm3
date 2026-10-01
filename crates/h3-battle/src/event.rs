@@ -18,7 +18,8 @@ pub enum Visibility {
     Side(BattleSide),
 }
 
-/// How a strike happened (BAT-ATK-001/003, BAT-RET-001, BAT-RNG-001/004, BAT-DMG-007).
+/// How a strike happened (BAT-ATK-001/003, BAT-RET-001, BAT-RNG-001/004, BAT-DMG-007,
+/// BAT-LCK-002).
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub struct StrikeFlags(u8);
 
@@ -33,6 +34,8 @@ impl StrikeFlags {
     pub const SECONDARY: Self = Self(1 << 2);
     /// A death blow: +100 % base damage (BAT-DMG-007).
     pub const DEATH_BLOW: Self = Self(1 << 3);
+    /// A lucky strike: +100 % base damage (BAT-LCK-002).
+    pub const LUCKY: Self = Self(1 << 4);
 
     /// Whether all flags of `other` are set.
     pub const fn contains(self, other: Self) -> bool {
@@ -120,6 +123,16 @@ pub enum EventKind {
         stack: StackId,
         /// Hit points regained.
         hit_points: u32,
+    },
+    /// Good morale: the stack that just acted gets another turn (BAT-MOR-003).
+    GoodMorale {
+        /// The stack.
+        stack: StackId,
+    },
+    /// Bad morale: the stack freezes and loses its turn (BAT-MOR-004).
+    BadMorale {
+        /// The stack.
+        stack: StackId,
     },
     /// The battle ended (BAT-END-001).
     BattleEnded {

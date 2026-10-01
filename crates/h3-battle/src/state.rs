@@ -8,14 +8,16 @@ use h3_contracts::{Army, ArmyStack, BattleOutcome, BattleSetup, BattleSide};
 use h3_kernel::{CanonicalHash, FixedVec, Rng, StateHasher, StreamId};
 
 use crate::error::SetupError;
+use crate::event::NoopSink;
 use crate::geometry::{Field, Footprint, Hex, HexSet};
+use crate::morale::{self, Modifiers};
 use crate::turn;
 
 /// Maximum number of stacks in a battle (both sides).
 pub const STACK_CAPACITY: usize = 2 * MAX_ARMY_SLOTS;
 
 /// Version of the battle-state hash encoding ([`BattleState::state_hash`]). Bump on any change.
-pub const BATTLE_STATE_HASH_VERSION: u32 = 4;
+pub const BATTLE_STATE_HASH_VERSION: u32 = 5;
 
 /// Index of a stack in its battle (attacker stacks first, in slot order, then defender stacks).
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Default)]
@@ -41,6 +43,8 @@ impl StackFlags {
     pub const RETALIATED: Self = Self(1 << 2);
     /// The stack is defending until its next activation (BAT-TRN-004).
     pub const DEFENDING: Self = Self(1 << 3);
+    /// The stack had a good-morale turn this round (BAT-MOR-003).
+    pub const HAD_MORALE: Self = Self(1 << 4);
 
     /// Whether all flags of `other` are set.
     pub const fn contains(self, other: Self) -> bool {
@@ -104,6 +108,8 @@ impl StackTraits {
     /// Regenerates its top creature at the start of its turn (ability `regeneration`,
     /// BAT-TRN-005).
     pub const REGENERATES: Self = Self(1 << 15);
+    /// Unaffected by morale: its morale is always 0 (flag `no_morale`, BAT-MOR-001).
+    pub const NO_MORALE: Self = Self(1 << 16);
 
     /// Whether all traits of `other` are set.
     pub const fn contains(self, other: Self) -> bool {
@@ -177,6 +183,7 @@ impl StackTraits {
                 Self::REGENERATES,
                 ability(|a| matches!(a, Ability::Regeneration)),
             )
+            .with(Self::NO_MORALE, has(CreatureFlag::NoMorale))
     }
 }
 
@@ -232,6 +239,10 @@ pub struct Stack {
     pub retaliations: u8,
     /// Retaliations left this round.
     pub retaliations_left: u8,
+    /// Morale (BAT-MOR-001), materialised from the battle's modifiers.
+    pub morale: i8,
+    /// Luck (BAT-LCK-001), materialised from the battle's modifiers.
+    pub luck: i8,
     /// Battle traits (two-hex, flying, …).
     pub traits: StackTraits,
     /// Per-round flags.
@@ -257,6 +268,8 @@ impl Default for Stack {
             shots: 0,
             retaliations: 1,
             retaliations_left: 1,
+            morale: 0,
+            luck: 0,
             traits: StackTraits::default(),
             flags: StackFlags::default(),
         }
@@ -317,6 +330,8 @@ impl CanonicalHash for Stack {
         h.write_u16(self.shots);
         h.write_u8(self.retaliations);
         h.write_u8(self.retaliations_left);
+        h.write_i32(i32::from(self.morale));
+        h.write_i32(i32::from(self.luck));
         h.write_u32(self.traits.bits());
         h.write_u8(self.flags.bits());
     }
@@ -338,6 +353,8 @@ pub struct BattleState {
     pub(crate) active: Option<StackId>,
     pub(crate) last_side_acted: Option<BattleSide>,
     pub(crate) winner: Option<BattleSide>,
+    pub(crate) modifiers: Modifiers,
+    pub(crate) led_by_hero: [bool; 2],
     pub(crate) rng: Rng,
 }
 
@@ -410,6 +427,8 @@ impl BattleState {
                     shots: creature.shots,
                     retaliations,
                     retaliations_left: retaliations,
+                    morale: 0,
+                    luck: 0,
                     traits,
                     flags: StackFlags::default(),
                 };
@@ -427,9 +446,14 @@ impl BattleState {
             active: None,
             last_side_acted: None,
             winner: None,
+            modifiers: Modifiers::new(),
+            led_by_hero: setup.led_by_hero,
             rng: Rng::for_stream(seed, StreamId::BATTLE),
         };
-        state.active = turn::next_active(&state);
+        morale::setup(&mut state, ruleset);
+        // The first activation runs the usual checks (bad morale, BAT-MOR-004); its events are not
+        // reported, like the start of round 1.
+        turn::activate_next(&mut state, ruleset, &mut NoopSink);
         Ok(state)
     }
 
@@ -526,9 +550,9 @@ impl BattleState {
     /// Canonical hash of the full state, including hidden parts such as the RNG (desync detection
     /// and replay verification; never sent to untrusted clients, docs/06-security.md).
     ///
-    /// Encoding v4: version, round, active, last side, winner, stacks (each with base count,
-    /// shots, retaliations and traits),
-    /// obstacles, RNG state.
+    /// Encoding v5: version, round, active, last side, winner, stacks (each with base count,
+    /// shots, retaliations, morale, luck and traits), obstacles, modifiers, hero flags, RNG
+    /// state.
     pub fn state_hash(&self) -> u64 {
         h3_kernel::hash::hash_of(self)
     }
@@ -587,6 +611,9 @@ impl CanonicalHash for BattleState {
         self.winner.map(side_code).hash_into(h);
         self.stacks.hash_into(h);
         self.obstacles.hash_into(h);
+        self.modifiers.hash_into(h);
+        h.write_bool(self.led_by_hero[0]);
+        h.write_bool(self.led_by_hero[1]);
         self.rng.hash_into(h);
     }
 }

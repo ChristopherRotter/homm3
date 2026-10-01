@@ -21,6 +21,7 @@
 //!
 //! [setup]                         # the rest of the setup (format 2; fields default when absent)
 //! obstacles = [40, 41]            # blocked hexes
+//! led_by_hero = ["attacker"]      # sides led by a hero (omitted when none)
 //!
 //! [[attacker]]                    # the setup, by creature key
 //! slot = 0
@@ -141,6 +142,8 @@ struct Meta {
 struct SetupEntry {
     #[serde(default)]
     obstacles: Vec<u8>,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    led_by_hero: Vec<String>,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -279,6 +282,7 @@ pub fn replay_to_toml(
         },
         setup: SetupEntry {
             obstacles: replay.setup.obstacles.clone(),
+            led_by_hero: h3_pack::side_names(replay.setup.led_by_hero),
         },
         attacker: stacks(&replay.setup.attacker),
         defender: stacks(&replay.setup.defender),
@@ -372,6 +376,8 @@ impl ReplayDoc {
                 attacker: army(&f.attacker)?,
                 defender: army(&f.defender)?,
                 obstacles: f.setup.obstacles,
+                led_by_hero: h3_pack::parse_sides(&f.setup.led_by_hero)
+                    .map_err(|e| CliError::Format(e.to_string()))?,
             },
             commands: f
                 .commands

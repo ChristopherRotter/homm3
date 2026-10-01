@@ -141,6 +141,11 @@ pub struct Battle {
     pub ranged_full_damage_distance: u8,
     pub ranged_penalty_percent: u8,
     pub melee_penalty_percent: u8,
+    pub morale_dice: u8,
+    pub good_morale_chances: Vec<u8>,
+    pub bad_morale_chances: Vec<u8>,
+    pub luck_dice: u8,
+    pub good_luck_chances: Vec<u8>,
     pub formation: Vec<Vec<u8>>,
     pub formation_sources: Vec<String>,
 }

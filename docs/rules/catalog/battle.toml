@@ -103,7 +103,7 @@ id       = "BAT-TRN-001"
 title    = "Turn order within a round"
 context  = "battle"
 status   = "implemented"
-summary  = "In the normal phase living stacks that have not acted or waited act in descending speed. Speed ties: the stack of the side that did not act last goes first (the attacker at the start of the battle; the rule carries across rounds), then the lower army slot. The order is re-evaluated before every activation. Skeleton scope: no siege/war-machine phases, no morale phase, speed never changes during a round."
+summary  = "In the normal phase living stacks that have not acted or waited act in descending speed. Speed ties: the stack of the side that did not act last goes first (the attacker at the start of the battle; the rule carries across rounds), then the lower army slot. The order is re-evaluated before every activation. Good morale gives the stack that just acted another turn outside this order (BAT-MOR-003). Scope: no siege/war-machine phases yet (T8), speed never changes during a round."
 numeric  = "integer"
 
   [[rule.source]]
@@ -132,19 +132,19 @@ id       = "BAT-TRN-002"
 title    = "Wait"
 context  = "battle"
 status   = "implemented"
-summary  = "Wait postpones the active stack's turn to the wait phase, which follows the normal phase; waiting stacks act in ascending speed, with the same tie rules as BAT-TRN-001. A stack cannot wait twice in a round; it may defend after waiting. Waiting counts as the side's chance to act for tie-breaking. Skeleton scope: the morale-and-wait phase (phase 2 on the wiki) does not exist without morale."
+summary  = "Wait postpones the active stack's turn to a wait phase after the normal phase: the morale-and-wait phase for stacks that waited during a good-morale turn (BAT-MOR-003), then the wait phase for the others. In both, stacks act in ascending speed, with the same tie rules as BAT-TRN-001. A stack cannot wait twice in a round; it may defend after waiting. Waiting counts as the side's chance to act for tie-breaking."
 numeric  = "integer"
 
   [[rule.source]]
   kind       = "wiki"
-  ref        = "Combat - Heroes 3 wiki: 'In the second and third phase, the creatures move in the ascending order of speed'; 'The units naturally cannot wait again'"
+  ref        = "Combat - Heroes 3 wiki: 'In the second and third phase, the creatures move in the ascending order of speed'; 'The units naturally cannot wait again'; phase 2 'occurs only for creatures that acted in the initial phase, gained high morale, then waited'"
   url        = "https://heroes.thelazy.net/index.php/Combat"
   retrieved  = "2026-09-30"
   confidence = "high"
 
   [[rule.source]]
   kind       = "vcmi"
-  ref        = "lib/battle/CUnitState.cpp battleQueuePhase (WAIT phase slowest first); sideThatLastMoved set on activation"
+  ref        = "lib/battle/CUnitState.cpp battleQueuePhase (WAIT_MORALE before WAIT, both slowest first); sideThatLastMoved set on activation"
   url        = "https://github.com/vcmi/vcmi/blob/1.7.5/lib/battle/CUnitState.cpp"
   retrieved  = "2026-09-30"
   confidence = "high"
@@ -820,6 +820,202 @@ numeric  = "integer"
   url        = "https://github.com/vcmi/vcmi/blob/1.7.5/lib/battle/CUnitState.cpp"
   retrieved  = "2026-10-01"
   confidence = "high"
+
+[[rule]]
+id       = "BAT-MOR-001"
+title    = "Morale of a stack"
+context  = "battle"
+status   = "implemented"
+summary  = "A stack's morale is the sum of the morale modifiers on its side (ADR-0012): army alignment and undead (BAT-MOR-002) and morale auras; raised to its creature's minimum_morale if lower (Minotaurs: +1); clamped to [-levels of bad_morale_chances, +levels of good_morale_chances] (original: -3..+3). Auras (morale_aura: Angels and Archangels +1 for their side, Bone and Ghost Dragons -1 for the enemy side) are not cumulative: an aura value (kind, amount, affected side) counts once per side; auras hold for the whole battle, also after their bearers die. Creatures with flag no_morale (Golems, Undead, Elementals) always have morale 0. Morale is materialised when the battle starts; in E03 no source changes during a battle. Heroes, artifacts, spells and terrain are E04."
+numeric  = "integer"
+
+  [[rule.source]]
+  kind       = "wiki"
+  ref        = "Morale - Heroes 3 wiki: range -3..+3; 'Golems, Undead and Elementals are unaffected by morale'; Angels +1, Bone/Ghost Dragons -1 enemy morale, Minotaurs minimum +1"
+  url        = "https://heroes.thelazy.net/index.php/Morale"
+  retrieved  = "2026-10-01"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "wiki"
+  ref        = "Angel - Heroes 3 wiki: +1 morale 'lasts until the end of combat, even if all Angels/Archangels die'; 'not cumulative'"
+  url        = "https://heroes.thelazy.net/index.php/Angel"
+  retrieved  = "2026-10-01"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "wiki"
+  ref        = "Bone Dragon - Heroes 3 wiki: -1 enemy morale, until the end of combat, not cumulative"
+  url        = "https://heroes.thelazy.net/index.php/Bone_Dragon"
+  retrieved  = "2026-10-01"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "wiki"
+  ref        = "Minotaur - Heroes 3 wiki: 'Minimum Morale is +1'"
+  url        = "https://heroes.thelazy.net/index.php/Minotaur"
+  retrieved  = "2026-10-01"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "vcmi"
+  ref        = "lib/BasicTypes.cpp moraleValAndBonusList (sum, clamp to the chance-table sizes) and unaffectedByMorale"
+  url        = "https://github.com/vcmi/vcmi/blob/1.7.5/lib/BasicTypes.cpp"
+  retrieved  = "2026-10-01"
+  confidence = "high"
+  note       = "VCMI also exempts NON_LIVING creatures (Gargoyles); the original's flag table does not mark Gargoyles no_morale and the wiki lists only Golems, Undead and Elementals, so Gargoyles keep their morale here."
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe static creature table: flag harvested as no_morale (docs/formats/installation.md §5)"
+  confidence = "high"
+
+[[rule]]
+id       = "BAT-MOR-002"
+title    = "Army alignment and undead"
+context  = "battle"
+status   = "implemented"
+summary  = "From the armies at the start of the battle: a side whose stacks all belong to one alignment (faction; neutral creatures form one) gets +1 morale; with n >= 2 alignments it gets 2 - n (two: 0, three: -1, four: -2, ...). A side with any undead stack (flag undead) gets another -1. Sides with and without a hero alike."
+numeric  = "integer"
+
+  [[rule.source]]
+  kind       = "wiki"
+  ref        = "Morale - Heroes 3 wiki, army composition: same town type +1, three types -1, four -2, ...; living creatures -1 if the army contains undead; neutral creatures count separately"
+  url        = "https://heroes.thelazy.net/index.php/Morale"
+  retrieved  = "2026-10-01"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "vcmi"
+  ref        = "lib/mapObjects/army/CArmedInstance.cpp updateMoraleBonusFromArmy: +1 for one faction, else 2 - n; -1 if any unit is UNDEAD"
+  url        = "https://github.com/vcmi/vcmi/blob/1.7.5/lib/mapObjects/army/CArmedInstance.cpp"
+  retrieved  = "2026-10-01"
+  confidence = "high"
+
+[[rule]]
+id       = "BAT-MOR-003"
+title    = "Good morale"
+context  = "battle"
+status   = "implemented"
+summary  = "After a stack moves, attacks or shoots (not after Wait or Defend, and also when it acts in a wait phase), if its morale m is positive, it is still alive, it has had no good-morale turn this round and the battle is not over, it gets another turn right away with chance good_morale_chances[m] / morale_dice (original: 1, 2, 3 out of 24). The extra turn is a normal turn without activation effects (no regeneration, no bad-morale check); if the stack waits in it, it acts in the morale-and-wait phase (BAT-TRN-002). Event GoodMorale, then TurnStarted for the same stack. Rolls are independent (VCMI's optional bias is not used)."
+numeric  = "integer"
+
+  [[rule.source]]
+  kind       = "wiki"
+  ref        = "Combat - Heroes 3 wiki: moving and attacking/shooting can trigger high morale after the counterattack; 'Waiting leads to second phase (instead of third) and high morale cannot occur again for it in this round'; 'Creatures acting during third phase can still get morale'; defending prevents high morale"
+  url        = "https://heroes.thelazy.net/index.php/Combat"
+  retrieved  = "2026-10-01"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "wiki"
+  ref        = "Morale - Heroes 3 wiki: +1 4.2%, +2 8.3%, +3 12.5%; 'Good morale is received after the troop stack has acted'"
+  url        = "https://heroes.thelazy.net/index.php/Morale"
+  retrieved  = "2026-10-01"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "vcmi"
+  ref        = "server/battles/BattleFlowProcessor.cpp rollGoodMorale (not hadMorale, not defending, not waiting, alive) and onActionMade; lib/gameState/GameStatePackVisitor.cpp clears 'waiting' when a stack starts to act; config/gameConfig.json goodMoraleChance [1, 2, 3], moraleDiceSize 24"
+  url        = "https://github.com/vcmi/vcmi/blob/1.7.5/server/battles/BattleFlowProcessor.cpp"
+  retrieved  = "2026-10-01"
+  confidence = "high"
+
+[[rule]]
+id       = "BAT-MOR-004"
+title    = "Bad morale"
+context  = "battle"
+status   = "implemented"
+summary  = "When a stack becomes active in the normal phase (not when it activates from waiting, not for a good-morale turn), after its Defend bonus ends and it regenerates (BAT-TRN-004/005), if its morale m is negative it freezes with chance bad_morale_chances[|m|] / morale_dice (original: 2, 4, 6 out of 24): it loses its turn, counts as having acted, and the next stack becomes active. This also applies to the first activation of the battle. Event BadMorale after TurnStarted."
+numeric  = "integer"
+
+  [[rule.source]]
+  kind       = "wiki"
+  ref        = "Morale - Heroes 3 wiki: -1 8.3%, -2 16.7%, -3 25.0%; 'Bad morale happens at the very beginning of creature stack's turn, and causes them to freeze in panic'"
+  url        = "https://heroes.thelazy.net/index.php/Morale"
+  retrieved  = "2026-10-01"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "wiki"
+  ref        = "Combat - Heroes 3 wiki: 'Upon activation, low morale is checked'"
+  url        = "https://heroes.thelazy.net/index.php/Combat"
+  retrieved  = "2026-10-01"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "vcmi"
+  ref        = "server/battles/BattleFlowProcessor.cpp tryActivateMoralePenalty (not hadMorale, not waited), activateNextStack; config/gameConfig.json badMoraleChance [2, 4, 6]"
+  url        = "https://github.com/vcmi/vcmi/blob/1.7.5/server/battles/BattleFlowProcessor.cpp"
+  retrieved  = "2026-10-01"
+  confidence = "high"
+
+[[rule]]
+id       = "BAT-LCK-001"
+title    = "Luck of a stack"
+context  = "battle"
+status   = "implemented"
+summary  = "A stack's luck is the sum of the luck modifiers on its side (luck auras: Devils and Arch Devils -1 for the enemy side, not cumulative, for the whole battle like morale auras), raised to its creature's minimum_luck (Halflings: +1), clamped to [0, levels of good_luck_chances] (original 0..3): before HotA there is no bad luck, so negative luck counts as 0. Heroes, artifacts and spells are E04."
+numeric  = "integer"
+
+  [[rule.source]]
+  kind       = "wiki"
+  ref        = "Luck - Heroes 3 wiki: range, no negative luck in RoE/AB/SoD (HotA added it), Devils -1, Arch Devils -1 in the original (-2 in HotA), Halflings 'always has luck value of at least +1'"
+  url        = "https://heroes.thelazy.net/index.php/Luck"
+  retrieved  = "2026-10-01"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "wiki"
+  ref        = "Halfling - Heroes 3 wiki: 'Minimum Luck is +1'"
+  url        = "https://heroes.thelazy.net/index.php/Halfling"
+  retrieved  = "2026-10-01"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "wiki"
+  ref        = "Devil - Heroes 3 wiki: Devils reduce enemy luck by 1"
+  url        = "https://heroes.thelazy.net/index.php/Devil"
+  retrieved  = "2026-10-01"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "vcmi"
+  ref        = "lib/BasicTypes.cpp luckValAndBonusList (clamp to the chance-table sizes; badLuckChance is empty in config/gameConfig.json)"
+  url        = "https://github.com/vcmi/vcmi/blob/1.7.5/lib/BasicTypes.cpp"
+  retrieved  = "2026-10-01"
+  confidence = "high"
+
+[[rule]]
+id       = "BAT-LCK-002"
+title    = "Lucky strike"
+context  = "battle"
+status   = "implemented"
+summary  = "Every attack (melee attack, second attack, retaliation, shot) of a stack with positive luck l rolls once, before the death blow (BAT-DMG-007): with chance good_luck_chances[l] / luck_dice (original: 1, 2, 3 out of 24) its strike on the attacked stack adds +100 % to the bonus sum, i.e. doubles the base damage (HotA doubles the total instead). Secondary targets of the attack get no luck (Q18). Strike flag LUCKY. Quirk Q-0003 (quirk.battle.no_luck_without_hero, on in faithful): a side that is not led by a hero (BattleSetup.led_by_hero) never gets lucky strikes."
+quirks   = ["Q-0003"]
+numeric  = "integer"
+
+  [[rule.source]]
+  kind       = "wiki"
+  ref        = "Luck - Heroes 3 wiki: lucky creatures 'deal double total base damage'; +1 1/24, +2 1/12, +3 1/8; 'originally, luck never worked for creatures without a hero'"
+  url        = "https://heroes.thelazy.net/index.php/Luck"
+  retrieved  = "2026-10-01"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "wiki"
+  ref        = "Cerberus - Heroes 3 wiki: a lucky strike 'applies only to the creature that directly attacks, and has no effect on other creatures'"
+  url        = "https://heroes.thelazy.net/index.php/Cerberus"
+  retrieved  = "2026-10-01"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "vcmi"
+  ref        = "server/battles/BattleActionProcessor.cpp makeAttack: rollGoodLuck once per attack (also counterattacks), before DOUBLE_DAMAGE_CHANCE; lib/battle/DamageCalculator.cpp getAttackLuckFactor = +1.0"
+  url        = "https://github.com/vcmi/vcmi/blob/1.7.5/server/battles/BattleActionProcessor.cpp"
+  retrieved  = "2026-10-01"
+  confidence = "high"
+  note       = "VCMI applies the lucky flag to every target of the attack; not followed (user decision Q18)."
 
 [[rule]]
 id       = "BAT-END-001"

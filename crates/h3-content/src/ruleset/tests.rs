@@ -45,6 +45,11 @@ fn battle_def() -> BattleParamsDef {
         ranged_full_damage_distance: 10,
         ranged_penalty_percent: 50,
         melee_penalty_percent: 50,
+        morale_dice: 24,
+        good_morale_chances: vec![1, 2, 3],
+        bad_morale_chances: vec![2, 4, 6],
+        luck_dice: 24,
+        good_luck_chances: vec![1, 2, 3],
         formation: vec![vec![5], vec![3, 7], vec![2, 5, 8]],
     }
 }
@@ -178,7 +183,7 @@ fn hash_is_stable_and_sensitive() {
     );
 }
 
-const GOLDEN_BASE_HASH: u64 = 0x9d87_f3a5_28cd_01a2;
+const GOLDEN_BASE_HASH: u64 = 0xe486_7e87_9ffa_4222;
 
 fn expect(packs: &[ContentPack], profile: &str) -> CompileError {
     Ruleset::compile(packs, profile).unwrap_err()
@@ -332,6 +337,22 @@ fn battle_param_errors() {
         (
             |b| b.melee_penalty_percent = 101,
             "ranged and melee penalties must not exceed 100 percent",
+        ),
+        (
+            |b| b.morale_dice = 0,
+            "morale_dice and luck_dice must be at least 1",
+        ),
+        (
+            |b| b.luck_dice = 0,
+            "morale_dice and luck_dice must be at least 1",
+        ),
+        (
+            |b| b.bad_morale_chances = vec![1; 9],
+            "morale and luck chances: at most 8 levels, each at most the die's sides",
+        ),
+        (
+            |b| b.good_luck_chances = vec![25],
+            "morale and luck chances: at most 8 levels, each at most the die's sides",
         ),
         (
             |b| drop(b.formation.pop()),
@@ -1000,5 +1021,62 @@ fn ability_errors() {
     assert_eq!(
         expect(&[base(), overriding("base:a", twice)], "base:faithful"),
         invalid("an ability is listed twice")
+    );
+}
+
+#[test]
+fn roll_tables_index_levels_from_one_and_cap_at_the_top() {
+    let r = Ruleset::compile(&[base()], "base:faithful").unwrap();
+    let b = r.battle();
+    assert_eq!((b.morale_dice, b.luck_dice), (24, 24));
+    assert_eq!(b.good_morale.levels(), 3);
+    assert_eq!(
+        (0..=4).map(|l| b.bad_morale.chance(l)).collect::<Vec<_>>(),
+        vec![0, 2, 4, 6, 6]
+    );
+    assert_eq!(b.good_luck.chance(1), 1);
+    assert_eq!(RollTable::default().chance(1), 0);
+}
+
+#[test]
+fn aura_values_are_keyed_and_limited() {
+    use crate::ability::AuraTarget;
+    let morale = |amount, affects| AbilityDef::MoraleAura { amount, affects };
+    let k = |a: AbilityDef| a.aura_key();
+    assert_eq!(
+        k(morale(1, AuraTarget::Allies)),
+        k(morale(1, AuraTarget::Allies))
+    );
+    assert_ne!(
+        k(morale(1, AuraTarget::Allies)),
+        k(morale(1, AuraTarget::Enemies))
+    );
+    assert_ne!(
+        k(morale(-1, AuraTarget::Enemies)),
+        k(morale(1, AuraTarget::Enemies))
+    );
+    assert_ne!(
+        k(morale(-1, AuraTarget::Enemies)),
+        k(AbilityDef::LuckAura {
+            amount: -1,
+            affects: AuraTarget::Enemies
+        })
+    );
+    assert_eq!(k(AbilityDef::Regeneration), None);
+    let with_auras = |n: i8| {
+        let mut p = base();
+        p.creatures = (0..n)
+            .map(|i| {
+                let mut c = creature(&std::format!("base:c{i}"));
+                c.info.abilities = vec![morale(i + 1, AuraTarget::Allies)];
+                c
+            })
+            .collect();
+        p
+    };
+    Ruleset::compile(&[with_auras(8)], "base:faithful").unwrap();
+    assert_eq!(
+        expect(&[with_auras(9)], "base:faithful"),
+        CompileError::TooManyEntries("distinct aura")
     );
 }

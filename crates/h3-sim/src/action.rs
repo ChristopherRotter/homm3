@@ -174,6 +174,7 @@ mod tests {
             attacker: stack("base:magog", 10),
             defender: stack("base:hydra", 2),
             obstacles: vec![],
+            led_by_hero: [false; 2],
         };
         let s = BattleState::new(&r, &setup, 1).unwrap();
         let side = s.side_to_act().unwrap();

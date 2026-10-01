@@ -139,6 +139,11 @@ defend_bonus_min = 1
 ranged_full_damage_distance = 10
 ranged_penalty_percent = 50
 melee_penalty_percent = 50
+morale_dice = 24
+good_morale_chances = [1, 2, 3]
+bad_morale_chances = [2, 4, 6]
+luck_dice = 24
+good_luck_chances = [1, 2, 3]
 formation = [[5], [2, 8]]
 formation_sources = ["s"]
 

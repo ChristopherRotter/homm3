@@ -114,6 +114,22 @@ will list modifier contributions (backlog).
 - **Abilities as modifiers with predicates**: one mechanism, but conditional behaviour (hate,
   jousting) would need a limiter language; rejected (Tier 4 by the back door).
 
+## Implementation notes — E03 T6 (2026-10-01)
+
+- The battle's pool (`h3_battle::Modifiers`) has bearers `Bearer::Side(side)` only, stats
+  `Morale` and `Luck`, and one expiry, `EndOfBattle`. Sources: army alignment and undead
+  (fixed keys) and auras (key = `Ability::aura_key`, equal for equal aura values, so equal
+  auras replace each other — Angels and Archangels give +1 once).
+- Capacity by construction: per side 2 army modifiers plus one per distinct aura value; the
+  compiler caps distinct aura values at `MAX_AURA_VALUES` = 8, so `MODIFIER_CAPACITY` = 20.
+- Per-creature floors (`minimum_morale`, `minimum_luck`) are turned into `AtLeast` modifiers
+  when the stats are materialised, read from the creature's abilities rather than stored in the
+  pool (they never change during a battle; stack bearers arrive with E04 spells).
+- Materialisation happens once at setup; in E03 nothing changes the pool during a battle
+  (auras persist after their bearers die). Rule clamps (morale −3…+3, luck 0…3 from the roll
+  tables) are applied by the morale/luck rules, as §3 says.
+
 ## Revision history
 
 - 2026-10-01: Proposed (E03 T1).
+- 2026-10-01: Implementation notes added (E03 T6, battle pool).

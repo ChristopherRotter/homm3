@@ -13,7 +13,7 @@ use h3_content::{
     CreatureDef, CreatureInfoDef, CreatureOverride, CreaturePatch, FactionDef, KeyError,
     PackManifest, ProfileDef, ResourceDef, Ruleset,
 };
-use h3_contracts::{Army, ArmyStack, BattleSetup};
+use h3_contracts::{Army, ArmyStack, BattleSetup, BattleSide};
 use serde::Deserialize;
 
 /// The synthetic content pack shipped with the repo (tests, benchmarks, FFI smoke, replays).
@@ -122,6 +122,11 @@ struct BattleDto {
     ranged_full_damage_distance: u8,
     ranged_penalty_percent: u8,
     melee_penalty_percent: u8,
+    morale_dice: u8,
+    good_morale_chances: Vec<u8>,
+    bad_morale_chances: Vec<u8>,
+    luck_dice: u8,
+    good_luck_chances: Vec<u8>,
     formation: Vec<Vec<u8>>,
 }
 
@@ -416,6 +421,11 @@ pub fn parse_pack(text: &str) -> Result<ContentPack, PackError> {
         ranged_full_damage_distance: b.ranged_full_damage_distance,
         ranged_penalty_percent: b.ranged_penalty_percent,
         melee_penalty_percent: b.melee_penalty_percent,
+        morale_dice: b.morale_dice,
+        good_morale_chances: b.good_morale_chances,
+        bad_morale_chances: b.bad_morale_chances,
+        luck_dice: b.luck_dice,
+        good_luck_chances: b.good_luck_chances,
         formation: b.formation,
     });
     Ok(ContentPack {
@@ -452,6 +462,9 @@ struct ScenarioHeader {
     /// Obstacle hexes (row-major indices), validated by the battle context.
     #[serde(default)]
     obstacles: Vec<u8>,
+    /// Sides led by a hero (`"attacker"`, `"defender"`; Q17).
+    #[serde(default)]
+    led_by_hero: Vec<String>,
 }
 
 #[derive(Deserialize, Clone)]
@@ -474,6 +487,39 @@ pub struct ScenarioDef {
     attacker: Vec<(u8, String, u32)>,
     defender: Vec<(u8, String, u32)>,
     obstacles: Vec<u8>,
+    led_by_hero: [bool; 2],
+}
+
+/// Parses a list of side names (`"attacker"`, `"defender"`, each at most once) into flags indexed
+/// by [`BattleSide::index`].
+///
+/// # Errors
+/// An unknown or repeated side name.
+pub fn parse_sides(names: &[String]) -> Result<[bool; 2], PackError> {
+    let mut sides = [false; 2];
+    for name in names {
+        let side = match name.as_str() {
+            "attacker" => BattleSide::Attacker,
+            "defender" => BattleSide::Defender,
+            _ => return Err(PackError::Syntax(format!("unknown side `{name}`"))),
+        };
+        if core::mem::replace(&mut sides[side.index()], true) {
+            return Err(PackError::Syntax(format!("side `{name}` listed twice")));
+        }
+    }
+    Ok(sides)
+}
+
+/// The side names of the flags set in `sides` (inverse of [`parse_sides`]).
+pub fn side_names(sides: [bool; 2]) -> Vec<String> {
+    BattleSide::BOTH
+        .into_iter()
+        .filter(|s| sides[s.index()])
+        .map(|s| match s {
+            BattleSide::Attacker => "attacker".to_owned(),
+            BattleSide::Defender => "defender".to_owned(),
+        })
+        .collect()
 }
 
 impl ScenarioDef {
@@ -500,6 +546,7 @@ impl ScenarioDef {
             attacker: army(&self.attacker)?,
             defender: army(&self.defender)?,
             obstacles: self.obstacles.clone(),
+            led_by_hero: self.led_by_hero,
         })
     }
 }
@@ -520,6 +567,7 @@ pub fn parse_scenario(text: &str) -> Result<ScenarioDef, PackError> {
         attacker: convert(file.attacker),
         defender: convert(file.defender),
         obstacles: file.scenario.obstacles,
+        led_by_hero: parse_sides(&file.scenario.led_by_hero)?,
     })
 }
 
@@ -596,8 +644,8 @@ mod tests {
         let bad_profile = SYNTHETIC_PACK.replace("id = \"faithful\"", "id = \"Faithful\"");
         assert!(matches!(parse_pack(&bad_profile), Err(PackError::Key(_))));
         let quirky = SYNTHETIC_PACK.replace(
-            "id = \"faithful\"",
-            "id = \"faithful\"\nquirks = { \"quirk.x\" = true }",
+            "quirks = { \"quirk.battle.no_luck_without_hero\" = true }",
+            "quirks = { \"quirk.x\" = true }",
         );
         let pack = parse_pack(&quirky).unwrap();
         assert_eq!(pack.profiles[0].quirks, vec![("quirk.x".to_owned(), true)]);
@@ -632,6 +680,27 @@ mod tests {
         assert_eq!(empty.id, "e");
         assert!(empty.packs.is_empty());
         assert_eq!(parse_scenario(SYNTHETIC_DUEL).unwrap().packs, ["synthetic"]);
+        let header = "[scenario]\nid = \"e\"\npacks = []\nprofile = \"a:b\"\n";
+        for (sides, err) in [
+            ("[\"attacker\", \"defender\"]", None),
+            ("[\"left\"]", Some("unknown side `left`")),
+            (
+                "[\"defender\", \"defender\"]",
+                Some("side `defender` listed twice"),
+            ),
+        ] {
+            let text = format!("{header}led_by_hero = {sides}\n");
+            match err {
+                None => assert_eq!(parse_scenario(&text).unwrap().led_by_hero, [true, true]),
+                Some(e) => assert_eq!(parse_scenario(&text), Err(PackError::Syntax(e.to_owned()))),
+            }
+        }
+        assert_eq!(
+            side_names([false, true]),
+            ["defender"],
+            "inverse of parse_sides"
+        );
+        assert_eq!(side_names([true, false]), ["attacker"]);
     }
 
     #[test]

@@ -6,8 +6,8 @@ use std::vec;
 use std::vec::Vec;
 
 use h3_content::{
-    AbilityDef, BattleParamsDef, ContentKey, ContentPack, CreatureDef, CreatureInfoDef,
-    PackManifest, ProfileDef, Ruleset,
+    AbilityDef, AuraTarget, BattleParamsDef, ContentKey, ContentPack, CreatureDef, CreatureInfoDef,
+    FactionDef, PackManifest, ProfileDef, Ruleset,
 };
 use h3_contracts::{Army, ArmyStack, BattleSetup, BattleSide};
 
@@ -169,17 +169,129 @@ pub const CREATURES: &[Creature] = &[
     ("starer", 10, 10, 2, 2, 10, 5, &["death_stare=100"]),
     ("wight", 10, 10, 2, 2, 10, 5, &["regeneration", "undead"]),
     ("hater", 10, 10, 2, 2, 10, 5, &["hate=fixed:50"]),
+    // Morale and luck (BAT-MOR-001..004, BAT-LCK-001/002).
+    (
+        "pikeman_c",
+        10,
+        10,
+        2,
+        2,
+        10,
+        5,
+        &["faction=castle", "alive"],
+    ),
+    (
+        "angel",
+        10,
+        10,
+        2,
+        2,
+        10,
+        5,
+        &["faction=castle", "alive", "morale_aura=1:allies"],
+    ),
+    (
+        "archangel",
+        10,
+        10,
+        2,
+        2,
+        10,
+        5,
+        &["faction=castle", "alive", "morale_aura=1:allies"],
+    ),
+    ("imp", 10, 10, 2, 2, 10, 5, &["faction=inferno", "alive"]),
+    (
+        "devil",
+        10,
+        10,
+        2,
+        2,
+        10,
+        5,
+        &["faction=inferno", "alive", "luck_aura=-1:enemies"],
+    ),
+    (
+        "skeleton",
+        10,
+        10,
+        2,
+        2,
+        10,
+        5,
+        &["faction=necropolis", "undead", "no_morale"],
+    ),
+    (
+        "bone_dragon",
+        10,
+        10,
+        2,
+        2,
+        10,
+        5,
+        &[
+            "faction=necropolis",
+            "undead",
+            "no_morale",
+            "morale_aura=-1:enemies",
+        ],
+    ),
+    (
+        "minotaur",
+        10,
+        10,
+        2,
+        2,
+        10,
+        5,
+        &["alive", "minimum_morale=1"],
+    ),
+    (
+        "halfling",
+        10,
+        10,
+        2,
+        2,
+        10,
+        5,
+        &["alive", "minimum_luck=1"],
+    ),
+    ("lucky", 10, 10, 2, 2, 10, 5, &["alive", "minimum_luck=3"]),
 ];
 
-/// The abilities and other non-flag traits of a test creature.
-fn parse_traits(traits: &[&str]) -> (Vec<String>, Vec<AbilityDef>, u16) {
+/// The traits of a test creature as creature info: flags, abilities, shots and faction.
+fn parse_traits(traits: &[&str]) -> CreatureInfoDef {
     let mut flags = Vec::new();
     let mut abilities = Vec::new();
     let mut shots = 0;
+    let mut faction = None;
     for t in traits {
         let (name, value) = t.split_once('=').unwrap_or((t, "0"));
         let n = || value.parse::<u16>().unwrap();
+        let signed = || value.parse::<i8>().unwrap();
+        let aura = || {
+            let (amount, affects) = value.split_once(':').unwrap();
+            let affects = match affects {
+                "allies" => AuraTarget::Allies,
+                _ => AuraTarget::Enemies,
+            };
+            (amount.parse::<i8>().unwrap(), affects)
+        };
         let ability = match name {
+            "faction" => {
+                faction = Some(ContentKey::new("t", value).unwrap());
+                continue;
+            }
+            "morale_aura" => {
+                let (amount, affects) = aura();
+                AbilityDef::MoraleAura { amount, affects }
+            }
+            "luck_aura" => {
+                let (amount, affects) = aura();
+                AbilityDef::LuckAura { amount, affects }
+            }
+            "minimum_morale" => AbilityDef::MinimumMorale { value: signed() },
+            "minimum_luck" => AbilityDef::MinimumLuck { value: signed() },
             "teleports" => AbilityDef::Teleports,
             "no_distance_penalty" => AbilityDef::NoDistancePenalty,
             "fireball" => AbilityDef::AreaShot {
@@ -228,7 +340,13 @@ fn parse_traits(traits: &[&str]) -> (Vec<String>, Vec<AbilityDef>, u16) {
         };
         abilities.push(ability);
     }
-    (flags, abilities, shots)
+    CreatureInfoDef {
+        flags,
+        abilities,
+        shots,
+        faction,
+        ..CreatureInfoDef::default()
+    }
 }
 
 pub fn battle_params() -> BattleParamsDef {
@@ -247,6 +365,13 @@ pub fn battle_params() -> BattleParamsDef {
         ranged_full_damage_distance: 10,
         ranged_penalty_percent: 50,
         melee_penalty_percent: 50,
+        // Morale and luck never trigger by default (tests stay independent of them); morale and
+        // luck tests and the property tests use `ruleset_with`.
+        morale_dice: 24,
+        good_morale_chances: vec![0, 0, 0],
+        bad_morale_chances: vec![0, 0, 0],
+        luck_dice: 24,
+        good_luck_chances: vec![0, 0, 0],
         formation: vec![
             vec![5],
             vec![3, 7],
@@ -260,11 +385,16 @@ pub fn battle_params() -> BattleParamsDef {
 }
 
 pub fn ruleset() -> Ruleset {
+    ruleset_with("t:faithful", |_| {})
+}
+
+/// The test ruleset with profile `profile` (`t:faithful` without quirks, `t:quirky` with
+/// Q-0003) and edited battle parameters.
+pub fn ruleset_with(profile: &str, edit: impl FnOnce(&mut BattleParamsDef)) -> Ruleset {
     let creatures = CREATURES
         .iter()
         .map(
             |&(name, attack, defense, damage_min, damage_max, hit_points, speed, traits)| {
-                let (flags, abilities, shots) = parse_traits(traits);
                 CreatureDef {
                     key: ContentKey::new("t", name).unwrap(),
                     attack,
@@ -273,30 +403,40 @@ pub fn ruleset() -> Ruleset {
                     damage_max,
                     hit_points,
                     speed,
-                    info: CreatureInfoDef {
-                        flags,
-                        abilities,
-                        shots,
-                        ..CreatureInfoDef::default()
-                    },
+                    info: parse_traits(traits),
                 }
             },
         )
         .collect();
+    let mut battle = battle_params();
+    edit(&mut battle);
     let pack = ContentPack {
         creatures,
-        profiles: vec![ProfileDef {
-            key: ContentKey::new("t", "faithful").unwrap(),
-            quirks: vec![],
-        }],
-        battle: Some(battle_params()),
+        factions: ["castle", "inferno", "necropolis"]
+            .iter()
+            .map(|f| FactionDef {
+                key: ContentKey::new("t", f).unwrap(),
+                name: String::from(*f),
+            })
+            .collect(),
+        profiles: vec![
+            ProfileDef {
+                key: ContentKey::new("t", "faithful").unwrap(),
+                quirks: vec![],
+            },
+            ProfileDef {
+                key: ContentKey::new("t", "quirky").unwrap(),
+                quirks: vec![(String::from("quirk.battle.no_luck_without_hero"), true)],
+            },
+        ],
+        battle: Some(battle),
         ..ContentPack::new(PackManifest {
             id: String::from("t"),
             version: String::from("1"),
             depends: vec![],
         })
     };
-    Ruleset::compile(&[pack], "t:faithful").unwrap()
+    Ruleset::compile(&[pack], profile).unwrap()
 }
 
 /// `(slot, creature name, count)`.
@@ -320,6 +460,7 @@ pub fn setup(rules: &Ruleset, attacker: &[Spec], defender: &[Spec]) -> BattleSet
         attacker: army(rules, attacker),
         defender: army(rules, defender),
         obstacles: vec![],
+        led_by_hero: [false; 2],
     }
 }
 

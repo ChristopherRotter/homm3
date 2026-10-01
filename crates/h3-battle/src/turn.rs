@@ -1,13 +1,17 @@
-//! Rounds and turn order (BAT-TRN-001..003) and regeneration (BAT-TRN-005).
+//! Rounds and turn order (BAT-TRN-001..003), regeneration (BAT-TRN-005) and the morale checks
+//! around a turn (BAT-MOR-003/004).
 //!
-//! A round has two phases. In the normal phase stacks act from fastest to slowest; stacks that
-//! waited act afterwards, from slowest to fastest. Speed ties go to the side that did not act
-//! last (the attacker at the start of the battle), then to the lower army slot. When every living
-//! stack has acted, a new round starts and per-round flags are reset.
+//! A round has three phases. In the normal phase stacks act from fastest to slowest; then stacks
+//! that waited during a good-morale turn, then the other stacks that waited, each from slowest to
+//! fastest. Speed ties go to the side that did not act last (the attacker at the start of the
+//! battle), then to the lower army slot. When every living stack has acted, a new round starts
+//! and per-round flags are reset.
 
+use h3_content::Ruleset;
 use h3_contracts::BattleSide;
 
 use crate::event::{Event, EventKind, Sink};
+use crate::morale;
 use crate::state::{BattleState, StackFlags, StackId, StackTraits};
 
 /// The next stack to act this round, or `None` if every living stack has acted.
@@ -20,17 +24,29 @@ pub(crate) fn next_active(state: &BattleState) -> Option<StackId> {
         .zip(state.stacks.iter())
         .filter(|(_, s)| s.is_alive() && !s.flags.contains(StackFlags::ACTED))
         .min_by_key(|(id, s)| {
-            let waited = s.flags.contains(StackFlags::WAITED);
-            // Smaller keys act earlier. Normal phase: faster first; wait phase: slower first.
-            let speed = if waited { s.speed } else { u8::MAX - s.speed };
+            // Phases: normal, waited during a good-morale turn, waited (BAT-MOR-003).
+            let phase = match (
+                s.flags.contains(StackFlags::WAITED),
+                s.flags.contains(StackFlags::HAD_MORALE),
+            ) {
+                (false, _) => 0,
+                (true, true) => 1,
+                (true, false) => 2,
+            };
+            // Smaller keys act earlier. Normal phase: faster first; wait phases: slower first.
+            let speed = if phase == 0 {
+                u8::MAX - s.speed
+            } else {
+                s.speed
+            };
             // The trailing id makes the key unique, so the order is total (ADR-0003 §9).
-            (waited, speed, s.side != preferred, s.slot, *id)
+            (phase, speed, s.side != preferred, s.slot, *id)
         })
         .map(|(id, _)| StackId(id))
 }
 
-/// Starts a new round: resets retaliation, wait and acted flags (the Defend bonus lasts until the
-/// stack's next activation, BAT-TRN-004).
+/// Starts a new round: resets retaliation, wait, morale and acted flags (the Defend bonus lasts
+/// until the stack's next activation, BAT-TRN-004).
 // rule: BAT-TRN-003
 pub(crate) fn start_round<S: Sink>(state: &mut BattleState, sink: &mut S) {
     state.round = state.round.saturating_add(1);
@@ -38,6 +54,7 @@ pub(crate) fn start_round<S: Sink>(state: &mut BattleState, sink: &mut S) {
         s.flags.set(StackFlags::ACTED, false);
         s.flags.set(StackFlags::WAITED, false);
         s.flags.set(StackFlags::RETALIATED, false);
+        s.flags.set(StackFlags::HAD_MORALE, false);
         s.retaliations_left = s.retaliations;
     }
     sink.emit(Event::public(EventKind::RoundStarted {
@@ -45,38 +62,79 @@ pub(crate) fn start_round<S: Sink>(state: &mut BattleState, sink: &mut S) {
     }));
 }
 
-/// Ends `mover`'s turn (`waited` for Wait, otherwise it has acted) and activates the next stack,
-/// starting a new round if needed. Once the battle is over no stack is active.
+/// How a turn ended.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) enum TurnEnd {
+    /// The stack moved, attacked or shot.
+    Acted,
+    /// The stack waited (BAT-TRN-002).
+    Waited,
+    /// The stack defended (BAT-TRN-004).
+    Defended,
+}
+
+/// Ends `mover`'s turn. After moving, attacking or shooting, good morale may give it another turn
+/// right away (BAT-MOR-003); otherwise it is marked as waited or acted and the next stack is
+/// activated, starting a new round if needed. Once the battle is over no stack is active.
 pub(crate) fn end_turn<S: Sink>(
     state: &mut BattleState,
+    ruleset: &Ruleset,
     mover: StackId,
-    waited: bool,
+    how: TurnEnd,
     sink: &mut S,
 ) {
-    let stack = state.at_mut(mover);
-    let flag = if waited {
+    state.last_side_acted = Some(state.at(mover).side);
+    // rule: BAT-MOR-003
+    if state.winner.is_none() && how == TurnEnd::Acted && morale::good_morale(state, ruleset, mover)
+    {
+        state.at_mut(mover).flags.set(StackFlags::HAD_MORALE, true);
+        sink.emit(Event::public(EventKind::GoodMorale { stack: mover }));
+        sink.emit(Event::public(EventKind::TurnStarted { stack: mover }));
+        return;
+    }
+    let flag = if how == TurnEnd::Waited {
         StackFlags::WAITED
     } else {
         StackFlags::ACTED
     };
-    stack.flags.set(flag, true);
-    let side = stack.side;
-    state.last_side_acted = Some(side);
+    state.at_mut(mover).flags.set(flag, true);
     if state.winner.is_some() {
         state.active = None;
         return;
     }
-    let next = next_active(state).or_else(|| {
+    activate_next(state, ruleset, sink);
+}
+
+/// The next stack to act, starting a new round if every living stack has acted.
+fn pick<S: Sink>(state: &mut BattleState, sink: &mut S) -> Option<StackId> {
+    next_active(state).or_else(|| {
         start_round(state, sink);
         next_active(state)
-    });
-    // While the battle is not over some stack is alive, so `next` is always `Some` here.
-    state.active = next.inspect(|&id| {
+    })
+}
+
+/// Activates the next stack: its Defend bonus ends (BAT-TRN-004), it regenerates (BAT-TRN-005),
+/// and bad morale may freeze it (BAT-MOR-004), in which case it loses its turn and the next stack
+/// is activated. While the battle is not over some stack is alive, so a stack is always found.
+pub(crate) fn activate_next<S: Sink>(state: &mut BattleState, ruleset: &Ruleset, sink: &mut S) {
+    let mut next = pick(state, sink);
+    while let Some(id) = next {
         // rule: BAT-TRN-004
         state.at_mut(id).flags.set(StackFlags::DEFENDING, false);
         sink.emit(Event::public(EventKind::TurnStarted { stack: id }));
         regenerate(state, id, sink);
-    });
+        // rule: BAT-MOR-004
+        if !morale::bad_morale(state, ruleset, id) {
+            break;
+        }
+        sink.emit(Event::public(EventKind::BadMorale { stack: id }));
+        let frozen = state.at_mut(id);
+        frozen.flags.set(StackFlags::ACTED, true);
+        let side = frozen.side;
+        state.last_side_acted = Some(side);
+        next = pick(state, sink);
+    }
+    state.active = next;
 }
 
 /// At the start of its turn in the normal phase (not after waiting), a regenerating stack's top

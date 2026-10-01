@@ -664,9 +664,13 @@ pub fn harvest(inputs: &Inputs, gap: &GapFill) -> Result<Harvest, String> {
     }
     write_battle(&mut base, gap);
     base.push_str(
-        "\n[[profile]]\nid = \"faithful\"        # default: preserve/fix-optional quirks on\n",
+        "\n[[profile]]\nid = \"faithful\"        # default: preserve/fix-optional quirks on\n\
+         quirks = { \"quirk.battle.no_luck_without_hero\" = true }    # Q-0003\n",
     );
-    base.push_str("\n[[profile]]\nid = \"strict-fixed\"    # all quirks fixed\n");
+    base.push_str(
+        "\n[[profile]]\nid = \"strict-fixed\"    # all quirks fixed\n\
+         quirks = { \"quirk.battle.no_luck_without_hero\" = false }   # Q-0003\n",
+    );
 
     // ab
     let mut ab = header("ab", &["base"], "Armageddon's Blade, latest patch (Q15).");
@@ -899,6 +903,20 @@ fn write_battle(out: &mut String, gap: &GapFill) {
     );
     let _ = writeln!(out, "ranged_penalty_percent = {}", b.ranged_penalty_percent);
     let _ = writeln!(out, "melee_penalty_percent = {}", b.melee_penalty_percent);
+    let list = |v: &[u8]| v.iter().map(u8::to_string).collect::<Vec<_>>().join(", ");
+    let _ = writeln!(out, "morale_dice = {}", b.morale_dice);
+    let _ = writeln!(
+        out,
+        "good_morale_chances = [{}]",
+        list(&b.good_morale_chances)
+    );
+    let _ = writeln!(
+        out,
+        "bad_morale_chances = [{}]",
+        list(&b.bad_morale_chances)
+    );
+    let _ = writeln!(out, "luck_dice = {}", b.luck_dice);
+    let _ = writeln!(out, "good_luck_chances = [{}]", list(&b.good_luck_chances));
     let rows: Vec<String> = b
         .formation
         .iter()

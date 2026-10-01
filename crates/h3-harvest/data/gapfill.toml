@@ -173,6 +173,11 @@ defend_bonus_min = 1                        # BAT-TRN-004
 ranged_full_damage_distance = 10            # BAT-RNG-002
 ranged_penalty_percent = 50                 # BAT-RNG-002
 melee_penalty_percent = 50                  # BAT-RNG-003
+morale_dice = 24                            # BAT-MOR-003/004 (wiki Morale: 1/24, 1/12, 1/8;
+good_morale_chances = [1, 2, 3]             #   bad 1/12, 1/6, 1/4)
+bad_morale_chances = [2, 4, 6]
+luck_dice = 24                              # BAT-LCK-002 (wiki Luck: 1/24, 1/12, 1/8;
+good_luck_chances = [1, 2, 3]               #   no bad luck in RoE/AB/SoD)
 formation = [[5], [2, 8], [2, 5, 8], [0, 4, 6, 10], [0, 2, 5, 8, 10], [0, 2, 4, 6, 8, 10], [0, 2, 4, 5, 6, 8, 10]]
 formation_sources = ["vcmi-layouts"]
 

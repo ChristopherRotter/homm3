@@ -93,7 +93,8 @@ resource may appear once.
 `fire_immune`, `strikes_twice`, `no_enemy_retaliation`, `no_morale`, `undead`,
 `multi_headed`, `area_attack`, `dragon`. Read by battle rules so far: `two_hex`, `flying`,
 `shooter`, `breath_attack`, `alive`, `no_melee_penalty`, `fire_immune`, `strikes_twice`,
-`no_enemy_retaliation` (E03 T3–T5); the others are data only until their rules arrive.
+`no_enemy_retaliation`, `no_morale`, `undead` (E03 T3–T6); the others are data only until their
+rules arrive.
 
 **Abilities** (E03, ADR-0012; `h3_content::Ability`): behaviour beyond the flag bits, with
 parameters. `abilities = [ ... ]` on a creature (or an override, replacing the whole list), each
@@ -116,24 +117,30 @@ errors:
 | `attacks_all_adjacent` | — | melee hits every adjacent enemy (requires flag `multi_headed`; BAT-ATK-003) |
 | `three_headed_attack` | — | melee hits the target and the hexes beside it (requires `multi_headed`; BAT-ATK-003) |
 | `teleports` | — | moves like a flyer (path irrelevant; BAT-MOV-002) |
-| `morale_aura`, `luck_aura` | `amount`, `affects` (`allies`/`enemies`) | battle-wide morale/luck change; equal auras do not stack |
-| `minimum_morale`, `minimum_luck` | `value` | lower bound of its morale/luck |
+| `morale_aura`, `luck_aura` | `amount`, `affects` (`allies`/`enemies`) | battle-wide morale/luck change; equal auras do not stack (BAT-MOR-001, BAT-LCK-001) |
+| `minimum_morale`, `minimum_luck` | `value` | lower bound of its morale/luck (BAT-MOR-001, BAT-LCK-001) |
 | `no_distance_penalty` | — | its shots have no distance penalty (BAT-RNG-002) |
 | `area_shot` | `effect` (`fireball`/`death_cloud`) | its shots also hit the stacks around the target (requires flag `area_attack`; BAT-RNG-004) |
 
 `creature` references follow the reference rules above (own pack, or `pack:name` in the
 dependency closure) and may name creatures defined later in the same pack. At most one entry of
 each kind, except `hate` with different targets; `extra_retaliations`/`unlimited_retaliations` and
-the two attack patterns exclude each other. The rule ids say which rule reads each kind; the
-auras and minimums arrive with morale and luck (E03 T6).
+the two attack patterns exclude each other. A ruleset has at most 8 distinct aura values (kind,
+amount, `affects`; `MAX_AURA_VALUES`), which sizes the battle's modifier pool. The rule ids say
+which rule reads each kind.
 
 **Battle parameters** (`[battle]`, Tier 2; exactly one enabled pack provides them): field
 size, army slots, damage rolls, attack/defense rates and caps, Defend bonus, formation rows (E01),
 and since E03 `ranged_full_damage_distance`, `ranged_penalty_percent`, `melee_penalty_percent`
-(BAT-RNG-002/003). **Profiles** (`[[profile]]` with `quirks`) are unchanged from E01. Profile-level Tier-2 overrides
-are not implemented yet (backlog).
+(BAT-RNG-002/003) and the morale and luck roll tables `morale_dice`, `good_morale_chances`,
+`bad_morale_chances`, `luck_dice`, `good_luck_chances` (chances out of the die's sides per level,
+at most 8 levels; the table lengths bound morale and luck, BAT-MOR-001..004, BAT-LCK-001/002).
+**Profiles** (`[[profile]]` with `quirks = { "quirk.<context>.<name>" = true | false }`; unlisted
+flags are off): the registered flags are in `h3_content::REGISTRY` and the quirks ledger
+(`docs/rules/quirks-ledger.md`); the packs' `faithful` profiles turn Q-0003 on, `strict-fixed`
+off. Profile-level Tier-2 overrides are not implemented yet (backlog).
 
-The compiled ruleset's canonical hash (encoding v4, `RULESET_HASH_VERSION`) covers packs, profile,
+The compiled ruleset's canonical hash (encoding v5, `RULESET_HASH_VERSION`) covers packs, profile,
 quirks, resources, factions, all creature fields including abilities, and the battle parameters;
 replays record it.
 
@@ -147,6 +154,7 @@ id = "skirmish"
 packs = ["synthetic"]            # enabled packs (any order)
 profile = "synthetic:faithful"
 obstacles = [58, 75]             # optional: blocked hexes, row-major (BAT-GEO-003)
+led_by_hero = ["attacker"]       # optional: sides led by a hero (Q17, quirk Q-0003)
 
 [[attacker]]                     # one entry per stack
 slot = 0

@@ -52,9 +52,12 @@ impl QuirkRegistry {
     }
 }
 
-/// The engine's quirk registry. Empty in E01: no quirk-affected rule is implemented yet. Add
-/// entries together with the ledger entry, the rule and its tests.
-pub const REGISTRY: QuirkRegistry = QuirkRegistry::new(&[]);
+/// The engine's quirk registry. Add entries together with the ledger entry, the rule and its
+/// tests; a flag's index is its position here and must never change.
+pub const REGISTRY: QuirkRegistry = QuirkRegistry::new(&["quirk.battle.no_luck_without_hero"]);
+
+/// Q-0003: creatures of a side without a hero never get lucky strikes (BAT-LCK-002).
+pub const NO_LUCK_WITHOUT_HERO: QuirkFlag = QuirkFlag(0);
 
 /// The set of enabled quirk flags of a ruleset.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
@@ -94,7 +97,11 @@ mod tests {
 
     #[test]
     fn registry_lookup_and_bitset() {
-        assert!(REGISTRY.is_empty());
+        assert_eq!(REGISTRY.len(), 1);
+        assert_eq!(
+            REGISTRY.lookup("quirk.battle.no_luck_without_hero"),
+            Some(NO_LUCK_WITHOUT_HERO)
+        );
         // `new` is a const fn; call it at run time too so coverage sees it.
         let runtime = QuirkRegistry::new(&["quirk.battle.a"]);
         assert_eq!(

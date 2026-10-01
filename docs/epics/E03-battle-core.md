@@ -97,8 +97,14 @@ Heroes, spells and artifacts (E04), spell-like creature abilities and the tactic
   state hash v4. Damage stays exact-integer with one rounding (open question Q23 with an
   experiment); VCMI followed over the wiki for death stare (Q21) and jousting distance (Q22).
   Bench unchanged (+0.3 % Ir: the synthetic scenarios have no abilities).
-- [ ] T6 Morale, luck and turn-order phases (modifiers in battle state; good morale extra action,
-  bad morale freeze, wait-morale phase; luck in damage).
+- [x] T6 Morale, luck and turn-order phases: battle modifier pool (ADR-0012: side bearers, army
+  alignment/undead, non-cumulative persistent auras; minimums at materialisation), morale and
+  luck per stack (BAT-MOR-001/002, BAT-LCK-001), good morale extra turn incl. the
+  morale-and-wait phase (BAT-MOR-003, BAT-TRN-002), bad morale freeze at activation
+  (BAT-MOR-004), lucky strikes on the primary target (BAT-LCK-002, Q18); `BattleSetup.led_by_hero`
+  and quirk Q-0003 (Q17, first registered quirk flag); morale/luck roll tables as Tier-2
+  parameters (ruleset hash v5, packs regenerated); state hash v5; scenario/replay field
+  `led_by_hero`.
 - [ ] T7 Terrain: battlefield types, native-terrain bonus, obstacle catalogue and random obstacle
   generation.
 - [ ] T8 War machines (hero-free): data, Ballista, First Aid Tent, Ammo Cart, automatic control,

@@ -46,3 +46,17 @@ Classes: `exploit-fix` (always fixed, never toggleable) · `preserve` (accepted,
 - Flag: none
 - Regression test: observation-hygiene property tests per context
 - Decided by / date: user requirement, 2026-09-30
+
+### Q-0003 — No luck without a hero
+- Class: fix-optional
+- Context / rules affected: battle, BAT-LCK-002
+- Original behavior: creatures of a side without a hero (neutral monsters, garrisons and town defenders without a hero) never get lucky strikes, although their luck is shown (e.g. Halflings' +1). Morale is not affected.
+- Intended/expected behavior: luck works like for any other stack (HotA fixed it).
+- Impact: gameplay-altering (small)
+- Community status: documented as an original bug on the wiki; fixed in Horn of the Abyss
+- Sources: wiki, Luck page ("originally, luck never worked for creatures without a hero", https://heroes.thelazy.net/index.php/Luck, retrieved 2026-10-01); wiki, Halfling page (https://heroes.thelazy.net/index.php/Halfling, retrieved 2026-10-01)
+- Flag: `quirk.battle.no_luck_without_hero`
+- Defaults: faithful = on, strict-fixed = off
+- Regression test: `tests::morale::without_a_hero_there_is_no_luck_under_quirk_q0003` (h3-battle)
+- Decided by / date: user, 2026-10-01 (OPEN-QUESTIONS Q17)
+

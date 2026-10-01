@@ -14,12 +14,24 @@ use proptest::collection::{btree_map, vec};
 use proptest::prelude::{Just, Strategy, any, prop_assert, prop_assert_eq, prop_oneof, proptest};
 use proptest::test_runner::Config;
 
-use super::support::{CREATURES, ruleset};
+use super::support::{CREATURES, ruleset_with};
 use crate::event::StrikeFlags;
 use crate::{
     BattleState, Command, Event, EventKind, Hex, LegalCommands, StackId, apply, legal_commands,
     observe,
 };
+
+/// The test ruleset with frequent good and bad morale and luck (a 4-sided die) and the quirk
+/// Q-0003 on, so that generated games exercise them.
+fn lively() -> Ruleset {
+    ruleset_with("t:quirky", |b| {
+        b.morale_dice = 4;
+        b.good_morale_chances = std::vec![1, 2, 3];
+        b.bad_morale_chances = std::vec![1, 2, 3];
+        b.luck_dice = 4;
+        b.good_luck_chances = std::vec![1, 2, 3];
+    })
+}
 
 /// One step of a generated game.
 #[derive(Debug, Clone)]
@@ -97,6 +109,7 @@ fn make_setup(
         attacker: army(attacker),
         defender: army(defender),
         obstacles: obstacles.to_vec(),
+        led_by_hero: [true, false],
     }
 }
 
@@ -149,7 +162,7 @@ proptest! {
     /// Atomicity, legality consistency, ownership isolation and conservation, checked at every step.
     #[test]
     fn every_step_preserves_the_invariants((att, def, obstacles, seed, steps) in arb_game()) {
-        let r = ruleset();
+        let r = lively();
         let setup = make_setup(&r, &att, &def, &obstacles);
         let mut state = BattleState::new(&r, &setup, seed).unwrap();
         let mut legal = LegalCommands::new();
@@ -202,6 +215,11 @@ proptest! {
                             }
                         }
                     }
+                    // Good morale keeps the mover active for another turn (BAT-MOR-003).
+                    if events.iter().any(|e| matches!(e.kind, EventKind::GoodMorale { .. })) {
+                        prop_assert_eq!(state.active(), Some(mover));
+                        prop_assert!(state.stacks()[mover.index()].flags.contains(crate::StackFlags::HAD_MORALE));
+                    }
                     let mentioned = |i: usize, f: fn(&EventKind, usize) -> bool| events.iter().any(|e| f(&e.kind, i));
                     for (i, (b, a)) in before.stacks().iter().zip(state.stacks()).enumerate() {
                         // Conservation: creatures only ever die, except that life drain brings
@@ -210,6 +228,9 @@ proptest! {
                         prop_assert!(a.count <= b.count || (drained && a.count <= a.base_count));
                         prop_assert!(a.is_alive() || a.top_hp == 0);
                         prop_assert!(!a.is_alive() || (1..=a.max_hp).contains(&a.top_hp));
+                        // Morale and luck are materialised once and stay in range.
+                        prop_assert_eq!((a.morale, a.luck), (b.morale, b.luck));
+                        prop_assert!((-3..=3).contains(&a.morale) && (0..=3).contains(&a.luck));
                         // Ownership isolation: the actor's command cannot move or re-stat enemy
                         // stacks, and only changes the enemy stacks it strikes (or that
                         // regenerate at the start of their turn, BAT-TRN-005).
@@ -235,7 +256,7 @@ proptest! {
     /// same to both sides.
     #[test]
     fn observations_do_not_depend_on_hidden_state((att, def, obstacles, seed, steps) in arb_game(), other_seed: u64) {
-        let r = ruleset();
+        let r = lively();
         let (state, _, _) = play(&r, &make_setup(&r, &att, &def, &obstacles), seed, &steps);
         let mut twin = state.clone();
         twin.rng = Rng::from_seed(other_seed);
@@ -247,7 +268,7 @@ proptest! {
     /// Clone equivalence: a clone taken mid-game evolves identically to the original.
     #[test]
     fn clones_evolve_identically((att, def, obstacles, seed, steps) in arb_game(), split in 0usize..160) {
-        let r = ruleset();
+        let r = lively();
         let setup = make_setup(&r, &att, &def, &obstacles);
         let split = split.min(steps.len());
         let (mut original, _, _) = play(&r, &setup, seed, &steps[..split]);
@@ -266,7 +287,7 @@ proptest! {
     /// Determinism: the same inputs give the same events and state hashes.
     #[test]
     fn replays_are_deterministic((att, def, obstacles, seed, steps) in arb_game()) {
-        let r = ruleset();
+        let r = lively();
         let setup = make_setup(&r, &att, &def, &obstacles);
         let first = play(&r, &setup, seed, &steps);
         let second = play(&r, &setup, seed, &steps);
@@ -280,7 +301,7 @@ proptest! {
 /// machinery; not a game rule: battles have no round limit).
 #[test]
 fn random_legal_play_finishes_battles() {
-    let r = ruleset();
+    let r = lively();
     let setup = make_setup(
         &r,
         &[(0, 5, 20), (1, 6, 8), (2, 10, 2)],

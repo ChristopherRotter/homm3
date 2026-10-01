@@ -29,6 +29,7 @@ mod error;
 mod event;
 mod geometry;
 mod legal;
+mod morale;
 mod movement;
 mod observe;
 mod state;
@@ -40,6 +41,7 @@ pub use event::{Event, EventKind, NoopSink, Sink, StrikeFlags, Visibility};
 pub use geometry::{ATTACK_SLOTS, Direction, Field, Footprint, Hex, HexSet};
 pub use h3_contracts::{BattleOutcome, BattleSetup, BattleSide};
 pub use legal::{LegalCommands, MAX_LEGAL_COMMANDS, legal_commands};
+pub use morale::{Bearer, Expiry, MODIFIER_CAPACITY, Modifiers, Stat};
 pub use observe::{Observation, observe, project};
 pub use state::{
     BATTLE_STATE_HASH_VERSION, BattleState, STACK_CAPACITY, Stack, StackFlags, StackId,

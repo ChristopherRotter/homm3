@@ -204,6 +204,16 @@ pub struct BattleParamsDef {
     pub ranged_penalty_percent: u8,
     /// Damage reduction of shooters' melee strikes, percent (BAT-RNG-003).
     pub melee_penalty_percent: u8,
+    /// Sides of the morale die (BAT-MOR-003/004).
+    pub morale_dice: u8,
+    /// Good-morale chance per positive morale level, out of `morale_dice` (BAT-MOR-003).
+    pub good_morale_chances: Vec<u8>,
+    /// Bad-morale chance per negative morale level, out of `morale_dice` (BAT-MOR-004).
+    pub bad_morale_chances: Vec<u8>,
+    /// Sides of the luck die (BAT-LCK-002).
+    pub luck_dice: u8,
+    /// Lucky-strike chance per positive luck level, out of `luck_dice` (BAT-LCK-002).
+    pub good_luck_chances: Vec<u8>,
     /// Starting rows: `formation[n - 1][i]` is the row of the i-th stack (by slot order) of an
     /// army with `n` stacks (BAT-SET-001).
     pub formation: Vec<Vec<u8>>,

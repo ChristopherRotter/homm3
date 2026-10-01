@@ -73,9 +73,21 @@ How the model turned out in the battle context:
 - **State:** stacks carry `base_count` (resurrection limit) and retaliations per round / left;
   state hash encoding v4.
 
+## Amendment — E03 battle core (2026-10-01, T6)
+
+- **Seam type change (`BattleSetup`):** `led_by_hero: [bool; 2]` (Q17), part of the state and
+  the observation.
+- **Turn structure:** `turn::activate_next` runs the activation effects (Defend bonus ends,
+  regeneration, bad morale) and repeats while stacks freeze; `BattleState::new` uses it for the
+  first activation (its events are not reported, like the start of round 1). Good morale keeps
+  the mover active after its command. Events `GoodMorale`, `BadMorale`; strike flag `LUCKY`.
+- **State:** the modifier pool (ADR-0012), stack morale and luck, flag `HAD_MORALE`; state hash
+  encoding v5.
+
 ## Revision history
 
 - 2026-09-30: Accepted.
 - 2026-09-30: Amended by E01 (battle entry point, command set, events, geometry seam, replay contents).
 - 2026-10-01: Amended by E03 T3 (footprints, obstacles, attack positions, setup/encoding changes).
 - 2026-10-01: Amended by E03 T4–T5 (shooting, strike flags, ability events, attack structure).
+- 2026-10-01: Amended by E03 T6 (hero flags, morale in the turn structure, morale/luck state).

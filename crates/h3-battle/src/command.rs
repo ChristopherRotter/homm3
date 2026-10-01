@@ -14,7 +14,7 @@ use crate::event::{Event, EventKind, Sink};
 use crate::geometry::{Field, Hex};
 use crate::movement::reachable;
 use crate::state::{BattleState, StackFlags, StackId, StackTraits};
-use crate::turn::end_turn;
+use crate::turn::{TurnEnd, end_turn};
 
 /// A player's intent for the active stack.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Default)]
@@ -197,16 +197,16 @@ pub fn apply<S: Sink>(
     match plan {
         Plan::Wait { mover } => {
             sink.emit(Event::public(EventKind::Waited { stack: mover }));
-            end_turn(state, mover, true, sink);
+            end_turn(state, ruleset, mover, TurnEnd::Waited, sink);
         }
         Plan::Defend { mover } => {
             state.at_mut(mover).flags.set(StackFlags::DEFENDING, true);
             sink.emit(Event::public(EventKind::Defended { stack: mover }));
-            end_turn(state, mover, false, sink);
+            end_turn(state, ruleset, mover, TurnEnd::Defended, sink);
         }
         Plan::Move { mover, from, to } => {
             move_stack(state, mover, from, to, sink);
-            end_turn(state, mover, false, sink);
+            end_turn(state, ruleset, mover, TurnEnd::Acted, sink);
         }
         Plan::Attack {
             mover,
@@ -219,11 +219,11 @@ pub fn apply<S: Sink>(
                 move_stack(state, mover, from, to, sink);
             }
             melee(state, ruleset, mover, target, from, charge, sink);
-            end_turn(state, mover, false, sink);
+            end_turn(state, ruleset, mover, TurnEnd::Acted, sink);
         }
         Plan::Shoot { mover, target, at } => {
             shoot(state, ruleset, mover, target, at, sink);
-            end_turn(state, mover, false, sink);
+            end_turn(state, ruleset, mover, TurnEnd::Acted, sink);
         }
     }
     Ok(())

@@ -82,6 +82,10 @@ pub struct BattleSetup {
     pub defender: Army,
     /// Hexes blocked by obstacles (row-major hex indices of the battlefield, each once; E03).
     pub obstacles: Vec<u8>,
+    /// Whether each side (indexed by [`BattleSide::index`]) is led by a hero (E03, Q17; the hero
+    /// itself arrives in E04). Without a hero a side gets no lucky strikes in profiles with the
+    /// quirk `quirk.battle.no_luck_without_hero` (Q-0003).
+    pub led_by_hero: [bool; 2],
 }
 
 impl BattleSetup {
@@ -133,6 +137,7 @@ mod tests {
             },
             defender: Army::default(),
             obstacles: vec![],
+            led_by_hero: [true, false],
         };
         assert_eq!(setup.army(BattleSide::Attacker).stacks, [stack]);
         assert!(setup.army(BattleSide::Defender).stacks.is_empty());

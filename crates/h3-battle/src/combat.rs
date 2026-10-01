@@ -16,6 +16,7 @@ use crate::damage::{
 };
 use crate::event::{Event, EventKind, Sink, StrikeFlags};
 use crate::geometry::{Direction, Field, Footprint, Hex, HexSet};
+use crate::morale;
 use crate::state::{
     BattleState, STACK_CAPACITY, Stack, StackFlags, StackId, StackTraits, UNLIMITED_RETALIATIONS,
 };
@@ -53,6 +54,8 @@ struct Blow {
     charge: u8,
     /// The attack is a death blow (BAT-DMG-007).
     death_blow: bool,
+    /// The strike is lucky (BAT-LCK-002; only the strike on the target of the attack, Q18).
+    lucky: bool,
 }
 
 /// Whether the creature of `stack` has an ability matching `f`.
@@ -105,6 +108,11 @@ fn strike<S: Sink>(
     }
     attack_defense(&mut factors, striker.attack, defense, params);
     let mut flags = flags;
+    // rule: BAT-LCK-002
+    if blow.lucky {
+        factors.bonus(100);
+        flags = flags.with(StrikeFlags::LUCKY);
+    }
     // rule: BAT-DMG-007
     if blow.death_blow {
         factors.bonus(100);
@@ -150,8 +158,9 @@ fn penalty(
 }
 
 /// One attack of `attacker` on `target` that also hits the `others` (BAT-ATK-003, BAT-RNG-004):
-/// the death-blow roll (BAT-DMG-007), the strike on the target, the strikes on the others in
-/// stack-id order, then life drain (BAT-DMG-008) and death stare (BAT-DMG-009).
+/// the luck roll (BAT-LCK-002) and the death-blow roll (BAT-DMG-007), the strike on the target
+/// (the only one luck applies to, Q18), the strikes on the others in stack-id order, then life
+/// drain (BAT-DMG-008) and death stare (BAT-DMG-009).
 fn attack<S: Sink>(
     state: &mut BattleState,
     ruleset: &Ruleset,
@@ -172,10 +181,13 @@ fn attack<S: Sink>(
             _ => {}
         }
     }
+    // Luck is rolled before the death blow, as VCMI does.
+    let lucky = morale::lucky(state, ruleset, attacker);
     // rule: BAT-DMG-007
     let blow = Blow {
         charge,
         death_blow: death_blow > 0 && state.rng.below(100) < u32::from(death_blow),
+        lucky: false,
     };
     // Life drain takes `drain` % of the hit points lost by living targets, rounded down per
     // target.
@@ -186,7 +198,7 @@ fn attack<S: Sink>(
             0
         }
     };
-    let lost = strike(state, ruleset, pair, flags, blow, sink);
+    let lost = strike(state, ruleset, pair, flags, Blow { lucky, ..blow }, sink);
     let mut heal = drained(state, target, lost);
     let secondary = flags.with(StrikeFlags::SECONDARY);
     for (i, _) in others.iter().enumerate().filter(|(_, hit)| **hit) {

@@ -29,6 +29,8 @@ pub struct Observation {
     pub stacks: FixedVec<Stack, STACK_CAPACITY>,
     /// Hexes blocked by obstacles (public).
     pub obstacles: HexSet,
+    /// Which sides are led by a hero (public), indexed by [`BattleSide::index`].
+    pub led_by_hero: [bool; 2],
 }
 
 /// The observation of `state` for `viewer`.
@@ -41,6 +43,7 @@ pub fn observe(state: &BattleState, viewer: BattleSide) -> Observation {
         winner: state.winner,
         stacks: state.stacks,
         obstacles: state.obstacles,
+        led_by_hero: state.led_by_hero,
     }
 }
 
