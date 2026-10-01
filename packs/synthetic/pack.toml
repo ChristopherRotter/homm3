@@ -149,6 +149,47 @@ ai_value = 65
 adventure_count = [15, 30]
 flags = ["flying", "shooter", "no_morale"]
 
+# War machines (E03 T8/T9, BAT-WAR-001..004): one of each kind, controlled by the engine.
+[[creature]]
+id = "bolt_thrower"         # shooting kind (BAT-WAR-002)
+name = "Bolt Thrower"
+plural = "Bolt Throwers"
+level = 3
+attack = 6
+defense = 6
+damage = [3, 4]
+hit_points = 120
+speed = 0
+shots = 12
+ai_value = 300
+flags = ["two_hex", "shooter", "war_machine", "no_morale"]
+
+[[creature]]
+id = "supply_wagon"         # ammo-supply kind: its side's shots are unlimited (BAT-WAR-004)
+name = "Supply Wagon"
+plural = "Supply Wagons"
+attack = 0
+defense = 3
+damage = [0, 0]
+hit_points = 60
+speed = 0
+ai_value = 150
+flags = ["war_machine", "no_morale"]
+abilities = [{ kind = "ammo_supply" }]
+
+[[creature]]
+id = "aid_tent"             # first-aid kind (BAT-WAR-003)
+name = "Aid Tent"
+plural = "Aid Tents"
+attack = 0
+defense = 0
+damage = [0, 0]
+hit_points = 50
+speed = 0
+ai_value = 120
+flags = ["two_hex", "war_machine", "no_morale"]
+abilities = [{ kind = "first_aid", min_hp = 1, max_hp = 10 }]
+
 [[profile]]
 id = "faithful"        # default: preserve/fix-optional quirks on
 quirks = { "quirk.battle.no_luck_without_hero" = true }    # Q-0003

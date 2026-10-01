@@ -271,7 +271,7 @@ mod tests {
         let side = a.to_move().unwrap();
         a.step(side, 0).unwrap();
         assert_ne!(a.state_hash(), b.state_hash());
-        assert_eq!(a.ruleset().creature_count(), 3);
+        assert_eq!(a.ruleset().creature_count(), 6);
         assert_eq!(a.state().round(), b.state().round());
     }
 

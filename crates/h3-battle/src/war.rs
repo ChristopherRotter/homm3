@@ -33,7 +33,7 @@ pub(crate) fn act<S: Sink>(state: &mut BattleState, ruleset: &Ruleset, id: Stack
 
 /// Whether stack `id` could attack next turn: it can shoot, or some enemy has an attack position
 /// it can reach (VCMI `getCanAttackNextTurn`).
-fn can_attack_next_turn(state: &BattleState, field: Field, id: StackId) -> bool {
+pub(crate) fn can_attack_next_turn(state: &BattleState, field: Field, id: StackId) -> bool {
     if can_shoot(state, field, id) {
         return true;
     }
@@ -57,8 +57,6 @@ struct Candidate {
     id: StackId,
     /// Not a war machine (preferred).
     creature: bool,
-    /// Can attack next turn (preferred).
-    dangerous: bool,
     /// Value of the expected damage: `numerator / denominator` (see [`value`]).
     value: (u128, u128),
 }
@@ -67,7 +65,7 @@ struct Candidate {
 /// target's health `T`, average kills `K` and AI value `V` per creature of `M` hit points,
 /// `min(T, D) · V / M + K · V` — as the fraction `V · (min(2T, min + max) + (kmin + kmax) · M)`
 /// over `2M`, compared exactly.
-fn value(
+pub(crate) fn value(
     state: &BattleState,
     ruleset: &Ruleset,
     shooter: StackId,
@@ -88,8 +86,12 @@ fn value(
 /// The target a war machine shoots (BAT-WAR-002, ported from VCMI): among the living enemies,
 /// prefer stacks that are not war machines, then stacks that could attack next turn, then the
 /// highest value of the expected damage ([`value`]); ties go to the lowest stack id.
+///
+/// Whether a stack could attack next turn needs its reachability, the expensive key, so it is
+/// evaluated lazily: within the best class (creatures if there are any), candidates are taken by
+/// value and id until one could attack; if none can, the best by value and id wins.
 // rule: BAT-WAR-002
-fn shooting_target(
+pub(crate) fn shooting_target(
     state: &BattleState,
     ruleset: &Ruleset,
     field: Field,
@@ -104,19 +106,32 @@ fn shooting_target(
             Candidate {
                 id,
                 creature: !s.has(StackTraits::WAR_MACHINE),
-                dangerous: can_attack_next_turn(state, field, id),
                 value: value(state, ruleset, shooter, id),
             }
         })
         .collect();
-    let better = |a: &Candidate, b: &Candidate| -> Ordering {
-        (a.creature, a.dangerous)
-            .cmp(&(b.creature, b.dangerous))
-            .then_with(|| (a.value.0 * b.value.1).cmp(&(b.value.0 * a.value.1)))
-            // The lower id wins ties.
+    let best_class = candidates.iter().any(|c| c.creature);
+    let mut pool: Vec<&Candidate> = candidates
+        .iter()
+        .filter(|c| c.creature == best_class)
+        .collect();
+    // The higher value wins, then the lower id.
+    let rank = |a: &&Candidate, b: &&Candidate| -> Ordering {
+        (a.value.0 * b.value.1)
+            .cmp(&(b.value.0 * a.value.1))
             .then_with(|| b.id.cmp(&a.id))
     };
-    candidates.iter().max_by(|a, b| better(a, b)).map(|c| c.id)
+    // Best first (selection, no sort): the first that could attack next turn wins, else the best.
+    let mut best = None;
+    while let Some((i, c)) = pool.iter().enumerate().max_by(|a, b| rank(a.1, b.1)) {
+        let id = c.id;
+        best.get_or_insert(id);
+        if can_attack_next_turn(state, field, id) {
+            return Some(id);
+        }
+        pool.swap_remove(i);
+    }
+    best
 }
 
 /// The First Aid Tent's turn (BAT-WAR-003): a uniformly chosen allied stack that is alive, not

@@ -747,10 +747,20 @@ mod tests {
     fn synthetic_pack_and_scenarios_load() {
         for text in [SYNTHETIC_SKIRMISH, SYNTHETIC_DUEL, SYNTHETIC_FULL] {
             let (ruleset, setup) = synthetic(text).unwrap();
-            assert_eq!(ruleset.creature_count(), 3);
+            assert_eq!(ruleset.creature_count(), 6);
             assert!(!setup.attacker.stacks.is_empty());
             assert!(!setup.defender.stacks.is_empty());
         }
+        let (ruleset, full) = synthetic(SYNTHETIC_FULL).unwrap();
+        let key = |c| ruleset.creature_key(c).unwrap().as_str();
+        assert_eq!(
+            full.war_machines
+                .map(|m| m.into_iter().map(key).collect::<Vec<_>>()),
+            [
+                ["synthetic:bolt_thrower", "synthetic:aid_tent"],
+                ["synthetic:bolt_thrower", "synthetic:supply_wagon"]
+            ]
+        );
         let (ruleset, setup) = synthetic(SYNTHETIC_SKIRMISH).unwrap();
         assert_eq!(ruleset.profile().as_str(), "synthetic:faithful");
         assert_eq!(ruleset.battle().army_slots, 7);
@@ -944,7 +954,7 @@ mod tests {
         let both = compile(&[SYNTHETIC_EXT_PACK, SYNTHETIC_PACK], "synthetic:faithful").unwrap();
         let ids: Vec<&str> = both.packs().iter().map(|(id, _)| id.as_str()).collect();
         assert_eq!(ids, ["synthetic", "synthetic-ext"]);
-        assert_eq!(both.creature_count(), 4);
+        assert_eq!(both.creature_count(), 7);
         let wisp_info = both.creature_info(wisp).unwrap();
         let marsh = wisp_info.faction.unwrap();
         assert_eq!(

@@ -374,3 +374,60 @@ fn random_legal_play_finishes_battles() {
     }
     assert_eq!(decided, 20);
 }
+
+/// The Ballista's target by the full ranking of BAT-WAR-002 (VCMI's order, every key evaluated
+/// eagerly): not a war machine, then could attack next turn, then value, then the lower id.
+fn reference_target(state: &BattleState, r: &Ruleset, shooter: StackId) -> Option<StackId> {
+    let field = crate::Field::new(r.battle().field);
+    let side = state.stacks()[shooter.index()].side;
+    (0u8..)
+        .zip(state.stacks())
+        .filter(|(_, s)| s.is_alive() && s.side != side)
+        .map(|(i, s)| {
+            let id = StackId(i);
+            let creature = !s.has(crate::StackTraits::WAR_MACHINE);
+            let dangerous = crate::war::can_attack_next_turn(state, field, id);
+            (
+                id,
+                creature,
+                dangerous,
+                crate::war::value(state, r, shooter, id),
+            )
+        })
+        .max_by(|a, b| {
+            (a.1, a.2)
+                .cmp(&(b.1, b.2))
+                .then_with(|| (a.3.0 * b.3.1).cmp(&(b.3.0 * a.3.1)))
+                .then_with(|| b.0.cmp(&a.0))
+        })
+        .map(|c| c.0)
+}
+
+proptest! {
+    #![proptest_config(Config { cases: 32, ..Config::default() })]
+
+    /// The lazy target choice of the Ballista (BAT-WAR-002) equals the eager reference ranking
+    /// in every state of random games with ballistae on both sides.
+    #[test]
+    fn the_lazy_ballista_target_equals_the_reference((att, def, obstacles, seed, steps) in arb_game()) {
+        let r = lively();
+        // Ballistae on both sides (bits 0 and 3), the other machines and formations at random.
+        let setup = make_setup(&r, &att, &def, &obstacles, seed | 0b1001);
+        let mut state = BattleState::new(&r, &setup, seed).unwrap();
+        let mut legal = LegalCommands::new();
+        let field = crate::Field::new(r.battle().field);
+        for step in &steps {
+            for (i, s) in (0u8..).zip(state.stacks()) {
+                if s.is_alive() && s.has(crate::StackTraits::WAR_MACHINE) && s.has(crate::StackTraits::SHOOTER) {
+                    let id = StackId(i);
+                    prop_assert_eq!(
+                        crate::war::shooting_target(&state, &r, field, id),
+                        reference_target(&state, &r, id)
+                    );
+                }
+            }
+            let (actor, cmd) = resolve(&state, &r, step, &mut legal);
+            let _ = apply(&mut state, &r, actor, cmd, &mut crate::NoopSink);
+        }
+    }
+}

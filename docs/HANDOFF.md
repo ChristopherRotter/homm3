@@ -9,9 +9,11 @@ Living state. The last agent updates this at the end of every session; the next 
 **In progress (resumable):** T8 docs done (`f09e0f7`); draw on simultaneous wipe-out done
 (`c16a377`, Q24: `BattleResult` enum, BAT-END-002, C ABI v2); tight formation in this commit (Q25:
 `BattleSetup.formations`, battle params `loose_formation`/`tight_formation`, scenario/replay field
-`tight_formation`, ruleset hash v8, packs regenerated). **Next:** observation features for
-morale/luck/war machines (observation encoding v3) with synthetic war machines in the `full`
-scenario; golden replays + bench re-baseline; review pass; close the epic; status doc; report.
+`tight_formation`, ruleset hash v8, packs regenerated, `32f68d5`); observation encoding v3
+(hero globals; morale, luck, shots, retaliations left, good-morale flag, two-hex/flies/shooter/war
+machine per stack) with synthetic war machines in the `full` scenario, a lazy Ballista target
+choice (same result, property-tested against the eager ranking), bench re-baselined — this
+commit. **Next:** review pass; close the epic; status doc; report.
 Sandbox: original data staged and symlinked into `original-data/install` (see the E02 notes).
 
 ---

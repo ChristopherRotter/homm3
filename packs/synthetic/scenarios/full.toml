@@ -1,9 +1,13 @@
-# Seven stacks per side (full armies); used for benchmarks and clone-cost measurements.
+# Seven stacks per side (full armies) plus war machines; used for benchmarks and clone-cost
+# measurements.
 
 [scenario]
 id = "full"
 packs = ["synthetic"]
 profile = "synthetic:faithful"
+led_by_hero = ["attacker"]       # Q17: only the attacker may get lucky strikes (Q-0003)
+attacker_war_machines = ["synthetic:bolt_thrower", "synthetic:aid_tent"]
+defender_war_machines = ["synthetic:bolt_thrower", "synthetic:supply_wagon"]
 
 [[attacker]]
 slot = 0
