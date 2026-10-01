@@ -138,6 +138,9 @@ pub struct Battle {
     pub defense_reduction_cap_permille: u16,
     pub defend_bonus_percent: u16,
     pub defend_bonus_min: u16,
+    pub ranged_full_damage_distance: u8,
+    pub ranged_penalty_percent: u8,
+    pub melee_penalty_percent: u8,
     pub formation: Vec<Vec<u8>>,
     pub formation_sources: Vec<String>,
 }

@@ -14,7 +14,9 @@ Living state. The last agent updates this at the end of every session; the next 
 
 T3 — footprints/two-hex, obstacles (`BattleSetup.obstacles`, scenario `obstacles = [...]`), flying and teleporting, attack positions (24 canonical slots), action encoding v2, replay format v2, golden replays re-recorded (skirmish now has obstacles), bench baseline updated.
 
-**Next:** T4 (ranged combat).
+T4 — ranged combat (BAT-RNG-001..004), damage factors generalised (`damage::Factors`), `combat.rs` for strike sequences, `StrikeFlags` in `Struck`, battle params `ranged_full_damage_distance`/`ranged_penalty_percent`/`melee_penalty_percent` (packs regenerated, ruleset hash v4), state hash v3, action encoding v3, CLI command `shoot`.
+
+**Next:** T5 (melee abilities and damage factors).
 
 **Sandbox notes (this session):** VCMI 1.7.5 is cloned at `/home/claude/ref/vcmi` (`git clone --depth 1 --branch 1.7.5 https://github.com/vcmi/vcmi.git`; github.com web pages are blocked, git works). The wiki is reachable only through WebFetch after the user approved it.
 

@@ -83,8 +83,12 @@ Heroes, spells and artifacts (E04), spell-like creature abilities and the tactic
   (BAT-MOV-001/002; ability `teleports`), attack positions on footprints (BAT-ATK-001); action
   encoding v2, replay format v2; bench-check re-baselined (+18 % Ir on the changed workload:
   synthetic wisps now fly and brutes are two-hex; wall time per step about the same).
-- [ ] T4 Ranged combat: Shoot command, shots, blocked shooters, distance and melee penalties, no
-  retaliation against shots, area shots.
+- [x] T4 Ranged combat: `Shoot { target, at }`, shots on stacks, blocked shooters, unblocked
+  shooters may not melee (BAT-RNG-001), double shots, distance and melee penalties
+  (BAT-RNG-002/003, Tier-2 parameters), area shots (BAT-RNG-004, abilities `area_shot`,
+  `no_distance_penalty`); damage factors generalised (bonuses add, reductions multiply, one
+  final floor); `Struck` events carry `StrikeFlags`; action encoding v3; bench re-baselined
+  (+13 % Ir, synthetic wisps shoot; ≈ 225 k steps/s).
 - [ ] T5 Melee abilities and damage factors: double attack, no/extra/unlimited retaliation,
   multi-hex attacks (hydra, Cerberus, breath), return after strike, jousting/charge immunity, hate,
   defense reduction, death blow, life drain, regeneration, death stare; exact combination of the

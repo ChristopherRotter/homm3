@@ -198,6 +198,12 @@ pub struct BattleParamsDef {
     pub defend_bonus_percent: u16,
     /// Minimum defense bonus of a defending stack (BAT-TRN-004).
     pub defend_bonus_min: u16,
+    /// Shots reach at full damage up to this hex distance (BAT-RNG-002).
+    pub ranged_full_damage_distance: u8,
+    /// Damage reduction of shots beyond that distance, percent (BAT-RNG-002).
+    pub ranged_penalty_percent: u8,
+    /// Damage reduction of shooters' melee strikes, percent (BAT-RNG-003).
+    pub melee_penalty_percent: u8,
     /// Starting rows: `formation[n - 1][i]` is the row of the i-th stack (by slot order) of an
     /// army with `n` stacks (BAT-SET-001).
     pub formation: Vec<Vec<u8>>,

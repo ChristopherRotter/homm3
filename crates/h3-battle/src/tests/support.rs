@@ -14,7 +14,8 @@ use h3_contracts::{Army, ArmyStack, BattleSetup, BattleSide};
 use crate::{BattleState, Command, Event, Field, Hex, StackId, apply};
 
 /// `(name, attack, defense, damage_min, damage_max, hit_points, speed, traits)`; traits are
-/// creature flag names plus `teleports` for that ability.
+/// creature flag names, ability names without parameters (`teleports`, …), `fireball` /
+/// `death_cloud` for an area shot, and `shots=N`.
 pub type Creature = (
     &'static str,
     u16,
@@ -39,7 +40,73 @@ pub const CREATURES: &[Creature] = &[
     ("flyer", 5, 3, 1, 3, 8, 7, &["flying"]),
     ("dragon", 12, 12, 5, 8, 60, 8, &["two_hex", "flying"]),
     ("porter", 8, 6, 2, 4, 15, 6, &["teleports"]),
+    ("archer", 6, 3, 2, 3, 10, 4, &["shooter", "shots=12"]),
+    (
+        "sniper",
+        6,
+        3,
+        2,
+        3,
+        10,
+        4,
+        &[
+            "shooter",
+            "shots=3",
+            "strikes_twice",
+            "no_melee_penalty",
+            "no_distance_penalty",
+        ],
+    ),
+    (
+        "magog",
+        7,
+        4,
+        2,
+        4,
+        13,
+        6,
+        &["shooter", "shots=24", "area_attack", "fireball"],
+    ),
+    (
+        "lich",
+        13,
+        10,
+        11,
+        13,
+        30,
+        6,
+        &[
+            "shooter",
+            "shots=12",
+            "area_attack",
+            "death_cloud",
+            "undead",
+        ],
+    ),
+    ("salamander", 5, 5, 2, 3, 12, 5, &["fire_immune", "alive"]),
 ];
+
+/// The abilities and other non-flag traits of a test creature.
+fn parse_traits(traits: &[&str]) -> (Vec<String>, Vec<AbilityDef>, u16) {
+    let mut flags = Vec::new();
+    let mut abilities = Vec::new();
+    let mut shots = 0;
+    for t in traits {
+        match *t {
+            "teleports" => abilities.push(AbilityDef::Teleports),
+            "no_distance_penalty" => abilities.push(AbilityDef::NoDistancePenalty),
+            "fireball" => abilities.push(AbilityDef::AreaShot {
+                effect: h3_content::AreaShot::Fireball,
+            }),
+            "death_cloud" => abilities.push(AbilityDef::AreaShot {
+                effect: h3_content::AreaShot::DeathCloud,
+            }),
+            t if t.starts_with("shots=") => shots = t[6..].parse().unwrap(),
+            t => flags.push(String::from(t)),
+        }
+    }
+    (flags, abilities, shots)
+}
 
 pub fn battle_params() -> BattleParamsDef {
     BattleParamsDef {
@@ -54,6 +121,9 @@ pub fn battle_params() -> BattleParamsDef {
         defense_reduction_cap_permille: 700,
         defend_bonus_percent: 20,
         defend_bonus_min: 1,
+        ranged_full_damage_distance: 10,
+        ranged_penalty_percent: 50,
+        melee_penalty_percent: 50,
         formation: vec![
             vec![5],
             vec![3, 7],
@@ -71,8 +141,7 @@ pub fn ruleset() -> Ruleset {
         .iter()
         .map(
             |&(name, attack, defense, damage_min, damage_max, hit_points, speed, traits)| {
-                let (abilities, flags): (Vec<&str>, Vec<&str>) =
-                    traits.iter().partition(|t| **t == "teleports");
+                let (flags, abilities, shots) = parse_traits(traits);
                 CreatureDef {
                     key: ContentKey::new("t", name).unwrap(),
                     attack,
@@ -82,8 +151,9 @@ pub fn ruleset() -> Ruleset {
                     hit_points,
                     speed,
                     info: CreatureInfoDef {
-                        flags: flags.into_iter().map(String::from).collect(),
-                        abilities: abilities.iter().map(|_| AbilityDef::Teleports).collect(),
+                        flags,
+                        abilities,
+                        shots,
                         ..CreatureInfoDef::default()
                     },
                 }

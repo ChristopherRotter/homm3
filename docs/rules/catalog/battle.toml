@@ -276,6 +276,115 @@ numeric  = "integer"
   confidence = "high"
 
 [[rule]]
+id       = "BAT-RNG-001"
+title    = "Shooting"
+context  = "battle"
+status   = "implemented"
+summary  = "A stack with flag shooter can shoot when it has shots left and no living enemy stack touches its footprint (an adjacent enemy blocks it). Then it may shoot at any living enemy stack (no line of sight on a field battle) and may not attack in melee; it can still move, wait or defend. A blocked shooter or one without shots fights like a melee stack. A shot is a ranged strike (BAT-DMG-001..003) that uses one shot and is not retaliated; a shooter with flag strikes_twice shoots a second time if the target still lives and it has a shot left (two shots used). The shooter does not move. Scope: no ammo cart (unlimited shots) until T8, no ranged retaliation (no RoE creature has it)."
+numeric  = "integer"
+
+  [[rule.source]]
+  kind       = "vcmi"
+  ref        = "lib/battle/CBattleInfoCallback.cpp battleCanShoot / battleIsUnitBlocked (adjacent enemy blocks), lib/battle/CUnitState.cpp canShoot (shots left); server/battles/BattleActionProcessor.cpp doShootAction (additional shots only while the target lives and shots remain, no retaliation without RANGED_RETALIATION)"
+  url        = "https://github.com/vcmi/vcmi/blob/1.7.5/lib/battle/CBattleInfoCallback.cpp"
+  retrieved  = "2026-10-01"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "vcmi"
+  ref        = "client/battle/BattleActionsController.cpp action priorities: SHOOT is chosen over walk-and-attack when the shooter can shoot"
+  url        = "https://github.com/vcmi/vcmi/blob/1.7.5/client/battle/BattleActionsController.cpp"
+  retrieved  = "2026-10-01"
+  confidence = "medium"
+
+  [[rule.source]]
+  kind       = "wiki"
+  ref        = "Ranged attack - Heroes 3 wiki: in Horn of the Abyss 'ranged units can now select whether to use a ranged or melee attack' (so in the original they cannot)"
+  url        = "https://heroes.thelazy.net/index.php/Ranged_attack"
+  retrieved  = "2026-10-01"
+  confidence = "medium"
+
+  [[rule.source]]
+  kind       = "wiki"
+  ref        = "Marksman - Heroes 3 wiki: shoots twice and uses two shots per ranged attack"
+  url        = "https://heroes.thelazy.net/index.php/Marksman"
+  retrieved  = "2026-10-01"
+  confidence = "high"
+
+[[rule]]
+id       = "BAT-RNG-002"
+title    = "Distance penalty"
+context  = "battle"
+status   = "implemented"
+summary  = "A shot deals half damage (a reduction of ranged_penalty_percent = 50 %, BAT-DMG-002) when no hex of the target is within ranged_full_damage_distance = 10 hexes of the shooter's position, unless the shooter has the no_distance_penalty ability (Sharpshooter). Scope: siege walls (the obstacle penalty) come with sieges."
+numeric  = "integer"
+
+  [[rule.source]]
+  kind       = "wiki"
+  ref        = "Ranged attack - Heroes 3 wiki: 'Ranged penalty halves the ranged damage farther away than 10 hexes'"
+  url        = "https://heroes.thelazy.net/index.php/Ranged_attack"
+  retrieved  = "2026-10-01"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "vcmi"
+  ref        = "lib/battle/CBattleInfoCallback.cpp battleHasDistancePenalty / isEnemyUnitWithinSpecifiedRange (no penalty if any target hex is within 10 of the shooter's position); DamageCalculator.cpp getDefenseRangePenaltiesFactor 0.5"
+  url        = "https://github.com/vcmi/vcmi/blob/1.7.5/lib/battle/CBattleInfoCallback.cpp"
+  retrieved  = "2026-10-01"
+  confidence = "high"
+
+[[rule]]
+id       = "BAT-RNG-003"
+title    = "Melee penalty of shooters"
+context  = "battle"
+status   = "implemented"
+summary  = "A melee strike (attack or retaliation) of a stack with flag shooter deals half damage (a reduction of melee_penalty_percent = 50 %, BAT-DMG-002), unless it has flag no_melee_penalty. This holds also when it has no shots left."
+numeric  = "integer"
+
+  [[rule.source]]
+  kind       = "wiki"
+  ref        = "Ranged attack - Heroes 3 wiki: 'most ranged creatures suffer melee penalty, which halves their damage'"
+  url        = "https://heroes.thelazy.net/index.php/Ranged_attack"
+  retrieved  = "2026-10-01"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "vcmi"
+  ref        = "lib/battle/DamageCalculator.cpp getDefenseRangePenaltiesFactor (melee: isShooter && !NO_MELEE_PENALTY -> 0.5); CUnitState::isShooter counts total shots"
+  url        = "https://github.com/vcmi/vcmi/blob/1.7.5/lib/battle/DamageCalculator.cpp"
+  retrieved  = "2026-10-01"
+  confidence = "high"
+
+[[rule]]
+id       = "BAT-RNG-004"
+title    = "Area shots (fireball, death cloud)"
+context  = "battle"
+status   = "implemented"
+summary  = "A shooter with the area_shot ability aims at its target's head or tail hex. Besides the target, each shot strikes every other living stack, of either side, with a hex in the aimed hex or next to it, once each, in stack-id order, with its own damage roll. Around the target a fireball (Magog) spares fire-immune stacks and a death cloud (Lich) spares stacks that are not alive; the target itself is always hit. Area strikes are ranged and not retaliated. Other shooters aim at the head. Scope: targeting an empty hex is a HotA feature, not original."
+numeric  = "integer"
+
+  [[rule.source]]
+  kind       = "wiki"
+  ref        = "Lich - Heroes 3 wiki: the death cloud hits the target hex and the six around it, friend and foe, damage computed individually; undead and non-living are spared around the target only"
+  url        = "https://heroes.thelazy.net/index.php/Lich"
+  retrieved  = "2026-10-01"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "wiki"
+  ref        = "Magog - Heroes 3 wiki: fireball damages all units in the hexes surrounding the target, friendly fire; fire-immune creatures only in the central hex"
+  url        = "https://heroes.thelazy.net/index.php/Magog"
+  retrieved  = "2026-10-01"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "vcmi"
+  ref        = "server/battles/BattleActionProcessor.cpp makeAttack (SPELL_LIKE_ATTACK: affected stacks of the spell area besides the defender, each hit once)"
+  url        = "https://github.com/vcmi/vcmi/blob/1.7.5/server/battles/BattleActionProcessor.cpp"
+  retrieved  = "2026-10-01"
+  confidence = "medium"
+
+[[rule]]
 id       = "BAT-DMG-001"
 title    = "Base damage of a stack"
 context  = "battle"
@@ -310,7 +419,7 @@ id       = "BAT-DMG-002"
 title    = "Attack/defense modifier and final rounding"
 context  = "battle"
 status   = "implemented"
-summary  = "If attack A > defense D: damage = base * (1 + min(0.05 * (A - D), 3.00)); else damage = base * (1 - min(0.025 * (D - A), 0.70)). The attack bonus is capped at +300 % (at most 4x base damage, reached at 60 points), per user decision 2026-09-30 (OPEN-QUESTIONS Q11). Rates and caps are ruleset parameters (percent / per mille). The result is rounded down and is at least 1. Computed exactly in integers: floor(base * (100 + bonus%) / 100) or floor(base * (1000 - reduction permille) / 1000). Skeleton scope: no other I/R modifiers (luck, skills, spells, specialties) yet; the original likely uses floating point (see the Armorer quirk on the wiki), so exact-integer results may differ by 1 in edge cases once more factors combine - revisit with observations in E03/E04."
+summary  = "Damage = base * (1 + sum of bonuses) * product of (1 - reduction), rounded down once at the end, at least 1. Attack/defense: if attack A > defense D, a bonus of min(0.05 * (A - D), 3.00); else a reduction of min(0.025 * (D - A), 0.70). The attack bonus is capped at +300 % (at most 4x base damage, reached at 60 points), per user decision 2026-09-30 (OPEN-QUESTIONS Q11). Other bonuses (luck, jousting, hate, death blow) add to the bonus sum; other reductions (ranged/melee penalty, ...) multiply. Rates and caps are ruleset parameters (percent / per mille). Computed exactly in integers: floor(base * (100 + bonus%) * prod(1000 - reduction permille) / (100 * 1000^n)). The original likely uses floating point (see the Armorer quirk on the wiki), so exact results may differ by 1 in rare edge cases; open question for an observation (E03 T5)."
 numeric  = "integer"
 
   [[rule.source]]
@@ -334,6 +443,13 @@ numeric  = "integer"
   retrieved  = "2026-09-30"
   confidence = "medium"
   note       = "VCMI caps the attack bonus at +400% (80 points) instead of +300%. Not followed: the user decided for +300% (Q11)."
+
+  [[rule.source]]
+  kind       = "wiki"
+  ref        = "Damage - Heroes 3 wiki: DMGf = DMGb * (1+I1+I2+I3+I4+I5) * (1-R1) * (1-R2-R3) * (1-R4) * ... * (1-R8): bonuses add, reductions multiply"
+  url        = "https://heroes.thelazy.net/index.php/Damage"
+  retrieved  = "2026-10-01"
+  confidence = "high"
 
 [[rule]]
 id       = "BAT-DMG-003"
@@ -362,7 +478,7 @@ id       = "BAT-RET-001"
 title    = "Retaliation"
 context  = "battle"
 status   = "implemented"
-summary  = "After a melee strike, the target retaliates once per round if it is still alive and has not retaliated this round; the retaliation is a normal strike (BAT-DMG-001..003) with the target's remaining creatures against the attacker. Retaliations reset at the start of each round (BAT-TRN-003). Skeleton scope: no unlimited/extra retaliations, no 'no enemy retaliation' attackers, no ranged attacks, no blind/paralyze effects."
+summary  = "After a melee strike, the target retaliates once per round if it is still alive and has not retaliated this round; the retaliation is a normal strike (BAT-DMG-001..003) with the target's remaining creatures against the attacker. Shots are never retaliated (BAT-RNG-001). Retaliations reset at the start of each round (BAT-TRN-003). Scope: unlimited/extra retaliations and attackers without enemy retaliation are E03 T5; blind/paralyze effects E04."
 numeric  = "integer"
 
   [[rule.source]]

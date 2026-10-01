@@ -126,8 +126,10 @@ each kind, except `hate` with different targets; `extra_retaliations`/`unlimited
 the two attack patterns exclude each other. Abilities are data only until the rule that reads
 them arrives (E03 tasks, see the epic file).
 
-**Battle parameters** (`[battle]`, Tier 2) and **profiles** (`[[profile]]` with `quirks`) are
-unchanged from E01; exactly one enabled pack provides `[battle]`. Profile-level Tier-2 overrides
+**Battle parameters** (`[battle]`, Tier 2; exactly one enabled pack provides them): field
+size, army slots, damage rolls, attack/defense rates and caps, Defend bonus, formation rows (E01),
+and since E03 `ranged_full_damage_distance`, `ranged_penalty_percent`, `melee_penalty_percent`
+(BAT-RNG-002/003). **Profiles** (`[[profile]]` with `quirks`) are unchanged from E01. Profile-level Tier-2 overrides
 are not implemented yet (backlog).
 
 The compiled ruleset's canonical hash (encoding v3, `RULESET_HASH_VERSION`) covers packs, profile,

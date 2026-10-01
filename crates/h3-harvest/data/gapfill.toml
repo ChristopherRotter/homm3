@@ -170,6 +170,9 @@ defense_reduction_per_point_permille = 25   # BAT-DMG-002
 defense_reduction_cap_permille = 700        # BAT-DMG-002
 defend_bonus_percent = 20                   # BAT-TRN-004
 defend_bonus_min = 1                        # BAT-TRN-004
+ranged_full_damage_distance = 10            # BAT-RNG-002
+ranged_penalty_percent = 50                 # BAT-RNG-002
+melee_penalty_percent = 50                  # BAT-RNG-003
 formation = [[5], [2, 8], [2, 5, 8], [0, 4, 6, 10], [0, 2, 5, 8, 10], [0, 2, 4, 6, 8, 10], [0, 2, 4, 5, 6, 8, 10]]
 formation_sources = ["vcmi-layouts"]
 

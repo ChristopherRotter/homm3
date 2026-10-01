@@ -7,7 +7,15 @@ use h3_contracts::{ArmyStack, BattleSide};
 use h3_kernel::Rng;
 
 use super::support::*;
-use crate::damage::{apply_damage, base_damage, effective_defense, modified_damage};
+use crate::damage::{Factors, apply_damage, attack_defense, base_damage, effective_defense};
+use crate::event::StrikeFlags;
+
+/// Damage of `base` with only the attack/defense factor (BAT-DMG-002).
+fn modified_damage(base: u64, attack: u16, defense: u16, p: &h3_content::BattleParams) -> u64 {
+    let mut f = Factors::default();
+    attack_defense(&mut f, attack, defense, p);
+    f.apply(base)
+}
 use crate::{
     Command, CommandError, Event, EventKind, LegalCommands, StackFlags, StackId, legal_commands,
 };
@@ -231,7 +239,7 @@ fn defending_ends_the_turn_and_lasts_until_the_next_activation() {
             events[0].kind,
             EventKind::Struck {
                 damage: 13,
-                retaliation: false,
+                flags: StrikeFlags::NONE,
                 ..
             }
         ),
@@ -362,7 +370,7 @@ fn melee_attacks_move_to_an_adjacent_hex_first() {
         EventKind::Struck {
             attacker: StackId(0),
             target: StackId(1),
-            retaliation: false,
+            flags: StrikeFlags::NONE,
             ..
         }
     ));
@@ -558,14 +566,14 @@ fn surviving_target_retaliates_once_per_round_with_its_remaining_creatures() {
                 target: StackId(2),
                 damage: 20,
                 kills: 2,
-                retaliation: false
+                flags: StrikeFlags::NONE
             }),
             Event::public(EventKind::Struck {
                 attacker: StackId(2),
                 target: StackId(0),
                 damage: 16,
                 kills: 1,
-                retaliation: true
+                flags: StrikeFlags::RETALIATION
             }),
         ]
     );
@@ -585,7 +593,7 @@ fn surviving_target_retaliates_once_per_round_with_its_remaining_creatures() {
         !events.iter().any(|e| matches!(
             e.kind,
             EventKind::Struck {
-                retaliation: true,
+                flags: StrikeFlags::RETALIATION,
                 ..
             }
         )),
@@ -607,7 +615,7 @@ fn surviving_target_retaliates_once_per_round_with_its_remaining_creatures() {
         events.iter().any(|e| matches!(
             e.kind,
             EventKind::Struck {
-                retaliation: true,
+                flags: StrikeFlags::RETALIATION,
                 ..
             }
         )),
@@ -639,7 +647,7 @@ fn killed_targets_do_not_retaliate() {
     assert!(!events.iter().any(|e| matches!(
         e.kind,
         EventKind::Struck {
-            retaliation: true,
+            flags: StrikeFlags::RETALIATION,
             ..
         }
     )));

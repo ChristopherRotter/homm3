@@ -22,6 +22,7 @@ extern crate alloc;
 #[cfg(test)]
 extern crate std;
 
+mod combat;
 mod command;
 mod damage;
 mod error;
@@ -35,7 +36,7 @@ mod turn;
 
 pub use command::{Command, apply, validate};
 pub use error::{CommandError, SetupError};
-pub use event::{Event, EventKind, NoopSink, Sink, Visibility};
+pub use event::{Event, EventKind, NoopSink, Sink, StrikeFlags, Visibility};
 pub use geometry::{ATTACK_SLOTS, Direction, Field, Footprint, Hex, HexSet};
 pub use h3_contracts::{BattleOutcome, BattleSetup, BattleSide};
 pub use legal::{LegalCommands, MAX_LEGAL_COMMANDS, legal_commands};

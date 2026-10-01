@@ -8,12 +8,12 @@
 use h3_content::Ruleset;
 use h3_contracts::BattleSide;
 
-use crate::damage::strike;
+use crate::combat::{can_shoot, melee, shoot};
 use crate::error::CommandError;
 use crate::event::{Event, EventKind, Sink};
 use crate::geometry::{Field, Hex};
 use crate::movement::reachable;
-use crate::state::{BattleState, Stack, StackFlags, StackId};
+use crate::state::{BattleState, StackFlags, StackId, StackTraits};
 use crate::turn::end_turn;
 
 /// A player's intent for the active stack.
@@ -28,8 +28,15 @@ pub enum Command {
     Attack {
         /// The enemy stack.
         target: StackId,
-        /// The hex to strike from, adjacent to the target.
+        /// The head position to strike from; the footprint there must touch the target.
         from: Hex,
+    },
+    /// Shoot at `target` (BAT-RNG-001).
+    Shoot {
+        /// The enemy stack.
+        target: StackId,
+        /// The target's hex aimed at: its head, or (area shots only) its tail (BAT-RNG-004).
+        at: Hex,
     },
     /// Postpone the turn to the wait phase (BAT-TRN-002).
     #[default]
@@ -51,6 +58,11 @@ enum Plan {
         to: Hex,
         target: StackId,
     },
+    Shoot {
+        mover: StackId,
+        target: StackId,
+        at: Hex,
+    },
     Wait {
         mover: StackId,
     },
@@ -68,6 +80,17 @@ pub fn validate(
     command: Command,
 ) -> Result<(), CommandError> {
     plan(state, ruleset, actor, command).map(|_| ())
+}
+
+/// The living enemy stack `target` of `actor`.
+fn enemy(state: &BattleState, actor: BattleSide, target: StackId) -> Result<(), CommandError> {
+    let Some(victim) = state.stack(target).filter(|s| s.is_alive()) else {
+        return Err(CommandError::NoSuchTarget);
+    };
+    if victim.side == actor {
+        return Err(CommandError::NotAnEnemy);
+    }
+    Ok(())
 }
 
 fn plan(
@@ -106,11 +129,10 @@ fn plan(
             })
         }
         Command::Attack { target, from } => {
-            let Some(victim) = state.stack(target).filter(|s| s.is_alive()) else {
-                return Err(CommandError::NoSuchTarget);
-            };
-            if victim.side == actor {
-                return Err(CommandError::NotAnEnemy);
+            enemy(state, actor, target)?;
+            // rule: BAT-RNG-001
+            if can_shoot(state, field, id) {
+                return Err(CommandError::MustShoot);
             }
             let Some(position) = field
                 .footprint(from, mover.is_two_hex(), mover.side)
@@ -119,7 +141,7 @@ fn plan(
                 return Err(CommandError::InvalidHex);
             };
             // rule: BAT-ATK-001
-            if !field.touches(position, victim.footprint(field)) {
+            if !field.touches(position, state.at(target).footprint(field)) {
                 return Err(CommandError::NotAdjacent);
             }
             if from != mover.hex && !reachable(state, field, id, &mover).can_move_to(from) {
@@ -130,6 +152,24 @@ fn plan(
                 from: mover.hex,
                 to: from,
                 target,
+            })
+        }
+        Command::Shoot { target, at } => {
+            enemy(state, actor, target)?;
+            // rule: BAT-RNG-001
+            if !can_shoot(state, field, id) {
+                return Err(CommandError::CannotShoot);
+            }
+            let fp = state.at(target).footprint(field);
+            // rule: BAT-RNG-004
+            let aimable = at == fp.head || (mover.has(StackTraits::AREA_SHOT) && fp.covers(at));
+            if !aimable {
+                return Err(CommandError::NotOnTarget);
+            }
+            Ok(Plan::Shoot {
+                mover: id,
+                target,
+                at,
             })
         }
     }
@@ -145,6 +185,8 @@ pub fn apply<S: Sink>(
     sink: &mut S,
 ) -> Result<(), CommandError> {
     let plan = plan(state, ruleset, actor, command)?;
+    let params = ruleset.battle();
+    let field = Field::new(params.field);
     // Validation is complete: nothing below can fail, and every stack id in the plan is valid.
     match plan {
         Plan::Wait { mover } => {
@@ -169,7 +211,11 @@ pub fn apply<S: Sink>(
             if from != to {
                 move_stack(state, mover, from, to, sink);
             }
-            melee(state, ruleset, mover, target, sink);
+            melee(state, params, field, mover, target, sink);
+            end_turn(state, mover, false, sink);
+        }
+        Plan::Shoot { mover, target, at } => {
+            shoot(state, params, field, mover, target, at, sink);
             end_turn(state, mover, false, sink);
         }
     }
@@ -183,71 +229,4 @@ fn move_stack<S: Sink>(state: &mut BattleState, mover: StackId, from: Hex, to: H
         from,
         to,
     }));
-}
-
-/// A melee exchange: the strike, then the target's retaliation if it survived and has not
-/// retaliated this round (BAT-RET-001), then the end-of-battle check (BAT-END-001).
-fn melee<S: Sink>(
-    state: &mut BattleState,
-    ruleset: &Ruleset,
-    attacker: StackId,
-    target: StackId,
-    sink: &mut S,
-) {
-    let params = ruleset.battle();
-    exchange(state, params, attacker, target, false, sink);
-    let t = state.at(target);
-    // rule: BAT-RET-001
-    if t.is_alive() && !t.flags.contains(StackFlags::RETALIATED) {
-        state.at_mut(target).flags.set(StackFlags::RETALIATED, true);
-        exchange(state, params, target, attacker, true, sink);
-    }
-    check_end(state, sink);
-}
-
-fn exchange<S: Sink>(
-    state: &mut BattleState,
-    params: &h3_content::BattleParams,
-    attacker: StackId,
-    target: StackId,
-    retaliation: bool,
-    sink: &mut S,
-) {
-    let striker = *state.at(attacker);
-    let (damage, kills) = {
-        let BattleState { stacks, rng, .. } = state;
-        strike(
-            rng,
-            &striker,
-            &mut stacks.as_mut_slice()[target.index()],
-            params,
-        )
-    };
-    sink.emit(Event::public(EventKind::Struck {
-        attacker,
-        target,
-        damage,
-        kills,
-        retaliation,
-    }));
-}
-
-/// The battle ends when one side has no living stacks; the other side wins.
-// rule: BAT-END-001
-fn check_end<S: Sink>(state: &mut BattleState, sink: &mut S) {
-    let alive = |side: BattleSide| {
-        state
-            .stacks
-            .iter()
-            .any(|s: &Stack| s.side == side && s.is_alive())
-    };
-    let winner = match (alive(BattleSide::Attacker), alive(BattleSide::Defender)) {
-        (true, false) => Some(BattleSide::Attacker),
-        (false, true) => Some(BattleSide::Defender),
-        _ => None,
-    };
-    if let Some(w) = winner {
-        state.winner = Some(w);
-        sink.emit(Event::public(EventKind::BattleEnded { winner: w }));
-    }
 }

@@ -9,9 +9,10 @@
 //! | 1 | Defend |
 //! | 2 + h, h < 255 | Move to hex `h` (the head of a two-hex stack) |
 //! | 257 + 24·s + k | Attack stack `s` from its canonical attack position `k` (`Field::attack_positions` for the active stack's shape) |
+//! | 1025 + 2·s + a | Shoot at stack `s`, aiming at its head (`a = 0`) or tail (`a = 1`) |
 //!
 //! Version 2 (E03 T3) replaced the six neighbour directions of version 1 by the 24 canonical
-//! attack positions, which cover two-hex attackers and targets.
+//! attack positions, which cover two-hex attackers and targets; version 3 (E03 T4) added shots.
 
 use h3_battle::{
     ATTACK_SLOTS, BattleState, Command, Field, Hex, LegalCommands, STACK_CAPACITY, StackId,
@@ -20,13 +21,15 @@ use h3_content::{MAX_FIELD_HEXES, Ruleset};
 use h3_contracts::BattleSide;
 
 /// Version of this encoding; bump on any change of the layout above.
-pub const ACTION_ENCODING_VERSION: u32 = 2;
+pub const ACTION_ENCODING_VERSION: u32 = 3;
 
 const MOVE_BASE: usize = 2;
 const ATTACK_BASE: usize = MOVE_BASE + MAX_FIELD_HEXES;
 
+const SHOOT_BASE: usize = ATTACK_BASE + ATTACK_SLOTS * STACK_CAPACITY;
+
 /// Number of actions.
-pub const ACTION_COUNT: usize = ATTACK_BASE + ATTACK_SLOTS * STACK_CAPACITY;
+pub const ACTION_COUNT: usize = SHOOT_BASE + 2 * STACK_CAPACITY;
 
 /// Legal-action mask.
 pub type ActionMask = [bool; ACTION_COUNT];
@@ -61,6 +64,18 @@ pub fn encode(state: &BattleState, ruleset: &Ruleset, command: Command) -> Optio
                 .position(|p| *p == Some(from))?;
             Some(ATTACK_BASE + ATTACK_SLOTS * target.index() + k)
         }
+        Command::Shoot { target, at } => {
+            let field = Field::new(ruleset.battle().field);
+            let fp = state.stack(target)?.footprint(field);
+            let aim = if at == fp.head {
+                0
+            } else if fp.tail == Some(at) {
+                1
+            } else {
+                return None;
+            };
+            Some(SHOOT_BASE + 2 * target.index() + aim)
+        }
     }
 }
 
@@ -73,10 +88,21 @@ pub fn decode(state: &BattleState, ruleset: &Ruleset, action: usize) -> Option<C
         a if a < ATTACK_BASE => u8::try_from(a - MOVE_BASE)
             .ok()
             .map(|h| Command::Move { to: Hex(h) }),
-        a if a < ACTION_COUNT => {
+        a if a < SHOOT_BASE => {
             let target = StackId(u8::try_from((a - ATTACK_BASE) / ATTACK_SLOTS).ok()?);
             let from = positions(state, ruleset, target)?[(a - ATTACK_BASE) % ATTACK_SLOTS]?;
             Some(Command::Attack { target, from })
+        }
+        a if a < ACTION_COUNT => {
+            let target = StackId(u8::try_from((a - SHOOT_BASE) / 2).ok()?);
+            let field = Field::new(ruleset.battle().field);
+            let fp = state.stack(target)?.footprint(field);
+            let at = if (a - SHOOT_BASE).is_multiple_of(2) {
+                fp.head
+            } else {
+                fp.tail?
+            };
+            Some(Command::Shoot { target, at })
         }
         _ => None,
     }
@@ -111,8 +137,8 @@ mod tests {
 
     #[test]
     fn layout() {
-        assert_eq!(ACTION_COUNT, 2 + 255 + 24 * 32);
-        assert_eq!(ACTION_ENCODING_VERSION, 2);
+        assert_eq!(ACTION_COUNT, 2 + 255 + 24 * 32 + 2 * 32);
+        assert_eq!(ACTION_ENCODING_VERSION, 3);
     }
 
     #[test]
@@ -130,6 +156,48 @@ mod tests {
         }
         legal_mask(&s, &r, side.opponent(), &mut legal, &mut mask);
         assert!(mask.iter().all(|m| !m));
+    }
+
+    #[test]
+    fn shots_round_trip_including_tail_aims() {
+        use h3_contracts::{Army, ArmyStack, BattleSetup};
+        let r = h3_pack::compile(&[h3_pack::BASE_PACK], "base:faithful").unwrap();
+        let stack = |key: &str, count| Army {
+            stacks: vec![ArmyStack {
+                slot: 0,
+                creature: r.creature_by_key(key).unwrap(),
+                count,
+            }],
+        };
+        let setup = BattleSetup {
+            // Magogs (speed 6) act before Hydras (speed 5, two hexes) and shoot.
+            attacker: stack("base:magog", 10),
+            defender: stack("base:hydra", 2),
+            obstacles: vec![],
+        };
+        let s = BattleState::new(&r, &setup, 1).unwrap();
+        let side = s.side_to_act().unwrap();
+        let mut legal = LegalCommands::new();
+        let mut mask = [false; ACTION_COUNT];
+        legal_mask(&s, &r, side, &mut legal, &mut mask);
+        let shots: Vec<Command> = legal
+            .iter()
+            .copied()
+            .filter(|c| matches!(c, Command::Shoot { .. }))
+            .collect();
+        assert_eq!(shots.len(), 2, "head and tail of the two-hex hydra");
+        for c in shots {
+            let i = encode(&s, &r, c).unwrap();
+            assert!(mask[i]);
+            assert_eq!(decode(&s, &r, i), Some(c));
+        }
+        let off = Command::Shoot {
+            target: StackId(1),
+            at: Hex(0),
+        };
+        assert_eq!(encode(&s, &r, off), None);
+        // A one-hex target has no tail aim.
+        assert_eq!(decode(&s, &r, SHOOT_BASE + 1), None);
     }
 
     #[test]

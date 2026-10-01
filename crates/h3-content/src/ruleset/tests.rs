@@ -42,6 +42,9 @@ fn battle_def() -> BattleParamsDef {
         defense_reduction_cap_permille: 700,
         defend_bonus_percent: 20,
         defend_bonus_min: 1,
+        ranged_full_damage_distance: 10,
+        ranged_penalty_percent: 50,
+        melee_penalty_percent: 50,
         formation: vec![vec![5], vec![3, 7], vec![2, 5, 8]],
     }
 }
@@ -175,7 +178,7 @@ fn hash_is_stable_and_sensitive() {
     );
 }
 
-const GOLDEN_BASE_HASH: u64 = 0xcdfc_4e89_b205_fdc5;
+const GOLDEN_BASE_HASH: u64 = 0x9d87_f3a5_28cd_01a2;
 
 fn expect(packs: &[ContentPack], profile: &str) -> CompileError {
     Ruleset::compile(packs, profile).unwrap_err()
@@ -321,6 +324,14 @@ fn battle_param_errors() {
         (
             |b| b.defense_reduction_cap_permille = 1001,
             "defense_reduction_cap_permille must not exceed 1000",
+        ),
+        (
+            |b| b.ranged_penalty_percent = 101,
+            "ranged and melee penalties must not exceed 100 percent",
+        ),
+        (
+            |b| b.melee_penalty_percent = 101,
+            "ranged and melee penalties must not exceed 100 percent",
         ),
         (
             |b| drop(b.formation.pop()),

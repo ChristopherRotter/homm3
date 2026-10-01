@@ -20,6 +20,9 @@ defense_reduction_per_point_permille = 25   # BAT-DMG-002
 defense_reduction_cap_permille = 700        # BAT-DMG-002
 defend_bonus_percent = 20                   # BAT-TRN-004
 defend_bonus_min = 1                        # BAT-TRN-004
+ranged_full_damage_distance = 10            # BAT-RNG-002
+ranged_penalty_percent = 50                 # BAT-RNG-002
+melee_penalty_percent = 50                  # BAT-RNG-003
 # BAT-SET-001: formation[n-1] = starting rows of an army with n stacks, in slot order.
 formation = [
     [5],

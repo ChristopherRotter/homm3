@@ -18,6 +18,37 @@ pub enum Visibility {
     Side(BattleSide),
 }
 
+/// How a strike happened (BAT-ATK-001, BAT-RET-001, BAT-RNG-001/004).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub struct StrikeFlags(u8);
+
+impl StrikeFlags {
+    /// A plain melee strike.
+    pub const NONE: Self = Self(0);
+    /// A retaliation.
+    pub const RETALIATION: Self = Self(1);
+    /// A ranged strike (a shot).
+    pub const RANGED: Self = Self(1 << 1);
+    /// A secondary target of a strike that hits several stacks (area shots, …).
+    pub const SECONDARY: Self = Self(1 << 2);
+
+    /// Whether all flags of `other` are set.
+    pub const fn contains(self, other: Self) -> bool {
+        self.0 & other.0 == other.0
+    }
+
+    /// The flags with `other` added.
+    #[must_use]
+    pub const fn with(self, other: Self) -> Self {
+        Self(self.0 | other.0)
+    }
+
+    /// The raw bits.
+    pub const fn bits(self) -> u8 {
+        self.0
+    }
+}
+
 /// What happened.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum EventKind {
@@ -50,7 +81,7 @@ pub enum EventKind {
         /// The stack.
         stack: StackId,
     },
-    /// A stack struck another (BAT-ATK-001, BAT-RET-001).
+    /// A stack struck another (BAT-ATK-001, BAT-RET-001, BAT-RNG-001).
     Struck {
         /// The striking stack.
         attacker: StackId,
@@ -60,8 +91,8 @@ pub enum EventKind {
         damage: u64,
         /// Creatures killed (BAT-DMG-003).
         kills: u32,
-        /// Whether this strike is a retaliation.
-        retaliation: bool,
+        /// How the strike happened.
+        flags: StrikeFlags,
     },
     /// The battle ended (BAT-END-001).
     BattleEnded {

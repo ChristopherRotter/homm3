@@ -5,21 +5,23 @@ use h3_content::{MAX_FIELD_HEXES, Ruleset};
 use h3_contracts::BattleSide;
 use h3_kernel::FixedVec;
 
+use crate::combat::can_shoot;
 use crate::command::Command;
 use crate::geometry::{ATTACK_SLOTS, Field, Hex};
 use crate::movement::reachable;
-use crate::state::{BattleState, STACK_CAPACITY, StackFlags, StackId};
+use crate::state::{BattleState, STACK_CAPACITY, StackFlags, StackId, StackTraits};
 
-/// Upper bound on the number of legal commands: Wait, Defend, one move per hex, and the
-/// canonical attack positions per enemy stack.
+/// Upper bound on the number of legal commands: Wait, Defend, one move per hex, and per enemy
+/// stack either its canonical attack positions or two aimed shots.
 pub const MAX_LEGAL_COMMANDS: usize = 2 + MAX_FIELD_HEXES + ATTACK_SLOTS * STACK_CAPACITY;
 
 /// Fixed-capacity buffer for [`legal_commands`] (no allocation in the hot path).
 pub type LegalCommands = FixedVec<Command, MAX_LEGAL_COMMANDS>;
 
 /// Fills `out` with every command `actor` may issue now (empty if it is not the actor's turn or
-/// the battle is over). Order: Wait, Defend, moves by hex, attacks by target then canonical
-/// position slot (`Field::attack_positions`).
+/// the battle is over). Order: Wait, Defend, moves by hex, then per enemy stack its shots (a
+/// stack that can shoot, BAT-RNG-001: head, then tail for area shots) or its melee attacks by
+/// canonical position slot (`Field::attack_positions`).
 pub fn legal_commands(
     state: &BattleState,
     ruleset: &Ruleset,
@@ -43,12 +45,26 @@ pub fn legal_commands(
             let _ = out.push(Command::Move { to: hex });
         }
     }
+    let shooting = can_shoot(state, field, id);
     for (tid, target) in (0u8..).zip(state.stacks.iter()) {
         if !target.is_alive() || target.side == actor {
             continue;
         }
-        let positions =
-            field.attack_positions(mover.is_two_hex(), mover.side, target.footprint(field));
+        let fp = target.footprint(field);
+        if shooting {
+            let aims = [
+                Some(fp.head),
+                fp.tail.filter(|_| mover.has(StackTraits::AREA_SHOT)),
+            ];
+            for at in aims.into_iter().flatten() {
+                let _ = out.push(Command::Shoot {
+                    target: StackId(tid),
+                    at,
+                });
+            }
+            continue;
+        }
+        let positions = field.attack_positions(mover.is_two_hex(), mover.side, fp);
         for from in positions.into_iter().flatten() {
             if from == mover.hex || reach.can_move_to(from) {
                 let _ = out.push(Command::Attack {

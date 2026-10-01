@@ -136,6 +136,9 @@ defense_reduction_per_point_permille = 25
 defense_reduction_cap_permille = 700
 defend_bonus_percent = 20
 defend_bonus_min = 1
+ranged_full_damage_distance = 10
+ranged_penalty_percent = 50
+melee_penalty_percent = 50
 formation = [[5], [2, 8]]
 formation_sources = ["s"]
 

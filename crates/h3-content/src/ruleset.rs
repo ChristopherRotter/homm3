@@ -22,7 +22,7 @@ pub const MAX_ARMY_SLOTS: usize = 16;
 pub const MAX_FIELD_HEXES: usize = 255;
 
 /// Version of the ruleset hash encoding. Bump when the encoding below changes.
-pub const RULESET_HASH_VERSION: u32 = 3;
+pub const RULESET_HASH_VERSION: u32 = 4;
 
 /// A compiled creature type.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -80,6 +80,12 @@ pub struct BattleParams {
     pub defend_bonus_percent: u16,
     /// Minimum defense bonus when defending.
     pub defend_bonus_min: u16,
+    /// Shots reach at full damage up to this hex distance (BAT-RNG-002).
+    pub ranged_full_damage_distance: u8,
+    /// Damage reduction of shots beyond that distance, percent (BAT-RNG-002).
+    pub ranged_penalty_percent: u8,
+    /// Damage reduction of shooters' melee strikes, percent (BAT-RNG-003).
+    pub melee_penalty_percent: u8,
     formation: [[u8; MAX_ARMY_SLOTS]; MAX_ARMY_SLOTS],
 }
 
@@ -696,6 +702,9 @@ fn compile_battle(def: &BattleParamsDef) -> Result<BattleParams, CompileError> {
     if def.defense_reduction_cap_permille > 1000 {
         return invalid("defense_reduction_cap_permille must not exceed 1000");
     }
+    if def.ranged_penalty_percent > 100 || def.melee_penalty_percent > 100 {
+        return invalid("ranged and melee penalties must not exceed 100 percent");
+    }
     if def.formation.len() != slots {
         return invalid("formation needs one entry per army size 1..=army_slots");
     }
@@ -728,16 +737,20 @@ fn compile_battle(def: &BattleParamsDef) -> Result<BattleParams, CompileError> {
         defense_reduction_cap_permille: def.defense_reduction_cap_permille,
         defend_bonus_percent: def.defend_bonus_percent,
         defend_bonus_min: def.defend_bonus_min,
+        ranged_full_damage_distance: def.ranged_full_damage_distance,
+        ranged_penalty_percent: def.ranged_penalty_percent,
+        melee_penalty_percent: def.melee_penalty_percent,
         formation,
     })
 }
 
 impl CanonicalHash for Ruleset {
-    /// Encoding v3: version, packs (id, version) in load order, profile key, quirk bits,
+    /// Encoding v4: version, packs (id, version) in load order, profile key, quirk bits,
     /// resources and factions (key, name), creatures (key, stats in field order including shots
     /// and flag bits, then the info fields in field order — a faction as presence flag + handle,
     /// the cost as length + pairs — then the abilities as length + each ability's encoding),
-    /// battle parameters in field order with the full formation table.
+    /// battle parameters in field order (v4: with the ranged/melee penalty parameters) with the
+    /// full formation table.
     fn hash_into(&self, h: &mut StateHasher) {
         h.write_u32(RULESET_HASH_VERSION);
         h.write_len(self.packs.len());
@@ -808,6 +821,9 @@ impl CanonicalHash for Ruleset {
         h.write_u16(b.defense_reduction_cap_permille);
         h.write_u16(b.defend_bonus_percent);
         h.write_u16(b.defend_bonus_min);
+        h.write_u8(b.ranged_full_damage_distance);
+        h.write_u8(b.ranged_penalty_percent);
+        h.write_u8(b.melee_penalty_percent);
         for row in &b.formation {
             h.write_bytes(row);
         }

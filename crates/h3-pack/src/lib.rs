@@ -119,6 +119,9 @@ struct BattleDto {
     defense_reduction_cap_permille: u16,
     defend_bonus_percent: u16,
     defend_bonus_min: u16,
+    ranged_full_damage_distance: u8,
+    ranged_penalty_percent: u8,
+    melee_penalty_percent: u8,
     formation: Vec<Vec<u8>>,
 }
 
@@ -410,6 +413,9 @@ pub fn parse_pack(text: &str) -> Result<ContentPack, PackError> {
         defense_reduction_cap_permille: b.defense_reduction_cap_permille,
         defend_bonus_percent: b.defend_bonus_percent,
         defend_bonus_min: b.defend_bonus_min,
+        ranged_full_damage_distance: b.ranged_full_damage_distance,
+        ranged_penalty_percent: b.ranged_penalty_percent,
+        melee_penalty_percent: b.melee_penalty_percent,
         formation: b.formation,
     });
     Ok(ContentPack {

@@ -179,8 +179,18 @@ proptest! {
                 Ok(()) => {
                     prop_assert!(legal.iter().any(|c| *c == cmd), "illegal {cmd:?} accepted");
                     let target = match cmd {
-                        Command::Attack { target, .. } => Some(target),
+                        Command::Attack { target, .. } | Command::Shoot { target, .. } => Some(target),
                         _ => None,
+                    };
+                    // Area shots may also hit the stacks around the aimed hex (BAT-RNG-004).
+                    let field = crate::Field::new(r.battle().field);
+                    let area = |s: &crate::Stack| match cmd {
+                        Command::Shoot { at, .. } => {
+                            let shooter = before.active().map(|id| before.stacks()[id.index()]);
+                            shooter.is_some_and(|sh| sh.has(crate::StackTraits::AREA_SHOT))
+                                && s.footprint(field).hexes().any(|h| field.distance(h, at) <= 1)
+                        }
+                        _ => false,
                     };
                     for (i, (b, a)) in before.stacks().iter().zip(state.stacks()).enumerate() {
                         // Conservation: creatures only ever die.
@@ -192,7 +202,7 @@ proptest! {
                         prop_assert_eq!((a.creature, a.side, a.slot, a.attack, a.defense, a.speed), (b.creature, b.side, b.slot, b.attack, b.defense, b.speed));
                         if b.side != actor {
                             prop_assert_eq!(a.hex, b.hex);
-                            if target != Some(StackId(i as u8)) {
+                            if target != Some(StackId(i as u8)) && !area(b) {
                                 prop_assert_eq!((a.count, a.top_hp), (b.count, b.top_hp));
                             }
                         }

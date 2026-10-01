@@ -4,5 +4,6 @@
 mod commands;
 mod geometry;
 mod properties;
+mod ranged;
 mod rules;
 mod support;

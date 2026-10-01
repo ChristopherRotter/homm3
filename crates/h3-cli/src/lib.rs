@@ -27,7 +27,7 @@
 //! creature = "synthetic:spearman"
 //! count = 30
 //!
-//! commands = ["A move 45", "D attack 3 57", "A wait", "D defend"]   # actor, command
+//! commands = ["A move 45", "D attack 3 57", "A shoot 4 120", "A wait", "D defend"]
 //! checkpoints = ["0x…"]           # state hash after every `checkpoint_every` commands
 //!
 //! [result]
@@ -182,6 +182,7 @@ pub fn format_command(side: BattleSide, command: Command) -> String {
     match command {
         Command::Move { to } => format!("{s} move {}", to.0),
         Command::Attack { target, from } => format!("{s} attack {} {}", target.0, from.0),
+        Command::Shoot { target, at } => format!("{s} shoot {} {}", target.0, at.0),
         Command::Wait => format!("{s} wait"),
         Command::Defend => format!("{s} defend"),
     }
@@ -207,6 +208,10 @@ pub fn parse_command(text: &str) -> Result<(BattleSide, Command), CliError> {
         (Some("attack"), 4) => Command::Attack {
             target: StackId(num(2)?),
             from: Hex(num(3)?),
+        },
+        (Some("shoot"), 4) => Command::Shoot {
+            target: StackId(num(2)?),
+            at: Hex(num(3)?),
         },
         (Some("wait"), 2) => Command::Wait,
         (Some("defend"), 2) => Command::Defend,

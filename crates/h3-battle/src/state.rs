@@ -1,7 +1,9 @@
 //! Battle state: stacks, round bookkeeping, RNG and outcome (ADR-0004 §8: flat, index-addressed,
 //! fixed-capacity, cheap to clone).
 
-use h3_content::{Ability, CreatureFlag, CreatureType, CreatureTypeId, MAX_ARMY_SLOTS, Ruleset};
+use h3_content::{
+    Ability, AreaShot, CreatureFlag, CreatureType, CreatureTypeId, MAX_ARMY_SLOTS, Ruleset,
+};
 use h3_contracts::{Army, ArmyStack, BattleOutcome, BattleSetup, BattleSide};
 use h3_kernel::{CanonicalHash, FixedVec, Rng, StateHasher, StreamId};
 
@@ -13,7 +15,7 @@ use crate::turn;
 pub const STACK_CAPACITY: usize = 2 * MAX_ARMY_SLOTS;
 
 /// Version of the battle-state hash encoding ([`BattleState::state_hash`]). Bump on any change.
-pub const BATTLE_STATE_HASH_VERSION: u32 = 2;
+pub const BATTLE_STATE_HASH_VERSION: u32 = 3;
 
 /// Index of a stack in its battle (attacker stacks first, in slot order, then defender stacks).
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Default)]
@@ -62,13 +64,30 @@ impl StackFlags {
 
 /// Battle traits of a stack, derived from its creature's flags and abilities at setup.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
-pub struct StackTraits(u16);
+pub struct StackTraits(u32);
 
 impl StackTraits {
     /// Occupies two hexes (flag `two_hex`, BAT-GEO-002).
     pub const TWO_HEX: Self = Self(1);
     /// Flies or teleports (flag `flying` or ability `teleports`, BAT-MOV-002).
     pub const FLIES: Self = Self(1 << 1);
+    /// A shooter (flag `shooter`, BAT-RNG-001).
+    pub const SHOOTER: Self = Self(1 << 2);
+    /// No melee penalty (flag `no_melee_penalty`, BAT-RNG-003).
+    pub const NO_MELEE_PENALTY: Self = Self(1 << 3);
+    /// No distance penalty (ability `no_distance_penalty`, BAT-RNG-002).
+    pub const NO_DISTANCE_PENALTY: Self = Self(1 << 4);
+    /// Strikes twice (flag `strikes_twice`; shooters shoot twice, BAT-RNG-001).
+    pub const STRIKES_TWICE: Self = Self(1 << 5);
+    /// Its shots hit an area (ability `area_shot`, BAT-RNG-004).
+    pub const AREA_SHOT: Self = Self(1 << 6);
+    /// Its area shot is a death cloud that spares stacks that are not alive (else a fireball
+    /// that spares fire-immune stacks).
+    pub const DEATH_CLOUD: Self = Self(1 << 7);
+    /// Alive (flag `alive`).
+    pub const ALIVE: Self = Self(1 << 8);
+    /// Immune to fire (flag `fire_immune`).
+    pub const FIRE_IMMUNE: Self = Self(1 << 9);
 
     /// Whether all traits of `other` are set.
     pub const fn contains(self, other: Self) -> bool {
@@ -82,20 +101,45 @@ impl StackTraits {
     }
 
     /// The raw bits.
-    pub const fn bits(self) -> u16 {
+    pub const fn bits(self) -> u32 {
         self.0
     }
 
     /// The traits of a creature type.
     pub(crate) fn of(creature: &CreatureType, abilities: &[h3_content::CompiledAbility]) -> Self {
         let flags = creature.flags;
+        let has = |f| flags.contains(f);
+        let ability = |f: fn(&h3_content::CompiledAbility) -> bool| abilities.iter().any(f);
         Self::default()
-            .with(Self::TWO_HEX, flags.contains(CreatureFlag::TwoHex))
+            .with(Self::TWO_HEX, has(CreatureFlag::TwoHex))
             .with(
                 Self::FLIES,
-                flags.contains(CreatureFlag::Flying)
-                    || abilities.iter().any(|a| matches!(a, Ability::Teleports)),
+                has(CreatureFlag::Flying) || ability(|a| matches!(a, Ability::Teleports)),
             )
+            .with(Self::SHOOTER, has(CreatureFlag::Shooter))
+            .with(Self::NO_MELEE_PENALTY, has(CreatureFlag::NoMeleePenalty))
+            .with(
+                Self::NO_DISTANCE_PENALTY,
+                ability(|a| matches!(a, Ability::NoDistancePenalty)),
+            )
+            .with(Self::STRIKES_TWICE, has(CreatureFlag::StrikesTwice))
+            .with(
+                Self::AREA_SHOT,
+                ability(|a| matches!(a, Ability::AreaShot { .. })),
+            )
+            .with(
+                Self::DEATH_CLOUD,
+                ability(|a| {
+                    matches!(
+                        a,
+                        Ability::AreaShot {
+                            effect: AreaShot::DeathCloud
+                        }
+                    )
+                }),
+            )
+            .with(Self::ALIVE, has(CreatureFlag::Alive))
+            .with(Self::FIRE_IMMUNE, has(CreatureFlag::FireImmune))
     }
 }
 
@@ -127,6 +171,8 @@ pub struct Stack {
     pub max_hp: u32,
     /// Speed.
     pub speed: u8,
+    /// Shots left (BAT-RNG-001).
+    pub shots: u16,
     /// Battle traits (two-hex, flying, …).
     pub traits: StackTraits,
     /// Per-round flags.
@@ -148,6 +194,7 @@ impl Default for Stack {
             damage_max: 0,
             max_hp: 0,
             speed: 0,
+            shots: 0,
             traits: StackTraits::default(),
             flags: StackFlags::default(),
         }
@@ -158,6 +205,11 @@ impl Stack {
     /// Whether the stack still has creatures.
     pub const fn is_alive(&self) -> bool {
         self.count > 0
+    }
+
+    /// Whether the stack has trait `t`.
+    pub const fn has(&self, t: StackTraits) -> bool {
+        self.traits.contains(t)
     }
 
     /// Whether the stack occupies two hexes.
@@ -199,7 +251,8 @@ impl CanonicalHash for Stack {
         h.write_u16(self.damage_max);
         h.write_u32(self.max_hp);
         h.write_u8(self.speed);
-        h.write_u16(self.traits.bits());
+        h.write_u16(self.shots);
+        h.write_u32(self.traits.bits());
         h.write_u8(self.flags.bits());
     }
 }
@@ -286,6 +339,7 @@ impl BattleState {
                     damage_max: creature.damage_max,
                     max_hp: creature.hit_points,
                     speed: creature.speed,
+                    shots: creature.shots,
                     traits,
                     flags: StackFlags::default(),
                 };
@@ -402,7 +456,8 @@ impl BattleState {
     /// Canonical hash of the full state, including hidden parts such as the RNG (desync detection
     /// and replay verification; never sent to untrusted clients, docs/06-security.md).
     ///
-    /// Encoding v2: version, round, active, last side, winner, stacks (each with its traits),
+    /// Encoding v3: version, round, active, last side, winner, stacks (each with its shots and
+    /// traits),
     /// obstacles, RNG state.
     pub fn state_hash(&self) -> u64 {
         h3_kernel::hash::hash_of(self)

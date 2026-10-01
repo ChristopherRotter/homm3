@@ -892,6 +892,13 @@ fn write_battle(out: &mut String, gap: &GapFill) {
     );
     let _ = writeln!(out, "defend_bonus_percent = {}", b.defend_bonus_percent);
     let _ = writeln!(out, "defend_bonus_min = {}", b.defend_bonus_min);
+    let _ = writeln!(
+        out,
+        "ranged_full_damage_distance = {}",
+        b.ranged_full_damage_distance
+    );
+    let _ = writeln!(out, "ranged_penalty_percent = {}", b.ranged_penalty_percent);
+    let _ = writeln!(out, "melee_penalty_percent = {}", b.melee_penalty_percent);
     let rows: Vec<String> = b
         .formation
         .iter()

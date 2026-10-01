@@ -89,6 +89,12 @@ pub enum CommandError {
     NotAnEnemy,
     /// The attack position is not adjacent to the target (BAT-ATK-001).
     NotAdjacent,
+    /// The active stack can shoot, so it may not attack in melee (BAT-RNG-001).
+    MustShoot,
+    /// The active stack cannot shoot: not a shooter, no shots left, or blocked (BAT-RNG-001).
+    CannotShoot,
+    /// The aimed hex is not one the stack may aim at on the target (BAT-RNG-004).
+    NotOnTarget,
 }
 
 impl fmt::Display for CommandError {
@@ -102,6 +108,9 @@ impl fmt::Display for CommandError {
             Self::NoSuchTarget => "no such living stack",
             Self::NotAnEnemy => "the target is not an enemy",
             Self::NotAdjacent => "the attack position is not adjacent to the target",
+            Self::MustShoot => "the stack can shoot, so it cannot attack in melee",
+            Self::CannotShoot => "the stack cannot shoot",
+            Self::NotOnTarget => "the stack cannot aim at that hex of the target",
         })
     }
 }
@@ -182,6 +191,15 @@ mod tests {
             (
                 CommandError::NotAdjacent,
                 "the attack position is not adjacent to the target",
+            ),
+            (
+                CommandError::MustShoot,
+                "the stack can shoot, so it cannot attack in melee",
+            ),
+            (CommandError::CannotShoot, "the stack cannot shoot"),
+            (
+                CommandError::NotOnTarget,
+                "the stack cannot aim at that hex of the target",
             ),
         ];
         for (e, text) in all {
