@@ -322,7 +322,7 @@ fn too_many_creatures() {
 fn creature_errors() {
     type Edit = fn(&mut CreatureDef);
     const DAMAGE: &str = "damage_min must be at least 1 (war machines: or damage [0, 0])";
-    let cases: [(Edit, &str); 6] = [
+    let cases: [(Edit, &str); 8] = [
         (|c| c.damage_min = 0, DAMAGE),
         (
             |c| c.damage_max = 0,
@@ -350,6 +350,20 @@ fn creature_errors() {
                 c.hit_points = 0;
             },
             "hit_points must be at least 1",
+        ),
+        // Only war machines act automatically.
+        (
+            |c| c.info.abilities = vec![AbilityDef::AmmoSupply],
+            "ammo_supply and first_aid require flag war_machine",
+        ),
+        (
+            |c| {
+                c.info.abilities = vec![AbilityDef::FirstAid {
+                    min_hp: 1,
+                    max_hp: 2,
+                }]
+            },
+            "ammo_supply and first_aid require flag war_machine",
         ),
     ];
     for (edit, reason) in cases {
@@ -413,6 +427,10 @@ fn battle_param_errors() {
         (
             |b| b.luck_dice = 0,
             "morale_dice and luck_dice must be at least 1",
+        ),
+        (
+            |b| b.bad_morale_chances = vec![1, 24],
+            "bad morale chances must be below morale_dice",
         ),
         (
             |b| b.bad_morale_chances = vec![1; 9],

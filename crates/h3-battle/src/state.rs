@@ -9,7 +9,7 @@ use h3_contracts::{Army, ArmyStack, BattleOutcome, BattleResult, BattleSetup, Ba
 use h3_kernel::{CanonicalHash, FixedVec, Rng, StateHasher, StreamId};
 
 use crate::error::SetupError;
-use crate::event::NoopSink;
+use crate::event::{NoopSink, Sink};
 use crate::geometry::{Field, Footprint, Hex, HexSet};
 use crate::morale::{self, Modifiers};
 use crate::{terrain, turn};
@@ -503,11 +503,31 @@ pub struct BattleState {
 impl BattleState {
     /// Starts a battle: validates the setup against the ruleset, places the obstacles and the
     /// armies (BAT-SET-001, BAT-GEO-003), seeds the battle RNG stream from `seed` and activates
-    /// the first stack.
+    /// the first stack. The events of that first activation (bad morale, war machines acting
+    /// before any command) are dropped; use [`BattleState::start`] to receive them.
     pub fn new(ruleset: &Ruleset, setup: &BattleSetup, seed: u64) -> Result<Self, SetupError> {
+        Self::start(ruleset, setup, seed, &mut NoopSink)
+    }
+
+    /// Like [`BattleState::new`], but reports the events of the first activation to `sink`: the
+    /// first `TurnStarted` and anything that happens before the first command (a bad-morale
+    /// freeze, BAT-MOR-004; war machines acting, BAT-WAR-002/003; even the end of the battle).
+    pub fn start<S: Sink>(
+        ruleset: &Ruleset,
+        setup: &BattleSetup,
+        seed: u64,
+        sink: &mut S,
+    ) -> Result<Self, SetupError> {
         let params = ruleset.battle();
         let field = Field::new(params.field);
         let obstacles = obstacles(field, &setup.obstacles)?;
+        // rule: BAT-TER-001
+        if setup
+            .terrain
+            .is_some_and(|t| ruleset.terrains().get(t.index()).is_none())
+        {
+            return Err(SetupError::UnknownTerrain);
+        }
         let mut taken = obstacles;
         let mut placed = [Stack::default(); STACK_CAPACITY];
         let mut len = 0;
@@ -590,9 +610,9 @@ impl BattleState {
             rng: Rng::for_stream(seed, StreamId::BATTLE),
         };
         morale::setup(&mut state, ruleset);
-        // The first activation runs the usual checks (bad morale, BAT-MOR-004); its events are not
-        // reported, like the start of round 1.
-        turn::activate_next(&mut state, ruleset, &mut NoopSink);
+        // The first activation runs the usual checks (bad morale, BAT-MOR-004); round 1 starts
+        // without a `RoundStarted` event.
+        turn::activate_next(&mut state, ruleset, sink);
         Ok(state)
     }
 

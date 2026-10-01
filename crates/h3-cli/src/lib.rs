@@ -83,10 +83,13 @@ fn read(path: &Path) -> Result<String, CliError> {
     std::fs::read_to_string(path).map_err(|e| CliError::Io(path.to_path_buf(), e))
 }
 
-/// Loads `<packs_dir>/<id>/pack.toml` for each id and compiles them with `profile`.
+/// Loads `<packs_dir>/<id>/pack.toml` for each id and compiles them with `profile`. Ids come
+/// from scenario and replay files, so they must be valid pack ids (no paths).
 pub fn load_ruleset(packs_dir: &Path, ids: &[String], profile: &str) -> Result<Ruleset, CliError> {
     let mut texts = Vec::new();
     for id in ids {
+        h3_content::ContentKey::new(id, "pack")
+            .map_err(|_| CliError::Format(format!("invalid pack id `{id}`")))?;
         let path = packs_dir.join(id).join("pack.toml");
         texts.push(read(&path)?);
     }
@@ -605,5 +608,12 @@ mod tests {
         let missing =
             load_ruleset(Path::new("/nonexistent"), &["x".to_owned()], "x:y").unwrap_err();
         assert!(missing.to_string().contains("pack.toml"));
+        for id in ["../synthetic", "/etc", "a/b"] {
+            let err = load_ruleset(Path::new("packs"), &[id.to_owned()], "x:y").unwrap_err();
+            assert_eq!(
+                err.to_string(),
+                format!("replay format: invalid pack id `{id}`")
+            );
+        }
     }
 }

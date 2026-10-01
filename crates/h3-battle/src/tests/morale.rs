@@ -3,7 +3,7 @@
 //! Q-0003).
 //!
 //! The default test ruleset never triggers morale or luck; these tests use `ruleset_with` and a
-//! one-sided die (always triggers) or the original 24-sided die for the chances.
+//! die on which they (nearly) always trigger or the original 24-sided die for the chances.
 
 use std::vec;
 use std::vec::Vec;
@@ -22,12 +22,13 @@ fn original(b: &mut BattleParamsDef) {
     b.good_luck_chances = vec![1, 2, 3];
 }
 
-/// Morale and luck that always trigger.
+/// Good morale and luck that always trigger, and bad morale that nearly always does (254/255: a
+/// certain freeze is not allowed, it could stop the battle for good).
 fn always(b: &mut BattleParamsDef) {
-    b.morale_dice = 1;
+    b.morale_dice = 255;
     b.luck_dice = 1;
-    b.good_morale_chances = vec![1, 1, 1];
-    b.bad_morale_chances = vec![1, 1, 1];
+    b.good_morale_chances = vec![255, 255, 255];
+    b.bad_morale_chances = vec![254, 254, 254];
     b.good_luck_chances = vec![1, 1, 1];
 }
 
@@ -455,6 +456,24 @@ fn bad_morale_freezes_a_stack_at_its_activation() {
         .map(|s| s.flags.contains(StackFlags::ACTED))
         .collect();
     assert_eq!(acted, vec![true, false, false]);
+    // `start` reports that first freeze.
+    let mut start = Vec::new();
+    let setup = setup(
+        &r,
+        &[(0, "pikeman_c", 1), (1, "imp", 1), (2, "serf", 1)],
+        &[(0, "fixed", 1)],
+    );
+    let same = BattleState::start(&r, &setup, 1, &mut start).unwrap();
+    assert_eq!(same, s);
+    let kinds: Vec<EventKind> = start.iter().map(|e| e.kind).collect();
+    assert_eq!(
+        kinds,
+        vec![
+            EventKind::TurnStarted { stack: StackId(0) },
+            EventKind::BadMorale { stack: StackId(0) },
+            EventKind::TurnStarted { stack: StackId(3) },
+        ]
+    );
     // After the defender's turn the other two freeze, each with an event, and a new round starts.
     let events = act(&mut s, &r, Command::Defend).unwrap();
     assert_eq!(count(&events, bad), 2);

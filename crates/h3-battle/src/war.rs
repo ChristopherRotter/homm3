@@ -5,17 +5,17 @@
 //! target VCMI's automatic control picks (BAT-WAR-002), the First Aid Tent heals a random
 //! damaged allied stack (BAT-WAR-003); the Ammo Cart never becomes active (BAT-WAR-004).
 
-use alloc::vec::Vec;
 use core::cmp::Ordering;
 
 use h3_content::{Ability, Ruleset};
+use h3_kernel::FixedVec;
 
 use crate::combat::{can_shoot, shoot, shot_damage_range};
 use crate::damage::apply_damage;
 use crate::event::{Event, EventKind, Sink};
 use crate::geometry::Field;
 use crate::movement::reachable;
-use crate::state::{BattleState, StackId, StackTraits};
+use crate::state::{BattleState, STACK_CAPACITY, StackId, StackTraits};
 
 /// The automatic turn of war machine `id` (BAT-WAR-002/003): heal, shoot, or nothing.
 pub(crate) fn act<S: Sink>(state: &mut BattleState, ruleset: &Ruleset, id: StackId, sink: &mut S) {
@@ -53,6 +53,7 @@ pub(crate) fn can_attack_next_turn(state: &BattleState, field: Field, id: StackI
 }
 
 /// A candidate target with its ranking keys (VCMI `tryMakeAutomaticActionOfRangedUnit`).
+#[derive(Debug, Clone, Copy, Default)]
 struct Candidate {
     id: StackId,
     /// Not a war machine (preferred).
@@ -98,38 +99,39 @@ pub(crate) fn shooting_target(
     shooter: StackId,
 ) -> Option<StackId> {
     let side = state.at(shooter).side;
-    let candidates: Vec<Candidate> = (0u8..)
-        .zip(state.stacks.iter())
-        .filter(|(_, s)| s.is_alive() && s.side != side)
-        .map(|(i, s)| {
+    // Fixed capacity, no allocation (ADR-0004 §8): at most every stack is a candidate.
+    let mut candidates: FixedVec<Candidate, STACK_CAPACITY> = FixedVec::new();
+    for (i, s) in (0u8..).zip(state.stacks.iter()) {
+        if s.is_alive() && s.side != side {
             let id = StackId(i);
-            Candidate {
+            let _ = candidates.push(Candidate {
                 id,
                 creature: !s.has(StackTraits::WAR_MACHINE),
                 value: value(state, ruleset, shooter, id),
-            }
-        })
-        .collect();
+            });
+        }
+    }
     let best_class = candidates.iter().any(|c| c.creature);
-    let mut pool: Vec<&Candidate> = candidates
-        .iter()
-        .filter(|c| c.creature == best_class)
-        .collect();
     // The higher value wins, then the lower id.
-    let rank = |a: &&Candidate, b: &&Candidate| -> Ordering {
+    let rank = |a: &Candidate, b: &Candidate| -> Ordering {
         (a.value.0 * b.value.1)
             .cmp(&(b.value.0 * a.value.1))
             .then_with(|| b.id.cmp(&a.id))
     };
     // Best first (selection, no sort): the first that could attack next turn wins, else the best.
+    let mut taken = [false; STACK_CAPACITY];
     let mut best = None;
-    while let Some((i, c)) = pool.iter().enumerate().max_by(|a, b| rank(a.1, b.1)) {
-        let id = c.id;
-        best.get_or_insert(id);
-        if can_attack_next_turn(state, field, id) {
-            return Some(id);
+    while let Some((i, c)) = candidates
+        .iter()
+        .enumerate()
+        .filter(|(i, c)| c.creature == best_class && !taken[*i])
+        .max_by(|a, b| rank(a.1, b.1))
+    {
+        best.get_or_insert(c.id);
+        if can_attack_next_turn(state, field, c.id) {
+            return Some(c.id);
         }
-        pool.swap_remove(i);
+        taken[i] = true;
     }
     best
 }
@@ -148,16 +150,16 @@ fn first_aid<S: Sink>(state: &mut BattleState, ruleset: &Ruleset, id: StackId, s
             _ => None,
         })
         .unwrap_or_default();
-    let hurt: Vec<StackId> = (0u8..)
-        .zip(state.stacks.iter())
-        .filter(|(_, s)| {
-            s.side == me.side
-                && s.is_alive()
-                && !s.has(StackTraits::WAR_MACHINE)
-                && s.top_hp < s.max_hp
-        })
-        .map(|(i, _)| StackId(i))
-        .collect();
+    let mut hurt: FixedVec<StackId, STACK_CAPACITY> = FixedVec::new();
+    for (i, s) in (0u8..).zip(state.stacks.iter()) {
+        if s.side == me.side
+            && s.is_alive()
+            && !s.has(StackTraits::WAR_MACHINE)
+            && s.top_hp < s.max_hp
+        {
+            let _ = hurt.push(StackId(i));
+        }
+    }
     let n = u32::try_from(hurt.len()).unwrap_or(u32::MAX);
     if n == 0 {
         return;

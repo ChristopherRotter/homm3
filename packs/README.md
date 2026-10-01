@@ -123,7 +123,7 @@ errors:
 | `charge_immunity` | — | attackers get no jousting bonus against it (BAT-DMG-005) |
 | `defense_reduction` | `percent` (1–100) | the target's defense counts `100 − percent` % (rounded down; BAT-DMG-006) |
 | `death_blow` | `chance_percent` | chance of +100 % base damage per attack (BAT-DMG-007) |
-| `life_drain` | `percent` | heals/resurrects itself by that share of the damage dealt to living targets (BAT-DMG-008) |
+| `life_drain` | `percent` (1–1000) | heals/resurrects itself by that share of the damage dealt to living targets (BAT-DMG-008) |
 | `regeneration` | — | top creature regains its lost hit points at the start of its turn (BAT-TRN-005) |
 | `death_stare` | `chance_percent` | per creature, kills one living enemy creature after attacking (BAT-DMG-009) |
 | `extra_retaliations` | `count` | retaliates `1 + count` times per round (BAT-RET-003) |
@@ -136,8 +136,8 @@ errors:
 | `minimum_morale`, `minimum_luck` | `value` | lower bound of its morale/luck (BAT-MOR-001, BAT-LCK-001) |
 | `no_distance_penalty` | — | its shots have no distance penalty (BAT-RNG-002) |
 | `area_shot` | `effect` (`fireball`/`death_cloud`) | its shots also hit the stacks around the target (requires flag `area_attack`; BAT-RNG-004) |
-| `first_aid` | `min_hp`, `max_hp` (1 ≤ min ≤ max) | war machine (First Aid Tent): on its turn heals the top creature of a random hurt allied stack by a uniform `min_hp..=max_hp` (BAT-WAR-003) |
-| `ammo_supply` | — | war machine (Ammo Cart): while it lives its side's shots use no ammunition; it never acts (BAT-WAR-004) |
+| `first_aid` | `min_hp`, `max_hp` (1 ≤ min ≤ max) | war machine only (requires flag `war_machine`; First Aid Tent): on its turn heals the top creature of a random hurt allied stack by a uniform `min_hp..=max_hp` (BAT-WAR-003) |
+| `ammo_supply` | — | war machine only (requires flag `war_machine`; Ammo Cart): while it lives its side's shots use no ammunition; it never acts (BAT-WAR-004) |
 
 `creature` references follow the reference rules above (own pack, or `pack:name` in the
 dependency closure) and may name creatures defined later in the same pack. At most one entry of
@@ -153,6 +153,7 @@ stacks in slot order, distinct rows of the field; the tight table since E03 T9, 
 and since E03 `ranged_full_damage_distance`, `ranged_penalty_percent`, `melee_penalty_percent`
 (BAT-RNG-002/003) and the morale and luck roll tables `morale_dice`, `good_morale_chances`,
 `bad_morale_chances`, `luck_dice`, `good_luck_chances` (chances out of the die's sides per level,
+bad-morale chances below the die's sides so that no stack freezes for certain,
 at most 8 levels; the table lengths bound morale and luck, BAT-MOR-001..004, BAT-LCK-001/002),
 and `war_machine_positions` (E03 T8: three head hexes `[x, y]` of the attacker's war machines by
 kind — shooting machine, ammo supply, first aid — mirrored for the defender, BAT-WAR-001). A war

@@ -9,6 +9,7 @@
 
 use h3_content::{Ability, BattleParams, CompiledAbility, Ruleset};
 use h3_contracts::{BattleResult, BattleSide};
+use h3_kernel::arith::mul_div_floor;
 
 use crate::damage::{
     Factors, apply_damage, attack_defense, base_damage, effective_defense, reduced_defense,
@@ -245,7 +246,7 @@ fn attack<S: Sink>(
     // target.
     let drained = |state: &BattleState, id: StackId, lost: u64| {
         if state.at(id).has(StackTraits::ALIVE) {
-            lost * u64::from(drain) / 100
+            mul_div_floor(lost, u64::from(drain), 100).unwrap_or(u64::MAX)
         } else {
             0
         }
@@ -257,7 +258,7 @@ fn attack<S: Sink>(
         // `i < STACK_CAPACITY <= u8::MAX`.
         let id = StackId(u8::try_from(i).unwrap_or(u8::MAX));
         let lost = strike(state, ruleset, (attacker, id), secondary, blow, sink);
-        heal += drained(state, id, lost);
+        heal = heal.saturating_add(drained(state, id, lost));
     }
     life_drain(state, attacker, heal, sink);
     if stare > 0 {

@@ -59,6 +59,8 @@ pub enum SetupError {
         /// The side.
         side: BattleSide,
     },
+    /// The battlefield's terrain is not part of the ruleset (BAT-TER-001).
+    UnknownTerrain,
 }
 
 impl fmt::Display for SetupError {
@@ -83,6 +85,7 @@ impl fmt::Display for SetupError {
             Self::InvalidWarMachine { side } => {
                 write!(f, "{side:?} war machine is not supported or listed twice")
             }
+            Self::UnknownTerrain => f.write_str("the terrain is not part of the ruleset"),
         }
     }
 }
@@ -204,6 +207,10 @@ mod tests {
         assert_eq!(
             SetupError::InvalidWarMachine { side: Attacker }.to_string(),
             "Attacker war machine is not supported or listed twice"
+        );
+        assert_eq!(
+            SetupError::UnknownTerrain.to_string(),
+            "the terrain is not part of the ruleset"
         );
         let all = [
             (CommandError::BattleOver, "the battle is over"),

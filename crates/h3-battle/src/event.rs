@@ -92,7 +92,9 @@ pub enum EventKind {
         attacker: StackId,
         /// The stack that was hit.
         target: StackId,
-        /// Damage dealt (BAT-DMG-002).
+        /// Damage dealt (BAT-DMG-002), before capping at the target's remaining health (VCMI
+        /// reports the capped value; the hit points actually lost are at most the target's
+        /// total health).
         damage: u64,
         /// Creatures killed (BAT-DMG-003).
         kills: u32,

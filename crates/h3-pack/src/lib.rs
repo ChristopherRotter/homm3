@@ -1093,9 +1093,19 @@ mod tests {
             { kind = \"minimum_morale\", value = 1 }, { kind = \"minimum_luck\", value = 1 }, \
             { kind = \"no_distance_penalty\" }, { kind = \"first_aid\", min_hp = 1, max_hp = 25 }, \
             { kind = \"ammo_supply\" }]\n";
+        // The war-machine abilities need flag war_machine.
         let text = SYNTHETIC_PACK.replace(
             "flags = [\"alive\"]\n",
             &std::format!("flags = [\"alive\"]\n{all}"),
+        );
+        assert!(matches!(
+            compile(&[&text], "synthetic:faithful"),
+            Err(PackError::Compile(CompileError::InvalidCreature { reason, .. }))
+                if reason == "ammo_supply and first_aid require flag war_machine"
+        ));
+        let text = SYNTHETIC_PACK.replace(
+            "flags = [\"alive\"]\n",
+            &std::format!("flags = [\"alive\", \"war_machine\"]\n{all}"),
         );
         let r = compile(&[&text], "synthetic:faithful").unwrap();
         let spearman = r.creature_by_key("synthetic:spearman").unwrap();

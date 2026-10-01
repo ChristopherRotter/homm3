@@ -52,6 +52,15 @@ fn creatures_on_their_native_terrain_get_one_attack_defense_and_speed() {
     );
     assert_eq!(stats(Some("void")).0, [(10, 10, 5); 3]);
     assert_eq!(stats(None).0, [(10, 10, 5); 3]);
+    // A terrain handle of another ruleset is rejected.
+    let unknown = BattleSetup {
+        terrain: Some(h3_content::TerrainId::from_raw(99)),
+        ..setup(&r, &[(0, "serf", 1)], &[(0, "serf", 1)])
+    };
+    assert_eq!(
+        BattleState::new(&r, &unknown, 1),
+        Err(crate::SetupError::UnknownTerrain)
+    );
 }
 
 // ---------------------------------------------------------------- BAT-GEO-004 obstacles

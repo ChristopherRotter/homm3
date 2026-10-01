@@ -278,7 +278,9 @@ impl<C> Ability<C> {
             {
                 Some("chance_percent must be 1..=100")
             }
-            Self::LifeDrain { percent: 0 } => Some("life_drain percent must be at least 1"),
+            Self::LifeDrain { percent } if !(1..=1000).contains(percent) => {
+                Some("life_drain percent must be 1..=1000")
+            }
             Self::ExtraRetaliations { count: 0 } => {
                 Some("extra_retaliations count must be at least 1")
             }
@@ -489,6 +491,7 @@ mod tests {
                 chance_percent: 101,
             },
             A::LifeDrain { percent: 0 },
+            A::LifeDrain { percent: 1001 },
             A::ExtraRetaliations { count: 0 },
             A::MoraleAura {
                 amount: 0,

@@ -862,6 +862,13 @@ fn validate_creature(
     if def.flags.contains(CreatureFlag::AreaAttack) != area {
         return invalid("flag area_attack requires an area_shot ability (and vice versa)");
     }
+    // Only war machines act automatically; an army stack with these would never act.
+    let automatic = abils
+        .iter()
+        .any(|a| matches!(a, Ability::AmmoSupply | Ability::FirstAid { .. }));
+    if automatic && !machine {
+        return invalid("ammo_supply and first_aid require flag war_machine");
+    }
     Ok(())
 }
 
@@ -940,6 +947,10 @@ fn compile_battle(def: &BattleParamsDef) -> Result<BattleParams, CompileError> {
     };
     let good_morale = table(def.morale_dice, &def.good_morale_chances)?;
     let bad_morale = table(def.morale_dice, &def.bad_morale_chances)?;
+    // A certain freeze would let no stack ever act again (BAT-MOR-004).
+    if def.bad_morale_chances.iter().any(|&c| c >= def.morale_dice) {
+        return invalid("bad morale chances must be below morale_dice");
+    }
     let good_luck = table(def.luck_dice, &def.good_luck_chances)?;
     let mut war_machine_positions = [(0, 0); WAR_MACHINE_KINDS];
     if def.war_machine_positions.len() != WAR_MACHINE_KINDS

@@ -114,6 +114,10 @@ How the model turned out in the battle context:
 - **Seam type change (`BattleSetup`, user decision Q25):** `formations: [Formation; 2]`
   (`h3_content::Formation`, loose by default) selects each army's starting rows (BAT-SET-001).
   It only affects placement, so it is not part of the state; replays record it with the setup.
+- **Battle start events (review):** `BattleState::start(ruleset, setup, seed, sink)` reports the
+  events of the first activation (the first `TurnStarted`, a bad-morale freeze, war machines
+  acting before any command — even `BattleEnded`); `BattleState::new` keeps dropping them.
+  `SetupError::UnknownTerrain` rejects a terrain handle of another ruleset.
 
 ## Revision history
 

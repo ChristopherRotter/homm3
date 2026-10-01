@@ -141,7 +141,7 @@ id       = "BAT-TRN-001"
 title    = "Turn order within a round"
 context  = "battle"
 status   = "implemented"
-summary  = "In the normal phase living stacks that have not acted or waited act in descending speed. Speed ties: the stack of the side that did not act last goes first (the attacker at the start of the battle; the rule carries across rounds), then the lower army slot. The order is re-evaluated before every activation. Good morale gives the stack that just acted another turn outside this order (BAT-MOR-003). Scope: no siege/war-machine phases yet (T8), speed never changes during a round."
+summary  = "In the normal phase living stacks that have not acted or waited act in descending speed. Speed ties: the stack of the side that did not act last goes first (the attacker at the start of the battle; the rule carries across rounds), then the lower army slot. The order is re-evaluated before every activation. Good morale gives the stack that just acted another turn outside this order (BAT-MOR-003). War machines take their turns in this order too (speed 0, so last in the normal phase; BAT-WAR-002/003), as in VCMI. Scope: no siege phases (E04), speed never changes during a round."
 numeric  = "integer"
 
   [[rule.source]]
@@ -214,7 +214,7 @@ id       = "BAT-TRN-004"
 title    = "Defend"
 context  = "battle"
 status   = "implemented"
-summary  = "Defend ends the active stack's turn. Until the stack's next activation its defense is increased by floor(defense * defend_bonus_percent / 100), at least defend_bonus_min (original: 20 %, at least +1). Skeleton scope: defense has no hero/spell bonuses yet, so the 'after bonuses and spell effects' base question does not arise."
+summary  = "Defend ends the active stack's turn. Until the stack's next activation its defense is increased by floor(defense * defend_bonus_percent / 100), at least defend_bonus_min (original: 20 %, at least +1). The base is the stack's defense including the native-terrain bonus (BAT-TER-001), as in VCMI; hero and spell bonuses join the base with E04."
 numeric  = "integer"
 
   [[rule.source]]
@@ -474,7 +474,7 @@ id       = "BAT-RNG-001"
 title    = "Shooting"
 context  = "battle"
 status   = "implemented"
-summary  = "A stack with flag shooter can shoot when it has shots left and no living enemy stack touches its footprint (an adjacent enemy blocks it). Then it may shoot at any living enemy stack (no line of sight on a field battle) and may not attack in melee; it can still move, wait or defend. A blocked shooter or one without shots fights like a melee stack. A shot is a ranged strike (BAT-DMG-001..003) that uses one shot and is not retaliated; a shooter with flag strikes_twice shoots a second time if the target still lives and it has a shot left (two shots used). The shooter does not move. Scope: no ammo cart (unlimited shots) until T8, no ranged retaliation (no RoE creature has it)."
+summary  = "A stack with flag shooter can shoot when it has shots left and no living enemy stack touches its footprint (an adjacent enemy blocks it). Then it may shoot at any living enemy stack (no line of sight on a field battle) and may not attack in melee; it can still move, wait or defend. A blocked shooter or one without shots fights like a melee stack. A shot is a ranged strike (BAT-DMG-001..003) that uses one shot and is not retaliated; a shooter with flag strikes_twice shoots a second time if the target still lives and it has a shot left (two shots used). The shooter does not move. A living Ammo Cart keeps shots unlimited (BAT-WAR-004). Scope: no ranged retaliation (no RoE creature has it)."
 numeric  = "integer"
 
   [[rule.source]]
@@ -991,7 +991,7 @@ id       = "BAT-MOR-004"
 title    = "Bad morale"
 context  = "battle"
 status   = "implemented"
-summary  = "When a stack becomes active in the normal phase (not when it activates from waiting, not for a good-morale turn), after its Defend bonus ends and it regenerates (BAT-TRN-004/005), if its morale m is negative it freezes with chance bad_morale_chances[|m|] / morale_dice (original: 2, 4, 6 out of 24): it loses its turn, counts as having acted, and the next stack becomes active. This also applies to the first activation of the battle. Event BadMorale after TurnStarted."
+summary  = "When a stack becomes active in the normal phase (not when it activates from waiting, not for a good-morale turn), after its Defend bonus ends and it regenerates (BAT-TRN-004/005), if its morale m is negative it freezes with chance bad_morale_chances[|m|] / morale_dice (original: 2, 4, 6 out of 24): it loses its turn, counts as having acted, and the next stack becomes active. This also applies to the first activation of the battle (its events reach the sink of BattleState::start; BattleState::new drops them). Event BadMorale after TurnStarted. A ruleset must keep every bad-morale chance below morale_dice: a certain freeze could leave no stack able to act."
 numeric  = "integer"
 
   [[rule.source]]
@@ -1087,7 +1087,7 @@ id       = "BAT-END-001"
 title    = "End of battle"
 context  = "battle"
 status   = "implemented"
-summary  = "After every strike, if one side has no living stacks the battle ends and the other side wins (BattleResult::Victory); no stack is active afterwards and every command is rejected. War machines do not count as living stacks (BAT-WAR-001). The outcome lists the result, the surviving army stacks per side and, separately, the surviving war machines. If neither side has living stacks left the battle is a draw (BAT-END-002). Scope: no retreat/surrender yet (E04 with heroes), no summons (which will not count as living either)."
+summary  = "After every action (a whole melee sequence with retaliation and second attack, or a whole shot sequence; as VCMI checks after each action), if one side has no living stacks the battle ends and the other side wins (BattleResult::Victory); no stack is active afterwards and every command is rejected. War machines do not count as living stacks (BAT-WAR-001). The outcome lists the result, the surviving army stacks per side and, separately, the surviving war machines. If neither side has living stacks left the battle is a draw (BAT-END-002). Scope: no retreat/surrender yet (E04 with heroes), no summons (which will not count as living either)."
 numeric  = "integer"
 
   [[rule.source]]
@@ -1109,7 +1109,7 @@ id       = "BAT-END-002"
 title    = "Simultaneous wipe-out: draw"
 context  = "battle"
 status   = "implemented"
-summary  = "If, after a strike, neither side has living stacks other than war machines (both were wiped out by the same action), the battle ends in a draw (BattleResult::Draw): nobody wins, no stack is active afterwards and every command is rejected; the outcome has no surviving army stacks and lists the surviving war machines. The orchestrator removes both heroes (VCMI; E04+). With the RoE creature set a draw needs an attack that hits stacks of both sides, which only area shots of war machines can do so far (content data); spells such as Armageddon or Fire Shield (E04) make it common. Representation: user decision Q24."
+summary  = "If, after an action, neither side has living stacks other than war machines (both were wiped out by the same action), the battle ends in a draw (BattleResult::Draw): nobody wins, no stack is active afterwards and every command is rejected; the outcome has no surviving army stacks and lists the surviving war machines. The orchestrator removes both heroes (VCMI; E04+). With the RoE creature set a draw needs an attack that hits stacks of both sides, which only area shots of war machines can do so far (content data); spells such as Armageddon or Fire Shield (E04) make it common. Representation: user decision Q24."
 numeric  = "integer"
 
   [[rule.source]]
@@ -1180,7 +1180,7 @@ id       = "BAT-WAR-003"
 title    = "First Aid Tent without First Aid"
 context  = "battle"
 status   = "implemented"
-summary  = "Without a hero's First Aid skill (E04) the First Aid Tent acts automatically when it becomes active: a uniformly chosen allied stack that is alive, not a war machine and whose top creature is hurt regains a uniform min_hp..=max_hp hit points (ability first_aid; 1..=25 for the tent) on its top creature, capped at full health, without resurrection; with no such stack nothing happens. Its turn then ends."
+summary  = "Without a hero's First Aid skill (E04) the First Aid Tent acts automatically when it becomes active: a uniformly chosen allied stack that is alive, not a war machine and whose top creature is hurt regains a uniform min_hp..=max_hp hit points (ability first_aid; 1..=25 for the tent) on its top creature, capped at full health, without resurrection; with no such stack nothing happens. Its turn then ends. Source conflict (Q26, user decision): VCMI heals a fixed 10 (firstAid spell at level 0); the wiki's 1..=25 is followed, an experiment is recorded in OPEN-QUESTIONS."
 numeric  = "integer"
 
   [[rule.source]]
@@ -1192,7 +1192,7 @@ numeric  = "integer"
 
   [[rule.source]]
   kind       = "vcmi"
-  ref        = "server/battles/BattleFlowProcessor.cpp tryMakeAutomaticAction (first aid tent: random hurt ally); config/creatures/special.json HEALER"
+  ref        = "server/battles/BattleFlowProcessor.cpp tryMakeAutomaticActionOfFirstAidTent (random hurt ally); server/battles/BattleActionProcessor.cpp doHealAction (firstAid spell cast at level 0); config/spells/vcmiAbility.json firstAid level 'none' power 10 (heal amount differs, Q26)"
   url        = "https://github.com/vcmi/vcmi/blob/1.7.5/server/battles/BattleFlowProcessor.cpp"
   retrieved  = "2026-10-01"
   confidence = "high"
