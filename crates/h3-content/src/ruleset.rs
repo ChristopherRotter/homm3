@@ -22,7 +22,7 @@ pub const MAX_ARMY_SLOTS: usize = 16;
 pub const MAX_FIELD_HEXES: usize = 255;
 
 /// Version of the ruleset hash encoding. Bump when the encoding below changes.
-pub const RULESET_HASH_VERSION: u32 = 6;
+pub const RULESET_HASH_VERSION: u32 = 7;
 
 /// A compiled creature type.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -129,8 +129,14 @@ pub struct BattleParams {
     pub luck_dice: u8,
     /// Lucky-strike chances by luck level; luck is at most `levels()` (BAT-LCK-001/002).
     pub good_luck: RollTable,
+    /// Head hexes `(x, y)` of the attacker's war machines by kind (shooting machine, ammo
+    /// supply, first aid); the defender's are mirrored (BAT-WAR-001).
+    pub war_machine_positions: [(u8, u8); WAR_MACHINE_KINDS],
     formation: [[u8; MAX_ARMY_SLOTS]; MAX_ARMY_SLOTS],
 }
+
+/// Kinds of war machines a battle places (shooting machine, ammo supply, first aid; BAT-WAR-001).
+pub const WAR_MACHINE_KINDS: usize = 3;
 
 impl BattleParams {
     /// Starting row of the `index`-th stack (in slot order) of an army with `stacks` stacks.
@@ -796,8 +802,10 @@ fn validate_creature(
             reason,
         })
     };
-    if def.damage_min == 0 {
-        return invalid("damage_min must be at least 1");
+    // War machines may have no damage and speed 0 (First Aid Tent, Ammo Cart; BAT-WAR-001).
+    let machine = def.flags.contains(CreatureFlag::WarMachine);
+    if def.damage_min == 0 && !(machine && def.damage_max == 0) {
+        return invalid("damage_min must be at least 1 (war machines: or damage [0, 0])");
     }
     if def.damage_max < def.damage_min {
         return invalid("damage_max must not be below damage_min");
@@ -805,8 +813,8 @@ fn validate_creature(
     if def.hit_points == 0 {
         return invalid("hit_points must be at least 1");
     }
-    if def.speed == 0 {
-        return invalid("speed must be at least 1");
+    if def.speed == 0 && !machine {
+        return invalid("speed must be at least 1 (except for war machines)");
     }
     if info.level == 0 {
         return invalid("level must be at least 1");
@@ -907,6 +915,21 @@ fn compile_battle(def: &BattleParamsDef) -> Result<BattleParams, CompileError> {
     let good_morale = table(def.morale_dice, &def.good_morale_chances)?;
     let bad_morale = table(def.morale_dice, &def.bad_morale_chances)?;
     let good_luck = table(def.luck_dice, &def.good_luck_chances)?;
+    let mut war_machine_positions = [(0, 0); WAR_MACHINE_KINDS];
+    if def.war_machine_positions.len() != WAR_MACHINE_KINDS
+        || def
+            .war_machine_positions
+            .iter()
+            .any(|&[x, y]| usize::from(x) >= w || usize::from(y) >= h)
+    {
+        return invalid("war_machine_positions needs 3 hexes [x, y] on the field");
+    }
+    for (slot, &[x, y]) in war_machine_positions
+        .iter_mut()
+        .zip(&def.war_machine_positions)
+    {
+        *slot = (x, y);
+    }
     if def.formation.len() != slots {
         return invalid("formation needs one entry per army size 1..=army_slots");
     }
@@ -947,6 +970,7 @@ fn compile_battle(def: &BattleParamsDef) -> Result<BattleParams, CompileError> {
         bad_morale,
         luck_dice: def.luck_dice,
         good_luck,
+        war_machine_positions,
         formation,
     })
 }
@@ -959,8 +983,8 @@ impl CanonicalHash for Ruleset {
     /// and flag bits, then the info fields in field order — a faction as presence flag + handle,
     /// the cost as length + pairs — then the abilities as length + each ability's encoding),
     /// battle parameters in field order (v4: with the ranged/melee penalty parameters; v5: with
-    /// the morale and luck dice and tables, each table as length + all 8 entries) with the full
-    /// formation table.
+    /// the morale and luck dice and tables, each table as length + all 8 entries; v7: the war
+    /// machine positions) with the full formation table.
     fn hash_into(&self, h: &mut StateHasher) {
         h.write_u32(RULESET_HASH_VERSION);
         h.write_len(self.packs.len());
@@ -1064,6 +1088,10 @@ impl CanonicalHash for Ruleset {
         h.write_u8(b.luck_dice);
         h.write_u8(b.good_luck.len);
         h.write_bytes(&b.good_luck.chances);
+        for &(x, y) in &b.war_machine_positions {
+            h.write_u8(x);
+            h.write_u8(y);
+        }
         for row in &b.formation {
             h.write_bytes(row);
         }

@@ -32,6 +32,19 @@ pub struct GapFill {
     pub native_terrain: Vec<NativeTerrain>,
     /// Obstacle types (E03 T7, BAT-GEO-004).
     pub obstacles: Obstacles,
+    /// War machines harvested like creatures (E03 T8).
+    pub war_machines: WarMachines,
+}
+
+/// The war machines the battle supports (E03 T8, BAT-WAR-001); the others (siege machines)
+/// stay unharvested.
+#[derive(Debug, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct WarMachines {
+    /// Singular names (as in `CRTRAITS.TXT`).
+    pub harvest: Vec<String>,
+    /// Source ids.
+    pub sources: Vec<String>,
 }
 
 /// The native terrain of a faction.
@@ -192,6 +205,7 @@ pub struct Battle {
     pub bad_morale_chances: Vec<u8>,
     pub luck_dice: u8,
     pub good_luck_chances: Vec<u8>,
+    pub war_machine_positions: Vec<[u8; 2]>,
     pub formation: Vec<Vec<u8>>,
     pub formation_sources: Vec<String>,
 }
@@ -225,7 +239,8 @@ impl GapFill {
                 .chain(&g.battle.formation_sources)
                 .chain(g.creature_abilities.iter().flat_map(|a| &a.sources))
                 .chain(g.native_terrain.iter().flat_map(|n| &n.sources))
-                .chain(&g.obstacles.sources);
+                .chain(&g.obstacles.sources)
+                .chain(&g.war_machines.sources);
         for r in refs {
             if !ids.contains(r.as_str()) {
                 return Err(format!("gapfill: unknown source `{r}`"));

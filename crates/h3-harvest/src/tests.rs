@@ -59,7 +59,7 @@ fn inputs() -> Inputs {
             def_name: String::new(),
             flags: match id {
                 7 => 0x11 | UNHARVESTED_BITS,
-                149 => WAR_MACHINE_BIT,
+                148 | 149 => WAR_MACHINE_BIT,
                 _ => 0x11,
             },
         });
@@ -145,6 +145,7 @@ good_morale_chances = [1, 2, 3]
 bad_morale_chances = [2, 4, 6]
 luck_dice = 24
 good_luck_chances = [1, 2, 3]
+war_machine_positions = [[1, 3], [1, 1], [1, 9]]
 formation = [[5], [2, 8]]
 formation_sources = ["s"]
 
@@ -176,6 +177,10 @@ faction = "Gamma"
 terrain = "Ice"
 sources = ["s"]
 
+[war_machines]
+harvest = ["Unit 148"]
+sources = ["s"]
+
 [obstacles]
 sources = ["s"]
 list = [
@@ -198,8 +203,15 @@ fn harvests_three_packs_that_compile_and_are_deterministic() {
     assert_eq!(h, harvest(&inputs(), &gap()).unwrap());
     let (base, ab, sod) = (pack(&h, "base"), pack(&h, "ab"), pack(&h, "sod"));
     let r = h3_pack::compile(&[base, ab, sod], "base:faithful").unwrap();
-    // 150 ids minus one unused slot and one war machine.
+    // 150 ids minus one unused slot and one siege machine; the listed war machine is harvested.
     assert_eq!(r.creature_count(), 148);
+    let machine = r.creature_by_key("base:unit_148").unwrap();
+    assert!(
+        r.creature(machine)
+            .unwrap()
+            .flags
+            .contains(h3_content::CreatureFlag::WarMachine)
+    );
     assert!(r.creature_by_key("base:unit_149").is_none());
     assert_eq!(r.resources().len(), 7);
     let ids: Vec<&str> = r.factions().iter().map(|f| f.key.as_str()).collect();
@@ -276,7 +288,7 @@ fn harvests_three_packs_that_compile_and_are_deterministic() {
     assert!(report.contains("`unit_8`: ability text changed"));
     assert!(report.contains("row `Abandoned`"));
     assert!(report.contains("unused slot"));
-    assert!(report.contains("`Unit 149`): war machine"));
+    assert!(report.contains("`Unit 149`): siege machine"));
 }
 
 fn h3_content_flag(name: &str) -> h3_content::CreatureFlag {

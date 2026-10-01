@@ -243,6 +243,9 @@ pub struct BattleParamsDef {
     pub luck_dice: u8,
     /// Lucky-strike chance per positive luck level, out of `luck_dice` (BAT-LCK-002).
     pub good_luck_chances: Vec<u8>,
+    /// Head hexes `[x, y]` of the attacker's war machines by kind (shooting machine, ammo
+    /// supply, first aid); the defender's are mirrored (BAT-WAR-001).
+    pub war_machine_positions: Vec<[u8; 2]>,
     /// Starting rows: `formation[n - 1][i]` is the row of the i-th stack (by slot order) of an
     /// army with `n` stacks (BAT-SET-001).
     pub formation: Vec<Vec<u8>>,

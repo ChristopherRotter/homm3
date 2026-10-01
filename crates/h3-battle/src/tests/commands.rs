@@ -228,7 +228,7 @@ fn state_hash_is_pinned() {
     let r = ruleset();
     let s = battle(&r, &[(0, "fixed", 3), (2, "wisp", 7)], &[(0, "slow", 4)], 7);
     assert_eq!(s.state_hash(), GOLDEN, "got {:#018x}", s.state_hash());
-    assert_eq!(crate::BATTLE_STATE_HASH_VERSION, 6);
+    assert_eq!(crate::BATTLE_STATE_HASH_VERSION, 7);
 }
 
-const GOLDEN: u64 = 0xaff6_724d_ec33_c485;
+const GOLDEN: u64 = 0xddc0_869a_570e_f084;

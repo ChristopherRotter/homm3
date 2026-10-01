@@ -39,11 +39,22 @@ pub(crate) fn is_blocked(state: &BattleState, field: Field, id: StackId) -> bool
 }
 
 /// Whether stack `id` can shoot now: a shooter with shots left that is not blocked
-/// (BAT-RNG-001).
-// rule: BAT-RNG-001
+/// (BAT-RNG-001); war machines shoot even when blocked (BAT-WAR-001).
+// rule: BAT-RNG-001, BAT-WAR-001
 pub(crate) fn can_shoot(state: &BattleState, field: Field, id: StackId) -> bool {
     let s = state.at(id);
-    s.has(StackTraits::SHOOTER) && s.shots > 0 && !is_blocked(state, field, id)
+    s.has(StackTraits::SHOOTER)
+        && s.shots > 0
+        && (s.has(StackTraits::WAR_MACHINE) || !is_blocked(state, field, id))
+}
+
+/// Whether a living stack of `side` supplies ammunition (BAT-WAR-004).
+// rule: BAT-WAR-004
+fn ammo_supplied(state: &BattleState, side: BattleSide) -> bool {
+    state
+        .stacks
+        .iter()
+        .any(|s| s.side == side && s.is_alive() && s.has(StackTraits::AMMO_SUPPLY))
 }
 
 /// What all strikes of one attack share.
@@ -74,7 +85,6 @@ fn strike<S: Sink>(
     sink: &mut S,
 ) -> u64 {
     let params = ruleset.battle();
-    let field = Field::new(params.field);
     let striker = *state.at(attacker);
     let victim = *state.at(target);
     let base = base_damage(
@@ -84,8 +94,32 @@ fn strike<S: Sink>(
         striker.damage_max,
         params.damage_roll_samples,
     );
+    let (factors, flags) = strike_factors(ruleset, (&striker, &victim), flags, blow);
+    let damage = factors.apply(base);
+    let lost = damage.min(victim.total_hp());
+    let kills = apply_damage(state.at_mut(target), damage);
+    sink.emit(Event::public(EventKind::Struck {
+        attacker,
+        target,
+        damage,
+        kills,
+        flags,
+    }));
+    lost
+}
+
+/// The damage factors of a strike of `striker` on `victim` (BAT-DMG-002 and the abilities that
+/// change them), and its flags with the luck and death-blow flags added.
+fn strike_factors(
+    ruleset: &Ruleset,
+    (striker, victim): (&Stack, &Stack),
+    flags: StrikeFlags,
+    blow: Blow,
+) -> (Factors, StrikeFlags) {
+    let params = ruleset.battle();
+    let field = Field::new(params.field);
     let mut factors = Factors::default();
-    let mut defense = effective_defense(&victim, params);
+    let mut defense = effective_defense(victim, params);
     for ability in ruleset.abilities(striker.creature) {
         match *ability {
             // rule: BAT-DMG-004
@@ -97,7 +131,7 @@ fn strike<S: Sink>(
             }
             // rule: BAT-DMG-005
             Ability::Jousting { percent_per_hex }
-                if !has_ability(ruleset, &victim, |a| matches!(a, Ability::ChargeImmunity)) =>
+                if !has_ability(ruleset, victim, |a| matches!(a, Ability::ChargeImmunity)) =>
             {
                 factors.bonus(u32::from(percent_per_hex) * u32::from(blow.charge));
             }
@@ -118,20 +152,38 @@ fn strike<S: Sink>(
         factors.bonus(100);
         flags = flags.with(StrikeFlags::DEATH_BLOW);
     }
-    if let Some(permille) = penalty(params, field, &striker, &victim, flags) {
+    if let Some(permille) = penalty(params, field, striker, victim, flags) {
         factors.reduce(permille);
     }
-    let damage = factors.apply(base);
-    let lost = damage.min(victim.total_hp());
-    let kills = apply_damage(state.at_mut(target), damage);
-    sink.emit(Event::public(EventKind::Struck {
-        attacker,
-        target,
-        damage,
-        kills,
-        flags,
-    }));
-    lost
+    (factors, flags)
+}
+
+/// The least and greatest damage a shot of `attacker` would deal to `target` now, without luck
+/// and death blows (the base damage of `count` creatures is between `count · min` and
+/// `count · max` for every sampling, BAT-DMG-001).
+pub(crate) fn shot_damage_range(
+    state: &BattleState,
+    ruleset: &Ruleset,
+    attacker: StackId,
+    target: StackId,
+) -> (u64, u64) {
+    let striker = state.at(attacker);
+    let blow = Blow {
+        charge: 0,
+        death_blow: false,
+        lucky: false,
+    };
+    let (factors, _) = strike_factors(
+        ruleset,
+        (striker, state.at(target)),
+        StrikeFlags::RANGED,
+        blow,
+    );
+    let n = u64::from(striker.count);
+    (
+        factors.apply(n * u64::from(striker.damage_min)),
+        factors.apply(n * u64::from(striker.damage_max)),
+    )
 }
 
 /// The ranged or melee penalty of a strike, in per mille, if any: shots at a target farther than
@@ -422,9 +474,11 @@ fn retaliate<S: Sink>(
 ) {
     let r = state.at(retaliator);
     let a = state.at(attacker);
+    // War machines never retaliate (BAT-WAR-001).
     if !r.is_alive()
         || !a.is_alive()
         || a.has(StackTraits::NO_ENEMY_RETALIATION)
+        || r.has(StackTraits::WAR_MACHINE)
         || r.retaliations_left == 0
     {
         return;
@@ -472,7 +526,9 @@ pub(crate) fn shoot<S: Sink>(
         if i > 0 && (!state.at(target).is_alive() || state.at(shooter).shots == 0) {
             break;
         }
-        state.at_mut(shooter).shots -= 1;
+        if !ammo_supplied(state, state.at(shooter).side) {
+            state.at_mut(shooter).shots -= 1;
+        }
         let others = area(state, field, shooter, target, at);
         let pair = (shooter, target);
         attack(state, ruleset, pair, &others, StrikeFlags::RANGED, 0, sink);
@@ -506,14 +562,15 @@ fn area(state: &BattleState, field: Field, shooter: StackId, target: StackId, at
     })
 }
 
-/// The battle ends when one side has no living stacks; the other side wins.
+/// The battle ends when one side has no living stacks other than war machines (BAT-WAR-001);
+/// the other side wins.
 // rule: BAT-END-001
 pub(crate) fn check_end<S: Sink>(state: &mut BattleState, sink: &mut S) {
     let alive = |side: BattleSide| {
         state
             .stacks
             .iter()
-            .any(|s: &Stack| s.side == side && s.is_alive())
+            .any(|s: &Stack| s.side == side && s.is_alive() && !s.has(StackTraits::WAR_MACHINE))
     };
     let winner = match (alive(BattleSide::Attacker), alive(BattleSide::Defender)) {
         (true, false) => Some(BattleSide::Attacker),

@@ -156,6 +156,7 @@ struct BattleDto {
     bad_morale_chances: Vec<u8>,
     luck_dice: u8,
     good_luck_chances: Vec<u8>,
+    war_machine_positions: Vec<[u8; 2]>,
     formation: Vec<Vec<u8>>,
 }
 
@@ -222,6 +223,8 @@ enum AbilityDto {
     MinimumLuck { value: i8 },
     NoDistancePenalty {},
     AreaShot { effect: AreaShotDto },
+    FirstAid { min_hp: u16, max_hp: u16 },
+    AmmoSupply {},
 }
 
 #[derive(Deserialize)]
@@ -279,6 +282,8 @@ impl AbilityDto {
                     AreaShotDto::DeathCloud => AreaShot::DeathCloud,
                 },
             },
+            Self::FirstAid { min_hp, max_hp } => AbilityDef::FirstAid { min_hp, max_hp },
+            Self::AmmoSupply {} => AbilityDef::AmmoSupply,
         })
     }
 }
@@ -487,6 +492,7 @@ pub fn parse_pack(text: &str) -> Result<ContentPack, PackError> {
         bad_morale_chances: b.bad_morale_chances,
         luck_dice: b.luck_dice,
         good_luck_chances: b.good_luck_chances,
+        war_machine_positions: b.war_machine_positions,
         formation: b.formation,
     });
     Ok(ContentPack {
@@ -533,6 +539,11 @@ struct ScenarioHeader {
     /// Generate obstacles for the terrain when the battle starts (BAT-GEO-004).
     #[serde(default)]
     random_obstacles: bool,
+    /// War machines by creature key (BAT-WAR-001).
+    #[serde(default)]
+    attacker_war_machines: Vec<String>,
+    #[serde(default)]
+    defender_war_machines: Vec<String>,
 }
 
 #[derive(Deserialize, Clone)]
@@ -557,6 +568,7 @@ pub struct ScenarioDef {
     obstacles: Vec<u8>,
     led_by_hero: [bool; 2],
     terrain: Option<String>,
+    war_machines: [Vec<String>; 2],
     /// Whether obstacles are generated for the terrain when the battle starts (the caller does
     /// it, with its seed; BAT-GEO-004). Excludes explicit obstacles.
     pub random_obstacles: bool,
@@ -623,12 +635,25 @@ impl ScenarioDef {
                     .ok_or_else(|| PackError::UnknownTerrain(t.clone()))
             })
             .transpose()?;
+        let machines = |keys: &[String]| -> Result<Vec<_>, PackError> {
+            keys.iter()
+                .map(|k| {
+                    ruleset
+                        .creature_by_key(k)
+                        .ok_or_else(|| PackError::UnknownCreature(k.clone()))
+                })
+                .collect()
+        };
         Ok(BattleSetup {
             attacker: army(&self.attacker)?,
             defender: army(&self.defender)?,
             obstacles: self.obstacles.clone(),
             led_by_hero: self.led_by_hero,
             terrain,
+            war_machines: [
+                machines(&self.war_machines[0])?,
+                machines(&self.war_machines[1])?,
+            ],
         })
     }
 }
@@ -661,6 +686,10 @@ pub fn parse_scenario(text: &str) -> Result<ScenarioDef, PackError> {
         obstacles: file.scenario.obstacles,
         led_by_hero: parse_sides(&file.scenario.led_by_hero)?,
         terrain: file.scenario.terrain,
+        war_machines: [
+            file.scenario.attacker_war_machines,
+            file.scenario.defender_war_machines,
+        ],
         random_obstacles: file.scenario.random_obstacles,
     })
 }
@@ -911,10 +940,11 @@ mod tests {
         let roe = compile(&[BASE_PACK], profile).unwrap();
         let ab = compile(&[BASE_PACK, AB_PACK], profile).unwrap();
         let sod = compile(&[SOD_PACK, AB_PACK, BASE_PACK], profile).unwrap();
-        // RoE: 8 towns x 14 + 6 neutrals; AB adds Conflux (10 new) and 13 neutrals.
-        assert_eq!(roe.creature_count(), 118);
-        assert_eq!(ab.creature_count(), 141);
-        assert_eq!(sod.creature_count(), 141);
+        // RoE: 8 towns x 14 + 6 neutrals + 3 war machines; AB adds Conflux (10 new) and 13
+        // neutrals.
+        assert_eq!(roe.creature_count(), 121);
+        assert_eq!(ab.creature_count(), 144);
+        assert_eq!(sod.creature_count(), 144);
         assert_eq!((roe.factions().len(), ab.factions().len()), (8, 9));
         // SoD requires AB; AB requires base.
         assert!(matches!(
@@ -1016,7 +1046,8 @@ mod tests {
             { kind = \"morale_aura\", amount = 1, affects = \"allies\" }, \
             { kind = \"luck_aura\", amount = -1, affects = \"enemies\" }, \
             { kind = \"minimum_morale\", value = 1 }, { kind = \"minimum_luck\", value = 1 }, \
-            { kind = \"no_distance_penalty\" }]\n";
+            { kind = \"no_distance_penalty\" }, { kind = \"first_aid\", min_hp = 1, max_hp = 25 }, \
+            { kind = \"ammo_supply\" }]\n";
         let text = SYNTHETIC_PACK.replace(
             "flags = [\"alive\"]\n",
             &std::format!("flags = [\"alive\"]\n{all}"),
@@ -1025,7 +1056,15 @@ mod tests {
         let spearman = r.creature_by_key("synthetic:spearman").unwrap();
         let wisp = r.creature_by_key("synthetic:wisp").unwrap();
         let list = r.abilities(spearman);
-        assert_eq!(list.len(), 17);
+        assert_eq!(list.len(), 19);
+        assert_eq!(
+            list[17],
+            Ability::FirstAid {
+                min_hp: 1,
+                max_hp: 25
+            }
+        );
+        assert_eq!(list[18], Ability::AmmoSupply);
         assert_eq!(
             list[0],
             Ability::Hate {

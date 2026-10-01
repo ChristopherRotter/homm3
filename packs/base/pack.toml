@@ -2628,6 +2628,68 @@ ai_value = 775
 adventure_count = [8, 12]
 flags = ["mind_immune", "no_morale"]
 
+[[creature]]
+id = "ballista"  # original id 146
+name = "Ballista"
+plural = "Ballistas"
+level = 5
+attack = 10
+defense = 10
+damage = [2, 3]
+hit_points = 250
+speed = 0
+shots = 24
+casts = 0
+cost = { gold = 2500 }
+growth = 0
+horde_growth = 0
+fight_value = 650
+ai_value = 600
+adventure_count = [0, 0]
+flags = ["two_hex", "shooter", "war_machine", "mind_immune", "no_melee_penalty", "no_enemy_retaliation", "no_morale"]
+
+[[creature]]
+id = "first_aid_tent"  # original id 147
+name = "First Aid Tent"
+plural = "First Aid Tents"
+level = 1
+attack = 0
+defense = 0
+damage = [0, 0]
+hit_points = 75
+speed = 0
+shots = 0
+casts = 0
+cost = { gold = 750 }
+growth = 0
+horde_growth = 0
+fight_value = 10
+ai_value = 300
+adventure_count = [0, 0]
+flags = ["two_hex", "war_machine", "mind_immune", "no_morale"]
+abilities = [{ kind = "first_aid", max_hp = 25, min_hp = 1 }]
+
+[[creature]]
+id = "ammo_cart"  # original id 148
+name = "Ammo Cart"
+plural = "Ammo Carts"
+level = 1
+attack = 0
+defense = 5
+damage = [0, 0]
+hit_points = 100
+speed = 0
+shots = 0
+casts = 0
+cost = { gold = 1000 }
+growth = 0
+horde_growth = 0
+fight_value = 5
+ai_value = 400
+adventure_count = [0, 0]
+flags = ["war_machine", "mind_immune", "no_morale"]
+abilities = [{ kind = "ammo_supply" }]
+
 [[obstacle]]
 id = "obstacle_0"
 terrains = ["dirt"]
@@ -3173,6 +3235,7 @@ good_morale_chances = [1, 2, 3]
 bad_morale_chances = [2, 4, 6]
 luck_dice = 24
 good_luck_chances = [1, 2, 3]
+war_machine_positions = [[1, 3], [1, 1], [1, 9]]
 formation = [[5], [2, 8], [2, 5, 8], [0, 4, 6, 10], [0, 2, 5, 8, 10], [0, 2, 4, 6, 8, 10], [0, 2, 4, 5, 6, 8, 10]]
 
 [[profile]]

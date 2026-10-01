@@ -257,6 +257,46 @@ pub const CREATURES: &[Creature] = &[
         &["alive", "minimum_luck=1"],
     ),
     ("lucky", 10, 10, 2, 2, 10, 5, &["alive", "minimum_luck=3"]),
+    // War machines (BAT-WAR-001..004).
+    (
+        "ballista",
+        10,
+        10,
+        2,
+        3,
+        250,
+        0,
+        &[
+            "two_hex",
+            "shooter",
+            "war_machine",
+            "no_morale",
+            "shots=24",
+            "ai=600",
+        ],
+    ),
+    (
+        "tent",
+        0,
+        0,
+        0,
+        0,
+        75,
+        0,
+        &["two_hex", "war_machine", "no_morale", "first_aid=1:25"],
+    ),
+    (
+        "cart",
+        0,
+        5,
+        0,
+        0,
+        100,
+        0,
+        &["war_machine", "no_morale", "ammo_supply"],
+    ),
+    ("valuable", 10, 10, 2, 2, 10, 5, &["alive", "ai=1000"]),
+    ("gadget", 0, 0, 0, 0, 10, 0, &["war_machine"]),
 ];
 
 /// The traits of a test creature as creature info: flags, abilities, shots and faction.
@@ -265,6 +305,7 @@ fn parse_traits(traits: &[&str]) -> CreatureInfoDef {
     let mut abilities = Vec::new();
     let mut shots = 0;
     let mut faction = None;
+    let mut ai = 0;
     for t in traits {
         let (name, value) = t.split_once('=').unwrap_or((t, "0"));
         let n = || value.parse::<u16>().unwrap();
@@ -278,6 +319,18 @@ fn parse_traits(traits: &[&str]) -> CreatureInfoDef {
             (amount.parse::<i8>().unwrap(), affects)
         };
         let ability = match name {
+            "ai" => {
+                ai = value.parse().unwrap();
+                continue;
+            }
+            "first_aid" => {
+                let (min, max) = value.split_once(':').unwrap();
+                AbilityDef::FirstAid {
+                    min_hp: min.parse().unwrap(),
+                    max_hp: max.parse().unwrap(),
+                }
+            }
+            "ammo_supply" => AbilityDef::AmmoSupply,
             "faction" => {
                 faction = Some(ContentKey::new("t", value).unwrap());
                 continue;
@@ -345,6 +398,7 @@ fn parse_traits(traits: &[&str]) -> CreatureInfoDef {
         abilities,
         shots,
         faction,
+        ai_value: ai,
         ..CreatureInfoDef::default()
     }
 }
@@ -372,6 +426,7 @@ pub fn battle_params() -> BattleParamsDef {
         bad_morale_chances: vec![0, 0, 0],
         luck_dice: 24,
         good_luck_chances: vec![0, 0, 0],
+        war_machine_positions: vec![[1, 3], [1, 1], [1, 9]],
         formation: vec![
             vec![5],
             vec![3, 7],
@@ -507,6 +562,7 @@ pub fn setup(rules: &Ruleset, attacker: &[Spec], defender: &[Spec]) -> BattleSet
         obstacles: vec![],
         led_by_hero: [false; 2],
         terrain: None,
+        war_machines: [vec![], vec![]],
     }
 }
 

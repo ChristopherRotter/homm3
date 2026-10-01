@@ -1,7 +1,7 @@
 //! Dense action encoding (docs/07-simulation-and-ai.md §1: "dense action encoding is defined by
 //! the sim layer, not the domain").
 //!
-//! Layout, version 2 (independent of the ruleset, so agents see a fixed-size action space):
+//! Layout, version 4 (independent of the ruleset, so agents see a fixed-size action space):
 //!
 //! | index | action |
 //! |---|---|
@@ -9,10 +9,11 @@
 //! | 1 | Defend |
 //! | 2 + h, h < 255 | Move to hex `h` (the head of a two-hex stack) |
 //! | 257 + 24·s + k | Attack stack `s` from its canonical attack position `k` (`Field::attack_positions` for the active stack's shape) |
-//! | 1025 + 2·s + a | Shoot at stack `s`, aiming at its head (`a = 0`) or tail (`a = 1`) |
+//! | 1169 + 2·s + a | Shoot at stack `s`, aiming at its head (`a = 0`) or tail (`a = 1`) |
 //!
 //! Version 2 (E03 T3) replaced the six neighbour directions of version 1 by the 24 canonical
-//! attack positions, which cover two-hex attackers and targets; version 3 (E03 T4) added shots.
+//! attack positions, which cover two-hex attackers and targets; version 3 (E03 T4) added shots;
+//! version 4 (E03 T8) grew the stack slots from 32 to 38 (`STACK_CAPACITY` includes war machines).
 
 use h3_battle::{
     ATTACK_SLOTS, BattleState, Command, Field, Hex, LegalCommands, STACK_CAPACITY, StackId,
@@ -21,7 +22,7 @@ use h3_content::{MAX_FIELD_HEXES, Ruleset};
 use h3_contracts::BattleSide;
 
 /// Version of this encoding; bump on any change of the layout above.
-pub const ACTION_ENCODING_VERSION: u32 = 3;
+pub const ACTION_ENCODING_VERSION: u32 = 4;
 
 const MOVE_BASE: usize = 2;
 const ATTACK_BASE: usize = MOVE_BASE + MAX_FIELD_HEXES;
@@ -137,8 +138,8 @@ mod tests {
 
     #[test]
     fn layout() {
-        assert_eq!(ACTION_COUNT, 2 + 255 + 24 * 32 + 2 * 32);
-        assert_eq!(ACTION_ENCODING_VERSION, 3);
+        assert_eq!(ACTION_COUNT, 2 + 255 + 24 * 38 + 2 * 38);
+        assert_eq!(ACTION_ENCODING_VERSION, 4);
     }
 
     #[test]
@@ -176,6 +177,7 @@ mod tests {
             obstacles: vec![],
             led_by_hero: [false; 2],
             terrain: None,
+            war_machines: [vec![], vec![]],
         };
         let s = BattleState::new(&r, &setup, 1).unwrap();
         let side = s.side_to_act().unwrap();

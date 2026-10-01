@@ -46,6 +46,19 @@ pub enum SetupError {
         /// The slot.
         slot: u8,
     },
+    /// A war machine is in an army slot (BAT-WAR-001).
+    WarMachineInArmy {
+        /// The side.
+        side: BattleSide,
+        /// The slot.
+        slot: u8,
+    },
+    /// A war machine is not a known war machine of a supported kind, or a kind is listed twice
+    /// (BAT-WAR-001).
+    InvalidWarMachine {
+        /// The side.
+        side: BattleSide,
+    },
 }
 
 impl fmt::Display for SetupError {
@@ -64,6 +77,12 @@ impl fmt::Display for SetupError {
                 write!(f, "obstacle hex {hex} is not a standable hex or repeats")
             }
             Self::NoRoom { side, slot } => write!(f, "no free hex for {side:?} slot {slot}"),
+            Self::WarMachineInArmy { side, slot } => {
+                write!(f, "{side:?} slot {slot} holds a war machine")
+            }
+            Self::InvalidWarMachine { side } => {
+                write!(f, "{side:?} war machine is not supported or listed twice")
+            }
         }
     }
 }
@@ -173,6 +192,18 @@ mod tests {
             }
             .to_string(),
             "no free hex for Defender slot 4"
+        );
+        assert_eq!(
+            SetupError::WarMachineInArmy {
+                side: Defender,
+                slot: 1
+            }
+            .to_string(),
+            "Defender slot 1 holds a war machine"
+        );
+        assert_eq!(
+            SetupError::InvalidWarMachine { side: Attacker }.to_string(),
+            "Attacker war machine is not supported or listed twice"
         );
         let all = [
             (CommandError::BattleOver, "the battle is over"),

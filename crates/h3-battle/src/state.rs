@@ -3,7 +3,7 @@
 
 use h3_content::{
     Ability, AreaShot, CreatureFlag, CreatureType, CreatureTypeId, MAX_ARMY_SLOTS, Ruleset,
-    TerrainId,
+    TerrainId, WAR_MACHINE_KINDS,
 };
 use h3_contracts::{Army, ArmyStack, BattleOutcome, BattleSetup, BattleSide};
 use h3_kernel::{CanonicalHash, FixedVec, Rng, StateHasher, StreamId};
@@ -14,11 +14,14 @@ use crate::geometry::{Field, Footprint, Hex, HexSet};
 use crate::morale::{self, Modifiers};
 use crate::{terrain, turn};
 
-/// Maximum number of stacks in a battle (both sides).
-pub const STACK_CAPACITY: usize = 2 * MAX_ARMY_SLOTS;
+/// Most war machines per side, one of each kind (BAT-WAR-001).
+pub const MAX_WAR_MACHINES: usize = WAR_MACHINE_KINDS;
+
+/// Maximum number of stacks in a battle (both sides: army slots and war machines).
+pub const STACK_CAPACITY: usize = 2 * (MAX_ARMY_SLOTS + MAX_WAR_MACHINES);
 
 /// Version of the battle-state hash encoding ([`BattleState::state_hash`]). Bump on any change.
-pub const BATTLE_STATE_HASH_VERSION: u32 = 6;
+pub const BATTLE_STATE_HASH_VERSION: u32 = 7;
 
 /// Index of a stack in its battle (attacker stacks first, in slot order, then defender stacks).
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Default)]
@@ -109,8 +112,17 @@ impl StackTraits {
     /// Regenerates its top creature at the start of its turn (ability `regeneration`,
     /// BAT-TRN-005).
     pub const REGENERATES: Self = Self(1 << 15);
-    /// Unaffected by morale: its morale is always 0 (flag `no_morale`, BAT-MOR-001).
+    /// Unaffected by morale: its morale is always 0 (flag `no_morale` or `war_machine`,
+    /// BAT-MOR-001).
     pub const NO_MORALE: Self = Self(1 << 16);
+    /// A war machine: fixed place, automatic, no retaliation, does not count as living for the
+    /// end of the battle (flag `war_machine`, BAT-WAR-001).
+    pub const WAR_MACHINE: Self = Self(1 << 17);
+    /// Supplies its side's shooters with ammunition and never acts (ability `ammo_supply`,
+    /// BAT-WAR-004).
+    pub const AMMO_SUPPLY: Self = Self(1 << 18);
+    /// Heals allied stacks on its turn (ability `first_aid`, BAT-WAR-003).
+    pub const FIRST_AID: Self = Self(1 << 19);
 
     /// Whether all traits of `other` are set.
     pub const fn contains(self, other: Self) -> bool {
@@ -184,8 +196,87 @@ impl StackTraits {
                 Self::REGENERATES,
                 ability(|a| matches!(a, Ability::Regeneration)),
             )
-            .with(Self::NO_MORALE, has(CreatureFlag::NoMorale))
+            .with(
+                Self::NO_MORALE,
+                has(CreatureFlag::NoMorale) || has(CreatureFlag::WarMachine),
+            )
+            .with(Self::WAR_MACHINE, has(CreatureFlag::WarMachine))
+            .with(
+                Self::AMMO_SUPPLY,
+                ability(|a| matches!(a, Ability::AmmoSupply)),
+            )
+            .with(
+                Self::FIRST_AID,
+                ability(|a| matches!(a, Ability::FirstAid { .. })),
+            )
     }
+}
+
+/// The kind of a war machine, which decides its place (BAT-WAR-001): a shooting machine
+/// (Ballista), an ammunition supply (Ammo Cart) or first aid (First Aid Tent).
+fn war_machine_kind(
+    creature: &CreatureType,
+    abilities: &[h3_content::CompiledAbility],
+) -> Option<usize> {
+    let has = |f: fn(&h3_content::CompiledAbility) -> bool| abilities.iter().any(f);
+    if !creature.flags.contains(CreatureFlag::WarMachine) {
+        None
+    } else if creature.flags.contains(CreatureFlag::Shooter) {
+        Some(0)
+    } else if has(|a| matches!(a, Ability::AmmoSupply)) {
+        Some(1)
+    } else if has(|a| matches!(a, Ability::FirstAid { .. })) {
+        Some(2)
+    } else {
+        None
+    }
+}
+
+/// The war machine stacks of `side`, by kind, placed at the ruleset's positions (mirrored for
+/// the defender) and reserved in `taken` (BAT-WAR-001).
+// rule: BAT-WAR-001
+fn war_machines(
+    ruleset: &Ruleset,
+    field: Field,
+    setup: &BattleSetup,
+    side: BattleSide,
+    taken: &mut HexSet,
+) -> Result<[Option<Stack>; MAX_WAR_MACHINES], SetupError> {
+    let params = ruleset.battle();
+    let mut out: [Option<Stack>; MAX_WAR_MACHINES] = [None; MAX_WAR_MACHINES];
+    for &id in &setup.war_machines[side.index()] {
+        let invalid = SetupError::InvalidWarMachine { side };
+        let creature = ruleset.creature(id).ok_or(invalid)?;
+        let kind = war_machine_kind(creature, ruleset.abilities(id)).ok_or(invalid)?;
+        if out[kind].is_some() {
+            return Err(invalid);
+        }
+        // `kind < MAX_WAR_MACHINES <= MAX_ARMY_SLOTS`.
+        let slot = u8::try_from(MAX_ARMY_SLOTS + kind).unwrap_or(u8::MAX);
+        let (x, y) = params.war_machine_positions[kind];
+        let x = match side {
+            BattleSide::Attacker => i32::from(x),
+            BattleSide::Defender => i32::from(params.field.width) - 1 - i32::from(x),
+        };
+        // The compiler checked that the positions are on the field.
+        let head = field.hex(x, i32::from(y)).unwrap_or_default();
+        let two_hex = creature.flags.contains(CreatureFlag::TwoHex);
+        let fp = field
+            .footprint(head, two_hex, side)
+            .filter(|fp| !fp.hexes().any(|h| taken.contains(h)))
+            .ok_or(SetupError::NoRoom { side, slot })?;
+        fp.hexes().for_each(|h| taken.insert(h));
+        out[kind] = Some(Stack::new(
+            ruleset,
+            setup,
+            (id, creature),
+            side,
+            slot,
+            head,
+            1,
+        ));
+    }
+    Ok(out)
 }
 
 /// `Stack::retaliations` value for unlimited retaliations (BAT-RET-003).
@@ -248,6 +339,47 @@ pub struct Stack {
     pub traits: StackTraits,
     /// Per-round flags.
     pub flags: StackFlags,
+}
+
+impl Stack {
+    /// A new stack of `count` creatures with the creature's stats, the native-terrain bonus
+    /// (BAT-TER-001) and its traits and retaliations.
+    fn new(
+        ruleset: &Ruleset,
+        setup: &BattleSetup,
+        (id, creature): (CreatureTypeId, &CreatureType),
+        side: BattleSide,
+        slot: u8,
+        hex: Hex,
+        count: u32,
+    ) -> Self {
+        let abilities = ruleset.abilities(id);
+        // rule: BAT-TER-001
+        let native = u8::from(terrain::is_native(ruleset, id, setup.terrain));
+        let retaliations = retaliations_per_round(abilities);
+        Self {
+            creature: id,
+            side,
+            slot,
+            hex,
+            count,
+            base_count: count,
+            top_hp: creature.hit_points,
+            attack: creature.attack.saturating_add(native.into()),
+            defense: creature.defense.saturating_add(native.into()),
+            damage_min: creature.damage_min,
+            damage_max: creature.damage_max,
+            max_hp: creature.hit_points,
+            speed: creature.speed.saturating_add(native),
+            shots: creature.shots,
+            retaliations,
+            retaliations_left: retaliations,
+            morale: 0,
+            luck: 0,
+            traits: StackTraits::of(creature, abilities),
+            flags: StackFlags::default(),
+        }
+    }
 }
 
 impl Default for Stack {
@@ -394,8 +526,14 @@ impl BattleState {
                 let creature = ruleset
                     .creature(s.creature)
                     .ok_or(SetupError::UnknownCreature { side, slot })?;
+                // rule: BAT-WAR-001
+                if creature.flags.contains(CreatureFlag::WarMachine) {
+                    return Err(SetupError::WarMachineInArmy { side, slot });
+                }
                 *entry = Some((*s, *creature));
             }
+            // War machines take their fixed places first (BAT-WAR-001).
+            let machines = war_machines(ruleset, field, setup, side, &mut taken)?;
             let n = army.stacks.len();
             let column = match side {
                 BattleSide::Attacker => field.first_standable_column(),
@@ -406,39 +544,25 @@ impl BattleState {
                 let row = params.formation_row(n, i).unwrap_or(0);
                 // rule: BAT-SET-001
                 let desired = field.hex(column, i32::from(row)).unwrap_or_default();
-                let abilities = ruleset.abilities(s.creature);
-                let traits = StackTraits::of(creature, abilities);
-                // rule: BAT-TER-001
-                let native = u8::from(terrain::is_native(ruleset, s.creature, setup.terrain));
-                let retaliations = retaliations_per_round(abilities);
-                let two_hex = traits.contains(StackTraits::TWO_HEX);
+                let two_hex = creature.flags.contains(CreatureFlag::TwoHex);
                 let head = closest_free(field, desired, two_hex, side, taken)
                     .ok_or(SetupError::NoRoom { side, slot: s.slot })?;
-                let stack = Stack {
-                    creature: s.creature,
+                let stack = Stack::new(
+                    ruleset,
+                    setup,
+                    (s.creature, creature),
                     side,
-                    slot: s.slot,
-                    hex: head,
-                    count: s.count,
-                    base_count: s.count,
-                    top_hp: creature.hit_points,
-                    attack: creature.attack.saturating_add(native.into()),
-                    defense: creature.defense.saturating_add(native.into()),
-                    damage_min: creature.damage_min,
-                    damage_max: creature.damage_max,
-                    max_hp: creature.hit_points,
-                    speed: creature.speed.saturating_add(native),
-                    shots: creature.shots,
-                    retaliations,
-                    retaliations_left: retaliations,
-                    morale: 0,
-                    luck: 0,
-                    traits,
-                    flags: StackFlags::default(),
-                };
+                    s.slot,
+                    head,
+                    s.count,
+                );
                 stack.footprint(field).hexes().for_each(|h| taken.insert(h));
-                // At most `army_slots <= MAX_ARMY_SLOTS` stacks per side, so `len` stays below
-                // STACK_CAPACITY = 2 * MAX_ARMY_SLOTS.
+                // At most `army_slots + MAX_WAR_MACHINES` stacks per side, so `len` stays below
+                // STACK_CAPACITY.
+                placed[len] = stack;
+                len += 1;
+            }
+            for stack in machines.into_iter().flatten() {
                 placed[len] = stack;
                 len += 1;
             }
@@ -537,11 +661,13 @@ impl BattleState {
     /// The outcome for the orchestrator, once the battle is over: winner and surviving stacks.
     pub fn outcome(&self) -> Option<BattleOutcome> {
         let winner = self.winner?;
+        let alive = |side: BattleSide, machine: bool| {
+            self.stacks.iter().filter(move |s| {
+                s.side == side && s.is_alive() && s.has(StackTraits::WAR_MACHINE) == machine
+            })
+        };
         let survivors = BattleSide::BOTH.map(|side| Army {
-            stacks: self
-                .stacks
-                .iter()
-                .filter(|s| s.side == side && s.is_alive())
+            stacks: alive(side, false)
                 .map(|s| ArmyStack {
                     slot: s.slot,
                     creature: s.creature,
@@ -549,13 +675,20 @@ impl BattleState {
                 })
                 .collect(),
         });
-        Some(BattleOutcome { winner, survivors })
+        let war_machines =
+            BattleSide::BOTH.map(|side| alive(side, true).map(|s| s.creature).collect());
+        Some(BattleOutcome {
+            winner,
+            survivors,
+            war_machines,
+        })
     }
 
     /// Canonical hash of the full state, including hidden parts such as the RNG (desync detection
     /// and replay verification; never sent to untrusted clients, docs/06-security.md).
     ///
-    /// Encoding v6: version, round, active, last side, winner, stacks (each with base count,
+    /// Encoding v7 (v6 plus war machines as stacks): version, round, active, last side, winner,
+    /// stacks (each with base count,
     /// shots, retaliations, morale, luck and traits), obstacles, modifiers, hero flags, terrain,
     /// RNG state.
     pub fn state_hash(&self) -> u64 {

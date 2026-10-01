@@ -124,6 +124,15 @@ pub enum EventKind {
         /// Hit points regained.
         hit_points: u32,
     },
+    /// A First Aid Tent healed a stack's top creature (BAT-WAR-003).
+    Healed {
+        /// The healing war machine.
+        healer: StackId,
+        /// The healed stack.
+        target: StackId,
+        /// Hit points regained.
+        hit_points: u32,
+    },
     /// Good morale: the stack that just acted gets another turn (BAT-MOR-003).
     GoodMorale {
         /// The stack.

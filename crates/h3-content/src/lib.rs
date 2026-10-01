@@ -41,4 +41,5 @@ pub use ruleset::{
     BattleParams, CreatureInfo, CreatureType, CreatureTypeId, FactionId, FactionInfo, FieldParams,
     MAX_ARMY_SLOTS, MAX_AURA_VALUES, MAX_FIELD_HEXES, MAX_ROLL_LEVELS, ObstacleType,
     RULESET_HASH_VERSION, ResourceId, ResourceInfo, RollTable, Ruleset, TerrainId, TerrainInfo,
+    WAR_MACHINE_KINDS,
 };

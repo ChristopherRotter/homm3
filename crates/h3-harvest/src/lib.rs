@@ -457,11 +457,10 @@ pub fn harvest(inputs: &Inputs, gap: &GapFill) -> Result<Harvest, String> {
             ));
             continue;
         }
-        if rec.flags & WAR_MACHINE_BIT != 0 {
-            // Speed 0 and no damage for most of them: hero equipment / siege structures with their
-            // own rules, not army creatures (E03/E04).
+        if rec.flags & WAR_MACHINE_BIT != 0 && !gap.war_machines.harvest.contains(&row.name) {
+            // Siege machines (Catapult, Arrow Tower) need siege rules (later epic).
             report.push(format!(
-                "creature id {id} (`{}`): war machine, not harvested yet (E03/E04)",
+                "creature id {id} (`{}`): siege machine, not harvested yet",
                 row.name
             ));
             continue;
@@ -980,6 +979,12 @@ fn write_battle(out: &mut String, gap: &GapFill) {
     );
     let _ = writeln!(out, "luck_dice = {}", b.luck_dice);
     let _ = writeln!(out, "good_luck_chances = [{}]", list(&b.good_luck_chances));
+    let positions: Vec<String> = b
+        .war_machine_positions
+        .iter()
+        .map(|[x, y]| format!("[{x}, {y}]"))
+        .collect();
+    let _ = writeln!(out, "war_machine_positions = [{}]", positions.join(", "));
     let rows: Vec<String> = b
         .formation
         .iter()

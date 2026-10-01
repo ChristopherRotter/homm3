@@ -13,6 +13,27 @@
 # ---------------------------------------------------------------------------------------------
 
 [[source]]
+id = "wiki-ballista"
+kind = "wiki"
+ref = "Ballista - Heroes 3 wiki: 10/10, 2-3, 250 HP, 24 shots, speed 0; SoD damage (2-3) x (hero attack + 1); automatic without Artillery; acts at the end of the round; cannot retaliate; shoots when enemies are adjacent; affected by luck, not by morale"
+url = "https://heroes.thelazy.net/index.php/Ballista"
+retrieved = "2026-10-01"
+
+[[source]]
+id = "wiki-first-aid-tent"
+kind = "wiki"
+ref = "First Aid Tent - Heroes 3 wiki: heals 1-25 HP (SoD) of the top creature of an allied stack, no resurrection; automatic without First Aid; acts last"
+url = "https://heroes.thelazy.net/index.php/First_Aid_Tent"
+retrieved = "2026-10-01"
+
+[[source]]
+id = "wiki-ammo-cart"
+kind = "wiki"
+ref = "Ammo Cart - Heroes 3 wiki: unlimited shots for its side's shooters and war machines until it is destroyed; does not act"
+url = "https://heroes.thelazy.net/index.php/Ammo_Cart"
+retrieved = "2026-10-01"
+
+[[source]]
 id = "wiki-native-terrain"
 kind = "wiki"
 ref = "Native terrain - Heroes 3 wiki: +1 attack, defense and speed on native terrain; native terrains per town; neutral creatures have none"
@@ -199,6 +220,7 @@ good_morale_chances = [1, 2, 3]             #   bad 1/12, 1/6, 1/4)
 bad_morale_chances = [2, 4, 6]
 luck_dice = 24                              # BAT-LCK-002 (wiki Luck: 1/24, 1/12, 1/8;
 good_luck_chances = [1, 2, 3]               #   no bad luck in RoE/AB/SoD)
+war_machine_positions = [[1, 3], [1, 1], [1, 9]]  # BAT-WAR-001 (VCMI layout: hexes 52, 18, 154)
 formation = [[5], [2, 8], [2, 5, 8], [0, 4, 6, 10], [0, 2, 5, 8, 10], [0, 2, 4, 6, 8, 10], [0, 2, 4, 5, 6, 8, 10]]
 formation_sources = ["vcmi-layouts"]
 
@@ -852,3 +874,24 @@ list = [
     { id = 121, terrains = ["Rough"], absolute = true, blocked = [[4, 4], [5, 4], [6, 4], [7, 4], [8, 4], [9, 4], [10, 4], [11, 4], [12, 4], [5, 5], [6, 5], [7, 5], [8, 5], [9, 5], [10, 5], [11, 5], [12, 5]] },
     { id = 122, terrains = ["Rough"], absolute = true, blocked = [[5, 4], [6, 4], [7, 4], [8, 4], [9, 4], [10, 4], [11, 4], [5, 5], [6, 5], [7, 5], [8, 5], [9, 5], [10, 5], [11, 5], [12, 5], [4, 6], [5, 6], [6, 6], [7, 6], [8, 6], [9, 6], [10, 6]] },
 ]
+
+# ---------------------------------------------------------------------------------------------
+# War machines (E03 T8): harvested from the tables like creatures (flag war_machine); the siege
+# machines (Catapult, Arrow Tower) wait for sieges. Their behaviour is the war-machine rules
+# (BAT-WAR-001..004) plus the abilities below.
+# ---------------------------------------------------------------------------------------------
+
+[war_machines]
+harvest = ["Ballista", "First Aid Tent", "Ammo Cart"]
+sources = ["wiki-ballista", "wiki-first-aid-tent", "wiki-ammo-cart"]
+
+[[creature_abilities]]
+creature = "First Aid Tent"
+abilities = [{ kind = "first_aid", min_hp = 1, max_hp = 25 }]
+sources = ["wiki-first-aid-tent"]
+
+[[creature_abilities]]
+creature = "Ammo Cart"
+abilities = [{ kind = "ammo_supply" }]
+sources = ["wiki-ammo-cart"]
+

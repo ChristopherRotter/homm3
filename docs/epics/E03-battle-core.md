@@ -113,8 +113,13 @@ Heroes, spells and artifacts (E04), spell-like creature abilities and the tactic
   in E03 are the plain terrains; special battlefields (magic terrains such as Holy Ground or
   Cursed Ground, coast, ship) with their obstacles and effects go to E04 with the map objects
   and spells that create them (BACKLOG).
-- [ ] T8 War machines (hero-free): data, Ballista, First Aid Tent, Ammo Cart, automatic control,
-  turn order.
+- [x] T8 War machines (hero-free): data, Ballista, First Aid Tent, Ammo Cart, automatic control,
+  turn order. BAT-WAR-001..004; harvested creatures 146–148 (siege machines skipped), abilities
+  `first_aid`/`ammo_supply`, battle param `war_machine_positions`, `BattleSetup.war_machines`,
+  `BattleOutcome.war_machines`, scenario/replay fields `attacker_war_machines`/
+  `defender_war_machines`; `STACK_CAPACITY` 38; ruleset hash v7, state hash v7, action encoding
+  v4, observation encoding v2. *Docs still to finish in T9:* `packs/README.md` (abilities,
+  param, scenario fields), ADR-0004 amendment for the seam change, glossary.
 - [ ] T9 End-of-battle details (draw, war machines not counting as living), tight formation,
   golden replays, benchmark re-baseline, docs, review pass, closure.
 

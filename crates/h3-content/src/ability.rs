@@ -122,6 +122,17 @@ pub enum Ability<C> {
         /// Who is spared around the target.
         effect: AreaShot,
     },
+    /// War machine: on its turn it heals the top creature of an allied stack by a uniform
+    /// `min_hp..=max_hp` hit points (First Aid Tent; BAT-WAR-003).
+    FirstAid {
+        /// Least hit points healed (≥ 1).
+        min_hp: u16,
+        /// Most hit points healed (≥ `min_hp`).
+        max_hp: u16,
+    },
+    /// War machine: while it lives, its side's shots use no ammunition; it never acts (Ammo
+    /// Cart; BAT-WAR-004).
+    AmmoSupply,
 }
 
 /// An ability as written in a pack (creature references are keys).
@@ -132,7 +143,7 @@ pub type CompiledAbility = Ability<CreatureTypeId>;
 
 impl<C> Ability<C> {
     /// Every ability name, in code order (the order of [`Ability::code`]).
-    pub const NAMES: [&'static str; 20] = [
+    pub const NAMES: [&'static str; 22] = [
         "hate",
         "jousting",
         "charge_immunity",
@@ -153,6 +164,8 @@ impl<C> Ability<C> {
         "minimum_luck",
         "no_distance_penalty",
         "area_shot",
+        "first_aid",
+        "ammo_supply",
     ];
 
     /// Stable numeric code of the ability kind (canonical hashing, duplicate checks).
@@ -178,6 +191,8 @@ impl<C> Ability<C> {
             Self::MinimumLuck { .. } => 17,
             Self::NoDistancePenalty => 18,
             Self::AreaShot { .. } => 19,
+            Self::FirstAid { .. } => 20,
+            Self::AmmoSupply => 21,
         }
     }
 
@@ -240,6 +255,11 @@ impl<C> Ability<C> {
             Self::MinimumLuck { value } => Ability::MinimumLuck { value: *value },
             Self::NoDistancePenalty => Ability::NoDistancePenalty,
             Self::AreaShot { effect } => Ability::AreaShot { effect: *effect },
+            Self::FirstAid { min_hp, max_hp } => Ability::FirstAid {
+                min_hp: *min_hp,
+                max_hp: *max_hp,
+            },
+            Self::AmmoSupply => Ability::AmmoSupply,
         })
     }
 
@@ -264,6 +284,9 @@ impl<C> Ability<C> {
             }
             Self::MoraleAura { amount: 0, .. } | Self::LuckAura { amount: 0, .. } => {
                 Some("aura amount must not be 0")
+            }
+            Self::FirstAid { min_hp, max_hp } if *min_hp == 0 || max_hp < min_hp => {
+                Some("first_aid needs 1 <= min_hp <= max_hp")
             }
             _ => None,
         }
@@ -306,6 +329,10 @@ impl CanonicalHash for Ability<CreatureTypeId> {
                 AreaShot::Fireball => 0,
                 AreaShot::DeathCloud => 1,
             }),
+            Self::FirstAid { min_hp, max_hp } => {
+                h.write_u16(min_hp);
+                h.write_u16(max_hp);
+            }
             Self::ChargeImmunity
             | Self::Regeneration
             | Self::UnlimitedRetaliations
@@ -313,7 +340,8 @@ impl CanonicalHash for Ability<CreatureTypeId> {
             | Self::AttacksAllAdjacent
             | Self::ThreeHeadedAttack
             | Self::Teleports
-            | Self::NoDistancePenalty => {}
+            | Self::NoDistancePenalty
+            | Self::AmmoSupply => {}
         }
     }
 }
@@ -351,7 +379,7 @@ mod tests {
 
     type A = Ability<u8>;
 
-    fn all() -> [A; 20] {
+    fn all() -> [A; 22] {
         [
             A::Hate {
                 target: 3,
@@ -384,6 +412,11 @@ mod tests {
             A::AreaShot {
                 effect: AreaShot::DeathCloud,
             },
+            A::FirstAid {
+                min_hp: 1,
+                max_hp: 25,
+            },
+            A::AmmoSupply,
         ]
     }
 
@@ -464,6 +497,14 @@ mod tests {
             A::LuckAura {
                 amount: 0,
                 affects: AuraTarget::Enemies,
+            },
+            A::FirstAid {
+                min_hp: 0,
+                max_hp: 25,
+            },
+            A::FirstAid {
+                min_hp: 5,
+                max_hp: 4,
             },
         ];
         for a in bad {

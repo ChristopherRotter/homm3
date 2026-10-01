@@ -11,8 +11,8 @@ use h3_content::Ruleset;
 use h3_contracts::BattleSide;
 
 use crate::event::{Event, EventKind, Sink};
-use crate::morale;
 use crate::state::{BattleState, StackFlags, StackId, StackTraits};
+use crate::{morale, war};
 
 /// The next stack to act this round, or `None` if every living stack has acted.
 // rule: BAT-TRN-001, BAT-TRN-002
@@ -22,7 +22,10 @@ pub(crate) fn next_active(state: &BattleState) -> Option<StackId> {
         .map_or(BattleSide::Attacker, BattleSide::opponent);
     (0u8..)
         .zip(state.stacks.iter())
-        .filter(|(_, s)| s.is_alive() && !s.flags.contains(StackFlags::ACTED))
+        // Ammunition supplies never act (BAT-WAR-004).
+        .filter(|(_, s)| {
+            s.is_alive() && !s.flags.contains(StackFlags::ACTED) && !s.has(StackTraits::AMMO_SUPPLY)
+        })
         .min_by_key(|(id, s)| {
             // Phases: normal, waited during a good-morale turn, waited (BAT-MOR-003).
             let phase = match (
@@ -124,15 +127,24 @@ pub(crate) fn activate_next<S: Sink>(state: &mut BattleState, ruleset: &Ruleset,
         sink.emit(Event::public(EventKind::TurnStarted { stack: id }));
         regenerate(state, id, sink);
         // rule: BAT-MOR-004
-        if !morale::bad_morale(state, ruleset, id) {
+        if morale::bad_morale(state, ruleset, id) {
+            sink.emit(Event::public(EventKind::BadMorale { stack: id }));
+        } else if state.at(id).has(StackTraits::WAR_MACHINE) {
+            // rule: BAT-WAR-002, BAT-WAR-003
+            war::act(state, ruleset, id, sink);
+        } else {
             break;
         }
-        sink.emit(Event::public(EventKind::BadMorale { stack: id }));
-        let frozen = state.at_mut(id);
-        frozen.flags.set(StackFlags::ACTED, true);
-        let side = frozen.side;
+        let done = state.at_mut(id);
+        done.flags.set(StackFlags::ACTED, true);
+        let side = done.side;
         state.last_side_acted = Some(side);
-        next = pick(state, sink);
+        // A war machine's shot can end the battle.
+        next = if state.winner.is_some() {
+            None
+        } else {
+            pick(state, sink)
+        };
     }
     state.active = next;
 }

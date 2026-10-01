@@ -61,9 +61,22 @@ fn arb_step() -> impl Strategy<Value = Step> {
     ]
 }
 
+/// Indices of the test creatures that may be in an army (war machines may not).
+fn army_creatures() -> Vec<u8> {
+    (0u8..)
+        .zip(CREATURES)
+        .filter(|(_, c)| !c.7.contains(&"war_machine"))
+        .map(|(i, _)| i)
+        .collect()
+}
+
 fn arb_army() -> impl Strategy<Value = ArmySpec> {
-    btree_map(0u8..7, (0..CREATURES.len() as u8, 1u32..60), 1..=7)
-        .prop_map(|m| m.into_iter().map(|(slot, (c, n))| (slot, c, n)).collect())
+    let pool = army_creatures();
+    btree_map(0u8..7, (0..pool.len(), 1u32..60), 1..=7).prop_map(move |m| {
+        m.into_iter()
+            .map(|(slot, (c, n))| (slot, pool[c], n))
+            .collect()
+    })
 }
 
 /// `(slot, creature index, count)` per stack.
@@ -87,12 +100,24 @@ fn arb_game() -> impl Strategy<Value = Game> {
     )
 }
 
+/// A setup from generated armies and obstacles; bits 0–5 of `machines` choose the attacker's
+/// and the defender's war machines (ballista, ammo cart, first aid tent).
 fn make_setup(
     r: &Ruleset,
     attacker: &[(u8, u8, u32)],
     defender: &[(u8, u8, u32)],
     obstacles: &[u8],
+    machines: u64,
 ) -> BattleSetup {
+    let pick = |bits: u64| -> Vec<_> {
+        ["ballista", "cart", "tent"]
+            .iter()
+            .enumerate()
+            .filter(|(i, _)| bits & (1 << i) != 0)
+            .map(|(_, k)| r.creature_by_key(&std::format!("t:{k}")).unwrap())
+            .collect()
+    };
+    let war_machines = [pick(machines & 7), pick((machines >> 3) & 7)];
     let army = |spec: &[(u8, u8, u32)]| Army {
         stacks: spec
             .iter()
@@ -111,6 +136,7 @@ fn make_setup(
         obstacles: obstacles.to_vec(),
         led_by_hero: [true, false],
         terrain: None,
+        war_machines,
     }
 }
 
@@ -164,7 +190,7 @@ proptest! {
     #[test]
     fn every_step_preserves_the_invariants((att, def, obstacles, seed, steps) in arb_game()) {
         let r = lively();
-        let setup = make_setup(&r, &att, &def, &obstacles);
+        let setup = make_setup(&r, &att, &def, &obstacles, seed);
         let mut state = BattleState::new(&r, &setup, seed).unwrap();
         let mut legal = LegalCommands::new();
         for step in &steps {
@@ -210,7 +236,8 @@ proptest! {
                             }
                             if attacker == mover {
                                 prop_assert_eq!(Some(hit), target);
-                            } else {
+                            } else if !before.stacks()[attacker.index()].has(crate::StackTraits::WAR_MACHINE) {
+                                // War machines act on their own after the command (BAT-WAR-002).
                                 prop_assert!(flags.contains(StrikeFlags::RETALIATION));
                                 prop_assert_eq!(hit, mover);
                             }
@@ -240,7 +267,8 @@ proptest! {
                             prop_assert_eq!(a.hex, b.hex);
                             let explained = mentioned(i, |k, i| matches!(k,
                                 EventKind::Struck { target, .. } | EventKind::DeathStared { target, .. } if target.index() == i))
-                                || mentioned(i, |k, i| matches!(k, EventKind::Regenerated { stack, .. } if stack.index() == i));
+                                || mentioned(i, |k, i| matches!(k, EventKind::Regenerated { stack, .. } if stack.index() == i))
+                                || mentioned(i, |k, i| matches!(k, EventKind::Healed { target, .. } if target.index() == i));
                             if !explained {
                                 prop_assert_eq!((a.count, a.top_hp), (b.count, b.top_hp));
                             }
@@ -258,7 +286,7 @@ proptest! {
     #[test]
     fn observations_do_not_depend_on_hidden_state((att, def, obstacles, seed, steps) in arb_game(), other_seed: u64) {
         let r = lively();
-        let (state, _, _) = play(&r, &make_setup(&r, &att, &def, &obstacles), seed, &steps);
+        let (state, _, _) = play(&r, &make_setup(&r, &att, &def, &obstacles, seed), seed, &steps);
         let mut twin = state.clone();
         twin.rng = Rng::from_seed(other_seed);
         for viewer in BattleSide::BOTH {
@@ -270,7 +298,7 @@ proptest! {
     #[test]
     fn clones_evolve_identically((att, def, obstacles, seed, steps) in arb_game(), split in 0usize..160) {
         let r = lively();
-        let setup = make_setup(&r, &att, &def, &obstacles);
+        let setup = make_setup(&r, &att, &def, &obstacles, seed);
         let split = split.min(steps.len());
         let (mut original, _, _) = play(&r, &setup, seed, &steps[..split]);
         let mut clone = original.clone();
@@ -289,7 +317,7 @@ proptest! {
     #[test]
     fn replays_are_deterministic((att, def, obstacles, seed, steps) in arb_game()) {
         let r = lively();
-        let setup = make_setup(&r, &att, &def, &obstacles);
+        let setup = make_setup(&r, &att, &def, &obstacles, seed);
         let first = play(&r, &setup, seed, &steps);
         let second = play(&r, &setup, seed, &steps);
         prop_assert_eq!(first.1, second.1);
@@ -308,6 +336,7 @@ fn random_legal_play_finishes_battles() {
         &[(0, 5, 20), (1, 6, 8), (2, 10, 2)],
         &[(0, 7, 15), (3, 5, 12), (4, 8, 6)],
         &[60, 77, 94],
+        0b111_111,
     );
     let mut decided = 0;
     for seed in 0..20u64 {

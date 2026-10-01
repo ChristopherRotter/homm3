@@ -23,6 +23,7 @@
 //! obstacles = [40, 41]            # blocked hexes
 //! led_by_hero = ["attacker"]      # sides led by a hero (omitted when none)
 //! terrain = "base:grass"          # the battlefield's terrain (omitted when none)
+//! attacker_war_machines = ["base:ballista"]  # war machines per side (omitted when none)
 //!
 //! [[attacker]]                    # the setup, by creature key
 //! slot = 0
@@ -41,7 +42,7 @@ use std::fmt;
 use std::path::{Path, PathBuf};
 
 use h3_battle::{Command, Hex, StackId};
-use h3_content::Ruleset;
+use h3_content::{CreatureTypeId, Ruleset};
 use h3_contracts::{Army, ArmyStack, BattleSetup, BattleSide};
 use h3_kernel::{Rng, StreamId};
 use h3_pack::{PackError, ScenarioDef};
@@ -154,6 +155,10 @@ struct SetupEntry {
     led_by_hero: Vec<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     terrain: Option<String>,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    attacker_war_machines: Vec<String>,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    defender_war_machines: Vec<String>,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -269,6 +274,17 @@ pub fn replay_to_toml(
             })
             .collect()
     };
+    let keys = |machines: &[CreatureTypeId]| -> Vec<String> {
+        machines
+            .iter()
+            .map(|&c| {
+                ruleset
+                    .creature_key(c)
+                    .map(|k| k.as_str().to_owned())
+                    .unwrap_or_default()
+            })
+            .collect()
+    };
     let h = &replay.header;
     let file = ReplayFile {
         replay: Meta {
@@ -298,6 +314,8 @@ pub fn replay_to_toml(
                 .terrain
                 .and_then(|t| ruleset.terrains().get(t.index()))
                 .map(|t| t.key.as_str().to_owned()),
+            attacker_war_machines: keys(&replay.setup.war_machines[0]),
+            defender_war_machines: keys(&replay.setup.war_machines[1]),
         },
         attacker: stacks(&replay.setup.attacker),
         defender: stacks(&replay.setup.defender),
@@ -369,6 +387,15 @@ impl ReplayDoc {
                 .collect::<Result<Vec<_>, CliError>>()?;
             Ok(Army { stacks })
         };
+        let machines = |keys: &[String]| -> Result<Vec<CreatureTypeId>, CliError> {
+            keys.iter()
+                .map(|k| {
+                    ruleset
+                        .creature_by_key(k)
+                        .ok_or_else(|| CliError::Format(format!("unknown creature `{k}`")))
+                })
+                .collect()
+        };
         let header = ReplayHeader {
             format_version: m.format,
             engine_version: m.engine,
@@ -403,6 +430,10 @@ impl ReplayDoc {
                             .ok_or_else(|| CliError::Format(format!("unknown terrain `{t}`")))
                     })
                     .transpose()?,
+                war_machines: [
+                    machines(&f.setup.attacker_war_machines)?,
+                    machines(&f.setup.defender_war_machines)?,
+                ],
             },
             commands: f
                 .commands

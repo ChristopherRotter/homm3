@@ -28,6 +28,7 @@ good_morale_chances = [1, 2, 3]             # BAT-MOR-003: morale +1..+3
 bad_morale_chances = [2, 4, 6]              # BAT-MOR-004: morale -1..-3
 luck_dice = 24                              # BAT-LCK-002
 good_luck_chances = [1, 2, 3]               # BAT-LCK-002: luck +1..+3 (no bad luck before HotA)
+war_machine_positions = [[1, 3], [1, 1], [1, 9]]   # BAT-WAR-001: shooting, ammo, first aid
 # BAT-SET-001: formation[n-1] = starting rows of an army with n stacks, in slot order.
 formation = [
     [5],

@@ -114,7 +114,13 @@ fn side_modifier(
 // rule: BAT-MOR-001, BAT-MOR-002, BAT-LCK-001
 pub(crate) fn setup(state: &mut BattleState, ruleset: &Ruleset) {
     for side in BattleSide::BOTH {
-        let army = || state.stacks.iter().filter(move |s| s.side == side);
+        // War machines are not part of the army (VCMI counts the army's slots).
+        let army = || {
+            state
+                .stacks
+                .iter()
+                .filter(move |s| s.side == side && !s.has(StackTraits::WAR_MACHINE))
+        };
         // Neutral creatures (no faction) count as one alignment.
         let alignments: BTreeSet<Option<u16>> = army()
             .map(|s| {

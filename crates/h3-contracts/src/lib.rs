@@ -89,6 +89,9 @@ pub struct BattleSetup {
     /// The battlefield's terrain, if any: creatures of factions native to it get the native
     /// terrain bonus (BAT-TER-001). Obstacles for it are generated before the seam (BAT-GEO-004).
     pub terrain: Option<TerrainId>,
+    /// War machines per side (indexed by [`BattleSide::index`]): creature types with flag
+    /// `war_machine`, at most one of each kind (E03, BAT-WAR-001; heroes bring them in E04).
+    pub war_machines: [Vec<CreatureTypeId>; 2],
 }
 
 impl BattleSetup {
@@ -108,6 +111,8 @@ pub struct BattleOutcome {
     pub winner: BattleSide,
     /// Surviving stacks per side (indexed by [`BattleSide::index`]), in slot order.
     pub survivors: [Army; 2],
+    /// Surviving war machines per side (indexed by [`BattleSide::index`]).
+    pub war_machines: [Vec<CreatureTypeId>; 2],
 }
 
 #[cfg(test)]
@@ -142,6 +147,7 @@ mod tests {
             obstacles: vec![],
             led_by_hero: [true, false],
             terrain: None,
+            war_machines: [vec![], vec![]],
         };
         assert_eq!(setup.army(BattleSide::Attacker).stacks, [stack]);
         assert!(setup.army(BattleSide::Defender).stacks.is_empty());

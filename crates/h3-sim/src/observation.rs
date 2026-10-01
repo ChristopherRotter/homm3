@@ -1,4 +1,4 @@
-//! Flat observation encoding (version 1) of a per-viewer [`Observation`].
+//! Flat observation encoding (version 2) of a per-viewer [`Observation`].
 //!
 //! Layout: 4 global features, then [`STACK_FEATURES`] features for each of the
 //! [`STACK_CAPACITY`] stack slots (zeros for unused slots). Values are raw game quantities as
@@ -13,7 +13,7 @@ use h3_battle::{Observation, STACK_CAPACITY, StackFlags};
 use h3_contracts::BattleSide;
 
 /// Version of this encoding; bump on any change of the layout above.
-pub const OBSERVATION_ENCODING_VERSION: u32 = 1;
+pub const OBSERVATION_ENCODING_VERSION: u32 = 2;
 
 const GLOBALS: usize = 4;
 /// Features per stack slot.
@@ -101,7 +101,7 @@ mod tests {
         assert_eq!(out[OBSERVATION_LEN], 9.0);
         let mut short = vec![0.0; 3];
         assert_eq!(encode(&obs, 17, &mut short), Err(OBSERVATION_LEN));
-        assert_eq!(OBSERVATION_LEN, 4 + 19 * 32);
+        assert_eq!(OBSERVATION_LEN, 4 + 19 * 38);
         assert_eq!(coords(20, 0), (0.0, 20.0));
     }
 }

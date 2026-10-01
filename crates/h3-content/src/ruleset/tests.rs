@@ -50,6 +50,7 @@ fn battle_def() -> BattleParamsDef {
         bad_morale_chances: vec![2, 4, 6],
         luck_dice: 24,
         good_luck_chances: vec![1, 2, 3],
+        war_machine_positions: vec![[1, 3], [1, 1], [1, 9]],
         formation: vec![vec![5], vec![3, 7], vec![2, 5, 8]],
     }
 }
@@ -217,7 +218,7 @@ fn hash_is_stable_and_sensitive() {
     );
 }
 
-const GOLDEN_BASE_HASH: u64 = 0x3d73_2826_837d_48a6;
+const GOLDEN_BASE_HASH: u64 = 0x6a26_2f14_fb4e_75fd;
 
 fn expect(packs: &[ContentPack], profile: &str) -> CompileError {
     Ruleset::compile(packs, profile).unwrap_err()
@@ -309,14 +310,36 @@ fn too_many_creatures() {
 #[test]
 fn creature_errors() {
     type Edit = fn(&mut CreatureDef);
-    let cases: [(Edit, &str); 4] = [
-        (|c| c.damage_min = 0, "damage_min must be at least 1"),
+    const DAMAGE: &str = "damage_min must be at least 1 (war machines: or damage [0, 0])";
+    let cases: [(Edit, &str); 6] = [
+        (|c| c.damage_min = 0, DAMAGE),
         (
             |c| c.damage_max = 0,
             "damage_max must not be below damage_min",
         ),
         (|c| c.hit_points = 0, "hit_points must be at least 1"),
-        (|c| c.speed = 0, "speed must be at least 1"),
+        (
+            |c| c.speed = 0,
+            "speed must be at least 1 (except for war machines)",
+        ),
+        // A war machine may have no damage, but not a damage range starting at 0.
+        (
+            |c| {
+                c.info.flags = vec!["war_machine".into()];
+                c.damage_min = 0;
+            },
+            DAMAGE,
+        ),
+        (
+            |c| {
+                c.info.flags = vec!["war_machine".into()];
+                c.damage_min = 0;
+                c.damage_max = 0;
+                c.speed = 0;
+                c.hit_points = 0;
+            },
+            "hit_points must be at least 1",
+        ),
     ];
     for (edit, reason) in cases {
         let mut p = base();
@@ -387,6 +410,18 @@ fn battle_param_errors() {
         (
             |b| b.good_luck_chances = vec![25],
             "morale and luck chances: at most 8 levels, each at most the die's sides",
+        ),
+        (
+            |b| b.war_machine_positions = vec![[1, 3]],
+            "war_machine_positions needs 3 hexes [x, y] on the field",
+        ),
+        (
+            |b| b.war_machine_positions[2] = [17, 9],
+            "war_machine_positions needs 3 hexes [x, y] on the field",
+        ),
+        (
+            |b| b.war_machine_positions[2] = [1, 11],
+            "war_machine_positions needs 3 hexes [x, y] on the field",
         ),
         (
             |b| drop(b.formation.pop()),

@@ -35,6 +35,7 @@ mod observe;
 mod state;
 mod terrain;
 mod turn;
+mod war;
 
 pub use command::{Command, apply, validate};
 pub use error::{CommandError, SetupError};
