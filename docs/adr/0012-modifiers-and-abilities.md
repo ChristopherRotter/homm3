@@ -1,8 +1,8 @@
 # ADR-0012: Modifiers and abilities
 
-- Status: Proposed (E03 T1; the user chose to review it with the E03 report rather than before implementation)
+- Status: Accepted (2026-10-01, by the user after reviewing it with the E03 report; proposed in E03 T1)
 - Date: 2026-10-01
-- Deciders: agent session (E03), within the scope the user set for E03
+- Deciders: agent session (E03), within the scope the user set for E03; accepted by the user
 
 ## Context
 
@@ -133,3 +133,4 @@ will list modifier contributions (backlog).
 
 - 2026-10-01: Proposed (E03 T1).
 - 2026-10-01: Implementation notes added (E03 T6, battle pool).
+- 2026-10-01: Accepted by the user at the E03 closure.

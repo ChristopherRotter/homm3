@@ -6,10 +6,10 @@ Living state. The last agent updates this at the end of every session; the next 
 
 ## 2026-10-01 — E03 closed (T9)
 
-**State:** E03 (battle core) is **done** on branch `e03-battle-core`; `cargo xtask verify
---with-original-data` is green on Linux. **Waiting on the user:** run `cargo xtask verify` (and
-`--with-original-data`) on Windows, review ADR-0012 (still Proposed), fast-forward `master` to
-`e03-battle-core` if happy.
+**State:** E03 (battle core) is **done**. The user ran `cargo xtask verify` (incl.
+`--with-original-data`) on Windows: green; Linux was green in the sandbox. **ADR-0012 accepted**
+by the user. Branch `e03-battle-core` (this commit on top of `c208a02`) is ready for the user to
+fast-forward into `master`.
 
 **T9 (this session):** T8 docs; draw on simultaneous wipe-out (BAT-END-002, Q24: `BattleResult`
 enum in the seam, `BattleOutcome.result`; it also fixes an endless loop when only war machines

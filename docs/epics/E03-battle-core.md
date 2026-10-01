@@ -1,6 +1,6 @@
 # E03 — Battle core (RoE rules)
 
-Status: **done** (2026-10-01, branch `e03-battle-core`; Linux verified incl. `--with-original-data`, Windows run by the user pending) · Refined: 2026-09-30 (end of E01) · Updated: 2026-10-01 (E02 data available; scope decisions Q16 at E03 start; closed after T9)
+Status: **done** (2026-10-01, branch `e03-battle-core`; verified on Linux and Windows incl. `--with-original-data`; ADR-0012 accepted) · Refined: 2026-09-30 (end of E01) · Updated: 2026-10-01 (E02 data available; scope decisions Q16 at E03 start; closed after T9)
 
 ## Goal
 
@@ -146,7 +146,9 @@ Heroes, spells and artifacts (E04), spell-like creature abilities and the tactic
    the Ballista target property); golden replays re-recorded with notes in the commits;
    ≈ 197 k random-legal steps/s/core on the full scenario with war machines (target 100 k);
    bench-check re-baselined with the reason.
-4. Linux: `cargo xtask verify --with-original-data` green. **Windows: to be run by the user.**
+4. Met: `cargo xtask verify --with-original-data` green on Linux (agent) and Windows (user).
+
+ADR-0012 (modifiers and abilities), proposed in T1, was accepted by the user at closure.
 
 ## Risks
 
