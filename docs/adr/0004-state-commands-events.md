@@ -88,6 +88,20 @@ How the model turned out in the battle context:
   `h3_battle::generate_obstacles(ruleset, terrain, rng)` and passed as `BattleSetup.obstacles`,
   so the battle itself never draws them; the tools use stream `OBSTACLES`.
 
+## Amendment — E03 battle core (2026-10-01, T8)
+
+- **Seam type changes (covered by the E03 scope decision Q16, war machines without heroes):**
+  `BattleSetup.war_machines: [Vec<CreatureTypeId>; 2]` (creature types with flag `war_machine`,
+  at most one per kind; validated by the battle context, which rejects war machines in army
+  slots) and `BattleOutcome.war_machines: [Vec<CreatureTypeId>; 2]` (surviving war machines,
+  separate from the surviving army stacks). Heroes bring their war machines in E04.
+- **State:** war machines are ordinary stacks after their side's army (slots 16 + kind),
+  `STACK_CAPACITY` = 2 · (16 + 3) = 38; state hash encoding v7.
+- **Turn structure:** war machines never wait for a command: `turn::activate_next` runs their
+  automatic turn (Ballista shot, First Aid Tent healing) and moves on, like a bad-morale freeze;
+  the Ammo Cart is never activated. Event `Healed { healer, target, hit_points }` (public).
+- **Sim encodings:** action encoding v4 and observation encoding v2 (more stack slots).
+
 ## Revision history
 
 - 2026-09-30: Accepted.
@@ -95,3 +109,4 @@ How the model turned out in the battle context:
 - 2026-10-01: Amended by E03 T3 (footprints, obstacles, attack positions, setup/encoding changes).
 - 2026-10-01: Amended by E03 T4–T5 (shooting, strike flags, ability events, attack structure).
 - 2026-10-01: Amended by E03 T6 (hero flags, morale in the turn structure, morale/luck state) and T7 (terrain, obstacle generation before the seam).
+- 2026-10-01: Amended by E03 T8 (war machines in the setup, the outcome and the turn structure).

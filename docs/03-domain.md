@@ -39,7 +39,8 @@ Other seams (town ↔ heroes, heroes ↔ magic, content ↔ all) are introduced 
 - **Hero**, **Town**, **Dwelling**, **Garrison**, **Mine**, **Resource**, **Artifact**, **Spell**, **Skill (primary/secondary)**.
 - **Adventure map**, **Tile**, **Object**, **Fog of war**.
 - **Day / Week / Month** — the calendar (weekly growth, month/week events).
-- **Battlefield**, **Hex**, **Initiative/Speed**, **Retaliation**, **Morale**, **Luck**, **Obstacle**, **War machine**.
+- **Battlefield**, **Hex**, **Initiative/Speed**, **Retaliation**, **Morale**, **Luck**, **Obstacle**.
+- **War machine** — a machine a side brings into battle besides its army (Ballista, First Aid Tent, Ammo Cart; later siege machines): a stack with flag `war_machine` at a fixed hex, controlled automatically without the hero's skill, never retaliating, unaffected by morale; a side with only war machines left has lost.
 - **Round** — every living stack acts once (normal phase, fastest first; then the **wait phase**, slowest first). **Active stack** — the stack whose turn it is. **Wait** — postpone the turn to the wait phase (once per round). **Defend** — end the turn with a defense bonus until the stack's next turn. **Attack** — one swing of a stack (its melee attack, a second attack, a retaliation or a shot); it strikes the target and the secondary targets its pattern hits (breath, multi-headed, area shots). **Strike** — the damage application of an attack on one stack. **Formation** — starting rows of an army by stack count.
 - **Ability** — a typed behaviour primitive of a creature type (flying, hate, jousting, …), referenced from content (ADR-0012). **Modifier** — a numeric change to a stat of a bearer (stack, side) with a source and an expiry; effective stats are materialised from base stats and modifiers (ADR-0012).
 - **Side** (`BattleSide`) — attacker or defender in a battle; the battle context's actor identity.

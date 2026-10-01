@@ -7,7 +7,7 @@ Human-editable content packs (ADR-0006), parsed by `h3-pack` and compiled into a
 |---|---|
 | `synthetic/` | Invented creatures with neutral names for tests, benchmarks, replays and the walking skeleton. **Not** original game data (docs/05-testing.md "Test data policy"). |
 | `synthetic-ext/` | Invented expansion of `synthetic`: exercises dependencies and overrides the way `ab`/`sod` do. |
-| `base/` | **Harvested**: The Restoration of Erathia, latest patch (Q15): resources, 10 terrains, 8 factions with native terrains, 78 obstacle types, 118 creatures, battle parameters, profiles. |
+| `base/` | **Harvested**: The Restoration of Erathia, latest patch (Q15): resources, 10 terrains, 8 factions with native terrains, 78 obstacle types, 121 creatures (118 plus the war machines Ballista, First Aid Tent and Ammo Cart, E03 T8), battle parameters, profiles. |
 | `ab/` | **Harvested**: Armageddon's Blade (depends on `base`): Conflux, 23 creatures, elementals moved to Conflux. |
 | `sod/` | **Harvested**: The Shadow of Death (depends on `ab`): SoD-only changes as overrides. |
 
@@ -106,8 +106,10 @@ resource may appear once.
 `fire_immune`, `strikes_twice`, `no_enemy_retaliation`, `no_morale`, `undead`,
 `multi_headed`, `area_attack`, `dragon`. Read by battle rules so far: `two_hex`, `flying`,
 `shooter`, `breath_attack`, `alive`, `no_melee_penalty`, `fire_immune`, `strikes_twice`,
-`no_enemy_retaliation`, `no_morale`, `undead` (E03 T3–T6); the others are data only until their
-rules arrive.
+`no_enemy_retaliation`, `no_morale`, `undead` (E03 T3–T6) and `war_machine` (E03 T8: placed at
+a fixed hex, acts automatically, never retaliates, no morale, not counted for alignment or the
+end of the battle; not allowed in army slots, BAT-WAR-001); `multi_headed` and `area_attack` are
+required by the matching abilities. The others are data only until their rules arrive.
 
 **Abilities** (E03, ADR-0012; `h3_content::Ability`): behaviour beyond the flag bits, with
 parameters. `abilities = [ ... ]` on a creature (or an override, replacing the whole list), each
@@ -134,6 +136,8 @@ errors:
 | `minimum_morale`, `minimum_luck` | `value` | lower bound of its morale/luck (BAT-MOR-001, BAT-LCK-001) |
 | `no_distance_penalty` | — | its shots have no distance penalty (BAT-RNG-002) |
 | `area_shot` | `effect` (`fireball`/`death_cloud`) | its shots also hit the stacks around the target (requires flag `area_attack`; BAT-RNG-004) |
+| `first_aid` | `min_hp`, `max_hp` (1 ≤ min ≤ max) | war machine (First Aid Tent): on its turn heals the top creature of a random hurt allied stack by a uniform `min_hp..=max_hp` (BAT-WAR-003) |
+| `ammo_supply` | — | war machine (Ammo Cart): while it lives its side's shots use no ammunition; it never acts (BAT-WAR-004) |
 
 `creature` references follow the reference rules above (own pack, or `pack:name` in the
 dependency closure) and may name creatures defined later in the same pack. At most one entry of
@@ -147,13 +151,17 @@ size, army slots, damage rolls, attack/defense rates and caps, Defend bonus, for
 and since E03 `ranged_full_damage_distance`, `ranged_penalty_percent`, `melee_penalty_percent`
 (BAT-RNG-002/003) and the morale and luck roll tables `morale_dice`, `good_morale_chances`,
 `bad_morale_chances`, `luck_dice`, `good_luck_chances` (chances out of the die's sides per level,
-at most 8 levels; the table lengths bound morale and luck, BAT-MOR-001..004, BAT-LCK-001/002).
+at most 8 levels; the table lengths bound morale and luck, BAT-MOR-001..004, BAT-LCK-001/002),
+and `war_machine_positions` (E03 T8: three head hexes `[x, y]` of the attacker's war machines by
+kind — shooting machine, ammo supply, first aid — mirrored for the defender, BAT-WAR-001). A war
+machine's kind follows from its data: flag `shooter`, ability `ammo_supply` or ability
+`first_aid`.
 **Profiles** (`[[profile]]` with `quirks = { "quirk.<context>.<name>" = true | false }`; unlisted
 flags are off): the registered flags are in `h3_content::REGISTRY` and the quirks ledger
 (`docs/rules/quirks-ledger.md`); the packs' `faithful` profiles turn Q-0003 on, `strict-fixed`
 off. Profile-level Tier-2 overrides are not implemented yet (backlog).
 
-The compiled ruleset's canonical hash (encoding v6, `RULESET_HASH_VERSION`) covers packs, profile,
+The compiled ruleset's canonical hash (encoding v7, `RULESET_HASH_VERSION`) covers packs, profile,
 quirks, resources, terrains, factions, obstacles, all creature fields including abilities, and the battle parameters;
 replays record it.
 
@@ -172,6 +180,8 @@ random_obstacles = true          # optional: generate obstacles for the terrain 
                                  # the tools use stream OBSTACLES of the battle seed); not
                                  # together with `obstacles`
 led_by_hero = ["attacker"]       # optional: sides led by a hero (Q17, quirk Q-0003)
+attacker_war_machines = ["synthetic:bolt_thrower", "synthetic:aid_tent"]  # optional, per side:
+defender_war_machines = ["synthetic:supply_wagon"]  # war machines by key, one per kind (BAT-WAR-001)
 
 [[attacker]]                     # one entry per stack
 slot = 0
@@ -184,4 +194,5 @@ creature = "synthetic:brute"
 count = 8
 ```
 
-The battle context validates the setup when the battle starts (slots, counts, obstacle hexes).
+The battle context validates the setup when the battle starts (slots, counts, obstacle hexes,
+war machines).
