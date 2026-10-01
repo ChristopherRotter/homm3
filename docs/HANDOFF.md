@@ -4,21 +4,52 @@ Living state. The last agent updates this at the end of every session; the next 
 
 ---
 
-## 2026-10-01 — E03 T9 in progress (closing session)
+## 2026-10-01 — E03 closed (T9)
 
-**In progress (resumable):** T8 docs done (`f09e0f7`); draw on simultaneous wipe-out done
-(`c16a377`, Q24: `BattleResult` enum, BAT-END-002, C ABI v2); tight formation in this commit (Q25:
-`BattleSetup.formations`, battle params `loose_formation`/`tight_formation`, scenario/replay field
-`tight_formation`, ruleset hash v8, packs regenerated, `32f68d5`); observation encoding v3
-(hero globals; morale, luck, shots, retaliations left, good-morale flag, two-hex/flies/shooter/war
-machine per stack) with synthetic war machines in the `full` scenario, a lazy Ballista target
-choice (same result, property-tested against the eager ranking), bench re-baselined — this
-commit. **Next:** review pass; close the epic; status doc; report.
-Sandbox: original data staged and symlinked into `original-data/install` (see the E02 notes).
+**State:** E03 (battle core) is **done** on branch `e03-battle-core`; `cargo xtask verify
+--with-original-data` is green on Linux. **Waiting on the user:** run `cargo xtask verify` (and
+`--with-original-data`) on Windows, review ADR-0012 (still Proposed), fast-forward `master` to
+`e03-battle-core` if happy.
+
+**T9 (this session):** T8 docs; draw on simultaneous wipe-out (BAT-END-002, Q24: `BattleResult`
+enum in the seam, `BattleOutcome.result`; it also fixes an endless loop when only war machines
+were left on both sides); tight formation (Q25: `BattleSetup.formations`, battle params
+`loose_formation`/`tight_formation`, scenario/replay field `tight_formation`); observation
+encoding v3 and C ABI v2 (`H3StepResult.result` with `H3_RESULT_*`; the ABI version now tracks
+the encodings — T3–T8 had changed them without a bump); synthetic war machines in the `full`
+scenario; lazy Ballista target choice (property-tested against the eager VCMI ranking);
+golden replays re-recorded, bench re-baselined (≈ 197 k steps/s on the full scenario).
+Review pass (two agents) and fixes: compiler rejects certain bad-morale freezes (they could
+hang `BattleState::new`), `ammo_supply`/`first_aid` without flag `war_machine` and life drain
+above 1000 %; overflow-safe life drain; `BattleState::start(…, sink)` reports the first
+activation's events; `SetupError::UnknownTerrain`; fixed-capacity buffers in war-machine turns;
+CLI validates pack ids; catalog wording fixed. Q26 (First Aid Tent heal: wiki 1–25 vs VCMI 10)
+decided by the user: wiki. Remaining review findings are in the BACKLOG inbox (death-stare
+work per attack, random obstacles in the sim/FFI, seed secrecy for server mode, war-machine
+position overlap check, checked arithmetic for the Ballista ranking in E04).
+
+**Versions now:** action encoding v4, observation encoding v3, C ABI v2, replay format v2,
+state hash v8, ruleset hash v8.
+
+**Next:** E04 (heroes, artifacts, skills, spells; also the E03 deferrals: special
+battlefields, spell-like abilities and immunities, tactics, sieges/Catapult/towers, hero
+control of war machines). Refine E04 with the user first. Open experiments: Q21–Q23 (and Q26 to
+confirm), whenever observation runs in the original are allowed again.
+
+**Traps (still valid):** see the E03 entry below (coverage of closures/`if let`, stale coverage
+binaries, abilities via `ruleset.abilities`). New: a test ruleset may not make bad morale
+certain (`tests/morale.rs::always` uses 254/255); `BattleState::new` drops the first
+activation's events, use `start` where events matter.
+
+**Sandbox notes (this session):** fresh sandbox; tooling as in the E02 notes (toolchain symlink
+`1.95.0`, `cargo install cargo-deny cargo-llvm-cov --locked`, `llvm-20`, VCMI 1.7.5 clone at
+`/home/claude/ref/vcmi`); original data staged from the user's `original-data/install` and
+symlinked; syncing via bundles in the user's `target/` and a fast-forward with delete
+permission for the repo folder (git lock files).
 
 ---
 
-## 2026-10-01 — E03 in progress (battle core)
+## 2026-10-01 — E03 T1–T8 (superseded by "E03 closed" above; kept for the per-task notes)
 
 **State:** branch `e03-battle-core` from `master` (`7c02e2a`). Scope decisions at the start (user, OPEN-QUESTIONS Q16): war machines without heroes and terrain bonus + obstacle generation are **in**; spell-like abilities, spell immunities and tactics are **E04**; sources VCMI 1.7.5 + wiki (fetches approved); no original-game experiments (open questions instead); ADR-0012 reviewed with the E03 report. Task list and status: `docs/epics/E03-battle-core.md`.
 
@@ -37,8 +68,6 @@ T6 — morale and luck: `h3_battle::morale` (modifier pool on sides, materialise
 T7 — terrain: content types `terrain`, faction `native_terrain`, `obstacle` (pack format, compiler checks, ruleset hash v6), harvester reads `TERRNAME.txt` and gap-fills native terrains and VCMI's obstacle table (special-battlefield-only obstacles left out), `BattleSetup.terrain` + native bonus (BAT-TER-001), `h3_battle::generate_obstacles` (BAT-GEO-004, kernel stream `OBSTACLES` = 3), CLI `load_scenario(path, packs, seed)` generates for `random_obstacles` scenarios (the synthetic duel now has terrain + random obstacles; the replay records the generated hexes and the terrain). Special battlefields (Holy Ground, Cursed Ground, …) are E04 (BACKLOG).
 
 T8 — war machines without heroes (BAT-WAR-001..004): `h3_battle::war` (automatic turns: Ballista target choice ported from VCMI `tryMakeAutomaticActionOfBallistaOrTowers`, First Aid Tent heals a random hurt ally 1..=25), Ammo Cart (`combat::ammo_supplied`: no shots used while it lives), war machines placed at `war_machine_positions` after the army (slots 16 + kind), never retaliate, no morale, do not count for alignment or the end of the battle; `BattleSetup.war_machines` / `BattleOutcome.war_machines` (contract change, covered by the Q16 scope decision), CLI scenario/replay fields `attacker_war_machines`/`defender_war_machines`, `STACK_CAPACITY` 38 → action encoding v4, observation encoding v2 (layout unchanged apart from the slot count), ruleset hash v7, state hash v7, packs regenerated, golden replays re-recorded (ruleset hash only). `cargo xtask verify` is green after the follow-up commit (coverage needed one more test ability; bench-check passed without a re-baseline).
-
-**Next (T9):** (1) Docs owed from T8: `packs/README.md` (abilities `first_aid`/`ammo_supply`, battle param `war_machine_positions`, scenario fields), ADR-0004 amendment (T8: `BattleSetup.war_machines`, `BattleOutcome.war_machines`), 03-domain glossary (war machine). (2) T9 proper: draw on simultaneous wipe-out, tight formation, observation features for morale/luck/war machines (bump observation encoding again), golden replays, bench re-baseline, review pass, close epic, project status doc `claude/e03-battle-core-status.md`, final report to the user (ADR-0012 summary, Q21–Q23, special battlefields → E04).
 
 **Traps (E03):** if `cargo xtask coverage` reports misses on lines that are not code (struct definitions), stale test binaries from older builds are being merged: run `cargo llvm-cov clean --workspace` and retry. Rule code reads abilities via `ruleset.abilities(creature)` (slices, no lookups by key); cheap per-attack booleans are cached as `StackTraits` bits at setup. Coverage counts closures and `if let` else paths: keep defaults eager (`unwrap_or`, `map_or`) where a branch cannot run.
 

@@ -1,6 +1,6 @@
 # E03 — Battle core (RoE rules)
 
-Status: in progress (branch `e03-battle-core`) · Refined: 2026-09-30 (end of E01) · Updated: 2026-10-01 (E02 data available; scope decisions Q16 at E03 start)
+Status: **done** (2026-10-01, branch `e03-battle-core`; Linux verified incl. `--with-original-data`, Windows run by the user pending) · Refined: 2026-09-30 (end of E01) · Updated: 2026-10-01 (E02 data available; scope decisions Q16 at E03 start; closed after T9)
 
 ## Goal
 
@@ -120,8 +120,33 @@ Heroes, spells and artifacts (E04), spell-like creature abilities and the tactic
   `defender_war_machines`; `STACK_CAPACITY` 38; ruleset hash v7, state hash v7, action encoding
   v4, observation encoding v2. *Docs still to finish in T9:* `packs/README.md` (abilities,
   param, scenario fields), ADR-0004 amendment for the seam change, glossary.
-- [ ] T9 End-of-battle details (draw, war machines not counting as living), tight formation,
-  golden replays, benchmark re-baseline, docs, review pass, closure.
+- [x] T9 Closure: T8 docs (packs README, ADR-0004 amendment, glossary); draw on simultaneous
+  wipe-out (BAT-END-002; user decision Q24: `BattleResult` enum in the seam; fixes an endless
+  loop when only war machines were left on both sides); tight formation (Q25:
+  `BattleSetup.formations`, battle params `loose_formation`/`tight_formation`, VCMI table via
+  the gap-fill file, scenario/replay field `tight_formation`); observation encoding v3 (hero
+  globals; morale, luck, shots, retaliations left, good-morale flag, trait flags per stack) and
+  C ABI v2 (result codes incl. draw; the ABI version now tracks the encodings); synthetic war
+  machines in the `full` scenario; lazy Ballista target choice (same result, property-tested);
+  golden replays re-recorded, bench re-baselined; independent review pass (two agents: rules vs
+  VCMI/catalog, robustness/security) with fixes: compiler rejects certain bad-morale freezes,
+  war-machine abilities on non-war-machines and life drain above 1000 %, overflow-safe life
+  drain, `BattleState::start` reports the first activation's events, `SetupError::UnknownTerrain`,
+  no allocation in war-machine turns, pack ids validated in the CLI; source conflict Q26 (First
+  Aid Tent heal) decided by the user (wiki); remaining findings in the BACKLOG inbox.
+
+## Exit criteria at closure (2026-10-01)
+
+1. Met: 45 battle rules in the catalog with labelled sources and tests (`check-rules`);
+   disputed rules have OPEN-QUESTIONS entries with experiments (Q21–Q23 open; Q18–Q20, Q26
+   decided by the user).
+2. Met: one quirk found and registered (Q-0003, `quirk.battle.no_luck_without_hero`); the
+   `faithful` and `strict-fixed` profiles differ exactly by it.
+3. Met: all E01 invariants still property-tested (plus ownership isolation with abilities and
+   the Ballista target property); golden replays re-recorded with notes in the commits;
+   ≈ 197 k random-legal steps/s/core on the full scenario with war machines (target 100 k);
+   bench-check re-baselined with the reason.
+4. Linux: `cargo xtask verify --with-original-data` green. **Windows: to be run by the user.**
 
 ## Risks
 
