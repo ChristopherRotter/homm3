@@ -4,6 +4,26 @@ Living state. The last agent updates this at the end of every session; the next 
 
 ---
 
+## 2026-10-01 — E04 refined (planning session with the user; nothing implemented)
+
+**State:** docs only, committed on `master` (E03 is closed and merged; this commit sits on top of `0a13da9`). No code, pack or test changed.
+
+**What the session produced:**
+- `docs/epics/E04a-heroes-in-battle.md` — the refined epic (goal, the entities called "hero", what the installation holds, 12 proposed tasks T1–T12, open design points for ADR-0013, exit criteria, risks).
+- OPEN-QUESTIONS: **Q27** (scope and slicing, the hero boundary), **Q28** (experiments batched and automated, SoD only), **Q6** answered (quirk policy confirmed); Q21–Q23 and Q26 now point to the first experiment batch.
+- BACKLOG: E04 replaced by **E04a** (refined), **E04b** battle magic and **E04c** sieges and special battlefields (sketches); inbox items re-targeted; four new inbox lines.
+- `03-domain.md`: open question on the Heroes crate updated; `README.md` index date.
+
+**Decisions (user):** three epics as allocated in the epic file; battle-oriented hero scope with no god hero type — a domain crate `h3-heroes` holding only the hero's lasting details (`HeroDetails`, the user disliked "sheet"; the name is provisional) and the translation to the battle's own seam type `BattleHero`; all battle spells in E04b (Earthquake with the sieges, E04c); **ADR-0013 in E04a T1, and work stops for the user's review**; experiments in batches, automated by compiling a spec into an `.h3m` (the user can verify SoD only, and staging many battles by hand is too tedious); quirks surveyed up front, classified by the user in one sitting.
+
+**Agent refinements the user has not explicitly confirmed (change freely):** the epic IDs E04a/b/c; spell *data rows* (not effects) are harvested in E04a T3 because heroes and artifacts reference spells; the quirk survey covers all three epics so one sitting suffices; E04b designs a factorized action encoding and flags it to E05; the VCMI oracle harness stays deferred.
+
+**Next:** the user creates branch `e04a-heroes-in-battle` from `master`, and an agent starts **E04a T1** (catalogue the hero/skill/artifact/spell tables and look for static tables in `Heroes3.exe`; source survey; quirk survey; ADR-0013 Proposed) — then stops for the user's review of the ADR and the quirk classification. T2 (experiment pipeline) can start after T1; its first deliverable is a smoke map that the user loads in the game.
+
+**Traps:** the installation stays read-only: the generated `.h3m` goes into a gitignored folder in the repo and the user copies it into the game's `Maps` folder. Experiment results hold for SoD only (the rule catalog must say which version a rule was observed in). Do not run `git` on the user's machine from the device shell without delete permission for the repo folder (stale `.git/index.lock`; this session ran only `git log`, `git branch` and `git status` and left no lock). Wiki fetches were approved for E03; re-confirm at T1. The sandbox is fresh: VCMI 1.7.5 has to be cloned again (`git clone --depth 1 --branch 1.7.5 https://github.com/vcmi/vcmi.git`).
+
+---
+
 ## 2026-10-01 — E03 closed (T9)
 
 **State:** E03 (battle core) is **done**. The user ran `cargo xtask verify` (incl.
@@ -33,7 +53,7 @@ state hash v8, ruleset hash v8.
 
 **Next:** E04 (heroes, artifacts, skills, spells; also the E03 deferrals: special
 battlefields, spell-like abilities and immunities, tactics, sieges/Catapult/towers, hero
-control of war machines). Refine E04 with the user first. Open experiments: Q21–Q23 (and Q26 to
+control of war machines). Refine E04 with the user first. *(Superseded: E04 was refined and split into E04a/b/c, see the entry above.)* Open experiments: Q21–Q23 (and Q26 to
 confirm), whenever observation runs in the original are allowed again.
 
 **Traps (still valid):** see the E03 entry below (coverage of closures/`if let`, stale coverage

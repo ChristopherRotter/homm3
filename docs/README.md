@@ -1,6 +1,6 @@
 # Documentation index
 
-Working project name: **h3** (provisional; see OPEN-QUESTIONS Q2). Last structural update: 2026-10-01 (E02: `formats/`, harvested packs). Code layout and quick start: [../README.md](../README.md).
+Working project name: **h3** (provisional; see OPEN-QUESTIONS Q2). Last structural update: 2026-10-01 (E04 refined: epic E04a, backlog split into E04a/b/c). Code layout and quick start: [../README.md](../README.md).
 
 ## How to read these docs
 

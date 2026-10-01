@@ -54,5 +54,6 @@ Use these words in code, docs, tests and commit messages. If the original game's
 
 - ~~Shape of the bonus/modifier system in the kernel~~: decided in ADR-0012 (E03): typed **abilities** in content for conditional behaviour, kernel **modifiers** (bearer, stat, op, amount, source, expiry) with materialised effective stats.
 - Whether Town and Heroes stay separate crates or start inside Adventure.
+- ~~Whether the Heroes context gets its own crate~~: direction decided in E04 refinement (OPEN-QUESTIONS Q27): a domain crate `h3-heroes` holds only the hero's lasting details (`HeroDetails`, provisional) and the pure translation to the battle's own `BattleHero` seam type; the hero on the map is an Adventure type (E08); no type is named plain `Hero`. Formalised by ADR-0013 (E04a T1, to be accepted by the user). Town stays open.
 - How Magic is split between Battle and Adventure.
 - Representation of map objects (closed enum vs. data-driven behavior primitives) — decided in the adventure epic with the ADR.

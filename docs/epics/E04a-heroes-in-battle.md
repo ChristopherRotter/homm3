@@ -1,0 +1,159 @@
+# E04a — Heroes in battle (without magic)
+
+Status: **refined** (2026-10-01, planning session with the user; nothing implemented yet) · Follows E03 (closed 2026-10-01) · The former E04 was split by the user into three epics (OPEN-QUESTIONS Q27): **E04a** (this one), **E04b** battle magic, **E04c** sieges and special battlefields.
+
+## Goal
+
+Let a battle be led by a hero. A hero adds its primary skills, secondary skills, artifacts and specialty to its army, runs the war machines it brings, may use tactics before the first round, and may retreat or surrender; the outcome tells the orchestrator what happened. No spells (E04b). The architecture stays that of E01–E03: pure logic, validated commands, events with visibility, observations, determinism, at least 100 k steps/s/core.
+
+The epic also fixes, once, the boundaries between the different things called "hero" (below), so that E04b, E04c and the adventure map (E08) build on them instead of growing one "god" hero type.
+
+## The former E04 and where its parts went (Q27)
+
+| Epic | Contents |
+|---|---|
+| **E04a** (this epic) | hero content (classes, heroes, secondary skills, artifacts, specialties; spell *data rows*, see T3), the `h3-heroes` crate and the `BattleHero` seam (ADR-0013), primary skills, secondary skills that need no spells, artifacts and specialties without spells, hero-run Ballista and First Aid Tent, tactics, retreat and surrender, a richer outcome, the experiment pipeline |
+| **E04b** battle magic | spell effects and their rules, spell book and mana in battle, casting, timed effects on stacks, summons and clones, obstacle spells, resistance, spell-like creature abilities, spell immunities, spellcasting creatures, spell-related skills, artifacts and specialties, hidden-information rules, casting in the sim encodings |
+| **E04c** sieges and special battlefields | siege setup derived from the town, walls, gate, moat, towers, Catapult, Ballistics, Earthquake, shooting at and through walls, magic terrains, coast and ship battles |
+
+Carried over from E03 (HANDOFF, "Moved to E04"): special battlefields → E04c; spell-like abilities and spell immunities → E04b; tactics → E04a; sieges, Catapult and towers → E04c; hero control of war machines → E04a (Ballista and First Aid Tent; the Catapult is E04c). E03 review leftovers: checked arithmetic for the Ballista ranking → E04a T7; the war-machine overlap check → E04a T4; the others stay in the BACKLOG inbox.
+
+## Decisions at the start of the refinement (2026-10-01, user)
+
+Recorded in OPEN-QUESTIONS Q27 (scope), Q28 (experiments) and Q6 (quirk policy).
+
+1. **Three epics**, allocated as in the table above.
+2. **Heroes are battle-oriented in this milestone:** a hero value type, loadout validation and the pure derivation of what a battle needs. No equip, learn or level-up commands, no experience or level-up algorithm; those wait for the adventure and game epics (E08–E10), where they have callers.
+3. **Heroes in battle and on the adventure map are distinct entities; no "god" hero type.** A domain crate `h3-heroes` holds only the hero's lasting details and the pure translation to the battle's own type. See the next section.
+4. **All battle spells** are in scope for E04b (Earthquake goes with the sieges, E04c).
+5. **The seam is decided by ADR-0013 in T1, and work stops there until the user has accepted it.** `BattleSetup`, `BattleOutcome` and `BattleResult` change only through that review.
+6. **Experiments in the original game are batched and automated** (Q28). The user can currently verify only SoD behavior, and staging more than a handful of battles by hand in the map editor is too tedious. The engine therefore compiles a spec of staged battles into an `.h3m` map that the user loads and plays (T2).
+7. **Quirks are surveyed up front** (T1): the user classifies the documented bugs of the whole E04 scope in one sitting. Q6 is confirmed: `faithful` is the default profile, `exploit-fix` is always fixed and never toggleable.
+
+## The things called "hero"
+
+| Entity | Owns | Lives in | Crate / type (proposal, fixed by ADR-0013) |
+|---|---|---|---|
+| Hero type (definition) | class, starting skills, specialty, starting army, name | content (Tier 1 data) | `h3-content` |
+| Hero details | level, experience, primary and secondary skills, artifacts, spell book | Heroes context | `h3-heroes`: `HeroDetails` |
+| Hero on the map | owner, position, movement points, boat, vision | Adventure context (E08) | `h3-adventure`, its own type; refers to the hero by id |
+| Battle hero | derived stats, skills that unlock battle actions, mana and spells (E04b), what was used this round | Battle context | seam type `BattleHero` in `h3-contracts`; its in-battle state inside `h3-battle` |
+
+Rules the ADR should make binding:
+
+- **No type is shared between contexts and no type is named plain `Hero`.** Identity is a handle (`HeroId`); each context has its own type. They meet only through ids and explicit, pure translation functions.
+- The only translation E04a needs is `HeroDetails` → `BattleHero` (03-domain: "all derived values are computed before the seam"). It lives in `h3-heroes`; `h3-battle` never imports it.
+- `h3-heroes` contains no map presence and no in-battle state, and in this milestone no commands.
+- What a skill does in battle (for example the damage factor of Archery) is a **battle rule** with a catalog id. The skill's numbers are data (a closed set of typed effect primitives in content, the same pattern as the creature abilities, ADR-0012); the translation mostly aggregates them.
+- `BattleHero` is designed once for E04a *and* E04b (reserved fields for spell book, mana and school levels), implemented in two steps, so the seam changes once.
+- The name `HeroDetails` is provisional (the agent first proposed "sheet", which the user found confusing and replaced by "something more abstract like details"). ADR-0013 may still rename it.
+
+## Starting point (E01–E03)
+
+- **Seam today** (`h3-contracts`): `BattleSetup { attacker, defender, obstacles, led_by_hero: [bool; 2], terrain, war_machines: [Vec<CreatureTypeId>; 2], formations }`, `BattleOutcome { result: BattleResult, survivors, war_machines }`, `BattleResult { Victory(side), Draw }`. `led_by_hero` and the war-machine fields carry comments "the hero itself arrives in E04".
+- **Modifiers** (ADR-0012, accepted): pool with bearer `Side` only, stats morale and luck, one expiry, capacity 20. E04a adds side-wide stat sources (hero attack and defense, Leadership, Luck, artifacts); E04b adds stack bearers and timed expiry. ADR-0013 decides the shape and revisits the capacity.
+- **Content**: the committed packs hold creatures, factions, resources, terrains, obstacles and battle parameters. No heroes, classes, skills, artifacts or spells yet.
+- **War machines** act automatically without a hero's skill (E03 T8); with the skill the hero chooses the target (E04a T7).
+- **Versions now:** action encoding v4, observation encoding v3, C ABI v2, replay format v2, state hash v8, ruleset hash v8.
+- **Open experiments:** Q21 (death stare), Q22 (jousting distance), Q23 (exact vs float damage rounding), Q26 (First Aid Tent heal). Q23 matters much more in E04a: Archery, Offense, Armorer and artifact bonuses stack on the damage formula.
+- **Quirk flags:** `quirk.battle.no_luck_without_hero` (Q-0003) reads `led_by_hero` today and must read the real hero afterwards.
+
+## What the installation holds (checked 2026-10-01 on the copies in `original-data/`)
+
+| Table | Contents | AB copy vs SoD copy |
+|---|---|---|
+| `SPTRAITS.TXT` | 81 spell rows (10 adventure, 60 combat, 11 creature abilities): level, school flags, mana cost per mastery, power factor, effect value per mastery, chance per town, AI value, target attributes, texts | differs |
+| `ARTRAITS.TXT` | 144 artifacts: cost, slot flags (including war machine slots), class letter, text. No effects | differs |
+| `HCTRAITS.TXT` | 18 hero classes: initial primary skills, primary-skill gain probabilities, secondary-skill probabilities, selection probability per town | identical |
+| `HOTRAITS.TXT` | 156 heroes: starting army only | identical |
+| `HeroSpec.txt` | 156 specialty rows: names and texts; parameters partly in the texts | identical |
+| `SSTRAITS.TXT` | 28 secondary skills: texts only; the numbers are inside the descriptions | identical |
+| `ballist.txt`, `PriSkill.txt`, `SkillLev.txt`, `ArtSlots.txt` | small tables (Ballistics effects, names, slots) | |
+
+Consequences: effect semantics and most skill and specialty numbers need sourced gap-fill (wiki/VCMI), as with the E03 abilities. The RoE-era versions of all of these (RoE had fewer heroes and artifacts and older values; exact membership is to be sourced in T1) are not in the installation and need membership and difference data from other sources (Q15). Whether `Heroes3.exe` holds static tables for heroes, artifacts or spells (as it does for creatures) is an open question for T1.
+
+## Scope
+
+1. **Survey and ADR-0013** (T1).
+2. **Experiment pipeline** (T2): spec → `.h3m` for the user's SoD installation, results template, first batch.
+3. **Content** (T3): hero classes, heroes, secondary skills, artifacts, specialties and the spell data rows, harvested and gap-filled, in the packs `base`/`ab`/`sod`; pack format v3.
+4. **`h3-heroes` and the seam** (T4): `HeroDetails`, loadout validation, `BattleHero`, `BattleSetup.heroes` replacing `led_by_hero`.
+5. **Primary skills and hero morale/luck** (T5).
+6. **Skills that change damage** (T6): Archery, Offense, Armorer.
+7. **Hero-run war machines** (T7): Artillery (Ballista), First Aid (Tent), war machines from artifacts.
+8. **Tactics** (T8).
+9. **Retreat, surrender and the richer outcome** (T9).
+10. **Artifacts and specialties without spells** (T10).
+11. **Sim, FFI, CLI, scenarios** (T11): heroes in scenarios and replays, new encodings, ABI v3, benchmarks.
+12. **Closure** (T12): fold the experiment results in, review, quirk ledger, docs.
+
+## Non-goals
+
+Spells, mana in play, spell-like abilities, immunities, spellcasting creatures (E04b). Sieges, Catapult, Ballistics' effect, towers, Earthquake, special battlefields (E04c). Experience, level-ups, skill offers, equip/unequip/learn/trade commands, army management, the hero on the map (E08–E10). Surrender cost (the orchestrator computes it). Applying outcomes to heroes (experience, Necromancy raising, artifact capture): the outcome carries the inputs, applying them waits for the epic that owns hero progression. AI (E05/E06). The VCMI oracle harness stays deferred (E03 scope item 10 was never done; revisit with the evaluation needs of E05/E06).
+
+## Tasks (proposed; refine at the start of each; keep status current)
+
+- [ ] **T1 Survey and ADR-0013 — stop for the user.**
+  - Catalogue the hero, skill, artifact and spell tables (`docs/formats/installation.md`) and look for static tables in `Heroes3.exe`.
+  - Source survey (VCMI 1.7.5 and the wiki, labelled) for E04a: secondary skill effects per level, artifact effect kinds, specialty kinds, tactics, retreat and surrender, hero-run war machines, experience inputs; in outline for E04b/E04c so the seam covers them (spell effect kinds, siege inputs). Check that wiki fetches are still approved.
+  - **Quirk survey** for the whole E04 scope with sources (`docs/rules/`), for the user to classify in one sitting; then ledger entries and flags.
+  - List the disputed rules that need an observation (input to T2).
+  - **ADR-0013 (Proposed):** the entities table, the crate and type names, `BattleHero`, the effect vocabulary, modifiers on sides and stacks and the pool capacity, `BattleSetup`/`BattleOutcome`/`BattleResult` changes, visibility, the tactics model, the encoding policy. See "Open design points".
+  - **Stop:** the user accepts ADR-0013 and classifies the quirks. Nothing later builds on a Proposed seam.
+- [ ] **T2 Experiment pipeline v0** (can overlap T3; the user's runs are asynchronous).
+  - Spec format: a battle setup (armies, heroes with skills, artifacts and spells, terrain) plus a *procedure* (what to click, in what order) and a *record* section (what to write down). It is validated like a scenario and can also run in our engine, so prediction and observation can be compared.
+  - Writer: a generator for the SoD `.h3m` format that stages N encounters on one small map (your hero next to each opposing hero or neutral stack, custom armies, skills, artifacts). References: VCMI's map reader (GPL, may be ported with attribution) and the community format notes; libraries found so far only read maps. The object templates come from the installation's tables (`original-data/`).
+  - **Smoke map first:** one encounter, loaded by the user to prove the game accepts our file, before any batch is built.
+  - Results: a template the user fills in, or screenshots of the combat log that the agent reads (the user chooses in T2). Results become `observation` sources, version "SoD 4.0 (Complete)".
+  - Batch 1: Q21, Q22, Q23, Q26 and the disputes from T1.
+  - Placement (T2 decides): an adapter. The h3m module probably belongs in `h3-formats` (E07 adds the reader there); no logic crate. The map goes into a gitignored output folder and the user copies it into the game's Maps folder; **agents never write into the installation**.
+  - Limits to design around: damage rolls, morale and luck are random and obstacles are generated by the game, so prefer experiments with deterministic outcomes (creatures with a single-value damage range, no morale or luck sources, as sketched in Q23) or enough repetitions; many sequences need manual steps, hence the procedure.
+- [ ] **T3 Content** — pack format v3: types for hero classes, heroes, secondary skills, artifacts, specialties and spells (the spell *data rows*: level, schools, mana per mastery, power factor, effect values, town chances, targets; effects are E04b, but heroes and artifacts reference spells, and the harvester reads the tables once). Harvester reads the tables and the exe tables T1 finds; gap-fill file for effect parameters with sources on every entry; RoE/AB/SoD membership and overrides; compiler checks; ruleset hash v9; synthetic packs get an invented hero, class, skill and artifact set (test-data policy). No flavor text is committed.
+- [ ] **T4 `h3-heroes` and the seam** — crate (domain, logic, `arch.toml` entry, rule catalog `heroes.toml` with prefix `HER`), `HeroDetails` and its validation (slots, class and skill limits), `derive_battle_hero`; `BattleHero` in contracts; `BattleSetup.heroes` replaces `led_by_hero` and Q-0003 reads the real hero; battle validates the setup; compiler check for overlapping war-machine positions (E03 review); state hash v9; observation features for heroes.
+- [ ] **T5 Primary skills and hero morale/luck** — the hero's attack and defense add to its creatures, Leadership and Luck and artifacts feed morale and luck (side modifiers, ADR-0012 pool capacity revisited), rules with catalog ids.
+- [ ] **T6 Skills that change damage** — Archery, Offense, Armorer as damage factors. Follows the Q23 result if batch 1 has come back; otherwise exact integers with Q23 left open, as in E03.
+- [ ] **T7 Hero-run war machines** — with Artillery or First Aid the hero chooses the target (new commands or activation), without the skill the automatic behavior of E03 stays; war machines come from the hero's artifacts; checked arithmetic for the Ballista ranking (E03 review).
+- [ ] **T8 Tactics** — the placement phase before round 1: who gets it, how far stacks may move, commands and events, interplay with the formations (BAT-SET-001).
+- [ ] **T9 Retreat, surrender and the richer outcome** — new `BattleResult` variants, casualties per side and creature type, hero fate, the inputs for experience, Necromancy and artifact capture; no application of them.
+- [ ] **T10 Artifacts and specialties without spells** — the effect primitives from the survey, stat and morale/luck artifacts, creature-stat and speed effects, war-machine artifacts, combination artifacts (assembly rules belong to the hero details), specialties of creature, skill and stat kinds. Spell-related ones are E04b.
+- [ ] **T11 Sim, FFI, CLI, scenarios** — heroes in the scenario and replay formats, action encoding v5 (retreat, surrender, tactics, hero-run war machines), observation encoding v4, C ABI v3, golden replays re-recorded with notes, benchmark baseline re-measured with the reason, hero-bearing scenarios in the `full` workload.
+- [ ] **T12 Closure** — fold the experiment results into the catalog (rules `verified` where observed), quirk ledger and profiles, independent review pass (rules against sources, robustness and security), HANDOFF, backlog, ADR-0013 revisions; the E03 hardening items that fit (work bound for death stare, random obstacles in the sim and C ABI).
+
+Order: T1 first and alone; T2 and T3 independent; T4 after T1 and T3; T5–T10 after T4 (T6 wants the batch-1 result, T10 after T5); T11 and T12 last.
+
+## Open design points for ADR-0013
+
+1. **Shape of `BattleHero`:** typed fields for what the battle must know by name (primary stats, skill levels that unlock actions, war machines, reserved spell fields) plus a list of typed effects for stat changes (so artifacts and specialties extend without growing the struct), or only one of the two. Agent's lean: the hybrid.
+2. **Effect vocabulary:** a closed enum in content (like `Ability`), selectors for "which creatures" (all, a creature, a level, …), and which tier each effect sits in.
+3. **Stats and capacity:** hero attack/defense as side modifiers or applied when stats are materialised; the pool capacity (E03: 20); stack bearers and timed expiry are E04b's but must fit.
+4. **Outcome and result:** new `BattleResult` variants (retreat, surrender), the casualty and hero-fate fields, what happens to war machines.
+5. **`led_by_hero`:** replaced by hero presence in `heroes`; what Q-0003 reads.
+6. **Visibility:** which hero data a viewer sees (skills, army, artifacts) and what stays hidden; the E04b hidden-information cases (Land Mine and Quicksand, the spell book) must fit the same mechanism.
+7. **Tactics model:** a pre-round phase with ordinary `Move` commands, or its own commands; who may use it when both heroes have the skill.
+8. **Encoding policy:** E04a extends the dense action encoding (v5); E04b's casting (spells × targets) cannot stay dense and flat. Agent's lean: E04b designs a factorized encoding and flags it to E05; E04a does not pre-empt it.
+9. **War machines:** how `BattleSetup.war_machines` relates to a hero's artifacts (derived before the seam, so the field stays).
+10. **Names:** `h3-heroes`, `HeroDetails`, `BattleHero`, the adventure-side name (E08 decides), glossary entries in `03-domain.md`.
+
+## Exit criteria
+
+1. ADR-0013 accepted by the user; quirk survey classified.
+2. Every rule in scope has a catalog entry with labelled sources and tests; disputed ones have an observation fixture (SoD) or an OPEN-QUESTIONS entry with the experiment.
+3. Quirks are in the ledger with flags; `faithful` and `strict-fixed` differ exactly by them.
+4. All earlier invariants still property-tested, plus: hero isolation (a side's hero never changes the other side's stacks except through modelled events), observation hygiene for hero data, conservation of creatures with casualties accounted.
+5. Golden replays re-recorded with notes; at least 100 k steps/s/core on the `full` scenario with heroes (E03 closed at about 197 k); `bench-check` re-baselined with the reason; state size and clone cost measured and recorded.
+6. The first experiment batch has been run by the user and its results are recorded as fixtures.
+7. `cargo xtask verify` green on Linux and Windows, including `--with-original-data`.
+
+## What E04b and E04c need from E04a
+
+- **E04b:** `BattleHero` with spell fields reserved and validated; a stat/effect mechanism that can take stack bearers and expiries; hero data already in the observation; the quirk list for spells already classified; the experiment pipeline able to stage heroes with spell books; spell data rows already in the packs.
+- **E04c:** the setup seam can take a siege description without another `BattleSetup` redesign (ADR-0013 reserves the extension point); `Ballistics` level present in `BattleHero`; the Catapult's place in the war-machine model decided.
+
+## Risks
+
+- **Seam churn.** Mitigation: one ADR, reserved fields, the stop after T1.
+- **Data volume and gap-fill:** 144 artifacts, 156 specialties and 28 skills whose numbers sit in description texts; RoE-era values are invisible in the installation. Mitigation: gap-fill with a source on every entry, the same discipline as E03's abilities.
+- **The `.h3m` writer is new and checkable only by the user.** Mitigation: smoke map first; small scope; the writer stays an adapter.
+- **Experiment results hold for SoD only.** Rules that differ in RoE or AB cannot be verified; the catalog says which rules were observed in which version.
+- **State and observation growth** (heroes, effects): measure state size, clone cost and steps/s at T4, T10 and T11.
+- **Vocabulary drift:** "hero" used loosely again. Mitigation: the entities table, no plain `Hero` type, glossary entries.
