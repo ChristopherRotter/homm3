@@ -1,58 +1,71 @@
 //! Dense action encoding (docs/07-simulation-and-ai.md §1: "dense action encoding is defined by
 //! the sim layer, not the domain").
 //!
-//! Layout, version 1 (independent of the ruleset, so agents see a fixed-size action space):
+//! Layout, version 2 (independent of the ruleset, so agents see a fixed-size action space):
 //!
 //! | index | action |
 //! |---|---|
 //! | 0 | Wait |
 //! | 1 | Defend |
-//! | 2 + h, h < 255 | Move to hex `h` |
-//! | 257 + 6·s + d | Attack stack `s` from its neighbour in direction `d` (`Direction::ALL` order) |
+//! | 2 + h, h < 255 | Move to hex `h` (the head of a two-hex stack) |
+//! | 257 + 24·s + k | Attack stack `s` from its canonical attack position `k` (`Field::attack_positions` for the active stack's shape) |
+//!
+//! Version 2 (E03 T3) replaced the six neighbour directions of version 1 by the 24 canonical
+//! attack positions, which cover two-hex attackers and targets.
 
 use h3_battle::{
-    BattleState, Command, Direction, Field, Hex, LegalCommands, STACK_CAPACITY, StackId,
+    ATTACK_SLOTS, BattleState, Command, Field, Hex, LegalCommands, STACK_CAPACITY, StackId,
 };
 use h3_content::{MAX_FIELD_HEXES, Ruleset};
 use h3_contracts::BattleSide;
 
 /// Version of this encoding; bump on any change of the layout above.
-pub const ACTION_ENCODING_VERSION: u32 = 1;
+pub const ACTION_ENCODING_VERSION: u32 = 2;
 
 const MOVE_BASE: usize = 2;
 const ATTACK_BASE: usize = MOVE_BASE + MAX_FIELD_HEXES;
 
 /// Number of actions.
-pub const ACTION_COUNT: usize = ATTACK_BASE + 6 * STACK_CAPACITY;
+pub const ACTION_COUNT: usize = ATTACK_BASE + ATTACK_SLOTS * STACK_CAPACITY;
 
 /// Legal-action mask.
 pub type ActionMask = [bool; ACTION_COUNT];
 
-fn direction_index(d: Direction) -> usize {
-    Direction::ALL.iter().position(|x| *x == d).unwrap_or(0)
+/// The canonical attack positions of the active stack against `target`.
+fn positions(
+    state: &BattleState,
+    ruleset: &Ruleset,
+    target: StackId,
+) -> Option<[Option<Hex>; ATTACK_SLOTS]> {
+    let field = Field::new(ruleset.battle().field);
+    let attacker = state.stack(state.active()?)?;
+    let victim = state.stack(target)?;
+    Some(field.attack_positions(
+        attacker.is_two_hex(),
+        attacker.side,
+        victim.footprint(field),
+    ))
 }
 
-/// Encodes a command. Attacks are encoded relative to the target's position, so encoding needs
-/// the state; returns `None` for commands that cannot be expressed (unknown target, or an attack
-/// position that is not a neighbour of the target).
+/// Encodes a command. Attacks are encoded relative to the target's position and the active
+/// stack's shape, so encoding needs the state; returns `None` for commands that cannot be
+/// expressed (no active stack, unknown target, or a position that is not an attack position).
 pub fn encode(state: &BattleState, ruleset: &Ruleset, command: Command) -> Option<usize> {
     match command {
         Command::Wait => Some(0),
         Command::Defend => Some(1),
         Command::Move { to } => (to.index() < MAX_FIELD_HEXES).then_some(MOVE_BASE + to.index()),
         Command::Attack { target, from } => {
-            let field = Field::new(ruleset.battle().field);
-            let target_hex = state.stack(target)?.hex;
-            let d = Direction::ALL
-                .into_iter()
-                .find(|&d| field.neighbor(target_hex, d) == Some(from))?;
-            Some(ATTACK_BASE + 6 * target.index() + direction_index(d))
+            let k = positions(state, ruleset, target)?
+                .iter()
+                .position(|p| *p == Some(from))?;
+            Some(ATTACK_BASE + ATTACK_SLOTS * target.index() + k)
         }
     }
 }
 
 /// Decodes an action index into a command for the current state (`None` if out of range or the
-/// attack position is off the field). The result still has to pass validation.
+/// slot holds no attack position). The result still has to pass validation.
 pub fn decode(state: &BattleState, ruleset: &Ruleset, action: usize) -> Option<Command> {
     match action {
         0 => Some(Command::Wait),
@@ -61,11 +74,8 @@ pub fn decode(state: &BattleState, ruleset: &Ruleset, action: usize) -> Option<C
             .ok()
             .map(|h| Command::Move { to: Hex(h) }),
         a if a < ACTION_COUNT => {
-            let s = (a - ATTACK_BASE) / 6;
-            let d = Direction::ALL[(a - ATTACK_BASE) % 6];
-            let target = StackId(u8::try_from(s).ok()?);
-            let field = Field::new(ruleset.battle().field);
-            let from = field.neighbor(state.stack(target)?.hex, d)?;
+            let target = StackId(u8::try_from((a - ATTACK_BASE) / ATTACK_SLOTS).ok()?);
+            let from = positions(state, ruleset, target)?[(a - ATTACK_BASE) % ATTACK_SLOTS]?;
             Some(Command::Attack { target, from })
         }
         _ => None,
@@ -101,8 +111,8 @@ mod tests {
 
     #[test]
     fn layout() {
-        assert_eq!(ACTION_COUNT, 2 + 255 + 6 * 32);
-        assert_eq!(ACTION_ENCODING_VERSION, 1);
+        assert_eq!(ACTION_COUNT, 2 + 255 + 24 * 32);
+        assert_eq!(ACTION_ENCODING_VERSION, 2);
     }
 
     #[test]
@@ -144,17 +154,21 @@ mod tests {
         assert_eq!(encode(&s, &r, far), None);
         assert_eq!(decode(&s, &r, ACTION_COUNT), None);
         // Stack 31 does not exist in a 6-stack battle.
-        assert_eq!(decode(&s, &r, ATTACK_BASE + 6 * 31), None);
+        assert_eq!(decode(&s, &r, ATTACK_BASE + ATTACK_SLOTS * 31), None);
         assert_eq!(decode(&s, &r, 2 + 17), Some(Command::Move { to: Hex(17) }));
-        // Stack 0 (attacker, column 1, row 2): its left neighbour exists (a side column), so the
-        // action decodes, and validation rejects it later.
-        let left = decode(&s, &r, ATTACK_BASE + direction_index(Direction::Left));
-        assert!(matches!(
-            left,
-            Some(Command::Attack {
-                target: StackId(0),
-                ..
-            })
-        ));
+        // A one-hex target has no tail slots.
+        let one_hex = s.stacks().iter().position(|t| !t.is_two_hex()).unwrap();
+        assert_eq!(
+            decode(&s, &r, ATTACK_BASE + ATTACK_SLOTS * one_hex + 12),
+            None
+        );
+        // Stack 0 stands in the first standable column: some of its attack positions touch the
+        // side column, so they decode, and validation rejects them later.
+        let side = s.side_to_act().unwrap();
+        let rejected = (0..ATTACK_SLOTS)
+            .filter_map(|k| decode(&s, &r, ATTACK_BASE + k))
+            .filter(|c| h3_battle::validate(&s, &r, side, *c).is_err())
+            .count();
+        assert!(rejected > 0);
     }
 }

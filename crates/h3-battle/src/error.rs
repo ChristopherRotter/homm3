@@ -37,6 +37,15 @@ pub enum SetupError {
         /// The slot.
         slot: u8,
     },
+    /// An obstacle hex is outside the standable field or listed twice.
+    InvalidObstacle(u8),
+    /// No free hex is left for a stack.
+    NoRoom {
+        /// The side.
+        side: BattleSide,
+        /// The slot.
+        slot: u8,
+    },
 }
 
 impl fmt::Display for SetupError {
@@ -51,6 +60,10 @@ impl fmt::Display for SetupError {
             Self::UnknownCreature { side, slot } => {
                 write!(f, "{side:?} slot {slot} has an unknown creature type")
             }
+            Self::InvalidObstacle(hex) => {
+                write!(f, "obstacle hex {hex} is not a standable hex or repeats")
+            }
+            Self::NoRoom { side, slot } => write!(f, "no free hex for {side:?} slot {slot}"),
         }
     }
 }
@@ -139,6 +152,18 @@ mod tests {
             }
             .to_string(),
             "Defender slot 0 has an unknown creature type"
+        );
+        assert_eq!(
+            SetupError::InvalidObstacle(3).to_string(),
+            "obstacle hex 3 is not a standable hex or repeats"
+        );
+        assert_eq!(
+            SetupError::NoRoom {
+                side: Defender,
+                slot: 4
+            }
+            .to_string(),
+            "no free hex for Defender slot 4"
         );
         let all = [
             (CommandError::BattleOver, "the battle is over"),

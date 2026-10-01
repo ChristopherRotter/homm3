@@ -1,8 +1,8 @@
-//! Battlefield geometry (BAT-GEO-001).
+//! Battlefield geometry (BAT-GEO-001, BAT-GEO-002).
 //!
 //! This module is the geometry seam of the battle context: the rest of the context only uses
-//! [`Hex`] and the [`Field`] API (validity, standability, neighbours, distance). E03 can replace
-//! the internals (obstacles, two-hex creatures, siege walls) without touching callers.
+//! [`Hex`], [`HexSet`], [`Footprint`] and the [`Field`] API (validity, standability, neighbours,
+//! distance, footprints of one- and two-hex stacks, attack positions).
 //!
 //! Layout: `width × height` hexes in row-major order, `hex = x + width·y`. Rows are horizontal;
 //! even rows (0-based) are shifted half a hex to the right. The `side_columns` leftmost and
@@ -10,6 +10,7 @@
 //! stand in them.
 
 use h3_content::FieldParams;
+use h3_contracts::BattleSide;
 use h3_kernel::{CanonicalHash, StateHasher};
 
 /// A hex of the battlefield (row-major index).
@@ -28,6 +29,80 @@ impl CanonicalHash for Hex {
         h.write_u8(self.0);
     }
 }
+
+/// A set of hexes (one bit per hex index; every `u8` hex fits).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub struct HexSet([u64; 4]);
+
+impl HexSet {
+    /// The empty set.
+    pub const fn new() -> Self {
+        Self([0; 4])
+    }
+
+    /// Adds `hex`.
+    pub fn insert(&mut self, hex: Hex) {
+        self.0[usize::from(hex.0 >> 6)] |= 1 << (hex.0 & 63);
+    }
+
+    /// Whether `hex` is in the set.
+    pub const fn contains(self, hex: Hex) -> bool {
+        self.0[(hex.0 >> 6) as usize] & (1 << (hex.0 & 63)) != 0
+    }
+
+    /// Number of hexes in the set.
+    pub const fn len(self) -> u32 {
+        self.0[0].count_ones()
+            + self.0[1].count_ones()
+            + self.0[2].count_ones()
+            + self.0[3].count_ones()
+    }
+
+    /// Whether the set is empty.
+    pub const fn is_empty(self) -> bool {
+        self.len() == 0
+    }
+
+    /// The hexes in ascending order.
+    pub fn iter(self) -> impl Iterator<Item = Hex> {
+        (0..=u8::MAX).map(Hex).filter(move |h| self.contains(*h))
+    }
+}
+
+impl CanonicalHash for HexSet {
+    /// Encoding: the four 64-bit words, lowest hexes first.
+    fn hash_into(&self, h: &mut StateHasher) {
+        for w in self.0 {
+            h.write_u64(w);
+        }
+    }
+}
+
+/// The hexes a stack covers: its head (the hex its position names) and, for two-hex stacks, the
+/// tail behind it — left of the head for the attacker, right of it for the defender
+/// (BAT-GEO-002).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct Footprint {
+    /// The head hex.
+    pub head: Hex,
+    /// The tail hex of a two-hex stack.
+    pub tail: Option<Hex>,
+}
+
+impl Footprint {
+    /// The covered hexes (head first).
+    pub fn hexes(self) -> impl Iterator<Item = Hex> {
+        core::iter::once(self.head).chain(self.tail)
+    }
+
+    /// Whether the footprint covers `hex`.
+    pub fn covers(self, hex: Hex) -> bool {
+        self.head == hex || self.tail == Some(hex)
+    }
+}
+
+/// Number of canonical attack positions around a target ([`Field::attack_positions`]).
+pub const ATTACK_SLOTS: usize = 24;
 
 /// The six neighbour directions, clockwise from the right.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -166,6 +241,97 @@ impl Field {
     /// Whether two hexes are neighbours.
     pub const fn are_adjacent(self, a: Hex, b: Hex) -> bool {
         self.distance(a, b) == 1
+    }
+
+    /// The direction from the head of a two-hex stack of `side` towards its front: right for
+    /// the attacker, left for the defender. The tail lies the opposite way.
+    pub const fn head_direction(side: BattleSide) -> Direction {
+        match side {
+            BattleSide::Attacker => Direction::Right,
+            BattleSide::Defender => Direction::Left,
+        }
+    }
+
+    /// The footprint of a stack of `side` whose head stands on `head`, or `None` if `head` or the
+    /// tail of a two-hex stack is off the field.
+    // rule: BAT-GEO-002
+    pub fn footprint(self, head: Hex, two_hex: bool, side: BattleSide) -> Option<Footprint> {
+        if !self.contains(head) {
+            return None;
+        }
+        if !two_hex {
+            return Some(Footprint { head, tail: None });
+        }
+        let back = match side {
+            BattleSide::Attacker => Direction::Left,
+            BattleSide::Defender => Direction::Right,
+        };
+        self.neighbor(head, back).map(|tail| Footprint {
+            head,
+            tail: Some(tail),
+        })
+    }
+
+    /// Smallest distance between a hex of `a` and a hex of `b`.
+    pub fn footprint_distance(self, a: Footprint, b: Footprint) -> u32 {
+        a.hexes()
+            .flat_map(|x| b.hexes().map(move |y| (x, y)))
+            .map(|(x, y)| self.distance(x, y))
+            .min()
+            .unwrap_or(u32::MAX)
+    }
+
+    /// Whether `a` and `b` touch: they do not overlap and some hexes are neighbours
+    /// (BAT-ATK-001).
+    pub fn touches(self, a: Footprint, b: Footprint) -> bool {
+        self.footprint_distance(a, b) == 1
+    }
+
+    /// The canonical attack positions of an attacker (`two_hex`, `side`) against the footprint
+    /// `target`: head hexes from which the attacker's footprint touches the target. Slot
+    /// `k = (i · 6 + d) · 2 + v`: `i` is the target hex (0 head, 1 tail), `d` the direction
+    /// ([`Direction::ALL`]) from it to the contact hex `n`, `v = 0` the attacker's head on `n`,
+    /// `v = 1` its tail on `n` (two-hex attackers only). A slot is `None` where the position is
+    /// off the field, overlaps the target, or repeats an earlier slot, so every position appears
+    /// once. Occupancy and reach are not considered.
+    pub fn attack_positions(
+        self,
+        two_hex: bool,
+        side: BattleSide,
+        target: Footprint,
+    ) -> [Option<Hex>; ATTACK_SLOTS] {
+        let mut out = [None; ATTACK_SLOTS];
+        let target_hexes = [Some(target.head), target.tail];
+        // Positions found so far (every position is kept in its first slot only).
+        let mut seen = [Hex(0); ATTACK_SLOTS];
+        let mut seen_len = 0;
+        for (k, slot) in out.iter_mut().enumerate() {
+            let (i, d, v) = (k / 12, (k / 2) % 6, k % 2);
+            if v == 1 && !two_hex {
+                continue;
+            }
+            let Some(contact) = target_hexes[i].and_then(|t| self.neighbor(t, Direction::ALL[d]))
+            else {
+                continue;
+            };
+            let head = if v == 0 {
+                Some(contact)
+            } else {
+                self.neighbor(contact, Self::head_direction(side))
+            };
+            // The contact hex neighbours the target, so the footprint touches it unless they
+            // overlap (for `v = 1` the footprint's tail is the contact hex itself).
+            let position = head
+                .and_then(|h| self.footprint(h, two_hex, side))
+                .filter(|fp| !fp.hexes().any(|h| target.covers(h)))
+                .map(|fp| fp.head);
+            if let Some(p) = position.filter(|p| !seen[..seen_len].contains(p)) {
+                seen[seen_len] = p;
+                seen_len += 1;
+                *slot = Some(p);
+            }
+        }
+        out
     }
 }
 

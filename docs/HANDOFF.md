@@ -12,7 +12,9 @@ Living state. The last agent updates this at the end of every session; the next 
 
 **User decisions during E03 (OPEN-QUESTIONS):** Q17 per-side "led by a hero" flag in `BattleSetup` + quirk "no luck without hero" (T6); Q18 luck only on the primary target; Q19 Behemoth: defense counts floor(D·(100−p)/100); Q20 regeneration at the stack's own turn.
 
-**Next:** T3 (geometry: obstacles, two-hex, flyers).
+T3 — footprints/two-hex, obstacles (`BattleSetup.obstacles`, scenario `obstacles = [...]`), flying and teleporting, attack positions (24 canonical slots), action encoding v2, replay format v2, golden replays re-recorded (skirmish now has obstacles), bench baseline updated.
+
+**Next:** T4 (ranged combat).
 
 **Sandbox notes (this session):** VCMI 1.7.5 is cloned at `/home/claude/ref/vcmi` (`git clone --depth 1 --branch 1.7.5 https://github.com/vcmi/vcmi.git`; github.com web pages are blocked, git works). The wiki is reachable only through WebFetch after the user approved it.
 

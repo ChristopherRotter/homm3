@@ -80,6 +80,8 @@ pub struct BattleSetup {
     pub attacker: Army,
     /// The defending army.
     pub defender: Army,
+    /// Hexes blocked by obstacles (row-major hex indices of the battlefield, each once; E03).
+    pub obstacles: Vec<u8>,
 }
 
 impl BattleSetup {
@@ -130,6 +132,7 @@ mod tests {
                 stacks: vec![stack],
             },
             defender: Army::default(),
+            obstacles: vec![],
         };
         assert_eq!(setup.army(BattleSide::Attacker).stacks, [stack]);
         assert!(setup.army(BattleSide::Defender).stacks.is_empty());

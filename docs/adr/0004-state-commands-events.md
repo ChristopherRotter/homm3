@@ -43,7 +43,23 @@ How the model turned out in the battle context:
 - **Episode limits are not game rules:** the battle has no round limit (as in the original); step limits live in the sim layer (`BattleEnv` truncation).
 - **Replays:** header (packs + versions, profile, ruleset hash, RNG/hash/encoding versions) + seed + setup + command log + a state hash every N commands + final hash; model in `h3-sim::replay`, TOML format in `h3-cli`.
 
+## Amendment — E03 battle core (2026-10-01, T3)
+
+- **Geometry seam extended** (still a concrete `Field`): footprints of one- and two-hex stacks
+  (`Footprint`, head hex + tail behind it by side), `HexSet` (256-bit set) for obstacles and
+  occupancy, `Field::attack_positions` (the 24 canonical slots from which an attacker's
+  footprint touches a target's; at most 10 are distinct). Movement and attacks are validated on
+  footprints. `MAX_LEGAL_COMMANDS` = 2 + 255 + 24 · 32.
+- **Seam type change (`BattleSetup`):** `obstacles: Vec<u8>` (blocked hexes, validated by the
+  battle context). Further E03 fields (hero presence per side Q17, battlefield/terrain, war
+  machines, formation) are added the same way, each defaulting to "absent".
+- **Observation:** includes the obstacles (public). State hash encoding v2 (stack traits,
+  obstacles).
+- **Sim encodings:** action encoding v2 (attacks by target and canonical slot); replay file
+  format v2 (`[setup]` table).
+
 ## Revision history
 
 - 2026-09-30: Accepted.
 - 2026-09-30: Amended by E01 (battle entry point, command set, events, geometry seam, replay contents).
+- 2026-10-01: Amended by E03 T3 (footprints, obstacles, attack positions, setup/encoding changes).

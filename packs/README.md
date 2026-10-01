@@ -133,3 +133,27 @@ are not implemented yet (backlog).
 The compiled ruleset's canonical hash (encoding v3, `RULESET_HASH_VERSION`) covers packs, profile,
 quirks, resources, factions, all creature fields including abilities, and the battle parameters;
 replays record it.
+
+## Scenarios
+
+A scenario (`synthetic/scenarios/*.toml`) is a battle setup for tests, the CLI and benchmarks:
+
+```toml
+[scenario]
+id = "skirmish"
+packs = ["synthetic"]            # enabled packs (any order)
+profile = "synthetic:faithful"
+obstacles = [58, 75]             # optional: blocked hexes, row-major (BAT-GEO-003)
+
+[[attacker]]                     # one entry per stack
+slot = 0
+creature = "synthetic:spearman"  # full key
+count = 30
+
+[[defender]]
+slot = 0
+creature = "synthetic:brute"
+count = 8
+```
+
+The battle context validates the setup when the battle starts (slots, counts, obstacle hexes).

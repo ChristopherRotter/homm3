@@ -54,19 +54,31 @@ fn arb_army() -> impl Strategy<Value = ArmySpec> {
 
 /// `(slot, creature index, count)` per stack.
 type ArmySpec = Vec<(u8, u8, u32)>;
-/// Attacker, defender, seed, steps.
-type Game = (ArmySpec, ArmySpec, u64, Vec<Step>);
+/// Attacker, defender, obstacles, seed, steps.
+type Game = (ArmySpec, ArmySpec, Vec<u8>, u64, Vec<Step>);
+
+/// Up to eight obstacle hexes away from the edge columns (x in 2..=14 of the 17-wide field).
+fn arb_obstacles() -> impl Strategy<Value = Vec<u8>> {
+    proptest::collection::btree_set((2u8..15, 0u8..11).prop_map(|(x, y)| x + 17 * y), 0..8)
+        .prop_map(|s| s.into_iter().collect())
+}
 
 fn arb_game() -> impl Strategy<Value = Game> {
     (
         arb_army(),
         arb_army(),
+        arb_obstacles(),
         any::<u64>(),
         vec(arb_step(), 1..160),
     )
 }
 
-fn make_setup(r: &Ruleset, attacker: &[(u8, u8, u32)], defender: &[(u8, u8, u32)]) -> BattleSetup {
+fn make_setup(
+    r: &Ruleset,
+    attacker: &[(u8, u8, u32)],
+    defender: &[(u8, u8, u32)],
+    obstacles: &[u8],
+) -> BattleSetup {
     let army = |spec: &[(u8, u8, u32)]| Army {
         stacks: spec
             .iter()
@@ -82,6 +94,7 @@ fn make_setup(r: &Ruleset, attacker: &[(u8, u8, u32)], defender: &[(u8, u8, u32)
     BattleSetup {
         attacker: army(attacker),
         defender: army(defender),
+        obstacles: obstacles.to_vec(),
     }
 }
 
@@ -133,9 +146,9 @@ proptest! {
 
     /// Atomicity, legality consistency, ownership isolation and conservation, checked at every step.
     #[test]
-    fn every_step_preserves_the_invariants((att, def, seed, steps) in arb_game()) {
+    fn every_step_preserves_the_invariants((att, def, obstacles, seed, steps) in arb_game()) {
         let r = ruleset();
-        let setup = make_setup(&r, &att, &def);
+        let setup = make_setup(&r, &att, &def, &obstacles);
         let mut state = BattleState::new(&r, &setup, seed).unwrap();
         let mut legal = LegalCommands::new();
         for step in &steps {
@@ -194,9 +207,9 @@ proptest! {
     /// Observation hygiene: two states that differ only in hidden information (the RNG) look the
     /// same to both sides.
     #[test]
-    fn observations_do_not_depend_on_hidden_state((att, def, seed, steps) in arb_game(), other_seed: u64) {
+    fn observations_do_not_depend_on_hidden_state((att, def, obstacles, seed, steps) in arb_game(), other_seed: u64) {
         let r = ruleset();
-        let (state, _, _) = play(&r, &make_setup(&r, &att, &def), seed, &steps);
+        let (state, _, _) = play(&r, &make_setup(&r, &att, &def, &obstacles), seed, &steps);
         let mut twin = state.clone();
         twin.rng = Rng::from_seed(other_seed);
         for viewer in BattleSide::BOTH {
@@ -206,9 +219,9 @@ proptest! {
 
     /// Clone equivalence: a clone taken mid-game evolves identically to the original.
     #[test]
-    fn clones_evolve_identically((att, def, seed, steps) in arb_game(), split in 0usize..160) {
+    fn clones_evolve_identically((att, def, obstacles, seed, steps) in arb_game(), split in 0usize..160) {
         let r = ruleset();
-        let setup = make_setup(&r, &att, &def);
+        let setup = make_setup(&r, &att, &def, &obstacles);
         let split = split.min(steps.len());
         let (mut original, _, _) = play(&r, &setup, seed, &steps[..split]);
         let mut clone = original.clone();
@@ -225,9 +238,9 @@ proptest! {
 
     /// Determinism: the same inputs give the same events and state hashes.
     #[test]
-    fn replays_are_deterministic((att, def, seed, steps) in arb_game()) {
+    fn replays_are_deterministic((att, def, obstacles, seed, steps) in arb_game()) {
         let r = ruleset();
-        let setup = make_setup(&r, &att, &def);
+        let setup = make_setup(&r, &att, &def, &obstacles);
         let first = play(&r, &setup, seed, &steps);
         let second = play(&r, &setup, seed, &steps);
         prop_assert_eq!(first.1, second.1);
@@ -241,7 +254,12 @@ proptest! {
 #[test]
 fn random_legal_play_finishes_battles() {
     let r = ruleset();
-    let setup = make_setup(&r, &[(0, 5, 20), (1, 6, 8)], &[(0, 7, 15), (3, 5, 12)]);
+    let setup = make_setup(
+        &r,
+        &[(0, 5, 20), (1, 6, 8), (2, 10, 2)],
+        &[(0, 7, 15), (3, 5, 12), (4, 8, 6)],
+        &[60, 77, 94],
+    );
     let mut decided = 0;
     for seed in 0..20u64 {
         let mut state = BattleState::new(&r, &setup, seed).unwrap();

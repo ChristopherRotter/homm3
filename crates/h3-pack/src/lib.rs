@@ -443,6 +443,9 @@ struct ScenarioHeader {
     id: String,
     packs: Vec<String>,
     profile: String,
+    /// Obstacle hexes (row-major indices), validated by the battle context.
+    #[serde(default)]
+    obstacles: Vec<u8>,
 }
 
 #[derive(Deserialize, Clone)]
@@ -464,6 +467,7 @@ pub struct ScenarioDef {
     pub profile: String,
     attacker: Vec<(u8, String, u32)>,
     defender: Vec<(u8, String, u32)>,
+    obstacles: Vec<u8>,
 }
 
 impl ScenarioDef {
@@ -489,6 +493,7 @@ impl ScenarioDef {
         Ok(BattleSetup {
             attacker: army(&self.attacker)?,
             defender: army(&self.defender)?,
+            obstacles: self.obstacles.clone(),
         })
     }
 }
@@ -508,6 +513,7 @@ pub fn parse_scenario(text: &str) -> Result<ScenarioDef, PackError> {
         profile: file.scenario.profile,
         attacker: convert(file.attacker),
         defender: convert(file.defender),
+        obstacles: file.scenario.obstacles,
     })
 }
 

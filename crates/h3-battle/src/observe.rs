@@ -9,6 +9,7 @@ use h3_contracts::BattleSide;
 use h3_kernel::FixedVec;
 
 use crate::event::{Event, Visibility};
+use crate::geometry::HexSet;
 use crate::state::{BattleState, STACK_CAPACITY, Stack, StackId};
 
 /// What one side may know about a battle.
@@ -26,6 +27,8 @@ pub struct Observation {
     pub winner: Option<BattleSide>,
     /// All stacks (public in battle).
     pub stacks: FixedVec<Stack, STACK_CAPACITY>,
+    /// Hexes blocked by obstacles (public).
+    pub obstacles: HexSet,
 }
 
 /// The observation of `state` for `viewer`.
@@ -37,6 +40,7 @@ pub fn observe(state: &BattleState, viewer: BattleSide) -> Observation {
         last_side_acted: state.last_side_acted,
         winner: state.winner,
         stacks: state.stacks,
+        obstacles: state.obstacles,
     }
 }
 

@@ -96,7 +96,7 @@ fn plan(
             if !field.is_standable(to) {
                 return Err(CommandError::InvalidHex);
             }
-            if !reachable(state, field, &mover).can_move_to(to) {
+            if !reachable(state, field, id, &mover).can_move_to(to) {
                 return Err(CommandError::Unreachable);
             }
             Ok(Plan::Move {
@@ -112,14 +112,17 @@ fn plan(
             if victim.side == actor {
                 return Err(CommandError::NotAnEnemy);
             }
-            if !field.is_standable(from) {
+            let Some(position) = field
+                .footprint(from, mover.is_two_hex(), mover.side)
+                .filter(|fp| fp.hexes().all(|h| field.is_standable(h)))
+            else {
                 return Err(CommandError::InvalidHex);
-            }
+            };
             // rule: BAT-ATK-001
-            if !field.are_adjacent(from, victim.hex) {
+            if !field.touches(position, victim.footprint(field)) {
                 return Err(CommandError::NotAdjacent);
             }
-            if from != mover.hex && !reachable(state, field, &mover).can_move_to(from) {
+            if from != mover.hex && !reachable(state, field, id, &mover).can_move_to(from) {
                 return Err(CommandError::Unreachable);
             }
             Ok(Plan::Attack {

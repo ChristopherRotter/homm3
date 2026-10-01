@@ -1,19 +1,19 @@
 //! Battle state: stacks, round bookkeeping, RNG and outcome (ADR-0004 §8: flat, index-addressed,
 //! fixed-capacity, cheap to clone).
 
-use h3_content::{CreatureType, CreatureTypeId, MAX_ARMY_SLOTS, Ruleset};
+use h3_content::{Ability, CreatureFlag, CreatureType, CreatureTypeId, MAX_ARMY_SLOTS, Ruleset};
 use h3_contracts::{Army, ArmyStack, BattleOutcome, BattleSetup, BattleSide};
 use h3_kernel::{CanonicalHash, FixedVec, Rng, StateHasher, StreamId};
 
 use crate::error::SetupError;
-use crate::geometry::{Field, Hex};
+use crate::geometry::{Field, Footprint, Hex, HexSet};
 use crate::turn;
 
 /// Maximum number of stacks in a battle (both sides).
 pub const STACK_CAPACITY: usize = 2 * MAX_ARMY_SLOTS;
 
 /// Version of the battle-state hash encoding ([`BattleState::state_hash`]). Bump on any change.
-pub const BATTLE_STATE_HASH_VERSION: u32 = 1;
+pub const BATTLE_STATE_HASH_VERSION: u32 = 2;
 
 /// Index of a stack in its battle (attacker stacks first, in slot order, then defender stacks).
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Default)]
@@ -60,6 +60,45 @@ impl StackFlags {
     }
 }
 
+/// Battle traits of a stack, derived from its creature's flags and abilities at setup.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub struct StackTraits(u16);
+
+impl StackTraits {
+    /// Occupies two hexes (flag `two_hex`, BAT-GEO-002).
+    pub const TWO_HEX: Self = Self(1);
+    /// Flies or teleports (flag `flying` or ability `teleports`, BAT-MOV-002).
+    pub const FLIES: Self = Self(1 << 1);
+
+    /// Whether all traits of `other` are set.
+    pub const fn contains(self, other: Self) -> bool {
+        self.0 & other.0 == other.0
+    }
+
+    /// The set with the traits of `other` added if `on`.
+    #[must_use]
+    pub const fn with(self, other: Self, on: bool) -> Self {
+        if on { Self(self.0 | other.0) } else { self }
+    }
+
+    /// The raw bits.
+    pub const fn bits(self) -> u16 {
+        self.0
+    }
+
+    /// The traits of a creature type.
+    pub(crate) fn of(creature: &CreatureType, abilities: &[h3_content::CompiledAbility]) -> Self {
+        let flags = creature.flags;
+        Self::default()
+            .with(Self::TWO_HEX, flags.contains(CreatureFlag::TwoHex))
+            .with(
+                Self::FLIES,
+                flags.contains(CreatureFlag::Flying)
+                    || abilities.iter().any(|a| matches!(a, Ability::Teleports)),
+            )
+    }
+}
+
 /// A stack in battle. Creature stats are copied in at setup so the hot path needs no lookups
 /// (and later effects can modify them per stack).
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -88,6 +127,8 @@ pub struct Stack {
     pub max_hp: u32,
     /// Speed.
     pub speed: u8,
+    /// Battle traits (two-hex, flying, …).
+    pub traits: StackTraits,
     /// Per-round flags.
     pub flags: StackFlags,
 }
@@ -107,6 +148,7 @@ impl Default for Stack {
             damage_max: 0,
             max_hp: 0,
             speed: 0,
+            traits: StackTraits::default(),
             flags: StackFlags::default(),
         }
     }
@@ -116,6 +158,22 @@ impl Stack {
     /// Whether the stack still has creatures.
     pub const fn is_alive(&self) -> bool {
         self.count > 0
+    }
+
+    /// Whether the stack occupies two hexes.
+    pub const fn is_two_hex(&self) -> bool {
+        self.traits.contains(StackTraits::TWO_HEX)
+    }
+
+    /// The hexes the stack covers on `field` (BAT-GEO-002). Placement and movement keep the
+    /// footprint of every stack on the field.
+    pub fn footprint(&self, field: Field) -> Footprint {
+        field
+            .footprint(self.hex, self.is_two_hex(), self.side)
+            .unwrap_or(Footprint {
+                head: self.hex,
+                tail: None,
+            })
     }
 
     /// Total remaining hit points: `(count - 1) · max_hp + top_hp` (BAT-DMG-003).
@@ -141,6 +199,7 @@ impl CanonicalHash for Stack {
         h.write_u16(self.damage_max);
         h.write_u32(self.max_hp);
         h.write_u8(self.speed);
+        h.write_u16(self.traits.bits());
         h.write_u8(self.flags.bits());
     }
 }
@@ -156,6 +215,7 @@ pub(crate) const fn side_code(side: BattleSide) -> u8 {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct BattleState {
     pub(crate) stacks: FixedVec<Stack, STACK_CAPACITY>,
+    pub(crate) obstacles: HexSet,
     pub(crate) round: u16,
     pub(crate) active: Option<StackId>,
     pub(crate) last_side_acted: Option<BattleSide>,
@@ -164,11 +224,14 @@ pub struct BattleState {
 }
 
 impl BattleState {
-    /// Starts a battle: validates the setup against the ruleset, places the armies
-    /// (BAT-SET-001), seeds the battle RNG stream from `seed` and activates the first stack.
+    /// Starts a battle: validates the setup against the ruleset, places the obstacles and the
+    /// armies (BAT-SET-001, BAT-GEO-003), seeds the battle RNG stream from `seed` and activates
+    /// the first stack.
     pub fn new(ruleset: &Ruleset, setup: &BattleSetup, seed: u64) -> Result<Self, SetupError> {
         let params = ruleset.battle();
         let field = Field::new(params.field);
+        let obstacles = obstacles(field, &setup.obstacles)?;
+        let mut taken = obstacles;
         let mut placed = [Stack::default(); STACK_CAPACITY];
         let mut len = 0;
         for side in BattleSide::BOTH {
@@ -204,14 +267,17 @@ impl BattleState {
             for (i, (s, creature)) in by_slot.iter().flatten().enumerate() {
                 // The compiler guarantees a formation row for every army size and index.
                 let row = params.formation_row(n, i).unwrap_or(0);
-                // At most `army_slots <= MAX_ARMY_SLOTS` stacks per side, so `len` stays below
-                // STACK_CAPACITY = 2 * MAX_ARMY_SLOTS.
-                placed[len] = Stack {
+                // rule: BAT-SET-001
+                let desired = field.hex(column, i32::from(row)).unwrap_or_default();
+                let traits = StackTraits::of(creature, ruleset.abilities(s.creature));
+                let two_hex = traits.contains(StackTraits::TWO_HEX);
+                let head = closest_free(field, desired, two_hex, side, taken)
+                    .ok_or(SetupError::NoRoom { side, slot: s.slot })?;
+                let stack = Stack {
                     creature: s.creature,
                     side,
                     slot: s.slot,
-                    // rule: BAT-SET-001
-                    hex: field.hex(column, i32::from(row)).unwrap_or_default(),
+                    hex: head,
                     count: s.count,
                     top_hp: creature.hit_points,
                     attack: creature.attack,
@@ -220,13 +286,19 @@ impl BattleState {
                     damage_max: creature.damage_max,
                     max_hp: creature.hit_points,
                     speed: creature.speed,
+                    traits,
                     flags: StackFlags::default(),
                 };
+                stack.footprint(field).hexes().for_each(|h| taken.insert(h));
+                // At most `army_slots <= MAX_ARMY_SLOTS` stacks per side, so `len` stays below
+                // STACK_CAPACITY = 2 * MAX_ARMY_SLOTS.
+                placed[len] = stack;
                 len += 1;
             }
         }
         let mut state = Self {
             stacks: FixedVec::from_array_prefix(placed, len),
+            obstacles,
             round: 1,
             active: None,
             last_side_acted: None,
@@ -235,6 +307,23 @@ impl BattleState {
         };
         state.active = turn::next_active(&state);
         Ok(state)
+    }
+
+    /// The hexes blocked by obstacles (BAT-GEO-003).
+    pub const fn obstacles(&self) -> HexSet {
+        self.obstacles
+    }
+
+    /// The hexes that block `except`'s movement: obstacles and the footprints of every other
+    /// living stack (BAT-MOV-001).
+    pub(crate) fn blocked_for(&self, field: Field, except: StackId) -> HexSet {
+        let mut blocked = self.obstacles;
+        for (id, s) in (0u8..).zip(self.stacks.iter()) {
+            if s.is_alive() && StackId(id) != except {
+                s.footprint(field).hexes().for_each(|h| blocked.insert(h));
+            }
+        }
+        blocked
     }
 
     /// All stacks (dead ones included; they keep their id).
@@ -313,10 +402,55 @@ impl BattleState {
     /// Canonical hash of the full state, including hidden parts such as the RNG (desync detection
     /// and replay verification; never sent to untrusted clients, docs/06-security.md).
     ///
-    /// Encoding v1: version, round, active, last side, winner, stacks, RNG state.
+    /// Encoding v2: version, round, active, last side, winner, stacks (each with its traits),
+    /// obstacles, RNG state.
     pub fn state_hash(&self) -> u64 {
         h3_kernel::hash::hash_of(self)
     }
+}
+
+/// Validates the setup's obstacle hexes: inside the field, not in a side column, each once.
+// rule: BAT-GEO-003
+fn obstacles(field: Field, hexes: &[u8]) -> Result<HexSet, SetupError> {
+    let mut set = HexSet::new();
+    for &raw in hexes {
+        let hex = Hex(raw);
+        if !field.is_standable(hex) || set.contains(hex) {
+            return Err(SetupError::InvalidObstacle(raw));
+        }
+        set.insert(hex);
+    }
+    Ok(set)
+}
+
+/// The head hex closest to `desired` where a stack of this shape fits: every hex of its
+/// footprint standable and not `taken`. Ties go to the column nearer the centre of the field,
+/// then the row nearer `desired`'s, then the lower hex index (BAT-SET-001).
+// rule: BAT-SET-001
+pub(crate) fn closest_free(
+    field: Field,
+    desired: Hex,
+    two_hex: bool,
+    side: BattleSide,
+    taken: HexSet,
+) -> Option<Hex> {
+    let (_, dy) = field.coords(desired);
+    (0..field.hex_count())
+        .filter_map(|i| u8::try_from(i).ok().map(Hex))
+        .filter_map(|h| field.footprint(h, two_hex, side))
+        .filter(|fp| {
+            fp.hexes()
+                .all(|h| field.is_standable(h) && !taken.contains(h))
+        })
+        .map(|fp| fp.head)
+        .min_by_key(|&h| {
+            let (x, y) = field.coords(h);
+            let toward_centre = match side {
+                BattleSide::Attacker => -x,
+                BattleSide::Defender => x,
+            };
+            (field.distance(desired, h), toward_centre, (y - dy).abs(), h)
+        })
 }
 
 impl CanonicalHash for BattleState {
@@ -327,6 +461,7 @@ impl CanonicalHash for BattleState {
         self.last_side_acted.map(side_code).hash_into(h);
         self.winner.map(side_code).hash_into(h);
         self.stacks.hash_into(h);
+        self.obstacles.hash_into(h);
         self.rng.hash_into(h);
     }
 }

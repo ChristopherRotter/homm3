@@ -6,25 +6,39 @@ use std::vec;
 use std::vec::Vec;
 
 use h3_content::{
-    BattleParamsDef, ContentKey, ContentPack, CreatureDef, CreatureInfoDef, PackManifest,
-    ProfileDef, Ruleset,
+    AbilityDef, BattleParamsDef, ContentKey, ContentPack, CreatureDef, CreatureInfoDef,
+    PackManifest, ProfileDef, Ruleset,
 };
 use h3_contracts::{Army, ArmyStack, BattleSetup, BattleSide};
 
 use crate::{BattleState, Command, Event, Field, Hex, StackId, apply};
 
-/// `(name, attack, defense, damage_min, damage_max, hit_points, speed)`.
-pub type Creature = (&'static str, u16, u16, u16, u16, u32, u8);
+/// `(name, attack, defense, damage_min, damage_max, hit_points, speed, traits)`; traits are
+/// creature flag names plus `teleports` for that ability.
+pub type Creature = (
+    &'static str,
+    u16,
+    u16,
+    u16,
+    u16,
+    u32,
+    u8,
+    &'static [&'static str],
+);
 
 pub const CREATURES: &[Creature] = &[
-    ("fixed", 10, 10, 2, 2, 10, 5),
-    ("slow", 1, 1, 1, 1, 5, 2),
-    ("fast", 5, 5, 1, 1, 3, 9),
-    ("tank", 0, 20, 1, 1, 100, 4),
-    ("range", 5, 5, 1, 9, 10, 5),
-    ("spear", 4, 5, 1, 3, 10, 4),
-    ("brute", 7, 4, 2, 5, 18, 5),
-    ("wisp", 3, 2, 1, 2, 4, 9),
+    ("fixed", 10, 10, 2, 2, 10, 5, &[]),
+    ("slow", 1, 1, 1, 1, 5, 2, &[]),
+    ("fast", 5, 5, 1, 1, 3, 9, &[]),
+    ("tank", 0, 20, 1, 1, 100, 4, &[]),
+    ("range", 5, 5, 1, 9, 10, 5, &[]),
+    ("spear", 4, 5, 1, 3, 10, 4, &[]),
+    ("brute", 7, 4, 2, 5, 18, 5, &[]),
+    ("wisp", 3, 2, 1, 2, 4, 9, &[]),
+    ("wide", 6, 6, 2, 4, 25, 5, &["two_hex"]),
+    ("flyer", 5, 3, 1, 3, 8, 7, &["flying"]),
+    ("dragon", 12, 12, 5, 8, 60, 8, &["two_hex", "flying"]),
+    ("porter", 8, 6, 2, 4, 15, 6, &["teleports"]),
 ];
 
 pub fn battle_params() -> BattleParamsDef {
@@ -56,15 +70,23 @@ pub fn ruleset() -> Ruleset {
     let creatures = CREATURES
         .iter()
         .map(
-            |&(name, attack, defense, damage_min, damage_max, hit_points, speed)| CreatureDef {
-                key: ContentKey::new("t", name).unwrap(),
-                attack,
-                defense,
-                damage_min,
-                damage_max,
-                hit_points,
-                speed,
-                info: CreatureInfoDef::default(),
+            |&(name, attack, defense, damage_min, damage_max, hit_points, speed, traits)| {
+                let (abilities, flags): (Vec<&str>, Vec<&str>) =
+                    traits.iter().partition(|t| **t == "teleports");
+                CreatureDef {
+                    key: ContentKey::new("t", name).unwrap(),
+                    attack,
+                    defense,
+                    damage_min,
+                    damage_max,
+                    hit_points,
+                    speed,
+                    info: CreatureInfoDef {
+                        flags: flags.into_iter().map(String::from).collect(),
+                        abilities: abilities.iter().map(|_| AbilityDef::Teleports).collect(),
+                        ..CreatureInfoDef::default()
+                    },
+                }
             },
         )
         .collect();
@@ -104,11 +126,24 @@ pub fn setup(rules: &Ruleset, attacker: &[Spec], defender: &[Spec]) -> BattleSet
     BattleSetup {
         attacker: army(rules, attacker),
         defender: army(rules, defender),
+        obstacles: vec![],
     }
 }
 
 pub fn battle(rules: &Ruleset, attacker: &[Spec], defender: &[Spec], seed: u64) -> BattleState {
     BattleState::new(rules, &setup(rules, attacker, defender), seed).unwrap()
+}
+
+/// A battle with obstacles at the given `(x, y)` hexes.
+pub fn battle_with_obstacles(
+    rules: &Ruleset,
+    attacker: &[Spec],
+    defender: &[Spec],
+    obstacles: &[(i32, i32)],
+) -> BattleState {
+    let mut s = setup(rules, attacker, defender);
+    s.obstacles = obstacles.iter().map(|&(x, y)| at(rules, x, y).0).collect();
+    BattleState::new(rules, &s, 1).unwrap()
 }
 
 pub fn field(rules: &Ruleset) -> Field {

@@ -1,15 +1,16 @@
 # Rule catalog: battle context. Format: docs/04-rules-and-sources.md §3.
 #
-# E01 (walking skeleton) implements a deliberately small subset. Simplifications that E03 must
-# revisit are stated in each summary under "Skeleton scope".
-# Wiki pages were read on 2026-09-30; VCMI references are to tag 1.7.5 (commit 6901839ae976).
+# E01 (walking skeleton) implemented a deliberately small subset; E03 completes the RoE battle
+# rules. Remaining simplifications are stated in each summary under "Scope".
+# Wiki pages were read on 2026-09-30 (E01) and 2026-10-01 (E03); VCMI references are to tag 1.7.5
+# (commit 6901839ae976).
 
 [[rule]]
 id       = "BAT-GEO-001"
 title    = "Battlefield hex layout, neighbours and distance"
 context  = "battle"
 status   = "implemented"
-summary  = "The field is width x height hexes (original: 17 x 11 with one non-standable side column on each edge, i.e. 15 x 11 playable), hex = x + width*y. Even rows (0-based) are shifted half a hex right: left/right neighbours are (x-1,y)/(x+1,y); on even rows the upper/lower neighbours are x and x+1, on odd rows x-1 and x. Distance: with X = x + floor(y/2), dX = X2-X1, dY = y2-y1, distance = max(|dX|,|dY|) if dX and dY have the same sign, else |dX|+|dY|. Skeleton scope: no obstacles, no two-hex creatures, no siege walls."
+summary  = "The field is width x height hexes (original: 17 x 11 with one non-standable side column on each edge, i.e. 15 x 11 playable), hex = x + width*y. Even rows (0-based) are shifted half a hex right: left/right neighbours are (x-1,y)/(x+1,y); on even rows the upper/lower neighbours are x and x+1, on odd rows x-1 and x. Distance: with X = x + floor(y/2), dX = X2-X1, dY = y2-y1, distance = max(|dX|,|dY|) if dX and dY have the same sign, else |dX|+|dY|. Footprints of two-hex stacks: BAT-GEO-002; obstacles: BAT-GEO-003. Scope: no siege walls (sieges are later)."
 numeric  = "integer"
 
   [[rule.source]]
@@ -28,18 +29,74 @@ numeric  = "integer"
   note       = "Internal 17-column layout and siege hex ids match the original numbering (medium-high that the layout is the original's)."
 
 [[rule]]
+id       = "BAT-GEO-002"
+title    = "Footprints of one- and two-hex stacks"
+context  = "battle"
+status   = "implemented"
+summary  = "A stack's position is its head hex. A stack of a creature with flag two_hex also covers the hex behind the head in the same row: the left neighbour for the attacker, the right neighbour for the defender (stacks face the enemy and never turn). A footprint is valid only if both hexes are on the field. Two footprints touch when they do not overlap and some hex of one neighbours some hex of the other; their distance is the smallest hex distance between them."
+numeric  = "integer"
+
+  [[rule.source]]
+  kind       = "vcmi"
+  ref        = "lib/battle/Unit.cpp occupiedHex (attacker: position - 1, defender: position + 1), coversPos, getHexes"
+  url        = "https://github.com/vcmi/vcmi/blob/1.7.5/lib/battle/Unit.cpp"
+  retrieved  = "2026-10-01"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe static creature table, flag 0x1 (two-hex), harvested as `two_hex` (docs/formats/installation.md §5)"
+  confidence = "high"
+
+[[rule]]
+id       = "BAT-GEO-003"
+title    = "Obstacles"
+context  = "battle"
+status   = "implemented"
+summary  = "The battle setup lists the hexes blocked by obstacles (each once, all standable hexes of the field; anything else is a setup error). No stack can stand on an obstacle hex: walkers cannot pass them (BAT-MOV-001), flyers and teleporters pass over them but cannot land on them (BAT-MOV-002), and placement avoids them (BAT-SET-001). Obstacles are public information. Scope: obstacles do not affect shooting (only siege walls do, later); which hexes are blocked is generated per battlefield in E03 T7."
+numeric  = "integer"
+
+  [[rule.source]]
+  kind       = "vcmi"
+  ref        = "lib/battle/CBattleInfoCallback.cpp getAccessibility (obstacle tiles are OBSTACLE, inaccessible for standing and walking), getFlyingReachability"
+  url        = "https://github.com/vcmi/vcmi/blob/1.7.5/lib/battle/CBattleInfoCallback.cpp"
+  retrieved  = "2026-10-01"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "wiki"
+  ref        = "Flying - Heroes 3 wiki: flying creatures bypass obstacles during combat; teleporting Devils get the same benefit"
+  url        = "https://heroes.thelazy.net/index.php/Flying"
+  retrieved  = "2026-10-01"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "wiki"
+  ref        = "Obstacle - Heroes 3 wiki: the obstacle (shooting) penalty only applies to walls in sieges"
+  url        = "https://heroes.thelazy.net/index.php/Obstacle"
+  retrieved  = "2026-10-01"
+  confidence = "high"
+
+[[rule]]
 id       = "BAT-SET-001"
 title    = "Initial placement of armies"
 context  = "battle"
 status   = "implemented"
-summary  = "Stacks of each army are taken in slot order; the attacker's stand in the first standable column, the defender's in the last. The i-th stack of an army with n stacks stands in row formation[n-1][i] (ruleset data). Stack ids: attacker stacks first, then defender stacks, each in slot order. Skeleton scope: the formation table of the synthetic pack is invented; the original loose/tight formations and tactics phase are for E03."
+summary  = "Stacks of each army are taken in slot order; the desired hex of the i-th stack of an army with n stacks is row formation[n-1][i] (ruleset data) in the first standable column (attacker) or the last (defender). Each stack, in id order, takes the head hex closest to its desired hex where its whole footprint (BAT-GEO-002) is standable and not blocked by obstacles or stacks placed before it; ties go to the column nearer the centre, then the row nearer the desired one, then the lower hex index. So a two-hex stack's tail stands in the edge column and its head one column further in. No such hex: setup error. Stack ids: attacker stacks first, then defender stacks, each in slot order. Scope: tight formation and tactics are later tasks (E03 T9, E04)."
 numeric  = "integer"
 
   [[rule.source]]
-  kind       = "design"
-  ref        = "E01 walking-skeleton simplification (docs/epics/E01-walking-skeleton.md); formation rows are ruleset data"
+  kind       = "vcmi"
+  ref        = "lib/battle/BattleInfo.cpp setupBattle (layout positions per army size), lib/battle/CBattleInfoCallback.cpp getAvailableHex, lib/battle/BattleHex.cpp getClosestTile (closest accessible hex, column nearer the centre, then nearer row)"
+  url        = "https://github.com/vcmi/vcmi/blob/1.7.5/lib/battle/CBattleInfoCallback.cpp"
+  retrieved  = "2026-10-01"
   confidence = "medium"
-  note       = "Replace with the original formation data (E02 import) and a sourced rule in E03."
+  note       = "The harvested base pack carries VCMI's loose layout (E02 gap-fill). The final hex-index tie-break is ours (VCMI keeps the first hex of its ordered set, i.e. also the lowest index)."
+
+  [[rule.source]]
+  kind       = "design"
+  ref        = "Formation rows are ruleset data (ADR-0006); the synthetic pack's table is invented"
+  confidence = "high"
 
 [[rule]]
 id       = "BAT-TRN-001"
@@ -142,7 +199,7 @@ id       = "BAT-MOV-001"
 title    = "Walking movement"
 context  = "battle"
 status   = "implemented"
-summary  = "A walking stack moves up to its speed in steps between neighbouring hexes; every step must enter a standable hex not occupied by a living stack of either side (dead stacks do not block; there is no zone of control). Moving to its own hex is not a move. Skeleton scope: no flyers, obstacles, two-hex creatures, quicksand/moat/mines."
+summary  = "A walking stack moves its head up to its speed in steps between neighbouring hexes; after every step its whole footprint (BAT-GEO-002) must be on standable hexes that are neither obstacles (BAT-GEO-003) nor occupied by another living stack (its own hexes do not block it; dead stacks do not block; there is no zone of control). Moving to its own position is not a move. Flyers and teleporters: BAT-MOV-002. Scope: no quicksand, moat, land mines or fire walls (spells and sieges are later)."
 numeric  = "integer"
 
   [[rule.source]]
@@ -160,11 +217,41 @@ numeric  = "integer"
   confidence = "high"
 
 [[rule]]
+id       = "BAT-MOV-002"
+title    = "Flying and teleporting movement"
+context  = "battle"
+status   = "implemented"
+summary  = "A stack whose creature has flag flying, or the teleports ability (Devils), moves its head to any position at a hex distance of at most its speed where its whole footprint is free (standable, no obstacle, no other living stack); what lies between does not matter. Moving to its own position is not a move. Scope: no quicksand, moat, land mines or fire walls yet (flyers would ignore quicksand and the moat)."
+numeric  = "integer"
+
+  [[rule.source]]
+  kind       = "vcmi"
+  ref        = "lib/battle/CBattleInfoCallback.cpp getFlyingReachability (every accessible hex, distance = hex distance from the start); Devils have FLYING with subtype movementTeleporting (config/creatures/inferno.json)"
+  url        = "https://github.com/vcmi/vcmi/blob/1.7.5/lib/battle/CBattleInfoCallback.cpp"
+  retrieved  = "2026-10-01"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "wiki"
+  ref        = "Flying - Heroes 3 wiki: flying creatures bypass obstacles; Devils' teleportation gives the same benefit"
+  url        = "https://heroes.thelazy.net/index.php/Flying"
+  retrieved  = "2026-10-01"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "wiki"
+  ref        = "Devil - Heroes 3 wiki: devils and arch devils can teleport to any hex"
+  url        = "https://heroes.thelazy.net/index.php/Devil"
+  retrieved  = "2026-10-01"
+  confidence = "medium"
+  note       = "The page does not mention a range limit; VCMI limits teleports by speed like flying, which we follow (Devils have speed 11 and 17)."
+
+[[rule]]
 id       = "BAT-ATK-001"
 title    = "Melee attack"
 context  = "battle"
 status   = "implemented"
-summary  = "A melee attack names an enemy stack and a hex adjacent to it: the attacker's own hex, or a hex it can walk to this turn (BAT-MOV-001). The attacker moves there, then strikes (BAT-DMG-001..003); the strike costs no movement. Then the target may retaliate (BAT-RET-001). Skeleton scope: no ranged attacks, double attacks or attack-direction effects."
+summary  = "A melee attack names an enemy stack and the attacker's head position: its current one or one it can move to this turn (BAT-MOV-001/002), from which its footprint touches the target's (some hexes are neighbours, none overlap; BAT-GEO-002). So a two-hex stack can strike with its head or its tail, and a two-hex target can be hit from any of the hexes around it. The attacker moves there, then strikes (BAT-DMG-001..003); the strike costs no movement. Then the target may retaliate (BAT-RET-001). Ranged attacks, double attacks and multi-hex attacks are separate rules."
 numeric  = "integer"
 
   [[rule.source]]
@@ -172,6 +259,13 @@ numeric  = "integer"
   ref        = "server/battles/BattleActionProcessor.cpp doWalkAndAttackAction (walk, strike, retaliation, second strike)"
   url        = "https://github.com/vcmi/vcmi/blob/1.7.5/server/battles/BattleActionProcessor.cpp"
   retrieved  = "2026-09-30"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "vcmi"
+  ref        = "lib/battle/Unit.cpp getAttackableHexes (a double-wide attacker may stand with its head or its tail next to the target), CStack::isMeleeAttackPossible"
+  url        = "https://github.com/vcmi/vcmi/blob/1.7.5/lib/battle/Unit.cpp"
+  retrieved  = "2026-10-01"
   confidence = "high"
 
   [[rule.source]]

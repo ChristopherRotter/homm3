@@ -1,11 +1,11 @@
 //! Library side of the `h3` tool: loading packs and scenarios from disk, running random battles,
 //! and the replay file format (TOML). The binary (`main.rs`) only parses arguments.
 //!
-//! Replay file format v1 (`fixtures/replays/*.toml` are examples):
+//! Replay file format v2 (`fixtures/replays/*.toml` are examples):
 //!
 //! ```toml
 //! [replay]
-//! format = 1
+//! format = 2
 //! engine = "0.1.0"
 //! scenario = "skirmish"
 //! seed = "7"                      # u64 as a decimal string
@@ -16,8 +16,11 @@
 //! rng_version = 1
 //! hash = "fnv1a64-le"
 //! hash_version = 1
-//! battle_state_hash_version = 1
+//! battle_state_hash_version = 2
 //! checkpoint_every = 25
+//!
+//! [setup]                         # the rest of the setup (format 2; fields default when absent)
+//! obstacles = [40, 41]            # blocked hexes
 //!
 //! [[attacker]]                    # the setup, by creature key
 //! slot = 0
@@ -106,6 +109,8 @@ pub fn load_scenario(
 #[serde(deny_unknown_fields)]
 struct ReplayFile {
     replay: Meta,
+    #[serde(default)]
+    setup: SetupEntry,
     attacker: Vec<StackEntry>,
     defender: Vec<StackEntry>,
     commands: Vec<String>,
@@ -129,6 +134,13 @@ struct Meta {
     hash_version: u32,
     battle_state_hash_version: u32,
     checkpoint_every: u32,
+}
+
+#[derive(Debug, Default, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+struct SetupEntry {
+    #[serde(default)]
+    obstacles: Vec<u8>,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -260,6 +272,9 @@ pub fn replay_to_toml(
             battle_state_hash_version: h.battle_state_hash_version,
             checkpoint_every: replay.checkpoint_every,
         },
+        setup: SetupEntry {
+            obstacles: replay.setup.obstacles.clone(),
+        },
         attacker: stacks(&replay.setup.attacker),
         defender: stacks(&replay.setup.defender),
         commands: replay
@@ -351,6 +366,7 @@ impl ReplayDoc {
             setup: BattleSetup {
                 attacker: army(&f.attacker)?,
                 defender: army(&f.defender)?,
+                obstacles: f.setup.obstacles,
             },
             commands: f
                 .commands

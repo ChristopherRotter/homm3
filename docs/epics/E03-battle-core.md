@@ -78,8 +78,11 @@ Heroes, spells and artifacts (E04), spell-like creature abilities and the tactic
   pack format, compiler checks, ruleset hash v3, harvester gap-fill with sourced abilities for
   `base`/`ab` (attribute-column cross-check), flags and shots on `CreatureType`. Rule code reads
   them in T3–T8 (each task lists the kinds it implements).
-- [ ] T3 Geometry: obstacles (setup + field), two-hex creatures (occupancy, movement, placement,
-  attack positions), flyers.
+- [x] T3 Geometry: footprints of two-hex stacks (BAT-GEO-002), obstacles in the setup
+  (BAT-GEO-003), placement around them (BAT-SET-001), walking and flying/teleporting
+  (BAT-MOV-001/002; ability `teleports`), attack positions on footprints (BAT-ATK-001); action
+  encoding v2, replay format v2; bench-check re-baselined (+18 % Ir on the changed workload:
+  synthetic wisps now fly and brutes are two-hex; wall time per step about the same).
 - [ ] T4 Ranged combat: Shoot command, shots, blocked shooters, distance and melee penalties, no
   retaliation against shots, area shots.
 - [ ] T5 Melee abilities and damage factors: double attack, no/extra/unlimited retaliation,

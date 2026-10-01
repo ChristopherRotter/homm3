@@ -86,11 +86,11 @@ mod tests {
         let mut out = vec![9.0; OBSERVATION_LEN + 3];
         encode(&obs, r.battle().field.width, &mut out).unwrap();
         assert_eq!(&out[..4], &[1.0, 0.0, 0.0, 0.0]);
-        // Stack 0: the attacker's brute ×8 at (1, 5), active.
+        // Stack 0: the attacker's two-hex brute ×8, head at (2, 5) (tail in column 1), active.
         let s0 = &out[GLOBALS..GLOBALS + STACK_FEATURES];
         assert_eq!(s0[0..3], [1.0, 1.0, 0.0]);
         assert_eq!(s0[4], 8.0);
-        assert_eq!((s0[12], s0[13]), (1.0, 5.0));
+        assert_eq!((s0[12], s0[13]), (2.0, 5.0));
         assert_eq!(s0[18], 1.0);
         // Unused slots are zero; the tail beyond OBSERVATION_LEN is untouched.
         assert!(
