@@ -4,28 +4,32 @@ Living state. The last agent updates this at the end of every session; the next 
 
 ---
 
-## 2026-09-30 — E02 in progress (session 1)
+## 2026-10-01 — E02 closed
 
-**State:** E02 T1 done; E02 re-planned after user decisions (see the epic file). Work happens on branch **`e02-content-pipeline`** (from `master` at `8e913f6`, which the user had already fast-forwarded to E01).
+**State:** E02 (content pipeline) is **done**. The user ran `cargo xtask verify --with-original-data` on Windows: green. Branch `e02-content-pipeline` (last commit before this one: `df5a0d8`) is ready for the user to fast-forward into `master`.
 
-**Decisions (user, this session):**
-- Q8: installation = **GOG Complete 4.0** (evidence: `docs/formats/installation.md`). Support **RoE (base), AB and SoD**; AB and SoD are toggleable expansions in a dependency graph (SoD → AB → base). Packs `base`, `ab`, `sod`.
-- Q13 (revises Q9): harvest the original tables **once** into a clean config and **commit** it (gameplay data + names; no flavor text/assets/original files). Harvest tooling lives in the repo; gaps from labelled wiki/VCMI sources.
-- Q14: keep **TOML**.
-- Recorded in ADR-0006 (E02 amendment: dependency graph, enabled-pack config, overrides) and ADR-0009 (amendment 2).
+**Decisions (user):** Q8 (installation = GOG Complete 4.0; RoE/AB/SoD as packs `base` → `ab` → `sod` in a dependency graph), Q13 (harvest once, commit the clean packs: gameplay data and names only; revises Q9), Q14 (keep TOML), Q15 (historical balance at the latest patches). Recorded in ADR-0005/0006/0009 amendments and OPEN-QUESTIONS. Agent decision noted in Q13: level/town/flags come from the executable's static creature table.
 
-**Key findings (T1):** LOD layout verified; `H3bitmap.lod` = SoD tables, `H3ab_bmp.lod` = AB-era tables (same 71 TXT names, 23 differ; the diff is the AB→SoD change set). Level/town/flags are only in `Heroes3.exe` (static 150 × 116-byte table at file offset `0x2703B8`); the agent decided to read it (original data ranks above wiki/VCMI) — noted in Q13, not an explicit user decision. RoE-era values and AB membership are not in the installation → gap-fill file with sources (T4).
+**What exists now:**
+- `crates/h3-formats` (adapter): LOD archives, text tables, the exe's creature table; property tests on arbitrary input.
+- Pack format v2 (`packs/README.md`): enabled packs in any order, dependency graph and closures, overrides, resources/factions, creature info and flags (`CreatureFlag`), ruleset hash v2.
+- `crates/h3-harvest` (tool) + `data/gapfill.toml` (sourced facts) → committed `packs/base` (118 creatures), `packs/ab` (23 + Conflux), `packs/sod` (3 overrides). `cargo xtask verify --with-original-data [path]` re-harvests and requires identical packs.
+- Catalogue of the installation: `docs/formats/installation.md`.
 
-**Environment notes (cloud sandbox):** `static.rust-lang.org` is blocked by the egress proxy, so `rustup` cannot install 1.95.0; the sandbox's `stable` *is* 1.95.0 and was symlinked as `~/.rustup/toolchains/1.95.0-x86_64-unknown-linux-gnu`. crates.io works. No `llvm-tools-preview`; Ubuntu's `llvm-cov` is LLVM 18.
+**Next:** E03 battle core (epic refined with the E02 findings, section "Inputs from E02"), starting with T1: modifier-system ADR + kernel implementation. New branch `e03-battle-core` from `master` once the user has fast-forwarded it.
 
-**Next:** T2 `h3-formats` (LOD + text table + exe table readers), then T3 pack v2, T4 harvester, T5 conformance.
+**Traps / notes:**
+- The packs under `packs/base|ab|sod` are generated: change `crates/h3-harvest` or its gap-fill file and re-run `cargo run -p h3-harvest -- --install original-data/install --out packs`, never edit them by hand.
+- War machines are not harvested (BACKLOG); abilities beyond flags are not in data yet (E03 T2).
+- Cloud sandbox: `static.rust-lang.org` is blocked, so link the sandbox's `stable` (1.95.0) as `~/.rustup/toolchains/1.95.0-x86_64-unknown-linux-gnu`; coverage works with Ubuntu's LLVM 20 (`apt-get update && apt-get install llvm-20`, then `LLVM_COV=/usr/lib/llvm-20/bin/llvm-cov LLVM_PROFDATA=/usr/lib/llvm-20/bin/llvm-profdata`). For `--with-original-data` in the sandbox, stage `Heroes3.exe`, `Data/H3bitmap.lod`, `Data/H3ab_bmp.lod` from the user's `original-data/install` and symlink them there.
+- Syncing to the user's repo: use a new bundle file name for each sync (re-committing to the same device path once left a stale file); the user's repo has no remote, so "unpushed commits" warnings about the sandbox clone are expected.
 
-**In progress (updated 2026-10-01, after resuming):**
-- **T1–T5 implemented** on `e02-content-pipeline`: catalogue, `h3-formats`, pack format v2, `h3-harvest` + gap-fill, committed packs `base`/`ab`/`sod`, `cargo xtask verify --with-original-data`. User decision Q15 (historical balance, latest patches) recorded.
-- Tooling in the cloud sandbox: toolchain 1.95.0 via a symlink to `stable` (static.rust-lang.org blocked); coverage with Ubuntu's LLVM 20 (`apt-get update && apt-get install llvm-20`, `LLVM_COV=/usr/lib/llvm-20/bin/llvm-cov LLVM_PROFDATA=/usr/lib/llvm-20/bin/llvm-profdata`); `original-data/install` is a symlink to staged copies of `Heroes3.exe`, `Data/H3bitmap.lod`, `Data/H3ab_bmp.lod`.
-- E03 epic refined with the E02 findings ("Inputs from E02").
-- **To close E02:** the user runs `cargo xtask verify --with-original-data` on Windows (`original-data/install` already holds the copies in the user's repo); then mark E02 done in BACKLOG and fast-forward `master` to `e02-content-pipeline`. Next epic: E03 (battle core), starting with T1 (modifier-system ADR).
-- Trap: when syncing bundles to the user's repo, use a new bundle file name each time (re-committing to the same device path once left a stale file).
+---
+
+## 2026-09-30/10-01 — E02 sessions (superseded by "E02 closed" above)
+
+T1 catalogue and decisions, T2 `h3-formats`, a user-requested checkpoint with T3 parked on a WIP branch (later folded into the T3 commit), then T3–T5 and the E03 refinement. Details are in the commit messages and the epic file.
+
 ---
 
 ## 2026-09-30 — E01 closed (final commit)

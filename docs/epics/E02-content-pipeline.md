@@ -1,6 +1,6 @@
 # E02 — Content pipeline
 
-Status: in-progress (T1–T5 implemented; closing) · Refined: 2026-09-30 (end of E01) · Re-planned: 2026-09-30 (E02 T1, after user decisions Q8, Q13, Q14)
+Status: **done** (2026-10-01; verified by the user on Windows with `--with-original-data`) · Refined: 2026-09-30 (end of E01) · Re-planned: 2026-09-30 (E02 T1, after user decisions Q8, Q13, Q14)
 
 ## Goal
 
@@ -97,8 +97,8 @@ than creatures/factions/resources unless E03 needs them (heroes, spells, artifac
   Arch Devil, Crystal Dragon (not flying) and Psychic/Magic Elemental (not two-hex); the exe wins.
 - **T5 Conformance + closing**: ✅ `cargo xtask verify --with-original-data [path]` re-harvests and
   requires byte-identical packs; `h3-pack` tests compile the committed packs in every allowed
-  combination (CI-safe). E03 refined with the real data (section "Inputs from E02"). Open for closing: the
-  user's `cargo xtask verify --with-original-data` run on Windows.
+  combination (CI-safe). E03 refined with the real data (section "Inputs from E02"). The user's
+  `cargo xtask verify --with-original-data` run on Windows was green (2026-10-01).
 
 ## Risks
 

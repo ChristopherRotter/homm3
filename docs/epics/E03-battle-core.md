@@ -1,6 +1,6 @@
 # E03 — Battle core (RoE rules)
 
-Status: todo · Refined: 2026-09-30 (end of E01) · Updated: 2026-10-01 (E02 data available)
+Status: next · Refined: 2026-09-30 (end of E01) · Updated: 2026-10-01 (E02 data available)
 
 ## Goal
 
