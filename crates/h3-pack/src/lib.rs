@@ -10,7 +10,7 @@ use std::fmt;
 
 use h3_content::{
     AbilityDef, AreaShot, AuraTarget, BattleParamsDef, CompileError, ContentKey, ContentPack,
-    CreatureDef, CreatureInfoDef, CreatureOverride, CreaturePatch, FactionDef, KeyError,
+    CreatureDef, CreatureInfoDef, CreatureOverride, CreaturePatch, FactionDef, Formation, KeyError,
     ObstacleDef, PackManifest, ProfileDef, ResourceDef, Ruleset, TerrainDef,
 };
 use h3_contracts::{Army, ArmyStack, BattleSetup, BattleSide};
@@ -157,7 +157,8 @@ struct BattleDto {
     luck_dice: u8,
     good_luck_chances: Vec<u8>,
     war_machine_positions: Vec<[u8; 2]>,
-    formation: Vec<Vec<u8>>,
+    loose_formation: Vec<Vec<u8>>,
+    tight_formation: Vec<Vec<u8>>,
 }
 
 #[derive(Deserialize)]
@@ -493,7 +494,8 @@ pub fn parse_pack(text: &str) -> Result<ContentPack, PackError> {
         luck_dice: b.luck_dice,
         good_luck_chances: b.good_luck_chances,
         war_machine_positions: b.war_machine_positions,
-        formation: b.formation,
+        loose_formation: b.loose_formation,
+        tight_formation: b.tight_formation,
     });
     Ok(ContentPack {
         manifest: PackManifest {
@@ -544,6 +546,9 @@ struct ScenarioHeader {
     attacker_war_machines: Vec<String>,
     #[serde(default)]
     defender_war_machines: Vec<String>,
+    /// Sides in tight formation (`"attacker"`, `"defender"`; the others are loose, BAT-SET-001).
+    #[serde(default)]
+    tight_formation: Vec<String>,
 }
 
 #[derive(Deserialize, Clone)]
@@ -569,6 +574,7 @@ pub struct ScenarioDef {
     led_by_hero: [bool; 2],
     terrain: Option<String>,
     war_machines: [Vec<String>; 2],
+    formations: [Formation; 2],
     /// Whether obstacles are generated for the terrain when the battle starts (the caller does
     /// it, with its seed; BAT-GEO-004). Excludes explicit obstacles.
     pub random_obstacles: bool,
@@ -592,6 +598,25 @@ pub fn parse_sides(names: &[String]) -> Result<[bool; 2], PackError> {
         }
     }
     Ok(sides)
+}
+
+/// The formations of a list of side names in tight formation (the other sides are loose).
+///
+/// # Errors
+/// An unknown or repeated side name.
+pub fn formations(tight: &[String]) -> Result<[Formation; 2], PackError> {
+    Ok(parse_sides(tight)?.map(|t| {
+        if t {
+            Formation::Tight
+        } else {
+            Formation::Loose
+        }
+    }))
+}
+
+/// The names of the sides in tight formation (inverse of [`formations`]).
+pub fn tight_sides(formations: [Formation; 2]) -> Vec<String> {
+    side_names(formations.map(|f| f == Formation::Tight))
 }
 
 /// The side names of the flags set in `sides` (inverse of [`parse_sides`]).
@@ -654,6 +679,7 @@ impl ScenarioDef {
                 machines(&self.war_machines[0])?,
                 machines(&self.war_machines[1])?,
             ],
+            formations: self.formations,
         })
     }
 }
@@ -690,6 +716,7 @@ pub fn parse_scenario(text: &str) -> Result<ScenarioDef, PackError> {
             file.scenario.attacker_war_machines,
             file.scenario.defender_war_machines,
         ],
+        formations: formations(&file.scenario.tight_formation)?,
         random_obstacles: file.scenario.random_obstacles,
     })
 }
@@ -848,6 +875,13 @@ mod tests {
             "inverse of parse_sides"
         );
         assert_eq!(side_names([true, false]), ["attacker"]);
+        let tight = parse_scenario(&format!("{header}tight_formation = [\"defender\"]\n")).unwrap();
+        assert_eq!(tight.formations, [Formation::Loose, Formation::Tight]);
+        assert_eq!(tight_sides(tight.formations), ["defender"]);
+        assert_eq!(
+            formations(&["x".to_owned()]),
+            Err(PackError::Syntax("unknown side `x`".to_owned()))
+        );
     }
 
     #[test]
@@ -972,7 +1006,8 @@ mod tests {
         assert_eq!(roe.creature(cerberus).unwrap().damage_max, 5);
         assert_eq!(sod.creature(cerberus).unwrap().damage_max, 7);
         assert_eq!(roe.battle().attack_bonus_cap_percent, 300);
-        assert_eq!(roe.battle().formation_row(7, 3), Some(5));
+        assert_eq!(roe.battle().formation_row(Formation::Loose, 7, 3), Some(5));
+        assert_eq!(roe.battle().formation_row(Formation::Tight, 3, 0), Some(4));
         // Abilities (E03 T2): RoE elementals hate their opposites; AB adds the Conflux ones.
         assert_eq!(roe.abilities(air).len(), 1);
         assert_eq!(ab.abilities(air).len(), 2);

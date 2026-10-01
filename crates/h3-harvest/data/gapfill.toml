@@ -110,6 +110,20 @@ ref = "config/gameConfig.json, layouts.default.attackerUnitsLoose (hex = x + 17*
 url = "https://github.com/vcmi/vcmi/blob/647b55b59b6313838db92fc2857d32e110dfbf12/config/gameConfig.json"
 retrieved = "2026-10-01"
 
+[[source]]
+id = "vcmi-layouts-tight"
+kind = "vcmi"
+ref = "config/gameConfig.json, layouts.default.attackerUnitsTight (hex = x + 17*y, x = 1) @ 1.7.5"
+url = "https://github.com/vcmi/vcmi/blob/1.7.5/config/gameConfig.json"
+retrieved = "2026-10-01"
+
+[[source]]
+id = "wiki-combat"
+kind = "wiki"
+ref = "Combat - Heroes 3 wiki: loose formation spreads the units evenly from top to bottom, tight formation clusters them in the centre of the side"
+url = "https://heroes.thelazy.net/index.php/Combat"
+retrieved = "2026-10-01"
+
 # ---------------------------------------------------------------------------------------------
 # Expansion membership: what Armageddon's Blade added (everything else is RoE = `base`).
 # SoD added no creatures or factions.
@@ -196,8 +210,8 @@ sources = ["wiki-cerberus"]
 
 # ---------------------------------------------------------------------------------------------
 # Battle parameters (Tier 2) of `base`. The values follow the sourced rules in
-# docs/rules/catalog/battle.toml; the formation is the original's loose formation (VCMI layout
-# table converted to rows). Tight formations and tactics come with E03 (BAT-SET-001).
+# docs/rules/catalog/battle.toml; the formations are the original's loose and tight formations
+# (VCMI layout tables converted to rows, BAT-SET-001). Tactics come with E04.
 # ---------------------------------------------------------------------------------------------
 
 [battle]
@@ -221,8 +235,9 @@ bad_morale_chances = [2, 4, 6]
 luck_dice = 24                              # BAT-LCK-002 (wiki Luck: 1/24, 1/12, 1/8;
 good_luck_chances = [1, 2, 3]               #   no bad luck in RoE/AB/SoD)
 war_machine_positions = [[1, 3], [1, 1], [1, 9]]  # BAT-WAR-001 (VCMI layout: hexes 52, 18, 154)
-formation = [[5], [2, 8], [2, 5, 8], [0, 4, 6, 10], [0, 2, 5, 8, 10], [0, 2, 4, 6, 8, 10], [0, 2, 4, 5, 6, 8, 10]]
-formation_sources = ["vcmi-layouts"]
+loose_formation = [[5], [2, 8], [2, 5, 8], [0, 4, 6, 10], [0, 2, 5, 8, 10], [0, 2, 4, 6, 8, 10], [0, 2, 4, 5, 6, 8, 10]]
+tight_formation = [[5], [4, 6], [4, 5, 6], [2, 4, 6, 8], [2, 4, 5, 6, 8], [0, 2, 4, 6, 8, 10], [0, 2, 4, 5, 6, 8, 10]]
+formation_sources = ["vcmi-layouts", "vcmi-layouts-tight", "wiki-combat"]
 
 # ---------------------------------------------------------------------------------------------
 # Creature abilities (E03 T2, ADR-0012): behaviour the original hard-codes per creature, beyond

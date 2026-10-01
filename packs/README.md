@@ -73,9 +73,9 @@ faction = "vale"                 # optional; omitted = neutral
 level = 2                        # >= 1 (default 1)
 attack = 7                       # required battle stats
 defense = 4
-damage = [2, 5]                  # min >= 1, max >= min
+damage = [2, 5]                  # min >= 1 (war machines: or [0, 0]), max >= min
 hit_points = 18                  # >= 1
-speed = 5                        # >= 1
+speed = 5                        # >= 1 (war machines: >= 0)
 shots = 0                        # default 0
 casts = 0                        # spell casts per battle, default 0
 cost = { coin = 120, shard = 1 } # resource -> amount, default {}
@@ -147,7 +147,9 @@ amount, `affects`; `MAX_AURA_VALUES`), which sizes the battle's modifier pool. T
 which rule reads each kind.
 
 **Battle parameters** (`[battle]`, Tier 2; exactly one enabled pack provides them): field
-size, army slots, damage rolls, attack/defense rates and caps, Defend bonus, formation rows (E01),
+size, army slots, damage rolls, attack/defense rates and caps, Defend bonus, the formation rows
+`loose_formation` and `tight_formation` (`*_formation[n - 1]` = starting rows of an army with `n`
+stacks in slot order, distinct rows of the field; the tight table since E03 T9, BAT-SET-001),
 and since E03 `ranged_full_damage_distance`, `ranged_penalty_percent`, `melee_penalty_percent`
 (BAT-RNG-002/003) and the morale and luck roll tables `morale_dice`, `good_morale_chances`,
 `bad_morale_chances`, `luck_dice`, `good_luck_chances` (chances out of the die's sides per level,
@@ -161,7 +163,7 @@ flags are off): the registered flags are in `h3_content::REGISTRY` and the quirk
 (`docs/rules/quirks-ledger.md`); the packs' `faithful` profiles turn Q-0003 on, `strict-fixed`
 off. Profile-level Tier-2 overrides are not implemented yet (backlog).
 
-The compiled ruleset's canonical hash (encoding v7, `RULESET_HASH_VERSION`) covers packs, profile,
+The compiled ruleset's canonical hash (encoding v8, `RULESET_HASH_VERSION`) covers packs, profile,
 quirks, resources, terrains, factions, obstacles, all creature fields including abilities, and the battle parameters;
 replays record it.
 
@@ -182,6 +184,7 @@ random_obstacles = true          # optional: generate obstacles for the terrain 
 led_by_hero = ["attacker"]       # optional: sides led by a hero (Q17, quirk Q-0003)
 attacker_war_machines = ["synthetic:bolt_thrower", "synthetic:aid_tent"]  # optional, per side:
 defender_war_machines = ["synthetic:supply_wagon"]  # war machines by key, one per kind (BAT-WAR-001)
+tight_formation = ["defender"]   # optional: sides in tight formation, the others loose (BAT-SET-001)
 
 [[attacker]]                     # one entry per stack
 slot = 0

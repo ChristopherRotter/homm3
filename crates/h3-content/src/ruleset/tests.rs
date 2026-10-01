@@ -51,7 +51,8 @@ fn battle_def() -> BattleParamsDef {
         luck_dice: 24,
         good_luck_chances: vec![1, 2, 3],
         war_machine_positions: vec![[1, 3], [1, 1], [1, 9]],
-        formation: vec![vec![5], vec![3, 7], vec![2, 5, 8]],
+        loose_formation: vec![vec![5], vec![3, 7], vec![2, 5, 8]],
+        tight_formation: vec![vec![5], vec![4, 6], vec![4, 5, 6]],
     }
 }
 
@@ -175,11 +176,17 @@ fn compiles_packs_in_order_with_dense_handles() {
 fn formation_rows() {
     let r = Ruleset::compile(&[base()], "base:faithful").unwrap();
     let b = r.battle();
-    assert_eq!(b.formation_row(1, 0), Some(5));
-    assert_eq!(b.formation_row(3, 2), Some(8));
-    assert_eq!(b.formation_row(3, 3), None);
-    assert_eq!(b.formation_row(4, 0), None);
-    assert_eq!(b.formation_row(0, 0), None);
+    assert_eq!(b.formation_row(Formation::Loose, 1, 0), Some(5));
+    assert_eq!(b.formation_row(Formation::Loose, 3, 2), Some(8));
+    assert_eq!(b.formation_row(Formation::Tight, 3, 2), Some(6));
+    assert_eq!(b.formation_row(Formation::Tight, 2, 0), Some(4));
+    for f in [Formation::Loose, Formation::Tight] {
+        assert_eq!(b.formation_row(f, 3, 3), None);
+        assert_eq!(b.formation_row(f, 4, 0), None);
+        assert_eq!(b.formation_row(f, 0, 0), None);
+    }
+    assert_eq!(Formation::default(), Formation::Loose);
+    assert_eq!(Formation::Tight.index(), 1);
 }
 
 #[test]
@@ -209,6 +216,10 @@ fn hash_is_stable_and_sensitive() {
     assert_ne!(a.content_hash(), c.content_hash());
     let quirky = Ruleset::compile_with(&[base()], "base:quirky", &TEST_REGISTRY).unwrap();
     assert_ne!(a.content_hash(), quirky.content_hash());
+    let mut tight = base();
+    tight.battle.as_mut().unwrap().tight_formation[1] = vec![3, 7];
+    let tight = Ruleset::compile(&[tight], "base:faithful").unwrap();
+    assert_ne!(a.content_hash(), tight.content_hash());
     // Golden value: pins the canonical encoding (bump RULESET_HASH_VERSION when it changes).
     assert_eq!(
         a.content_hash(),
@@ -218,7 +229,7 @@ fn hash_is_stable_and_sensitive() {
     );
 }
 
-const GOLDEN_BASE_HASH: u64 = 0x6a26_2f14_fb4e_75fd;
+const GOLDEN_BASE_HASH: u64 = 0x8689_5c6b_3859_ca06;
 
 fn expect(packs: &[ContentPack], profile: &str) -> CompileError {
     Ruleset::compile(packs, profile).unwrap_err()
@@ -424,19 +435,23 @@ fn battle_param_errors() {
             "war_machine_positions needs 3 hexes [x, y] on the field",
         ),
         (
-            |b| drop(b.formation.pop()),
-            "formation needs one entry per army size 1..=army_slots",
+            |b| drop(b.loose_formation.pop()),
+            "formations need one entry per army size 1..=army_slots",
         ),
         (
-            |b| b.formation[1] = vec![1],
+            |b| drop(b.tight_formation.pop()),
+            "formations need one entry per army size 1..=army_slots",
+        ),
+        (
+            |b| b.loose_formation[1] = vec![1],
             "formation entry n must list n rows",
         ),
         (
-            |b| b.formation[1] = vec![1, 11],
+            |b| b.tight_formation[1] = vec![1, 11],
             "formation row outside the field",
         ),
         (
-            |b| b.formation[2] = vec![1, 2, 1],
+            |b| b.loose_formation[2] = vec![1, 2, 1],
             "formation rows must be distinct",
         ),
     ];
@@ -455,7 +470,8 @@ fn battle_param_errors() {
     b.field_width = 15;
     b.field_height = 17;
     b.army_slots = 16;
-    b.formation = (1..=16u8).map(|n| (0..n).collect()).collect();
+    b.loose_formation = (1..=16u8).map(|n| (0..n).collect()).collect();
+    b.tight_formation = (1..=16u8).map(|n| (0..n).rev().collect()).collect();
     assert!(Ruleset::compile(&[ok], "base:faithful").is_ok());
 }
 

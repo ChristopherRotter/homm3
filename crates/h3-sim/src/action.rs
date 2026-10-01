@@ -178,6 +178,7 @@ mod tests {
             led_by_hero: [false; 2],
             terrain: None,
             war_machines: [vec![], vec![]],
+            formations: Default::default(),
         };
         let s = BattleState::new(&r, &setup, 1).unwrap();
         let side = s.side_to_act().unwrap();

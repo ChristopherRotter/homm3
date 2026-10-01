@@ -206,7 +206,8 @@ pub struct Battle {
     pub luck_dice: u8,
     pub good_luck_chances: Vec<u8>,
     pub war_machine_positions: Vec<[u8; 2]>,
-    pub formation: Vec<Vec<u8>>,
+    pub loose_formation: Vec<Vec<u8>>,
+    pub tight_formation: Vec<Vec<u8>>,
     pub formation_sources: Vec<String>,
 }
 
@@ -263,7 +264,14 @@ mod tests {
         let g = GapFill::parse(GAPFILL).unwrap();
         assert_eq!(g.ab.factions, ["Conflux"]);
         assert_eq!(g.roe_creature.len(), 4);
-        assert_eq!(g.battle.formation.len(), usize::from(g.battle.army_slots));
+        assert_eq!(
+            g.battle.loose_formation.len(),
+            usize::from(g.battle.army_slots)
+        );
+        assert_eq!(
+            g.battle.tight_formation.len(),
+            usize::from(g.battle.army_slots)
+        );
     }
 
     #[test]
@@ -275,7 +283,7 @@ mod tests {
                 .contains("unknown source `nope`")
         );
         let unused = GAPFILL.replace(
-            "formation_sources = [\"vcmi-layouts\"]",
+            "formation_sources = [\"vcmi-layouts\", \"vcmi-layouts-tight\", \"wiki-combat\"]",
             "formation_sources = [\"wiki-angel\"]",
         );
         assert!(GapFill::parse(&unused).unwrap_err().contains("not used"));

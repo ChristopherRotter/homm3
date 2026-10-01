@@ -24,6 +24,7 @@
 //! led_by_hero = ["attacker"]      # sides led by a hero (omitted when none)
 //! terrain = "base:grass"          # the battlefield's terrain (omitted when none)
 //! attacker_war_machines = ["base:ballista"]  # war machines per side (omitted when none)
+//! tight_formation = ["defender"]  # sides in tight formation (omitted when none)
 //!
 //! [[attacker]]                    # the setup, by creature key
 //! slot = 0
@@ -159,6 +160,8 @@ struct SetupEntry {
     attacker_war_machines: Vec<String>,
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     defender_war_machines: Vec<String>,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    tight_formation: Vec<String>,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -319,6 +322,7 @@ pub fn replay_to_toml(
                 .map(|t| t.key.as_str().to_owned()),
             attacker_war_machines: keys(&replay.setup.war_machines[0]),
             defender_war_machines: keys(&replay.setup.war_machines[1]),
+            tight_formation: h3_pack::tight_sides(replay.setup.formations),
         },
         attacker: stacks(&replay.setup.attacker),
         defender: stacks(&replay.setup.defender),
@@ -437,6 +441,8 @@ impl ReplayDoc {
                     machines(&f.setup.attacker_war_machines)?,
                     machines(&f.setup.defender_war_machines)?,
                 ],
+                formations: h3_pack::formations(&f.setup.tight_formation)
+                    .map_err(|e| CliError::Format(e.to_string()))?,
             },
             commands: f
                 .commands

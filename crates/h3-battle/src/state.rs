@@ -549,7 +549,9 @@ impl BattleState {
             };
             for (i, (s, creature)) in by_slot.iter().flatten().enumerate() {
                 // The compiler guarantees a formation row for every army size and index.
-                let row = params.formation_row(n, i).unwrap_or(0);
+                let row = params
+                    .formation_row(setup.formations[side.index()], n, i)
+                    .unwrap_or(0);
                 // rule: BAT-SET-001
                 let desired = field.hex(column, i32::from(row)).unwrap_or_default();
                 let two_hex = creature.flags.contains(CreatureFlag::TwoHex);

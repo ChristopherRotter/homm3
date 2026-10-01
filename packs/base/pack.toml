@@ -3213,8 +3213,8 @@ terrains = ["rough"]
 absolute = true
 blocked = [[5, 4], [6, 4], [7, 4], [8, 4], [9, 4], [10, 4], [11, 4], [5, 5], [6, 5], [7, 5], [8, 5], [9, 5], [10, 5], [11, 5], [12, 5], [4, 6], [5, 6], [6, 6], [7, 6], [8, 6], [9, 6], [10, 6]]
 
-# Battle parameters (Tier 2): rule ids in docs/rules/catalog/battle.toml; formation = the
-# original's loose formation (sources in the gap-fill file).
+# Battle parameters (Tier 2): rule ids in docs/rules/catalog/battle.toml; the formations
+# are the original's loose and tight formations (sources in the gap-fill file).
 [battle]
 field_width = 17
 field_height = 11
@@ -3236,7 +3236,8 @@ bad_morale_chances = [2, 4, 6]
 luck_dice = 24
 good_luck_chances = [1, 2, 3]
 war_machine_positions = [[1, 3], [1, 1], [1, 9]]
-formation = [[5], [2, 8], [2, 5, 8], [0, 4, 6, 10], [0, 2, 5, 8, 10], [0, 2, 4, 6, 8, 10], [0, 2, 4, 5, 6, 8, 10]]
+loose_formation = [[5], [2, 8], [2, 5, 8], [0, 4, 6, 10], [0, 2, 5, 8, 10], [0, 2, 4, 6, 8, 10], [0, 2, 4, 5, 6, 8, 10]]
+tight_formation = [[5], [4, 6], [4, 5, 6], [2, 4, 6, 8], [2, 4, 5, 6, 8], [0, 2, 4, 6, 8, 10], [0, 2, 4, 5, 6, 8, 10]]
 
 [[profile]]
 id = "faithful"        # default: preserve/fix-optional quirks on

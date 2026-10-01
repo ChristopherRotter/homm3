@@ -7,7 +7,7 @@
 
 use std::vec::Vec;
 
-use h3_content::Ruleset;
+use h3_content::{Formation, Ruleset};
 use h3_contracts::{Army, ArmyStack, BattleSetup, BattleSide};
 use h3_kernel::Rng;
 use proptest::collection::{btree_map, vec};
@@ -101,7 +101,8 @@ fn arb_game() -> impl Strategy<Value = Game> {
 }
 
 /// A setup from generated armies and obstacles; bits 0–5 of `machines` choose the attacker's
-/// and the defender's war machines (ballista, ammo cart, first aid tent).
+/// and the defender's war machines (ballista, ammo cart, first aid tent), bits 6–7 whether the
+/// attacker and the defender stand in tight formation.
 fn make_setup(
     r: &Ruleset,
     attacker: &[(u8, u8, u32)],
@@ -137,6 +138,13 @@ fn make_setup(
         led_by_hero: [true, false],
         terrain: None,
         war_machines,
+        formations: [6, 7].map(|bit| {
+            if machines & (1 << bit) == 0 {
+                Formation::Loose
+            } else {
+                Formation::Tight
+            }
+        }),
     }
 }
 

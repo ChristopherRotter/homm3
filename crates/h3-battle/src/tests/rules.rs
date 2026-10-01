@@ -3,6 +3,7 @@
 use std::vec;
 use std::vec::Vec;
 
+use h3_content::Formation;
 use h3_contracts::{ArmyStack, BattleResult, BattleSide};
 use h3_kernel::Rng;
 
@@ -17,7 +18,8 @@ fn modified_damage(base: u64, attack: u16, defense: u16, p: &h3_content::BattleP
     f.apply(base)
 }
 use crate::{
-    Command, CommandError, Event, EventKind, LegalCommands, StackFlags, StackId, legal_commands,
+    BattleState, Command, CommandError, Event, EventKind, Hex, LegalCommands, StackFlags, StackId,
+    legal_commands,
 };
 
 // ---------------------------------------------------------------- BAT-SET-001 placement
@@ -49,6 +51,48 @@ fn armies_start_on_their_edge_columns_in_formation_rows() {
         (20, 100, 100, 1)
     );
     assert_eq!(s.round(), 1);
+}
+
+// covers: BAT-SET-001
+#[test]
+fn each_side_uses_its_own_formation() {
+    let r = ruleset();
+    let mut setup = setup(
+        &r,
+        &[
+            (0, "fixed", 1),
+            (1, "slow", 1),
+            (2, "fast", 1),
+            (3, "wide", 1),
+        ],
+        &[(0, "fixed", 1), (1, "slow", 1), (2, "fast", 1)],
+    );
+    setup.formations = [Formation::Tight, Formation::Loose];
+    let s = BattleState::new(&r, &setup, 1).unwrap();
+    let hexes: Vec<Hex> = s.stacks().iter().map(|st| st.hex).collect();
+    // Tight, four stacks: rows [2, 4, 6, 8]; the two-hex stack's head stands one column in.
+    // Loose, three stacks: rows [2, 5, 8].
+    assert_eq!(
+        hexes,
+        vec![
+            at(&r, 1, 2),
+            at(&r, 1, 4),
+            at(&r, 1, 6),
+            at(&r, 2, 8),
+            at(&r, 15, 2),
+            at(&r, 15, 5),
+            at(&r, 15, 8),
+        ]
+    );
+    setup.formations = [Formation::Loose, Formation::Tight];
+    let s = BattleState::new(&r, &setup, 1).unwrap();
+    let rows: Vec<i32> = s
+        .stacks()
+        .iter()
+        .map(|st| field(&r).coords(st.hex).1)
+        .collect();
+    // Loose, four stacks: rows [1, 4, 6, 9]; tight, three stacks: rows [4, 5, 6].
+    assert_eq!(rows, vec![1, 4, 6, 9, 4, 5, 6]);
 }
 
 // ---------------------------------------------------------------- BAT-TRN-001 turn order
@@ -324,13 +368,7 @@ fn side_columns_and_own_hex_are_not_move_targets() {
         Err(CommandError::InvalidHex)
     );
     assert_eq!(
-        act(
-            &mut s.clone(),
-            &r,
-            Command::Move {
-                to: crate::Hex(250)
-            }
-        ),
+        act(&mut s.clone(), &r, Command::Move { to: Hex(250) }),
         Err(CommandError::InvalidHex)
     );
     assert_eq!(
@@ -404,7 +442,7 @@ fn attack_position_must_be_adjacent_reachable_and_free() {
         Err(CommandError::Unreachable)
     );
     assert_eq!(
-        act(&mut s.clone(), &r, attack(crate::Hex(255))),
+        act(&mut s.clone(), &r, attack(Hex(255))),
         Err(CommandError::InvalidHex)
     );
     place(&mut s, &r, 2, 12, 5);

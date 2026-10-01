@@ -22,7 +22,7 @@ pub const MAX_ARMY_SLOTS: usize = 16;
 pub const MAX_FIELD_HEXES: usize = 255;
 
 /// Version of the ruleset hash encoding. Bump when the encoding below changes.
-pub const RULESET_HASH_VERSION: u32 = 7;
+pub const RULESET_HASH_VERSION: u32 = 8;
 
 /// A compiled creature type.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -132,20 +132,46 @@ pub struct BattleParams {
     /// Head hexes `(x, y)` of the attacker's war machines by kind (shooting machine, ammo
     /// supply, first aid); the defender's are mirrored (BAT-WAR-001).
     pub war_machine_positions: [(u8, u8); WAR_MACHINE_KINDS],
-    formation: [[u8; MAX_ARMY_SLOTS]; MAX_ARMY_SLOTS],
+    /// Starting rows by formation ([`Formation::index`]), army size and stack index.
+    formations: [[[u8; MAX_ARMY_SLOTS]; MAX_ARMY_SLOTS]; Formation::COUNT],
+}
+
+/// How an army is arranged at the start of a battle (BAT-SET-001): chosen per army in the
+/// original (hero or garrison setting) and passed in the battle setup.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Default)]
+pub enum Formation {
+    /// Stacks spread from top to bottom.
+    #[default]
+    Loose,
+    /// Stacks clustered around the middle rows.
+    Tight,
+}
+
+impl Formation {
+    /// Number of formations.
+    pub const COUNT: usize = 2;
+
+    /// 0 for loose, 1 for tight.
+    pub const fn index(self) -> usize {
+        match self {
+            Self::Loose => 0,
+            Self::Tight => 1,
+        }
+    }
 }
 
 /// Kinds of war machines a battle places (shooting machine, ammo supply, first aid; BAT-WAR-001).
 pub const WAR_MACHINE_KINDS: usize = 3;
 
 impl BattleParams {
-    /// Starting row of the `index`-th stack (in slot order) of an army with `stacks` stacks.
-    pub fn formation_row(&self, stacks: usize, index: usize) -> Option<u8> {
+    /// Starting row of the `index`-th stack (in slot order) of an army with `stacks` stacks in
+    /// `formation`.
+    pub fn formation_row(&self, formation: Formation, stacks: usize, index: usize) -> Option<u8> {
         if index >= stacks || stacks > usize::from(self.army_slots) {
             return None;
         }
         // `1 <= stacks <= army_slots <= MAX_ARMY_SLOTS` here, so the lookups cannot fail.
-        self.formation
+        self.formations[formation.index()]
             .get(stacks - 1)
             .and_then(|rows| rows.get(index))
             .copied()
@@ -930,23 +956,12 @@ fn compile_battle(def: &BattleParamsDef) -> Result<BattleParams, CompileError> {
     {
         *slot = (x, y);
     }
-    if def.formation.len() != slots {
-        return invalid("formation needs one entry per army size 1..=army_slots");
-    }
-    let mut formation = [[0u8; MAX_ARMY_SLOTS]; MAX_ARMY_SLOTS];
-    for (n, (rows, out)) in def.formation.iter().zip(formation.iter_mut()).enumerate() {
-        if rows.len() != n + 1 {
-            return invalid("formation entry n must list n rows");
-        }
-        for (i, (&row, slot)) in rows.iter().zip(out.iter_mut()).enumerate() {
-            if usize::from(row) >= h {
-                return invalid("formation row outside the field");
-            }
-            if rows.get(..i).is_some_and(|earlier| earlier.contains(&row)) {
-                return invalid("formation rows must be distinct");
-            }
-            *slot = row;
-        }
+    let mut formations = [[[0u8; MAX_ARMY_SLOTS]; MAX_ARMY_SLOTS]; Formation::COUNT];
+    for (table, out) in [&def.loose_formation, &def.tight_formation]
+        .into_iter()
+        .zip(formations.iter_mut())
+    {
+        compile_formation(table, slots, h, out)?;
     }
     Ok(BattleParams {
         field: FieldParams {
@@ -971,8 +986,37 @@ fn compile_battle(def: &BattleParamsDef) -> Result<BattleParams, CompileError> {
         luck_dice: def.luck_dice,
         good_luck,
         war_machine_positions,
-        formation,
+        formations,
     })
+}
+
+/// Validates a formation table (one entry per army size `1..=slots`, entry `n` with `n`
+/// distinct rows of a field with `height` rows) into `out`.
+fn compile_formation(
+    table: &[Vec<u8>],
+    slots: usize,
+    height: usize,
+    out: &mut [[u8; MAX_ARMY_SLOTS]; MAX_ARMY_SLOTS],
+) -> Result<(), CompileError> {
+    let invalid = |m| Err(CompileError::InvalidBattleParams(m));
+    if table.len() != slots {
+        return invalid("formations need one entry per army size 1..=army_slots");
+    }
+    for (n, (rows, out)) in table.iter().zip(out.iter_mut()).enumerate() {
+        if rows.len() != n + 1 {
+            return invalid("formation entry n must list n rows");
+        }
+        for (i, (&row, slot)) in rows.iter().zip(out.iter_mut()).enumerate() {
+            if usize::from(row) >= height {
+                return invalid("formation row outside the field");
+            }
+            if rows.get(..i).is_some_and(|earlier| earlier.contains(&row)) {
+                return invalid("formation rows must be distinct");
+            }
+            *slot = row;
+        }
+    }
+    Ok(())
 }
 
 impl CanonicalHash for Ruleset {
@@ -984,7 +1028,7 @@ impl CanonicalHash for Ruleset {
     /// the cost as length + pairs — then the abilities as length + each ability's encoding),
     /// battle parameters in field order (v4: with the ranged/melee penalty parameters; v5: with
     /// the morale and luck dice and tables, each table as length + all 8 entries; v7: the war
-    /// machine positions) with the full formation table.
+    /// machine positions) with the full formation tables (v8: loose, then tight).
     fn hash_into(&self, h: &mut StateHasher) {
         h.write_u32(RULESET_HASH_VERSION);
         h.write_len(self.packs.len());
@@ -1092,7 +1136,7 @@ impl CanonicalHash for Ruleset {
             h.write_u8(x);
             h.write_u8(y);
         }
-        for row in &b.formation {
+        for row in b.formations.iter().flatten() {
             h.write_bytes(row);
         }
     }

@@ -928,8 +928,8 @@ fn write_battle(out: &mut String, gap: &GapFill) {
     let b = &gap.battle;
     let _ = write!(
         out,
-        "\n# Battle parameters (Tier 2): rule ids in docs/rules/catalog/battle.toml; formation = the\n\
-         # original's loose formation (sources in the gap-fill file).\n[battle]\n"
+        "\n# Battle parameters (Tier 2): rule ids in docs/rules/catalog/battle.toml; the formations\n\
+         # are the original's loose and tight formations (sources in the gap-fill file).\n[battle]\n"
     );
     let _ = writeln!(out, "field_width = {}", b.field_width);
     let _ = writeln!(out, "field_height = {}", b.field_height);
@@ -985,17 +985,15 @@ fn write_battle(out: &mut String, gap: &GapFill) {
         .map(|[x, y]| format!("[{x}, {y}]"))
         .collect();
     let _ = writeln!(out, "war_machine_positions = [{}]", positions.join(", "));
-    let rows: Vec<String> = b
-        .formation
-        .iter()
-        .map(|r| {
-            format!(
-                "[{}]",
-                r.iter().map(u8::to_string).collect::<Vec<_>>().join(", ")
-            )
-        })
-        .collect();
-    let _ = writeln!(out, "formation = [{}]", rows.join(", "));
+    let rows = |table: &[Vec<u8>]| -> String {
+        table
+            .iter()
+            .map(|r| format!("[{}]", list(r)))
+            .collect::<Vec<_>>()
+            .join(", ")
+    };
+    let _ = writeln!(out, "loose_formation = [{}]", rows(&b.loose_formation));
+    let _ = writeln!(out, "tight_formation = [{}]", rows(&b.tight_formation));
 }
 
 #[cfg(test)]

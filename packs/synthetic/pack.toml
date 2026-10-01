@@ -29,8 +29,8 @@ bad_morale_chances = [2, 4, 6]              # BAT-MOR-004: morale -1..-3
 luck_dice = 24                              # BAT-LCK-002
 good_luck_chances = [1, 2, 3]               # BAT-LCK-002: luck +1..+3 (no bad luck before HotA)
 war_machine_positions = [[1, 3], [1, 1], [1, 9]]   # BAT-WAR-001: shooting, ammo, first aid
-# BAT-SET-001: formation[n-1] = starting rows of an army with n stacks, in slot order.
-formation = [
+# BAT-SET-001: *_formation[n-1] = starting rows of an army with n stacks, in slot order.
+loose_formation = [
     [5],
     [3, 7],
     [2, 5, 8],
@@ -38,6 +38,15 @@ formation = [
     [0, 2, 5, 8, 10],
     [0, 2, 4, 6, 8, 10],
     [0, 2, 4, 5, 6, 8, 10],
+]
+tight_formation = [
+    [5],
+    [4, 6],
+    [4, 5, 6],
+    [3, 4, 6, 7],
+    [3, 4, 5, 6, 7],
+    [2, 3, 4, 6, 7, 8],
+    [2, 3, 4, 5, 6, 7, 8],
 ]
 
 # Content of pack format v2 (E02): resource kinds, factions and the non-battle creature fields.

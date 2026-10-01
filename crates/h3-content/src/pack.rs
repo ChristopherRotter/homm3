@@ -246,9 +246,11 @@ pub struct BattleParamsDef {
     /// Head hexes `[x, y]` of the attacker's war machines by kind (shooting machine, ammo
     /// supply, first aid); the defender's are mirrored (BAT-WAR-001).
     pub war_machine_positions: Vec<[u8; 2]>,
-    /// Starting rows: `formation[n - 1][i]` is the row of the i-th stack (by slot order) of an
-    /// army with `n` stacks (BAT-SET-001).
-    pub formation: Vec<Vec<u8>>,
+    /// Starting rows of the loose formation: `loose_formation[n - 1][i]` is the row of the i-th
+    /// stack (by slot order) of an army with `n` stacks (BAT-SET-001).
+    pub loose_formation: Vec<Vec<u8>>,
+    /// Starting rows of the tight formation, laid out like `loose_formation` (BAT-SET-001).
+    pub tight_formation: Vec<Vec<u8>>,
 }
 
 /// A profile: a named selection of quirk flags (ADR-0007).

@@ -146,7 +146,8 @@ bad_morale_chances = [2, 4, 6]
 luck_dice = 24
 good_luck_chances = [1, 2, 3]
 war_machine_positions = [[1, 3], [1, 1], [1, 9]]
-formation = [[5], [2, 8]]
+loose_formation = [[5], [2, 8]]
+tight_formation = [[5], [4, 6]]
 formation_sources = ["s"]
 
 [[creature_abilities]]

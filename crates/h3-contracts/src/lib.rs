@@ -22,7 +22,7 @@ extern crate alloc;
 
 use alloc::vec::Vec;
 
-use h3_content::{CreatureTypeId, TerrainId};
+use h3_content::{CreatureTypeId, Formation, TerrainId};
 
 /// The two sides of a battle.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
@@ -92,6 +92,9 @@ pub struct BattleSetup {
     /// War machines per side (indexed by [`BattleSide::index`]): creature types with flag
     /// `war_machine`, at most one of each kind (E03, BAT-WAR-001; heroes bring them in E04).
     pub war_machines: [Vec<CreatureTypeId>; 2],
+    /// Each side's formation (indexed by [`BattleSide::index`]), which decides the starting
+    /// rows of its army (BAT-SET-001; E03, Q25). Default: loose.
+    pub formations: [Formation; 2],
 }
 
 impl BattleSetup {
@@ -176,6 +179,7 @@ mod tests {
             led_by_hero: [true, false],
             terrain: None,
             war_machines: [vec![], vec![]],
+            formations: [Formation::Tight, Formation::Loose],
         };
         assert_eq!(setup.army(BattleSide::Attacker).stacks, [stack]);
         assert!(setup.army(BattleSide::Defender).stacks.is_empty());

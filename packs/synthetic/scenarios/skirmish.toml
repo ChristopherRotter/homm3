@@ -6,6 +6,7 @@ packs = ["synthetic"]
 profile = "synthetic:faithful"
 # Blocked hexes (BAT-GEO-003), row-major: (7,3) (7,4) (8,5) (9,6) (9,7).
 obstacles = [58, 75, 93, 111, 128]
+tight_formation = ["defender"]   # BAT-SET-001: the defender stands in tight formation
 
 [[attacker]]
 slot = 0

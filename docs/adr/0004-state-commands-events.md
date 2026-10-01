@@ -111,6 +111,9 @@ How the model turned out in the battle context:
   event `BattleEnded { result }`, the sim's step results and replays carry the result. State
   hash encoding v8. Before this change a simultaneous wipe-out left the battle without a winner
   and without a stack able to end it (an endless loop of war-machine turns).
+- **Seam type change (`BattleSetup`, user decision Q25):** `formations: [Formation; 2]`
+  (`h3_content::Formation`, loose by default) selects each army's starting rows (BAT-SET-001).
+  It only affects placement, so it is not part of the state; replays record it with the setup.
 
 ## Revision history
 
@@ -120,4 +123,4 @@ How the model turned out in the battle context:
 - 2026-10-01: Amended by E03 T4–T5 (shooting, strike flags, ability events, attack structure).
 - 2026-10-01: Amended by E03 T6 (hero flags, morale in the turn structure, morale/luck state) and T7 (terrain, obstacle generation before the seam).
 - 2026-10-01: Amended by E03 T8 (war machines in the setup, the outcome and the turn structure).
-- 2026-10-01: Amended by E03 T9 (battle result with draws).
+- 2026-10-01: Amended by E03 T9 (battle result with draws, formations in the setup).

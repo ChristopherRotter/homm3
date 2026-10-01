@@ -106,13 +106,27 @@ id       = "BAT-SET-001"
 title    = "Initial placement of armies"
 context  = "battle"
 status   = "implemented"
-summary  = "Stacks of each army are taken in slot order; the desired hex of the i-th stack of an army with n stacks is row formation[n-1][i] (ruleset data) in the first standable column (attacker) or the last (defender). Each stack, in id order, takes the head hex closest to its desired hex where its whole footprint (BAT-GEO-002) is standable and not blocked by obstacles or stacks placed before it; ties go to the column nearer the centre, then the row nearer the desired one, then the lower hex index. So a two-hex stack's tail stands in the edge column and its head one column further in. No such hex: setup error. Stack ids: attacker stacks first, then defender stacks, each in slot order. Scope: tight formation and tactics are later tasks (E03 T9, E04)."
+summary  = "Each side arranges its army in its formation from the setup (BattleSetup.formations: loose by default, or tight; Q25). Stacks of each army are taken in slot order; the desired hex of the i-th stack of an army with n stacks is row F[n-1][i] of the formation's table (ruleset data: loose_formation spreads the stacks from top to bottom, e.g. rows 2, 5, 8 for three stacks; tight_formation clusters them around the middle row, e.g. 4, 5, 6; the tables coincide for six and seven stacks) in the first standable column (attacker) or the last (defender). Each stack, in id order, takes the head hex closest to its desired hex where its whole footprint (BAT-GEO-002) is standable and not blocked by obstacles or stacks placed before it; ties go to the column nearer the centre, then the row nearer the desired one, then the lower hex index. So a two-hex stack's tail stands in the edge column and its head one column further in. No such hex: setup error. Stack ids: attacker stacks first, then defender stacks, each in slot order. Scope: the tactics phase (rearranging before the battle) is E04; creature-bank layouts come with creature banks."
 numeric  = "integer"
 
   [[rule.source]]
   kind       = "vcmi"
   ref        = "lib/battle/BattleInfo.cpp setupBattle (layout positions per army size), lib/battle/CBattleInfoCallback.cpp getAvailableHex, lib/battle/BattleHex.cpp getClosestTile (closest accessible hex, column nearer the centre, then nearer row)"
   url        = "https://github.com/vcmi/vcmi/blob/1.7.5/lib/battle/CBattleInfoCallback.cpp"
+  retrieved  = "2026-10-01"
+  confidence = "medium"
+
+  [[rule.source]]
+  kind       = "vcmi"
+  ref        = "config/gameConfig.json combat.layouts.default attackerUnitsLoose/attackerUnitsTight (and defender*): the army's formation (CArmedInstance::formation) selects the table, lib/battle/BattleLayout.cpp createLayout"
+  url        = "https://github.com/vcmi/vcmi/blob/1.7.5/config/gameConfig.json"
+  retrieved  = "2026-10-01"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "wiki"
+  ref        = "Combat - Heroes 3 wiki: loose formation spreads the units evenly from top to bottom; tight formation clusters them in the centre of the player's side"
+  url        = "https://heroes.thelazy.net/index.php/Combat"
   retrieved  = "2026-10-01"
   confidence = "medium"
   note       = "The harvested base pack carries VCMI's loose layout (E02 gap-fill). The final hex-index tie-break is ours (VCMI keeps the first hex of its ordered set, i.e. also the lowest index)."

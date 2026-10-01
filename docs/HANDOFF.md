@@ -4,6 +4,18 @@ Living state. The last agent updates this at the end of every session; the next 
 
 ---
 
+## 2026-10-01 — E03 T9 in progress (closing session)
+
+**In progress (resumable):** T8 docs done (`f09e0f7`); draw on simultaneous wipe-out done
+(`c16a377`, Q24: `BattleResult` enum, BAT-END-002, C ABI v2); tight formation in this commit (Q25:
+`BattleSetup.formations`, battle params `loose_formation`/`tight_formation`, scenario/replay field
+`tight_formation`, ruleset hash v8, packs regenerated). **Next:** observation features for
+morale/luck/war machines (observation encoding v3) with synthetic war machines in the `full`
+scenario; golden replays + bench re-baseline; review pass; close the epic; status doc; report.
+Sandbox: original data staged and symlinked into `original-data/install` (see the E02 notes).
+
+---
+
 ## 2026-10-01 — E03 in progress (battle core)
 
 **State:** branch `e03-battle-core` from `master` (`7c02e2a`). Scope decisions at the start (user, OPEN-QUESTIONS Q16): war machines without heroes and terrain bonus + obstacle generation are **in**; spell-like abilities, spell immunities and tactics are **E04**; sources VCMI 1.7.5 + wiki (fetches approved); no original-game experiments (open questions instead); ADR-0012 reviewed with the E03 report. Task list and status: `docs/epics/E03-battle-core.md`.

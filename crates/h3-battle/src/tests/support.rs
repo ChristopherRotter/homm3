@@ -7,7 +7,7 @@ use std::vec::Vec;
 
 use h3_content::{
     AbilityDef, AuraTarget, BattleParamsDef, ContentKey, ContentPack, CreatureDef, CreatureInfoDef,
-    FactionDef, ObstacleDef, PackManifest, ProfileDef, Ruleset, TerrainDef,
+    FactionDef, Formation, ObstacleDef, PackManifest, ProfileDef, Ruleset, TerrainDef,
 };
 use h3_contracts::{Army, ArmyStack, BattleSetup, BattleSide};
 
@@ -452,12 +452,22 @@ pub fn battle_params() -> BattleParamsDef {
         luck_dice: 24,
         good_luck_chances: vec![0, 0, 0],
         war_machine_positions: vec![[1, 3], [1, 1], [1, 9]],
-        formation: vec![
+        loose_formation: vec![
             vec![5],
             vec![3, 7],
             vec![2, 5, 8],
             vec![1, 4, 6, 9],
             vec![0, 2, 5, 8, 10],
+            vec![0, 2, 4, 6, 8, 10],
+            vec![0, 2, 4, 5, 6, 8, 10],
+        ],
+        // The original's tight formation (VCMI layout).
+        tight_formation: vec![
+            vec![5],
+            vec![4, 6],
+            vec![4, 5, 6],
+            vec![2, 4, 6, 8],
+            vec![2, 4, 5, 6, 8],
             vec![0, 2, 4, 6, 8, 10],
             vec![0, 2, 4, 5, 6, 8, 10],
         ],
@@ -588,6 +598,7 @@ pub fn setup(rules: &Ruleset, attacker: &[Spec], defender: &[Spec]) -> BattleSet
         led_by_hero: [false; 2],
         terrain: None,
         war_machines: [vec![], vec![]],
+        formations: [Formation::Loose; 2],
     }
 }
 
