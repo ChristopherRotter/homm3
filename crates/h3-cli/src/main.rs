@@ -95,9 +95,10 @@ fn run(args: &Args) -> Result<(), String> {
         checkpoint_every: args.num("checkpoint-every", 25)?,
     };
     let (replay, text) = run_random(&scenario, &packs_dir, &options).map_err(|e| e.to_string())?;
-    let winner = replay.winner.map_or("none (step limit)".to_owned(), |w| {
-        format!("{w:?}").to_lowercase()
-    });
+    let winner = match replay.result {
+        None => "none (step limit)",
+        Some(r) => h3_cli::result_text(Some(r)),
+    };
     println!("commands: {}", replay.commands.len());
     println!("winner:   {winner}");
     println!("hash:     {:#018x}", replay.final_hash);

@@ -34,7 +34,7 @@
 //! checkpoints = ["0x…"]           # state hash after every `checkpoint_every` commands
 //!
 //! [result]
-//! winner = "attacker"             # attacker | defender | none
+//! winner = "attacker"             # attacker | defender | draw | none (undecided)
 //! final_hash = "0x…"
 //! ```
 
@@ -43,7 +43,7 @@ use std::path::{Path, PathBuf};
 
 use h3_battle::{Command, Hex, StackId};
 use h3_content::{CreatureTypeId, Ruleset};
-use h3_contracts::{Army, ArmyStack, BattleSetup, BattleSide};
+use h3_contracts::{Army, ArmyStack, BattleResult, BattleSetup, BattleSide};
 use h3_kernel::{Rng, StreamId};
 use h3_pack::{PackError, ScenarioDef};
 use h3_sim::{Replay, ReplayError, ReplayHeader};
@@ -238,18 +238,21 @@ pub fn parse_command(text: &str) -> Result<(BattleSide, Command), CliError> {
     Ok((side, command))
 }
 
-fn winner_text(w: Option<BattleSide>) -> &'static str {
-    match w {
-        Some(BattleSide::Attacker) => "attacker",
-        Some(BattleSide::Defender) => "defender",
+/// The `winner` text of a result: the winning side, `draw` or `none` (undecided).
+pub fn result_text(r: Option<BattleResult>) -> &'static str {
+    match r {
+        Some(BattleResult::Victory(BattleSide::Attacker)) => "attacker",
+        Some(BattleResult::Victory(BattleSide::Defender)) => "defender",
+        Some(BattleResult::Draw) => "draw",
         None => "none",
     }
 }
 
-fn parse_winner(s: &str) -> Result<Option<BattleSide>, CliError> {
+fn parse_result(s: &str) -> Result<Option<BattleResult>, CliError> {
     match s {
-        "attacker" => Ok(Some(BattleSide::Attacker)),
-        "defender" => Ok(Some(BattleSide::Defender)),
+        "attacker" => Ok(Some(BattleResult::Victory(BattleSide::Attacker))),
+        "defender" => Ok(Some(BattleResult::Victory(BattleSide::Defender))),
+        "draw" => Ok(Some(BattleResult::Draw)),
         "none" => Ok(None),
         other => Err(CliError::Format(format!("bad winner `{other}`"))),
     }
@@ -326,7 +329,7 @@ pub fn replay_to_toml(
             .collect(),
         checkpoints: replay.checkpoints.iter().map(|h| hex64(*h)).collect(),
         result: ResultEntry {
-            winner: winner_text(replay.winner).to_owned(),
+            winner: result_text(replay.result).to_owned(),
             final_hash: hex64(replay.final_hash),
         },
     };
@@ -447,7 +450,7 @@ impl ReplayDoc {
                 .map(|h| parse_hex64(h))
                 .collect::<Result<_, _>>()?,
             final_hash: parse_hex64(&f.result.final_hash)?,
-            winner: parse_winner(&f.result.winner)?,
+            result: parse_result(&f.result.winner)?,
         })
     }
 }
@@ -583,8 +586,16 @@ mod tests {
         assert!(parse_hex64("12").is_err());
         assert!(parse_hex64("0xzz").is_err());
         assert_eq!(parse_hex64("0x10").unwrap(), 16);
-        assert!(parse_winner("draw").is_err());
-        assert_eq!(parse_winner("none").unwrap(), None);
+        assert!(parse_result("nobody").is_err());
+        assert_eq!(parse_result("none").unwrap(), None);
+        for r in [
+            None,
+            Some(BattleResult::Draw),
+            Some(BattleResult::Victory(BattleSide::Attacker)),
+            Some(BattleResult::Victory(BattleSide::Defender)),
+        ] {
+            assert_eq!(parse_result(result_text(r)).unwrap(), r);
+        }
         let missing =
             load_ruleset(Path::new("/nonexistent"), &["x".to_owned()], "x:y").unwrap_err();
         assert!(missing.to_string().contains("pack.toml"));

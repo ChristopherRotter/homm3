@@ -14,7 +14,7 @@
     } while (0)
 
 int main(void) {
-    CHECK(h3_abi_version() == 1);
+    CHECK(h3_abi_version() == 2);
     uint32_t n_actions = h3_action_count();
     uint32_t n_obs = h3_observation_len();
     uint8_t *mask = malloc(n_actions);
@@ -46,6 +46,9 @@ int main(void) {
         steps++;
     }
     CHECK(result.done == 1);
+    CHECK(result.result == H3_RESULT_NONE ? result.truncated == 1
+                                          : result.result >= H3_RESULT_ATTACKER &&
+                                                result.result <= H3_RESULT_DRAW);
     CHECK(h3_env_step(env, 0, 1, &result) == H3_ERR_EPISODE_OVER);
     CHECK(h3_env_step(NULL, 0, 1, &result) == H3_ERR_NULL);
 
@@ -57,7 +60,7 @@ int main(void) {
     h3_env_destroy(env);
     free(mask);
     free(obs);
-    printf("ffi smoke ok: %d steps, winner %d, final hash %016llx\n", steps, (int)result.winner,
+    printf("ffi smoke ok: %d steps, result %d, final hash %016llx\n", steps, (int)result.result,
            (unsigned long long)hash);
     return 0;
 }

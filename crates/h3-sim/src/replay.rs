@@ -11,7 +11,7 @@ use h3_battle::{
     SetupError, apply,
 };
 use h3_content::Ruleset;
-use h3_contracts::{BattleSetup, BattleSide};
+use h3_contracts::{BattleResult, BattleSetup, BattleSide};
 use h3_kernel::hash::{HASH_ALGORITHM, HASH_VERSION};
 use h3_kernel::rng::{RNG_ALGORITHM, RNG_VERSION};
 use h3_kernel::{Rng, StreamId};
@@ -107,8 +107,8 @@ pub struct Replay {
     pub checkpoints: Vec<u64>,
     /// State hash after the last command.
     pub final_hash: u64,
-    /// Winner at the end, if decided.
-    pub winner: Option<BattleSide>,
+    /// How the battle ended, if it did (a victory or a draw).
+    pub result: Option<BattleResult>,
 }
 
 /// Why a replay does not verify.
@@ -136,8 +136,8 @@ pub enum ReplayError {
     },
     /// The number of checkpoints does not match the command count.
     CheckpointCount,
-    /// The winner differs.
-    WinnerMismatch,
+    /// The result (victory, draw or undecided) differs.
+    ResultMismatch,
 }
 
 impl fmt::Display for ReplayError {
@@ -159,7 +159,7 @@ impl fmt::Display for ReplayError {
             Self::CheckpointCount => {
                 f.write_str("checkpoint count does not match the command count")
             }
-            Self::WinnerMismatch => f.write_str("winner differs"),
+            Self::ResultMismatch => f.write_str("result differs"),
         }
     }
 }
@@ -208,11 +208,11 @@ impl Replay {
             checkpoint_every,
             checkpoints,
             final_hash: state.state_hash(),
-            winner: state.winner(),
+            result: state.result(),
         })
     }
 
-    /// Re-runs the replay and compares every recorded hash and the winner.
+    /// Re-runs the replay and compares every recorded hash and the result.
     pub fn verify(&self, ruleset: &Ruleset) -> Result<(), ReplayError> {
         self.header.check(ruleset)?;
         let every = self.checkpoint_every as usize;
@@ -247,8 +247,8 @@ impl Replay {
                 actual,
             });
         }
-        if state.winner() != self.winner {
-            return Err(ReplayError::WinnerMismatch);
+        if state.result() != self.result {
+            return Err(ReplayError::ResultMismatch);
         }
         Ok(())
     }
@@ -300,11 +300,17 @@ mod tests {
         bad.seed += 1;
         assert!(bad.verify(&r).is_err());
         let mut bad = replay.clone();
-        bad.winner = bad
-            .winner
-            .map(BattleSide::opponent)
-            .or(Some(BattleSide::Attacker));
-        assert!(bad.verify(&r).is_err());
+        for other in [
+            None,
+            Some(BattleResult::Draw),
+            Some(BattleResult::Victory(BattleSide::Attacker)),
+            Some(BattleResult::Victory(BattleSide::Defender)),
+        ] {
+            if other != replay.result {
+                bad.result = other;
+                assert_eq!(bad.verify(&r), Err(ReplayError::ResultMismatch));
+            }
+        }
         let mut bad = replay.clone();
         bad.commands
             .insert(0, (BattleSide::Defender, Command::Wait));
@@ -364,7 +370,7 @@ mod tests {
             ReplayError::CheckpointCount.to_string(),
             "checkpoint count does not match the command count"
         );
-        assert_eq!(ReplayError::WinnerMismatch.to_string(), "winner differs");
+        assert_eq!(ReplayError::ResultMismatch.to_string(), "result differs");
         assert!(
             ReplayError::Setup(SetupError::EmptyArmy(BattleSide::Defender))
                 .to_string()

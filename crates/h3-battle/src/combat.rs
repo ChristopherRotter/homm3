@@ -8,7 +8,7 @@
 //! second attack.
 
 use h3_content::{Ability, BattleParams, CompiledAbility, Ruleset};
-use h3_contracts::BattleSide;
+use h3_contracts::{BattleResult, BattleSide};
 
 use crate::damage::{
     Factors, apply_damage, attack_defense, base_damage, effective_defense, reduced_defense,
@@ -562,9 +562,9 @@ fn area(state: &BattleState, field: Field, shooter: StackId, target: StackId, at
     })
 }
 
-/// The battle ends when one side has no living stacks other than war machines (BAT-WAR-001);
-/// the other side wins.
-// rule: BAT-END-001
+/// The battle ends when a side has no living stacks other than war machines (BAT-WAR-001): the
+/// other side wins (BAT-END-001), or nobody if neither side has any left (BAT-END-002).
+// rule: BAT-END-001, BAT-END-002
 pub(crate) fn check_end<S: Sink>(state: &mut BattleState, sink: &mut S) {
     let alive = |side: BattleSide| {
         state
@@ -572,13 +572,14 @@ pub(crate) fn check_end<S: Sink>(state: &mut BattleState, sink: &mut S) {
             .iter()
             .any(|s: &Stack| s.side == side && s.is_alive() && !s.has(StackTraits::WAR_MACHINE))
     };
-    let winner = match (alive(BattleSide::Attacker), alive(BattleSide::Defender)) {
-        (true, false) => Some(BattleSide::Attacker),
-        (false, true) => Some(BattleSide::Defender),
-        _ => None,
+    let result = match (alive(BattleSide::Attacker), alive(BattleSide::Defender)) {
+        (true, true) => None,
+        (true, false) => Some(BattleResult::Victory(BattleSide::Attacker)),
+        (false, true) => Some(BattleResult::Victory(BattleSide::Defender)),
+        (false, false) => Some(BattleResult::Draw),
     };
-    if let Some(w) = winner {
-        state.winner = Some(w);
-        sink.emit(Event::public(EventKind::BattleEnded { winner: w }));
+    if let Some(r) = result {
+        state.result = Some(r);
+        sink.emit(Event::public(EventKind::BattleEnded { result: r }));
     }
 }

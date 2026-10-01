@@ -32,7 +32,18 @@ Language-specific bindings only (locks out other ecosystems); a network protocol
 - Action and observation encodings are owned and versioned by `h3-sim` (`ACTION_ENCODING_VERSION`, `OBSERVATION_ENCODING_VERSION`), and covered by the ABI version.
 - The ABI exposes the full-state hash and is meant for trusted local consumers (training, tools); a server must not forward it to untrusted clients.
 
+## Amendment — E03 battle core (2026-10-01, T9)
+
+- **ABI v2:** `H3StepResult.result` (`int32_t`) replaces `winner`: `H3_RESULT_ATTACKER` (0),
+  `H3_RESULT_DEFENDER` (1), `H3_RESULT_DRAW` (2, BAT-END-002) or `H3_RESULT_NONE` (−1) while the
+  battle is undecided (running or truncated). The struct layout is unchanged.
+- The ABI version now also tracks the encodings it covers: v2 = action encoding v4 and
+  observation encoding v3. (E03 T3–T8 changed both encodings without bumping the ABI version,
+  contrary to the rule above; no external consumer existed. From now on every encoding bump
+  bumps `H3_ABI_VERSION` too.)
+
 ## Revision history
 
 - 2026-09-30: Accepted.
 - 2026-09-30: Amended by E01 (ABI v1 surface and smoke test).
+- 2026-10-01: Amended by E03 T9 (ABI v2: battle result with draws; encodings tied to the ABI version).

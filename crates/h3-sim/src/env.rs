@@ -7,7 +7,7 @@ use h3_battle::{
     BattleState, CommandError, LegalCommands, NoopSink, Observation, SetupError, apply, observe,
 };
 use h3_content::Ruleset;
-use h3_contracts::{BattleSetup, BattleSide};
+use h3_contracts::{BattleResult, BattleSetup, BattleSide};
 
 use crate::action::{self, ActionMask};
 use crate::observation;
@@ -19,10 +19,23 @@ pub struct StepResult {
     pub done: bool,
     /// The episode was cut off by the step limit (an RL truncation, not a game rule).
     pub truncated: bool,
-    /// The winner, if the battle was decided.
-    pub winner: Option<BattleSide>,
-    /// Reward per side, indexed by [`BattleSide::index`]: +1 win, −1 loss, 0 otherwise.
+    /// How the battle ended, if it did (a victory or a draw).
+    pub result: Option<BattleResult>,
+    /// Reward per side, indexed by [`BattleSide::index`]: +1 win, −1 loss, 0 otherwise (also
+    /// for a draw, where both armies are gone).
     pub reward: [f32; 2],
+}
+
+/// The rewards for a battle `result` ([`StepResult::reward`]).
+fn rewards(result: Option<BattleResult>) -> [f32; 2] {
+    match result.and_then(BattleResult::winner) {
+        Some(w) => {
+            let mut r = [-1.0; 2];
+            r[w.index()] = 1.0;
+            r
+        }
+        None => [0.0; 2],
+    }
 }
 
 /// Why a step was refused. The environment is unchanged.
@@ -127,23 +140,15 @@ impl BattleEnv {
         )
         .map_err(StepError::Rejected)?;
         self.steps = self.steps.saturating_add(1);
-        let winner = self.state.winner();
-        if winner.is_none() && self.max_steps != 0 && self.steps >= self.max_steps {
+        let result = self.state.result();
+        if result.is_none() && self.max_steps != 0 && self.steps >= self.max_steps {
             self.truncated = true;
         }
-        let reward = match winner {
-            Some(w) => {
-                let mut r = [-1.0; 2];
-                r[w.index()] = 1.0;
-                r
-            }
-            None => [0.0; 2],
-        };
         Ok(StepResult {
             done: self.is_done(),
             truncated: self.truncated,
-            winner,
-            reward,
+            result,
+            reward: rewards(result),
         })
     }
 
@@ -291,9 +296,18 @@ mod tests {
             last = Some(env.step(side, a).unwrap());
         }
         let r = last.unwrap();
-        let w = r.winner.unwrap();
+        let w = r.result.and_then(BattleResult::winner).unwrap();
         assert!(r.done && !r.truncated);
         assert_eq!(r.reward[w.index()], 1.0);
         assert_eq!(r.reward[w.opponent().index()], -1.0);
+    }
+
+    #[test]
+    fn rewards_by_result() {
+        let won = |side| rewards(Some(BattleResult::Victory(side)));
+        assert_eq!(won(BattleSide::Attacker), [1.0, -1.0]);
+        assert_eq!(won(BattleSide::Defender), [-1.0, 1.0]);
+        assert_eq!(rewards(Some(BattleResult::Draw)), [0.0, 0.0]);
+        assert_eq!(rewards(None), [0.0, 0.0]);
     }
 }

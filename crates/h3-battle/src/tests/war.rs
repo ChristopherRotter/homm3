@@ -4,7 +4,7 @@ use std::vec;
 use std::vec::Vec;
 
 use h3_content::Ruleset;
-use h3_contracts::BattleSide;
+use h3_contracts::{BattleResult, BattleSide};
 
 use super::support::*;
 use crate::event::StrikeFlags;
@@ -200,12 +200,71 @@ fn war_machines_do_not_retaliate_and_do_not_count_for_the_end_of_the_battle() {
     .unwrap();
     assert!(events.iter().any(|e| e.kind
         == EventKind::BattleEnded {
-            winner: BattleSide::Attacker
+            result: BattleResult::Victory(BattleSide::Attacker)
         }));
     let outcome = s.outcome().unwrap();
     assert!(outcome.survivors[1].stacks.is_empty());
     assert_eq!(outcome.war_machines[1], vec![creature(&r, "tent")]);
     assert!(outcome.war_machines[0].is_empty());
+}
+
+// covers: BAT-END-002, BAT-WAR-002
+#[test]
+fn a_shot_that_kills_the_last_creatures_of_both_sides_is_a_draw() {
+    let r = ruleset();
+    // 0 = serf (attacker), 1 = its firebomb, 2 = serf (defender), side by side.
+    let mut s = start(
+        &r,
+        &with_machines(
+            &r,
+            &[(0, "serf", 1)],
+            &[(0, "serf", 1)],
+            [&["firebomb"], &[]],
+        ),
+        1,
+    );
+    place(&mut s, &r, 0, 9, 5);
+    place(&mut s, &r, 2, 10, 5);
+    let mut events = act(&mut s, &r, Command::Defend).unwrap();
+    assert_eq!(s.active(), Some(StackId(2)));
+    events.extend(act(&mut s, &r, Command::Defend).unwrap());
+    // The firebomb's shot at the defender's serf also hits the attacker's serf: both die and
+    // neither side has a living creature left. (Before BAT-END-002 the battle never ended: the
+    // firebomb kept getting turns with nothing to shoot.)
+    assert_eq!(
+        shots_by(&events, 1),
+        vec![
+            (2, StrikeFlags::RANGED),
+            (0, StrikeFlags::RANGED.with(StrikeFlags::SECONDARY))
+        ]
+    );
+    assert_eq!(
+        events.last(),
+        Some(&Event::public(EventKind::BattleEnded {
+            result: BattleResult::Draw
+        }))
+    );
+    assert!(s.is_over());
+    assert_eq!(s.result(), Some(BattleResult::Draw));
+    assert_eq!(s.winner(), None);
+    assert_eq!(s.active(), None);
+    // The result is part of the state hash.
+    let mut undecided = s.clone();
+    undecided.result = None;
+    assert_ne!(s.state_hash(), undecided.state_hash());
+    let outcome = s.outcome().unwrap();
+    assert_eq!(outcome.result, BattleResult::Draw);
+    assert!(outcome.survivors.iter().all(|a| a.stacks.is_empty()));
+    assert_eq!(
+        outcome.war_machines,
+        [vec![creature(&r, "firebomb")], vec![]]
+    );
+    for side in BattleSide::BOTH {
+        assert_eq!(
+            crate::validate(&s, &r, side, Command::Defend),
+            Err(crate::CommandError::BattleOver)
+        );
+    }
 }
 
 // ---------------------------------------------------------------- BAT-WAR-002 automatic shots
@@ -297,7 +356,7 @@ fn the_ballista_can_win_the_battle_and_stops_without_shots() {
     let events: Vec<Event> = (0..5).flat_map(|_| defend_round(&mut s, &r)).collect();
     assert!(events.iter().any(|e| e.kind
         == EventKind::BattleEnded {
-            winner: BattleSide::Attacker
+            result: BattleResult::Victory(BattleSide::Attacker)
         }));
     assert_eq!(s.active(), None);
     let mut s = start(

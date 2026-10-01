@@ -43,7 +43,7 @@ pub fn encode(obs: &Observation, field_width: u8, out: &mut [f32]) -> Result<(),
     out[0] = f32::from(obs.round);
     out[1] = flag(obs.viewer == BattleSide::Attacker);
     out[2] = flag(to_act == Some(obs.viewer));
-    out[3] = flag(obs.winner.is_some());
+    out[3] = flag(obs.result.is_some());
     for (i, s) in obs.stacks.iter().enumerate() {
         let f = &mut out[GLOBALS + i * STACK_FEATURES..GLOBALS + (i + 1) * STACK_FEATURES];
         let (x, y) = coords(s.hex.0, field_width);

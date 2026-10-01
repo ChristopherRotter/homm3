@@ -24,7 +24,7 @@ Adventure and Battle never import each other.
 
 1. Adventure/Game detect an engagement and build a `BattleSetup`: armies, heroes' *derived battle profile* (attack/defense/power/knowledge, relevant skills, artifacts' effects, spell book and mana), terrain/battlefield type, obstacles, siege info, rules-relevant flags. All derived values are computed **before** the seam, so Battle needs no knowledge of hero management.
 2. Battle runs standalone from a `BattleSetup` (this is also what lets the battle AI train in isolation).
-3. Battle returns a `BattleOutcome`: winner, casualties, survivors, experience inputs, artifacts/spell-scroll capture, etc. Game applies it to adventure/hero state.
+3. Battle returns a `BattleOutcome`: result (a victory of one side, or a draw when both armies are wiped out at once), casualties, survivors, experience inputs, artifacts/spell-scroll capture, etc. Game applies it to adventure/hero state.
 
 Other seams (town ↔ heroes, heroes ↔ magic, content ↔ all) are introduced the same way: a small contract type, owned by `contracts`, no reach-through.
 

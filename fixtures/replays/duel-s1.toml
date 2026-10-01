@@ -150,11 +150,11 @@ commands = [
     "A attack 1 63",
 ]
 checkpoints = [
-    "0x7177da72e51a48eb",
-    "0x5e74f563bd3d5332",
-    "0x74f47808a1c7719b",
-    "0xca3d4c61481f346a",
-    "0x8ab8e6390f6a944c",
+    "0x048156ed203060ec",
+    "0x45e04efa64cf7fa1",
+    "0x13cdc91464718d44",
+    "0xdc95168378a127c5",
+    "0x2f21a59311fabb73",
 ]
 
 [replay]
@@ -172,7 +172,7 @@ rng = "xoshiro256starstar+splitmix64"
 rng_version = 1
 hash = "fnv1a64-le"
 hash_version = 1
-battle_state_hash_version = 7
+battle_state_hash_version = 8
 checkpoint_every = 25
 
 [setup]
@@ -200,4 +200,4 @@ count = 20
 
 [result]
 winner = "defender"
-final_hash = "0x6594117ebbabd3eb"
+final_hash = "0x6376c88fc7be7754"

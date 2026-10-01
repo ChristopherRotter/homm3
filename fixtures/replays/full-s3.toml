@@ -848,39 +848,39 @@ commands = [
     "A attack 8 54",
 ]
 checkpoints = [
-    "0xcb332fde34fdbe2f",
-    "0x052dbf43abc460be",
-    "0x867cccd94cd0723e",
-    "0x4db3f0148d403e87",
-    "0xb57d1c8914a26044",
-    "0x9bec71c428a4ccaf",
-    "0x9c9aa71de32021ce",
-    "0xd28e1cb8f87a5952",
-    "0x9c0d37b66e3d597a",
-    "0x1bad916b06113ea2",
-    "0x0da8588fb7e2f694",
-    "0x4bb645bc97a0c223",
-    "0x513f33694864cf92",
-    "0xe8da10cb08f19cda",
-    "0x38a8b6240ba18af7",
-    "0x93db2c86bbc537da",
-    "0x9b7303cec5255b8d",
-    "0x1d169cb9e7decb5f",
-    "0x3c59ee6ae52083b7",
-    "0x547e0ca61de714fd",
-    "0x73a2d0ac6e126c03",
-    "0x41ee3bb258707d71",
-    "0xd657123d34f734ca",
-    "0x13c27759acc4bf0c",
-    "0xe962bf7d90a8177f",
-    "0x77629a563cfd33a2",
-    "0x35594032cbb7c7e3",
-    "0x9d11834a2921fa1d",
-    "0xc1ddb47b98226a8e",
-    "0xe9c44f0e2f319f20",
-    "0xcd9b756816edfbef",
-    "0xe1942f97dda58a25",
-    "0x017bcce77729ed77",
+    "0x612a4686dbe54c9c",
+    "0x68afde8ad1d28521",
+    "0x9530e676d8bf7b7d",
+    "0x736b685e4d58b01c",
+    "0x80a5396cb5aa1753",
+    "0x5f99a63beac06918",
+    "0x1eaa43fb04a2e441",
+    "0x4146a75163f82ea9",
+    "0xc79b1246980b3995",
+    "0xb71e0b82409fb75d",
+    "0x7a76158d2630c20b",
+    "0x65bb03ef7c2f1f24",
+    "0x2f738c2ad895fec5",
+    "0x8a69dfe66456f4cd",
+    "0xd8fa637f2a770de0",
+    "0x9a8c3f64f1eea8bd",
+    "0x4c03ab77c3cdeeb6",
+    "0xe1cf93bab0a92844",
+    "0xdf4a9560760a2440",
+    "0xe7a4b6ee8b54da2e",
+    "0xddc90c51450e4ad4",
+    "0x5e6072036e1be162",
+    "0xd451201e62c3a375",
+    "0x5f5b7897c64e2a07",
+    "0x5b14a1a2734818bc",
+    "0x9626db83c3d5a2b5",
+    "0x1ba9c069fcd2bac8",
+    "0x29656c441485cbbe",
+    "0x51903058bee31dad",
+    "0x639ddb5abc0bc687",
+    "0x3cf0ad867ef28f88",
+    "0xda253a3a8a5a0ea6",
+    "0x5bf44f095cbeaac0",
 ]
 
 [replay]
@@ -898,7 +898,7 @@ rng = "xoshiro256starstar+splitmix64"
 rng_version = 1
 hash = "fnv1a64-le"
 hash_version = 1
-battle_state_hash_version = 7
+battle_state_hash_version = 8
 checkpoint_every = 25
 
 [setup]
@@ -976,4 +976,4 @@ count = 11
 
 [result]
 winner = "attacker"
-final_hash = "0xf9c3f8b2d1038afc"
+final_hash = "0x6cd9ef5a4fca4b5f"

@@ -304,6 +304,24 @@ pub const CREATURES: &[Creature] = &[
     ),
     ("valuable", 10, 10, 2, 2, 10, 5, &["alive", "ai=1000"]),
     ("gadget", 0, 0, 0, 0, 10, 0, &["war_machine"]),
+    // A shooting war machine with an area shot: it can hit its own side (BAT-END-002).
+    (
+        "firebomb",
+        10,
+        10,
+        50,
+        50,
+        100,
+        0,
+        &[
+            "shooter",
+            "war_machine",
+            "no_morale",
+            "area_attack",
+            "fireball",
+            "shots=4",
+        ],
+    ),
 ];
 
 /// The traits of a test creature as creature info: flags, abilities, shots and faction.

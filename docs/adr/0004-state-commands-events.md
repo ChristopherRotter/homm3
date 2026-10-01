@@ -102,6 +102,16 @@ How the model turned out in the battle context:
   the Ammo Cart is never activated. Event `Healed { healer, target, hit_points }` (public).
 - **Sim encodings:** action encoding v4 and observation encoding v2 (more stack slots).
 
+## Amendment — E03 battle core (2026-10-01, T9)
+
+- **Seam type change (`BattleOutcome`, user decision Q24):** a battle ends in a
+  `BattleResult` — `Victory(side)` or `Draw` (both armies wiped out by the same action,
+  BAT-END-002) — and `BattleOutcome.result` replaces `winner`. The state exposes `result()`
+  (and `winner()`, which is `None` while the battle runs and after a draw); the observation, the
+  event `BattleEnded { result }`, the sim's step results and replays carry the result. State
+  hash encoding v8. Before this change a simultaneous wipe-out left the battle without a winner
+  and without a stack able to end it (an endless loop of war-machine turns).
+
 ## Revision history
 
 - 2026-09-30: Accepted.
@@ -110,3 +120,4 @@ How the model turned out in the battle context:
 - 2026-10-01: Amended by E03 T4–T5 (shooting, strike flags, ability events, attack structure).
 - 2026-10-01: Amended by E03 T6 (hero flags, morale in the turn structure, morale/luck state) and T7 (terrain, obstacle generation before the seam).
 - 2026-10-01: Amended by E03 T8 (war machines in the setup, the outcome and the turn structure).
+- 2026-10-01: Amended by E03 T9 (battle result with draws).

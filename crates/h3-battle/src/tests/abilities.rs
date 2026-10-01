@@ -9,7 +9,7 @@ use std::vec;
 use std::vec::Vec;
 
 use h3_content::{Ability, CompiledAbility, Ruleset};
-use h3_contracts::BattleSide;
+use h3_contracts::{BattleResult, BattleSide};
 
 use super::support::*;
 use crate::damage::reduced_defense;
@@ -110,7 +110,10 @@ fn the_second_attack_needs_both_stacks_alive_and_shooters_strike_once_in_melee()
     arrange(&mut s, &r, &[(7, 5), (8, 5)]);
     let events = hit(&mut s, &r, 1, (7, 5));
     assert_eq!(strikes(&events).len(), 2);
-    assert_eq!(s.outcome().unwrap().winner, BattleSide::Defender);
+    assert_eq!(
+        s.outcome().unwrap().result,
+        BattleResult::Victory(BattleSide::Defender)
+    );
     // A blocked shooter that shoots twice strikes once in melee.
     let mut s = battle(&r, &[(0, "sniper", 5)], &[(0, "fixed", 10)], 1);
     arrange(&mut s, &r, &[(7, 5), (8, 5)]);

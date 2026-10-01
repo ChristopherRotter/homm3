@@ -14,11 +14,23 @@ use std::panic::{AssertUnwindSafe, catch_unwind};
 use std::sync::Arc;
 
 use h3_battle::LegalCommands;
-use h3_contracts::BattleSide;
+use h3_contracts::{BattleResult, BattleSide};
 use h3_sim::{ACTION_COUNT, ActionMask, BattleEnv, OBSERVATION_LEN, StepError};
 
 /// Version of this ABI (functions, structs, error codes, and the action/observation encodings).
-pub const H3_ABI_VERSION: u32 = 1;
+///
+/// v2 (E03 T9): `H3StepResult.result` replaces `winner` (draws, `H3_RESULT_*`); action encoding
+/// v4 and observation encoding v3 (v1 had the E01 encodings v1).
+pub const H3_ABI_VERSION: u32 = 2;
+
+/// `H3StepResult.result`: the battle is not decided (still running, or truncated).
+pub const H3_RESULT_NONE: i32 = -1;
+/// `H3StepResult.result`: the attacker won.
+pub const H3_RESULT_ATTACKER: i32 = 0;
+/// `H3StepResult.result`: the defender won.
+pub const H3_RESULT_DEFENDER: i32 = 1;
+/// `H3StepResult.result`: a draw (both armies wiped out at once).
+pub const H3_RESULT_DRAW: i32 = 2;
 
 /// Success.
 pub const H3_OK: i32 = 0;
@@ -43,8 +55,9 @@ pub struct H3StepResult {
     pub done: u8,
     /// 1 if the episode was truncated by the step limit.
     pub truncated: u8,
-    /// Winner: 0 attacker, 1 defender, -1 none.
-    pub winner: i32,
+    /// How the battle ended: `H3_RESULT_ATTACKER`, `H3_RESULT_DEFENDER`, `H3_RESULT_DRAW`, or
+    /// `H3_RESULT_NONE` while it is not decided.
+    pub result: i32,
     /// Reward of the attacker.
     pub reward_attacker: f32,
     /// Reward of the defender.
@@ -72,6 +85,15 @@ fn side_code(value: Option<BattleSide>) -> i32 {
         Some(BattleSide::Attacker) => 0,
         Some(BattleSide::Defender) => 1,
         None => -1,
+    }
+}
+
+fn result_code(value: Option<BattleResult>) -> i32 {
+    match value {
+        None => H3_RESULT_NONE,
+        Some(BattleResult::Victory(BattleSide::Attacker)) => H3_RESULT_ATTACKER,
+        Some(BattleResult::Victory(BattleSide::Defender)) => H3_RESULT_DEFENDER,
+        Some(BattleResult::Draw) => H3_RESULT_DRAW,
     }
 }
 
@@ -272,7 +294,7 @@ pub unsafe extern "C" fn h3_env_step(
             let result = H3StepResult {
                 done: u8::from(r.done),
                 truncated: u8::from(r.truncated),
-                winner: side_code(r.winner),
+                result: result_code(r.result),
                 reward_attacker: r.reward[0],
                 reward_defender: r.reward[1],
             };
@@ -304,7 +326,7 @@ mod tests {
 
     #[test]
     fn abi_smoke_create_step_destroy() {
-        assert_eq!(h3_abi_version(), 1);
+        assert_eq!(h3_abi_version(), 2);
         assert_eq!(h3_action_count() as usize, ACTION_COUNT);
         assert_eq!(h3_observation_len() as usize, OBSERVATION_LEN);
         assert!(h3_env_create_synthetic(9, 1, 0).is_null());
@@ -337,7 +359,7 @@ mod tests {
             }
             assert!(steps > 0);
             assert_eq!(result.done, 1);
-            assert!(result.winner >= 0 || result.truncated == 1);
+            assert!(result.result >= 0 || result.truncated == 1);
             assert_eq!(h3_env_step(env, 0, 1, &mut result), H3_ERR_EPISODE_OVER);
             let hash = h3_env_state_hash(env);
             let fork = h3_env_fork(env);
@@ -393,5 +415,19 @@ mod tests {
             h3_env_destroy(env);
         }
         assert_eq!(guard(|| panic!("boom")), H3_ERR_PANIC);
+    }
+
+    #[test]
+    fn result_codes() {
+        assert_eq!(result_code(None), H3_RESULT_NONE);
+        assert_eq!(
+            result_code(Some(BattleResult::Victory(BattleSide::Attacker))),
+            H3_RESULT_ATTACKER
+        );
+        assert_eq!(
+            result_code(Some(BattleResult::Victory(BattleSide::Defender))),
+            H3_RESULT_DEFENDER
+        );
+        assert_eq!(result_code(Some(BattleResult::Draw)), H3_RESULT_DRAW);
     }
 }

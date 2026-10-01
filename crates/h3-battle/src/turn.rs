@@ -88,7 +88,7 @@ pub(crate) fn end_turn<S: Sink>(
 ) {
     state.last_side_acted = Some(state.at(mover).side);
     // rule: BAT-MOR-003
-    if state.winner.is_none() && how == TurnEnd::Acted && morale::good_morale(state, ruleset, mover)
+    if state.result.is_none() && how == TurnEnd::Acted && morale::good_morale(state, ruleset, mover)
     {
         state.at_mut(mover).flags.set(StackFlags::HAD_MORALE, true);
         sink.emit(Event::public(EventKind::GoodMorale { stack: mover }));
@@ -101,7 +101,7 @@ pub(crate) fn end_turn<S: Sink>(
         StackFlags::ACTED
     };
     state.at_mut(mover).flags.set(flag, true);
-    if state.winner.is_some() {
+    if state.result.is_some() {
         state.active = None;
         return;
     }
@@ -140,7 +140,7 @@ pub(crate) fn activate_next<S: Sink>(state: &mut BattleState, ruleset: &Ruleset,
         let side = done.side;
         state.last_side_acted = Some(side);
         // A war machine's shot can end the battle.
-        next = if state.winner.is_some() {
+        next = if state.result.is_some() {
             None
         } else {
             pick(state, sink)

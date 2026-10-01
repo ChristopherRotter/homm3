@@ -5,7 +5,7 @@
 //! its hygiene property test exist so that hidden battle information added later (e.g. an
 //! opponent's spell book) has a place to be projected away.
 
-use h3_contracts::BattleSide;
+use h3_contracts::{BattleResult, BattleSide};
 use h3_kernel::FixedVec;
 
 use crate::event::{Event, Visibility};
@@ -23,8 +23,8 @@ pub struct Observation {
     pub active: Option<StackId>,
     /// Side of the last stack that took a turn.
     pub last_side_acted: Option<BattleSide>,
-    /// Winner, once the battle is over.
-    pub winner: Option<BattleSide>,
+    /// How the battle ended, once it is over.
+    pub result: Option<BattleResult>,
     /// All stacks (public in battle).
     pub stacks: FixedVec<Stack, STACK_CAPACITY>,
     /// Hexes blocked by obstacles (public).
@@ -42,7 +42,7 @@ pub fn observe(state: &BattleState, viewer: BattleSide) -> Observation {
         round: state.round,
         active: state.active,
         last_side_acted: state.last_side_acted,
-        winner: state.winner,
+        result: state.result,
         stacks: state.stacks,
         obstacles: state.obstacles,
         led_by_hero: state.led_by_hero,

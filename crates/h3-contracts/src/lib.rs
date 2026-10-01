@@ -104,11 +104,30 @@ impl BattleSetup {
     }
 }
 
+/// How a battle ended (BAT-END-001/002).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum BattleResult {
+    /// The side that still has living stacks after the other side has none.
+    Victory(BattleSide),
+    /// Neither side has living stacks left: both were wiped out by the same action (Q24).
+    Draw,
+}
+
+impl BattleResult {
+    /// The winning side, or `None` for a draw.
+    pub const fn winner(self) -> Option<BattleSide> {
+        match self {
+            Self::Victory(side) => Some(side),
+            Self::Draw => None,
+        }
+    }
+}
+
 /// The result of a finished battle, applied back by the orchestrator.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct BattleOutcome {
-    /// The winning side.
-    pub winner: BattleSide,
+    /// How the battle ended: a victory of one side or a draw.
+    pub result: BattleResult,
     /// Surviving stacks per side (indexed by [`BattleSide::index`]), in slot order.
     pub survivors: [Army; 2],
     /// Surviving war machines per side (indexed by [`BattleSide::index`]).
@@ -130,6 +149,15 @@ mod tests {
             BattleSide::BOTH,
             [BattleSide::Attacker, BattleSide::Defender]
         );
+    }
+
+    #[test]
+    fn results() {
+        assert_eq!(
+            BattleResult::Victory(BattleSide::Defender).winner(),
+            Some(BattleSide::Defender)
+        );
+        assert_eq!(BattleResult::Draw.winner(), None);
     }
 
     #[test]

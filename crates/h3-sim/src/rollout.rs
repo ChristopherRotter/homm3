@@ -1,7 +1,7 @@
 //! Baseline agents: the uniformly random legal agent (also the benchmark workload).
 
 use h3_battle::{Command, LegalCommands, legal_commands};
-use h3_contracts::BattleSide;
+use h3_contracts::{BattleResult, BattleSide};
 use h3_kernel::{Rng, StreamId};
 
 use crate::env::{BattleEnv, StepError, StepResult};
@@ -11,8 +11,8 @@ use crate::env::{BattleEnv, StepError, StepResult};
 pub struct RolloutResult {
     /// Steps played.
     pub steps: u32,
-    /// Winner, if decided.
-    pub winner: Option<BattleSide>,
+    /// How the battle ended, if it did.
+    pub result: Option<BattleResult>,
 }
 
 /// Plays both sides with uniformly random legal commands until the episode ends (or
@@ -33,7 +33,7 @@ pub fn random_rollout(env: &mut BattleEnv, agent_seed: u64, max_steps: u32) -> R
     }
     RolloutResult {
         steps,
-        winner: env.state().winner(),
+        result: env.state().result(),
     }
 }
 

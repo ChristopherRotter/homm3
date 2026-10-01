@@ -4,7 +4,7 @@
 
 use alloc::vec::Vec;
 
-use h3_contracts::BattleSide;
+use h3_contracts::{BattleResult, BattleSide};
 
 use crate::geometry::Hex;
 use crate::state::StackId;
@@ -143,10 +143,10 @@ pub enum EventKind {
         /// The stack.
         stack: StackId,
     },
-    /// The battle ended (BAT-END-001).
+    /// The battle ended (BAT-END-001/002).
     BattleEnded {
-        /// The winner.
-        winner: BattleSide,
+        /// A victory of one side, or a draw.
+        result: BattleResult,
     },
 }
 

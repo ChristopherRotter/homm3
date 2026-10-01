@@ -3,7 +3,7 @@
 use std::vec;
 use std::vec::Vec;
 
-use h3_contracts::{ArmyStack, BattleSide};
+use h3_contracts::{ArmyStack, BattleResult, BattleSide};
 use h3_kernel::Rng;
 
 use super::support::*;
@@ -681,7 +681,7 @@ fn battle_ends_when_one_side_has_no_living_stacks() {
     assert_eq!(
         events.last(),
         Some(&Event::public(EventKind::BattleEnded {
-            winner: BattleSide::Attacker
+            result: BattleResult::Victory(BattleSide::Attacker)
         }))
     );
     assert!(s.is_over());
@@ -689,7 +689,7 @@ fn battle_ends_when_one_side_has_no_living_stacks() {
     assert_eq!(s.active(), None);
     assert_eq!(s.side_to_act(), None);
     let outcome = s.outcome().unwrap();
-    assert_eq!(outcome.winner, BattleSide::Attacker);
+    assert_eq!(outcome.result, BattleResult::Victory(BattleSide::Attacker));
     assert_eq!(
         outcome.survivors[0].stacks,
         vec![
@@ -735,7 +735,7 @@ fn a_retaliation_can_end_the_battle() {
     )
     .unwrap();
     assert!(events.contains(&Event::public(EventKind::BattleEnded {
-        winner: BattleSide::Defender
+        result: BattleResult::Victory(BattleSide::Defender)
     })));
     assert_eq!(s.winner(), Some(BattleSide::Defender));
     assert!(s.outcome().unwrap().survivors[0].stacks.is_empty());
@@ -747,5 +747,6 @@ fn the_outcome_is_only_available_after_the_battle() {
     let r = ruleset();
     let s = battle(&r, &[(0, "slow", 1)], &[(0, "fixed", 10)], 1);
     assert_eq!(s.outcome(), None);
+    assert_eq!((s.result(), s.winner()), (None, None));
     let _ = Vec::<u8>::new();
 }

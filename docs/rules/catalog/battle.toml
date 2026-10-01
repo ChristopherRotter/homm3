@@ -1073,7 +1073,7 @@ id       = "BAT-END-001"
 title    = "End of battle"
 context  = "battle"
 status   = "implemented"
-summary  = "After every strike, if one side has no living stacks the battle ends and the other side wins; no stack is active afterwards and every command is rejected. War machines do not count as living stacks (BAT-WAR-001). The outcome lists the surviving army stacks per side and, separately, the surviving war machines. Skeleton scope: no retreat/surrender, no summons (which will not count as living either), no simultaneous wipe-out (cannot happen with single strikes; VCMI treats it as a draw)."
+summary  = "After every strike, if one side has no living stacks the battle ends and the other side wins (BattleResult::Victory); no stack is active afterwards and every command is rejected. War machines do not count as living stacks (BAT-WAR-001). The outcome lists the result, the surviving army stacks per side and, separately, the surviving war machines. If neither side has living stacks left the battle is a draw (BAT-END-002). Scope: no retreat/surrender yet (E04 with heroes), no summons (which will not count as living either)."
 numeric  = "integer"
 
   [[rule.source]]
@@ -1089,6 +1089,28 @@ numeric  = "integer"
   url        = "https://github.com/vcmi/vcmi/blob/1.7.5/lib/battle/CBattleInfoCallback.cpp"
   retrieved  = "2026-09-30"
   confidence = "high"
+
+[[rule]]
+id       = "BAT-END-002"
+title    = "Simultaneous wipe-out: draw"
+context  = "battle"
+status   = "implemented"
+summary  = "If, after a strike, neither side has living stacks other than war machines (both were wiped out by the same action), the battle ends in a draw (BattleResult::Draw): nobody wins, no stack is active afterwards and every command is rejected; the outcome has no surviving army stacks and lists the surviving war machines. The orchestrator removes both heroes (VCMI; E04+). With the RoE creature set a draw needs an attack that hits stacks of both sides, which only area shots of war machines can do so far (content data); spells such as Armageddon or Fire Shield (E04) make it common. Representation: user decision Q24."
+numeric  = "integer"
+
+  [[rule.source]]
+  kind       = "vcmi"
+  ref        = "lib/battle/CBattleInfoCallback.cpp battleIsFinished: no living units on either side returns BattleSide::NONE (draw); server/battles/BattleResultProcessor.cpp: 'For draw case both heroes should be removed'"
+  url        = "https://github.com/vcmi/vcmi/blob/1.7.5/lib/battle/CBattleInfoCallback.cpp"
+  retrieved  = "2026-10-01"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "wiki"
+  ref        = "Combat - Heroes 3 wiki: combat ends when either army is entirely destroyed (the simultaneous case is not described)"
+  url        = "https://heroes.thelazy.net/index.php/Combat"
+  retrieved  = "2026-10-01"
+  confidence = "low"
 
 [[rule]]
 id       = "BAT-WAR-001"

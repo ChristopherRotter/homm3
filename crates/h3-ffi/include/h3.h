@@ -1,5 +1,5 @@
 /*
- * h3 engine C ABI, version 1 (see crates/h3-ffi/src/lib.rs and ADR-0011).
+ * h3 engine C ABI, version 2 (see crates/h3-ffi/src/lib.rs and ADR-0011).
  * SPDX-License-Identifier: GPL-2.0-or-later
  *
  * Handles are opaque. Functions return H3_OK (0) or a negative error code; they never unwind.
@@ -23,12 +23,18 @@ extern "C" {
 #define H3_ERR_EPISODE_OVER (-5)
 #define H3_ERR_PANIC (-99)
 
+/* H3StepResult.result */
+#define H3_RESULT_NONE (-1)    /* not decided (running or truncated) */
+#define H3_RESULT_ATTACKER 0   /* the attacker won */
+#define H3_RESULT_DEFENDER 1   /* the defender won */
+#define H3_RESULT_DRAW 2       /* both armies wiped out at once */
+
 typedef struct H3Env H3Env;
 
 typedef struct H3StepResult {
     uint8_t done;
     uint8_t truncated;
-    int32_t winner; /* 0 attacker, 1 defender, -1 none */
+    int32_t result; /* H3_RESULT_* */
     float reward_attacker;
     float reward_defender;
 } H3StepResult;

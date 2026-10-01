@@ -5,7 +5,7 @@ use h3_content::{
     Ability, AreaShot, CreatureFlag, CreatureType, CreatureTypeId, MAX_ARMY_SLOTS, Ruleset,
     TerrainId, WAR_MACHINE_KINDS,
 };
-use h3_contracts::{Army, ArmyStack, BattleOutcome, BattleSetup, BattleSide};
+use h3_contracts::{Army, ArmyStack, BattleOutcome, BattleResult, BattleSetup, BattleSide};
 use h3_kernel::{CanonicalHash, FixedVec, Rng, StateHasher, StreamId};
 
 use crate::error::SetupError;
@@ -21,7 +21,7 @@ pub const MAX_WAR_MACHINES: usize = WAR_MACHINE_KINDS;
 pub const STACK_CAPACITY: usize = 2 * (MAX_ARMY_SLOTS + MAX_WAR_MACHINES);
 
 /// Version of the battle-state hash encoding ([`BattleState::state_hash`]). Bump on any change.
-pub const BATTLE_STATE_HASH_VERSION: u32 = 7;
+pub const BATTLE_STATE_HASH_VERSION: u32 = 8;
 
 /// Index of a stack in its battle (attacker stacks first, in slot order, then defender stacks).
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Default)]
@@ -477,6 +477,14 @@ pub(crate) const fn side_code(side: BattleSide) -> u8 {
     }
 }
 
+/// Hash code of a result: the winner's side code, 2 for a draw.
+const fn result_code(result: BattleResult) -> u8 {
+    match result {
+        BattleResult::Victory(side) => side_code(side),
+        BattleResult::Draw => 2,
+    }
+}
+
 /// The complete, authoritative state of one battle.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct BattleState {
@@ -485,7 +493,7 @@ pub struct BattleState {
     pub(crate) round: u16,
     pub(crate) active: Option<StackId>,
     pub(crate) last_side_acted: Option<BattleSide>,
-    pub(crate) winner: Option<BattleSide>,
+    pub(crate) result: Option<BattleResult>,
     pub(crate) modifiers: Modifiers,
     pub(crate) led_by_hero: [bool; 2],
     pub(crate) terrain: Option<TerrainId>,
@@ -573,7 +581,7 @@ impl BattleState {
             round: 1,
             active: None,
             last_side_acted: None,
-            winner: None,
+            result: None,
             modifiers: Modifiers::new(),
             led_by_hero: setup.led_by_hero,
             terrain: setup.terrain,
@@ -648,19 +656,24 @@ impl BattleState {
         self.last_side_acted
     }
 
-    /// The winner, once the battle is over (BAT-END-001).
-    pub const fn winner(&self) -> Option<BattleSide> {
-        self.winner
+    /// How the battle ended, once it is over (BAT-END-001/002).
+    pub const fn result(&self) -> Option<BattleResult> {
+        self.result
+    }
+
+    /// The winner: `None` while the battle goes on and after a draw (BAT-END-002).
+    pub fn winner(&self) -> Option<BattleSide> {
+        self.result.and_then(BattleResult::winner)
     }
 
     /// Whether the battle is over.
     pub const fn is_over(&self) -> bool {
-        self.winner.is_some()
+        self.result.is_some()
     }
 
-    /// The outcome for the orchestrator, once the battle is over: winner and surviving stacks.
+    /// The outcome for the orchestrator, once the battle is over: result and surviving stacks.
     pub fn outcome(&self) -> Option<BattleOutcome> {
-        let winner = self.winner?;
+        let result = self.result?;
         let alive = |side: BattleSide, machine: bool| {
             self.stacks.iter().filter(move |s| {
                 s.side == side && s.is_alive() && s.has(StackTraits::WAR_MACHINE) == machine
@@ -678,7 +691,7 @@ impl BattleState {
         let war_machines =
             BattleSide::BOTH.map(|side| alive(side, true).map(|s| s.creature).collect());
         Some(BattleOutcome {
-            winner,
+            result,
             survivors,
             war_machines,
         })
@@ -687,10 +700,10 @@ impl BattleState {
     /// Canonical hash of the full state, including hidden parts such as the RNG (desync detection
     /// and replay verification; never sent to untrusted clients, docs/06-security.md).
     ///
-    /// Encoding v7 (v6 plus war machines as stacks): version, round, active, last side, winner,
-    /// stacks (each with base count,
-    /// shots, retaliations, morale, luck and traits), obstacles, modifiers, hero flags, terrain,
-    /// RNG state.
+    /// Encoding v8 (v7 with the result instead of the winner): version, round, active, last
+    /// side, result (0/1 = victory of the attacker/defender, 2 = draw), stacks (each with base
+    /// count, shots, retaliations, morale, luck and traits), obstacles, modifiers, hero flags,
+    /// terrain, RNG state.
     pub fn state_hash(&self) -> u64 {
         h3_kernel::hash::hash_of(self)
     }
@@ -746,7 +759,7 @@ impl CanonicalHash for BattleState {
         h.write_u16(self.round);
         self.active.map(|s| s.0).hash_into(h);
         self.last_side_acted.map(side_code).hash_into(h);
-        self.winner.map(side_code).hash_into(h);
+        self.result.map(result_code).hash_into(h);
         self.stacks.hash_into(h);
         self.obstacles.hash_into(h);
         self.modifiers.hash_into(h);
