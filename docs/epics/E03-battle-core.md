@@ -1,6 +1,6 @@
 # E03 — Battle core (RoE rules)
 
-Status: next · Refined: 2026-09-30 (end of E01) · Updated: 2026-10-01 (E02 data available)
+Status: in progress (branch `e03-battle-core`) · Refined: 2026-09-30 (end of E01) · Updated: 2026-10-01 (E02 data available; scope decisions Q16 at E03 start)
 
 ## Goal
 
@@ -32,6 +32,21 @@ Replace the walking skeleton's simplified battle with faithful RoE battle rules 
 - **Formations:** `base` carries the original loose formation (VCMI layout table, sourced in the
   gap-fill file); tight formation and tactics are T8.
 
+## Scope decisions at E03 start (2026-10-01, user, OPEN-QUESTIONS Q16)
+
+- **In E03:** war machines without heroes (Ballista, First Aid Tent, Ammo Cart with their own
+  stats, turn phases and automatic control; hero skills plug in with E04); **native-terrain
+  bonuses and random obstacle generation** per battlefield type (terrain content and obstacle
+  catalogues).
+- **Deferred to E04:** spell-like creature abilities (blind, petrify, bind, curse, dispel,
+  weakness, aging, poison, …), spell immunities and resistances, spellcasting creatures, and the
+  tactics phase (it needs a hero's Tactics skill).
+- **Sources:** VCMI 1.7.5 (cloned in the sandbox) and the Heroes 3 wiki (fetches approved by the
+  user). **No observation experiments** in the original game for now: uncertain rules get an
+  OPEN-QUESTIONS entry with a ready-made experiment.
+- **ADR-0012** (modifiers and abilities) is written as Proposed; the user reviews it with the E03
+  report.
+
 ## Scope
 
 1. **Bonus/modifier system** in the kernel (design ADR first: Tier-3 friendly, no per-step allocation, deterministic ordering). Everything below builds on it.
@@ -47,7 +62,7 @@ Replace the walking skeleton's simplified battle with faithful RoE battle rules 
 
 ## Non-goals
 
-Heroes, spells and artifacts (E04), sieges beyond what war machines need, AB/SoD specifics (E11), AI (E05/E06).
+Heroes, spells and artifacts (E04), spell-like creature abilities and the tactics phase (E04, Q16), sieges beyond what war machines need, AB/SoD specifics (E11), AI (E05/E06).
 
 ## Exit criteria
 
@@ -56,16 +71,28 @@ Heroes, spells and artifacts (E04), sieges beyond what war machines need, AB/SoD
 3. All E01 invariants still property-tested; golden replays re-recorded with a note; performance ≥ 100 k steps/s/core on the full scenario (re-baseline bench-check with the reason).
 4. `cargo xtask verify` green (Linux + Windows).
 
-## Tasks (sketch — split further when the epic starts)
+## Tasks (refined at E03 start; status kept current)
 
-- T1 Modifier-system ADR + kernel implementation.
-- T2 Ability primitives v1 + data wiring (E02 pack format v2 is ready; extend the harvester to emit ability references).
-- T3 Geometry: obstacles, two-hex units, flyers (behind the existing `Field` API).
-- T4 Ranged combat.
-- T5 Morale/luck + turn-order phases.
-- T6 Damage formula completion + observation fixtures.
-- T7 War machines.
-- T8 End-of-battle details, formations/tactics, closure.
+- [ ] T1 Modifier-system ADR (ADR-0012) + kernel implementation (`h3_kernel::modifier`, KER-MOD-001).
+- [ ] T2 Ability primitives v1 + data wiring: closed `Ability` set in `h3-content`, pack format,
+  compiler, ruleset hash, harvester gap-fill emitting sourced abilities for `base`/`ab`/`sod`,
+  stacks carrying their abilities.
+- [ ] T3 Geometry: obstacles (setup + field), two-hex creatures (occupancy, movement, placement,
+  attack positions), flyers.
+- [ ] T4 Ranged combat: Shoot command, shots, blocked shooters, distance and melee penalties, no
+  retaliation against shots, area shots.
+- [ ] T5 Melee abilities and damage factors: double attack, no/extra/unlimited retaliation,
+  multi-hex attacks (hydra, Cerberus, breath), return after strike, jousting/charge immunity, hate,
+  defense reduction, death blow, life drain, regeneration, death stare; exact combination of the
+  damage factors (integer vs. float decision recorded).
+- [ ] T6 Morale, luck and turn-order phases (modifiers in battle state; good morale extra action,
+  bad morale freeze, wait-morale phase; luck in damage).
+- [ ] T7 Terrain: battlefield types, native-terrain bonus, obstacle catalogue and random obstacle
+  generation.
+- [ ] T8 War machines (hero-free): data, Ballista, First Aid Tent, Ammo Cart, automatic control,
+  turn order.
+- [ ] T9 End-of-battle details (draw, war machines not counting as living), tight formation,
+  golden replays, benchmark re-baseline, docs, review pass, closure.
 
 ## Risks
 

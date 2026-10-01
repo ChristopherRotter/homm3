@@ -43,7 +43,7 @@ Rules:
 
 ```
 crates/
-  h3-kernel/       handles, FixedVec, PRNG + streams, canonical state hashing, kernel::num, order, arith; bonus/modifier primitives (design deferred)
+  h3-kernel/       handles, FixedVec, PRNG + streams, canonical state hashing, kernel::num, order, arith; modifier primitives (ADR-0012)
   h3-contracts/    seam types: BattleSide, Army, BattleSetup, BattleOutcome, ...
   h3-content/      definition model (creatures, ...), content-pack model, quirk registry, Ruleset compiler (pure: takes parsed data)
   h3-battle/       battle context

@@ -47,3 +47,16 @@ numeric  = "integer"
   kind       = "design"
   ref        = "ADR-0003 §11 (amended by E01: algorithm choice)"
   confidence = "high"
+
+[[rule]]
+id       = "KER-MOD-001"
+title    = "Modifier evaluation and stacking"
+context  = "kernel"
+status   = "implemented"
+summary  = "A modifier changes a stat of a bearer by Add, AddPercent, AtLeast or AtMost with an i32 amount and a source key. A stat evaluates in fixed stages with i64 intermediates: flat = base + sum(Add); value = flat + floor(flat * sum(AddPercent) / 100); value = max(value, largest AtLeast) if any; value = min(value, smallest AtMost) if any (the upper bound wins); saturate to i32. The result does not depend on the order of the modifiers. A source contributes at most one modifier per bearer and stat: inserting one with an existing (bearer, stat, source) replaces it. Pools have a fixed capacity and keep insertion order (hashed, never evaluated)."
+numeric  = "integer"
+
+  [[rule.source]]
+  kind       = "design"
+  ref        = "ADR-0012 §2 (modifiers and abilities)"
+  confidence = "high"

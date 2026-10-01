@@ -6,7 +6,7 @@ This is the first cut. Contexts are refined when their epics start. Splitting or
 
 | Context | Responsibility | Depends on |
 |---|---|---|
-| **Kernel** (shared kernel) | IDs, numerics, PRNG, hashing, errors, bonus/modifier primitives | — |
+| **Kernel** (shared kernel) | IDs, numerics, PRNG, hashing, errors, modifier primitives (ADR-0012) | — |
 | **Content** | Static definitions: creature types, spells, artifacts, skills, hero classes/heroes, town types/buildings, terrain, object types; content packs; `Ruleset` compilation | Kernel |
 | **Contracts** | Seam types exchanged between contexts (`BattleSetup`, `BattleOutcome`, …) | Kernel, Content |
 | **Battle** | Tactical combat: hex field, stacks, turn order (initiative), movement, attacks, retaliation, morale/luck, damage, obstacles, war machines, battle spells, surrender/retreat, outcome | Kernel, Content, Contracts |
@@ -41,6 +41,7 @@ Other seams (town ↔ heroes, heroes ↔ magic, content ↔ all) are introduced 
 - **Day / Week / Month** — the calendar (weekly growth, month/week events).
 - **Battlefield**, **Hex**, **Initiative/Speed**, **Retaliation**, **Morale**, **Luck**, **Obstacle**, **War machine**.
 - **Round** — every living stack acts once (normal phase, fastest first; then the **wait phase**, slowest first). **Active stack** — the stack whose turn it is. **Wait** — postpone the turn to the wait phase (once per round). **Defend** — end the turn with a defense bonus until the stack's next turn. **Strike** — one attack's damage application (the attack itself or a retaliation). **Formation** — starting rows of an army by stack count.
+- **Ability** — a typed behaviour primitive of a creature type (flying, hate, jousting, …), referenced from content (ADR-0012). **Modifier** — a numeric change to a stat of a bearer (stack, side) with a source and an expiry; effective stats are materialised from base stats and modifiers (ADR-0012).
 - **Side** (`BattleSide`) — attacker or defender in a battle; the battle context's actor identity.
 - Sim-layer terms (not domain language): **episode**, **step**, **truncation** (step limit), **action index**, **observation encoding**, **reward**.
 - **Command** — a player's intent, validated and applied. **Event** — a fact emitted by applying a command. **Observation** — a player-specific projection of state. **Actor** — the trusted identity issuing a command.
@@ -50,7 +51,7 @@ Use these words in code, docs, tests and commit messages. If the original game's
 
 ## Open domain design questions (deferred)
 
-- Shape of the bonus/modifier system in the kernel (E03/E04). Must be Tier-3 friendly and fast; do not copy another project's design uncritically.
+- ~~Shape of the bonus/modifier system in the kernel~~: decided in ADR-0012 (E03): typed **abilities** in content for conditional behaviour, kernel **modifiers** (bearer, stat, op, amount, source, expiry) with materialised effective stats.
 - Whether Town and Heroes stay separate crates or start inside Adventure.
 - How Magic is split between Battle and Adventure.
 - Representation of map objects (closed enum vs. data-driven behavior primitives) — decided in the adventure epic with the ADR.

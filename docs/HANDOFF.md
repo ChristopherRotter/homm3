@@ -4,6 +4,18 @@ Living state. The last agent updates this at the end of every session; the next 
 
 ---
 
+## 2026-10-01 — E03 in progress (battle core)
+
+**State:** branch `e03-battle-core` from `master` (`7c02e2a`). Scope decisions at the start (user, OPEN-QUESTIONS Q16): war machines without heroes and terrain bonus + obstacle generation are **in**; spell-like abilities, spell immunities and tactics are **E04**; sources VCMI 1.7.5 + wiki (fetches approved); no original-game experiments (open questions instead); ADR-0012 reviewed with the E03 report. Task list and status: `docs/epics/E03-battle-core.md`.
+
+**Done:** T1 — ADR-0012 (modifiers and abilities, Proposed) and `h3_kernel::modifier` (KER-MOD-001; `FixedVec::remove_if`).
+
+**Next:** T2 (ability primitives + data wiring).
+
+**Sandbox notes (this session):** VCMI 1.7.5 is cloned at `/home/claude/ref/vcmi` (`git clone --depth 1 --branch 1.7.5 https://github.com/vcmi/vcmi.git`; github.com web pages are blocked, git works). The wiki is reachable only through WebFetch after the user approved it.
+
+---
+
 ## 2026-10-01 — E02 closed
 
 **State:** E02 (content pipeline) is **done**. The user ran `cargo xtask verify --with-original-data` on Windows: green. Branch `e02-content-pipeline` (last commit before this one: `df5a0d8`) is ready for the user to fast-forward into `master`.

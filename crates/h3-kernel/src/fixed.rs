@@ -76,6 +76,22 @@ impl<T: Copy + Default, const N: usize> FixedVec<T, N> {
         self.len = 0;
     }
 
+    /// Removes every element for which `remove` returns true, keeping the order of the rest.
+    /// Returns the number of removed elements.
+    pub fn remove_if(&mut self, mut remove: impl FnMut(&T) -> bool) -> usize {
+        let mut kept = 0;
+        for i in 0..self.len {
+            let item = self.items[i];
+            if !remove(&item) {
+                self.items[kept] = item;
+                kept += 1;
+            }
+        }
+        let removed = self.len - kept;
+        self.len = kept;
+        removed
+    }
+
     /// Number of elements.
     pub const fn len(&self) -> usize {
         self.len
@@ -177,6 +193,16 @@ mod tests {
         v.clear();
         assert!(v.is_empty());
         assert_eq!(v.get_mut(0), None);
+    }
+
+    #[test]
+    fn remove_if_keeps_order() {
+        let mut v: FixedVec<u8, 5> = FixedVec::from_slice(&[1, 2, 3, 4, 5]).unwrap();
+        assert_eq!(v.remove_if(|x| x % 2 == 0), 2);
+        assert_eq!(v.as_slice(), &[1, 3, 5]);
+        assert_eq!(v.remove_if(|_| false), 0);
+        assert_eq!(v.remove_if(|_| true), 3);
+        assert!(v.is_empty());
     }
 
     #[test]

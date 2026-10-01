@@ -15,3 +15,4 @@ Binding decisions. One decision per file, numbered, never silently edited once A
 | [0009](0009-license-and-reference-material.md) | License and reference-material policy (GPL-2.0-or-later) | Accepted |
 | [0010](0010-testing-gates-and-traceability.md) | Testing gates and rule traceability | Accepted |
 | [0011](0011-portability-and-c-abi.md) | Portability and C ABI | Accepted |
+| [0012](0012-modifiers-and-abilities.md) | Modifiers and abilities | Proposed (E03) |
