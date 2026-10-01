@@ -97,8 +97,8 @@ than creatures/factions/resources unless E03 needs them (heroes, spells, artifac
   Arch Devil, Crystal Dragon (not flying) and Psychic/Magic Elemental (not two-hex); the exe wins.
 - **T5 Conformance + closing**: ✅ `cargo xtask verify --with-original-data [path]` re-harvests and
   requires byte-identical packs; `h3-pack` tests compile the committed packs in every allowed
-  combination (CI-safe). Open for closing: refine E03 with the real data (abilities list from the
-  harvest report, flags), user confirmation on Windows.
+  combination (CI-safe). E03 refined with the real data (section "Inputs from E02"). Open for closing: the
+  user's `cargo xtask verify --with-original-data` run on Windows.
 
 ## Risks
 

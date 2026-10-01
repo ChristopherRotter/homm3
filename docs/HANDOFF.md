@@ -23,7 +23,8 @@ Living state. The last agent updates this at the end of every session; the next 
 **In progress (updated 2026-10-01, after resuming):**
 - **T1–T5 implemented** on `e02-content-pipeline`: catalogue, `h3-formats`, pack format v2, `h3-harvest` + gap-fill, committed packs `base`/`ab`/`sod`, `cargo xtask verify --with-original-data`. User decision Q15 (historical balance, latest patches) recorded.
 - Tooling in the cloud sandbox: toolchain 1.95.0 via a symlink to `stable` (static.rust-lang.org blocked); coverage with Ubuntu's LLVM 20 (`apt-get update && apt-get install llvm-20`, `LLVM_COV=/usr/lib/llvm-20/bin/llvm-cov LLVM_PROFDATA=/usr/lib/llvm-20/bin/llvm-profdata`); `original-data/install` is a symlink to staged copies of `Heroes3.exe`, `Data/H3bitmap.lod`, `Data/H3ab_bmp.lod`.
-- **To close E02:** user runs `cargo xtask verify --with-original-data` on Windows (needs `original-data/install` = the copies already in the user's repo); refine E03 with the harvest report (abilities, flags); then mark E02 done in BACKLOG and fast-forward `master`.
+- E03 epic refined with the E02 findings ("Inputs from E02").
+- **To close E02:** the user runs `cargo xtask verify --with-original-data` on Windows (`original-data/install` already holds the copies in the user's repo); then mark E02 done in BACKLOG and fast-forward `master` to `e02-content-pipeline`. Next epic: E03 (battle core), starting with T1 (modifier-system ADR).
 - Trap: when syncing bundles to the user's repo, use a new bundle file name each time (re-committing to the same device path once left a stale file).
 ---
 

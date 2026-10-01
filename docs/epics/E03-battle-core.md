@@ -1,6 +1,6 @@
 # E03 — Battle core (RoE rules)
 
-Status: todo · Refined: 2026-09-30 (end of E01)
+Status: todo · Refined: 2026-09-30 (end of E01) · Updated: 2026-10-01 (E02 data available)
 
 ## Goal
 
@@ -9,6 +9,28 @@ Replace the walking skeleton's simplified battle with faithful RoE battle rules 
 ## Starting point (from E01)
 
 `h3-battle` implements BAT-GEO-001, BAT-SET-001 (invented formation data), BAT-TRN-001..004, BAT-MOV-001, BAT-ATK-001, BAT-DMG-001..003, BAT-RET-001, BAT-END-001, each with "Skeleton scope" notes in `docs/rules/catalog/battle.toml` listing what E03 must add. Source conflicts Q11 (attack cap: +300 %) and Q12 (large-stack damage roll: wiki) were decided by the user at E01 closure.
+
+## Inputs from E02 (2026-10-01)
+
+- **Real data:** committed packs `base` (RoE, latest patch), `ab`, `sod` (OPEN-QUESTIONS Q8/Q13/Q15;
+  format `packs/README.md`). E03 targets `base`; AB/SoD-specific abilities stay E11, but the
+  ability primitives must not assume RoE only (Conflux, Dragon Fly weakness from RoE 1.3, …).
+- **Flags already in data** (`h3_content::CreatureFlag`, from the executable's table): `two_hex`,
+  `flying`, `shooter`, `breath_attack`, `alive`, `catapult`, `war_machine`, `king_1..3`,
+  `mind_immune`, `no_melee_penalty`, `fire_immune`, `strikes_twice`, `no_enemy_retaliation`,
+  `no_morale`, `undead`, `multi_headed` (pattern per creature: hydras all around, Cerberi three
+  hexes), `area_attack`, `dragon`. Today they live in `CreatureInfo` (not on the hot path); T2 decides
+  which become battle-stack data. Shots are in `CreatureInfo.shots`.
+- **Not in data yet — abilities from the harvest report** (hard-coded per creature in the
+  original; need primitives + data): jousting (Cavalier/Champion), morale ± (Angels, Bone/Ghost
+  Dragons), no obstacle/wall penalty (Arch Mage; also exe bit `0x800` on Arch Mage, Beholder, Evil Eye,
+  unidentified), unlimited/extra retaliations (Griffins), hate, death stare, devil teleport (Devils
+  walk in the exe table; they do not fly), Dragon Fly weakness and other spell-like attacks.
+  Collect the full RoE list with sources at T2 start.
+- **War machines are not harvested** (speed 0, no damage for most): T7 must extend the harvester
+  and the pack format (or model them separately) — see BACKLOG.
+- **Formations:** `base` carries the original loose formation (VCMI layout table, sourced in the
+  gap-fill file); tight formation and tactics are T8.
 
 ## Scope
 
@@ -37,7 +59,7 @@ Heroes, spells and artifacts (E04), sieges beyond what war machines need, AB/SoD
 ## Tasks (sketch — split further when the epic starts)
 
 - T1 Modifier-system ADR + kernel implementation.
-- T2 Ability primitives v1 + data wiring (needs E02 pack format v2).
+- T2 Ability primitives v1 + data wiring (E02 pack format v2 is ready; extend the harvester to emit ability references).
 - T3 Geometry: obstacles, two-hex units, flyers (behind the existing `Field` API).
 - T4 Ranged combat.
 - T5 Morale/luck + turn-order phases.
