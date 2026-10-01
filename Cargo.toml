@@ -10,6 +10,7 @@ members = [
     "crates/h3-ffi",
     "crates/h3-cli",
     "crates/h3-formats",
+    "crates/h3-harvest",
     "xtask",
 ]
 default-members = [
@@ -22,6 +23,7 @@ default-members = [
     "crates/h3-ffi",
     "crates/h3-cli",
     "crates/h3-formats",
+    "crates/h3-harvest",
 ]
 
 [workspace.package]

@@ -21,9 +21,10 @@ Living state. The last agent updates this at the end of every session; the next 
 **Next:** T2 `h3-formats` (LOD + text table + exe table readers), then T3 pack v2, T4 harvester, T5 conformance.
 
 **In progress (updated 2026-10-01, after resuming):**
-- T1, T2, **T3 done** on `e02-content-pipeline` (the `e02-t3-wip` branch was folded into the T3 commit and deleted). `cargo xtask verify` is **green, all 12 gates** (incl. coverage) in the cloud sandbox after T3.
-- Coverage now runs in the sandbox with Ubuntu's LLVM 20 (`apt-get update && apt-get install llvm-20`, then `LLVM_COV=/usr/lib/llvm-20/bin/llvm-cov LLVM_PROFDATA=/usr/lib/llvm-20/bin/llvm-profdata`).
-- **Next: T4** `h3-harvest` (tool crate): read `original-data/install` (LODs + exe) with `h3-formats`, write `packs/{base,ab,sod}/pack.toml` deterministically. Inputs: SoD tables = `H3bitmap.lod`, AB-era tables = `H3ab_bmp.lod` (their diff → `sod` overrides), exe creature table → level/town/flags (skip bit `0x800`, unidentified; skip the four `NOT USED` ids). Needs a committed gap-fill file with labelled sources for what the installation cannot tell: which creatures/factions AB added (Conflux, AB neutrals), RoE-era values, RoE faction/level of the four elementals (neutral in RoE, Conflux in AB+). Then T5 (`--with-original-data` re-harvest check).
+- **T1–T5 implemented** on `e02-content-pipeline`: catalogue, `h3-formats`, pack format v2, `h3-harvest` + gap-fill, committed packs `base`/`ab`/`sod`, `cargo xtask verify --with-original-data`. User decision Q15 (historical balance, latest patches) recorded.
+- Tooling in the cloud sandbox: toolchain 1.95.0 via a symlink to `stable` (static.rust-lang.org blocked); coverage with Ubuntu's LLVM 20 (`apt-get update && apt-get install llvm-20`, `LLVM_COV=/usr/lib/llvm-20/bin/llvm-cov LLVM_PROFDATA=/usr/lib/llvm-20/bin/llvm-profdata`); `original-data/install` is a symlink to staged copies of `Heroes3.exe`, `Data/H3bitmap.lod`, `Data/H3ab_bmp.lod`.
+- **To close E02:** user runs `cargo xtask verify --with-original-data` on Windows (needs `original-data/install` = the copies already in the user's repo); refine E03 with the harvest report (abilities, flags); then mark E02 done in BACKLOG and fast-forward `master`.
+- Trap: when syncing bundles to the user's repo, use a new bundle file name each time (re-committing to the same device path once left a stale file).
 ---
 
 ## 2026-09-30 — E01 closed (final commit)

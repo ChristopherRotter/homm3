@@ -42,8 +42,9 @@ pub enum CreatureFlag {
     NoMorale,
     /// Undead.
     Undead,
-    /// Attacks all adjacent enemies.
-    AttacksAllAdjacent,
+    /// Its attack hits several adjacent enemies (hydras: all around; Cerberi: three hexes); the
+    /// exact pattern is per creature (E03).
+    MultiHeaded,
     /// Its ranged attack hits an area.
     AreaAttack,
     /// A dragon (for effects that target dragons).
@@ -70,7 +71,7 @@ impl CreatureFlag {
         Self::NoEnemyRetaliation,
         Self::NoMorale,
         Self::Undead,
-        Self::AttacksAllAdjacent,
+        Self::MultiHeaded,
         Self::AreaAttack,
         Self::Dragon,
     ];
@@ -95,7 +96,7 @@ impl CreatureFlag {
             Self::NoEnemyRetaliation => "no_enemy_retaliation",
             Self::NoMorale => "no_morale",
             Self::Undead => "undead",
-            Self::AttacksAllAdjacent => "attacks_all_adjacent",
+            Self::MultiHeaded => "multi_headed",
             Self::AreaAttack => "area_attack",
             Self::Dragon => "dragon",
         }

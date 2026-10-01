@@ -7,10 +7,15 @@ Human-editable content packs (ADR-0006), parsed by `h3-pack` and compiled into a
 |---|---|
 | `synthetic/` | Invented creatures with neutral names for tests, benchmarks, replays and the walking skeleton. **Not** original game data (docs/05-testing.md "Test data policy"). |
 | `synthetic-ext/` | Invented expansion of `synthetic`: exercises dependencies and overrides the way `ab`/`sod` do. |
+| `base/` | **Harvested**: The Restoration of Erathia, latest patch (Q15): resources, 8 factions, 118 creatures, battle parameters, profiles. |
+| `ab/` | **Harvested**: Armageddon's Blade (depends on `base`): Conflux, 23 creatures, elementals moved to Conflux. |
+| `sod/` | **Harvested**: The Shadow of Death (depends on `ab`): SoD-only changes as overrides. |
 
-The harvested packs `base` (RoE), `ab` and `sod` are generated once from the user's installation by
-the harvesting tool and committed (E02 T4; OPEN-QUESTIONS Q13: gameplay data and names only, no
-flavor text). Original files stay in the gitignored `original-data/`; the installation itself is
+The harvested packs `base` (RoE), `ab` and `sod` are generated from the user's installation by
+`crates/h3-harvest` and committed (E02 T4; OPEN-QUESTIONS Q13: gameplay data and names only, no
+flavor text). Do not edit them by hand: change the harvester or its gap-fill file and re-run
+`cargo run -p h3-harvest -- --install original-data/install --out packs`;
+`cargo xtask verify --with-original-data` checks that they match the installation. Original files stay in the gitignored `original-data/`; the installation itself is
 never written to.
 
 ## Enabling packs
@@ -86,7 +91,7 @@ resource may appear once.
 `docs/formats/installation.md` §5): `two_hex`, `flying`, `shooter`, `breath_attack`, `alive`,
 `catapult`, `war_machine`, `king_1`, `king_2`, `king_3`, `mind_immune`, `no_melee_penalty`,
 `fire_immune`, `strikes_twice`, `no_enemy_retaliation`, `no_morale`, `undead`,
-`attacks_all_adjacent`, `area_attack`, `dragon`. Flags are data only until the rules that read them
+`multi_headed`, `area_attack`, `dragon`. Flags are data only until the rules that read them
 arrive (E03).
 
 **Battle parameters** (`[battle]`, Tier 2) and **profiles** (`[[profile]]` with `quirks`) are

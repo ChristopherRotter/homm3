@@ -1,0 +1,797 @@
+//! Harvester (E02 T4, OPEN-QUESTIONS Q8/Q13/Q15): turns the user's installation into the committed
+//! TOML packs `base` (RoE, latest patch), `ab` (Armageddon's Blade) and `sod` (Shadow of Death).
+//!
+//! Inputs, all read-only: `Heroes3.exe` (static creature table: town, level, flags) and the text
+//! tables in `Data/H3bitmap.lod` (SoD) and `Data/H3ab_bmp.lod` (AB-era), plus the committed
+//! gap-fill file with labelled sources for what the installation cannot tell
+//! (`data/gapfill.toml`). Output: the pack texts, deterministic byte for byte, and a report of
+//! everything that was not harvested or looked suspicious. The harvester checks that the packs
+//! compile in every allowed expansion combination before returning them.
+//!
+//! Layouts: `docs/formats/installation.md`; pack format: `packs/README.md`.
+
+pub mod gapfill;
+
+use std::collections::{BTreeMap, BTreeSet};
+use std::fmt::Write as _;
+use std::path::Path;
+
+use h3_formats::exe::CreatureRecord;
+use h3_formats::lod::LodArchive;
+use h3_formats::text::TextTable;
+
+use crate::gapfill::{GapFill, Since};
+
+/// Number of creature ids in the executable's table and the creature text table.
+pub const CREATURE_COUNT: usize = 150;
+/// Resource columns of `CRTRAITS.TXT`, in column order (they match the first seven rows of
+/// `RESTYPES.TXT`).
+pub const RESOURCE_COUNT: usize = 7;
+/// Fields per row of `CRTRAITS.TXT`.
+pub const CRTRAITS_FIELDS: usize = 25;
+
+/// Parsed inputs of a harvest.
+#[derive(Debug, Clone)]
+pub struct Inputs {
+    /// Static creature table of the executable.
+    pub exe: Vec<CreatureRecord>,
+    /// `CRTRAITS.TXT` from the SoD archive.
+    pub sod_creatures: TextTable,
+    /// `CRTRAITS.TXT` from the AB-era archive.
+    pub ab_creatures: TextTable,
+    /// `TownType.txt`.
+    pub towns: TextTable,
+    /// `RESTYPES.TXT`.
+    pub resources: TextTable,
+}
+
+impl Inputs {
+    /// Reads an installation directory (or a copy of it): `Heroes3.exe`, `Data/H3bitmap.lod`,
+    /// `Data/H3ab_bmp.lod`. Only reads.
+    ///
+    /// # Errors
+    /// Missing files, unknown executable build, malformed archives or tables.
+    pub fn read(install: &Path) -> Result<Self, String> {
+        let read = |rel: &str| {
+            let path = install.join(rel);
+            std::fs::read(&path).map_err(|e| format!("{}: {e}", path.display()))
+        };
+        let exe = h3_formats::exe::creature_table(&read("Heroes3.exe")?)
+            .map_err(|e| format!("Heroes3.exe: {e}"))?;
+        let sod = read("Data/H3bitmap.lod")?;
+        let ab = read("Data/H3ab_bmp.lod")?;
+        let table = |data: &[u8], archive: &str, name: &str| -> Result<TextTable, String> {
+            let lod = LodArchive::parse(data).map_err(|e| format!("{archive}: {e}"))?;
+            let bytes = lod
+                .read_by_name(name)
+                .map_err(|e| format!("{archive}/{name}: {e}"))?
+                .ok_or_else(|| format!("{archive}: no {name}"))?;
+            TextTable::parse(&bytes).map_err(|e| format!("{archive}/{name}: {e}"))
+        };
+        Ok(Self {
+            exe,
+            sod_creatures: table(&sod, "H3bitmap.lod", "CRTRAITS.TXT")?,
+            ab_creatures: table(&ab, "H3ab_bmp.lod", "CRTRAITS.TXT")?,
+            towns: table(&sod, "H3bitmap.lod", "TownType.txt")?,
+            resources: table(&sod, "H3bitmap.lod", "RESTYPES.TXT")?,
+        })
+    }
+}
+
+/// One harvested row of `CRTRAITS.TXT` (the harvested columns only).
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Row {
+    /// Singular name.
+    pub name: String,
+    /// Plural name.
+    pub plural: String,
+    /// Cost per resource column.
+    pub cost: [u32; RESOURCE_COUNT],
+    /// Fight value.
+    pub fight_value: u32,
+    /// AI value.
+    pub ai_value: u32,
+    /// Growth.
+    pub growth: u16,
+    /// Horde growth.
+    pub horde_growth: u16,
+    /// Hit points.
+    pub hit_points: u32,
+    /// Speed.
+    pub speed: u8,
+    /// Attack.
+    pub attack: u16,
+    /// Defense.
+    pub defense: u16,
+    /// Damage low/high.
+    pub damage: [u16; 2],
+    /// Shots.
+    pub shots: u16,
+    /// Spell casts.
+    pub casts: u8,
+    /// Adventure-map count low/high.
+    pub adventure_count: [u16; 2],
+    /// Ability text (flavor; never written to packs, compared only to report changes).
+    pub ability_text: String,
+    /// Attribute column ("reference only"; cross-checked against the executable's flags).
+    pub attributes: String,
+}
+
+fn number<T: std::str::FromStr>(row: &[String], col: usize, line: usize) -> Result<T, String> {
+    let text = row.get(col).map_or("", |s| s.trim());
+    text.parse().map_err(|_| {
+        format!(
+            "CRTRAITS record {line}, column {}: `{text}` is not a valid number",
+            col + 1
+        )
+    })
+}
+
+/// Parses the creature table into 150 rows (header and separator rows dropped).
+///
+/// # Errors
+/// Wrong field or row counts, non-numeric values.
+pub fn creature_rows(table: &TextTable) -> Result<Vec<Row>, String> {
+    let mut rows = Vec::with_capacity(CREATURE_COUNT);
+    for (i, record) in table.records.iter().enumerate().skip(2) {
+        if TextTable::is_blank(record) {
+            continue;
+        }
+        let line = i + 1;
+        if record.len() != CRTRAITS_FIELDS {
+            return Err(format!(
+                "CRTRAITS record {line}: {} fields, expected {CRTRAITS_FIELDS}",
+                record.len()
+            ));
+        }
+        let mut cost = [0u32; RESOURCE_COUNT];
+        for (r, slot) in cost.iter_mut().enumerate() {
+            *slot = number(record, 2 + r, line)?;
+        }
+        rows.push(Row {
+            name: record[0].trim().to_owned(),
+            plural: record[1].trim().to_owned(),
+            cost,
+            fight_value: number(record, 9, line)?,
+            ai_value: number(record, 10, line)?,
+            growth: number(record, 11, line)?,
+            horde_growth: number(record, 12, line)?,
+            hit_points: number(record, 13, line)?,
+            speed: number(record, 14, line)?,
+            attack: number(record, 15, line)?,
+            defense: number(record, 16, line)?,
+            damage: [number(record, 17, line)?, number(record, 18, line)?],
+            shots: number(record, 19, line)?,
+            casts: number(record, 20, line)?,
+            adventure_count: [number(record, 21, line)?, number(record, 22, line)?],
+            ability_text: record[23].clone(),
+            attributes: record[24].clone(),
+        });
+    }
+    if rows.len() != CREATURE_COUNT {
+        return Err(format!(
+            "CRTRAITS: {} creature rows, expected {CREATURE_COUNT}",
+            rows.len()
+        ));
+    }
+    Ok(rows)
+}
+
+impl Row {
+    /// Whether the harvested gameplay columns (everything but the two text columns) are equal.
+    fn same_values(&self, other: &Self) -> bool {
+        let strip = |r: &Self| Self {
+            ability_text: String::new(),
+            attributes: String::new(),
+            ..r.clone()
+        };
+        strip(self) == strip(other)
+    }
+}
+
+/// Executable flag bits and the pack flag names (`h3_content::CreatureFlag`). Bit `0x800` is
+/// unidentified and not harvested (docs/formats/installation.md §5).
+pub const FLAG_BITS: [(u32, &str); 20] = [
+    (0x1, "two_hex"),
+    (0x2, "flying"),
+    (0x4, "shooter"),
+    (0x8, "breath_attack"),
+    (0x10, "alive"),
+    (0x20, "catapult"),
+    (0x40, "war_machine"),
+    (0x80, "king_1"),
+    (0x100, "king_2"),
+    (0x200, "king_3"),
+    (0x400, "mind_immune"),
+    (0x1000, "no_melee_penalty"),
+    (0x4000, "fire_immune"),
+    (0x8000, "strikes_twice"),
+    (0x1_0000, "no_enemy_retaliation"),
+    (0x2_0000, "no_morale"),
+    (0x4_0000, "undead"),
+    (0x8_0000, "multi_headed"),
+    (0x10_0000, "area_attack"),
+    (0x8000_0000, "dragon"),
+];
+/// The war-machine bit: such entries are not harvested as creatures (yet).
+pub const WAR_MACHINE_BIT: u32 = 0x40;
+/// Bits that occur in the table but are not harvested.
+pub const UNHARVESTED_BITS: u32 = 0x800;
+
+/// Attribute-column tokens and the flag each implies.
+const ATTRIBUTE_FLAGS: [(&str, &str); 14] = [
+    ("DOUBLE_WIDE", "two_hex"),
+    ("FLYING_ARMY", "flying"),
+    ("SHOOTING_ARMY", "shooter"),
+    ("IS_UNDEAD", "undead"),
+    ("KING_1", "king_1"),
+    ("KING_2", "king_2"),
+    ("KING_3", "king_3"),
+    ("IMMUNE_TO_MIND_SPELLS", "mind_immune"),
+    ("IMMUNE_TO_FIRE_SPELLS", "fire_immune"),
+    ("SIEGE_WEAPON", "war_machine"),
+    ("CATAPULT", "catapult"),
+    ("const_two_attacks", "strikes_twice"),
+    ("const_free_attack", "no_enemy_retaliation"),
+    ("const_no_melee_penalty", "no_melee_penalty"),
+];
+
+/// Flag names of an executable record.
+///
+/// # Errors
+/// A bit that is neither mapped nor known-unharvested.
+pub fn flags(bits: u32) -> Result<Vec<&'static str>, String> {
+    let known = FLAG_BITS
+        .iter()
+        .fold(UNHARVESTED_BITS, |acc, (b, _)| acc | b);
+    if bits & !known != 0 {
+        return Err(format!("unexpected flag bits {:#x}", bits & !known));
+    }
+    Ok(FLAG_BITS
+        .iter()
+        .filter(|(b, _)| bits & b != 0)
+        .map(|(_, n)| *n)
+        .collect())
+}
+
+/// Pack key from a display name: lowercase ASCII, spaces and hyphens become `_`.
+#[must_use]
+pub fn key_of(name: &str) -> String {
+    name.trim()
+        .chars()
+        .filter_map(|c| match c {
+            ' ' | '-' => Some('_'),
+            c if c.is_ascii_alphanumeric() => Some(c.to_ascii_lowercase()),
+            _ => None,
+        })
+        .collect()
+}
+
+/// Result of a harvest.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Harvest {
+    /// `(pack id, pack.toml text)` for `base`, `ab`, `sod`.
+    pub packs: Vec<(&'static str, String)>,
+    /// Notes: what was not harvested, cross-check mismatches, hints for E03.
+    pub report: Vec<String>,
+}
+
+/// A creature prepared for writing.
+struct Creature<'a> {
+    id: usize,
+    key: String,
+    row: &'a Row,
+    faction: Option<usize>,
+    level: u8,
+    flags: Vec<&'static str>,
+}
+
+/// Runs the harvest.
+///
+/// # Errors
+/// Any inconsistency between inputs and gap-fill (see the module docs); the packs failing to
+/// compile.
+#[allow(
+    clippy::too_many_lines,
+    reason = "one linear pipeline, split by comments"
+)]
+pub fn harvest(inputs: &Inputs, gap: &GapFill) -> Result<Harvest, String> {
+    let mut report = Vec::new();
+    if inputs.exe.len() != CREATURE_COUNT {
+        return Err(format!("executable table has {} records", inputs.exe.len()));
+    }
+    let sod_rows = creature_rows(&inputs.sod_creatures)?;
+    let ab_rows = creature_rows(&inputs.ab_creatures)?;
+
+    // Towns and resources.
+    let towns: Vec<String> = inputs
+        .towns
+        .records
+        .iter()
+        .map(|r| r[0].trim().to_owned())
+        .collect();
+    let resources: Vec<String> = inputs
+        .resources
+        .records
+        .iter()
+        .take(RESOURCE_COUNT)
+        .map(|r| r[0].trim().to_owned())
+        .collect();
+    if resources.len() != RESOURCE_COUNT {
+        return Err(format!(
+            "RESTYPES.TXT has {} rows, expected at least {RESOURCE_COUNT}",
+            resources.len()
+        ));
+    }
+    for extra in inputs.resources.records.iter().skip(RESOURCE_COUNT) {
+        report.push(format!(
+            "RESTYPES.TXT: row `{}` is not a resource column of CRTRAITS; not harvested",
+            extra[0].trim()
+        ));
+    }
+    let ab_towns: BTreeSet<usize> = gap
+        .ab
+        .factions
+        .iter()
+        .map(|n| {
+            towns
+                .iter()
+                .position(|t| t == n)
+                .ok_or_else(|| format!("gapfill: unknown town `{n}`"))
+        })
+        .collect::<Result<_, _>>()?;
+
+    // Creatures.
+    let by_name = |name: &str| -> Result<usize, String> {
+        sod_rows
+            .iter()
+            .position(|r| r.name == name)
+            .ok_or_else(|| format!("gapfill: unknown creature `{name}`"))
+    };
+    let ab_ids: BTreeSet<usize> = gap
+        .ab
+        .creatures
+        .iter()
+        .map(|n| by_name(n))
+        .collect::<Result<_, _>>()?;
+    let roe: BTreeMap<usize, u8> = gap
+        .roe_creature
+        .iter()
+        .map(|r| Ok((by_name(&r.name)?, r.level)))
+        .collect::<Result<_, String>>()?;
+    let changes: BTreeMap<usize, Since> = gap
+        .table_change
+        .iter()
+        .map(|c| Ok((by_name(&c.name)?, c.since)))
+        .collect::<Result<_, String>>()?;
+
+    let mut creatures = Vec::new();
+    let mut keys = BTreeSet::new();
+    for (id, (rec, row)) in inputs.exe.iter().zip(&sod_rows).enumerate() {
+        let unused = row.name.starts_with("NOT USED");
+        if unused != (rec.level < 0) {
+            return Err(format!(
+                "creature {id} `{}`: table and executable disagree on whether it is used",
+                row.name
+            ));
+        }
+        if unused {
+            report.push(format!(
+                "creature id {id} (`{}`): unused slot, not harvested",
+                row.name
+            ));
+            continue;
+        }
+        if rec.flags & WAR_MACHINE_BIT != 0 {
+            // Speed 0 and no damage for most of them: hero equipment / siege structures with their
+            // own rules, not army creatures (E03/E04).
+            report.push(format!(
+                "creature id {id} (`{}`): war machine, not harvested yet (E03/E04)",
+                row.name
+            ));
+            continue;
+        }
+        let key = key_of(&row.name);
+        if !keys.insert(key.clone()) {
+            return Err(format!("duplicate creature key `{key}`"));
+        }
+        let flag_names =
+            flags(rec.flags).map_err(|e| format!("creature {id} `{}`: {e}", row.name))?;
+        if rec.flags & UNHARVESTED_BITS != 0 {
+            report.push(format!(
+                "creature `{key}`: unidentified flag bit 0x800 not harvested"
+            ));
+        }
+        for token in row
+            .attributes
+            .split('|')
+            .map(str::trim)
+            .filter(|t| !t.is_empty() && *t != "0")
+        {
+            match ATTRIBUTE_FLAGS.iter().find(|(a, _)| *a == token) {
+                Some((_, flag)) if !flag_names.contains(flag) => report.push(format!(
+                    "creature `{key}`: attribute column says {token}, executable lacks `{flag}`"
+                )),
+                Some(_) => {}
+                None => report.push(format!(
+                    "creature `{key}`: attribute {token} not harvested (ability, E03)"
+                )),
+            }
+        }
+        let faction = usize::try_from(rec.town).ok();
+        if faction.is_some_and(|t| t >= towns.len()) {
+            return Err(format!(
+                "creature `{key}`: town index {} has no TownType row",
+                rec.town
+            ));
+        }
+        let level =
+            u8::try_from(rec.level + 1).map_err(|_| format!("creature `{key}`: bad level"))?;
+        creatures.push(Creature {
+            id,
+            key,
+            row,
+            faction,
+            level,
+            flags: flag_names,
+        });
+    }
+
+    // Classify rows that differ between the AB-era and SoD tables.
+    for (id, (sod, ab)) in sod_rows.iter().zip(&ab_rows).enumerate() {
+        let differs = !sod.same_values(ab);
+        match (differs, changes.get(&id)) {
+            (true, None) => {
+                return Err(format!(
+                    "creature `{}` differs between H3ab_bmp and H3bitmap; classify it in gapfill",
+                    sod.name
+                ));
+            }
+            (false, Some(_)) => {
+                return Err(format!(
+                    "gapfill: table_change `{}` does not differ",
+                    sod.name
+                ));
+            }
+            _ => {}
+        }
+        if sod.ability_text != ab.ability_text {
+            report.push(format!(
+                "creature `{}`: ability text changed between AB and SoD (abilities: E03)",
+                key_of(&sod.name)
+            ));
+        }
+    }
+
+    // Pack membership.
+    let base_towns: Vec<usize> = (0..towns.len()).filter(|t| !ab_towns.contains(t)).collect();
+    for c in &creatures {
+        let in_ab = ab_ids.contains(&c.id);
+        if !in_ab && c.faction.is_some_and(|t| ab_towns.contains(&t)) && !roe.contains_key(&c.id) {
+            return Err(format!(
+                "creature `{}` is RoE but belongs to an AB faction; add a roe_creature entry",
+                c.key
+            ));
+        }
+        if in_ab && roe.contains_key(&c.id) {
+            return Err(format!(
+                "creature `{}` is listed as AB addition and as RoE creature",
+                c.key
+            ));
+        }
+    }
+    let town_ref = |t: usize, pack: &str| {
+        let owner = if ab_towns.contains(&t) { "ab" } else { "base" };
+        let k = key_of(&towns[t]);
+        if owner == pack {
+            k
+        } else {
+            format!("{owner}:{k}")
+        }
+    };
+    let row_for = |c: &Creature<'_>| -> Row {
+        // `since = "sod"`: base/ab keep the AB-era row.
+        if changes.get(&c.id) == Some(&Since::Sod) {
+            ab_rows[c.id].clone()
+        } else {
+            c.row.clone()
+        }
+    };
+
+    let header = |id: &str, depends: &[&str], what: &str| {
+        let mut s = String::new();
+        let _ = writeln!(
+            s,
+            "# GENERATED by h3-harvest (E02) from the user's installation (Complete 4.0) and"
+        );
+        let _ = writeln!(s, "# crates/h3-harvest/data/gapfill.toml. {what}");
+        let _ = writeln!(
+            s,
+            "# Do not edit by hand: change the harvester or the gap-fill file and re-run it"
+        );
+        let _ = writeln!(
+            s,
+            "# (`cargo run -p h3-harvest -- --install original-data/install --out packs`)."
+        );
+        let _ = writeln!(
+            s,
+            "# Gameplay data and names only (OPEN-QUESTIONS Q13); sources: docs/formats/installation.md."
+        );
+        let _ = writeln!(s);
+        let _ = writeln!(s, "[pack]");
+        let _ = writeln!(s, "id = \"{id}\"");
+        let _ = writeln!(s, "version = \"harvest-1\"");
+        let deps: Vec<String> = depends.iter().map(|d| format!("\"{d}\"")).collect();
+        let _ = writeln!(s, "depends = [{}]", deps.join(", "));
+        s
+    };
+
+    // base
+    let mut base = header(
+        "base",
+        &[],
+        "The Restoration of Erathia, latest patch (Q15).",
+    );
+    for r in &resources {
+        let _ = write!(
+            base,
+            "\n[[resource]]\nid = \"{}\"\nname = {}\n",
+            key_of(r),
+            quote(r)
+        );
+    }
+    for &t in &base_towns {
+        let _ = write!(
+            base,
+            "\n[[faction]]\nid = \"{}\"\nname = {}\n",
+            key_of(&towns[t]),
+            quote(&towns[t])
+        );
+    }
+    for c in creatures.iter().filter(|c| !ab_ids.contains(&c.id)) {
+        let (faction, level) = match roe.get(&c.id) {
+            Some(&level) => (None, level),
+            None => (c.faction.map(|t| town_ref(t, "base")), c.level),
+        };
+        write_creature(
+            &mut base,
+            c,
+            &row_for(c),
+            faction.as_deref(),
+            level,
+            &resources,
+            "base",
+        );
+    }
+    write_battle(&mut base, gap);
+    base.push_str(
+        "\n[[profile]]\nid = \"faithful\"        # default: preserve/fix-optional quirks on\n",
+    );
+    base.push_str("\n[[profile]]\nid = \"strict-fixed\"    # all quirks fixed\n");
+
+    // ab
+    let mut ab = header("ab", &["base"], "Armageddon's Blade, latest patch (Q15).");
+    for &t in &ab_towns {
+        let _ = write!(
+            ab,
+            "\n[[faction]]\nid = \"{}\"\nname = {}\n",
+            key_of(&towns[t]),
+            quote(&towns[t])
+        );
+    }
+    for c in creatures.iter().filter(|c| ab_ids.contains(&c.id)) {
+        let faction = c.faction.map(|t| town_ref(t, "ab"));
+        write_creature(
+            &mut ab,
+            c,
+            &row_for(c),
+            faction.as_deref(),
+            c.level,
+            &resources,
+            "ab",
+        );
+    }
+    for c in creatures.iter().filter(|c| roe.contains_key(&c.id)) {
+        let _ = write!(ab, "\n[[creature_override]]\ntarget = \"base:{}\"\n", c.key);
+        let faction = c.faction.map_or_else(String::new, |t| town_ref(t, "ab"));
+        let _ = writeln!(ab, "faction = \"{faction}\"");
+        let _ = writeln!(ab, "level = {}", c.level);
+    }
+
+    // sod
+    let mut sod = header("sod", &["ab"], "The Shadow of Death: changes on top of AB.");
+    for c in creatures
+        .iter()
+        .filter(|c| changes.get(&c.id) == Some(&Since::Sod))
+    {
+        let owner = if ab_ids.contains(&c.id) { "ab" } else { "base" };
+        let (old, new) = (&ab_rows[c.id], c.row);
+        let _ = write!(
+            sod,
+            "\n[[creature_override]]\ntarget = \"{owner}:{}\"\n",
+            c.key
+        );
+        write_row_diff(&mut sod, old, new, &resources);
+    }
+
+    // The output must compile in every allowed combination, and SoD without AB must be rejected.
+    let profile = "base:faithful";
+    for set in [&[&base][..], &[&base, &ab], &[&base, &ab, &sod]] {
+        let texts: Vec<&str> = set.iter().map(|s| s.as_str()).collect();
+        h3_pack::compile(&texts, profile)
+            .map_err(|e| format!("generated packs do not compile: {e}"))?;
+    }
+    if h3_pack::compile(&[&base, &sod], profile).is_ok() {
+        return Err("generated sod pack compiles without ab".into());
+    }
+    report.push("CRTRAITS ability-text column: flavor text, not harvested (Q13)".into());
+    Ok(Harvest {
+        packs: vec![("base", base), ("ab", ab), ("sod", sod)],
+        report,
+    })
+}
+
+/// TOML basic string.
+fn quote(s: &str) -> String {
+    let mut out = String::from("\"");
+    for c in s.chars() {
+        match c {
+            '"' => out.push_str("\\\""),
+            '\\' => out.push_str("\\\\"),
+            c if c.is_control() => {
+                let _ = write!(out, "\\u{:04X}", u32::from(c));
+            }
+            c => out.push(c),
+        }
+    }
+    out.push('"');
+    out
+}
+
+fn cost_table(cost: &[u32; RESOURCE_COUNT], resources: &[String], pack: &str) -> String {
+    let entries: Vec<String> = cost
+        .iter()
+        .zip(resources)
+        .filter(|(n, _)| **n != 0)
+        .map(|(n, r)| {
+            let k = key_of(r);
+            if pack == "base" {
+                format!("{k} = {n}")
+            } else {
+                format!("\"base:{k}\" = {n}")
+            }
+        })
+        .collect();
+    format!("{{ {} }}", entries.join(", "))
+}
+
+#[allow(clippy::too_many_arguments, reason = "internal writer")]
+fn write_creature(
+    out: &mut String,
+    c: &Creature<'_>,
+    row: &Row,
+    faction: Option<&str>,
+    level: u8,
+    resources: &[String],
+    pack: &str,
+) {
+    let _ = write!(
+        out,
+        "\n[[creature]]\nid = \"{}\"  # original id {}\n",
+        c.key, c.id
+    );
+    let _ = writeln!(out, "name = {}", quote(&row.name));
+    let _ = writeln!(out, "plural = {}", quote(&row.plural));
+    if let Some(f) = faction {
+        let _ = writeln!(out, "faction = \"{f}\"");
+    }
+    let _ = writeln!(out, "level = {level}");
+    let _ = writeln!(out, "attack = {}", row.attack);
+    let _ = writeln!(out, "defense = {}", row.defense);
+    let _ = writeln!(out, "damage = [{}, {}]", row.damage[0], row.damage[1]);
+    let _ = writeln!(out, "hit_points = {}", row.hit_points);
+    let _ = writeln!(out, "speed = {}", row.speed);
+    let _ = writeln!(out, "shots = {}", row.shots);
+    let _ = writeln!(out, "casts = {}", row.casts);
+    let _ = writeln!(out, "cost = {}", cost_table(&row.cost, resources, pack));
+    let _ = writeln!(out, "growth = {}", row.growth);
+    let _ = writeln!(out, "horde_growth = {}", row.horde_growth);
+    let _ = writeln!(out, "fight_value = {}", row.fight_value);
+    let _ = writeln!(out, "ai_value = {}", row.ai_value);
+    let _ = writeln!(
+        out,
+        "adventure_count = [{}, {}]",
+        row.adventure_count[0], row.adventure_count[1]
+    );
+    let flags: Vec<String> = c.flags.iter().map(|f| format!("\"{f}\"")).collect();
+    let _ = writeln!(out, "flags = [{}]", flags.join(", "));
+}
+
+fn write_row_diff(out: &mut String, old: &Row, new: &Row, resources: &[String]) {
+    macro_rules! field {
+        ($f:ident) => {
+            if old.$f != new.$f {
+                let _ = writeln!(out, "{} = {}", stringify!($f), new.$f);
+            }
+        };
+    }
+    if old.name != new.name {
+        let _ = writeln!(out, "name = {}", quote(&new.name));
+    }
+    if old.plural != new.plural {
+        let _ = writeln!(out, "plural = {}", quote(&new.plural));
+    }
+    field!(attack);
+    field!(defense);
+    if old.damage != new.damage {
+        let _ = writeln!(out, "damage = [{}, {}]", new.damage[0], new.damage[1]);
+    }
+    field!(hit_points);
+    field!(speed);
+    field!(shots);
+    field!(casts);
+    if old.cost != new.cost {
+        let _ = writeln!(out, "cost = {}", cost_table(&new.cost, resources, "sod"));
+    }
+    field!(growth);
+    field!(horde_growth);
+    field!(fight_value);
+    field!(ai_value);
+    if old.adventure_count != new.adventure_count {
+        let _ = writeln!(
+            out,
+            "adventure_count = [{}, {}]",
+            new.adventure_count[0], new.adventure_count[1]
+        );
+    }
+}
+
+fn write_battle(out: &mut String, gap: &GapFill) {
+    let b = &gap.battle;
+    let _ = write!(
+        out,
+        "\n# Battle parameters (Tier 2): rule ids in docs/rules/catalog/battle.toml; formation = the\n\
+         # original's loose formation (sources in the gap-fill file).\n[battle]\n"
+    );
+    let _ = writeln!(out, "field_width = {}", b.field_width);
+    let _ = writeln!(out, "field_height = {}", b.field_height);
+    let _ = writeln!(out, "side_columns = {}", b.side_columns);
+    let _ = writeln!(out, "army_slots = {}", b.army_slots);
+    let _ = writeln!(out, "damage_roll_samples = {}", b.damage_roll_samples);
+    let _ = writeln!(
+        out,
+        "attack_bonus_per_point_percent = {}",
+        b.attack_bonus_per_point_percent
+    );
+    let _ = writeln!(
+        out,
+        "attack_bonus_cap_percent = {}",
+        b.attack_bonus_cap_percent
+    );
+    let _ = writeln!(
+        out,
+        "defense_reduction_per_point_permille = {}",
+        b.defense_reduction_per_point_permille
+    );
+    let _ = writeln!(
+        out,
+        "defense_reduction_cap_permille = {}",
+        b.defense_reduction_cap_permille
+    );
+    let _ = writeln!(out, "defend_bonus_percent = {}", b.defend_bonus_percent);
+    let _ = writeln!(out, "defend_bonus_min = {}", b.defend_bonus_min);
+    let rows: Vec<String> = b
+        .formation
+        .iter()
+        .map(|r| {
+            format!(
+                "[{}]",
+                r.iter().map(u8::to_string).collect::<Vec<_>>().join(", ")
+            )
+        })
+        .collect();
+    let _ = writeln!(out, "formation = [{}]", rows.join(", "));
+}
+
+#[cfg(test)]
+mod tests;

@@ -20,6 +20,12 @@ use serde::Deserialize;
 pub const SYNTHETIC_PACK: &str = include_str!("../../../packs/synthetic/pack.toml");
 /// Synthetic expansion pack (depends on the synthetic pack; dependencies and overrides).
 pub const SYNTHETIC_EXT_PACK: &str = include_str!("../../../packs/synthetic-ext/pack.toml");
+/// Harvested pack `base`: The Restoration of Erathia, latest patch (E02, OPEN-QUESTIONS Q13/Q15).
+pub const BASE_PACK: &str = include_str!("../../../packs/base/pack.toml");
+/// Harvested pack `ab`: Armageddon's Blade (depends on `base`).
+pub const AB_PACK: &str = include_str!("../../../packs/ab/pack.toml");
+/// Harvested pack `sod`: The Shadow of Death (depends on `ab`).
+pub const SOD_PACK: &str = include_str!("../../../packs/sod/pack.toml");
 /// Synthetic scenario: three stacks per side.
 pub const SYNTHETIC_SKIRMISH: &str =
     include_str!("../../../packs/synthetic/scenarios/skirmish.toml");
@@ -570,6 +576,46 @@ mod tests {
                 depends: "synthetic".into()
             }))
         );
+    }
+
+    #[test]
+    fn harvested_packs_compile_in_every_allowed_combination() {
+        let profile = "base:faithful";
+        let roe = compile(&[BASE_PACK], profile).unwrap();
+        let ab = compile(&[BASE_PACK, AB_PACK], profile).unwrap();
+        let sod = compile(&[SOD_PACK, AB_PACK, BASE_PACK], profile).unwrap();
+        // RoE: 8 towns x 14 + 6 neutrals; AB adds Conflux (10 new) and 13 neutrals.
+        assert_eq!(roe.creature_count(), 118);
+        assert_eq!(ab.creature_count(), 141);
+        assert_eq!(sod.creature_count(), 141);
+        assert_eq!((roe.factions().len(), ab.factions().len()), (8, 9));
+        // SoD requires AB; AB requires base.
+        assert!(matches!(
+            compile(&[BASE_PACK, SOD_PACK], profile),
+            Err(PackError::Compile(CompileError::MissingDependency { .. }))
+        ));
+        assert!(compile(&[AB_PACK], profile).is_err());
+        // Spot checks of the version differences (sources: crates/h3-harvest/data/gapfill.toml).
+        let gems_of = |r: &Ruleset, key: &str| {
+            let info = r.creature_info(r.creature_by_key(key).unwrap()).unwrap();
+            info.cost
+                .iter()
+                .find(|(res, _)| r.resources()[res.index()].key.as_str() == "base:gems")
+                .map_or(0, |(_, n)| *n)
+        };
+        assert_eq!(gems_of(&ab, "base:angel"), 0);
+        assert_eq!(gems_of(&sod, "base:angel"), 1);
+        let air = roe.creature_by_key("base:air_elemental").unwrap();
+        assert_eq!(roe.creature_info(air).unwrap().faction, None);
+        assert_eq!(roe.creature_info(air).unwrap().level, 4);
+        assert_eq!(ab.creature_info(air).unwrap().level, 2);
+        let lizard = roe.creature_by_key("base:lizardman").unwrap();
+        assert_eq!(roe.creature_info(lizard).unwrap().growth, 9);
+        let cerberus = roe.creature_by_key("base:cerberus").unwrap();
+        assert_eq!(roe.creature(cerberus).unwrap().damage_max, 5);
+        assert_eq!(sod.creature(cerberus).unwrap().damage_max, 7);
+        assert_eq!(roe.battle().attack_bonus_cap_percent, 300);
+        assert_eq!(roe.battle().formation_row(7, 3), Some(5));
     }
 
     #[test]

@@ -1,6 +1,6 @@
 # E02 — Content pipeline
 
-Status: in-progress · Refined: 2026-09-30 (end of E01) · Re-planned: 2026-09-30 (E02 T1, after user decisions Q8, Q13, Q14)
+Status: in-progress (T1–T5 implemented; closing) · Refined: 2026-09-30 (end of E01) · Re-planned: 2026-09-30 (E02 T1, after user decisions Q8, Q13, Q14)
 
 ## Goal
 
@@ -86,9 +86,19 @@ than creatures/factions/resources unless E03 needs them (heroes, spells, artifac
   `packs/synthetic-ext` added; format in `packs/README.md`. Golden replays re-recorded (only the
   ruleset hash in their headers changed; all state hashes identical). Profile-level Tier-2
   overrides are still deferred (backlog).
-- **T4 `h3-harvest` + gap-fill file**: generate and commit `base`, `ab`, `sod`.
-- **T5 Conformance + closing**: `--with-original-data` re-harvest check, HANDOFF, refine E03 with
-  the real data (abilities list, flags).
+- **T4 `h3-harvest` + gap-fill file** ✅ 2026-10-01: `crates/h3-harvest` (tool) +
+  `data/gapfill.toml` (AB membership, RoE levels of the four elementals, classification of the
+  AB-era→SoD table differences per Q15, battle parameters with the loose formation from VCMI; every
+  entry sourced). Committed `packs/base` (118 creatures, 8 factions, 7 resources, battle, profiles),
+  `packs/ab` (Conflux + 23 creatures, 4 elemental overrides), `packs/sod` (3 overrides). The harvester
+  compiles its output in every allowed combination before writing. Not harvested (reported): war
+  machines (speed 0, own rules → E03/E04), exe bit `0x800`, ability attributes and ability text.
+  Cross-check finding: the table's attribute column is wrong for Hell Hound, Cerberus, Devil,
+  Arch Devil, Crystal Dragon (not flying) and Psychic/Magic Elemental (not two-hex); the exe wins.
+- **T5 Conformance + closing**: ✅ `cargo xtask verify --with-original-data [path]` re-harvests and
+  requires byte-identical packs; `h3-pack` tests compile the committed packs in every allowed
+  combination (CI-safe). Open for closing: refine E03 with the real data (abilities list from the
+  harvest report, flags), user confirmation on Windows.
 
 ## Risks
 

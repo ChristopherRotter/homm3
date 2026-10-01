@@ -164,6 +164,16 @@ external = ["miniz_oxide"]
 dev_deps = []
 dev_external = ["proptest"]
 
+# One-off harvester: original files -> committed packs base/ab/sod (E02, Q13). Tool layer: nothing
+# may depend on it.
+[crate.h3-harvest]
+layer = "tool"
+logic = false
+deps = ["h3-formats", "h3-pack"]
+external = ["serde", "toml"]
+dev_deps = ["h3-content"]
+dev_external = []
+
 [crate.xtask]
 layer = "tool"
 logic = false

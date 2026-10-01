@@ -92,17 +92,52 @@ fn test() -> Result<(), String> {
 struct Options {
     quick: bool,
     skip: Vec<String>,
+    /// `--with-original-data [path]`: also re-harvest from the user's installation copy and
+    /// require the committed packs to match (local only, never CI; E02 T5).
+    original_data: Option<String>,
+}
+
+/// Default location of the installation copy (gitignored, ADR-0009).
+const DEFAULT_ORIGINAL_DATA: &str = "original-data/install";
+
+/// Re-harvests from `install` and compares with the committed packs (read-only on `install`).
+fn harvest_check(install: &str) -> Result<(), String> {
+    let mut cmd = cargo();
+    cmd.args([
+        "run",
+        "--quiet",
+        "-p",
+        "h3-harvest",
+        "--",
+        "--install",
+        install,
+        "--out",
+        "packs",
+        "--check",
+    ]);
+    run_cmd(cmd)
 }
 
 fn parse(args: &[String]) -> Result<Options, String> {
     let mut options = Options {
         quick: false,
         skip: Vec::new(),
+        original_data: None,
     };
     let mut iter = args.iter();
     while let Some(arg) = iter.next() {
         match arg.as_str() {
             "--quick" => options.quick = true,
+            "--with-original-data" => {
+                let path = match iter.as_slice().first() {
+                    Some(next) if !next.starts_with("--") => {
+                        iter.next();
+                        next.clone()
+                    }
+                    _ => DEFAULT_ORIGINAL_DATA.to_owned(),
+                };
+                options.original_data = Some(path);
+            }
             "--skip" => {
                 let step = iter.next().ok_or("--skip needs a step name")?;
                 if !STEPS.iter().any(|s| s.name == step) {
@@ -151,6 +186,14 @@ pub fn run_steps(args: &[String]) -> Result<(), String> {
             }
         };
         results.push((step.name, outcome));
+    }
+    if let Some(install) = &options.original_data {
+        println!("\n==> original-data ({install})");
+        let outcome = match harvest_check(install) {
+            Ok(()) => Outcome::Passed,
+            Err(e) => Outcome::Failed(e),
+        };
+        results.push(("original-data", outcome));
     }
 
     println!("\nverify summary:");
@@ -202,9 +245,22 @@ mod tests {
             options,
             Options {
                 quick: true,
-                skip: vec!["deny".to_owned()]
+                skip: vec!["deny".to_owned()],
+                original_data: None,
             }
         );
+    }
+
+    #[test]
+    fn parses_with_original_data() {
+        let default = parse(&strings(&["--with-original-data", "--quick"])).unwrap();
+        assert_eq!(
+            default.original_data.as_deref(),
+            Some(DEFAULT_ORIGINAL_DATA)
+        );
+        assert!(default.quick);
+        let path = parse(&strings(&["--with-original-data", "D:/H3"])).unwrap();
+        assert_eq!(path.original_data.as_deref(), Some("D:/H3"));
     }
 
     #[test]

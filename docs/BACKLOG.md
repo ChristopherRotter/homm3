@@ -56,4 +56,8 @@ See `docs/stubs.toml` (empty: no registered stubs after E01).
 - 2026-09-30 (E01): content-pack override rules and profile-level Tier-2 overrides (deferred; E02 T4).
 - 2026-09-30 (E01): faster state hash if search needs per-node hashing (FNV-1a ≈ 1 ns/byte; bump `HASH_VERSION`).
 - 2026-09-30 (E01): bump the pinned toolchain (1.95.0) to the current stable when the build environment allows; re-baseline bench-check.
+- 2026-10-01 (E02): war machines (Catapult, Ballista, First Aid Tent, Ammo Cart, Arrow Tower) are not harvested (speed 0, no damage for most): model them with heroes/sieges (E03/E04) and extend the harvester.
+- 2026-10-01 (E02): abilities from the harvest report for E03 (jousting, morale ±, no wall penalty, Dragon Fly weakness from SoD/RoE 1.3, hate, …) and the unidentified exe flag bit `0x800` (Arch Mage, Beholder, Evil Eye).
+- 2026-10-01 (E02): tight formations / tactics (BAT-SET-001; VCMI layout table), and other harvested tables (spells, artifacts, heroes, buildings) when their epics come; RoE/AB patch differences outside creatures need the same gap-fill treatment (Q15).
+- 2026-10-01 (E02): `cargo-fuzz` targets for `h3-formats` (property tests cover arbitrary input today; the readers only run in the harvester on local files).
 - 2026-09-30 (E01): batch stepping over many environments in `h3-sim`/C ABI, and loading packs/scenarios through the ABI (E05).

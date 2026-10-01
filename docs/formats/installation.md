@@ -101,6 +101,10 @@ then contain CRLF (multi-line ability texts). Header rows are part of the file.
   `IMMUNE_TO_MIND_SPELLS`, `SIEGE_WEAPON`, `CATAPULT`; it is incomplete (e.g. no multi-head flag on
   hydras) and inconsistently spaced. Not authoritative; the executable's flags are (§5).
 
+`RESTYPES.TXT` has 8 rows: the seven resources in the `CRTRAITS` cost-column order, then
+`Abandoned` (not a resource; not harvested). `TownType.txt` has the 9 town names in town-index
+order (Castle … Conflux).
+
 Other tables (artifacts `ARTRAITS`, spells `SPTRAITS`, heroes `HOTRAITS`, classes `HCTRAITS`,
 secondary skills `SSTRAITS`, buildings, objects, …) are listed in §3 and catalogued when an epic
 needs them.
@@ -125,9 +129,13 @@ executable's `.data` section:
   `0x8` two-hex (breath) attack, `0x10` alive, `0x20` catapult, `0x40` war machine, `0x80`/`0x100`/
   `0x200` king 1/2/3, `0x400` mind immunity, `0x1000` no melee penalty, `0x4000` fire immunity,
   `0x8000` strikes twice, `0x10000` no enemy retaliation, `0x20000` no morale, `0x40000` undead,
-  `0x80000` attacks all adjacent, `0x100000` area (ball) ranged attack (ids 45, 64, 65),
+  `0x80000` multi-headed attack (hydras, Cerberus, psychic/magic elementals), `0x100000` area (ball) ranged attack (ids 45, 64, 65),
   `0x80000000` dragon. `0x800` is set on ids 35, 74, 75 and not identified yet; `0x2000` and bits
   21–30 are unused by all 150 records.
+
+The harvester cross-checks the flags with the `CRTRAITS` attribute column. Where they disagree
+the executable matches known gameplay and wins: the column marks Hell Hound, Cerberus, Devil, Arch
+Devil and Crystal Dragon as flying and Psychic/Magic Elemental as two-hex; none of them is.
 
 Only this exact executable (SHA-256 above) is known to have the table at this offset; a harvester
 must refuse other builds rather than read garbage.
