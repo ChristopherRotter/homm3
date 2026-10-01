@@ -175,7 +175,7 @@ fn hash_is_stable_and_sensitive() {
     );
 }
 
-const GOLDEN_BASE_HASH: u64 = 0x8f01_a9ac_8314_51d2;
+const GOLDEN_BASE_HASH: u64 = 0xcdfc_4e89_b205_fdc5;
 
 fn expect(packs: &[ContentPack], profile: &str) -> CompileError {
     Ruleset::compile(packs, profile).unwrap_err()
@@ -524,13 +524,12 @@ fn resources_factions_and_creature_info_compile() {
     );
     assert_eq!((info.growth, info.horde_growth), (14, 4));
     assert_eq!((info.fight_value, info.ai_value), (100, 80));
-    assert_eq!(
-        (info.shots, info.casts, info.adventure_count),
-        (12, 1, [20, 50])
-    );
-    assert!(info.flags.contains(CreatureFlag::Flying));
-    assert!(info.flags.contains(CreatureFlag::TwoHex));
-    assert!(!info.flags.contains(CreatureFlag::Undead));
+    assert_eq!((info.casts, info.adventure_count), (1, [20, 50]));
+    let stats = r.creature(a).unwrap();
+    assert_eq!(stats.shots, 12);
+    assert!(stats.flags.contains(CreatureFlag::Flying));
+    assert!(stats.flags.contains(CreatureFlag::TwoHex));
+    assert!(!stats.flags.contains(CreatureFlag::Undead));
     let b = r
         .creature_info(r.creature_by_key("base:b").unwrap())
         .unwrap();
@@ -696,6 +695,10 @@ fn full_patch() -> CreaturePatch {
         casts: Some(3),
         adventure_count: Some([4, 10]),
         flags: Some(vec!["undead".into()]),
+        abilities: Some(vec![AbilityDef::Hate {
+            target: key("ext:c"),
+            percent: 50,
+        }]),
     }
 }
 
@@ -754,12 +757,17 @@ fn overrides_change_only_the_listed_fields() {
     );
     assert_eq!((info.growth, info.horde_growth), (2, 1));
     assert_eq!((info.fight_value, info.ai_value), (5000, 6000));
+    assert_eq!((info.casts, info.adventure_count), (3, [4, 10]));
+    assert_eq!(stats.shots, 24);
+    assert!(stats.flags.contains(CreatureFlag::Undead));
+    assert!(!stats.flags.contains(CreatureFlag::Flying));
     assert_eq!(
-        (info.shots, info.casts, info.adventure_count),
-        (24, 3, [4, 10])
+        r.abilities(a),
+        [CompiledAbility::Hate {
+            target: r.creature_by_key("ext:c").unwrap(),
+            percent: 50
+        }]
     );
-    assert!(info.flags.contains(CreatureFlag::Undead));
-    assert!(!info.flags.contains(CreatureFlag::Flying));
     // `Some(None)` makes a creature neutral.
     let neutral = CreaturePatch {
         faction: Some(None),
@@ -843,5 +851,143 @@ fn override_errors() {
             key: "base:a".into(),
             reason: "hit_points must be at least 1"
         }
+    );
+}
+
+fn with_abilities(abilities: Vec<AbilityDef>) -> ContentPack {
+    let mut p = base();
+    p.creatures[0].info.abilities = abilities;
+    p
+}
+
+#[test]
+fn abilities_compile_with_forward_references() {
+    use crate::ability::{AreaShot, AuraTarget};
+    let mut p = with_abilities(vec![
+        // `base:b` is defined after `base:a`.
+        AbilityDef::Hate {
+            target: key("base:b"),
+            percent: 50,
+        },
+        AbilityDef::MoraleAura {
+            amount: 1,
+            affects: AuraTarget::Allies,
+        },
+    ]);
+    p.creatures[1].info.flags = vec!["area_attack".into(), "multi_headed".into()];
+    p.creatures[1].info.abilities = vec![
+        AbilityDef::AreaShot {
+            effect: AreaShot::Fireball,
+        },
+        AbilityDef::ThreeHeadedAttack,
+    ];
+    let r = Ruleset::compile(&[p], "base:faithful").unwrap();
+    let a = r.creature_by_key("base:a").unwrap();
+    let b = r.creature_by_key("base:b").unwrap();
+    assert_eq!(
+        r.abilities(a),
+        [
+            CompiledAbility::Hate {
+                target: b,
+                percent: 50
+            },
+            CompiledAbility::MoraleAura {
+                amount: 1,
+                affects: AuraTarget::Allies
+            }
+        ]
+    );
+    assert_eq!(r.abilities(b).len(), 2);
+    assert!(r.abilities(CreatureTypeId::from_raw(99)).is_empty());
+    // Abilities are part of the content hash.
+    let plain = Ruleset::compile(&[with_abilities(vec![])], "base:faithful").unwrap();
+    let hated = Ruleset::compile(
+        &[with_abilities(vec![AbilityDef::Teleports])],
+        "base:faithful",
+    )
+    .unwrap();
+    assert_ne!(plain.content_hash(), hated.content_hash());
+}
+
+#[test]
+fn ability_errors() {
+    let invalid = |reason| CompileError::InvalidCreature {
+        key: "base:a".into(),
+        reason,
+    };
+    assert_eq!(
+        expect(
+            &[with_abilities(vec![AbilityDef::Hate {
+                target: key("base:zzz"),
+                percent: 50
+            }])],
+            "base:faithful"
+        ),
+        CompileError::UnknownReference {
+            kind: "creature",
+            key: "base:zzz".into()
+        }
+    );
+    // A base creature cannot refer to a creature of a pack it does not depend on.
+    assert_eq!(
+        expect(
+            &[
+                with_abilities(vec![AbilityDef::Hate {
+                    target: key("ext:c"),
+                    percent: 50
+                }]),
+                ext()
+            ],
+            "base:faithful"
+        ),
+        CompileError::ReferenceOutsideDependencies {
+            key: "ext:c".into(),
+            pack: "base".into()
+        }
+    );
+    assert_eq!(
+        expect(
+            &[with_abilities(vec![AbilityDef::Jousting {
+                percent_per_hex: 0
+            }])],
+            "base:faithful"
+        ),
+        invalid("jousting percent_per_hex must be at least 1")
+    );
+    assert_eq!(
+        expect(
+            &[with_abilities(vec![AbilityDef::AttacksAllAdjacent])],
+            "base:faithful"
+        ),
+        invalid("flag multi_headed requires attacks_all_adjacent or three_headed_attack")
+    );
+    let mut flagged = base();
+    flagged.creatures[0].info.flags = vec!["area_attack".into()];
+    assert_eq!(
+        expect(&[flagged], "base:faithful"),
+        invalid("flag area_attack requires an area_shot ability (and vice versa)")
+    );
+    // Overrides resolve their abilities in the overriding pack's scope and are validated.
+    let bad = CreaturePatch {
+        abilities: Some(vec![AbilityDef::Hate {
+            target: key("ext:nobody"),
+            percent: 50,
+        }]),
+        ..CreaturePatch::default()
+    };
+    assert!(matches!(
+        expect(&[base(), overriding("base:a", bad)], "base:faithful"),
+        CompileError::UnknownReference {
+            kind: "creature",
+            ..
+        }
+    ));
+    let twice = CreaturePatch {
+        abilities: Some(vec![AbilityDef::Teleports, AbilityDef::Teleports]),
+        ..CreaturePatch::default()
+    };
+    assert_eq!(
+        expect(&[base(), overriding("base:a", twice)], "base:faithful"),
+        invalid("an ability is listed twice")
     );
 }

@@ -52,8 +52,23 @@ Runtime scripting for all rules (flexible, slow, hard to test/secure); hard-code
 - **Implemented in E02 T3:** resources and factions are content; creatures carry the non-battle fields (names, faction, level, cost, growth, horde growth, fight/AI value, shots, casts, adventure-map count) and flags from a closed set in code (`CreatureFlag`, unknown names are errors). Non-battle fields live in `CreatureInfo` beside the hot-path `CreatureType`. Ruleset hash encoding v2. Format reference: `packs/README.md`.
 - **Configuration source:** the committed packs are generated once from the original data by the harvesting tool and then maintained as source (Q13, ADR-0009 amendment 2).
 
+## Amendment — E03 battle core (2026-10-01, T2)
+
+- **Abilities in packs** (Tier 3, ADR-0012): creatures carry `abilities`, a list of typed
+  primitives with parameters from the closed set `h3_content::Ability` (format in
+  `packs/README.md`). Creature references inside abilities resolve like other references
+  (dependency closure) and may point forward within a pack. The compiler checks parameters,
+  duplicates, exclusive kinds and the consistency with the executable's flags (`multi_headed`
+  needs an attack pattern, `area_attack` an `area_shot`). The harvester emits them from sourced
+  gap-fill entries.
+- **Hot-path creature data:** `CreatureType` now also holds `shots` and the flags (moved from
+  `CreatureInfo`), because battle rules read them; abilities stay a per-creature list in the
+  ruleset, read by handle at the decision point.
+- Ruleset hash encoding **v3**.
+
 ## Revision history
 
 - 2026-09-30: Accepted.
 - 2026-09-30: Amended by E01 (pack format, compiler rules, quirk registry, stats copied into battle state).
 - 2026-09-30: Amended by E02 T1 (TOML confirmed, expansion dependency graph, overrides, harvested packs).
+- 2026-10-01: Amended by E03 T2 (abilities in packs, flags/shots on the hot-path creature type, hash v3).

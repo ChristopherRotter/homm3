@@ -89,6 +89,7 @@ fight_value = 100
 ai_value = 80
 adventure_count = [20, 50]
 flags = ["alive"]
+abilities = [{ kind = "charge_immunity" }]
 
 [[creature]]
 id = "halberdier"  # original id 1
@@ -110,6 +111,7 @@ fight_value = 115
 ai_value = 115
 adventure_count = [20, 30]
 flags = ["alive"]
+abilities = [{ kind = "charge_immunity" }]
 
 [[creature]]
 id = "archer"  # original id 2
@@ -173,6 +175,7 @@ fight_value = 324
 ai_value = 351
 adventure_count = [12, 25]
 flags = ["two_hex", "flying", "alive"]
+abilities = [{ kind = "extra_retaliations", count = 1 }]
 
 [[creature]]
 id = "royal_griffin"  # original id 5
@@ -194,6 +197,7 @@ fight_value = 364
 ai_value = 448
 adventure_count = [12, 20]
 flags = ["two_hex", "flying", "alive"]
+abilities = [{ kind = "unlimited_retaliations" }]
 
 [[creature]]
 id = "swordsman"  # original id 6
@@ -299,6 +303,7 @@ fight_value = 1668
 ai_value = 1946
 adventure_count = [5, 12]
 flags = ["two_hex", "alive"]
+abilities = [{ kind = "jousting", percent_per_hex = 5 }]
 
 [[creature]]
 id = "champion"  # original id 11
@@ -320,6 +325,7 @@ fight_value = 1800
 ai_value = 2100
 adventure_count = [5, 10]
 flags = ["two_hex", "alive"]
+abilities = [{ kind = "jousting", percent_per_hex = 5 }]
 
 [[creature]]
 id = "angel"  # original id 12
@@ -341,6 +347,7 @@ fight_value = 3585
 ai_value = 5019
 adventure_count = [4, 10]
 flags = ["flying", "alive", "king_2"]
+abilities = [{ kind = "morale_aura", affects = "allies", amount = 1 }, { kind = "hate", creature = "devil", percent = 50 }, { kind = "hate", creature = "arch_devil", percent = 50 }]
 
 [[creature]]
 id = "archangel"  # original id 13
@@ -362,6 +369,7 @@ fight_value = 6033
 ai_value = 8776
 adventure_count = [3, 8]
 flags = ["two_hex", "flying", "alive", "king_2"]
+abilities = [{ kind = "morale_aura", affects = "allies", amount = 1 }, { kind = "hate", creature = "devil", percent = 50 }, { kind = "hate", creature = "arch_devil", percent = 50 }]
 
 [[creature]]
 id = "centaur"  # original id 14
@@ -845,6 +853,7 @@ fight_value = 680
 ai_value = 884
 adventure_count = [8, 16]
 flags = ["flying", "alive"]
+abilities = [{ kind = "hate", creature = "efreeti", percent = 50 }, { kind = "hate", creature = "efreet_sultan", percent = 50 }]
 
 [[creature]]
 id = "master_genie"  # original id 37
@@ -866,6 +875,7 @@ fight_value = 748
 ai_value = 942
 adventure_count = [8, 12]
 flags = ["flying", "alive"]
+abilities = [{ kind = "hate", creature = "efreeti", percent = 50 }, { kind = "hate", creature = "efreet_sultan", percent = 50 }]
 
 [[creature]]
 id = "naga"  # original id 38
@@ -950,6 +960,7 @@ fight_value = 5000
 ai_value = 7500
 adventure_count = [3, 8]
 flags = ["shooter", "alive", "king_3", "mind_immune", "no_melee_penalty"]
+abilities = [{ kind = "hate", creature = "black_dragon", percent = 50 }]
 
 [[creature]]
 id = "imp"  # original id 42
@@ -1034,6 +1045,7 @@ fight_value = 210
 ai_value = 240
 adventure_count = [16, 25]
 flags = ["shooter", "alive", "area_attack"]
+abilities = [{ kind = "area_shot", effect = "fireball" }]
 
 [[creature]]
 id = "hell_hound"  # original id 46
@@ -1076,6 +1088,7 @@ fight_value = 308
 ai_value = 392
 adventure_count = [12, 20]
 flags = ["two_hex", "alive", "no_enemy_retaliation", "multi_headed"]
+abilities = [{ kind = "three_headed_attack" }]
 
 [[creature]]
 id = "demon"  # original id 48
@@ -1181,6 +1194,7 @@ fight_value = 1413
 ai_value = 1670
 adventure_count = [5, 12]
 flags = ["flying", "alive", "fire_immune"]
+abilities = [{ kind = "hate", creature = "genie", percent = 50 }, { kind = "hate", creature = "master_genie", percent = 50 }]
 
 [[creature]]
 id = "efreet_sultan"  # original id 53
@@ -1202,6 +1216,7 @@ fight_value = 1584
 ai_value = 1848
 adventure_count = [5, 10]
 flags = ["flying", "alive", "fire_immune"]
+abilities = [{ kind = "hate", creature = "genie", percent = 50 }, { kind = "hate", creature = "master_genie", percent = 50 }]
 
 [[creature]]
 id = "devil"  # original id 54
@@ -1223,6 +1238,7 @@ fight_value = 3759
 ai_value = 5101
 adventure_count = [4, 10]
 flags = ["alive", "king_2", "no_enemy_retaliation"]
+abilities = [{ kind = "teleports" }, { kind = "luck_aura", affects = "enemies", amount = -1 }, { kind = "hate", creature = "angel", percent = 50 }, { kind = "hate", creature = "archangel", percent = 50 }]
 
 [[creature]]
 id = "arch_devil"  # original id 55
@@ -1244,6 +1260,7 @@ fight_value = 5243
 ai_value = 7115
 adventure_count = [3, 8]
 flags = ["alive", "king_2", "no_enemy_retaliation"]
+abilities = [{ kind = "teleports" }, { kind = "luck_aura", affects = "enemies", amount = -1 }, { kind = "hate", creature = "angel", percent = 50 }, { kind = "hate", creature = "archangel", percent = 50 }]
 
 [[creature]]
 id = "skeleton"  # original id 56
@@ -1349,6 +1366,7 @@ fight_value = 231
 ai_value = 252
 adventure_count = [12, 25]
 flags = ["flying", "mind_immune", "no_morale", "undead"]
+abilities = [{ kind = "regeneration" }]
 
 [[creature]]
 id = "wraith"  # original id 61
@@ -1370,6 +1388,7 @@ fight_value = 252
 ai_value = 315
 adventure_count = [12, 20]
 flags = ["flying", "mind_immune", "no_morale", "undead"]
+abilities = [{ kind = "regeneration" }]
 
 [[creature]]
 id = "vampire"  # original id 62
@@ -1412,6 +1431,7 @@ fight_value = 652
 ai_value = 783
 adventure_count = [10, 16]
 flags = ["flying", "mind_immune", "no_enemy_retaliation", "no_morale", "undead"]
+abilities = [{ kind = "life_drain", percent = 100 }]
 
 [[creature]]
 id = "lich"  # original id 64
@@ -1433,6 +1453,7 @@ fight_value = 742
 ai_value = 848
 adventure_count = [8, 16]
 flags = ["shooter", "mind_immune", "no_morale", "undead", "area_attack"]
+abilities = [{ kind = "area_shot", effect = "death_cloud" }]
 
 [[creature]]
 id = "power_lich"  # original id 65
@@ -1454,6 +1475,7 @@ fight_value = 889
 ai_value = 1079
 adventure_count = [8, 12]
 flags = ["shooter", "mind_immune", "no_morale", "undead", "area_attack"]
+abilities = [{ kind = "area_shot", effect = "death_cloud" }]
 
 [[creature]]
 id = "black_knight"  # original id 66
@@ -1496,6 +1518,7 @@ fight_value = 2029
 ai_value = 2382
 adventure_count = [5, 10]
 flags = ["two_hex", "mind_immune", "no_morale", "undead"]
+abilities = [{ kind = "death_blow", chance_percent = 20 }]
 
 [[creature]]
 id = "bone_dragon"  # original id 68
@@ -1517,6 +1540,7 @@ fight_value = 2420
 ai_value = 3388
 adventure_count = [4, 10]
 flags = ["two_hex", "flying", "king_1", "mind_immune", "no_morale", "undead", "dragon"]
+abilities = [{ kind = "morale_aura", affects = "enemies", amount = -1 }]
 
 [[creature]]
 id = "ghost_dragon"  # original id 69
@@ -1538,6 +1562,7 @@ fight_value = 3228
 ai_value = 4696
 adventure_count = [3, 8]
 flags = ["two_hex", "flying", "king_1", "mind_immune", "no_morale", "undead", "dragon"]
+abilities = [{ kind = "morale_aura", affects = "enemies", amount = -1 }]
 
 [[creature]]
 id = "troglodyte"  # original id 70
@@ -1601,6 +1626,7 @@ fight_value = 140
 ai_value = 154
 adventure_count = [16, 30]
 flags = ["flying", "alive"]
+abilities = [{ kind = "strike_and_return" }]
 
 [[creature]]
 id = "harpy_hag"  # original id 73
@@ -1622,6 +1648,7 @@ fight_value = 196
 ai_value = 238
 adventure_count = [16, 25]
 flags = ["flying", "alive", "no_enemy_retaliation"]
+abilities = [{ kind = "strike_and_return" }]
 
 [[creature]]
 id = "beholder"  # original id 74
@@ -1727,6 +1754,7 @@ fight_value = 835
 ai_value = 835
 adventure_count = [8, 16]
 flags = ["alive"]
+abilities = [{ kind = "minimum_morale", value = 1 }]
 
 [[creature]]
 id = "minotaur_king"  # original id 79
@@ -1748,6 +1776,7 @@ fight_value = 890
 ai_value = 1068
 adventure_count = [8, 12]
 flags = ["alive"]
+abilities = [{ kind = "minimum_morale", value = 1 }]
 
 [[creature]]
 id = "manticore"  # original id 80
@@ -1832,6 +1861,7 @@ fight_value = 6783
 ai_value = 8721
 adventure_count = [3, 8]
 flags = ["two_hex", "flying", "breath_attack", "alive", "king_1", "mind_immune", "dragon"]
+abilities = [{ kind = "hate", creature = "titan", percent = 50 }]
 
 [[creature]]
 id = "goblin"  # original id 84
@@ -2105,6 +2135,7 @@ fight_value = 3162
 ai_value = 3162
 adventure_count = [4, 10]
 flags = ["two_hex", "alive", "king_1"]
+abilities = [{ kind = "defense_reduction", percent = 40 }]
 
 [[creature]]
 id = "ancient_behemoth"  # original id 97
@@ -2126,6 +2157,7 @@ fight_value = 5397
 ai_value = 6168
 adventure_count = [3, 8]
 flags = ["two_hex", "alive", "king_1"]
+abilities = [{ kind = "defense_reduction", percent = 80 }]
 
 [[creature]]
 id = "gnoll"  # original id 98
@@ -2252,6 +2284,7 @@ fight_value = 1028
 ai_value = 1028
 adventure_count = [12, 20]
 flags = ["two_hex", "alive"]
+abilities = [{ kind = "death_stare", chance_percent = 10 }]
 
 [[creature]]
 id = "serpent_fly"  # original id 104
@@ -2399,6 +2432,7 @@ fight_value = 4120
 ai_value = 4120
 adventure_count = [4, 10]
 flags = ["two_hex", "alive", "king_1", "no_enemy_retaliation", "multi_headed"]
+abilities = [{ kind = "attacks_all_adjacent" }]
 
 [[creature]]
 id = "chaos_hydra"  # original id 111
@@ -2420,6 +2454,7 @@ fight_value = 5272
 ai_value = 5931
 adventure_count = [3, 8]
 flags = ["two_hex", "alive", "king_1", "no_enemy_retaliation", "multi_headed"]
+abilities = [{ kind = "attacks_all_adjacent" }]
 
 [[creature]]
 id = "air_elemental"  # original id 112
@@ -2440,6 +2475,7 @@ fight_value = 324
 ai_value = 356
 adventure_count = [8, 12]
 flags = ["mind_immune", "no_morale"]
+abilities = [{ kind = "hate", creature = "earth_elemental", percent = 100 }]
 
 [[creature]]
 id = "earth_elemental"  # original id 113
@@ -2460,6 +2496,7 @@ fight_value = 415
 ai_value = 330
 adventure_count = [16, 30]
 flags = ["mind_immune", "no_morale"]
+abilities = [{ kind = "hate", creature = "air_elemental", percent = 100 }]
 
 [[creature]]
 id = "fire_elemental"  # original id 114
@@ -2480,6 +2517,7 @@ fight_value = 345
 ai_value = 345
 adventure_count = [16, 25]
 flags = ["mind_immune", "fire_immune", "no_morale"]
+abilities = [{ kind = "hate", creature = "water_elemental", percent = 100 }]
 
 [[creature]]
 id = "water_elemental"  # original id 115
@@ -2500,6 +2538,7 @@ fight_value = 315
 ai_value = 315
 adventure_count = [12, 25]
 flags = ["two_hex", "mind_immune", "no_morale"]
+abilities = [{ kind = "hate", creature = "fire_elemental", percent = 100 }]
 
 [[creature]]
 id = "gold_golem"  # original id 116

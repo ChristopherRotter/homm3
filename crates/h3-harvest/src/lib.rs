@@ -20,7 +20,7 @@ use h3_formats::exe::CreatureRecord;
 use h3_formats::lod::LodArchive;
 use h3_formats::text::TextTable;
 
-use crate::gapfill::{GapFill, Since};
+use crate::gapfill::{AbilitySpec, GapFill, Since};
 
 /// Number of creature ids in the executable's table and the creature text table.
 pub const CREATURE_COUNT: usize = 150;
@@ -236,6 +236,18 @@ const ATTRIBUTE_FLAGS: [(&str, &str); 14] = [
     ("const_no_melee_penalty", "no_melee_penalty"),
 ];
 
+/// Attribute-column tokens that name abilities (E03 T2): the gap-fill file must give the creature
+/// one of the listed ability kinds (a cross-check like [`ATTRIBUTE_FLAGS`]).
+const ATTRIBUTE_ABILITIES: [(&str, &[&str]); 4] = [
+    ("const_jousting", &["jousting"]),
+    ("const_raises_morale", &["morale_aura"]),
+    ("const_lowers_morale", &["morale_aura"]),
+    (
+        "MULTI_HEADED",
+        &["attacks_all_adjacent", "three_headed_attack"],
+    ),
+];
+
 /// Flag names of an executable record.
 ///
 /// # Errors
@@ -364,6 +376,16 @@ pub fn harvest(inputs: &Inputs, gap: &GapFill) -> Result<Harvest, String> {
         .iter()
         .map(|c| Ok((by_name(&c.name)?, c.since)))
         .collect::<Result<_, String>>()?;
+    let mut ability_specs: BTreeMap<usize, &[AbilitySpec]> = BTreeMap::new();
+    for entry in &gap.creature_abilities {
+        let id = by_name(&entry.creature)?;
+        if ability_specs.insert(id, &entry.abilities).is_some() {
+            return Err(format!(
+                "gapfill: abilities of `{}` are listed twice",
+                entry.creature
+            ));
+        }
+    }
 
     let mut creatures = Vec::new();
     let mut keys = BTreeSet::new();
@@ -413,9 +435,21 @@ pub fn harvest(inputs: &Inputs, gap: &GapFill) -> Result<Harvest, String> {
                     "creature `{key}`: attribute column says {token}, executable lacks `{flag}`"
                 )),
                 Some(_) => {}
-                None => report.push(format!(
-                    "creature `{key}`: attribute {token} not harvested (ability, E03)"
-                )),
+                None => match ATTRIBUTE_ABILITIES.iter().find(|(a, _)| *a == token) {
+                    Some((_, kinds)) => {
+                        let given = ability_specs
+                            .get(&id)
+                            .is_some_and(|l| l.iter().any(|a| kinds.contains(&a.kind.as_str())));
+                        if !given {
+                            report.push(format!(
+                                "creature `{key}`: attribute column says {token}, gap-fill lacks {kinds:?}"
+                            ));
+                        }
+                    }
+                    None => report.push(format!(
+                        "creature `{key}`: attribute {token} not harvested (later epic)"
+                    )),
+                },
             }
         }
         let faction = usize::try_from(rec.town).ok();
@@ -498,6 +532,70 @@ pub fn harvest(inputs: &Inputs, gap: &GapFill) -> Result<Harvest, String> {
         }
     };
 
+    // Abilities: render each creature's list for the pack it is written to. A creature reference
+    // outside that pack is written as `pack:key`; a `base` creature whose list refers to an `ab`
+    // creature gets the list without those entries in `base` and the full list as an `ab`
+    // override.
+    let harvested: BTreeMap<usize, &str> =
+        creatures.iter().map(|c| (c.id, c.key.as_str())).collect();
+    if let Some(id) = ability_specs.keys().find(|id| !harvested.contains_key(id)) {
+        return Err(format!(
+            "gapfill: abilities for `{}`, which is not harvested",
+            sod_rows[*id].name
+        ));
+    }
+    let owner = |id: usize| if ab_ids.contains(&id) { "ab" } else { "base" };
+    let render = |spec: &AbilitySpec, pack: &str| -> Result<String, String> {
+        let mut parts = vec![format!("kind = {}", quote(&spec.kind))];
+        if let Some(name) = &spec.creature {
+            let target = by_name(name)?;
+            let key = harvested
+                .get(&target)
+                .ok_or_else(|| format!("gapfill: ability refers to `{name}`, not harvested"))?;
+            let r = if owner(target) == pack {
+                (*key).to_owned()
+            } else {
+                format!("{}:{key}", owner(target))
+            };
+            parts.push(format!("creature = {}", quote(&r)));
+        }
+        for (k, v) in &spec.params {
+            parts.push(format!("{k} = {v}"));
+        }
+        Ok(format!("{{ {} }}", parts.join(", ")))
+    };
+    let refers_to_ab = |spec: &AbilitySpec| {
+        spec.creature
+            .as_deref()
+            .and_then(|n| by_name(n).ok())
+            .is_some_and(|t| ab_ids.contains(&t))
+    };
+    let ability_line = |specs: &[AbilitySpec], pack: &str| -> Result<String, String> {
+        let items = specs
+            .iter()
+            .map(|a| render(a, pack))
+            .collect::<Result<Vec<_>, _>>()?;
+        Ok(format!("abilities = [{}]", items.join(", ")))
+    };
+    let mut base_abilities: BTreeMap<usize, String> = BTreeMap::new();
+    let mut ab_abilities: BTreeMap<usize, String> = BTreeMap::new();
+    let mut ab_ability_overrides: BTreeMap<usize, String> = BTreeMap::new();
+    for (&id, specs) in &ability_specs {
+        if ab_ids.contains(&id) {
+            ab_abilities.insert(id, ability_line(specs, "ab")?);
+        } else if specs.iter().any(&refers_to_ab) {
+            let roe: Vec<AbilitySpec> = specs
+                .iter()
+                .filter(|a| !refers_to_ab(a))
+                .map(AbilitySpec::clone)
+                .collect();
+            base_abilities.insert(id, ability_line(&roe, "base")?);
+            ab_ability_overrides.insert(id, ability_line(specs, "ab")?);
+        } else {
+            base_abilities.insert(id, ability_line(specs, "base")?);
+        }
+    }
+
     let header = |id: &str, depends: &[&str], what: &str| {
         let mut s = String::new();
         let _ = writeln!(
@@ -561,6 +659,7 @@ pub fn harvest(inputs: &Inputs, gap: &GapFill) -> Result<Harvest, String> {
             level,
             &resources,
             "base",
+            base_abilities.get(&c.id).map(String::as_str),
         );
     }
     write_battle(&mut base, gap);
@@ -589,13 +688,22 @@ pub fn harvest(inputs: &Inputs, gap: &GapFill) -> Result<Harvest, String> {
             c.level,
             &resources,
             "ab",
+            ab_abilities.get(&c.id).map(String::as_str),
         );
     }
-    for c in creatures.iter().filter(|c| roe.contains_key(&c.id)) {
+    for c in creatures
+        .iter()
+        .filter(|c| roe.contains_key(&c.id) || ab_ability_overrides.contains_key(&c.id))
+    {
         let _ = write!(ab, "\n[[creature_override]]\ntarget = \"base:{}\"\n", c.key);
-        let faction = c.faction.map_or_else(String::new, |t| town_ref(t, "ab"));
-        let _ = writeln!(ab, "faction = \"{faction}\"");
-        let _ = writeln!(ab, "level = {}", c.level);
+        if roe.contains_key(&c.id) {
+            let faction = c.faction.map_or_else(String::new, |t| town_ref(t, "ab"));
+            let _ = writeln!(ab, "faction = \"{faction}\"");
+            let _ = writeln!(ab, "level = {}", c.level);
+        }
+        if let Some(line) = ab_ability_overrides.get(&c.id) {
+            let _ = writeln!(ab, "{line}");
+        }
     }
 
     // sod
@@ -674,6 +782,7 @@ fn write_creature(
     level: u8,
     resources: &[String],
     pack: &str,
+    abilities: Option<&str>,
 ) {
     let _ = write!(
         out,
@@ -705,6 +814,9 @@ fn write_creature(
     );
     let flags: Vec<String> = c.flags.iter().map(|f| format!("\"{f}\"")).collect();
     let _ = writeln!(out, "flags = [{}]", flags.join(", "));
+    if let Some(line) = abilities {
+        let _ = writeln!(out, "{line}");
+    }
 }
 
 fn write_row_diff(out: &mut String, old: &Row, new: &Row, resources: &[String]) {

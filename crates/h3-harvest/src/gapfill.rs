@@ -1,7 +1,7 @@
 //! The committed gap-fill file (`data/gapfill.toml`): facts the installation cannot tell, each with
 //! a labelled source.
 
-use std::collections::BTreeSet;
+use std::collections::{BTreeMap, BTreeSet};
 
 use serde::Deserialize;
 
@@ -24,6 +24,36 @@ pub struct GapFill {
     pub table_change: Vec<TableChange>,
     /// Battle parameters of `base`.
     pub battle: Battle,
+    /// Creature abilities (E03 T2; ADR-0012): behaviour the original hard-codes per creature.
+    #[serde(default)]
+    pub creature_abilities: Vec<CreatureAbilities>,
+}
+
+/// The abilities of one creature (`packs/README.md`, "Abilities").
+#[derive(Debug, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct CreatureAbilities {
+    /// Singular name (as in `CRTRAITS.TXT`).
+    pub creature: String,
+    /// The abilities, in pack order.
+    pub abilities: Vec<AbilitySpec>,
+    /// Source ids.
+    pub sources: Vec<String>,
+}
+
+/// One ability as written in the gap-fill file: the pack syntax, except that a referenced
+/// creature is named by its singular name. The harvester turns the name into a key; the other
+/// parameters are copied verbatim (the generated packs are compiled, which validates them).
+#[derive(Debug, Clone, Deserialize)]
+pub struct AbilitySpec {
+    /// Ability kind (`hate`, `jousting`, …).
+    pub kind: String,
+    /// Referenced creature (`hate`), by singular name.
+    #[serde(default)]
+    pub creature: Option<String>,
+    /// The other parameters.
+    #[serde(flatten)]
+    pub params: BTreeMap<String, toml::Value>,
 }
 
 /// A labelled source (docs/04-rules-and-sources.md).
@@ -138,7 +168,8 @@ impl GapFill {
                 .iter()
                 .chain(g.roe_creature.iter().flat_map(|r| &r.sources))
                 .chain(g.table_change.iter().flat_map(|t| &t.sources))
-                .chain(&g.battle.formation_sources);
+                .chain(&g.battle.formation_sources)
+                .chain(g.creature_abilities.iter().flat_map(|a| &a.sources));
         for r in refs {
             if !ids.contains(r.as_str()) {
                 return Err(format!("gapfill: unknown source `{r}`"));
@@ -173,8 +204,8 @@ mod tests {
                 .contains("unknown source `nope`")
         );
         let unused = GAPFILL.replace(
-            "sources = [\"wiki-cerberus\"]",
-            "sources = [\"wiki-angel\"]",
+            "formation_sources = [\"vcmi-layouts\"]",
+            "formation_sources = [\"wiki-angel\"]",
         );
         assert!(GapFill::parse(&unused).unwrap_err().contains("not used"));
         let no_url = GAPFILL.replace("https://heroes.thelazy.net/index.php/Cerberus", "n/a");

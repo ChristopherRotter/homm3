@@ -138,6 +138,24 @@ defend_bonus_percent = 20
 defend_bonus_min = 1
 formation = [[5], [2, 8]]
 formation_sources = ["s"]
+
+[[creature_abilities]]
+creature = "Unit 1"
+abilities = [{ kind = "jousting", percent_per_hex = 5 }]
+sources = ["s"]
+
+[[creature_abilities]]
+creature = "Unit 2"
+abilities = [
+    { kind = "hate", creature = "Unit 1", percent = 50 },
+    { kind = "hate", creature = "Unit 20", percent = 50 },
+]
+sources = ["s"]
+
+[[creature_abilities]]
+creature = "Unit 20"
+abilities = [{ kind = "hate", creature = "Unit 2", percent = 100 }]
+sources = ["s"]
 "#;
 
 fn gap() -> GapFill {
@@ -187,19 +205,40 @@ fn harvests_three_packs_that_compile_and_are_deterministic() {
     let u6 = r.creature_by_key("base:unit_6").unwrap();
     assert_eq!(roe_only.creature(u6).unwrap().attack, 4);
     // Costs and flags.
-    let i0 = roe_only
-        .creature_info(roe_only.creature_by_key("base:unit_0").unwrap())
-        .unwrap();
+    let u0 = roe_only.creature_by_key("base:unit_0").unwrap();
+    let i0 = roe_only.creature_info(u0).unwrap();
     assert_eq!(i0.cost.len(), 1);
-    assert!(i0.flags.contains(h3_content_flag("two_hex")));
+    assert!(
+        roe_only
+            .creature(u0)
+            .unwrap()
+            .flags
+            .contains(h3_content_flag("two_hex"))
+    );
     assert!(base.contains("cost = { gold = 100 }"));
     assert!(ab.contains("cost = { \"base:gold\" = 100 }"));
     // Flavor text never reaches the packs.
     assert!(!base.contains("flavor") && !ab.contains("flavor") && !sod.contains("flavor"));
+    // Abilities: a base creature's references to ab creatures go into an ab override.
+    assert!(base.contains("abilities = [{ kind = \"jousting\", percent_per_hex = 5 }]"));
+    assert!(
+        base.contains("abilities = [{ kind = \"hate\", creature = \"unit_1\", percent = 50 }]")
+    );
+    assert!(ab.contains(
+        "target = \"base:unit_2\"\nabilities = [{ kind = \"hate\", creature = \"base:unit_1\", \
+         percent = 50 }, { kind = \"hate\", creature = \"unit_20\", percent = 50 }]"
+    ));
+    assert!(
+        ab.contains("abilities = [{ kind = \"hate\", creature = \"base:unit_2\", percent = 100 }]")
+    );
+    let u2 = r.creature_by_key("base:unit_2").unwrap();
+    assert_eq!(r.abilities(u2).len(), 2);
+    assert_eq!(roe_only.abilities(u2).len(), 1);
 
     let report = h.report.join("\n");
     assert!(report.contains("unit_7`: unidentified flag bit 0x800"));
-    assert!(report.contains("attribute const_jousting not harvested"));
+    assert!(report.contains("`unit_0`: attribute column says const_jousting, gap-fill lacks"));
+    assert!(!report.contains("`unit_1`: attribute column says const_jousting"));
     assert!(report.contains("`unit_8`: ability text changed"));
     assert!(report.contains("row `Abandoned`"));
     assert!(report.contains("unused slot"));
@@ -278,6 +317,53 @@ fn inconsistencies_are_errors() {
         harvest(&inputs(), &both)
             .unwrap_err()
             .contains("AB addition and as RoE")
+    );
+
+    // Ability entries: listed twice, for a creature that is not harvested, referring to one
+    // that is not harvested, and with parameters the compiler rejects.
+    let twice = GapFill::parse(&format!(
+        "{GAP}\n[[creature_abilities]]\ncreature = \"Unit 1\"\nabilities = []\nsources = [\"s\"]\n"
+    ))
+    .unwrap();
+    assert!(
+        harvest(&inputs(), &twice)
+            .unwrap_err()
+            .contains("listed twice")
+    );
+    let machine =
+        GapFill::parse(&GAP.replace("creature = \"Unit 20\"\n", "creature = \"Unit 149\"\n"))
+            .unwrap();
+    assert!(
+        harvest(&inputs(), &machine)
+            .unwrap_err()
+            .contains("abilities for `Unit 149`, which is not harvested")
+    );
+    let target = GapFill::parse(&GAP.replace(
+        "creature = \"Unit 1\", percent",
+        "creature = \"Unit 149\", percent",
+    ))
+    .unwrap();
+    assert!(
+        harvest(&inputs(), &target)
+            .unwrap_err()
+            .contains("refers to `Unit 149`, not harvested")
+    );
+    let unnamed = GapFill::parse(&GAP.replace(
+        "creature = \"Unit 1\", percent",
+        "creature = \"Nobody\", percent",
+    ))
+    .unwrap();
+    assert!(
+        harvest(&inputs(), &unnamed)
+            .unwrap_err()
+            .contains("unknown creature `Nobody`")
+    );
+    let invalid =
+        GapFill::parse(&GAP.replace("percent_per_hex = 5", "percent_per_hex = 0")).unwrap();
+    assert!(
+        harvest(&inputs(), &invalid)
+            .unwrap_err()
+            .contains("percent_per_hex must be at least 1")
     );
 
     let unknown = GapFill::parse(&GAP.replace("\"Unit 30\"", "\"Unit 999\"")).unwrap();

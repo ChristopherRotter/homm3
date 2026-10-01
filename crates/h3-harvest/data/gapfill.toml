@@ -172,3 +172,516 @@ defend_bonus_percent = 20                   # BAT-TRN-004
 defend_bonus_min = 1                        # BAT-TRN-004
 formation = [[5], [2, 8], [2, 5, 8], [0, 4, 6, 10], [0, 2, 5, 8, 10], [0, 2, 4, 6, 8, 10], [0, 2, 4, 5, 6, 8, 10]]
 formation_sources = ["vcmi-layouts"]
+
+# ---------------------------------------------------------------------------------------------
+# Creature abilities (E03 T2, ADR-0012): behaviour the original hard-codes per creature, beyond
+# the executable's flag bits. Pack syntax (packs/README.md, "Abilities"), except that `creature`
+# is a singular name. Spell-like abilities (blind, petrify, curse, …), spell immunities and
+# creature spellcasting are E04 (OPEN-QUESTIONS Q16) and not listed here.
+# ---------------------------------------------------------------------------------------------
+
+[[source]]
+id = "vcmi-creatures"
+kind = "vcmi"
+ref = "config/creatures/*.json @ 1.7.5 (6901839): per-creature abilities (HATE, JOUSTING, MORALE, LUCK, …)"
+url = "https://github.com/vcmi/vcmi/tree/1.7.5/config/creatures"
+retrieved = "2026-10-01"
+
+[[source]]
+id = "wiki-cavalier"
+kind = "wiki"
+ref = "Cavalier - Heroes 3 wiki: +5% damage per hex travelled; Pikemen and Halberdiers immune"
+url = "https://heroes.thelazy.net/index.php/Cavalier"
+retrieved = "2026-10-01"
+
+[[source]]
+id = "wiki-pikeman"
+kind = "wiki"
+ref = "Pikeman - Heroes 3 wiki: immune to the jousting bonus (undocumented in the manual)"
+url = "https://heroes.thelazy.net/index.php/Pikeman"
+retrieved = "2026-10-01"
+
+[[source]]
+id = "wiki-griffin"
+kind = "wiki"
+ref = "Griffin - Heroes 3 wiki: Griffins retaliate twice, Royal Griffins without limit"
+url = "https://heroes.thelazy.net/index.php/Griffin"
+retrieved = "2026-10-01"
+
+[[source]]
+id = "wiki-angel-abilities"
+kind = "wiki"
+ref = "Angel - Heroes 3 wiki: +1 morale for the whole battle, not cumulative, also after the Angels die; hate Devils (150% damage)"
+url = "https://heroes.thelazy.net/index.php/Angel"
+retrieved = "2026-10-01"
+
+[[source]]
+id = "wiki-genie"
+kind = "wiki"
+ref = "Genie - Heroes 3 wiki: hate Efreet and Efreet Sultans (150% damage)"
+url = "https://heroes.thelazy.net/index.php/Genie"
+retrieved = "2026-10-01"
+
+[[source]]
+id = "wiki-titan"
+kind = "wiki"
+ref = "Titan - Heroes 3 wiki: 150% damage to Black Dragons"
+url = "https://heroes.thelazy.net/index.php/Titan"
+retrieved = "2026-10-01"
+
+[[source]]
+id = "wiki-efreet"
+kind = "wiki"
+ref = "Efreet - Heroes 3 wiki: hate Genies and Master Genies (150% damage)"
+url = "https://heroes.thelazy.net/index.php/Efreet"
+retrieved = "2026-10-01"
+
+[[source]]
+id = "wiki-devil"
+kind = "wiki"
+ref = "Devil - Heroes 3 wiki: teleport to any hex, -1 enemy luck (Arch Devils too in the original), hate Angels, no retaliation"
+url = "https://heroes.thelazy.net/index.php/Devil"
+retrieved = "2026-10-01"
+
+[[source]]
+id = "wiki-wight"
+kind = "wiki"
+ref = "Wight - Heroes 3 wiki: the first creature regenerates all lost hit points (Wight and Wraith)"
+url = "https://heroes.thelazy.net/index.php/Wight"
+retrieved = "2026-10-01"
+
+[[source]]
+id = "wiki-vampire-lord"
+kind = "wiki"
+ref = "Vampire Lord - Heroes 3 wiki: life drain heals and resurrects by the damage dealt, not on undead/non-living targets"
+url = "https://heroes.thelazy.net/index.php/Vampire_Lord"
+retrieved = "2026-10-01"
+
+[[source]]
+id = "wiki-lich"
+kind = "wiki"
+ref = "Lich - Heroes 3 wiki: death cloud hits the target hex and the six around it; undead and non-living are spared around the target"
+url = "https://heroes.thelazy.net/index.php/Lich"
+retrieved = "2026-10-01"
+
+[[source]]
+id = "wiki-dread-knight"
+kind = "wiki"
+ref = "Dread Knight - Heroes 3 wiki: 20% chance of double base damage (death blow)"
+url = "https://heroes.thelazy.net/index.php/Dread_Knight"
+retrieved = "2026-10-01"
+
+[[source]]
+id = "wiki-bone-dragon"
+kind = "wiki"
+ref = "Bone Dragon - Heroes 3 wiki: -1 enemy morale for the whole battle, not cumulative, also after the dragons die"
+url = "https://heroes.thelazy.net/index.php/Bone_Dragon"
+retrieved = "2026-10-01"
+
+[[source]]
+id = "wiki-harpy"
+kind = "wiki"
+ref = "Harpy - Heroes 3 wiki: strike and return to the original hex (after the retaliation)"
+url = "https://heroes.thelazy.net/index.php/Harpy"
+retrieved = "2026-10-01"
+
+[[source]]
+id = "wiki-minotaur"
+kind = "wiki"
+ref = "Minotaur - Heroes 3 wiki: minimum morale +1"
+url = "https://heroes.thelazy.net/index.php/Minotaur"
+retrieved = "2026-10-01"
+
+[[source]]
+id = "wiki-black-dragon"
+kind = "wiki"
+ref = "Black Dragon - Heroes 3 wiki: 150% damage against Titans (Red Dragons hate nobody)"
+url = "https://heroes.thelazy.net/index.php/Black_Dragon"
+retrieved = "2026-10-01"
+
+[[source]]
+id = "wiki-behemoth"
+kind = "wiki"
+ref = "Behemoth - Heroes 3 wiki: ignores 40% (Ancient Behemoth: 80%) of the enemy's defense"
+url = "https://heroes.thelazy.net/index.php/Behemoth"
+retrieved = "2026-10-01"
+
+[[source]]
+id = "wiki-mighty-gorgon"
+kind = "wiki"
+ref = "Mighty Gorgon - Heroes 3 wiki: death stare, 10% per gorgon, at most ceil(10% of the gorgons) kills, living targets only"
+url = "https://heroes.thelazy.net/index.php/Mighty_Gorgon"
+retrieved = "2026-10-01"
+
+[[source]]
+id = "wiki-hydra"
+kind = "wiki"
+ref = "Hydra - Heroes 3 wiki: attacks all adjacent enemies, no enemy retaliation"
+url = "https://heroes.thelazy.net/index.php/Hydra"
+retrieved = "2026-10-01"
+
+[[source]]
+id = "wiki-magog"
+kind = "wiki"
+ref = "Magog - Heroes 3 wiki: fireball hits the stacks around the target, friendly fire; fire-immune stacks only in the central hex"
+url = "https://heroes.thelazy.net/index.php/Magog"
+retrieved = "2026-10-01"
+
+[[source]]
+id = "wiki-air-elemental"
+kind = "wiki"
+ref = "Air Elemental - Heroes 3 wiki: 200% base damage to Earth and Magma Elementals"
+url = "https://heroes.thelazy.net/index.php/Air_Elemental"
+retrieved = "2026-10-01"
+
+[[source]]
+id = "wiki-earth-elemental"
+kind = "wiki"
+ref = "Earth Elemental - Heroes 3 wiki: +100% base damage to Air and Storm Elementals"
+url = "https://heroes.thelazy.net/index.php/Earth_Elemental"
+retrieved = "2026-10-01"
+
+[[source]]
+id = "wiki-fire-elemental"
+kind = "wiki"
+ref = "Fire Elemental - Heroes 3 wiki: +100% base damage to Water and Ice Elementals"
+url = "https://heroes.thelazy.net/index.php/Fire_Elemental"
+retrieved = "2026-10-01"
+
+[[source]]
+id = "wiki-water-elemental"
+kind = "wiki"
+ref = "Water Elemental - Heroes 3 wiki: 200% base damage to Fire and Energy Elementals"
+url = "https://heroes.thelazy.net/index.php/Water_Elemental"
+retrieved = "2026-10-01"
+
+[[source]]
+id = "wiki-psychic-elemental"
+kind = "wiki"
+ref = "Psychic Elemental - Heroes 3 wiki: attacks all adjacent enemies, no enemy retaliation (Psychic and Magic Elementals)"
+url = "https://heroes.thelazy.net/index.php/Psychic_Elemental"
+retrieved = "2026-10-01"
+
+[[source]]
+id = "wiki-sharpshooter"
+kind = "wiki"
+ref = "Sharpshooter - Heroes 3 wiki: no range penalty, no barrier penalty"
+url = "https://heroes.thelazy.net/index.php/Sharpshooter"
+retrieved = "2026-10-01"
+
+[[source]]
+id = "wiki-halfling"
+kind = "wiki"
+ref = "Halfling - Heroes 3 wiki: minimum luck +1"
+url = "https://heroes.thelazy.net/index.php/Halfling"
+retrieved = "2026-10-01"
+
+[[source]]
+id = "wiki-troll"
+kind = "wiki"
+ref = "Troll - Heroes 3 wiki: regenerating"
+url = "https://heroes.thelazy.net/index.php/Troll"
+retrieved = "2026-10-01"
+
+# Castle
+[[creature_abilities]]
+creature = "Pikeman"
+abilities = [{ kind = "charge_immunity" }]
+sources = ["wiki-pikeman", "wiki-cavalier", "vcmi-creatures"]
+
+[[creature_abilities]]
+creature = "Halberdier"
+abilities = [{ kind = "charge_immunity" }]
+sources = ["wiki-pikeman", "wiki-cavalier", "vcmi-creatures"]
+
+[[creature_abilities]]
+creature = "Griffin"
+abilities = [{ kind = "extra_retaliations", count = 1 }]
+sources = ["wiki-griffin", "vcmi-creatures"]
+
+[[creature_abilities]]
+creature = "Royal Griffin"
+abilities = [{ kind = "unlimited_retaliations" }]
+sources = ["wiki-griffin", "vcmi-creatures"]
+
+[[creature_abilities]]
+creature = "Cavalier"
+abilities = [{ kind = "jousting", percent_per_hex = 5 }]
+sources = ["wiki-cavalier", "vcmi-creatures"]
+
+[[creature_abilities]]
+creature = "Champion"
+abilities = [{ kind = "jousting", percent_per_hex = 5 }]
+sources = ["wiki-cavalier", "vcmi-creatures"]
+
+[[creature_abilities]]
+creature = "Angel"
+abilities = [
+    { kind = "morale_aura", amount = 1, affects = "allies" },
+    { kind = "hate", creature = "Devil", percent = 50 },
+    { kind = "hate", creature = "Arch Devil", percent = 50 },
+]
+sources = ["wiki-angel-abilities", "vcmi-creatures"]
+
+[[creature_abilities]]
+creature = "Archangel"
+abilities = [
+    { kind = "morale_aura", amount = 1, affects = "allies" },
+    { kind = "hate", creature = "Devil", percent = 50 },
+    { kind = "hate", creature = "Arch Devil", percent = 50 },
+]
+sources = ["wiki-angel-abilities", "vcmi-creatures"]
+
+# Tower
+[[creature_abilities]]
+creature = "Genie"
+abilities = [
+    { kind = "hate", creature = "Efreeti", percent = 50 },
+    { kind = "hate", creature = "Efreet Sultan", percent = 50 },
+]
+sources = ["wiki-genie", "vcmi-creatures"]
+
+[[creature_abilities]]
+creature = "Master Genie"
+abilities = [
+    { kind = "hate", creature = "Efreeti", percent = 50 },
+    { kind = "hate", creature = "Efreet Sultan", percent = 50 },
+]
+sources = ["wiki-genie", "vcmi-creatures"]
+
+[[creature_abilities]]
+creature = "Titan"
+abilities = [{ kind = "hate", creature = "Black Dragon", percent = 50 }]
+sources = ["wiki-titan", "vcmi-creatures"]
+
+# Inferno
+[[creature_abilities]]
+creature = "Magog"
+abilities = [{ kind = "area_shot", effect = "fireball" }]
+sources = ["wiki-magog", "vcmi-creatures"]
+
+[[creature_abilities]]
+creature = "Cerberus"
+abilities = [{ kind = "three_headed_attack" }]
+sources = ["wiki-cerberus", "vcmi-creatures"]
+
+[[creature_abilities]]
+creature = "Efreeti"
+abilities = [
+    { kind = "hate", creature = "Genie", percent = 50 },
+    { kind = "hate", creature = "Master Genie", percent = 50 },
+]
+sources = ["wiki-efreet", "vcmi-creatures"]
+
+[[creature_abilities]]
+creature = "Efreet Sultan"
+abilities = [
+    { kind = "hate", creature = "Genie", percent = 50 },
+    { kind = "hate", creature = "Master Genie", percent = 50 },
+]
+sources = ["wiki-efreet", "vcmi-creatures"]
+
+[[creature_abilities]]
+creature = "Devil"
+abilities = [
+    { kind = "teleports" },
+    { kind = "luck_aura", amount = -1, affects = "enemies" },
+    { kind = "hate", creature = "Angel", percent = 50 },
+    { kind = "hate", creature = "Archangel", percent = 50 },
+]
+sources = ["wiki-devil", "vcmi-creatures"]
+
+[[creature_abilities]]
+creature = "Arch Devil"
+abilities = [
+    { kind = "teleports" },
+    { kind = "luck_aura", amount = -1, affects = "enemies" },
+    { kind = "hate", creature = "Angel", percent = 50 },
+    { kind = "hate", creature = "Archangel", percent = 50 },
+]
+sources = ["wiki-devil", "vcmi-creatures"]
+
+# Necropolis
+[[creature_abilities]]
+creature = "Wight"
+abilities = [{ kind = "regeneration" }]
+sources = ["wiki-wight", "vcmi-creatures"]
+
+[[creature_abilities]]
+creature = "Wraith"
+abilities = [{ kind = "regeneration" }]
+sources = ["wiki-wight", "vcmi-creatures"]
+
+[[creature_abilities]]
+creature = "Vampire Lord"
+abilities = [{ kind = "life_drain", percent = 100 }]
+sources = ["wiki-vampire-lord", "vcmi-creatures"]
+
+[[creature_abilities]]
+creature = "Lich"
+abilities = [{ kind = "area_shot", effect = "death_cloud" }]
+sources = ["wiki-lich", "vcmi-creatures"]
+
+[[creature_abilities]]
+creature = "Power Lich"
+abilities = [{ kind = "area_shot", effect = "death_cloud" }]
+sources = ["wiki-lich", "vcmi-creatures"]
+
+[[creature_abilities]]
+creature = "Dread Knight"
+abilities = [{ kind = "death_blow", chance_percent = 20 }]
+sources = ["wiki-dread-knight", "vcmi-creatures"]
+
+[[creature_abilities]]
+creature = "Bone Dragon"
+abilities = [{ kind = "morale_aura", amount = -1, affects = "enemies" }]
+sources = ["wiki-bone-dragon", "vcmi-creatures"]
+
+[[creature_abilities]]
+creature = "Ghost Dragon"
+abilities = [{ kind = "morale_aura", amount = -1, affects = "enemies" }]
+sources = ["wiki-bone-dragon", "vcmi-creatures"]
+
+# Dungeon
+[[creature_abilities]]
+creature = "Harpy"
+abilities = [{ kind = "strike_and_return" }]
+sources = ["wiki-harpy", "vcmi-creatures"]
+
+[[creature_abilities]]
+creature = "Harpy Hag"
+abilities = [{ kind = "strike_and_return" }]
+sources = ["wiki-harpy", "vcmi-creatures"]
+
+[[creature_abilities]]
+creature = "Minotaur"
+abilities = [{ kind = "minimum_morale", value = 1 }]
+sources = ["wiki-minotaur", "vcmi-creatures"]
+
+[[creature_abilities]]
+creature = "Minotaur King"
+abilities = [{ kind = "minimum_morale", value = 1 }]
+sources = ["wiki-minotaur", "vcmi-creatures"]
+
+[[creature_abilities]]
+creature = "Black Dragon"
+abilities = [{ kind = "hate", creature = "Titan", percent = 50 }]
+sources = ["wiki-black-dragon", "vcmi-creatures"]
+
+# Stronghold
+[[creature_abilities]]
+creature = "Behemoth"
+abilities = [{ kind = "defense_reduction", percent = 40 }]
+sources = ["wiki-behemoth", "vcmi-creatures"]
+
+[[creature_abilities]]
+creature = "Ancient Behemoth"
+abilities = [{ kind = "defense_reduction", percent = 80 }]
+sources = ["wiki-behemoth", "vcmi-creatures"]
+
+# Fortress
+[[creature_abilities]]
+creature = "Mighty Gorgon"
+abilities = [{ kind = "death_stare", chance_percent = 10 }]
+sources = ["wiki-mighty-gorgon", "vcmi-creatures"]
+
+[[creature_abilities]]
+creature = "Hydra"
+abilities = [{ kind = "attacks_all_adjacent" }]
+sources = ["wiki-hydra", "vcmi-creatures"]
+
+[[creature_abilities]]
+creature = "Chaos Hydra"
+abilities = [{ kind = "attacks_all_adjacent" }]
+sources = ["wiki-hydra", "vcmi-creatures"]
+
+# Elementals: RoE creatures (opposite elementals); the AB ones are added by `ab` overrides.
+[[creature_abilities]]
+creature = "Air Elemental"
+abilities = [
+    { kind = "hate", creature = "Earth Elemental", percent = 100 },
+    { kind = "hate", creature = "Magma Elemental", percent = 100 },
+]
+sources = ["wiki-air-elemental", "vcmi-creatures"]
+
+[[creature_abilities]]
+creature = "Earth Elemental"
+abilities = [
+    { kind = "hate", creature = "Air Elemental", percent = 100 },
+    { kind = "hate", creature = "Storm Elemental", percent = 100 },
+]
+sources = ["wiki-earth-elemental", "vcmi-creatures"]
+
+[[creature_abilities]]
+creature = "Fire Elemental"
+abilities = [
+    { kind = "hate", creature = "Water Elemental", percent = 100 },
+    { kind = "hate", creature = "Ice Elemental", percent = 100 },
+]
+sources = ["wiki-fire-elemental", "vcmi-creatures"]
+
+[[creature_abilities]]
+creature = "Water Elemental"
+abilities = [
+    { kind = "hate", creature = "Fire Elemental", percent = 100 },
+    { kind = "hate", creature = "Energy Elemental", percent = 100 },
+]
+sources = ["wiki-water-elemental", "vcmi-creatures"]
+
+# Armageddon's Blade
+[[creature_abilities]]
+creature = "Psychic Elemental"
+abilities = [{ kind = "attacks_all_adjacent" }]
+sources = ["wiki-psychic-elemental", "vcmi-creatures"]
+
+[[creature_abilities]]
+creature = "Magic Elemental"
+abilities = [{ kind = "attacks_all_adjacent" }]
+sources = ["wiki-psychic-elemental", "vcmi-creatures"]
+
+[[creature_abilities]]
+creature = "Storm Elemental"
+abilities = [
+    { kind = "hate", creature = "Earth Elemental", percent = 100 },
+    { kind = "hate", creature = "Magma Elemental", percent = 100 },
+]
+sources = ["wiki-air-elemental", "vcmi-creatures"]
+
+[[creature_abilities]]
+creature = "Magma Elemental"
+abilities = [
+    { kind = "hate", creature = "Air Elemental", percent = 100 },
+    { kind = "hate", creature = "Storm Elemental", percent = 100 },
+]
+sources = ["wiki-earth-elemental", "vcmi-creatures"]
+
+[[creature_abilities]]
+creature = "Ice Elemental"
+abilities = [
+    { kind = "hate", creature = "Fire Elemental", percent = 100 },
+    { kind = "hate", creature = "Energy Elemental", percent = 100 },
+]
+sources = ["wiki-water-elemental", "vcmi-creatures"]
+
+[[creature_abilities]]
+creature = "Energy Elemental"
+abilities = [
+    { kind = "hate", creature = "Water Elemental", percent = 100 },
+    { kind = "hate", creature = "Ice Elemental", percent = 100 },
+]
+sources = ["wiki-fire-elemental", "vcmi-creatures"]
+
+[[creature_abilities]]
+creature = "Sharpshooter"
+abilities = [{ kind = "no_distance_penalty" }]
+sources = ["wiki-sharpshooter", "vcmi-creatures"]
+
+[[creature_abilities]]
+creature = "Halfling"
+abilities = [{ kind = "minimum_luck", value = 1 }]
+sources = ["wiki-halfling", "vcmi-creatures"]
+
+[[creature_abilities]]
+creature = "Troll"
+abilities = [{ kind = "regeneration" }]
+sources = ["wiki-troll", "vcmi-creatures"]

@@ -75,6 +75,7 @@ fight_value = 1431
 ai_value = 1669
 adventure_count = [8, 16]
 flags = ["mind_immune", "no_enemy_retaliation", "no_morale", "multi_headed"]
+abilities = [{ kind = "attacks_all_adjacent" }]
 
 [[creature]]
 id = "magic_elemental"  # original id 121
@@ -96,6 +97,7 @@ fight_value = 1724
 ai_value = 2012
 adventure_count = [8, 12]
 flags = ["mind_immune", "no_enemy_retaliation", "no_morale", "multi_headed"]
+abilities = [{ kind = "attacks_all_adjacent" }]
 
 [[creature]]
 id = "ice_elemental"  # original id 123
@@ -117,6 +119,7 @@ fight_value = 315
 ai_value = 380
 adventure_count = [12, 20]
 flags = ["two_hex", "shooter", "mind_immune", "no_morale"]
+abilities = [{ kind = "hate", creature = "base:fire_elemental", percent = 100 }, { kind = "hate", creature = "energy_elemental", percent = 100 }]
 
 [[creature]]
 id = "magma_elemental"  # original id 125
@@ -138,6 +141,7 @@ fight_value = 490
 ai_value = 490
 adventure_count = [16, 25]
 flags = ["mind_immune", "no_morale"]
+abilities = [{ kind = "hate", creature = "base:air_elemental", percent = 100 }, { kind = "hate", creature = "storm_elemental", percent = 100 }]
 
 [[creature]]
 id = "storm_elemental"  # original id 127
@@ -159,6 +163,7 @@ fight_value = 324
 ai_value = 486
 adventure_count = [6, 12]
 flags = ["shooter", "mind_immune", "no_morale"]
+abilities = [{ kind = "hate", creature = "base:earth_elemental", percent = 100 }, { kind = "hate", creature = "magma_elemental", percent = 100 }]
 
 [[creature]]
 id = "energy_elemental"  # original id 129
@@ -180,6 +185,7 @@ fight_value = 360
 ai_value = 470
 adventure_count = [12, 25]
 flags = ["flying", "mind_immune", "fire_immune", "no_morale"]
+abilities = [{ kind = "hate", creature = "base:water_elemental", percent = 100 }, { kind = "hate", creature = "ice_elemental", percent = 100 }]
 
 [[creature]]
 id = "firebird"  # original id 130
@@ -342,6 +348,7 @@ fight_value = 415
 ai_value = 585
 adventure_count = [5, 12]
 flags = ["shooter", "alive"]
+abilities = [{ kind = "no_distance_penalty" }]
 
 [[creature]]
 id = "halfling"  # original id 138
@@ -362,6 +369,7 @@ fight_value = 60
 ai_value = 75
 adventure_count = [20, 50]
 flags = ["shooter", "alive"]
+abilities = [{ kind = "minimum_luck", value = 1 }]
 
 [[creature]]
 id = "peasant"  # original id 139
@@ -482,23 +490,28 @@ fight_value = 1024
 ai_value = 1024
 adventure_count = [8, 12]
 flags = ["alive"]
+abilities = [{ kind = "regeneration" }]
 
 [[creature_override]]
 target = "base:air_elemental"
 faction = "conflux"
 level = 2
+abilities = [{ kind = "hate", creature = "base:earth_elemental", percent = 100 }, { kind = "hate", creature = "magma_elemental", percent = 100 }]
 
 [[creature_override]]
 target = "base:earth_elemental"
 faction = "conflux"
 level = 5
+abilities = [{ kind = "hate", creature = "base:air_elemental", percent = 100 }, { kind = "hate", creature = "storm_elemental", percent = 100 }]
 
 [[creature_override]]
 target = "base:fire_elemental"
 faction = "conflux"
 level = 4
+abilities = [{ kind = "hate", creature = "base:water_elemental", percent = 100 }, { kind = "hate", creature = "ice_elemental", percent = 100 }]
 
 [[creature_override]]
 target = "base:water_elemental"
 faction = "conflux"
 level = 3
+abilities = [{ kind = "hate", creature = "base:fire_elemental", percent = 100 }, { kind = "hate", creature = "energy_elemental", percent = 100 }]

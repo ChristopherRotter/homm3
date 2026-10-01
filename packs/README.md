@@ -94,9 +94,42 @@ resource may appear once.
 `multi_headed`, `area_attack`, `dragon`. Flags are data only until the rules that read them
 arrive (E03).
 
+**Abilities** (E03, ADR-0012; `h3_content::Ability`): behaviour beyond the flag bits, with
+parameters. `abilities = [ ... ]` on a creature (or an override, replacing the whole list), each
+entry an inline table with `kind` and that kind's parameters; unknown kinds or parameters are
+errors:
+
+| `kind` | Parameters | Meaning (rule ids in `docs/rules/catalog/battle.toml`) |
+|---|---|---|
+| `hate` | `creature`, `percent` | +`percent` % base damage against that creature (one entry per target) |
+| `jousting` | `percent_per_hex` | +% base damage per hex travelled before a melee attack |
+| `charge_immunity` | — | attackers get no jousting bonus against it |
+| `defense_reduction` | `percent` (1–100) | the target's defense counts `100 − percent` % (rounded down) |
+| `death_blow` | `chance_percent` | chance of +100 % base damage per attack |
+| `life_drain` | `percent` | heals/resurrects itself by that share of the damage dealt to living targets |
+| `regeneration` | — | top creature regains its lost hit points at the start of its turn |
+| `death_stare` | `chance_percent` | per creature, kills one living enemy creature after attacking |
+| `extra_retaliations` | `count` | retaliates `1 + count` times per round |
+| `unlimited_retaliations` | — | retaliates against every attack |
+| `strike_and_return` | — | returns to its starting hex after a melee attack |
+| `attacks_all_adjacent` | — | melee hits every adjacent enemy (requires flag `multi_headed`) |
+| `three_headed_attack` | — | melee hits the target and the hexes beside it (requires `multi_headed`) |
+| `teleports` | — | moves like a flyer (path irrelevant) |
+| `morale_aura`, `luck_aura` | `amount`, `affects` (`allies`/`enemies`) | battle-wide morale/luck change; equal auras do not stack |
+| `minimum_morale`, `minimum_luck` | `value` | lower bound of its morale/luck |
+| `no_distance_penalty` | — | its shots have no distance penalty |
+| `area_shot` | `effect` (`fireball`/`death_cloud`) | its shots also hit the stacks around the target (requires flag `area_attack`) |
+
+`creature` references follow the reference rules above (own pack, or `pack:name` in the
+dependency closure) and may name creatures defined later in the same pack. At most one entry of
+each kind, except `hate` with different targets; `extra_retaliations`/`unlimited_retaliations` and
+the two attack patterns exclude each other. Abilities are data only until the rule that reads
+them arrives (E03 tasks, see the epic file).
+
 **Battle parameters** (`[battle]`, Tier 2) and **profiles** (`[[profile]]` with `quirks`) are
 unchanged from E01; exactly one enabled pack provides `[battle]`. Profile-level Tier-2 overrides
 are not implemented yet (backlog).
 
-The compiled ruleset's canonical hash (encoding v2, `RULESET_HASH_VERSION`) covers packs, profile,
-quirks, resources, factions, all creature fields and the battle parameters; replays record it.
+The compiled ruleset's canonical hash (encoding v3, `RULESET_HASH_VERSION`) covers packs, profile,
+quirks, resources, factions, all creature fields including abilities, and the battle parameters;
+replays record it.

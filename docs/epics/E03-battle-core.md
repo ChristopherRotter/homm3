@@ -73,10 +73,11 @@ Heroes, spells and artifacts (E04), spell-like creature abilities and the tactic
 
 ## Tasks (refined at E03 start; status kept current)
 
-- [ ] T1 Modifier-system ADR (ADR-0012) + kernel implementation (`h3_kernel::modifier`, KER-MOD-001).
-- [ ] T2 Ability primitives v1 + data wiring: closed `Ability` set in `h3-content`, pack format,
-  compiler, ruleset hash, harvester gap-fill emitting sourced abilities for `base`/`ab`/`sod`,
-  stacks carrying their abilities.
+- [x] T1 Modifier-system ADR (ADR-0012) + kernel implementation (`h3_kernel::modifier`, KER-MOD-001).
+- [x] T2 Ability primitives v1 + data wiring: closed `Ability` set in `h3-content` (20 kinds),
+  pack format, compiler checks, ruleset hash v3, harvester gap-fill with sourced abilities for
+  `base`/`ab` (attribute-column cross-check), flags and shots on `CreatureType`. Rule code reads
+  them in T3–T8 (each task lists the kinds it implements).
 - [ ] T3 Geometry: obstacles (setup + field), two-hex creatures (occupancy, movement, placement,
   attack positions), flyers.
 - [ ] T4 Ranged combat: Shoot command, shots, blocked shooters, distance and melee penalties, no

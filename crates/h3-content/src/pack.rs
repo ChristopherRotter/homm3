@@ -7,6 +7,7 @@
 use alloc::string::String;
 use alloc::vec::Vec;
 
+use crate::ability::AbilityDef;
 use crate::key::ContentKey;
 
 /// Identity and dependencies of a pack.
@@ -70,6 +71,8 @@ pub struct CreatureInfoDef {
     pub adventure_count: [u16; 2],
     /// Creature flags by name, from the closed set [`crate::CreatureFlag`].
     pub flags: Vec<String>,
+    /// Abilities (ADR-0012), from the closed set [`crate::Ability`].
+    pub abilities: Vec<AbilityDef>,
 }
 
 impl Default for CreatureInfoDef {
@@ -88,6 +91,7 @@ impl Default for CreatureInfoDef {
             casts: 0,
             adventure_count: [0, 0],
             flags: Vec::new(),
+            abilities: Vec::new(),
         }
     }
 }
@@ -165,6 +169,8 @@ pub struct CreaturePatch {
     pub adventure_count: Option<[u16; 2]>,
     /// New flags (replaces the whole list).
     pub flags: Option<Vec<String>>,
+    /// New abilities (replaces the whole list).
+    pub abilities: Option<Vec<AbilityDef>>,
 }
 
 /// Battle parameters (Tier 2). Exactly one pack in a ruleset provides them.

@@ -8,9 +8,11 @@ Living state. The last agent updates this at the end of every session; the next 
 
 **State:** branch `e03-battle-core` from `master` (`7c02e2a`). Scope decisions at the start (user, OPEN-QUESTIONS Q16): war machines without heroes and terrain bonus + obstacle generation are **in**; spell-like abilities, spell immunities and tactics are **E04**; sources VCMI 1.7.5 + wiki (fetches approved); no original-game experiments (open questions instead); ADR-0012 reviewed with the E03 report. Task list and status: `docs/epics/E03-battle-core.md`.
 
-**Done:** T1 — ADR-0012 (modifiers and abilities, Proposed) and `h3_kernel::modifier` (KER-MOD-001; `FixedVec::remove_if`).
+**Done:** T1 — ADR-0012 (modifiers and abilities, Proposed) and `h3_kernel::modifier` (KER-MOD-001; `FixedVec::remove_if`). T2 — `h3_content::Ability` (20 kinds), pack syntax (`packs/README.md`), compiler checks, ruleset hash v3, flags/shots moved to `CreatureType`, harvester `creature_abilities` gap-fill entries (sourced) → packs regenerated; golden replays re-recorded (only the ruleset hash changed).
 
-**Next:** T2 (ability primitives + data wiring).
+**User decisions during E03 (OPEN-QUESTIONS):** Q17 per-side "led by a hero" flag in `BattleSetup` + quirk "no luck without hero" (T6); Q18 luck only on the primary target; Q19 Behemoth: defense counts floor(D·(100−p)/100); Q20 regeneration at the stack's own turn.
+
+**Next:** T3 (geometry: obstacles, two-hex, flyers).
 
 **Sandbox notes (this session):** VCMI 1.7.5 is cloned at `/home/claude/ref/vcmi` (`git clone --depth 1 --branch 1.7.5 https://github.com/vcmi/vcmi.git`; github.com web pages are blocked, git works). The wiki is reachable only through WebFetch after the user approved it.
 

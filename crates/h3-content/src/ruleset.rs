@@ -7,6 +7,7 @@ use alloc::vec::Vec;
 
 use h3_kernel::{CanonicalHash, Handle, StateHasher};
 
+use crate::ability::{self, Ability, AbilityDef, CompiledAbility};
 use crate::error::CompileError;
 use crate::flags::{CreatureFlag, CreatureFlags};
 use crate::key::{ContentKey, is_valid_part};
@@ -21,7 +22,7 @@ pub const MAX_ARMY_SLOTS: usize = 16;
 pub const MAX_FIELD_HEXES: usize = 255;
 
 /// Version of the ruleset hash encoding. Bump when the encoding below changes.
-pub const RULESET_HASH_VERSION: u32 = 2;
+pub const RULESET_HASH_VERSION: u32 = 3;
 
 /// A compiled creature type.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -38,6 +39,10 @@ pub struct CreatureType {
     pub hit_points: u32,
     /// Speed (≥ 1).
     pub speed: u8,
+    /// Ranged shots per battle (0 for creatures without ammunition).
+    pub shots: u16,
+    /// Flags.
+    pub flags: CreatureFlags,
 }
 
 /// Handle of a creature type in a [`Ruleset`].
@@ -137,14 +142,10 @@ pub struct CreatureInfo {
     pub fight_value: u32,
     /// AI value.
     pub ai_value: u32,
-    /// Ranged shots.
-    pub shots: u16,
     /// Spell casts per battle.
     pub casts: u8,
     /// Adventure-map stack size range `[low, high]`.
     pub adventure_count: [u16; 2],
-    /// Flags.
-    pub flags: CreatureFlags,
 }
 
 /// The immutable compiled ruleset.
@@ -157,6 +158,7 @@ pub struct Ruleset {
     factions: Vec<FactionInfo>,
     creatures: Vec<CreatureType>,
     creature_info: Vec<CreatureInfo>,
+    creature_abilities: Vec<Vec<CompiledAbility>>,
     creature_keys: Vec<ContentKey>,
     creature_index: BTreeMap<String, CreatureTypeId>,
     battle: BattleParams,
@@ -212,6 +214,18 @@ impl Scope<'_> {
     }
 }
 
+/// Resolves the creature references of an ability list against the creatures compiled so far,
+/// restricted to the pack's dependency closure.
+fn abilities(
+    defs: &[AbilityDef],
+    scope: &Scope<'_>,
+    creatures: &BTreeMap<String, CreatureTypeId>,
+) -> Result<Vec<CompiledAbility>, CompileError> {
+    defs.iter()
+        .map(|a| a.try_map(|key| scope.resolve(key, creatures, "creature")))
+        .collect()
+}
+
 /// Resolves creature flag names.
 fn flags(names: &[String]) -> Result<CreatureFlags, CompileError> {
     names
@@ -249,6 +263,7 @@ impl Ruleset {
         let mut faction_index = BTreeMap::new();
         let mut creatures = Vec::new();
         let mut creature_info = Vec::new();
+        let mut creature_abilities: Vec<Vec<CompiledAbility>> = Vec::new();
         let mut creature_keys: Vec<ContentKey> = Vec::new();
         let mut creature_index = BTreeMap::new();
         let mut battle_def: Option<&BattleParamsDef> = None;
@@ -292,6 +307,8 @@ impl Ruleset {
                     damage_max: def.damage_max,
                     hit_points: def.hit_points,
                     speed: def.speed,
+                    shots: def.info.shots,
+                    flags: flags(&def.info.flags)?,
                 });
                 let info = &def.info;
                 creature_info.push(CreatureInfo {
@@ -304,12 +321,15 @@ impl Ruleset {
                     horde_growth: info.horde_growth,
                     fight_value: info.fight_value,
                     ai_value: info.ai_value,
-                    shots: info.shots,
                     casts: info.casts,
                     adventure_count: info.adventure_count,
-                    flags: flags(&info.flags)?,
                 });
                 creature_keys.push(def.key.clone());
+            }
+            // Abilities may refer to any creature of the closure, including later ones of this
+            // pack, so they are resolved once the pack's creatures are registered.
+            for def in &pack.creatures {
+                creature_abilities.push(abilities(&def.info.abilities, &scope, &creature_index)?);
             }
             for o in &pack.creature_overrides {
                 let target = String::from(o.target.as_str());
@@ -327,10 +347,19 @@ impl Ruleset {
                 }
                 // Handles come from `creature_index`, which only holds pushed positions, so the
                 // lookup always succeeds.
+                let i = handle.index();
                 creatures
-                    .get_mut(handle.index())
-                    .zip(creature_info.get_mut(handle.index()))
-                    .map(|(stats, info)| apply_patch(&o.patch, stats, info, &scope))
+                    .get_mut(i)
+                    .zip(creature_info.get_mut(i))
+                    .zip(creature_abilities.get_mut(i))
+                    .map(|((stats, info), abils)| {
+                        let target = Target {
+                            stats,
+                            info,
+                            abilities: abils,
+                        };
+                        apply_patch(&o.patch, target, &scope, &creature_index)
+                    })
                     .transpose()?;
             }
             if let Some(b) = &pack.battle {
@@ -340,8 +369,13 @@ impl Ruleset {
                 battle_def = Some(b);
             }
         }
-        for ((stats, info), key) in creatures.iter().zip(&creature_info).zip(&creature_keys) {
-            validate_creature(key, stats, info)?;
+        for (((stats, info), abils), key) in creatures
+            .iter()
+            .zip(&creature_info)
+            .zip(&creature_abilities)
+            .zip(&creature_keys)
+        {
+            validate_creature(key, stats, info, abils)?;
         }
         let battle = compile_battle(battle_def.ok_or(CompileError::MissingBattleParams)?)?;
 
@@ -376,6 +410,7 @@ impl Ruleset {
             factions,
             creatures,
             creature_info,
+            creature_abilities,
             creature_keys,
             creature_index,
             battle,
@@ -393,6 +428,13 @@ impl Ruleset {
     /// Non-battle attributes of a creature type.
     pub fn creature_info(&self, id: CreatureTypeId) -> Option<&CreatureInfo> {
         self.creature_info.get(id.index())
+    }
+
+    /// The abilities of a creature type (empty for unknown handles), in pack order.
+    pub fn abilities(&self, id: CreatureTypeId) -> &[CompiledAbility] {
+        self.creature_abilities
+            .get(id.index())
+            .map_or(&[], Vec::as_slice)
     }
 
     /// The key of a creature type.
@@ -521,12 +563,24 @@ fn insert_unique<T>(
     Ok(())
 }
 
+/// The compiled parts of a creature an override patches.
+struct Target<'a> {
+    stats: &'a mut CreatureType,
+    info: &'a mut CreatureInfo,
+    abilities: &'a mut Vec<CompiledAbility>,
+}
+
 fn apply_patch(
     p: &CreaturePatch,
-    stats: &mut CreatureType,
-    info: &mut CreatureInfo,
+    target: Target<'_>,
     scope: &Scope<'_>,
+    creatures: &BTreeMap<String, CreatureTypeId>,
 ) -> Result<(), CompileError> {
+    let Target {
+        stats,
+        info,
+        abilities: abils,
+    } = target;
     fn set<T: Clone>(field: &mut T, value: Option<&T>) {
         if let Some(v) = value {
             *field = v.clone();
@@ -551,11 +605,14 @@ fn apply_patch(
     set(&mut info.horde_growth, p.horde_growth.as_ref());
     set(&mut info.fight_value, p.fight_value.as_ref());
     set(&mut info.ai_value, p.ai_value.as_ref());
-    set(&mut info.shots, p.shots.as_ref());
+    set(&mut stats.shots, p.shots.as_ref());
     set(&mut info.casts, p.casts.as_ref());
     set(&mut info.adventure_count, p.adventure_count.as_ref());
     if let Some(names) = &p.flags {
-        info.flags = flags(names)?;
+        stats.flags = flags(names)?;
+    }
+    if let Some(defs) = &p.abilities {
+        *abils = abilities(defs, scope, creatures)?;
     }
     Ok(())
 }
@@ -575,6 +632,7 @@ fn validate_creature(
     key: &ContentKey,
     def: &CreatureType,
     info: &CreatureInfo,
+    abils: &[CompiledAbility],
 ) -> Result<(), CompileError> {
     let invalid = |reason| {
         Err(CompileError::InvalidCreature {
@@ -599,6 +657,20 @@ fn validate_creature(
     }
     if info.adventure_count[1] < info.adventure_count[0] {
         return invalid("adventure_count high must not be below low");
+    }
+    if let Some(reason) = ability::list_error(abils) {
+        return invalid(reason);
+    }
+    // The executable's multi-head and area-attack bits need the pattern the original hard-codes.
+    let pattern = abils
+        .iter()
+        .any(|a| matches!(a, Ability::AttacksAllAdjacent | Ability::ThreeHeadedAttack));
+    if def.flags.contains(CreatureFlag::MultiHeaded) != pattern {
+        return invalid("flag multi_headed requires attacks_all_adjacent or three_headed_attack");
+    }
+    let area = abils.iter().any(|a| matches!(a, Ability::AreaShot { .. }));
+    if def.flags.contains(CreatureFlag::AreaAttack) != area {
+        return invalid("flag area_attack requires an area_shot ability (and vice versa)");
     }
     Ok(())
 }
@@ -661,9 +733,10 @@ fn compile_battle(def: &BattleParamsDef) -> Result<BattleParams, CompileError> {
 }
 
 impl CanonicalHash for Ruleset {
-    /// Encoding v2: version, packs (id, version) in load order, profile key, quirk bits,
-    /// resources and factions (key, name), creatures (key, stats in field order, then the info
-    /// fields in field order; a faction as presence flag + handle, the cost as length + pairs),
+    /// Encoding v3: version, packs (id, version) in load order, profile key, quirk bits,
+    /// resources and factions (key, name), creatures (key, stats in field order including shots
+    /// and flag bits, then the info fields in field order — a faction as presence flag + handle,
+    /// the cost as length + pairs — then the abilities as length + each ability's encoding),
     /// battle parameters in field order with the full formation table.
     fn hash_into(&self, h: &mut StateHasher) {
         h.write_u32(RULESET_HASH_VERSION);
@@ -685,10 +758,11 @@ impl CanonicalHash for Ruleset {
             f.name.as_str().hash_into(h);
         }
         h.write_len(self.creatures.len());
-        for ((c, info), key) in self
+        for (((c, info), abils), key) in self
             .creatures
             .iter()
             .zip(&self.creature_info)
+            .zip(&self.creature_abilities)
             .zip(&self.creature_keys)
         {
             key.as_str().hash_into(h);
@@ -698,6 +772,8 @@ impl CanonicalHash for Ruleset {
             h.write_u16(c.damage_max);
             h.write_u32(c.hit_points);
             h.write_u8(c.speed);
+            h.write_u16(c.shots);
+            h.write_u32(c.flags.bits());
             info.name.as_str().hash_into(h);
             info.plural.as_str().hash_into(h);
             h.write_bool(info.faction.is_some());
@@ -712,11 +788,13 @@ impl CanonicalHash for Ruleset {
             h.write_u16(info.horde_growth);
             h.write_u32(info.fight_value);
             h.write_u32(info.ai_value);
-            h.write_u16(info.shots);
             h.write_u8(info.casts);
             h.write_u16(info.adventure_count[0]);
             h.write_u16(info.adventure_count[1]);
-            h.write_u32(info.flags.bits());
+            h.write_len(abils.len());
+            for a in abils {
+                a.hash_into(h);
+            }
         }
         let b = &self.battle;
         h.write_u8(b.field.width);

@@ -9,9 +9,9 @@ use std::collections::BTreeMap;
 use std::fmt;
 
 use h3_content::{
-    BattleParamsDef, CompileError, ContentKey, ContentPack, CreatureDef, CreatureInfoDef,
-    CreatureOverride, CreaturePatch, FactionDef, KeyError, PackManifest, ProfileDef, ResourceDef,
-    Ruleset,
+    AbilityDef, AreaShot, AuraTarget, BattleParamsDef, CompileError, ContentKey, ContentPack,
+    CreatureDef, CreatureInfoDef, CreatureOverride, CreaturePatch, FactionDef, KeyError,
+    PackManifest, ProfileDef, ResourceDef, Ruleset,
 };
 use h3_contracts::{Army, ArmyStack, BattleSetup};
 use serde::Deserialize;
@@ -156,6 +156,98 @@ struct CreatureDto {
     adventure_count: [u16; 2],
     #[serde(default)]
     flags: Vec<String>,
+    #[serde(default)]
+    abilities: Vec<AbilityDto>,
+}
+
+/// One ability (`packs/README.md`, "Abilities"): `kind` plus the parameters of that kind.
+/// Parameterless kinds are empty struct variants so that `deny_unknown_fields` rejects stray keys.
+#[derive(Deserialize)]
+#[serde(tag = "kind", rename_all = "snake_case", deny_unknown_fields)]
+enum AbilityDto {
+    Hate { creature: String, percent: u16 },
+    Jousting { percent_per_hex: u16 },
+    ChargeImmunity {},
+    DefenseReduction { percent: u8 },
+    DeathBlow { chance_percent: u8 },
+    LifeDrain { percent: u16 },
+    Regeneration {},
+    DeathStare { chance_percent: u8 },
+    ExtraRetaliations { count: u8 },
+    UnlimitedRetaliations {},
+    StrikeAndReturn {},
+    AttacksAllAdjacent {},
+    ThreeHeadedAttack {},
+    Teleports {},
+    MoraleAura { amount: i8, affects: AuraDto },
+    LuckAura { amount: i8, affects: AuraDto },
+    MinimumMorale { value: i8 },
+    MinimumLuck { value: i8 },
+    NoDistancePenalty {},
+    AreaShot { effect: AreaShotDto },
+}
+
+#[derive(Deserialize)]
+#[serde(rename_all = "snake_case")]
+enum AuraDto {
+    Allies,
+    Enemies,
+}
+
+#[derive(Deserialize)]
+#[serde(rename_all = "snake_case")]
+enum AreaShotDto {
+    Fireball,
+    DeathCloud,
+}
+
+impl AbilityDto {
+    fn into_def(self, pack: &str) -> Result<AbilityDef, KeyError> {
+        let aura = |a: AuraDto| match a {
+            AuraDto::Allies => AuraTarget::Allies,
+            AuraDto::Enemies => AuraTarget::Enemies,
+        };
+        Ok(match self {
+            Self::Hate { creature, percent } => AbilityDef::Hate {
+                target: reference(pack, &creature)?,
+                percent,
+            },
+            Self::Jousting { percent_per_hex } => AbilityDef::Jousting { percent_per_hex },
+            Self::ChargeImmunity {} => AbilityDef::ChargeImmunity,
+            Self::DefenseReduction { percent } => AbilityDef::DefenseReduction { percent },
+            Self::DeathBlow { chance_percent } => AbilityDef::DeathBlow { chance_percent },
+            Self::LifeDrain { percent } => AbilityDef::LifeDrain { percent },
+            Self::Regeneration {} => AbilityDef::Regeneration,
+            Self::DeathStare { chance_percent } => AbilityDef::DeathStare { chance_percent },
+            Self::ExtraRetaliations { count } => AbilityDef::ExtraRetaliations { count },
+            Self::UnlimitedRetaliations {} => AbilityDef::UnlimitedRetaliations,
+            Self::StrikeAndReturn {} => AbilityDef::StrikeAndReturn,
+            Self::AttacksAllAdjacent {} => AbilityDef::AttacksAllAdjacent,
+            Self::ThreeHeadedAttack {} => AbilityDef::ThreeHeadedAttack,
+            Self::Teleports {} => AbilityDef::Teleports,
+            Self::MoraleAura { amount, affects } => AbilityDef::MoraleAura {
+                amount,
+                affects: aura(affects),
+            },
+            Self::LuckAura { amount, affects } => AbilityDef::LuckAura {
+                amount,
+                affects: aura(affects),
+            },
+            Self::MinimumMorale { value } => AbilityDef::MinimumMorale { value },
+            Self::MinimumLuck { value } => AbilityDef::MinimumLuck { value },
+            Self::NoDistancePenalty {} => AbilityDef::NoDistancePenalty,
+            Self::AreaShot { effect } => AbilityDef::AreaShot {
+                effect: match effect {
+                    AreaShotDto::Fireball => AreaShot::Fireball,
+                    AreaShotDto::DeathCloud => AreaShot::DeathCloud,
+                },
+            },
+        })
+    }
+}
+
+fn abilities(pack: &str, list: Vec<AbilityDto>) -> Result<Vec<AbilityDef>, KeyError> {
+    list.into_iter().map(|a| a.into_def(pack)).collect()
 }
 
 fn default_level() -> u8 {
@@ -186,6 +278,7 @@ struct OverrideDto {
     casts: Option<u8>,
     adventure_count: Option<[u16; 2]>,
     flags: Option<Vec<String>>,
+    abilities: Option<Vec<AbilityDto>>,
 }
 
 /// Resolves a reference: `name` means `<own pack>:name`, `pack:name` is taken as written.
@@ -255,6 +348,7 @@ pub fn parse_pack(text: &str) -> Result<ContentPack, PackError> {
                     casts: c.casts,
                     adventure_count: c.adventure_count,
                     flags: c.flags,
+                    abilities: abilities(&pack_id, c.abilities)?,
                 },
             })
         })
@@ -289,6 +383,7 @@ pub fn parse_pack(text: &str) -> Result<ContentPack, PackError> {
                     casts: o.casts,
                     adventure_count: o.adventure_count,
                     flags: o.flags,
+                    abilities: o.abilities.map(|a| abilities(&pack_id, a)).transpose()?,
                 },
             })
         })
@@ -546,7 +641,12 @@ mod tests {
             .map(|(r, n)| (base.resources()[r.index()].key.as_str(), *n))
             .collect();
         assert_eq!(costs, [("synthetic:coin", 120), ("synthetic:shard", 1)]);
-        assert!(info.flags.contains(h3_content::CreatureFlag::TwoHex));
+        assert!(
+            base.creature(brute)
+                .unwrap()
+                .flags
+                .contains(h3_content::CreatureFlag::TwoHex)
+        );
         let wisp = base.creature_by_key("synthetic:wisp").unwrap();
         assert_eq!(base.creature_info(wisp).unwrap().faction, None);
 
@@ -616,6 +716,14 @@ mod tests {
         assert_eq!(sod.creature(cerberus).unwrap().damage_max, 7);
         assert_eq!(roe.battle().attack_bonus_cap_percent, 300);
         assert_eq!(roe.battle().formation_row(7, 3), Some(5));
+        // Abilities (E03 T2): RoE elementals hate their opposites; AB adds the Conflux ones.
+        assert_eq!(roe.abilities(air).len(), 1);
+        assert_eq!(ab.abilities(air).len(), 2);
+        let cavalier = roe.creature_by_key("base:cavalier").unwrap();
+        assert_eq!(
+            roe.abilities(cavalier),
+            [h3_content::Ability::Jousting { percent_per_hex: 5 }]
+        );
     }
 
     #[test]
@@ -641,8 +749,11 @@ mod tests {
         );
         let info = r.creature_info(id).unwrap();
         assert_eq!(info.faction, None); // `faction = ""` makes it neutral
-        assert_eq!((info.name.as_str(), info.shots, info.casts), ("Pike", 1, 2));
-        assert!(info.flags.contains(h3_content::CreatureFlag::Undead));
+        assert_eq!(
+            (info.name.as_str(), stats.shots, info.casts),
+            ("Pike", 1, 2)
+        );
+        assert!(stats.flags.contains(h3_content::CreatureFlag::Undead));
 
         let bad_target = with("[[creature_override]]\ntarget = \"spearman\"\n");
         assert!(matches!(parse_pack(&bad_target), Err(PackError::Key(_))));
@@ -659,6 +770,97 @@ mod tests {
             compile(&[&bad_flag], "synthetic:faithful"),
             Err(PackError::Compile(CompileError::UnknownFlag(_)))
         ));
+    }
+
+    #[test]
+    fn ability_syntax() {
+        use h3_content::{Ability, AreaShot, AuraTarget};
+        // Every kind with its parameters; references follow the usual rules.
+        let all = "abilities = [\
+            { kind = \"hate\", creature = \"wisp\", percent = 50 }, \
+            { kind = \"hate\", creature = \"synthetic:brute\", percent = 100 }, \
+            { kind = \"jousting\", percent_per_hex = 5 }, { kind = \"charge_immunity\" }, \
+            { kind = \"defense_reduction\", percent = 40 }, \
+            { kind = \"death_blow\", chance_percent = 20 }, \
+            { kind = \"life_drain\", percent = 100 }, { kind = \"regeneration\" }, \
+            { kind = \"death_stare\", chance_percent = 10 }, \
+            { kind = \"extra_retaliations\", count = 1 }, { kind = \"strike_and_return\" }, \
+            { kind = \"teleports\" }, \
+            { kind = \"morale_aura\", amount = 1, affects = \"allies\" }, \
+            { kind = \"luck_aura\", amount = -1, affects = \"enemies\" }, \
+            { kind = \"minimum_morale\", value = 1 }, { kind = \"minimum_luck\", value = 1 }, \
+            { kind = \"no_distance_penalty\" }]\n";
+        let text = SYNTHETIC_PACK.replace(
+            "flags = [\"alive\"]\n",
+            &std::format!("flags = [\"alive\"]\n{all}"),
+        );
+        let r = compile(&[&text], "synthetic:faithful").unwrap();
+        let spearman = r.creature_by_key("synthetic:spearman").unwrap();
+        let wisp = r.creature_by_key("synthetic:wisp").unwrap();
+        let list = r.abilities(spearman);
+        assert_eq!(list.len(), 17);
+        assert_eq!(
+            list[0],
+            Ability::Hate {
+                target: wisp,
+                percent: 50
+            }
+        );
+        assert_eq!(
+            list[13],
+            Ability::LuckAura {
+                amount: -1,
+                affects: AuraTarget::Enemies
+            }
+        );
+        // Patterns and area shots need their flags; overrides replace the whole list.
+        let ext = std::format!(
+            "{SYNTHETIC_EXT_PACK}\n[[creature_override]]\ntarget = \"synthetic:wisp\"\n\
+             flags = [\"multi_headed\", \"area_attack\"]\nabilities = [\
+             {{ kind = \"attacks_all_adjacent\" }}, {{ kind = \"area_shot\", effect = \"death_cloud\" }}]\n\
+             [[creature_override]]\ntarget = \"synthetic:brute\"\nflags = [\"multi_headed\", \"area_attack\"]\n\
+             abilities = [{{ kind = \"three_headed_attack\" }}, {{ kind = \"unlimited_retaliations\" }}, \
+             {{ kind = \"area_shot\", effect = \"fireball\" }}]\n"
+        );
+        let r = compile(&[SYNTHETIC_PACK, &ext], "synthetic:faithful").unwrap();
+        assert_eq!(
+            r.abilities(wisp),
+            [
+                Ability::AttacksAllAdjacent,
+                Ability::AreaShot {
+                    effect: AreaShot::DeathCloud
+                }
+            ]
+        );
+        let brute = r.creature_by_key("synthetic:brute").unwrap();
+        assert_eq!(r.abilities(brute).len(), 3);
+        // Strict parsing: unknown kinds, unknown or missing parameters, bad references.
+        for bad in [
+            "abilities = [{ kind = \"swims\" }]",
+            "abilities = [{ kind = \"teleports\", range = 3 }]",
+            "abilities = [{ kind = \"jousting\" }]",
+            "abilities = [{ kind = \"morale_aura\", amount = 1, affects = \"everyone\" }]",
+            "abilities = [{ kind = \"area_shot\", effect = \"lightning\" }]",
+        ] {
+            let text = SYNTHETIC_PACK.replace(
+                "flags = [\"alive\"]\n",
+                &std::format!("flags = [\"alive\"]\n{bad}\n"),
+            );
+            assert!(
+                matches!(parse_pack(&text), Err(PackError::Syntax(_))),
+                "{bad}"
+            );
+        }
+        let bad_ref = SYNTHETIC_PACK.replace(
+            "flags = [\"alive\"]\n",
+            "flags = [\"alive\"]\nabilities = [{ kind = \"hate\", creature = \"A:b\", percent = 1 }]\n",
+        );
+        assert!(matches!(parse_pack(&bad_ref), Err(PackError::Key(_))));
+        let bad_override = std::format!(
+            "{SYNTHETIC_EXT_PACK}\n[[creature_override]]\ntarget = \"synthetic:wisp\"\n\
+             abilities = [{{ kind = \"hate\", creature = \"A:b\", percent = 1 }}]\n"
+        );
+        assert!(matches!(parse_pack(&bad_override), Err(PackError::Key(_))));
     }
 
     #[test]

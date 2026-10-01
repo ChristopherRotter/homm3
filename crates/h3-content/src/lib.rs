@@ -20,6 +20,7 @@
 
 extern crate alloc;
 
+mod ability;
 mod error;
 mod flags;
 mod key;
@@ -27,6 +28,7 @@ mod pack;
 mod quirks;
 mod ruleset;
 
+pub use ability::{Ability, AbilityDef, AreaShot, AuraTarget, CompiledAbility};
 pub use error::CompileError;
 pub use flags::{CreatureFlag, CreatureFlags};
 pub use key::{ContentKey, KeyError};
