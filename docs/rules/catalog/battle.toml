@@ -262,6 +262,12 @@ numeric  = "integer"
   retrieved  = "2026-10-01"
   confidence = "low"
 
+  [[rule.source]]
+  kind       = "observation"
+  ref        = "experiments/results/E04a-batch-1a.md R8 (SoD 4.0 Complete through the HD Mod launcher with HD+): Trolls with the Elixir of Life (54 hit points: 40 + 25 % + the parts' 4) shot down to 31 regain all 54 at their turn in round 2; the regeneration restores the raised maximum (survey quirk S-04 not reproduced)"
+  retrieved  = "2026-10-03"
+  confidence = "high"
+
 [[rule]]
 id       = "BAT-TER-001"
 title    = "Native terrain"
@@ -613,7 +619,8 @@ id       = "BAT-DMG-002"
 title    = "Attack/defense modifier and final rounding"
 context  = "battle"
 status   = "implemented"
-summary  = "Damage = base * (1 + sum of bonuses) * product of (1 - reduction), rounded down once at the end, at least 1. Attack/defense: if attack A > defense D, a bonus of min(0.05 * (A - D), 3.00); else a reduction of min(0.025 * (D - A), 0.70). The attack bonus is capped at +300 % (at most 4x base damage, reached at 60 points), per user decision 2026-09-30 (OPEN-QUESTIONS Q11). Other bonuses (luck, jousting, hate, death blow) add to the bonus sum; other reductions (ranged/melee penalty, ...) multiply. Rates and caps are ruleset parameters (percent / per mille). Computed exactly in integers: floor(base * (100 + bonus%) * prod(1000 - reduction permille) / (100 * 1000^n)). The original likely uses floating point (see the Armorer quirk on the wiki), so exact results may differ by 1 in rare edge cases; open question Q23 with a prepared experiment."
+summary  = "Damage = base * (1 + sum of bonuses) * product of (1 - reduction), rounded down once at the end, at least 1. Attack/defense: if attack A > defense D, a bonus of min(0.05 * (A - D), 3.00); else a reduction of min(0.025 * (D - A), 0.70). The attack bonus is capped at +300 % (at most 4x base damage, reached at 60 points), per user decision 2026-09-30 (OPEN-QUESTIONS Q11). Other bonuses (luck, jousting, hate, death blow) add to the bonus sum; other reductions (ranged/melee penalty, ...) multiply. Rates and caps are ruleset parameters (percent / per mille). Computed exactly in integers: floor(base * (100 + bonus%) * prod(1000 - reduction permille) / (100 * 1000^n)). Observed (Q23, batch 1a): the original uses the single-precision values of the rates (0.05 = 13421773/2^28, 0.025 = 13421773/2^29), so a result can be one lower or stay exact where decimal rates give an integer; quirk Q-0005, to be implemented by E04a T6 (exactly, in integers)."
+quirks   = ["Q-0005"]
 numeric  = "integer"
 
   [[rule.source]]
@@ -637,6 +644,13 @@ numeric  = "integer"
   retrieved  = "2026-09-30"
   confidence = "medium"
   note       = "VCMI caps the attack bonus at +400% (80 points) instead of +300%. Not followed: the user decided for +300% (Q11)."
+
+  [[rule.source]]
+  kind       = "observation"
+  ref        = "experiments/results/E04a-batch-1a.md R1-R3 (SoD 4.0 Complete, Heroes3.exe through the HD Mod 5.6 R9 launcher with HD+; none of HD+'s fixes touches these battles): Archangels with +22 attack points deal 105 per 50 base (exact), Angels with -24 points 19/39/../119 (exact 20/40/..), against Basic Armorer 47/94/142/189/237/284 (exact 47/95/..); all match exact arithmetic with single-precision rates, rounded down once"
+  retrieved  = "2026-10-03"
+  confidence = "high"
+  note       = "Q23 answered; the implementation keeps decimal rates until Q-0005 is implemented (E04a T6)."
 
   [[rule.source]]
   kind       = "wiki"
@@ -790,7 +804,7 @@ id       = "BAT-DMG-009"
 title    = "Death stare"
 context  = "battle"
 status   = "implemented"
-summary  = "After its attack (also a retaliation), if the target is alive (flag alive) and survived, each creature of a stack with death_stare (Mighty Gorgons: 10 %) independently kills one target creature with that chance, at most ceil(count × percent / 100) kills (trials stop at the cap). The kills deal kills × max_hp damage (BAT-DMG-003), so the top creature keeps its damage (Q21, VCMI); the wiki says the new top creature has full health."
+summary  = "After its attack (also a retaliation), if the target is alive (flag alive) and survived, each creature of a stack with death_stare (Mighty Gorgons: 10 %) independently kills one target creature with that chance, at most ceil(count × percent / 100) kills (trials stop at the cap). The kills deal kills × max_hp damage (BAT-DMG-003), so the top creature keeps its damage (VCMI). Observed (Q21, batch 1a): the stare removes whole creatures starting with the damaged top one, so the new top creature has full health (the wiki); the change is planned for E04a T5."
 numeric  = "integer"
 
   [[rule.source]]
@@ -799,7 +813,13 @@ numeric  = "integer"
   url        = "https://heroes.thelazy.net/index.php/Mighty_Gorgon"
   retrieved  = "2026-10-01"
   confidence = "high"
-  note       = "The full-health statement conflicts with VCMI; open question Q21 with a prepared experiment."
+  note       = "The full-health statement conflicts with VCMI; confirmed by observation (Q21)."
+
+  [[rule.source]]
+  kind       = "observation"
+  ref        = "experiments/results/E04a-batch-1a.md R4 (SoD 4.0 Complete, Heroes3.exe through the HD Mod 5.6 R9 launcher with HD+; none of HD+'s fixes touches these battles): 40 Ogres (top 40 HP) take 333 damage (8 die, the top Ogre left at 27 HP) and 2 stare kills: 30 Ogres remain, the top at 40 HP (VCMI predicts 27)"
+  retrieved  = "2026-10-03"
+  confidence = "high"
 
   [[rule.source]]
   kind       = "vcmi"
@@ -1158,7 +1178,8 @@ id       = "BAT-WAR-002"
 title    = "Ballista without Artillery"
 context  = "battle"
 status   = "implemented"
-summary  = "Without a hero's Artillery skill (E04) the Ballista is controlled by the engine: when it becomes active it shoots at once (it is never blocked: war machines shoot even next to enemies) and its turn ends; without shots it does nothing. Target: among living enemies prefer stacks that are not war machines, then stacks that could attack next turn (can shoot, or can reach an attack position), then the highest value of the expected damage min(T, D) * V / M + K * V (D = average damage capped at the target's total health T, K = average kills, V = AI value, M = hit points per creature), compared exactly; ties go to the lowest stack id. Shots are used like a shooter's (24 for the Ballista; unlimited with an Ammo Cart, BAT-WAR-004)."
+summary  = "Without a hero's Artillery skill (E04) the Ballista is controlled by the engine: when it becomes active it shoots at once (it is never blocked: war machines shoot even next to enemies) and its turn ends; without shots it does nothing. Target: among living enemies prefer stacks that are not war machines, then stacks that could attack next turn (can shoot, or can reach an attack position), then the highest value of the expected damage min(T, D) * V / M + K * V (D = average damage capped at the target's total health T, K = average kills, V = AI value, M = hit points per creature), compared exactly; ties go to the lowest stack id. Shots are used like a shooter's (24 for the Ballista; unlimited with an Ammo Cart, BAT-WAR-004). Observed (batch 1a): the original's Ballista shoots on after its 24 shots; quirk Q-0004, to be implemented by E04a T7."
+quirks   = ["Q-0004"]
 numeric  = "integer"
 
   [[rule.source]]
@@ -1174,6 +1195,12 @@ numeric  = "integer"
   url        = "https://heroes.thelazy.net/index.php/Ballista"
   retrieved  = "2026-10-01"
   confidence = "medium"
+
+  [[rule.source]]
+  kind       = "observation"
+  ref        = "experiments/results/E04a-batch-1a.md R7 (SoD 4.0 Complete, Heroes3.exe through the HD Mod 5.6 R9 launcher with HD+; none of HD+'s fixes touches these battles): with Expert Artillery and no Ammo Cart the Ballista shows 22, 20, ... shots, reaches 0 after round 12 and keeps shooting twice per round with negative counts"
+  retrieved  = "2026-10-03"
+  confidence = "high"
 
 [[rule]]
 id       = "BAT-WAR-003"

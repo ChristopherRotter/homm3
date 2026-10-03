@@ -14,7 +14,7 @@ Sources: `wiki` = https://heroes.thelazy.net (retrieved 2026-10-03; pages named 
 |---|---|
 | confirmed by original data | S-05 (the exe's creature table holds the bugged levels) |
 | exploit-fix, no confirmation needed (never implemented) | S-08, S-14, S-20 |
-| to confirm in batch 1a (E04a) | S-01, S-02 (with Q23), S-03, S-04 |
+| batch 1a (E04a), evaluated 2026-10-03 | confirmed: S-01 (ledger Q-0004), S-02 with Q23 (Q-0005, all damage rates), S-03 for Roland only (Q-0006); not reproduced in SoD: S-04 (dropped) |
 | to confirm in an E04b or E04c batch | S-06, S-07, S-09 – S-13, S-15 – S-19, S-21 |
 | to confirm when the battle setup is derived from the map (E04c or E08) | S-22 |
 

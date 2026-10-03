@@ -16,6 +16,8 @@ The skill, artifact and battle surveys were compiled by sub-agents and reviewed 
 
 ## Disputes: input for experiment batch 1
 
+*Batch 1a results (2026-10-03): `docs/epics/E04a-design.md`, "Batch 1a results"; Q21, Q23, D1, S-01–S-04, OQ-4 (Ballista), H-1 and the Ballista's attack are answered there.*
+
 Collected from the surveys; ids point into them. "Observable in SoD" means the user can settle it with a staged battle (E04a T2). Batch 1 is split (user, Q30): **1a** for T5–T7, **1b** for T8–T10. Reading the game's code is allowed as a last resort (Q29); the First Aid reading (installation.md §7.5) settles two rows.
 
 | # | Question | Sources disagree | Needed by | Batch |

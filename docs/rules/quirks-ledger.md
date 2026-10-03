@@ -60,3 +60,42 @@ Classes: `exploit-fix` (always fixed, never toggleable) · `preserve` (accepted,
 - Regression test: `tests::morale::without_a_hero_there_is_no_luck_under_quirk_q0003` (h3-battle)
 - Decided by / date: user, 2026-10-01 (OPEN-QUESTIONS Q17)
 
+
+### Q-0004 — The Ballista has unlimited shots
+- Class: fix-optional (survey S-01, suggested class; confirmed by experiment, Q30 rule)
+- Context / rules affected: battle, BAT-WAR-002 (E04a T7)
+- Original behavior: the Ballista shoots on after its 24 shots without an Ammo Cart; the displayed shot count goes negative. Observed with Expert Artillery: two shots per round, 22 and 20 shots shown after rounds 1 and 2, 0 after round 12, then two shots per round with negative counts.
+- Intended/expected behavior: the Ballista uses its 24 shots unless an Ammo Cart supplies it (HotA fixed it; VCMI and our E03 rule).
+- Impact: gameplay-altering (small)
+- Community status: documented on the wiki (War Machine page), fixed in Horn of the Abyss
+- Sources: observation, `experiments/results/E04a-batch-1a.md` R7 (SoD 4.0 Complete, 2026-10-03); wiki, War Machine (https://heroes.thelazy.net/index.php/War_Machine, retrieved 2026-10-03)
+- Flag: `quirk.battle.unlimited_ballista_shots` (planned; registered by E04a T7 with the rule change)
+- Defaults: faithful = on, strict-fixed = off
+- Regression test: with the flag (E04a T7)
+- Decided by / date: suggested class S-01, confirmed by experiment batch 1a, 2026-10-03
+
+### Q-0005 — Damage rates are single-precision values
+- Class: fix-optional (proposed at the batch-1a report, 2026-10-03; survey S-02 said "decide with Q23")
+- Context / rules affected: battle, BAT-DMG-002 and every damage factor with a rate that is not a binary fraction (attack and defense points, skills, specialties, artifacts; E04a T6)
+- Original behavior: the damage factors use the binary single-precision values of their rates: 0.05 per attack point is 13421773/2^28 (slightly more than 5 %), 0.025 per defense point 13421773/2^29, Basic Armorer's 0.05 likewise, and the product is rounded down once. So a damage that is an exact integer with decimal rates can come out one lower (Angels with 24 defense points against them: 19 instead of 20; 100 base against Basic Armorer: 94 instead of 95) or stay exact (attack bonuses err upwards). Observed in R1–R3 (18 values, one model).
+- Intended/expected behavior: exact decimal rates (our BAT-DMG-002 today).
+- Impact: gameplay-altering (tiny: at most one damage point per strike)
+- Community status: the Armorer case is on the wiki (Damage page); the cause was unknown
+- Sources: observation, `experiments/results/E04a-batch-1a.md` R1–R3 (SoD 4.0 Complete, 2026-10-03); original-data, the executable's skill tables are f32 (`docs/formats/installation.md` §7.4); wiki, Damage (https://heroes.thelazy.net/index.php/Damage, retrieved 2026-10-01)
+- Flag: `quirk.battle.single_precision_rates` (planned; registered by E04a T6, which computes it exactly in integers, ADR-0003)
+- Defaults: faithful = on, strict-fixed = off
+- Regression test: R1–R3 as fixtures (E04a T6)
+- Decided by / date: confirmed by experiment batch 1a (Q23), 2026-10-03; class proposed, the user may object
+
+### Q-0006 — Roland's specialty affects only Crusaders
+- Class: fix-optional (survey S-03, suggested class; confirmed for Roland only)
+- Context / rules affected: content (hero specialties), the creature specialty rule (E04a T10)
+- Original behavior: the executable's specialty table names the Crusader (creature 7) for Roland, so his specialty raises only Crusaders, although it is presented as a Swordsman specialty. Observed at hero level 4: Roland's Crusaders get +1/+1/+1, his Swordsmen nothing; Catherine's and Sorsha's specialty (the Swordsman) raises both. The wiki's claim that Catherine's is bugged as well does not hold in SoD.
+- Intended/expected behavior: Swordsmen and Crusaders (HotA fixed it).
+- Impact: gameplay-altering (a campaign hero)
+- Community status: on the wiki (Swordsman, Hero specialty pages; Catherine mis-attributed), fixed in Horn of the Abyss
+- Sources: observation, `experiments/results/E04a-batch-1a.md` B4–B6 (SoD 4.0 Complete, 2026-10-03); original-data, the specialty table (`docs/formats/installation.md` §7.2); wiki, Hero specialty (https://heroes.thelazy.net/index.php/Hero_specialty, retrieved 2026-10-03)
+- Flag: none yet; a quirk in data, so it needs the same mechanism as the elementals' levels (survey S-05): a per-profile data override, planned with E04a T10. Until then the packs hold the executable's value (faithful).
+- Defaults: faithful = on (Crusader), strict-fixed = off (Swordsman)
+- Regression test: E04a T10
+- Decided by / date: suggested class S-03, confirmed by experiment batch 1a, 2026-10-03

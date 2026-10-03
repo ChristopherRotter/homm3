@@ -8,6 +8,39 @@ documentation, the rule catalog and the pack docs then hold the detail). Where t
 deviates, the code wins; change the ADR only if a decision changes. Delete this file when E04a closes.
 Section numbers follow the ADR. Survey references: `docs/rules/surveys/`.
 
+## Batch 1a results (experiment, SoD; evaluated 2026-10-03)
+
+Results: `experiments/results/E04a-batch-1a.md`; predictions: `experiments/specs/E04a-batch-1a.toml`.
+Played with the Complete edition's `Heroes3.exe` through the HD Mod 5.6 R9 launcher with HD+ on;
+none of HD+'s fixes (https://www.sites.google.com/site/heroes3hd/eng/original-game-bug-fixing,
+checked 2026-10-03) touches these battles. Recorded in OPEN-QUESTIONS (Q21, Q23), the quirks ledger
+(Q-0004 to Q-0006) and the catalog (BAT-DMG-002, BAT-DMG-009, BAT-WAR-002, BAT-TRN-005). What each
+task has to do with them:
+
+- **T5** (first battle task after the seam): death stare per the wiki (Q21): after the damage the
+  stare removes whole creatures, the damaged top one first; the new top creature has full health
+  (BAT-DMG-009). Golden replays change only if a replay has a stare.
+- **T6:** quirk Q-0005: rates enter the damage factors as their single-precision values
+  (`round_to_f32(rate)` as an exact dyadic fraction: 0.05 → 13421773/2^28), the product is rounded
+  down once; computed exactly in integers (u128), behind `quirk.battle.single_precision_rates`.
+  Applies to the attack and defense rates, skill and specialty fractions and artifact percentages;
+  rates that are binary fractions (0.5, 1.0) are unaffected. Fixtures: R1–R3 (18 values).
+- **T7:** the hero's attack counts twice in the Ballista's damage, as in VCMI: the damage range is
+  (2..3) × (hero attack + 1), rolled as one integer in that range (R5: 92 = 56 × 1.65), and the
+  Ballista's attack (10 + hero attack) enters the attack advantage. Basic Artillery: one shot per
+  turn, Expert two (R6, R7; D1). A commanded Ballista may Wait and Defend (R6, OQ-4). Quirk Q-0004:
+  unlimited Ballista shots (R7). A commanded First Aid Tent got no turn while no ally was hurt
+  (R6); its Wait/Defend and the heal amount with the skill were not observable (the Golems
+  destroyed it) — retry in batch 1b with troops hurt before the tent's first turn.
+- **T3b / T10:** Elixir of Life on Trolls shows 54 hit points: +25 % of the creature's base (40 → 50)
+  plus the parts' flat +4 (Ring of Vitality, Ring of Life, Vial of Lifeblood); regeneration restores
+  all 54 (R8: survey quirk S-04 not reproduced, no ledger entry). Creature specialties at hero
+  level 4: +1 attack, +1 defense, +1 speed for 10/12 and 12/12 creatures (ceil of 5 % per step),
+  Catherine and Sorsha for Swordsmen and Crusaders, Roland for Crusaders only (B4–B6; quirk Q-0006,
+  already in the packs as the executable has it).
+- Not observed: the wiki's Armorer example "2002 → 2001" is not explained by Q-0005 alone; Q22
+  (jousting) was not staged.
+
 ## 2. `HeroDetails`, validation and the translation (T4)
 
 - `h3-heroes`: domain, logic crate (`no_std`, 100 % coverage), depends on kernel, content and

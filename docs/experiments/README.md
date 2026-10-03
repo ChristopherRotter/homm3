@@ -50,8 +50,16 @@ written into the spec.
 | Batch | Purpose | State |
 |---|---|---|
 | smoke (`E04a-smoke.h3m`) | prove that the game accepts our files | **works** (user, 2026-10-03) |
-| 1a (`E04a-batch-1a`) | Q23 damage rounding (three encounters that separate exact, single, double and x87-style arithmetic), Q21 death stare, the hero's attack in the Ballista, Basic Artillery and First Aid control, Ballista ammunition (S-01), Elixir of Life regeneration (S-04), the Swordsman specialties (S-03) | **waiting for the user** (2026-10-03) |
+| 1a (`E04a-batch-1a`) | Q23 damage rounding (three encounters that separate exact, single, double and x87-style arithmetic), Q21 death stare, the hero's attack in the Ballista, Basic Artillery and First Aid control, Ballista ammunition (S-01), Elixir of Life regeneration (S-04), the Swordsman specialties (S-03) | **evaluated** (2026-10-03): `docs/epics/E04a-design.md`, "Batch 1a results"; the First Aid Tent with the skill is left for 1b |
 | 1b | tactics, retreat, surrender, outcome inputs, artifacts (T8–T10; `docs/rules/surveys/README.md`) | later |
+
+**How the user plays** (2026-10-03): the Complete edition's `Heroes3.exe` started through a HotA
+installation's HD Mod launcher (HD Mod 5.6 R9). The HD Mod's always-on changes are crash fixes; its
+gameplay fixes come only with the optional HD+ setting (Clone, Quick Combat, neutrals with the
+Angelic Alliance, a hero without an army, AI turns, merchants;
+https://www.sites.google.com/site/heroes3hd/eng/original-game-bug-fixing). Batch 1a was played with
+HD+ on (no fix touches it); from batch 1b on the user plays with plain HD. Observation sources name
+the setup.
 
 Not staged: Q22 (jousting: path length or distance). Showing it needs a controlled detour and,
 because Champion damage is random, many repetitions; reading the game's code is the cheaper last
