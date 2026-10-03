@@ -16,7 +16,7 @@ use crate::effect::{self, CompiledHeroEffect, HeroEffectDef, MAX_SKILL_LEVEL};
 use crate::error::CompileError;
 use crate::flags::CreatureFlag;
 use crate::key::ContentKey;
-use crate::pack::ContentPack;
+use crate::pack::{ContentPack, HeroParamsDef};
 use crate::ruleset::{CreatureType, CreatureTypeId, FactionId, ResourceId};
 
 /// Highest spell level.
@@ -201,6 +201,33 @@ pub struct HeroType {
 /// Handle of a hero type in a [`crate::Ruleset`].
 pub type HeroTypeId = Handle<HeroType>;
 
+/// Compiled hero parameters (Tier 2, E04a T4a): the limits of a hero's details
+/// (`h3-heroes`) and of a battle hero's primary skills.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct HeroParams {
+    /// Lowest effective primary skills (attack, defense, power, knowledge); a lower total
+    /// counts as this value (HER-DET-001).
+    pub primary_min: [u8; 4],
+    /// Highest primary skill, base and effective (HER-DET-001).
+    pub primary_max: u8,
+    /// Most artifacts in a hero's backpack (HER-ART-002).
+    pub backpack: u16,
+}
+
+/// Validates hero parameters: every minimum at most the maximum (HER-DET-001).
+fn compile_params(def: &HeroParamsDef) -> Result<HeroParams, CompileError> {
+    if def.primary_min.iter().any(|&m| m > def.primary_max) {
+        return Err(CompileError::InvalidHeroParams(
+            "primary_min must not exceed primary_max",
+        ));
+    }
+    Ok(HeroParams {
+        primary_min: def.primary_min,
+        primary_max: def.primary_max,
+        backpack: def.backpack,
+    })
+}
+
 /// A table of compiled entries with their key index.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) struct Table<T> {
@@ -263,6 +290,7 @@ pub(crate) struct HeroContent {
     pub(crate) heroes: Table<HeroType>,
     pub(crate) slots: Table<ArtifactSlot>,
     pub(crate) artifacts: Table<ArtifactType>,
+    pub(crate) params: Option<HeroParams>,
 }
 
 /// What the pack being compiled may refer to.
@@ -411,6 +439,12 @@ impl HeroContent {
             });
         }
         self.add_artifacts(pack, refs)?;
+        if let Some(def) = &pack.hero_params {
+            if self.params.is_some() {
+                return Err(CompileError::DuplicateHeroParams(String::from(refs.pack)));
+            }
+            self.params = Some(compile_params(def)?);
+        }
         for def in &pack.hero_classes {
             self.classes.register(&def.key, refs.pack, "hero class")?;
             self.classes.items.push(HeroClass {
@@ -553,7 +587,8 @@ impl CanonicalHash for HeroContent {
     /// Schools (key, name); spells (key, name, category, level, schools, cost, power, effect,
     /// polarity); skills (key, name, the three effect lists); classes (key, name, faction,
     /// primary, gains, weights); hero types (key, name, class, skills, spell book, spells,
-    /// army, war machines, specialty); then the artifact content (`hash_artifacts`).
+    /// army, war machines, specialty); then the artifact content (`hash_artifacts`); then the
+    /// hero parameters as presence flag + fields (v11).
     fn hash_into(&self, h: &mut StateHasher) {
         h.write_len(self.schools.items.len());
         for s in &self.schools.items {
@@ -615,6 +650,12 @@ impl CanonicalHash for HeroContent {
             t.specialty.hash_into(h);
         }
         self.hash_artifacts(h);
+        h.write_bool(self.params.is_some());
+        if let Some(p) = &self.params {
+            h.write_bytes(&p.primary_min);
+            h.write_u8(p.primary_max);
+            h.write_u16(p.backpack);
+        }
     }
 }
 

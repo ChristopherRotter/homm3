@@ -81,6 +81,9 @@ pub struct ArtifactSlot {
     pub name: String,
     /// Positions of this kind on a hero (1..=8).
     pub count: u8,
+    /// Whether its artifacts may be carried in the backpack (not the war machines, the
+    /// Catapult and the spell book; HER-ART-002).
+    pub backpack: bool,
 }
 
 /// Handle of an artifact slot in a [`crate::Ruleset`].
@@ -151,6 +154,7 @@ impl HeroContent {
                 key: def.key.clone(),
                 name: def.name.clone(),
                 count: def.count,
+                backpack: def.backpack,
             });
         }
         for o in &pack.artifact_slot_overrides {
@@ -329,7 +333,7 @@ impl HeroContent {
             .and_then(Handle::from_index)
     }
 
-    /// Slots (key, name, count); artifacts (key, name, class, cost, slot, war machine, needed
+    /// Slots (key, name, count, backpack flag); artifacts (key, name, class, cost, slot, war machine, needed
     /// skill, effects, parts). Locks are derived from these and not hashed.
     pub(crate) fn hash_artifacts(&self, h: &mut StateHasher) {
         h.write_len(self.slots.items.len());
@@ -337,6 +341,7 @@ impl HeroContent {
             s.key.as_str().hash_into(h);
             s.name.as_str().hash_into(h);
             h.write_u8(s.count);
+            h.write_bool(s.backpack);
         }
         h.write_len(self.artifacts.items.len());
         for a in &self.artifacts.items {

@@ -230,7 +230,7 @@ fn hash_is_stable_and_sensitive() {
     );
 }
 
-const GOLDEN_BASE_HASH: u64 = 0xdb52_151e_d080_2b30;
+const GOLDEN_BASE_HASH: u64 = 0xad9a_3012_f302_c459;
 
 fn expect(packs: &[ContentPack], profile: &str) -> CompileError {
     Ruleset::compile(packs, profile).unwrap_err()
@@ -453,6 +453,23 @@ fn battle_param_errors() {
             |b| b.war_machine_positions[2] = [1, 11],
             "war_machine_positions needs 3 hexes [x, y] on the field",
         ),
+        // covers: BAT-WAR-001
+        (
+            |b| b.war_machine_positions[0] = [0, 3],
+            "war machine positions need room for a two-hex machine behind them",
+        ),
+        (
+            |b| b.war_machine_positions[1] = [2, 3],
+            "war machine positions overlap (as two-hex footprints)",
+        ),
+        (
+            |b| b.war_machine_positions[2] = [1, 3],
+            "war machine positions overlap (as two-hex footprints)",
+        ),
+        (
+            |b| b.war_machine_positions[2] = [8, 5],
+            "war machine positions overlap (as two-hex footprints)",
+        ),
         (
             |b| drop(b.loose_formation.pop()),
             "formations need one entry per army size 1..=army_slots",
@@ -575,6 +592,14 @@ fn error_messages() {
         (
             CompileError::InvalidBattleParams("bad"),
             "battle parameters: bad",
+        ),
+        (
+            CompileError::DuplicateHeroParams("a".into()),
+            "pack `a` provides hero parameters a second time",
+        ),
+        (
+            CompileError::InvalidHeroParams("bad"),
+            "hero parameters: bad",
         ),
         (
             CompileError::InvalidContent {

@@ -6,8 +6,8 @@ use std::vec::Vec;
 use super::*;
 use crate::effect::{Affects, CreatureSelector, CreatureStat, HeroEffect};
 use crate::pack::{
-    HeroClassDef, HeroTypeDef, ProfileDef, SecondarySkillDef, SpellDef, SpellSchoolDef,
-    StartingStackDef,
+    HeroClassDef, HeroParamsDef, HeroTypeDef, ProfileDef, SecondarySkillDef, SpellDef,
+    SpellSchoolDef, StartingStackDef,
 };
 use crate::ruleset::Ruleset;
 use crate::ruleset::tests::{battle_def, creature, faction, key, manifest};
@@ -685,5 +685,62 @@ fn a_later_override_can_invalidate_a_hero() {
             "t:orrin",
             "war_machines must have flag war_machine"
         )
+    );
+}
+
+fn params() -> HeroParamsDef {
+    HeroParamsDef {
+        primary_min: [0, 0, 1, 1],
+        primary_max: 99,
+        backpack: 64,
+    }
+}
+
+#[test]
+fn hero_params_are_optional_unique_and_checked() {
+    let without = compile(&[pack()]).unwrap();
+    assert_eq!(without.hero_params(), None);
+    let mut p = pack();
+    p.hero_params = Some(params());
+    let with = compile(&[p.clone()]).unwrap();
+    assert_eq!(
+        with.hero_params(),
+        Some(&HeroParams {
+            primary_min: [0, 0, 1, 1],
+            primary_max: 99,
+            backpack: 64,
+        })
+    );
+    // The hash sees presence and every field.
+    let changes: [fn(&mut HeroParamsDef); 3] = [
+        |d| d.primary_min[3] = 2,
+        |d| d.primary_max = 98,
+        |d| d.backpack = 0,
+    ];
+    let hash = with.content_hash();
+    assert_ne!(without.content_hash(), hash);
+    for change in changes {
+        let mut q = pack();
+        let mut def = params();
+        change(&mut def);
+        q.hero_params = Some(def);
+        assert_ne!(compile(&[q]).unwrap().content_hash(), hash);
+    }
+    // A minimum above the maximum.
+    let mut q = pack();
+    q.hero_params = Some(HeroParamsDef {
+        primary_max: 0,
+        ..params()
+    });
+    assert_eq!(
+        fails(q),
+        CompileError::InvalidHeroParams("primary_min must not exceed primary_max")
+    );
+    // Provided twice in the closure.
+    let mut ext = ContentPack::new(manifest("x", &["t"]));
+    ext.hero_params = Some(params());
+    assert_eq!(
+        compile(&[p, ext]).unwrap_err(),
+        CompileError::DuplicateHeroParams("x".into())
     );
 }

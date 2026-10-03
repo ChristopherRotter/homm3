@@ -61,6 +61,10 @@ pub enum CompileError {
     DuplicateBattleParams(String),
     /// The battle parameters are invalid.
     InvalidBattleParams(&'static str),
+    /// More than one pack provides hero parameters.
+    DuplicateHeroParams(String),
+    /// The hero parameters are invalid.
+    InvalidHeroParams(&'static str),
     /// An obstacle type is invalid.
     InvalidObstacle {
         /// The obstacle's key.
@@ -120,6 +124,10 @@ impl fmt::Display for CompileError {
                 write!(f, "pack `{pack}` provides battle parameters a second time")
             }
             Self::InvalidBattleParams(reason) => write!(f, "battle parameters: {reason}"),
+            Self::DuplicateHeroParams(pack) => {
+                write!(f, "pack `{pack}` provides hero parameters a second time")
+            }
+            Self::InvalidHeroParams(reason) => write!(f, "hero parameters: {reason}"),
             Self::InvalidObstacle { key, reason } => write!(f, "obstacle `{key}`: {reason}"),
             Self::InvalidContent { kind, key, reason } => write!(f, "{kind} `{key}`: {reason}"),
             Self::UnknownProfile(key) => write!(f, "unknown profile `{key}`"),

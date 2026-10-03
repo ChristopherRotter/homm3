@@ -43,15 +43,15 @@ pub use effect::{
 pub use error::CompileError;
 pub use flags::{CreatureFlag, CreatureFlags};
 pub use heroes::{
-    HeroClass, HeroClassId, HeroType, HeroTypeId, MAX_HERO_SKILLS, MAX_SPELL_LEVEL, SchoolId,
-    SecondarySkill, SkillId, Spell, SpellCategory, SpellId, SpellPolarity, SpellSchool,
+    HeroClass, HeroClassId, HeroParams, HeroType, HeroTypeId, MAX_HERO_SKILLS, MAX_SPELL_LEVEL,
+    SchoolId, SecondarySkill, SkillId, Spell, SpellCategory, SpellId, SpellPolarity, SpellSchool,
     StartingStack,
 };
 pub use key::{ContentKey, KeyError};
 pub use pack::{
     ArtifactDef, ArtifactSlotDef, ArtifactSlotOverride, BattleParamsDef, ContentPack, CreatureDef,
-    CreatureInfoDef, CreatureOverride, CreaturePatch, FactionDef, HeroClassDef, HeroTypeDef,
-    ObstacleDef, PackManifest, ProfileDef, ResourceDef, SecondarySkillDef, SpellDef,
+    CreatureInfoDef, CreatureOverride, CreaturePatch, FactionDef, HeroClassDef, HeroParamsDef,
+    HeroTypeDef, ObstacleDef, PackManifest, ProfileDef, ResourceDef, SecondarySkillDef, SpellDef,
     SpellSchoolDef, StartingStackDef, TerrainDef,
 };
 pub use quirks::{NO_LUCK_WITHOUT_HERO, QuirkFlag, QuirkRegistry, Quirks, REGISTRY};

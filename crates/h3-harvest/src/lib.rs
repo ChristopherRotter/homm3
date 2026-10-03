@@ -823,6 +823,7 @@ pub fn harvest(inputs: &Inputs, gap: &GapFill) -> Result<Harvest, String> {
     base.push_str(&artifact_packs.base);
     base.push_str(&obstacles);
     write_battle(&mut base, gap);
+    write_hero_params(&mut base, gap);
     base.push_str(
         "\n[[profile]]\nid = \"faithful\"        # default: preserve/fix-optional quirks on\n\
          quirks = { \"quirk.battle.no_luck_without_hero\" = true }    # Q-0003\n",
@@ -1031,6 +1032,18 @@ fn write_row_diff(out: &mut String, old: &Row, new: &Row, resources: &[String]) 
             new.adventure_count[0], new.adventure_count[1]
         );
     }
+}
+
+fn write_hero_params(out: &mut String, gap: &GapFill) {
+    let p = &gap.heroes.params;
+    let [a, d, s, k] = p.primary_min;
+    let _ = write!(
+        out,
+        "\n# Hero parameters (Tier 2): rule ids in docs/rules/catalog/heroes.toml (sources in the\n\
+         # gap-fill file).\n[hero_params]\nprimary_min = [{a}, {d}, {s}, {k}]\nprimary_max = {}\n\
+         backpack = {}\n",
+        p.primary_max, p.backpack
+    );
 }
 
 fn write_battle(out: &mut String, gap: &GapFill) {

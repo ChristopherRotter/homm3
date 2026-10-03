@@ -151,11 +151,12 @@ fn war_machine_setups_are_validated() {
     let mut bad = with_machines(&r, serf, serf, [&[], &[]]);
     bad.war_machines[0].push(h3_content::CreatureTypeId::from_raw(999));
     assert_eq!(BattleState::new(&r, &bad, 1).unwrap_err(), invalid);
-    // A position whose two-hex footprint leaves the field.
-    let edge = ruleset_with("t:faithful", |b| b.war_machine_positions[0] = [0, 3]);
-    let s = with_machines(&edge, serf, serf, [&["ballista"], &[]]);
+    // The compiler keeps the machines' places apart (BAT-WAR-001), but an obstacle of the setup
+    // can still stand on one: the Ballista's head hex (1, 3) is hex 52.
+    let mut s = with_machines(&r, serf, serf, [&["ballista"], &[]]);
+    s.obstacles = vec![52];
     assert_eq!(
-        BattleState::new(&edge, &s, 1).unwrap_err(),
+        BattleState::new(&r, &s, 1).unwrap_err(),
         SetupError::NoRoom {
             side: BattleSide::Attacker,
             slot: 16

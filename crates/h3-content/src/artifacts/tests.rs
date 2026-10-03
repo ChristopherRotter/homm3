@@ -16,6 +16,7 @@ fn slot(k: &str, count: u8) -> ArtifactSlotDef {
         key: key(k),
         name: "Slot".into(),
         count,
+        backpack: true,
     }
 }
 
@@ -83,7 +84,10 @@ fn pack() -> ContentPack {
             slot("t:head", 1),
             slot("t:ring", 2),
             slot("t:misc", 3),
-            slot("t:machine", 1),
+            ArtifactSlotDef {
+                backpack: false,
+                ..slot("t:machine", 1)
+            },
         ],
         artifacts: vec![
             circle,
@@ -153,6 +157,9 @@ fn compiles_slots_artifacts_and_combinations() {
     let ring = r.artifact_slot_by_key("t:ring").unwrap();
     let head = r.artifact_slot_by_key("t:head").unwrap();
     assert_eq!(r.artifact_slot(ring).unwrap().count, 2);
+    let machine = r.artifact_slot_by_key("t:machine").unwrap();
+    assert!(r.artifact_slot(ring).unwrap().backpack);
+    assert!(!r.artifact_slot(machine).unwrap().backpack);
     assert!(r.artifact_slot(Handle::from_raw(9)).is_none());
 
     assert_eq!(r.artifacts().len(), 7);
@@ -197,8 +204,9 @@ fn compiles_slots_artifacts_and_combinations() {
 fn later_packs_override_slots_and_the_hash_sees_all_artifact_content() {
     let base = compile(&[pack()]).unwrap().content_hash();
     assert_eq!(compile(&[pack()]).unwrap().content_hash(), base);
-    let changes: [fn(&mut ContentPack); 10] = [
+    let changes: [fn(&mut ContentPack); 11] = [
         |p| p.artifact_slots[0].name = "Crown".into(),
+        |p| p.artifact_slots[3].backpack = true,
         |p| p.artifact_slots[2].count = 4,
         |p| find(p, "t:helm").name = "Cap".into(),
         |p| find(p, "t:helm").class = ArtifactClass::Major,

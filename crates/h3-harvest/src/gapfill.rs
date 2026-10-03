@@ -55,6 +55,22 @@ pub struct Heroes {
     /// Specialty parts the executable's records cannot hold.
     #[serde(default)]
     pub specialty_extra: Vec<SpecialtyExtra>,
+    /// Limits of a hero's details (E04a T4a).
+    pub params: HeroParams,
+}
+
+/// The pack's `[hero_params]` (E04a T4a).
+#[derive(Debug, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct HeroParams {
+    /// Lowest effective primary skills.
+    pub primary_min: [u8; 4],
+    /// Highest primary skill.
+    pub primary_max: u8,
+    /// Backpack capacity.
+    pub backpack: u16,
+    /// Source ids.
+    pub sources: Vec<String>,
 }
 
 /// Parameters of creature specialties (specialty kind 1).
@@ -212,6 +228,10 @@ pub struct Artifacts {
     pub unused: Vec<String>,
     /// Source ids for `unused`.
     pub unused_sources: Vec<String>,
+    /// Slot kinds whose artifacts never go to the backpack (E04a T4a).
+    pub no_backpack: Vec<String>,
+    /// Source ids for `no_backpack`.
+    pub no_backpack_sources: Vec<String>,
     /// Artifacts that place a war machine.
     #[serde(default)]
     pub war_machines: Vec<ArtifactWarMachine>,
@@ -390,10 +410,12 @@ impl GapFill {
                 .chain(&g.war_machines.sources)
                 .chain(&g.heroes.upgrade_sources)
                 .chain(&g.heroes.creature_specialty.sources)
+                .chain(&g.heroes.params.sources)
                 .chain(g.heroes.skill_effects.iter().flat_map(|e| &e.sources))
                 .chain(g.heroes.specialty_extra.iter().flat_map(|e| &e.sources))
                 .chain(&g.artifacts.ab_sources)
                 .chain(&g.artifacts.unused_sources)
+                .chain(&g.artifacts.no_backpack_sources)
                 .chain(g.artifacts.war_machines.iter().flat_map(|w| &w.sources))
                 .chain(g.artifacts.combinations.iter().flat_map(|c| &c.sources))
                 .chain(g.artifacts.effects.iter().flat_map(|e| &e.sources));

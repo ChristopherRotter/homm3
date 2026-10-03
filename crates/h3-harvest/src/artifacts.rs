@@ -271,20 +271,39 @@ pub fn harvest_artifacts(
             kinds_in_order.push(k);
         }
     }
+    // Slot kinds whose artifacts never go to the backpack (HER-ART-002).
+    if let Some(k) = ga
+        .no_backpack
+        .iter()
+        .find(|k| !kinds_in_order.contains(&k.as_str()))
+    {
+        return Err(format!(
+            "gapfill: no_backpack names unknown slot kind `{k}`"
+        ));
+    }
+    let flag = |k: &str| {
+        if ga.no_backpack.iter().any(|n| n == k) {
+            "backpack = false\n"
+        } else {
+            ""
+        }
+    };
     for k in &kinds_in_order {
         let (sod_n, name) = sod_counts[k];
         let Some(&(ab_n, _)) = ab_counts.get(k) else {
             let _ = write!(
                 out.sod,
-                "\n[[artifact_slot]]\nid = \"{k}\"\nname = {}\ncount = {sod_n}\n",
-                quote(name)
+                "\n[[artifact_slot]]\nid = \"{k}\"\nname = {}\ncount = {sod_n}\n{}",
+                quote(name),
+                flag(k)
             );
             continue;
         };
         let _ = write!(
             out.base,
-            "\n[[artifact_slot]]\nid = \"{k}\"\nname = {}\ncount = {ab_n}\n",
-            quote(name)
+            "\n[[artifact_slot]]\nid = \"{k}\"\nname = {}\ncount = {ab_n}\n{}",
+            quote(name),
+            flag(k)
         );
         if ab_n != sod_n {
             let _ = write!(

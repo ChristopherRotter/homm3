@@ -12,9 +12,10 @@ use h3_content::{
     AbilityDef, Affects, AreaShot, ArtifactClass, ArtifactDef, ArtifactSlotDef,
     ArtifactSlotOverride, AuraTarget, BattleParamsDef, CompileError, ContentKey, ContentPack,
     CreatureDef, CreatureFlag, CreatureInfoDef, CreatureOverride, CreaturePatch, CreatureSelector,
-    CreatureStat, FactionDef, Formation, HeroClassDef, HeroEffect, HeroEffectDef, HeroTypeDef,
-    KeyError, ObstacleDef, PackManifest, ProfileDef, ResourceDef, Ruleset, SecondarySkillDef,
-    SpellCategory, SpellDef, SpellPolarity, SpellSchoolDef, StartingStackDef, TerrainDef,
+    CreatureStat, FactionDef, Formation, HeroClassDef, HeroEffect, HeroEffectDef, HeroParamsDef,
+    HeroTypeDef, KeyError, ObstacleDef, PackManifest, ProfileDef, ResourceDef, Ruleset,
+    SecondarySkillDef, SpellCategory, SpellDef, SpellPolarity, SpellSchoolDef, StartingStackDef,
+    TerrainDef,
 };
 use h3_contracts::{Army, ArmyStack, BattleSetup, BattleSide};
 use serde::Deserialize;
@@ -83,6 +84,7 @@ impl From<CompileError> for PackError {
 struct PackFile {
     pack: ManifestDto,
     battle: Option<BattleDto>,
+    hero_params: Option<HeroParamsDto>,
     #[serde(default)]
     resource: Vec<NamedDto>,
     #[serde(default)]
@@ -454,10 +456,25 @@ struct ArtifactSlotDto {
     name: String,
     #[serde(default = "one")]
     count: u8,
+    #[serde(default = "yes")]
+    backpack: bool,
 }
 
 fn one() -> u8 {
     1
+}
+
+fn yes() -> bool {
+    true
+}
+
+/// `[hero_params]`: the limits of a hero's details (E04a T4a).
+#[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
+struct HeroParamsDto {
+    primary_min: [u8; 4],
+    primary_max: u8,
+    backpack: u16,
 }
 
 /// `[[artifact_slot_override]]`: changes to a slot of the closure.
@@ -1005,6 +1022,7 @@ pub fn parse_pack(text: &str) -> Result<ContentPack, PackError> {
                 key: ContentKey::new(&pack_id, &d.id)?,
                 name: d.name,
                 count: d.count,
+                backpack: d.backpack,
             })
         })
         .collect::<Result<Vec<_>, KeyError>>()?;
@@ -1099,6 +1117,11 @@ pub fn parse_pack(text: &str) -> Result<ContentPack, PackError> {
         artifacts,
         profiles,
         battle,
+        hero_params: file.hero_params.map(|p| HeroParamsDef {
+            primary_min: p.primary_min,
+            primary_max: p.primary_max,
+            backpack: p.backpack,
+        }),
     })
 }
 
@@ -1628,6 +1651,28 @@ mod tests {
         assert_eq!(counts(&ab), (28, 80, 18, 156));
         assert_eq!(counts(&sod), (28, 81, 18, 156));
         assert_eq!(sod.spell_schools().len(), 4);
+        // Hero parameters and the slots whose artifacts never go to the backpack (E04a T4a).
+        let params = roe.hero_params().unwrap();
+        assert_eq!(
+            (params.primary_min, params.primary_max, params.backpack),
+            ([0, 0, 1, 1], 99, 64)
+        );
+        let fixed: Vec<&str> = sod
+            .artifact_slots()
+            .iter()
+            .filter(|s| !s.backpack)
+            .map(|s| s.key.as_str())
+            .collect();
+        assert_eq!(
+            fixed,
+            [
+                "base:war_machine_1",
+                "base:war_machine_2",
+                "base:war_machine_3",
+                "base:war_machine_4",
+                "base:spell_book"
+            ]
+        );
         let archery = sod
             .skill(sod.skill_by_key("base:archery").unwrap())
             .unwrap();
@@ -1861,6 +1906,14 @@ mod tests {
         let charm = r.artifact_slot_by_key("synthetic:charm").unwrap();
         let crown = r.artifact_slot_by_key("synthetic:crown").unwrap();
         assert_eq!(r.artifact_slot(charm).unwrap().count, 3);
+        let engine = r.artifact_slot_by_key("synthetic:engine").unwrap();
+        assert!(r.artifact_slot(charm).unwrap().backpack);
+        assert!(!r.artifact_slot(engine).unwrap().backpack);
+        let params = r.hero_params().unwrap();
+        assert_eq!(
+            (params.primary_min, params.primary_max, params.backpack),
+            ([0, 0, 1, 2], 40, 3)
+        );
         assert_eq!(r.artifacts().len(), 10);
         let by_key = |k: &str| r.artifact(r.artifact_by_key(k).unwrap()).unwrap();
         let regalia = by_key("synthetic-ext:storm_regalia");

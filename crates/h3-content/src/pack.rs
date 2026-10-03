@@ -317,6 +317,9 @@ pub struct ArtifactSlotDef {
     pub name: String,
     /// Positions of this kind on a hero.
     pub count: u8,
+    /// Whether its artifacts may be carried in the backpack (pack default: true; not the war
+    /// machines, the Catapult and the spell book, HER-ART-002).
+    pub backpack: bool,
 }
 
 /// Changes to an artifact slot of the pack's closure (SoD's fifth misc position).
@@ -404,6 +407,18 @@ pub struct BattleParamsDef {
     pub tight_formation: Vec<Vec<u8>>,
 }
 
+/// Hero parameters (Tier 2, E04a T4a): the limits of a hero's details.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct HeroParamsDef {
+    /// Lowest effective primary skills (attack, defense, power, knowledge); lower totals count
+    /// as these (HER-DET-001).
+    pub primary_min: [u8; 4],
+    /// Highest primary skill, base and effective (HER-DET-001).
+    pub primary_max: u8,
+    /// Most artifacts in a hero's backpack (HER-ART-002).
+    pub backpack: u16,
+}
+
 /// A profile: a named selection of quirk flags (ADR-0007).
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ProfileDef {
@@ -450,6 +465,8 @@ pub struct ContentPack {
     pub profiles: Vec<ProfileDef>,
     /// Battle parameters, if this pack provides them.
     pub battle: Option<BattleParamsDef>,
+    /// Hero parameters, if this pack provides them (E04a T4a).
+    pub hero_params: Option<HeroParamsDef>,
 }
 
 impl ContentPack {
@@ -473,6 +490,7 @@ impl ContentPack {
             artifacts: Vec::new(),
             profiles: Vec::new(),
             battle: None,
+            hero_params: None,
         }
     }
 }

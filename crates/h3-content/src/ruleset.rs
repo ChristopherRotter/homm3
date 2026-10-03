@@ -12,8 +12,8 @@ use crate::artifacts::{ArtifactSlot, ArtifactSlotId, ArtifactType, ArtifactTypeI
 use crate::error::CompileError;
 use crate::flags::{CreatureFlag, CreatureFlags};
 use crate::heroes::{
-    HeroClass, HeroClassId, HeroContent, HeroType, HeroTypeId, Refs, SecondarySkill, SkillId,
-    Spell, SpellId, SpellSchool,
+    HeroClass, HeroClassId, HeroContent, HeroParams, HeroType, HeroTypeId, Refs, SecondarySkill,
+    SkillId, Spell, SpellId, SpellSchool,
 };
 use crate::key::{ContentKey, is_valid_part};
 use crate::pack::{BattleParamsDef, ContentPack, CreaturePatch};
@@ -27,7 +27,7 @@ pub const MAX_ARMY_SLOTS: usize = 16;
 pub const MAX_FIELD_HEXES: usize = 255;
 
 /// Version of the ruleset hash encoding. Bump when the encoding below changes.
-pub const RULESET_HASH_VERSION: u32 = 10;
+pub const RULESET_HASH_VERSION: u32 = 11;
 
 /// A compiled creature type.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -763,6 +763,11 @@ impl Ruleset {
         self.hero.artifacts.by_key(key)
     }
 
+    /// The hero parameters, if a pack provides them (E04a T4a).
+    pub fn hero_params(&self) -> Option<&HeroParams> {
+        self.hero.params.as_ref()
+    }
+
     /// The combination artifact `part` is a part of, if any.
     pub fn combination_of(&self, part: ArtifactTypeId) -> Option<ArtifactTypeId> {
         self.hero.combination_of(part)
@@ -1119,6 +1124,24 @@ fn compile_battle(def: &BattleParamsDef) -> Result<BattleParams, CompileError> {
     {
         return invalid("war_machine_positions needs 3 hexes [x, y] on the field");
     }
+    // rule: BAT-WAR-001
+    // Any machine may be two hexes wide, with its tail on the hex behind its head (x - 1 for
+    // the attacker, x + 1 for the mirrored defender): every footprint must fit the field, and
+    // no two footprints of either side may share a hex.
+    let mut machine_hexes: BTreeSet<(usize, usize)> = BTreeSet::new();
+    for &[x, y] in &def.war_machine_positions {
+        let (x, y) = (usize::from(x), usize::from(y));
+        let Some(tail) = x.checked_sub(1) else {
+            return invalid("war machine positions need room for a two-hex machine behind them");
+        };
+        // `x < w`, so the mirrored head and its tail `w - x` stay on the field.
+        let mirrored = w - 1 - x;
+        for hex in [(x, y), (tail, y), (mirrored, y), (w - x, y)] {
+            if !machine_hexes.insert(hex) {
+                return invalid("war machine positions overlap (as two-hex footprints)");
+            }
+        }
+    }
     for (slot, &[x, y]) in war_machine_positions
         .iter_mut()
         .zip(&def.war_machine_positions)
@@ -1200,7 +1223,9 @@ impl CanonicalHash for Ruleset {
     /// machine positions) with the full formation tables (v8: loose, then tight). v9 (E04a T3):
     /// each creature ends with its upgrades (length + handles), and the hero content follows the
     /// battle parameters (`heroes::HeroContent`'s encoding). v10 (E04a T3b): the hero content
-    /// ends with the artifact slots and artifacts, and hero effects have nine more kinds.
+    /// ends with the artifact slots and artifacts, and hero effects have nine more kinds. v11
+    /// (E04a T4a): artifact slots carry the backpack flag, and the hero content ends with the
+    /// hero parameters.
     fn hash_into(&self, h: &mut StateHasher) {
         h.write_u32(RULESET_HASH_VERSION);
         h.write_len(self.packs.len());

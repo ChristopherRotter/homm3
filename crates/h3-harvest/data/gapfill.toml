@@ -956,6 +956,20 @@ ref = "lib/entities/hero/CHeroHandler.cpp createCreatureSpecialty and config/gam
 url = "https://github.com/vcmi/vcmi/blob/1.7.5/lib/entities/hero/CHeroHandler.cpp"
 retrieved = "2026-10-03"
 
+[[source]]
+id = "wiki-primary-skill"
+kind = "wiki"
+ref = "Primary skill: \"The upper limit is 99. At 129 the skill value is reset to 0.\" Knowledge: a map-maker may set it to 0, and the hero then works as if it were 1"
+url = "https://heroes.thelazy.net/index.php/Primary_skill"
+retrieved = "2026-10-03"
+
+[[source]]
+id = "vcmi-game-config"
+kind = "vcmi"
+ref = "config/gameConfig.json heroes (1.7.5): minimalPrimarySkills [0, 0, 1, 1], skillPerHero 8, backpackSize -1 (unlimited)"
+url = "https://github.com/vcmi/vcmi/blob/1.7.5/config/gameConfig.json"
+retrieved = "2026-10-03"
+
 [heroes]
 # Upgrades the harvester's pairing rule (consecutive even/odd ids of one town and level) cannot
 # find: the executable gives the upgraded elementals different levels (quirk S-05).
@@ -974,6 +988,14 @@ bp_per_step = 500
 speed = 1
 war_machine_speed = 0           # the wiki excludes the Ballista; VCMI gives it +1 too
 sources = ["wiki-hero-specialty", "vcmi-specialties"]
+
+# Limits of a hero's details: the pack's `[hero_params]` (Tier 2, E04a T4a; HER-DET-001,
+# HER-ART-002).
+[heroes.params]
+primary_min = [0, 0, 1, 1]      # attack, defense, power, knowledge: lower totals count as these
+primary_max = 99
+backpack = 64                   # VCMI: unlimited (dispute D7, decided with the outcome, T9)
+sources = ["wiki-primary-skill", "vcmi-game-config", "wiki-artifact"]
 
 # Skills whose values are not in the executable's skill tables (installation.md §7.4).
 [[heroes.skill_effects]]
@@ -1030,7 +1052,7 @@ retrieved = "2026-10-03"
 [[source]]
 id = "wiki-artifact"
 kind = "wiki"
-ref = "Artifact: four misc slots before SoD; identical artifacts do not stack except Quiet Eye of the Dragon and the resource artifacts; traces of three unrealized artifacts in the game files"
+ref = "Artifact: four misc slots before SoD; identical artifacts do not stack except Quiet Eye of the Dragon and the resource artifacts; traces of three unrealized artifacts in the game files; the backpack holds up to 64 artifacts, and the war machines and the spell book cannot be stored in it"
 url = "https://heroes.thelazy.net/index.php/Artifact"
 retrieved = "2026-10-03"
 
@@ -1039,6 +1061,13 @@ id = "wiki-combination-artifact"
 kind = "wiki"
 ref = "Combination artifact: the twelve SoD combinations, their parts, and that the parts keep giving their own bonuses"
 url = "https://heroes.thelazy.net/index.php/Combination_artifact"
+retrieved = "2026-10-03"
+
+[[source]]
+id = "vcmi-artifact-utils"
+kind = "vcmi"
+ref = "lib/entities/artifact/ArtifactUtils.cpp unmovableSlots: SPELLBOOK and MACH4 (the Catapult) never move; lib/entities/artifact/CArtifact.cpp canBePutAt: 'big' artifacts (war machines) never go to the backpack (1.7.5)"
+url = "https://github.com/vcmi/vcmi/blob/1.7.5/lib/entities/artifact/ArtifactUtils.cpp"
 retrieved = "2026-10-03"
 
 [[source]]
@@ -1146,6 +1175,10 @@ ab_sources = ["vcmi-map-features", "wiki-artifact-list"]
 # SoD rows that are not artifacts of the game: unfinished traces, not harvested.
 unused = ["Diplomat's Suit", "Mired in Neutrality", "Ironfist of the Ogre"]
 unused_sources = ["vcmi-artifacts", "wiki-artifact"]
+# Slot kinds whose artifacts never go to the backpack (pack flag `backpack = false`, HER-ART-002):
+# the war machines (the Catapult included) and the spell book.
+no_backpack = ["war_machine_1", "war_machine_2", "war_machine_3", "war_machine_4", "spell_book"]
+no_backpack_sources = ["wiki-artifact", "vcmi-artifact-utils"]
 
 [[artifacts.war_machines]]
 artifact = "Ballista"

@@ -392,6 +392,7 @@ count = 2                           # synthetic-ext raises it to 3
 [[artifact_slot]]
 id = "engine"
 name = "Engine"
+backpack = false                    # HER-ART-002: its artifacts never go to the backpack
 
 [[artifact]]
 id = "iron_crown"
@@ -476,6 +477,12 @@ war_machine = "bolt_thrower"        # places the war machine in its owner's batt
 id = "relic_stone"                  # no slot: carried in the backpack only
 name = "Relic Stone"
 class = "special"
+
+# Hero parameters (Tier 2, E04a T4a): invented limits, smaller than the original's.
+[hero_params]
+primary_min = [0, 0, 1, 2]          # HER-DET-001: lower totals count as these
+primary_max = 40                    # HER-DET-001
+backpack = 3                        # HER-ART-002
 
 [[profile]]
 id = "faithful"        # default: preserve/fix-optional quirks on

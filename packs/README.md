@@ -235,6 +235,7 @@ of equipment position with a count; an artifact fits any position of its slot.
 id = "charm"
 name = "Charm"
 count = 2                          # positions of this kind on a hero (1..=8, default 1; all slots together at most 32)
+backpack = false                   # optional (default true): its artifacts never go to the backpack (since E04a T4a; HER-ART-002)
 
 [[artifact_slot_override]]         # a later pack changes a slot of its closure (name and/or count)
 target = "synthetic:charm"
@@ -312,15 +313,26 @@ at most 8 levels; the table lengths bound morale and luck, BAT-MOR-001..004, BAT
 and `war_machine_positions` (E03 T8: three head hexes `[x, y]` of the attacker's war machines by
 kind — shooting machine, ammo supply, first aid — mirrored for the defender, BAT-WAR-001). A war
 machine's kind follows from its data: flag `shooter`, ability `ammo_supply` or ability
-`first_aid`.
+`first_aid`. Since E04a T4a the compiler also checks that the positions leave room for two-hex
+machines: each head hex has a hex behind it on the field, and no two footprints of either side
+(the defender's mirrored) share a hex.
+
+**Hero parameters** (`[hero_params]`, Tier 2, E04a T4a; at most one enabled pack provides them,
+a ruleset without them cannot validate hero details): `primary_min` (four values, attack,
+defense, power, knowledge: lower totals count as these), `primary_max` (the highest primary
+skill, base and effective; every minimum at most this) and `backpack` (the most artifacts in a
+hero's backpack). Rules HER-DET-001 and HER-ART-002; the base pack's values come from the
+gap-fill file (`[heroes.params]`: 0/0/1/1, 99, 64).
+
 **Profiles** (`[[profile]]` with `quirks = { "quirk.<context>.<name>" = true | false }`; unlisted
 flags are off): the registered flags are in `h3_content::REGISTRY` and the quirks ledger
 (`docs/rules/quirks-ledger.md`); the packs' `faithful` profiles turn Q-0003 on, `strict-fixed`
 off. Profile-level Tier-2 overrides are not implemented yet (backlog).
 
-The compiled ruleset's canonical hash (encoding v10, `RULESET_HASH_VERSION`) covers packs,
+The compiled ruleset's canonical hash (encoding v11, `RULESET_HASH_VERSION`) covers packs,
 profile, quirks, resources, terrains, factions, obstacles, all creature fields including abilities
-and upgrades, the battle parameters and the hero content with the artifacts; replays record it.
+and upgrades, the battle parameters and the hero content with the artifacts and the hero
+parameters; replays record it.
 
 ## Scenarios
 

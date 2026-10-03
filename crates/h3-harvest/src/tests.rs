@@ -418,6 +418,12 @@ speed = 1
 war_machine_speed = 0
 sources = ["s"]
 
+[heroes.params]
+primary_min = [0, 0, 1, 1]
+primary_max = 99
+backpack = 64
+sources = ["s"]
+
 [[heroes.skill_effects]]
 skill = "Skill 19"
 basic = [{ kind = "tactics", level = 1 }]
@@ -437,6 +443,8 @@ ab = ["Vial"]
 ab_sources = ["s"]
 unused = ["Trace"]
 unused_sources = ["s"]
+no_backpack = ["war_machine_1", "spell_book"]
+no_backpack_sources = ["s"]
 
 [[artifacts.war_machines]]
 artifact = "Kit"
@@ -985,6 +993,17 @@ fn harvests_artifacts() {
     let misc = r.artifact_slot_by_key("base:misc").unwrap();
     assert_eq!(r.artifact_slot(misc).unwrap().count, 3);
     assert_eq!(r.artifacts().len(), 9);
+    let flag = |k: &str| {
+        r.artifact_slot(r.artifact_slot_by_key(k).unwrap())
+            .unwrap()
+            .backpack
+    };
+    assert!(flag("base:misc") && !flag("base:war_machine_1") && !flag("sod:spell_book"));
+    assert_eq!(
+        r.hero_params()
+            .map(|p| (p.primary_min, p.primary_max, p.backpack)),
+        Some(([0, 0, 1, 1], 99, 64))
+    );
     for line in [
         "[[artifact_slot]]\nid = \"ring\"\nname = \"Ring\"\ncount = 2",
         "[[artifact_slot]]\nid = \"misc\"\nname = \"Misc\"\ncount = 2",
@@ -998,7 +1017,7 @@ fn harvests_artifacts() {
     assert!(ab.contains("cost = { \"base:gold\" = 20000 }\nslot = \"base:misc\"\neffects = [{ kind = \"creature_stat\", creatures = { flag = \"dragon\" }, stat = \"attack\", amount = 5 }]"));
     for line in [
         "[[artifact_slot_override]]\ntarget = \"base:misc\"\ncount = 3",
-        "[[artifact_slot]]\nid = \"spell_book\"\nname = \"Spell Book\"\ncount = 1",
+        "[[artifact_slot]]\nid = \"spell_book\"\nname = \"Spell Book\"\ncount = 1\nbackpack = false\n",
         "effects = [{ kind = \"primary_skills\", power = 6, knowledge = 6 }, { kind = \"alignment_group\", factions = [\"base:alpha\", \"ab:gamma\"] }, \
          { kind = \"regeneration\", creatures = { creature = \"ab:unit_21\" }, hit_points = 5 }]\nparts = [\"base:band\", \"base:loop\", \"base:helm\"]",
     ] {
@@ -1037,6 +1056,11 @@ fn artifact_errors() {
         assert!(GAP.contains(from), "{from}");
         fails_with(&|_| {}, &|g: &str| g.replacen(from, to, 1), error);
     };
+    gap_fails(
+        "no_backpack = [\"war_machine_1\", \"spell_book\"]",
+        "no_backpack = [\"tail\"]",
+        "no_backpack names unknown slot kind `tail`",
+    );
     let row_of = |i: &mut Inputs, name: &str| {
         i.artifact_tables
             .sod
