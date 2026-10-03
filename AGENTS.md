@@ -46,6 +46,7 @@ If the user is not present, do the safe preparatory work, document the decision 
 - Incomplete features must be visible: use the stub registry convention in `docs/08-work-process.md` (no silent `todo!()`, no untracked `#[ignore]`).
 - Prefer the smallest design that satisfies the current epic. Do not over-specify the future; do not paint the project into a corner either (see the guardrails in ADR-0006).
 - Keep documentation current in the same change as the code (architecture, rules catalog, quirks ledger, ADRs).
+- **Token efficiency beats speed** (user directive, 2026-10-03). Completion speed is not a requirement; token use is. Prefer doing the work yourself, sequentially. Use sub-agents only for narrow, well-bounded jobs (one question, one table, a handful of files or pages) with a concise brief and a short, structured answer; never hand a sub-agent a broad survey whose context grows with every file or page it reads. Do not run several large sub-agents in parallel. Read big files in slices, and summarise into the repo's docs as you go instead of re-reading.
 
 ## Interruptions and resuming
 
