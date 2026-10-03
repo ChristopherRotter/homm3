@@ -37,6 +37,9 @@ Other seams (town ↔ heroes, heroes ↔ magic, content ↔ all) are introduced 
 - **Stack** — a number of identical creatures acting as one unit (in an army or in battle).
 - **Army** — up to N stacks (N is a ruleset parameter, 7 in the original) belonging to a hero or garrison.
 - **Hero**, **Town**, **Dwelling**, **Garrison**, **Mine**, **Resource**, **Artifact**, **Spell**, **Skill (primary/secondary)**.
+- **Hero** — the person across contexts; never a type name (ADR-0013). **Hero type** (`HeroType`, content) — the definition: class, specialty, starting skills and army. **Hero details** (`HeroDetails`, Heroes context) — a hero's lasting state: level, experience, primary and secondary skills, artifacts, spell book, mana; not the army. **Battle hero** (`BattleHero`, contract) — what a battle needs, all derived from the details before the seam. The hero on the adventure map is an Adventure type (E08).
+- **Specialty** — a hero type's built-in bonus (skill, creature, resource, spell, fixed creature stats, speed, creature upgrade, dragons). **Effect** — a typed primitive of an artifact, a skill level or a specialty (`HeroEffect` in content); the translation turns effects into resolved **battle effects** (`BattleEffect`).
+- **Tactics phase** — the placement phase before round 1 for the side with the higher Tactics level. **Retreat** — a side with a hero leaves the battle and loses its army. **Surrender** — a side with a hero buys its way out of a battle against another hero, keeping its army.
 - **Adventure map**, **Tile**, **Object**, **Fog of war**.
 - **Day / Week / Month** — the calendar (weekly growth, month/week events).
 - **Battlefield**, **Hex**, **Initiative/Speed**, **Retaliation**, **Morale**, **Luck**, **Obstacle**.
@@ -54,6 +57,6 @@ Use these words in code, docs, tests and commit messages. If the original game's
 
 - ~~Shape of the bonus/modifier system in the kernel~~: decided in ADR-0012 (E03): typed **abilities** in content for conditional behaviour, kernel **modifiers** (bearer, stat, op, amount, source, expiry) with materialised effective stats.
 - Whether Town and Heroes stay separate crates or start inside Adventure.
-- ~~Whether the Heroes context gets its own crate~~: direction decided in E04 refinement (OPEN-QUESTIONS Q27): a domain crate `h3-heroes` holds only the hero's lasting details (`HeroDetails`, provisional) and the pure translation to the battle's own `BattleHero` seam type; the hero on the map is an Adventure type (E08); no type is named plain `Hero`. Formalised by ADR-0013 (E04a T1, to be accepted by the user). Town stays open.
+- ~~Whether the Heroes context gets its own crate~~: direction decided in E04 refinement (OPEN-QUESTIONS Q27): a domain crate `h3-heroes` holds only the hero's lasting details (`HeroDetails`, provisional) and the pure translation to the battle's own `BattleHero` seam type; the hero on the map is an Adventure type (E08); no type is named plain `Hero`. Formalised by ADR-0013 (Proposed in E04a T1, 2026-10-03; to be accepted by the user). Town stays open.
 - How Magic is split between Battle and Adventure.
 - Representation of map objects (closed enum vs. data-driven behavior primitives) — decided in the adventure epic with the ADR.

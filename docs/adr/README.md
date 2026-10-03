@@ -16,3 +16,4 @@ Binding decisions. One decision per file, numbered, never silently edited once A
 | [0010](0010-testing-gates-and-traceability.md) | Testing gates and rule traceability | Accepted |
 | [0011](0011-portability-and-c-abi.md) | Portability and C ABI | Accepted |
 | [0012](0012-modifiers-and-abilities.md) | Modifiers and abilities | Accepted (E03) |
+| [0013](0013-heroes-in-battle.md) | Heroes in battle: entities, the `BattleHero` seam, the hero's battle rules | Proposed (E04a T1) |

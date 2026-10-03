@@ -4,6 +4,20 @@ Living state. The last agent updates this at the end of every session; the next 
 
 ---
 
+## 2026-10-03 — E04a T1 done (waiting for review); T2 smoke map in progress
+
+**State:** branch `e04a-heroes-in-battle` (created from `master` by the agent with the user's OK). Commits: toolchain pin 1.97.0 (user decision; bench-check re-baselined), AGENTS.md directive (token efficiency beats speed; narrow sub-agents only), T1 docs. No code change in T1.
+
+**T1 results:** `docs/formats/installation.md` §6–§7 (hero/skill/artifact/spell tables; exe tables: heroes with RoE/expansion flags, specialties, per-level skill values, artifact primary skills, spells; §7.5 is a code reading pending Q29); `docs/rules/surveys/` (README with the batch-1 dispute list, skills, artifacts, heroes, battle, quirks); ADR-0013 Proposed; glossary entries in 03-domain; OPEN-QUESTIONS Q29 (may agents read the game's code?) and Q30 (review ADR-0013, classify the 22 quirks).
+
+**Stop rule:** nothing builds on ADR-0013 until the user accepts it (Q30). T2 does not depend on it.
+
+**In progress:** T2 smoke map (minimal SoD `.h3m` writer in `h3-formats`, one encounter, written to a gitignored folder for the user to copy into the game's `Maps` folder).
+
+**Traps:** the sandbox has only rustc 1.97.0 (now the pin; symlink `stable` as `~/.rustup/toolchains/1.97.0-x86_64-unknown-linux-gnu`). Sub-agents that run broad surveys burn tokens fast and hit session limits (this session lost three of five survey agents to a rate limit); do research yourself in narrow steps. The wiki is only reachable through WebFetch (summarised): ask for verbatim quotes, use `index.php?title=<Page>&action=raw`, and the search page `index.php?search=<term>&fulltext=1` to discover pages. Our packs inherited three bugged elemental levels from the exe (quirk S-05).
+
+---
+
 ## 2026-10-01 — E04 refined (planning session with the user; nothing implemented)
 
 **State:** docs only, committed on `master` (E03 is closed and merged; this commit sits on top of `0a13da9`). No code, pack or test changed.

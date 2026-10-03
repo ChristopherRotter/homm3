@@ -1,6 +1,6 @@
 # E04a — Heroes in battle (without magic)
 
-Status: **refined** (2026-10-01, planning session with the user; nothing implemented yet) · Follows E03 (closed 2026-10-01) · The former E04 was split by the user into three epics (OPEN-QUESTIONS Q27): **E04a** (this one), **E04b** battle magic, **E04c** sieges and special battlefields.
+Status: **in progress** (refined 2026-10-01; T1 done 2026-10-03 and waiting for the user's review, T2 smoke map in progress) · Follows E03 (closed 2026-10-01) · The former E04 was split by the user into three epics (OPEN-QUESTIONS Q27): **E04a** (this one), **E04b** battle magic, **E04c** sieges and special battlefields.
 
 ## Goal
 
@@ -93,7 +93,7 @@ Spells, mana in play, spell-like abilities, immunities, spellcasting creatures (
 
 ## Tasks (proposed; refine at the start of each; keep status current)
 
-- [ ] **T1 Survey and ADR-0013 — stop for the user.**
+- [x] **T1 Survey and ADR-0013 — stop for the user.** *Done 2026-10-03, waiting for the review (OPEN-QUESTIONS Q30).* Results: tables and exe tables in `docs/formats/installation.md` §6–§7 (hero table with RoE/expansion flags, specialty table, per-level skill values, artifact primary skills, spell table; one code reading pending Q29); surveys in `docs/rules/surveys/` (skills, artifacts, heroes and specialties, battle mechanics, 22 quirks to classify, the batch-1 dispute list); ADR-0013 Proposed; glossary in 03-domain. Findings that change later tasks: percentages need basis points (specialty terms such as 17.5 %); the creature upgrade relation is missing from content (T3); Ice, Magma and Energy Elementals have bugged levels in the exe table that our packs inherited (quirk S-05); the battle should price surrenders itself (ADR-0013 §7, revises the non-goal below); the Ballista may have unlimited shots in SoD (S-01, against E03's BAT-WAR-002).
   - Catalogue the hero, skill, artifact and spell tables (`docs/formats/installation.md`) and look for static tables in `Heroes3.exe`.
   - Source survey (VCMI 1.7.5 and the wiki, labelled) for E04a: secondary skill effects per level, artifact effect kinds, specialty kinds, tactics, retreat and surrender, hero-run war machines, experience inputs; in outline for E04b/E04c so the seam covers them (spell effect kinds, siege inputs). Check that wiki fetches are still approved.
   - **Quirk survey** for the whole E04 scope with sources (`docs/rules/`), for the user to classify in one sitting; then ledger entries and flags.

@@ -139,3 +139,113 @@ Devil and Crystal Dragon as flying and Psychic/Magic Elemental as two-hex; none 
 
 Only this exact executable (SHA-256 above) is known to have the table at this offset; a harvester
 must refuse other builds rather than read garbage.
+
+## 6. Hero, skill, artifact and spell tables (E04a T1, 2026-10-03)
+
+Same syntax as §4. "AB vs SoD" compares the `H3ab_bmp.lod` copy (AB era) with the `H3bitmap.lod`
+copy (SoD). Details per table, with the parsing traps, are in the E04 surveys
+(`docs/rules/surveys/`).
+
+| Table | Rows | Columns | AB vs SoD |
+|---|---|---|---|
+| `SPTRAITS.TXT` | 2 header rows; group rows "Adventure Spells" (10 spells), "Combat Spells" (60), "Creature Abilities" (11): 81 spells, ids 0–80 in row order | 34: name, abbreviated name, level, school flags (Earth, Water, Fire, Air), mana cost ×4 (none/basic/advanced/expert), power factor, effect value ×4, chance to appear per town ×9, AI value ×4, description ×4, attributes ("reference only") | one row differs: id 57 is "Fear (disabled)" in AB and Titan's Lightning Bolt (level 5, Air, cost 0, effect 600) in SoD; descriptions otherwise equal |
+| `ARTRAITS.TXT` | 2 header rows + 144 artifacts (ids 0–143 in row order) + padding rows | 23: name, cost, 19 slot flags (`x`), class letter (S/T/N/J/R), description | AB copy: 129 artifacts and 22 columns (no Misc 5 slot); SoD adds the 12 combination artifacts (129–140), 3 unused rows (141–143) and the Misc 5 column |
+| `ArtSlots.txt` | 19 slot names (SoD), 18 (AB) | 1 | SoD appends Misc 5 |
+| `HCTRAITS.TXT` | 2 header rows + 18 classes | 51: name, aggression, 4 initial primary skills, gain probabilities for levels 2–9 (4) and 10+ (4), 28 secondary-skill probabilities, 9 tavern weights | identical |
+| `HOTRAITS.TXT` | 2 header rows + 156 heroes | 10: name, 3 × (low, high, creature name for reference) | identical |
+| `HeroSpec.txt` | 2 header rows + 156 | 3: specialty short name, long name, text | identical |
+| `SSTRAITS.TXT` | 2 header rows + 28 skills | 4: name, description per level (the numbers are only in the texts) | identical |
+| `ballist.txt` | 2 header rows + 4 levels | 11: per Ballistics level the hit chances on keep/tower/gate/wall, shots, damage distribution | identical |
+| `PriSkill.txt`, `SkillLev.txt` | 4 / 6 lines | names of the primary skills; level names and abbreviations | identical |
+
+Effects of artifacts, skills and specialties are **not** in any text table. Most of them are in
+static tables of the executable (§7); the rest are code.
+
+## 7. `Heroes3.exe`: further static tables (E04a T1, 2026-10-03)
+
+Same executable as §5 (`.data` raw offset = RVA, so file offset = VA − 0x400000 there; `.rdata`
+likewise). Found by searching for known values and checked against the text tables and VCMI. As in
+§5, a harvester must refuse other builds.
+
+### 7.1 Hero table — VA 0x679DD0 (file 0x279DD0), 156 × 92 bytes
+
+| Offset | Field |
+|---:|---|
+| 0x00 | i32 female |
+| 0x04 | i32 unknown (7 for most heroes) |
+| 0x08 | i32 class (0–17, HCTRAITS order) |
+| 0x0C | 2 × (i32 secondary skill, i32 level 1–3): starting skills (`-1` = none) |
+| 0x1C | u8 has a spell book (93 heroes) |
+| 0x20 | i32 starting spell (`-1` = none) |
+| 0x24 | 3 × i32 starting creature types |
+| 0x30 | 2 pointers: small and large portrait names |
+| 0x38 | 4 flag bytes: byte 0 = RoE hero (0–127), byte 1 = available with the expansions (all but id 4), byte 2 = campaign hero (145–155) (meaning inferred from the values) |
+| 0x3C | pointer to the name (zero in the file; filled from `HOTRAITS.TXT`) |
+| 0x40 | 3 × (i32 low, i32 high) starting stack sizes (zero in the file; filled from `HOTRAITS.TXT`) |
+
+A 157th record follows the table; it is not a hero of the text tables and is ignored.
+
+### 7.2 Hero specialty table — VA 0x678420 (file 0x278420), 156 × 40 bytes
+
+Pointer to it at VA 0x679C80. Record: i32 kind, i32 id, i32 attack, i32 defense, i32 damage,
+i32 upgrade 1, i32 upgrade 2, 3 text pointers (zero in the file; filled from `HeroSpec.txt`).
+Kinds: 0 secondary skill (37 heroes), 1 creature with level scaling (55, among them 6 Ballista
+heroes, creature 146), 2 resource (13), 3 spell (34), 4 fixed creature stats (11), 5 speed (1,
+Sir Mullich +2), 6 creature upgrade (2, Dracon and Gelu), 7 dragons (2, Mutare and Mutare Drake),
+−1 none (Adrienne). Per-kind formulas: `docs/rules/surveys/E04-heroes.md` §3.
+
+### 7.3 Artifact primary skills — VA 0x63E758 (file 0x23E758), 144 × 4 bytes
+
+Signed bytes attack, defense, power, knowledge per artifact id. Matches VCMI's hero-wide
+`PRIMARY_SKILL` bonuses for all 144 artifacts (script check); creature-limited bonuses (Vial of
+Dragon Blood) and per-copy bonuses (Quiet Eye of the Dragon, +1/+1 here) are where VCMI models
+them differently. Example: Armageddon's Blade (128) is +3/+3/+3/+6, which settles the wiki
+template's +6 power (artifact survey, D5). The artifact setup table itself (pointer at VA
+0x660B68) is uninitialised in the file and filled from `ARTRAITS.TXT`.
+
+### 7.4 Secondary skill values — VA 0x63E998–0x63EAA7 (file 0x23E998), 17 × 4 values
+
+One four-entry table per skill, indexed by level 0–3; each is read by a small getter that also
+applies the hero's skill specialty (× (1 + 0.05 × level), constant 0.05 at VA 0x63EAE4). The skill
+was identified from the hero field each getter reads (the secondary-skill levels are bytes at
+hero +0xC9 + skill id).
+
+| VA | Skill | Values (level 0–3) |
+|---|---|---|
+| 0x63E998 | Luck | i32 0, 1, 2, 3 |
+| 0x63E9A8 | Leadership | i32 0, 1, 2, 3 |
+| 0x63E9B8 | Necromancy | f32 0, 0.10, 0.20, 0.30 |
+| 0x63E9C8 | Mysticism | i32 1, 2, 3, 4 (spell points per day) |
+| 0x63E9D8 | Scouting | i32 5, 6, 7, 8 (radius) |
+| 0x63E9E8 | Archery | f32 0, 0.10, 0.25, 0.50 |
+| 0x63E9F8 | Offense | f32 0, 0.10, 0.20, 0.30 |
+| 0x63EA08 | Armorer | f32 0, 0.05, 0.10, 0.15 |
+| 0x63EA18 | Estates | i32 0, 125, 250, 500 |
+| 0x63EA28 | Eagle Eye | f32 0, 0.40, 0.50, 0.60 |
+| 0x63EA38 | Diplomacy | f32 0, 0.20, 0.40, 0.60 |
+| 0x63EA48 | Resistance | f32 0, 0.05, 0.10, 0.20 |
+| 0x63EA58 | Learning | f32 0, 0.05, 0.10, 0.15 |
+| 0x63EA68 | Logistics (getter not yet confirmed) | f32 0, 0.10, 0.20, 0.30 |
+| 0x63EA78 | Sorcery | f32 0, 0.05, 0.10, 0.15 |
+| 0x63EA88 | Intelligence | f32 0, 0.25, 0.50, 1.00 |
+| 0x63EA98 | First Aid | f32 0, 1, 2, 3 (the tent's maximum heal is 25 × (1 + value), §7.5) |
+
+These are original data and rank above VCMI and the wiki; all agree with the skill texts and
+with VCMI except where noted in the skills survey.
+
+### 7.5 Code reading: First Aid Tent heal (pending OPEN-QUESTIONS Q29)
+
+Identifying the First Aid getter (VA 0x4E4920) led to its battle caller (VA 0x478BEC): the tent
+heals `Random(1, trunc(25.0 × getter))` hit points, where the getter returns
+`1 + table[level] × (1 + 0.05 × hero level if First Aid specialist)` and `Random(a, b)`
+(VA 0x50B230) is `a + rand() % (b − a + 1)`; the result is capped by the missing hit points. So
+without the skill the tent heals 1–25 (confirms Q26) and with Basic/Advanced/Expert First Aid
+1–50/1–75/1–100 (the wiki's reading; VCMI's fixed 50/75/100 is wrong). This is a reading of the
+game's code, not of a data table; whether agents may use such readings as a source is Q29.
+
+### 7.6 Spell table — VA 0x685450 (file 0x285450), 81 × 0x88 bytes
+
+Static fields per spell id: i32 type (−1 negative, 0 neutral, 1 positive), pointer to the sound
+name, i32 animation, u32 flag bits (meaning to be decoded in T3: combat/adventure, target kinds,
+mind spell, …). All other fields (name, level, schools, costs, power, effects, chances, AI values,
+texts) are zero in the file and filled from `SPTRAITS.TXT`.
