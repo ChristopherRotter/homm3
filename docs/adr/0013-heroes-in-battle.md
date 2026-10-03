@@ -93,110 +93,146 @@ Inputs from the T1 survey (`docs/rules/surveys/`):
 
 ```rust
 pub struct BattleHero {
-    pub hero_type: HeroTypeId,      // identity for observation and replays; no rule reads it
-    pub attack: u8,                 // effective primary skills: base + artifacts + specialty,
-    pub defense: u8,                //   clamped by the derivation to the ruleset's limits
-    pub power: u8,                  // E04b reads power; knowledge only bounds mana
+    pub hero_type: HeroTypeId,       // identity for observation and replays; no rule reads it
+    pub attack: u8,                  // effective primary skills: base + artifacts + specialty,
+    pub defense: u8,                 //   within the ruleset's limits (checked by both sides)
+    pub power: u8,                   // E04b reads power; knowledge only explains max mana
     pub knowledge: u8,
-    pub skills: BattleSkills,       // levels 0..=3 that unlock or scale battle actions
-    pub damage: DamageBonuses,      // basis points, specialty and artifacts included
-    pub surrender_discount_bp: u16, // Diplomacy and artifacts (the battle prices a surrender)
-    pub effects: Vec<BattleEffect>, // everything else, resolved (closed enum, bounded length)
-    pub magic: BattleMagic,         // E04b: spell book, mana, max mana, school levels
+    pub tactics: u8,                 // Tactics level 0..=3 (the battle compares both sides')
+    pub damage: DamageBonuses,       // basis points, specialty and artifacts included
+    pub war_machines: MachineControl,
+    pub surrender_discount_bp: u16,  // Diplomacy and artifacts, 0..=10_000
+    pub effects: Vec<BattleEffect>,  // everything else, resolved; at most MAX_BATTLE_EFFECTS = 64
+    pub magic: BattleMagic,          // E04b
 }
-pub struct BattleSkills { pub tactics: u8, pub artillery: u8, pub first_aid: u8, pub ballistics: u8 }
 pub struct DamageBonuses { pub ranged_bp: u16, pub melee_bp: u16, pub reduction_bp: u16 }
+pub struct MachineControl {          // all derived from skill level, specialty and artifacts
+    pub ballista: Option<BallistaControl>,   // Some = the side commands its Ballista (Artillery)
+    pub tent: Option<TentControl>,           // Some = the side commands its First Aid Tent
+    pub catapult: Option<CatapultControl>,   // reserved for E04c (Ballistics); None in E04a
+}
+pub struct BallistaControl { pub shots: u8, pub double_damage_percent: u8 }
+pub struct TentControl { pub max_heal: u16 }  // heals 1..=max_heal (installation.md §7.5, Q29)
 pub struct BattleMagic { pub spell_book: Option<Vec<SpellId>>, pub mana: u16, pub max_mana: u16, pub schools: [u8; 4] }
 ```
 
 - **Hybrid shape:** values the battle reads by name, once per side, on the hot path or for action
   legality are typed fields; variable, selective effects are the `effects` list. Adding an
-  artifact or specialty kind adds a `BattleEffect` variant, not a field.
-- `BattleEffect` (closed enum in contracts, selectors already resolved):
-  `Morale { amount, affects }`, `Luck { amount, affects }`, `MoraleAtMost { value, affects }`,
-  `LuckAtMost { value, affects }`, `StackStat { creatures, stat, op, amount }` (op: add, or percent
-  of the creature's base value), `Regeneration { creatures }`, `NoRangePenalty { creatures }`,
+  artifact or specialty kind adds a `BattleEffect` variant, not a field. War-machine control is
+  carried as derived numbers, not skill levels, so specialties and artifacts that change shots,
+  chances or heals need no channel of their own.
+- **Units and ranges:** `ranged_bp` and `melee_bp` may exceed 10 000 (an Archery specialist at a
+  high level); `reduction_bp` and `surrender_discount_bp` are at most 10 000; skill and school
+  levels at most 3; `max_mana` is informative (mana may exceed it, e.g. after a Mana Vortex).
+  The ruleset carries the primary-skill limits; the derivation stays within them and the battle
+  rejects values outside them.
+- **How the damage fields enter the damage formula** (survey `E04-skills.md` §3): `ranged_bp`
+  (the attacker's side) is added to the bonus sum of shots, the Ballista's included; `melee_bp`
+  to the bonus sum of melee attacks and retaliations, a shooter's melee included; never both.
+  `reduction_bp` (the defender's side) is one multiplicative factor `(10 000 − r) / 10 000` on every
+  physical strike against that side's stacks. BAT-DMG-002 stays exact-integer until Q23 is
+  answered.
+- `BattleEffect` (closed enum in contracts, selectors resolved):
+  `Morale { amount: i8, affects }`, `Luck { amount: i8, affects }`,
+  `MoraleAtMost { value: i8, affects }`, `LuckAtMost { value: i8, affects }`,
+  `StackStat { creatures, stat, op, amount: i16 }` with `stat` ∈ {attack, defense, speed, hit
+  points, minimum damage, maximum damage} and `op` ∈ {add, percent of the creature's own value
+  (basis points, rounded up)}, `Regeneration { creatures }`, `NoRangePenalty { creatures }`,
   `NoRetreat` (neither side may retreat or surrender), plus what T10 adds from the survey list.
-  `affects` ∈ {own side, enemy side, both}. `creatures` is `All`, a trait (living, undead, dragon,
-  shooter — the `CreatureFlag`s) or up to four explicit creature types (a creature and its
-  upgrades). E04b adds spell variants (opening spells, immunities, resistance, spell damage,
-  duration, blocked magic levels) without touching the fields.
-- **E04b fields are present and validated from E04a on** (ranges, spell ids of the ruleset,
-  `mana ≤ max_mana`); E04a's battle carries them and ignores them. So E04b changes no seam type,
-  only adds `BattleEffect` variants.
-- The battle validates a `BattleHero` like the rest of the setup (`SetupError`): levels ≤ 3,
-  bounded `effects` length (`MAX_BATTLE_EFFECTS`), creature ids of this ruleset.
+  `affects` ∈ {own side, enemy side, both}; `creatures` is `All`, a `CreatureFlag` trait (living,
+  undead, dragon, shooter, …) or up to four creature types (a creature and its upgrades).
+- **E04b fields are present and validated from E04a on** (ranges, spell ids of the ruleset);
+  E04a's battle carries them and ignores them.
+- The battle validates a `BattleHero` like the rest of the setup (`SetupError`).
 
 ### 5. `BattleSetup`, `BattleOutcome`, `BattleResult`
 
 - `BattleSetup.heroes: [Option<BattleHero>; 2]` **replaces `led_by_hero`**. "Led by a hero" is
   `heroes[side].is_some()`; quirk Q-0003 reads it.
-- `BattleSetup.funds: [u32; 2]`: gold the side's owner can spend on a surrender (0 without a
-  hero). `war_machines`, `formations`, `terrain` and `obstacles` stay; `war_machines` is filled
-  from `h3_heroes::war_machines` before the seam.
-- **Reserved for E04c:** one optional `siege` field in the setup and one siege result in the
-  outcome, and a special-battlefield kind; E04c's own ADR defines their contents. Nothing else in
-  the setup changes for sieges.
+- `BattleSetup.funds: [u32; 2]`: gold the side's owner can spend on a surrender (ignored for a side
+  without a hero). `war_machines`, `formations`, `terrain` and `obstacles` stay. `war_machines` is
+  filled from `h3_heroes::war_machines`, which returns the Ballista, Ammo Cart and First Aid Tent
+  of the hero's war-machine slots; the **Catapult** is left out outside sieges, and the battle
+  keeps rejecting it until E04c (it then belongs to the attacker of a siege, controlled through
+  `MachineControl.catapult`).
 - `BattleResult` gains `Retreat(side)` and `Surrender(side)` (the side that left; `winner()` is
   the other side) next to `Victory(side)` and `Draw`.
 - `BattleOutcome` gains:
-  - `stacks: [Vec<StackRecord>; 2]` with `origin` (army slot, war machine; E04b: summoned,
-    clone), creature type, count at the start, count at the end — the casualties per stack that
-    experience and Necromancy need (both are applied by the orchestrator later, not by the battle);
-  - `surrender_cost: Option<u32>` (gold paid);
-  - `heroes: [Option<HeroOutcome>; 2]` with `mana` left and `spells_cast` (E04b fills them;
-    Eagle Eye needs them);
-  - `rounds: u16`.
-  `survivors` and `war_machines` stay as they are. Hero fate (killed, fled, surrendered) and
-  artifact capture follow from `result` and hero presence and are the orchestrator's business.
+  - `stacks: [Vec<StackRecord>; 2]`, **every** stack of both sides in stack order:
+    `StackRecord { origin: StackOrigin, creature: CreatureTypeId, start: u32, end: u32 }`,
+    `StackOrigin` ∈ {army slot (u8), war machine} (E04b adds summoned and clone). `end` is the
+    count alive when the battle ended, whatever the result;
+  - `surrender_cost: Option<u32>` (gold to be paid by the side that surrendered);
+  - `heroes: [Option<HeroOutcome>; 2]` with `HeroOutcome { mana: u16, spells_cast: Vec<SpellId> }`
+    (E04b fills the spells; Eagle Eye needs them);
+  - `rounds: u16` (the last round started; the tactics phase is round 0).
+  `survivors` and `war_machines` stay and are derived from `stacks` (army stacks and machines with
+  `end > 0`). The outcome reports facts; the consequences — a retreating side loses its army, a
+  surrendering side keeps it, war machines follow the hero's artifacts, the loser's artifacts are
+  captured, experience and Necromancy — are applied by the orchestrator under T9's rules.
+- **Seam stability:** this fixes every field E04a and E04b need. Later epics add only enum
+  variants (`BattleEffect`, `StackOrigin`) or, for E04c, two optional fields whose names this ADR
+  reserves: `BattleSetup.siege` and `BattleOutcome.siege` (contents defined by E04c's ADR), plus
+  a special-battlefield kind next to `terrain`. Existing fields keep their meaning.
 
 ### 6. The hero's effects in the battle state
 
-- **Battle-long stat effects are applied once at setup** into each stack's base stats (hero
-  attack and defense, `StackStat`, specialties), after the native-terrain bonus; traits such as
-  regeneration or no range penalty become stack traits. The hot path keeps reading plain fields.
-  ADR-0012's modifier pool keeps what can change during a battle.
-- **Morale and luck effects become side modifiers** in the pool (ADR-0012), one per source and
-  stat: the own hero's morale and luck, the enemy hero's morale and luck, and the caps (`AtMost`).
-  At most 6 per side, so `MODIFIER_CAPACITY` grows from 20 to 32 (sized by construction, tested).
-  E04b adds stack bearers and timed expiry and re-derives the capacity (it may keep per-stack
-  spell effects in per-stack arrays if that is cheaper; its decision).
-- The battle keeps a small per-side hero record (present, skill levels, damage bonuses, may
-  retreat, may surrender, controls Ballista/Tent; E04b: mana, cast this round). Damage rules read
-  `ranged_bp`/`melee_bp` of the attacker's side and `reduction_bp` of the defender's side
-  (BAT-DMG-002 stays exact-integer until Q23 is answered).
+- **Battle-long stat effects are applied once at setup.** A stack's *base* stats (ADR-0012 §3)
+  become: the creature's values, then the native-terrain bonus, then the hero's attack and defense,
+  then `StackStat` effects (percentages of the creature's own value, computed before any
+  addition). They apply to every stack of the side, war machines included (VCMI; to be confirmed
+  for the Ballista in batch 1). Traits such as regeneration or no range penalty become stack traits.
+  The pool (ADR-0012) keeps what changes during a battle; its evaluation starts from these bases.
+- **Morale and luck effects become side modifiers.** The battle sums a hero's effects per affected
+  side, stat and operation at setup and inserts one modifier per (bearer side, stat, operation,
+  source hero): sources are distinct keys for "own hero add", "own hero cap", "enemy hero add",
+  "enemy hero cap", so an `Add` and an `AtMost` from the same hero never replace each other. That is
+  at most 8 per bearer side, 16 in all: `MODIFIER_CAPACITY` grows from 20 to 36 (sized by
+  construction and tested). E04b adds stack bearers and timed expiry and re-derives the capacity
+  (it may keep per-stack spell effects in per-stack arrays if that is cheaper; its decision).
+- The battle keeps a small per-side hero record (present, tactics level, damage bonuses, machine
+  control, retreat and surrender allowed, an offer made this round; E04b: mana, cast this round).
 
 ### 7. Phases and commands
 
-- **Tactics phase** (before round 1; "round 0"): the side whose Tactics level exceeds the
-  enemy's gets a zone of 1 + 2 × difference columns (3/5/7) from its edge; equal levels cancel.
-  Only that side's army stacks are activated, in round-1 order and cycling; commands: `Move { to }`
-  to any reachable hex of the zone (the stack's speed does not limit it), `Wait` (skip to the next
-  stack) and the new `EndTactics`. War machines are not moved. Events `TacticsStarted`,
-  `TacticsEnded`. (Survey `E04-battle.md` §1; open points OQ-1/OQ-2 go to batch 1.)
-- **Retreat** (`Retreat`): by the side whose stack is active or whose tactics phase runs; legal
-  if the side has a hero and no `NoRetreat` effect is in the battle. Ends the battle with
+- **Tactics phase** (round 0, after placement in the side's formation, BAT-SET-001): the side whose
+  Tactics level exceeds the enemy's gets a zone of 1 + 2 × difference columns (3/5/7) from its
+  edge; equal levels cancel. Only that side's army stacks are activated, in round-1 order and
+  cycling; commands: `Move { to }` with the footprint, occupancy and obstacle rules of an ordinary
+  move (a walking stack needs a path; flying stacks fly), the speed limit replaced by the zone;
+  `Wait` (skip to the next stack); and the new `EndTactics`. War machines are not moved. Events
+  `TacticsStarted`, `TacticsEnded`; `RoundStarted(1)` follows. Like the battle itself the phase has
+  no limit in the rules; the sim's step limit truncates (E01), and E05 handles the action balance.
+  The exact zone geometry and whether placement needs a path are batch-1 questions (OQ-1, OQ-2).
+- **Retreat** (`Retreat`): by the side whose stack is active or whose tactics phase runs; legal if
+  the side has a hero and no `NoRetreat` effect is in the battle. Ends the battle with
   `Retreat(side)`.
-- **Surrender** (`Surrender`, `AcceptSurrender`, `RejectSurrender`): legal like Retreat and only
-  if the enemy has a hero and the side's `funds` cover the price. The battle computes the price
-  (a new BAT rule: gold cost of the living army creatures × a ruleset factor × (1 − discount); the
-  factor is D-1 in batch 1). If the ruleset parameter `surrender_needs_consent` is set (default
-  per D-5; the wiki says the opponent may refuse), the battle enters a pending state in which the
-  only legal commands are the opponent's answer; a rejected offer resumes the active stack, and a
-  side may offer once per round.
-- **Hero-run war machines:** with Artillery the side commands its Ballista (ordinary `Shoot`, with
-  the skill's shots and double-damage chance), with First Aid its tent (new `Heal { target }`);
-  without the skill they act automatically as in E03. Wait and Defend stay legal for them (OQ-4).
-- Actors are validated as in ADR-0004: the answer to a surrender comes from the side it was
-  offered to, every other command from the side whose stack is active.
+- **Surrender** (`Surrender`, then `AcceptSurrender` or `RejectSurrender` by the opponent):
+  legal like Retreat, and only if the enemy has a hero, the side has not offered yet in this round
+  (the tactics phase counts as round 0) and its `funds` cover the price. The price is a new BAT
+  rule: Σ over the side's living army stacks (war machines excluded) of count × the creature's
+  gold cost, × a ruleset factor in percent (D-1: 50 or 100), × (10 000 − discount) / 10 000,
+  computed in `u64` and rounded down (D-2 checks the combination). If the ruleset parameter
+  `surrender_needs_consent` is set (default per D-5; the wiki says the opponent may refuse), the
+  battle enters a pending state in which the only legal commands are the opponent's answer; a
+  rejection resumes where the offer was made.
+- **Hero-run war machines:** with `MachineControl.ballista` the side commands its Ballista
+  (ordinary `Shoot`, `shots` shots, `double_damage_percent`), with `tent` its First Aid Tent (new
+  `Heal { target }`); otherwise they act automatically as in E03. Wait and Defend stay legal for
+  them (OQ-4).
+- Actors are validated as in ADR-0004: the answer to a surrender comes from the side it was offered
+  to, every other command from the side whose stack is active or whose tactics phase runs.
 
 ### 8. Visibility
 
 - Public in the observation of both sides: `hero_type`, attack, defense, power, knowledge, mana
-  and max mana (the original shows these on right-click in battle), the war machines, the tactics
-  phase and its zone, a surrender offer and its price.
-- Private to the hero's own side: skill levels, damage bonuses, the `effects` list (their visible
-  consequences are on the stacks, whose stats are public), the spell book, `funds`.
+  and max mana (the original shows these in battle), the war machines and who controls them, the
+  tactics phase and its zone, whether each side may retreat and surrender (a `NoRetreat` effect
+  changes both sides' options, so it is public), a surrender offer and its price (accepting that an
+  offer reveals that the offering side can pay).
+- Private to the hero's own side: `tactics` level, the damage bonuses, `surrender_discount_bp`,
+  school levels, the `effects` list other than the public consequences above (stat effects show in
+  the stacks' public stats), the spell book, `funds`.
 - E04b's hidden battlefield objects (Land Mine, Quicksand) use the same mechanism: state with an
   owner side, projected away for the other viewer, events with `Visibility::Side` (ADR-0004 §6).
 
@@ -218,14 +254,14 @@ pub struct BattleMagic { pub spell_book: Option<Vec<SpellId>>, pub mana: u16, pu
 
 ## Consequences
 
-- `BattleSetup`, `BattleOutcome` and `BattleResult` change once for E04a and E04b; E04c adds its
-  reserved siege fields. Every caller (sim, CLI scenarios and replays, FFI, tests) changes in E04a
+- `BattleSetup`, `BattleOutcome` and `BattleResult` get every field E04a and E04b need now; later
+  epics add enum variants and E04c its two reserved siege fields. Every caller (sim, CLI scenarios and replays, FFI, tests) changes in E04a
   T4/T9/T11; replays get a hero table; state hash v9; ruleset hash v9 (content types, T3).
 - The battle stays ignorant of hero management: no level, class, specialty or artifact logic in
   `h3-battle`; changing a skill's numbers is a data change; a new kind of effect is one variant in
   content, one in contracts and one rule.
 - Setup does a little more work; the hot path is unchanged (plain fields, one pool lookup per
-  materialisation). State grows by two small hero records and 12 pool entries; T4 measures it.
+  materialisation). State grows by two small hero records and 16 pool entries; T4 measures it.
 - Enforced by: `check-arch` (no `h3-battle` → `h3-heroes` edge; `h3-heroes` is a logic crate),
   property tests (hero isolation: a hero changes the other side only through modelled effects;
   observation hygiene for the private fields; conservation of creatures with casualties
@@ -254,3 +290,7 @@ pub struct BattleMagic { pub spell_book: Option<Vec<SpellId>>, pub mana: u16, pu
 ## Revision history
 
 - 2026-10-03: Proposed (E04a T1).
+- 2026-10-03: Revised before the user's review after an internal consistency review: modifier
+  capacity 36 with distinct sources per operation, war-machine control as derived numbers
+  (`MachineControl`), units and ranges, how the damage fields enter the formula, the Catapult,
+  complete outcome records, tactics and surrender details, visibility of `NoRetreat`.
