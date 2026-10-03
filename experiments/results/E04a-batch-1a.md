@@ -23,14 +23,14 @@ Map file: `E04a-batch-1a.h3m`. Fill in the blanks below and keep this file; an a
 
 | Archangels in the stack | damage |
 |---|---|
-|   |   |
-|   |   |
-|   |   |
-|   |   |
-|   |   |
-|   |   |
+|1|105|
+|2|210|
+|3|315|
+|4|420|
+|5|525|
+|6|630|
 
-- Anything unexpected: 
+- Anything unexpected:
 
 ## R2 — Damage rounding: defense advantage (Q23)
 
@@ -46,14 +46,14 @@ Map file: `E04a-batch-1a.h3m`. Fill in the blanks below and keep this file; an a
 
 | Angels in the stack | damage |
 |---|---|
-|   |   |
-|   |   |
-|   |   |
-|   |   |
-|   |   |
-|   |   |
+|1|19|
+|2|39|
+|3|59|
+|4|79|
+|5|99|
+|6|119|
 
-- Anything unexpected: 
+- Anything unexpected:
 
 ## R3 — Damage rounding: Armorer (Q23, S-02)
 
@@ -69,14 +69,14 @@ Map file: `E04a-batch-1a.h3m`. Fill in the blanks below and keep this file; an a
 
 | Archangels in the stack | damage |
 |---|---|
-|   |   |
-|   |   |
-|   |   |
-|   |   |
-|   |   |
-|   |   |
+|1|47|
+|2|94|
+|3|142|
+|4|189|
+|5|237|
+|6|284|
 
-- Anything unexpected: 
+- Anything unexpected:
 
 ## R4 — Death stare: health of the new top creature (Q21)
 
@@ -92,12 +92,12 @@ Map file: `E04a-batch-1a.h3m`. Fill in the blanks below and keep this file; an a
 
 | count before | health left before | damage | killed by the damage | killed by the stare | count after | health left after |
 |---|---|---|---|---|---|---|
-|   |   |   |   |   |   |   |
-|   |   |   |   |   |   |   |
-|   |   |   |   |   |   |   |
-|   |   |   |   |   |   |   |
+|40|40|333|8|2|30|40|
+|30|40|321|8|2|20|?|
+|13|40|241|6|-|7|39|
+|7|39|345|7|-|0|0|
 
-- Anything unexpected: 
+- Anything unexpected: I cannot see the Ogre's health left after the second attack because their turn starts and they attack right away, resulting in a retaliatory strike from Gorgons
 
 ## R5 — The hero's attack in the Ballista's damage (skills survey: open point)
 
@@ -111,11 +111,11 @@ Map file: `E04a-batch-1a.h3m`. Fill in the blanks below and keep this file; an a
 
 | Ballista shot | damage |
 |---|---|
-|   |   |
+|1|92|
 |   |   |
 |   |   |
 
-- Anything unexpected: 
+- Anything unexpected: Cannot see the damage of the second shot as it ends the battle by killing the Behemoth
 
 ## R6 — Basic Artillery and Basic First Aid: control, shots per turn, Wait and Defend (D-4 / skills D1, OQ-4)
 
@@ -129,12 +129,12 @@ Map file: `E04a-batch-1a.h3m`. Fill in the blanks below and keep this file; an a
 
 **Record**
 
-- Ballista: target chosen by you (yes/no): 
-- Ballista: Wait available / Defend available: 
-- Ballista shots in its turn, round 1 / round 2: 
-- Tent: target chosen by you (yes/no); Wait / Defend available: 
-- Tent: hit points healed (each time): 
-- Anything unexpected: 
+- Ballista: target chosen by you (yes/no): yes
+- Ballista: Wait available / Defend available: yes, and wait works as expected
+- Ballista shots in its turn, round 1 / round 2: once per turn
+- Tent: target chosen by you (yes/no); Wait / Defend available:
+- Tent: hit points healed (each time): n/a
+- Anything unexpected: Round 1 and 2: Tent got no turn and did nothing, probably because Pikemen were at full health. Tent was destroyed by Golems in turn 3
 
 ## R7 — Ballista ammunition without an Ammo Cart (S-01, D-8)
 
@@ -148,11 +148,11 @@ Map file: `E04a-batch-1a.h3m`. Fill in the blanks below and keep this file; an a
 
 **Record**
 
-- Ballista shots in round 1: 
-- Shots shown after round 1 / after round 2: 
-- Round in which the shots shown reached 0: 
-- Did the Ballista shoot after that? (how often): 
-- Anything unexpected: 
+- Ballista shots in round 1: twice per round
+- Shots shown after round 1 / after round 2: 22, then 20
+- Round in which the shots shown reached 0: 12
+- Did the Ballista shoot after that? (how often): yes, shoots twice per round, and shots left go into negatives
+- Anything unexpected:
 
 ## R8 — Elixir of Life: do Trolls regenerate to full health? (S-04)
 
@@ -166,10 +166,10 @@ Map file: `E04a-batch-1a.h3m`. Fill in the blanks below and keep this file; an a
 
 **Record**
 
-- Troll Health on the hero screen: 
-- Health Left after the Archers' shots: 
-- Health Left at the Trolls' turn in round 2: 
-- Anything unexpected (for example: the Elixir is missing or misplaced on the hero screen): 
+- Troll Health on the hero screen: 54 (I think the component bonues of the Elixir add 4 flat HP)
+- Health Left after the Archers' shots: 31
+- Health Left at the Trolls' turn in round 2: 54
+- Anything unexpected (for example: the Elixir is missing or misplaced on the hero screen): Health left after the Archer's shots is deducted from substracting their dealt damage from the initial HP, because the round ends before I can view what it actually says for health left
 
 ## B4 — Swordsman specialty: Catherine (S-03, H-1)
 
@@ -180,12 +180,12 @@ Map file: `E04a-batch-1a.h3m`. Fill in the blanks below and keep this file; an a
 
 **Record**
 
-- Level, attack, defense: 
+- Level, attack, defense: 4, 1, 1
 
 | creature | attack | defense | speed |
 |---|---|---|---|
-|   |   |   |   |
-|   |   |   |   |
+|Swordsmen|12|14|6|
+|Crusaders|14|14|7|
 
 ## B5 — Swordsman specialty: Roland (S-03, H-1)
 
@@ -195,12 +195,12 @@ Map file: `E04a-batch-1a.h3m`. Fill in the blanks below and keep this file; an a
 
 **Record**
 
-- Level, attack, defense: 
+- Level, attack, defense: 4, 2, 1
 
 | creature | attack | defense | speed |
 |---|---|---|---|
-|   |   |   |   |
-|   |   |   |   |
+|Swordsmen|12|13|5|
+|Crusaders|15|14|7|
 
 ## B6 — Swordsman specialty: Sorsha (control) (S-03, H-1)
 
@@ -210,10 +210,9 @@ Map file: `E04a-batch-1a.h3m`. Fill in the blanks below and keep this file; an a
 
 **Record**
 
-- Level, attack, defense: 
+- Level, attack, defense: 4, 2, 1
 
 | creature | attack | defense | speed |
 |---|---|---|---|
-|   |   |   |   |
-|   |   |   |   |
-
+|Swordsmen|13|14|6|
+|Crusaders|15|14|7|
