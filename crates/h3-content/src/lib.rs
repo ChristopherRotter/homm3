@@ -21,25 +21,37 @@
 extern crate alloc;
 
 mod ability;
+mod effect;
 mod error;
 mod flags;
+mod heroes;
 mod key;
 mod pack;
 mod quirks;
 mod ruleset;
 
 pub use ability::{Ability, AbilityDef, AreaShot, AuraTarget, CompiledAbility};
+pub use effect::{
+    Affects, CompiledHeroEffect, CreatureSelector, CreatureStat, FULL_BP, HeroEffect,
+    HeroEffectDef, MAX_EFFECTS, MAX_SKILL_LEVEL,
+};
 pub use error::CompileError;
 pub use flags::{CreatureFlag, CreatureFlags};
+pub use heroes::{
+    HeroClass, HeroClassId, HeroType, HeroTypeId, MAX_HERO_SKILLS, MAX_SPELL_LEVEL, SchoolId,
+    SecondarySkill, SkillId, Spell, SpellCategory, SpellId, SpellPolarity, SpellSchool,
+    StartingStack,
+};
 pub use key::{ContentKey, KeyError};
 pub use pack::{
     BattleParamsDef, ContentPack, CreatureDef, CreatureInfoDef, CreatureOverride, CreaturePatch,
-    FactionDef, ObstacleDef, PackManifest, ProfileDef, ResourceDef, TerrainDef,
+    FactionDef, HeroClassDef, HeroTypeDef, ObstacleDef, PackManifest, ProfileDef, ResourceDef,
+    SecondarySkillDef, SpellDef, SpellSchoolDef, StartingStackDef, TerrainDef,
 };
 pub use quirks::{NO_LUCK_WITHOUT_HERO, QuirkFlag, QuirkRegistry, Quirks, REGISTRY};
 pub use ruleset::{
     BattleParams, CreatureInfo, CreatureType, CreatureTypeId, FactionId, FactionInfo, FieldParams,
-    Formation, MAX_ARMY_SLOTS, MAX_AURA_VALUES, MAX_FIELD_HEXES, MAX_ROLL_LEVELS, ObstacleType,
-    RULESET_HASH_VERSION, ResourceId, ResourceInfo, RollTable, Ruleset, TerrainId, TerrainInfo,
-    WAR_MACHINE_KINDS,
+    Formation, MAX_ARMY_SLOTS, MAX_AURA_VALUES, MAX_FIELD_HEXES, MAX_ROLL_LEVELS, MAX_UPGRADES,
+    ObstacleType, RULESET_HASH_VERSION, ResourceId, ResourceInfo, RollTable, Ruleset, TerrainId,
+    TerrainInfo, WAR_MACHINE_KINDS,
 };

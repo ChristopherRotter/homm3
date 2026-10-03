@@ -9,9 +9,12 @@ use std::collections::BTreeMap;
 use std::fmt;
 
 use h3_content::{
-    AbilityDef, AreaShot, AuraTarget, BattleParamsDef, CompileError, ContentKey, ContentPack,
-    CreatureDef, CreatureInfoDef, CreatureOverride, CreaturePatch, FactionDef, Formation, KeyError,
-    ObstacleDef, PackManifest, ProfileDef, ResourceDef, Ruleset, TerrainDef,
+    AbilityDef, Affects, AreaShot, AuraTarget, BattleParamsDef, CompileError, ContentKey,
+    ContentPack, CreatureDef, CreatureFlag, CreatureInfoDef, CreatureOverride, CreaturePatch,
+    CreatureSelector, CreatureStat, FactionDef, Formation, HeroClassDef, HeroEffect, HeroEffectDef,
+    HeroTypeDef, KeyError, ObstacleDef, PackManifest, ProfileDef, ResourceDef, Ruleset,
+    SecondarySkillDef, SpellCategory, SpellDef, SpellPolarity, SpellSchoolDef, StartingStackDef,
+    TerrainDef,
 };
 use h3_contracts::{Army, ArmyStack, BattleSetup, BattleSide};
 use serde::Deserialize;
@@ -92,6 +95,16 @@ struct PackFile {
     creature: Vec<CreatureDto>,
     #[serde(default)]
     creature_override: Vec<OverrideDto>,
+    #[serde(default)]
+    spell_school: Vec<NamedDto>,
+    #[serde(default)]
+    spell: Vec<SpellDto>,
+    #[serde(default)]
+    secondary_skill: Vec<SkillDto>,
+    #[serde(default)]
+    hero_class: Vec<HeroClassDto>,
+    #[serde(default)]
+    hero: Vec<HeroDto>,
     #[serde(default)]
     profile: Vec<ProfileDto>,
 }
@@ -197,6 +210,8 @@ struct CreatureDto {
     flags: Vec<String>,
     #[serde(default)]
     abilities: Vec<AbilityDto>,
+    #[serde(default)]
+    upgrades: Vec<String>,
 }
 
 /// One ability (`packs/README.md`, "Abilities"): `kind` plus the parameters of that kind.
@@ -322,6 +337,275 @@ struct OverrideDto {
     adventure_count: Option<[u16; 2]>,
     flags: Option<Vec<String>>,
     abilities: Option<Vec<AbilityDto>>,
+    upgrades: Option<Vec<String>>,
+}
+
+/// `[[spell]]` (pack format v3, E04a T3): a spell's data row.
+#[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
+struct SpellDto {
+    id: String,
+    #[serde(default)]
+    name: String,
+    category: SpellCategoryDto,
+    level: u8,
+    #[serde(default)]
+    schools: Vec<String>,
+    cost: [u16; 4],
+    #[serde(default)]
+    power: u16,
+    effect: [u16; 4],
+    polarity: SpellPolarityDto,
+}
+
+#[derive(Deserialize)]
+#[serde(rename_all = "snake_case")]
+enum SpellCategoryDto {
+    Adventure,
+    Combat,
+    Ability,
+}
+
+#[derive(Deserialize)]
+#[serde(rename_all = "snake_case")]
+enum SpellPolarityDto {
+    Positive,
+    Neutral,
+    Negative,
+}
+
+/// `[[secondary_skill]]`: the effects of the three levels.
+#[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
+struct SkillDto {
+    id: String,
+    #[serde(default)]
+    name: String,
+    #[serde(default)]
+    basic: Vec<EffectDto>,
+    #[serde(default)]
+    advanced: Vec<EffectDto>,
+    #[serde(default)]
+    expert: Vec<EffectDto>,
+}
+
+/// `[[hero_class]]`.
+#[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
+struct HeroClassDto {
+    id: String,
+    #[serde(default)]
+    name: String,
+    faction: String,
+    primary: [u8; 4],
+    primary_gain: [[u8; 4]; 2],
+    #[serde(default)]
+    skill_weights: BTreeMap<String, u8>,
+}
+
+/// `[[hero]]`: a hero type.
+#[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
+struct HeroDto {
+    id: String,
+    #[serde(default)]
+    name: String,
+    class: String,
+    #[serde(default)]
+    skills: Vec<HeroSkillDto>,
+    #[serde(default)]
+    spell_book: bool,
+    #[serde(default)]
+    spells: Vec<String>,
+    #[serde(default)]
+    army: Vec<StartingStackDto>,
+    #[serde(default)]
+    war_machines: Vec<String>,
+    #[serde(default)]
+    specialty: Vec<EffectDto>,
+}
+
+#[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
+struct HeroSkillDto {
+    skill: String,
+    level: u8,
+}
+
+#[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
+struct StartingStackDto {
+    creature: String,
+    count: [u16; 2],
+}
+
+/// One hero effect (`packs/README.md`, "Hero effects"): `kind` plus that kind's parameters.
+#[derive(Deserialize)]
+#[serde(tag = "kind", rename_all = "snake_case", deny_unknown_fields)]
+enum EffectDto {
+    Morale {
+        amount: i8,
+        #[serde(default)]
+        affects: AffectsDto,
+    },
+    Luck {
+        amount: i8,
+        #[serde(default)]
+        affects: AffectsDto,
+    },
+    RangedDamage {
+        bp: u16,
+    },
+    MeleeDamage {
+        bp: u16,
+    },
+    DamageReduction {
+        bp: u16,
+    },
+    SurrenderDiscount {
+        bp: u16,
+    },
+    Tactics {
+        level: u8,
+    },
+    Artillery {
+        shots: u8,
+        double_damage_chance_bp: u16,
+    },
+    FirstAid {
+        heal_bp: u16,
+    },
+    CreatureStat {
+        creatures: Option<SelectorDto>,
+        stat: CreatureStatDto,
+        amount: i16,
+    },
+    SkillSpecialty {
+        skill: String,
+        bp_per_level: u16,
+    },
+    CreatureSpecialty {
+        creature: String,
+        bp_per_step: u16,
+        #[serde(default)]
+        speed: u8,
+    },
+    SpellSpecialty {
+        spell: String,
+    },
+}
+
+#[derive(Deserialize, Default)]
+#[serde(rename_all = "snake_case")]
+enum AffectsDto {
+    #[default]
+    Own,
+    Enemy,
+    Both,
+}
+
+#[derive(Deserialize)]
+#[serde(rename_all = "snake_case")]
+enum CreatureStatDto {
+    Attack,
+    Defense,
+    Speed,
+    HitPoints,
+    MinDamage,
+    MaxDamage,
+}
+
+/// `creatures = { creature = "behemoth" }` (with its upgrades) or `{ flag = "dragon" }`;
+/// omitted: every creature.
+#[derive(Deserialize)]
+#[serde(rename_all = "snake_case", deny_unknown_fields)]
+enum SelectorDto {
+    Creature(String),
+    Flag(String),
+}
+
+impl EffectDto {
+    fn into_def(self, pack: &str) -> Result<HeroEffectDef, PackError> {
+        let affects = |a: AffectsDto| match a {
+            AffectsDto::Own => Affects::Own,
+            AffectsDto::Enemy => Affects::Enemy,
+            AffectsDto::Both => Affects::Both,
+        };
+        Ok(match self {
+            Self::Morale { amount, affects: a } => HeroEffect::Morale {
+                amount,
+                affects: affects(a),
+            },
+            Self::Luck { amount, affects: a } => HeroEffect::Luck {
+                amount,
+                affects: affects(a),
+            },
+            Self::RangedDamage { bp } => HeroEffect::RangedDamage { bp },
+            Self::MeleeDamage { bp } => HeroEffect::MeleeDamage { bp },
+            Self::DamageReduction { bp } => HeroEffect::DamageReduction { bp },
+            Self::SurrenderDiscount { bp } => HeroEffect::SurrenderDiscount { bp },
+            Self::Tactics { level } => HeroEffect::Tactics { level },
+            Self::Artillery {
+                shots,
+                double_damage_chance_bp,
+            } => HeroEffect::Artillery {
+                shots,
+                double_damage_chance_bp,
+            },
+            Self::FirstAid { heal_bp } => HeroEffect::FirstAid { heal_bp },
+            Self::CreatureStat {
+                creatures,
+                stat,
+                amount,
+            } => HeroEffect::CreatureStat {
+                creatures: match creatures {
+                    None => CreatureSelector::All,
+                    Some(SelectorDto::Creature(c)) => {
+                        CreatureSelector::Creature(reference(pack, &c)?)
+                    }
+                    Some(SelectorDto::Flag(f)) => CreatureSelector::Flag(
+                        CreatureFlag::from_name(&f).ok_or(CompileError::UnknownFlag(f))?,
+                    ),
+                },
+                stat: match stat {
+                    CreatureStatDto::Attack => CreatureStat::Attack,
+                    CreatureStatDto::Defense => CreatureStat::Defense,
+                    CreatureStatDto::Speed => CreatureStat::Speed,
+                    CreatureStatDto::HitPoints => CreatureStat::HitPoints,
+                    CreatureStatDto::MinDamage => CreatureStat::MinDamage,
+                    CreatureStatDto::MaxDamage => CreatureStat::MaxDamage,
+                },
+                amount,
+            },
+            Self::SkillSpecialty {
+                skill,
+                bp_per_level,
+            } => HeroEffect::SkillSpecialty {
+                skill: reference(pack, &skill)?,
+                bp_per_level,
+            },
+            Self::CreatureSpecialty {
+                creature,
+                bp_per_step,
+                speed,
+            } => HeroEffect::CreatureSpecialty {
+                creature: reference(pack, &creature)?,
+                bp_per_step,
+                speed,
+            },
+            Self::SpellSpecialty { spell } => HeroEffect::SpellSpecialty {
+                spell: reference(pack, &spell)?,
+            },
+        })
+    }
+}
+
+fn effects(pack: &str, list: Vec<EffectDto>) -> Result<Vec<HeroEffectDef>, PackError> {
+    list.into_iter().map(|e| e.into_def(pack)).collect()
+}
+
+fn references(pack: &str, list: &[String]) -> Result<Vec<ContentKey>, KeyError> {
+    list.iter().map(|t| reference(pack, t)).collect()
 }
 
 /// Resolves a reference: `name` means `<own pack>:name`, `pack:name` is taken as written.
@@ -424,6 +708,7 @@ pub fn parse_pack(text: &str) -> Result<ContentPack, PackError> {
                     adventure_count: c.adventure_count,
                     flags: c.flags,
                     abilities: abilities(&pack_id, c.abilities)?,
+                    upgrades: references(&pack_id, &c.upgrades)?,
                 },
             })
         })
@@ -459,7 +744,100 @@ pub fn parse_pack(text: &str) -> Result<ContentPack, PackError> {
                     adventure_count: o.adventure_count,
                     flags: o.flags,
                     abilities: o.abilities.map(|a| abilities(&pack_id, a)).transpose()?,
+                    upgrades: o.upgrades.map(|u| references(&pack_id, &u)).transpose()?,
                 },
+            })
+        })
+        .collect::<Result<Vec<_>, PackError>>()?;
+    let spell_schools = named(file.spell_school)?
+        .into_iter()
+        .map(|(key, name)| SpellSchoolDef { key, name })
+        .collect();
+    let spells = file
+        .spell
+        .into_iter()
+        .map(|s| {
+            Ok(SpellDef {
+                key: ContentKey::new(&pack_id, &s.id)?,
+                name: s.name,
+                category: match s.category {
+                    SpellCategoryDto::Adventure => SpellCategory::Adventure,
+                    SpellCategoryDto::Combat => SpellCategory::Combat,
+                    SpellCategoryDto::Ability => SpellCategory::Ability,
+                },
+                level: s.level,
+                schools: references(&pack_id, &s.schools)?,
+                cost: s.cost,
+                power: s.power,
+                effect: s.effect,
+                polarity: match s.polarity {
+                    SpellPolarityDto::Positive => SpellPolarity::Positive,
+                    SpellPolarityDto::Neutral => SpellPolarity::Neutral,
+                    SpellPolarityDto::Negative => SpellPolarity::Negative,
+                },
+            })
+        })
+        .collect::<Result<Vec<_>, KeyError>>()?;
+    let skills = file
+        .secondary_skill
+        .into_iter()
+        .map(|s| {
+            Ok(SecondarySkillDef {
+                key: ContentKey::new(&pack_id, &s.id)?,
+                name: s.name,
+                levels: [
+                    effects(&pack_id, s.basic)?,
+                    effects(&pack_id, s.advanced)?,
+                    effects(&pack_id, s.expert)?,
+                ],
+            })
+        })
+        .collect::<Result<Vec<_>, PackError>>()?;
+    let hero_classes = file
+        .hero_class
+        .into_iter()
+        .map(|c| {
+            Ok(HeroClassDef {
+                key: ContentKey::new(&pack_id, &c.id)?,
+                name: c.name,
+                faction: reference(&pack_id, &c.faction)?,
+                primary: c.primary,
+                primary_gain: c.primary_gain,
+                skill_weights: c
+                    .skill_weights
+                    .into_iter()
+                    .map(|(k, w)| Ok((reference(&pack_id, &k)?, w)))
+                    .collect::<Result<_, KeyError>>()?,
+            })
+        })
+        .collect::<Result<Vec<_>, KeyError>>()?;
+    let heroes = file
+        .hero
+        .into_iter()
+        .map(|h| {
+            Ok(HeroTypeDef {
+                key: ContentKey::new(&pack_id, &h.id)?,
+                name: h.name,
+                class: reference(&pack_id, &h.class)?,
+                skills: h
+                    .skills
+                    .into_iter()
+                    .map(|s| Ok((reference(&pack_id, &s.skill)?, s.level)))
+                    .collect::<Result<_, KeyError>>()?,
+                spell_book: h.spell_book,
+                spells: references(&pack_id, &h.spells)?,
+                army: h
+                    .army
+                    .into_iter()
+                    .map(|s| {
+                        Ok(StartingStackDef {
+                            creature: reference(&pack_id, &s.creature)?,
+                            count: s.count,
+                        })
+                    })
+                    .collect::<Result<_, KeyError>>()?,
+                war_machines: references(&pack_id, &h.war_machines)?,
+                specialty: effects(&pack_id, h.specialty)?,
             })
         })
         .collect::<Result<Vec<_>, PackError>>()?;
@@ -509,6 +887,11 @@ pub fn parse_pack(text: &str) -> Result<ContentPack, PackError> {
         obstacles,
         creatures,
         creature_overrides,
+        spell_schools,
+        spells,
+        skills,
+        hero_classes,
+        heroes,
         profiles,
         battle,
     })
@@ -945,7 +1328,7 @@ mod tests {
             base.creature(brute)
                 .unwrap()
                 .flags
-                .contains(h3_content::CreatureFlag::TwoHex)
+                .contains(CreatureFlag::TwoHex)
         );
         let wisp = base.creature_by_key("synthetic:wisp").unwrap();
         assert_eq!(base.creature_info(wisp).unwrap().faction, None);
@@ -1055,7 +1438,7 @@ mod tests {
             (info.name.as_str(), stats.shots, info.casts),
             ("Pike", 1, 2)
         );
-        assert!(stats.flags.contains(h3_content::CreatureFlag::Undead));
+        assert!(stats.flags.contains(CreatureFlag::Undead));
 
         let bad_target = with("[[creature_override]]\ntarget = \"spearman\"\n");
         assert!(matches!(parse_pack(&bad_target), Err(PackError::Key(_))));
@@ -1182,6 +1565,163 @@ mod tests {
              abilities = [{{ kind = \"hate\", creature = \"A:b\", percent = 1 }}]\n"
         );
         assert!(matches!(parse_pack(&bad_override), Err(PackError::Key(_))));
+    }
+
+    #[test]
+    fn hero_content_syntax() {
+        use h3_content::SpellCategory;
+        let r = compile(&[SYNTHETIC_PACK, SYNTHETIC_EXT_PACK], "synthetic:faithful").unwrap();
+        assert_eq!(r.spell_schools().len(), 2);
+        assert_eq!(r.spells().len(), 4);
+        let ward = r.spell(r.spell_by_key("synthetic:ward").unwrap()).unwrap();
+        assert_eq!((ward.level, ward.schools.len(), ward.power), (2, 2, 0));
+        assert_eq!(ward.polarity, SpellPolarity::Positive);
+        let glare = r.spell(r.spell_by_key("synthetic:glare").unwrap()).unwrap();
+        assert_eq!(glare.category, SpellCategory::Ability);
+        assert_eq!(r.skills().len(), 10);
+        let omens = r.skill(r.skill_by_key("synthetic:omens").unwrap()).unwrap();
+        assert_eq!(
+            omens.effects(3)[1],
+            HeroEffect::Luck {
+                amount: -1,
+                affects: Affects::Enemy
+            }
+        );
+        assert_eq!(r.hero_classes().len(), 2);
+        assert_eq!(r.hero_classes()[1].skill_weights.len(), 4);
+        assert_eq!(r.hero_types().len(), 5);
+        let wisp = r.creature_by_key("synthetic:wisp").unwrap();
+        let corwin = r
+            .hero_type(r.hero_type_by_key("synthetic:corwin").unwrap())
+            .unwrap();
+        assert_eq!(
+            corwin.specialty[0],
+            HeroEffect::CreatureStat {
+                creatures: CreatureSelector::Creature(wisp),
+                stat: CreatureStat::Attack,
+                amount: 2
+            }
+        );
+        assert_eq!(
+            corwin.specialty[3],
+            HeroEffect::CreatureStat {
+                creatures: CreatureSelector::Flag(CreatureFlag::Flying),
+                stat: CreatureStat::Defense,
+                amount: 1
+            }
+        );
+        let dara = r
+            .hero_type(r.hero_type_by_key("synthetic:dara").unwrap())
+            .unwrap();
+        assert!(dara.spell_book && dara.spells.len() == 1 && dara.war_machines.len() == 1);
+        let lurker = r.creature_by_key("synthetic-ext:lurker").unwrap();
+        assert_eq!(r.upgrades(wisp), &[lurker]);
+        // Every effect kind parses (the synthetic pack uses each at least once).
+        let kinds: std::collections::BTreeSet<&str> = r
+            .skills()
+            .iter()
+            .flat_map(|s| s.levels.iter().flatten())
+            .chain(r.hero_types().iter().flat_map(|h| &h.specialty))
+            .map(HeroEffect::name)
+            .collect();
+        assert_eq!(kinds.len(), HeroEffect::<u8, u8, u8>::NAMES.len());
+
+        // Strict syntax: unknown kinds, parameters, flags and selectors are errors.
+        let bad_syntax = [
+            (
+                "{ kind = \"ranged_damage\", bp = 1000 }]",
+                "{ kind = \"ranged\", bp = 1000 }]",
+            ),
+            (
+                "{ kind = \"ranged_damage\", bp = 1000 }]",
+                "{ kind = \"ranged_damage\", percent = 10 }]",
+            ),
+            (
+                "creatures = { flag = \"flying\" }",
+                "creatures = { flag = \"flying\", creature = \"wisp\" }",
+            ),
+            (
+                "creatures = { flag = \"flying\" }",
+                "creatures = { kind = \"flying\" }",
+            ),
+            ("category = \"combat\"", "category = \"battle\""),
+            ("polarity = \"neutral\"", "polarity = \"good\""),
+            ("affects = \"enemy\"", "affects = \"allies\""),
+            ("stat = \"speed\"", "stat = \"luck\""),
+            (
+                "level = 1 }, { skill = \"marksmanship\"",
+                "lvl = 1 }, { skill = \"marksmanship\"",
+            ),
+            ("count = [4, 7] }", "count = [4, 7], slot = 1 }"),
+            (
+                "faction = \"vale\"\nprimary",
+                "faction = \"vale\"\nprimary_skills = [1, 1, 1, 1]\nprimary",
+            ),
+        ];
+        for (from, to) in bad_syntax {
+            assert!(SYNTHETIC_PACK.contains(from), "{from}");
+            let text = SYNTHETIC_PACK.replacen(from, to, 1);
+            assert!(
+                matches!(parse_pack(&text), Err(PackError::Syntax(_))),
+                "{to}"
+            );
+        }
+        let unknown_flag = SYNTHETIC_PACK.replace(
+            "creatures = { flag = \"flying\" }",
+            "creatures = { flag = \"winged\" }",
+        );
+        assert_eq!(
+            parse_pack(&unknown_flag),
+            Err(PackError::Compile(CompileError::UnknownFlag(
+                "winged".into()
+            )))
+        );
+        // Malformed references at every reference site.
+        let bad_refs = [
+            ("schools = [\"storm\"]", "schools = [\"S:x\"]"),
+            (
+                "{ kind = \"ranged_damage\", bp = 1000 }]",
+                "{ kind = \"creature_stat\", creatures = { creature = \"W:x\" }, stat = \"speed\", amount = 1 }]",
+            ),
+            (
+                "skill = \"marksmanship\", bp_per_level",
+                "skill = \"M:x\", bp_per_level",
+            ),
+            (
+                "creature = \"brute\", bp_per_step",
+                "creature = \"B:x\", bp_per_step",
+            ),
+            ("spell = \"spark\" }", "spell = \"S:x\" }"),
+            ("faction = \"vale\"\nprimary", "faction = \"V:x\"\nprimary"),
+            ("marksmanship = 6", "\"M:x\" = 6"),
+            ("class = \"warden\"", "class = \"W:x\""),
+            ("{ skill = \"command\"", "{ skill = \"C:x\""),
+            ("spells = [\"spark\"]", "spells = [\"S:x\"]"),
+            (
+                "{ creature = \"brute\", count",
+                "{ creature = \"B:x\", count",
+            ),
+            ("war_machines = [\"aid_tent\"]", "war_machines = [\"A:x\"]"),
+            ("id = \"ansel\"", "id = \"Ansel\""),
+            ("id = \"warden\"", "id = \"Warden\""),
+            ("id = \"drill\"", "id = \"Drill\""),
+            ("id = \"spark\"", "id = \"Spark\""),
+            ("id = \"storm\"", "id = \"Storm\""),
+        ];
+        for (from, to) in bad_refs {
+            assert!(SYNTHETIC_PACK.contains(from), "{from}");
+            let text = SYNTHETIC_PACK.replacen(from, to, 1);
+            assert!(matches!(parse_pack(&text), Err(PackError::Key(_))), "{to}");
+        }
+        let bad_upgrade =
+            SYNTHETIC_EXT_PACK.replace("upgrades = [\"lurker\"]", "upgrades = [\"L:x\"]");
+        assert!(matches!(parse_pack(&bad_upgrade), Err(PackError::Key(_))));
+        let bad_upgrade = SYNTHETIC_PACK.replacen(
+            "flags = [\"alive\"]\n",
+            "flags = [\"alive\"]\nupgrades = [\"U:x\"]\n",
+            1,
+        );
+        assert!(matches!(parse_pack(&bad_upgrade), Err(PackError::Key(_))));
     }
 
     #[test]

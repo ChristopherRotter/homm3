@@ -33,6 +33,7 @@ flags = ["alive"]
 target = "synthetic:wisp"
 faction = "marsh"           # the expansion adopts a neutral creature
 level = 2
+upgrades = ["lurker"]       # pack format v3 (E04a T3): the upgrade comes with the expansion
 
 [[creature_override]]
 target = "synthetic:brute"

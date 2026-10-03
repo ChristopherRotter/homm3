@@ -10,6 +10,10 @@ use h3_kernel::{CanonicalHash, Handle, StateHasher};
 use crate::ability::{self, Ability, AbilityDef, CompiledAbility};
 use crate::error::CompileError;
 use crate::flags::{CreatureFlag, CreatureFlags};
+use crate::heroes::{
+    HeroClass, HeroClassId, HeroContent, HeroType, HeroTypeId, Refs, SecondarySkill, SkillId,
+    Spell, SpellId, SpellSchool,
+};
 use crate::key::{ContentKey, is_valid_part};
 use crate::pack::{BattleParamsDef, ContentPack, CreaturePatch};
 use crate::quirks::{QuirkRegistry, Quirks, REGISTRY};
@@ -22,7 +26,7 @@ pub const MAX_ARMY_SLOTS: usize = 16;
 pub const MAX_FIELD_HEXES: usize = 255;
 
 /// Version of the ruleset hash encoding. Bump when the encoding below changes.
-pub const RULESET_HASH_VERSION: u32 = 8;
+pub const RULESET_HASH_VERSION: u32 = 9;
 
 /// A compiled creature type.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -233,6 +237,9 @@ pub struct ObstacleType {
     pub absolute: bool,
 }
 
+/// Most direct upgrades of one creature type.
+pub const MAX_UPGRADES: usize = 3;
+
 /// Compiled non-battle attributes of a creature type (not needed on the battle hot path).
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct CreatureInfo {
@@ -258,6 +265,8 @@ pub struct CreatureInfo {
     pub casts: u8,
     /// Adventure-map stack size range `[low, high]`.
     pub adventure_count: [u16; 2],
+    /// The creature types it upgrades into, in pack order (E04a T3).
+    pub upgrades: Vec<CreatureTypeId>,
 }
 
 /// The immutable compiled ruleset.
@@ -276,6 +285,7 @@ pub struct Ruleset {
     creature_abilities: Vec<Vec<CompiledAbility>>,
     creature_keys: Vec<ContentKey>,
     creature_index: BTreeMap<String, CreatureTypeId>,
+    hero: HeroContent,
     battle: BattleParams,
     hash: u64,
 }
@@ -290,7 +300,7 @@ struct Scope<'a> {
 
 /// Checks that `key` belongs to a pack in `closure` (the closure of `pack`) and resolves it in
 /// `index`.
-fn resolve_in<T>(
+pub(crate) fn resolve_in<T>(
     pack: &str,
     closure: &BTreeSet<String>,
     key: &ContentKey,
@@ -353,6 +363,17 @@ fn abilities(
         .collect()
 }
 
+/// Resolves an upgrade list against the creatures compiled so far.
+fn upgrades(
+    keys: &[ContentKey],
+    scope: &Scope<'_>,
+    creatures: &BTreeMap<String, CreatureTypeId>,
+) -> Result<Vec<CreatureTypeId>, CompileError> {
+    keys.iter()
+        .map(|k| scope.resolve(k, creatures, "creature"))
+        .collect()
+}
+
 /// Resolves creature flag names.
 fn flags(names: &[String]) -> Result<CreatureFlags, CompileError> {
     names
@@ -397,6 +418,7 @@ impl Ruleset {
         let mut creature_abilities: Vec<Vec<CompiledAbility>> = Vec::new();
         let mut creature_keys: Vec<ContentKey> = Vec::new();
         let mut creature_index = BTreeMap::new();
+        let mut hero = HeroContent::default();
         let mut battle_def: Option<&BattleParamsDef> = None;
         for (pack, closure) in order.iter().zip(&closures) {
             let id = &pack.manifest.id;
@@ -481,13 +503,20 @@ impl Ruleset {
                     ai_value: info.ai_value,
                     casts: info.casts,
                     adventure_count: info.adventure_count,
+                    upgrades: Vec::new(),
                 });
                 creature_keys.push(def.key.clone());
             }
-            // Abilities may refer to any creature of the closure, including later ones of this
-            // pack, so they are resolved once the pack's creatures are registered.
-            for def in &pack.creatures {
+            // Abilities and upgrades may refer to any creature of the closure, including later
+            // ones of this pack, so they are resolved once the pack's creatures are registered.
+            let first = creature_abilities.len();
+            for (def, info) in pack
+                .creatures
+                .iter()
+                .zip(creature_info.get_mut(first..).unwrap_or_default())
+            {
                 creature_abilities.push(abilities(&def.info.abilities, &scope, &creature_index)?);
+                info.upgrades = upgrades(&def.info.upgrades, &scope, &creature_index)?;
             }
             for o in &pack.creature_overrides {
                 let target = String::from(o.target.as_str());
@@ -520,6 +549,13 @@ impl Ruleset {
                     })
                     .transpose()?;
             }
+            let refs = Refs {
+                pack: id,
+                closure,
+                factions: &faction_index,
+                creatures: &creature_index,
+            };
+            hero.add_pack(pack, &refs)?;
             if let Some(b) = &pack.battle {
                 if battle_def.is_some() {
                     return Err(CompileError::DuplicateBattleParams(id.clone()));
@@ -527,15 +563,17 @@ impl Ruleset {
                 battle_def = Some(b);
             }
         }
-        for (((stats, info), abils), key) in creatures
+        for (i, (((stats, info), abils), key)) in creatures
             .iter()
             .zip(&creature_info)
             .zip(&creature_abilities)
             .zip(&creature_keys)
+            .enumerate()
         {
-            validate_creature(key, stats, info, abils)?;
+            validate_creature(i, key, stats, info, abils)?;
         }
         let battle = compile_battle(battle_def.ok_or(CompileError::MissingBattleParams)?)?;
+        hero.validate(&creatures, battle.army_slots)?;
         for o in &obstacles {
             validate_obstacle(o, &battle)?;
         }
@@ -586,6 +624,7 @@ impl Ruleset {
             creature_abilities,
             creature_keys,
             creature_index,
+            hero,
             battle,
             hash: 0,
         };
@@ -623,6 +662,73 @@ impl Ruleset {
     /// Number of creature types.
     pub fn creature_count(&self) -> usize {
         self.creatures.len()
+    }
+
+    /// The direct upgrades of a creature type (empty for unknown handles).
+    pub fn upgrades(&self, id: CreatureTypeId) -> &[CreatureTypeId] {
+        self.creature_info
+            .get(id.index())
+            .map_or(&[], |i| i.upgrades.as_slice())
+    }
+
+    /// Spell schools, in load order (a [`crate::SchoolId`] indexes this slice).
+    pub fn spell_schools(&self) -> &[SpellSchool] {
+        &self.hero.schools.items
+    }
+
+    /// Spells, in load order (a [`SpellId`] indexes this slice).
+    pub fn spells(&self) -> &[Spell] {
+        &self.hero.spells.items
+    }
+
+    /// The spell behind a handle.
+    pub fn spell(&self, id: SpellId) -> Option<&Spell> {
+        self.hero.spells.get(id)
+    }
+
+    /// Looks a spell up by its `pack:name` key.
+    pub fn spell_by_key(&self, key: &str) -> Option<SpellId> {
+        self.hero.spells.by_key(key)
+    }
+
+    /// Secondary skills, in load order (a [`SkillId`] indexes this slice).
+    pub fn skills(&self) -> &[SecondarySkill] {
+        &self.hero.skills.items
+    }
+
+    /// The secondary skill behind a handle.
+    pub fn skill(&self, id: SkillId) -> Option<&SecondarySkill> {
+        self.hero.skills.get(id)
+    }
+
+    /// Looks a secondary skill up by its `pack:name` key.
+    pub fn skill_by_key(&self, key: &str) -> Option<SkillId> {
+        self.hero.skills.by_key(key)
+    }
+
+    /// Hero classes, in load order (a [`HeroClassId`] indexes this slice).
+    pub fn hero_classes(&self) -> &[HeroClass] {
+        &self.hero.classes.items
+    }
+
+    /// The hero class behind a handle.
+    pub fn hero_class(&self, id: HeroClassId) -> Option<&HeroClass> {
+        self.hero.classes.get(id)
+    }
+
+    /// Hero types, in load order (a [`HeroTypeId`] indexes this slice).
+    pub fn hero_types(&self) -> &[HeroType] {
+        &self.hero.heroes.items
+    }
+
+    /// The hero type behind a handle.
+    pub fn hero_type(&self, id: HeroTypeId) -> Option<&HeroType> {
+        self.hero.heroes.get(id)
+    }
+
+    /// Looks a hero type up by its `pack:name` key.
+    pub fn hero_type_by_key(&self, key: &str) -> Option<HeroTypeId> {
+        self.hero.heroes.by_key(key)
     }
 
     /// Resource kinds, in load order (a [`ResourceId`] indexes this slice).
@@ -802,6 +908,9 @@ fn apply_patch(
     if let Some(defs) = &p.abilities {
         *abils = abilities(defs, scope, creatures)?;
     }
+    if let Some(keys) = &p.upgrades {
+        info.upgrades = upgrades(keys, scope, creatures)?;
+    }
     Ok(())
 }
 
@@ -817,6 +926,7 @@ fn check_namespace(key: &ContentKey, pack: &str) -> Result<(), CompileError> {
 }
 
 fn validate_creature(
+    index: usize,
     key: &ContentKey,
     def: &CreatureType,
     info: &CreatureInfo,
@@ -850,6 +960,17 @@ fn validate_creature(
     }
     if let Some(reason) = ability::list_error(abils) {
         return invalid(reason);
+    }
+    if info.upgrades.len() > MAX_UPGRADES {
+        return invalid("at most 3 upgrades");
+    }
+    if info.upgrades.iter().any(|u| u.index() == index) {
+        return invalid("a creature cannot upgrade into itself");
+    }
+    for (i, u) in info.upgrades.iter().enumerate() {
+        if info.upgrades.get(..i).unwrap_or_default().contains(u) {
+            return invalid("an upgrade is listed twice");
+        }
     }
     // The executable's multi-head and area-attack bits need the pattern the original hard-codes.
     let pattern = abils
@@ -1039,7 +1160,9 @@ impl CanonicalHash for Ruleset {
     /// the cost as length + pairs — then the abilities as length + each ability's encoding),
     /// battle parameters in field order (v4: with the ranged/melee penalty parameters; v5: with
     /// the morale and luck dice and tables, each table as length + all 8 entries; v7: the war
-    /// machine positions) with the full formation tables (v8: loose, then tight).
+    /// machine positions) with the full formation tables (v8: loose, then tight). v9 (E04a T3):
+    /// each creature ends with its upgrades (length + handles), and the hero content follows the
+    /// battle parameters (`heroes::HeroContent`'s encoding).
     fn hash_into(&self, h: &mut StateHasher) {
         h.write_u32(RULESET_HASH_VERSION);
         h.write_len(self.packs.len());
@@ -1119,6 +1242,7 @@ impl CanonicalHash for Ruleset {
             for a in abils {
                 a.hash_into(h);
             }
+            info.upgrades.hash_into(h);
         }
         let b = &self.battle;
         h.write_u8(b.field.width);
@@ -1150,8 +1274,9 @@ impl CanonicalHash for Ruleset {
         for row in b.formations.iter().flatten() {
             h.write_bytes(row);
         }
+        self.hero.hash_into(h);
     }
 }
 
 #[cfg(test)]
-mod tests;
+pub(crate) mod tests;

@@ -190,6 +190,189 @@ ai_value = 120
 flags = ["two_hex", "war_machine", "no_morale"]
 abilities = [{ kind = "first_aid", min_hp = 1, max_hp = 10 }]
 
+# ---- Hero content (pack format v3, E04a T3): invented schools, spells, skills, classes and heroes.
+# Every hero-effect kind appears at least once. Spells are data rows only (effects: E04b).
+
+[[spell_school]]
+id = "storm"
+name = "Storm"
+
+[[spell_school]]
+id = "stone"
+name = "Stone"
+
+[[spell]]
+id = "spark"
+name = "Spark"
+category = "combat"
+level = 1
+schools = ["storm"]
+cost = [6, 5, 5, 5]                 # mana by mastery: none, basic, advanced, expert
+power = 10
+effect = [10, 10, 20, 30]
+polarity = "negative"
+
+[[spell]]
+id = "ward"
+name = "Ward"
+category = "combat"
+level = 2
+schools = ["stone", "storm"]
+cost = [8, 6, 6, 6]
+effect = [3, 3, 6, 6]
+polarity = "positive"
+
+[[spell]]
+id = "farsight"
+name = "Farsight"
+category = "adventure"
+level = 1
+schools = ["stone"]
+cost = [2, 1, 1, 1]
+effect = [0, 0, 0, 0]
+polarity = "neutral"
+
+[[spell]]
+id = "glare"                        # a creature ability: no school, may have level 0
+name = "Glare"
+category = "ability"
+level = 0
+cost = [0, 0, 0, 0]
+effect = [0, 0, 0, 0]
+polarity = "negative"
+
+[[secondary_skill]]
+id = "marksmanship"
+name = "Marksmanship"
+basic = [{ kind = "ranged_damage", bp = 1000 }]
+advanced = [{ kind = "ranged_damage", bp = 2500 }]
+expert = [{ kind = "ranged_damage", bp = 5000 }]
+
+[[secondary_skill]]
+id = "brawling"
+name = "Brawling"
+basic = [{ kind = "melee_damage", bp = 1000 }]
+advanced = [{ kind = "melee_damage", bp = 2000 }]
+expert = [{ kind = "melee_damage", bp = 3000 }]
+
+[[secondary_skill]]
+id = "plating"
+name = "Plating"
+basic = [{ kind = "damage_reduction", bp = 500 }]
+advanced = [{ kind = "damage_reduction", bp = 1000 }]
+expert = [{ kind = "damage_reduction", bp = 1500 }]
+
+[[secondary_skill]]
+id = "command"
+name = "Command"
+basic = [{ kind = "morale", amount = 1 }]
+advanced = [{ kind = "morale", amount = 2 }]
+expert = [{ kind = "morale", amount = 3 }]
+
+[[secondary_skill]]
+id = "omens"
+name = "Omens"
+basic = [{ kind = "luck", amount = 1 }]
+advanced = [{ kind = "luck", amount = 2 }]
+expert = [{ kind = "luck", amount = 2 }, { kind = "luck", amount = -1, affects = "enemy" }]
+
+[[secondary_skill]]
+id = "drill"
+name = "Drill"
+basic = [{ kind = "tactics", level = 1 }]
+advanced = [{ kind = "tactics", level = 2 }]
+expert = [{ kind = "tactics", level = 3 }]
+
+[[secondary_skill]]
+id = "gunnery"
+name = "Gunnery"
+basic = [{ kind = "artillery", shots = 1, double_damage_chance_bp = 5000 }]
+advanced = [{ kind = "artillery", shots = 2, double_damage_chance_bp = 7500 }]
+expert = [{ kind = "artillery", shots = 2, double_damage_chance_bp = 10000 }]
+
+[[secondary_skill]]
+id = "mending"
+name = "Mending"
+basic = [{ kind = "first_aid", heal_bp = 10000 }]
+advanced = [{ kind = "first_aid", heal_bp = 20000 }]
+expert = [{ kind = "first_aid", heal_bp = 30000 }]
+
+[[secondary_skill]]
+id = "parley"
+name = "Parley"
+basic = [{ kind = "surrender_discount", bp = 2000 }]
+advanced = [{ kind = "surrender_discount", bp = 4000 }]
+expert = [{ kind = "surrender_discount", bp = 6000 }]
+
+[[secondary_skill]]
+id = "wayfinding"                   # no battle effect (an adventure skill)
+name = "Wayfinding"
+
+[[hero_class]]
+id = "warden"
+name = "Warden"
+faction = "vale"
+primary = [2, 2, 1, 1]              # attack, defense, power, knowledge
+primary_gain = [[40, 40, 10, 10], [30, 30, 20, 20]]  # percent per level-up: levels 2-9, 10+
+skill_weights = { marksmanship = 6, brawling = 6, plating = 5, command = 8, omens = 3, drill = 4, gunnery = 4, mending = 2, parley = 2, wayfinding = 5 }
+
+[[hero_class]]
+id = "sage"
+name = "Sage"
+faction = "vale"
+primary = [0, 1, 2, 2]
+primary_gain = [[10, 15, 35, 40], [20, 20, 30, 30]]
+skill_weights = { omens = 6, parley = 5, mending = 5, wayfinding = 8 }
+
+[[hero]]
+id = "ansel"
+name = "Ansel"
+class = "warden"
+skills = [{ skill = "command", level = 1 }, { skill = "marksmanship", level = 1 }]
+army = [{ creature = "brute", count = [4, 7] }, { creature = "wisp", count = [2, 4] }, { creature = "wisp", count = [1, 2] }]
+specialty = [{ kind = "skill_specialty", skill = "marksmanship", bp_per_level = 500 }]
+
+[[hero]]
+id = "brea"
+name = "Brea"
+class = "warden"
+skills = [{ skill = "drill", level = 2 }]
+army = [{ creature = "brute", count = [2, 4] }]
+war_machines = ["bolt_thrower"]
+specialty = [{ kind = "creature_specialty", creature = "brute", bp_per_step = 500, speed = 1 }]
+
+[[hero]]
+id = "corwin"
+name = "Corwin"
+class = "warden"
+skills = [{ skill = "gunnery", level = 1 }]
+army = [{ creature = "wisp", count = [3, 6] }]
+specialty = [
+    { kind = "creature_stat", creatures = { creature = "wisp" }, stat = "attack", amount = 2 },
+    { kind = "creature_stat", creatures = { creature = "wisp" }, stat = "min_damage", amount = 1 },
+    { kind = "creature_stat", creatures = { creature = "wisp" }, stat = "max_damage", amount = 1 },
+    { kind = "creature_stat", creatures = { flag = "flying" }, stat = "defense", amount = 1 },
+]
+
+[[hero]]
+id = "dara"
+name = "Dara"
+class = "sage"
+skills = [{ skill = "mending", level = 1 }, { skill = "omens", level = 1 }]
+spell_book = true
+spells = ["spark"]
+army = [{ creature = "wisp", count = [5, 10] }]
+war_machines = ["aid_tent"]
+specialty = [{ kind = "spell_specialty", spell = "spark" }]
+
+[[hero]]
+id = "edda"
+name = "Edda"
+class = "sage"
+skills = [{ skill = "parley", level = 1 }]
+army = [{ creature = "wisp", count = [2, 3] }]
+specialty = [{ kind = "creature_stat", stat = "speed", amount = 1 }]
+
 [[profile]]
 id = "faithful"        # default: preserve/fix-optional quirks on
 quirks = { "quirk.battle.no_luck_without_hero" = true }    # Q-0003

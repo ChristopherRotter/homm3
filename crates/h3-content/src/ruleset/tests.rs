@@ -12,11 +12,11 @@ use crate::pack::{
 };
 use crate::quirks::QuirkRegistry;
 
-fn key(s: &str) -> ContentKey {
+pub(crate) fn key(s: &str) -> ContentKey {
     ContentKey::parse(s).unwrap()
 }
 
-fn creature(k: &str) -> CreatureDef {
+pub(crate) fn creature(k: &str) -> CreatureDef {
     CreatureDef {
         key: key(k),
         attack: 5,
@@ -29,7 +29,7 @@ fn creature(k: &str) -> CreatureDef {
     }
 }
 
-fn battle_def() -> BattleParamsDef {
+pub(crate) fn battle_def() -> BattleParamsDef {
     BattleParamsDef {
         field_width: 17,
         field_height: 11,
@@ -56,7 +56,7 @@ fn battle_def() -> BattleParamsDef {
     }
 }
 
-fn manifest(id: &str, depends: &[&str]) -> PackManifest {
+pub(crate) fn manifest(id: &str, depends: &[&str]) -> PackManifest {
     PackManifest {
         id: id.into(),
         version: "1".into(),
@@ -64,14 +64,14 @@ fn manifest(id: &str, depends: &[&str]) -> PackManifest {
     }
 }
 
-fn resource(k: &str) -> ResourceDef {
+pub(crate) fn resource(k: &str) -> ResourceDef {
     ResourceDef {
         key: key(k),
         name: "R".into(),
     }
 }
 
-fn faction(k: &str) -> FactionDef {
+pub(crate) fn faction(k: &str) -> FactionDef {
     FactionDef {
         key: key(k),
         name: "F".into(),
@@ -134,6 +134,7 @@ fn base() -> ContentPack {
             },
         ],
         battle: Some(battle_def()),
+        ..ContentPack::new(manifest("base", &[]))
     }
 }
 
@@ -229,7 +230,7 @@ fn hash_is_stable_and_sensitive() {
     );
 }
 
-const GOLDEN_BASE_HASH: u64 = 0x8689_5c6b_3859_ca06;
+const GOLDEN_BASE_HASH: u64 = 0x5f19_ee50_3509_8db1;
 
 fn expect(packs: &[ContentPack], profile: &str) -> CompileError {
     Ruleset::compile(packs, profile).unwrap_err()
@@ -576,6 +577,14 @@ fn error_messages() {
             "battle parameters: bad",
         ),
         (
+            CompileError::InvalidContent {
+                kind: "spell",
+                key: "a:s".into(),
+                reason: "bad",
+            },
+            "spell `a:s`: bad",
+        ),
+        (
             CompileError::UnknownProfile("a:p".into()),
             "unknown profile `a:p`",
         ),
@@ -867,6 +876,7 @@ fn full_patch() -> CreaturePatch {
             target: key("ext:c"),
             percent: 50,
         }]),
+        upgrades: Some(vec![key("ext:c")]),
     }
 }
 

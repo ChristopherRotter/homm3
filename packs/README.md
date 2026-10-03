@@ -146,6 +146,80 @@ the two attack patterns exclude each other. A ruleset has at most 8 distinct aur
 amount, `affects`; `MAX_AURA_VALUES`), which sizes the battle's modifier pool. The rule ids say
 which rule reads each kind.
 
+**Upgrades** (pack format v3, E04a T3): `upgrades = ["halberdier"]` on a creature (or an
+override, replacing the list) names the creature types it upgrades into: at most 3, not itself,
+none twice; references follow the reference rules and may name later creatures of the pack.
+Hero effects that select "a creature" apply to it and its direct upgrades.
+
+## Hero content (format v3, E04a T3)
+
+Spell schools, spells, secondary skills, hero classes and hero types (ADR-0013). References follow
+the reference rules above; every kind may refer to content of its dependency closure.
+
+```toml
+[[spell_school]]
+id = "storm"
+name = "Storm"
+
+[[spell]]                          # a data row; what a spell does is battle magic (E04b)
+id = "spark"
+name = "Spark"
+category = "combat"                # adventure | combat | ability (a creature ability)
+level = 1                          # 1..=5; abilities 0..=5
+schools = ["storm"]                # at least one; abilities none
+cost = [6, 5, 5, 5]                # mana by mastery: none, basic, advanced, expert
+power = 10                         # effect per point of spell power (default 0)
+effect = [10, 10, 20, 30]          # base effect by mastery
+polarity = "negative"              # positive | neutral | negative
+
+[[secondary_skill]]
+id = "marksmanship"
+name = "Marksmanship"
+basic = [{ kind = "ranged_damage", bp = 1000 }]   # hero effects per level (default [])
+advanced = [{ kind = "ranged_damage", bp = 2500 }]
+expert = [{ kind = "ranged_damage", bp = 5000 }]
+
+[[hero_class]]
+id = "warden"
+name = "Warden"
+faction = "vale"
+primary = [2, 2, 1, 1]             # starting attack, defense, power, knowledge
+primary_gain = [[40, 40, 10, 10], [30, 30, 20, 20]]  # level-up chances (%): levels 2-9, 10+; rows sum to 100
+skill_weights = { marksmanship = 6, command = 8 }    # level-up weights; unlisted skills weigh 0
+
+[[hero]]
+id = "ansel"
+name = "Ansel"
+class = "warden"
+skills = [{ skill = "command", level = 1 }]          # starting skills, levels 1..=3, at most 8
+spell_book = false                 # default false; starting `spells = [...]` need it
+army = [{ creature = "brute", count = [4, 7] }]       # at most army_slots stacks; 1 <= low <= high
+war_machines = ["bolt_thrower"]    # creatures with flag war_machine (not in `army`)
+specialty = [{ kind = "skill_specialty", skill = "marksmanship", bp_per_level = 500 }]
+```
+
+**Hero effects** (`h3_content::HeroEffect`, ADR-0013 §3): what a skill level or a specialty (from
+T3b: an artifact) gives. Percentages are **basis points** (`bp`, 1/100 %). The translation to the
+battle (`h3-heroes`, E04a T4) and the rules that read them come with E04a T4–T10. At most 16 per
+list; one entry per kind, except `morale`/`luck` for different sides and `creature_stat` for
+different creatures or statistics.
+
+| `kind` | Parameters | Meaning |
+|---|---|---|
+| `morale`, `luck` | `amount` (≠ 0), `affects` (`own` default, `enemy`, `both`) | battle-long morale/luck change of the affected stacks (Leadership, Luck) |
+| `ranged_damage`, `melee_damage` | `bp` (≥ 1) | base-damage bonus of the hero's shots (Ballista included) / melee attacks (Archery, Offense) |
+| `damage_reduction` | `bp` (1..=10000) | less physical damage to the hero's stacks (Armorer) |
+| `surrender_discount` | `bp` (1..=10000) | cheaper surrender (Diplomacy) |
+| `tactics` | `level` (1..=3) | the hero's Tactics level |
+| `artillery` | `shots` (≥ 1), `double_damage_chance_bp` (≤ 10000) | the hero commands its Ballista |
+| `first_aid` | `heal_bp` (≥ 1) | the hero commands its First Aid Tent; its largest heal grows by `heal_bp` of the tent's own `first_aid` maximum |
+| `creature_stat` | `creatures` (omitted: all; `{ creature = "x" }`: x and its upgrades; `{ flag = "dragon" }`), `stat` (`attack`, `defense`, `speed`, `hit_points`, `min_damage`, `max_damage`), `amount` (≠ 0) | fixed change of a creature statistic |
+| `skill_specialty` | `skill`, `bp_per_level` (≥ 1) | specialty: the skill's scalable values grow by `bp_per_level` of themselves per hero level |
+| `creature_specialty` | `creature`, `bp_per_step` (≥ 1), `speed` (default 0) | specialty: attack and defense of the creature and its upgrades grow by `bp_per_step` of the creature's value (rounded up) per full step of (creature level) hero levels; speed + `speed` |
+| `spell_specialty` | `spell` | specialty: stronger casts of the spell (formula per spell: E04b) |
+
+The three `*_specialty` kinds are allowed in a hero's `specialty` only.
+
 **Battle parameters** (`[battle]`, Tier 2; exactly one enabled pack provides them): field
 size, army slots, damage rolls, attack/defense rates and caps, Defend bonus, the formation rows
 `loose_formation` and `tight_formation` (`*_formation[n - 1]` = starting rows of an army with `n`
@@ -164,9 +238,9 @@ flags are off): the registered flags are in `h3_content::REGISTRY` and the quirk
 (`docs/rules/quirks-ledger.md`); the packs' `faithful` profiles turn Q-0003 on, `strict-fixed`
 off. Profile-level Tier-2 overrides are not implemented yet (backlog).
 
-The compiled ruleset's canonical hash (encoding v8, `RULESET_HASH_VERSION`) covers packs, profile,
-quirks, resources, terrains, factions, obstacles, all creature fields including abilities, and the battle parameters;
-replays record it.
+The compiled ruleset's canonical hash (encoding v9, `RULESET_HASH_VERSION`) covers packs, profile,
+quirks, resources, terrains, factions, obstacles, all creature fields including abilities and
+upgrades, the battle parameters and the hero content; replays record it.
 
 ## Scenarios
 

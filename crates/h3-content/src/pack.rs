@@ -8,6 +8,8 @@ use alloc::string::String;
 use alloc::vec::Vec;
 
 use crate::ability::AbilityDef;
+use crate::effect::HeroEffectDef;
+use crate::heroes::{SpellCategory, SpellPolarity};
 use crate::key::ContentKey;
 
 /// Identity and dependencies of a pack.
@@ -102,6 +104,9 @@ pub struct CreatureInfoDef {
     pub flags: Vec<String>,
     /// Abilities (ADR-0012), from the closed set [`crate::Ability`].
     pub abilities: Vec<AbilityDef>,
+    /// The creature types this one upgrades into (E04a T3; at most
+    /// [`crate::MAX_UPGRADES`]).
+    pub upgrades: Vec<ContentKey>,
 }
 
 impl Default for CreatureInfoDef {
@@ -121,6 +126,7 @@ impl Default for CreatureInfoDef {
             adventure_count: [0, 0],
             flags: Vec::new(),
             abilities: Vec::new(),
+            upgrades: Vec::new(),
         }
     }
 }
@@ -200,6 +206,105 @@ pub struct CreaturePatch {
     pub flags: Option<Vec<String>>,
     /// New abilities (replaces the whole list).
     pub abilities: Option<Vec<AbilityDef>>,
+    /// New upgrades (replaces the whole list).
+    pub upgrades: Option<Vec<ContentKey>>,
+}
+
+/// A school of magic (E04a T3): spells belong to schools, school skills raise their mastery.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct SpellSchoolDef {
+    /// Namespaced key.
+    pub key: ContentKey,
+    /// Display name.
+    pub name: String,
+}
+
+/// A spell's data row (E04a T3): the numbers of the original spell table. What a spell does is
+/// battle magic (E04b); no rule reads these values yet.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct SpellDef {
+    /// Namespaced key.
+    pub key: ContentKey,
+    /// Display name.
+    pub name: String,
+    /// Where it is used.
+    pub category: SpellCategory,
+    /// Spell level (1..=5; creature abilities 0..=5).
+    pub level: u8,
+    /// Schools it belongs to.
+    pub schools: Vec<ContentKey>,
+    /// Mana cost by mastery: none, basic, advanced, expert.
+    pub cost: [u16; 4],
+    /// Power factor (effect per point of spell power).
+    pub power: u16,
+    /// Base effect value by mastery: none, basic, advanced, expert.
+    pub effect: [u16; 4],
+    /// Positive, neutral or negative for its target.
+    pub polarity: SpellPolarity,
+}
+
+/// A secondary skill with the effects of its three levels (E04a T3).
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct SecondarySkillDef {
+    /// Namespaced key.
+    pub key: ContentKey,
+    /// Display name.
+    pub name: String,
+    /// Effects at Basic, Advanced and Expert. Effects that matter only outside battle are not
+    /// modelled yet (`packs/README.md`).
+    pub levels: [Vec<HeroEffectDef>; 3],
+}
+
+/// A hero class (E04a T3): the faction it belongs to, starting primary skills and the
+/// probabilities of a level-up (hero progression arrives with E08–E10).
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct HeroClassDef {
+    /// Namespaced key.
+    pub key: ContentKey,
+    /// Display name.
+    pub name: String,
+    /// The faction (town) of its heroes.
+    pub faction: ContentKey,
+    /// Starting primary skills: attack, defense, power, knowledge.
+    pub primary: [u8; 4],
+    /// Chance in percent that a level-up raises each primary skill, for levels 2–9 and 10+
+    /// (each row sums to 100).
+    pub primary_gain: [[u8; 4]; 2],
+    /// Relative weights of the secondary skills offered on level-ups; unlisted skills weigh 0.
+    pub skill_weights: Vec<(ContentKey, u8)>,
+}
+
+/// One stack of a hero type's starting army.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct StartingStackDef {
+    /// The creature type.
+    pub creature: ContentKey,
+    /// Size range `[low, high]`.
+    pub count: [u16; 2],
+}
+
+/// A hero type (E04a T3): who a hero is when it enters the game. Level, experience, artifacts and
+/// current skills belong to the hero's details (`h3-heroes`, ADR-0013).
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct HeroTypeDef {
+    /// Namespaced key.
+    pub key: ContentKey,
+    /// Display name.
+    pub name: String,
+    /// Hero class.
+    pub class: ContentKey,
+    /// Starting secondary skills with their levels (1..=3), in display order.
+    pub skills: Vec<(ContentKey, u8)>,
+    /// Starts with a spell book.
+    pub spell_book: bool,
+    /// Starting spells (need the spell book).
+    pub spells: Vec<ContentKey>,
+    /// Starting army.
+    pub army: Vec<StartingStackDef>,
+    /// Starting war machines (creature types with flag `war_machine`).
+    pub war_machines: Vec<ContentKey>,
+    /// The specialty, as effects (empty: none, or not modelled yet).
+    pub specialty: Vec<HeroEffectDef>,
 }
 
 /// Battle parameters (Tier 2). Exactly one pack in a ruleset provides them.
@@ -279,6 +384,16 @@ pub struct ContentPack {
     pub creatures: Vec<CreatureDef>,
     /// Changes to creatures of packs this pack depends on.
     pub creature_overrides: Vec<CreatureOverride>,
+    /// Spell schools.
+    pub spell_schools: Vec<SpellSchoolDef>,
+    /// Spells (data rows).
+    pub spells: Vec<SpellDef>,
+    /// Secondary skills.
+    pub skills: Vec<SecondarySkillDef>,
+    /// Hero classes.
+    pub hero_classes: Vec<HeroClassDef>,
+    /// Hero types.
+    pub heroes: Vec<HeroTypeDef>,
     /// Profiles.
     pub profiles: Vec<ProfileDef>,
     /// Battle parameters, if this pack provides them.
@@ -296,6 +411,11 @@ impl ContentPack {
             obstacles: Vec::new(),
             creatures: Vec::new(),
             creature_overrides: Vec::new(),
+            spell_schools: Vec::new(),
+            spells: Vec::new(),
+            skills: Vec::new(),
+            hero_classes: Vec::new(),
+            heroes: Vec::new(),
             profiles: Vec::new(),
             battle: None,
         }

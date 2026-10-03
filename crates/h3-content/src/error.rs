@@ -68,6 +68,15 @@ pub enum CompileError {
         /// What is wrong.
         reason: &'static str,
     },
+    /// A spell, secondary skill, hero class or hero type is invalid (E04a T3).
+    InvalidContent {
+        /// What kind of entry.
+        kind: &'static str,
+        /// Its key.
+        key: String,
+        /// What is wrong.
+        reason: &'static str,
+    },
     /// The selected profile does not exist.
     UnknownProfile(String),
     /// A profile sets a quirk flag the engine does not know.
@@ -112,6 +121,7 @@ impl fmt::Display for CompileError {
             }
             Self::InvalidBattleParams(reason) => write!(f, "battle parameters: {reason}"),
             Self::InvalidObstacle { key, reason } => write!(f, "obstacle `{key}`: {reason}"),
+            Self::InvalidContent { kind, key, reason } => write!(f, "{kind} `{key}`: {reason}"),
             Self::UnknownProfile(key) => write!(f, "unknown profile `{key}`"),
             Self::UnknownQuirk { profile, flag } => {
                 write!(f, "profile `{profile}` sets unknown quirk flag `{flag}`")

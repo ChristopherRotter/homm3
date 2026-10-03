@@ -1,0 +1,688 @@
+//! Hero effects: the closed set of typed primitives a secondary-skill level or a hero's
+//! specialty (and, from E04a T3b, an artifact) can carry (ADR-0013 §3, ADR-0006 Tier 3).
+//!
+//! An effect states *what* a source gives and how its value is computed; it does not apply
+//! anything. The pure translation in `h3-heroes` (E04a T4) resolves a hero's effects into the
+//! battle's own `BattleEffect`s and typed `BattleHero` fields, and the rules that read them carry
+//! catalog ids (`HER-…`, `BAT-…`). Percentages are basis points (1/100 %), so every skill and
+//! specialty product stays an exact integer.
+//!
+//! [`HeroEffect`] is generic over how creature types (`C`), secondary skills (`K`) and spells
+//! (`S`) are referenced: [`ContentKey`]s in packs ([`HeroEffectDef`]), handles once compiled
+//! ([`CompiledHeroEffect`]).
+//!
+//! Effects that only matter outside battle (adventure map, towns, outcome application) get
+//! variants with the epic that reads them; the pack docs list which sources carry such effects.
+
+use h3_kernel::{CanonicalHash, StateHasher};
+
+use crate::flags::CreatureFlag;
+use crate::heroes::{SkillId, SpellId};
+use crate::key::ContentKey;
+use crate::ruleset::CreatureTypeId;
+
+/// Most effects in one list (a skill level, a specialty).
+pub const MAX_EFFECTS: usize = 16;
+
+/// Highest secondary-skill level (Expert); levels are 1 (Basic) to 3 (Expert).
+pub const MAX_SKILL_LEVEL: u8 = 3;
+
+/// The largest basis-point value of a share that cannot exceed the whole (100 %).
+pub const FULL_BP: u16 = 10_000;
+
+/// Whose stacks a morale or luck effect changes.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
+pub enum Affects {
+    /// The stacks of the hero's own side.
+    Own,
+    /// The stacks of the opposing side.
+    Enemy,
+    /// The stacks of both sides.
+    Both,
+}
+
+impl Affects {
+    /// All values, in code order.
+    pub const ALL: [Self; 3] = [Self::Own, Self::Enemy, Self::Both];
+
+    /// Pack name.
+    pub const fn name(self) -> &'static str {
+        match self {
+            Self::Own => "own",
+            Self::Enemy => "enemy",
+            Self::Both => "both",
+        }
+    }
+
+    /// Looks a value up by its pack name.
+    pub fn from_name(name: &str) -> Option<Self> {
+        Self::ALL.into_iter().find(|a| a.name() == name)
+    }
+}
+
+/// A creature statistic an effect changes.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
+pub enum CreatureStat {
+    /// Attack skill.
+    Attack,
+    /// Defense skill.
+    Defense,
+    /// Speed.
+    Speed,
+    /// Hit points per creature.
+    HitPoints,
+    /// Minimum damage per creature.
+    MinDamage,
+    /// Maximum damage per creature.
+    MaxDamage,
+}
+
+impl CreatureStat {
+    /// All values, in code order.
+    pub const ALL: [Self; 6] = [
+        Self::Attack,
+        Self::Defense,
+        Self::Speed,
+        Self::HitPoints,
+        Self::MinDamage,
+        Self::MaxDamage,
+    ];
+
+    /// Pack name.
+    pub const fn name(self) -> &'static str {
+        match self {
+            Self::Attack => "attack",
+            Self::Defense => "defense",
+            Self::Speed => "speed",
+            Self::HitPoints => "hit_points",
+            Self::MinDamage => "min_damage",
+            Self::MaxDamage => "max_damage",
+        }
+    }
+
+    /// Looks a value up by its pack name.
+    pub fn from_name(name: &str) -> Option<Self> {
+        Self::ALL.into_iter().find(|s| s.name() == name)
+    }
+}
+
+/// Which creatures of the hero's army an effect applies to.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum CreatureSelector<C> {
+    /// Every creature, war machines included.
+    All,
+    /// Creatures with this flag (dragons, living creatures, shooters, …).
+    Flag(CreatureFlag),
+    /// This creature type and its direct upgrades (the creature's `upgrades` list).
+    Creature(C),
+}
+
+impl<C> CreatureSelector<C> {
+    /// Maps the creature reference.
+    pub fn try_map<D, E>(
+        &self,
+        f: impl FnOnce(&C) -> Result<D, E>,
+    ) -> Result<CreatureSelector<D>, E> {
+        Ok(match self {
+            Self::All => CreatureSelector::All,
+            Self::Flag(flag) => CreatureSelector::Flag(*flag),
+            Self::Creature(c) => CreatureSelector::Creature(f(c)?),
+        })
+    }
+}
+
+/// One hero effect. `C`, `K` and `S` are how creature types, secondary skills and spells are
+/// referenced.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum HeroEffect<C, K, S> {
+    /// Changes the morale of the affected stacks for the whole battle (Leadership).
+    Morale {
+        /// Morale change (not 0).
+        amount: i8,
+        /// Whose stacks.
+        affects: Affects,
+    },
+    /// Changes the luck of the affected stacks for the whole battle (Luck).
+    Luck {
+        /// Luck change (not 0).
+        amount: i8,
+        /// Whose stacks.
+        affects: Affects,
+    },
+    /// Raises the base damage of the hero's shots, the Ballista's included (Archery).
+    RangedDamage {
+        /// Bonus in basis points (≥ 1).
+        bp: u16,
+    },
+    /// Raises the base damage of the hero's melee attacks and retaliations (Offense).
+    MeleeDamage {
+        /// Bonus in basis points (≥ 1).
+        bp: u16,
+    },
+    /// Reduces the physical damage the hero's stacks take (Armorer).
+    DamageReduction {
+        /// Reduction in basis points (1..=10 000).
+        bp: u16,
+    },
+    /// Reduces the price of the hero's surrender (Diplomacy).
+    SurrenderDiscount {
+        /// Discount in basis points (1..=10 000).
+        bp: u16,
+    },
+    /// Gives the hero this level of the Tactics skill (the battle compares both sides').
+    Tactics {
+        /// Tactics level (1..=3).
+        level: u8,
+    },
+    /// The hero commands its Ballista (Artillery).
+    Artillery {
+        /// Shots per turn (≥ 1).
+        shots: u8,
+        /// Chance of each shot to deal double base damage, basis points (≤ 10 000).
+        double_damage_chance_bp: u16,
+    },
+    /// The hero commands its First Aid Tent, whose largest heal grows by this share of the
+    /// tent's own `first_aid` maximum (First Aid).
+    FirstAid {
+        /// Increase of the maximum heal, basis points of the tent's maximum (≥ 1).
+        heal_bp: u16,
+    },
+    /// Changes a statistic of the selected creatures of the hero's army by a fixed amount
+    /// (fixed creature specialties, Sir Mullich, the dragon specialists).
+    CreatureStat {
+        /// Which creatures.
+        creatures: CreatureSelector<C>,
+        /// Which statistic.
+        stat: CreatureStat,
+        /// Change (not 0).
+        amount: i16,
+    },
+    /// Specialty: the scalable values of the hero's effects from `skill` grow by `bp_per_level`
+    /// basis points of themselves per hero level (`docs/formats/installation.md` §7.4).
+    SkillSpecialty {
+        /// The secondary skill.
+        skill: K,
+        /// Growth per hero level, basis points (≥ 1).
+        bp_per_level: u16,
+    },
+    /// Specialty: attack and defense of `creature` and its direct upgrades grow by `bp_per_step`
+    /// basis points of the creature's own value (rounded up) for every full step of as many
+    /// hero levels as the creature's level; speed grows by `speed`.
+    CreatureSpecialty {
+        /// The base creature.
+        creature: C,
+        /// Growth per step, basis points of the creature's own attack and defense (≥ 1).
+        bp_per_step: u16,
+        /// Speed bonus.
+        speed: u8,
+    },
+    /// Specialty: the hero's casts of `spell` are stronger (formula per spell: E04b).
+    SpellSpecialty {
+        /// The spell.
+        spell: S,
+    },
+}
+
+/// An effect as written in a pack (references are keys).
+pub type HeroEffectDef = HeroEffect<ContentKey, ContentKey, ContentKey>;
+/// An effect with resolved references.
+pub type CompiledHeroEffect = HeroEffect<CreatureTypeId, SkillId, SpellId>;
+
+impl<C, K, S> HeroEffect<C, K, S> {
+    /// Pack names, indexed by [`HeroEffect::code`].
+    pub const NAMES: [&'static str; 13] = [
+        "morale",
+        "luck",
+        "ranged_damage",
+        "melee_damage",
+        "damage_reduction",
+        "surrender_discount",
+        "tactics",
+        "artillery",
+        "first_aid",
+        "creature_stat",
+        "skill_specialty",
+        "creature_specialty",
+        "spell_specialty",
+    ];
+
+    /// Stable code of the variant (canonical hash, duplicate checks).
+    pub const fn code(&self) -> u8 {
+        match self {
+            Self::Morale { .. } => 0,
+            Self::Luck { .. } => 1,
+            Self::RangedDamage { .. } => 2,
+            Self::MeleeDamage { .. } => 3,
+            Self::DamageReduction { .. } => 4,
+            Self::SurrenderDiscount { .. } => 5,
+            Self::Tactics { .. } => 6,
+            Self::Artillery { .. } => 7,
+            Self::FirstAid { .. } => 8,
+            Self::CreatureStat { .. } => 9,
+            Self::SkillSpecialty { .. } => 10,
+            Self::CreatureSpecialty { .. } => 11,
+            Self::SpellSpecialty { .. } => 12,
+        }
+    }
+
+    /// Pack name of the variant.
+    pub fn name(&self) -> &'static str {
+        // `code` is always below `NAMES.len()`.
+        Self::NAMES
+            .get(usize::from(self.code()))
+            .copied()
+            .unwrap_or_default()
+    }
+
+    /// Whether the variant describes a hero's specialty (allowed in specialties only).
+    pub const fn is_specialty(&self) -> bool {
+        matches!(
+            self,
+            Self::SkillSpecialty { .. }
+                | Self::CreatureSpecialty { .. }
+                | Self::SpellSpecialty { .. }
+        )
+    }
+
+    /// Maps the references.
+    pub fn try_map<C2, K2, S2, E>(
+        &self,
+        creature: impl FnOnce(&C) -> Result<C2, E>,
+        skill: impl FnOnce(&K) -> Result<K2, E>,
+        spell: impl FnOnce(&S) -> Result<S2, E>,
+    ) -> Result<HeroEffect<C2, K2, S2>, E> {
+        Ok(match self {
+            Self::Morale { amount, affects } => HeroEffect::Morale {
+                amount: *amount,
+                affects: *affects,
+            },
+            Self::Luck { amount, affects } => HeroEffect::Luck {
+                amount: *amount,
+                affects: *affects,
+            },
+            Self::RangedDamage { bp } => HeroEffect::RangedDamage { bp: *bp },
+            Self::MeleeDamage { bp } => HeroEffect::MeleeDamage { bp: *bp },
+            Self::DamageReduction { bp } => HeroEffect::DamageReduction { bp: *bp },
+            Self::SurrenderDiscount { bp } => HeroEffect::SurrenderDiscount { bp: *bp },
+            Self::Tactics { level } => HeroEffect::Tactics { level: *level },
+            Self::Artillery {
+                shots,
+                double_damage_chance_bp,
+            } => HeroEffect::Artillery {
+                shots: *shots,
+                double_damage_chance_bp: *double_damage_chance_bp,
+            },
+            Self::FirstAid { heal_bp } => HeroEffect::FirstAid { heal_bp: *heal_bp },
+            Self::CreatureStat {
+                creatures,
+                stat,
+                amount,
+            } => HeroEffect::CreatureStat {
+                creatures: creatures.try_map(creature)?,
+                stat: *stat,
+                amount: *amount,
+            },
+            Self::SkillSpecialty {
+                skill: k,
+                bp_per_level,
+            } => HeroEffect::SkillSpecialty {
+                skill: skill(k)?,
+                bp_per_level: *bp_per_level,
+            },
+            Self::CreatureSpecialty {
+                creature: c,
+                bp_per_step,
+                speed,
+            } => HeroEffect::CreatureSpecialty {
+                creature: creature(c)?,
+                bp_per_step: *bp_per_step,
+                speed: *speed,
+            },
+            Self::SpellSpecialty { spell: s } => HeroEffect::SpellSpecialty { spell: spell(s)? },
+        })
+    }
+
+    /// Why the parameters are invalid, if they are.
+    pub fn parameter_error(&self) -> Option<&'static str> {
+        match self {
+            Self::Morale { amount: 0, .. } | Self::Luck { amount: 0, .. } => {
+                Some("morale and luck amounts must not be 0")
+            }
+            Self::RangedDamage { bp: 0 } | Self::MeleeDamage { bp: 0 } => {
+                Some("damage bonuses must be at least 1 bp")
+            }
+            Self::DamageReduction { bp } | Self::SurrenderDiscount { bp }
+                if !(1..=FULL_BP).contains(bp) =>
+            {
+                Some("damage_reduction and surrender_discount need 1..=10000 bp")
+            }
+            Self::Tactics { level } if !(1..=MAX_SKILL_LEVEL).contains(level) => {
+                Some("tactics level must be 1..=3")
+            }
+            Self::Artillery { shots: 0, .. } => Some("artillery shots must be at least 1"),
+            Self::Artillery {
+                double_damage_chance_bp,
+                ..
+            } if *double_damage_chance_bp > FULL_BP => {
+                Some("artillery double_damage_chance_bp must be at most 10000")
+            }
+            Self::FirstAid { heal_bp: 0 } => Some("first_aid heal_bp must be at least 1"),
+            Self::CreatureStat { amount: 0, .. } => Some("creature_stat amount must not be 0"),
+            Self::SkillSpecialty {
+                bp_per_level: 0, ..
+            } => Some("skill_specialty bp_per_level must be at least 1"),
+            Self::CreatureSpecialty { bp_per_step: 0, .. } => {
+                Some("creature_specialty bp_per_step must be at least 1")
+            }
+            _ => None,
+        }
+    }
+}
+
+impl<C: PartialEq, K, S> HeroEffect<C, K, S> {
+    /// Whether two effects may not both appear in one list: the same variant, except morale or
+    /// luck for different sides and `creature_stat` entries for different creatures or
+    /// statistics.
+    fn collides(&self, other: &Self) -> bool {
+        match (self, other) {
+            (Self::Morale { affects: a, .. }, Self::Morale { affects: b, .. })
+            | (Self::Luck { affects: a, .. }, Self::Luck { affects: b, .. }) => a == b,
+            (
+                Self::CreatureStat {
+                    creatures: a,
+                    stat: x,
+                    ..
+                },
+                Self::CreatureStat {
+                    creatures: b,
+                    stat: y,
+                    ..
+                },
+            ) => a == b && x == y,
+            _ => self.code() == other.code(),
+        }
+    }
+}
+
+/// Why an effect list is invalid, if it is: too long, invalid parameters, an effect listed twice,
+/// or a specialty variant where `specialty` is false.
+pub(crate) fn list_error<C: PartialEq, K, S>(
+    list: &[HeroEffect<C, K, S>],
+    specialty: bool,
+) -> Option<&'static str> {
+    if list.len() > MAX_EFFECTS {
+        return Some("more than 16 effects");
+    }
+    if let Some(e) = list.iter().find_map(HeroEffect::parameter_error) {
+        return Some(e);
+    }
+    if !specialty && list.iter().any(HeroEffect::is_specialty) {
+        return Some("specialty effects are allowed in a hero's specialty only");
+    }
+    for (i, a) in list.iter().enumerate() {
+        let earlier = list.get(..i).unwrap_or(&[]);
+        if earlier.iter().any(|b| a.collides(b)) {
+            return Some("an effect is listed twice");
+        }
+    }
+    None
+}
+
+const fn signed(v: i8) -> u8 {
+    v.to_le_bytes()[0]
+}
+
+const fn affects_code(a: Affects) -> u8 {
+    a as u8
+}
+
+impl CanonicalHash for CompiledHeroEffect {
+    fn hash_into(&self, h: &mut StateHasher) {
+        h.write_u8(self.code());
+        match *self {
+            Self::Morale { amount, affects } | Self::Luck { amount, affects } => {
+                h.write_u8(signed(amount));
+                h.write_u8(affects_code(affects));
+            }
+            Self::RangedDamage { bp }
+            | Self::MeleeDamage { bp }
+            | Self::DamageReduction { bp }
+            | Self::SurrenderDiscount { bp } => h.write_u16(bp),
+            Self::Tactics { level } => h.write_u8(level),
+            Self::Artillery {
+                shots,
+                double_damage_chance_bp,
+            } => {
+                h.write_u8(shots);
+                h.write_u16(double_damage_chance_bp);
+            }
+            Self::FirstAid { heal_bp } => h.write_u16(heal_bp),
+            Self::CreatureStat {
+                creatures,
+                stat,
+                amount,
+            } => {
+                match creatures {
+                    CreatureSelector::All => h.write_u8(0),
+                    CreatureSelector::Flag(flag) => {
+                        h.write_u8(1);
+                        h.write_u32(flag.bit());
+                    }
+                    CreatureSelector::Creature(c) => {
+                        h.write_u8(2);
+                        c.hash_into(h);
+                    }
+                }
+                h.write_u8(stat as u8);
+                h.write_bytes(&amount.to_le_bytes());
+            }
+            Self::SkillSpecialty {
+                skill,
+                bp_per_level,
+            } => {
+                skill.hash_into(h);
+                h.write_u16(bp_per_level);
+            }
+            Self::CreatureSpecialty {
+                creature,
+                bp_per_step,
+                speed,
+            } => {
+                creature.hash_into(h);
+                h.write_u16(bp_per_step);
+                h.write_u8(speed);
+            }
+            Self::SpellSpecialty { spell } => spell.hash_into(h),
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    extern crate std;
+
+    use std::vec::Vec;
+
+    use super::*;
+
+    type E = HeroEffect<u8, u8, u8>;
+
+    fn every() -> Vec<E> {
+        std::vec![
+            E::Morale {
+                amount: 1,
+                affects: Affects::Own,
+            },
+            E::Luck {
+                amount: -1,
+                affects: Affects::Both,
+            },
+            E::RangedDamage { bp: 1000 },
+            E::MeleeDamage { bp: 1000 },
+            E::DamageReduction { bp: 500 },
+            E::SurrenderDiscount { bp: 2000 },
+            E::Tactics { level: 3 },
+            E::Artillery {
+                shots: 2,
+                double_damage_chance_bp: 5000,
+            },
+            E::FirstAid { heal_bp: 10_000 },
+            E::CreatureStat {
+                creatures: CreatureSelector::Creature(1),
+                stat: CreatureStat::Attack,
+                amount: 5,
+            },
+            E::SkillSpecialty {
+                skill: 2,
+                bp_per_level: 500,
+            },
+            E::CreatureSpecialty {
+                creature: 3,
+                bp_per_step: 500,
+                speed: 1,
+            },
+            E::SpellSpecialty { spell: 4 },
+        ]
+    }
+
+    #[test]
+    fn names_follow_codes_and_lists_validate() {
+        let all = every();
+        for (i, e) in all.iter().enumerate() {
+            assert_eq!(usize::from(e.code()), i);
+            assert_eq!(e.name(), E::NAMES[i]);
+            assert_eq!(e.parameter_error(), None, "{e:?}");
+            assert_eq!(e.is_specialty(), e.code() >= 10, "{e:?}");
+        }
+        assert_eq!(list_error(&all, true), None);
+        assert_eq!(
+            list_error(&all, false),
+            Some("specialty effects are allowed in a hero's specialty only")
+        );
+        let mut twice = std::vec![all[2], all[2]];
+        assert_eq!(list_error(&twice, false), Some("an effect is listed twice"));
+        // Creature stats collide only for the same creatures and statistic.
+        let stat = |creatures, stat| E::CreatureStat {
+            creatures,
+            stat,
+            amount: 1,
+        };
+        twice = std::vec![
+            stat(CreatureSelector::All, CreatureStat::Speed),
+            stat(CreatureSelector::All, CreatureStat::Attack),
+            stat(
+                CreatureSelector::Flag(CreatureFlag::Dragon),
+                CreatureStat::Attack
+            ),
+        ];
+        assert_eq!(list_error(&twice, false), None);
+        twice.push(stat(CreatureSelector::All, CreatureStat::Speed));
+        assert_eq!(list_error(&twice, false), Some("an effect is listed twice"));
+        // Morale and luck collide only for the same side.
+        let luck = |affects| E::Luck { amount: 1, affects };
+        let mut sides = std::vec![luck(Affects::Own), luck(Affects::Enemy)];
+        assert_eq!(list_error(&sides, false), None);
+        sides.push(luck(Affects::Own));
+        assert_eq!(list_error(&sides, false), Some("an effect is listed twice"));
+        let morale = |affects| E::Morale { amount: 1, affects };
+        let both = [morale(Affects::Both), morale(Affects::Both)];
+        assert_eq!(list_error(&both, false), Some("an effect is listed twice"));
+        let long = std::vec![E::Tactics { level: 1 }; MAX_EFFECTS + 1];
+        assert_eq!(list_error(&long, false), Some("more than 16 effects"));
+        assert_eq!(
+            list_error(&[E::Tactics { level: 0 }], false),
+            Some("tactics level must be 1..=3")
+        );
+    }
+
+    #[test]
+    fn parameter_errors() {
+        let bad = [
+            E::Morale {
+                amount: 0,
+                affects: Affects::Own,
+            },
+            E::Luck {
+                amount: 0,
+                affects: Affects::Enemy,
+            },
+            E::RangedDamage { bp: 0 },
+            E::MeleeDamage { bp: 0 },
+            E::DamageReduction { bp: 0 },
+            E::SurrenderDiscount { bp: 10_001 },
+            E::Tactics { level: 4 },
+            E::Artillery {
+                shots: 0,
+                double_damage_chance_bp: 0,
+            },
+            E::Artillery {
+                shots: 1,
+                double_damage_chance_bp: 10_001,
+            },
+            E::FirstAid { heal_bp: 0 },
+            E::CreatureStat {
+                creatures: CreatureSelector::All,
+                stat: CreatureStat::HitPoints,
+                amount: 0,
+            },
+            E::SkillSpecialty {
+                skill: 0,
+                bp_per_level: 0,
+            },
+            E::CreatureSpecialty {
+                creature: 0,
+                bp_per_step: 0,
+                speed: 0,
+            },
+        ];
+        for e in bad {
+            assert!(e.parameter_error().is_some(), "{e:?}");
+        }
+    }
+
+    #[test]
+    fn names_round_trip() {
+        for a in Affects::ALL {
+            assert_eq!(Affects::from_name(a.name()), Some(a));
+        }
+        for s in CreatureStat::ALL {
+            assert_eq!(CreatureStat::from_name(s.name()), Some(s));
+        }
+        assert_eq!(Affects::from_name("allies"), None);
+        assert_eq!(CreatureStat::from_name("luck"), None);
+    }
+
+    #[test]
+    fn try_map_keeps_parameters_and_maps_references() {
+        let plus = |v: &u8| Ok::<u16, ()>(u16::from(*v) + 100);
+        for e in every() {
+            let m = e.try_map(plus, plus, plus).unwrap();
+            assert_eq!(m.code(), e.code());
+            assert_eq!(m.parameter_error(), None);
+        }
+        let mapped = E::CreatureSpecialty {
+            creature: 1,
+            bp_per_step: 500,
+            speed: 1,
+        }
+        .try_map(plus, plus, plus)
+        .unwrap();
+        assert_eq!(
+            mapped,
+            HeroEffect::CreatureSpecialty {
+                creature: 101,
+                bp_per_step: 500,
+                speed: 1
+            }
+        );
+        let fail = |_: &u8| Err::<u16, ()>(());
+        assert_eq!(
+            E::SpellSpecialty { spell: 1 }.try_map(plus, plus, fail),
+            Err(())
+        );
+        assert_eq!(
+            CreatureSelector::<u8>::Flag(CreatureFlag::Dragon).try_map(fail),
+            Ok(CreatureSelector::Flag(CreatureFlag::Dragon))
+        );
+    }
+}
