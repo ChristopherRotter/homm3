@@ -938,7 +938,7 @@ retrieved = "2026-10-03"
 [[source]]
 id = "wiki-artillery"
 kind = "wiki"
-ref = "Artillery - Heroes 3 wiki: the hero controls the Ballista; SoD Basic 50 % chance of double damage, Advanced and Expert the Ballista shoots twice, 75 %/100 % (the skill text says two shots at every level: dispute D1, experiment batch 1a)"
+ref = "Artillery - Heroes 3 wiki: the hero controls the Ballista; SoD Basic 50 % chance of double damage, Advanced and Expert the Ballista shoots twice, 75 %/100 % (the skill text says two shots at every level; experiment batch 1a observed one shot at Basic and two at Expert, dispute D1)"
 url = "https://heroes.thelazy.net/index.php/Artillery"
 retrieved = "2026-10-03"
 

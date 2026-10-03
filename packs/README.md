@@ -231,10 +231,12 @@ layouts: `docs/formats/installation.md` §6–§7, `crates/h3-harvest/data/gapfi
 - Spells: town chances, AI values and the target/flag attributes (E04b, E09); hero classes:
   aggression and tavern weights (E09); hero availability (campaign heroes, Lord Haart the Knight
   retired by the expansions; E08–E10). Artifacts follow in E04a T3b.
-- Values pending an experiment: Artillery's shots at Basic (dispute D1, batch 1a; the gap-fill
-  follows VCMI and the wiki), Catherine's and Roland's Swordsmen specialty (H-1, batch 1a; the
-  harvest follows the executable: Swordsman for Catherine, Crusader for Roland), Xeron's +1 speed
-  (H-2; VCMI and the wiki).
+- Checked by experiment batch 1a (SoD, `experiments/results/E04a-batch-1a.md`): Artillery gives
+  one Ballista shot at Basic and two at Expert (R6, R7; dispute D1 goes to VCMI and the wiki, not
+  the skill text); the creature specialties follow the executable's specialty table: Catherine
+  and Sorsha raise Swordsmen and Crusaders, Roland only Crusaders (B4–B6, dispute H-1; the wiki's
+  "Catherine only Crusaders" does not hold in SoD). Xeron's +1 speed (H-2) is VCMI and the wiki,
+  not observed yet.
 
 **Battle parameters** (`[battle]`, Tier 2; exactly one enabled pack provides them): field
 size, army slots, damage rolls, attack/defense rates and caps, Defend bonus, the formation rows
