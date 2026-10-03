@@ -910,3 +910,90 @@ creature = "Ammo Cart"
 abilities = [{ kind = "ammo_supply" }]
 sources = ["wiki-ammo-cart"]
 
+# ---------------------------------------------------------------------------------------------
+# Hero content (E04a T3): what the executable's hero tables and the text tables do not hold.
+# ---------------------------------------------------------------------------------------------
+
+[[source]]
+id = "vcmi-elemental-upgrades"
+kind = "vcmi"
+ref = "config/creatures/conflux.json (1.7.5): the Air, Water, Fire and Earth Elementals upgrade to Storm, Ice, Energy and Magma Elementals; every other upgrade matches the harvester's pairing rule (checked 2026-10-03)"
+url = "https://github.com/vcmi/vcmi/blob/1.7.5/config/creatures/conflux.json"
+retrieved = "2026-10-03"
+
+[[source]]
+id = "vcmi-skills"
+kind = "vcmi"
+ref = "config/skills.json (1.7.5): tactics BEFORE_BATTLE_REPOSITION 2/4/6 (zones of 3/5/7 columns, levels 1-3); artillery BONUS_DAMAGE_CHANCE 50/75/100 and HERO_GRANTS_ATTACKS 0/1/1 (one, two, two shots)"
+url = "https://github.com/vcmi/vcmi/blob/1.7.5/config/skills.json"
+retrieved = "2026-10-03"
+
+[[source]]
+id = "wiki-tactics"
+kind = "wiki"
+ref = "Tactics - Heroes 3 wiki: placement within 3/5/7 rows at Basic/Advanced/Expert; negates one to three levels of the enemy's Tactics"
+url = "https://heroes.thelazy.net/index.php/Tactics"
+retrieved = "2026-10-03"
+
+[[source]]
+id = "wiki-artillery"
+kind = "wiki"
+ref = "Artillery - Heroes 3 wiki: the hero controls the Ballista; SoD Basic 50 % chance of double damage, Advanced and Expert the Ballista shoots twice, 75 %/100 % (the skill text says two shots at every level: dispute D1, experiment batch 1a)"
+url = "https://heroes.thelazy.net/index.php/Artillery"
+retrieved = "2026-10-03"
+
+[[source]]
+id = "wiki-hero-specialty"
+kind = "wiki"
+ref = "Hero specialty - Heroes 3 wiki (SoD branch): creature specialists raise attack and defense of the creature and its upgrade by 5 % of the base value per n hero levels (n = the creature's level; the Ballista every 5 levels), rounded up, and speed by 1 (not the Ballista); Xeron: Devils +4 attack, +2 defense, +1 speed"
+url = "https://heroes.thelazy.net/index.php/Hero_specialty"
+retrieved = "2026-10-03"
+
+[[source]]
+id = "vcmi-specialties"
+kind = "vcmi"
+ref = "lib/entities/hero/CHeroHandler.cpp createCreatureSpecialty and config/gameConfig.json specialtyCreatureGrowth = 5 (1.7.5): +5 % of the creature's value per step, +1 speed; config/heroes/special.json: Xeron STACKS_SPEED +1 for Devils"
+url = "https://github.com/vcmi/vcmi/blob/1.7.5/lib/entities/hero/CHeroHandler.cpp"
+retrieved = "2026-10-03"
+
+[heroes]
+# Upgrades the harvester's pairing rule (consecutive even/odd ids of one town and level) cannot
+# find: the executable gives the upgraded elementals different levels (quirk S-05).
+upgrades = [
+    ["Air Elemental", "Storm Elemental"],
+    ["Water Elemental", "Ice Elemental"],
+    ["Fire Elemental", "Energy Elemental"],
+    ["Earth Elemental", "Magma Elemental"],
+]
+upgrade_sources = ["vcmi-elemental-upgrades"]
+
+# Creature specialists (specialty kind 1). The executable's record holds only the creature; the
+# formula is code. Step = the creature's level (the Ballista's level is 5).
+[heroes.creature_specialty]
+bp_per_step = 500
+speed = 1
+war_machine_speed = 0           # the wiki excludes the Ballista; VCMI gives it +1 too
+sources = ["wiki-hero-specialty", "vcmi-specialties"]
+
+# Skills whose values are not in the executable's skill tables (installation.md §7.4).
+[[heroes.skill_effects]]
+skill = "Tactics"
+basic = [{ kind = "tactics", level = 1 }]
+advanced = [{ kind = "tactics", level = 2 }]
+expert = [{ kind = "tactics", level = 3 }]
+sources = ["wiki-tactics", "vcmi-skills"]
+
+[[heroes.skill_effects]]
+skill = "Artillery"
+basic = [{ kind = "artillery", shots = 1, double_damage_chance_bp = 5000 }]
+advanced = [{ kind = "artillery", shots = 2, double_damage_chance_bp = 7500 }]
+expert = [{ kind = "artillery", shots = 2, double_damage_chance_bp = 10000 }]
+sources = ["wiki-artillery", "vcmi-skills"]
+
+# Specialty parts the executable's fixed-stat record has no field for (dispute H-2: speed).
+[[heroes.specialty_extra]]
+hero = "Xeron"
+creature = "Devil"
+stat = "speed"
+amount = 1
+sources = ["wiki-hero-specialty", "vcmi-specialties"]

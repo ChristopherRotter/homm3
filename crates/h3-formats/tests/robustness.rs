@@ -59,8 +59,19 @@ proptest! {
         if let Ok(image) = exe::PeImage::parse(&bytes) {
             let _ = image.c_string(va);
             let _ = exe::creature_table_at(&image, va, count);
+            let tables = exe::HeroTables {
+                hero_va: va,
+                hero_count: count,
+                specialty_va: va.wrapping_add(8),
+                spell_va: va.wrapping_add(16),
+                spell_count: count,
+                skill_values: &[exe::SkillValueTable { skill: 0, va: 0x0040_1000, float: true }],
+                specialty_growth_va: va,
+            };
+            let _ = exe::hero_data_at(&image, &tables);
         }
         let _ = exe::creature_table(&bytes);
+        let _ = exe::hero_data(&bytes);
     }
 
     #[test]
@@ -74,6 +85,16 @@ proptest! {
         }
         if let Ok(image) = exe::PeImage::parse(&bytes) {
             let _ = exe::creature_table_at(&image, 0x0040_1008, count);
+            let tables = exe::HeroTables {
+                hero_va: 0x0040_1008,
+                hero_count: count,
+                specialty_va: 0x0040_1010,
+                spell_va: 0x0040_1020,
+                spell_count: count,
+                skill_values: &[exe::SkillValueTable { skill: 0, va: 0x0040_1000, float: false }],
+                specialty_growth_va: 0x0040_1004,
+            };
+            let _ = exe::hero_data_at(&image, &tables);
         }
     }
 }

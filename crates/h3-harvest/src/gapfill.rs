@@ -34,6 +34,71 @@ pub struct GapFill {
     pub obstacles: Obstacles,
     /// War machines harvested like creatures (E03 T8).
     pub war_machines: WarMachines,
+    /// Hero content (E04a T3).
+    pub heroes: Heroes,
+}
+
+/// Hero content the installation does not hold (E04a T3).
+#[derive(Debug, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct Heroes {
+    /// Upgrades the pairing rule cannot find, as (creature, upgrade) singular names.
+    pub upgrades: Vec<[String; 2]>,
+    /// Source ids of `upgrades`.
+    pub upgrade_sources: Vec<String>,
+    /// Parameters of creature specialties.
+    pub creature_specialty: CreatureSpecialty,
+    /// Effects of skills without a value table in the executable.
+    pub skill_effects: Vec<SkillEffects>,
+    /// Specialty parts the executable's records cannot hold.
+    #[serde(default)]
+    pub specialty_extra: Vec<SpecialtyExtra>,
+}
+
+/// Parameters of creature specialties (specialty kind 1).
+#[derive(Debug, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct CreatureSpecialty {
+    /// Growth per step, basis points.
+    pub bp_per_step: u16,
+    /// Speed bonus.
+    pub speed: u8,
+    /// Speed bonus for war machines.
+    pub war_machine_speed: u8,
+    /// Source ids.
+    pub sources: Vec<String>,
+}
+
+/// The effects of one skill's levels, in pack syntax (`kind` plus parameters, no references).
+#[derive(Debug, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct SkillEffects {
+    /// Skill name (as in `SSTRAITS.TXT`).
+    pub skill: String,
+    /// Basic.
+    pub basic: Vec<AbilitySpec>,
+    /// Advanced.
+    pub advanced: Vec<AbilitySpec>,
+    /// Expert.
+    pub expert: Vec<AbilitySpec>,
+    /// Source ids.
+    pub sources: Vec<String>,
+}
+
+/// An extra `creature_stat` effect of a hero's specialty.
+#[derive(Debug, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct SpecialtyExtra {
+    /// Hero name (as in `HOTRAITS.TXT`).
+    pub hero: String,
+    /// Creature singular name (the effect applies to it and its upgrades).
+    pub creature: String,
+    /// Statistic (pack name).
+    pub stat: String,
+    /// Change.
+    pub amount: i16,
+    /// Source ids.
+    pub sources: Vec<String>,
 }
 
 /// The war machines the battle supports (E03 T8, BAT-WAR-001); the others (siege machines)
@@ -241,7 +306,11 @@ impl GapFill {
                 .chain(g.creature_abilities.iter().flat_map(|a| &a.sources))
                 .chain(g.native_terrain.iter().flat_map(|n| &n.sources))
                 .chain(&g.obstacles.sources)
-                .chain(&g.war_machines.sources);
+                .chain(&g.war_machines.sources)
+                .chain(&g.heroes.upgrade_sources)
+                .chain(&g.heroes.creature_specialty.sources)
+                .chain(g.heroes.skill_effects.iter().flat_map(|e| &e.sources))
+                .chain(g.heroes.specialty_extra.iter().flat_map(|e| &e.sources));
         for r in refs {
             if !ids.contains(r.as_str()) {
                 return Err(format!("gapfill: unknown source `{r}`"));

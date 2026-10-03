@@ -2,6 +2,7 @@
 //! `cargo xtask verify --with-original-data`).
 
 use super::*;
+use h3_formats::exe::{HeroRecord, SkillValue, SpecialtyRecord};
 
 fn table(rows: &[Vec<String>]) -> TextTable {
     TextTable {
@@ -89,6 +90,130 @@ fn inputs() -> Inputs {
             "Abandoned",
         ]),
         terrains: single(&["Mud", "Ice"]),
+        hero_data: hero_data(),
+        hero_tables: hero_tables(),
+    }
+}
+
+fn strings(v: &[&str]) -> Vec<String> {
+    v.iter().map(|s| (*s).to_owned()).collect()
+}
+
+/// A hero record: class, two starting skills, starting spell, three creatures; RoE or not.
+fn hero(class: i32, spell: i32, creatures: [i32; 3], roe: bool) -> HeroRecord {
+    HeroRecord {
+        class,
+        skills: [(6, 1), (-1, 0)],
+        spell_book: spell >= 0,
+        spell,
+        creatures,
+        roe,
+        expansions: true,
+        campaign: false,
+    }
+}
+
+fn specialty(kind: i32, id: i32, attack: i32, defense: i32, damage: i32) -> SpecialtyRecord {
+    SpecialtyRecord {
+        kind,
+        id,
+        attack,
+        defense,
+        damage,
+        upgrades: [0, 0],
+    }
+}
+
+/// Seven heroes, one per specialty kind 0, 1, 3, 4, 5, 7, 2; hero 3 is an expansion hero.
+fn hero_data() -> HeroData {
+    let int = |v: [i32; 4]| v.map(SkillValue::Integer);
+    let float = |v: [f32; 4]| v.map(SkillValue::Float);
+    HeroData {
+        heroes: vec![
+            hero(0, -1, [0, 2, 148], true),
+            hero(1, 1, [4, 4, 10], true),
+            hero(2, -1, [10, 11, 12], true),
+            hero(4, 1, [20, 21, 0], false),
+            hero(0, -1, [0, 0, 0], true),
+            hero(1, -1, [1, 2, 4], true),
+            hero(3, -1, [12, 13, 14], true),
+        ],
+        specialties: vec![
+            specialty(0, 1, 0, 0, 0),
+            specialty(1, 148, 0, 0, 0),
+            specialty(3, 1, 0, 0, 0),
+            specialty(4, 20, 2, 1, 3),
+            specialty(5, 2, 0, 0, 0),
+            specialty(7, 0, 5, 5, 0),
+            specialty(2, 6, 0, 0, 0),
+        ],
+        spell_types: vec![0, -1, 1],
+        skill_values: vec![
+            (9, int([0, 1, 2, 3])),
+            (6, int([0, 1, 2, 3])),
+            (1, float([0.0, 0.1, 0.25, 0.5])),
+            (22, float([0.0, 0.1, 0.2, 0.3])),
+            (23, float([0.0, 0.05, 0.1, 0.15])),
+            (4, float([0.0, 0.2, 0.4, 0.6])),
+            (27, float([0.0, 1.0, 2.0, 3.0])),
+        ],
+        specialty_growth: 0.05,
+    }
+}
+
+/// 28 skills, six classes (two per town), seven heroes and three spells (the last one differs
+/// between the AB-era and the SoD table).
+fn hero_tables() -> heroes::Tables {
+    let header = vec![vec!["".to_owned()], vec!["Name".to_owned()]];
+    let mut skills = header.clone();
+    for i in 0..28 {
+        skills.push(strings(&[&format!("Skill {i}"), "b", "a", "e"]));
+    }
+    let mut classes = header.clone();
+    for i in 0..6 {
+        let mut r = strings(&[&format!("Class {i}"), "1.00", "2", "2", "1", "1"]);
+        r.extend(strings(&["35", "45", "10", "10", "30", "30", "20", "20"]));
+        r.extend((0..28).map(|s| (s % 3).to_string()));
+        r.extend((0..9).map(|_| "5".to_owned()));
+        classes.push(r);
+    }
+    let mut heroes = header.clone();
+    for i in 0..7 {
+        let mut r = vec![format!("Hero {i}")];
+        for _ in 0..3 {
+            r.extend(strings(&["2", "4", "ref"]));
+        }
+        heroes.push(r);
+    }
+    heroes[2][7..9].clone_from_slice(&strings(&["1", "1"])); // hero 0's war machine
+    let spell = |name: &str, schools: [&str; 4]| {
+        let mut r = vec![name.to_owned(), name.to_owned(), "1".to_owned()];
+        r.extend(strings(&schools));
+        r.extend((7..29).map(|c| c.to_string()));
+        r.extend((29..34).map(|_| "text".to_owned()));
+        r
+    };
+    let mut spells_header = header;
+    spells_header[1] = strings(&["Name", "Abbr", "Level", "Earth", "Water", "Fire", "Air"]);
+    let group = |n: &str| vec![n.to_owned()];
+    let mut sod = spells_header.clone();
+    sod.extend([
+        group("Adventure Spells"),
+        spell("Look", ["x", " ", " ", " "]),
+        vec![String::new()],
+        group("Combat Spells"),
+        spell("Zap", [" ", " ", "x", "x"]),
+        spell("Bolt", ["", "", "", "x"]),
+    ]);
+    let mut ab = sod.clone();
+    let last = ab.len() - 1;
+    ab[last] = spell("Old (disabled)", [" ", " ", " ", " "]);
+    heroes::Tables {
+        classes: table(&classes),
+        heroes: table(&heroes),
+        skills: table(&skills),
+        sod_spells: table(&sod),
+        ab_spells: table(&ab),
     }
 }
 
@@ -129,7 +254,7 @@ sources = ["s"]
 field_width = 17
 field_height = 11
 side_columns = 1
-army_slots = 2
+army_slots = 3
 damage_roll_samples = 10
 attack_bonus_per_point_percent = 5
 attack_bonus_cap_percent = 300
@@ -146,8 +271,8 @@ bad_morale_chances = [2, 4, 6]
 luck_dice = 24
 good_luck_chances = [1, 2, 3]
 war_machine_positions = [[1, 3], [1, 1], [1, 9]]
-loose_formation = [[5], [2, 8]]
-tight_formation = [[5], [4, 6]]
+loose_formation = [[5], [2, 8], [2, 5, 8]]
+tight_formation = [[5], [4, 6], [4, 5, 6]]
 formation_sources = ["s"]
 
 [[creature_abilities]]
@@ -188,6 +313,30 @@ list = [
     { id = 0, terrains = ["Mud"], width = 2, height = 1, blocked = [[0, 0], [1, -1]] },
     { id = 7, terrains = ["Mud", "Ice"], absolute = true, blocked = [[5, 4]] },
 ]
+
+[heroes]
+upgrades = [["Unit 26", "Unit 30"]]
+upgrade_sources = ["s"]
+
+[heroes.creature_specialty]
+bp_per_step = 500
+speed = 1
+war_machine_speed = 0
+sources = ["s"]
+
+[[heroes.skill_effects]]
+skill = "Skill 19"
+basic = [{ kind = "tactics", level = 1 }]
+advanced = [{ kind = "tactics", level = 2 }]
+expert = [{ kind = "tactics", level = 3 }]
+sources = ["s"]
+
+[[heroes.specialty_extra]]
+hero = "Hero 3"
+creature = "Unit 21"
+stat = "speed"
+amount = 1
+sources = ["s"]
 "#;
 
 fn gap() -> GapFill {
@@ -454,6 +603,232 @@ fn inconsistencies_are_errors() {
             harvest(&inputs(), &g).unwrap_err().contains(error),
             "{error}"
         );
+    }
+}
+
+#[test]
+fn harvests_hero_content() {
+    let h = harvest(&inputs(), &gap()).unwrap();
+    let (base, ab, sod) = (pack(&h, "base"), pack(&h, "ab"), pack(&h, "sod"));
+    let r = h3_pack::compile(&[base, ab, sod], "base:faithful").unwrap();
+    assert_eq!(r.skills().len(), 28);
+    assert_eq!(r.spell_schools().len(), 4);
+    assert_eq!(r.spells().len(), 3);
+    assert_eq!(r.hero_classes().len(), 6);
+    assert_eq!(r.hero_types().len(), 7);
+    // Skill effects from the value tables and the gap-fill file.
+    assert!(base.contains(
+        "id = \"skill_1\"\nname = \"Skill 1\"\nbasic = [{ kind = \"ranged_damage\", bp = 1000 }]"
+    ));
+    assert!(base.contains("expert = [{ kind = \"first_aid\", heal_bp = 30000 }]"));
+    assert!(base.contains("advanced = [{ kind = \"morale\", amount = 2 }]"));
+    assert!(base.contains("expert = [{ kind = \"tactics\", level = 3 }]"));
+    // Spells: schools, polarity, the SoD-only row.
+    assert!(base.contains("schools = [\"fire\", \"air\"]"));
+    assert!(sod.contains("id = \"bolt\"  # original id 2"));
+    assert!(sod.contains("schools = [\"base:air\"]\ncost = [7, 8, 9, 10]\npower = 11"));
+    assert!(sod.contains("polarity = \"positive\""));
+    assert!(
+        h.report
+            .iter()
+            .any(|l| l.contains("`Old (disabled)` in the AB-era table"))
+    );
+    // Classes in their faction's pack; heroes by the executable's flags.
+    assert!(ab.contains("[[hero_class]]\nid = \"class_4\""));
+    assert!(ab.contains("skill_weights = { \"base:skill_1\" = 1"));
+    assert!(ab.contains("[[hero]]\nid = \"hero_3\"  # original id 3"));
+    // Specialties, one per kind.
+    for line in [
+        "specialty = [{ kind = \"skill_specialty\", skill = \"skill_1\", bp_per_level = 500 }]",
+        "war_machines = [\"unit_148\"]",
+        "specialty = [{ kind = \"creature_specialty\", creature = \"unit_148\", bp_per_step = 500, speed = 0 }]",
+        "spells = [\"zap\"]",
+        "specialty = [{ kind = \"spell_specialty\", spell = \"zap\" }]",
+        "{ kind = \"creature_stat\", stat = \"speed\", amount = 2 }",
+        "{ kind = \"creature_stat\", creatures = { flag = \"dragon\" }, stat = \"defense\", amount = 5 }",
+    ] {
+        assert!(base.contains(line), "{line}");
+    }
+    assert!(ab.contains(
+        "specialty = [{ kind = \"creature_stat\", creatures = { creature = \"unit_20\" }, stat = \"attack\", amount = 2 }, \
+         { kind = \"creature_stat\", creatures = { creature = \"unit_20\" }, stat = \"defense\", amount = 1 }, \
+         { kind = \"creature_stat\", creatures = { creature = \"unit_20\" }, stat = \"min_damage\", amount = 3 }, \
+         { kind = \"creature_stat\", creatures = { creature = \"unit_20\" }, stat = \"max_damage\", amount = 3 }, \
+         { kind = \"creature_stat\", creatures = { creature = \"unit_21\" }, stat = \"speed\", amount = 1 }]"
+    ));
+    assert!(
+        h.report
+            .iter()
+            .any(|l| l == "specialties not modelled: 1 resource (adventure)")
+    );
+    // Upgrades: the pairing rule within a pack, a base creature's ab upgrade as an ab override.
+    assert!(base.contains("upgrades = [\"unit_1\"]"));
+    assert!(ab.contains("target = \"base:unit_26\"\nupgrades = [\"unit_30\"]"));
+    let u26 = r.creature_by_key("base:unit_26").unwrap();
+    assert_eq!(r.upgrades(u26), &[r.creature_by_key("ab:unit_30").unwrap()]);
+    let u22 = r.creature_by_key("ab:unit_22").unwrap();
+    assert_eq!(
+        r.upgrades(u22),
+        &[r.creature_by_key("base:unit_23").unwrap()]
+    );
+}
+
+#[test]
+fn hero_content_errors() {
+    let g = gap();
+    let fails = |change: &dyn Fn(&mut Inputs), error: &str| {
+        let mut i = inputs();
+        change(&mut i);
+        let e = harvest(&i, &g).unwrap_err();
+        assert!(e.contains(error), "{error}: {e}");
+    };
+    fails(
+        &|i| i.hero_data.skill_values.pop().map(drop).unwrap(),
+        "no value table for skill 27",
+    );
+    fails(
+        &|i| i.hero_data.skill_values[0].1[0] = SkillValue::Float(0.0),
+        "wrong value type",
+    );
+    fails(
+        &|i| i.hero_data.skill_values[2].1[0] = SkillValue::Float(0.1),
+        "a value without the skill",
+    );
+    fails(
+        &|i| i.hero_data.skill_values[2].1[1] = SkillValue::Float(0.123_45),
+        "basis points",
+    );
+    fails(
+        &|i| i.hero_data.spell_types.pop().map(drop).unwrap(),
+        "the executable has 2",
+    );
+    fails(&|i| i.hero_data.heroes[1].class = 9, "class 9 out of range");
+    fails(
+        &|i| i.hero_data.heroes[0].creatures[0] = 149,
+        "creature id 149 is not harvested",
+    );
+    fails(
+        &|i| i.hero_data.heroes[0].creatures[0] = -1,
+        "army entry 0 is empty",
+    );
+    fails(
+        &|i| {
+            i.hero_data.heroes[0].roe = false;
+            i.hero_data.heroes[0].expansions = false;
+        },
+        "neither RoE nor an expansion hero",
+    );
+    fails(
+        &|i| i.hero_data.heroes[0].spell = 2,
+        "`sod:bolt` is not available to `base`",
+    );
+    fails(
+        &|i| i.hero_data.heroes[0].skills[0].0 = 40,
+        "skill id 40 out of range",
+    );
+    fails(
+        &|i| i.hero_data.specialties[1].id = 3,
+        "specialty creature 3",
+    );
+    fails(
+        &|i| i.hero_tables.heroes.records[2][7] = "2".into(),
+        "war machine with count 2-1",
+    );
+    fails(
+        &|i| i.hero_tables.heroes.records.truncate(5),
+        "HOTRAITS.TXT: 3 rows, expected 7",
+    );
+    fails(
+        &|i| i.hero_tables.skills.records[3].truncate(2),
+        "has 2 fields",
+    );
+    fails(
+        &|i| i.hero_tables.classes.records[2][3] = "x".into(),
+        "is not a number",
+    );
+    fails(
+        &|i| i.hero_tables.sod_spells.records[1].truncate(5),
+        "school columns without names",
+    );
+    fails(
+        &|i| i.hero_tables.sod_spells.records.truncate(1),
+        "no header row",
+    );
+    fails(
+        &|i| {
+            let spells = &mut i.hero_tables.sod_spells.records;
+            spells.remove(2);
+        },
+        "before a group row",
+    );
+    fails(
+        &|i| i.hero_tables.sod_spells.records[3].truncate(9),
+        "has 9 fields",
+    );
+    fails(
+        &|i| {
+            let ab = &mut i.hero_tables.ab_spells.records;
+            ab[6][9] = "99".into();
+        },
+        "differs between H3ab_bmp and H3bitmap",
+    );
+    fails(
+        &|i| i.hero_tables.sod_spells.records[6][0] = "Look".into(),
+        "duplicate spell key `look`",
+    );
+    // Classes beyond the towns, and duplicate hero names.
+    fails(
+        &|i| {
+            let extra = i.hero_tables.classes.records[2].clone();
+            i.hero_tables.classes.records.push(extra);
+        },
+        "no town 3",
+    );
+    let mut i = inputs();
+    i.hero_tables.heroes.records[3][0] = "Hero 0".into();
+    let h = harvest(&i, &g).unwrap();
+    assert!(pack(&h, "base").contains("id = \"hero_0_class_1\""));
+    // Gap-fill entries that do not match the tables.
+    for (from, to, error) in [
+        (
+            "[\"Unit 26\", \"Unit 30\"]",
+            "[\"Unit 0\", \"Unit 1\"]",
+            "is found by the rule",
+        ),
+        (
+            "[\"Unit 26\", \"Unit 30\"]",
+            "[\"Unit 26\", \"Nobody\"]",
+            "`Nobody`, not a harvested creature",
+        ),
+        (
+            "skill = \"Skill 19\"",
+            "skill = \"Skill 99\"",
+            "unknown skill `Skill 99`",
+        ),
+        (
+            "skill = \"Skill 19\"",
+            "skill = \"Skill 1\"",
+            "has a value table",
+        ),
+        (
+            "{ kind = \"tactics\", level = 1 }",
+            "{ kind = \"tactics\", creature = \"Unit 1\", level = 1 }",
+            "take no creature",
+        ),
+        (
+            "hero = \"Hero 3\"",
+            "hero = \"Hero 9\"",
+            "unknown hero `Hero 9`",
+        ),
+        (
+            "creature = \"Unit 21\"\nstat",
+            "creature = \"Unit 999\"\nstat",
+            "specialty_extra creature",
+        ),
+    ] {
+        let g = GapFill::parse(&GAP.replace(from, to)).unwrap();
+        let e = harvest(&inputs(), &g).unwrap_err();
+        assert!(e.contains(error), "{error}: {e}");
     }
 }
 

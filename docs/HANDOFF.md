@@ -4,6 +4,18 @@ Living state. The last agent updates this at the end of every session; the next 
 
 ---
 
+## 2026-10-03 (third session) — E04a T3a done (hero content without artifacts)
+
+**State:** branch `e04a-heroes-in-battle`, `cargo xtask verify` green (also `--with-original-data`). The user split T3 at the artifacts (T3a now, T3b next) and is playing batch 1a meanwhile; its results template is untouched in the repo.
+
+**T3a (this session):** pack format v3 with `[[spell_school]]`, `[[spell]]` (data rows), `[[secondary_skill]]` (effects per level), `[[hero_class]]`, `[[hero]]` and creature `upgrades` (`packs/README.md`); `h3_content::HeroEffect<C, K, S>` with 13 kinds, compiled in `h3_content::heroes` (validation after all packs, so later overrides are checked too); ruleset hash v9; `h3_formats::exe::hero_data` (hero, specialty, skill-value and spell tables of the known build); harvester module `h3_harvest::heroes` plus the gap-fill section `[heroes]` (elemental upgrades, creature-specialty parameters, Tactics and Artillery effects, Xeron's speed); packs regenerated (base: 4 schools, 80 spells, 28 skills, 16 classes, 128 heroes, 56 upgrade pairs; ab: 2 classes, 28 heroes, Conflux and elemental upgrades; sod: Titan's Lightning Bolt); synthetic packs got an invented hero set that uses every effect kind; golden replays re-recorded (ruleset hash only); `h3-experiment` switched to the new reader (batch-1a map byte-identical).
+
+**Decisions (agent, change freely; recorded in the epic):** per-town columns, class aggression, spell AI values and spell flags are not harvested (BACKLOG inbox); hero availability waits for E08–E10; Artillery at Basic is one shot (VCMI and wiki) until batch 1a answers D1; a duplicate hero name gets the class appended (`lord_haart_death_knight`).
+
+**Next:** T3b (artifacts: slots, the 144 artifacts, the remaining effect kinds listed in `E04a-design.md` §3, combination parts, synthetic artifacts). After the user's batch-1a results: record them as planned in the entry below. **Traps:** the wiki fetch permission timed out once this session (the user was busy); facts were taken from the committed surveys. The harvester needs `HCTRAITS/HOTRAITS/SSTRAITS/SPTRAITS` from both LODs, which `Inputs::read` takes from the staged `Data/*.lod` files. Sandbox: `apt-get update` first, then `apt-get install llvm-20` works; `rustup component add llvm-tools-preview` fails behind the proxy.
+
+---
+
 ## 2026-10-03 (second session) — decisions recorded; T2 batch 1a delivered, waiting for the user
 
 **State:** branch `e04a-heroes-in-battle`, `cargo xtask verify` green. User answers recorded (OPEN-QUESTIONS Q29, Q30): ADR-0013 **accepted** and cut to its decisions (detail in `docs/epics/E04a-design.md`, which each task prunes as it implements it); new ADR size rule (`docs/adr/README.md`, "Read when" column); ADR-0004 and ADR-0012 trimmed (old text in git history at `22b6bc0`); code reading of `Heroes3.exe` allowed as a last resort, for insight only (`docs/04-rules-and-sources.md` §2); quirks are confirmed for SoD before they get a flag (§4; the survey's classification table); results via lean templates; batch 1 split into 1a (T5–T7) and 1b (T8–T10). The smoke map works in the user's game.

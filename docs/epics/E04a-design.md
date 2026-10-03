@@ -23,28 +23,25 @@ Section numbers follow the ADR. Survey references: `docs/rules/surveys/`.
     `war_machines(&HeroDetails, &Ruleset) -> Vec<CreatureTypeId>` (from the war-machine slots).
 - `h3-battle` never depends on `h3-heroes`; it reads only `BattleHero`.
 - `h3-content` owns the definitions and the content-side effect vocabulary (§3), including the
-  creature upgrade relation that selectors need (T3 adds it).
+  creature upgrade relation that selectors need (`Ruleset::upgrades`, T3a).
 
-## 3. Effect vocabulary in content (T3, T10)
+## 3. Effect vocabulary in content (T3b, T10)
 
-- A closed enum `HeroEffect<C>` in `h3-content` (generic over creature references, like `Ability`,
-  ADR-0012), referenced by artifacts, by each level of a secondary skill and by specialties.
-  Parameters are Tier 1 data; the compiler validates them. New behaviour is a new variant plus the
-  rule that reads it (ADR-0006).
-- Effects state *how* a value is computed (fixed, per hero level, per hero level over creature
-  level, "only if the hero has skill X", "on own side / enemy side / both"); the translation (§4)
-  turns them into resolved battle effects. Effects that matter only on the adventure map are not
-  given variants before their epic; T3 lists which artifacts and specialties carry such uncovered
-  effects instead of inventing placeholders.
-- **Units:** percentages are basis points (1/100 %) in content and in the seam. Every skill and
-  specialty product is then an exact integer.
-- The initial E04a variants follow the survey's effect kinds (`E04-artifacts.md` §4,
-  `E04-heroes.md` §3, `E04-skills.md` §1): primary skills, morale and luck (with the affected side),
-  morale and luck caps, creature stats (attack, defense, speed, hit points, damage; fixed or
-  scaled), damage percentages (ranged, melee, reduction), skill-value bonuses (Bow artifacts,
-  Necromancy artifacts), the skill specialty, regeneration, no range penalty, no retreat, war
-  machine, and the battle-action skills (tactics, artillery, first aid; ballistics for E04c). T3
-  fixes the exact list.
+T3a implemented `h3_content::HeroEffect<C, K, S>` (creature, skill and spell references) with the
+kinds skills and specialties need; the pack docs (`packs/README.md`, "Hero effects") hold the
+list. Left for T3b (artifacts), from the survey (`E04-artifacts.md` §4, §9):
+
+- primary skills (attack, defense, power, knowledge; negative values; hero totals clamped by the
+  derivation), morale and luck caps on both sides (Spirit of Oppression, Hourglass), the
+  alignment-mix morale rule (Angelic Alliance), `creature_stat` as a percentage of the creature's
+  own value (Elixir of Life: +25 % hit points, living only, rounded down), regeneration (living
+  only, 50 HP), no range penalty and shooting while adjacent (own shooters), no retreat (both
+  sides), war machine (slots WM1–WM3; the Catapult is E04c), skill-value bonuses that need the
+  skill (Bow artifacts on Archery, Necromancy artifacts; an effect condition "only if the hero
+  has skill X"), surrender discount (Statesman's Medal and friends), and a per-kind "stacks per
+  copy" flag (only Quiet Eye of the Dragon in E04a).
+- Artifacts whose only effects are E04b or adventure ones get no placeholder variants; T3b lists
+  them.
 
 ## 4. `BattleHero` (T4; read by T5–T7, T10)
 

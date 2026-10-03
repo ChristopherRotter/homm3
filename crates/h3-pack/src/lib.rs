@@ -1409,6 +1409,35 @@ mod tests {
             roe.abilities(cavalier),
             [h3_content::Ability::Jousting { percent_per_hex: 5 }]
         );
+        // Hero content (E04a T3): RoE has 16 classes and 128 heroes, AB adds Conflux and 28
+        // heroes, SoD Titan's Lightning Bolt.
+        let counts = |r: &Ruleset| {
+            (
+                r.skills().len(),
+                r.spells().len(),
+                r.hero_classes().len(),
+                r.hero_types().len(),
+            )
+        };
+        assert_eq!(counts(&roe), (28, 80, 16, 128));
+        assert_eq!(counts(&ab), (28, 80, 18, 156));
+        assert_eq!(counts(&sod), (28, 81, 18, 156));
+        assert_eq!(sod.spell_schools().len(), 4);
+        let archery = sod
+            .skill(sod.skill_by_key("base:archery").unwrap())
+            .unwrap();
+        assert_eq!(archery.effects(3), [HeroEffect::RangedDamage { bp: 5000 }]);
+        let pikeman = roe.creature_by_key("base:pikeman").unwrap();
+        let halberdier = roe.creature_by_key("base:halberdier").unwrap();
+        assert_eq!(roe.upgrades(pikeman), [halberdier]);
+        assert!(roe.upgrades(air).is_empty());
+        let storm = ab.creature_by_key("ab:storm_elemental").unwrap();
+        assert_eq!(ab.upgrades(air), [storm]);
+        let orrin = roe
+            .hero_type(roe.hero_type_by_key("base:orrin").unwrap())
+            .unwrap();
+        assert_eq!(orrin.army.len(), 3);
+        assert!(sod.hero_type_by_key("ab:lord_haart_death_knight").is_some());
     }
 
     #[test]

@@ -34,6 +34,7 @@ fight_value = 40
 ai_value = 55
 adventure_count = [20, 50]
 flags = ["flying", "alive"]
+upgrades = ["sprite"]
 
 [[creature]]
 id = "sprite"  # original id 119
@@ -77,6 +78,7 @@ ai_value = 1669
 adventure_count = [8, 16]
 flags = ["mind_immune", "no_enemy_retaliation", "no_morale", "multi_headed"]
 abilities = [{ kind = "attacks_all_adjacent" }]
+upgrades = ["magic_elemental"]
 
 [[creature]]
 id = "magic_elemental"  # original id 121
@@ -208,6 +210,7 @@ fight_value = 3248
 ai_value = 4547
 adventure_count = [4, 10]
 flags = ["two_hex", "flying", "breath_attack", "alive", "king_1", "fire_immune"]
+upgrades = ["phoenix"]
 
 [[creature]]
 id = "phoenix"  # original id 131
@@ -498,21 +501,286 @@ target = "base:air_elemental"
 faction = "conflux"
 level = 2
 abilities = [{ kind = "hate", creature = "base:earth_elemental", percent = 100 }, { kind = "hate", creature = "magma_elemental", percent = 100 }]
+upgrades = ["storm_elemental"]
 
 [[creature_override]]
 target = "base:earth_elemental"
 faction = "conflux"
 level = 5
 abilities = [{ kind = "hate", creature = "base:air_elemental", percent = 100 }, { kind = "hate", creature = "storm_elemental", percent = 100 }]
+upgrades = ["magma_elemental"]
 
 [[creature_override]]
 target = "base:fire_elemental"
 faction = "conflux"
 level = 4
 abilities = [{ kind = "hate", creature = "base:water_elemental", percent = 100 }, { kind = "hate", creature = "ice_elemental", percent = 100 }]
+upgrades = ["energy_elemental"]
 
 [[creature_override]]
 target = "base:water_elemental"
 faction = "conflux"
 level = 3
 abilities = [{ kind = "hate", creature = "base:fire_elemental", percent = 100 }, { kind = "hate", creature = "energy_elemental", percent = 100 }]
+upgrades = ["ice_elemental"]
+
+[[hero_class]]
+id = "planeswalker"
+name = "Planeswalker"
+faction = "conflux"
+primary = [3, 1, 1, 1]
+primary_gain = [[45, 25, 15, 15], [30, 30, 20, 20]]
+skill_weights = { "base:pathfinding" = 6, "base:archery" = 8, "base:logistics" = 8, "base:scouting" = 6, "base:diplomacy" = 2, "base:navigation" = 5, "base:leadership" = 3, "base:wisdom" = 2, "base:mysticism" = 3, "base:luck" = 2, "base:ballistics" = 8, "base:eagle_eye" = 2, "base:estates" = 3, "base:fire_magic" = 3, "base:air_magic" = 2, "base:water_magic" = 2, "base:earth_magic" = 3, "base:scholar" = 1, "base:tactics" = 8, "base:artillery" = 8, "base:learning" = 8, "base:offense" = 9, "base:armorer" = 5, "base:intelligence" = 1, "base:sorcery" = 1, "base:resistance" = 2, "base:first_aid" = 1 }
+
+[[hero_class]]
+id = "elementalist"
+name = "Elementalist"
+faction = "conflux"
+primary = [0, 0, 3, 3]
+primary_gain = [[15, 15, 35, 35], [25, 25, 25, 25]]
+skill_weights = { "base:pathfinding" = 2, "base:archery" = 2, "base:logistics" = 2, "base:scouting" = 2, "base:diplomacy" = 4, "base:navigation" = 4, "base:leadership" = 3, "base:wisdom" = 8, "base:mysticism" = 8, "base:luck" = 2, "base:ballistics" = 4, "base:eagle_eye" = 8, "base:estates" = 3, "base:fire_magic" = 6, "base:air_magic" = 6, "base:water_magic" = 6, "base:earth_magic" = 6, "base:scholar" = 8, "base:tactics" = 1, "base:artillery" = 1, "base:learning" = 4, "base:offense" = 1, "base:armorer" = 1, "base:intelligence" = 8, "base:sorcery" = 8, "base:first_aid" = 4 }
+
+[[hero]]
+id = "pasis"  # original id 128
+name = "Pasis"
+class = "planeswalker"
+skills = [{ skill = "base:offense", level = 1 }, { skill = "base:artillery", level = 1 }]
+army = [{ creature = "pixie", count = [15, 25] }, { creature = "base:air_elemental", count = [3, 5] }, { creature = "base:air_elemental", count = [2, 3] }]
+specialty = [{ kind = "creature_stat", creatures = { creature = "psychic_elemental" }, stat = "attack", amount = 3 }, { kind = "creature_stat", creatures = { creature = "psychic_elemental" }, stat = "defense", amount = 3 }]
+
+[[hero]]
+id = "thunar"  # original id 129
+name = "Thunar"
+class = "planeswalker"
+skills = [{ skill = "base:tactics", level = 1 }, { skill = "base:estates", level = 1 }]
+army = [{ creature = "pixie", count = [15, 25] }, { creature = "base:air_elemental", count = [3, 5] }, { creature = "base:water_elemental", count = [2, 3] }]
+specialty = [{ kind = "creature_stat", creatures = { creature = "base:earth_elemental" }, stat = "attack", amount = 2 }, { kind = "creature_stat", creatures = { creature = "base:earth_elemental" }, stat = "defense", amount = 1 }, { kind = "creature_stat", creatures = { creature = "base:earth_elemental" }, stat = "min_damage", amount = 5 }, { kind = "creature_stat", creatures = { creature = "base:earth_elemental" }, stat = "max_damage", amount = 5 }]
+
+[[hero]]
+id = "ignissa"  # original id 130
+name = "Ignissa"
+class = "planeswalker"
+skills = [{ skill = "base:offense", level = 1 }, { skill = "base:artillery", level = 1 }]
+army = [{ creature = "pixie", count = [15, 25] }, { creature = "base:air_elemental", count = [3, 5] }, { creature = "base:water_elemental", count = [2, 3] }]
+specialty = [{ kind = "creature_stat", creatures = { creature = "base:fire_elemental" }, stat = "attack", amount = 1 }, { kind = "creature_stat", creatures = { creature = "base:fire_elemental" }, stat = "defense", amount = 2 }, { kind = "creature_stat", creatures = { creature = "base:fire_elemental" }, stat = "min_damage", amount = 2 }, { kind = "creature_stat", creatures = { creature = "base:fire_elemental" }, stat = "max_damage", amount = 2 }]
+
+[[hero]]
+id = "lacus"  # original id 131
+name = "Lacus"
+class = "planeswalker"
+skills = [{ skill = "base:tactics", level = 2 }]
+army = [{ creature = "pixie", count = [15, 25] }, { creature = "base:water_elemental", count = [3, 5] }, { creature = "base:water_elemental", count = [1, 2] }]
+specialty = [{ kind = "creature_stat", creatures = { creature = "base:water_elemental" }, stat = "attack", amount = 2 }]
+
+[[hero]]
+id = "monere"  # original id 132
+name = "Monere"
+class = "planeswalker"
+skills = [{ skill = "base:offense", level = 1 }, { skill = "base:logistics", level = 1 }]
+army = [{ creature = "pixie", count = [15, 25] }, { creature = "base:air_elemental", count = [3, 5] }, { creature = "base:air_elemental", count = [2, 3] }]
+specialty = [{ kind = "creature_stat", creatures = { creature = "psychic_elemental" }, stat = "attack", amount = 3 }, { kind = "creature_stat", creatures = { creature = "psychic_elemental" }, stat = "defense", amount = 3 }]
+
+[[hero]]
+id = "erdamon"  # original id 133
+name = "Erdamon"
+class = "planeswalker"
+skills = [{ skill = "base:tactics", level = 1 }, { skill = "base:estates", level = 1 }]
+army = [{ creature = "pixie", count = [15, 25] }, { creature = "base:air_elemental", count = [3, 5] }, { creature = "base:water_elemental", count = [2, 3] }]
+specialty = [{ kind = "creature_stat", creatures = { creature = "base:earth_elemental" }, stat = "attack", amount = 2 }, { kind = "creature_stat", creatures = { creature = "base:earth_elemental" }, stat = "defense", amount = 1 }, { kind = "creature_stat", creatures = { creature = "base:earth_elemental" }, stat = "min_damage", amount = 5 }, { kind = "creature_stat", creatures = { creature = "base:earth_elemental" }, stat = "max_damage", amount = 5 }]
+
+[[hero]]
+id = "fiur"  # original id 134
+name = "Fiur"
+class = "planeswalker"
+skills = [{ skill = "base:offense", level = 2 }]
+army = [{ creature = "pixie", count = [15, 25] }, { creature = "base:air_elemental", count = [3, 5] }, { creature = "base:water_elemental", count = [2, 3] }]
+specialty = [{ kind = "creature_stat", creatures = { creature = "base:fire_elemental" }, stat = "attack", amount = 1 }, { kind = "creature_stat", creatures = { creature = "base:fire_elemental" }, stat = "defense", amount = 2 }, { kind = "creature_stat", creatures = { creature = "base:fire_elemental" }, stat = "min_damage", amount = 2 }, { kind = "creature_stat", creatures = { creature = "base:fire_elemental" }, stat = "max_damage", amount = 2 }]
+
+[[hero]]
+id = "kalt"  # original id 135
+name = "Kalt"
+class = "planeswalker"
+skills = [{ skill = "base:tactics", level = 1 }, { skill = "base:learning", level = 1 }]
+army = [{ creature = "pixie", count = [15, 25] }, { creature = "base:water_elemental", count = [3, 5] }, { creature = "base:water_elemental", count = [1, 2] }]
+specialty = [{ kind = "creature_stat", creatures = { creature = "base:water_elemental" }, stat = "attack", amount = 2 }]
+
+[[hero]]
+id = "luna"  # original id 136
+name = "Luna"
+class = "elementalist"
+skills = [{ skill = "base:wisdom", level = 1 }, { skill = "base:fire_magic", level = 1 }]
+spell_book = true
+spells = ["base:fire_wall"]
+army = [{ creature = "pixie", count = [15, 25] }, { creature = "base:air_elemental", count = [3, 5] }, { creature = "base:water_elemental", count = [2, 3] }]
+specialty = [{ kind = "spell_specialty", spell = "base:fire_wall" }]
+
+[[hero]]
+id = "brissa"  # original id 137
+name = "Brissa"
+class = "elementalist"
+skills = [{ skill = "base:wisdom", level = 1 }, { skill = "base:air_magic", level = 1 }]
+spell_book = true
+spells = ["base:haste"]
+army = [{ creature = "pixie", count = [15, 25] }, { creature = "base:air_elemental", count = [3, 5] }, { creature = "base:water_elemental", count = [2, 3] }]
+specialty = [{ kind = "spell_specialty", spell = "base:haste" }]
+
+[[hero]]
+id = "ciele"  # original id 138
+name = "Ciele"
+class = "elementalist"
+skills = [{ skill = "base:wisdom", level = 1 }, { skill = "base:water_magic", level = 1 }]
+spell_book = true
+spells = ["base:magic_arrow"]
+army = [{ creature = "pixie", count = [15, 25] }, { creature = "base:air_elemental", count = [3, 5] }, { creature = "base:water_elemental", count = [2, 3] }]
+specialty = [{ kind = "spell_specialty", spell = "base:magic_arrow" }]
+
+[[hero]]
+id = "labetha"  # original id 139
+name = "Labetha"
+class = "elementalist"
+skills = [{ skill = "base:wisdom", level = 1 }, { skill = "base:earth_magic", level = 1 }]
+spell_book = true
+spells = ["base:stone_skin"]
+army = [{ creature = "pixie", count = [15, 25] }, { creature = "base:air_elemental", count = [3, 5] }, { creature = "base:water_elemental", count = [2, 3] }]
+specialty = [{ kind = "spell_specialty", spell = "base:stone_skin" }]
+
+[[hero]]
+id = "inteus"  # original id 140
+name = "Inteus"
+class = "elementalist"
+skills = [{ skill = "base:wisdom", level = 1 }, { skill = "base:fire_magic", level = 1 }]
+spell_book = true
+spells = ["base:bloodlust"]
+army = [{ creature = "pixie", count = [15, 25] }, { creature = "base:air_elemental", count = [3, 5] }, { creature = "base:water_elemental", count = [2, 3] }]
+specialty = [{ kind = "spell_specialty", spell = "base:bloodlust" }]
+
+[[hero]]
+id = "aenain"  # original id 141
+name = "Aenain"
+class = "elementalist"
+skills = [{ skill = "base:wisdom", level = 1 }, { skill = "base:air_magic", level = 1 }]
+spell_book = true
+spells = ["base:disrupting_ray"]
+army = [{ creature = "pixie", count = [15, 25] }, { creature = "base:air_elemental", count = [3, 5] }, { creature = "base:water_elemental", count = [2, 3] }]
+specialty = [{ kind = "spell_specialty", spell = "base:disrupting_ray" }]
+
+[[hero]]
+id = "gelare"  # original id 142
+name = "Gelare"
+class = "elementalist"
+skills = [{ skill = "base:wisdom", level = 1 }, { skill = "base:water_magic", level = 1 }]
+spell_book = true
+spells = ["base:dispel"]
+army = [{ creature = "pixie", count = [15, 25] }, { creature = "base:air_elemental", count = [3, 5] }, { creature = "base:water_elemental", count = [2, 3] }]
+
+[[hero]]
+id = "grindan"  # original id 143
+name = "Grindan"
+class = "elementalist"
+skills = [{ skill = "base:wisdom", level = 1 }, { skill = "base:earth_magic", level = 1 }]
+spell_book = true
+spells = ["base:slow"]
+army = [{ creature = "pixie", count = [15, 25] }, { creature = "base:air_elemental", count = [3, 5] }, { creature = "base:water_elemental", count = [2, 3] }]
+
+[[hero]]
+id = "sir_mullich"  # original id 144
+name = "Sir Mullich"
+class = "base:knight"
+skills = [{ skill = "base:leadership", level = 2 }]
+army = [{ creature = "base:pikeman", count = [10, 20] }, { creature = "base:archer", count = [4, 7] }, { creature = "base:griffin", count = [2, 3] }]
+specialty = [{ kind = "creature_stat", stat = "speed", amount = 2 }]
+
+[[hero]]
+id = "adrienne"  # original id 145
+name = "Adrienne"
+class = "base:witch"
+skills = [{ skill = "base:wisdom", level = 1 }, { skill = "base:fire_magic", level = 3 }]
+spell_book = true
+spells = ["base:inferno"]
+army = [{ creature = "base:gnoll", count = [10, 20] }, { creature = "base:lizardman", count = [4, 7] }, { creature = "base:serpent_fly", count = [2, 4] }]
+
+[[hero]]
+id = "catherine"  # original id 146
+name = "Catherine"
+class = "base:knight"
+skills = [{ skill = "base:leadership", level = 1 }, { skill = "base:offense", level = 1 }]
+army = [{ creature = "base:pikeman", count = [10, 20] }, { creature = "base:archer", count = [4, 7] }, { creature = "base:griffin", count = [2, 3] }]
+specialty = [{ kind = "creature_specialty", creature = "base:swordsman", bp_per_step = 500, speed = 1 }]
+
+[[hero]]
+id = "dracon"  # original id 147
+name = "Dracon"
+class = "base:wizard"
+skills = [{ skill = "base:wisdom", level = 2 }]
+spell_book = true
+spells = ["base:haste"]
+army = [{ creature = "enchanter", count = [6, 6] }, { creature = "enchanter", count = [3, 3] }, { creature = "enchanter", count = [1, 1] }]
+
+[[hero]]
+id = "gelu"  # original id 148
+name = "Gelu"
+class = "base:ranger"
+skills = [{ skill = "base:leadership", level = 1 }, { skill = "base:archery", level = 1 }]
+army = [{ creature = "sharpshooter", count = [6, 6] }, { creature = "sharpshooter", count = [3, 3] }, { creature = "sharpshooter", count = [1, 1] }]
+
+[[hero]]
+id = "kilgor"  # original id 149
+name = "Kilgor"
+class = "base:barbarian"
+skills = [{ skill = "base:offense", level = 2 }]
+army = [{ creature = "base:goblin", count = [15, 25] }, { creature = "base:wolf_rider", count = [5, 7] }, { creature = "base:orc", count = [4, 6] }]
+specialty = [{ kind = "creature_stat", creatures = { creature = "base:behemoth" }, stat = "attack", amount = 5 }, { kind = "creature_stat", creatures = { creature = "base:behemoth" }, stat = "defense", amount = 5 }, { kind = "creature_stat", creatures = { creature = "base:behemoth" }, stat = "min_damage", amount = 10 }, { kind = "creature_stat", creatures = { creature = "base:behemoth" }, stat = "max_damage", amount = 10 }]
+
+[[hero]]
+id = "lord_haart_death_knight"  # original id 150
+name = "Lord Haart"
+class = "base:death_knight"
+skills = [{ skill = "base:necromancy", level = 2 }]
+spell_book = true
+spells = ["base:slow"]
+army = [{ creature = "base:skeleton", count = [20, 30] }, { creature = "base:walking_dead", count = [4, 6] }, { creature = "base:wight", count = [4, 6] }]
+specialty = [{ kind = "creature_stat", creatures = { creature = "base:black_knight" }, stat = "attack", amount = 5 }, { kind = "creature_stat", creatures = { creature = "base:black_knight" }, stat = "defense", amount = 5 }, { kind = "creature_stat", creatures = { creature = "base:black_knight" }, stat = "min_damage", amount = 10 }, { kind = "creature_stat", creatures = { creature = "base:black_knight" }, stat = "max_damage", amount = 10 }]
+
+[[hero]]
+id = "mutare"  # original id 151
+name = "Mutare"
+class = "base:overlord"
+skills = [{ skill = "base:tactics", level = 1 }, { skill = "base:estates", level = 1 }]
+spell_book = true
+spells = ["base:magic_arrow"]
+army = [{ creature = "base:troglodyte", count = [30, 40] }, { creature = "base:harpy", count = [4, 6] }, { creature = "base:beholder", count = [3, 4] }]
+specialty = [{ kind = "creature_stat", creatures = { flag = "dragon" }, stat = "attack", amount = 5 }, { kind = "creature_stat", creatures = { flag = "dragon" }, stat = "defense", amount = 5 }]
+
+[[hero]]
+id = "roland"  # original id 152
+name = "Roland"
+class = "base:knight"
+skills = [{ skill = "base:leadership", level = 1 }, { skill = "base:armorer", level = 1 }]
+army = [{ creature = "base:pikeman", count = [10, 20] }, { creature = "base:archer", count = [4, 7] }, { creature = "base:griffin", count = [2, 3] }]
+specialty = [{ kind = "creature_specialty", creature = "base:crusader", bp_per_step = 500, speed = 1 }]
+
+[[hero]]
+id = "mutare_drake"  # original id 153
+name = "Mutare Drake"
+class = "base:overlord"
+skills = [{ skill = "base:tactics", level = 1 }, { skill = "base:estates", level = 1 }]
+spell_book = true
+spells = ["base:magic_arrow"]
+army = [{ creature = "base:troglodyte", count = [10, 20] }, { creature = "base:harpy", count = [4, 7] }, { creature = "base:beholder", count = [2, 3] }]
+specialty = [{ kind = "creature_stat", creatures = { flag = "dragon" }, stat = "attack", amount = 5 }, { kind = "creature_stat", creatures = { flag = "dragon" }, stat = "defense", amount = 5 }]
+
+[[hero]]
+id = "boragus"  # original id 154
+name = "Boragus"
+class = "base:barbarian"
+skills = [{ skill = "base:offense", level = 1 }, { skill = "base:tactics", level = 1 }]
+army = [{ creature = "base:goblin", count = [10, 20] }, { creature = "base:wolf_rider", count = [4, 7] }, { creature = "base:orc", count = [2, 3] }]
+specialty = [{ kind = "creature_specialty", creature = "base:ogre", bp_per_step = 500, speed = 1 }]
+
+[[hero]]
+id = "xeron"  # original id 155
+name = "Xeron"
+class = "base:demoniac"
+skills = [{ skill = "base:leadership", level = 1 }, { skill = "base:tactics", level = 1 }]
+army = [{ creature = "base:imp", count = [10, 20] }, { creature = "base:hell_hound", count = [4, 7] }, { creature = "base:hell_hound", count = [2, 3] }]
+specialty = [{ kind = "creature_stat", creatures = { creature = "base:devil" }, stat = "attack", amount = 4 }, { kind = "creature_stat", creatures = { creature = "base:devil" }, stat = "defense", amount = 2 }, { kind = "creature_stat", creatures = { creature = "base:devil" }, stat = "speed", amount = 1 }]

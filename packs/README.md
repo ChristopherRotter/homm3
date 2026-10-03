@@ -7,9 +7,9 @@ Human-editable content packs (ADR-0006), parsed by `h3-pack` and compiled into a
 |---|---|
 | `synthetic/` | Invented creatures with neutral names for tests, benchmarks, replays and the walking skeleton. **Not** original game data (docs/05-testing.md "Test data policy"). |
 | `synthetic-ext/` | Invented expansion of `synthetic`: exercises dependencies and overrides the way `ab`/`sod` do. |
-| `base/` | **Harvested**: The Restoration of Erathia, latest patch (Q15): resources, 10 terrains, 8 factions with native terrains, 78 obstacle types, 121 creatures (118 plus the war machines Ballista, First Aid Tent and Ammo Cart, E03 T8), battle parameters, profiles. |
-| `ab/` | **Harvested**: Armageddon's Blade (depends on `base`): Conflux, 23 creatures, elementals moved to Conflux. |
-| `sod/` | **Harvested**: The Shadow of Death (depends on `ab`): SoD-only changes as overrides. |
+| `base/` | **Harvested**: The Restoration of Erathia, latest patch (Q15): resources, 10 terrains, 8 factions with native terrains, 78 obstacle types, 121 creatures (118 plus the war machines Ballista, First Aid Tent and Ammo Cart, E03 T8) with their upgrades, battle parameters, profiles; since E04a T3 also 4 spell schools, 80 spells, 28 secondary skills, 16 hero classes and 128 heroes. |
+| `ab/` | **Harvested**: Armageddon's Blade (depends on `base`): Conflux, 23 creatures, elementals moved to Conflux and given their upgrades; the 2 Conflux hero classes and 28 heroes (Conflux, Sir Mullich, the campaign heroes). |
+| `sod/` | **Harvested**: The Shadow of Death (depends on `ab`): SoD-only changes as overrides; Titan's Lightning Bolt. |
 
 The harvested packs `base` (RoE), `ab` and `sod` are generated from the user's installation by
 `crates/h3-harvest` and committed (E02 T4; OPEN-QUESTIONS Q13: gameplay data and names only, no
@@ -219,6 +219,22 @@ different creatures or statistics.
 | `spell_specialty` | `spell` | specialty: stronger casts of the spell (formula per spell: E04b) |
 
 The three `*_specialty` kinds are allowed in a hero's `specialty` only.
+
+**What the harvested hero content leaves out** (the harvester's report lists it; sources and
+layouts: `docs/formats/installation.md` §6–§7, `crates/h3-harvest/data/gapfill.toml`):
+
+- Skills without effects yet: the magic skills, Sorcery, Resistance, Intelligence, Mysticism,
+  Wisdom, Eagle Eye (E04b), Ballistics (E04c), Necromancy and Learning (outcome application,
+  E08–E10), and the adventure skills. Their `[[secondary_skill]]` entries exist without levels.
+- Specialties not modelled: 13 resource and 2 creature-upgrade specialties (adventure), Adrienne
+  (none). Spell specialties carry only the spell; their formulas come with E04b.
+- Spells: town chances, AI values and the target/flag attributes (E04b, E09); hero classes:
+  aggression and tavern weights (E09); hero availability (campaign heroes, Lord Haart the Knight
+  retired by the expansions; E08–E10). Artifacts follow in E04a T3b.
+- Values pending an experiment: Artillery's shots at Basic (dispute D1, batch 1a; the gap-fill
+  follows VCMI and the wiki), Catherine's and Roland's Swordsmen specialty (H-1, batch 1a; the
+  harvest follows the executable: Swordsman for Catherine, Crusader for Roland), Xeron's +1 speed
+  (H-2; VCMI and the wiki).
 
 **Battle parameters** (`[battle]`, Tier 2; exactly one enabled pack provides them): field
 size, army slots, damage rolls, attack/defense rates and caps, Defend bonus, the formation rows

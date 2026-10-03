@@ -11,16 +11,18 @@
 //! Layouts: `docs/formats/installation.md`; pack format: `packs/README.md`.
 
 pub mod gapfill;
+pub mod heroes;
 
 use std::collections::{BTreeMap, BTreeSet};
 use std::fmt::Write as _;
 use std::path::Path;
 
-use h3_formats::exe::CreatureRecord;
+use h3_formats::exe::{CreatureRecord, HeroData};
 use h3_formats::lod::LodArchive;
 use h3_formats::text::TextTable;
 
 use crate::gapfill::{AbilitySpec, GapFill, Since};
+use crate::heroes::{Context, CreatureRef};
 
 /// Number of creature ids in the executable's table and the creature text table.
 pub const CREATURE_COUNT: usize = 150;
@@ -45,6 +47,10 @@ pub struct Inputs {
     pub resources: TextTable,
     /// `TERRNAME.txt` (terrain types).
     pub terrains: TextTable,
+    /// The executable's hero-related tables (E04a T3).
+    pub hero_data: HeroData,
+    /// Hero content text tables (E04a T3).
+    pub hero_tables: heroes::Tables,
 }
 
 impl Inputs {
@@ -58,8 +64,11 @@ impl Inputs {
             let path = install.join(rel);
             std::fs::read(&path).map_err(|e| format!("{}: {e}", path.display()))
         };
-        let exe = h3_formats::exe::creature_table(&read("Heroes3.exe")?)
-            .map_err(|e| format!("Heroes3.exe: {e}"))?;
+        let exe_bytes = read("Heroes3.exe")?;
+        let exe =
+            h3_formats::exe::creature_table(&exe_bytes).map_err(|e| format!("Heroes3.exe: {e}"))?;
+        let hero_data =
+            h3_formats::exe::hero_data(&exe_bytes).map_err(|e| format!("Heroes3.exe: {e}"))?;
         let sod = read("Data/H3bitmap.lod")?;
         let ab = read("Data/H3ab_bmp.lod")?;
         let table = |data: &[u8], archive: &str, name: &str| -> Result<TextTable, String> {
@@ -77,6 +86,14 @@ impl Inputs {
             towns: table(&sod, "H3bitmap.lod", "TownType.txt")?,
             resources: table(&sod, "H3bitmap.lod", "RESTYPES.TXT")?,
             terrains: table(&sod, "H3bitmap.lod", "TERRNAME.txt")?,
+            hero_data,
+            hero_tables: heroes::Tables {
+                classes: table(&sod, "H3bitmap.lod", "HCTRAITS.TXT")?,
+                heroes: table(&sod, "H3bitmap.lod", "HOTRAITS.TXT")?,
+                skills: table(&sod, "H3bitmap.lod", "SSTRAITS.TXT")?,
+                sod_spells: table(&sod, "H3bitmap.lod", "SPTRAITS.TXT")?,
+                ab_spells: table(&ab, "H3ab_bmp.lod", "SPTRAITS.TXT")?,
+            },
         })
     }
 }
@@ -648,6 +665,61 @@ pub fn harvest(inputs: &Inputs, gap: &GapFill) -> Result<Harvest, String> {
         }
     }
 
+    // Hero content (E04a T3) and the creature upgrade relation.
+    let pack_of = |id: usize| if ab_ids.contains(&id) { "ab" } else { "base" };
+    let creature_refs: BTreeMap<usize, CreatureRef> = creatures
+        .iter()
+        .map(|c| {
+            let r = CreatureRef {
+                key: c.key.clone(),
+                pack: pack_of(c.id),
+                war_machine: c.flags.contains(&"war_machine"),
+                name: c.row.name.clone(),
+            };
+            (c.id, r)
+        })
+        .collect();
+    let town_refs: Vec<(String, &'static str)> = towns
+        .iter()
+        .enumerate()
+        .map(|(t, n)| (key_of(n), if ab_towns.contains(&t) { "ab" } else { "base" }))
+        .collect();
+    let upgrades = heroes::upgrades(&inputs.exe, &creature_refs, gap)?;
+    let hero_packs = heroes::harvest_heroes(
+        &inputs.hero_tables,
+        &inputs.hero_data,
+        gap,
+        Context {
+            creatures: &creature_refs,
+            towns: &town_refs,
+        },
+        &mut report,
+    )?;
+    // Upgrades a creature's own pack can express, and the full list where a `base` creature
+    // upgrades into an `ab` creature (written as an `ab` override).
+    let upgrade_list = |id: usize, pack: &str, all: bool| -> Vec<String> {
+        upgrades
+            .get(&id)
+            .into_iter()
+            .flatten()
+            .filter(|&&u| all || pack_of(u) == pack || pack_of(u) == "base")
+            .map(|&u| {
+                let key = &creature_refs[&u].key;
+                if pack_of(u) == pack {
+                    key.clone()
+                } else {
+                    format!("{}:{key}", pack_of(u))
+                }
+            })
+            .collect()
+    };
+    let upgrades_later = |id: usize| {
+        pack_of(id) == "base"
+            && upgrades
+                .get(&id)
+                .is_some_and(|l| l.iter().any(|&u| pack_of(u) == "ab"))
+    };
+
     let header = |id: &str, depends: &[&str], what: &str| {
         let mut s = String::new();
         let _ = writeln!(
@@ -726,8 +798,10 @@ pub fn harvest(inputs: &Inputs, gap: &GapFill) -> Result<Harvest, String> {
             &resources,
             "base",
             base_abilities.get(&c.id).map(String::as_str),
+            &upgrade_list(c.id, "base", false),
         );
     }
+    base.push_str(&hero_packs.base);
     base.push_str(&obstacles);
     write_battle(&mut base, gap);
     base.push_str(
@@ -755,12 +829,12 @@ pub fn harvest(inputs: &Inputs, gap: &GapFill) -> Result<Harvest, String> {
             &resources,
             "ab",
             ab_abilities.get(&c.id).map(String::as_str),
+            &upgrade_list(c.id, "ab", true),
         );
     }
-    for c in creatures
-        .iter()
-        .filter(|c| roe.contains_key(&c.id) || ab_ability_overrides.contains_key(&c.id))
-    {
+    for c in creatures.iter().filter(|c| {
+        roe.contains_key(&c.id) || ab_ability_overrides.contains_key(&c.id) || upgrades_later(c.id)
+    }) {
         let _ = write!(ab, "\n[[creature_override]]\ntarget = \"base:{}\"\n", c.key);
         if roe.contains_key(&c.id) {
             let faction = c.faction.map_or_else(String::new, |t| town_ref(t, "ab"));
@@ -770,7 +844,15 @@ pub fn harvest(inputs: &Inputs, gap: &GapFill) -> Result<Harvest, String> {
         if let Some(line) = ab_ability_overrides.get(&c.id) {
             let _ = writeln!(ab, "{line}");
         }
+        if upgrades_later(c.id) {
+            let list: Vec<String> = upgrade_list(c.id, "ab", true)
+                .iter()
+                .map(|k| format!("\"{k}\""))
+                .collect();
+            let _ = writeln!(ab, "upgrades = [{}]", list.join(", "));
+        }
     }
+    ab.push_str(&hero_packs.ab);
 
     // sod
     let mut sod = header("sod", &["ab"], "The Shadow of Death: changes on top of AB.");
@@ -787,6 +869,7 @@ pub fn harvest(inputs: &Inputs, gap: &GapFill) -> Result<Harvest, String> {
         );
         write_row_diff(&mut sod, old, new, &resources);
     }
+    sod.push_str(&hero_packs.sod);
 
     // The output must compile in every allowed combination, and SoD without AB must be rejected.
     let profile = "base:faithful";
@@ -806,7 +889,7 @@ pub fn harvest(inputs: &Inputs, gap: &GapFill) -> Result<Harvest, String> {
 }
 
 /// TOML basic string.
-fn quote(s: &str) -> String {
+pub(crate) fn quote(s: &str) -> String {
     let mut out = String::from("\"");
     for c in s.chars() {
         match c {
@@ -849,6 +932,7 @@ fn write_creature(
     resources: &[String],
     pack: &str,
     abilities: Option<&str>,
+    upgrades: &[String],
 ) {
     let _ = write!(
         out,
@@ -882,6 +966,10 @@ fn write_creature(
     let _ = writeln!(out, "flags = [{}]", flags.join(", "));
     if let Some(line) = abilities {
         let _ = writeln!(out, "{line}");
+    }
+    if !upgrades.is_empty() {
+        let list: Vec<String> = upgrades.iter().map(|k| format!("\"{k}\"")).collect();
+        let _ = writeln!(out, "upgrades = [{}]", list.join(", "));
     }
 }
 

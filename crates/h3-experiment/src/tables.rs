@@ -8,14 +8,6 @@ use h3_formats::h3m::{ARTIFACT_SLOTS, ObjectTemplate};
 use h3_formats::lod::LodArchive;
 use h3_formats::text::{TextTable, decode_windows_1252};
 
-/// Number of hero types (`HOTRAITS.TXT`).
-pub const HEROES: usize = 156;
-/// Hero table of the Complete 4.0 executable: VA, record size, offset of the class
-/// (`docs/formats/installation.md` §7.1).
-const HERO_TABLE: (u32, u32, u32) = (0x0067_9DD0, 92, 8);
-/// Specialty table of the Complete 4.0 executable: VA and record size; kind and id are the first
-/// two `i32` (`docs/formats/installation.md` §7.2).
-const SPECIALTY_TABLE: (u32, u32) = (0x0067_8420, 40);
 /// Object class of a fixed wandering monster (subclass = creature id).
 const MONSTER_CLASS: u32 = 54;
 /// Resource names in `RESTYPES.TXT` order (for specialty descriptions).
@@ -73,30 +65,24 @@ impl Tables {
             std::fs::read(&path).map_err(|e| format!("{}: {e}", path.display()))
         };
         let exe_data = read("Heroes3.exe")?;
-        let (_, image) = exe::identify(&exe_data).map_err(|e| format!("Heroes3.exe: {e}"))?;
-        let i32_at = |va: u32| -> Result<i32, String> {
-            let off = image
-                .file_offset(va)
-                .ok_or_else(|| format!("Heroes3.exe: address {va:#x} not mapped"))?;
-            let bytes = exe_data
-                .get(off..off + 4)
-                .ok_or_else(|| format!("Heroes3.exe: address {va:#x} truncated"))?;
-            Ok(i32::from_le_bytes([bytes[0], bytes[1], bytes[2], bytes[3]]))
-        };
-        let mut hero_classes = Vec::with_capacity(HEROES);
-        let mut specialties = Vec::with_capacity(HEROES);
-        for id in 0..HEROES as u32 {
-            let class = i32_at(HERO_TABLE.0 + HERO_TABLE.1 * id + HERO_TABLE.2)?;
-            hero_classes.push(
-                u8::try_from(class)
-                    .map_err(|_| format!("hero {id}: class {class} out of range"))?,
-            );
-            let base = SPECIALTY_TABLE.0 + SPECIALTY_TABLE.1 * id;
-            specialties.push(Specialty {
-                kind: i32_at(base)?,
-                id: i32_at(base + 4)?,
-            });
-        }
+        let data = exe::hero_data(&exe_data).map_err(|e| format!("Heroes3.exe: {e}"))?;
+        let hero_classes = data
+            .heroes
+            .iter()
+            .enumerate()
+            .map(|(id, h)| {
+                u8::try_from(h.class)
+                    .map_err(|_| format!("hero {id}: class {} out of range", h.class))
+            })
+            .collect::<Result<Vec<_>, _>>()?;
+        let specialties = data
+            .specialties
+            .iter()
+            .map(|s| Specialty {
+                kind: s.kind,
+                id: s.id,
+            })
+            .collect();
         let lod_data = read("Data/H3bitmap.lod")?;
         let lod = LodArchive::parse(&lod_data).map_err(|e| format!("H3bitmap.lod: {e}"))?;
         let entry = |name: &str| -> Result<Vec<u8>, String> {

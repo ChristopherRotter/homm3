@@ -183,7 +183,10 @@ likewise). Found by searching for known values and checked against the text tabl
 | 0x3C | pointer to the name (zero in the file; filled from `HOTRAITS.TXT`) |
 | 0x40 | 3 × (i32 low, i32 high) starting stack sizes (zero in the file; filled from `HOTRAITS.TXT`) |
 
-A 157th record follows the table; it is not a hero of the text tables and is ignored.
+A 157th record follows the table; it is not a hero of the text tables and is ignored. Nine heroes
+have a war machine as their third starting creature (six the Ballista, three the First Aid Tent,
+count 1–1 in `HOTRAITS.TXT`); the harvester writes them as `war_machines`. Read by
+`h3_formats::exe::hero_data` together with §7.2, §7.4 and §7.6 (E04a T3).
 
 ### 7.2 Hero specialty table — VA 0x678420 (file 0x278420), 156 × 40 bytes
 
@@ -231,7 +234,10 @@ hero +0xC9 + skill id).
 | 0x63EA98 | First Aid | f32 0, 1, 2, 3 (the tent's maximum heal is 25 × (1 + value), §7.5) |
 
 These are original data and rank above VCMI and the wiki; all agree with the skill texts and
-with VCMI except where noted in the skills survey.
+with VCMI except where noted in the skills survey. The harvester (E04a T3) turns the tables of
+Luck, Leadership, Archery, Offense, Armorer, Diplomacy and First Aid into the skills' hero effects
+(fractions as basis points, each checked to be a whole number of them) and the growth constant
+0.05 into the skill specialties' 500 bp per level; Logistics is not read.
 
 ### 7.5 Code reading: First Aid Tent heal
 
@@ -247,6 +253,7 @@ game's code, not of a data table; such readings are allowed as a last resort, fo
 ### 7.6 Spell table — VA 0x685450 (file 0x285450), 81 × 0x88 bytes
 
 Static fields per spell id: i32 type (−1 negative, 0 neutral, 1 positive), pointer to the sound
-name, i32 animation, u32 flag bits (meaning to be decoded in T3: combat/adventure, target kinds,
-mind spell, …). All other fields (name, level, schools, costs, power, effects, chances, AI values,
-texts) are zero in the file and filled from `SPTRAITS.TXT`.
+name, i32 animation, u32 flag bits (combat/adventure, target kinds, mind spell, …; not decoded yet:
+E04b decodes them with the rules that read them). All other fields (name, level, schools, costs,
+power, effects, chances, AI values, texts) are zero in the file and filled from `SPTRAITS.TXT`.
+The harvester (E04a T3) writes the type as the spell's `polarity`.

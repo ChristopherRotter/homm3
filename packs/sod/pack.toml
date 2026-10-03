@@ -20,3 +20,14 @@ cost = { "base:gems" = 3, "base:gold" = 5000 }
 [[creature_override]]
 target = "base:cerberus"
 damage = [2, 7]
+
+[[spell]]
+id = "titans_lightning_bolt"  # original id 57
+name = "Titan's Lightning Bolt"
+category = "combat"
+level = 5
+schools = ["base:air"]
+cost = [0, 0, 0, 0]
+power = 0
+effect = [600, 600, 600, 600]
+polarity = "negative"

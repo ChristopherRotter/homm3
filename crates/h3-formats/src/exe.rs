@@ -1,4 +1,4 @@
-//! Static tables inside `Heroes3.exe` (`docs/formats/installation.md` §5).
+//! Static tables inside `Heroes3.exe` (`docs/formats/installation.md` §5, §7).
 //!
 //! Only builds listed in [`KNOWN_BUILDS`] are read: the table location is build-specific, so an
 //! unknown executable is rejected instead of being read at a guessed offset.
@@ -18,7 +18,123 @@ pub struct KnownBuild {
     pub creature_table_va: u32,
     /// Number of creature records.
     pub creature_count: usize,
+    /// Hero, specialty, skill-value and spell tables (E04a T3).
+    pub heroes: HeroTables,
 }
+
+/// Where a build keeps its hero-related static tables (`docs/formats/installation.md` §7).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct HeroTables {
+    /// Virtual address of the hero table (§7.1).
+    pub hero_va: u32,
+    /// Number of hero records.
+    pub hero_count: usize,
+    /// Virtual address of the specialty table (§7.2), one record per hero.
+    pub specialty_va: u32,
+    /// Virtual address of the spell table (§7.6).
+    pub spell_va: u32,
+    /// Number of spell records.
+    pub spell_count: usize,
+    /// The secondary-skill value tables (§7.4).
+    pub skill_values: &'static [SkillValueTable],
+    /// Virtual address of the `f32` per-level growth of skill specialties (§7.4).
+    pub specialty_growth_va: u32,
+}
+
+/// One secondary skill's four values (levels 0–3) in the executable (§7.4).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct SkillValueTable {
+    /// Secondary skill id (`SSTRAITS.TXT` row).
+    pub skill: u8,
+    /// Virtual address of the four values.
+    pub va: u32,
+    /// The values are `f32` (else `i32`).
+    pub float: bool,
+}
+
+/// Skill value tables of the Complete 4.0 build whose getters were identified (§7.4).
+const COMPLETE_SKILL_VALUES: &[SkillValueTable] = &[
+    SkillValueTable {
+        skill: 9,
+        va: 0x0063_E998,
+        float: false,
+    }, // Luck
+    SkillValueTable {
+        skill: 6,
+        va: 0x0063_E9A8,
+        float: false,
+    }, // Leadership
+    SkillValueTable {
+        skill: 12,
+        va: 0x0063_E9B8,
+        float: true,
+    }, // Necromancy
+    SkillValueTable {
+        skill: 8,
+        va: 0x0063_E9C8,
+        float: false,
+    }, // Mysticism
+    SkillValueTable {
+        skill: 3,
+        va: 0x0063_E9D8,
+        float: false,
+    }, // Scouting
+    SkillValueTable {
+        skill: 1,
+        va: 0x0063_E9E8,
+        float: true,
+    }, // Archery
+    SkillValueTable {
+        skill: 22,
+        va: 0x0063_E9F8,
+        float: true,
+    }, // Offense
+    SkillValueTable {
+        skill: 23,
+        va: 0x0063_EA08,
+        float: true,
+    }, // Armorer
+    SkillValueTable {
+        skill: 13,
+        va: 0x0063_EA18,
+        float: false,
+    }, // Estates
+    SkillValueTable {
+        skill: 11,
+        va: 0x0063_EA28,
+        float: true,
+    }, // Eagle Eye
+    SkillValueTable {
+        skill: 4,
+        va: 0x0063_EA38,
+        float: true,
+    }, // Diplomacy
+    SkillValueTable {
+        skill: 26,
+        va: 0x0063_EA48,
+        float: true,
+    }, // Resistance
+    SkillValueTable {
+        skill: 21,
+        va: 0x0063_EA58,
+        float: true,
+    }, // Learning
+    SkillValueTable {
+        skill: 25,
+        va: 0x0063_EA78,
+        float: true,
+    }, // Sorcery
+    SkillValueTable {
+        skill: 24,
+        va: 0x0063_EA88,
+        float: true,
+    }, // Intelligence
+    SkillValueTable {
+        skill: 27,
+        va: 0x0063_EA98,
+        float: true,
+    }, // First Aid
+];
 
 /// Builds known to this reader.
 pub const KNOWN_BUILDS: &[KnownBuild] = &[KnownBuild {
@@ -27,7 +143,87 @@ pub const KNOWN_BUILDS: &[KnownBuild] = &[KnownBuild {
     file_len: 2_732_032,
     creature_table_va: 0x0067_03B8,
     creature_count: 150,
+    heroes: HeroTables {
+        hero_va: 0x0067_9DD0,
+        hero_count: 156,
+        specialty_va: 0x0067_8420,
+        spell_va: 0x0068_5450,
+        spell_count: 81,
+        skill_values: COMPLETE_SKILL_VALUES,
+        specialty_growth_va: 0x0063_EAE4,
+    },
 }];
+
+/// Size of one hero record (§7.1).
+pub const HERO_RECORD_SIZE: usize = 92;
+/// Size of one specialty record (§7.2).
+pub const SPECIALTY_RECORD_SIZE: usize = 40;
+/// Size of one spell record (§7.6).
+pub const SPELL_RECORD_SIZE: usize = 0x88;
+
+/// The static part of a hero record (§7.1); names and army sizes are filled from the text
+/// tables at start-up and are zero in the file.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct HeroRecord {
+    /// Hero class (`HCTRAITS.TXT` row).
+    pub class: i32,
+    /// Starting secondary skills as (skill id, level 1–3); skill `-1` = none.
+    pub skills: [(i32, i32); 2],
+    /// Starts with a spell book.
+    pub spell_book: bool,
+    /// Starting spell id, `-1` = none.
+    pub spell: i32,
+    /// Starting creature types of the three army entries.
+    pub creatures: [i32; 3],
+    /// Flag byte 0: a hero of The Restoration of Erathia.
+    pub roe: bool,
+    /// Flag byte 1: available with the expansions.
+    pub expansions: bool,
+    /// Flag byte 2: a campaign hero.
+    pub campaign: bool,
+}
+
+/// A specialty record (§7.2).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct SpecialtyRecord {
+    /// Kind: −1 none, 0 skill, 1 creature, 2 resource, 3 spell, 4 creature stats, 5 speed,
+    /// 6 upgrade, 7 dragons.
+    pub kind: i32,
+    /// Skill, creature, resource or spell id (kind 5: the speed bonus).
+    pub id: i32,
+    /// Attack bonus (kinds 4 and 7).
+    pub attack: i32,
+    /// Defense bonus (kinds 4 and 7).
+    pub defense: i32,
+    /// Damage bonus (kind 4).
+    pub damage: i32,
+    /// Upgrade targets (kind 6).
+    pub upgrades: [i32; 2],
+}
+
+/// A skill table value.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub enum SkillValue {
+    /// An integer value (levels, points).
+    Integer(i32),
+    /// A fraction (0.25 = 25 %).
+    Float(f32),
+}
+
+/// The hero-related static tables of an executable.
+#[derive(Debug, Clone, PartialEq)]
+pub struct HeroData {
+    /// Hero records by hero id.
+    pub heroes: Vec<HeroRecord>,
+    /// Specialty records by hero id.
+    pub specialties: Vec<SpecialtyRecord>,
+    /// Spell type by spell id: −1 negative, 0 neutral, 1 positive.
+    pub spell_types: Vec<i32>,
+    /// Values of levels 0–3 per identified skill table, in table order.
+    pub skill_values: Vec<(u8, [SkillValue; 4])>,
+    /// Growth of a skill specialty per hero level (0.05).
+    pub specialty_growth: f32,
+}
 
 /// Size of one creature record.
 pub const CREATURE_RECORD_SIZE: usize = 116;
@@ -254,6 +450,125 @@ pub fn creature_table_at(
     Ok(out)
 }
 
+/// Reads the hero-related static tables of a known build.
+///
+/// # Errors
+/// Unknown build, unmapped tables, or values outside the ranges the tables use.
+pub fn hero_data(data: &[u8]) -> Result<HeroData, FormatError> {
+    let (build, image) = identify(data)?;
+    hero_data_at(&image, &build.heroes)
+}
+
+fn range(what: &'static str, v: i32, lo: i32, hi: i32) -> Result<i32, FormatError> {
+    if (lo..=hi).contains(&v) {
+        Ok(v)
+    } else {
+        Err(FormatError::OutOfRange {
+            what,
+            value: u64::from(v.unsigned_abs()),
+        })
+    }
+}
+
+/// Reads the tables described by `t` (exposed for tests with synthetic images).
+///
+/// # Errors
+/// As [`hero_data`], without the build check.
+pub fn hero_data_at(image: &PeImage<'_>, t: &HeroTables) -> Result<HeroData, FormatError> {
+    let at = |va: u32, what: &'static str| {
+        image.file_offset(va).ok_or(FormatError::OutOfRange {
+            what,
+            value: u64::from(va),
+        })
+    };
+    let i32_at = |off: usize| le::i32_at(image.data, off, "hero table");
+    let base = at(t.hero_va, "hero table address")?;
+    let mut heroes = Vec::with_capacity(t.hero_count.min(1024));
+    for i in 0..t.hero_count {
+        let r = base + i * HERO_RECORD_SIZE;
+        let byte = |o: usize| {
+            image
+                .data
+                .get(r + o)
+                .copied()
+                .ok_or(FormatError::Truncated {
+                    what: "hero record",
+                    offset: r,
+                })
+        };
+        let skill = |o: usize| -> Result<(i32, i32), FormatError> {
+            Ok((
+                range("hero skill", i32_at(r + o)?, -1, 63)?,
+                range("hero skill level", i32_at(r + o + 4)?, 0, 3)?,
+            ))
+        };
+        let creature = |o: usize| range("hero creature", i32_at(r + o)?, -1, 1023);
+        heroes.push(HeroRecord {
+            class: range("hero class", i32_at(r + 8)?, 0, 63)?,
+            skills: [skill(0x0C)?, skill(0x14)?],
+            spell_book: byte(0x1C)? != 0,
+            spell: range("hero spell", i32_at(r + 0x20)?, -1, 1023)?,
+            creatures: [creature(0x24)?, creature(0x28)?, creature(0x2C)?],
+            roe: byte(0x38)? != 0,
+            expansions: byte(0x39)? != 0,
+            campaign: byte(0x3A)? != 0,
+        });
+        // The whole record must be present.
+        byte(HERO_RECORD_SIZE - 1)?;
+    }
+    let base = at(t.specialty_va, "specialty table address")?;
+    let mut specialties = Vec::with_capacity(t.hero_count.min(1024));
+    for i in 0..t.hero_count {
+        let r = base + i * SPECIALTY_RECORD_SIZE;
+        let v = |k: usize| le::i32_at(image.data, r + 4 * k, "specialty record");
+        specialties.push(SpecialtyRecord {
+            kind: range("specialty kind", v(0)?, -1, 7)?,
+            id: v(1)?,
+            attack: v(2)?,
+            defense: v(3)?,
+            damage: v(4)?,
+            upgrades: [v(5)?, v(6)?],
+        });
+    }
+    let base = at(t.spell_va, "spell table address")?;
+    let mut spell_types = Vec::with_capacity(t.spell_count.min(1024));
+    for i in 0..t.spell_count {
+        let r = base + i * SPELL_RECORD_SIZE;
+        spell_types.push(range(
+            "spell type",
+            le::i32_at(image.data, r, "spell record")?,
+            -1,
+            1,
+        )?);
+    }
+    let mut skill_values = Vec::with_capacity(t.skill_values.len());
+    for table in t.skill_values {
+        let base = at(table.va, "skill table address")?;
+        let mut values = [SkillValue::Integer(0); 4];
+        for (k, v) in values.iter_mut().enumerate() {
+            let bits = le::u32_at(image.data, base + 4 * k, "skill table")?;
+            *v = if table.float {
+                SkillValue::Float(f32::from_bits(bits))
+            } else {
+                SkillValue::Integer(i32::from_le_bytes(bits.to_le_bytes()))
+            };
+        }
+        skill_values.push((table.skill, values));
+    }
+    let growth = le::u32_at(
+        image.data,
+        at(t.specialty_growth_va, "specialty growth address")?,
+        "specialty growth",
+    )?;
+    Ok(HeroData {
+        heroes,
+        specialties,
+        spell_types,
+        skill_values,
+        specialty_growth: f32::from_bits(growth),
+    })
+}
+
 /// Builds a minimal PE32 image with one section that holds `payload` at RVA `0x1000`, image base
 /// `0x400000` (tests only; the layout is the standard PE layout, not game data).
 #[must_use]
@@ -329,6 +644,190 @@ mod tests {
         // Reading past the section is an error, not a panic.
         assert!(creature_table_at(&pe, va, 3).is_err());
         assert!(creature_table_at(&pe, 0x10, 1).is_err());
+    }
+
+    /// A payload with one hero record, one specialty record, two spell records, two skill
+    /// tables and the growth constant, at known offsets from RVA 0x1000.
+    fn hero_payload() -> (Vec<u8>, HeroTables) {
+        const SKILLS: &[SkillValueTable] = &[
+            SkillValueTable {
+                skill: 9,
+                va: 0x0040_1000 + 92 + 40 + 2 * 0x88,
+                float: false,
+            },
+            SkillValueTable {
+                skill: 1,
+                va: 0x0040_1000 + 92 + 40 + 2 * 0x88 + 16,
+                float: true,
+            },
+        ];
+        let mut p = vec![0u8; HERO_RECORD_SIZE];
+        let put = |p: &mut Vec<u8>, at: usize, v: i32| {
+            p[at..at + 4].copy_from_slice(&v.to_le_bytes());
+        };
+        put(&mut p, 8, 3); // class
+        put(&mut p, 0x0C, 6);
+        put(&mut p, 0x10, 1);
+        put(&mut p, 0x14, -1);
+        p[0x1C] = 1;
+        put(&mut p, 0x20, 46);
+        put(&mut p, 0x24, 0);
+        put(&mut p, 0x28, 2);
+        put(&mut p, 0x2C, 146);
+        p[0x38] = 1;
+        p[0x39] = 1;
+        let mut spec = vec![0u8; SPECIALTY_RECORD_SIZE];
+        for (k, v) in [4i32, 96, 5, 5, 10, 0, 0].into_iter().enumerate() {
+            put(&mut spec, 4 * k, v);
+        }
+        p.extend_from_slice(&spec);
+        for t in [-1i32, 1] {
+            let mut r = vec![0u8; SPELL_RECORD_SIZE];
+            put(&mut r, 0, t);
+            p.extend_from_slice(&r);
+        }
+        for v in [0i32, 1, 2, 3] {
+            p.extend_from_slice(&v.to_le_bytes());
+        }
+        for v in [0.0f32, 0.1, 0.25, 0.5] {
+            p.extend_from_slice(&v.to_bits().to_le_bytes());
+        }
+        p.extend_from_slice(&0.05f32.to_bits().to_le_bytes());
+        let tables = HeroTables {
+            hero_va: 0x0040_1000,
+            hero_count: 1,
+            specialty_va: 0x0040_1000 + 92,
+            spell_va: 0x0040_1000 + 92 + 40,
+            spell_count: 2,
+            skill_values: SKILLS,
+            specialty_growth_va: 0x0040_1000 + 92 + 40 + 2 * 0x88 + 32,
+        };
+        (p, tables)
+    }
+
+    #[test]
+    fn reads_hero_tables_from_a_synthetic_image() {
+        let (p, t) = hero_payload();
+        let img = build_test_image(1, &p);
+        let pe = PeImage::parse(&img).unwrap();
+        let d = hero_data_at(&pe, &t).unwrap();
+        assert_eq!(
+            d.heroes,
+            vec![HeroRecord {
+                class: 3,
+                skills: [(6, 1), (-1, 0)],
+                spell_book: true,
+                spell: 46,
+                creatures: [0, 2, 146],
+                roe: true,
+                expansions: true,
+                campaign: false,
+            }]
+        );
+        assert_eq!(
+            d.specialties[0],
+            SpecialtyRecord {
+                kind: 4,
+                id: 96,
+                attack: 5,
+                defense: 5,
+                damage: 10,
+                upgrades: [0, 0]
+            }
+        );
+        assert_eq!(d.spell_types, vec![-1, 1]);
+        assert_eq!(
+            d.skill_values[0],
+            (9, [0, 1, 2, 3].map(SkillValue::Integer))
+        );
+        assert_eq!(
+            d.skill_values[1],
+            (1, [0.0, 0.1, 0.25, 0.5].map(SkillValue::Float))
+        );
+        assert_eq!(d.specialty_growth, 0.05);
+        assert!(matches!(hero_data(&img), Err(FormatError::UnknownBuild(_))));
+    }
+
+    #[test]
+    fn hero_table_errors() {
+        let (p, t) = hero_payload();
+        let img = build_test_image(1, &p);
+        let pe = PeImage::parse(&img).unwrap();
+        // Unmapped addresses and truncated tables.
+        for bad in [
+            HeroTables { hero_va: 0x10, ..t },
+            HeroTables {
+                specialty_va: 0x10,
+                ..t
+            },
+            HeroTables {
+                spell_va: 0x10,
+                ..t
+            },
+            HeroTables {
+                specialty_growth_va: 0x10,
+                ..t
+            },
+            HeroTables { hero_count: 9, ..t },
+            HeroTables {
+                spell_count: 9,
+                ..t
+            },
+            HeroTables {
+                specialty_growth_va: t.specialty_growth_va + 2,
+                ..t
+            },
+            HeroTables {
+                skill_values: &[SkillValueTable {
+                    skill: 0,
+                    va: 0x10,
+                    float: false,
+                }],
+                ..t
+            },
+            HeroTables {
+                skill_values: &[SkillValueTable {
+                    skill: 0,
+                    va: 0x0040_1000 + 92 + 40 + 2 * 0x88 + 28,
+                    float: false,
+                }],
+                ..t
+            },
+        ] {
+            assert!(hero_data_at(&pe, &bad).is_err(), "{bad:?}");
+        }
+        // Out-of-range values.
+        let at_spec = HERO_RECORD_SIZE;
+        let at_spell = HERO_RECORD_SIZE + SPECIALTY_RECORD_SIZE;
+        for (offset, value) in [
+            (8, 64),
+            (0x0C, 64),
+            (0x10, 4),
+            (0x14, -2),
+            (0x18, -1),
+            (0x20, 1024),
+            (0x24, -2),
+            (0x28, 1024),
+            (0x2C, -5),
+            (at_spec, 8),
+            (at_spell, 2),
+        ] {
+            let mut q = p.clone();
+            q[offset..offset + 4].copy_from_slice(&i32::to_le_bytes(value));
+            let img = build_test_image(1, &q);
+            let pe = PeImage::parse(&img).unwrap();
+            assert!(
+                matches!(hero_data_at(&pe, &t), Err(FormatError::OutOfRange { .. })),
+                "{offset:#x} = {value}"
+            );
+        }
+        // A hero record cut short by the end of the section.
+        let img = build_test_image(1, &p[..60]);
+        let pe = PeImage::parse(&img).unwrap();
+        assert!(hero_data_at(&pe, &t).is_err());
+        let img = build_test_image(1, &p[..80]);
+        let pe = PeImage::parse(&img).unwrap();
+        assert!(hero_data_at(&pe, &t).is_err());
     }
 
     #[test]
