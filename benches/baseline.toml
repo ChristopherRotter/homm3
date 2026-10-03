@@ -3,7 +3,7 @@
 # both match this file. A change above `threshold_percent` fails verify. Update intentionally
 # with `cargo xtask bench-check --update` and state the reason in the commit message.
 
-toolchain = "rustc 1.95.0 (59807616e 2026-04-14)"
+toolchain = "rustc 1.97.0 (2d8144b78 2026-07-07)"
 target = "x86_64-unknown-linux-gnu"
 
 [[workload]]
@@ -19,5 +19,5 @@ args = [
     "1",
 ]
 collect = "*random_rollout*"
-instructions = 497032854
+instructions = 485593259
 threshold_percent = 2

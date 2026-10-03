@@ -71,7 +71,6 @@ See `docs/stubs.toml` (empty: no registered stubs after E01).
 - 2026-09-30 (E01): mutation testing (`cargo-mutants`) and fuzzing (`cargo-fuzz`) set-up; first fuzz targets come with E02's binary parsers.
 - 2026-09-30 (E01): profile-level Tier-2 overrides (still deferred after E02; content-pack override rules were done in E02 T3).
 - 2026-09-30 (E01): faster state hash if search needs per-node hashing (FNV-1a ≈ 1 ns/byte; bump `HASH_VERSION`).
-- 2026-09-30 (E01): bump the pinned toolchain (1.95.0) to the current stable when the build environment allows; re-baseline bench-check.
 - 2026-10-01 (E02): war machines (Catapult, Ballista, First Aid Tent, Ammo Cart, Arrow Tower) are not harvested (speed 0, no damage for most): model them with heroes/sieges (E03/E04) and extend the harvester. *(E03 T8: Ballista, First Aid Tent and Ammo Cart harvested and implemented; Catapult and Arrow Tower remain for sieges, E04.)*
 - 2026-10-01 (E02): abilities from the harvest report for E03 (jousting, morale ±, no wall penalty, Dragon Fly weakness from SoD/RoE 1.3, hate, …) and the unidentified exe flag bit `0x800` (Arch Mage, Beholder, Evil Eye).
 - 2026-10-01 (E02): ~~tight formations~~ (done in E03 T9) / tactics (E04), creature-bank layouts (with creature banks), and other harvested tables (spells, artifacts, heroes, buildings) when their epics come; RoE/AB patch differences outside creatures need the same gap-fill treatment (Q15).

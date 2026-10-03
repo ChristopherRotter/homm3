@@ -2,6 +2,6 @@
 # Coverage additionally needs `llvm-tools-preview` (`rustup component add llvm-tools-preview`);
 # it is not listed here so that environments without it can still build and test.
 [toolchain]
-channel = "1.95.0"
+channel = "1.97.0"
 components = ["rustfmt", "clippy"]
 profile = "minimal"
