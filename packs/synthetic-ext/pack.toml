@@ -39,3 +39,19 @@ upgrades = ["lurker"]       # pack format v3 (E04a T3): the upgrade comes with t
 target = "synthetic:brute"
 growth = 8
 cost = { "synthetic:coin" = 110, "synthetic:shard" = 1 }
+
+# Artifacts (E04a T3b): one more charm position, and a combination that needs all three.
+[[artifact_slot_override]]
+target = "synthetic:charm"
+count = 3
+
+[[artifact]]
+id = "storm_regalia"
+name = "Storm Regalia"
+class = "relic"
+slot = "synthetic:charm"            # locks two more charms and the crown
+parts = ["synthetic:lucky_knot", "synthetic:gloom_bell", "synthetic:sight_lens", "synthetic:iron_crown"]
+effects = [
+    { kind = "shoot_when_adjacent", creatures = { flag = "shooter" } },
+    { kind = "alignment_group", factions = ["synthetic:vale", "marsh"] },
+]

@@ -198,8 +198,8 @@ war_machines = ["bolt_thrower"]    # creatures with flag war_machine (not in `ar
 specialty = [{ kind = "skill_specialty", skill = "marksmanship", bp_per_level = 500 }]
 ```
 
-**Hero effects** (`h3_content::HeroEffect`, ADR-0013 §3): what a skill level or a specialty (from
-T3b: an artifact) gives. Percentages are **basis points** (`bp`, 1/100 %). The translation to the
+**Hero effects** (`h3_content::HeroEffect`, ADR-0013 §3): what a skill level, a specialty or an
+artifact gives. Percentages are **basis points** (`bp`, 1/100 %). The translation to the
 battle (`h3-heroes`, E04a T4) and the rules that read them come with E04a T4–T10. At most 16 per
 list; one entry per kind, except `morale`/`luck` for different sides and `creature_stat` for
 different creatures or statistics.
@@ -217,8 +217,49 @@ different creatures or statistics.
 | `skill_specialty` | `skill`, `bp_per_level` (≥ 1) | specialty: the skill's scalable values grow by `bp_per_level` of themselves per hero level |
 | `creature_specialty` | `creature`, `bp_per_step` (≥ 1), `speed` (default 0) | specialty: attack and defense of the creature and its upgrades grow by `bp_per_step` of the creature's value (rounded up) per full step of (creature level) hero levels; speed + `speed` |
 | `spell_specialty` | `spell` | specialty: stronger casts of the spell (formula per spell: E04b) |
+| `primary_skills` | `attack`, `defense`, `power`, `knowledge` (each default 0, not all 0) | changes the hero's primary skills (artifacts); the only kind that counts once **per equipped copy** |
+| `morale_at_most`, `luck_at_most` | `value`, `affects` | caps the morale/luck of the affected stacks for the battle (Spirit of Oppression, Hourglass of the Evil Hour: `value = 0`, `affects = "both"`) |
+| `alignment_group` | `factions` (2..=16, distinct) | creatures of these factions count as one alignment for the army-alignment morale of the hero's side (BAT-MOR-002; Angelic Alliance) |
+| `creature_stat_percent` | `creatures`, `stat`, `bp` (≥ 1) | change of a creature statistic by a share of the creature's own value (Elixir of Life: +25 % hit points) |
+| `regeneration` | `creatures`, `hit_points` (≥ 1) | the top creature of each selected stack regains up to `hit_points` at the start of its turn (Elixir of Life) |
+| `no_range_penalty`, `shoot_when_adjacent` | `creatures` | the selected creatures shoot without the range penalty / also while an enemy is adjacent (Golden Bow, Bow of the Sharpshooter) |
+| `no_retreat` | — | neither side may retreat or surrender (Shackles of War) |
 
 The three `*_specialty` kinds are allowed in a hero's `specialty` only.
+
+**Artifacts** (format v3, E04a T3b; `h3_content::ArtifactType`, ADR-0013 §3). A slot is a *kind*
+of equipment position with a count; an artifact fits any position of its slot.
+
+```toml
+[[artifact_slot]]
+id = "charm"
+name = "Charm"
+count = 2                          # positions of this kind on a hero (1..=8, default 1; all slots together at most 32)
+
+[[artifact_slot_override]]         # a later pack changes a slot of its closure (name and/or count)
+target = "synthetic:charm"
+count = 3
+
+[[artifact]]
+id = "sight_lens"
+name = "Sight Lens"
+class = "treasure"                 # treasure | minor | major | relic | special
+cost = { coin = 2000 }             # value by resource (default: none)
+slot = "charm"                     # omitted: carried in the backpack only
+needs_skill = "marksmanship"       # optional: the effects apply only while the hero has the skill
+war_machine = "bolt_thrower"       # optional: the war machine (flag war_machine) it places in battle
+effects = [{ kind = "ranged_damage", bp = 500 }]   # hero effects, no *_specialty kinds
+parts = ["a", "b"]                 # a combination's parts (2..=16, distinct)
+```
+
+The compiler checks after all packs: effect lists as above; a war-machine artifact has a slot
+and is neither a combination nor a part; a combination's parts have slots, are not combinations
+themselves and belong to no other combination, its own slot is one of its parts' slots, and the
+slots have enough positions for all parts. A combination **locks** one position of every part's
+slot except one of its own (`ArtifactType::locks`, derived: Angelic Alliance in the right hand
+locks the torso, feet, neck, left hand and head). It gives its own effects, and its parts give
+theirs (the derivation, E04a T10). Identical artifacts count once, except `primary_skills`
+(the original sums its artifact table per copy: two Quiet Eyes of the Dragon give +2/+2).
 
 **What the harvested hero content leaves out** (the harvester's report lists it; sources and
 layouts: `docs/formats/installation.md` §6–§7, `crates/h3-harvest/data/gapfill.toml`):
@@ -230,7 +271,7 @@ layouts: `docs/formats/installation.md` §6–§7, `crates/h3-harvest/data/gapfi
   (none). Spell specialties carry only the spell; their formulas come with E04b.
 - Spells: town chances, AI values and the target/flag attributes (E04b, E09); hero classes:
   aggression and tavern weights (E09); hero availability (campaign heroes, Lord Haart the Knight
-  retired by the expansions; E08–E10). Artifacts follow in E04a T3b.
+  retired by the expansions; E08–E10).
 - Checked by experiment batch 1a (SoD, `experiments/results/E04a-batch-1a.md`): Artillery gives
   one Ballista shot at Basic and two at Expert (R6, R7; dispute D1 goes to VCMI and the wiki, not
   the skill text); the creature specialties follow the executable's specialty table: Catherine
@@ -256,9 +297,9 @@ flags are off): the registered flags are in `h3_content::REGISTRY` and the quirk
 (`docs/rules/quirks-ledger.md`); the packs' `faithful` profiles turn Q-0003 on, `strict-fixed`
 off. Profile-level Tier-2 overrides are not implemented yet (backlog).
 
-The compiled ruleset's canonical hash (encoding v9, `RULESET_HASH_VERSION`) covers packs, profile,
-quirks, resources, terrains, factions, obstacles, all creature fields including abilities and
-upgrades, the battle parameters and the hero content; replays record it.
+The compiled ruleset's canonical hash (encoding v10, `RULESET_HASH_VERSION`) covers packs,
+profile, quirks, resources, terrains, factions, obstacles, all creature fields including abilities
+and upgrades, the battle parameters and the hero content with the artifacts; replays record it.
 
 ## Scenarios
 

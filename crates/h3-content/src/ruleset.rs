@@ -8,6 +8,7 @@ use alloc::vec::Vec;
 use h3_kernel::{CanonicalHash, Handle, StateHasher};
 
 use crate::ability::{self, Ability, AbilityDef, CompiledAbility};
+use crate::artifacts::{ArtifactSlot, ArtifactSlotId, ArtifactType, ArtifactTypeId};
 use crate::error::CompileError;
 use crate::flags::{CreatureFlag, CreatureFlags};
 use crate::heroes::{
@@ -26,7 +27,7 @@ pub const MAX_ARMY_SLOTS: usize = 16;
 pub const MAX_FIELD_HEXES: usize = 255;
 
 /// Version of the ruleset hash encoding. Bump when the encoding below changes.
-pub const RULESET_HASH_VERSION: u32 = 9;
+pub const RULESET_HASH_VERSION: u32 = 10;
 
 /// A compiled creature type.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -552,6 +553,7 @@ impl Ruleset {
             let refs = Refs {
                 pack: id,
                 closure,
+                resources: &resource_index,
                 factions: &faction_index,
                 creatures: &creature_index,
             };
@@ -729,6 +731,41 @@ impl Ruleset {
     /// Looks a hero type up by its `pack:name` key.
     pub fn hero_type_by_key(&self, key: &str) -> Option<HeroTypeId> {
         self.hero.heroes.by_key(key)
+    }
+
+    /// All artifact slots, in load order (handle order).
+    pub fn artifact_slots(&self) -> &[ArtifactSlot] {
+        &self.hero.slots.items
+    }
+
+    /// The artifact slot behind a handle.
+    pub fn artifact_slot(&self, id: ArtifactSlotId) -> Option<&ArtifactSlot> {
+        self.hero.slots.get(id)
+    }
+
+    /// Looks an artifact slot up by its `pack:name` key.
+    pub fn artifact_slot_by_key(&self, key: &str) -> Option<ArtifactSlotId> {
+        self.hero.slots.by_key(key)
+    }
+
+    /// All artifact types, in load order (handle order).
+    pub fn artifacts(&self) -> &[ArtifactType] {
+        &self.hero.artifacts.items
+    }
+
+    /// The artifact type behind a handle.
+    pub fn artifact(&self, id: ArtifactTypeId) -> Option<&ArtifactType> {
+        self.hero.artifacts.get(id)
+    }
+
+    /// Looks an artifact type up by its `pack:name` key.
+    pub fn artifact_by_key(&self, key: &str) -> Option<ArtifactTypeId> {
+        self.hero.artifacts.by_key(key)
+    }
+
+    /// The combination artifact `part` is a part of, if any.
+    pub fn combination_of(&self, part: ArtifactTypeId) -> Option<ArtifactTypeId> {
+        self.hero.combination_of(part)
     }
 
     /// Resource kinds, in load order (a [`ResourceId`] indexes this slice).
@@ -1162,7 +1199,8 @@ impl CanonicalHash for Ruleset {
     /// the morale and luck dice and tables, each table as length + all 8 entries; v7: the war
     /// machine positions) with the full formation tables (v8: loose, then tight). v9 (E04a T3):
     /// each creature ends with its upgrades (length + handles), and the hero content follows the
-    /// battle parameters (`heroes::HeroContent`'s encoding).
+    /// battle parameters (`heroes::HeroContent`'s encoding). v10 (E04a T3b): the hero content
+    /// ends with the artifact slots and artifacts, and hero effects have nine more kinds.
     fn hash_into(&self, h: &mut StateHasher) {
         h.write_u32(RULESET_HASH_VERSION);
         h.write_len(self.packs.len());

@@ -21,6 +21,7 @@
 extern crate alloc;
 
 mod ability;
+mod artifacts;
 mod effect;
 mod error;
 mod flags;
@@ -31,9 +32,13 @@ mod quirks;
 mod ruleset;
 
 pub use ability::{Ability, AbilityDef, AreaShot, AuraTarget, CompiledAbility};
+pub use artifacts::{
+    ArtifactClass, ArtifactSlot, ArtifactSlotId, ArtifactType, ArtifactTypeId, MAX_PARTS,
+    MAX_SLOT_COUNT, MAX_SLOT_POSITIONS,
+};
 pub use effect::{
     Affects, CompiledHeroEffect, CreatureSelector, CreatureStat, FULL_BP, HeroEffect,
-    HeroEffectDef, MAX_EFFECTS, MAX_SKILL_LEVEL,
+    HeroEffectDef, MAX_ALIGNMENT_FACTIONS, MAX_EFFECTS, MAX_SKILL_LEVEL,
 };
 pub use error::CompileError;
 pub use flags::{CreatureFlag, CreatureFlags};
@@ -44,9 +49,10 @@ pub use heroes::{
 };
 pub use key::{ContentKey, KeyError};
 pub use pack::{
-    BattleParamsDef, ContentPack, CreatureDef, CreatureInfoDef, CreatureOverride, CreaturePatch,
-    FactionDef, HeroClassDef, HeroTypeDef, ObstacleDef, PackManifest, ProfileDef, ResourceDef,
-    SecondarySkillDef, SpellDef, SpellSchoolDef, StartingStackDef, TerrainDef,
+    ArtifactDef, ArtifactSlotDef, ArtifactSlotOverride, BattleParamsDef, ContentPack, CreatureDef,
+    CreatureInfoDef, CreatureOverride, CreaturePatch, FactionDef, HeroClassDef, HeroTypeDef,
+    ObstacleDef, PackManifest, ProfileDef, ResourceDef, SecondarySkillDef, SpellDef,
+    SpellSchoolDef, StartingStackDef, TerrainDef,
 };
 pub use quirks::{NO_LUCK_WITHOUT_HERO, QuirkFlag, QuirkRegistry, Quirks, REGISTRY};
 pub use ruleset::{

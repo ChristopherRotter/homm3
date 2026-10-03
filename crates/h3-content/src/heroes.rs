@@ -11,12 +11,13 @@ use alloc::vec::Vec;
 
 use h3_kernel::{CanonicalHash, Handle, StateHasher};
 
+use crate::artifacts::{ArtifactSlot, ArtifactType};
 use crate::effect::{self, CompiledHeroEffect, HeroEffectDef, MAX_SKILL_LEVEL};
 use crate::error::CompileError;
 use crate::flags::CreatureFlag;
 use crate::key::ContentKey;
 use crate::pack::ContentPack;
-use crate::ruleset::{CreatureType, CreatureTypeId, FactionId};
+use crate::ruleset::{CreatureType, CreatureTypeId, FactionId, ResourceId};
 
 /// Highest spell level.
 pub const MAX_SPELL_LEVEL: u8 = 5;
@@ -218,7 +219,7 @@ impl<T> Default for Table<T> {
 
 impl<T> Table<T> {
     /// Reserves the next handle for `key` (unique, in the pack's namespace).
-    fn register(
+    pub(crate) fn register(
         &mut self,
         key: &ContentKey,
         pack: &str,
@@ -260,18 +261,21 @@ pub(crate) struct HeroContent {
     pub(crate) skills: Table<SecondarySkill>,
     pub(crate) classes: Table<HeroClass>,
     pub(crate) heroes: Table<HeroType>,
+    pub(crate) slots: Table<ArtifactSlot>,
+    pub(crate) artifacts: Table<ArtifactType>,
 }
 
 /// What the pack being compiled may refer to.
 pub(crate) struct Refs<'a> {
     pub(crate) pack: &'a str,
     pub(crate) closure: &'a BTreeSet<String>,
+    pub(crate) resources: &'a BTreeMap<String, ResourceId>,
     pub(crate) factions: &'a BTreeMap<String, FactionId>,
     pub(crate) creatures: &'a BTreeMap<String, CreatureTypeId>,
 }
 
 impl Refs<'_> {
-    fn resolve<T>(
+    pub(crate) fn resolve<T>(
         &self,
         key: &ContentKey,
         index: &BTreeMap<String, Handle<T>>,
@@ -281,7 +285,7 @@ impl Refs<'_> {
     }
 }
 
-fn invalid(kind: &'static str, key: &ContentKey, reason: &'static str) -> CompileError {
+pub(crate) fn invalid(kind: &'static str, key: &ContentKey, reason: &'static str) -> CompileError {
     CompileError::InvalidContent {
         kind,
         key: String::from(key.as_str()),
@@ -318,7 +322,7 @@ fn all<T>(
 }
 
 /// Resolves a list of references that must be distinct.
-fn distinct<T>(
+pub(crate) fn distinct<T>(
     refs: &Refs<'_>,
     keys: &[ContentKey],
     index: &BTreeMap<String, Handle<T>>,
@@ -334,18 +338,27 @@ fn distinct<T>(
 }
 
 impl HeroContent {
-    /// Resolves the references of an effect list.
-    fn effects(
+    /// Resolves the references of an effect list (an effect's factions must be distinct).
+    pub(crate) fn effects(
         &self,
         refs: &Refs<'_>,
         list: &[HeroEffectDef],
     ) -> Result<Vec<CompiledHeroEffect>, CompileError> {
         list.iter()
             .map(|e| {
+                let mut seen: Vec<FactionId> = Vec::new();
                 e.try_map(
                     |c| refs.resolve(c, refs.creatures, "creature"),
                     |k| refs.resolve(k, &self.skills.index, "secondary skill"),
                     |s| refs.resolve(s, &self.spells.index, "spell"),
+                    |f| {
+                        let id = refs.resolve(f, refs.factions, "faction")?;
+                        if seen.contains(&id) {
+                            return Err(CompileError::DuplicateKey(String::from(f.as_str())));
+                        }
+                        seen.push(id);
+                        Ok(id)
+                    },
                 )
             })
             .collect()
@@ -397,6 +410,7 @@ impl HeroContent {
                 levels,
             });
         }
+        self.add_artifacts(pack, refs)?;
         for def in &pack.hero_classes {
             self.classes.register(&def.key, refs.pack, "hero class")?;
             self.classes.items.push(HeroClass {
@@ -531,7 +545,7 @@ impl HeroContent {
                 return Err(invalid("hero type", &h.key, reason));
             }
         }
-        Ok(())
+        self.validate_artifacts(creatures)
     }
 }
 
@@ -539,7 +553,7 @@ impl CanonicalHash for HeroContent {
     /// Schools (key, name); spells (key, name, category, level, schools, cost, power, effect,
     /// polarity); skills (key, name, the three effect lists); classes (key, name, faction,
     /// primary, gains, weights); hero types (key, name, class, skills, spell book, spells,
-    /// army, war machines, specialty).
+    /// army, war machines, specialty); then the artifact content (`hash_artifacts`).
     fn hash_into(&self, h: &mut StateHasher) {
         h.write_len(self.schools.items.len());
         for s in &self.schools.items {
@@ -600,6 +614,7 @@ impl CanonicalHash for HeroContent {
             t.war_machines.hash_into(h);
             t.specialty.hash_into(h);
         }
+        self.hash_artifacts(h);
     }
 }
 

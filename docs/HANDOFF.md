@@ -4,6 +4,14 @@ Living state. The last agent updates this at the end of every session; the next 
 
 ---
 
+## 2026-10-03 (fourth session) — E04a T3b (artifacts) in progress
+
+**Scope (user):** T3b only. Q-0005 confirmed fix-optional by the user.
+
+**Done so far:** content model and pack format for artifacts (`h3_content::{ArtifactSlot, ArtifactType}`, `[[artifact_slot]]`, `[[artifact_slot_override]]`, `[[artifact]]`; nine new `HeroEffect` kinds; `HeroEffect` gained a faction parameter and is no longer `Copy`), compiler checks, ruleset hash v10, synthetic artifacts, golden replays re-recorded (ruleset hash only). **Next:** the executable's artifact primary-skill table in `h3_formats::exe`, harvester module `artifacts` with a gap-fill `[artifacts]` section, regenerate the packs, docs (epic, design note §3, installation.md, catalog/quirks if needed), Q-0005 decision in the ledger.
+
+---
+
 ## 2026-10-03 (third session) — E04a T3a done; batch 1a evaluated
 
 **State:** branch `e04a-heroes-in-battle`, `cargo xtask verify` green (also `--with-original-data`). Session closed with the user; nothing half-done.

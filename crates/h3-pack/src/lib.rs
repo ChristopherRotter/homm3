@@ -9,12 +9,12 @@ use std::collections::BTreeMap;
 use std::fmt;
 
 use h3_content::{
-    AbilityDef, Affects, AreaShot, AuraTarget, BattleParamsDef, CompileError, ContentKey,
-    ContentPack, CreatureDef, CreatureFlag, CreatureInfoDef, CreatureOverride, CreaturePatch,
-    CreatureSelector, CreatureStat, FactionDef, Formation, HeroClassDef, HeroEffect, HeroEffectDef,
-    HeroTypeDef, KeyError, ObstacleDef, PackManifest, ProfileDef, ResourceDef, Ruleset,
-    SecondarySkillDef, SpellCategory, SpellDef, SpellPolarity, SpellSchoolDef, StartingStackDef,
-    TerrainDef,
+    AbilityDef, Affects, AreaShot, ArtifactClass, ArtifactDef, ArtifactSlotDef,
+    ArtifactSlotOverride, AuraTarget, BattleParamsDef, CompileError, ContentKey, ContentPack,
+    CreatureDef, CreatureFlag, CreatureInfoDef, CreatureOverride, CreaturePatch, CreatureSelector,
+    CreatureStat, FactionDef, Formation, HeroClassDef, HeroEffect, HeroEffectDef, HeroTypeDef,
+    KeyError, ObstacleDef, PackManifest, ProfileDef, ResourceDef, Ruleset, SecondarySkillDef,
+    SpellCategory, SpellDef, SpellPolarity, SpellSchoolDef, StartingStackDef, TerrainDef,
 };
 use h3_contracts::{Army, ArmyStack, BattleSetup, BattleSide};
 use serde::Deserialize;
@@ -105,6 +105,12 @@ struct PackFile {
     hero_class: Vec<HeroClassDto>,
     #[serde(default)]
     hero: Vec<HeroDto>,
+    #[serde(default)]
+    artifact_slot: Vec<ArtifactSlotDto>,
+    #[serde(default)]
+    artifact_slot_override: Vec<ArtifactSlotOverrideDto>,
+    #[serde(default)]
+    artifact: Vec<ArtifactDto>,
     #[serde(default)]
     profile: Vec<ProfileDto>,
 }
@@ -439,6 +445,59 @@ struct StartingStackDto {
     count: [u16; 2],
 }
 
+/// `[[artifact_slot]]`: a kind of equipment position.
+#[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
+struct ArtifactSlotDto {
+    id: String,
+    #[serde(default)]
+    name: String,
+    #[serde(default = "one")]
+    count: u8,
+}
+
+fn one() -> u8 {
+    1
+}
+
+/// `[[artifact_slot_override]]`: changes to a slot of the closure.
+#[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
+struct ArtifactSlotOverrideDto {
+    target: String,
+    name: Option<String>,
+    count: Option<u8>,
+}
+
+/// `[[artifact]]`: an artifact type.
+#[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
+struct ArtifactDto {
+    id: String,
+    #[serde(default)]
+    name: String,
+    class: ArtifactClassDto,
+    #[serde(default)]
+    cost: BTreeMap<String, u32>,
+    slot: Option<String>,
+    war_machine: Option<String>,
+    needs_skill: Option<String>,
+    #[serde(default)]
+    effects: Vec<EffectDto>,
+    #[serde(default)]
+    parts: Vec<String>,
+}
+
+#[derive(Deserialize)]
+#[serde(rename_all = "snake_case")]
+enum ArtifactClassDto {
+    Treasure,
+    Minor,
+    Major,
+    Relic,
+    Special,
+}
+
 /// One hero effect (`packs/README.md`, "Hero effects"): `kind` plus that kind's parameters.
 #[derive(Deserialize)]
 #[serde(tag = "kind", rename_all = "snake_case", deny_unknown_fields)]
@@ -493,6 +552,46 @@ enum EffectDto {
     SpellSpecialty {
         spell: String,
     },
+    PrimarySkills {
+        #[serde(default)]
+        attack: i8,
+        #[serde(default)]
+        defense: i8,
+        #[serde(default)]
+        power: i8,
+        #[serde(default)]
+        knowledge: i8,
+    },
+    MoraleAtMost {
+        value: i8,
+        #[serde(default)]
+        affects: AffectsDto,
+    },
+    LuckAtMost {
+        value: i8,
+        #[serde(default)]
+        affects: AffectsDto,
+    },
+    AlignmentGroup {
+        factions: Vec<String>,
+    },
+    CreatureStatPercent {
+        creatures: Option<SelectorDto>,
+        stat: CreatureStatDto,
+        bp: u16,
+    },
+    Regeneration {
+        creatures: Option<SelectorDto>,
+        hit_points: u16,
+    },
+    NoRangePenalty {
+        creatures: Option<SelectorDto>,
+    },
+    ShootWhenAdjacent {
+        creatures: Option<SelectorDto>,
+    },
+    // A struct variant, so that unknown keys are rejected like everywhere else.
+    NoRetreat {},
 }
 
 #[derive(Deserialize, Default)]
@@ -558,23 +657,8 @@ impl EffectDto {
                 stat,
                 amount,
             } => HeroEffect::CreatureStat {
-                creatures: match creatures {
-                    None => CreatureSelector::All,
-                    Some(SelectorDto::Creature(c)) => {
-                        CreatureSelector::Creature(reference(pack, &c)?)
-                    }
-                    Some(SelectorDto::Flag(f)) => CreatureSelector::Flag(
-                        CreatureFlag::from_name(&f).ok_or(CompileError::UnknownFlag(f))?,
-                    ),
-                },
-                stat: match stat {
-                    CreatureStatDto::Attack => CreatureStat::Attack,
-                    CreatureStatDto::Defense => CreatureStat::Defense,
-                    CreatureStatDto::Speed => CreatureStat::Speed,
-                    CreatureStatDto::HitPoints => CreatureStat::HitPoints,
-                    CreatureStatDto::MinDamage => CreatureStat::MinDamage,
-                    CreatureStatDto::MaxDamage => CreatureStat::MaxDamage,
-                },
+                creatures: selector(pack, creatures)?,
+                stat: stat.into_stat(),
                 amount,
             },
             Self::SkillSpecialty {
@@ -596,8 +680,80 @@ impl EffectDto {
             Self::SpellSpecialty { spell } => HeroEffect::SpellSpecialty {
                 spell: reference(pack, &spell)?,
             },
+            Self::PrimarySkills {
+                attack,
+                defense,
+                power,
+                knowledge,
+            } => HeroEffect::PrimarySkills {
+                attack,
+                defense,
+                power,
+                knowledge,
+            },
+            Self::MoraleAtMost { value, affects: a } => HeroEffect::MoraleAtMost {
+                value,
+                affects: affects(a),
+            },
+            Self::LuckAtMost { value, affects: a } => HeroEffect::LuckAtMost {
+                value,
+                affects: affects(a),
+            },
+            Self::AlignmentGroup { factions } => HeroEffect::AlignmentGroup {
+                factions: references(pack, &factions)?,
+            },
+            Self::CreatureStatPercent {
+                creatures,
+                stat,
+                bp,
+            } => HeroEffect::CreatureStatPercent {
+                creatures: selector(pack, creatures)?,
+                stat: stat.into_stat(),
+                bp,
+            },
+            Self::Regeneration {
+                creatures,
+                hit_points,
+            } => HeroEffect::Regeneration {
+                creatures: selector(pack, creatures)?,
+                hit_points,
+            },
+            Self::NoRangePenalty { creatures } => HeroEffect::NoRangePenalty {
+                creatures: selector(pack, creatures)?,
+            },
+            Self::ShootWhenAdjacent { creatures } => HeroEffect::ShootWhenAdjacent {
+                creatures: selector(pack, creatures)?,
+            },
+            Self::NoRetreat {} => HeroEffect::NoRetreat,
         })
     }
+}
+
+impl CreatureStatDto {
+    fn into_stat(self) -> CreatureStat {
+        match self {
+            Self::Attack => CreatureStat::Attack,
+            Self::Defense => CreatureStat::Defense,
+            Self::Speed => CreatureStat::Speed,
+            Self::HitPoints => CreatureStat::HitPoints,
+            Self::MinDamage => CreatureStat::MinDamage,
+            Self::MaxDamage => CreatureStat::MaxDamage,
+        }
+    }
+}
+
+/// A creature selector; omitted: every creature.
+fn selector(
+    pack: &str,
+    creatures: Option<SelectorDto>,
+) -> Result<CreatureSelector<ContentKey>, PackError> {
+    Ok(match creatures {
+        None => CreatureSelector::All,
+        Some(SelectorDto::Creature(c)) => CreatureSelector::Creature(reference(pack, &c)?),
+        Some(SelectorDto::Flag(f)) => {
+            CreatureSelector::Flag(CreatureFlag::from_name(&f).ok_or(CompileError::UnknownFlag(f))?)
+        }
+    })
 }
 
 fn effects(pack: &str, list: Vec<EffectDto>) -> Result<Vec<HeroEffectDef>, PackError> {
@@ -841,6 +997,52 @@ pub fn parse_pack(text: &str) -> Result<ContentPack, PackError> {
             })
         })
         .collect::<Result<Vec<_>, PackError>>()?;
+    let artifact_slots = file
+        .artifact_slot
+        .into_iter()
+        .map(|d| {
+            Ok(ArtifactSlotDef {
+                key: ContentKey::new(&pack_id, &d.id)?,
+                name: d.name,
+                count: d.count,
+            })
+        })
+        .collect::<Result<Vec<_>, KeyError>>()?;
+    let artifact_slot_overrides = file
+        .artifact_slot_override
+        .into_iter()
+        .map(|o| {
+            Ok(ArtifactSlotOverride {
+                target: reference(&pack_id, &o.target)?,
+                name: o.name,
+                count: o.count,
+            })
+        })
+        .collect::<Result<Vec<_>, KeyError>>()?;
+    let optional = |text: Option<String>| text.map(|t| reference(&pack_id, &t)).transpose();
+    let artifacts = file
+        .artifact
+        .into_iter()
+        .map(|a| {
+            Ok(ArtifactDef {
+                key: ContentKey::new(&pack_id, &a.id)?,
+                name: a.name,
+                class: match a.class {
+                    ArtifactClassDto::Treasure => ArtifactClass::Treasure,
+                    ArtifactClassDto::Minor => ArtifactClass::Minor,
+                    ArtifactClassDto::Major => ArtifactClass::Major,
+                    ArtifactClassDto::Relic => ArtifactClass::Relic,
+                    ArtifactClassDto::Special => ArtifactClass::Special,
+                },
+                cost: cost(&pack_id, a.cost)?,
+                slot: optional(a.slot)?,
+                war_machine: optional(a.war_machine)?,
+                needs_skill: optional(a.needs_skill)?,
+                effects: effects(&pack_id, a.effects)?,
+                parts: references(&pack_id, &a.parts)?,
+            })
+        })
+        .collect::<Result<Vec<_>, PackError>>()?;
     let profiles = file
         .profile
         .into_iter()
@@ -892,6 +1094,9 @@ pub fn parse_pack(text: &str) -> Result<ContentPack, PackError> {
         skills,
         hero_classes,
         heroes,
+        artifact_slots,
+        artifact_slot_overrides,
+        artifacts,
         profiles,
         battle,
     })
@@ -1597,6 +1802,87 @@ mod tests {
     }
 
     #[test]
+    fn artifact_syntax() {
+        use h3_content::ArtifactClass;
+        let r = compile(&[SYNTHETIC_PACK, SYNTHETIC_EXT_PACK], "synthetic:faithful").unwrap();
+        assert_eq!(r.artifact_slots().len(), 4);
+        let charm = r.artifact_slot_by_key("synthetic:charm").unwrap();
+        let crown = r.artifact_slot_by_key("synthetic:crown").unwrap();
+        assert_eq!(r.artifact_slot(charm).unwrap().count, 3);
+        assert_eq!(r.artifacts().len(), 10);
+        let by_key = |k: &str| r.artifact(r.artifact_by_key(k).unwrap()).unwrap();
+        let regalia = by_key("synthetic-ext:storm_regalia");
+        assert_eq!(regalia.class, ArtifactClass::Relic);
+        assert_eq!(regalia.locks, vec![charm, charm, crown]);
+        assert_eq!(regalia.parts.len(), 4);
+        let lens = by_key("synthetic:sight_lens");
+        assert_eq!(lens.needs_skill, r.skill_by_key("synthetic:marksmanship"));
+        assert_eq!(lens.cost.len(), 1);
+        assert_eq!(
+            by_key("synthetic:bolt_thrower_kit").war_machine,
+            r.creature_by_key("synthetic:bolt_thrower")
+        );
+        assert_eq!(by_key("synthetic:relic_stone").slot, None);
+        assert_eq!(by_key("synthetic:vigor_stone").cost.len(), 2);
+        // Without the expansion the slot keeps its own count.
+        let base = compile(&[SYNTHETIC_PACK], "synthetic:faithful").unwrap();
+        assert_eq!(base.artifact_slot(charm).unwrap().count, 2);
+
+        // Strict syntax and malformed references at every artifact site.
+        let bad_syntax = [
+            (
+                "class = \"relic\"\ncost = { coin = 4000 }",
+                "class = \"epic\"\ncost = { coin = 4000 }",
+            ),
+            ("count = 2   ", "count = \"two\""),
+            ("id = \"engine\"", "id = \"engine\"\nsize = 1"),
+            ("slot = \"engine\"", "slot = \"engine\"\nbroken = true"),
+            (
+                "{ kind = \"no_retreat\" }",
+                "{ kind = \"no_retreat\", sides = 2 }",
+            ),
+        ];
+        for (from, to) in bad_syntax {
+            assert!(SYNTHETIC_PACK.contains(from), "{from}");
+            let text = SYNTHETIC_PACK.replacen(from, to, 1);
+            assert!(
+                matches!(parse_pack(&text), Err(PackError::Syntax(_))),
+                "{to}"
+            );
+        }
+        let bad_refs = [
+            ("id = \"crown\"", "id = \"Crown\""),
+            ("id = \"relic_stone\"", "id = \"Relic\""),
+            ("cost = { coin = 4000 }", "cost = { \"C:x\" = 4000 }"),
+            ("slot = \"engine\"", "slot = \"E:x\""),
+            ("war_machine = \"bolt_thrower\"", "war_machine = \"B:x\""),
+            ("needs_skill = \"marksmanship\"", "needs_skill = \"M:x\""),
+            (
+                "{ kind = \"no_range_penalty\", creatures = { flag = \"shooter\" } }",
+                "{ kind = \"no_range_penalty\", creatures = { creature = \"S:x\" } }",
+            ),
+        ];
+        for (from, to) in bad_refs {
+            assert!(SYNTHETIC_PACK.contains(from), "{from}");
+            let text = SYNTHETIC_PACK.replacen(from, to, 1);
+            assert!(matches!(parse_pack(&text), Err(PackError::Key(_))), "{to}");
+        }
+        let ext_refs = [
+            ("target = \"synthetic:charm\"", "target = \"T:x\""),
+            (
+                "\"synthetic:lucky_knot\", \"synthetic",
+                "\"L:x\", \"synthetic",
+            ),
+            ("\"synthetic:vale\", \"marsh\"", "\"V:x\", \"marsh\""),
+        ];
+        for (from, to) in ext_refs {
+            assert!(SYNTHETIC_EXT_PACK.contains(from), "{from}");
+            let text = SYNTHETIC_EXT_PACK.replacen(from, to, 1);
+            assert!(matches!(parse_pack(&text), Err(PackError::Key(_))), "{to}");
+        }
+    }
+
+    #[test]
     fn hero_content_syntax() {
         use h3_content::SpellCategory;
         let r = compile(&[SYNTHETIC_PACK, SYNTHETIC_EXT_PACK], "synthetic:faithful").unwrap();
@@ -1651,9 +1937,10 @@ mod tests {
             .iter()
             .flat_map(|s| s.levels.iter().flatten())
             .chain(r.hero_types().iter().flat_map(|h| &h.specialty))
+            .chain(r.artifacts().iter().flat_map(|a| &a.effects))
             .map(HeroEffect::name)
             .collect();
-        assert_eq!(kinds.len(), HeroEffect::<u8, u8, u8>::NAMES.len());
+        assert_eq!(kinds.len(), HeroEffect::<u8, u8, u8, u8>::NAMES.len());
 
         // Strict syntax: unknown kinds, parameters, flags and selectors are errors.
         let bad_syntax = [

@@ -8,6 +8,7 @@ use alloc::string::String;
 use alloc::vec::Vec;
 
 use crate::ability::AbilityDef;
+use crate::artifacts::ArtifactClass;
 use crate::effect::HeroEffectDef;
 use crate::heroes::{SpellCategory, SpellPolarity};
 use crate::key::ContentKey;
@@ -307,6 +308,51 @@ pub struct HeroTypeDef {
     pub specialty: Vec<HeroEffectDef>,
 }
 
+/// An artifact slot: a kind of equipment position (E04a T3b).
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ArtifactSlotDef {
+    /// Namespaced key.
+    pub key: ContentKey,
+    /// Display name.
+    pub name: String,
+    /// Positions of this kind on a hero.
+    pub count: u8,
+}
+
+/// Changes to an artifact slot of the pack's closure (SoD's fifth misc position).
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ArtifactSlotOverride {
+    /// The slot changed.
+    pub target: ContentKey,
+    /// New display name.
+    pub name: Option<String>,
+    /// New number of positions.
+    pub count: Option<u8>,
+}
+
+/// An artifact type (E04a T3b).
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ArtifactDef {
+    /// Namespaced key.
+    pub key: ContentKey,
+    /// Display name.
+    pub name: String,
+    /// Class.
+    pub class: ArtifactClass,
+    /// Value by resource (empty: none).
+    pub cost: Vec<(ContentKey, u32)>,
+    /// The slot it is worn in; `None`: backpack only.
+    pub slot: Option<ContentKey>,
+    /// The war machine it places in battle.
+    pub war_machine: Option<ContentKey>,
+    /// The secondary skill its effects need.
+    pub needs_skill: Option<ContentKey>,
+    /// Its own effects.
+    pub effects: Vec<HeroEffectDef>,
+    /// A combination's parts.
+    pub parts: Vec<ContentKey>,
+}
+
 /// Battle parameters (Tier 2). Exactly one pack in a ruleset provides them.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct BattleParamsDef {
@@ -394,6 +440,12 @@ pub struct ContentPack {
     pub hero_classes: Vec<HeroClassDef>,
     /// Hero types.
     pub heroes: Vec<HeroTypeDef>,
+    /// Artifact slots (E04a T3b).
+    pub artifact_slots: Vec<ArtifactSlotDef>,
+    /// Changes to artifact slots of the closure.
+    pub artifact_slot_overrides: Vec<ArtifactSlotOverride>,
+    /// Artifact types (E04a T3b).
+    pub artifacts: Vec<ArtifactDef>,
     /// Profiles.
     pub profiles: Vec<ProfileDef>,
     /// Battle parameters, if this pack provides them.
@@ -416,6 +468,9 @@ impl ContentPack {
             skills: Vec::new(),
             hero_classes: Vec::new(),
             heroes: Vec::new(),
+            artifact_slots: Vec::new(),
+            artifact_slot_overrides: Vec::new(),
+            artifacts: Vec::new(),
             profiles: Vec::new(),
             battle: None,
         }

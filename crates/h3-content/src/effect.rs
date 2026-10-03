@@ -1,5 +1,5 @@
-//! Hero effects: the closed set of typed primitives a secondary-skill level or a hero's
-//! specialty (and, from E04a T3b, an artifact) can carry (ADR-0013 §3, ADR-0006 Tier 3).
+//! Hero effects: the closed set of typed primitives a secondary-skill level, a hero's specialty
+//! or an artifact can carry (ADR-0013 §3, ADR-0006 Tier 3).
 //!
 //! An effect states *what* a source gives and how its value is computed; it does not apply
 //! anything. The pure translation in `h3-heroes` (E04a T4) resolves a hero's effects into the
@@ -7,22 +7,27 @@
 //! catalog ids (`HER-…`, `BAT-…`). Percentages are basis points (1/100 %), so every skill and
 //! specialty product stays an exact integer.
 //!
-//! [`HeroEffect`] is generic over how creature types (`C`), secondary skills (`K`) and spells
-//! (`S`) are referenced: [`ContentKey`]s in packs ([`HeroEffectDef`]), handles once compiled
-//! ([`CompiledHeroEffect`]).
+//! [`HeroEffect`] is generic over how creature types (`C`), secondary skills (`K`), spells (`S`)
+//! and factions (`F`) are referenced: [`ContentKey`]s in packs ([`HeroEffectDef`]), handles once
+//! compiled ([`CompiledHeroEffect`]).
 //!
 //! Effects that only matter outside battle (adventure map, towns, outcome application) get
 //! variants with the epic that reads them; the pack docs list which sources carry such effects.
+
+use alloc::vec::Vec;
 
 use h3_kernel::{CanonicalHash, StateHasher};
 
 use crate::flags::CreatureFlag;
 use crate::heroes::{SkillId, SpellId};
 use crate::key::ContentKey;
-use crate::ruleset::CreatureTypeId;
+use crate::ruleset::{CreatureTypeId, FactionId};
 
-/// Most effects in one list (a skill level, a specialty).
+/// Most effects in one list (a skill level, a specialty, an artifact).
 pub const MAX_EFFECTS: usize = 16;
+
+/// Most factions in one `alignment_group` effect.
+pub const MAX_ALIGNMENT_FACTIONS: usize = 16;
 
 /// Highest secondary-skill level (Expert); levels are 1 (Basic) to 3 (Expert).
 pub const MAX_SKILL_LEVEL: u8 = 3;
@@ -131,10 +136,10 @@ impl<C> CreatureSelector<C> {
     }
 }
 
-/// One hero effect. `C`, `K` and `S` are how creature types, secondary skills and spells are
-/// referenced.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum HeroEffect<C, K, S> {
+/// One hero effect. `C`, `K`, `S` and `F` are how creature types, secondary skills, spells and
+/// factions are referenced.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum HeroEffect<C, K, S, F> {
     /// Changes the morale of the affected stacks for the whole battle (Leadership).
     Morale {
         /// Morale change (not 0).
@@ -221,16 +226,80 @@ pub enum HeroEffect<C, K, S> {
         /// The spell.
         spell: S,
     },
+    /// Changes the hero's primary skills (artifacts; the executable's artifact table). Unlike
+    /// every other kind, it counts once per equipped copy (two Quiet Eyes of the Dragon give
+    /// +2 attack); the derivation clamps the hero's totals (E04a T10).
+    PrimarySkills {
+        /// Attack change.
+        attack: i8,
+        /// Defense change.
+        defense: i8,
+        /// Spell power change.
+        power: i8,
+        /// Knowledge change.
+        knowledge: i8,
+    },
+    /// Caps the morale of the affected stacks for the whole battle (Spirit of Oppression).
+    MoraleAtMost {
+        /// Highest morale.
+        value: i8,
+        /// Whose stacks.
+        affects: Affects,
+    },
+    /// Caps the luck of the affected stacks for the whole battle (Hourglass of the Evil Hour).
+    LuckAtMost {
+        /// Highest luck.
+        value: i8,
+        /// Whose stacks.
+        affects: Affects,
+    },
+    /// Creatures of these factions count as one alignment for the army-alignment morale of the
+    /// hero's side (BAT-MOR-002; Angelic Alliance).
+    AlignmentGroup {
+        /// The factions (2..=16, distinct).
+        factions: Vec<F>,
+    },
+    /// Changes a statistic of the selected creatures of the hero's army by a share of the
+    /// creature's own value (Elixir of Life: +25 % hit points).
+    CreatureStatPercent {
+        /// Which creatures.
+        creatures: CreatureSelector<C>,
+        /// Which statistic.
+        stat: CreatureStat,
+        /// Change in basis points of the creature's own value (≥ 1).
+        bp: u16,
+    },
+    /// The top creature of each selected stack regains up to `hit_points` lost hit points at the
+    /// start of its turn (Elixir of Life).
+    Regeneration {
+        /// Which creatures.
+        creatures: CreatureSelector<C>,
+        /// Most hit points regained per turn (≥ 1).
+        hit_points: u16,
+    },
+    /// The selected creatures' shots have no range penalty (Golden Bow).
+    NoRangePenalty {
+        /// Which creatures.
+        creatures: CreatureSelector<C>,
+    },
+    /// The selected creatures may shoot while an enemy stands next to them (Bow of the
+    /// Sharpshooter).
+    ShootWhenAdjacent {
+        /// Which creatures.
+        creatures: CreatureSelector<C>,
+    },
+    /// Neither side may retreat or surrender (Shackles of War).
+    NoRetreat,
 }
 
 /// An effect as written in a pack (references are keys).
-pub type HeroEffectDef = HeroEffect<ContentKey, ContentKey, ContentKey>;
+pub type HeroEffectDef = HeroEffect<ContentKey, ContentKey, ContentKey, ContentKey>;
 /// An effect with resolved references.
-pub type CompiledHeroEffect = HeroEffect<CreatureTypeId, SkillId, SpellId>;
+pub type CompiledHeroEffect = HeroEffect<CreatureTypeId, SkillId, SpellId, FactionId>;
 
-impl<C, K, S> HeroEffect<C, K, S> {
+impl<C, K, S, F> HeroEffect<C, K, S, F> {
     /// Pack names, indexed by [`HeroEffect::code`].
-    pub const NAMES: [&'static str; 13] = [
+    pub const NAMES: [&'static str; 22] = [
         "morale",
         "luck",
         "ranged_damage",
@@ -244,6 +313,15 @@ impl<C, K, S> HeroEffect<C, K, S> {
         "skill_specialty",
         "creature_specialty",
         "spell_specialty",
+        "primary_skills",
+        "morale_at_most",
+        "luck_at_most",
+        "alignment_group",
+        "creature_stat_percent",
+        "regeneration",
+        "no_range_penalty",
+        "shoot_when_adjacent",
+        "no_retreat",
     ];
 
     /// Stable code of the variant (canonical hash, duplicate checks).
@@ -262,6 +340,15 @@ impl<C, K, S> HeroEffect<C, K, S> {
             Self::SkillSpecialty { .. } => 10,
             Self::CreatureSpecialty { .. } => 11,
             Self::SpellSpecialty { .. } => 12,
+            Self::PrimarySkills { .. } => 13,
+            Self::MoraleAtMost { .. } => 14,
+            Self::LuckAtMost { .. } => 15,
+            Self::AlignmentGroup { .. } => 16,
+            Self::CreatureStatPercent { .. } => 17,
+            Self::Regeneration { .. } => 18,
+            Self::NoRangePenalty { .. } => 19,
+            Self::ShootWhenAdjacent { .. } => 20,
+            Self::NoRetreat => 21,
         }
     }
 
@@ -285,12 +372,13 @@ impl<C, K, S> HeroEffect<C, K, S> {
     }
 
     /// Maps the references.
-    pub fn try_map<C2, K2, S2, E>(
+    pub fn try_map<C2, K2, S2, F2, E>(
         &self,
         creature: impl FnOnce(&C) -> Result<C2, E>,
         skill: impl FnOnce(&K) -> Result<K2, E>,
         spell: impl FnOnce(&S) -> Result<S2, E>,
-    ) -> Result<HeroEffect<C2, K2, S2>, E> {
+        faction: impl FnMut(&F) -> Result<F2, E>,
+    ) -> Result<HeroEffect<C2, K2, S2, F2>, E> {
         Ok(match self {
             Self::Morale { amount, affects } => HeroEffect::Morale {
                 amount: *amount,
@@ -339,6 +427,51 @@ impl<C, K, S> HeroEffect<C, K, S> {
                 speed: *speed,
             },
             Self::SpellSpecialty { spell: s } => HeroEffect::SpellSpecialty { spell: spell(s)? },
+            Self::PrimarySkills {
+                attack,
+                defense,
+                power,
+                knowledge,
+            } => HeroEffect::PrimarySkills {
+                attack: *attack,
+                defense: *defense,
+                power: *power,
+                knowledge: *knowledge,
+            },
+            Self::MoraleAtMost { value, affects } => HeroEffect::MoraleAtMost {
+                value: *value,
+                affects: *affects,
+            },
+            Self::LuckAtMost { value, affects } => HeroEffect::LuckAtMost {
+                value: *value,
+                affects: *affects,
+            },
+            Self::AlignmentGroup { factions } => HeroEffect::AlignmentGroup {
+                factions: factions.iter().map(faction).collect::<Result<_, _>>()?,
+            },
+            Self::CreatureStatPercent {
+                creatures,
+                stat,
+                bp,
+            } => HeroEffect::CreatureStatPercent {
+                creatures: creatures.try_map(creature)?,
+                stat: *stat,
+                bp: *bp,
+            },
+            Self::Regeneration {
+                creatures,
+                hit_points,
+            } => HeroEffect::Regeneration {
+                creatures: creatures.try_map(creature)?,
+                hit_points: *hit_points,
+            },
+            Self::NoRangePenalty { creatures } => HeroEffect::NoRangePenalty {
+                creatures: creatures.try_map(creature)?,
+            },
+            Self::ShootWhenAdjacent { creatures } => HeroEffect::ShootWhenAdjacent {
+                creatures: creatures.try_map(creature)?,
+            },
+            Self::NoRetreat => HeroEffect::NoRetreat,
         })
     }
 
@@ -374,19 +507,56 @@ impl<C, K, S> HeroEffect<C, K, S> {
             Self::CreatureSpecialty { bp_per_step: 0, .. } => {
                 Some("creature_specialty bp_per_step must be at least 1")
             }
+            Self::PrimarySkills {
+                attack: 0,
+                defense: 0,
+                power: 0,
+                knowledge: 0,
+            } => Some("primary_skills needs a value that is not 0"),
+            Self::AlignmentGroup { factions }
+                if !(2..=MAX_ALIGNMENT_FACTIONS).contains(&factions.len()) =>
+            {
+                Some("alignment_group needs 2..=16 factions")
+            }
+            Self::CreatureStatPercent { bp: 0, .. } => {
+                Some("creature_stat_percent bp must be at least 1")
+            }
+            Self::Regeneration { hit_points: 0, .. } => {
+                Some("regeneration hit_points must be at least 1")
+            }
             _ => None,
         }
     }
 }
 
-impl<C: PartialEq, K, S> HeroEffect<C, K, S> {
+impl<C: PartialEq, K, S, F> HeroEffect<C, K, S, F> {
     /// Whether two effects may not both appear in one list: the same variant, except morale or
-    /// luck for different sides and `creature_stat` entries for different creatures or
-    /// statistics.
+    /// luck (and their caps) for different sides and creature-selecting kinds for different
+    /// creatures (or statistics).
     fn collides(&self, other: &Self) -> bool {
         match (self, other) {
             (Self::Morale { affects: a, .. }, Self::Morale { affects: b, .. })
-            | (Self::Luck { affects: a, .. }, Self::Luck { affects: b, .. }) => a == b,
+            | (Self::Luck { affects: a, .. }, Self::Luck { affects: b, .. })
+            | (Self::MoraleAtMost { affects: a, .. }, Self::MoraleAtMost { affects: b, .. })
+            | (Self::LuckAtMost { affects: a, .. }, Self::LuckAtMost { affects: b, .. }) => a == b,
+            (
+                Self::CreatureStatPercent {
+                    creatures: a,
+                    stat: x,
+                    ..
+                },
+                Self::CreatureStatPercent {
+                    creatures: b,
+                    stat: y,
+                    ..
+                },
+            ) => a == b && x == y,
+            (Self::Regeneration { creatures: a, .. }, Self::Regeneration { creatures: b, .. })
+            | (Self::NoRangePenalty { creatures: a }, Self::NoRangePenalty { creatures: b })
+            | (
+                Self::ShootWhenAdjacent { creatures: a },
+                Self::ShootWhenAdjacent { creatures: b },
+            ) => a == b,
             (
                 Self::CreatureStat {
                     creatures: a,
@@ -406,8 +576,8 @@ impl<C: PartialEq, K, S> HeroEffect<C, K, S> {
 
 /// Why an effect list is invalid, if it is: too long, invalid parameters, an effect listed twice,
 /// or a specialty variant where `specialty` is false.
-pub(crate) fn list_error<C: PartialEq, K, S>(
-    list: &[HeroEffect<C, K, S>],
+pub(crate) fn list_error<C: PartialEq, K, S, F>(
+    list: &[HeroEffect<C, K, S, F>],
     specialty: bool,
 ) -> Option<&'static str> {
     if list.len() > MAX_EFFECTS {
@@ -436,44 +606,48 @@ const fn affects_code(a: Affects) -> u8 {
     a as u8
 }
 
+fn hash_selector(creatures: CreatureSelector<CreatureTypeId>, h: &mut StateHasher) {
+    match creatures {
+        CreatureSelector::All => h.write_u8(0),
+        CreatureSelector::Flag(flag) => {
+            h.write_u8(1);
+            h.write_u32(flag.bit());
+        }
+        CreatureSelector::Creature(c) => {
+            h.write_u8(2);
+            c.hash_into(h);
+        }
+    }
+}
+
 impl CanonicalHash for CompiledHeroEffect {
     fn hash_into(&self, h: &mut StateHasher) {
         h.write_u8(self.code());
-        match *self {
+        match self {
             Self::Morale { amount, affects } | Self::Luck { amount, affects } => {
-                h.write_u8(signed(amount));
-                h.write_u8(affects_code(affects));
+                h.write_u8(signed(*amount));
+                h.write_u8(affects_code(*affects));
             }
             Self::RangedDamage { bp }
             | Self::MeleeDamage { bp }
             | Self::DamageReduction { bp }
-            | Self::SurrenderDiscount { bp } => h.write_u16(bp),
-            Self::Tactics { level } => h.write_u8(level),
+            | Self::SurrenderDiscount { bp } => h.write_u16(*bp),
+            Self::Tactics { level } => h.write_u8(*level),
             Self::Artillery {
                 shots,
                 double_damage_chance_bp,
             } => {
-                h.write_u8(shots);
-                h.write_u16(double_damage_chance_bp);
+                h.write_u8(*shots);
+                h.write_u16(*double_damage_chance_bp);
             }
-            Self::FirstAid { heal_bp } => h.write_u16(heal_bp),
+            Self::FirstAid { heal_bp } => h.write_u16(*heal_bp),
             Self::CreatureStat {
                 creatures,
                 stat,
                 amount,
             } => {
-                match creatures {
-                    CreatureSelector::All => h.write_u8(0),
-                    CreatureSelector::Flag(flag) => {
-                        h.write_u8(1);
-                        h.write_u32(flag.bit());
-                    }
-                    CreatureSelector::Creature(c) => {
-                        h.write_u8(2);
-                        c.hash_into(h);
-                    }
-                }
-                h.write_u8(stat as u8);
+                hash_selector(*creatures, h);
+                h.write_u8(*stat as u8);
                 h.write_bytes(&amount.to_le_bytes());
             }
             Self::SkillSpecialty {
@@ -481,7 +655,7 @@ impl CanonicalHash for CompiledHeroEffect {
                 bp_per_level,
             } => {
                 skill.hash_into(h);
-                h.write_u16(bp_per_level);
+                h.write_u16(*bp_per_level);
             }
             Self::CreatureSpecialty {
                 creature,
@@ -489,10 +663,45 @@ impl CanonicalHash for CompiledHeroEffect {
                 speed,
             } => {
                 creature.hash_into(h);
-                h.write_u16(bp_per_step);
-                h.write_u8(speed);
+                h.write_u16(*bp_per_step);
+                h.write_u8(*speed);
             }
             Self::SpellSpecialty { spell } => spell.hash_into(h),
+            Self::PrimarySkills {
+                attack,
+                defense,
+                power,
+                knowledge,
+            } => {
+                for v in [attack, defense, power, knowledge] {
+                    h.write_u8(signed(*v));
+                }
+            }
+            Self::MoraleAtMost { value, affects } | Self::LuckAtMost { value, affects } => {
+                h.write_u8(signed(*value));
+                h.write_u8(affects_code(*affects));
+            }
+            Self::AlignmentGroup { factions } => factions.hash_into(h),
+            Self::CreatureStatPercent {
+                creatures,
+                stat,
+                bp,
+            } => {
+                hash_selector(*creatures, h);
+                h.write_u8(*stat as u8);
+                h.write_u16(*bp);
+            }
+            Self::Regeneration {
+                creatures,
+                hit_points,
+            } => {
+                hash_selector(*creatures, h);
+                h.write_u16(*hit_points);
+            }
+            Self::NoRangePenalty { creatures } | Self::ShootWhenAdjacent { creatures } => {
+                hash_selector(*creatures, h);
+            }
+            Self::NoRetreat => {}
         }
     }
 }
@@ -505,7 +714,7 @@ mod tests {
 
     use super::*;
 
-    type E = HeroEffect<u8, u8, u8>;
+    type E = HeroEffect<u8, u8, u8, u8>;
 
     fn every() -> Vec<E> {
         std::vec![
@@ -542,6 +751,39 @@ mod tests {
                 speed: 1,
             },
             E::SpellSpecialty { spell: 4 },
+            E::PrimarySkills {
+                attack: 12,
+                defense: -3,
+                power: 0,
+                knowledge: 0,
+            },
+            E::MoraleAtMost {
+                value: 0,
+                affects: Affects::Both,
+            },
+            E::LuckAtMost {
+                value: 0,
+                affects: Affects::Both,
+            },
+            E::AlignmentGroup {
+                factions: std::vec![1, 2],
+            },
+            E::CreatureStatPercent {
+                creatures: CreatureSelector::Flag(CreatureFlag::Alive),
+                stat: CreatureStat::HitPoints,
+                bp: 2500,
+            },
+            E::Regeneration {
+                creatures: CreatureSelector::Flag(CreatureFlag::Alive),
+                hit_points: 50,
+            },
+            E::NoRangePenalty {
+                creatures: CreatureSelector::Flag(CreatureFlag::Shooter),
+            },
+            E::ShootWhenAdjacent {
+                creatures: CreatureSelector::Flag(CreatureFlag::Shooter),
+            },
+            E::NoRetreat,
         ]
     }
 
@@ -552,14 +794,16 @@ mod tests {
             assert_eq!(usize::from(e.code()), i);
             assert_eq!(e.name(), E::NAMES[i]);
             assert_eq!(e.parameter_error(), None, "{e:?}");
-            assert_eq!(e.is_specialty(), e.code() >= 10, "{e:?}");
+            assert_eq!(e.is_specialty(), (10..=12).contains(&e.code()), "{e:?}");
         }
-        assert_eq!(list_error(&all, true), None);
+        let (old, new) = all.split_at(13);
+        assert_eq!(list_error(old, true), None);
+        assert_eq!(list_error(new, false), None);
         assert_eq!(
-            list_error(&all, false),
+            list_error(old, false),
             Some("specialty effects are allowed in a hero's specialty only")
         );
-        let mut twice = std::vec![all[2], all[2]];
+        let mut twice = std::vec![all[2].clone(), all[2].clone()];
         assert_eq!(list_error(&twice, false), Some("an effect is listed twice"));
         // Creature stats collide only for the same creatures and statistic.
         let stat = |creatures, stat| E::CreatureStat {
@@ -587,6 +831,52 @@ mod tests {
         let morale = |affects| E::Morale { amount: 1, affects };
         let both = [morale(Affects::Both), morale(Affects::Both)];
         assert_eq!(list_error(&both, false), Some("an effect is listed twice"));
+        let caps: [fn(Affects) -> E; 2] = [
+            |affects| E::LuckAtMost { value: 0, affects },
+            |affects| E::MoraleAtMost { value: 0, affects },
+        ];
+        for cap in caps {
+            let mut capped = std::vec![cap(Affects::Own), cap(Affects::Both)];
+            assert_eq!(list_error(&capped, false), None);
+            capped.push(cap(Affects::Own));
+            assert_eq!(
+                list_error(&capped, false),
+                Some("an effect is listed twice")
+            );
+        }
+        // Creature-selecting kinds collide only for the same creatures (and statistic).
+        let shooters = CreatureSelector::Flag(CreatureFlag::Shooter);
+        let selecting: [fn(CreatureSelector<u8>) -> E; 4] = [
+            |c| E::Regeneration {
+                creatures: c,
+                hit_points: 1,
+            },
+            |c| E::NoRangePenalty { creatures: c },
+            |c| E::ShootWhenAdjacent { creatures: c },
+            |c| E::CreatureStatPercent {
+                creatures: c,
+                stat: CreatureStat::Speed,
+                bp: 1,
+            },
+        ];
+        for make in selecting {
+            let mut list = std::vec![make(CreatureSelector::All), make(shooters)];
+            assert_eq!(list_error(&list, false), None);
+            list.push(make(shooters));
+            assert_eq!(list_error(&list, false), Some("an effect is listed twice"));
+        }
+        let percent = |stat| E::CreatureStatPercent {
+            creatures: CreatureSelector::All,
+            stat,
+            bp: 1,
+        };
+        let stats = [percent(CreatureStat::Speed), percent(CreatureStat::Attack)];
+        assert_eq!(list_error(&stats, false), None);
+        let retreat = [E::NoRetreat, E::NoRetreat];
+        assert_eq!(
+            list_error(&retreat, false),
+            Some("an effect is listed twice")
+        );
         let long = std::vec![E::Tactics { level: 1 }; MAX_EFFECTS + 1];
         assert_eq!(list_error(&long, false), Some("more than 16 effects"));
         assert_eq!(
@@ -634,6 +924,27 @@ mod tests {
                 bp_per_step: 0,
                 speed: 0,
             },
+            E::PrimarySkills {
+                attack: 0,
+                defense: 0,
+                power: 0,
+                knowledge: 0,
+            },
+            E::AlignmentGroup {
+                factions: std::vec![1],
+            },
+            E::AlignmentGroup {
+                factions: std::vec![0; MAX_ALIGNMENT_FACTIONS + 1],
+            },
+            E::CreatureStatPercent {
+                creatures: CreatureSelector::All,
+                stat: CreatureStat::HitPoints,
+                bp: 0,
+            },
+            E::Regeneration {
+                creatures: CreatureSelector::All,
+                hit_points: 0,
+            },
         ];
         for e in bad {
             assert!(e.parameter_error().is_some(), "{e:?}");
@@ -656,7 +967,7 @@ mod tests {
     fn try_map_keeps_parameters_and_maps_references() {
         let plus = |v: &u8| Ok::<u16, ()>(u16::from(*v) + 100);
         for e in every() {
-            let m = e.try_map(plus, plus, plus).unwrap();
+            let m = e.try_map(plus, plus, plus, plus).unwrap();
             assert_eq!(m.code(), e.code());
             assert_eq!(m.parameter_error(), None);
         }
@@ -665,7 +976,7 @@ mod tests {
             bp_per_step: 500,
             speed: 1,
         }
-        .try_map(plus, plus, plus)
+        .try_map(plus, plus, plus, plus)
         .unwrap();
         assert_eq!(
             mapped,
@@ -677,9 +988,52 @@ mod tests {
         );
         let fail = |_: &u8| Err::<u16, ()>(());
         assert_eq!(
-            E::SpellSpecialty { spell: 1 }.try_map(plus, plus, fail),
+            E::SpellSpecialty { spell: 1 }.try_map(plus, plus, fail, plus),
             Err(())
         );
+        assert_eq!(
+            E::AlignmentGroup {
+                factions: std::vec![1, 2]
+            }
+            .try_map(plus, plus, plus, plus),
+            Ok(HeroEffect::AlignmentGroup {
+                factions: std::vec![101, 102]
+            })
+        );
+        assert_eq!(
+            E::AlignmentGroup {
+                factions: std::vec![1, 2]
+            }
+            .try_map(plus, plus, plus, fail),
+            Err(())
+        );
+        // Every creature-selecting kind fails with its creature reference.
+        let creature = CreatureSelector::Creature(1);
+        let selecting = [
+            E::CreatureStat {
+                creatures: creature,
+                stat: CreatureStat::Speed,
+                amount: 1,
+            },
+            E::CreatureStatPercent {
+                creatures: creature,
+                stat: CreatureStat::Speed,
+                bp: 1,
+            },
+            E::Regeneration {
+                creatures: creature,
+                hit_points: 1,
+            },
+            E::NoRangePenalty {
+                creatures: creature,
+            },
+            E::ShootWhenAdjacent {
+                creatures: creature,
+            },
+        ];
+        for e in selecting {
+            assert_eq!(e.try_map(fail, plus, plus, plus), Err(()), "{e:?}");
+        }
         assert_eq!(
             CreatureSelector::<u8>::Flag(CreatureFlag::Dragon).try_map(fail),
             Ok(CreatureSelector::Flag(CreatureFlag::Dragon))

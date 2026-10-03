@@ -373,6 +373,110 @@ skills = [{ skill = "parley", level = 1 }]
 army = [{ creature = "wisp", count = [2, 3] }]
 specialty = [{ kind = "creature_stat", stat = "speed", amount = 1 }]
 
+# Artifacts (pack format v3, E04a T3b): invented slots and artifacts; with the expansion's
+# combination they use every artifact feature and effect kind once.
+[[artifact_slot]]
+id = "crown"
+name = "Crown"
+
+[[artifact_slot]]
+id = "hand"
+name = "Hand"
+count = 2
+
+[[artifact_slot]]
+id = "charm"
+name = "Charm"
+count = 2                           # synthetic-ext raises it to 3
+
+[[artifact_slot]]
+id = "engine"
+name = "Engine"
+
+[[artifact]]
+id = "iron_crown"
+name = "Iron Crown"
+class = "relic"
+cost = { coin = 4000 }
+slot = "crown"
+effects = [{ kind = "primary_skills", attack = 3, defense = -1, knowledge = 1 }]
+
+[[artifact]]
+id = "twin_band"
+name = "Twin Band"
+class = "treasure"
+cost = { coin = 1000 }
+slot = "hand"
+effects = [
+    { kind = "primary_skills", attack = 1, defense = 1 },
+    { kind = "creature_stat", stat = "hit_points", amount = 1 },
+]
+
+[[artifact]]
+id = "lucky_knot"
+name = "Lucky Knot"
+class = "minor"
+cost = { coin = 1500 }
+slot = "charm"
+effects = [{ kind = "morale", amount = 1 }, { kind = "luck", amount = 1 }]
+
+[[artifact]]
+id = "gloom_bell"
+name = "Gloom Bell"
+class = "major"
+cost = { coin = 2000 }
+slot = "charm"
+effects = [
+    { kind = "morale_at_most", value = 0, affects = "both" },
+    { kind = "luck_at_most", value = 0, affects = "both" },
+    { kind = "no_retreat" },
+]
+
+[[artifact]]
+id = "sight_lens"
+name = "Sight Lens"
+class = "treasure"
+cost = { coin = 2000 }
+slot = "charm"
+needs_skill = "marksmanship"        # no effect without the skill
+effects = [{ kind = "ranged_damage", bp = 500 }]
+
+[[artifact]]
+id = "far_scope"
+name = "Far Scope"
+class = "major"
+cost = { coin = 5000 }
+slot = "hand"
+effects = [
+    { kind = "no_range_penalty", creatures = { flag = "shooter" } },
+    { kind = "creature_stat", creatures = { flag = "flying" }, stat = "speed", amount = 1 },
+    { kind = "surrender_discount", bp = 1000 },
+]
+
+[[artifact]]
+id = "vigor_stone"
+name = "Vigor Stone"
+class = "relic"
+cost = { coin = 6000, shard = 2 }
+slot = "crown"
+effects = [
+    { kind = "creature_stat_percent", creatures = { flag = "alive" }, stat = "hit_points", bp = 2500 },
+    { kind = "regeneration", creatures = { flag = "alive" }, hit_points = 10 },
+]
+
+[[artifact]]
+id = "bolt_thrower_kit"
+name = "Bolt Thrower"
+class = "special"
+cost = { coin = 2500 }
+slot = "engine"
+war_machine = "bolt_thrower"        # places the war machine in its owner's battles
+
+[[artifact]]
+id = "relic_stone"                  # no slot: carried in the backpack only
+name = "Relic Stone"
+class = "special"
+
 [[profile]]
 id = "faithful"        # default: preserve/fix-optional quirks on
 quirks = { "quirk.battle.no_luck_without_hero" = true }    # Q-0003
