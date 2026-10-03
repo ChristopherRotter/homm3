@@ -1,6 +1,6 @@
 # Documentation index
 
-Working project name: **h3** (provisional; see OPEN-QUESTIONS Q2). Last structural update: 2026-10-01 (E04 refined: epic E04a, backlog split into E04a/b/c). Code layout and quick start: [../README.md](../README.md).
+Working project name: **h3** (provisional; see OPEN-QUESTIONS Q2). Last structural update: 2026-10-03 (E04a T1/T2: source surveys, ADR-0013 Proposed, experiment maps). Code layout and quick start: [../README.md](../README.md).
 
 ## How to read these docs
 
@@ -20,8 +20,9 @@ Working project name: **h3** (provisional; see OPEN-QUESTIONS Q2). Last structur
 | [epics/](epics/) | Refined epics (only those about to be worked on) |
 | [adr/](adr/) | Architecture Decision Records (binding) |
 | [pull_request_template.md](pull_request_template.md) | Definition-of-Done checklist for changes |
-| [rules/](rules/) | Rule catalog (machine-checked), quirks ledger |
-| [formats/](formats/) | Observed layouts of the original installation's files (catalogue) |
+| [rules/](rules/) | Rule catalog (machine-checked), quirks ledger, [source surveys](rules/surveys/) per epic |
+| [formats/](formats/) | Observed layouts of the original installation's files (catalogue), the map format we write |
+| [experiments/](experiments/) | Staged battles in the original game: flow, maps, results |
 
 ## Planning philosophy
 
@@ -41,3 +42,5 @@ Decide upfront only what is expensive to change later: determinism, state/comman
 | License & reference-material policy (GPL-2.0-or-later) | Accepted | ADR-0009 |
 | Testing gates & rule traceability | Accepted | ADR-0010 |
 | Portability & C ABI | Accepted | ADR-0011 |
+| Modifiers & abilities | Accepted | ADR-0012 |
+| Heroes in battle (entities, `BattleHero` seam) | Proposed | ADR-0013 |

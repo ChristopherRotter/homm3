@@ -7,3 +7,6 @@
 # Copies of files from the user's original game installation (OPEN-QUESTIONS Q9: import-only).
 # Never commit original game data; `cargo xtask check-arch` fails if anything here is tracked.
 /original-data/
+
+# Generated experiment maps (E04a T2); the user copies them into the game's Maps folder
+/experiments/out/

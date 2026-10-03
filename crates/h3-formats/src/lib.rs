@@ -3,7 +3,8 @@
 //!
 //! These readers exist for the harvesting tool (`h3-harvest`, E02), which turns the original
 //! tables into the committed TOML packs once (OPEN-QUESTIONS Q13). The engine itself never reads
-//! original files at run time.
+//! original files at run time. The crate also writes one original format: maps (`.h3m`) for
+//! staged experiments in the user's game (`h3m`, E04a T2).
 //!
 //! Every reader treats its input as untrusted bytes: all offsets and sizes are checked before use,
 //! allocations are bounded by the input size or an explicit limit, and no reader panics on any
@@ -12,6 +13,7 @@
 #![forbid(unsafe_code)]
 
 pub mod exe;
+pub mod h3m;
 pub mod lod;
 pub mod text;
 
