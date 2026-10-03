@@ -250,6 +250,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "h3-heroes"
+version = "0.1.0"
+dependencies = [
+ "h3-content",
+ "proptest",
+]
+
+[[package]]
 name = "h3-kernel"
 version = "0.1.0"
 dependencies = [
@@ -262,6 +270,7 @@ version = "0.1.0"
 dependencies = [
  "h3-content",
  "h3-contracts",
+ "h3-heroes",
  "h3-kernel",
  "serde",
  "toml",

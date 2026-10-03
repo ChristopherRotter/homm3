@@ -16,6 +16,7 @@ const LOGIC_PATHS: &[&str] = &[
     "crates/h3-content/",
     "crates/h3-contracts/",
     "crates/h3-battle/",
+    "crates/h3-heroes/",
 ];
 
 /// Whether a set of changed paths touches logic code without touching documentation.

@@ -123,12 +123,22 @@ external = []
 dev_deps = []
 dev_external = ["proptest"]
 
+# Hero details: validation and the translations to the battle's types (ADR-0013). A domain context
+# of its own; the battle never depends on it.
+[crate.h3-heroes]
+layer = "domain"
+logic = true
+deps = ["h3-content"]
+external = []
+dev_deps = []
+dev_external = ["proptest"]
+
 [crate.h3-pack]
 layer = "adapter"
 logic = false
 deps = ["h3-kernel", "h3-content", "h3-contracts"]
 external = ["serde", "toml"]
-dev_deps = []
+dev_deps = ["h3-heroes"]          # hero details checked against the harvested packs
 dev_external = []
 
 [crate.h3-sim]

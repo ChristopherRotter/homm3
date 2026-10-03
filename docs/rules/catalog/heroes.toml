@@ -1,0 +1,132 @@
+# Hero rules (context `heroes`, crate `h3-heroes`): a hero's lasting details, their limits, and
+# the translations to what a battle needs (ADR-0013). Battle rules about heroes keep the BAT
+# prefix (BAT-HER, BAT-TAC, BAT-FLE). Format: docs/04-rules-and-sources.md §3.
+
+[[rule]]
+id       = "HER-DET-001"
+title    = "Hero details and the primary-skill limits"
+context  = "heroes"
+status   = "implemented"
+summary  = "A hero's details (HeroDetails) name a hero type of the ruleset, a level of at least 1, experience, four base primary skills (attack, defense, power, knowledge), secondary skills, worn and carried artifacts, known spells and mana. Each base primary skill is at most the ruleset's primary_max (99); a value below the ruleset's minimum (primary_min: attack 0, defense 0, power 1, knowledge 1) is allowed and counts as the minimum. Experience is not checked against the level until the experience table arrives (E08-E10), and mana is unbounded (it may exceed the maximum, e.g. after a Mana Vortex). A ruleset without hero parameters cannot validate hero details."
+numeric  = "integer"
+
+  [[rule.source]]
+  kind       = "wiki"
+  ref        = "Primary skill - Heroes 3 wiki: \"The upper limit is 99. At 129 the skill value is reset to 0.\" Knowledge: a map-maker may set it to 0, and the hero then looks and works as if it were 1"
+  url        = "https://heroes.thelazy.net/index.php/Primary_skill"
+  retrieved  = "2026-10-03"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "vcmi"
+  ref        = "config/gameConfig.json heroes.minimalPrimarySkills = [0, 0, 1, 1]"
+  url        = "https://github.com/vcmi/vcmi/blob/1.7.5/config/gameConfig.json"
+  retrieved  = "2026-10-03"
+  confidence = "high"
+  note       = "The reset at 129 is a progression overflow (quirk survey, outside E04): base values above 99 do not arise without progression, so the limit applies to base values too."
+
+[[rule]]
+id       = "HER-SEC-001"
+title    = "Secondary skills of a hero"
+context  = "heroes"
+status   = "implemented"
+summary  = "A hero has at most 8 secondary skills (MAX_HERO_SKILLS), each skill at most once, each at level 1 (Basic), 2 (Advanced) or 3 (Expert). Which skills a class may learn concerns level-ups (E08-E10), not the details: a map may give any hero any skill."
+numeric  = "integer"
+
+  [[rule.source]]
+  kind       = "wiki"
+  ref        = "Secondary skill - Heroes 3 wiki: \"Each hero can have up to eight secondary skills.\" \"Each one has three levels: basic, advanced and expert.\""
+  url        = "https://heroes.thelazy.net/index.php/Secondary_skill"
+  retrieved  = "2026-10-03"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "vcmi"
+  ref        = "config/gameConfig.json heroes.skillPerHero = 8"
+  url        = "https://github.com/vcmi/vcmi/blob/1.7.5/config/gameConfig.json"
+  retrieved  = "2026-10-03"
+  confidence = "high"
+
+[[rule]]
+id       = "HER-ART-001"
+title    = "Worn artifacts and combination locks"
+context  = "heroes"
+status   = "implemented"
+summary  = "Every worn artifact occupies one position of its slot; a slot kind has `count` positions (two rings; four misc positions before SoD, five in SoD; one of every other kind). A combination artifact also occupies one position of every slot in its locks (its parts' slots minus one position of its own; Angelic Alliance in the right hand also fills torso, feet, neck, left hand and head). The positions all worn artifacts and their locks need must fit every slot's count. An artifact without a slot (the Grail) cannot be worn. The same artifact type may be worn more than once while positions remain (two Quiet Eyes of the Dragon), and one war machine of each kind fits its own slot. Positions of one slot are interchangeable, so the details list artifacts, not positions."
+numeric  = "integer"
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "ArtSlots.txt (19 positions in SoD, 18 in the AB copy without Misc 5) and the slot columns of ARTRAITS.TXT, harvested into the packs' [[artifact_slot]] counts (docs/formats/installation.md §6)"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "wiki"
+  ref        = "Artifact - Heroes 3 wiki: equipment slots (Ring x2, Miscellaneous x5 in SoD, four before); Combination artifact: a combination occupies the slots of its parts"
+  url        = "https://heroes.thelazy.net/index.php/Artifact"
+  retrieved  = "2026-10-03"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "vcmi"
+  ref        = "lib/entities/artifact/CArtifactSet.cpp lockSlot: a combination locks the slots of its other parts (survey docs/rules/surveys/E04-artifacts.md)"
+  url        = "https://github.com/vcmi/vcmi/blob/1.7.5/lib/entities/artifact/CArtifactSet.cpp"
+  retrieved  = "2026-10-03"
+  confidence = "high"
+
+[[rule]]
+id       = "HER-ART-002"
+title    = "The backpack"
+context  = "heroes"
+status   = "implemented"
+summary  = "A hero carries at most the ruleset's `backpack` artifacts (64) in its backpack. Artifacts of slots marked `backpack = false` never go there: the war machines (Ballista, Ammo Cart, First Aid Tent, Catapult) and the spell book. Artifacts without a slot (the Grail) and combinations may be carried. What happens to loot that finds no room (it disappears in the original; VCMI's backpack is unlimited, dispute D7) is decided with the outcome application (T9, E08-E10)."
+numeric  = "integer"
+
+  [[rule.source]]
+  kind       = "wiki"
+  ref        = "Artifact - Heroes 3 wiki: the backpack holds up to 64 unequipped artifacts; artifacts from creature banks or defeated heroes without free space disappear; war machines and the spell book have dedicated slots and cannot be stored in the backpack"
+  url        = "https://heroes.thelazy.net/index.php/Artifact"
+  retrieved  = "2026-10-03"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "vcmi"
+  ref        = "lib/entities/artifact/ArtifactUtils.cpp unmovableSlots: SPELLBOOK and MACH4; lib/entities/artifact/CArtifact.cpp canBePutAt: war machines ('big' artifacts) never go to the backpack; config/gameConfig.json backpackSize = -1 (unlimited, dispute D7)"
+  url        = "https://github.com/vcmi/vcmi/blob/1.7.5/lib/entities/artifact/ArtifactUtils.cpp"
+  retrieved  = "2026-10-03"
+  confidence = "high"
+
+[[rule]]
+id       = "HER-SPL-001"
+title    = "Known spells"
+context  = "heroes"
+status   = "implemented"
+summary  = "A hero's known spells are spells of the ruleset, each listed once, and none of them a creature ability (spell category `ability`, which never stands in a spell book). Whether the spells need a worn spell book is checked from E04b on, when the spell book artifact gets its effect."
+numeric  = "integer"
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "SPTRAITS.TXT: adventure spells, combat spells and creature abilities in separate sections; the abilities are cast by creatures only (docs/formats/installation.md §6)"
+  confidence = "high"
+
+[[rule]]
+id       = "HER-WAR-001"
+title    = "War machines a hero brings"
+context  = "heroes"
+status   = "implemented"
+summary  = "A hero brings to a battle the war machine of every worn artifact that places one (Ballista, Ammo Cart, First Aid Tent; each in its own slot, so at most one of each), in the order worn; they become BattleSetup.war_machines (BAT-WAR-001). The Catapult's artifact places none until sieges arrive (E04c); artifacts in the backpack never place one."
+numeric  = "integer"
+
+  [[rule.source]]
+  kind       = "wiki"
+  ref        = "War Machine - Heroes 3 wiki: the Ballista, Ammo Cart, First Aid Tent and Catapult occupy the war machine slots; a hero brings the machines in its slots; the Catapult only to sieges"
+  url        = "https://heroes.thelazy.net/index.php/War_Machine"
+  retrieved  = "2026-10-03"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "vcmi"
+  ref        = "lib/battle/BattleInfo.cpp setupBattle: every filled war machine slot of a side's hero creates a war machine stack of its artifact's creature; no Catapult outside sieges"
+  url        = "https://github.com/vcmi/vcmi/blob/1.7.5/lib/battle/BattleInfo.cpp"
+  retrieved  = "2026-10-03"
+  confidence = "high"

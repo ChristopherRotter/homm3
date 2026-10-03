@@ -1,0 +1,17 @@
+[package]
+name = "h3-heroes"
+description = "Hero details: a hero's lasting details, their validation and what they bring to a battle (ADR-0013)."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish.workspace = true
+
+[dependencies]
+h3-content.workspace = true
+
+[dev-dependencies]
+proptest.workspace = true
+
+[lints]
+workspace = true

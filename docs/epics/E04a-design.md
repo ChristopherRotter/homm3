@@ -41,40 +41,32 @@ task has to do with them:
 - Not observed: the wiki's Armorer example "2002 → 2001" is not explained by Q-0005 alone; Q22
   (jousting) was not staged.
 
-## 2. `HeroDetails`, validation and the translation (T4)
+## 2. The translation (T4b)
 
-- `h3-heroes`: domain, logic crate (`no_std`, 100 % coverage), depends on kernel, content and
-  contracts only; `arch.toml` entry; rule catalog `docs/rules/catalog/heroes.toml`, prefix `HER`.
-  In E04a it contains `HeroDetails`, its validation and the translation, and **no commands and no
-  map or battle state**:
-  - `HeroDetails { hero_type, level, experience, primary: [u8; 4], secondary: Vec<(SkillId, u8)>,
-    artifacts: equipped slots + backpack, spell_book: Option<Vec<SpellId>>, mana }`.
-  - `validate(&HeroDetails, &Ruleset) -> Result<(), DetailsError>` (loadout validation: levels,
-    skill count and levels, slot compatibility, combination locks, one artifact per slot, the
-    ruleset's slot set — 18 slots before SoD, 19 with it).
-  - `derive_battle_hero(&HeroDetails, &Ruleset) -> BattleHero` and
-    `war_machines(&HeroDetails, &Ruleset) -> Vec<CreatureTypeId>` (from the war-machine slots).
+T4a implemented the crate, `HeroDetails`, `validate` and `war_machines` (crate docs,
+`docs/rules/catalog/heroes.toml`). Left for T4b:
+
+- `derive_battle_hero(&HeroDetails, &Ruleset) -> BattleHero` in `h3-heroes`, which then also
+  depends on `h3-contracts` (`arch.toml`). Effective primary skills = base + artifacts
+  (`primary_skills` per copy) + specialty, clamped to `HeroParams::primary_min..=primary_max`.
+- `BattleMagic.spell_book` (§4): `HeroDetails` has no book flag (T4a decision): the book is a worn
+  artifact and `spells` the known spells. Until E04b gives the spell book artifact its effect,
+  the derivation cannot tell a book from other artifacts; it returns `None` and E04b fills it.
 - `h3-battle` never depends on `h3-heroes`; it reads only `BattleHero`.
 - `h3-content` owns the definitions and the content-side effect vocabulary (§3), including the
   creature upgrade relation that selectors need (`Ruleset::upgrades`, T3a).
 
-## 3. Artifacts in the derivation (T4, T10)
+## 3. Artifacts in the derivation (T4b, T10)
 
 T3a and T3b implemented the content side (`h3_content::HeroEffect`, `ArtifactSlot`,
 `ArtifactType`; `packs/README.md`, "Hero effects" and "Artifacts"). What the derivation in
 `h3-heroes` has to do with it:
 
-- **Slots and locks (T4, `HER` rules):** a hero has `count` positions per slot; an artifact goes
-  into a position of its slot; a combination also occupies the positions in its `locks`; the
-  backpack takes artifacts without a slot (and any other, except war machines and the spell book,
-  per the wiki; capacity D7). The ruleset's slot set differs by expansion (14 kinds; misc 4 or 5).
 - **Which effects count (T10):** each equipped artifact type counts once, except
   `primary_skills`, which count per copy (two Quiet Eyes: +2/+2); a combination gives its own
   effects and its parts' effects; `needs_skill` effects only while the hero has the skill (any
   level); a skill specialty grows only the skill's own values, not the artifacts' (as VCMI). Hero
   primary totals are clamped (attack, defense ≥ 0; power, knowledge ≥ 1, VCMI).
-- **War machines (T4):** `h3_heroes::war_machines` reads `ArtifactType::war_machine` of the
-  war-machine slots; the Catapult artifact has none until E04c.
 - **Pending** (no battle effect in E04a): see `packs/README.md`, "What the harvested artifacts
   leave out"; Necromancy goes with the Necromancy skill (E08–E10), not T9.
 

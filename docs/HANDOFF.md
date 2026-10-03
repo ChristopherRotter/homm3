@@ -4,6 +4,18 @@ Living state. The last agent updates this at the end of every session; the next 
 
 ---
 
+## 2026-10-04 (fifth session) — E04a T4a done (hero details)
+
+**State:** branch `e04a-heroes-in-battle`, `cargo xtask verify` green (also `--with-original-data`). Scope chosen by the user at the start: T4 split at the seam, **T4a only**. Nothing half-done.
+
+**T4a:** new domain logic crate `h3-heroes` (content only so far; `arch.toml`, doc-drift list): `HeroDetails { hero_type, level, experience, primary, skills, worn, backpack, spells, mana }`, `validate` → `DetailsError`, `war_machines`, `PrimarySkill`; rule catalog `docs/rules/catalog/heroes.toml` (HER-DET-001, HER-SEC-001, HER-ART-001/002, HER-SPL-001, HER-WAR-001). Content: `[hero_params]` (Tier 2; optional, at most one pack; `primary_min`, `primary_max`, `backpack`) and `backpack = false` on `[[artifact_slot]]`, harvested from gap-fill `[heroes.params]` and `[artifacts] no_backpack` (sources: wiki Primary skill, Secondary skill, Artifact; VCMI gameConfig/ArtifactUtils); `compile_battle` rejects war-machine positions whose two-hex footprints leave the field or overlap (E03 review item, BAT-WAR-001; the battle's `NoRoom` for machines is now reached only through a setup obstacle); ruleset hash v11; golden replays re-recorded (hash only); `h3-pack` tests hero details against the harvested packs (dev-dependency on `h3-heroes`). Agent decisions (in the epic; change freely): `worn` lists artifacts, not positions; the spell book is the worn artifact, `spells` the known spells (no `spell_book` option; "spells need a book" waits for E04b); experience and mana unchecked; base primary skills ≤ 99, below the minimum allowed; no class limits on skills; 8 skills stays `MAX_HERO_SKILLS`; backpack 64 (wiki, D7).
+
+**Next:** the user decides. Recommended: **T4b** (`BattleHero` and friends in contracts, `derive_battle_hero`, `BattleSetup.heroes` replacing `led_by_hero`, battle validation, state hash v9, observation struct, scenario/replay/CLI/sim follow-ups). Open point to settle at its start: how scenario files name a hero before T11 (e.g. a minimal `[scenario.heroes.<side>]` table → `HeroDetails` → derive). Alternative: design batch 1b.
+
+**Traps:** a dev-dependency must respect the layers too (`check-arch`), so domain crates build test rulesets in code; `quiet_eye_of_the_dragon` is a ring, not a misc artifact. Syncing worked with a bundle in `Claude outputs/` (deleted afterwards) and delete permission for the repo folder. Sandbox as before.
+
+---
+
 ## 2026-10-03 (fourth session) — E04a T3b done (artifacts)
 
 **State:** branch `e04a-heroes-in-battle`, `cargo xtask verify` green (also `--with-original-data`). Scope chosen by the user at the start: **T3b only**. The user confirmed quirk Q-0005 as **fix-optional** (ledger, OPEN-QUESTIONS Q23). Nothing half-done.

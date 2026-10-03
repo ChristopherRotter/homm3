@@ -1898,6 +1898,89 @@ mod tests {
         assert!(matches!(parse_pack(&bad_override), Err(PackError::Key(_))));
     }
 
+    // covers: HER-ART-001, HER-ART-002, HER-WAR-001
+    #[test]
+    fn hero_details_fit_the_harvested_slots() {
+        use h3_heroes::{DetailsError, HeroDetails, validate, war_machines};
+        let profile = "base:faithful";
+        let ab = compile(&[BASE_PACK, AB_PACK], profile).unwrap();
+        let sod = compile(&[SOD_PACK, AB_PACK, BASE_PACK], profile).unwrap();
+        let details = |r: &Ruleset, worn: &[&str], backpack: &[&str]| {
+            let art = |k: &&str| r.artifact_by_key(k).unwrap();
+            HeroDetails {
+                hero_type: r.hero_type_by_key("base:orrin").unwrap(),
+                level: 10,
+                experience: 20_000,
+                primary: [5, 4, 2, 2],
+                skills: vec![(r.skill_by_key("base:archery").unwrap(), 3)],
+                worn: worn.iter().map(art).collect(),
+                backpack: backpack.iter().map(art).collect(),
+                spells: vec![r.spell_by_key("base:magic_arrow").unwrap()],
+                mana: 20,
+            }
+        };
+        let machines = [
+            "base:ballista",
+            "base:ammo_cart",
+            "base:first_aid_tent",
+            "base:catapult",
+            "base:spell_book",
+        ];
+        let misc = ["base:clover_of_fortune"; 5];
+        let rings = ["base:quiet_eye_of_the_dragon"; 2];
+        // SoD: Angelic Alliance (right hand) with five misc artifacts, both rings, every
+        // machine and the book; the Grail in the backpack.
+        let full: Vec<&str> = ["sod:angelic_alliance"]
+            .into_iter()
+            .chain(misc)
+            .chain(rings)
+            .chain(machines)
+            .collect();
+        let d = details(&sod, &full, &["base:the_grail"]);
+        assert_eq!(validate(&d, &sod), Ok(()));
+        let creature = |k: &str| sod.creature_by_key(k).unwrap();
+        assert_eq!(
+            war_machines(&d, &sod),
+            [
+                creature("base:ballista"),
+                creature("base:ammo_cart"),
+                creature("base:first_aid_tent")
+            ]
+        );
+        // The Alliance locks the head; machines and the book stay out of the backpack.
+        let head = details(
+            &sod,
+            &[&full[..], &["base:helm_of_heavenly_enlightenment"]].concat(),
+            &[],
+        );
+        assert_eq!(
+            validate(&head, &sod),
+            Err(DetailsError::SlotFull(
+                sod.artifact_slot_by_key("base:head").unwrap()
+            ))
+        );
+        for k in machines {
+            let d = details(&sod, &[], &[k]);
+            assert_eq!(
+                validate(&d, &sod),
+                Err(DetailsError::NotForBackpack(
+                    sod.artifact_by_key(k).unwrap()
+                ))
+            );
+        }
+        let crowded = details(&sod, &[], &["base:clover_of_fortune"; 65]);
+        assert_eq!(validate(&crowded, &sod), Err(DetailsError::BackpackFull));
+        // Before SoD a hero has four misc positions.
+        let five = details(&ab, &misc, &[]);
+        assert_eq!(
+            validate(&five, &ab),
+            Err(DetailsError::SlotFull(
+                ab.artifact_slot_by_key("base:misc").unwrap()
+            ))
+        );
+        assert_eq!(validate(&details(&ab, &misc[1..], &[]), &ab), Ok(()));
+    }
+
     #[test]
     fn artifact_syntax() {
         use h3_content::ArtifactClass;
