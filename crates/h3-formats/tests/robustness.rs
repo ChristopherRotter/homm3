@@ -67,6 +67,8 @@ proptest! {
                 spell_count: count,
                 skill_values: &[exe::SkillValueTable { skill: 0, va: 0x0040_1000, float: true }],
                 specialty_growth_va: va,
+                artifact_primary_va: va.wrapping_add(24),
+                artifact_count: count,
             };
             let _ = exe::hero_data_at(&image, &tables);
         }
@@ -93,6 +95,8 @@ proptest! {
                 spell_count: count,
                 skill_values: &[exe::SkillValueTable { skill: 0, va: 0x0040_1000, float: false }],
                 specialty_growth_va: 0x0040_1004,
+                artifact_primary_va: 0x0040_1030,
+                artifact_count: count,
             };
             let _ = exe::hero_data_at(&image, &tables);
         }

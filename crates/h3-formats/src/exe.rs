@@ -39,6 +39,11 @@ pub struct HeroTables {
     pub skill_values: &'static [SkillValueTable],
     /// Virtual address of the `f32` per-level growth of skill specialties (§7.4).
     pub specialty_growth_va: u32,
+    /// Virtual address of the artifact primary-skill table (§7.3): four signed bytes per
+    /// artifact (E04a T3b).
+    pub artifact_primary_va: u32,
+    /// Number of artifacts in that table.
+    pub artifact_count: usize,
 }
 
 /// One secondary skill's four values (levels 0–3) in the executable (§7.4).
@@ -151,6 +156,8 @@ pub const KNOWN_BUILDS: &[KnownBuild] = &[KnownBuild {
         spell_count: 81,
         skill_values: COMPLETE_SKILL_VALUES,
         specialty_growth_va: 0x0063_EAE4,
+        artifact_primary_va: 0x0063_E758,
+        artifact_count: 144,
     },
 }];
 
@@ -223,6 +230,8 @@ pub struct HeroData {
     pub skill_values: Vec<(u8, [SkillValue; 4])>,
     /// Growth of a skill specialty per hero level (0.05).
     pub specialty_growth: f32,
+    /// Attack, defense, power and knowledge per artifact id (§7.3).
+    pub artifact_primary: Vec<[i8; 4]>,
 }
 
 /// Size of one creature record.
@@ -560,12 +569,23 @@ pub fn hero_data_at(image: &PeImage<'_>, t: &HeroTables) -> Result<HeroData, For
         at(t.specialty_growth_va, "specialty growth address")?,
         "specialty growth",
     )?;
+    let base = at(t.artifact_primary_va, "artifact table address")?;
+    let mut artifact_primary = Vec::with_capacity(t.artifact_count.min(1024));
+    for i in 0..t.artifact_count {
+        let r = base + 4 * i;
+        let bytes = image.data.get(r..r + 4).ok_or(FormatError::Truncated {
+            what: "artifact primary skills",
+            offset: r,
+        })?;
+        artifact_primary.push([0, 1, 2, 3].map(|k| i8::from_le_bytes([bytes[k]])));
+    }
     Ok(HeroData {
         heroes,
         specialties,
         spell_types,
         skill_values,
         specialty_growth: f32::from_bits(growth),
+        artifact_primary,
     })
 }
 
@@ -693,6 +713,7 @@ mod tests {
             p.extend_from_slice(&v.to_bits().to_le_bytes());
         }
         p.extend_from_slice(&0.05f32.to_bits().to_le_bytes());
+        p.extend_from_slice(&[2, 0, 0, 0, 0xFD, 12, 0, 0]);
         let tables = HeroTables {
             hero_va: 0x0040_1000,
             hero_count: 1,
@@ -701,6 +722,8 @@ mod tests {
             spell_count: 2,
             skill_values: SKILLS,
             specialty_growth_va: 0x0040_1000 + 92 + 40 + 2 * 0x88 + 32,
+            artifact_primary_va: 0x0040_1000 + 92 + 40 + 2 * 0x88 + 36,
+            artifact_count: 2,
         };
         (p, tables)
     }
@@ -745,6 +768,7 @@ mod tests {
             (1, [0.0, 0.1, 0.25, 0.5].map(SkillValue::Float))
         );
         assert_eq!(d.specialty_growth, 0.05);
+        assert_eq!(d.artifact_primary, vec![[2, 0, 0, 0], [-3, 12, 0, 0]]);
         assert!(matches!(hero_data(&img), Err(FormatError::UnknownBuild(_))));
     }
 
@@ -770,11 +794,19 @@ mod tests {
             },
             HeroTables { hero_count: 9, ..t },
             HeroTables {
+                artifact_primary_va: 0x10,
+                ..t
+            },
+            HeroTables {
+                artifact_count: 3,
+                ..t
+            },
+            HeroTables {
                 spell_count: 9,
                 ..t
             },
             HeroTables {
-                specialty_growth_va: t.specialty_growth_va + 2,
+                specialty_growth_va: t.artifact_primary_va + 6,
                 ..t
             },
             HeroTables {
@@ -788,7 +820,7 @@ mod tests {
             HeroTables {
                 skill_values: &[SkillValueTable {
                     skill: 0,
-                    va: 0x0040_1000 + 92 + 40 + 2 * 0x88 + 28,
+                    va: 0x0040_1000 + 92 + 40 + 2 * 0x88 + 36,
                     float: false,
                 }],
                 ..t

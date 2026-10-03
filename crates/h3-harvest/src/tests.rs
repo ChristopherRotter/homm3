@@ -92,6 +92,87 @@ fn inputs() -> Inputs {
         terrains: single(&["Mud", "Ice"]),
         hero_data: hero_data(),
         hero_tables: hero_tables(),
+        artifact_tables: artifact_tables(),
+    }
+}
+
+/// Artifact positions of the AB-era and the SoD `ArtSlots.txt`.
+const AB_POSITIONS: [&str; 6] = [
+    "Head",
+    "Right Ring",
+    "Left Ring",
+    "Misc 1",
+    "Misc 2",
+    "War Machine 1",
+];
+
+/// An `ARTRAITS.TXT` row: name, cost, the flagged positions, class.
+fn artifact_row(
+    header: &[String],
+    name: &str,
+    cost: &str,
+    slots: &[&str],
+    class: &str,
+) -> Vec<String> {
+    header
+        .iter()
+        .map(|h| match h.as_str() {
+            "Name" => name.to_owned(),
+            "Cost" => cost.to_owned(),
+            "Class (S,T,N,J,R)" => class.to_owned(),
+            "Description" => "text".to_owned(),
+            p if slots.contains(&p) => "x".to_owned(),
+            _ => " ".to_owned(),
+        })
+        .collect()
+}
+
+/// Ten SoD artifacts (eight in the AB-era table; `Vial` is an AB addition, `Circle` a
+/// combination, `Trace` unused) over six AB-era positions plus SoD's `Misc 5` and `Spell Book`.
+fn artifact_tables() -> artifacts::Tables {
+    let sod_positions: Vec<&str> = AB_POSITIONS
+        .iter()
+        .copied()
+        .chain(["Misc 5", "Spell Book"])
+        .collect();
+    let header = |positions: &[&str]| {
+        let mut h = strings(&["Name", "Cost"]);
+        h.extend(positions.iter().rev().map(|p| (*p).to_owned()));
+        h.extend(strings(&["Class (S,T,N,J,R)", "Description"]));
+        h
+    };
+    let rows = |positions: &[&str], sod: bool| {
+        let h = header(positions);
+        let misc: &[&str] = if sod {
+            &["Misc 1", "Misc 2", "Misc 5"]
+        } else {
+            &["Misc 1", "Misc 2"]
+        };
+        let ring = ["Right Ring", "Left Ring"];
+        let mut t = vec![
+            vec![String::new(), String::new(), "Hero Slots".to_owned()],
+            h.clone(),
+        ];
+        t.push(artifact_row(&h, "Helm", "1000", &["Head"], "T"));
+        t.push(artifact_row(&h, "Band", "500", &ring, "N"));
+        t.push(artifact_row(&h, "Loop", "600", &ring, "J"));
+        t.push(artifact_row(&h, "Charm", "100", misc, "T"));
+        t.push(artifact_row(&h, "Kit", "2500", &["War Machine 1"], "S"));
+        t.push(artifact_row(&h, "Relic", "0", &[], "S"));
+        t.push(artifact_row(&h, "Bow", "2000", misc, "R"));
+        t.push(artifact_row(&h, "Vial", "20000", misc, "R"));
+        if sod {
+            t.push(artifact_row(&h, "Circle", "", &ring, "R"));
+            t.push(artifact_row(&h, "Trace", "", &["Head"], "R"));
+        }
+        t.push(vec![String::new(); 4]); // padding row
+        table(&t)
+    };
+    artifacts::Tables {
+        sod: rows(&sod_positions, true),
+        ab: rows(&AB_POSITIONS, false),
+        sod_slots: single(&sod_positions),
+        ab_slots: single(&AB_POSITIONS),
     }
 }
 
@@ -158,6 +239,19 @@ fn hero_data() -> HeroData {
             (27, float([0.0, 1.0, 2.0, 3.0])),
         ],
         specialty_growth: 0.05,
+        artifact_primary: [
+            [1, 0, 0, 0],
+            [0; 4],
+            [0; 4],
+            [0; 4],
+            [0; 4],
+            [0; 4],
+            [0; 4],
+            [0; 4],
+            [0, 0, 6, 6],
+            [0; 4],
+        ]
+        .to_vec(),
     }
 }
 
@@ -337,6 +431,56 @@ creature = "Unit 21"
 stat = "speed"
 amount = 1
 sources = ["s"]
+
+[artifacts]
+ab = ["Vial"]
+ab_sources = ["s"]
+unused = ["Trace"]
+unused_sources = ["s"]
+
+[[artifacts.war_machines]]
+artifact = "Kit"
+creature = "Unit 148"
+sources = ["s"]
+
+[[artifacts.combinations]]
+artifact = "Circle"
+parts = ["Band", "Loop", "Helm"]
+sources = ["s"]
+
+[[artifacts.effects]]
+artifacts = ["Band"]
+effects = [{ kind = "luck", amount = 1 }]
+sources = ["s"]
+
+[[artifacts.effects]]
+artifacts = ["Loop"]
+effects = [{ kind = "morale", amount = 1 }]
+sources = ["s"]
+
+[[artifacts.effects]]
+artifacts = ["Bow"]
+effects = [{ kind = "ranged_damage", bp = 500 }]
+needs_skill = "Skill 1"
+sources = ["s"]
+
+[[artifacts.effects]]
+artifacts = ["Vial"]
+effects = [{ kind = "creature_stat", amount = 5, stat = "attack", creatures = { flag = "dragon" } }]
+sources = ["s"]
+
+[[artifacts.effects]]
+artifacts = ["Circle"]
+effects = [
+    { kind = "alignment_group", factions = ["Alpha", "Gamma"] },
+    { kind = "regeneration", creatures = { creature = "Unit 21" }, hit_points = 5 },
+]
+sources = ["s"]
+
+[[artifacts.pending]]
+epic = "E04b"
+what = "spells"
+artifacts = ["Charm", "Relic"]
 "#;
 
 fn gap() -> GapFill {
@@ -830,6 +974,224 @@ fn hero_content_errors() {
         let e = harvest(&inputs(), &g).unwrap_err();
         assert!(e.contains(error), "{error}: {e}");
     }
+}
+
+#[test]
+fn harvests_artifacts() {
+    let h = harvest(&inputs(), &gap()).unwrap();
+    let (base, ab, sod) = (pack(&h, "base"), pack(&h, "ab"), pack(&h, "sod"));
+    let r = h3_pack::compile(&[base, ab, sod], "base:faithful").unwrap();
+    assert_eq!(r.artifact_slots().len(), 5);
+    let misc = r.artifact_slot_by_key("base:misc").unwrap();
+    assert_eq!(r.artifact_slot(misc).unwrap().count, 3);
+    assert_eq!(r.artifacts().len(), 9);
+    for line in [
+        "[[artifact_slot]]\nid = \"ring\"\nname = \"Ring\"\ncount = 2",
+        "[[artifact_slot]]\nid = \"misc\"\nname = \"Misc\"\ncount = 2",
+        "id = \"helm\"  # original id 0\nname = \"Helm\"\nclass = \"treasure\"\ncost = { \"gold\" = 1000 }\nslot = \"head\"\neffects = [{ kind = \"primary_skills\", attack = 1 }]",
+        "slot = \"war_machine_1\"\nwar_machine = \"unit_148\"",
+        "id = \"relic\"  # original id 5; pending: E04b\nname = \"Relic\"\nclass = \"special\"\n",
+        "needs_skill = \"skill_1\"\neffects = [{ kind = \"ranged_damage\", bp = 500 }]",
+    ] {
+        assert!(base.contains(line), "{line}");
+    }
+    assert!(ab.contains("cost = { \"base:gold\" = 20000 }\nslot = \"base:misc\"\neffects = [{ kind = \"creature_stat\", creatures = { flag = \"dragon\" }, stat = \"attack\", amount = 5 }]"));
+    for line in [
+        "[[artifact_slot_override]]\ntarget = \"base:misc\"\ncount = 3",
+        "[[artifact_slot]]\nid = \"spell_book\"\nname = \"Spell Book\"\ncount = 1",
+        "effects = [{ kind = \"primary_skills\", power = 6, knowledge = 6 }, { kind = \"alignment_group\", factions = [\"base:alpha\", \"ab:gamma\"] }, \
+         { kind = \"regeneration\", creatures = { creature = \"ab:unit_21\" }, hit_points = 5 }]\nparts = [\"base:band\", \"base:loop\", \"base:helm\"]",
+    ] {
+        assert!(sod.contains(line), "{line}");
+    }
+    assert!(!sod.contains("Trace"));
+    let circle = r
+        .artifact(r.artifact_by_key("sod:circle").unwrap())
+        .unwrap();
+    assert_eq!(circle.locks.len(), 2);
+    assert!(
+        h.report
+            .iter()
+            .any(|l| l == "slot `misc`: 2 positions before SoD, 3 in SoD")
+    );
+    assert!(
+        h.report
+            .iter()
+            .any(|l| l == "artifacts per pack: ab 1, base 7, sod 1")
+    );
+}
+
+#[test]
+fn artifact_errors() {
+    let fails_with =
+        |change: &dyn Fn(&mut Inputs), gap_change: &dyn Fn(&str) -> String, error: &str| {
+            let mut i = inputs();
+            change(&mut i);
+            let g = GapFill::parse(&gap_change(GAP)).unwrap();
+            let e = harvest(&i, &g).unwrap_err();
+            assert!(e.contains(error), "{error}: {e}");
+        };
+    let same = |g: &str| g.to_owned();
+    let fails = |change: &dyn Fn(&mut Inputs), error: &str| fails_with(change, &same, error);
+    let gap_fails = |from: &str, to: &str, error: &str| {
+        assert!(GAP.contains(from), "{from}");
+        fails_with(&|_| {}, &|g: &str| g.replacen(from, to, 1), error);
+    };
+    let row_of = |i: &mut Inputs, name: &str| {
+        i.artifact_tables
+            .sod
+            .records
+            .iter()
+            .position(|r| r[0] == name)
+            .unwrap()
+    };
+    fails(
+        &|i| {
+            i.artifact_tables.ab_slots.records[0][0] = "Tail".into();
+            i.artifact_tables.sod_slots.records[0][0] = "Tail".into();
+        },
+        "unknown position `Tail`",
+    );
+    fails(
+        &|i| i.artifact_tables.ab_slots.records.swap(0, 1),
+        "not a prefix",
+    );
+    fails(
+        &|i| i.artifact_tables.sod_slots.records.clear(),
+        "no positions",
+    );
+    fails(
+        &|i| i.hero_data.artifact_primary.pop().map(drop).unwrap(),
+        "the executable has 9",
+    );
+    fails(
+        &|i| {
+            let r = row_of(i, "Helm");
+            i.artifact_tables.sod.records[r][1] = "lots".into();
+        },
+        "has cost `lots`",
+    );
+    fails(
+        &|i| {
+            let r = row_of(i, "Helm");
+            let c = i.artifact_tables.sod.records[r].len() - 2;
+            i.artifact_tables.sod.records[r][c] = "Q".into();
+        },
+        "has class `Q`",
+    );
+    fails(
+        &|i| {
+            let r = row_of(i, "Helm");
+            i.artifact_tables.sod.records[r][1] = "999".into();
+        },
+        "artifact id 0 `Helm` differs",
+    );
+    fails(
+        &|i| {
+            let r = row_of(i, "Band");
+            for t in [&mut i.artifact_tables.sod, &mut i.artifact_tables.ab] {
+                let h = t.records[1].clone();
+                t.records[r] = artifact_row(&h, "Band", "500", &["Right Ring"], "N");
+            }
+        },
+        "not the positions of one slot",
+    );
+    fails(
+        &|i| i.artifact_tables.sod.records[1][2] = "Hat".into(),
+        "no column",
+    );
+    fails(
+        &|i| i.artifact_tables.sod.records.truncate(1),
+        "no header row",
+    );
+    fails(
+        &|i| {
+            let r = row_of(i, "Loop");
+            i.artifact_tables.sod.records[r][0] = "Band".into();
+            i.artifact_tables.ab.records[r][0] = "Band".into();
+        },
+        "duplicate artifact key `band`",
+    );
+    gap_fails(
+        "ab = [\"Vial\"]",
+        "ab = [\"Circle\"]",
+        "`Circle` is not in the AB-era table",
+    );
+    gap_fails(
+        "ab = [\"Vial\"]",
+        "ab = [\"Flask\"]",
+        "unknown artifact `Flask`",
+    );
+    gap_fails(
+        "creature = \"Unit 148\"\nsources",
+        "creature = \"Unit 1\"\nsources",
+        "`Unit 1` is not a war machine",
+    );
+    gap_fails(
+        "creature = \"Unit 148\"\nsources",
+        "creature = \"Unit 999\"\nsources",
+        "`Unit 999` is not harvested",
+    );
+    gap_fails(
+        "parts = [\"Band\", \"Loop\", \"Helm\"]",
+        "parts = [\"Band\", \"Trace\"]",
+        "`Trace` is not harvested",
+    );
+    gap_fails(
+        "needs_skill = \"Skill 1\"",
+        "needs_skill = \"Flying\"",
+        "unknown skill `Flying`",
+    );
+    gap_fails(
+        "factions = [\"Alpha\", \"Gamma\"]",
+        "factions = [\"Alpha\", \"Delta\"]",
+        "unknown town `Delta`",
+    );
+    gap_fails(
+        "creatures = { creature = \"Unit 21\" }",
+        "creatures = { creature = \"Unit 999\" }",
+        "unknown creature `Unit 999`",
+    );
+    gap_fails(
+        "creatures = { creature = \"Unit 21\" }",
+        "creatures = { kind = \"x\" }",
+        "malformed `creatures`",
+    );
+    gap_fails(
+        "{ kind = \"luck\", amount = 1 }",
+        "{ kind = \"luck\", amount = 1, creature = \"Unit 1\" }",
+        "take no `creature`",
+    );
+    gap_fails(
+        "artifacts = [\"Charm\", \"Relic\"]",
+        "artifacts = [\"Charm\"]",
+        "not pending: Relic",
+    );
+    gap_fails(
+        "artifacts = [\"Loop\"]",
+        "artifacts = [\"Band\"]",
+        "effects of `Band` are listed twice",
+    );
+    gap_fails(
+        "artifacts = [\"Loop\"]",
+        "artifacts = [\"Loop\", \"Trace\"]",
+        "`Trace` is not harvested",
+    );
+    gap_fails(
+        "artifacts = [\"Charm\", \"Relic\"]",
+        "artifacts = [\"Charm\", \"Relic\", \"Ghost\"]",
+        "unknown artifact `Ghost`",
+    );
+    gap_fails(
+        "[[artifacts.combinations]]\nartifact = \"Circle\"",
+        "[[artifacts.combinations]]\nartifact = \"Circle\"\nparts = [\"Band\", \"Loop\"]\nsources = [\"s\"]\n\n[[artifacts.combinations]]\nartifact = \"Circle\"",
+        "`Circle` is listed twice",
+    );
+    gap_fails(
+        "[[artifacts.war_machines]]\nartifact = \"Kit\"",
+        "[[artifacts.war_machines]]\nartifact = \"Kit\"\ncreature = \"Unit 148\"\nsources = [\"s\"]\n\n[[artifacts.war_machines]]\nartifact = \"Kit\"",
+        "`Kit` has two war machines",
+    );
 }
 
 #[test]

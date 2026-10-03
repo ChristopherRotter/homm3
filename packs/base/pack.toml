@@ -5080,6 +5080,1030 @@ spells = ["stone_skin"]
 army = [{ creature = "gnoll", count = [10, 20] }, { creature = "lizardman", count = [4, 7] }, { creature = "serpent_fly", count = [2, 4] }]
 specialty = [{ kind = "skill_specialty", skill = "eagle_eye", bp_per_level = 500 }]
 
+[[artifact_slot]]
+id = "head"
+name = "Head"
+count = 1
+
+[[artifact_slot]]
+id = "shoulders"
+name = "Shoulders"
+count = 1
+
+[[artifact_slot]]
+id = "neck"
+name = "Neck"
+count = 1
+
+[[artifact_slot]]
+id = "right_hand"
+name = "Right Hand"
+count = 1
+
+[[artifact_slot]]
+id = "left_hand"
+name = "Left Hand"
+count = 1
+
+[[artifact_slot]]
+id = "torso"
+name = "Torso"
+count = 1
+
+[[artifact_slot]]
+id = "ring"
+name = "Ring"
+count = 2
+
+[[artifact_slot]]
+id = "feet"
+name = "Feet"
+count = 1
+
+[[artifact_slot]]
+id = "misc"
+name = "Misc"
+count = 4
+
+[[artifact_slot]]
+id = "war_machine_1"
+name = "War Machine 1"
+count = 1
+
+[[artifact_slot]]
+id = "war_machine_2"
+name = "War Machine 2"
+count = 1
+
+[[artifact_slot]]
+id = "war_machine_3"
+name = "War Machine 3"
+count = 1
+
+[[artifact_slot]]
+id = "war_machine_4"
+name = "War Machine 4"
+count = 1
+
+[[artifact_slot]]
+id = "spell_book"
+name = "Spell Book"
+count = 1
+
+[[artifact]]
+id = "spell_book"  # original id 0; pending: E04b
+name = "Spell Book"
+class = "special"
+slot = "spell_book"
+
+[[artifact]]
+id = "spell_scroll"  # original id 1; pending: E04b
+name = "Spell Scroll"
+class = "special"
+cost = { "gold" = 2500 }
+slot = "misc"
+
+[[artifact]]
+id = "the_grail"  # original id 2; pending: E08-E10
+name = "The Grail"
+class = "special"
+
+[[artifact]]
+id = "catapult"  # original id 3; pending: E04c
+name = "Catapult"
+class = "special"
+cost = { "gold" = 1000 }
+slot = "war_machine_4"
+
+[[artifact]]
+id = "ballista"  # original id 4
+name = "Ballista"
+class = "special"
+cost = { "gold" = 2500 }
+slot = "war_machine_1"
+war_machine = "ballista"
+
+[[artifact]]
+id = "ammo_cart"  # original id 5
+name = "Ammo Cart"
+class = "special"
+cost = { "gold" = 1000 }
+slot = "war_machine_2"
+war_machine = "ammo_cart"
+
+[[artifact]]
+id = "first_aid_tent"  # original id 6
+name = "First Aid Tent"
+class = "special"
+cost = { "gold" = 750 }
+slot = "war_machine_3"
+war_machine = "first_aid_tent"
+
+[[artifact]]
+id = "centaurs_axe"  # original id 7
+name = "Centaurs Axe"
+class = "treasure"
+cost = { "gold" = 2000 }
+slot = "right_hand"
+effects = [{ kind = "primary_skills", attack = 2 }]
+
+[[artifact]]
+id = "blackshard_of_the_dead_knight"  # original id 8
+name = "Blackshard of the Dead Knight"
+class = "minor"
+cost = { "gold" = 3000 }
+slot = "right_hand"
+effects = [{ kind = "primary_skills", attack = 3 }]
+
+[[artifact]]
+id = "greater_gnolls_flail"  # original id 9
+name = "Greater Gnoll's Flail"
+class = "minor"
+cost = { "gold" = 4000 }
+slot = "right_hand"
+effects = [{ kind = "primary_skills", attack = 4 }]
+
+[[artifact]]
+id = "ogres_club_of_havoc"  # original id 10
+name = "Ogre's Club of Havoc"
+class = "major"
+cost = { "gold" = 5000 }
+slot = "right_hand"
+effects = [{ kind = "primary_skills", attack = 5 }]
+
+[[artifact]]
+id = "sword_of_hellfire"  # original id 11
+name = "Sword of Hellfire"
+class = "major"
+cost = { "gold" = 6000 }
+slot = "right_hand"
+effects = [{ kind = "primary_skills", attack = 6 }]
+
+[[artifact]]
+id = "titans_gladius"  # original id 12
+name = "Titan's Gladius"
+class = "relic"
+cost = { "gold" = 10000 }
+slot = "right_hand"
+effects = [{ kind = "primary_skills", attack = 12, defense = -3 }]
+
+[[artifact]]
+id = "shield_of_the_dwarven_lords"  # original id 13
+name = "Shield of the Dwarven Lords"
+class = "treasure"
+cost = { "gold" = 2000 }
+slot = "left_hand"
+effects = [{ kind = "primary_skills", defense = 2 }]
+
+[[artifact]]
+id = "shield_of_the_yawning_dead"  # original id 14
+name = "Shield of the Yawning Dead"
+class = "minor"
+cost = { "gold" = 3000 }
+slot = "left_hand"
+effects = [{ kind = "primary_skills", defense = 3 }]
+
+[[artifact]]
+id = "buckler_of_the_gnoll_king"  # original id 15
+name = "Buckler of the Gnoll King"
+class = "minor"
+cost = { "gold" = 4000 }
+slot = "left_hand"
+effects = [{ kind = "primary_skills", defense = 4 }]
+
+[[artifact]]
+id = "targ_of_the_rampaging_ogre"  # original id 16
+name = "Targ of the Rampaging Ogre"
+class = "major"
+cost = { "gold" = 5000 }
+slot = "left_hand"
+effects = [{ kind = "primary_skills", defense = 5 }]
+
+[[artifact]]
+id = "shield_of_the_damned"  # original id 17
+name = "Shield of the Damned"
+class = "major"
+cost = { "gold" = 6000 }
+slot = "left_hand"
+effects = [{ kind = "primary_skills", defense = 6 }]
+
+[[artifact]]
+id = "sentinels_shield"  # original id 18
+name = "Sentinel's Shield"
+class = "relic"
+cost = { "gold" = 10000 }
+slot = "left_hand"
+effects = [{ kind = "primary_skills", attack = -3, defense = 12 }]
+
+[[artifact]]
+id = "helm_of_the_alabaster_unicorn"  # original id 19
+name = "Helm of the Alabaster Unicorn"
+class = "treasure"
+cost = { "gold" = 1000 }
+slot = "head"
+effects = [{ kind = "primary_skills", knowledge = 1 }]
+
+[[artifact]]
+id = "skull_helmet"  # original id 20
+name = "Skull Helmet"
+class = "treasure"
+cost = { "gold" = 3000 }
+slot = "head"
+effects = [{ kind = "primary_skills", knowledge = 2 }]
+
+[[artifact]]
+id = "helm_of_chaos"  # original id 21
+name = "Helm of Chaos"
+class = "minor"
+cost = { "gold" = 4000 }
+slot = "head"
+effects = [{ kind = "primary_skills", knowledge = 3 }]
+
+[[artifact]]
+id = "crown_of_the_supreme_magi"  # original id 22
+name = "Crown of the Supreme Magi"
+class = "minor"
+cost = { "gold" = 5000 }
+slot = "head"
+effects = [{ kind = "primary_skills", knowledge = 4 }]
+
+[[artifact]]
+id = "hellstorm_helmet"  # original id 23
+name = "Hellstorm Helmet"
+class = "major"
+cost = { "gold" = 6000 }
+slot = "head"
+effects = [{ kind = "primary_skills", knowledge = 5 }]
+
+[[artifact]]
+id = "thunder_helmet"  # original id 24
+name = "Thunder Helmet"
+class = "relic"
+cost = { "gold" = 10000 }
+slot = "head"
+effects = [{ kind = "primary_skills", power = -2, knowledge = 10 }]
+
+[[artifact]]
+id = "breastplate_of_petrified_wood"  # original id 25
+name = "Breastplate of Petrified Wood"
+class = "treasure"
+cost = { "gold" = 1000 }
+slot = "torso"
+effects = [{ kind = "primary_skills", power = 1 }]
+
+[[artifact]]
+id = "rib_cage"  # original id 26
+name = "Rib Cage"
+class = "minor"
+cost = { "gold" = 3000 }
+slot = "torso"
+effects = [{ kind = "primary_skills", power = 2 }]
+
+[[artifact]]
+id = "scales_of_the_greater_basilisk"  # original id 27
+name = "Scales of the Greater Basilisk"
+class = "minor"
+cost = { "gold" = 4000 }
+slot = "torso"
+effects = [{ kind = "primary_skills", power = 3 }]
+
+[[artifact]]
+id = "tunic_of_the_cyclops_king"  # original id 28
+name = "Tunic of the Cyclops King"
+class = "major"
+cost = { "gold" = 5000 }
+slot = "torso"
+effects = [{ kind = "primary_skills", power = 4 }]
+
+[[artifact]]
+id = "breastplate_of_brimstone"  # original id 29
+name = "Breastplate of Brimstone"
+class = "major"
+cost = { "gold" = 6000 }
+slot = "torso"
+effects = [{ kind = "primary_skills", power = 5 }]
+
+[[artifact]]
+id = "titans_cuirass"  # original id 30
+name = "Titan's Cuirass"
+class = "relic"
+cost = { "gold" = 10000 }
+slot = "torso"
+effects = [{ kind = "primary_skills", power = 10, knowledge = -2 }]
+
+[[artifact]]
+id = "armor_of_wonder"  # original id 31
+name = "Armor of Wonder"
+class = "minor"
+cost = { "gold" = 4000 }
+slot = "torso"
+effects = [{ kind = "primary_skills", attack = 1, defense = 1, power = 1, knowledge = 1 }]
+
+[[artifact]]
+id = "sandals_of_the_saint"  # original id 32
+name = "Sandals of the Saint"
+class = "relic"
+cost = { "gold" = 8000 }
+slot = "feet"
+effects = [{ kind = "primary_skills", attack = 2, defense = 2, power = 2, knowledge = 2 }]
+
+[[artifact]]
+id = "celestial_necklace_of_bliss"  # original id 33
+name = "Celestial Necklace of Bliss"
+class = "relic"
+cost = { "gold" = 12000 }
+slot = "neck"
+effects = [{ kind = "primary_skills", attack = 3, defense = 3, power = 3, knowledge = 3 }]
+
+[[artifact]]
+id = "lions_shield_of_courage"  # original id 34
+name = "Lion's Shield of Courage"
+class = "relic"
+cost = { "gold" = 16000 }
+slot = "left_hand"
+effects = [{ kind = "primary_skills", attack = 4, defense = 4, power = 4, knowledge = 4 }]
+
+[[artifact]]
+id = "sword_of_judgement"  # original id 35
+name = "Sword of Judgement"
+class = "relic"
+cost = { "gold" = 20000 }
+slot = "right_hand"
+effects = [{ kind = "primary_skills", attack = 5, defense = 5, power = 5, knowledge = 5 }]
+
+[[artifact]]
+id = "helm_of_heavenly_enlightenment"  # original id 36
+name = "Helm of Heavenly Enlightenment"
+class = "relic"
+cost = { "gold" = 24000 }
+slot = "head"
+effects = [{ kind = "primary_skills", attack = 6, defense = 6, power = 6, knowledge = 6 }]
+
+[[artifact]]
+id = "quiet_eye_of_the_dragon"  # original id 37
+name = "Quiet Eye of the Dragon"
+class = "treasure"
+cost = { "gold" = 2000 }
+slot = "ring"
+effects = [{ kind = "primary_skills", attack = 1, defense = 1 }]
+
+[[artifact]]
+id = "red_dragon_flame_tongue"  # original id 38
+name = "Red Dragon Flame Tongue"
+class = "minor"
+cost = { "gold" = 4000 }
+slot = "right_hand"
+effects = [{ kind = "primary_skills", attack = 2, defense = 2 }]
+
+[[artifact]]
+id = "dragon_scale_shield"  # original id 39
+name = "Dragon Scale Shield"
+class = "major"
+cost = { "gold" = 6000 }
+slot = "left_hand"
+effects = [{ kind = "primary_skills", attack = 3, defense = 3 }]
+
+[[artifact]]
+id = "dragon_scale_armor"  # original id 40
+name = "Dragon Scale Armor"
+class = "relic"
+cost = { "gold" = 8000 }
+slot = "torso"
+effects = [{ kind = "primary_skills", attack = 4, defense = 4 }]
+
+[[artifact]]
+id = "dragonbone_greaves"  # original id 41
+name = "Dragonbone Greaves"
+class = "treasure"
+cost = { "gold" = 2000 }
+slot = "feet"
+effects = [{ kind = "primary_skills", power = 1, knowledge = 1 }]
+
+[[artifact]]
+id = "dragon_wing_tabard"  # original id 42
+name = "Dragon Wing Tabard"
+class = "minor"
+cost = { "gold" = 4000 }
+slot = "shoulders"
+effects = [{ kind = "primary_skills", power = 2, knowledge = 2 }]
+
+[[artifact]]
+id = "necklace_of_dragonteeth"  # original id 43
+name = "Necklace of Dragonteeth"
+class = "major"
+cost = { "gold" = 6000 }
+slot = "neck"
+effects = [{ kind = "primary_skills", power = 3, knowledge = 3 }]
+
+[[artifact]]
+id = "crown_of_dragontooth"  # original id 44
+name = "Crown of Dragontooth"
+class = "relic"
+cost = { "gold" = 8000 }
+slot = "head"
+effects = [{ kind = "primary_skills", power = 4, knowledge = 4 }]
+
+[[artifact]]
+id = "still_eye_of_the_dragon"  # original id 45
+name = "Still Eye of the Dragon"
+class = "treasure"
+cost = { "gold" = 2000 }
+slot = "ring"
+effects = [{ kind = "morale", amount = 1 }, { kind = "luck", amount = 1 }]
+
+[[artifact]]
+id = "clover_of_fortune"  # original id 46
+name = "Clover of Fortune"
+class = "treasure"
+cost = { "gold" = 1000 }
+slot = "misc"
+effects = [{ kind = "luck", amount = 1 }]
+
+[[artifact]]
+id = "cards_of_prophecy"  # original id 47
+name = "Cards of Prophecy"
+class = "treasure"
+cost = { "gold" = 1000 }
+slot = "misc"
+effects = [{ kind = "luck", amount = 1 }]
+
+[[artifact]]
+id = "ladybird_of_luck"  # original id 48
+name = "Ladybird of Luck"
+class = "treasure"
+cost = { "gold" = 1000 }
+slot = "misc"
+effects = [{ kind = "luck", amount = 1 }]
+
+[[artifact]]
+id = "badge_of_courage"  # original id 49; pending: E04b
+name = "Badge of Courage"
+class = "treasure"
+cost = { "gold" = 1000 }
+slot = "misc"
+effects = [{ kind = "morale", amount = 1 }]
+
+[[artifact]]
+id = "crest_of_valor"  # original id 50
+name = "Crest of Valor"
+class = "treasure"
+cost = { "gold" = 1000 }
+slot = "misc"
+effects = [{ kind = "morale", amount = 1 }]
+
+[[artifact]]
+id = "glyph_of_gallantry"  # original id 51
+name = "Glyph of Gallantry"
+class = "treasure"
+cost = { "gold" = 1000 }
+slot = "misc"
+effects = [{ kind = "morale", amount = 1 }]
+
+[[artifact]]
+id = "speculum"  # original id 52; pending: E08-E10
+name = "Speculum"
+class = "treasure"
+cost = { "gold" = 1000 }
+slot = "misc"
+
+[[artifact]]
+id = "spyglass"  # original id 53; pending: E08-E10
+name = "Spyglass"
+class = "treasure"
+cost = { "gold" = 1000 }
+slot = "misc"
+
+[[artifact]]
+id = "amulet_of_the_undertaker"  # original id 54; pending: E08-E10
+name = "Amulet of the Undertaker"
+class = "treasure"
+cost = { "gold" = 2000 }
+slot = "neck"
+
+[[artifact]]
+id = "vampires_cowl"  # original id 55; pending: E08-E10
+name = "Vampire's Cowl"
+class = "minor"
+cost = { "gold" = 4000 }
+slot = "shoulders"
+
+[[artifact]]
+id = "dead_mans_boots"  # original id 56; pending: E08-E10
+name = "Dead Man's Boots"
+class = "major"
+cost = { "gold" = 6000 }
+slot = "feet"
+
+[[artifact]]
+id = "garniture_of_interference"  # original id 57; pending: E04b
+name = "Garniture of Interference"
+class = "major"
+cost = { "gold" = 2000 }
+slot = "neck"
+
+[[artifact]]
+id = "surcoat_of_counterpoise"  # original id 58; pending: E04b
+name = "Surcoat of Counterpoise"
+class = "major"
+cost = { "gold" = 4000 }
+slot = "shoulders"
+
+[[artifact]]
+id = "boots_of_polarity"  # original id 59; pending: E04b
+name = "Boots of Polarity"
+class = "relic"
+cost = { "gold" = 6000 }
+slot = "feet"
+
+[[artifact]]
+id = "bow_of_elven_cherrywood"  # original id 60
+name = "Bow of Elven Cherrywood"
+class = "treasure"
+cost = { "gold" = 2000 }
+slot = "misc"
+needs_skill = "archery"
+effects = [{ kind = "ranged_damage", bp = 500 }]
+
+[[artifact]]
+id = "bowstring_of_the_unicorns_mane"  # original id 61
+name = "Bowstring of the Unicorn's Mane"
+class = "minor"
+cost = { "gold" = 4000 }
+slot = "misc"
+needs_skill = "archery"
+effects = [{ kind = "ranged_damage", bp = 1000 }]
+
+[[artifact]]
+id = "angel_feather_arrows"  # original id 62
+name = "Angel Feather Arrows"
+class = "major"
+cost = { "gold" = 6000 }
+slot = "misc"
+needs_skill = "archery"
+effects = [{ kind = "ranged_damage", bp = 1500 }]
+
+[[artifact]]
+id = "bird_of_perception"  # original id 63; pending: E04b
+name = "Bird of Perception"
+class = "treasure"
+cost = { "gold" = 1000 }
+slot = "misc"
+
+[[artifact]]
+id = "stoic_watchman"  # original id 64; pending: E04b
+name = "Stoic Watchman"
+class = "treasure"
+cost = { "gold" = 2000 }
+slot = "misc"
+
+[[artifact]]
+id = "emblem_of_cognizance"  # original id 65; pending: E04b
+name = "Emblem of Cognizance"
+class = "minor"
+cost = { "gold" = 3000 }
+slot = "misc"
+
+[[artifact]]
+id = "statesmans_medal"  # original id 66
+name = "Statesman's Medal"
+class = "major"
+cost = { "gold" = 5000 }
+slot = "neck"
+effects = [{ kind = "surrender_discount", bp = 1000 }]
+
+[[artifact]]
+id = "diplomats_ring"  # original id 67
+name = "Diplomat's Ring"
+class = "major"
+cost = { "gold" = 5000 }
+slot = "ring"
+effects = [{ kind = "surrender_discount", bp = 1000 }]
+
+[[artifact]]
+id = "ambassadors_sash"  # original id 68
+name = "Ambassador's Sash"
+class = "major"
+cost = { "gold" = 5000 }
+slot = "shoulders"
+effects = [{ kind = "surrender_discount", bp = 1000 }]
+
+[[artifact]]
+id = "ring_of_the_wayfarer"  # original id 69
+name = "Ring of the Wayfarer"
+class = "major"
+cost = { "gold" = 5000 }
+slot = "ring"
+effects = [{ kind = "creature_stat", stat = "speed", amount = 1 }]
+
+[[artifact]]
+id = "equestrians_gloves"  # original id 70; pending: E08-E10
+name = "Equestrian's Gloves"
+class = "minor"
+cost = { "gold" = 3000 }
+slot = "ring"
+
+[[artifact]]
+id = "necklace_of_ocean_guidance"  # original id 71; pending: E08-E10
+name = "Necklace of Ocean Guidance"
+class = "major"
+cost = { "gold" = 10000 }
+slot = "neck"
+
+[[artifact]]
+id = "angel_wings"  # original id 72; pending: E08-E10
+name = "Angel Wings"
+class = "relic"
+cost = { "gold" = 20000 }
+slot = "shoulders"
+
+[[artifact]]
+id = "charm_of_mana"  # original id 73; pending: E04b
+name = "Charm of Mana"
+class = "treasure"
+cost = { "gold" = 500 }
+slot = "misc"
+
+[[artifact]]
+id = "talisman_of_mana"  # original id 74; pending: E04b
+name = "Talisman of Mana"
+class = "treasure"
+cost = { "gold" = 1000 }
+slot = "misc"
+
+[[artifact]]
+id = "mystic_orb_of_mana"  # original id 75; pending: E04b
+name = "Mystic Orb of Mana"
+class = "treasure"
+cost = { "gold" = 1500 }
+slot = "misc"
+
+[[artifact]]
+id = "collar_of_conjuring"  # original id 76; pending: E04b
+name = "Collar of Conjuring"
+class = "treasure"
+cost = { "gold" = 500 }
+slot = "neck"
+
+[[artifact]]
+id = "ring_of_conjuring"  # original id 77; pending: E04b
+name = "Ring of Conjuring"
+class = "treasure"
+cost = { "gold" = 1000 }
+slot = "ring"
+
+[[artifact]]
+id = "cape_of_conjuring"  # original id 78; pending: E04b
+name = "Cape of Conjuring"
+class = "treasure"
+cost = { "gold" = 1500 }
+slot = "shoulders"
+
+[[artifact]]
+id = "orb_of_the_firmament"  # original id 79; pending: E04b
+name = "Orb of the Firmament"
+class = "major"
+cost = { "gold" = 6000 }
+slot = "misc"
+
+[[artifact]]
+id = "orb_of_silt"  # original id 80; pending: E04b
+name = "Orb of Silt"
+class = "major"
+cost = { "gold" = 6000 }
+slot = "misc"
+
+[[artifact]]
+id = "orb_of_tempestuous_fire"  # original id 81; pending: E04b
+name = "Orb of Tempestuous Fire"
+class = "major"
+cost = { "gold" = 6000 }
+slot = "misc"
+
+[[artifact]]
+id = "orb_of_driving_rain"  # original id 82; pending: E04b
+name = "Orb of Driving Rain"
+class = "major"
+cost = { "gold" = 6000 }
+slot = "misc"
+
+[[artifact]]
+id = "recanters_cloak"  # original id 83; pending: E04b
+name = "Recanter's Cloak"
+class = "major"
+cost = { "gold" = 8000 }
+slot = "shoulders"
+
+[[artifact]]
+id = "spirit_of_oppression"  # original id 84
+name = "Spirit of Oppression"
+class = "treasure"
+cost = { "gold" = 2000 }
+slot = "misc"
+effects = [{ kind = "morale_at_most", affects = "both", value = 0 }]
+
+[[artifact]]
+id = "hourglass_of_the_evil_hour"  # original id 85
+name = "Hourglass of the Evil Hour"
+class = "treasure"
+cost = { "gold" = 2000 }
+slot = "misc"
+effects = [{ kind = "luck_at_most", affects = "both", value = 0 }]
+
+[[artifact]]
+id = "tome_of_fire_magic"  # original id 86; pending: E04b
+name = "Tome of Fire Magic"
+class = "relic"
+cost = { "gold" = 20000 }
+slot = "misc"
+
+[[artifact]]
+id = "tome_of_air_magic"  # original id 87; pending: E04b
+name = "Tome of Air Magic"
+class = "relic"
+cost = { "gold" = 20000 }
+slot = "misc"
+
+[[artifact]]
+id = "tome_of_water_magic"  # original id 88; pending: E04b
+name = "Tome of Water Magic"
+class = "relic"
+cost = { "gold" = 20000 }
+slot = "misc"
+
+[[artifact]]
+id = "tome_of_earth_magic"  # original id 89; pending: E04b
+name = "Tome of Earth Magic"
+class = "relic"
+cost = { "gold" = 20000 }
+slot = "misc"
+
+[[artifact]]
+id = "boots_of_levitation"  # original id 90; pending: E08-E10
+name = "Boots of Levitation"
+class = "relic"
+cost = { "gold" = 10000 }
+slot = "feet"
+
+[[artifact]]
+id = "golden_bow"  # original id 91; pending: E04c
+name = "Golden Bow"
+class = "major"
+cost = { "gold" = 8000 }
+slot = "misc"
+effects = [{ kind = "no_range_penalty", creatures = { flag = "shooter" } }]
+
+[[artifact]]
+id = "sphere_of_permanence"  # original id 92; pending: E04b
+name = "Sphere of Permanence"
+class = "major"
+cost = { "gold" = 7500 }
+slot = "misc"
+
+[[artifact]]
+id = "orb_of_vulnerability"  # original id 93; pending: E04b
+name = "Orb of Vulnerability"
+class = "relic"
+cost = { "gold" = 25000 }
+slot = "misc"
+
+[[artifact]]
+id = "ring_of_vitality"  # original id 94
+name = "Ring of Vitality"
+class = "treasure"
+cost = { "gold" = 5000 }
+slot = "ring"
+effects = [{ kind = "creature_stat", stat = "hit_points", amount = 1 }]
+
+[[artifact]]
+id = "ring_of_life"  # original id 95
+name = "Ring of Life"
+class = "minor"
+cost = { "gold" = 5000 }
+slot = "ring"
+effects = [{ kind = "creature_stat", stat = "hit_points", amount = 1 }]
+
+[[artifact]]
+id = "vial_of_lifeblood"  # original id 96
+name = "Vial of Lifeblood"
+class = "major"
+cost = { "gold" = 10000 }
+slot = "misc"
+effects = [{ kind = "creature_stat", stat = "hit_points", amount = 2 }]
+
+[[artifact]]
+id = "necklace_of_swiftness"  # original id 97
+name = "Necklace of Swiftness"
+class = "treasure"
+cost = { "gold" = 5000 }
+slot = "neck"
+effects = [{ kind = "creature_stat", stat = "speed", amount = 1 }]
+
+[[artifact]]
+id = "boots_of_speed"  # original id 98; pending: E08-E10
+name = "Boots of Speed"
+class = "minor"
+cost = { "gold" = 6000 }
+slot = "feet"
+
+[[artifact]]
+id = "cape_of_velocity"  # original id 99
+name = "Cape of Velocity"
+class = "major"
+cost = { "gold" = 10000 }
+slot = "shoulders"
+effects = [{ kind = "creature_stat", stat = "speed", amount = 2 }]
+
+[[artifact]]
+id = "pendant_of_dispassion"  # original id 100; pending: E04b
+name = "Pendant of Dispassion"
+class = "treasure"
+cost = { "gold" = 1000 }
+slot = "neck"
+
+[[artifact]]
+id = "pendant_of_second_sight"  # original id 101; pending: E04b
+name = "Pendant of Second Sight"
+class = "major"
+cost = { "gold" = 5000 }
+slot = "neck"
+
+[[artifact]]
+id = "pendant_of_holiness"  # original id 102; pending: E04b
+name = "Pendant of Holiness"
+class = "treasure"
+cost = { "gold" = 1000 }
+slot = "neck"
+
+[[artifact]]
+id = "pendant_of_life"  # original id 103; pending: E04b
+name = "Pendant of Life"
+class = "treasure"
+cost = { "gold" = 2500 }
+slot = "neck"
+
+[[artifact]]
+id = "pendant_of_death"  # original id 104; pending: E04b
+name = "Pendant of Death"
+class = "treasure"
+cost = { "gold" = 2500 }
+slot = "neck"
+
+[[artifact]]
+id = "pendant_of_free_will"  # original id 105; pending: E04b
+name = "Pendant of Free Will"
+class = "treasure"
+cost = { "gold" = 1000 }
+slot = "neck"
+
+[[artifact]]
+id = "pendant_of_negativity"  # original id 106; pending: E04b
+name = "Pendant of Negativity"
+class = "major"
+cost = { "gold" = 5000 }
+slot = "neck"
+
+[[artifact]]
+id = "pendant_of_total_recall"  # original id 107; pending: E04b
+name = "Pendant of Total Recall"
+class = "treasure"
+cost = { "gold" = 3000 }
+slot = "neck"
+
+[[artifact]]
+id = "pendant_of_courage"  # original id 108
+name = "Pendant of Courage"
+class = "major"
+cost = { "gold" = 7000 }
+slot = "neck"
+effects = [{ kind = "morale", amount = 3 }, { kind = "luck", amount = 3 }]
+
+[[artifact]]
+id = "everflowing_crystal_cloak"  # original id 109; pending: E08-E10
+name = "Everflowing Crystal Cloak"
+class = "major"
+cost = { "gold" = 5000 }
+slot = "shoulders"
+
+[[artifact]]
+id = "ring_of_infinite_gems"  # original id 110; pending: E08-E10
+name = "Ring of Infinite Gems"
+class = "major"
+cost = { "gold" = 5000 }
+slot = "ring"
+
+[[artifact]]
+id = "everpouring_vial_of_mercury"  # original id 111; pending: E08-E10
+name = "Everpouring Vial of Mercury"
+class = "major"
+cost = { "gold" = 5000 }
+slot = "misc"
+
+[[artifact]]
+id = "inexhaustible_cart_of_ore"  # original id 112; pending: E08-E10
+name = "Inexhaustible Cart of Ore"
+class = "minor"
+cost = { "gold" = 5000 }
+slot = "misc"
+
+[[artifact]]
+id = "eversmoking_ring_of_sulfur"  # original id 113; pending: E08-E10
+name = "Eversmoking Ring of Sulfur"
+class = "major"
+cost = { "gold" = 5000 }
+slot = "ring"
+
+[[artifact]]
+id = "inexhaustible_cart_of_lumber"  # original id 114; pending: E08-E10
+name = "Inexhaustible Cart of Lumber"
+class = "minor"
+cost = { "gold" = 5000 }
+slot = "misc"
+
+[[artifact]]
+id = "endless_sack_of_gold"  # original id 115; pending: E08-E10
+name = "Endless Sack of Gold"
+class = "relic"
+cost = { "gold" = 10000 }
+slot = "misc"
+
+[[artifact]]
+id = "endless_bag_of_gold"  # original id 116; pending: E08-E10
+name = "Endless Bag of Gold"
+class = "major"
+cost = { "gold" = 7500 }
+slot = "misc"
+
+[[artifact]]
+id = "endless_purse_of_gold"  # original id 117; pending: E08-E10
+name = "Endless Purse of Gold"
+class = "major"
+cost = { "gold" = 5000 }
+slot = "misc"
+
+[[artifact]]
+id = "legs_of_legion"  # original id 118; pending: E08-E10
+name = "Legs of Legion"
+class = "treasure"
+cost = { "gold" = 5000 }
+slot = "misc"
+
+[[artifact]]
+id = "loins_of_legion"  # original id 119; pending: E08-E10
+name = "Loins of Legion"
+class = "minor"
+cost = { "gold" = 5000 }
+slot = "misc"
+
+[[artifact]]
+id = "torso_of_legion"  # original id 120; pending: E08-E10
+name = "Torso of Legion"
+class = "minor"
+cost = { "gold" = 5000 }
+slot = "misc"
+
+[[artifact]]
+id = "arms_of_legion"  # original id 121; pending: E08-E10
+name = "Arms of Legion"
+class = "major"
+cost = { "gold" = 5000 }
+slot = "misc"
+
+[[artifact]]
+id = "head_of_legion"  # original id 122; pending: E08-E10
+name = "Head of Legion"
+class = "major"
+cost = { "gold" = 5000 }
+slot = "misc"
+
+[[artifact]]
+id = "sea_captains_hat"  # original id 123; pending: E08-E10
+name = "Sea Captain's Hat"
+class = "relic"
+cost = { "gold" = 15000 }
+slot = "head"
+
+[[artifact]]
+id = "spellbinders_hat"  # original id 124; pending: E04b
+name = "Spellbinder's Hat"
+class = "relic"
+cost = { "gold" = 30000 }
+slot = "head"
+
+[[artifact]]
+id = "shackles_of_war"  # original id 125
+name = "Shackles of War"
+class = "major"
+cost = { "gold" = 5000 }
+slot = "misc"
+effects = [{ kind = "no_retreat" }]
+
+[[artifact]]
+id = "orb_of_inhibition"  # original id 126; pending: E04b
+name = "Orb of Inhibition"
+class = "relic"
+cost = { "gold" = 20000 }
+slot = "misc"
+
 [[obstacle]]
 id = "obstacle_0"
 terrains = ["dirt"]

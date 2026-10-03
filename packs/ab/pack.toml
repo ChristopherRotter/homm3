@@ -784,3 +784,19 @@ class = "base:demoniac"
 skills = [{ skill = "base:leadership", level = 1 }, { skill = "base:tactics", level = 1 }]
 army = [{ creature = "base:imp", count = [10, 20] }, { creature = "base:hell_hound", count = [4, 7] }, { creature = "base:hell_hound", count = [2, 3] }]
 specialty = [{ kind = "creature_stat", creatures = { creature = "base:devil" }, stat = "attack", amount = 4 }, { kind = "creature_stat", creatures = { creature = "base:devil" }, stat = "defense", amount = 2 }, { kind = "creature_stat", creatures = { creature = "base:devil" }, stat = "speed", amount = 1 }]
+
+[[artifact]]
+id = "vial_of_dragon_blood"  # original id 127
+name = "Vial of Dragon Blood"
+class = "relic"
+cost = { "base:gold" = 20000 }
+slot = "base:misc"
+effects = [{ kind = "creature_stat", creatures = { flag = "dragon" }, stat = "attack", amount = 5 }, { kind = "creature_stat", creatures = { flag = "dragon" }, stat = "defense", amount = 5 }]
+
+[[artifact]]
+id = "armageddons_blade"  # original id 128; pending: E04b
+name = "Armageddon's Blade"
+class = "relic"
+cost = { "base:gold" = 50000 }
+slot = "base:right_hand"
+effects = [{ kind = "primary_skills", attack = 3, defense = 3, power = 3, knowledge = 6 }]

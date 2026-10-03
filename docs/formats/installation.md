@@ -206,6 +206,18 @@ them differently. Example: Armageddon's Blade (128) is +3/+3/+3/+6, which settle
 template's +6 power (artifact survey, D5). The artifact setup table itself (pointer at VA
 0x660B68) is uninitialised in the file and filled from `ARTRAITS.TXT`.
 
+Read by `h3_formats::exe::hero_data` (`HeroData::artifact_primary`, E04a T3b); the harvester writes
+the non-zero rows as `primary_skills` effects. The table holds only the combinations' own values
+(Power of the Dragon Father +6/+6/+6/+6, Angelic Alliance 0: its +21 comes from its parts), and 0
+for Vial of Dragon Blood, whose dragon-only +5/+5 is code and comes from the gap-fill file. No
+static table of combination parts was found (searched as bitsets and as id lists; E04a T3b): the
+parts are gap-filled from VCMI and the wiki.
+
+**Slot kinds (harvester, E04a T3b).** Every artifact row flags either no position (the Grail) or
+exactly all positions of one kind: both rings, all misc positions (four in the AB copy, five in
+SoD), or a single position. The harvester groups the `ArtSlots.txt` positions into these kinds
+(`h3_harvest::artifacts::SLOT_KINDS`) and rejects a row that flags anything else.
+
 ### 7.4 Secondary skill values — VA 0x63E998–0x63EAA7 (file 0x23E998), 17 × 4 values
 
 One four-entry table per skill, indexed by level 0–3; each is read by a small getter that also

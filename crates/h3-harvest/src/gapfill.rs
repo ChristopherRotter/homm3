@@ -36,6 +36,8 @@ pub struct GapFill {
     pub war_machines: WarMachines,
     /// Hero content (E04a T3).
     pub heroes: Heroes,
+    /// Artifact facts (E04a T3b).
+    pub artifacts: Artifacts,
 }
 
 /// Hero content the installation does not hold (E04a T3).
@@ -197,6 +199,85 @@ pub struct Source {
     pub retrieved: String,
 }
 
+/// Artifact facts the tables do not hold (E04a T3b). Artifacts are named as in the SoD
+/// `ARTRAITS.TXT`.
+#[derive(Debug, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct Artifacts {
+    /// The AB-era table's artifacts that are not RoE ones.
+    pub ab: Vec<String>,
+    /// Source ids for `ab`.
+    pub ab_sources: Vec<String>,
+    /// SoD rows that are not artifacts of the game (not harvested).
+    pub unused: Vec<String>,
+    /// Source ids for `unused`.
+    pub unused_sources: Vec<String>,
+    /// Artifacts that place a war machine.
+    #[serde(default)]
+    pub war_machines: Vec<ArtifactWarMachine>,
+    /// Combination artifacts and their parts.
+    #[serde(default)]
+    pub combinations: Vec<Combination>,
+    /// Effects beyond the executable's primary skills.
+    #[serde(default)]
+    pub effects: Vec<ArtifactEffects>,
+    /// Artifacts with effects no epic has modelled yet.
+    #[serde(default)]
+    pub pending: Vec<Pending>,
+}
+
+/// An artifact that places a war machine.
+#[derive(Debug, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct ArtifactWarMachine {
+    /// Artifact name.
+    pub artifact: String,
+    /// The war machine's singular name (`CRTRAITS.TXT`).
+    pub creature: String,
+    /// Source ids.
+    pub sources: Vec<String>,
+}
+
+/// A combination artifact.
+#[derive(Debug, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct Combination {
+    /// Artifact name.
+    pub artifact: String,
+    /// Its parts' names.
+    pub parts: Vec<String>,
+    /// Source ids.
+    pub sources: Vec<String>,
+}
+
+/// Effects of one or more artifacts that share them.
+#[derive(Debug, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct ArtifactEffects {
+    /// Artifact names.
+    pub artifacts: Vec<String>,
+    /// Hero effects (`packs/README.md`); `creatures = { creature = "<name>" }` and
+    /// `factions = ["<town name>", …]` are translated to keys.
+    pub effects: Vec<AbilitySpec>,
+    /// The secondary skill (`SSTRAITS.TXT` name) the effects need.
+    #[serde(default)]
+    pub needs_skill: Option<String>,
+    /// Source ids.
+    pub sources: Vec<String>,
+}
+
+/// Artifacts whose effects wait for a later epic (a note in the pack, checked for coverage).
+#[derive(Debug, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct Pending {
+    /// The epic that models the effects.
+    pub epic: String,
+    /// What waits, in a few words.
+    pub what: String,
+    /// Artifact names.
+    pub artifacts: Vec<String>,
+}
+
 /// Content added by Armageddon's Blade.
 #[derive(Debug, Deserialize)]
 #[serde(deny_unknown_fields)]
@@ -310,7 +391,12 @@ impl GapFill {
                 .chain(&g.heroes.upgrade_sources)
                 .chain(&g.heroes.creature_specialty.sources)
                 .chain(g.heroes.skill_effects.iter().flat_map(|e| &e.sources))
-                .chain(g.heroes.specialty_extra.iter().flat_map(|e| &e.sources));
+                .chain(g.heroes.specialty_extra.iter().flat_map(|e| &e.sources))
+                .chain(&g.artifacts.ab_sources)
+                .chain(&g.artifacts.unused_sources)
+                .chain(g.artifacts.war_machines.iter().flat_map(|w| &w.sources))
+                .chain(g.artifacts.combinations.iter().flat_map(|c| &c.sources))
+                .chain(g.artifacts.effects.iter().flat_map(|e| &e.sources));
         for r in refs {
             if !ids.contains(r.as_str()) {
                 return Err(format!("gapfill: unknown source `{r}`"));
@@ -341,6 +427,8 @@ mod tests {
             g.battle.tight_formation.len(),
             usize::from(g.battle.army_slots)
         );
+        assert_eq!(g.artifacts.combinations.len(), 12);
+        assert_eq!(g.artifacts.war_machines.len(), 3);
     }
 
     #[test]

@@ -1643,6 +1643,58 @@ mod tests {
             .unwrap();
         assert_eq!(orrin.army.len(), 3);
         assert!(sod.hero_type_by_key("ab:lord_haart_death_knight").is_some());
+        // Artifacts (E04a T3b): RoE 127 with four misc positions, AB adds two, SoD the twelve
+        // combinations and a fifth misc position.
+        let misc = |r: &Ruleset| {
+            r.artifact_slot(r.artifact_slot_by_key("base:misc").unwrap())
+                .unwrap()
+                .count
+        };
+        assert_eq!((roe.artifacts().len(), misc(&roe)), (127, 4));
+        assert_eq!((ab.artifacts().len(), misc(&ab)), (129, 4));
+        assert_eq!((sod.artifacts().len(), misc(&sod)), (141, 5));
+        assert_eq!(sod.artifact_slots().len(), 14);
+        let slot = |k: &str| sod.artifact_slot_by_key(k).unwrap();
+        let alliance = sod
+            .artifact(sod.artifact_by_key("sod:angelic_alliance").unwrap())
+            .unwrap();
+        assert_eq!(alliance.slot, Some(slot("base:right_hand")));
+        assert_eq!(
+            alliance.locks,
+            [
+                "base:torso",
+                "base:feet",
+                "base:neck",
+                "base:left_hand",
+                "base:head"
+            ]
+            .map(slot)
+        );
+        let sword = sod.artifact_by_key("base:sword_of_judgement").unwrap();
+        assert_eq!(
+            sod.combination_of(sword),
+            sod.artifact_by_key("sod:angelic_alliance")
+        );
+        let gladius = sod
+            .artifact(sod.artifact_by_key("base:titans_gladius").unwrap())
+            .unwrap();
+        assert_eq!(
+            gladius.effects,
+            [HeroEffect::PrimarySkills {
+                attack: 12,
+                defense: -3,
+                power: 0,
+                knowledge: 0
+            }]
+        );
+        let ballista = sod
+            .artifact(sod.artifact_by_key("base:ballista").unwrap())
+            .unwrap();
+        assert_eq!(ballista.war_machine, sod.creature_by_key("base:ballista"));
+        let bow = sod
+            .artifact(sod.artifact_by_key("base:bow_of_elven_cherrywood").unwrap())
+            .unwrap();
+        assert_eq!(bow.needs_skill, sod.skill_by_key("base:archery"));
     }
 
     #[test]

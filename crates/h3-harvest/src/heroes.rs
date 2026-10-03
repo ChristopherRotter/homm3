@@ -90,7 +90,8 @@ pub struct HeroPacks {
 }
 
 impl HeroPacks {
-    fn pack(&mut self, pack: &str) -> &mut String {
+    /// The text of `pack` (`base`, `ab`, anything else: `sod`).
+    pub(crate) fn pack(&mut self, pack: &str) -> &mut String {
         match pack {
             "base" => &mut self.base,
             "ab" => &mut self.ab,
@@ -105,7 +106,7 @@ fn rank(pack: &str) -> usize {
 
 /// A reference from content of `pack` to `key` of `owner`: bare within the pack, `owner:key`
 /// otherwise; an error if `owner` is above `pack`.
-fn reference(key: &str, owner: &str, pack: &str, what: &str) -> Result<String, String> {
+pub(crate) fn reference(key: &str, owner: &str, pack: &str, what: &str) -> Result<String, String> {
     if rank(owner) > rank(pack) {
         return Err(format!(
             "{what}: `{owner}:{key}` is not available to `{pack}`"
@@ -236,6 +237,17 @@ pub fn upgrades(
         list.push(b);
     }
     Ok(out)
+}
+
+/// The secondary skill names of `SSTRAITS.TXT`, in id order (their keys are `base` keys).
+///
+/// # Errors
+/// A malformed table.
+pub fn skill_names(tables: &Tables) -> Result<Vec<String>, String> {
+    Ok(named_rows(&tables.skills, None, 4, "SSTRAITS.TXT")?
+        .iter()
+        .map(|r| r[0].trim().to_owned())
+        .collect())
 }
 
 /// Runs the hero-content harvest.

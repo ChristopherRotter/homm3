@@ -32,7 +32,7 @@ task has to do with them:
   unlimited Ballista shots (R7). A commanded First Aid Tent got no turn while no ally was hurt
   (R6); its Wait/Defend and the heal amount with the skill were not observable (the Golems
   destroyed it) — retry in batch 1b with troops hurt before the tent's first turn.
-- **T3b / T10:** Elixir of Life on Trolls shows 54 hit points: +25 % of the creature's base (40 → 50)
+- **T10** (T3b put the values into the packs): Elixir of Life on Trolls shows 54 hit points: +25 % of the creature's base (40 → 50)
   plus the parts' flat +4 (Ring of Vitality, Ring of Life, Vial of Lifeblood); regeneration restores
   all 54 (R8: survey quirk S-04 not reproduced, no ledger entry). Creature specialties at hero
   level 4: +1 attack, +1 defense, +1 speed for 10/12 and 12/12 creatures (ceil of 5 % per step),
@@ -58,23 +58,25 @@ task has to do with them:
 - `h3-content` owns the definitions and the content-side effect vocabulary (§3), including the
   creature upgrade relation that selectors need (`Ruleset::upgrades`, T3a).
 
-## 3. Effect vocabulary in content (T3b, T10)
+## 3. Artifacts in the derivation (T4, T10)
 
-T3a implemented `h3_content::HeroEffect<C, K, S>` (creature, skill and spell references) with the
-kinds skills and specialties need; the pack docs (`packs/README.md`, "Hero effects") hold the
-list. Left for T3b (artifacts), from the survey (`E04-artifacts.md` §4, §9):
+T3a and T3b implemented the content side (`h3_content::HeroEffect`, `ArtifactSlot`,
+`ArtifactType`; `packs/README.md`, "Hero effects" and "Artifacts"). What the derivation in
+`h3-heroes` has to do with it:
 
-- primary skills (attack, defense, power, knowledge; negative values; hero totals clamped by the
-  derivation), morale and luck caps on both sides (Spirit of Oppression, Hourglass), the
-  alignment-mix morale rule (Angelic Alliance), `creature_stat` as a percentage of the creature's
-  own value (Elixir of Life: +25 % hit points, living only, rounded down), regeneration (living
-  only, 50 HP), no range penalty and shooting while adjacent (own shooters), no retreat (both
-  sides), war machine (slots WM1–WM3; the Catapult is E04c), skill-value bonuses that need the
-  skill (Bow artifacts on Archery, Necromancy artifacts; an effect condition "only if the hero
-  has skill X"), surrender discount (Statesman's Medal and friends), and a per-kind "stacks per
-  copy" flag (only Quiet Eye of the Dragon in E04a).
-- Artifacts whose only effects are E04b or adventure ones get no placeholder variants; T3b lists
-  them.
+- **Slots and locks (T4, `HER` rules):** a hero has `count` positions per slot; an artifact goes
+  into a position of its slot; a combination also occupies the positions in its `locks`; the
+  backpack takes artifacts without a slot (and any other, except war machines and the spell book,
+  per the wiki; capacity D7). The ruleset's slot set differs by expansion (14 kinds; misc 4 or 5).
+- **Which effects count (T10):** each equipped artifact type counts once, except
+  `primary_skills`, which count per copy (two Quiet Eyes: +2/+2); a combination gives its own
+  effects and its parts' effects; `needs_skill` effects only while the hero has the skill (any
+  level); a skill specialty grows only the skill's own values, not the artifacts' (as VCMI). Hero
+  primary totals are clamped (attack, defense ≥ 0; power, knowledge ≥ 1, VCMI).
+- **War machines (T4):** `h3_heroes::war_machines` reads `ArtifactType::war_machine` of the
+  war-machine slots; the Catapult artifact has none until E04c.
+- **Pending** (no battle effect in E04a): see `packs/README.md`, "What the harvested artifacts
+  leave out"; Necromancy goes with the Necromancy skill (E08–E10), not T9.
 
 ## 4. `BattleHero` (T4; read by T5–T7, T10)
 

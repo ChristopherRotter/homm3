@@ -997,3 +997,386 @@ creature = "Devil"
 stat = "speed"
 amount = 1
 sources = ["wiki-hero-specialty", "vcmi-specialties"]
+
+# ---------------------------------------------------------------------------------------------
+# Artifacts (E04a T3b)
+# ---------------------------------------------------------------------------------------------
+# ARTRAITS.TXT holds names, costs, slots and classes, and the executable the primary skills
+# (docs/formats/installation.md §6, §7.3). Membership, war machines, combinations and the other
+# effects come from here; artifacts are named as in the SoD ARTRAITS.TXT. Research notes and the
+# disputes: docs/rules/surveys/E04-artifacts.md.
+
+[[source]]
+id = "vcmi-artifacts"
+kind = "vcmi"
+ref = "config/artifacts.json: per artifact the war machine, the combination parts and the bonuses (morale, luck, stack speed and health, dragon-limited attack and defense, ranged damage limited to Archery, surrender discount, battle-wide caps, no fleeing, Elixir of Life, Golden Bow, Bow of the Sharpshooter); unusedArtifact1-3"
+url = "https://github.com/vcmi/vcmi/blob/1.7.5/config/artifacts.json"
+retrieved = "2026-10-03"
+
+[[source]]
+id = "vcmi-map-features"
+kind = "vcmi"
+ref = "lib/mapping/MapFeaturesH3M.cpp: 127 artifacts in RoE, +2 in AB (Armageddon's Blade, Vial of Dragon Blood), +15 in SoD (combinations and three unfinished ones); 18 slots before SoD, 19 with it"
+url = "https://github.com/vcmi/vcmi/blob/1.7.5/lib/mapping/MapFeaturesH3M.cpp#L55-L107"
+retrieved = "2026-10-03"
+
+[[source]]
+id = "wiki-artifact-list"
+kind = "wiki"
+ref = "List of artifacts (and its artifact table templates): expansion of each artifact (roe, ab, sod) and its effect"
+url = "https://heroes.thelazy.net/index.php/List_of_artifacts"
+retrieved = "2026-10-03"
+
+[[source]]
+id = "wiki-artifact"
+kind = "wiki"
+ref = "Artifact: four misc slots before SoD; identical artifacts do not stack except Quiet Eye of the Dragon and the resource artifacts; traces of three unrealized artifacts in the game files"
+url = "https://heroes.thelazy.net/index.php/Artifact"
+retrieved = "2026-10-03"
+
+[[source]]
+id = "wiki-combination-artifact"
+kind = "wiki"
+ref = "Combination artifact: the twelve SoD combinations, their parts, and that the parts keep giving their own bonuses"
+url = "https://heroes.thelazy.net/index.php/Combination_artifact"
+retrieved = "2026-10-03"
+
+[[source]]
+id = "wiki-war-machine"
+kind = "wiki"
+ref = "War Machine: the Ballista, Ammo Cart, First Aid Tent and Catapult occupy the war machine slots A-D; a hero brings the machines in its slots"
+url = "https://heroes.thelazy.net/index.php/War_Machine"
+retrieved = "2026-10-03"
+
+[[source]]
+id = "wiki-angelic-alliance"
+kind = "wiki"
+ref = "Angelic Alliance (SoD): no morale penalty for mixing Castle, Rampart, Tower, Fortress and Stronghold creatures; Conflux or neutral creatures prevent it (dispute D1: VCMI lets every non-evil faction mix)"
+url = "https://heroes.thelazy.net/index.php/Angelic_Alliance"
+retrieved = "2026-10-03"
+
+[[source]]
+id = "wiki-elixir-of-life"
+kind = "wiki"
+ref = "Elixir of Life: +25 % hit points of the creature's base and regeneration for living creatures, plus its parts' +4 hit points"
+url = "https://heroes.thelazy.net/index.php/Elixir_of_Life"
+retrieved = "2026-10-03"
+
+[[source]]
+id = "wiki-bow-of-the-sharpshooter"
+kind = "wiki"
+ref = "Bow of the Sharpshooter: shooters have no range or obstacle penalty and shoot while blocked, plus its parts' Archery bonuses"
+url = "https://heroes.thelazy.net/index.php/Bow_of_the_Sharpshooter"
+retrieved = "2026-10-03"
+
+[[source]]
+id = "wiki-golden-bow"
+kind = "wiki"
+ref = "Golden Bow: the hero's shooters have no range penalty (and no obstacle penalty in sieges)"
+url = "https://heroes.thelazy.net/index.php/Golden_Bow"
+retrieved = "2026-10-03"
+
+[[source]]
+id = "wiki-bow-of-elven-cherrywood"
+kind = "wiki"
+ref = "Bow of Elven Cherrywood: +5 % to the Archery skill's bonus, no effect without the skill (the Bowstring +10 %, the Angel Feather Arrows +15 % likewise, Archery page)"
+url = "https://heroes.thelazy.net/index.php/Bow_of_Elven_Cherrywood"
+retrieved = "2026-10-03"
+
+[[source]]
+id = "wiki-shackles-of-war"
+kind = "wiki"
+ref = "Shackles of War: neither hero may retreat or surrender (hero-to-hero battles only)"
+url = "https://heroes.thelazy.net/index.php/Shackles_of_War"
+retrieved = "2026-10-03"
+
+[[source]]
+id = "wiki-spirit-of-oppression"
+kind = "wiki"
+ref = "Spirit of Oppression: negates all positive morale of both sides in combat"
+url = "https://heroes.thelazy.net/index.php/Spirit_of_Oppression"
+retrieved = "2026-10-03"
+
+[[source]]
+id = "wiki-hourglass-of-the-evil-hour"
+kind = "wiki"
+ref = "Hourglass of the Evil Hour: negates all positive luck of both sides in combat"
+url = "https://heroes.thelazy.net/index.php/Hourglass_of_the_Evil_Hour"
+retrieved = "2026-10-03"
+
+[[source]]
+id = "wiki-vial-of-dragon-blood"
+kind = "wiki"
+ref = "Vial of Dragon Blood: +5 attack and +5 defense to the hero's dragons"
+url = "https://heroes.thelazy.net/index.php/Vial_of_Dragon_Blood"
+retrieved = "2026-10-03"
+
+[[source]]
+id = "wiki-statesmans-medal"
+kind = "wiki"
+ref = "Statesman's Medal: surrender costs 10 % less (Diplomat's Ring and Ambassador's Sash the same)"
+url = "https://heroes.thelazy.net/index.php/Statesman%27s_Medal"
+retrieved = "2026-10-03"
+
+[[source]]
+id = "wiki-still-eye-of-the-dragon"
+kind = "wiki"
+ref = "Still Eye of the Dragon: +1 morale and +1 luck"
+url = "https://heroes.thelazy.net/index.php/Still_Eye_of_the_Dragon"
+retrieved = "2026-10-03"
+
+[[source]]
+id = "wiki-necklace-of-swiftness"
+kind = "wiki"
+ref = "Necklace of Swiftness: +1 speed to all the hero's creatures"
+url = "https://heroes.thelazy.net/index.php/Necklace_of_Swiftness"
+retrieved = "2026-10-03"
+
+[[source]]
+id = "wiki-ring-of-vitality"
+kind = "wiki"
+ref = "Ring of Vitality: +1 hit point to all the hero's creatures"
+url = "https://heroes.thelazy.net/index.php/Ring_of_Vitality"
+retrieved = "2026-10-03"
+
+[artifacts]
+# The AB-era table's rows that RoE did not have (RoE: rows 0-126).
+ab = ["Vial of Dragon Blood", "Armageddon's Blade"]
+ab_sources = ["vcmi-map-features", "wiki-artifact-list"]
+# SoD rows that are not artifacts of the game: unfinished traces, not harvested.
+unused = ["Diplomat's Suit", "Mired in Neutrality", "Ironfist of the Ogre"]
+unused_sources = ["vcmi-artifacts", "wiki-artifact"]
+
+[[artifacts.war_machines]]
+artifact = "Ballista"
+creature = "Ballista"
+sources = ["wiki-war-machine", "vcmi-artifacts"]
+
+[[artifacts.war_machines]]
+artifact = "Ammo Cart"
+creature = "Ammo Cart"
+sources = ["wiki-war-machine", "vcmi-artifacts"]
+
+[[artifacts.war_machines]]
+artifact = "First Aid Tent"
+creature = "First Aid Tent"
+sources = ["wiki-war-machine", "vcmi-artifacts"]
+
+[[artifacts.combinations]]
+artifact = "Angelic Alliance"
+parts = ["Armor of Wonder", "Sandals of the Saint", "Celestial Necklace of Bliss", "Lion's Shield of Courage", "Sword of Judgement", "Helm of Heavenly Enlightenment"]
+sources = ["wiki-combination-artifact", "vcmi-artifacts"]
+
+[[artifacts.combinations]]
+artifact = "Cloak of the Undead King"
+parts = ["Amulet of the Undertaker", "Vampire's Cowl", "Dead Man's Boots"]
+sources = ["wiki-combination-artifact", "vcmi-artifacts"]
+
+[[artifacts.combinations]]
+artifact = "Elixir of Life"
+parts = ["Ring of Vitality", "Ring of Life", "Vial of Lifeblood"]
+sources = ["wiki-combination-artifact", "vcmi-artifacts"]
+
+[[artifacts.combinations]]
+artifact = "Armor of the Damned"
+parts = ["Blackshard of the Dead Knight", "Shield of the Yawning Dead", "Skull Helmet", "Rib Cage"]
+sources = ["wiki-combination-artifact", "vcmi-artifacts"]
+
+[[artifacts.combinations]]
+artifact = "Statue of Legion"
+parts = ["Legs of Legion", "Loins of Legion", "Torso of Legion", "Arms of Legion", "Head of Legion"]
+sources = ["wiki-combination-artifact", "vcmi-artifacts"]
+
+[[artifacts.combinations]]
+artifact = "Power of the Dragon Father"
+parts = ["Quiet Eye of the Dragon", "Red Dragon Flame Tongue", "Dragon Scale Shield", "Dragon Scale Armor", "Dragonbone Greaves", "Dragon Wing Tabard", "Necklace of Dragonteeth", "Crown of Dragontooth", "Still Eye of the Dragon"]
+sources = ["wiki-combination-artifact", "vcmi-artifacts"]
+
+[[artifacts.combinations]]
+artifact = "Titan's Thunder"
+parts = ["Titan's Gladius", "Sentinel's Shield", "Thunder Helmet", "Titan's Cuirass"]
+sources = ["wiki-combination-artifact", "vcmi-artifacts"]
+
+[[artifacts.combinations]]
+artifact = "Admiral's Hat"
+parts = ["Necklace of Ocean Guidance", "Sea Captain's Hat"]
+sources = ["wiki-combination-artifact", "vcmi-artifacts"]
+
+[[artifacts.combinations]]
+artifact = "Bow of the Sharpshooter"
+parts = ["Bow of Elven Cherrywood", "Bowstring of the Unicorn's Mane", "Angel Feather Arrows"]
+sources = ["wiki-combination-artifact", "vcmi-artifacts"]
+
+[[artifacts.combinations]]
+artifact = "Wizard's Well"
+parts = ["Charm of Mana", "Talisman of Mana", "Mystic Orb of Mana"]
+sources = ["wiki-combination-artifact", "vcmi-artifacts"]
+
+[[artifacts.combinations]]
+artifact = "Ring of the Magi"
+parts = ["Collar of Conjuring", "Ring of Conjuring", "Cape of Conjuring"]
+sources = ["wiki-combination-artifact", "vcmi-artifacts"]
+
+[[artifacts.combinations]]
+artifact = "Cornucopia"
+parts = ["Everflowing Crystal Cloak", "Ring of Infinite Gems", "Everpouring Vial of Mercury", "Eversmoking Ring of Sulfur"]
+sources = ["wiki-combination-artifact", "vcmi-artifacts"]
+
+# Effects beyond the executable's primary skills (installation.md §7.3).
+[[artifacts.effects]]
+artifacts = ["Still Eye of the Dragon"]
+effects = [{ kind = "morale", amount = 1 }, { kind = "luck", amount = 1 }]
+sources = ["wiki-still-eye-of-the-dragon", "vcmi-artifacts"]
+
+[[artifacts.effects]]
+artifacts = ["Clover of Fortune", "Cards of Prophecy", "Ladybird of Luck"]
+effects = [{ kind = "luck", amount = 1 }]
+sources = ["wiki-artifact-list", "vcmi-artifacts"]
+
+[[artifacts.effects]]
+artifacts = ["Badge of Courage", "Crest of Valor", "Glyph of Gallantry"]
+effects = [{ kind = "morale", amount = 1 }]
+sources = ["wiki-artifact-list", "vcmi-artifacts"]
+
+[[artifacts.effects]]
+artifacts = ["Pendant of Courage"]
+effects = [{ kind = "morale", amount = 3 }, { kind = "luck", amount = 3 }]
+sources = ["wiki-artifact-list", "vcmi-artifacts"]
+
+[[artifacts.effects]]
+artifacts = ["Statesman's Medal", "Diplomat's Ring", "Ambassador's Sash"]
+effects = [{ kind = "surrender_discount", bp = 1000 }]
+sources = ["wiki-statesmans-medal", "vcmi-artifacts"]
+
+[[artifacts.effects]]
+artifacts = ["Ring of the Wayfarer", "Necklace of Swiftness"]
+effects = [{ kind = "creature_stat", stat = "speed", amount = 1 }]
+sources = ["wiki-necklace-of-swiftness", "vcmi-artifacts"]
+
+[[artifacts.effects]]
+artifacts = ["Cape of Velocity"]
+effects = [{ kind = "creature_stat", stat = "speed", amount = 2 }]
+sources = ["wiki-artifact-list", "vcmi-artifacts"]
+
+[[artifacts.effects]]
+artifacts = ["Ring of Vitality", "Ring of Life"]
+effects = [{ kind = "creature_stat", stat = "hit_points", amount = 1 }]
+sources = ["wiki-ring-of-vitality", "vcmi-artifacts"]
+
+[[artifacts.effects]]
+artifacts = ["Vial of Lifeblood"]
+effects = [{ kind = "creature_stat", stat = "hit_points", amount = 2 }]
+sources = ["wiki-artifact-list", "vcmi-artifacts"]
+
+[[artifacts.effects]]
+artifacts = ["Spirit of Oppression"]
+effects = [{ kind = "morale_at_most", value = 0, affects = "both" }]
+sources = ["wiki-spirit-of-oppression", "vcmi-artifacts"]
+
+[[artifacts.effects]]
+artifacts = ["Hourglass of the Evil Hour"]
+effects = [{ kind = "luck_at_most", value = 0, affects = "both" }]
+sources = ["wiki-hourglass-of-the-evil-hour", "vcmi-artifacts"]
+
+[[artifacts.effects]]
+artifacts = ["Bow of Elven Cherrywood"]
+effects = [{ kind = "ranged_damage", bp = 500 }]
+needs_skill = "Archery"
+sources = ["wiki-bow-of-elven-cherrywood", "vcmi-artifacts"]
+
+[[artifacts.effects]]
+artifacts = ["Bowstring of the Unicorn's Mane"]
+effects = [{ kind = "ranged_damage", bp = 1000 }]
+needs_skill = "Archery"
+sources = ["wiki-bow-of-elven-cherrywood", "vcmi-artifacts"]
+
+[[artifacts.effects]]
+artifacts = ["Angel Feather Arrows"]
+effects = [{ kind = "ranged_damage", bp = 1500 }]
+needs_skill = "Archery"
+sources = ["wiki-bow-of-elven-cherrywood", "vcmi-artifacts"]
+
+[[artifacts.effects]]
+artifacts = ["Golden Bow"]
+effects = [{ kind = "no_range_penalty", creatures = { flag = "shooter" } }]
+sources = ["wiki-golden-bow", "vcmi-artifacts"]
+
+[[artifacts.effects]]
+artifacts = ["Shackles of War"]
+effects = [{ kind = "no_retreat" }]
+sources = ["wiki-shackles-of-war", "vcmi-artifacts"]
+
+[[artifacts.effects]]
+artifacts = ["Vial of Dragon Blood"]
+effects = [
+    { kind = "creature_stat", creatures = { flag = "dragon" }, stat = "attack", amount = 5 },
+    { kind = "creature_stat", creatures = { flag = "dragon" }, stat = "defense", amount = 5 },
+]
+sources = ["wiki-vial-of-dragon-blood", "vcmi-artifacts"]
+
+# Dispute D1: the SoD text and the wiki name these five towns; VCMI lets every non-evil faction
+# (Conflux and neutral creatures included) mix. Batch 1b candidate.
+[[artifacts.effects]]
+artifacts = ["Angelic Alliance"]
+effects = [{ kind = "alignment_group", factions = ["Castle", "Rampart", "Tower", "Fortress", "Stronghold"] }]
+sources = ["wiki-angelic-alliance", "vcmi-artifacts"]
+
+[[artifacts.effects]]
+artifacts = ["Elixir of Life"]
+effects = [
+    { kind = "creature_stat_percent", creatures = { flag = "alive" }, stat = "hit_points", bp = 2500 },
+    { kind = "regeneration", creatures = { flag = "alive" }, hit_points = 50 },
+]
+sources = ["wiki-elixir-of-life", "vcmi-artifacts"]
+
+[[artifacts.effects]]
+artifacts = ["Bow of the Sharpshooter"]
+effects = [
+    { kind = "no_range_penalty", creatures = { flag = "shooter" } },
+    { kind = "shoot_when_adjacent", creatures = { flag = "shooter" } },
+]
+sources = ["wiki-bow-of-the-sharpshooter", "vcmi-artifacts"]
+
+# Effects no epic has modelled yet; the pack marks these artifacts, and every artifact without a
+# modelled effect must be listed here.
+[[artifacts.pending]]
+epic = "E04b"
+what = "spell book, spells, spell immunity and resistance, spell duration and damage, mana, Eagle Eye"
+artifacts = [
+    "Spell Book", "Spell Scroll", "Badge of Courage",
+    "Garniture of Interference", "Surcoat of Counterpoise", "Boots of Polarity",
+    "Bird of Perception", "Stoic Watchman", "Emblem of Cognizance",
+    "Charm of Mana", "Talisman of Mana", "Mystic Orb of Mana",
+    "Collar of Conjuring", "Ring of Conjuring", "Cape of Conjuring",
+    "Orb of the Firmament", "Orb of Silt", "Orb of Tempestuous Fire", "Orb of Driving Rain",
+    "Recanter's Cloak", "Tome of Fire Magic", "Tome of Air Magic", "Tome of Water Magic",
+    "Tome of Earth Magic", "Sphere of Permanence", "Orb of Vulnerability",
+    "Pendant of Dispassion", "Pendant of Second Sight", "Pendant of Holiness", "Pendant of Life",
+    "Pendant of Death", "Pendant of Free Will", "Pendant of Negativity", "Pendant of Total Recall",
+    "Spellbinder's Hat", "Orb of Inhibition", "Armageddon's Blade",
+    "Angelic Alliance", "Armor of the Damned", "Power of the Dragon Father", "Titan's Thunder",
+    "Wizard's Well", "Ring of the Magi",
+]
+
+[[artifacts.pending]]
+epic = "E04c"
+what = "the Catapult, no obstacle penalty in sieges"
+artifacts = ["Catapult", "Golden Bow", "Bow of the Sharpshooter"]
+
+[[artifacts.pending]]
+epic = "E08-E10"
+what = "Necromancy (outcome application)"
+artifacts = ["Amulet of the Undertaker", "Vampire's Cowl", "Dead Man's Boots", "Cloak of the Undead King"]
+
+[[artifacts.pending]]
+epic = "E08-E10"
+what = "adventure map: movement, vision, resources, growth, the Grail"
+artifacts = [
+    "The Grail", "Speculum", "Spyglass", "Equestrian's Gloves", "Necklace of Ocean Guidance",
+    "Angel Wings", "Boots of Levitation", "Boots of Speed",
+    "Everflowing Crystal Cloak", "Ring of Infinite Gems", "Everpouring Vial of Mercury",
+    "Inexhaustible Cart of Ore", "Eversmoking Ring of Sulfur", "Inexhaustible Cart of Lumber",
+    "Endless Sack of Gold", "Endless Bag of Gold", "Endless Purse of Gold",
+    "Legs of Legion", "Loins of Legion", "Torso of Legion", "Arms of Legion", "Head of Legion",
+    "Sea Captain's Hat", "Statue of Legion", "Admiral's Hat", "Cornucopia",
+]

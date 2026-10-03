@@ -10,6 +10,7 @@
 //!
 //! Layouts: `docs/formats/installation.md`; pack format: `packs/README.md`.
 
+pub mod artifacts;
 pub mod gapfill;
 pub mod heroes;
 
@@ -51,6 +52,8 @@ pub struct Inputs {
     pub hero_data: HeroData,
     /// Hero content text tables (E04a T3).
     pub hero_tables: heroes::Tables,
+    /// Artifact text tables (E04a T3b).
+    pub artifact_tables: artifacts::Tables,
 }
 
 impl Inputs {
@@ -93,6 +96,12 @@ impl Inputs {
                 skills: table(&sod, "H3bitmap.lod", "SSTRAITS.TXT")?,
                 sod_spells: table(&sod, "H3bitmap.lod", "SPTRAITS.TXT")?,
                 ab_spells: table(&ab, "H3ab_bmp.lod", "SPTRAITS.TXT")?,
+            },
+            artifact_tables: artifacts::Tables {
+                sod: table(&sod, "H3bitmap.lod", "ARTRAITS.TXT")?,
+                ab: table(&ab, "H3ab_bmp.lod", "ARTRAITS.TXT")?,
+                sod_slots: table(&sod, "H3bitmap.lod", "ArtSlots.txt")?,
+                ab_slots: table(&ab, "H3ab_bmp.lod", "ArtSlots.txt")?,
             },
         })
     }
@@ -685,14 +694,23 @@ pub fn harvest(inputs: &Inputs, gap: &GapFill) -> Result<Harvest, String> {
         .map(|(t, n)| (key_of(n), if ab_towns.contains(&t) { "ab" } else { "base" }))
         .collect();
     let upgrades = heroes::upgrades(&inputs.exe, &creature_refs, gap)?;
+    let ctx = Context {
+        creatures: &creature_refs,
+        towns: &town_refs,
+    };
     let hero_packs = heroes::harvest_heroes(
         &inputs.hero_tables,
         &inputs.hero_data,
         gap,
-        Context {
-            creatures: &creature_refs,
-            towns: &town_refs,
-        },
+        ctx,
+        &mut report,
+    )?;
+    let artifact_packs = artifacts::harvest_artifacts(
+        &inputs.artifact_tables,
+        &inputs.hero_data.artifact_primary,
+        &heroes::skill_names(&inputs.hero_tables)?,
+        gap,
+        ctx,
         &mut report,
     )?;
     // Upgrades a creature's own pack can express, and the full list where a `base` creature
@@ -802,6 +820,7 @@ pub fn harvest(inputs: &Inputs, gap: &GapFill) -> Result<Harvest, String> {
         );
     }
     base.push_str(&hero_packs.base);
+    base.push_str(&artifact_packs.base);
     base.push_str(&obstacles);
     write_battle(&mut base, gap);
     base.push_str(
@@ -853,6 +872,7 @@ pub fn harvest(inputs: &Inputs, gap: &GapFill) -> Result<Harvest, String> {
         }
     }
     ab.push_str(&hero_packs.ab);
+    ab.push_str(&artifact_packs.ab);
 
     // sod
     let mut sod = header("sod", &["ab"], "The Shadow of Death: changes on top of AB.");
@@ -870,6 +890,7 @@ pub fn harvest(inputs: &Inputs, gap: &GapFill) -> Result<Harvest, String> {
         write_row_diff(&mut sod, old, new, &resources);
     }
     sod.push_str(&hero_packs.sod);
+    sod.push_str(&artifact_packs.sod);
 
     // The output must compile in every allowed combination, and SoD without AB must be rejected.
     let profile = "base:faithful";

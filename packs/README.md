@@ -7,9 +7,9 @@ Human-editable content packs (ADR-0006), parsed by `h3-pack` and compiled into a
 |---|---|
 | `synthetic/` | Invented creatures with neutral names for tests, benchmarks, replays and the walking skeleton. **Not** original game data (docs/05-testing.md "Test data policy"). |
 | `synthetic-ext/` | Invented expansion of `synthetic`: exercises dependencies and overrides the way `ab`/`sod` do. |
-| `base/` | **Harvested**: The Restoration of Erathia, latest patch (Q15): resources, 10 terrains, 8 factions with native terrains, 78 obstacle types, 121 creatures (118 plus the war machines Ballista, First Aid Tent and Ammo Cart, E03 T8) with their upgrades, battle parameters, profiles; since E04a T3 also 4 spell schools, 80 spells, 28 secondary skills, 16 hero classes and 128 heroes. |
-| `ab/` | **Harvested**: Armageddon's Blade (depends on `base`): Conflux, 23 creatures, elementals moved to Conflux and given their upgrades; the 2 Conflux hero classes and 28 heroes (Conflux, Sir Mullich, the campaign heroes). |
-| `sod/` | **Harvested**: The Shadow of Death (depends on `ab`): SoD-only changes as overrides; Titan's Lightning Bolt. |
+| `base/` | **Harvested**: The Restoration of Erathia, latest patch (Q15): resources, 10 terrains, 8 factions with native terrains, 78 obstacle types, 121 creatures (118 plus the war machines Ballista, First Aid Tent and Ammo Cart, E03 T8) with their upgrades, battle parameters, profiles; since E04a T3 also 4 spell schools, 80 spells, 28 secondary skills, 16 hero classes and 128 heroes, and (T3b) 14 artifact slots (four misc positions) and 127 artifacts. |
+| `ab/` | **Harvested**: Armageddon's Blade (depends on `base`): Conflux, 23 creatures, elementals moved to Conflux and given their upgrades; the 2 Conflux hero classes and 28 heroes (Conflux, Sir Mullich, the campaign heroes); Vial of Dragon Blood and Armageddon's Blade. |
+| `sod/` | **Harvested**: The Shadow of Death (depends on `ab`): SoD-only changes as overrides; Titan's Lightning Bolt; the fifth misc position and the 12 combination artifacts. |
 
 The harvested packs `base` (RoE), `ab` and `sod` are generated from the user's installation by
 `crates/h3-harvest` and committed (E02 T4; OPEN-QUESTIONS Q13: gameplay data and names only, no
@@ -278,6 +278,27 @@ layouts: `docs/formats/installation.md` §6–§7, `crates/h3-harvest/data/gapfi
   and Sorsha raise Swordsmen and Crusaders, Roland only Crusaders (B4–B6, dispute H-1; the wiki's
   "Catherine only Crusaders" does not hold in SoD). Xeron's +1 speed (H-2) is VCMI and the wiki,
   not observed yet.
+
+**What the harvested artifacts leave out** (the harvester's report lists it; facts and sources:
+`docs/formats/installation.md` §6, §7.3, `crates/h3-harvest/data/gapfill.toml` `[artifacts]`,
+research notes and disputes in `docs/rules/surveys/E04-artifacts.md`):
+
+- The primary skills come from the executable's table; war machines, combination parts and every
+  other effect from the gap-fill file. Effects no epic models yet are **pending** (the pack marks
+  such entries `# pending: <epic>`): spells, spell immunity and resistance, mana, spell duration
+  and damage, Eagle Eye (E04b; 43 artifacts, among them the opening spells of Angelic Alliance and
+  Armor of the Damned and Titan's Thunder's spell book), the Catapult and the siege obstacle
+  penalty (E04c), Necromancy (the three Necromancy artifacts and the Cloak of the Undead King;
+  outcome application, E08–E10, together with the Necromancy skill) and the adventure effects
+  (movement, vision, resources, growth, the Grail; E08–E10).
+- Not harvested: the descriptions, the three unused SoD rows (Diplomat's Suit, Mired in Neutrality,
+  Ironfist of the Ogre), the combinations' costs (blank in the original table; VCMI's values are
+  its own).
+- Angelic Alliance's `alignment_group` names the five towns of the SoD text and the wiki (dispute
+  D1: VCMI lets every non-evil faction mix, Conflux included; an experiment for batch 1b).
+  Speed and hit-point artifacts use the selector "all creatures", so they also reach war machines
+  as in VCMI (open check 1); the Golden Bow's "shooters" include the Ballista (open check 2).
+  Both are experiment candidates; the rules come with E04a T10.
 
 **Battle parameters** (`[battle]`, Tier 2; exactly one enabled pack provides them): field
 size, army slots, damage rolls, attack/defense rates and caps, Defend bonus, the formation rows

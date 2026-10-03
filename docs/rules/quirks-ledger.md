@@ -75,7 +75,7 @@ Classes: `exploit-fix` (always fixed, never toggleable) · `preserve` (accepted,
 - Decided by / date: suggested class S-01, confirmed by experiment batch 1a, 2026-10-03
 
 ### Q-0005 — Damage rates are single-precision values
-- Class: fix-optional (proposed at the batch-1a report, 2026-10-03; survey S-02 said "decide with Q23")
+- Class: fix-optional (proposed at the batch-1a report and confirmed by the user, 2026-10-03; survey S-02 said "decide with Q23")
 - Context / rules affected: battle, BAT-DMG-002 and every damage factor with a rate that is not a binary fraction (attack and defense points, skills, specialties, artifacts; E04a T6)
 - Original behavior: the damage factors use the binary single-precision values of their rates: 0.05 per attack point is 13421773/2^28 (slightly more than 5 %), 0.025 per defense point 13421773/2^29, Basic Armorer's 0.05 likewise, and the product is rounded down once. So a damage that is an exact integer with decimal rates can come out one lower (Angels with 24 defense points against them: 19 instead of 20; 100 base against Basic Armorer: 94 instead of 95) or stay exact (attack bonuses err upwards). Observed in R1–R3 (18 values, one model).
 - Intended/expected behavior: exact decimal rates (our BAT-DMG-002 today).
@@ -85,7 +85,7 @@ Classes: `exploit-fix` (always fixed, never toggleable) · `preserve` (accepted,
 - Flag: `quirk.battle.single_precision_rates` (planned; registered by E04a T6, which computes it exactly in integers, ADR-0003)
 - Defaults: faithful = on, strict-fixed = off
 - Regression test: R1–R3 as fixtures (E04a T6)
-- Decided by / date: confirmed by experiment batch 1a (Q23), 2026-10-03; class proposed, the user may object
+- Decided by / date: confirmed by experiment batch 1a (Q23), 2026-10-03; class fix-optional confirmed by the user, 2026-10-03
 
 ### Q-0006 — Roland's specialty affects only Crusaders
 - Class: fix-optional (survey S-03, suggested class; confirmed for Roland only)

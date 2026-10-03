@@ -31,3 +31,95 @@ cost = [0, 0, 0, 0]
 power = 0
 effect = [600, 600, 600, 600]
 polarity = "negative"
+
+[[artifact_slot_override]]
+target = "base:misc"
+count = 5
+
+[[artifact]]
+id = "angelic_alliance"  # original id 129; pending: E04b
+name = "Angelic Alliance"
+class = "relic"
+slot = "base:right_hand"
+effects = [{ kind = "alignment_group", factions = ["base:castle", "base:rampart", "base:tower", "base:fortress", "base:stronghold"] }]
+parts = ["base:armor_of_wonder", "base:sandals_of_the_saint", "base:celestial_necklace_of_bliss", "base:lions_shield_of_courage", "base:sword_of_judgement", "base:helm_of_heavenly_enlightenment"]
+
+[[artifact]]
+id = "cloak_of_the_undead_king"  # original id 130; pending: E08-E10
+name = "Cloak of the Undead King"
+class = "relic"
+slot = "base:shoulders"
+parts = ["base:amulet_of_the_undertaker", "base:vampires_cowl", "base:dead_mans_boots"]
+
+[[artifact]]
+id = "elixir_of_life"  # original id 131
+name = "Elixir of Life"
+class = "relic"
+slot = "base:misc"
+effects = [{ kind = "creature_stat_percent", creatures = { flag = "alive" }, stat = "hit_points", bp = 2500 }, { kind = "regeneration", creatures = { flag = "alive" }, hit_points = 50 }]
+parts = ["base:ring_of_vitality", "base:ring_of_life", "base:vial_of_lifeblood"]
+
+[[artifact]]
+id = "armor_of_the_damned"  # original id 132; pending: E04b
+name = "Armor of the Damned"
+class = "relic"
+slot = "base:torso"
+parts = ["base:blackshard_of_the_dead_knight", "base:shield_of_the_yawning_dead", "base:skull_helmet", "base:rib_cage"]
+
+[[artifact]]
+id = "statue_of_legion"  # original id 133; pending: E08-E10
+name = "Statue of Legion"
+class = "relic"
+slot = "base:misc"
+parts = ["base:legs_of_legion", "base:loins_of_legion", "base:torso_of_legion", "base:arms_of_legion", "base:head_of_legion"]
+
+[[artifact]]
+id = "power_of_the_dragon_father"  # original id 134; pending: E04b
+name = "Power of the Dragon Father"
+class = "relic"
+slot = "base:torso"
+effects = [{ kind = "primary_skills", attack = 6, defense = 6, power = 6, knowledge = 6 }]
+parts = ["base:quiet_eye_of_the_dragon", "base:red_dragon_flame_tongue", "base:dragon_scale_shield", "base:dragon_scale_armor", "base:dragonbone_greaves", "base:dragon_wing_tabard", "base:necklace_of_dragonteeth", "base:crown_of_dragontooth", "base:still_eye_of_the_dragon"]
+
+[[artifact]]
+id = "titans_thunder"  # original id 135; pending: E04b
+name = "Titan's Thunder"
+class = "relic"
+slot = "base:right_hand"
+parts = ["base:titans_gladius", "base:sentinels_shield", "base:thunder_helmet", "base:titans_cuirass"]
+
+[[artifact]]
+id = "admirals_hat"  # original id 136; pending: E08-E10
+name = "Admiral's Hat"
+class = "relic"
+slot = "base:head"
+parts = ["base:necklace_of_ocean_guidance", "base:sea_captains_hat"]
+
+[[artifact]]
+id = "bow_of_the_sharpshooter"  # original id 137; pending: E04c
+name = "Bow of the Sharpshooter"
+class = "relic"
+slot = "base:misc"
+effects = [{ kind = "no_range_penalty", creatures = { flag = "shooter" } }, { kind = "shoot_when_adjacent", creatures = { flag = "shooter" } }]
+parts = ["base:bow_of_elven_cherrywood", "base:bowstring_of_the_unicorns_mane", "base:angel_feather_arrows"]
+
+[[artifact]]
+id = "wizards_well"  # original id 138; pending: E04b
+name = "Wizard's Well"
+class = "relic"
+slot = "base:misc"
+parts = ["base:charm_of_mana", "base:talisman_of_mana", "base:mystic_orb_of_mana"]
+
+[[artifact]]
+id = "ring_of_the_magi"  # original id 139; pending: E04b
+name = "Ring of the Magi"
+class = "relic"
+slot = "base:ring"
+parts = ["base:collar_of_conjuring", "base:ring_of_conjuring", "base:cape_of_conjuring"]
+
+[[artifact]]
+id = "cornucopia"  # original id 140; pending: E08-E10
+name = "Cornucopia"
+class = "relic"
+slot = "base:misc"
+parts = ["base:everflowing_crystal_cloak", "base:ring_of_infinite_gems", "base:everpouring_vial_of_mercury", "base:eversmoking_ring_of_sulfur"]
