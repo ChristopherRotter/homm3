@@ -53,6 +53,7 @@ crates/
   h3-game/         orchestration, session, projections/visibility
   h3-formats/      readers for original files: LOD archives, TXT tables, exe static tables (adapter, E02); H3M writer for experiment maps (E04a T2; reader later)
   h3-harvest/      one-off harvester: original files → committed TOML packs base/ab/sod (tool, E02, Q13)
+  h3-experiment/   experiment compiler: spec → SoD .h3m + results template (tool, E04a T2, Q28)
   h3-sim/          RL environment API (batched, fork/clone, masks, observations)
   h3-ffi/          C ABI
   h3-cli/          headless runner, replay tool

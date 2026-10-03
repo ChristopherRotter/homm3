@@ -34,7 +34,7 @@ Wiki (Mighty Gorgon page): death stare kills the topmost creatures and "the new 
 
 Wiki (Cavalier page): the bonus is "calculated based on the distance between starting and ending positions". VCMI passes the length of the path actually walked. They differ when obstacles or stacks force a detour. **Implemented: path length (VCMI)** (BAT-DMG-005). **Experiment:** place a Cavalier so that its shortest path to the target detours around an obstacle (e.g. 5 steps for a straight distance of 4); compare its damage on a fixed target with a 4-step straight charge (+25 % vs +20 % of base).
 
-**Planned:** experiment batch 1a (Q28, E04a T2); the result holds for SoD only.
+**Not in batch 1a** (2026-10-03): the experiment needs a controlled detour and, because Champion damage is random, many repetitions. If a task needs the answer, reading the game's code is the cheaper last resort (Q29); otherwise VCMI's path length stays.
 
 ### Q23 — Damage rounding: one exact rounding or floating point (E03 T5)
 

@@ -210,6 +210,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "h3-experiment"
+version = "0.1.0"
+dependencies = [
+ "h3-formats",
+ "serde",
+ "toml",
+]
+
+[[package]]
 name = "h3-ffi"
 version = "0.1.0"
 dependencies = [

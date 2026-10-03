@@ -1,0 +1,361 @@
+# Experiment batch 1a (E04a T2): damage rounding, death stare, hero-run war machines, two quirks.
+# Build: see docs/experiments/README.md. Disputes: docs/rules/surveys/README.md (column "Batch").
+# Predictions are for the agent who evaluates the results; the template never shows them.
+#
+# Terrain dirt: native only to Necropolis creatures, and none of them appears here. Heroes have
+# resource or adventure specialties unless the encounter is about a specialty; no spell books
+# (custom artifacts and an empty spell list), no luck or morale sources besides the Angels'
+# aura. The damage models in the predictions (Q23):
+#   exact = exact rationals, rounded down once (our BAT-DMG-002)
+#   f32   = single precision for every operation
+#   f64   = double precision for every operation
+#   x87   = single-precision constants (0.05, 0.025, 0.95), wider arithmetic
+#   x87s  = as x87, but the factor is stored as single precision before the multiplication
+
+[map]
+name = "E04a batch 1a"
+description = "Engine-generated experiment map (E04a T2, batch 1a). Play it in hot seat with Red and Blue as human players and follow the results template."
+size = 36
+terrain = "dirt"
+instructions = [
+    "Copy `E04a-batch-1a.h3m` into `D:\\Heroes3\\HoMM 3 Complete\\Maps`.",
+    "Start it in hot seat: *New Game → Multiplayer → Hot Seat*, two players, Red and Blue both human. In the battles against Blue's heroes (R2, R3, R7) you control both sides.",
+    "Save right away (for example `batch1a`), so any encounter can be repeated by loading.",
+    "On day 1, play Red's encounters R1–R8 in any order. Then end Red's turn and do B4–B6 on Blue's turn.",
+    "In battle, the combat log at the bottom shows each strike's damage (scroll it with its arrow); right-click a stack to see its values. Ignore second attacks from good morale and all retaliations unless an encounter asks for them.",
+    "Where an encounter says *retreat*, end the battle with Retreat (Red loses that hero, which is intended). Other battles may end any way, Auto combat included.",
+    "Fill in this file (anything unexpected goes into the last line of an encounter) and keep it in the repo.",
+]
+
+# --- Q23: one exact rounding or floating point ------------------------------------------------
+
+[[encounter]]
+id = "R1"
+title = "Damage rounding: attack advantage"
+questions = ["Q23"]
+procedure = [
+    "Attack the Gold Golems.",
+    "In round 1, let each Archangel stack attack a Golem stack once, without Wait or Defend before it (any Golem stack will do).",
+    "For each attack, note the number of Archangels in the attacking stack and the damage from the log.",
+]
+predictions = """
+Archangel attack 30 + 4 = 34 vs Gold Golem defense 12: +22 x 5 % = +110 %; base 50 per Archangel.
+N = 1..6 -> exact 105 210 315 420 525 630 | f32 104 209 315 419 525 630 | f64 = exact |
+x87 = exact | x87s 104 209 314 419 524 629.
+"""
+[encounter.hero]
+type = "Sylvia"
+specialty = "skill Navigation"
+primary = [4, 0, 1, 1]
+army = [["Archangel", 1], ["Archangel", 2], ["Archangel", 3], ["Archangel", 4], ["Archangel", 5], ["Archangel", 6]]
+[encounter.opponent]
+monster = "Gold Golem"
+count = 120
+[[encounter.record]]
+table = ["Archangels in the stack", "damage"]
+rows = 6
+[[encounter.record]]
+field = "Anything unexpected"
+
+[[encounter]]
+id = "R2"
+title = "Damage rounding: defense advantage"
+questions = ["Q23"]
+procedure = [
+    "Attack Blue's hero B1.",
+    "In round 1, let each Angel stack attack a Golem stack once, without Wait or Defend before it. Blue's Golems act after all Angels; let them do anything.",
+    "For each attack, note the number of Angels in the attacking stack and the damage from the log.",
+    "In round 2, retreat with Red.",
+]
+predictions = """
+Angel attack 20 vs Gold Golem defense 12 + 32 = 44: 24 points, -60 %; base 50 per Angel.
+N = 1..6 -> exact 20 40 60 80 100 120 | every float model 19 39 59 79 99 119.
+"""
+[encounter.hero]
+type = "Kyrre"
+specialty = "skill Logistics"
+primary = [0, 0, 1, 1]
+army = [["Angel", 1], ["Angel", 2], ["Angel", 3], ["Angel", 4], ["Angel", 5], ["Angel", 6]]
+[encounter.opponent.hero]
+type = "Octavia"
+specialty = "resource gold"
+name = "B1"
+primary = [0, 32, 1, 1]
+army = [["Gold Golem", 60], ["Gold Golem", 60], ["Gold Golem", 60]]
+[[encounter.record]]
+table = ["Angels in the stack", "damage"]
+rows = 6
+[[encounter.record]]
+field = "Anything unexpected"
+
+[[encounter]]
+id = "R3"
+title = "Damage rounding: Armorer"
+questions = ["Q23", "S-02"]
+procedure = [
+    "Attack Blue's hero B2.",
+    "In round 1, let each Archangel stack attack a Golem stack once, without Wait or Defend before it. Blue's Golems act after all Archangels; let them do anything.",
+    "For each attack, note the number of Archangels in the attacking stack and the damage from the log.",
+    "In round 2, retreat with Red.",
+]
+predictions = """
+Archangel attack 30 vs Gold Golem defense 12 + 18 = 30: no advantage; B2's Basic Armorer -5 %; base 50N.
+N = 1..6 -> exact, f32 and f64 47 95 142 190 237 285 | x87 and x87s 47 94 142 189 237 284
+(the wiki's 100 Peasants -> 94 is the x87 pattern). Signatures over R1 (N=1), R2 (N=1), R3 (N=2):
+exact 105/20/95, f32 104/19/95, f64 105/19/95, x87 105/19/94, x87s 104/19/94.
+"""
+[encounter.hero]
+type = "Jenova"
+specialty = "resource gold"
+primary = [0, 0, 1, 1]
+army = [["Archangel", 1], ["Archangel", 2], ["Archangel", 3], ["Archangel", 4], ["Archangel", 5], ["Archangel", 6]]
+[encounter.opponent.hero]
+type = "Caitlin"
+specialty = "resource gold"
+name = "B2"
+primary = [0, 18, 1, 1]
+skills = [["Armorer", 1]]
+army = [["Gold Golem", 60], ["Gold Golem", 60], ["Gold Golem", 60]]
+[[encounter.record]]
+table = ["Archangels in the stack", "damage"]
+rows = 6
+[[encounter.record]]
+field = "Anything unexpected"
+
+# --- Q21: death stare ----------------------------------------------------------------------------
+
+[[encounter]]
+id = "R4"
+title = "Death stare: health of the new top creature"
+questions = ["Q21"]
+procedure = [
+    "Attack the Ogres. The Gorgons act before the Ogres; move them towards the Ogres (or Defend) until an Ogre stack is in reach.",
+    "Before each Gorgon attack, right-click the target Ogre stack: note its count and the top Ogre's *Health Left*.",
+    "After the attack, note from the log the damage, the Ogres killed by it and the Ogres killed by the death stare (if any). Right-click the target again: count and *Health Left*.",
+    "Repeat with both Gorgon stacks and in later rounds until at least two attacks had a death stare (load the save if the battle is lost first). Then finish the battle any way.",
+]
+predictions = """
+Total hit points before T = 40 x (count - 1) + health left. VCMI: after the attack the stack has
+T - damage - 40 x stare kills hit points (count and health left follow from that). Wiki: the
+damage applies first, the stare removes whole creatures, and the new top Ogre has full health 40.
+They differ whenever the damage leaves the top Ogre hurt.
+"""
+[encounter.hero]
+type = "Clavius"
+specialty = "resource gold"
+primary = [0, 0, 1, 1]
+army = [["Mighty Gorgon", 20], ["Mighty Gorgon", 20]]
+[encounter.opponent]
+monster = "Ogre"
+count = 40
+[[encounter.record]]
+table = ["count before", "health left before", "damage", "killed by the damage", "killed by the stare", "count after", "health left after"]
+rows = 4
+[[encounter.record]]
+field = "Anything unexpected"
+
+# --- War machines with a hero (T7) ---------------------------------------------------------------
+
+[[encounter]]
+id = "R5"
+title = "The hero's attack in the Ballista's damage"
+questions = ["skills survey: open point"]
+procedure = [
+    "Attack the Behemoth. The Ballista shoots on its own (R5 has no Artillery); the Peasants may Defend.",
+    "Note the damage of every Ballista shot from the log (one is enough, two are better). Finish the battle any way.",
+]
+predictions = """
+Ballista base (2..3) x (hero attack 20 + 1) = 42..63. Attack only in the multiplier (Ballista attack
+10 vs Behemoth defense 17: -17.5 %) -> 34..51. Also in the attack advantage (30 vs 17: +65 %) ->
+69..103. Only in the advantage, no multiplier -> 3..4.
+"""
+[encounter.hero]
+type = "Damacon"
+specialty = "resource gold"
+primary = [20, 0, 1, 1]
+army = [["Peasant", 30]]
+artifacts = { "war machine 1" = "Ballista" }
+[encounter.opponent]
+monster = "Behemoth"
+count = 1
+[[encounter.record]]
+table = ["Ballista shot", "damage"]
+rows = 3
+[[encounter.record]]
+field = "Anything unexpected"
+
+[[encounter]]
+id = "R6"
+title = "Basic Artillery and Basic First Aid: control, shots per turn, Wait and Defend"
+questions = ["D-4 / skills D1", "OQ-4"]
+procedure = [
+    "Attack the Gold Golems and let the Pikemen Defend. Rounds 1 and 2 are enough for the Ballista; for the Tent, go on until the Golems have hit the Pikemen.",
+    "At the Ballista's turn: can you choose its target? Are *Wait* and *Defend* available (try Wait once in round 2)? How many times does it shoot in its turn?",
+    "At the First Aid Tent's turn: can you choose whom to heal? Are Wait and Defend available? If it heals, note the amount from the log.",
+    "Then retreat or finish the battle any way.",
+]
+predictions = """
+Shots per turn at Basic: 1 (wiki and VCMI: HERO_GRANTS_ATTACKS 0/1/1) or 2 (the skill text "two
+shots" at every level). Control at Basic: yes in every source. OQ-4: VCMI lets a controlled
+machine Wait and Defend. Tent heal at Basic: random 1..50 (code reading, installation.md 7.5).
+"""
+[encounter.hero]
+type = "Gunnar"
+specialty = "skill Logistics"
+primary = [0, 0, 1, 1]
+skills = [["Artillery", 1], ["First Aid", 1]]
+army = [["Pikeman", 20]]
+artifacts = { "war machine 1" = "Ballista", "war machine 3" = "First Aid Tent" }
+[encounter.opponent]
+monster = "Gold Golem"
+count = 30
+[[encounter.record]]
+field = "Ballista: target chosen by you (yes/no)"
+[[encounter.record]]
+field = "Ballista: Wait available / Defend available"
+[[encounter.record]]
+field = "Ballista shots in its turn, round 1 / round 2"
+[[encounter.record]]
+field = "Tent: target chosen by you (yes/no); Wait / Defend available"
+[[encounter.record]]
+field = "Tent: hit points healed (each time)"
+[[encounter.record]]
+field = "Anything unexpected"
+
+[[encounter]]
+id = "R7"
+title = "Ballista ammunition without an Ammo Cart"
+questions = ["S-01", "D-8"]
+procedure = [
+    "Attack Blue's hero B3. Every round: Red's Peasant and Blue's Crystal Dragon Defend; aim every Ballista shot at the Crystal Dragon.",
+    "After round 1 and after round 2, right-click the Ballista and note *Shots* (or shots left).",
+    "If the number did not go down, stop here and retreat. Otherwise continue until it reaches 0, then play one more round: does the Ballista still shoot?",
+    "Retreat with Red.",
+]
+predictions = """
+VCMI and our BAT-WAR-002: 24 shots, then the Ballista stops (two shots per turn with Expert
+Artillery, so 0 after round 12). Wiki: unlimited shots despite the displayed number.
+"""
+[encounter.hero]
+type = "Dessa"
+specialty = "skill Logistics"
+primary = [0, 0, 1, 1]
+skills = [["Artillery", 3]]
+army = [["Peasant", 1]]
+artifacts = { "war machine 1" = "Ballista" }
+[encounter.opponent.hero]
+type = "Aine"
+specialty = "resource gold"
+name = "B3"
+primary = [0, 0, 1, 1]
+army = [["Crystal Dragon", 1]]
+[[encounter.record]]
+field = "Ballista shots in round 1"
+[[encounter.record]]
+field = "Shots shown after round 1 / after round 2"
+[[encounter.record]]
+field = "Round in which the shots shown reached 0"
+[[encounter.record]]
+field = "Did the Ballista shoot after that? (how often)"
+[[encounter.record]]
+field = "Anything unexpected"
+
+# --- Quirks to confirm (Q30): S-04, S-03 ----------------------------------------------------------
+
+[[encounter]]
+id = "R8"
+title = "Elixir of Life: do Trolls regenerate to full health?"
+questions = ["S-04"]
+procedure = [
+    "Before attacking, open R8's hero screen and right-click the Trolls: note *Health* (50 with the Elixir's +25 %, 40 without).",
+    "Attack the Archers. In round 1 let the Trolls Defend, so that the Archers shoot them.",
+    "After the Archers have shot, right-click the Trolls: note *Health Left*.",
+    "At the Trolls' turn in round 2, right-click them before acting: note *Health Left* again. Then finish the battle any way.",
+]
+predictions = """
+Clean (VCMI, HotA): regeneration restores the top Troll to 50. Bug (HotA changelog): it stops at
+40, the base value. Only informative if the shots left the top Troll below 40.
+"""
+[encounter.hero]
+type = "Saurug"
+specialty = "resource gems"
+primary = [0, 0, 1, 1]
+army = [["Troll", 20]]
+artifacts = { "misc 1" = "Elixir of Life" }
+[encounter.opponent]
+monster = "Archer"
+count = 20
+[[encounter.record]]
+field = "Troll Health on the hero screen"
+[[encounter.record]]
+field = "Health Left after the Archers' shots"
+[[encounter.record]]
+field = "Health Left at the Trolls' turn in round 2"
+[[encounter.record]]
+field = "Anything unexpected (for example: the Elixir is missing or misplaced on the hero screen)"
+
+[[encounter]]
+id = "B4"
+title = "Swordsman specialty: Catherine"
+questions = ["S-03", "H-1"]
+procedure = [
+    "On Blue's turn, accept any level-up offers, then open Catherine's hero screen (named B4).",
+    "Note her level, attack and defense. Right-click the Swordsmen and the Crusaders and note Attack, Defense and Speed as shown (base values: Swordsman 10/12/5, Crusader 12/12/6).",
+]
+predictions = """
+Level 4 (3200 experience): +5 % of the base value, rounded up, for attack and defense (+1 each)
+and +1 speed, on top of the hero's attack and defense. Clean (VCMI): Swordsmen and Crusaders.
+Bug (wiki): Crusaders only. The exe's specialty table names the Swordsman for Catherine.
+"""
+[encounter.hero]
+type = "Catherine"
+specialty = "creature Swordsman"
+owner = "blue"
+experience = 3200
+primary = [0, 0, 1, 1]
+army = [["Swordsman", 10], ["Crusader", 10]]
+[[encounter.record]]
+field = "Level, attack, defense"
+[[encounter.record]]
+table = ["creature", "attack", "defense", "speed"]
+rows = 2
+
+[[encounter]]
+id = "B5"
+title = "Swordsman specialty: Roland"
+questions = ["S-03", "H-1"]
+procedure = ["As B4, for Roland (named B5)."]
+predictions = """
+As B4. The exe's specialty table names the Crusader for Roland, which would explain the bug.
+"""
+[encounter.hero]
+type = "Roland"
+specialty = "creature Crusader"
+owner = "blue"
+experience = 3200
+primary = [0, 0, 1, 1]
+army = [["Swordsman", 10], ["Crusader", 10]]
+[[encounter.record]]
+field = "Level, attack, defense"
+[[encounter.record]]
+table = ["creature", "attack", "defense", "speed"]
+rows = 2
+
+[[encounter]]
+id = "B6"
+title = "Swordsman specialty: Sorsha (control)"
+questions = ["S-03", "H-1"]
+procedure = ["As B4, for Sorsha (named B6). Every source agrees that her specialty covers both."]
+predictions = "Swordsmen and Crusaders both get the bonus."
+[encounter.hero]
+type = "Sorsha"
+specialty = "creature Swordsman"
+owner = "blue"
+experience = 3200
+primary = [0, 0, 1, 1]
+army = [["Swordsman", 10], ["Crusader", 10]]
+[[encounter.record]]
+field = "Level, attack, defense"
+[[encounter.record]]
+table = ["creature", "attack", "defense", "speed"]
+rows = 2

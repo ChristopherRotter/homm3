@@ -39,6 +39,7 @@ Tools for the full gate: `cargo install cargo-deny cargo-llvm-cov --locked`,
 | `crates/h3-cli` | `h3` command-line tool |
 | `crates/h3-formats` | readers for the original game's files (LOD, TXT, exe tables), used by the harvester, and the `.h3m` writer for experiment maps (adapter) |
 | `crates/h3-harvest` | harvester: original files → committed packs `base`/`ab`/`sod` (tool) |
+| `crates/h3-experiment` | experiment compiler: spec → `.h3m` map + results template for the user (tool) |
 | `xtask` | `cargo xtask verify` and the individual gates |
 | `packs/`, `fixtures/`, `benches/` | harvested and synthetic content packs, golden replays, benchmark baselines |
 | `docs/` | vision, architecture, ADRs, rule catalog, backlog, handoff |

@@ -4,11 +4,15 @@ Living state. The last agent updates this at the end of every session; the next 
 
 ---
 
-## 2026-10-03 (second session) — user decisions recorded; T2 batch 1a in progress
+## 2026-10-03 (second session) — decisions recorded; T2 batch 1a delivered, waiting for the user
 
-**State:** branch `e04a-heroes-in-battle`. User answers recorded (OPEN-QUESTIONS Q29, Q30): ADR-0013 **accepted** and cut to its decisions (detail in `docs/epics/E04a-design.md`, pruned per task); new ADR size rule (`docs/adr/README.md`, "Read when" column); ADR-0004 and ADR-0012 trimmed (old text in git history at `22b6bc0`); code reading of `Heroes3.exe` allowed as a last resort, for insight only; quirks are confirmed before they are flagged; results via lean templates; batch 1 split into 1a (T5–T7) and 1b (T8–T10). The smoke map works in the user's game.
+**State:** branch `e04a-heroes-in-battle`, `cargo xtask verify` green. User answers recorded (OPEN-QUESTIONS Q29, Q30): ADR-0013 **accepted** and cut to its decisions (detail in `docs/epics/E04a-design.md`, which each task prunes as it implements it); new ADR size rule (`docs/adr/README.md`, "Read when" column); ADR-0004 and ADR-0012 trimmed (old text in git history at `22b6bc0`); code reading of `Heroes3.exe` allowed as a last resort, for insight only (`docs/04-rules-and-sources.md` §2); quirks are confirmed for SoD before they get a flag (§4; the survey's classification table); results via lean templates; batch 1 split into 1a (T5–T7) and 1b (T8–T10). The smoke map works in the user's game.
 
-**In progress:** T2 — experiment spec format, spec → `.h3m` + results template, batch 1a.
+**T2 (this session):** new tool crate `h3-experiment` (spec TOML → SoD `.h3m` + results template; names resolve against the installation's tables, hero specialties are checked against the executable; `--list` for spec authors). Batch 1a: spec `experiments/specs/E04a-batch-1a.toml` (11 encounters, played in hot seat; predictions per hypothesis inside the spec), template `experiments/results/E04a-batch-1a.md` (committed, for the user to fill in), map `experiments/out/E04a-batch-1a.h3m` (gitignored; also copied into the user's repo folder). Q23 is covered by three encounters whose combined results separate five arithmetic models (exact, f32, f64, x87-style, x87 with a stored factor). Q22 is not staged (needs controlled geometry and many repetitions; code reading if ever needed).
+
+**Next:** the user plays batch 1a and fills in the template. Meanwhile **T3 (content)** can start; it does not depend on the batch. After the results: evaluate them against the spec's predictions, record observations in the catalog (BAT-DMG-002 for Q23, BAT-DMG-009 for Q21, BAT-WAR-002 for S-01) and confirmed quirks in the ledger, then design batch 1b.
+
+**Traps:** the `.h3m` writer knows tile pictures for dirt, grass and water only (dirt is native to Necropolis only, so it is the neutral experiment terrain). A hero type can appear once per map and a player can have eight heroes. Batch 1a places campaign heroes (Catherine, Roland) and a combination artifact (Elixir of Life) for the first time; if the game rejects them, drop those encounters. Sandbox: rustc 1.97.0 is the image's `stable` (symlink it as `~/.rustup/toolchains/1.97.0-x86_64-unknown-linux-gnu`); `cargo install cargo-deny cargo-llvm-cov --locked`, `apt-get install llvm-20` and `LLVM_COV`/`LLVM_PROFDATA` from `/usr/lib/llvm-20/bin` for coverage; stage `Heroes3.exe`, `Data/H3bitmap.lod`, `Data/H3ab_bmp.lod` and `extracted/H3bitmap/Objects.txt` from the user's `original-data/`.
 
 ---
 
