@@ -1,6 +1,6 @@
 # E04a — Heroes in battle (without magic)
 
-Status: **in progress** (refined 2026-10-01; T1 done 2026-10-03 and waiting for the user's review, T2 smoke map in progress) · Follows E03 (closed 2026-10-01) · The former E04 was split by the user into three epics (OPEN-QUESTIONS Q27): **E04a** (this one), **E04b** battle magic, **E04c** sieges and special battlefields.
+Status: **in progress** (refined 2026-10-01; T1 done and ADR-0013 accepted 2026-10-03; T2 in progress: smoke map works, batch 1a next) · Follows E03 (closed 2026-10-01) · The former E04 was split by the user into three epics (OPEN-QUESTIONS Q27): **E04a** (this one), **E04b** battle magic, **E04c** sieges and special battlefields.
 
 ## Goal
 
@@ -32,21 +32,7 @@ Recorded in OPEN-QUESTIONS Q27 (scope), Q28 (experiments) and Q6 (quirk policy).
 
 ## The things called "hero"
 
-| Entity | Owns | Lives in | Crate / type (proposal, fixed by ADR-0013) |
-|---|---|---|---|
-| Hero type (definition) | class, starting skills, specialty, starting army, name | content (Tier 1 data) | `h3-content` |
-| Hero details | level, experience, primary and secondary skills, artifacts, spell book | Heroes context | `h3-heroes`: `HeroDetails` |
-| Hero on the map | owner, position, movement points, boat, vision | Adventure context (E08) | `h3-adventure`, its own type; refers to the hero by id |
-| Battle hero | derived stats, skills that unlock battle actions, mana and spells (E04b), what was used this round | Battle context | seam type `BattleHero` in `h3-contracts`; its in-battle state inside `h3-battle` |
-
-Rules the ADR should make binding:
-
-- **No type is shared between contexts and no type is named plain `Hero`.** Identity is a handle (`HeroId`); each context has its own type. They meet only through ids and explicit, pure translation functions.
-- The only translation E04a needs is `HeroDetails` → `BattleHero` (03-domain: "all derived values are computed before the seam"). It lives in `h3-heroes`; `h3-battle` never imports it.
-- `h3-heroes` contains no map presence and no in-battle state, and in this milestone no commands.
-- What a skill does in battle (for example the damage factor of Archery) is a **battle rule** with a catalog id. The skill's numbers are data (a closed set of typed effect primitives in content, the same pattern as the creature abilities, ADR-0012); the translation mostly aggregates them.
-- `BattleHero` is designed once for E04a *and* E04b (reserved fields for spell book, mana and school levels), implemented in two steps, so the seam changes once.
-- The name `HeroDetails` is provisional (the agent first proposed "sheet", which the user found confusing and replaced by "something more abstract like details"). ADR-0013 may still rename it.
+Decided in [ADR-0013](../adr/0013-heroes-in-battle.md) (accepted 2026-10-03), points 1–2: hero type (content), `HeroDetails` (`h3-heroes`), the hero on the map (E08), `BattleHero` (contracts); no type named `Hero`; `h3-battle` never imports `h3-heroes`. Working detail for the tasks: [`E04a-design.md`](E04a-design.md), pruned as tasks implement it.
 
 ## Starting point (E01–E03)
 
@@ -89,11 +75,11 @@ Consequences: effect semantics and most skill and specialty numbers need sourced
 
 ## Non-goals
 
-Spells, mana in play, spell-like abilities, immunities, spellcasting creatures (E04b). Sieges, Catapult, Ballistics' effect, towers, Earthquake, special battlefields (E04c). Experience, level-ups, skill offers, equip/unequip/learn/trade commands, army management, the hero on the map (E08–E10). Surrender cost (the orchestrator computes it). Applying outcomes to heroes (experience, Necromancy raising, artifact capture): the outcome carries the inputs, applying them waits for the epic that owns hero progression. AI (E05/E06). The VCMI oracle harness stays deferred (E03 scope item 10 was never done; revisit with the evaluation needs of E05/E06).
+Spells, mana in play, spell-like abilities, immunities, spellcasting creatures (E04b). Sieges, Catapult, Ballistics' effect, towers, Earthquake, special battlefields (E04c). Experience, level-ups, skill offers, equip/unequip/learn/trade commands, army management, the hero on the map (E08–E10). Applying outcomes to heroes (experience, Necromancy raising, artifact capture): the outcome carries the inputs, applying them waits for the epic that owns hero progression. AI (E05/E06). The VCMI oracle harness stays deferred (E03 scope item 10 was never done; revisit with the evaluation needs of E05/E06).
 
 ## Tasks (proposed; refine at the start of each; keep status current)
 
-- [x] **T1 Survey and ADR-0013 — stop for the user.** *Done 2026-10-03, waiting for the review (OPEN-QUESTIONS Q30).* Results: tables and exe tables in `docs/formats/installation.md` §6–§7 (hero table with RoE/expansion flags, specialty table, per-level skill values, artifact primary skills, spell table; one code reading pending Q29); surveys in `docs/rules/surveys/` (skills, artifacts, heroes and specialties, battle mechanics, 22 quirks to classify, the batch-1 dispute list); ADR-0013 Proposed; glossary in 03-domain. Findings that change later tasks: percentages need basis points (specialty terms such as 17.5 %); the creature upgrade relation is missing from content (T3); Ice, Magma and Energy Elementals have bugged levels in the exe table that our packs inherited (quirk S-05); the battle should price surrenders itself (ADR-0013 §7, revises the non-goal below); the Ballista may have unlimited shots in SoD (S-01, against E03's BAT-WAR-002).
+- [x] **T1 Survey and ADR-0013 — stop for the user.** *Done 2026-10-03; ADR-0013 accepted by the user and cut to its decisions (detail in `E04a-design.md`); quirks: confirm before flagging (Q30); code reading allowed as a last resort (Q29).* Results: tables and exe tables in `docs/formats/installation.md` §6–§7 (hero table with RoE/expansion flags, specialty table, per-level skill values, artifact primary skills, spell table; one code reading pending Q29); surveys in `docs/rules/surveys/` (skills, artifacts, heroes and specialties, battle mechanics, 22 quirks to classify, the batch-1 dispute list); ADR-0013 Proposed; glossary in 03-domain. Findings that change later tasks: percentages need basis points (specialty terms such as 17.5 %); the creature upgrade relation is missing from content (T3); Ice, Magma and Energy Elementals have bugged levels in the exe table that our packs inherited (quirk S-05); the battle should price surrenders itself (ADR-0013 §7, revises the non-goal below); the Ballista may have unlimited shots in SoD (S-01, against E03's BAT-WAR-002).
   - Catalogue the hero, skill, artifact and spell tables (`docs/formats/installation.md`) and look for static tables in `Heroes3.exe`.
   - Source survey (VCMI 1.7.5 and the wiki, labelled) for E04a: secondary skill effects per level, artifact effect kinds, specialty kinds, tactics, retreat and surrender, hero-run war machines, experience inputs; in outline for E04b/E04c so the seam covers them (spell effect kinds, siege inputs). Check that wiki fetches are still approved.
   - **Quirk survey** for the whole E04 scope with sources (`docs/rules/`), for the user to classify in one sitting; then ledger entries and flags.
@@ -121,22 +107,13 @@ Spells, mana in play, spell-like abilities, immunities, spellcasting creatures (
 
 Order: T1 first and alone; T2 and T3 independent; T4 after T1 and T3; T5–T10 after T4 (T6 wants the batch-1 result, T10 after T5); T11 and T12 last.
 
-## Open design points for ADR-0013
+## Design
 
-1. **Shape of `BattleHero`:** typed fields for what the battle must know by name (primary stats, skill levels that unlock actions, war machines, reserved spell fields) plus a list of typed effects for stat changes (so artifacts and specialties extend without growing the struct), or only one of the two. Agent's lean: the hybrid.
-2. **Effect vocabulary:** a closed enum in content (like `Ability`), selectors for "which creatures" (all, a creature, a level, …), and which tier each effect sits in.
-3. **Stats and capacity:** hero attack/defense as side modifiers or applied when stats are materialised; the pool capacity (E03: 20); stack bearers and timed expiry are E04b's but must fit.
-4. **Outcome and result:** new `BattleResult` variants (retreat, surrender), the casualty and hero-fate fields, what happens to war machines.
-5. **`led_by_hero`:** replaced by hero presence in `heroes`; what Q-0003 reads.
-6. **Visibility:** which hero data a viewer sees (skills, army, artifacts) and what stays hidden; the E04b hidden-information cases (Land Mine and Quicksand, the spell book) must fit the same mechanism.
-7. **Tactics model:** a pre-round phase with ordinary `Move` commands, or its own commands; who may use it when both heroes have the skill.
-8. **Encoding policy:** E04a extends the dense action encoding (v5); E04b's casting (spells × targets) cannot stay dense and flat. Agent's lean: E04b designs a factorized encoding and flags it to E05; E04a does not pre-empt it.
-9. **War machines:** how `BattleSetup.war_machines` relates to a hero's artifacts (derived before the seam, so the field stays).
-10. **Names:** `h3-heroes`, `HeroDetails`, `BattleHero`, the adventure-side name (E08 decides), glossary entries in `03-domain.md`.
+Settled by ADR-0013 (accepted by the user 2026-10-03, Q30). The working detail per task (field lists, formulas, sizes) is in [`E04a-design.md`](E04a-design.md); each task deletes the section it implements.
 
 ## Exit criteria
 
-1. ADR-0013 accepted by the user; quirk survey classified.
+1. ~~ADR-0013 accepted by the user; quirk survey classified~~ (done 2026-10-03, Q30: quirks are confirmed before they are flagged).
 2. Every rule in scope has a catalog entry with labelled sources and tests; disputed ones have an observation fixture (SoD) or an OPEN-QUESTIONS entry with the experiment.
 3. Quirks are in the ledger with flags; `faithful` and `strict-fixed` differ exactly by them.
 4. All earlier invariants still property-tested, plus: hero isolation (a side's hero never changes the other side's stacks except through modelled events), observation hygiene for hero data, conservation of creatures with casualties accounted.

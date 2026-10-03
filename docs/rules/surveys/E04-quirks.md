@@ -6,6 +6,18 @@ Classes (04-rules-and-sources §4): **exploit-fix** (cheating, crash, soft-lock,
 
 Sources: `wiki` = https://heroes.thelazy.net (retrieved 2026-10-03; pages named below, URL `https://heroes.thelazy.net/index.php/<Page>`). Many entries come from the wiki's "Bug:" notes and from the Horn of the Abyss changelog, which lists original bugs that HotA fixed; changelog items can also be HotA's own bugs, so their confidence is lower. `vcmi` = VCMI 1.7.5. Disputed *rules* (two sources disagree, nobody calls it a bug) are not here; they are in the [survey index](README.md#disputes-input-for-experiment-batch-1).
 
+## Classification (user, 2026-10-03, OPEN-QUESTIONS Q30)
+
+**Confirm before flagging** (`docs/04-rules-and-sources.md` §4): an entry becomes a ledger quirk with a flag only once it is confirmed for SoD; until then the clean behaviour is implemented. A confirmed entry takes its suggested class unless the user objects at the batch report.
+
+| Status | Entries |
+|---|---|
+| confirmed by original data | S-05 (the exe's creature table holds the bugged levels) |
+| exploit-fix, no confirmation needed (never implemented) | S-08, S-14, S-20 |
+| to confirm in batch 1a (E04a) | S-01, S-02 (with Q23), S-03, S-04 |
+| to confirm in an E04b or E04c batch | S-06, S-07, S-09 – S-13, S-15 – S-19, S-21 |
+| to confirm when the battle setup is derived from the map (E04c or E08) | S-22 |
+
 ## Overview
 
 | ID | Title | Epic | Impact | Suggested class | Confidence it exists in SoD |

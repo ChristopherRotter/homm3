@@ -29,102 +29,31 @@ Clear security story, reproducibility, straightforward RL integration and client
 
 Event sourcing (heavier, slower, unnecessary); direct state mutation APIs (bypassable validation); lockstep multiplayer (information leak, conflicts with anti-cheat goal).
 
-## Amendment — E01 walking skeleton (2026-09-30)
+## Amendments (decisions only)
 
-How the model turned out in the battle context:
+What E01 and E03 added to the decisions above. The command, event, state and encoding details of
+each task live in the crate docs (`h3-battle`, `h3-contracts`, `h3-sim`) and the epic files; the
+full amendment text of E01–E03 is in git history (this file at commit `22b6bc0`).
 
-- **Entry point:** `h3_battle::apply(&mut BattleState, &Ruleset, BattleSide, Command, &mut impl Sink)`; the actor is the side the trusted caller acts for. Validation (`plan`) completes before any mutation; after it, every stack id is known valid, so the mutation phase uses infallible accessors. `validate` exposes the same check without mutating.
-- **Commands (intent only):** `Move { to }`, `Attack { target, from }`, `Wait`, `Defend`. The acting stack is implied by the state (the active stack), so a command cannot even name a stack to act with.
-- **Events:** `RoundStarted`, `TurnStarted`, `Moved`, `Waited`, `Defended`, `Struck` (damage, kills, retaliation flag), `BattleEnded`, each with a `Visibility` (`Public` or `Side`); `project(event, viewer)` filters. All battle events are public so far. `NoopSink` compiles to nothing; `Vec<Event>` records.
-- **Observation:** the full battlefield minus the RNG state (the only hidden information so far); property-tested for hygiene.
-- **Legal commands:** enumerated into a fixed-capacity buffer (`LegalCommands`, capacity 449) from the same reachability/adjacency functions `apply` uses; consistency is property-tested in both directions.
-- **State layout:** `BattleState` is 944 bytes (32 inline stacks with creature stats copied in, round/turn bookkeeping, RNG) and clones in ≈ 90 ns; no heap allocation in `apply`/`legal_commands`.
-- **Geometry seam:** the battle context uses only `Hex` and the `Field` API (standable, neighbours, distance). It is a concrete type rather than a trait: a trait would have spread a generic parameter (or dynamic dispatch) through the hot path for no current benefit. E03 can change `Field`'s internals (obstacles, two-hex units) behind the same API.
-- **Episode limits are not game rules:** the battle has no round limit (as in the original); step limits live in the sim layer (`BattleEnv` truncation).
-- **Replays:** header (packs + versions, profile, ruleset hash, RNG/hash/encoding versions) + seed + setup + command log + a state hash every N commands + final hash; model in `h3-sim::replay`, TOML format in `h3-cli`.
-
-## Amendment — E03 battle core (2026-10-01, T3)
-
-- **Geometry seam extended** (still a concrete `Field`): footprints of one- and two-hex stacks
-  (`Footprint`, head hex + tail behind it by side), `HexSet` (256-bit set) for obstacles and
-  occupancy, `Field::attack_positions` (the 24 canonical slots from which an attacker's
-  footprint touches a target's; at most 10 are distinct). Movement and attacks are validated on
-  footprints. `MAX_LEGAL_COMMANDS` = 2 + 255 + 24 · 32.
-- **Seam type change (`BattleSetup`):** `obstacles: Vec<u8>` (blocked hexes, validated by the
-  battle context). Further E03 fields (hero presence per side Q17, battlefield/terrain, war
-  machines, formation) are added the same way, each defaulting to "absent".
-- **Observation:** includes the obstacles (public). State hash encoding v2 (stack traits,
-  obstacles).
-- **Sim encodings:** action encoding v2 (attacks by target and canonical slot); replay file
-  format v2 (`[setup]` table).
-
-## Amendment — E03 battle core (2026-10-01, T4–T5)
-
-- **Commands:** `Shoot { target, at }` (T4; `at` is the target's head, or for area shots any hex
-  of the target).
-- **Events:** `Struck` carries `StrikeFlags` (retaliation, ranged, secondary target, death blow)
-  instead of a retaliation bool (T4). T5 adds `LifeDrained { stack, hit_points, resurrected }`,
-  `DeathStared { attacker, target, kills }` and `Regenerated { stack, hit_points }`; strike and
-  return emits a second `Moved`. All public.
-- **Attack structure (T5):** an attack (`combat::attack`) rolls the death blow once, strikes the
-  target, then the secondary targets of its pattern in stack-id order, then applies life drain
-  and death stare; melee = attack, retaliation, second attack, return. Secondary targets are
-  computed from the positions at the start of each attack.
-- **State:** stacks carry `base_count` (resurrection limit) and retaliations per round / left;
-  state hash encoding v4.
-
-## Amendment — E03 battle core (2026-10-01, T6)
-
-- **Seam type change (`BattleSetup`):** `led_by_hero: [bool; 2]` (Q17), part of the state and
-  the observation.
-- **Turn structure:** `turn::activate_next` runs the activation effects (Defend bonus ends,
-  regeneration, bad morale) and repeats while stacks freeze; `BattleState::new` uses it for the
-  first activation (its events are not reported, like the start of round 1). Good morale keeps
-  the mover active after its command. Events `GoodMorale`, `BadMorale`; strike flag `LUCKY`.
-- **State:** the modifier pool (ADR-0012), stack morale and luck, flag `HAD_MORALE`; state hash
-  encoding v5.
-- **T7:** `BattleSetup.terrain: Option<TerrainId>` (native-terrain bonus; in state and
-  observation; state hash v6). Random obstacles are generated *before* the seam by
-  `h3_battle::generate_obstacles(ruleset, terrain, rng)` and passed as `BattleSetup.obstacles`,
-  so the battle itself never draws them; the tools use stream `OBSTACLES`.
-
-## Amendment — E03 battle core (2026-10-01, T8)
-
-- **Seam type changes (covered by the E03 scope decision Q16, war machines without heroes):**
-  `BattleSetup.war_machines: [Vec<CreatureTypeId>; 2]` (creature types with flag `war_machine`,
-  at most one per kind; validated by the battle context, which rejects war machines in army
-  slots) and `BattleOutcome.war_machines: [Vec<CreatureTypeId>; 2]` (surviving war machines,
-  separate from the surviving army stacks). Heroes bring their war machines in E04.
-- **State:** war machines are ordinary stacks after their side's army (slots 16 + kind),
-  `STACK_CAPACITY` = 2 · (16 + 3) = 38; state hash encoding v7.
-- **Turn structure:** war machines never wait for a command: `turn::activate_next` runs their
-  automatic turn (Ballista shot, First Aid Tent healing) and moves on, like a bad-morale freeze;
-  the Ammo Cart is never activated. Event `Healed { healer, target, hit_points }` (public).
-- **Sim encodings:** action encoding v4 and observation encoding v2 (more stack slots).
-
-## Amendment — E03 battle core (2026-10-01, T9)
-
-- **Seam type change (`BattleOutcome`, user decision Q24):** a battle ends in a
-  `BattleResult` — `Victory(side)` or `Draw` (both armies wiped out by the same action,
-  BAT-END-002) — and `BattleOutcome.result` replaces `winner`. The state exposes `result()`
-  (and `winner()`, which is `None` while the battle runs and after a draw); the observation, the
-  event `BattleEnded { result }`, the sim's step results and replays carry the result. State
-  hash encoding v8. Before this change a simultaneous wipe-out left the battle without a winner
-  and without a stack able to end it (an endless loop of war-machine turns).
-- **Seam type change (`BattleSetup`, user decision Q25):** `formations: [Formation; 2]`
-  (`h3_content::Formation`, loose by default) selects each army's starting rows (BAT-SET-001).
-  It only affects placement, so it is not part of the state; replays record it with the setup.
-- **Battle start events (review):** `BattleState::start(ruleset, setup, seed, sink)` reports the
-  events of the first activation (the first `TurnStarted`, a bad-morale freeze, war machines
-  acting before any command — even `BattleEnded`); `BattleState::new` keeps dropping them.
-  `SetupError::UnknownTerrain` rejects a terrain handle of another ruleset.
+- **Battle entry point (E01):** `h3_battle::apply(&mut BattleState, &Ruleset, BattleSide,
+  Command, &mut impl Sink)`; the actor is the side the trusted caller acts for. The acting stack
+  is implied by the state, so a command cannot name a stack to act with. Validation completes
+  before any mutation; `validate` runs the same check without mutating.
+- **Geometry seam (E01, E03):** a concrete `Field` type (hexes, footprints, obstacles, attack
+  positions), not a trait, so the hot path carries no generic parameter or dynamic dispatch.
+- **Episode limits are not game rules (E01):** the battle has no round limit, as in the original;
+  step limits live in the sim layer (truncation).
+- **Replays (E01):** a header (packs, versions, profile, ruleset hash, encoding versions), the
+  seed, the setup, the command log, a state hash every N commands and the final hash.
+- **Seam growth (E03):** `BattleSetup` and `BattleOutcome` grow by fields that default to
+  "absent"; each change is a user decision (Q16, Q17, Q24, Q25; heroes: ADR-0013).
+- **Setup randomness before the seam (E03 T7):** random battle inputs such as obstacles are drawn
+  before the seam (`h3_battle::generate_obstacles`, stream `OBSTACLES`) and passed in; the battle
+  draws only in-battle randomness.
 
 ## Revision history
 
 - 2026-09-30: Accepted.
-- 2026-09-30: Amended by E01 (battle entry point, command set, events, geometry seam, replay contents).
-- 2026-10-01: Amended by E03 T3 (footprints, obstacles, attack positions, setup/encoding changes).
-- 2026-10-01: Amended by E03 T4–T5 (shooting, strike flags, ability events, attack structure).
-- 2026-10-01: Amended by E03 T6 (hero flags, morale in the turn structure, morale/luck state) and T7 (terrain, obstacle generation before the seam).
-- 2026-10-01: Amended by E03 T8 (war machines in the setup, the outcome and the turn structure).
-- 2026-10-01: Amended by E03 T9 (battle result with draws, formations in the setup).
+- 2026-09-30 – 2026-10-01: Amended by E01 and E03 (T3–T9).
+- 2026-10-03: Amendments cut to their decisions (ADR size rule, `docs/adr/README.md`); the
+  implementation detail is in the crate docs and in git history.

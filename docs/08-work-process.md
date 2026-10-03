@@ -53,6 +53,8 @@ See `AGENTS.md` for the list. Protocol:
 
 Use `docs/adr/0000-template.md`. One decision per ADR. Statuses: Proposed, Accepted, Superseded by ADR-NNNN. Do not edit an accepted ADR's decision silently; supersede it.
 
+**Size:** ADRs hold decisions only (about 80 lines); working detail goes into the epic's design note (`docs/epics/<epic>-design.md`), which each task prunes as it implements it. Full rule: `docs/adr/README.md`, "Keep ADRs short".
+
 ## Branching and commits (provisional — OPEN-QUESTIONS Q3)
 
 Trunk-based: short-lived branches, small commits, main always green. Conventional-style prefixes are welcome (`feat(battle): …`, `fix(game): …`, `docs: …`). Attribution trailers follow the session's configured instructions.

@@ -1,6 +1,6 @@
 # Documentation index
 
-Working project name: **h3** (provisional; see OPEN-QUESTIONS Q2). Last structural update: 2026-10-03 (E04a T1/T2: source surveys, ADR-0013 Proposed, experiment maps). Code layout and quick start: [../README.md](../README.md).
+Working project name: **h3** (provisional; see OPEN-QUESTIONS Q2). Last structural update: 2026-10-03 (E04a: source surveys, ADR-0013 accepted, ADRs cut to decisions with design notes next to the epic, experiment maps). Code layout and quick start: [../README.md](../README.md).
 
 ## How to read these docs
 
@@ -17,7 +17,7 @@ Working project name: **h3** (provisional; see OPEN-QUESTIONS Q2). Last structur
 | [BACKLOG.md](BACKLOG.md) | Coarse-grained epics, ordered; only the next ones are refined |
 | [HANDOFF.md](HANDOFF.md) | Living state: what was done, what is next, traps |
 | [OPEN-QUESTIONS.md](OPEN-QUESTIONS.md) | Decisions waiting for the user |
-| [epics/](epics/) | Refined epics (only those about to be worked on) |
+| [epics/](epics/) | Refined epics (only those about to be worked on) and their design notes (`<epic>-design.md`, pruned as tasks implement them) |
 | [adr/](adr/) | Architecture Decision Records (binding) |
 | [pull_request_template.md](pull_request_template.md) | Definition-of-Done checklist for changes |
 | [rules/](rules/) | Rule catalog (machine-checked), quirks ledger, [source surveys](rules/surveys/) per epic |
@@ -43,4 +43,4 @@ Decide upfront only what is expensive to change later: determinism, state/comman
 | Testing gates & rule traceability | Accepted | ADR-0010 |
 | Portability & C ABI | Accepted | ADR-0011 |
 | Modifiers & abilities | Accepted | ADR-0012 |
-| Heroes in battle (entities, `BattleHero` seam) | Proposed | ADR-0013 |
+| Heroes in battle (entities, `BattleHero` seam) | Accepted | ADR-0013 |

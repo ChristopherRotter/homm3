@@ -233,7 +233,7 @@ hero +0xC9 + skill id).
 These are original data and rank above VCMI and the wiki; all agree with the skill texts and
 with VCMI except where noted in the skills survey.
 
-### 7.5 Code reading: First Aid Tent heal (pending OPEN-QUESTIONS Q29)
+### 7.5 Code reading: First Aid Tent heal
 
 Identifying the First Aid getter (VA 0x4E4920) led to its battle caller (VA 0x478BEC): the tent
 heals `Random(1, trunc(25.0 × getter))` hit points, where the getter returns
@@ -241,7 +241,8 @@ heals `Random(1, trunc(25.0 × getter))` hit points, where the getter returns
 (VA 0x50B230) is `a + rand() % (b − a + 1)`; the result is capped by the missing hit points. So
 without the skill the tent heals 1–25 (confirms Q26) and with Basic/Advanced/Expert First Aid
 1–50/1–75/1–100 (the wiki's reading; VCMI's fixed 50/75/100 is wrong). This is a reading of the
-game's code, not of a data table; whether agents may use such readings as a source is Q29.
+game's code, not of a data table; such readings are allowed as a last resort, for insight only
+(user, OPEN-QUESTIONS Q29: findings in our own words and numbers, no code or listings copied).
 
 ### 7.6 Spell table — VA 0x685450 (file 0x285450), 81 × 0x88 bytes
 

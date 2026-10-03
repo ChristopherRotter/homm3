@@ -6,131 +6,64 @@
 
 ## Context
 
-E03 brings the first stat changes that come and go during a battle: morale and luck auras of
-creatures (Angels, Bone Dragons, Devils), floors on morale and luck (Minotaurs, Halflings), army
-composition morale, native-terrain bonuses. E04 adds many more: hero primary skills, secondary
-skills, artifacts, specialties and spells with durations. They all need one mechanism
-(03-domain, "Open domain design questions"), and it must be:
-
-- **Tier-3 friendly** (ADR-0006): behaviour comes from a closed set of typed primitives that
-  content refers to, not from scripts;
-- **fast**: no allocation per step (ADR-0004 §8), no per-read evaluation on the hot path (turn
-  order reads every living stack's speed before every activation; damage reads attack and
-  defense);
-- **deterministic** (ADR-0003): integer arithmetic, no order dependence.
-
-VCMI solves this with a general bonus system: bonuses attached to a tree of bearers, propagated
-by propagators, filtered by selectors and limiters, changed by updaters, cached by string keys.
-It is very flexible, allocates, and evaluates selectors on reads. We do not copy it (03-domain:
-"do not copy another project's design uncritically"), but we keep its useful observations: a
-bonus has a *source*, a *duration*, a *stacking* group, and a value type
-(additive, percent, minimum/maximum).
-
-Most creature abilities of the original are not stat changes at all. Jousting, hate, death blow,
-double attack, no retaliation, breath attacks and ranged penalties are *conditional behaviour at
-one decision point* ("when this stack strikes that stack after walking n hexes"). Expressing them
-as generic modifiers with predicate limiters is where bonus systems become slow and opaque.
+Battles need stat changes that come and go (morale and luck auras, floors, terrain bonuses; from
+E04 on heroes, artifacts and spells with durations) through one mechanism that is Tier-3 friendly
+(ADR-0006), allocation-free and not evaluated on hot-path reads (ADR-0004 §8), and order-independent
+(ADR-0003). Most creature abilities are not stat changes but conditional behaviour at one decision
+point (jousting, hate, death blow). VCMI's general bonus tree (propagators, selectors, limiters,
+updaters) is flexible but allocates and evaluates on reads; we keep only its observations that a
+bonus has a source, a duration, a stacking group and a value type.
 
 ## Decision
 
 ### 1. Two concepts
 
-- **Abilities** are static, typed behaviour primitives of a creature type: a closed Rust enum in
-  `h3-content` (variants with parameters, e.g. `Hate { targets }`, `Jousting { percent_per_hex }`,
-  `ExtraRetaliations { count }`). Packs refer to them by name with parameters; the compiler
-  validates them; the ruleset stores them per creature type. Rule code reads them at the point
-  where the rule applies (the damage computation asks whether the attacker hates the target).
-  New abilities are new variants plus the rule code that reads them (E03 T2 and later tasks).
-- **Modifiers** are numeric changes to a *stat* of a *bearer*: `(bearer, stat, op, amount,
-  source, expiry)`. The kernel owns the primitive and its evaluation; each context defines its
-  bearers, stats, sources and expiry events. Abilities whose effect is a plain stat change (a
-  morale aura, a luck floor) are turned into modifiers by the context that runs them; abilities
-  with conditional behaviour are not.
+- **Abilities** are static, typed behaviour primitives of a creature type: a closed enum in
+  `h3-content` with parameters, validated by the compiler, read by rule code at the point where
+  the rule applies. New behaviour is a new variant plus the rule that reads it.
+- **Modifiers** are numeric changes `(bearer, stat, op, amount, source, expiry)`. The kernel owns
+  the primitive; each context defines bearers, stats, sources and expiry events. Abilities that
+  are plain stat changes (an aura, a floor) are turned into modifiers by the context that runs
+  them; conditional behaviour is not.
 
 ### 2. Kernel primitive (`h3_kernel::modifier`, rule KER-MOD-001)
 
-- `Modifier<B, S, E>` with a context-defined bearer `B`, stat `S` and expiry tag `E`, an
-  operation `ModifierOp ∈ {Add, AddPercent, AtLeast, AtMost}`, an `i32` amount and a
-  `SourceKey` (`u32`).
-- `ModifierPool<B, S, E, N>`: fixed capacity `N`, inline storage (`FixedVec`), no allocation.
-- **Stacking:** a source contributes at most one modifier per bearer and stat. Inserting a
-  modifier whose `(bearer, stat, source)` already exists *replaces* it (a re-cast spell refreshes,
-  two stacks with the same aura give it once). Different sources stack. Content that must not
-  stack across creature types (Angels and Archangels) uses the same source key.
-- **Evaluation** of a stat for a bearer, in fixed stages, with `i64` intermediates:
-  1. `flat = base + Σ Add`
-  2. `value = flat + floor(flat · Σ AddPercent / 100)`
-  3. `value = max(value, max AtLeast)` if any `AtLeast` applies
-  4. `value = min(value, min AtMost)` if any `AtMost` applies (an upper bound wins over a lower
-     bound)
-  5. saturate to `i32`.
-  Every stage aggregates with `+`, `max` or `min`, so the result does not depend on the order of
-  the modifiers. Which modifiers apply to a bearer (its own, its side's, …) is a predicate the
-  context passes in.
-- **Expiry** is a context-defined tag; the context removes modifiers when the matching event
-  happens (`ModifierPool::remove_if`, order-preserving). The kernel never interprets tags.
+- Operations `Add`, `AddPercent`, `AtLeast`, `AtMost`; a fixed-capacity, inline pool.
+- **Stacking:** a source contributes at most one modifier per bearer and stat; re-inserting
+  replaces it. Different sources stack.
+- **Evaluation** in fixed stages (sum, percentage, lower bound, upper bound wins, saturate) with
+  only `+`, `max` and `min`, so the result is independent of order. The stages are specified in
+  KER-MOD-001.
+- **Expiry** is a context tag; the context removes modifiers when the matching event happens.
 
-### 3. Use in a context (the battle, from E03 T6 on)
+### 3. Use in a context
 
-- The pool lives in the context state (`BattleState`) and is part of its canonical hash.
-- **Effective stats are materialised.** A stack keeps its base stats (copied from the creature
-  at setup, ADR-0006 E01 amendment) and its effective stats. Whenever a modifier is inserted or
-  removed, or something a modifier depends on changes (a source stack dies), the affected stacks'
-  effective stats are recomputed. The hot path reads plain fields; evaluation runs only on
-  changes.
-- **Capacity is sized by construction:** each context documents why its pool cannot overflow
-  (bounded sources per bearer) and tests the bound; a full pool is an invariant violation, not a
-  reachable command error. E04 revisits the capacity when spells arrive.
-- Context-specific rules stay rules: the Defend bonus (BAT-TRN-004) is computed from the
-  materialised defense when the stack is hit, as in E01; rule clamps (morale range −3…+3) are
-  applied by the rule that reads the stat.
-
-### 4. What this does not decide
-
-Stat sets beyond the battle, how heroes/artifacts/spells feed modifiers across the seam (E04:
-derived values are computed before the `BattleSetup` seam, 03-domain), and the `Trace` sink that
-will list modifier contributions (backlog).
+- The pool lives in the context state and is part of its canonical hash.
+- **Effective stats are materialised:** recomputed when a modifier or something it depends on
+  changes; the hot path reads plain fields.
+- **Capacity is sized by construction:** each context documents and tests why its pool cannot
+  overflow; a full pool is an invariant violation, not a command error.
+- Context rules stay rules: the Defend bonus and rule clamps (morale −3…+3) are applied by the rule
+  that reads the stat.
 
 ## Consequences
 
-- Reads are free; writes cost one pass over the pool and the affected stacks. State grows by
-  `N` small entries (measured in `bench-check` when the battle starts using the pool).
-- Conditional behaviour lives in rule code next to the rule it changes, with a rule id, instead
-  of in data-driven predicates; adding such behaviour means adding an ability variant and code
-  (ADR-0006 Tier 3: "the set grows by adding variants in code").
-- Order independence is structural (sums, maxima, minima), so no sort or tie-breaker is needed
-  for evaluation (ADR-0003 §9).
-- Enforced by: kernel unit and property tests (order independence, stacking, staging), the state
-  hash covering the pool, the coverage gate.
+- Reads are free; writes cost one pass over the pool and the affected stacks.
+- Conditional behaviour lives in rule code with a rule id, not in data-driven predicates.
+- Enforced by kernel unit and property tests (order independence, stacking, staging), the state
+  hash covering the pool and the coverage gate. The battle's pool (bearers, stats, sources,
+  capacity) is documented in `h3_battle::morale`; heroes feed it per ADR-0013.
 
 ## Alternatives considered
 
-- **A VCMI-style bonus tree** (propagators, selectors, limiters, updaters): general, but
-  allocation-heavy, evaluated on reads and hard to audit; rejected.
-- **Recompute on every read** (no materialised stats): simpler state, but turn order and damage
-  would evaluate the pool on every step; rejected for the hot path.
-- **Per-stack fixed arrays of modifiers**: no bearer field, but side-wide effects would be
-  duplicated into every stack and the state would grow by stacks × slots; rejected.
-- **Abilities as modifiers with predicates**: one mechanism, but conditional behaviour (hate,
-  jousting) would need a limiter language; rejected (Tier 4 by the back door).
-
-## Implementation notes — E03 T6 (2026-10-01)
-
-- The battle's pool (`h3_battle::Modifiers`) has bearers `Bearer::Side(side)` only, stats
-  `Morale` and `Luck`, and one expiry, `EndOfBattle`. Sources: army alignment and undead
-  (fixed keys) and auras (key = `Ability::aura_key`, equal for equal aura values, so equal
-  auras replace each other — Angels and Archangels give +1 once).
-- Capacity by construction: per side 2 army modifiers plus one per distinct aura value; the
-  compiler caps distinct aura values at `MAX_AURA_VALUES` = 8, so `MODIFIER_CAPACITY` = 20.
-- Per-creature floors (`minimum_morale`, `minimum_luck`) are turned into `AtLeast` modifiers
-  when the stats are materialised, read from the creature's abilities rather than stored in the
-  pool (they never change during a battle; stack bearers arrive with E04 spells).
-- Materialisation happens once at setup; in E03 nothing changes the pool during a battle
-  (auras persist after their bearers die). Rule clamps (morale −3…+3, luck 0…3 from the roll
-  tables) are applied by the morale/luck rules, as §3 says.
+- A VCMI-style bonus tree: allocation-heavy, evaluated on reads, hard to audit.
+- Recompute on every read: turn order and damage would evaluate the pool on every step.
+- Per-stack modifier arrays: side-wide effects duplicated into every stack.
+- Abilities as modifiers with predicates: a limiter language, i.e. Tier 4 by the back door.
 
 ## Revision history
 
-- 2026-10-01: Proposed (E03 T1).
-- 2026-10-01: Implementation notes added (E03 T6, battle pool).
-- 2026-10-01: Accepted by the user at the E03 closure.
+- 2026-10-01: Proposed (E03 T1); implementation notes added (E03 T6); accepted by the user.
+- 2026-10-03: Cut to its decisions (ADR size rule, `docs/adr/README.md`). The evaluation stages
+  are in KER-MOD-001, the battle pool's details in `h3_battle::morale`; the longer text is in git
+  history (this file at commit `22b6bc0`).

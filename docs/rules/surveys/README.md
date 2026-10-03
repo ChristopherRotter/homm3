@@ -16,32 +16,32 @@ The skill, artifact and battle surveys were compiled by sub-agents and reviewed 
 
 ## Disputes: input for experiment batch 1
 
-Collected from the surveys; ids point into them. "Observable in SoD" means the user can settle it with a staged battle (E04a T2). Code analysis of `Heroes3.exe` (installation.md §7.5) already answers some of them; whether such analysis may be used as a source is OPEN-QUESTIONS Q29.
+Collected from the surveys; ids point into them. "Observable in SoD" means the user can settle it with a staged battle (E04a T2). Batch 1 is split (user, Q30): **1a** for T5–T7, **1b** for T8–T10. Reading the game's code is allowed as a last resort (Q29); the First Aid reading (installation.md §7.5) settles two rows.
 
-| # | Question | Sources disagree | Needed by | Batch 1? |
+| # | Question | Sources disagree | Needed by | Batch |
 |---|---|---|---|---|
-| Q23 + S-02 + H-3 | Damage rounding: exact integers or single-precision floats (also Armorer 94 vs 95, specialty rounding) | wiki example vs VCMI and our exact rule | T5, T6, T10 | **yes** (highest value: affects every damage number) |
-| Q21 | Death stare: health of the new top creature | wiki vs VCMI | done (E03) | yes |
-| Q22 | Jousting: path length or start-to-end distance | wiki vs VCMI | done (E03) | yes |
-| Q26 | First Aid Tent without the skill: 1–25 random or fixed 10 | wiki vs VCMI; the exe code says random 1–25 (§7.5) | done (E03) | yes (cheap confirmation) |
-| skills D2, battle D-12 | First Aid with the skill: fixed 50/75/100 or random 1–50/75/100 | VCMI and the skill text vs wiki; the exe code says random 1..25 × (1 + level) (§7.5) | T7 | yes (confirms the code reading) |
-| skills D1, battle D-4 | Artillery at Basic: one or two Ballista shots | skill text vs wiki and VCMI | T7 | **yes** |
-| S-01, battle D-8 | Ballista without an Ammo Cart: 24 shots or unlimited | VCMI and the creature table vs wiki | T7 | **yes** |
-| battle D-1, skills D4 | Surrender cost: half or full recruitment cost | wiki vs VCMI | T9 | **yes** |
-| battle D-2 | How Diplomacy and the Statesman's Medal combine | VCMI additive; others silent | T9 | yes (same battle as D-1) |
-| battle D-5 | Can the opponent refuse a surrender? | wiki (yes) vs VCMI (no) | T9 (seam: offer and answer) | **yes** |
-| battle D-6 | Shackles of War against a neutral stack | VCMI vs the artifact text and wiki | T9 | yes |
-| battle D-3 | Experience for killed war machines | VCMI vs wiki | T9 (outcome inputs) | yes |
-| battle D-7, skills D5 | Necromancy: per stack (rounded towards 1) or one sum | wiki vs VCMI | T9 (outcome inputs) | yes |
-| battle OQ-1, OQ-2 | Tactics: does a disabled Tactics still cancel; is placement a path or free; can war machines be moved | VCMI only | T8 | yes (screenshots) |
-| battle OQ-4 | May a hero-controlled Ballista or Tent wait or defend | VCMI only | T7 | yes |
-| battle OQ-5 | War machines of a defeated hero: lost or captured | VCMI only | T9 | yes |
-| battle OQ-6 | Is the +500 experience for a defeated hero raised by Learning | VCMI only | T9 | optional |
-| artifacts D1 | Angelic Alliance: which factions may mix | artifact text and wiki vs VCMI | T10 | yes |
-| artifacts D8 | Cloak of the Undead King at Basic Necromancy: Zombies or Walking Dead | artifact text vs VCMI and wiki | T10 (outcome) | optional |
-| artifacts open 1–2 | War machines get HP/speed from artifacts; Golden Bow on the Ballista | VCMI only | T7, T10 | optional |
-| H-1, S-03 | Catherine's and Roland's Swordsmen specialty | wiki vs exe table vs VCMI | T10 | optional |
-| H-2 | Xeron's +1 speed | wiki and VCMI vs the exe record layout | T10 | optional |
-| skills (open) | Hero attack in the Ballista: multiplier only, or also the attack advantage | VCMI does both | T7 | yes (same battle as D-4) |
+| Q23 + S-02 + H-3 | Damage rounding: exact integers or single-precision floats (also Armorer 94 vs 95, specialty rounding) | wiki example vs VCMI and our exact rule | T5, T6, T10 | **1a** (highest value: affects every damage number) |
+| Q21 | Death stare: health of the new top creature | wiki vs VCMI | done (E03) | 1a |
+| Q22 | Jousting: path length or start-to-end distance | wiki vs VCMI | done (E03) | 1a |
+| Q26 | First Aid Tent without the skill: 1–25 random or fixed 10 | wiki vs VCMI; the exe code says random 1–25 (§7.5) | done (E03) | settled by code reading (§7.5) |
+| skills D2, battle D-12 | First Aid with the skill: fixed 50/75/100 or random 1–50/75/100 | VCMI and the skill text vs wiki; the exe code says random 1..25 × (1 + level) (§7.5) | T7 | settled by code reading (§7.5) |
+| skills D1, battle D-4 | Artillery at Basic: one or two Ballista shots | skill text vs wiki and VCMI | T7 | **1a** |
+| S-01, battle D-8 | Ballista without an Ammo Cart: 24 shots or unlimited | VCMI and the creature table vs wiki | T7 | **1a** |
+| battle D-1, skills D4 | Surrender cost: half or full recruitment cost | wiki vs VCMI | T9 | **1b** |
+| battle D-2 | How Diplomacy and the Statesman's Medal combine | VCMI additive; others silent | T9 | 1b |
+| battle D-5 | Can the opponent refuse a surrender? | wiki (yes) vs VCMI (no) | T9 (seam: offer and answer) | **1b** |
+| battle D-6 | Shackles of War against a neutral stack | VCMI vs the artifact text and wiki | T9 | 1b |
+| battle D-3 | Experience for killed war machines | VCMI vs wiki | T9 (outcome inputs) | 1b |
+| battle D-7, skills D5 | Necromancy: per stack (rounded towards 1) or one sum | wiki vs VCMI | T9 (outcome inputs) | 1b |
+| battle OQ-1, OQ-2 | Tactics: does a disabled Tactics still cancel; is placement a path or free; can war machines be moved | VCMI only | T8 | 1b |
+| battle OQ-4 | May a hero-controlled Ballista or Tent wait or defend | VCMI only | T7 | 1a |
+| battle OQ-5 | War machines of a defeated hero: lost or captured | VCMI only | T9 | 1b |
+| battle OQ-6 | Is the +500 experience for a defeated hero raised by Learning | VCMI only | T9 | 1b (optional) |
+| artifacts D1 | Angelic Alliance: which factions may mix | artifact text and wiki vs VCMI | T10 | 1b |
+| artifacts D8 | Cloak of the Undead King at Basic Necromancy: Zombies or Walking Dead | artifact text vs VCMI and wiki | T10 (outcome) | 1b (optional) |
+| artifacts open 1–2 | War machines get HP/speed from artifacts; Golden Bow on the Ballista | VCMI only | T7, T10 | 1a (optional) |
+| H-1, S-03 | Catherine's and Roland's Swordsmen specialty | wiki vs exe table vs VCMI | T10 | 1a (optional) |
+| H-2 | Xeron's +1 speed | wiki and VCMI vs the exe record layout | T10 | 1b (optional) |
+| skills (open) | Hero attack in the Ballista: multiplier only, or also the attack advantage | VCMI does both | T7 | 1a |
 
 Later batches (E04b, E04c): battle D-9 to D-11, artifacts D2 and D3, skills D6 and D7, S-07, S-13, S-21.

@@ -9,7 +9,7 @@ You are one of many agents working on this over time. No single session finishes
 1. Read `docs/HANDOFF.md` (current state, what to do next, traps).
 2. Read `docs/OPEN-QUESTIONS.md` (anything blocking or recently answered).
 3. Read the epic file you are working on (`docs/epics/`) and the relevant parts of `docs/BACKLOG.md`.
-4. Skim `docs/02-architecture.md` and the ADRs in `docs/adr/` that touch your task. ADRs are binding; do not silently deviate.
+4. Skim `docs/02-architecture.md`; from the ADR index (`docs/adr/README.md`, column "Read when") read only the ADRs that touch your task, plus the epic's design note if it has one. ADRs are binding; do not silently deviate. ADRs stay short: decisions only, detail in design notes (rule in the ADR index).
 5. Run `cargo xtask verify` (once it exists — see the backlog; until then run the commands listed in HANDOFF) to confirm the repo is green **before** you change anything.
 
 ## Non-negotiables

@@ -4,6 +4,11 @@
 //! once when the battle starts and kept until it ends (auras persist after their bearers die). A
 //! stack's morale and luck are materialised from them and its creature's minimums; the hot path
 //! reads the plain fields. Rolls use the ruleset's roll tables (Tier 2).
+//!
+//! Source keys: fixed keys for army alignment and undead; an aura uses `Ability::aura_key`, which
+//! is equal for equal aura values, so equal auras (Angels and Archangels) count once. Creature
+//! minimums never change during a battle, so they are applied as `AtLeast` when the stats are
+//! materialised instead of being stored in the pool.
 
 use alloc::collections::BTreeSet;
 

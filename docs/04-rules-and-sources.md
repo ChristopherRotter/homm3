@@ -10,7 +10,7 @@
 
 | # | Kind (`kind` in catalog) | What | Notes |
 |---|---|---|---|
-| 1 | `original-data` | Data files from the user's own installation (the `*.TXT` tables and similar inside the game archives: creature, spell, artifact, hero, class, skill, building, object tables; map and archive formats) | Facts. Supplied by the user (installation connected read-only; copies go to the gitignored `original-data/` directory; the files are never committed, the harvested packs are — Q13). Observed layouts: `docs/formats/installation.md`; do not assume others from memory. Includes static tables inside `Heroes3.exe` (e.g. creature level/town/flags). |
+| 1 | `original-data` | Data files from the user's own installation (the `*.TXT` tables and similar inside the game archives: creature, spell, artifact, hero, class, skill, building, object tables; map and archive formats) | Facts. Supplied by the user (installation connected read-only; copies go to the gitignored `original-data/` directory; the files are never committed, the harvested packs are — Q13). Observed layouts: `docs/formats/installation.md`; do not assume others from memory. Includes static tables inside `Heroes3.exe` (e.g. creature level/town/flags). **Code reading** of the user's `Heroes3.exe` is allowed as a last resort, for insight only (user, Q29): when sources and experiments cannot settle a rule cheaply, an agent may read the disassembly, records the finding in our own words and numbers (with addresses) in `docs/formats/installation.md` and cites it with this kind; no code, listings or decompiled output are copied or committed. |
 | 2 | `observation` | Controlled experiments in the original game, recorded as fixtures (inputs, outcome, game version) | Final arbiter for behavior. Expensive; used for disputed/high-impact rules. |
 | 3 | `reverse-engineering` | Community technical documentation of formats and mechanics | Label with URL. |
 | 4 | `vcmi` | Behavior of the VCMI open-source engine | Reference and oracle; code may be ported with attribution since the project is GPL-2.0-or-later (ADR-0009). Note version/commit. Treat as a strong but fallible source (VCMI itself deviates from the original in places). |
@@ -64,6 +64,8 @@ Every known difference between "what the original does" and "what a clean design
 | `exploit-fix` | Enables cheating against other players, corrupts/soft-locks the game, crashes, or breaks invariants | **Always fixed. Not toggleable.** Never implemented. |
 | `preserve` | Harmless/accepted deviation that alters gameplay in a way the community accepts | Implemented; controlled by a quirk flag; on in the `faithful` profile |
 | `fix-optional` | Unintended, mild, arguably better fixed | Flag exists; default differs by profile |
+
+**Confirm before flagging** (user, 2026-10-03, Q30): a documented bug is implemented as a quirk (with a flag) only after it is confirmed for SoD — by an experiment, by original data or, as a last resort, by code reading. Until then the engine implements the clean behaviour and the quirk waits in its survey with the experiment that would confirm it. `exploit-fix` entries need no confirmation (they are never implemented). A confirmed quirk takes the class suggested in its survey unless the user objects when the result is reported.
 
 Decision guide:
 1. Does it break security/consistency (see `06-security.md`), crash, soft-lock or corrupt state? → `exploit-fix`.

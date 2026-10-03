@@ -1180,7 +1180,7 @@ id       = "BAT-WAR-003"
 title    = "First Aid Tent without First Aid"
 context  = "battle"
 status   = "implemented"
-summary  = "Without a hero's First Aid skill (E04) the First Aid Tent acts automatically when it becomes active: a uniformly chosen allied stack that is alive, not a war machine and whose top creature is hurt regains a uniform min_hp..=max_hp hit points (ability first_aid; 1..=25 for the tent) on its top creature, capped at full health, without resurrection; with no such stack nothing happens. Its turn then ends. Source conflict (Q26, user decision): VCMI heals a fixed 10 (firstAid spell at level 0); the wiki's 1..=25 is followed, an experiment is recorded in OPEN-QUESTIONS."
+summary  = "Without a hero's First Aid skill (E04) the First Aid Tent acts automatically when it becomes active: a uniformly chosen allied stack that is alive, not a war machine and whose top creature is hurt regains a uniform min_hp..=max_hp hit points (ability first_aid; 1..=25 for the tent) on its top creature, capped at full health, without resurrection; with no such stack nothing happens. Its turn then ends. Source conflict (Q26, user decision): VCMI heals a fixed 10 (firstAid spell at level 0); the wiki's 1..=25 is followed and confirmed by reading the game's code (installation.md section 7.5)."
 numeric  = "integer"
 
   [[rule.source]]
@@ -1195,6 +1195,11 @@ numeric  = "integer"
   ref        = "server/battles/BattleFlowProcessor.cpp tryMakeAutomaticActionOfFirstAidTent (random hurt ally); server/battles/BattleActionProcessor.cpp doHealAction (firstAid spell cast at level 0); config/spells/vcmiAbility.json firstAid level 'none' power 10 (heal amount differs, Q26)"
   url        = "https://github.com/vcmi/vcmi/blob/1.7.5/server/battles/BattleFlowProcessor.cpp"
   retrieved  = "2026-10-01"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (Q29): the tent heals Random(1, trunc(25 x (1 + First Aid value))), i.e. 1..=25 without the skill; confirms the wiki (docs/formats/installation.md section 7.5)"
   confidence = "high"
 
 [[rule]]
