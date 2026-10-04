@@ -5,7 +5,7 @@ Living state between sessions; every session reads it first. Rules (`docs/08-wor
 ## Current state
 
 - Branch `e04a-heroes-in-battle` (the user merges to `master` when an epic closes); `cargo xtask verify --with-original-data` green. Sandbox and syncing: `docs/08-work-process.md`, "Cloud sandbox and syncing" (`scripts/sandbox-setup.sh`).
-- **E04a** (`docs/epics/E04a-heroes-in-battle.md`): T1–T10 done, experiment batches 1a and 1b evaluated and folded in (`docs/epics/E04a-design.md`); T10 in three checkpoints (Q35/Q36). **T11 in progress** in three checkpoints (Q37): T11a the observation (`observe` takes the ruleset), T11b observation encoding v4 and C ABI v7, T11c hero-bearing `full` workload, golden replays, benchmark, measurements; then T12 (closure).
+- **E04a** (`docs/epics/E04a-heroes-in-battle.md`): T1–T10 done, experiment batches 1a and 1b evaluated and folded in (`docs/epics/E04a-design.md`); T10 in three checkpoints (Q35/Q36). T11 in three checkpoints (Q37): T11a (the observation; `observe` takes the ruleset) and T11b (observation encoding v4, C ABI v7) done. **Next: T11c**: the defender of `full` led by a hero too, with T10 effects (stack stats, traits, an alignment group; surrender then priced for both), golden replays re-recorded with notes, `bench-check` re-baselined with the reason, measurements (state size, clone, steps/s ≥ 100 k), T11 closed (epic, log, design note). Then T12 (closure).
 - Versions: state hash v17, ruleset hash v13, replay format v13, action encoding v8, C ABI v7, observation encoding v4. Each new command bumps the action encoding and the C ABI (ADR-0011).
 - No decision is waiting for the user. Long-term open questions: `docs/OPEN-QUESTIONS.md`, section "Open".
 - Working agreement: small increments, the user confirms the seam; token efficiency beats speed (AGENTS.md); the user plays experiment maps in SoD with plain HD and commits the results.
@@ -15,6 +15,7 @@ Living state between sessions; every session reads it first. Rules (`docs/08-wor
 **Sandbox and sync**
 - Git on the user's machine: get delete permission for the repo folder before *any* git command (even `git status` leaves `.git/index.lock` otherwise). A fast-forward once failed with "unable to unlink … Permission denied" (a file held open on Windows): write the file from `git show <commit>:<path>`, then `git reset --mixed <commit>`.
 - Each bundle fetch adds a pack; past 50 packs a fetch starts a detached `git gc --auto`, which dies with the device shell and leaves `.git/gc.log.lock`. Fetch with `git -c gc.auto=0 fetch …`; if packs pile up, run `git gc` in the foreground. Old packs Windows keeps open stay behind as garbage without `.idx` (harmless; 47 such files since 2026-10-04, deletable once nothing holds them).
+- The sandbox VM can restart mid-session (files stay, background jobs and installs die): check `ps` and the logs before waiting on a background job.
 - `cargo xtask verify` outlasts a tool call: run `scripts/sandbox-verify.sh` in the background and poll its log.
 - Broad sub-agent surveys burn tokens and hit rate limits; research in narrow steps yourself.
 
@@ -45,9 +46,9 @@ Living state between sessions; every session reads it first. Rules (`docs/08-wor
 
 ## Recent sessions
 
-### 2026-10-04 (thirteenth) — E04a T11 started
+### 2026-10-04 (thirteenth) — E04a T11a and T11b done (observation, encoding v4)
 
-T11 split with the user (Q37): T11a and T11b this session, T11c in the next; `observe` takes the ruleset; the experiment-spec runner stays in the BACKLOG. T11a done (the observation: `observe` takes the ruleset, `surrender_possible`, machine control public, `Observation.own_hero` private). T11b done (observation encoding v4, C ABI v7). **Next:** T11c.
+T11 split with the user (Q37): T11a and T11b this session, T11c next; `observe` takes the ruleset (ADR-0004 amended); the experiment-spec runner stays in the BACKLOG. T11a (`e527a53`): `Observation.surrender_possible`, `HeroView.commands_ballista`/`commands_tent` public, `Observation.own_hero` (`OwnHeroView`) private; hygiene property test varies every private hero value. T11b (`adffa12`): observation encoding v4 (`OBSERVATION_LEN` 1229), C ABI v7. No state, replay or bench change. Detail: `docs/epics/E04a-log.md`.
 
 ### 2026-10-04 (twelfth) — E04a T10 done (stat effects, traits, alignment groups)
 
