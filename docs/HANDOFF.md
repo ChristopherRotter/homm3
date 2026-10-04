@@ -5,7 +5,7 @@ Living state between sessions; every session reads it first. Rules (`docs/08-wor
 ## Current state
 
 - Branch `e04a-heroes-in-battle` (the user merges to `master` when an epic closes); `cargo xtask verify --with-original-data` green. Sandbox and syncing: `docs/08-work-process.md`, "Cloud sandbox and syncing" (`scripts/sandbox-setup.sh`).
-- **E04a** (`docs/epics/E04a-heroes-in-battle.md`): T1–T9 done, experiment batches 1a and 1b evaluated (`docs/epics/E04a-design.md`, "Batch 1b results" says what T10 must do). **Next: T10 (artifacts and specialties without spells)**; at the start, propose a split and let the user confirm it. Then T11, T12.
+- **E04a** (`docs/epics/E04a-heroes-in-battle.md`): T1–T9 done, experiment batches 1a and 1b evaluated (`docs/epics/E04a-design.md`, "Batch 1b results" says what T10 must do). **T10 in progress** (split Q35: T10a stat effects, T10b stack traits this session; T10c alignment group and closure next). Then T11, T12.
 - Versions: state hash v16, ruleset hash v13, replay format v10, action encoding v8, C ABI v6, observation encoding v3. Each new command bumps the action encoding and the C ABI (ADR-0011).
 - No decision is waiting for the user. Long-term open questions: `docs/OPEN-QUESTIONS.md`, section "Open".
 - Working agreement: small increments, the user confirms the seam; token efficiency beats speed (AGENTS.md); the user plays experiment maps in SoD with plain HD and commits the results.
