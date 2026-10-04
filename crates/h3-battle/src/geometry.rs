@@ -229,9 +229,21 @@ impl Field {
             .find(|&d| self.neighbor(from, d) == Some(to))
     }
 
-    /// All neighbours of `hex`, in [`Direction::ALL`] order.
+    /// All neighbours of `hex`, in [`Direction::ALL`] order. Computed from one `coords` and
+    /// written out rather than mapped over the directions, which keeps this hot path (movement)
+    /// independent of the inlining of [`Field::neighbor`] (BACKLOG, codegen swings).
     pub fn neighbors(self, hex: Hex) -> [Option<Hex>; 6] {
-        Direction::ALL.map(|d| self.neighbor(hex, d))
+        let (x, y) = self.coords(hex);
+        // As in `neighbor`.
+        let shift = if y % 2 == 0 { 0 } else { -1 };
+        [
+            self.hex(x + 1, y),
+            self.hex(x + shift + 1, y + 1),
+            self.hex(x + shift, y + 1),
+            self.hex(x - 1, y),
+            self.hex(x + shift, y - 1),
+            self.hex(x + shift + 1, y - 1),
+        ]
     }
 
     /// Hex distance (number of steps between hexes on an empty field).
@@ -424,6 +436,14 @@ mod tests {
             ]
         );
         assert_eq!(FIELD.neighbor(at(16, 10), Direction::Right), None);
+        // `neighbors` agrees with `neighbor` everywhere.
+        for i in 0..FIELD.hex_count() {
+            let hex = Hex(u8::try_from(i).unwrap());
+            assert_eq!(
+                FIELD.neighbors(hex),
+                Direction::ALL.map(|d| FIELD.neighbor(hex, d))
+            );
+        }
     }
 
     // covers: BAT-GEO-001

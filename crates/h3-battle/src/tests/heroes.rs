@@ -1,6 +1,6 @@
 //! The heroes leading the sides (BAT-HER-001): what the battle checks, keeps and shows, the
 //! hero's attack and defense on its stacks (BAT-HER-002), its morale and luck effects
-//! (BAT-HER-003) and its damage bonuses (BAT-HER-004).
+//! (BAT-HER-003), its damage bonuses (BAT-HER-004) and its statistic effects (BAT-HER-005).
 
 use std::vec;
 use std::vec::Vec;
@@ -212,6 +212,99 @@ fn unsound_heroes_are_rejected() {
             );
         }
     }
+}
+
+// covers: BAT-HER-005
+#[test]
+fn statistic_effects_change_the_selected_stacks_of_the_side_at_setup() {
+    use CreatureSelector::{All, Flag};
+    use CreatureStat::{Attack, Defense, HitPoints, MaxDamage, MinDamage, Speed};
+    use StatOp::{Add, PercentBp, PercentBpDown};
+    let r = ruleset();
+    let id = |k: &str| r.creature_by_key(k).unwrap();
+    let squires = CreatureSelector::Creature(id("t:squire"));
+    let stat = |creatures, stat, op, amount| BattleEffect::StackStat {
+        creatures,
+        stat,
+        op,
+        amount,
+    };
+    let alive = Flag(CreatureFlag::Alive);
+    let mut attacker = hero(&r);
+    [attacker.attack, attacker.defense] = [0, 0];
+    attacker.effects = vec![
+        // Elixir of Life: +25 % of a living creature's own hit points, rounded down, and its
+        // parts' +4 for every creature, war machines included.
+        stat(alive, HitPoints, PercentBpDown, 2500),
+        stat(All, HitPoints, Add, 4),
+        // +2 speed for every creature, but not for war machines.
+        stat(All, Speed, Add, 2),
+        // One step of a squire specialty: +5 % attack and defense of the creature's own value,
+        // rounded up, for squires and their upgrade.
+        stat(squires, Attack, PercentBp, 500),
+        stat(squires, Defense, PercentBp, 500),
+        // Speed and damage shares: +20 % speed rounded up (5 → +1, 6 → +2), +50 % maximum
+        // damage rounded down (9 → +4, 10 → +5) on top of the additions.
+        stat(squires, Speed, PercentBp, 2000),
+        stat(squires, MinDamage, Add, 5),
+        stat(squires, MaxDamage, Add, -1),
+        stat(squires, MaxDamage, PercentBpDown, 5000),
+        BattleEffect::Morale {
+            amount: 1,
+            affects: Affects::Own,
+        },
+    ];
+    let mut defender = hero(&r);
+    [defender.attack, defender.defense] = [0, 0];
+    defender.effects = vec![
+        // Negative shares: −0.5 rounded down to −1 attack, −0.6 rounded up to 0 defense.
+        stat(alive, Attack, PercentBpDown, -500),
+        stat(alive, Defense, PercentBp, -500),
+        // Hit points stay at least 1, speed and damage at least 0; a minimum damage above the
+        // maximum is lowered to it.
+        stat(All, HitPoints, Add, i16::MIN),
+        stat(All, Speed, Add, -100),
+        stat(All, MaxDamage, Add, -100),
+        stat(alive, MinDamage, PercentBp, -5000),
+    ];
+    let s = BattleSetup {
+        heroes: [Some(attacker), None],
+        war_machines: [vec![id("t:ballista"), id("t:cart"), id("t:tent")], vec![]],
+        ..setup(
+            &r,
+            &[(0, "squire", 1), (1, "paladin", 1), (2, "fixed", 1)],
+            &[(0, "squire", 1)],
+        )
+    };
+    // (attack, defense, damage, hit points, top hit points, speed)
+    let stats = |s: &BattleSetup| -> Vec<(u16, u16, [u16; 2], u32, u32, u8)> {
+        let b = BattleState::new(&r, s, 1).unwrap();
+        b.stacks()
+            .iter()
+            .map(|s| {
+                let damage = [s.damage_min, s.damage_max];
+                (s.attack, s.defense, damage, s.max_hp, s.top_hp, s.speed)
+            })
+            .collect()
+    };
+    // Stacks: the attacker's squire, paladin, fixed, Ballista, cart and tent, the defender's squire.
+    assert_eq!(
+        stats(&s),
+        [
+            (11, 13, [11, 12], 35 + 8 + 4, 47, 8),
+            (13, 13, [12, 14], 35 + 8 + 4, 47, 10),
+            (10, 10, [2, 2], 14, 14, 7),
+            (10, 10, [2, 3], 254, 254, 0),
+            (0, 5, [0, 0], 104, 104, 0),
+            (0, 0, [0, 0], 79, 79, 0),
+            (10, 12, [6, 9], 35, 35, 5),
+        ]
+    );
+    let s = BattleSetup {
+        heroes: [None, Some(defender)],
+        ..s
+    };
+    assert_eq!(stats(&s).get(6..), Some(&[(9, 12, [0, 0], 1, 1, 0)][..]));
 }
 
 // covers: BAT-HER-002

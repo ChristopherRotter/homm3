@@ -259,7 +259,7 @@ themselves and belong to no other combination, its own slot is one of its parts'
 slots have enough positions for all parts. A combination **locks** one position of every part's
 slot except one of its own (`ArtifactType::locks`, derived: Angelic Alliance in the right hand
 locks the torso, feet, neck, left hand and head). It gives its own effects, and its parts give
-theirs (the derivation, E04a T10). Identical artifacts count once, except `primary_skills`
+theirs (the derivation, HER-BAT-001). Identical artifacts count once, except `primary_skills`
 (the original sums its artifact table per copy: two Quiet Eyes of the Dragon give +2/+2).
 
 **What the harvested hero content leaves out** (the harvester's report lists it; sources and
@@ -277,8 +277,8 @@ layouts: `docs/formats/installation.md` §6–§7, `crates/h3-harvest/data/gapfi
   one Ballista shot at Basic and two at Expert (R6, R7; dispute D1 goes to VCMI and the wiki, not
   the skill text); the creature specialties follow the executable's specialty table: Catherine
   and Sorsha raise Swordsmen and Crusaders, Roland only Crusaders (B4–B6, dispute H-1; the wiki's
-  "Catherine only Crusaders" does not hold in SoD). Xeron's +1 speed (H-2) is VCMI and the wiki,
-  not observed yet.
+  "Catherine only Crusaders" does not hold in SoD). Xeron's +1 speed (H-2, VCMI and the wiki)
+  holds in SoD (batch 1b B7).
 
 **What the harvested artifacts leave out** (the harvester's report lists it; facts and sources:
 `docs/formats/installation.md` §6, §7.3, `crates/h3-harvest/data/gapfill.toml` `[artifacts]`,
@@ -297,9 +297,9 @@ research notes and disputes in `docs/rules/surveys/E04-artifacts.md`):
   its own).
 - Angelic Alliance's `alignment_group` names the five towns of the SoD text and the wiki (dispute
   D1: VCMI lets every non-evil faction mix, Conflux included; an experiment for batch 1b).
-  Speed and hit-point artifacts use the selector "all creatures", so they also reach war machines
-  as in VCMI (open check 1); the Golden Bow's "shooters" include the Ballista (open check 2).
-  Both are experiment candidates; the rules come with E04a T10.
+  Speed and hit-point artifacts use the selector "all creatures"; the battle gives war machines
+  the hit points but not the speed (batch 1b R8, BAT-HER-005). The Golden Bow's "shooters"
+  include the Ballista (open check 2, batch 1b R8; the rule comes with E04a T10b).
 
 **Battle parameters** (`[battle]`, Tier 2; exactly one enabled pack provides them): field
 size, army slots, damage rolls, attack/defense rates and caps, Defend bonus, the formation rows
@@ -365,7 +365,7 @@ hero_type = "synthetic:brea"     # the side, given directly (BAT-HER-001, Q31); 
 attack = 2                       # one is not led by a hero (quirk Q-0003). Every field but
 defense = 2                      # hero_type defaults to 0 (effects: none); the rest of the battle
 power = 1                        # hero (other effects, spell book, …) joins the format with
-knowledge = 1                    # the rules that read it (E04a T10, E04b)
+knowledge = 1                    # the rules that read it (E04a T10b, T10c, E04b)
 tactics = 2
 mana = 10
 max_mana = 10
@@ -380,7 +380,9 @@ tent = { heal_bonus_bp = 10000 } # optional: the side commands its First Aid Ten
 effects = [{ kind = "morale", amount = 1 }, { kind = "luck_at_most", value = 0, affects = "enemy" }]
                                  # battle effects as in "Hero effects": so far `morale`, `luck`,
                                  # `morale_at_most`, `luck_at_most` (BAT-HER-003), `no_retreat`
-                                 # (BAT-FLE-001)
+                                 # (BAT-FLE-001) and `stack_stat` (BAT-HER-005: `creatures` as in
+                                 # "Hero effects" (omitted: all), `stat`, `op` = `add` |
+                                 # `percent_bp` (rounded up) | `percent_bp_down`, `amount`)
 
 [[attacker]]                     # one entry per stack
 slot = 0

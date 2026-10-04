@@ -324,6 +324,18 @@ pub const CREATURES: &[Creature] = &[
             "shots=4",
         ],
     ),
+    // A creature and its upgrade (hero statistic effects, BAT-HER-005).
+    (
+        "squire",
+        10,
+        12,
+        6,
+        9,
+        35,
+        5,
+        &["alive", "upgrades=paladin"],
+    ),
+    ("paladin", 12, 12, 7, 10, 35, 6, &["alive"]),
 ];
 
 /// The traits of a test creature as creature info: flags, abilities, shots and faction.
@@ -333,6 +345,7 @@ fn parse_traits(traits: &[&str]) -> CreatureInfoDef {
     let mut shots = 0;
     let mut faction = None;
     let mut ai = 0;
+    let mut upgrades = Vec::new();
     for t in traits {
         let (name, value) = t.split_once('=').unwrap_or((t, "0"));
         let n = || value.parse::<u16>().unwrap();
@@ -360,6 +373,10 @@ fn parse_traits(traits: &[&str]) -> CreatureInfoDef {
             "ammo_supply" => AbilityDef::AmmoSupply,
             "faction" => {
                 faction = Some(ContentKey::new("t", value).unwrap());
+                continue;
+            }
+            "upgrades" => {
+                upgrades.push(ContentKey::new("t", value).unwrap());
                 continue;
             }
             "morale_aura" => {
@@ -426,6 +443,7 @@ fn parse_traits(traits: &[&str]) -> CreatureInfoDef {
         shots,
         faction,
         ai_value: ai,
+        upgrades,
         ..CreatureInfoDef::default()
     }
 }

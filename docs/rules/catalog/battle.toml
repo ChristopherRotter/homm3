@@ -1458,6 +1458,27 @@ numeric  = "integer"
   confidence = "high"
 
 [[rule]]
+id       = "BAT-HER-005"
+title    = "The heroes' statistic effects on their stacks"
+context  = "battle"
+status   = "implemented"
+summary  = "When the battle starts, every StackStat effect of a side's hero (HER-BAT-008) whose creatures include a stack's creature type (all, a flag such as alive or dragon, or a creature and its direct upgrades) changes that statistic of the stack for the whole battle: Add adds the amount; PercentBp adds amount / 10 000 of the creature type's own value rounded up, PercentBpDown rounded down (negative shares too: up is toward +infinity). The changes are computed from the creature's own values and added after the native-terrain bonus, the hero's attack and defense and the war machines' damage growth (BAT-TER-001, BAT-HER-002, BAT-WAR-005). War machines take hit-point effects (batch 1b R8: Ballista 254, Ammo Cart 104, First Aid Tent 79 with +4) but no speed effects (speed stays 0). Results stay in range: attack, defense, speed and damage at least 0, hit points at least 1, minimum damage at most the maximum; the top creature starts with the changed hit points. Only the hero's own side is changed; the changed statistics are public in the observation, the effects private (ADR-0013 point 9)."
+numeric  = "integer"
+
+  [[rule.source]]
+  kind       = "observation"
+  ref        = "experiments/results/E04a-batch-1b.md R8 (SoD 4.0 Complete, plain HD, 2026-10-04): with Ring of Vitality, Ring of Life, Vial of Lifeblood, Necklace of Swiftness and Cape of Velocity, Pikemen 14 hit points and speed 7, Ballista 254, Ammo Cart 104, First Aid Tent 79, each speed 0 (artifacts open check 1: hit points yes, speed no); experiments/results/E04a-batch-1a.md R8 (Elixir of Life: Trolls 54) and B4-B6 (creature specialties at level 4: +1/+1/+1)"
+  retrieved  = "2026-10-04"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "vcmi"
+  ref        = "lib/CStack.cpp L73-L79: war machines attach to the hero's army node, so STACK_HEALTH and STACKS_SPEED reach them (the speed part does not hold in SoD, batch 1b R8); lib/bonuses/BonusList.cpp L103-L110 (rounding: up for creature specialties, down otherwise)"
+  url        = "https://github.com/vcmi/vcmi/blob/1.7.5/lib/CStack.cpp#L73-L79"
+  retrieved  = "2026-10-04"
+  confidence = "high"
+
+[[rule]]
 id       = "BAT-TAC-001"
 title    = "Who gets the tactics phase, and its zone"
 context  = "battle"

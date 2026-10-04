@@ -19,7 +19,7 @@ use h3_content::{
 };
 use h3_contracts::{
     Army, ArmyStack, BallistaControl, BattleEffect, BattleHero, BattleSetup, BattleSide,
-    DamageBonuses, TentControl,
+    DamageBonuses, StatOp, TentControl,
 };
 use serde::{Deserialize, Serialize};
 
@@ -575,7 +575,7 @@ enum EffectDto {
     },
     CreatureStat {
         creatures: Option<SelectorDto>,
-        stat: CreatureStatDto,
+        stat: StatEntry,
         amount: i16,
     },
     SkillSpecialty {
@@ -616,7 +616,7 @@ enum EffectDto {
     },
     CreatureStatPercent {
         creatures: Option<SelectorDto>,
-        stat: CreatureStatDto,
+        stat: StatEntry,
         bp: u16,
     },
     Regeneration {
@@ -667,14 +667,21 @@ impl From<Affects> for AffectsEntry {
     }
 }
 
-#[derive(Deserialize)]
+/// A creature statistic as packs, scenarios and replays write it ([`CreatureStat`]).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
-enum CreatureStatDto {
+pub enum StatEntry {
+    /// Attack skill.
     Attack,
+    /// Defense skill.
     Defense,
+    /// Speed.
     Speed,
+    /// Hit points per creature.
     HitPoints,
+    /// Minimum damage per creature.
     MinDamage,
+    /// Maximum damage per creature.
     MaxDamage,
 }
 
@@ -718,7 +725,7 @@ impl EffectDto {
                 amount,
             } => HeroEffect::CreatureStat {
                 creatures: selector(pack, creatures)?,
-                stat: stat.into_stat(),
+                stat: stat.into(),
                 amount,
             },
             Self::SkillSpecialty {
@@ -768,7 +775,7 @@ impl EffectDto {
                 bp,
             } => HeroEffect::CreatureStatPercent {
                 creatures: selector(pack, creatures)?,
-                stat: stat.into_stat(),
+                stat: stat.into(),
                 bp,
             },
             Self::Regeneration {
@@ -789,15 +796,28 @@ impl EffectDto {
     }
 }
 
-impl CreatureStatDto {
-    fn into_stat(self) -> CreatureStat {
-        match self {
-            Self::Attack => CreatureStat::Attack,
-            Self::Defense => CreatureStat::Defense,
-            Self::Speed => CreatureStat::Speed,
-            Self::HitPoints => CreatureStat::HitPoints,
-            Self::MinDamage => CreatureStat::MinDamage,
-            Self::MaxDamage => CreatureStat::MaxDamage,
+impl From<StatEntry> for CreatureStat {
+    fn from(s: StatEntry) -> Self {
+        match s {
+            StatEntry::Attack => Self::Attack,
+            StatEntry::Defense => Self::Defense,
+            StatEntry::Speed => Self::Speed,
+            StatEntry::HitPoints => Self::HitPoints,
+            StatEntry::MinDamage => Self::MinDamage,
+            StatEntry::MaxDamage => Self::MaxDamage,
+        }
+    }
+}
+
+impl From<CreatureStat> for StatEntry {
+    fn from(s: CreatureStat) -> Self {
+        match s {
+            CreatureStat::Attack => Self::Attack,
+            CreatureStat::Defense => Self::Defense,
+            CreatureStat::Speed => Self::Speed,
+            CreatureStat::HitPoints => Self::HitPoints,
+            CreatureStat::MinDamage => Self::MinDamage,
+            CreatureStat::MaxDamage => Self::MaxDamage,
         }
     }
 }
@@ -1332,10 +1352,55 @@ fn is_zero(value: &u16) -> bool {
     *value == 0
 }
 
-/// One battle effect of a hero as scenario and replay files write it: `kind` and the kind's
-/// parameters, named as in the packs (`packs/README.md`, "Hero effects"). It holds the kinds
-/// the battle reads so far (morale and luck, BAT-HER-003); later kinds join with their rules.
+/// Which creatures a battle effect applies to, as scenario and replay files write it
+/// ([`CreatureSelector`]): `{ creature = "pack:name" }` for a creature and its direct upgrades,
+/// `{ flag = "dragon" }` for the creatures with a flag; omitted, every creature.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case", deny_unknown_fields)]
+pub enum SelectorEntry {
+    /// The creature type with this key and its direct upgrades.
+    Creature(String),
+    /// The creatures with this flag.
+    Flag(String),
+}
+
+/// How a stack statistic effect applies ([`StatOp`]) in scenario and replay files.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum StatOpEntry {
+    /// [`StatOp::Add`].
+    Add,
+    /// [`StatOp::PercentBp`].
+    PercentBp,
+    /// [`StatOp::PercentBpDown`].
+    PercentBpDown,
+}
+
+impl From<StatOpEntry> for StatOp {
+    fn from(op: StatOpEntry) -> Self {
+        match op {
+            StatOpEntry::Add => Self::Add,
+            StatOpEntry::PercentBp => Self::PercentBp,
+            StatOpEntry::PercentBpDown => Self::PercentBpDown,
+        }
+    }
+}
+
+impl From<StatOp> for StatOpEntry {
+    fn from(op: StatOp) -> Self {
+        match op {
+            StatOp::Add => Self::Add,
+            StatOp::PercentBp => Self::PercentBp,
+            StatOp::PercentBpDown => Self::PercentBpDown,
+        }
+    }
+}
+
+/// One battle effect of a hero as scenario and replay files write it: `kind` and the kind's
+/// parameters (`packs/README.md`, "Scenarios"). It holds the kinds the battle reads so far
+/// (morale and luck, BAT-HER-003; no retreat, BAT-FLE-001; stack statistics, BAT-HER-005); later
+/// kinds join with their rules.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(tag = "kind", rename_all = "snake_case", deny_unknown_fields)]
 pub enum EffectEntry {
     /// [`BattleEffect::Morale`].
@@ -1372,12 +1437,27 @@ pub enum EffectEntry {
     },
     /// [`BattleEffect::NoRetreat`] (a struct variant, so that unknown keys are rejected).
     NoRetreat {},
+    /// [`BattleEffect::StackStat`].
+    StackStat {
+        /// Which creatures (default every creature; written only when set).
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        creatures: Option<SelectorEntry>,
+        /// Which statistic.
+        stat: StatEntry,
+        /// How the amount applies.
+        op: StatOpEntry,
+        /// Amount (an addition, or basis points).
+        amount: i16,
+    },
 }
 
 impl EffectEntry {
-    /// The battle effect.
-    pub fn effect(self) -> BattleEffect {
-        match self {
+    /// The battle effect, its creature references resolved against `ruleset`.
+    ///
+    /// # Errors
+    /// [`PackError::UnknownCreature`]; an unknown flag ([`CompileError::UnknownFlag`]).
+    pub fn effect(&self, ruleset: &Ruleset) -> Result<BattleEffect, PackError> {
+        Ok(match self.clone() {
             Self::Morale { amount, affects } => BattleEffect::Morale {
                 amount,
                 affects: affects.into(),
@@ -1395,12 +1475,37 @@ impl EffectEntry {
                 affects: affects.into(),
             },
             Self::NoRetreat {} => BattleEffect::NoRetreat,
-        }
+            Self::StackStat {
+                creatures,
+                stat,
+                op,
+                amount,
+            } => BattleEffect::StackStat {
+                creatures: match creatures {
+                    None => CreatureSelector::All,
+                    Some(SelectorEntry::Creature(key)) => CreatureSelector::Creature(
+                        ruleset
+                            .creature_by_key(&key)
+                            .ok_or(PackError::UnknownCreature(key))?,
+                    ),
+                    Some(SelectorEntry::Flag(flag)) => CreatureSelector::Flag(
+                        CreatureFlag::from_name(&flag).ok_or(CompileError::UnknownFlag(flag))?,
+                    ),
+                },
+                stat: stat.into(),
+                op: op.into(),
+                amount,
+            },
+        })
     }
 
-    /// The entry of `effect`, if the format holds its kind (inverse of [`EffectEntry::effect`]).
-    pub fn of(effect: &BattleEffect) -> Option<Self> {
-        Some(match *effect {
+    /// The entry of `effect` (inverse of [`EffectEntry::effect`]).
+    ///
+    /// # Errors
+    /// [`PackError::HeroNotWritable`] for a kind the format does not hold yet;
+    /// [`PackError::UnknownCreature`] for a creature type outside `ruleset`.
+    pub fn of(effect: &BattleEffect, ruleset: &Ruleset) -> Result<Self, PackError> {
+        Ok(match *effect {
             BattleEffect::Morale { amount, affects } => Self::Morale {
                 amount,
                 affects: affects.into(),
@@ -1418,7 +1523,33 @@ impl EffectEntry {
                 affects: affects.into(),
             },
             BattleEffect::NoRetreat => Self::NoRetreat {},
-            _ => return None,
+            BattleEffect::StackStat {
+                creatures,
+                stat,
+                op,
+                amount,
+            } => Self::StackStat {
+                creatures: match creatures {
+                    CreatureSelector::All => None,
+                    CreatureSelector::Creature(c) => Some(SelectorEntry::Creature(
+                        ruleset
+                            .creature_key(c)
+                            .map(|k| k.as_str().to_owned())
+                            .ok_or_else(|| PackError::UnknownCreature(format!("#{}", c.raw())))?,
+                    )),
+                    CreatureSelector::Flag(flag) => {
+                        Some(SelectorEntry::Flag(flag.name().to_owned()))
+                    }
+                },
+                stat: stat.into(),
+                op: op.into(),
+                amount,
+            },
+            _ => {
+                return Err(PackError::HeroNotWritable(
+                    "effects other than morale, luck, no retreat and stack statistics",
+                ));
+            }
         })
     }
 }
@@ -1451,7 +1582,11 @@ impl HeroEntry {
             heal_bonus_bp: t.heal_bonus_bp,
         });
         hero.surrender_discount_bp = self.surrender_discount_bp;
-        hero.effects = self.effects.iter().map(|e| e.effect()).collect();
+        hero.effects = self
+            .effects
+            .iter()
+            .map(|e| e.effect(ruleset))
+            .collect::<Result<_, _>>()?;
         Ok(hero)
     }
 
@@ -1461,19 +1596,14 @@ impl HeroEntry {
     /// [`PackError::UnknownHeroType`] for a hero type outside `ruleset`;
     /// [`PackError::HeroNotWritable`] if a field the format does not hold yet is not neutral.
     pub fn of(hero: &BattleHero, ruleset: &Ruleset) -> Result<Self, PackError> {
-        let unwritable = [
-            (
-                "effects other than morale, luck and no retreat",
-                hero.effects.iter().any(|e| EffectEntry::of(e).is_none()),
-            ),
-            (
-                "spell book or schools",
-                hero.magic.spell_book.is_some() || hero.magic.schools != [0; 4],
-            ),
-        ];
-        if let Some((what, _)) = unwritable.into_iter().find(|(_, set)| *set) {
-            return Err(PackError::HeroNotWritable(what));
+        if hero.magic.spell_book.is_some() || hero.magic.schools != [0; 4] {
+            return Err(PackError::HeroNotWritable("spell book or schools"));
         }
+        let effects = hero
+            .effects
+            .iter()
+            .map(|e| EffectEntry::of(e, ruleset))
+            .collect::<Result<_, _>>()?;
         let key = ruleset
             .hero_type(hero.hero_type)
             .map(|t| t.key.as_str().to_owned())
@@ -1495,7 +1625,7 @@ impl HeroEntry {
             tent: hero.war_machines.tent.map(|t| TentEntry {
                 heal_bonus_bp: t.heal_bonus_bp,
             }),
-            effects: hero.effects.iter().filter_map(EffectEntry::of).collect(),
+            effects,
         })
     }
 }
@@ -1943,6 +2073,30 @@ mod tests {
                 ]
             })
             .chain([BattleEffect::NoRetreat])
+            .chain(
+                [
+                    CreatureSelector::All,
+                    CreatureSelector::Creature(ruleset.creature_by_key("synthetic:brute").unwrap()),
+                    CreatureSelector::Flag(CreatureFlag::Dragon),
+                ]
+                .into_iter()
+                .zip(CreatureStat::ALL.into_iter().zip([
+                    StatOp::Add,
+                    StatOp::PercentBp,
+                    StatOp::PercentBpDown,
+                ]))
+                .chain(
+                    CreatureStat::ALL
+                        .into_iter()
+                        .map(|stat| (CreatureSelector::All, (stat, StatOp::Add))),
+                )
+                .map(|(creatures, (stat, op))| BattleEffect::StackStat {
+                    creatures,
+                    stat,
+                    op,
+                    amount: -3,
+                }),
+            )
             .collect();
         every.surrender_discount_bp = 4000;
         let entry = HeroEntry::of(&every, &ruleset).unwrap();
@@ -1950,6 +2104,12 @@ mod tests {
         let written = toml::to_string(&entry).unwrap();
         assert!(
             written.contains("[[effects]]\nkind = \"morale_at_most\""),
+            "{written}"
+        );
+        assert!(
+            written.contains(
+                "[[effects]]\nkind = \"stack_stat\"\nstat = \"defense\"\nop = \"percent_bp\"\namount = -3\n\n[effects.creatures]\ncreature = \"synthetic:brute\""
+            ),
             "{written}"
         );
         assert_eq!(toml::from_str::<HeroEntry>(&written), Ok(entry));
@@ -1974,6 +2134,34 @@ mod tests {
             HeroEntry::of(&stranger, &ruleset),
             Err(PackError::UnknownHeroType("#99".to_owned()))
         );
+        // Stack statistics name known creatures and flags.
+        for (creatures, error) in [
+            (
+                "{ creature = \"synthetic:nobody\" }",
+                PackError::UnknownCreature("synthetic:nobody".to_owned()),
+            ),
+            (
+                "{ flag = \"winged\" }",
+                PackError::from(CompileError::UnknownFlag("winged".to_owned())),
+            ),
+        ] {
+            let text = format!(
+                "{header}[scenario.defender_hero]\nhero_type = \"synthetic:ansel\"\neffects = [{{ kind = \"stack_stat\", creatures = {creatures}, stat = \"speed\", op = \"add\", amount = 1 }}]\n"
+            );
+            let entry = parse_scenario(&text).unwrap().heroes[1].clone().unwrap();
+            assert_eq!(entry.resolve(&ruleset), Err(error));
+        }
+        let mut stranger_creature = expected.clone();
+        stranger_creature.effects = vec![BattleEffect::StackStat {
+            creatures: CreatureSelector::Creature(h3_content::CreatureTypeId::from_raw(999)),
+            stat: CreatureStat::Speed,
+            op: StatOp::Add,
+            amount: 1,
+        }];
+        assert_eq!(
+            HeroEntry::of(&stranger_creature, &ruleset),
+            Err(PackError::UnknownCreature("#999".to_owned()))
+        );
         // Values the format cannot hold yet.
         type Change = (fn(&mut BattleHero), &'static str);
         let changes: [Change; 3] = [
@@ -1983,7 +2171,7 @@ mod tests {
                         creatures: CreatureSelector::All,
                     })
                 },
-                "effects other than morale, luck and no retreat",
+                "effects other than morale, luck, no retreat and stack statistics",
             ),
             (
                 |h| h.magic.spell_book = Some(vec![]),
@@ -2588,6 +2776,120 @@ mod tests {
             ))
         );
         assert_eq!(validate(&details(&ab, &misc[1..], &[]), &ab), Ok(()));
+    }
+
+    // covers: HER-BAT-008, BAT-HER-005
+    #[test]
+    fn harvested_statistic_effects_reproduce_the_experiments() {
+        use h3_battle::BattleState;
+        use h3_contracts::{Army, ArmyStack};
+        use h3_heroes::{HeroDetails, derive_battle_hero, war_machines};
+        let sod = compile(&[SOD_PACK, AB_PACK, BASE_PACK], "base:faithful").unwrap();
+        let creature = |k: &str| sod.creature_by_key(k).unwrap();
+        // The stacks of a battle the hero leads as attacker with `army` against one Peasant:
+        // (attack, defense, hit points, speed) of the hero's army and war machines.
+        let stacks =
+            |hero: &str, level: u8, primary: [u8; 4], worn: &[&str], army: &[(&str, u32)]| {
+                let details = HeroDetails {
+                    hero_type: sod.hero_type_by_key(hero).unwrap(),
+                    level,
+                    experience: 0,
+                    primary,
+                    skills: vec![],
+                    worn: worn
+                        .iter()
+                        .map(|k| sod.artifact_by_key(k).unwrap())
+                        .collect(),
+                    backpack: vec![],
+                    spells: vec![],
+                    mana: 0,
+                };
+                let to_army = |stacks: &[(&str, u32)]| Army {
+                    stacks: stacks
+                        .iter()
+                        .enumerate()
+                        .map(|(slot, &(k, count))| ArmyStack {
+                            slot: u8::try_from(slot).unwrap(),
+                            creature: creature(k),
+                            count,
+                        })
+                        .collect(),
+                };
+                let setup = BattleSetup {
+                    attacker: to_army(army),
+                    defender: to_army(&[("ab:peasant", 1)]),
+                    obstacles: vec![],
+                    heroes: [Some(derive_battle_hero(&details, &sod).unwrap()), None],
+                    terrain: None,
+                    war_machines: [war_machines(&details, &sod), vec![]],
+                    formations: [Formation::Loose; 2],
+                    funds: [0; 2],
+                };
+                let state = BattleState::new(&sod, &setup, 1).unwrap();
+                state
+                    .stacks()
+                    .iter()
+                    .filter(|s| s.side == BattleSide::Attacker)
+                    .map(|s| (s.attack, s.defense, s.max_hp, s.speed))
+                    .collect::<Vec<_>>()
+            };
+        // Batch 1a R8: Trolls with the Elixir of Life have 54 hit points, 40 + 25 % + the parts'
+        // flat 4.
+        let troll = stacks(
+            "base:saurug",
+            1,
+            [0, 0, 1, 1],
+            &["sod:elixir_of_life"],
+            &[("ab:troll", 20)],
+        );
+        assert_eq!(troll[0].2, 54);
+        // Batch 1b R8: Pikemen 14 hit points and speed 7 (Ring of Vitality, Ring of Life, Vial of
+        // Lifeblood +4; Necklace of Swiftness +1, Cape of Velocity +2); the war machines get the
+        // hit points but not the speed: Ballista 254, Ammo Cart 104, First Aid Tent 79, speed 0.
+        let worn = [
+            "base:ring_of_life",
+            "base:vial_of_lifeblood",
+            "base:golden_bow",
+            "base:necklace_of_swiftness",
+            "base:ring_of_vitality",
+            "base:cape_of_velocity",
+            "base:ballista",
+            "base:ammo_cart",
+            "base:first_aid_tent",
+        ];
+        let r8 = stacks(
+            "base:saurug",
+            1,
+            [4, 0, 1, 1],
+            &worn,
+            &[("base:pikeman", 60)],
+        );
+        assert_eq!(
+            r8.iter().map(|s| (s.2, s.3)).collect::<Vec<_>>(),
+            [(14, 7), (254, 0), (104, 0), (79, 0)]
+        );
+        // Batch 1a B4-B6 at level 4 (one step of the creature level 4): Catherine's and Sorsha's
+        // Swordsman specialty raises Swordsmen and Crusaders by +1 attack, +1 defense (5 % of
+        // 10 or 12, rounded up) and +1 speed; Roland's names the Crusader only (quirk Q-0006,
+        // the executable's value).
+        let swordsmen = [("base:swordsman", 10), ("base:crusader", 10)];
+        assert_eq!(
+            stacks("ab:catherine", 4, [1, 1, 1, 1], &[], &swordsmen),
+            [(12, 14, 35, 6), (14, 14, 35, 7)]
+        );
+        assert_eq!(
+            stacks("ab:roland", 4, [2, 1, 1, 1], &[], &swordsmen),
+            [(12, 13, 35, 5), (15, 14, 35, 7)]
+        );
+        assert_eq!(
+            stacks("base:sorsha", 4, [2, 1, 1, 1], &[], &swordsmen),
+            [(13, 14, 35, 6), (15, 14, 35, 7)]
+        );
+        // Batch 1b B7: Xeron's Devils 23 / 23 / 12 (+4 attack, +2 defense, +1 speed).
+        assert_eq!(
+            stacks("ab:xeron", 1, [0, 0, 1, 1], &[], &[("base:devil", 5)])[0],
+            (23, 23, 160, 12)
+        );
     }
 
     #[test]

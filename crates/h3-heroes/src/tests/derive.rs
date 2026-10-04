@@ -1,4 +1,4 @@
-//! `derive_battle_hero` (HER-BAT-001 to HER-BAT-004).
+//! `derive_battle_hero` (HER-BAT-001 to HER-BAT-008).
 
 use std::vec;
 
@@ -491,6 +491,157 @@ fn artillery_and_first_aid_make_the_hero_command_its_war_machines() {
         control(&r, u8::MAX, None, Some(3)).1,
         Some(30_000 + 30_000 * 500 * 255 / 10_000 + 5000)
     );
+}
+
+/// The test pack plus stack statistics: `t:squire` (level 2, alive) upgrades into `t:knight`;
+/// the combination `t:circle` +25 % hit points of living creatures, its parts `t:band` +1 hit
+/// point and +1 speed for all and `t:helm` +5 attack for squires; `t:eye` +1 hit point for all;
+/// `t:hook` −1 speed for all; the specialty a squire specialty (+5 % attack and defense per two
+/// levels, +1 speed).
+fn stat_ruleset() -> Ruleset {
+    use h3_content::{CreatureFlag, CreatureSelector, CreatureStat};
+    let all = CreatureSelector::All;
+    let squires = CreatureSelector::Creature(key("t:squire"));
+    let stat = |creatures, stat, amount| HeroEffectDef::CreatureStat {
+        creatures,
+        stat,
+        amount,
+    };
+    let mut p = pack();
+    let mut squire = creature("t:squire", &["alive"]);
+    squire.info.level = 2;
+    squire.info.upgrades = vec![key("t:knight")];
+    let mut knight = creature("t:knight", &["alive"]);
+    squire.speed = 5;
+    knight.speed = 5;
+    p.creatures.extend([squire, knight]);
+    for a in &mut p.artifacts {
+        a.effects = match a.key.to_string().as_str() {
+            "t:circle" => vec![HeroEffectDef::CreatureStatPercent {
+                creatures: CreatureSelector::Flag(CreatureFlag::Alive),
+                stat: CreatureStat::HitPoints,
+                bp: 2500,
+            }],
+            "t:band" => vec![
+                stat(all.clone(), CreatureStat::HitPoints, 1),
+                stat(all.clone(), CreatureStat::Speed, 1),
+            ],
+            "t:helm" => vec![stat(squires.clone(), CreatureStat::Attack, 5)],
+            "t:eye" => vec![stat(all.clone(), CreatureStat::HitPoints, 1)],
+            "t:hook" => vec![stat(all.clone(), CreatureStat::Speed, -1)],
+            _ => continue,
+        };
+    }
+    p.heroes[0].specialty = vec![HeroEffectDef::CreatureSpecialty {
+        creature: key("t:squire"),
+        bp_per_step: 500,
+        speed: 1,
+    }];
+    compile(p).unwrap()
+}
+
+// covers: HER-BAT-008
+#[test]
+fn stack_statistics_are_summed_per_creatures_statistic_and_operation() {
+    use h3_content::{CreatureFlag, CreatureSelector, CreatureStat};
+    use h3_contracts::StatOp;
+    let r = stat_ruleset();
+    let squires = CreatureSelector::Creature(r.creature_by_key("t:squire").unwrap());
+    let effect = |creatures, stat, op, amount| BattleEffect::StackStat {
+        creatures,
+        stat,
+        op,
+        amount,
+    };
+    let specialty = |bp| {
+        [
+            effect(squires, CreatureStat::Attack, StatOp::PercentBp, bp),
+            effect(squires, CreatureStat::Defense, StatOp::PercentBp, bp),
+            effect(squires, CreatureStat::Speed, StatOp::Add, 1),
+        ]
+    };
+    // The circle's share; band and one eye +2 hit points (the second eye counts not); band and
+    // hook cancel in speed; the helm's +5 attack. Level 5: two full steps of the squire's level
+    // 2, +10 % attack and defense; the speed in any case.
+    let mut d = details(&r);
+    d.level = 5;
+    let mut want = vec![
+        effect(
+            CreatureSelector::Flag(CreatureFlag::Alive),
+            CreatureStat::HitPoints,
+            StatOp::PercentBpDown,
+            2500,
+        ),
+        effect(
+            CreatureSelector::All,
+            CreatureStat::HitPoints,
+            StatOp::Add,
+            2,
+        ),
+        effect(squires, CreatureStat::Attack, StatOp::Add, 5),
+    ];
+    want.extend(specialty(1000));
+    assert_eq!(derive_battle_hero(&d, &r).unwrap().effects, want);
+    // Level 1 is no full step: only the speed.
+    d.level = 1;
+    want.truncate(3);
+    want.push(specialty(0)[2]);
+    assert_eq!(derive_battle_hero(&d, &r).unwrap().effects, want);
+    // At level 255, 127 steps of 5 % saturate at i16::MAX basis points; so does the largest
+    // growth per step at level 1 of a level-1 creature, whose specialty without speed gives none.
+    d.level = u8::MAX;
+    let hero = derive_battle_hero(&d, &r).unwrap();
+    assert_eq!(hero.effects.get(3..), Some(&specialty(i16::MAX)[..]));
+    let mut p = pack();
+    p.heroes[0].specialty = vec![HeroEffectDef::CreatureSpecialty {
+        creature: key("t:peasant"),
+        bp_per_step: u16::MAX,
+        speed: 0,
+    }];
+    let r = compile(p).unwrap();
+    let peasants = CreatureSelector::Creature(r.creature_by_key("t:peasant").unwrap());
+    assert_eq!(
+        derive_battle_hero(&details(&r), &r).unwrap().effects,
+        [CreatureStat::Attack, CreatureStat::Defense].map(|stat| effect(
+            peasants,
+            stat,
+            StatOp::PercentBp,
+            i16::MAX
+        ))
+    );
+}
+
+// covers: HER-BAT-008
+#[test]
+fn more_battle_effects_than_the_seam_holds_are_an_error() {
+    use h3_content::{CreatureFlag, CreatureSelector, CreatureStat};
+    // 16 distinct statistic effects on each of the circle, its three parts and the eye: 80.
+    let mut keys = CreatureFlag::ALL
+        .into_iter()
+        .flat_map(|flag| CreatureStat::ALL.map(|stat| (flag, stat)));
+    let mut p = pack();
+    for a in &mut p.artifacts {
+        if ["t:circle", "t:band", "t:loop", "t:helm", "t:eye"].contains(&a.key.to_string().as_str())
+        {
+            a.effects = keys
+                .by_ref()
+                .take(16)
+                .map(|(flag, stat)| HeroEffectDef::CreatureStat {
+                    creatures: CreatureSelector::Flag(flag),
+                    stat,
+                    amount: 1,
+                })
+                .collect();
+        }
+    }
+    let r = compile(p).unwrap();
+    let error = derive_battle_hero(&details(&r), &r).unwrap_err();
+    assert_eq!(error, DetailsError::TooManyBattleEffects);
+    assert_eq!(error.to_string(), "too many battle effects");
+    // Without the eye's 16: 64, the limit.
+    let mut d = details(&r);
+    d.worn.retain(|&a| a != art(&r, "t:eye"));
+    assert_eq!(derive_battle_hero(&d, &r).unwrap().effects.len(), 64);
 }
 
 proptest! {

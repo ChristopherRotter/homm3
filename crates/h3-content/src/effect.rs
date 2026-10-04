@@ -21,7 +21,7 @@ use h3_kernel::{CanonicalHash, StateHasher};
 use crate::flags::CreatureFlag;
 use crate::heroes::{SkillId, SpellId};
 use crate::key::ContentKey;
-use crate::ruleset::{CreatureTypeId, FactionId};
+use crate::ruleset::{CreatureTypeId, FactionId, Ruleset};
 
 /// Most effects in one list (a skill level, a specialty, an artifact).
 pub const MAX_EFFECTS: usize = 16;
@@ -133,6 +133,18 @@ impl<C> CreatureSelector<C> {
             Self::Flag(flag) => CreatureSelector::Flag(*flag),
             Self::Creature(c) => CreatureSelector::Creature(f(c)?),
         })
+    }
+}
+
+impl CreatureSelector<CreatureTypeId> {
+    /// Whether the selector takes creature type `id` of `ruleset`: every creature, a creature
+    /// with the flag, or the named creature and its direct upgrades.
+    pub fn matches(&self, ruleset: &Ruleset, id: CreatureTypeId) -> bool {
+        match *self {
+            Self::All => true,
+            Self::Flag(flag) => ruleset.creature(id).is_some_and(|c| c.flags.contains(flag)),
+            Self::Creature(c) => c == id || ruleset.upgrades(c).contains(&id),
+        }
     }
 }
 

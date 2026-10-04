@@ -310,3 +310,37 @@ numeric  = "integer"
   url        = "https://github.com/vcmi/vcmi/blob/1.7.5/config/skills.json#L118-L153"
   retrieved  = "2026-10-03"
   confidence = "high"
+
+[[rule]]
+id       = "HER-BAT-008"
+title    = "The battle hero's stack statistic effects"
+context  = "heroes"
+status   = "implemented"
+summary  = "The battle hero's StackStat effects come from the hero's effect sources (HER-BAT-001), each worn artifact type once (also inside a combination), skills at their levels and the specialty: a creature_stat effect becomes an addition (StatOp::Add: the hit-point and speed artifacts, Vial of Dragon Blood, Sir Mullich, the fixed creature specialties of the AB heroes); a creature_stat_percent effect a share of the creature's own value rounded down (PercentBpDown: Elixir of Life's +25 % hit points of living creatures); a creature specialty (creature_specialty) attack and defense shares rounded up (PercentBp) of bp_per_step per full step of the named creature's level in hero levels (floor(hero level / creature level); Catherine at level 4 with the level-4 Swordsman: 5 %), and its speed as an addition, for the named creature and its direct upgrades. Skill specialties do not grow them. Effects with the same creatures, statistic and operation are summed (saturated to i16; a sum of 0 is left out) in the order of their first appearance, after the morale and luck effects and NoRetreat. If the effects then exceed MAX_BATTLE_EFFECTS (64), the derivation fails (DetailsError::TooManyBattleEffects). The battle applies them (BAT-HER-005). Roland's specialty names the Crusader only, as the executable has it (quirk Q-0006, data; the profile override waits for E04b, Q35)."
+quirks   = ["Q-0006"]
+numeric  = "integer"
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe specialty table (docs/formats/installation.md §7.2; survey docs/rules/surveys/E04-heroes.md §3): kind 1 creature specialties (creature, its upgrade, 5 % per creature-level hero levels, +1 speed except the Ballista), kind 4 fixed creature stats, kind 5 speed (Sir Mullich +2), kind 7 dragons (+5/+5); the artifacts' values in the harvested packs (gap-fill [artifacts], sources there)"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "wiki"
+  ref        = "Hero specialty - Heroes 3 wiki, SoD branch: creature specialists raise attack and defense by 5 % every n levels (n the creature's level), rounded up, and speed by 1 (survey E04-heroes.md §3, H-3); Elixir of Life: +25 % of base health for living creatures (survey E04-artifacts.md §5)"
+  url        = "https://heroes.thelazy.net/index.php/Hero_specialty"
+  retrieved  = "2026-10-03"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "vcmi"
+  ref        = "lib/entities/hero/CHeroHandler.cpp L142-L181 createCreatureSpecialty: +1 STACKS_SPEED and PERCENT_TO_TARGET_TYPE attack and defense with TimesHeroLevelUpdater(creature level), i.e. growth x floor(level / creature level); lib/bonuses/BonusList.cpp L103-L110: creature specialties round up, every other percentage (Elixir's STACK_HEALTH percent to base) rounds down"
+  url        = "https://github.com/vcmi/vcmi/blob/1.7.5/lib/entities/hero/CHeroHandler.cpp#L142-L181"
+  retrieved  = "2026-10-04"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "observation"
+  ref        = "experiments/results/E04a-batch-1a.md B4-B6 (SoD 4.0 Complete, 2026-10-03): at level 4 Catherine's and Sorsha's Swordsmen and Crusaders +1 attack, +1 defense, +1 speed, Roland's Crusaders only; R8: Trolls with the Elixir of Life 54 hit points. experiments/results/E04a-batch-1b.md B7 (plain HD, 2026-10-04): Xeron's Devils 23 / 23 / 12 (H-2: the +1 speed holds). All reproduced with the harvested packs (crates/h3-pack, harvested_statistic_effects_reproduce_the_experiments)"
+  retrieved  = "2026-10-04"
+  confidence = "high"

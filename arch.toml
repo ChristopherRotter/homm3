@@ -138,7 +138,7 @@ layer = "adapter"
 logic = false
 deps = ["h3-kernel", "h3-content", "h3-contracts"]
 external = ["serde", "toml"]
-dev_deps = ["h3-heroes"]          # hero details checked against the harvested packs
+dev_deps = ["h3-heroes", "h3-battle"]  # hero details and their battle effects checked against the harvested packs
 dev_external = []
 
 [crate.h3-sim]

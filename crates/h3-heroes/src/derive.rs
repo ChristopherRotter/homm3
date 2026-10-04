@@ -4,9 +4,13 @@
 use alloc::collections::BTreeSet;
 use alloc::vec::Vec;
 
-use h3_content::{Affects, CompiledHeroEffect, FULL_BP, HeroEffect, Ruleset};
+use h3_content::{
+    Affects, CompiledHeroEffect, CreatureSelector, CreatureStat, CreatureTypeId, FULL_BP,
+    HeroEffect, Ruleset,
+};
 use h3_contracts::{
-    BallistaControl, BattleEffect, BattleHero, DamageBonuses, MachineControl, TentControl,
+    BallistaControl, BattleEffect, BattleHero, DamageBonuses, MAX_BATTLE_EFFECTS, MachineControl,
+    StatOp, TentControl,
 };
 
 use crate::details::{HeroDetails, PrimarySkill, check};
@@ -15,14 +19,16 @@ use crate::error::DetailsError;
 /// Derives what a battle needs to know about the hero (`BattleSetup.heroes`): the hero type, the
 /// effective primary skills (HER-BAT-001), the Tactics level (HER-BAT-002), the morale and luck
 /// effects (HER-BAT-003), the damage bonuses (HER-BAT-004), the war machines it commands
-/// (HER-BAT-005), the `NoRetreat` effect (HER-BAT-006) and the surrender discount (HER-BAT-007);
-/// the mana is passed through. The details are validated first.
+/// (HER-BAT-005), the `NoRetreat` effect (HER-BAT-006), the surrender discount (HER-BAT-007) and
+/// the stack statistic effects (HER-BAT-008); the mana is passed through. The details are
+/// validated first.
 ///
-/// Later tasks fill the rest; until then it stays neutral: the other effects (T10), and spell
-/// book, maximum mana and schools (E04b).
+/// Later tasks fill the rest; until then it stays neutral: the other effects (E04a T10b, T10c),
+/// and spell book, maximum mana and schools (E04b).
 ///
 /// # Errors
-/// The [`DetailsError`] of the first rule the details break ([`crate::validate`]).
+/// The [`DetailsError`] of the first rule the details break ([`crate::validate`]);
+/// [`DetailsError::TooManyBattleEffects`] if the effects exceed [`MAX_BATTLE_EFFECTS`].
 pub fn derive_battle_hero(
     details: &HeroDetails,
     ruleset: &Ruleset,
@@ -72,6 +78,12 @@ pub fn derive_battle_hero(
         hero.effects.push(BattleEffect::NoRetreat);
     }
 
+    // rule: HER-BAT-008
+    hero.effects.extend(stack_stats(details, ruleset));
+    if hero.effects.len() > MAX_BATTLE_EFFECTS {
+        return Err(DetailsError::TooManyBattleEffects);
+    }
+
     // rule: HER-BAT-004
     hero.damage = damage_bonuses(details, ruleset);
 
@@ -95,6 +107,68 @@ fn surrender_discount(details: &HeroDetails, ruleset: &Ruleset) -> u16 {
         })
         .sum();
     u16::try_from(sum.min(u64::from(FULL_BP))).unwrap_or(FULL_BP)
+}
+
+/// The stack statistic effects (HER-BAT-008): the `creature_stat` effects as additions, the
+/// `creature_stat_percent` effects as shares rounded down, and a creature specialty as attack and
+/// defense shares rounded up of `bp_per_step` per full step of (the creature's level) hero
+/// levels plus its speed as an addition, for the named creature and its upgrades. Each artifact
+/// type counts once; skill specialties do not grow them. Effects with the same creatures,
+/// statistic and operation are summed (saturated to `i16`; a sum of 0 is left out), in the order
+/// of their first appearance.
+fn stack_stats(details: &HeroDetails, ruleset: &Ruleset) -> Vec<BattleEffect> {
+    type Key = (CreatureSelector<CreatureTypeId>, CreatureStat, StatOp);
+    let mut totals: Vec<(Key, i32)> = Vec::new();
+    let mut add = |key: Key, amount: i32| match totals.iter_mut().find(|(k, _)| *k == key) {
+        Some((_, total)) => *total = total.saturating_add(amount),
+        None => totals.push((key, amount)),
+    };
+    for effect in effects(details, ruleset, Count::OncePerType) {
+        match *effect {
+            HeroEffect::CreatureStat {
+                creatures,
+                stat,
+                amount,
+            } => add((creatures, stat, StatOp::Add), i32::from(amount)),
+            HeroEffect::CreatureStatPercent {
+                creatures,
+                stat,
+                bp,
+            } => add((creatures, stat, StatOp::PercentBpDown), i32::from(bp)),
+            HeroEffect::CreatureSpecialty {
+                creature,
+                bp_per_step,
+                speed,
+            } => {
+                // Creature levels are at least 1 (content validation).
+                let level = ruleset
+                    .creature_info(creature)
+                    .map_or(1, |i| i.level)
+                    .max(1);
+                let bp = i32::from(bp_per_step).saturating_mul(i32::from(details.level / level));
+                let creatures = CreatureSelector::Creature(creature);
+                add((creatures, CreatureStat::Attack, StatOp::PercentBp), bp);
+                add((creatures, CreatureStat::Defense, StatOp::PercentBp), bp);
+                add(
+                    (creatures, CreatureStat::Speed, StatOp::Add),
+                    i32::from(speed),
+                );
+            }
+            _ => {}
+        }
+    }
+    totals
+        .into_iter()
+        .filter(|&(_, total)| total != 0)
+        .map(|((creatures, stat, op), total)| BattleEffect::StackStat {
+            creatures,
+            stat,
+            op,
+            // Within `i16` after the clamp.
+            amount: i16::try_from(total.clamp(i16::MIN.into(), i16::MAX.into()))
+                .unwrap_or_default(),
+        })
+        .collect()
 }
 
 /// How often a worn artifact's effects count.

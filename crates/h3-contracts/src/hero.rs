@@ -3,9 +3,7 @@
 //! scenario may also give it directly). The battle takes it as given and checks only what its
 //! rules need to run soundly, not whether a real hero could have these values.
 //!
-//! Fields that later tasks give a meaning stay at their neutral value until then: the damage
-//! bonuses (E04a T6), war-machine control (T7), the surrender discount (T9), the effects other
-//! than morale and luck (T10) and the magic (E04b).
+//! The magic (E04b) stays at its neutral value until E04b gives it a meaning.
 
 use alloc::vec::Vec;
 
@@ -36,7 +34,8 @@ pub struct BattleHero {
     /// Discount on the price of a surrender, basis points (at most 10 000; T9).
     pub surrender_discount_bp: u16,
     /// Every other battle effect of the hero's skills, artifacts and specialty, resolved (at most
-    /// [`MAX_BATTLE_EFFECTS`]; morale and luck since E04a T5b, the others with T10).
+    /// [`MAX_BATTLE_EFFECTS`]; morale and luck since E04a T5b, `NoRetreat` since T9a, stack
+    /// statistics since T10a, the others with T10b and T10c).
     pub effects: Vec<BattleEffect>,
     /// Spell book, mana and schools (E04b; carried and ignored before).
     pub magic: BattleMagic,
@@ -142,8 +141,12 @@ pub struct BattleMagic {
 pub enum StatOp {
     /// Adds the amount.
     Add,
-    /// Adds the amount in basis points of the creature's own value, rounded up.
+    /// Adds the amount in basis points of the creature's own value, rounded up (creature
+    /// specialties).
     PercentBp,
+    /// Adds the amount in basis points of the creature's own value, rounded down (Elixir of
+    /// Life).
+    PercentBpDown,
 }
 
 /// One resolved effect of a hero in battle (ADR-0013 point 3). Later tasks add variants (T10,

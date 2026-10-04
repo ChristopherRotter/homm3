@@ -352,7 +352,8 @@ pub struct Stack {
 impl Stack {
     /// A new stack of `count` creatures with the creature's stats, the native-terrain bonus
     /// (BAT-TER-001), the attack and defense of its side's hero (BAT-HER-002), for war machines
-    /// the damage grown by the hero's attack (BAT-WAR-005), and its traits and retaliations.
+    /// the damage grown by the hero's attack (BAT-WAR-005), the hero's statistic effects
+    /// (BAT-HER-005), and its traits and retaliations.
     fn new(
         ruleset: &Ruleset,
         setup: &BattleSetup,
@@ -377,6 +378,16 @@ impl Stack {
         } else {
             1
         };
+        // rule: BAT-HER-005
+        let [attack, defense, speed, hit_points, min_damage, max_damage] =
+            hero::stat_changes(ruleset, setup.heroes[side.index()].as_ref(), (id, creature));
+        let damage_max = changed_u16(
+            creature.damage_max.saturating_mul(machine_factor),
+            max_damage,
+        );
+        let max_hp = changed(creature.hit_points.into(), hit_points, 1, u32::MAX.into());
+        // Within `u32` after the clamp.
+        let max_hp = u32::try_from(max_hp).unwrap_or(u32::MAX);
         let retaliations = retaliations_per_round(abilities);
         Self {
             creature: id,
@@ -385,19 +396,35 @@ impl Stack {
             hex,
             count,
             base_count: count,
-            top_hp: creature.hit_points,
-            attack: creature
-                .attack
-                .saturating_add(native.into())
-                .saturating_add(hero_attack.into()),
-            defense: creature
-                .defense
-                .saturating_add(native.into())
-                .saturating_add(hero_defense.into()),
-            damage_min: creature.damage_min.saturating_mul(machine_factor),
-            damage_max: creature.damage_max.saturating_mul(machine_factor),
-            max_hp: creature.hit_points,
-            speed: creature.speed.saturating_add(native),
+            top_hp: max_hp,
+            attack: changed_u16(
+                creature
+                    .attack
+                    .saturating_add(native.into())
+                    .saturating_add(hero_attack.into()),
+                attack,
+            ),
+            defense: changed_u16(
+                creature
+                    .defense
+                    .saturating_add(native.into())
+                    .saturating_add(hero_defense.into()),
+                defense,
+            ),
+            damage_min: changed_u16(
+                creature.damage_min.saturating_mul(machine_factor),
+                min_damage,
+            )
+            .min(damage_max),
+            damage_max,
+            max_hp,
+            speed: u8::try_from(changed(
+                creature.speed.saturating_add(native).into(),
+                speed,
+                0,
+                u8::MAX.into(),
+            ))
+            .unwrap_or(u8::MAX),
             shots: creature.shots,
             retaliations,
             retaliations_left: retaliations,
@@ -407,6 +434,17 @@ impl Stack {
             flags: StackFlags::default(),
         }
     }
+}
+
+/// `value` changed by `delta`, kept within `min..=max` (BAT-HER-005).
+fn changed(value: i64, delta: i64, min: i64, max: i64) -> i64 {
+    value.saturating_add(delta).clamp(min, max)
+}
+
+/// A `u16` statistic changed by `delta`, kept within its type (BAT-HER-005).
+fn changed_u16(value: u16, delta: i64) -> u16 {
+    // Within `u16` after the clamp.
+    u16::try_from(changed(value.into(), delta, 0, u16::MAX.into())).unwrap_or(u16::MAX)
 }
 
 impl Default for Stack {

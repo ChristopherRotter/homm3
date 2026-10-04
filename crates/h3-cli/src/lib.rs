@@ -47,8 +47,8 @@
 //! heal_bonus_bp = 10000           #   when not): `h3_pack::TentEntry`
 //!
 //! [[setup.attacker_hero.effects]] # its battle effects (format 4; omitted when none):
-//! kind = "morale"                 #   `h3_pack::EffectEntry`
-//! amount = 1
+//! kind = "morale"                 #   `h3_pack::EffectEntry` (`no_retreat` format 9,
+//! amount = 1                      #   `stack_stat` format 11)
 //! affects = "own"
 //!
 //! [[attacker]]                    # the setup, by creature key

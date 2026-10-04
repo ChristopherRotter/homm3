@@ -42,6 +42,9 @@ pub enum DetailsError {
     DuplicateSpell(SpellId),
     /// A spell is a creature ability, which never stands in a spell book.
     NotAHeroSpell(SpellId),
+    /// The details are valid, but their battle effects exceed the seam's limit
+    /// (`h3_contracts::MAX_BATTLE_EFFECTS`; HER-BAT-008).
+    TooManyBattleEffects,
 }
 
 impl fmt::Display for DetailsError {
@@ -67,6 +70,7 @@ impl fmt::Display for DetailsError {
             Self::UnknownSpell(id) => write!(f, "unknown spell {}", id.raw()),
             Self::DuplicateSpell(id) => write!(f, "spell {} listed twice", id.raw()),
             Self::NotAHeroSpell(id) => write!(f, "spell {} is a creature ability", id.raw()),
+            Self::TooManyBattleEffects => f.write_str("too many battle effects"),
         }
     }
 }

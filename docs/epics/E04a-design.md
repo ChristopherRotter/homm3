@@ -22,12 +22,9 @@ task has to do with them:
 - **T7** (done): R5 → BAT-WAR-005, R6/R7 → BAT-WAR-006/007 and HER-BAT-005, Q-0004 →
   BAT-WAR-002. Still to observe (batch 1b, R7): the commanded tent's Wait/Defend, target choice and
   heal amounts (R6's Golems destroyed it) — stage troops hurt before the tent's first turn.
-- **T10** (T3b put the values into the packs): Elixir of Life on Trolls shows 54 hit points: +25 % of the creature's base (40 → 50)
-  plus the parts' flat +4 (Ring of Vitality, Ring of Life, Vial of Lifeblood); regeneration restores
-  all 54 (R8: survey quirk S-04 not reproduced, no ledger entry). Creature specialties at hero
-  level 4: +1 attack, +1 defense, +1 speed for 10/12 and 12/12 creatures (ceil of 5 % per step),
-  Catherine and Sorsha for Swordsmen and Crusaders, Roland for Crusaders only (B4–B6; quirk Q-0006,
-  already in the packs as the executable has it).
+- **T10** (T10a done: the Elixir's 54 hit points on Trolls and the creature specialties B4–B6 are
+  HER-BAT-008/BAT-HER-005 fixtures). Left for T10b: the Elixir's regeneration restores all 54, the
+  raised maximum (R8: survey quirk S-04 not reproduced, no ledger entry).
 - Not observed: the wiki's Armorer example "2002 → 2001" is not explained by Q-0005 alone; Q22
   (jousting) was not staged.
 
@@ -49,29 +46,23 @@ each task has to do with them:
   Learning multiplies the whole sum including the +500, the loser's war machines are not
   captured) and R6 (Necromancy rounded down per killed stack) need; those rules are E08–E10's
   (BACKLOG inbox, 2026-10-04).
-- **T10** (R1, R8, B7):
-  - Angelic Alliance as the packs model it (artifacts D1): the five SoD factions count as one
+- **T10** (R1, R8, B7; T10a done: R8's hit points and speeds and B7 are HER-BAT-008/BAT-HER-005
+  fixtures):
+  - T10c: Angelic Alliance as the packs model it (artifacts D1): the five SoD factions count as one
     alignment, Conflux and neutral creatures stay separate (R1 in battle: −1 "Troops of three
     alignments" with all four, 0 without the Pixies or without the Peasants); VCMI (every non-evil
     faction, +1) and the wiki's "they cancel the bonus" are not the original. The hero screen shows
     no alignment morale; only the battle does.
-  - War machines get the hit-point artifacts (R8: Ballista 254, Ammo Cart 104, Tent 79 with +4)
-    but not the speed artifacts (speed stays 0) (artifacts open 1; VCMI gives both).
-  - The Golden Bow removes the Ballista's range penalty (R8: 23, 17, 20; open 2, as VCMI).
-  - Xeron's Devils get +1 speed (B7: 23/23/12; H-2, as the packs have it).
+  - T10b: the Golden Bow removes the Ballista's range penalty (R8: 23, 17, 20; open 2, as VCMI).
 - Not staged: D8 (Cloak of the Undead King, E08–E10), Q22.
 
 ## 3. Artifacts in the derivation (T10)
 
 T4b1 implemented the effect sources (`h3_heroes` `derive.rs`, `effects`: skills at their levels,
-worn artifacts per copy with a combination's parts, `needs_skill`, the specialty; HER-BAT-001)
-and the primary skills and Tactics from them. Left for T10:
-
-- **Which effects count:** each equipped artifact type counts once, except `primary_skills`
-  (per copy, done); a skill specialty grows only the skill's own values, not the artifacts' (as
-  VCMI).
-- **Pending** (no battle effect in E04a): see `packs/README.md`, "What the harvested artifacts
-  leave out"; Necromancy goes with the Necromancy skill (E08–E10), not T9.
+worn artifacts per copy with a combination's parts, `needs_skill`, the specialty; HER-BAT-001);
+each artifact type counts once except `primary_skills` (HER-BAT-003, HER-BAT-008). **Pending**
+(no battle effect in E04a): see `packs/README.md`, "What the harvested artifacts leave out";
+Necromancy goes with the Necromancy skill (E08–E10).
 
 ## 4. `BattleHero` (read by T5–T7, T9, T10)
 
@@ -88,9 +79,9 @@ become several effects) and `StatOp { Add, PercentBp }`. What the tasks still ha
   and the Ballista's chance at most 10 000, Tactics and school levels at most 3, the spell
   book's spells of the ruleset and not creature abilities; it does not check the primary-skill
   limits (any `u8` is accepted).
-- **The derivation fills the rest:** `effects` from artifacts and specialties other than morale,
-  luck and no-retreat (T10; morale and luck since T5b, HER-BAT-003; `NoRetreat` since T9a,
-  HER-BAT-006; at most 64 in all), magic (E04b); damage bonuses since T6b (HER-BAT-004, applied
+- **The derivation fills the rest:** `effects` — the traits (T10b) and the alignment group
+  (T10c; morale and luck since T5b, HER-BAT-003; `NoRetreat` since T9a, HER-BAT-006; stack
+  statistics since T10a, HER-BAT-008; at most 64 in all, more is an error), magic (E04b); damage bonuses since T6b (HER-BAT-004, applied
   by BAT-HER-004), war-machine control since T7 (HER-BAT-005, applied by BAT-WAR-006/007), the
   surrender discount since T9b (HER-BAT-007, applied by BAT-FLE-002). Sums that can exceed the
   field types saturate; `surrender_discount_bp` is clamped to 10 000 like `reduction_bp`.
@@ -108,11 +99,10 @@ Tent); the **Catapult** is left out outside sieges, and the battle keeps rejecti
 
 ## 6. The hero's effects in the battle state (T5, T10)
 
-- **Battle-long stat effects are applied once at setup.** T5a implemented the hero's attack and
-  defense (BAT-HER-002, `Stack::new`: creature, native terrain, hero; war machines included).
-  T10 adds the `StackStat` effects after them (percentages of the creature's own value, computed
-  before any addition). Traits such as regeneration or no range penalty become stack traits. The
-  pool (ADR-0012) keeps what changes during a battle; its evaluation starts from these bases.
+- **Battle-long stat effects are applied once at setup** (BAT-HER-002 since T5a, the `StackStat`
+  effects BAT-HER-005 since T10a, `Stack::new`). T10b: traits such as regeneration or no range
+  penalty become stack traits. The pool (ADR-0012) keeps what changes during a battle; its
+  evaluation starts from these bases.
 - **Morale and luck effects become side modifiers:** done in T5b (BAT-HER-003, `h3_battle`
   `morale.rs`): both heroes' changes summed and their caps combined per side and stat, so 4 per
   side and `MODIFIER_CAPACITY` 28 (the sketch's per-hero keys would have needed 36 for the same

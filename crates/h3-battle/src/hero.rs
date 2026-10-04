@@ -6,10 +6,13 @@
 //! the ranges where the rules are defined. Values no real hero could have (attack 200) are
 //! accepted; keeping a hero within the game's limits is the derivation's job (HER-BAT-001).
 
-use h3_content::{CreatureSelector, FULL_BP, HeroTypeId, MAX_SKILL_LEVEL, Ruleset, SpellCategory};
+use h3_content::{
+    CreatureFlag, CreatureSelector, CreatureStat, CreatureType, CreatureTypeId, FULL_BP,
+    HeroTypeId, MAX_SKILL_LEVEL, Ruleset, SpellCategory,
+};
 use h3_contracts::{
     BallistaControl, BattleEffect, BattleHero, BattleSide, DamageBonuses, MAX_BATTLE_EFFECTS,
-    TentControl,
+    StatOp, TentControl,
 };
 use h3_kernel::{CanonicalHash, StateHasher};
 
@@ -64,6 +67,57 @@ pub(crate) struct HeroRecord {
 // rule: BAT-FLE-001
 pub(crate) fn may_retreat(heroes: &[Option<HeroRecord>; 2], side: BattleSide) -> bool {
     heroes[side.index()].is_some() && !heroes.iter().flatten().any(|h| h.no_retreat)
+}
+
+/// The changes a hero's `StackStat` effects make to the statistics of a stack of creature `id`
+/// (BAT-HER-005), in the order of [`CreatureStat::ALL`]: every effect whose creatures include `id`
+/// adds its amount, or its share in basis points of the creature's own value (rounded up for
+/// `PercentBp`, down for `PercentBpDown`). War machines keep their speed (batch 1b R8).
+// rule: BAT-HER-005
+pub(crate) fn stat_changes(
+    ruleset: &Ruleset,
+    hero: Option<&BattleHero>,
+    (id, creature): (CreatureTypeId, &CreatureType),
+) -> [i64; 6] {
+    let own = |stat| match stat {
+        CreatureStat::Attack => i64::from(creature.attack),
+        CreatureStat::Defense => i64::from(creature.defense),
+        CreatureStat::Speed => i64::from(creature.speed),
+        CreatureStat::HitPoints => i64::from(creature.hit_points),
+        CreatureStat::MinDamage => i64::from(creature.damage_min),
+        CreatureStat::MaxDamage => i64::from(creature.damage_max),
+    };
+    let machine = creature.flags.contains(CreatureFlag::WarMachine);
+    let mut changes = [0i64; 6];
+    let effects = hero.map(|h| h.effects.as_slice()).unwrap_or_default();
+    for effect in effects {
+        let BattleEffect::StackStat {
+            creatures,
+            stat,
+            op,
+            amount,
+        } = *effect
+        else {
+            continue;
+        };
+        if !creatures.matches(ruleset, id) || (machine && stat == CreatureStat::Speed) {
+            continue;
+        }
+        let amount = i64::from(amount);
+        let bp = i64::from(FULL_BP);
+        let change = match op {
+            StatOp::Add => amount,
+            StatOp::PercentBp => -(-own(stat) * amount).div_euclid(bp),
+            StatOp::PercentBpDown => (own(stat) * amount).div_euclid(bp),
+        };
+        // `CreatureStat::ALL` lists every statistic.
+        let i = CreatureStat::ALL
+            .iter()
+            .position(|&s| s == stat)
+            .unwrap_or_default();
+        changes[i] += change;
+    }
+    changes
 }
 
 /// The damage bonuses of `side` (none without a hero; BAT-HER-004).
@@ -189,7 +243,7 @@ pub(crate) fn check(
 }
 
 /// The creature type an effect names, if any.
-fn creature_of(effect: &BattleEffect) -> Option<h3_content::CreatureTypeId> {
+fn creature_of(effect: &BattleEffect) -> Option<CreatureTypeId> {
     let selector = match effect {
         BattleEffect::StackStat { creatures, .. }
         | BattleEffect::Regeneration { creatures, .. }
