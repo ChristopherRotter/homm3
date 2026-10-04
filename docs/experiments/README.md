@@ -51,7 +51,7 @@ written into the spec.
 |---|---|---|
 | smoke (`E04a-smoke.h3m`) | prove that the game accepts our files | **works** (user, 2026-10-03) |
 | 1a (`E04a-batch-1a`) | Q23 damage rounding (three encounters that separate exact, single, double and x87-style arithmetic), Q21 death stare, the hero's attack in the Ballista, Basic Artillery and First Aid control, Ballista ammunition (S-01), Elixir of Life regeneration (S-04), the Swordsman specialties (S-03) | **evaluated** (2026-10-03): `docs/epics/E04a-design.md`, "Batch 1a results"; the First Aid Tent with the skill is left for 1b |
-| 1b | tactics, retreat, surrender, outcome inputs, artifacts (T8–T10; `docs/rules/surveys/README.md`) | later |
+| 1b (`E04a-batch-1b`) | tactics: zone, war machines, placement rules, the disabled Tactics formation (OQ-1–OQ-3); surrender price, discounts and consent (D-1, D-2, D-5); Shackles of War against a monster (D-6); experience for war machines and with Learning, captured war machines (D-3, OQ-6, OQ-5); Necromancy rounding (D-7); the commanded First Aid Tent (T7b leftovers); war machines with creature artifacts and the Golden Bow, the Ballista's range penalty (artifacts open 1–2); Angelic Alliance mixing (artifacts D1); Xeron's speed (H-2) | **delivered** (2026-10-04), waiting for the user; not staged: D8 (an E08–E10 input) |
 
 **How the user plays** (2026-10-03): the Complete edition's `Heroes3.exe` started through a HotA
 installation's HD Mod launcher (HD Mod 5.6 R9). The HD Mod's always-on changes are crash fixes; its

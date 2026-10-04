@@ -20,7 +20,7 @@ task has to do with them:
 - **T6** (done): quirk Q-0005 (T6a, BAT-DMG-002, R1–R3 as fixtures); the hero's damage
   bonuses enter as single-precision rates of their summed basis points (T6b, BAT-HER-004).
 - **T7** (done): R5 → BAT-WAR-005, R6/R7 → BAT-WAR-006/007 and HER-BAT-005, Q-0004 →
-  BAT-WAR-002. Still to observe (batch 1b): the commanded tent's Wait/Defend, target choice and
+  BAT-WAR-002. Still to observe (batch 1b, R7): the commanded tent's Wait/Defend, target choice and
   heal amounts (R6's Golems destroyed it) — stage troops hurt before the tent's first turn.
 - **T10** (T3b put the values into the packs): Elixir of Life on Trolls shows 54 hit points: +25 % of the creature's base (40 → 50)
   plus the parts' flat +4 (Ring of Vitality, Ring of Life, Vial of Lifeblood); regeneration restores

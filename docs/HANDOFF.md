@@ -4,6 +4,18 @@ Living state. The last agent updates this at the end of every session; the next 
 
 ---
 
+## 2026-10-04 (tenth session) — E04a T2: experiment batch 1b delivered
+
+**State:** branch `e04a-heroes-in-battle`, `cargo xtask verify` green (also `--with-original-data`). Scope chosen by the user at the start: **design batch 1b alone** (no T8 this session, so T8–T10 start from the results). Nothing half-done; no code changed.
+
+**Batch 1b:** spec `experiments/specs/E04a-batch-1b.toml` (predictions per hypothesis inside), results template `experiments/results/E04a-batch-1b.md` (committed, for the user to fill in), map `experiments/out/E04a-batch-1b.h3m` (gitignored; also copied into the user's repo folder). Ten encounters, eight Red heroes (the per-player maximum) and seven Blue: R1 Angelic Alliance mixing (artifacts D1; four morale readings, one save load), R2 tactics zone, war machines, speed, path rule, move order (OQ-2, OQ-3), R3 disabled Tactics formation (OQ-1), R4 surrender price, discounts and consent (D-1, D-2, D-5; an optional second game with Blue as computer if hot seat shows no consent step), R5 experience with killed war machines and Expert Learning, captured Ammo Cart (D-3, OQ-6, OQ-5), R6 Necromancy rounding (D-7; stacks 6/6/6/14/17 separate five models), R7 commanded First Aid Tent (target, Wait/Defend, the Ballista as patient, 8 heal amounts) plus the automatic Ballista's damage at long range, R8 war machines with speed/HP artifacts and the Golden Bow (artifacts open 1–2), B6 Shackles of War against a monster (D-6), B7 Xeron's speed (H-2). Not staged: D8 (E08–E10 input), Q22. The tool needed no change. Docs: `docs/experiments/README.md` (status), survey README (pointer), epic T2.
+
+**Next:** the user plays batch 1b (plain HD, hot seat, difficulty Normal or easier) and fills in the template. Then: evaluate against the spec's predictions (catalog observation sources, quirks ledger, OPEN-QUESTIONS), adjust `E04a-design.md` §5/§7 (T8/T9 design) to the results, then T8. If the user wants to proceed before playing: T10 parts not touched by the batch (creature specialties, stat artifacts on creatures).
+
+**Traps:** a player may have at most eight heroes on the map, so batch specs run out of Red heroes first (Blue's own encounters run on Blue's turn). Wandering monsters act on their own in battle; use a Blue hero (hot seat) whenever a procedure needs the opponent to hold still or aim. Sandbox and sync as before (bundle in `Claude outputs/`, deleted afterwards; delete permission for the repo folder).
+
+---
+
 ## 2026-10-04 (ninth session) — E04a T7 done (T7a and T7b: the hero-run Ballista and First Aid Tent)
 
 **State:** branch `e04a-heroes-in-battle`, `cargo xtask verify` green (also `--with-original-data`). Scope chosen by the user at the start: T7 split into **T7a** (Ballista) and **T7b** (First Aid Tent and the `Heal` command), both this session as separate checkpoints. Nothing half-done.

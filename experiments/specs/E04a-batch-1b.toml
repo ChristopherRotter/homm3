@@ -1,0 +1,427 @@
+# Experiment batch 1b (E04a T2): tactics, retreat and surrender, the battle outcome, the commanded
+# First Aid Tent, war machines and artifacts. Input for T8 (tactics), T9 (retreat, surrender,
+# outcome) and T10 (artifacts and specialties); disputes from docs/rules/surveys/README.md
+# (column "Batch") and the T7b leftovers (docs/epics/E04a-design.md, "Batch 1a results").
+# Build: see docs/experiments/README.md. Predictions are for the agent who evaluates the results;
+# the template never shows them.
+#
+# Played with plain HD (HD+ off), as agreed after batch 1a. Terrain dirt: native only to
+# Necropolis creatures, and none of them fights here. Heroes have resource or adventure
+# specialties unless the encounter is about a specialty; no spell books (custom artifacts and an
+# empty spell list); no luck sources, so no lucky strikes. Hero levels: experience 0 (level 1).
+# Not staged: D8 (Cloak of the Undead King, an E08-E10 input), Q22 (see the README), the
+# E04b/E04c disputes.
+
+[map]
+name = "E04a batch 1b"
+description = "Engine-generated experiment map (E04a T2, batch 1b). Play it in hot seat with Red and Blue as human players and follow the results template."
+size = 36
+terrain = "dirt"
+instructions = [
+    "Copy `E04a-batch-1b.h3m` into `D:\\Heroes3\\HoMM 3 Complete\\Maps`.",
+    "Use the HD launcher with plain HD (HD+ off).",
+    "Start the map in hot seat: *New Game → Multiplayer → Hot Seat*, two players, Red and Blue both human, difficulty 100 % (Normal) or easier, so that both players start with gold (R4 needs it). In the battles against Blue's heroes (R3–R7) you control both sides.",
+    "Save right away (for example `batch1b`). Do R1 first: it loads this save once.",
+    "On day 1, play Red's encounters R1–R8 (R1 first, the others in any order). Then end Red's turn and do B6 and B7 on Blue's turn.",
+    "In battle, the combat log at the bottom shows each strike's damage and each heal (scroll it with its arrow); right-click a stack to see its values. When a stack gets an extra turn from good morale, let it Defend unless the encounter says otherwise.",
+    "Where an encounter says *retreat*, end the battle with Retreat (Red loses that hero, which is intended). Use Auto combat only where an encounter allows it: some battles need a particular order of kills.",
+    "Fill in this file (anything unexpected goes into the last line of an encounter) and keep it in the repo.",
+]
+
+# --- T10: Angelic Alliance and army alignment -----------------------------------------------------
+
+[[encounter]]
+id = "R1"
+title = "Angelic Alliance: which creatures may mix without a morale penalty"
+questions = ["artifacts D1"]
+procedure = [
+    "Right after saving: open R1's hero screen and right-click the morale icon. Note the morale value and the lines of its explanation (the army: Pikemen, Centaurs, Pixies, Peasants).",
+    "Dismiss the Peasants (select the stack, then the dismiss button). Note morale and explanation again (Pikemen, Centaurs, Pixies).",
+    "Load the save. Open R1's hero screen again and dismiss the Pixies. Note morale and explanation (Pikemen, Centaurs, Peasants).",
+    "Also dismiss the Peasants. Note morale and explanation (Pikemen, Centaurs).",
+]
+predictions = """
+Readings (1) Castle+Rampart+Conflux+neutral, (2) Castle+Rampart+Conflux, (3) Castle+Rampart+neutral,
+(4) Castle+Rampart. Normal rule (BAT-MOR-002): one alignment +1, else 2 - n; neutral creatures are
+one alignment of their own.
+- VCMI (every non-evil faction counts as one; Conflux and neutral are non-evil): +1 +1 +1 +1.
+- Our packs (AA groups Castle, Rampart, Tower, Fortress, Stronghold; Conflux and neutral apart):
+  -1 0 0 +1.
+- Wiki SoD branch (Conflux or neutral creatures in the army cancel the AA's effect): -2 -1 -1 +1.
+- Only Conflux cancels: -2 -1 0 +1.   Only neutral creatures cancel: -2 0 -1 +1.
+- The AA has no alignment effect at all (control): -2 -1 -1 0.
+"""
+[encounter.hero]
+type = "Caitlin"
+specialty = "resource gold"
+primary = [0, 0, 1, 1]
+army = [["Pikeman", 5], ["Centaur", 5], ["Pixie", 5], ["Peasant", 5]]
+artifacts = { "right hand" = "Angelic Alliance" }
+[[encounter.record]]
+table = ["reading", "morale", "explanation (its lines)"]
+rows = 4
+[[encounter.record]]
+field = "Anything unexpected"
+
+# --- T8: tactics ----------------------------------------------------------------------------------
+
+[[encounter]]
+id = "R2"
+title = "Tactics phase: zone, war machines, placement"
+questions = ["OQ-2", "OQ-3"]
+procedure = [
+    "Attack the Peasants. A tactics phase should start before round 1 (Expert Tactics against a monster without a hero).",
+    "Before moving anything, look at the highlighted zone: in the top row and in the second row, which is the zone's rightmost hex, counted from that row's leftmost hex (1 = leftmost)? Hexes with a stack or an obstacle inside the zone count too.",
+    "Click the Ballista and the First Aid Tent: can either be selected or moved?",
+    "Which buttons are available during the phase? Is Retreat available (do not retreat)?",
+    "Select the Peasants (speed 3): can they move to a free hex of the zone more than 3 hexes away (for example from their place to the zone's far corner in another row)?",
+    "Move one stack twice: allowed? Can you pick any stack yourself (click it), or does the game hand you the stacks in a fixed order?",
+    "Pick an empty hex in the top row inside the zone, away from its left and right edge. Move four Pikemen onto the hexes left and right of it and the two hexes touching it from below. Then select the Peasants: can they move into the enclosed hex (is it highlighted)? Then select the Pixies (flyers): can they?",
+    "End the tactics phase and finish the battle any way (Auto combat is fine).",
+]
+predictions = """
+VCMI: the zone is the raw columns 1..7 of every row (Expert = 1 + 3 x 2 against no Tactics), so 7 and 7
+(the rows are shifted by half a hex, so the edge zig-zags); war machines cannot be moved; Retreat
+is allowed (VCMI and wiki: "may retreat or surrender" during the phase); speed does not limit a
+tactics move (any reachable hex in the zone); any stack, any number of times, in any order; the
+walker needs a path, so the enclosed hex is not available to the Peasants but is to the Pixies.
+Free placement (no path rule): the enclosed hex is available to both. A zone with a straight edge
+would give 7 and 6 (or 7 and 8). Our design note (E04a-design 7) assumed round-1 order, cycling.
+"""
+[encounter.hero]
+type = "Kyrre"
+specialty = "skill Logistics"
+primary = [0, 0, 1, 1]
+skills = [["Tactics", 3]]
+army = [["Pikeman", 1], ["Pikeman", 1], ["Pikeman", 1], ["Pikeman", 1], ["Peasant", 5], ["Pixie", 5]]
+artifacts = { "war machine 1" = "Ballista", "war machine 3" = "First Aid Tent" }
+[encounter.opponent]
+monster = "Peasant"
+count = 3
+[[encounter.record]]
+field = "Zone: rightmost hex in the top row / in the second row"
+[[encounter.record]]
+field = "Ballista or Tent selectable or movable (yes/no)"
+[[encounter.record]]
+field = "Buttons during the phase; Retreat available (yes/no)"
+[[encounter.record]]
+field = "Peasants moved more than 3 hexes (yes/no)"
+[[encounter.record]]
+field = "A stack moved twice (yes/no); stacks picked freely or in a fixed order"
+[[encounter.record]]
+field = "Enclosed hex available to the Peasants / to the Pixies (yes/no each)"
+[[encounter.record]]
+field = "Anything unexpected"
+
+[[encounter]]
+id = "R3"
+title = "Tactics: does a disabled Tactics formation still cancel the enemy's Tactics?"
+questions = ["OQ-1"]
+procedure = [
+    "Before attacking, open R3's hero screen and switch the Tactics formation off (the tactics button next to the formation buttons; its tooltip reads *Disable Tactics formation* or similar).",
+    "Attack Blue's hero B1 (Basic Tactics, formation on). Does a tactics phase start, and for which side? If one starts, note the zone's outermost hex in the top row, counted from that side's edge (1 = the hex at the edge).",
+    "Retreat with Red (or end the tactics phase and retreat in round 1).",
+]
+predictions = """
+R3 Advanced Tactics with the formation off, B1 Basic Tactics. VCMI: the toggle drops only R3's own
+phase; its Tactics still blocks B1's -> no phase. If the toggle removes R3's Tactics altogether:
+B1 gets a Basic phase (zone 3). If the toggle does not matter in battle: R3 gets a phase of Advanced
+- Basic = Basic (zone 3).
+"""
+[encounter.hero]
+type = "Gunnar"
+specialty = "skill Logistics"
+primary = [0, 0, 1, 1]
+skills = [["Tactics", 2]]
+army = [["Pikeman", 10]]
+[encounter.opponent.hero]
+type = "Dessa"
+specialty = "skill Logistics"
+name = "B1"
+primary = [0, 0, 1, 1]
+skills = [["Tactics", 1]]
+army = [["Pikeman", 10]]
+[[encounter.record]]
+field = "Tactics phase: none / Red / Blue"
+[[encounter.record]]
+field = "If one: outermost zone hex in the top row"
+[[encounter.record]]
+field = "Anything unexpected"
+
+# --- T9: retreat, surrender, the outcome --------------------------------------------------------
+
+[[encounter]]
+id = "R4"
+title = "Surrender: price, discounts, and whether the enemy may refuse"
+questions = ["D-1", "D-2", "D-5"]
+procedure = [
+    "Attack Blue's hero B2.",
+    "At Red's first stack turn in round 1, press Surrender. Write down exactly what appears (text, price, buttons), then decline. Press Surrender again right away: what happens? Decline again.",
+    "At Blue's first stack turn, press Surrender for Blue. Note the price, then decline.",
+    "Play on until both sides have lost some creatures (Red's Ballista shoots on its own). At a Red turn, right-click to note the counts of Red's Pikemen, Red's Pixies and Blue's Pikemen, then press Surrender: note the price and decline.",
+    "Note Red's gold (resource bar). Press Surrender and accept. Is Blue asked whether to accept? If so, refuse once with Blue, play on, offer again in the next round and accept with Blue this time. Note the messages and Red's gold afterwards.",
+    "Only if Blue was never asked in step 5: start a new single-player game of this map with Blue as a computer player. With R4, attack B2 and press Surrender in round 1 and accept: does the computer accept? If the battle goes on, try again in rounds 2 and 3.",
+]
+predictions = """
+Red: 7 Pikemen (60) + 1 Pixie (25) = 445 gold of army, plus a Ballista (2500). Blue: 10 Pikemen = 600
+with Basic Diplomacy (20 %), Statesman's Medal and Diplomat's Ring (10 % each).
+Red's price, step 2 (D-1): wiki half of the army 222 (222.5 rounded down) or 223 | VCMI full 445 |
+if war machines counted: half 1472/1473, full 2945.
+Blue's price, step 3 (D-2): half / full x additive 60 % -> 180 / 360 | multiplicative 0.8 x 0.9 x 0.9
+= 64.8 % -> 194 (194.4) / 388 (388.8) | largest only 80 % -> 240 / 480 | no discount 300 / 600.
+Step 4: the same factor applied to the current counts (VCMI and wiki: remaining creatures).
+D-5: wiki "the enemy may refuse a surrender" (HotA: cannot); VCMI: no consent step. The dialog
+text GENRLTXT 37-39 ("%s states: I will accept your surrender ... for %d gold") is shown to the
+side that surrenders. Our design note (E04a-design 7): one offer per side and round.
+"""
+[encounter.hero]
+type = "Sylvia"
+specialty = "skill Navigation"
+primary = [0, 0, 1, 1]
+army = [["Pikeman", 7], ["Pixie", 1]]
+artifacts = { "war machine 1" = "Ballista" }
+[encounter.opponent.hero]
+type = "Octavia"
+specialty = "resource gold"
+name = "B2"
+primary = [0, 0, 1, 1]
+skills = [["Diplomacy", 1]]
+army = [["Pikeman", 10]]
+artifacts = { "neck" = "Statesman's Medal", "right ring" = "Diplomat's Ring" }
+[[encounter.record]]
+field = "Step 2: what appeared (text, price, buttons)"
+[[encounter.record]]
+field = "Step 2: Surrender pressed again right away"
+[[encounter.record]]
+field = "Step 3: Blue's price"
+[[encounter.record]]
+field = "Step 4: Red Pikemen, Red Pixies, Blue Pikemen; Red's price"
+[[encounter.record]]
+field = "Step 5: was Blue asked? What happened (messages)"
+[[encounter.record]]
+field = "Step 5: Red's gold before / after"
+[[encounter.record]]
+field = "Step 6 (only if played): computer accepted or refused, in which rounds"
+[[encounter.record]]
+field = "Anything unexpected"
+
+[[encounter]]
+id = "R5"
+title = "Experience: killed war machines, Learning on the +500, captured war machines"
+questions = ["D-3", "OQ-6", "OQ-5"]
+procedure = [
+    "Note R5's experience on the hero screen (0).",
+    "Attack Blue's hero B3. In round 1, destroy the Ballista with one Archangel stack and the First Aid Tent with another; B3's Gold Golem Defends. Do not attack the Ammo Cart. Then kill the Gold Golem with the third stack (or in round 2). No Auto combat.",
+    "Note the experience in the victory message (*For valor in combat, R5 receives … experience*).",
+    "Accept any level-up offers. Open R5's hero screen: does R5 now have an Ammo Cart (or any war machine)?",
+]
+predictions = """
+Killed: Gold Golem 50 HP, Ballista 250, Tent 75; +500 for the defeated hero; Expert Learning +15 %.
+Learning on the whole sum: wiki (war machines do not count) floor(550 x 1.15) = 632 (632.5) |
+VCMI (they count) floor(875 x 1.15) = 1006 (1006.25).
+Learning only on the creatures' part: 57 + 500 = 557 | 431 + 500 = 931.
+No Learning at all (control): 550 | 875. Rounding to nearest instead of down: 633 / 1006 / 558 / 431.
+OQ-5: VCMI: the loser's surviving war machines vanish (no capture); wiki silent.
+"""
+[encounter.hero]
+type = "Jenova"
+specialty = "resource gold"
+primary = [0, 0, 1, 1]
+skills = [["Learning", 3]]
+army = [["Archangel", 3], ["Archangel", 3], ["Archangel", 3]]
+[encounter.opponent.hero]
+type = "Aine"
+specialty = "resource gold"
+name = "B3"
+primary = [0, 0, 1, 1]
+army = [["Gold Golem", 1]]
+artifacts = { "war machine 1" = "Ballista", "war machine 2" = "Ammo Cart", "war machine 3" = "First Aid Tent" }
+[[encounter.record]]
+field = "Experience before the battle"
+[[encounter.record]]
+field = "Experience in the victory message"
+[[encounter.record]]
+field = "Order of kills as played; did the Ammo Cart survive?"
+[[encounter.record]]
+field = "War machines of R5 after the battle"
+[[encounter.record]]
+field = "Anything unexpected"
+
+[[encounter]]
+id = "R6"
+title = "Necromancy: rounding per killed stack or over the sum"
+questions = ["D-7"]
+procedure = [
+    "Attack Blue's hero B4 and kill all five Pikeman stacks (any order; no Auto combat needed, but it is allowed if no Archangel stack dies).",
+    "After the battle, note the number of Skeletons in the Necromancy message (*… able to raise … Skeletons*) and R6's Skeletons on the hero screen.",
+]
+predictions = """
+Basic Necromancy 10 %; Pikemen (10 HP) count fully (at least 6 HP). B4's stacks 6, 6, 6, 14, 17 ->
+shares 0.6, 0.6, 0.6, 1.4, 1.7. VCMI (one sum, rounded down, at least 1): 49 x 0.1 = 4.9 -> 4.
+Per stack (wiki SoD: "every killed stack individually ... always rounded towards 1"): rounded down
+but at least 1 each -> 5 | rounded up -> 7 | to nearest -> 6 | rounded down, at least 1 in total -> 2.
+"""
+[encounter.hero]
+type = "Clavius"
+specialty = "resource gold"
+primary = [0, 0, 1, 1]
+skills = [["Necromancy", 1]]
+army = [["Archangel", 3], ["Archangel", 3], ["Archangel", 3]]
+[encounter.opponent.hero]
+type = "Rissa"
+specialty = "resource mercury"
+name = "B4"
+primary = [0, 0, 1, 1]
+army = [["Pikeman", 6], ["Pikeman", 6], ["Pikeman", 6], ["Pikeman", 14], ["Pikeman", 17]]
+[[encounter.record]]
+field = "Skeletons in the Necromancy message"
+[[encounter.record]]
+field = "Skeletons in R6's army afterwards"
+[[encounter.record]]
+field = "Anything unexpected"
+
+# --- T7 leftovers and T10: war machines ---------------------------------------------------------
+
+[[encounter]]
+id = "R7"
+title = "First Aid Tent under the hero's control: targets, Wait/Defend, heal amounts; Ballista at long range"
+questions = ["T7b (BAT-WAR-007)", "artifacts open 2 (baseline)"]
+procedure = [
+    "Attack Blue's hero B5. Every round, Red's Behemoths and Peasants Defend. Blue's Archers always shoot (never Defend): aim them so that before the tent's turn one Behemoth stack's top Behemoth has at most 110 of its 160 *Health Left*; spare volleys go to the Peasants. Never kill a Behemoth stack. In round 1, one volley goes to Red's Ballista.",
+    "At the tent's first turn: can you choose whom to heal? Are Wait and Defend available? Can you pick the hurt Ballista as the target? If Wait is there, use it once: does the tent get its turn again later in the round?",
+    "At each tent turn, right-click the Behemoth stack you heal (*Health Left*), heal it and note the amount from the log (*The First Aid Tent heals the Behemoth removing … points of damage*).",
+    "Red's Ballista shoots on its own at the Archers (no Artillery). Note the damage of each of its shots from the log.",
+    "Go on until 8 heals are noted, then retreat with Red.",
+]
+predictions = """
+Heal at Basic First Aid: random 1..50 (code reading, installation.md 7.5; our BAT-WAR-007), the tent
+waits for a command only while an ally is hurt; Wait and Defend: VCMI yes (OQ-4); the Ballista as a
+patient: our rule and VCMI no (war machines are not patients).
+Ballista (no Artillery): damage range (2..3) x (attack 4 + 1) = 10..15; attack 10 + 4 = 14 vs the
+Archers' defense 3: +55 %. Full damage 15 17 18 20 21 23; with the range penalty (distance > 10,
+VCMI and our BAT-RNG-002) 7 8 9 10 11.
+"""
+[encounter.hero]
+type = "Damacon"
+specialty = "resource gold"
+primary = [4, 0, 1, 1]
+skills = [["First Aid", 1]]
+army = [["Behemoth", 3], ["Behemoth", 3], ["Peasant", 30]]
+artifacts = { "war machine 1" = "Ballista", "war machine 3" = "First Aid Tent" }
+[encounter.opponent.hero]
+type = "Calid"
+specialty = "resource sulfur"
+name = "B5"
+primary = [0, 0, 1, 1]
+army = [["Archer", 25], ["Archer", 25]]
+[[encounter.record]]
+field = "Tent: target chosen by you (yes/no); Wait / Defend available; Ballista as target (yes/no)"
+[[encounter.record]]
+field = "After Wait: did the tent act again later in the round?"
+[[encounter.record]]
+table = ["round", "Health Left before", "healed"]
+rows = 8
+[[encounter.record]]
+field = "Ballista damage per shot"
+[[encounter.record]]
+field = "Anything unexpected"
+
+[[encounter]]
+id = "R8"
+title = "War machines and creature artifacts: health, speed, Golden Bow on the Ballista"
+questions = ["artifacts open 1", "artifacts open 2"]
+procedure = [
+    "Before attacking, right-click the Pikemen on R8's hero screen: note Health and Speed.",
+    "Attack the Archers. At the start of round 1, right-click the Ballista, the Ammo Cart and the First Aid Tent: note Health and Speed of each.",
+    "The Pikemen Defend every round. Note the damage of each of the Ballista's first three shots (it shoots on its own), then finish the battle any way (Auto combat is fine).",
+]
+predictions = """
+Artifacts: Cape of Velocity +2 and Necklace of Swiftness +1 speed; Ring of Vitality +1, Ring of Life +1,
+Vial of Lifeblood +2 hit points. Pikemen (control): 14 health, speed 7.
+Open 1 - VCMI (machines attach to the hero's army): Ballista 254 / 3, Ammo Cart 104 / 3, Tent 79 / 3.
+Not applied to machines: 250 / 0, 100 / 0, 75 / 0.
+Open 2 - same Ballista numbers as R7 (attack 4, Archers' defense 3): VCMI (the Golden Bow covers the
+Ballista) full damage 15 17 18 20 21 23 at any distance; otherwise as R7 (7 8 9 10 11 if the Ballista
+has the range penalty at all).
+"""
+[encounter.hero]
+type = "Saurug"
+specialty = "resource gems"
+primary = [4, 0, 1, 1]
+army = [["Pikeman", 60]]
+[encounter.hero.artifacts]
+"shoulders" = "Cape of Velocity"
+"neck" = "Necklace of Swiftness"
+"right ring" = "Ring of Vitality"
+"left ring" = "Ring of Life"
+"misc 1" = "Vial of Lifeblood"
+"misc 2" = "Golden Bow"
+"war machine 1" = "Ballista"
+"war machine 2" = "Ammo Cart"
+"war machine 3" = "First Aid Tent"
+[encounter.opponent]
+monster = "Archer"
+count = 30
+[[encounter.record]]
+field = "Pikemen on the hero screen: Health, Speed"
+[[encounter.record]]
+table = ["war machine", "Health", "Speed"]
+rows = 3
+[[encounter.record]]
+field = "Ballista damage per shot"
+[[encounter.record]]
+field = "Anything unexpected"
+
+# --- Blue's turn: Shackles of War, Xeron ----------------------------------------------------------
+
+[[encounter]]
+id = "B6"
+title = "Shackles of War against a monster: can the wearer retreat?"
+questions = ["D-6"]
+procedure = [
+    "On Blue's turn, attack the Peasants with B6.",
+    "At B6's first stack turn, press Retreat. Note exactly what happens (message text). If the game asks *Are you sure you want to retreat?*, answer No.",
+    "Finish the battle any way (Auto combat is fine).",
+]
+predictions = """
+Wiki (SoD; "in HotA the effect is active in hero-to-hero battles only") and the artifact text
+("neither you nor your opponent may retreat or surrender"): "The Shackles of War are present. B6
+can not retreat!" (GENRLTXT 397). VCMI (follows HotA): retreat allowed, the confirmation appears.
+"""
+[encounter.hero]
+type = "Sephinroth"
+specialty = "resource crystal"
+owner = "blue"
+primary = [0, 0, 1, 1]
+army = [["Archangel", 1]]
+artifacts = { "misc 1" = "Shackles of War" }
+[encounter.opponent]
+monster = "Peasant"
+count = 5
+[[encounter.record]]
+field = "What happened when Retreat was pressed (message)"
+[[encounter.record]]
+field = "Anything unexpected"
+
+[[encounter]]
+id = "B7"
+title = "Xeron's specialty: does it raise the Devils' speed?"
+questions = ["H-2"]
+procedure = [
+    "On Blue's turn, open Xeron's hero screen (named B7) and right-click the Devils: note Attack, Defense and Speed as shown (Devil base values 19 / 21 / 11).",
+]
+predictions = """
+The executable's fixed-stat specialty record: Devils +4 attack, +2 defense, no speed field -> 23 / 23 / 11
+if the speed is not hard-coded elsewhere. Wiki and VCMI (and our packs): +1 speed -> 23 / 23 / 12.
+"""
+[encounter.hero]
+type = "Xeron"
+specialty = "creature stats Devil"
+owner = "blue"
+primary = [0, 0, 1, 1]
+army = [["Devil", 5]]
+[[encounter.record]]
+table = ["creature", "attack", "defense", "speed"]
+rows = 1
+[[encounter.record]]
+field = "Anything unexpected"

@@ -18,6 +18,8 @@ The skill, artifact and battle surveys were compiled by sub-agents and reviewed 
 
 *Batch 1a results (2026-10-03): `docs/epics/E04a-design.md`, "Batch 1a results"; Q21, Q23, D1, S-01–S-04, OQ-4 (Ballista), H-1 and the Ballista's attack are answered there.*
 
+*Batch 1b (2026-10-04): `experiments/specs/E04a-batch-1b.toml` stages every row marked 1b except D8 (the Cloak of the Undead King, an E08–E10 input), plus the commanded tent (T7b) and the Ballista's range penalty as the baseline for the Golden Bow; each encounter lists its rows under `questions`.*
+
 Collected from the surveys; ids point into them. "Observable in SoD" means the user can settle it with a staged battle (E04a T2). Batch 1 is split (user, Q30): **1a** for T5–T7, **1b** for T8–T10. Reading the game's code is allowed as a last resort (Q29); the First Aid reading (installation.md §7.5) settles two rows.
 
 | # | Question | Sources disagree | Needed by | Batch |
