@@ -1588,3 +1588,29 @@ numeric  = "integer"
   kind       = "design"
   ref        = "ADR-0013 point 8: the battle prices a surrender; funds come in through the setup. The factor and the resource are ruleset data (ADR-0006 tier 2)"
   confidence = "high"
+
+[[rule]]
+id       = "BAT-END-003"
+title    = "The outcome of a battle"
+context  = "battle"
+status   = "implemented"
+summary  = "Once the battle is over, BattleState::outcome reports facts for the orchestrator (ADR-0013 point 5): the result (victory, draw, retreat, surrender; BAT-END-001/002, BAT-FLE-001/002); per side every stack in stack order, dead ones included, as StackRecord { origin: army slot or war machine, creature, start: the count at the start, end: the count alive at the end, whatever the result }; the survivors (army stacks with end > 0, by slot) and surviving war machines derived from those records; the surrender's cost (the price paid, BAT-FLE-002) or none; per side the hero's mana left and the spells it cast (empty until E04b); the last round started (0 if the battle ended in the tactics phase). The battle applies no consequence: casualties, a retreating side's lost army, the payment, captured artifacts, experience (killed war machines give none; Learning multiplies the whole sum including the +500, batch 1b R5) and Necromancy (rounded down per killed stack, R6) are applied by the orchestrator with the epics that own hero progression (E08-E10)."
+numeric  = "integer"
+
+  [[rule.source]]
+  kind       = "design"
+  ref        = "ADR-0013 point 5 and E04a-design.md section 5: the outcome reports per-stack start and end counts, the surrender cost, per-hero results and rounds; the orchestrator applies the consequences"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "observation"
+  ref        = "experiments/results/E04a-batch-1b.md R5, R6 (SoD 4.0 Complete, plain HD, 2026-10-04): experience and Necromancy need the killed creatures per stack (Necromancy rounds per killed stack: 6, 6, 6, 14, 17 at 10 % raise 2 Skeletons)"
+  retrieved  = "2026-10-04"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "vcmi"
+  ref        = "server/battles/BattleResultProcessor.cpp (casualties per stack from the units' initial and alive counts, applied after the battle)"
+  url        = "https://github.com/vcmi/vcmi/blob/1.7.5/server/battles/BattleResultProcessor.cpp"
+  retrieved  = "2026-10-04"
+  confidence = "medium"

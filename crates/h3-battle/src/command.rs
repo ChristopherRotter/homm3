@@ -111,6 +111,7 @@ enum Plan {
     },
     Surrender {
         side: BattleSide,
+        price: u32,
     },
 }
 
@@ -265,10 +266,11 @@ fn surrender(
     ruleset: &Ruleset,
     side: BattleSide,
 ) -> Result<Plan, CommandError> {
-    if state.surrender_price(ruleset, side).is_none() {
-        Err(CommandError::CannotSurrender)
-    } else if state.may_surrender(ruleset, side) {
-        Ok(Plan::Surrender { side })
+    let Some(price) = state.surrender_price(ruleset, side) else {
+        return Err(CommandError::CannotSurrender);
+    };
+    if state.may_surrender(ruleset, side) {
+        Ok(Plan::Surrender { side, price })
     } else {
         Err(CommandError::CannotAffordSurrender)
     }
@@ -371,7 +373,10 @@ pub fn apply<S: Sink>(
         Plan::Pass { mover, phase } => tactics::pass(state, phase, mover, sink),
         Plan::EndTactics => tactics::end(state, ruleset, sink),
         Plan::Retreat { side } => leave(state, BattleResult::Retreat(side), sink),
-        Plan::Surrender { side } => leave(state, BattleResult::Surrender(side), sink),
+        Plan::Surrender { side, price } => {
+            state.surrender_cost = Some(price);
+            leave(state, BattleResult::Surrender(side), sink);
+        }
     }
     Ok(())
 }

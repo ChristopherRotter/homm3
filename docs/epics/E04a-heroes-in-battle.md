@@ -1,6 +1,6 @@
 # E04a — Heroes in battle (without magic)
 
-Status: **in progress** (refined 2026-10-01; T1–T8, T9a and T9b done by 2026-10-04; T9c next) · Follows E03 (closed 2026-10-01) · The former E04 was split by the user into three epics (OPEN-QUESTIONS Q27): **E04a** (this one), **E04b** battle magic, **E04c** sieges and special battlefields.
+Status: **in progress** (refined 2026-10-01; T1–T9 done by 2026-10-04; T10 next) · Follows E03 (closed 2026-10-01) · The former E04 was split by the user into three epics (OPEN-QUESTIONS Q27): **E04a** (this one), **E04b** battle magic, **E04c** sieges and special battlefields.
 
 ## Goal
 
@@ -65,10 +65,7 @@ Starting point, installation tables and the full record of done tasks (refinemen
 - [x] **T6 Skills that change damage** — done 2026-10-04 (T6a, T6b): quirk Q-0005, HER-BAT-004, BAT-HER-004; state hash v10, replay format v5.
 - [x] **T7 Hero-run war machines** — done 2026-10-04 (T7a, T7b): BAT-WAR-005/006/007, HER-BAT-005, quirk Q-0004, `Command::Heal`; state hash v12, replay format v7, action encoding v5, C ABI v3.
 - [x] **T8 Tactics** — done 2026-10-04 (one checkpoint, Q33): BAT-TAC-001/002, `tactics_zone_columns` (ruleset hash v12), `Command::EndTactics`, `Observation.tactics`; state hash v13, replay format v8, action encoding v6, C ABI v4.
-- [ ] **T9 Retreat, surrender and the richer outcome** — new `BattleResult` variants, casualties per side and creature type, hero fate, the inputs for experience, Necromancy and artifact capture; no application of them. Split with the user (2026-10-04) into three checkpoints in one session:
-  - [x] **T9a Retreat** — done 2026-10-04: BAT-FLE-001, HER-BAT-006, `BattleResult::Retreat`/`Surrender`, `Command::Retreat`; state hash v14, replay format v9, action encoding v7, C ABI v5.
-  - [x] **T9b Surrender** — done 2026-10-04: BAT-FLE-002, HER-BAT-007, `BattleSetup.funds`, battle parameter `surrender`, `Command::Surrender`; ruleset hash v13, state hash v15, replay format v10, action encoding v8, C ABI v6.
-  - [ ] **T9c The richer outcome** — per-stack records, surrender cost, hero results, rounds.
+- [x] **T9 Retreat, surrender and the richer outcome** — done 2026-10-04 in three checkpoints (T9a Retreat, T9b Surrender, T9c the outcome; split with the user, Q34): BAT-FLE-001/002, BAT-END-003, HER-BAT-006/007; `BattleResult::Retreat`/`Surrender`, `BattleSetup.funds`, the outcome's stack records; ruleset hash v13, state hash v16, replay format v10, action encoding v8, C ABI v6.
 - [ ] **T10 Artifacts and specialties without spells** — the effect primitives from the survey, stat and morale/luck artifacts, creature-stat and speed effects, war-machine artifacts, combination artifacts (assembly rules belong to the hero details), specialties of creature, skill and stat kinds. Spell-related ones are E04b.
 - [ ] **T11 Sim, FFI, CLI, scenarios** — heroes in the scenario and replay formats, the action encoding complete for retreat and surrender (T7b added heals as v5 with C ABI v3, T8 `EndTactics` as v6 with C ABI v4; T9 appends its commands), observation encoding v4 and its ABI bump, golden replays re-recorded with notes, benchmark baseline re-measured with the reason, hero-bearing scenarios in the `full` workload.
 - [ ] **T12 Closure** — fold the experiment results into the catalog (rules `verified` where observed), quirk ledger and profiles, independent review pass (rules against sources, robustness and security), HANDOFF, backlog, ADR-0013 revisions; the E03 hardening items that fit (work bound for death stare, random obstacles in the sim and C ABI).

@@ -377,6 +377,65 @@ proptest! {
     }
 }
 
+/// Plays `state` on with random legal commands, attacks first, until the battle is over (or a
+/// step limit): with `leave` the commands that leave the battle are among them.
+fn finish(state: &mut BattleState, r: &Ruleset, seed: u64, leave: bool) {
+    let mut agent = Rng::for_stream(seed, h3_kernel::StreamId::AGENT);
+    let mut legal = LegalCommands::new();
+    for _ in 0..5_000 {
+        let Some(side) = state.side_to_act() else {
+            break;
+        };
+        legal_commands(state, r, side, &mut legal);
+        let allowed = |c: &&Command| leave || !c.leaves_battle();
+        // Prefer attacks so that random games end quickly.
+        let attacks: Vec<Command> = legal
+            .iter()
+            .filter(allowed)
+            .copied()
+            .filter(|c| matches!(c, Command::Attack { .. }))
+            .collect();
+        let pool: Vec<Command> = if attacks.is_empty() {
+            legal.iter().filter(allowed).copied().collect()
+        } else {
+            attacks
+        };
+        let cmd = pool[agent.below(pool.len() as u32) as usize];
+        apply(state, r, side, cmd, &mut crate::NoopSink).unwrap();
+    }
+}
+
+proptest! {
+    #![proptest_config(Config { cases: 48, ..Config::default() })]
+
+    /// Conservation with casualties accounted (E04a exit criterion 4, BAT-END-003): a finished
+    /// battle's outcome lists every stack once, in stack order per side, with its start and end
+    /// counts; the survivors and war machines are exactly the records with creatures left.
+    #[test]
+    fn outcomes_account_for_every_stack((att, def, obstacles, seed, steps) in arb_game()) {
+        let r = lively();
+        let (mut state, _, _) = play(&r, &make_setup(&r, &att, &def, &obstacles, seed), seed, &steps);
+        finish(&mut state, &r, seed, false);
+        prop_assert!(state.is_over());
+        let o = state.outcome().unwrap();
+        prop_assert_eq!(Some(o.result), state.result());
+        prop_assert_eq!(o.rounds, state.round());
+        for side in BattleSide::BOTH {
+            let stacks: Vec<_> = state.stacks().iter().filter(|s| s.side == side).collect();
+            let records = &o.stacks[side.index()];
+            prop_assert_eq!(records.len(), stacks.len());
+            for (record, s) in records.iter().zip(&stacks) {
+                prop_assert_eq!((record.creature, record.start, record.end), (s.creature, s.base_count, s.count));
+                prop_assert!(record.end <= record.start);
+            }
+            let alive = |machine: bool| records.iter().filter(move |rec| rec.end > 0 && (rec.origin == h3_contracts::StackOrigin::WarMachine) == machine);
+            prop_assert_eq!(o.survivors[side.index()].stacks.len(), alive(false).count());
+            prop_assert_eq!(o.war_machines[side.index()].len(), alive(true).count());
+            prop_assert_eq!(o.survivors[side.index()].stacks.iter().map(|s| s.count).sum::<u32>(), alive(false).map(|rec| rec.end).sum::<u32>());
+        }
+    }
+}
+
 /// Random legal play always terminates in a decided battle eventually (sanity check of the turn
 /// machinery; not a game rule: battles have no round limit).
 #[test]
@@ -392,27 +451,7 @@ fn random_legal_play_finishes_battles() {
     let mut decided = 0;
     for seed in 0..20u64 {
         let mut state = BattleState::new(&r, &setup, seed).unwrap();
-        let mut agent = Rng::for_stream(seed, h3_kernel::StreamId::AGENT);
-        let mut legal = LegalCommands::new();
-        for _ in 0..5_000 {
-            let Some(side) = state.side_to_act() else {
-                break;
-            };
-            legal_commands(&state, &r, side, &mut legal);
-            // Prefer attacks so that random games end quickly.
-            let attacks: Vec<Command> = legal
-                .iter()
-                .copied()
-                .filter(|c| matches!(c, Command::Attack { .. }))
-                .collect();
-            let pool: &[Command] = if attacks.is_empty() {
-                legal.as_slice()
-            } else {
-                &attacks
-            };
-            let cmd = pool[agent.below(pool.len() as u32) as usize];
-            apply(&mut state, &r, side, cmd, &mut crate::NoopSink).unwrap();
-        }
+        finish(&mut state, &r, seed, true);
         decided += usize::from(state.is_over());
     }
     assert_eq!(decided, 20);

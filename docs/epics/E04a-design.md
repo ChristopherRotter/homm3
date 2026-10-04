@@ -44,18 +44,11 @@ each task has to do with them:
   points). The automatic Ballista has the range penalty (7–11 at long range).
 - **T8** (done): R2 and R3 are observation sources of BAT-TAC-001/002; the Tactics-formation
   toggle is not modelled (agent decision, BAT-TAC-001).
-- **T9** (R4, R5, B6; T9c still to do):
-  - Done in T9a/T9b: the surrender price (D-1, R4: war machines count, a rule), additive discounts
-    entering as one single-precision rate (D-2, Q-0005), no consent (D-5, ADR-0013 point 7
-    amended) and the Shackles also against a monster (B6, D-6): BAT-FLE-001/002,
-    HER-BAT-006/007.
-  - Outcome inputs (for the orchestrator): killed war machines give no experience; Learning
-    multiplies the whole sum including the +500 (R5: floor(550 × 1.15) = 632; D-3 as the wiki,
-    OQ-6 as VCMI); the loser's surviving war machines are not captured (OQ-5; afterwards the winner
-    had only the Catapult every hero gets).
-  - Necromancy (D-7, an E08–E10 input): rounded down per killed stack (R6: stacks 6, 6, 6, 14, 17
-    at 10 % → 0 + 0 + 0 + 1 + 1 = 2 Skeletons); VCMI's single sum (4) and "at least 1 per stack"
-    (5) are not the original. The outcome's per-stack records (§5) carry what this needs.
+- **T9** (done): R4 and B6 are observation sources of BAT-FLE-001/002 and HER-BAT-007; the
+  outcome (BAT-END-003) carries the facts that R5 (experience: killed war machines give none,
+  Learning multiplies the whole sum including the +500, the loser's war machines are not
+  captured) and R6 (Necromancy rounded down per killed stack) need; those rules are E08–E10's
+  (BACKLOG inbox, 2026-10-04).
 - **T10** (R1, R8, B7):
   - Angelic Alliance as the packs model it (artifacts D1): the five SoD factions count as one
     alignment, Conflux and neutral creatures stay separate (R1 in battle: −1 "Troops of three
@@ -102,35 +95,16 @@ become several effects) and `StatOp { Add, PercentBp }`. What the tasks still ha
   surrender discount since T9b (HER-BAT-007, applied by BAT-FLE-002). Sums that can exceed the
   field types saturate; `surrender_discount_bp` is clamped to 10 000 like `reduction_bp`.
 
-## 5. `BattleSetup`, `BattleOutcome`, `BattleResult` (T9)
+## 5. `BattleSetup`, `BattleOutcome`, `BattleResult` (done)
 
-T4b2 implemented `BattleSetup.heroes` (replaces `led_by_hero`; Q-0003 reads hero presence;
-BAT-HER-001). The battle keeps a small per-side record (`h3_battle` `hero.rs`, `HeroRecord`:
-hero type, primary skills, Tactics level, mana, maximum mana); each later task adds the fields
-its rules read, together with the scenario/replay format field (`h3_pack::HeroEntry`) and a
-state-hash bump. Left for T9:
-
-- T9b implemented `BattleSetup.funds` (BAT-FLE-002). `war_machines` is filled from `h3_heroes::war_machines`, which returns the Ballista, Ammo Cart and First Aid Tent
-  of the hero's war-machine slots; the **Catapult** is left out outside sieges, and the battle
-  keeps rejecting it until E04c (it then belongs to the attacker of a siege, controlled through
-  `MachineControl.catapult`).
-- `BattleOutcome` gains:
-  - `stacks: [Vec<StackRecord>; 2]`, **every** stack of both sides in stack order:
-    `StackRecord { origin: StackOrigin, creature: CreatureTypeId, start: u32, end: u32 }`,
-    `StackOrigin` ∈ {army slot (u8), war machine} (E04b adds summoned and clone). `end` is the
-    count alive when the battle ended, whatever the result;
-  - `surrender_cost: Option<u32>` (gold to be paid by the side that surrendered);
-  - `heroes: [Option<HeroOutcome>; 2]` with `HeroOutcome { mana: u16, spells_cast: Vec<SpellId> }`
-    (E04b fills the spells; Eagle Eye needs them);
-  - `rounds: u16` (the last round started; the tactics phase is round 0).
-  `survivors` and `war_machines` stay and are derived from `stacks` (army stacks and machines with
-  `end > 0`). The outcome reports facts; the consequences — a retreating side loses its army, a
-  surrendering side keeps it, war machines follow the hero's artifacts, the loser's artifacts are
-  captured, experience and Necromancy — are applied by the orchestrator under T9's rules.
-- **Seam stability:** this fixes every field E04a and E04b need. Later epics add only enum
-  variants (`BattleEffect`, `StackOrigin`) or, for E04c, two optional fields whose names this ADR
-  reserves: `BattleSetup.siege` and `BattleOutcome.siege` (contents defined by E04c's ADR), plus
-  a special-battlefield kind next to `terrain`. Existing fields keep their meaning.
+T4b2 implemented `BattleSetup.heroes`, T9b `funds`, T9a/T9b the results `Retreat`/`Surrender`, T9c
+the outcome (`StackRecord`, `StackOrigin`, `HeroOutcome`, `surrender_cost`, `rounds`;
+BAT-END-003). `war_machines` comes from `h3_heroes::war_machines` (Ballista, Ammo Cart, First Aid
+Tent); the **Catapult** is left out outside sieges, and the battle keeps rejecting it until E04c
+(it then belongs to the attacker of a siege, controlled through `MachineControl.catapult`).
+**Seam stability** (ADR-0013 point 5): later epics add only enum variants (`BattleEffect`,
+`StackOrigin`: summoned stacks and clones in E04b) or, for E04c, the reserved optional fields
+`BattleSetup.siege` and `BattleOutcome.siege` and a special-battlefield kind next to `terrain`.
 
 ## 6. The hero's effects in the battle state (T5, T10)
 
@@ -147,7 +121,7 @@ state-hash bump. Left for T9:
 - The battle keeps a small per-side hero record (present, tactics level, damage bonuses, machine
   control, retreat and surrender allowed, an offer made this round; E04b: mana, cast this round).
 
-## 7. Phases and commands (T9)
+## 7. Phases and commands (done)
 
 The tactics phase is implemented (T8: BAT-TAC-001/002, `h3_battle` `tactics.rs`), Retreat and the
 results `Retreat(side)`/`Surrender(side)` too (T9a: BAT-FLE-001, `Observation.may_retreat`), and
@@ -181,8 +155,8 @@ T11). Still to do:
 - T7b already appended `Heal { target }` over the stack slots (action encoding v5, C ABI v3:
   every legal command must be encodable); the commanded Ballista reuses `Shoot`. T8 appended
   `EndTactics` (action encoding v6, C ABI v4; placements reuse the `Move` indices, passing reuses
-  Wait); T9 appends `Retreat` and `Surrender` the same way (each bump also bumps the C ABI,
-  ADR-0011). Observation encoding v4
+  Wait); T9 appended `Retreat` (v7, C ABI v5, with result codes for retreats and surrenders) and
+  `Surrender` (v8, C ABI v6); each bump also bumps the C ABI (ADR-0011). Observation encoding v4
   adds per-side hero features (the public part for the opponent) in T11.
 - E04b's casting (spells × targets) does not fit a flat dense encoding; E04b designs a factorized
   one together with E05 (BACKLOG). E04a does not pre-empt it.

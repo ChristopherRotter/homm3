@@ -182,6 +182,8 @@ fn the_surrender_price_is_half_the_cost_of_the_living_stacks_war_machines_includ
         (state.result(), state.winner()),
         (Some(result), Some(Defender))
     );
+    // The outcome reports what the side pays (BAT-END-003).
+    assert_eq!(state.outcome().unwrap().surrender_cost, Some(1472));
     assert!(Command::Surrender.leaves_battle());
     // One gold short: no surrender.
     let mut poor = r4(&r, 1471);
@@ -266,4 +268,54 @@ fn surrender_needs_an_enemy_hero_no_shackles_and_a_priced_ruleset() {
     );
     act(&mut state, &r, Command::Surrender).unwrap();
     assert_eq!(state.result(), Some(BattleResult::Surrender(Attacker)));
+}
+
+// covers: BAT-END-003
+#[test]
+fn the_outcome_reports_every_stack_and_the_heroes() {
+    use h3_contracts::{HeroOutcome, StackOrigin, StackRecord};
+    let r = ruleset();
+    let mut state = r4(&r, 0);
+    assert_eq!(state.outcome(), None);
+    // Batch 1b R4 later: 6 Pikemen left, the Pixie dead; then the attacker retreats.
+    state.stacks.as_mut_slice()[0].count = 6;
+    state.stacks.as_mut_slice()[1].count = 0;
+    state.stacks.as_mut_slice()[1].top_hp = 0;
+    act(&mut state, &r, Command::Retreat).unwrap();
+    let o = state.outcome().unwrap();
+    let id = |key: &str| r.creature_by_key(key).unwrap();
+    let record = |origin, key, start, end| StackRecord {
+        origin,
+        creature: id(key),
+        start,
+        end,
+    };
+    assert_eq!(
+        o.stacks,
+        [
+            vec![
+                record(StackOrigin::Army(0), "t:fixed", 7, 6),
+                record(StackOrigin::Army(1), "t:flyer", 1, 0),
+                record(StackOrigin::WarMachine, "t:ballista", 1, 1),
+            ],
+            vec![record(StackOrigin::Army(0), "t:slow", 10, 10)],
+        ]
+    );
+    // Survivors and war machines are derived from the records.
+    let survivors: vec::Vec<_> = o.survivors[0]
+        .stacks
+        .iter()
+        .map(|s| (s.slot, s.count))
+        .collect();
+    assert_eq!(survivors, [(0, 6)]);
+    assert_eq!(o.war_machines, [vec![id("t:ballista")], vec![]]);
+    let hero = HeroOutcome {
+        mana: 15,
+        spells_cast: vec![],
+    };
+    assert_eq!(o.heroes, [Some(hero.clone()), Some(hero)]);
+    assert_eq!(
+        (o.result, o.rounds, o.surrender_cost),
+        (BattleResult::Retreat(Attacker), 1, None)
+    );
 }

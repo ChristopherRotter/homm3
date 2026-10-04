@@ -1,11 +1,16 @@
 //! Battle state: stacks, round bookkeeping, RNG and outcome (ADR-0004 §8: flat, index-addressed,
 //! fixed-capacity, cheap to clone).
 
+use alloc::vec::Vec;
 use h3_content::{
     Ability, AreaShot, CreatureFlag, CreatureType, CreatureTypeId, MAX_ARMY_SLOTS, Ruleset,
     TerrainId, UNLIMITED_BALLISTA_SHOTS, WAR_MACHINE_KINDS,
 };
-use h3_contracts::{Army, ArmyStack, BattleOutcome, BattleResult, BattleSetup, BattleSide};
+
+use h3_contracts::{
+    Army, ArmyStack, BattleOutcome, BattleResult, BattleSetup, BattleSide, HeroOutcome,
+    StackOrigin, StackRecord,
+};
 use h3_kernel::{CanonicalHash, FixedVec, Rng, StateHasher, StreamId};
 
 use crate::error::SetupError;
@@ -23,7 +28,7 @@ pub const MAX_WAR_MACHINES: usize = WAR_MACHINE_KINDS;
 pub const STACK_CAPACITY: usize = 2 * (MAX_ARMY_SLOTS + MAX_WAR_MACHINES);
 
 /// Version of the battle-state hash encoding ([`BattleState::state_hash`]). Bump on any change.
-pub const BATTLE_STATE_HASH_VERSION: u32 = 15;
+pub const BATTLE_STATE_HASH_VERSION: u32 = 16;
 
 /// Index of a stack in its battle (attacker stacks first, in slot order, then defender stacks).
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Default)]
@@ -520,6 +525,7 @@ pub struct BattleState {
     pub(crate) active: Option<StackId>,
     pub(crate) last_side_acted: Option<BattleSide>,
     pub(crate) result: Option<BattleResult>,
+    pub(crate) surrender_cost: Option<u32>,
     pub(crate) modifiers: Modifiers,
     pub(crate) heroes: [Option<HeroRecord>; 2],
     pub(crate) terrain: Option<TerrainId>,
@@ -640,6 +646,7 @@ impl BattleState {
             active: None,
             last_side_acted: None,
             result: None,
+            surrender_cost: None,
             modifiers: Modifiers::new(),
             heroes,
             terrain: setup.terrain,
@@ -771,38 +778,71 @@ impl BattleState {
         self.result.is_some()
     }
 
-    /// The outcome for the orchestrator, once the battle is over: result and surviving stacks.
+    /// The outcome for the orchestrator, once the battle is over (BAT-END-003): the result,
+    /// every stack's start and end counts, the survivors derived from them, the surrender's cost,
+    /// the heroes' mana and spells, the rounds.
+    // rule: BAT-END-003
     pub fn outcome(&self) -> Option<BattleOutcome> {
         let result = self.result?;
-        let alive = |side: BattleSide, machine: bool| {
-            self.stacks.iter().filter(move |s| {
-                s.side == side && s.is_alive() && s.has(StackTraits::WAR_MACHINE) == machine
-            })
-        };
-        let survivors = BattleSide::BOTH.map(|side| Army {
-            stacks: alive(side, false)
-                .map(|s| ArmyStack {
-                    slot: s.slot,
+        let stacks = BattleSide::BOTH.map(|side| {
+            self.stacks
+                .iter()
+                .filter(|s| s.side == side)
+                .map(|s| StackRecord {
+                    origin: if s.has(StackTraits::WAR_MACHINE) {
+                        StackOrigin::WarMachine
+                    } else {
+                        StackOrigin::Army(s.slot)
+                    },
                     creature: s.creature,
-                    count: s.count,
+                    start: s.base_count,
+                    end: s.count,
+                })
+                .collect::<Vec<_>>()
+        });
+        let survivors = stacks.each_ref().map(|records| Army {
+            stacks: records
+                .iter()
+                .filter_map(|r| match r.origin {
+                    StackOrigin::Army(slot) if r.end > 0 => Some(ArmyStack {
+                        slot,
+                        creature: r.creature,
+                        count: r.end,
+                    }),
+                    _ => None,
                 })
                 .collect(),
         });
-        let war_machines =
-            BattleSide::BOTH.map(|side| alive(side, true).map(|s| s.creature).collect());
+        let war_machines = stacks.each_ref().map(|records| {
+            records
+                .iter()
+                .filter(|r| r.origin == StackOrigin::WarMachine && r.end > 0)
+                .map(|r| r.creature)
+                .collect()
+        });
         Some(BattleOutcome {
             result,
             survivors,
             war_machines,
+            stacks,
+            surrender_cost: self.surrender_cost,
+            heroes: self.heroes.map(|h| {
+                h.map(|h| HeroOutcome {
+                    mana: h.view.mana,
+                    spells_cast: Vec::new(),
+                })
+            }),
+            rounds: self.round,
         })
     }
 
     /// Canonical hash of the full state, including hidden parts such as the RNG (desync detection
     /// and replay verification; never sent to untrusted clients, docs/06-security.md).
     ///
-    /// Encoding v15 (v14 with surrender): version, round, the tactics phase if any (side, zone
-    /// columns), active, last side, result (0/1 = victory of the attacker/defender, 2 = draw,
-    /// 3/4 = retreat and 5/6 = surrender of the attacker/defender), stacks (each with base count,
+    /// Encoding v16 (v15 with the surrender's cost): version, round, the tactics phase if any
+    /// (side, zone columns), active, last side, result (0/1 = victory of the attacker/defender,
+    /// 2 = draw, 3/4 = retreat and 5/6 = surrender of the attacker/defender), the surrender's cost
+    /// if any, stacks (each with base count,
     /// shots, retaliations, morale, luck and traits), obstacles, modifiers, per side the hero if
     /// any (type, attack, defense, power, knowledge, Tactics level, mana, maximum mana, ranged,
     /// melee and reduction basis points, the Ballista's control if any: shots and double-damage
@@ -866,6 +906,7 @@ impl CanonicalHash for BattleState {
         self.active.map(|s| s.0).hash_into(h);
         self.last_side_acted.map(side_code).hash_into(h);
         self.result.map(result_code).hash_into(h);
+        self.surrender_cost.hash_into(h);
         self.stacks.hash_into(h);
         self.obstacles.hash_into(h);
         self.modifiers.hash_into(h);

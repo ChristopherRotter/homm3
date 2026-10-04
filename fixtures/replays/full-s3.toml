@@ -485,25 +485,25 @@ commands = [
     "A shoot 13 126",
 ]
 checkpoints = [
-    "0xf37472f3a6f57abb",
-    "0xb2026d8c1fce7048",
-    "0x4c8d7890ee060597",
-    "0x0bef182fb32907dc",
-    "0xcd7d675a69fe8bcf",
-    "0xfebb6f7cba6cb9c6",
-    "0x9a8740ee4e41d2ee",
-    "0xbe3406b31b96af2b",
-    "0x60df120afdf48f8e",
-    "0x736c65ced66c6bb6",
-    "0x505f5dbc46239e80",
-    "0x7c3fa7bae0ee4d85",
-    "0xc94f604f674084c9",
-    "0x33bd5ed5dd63d8b7",
-    "0x34848cd07a46ffb1",
-    "0x4477035cb3f4c4e0",
-    "0xfab9a3f7d517baa2",
-    "0x47b352f5cec800b5",
-    "0xf7b0eb9df074f99f",
+    "0xfbf2a53dbeb88ba0",
+    "0x10446c991c9b57c9",
+    "0xb32541854ac79250",
+    "0xb9f87fd77fc1ebdd",
+    "0x0bc2990ff0e1f90e",
+    "0x8faf91dbe59bfa65",
+    "0xa3ff6d8e1665aad3",
+    "0x238aa9e3867eb832",
+    "0xab9ba21a21881635",
+    "0x5b32f8e6bcb1b3a7",
+    "0x305f6046fccda81b",
+    "0xc98396719d1ded10",
+    "0x80b6c10d59d0629a",
+    "0x35c7827dd5f609f0",
+    "0xaeb0d1531f5d9d44",
+    "0x4b077ac9b2f241e7",
+    "0x86c393d3666d23af",
+    "0xc6fd788bbd701b1e",
+    "0xefa62acb327c98ca",
 ]
 
 [replay]
@@ -521,7 +521,7 @@ rng = "xoshiro256starstar+splitmix64"
 rng_version = 1
 hash = "fnv1a64-le"
 hash_version = 1
-battle_state_hash_version = 15
+battle_state_hash_version = 16
 checkpoint_every = 25
 
 [setup]
@@ -637,4 +637,4 @@ count = 11
 
 [result]
 winner = "attacker"
-final_hash = "0xee204014ccd56b1b"
+final_hash = "0x573972b881f92872"

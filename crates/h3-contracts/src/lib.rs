@@ -29,7 +29,7 @@ pub use hero::{
     MAX_BATTLE_EFFECTS, MachineControl, StatOp, TentControl,
 };
 
-use h3_content::{CreatureTypeId, Formation, TerrainId};
+use h3_content::{CreatureTypeId, Formation, SpellId, TerrainId};
 
 /// The two sides of a battle.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
@@ -147,15 +147,60 @@ impl BattleResult {
     }
 }
 
-/// The result of a finished battle, applied back by the orchestrator.
+/// Where a battle stack came from ([`StackRecord::origin`]). E04b adds summoned stacks and
+/// clones.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum StackOrigin {
+    /// A stack of the side's army, by army slot.
+    Army(u8),
+    /// One of the side's war machines.
+    WarMachine,
+}
+
+/// What became of one battle stack (BAT-END-003).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct StackRecord {
+    /// Where it came from.
+    pub origin: StackOrigin,
+    /// Creature type.
+    pub creature: CreatureTypeId,
+    /// Creatures when the battle started.
+    pub start: u32,
+    /// Creatures alive when the battle ended, whatever the result.
+    pub end: u32,
+}
+
+/// What became of a side's hero in battle (BAT-END-003).
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct HeroOutcome {
+    /// Spell points left.
+    pub mana: u16,
+    /// The spells the hero cast, in order (E04b; Eagle Eye needs them). Empty in E04a.
+    pub spells_cast: Vec<SpellId>,
+}
+
+/// The result of a finished battle, applied back by the orchestrator (BAT-END-003). It reports
+/// facts; the consequences (casualties, a retreating side's lost army, a surrender's payment,
+/// captured artifacts, experience, Necromancy) are the orchestrator's (ADR-0013 point 5).
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct BattleOutcome {
     /// How the battle ended: a victory of one side, a draw, a retreat or a surrender.
     pub result: BattleResult,
-    /// Surviving stacks per side (indexed by [`BattleSide::index`]), in slot order.
+    /// Surviving stacks per side (indexed by [`BattleSide::index`]), in slot order: the army
+    /// stacks of [`BattleOutcome::stacks`] with creatures left.
     pub survivors: [Army; 2],
-    /// Surviving war machines per side (indexed by [`BattleSide::index`]).
+    /// Surviving war machines per side (indexed by [`BattleSide::index`]): the war machines of
+    /// [`BattleOutcome::stacks`] with creatures left.
     pub war_machines: [Vec<CreatureTypeId>; 2],
+    /// Every stack of each side (indexed by [`BattleSide::index`]) in stack order, dead ones
+    /// included: army stacks in slot order, then war machines.
+    pub stacks: [Vec<StackRecord>; 2],
+    /// What the side that surrendered pays (BAT-FLE-002); `None` for any other result.
+    pub surrender_cost: Option<u32>,
+    /// What became of each side's hero (indexed by [`BattleSide::index`]).
+    pub heroes: [Option<HeroOutcome>; 2],
+    /// The last round started (0 if the battle ended in the tactics phase, BAT-TAC-001).
+    pub rounds: u16,
 }
 
 #[cfg(test)]
