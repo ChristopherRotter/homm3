@@ -101,7 +101,7 @@ mod tests {
     fn encodes_globals_and_stacks() {
         let (r, setup) = h3_pack::synthetic(h3_pack::SYNTHETIC_DUEL).unwrap();
         let s = BattleState::new(&r, &setup, 1).unwrap();
-        let obs = observe(&s, BattleSide::Defender);
+        let obs = observe(&s, &r, BattleSide::Defender);
         let mut out = vec![9.0; OBSERVATION_LEN + 3];
         encode(&obs, r.battle().field.width, &mut out).unwrap();
         assert_eq!(&out[..GLOBALS], &[1.0, 0.0, 0.0, 0.0, 0.0, 0.0]);
@@ -142,7 +142,7 @@ mod tests {
             (BattleSide::Attacker, [1.0, 0.0]),
             (BattleSide::Defender, [0.0, 1.0]),
         ] {
-            encode(&observe(&s, viewer), 17, &mut out).unwrap();
+            encode(&observe(&s, &r, viewer), 17, &mut out).unwrap();
             assert_eq!(out[4..6], heroes);
         }
         // Ids: attacker army 0..=6, its bolt thrower 7 and aid tent 8; defender army 9..=15,
@@ -159,7 +159,7 @@ mod tests {
         assert_eq!(kinds[17], [0.0, 0.0, 0.0, 1.0], "supply wagon");
         assert_eq!(stack(&out, 7)[21], 12.0, "the bolt thrower's shots");
         // Morale, luck and the good-morale flag come from the stacks.
-        let mut obs = observe(&s, BattleSide::Attacker);
+        let mut obs = observe(&s, &r, BattleSide::Attacker);
         let st = &mut obs.stacks.as_mut_slice()[0];
         st.morale = 2;
         st.luck = -1;

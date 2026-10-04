@@ -19,7 +19,8 @@ use h3_kernel::{CanonicalHash, StateHasher};
 use crate::error::{HeroError, SetupError};
 use crate::state::StackTraits;
 
-/// What both sides see of a side's hero (ADR-0013 point 9): identity, primary skills and mana.
+/// What both sides see of a side's hero (ADR-0013 point 9): identity, primary skills, mana and
+/// which war machines the hero commands.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct HeroView {
     /// The hero type.
@@ -36,10 +37,37 @@ pub struct HeroView {
     pub mana: u16,
     /// Maximum spell points.
     pub max_mana: u16,
+    /// The hero commands its side's Ballista (BAT-WAR-006); how it shoots is private.
+    pub commands_ballista: bool,
+    /// The hero commands its side's First Aid Tent (BAT-WAR-007); how it heals is private.
+    pub commands_tent: bool,
+}
+
+/// What only the hero's own side sees of it (ADR-0013 point 9; `Observation::own_hero`): the
+/// values of its skills, its surrender discount, its funds and the price of its surrender.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct OwnHeroView {
+    /// Tactics level, 0..=3 (BAT-TAC-001).
+    pub tactics: u8,
+    /// Damage bonuses of the side's strikes and the reduction of strikes against it
+    /// (BAT-HER-004).
+    pub damage: DamageBonuses,
+    /// How the commanded Ballista shoots (BAT-WAR-006).
+    pub ballista: Option<BallistaControl>,
+    /// How the commanded First Aid Tent heals (BAT-WAR-007).
+    pub tent: Option<TentControl>,
+    /// Discount on the price of the side's surrender, basis points (BAT-FLE-002).
+    pub surrender_discount_bp: u16,
+    /// What the side's owner can pay for a surrender (`BattleSetup.funds`).
+    pub funds: u32,
+    /// The price of the side's surrender now, if it may surrender at all (BAT-FLE-002); it may
+    /// surrender now if its funds cover the price.
+    pub surrender_price: Option<u32>,
 }
 
 /// The part of a side's hero the battle keeps in its state. Later tasks add what their rules
-/// read (damage bonuses, war-machine control, …) together with the rule.
+/// read (damage bonuses, war-machine control, …) together with the rule. The state hash covers
+/// the view's machine flags through `ballista` and `tent`.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(crate) struct HeroRecord {
     /// The public part.
@@ -276,6 +304,8 @@ pub(crate) fn check(
             knowledge: hero.knowledge,
             mana: magic.mana,
             max_mana: magic.max_mana,
+            commands_ballista: hero.war_machines.ballista.is_some(),
+            commands_tent: hero.war_machines.tent.is_some(),
         },
         tactics: hero.tactics,
         damage: hero.damage,

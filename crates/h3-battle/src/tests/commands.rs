@@ -175,8 +175,8 @@ fn observation_hides_only_the_rng() {
     let b = battle(&r, &[(0, "fixed", 1)], &[(0, "slow", 1)], 2);
     assert_ne!(a.state_hash(), b.state_hash(), "the hash covers the RNG");
     for viewer in BattleSide::BOTH {
-        let o = observe(&a, viewer);
-        assert_eq!(o, observe(&b, viewer));
+        let o = observe(&a, &r, viewer);
+        assert_eq!(o, observe(&b, &r, viewer));
         assert_eq!(o.viewer, viewer);
         assert_eq!(
             (o.round, o.active, o.last_side_acted, o.result),

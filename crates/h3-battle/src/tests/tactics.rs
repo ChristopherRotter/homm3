@@ -161,7 +161,7 @@ fn the_phase_starts_in_round_0_and_is_public() {
         (0, Some(BattleSide::Attacker))
     );
     for viewer in BattleSide::BOTH {
-        let o = observe(&state, viewer);
+        let o = observe(&state, &r, viewer);
         assert_eq!((o.round, o.tactics), (0, Some(phase)));
     }
     // The enemy cannot act in the phase.

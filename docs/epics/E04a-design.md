@@ -102,24 +102,15 @@ battle parameters, `BattleParams.surrender`).
 - Actors are validated as in ADR-0004: every command comes from the side whose stack is active or
   whose tactics phase runs.
 
-## 8. Visibility (T9, T11)
+## 8. Visibility (done)
 
-T4b2: `Observation.heroes` shows both sides the public part (`HeroView`: hero type, primary
-skills, mana, maximum mana); the Tactics level stays private (hygiene property test). The
-encoding still has only the two "led by a hero" flags; T11 adds hero features. T8:
-`Observation.tactics` shows both sides the phase and its zone (the encoding shows round 0 until
-T11). Still to do:
-
-- Public in the observation of both sides: the war machines and who controls them, and whether
-  surrender is possible at all (both heroes present, no `NoRetreat`
-  effect; public because it changes both sides' options; T9b left it and the own price out of
-  `Observation`, whose `observe` has no ruleset: T11 decides with the encoding; the action mask
-  already shows the own side's option). Whether a side can afford its surrender, and its price, show only to that side (its action mask).
-- Private to the hero's own side: `tactics` level, the damage bonuses, `surrender_discount_bp`,
-  school levels, the `effects` list other than the public consequences above (stat effects show in
-  the stacks' public stats), the spell book, `funds`.
-- E04b's hidden battlefield objects (Land Mine, Quicksand) use the same mechanism: state with an
-  owner side, projected away for the other viewer, events with `Visibility::Side` (ADR-0004 §6).
+T11a (Q37): `observe` takes the ruleset. Public: `HeroView` (hero type, primary skills, mana, the
+war machines the hero commands), `Observation.tactics`, `may_retreat` and `surrender_possible`.
+Private to the own side: `Observation.own_hero` (`OwnHeroView`: Tactics level, damage bonuses,
+how the machines work, surrender discount, funds, surrender price). E04b adds its private parts
+(school levels, spell book) there. E04b's hidden battlefield objects (Land Mine, Quicksand) use
+the same mechanism: state with an owner side, projected away for the other viewer, events with
+`Visibility::Side` (ADR-0004 §6).
 
 ## 9. Encodings (T11)
 

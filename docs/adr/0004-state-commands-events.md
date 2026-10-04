@@ -50,10 +50,14 @@ full amendment text of E01–E03 is in git history (this file at commit `22b6bc0
 - **Setup randomness before the seam (E03 T7):** random battle inputs such as obstacles are drawn
   before the seam (`h3_battle::generate_obstacles`, stream `OBSTACLES`) and passed in; the battle
   draws only in-battle randomness.
+- **Observation reads the ruleset (E04a T11a, Q37):** `h3_battle::observe(&BattleState,
+  &Ruleset, BattleSide)`, with the same precondition as `apply` (the ruleset the battle was built
+  with); the viewer's own hero's private part, such as its surrender price, is derived from it.
 
 ## Revision history
 
 - 2026-09-30: Accepted.
 - 2026-09-30 – 2026-10-01: Amended by E01 and E03 (T3–T9).
+- 2026-10-04: Amended by E04a T11a (the observation reads the ruleset, Q37).
 - 2026-10-03: Amendments cut to their decisions (ADR size rule, `docs/adr/README.md`); the
   implementation detail is in the crate docs and in git history.

@@ -8,7 +8,9 @@
 use std::vec::Vec;
 
 use h3_content::{Formation, Ruleset};
-use h3_contracts::{Army, ArmyStack, BallistaControl, BattleSetup, BattleSide, TentControl};
+use h3_contracts::{
+    Army, ArmyStack, BallistaControl, BattleSetup, BattleSide, DamageBonuses, TentControl,
+};
 use h3_kernel::Rng;
 use proptest::collection::{btree_map, vec};
 use proptest::prelude::{Just, Strategy, any, prop_assert, prop_assert_eq, prop_oneof, proptest};
@@ -329,19 +331,41 @@ proptest! {
         }
     }
 
-    /// Observation hygiene: two states that differ only in hidden information (the RNG, the
-    /// heroes' Tactics levels) look the same to both sides.
+    /// Observation hygiene (ADR-0013 point 9): hidden information does not show. The RNG shows
+    /// to neither side; the private part of a side's hero (Tactics level, damage bonuses, how
+    /// its war machines work, surrender discount, funds) only to that side.
     #[test]
-    fn observations_do_not_depend_on_hidden_state((att, def, obstacles, seed, steps) in arb_game(), other_seed: u64) {
+    fn observations_do_not_depend_on_hidden_state(
+        (att, def, obstacles, seed, steps) in arb_game(),
+        other_seed: u64,
+        damage: [u16; 2],
+        (reduction, chance, discount) in (0u16..=10_000, 0u16..=10_000, 0u16..=10_000),
+        (shots, heal, funds) in (1u8..=3, any::<u32>(), any::<u32>()),
+    ) {
         let r = lively();
         let (state, _, _) = play(&r, &make_setup(&r, &att, &def, &obstacles, seed), seed, &steps);
         let mut twin = state.clone();
         twin.rng = Rng::from_seed(other_seed);
-        for hero in twin.heroes.iter_mut().flatten() {
-            hero.tactics = 3 - hero.tactics;
-        }
         for viewer in BattleSide::BOTH {
-            prop_assert_eq!(observe(&state, viewer), observe(&twin, viewer));
+            prop_assert_eq!(observe(&state, &r, viewer), observe(&twin, &r, viewer));
+        }
+        for side in BattleSide::BOTH {
+            let mut twin = state.clone();
+            for hero in twin.heroes[side.index()].iter_mut() {
+                hero.tactics = 3 - hero.tactics;
+                hero.damage = DamageBonuses {
+                    ranged_bp: damage[0],
+                    melee_bp: damage[1],
+                    reduction_bp: reduction,
+                };
+                let ballista = BallistaControl { shots, double_damage_chance_bp: chance };
+                hero.ballista = hero.ballista.and(Some(ballista));
+                hero.tent = hero.tent.and(Some(TentControl { heal_bonus_bp: heal }));
+                hero.surrender_discount_bp = discount;
+                hero.funds = funds;
+            }
+            let viewer = side.opponent();
+            prop_assert_eq!(observe(&state, &r, viewer), observe(&twin, &r, viewer));
         }
     }
 

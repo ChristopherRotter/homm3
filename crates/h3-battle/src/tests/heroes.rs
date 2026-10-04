@@ -11,12 +11,13 @@ use h3_content::{
 };
 use h3_contracts::{
     BallistaControl, BattleEffect, BattleHero, DamageBonuses, MAX_BATTLE_EFFECTS, StatOp,
+    TentControl,
 };
 
 use super::support::*;
 use crate::{
-    BattleSetup, BattleSide, BattleState, Command, EventKind, HeroError, HeroView, SetupError,
-    StackId, observe,
+    BattleSetup, BattleSide, BattleState, Command, EventKind, HeroError, HeroView, OwnHeroView,
+    SetupError, StackId, observe,
 };
 
 fn with_heroes(r: &h3_content::Ruleset, heroes: [Option<BattleHero>; 2]) -> BattleSetup {
@@ -89,12 +90,14 @@ fn heroes_are_kept_and_shown_to_both_sides() {
         knowledge: 1,
         mana: 15,
         max_mana: 10,
+        commands_ballista: false,
+        commands_tent: false,
     };
     let s = BattleState::new(&r, &with_heroes(&r, [Some(hero(&r)), None]), 1).unwrap();
     assert_eq!(s.hero(BattleSide::Attacker), Some(view));
     assert_eq!(s.hero(BattleSide::Defender), None);
     for viewer in BattleSide::BOTH {
-        assert_eq!(observe(&s, viewer).heroes, [Some(view), None]);
+        assert_eq!(observe(&s, &r, viewer).heroes, [Some(view), None]);
     }
     // The hero and its private Tactics level are part of the state hash.
     let bare = BattleState::new(&r, &with_heroes(&r, [None, None]), 1).unwrap();
@@ -111,6 +114,66 @@ fn heroes_are_kept_and_shown_to_both_sides() {
     .unwrap();
     assert_eq!((both.tactics(), other.tactics()), (None, None));
     assert_ne!(both.state_hash(), other.state_hash());
+}
+
+// covers: BAT-HER-001, BAT-FLE-002
+#[test]
+fn the_private_part_of_a_hero_shows_only_to_its_side() {
+    let r = ruleset();
+    let damage = DamageBonuses {
+        ranged_bp: 1000,
+        melee_bp: 2000,
+        reduction_bp: 500,
+    };
+    let mut commander = hero(&r);
+    commander.tactics = 2;
+    commander.damage = damage;
+    let ballista = BallistaControl {
+        shots: 2,
+        double_damage_chance_bp: 7500,
+    };
+    let tent = TentControl {
+        heal_bonus_bp: 10_000,
+    };
+    commander.war_machines.ballista = Some(ballista);
+    commander.war_machines.tent = Some(tent);
+    commander.surrender_discount_bp = 2000;
+    let setup = BattleSetup {
+        funds: [5000, 7],
+        ..with_heroes(&r, [Some(commander), Some(hero(&r))])
+    };
+    let s = BattleState::new(&r, &setup, 1).unwrap();
+    // Both sides see which war machines a hero commands, and that both may surrender.
+    let [attacker, defender] = BattleSide::BOTH.map(|viewer| observe(&s, &r, viewer));
+    assert_eq!(attacker.heroes, defender.heroes);
+    let public = attacker
+        .heroes
+        .map(|h| h.map(|h| (h.commands_ballista, h.commands_tent)));
+    assert_eq!(public, [Some((true, true)), Some((false, false))]);
+    assert_eq!(attacker.surrender_possible, [true, true]);
+    assert_eq!(defender.surrender_possible, [true, true]);
+    // Each side sees its own private part with its price: half of 10 fixed at 60 gold, less the
+    // attacker's 20 % discount (BAT-FLE-002).
+    assert_eq!(
+        attacker.own_hero,
+        Some(OwnHeroView {
+            tactics: 2,
+            damage,
+            ballista: Some(ballista),
+            tent: Some(tent),
+            surrender_discount_bp: 2000,
+            funds: 5000,
+            surrender_price: Some(240),
+        })
+    );
+    let own = defender.own_hero.unwrap();
+    assert_eq!((own.tactics, own.ballista, own.tent), (0, None, None));
+    assert_eq!((own.surrender_discount_bp, own.funds), (0, 7));
+    assert_eq!(own.surrender_price, Some(300));
+    // A side without a hero has no private part.
+    let lone = BattleState::new(&r, &with_heroes(&r, [Some(hero(&r)), None]), 1).unwrap();
+    assert!(observe(&lone, &r, BattleSide::Attacker).own_hero.is_some());
+    assert_eq!(observe(&lone, &r, BattleSide::Defender).own_hero, None);
 }
 
 // covers: BAT-HER-001

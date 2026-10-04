@@ -164,7 +164,7 @@ impl BattleEnv {
 
     /// The observation for `viewer`.
     pub fn observation(&self, viewer: BattleSide) -> Observation {
-        observe(&self.state, viewer)
+        observe(&self.state, &self.ruleset, viewer)
     }
 
     /// Writes the flat observation encoding for `viewer` into `out`

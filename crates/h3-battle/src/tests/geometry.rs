@@ -137,7 +137,7 @@ fn obstacles_are_validated_and_observed() {
         [at(&r, 7, 2), at(&r, 6, 5)]
     );
     for viewer in BattleSide::BOTH {
-        assert_eq!(crate::observe(&s, viewer).obstacles, obstacles);
+        assert_eq!(crate::observe(&s, &r, viewer).obstacles, obstacles);
     }
     let mut bad = setup(&r, &[(0, "fixed", 1)], &[(0, "slow", 1)]);
     for hexes in [vec![at(&r, 0, 5).0], vec![200], vec![40, 41, 40]] {

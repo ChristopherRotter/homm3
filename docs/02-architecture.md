@@ -71,7 +71,7 @@ Detailed in ADR-0004. In short:
 
 - `apply(state, ruleset, actor, command, sink) -> Result<(), CommandError>` is the only mutation path. `actor` is supplied by the trusted session layer, never by the payload. Commands carry **intent only**; all derived values (prices, amounts, ownership) come from state. On error the state is unchanged.
 - Events are an **output** (for clients, logs, animation, replays). Events carry a visibility scope. The state, not the event log, is the source of truth.
-- `observe(state, viewer) -> Observation` projects hidden information away. `legal_commands(state, actor)` enumerates/masks legal commands and must agree with `apply` (property-tested).
+- `observe(state, ruleset, viewer) -> Observation` projects hidden information away. `legal_commands(state, actor)` enumerates/masks legal commands and must agree with `apply` (property-tested).
 - **State layout for cheap clone/fork** (needed for search and RL): flat, index-addressed storage with stable IDs; immutable bulk data (terrain, map layout, ruleset) shared via `Arc`; mutable parts small and contiguous; battle state sized with fixed-capacity arrays where possible (no per-step heap allocation).
 - **Replays** = ruleset id + initial scenario + seed + command log (+ optional expected state hashes). **Saves** = our own state serialization (versioned). Original save import is a separate future adapter.
 

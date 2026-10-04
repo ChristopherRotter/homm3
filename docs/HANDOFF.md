@@ -47,7 +47,7 @@ Living state between sessions; every session reads it first. Rules (`docs/08-wor
 
 ### 2026-10-04 (thirteenth) — E04a T11 started
 
-T11 split with the user (Q37): T11a and T11b this session, T11c in the next; `observe` takes the ruleset; the experiment-spec runner stays in the BACKLOG. **In progress:** T11a.
+T11 split with the user (Q37): T11a and T11b this session, T11c in the next; `observe` takes the ruleset; the experiment-spec runner stays in the BACKLOG. T11a done (the observation: `observe` takes the ruleset, `surrender_possible`, machine control public, `Observation.own_hero` private). **In progress:** T11b.
 
 ### 2026-10-04 (twelfth) — E04a T10 done (stat effects, traits, alignment groups)
 

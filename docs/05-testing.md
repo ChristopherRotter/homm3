@@ -18,7 +18,7 @@
 - **Legality consistency:** every command listed by `legal_commands` is accepted by `apply`; commands sampled from outside the set are rejected.
 - **Ownership isolation:** a random command sequence issued by actor A never changes anything owned by actor B except through explicitly modelled interactions (battle, trade, …).
 - **Conservation:** resources/creatures are conserved except through modelled sources and sinks.
-- **Observation hygiene:** `observe(state, viewer)` is a function of only what `viewer` may know (two states differing only in hidden info yield equal observations).
+- **Observation hygiene:** `observe(state, ruleset, viewer)` is a function of only what `viewer` may know (two states differing only in hidden info yield equal observations).
 - **Clone equivalence:** cloned states evolve identically under the same commands/seed.
 - **Determinism:** same inputs ⇒ same outputs, across runs.
 

@@ -1,14 +1,28 @@
 //! Leaving a battle: the price of a surrender (BAT-FLE-002). Whether a side may retreat at all
 //! is the heroes' business (`hero::may_retreat`, BAT-FLE-001).
 
-use h3_content::{FULL_BP, Ruleset, SINGLE_PRECISION_RATES};
+use h3_content::{FULL_BP, Ruleset, SINGLE_PRECISION_RATES, SurrenderParams};
 use h3_contracts::BattleSide;
 use h3_kernel::arith::{SINGLE_FRAC_BITS, single_precision};
 
 use crate::state::BattleState;
 
-/// The price of `side`'s surrender, if it may surrender at all: it may retreat (BAT-FLE-001),
-/// the enemy is led by a hero and the ruleset prices surrenders. The price is the ruleset's
+/// The ruleset's surrender parameters if `side` may surrender at all (public, ADR-0013 point 9):
+/// it may retreat (BAT-FLE-001), the enemy is led by a hero and the ruleset prices surrenders.
+// rule: BAT-FLE-002
+pub(crate) fn surrender_terms(
+    state: &BattleState,
+    ruleset: &Ruleset,
+    side: BattleSide,
+) -> Option<SurrenderParams> {
+    ruleset
+        .battle()
+        .surrender
+        .filter(|_| state.may_retreat(side) && state.has_hero(side.opponent()))
+}
+
+/// The price of `side`'s surrender, if it may surrender at all ([`surrender_terms`]). The price
+/// is the ruleset's
 /// `cost_percent` of the summed cost, in its resource, of the side's living stacks with their
 /// current counts, war machines included (batch 1b R4), times one minus the hero's discount,
 /// rounded down once; with quirk Q-0005 the discount enters as its single-precision value
@@ -19,10 +33,7 @@ pub(crate) fn surrender_price(
     ruleset: &Ruleset,
     side: BattleSide,
 ) -> Option<u32> {
-    let params = ruleset
-        .battle()
-        .surrender
-        .filter(|_| state.may_retreat(side) && state.has_hero(side.opponent()))?;
+    let params = surrender_terms(state, ruleset, side)?;
     let unit_cost = |creature| {
         ruleset.creature_info(creature).map_or(0, |info| {
             info.cost

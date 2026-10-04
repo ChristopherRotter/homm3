@@ -736,6 +736,13 @@ impl BattleState {
         hero::may_retreat(&self.heroes, side)
     }
 
+    /// Whether `side` may surrender at all (BAT-FLE-002; public, ADR-0013 point 9): it may
+    /// retreat, the enemy is led by a hero and the ruleset prices surrenders. Whether it can pay
+    /// is private ([`may_surrender`](Self::may_surrender)).
+    pub fn surrender_possible(&self, ruleset: &Ruleset, side: BattleSide) -> bool {
+        flee::surrender_terms(self, ruleset, side).is_some()
+    }
+
     /// The price of `side`'s surrender, if it may surrender at all (BAT-FLE-002): it may retreat,
     /// the enemy is led by a hero and the ruleset prices surrenders. Depends on the side's
     /// private discount: show it to that side only.

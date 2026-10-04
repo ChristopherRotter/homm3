@@ -29,7 +29,7 @@ fn a_side_with_a_hero_retreats_on_its_turn() {
     let mut state = BattleState::new(&r, &s, 1).unwrap();
     assert!(state.may_retreat(Attacker) && !state.may_retreat(Defender));
     for viewer in BattleSide::BOTH {
-        assert_eq!(observe(&state, viewer).may_retreat, [true, false]);
+        assert_eq!(observe(&state, &r, viewer).may_retreat, [true, false]);
     }
     // The defender (speed 9) acts first and has no hero; the attacker cannot act out of turn.
     assert_eq!(state.side_to_act(), Some(Defender));
@@ -113,13 +113,13 @@ fn shackles_of_war_stop_every_retreat_also_against_monsters() {
         ..setup(&r, &[(0, "fast", 5)], &[(0, "fixed", 5)])
     };
     let state = BattleState::new(&r, &both, 1).unwrap();
-    assert_eq!(observe(&state, Attacker).may_retreat, [false, false]);
+    assert_eq!(observe(&state, &r, Attacker).may_retreat, [false, false]);
     let free = BattleSetup {
         heroes: [Some(hero(&r)), Some(hero(&r))],
         ..both.clone()
     };
     let free = BattleState::new(&r, &free, 1).unwrap();
-    assert_eq!(observe(&free, Defender).may_retreat, [true, true]);
+    assert_eq!(observe(&free, &r, Defender).may_retreat, [true, true]);
     assert_ne!(state.state_hash(), free.state_hash());
 }
 
@@ -163,6 +163,8 @@ fn the_surrender_price_is_half_the_cost_of_the_living_stacks_war_machines_includ
     assert_eq!(state.side_to_act(), Some(Attacker));
     assert_eq!(state.surrender_price(&r, Attacker), Some(1472));
     assert!(state.may_surrender(&r, Attacker));
+    let own = observe(&state, &r, Attacker).own_hero.unwrap();
+    assert_eq!((own.surrender_price, own.funds), (Some(1472), 1472));
     let commands = legal(&state, &r, Attacker);
     assert_eq!(
         commands[commands.len() - 2..],
@@ -248,6 +250,12 @@ fn surrender_needs_an_enemy_hero_no_shackles_and_a_priced_ruleset() {
     ] {
         let mut state = BattleState::new(&r, &led(heroes.clone()), 1).unwrap();
         assert_eq!(state.surrender_price(&r, Attacker), None, "{heroes:?}");
+        // Both sides see that neither may surrender (public, ADR-0013 point 9).
+        for viewer in BattleSide::BOTH {
+            let o = observe(&state, &r, viewer);
+            assert_eq!(o.surrender_possible, [false, false]);
+            assert_eq!(o.own_hero.and_then(|h| h.surrender_price), None);
+        }
         assert_eq!(
             act(&mut state, &r, Command::Surrender),
             Err(CommandError::CannotSurrender)
@@ -257,6 +265,12 @@ fn surrender_needs_an_enemy_hero_no_shackles_and_a_priced_ruleset() {
     let unpriced = ruleset_with("t:faithful", |b| b.surrender = None);
     let state = BattleState::new(&unpriced, &led([Some(hero(&r)), Some(hero(&r))]), 1).unwrap();
     assert_eq!(state.surrender_price(&unpriced, Attacker), None);
+    assert!(!state.surrender_possible(&unpriced, Attacker));
+    assert_eq!(
+        observe(&state, &unpriced, Defender).surrender_possible,
+        [false, false]
+    );
+    assert!(state.surrender_possible(&r, Attacker));
     // In its tactics phase a side may surrender too.
     let mut tactician = hero(&r);
     tactician.tactics = 1;

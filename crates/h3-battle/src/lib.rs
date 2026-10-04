@@ -45,7 +45,7 @@ pub use error::{CommandError, HeroError, SetupError};
 pub use event::{Event, EventKind, NoopSink, Sink, StrikeFlags, Visibility};
 pub use geometry::{ATTACK_SLOTS, Direction, Field, Footprint, Hex, HexSet};
 pub use h3_contracts::{BattleOutcome, BattleResult, BattleSetup, BattleSide};
-pub use hero::HeroView;
+pub use hero::{HeroView, OwnHeroView};
 pub use legal::{LegalCommands, MAX_LEGAL_COMMANDS, legal_commands};
 pub use morale::{Bearer, Expiry, MODIFIER_CAPACITY, Modifiers, Stat};
 pub use observe::{Observation, observe, project};

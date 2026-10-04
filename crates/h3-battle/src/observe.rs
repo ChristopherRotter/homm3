@@ -1,16 +1,18 @@
 //! Observations and event projection (ADR-0004 §6, docs/06-security.md "Information hiding").
 //!
 //! The battlefield is fully visible to both sides, so the observation is the state minus what
-//! no player may know: the RNG state (it would predict rolls) and the private part of the heroes
-//! (their Tactics level; ADR-0013 point 9). Hidden battle information added later (an opponent's
-//! spell book, E04b) is projected away here too.
+//! the viewer may not know: the RNG state (it would predict rolls) and the private part of the
+//! other side's hero (ADR-0013 point 9: its skill values, surrender discount, funds and price).
+//! The viewer's own hero's private part is shown to the viewer ([`OwnHeroView`]). Hidden battle
+//! information added later (an opponent's spell book, E04b) is projected away here too.
 
+use h3_content::Ruleset;
 use h3_contracts::{BattleResult, BattleSide};
 use h3_kernel::FixedVec;
 
 use crate::event::{Event, Visibility};
 use crate::geometry::HexSet;
-use crate::hero::HeroView;
+use crate::hero::{HeroView, OwnHeroView};
 use crate::state::{BattleState, STACK_CAPACITY, Stack, StackId};
 use crate::tactics::TacticsPhase;
 
@@ -25,6 +27,9 @@ pub struct Observation {
     pub tactics: Option<TacticsPhase>,
     /// Whether each side may retreat (BAT-FLE-001; public), indexed by [`BattleSide::index`].
     pub may_retreat: [bool; 2],
+    /// Whether each side may surrender at all (BAT-FLE-002; public, ADR-0013 point 9), indexed
+    /// by [`BattleSide::index`]. Whether the viewer can pay is in [`own_hero`](Self::own_hero).
+    pub surrender_possible: [bool; 2],
     /// The stack whose turn it is.
     pub active: Option<StackId>,
     /// Side of the last stack that took a turn.
@@ -35,26 +40,39 @@ pub struct Observation {
     pub stacks: FixedVec<Stack, STACK_CAPACITY>,
     /// Hexes blocked by obstacles (public).
     pub obstacles: HexSet,
-    /// The heroes leading the sides, their public part (identity, primary skills, mana;
-    /// ADR-0013 point 9), indexed by [`BattleSide::index`].
+    /// The heroes leading the sides, their public part (identity, primary skills, mana, the war
+    /// machines they command; ADR-0013 point 9), indexed by [`BattleSide::index`].
     pub heroes: [Option<HeroView>; 2],
+    /// The private part of the viewer's own hero, if the viewer is led by one.
+    pub own_hero: Option<OwnHeroView>,
     /// The battlefield's terrain (public).
     pub terrain: Option<h3_content::TerrainId>,
 }
 
-/// The observation of `state` for `viewer`.
-pub fn observe(state: &BattleState, viewer: BattleSide) -> Observation {
+/// The observation of `state` for `viewer`. `ruleset` must be the one the battle was built
+/// with (as for [`apply`](crate::apply)); the surrender rules read it.
+pub fn observe(state: &BattleState, ruleset: &Ruleset, viewer: BattleSide) -> Observation {
     Observation {
         viewer,
         round: state.round,
         tactics: state.tactics,
         may_retreat: BattleSide::BOTH.map(|side| state.may_retreat(side)),
+        surrender_possible: BattleSide::BOTH.map(|side| state.surrender_possible(ruleset, side)),
         active: state.active,
         last_side_acted: state.last_side_acted,
         result: state.result,
         stacks: state.stacks,
         obstacles: state.obstacles,
         heroes: BattleSide::BOTH.map(|side| state.hero(side)),
+        own_hero: state.heroes[viewer.index()].map(|h| OwnHeroView {
+            tactics: h.tactics,
+            damage: h.damage,
+            ballista: h.ballista,
+            tent: h.tent,
+            surrender_discount_bp: h.surrender_discount_bp,
+            funds: h.funds,
+            surrender_price: state.surrender_price(ruleset, viewer),
+        }),
         terrain: state.terrain,
     }
 }
