@@ -1,4 +1,5 @@
-//! The heroes leading the sides (BAT-HER-001): what the battle checks, keeps and shows.
+//! The heroes leading the sides (BAT-HER-001): what the battle checks, keeps and shows, and the
+//! hero's attack and defense on its stacks (BAT-HER-002).
 
 use std::vec;
 use std::vec::Vec;
@@ -9,7 +10,10 @@ use h3_content::{
 use h3_contracts::{BallistaControl, BattleEffect, BattleHero, MAX_BATTLE_EFFECTS, StatOp};
 
 use super::support::*;
-use crate::{BattleSetup, BattleSide, BattleState, HeroError, HeroView, SetupError, observe};
+use crate::{
+    BattleSetup, BattleSide, BattleState, Command, EventKind, HeroError, HeroView, SetupError,
+    StackId, observe,
+};
 
 fn with_heroes(r: &h3_content::Ruleset, heroes: [Option<BattleHero>; 2]) -> BattleSetup {
     BattleSetup {
@@ -197,4 +201,67 @@ fn unsound_heroes_are_rejected() {
             );
         }
     }
+}
+
+// covers: BAT-HER-002
+#[test]
+fn a_hero_adds_its_attack_and_defense_to_every_stack_of_its_side() {
+    let r = ruleset();
+    let ballista = r.creature_by_key("t:ballista").unwrap();
+    let stats = |heroes: [Option<BattleHero>; 2]| -> Vec<(u16, u16)> {
+        let s = BattleSetup {
+            heroes,
+            terrain: r.terrain_by_key("t:plain"),
+            war_machines: [vec![ballista], vec![ballista]],
+            ..setup(
+                &r,
+                &[(0, "pikeman_c", 1), (1, "serf", 1)],
+                &[(0, "serf", 1)],
+            )
+        };
+        let b = BattleState::new(&r, &s, 1).unwrap();
+        b.stacks().iter().map(|s| (s.attack, s.defense)).collect()
+    };
+    // Stacks: the attacker's pikeman, serf and Ballista, then the defender's serf and Ballista.
+    let bare = stats([None, None]);
+    assert_eq!(bare[..2], [(11, 11), (10, 10)]);
+    // Orrin (attack 3, defense 2) leads the attacker: its army and its war machine gain, on top
+    // of the native-terrain bonus; the defender's stacks keep their values.
+    let led = stats([Some(hero(&r)), None]);
+    let gained: Vec<(u16, u16)> = bare[..3].iter().map(|&(a, d)| (a + 3, d + 2)).collect();
+    assert_eq!(led[..3], gained[..]);
+    assert_eq!(led[3..], bare[3..]);
+    // Values no real hero could have are added as they are.
+    let mut odd = hero(&r);
+    [odd.attack, odd.defense] = [255, 255];
+    assert_eq!(stats([None, Some(odd)])[3], (265, 265));
+
+    // The attack advantage reads the sums (BAT-DMG-002): 10 fixed (2 damage each) strike 10
+    // fixed for 20 without heroes, for 23 with Orrin's attack 3 (+15 %), for 21 when the
+    // defender's Orrin adds defense 2 (+5 %).
+    let damage = |heroes: [Option<BattleHero>; 2]| {
+        let s = BattleSetup {
+            heroes,
+            ..setup(&r, &[(0, "fixed", 10)], &[(0, "fixed", 10)])
+        };
+        let mut b = BattleState::new(&r, &s, 1).unwrap();
+        place(&mut b, &r, 0, 7, 5);
+        place(&mut b, &r, 1, 8, 5);
+        activate(&mut b, 0);
+        let attack = Command::Attack {
+            target: StackId(1),
+            from: at(&r, 7, 5),
+        };
+        act(&mut b, &r, attack)
+            .unwrap()
+            .iter()
+            .find_map(|e| match e.kind {
+                EventKind::Struck { damage, .. } => Some(damage),
+                _ => None,
+            })
+            .unwrap()
+    };
+    assert_eq!(damage([None, None]), 20);
+    assert_eq!(damage([Some(hero(&r)), None]), 23);
+    assert_eq!(damage([Some(hero(&r)), Some(hero(&r))]), 21);
 }

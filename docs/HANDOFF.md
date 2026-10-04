@@ -4,6 +4,16 @@ Living state. The last agent updates this at the end of every session; the next 
 
 ---
 
+## 2026-10-04 (seventh session) — E04a T5a done; T5b in progress
+
+**State:** branch `e04a-heroes-in-battle`, `cargo xtask verify` green. Scope chosen by the user at the start: T5 split at the stats/morale boundary into **T5a and T5b**, both this session as separate checkpoints.
+
+**T5a (done):** BAT-HER-002 — the hero's attack and defense are added to every stack of its side, war machines included, after the native-terrain bonus (`Stack::new`); they enter the attack advantage and the Defend base (BAT-TRN-004 updated). BAT-DMG-009 — death stare removes whole creatures, the damaged top one first; the new top creature has full health (Q21). No version bumps (encodings unchanged); the pinned initial-state hash and `full-s3` changed with the values (Brea's attack and defense 2 now count; 467 → 599 commands, the attacker still wins). Bench-check re-baselined: the `full` workload's 20 games take 12 % fewer steps (instructions per step +1.8 %); `h3 bench` full 300 games ≈ 165 k steps/s against ≈ 176 k before in the same sandbox (shorter battles amortise setup over fewer steps).
+
+**Next:** T5b (see the epic): derivation fills `effects` with the morale/luck kinds (HER-BAT-003), side modifiers in `h3_battle::morale` (capacity 36), scenario/replay `effects`, state size measured.
+
+---
+
 ## 2026-10-04 (sixth session) — E04a T4 done (T4b1 and T4b2: the battle hero and the seam switch)
 
 **State:** branch `e04a-heroes-in-battle`, `cargo xtask verify` green (also `--with-original-data`). Scope chosen by the user at the start: T4b split into **T4b1 and T4b2**, both this session, as separate checkpoints. The user also decided (OPEN-QUESTIONS **Q31**): a scenario is a battle-setup file and gives the battle hero **directly** (no derivation); the battle takes a `BattleHero` as given and checks it **only for soundness**, not whether a real hero could have its values. Nothing half-done.

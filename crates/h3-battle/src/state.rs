@@ -344,7 +344,8 @@ pub struct Stack {
 
 impl Stack {
     /// A new stack of `count` creatures with the creature's stats, the native-terrain bonus
-    /// (BAT-TER-001) and its traits and retaliations.
+    /// (BAT-TER-001), the attack and defense of its side's hero (BAT-HER-002) and its traits and
+    /// retaliations.
     fn new(
         ruleset: &Ruleset,
         setup: &BattleSetup,
@@ -357,6 +358,10 @@ impl Stack {
         let abilities = ruleset.abilities(id);
         // rule: BAT-TER-001
         let native = u8::from(terrain::is_native(ruleset, id, setup.terrain));
+        // rule: BAT-HER-002
+        let (hero_attack, hero_defense) = setup.heroes[side.index()]
+            .as_ref()
+            .map_or((0, 0), |hero| (hero.attack, hero.defense));
         let retaliations = retaliations_per_round(abilities);
         Self {
             creature: id,
@@ -366,8 +371,14 @@ impl Stack {
             count,
             base_count: count,
             top_hp: creature.hit_points,
-            attack: creature.attack.saturating_add(native.into()),
-            defense: creature.defense.saturating_add(native.into()),
+            attack: creature
+                .attack
+                .saturating_add(native.into())
+                .saturating_add(hero_attack.into()),
+            defense: creature
+                .defense
+                .saturating_add(native.into())
+                .saturating_add(hero_defense.into()),
             damage_min: creature.damage_min,
             damage_max: creature.damage_max,
             max_hp: creature.hit_points,

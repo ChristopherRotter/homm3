@@ -214,7 +214,7 @@ id       = "BAT-TRN-004"
 title    = "Defend"
 context  = "battle"
 status   = "implemented"
-summary  = "Defend ends the active stack's turn. Until the stack's next activation its defense is increased by floor(defense * defend_bonus_percent / 100), at least defend_bonus_min (original: 20 %, at least +1). The base is the stack's defense including the native-terrain bonus (BAT-TER-001), as in VCMI; hero and spell bonuses join the base with E04."
+summary  = "Defend ends the active stack's turn. Until the stack's next activation its defense is increased by floor(defense * defend_bonus_percent / 100), at least defend_bonus_min (original: 20 %, at least +1). The base is the stack's defense including the native-terrain bonus (BAT-TER-001) and the hero's defense (BAT-HER-002), as in VCMI and the wiki ('after bonuses'); spell bonuses join the base with E04b."
 numeric  = "integer"
 
   [[rule.source]]
@@ -804,7 +804,7 @@ id       = "BAT-DMG-009"
 title    = "Death stare"
 context  = "battle"
 status   = "implemented"
-summary  = "After its attack (also a retaliation), if the target is alive (flag alive) and survived, each creature of a stack with death_stare (Mighty Gorgons: 10 %) independently kills one target creature with that chance, at most ceil(count × percent / 100) kills (trials stop at the cap). The kills deal kills × max_hp damage (BAT-DMG-003), so the top creature keeps its damage (VCMI). Observed (Q21, batch 1a): the stare removes whole creatures starting with the damaged top one, so the new top creature has full health (the wiki); the change is planned for E04a T5."
+summary  = "After its attack (also a retaliation), if the target is alive (flag alive) and survived, each creature of a stack with death_stare (Mighty Gorgons: 10 %) independently kills one target creature with that chance, at most ceil(count × percent / 100) kills (trials stop at the cap). The kills remove whole creatures, the damaged top one first, so a surviving stack's new top creature has full health (the wiki; observed, Q21). VCMI deals kills × max_hp damage instead, so its top creature keeps its damage; not followed."
 numeric  = "integer"
 
   [[rule.source]]
@@ -813,7 +813,7 @@ numeric  = "integer"
   url        = "https://heroes.thelazy.net/index.php/Mighty_Gorgon"
   retrieved  = "2026-10-01"
   confidence = "high"
-  note       = "The full-health statement conflicts with VCMI; confirmed by observation (Q21)."
+  note       = "The full-health statement conflicts with VCMI; confirmed by observation (Q21) and implemented (E04a T5a)."
 
   [[rule.source]]
   kind       = "observation"
@@ -1262,4 +1262,32 @@ numeric  = "integer"
   [[rule.source]]
   kind       = "design"
   ref        = "ADR-0013 points 4, 5 and 9; OPEN-QUESTIONS Q31 (user, 2026-10-04: the battle is fed whatever the game state happens to be and checks only soundness)"
+  confidence = "high"
+
+[[rule]]
+id       = "BAT-HER-002"
+title    = "The hero's attack and defense on its stacks"
+context  = "battle"
+status   = "implemented"
+summary  = "When the battle starts, the attack and defense of a side's hero (BattleHero.attack and .defense, BAT-HER-001) are added to the attack and defense of every stack of that side, war machines included, for the whole battle. Order of a stack's base values: the creature's, the native-terrain bonus (BAT-TER-001), the hero's attack and defense, then the hero's stat effects (E04a T10). The other side's stacks are unchanged. The sums enter the attack advantage of the damage (BAT-DMG-002) and the base of the Defend bonus (BAT-TRN-004). Not covered here: the Ballista's damage range, which grows with the hero's attack as well (E04a T7)."
+numeric  = "integer"
+
+  [[rule.source]]
+  kind       = "wiki"
+  ref        = "Primary skill - Heroes 3 wiki: 'A hero's attack skill value is added to each of the stack's attack rating'; 'Heroes' defense skill is added to the defense rating of each of the creatures in their army'"
+  url        = "https://heroes.thelazy.net/index.php/Primary_skill"
+  retrieved  = "2026-10-03"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "vcmi"
+  ref        = "lib/CStack.cpp L63-82: army stacks inherit the hero's bonuses through their CStackInstance, war machines attach directly to the hero's army node, so the hero's primary skills reach both"
+  url        = "https://github.com/vcmi/vcmi/blob/1.7.5/lib/CStack.cpp#L63-L82"
+  retrieved  = "2026-10-03"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "observation"
+  ref        = "experiments/results/E04a-batch-1a.md R5 (SoD 4.0 Complete): a hero with attack 20 and no skills; its Ballista hit a Behemoth for 92 = 56 × 1.65, i.e. the Ballista's attack 10 + 20 against the Behemoth's defense 17 (+13 points, +65 %); the damage range part (56 within (2..3) × (20 + 1) = 42..63) is E04a T7"
+  retrieved  = "2026-10-03"
   confidence = "high"

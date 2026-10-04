@@ -17,9 +17,6 @@ checked 2026-10-03) touches these battles. Recorded in OPEN-QUESTIONS (Q21, Q23)
 (Q-0004 to Q-0006) and the catalog (BAT-DMG-002, BAT-DMG-009, BAT-WAR-002, BAT-TRN-005). What each
 task has to do with them:
 
-- **T5** (first battle task after the seam): death stare per the wiki (Q21): after the damage the
-  stare removes whole creatures, the damaged top one first; the new top creature has full health
-  (BAT-DMG-009). Golden replays change only if a replay has a stare.
 - **T6:** quirk Q-0005: rates enter the damage factors as their single-precision values
   (`round_to_f32(rate)` as an exact dyadic fraction: 0.05 → 13421773/2^28), the product is rounded
   down once; computed exactly in integers (u128), behind `quirk.battle.single_precision_rates`.
@@ -114,12 +111,11 @@ state-hash bump. Left for T9:
 
 ## 6. The hero's effects in the battle state (T5, T10)
 
-- **Battle-long stat effects are applied once at setup.** A stack's *base* stats (ADR-0012 §3)
-  become: the creature's values, then the native-terrain bonus, then the hero's attack and defense,
-  then `StackStat` effects (percentages of the creature's own value, computed before any
-  addition). They apply to every stack of the side, war machines included (VCMI; to be confirmed
-  for the Ballista in batch 1). Traits such as regeneration or no range penalty become stack traits.
-  The pool (ADR-0012) keeps what changes during a battle; its evaluation starts from these bases.
+- **Battle-long stat effects are applied once at setup.** T5a implemented the hero's attack and
+  defense (BAT-HER-002, `Stack::new`: creature, native terrain, hero; war machines included).
+  T10 adds the `StackStat` effects after them (percentages of the creature's own value, computed
+  before any addition). Traits such as regeneration or no range penalty become stack traits. The
+  pool (ADR-0012) keeps what changes during a battle; its evaluation starts from these bases.
 - **Morale and luck effects become side modifiers.** The battle sums a hero's effects per affected
   side, stat and operation at setup and inserts one modifier per (bearer side, stat, operation,
   source hero): sources are distinct keys for "own hero add", "own hero cap", "enemy hero add",

@@ -281,8 +281,9 @@ fn life_drain<S: Sink>(state: &mut BattleState, stack: StackId, hp: u64, sink: &
 
 /// After its attack, each creature of `attacker` kills one creature of the living, surviving
 /// `target` with `chance` % probability, at most `ceil(count · chance / 100)` in total (one trial
-/// per creature, stopping at the cap). The kills deal `kills × max_hp` damage, so the top
-/// creature keeps its damage (Q21, as VCMI does) (BAT-DMG-009).
+/// per creature, stopping at the cap). The kills remove whole creatures, the damaged top one
+/// first, so a surviving stack's new top creature has full health (Q21, observed; VCMI keeps the
+/// damage instead) (BAT-DMG-009).
 // rule: BAT-DMG-009
 fn death_stare<S: Sink>(
     state: &mut BattleState,
@@ -309,8 +310,11 @@ fn death_stare<S: Sink>(
         return;
     }
     let victim = state.at_mut(target);
-    let damage = successes.saturating_mul(u64::from(victim.max_hp));
-    let kills = apply_damage(victim, damage);
+    let kills = u32::try_from(successes)
+        .unwrap_or(u32::MAX)
+        .min(victim.count);
+    victim.count -= kills;
+    victim.top_hp = if victim.is_alive() { victim.max_hp } else { 0 };
     sink.emit(Event::public(EventKind::DeathStared {
         attacker,
         target,

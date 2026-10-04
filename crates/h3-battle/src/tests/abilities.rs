@@ -603,25 +603,27 @@ fn stares(events: &[Event]) -> Vec<(u8, u8, u32)> {
 #[test]
 fn death_stare_kills_whole_creatures_after_the_strike() {
     let r = ruleset();
-    // 3 starers deal 6 (94 HP left), then stare 3 serfs dead: 7 left, the top one still at 4 HP
-    // (Q21); the 7 retaliate for 14.
+    // 3 starers deal 6 (94 HP left, the top serf at 4 HP), then stare 3 serfs dead, the damaged
+    // top one first: 7 left, the new top one at full health (Q21, batch 1a R4); the 7 retaliate
+    // for 14.
     let mut s = battle(&r, &[(0, "starer", 3)], &[(0, "serf", 10)], 1);
     arrange(&mut s, &r, &[(7, 5), (8, 5)]);
     let events = hit(&mut s, &r, 1, (7, 5));
     assert_eq!(stares(&events), vec![(0, 1, 3)]);
-    assert_eq!((s.stacks()[1].count, s.stacks()[1].top_hp), (7, 4));
+    assert_eq!((s.stacks()[1].count, s.stacks()[1].top_hp), (7, 10));
     assert_eq!(strikes(&events), vec![(0, 1, 6, 0, N), (1, 0, 14, 1, R)]);
     let kinds: Vec<EventKind> = events.iter().map(|e| e.kind).collect();
     assert!(matches!(kinds[0], EventKind::Struck { .. }));
     assert!(matches!(kinds[1], EventKind::DeathStared { .. }));
     assert!(matches!(kinds[2], EventKind::Struck { .. }));
-    // A retaliation stares too: 1 starer left after 20 damage, it retaliates and kills 1.
+    // A retaliation stares too: 1 starer left after 20 damage, it retaliates (the top serf at
+    // 8 HP) and kills 1: 9 left, the top one at full health.
     let mut s = battle(&r, &[(0, "serf", 10)], &[(0, "starer", 3)], 1);
     arrange(&mut s, &r, &[(7, 5), (8, 5)]);
     let events = hit(&mut s, &r, 1, (7, 5));
     assert_eq!(strikes(&events), vec![(0, 1, 20, 2, N), (1, 0, 2, 0, R)]);
     assert_eq!(stares(&events), vec![(1, 0, 1)]);
-    assert_eq!((s.stacks()[0].count, s.stacks()[0].top_hp), (9, 8));
+    assert_eq!((s.stacks()[0].count, s.stacks()[0].top_hp), (9, 10));
 }
 
 // covers: BAT-DMG-009
