@@ -96,6 +96,6 @@ Classes: `exploit-fix` (always fixed, never toggleable) · `preserve` (accepted,
 - Community status: on the wiki (Swordsman, Hero specialty pages; Catherine mis-attributed), fixed in Horn of the Abyss
 - Sources: observation, `experiments/results/E04a-batch-1a.md` B4–B6 (SoD 4.0 Complete, 2026-10-03); original-data, the specialty table (`docs/formats/installation.md` §7.2); wiki, Hero specialty (https://heroes.thelazy.net/index.php/Hero_specialty, retrieved 2026-10-03)
 - Flag: none yet; a quirk in data, so it needs the same mechanism as the elementals' levels (survey S-05): a per-profile data override (profile-level Tier-2 overrides, deferred by ADR-0006), built with E04b (user, OPEN-QUESTIONS Q35). Until then the packs hold the executable's value (faithful).
-- Defaults: faithful = on (Crusader), strict-fixed = off (Swordsman)
+- Defaults: faithful = on (Crusader), strict-fixed = off (Swordsman), effective once the override exists (E04b); until then both profiles keep the Crusader, the one difference of the profiles not yet built (E04a exit criterion 3)
 - Regression test: `crates/h3-pack/src/lib.rs`, `harvested_hero_effects_reproduce_the_experiments` (B4–B6 with the harvested packs; E04a T10a)
 - Decided by / date: suggested class S-03, confirmed by experiment batch 1a, 2026-10-03

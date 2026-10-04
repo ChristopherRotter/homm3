@@ -27,7 +27,8 @@ are computed before the seam (03-domain). The seam must change once for E04a and
 4. **`BattleHero` is a hybrid:** typed fields for what the battle reads by name (primary skills,
    Tactics level, damage bonuses, war-machine control as derived numbers, surrender discount), a
    bounded list of resolved `BattleEffect`s for everything else, and E04b's magic fields reserved
-   and validated from E04a on. The battle validates it like the rest of the setup.
+   and validated from E04a on. The battle checks only what its rules need to run soundly
+   (references, bounds); keeping a hero within the game's limits is the derivation's job (Q31).
 5. **Seam changes.** `BattleSetup.heroes: [Option<BattleHero>; 2]` replaces `led_by_hero` (Q-0003
    reads hero presence); `BattleSetup.funds` for surrenders. `BattleResult` gains `Retreat(side)`
    and `Surrender(side)`. `BattleOutcome` reports facts — per-stack start and end counts, the
@@ -43,11 +44,13 @@ are computed before the seam (03-domain). The seam must change once for E04a and
    the ruleset's costs, the hero's discount); funds come in through the setup. Should a rule ever
    need information outside the battle, the price becomes an injected input, never an import.
 9. **Visibility.** What the original shows in battle (hero identity, primary skills, mana, war
-   machines, tactics zone, retreat/surrender options) is public; skill levels, bonuses,
-   effects, spell book and funds are private to the hero's side. Hidden battlefield objects (E04b)
-   use the same owner-side projection (ADR-0004).
-10. **Encodings.** E04a extends the dense action encoding (v5); E04b designs a factorized one for
-    casting together with E05.
+   machines and which of them the hero commands, tactics zone, retreat/surrender options) is
+   public; skill levels, bonuses, effects, spell book, funds and the surrender price are private
+   to the hero's side, which sees them in its own observation (`observe` reads the ruleset, Q37).
+   Hidden battlefield objects (E04b) use the same owner-side projection (ADR-0004).
+10. **Encodings.** E04a extends the dense action encoding (v8: heals, `EndTactics`, Retreat,
+    Surrender) and the observation encoding (v4: a hero block per side, the opponent's without
+    its private part); E04b designs a factorized one for casting together with E05.
 11. **Rule ids.** Battle rules keep `BAT-` (new areas `BAT-TAC`, `BAT-FLE`, `BAT-HER`); derivation
     rules are `HER-` rules in `docs/rules/catalog/heroes.toml`.
 
@@ -80,3 +83,7 @@ are computed before the seam (03-domain). The seam must change once for E04a and
 - 2026-10-04: point 7 — the optional consent step for a surrender is dropped (user, OPEN-QUESTIONS
   Q32): in SoD neither a human nor the computer opponent is asked (experiment batch 1b R4), and in
   HotA the enemy cannot refuse either (wiki, Combat). Point 9 no longer lists offers.
+- 2026-10-04 (E04a T12a): what E04a's tasks decided, folded in — point 4: the battle checks only
+  soundness (Q31); point 9: which war machines a hero commands is public, the own side's private
+  part is in its observation (T11a, Q37); point 10: the encodings E04a ended with (T11b). Detail
+  that stays out of the ADR: `FactionGroup` (Q36) and `StatOp` in the crate docs.

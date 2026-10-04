@@ -2953,6 +2953,18 @@ mod tests {
     }
 
     // covers: HER-BAT-008, HER-BAT-009, HER-BAT-010, BAT-HER-005, BAT-HER-006, BAT-HER-007
+    /// E04a exit criterion 3: with the harvested packs `faithful` turns every registered quirk
+    /// flag on and `strict-fixed` every one off, so the two profiles differ exactly by the quirks
+    /// of the ledger that have a flag (Q-0006 gets its data override with E04b, Q35).
+    #[test]
+    fn the_profiles_differ_exactly_by_the_quirk_flags() {
+        let all = (1u64 << h3_content::REGISTRY.len()) - 1;
+        for (profile, bits) in [("base:faithful", all), ("base:strict-fixed", 0)] {
+            let r = compile(&[SOD_PACK, AB_PACK, BASE_PACK], profile).unwrap();
+            assert_eq!(r.quirks().bits(), bits, "{profile}");
+        }
+    }
+
     #[test]
     fn harvested_hero_effects_reproduce_the_experiments() {
         use h3_battle::{BattleState, Stack, StackTraits};

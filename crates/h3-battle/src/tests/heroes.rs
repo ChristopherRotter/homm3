@@ -882,3 +882,90 @@ fn hero_damage_bonuses_raise_the_sides_strikes_and_reduce_the_strikes_against_it
     assert_eq!(armorer("t:faithful"), Some(95));
     assert_eq!(armorer("t:single"), Some(94));
 }
+
+mod isolation {
+    use proptest::prelude::{any, prop_assert, prop_assert_eq, proptest};
+    use proptest::test_runner::Config;
+
+    use super::*;
+
+    /// What a side's stacks start with apart from morale and luck: statistics, traits,
+    /// regeneration and places.
+    fn statistics(
+        s: &BattleState,
+        side: BattleSide,
+    ) -> Vec<(CreatureTypeId, crate::Hex, [u32; 9])> {
+        s.stacks()
+            .iter()
+            .filter(|st| st.side == side)
+            .map(|st| {
+                let values = [
+                    st.count,
+                    st.max_hp,
+                    u32::from(st.attack),
+                    u32::from(st.defense),
+                    u32::from(st.speed),
+                    u32::from(st.damage_min),
+                    u32::from(st.damage_max),
+                    u32::from(st.shots),
+                    st.traits.bits() << 16 | u32::from(st.regeneration),
+                ];
+                (st.creature, st.hex, values)
+            })
+            .collect()
+    }
+
+    fn morale_and_luck(s: &BattleState, side: BattleSide) -> Vec<(i8, i8)> {
+        s.stacks()
+            .iter()
+            .filter(|st| st.side == side)
+            .map(|st| (st.morale, st.luck))
+            .collect()
+    }
+
+    proptest! {
+        #![proptest_config(Config::with_cases(64))]
+
+        /// Hero isolation (E04a exit criterion 4): whatever the attacker's hero (primary skills,
+        /// any subset of every effect kind), the defender's stacks start with the same
+        /// statistics, traits and regeneration as without it (BAT-HER-002, BAT-HER-005,
+        /// BAT-HER-006); their morale and luck change only through effects on the enemy
+        /// (BAT-HER-003, BAT-HER-007).
+        #[test]
+        fn a_hero_changes_only_its_own_sides_stacks(skills: [u8; 4], subset in any::<u16>()) {
+            let r = ruleset();
+            let effects: Vec<BattleEffect> = every_effect(&r)
+                .into_iter()
+                .enumerate()
+                .filter(|(i, _)| subset & (1 << i) != 0)
+                .map(|(_, e)| e)
+                .collect();
+            let on_enemy = effects.iter().any(|e| matches!(e,
+                BattleEffect::Morale { affects, .. }
+                | BattleEffect::Luck { affects, .. }
+                | BattleEffect::MoraleAtMost { affects, .. }
+                | BattleEffect::LuckAtMost { affects, .. } if *affects != Affects::Own));
+            let mut led = hero(&r);
+            [led.attack, led.defense, led.power, led.knowledge] = skills;
+            led.effects = effects;
+            let armies = setup(
+                &r,
+                &[(0, "fixed", 10), (1, "archer", 5), (2, "wight", 3)],
+                &[(0, "fixed", 10), (1, "archer", 5), (2, "wight", 3)],
+            );
+            let with = BattleSetup { heroes: [Some(led), None], ..armies.clone() };
+            let with = BattleState::new(&r, &with, 1).unwrap();
+            let without = BattleState::new(&r, &armies, 1).unwrap();
+            let defender = BattleSide::Defender;
+            prop_assert_eq!(statistics(&with, defender), statistics(&without, defender));
+            prop_assert!(
+                on_enemy || morale_and_luck(&with, defender) == morale_and_luck(&without, defender)
+            );
+            // Not vacuous: the sixth effect (+25 % hit points for all) changes the hero's side.
+            let attacker = BattleSide::Attacker;
+            prop_assert!(
+                subset & (1 << 5) == 0 || statistics(&with, attacker) != statistics(&without, attacker)
+            );
+        }
+    }
+}
