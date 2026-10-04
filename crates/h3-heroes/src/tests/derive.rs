@@ -1,4 +1,4 @@
-//! `derive_battle_hero` (HER-BAT-001 to HER-BAT-008).
+//! `derive_battle_hero` (HER-BAT-001 to HER-BAT-009).
 
 use std::vec;
 
@@ -608,6 +608,66 @@ fn stack_statistics_are_summed_per_creatures_statistic_and_operation() {
             StatOp::PercentBp,
             i16::MAX
         ))
+    );
+}
+
+// covers: HER-BAT-009
+#[test]
+fn stack_trait_effects_are_kept_once_per_kind_and_creatures() {
+    use h3_content::{CreatureFlag, CreatureSelector};
+    let alive = CreatureSelector::Flag(CreatureFlag::Alive);
+    let shooters = CreatureSelector::Flag(CreatureFlag::Shooter);
+    let regeneration = |creatures, hit_points| HeroEffectDef::Regeneration {
+        creatures,
+        hit_points,
+    };
+    let mut p = pack();
+    for a in &mut p.artifacts {
+        a.effects = match a.key.to_string().as_str() {
+            "t:circle" => vec![regeneration(alive.clone(), 50)],
+            "t:band" => vec![
+                HeroEffectDef::NoRangePenalty {
+                    creatures: shooters.clone(),
+                },
+                HeroEffectDef::ShootWhenAdjacent {
+                    creatures: shooters.clone(),
+                },
+            ],
+            "t:helm" => vec![regeneration(alive.clone(), 70)],
+            "t:eye" => vec![
+                HeroEffectDef::NoRangePenalty {
+                    creatures: shooters.clone(),
+                },
+                regeneration(CreatureSelector::All, 10),
+            ],
+            _ => continue,
+        };
+    }
+    let r = compile(p).unwrap();
+    let (alive, shooters) = (
+        CreatureSelector::Flag(CreatureFlag::Alive),
+        CreatureSelector::Flag(CreatureFlag::Shooter),
+    );
+    // The helm's 70 beats the circle's 50 for the same creatures; the eye's second no range
+    // penalty is dropped, its regeneration for all creatures kept.
+    assert_eq!(
+        derive_battle_hero(&details(&r), &r).unwrap().effects,
+        [
+            BattleEffect::Regeneration {
+                creatures: alive,
+                hit_points: 70
+            },
+            BattleEffect::NoRangePenalty {
+                creatures: shooters
+            },
+            BattleEffect::ShootWhenAdjacent {
+                creatures: shooters
+            },
+            BattleEffect::Regeneration {
+                creatures: CreatureSelector::All,
+                hit_points: 10
+            },
+        ]
     );
 }
 

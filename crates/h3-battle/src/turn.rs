@@ -155,14 +155,20 @@ pub(crate) fn activate_next<S: Sink>(state: &mut BattleState, ruleset: &Ruleset,
 }
 
 /// At the start of its turn in the normal phase (not after waiting), a regenerating stack's top
-/// creature regains all lost hit points (Q20: at the stack's own turn, as VCMI does).
+/// creature regains all lost hit points (Q20: at the stack's own turn, as VCMI does); a stack its
+/// hero makes regenerate (BAT-HER-006) regains at most the stack's `regeneration`.
 // rule: BAT-TRN-005
 fn regenerate<S: Sink>(state: &mut BattleState, id: StackId, sink: &mut S) {
     let s = state.at_mut(id);
-    if s.has(StackTraits::REGENERATES) && !s.flags.contains(StackFlags::WAITED) {
-        let hit_points = s.max_hp - s.top_hp;
+    let most = if s.has(StackTraits::REGENERATES) {
+        u32::MAX
+    } else {
+        u32::from(s.regeneration)
+    };
+    if !s.flags.contains(StackFlags::WAITED) {
+        let hit_points = (s.max_hp - s.top_hp).min(most);
         if hit_points > 0 {
-            s.top_hp = s.max_hp;
+            s.top_hp += hit_points;
             sink.emit(Event::public(EventKind::Regenerated {
                 stack: id,
                 hit_points,

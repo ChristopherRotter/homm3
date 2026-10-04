@@ -242,6 +242,11 @@ fn state_hash_is_pinned() {
         heal_bonus_bp: 45_000,
     });
     led.surrender_discount_bp = 4000;
+    // A regeneration for every stack of the side (BAT-HER-006).
+    led.effects = vec![h3_contracts::BattleEffect::Regeneration {
+        creatures: h3_content::CreatureSelector::All,
+        hit_points: 50,
+    }];
     let setup = BattleSetup {
         heroes: [Some(led), None],
         funds: [1234, 99],
@@ -250,7 +255,7 @@ fn state_hash_is_pinned() {
     let s = BattleState::new(&r, &setup, 7).unwrap();
     assert!(s.tactics().is_some());
     assert_eq!(s.state_hash(), GOLDEN, "got {:#018x}", s.state_hash());
-    assert_eq!(crate::BATTLE_STATE_HASH_VERSION, 16);
+    assert_eq!(crate::BATTLE_STATE_HASH_VERSION, 17);
 }
 
-const GOLDEN: u64 = 0x2c75_08d1_193d_9eef;
+const GOLDEN: u64 = 0x8b5c_f48d_1b28_1944;

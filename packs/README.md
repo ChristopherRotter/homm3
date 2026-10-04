@@ -299,7 +299,7 @@ research notes and disputes in `docs/rules/surveys/E04-artifacts.md`):
   D1: VCMI lets every non-evil faction mix, Conflux included; an experiment for batch 1b).
   Speed and hit-point artifacts use the selector "all creatures"; the battle gives war machines
   the hit points but not the speed (batch 1b R8, BAT-HER-005). The Golden Bow's "shooters"
-  include the Ballista (open check 2, batch 1b R8; the rule comes with E04a T10b).
+  include the Ballista (open check 2, batch 1b R8; BAT-HER-006).
 
 **Battle parameters** (`[battle]`, Tier 2; exactly one enabled pack provides them): field
 size, army slots, damage rolls, attack/defense rates and caps, Defend bonus, the formation rows
@@ -365,7 +365,7 @@ hero_type = "synthetic:brea"     # the side, given directly (BAT-HER-001, Q31); 
 attack = 2                       # one is not led by a hero (quirk Q-0003). Every field but
 defense = 2                      # hero_type defaults to 0 (effects: none); the rest of the battle
 power = 1                        # hero (other effects, spell book, …) joins the format with
-knowledge = 1                    # the rules that read it (E04a T10b, T10c, E04b)
+knowledge = 1                    # the rules that read it (E04a T10c, E04b)
 tactics = 2
 mana = 10
 max_mana = 10
@@ -380,9 +380,11 @@ tent = { heal_bonus_bp = 10000 } # optional: the side commands its First Aid Ten
 effects = [{ kind = "morale", amount = 1 }, { kind = "luck_at_most", value = 0, affects = "enemy" }]
                                  # battle effects as in "Hero effects": so far `morale`, `luck`,
                                  # `morale_at_most`, `luck_at_most` (BAT-HER-003), `no_retreat`
-                                 # (BAT-FLE-001) and `stack_stat` (BAT-HER-005: `creatures` as in
+                                 # (BAT-FLE-001), `stack_stat` (BAT-HER-005: `creatures` as in
                                  # "Hero effects" (omitted: all), `stat`, `op` = `add` |
-                                 # `percent_bp` (rounded up) | `percent_bp_down`, `amount`)
+                                 # `percent_bp` (rounded up) | `percent_bp_down`, `amount`),
+                                 # `regeneration`, `no_range_penalty`, `shoot_when_adjacent`
+                                 # (BAT-HER-006, parameters as in "Hero effects")
 
 [[attacker]]                     # one entry per stack
 slot = 0

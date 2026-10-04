@@ -48,7 +48,8 @@
 //!
 //! [[setup.attacker_hero.effects]] # its battle effects (format 4; omitted when none):
 //! kind = "morale"                 #   `h3_pack::EffectEntry` (`no_retreat` format 9,
-//! amount = 1                      #   `stack_stat` format 11)
+//! amount = 1                      #   `stack_stat` format 11, `regeneration`,
+//!                                 #   `no_range_penalty`, `shoot_when_adjacent` format 12)
 //! affects = "own"
 //!
 //! [[attacker]]                    # the setup, by creature key

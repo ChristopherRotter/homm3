@@ -17,6 +17,7 @@ use h3_contracts::{
 use h3_kernel::{CanonicalHash, StateHasher};
 
 use crate::error::{HeroError, SetupError};
+use crate::state::StackTraits;
 
 /// What both sides see of a side's hero (ADR-0013 point 9): identity, primary skills and mana.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -118,6 +119,37 @@ pub(crate) fn stat_changes(
         changes[i] += change;
     }
     changes
+}
+
+/// A stack's traits and regeneration with its hero's trait effects (BAT-HER-006): for creature
+/// `id`, a matching `NoRangePenalty` adds the trait `NO_DISTANCE_PENALTY`, a matching
+/// `ShootWhenAdjacent` the trait `SHOOTS_WHEN_ADJACENT`, and the regeneration is the most hit
+/// points of the matching `Regeneration` effects (0 without one).
+// rule: BAT-HER-006
+pub(crate) fn trait_effects(
+    ruleset: &Ruleset,
+    hero: Option<&BattleHero>,
+    id: CreatureTypeId,
+    mut traits: StackTraits,
+) -> (StackTraits, u16) {
+    let mut regeneration = 0;
+    let effects = hero.map(|h| h.effects.as_slice()).unwrap_or_default();
+    for effect in effects {
+        match *effect {
+            BattleEffect::Regeneration {
+                creatures,
+                hit_points,
+            } if creatures.matches(ruleset, id) => regeneration = regeneration.max(hit_points),
+            BattleEffect::NoRangePenalty { creatures } if creatures.matches(ruleset, id) => {
+                traits = traits.with(StackTraits::NO_DISTANCE_PENALTY, true);
+            }
+            BattleEffect::ShootWhenAdjacent { creatures } if creatures.matches(ruleset, id) => {
+                traits = traits.with(StackTraits::SHOOTS_WHEN_ADJACENT, true);
+            }
+            _ => {}
+        }
+    }
+    (traits, regeneration)
 }
 
 /// The damage bonuses of `side` (none without a hero; BAT-HER-004).

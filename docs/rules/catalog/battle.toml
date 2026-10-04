@@ -237,7 +237,7 @@ id       = "BAT-TRN-005"
 title    = "Regeneration"
 context  = "battle"
 status   = "implemented"
-summary  = "When a stack with regeneration (Wights, Wraiths, Trolls) becomes active in the normal phase of a round (not when it activates from waiting), its top creature regains all lost hit points. Following VCMI (Q20); the wiki's creature text says 'at the beginning of each combat round'."
+summary  = "When a stack with regeneration (Wights, Wraiths, Trolls) becomes active in the normal phase of a round (not when it activates from waiting), its top creature regains all lost hit points. A stack its hero makes regenerate (Elixir of Life, BAT-HER-006) regains at the same moment at most the effect's hit points (50); with both, all. Event Regenerated. Following VCMI (Q20); the wiki's creature text says 'at the beginning of each combat round'."
 numeric  = "integer"
 
   [[rule.source]]
@@ -480,7 +480,7 @@ id       = "BAT-RNG-001"
 title    = "Shooting"
 context  = "battle"
 status   = "implemented"
-summary  = "A stack with flag shooter can shoot when it has shots left and no living enemy stack touches its footprint (an adjacent enemy blocks it). Then it may shoot at any living enemy stack (no line of sight on a field battle) and may not attack in melee; it can still move, wait or defend. A blocked shooter or one without shots fights like a melee stack. A shot is a ranged strike (BAT-DMG-001..003) that uses one shot and is not retaliated; a shooter with flag strikes_twice shoots a second time if the target still lives and it has a shot left (two shots used). The shooter does not move. A living Ammo Cart keeps shots unlimited (BAT-WAR-004). Scope: no ranged retaliation (no RoE creature has it)."
+summary  = "A stack with flag shooter can shoot when it has shots left and no living enemy stack touches its footprint (an adjacent enemy blocks it; not a stack whose hero lets it shoot while adjacent, the Bow of the Sharpshooter, BAT-HER-006). Then it may shoot at any living enemy stack (no line of sight on a field battle) and may not attack in melee; it can still move, wait or defend. A blocked shooter or one without shots fights like a melee stack. A shot is a ranged strike (BAT-DMG-001..003) that uses one shot and is not retaliated; a shooter with flag strikes_twice shoots a second time if the target still lives and it has a shot left (two shots used). The shooter does not move. A living Ammo Cart keeps shots unlimited (BAT-WAR-004). Scope: no ranged retaliation (no RoE creature has it)."
 numeric  = "integer"
 
   [[rule.source]]
@@ -516,7 +516,7 @@ id       = "BAT-RNG-002"
 title    = "Distance penalty"
 context  = "battle"
 status   = "implemented"
-summary  = "A shot deals half damage (a reduction of ranged_penalty_percent = 50 %, BAT-DMG-002) when no hex of the target is within ranged_full_damage_distance = 10 hexes of the shooter's position, unless the shooter has the no_distance_penalty ability (Sharpshooter). This includes the Ballista (observed, batch 1b R7). Scope: siege walls (the obstacle penalty) come with sieges; the Golden Bow's exemption (batch 1b R8) comes with E04a T10."
+summary  = "A shot deals half damage (a reduction of ranged_penalty_percent = 50 %, BAT-DMG-002) when no hex of the target is within ranged_full_damage_distance = 10 hexes of the shooter's position, unless the shooter has the no_distance_penalty ability (Sharpshooter) or its hero's NoRangePenalty effect (Golden Bow, Bow of the Sharpshooter; BAT-HER-006). This includes the Ballista (observed, batch 1b R7; with the Golden Bow none, R8). Scope: siege walls (the obstacle penalty) come with sieges."
 numeric  = "integer"
 
   [[rule.source]]
@@ -1477,6 +1477,32 @@ numeric  = "integer"
   url        = "https://github.com/vcmi/vcmi/blob/1.7.5/lib/CStack.cpp#L73-L79"
   retrieved  = "2026-10-04"
   confidence = "high"
+
+[[rule]]
+id       = "BAT-HER-006"
+title    = "The heroes' trait effects on their stacks"
+context  = "battle"
+status   = "implemented"
+summary  = "When the battle starts, a side's hero's trait effects (HER-BAT-009) reach the stacks of its side whose creature type they select (as in BAT-HER-005): NoRangePenalty gives the stack the no-distance-penalty trait (no half damage beyond ten hexes, BAT-RNG-002; the Golden Bow's shooters include the Ballista, batch 1b R8); ShootWhenAdjacent lets it shoot while an enemy touches it (BAT-RNG-001; it then shoots and does not attack in melee, as an unblocked shooter); Regeneration gives it the most hit points of the matching effects as its regeneration (Stack.regeneration, state hash v17), which its top creature regains at most at its turn (BAT-TRN-005; the Elixir of Life gives 50 to living creatures). Only the hero's own side is changed. The obstacle penalty of sieges is E04c."
+numeric  = "integer"
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "ARTRAITS.TXT descriptions (not committed, ADR-0009): the Golden Bow lets the troops shoot at any range without penalty; the Bow of the Sharpshooter lets ranged shooters fire while adjacent to an enemy, without range penalty; the Elixir of Life gives living creatures the regeneration ability (amount not stated)"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "vcmi"
+  ref        = "config/artifacts.json L1978-L2013 (Elixir: HP_REGENERATION 50, LIVING), L1322-L1340 and L2163-L2194 (NO_DISTANCE_PENALTY, FREE_SHOOTING with SHOOTER_ONLY); server/battles/BattleFlowProcessor.cpp L295-L299: the regeneration restores min(lost, value)"
+  url        = "https://github.com/vcmi/vcmi/blob/1.7.5/config/artifacts.json#L1978-L2013"
+  retrieved  = "2026-10-04"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "observation"
+  ref        = "experiments/results/E04a-batch-1b.md R8 (SoD 4.0 Complete, plain HD, 2026-10-04): with the Golden Bow the Ballista deals 23, 17 and 20 at long range, no range penalty (artifacts open check 2); experiments/results/E04a-batch-1a.md R8: Trolls with the Elixir regain all 54 (their own regeneration); the 50 cap is not observed (wiki and VCMI)"
+  retrieved  = "2026-10-04"
+  confidence = "medium"
 
 [[rule]]
 id       = "BAT-TAC-001"

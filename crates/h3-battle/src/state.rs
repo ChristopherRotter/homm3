@@ -28,7 +28,7 @@ pub const MAX_WAR_MACHINES: usize = WAR_MACHINE_KINDS;
 pub const STACK_CAPACITY: usize = 2 * (MAX_ARMY_SLOTS + MAX_WAR_MACHINES);
 
 /// Version of the battle-state hash encoding ([`BattleState::state_hash`]). Bump on any change.
-pub const BATTLE_STATE_HASH_VERSION: u32 = 16;
+pub const BATTLE_STATE_HASH_VERSION: u32 = 17;
 
 /// Index of a stack in its battle (attacker stacks first, in slot order, then defender stacks).
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Default)]
@@ -133,6 +133,9 @@ impl StackTraits {
     /// Shoots on without shots left: the shooting war machine under quirk Q-0004
     /// (`quirk.battle.unlimited_ballista_shots`, BAT-WAR-002).
     pub const UNLIMITED_SHOTS: Self = Self(1 << 20);
+    /// May shoot while an enemy stands next to it (its hero's `ShootWhenAdjacent`, Bow of the
+    /// Sharpshooter; BAT-HER-006).
+    pub const SHOOTS_WHEN_ADJACENT: Self = Self(1 << 21);
 
     /// Whether all traits of `other` are set.
     pub const fn contains(self, other: Self) -> bool {
@@ -345,6 +348,9 @@ pub struct Stack {
     pub luck: i8,
     /// Battle traits (two-hex, flying, …).
     pub traits: StackTraits,
+    /// Most hit points its hero's regeneration effects restore to the top creature at the start
+    /// of its turn (BAT-HER-006, BAT-TRN-005; 0: none).
+    pub regeneration: u16,
     /// Per-round flags.
     pub flags: StackFlags,
 }
@@ -389,6 +395,13 @@ impl Stack {
         // Within `u32` after the clamp.
         let max_hp = u32::try_from(max_hp).unwrap_or(u32::MAX);
         let retaliations = retaliations_per_round(abilities);
+        // rule: BAT-HER-006
+        let (traits, regeneration) = hero::trait_effects(
+            ruleset,
+            setup.heroes[side.index()].as_ref(),
+            id,
+            StackTraits::of(creature, abilities),
+        );
         Self {
             creature: id,
             side,
@@ -430,7 +443,8 @@ impl Stack {
             retaliations_left: retaliations,
             morale: 0,
             luck: 0,
-            traits: StackTraits::of(creature, abilities),
+            traits,
+            regeneration,
             flags: StackFlags::default(),
         }
     }
@@ -469,6 +483,7 @@ impl Default for Stack {
             morale: 0,
             luck: 0,
             traits: StackTraits::default(),
+            regeneration: 0,
             flags: StackFlags::default(),
         }
     }
@@ -531,6 +546,7 @@ impl CanonicalHash for Stack {
         h.write_i32(i32::from(self.morale));
         h.write_i32(i32::from(self.luck));
         h.write_u32(self.traits.bits());
+        h.write_u16(self.regeneration);
         h.write_u8(self.flags.bits());
     }
 }

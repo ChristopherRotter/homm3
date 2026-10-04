@@ -1,6 +1,7 @@
 //! The heroes leading the sides (BAT-HER-001): what the battle checks, keeps and shows, the
 //! hero's attack and defense on its stacks (BAT-HER-002), its morale and luck effects
-//! (BAT-HER-003), its damage bonuses (BAT-HER-004) and its statistic effects (BAT-HER-005).
+//! (BAT-HER-003), its damage bonuses (BAT-HER-004), its statistic effects (BAT-HER-005) and its
+//! trait effects (BAT-HER-006).
 
 use std::vec;
 use std::vec::Vec;
@@ -305,6 +306,174 @@ fn statistic_effects_change_the_selected_stacks_of_the_side_at_setup() {
         ..s
     };
     assert_eq!(stats(&s).get(6..), Some(&[(9, 12, [0, 0], 1, 1, 0)][..]));
+}
+
+// covers: BAT-HER-006
+#[test]
+fn trait_effects_reach_the_selected_stacks_of_the_side() {
+    use crate::StackTraits;
+    let r = ruleset();
+    let id = |k: &str| r.creature_by_key(k).unwrap();
+    let shooters = CreatureSelector::Flag(CreatureFlag::Shooter);
+    let mut h = hero(&r);
+    h.effects = vec![
+        BattleEffect::Morale {
+            amount: 1,
+            affects: Affects::Own,
+        },
+        BattleEffect::Regeneration {
+            creatures: CreatureSelector::Flag(CreatureFlag::Alive),
+            hit_points: 50,
+        },
+        BattleEffect::Regeneration {
+            creatures: CreatureSelector::Creature(id("t:squire")),
+            hit_points: 70,
+        },
+        BattleEffect::NoRangePenalty {
+            creatures: shooters,
+        },
+        BattleEffect::ShootWhenAdjacent {
+            creatures: shooters,
+        },
+    ];
+    let s = BattleSetup {
+        heroes: [Some(h), None],
+        war_machines: [vec![id("t:ballista")], vec![]],
+        ..setup(
+            &r,
+            &[
+                (0, "archer", 10),
+                (1, "squire", 1),
+                (2, "paladin", 1),
+                (3, "fixed", 1),
+            ],
+            &[(0, "archer", 10)],
+        )
+    };
+    let b = BattleState::new(&r, &s, 1).unwrap();
+    let both = |s: &crate::Stack| {
+        [
+            StackTraits::NO_DISTANCE_PENALTY,
+            StackTraits::SHOOTS_WHEN_ADJACENT,
+        ]
+        .map(|t| s.has(t))
+    };
+    // Stacks: archer, squire, paladin, fixed, Ballista; the defender's archer. The squires' 70
+    // beats the living creatures' 50; the archer is not alive; the Ballista is a shooter.
+    assert_eq!(
+        b.stacks()
+            .iter()
+            .map(|s| (both(s), s.regeneration))
+            .collect::<Vec<_>>(),
+        [
+            ([true, true], 0),
+            ([false, false], 70),
+            ([false, false], 70),
+            ([false, false], 0),
+            ([true, true], 0),
+            ([false, false], 0),
+        ]
+    );
+}
+
+// covers: BAT-HER-006, BAT-TRN-005, BAT-RNG-001, BAT-RNG-002
+#[test]
+fn hero_traits_let_shooters_shoot_far_and_close_and_stacks_regenerate() {
+    let r = ruleset();
+    let shooters = CreatureSelector::Flag(CreatureFlag::Shooter);
+    let mut bow = hero(&r);
+    [bow.attack, bow.defense] = [0, 0];
+    bow.effects = vec![
+        BattleEffect::NoRangePenalty {
+            creatures: shooters,
+        },
+        BattleEffect::ShootWhenAdjacent {
+            creatures: shooters,
+        },
+    ];
+    let mut s = BattleState::new(
+        &r,
+        &BattleSetup {
+            heroes: [Some(bow), None],
+            ..setup(
+                &r,
+                &[(0, "archer", 10)],
+                &[(0, "fixed", 10), (1, "slow", 1)],
+            )
+        },
+        1,
+    )
+    .unwrap();
+    activate(&mut s, 0);
+    for st in &mut s.stacks.as_mut_slice()[..1] {
+        [st.damage_min, st.damage_max] = [10, 10];
+    }
+    // archer attack 6 against fixed defense 10: 90 at any distance (half beyond ten hexes
+    // without the hero, BAT-RNG-002).
+    let damage = |s: &BattleState, x: i32| {
+        let mut t = s.clone();
+        place(&mut t, &r, 1, x, 5);
+        let shot = Command::Shoot {
+            target: StackId(1),
+            at: t.stacks()[1].hex,
+        };
+        act(&mut t, &r, shot)
+            .unwrap()
+            .iter()
+            .find_map(|e| match e.kind {
+                EventKind::Struck { damage, .. } => Some(damage),
+                _ => None,
+            })
+    };
+    assert_eq!(damage(&s, 15), Some(90));
+    // Next to an enemy it still shoots (BAT-RNG-001 would block it).
+    place(&mut s, &r, 2, 2, 5);
+    assert_eq!(damage(&s, 9), Some(90));
+    // A hero's regeneration restores at most its hit points per turn; a creature's own
+    // regeneration everything (BAT-TRN-005). The squire has 135 hit points, 10 left.
+    let mut tough = hero(&r);
+    tough.effects = vec![
+        BattleEffect::Regeneration {
+            creatures: CreatureSelector::All,
+            hit_points: 50,
+        },
+        BattleEffect::StackStat {
+            creatures: CreatureSelector::All,
+            stat: CreatureStat::HitPoints,
+            op: StatOp::Add,
+            amount: 100,
+        },
+    ];
+    let mut s = BattleState::new(
+        &r,
+        &BattleSetup {
+            heroes: [Some(tough.clone()), Some(tough)],
+            ..setup(&r, &[(0, "squire", 1)], &[(0, "wight", 5)])
+        },
+        1,
+    )
+    .unwrap();
+    s.stacks.as_mut_slice()[0].top_hp = 10;
+    s.stacks.as_mut_slice()[1].top_hp = 3;
+    let regenerated = |events: &[crate::Event]| -> Vec<(u8, u32)> {
+        events
+            .iter()
+            .filter_map(|e| match e.kind {
+                EventKind::Regenerated { stack, hit_points } => Some((stack.0, hit_points)),
+                _ => None,
+            })
+            .collect()
+    };
+    // The squire acts first, then the wight (110 hit points) regains all 107.
+    assert_eq!(
+        regenerated(&act(&mut s, &r, Command::Defend).unwrap()),
+        [(1, 107)]
+    );
+    assert_eq!(
+        regenerated(&act(&mut s, &r, Command::Defend).unwrap()),
+        [(0, 50)]
+    );
+    assert_eq!(s.stacks()[0].top_hp, 60);
 }
 
 // covers: BAT-HER-002

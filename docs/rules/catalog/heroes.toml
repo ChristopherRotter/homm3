@@ -344,3 +344,25 @@ numeric  = "integer"
   ref        = "experiments/results/E04a-batch-1a.md B4-B6 (SoD 4.0 Complete, 2026-10-03): at level 4 Catherine's and Sorsha's Swordsmen and Crusaders +1 attack, +1 defense, +1 speed, Roland's Crusaders only; R8: Trolls with the Elixir of Life 54 hit points. experiments/results/E04a-batch-1b.md B7 (plain HD, 2026-10-04): Xeron's Devils 23 / 23 / 12 (H-2: the +1 speed holds). All reproduced with the harvested packs (crates/h3-pack, harvested_statistic_effects_reproduce_the_experiments)"
   retrieved  = "2026-10-04"
   confidence = "high"
+
+[[rule]]
+id       = "HER-BAT-009"
+title    = "The battle hero's stack trait effects"
+context  = "heroes"
+status   = "implemented"
+summary  = "The battle hero's Regeneration, NoRangePenalty and ShootWhenAdjacent effects come from the regeneration, no_range_penalty and shoot_when_adjacent effects of the hero's effect sources (HER-BAT-001), each worn artifact type once (also inside a combination): one effect per kind and creatures, a regeneration with the most hit points, in the order of their first appearance after the stack statistics (HER-BAT-008), all within MAX_BATTLE_EFFECTS. The Golden Bow and the Bow of the Sharpshooter (no range penalty for shooters, the Bow also shooting while adjacent) and the Elixir of Life (regeneration of 50 for living creatures) are the original's sources. The battle applies them (BAT-HER-006)."
+numeric  = "integer"
+
+  [[rule.source]]
+  kind       = "wiki"
+  ref        = "Elixir of Life, Golden Bow, Bow of the Sharpshooter - Heroes 3 wiki (survey docs/rules/surveys/E04-artifacts.md §4-§5: regeneration of 50 per turn for living creatures; shooters without range penalty; shooting while adjacent)"
+  url        = "https://heroes.thelazy.net/index.php/Elixir_of_Life"
+  retrieved  = "2026-10-03"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "vcmi"
+  ref        = "config/artifacts.json L1978-L2013 (elixirOfLife: HP_REGENERATION 50 with a LIVING limiter), L1322-L1340 (goldenBow: NO_DISTANCE_PENALTY, SHOOTER_ONLY), L2163-L2194 (bowOfTheSharpshooter: NO_DISTANCE_PENALTY, FREE_SHOOTING, SHOOTER_ONLY)"
+  url        = "https://github.com/vcmi/vcmi/blob/1.7.5/config/artifacts.json#L1978-L2013"
+  retrieved  = "2026-10-03"
+  confidence = "high"

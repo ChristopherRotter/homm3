@@ -453,28 +453,28 @@ commands = [
     "D attack 1 140",
 ]
 checkpoints = [
-    "0xb9047d5d850d6a21",
-    "0x219ee29086f98dc4",
-    "0xfd4635d353701183",
-    "0x225c64514ef914c0",
-    "0x23e19bf26596b9c9",
-    "0xa24155270e77ad07",
-    "0x8ae65394a06dcacd",
-    "0x0a396dbdbc2ff83c",
-    "0xa58f7fde1994a499",
-    "0x345015da6ab41664",
-    "0x38edb0822cd2d73b",
-    "0x086be2dde3f2f8cd",
-    "0xf6f028c8f11a1207",
-    "0xc8ae2325464d0357",
-    "0x46fecc25478f76a9",
-    "0x07b27f5843fb2fd5",
-    "0x54ffceb3f3436460",
-    "0xecdc2643f463bf33",
+    "0x2dbd513f82b0c884",
+    "0x964f6b7398595e0d",
+    "0x2ebd078db6ceab5a",
+    "0xd942b60562d7ee29",
+    "0xe68241a7b1a2f064",
+    "0x3651ac41785b90fa",
+    "0xaf118587d325260c",
+    "0x2e5ebb45433bb35d",
+    "0x935fd86d7dd67ddc",
+    "0xce226c4866cbc1fd",
+    "0xe372eeda6c1a41f2",
+    "0xca4277d267b0f8b0",
+    "0xc6c96dd84a292a1e",
+    "0x6cda52693b1914ee",
+    "0x392ea566b017c6c0",
+    "0x9ac88679cfad31d4",
+    "0xe679a91467b41501",
+    "0x2dce89ed447fcc1e",
 ]
 
 [replay]
-format = 11
+format = 12
 engine = "0.1.0"
 scenario = "skirmish"
 seed = "7"
@@ -488,7 +488,7 @@ rng = "xoshiro256starstar+splitmix64"
 rng_version = 1
 hash = "fnv1a64-le"
 hash_version = 1
-battle_state_hash_version = 16
+battle_state_hash_version = 17
 checkpoint_every = 25
 
 [setup]
@@ -533,4 +533,4 @@ count = 15
 
 [result]
 winner = "defender"
-final_hash = "0x65c5a9312442045c"
+final_hash = "0xf6f0cc5692c7994d"

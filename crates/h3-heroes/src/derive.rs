@@ -19,12 +19,12 @@ use crate::error::DetailsError;
 /// Derives what a battle needs to know about the hero (`BattleSetup.heroes`): the hero type, the
 /// effective primary skills (HER-BAT-001), the Tactics level (HER-BAT-002), the morale and luck
 /// effects (HER-BAT-003), the damage bonuses (HER-BAT-004), the war machines it commands
-/// (HER-BAT-005), the `NoRetreat` effect (HER-BAT-006), the surrender discount (HER-BAT-007) and
-/// the stack statistic effects (HER-BAT-008); the mana is passed through. The details are
-/// validated first.
+/// (HER-BAT-005), the `NoRetreat` effect (HER-BAT-006), the surrender discount (HER-BAT-007),
+/// the stack statistic effects (HER-BAT-008) and the stack trait effects (HER-BAT-009); the mana
+/// is passed through. The details are validated first.
 ///
-/// Later tasks fill the rest; until then it stays neutral: the other effects (E04a T10b, T10c),
-/// and spell book, maximum mana and schools (E04b).
+/// Later tasks fill the rest; until then it stays neutral: the alignment group (E04a T10c), and
+/// spell book, maximum mana and schools (E04b).
 ///
 /// # Errors
 /// The [`DetailsError`] of the first rule the details break ([`crate::validate`]);
@@ -80,6 +80,9 @@ pub fn derive_battle_hero(
 
     // rule: HER-BAT-008
     hero.effects.extend(stack_stats(details, ruleset));
+
+    // rule: HER-BAT-009
+    hero.effects.extend(stack_traits(details, ruleset));
     if hero.effects.len() > MAX_BATTLE_EFFECTS {
         return Err(DetailsError::TooManyBattleEffects);
     }
@@ -169,6 +172,46 @@ fn stack_stats(details: &HeroDetails, ruleset: &Ruleset) -> Vec<BattleEffect> {
                 .unwrap_or_default(),
         })
         .collect()
+}
+
+/// The stack trait effects (HER-BAT-009): `Regeneration`, `NoRangePenalty` and
+/// `ShootWhenAdjacent`, each artifact type once, in the order of their first appearance; one
+/// effect per kind and creatures, a regeneration with the most hit points.
+fn stack_traits(details: &HeroDetails, ruleset: &Ruleset) -> Vec<BattleEffect> {
+    let mut out: Vec<BattleEffect> = Vec::new();
+    for effect in effects(details, ruleset, Count::OncePerType) {
+        let new = match *effect {
+            HeroEffect::Regeneration {
+                creatures,
+                hit_points,
+            } => {
+                let same = out.iter_mut().find_map(|e| match e {
+                    BattleEffect::Regeneration {
+                        creatures: c,
+                        hit_points: h,
+                    } if *c == creatures => Some(h),
+                    _ => None,
+                });
+                if let Some(h) = same {
+                    *h = (*h).max(hit_points);
+                    continue;
+                }
+                BattleEffect::Regeneration {
+                    creatures,
+                    hit_points,
+                }
+            }
+            HeroEffect::NoRangePenalty { creatures } => BattleEffect::NoRangePenalty { creatures },
+            HeroEffect::ShootWhenAdjacent { creatures } => {
+                BattleEffect::ShootWhenAdjacent { creatures }
+            }
+            _ => continue,
+        };
+        if !out.contains(&new) {
+            out.push(new);
+        }
+    }
+    out
 }
 
 /// How often a worn artifact's effects count.

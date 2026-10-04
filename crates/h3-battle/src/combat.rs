@@ -43,14 +43,17 @@ pub(crate) fn is_blocked(state: &BattleState, field: Field, id: StackId) -> bool
 }
 
 /// Whether stack `id` can shoot now: a shooter with shots left that is not blocked
-/// (BAT-RNG-001); war machines shoot even when blocked (BAT-WAR-001), and under quirk Q-0004
-/// the shooting war machine also without shots (BAT-WAR-002).
+/// (BAT-RNG-001); war machines and stacks whose hero lets them shoot while adjacent shoot even
+/// when blocked (BAT-WAR-001, BAT-HER-006), and under quirk Q-0004 the shooting war machine also
+/// without shots (BAT-WAR-002).
 // rule: BAT-RNG-001, BAT-WAR-001
 pub(crate) fn can_shoot(state: &BattleState, field: Field, id: StackId) -> bool {
     let s = state.at(id);
     s.has(StackTraits::SHOOTER)
         && has_ammunition(s)
-        && (s.has(StackTraits::WAR_MACHINE) || !is_blocked(state, field, id))
+        && (s.has(StackTraits::WAR_MACHINE)
+            || s.has(StackTraits::SHOOTS_WHEN_ADJACENT)
+            || !is_blocked(state, field, id))
 }
 
 /// Whether `stack` has a shot to use: shots left, or none needed (quirk Q-0004, BAT-WAR-002).
