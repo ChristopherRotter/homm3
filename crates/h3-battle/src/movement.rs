@@ -19,7 +19,7 @@ pub(crate) struct Reach {
 }
 
 impl Reach {
-    /// Steps needed to reach `hex`, if reachable within the stack's speed.
+    /// Steps needed to reach `hex`, if reachable within the range.
     pub(crate) fn steps(&self, hex: Hex) -> Option<u8> {
         self.dist
             .get(hex.index())
@@ -44,12 +44,23 @@ pub(crate) fn fits(field: Field, mover: &Stack, hex: Hex, blocked: HexSet) -> bo
         })
 }
 
-/// Computes where `mover` (stack `id`) can move. Walkers take up to `speed` steps between
-/// neighbouring free positions (BAT-MOV-001); flyers and teleporters reach every free position
-/// whose hex distance is at most `speed`, whatever lies in between (BAT-MOV-002). Dead stacks do
-/// not block.
-// rule: BAT-MOV-001, BAT-MOV-002
+/// Computes where `mover` (stack `id`) can move this turn: within its speed.
 pub(crate) fn reachable(state: &BattleState, field: Field, id: StackId, mover: &Stack) -> Reach {
+    reachable_within(state, field, id, mover, mover.speed)
+}
+
+/// Computes where `mover` (stack `id`) can move within `range`. Walkers take up to `range` steps
+/// between neighbouring free positions (BAT-MOV-001); flyers and teleporters reach every free
+/// position whose hex distance is at most `range`, whatever lies in between (BAT-MOV-002). Dead
+/// stacks do not block.
+// rule: BAT-MOV-001, BAT-MOV-002
+pub(crate) fn reachable_within(
+    state: &BattleState,
+    field: Field,
+    id: StackId,
+    mover: &Stack,
+    range: u8,
+) -> Reach {
     let blocked = state.blocked_for(field, id);
     let mut reach = Reach {
         start: mover.hex,
@@ -60,8 +71,8 @@ pub(crate) fn reachable(state: &BattleState, field: Field, id: StackId, mover: &
         for i in 0..field.hex_count() {
             let hex = Hex(u8::try_from(i).unwrap_or(u8::MAX));
             let d = field.distance(mover.hex, hex);
-            if d <= u32::from(mover.speed) && fits(field, mover, hex, blocked) {
-                // `d <= speed <= 255`, and the start keeps 0.
+            if d <= u32::from(range) && fits(field, mover, hex, blocked) {
+                // `d <= range <= 255`, and the start keeps 0.
                 reach.dist[i] = u8::try_from(d).unwrap_or(UNREACHABLE);
             }
         }
@@ -74,7 +85,7 @@ pub(crate) fn reachable(state: &BattleState, field: Field, id: StackId, mover: &
         let hex = queue[head];
         head += 1;
         let d = reach.dist[hex.index()];
-        if d >= mover.speed {
+        if d >= range {
             continue;
         }
         for next in field.neighbors(hex).into_iter().flatten() {

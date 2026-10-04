@@ -34,6 +34,7 @@ mod morale;
 mod movement;
 mod observe;
 mod state;
+mod tactics;
 mod terrain;
 mod turn;
 mod war;
@@ -51,6 +52,7 @@ pub use state::{
     BATTLE_STATE_HASH_VERSION, BattleState, STACK_CAPACITY, Stack, StackFlags, StackId,
     StackTraits, UNLIMITED_RETALIATIONS,
 };
+pub use tactics::TacticsPhase;
 pub use terrain::generate_obstacles;
 
 #[cfg(test)]

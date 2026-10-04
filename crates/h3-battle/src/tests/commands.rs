@@ -227,6 +227,8 @@ fn state_hash_is_pinned() {
     // BATTLE_STATE_HASH_VERSION when the encoding changes).
     let r = ruleset();
     let mut led = hero(&r);
+    // Advanced Tactics against no hero: the state is in a tactics phase (BAT-TAC-001).
+    led.tactics = 2;
     led.damage = h3_contracts::DamageBonuses {
         ranged_bp: 1000,
         melee_bp: 2000,
@@ -244,8 +246,9 @@ fn state_hash_is_pinned() {
         ..setup(&r, &[(0, "fixed", 3), (2, "wisp", 7)], &[(0, "slow", 4)])
     };
     let s = BattleState::new(&r, &setup, 7).unwrap();
+    assert!(s.tactics().is_some());
     assert_eq!(s.state_hash(), GOLDEN, "got {:#018x}", s.state_hash());
-    assert_eq!(crate::BATTLE_STATE_HASH_VERSION, 12);
+    assert_eq!(crate::BATTLE_STATE_HASH_VERSION, 13);
 }
 
-const GOLDEN: u64 = 0xd1de_966b_9dd2_dd7b;
+const GOLDEN: u64 = 0x4121_9ba9_57a6_c157;

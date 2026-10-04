@@ -13,6 +13,7 @@ use crate::event::{NoopSink, Sink};
 use crate::geometry::{Field, Footprint, Hex, HexSet};
 use crate::hero::{self, HeroRecord, HeroView};
 use crate::morale::{self, Modifiers};
+use crate::tactics::{self, TacticsPhase};
 use crate::{terrain, turn};
 
 /// Most war machines per side, one of each kind (BAT-WAR-001).
@@ -22,7 +23,7 @@ pub const MAX_WAR_MACHINES: usize = WAR_MACHINE_KINDS;
 pub const STACK_CAPACITY: usize = 2 * (MAX_ARMY_SLOTS + MAX_WAR_MACHINES);
 
 /// Version of the battle-state hash encoding ([`BattleState::state_hash`]). Bump on any change.
-pub const BATTLE_STATE_HASH_VERSION: u32 = 12;
+pub const BATTLE_STATE_HASH_VERSION: u32 = 13;
 
 /// Index of a stack in its battle (attacker stacks first, in slot order, then defender stacks).
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Default)]
@@ -512,6 +513,7 @@ pub struct BattleState {
     pub(crate) stacks: FixedVec<Stack, STACK_CAPACITY>,
     pub(crate) obstacles: HexSet,
     pub(crate) round: u16,
+    pub(crate) tactics: Option<TacticsPhase>,
     pub(crate) active: Option<StackId>,
     pub(crate) last_side_acted: Option<BattleSide>,
     pub(crate) result: Option<BattleResult>,
@@ -523,15 +525,17 @@ pub struct BattleState {
 
 impl BattleState {
     /// Starts a battle: validates the setup against the ruleset, places the obstacles and the
-    /// armies (BAT-SET-001, BAT-GEO-003), seeds the battle RNG stream from `seed` and activates
-    /// the first stack. The events of that first activation (bad morale, war machines acting
-    /// before any command) are dropped; use [`BattleState::start`] to receive them.
+    /// armies (BAT-SET-001, BAT-GEO-003), seeds the battle RNG stream from `seed` and either
+    /// starts the tactics phase (BAT-TAC-001) or activates the first stack. The events of that
+    /// start (the phase, bad morale, war machines acting before any command) are dropped; use
+    /// [`BattleState::start`] to receive them.
     pub fn new(ruleset: &Ruleset, setup: &BattleSetup, seed: u64) -> Result<Self, SetupError> {
         Self::start(ruleset, setup, seed, &mut NoopSink)
     }
 
-    /// Like [`BattleState::new`], but reports the events of the first activation to `sink`: the
-    /// first `TurnStarted` and anything that happens before the first command (a bad-morale
+    /// Like [`BattleState::new`], but reports the events of the start to `sink`: `TacticsStarted`
+    /// if a tactics phase runs, the first `TurnStarted` and anything that happens before the
+    /// first command (a bad-morale
     /// freeze, BAT-MOR-004; war machines acting, BAT-WAR-002/003; even the end of the battle).
     pub fn start<S: Sink>(
         ruleset: &Ruleset,
@@ -628,6 +632,7 @@ impl BattleState {
             stacks: FixedVec::from_array_prefix(placed, len),
             obstacles,
             round: 1,
+            tactics: None,
             active: None,
             last_side_acted: None,
             result: None,
@@ -637,9 +642,15 @@ impl BattleState {
             rng: Rng::for_stream(seed, StreamId::BATTLE),
         };
         morale::setup(&mut state, ruleset, &setup.heroes);
-        // The first activation runs the usual checks (bad morale, BAT-MOR-004); round 1 starts
-        // without a `RoundStarted` event.
-        turn::activate_next(&mut state, ruleset, sink);
+        // rule: BAT-TAC-001
+        if let Some(phase) = tactics::phase(ruleset, &state.heroes) {
+            // Round 0: the tactics phase; `EndTactics` starts round 1 (BAT-TAC-002).
+            tactics::begin(&mut state, phase, sink);
+        } else {
+            // The first activation runs the usual checks (bad morale, BAT-MOR-004); round 1
+            // starts without a `RoundStarted` event.
+            turn::activate_next(&mut state, ruleset, sink);
+        }
         Ok(state)
     }
 
@@ -695,9 +706,14 @@ impl BattleState {
         &mut self.stacks.as_mut_slice()[id.index()]
     }
 
-    /// The current round (1-based).
+    /// The current round (1-based; 0 during the tactics phase, BAT-TAC-001).
     pub const fn round(&self) -> u16 {
         self.round
+    }
+
+    /// The running tactics phase, if any (BAT-TAC-001/002; public, ADR-0013 point 9).
+    pub const fn tactics(&self) -> Option<TacticsPhase> {
+        self.tactics
     }
 
     /// The stack whose turn it is, or `None` once the battle is over.
@@ -759,7 +775,8 @@ impl BattleState {
     /// Canonical hash of the full state, including hidden parts such as the RNG (desync detection
     /// and replay verification; never sent to untrusted clients, docs/06-security.md).
     ///
-    /// Encoding v12 (v11 with the commanded First Aid Tent): version, round, active, last side,
+    /// Encoding v13 (v12 with the tactics phase): version, round, the tactics phase if any (side,
+    /// zone columns), active, last side,
     /// result (0/1 = victory of the attacker/defender, 2 = draw), stacks (each with base count,
     /// shots, retaliations, morale, luck and traits), obstacles, modifiers, per side the hero if
     /// any (type, attack, defense, power, knowledge, Tactics level, mana, maximum mana, ranged,
@@ -818,6 +835,7 @@ impl CanonicalHash for BattleState {
     fn hash_into(&self, h: &mut StateHasher) {
         h.write_u32(BATTLE_STATE_HASH_VERSION);
         h.write_u16(self.round);
+        self.tactics.hash_into(h);
         self.active.map(|s| s.0).hash_into(h);
         self.last_side_acted.map(side_code).hash_into(h);
         self.result.map(result_code).hash_into(h);

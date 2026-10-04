@@ -165,7 +165,7 @@ id       = "HER-BAT-002"
 title    = "The battle hero's Tactics level"
 context  = "heroes"
 status   = "implemented"
-summary  = "The battle hero's Tactics level is the highest level given by a tactics effect among the hero's effect sources (HER-BAT-001): in the original only the Tactics skill, Basic 1 to Expert 3. Without one it is 0. The battle compares both sides' levels (E04a T8)."
+summary  = "The battle hero's Tactics level is the highest level given by a tactics effect among the hero's effect sources (HER-BAT-001): in the original only the Tactics skill, Basic 1 to Expert 3. Without one it is 0. The battle compares both sides' levels (BAT-TAC-001)."
 numeric  = "integer"
 
   [[rule.source]]

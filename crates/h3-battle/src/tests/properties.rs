@@ -46,6 +46,7 @@ fn arb_command() -> impl Strategy<Value = Command> {
     prop_oneof![
         Just(Command::Wait),
         Just(Command::Defend),
+        Just(Command::EndTactics),
         any::<u8>().prop_map(|h| Command::Move { to: Hex(h) }),
         (0u8..40, any::<u8>()).prop_map(|(t, h)| Command::Attack {
             target: StackId(t),
@@ -105,7 +106,9 @@ fn arb_game() -> impl Strategy<Value = Game> {
 /// and the defender's war machines (ballista, ammo cart, first aid tent), bits 6–7 whether the
 /// attacker and the defender stand in tight formation, bit 8 whether the attacker's hero
 /// commands its Ballista (bit 9: two shots; bits 10–23: the double-damage chance), bit 24
-/// whether it commands its First Aid Tent (bits 25–40: the heal bonus).
+/// whether it commands its First Aid Tent (bits 25–40: the heal bonus), bits 41–42 the attacker
+/// hero's Tactics level if bit 43 is set, bit 44 whether the defender is led by a hero too, with
+/// Tactics level bits 45–46 (so that some games start with a tactics phase, BAT-TAC-001).
 fn make_setup(
     r: &Ruleset,
     attacker: &[(u8, u8, u32)],
@@ -148,11 +151,19 @@ fn make_setup(
             heal_bonus_bp: u32::try_from((machines >> 25) & 0xffff).unwrap(),
         });
     }
+    if machines & (1 << 43) != 0 {
+        led.tactics = u8::try_from((machines >> 41) & 3).unwrap();
+    }
+    let defender_hero = (machines & (1 << 44) != 0).then(|| {
+        let mut h = hero(r);
+        h.tactics = u8::try_from((machines >> 45) & 3).unwrap();
+        h
+    });
     BattleSetup {
         attacker: army(attacker),
         defender: army(defender),
         obstacles: obstacles.to_vec(),
-        heroes: [Some(led), None],
+        heroes: [Some(led), defender_hero],
         terrain: None,
         war_machines,
         formations: [6, 7].map(|bit| {

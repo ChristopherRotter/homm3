@@ -192,6 +192,7 @@ struct BattleDto {
     war_machine_positions: Vec<[u8; 2]>,
     loose_formation: Vec<Vec<u8>>,
     tight_formation: Vec<Vec<u8>>,
+    tactics_zone_columns: Vec<u8>,
 }
 
 #[derive(Deserialize)]
@@ -1127,6 +1128,7 @@ pub fn parse_pack(text: &str) -> Result<ContentPack, PackError> {
         war_machine_positions: b.war_machine_positions,
         loose_formation: b.loose_formation,
         tight_formation: b.tight_formation,
+        tactics_zone_columns: b.tactics_zone_columns,
     });
     Ok(ContentPack {
         manifest: PackManifest {

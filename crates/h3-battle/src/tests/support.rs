@@ -472,6 +472,7 @@ pub fn battle_params() -> BattleParamsDef {
             vec![0, 2, 4, 6, 8, 10],
             vec![0, 2, 4, 5, 6, 8, 10],
         ],
+        tactics_zone_columns: vec![3, 5, 7],
     }
 }
 
@@ -645,11 +646,11 @@ pub fn army(rules: &Ruleset, spec: &[Spec]) -> Army {
     }
 }
 
-/// A battle hero of the test ruleset's only hero type with some primary skills, Tactics and mana.
+/// A battle hero of the test ruleset's only hero type with some primary skills and mana, without
+/// Tactics (so that no tactics phase runs, BAT-TAC-001).
 pub fn hero(rules: &Ruleset) -> BattleHero {
     let mut hero = BattleHero::new(rules.hero_type_by_key("t:orrin").unwrap());
     [hero.attack, hero.defense, hero.power, hero.knowledge] = [3, 2, 1, 1];
-    hero.tactics = 2;
     hero.magic.mana = 15;
     hero.magic.max_mana = 10;
     hero

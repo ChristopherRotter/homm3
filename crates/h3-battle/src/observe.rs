@@ -12,14 +12,17 @@ use crate::event::{Event, Visibility};
 use crate::geometry::HexSet;
 use crate::hero::HeroView;
 use crate::state::{BattleState, STACK_CAPACITY, Stack, StackId};
+use crate::tactics::TacticsPhase;
 
 /// What one side may know about a battle.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Observation {
     /// The side this observation is for.
     pub viewer: BattleSide,
-    /// Current round.
+    /// Current round (0 during the tactics phase).
     pub round: u16,
+    /// The running tactics phase: its side and zone (public, ADR-0013 point 9).
+    pub tactics: Option<TacticsPhase>,
     /// The stack whose turn it is.
     pub active: Option<StackId>,
     /// Side of the last stack that took a turn.
@@ -42,6 +45,7 @@ pub fn observe(state: &BattleState, viewer: BattleSide) -> Observation {
     Observation {
         viewer,
         round: state.round,
+        tactics: state.tactics,
         active: state.active,
         last_side_acted: state.last_side_acted,
         result: state.result,

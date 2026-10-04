@@ -315,7 +315,10 @@ kind — shooting machine, ammo supply, first aid — mirrored for the defender,
 machine's kind follows from its data: flag `shooter`, ability `ammo_supply` or ability
 `first_aid`. Since E04a T4a the compiler also checks that the positions leave room for two-hex
 machines: each head hex has a hex behind it on the field, and no two footprints of either side
-(the defender's mirrored) share a hex.
+(the defender's mirrored) share a hex. Since E04a T8 `tactics_zone_columns` (one width per skill
+level: the tactics zone of a side whose Tactics level exceeds the enemy's by `d` is
+`tactics_zone_columns[d - 1]` columns wide, each between 1 and the standable columns; `[3, 5, 7]`
+in `base`, BAT-TAC-001; ruleset hash v12).
 
 **Hero parameters** (`[hero_params]`, Tier 2, E04a T4a; at most one enabled pack provides them,
 a ruleset without them cannot validate hero details): `primary_min` (four values, attack,

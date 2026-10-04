@@ -13,11 +13,13 @@ use crate::error::CommandError;
 use crate::event::{Event, EventKind, Sink};
 use crate::geometry::{Field, Hex};
 use crate::movement::reachable;
-use crate::state::{BattleState, StackFlags, StackId, StackTraits};
+use crate::state::{BattleState, Stack, StackFlags, StackId, StackTraits};
+use crate::tactics::{self, TacticsPhase};
 use crate::turn::{TurnEnd, end_turn};
 use crate::war;
 
-/// A player's intent for the active stack.
+/// A player's intent for the active stack. In the tactics phase (BAT-TAC-002) `Move` places the
+/// active stack in the zone, `Wait` passes to the next stack and `EndTactics` ends the phase.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Default)]
 pub enum Command {
     /// Walk to a hex (BAT-MOV-001).
@@ -49,6 +51,8 @@ pub enum Command {
         /// The allied stack to heal.
         target: StackId,
     },
+    /// End the tactics phase; round 1 starts (BAT-TAC-002).
+    EndTactics,
 }
 
 /// A command that passed validation, with everything `apply` needs.
@@ -80,6 +84,17 @@ enum Plan {
         mover: StackId,
         target: StackId,
     },
+    Place {
+        mover: StackId,
+        from: Hex,
+        to: Hex,
+        phase: TacticsPhase,
+    },
+    Pass {
+        mover: StackId,
+        phase: TacticsPhase,
+    },
+    EndTactics,
 }
 
 /// Checks `command` for `actor` without changing anything. Shared by `apply` and
@@ -117,7 +132,11 @@ fn plan(
         return Err(CommandError::NotYourTurn);
     }
     let field = Field::new(ruleset.battle().field);
+    if let Some(phase) = state.tactics {
+        return plan_tactics(state, field, phase, (id, &mover), command);
+    }
     match command {
+        Command::EndTactics => Err(CommandError::NoTacticsPhase),
         Command::Wait => {
             // rule: BAT-TRN-002
             if mover.flags.contains(StackFlags::WAITED) {
@@ -210,6 +229,42 @@ fn plan(
     }
 }
 
+/// Validates `command` for the active stack `mover` in the tactics phase: a placement in the
+/// zone, Wait (pass to the next stack) or `EndTactics`; nothing else.
+// rule: BAT-TAC-001, BAT-TAC-002
+fn plan_tactics(
+    state: &BattleState,
+    field: Field,
+    phase: TacticsPhase,
+    (id, mover): (StackId, &Stack),
+    command: Command,
+) -> Result<Plan, CommandError> {
+    match command {
+        Command::Move { to } => {
+            if !field.is_standable(to) {
+                return Err(CommandError::InvalidHex);
+            }
+            if !phase.contains(field, to) {
+                return Err(CommandError::OutsideZone);
+            }
+            if !tactics::reach(state, field, id, mover).can_move_to(to) {
+                return Err(CommandError::Unreachable);
+            }
+            Ok(Plan::Place {
+                mover: id,
+                from: mover.hex,
+                to,
+                phase,
+            })
+        }
+        Command::Wait => Ok(Plan::Pass { mover: id, phase }),
+        Command::EndTactics => Ok(Plan::EndTactics),
+        Command::Attack { .. } | Command::Shoot { .. } | Command::Defend | Command::Heal { .. } => {
+            Err(CommandError::InTacticsPhase)
+        }
+    }
+}
+
 /// Applies `command` on behalf of `actor` (supplied by the trusted caller, never decoded from the
 /// command). On error the state is unchanged. Events go to `sink`.
 pub fn apply<S: Sink>(
@@ -256,6 +311,17 @@ pub fn apply<S: Sink>(
             war::heal(state, ruleset, mover, target, sink);
             end_turn(state, ruleset, mover, TurnEnd::Acted, sink);
         }
+        Plan::Place {
+            mover,
+            from,
+            to,
+            phase,
+        } => {
+            move_stack(state, mover, from, to, sink);
+            tactics::pass(state, phase, mover, sink);
+        }
+        Plan::Pass { mover, phase } => tactics::pass(state, phase, mover, sink),
+        Plan::EndTactics => tactics::end(state, ruleset, sink),
     }
     Ok(())
 }

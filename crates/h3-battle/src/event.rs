@@ -60,12 +60,21 @@ impl StrikeFlags {
 /// What happened.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum EventKind {
+    /// The tactics phase began (round 0, BAT-TAC-001).
+    TacticsStarted {
+        /// The side that places its stacks.
+        side: BattleSide,
+        /// Width of its zone in columns.
+        columns: u8,
+    },
+    /// The tactics phase ended; round 1 starts (BAT-TAC-002).
+    TacticsEnded,
     /// A new round began (BAT-TRN-003).
     RoundStarted {
         /// The new round number.
         round: u16,
     },
-    /// A stack's turn began.
+    /// A stack's turn began (in the tactics phase: the stack to place, BAT-TAC-002).
     TurnStarted {
         /// The active stack.
         stack: StackId,

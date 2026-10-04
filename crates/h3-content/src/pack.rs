@@ -405,6 +405,10 @@ pub struct BattleParamsDef {
     pub loose_formation: Vec<Vec<u8>>,
     /// Starting rows of the tight formation, laid out like `loose_formation` (BAT-SET-001).
     pub tight_formation: Vec<Vec<u8>>,
+    /// Width in columns of the tactics zone by Tactics level difference:
+    /// `tactics_zone_columns[d - 1]` for a side whose level exceeds the enemy's by `d`, one
+    /// entry per skill level (BAT-TAC-001; 3, 5, 7 in the original).
+    pub tactics_zone_columns: Vec<u8>,
 }
 
 /// Hero parameters (Tier 2, E04a T4a): the limits of a hero's details.

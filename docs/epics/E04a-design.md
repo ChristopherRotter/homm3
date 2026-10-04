@@ -42,16 +42,8 @@ each task has to do with them:
   the patient, the hurt Ballista is not one, Wait (the tent acts again later in the round) and
   Defend are available, eight heals at Basic between 6 and 50 (one capped at the 41 missing hit
   points). The automatic Ballista has the range penalty (7–11 at long range).
-- **T8** (R2, R3; §7 as designed): the zone is the raw columns 1..d of every row, d = 1 + 2 ×
-  difference (7 and 7 at Expert against no Tactics), so its edge zig-zags; war machines cannot be
-  selected or moved; Retreat is available in the phase; speed does not limit a placement; a walker
-  needs a path (obstacles and stacks block it, an enclosed hex is unreachable), a flyer reaches any
-  free hex of the zone; the game hands over the side's army stacks in a fixed order, cycling, a
-  move passes to the next stack, and a stack can be moved any number of times (VCMI's free choice
-  of the stack is not the original; the exact order was not recorded, round-1 order stays). OQ-1
-  (R3): a hero whose Tactics formation is switched off still blocks the enemy's phase (VCMI).
-  Agent decision: the toggle is not modelled — a side that gets the phase can end it at once, and
-  the block counts either way.
+- **T8** (done): R2 and R3 are observation sources of BAT-TAC-001/002; the Tactics-formation
+  toggle is not modelled (agent decision, BAT-TAC-001).
 - **T9** (R4, R5, B6):
   - Surrender price (D-1): half the gold cost of the side's living stacks **including war
     machines**, with the current counts, rounded down (R4: 1472 = ½ × (7 × 60 + 25 + 2500); later
@@ -168,22 +160,13 @@ state-hash bump. Left for T9:
 - The battle keeps a small per-side hero record (present, tactics level, damage bonuses, machine
   control, retreat and surrender allowed, an offer made this round; E04b: mana, cast this round).
 
-## 7. Phases and commands (T8, T9)
+## 7. Phases and commands (T9)
 
-- **Tactics phase** (round 0, after placement in the side's formation, BAT-SET-001): the side whose
-  Tactics level exceeds the enemy's gets a zone of 1 + 2 × difference columns (3/5/7) from its
-  edge; equal levels cancel. Only that side's army stacks are activated, in round-1 order and
-  cycling; commands: `Move { to }` with the footprint, occupancy and obstacle rules of an ordinary
-  move (a walking stack needs a path, which may leave the zone: only the destination must lie in it,
-  user decision 2026-10-04 as VCMI; flying stacks fly), the speed limit replaced by the zone;
-  `Wait` (skip to the next stack); and the new `EndTactics`. War machines are not moved. Events
-  `TacticsStarted`, `TacticsEnded`; `RoundStarted(1)` follows. Like the battle itself the phase has
-  no limit in the rules; the sim's step limit truncates (E01), and E05 handles the action balance.
-  Batch 1b confirmed the zone, the path rule, the speed exemption and the cycling ("Batch 1b
-  results"); `Retreat` is also legal in the phase (T9).
-- **Retreat** (`Retreat`): by the side whose stack is active or whose tactics phase runs; legal if
-  the side has a hero and no `NoRetreat` effect is in the battle. Ends the battle with
-  `Retreat(side)`.
+The tactics phase is implemented (T8: BAT-TAC-001/002, `h3_battle` `tactics.rs`).
+
+- **Retreat** (`Retreat`): by the side whose stack is active or whose tactics phase runs (batch 1b
+  R2: Retreat is available in the phase); legal if the side has a hero and no `NoRetreat` effect
+  is in the battle. Ends the battle with `Retreat(side)`.
 - **Surrender** (`Surrender`): legal like Retreat, and only if the enemy has a hero and the
   side's `funds` cover the price; it ends the battle at once with `Surrender(side)` (no consent
   step, batch 1b R4). The price is a new BAT rule: half (a ruleset factor, 50 %) of Σ over the
@@ -194,16 +177,17 @@ state-hash bump. Left for T9:
 - Actors are validated as in ADR-0004: every command comes from the side whose stack is active or
   whose tactics phase runs.
 
-## 8. Visibility (T7–T9, T11)
+## 8. Visibility (T9, T11)
 
 T4b2: `Observation.heroes` shows both sides the public part (`HeroView`: hero type, primary
 skills, mana, maximum mana); the Tactics level stays private (hygiene property test). The
-encoding still has only the two "led by a hero" flags; T11 adds hero features. Still to do:
+encoding still has only the two "led by a hero" flags; T11 adds hero features. T8:
+`Observation.tactics` shows both sides the phase and its zone (the encoding shows round 0 until
+T11). Still to do:
 
-- Public in the observation of both sides: the war machines and who controls them, the
-  tactics phase and its zone, whether each side may retreat, and whether surrender is possible at
-  all (both heroes present, no `NoRetreat` effect; public because it changes both sides' options).
-  Whether a side can afford its surrender, and its price, show only to that side (its action mask).
+- Public in the observation of both sides: the war machines and who controls them, whether each
+  side may retreat, and whether surrender is possible at all (both heroes present, no `NoRetreat`
+  effect; public because it changes both sides' options). Whether a side can afford its surrender, and its price, show only to that side (its action mask).
 - Private to the hero's own side: `tactics` level, the damage bonuses, `surrender_discount_bp`,
   school levels, the `effects` list other than the public consequences above (stat effects show in
   the stacks' public stats), the spell book, `funds`.
@@ -213,9 +197,10 @@ encoding still has only the two "led by a hero" flags; T11 adds hero features. S
 ## 9. Encodings (T11)
 
 - T7b already appended `Heal { target }` over the stack slots (action encoding v5, C ABI v3:
-  every legal command must be encodable); the commanded Ballista reuses `Shoot`. T8/T9 append
-  `EndTactics`, `Retreat` and `Surrender` the same way (each bump also bumps
-  the C ABI, ADR-0011); tactics placement reuses the `Move` indices. Observation encoding v4
+  every legal command must be encodable); the commanded Ballista reuses `Shoot`. T8 appended
+  `EndTactics` (action encoding v6, C ABI v4; placements reuse the `Move` indices, passing reuses
+  Wait); T9 appends `Retreat` and `Surrender` the same way (each bump also bumps the C ABI,
+  ADR-0011). Observation encoding v4
   adds per-side hero features (the public part for the opponent) in T11.
 - E04b's casting (spells × targets) does not fit a flat dense encoding; E04b designs a factorized
   one together with E05 (BACKLOG). E04a does not pre-empt it.

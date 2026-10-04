@@ -372,6 +372,8 @@ war_machine_positions = [[1, 3], [1, 1], [1, 9]]
 loose_formation = [[5], [2, 8], [2, 5, 8]]
 tight_formation = [[5], [4, 6], [4, 5, 6]]
 formation_sources = ["s"]
+tactics_zone_columns = [3, 5, 7]
+tactics_sources = ["s"]
 
 [[creature_abilities]]
 creature = "Unit 1"

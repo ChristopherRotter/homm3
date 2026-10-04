@@ -181,6 +181,12 @@ pub enum CommandError {
     CannotHeal,
     /// The target is not a hurt allied stack the tent may heal (BAT-WAR-003, BAT-WAR-007).
     NotAPatient,
+    /// The command is not allowed during the tactics phase (BAT-TAC-002).
+    InTacticsPhase,
+    /// No tactics phase is running (BAT-TAC-002).
+    NoTacticsPhase,
+    /// The hex lies outside the tactics zone (BAT-TAC-001).
+    OutsideZone,
 }
 
 impl fmt::Display for CommandError {
@@ -200,6 +206,9 @@ impl fmt::Display for CommandError {
             Self::NoMelee => "war machines do not attack in melee",
             Self::CannotHeal => "the stack cannot heal",
             Self::NotAPatient => "the target is not a hurt allied stack",
+            Self::InTacticsPhase => "not allowed during the tactics phase",
+            Self::NoTacticsPhase => "no tactics phase is running",
+            Self::OutsideZone => "the hex lies outside the tactics zone",
         })
     }
 }
@@ -353,6 +362,15 @@ mod tests {
             (
                 CommandError::NotAPatient,
                 "the target is not a hurt allied stack",
+            ),
+            (
+                CommandError::InTacticsPhase,
+                "not allowed during the tactics phase",
+            ),
+            (CommandError::NoTacticsPhase, "no tactics phase is running"),
+            (
+                CommandError::OutsideZone,
+                "the hex lies outside the tactics zone",
             ),
         ];
         for (e, text) in all {

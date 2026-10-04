@@ -40,7 +40,8 @@ pub struct HeroView {
 pub(crate) struct HeroRecord {
     /// The public part.
     pub(crate) view: HeroView,
-    /// Tactics level, 0..=3 (private to the side; the tactics phase arrives in E04a T8).
+    /// Tactics level, 0..=3 (private to the side; the tactics phase it gives is public,
+    /// BAT-TAC-001).
     pub(crate) tactics: u8,
     /// Damage bonuses of the side's strikes and reduction of the strikes against it
     /// (BAT-HER-004; private to the side).

@@ -91,10 +91,18 @@ fn heroes_are_kept_and_shown_to_both_sides() {
     // The hero and its private Tactics level are part of the state hash.
     let bare = BattleState::new(&r, &with_heroes(&r, [None, None]), 1).unwrap();
     assert_ne!(s.state_hash(), bare.state_hash());
+    // Equal levels cancel (no tactics phase, BAT-TAC-001), so only the levels differ.
     let mut tactician = hero(&r);
     tactician.tactics = 3;
-    let other = BattleState::new(&r, &with_heroes(&r, [Some(tactician), None]), 1).unwrap();
-    assert_ne!(s.state_hash(), other.state_hash());
+    let both = BattleState::new(&r, &with_heroes(&r, [Some(hero(&r)), Some(hero(&r))]), 1).unwrap();
+    let other = BattleState::new(
+        &r,
+        &with_heroes(&r, [Some(tactician.clone()), Some(tactician)]),
+        1,
+    )
+    .unwrap();
+    assert_eq!((both.tactics(), other.tactics()), (None, None));
+    assert_ne!(both.state_hash(), other.state_hash());
 }
 
 // covers: BAT-HER-001

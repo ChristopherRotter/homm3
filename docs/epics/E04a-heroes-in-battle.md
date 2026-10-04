@@ -1,6 +1,6 @@
 # E04a — Heroes in battle (without magic)
 
-Status: **in progress** (refined 2026-10-01; T1–T7 done by 2026-10-04; T8 next) · Follows E03 (closed 2026-10-01) · The former E04 was split by the user into three epics (OPEN-QUESTIONS Q27): **E04a** (this one), **E04b** battle magic, **E04c** sieges and special battlefields.
+Status: **in progress** (refined 2026-10-01; T1–T8 done by 2026-10-04; T9 next) · Follows E03 (closed 2026-10-01) · The former E04 was split by the user into three epics (OPEN-QUESTIONS Q27): **E04a** (this one), **E04b** battle magic, **E04c** sieges and special battlefields.
 
 ## Goal
 
@@ -64,10 +64,10 @@ Starting point, installation tables and the full record of done tasks (refinemen
 - [x] **T5 Primary skills, hero morale and luck** — done 2026-10-04 (T5a, T5b): BAT-HER-002/003, HER-BAT-003, BAT-DMG-009 (Q21); replay format v4.
 - [x] **T6 Skills that change damage** — done 2026-10-04 (T6a, T6b): quirk Q-0005, HER-BAT-004, BAT-HER-004; state hash v10, replay format v5.
 - [x] **T7 Hero-run war machines** — done 2026-10-04 (T7a, T7b): BAT-WAR-005/006/007, HER-BAT-005, quirk Q-0004, `Command::Heal`; state hash v12, replay format v7, action encoding v5, C ABI v3.
-- [ ] **T8 Tactics** — the placement phase before round 1: who gets it, how far stacks may move, commands and events, interplay with the formations (BAT-SET-001).
+- [x] **T8 Tactics** — done 2026-10-04 (one checkpoint, Q33): BAT-TAC-001/002, `tactics_zone_columns` (ruleset hash v12), `Command::EndTactics`, `Observation.tactics`; state hash v13, replay format v8, action encoding v6, C ABI v4.
 - [ ] **T9 Retreat, surrender and the richer outcome** — new `BattleResult` variants, casualties per side and creature type, hero fate, the inputs for experience, Necromancy and artifact capture; no application of them.
 - [ ] **T10 Artifacts and specialties without spells** — the effect primitives from the survey, stat and morale/luck artifacts, creature-stat and speed effects, war-machine artifacts, combination artifacts (assembly rules belong to the hero details), specialties of creature, skill and stat kinds. Spell-related ones are E04b.
-- [ ] **T11 Sim, FFI, CLI, scenarios** — heroes in the scenario and replay formats, the action encoding complete for retreat, surrender and tactics (T7b already added heals as v5 with C ABI v3; T8/T9 append their commands), observation encoding v4 and its ABI bump, golden replays re-recorded with notes, benchmark baseline re-measured with the reason, hero-bearing scenarios in the `full` workload.
+- [ ] **T11 Sim, FFI, CLI, scenarios** — heroes in the scenario and replay formats, the action encoding complete for retreat and surrender (T7b added heals as v5 with C ABI v3, T8 `EndTactics` as v6 with C ABI v4; T9 appends its commands), observation encoding v4 and its ABI bump, golden replays re-recorded with notes, benchmark baseline re-measured with the reason, hero-bearing scenarios in the `full` workload.
 - [ ] **T12 Closure** — fold the experiment results into the catalog (rules `verified` where observed), quirk ledger and profiles, independent review pass (rules against sources, robustness and security), HANDOFF, backlog, ADR-0013 revisions; the E03 hardening items that fit (work bound for death stare, random obstacles in the sim and C ABI).
 
 Order: T1 first and alone; T2 and T3 independent; T4 after T1 and T3; T5–T10 after T4 (T6 wants the batch-1 result, T10 after T5); T11 and T12 last.

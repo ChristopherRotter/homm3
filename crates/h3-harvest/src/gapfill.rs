@@ -375,6 +375,8 @@ pub struct Battle {
     pub loose_formation: Vec<Vec<u8>>,
     pub tight_formation: Vec<Vec<u8>>,
     pub formation_sources: Vec<String>,
+    pub tactics_zone_columns: Vec<u8>,
+    pub tactics_sources: Vec<String>,
 }
 
 impl GapFill {
@@ -404,6 +406,7 @@ impl GapFill {
                 .chain(g.roe_creature.iter().flat_map(|r| &r.sources))
                 .chain(g.table_change.iter().flat_map(|t| &t.sources))
                 .chain(&g.battle.formation_sources)
+                .chain(&g.battle.tactics_sources)
                 .chain(g.creature_abilities.iter().flat_map(|a| &a.sources))
                 .chain(g.native_terrain.iter().flat_map(|n| &n.sources))
                 .chain(&g.obstacles.sources)

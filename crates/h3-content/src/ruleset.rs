@@ -9,6 +9,7 @@ use h3_kernel::{CanonicalHash, Handle, StateHasher};
 
 use crate::ability::{self, Ability, AbilityDef, CompiledAbility};
 use crate::artifacts::{ArtifactSlot, ArtifactSlotId, ArtifactType, ArtifactTypeId};
+use crate::effect::MAX_SKILL_LEVEL;
 use crate::error::CompileError;
 use crate::flags::{CreatureFlag, CreatureFlags};
 use crate::heroes::{
@@ -27,7 +28,7 @@ pub const MAX_ARMY_SLOTS: usize = 16;
 pub const MAX_FIELD_HEXES: usize = 255;
 
 /// Version of the ruleset hash encoding. Bump when the encoding below changes.
-pub const RULESET_HASH_VERSION: u32 = 11;
+pub const RULESET_HASH_VERSION: u32 = 12;
 
 /// A compiled creature type.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -139,6 +140,9 @@ pub struct BattleParams {
     pub war_machine_positions: [(u8, u8); WAR_MACHINE_KINDS],
     /// Starting rows by formation ([`Formation::index`]), army size and stack index.
     formations: [[[u8; MAX_ARMY_SLOTS]; MAX_ARMY_SLOTS]; Formation::COUNT],
+    /// Width in columns of the tactics zone by Tactics level difference minus one, each between
+    /// 1 and the number of standable columns (BAT-TAC-001).
+    pub tactics_zone_columns: [u8; MAX_SKILL_LEVEL as usize],
 }
 
 /// How an army is arranged at the start of a battle (BAT-SET-001): chosen per army in the
@@ -1156,6 +1160,19 @@ fn compile_battle(def: &BattleParamsDef) -> Result<BattleParams, CompileError> {
     {
         compile_formation(table, slots, h, out)?;
     }
+    // rule: BAT-TAC-001
+    let mut tactics_zone_columns = [0u8; MAX_SKILL_LEVEL as usize];
+    if def.tactics_zone_columns.len() != tactics_zone_columns.len()
+        || def
+            .tactics_zone_columns
+            .iter()
+            .any(|&c| c == 0 || usize::from(c) > w - 2 * side)
+    {
+        return invalid(
+            "tactics_zone_columns needs one width per skill level, each between 1 and the standable columns",
+        );
+    }
+    tactics_zone_columns.copy_from_slice(&def.tactics_zone_columns);
     Ok(BattleParams {
         field: FieldParams {
             width: def.field_width,
@@ -1180,6 +1197,7 @@ fn compile_battle(def: &BattleParamsDef) -> Result<BattleParams, CompileError> {
         good_luck,
         war_machine_positions,
         formations,
+        tactics_zone_columns,
     })
 }
 
@@ -1213,7 +1231,7 @@ fn compile_formation(
 }
 
 impl CanonicalHash for Ruleset {
-    /// Encoding v6: version, packs (id, version) in load order, profile key, quirk bits,
+    /// Encoding v12: version, packs (id, version) in load order, profile key, quirk bits,
     /// resources (key, name), terrains (key, name), factions (key, name, native terrain as an
     /// optional handle), obstacles (key, terrains, width, height, blocked pairs, absolute flag),
     /// creatures (key, stats in field order including shots
@@ -1226,7 +1244,8 @@ impl CanonicalHash for Ruleset {
     /// battle parameters (`heroes::HeroContent`'s encoding). v10 (E04a T3b): the hero content
     /// ends with the artifact slots and artifacts, and hero effects have nine more kinds. v11
     /// (E04a T4a): artifact slots carry the backpack flag, and the hero content ends with the
-    /// hero parameters.
+    /// hero parameters. v12 (E04a T8): the battle parameters end with the tactics zone widths
+    /// (all entries, no length).
     fn hash_into(&self, h: &mut StateHasher) {
         h.write_u32(RULESET_HASH_VERSION);
         h.write_len(self.packs.len());
@@ -1338,6 +1357,7 @@ impl CanonicalHash for Ruleset {
         for row in b.formations.iter().flatten() {
             h.write_bytes(row);
         }
+        h.write_bytes(&b.tactics_zone_columns);
         self.hero.hash_into(h);
     }
 }

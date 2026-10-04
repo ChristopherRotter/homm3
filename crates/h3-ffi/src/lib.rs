@@ -22,7 +22,8 @@ use h3_sim::{ACTION_COUNT, ActionMask, BattleEnv, OBSERVATION_LEN, StepError};
 /// v2 (E03 T9): `H3StepResult.result` replaces `winner` (draws, `H3_RESULT_*`); action encoding
 /// v4 and observation encoding v3 (v1 had the E01 encodings v1). v3 (E04a T7b): action encoding
 /// v5 (heals appended; `h3_action_count` grows by the stack slots, earlier indices unchanged).
-pub const H3_ABI_VERSION: u32 = 3;
+/// v4 (E04a T8): action encoding v6 (`EndTactics` appended; `h3_action_count` grows by one).
+pub const H3_ABI_VERSION: u32 = 4;
 
 /// `H3StepResult.result`: the battle is not decided (still running, or truncated).
 pub const H3_RESULT_NONE: i32 = -1;
@@ -327,7 +328,7 @@ mod tests {
 
     #[test]
     fn abi_smoke_create_step_destroy() {
-        assert_eq!(h3_abi_version(), 3);
+        assert_eq!(h3_abi_version(), 4);
         assert_eq!(h3_action_count() as usize, ACTION_COUNT);
         assert_eq!(h3_observation_len() as usize, OBSERVATION_LEN);
         assert!(h3_env_create_synthetic(9, 1, 0).is_null());

@@ -1120,6 +1120,11 @@ fn write_battle(out: &mut String, gap: &GapFill) {
     };
     let _ = writeln!(out, "loose_formation = [{}]", rows(&b.loose_formation));
     let _ = writeln!(out, "tight_formation = [{}]", rows(&b.tight_formation));
+    let _ = writeln!(
+        out,
+        "tactics_zone_columns = [{}]",
+        list(&b.tactics_zone_columns)
+    );
 }
 
 #[cfg(test)]

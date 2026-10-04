@@ -106,7 +106,7 @@ id       = "BAT-SET-001"
 title    = "Initial placement of armies"
 context  = "battle"
 status   = "implemented"
-summary  = "Each side arranges its army in its formation from the setup (BattleSetup.formations: loose by default, or tight; Q25). Stacks of each army are taken in slot order; the desired hex of the i-th stack of an army with n stacks is row F[n-1][i] of the formation's table (ruleset data: loose_formation spreads the stacks from top to bottom, e.g. rows 2, 5, 8 for three stacks; tight_formation clusters them around the middle row, e.g. 4, 5, 6; the tables coincide for six and seven stacks) in the first standable column (attacker) or the last (defender). Each stack, in id order, takes the head hex closest to its desired hex where its whole footprint (BAT-GEO-002) is standable and not blocked by obstacles or stacks placed before it; ties go to the column nearer the centre, then the row nearer the desired one, then the lower hex index. So a two-hex stack's tail stands in the edge column and its head one column further in. No such hex: setup error. Stack ids: attacker stacks first, then defender stacks, each in slot order. Scope: the tactics phase (rearranging before the battle) is E04; creature-bank layouts come with creature banks."
+summary  = "Each side arranges its army in its formation from the setup (BattleSetup.formations: loose by default, or tight; Q25). Stacks of each army are taken in slot order; the desired hex of the i-th stack of an army with n stacks is row F[n-1][i] of the formation's table (ruleset data: loose_formation spreads the stacks from top to bottom, e.g. rows 2, 5, 8 for three stacks; tight_formation clusters them around the middle row, e.g. 4, 5, 6; the tables coincide for six and seven stacks) in the first standable column (attacker) or the last (defender). Each stack, in id order, takes the head hex closest to its desired hex where its whole footprint (BAT-GEO-002) is standable and not blocked by obstacles or stacks placed before it; ties go to the column nearer the centre, then the row nearer the desired one, then the lower hex index. So a two-hex stack's tail stands in the edge column and its head one column further in. No such hex: setup error. Stack ids: attacker stacks first, then defender stacks, each in slot order. The tactics phase rearranges the stacks afterwards (BAT-TAC-001/002); creature-bank layouts come with creature banks."
 numeric  = "integer"
 
   [[rule.source]]
@@ -1456,3 +1456,68 @@ numeric  = "integer"
   ref        = "experiments/results/E04a-batch-1a.md R3 (SoD 4.0 Complete): Archangels against Basic Armorer deal 47/94/142/189/237/284 (exact 47/95/..), so Armorer is a single-precision rate (Q-0005)"
   retrieved  = "2026-10-03"
   confidence = "high"
+
+[[rule]]
+id       = "BAT-TAC-001"
+title    = "Who gets the tactics phase, and its zone"
+context  = "battle"
+status   = "implemented"
+summary  = "Before round 1 the side whose hero's Tactics level (BattleHero.tactics, HER-BAT-002; 0 without a hero) exceeds the enemy's by d >= 1 gets a tactics phase (round 0); equal levels cancel, so at most one side gets it. Its zone is the side's tactics_zone_columns[d - 1] standable columns nearest its edge (ruleset data, 3/5/7 in the original: Expert against no Tactics 7, Expert against Basic 5), taken as raw columns of every row (attacker x in 1..=w, defender x in 15-w+1..=15 on the 17-wide field), so the zone's inner edge zig-zags with the row offset. The phase and its zone are public (Observation.tactics, event TacticsStarted { side, columns }); the levels stay private. The original's switch that turns off a hero's own Tactics formation is not modelled (agent decision 2026-10-04: a side that gets the phase can end it at once, and its level blocks the enemy's either way, batch 1b R3). No tactics in creature banks (later epics) or sieges (E04c)."
+numeric  = "integer"
+
+  [[rule.source]]
+  kind       = "wiki"
+  ref        = "Tactics - Heroes 3 wiki: placement within 3/5/7 rows at Basic/Advanced/Expert; it negates one/two/three levels of an enemy hero's Tactics (docs/rules/surveys/E04-skills.md §2.5)"
+  url        = "https://heroes.thelazy.net/index.php/Tactics"
+  retrieved  = "2026-10-03"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "observation"
+  ref        = "experiments/results/E04a-batch-1b.md R2 (SoD 4.0 Complete, plain HD, 2026-10-04): Expert Tactics against a monster, the zone's rightmost hex is the 7th from the row's leftmost hex in the top row and in the second row"
+  retrieved  = "2026-10-04"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "observation"
+  ref        = "experiments/results/E04a-batch-1b.md R3 (SoD 4.0 Complete, plain HD, 2026-10-04): Advanced Tactics with the Tactics formation switched off against Basic Tactics: no tactics phase for either side"
+  retrieved  = "2026-10-04"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "vcmi"
+  ref        = "lib/battle/BattleInfo.cpp L397-L437 (tacticDistance = 1 + the side's BEFORE_BATTLE_REPOSITION minus the enemy's BEFORE_BATTLE_REPOSITION_BLOCK, the attacker first; a disabled formation drops only the side's own value); config/skills.json L577-L608 (Tactics: 2/4/6 for both); lib/battle/CBattleInfoCallback.cpp L1666-L1679 isInTacticRange (attacker 0 < x <= dist, defender BFIELD_WIDTH - dist - 1 <= x < BFIELD_WIDTH - 1)"
+  url        = "https://github.com/vcmi/vcmi/blob/1.7.5/lib/battle/BattleInfo.cpp#L397-L437"
+  retrieved  = "2026-10-04"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "design"
+  ref        = "The zone widths are ruleset data (ADR-0006 tier 2, BattleParams.tactics_zone_columns)"
+  confidence = "high"
+
+[[rule]]
+id       = "BAT-TAC-002"
+title    = "Placing stacks in the tactics phase"
+context  = "battle"
+status   = "implemented"
+summary  = "In the tactics phase the phase's side is handed its living army stacks one at a time in round-1 order (BAT-TRN-001: faster first, then the lower army slot), cycling after the last; war machines are never handed over or moved, and nothing acts automatically. Legal commands of the active stack: Move { to } places it with its head on a free position (BAT-GEO-002 footprint, no obstacle or other stack) inside the zone (BAT-TAC-001; CommandError::OutsideZone), without a speed limit: a walker needs a path, which may leave the zone (user decision 2026-10-04, as VCMI), a flyer or teleporter reaches any free position; Wait passes to the next stack (no wait flag, no event besides the next TurnStarted); EndTactics ends the phase (TacticsEnded, then round 1 starts with RoundStarted { round: 1 } and its first activation as usual; last_side_acted stays empty). A placement emits Moved and passes to the next stack; a stack may be placed any number of times. Everything else is refused (InTacticsPhase); EndTactics outside the phase is refused (NoTacticsPhase). Retreat in the phase comes with E04a T9. The phase has no limit in the rules (the sim's step limit truncates)."
+numeric  = "integer"
+
+  [[rule.source]]
+  kind       = "observation"
+  ref        = "experiments/results/E04a-batch-1b.md R2 (SoD 4.0 Complete, plain HD, 2026-10-04): the Ballista and the First Aid Tent cannot be selected or moved; Peasants (speed 3) move further than 3 hexes; a stack can be moved any number of times; the game dictates the order and moving a creature passes control to the next one; an enclosed free hex of the zone is not available to the Peasants but is to the Pixies (flyers); Retreat is available"
+  retrieved  = "2026-10-04"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "vcmi"
+  ref        = "lib/battle/CBattleInfoCallback.cpp L623-L655 battleGetAvailableHexes: in the tactics phase any hex reachable over the whole field (no speed limit) that lies in the tactic range; server/battles/BattleActionProcessor.cpp L681 END_TACTIC_PHASE (VCMI lets the player choose the stack, which is not the original)"
+  url        = "https://github.com/vcmi/vcmi/blob/1.7.5/lib/battle/CBattleInfoCallback.cpp#L623-L655"
+  retrieved  = "2026-10-04"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "design"
+  ref        = "ADR-0013 point 7: the phase reuses Move with cycling activations plus EndTactics (no Place command); the order within the cycle was not recorded in batch 1b, so round-1 order stands (E04a-design.md, Batch 1b results)"
+  confidence = "medium"

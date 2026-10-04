@@ -5,8 +5,8 @@ Living state between sessions; every session reads it first. Rules (`docs/08-wor
 ## Current state
 
 - Branch `e04a-heroes-in-battle` (the user merges to `master` when an epic closes); `cargo xtask verify --with-original-data` green. Sandbox and syncing: `docs/08-work-process.md`, "Cloud sandbox and syncing" (`scripts/sandbox-setup.sh`).
-- **E04a** (`docs/epics/E04a-heroes-in-battle.md`): T1–T7 done, experiment batches 1a and 1b evaluated (`docs/epics/E04a-design.md`, "Batch 1b results" says what T8–T10 must do). **In progress: T8 (tactics)**, confirmed by the user (2026-10-04, eleventh session) as one checkpoint (it cannot be split green: the `full` scenario's Brea already has Advanced Tactics); user decision: a walking stack's path may leave the zone, only the destination must lie in it (VCMI). Then T9, T10, T11, T12.
-- Versions: state hash v12, ruleset hash v11, replay format v7, action encoding v5, C ABI v3, observation encoding v3. Each new command bumps the action encoding and the C ABI (ADR-0011).
+- **E04a** (`docs/epics/E04a-heroes-in-battle.md`): T1–T8 done, experiment batches 1a and 1b evaluated (`docs/epics/E04a-design.md`, "Batch 1b results" says what T9 and T10 must do). **Next: T9 (retreat, surrender, richer outcome)**; at the start, propose a split and let the user confirm it (T8 was one checkpoint, Q33). Then T10, T11, T12.
+- Versions: state hash v13, ruleset hash v12, replay format v8, action encoding v6, C ABI v4, observation encoding v3. Each new command bumps the action encoding and the C ABI (ADR-0011).
 - No decision is waiting for the user. Long-term open questions: `docs/OPEN-QUESTIONS.md`, section "Open".
 - Working agreement: small increments, the user confirms the seam; token efficiency beats speed (AGENTS.md); the user plays experiment maps in SoD with plain HD and commits the results.
 
@@ -14,6 +14,7 @@ Living state between sessions; every session reads it first. Rules (`docs/08-wor
 
 **Sandbox and sync**
 - Git on the user's machine: get delete permission for the repo folder before *any* git command (even `git status` leaves `.git/index.lock` otherwise). A fast-forward once failed with "unable to unlink … Permission denied" (a file held open on Windows): write the file from `git show <commit>:<path>`, then `git reset --mixed <commit>`.
+- Each bundle fetch adds a pack; past 50 packs a fetch starts a detached `git gc --auto`, which dies with the device shell and leaves `.git/gc.log.lock`. Fetch with `git -c gc.auto=0 fetch …`; if packs pile up, run `git gc` in the foreground. Old packs Windows keeps open stay behind as garbage without `.idx` (harmless; 47 such files since 2026-10-04, deletable once nothing holds them).
 - `cargo xtask verify` outlasts a tool call: run `scripts/sandbox-verify.sh` in the background and poll its log.
 - Broad sub-agent surveys burn tokens and hit rate limits; research in narrow steps yourself.
 
@@ -44,6 +45,10 @@ Living state between sessions; every session reads it first. Rules (`docs/08-wor
 
 ## Recent sessions
 
+### 2026-10-04 (eleventh) — E04a T8 done (tactics)
+
+Scope confirmed by the user (Q33): T8 as one checkpoint; a walking stack's path may leave the zone. BAT-TAC-001/002: `tactics.rs`, battle parameter `tactics_zone_columns`, `Command::EndTactics`, `Observation.tactics`, events `TacticsStarted`/`TacticsEnded`; state hash v13, ruleset hash v12, replay format v8, action encoding v6, C ABI v4; `full-s3` 484 commands; bench re-baselined (+28.6 % Ir: the `full` workload now has a tactics phase, +13.7 % steps, a phase step costs about twice a battle step). Agent decisions and measurements: `docs/epics/E04a-log.md`, T8. A detached auto-gc on the user's machine left a lock (new standing trap).
+
 ### 2026-10-04 (tenth) — E04a T2 done: batch 1b designed, played and evaluated; start cost reduced
 
 Batch 1b (`49a7cd1`; the user's results `4610112`) and its evaluation (`492bc51`): `E04a-design.md` "Batch 1b results", Q-0005 extended to the surrender discount, ADR-0013 point 7 amended (no consent step), OPEN-QUESTIONS Q32, catalog sources on BAT-WAR-007 and BAT-RNG-002. User decisions (Q32): war machines count in the surrender price (a rule); Q-0005 covers the discount; consent dropped. Agent decision: the Tactics-formation toggle is not modelled. Then, on the user's request: HANDOFF cut to this format with `cargo xtask check-docs`, the epic's done tasks moved to `docs/epics/E04a-log.md`, `scripts/sandbox-setup.sh` and `scripts/sandbox-verify.sh`, AGENTS.md and `08-work-process.md` updated.
@@ -51,7 +56,3 @@ Batch 1b (`49a7cd1`; the user's results `4610112`) and its evaluation (`492bc51`
 ### 2026-10-04 (ninth) — E04a T7 done (T7a Ballista, T7b First Aid Tent)
 
 `427de8e`, `534cbf2`: BAT-WAR-005/006/007, HER-BAT-005, quirk Q-0004, `Command::Heal`, state hash v12, replay format v7, action encoding v5, C ABI v3; `full-s3` 437 commands; bench re-baselined (−2.1 %, −6.0 %), about 200 k steps/s. Agent decisions: `docs/epics/E04a-log.md`, T7.
-
-### 2026-10-04 (eighth) — E04a T6 done (T6a single-precision rates, T6b Archery, Offense, Armorer)
-
-`183378e`, `1dbb8e0`: quirk Q-0005 (`h3_kernel::arith::single_precision`, `WideUint`), HER-BAT-004, BAT-HER-004, state hash v10, replay format v5; bench re-baselined. Agent decisions: `docs/epics/E04a-log.md`, T6.

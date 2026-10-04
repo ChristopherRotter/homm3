@@ -10,5 +10,6 @@ mod properties;
 mod ranged;
 mod rules;
 mod support;
+mod tactics;
 mod terrain;
 mod war;

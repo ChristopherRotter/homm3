@@ -1,0 +1,153 @@
+//! The tactics phase before round 1 (BAT-TAC-001/002; ADR-0013 point 7).
+//!
+//! The side whose hero has the higher Tactics level places its army stacks in a zone at its edge
+//! before the first round; the battle is in round 0 meanwhile. The game hands the side its army
+//! stacks one at a time in round-1 order, cycling; a placement passes to the next stack, Wait
+//! skips to it, and `EndTactics` starts round 1. War machines are not placed.
+
+use h3_content::Ruleset;
+use h3_contracts::BattleSide;
+use h3_kernel::{CanonicalHash, StateHasher};
+
+use crate::event::{Event, EventKind, Sink};
+use crate::geometry::{Field, Hex};
+use crate::hero::HeroRecord;
+use crate::movement::{Reach, reachable_within};
+use crate::state::{BattleState, Stack, StackId, StackTraits, side_code};
+use crate::turn;
+
+/// A running tactics phase: the side that places its stacks and the width of its zone.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct TacticsPhase {
+    /// The side that places its army stacks.
+    pub side: BattleSide,
+    /// Width of the zone in columns, counted from the side's first standable column
+    /// (BAT-TAC-001).
+    pub columns: u8,
+}
+
+impl TacticsPhase {
+    /// Whether `hex` lies in the zone: the side's `columns` standable columns nearest its edge,
+    /// as raw columns of every row, so the zone's inner edge zig-zags (BAT-TAC-001).
+    // rule: BAT-TAC-001
+    pub fn contains(self, field: Field, hex: Hex) -> bool {
+        let (x, _) = field.coords(hex);
+        let columns = i32::from(self.columns);
+        match self.side {
+            BattleSide::Attacker => {
+                let first = field.first_standable_column();
+                x >= first && x < first + columns
+            }
+            BattleSide::Defender => {
+                let last = field.last_standable_column();
+                x <= last && x > last - columns
+            }
+        }
+    }
+}
+
+impl CanonicalHash for TacticsPhase {
+    fn hash_into(&self, h: &mut StateHasher) {
+        h.write_u8(side_code(self.side));
+        h.write_u8(self.columns);
+    }
+}
+
+/// The tactics phase of a battle led by `heroes`, if any: the side whose Tactics level exceeds
+/// the enemy's gets a zone as wide as the ruleset's entry for the difference; equal levels
+/// cancel, and a side without a hero has level 0.
+// rule: BAT-TAC-001
+pub(crate) fn phase(ruleset: &Ruleset, heroes: &[Option<HeroRecord>; 2]) -> Option<TacticsPhase> {
+    let level = |side: BattleSide| heroes[side.index()].map_or(0, |h| h.tactics);
+    let (attacker, defender) = (level(BattleSide::Attacker), level(BattleSide::Defender));
+    let (side, difference) = match attacker.cmp(&defender) {
+        core::cmp::Ordering::Greater => (BattleSide::Attacker, attacker - defender),
+        core::cmp::Ordering::Less => (BattleSide::Defender, defender - attacker),
+        core::cmp::Ordering::Equal => return None,
+    };
+    // Levels are at most MAX_SKILL_LEVEL (BAT-HER-001), and the table has an entry per level.
+    let columns = ruleset
+        .battle()
+        .tactics_zone_columns
+        .get(usize::from(difference) - 1)
+        .copied()
+        .unwrap_or(0);
+    Some(TacticsPhase { side, columns })
+}
+
+/// Placement order of the side's living army stacks: round-1 order (BAT-TRN-001: faster first,
+/// then the lower army slot; the id makes the key unique).
+fn order_key(id: u8, s: &Stack) -> (u8, u8, u8) {
+    (u8::MAX - s.speed, s.slot, id)
+}
+
+/// The stack to place after `current` (the first one for `None`), wrapping around after the
+/// last. War machines are not placed (batch 1b R2).
+// rule: BAT-TAC-002
+fn next(state: &BattleState, phase: TacticsPhase, current: Option<StackId>) -> StackId {
+    let after = current.map(|id| order_key(id.0, state.at(id)));
+    let candidates = || {
+        (0u8..)
+            .zip(state.stacks.iter())
+            .filter(|(_, s)| {
+                s.side == phase.side && s.is_alive() && !s.has(StackTraits::WAR_MACHINE)
+            })
+            .map(|(id, s)| (order_key(id, s), id))
+    };
+    // The side has an army stack (the setup requires one), so a stack is always found.
+    candidates()
+        .filter(|(key, _)| after.is_none_or(|a| *key > a))
+        .min()
+        .or_else(|| candidates().min())
+        .map_or(StackId(0), |(_, id)| StackId(id))
+}
+
+/// Hands the next stack after `current` to the phase's side.
+fn activate<S: Sink>(
+    state: &mut BattleState,
+    phase: TacticsPhase,
+    current: Option<StackId>,
+    sink: &mut S,
+) {
+    let id = next(state, phase, current);
+    state.active = Some(id);
+    sink.emit(Event::public(EventKind::TurnStarted { stack: id }));
+}
+
+/// Starts the phase in round 0 with the side's first stack.
+pub(crate) fn begin<S: Sink>(state: &mut BattleState, phase: TacticsPhase, sink: &mut S) {
+    state.round = 0;
+    state.tactics = Some(phase);
+    sink.emit(Event::public(EventKind::TacticsStarted {
+        side: phase.side,
+        columns: phase.columns,
+    }));
+    activate(state, phase, None, sink);
+}
+
+/// Passes from `current` to the next stack (after a placement or a Wait).
+pub(crate) fn pass<S: Sink>(
+    state: &mut BattleState,
+    phase: TacticsPhase,
+    current: StackId,
+    sink: &mut S,
+) {
+    activate(state, phase, Some(current), sink);
+}
+
+/// Ends the phase: round 1 starts and its first stack is activated as usual.
+pub(crate) fn end<S: Sink>(state: &mut BattleState, ruleset: &Ruleset, sink: &mut S) {
+    state.tactics = None;
+    sink.emit(Event::public(EventKind::TacticsEnded));
+    turn::start_round(state, sink);
+    turn::activate_next(state, ruleset, sink);
+}
+
+/// The positions stack `id` reaches in the phase: those a walker reaches over the whole field
+/// without a step limit (obstacles and stacks block its path, which may leave the zone; user
+/// decision 2026-10-04, as VCMI), and every free position for flyers (BAT-MOV-001/002 without the
+/// speed limit). A placement also needs its destination in the zone.
+// rule: BAT-TAC-002
+pub(crate) fn reach(state: &BattleState, field: Field, id: StackId, mover: &Stack) -> Reach {
+    reachable_within(state, field, id, mover, u8::MAX)
+}

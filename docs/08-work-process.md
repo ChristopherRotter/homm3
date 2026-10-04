@@ -70,7 +70,8 @@ user's computer.
    Later verify runs: `nohup scripts/sandbox-verify.sh --with-original-data > /dev/null 2>&1 &`.
 4. **After every commit:** bundle the new commits (`git bundle create <outputs>/sync-<n>.bundle
    <last synced>..<branch>`, a new name each time), write it into `Claude outputs/` on the
-   user's machine, there `git fetch "Claude outputs/sync-<n>.bundle" <branch>` and
+   user's machine, there `git -c gc.auto=0 fetch "Claude outputs/sync-<n>.bundle" <branch>` (a
+   detached auto-gc would die with the device shell and leave `.git/gc.log.lock`) and
    `git merge --ff-only FETCH_HEAD`, delete the bundle, and check that `git status` is clean and
    no `.git/*.lock` is left. If the user committed in between, their repo wins: bring their
    commits into the sandbox first.

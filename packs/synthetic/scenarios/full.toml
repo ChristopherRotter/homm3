@@ -13,6 +13,7 @@ defender_war_machines = ["synthetic:bolt_thrower", "synthetic:supply_wagon"]
 # Brawling and Plating (+10 % shots, +10 % melee, −5 % damage taken), Basic Gunnery (she
 # commands her Bolt Thrower: one shot per turn, 50 % double damage) and Basic Mending (she
 # commands her Aid Tent: heals 1–20 instead of 1–10), wearing a Lucky Knot (morale +1, luck +1).
+# Her Tactics give her a tactics phase with a five-column zone before round 1 (BAT-TAC-001).
 [scenario.attacker_hero]
 hero_type = "synthetic:brea"
 attack = 2
