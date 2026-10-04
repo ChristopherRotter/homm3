@@ -19,11 +19,9 @@ task has to do with them:
 
 - **T6** (done): quirk Q-0005 (T6a, BAT-DMG-002, R1–R3 as fixtures); the hero's damage
   bonuses enter as single-precision rates of their summed basis points (T6b, BAT-HER-004).
-- **T7a** (done): R5 → BAT-WAR-005, R6/R7 → BAT-WAR-006 and HER-BAT-005, Q-0004 →
-  BAT-WAR-002.
-- **T7b:** a commanded First Aid Tent got no turn while no ally was hurt (R6); its Wait/Defend
-  and the heal amount with the skill were not observable (the Golems destroyed it) — retry in
-  batch 1b with troops hurt before the tent's first turn.
+- **T7** (done): R5 → BAT-WAR-005, R6/R7 → BAT-WAR-006/007 and HER-BAT-005, Q-0004 →
+  BAT-WAR-002. Still to observe (batch 1b): the commanded tent's Wait/Defend, target choice and
+  heal amounts (R6's Golems destroyed it) — stage troops hurt before the tent's first turn.
 - **T10** (T3b put the values into the packs): Elixir of Life on Trolls shows 54 hit points: +25 % of the creature's base (40 → 50)
   plus the parts' flat +4 (Ring of Vitality, Ring of Life, Vial of Lifeblood); regeneration restores
   all 54 (R8: survey quirk S-04 not reproduced, no ledger entry). Creature specialties at hero
@@ -61,9 +59,9 @@ become several effects) and `StatOp { Add, PercentBp }`. What the tasks still ha
   book's spells of the ruleset and not creature abilities; it does not check the primary-skill
   limits (any `u8` is accepted).
 - **The derivation fills the rest:** `effects` from artifacts and specialties other than morale
-  and luck (T10; morale and luck since T5b, HER-BAT-003; at most 64 in all), the tent's control
-  (T7b; the Ballista's since T7a, HER-BAT-005), surrender discount (T9), magic (E04b); damage
-  bonuses since T6b (HER-BAT-004, applied by BAT-HER-004). Sums that can exceed the field types saturate; `surrender_discount_bp` is
+  and luck (T10; morale and luck since T5b, HER-BAT-003; at most 64 in all), surrender discount
+  (T9), magic (E04b); damage bonuses since T6b (HER-BAT-004, applied by BAT-HER-004),
+  war-machine control since T7 (HER-BAT-005, applied by BAT-WAR-006/007). Sums that can exceed the field types saturate; `surrender_discount_bp` is
   clamped to 10 000 like `reduction_bp`.
 
 ## 5. `BattleSetup`, `BattleOutcome`, `BattleResult` (T9)
@@ -115,7 +113,7 @@ state-hash bump. Left for T9:
 - The battle keeps a small per-side hero record (present, tactics level, damage bonuses, machine
   control, retreat and surrender allowed, an offer made this round; E04b: mana, cast this round).
 
-## 7. Phases and commands (T7, T8, T9)
+## 7. Phases and commands (T8, T9)
 
 - **Tactics phase** (round 0, after placement in the side's formation, BAT-SET-001): the side whose
   Tactics level exceeds the enemy's gets a zone of 1 + 2 × difference columns (3/5/7) from its
@@ -138,9 +136,6 @@ state-hash bump. Left for T9:
   `surrender_needs_consent` is set (default per D-5; the wiki says the opponent may refuse), the
   battle enters a pending state in which the only legal commands are the opponent's answer; a
   rejection resumes where the offer was made.
-- **Hero-run war machines:** the Ballista is done (T7a, BAT-WAR-006). With `MachineControl.tent`
-  the side commands its First Aid Tent (new `Heal { target }`, T7b); otherwise it acts
-  automatically as in E03. Wait and Defend stay legal for it (OQ-4).
 - Actors are validated as in ADR-0004: the answer to a surrender comes from the side it was offered
   to, every other command from the side whose stack is active or whose tactics phase runs.
 
@@ -162,9 +157,10 @@ encoding still has only the two "led by a hero" flags; T11 adds hero features. S
 
 ## 9. Encodings (T11)
 
-- E04a extends the dense action encoding (v5): `EndTactics`, `Retreat`, `Surrender`, the two
-  answers, and `Heal { target }` over the stack slots; tactics placement reuses the `Move`
-  indices and the commanded Ballista reuses `Shoot`. Observation encoding v4 adds per-side hero
-  features (the public part for the opponent). C ABI v3.
+- T7b already appended `Heal { target }` over the stack slots (action encoding v5, C ABI v3:
+  every legal command must be encodable); the commanded Ballista reuses `Shoot`. T8/T9 append
+  `EndTactics`, `Retreat`, `Surrender` and the two answers the same way (each bump also bumps
+  the C ABI, ADR-0011); tactics placement reuses the `Move` indices. Observation encoding v4
+  adds per-side hero features (the public part for the opponent) in T11.
 - E04b's casting (spells × targets) does not fit a flat dense encoding; E04b designs a factorized
   one together with E05 (BACKLOG). E04a does not pre-empt it.

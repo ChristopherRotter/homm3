@@ -103,7 +103,7 @@ fn spell(k: &str, category: SpellCategory) -> SpellDef {
     }
 }
 
-const SKILLS: [&str; 9] = [
+const SKILLS: [&str; 10] = [
     "t:archery",
     "t:tactics",
     "t:wisdom",
@@ -113,6 +113,7 @@ const SKILLS: [&str; 9] = [
     "t:armorer",
     "t:artillery",
     "t:logistics",
+    "t:first_aid",
 ];
 
 /// Slots: head, two rings, three misc positions, a war-machine slot, a second machine slot

@@ -175,6 +175,12 @@ pub enum CommandError {
     CannotShoot,
     /// The aimed hex is not one the stack may aim at on the target (BAT-RNG-004).
     NotOnTarget,
+    /// The active stack is a war machine, which never attacks in melee (BAT-WAR-001).
+    NoMelee,
+    /// The active stack is not a First Aid Tent its side commands (BAT-WAR-007).
+    CannotHeal,
+    /// The target is not a hurt allied stack the tent may heal (BAT-WAR-003, BAT-WAR-007).
+    NotAPatient,
 }
 
 impl fmt::Display for CommandError {
@@ -191,6 +197,9 @@ impl fmt::Display for CommandError {
             Self::MustShoot => "the stack can shoot, so it cannot attack in melee",
             Self::CannotShoot => "the stack cannot shoot",
             Self::NotOnTarget => "the stack cannot aim at that hex of the target",
+            Self::NoMelee => "war machines do not attack in melee",
+            Self::CannotHeal => "the stack cannot heal",
+            Self::NotAPatient => "the target is not a hurt allied stack",
         })
     }
 }
@@ -338,6 +347,12 @@ mod tests {
             (
                 CommandError::NotOnTarget,
                 "the stack cannot aim at that hex of the target",
+            ),
+            (CommandError::NoMelee, "war machines do not attack in melee"),
+            (CommandError::CannotHeal, "the stack cannot heal"),
+            (
+                CommandError::NotAPatient,
+                "the target is not a hurt allied stack",
             ),
         ];
         for (e, text) in all {

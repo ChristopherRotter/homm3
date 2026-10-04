@@ -1,10 +1,10 @@
-//! Tests of war machines (BAT-WAR-001..006).
+//! Tests of war machines (BAT-WAR-001..007).
 
 use std::vec;
 use std::vec::Vec;
 
 use h3_content::Ruleset;
-use h3_contracts::{BallistaControl, BattleHero, BattleResult, BattleSide};
+use h3_contracts::{BallistaControl, BattleHero, BattleResult, BattleSide, TentControl};
 
 use super::support::*;
 use crate::event::StrikeFlags;
@@ -652,6 +652,139 @@ fn the_tent_heals_at_most_the_missing_hit_points_and_waits_without_patients() {
     let events = defend_round(&mut s, &r);
     assert_eq!(healed(&events), vec![(1, 0, 1)]);
     assert!(healed(&defend_round(&mut s, &r)).is_empty());
+}
+
+// ---------------------------------------------------------------- BAT-WAR-007 First Aid
+
+/// A battle where the attacker's hero commands its tent with `bonus`: 0 = tank ×3 (top creature
+/// at 50 of 100 hit points), 1 = serf, 2 = ballista (hurt), 3 = tent (attacker); 4 = `enemy`.
+fn nursed(bonus: u32, enemy: Spec, seed: u64) -> (Ruleset, BattleState) {
+    let r = ruleset();
+    let mut setup = with_machines(
+        &r,
+        &[(0, "tank", 3), (1, "serf", 2)],
+        &[enemy],
+        [&["tent", "ballista"], &[]],
+    );
+    let mut h = hero(&r);
+    h.war_machines.tent = Some(TentControl {
+        heal_bonus_bp: bonus,
+    });
+    setup.heroes[0] = Some(h);
+    let mut s = start(&r, &setup, seed);
+    s.stacks.as_mut_slice()[0].top_hp = 50;
+    s.stacks.as_mut_slice()[2].top_hp = 10;
+    (r, s)
+}
+
+/// Lets every stack defend until stack `id` is active; returns the events.
+fn defend_until(s: &mut BattleState, r: &Ruleset, id: u8) -> Vec<Event> {
+    let mut events = Vec::new();
+    while s.active() != Some(StackId(id)) {
+        events.extend(act(s, r, Command::Defend).unwrap());
+    }
+    events
+}
+
+// covers: BAT-WAR-007
+#[test]
+fn a_commanded_tent_waits_for_a_heal_command_while_an_ally_is_hurt() {
+    let (r, mut s) = nursed(10_000, (0, "fixed", 1), 1);
+    // The defender's fixed stands next to the tent: still no melee for a war machine.
+    place(&mut s, &r, 4, 2, 9);
+    let events = defend_until(&mut s, &r, 3);
+    assert!(healed(&events).is_empty());
+    let mut legal = crate::LegalCommands::new();
+    crate::legal_commands(&s, &r, BattleSide::Attacker, &mut legal);
+    // Wait, Defend and a heal of the hurt tanks only: not the full serfs, not the hurt
+    // ballista (a war machine), not the enemy.
+    assert_eq!(
+        legal.as_slice(),
+        [
+            Command::Wait,
+            Command::Defend,
+            Command::Heal { target: StackId(0) }
+        ]
+    );
+    let attack = Command::Attack {
+        target: StackId(4),
+        from: s.stacks()[3].hex,
+    };
+    assert_eq!(act(&mut s, &r, attack), Err(crate::CommandError::NoMelee));
+    // It may wait and heal in the wait phase.
+    act(&mut s, &r, Command::Wait).unwrap();
+    defend_until(&mut s, &r, 3);
+    let events = act(&mut s, &r, Command::Heal { target: StackId(0) }).unwrap();
+    let heals = healed(&events);
+    assert_eq!(heals.len(), 1);
+    assert_eq!((heals[0].0, heals[0].1), (3, 0));
+    assert_eq!(s.stacks()[0].top_hp, 50 + heals[0].2);
+    assert_ne!(s.active(), Some(StackId(3)));
+}
+
+// covers: BAT-WAR-007
+#[test]
+fn a_commanded_tent_without_patients_passes_its_turn() {
+    // Batch 1a R6: the tent got no turn while nobody was hurt.
+    let (r, mut s) = nursed(10_000, (0, "fixed", 1), 1);
+    s.stacks.as_mut_slice()[0].top_hp = 100;
+    let events = defend_round(&mut s, &r);
+    assert!(
+        events
+            .iter()
+            .any(|e| e.kind == EventKind::TurnStarted { stack: StackId(3) })
+    );
+    assert!(healed(&events).is_empty());
+    assert_ne!(s.active(), Some(StackId(3)));
+}
+
+// covers: BAT-WAR-007
+#[test]
+fn first_aid_grows_the_tents_largest_heal() {
+    // Basic First Aid: 1–25 becomes 1–50 (the executable's 25 × (1 + 1)), Advanced 1–75; a
+    // bonus of 1 bp of 25 stays 25.
+    for (bonus, top) in [(10_000, 50), (20_000, 75), (1, 25)] {
+        let mut amounts = std::collections::BTreeSet::new();
+        for seed in 0..400 {
+            let (r, mut s) = nursed(bonus, (0, "fixed", 1), seed);
+            s.stacks.as_mut_slice()[0].top_hp = 1;
+            activate(&mut s, 3);
+            let events = act(&mut s, &r, Command::Heal { target: StackId(0) }).unwrap();
+            amounts.insert(healed(&events)[0].2);
+        }
+        assert_eq!(amounts.first(), Some(&1));
+        assert_eq!(amounts.last(), Some(&top), "{bonus}");
+    }
+}
+
+// covers: BAT-WAR-007
+#[test]
+fn heal_commands_are_validated() {
+    use crate::CommandError::{CannotHeal, NoSuchTarget, NotAPatient};
+    let (r, mut s) = nursed(10_000, (0, "fixed", 1), 1);
+    let heal = |target| Command::Heal {
+        target: StackId(target),
+    };
+    // Only a commanded tent heals.
+    activate(&mut s, 0);
+    assert_eq!(act(&mut s, &r, heal(0)), Err(CannotHeal));
+    activate(&mut s, 3);
+    for (target, error) in [
+        (1, NotAPatient),  // full health
+        (2, NotAPatient),  // a war machine
+        (4, NotAPatient),  // an enemy
+        (9, NoSuchTarget), // no such stack
+    ] {
+        assert_eq!(act(&mut s, &r, heal(target)), Err(error), "{target}");
+    }
+    s.stacks.as_mut_slice()[1].count = 0;
+    s.stacks.as_mut_slice()[1].top_hp = 0;
+    assert_eq!(act(&mut s, &r, heal(1)), Err(NoSuchTarget));
+    // Without control the tent stays automatic and never waits for a command.
+    let (r, mut s) = nursed(10_000, (0, "fixed", 1), 1);
+    s.heroes[0] = None;
+    let events = defend_round(&mut s, &r);
+    assert_eq!(healed(&events).len(), 1);
 }
 
 // ---------------------------------------------------------------- BAT-WAR-004 ammo cart

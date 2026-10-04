@@ -9,6 +9,7 @@
 use h3_content::{CreatureSelector, FULL_BP, HeroTypeId, MAX_SKILL_LEVEL, Ruleset, SpellCategory};
 use h3_contracts::{
     BallistaControl, BattleEffect, BattleHero, BattleSide, DamageBonuses, MAX_BATTLE_EFFECTS,
+    TentControl,
 };
 use h3_kernel::{CanonicalHash, StateHasher};
 
@@ -46,6 +47,8 @@ pub(crate) struct HeroRecord {
     pub(crate) damage: DamageBonuses,
     /// The side commands its Ballista (Artillery, BAT-WAR-006; private to the side).
     pub(crate) ballista: Option<BallistaControl>,
+    /// The side commands its First Aid Tent (First Aid, BAT-WAR-007; private to the side).
+    pub(crate) tent: Option<TentControl>,
 }
 
 /// The damage bonuses of `side` (none without a hero; BAT-HER-004).
@@ -59,6 +62,11 @@ pub(crate) fn ballista(
     side: BattleSide,
 ) -> Option<BallistaControl> {
     heroes[side.index()].and_then(|h| h.ballista)
+}
+
+/// How `side`'s hero commands its First Aid Tent, if it does (BAT-WAR-007).
+pub(crate) fn tent(heroes: &[Option<HeroRecord>; 2], side: BattleSide) -> Option<TentControl> {
+    heroes[side.index()].and_then(|h| h.tent)
 }
 
 impl CanonicalHash for HeroRecord {
@@ -78,6 +86,10 @@ impl CanonicalHash for HeroRecord {
         if let Some(b) = self.ballista {
             h.write_u8(b.shots);
             h.write_u16(b.double_damage_chance_bp);
+        }
+        h.write_u8(u8::from(self.tent.is_some()));
+        if let Some(t) = self.tent {
+            h.write_u32(t.heal_bonus_bp);
         }
     }
 }
@@ -149,6 +161,7 @@ pub(crate) fn check(
         tactics: hero.tactics,
         damage: hero.damage,
         ballista: hero.war_machines.ballista,
+        tent: hero.war_machines.tent,
     })
 }
 

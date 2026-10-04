@@ -15,6 +15,7 @@ use crate::geometry::{Field, Hex};
 use crate::movement::reachable;
 use crate::state::{BattleState, StackFlags, StackId, StackTraits};
 use crate::turn::{TurnEnd, end_turn};
+use crate::war;
 
 /// A player's intent for the active stack.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Default)]
@@ -43,6 +44,11 @@ pub enum Command {
     Wait,
     /// End the turn with the Defend bonus (BAT-TRN-004).
     Defend,
+    /// Heal `target` with the commanded First Aid Tent (BAT-WAR-007).
+    Heal {
+        /// The allied stack to heal.
+        target: StackId,
+    },
 }
 
 /// A command that passed validation, with everything `apply` needs.
@@ -69,6 +75,10 @@ enum Plan {
     },
     Defend {
         mover: StackId,
+    },
+    Heal {
+        mover: StackId,
+        target: StackId,
     },
 }
 
@@ -135,6 +145,10 @@ fn plan(
             if can_shoot(state, field, id) {
                 return Err(CommandError::MustShoot);
             }
+            // rule: BAT-WAR-001
+            if mover.has(StackTraits::WAR_MACHINE) {
+                return Err(CommandError::NoMelee);
+            }
             let Some(position) = field
                 .footprint(from, mover.is_two_hex(), mover.side)
                 .filter(|fp| fp.hexes().all(|h| field.is_standable(h)))
@@ -180,6 +194,19 @@ fn plan(
                 at,
             })
         }
+        Command::Heal { target } => {
+            // rule: BAT-WAR-007
+            if war::commanded_tent(state, id).is_none() {
+                return Err(CommandError::CannotHeal);
+            }
+            if state.stack(target).is_none_or(|s| !s.is_alive()) {
+                return Err(CommandError::NoSuchTarget);
+            }
+            if !war::is_patient(state, id, target) {
+                return Err(CommandError::NotAPatient);
+            }
+            Ok(Plan::Heal { mover: id, target })
+        }
     }
 }
 
@@ -223,6 +250,10 @@ pub fn apply<S: Sink>(
         }
         Plan::Shoot { mover, target, at } => {
             shoot(state, ruleset, mover, target, at, sink);
+            end_turn(state, ruleset, mover, TurnEnd::Acted, sink);
+        }
+        Plan::Heal { mover, target } => {
+            war::heal(state, ruleset, mover, target, sink);
             end_turn(state, ruleset, mover, TurnEnd::Acted, sink);
         }
     }

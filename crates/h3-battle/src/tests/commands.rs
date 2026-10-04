@@ -236,13 +236,16 @@ fn state_hash_is_pinned() {
         shots: 2,
         double_damage_chance_bp: 7500,
     });
+    led.war_machines.tent = Some(h3_contracts::TentControl {
+        heal_bonus_bp: 45_000,
+    });
     let setup = BattleSetup {
         heroes: [Some(led), None],
         ..setup(&r, &[(0, "fixed", 3), (2, "wisp", 7)], &[(0, "slow", 4)])
     };
     let s = BattleState::new(&r, &setup, 7).unwrap();
     assert_eq!(s.state_hash(), GOLDEN, "got {:#018x}", s.state_hash());
-    assert_eq!(crate::BATTLE_STATE_HASH_VERSION, 11);
+    assert_eq!(crate::BATTLE_STATE_HASH_VERSION, 12);
 }
 
-const GOLDEN: u64 = 0xf9cf_0c68_043c_5e88;
+const GOLDEN: u64 = 0xd1de_966b_9dd2_dd7b;

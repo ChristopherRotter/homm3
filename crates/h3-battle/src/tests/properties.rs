@@ -8,7 +8,7 @@
 use std::vec::Vec;
 
 use h3_content::{Formation, Ruleset};
-use h3_contracts::{Army, ArmyStack, BallistaControl, BattleSetup, BattleSide};
+use h3_contracts::{Army, ArmyStack, BallistaControl, BattleSetup, BattleSide, TentControl};
 use h3_kernel::Rng;
 use proptest::collection::{btree_map, vec};
 use proptest::prelude::{Just, Strategy, any, prop_assert, prop_assert_eq, prop_oneof, proptest};
@@ -51,6 +51,7 @@ fn arb_command() -> impl Strategy<Value = Command> {
             target: StackId(t),
             from: Hex(h)
         }),
+        (0u8..40).prop_map(|t| Command::Heal { target: StackId(t) }),
     ]
 }
 
@@ -103,7 +104,8 @@ fn arb_game() -> impl Strategy<Value = Game> {
 /// A setup from generated armies and obstacles; bits 0–5 of `machines` choose the attacker's
 /// and the defender's war machines (ballista, ammo cart, first aid tent), bits 6–7 whether the
 /// attacker and the defender stand in tight formation, bit 8 whether the attacker's hero
-/// commands its Ballista (bit 9: two shots; bits 10–23: the double-damage chance).
+/// commands its Ballista (bit 9: two shots; bits 10–23: the double-damage chance), bit 24
+/// whether it commands its First Aid Tent (bits 25–40: the heal bonus).
 fn make_setup(
     r: &Ruleset,
     attacker: &[(u8, u8, u32)],
@@ -139,6 +141,11 @@ fn make_setup(
             double_damage_chance_bp: u16::try_from((machines >> 10) % 16_384)
                 .unwrap()
                 .min(10_000),
+        });
+    }
+    if machines & (1 << 24) != 0 {
+        led.war_machines.tent = Some(TentControl {
+            heal_bonus_bp: u32::try_from((machines >> 25) & 0xffff).unwrap(),
         });
     }
     BattleSetup {

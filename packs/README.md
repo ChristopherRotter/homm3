@@ -212,7 +212,7 @@ different creatures or statistics.
 | `surrender_discount` | `bp` (1..=10000) | cheaper surrender (Diplomacy) |
 | `tactics` | `level` (1..=3) | the hero's Tactics level |
 | `artillery` | `shots` (≥ 1), `double_damage_chance_bp` (≤ 10000) | the hero commands its Ballista: `shots` per command at one target, each with the chance of +100 % damage (BAT-WAR-006); several such effects: the largest of each value (HER-BAT-005) |
-| `first_aid` | `heal_bp` (≥ 1) | the hero commands its First Aid Tent; its largest heal grows by `heal_bp` of the tent's own `first_aid` maximum |
+| `first_aid` | `heal_bp` (≥ 1) | the hero commands its First Aid Tent; its largest heal grows by `heal_bp` of the tent's own `first_aid` maximum (BAT-WAR-007); several such effects add up, a skill's grown by its skill specialty (HER-BAT-005) |
 | `creature_stat` | `creatures` (omitted: all; `{ creature = "x" }`: x and its upgrades; `{ flag = "dragon" }`), `stat` (`attack`, `defense`, `speed`, `hit_points`, `min_damage`, `max_damage`), `amount` (≠ 0) | fixed change of a creature statistic |
 | `skill_specialty` | `skill`, `bp_per_level` (≥ 1) | specialty: the skill's scalable values grow by `bp_per_level` of themselves per hero level |
 | `creature_specialty` | `creature`, `bp_per_step` (≥ 1), `speed` (default 0) | specialty: attack and defense of the creature and its upgrades grow by `bp_per_step` of the creature's value (rounded up) per full step of (creature level) hero levels; speed + `speed` |
@@ -356,8 +356,8 @@ tight_formation = ["defender"]   # optional: sides in tight formation, the other
 hero_type = "synthetic:brea"     # the side, given directly (BAT-HER-001, Q31); a side without
 attack = 2                       # one is not led by a hero (quirk Q-0003). Every field but
 defense = 2                      # hero_type defaults to 0 (effects: none); the rest of the battle
-power = 1                        # hero (the tent's control, other effects, spell book, …) joins
-knowledge = 1                    # the format with the rules that read it (E04a T7b–T10, E04b)
+power = 1                        # hero (surrender discount, other effects, spell book, …) joins
+knowledge = 1                    # the format with the rules that read it (E04a T9–T10, E04b)
 tactics = 2
 mana = 10
 max_mana = 10
@@ -366,6 +366,8 @@ melee_bp = 1000                  # its melee strikes, and the reduction of strik
 reduction_bp = 500               # (at most 10 000)
 ballista = { shots = 1, double_damage_chance_bp = 5000 }   # optional: the side commands its
                                  # Ballista (Artillery, BAT-WAR-006)
+tent = { heal_bonus_bp = 10000 } # optional: the side commands its First Aid Tent (First Aid,
+                                 # BAT-WAR-007; the bonus of its largest heal)
 effects = [{ kind = "morale", amount = 1 }, { kind = "luck_at_most", value = 0, affects = "enemy" }]
                                  # battle effects as in "Hero effects": so far `morale`, `luck`,
                                  # `morale_at_most`, `luck_at_most` (BAT-HER-003)

@@ -5,7 +5,9 @@ use alloc::collections::BTreeSet;
 use alloc::vec::Vec;
 
 use h3_content::{Affects, CompiledHeroEffect, FULL_BP, HeroEffect, Ruleset};
-use h3_contracts::{BallistaControl, BattleEffect, BattleHero, DamageBonuses, MachineControl};
+use h3_contracts::{
+    BallistaControl, BattleEffect, BattleHero, DamageBonuses, MachineControl, TentControl,
+};
 
 use crate::details::{HeroDetails, PrimarySkill, check};
 use crate::error::DetailsError;
@@ -15,9 +17,8 @@ use crate::error::DetailsError;
 /// effects (HER-BAT-003), the damage bonuses (HER-BAT-004) and the war machines it commands
 /// (HER-BAT-005); the mana is passed through. The details are validated first.
 ///
-/// Later tasks fill the rest; until then it stays neutral: the First Aid Tent's control (E04a
-/// T7b), surrender discount (T9), the other effects (T10), and spell book, maximum mana and
-/// schools (E04b).
+/// Later tasks fill the rest; until then it stays neutral: surrender discount (E04a T9), the
+/// other effects (T10), and spell book, maximum mana and schools (E04b).
 ///
 /// # Errors
 /// The [`DetailsError`] of the first rule the details break ([`crate::validate`]).
@@ -69,7 +70,7 @@ pub fn derive_battle_hero(
     hero.damage = damage_bonuses(details, ruleset);
 
     // rule: HER-BAT-005
-    hero.war_machines = machine_control(effects(details, ruleset, Count::OncePerType));
+    hero.war_machines = machine_control(details, ruleset);
 
     hero.magic.mana = details.mana;
     Ok(hero)
@@ -141,27 +142,16 @@ const fn affects_index(affects: Affects) -> usize {
     }
 }
 
-/// The damage bonuses (HER-BAT-004): per kind (ranged, melee, reduction) the sum of the
-/// secondary skills' values, each grown by the hero's specialties for that skill by
-/// `bp_per_level` basis points of itself per hero level (rounded down), the worn artifacts'
-/// values (each artifact type once) and the specialty's own. Sums saturate at `u16::MAX`; the
-/// reduction is at most 10 000.
-fn damage_bonuses(details: &HeroDetails, ruleset: &Ruleset) -> DamageBonuses {
-    // [ranged, melee, reduction]
-    let mut sums = [0u64; 3];
-    let mut add = |effect: &CompiledHeroEffect, growth_bp: u64| {
-        let (kind, bp) = match *effect {
-            HeroEffect::RangedDamage { bp } => (0, bp),
-            HeroEffect::MeleeDamage { bp } => (1, bp),
-            HeroEffect::DamageReduction { bp } => (2, bp),
-            _ => return,
-        };
-        let bp = u64::from(bp);
-        let grown = bp + bp * growth_bp / u64::from(FULL_BP);
-        sums[kind] = sums[kind].saturating_add(grown);
-    };
+/// Every effect with the growth its value gets (HER-BAT-004, HER-BAT-005): the secondary skills'
+/// effects at their levels, each grown by the hero's specialties for that skill by
+/// `bp_per_level` basis points of itself per hero level; the worn artifacts' (each artifact type
+/// once) and the specialty's own, not grown.
+fn grown_effects<'a>(
+    details: &'a HeroDetails,
+    ruleset: &'a Ruleset,
+) -> impl Iterator<Item = (&'a CompiledHeroEffect, u64)> {
     let specialty = specialty(details, ruleset);
-    for &(id, level) in &details.skills {
+    let skills = details.skills.iter().flat_map(move |&(id, level)| {
         let growth_bp: u64 = specialty
             .iter()
             .filter_map(|effect| match *effect {
@@ -172,16 +162,35 @@ fn damage_bonuses(details: &HeroDetails, ruleset: &Ruleset) -> DamageBonuses {
                 _ => None,
             })
             .sum();
-        let effects = ruleset
+        ruleset
             .skill(id)
             .map(|skill| skill.effects(level))
-            .unwrap_or_default();
-        for effect in effects {
-            add(effect, growth_bp);
-        }
-    }
-    for effect in artifact_effects(details, ruleset, Count::OncePerType).chain(specialty) {
-        add(effect, 0);
+            .unwrap_or_default()
+            .iter()
+            .map(move |effect| (effect, growth_bp))
+    });
+    let others = artifact_effects(details, ruleset, Count::OncePerType).chain(specialty);
+    skills.chain(others.map(|effect| (effect, 0)))
+}
+
+/// `bp` grown by `growth_bp` basis points of itself, rounded down.
+fn grow(bp: u64, growth_bp: u64) -> u64 {
+    bp.saturating_add(bp.saturating_mul(growth_bp) / u64::from(FULL_BP))
+}
+
+/// The damage bonuses (HER-BAT-004): per kind (ranged, melee, reduction) the sum of the grown
+/// values of [`grown_effects`]. Sums saturate at `u16::MAX`; the reduction is at most 10 000.
+fn damage_bonuses(details: &HeroDetails, ruleset: &Ruleset) -> DamageBonuses {
+    // [ranged, melee, reduction]
+    let mut sums = [0u64; 3];
+    for (effect, growth_bp) in grown_effects(details, ruleset) {
+        let (kind, bp) = match *effect {
+            HeroEffect::RangedDamage { bp } => (0, bp),
+            HeroEffect::MeleeDamage { bp } => (1, bp),
+            HeroEffect::DamageReduction { bp } => (2, bp),
+            _ => continue,
+        };
+        sums[kind] = sums[kind].saturating_add(grow(u64::from(bp), growth_bp));
     }
     let bp = |sum: u64| u16::try_from(sum).unwrap_or(u16::MAX);
     DamageBonuses {
@@ -192,25 +201,34 @@ fn damage_bonuses(details: &HeroDetails, ruleset: &Ruleset) -> DamageBonuses {
 }
 
 /// The war machines the hero commands (HER-BAT-005): the Ballista if an effect gives Artillery,
-/// with the most shots and the highest double-damage chance among such effects. Skill
-/// specialties do not grow them (the original has no Artillery specialist and keeps no
-/// Artillery value its specialty getter could scale, `docs/formats/installation.md` §7.4).
-fn machine_control<'a>(effects: impl Iterator<Item = &'a CompiledHeroEffect>) -> MachineControl {
+/// with the most shots and the highest double-damage chance among such effects (skill
+/// specialties do not grow them: the original has no Artillery specialist and keeps no
+/// Artillery value its specialty getter could scale, `docs/formats/installation.md` §7.4); the
+/// First Aid Tent if an effect gives First Aid, its heal bonus the sum of the grown `heal_bp`
+/// values of [`grown_effects`] (a First Aid specialist's grows by 5 % per level), saturated.
+fn machine_control(details: &HeroDetails, ruleset: &Ruleset) -> MachineControl {
     let mut control = MachineControl::default();
-    for effect in effects {
-        if let HeroEffect::Artillery {
-            shots,
-            double_damage_chance_bp,
-        } = *effect
-        {
-            let ballista = control.ballista.get_or_insert(BallistaControl {
+    for (effect, growth_bp) in grown_effects(details, ruleset) {
+        match *effect {
+            HeroEffect::Artillery {
                 shots,
                 double_damage_chance_bp,
-            });
-            ballista.shots = ballista.shots.max(shots);
-            ballista.double_damage_chance_bp = ballista
-                .double_damage_chance_bp
-                .max(double_damage_chance_bp);
+            } => {
+                let ballista = control.ballista.get_or_insert(BallistaControl {
+                    shots,
+                    double_damage_chance_bp,
+                });
+                ballista.shots = ballista.shots.max(shots);
+                ballista.double_damage_chance_bp = ballista
+                    .double_damage_chance_bp
+                    .max(double_damage_chance_bp);
+            }
+            HeroEffect::FirstAid { heal_bp } => {
+                let tent = control.tent.get_or_insert(TentControl { heal_bonus_bp: 0 });
+                let grown = u32::try_from(grow(u64::from(heal_bp), growth_bp)).unwrap_or(u32::MAX);
+                tent.heal_bonus_bp = tent.heal_bonus_bp.saturating_add(grown);
+            }
+            _ => {}
         }
     }
     control

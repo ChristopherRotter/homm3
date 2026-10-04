@@ -10,9 +10,11 @@ use crate::command::Command;
 use crate::geometry::{ATTACK_SLOTS, Field, Hex};
 use crate::movement::reachable;
 use crate::state::{BattleState, STACK_CAPACITY, StackFlags, StackId, StackTraits};
+use crate::war;
 
 /// Upper bound on the number of legal commands: Wait, Defend, one move per hex, and per enemy
-/// stack either its canonical attack positions or two aimed shots.
+/// stack either its canonical attack positions or two aimed shots (a commanded First Aid Tent:
+/// Wait, Defend and at most one heal per stack).
 pub const MAX_LEGAL_COMMANDS: usize = 2 + MAX_FIELD_HEXES + ATTACK_SLOTS * STACK_CAPACITY;
 
 /// Fixed-capacity buffer for [`legal_commands`] (no allocation in the hot path).
@@ -21,7 +23,8 @@ pub type LegalCommands = FixedVec<Command, MAX_LEGAL_COMMANDS>;
 /// Fills `out` with every command `actor` may issue now (empty if it is not the actor's turn or
 /// the battle is over). Order: Wait, Defend, moves by hex, then per enemy stack its shots (a
 /// stack that can shoot, BAT-RNG-001: head, then tail for area shots) or its melee attacks by
-/// canonical position slot (`Field::attack_positions`).
+/// canonical position slot (`Field::attack_positions`; never for war machines, BAT-WAR-001),
+/// then for a commanded First Aid Tent its heals by stack id (BAT-WAR-007).
 pub fn legal_commands(
     state: &BattleState,
     ruleset: &Ruleset,
@@ -64,6 +67,9 @@ pub fn legal_commands(
             }
             continue;
         }
+        if mover.has(StackTraits::WAR_MACHINE) {
+            continue;
+        }
         let positions = field.attack_positions(mover.is_two_hex(), mover.side, fp);
         for from in positions.into_iter().flatten() {
             if from == mover.hex || reach.can_move_to(from) {
@@ -72,6 +78,11 @@ pub fn legal_commands(
                     from,
                 });
             }
+        }
+    }
+    if war::commanded_tent(state, id).is_some() {
+        for target in war::patients(state, id).iter().copied() {
+            let _ = out.push(Command::Heal { target });
         }
     }
 }

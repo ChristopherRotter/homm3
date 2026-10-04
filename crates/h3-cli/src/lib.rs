@@ -1,11 +1,11 @@
 //! Library side of the `h3` tool: loading packs and scenarios from disk, running random battles,
 //! and the replay file format (TOML). The binary (`main.rs`) only parses arguments.
 //!
-//! Replay file format v6 (`fixtures/replays/*.toml` are examples):
+//! Replay file format v7 (`fixtures/replays/*.toml` are examples):
 //!
 //! ```toml
 //! [replay]
-//! format = 6
+//! format = 7
 //! engine = "0.1.0"
 //! scenario = "skirmish"
 //! seed = "7"                      # u64 as a decimal string
@@ -16,7 +16,7 @@
 //! rng_version = 1
 //! hash = "fnv1a64-le"
 //! hash_version = 1
-//! battle_state_hash_version = 11
+//! battle_state_hash_version = 12
 //! checkpoint_every = 25
 //!
 //! [setup]                         # the rest of the setup (fields default when absent)
@@ -40,6 +40,9 @@
 //! shots = 1                       #   `h3_pack::BallistaEntry`
 //! double_damage_chance_bp = 5000
 //!
+//! [setup.attacker_hero.tent]      # the side commands its First Aid Tent (format 7; omitted
+//! heal_bonus_bp = 10000           #   when not): `h3_pack::TentEntry`
+//!
 //! [[setup.attacker_hero.effects]] # its battle effects (format 4; omitted when none):
 //! kind = "morale"                 #   `h3_pack::EffectEntry`
 //! amount = 1
@@ -50,7 +53,7 @@
 //! creature = "synthetic:spearman"
 //! count = 30
 //!
-//! commands = ["A move 45", "D attack 3 57", "A shoot 4 120", "A wait", "D defend"]
+//! commands = ["A move 45", "D attack 3 57", "A shoot 4 120", "A wait", "D defend", "A heal 2"]
 //! checkpoints = ["0x…"]           # state hash after every `checkpoint_every` commands
 //!
 //! [result]
@@ -222,7 +225,8 @@ fn side_letter(side: BattleSide) -> &'static str {
 }
 
 /// Text form of one replay command: `"<A|D> move <hex>"`, `"<A|D> attack <stack> <hex>"`,
-/// `"<A|D> wait"`, `"<A|D> defend"`.
+/// `"<A|D> shoot <stack> <hex>"`, `"<A|D> wait"`, `"<A|D> defend"`, `"<A|D> heal <stack>"`
+/// (format 7).
 pub fn format_command(side: BattleSide, command: Command) -> String {
     let s = side_letter(side);
     match command {
@@ -231,6 +235,7 @@ pub fn format_command(side: BattleSide, command: Command) -> String {
         Command::Shoot { target, at } => format!("{s} shoot {} {}", target.0, at.0),
         Command::Wait => format!("{s} wait"),
         Command::Defend => format!("{s} defend"),
+        Command::Heal { target } => format!("{s} heal {}", target.0),
     }
 }
 
@@ -261,6 +266,9 @@ pub fn parse_command(text: &str) -> Result<(BattleSide, Command), CliError> {
         },
         (Some("wait"), 2) => Command::Wait,
         (Some("defend"), 2) => Command::Defend,
+        (Some("heal"), 3) => Command::Heal {
+            target: StackId(num(2)?),
+        },
         _ => return Err(bad()),
     };
     Ok((side, command))
@@ -586,6 +594,11 @@ mod tests {
             ),
             (BattleSide::Attacker, Command::Wait, "A wait"),
             (BattleSide::Defender, Command::Defend, "D defend"),
+            (
+                BattleSide::Attacker,
+                Command::Heal { target: StackId(2) },
+                "A heal 2",
+            ),
         ];
         for (side, cmd, text) in cases {
             assert_eq!(format_command(side, cmd), text);
@@ -599,6 +612,8 @@ mod tests {
             "A move 300",
             "A wait now",
             "A attack 1",
+            "A heal",
+            "A heal 300",
         ] {
             assert!(parse_command(bad).is_err(), "{bad}");
         }

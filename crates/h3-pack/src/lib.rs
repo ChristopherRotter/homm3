@@ -19,7 +19,7 @@ use h3_content::{
 };
 use h3_contracts::{
     Army, ArmyStack, BallistaControl, BattleEffect, BattleHero, BattleSetup, BattleSide,
-    DamageBonuses,
+    DamageBonuses, TentControl,
 };
 use serde::{Deserialize, Serialize};
 
@@ -1249,6 +1249,10 @@ pub struct HeroEntry {
     /// when set).
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub ballista: Option<BallistaEntry>,
+    /// The side commands its First Aid Tent ([`MachineControl::tent`]; default not, written only
+    /// when set).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub tent: Option<TentEntry>,
     /// Battle effects (default none; written only when there are some, after the values).
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub effects: Vec<EffectEntry>,
@@ -1280,6 +1284,14 @@ impl From<BallistaControl> for BallistaEntry {
             double_damage_chance_bp: c.double_damage_chance_bp,
         }
     }
+}
+
+/// How a hero commands its First Aid Tent ([`TentControl`]) in scenario and replay files.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct TentEntry {
+    /// Increase of the tent's largest heal, basis points of the tent's own maximum.
+    pub heal_bonus_bp: u32,
 }
 
 /// Whether a value is 0 (serde's `skip_serializing_if`).
@@ -1399,6 +1411,9 @@ impl HeroEntry {
             reduction_bp: self.reduction_bp,
         };
         hero.war_machines.ballista = self.ballista.map(BallistaControl::from);
+        hero.war_machines.tent = self.tent.map(|t| TentControl {
+            heal_bonus_bp: t.heal_bonus_bp,
+        });
         hero.effects = self.effects.iter().map(|e| e.effect()).collect();
         Ok(hero)
     }
@@ -1410,7 +1425,6 @@ impl HeroEntry {
     /// [`PackError::HeroNotWritable`] if a field the format does not hold yet is not neutral.
     pub fn of(hero: &BattleHero, ruleset: &Ruleset) -> Result<Self, PackError> {
         let unwritable = [
-            ("First Aid Tent control", hero.war_machines.tent.is_some()),
             ("surrender discount", hero.surrender_discount_bp != 0),
             (
                 "effects other than morale and luck",
@@ -1441,6 +1455,9 @@ impl HeroEntry {
             melee_bp: hero.damage.melee_bp,
             reduction_bp: hero.damage.reduction_bp,
             ballista: hero.war_machines.ballista.map(BallistaEntry::from),
+            tent: hero.war_machines.tent.map(|t| TentEntry {
+                heal_bonus_bp: t.heal_bonus_bp,
+            }),
             effects: hero.effects.iter().filter_map(EffectEntry::of).collect(),
         })
     }
@@ -1819,6 +1836,9 @@ mod tests {
             shots: 1,
             double_damage_chance_bp: 5000,
         });
+        expected.war_machines.tent = Some(TentControl {
+            heal_bonus_bp: 10_000,
+        });
         expected.effects = vec![
             BattleEffect::Morale {
                 amount: 1,
@@ -1897,9 +1917,13 @@ mod tests {
             written.contains("[ballista]\nshots = 1\ndouble_damage_chance_bp = 5000\n"),
             "{written}"
         );
+        assert!(
+            written.contains("[tent]\nheal_bonus_bp = 10000\n"),
+            "{written}"
+        );
         let plain = toml::to_string(&HeroEntry::of(&ansel, &ruleset).unwrap()).unwrap();
         assert!(
-            !plain.contains("_bp") && !plain.contains("ballista"),
+            !plain.contains("_bp") && !plain.contains("ballista") && !plain.contains("tent"),
             "{plain}"
         );
         let mut stranger = expected.clone();
@@ -1910,13 +1934,7 @@ mod tests {
         );
         // Values the format cannot hold yet.
         type Change = (fn(&mut BattleHero), &'static str);
-        let changes: [Change; 5] = [
-            (
-                |h| {
-                    h.war_machines.tent = Some(h3_contracts::TentControl { heal_bonus_bp: 1 });
-                },
-                "First Aid Tent control",
-            ),
+        let changes: [Change; 4] = [
             (|h| h.surrender_discount_bp = 1, "surrender discount"),
             (
                 |h| h.effects.push(BattleEffect::NoRetreat),
@@ -2428,6 +2446,29 @@ mod tests {
                 })
             );
         }
+        // First Aid: the tent's largest heal +100/200/300 %; Rion, a First Aid specialist, at
+        // level 10 with Expert First Aid: 300 % × 1.5 (the executable: 25 × (1 + 3 × 1.5), 137).
+        assert_eq!(hero.war_machines.tent, None);
+        let first_aid = sod.skill_by_key("base:first_aid").unwrap();
+        gunner.skills = vec![(first_aid, 1)];
+        let tent = |d: &HeroDetails| derive_battle_hero(d, &sod).unwrap().war_machines.tent;
+        assert_eq!(
+            tent(&gunner),
+            Some(TentControl {
+                heal_bonus_bp: 10_000
+            })
+        );
+        let rion = HeroDetails {
+            hero_type: sod.hero_type_by_key("base:rion").unwrap(),
+            skills: vec![(first_aid, 3)],
+            ..gunner.clone()
+        };
+        assert_eq!(
+            tent(&rion),
+            Some(TentControl {
+                heal_bonus_bp: 45_000
+            })
+        );
         // Five Clovers of Fortune give luck +1: identical artifacts do not stack (wiki Artifact).
         let luck = |amount| BattleEffect::Luck {
             amount,

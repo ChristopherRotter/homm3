@@ -1,7 +1,7 @@
 //! Dense action encoding (docs/07-simulation-and-ai.md §1: "dense action encoding is defined by
 //! the sim layer, not the domain").
 //!
-//! Layout, version 4 (independent of the ruleset, so agents see a fixed-size action space):
+//! Layout, version 5 (independent of the ruleset, so agents see a fixed-size action space):
 //!
 //! | index | action |
 //! |---|---|
@@ -10,10 +10,12 @@
 //! | 2 + h, h < 255 | Move to hex `h` (the head of a two-hex stack) |
 //! | 257 + 24·s + k | Attack stack `s` from its canonical attack position `k` (`Field::attack_positions` for the active stack's shape) |
 //! | 1169 + 2·s + a | Shoot at stack `s`, aiming at its head (`a = 0`) or tail (`a = 1`) |
+//! | 1245 + s | Heal stack `s` (the commanded First Aid Tent, BAT-WAR-007) |
 //!
 //! Version 2 (E03 T3) replaced the six neighbour directions of version 1 by the 24 canonical
 //! attack positions, which cover two-hex attackers and targets; version 3 (E03 T4) added shots;
-//! version 4 (E03 T8) grew the stack slots from 32 to 38 (`STACK_CAPACITY` includes war machines).
+//! version 4 (E03 T8) grew the stack slots from 32 to 38 (`STACK_CAPACITY` includes war machines);
+//! version 5 (E04a T7b) appended the heals, so the earlier indices keep their meaning.
 
 use h3_battle::{
     ATTACK_SLOTS, BattleState, Command, Field, Hex, LegalCommands, STACK_CAPACITY, StackId,
@@ -22,15 +24,17 @@ use h3_content::{MAX_FIELD_HEXES, Ruleset};
 use h3_contracts::BattleSide;
 
 /// Version of this encoding; bump on any change of the layout above.
-pub const ACTION_ENCODING_VERSION: u32 = 4;
+pub const ACTION_ENCODING_VERSION: u32 = 5;
 
 const MOVE_BASE: usize = 2;
 const ATTACK_BASE: usize = MOVE_BASE + MAX_FIELD_HEXES;
 
 const SHOOT_BASE: usize = ATTACK_BASE + ATTACK_SLOTS * STACK_CAPACITY;
 
+const HEAL_BASE: usize = SHOOT_BASE + 2 * STACK_CAPACITY;
+
 /// Number of actions.
-pub const ACTION_COUNT: usize = SHOOT_BASE + 2 * STACK_CAPACITY;
+pub const ACTION_COUNT: usize = HEAL_BASE + STACK_CAPACITY;
 
 /// Legal-action mask.
 pub type ActionMask = [bool; ACTION_COUNT];
@@ -77,6 +81,9 @@ pub fn encode(state: &BattleState, ruleset: &Ruleset, command: Command) -> Optio
             };
             Some(SHOOT_BASE + 2 * target.index() + aim)
         }
+        Command::Heal { target } => {
+            (target.index() < STACK_CAPACITY).then_some(HEAL_BASE + target.index())
+        }
     }
 }
 
@@ -94,7 +101,7 @@ pub fn decode(state: &BattleState, ruleset: &Ruleset, action: usize) -> Option<C
             let from = positions(state, ruleset, target)?[(a - ATTACK_BASE) % ATTACK_SLOTS]?;
             Some(Command::Attack { target, from })
         }
-        a if a < ACTION_COUNT => {
+        a if a < HEAL_BASE => {
             let target = StackId(u8::try_from((a - SHOOT_BASE) / 2).ok()?);
             let field = Field::new(ruleset.battle().field);
             let fp = state.stack(target)?.footprint(field);
@@ -105,6 +112,9 @@ pub fn decode(state: &BattleState, ruleset: &Ruleset, action: usize) -> Option<C
             };
             Some(Command::Shoot { target, at })
         }
+        a if a < ACTION_COUNT => u8::try_from(a - HEAL_BASE)
+            .ok()
+            .map(|t| Command::Heal { target: StackId(t) }),
         _ => None,
     }
 }
@@ -138,8 +148,8 @@ mod tests {
 
     #[test]
     fn layout() {
-        assert_eq!(ACTION_COUNT, 2 + 255 + 24 * 38 + 2 * 38);
-        assert_eq!(ACTION_ENCODING_VERSION, 4);
+        assert_eq!(ACTION_COUNT, 2 + 255 + 24 * 38 + 2 * 38 + 38);
+        assert_eq!(ACTION_ENCODING_VERSION, 5);
     }
 
     #[test]
@@ -203,6 +213,46 @@ mod tests {
         assert_eq!(encode(&s, &r, off), None);
         // A one-hex target has no tail aim.
         assert_eq!(decode(&s, &r, SHOOT_BASE + 1), None);
+    }
+
+    #[test]
+    fn heals_of_the_commanded_tent_round_trip() {
+        // The full scenario's attacker commands its tent (BAT-WAR-007): play until it may heal.
+        let (r, setup) = h3_pack::synthetic(h3_pack::SYNTHETIC_FULL).unwrap();
+        let mut s = BattleState::new(&r, &setup, 3).unwrap();
+        let mut legal = LegalCommands::new();
+        let mut mask = [false; ACTION_COUNT];
+        let mut heals = 0;
+        for step in 0..2000 {
+            let Some(side) = s.side_to_act() else { break };
+            legal_mask(&s, &r, side, &mut legal, &mut mask);
+            assert_eq!(mask.iter().filter(|m| **m).count(), legal.len());
+            for c in legal.iter().filter(|c| matches!(c, Command::Heal { .. })) {
+                let i = encode(&s, &r, *c).unwrap();
+                assert!(i >= HEAL_BASE && mask[i]);
+                assert_eq!(decode(&s, &r, i), Some(*c));
+                heals += 1;
+            }
+            let command = legal.as_slice()[step % legal.len()];
+            h3_battle::apply(&mut s, &r, side, command, &mut h3_battle::NoopSink).unwrap();
+        }
+        assert!(heals > 0);
+        assert_eq!(
+            encode(
+                &s,
+                &r,
+                Command::Heal {
+                    target: StackId(38)
+                }
+            ),
+            None
+        );
+        assert_eq!(
+            decode(&s, &r, ACTION_COUNT - 1),
+            Some(Command::Heal {
+                target: StackId(37)
+            })
+        );
     }
 
     #[test]

@@ -4,13 +4,19 @@ Living state. The last agent updates this at the end of every session; the next 
 
 ---
 
-## 2026-10-04 (ninth session) — E04a T7 in progress (T7a done: the Ballista; T7b next)
+## 2026-10-04 (ninth session) — E04a T7 done (T7a and T7b: the hero-run Ballista and First Aid Tent)
 
-**State:** branch `e04a-heroes-in-battle`, `cargo xtask verify` green. Scope chosen by the user at the start: T7 split into **T7a** (Ballista) and **T7b** (First Aid Tent and the `Heal` command), both this session as separate checkpoints. **In progress:** T7b (not started when T7a was committed).
+**State:** branch `e04a-heroes-in-battle`, `cargo xtask verify` green (also `--with-original-data`). Scope chosen by the user at the start: T7 split into **T7a** (Ballista) and **T7b** (First Aid Tent and the `Heal` command), both this session as separate checkpoints. Nothing half-done.
 
-**T7a:** BAT-WAR-005 (the hero's attack + 1 multiplies its war machines' damage range, `Stack::new`), BAT-WAR-006 (commanded Ballista: `war::commanded_ballista`, `war::is_commanded`, `turn::activate_next`; `shots` per Shoot, double-damage roll in `combat::attack`, `StrikeFlags::DOUBLE_DAMAGE`), quirk Q-0004 (`UNLIMITED_BALLISTA_SHOTS`, index 2, `StackTraits::UNLIMITED_SHOTS`), HER-BAT-005 (`derive::machine_control`), `HeroRecord.ballista` (**state hash v11**), `h3_pack::BallistaEntry` (**replay format v6**), Brea commands her Bolt Thrower in `full`, golden replays re-recorded (`full-s3` 262 commands). `h3_kernel::arith::{mul_wide, cmp_fractions}` for the ranking (E03 review item done). Compiler: war machines must have speed 0. Bench re-baselined (see the epic).
+**T7a (`427de8e`):** BAT-WAR-005 (the hero's attack + 1 multiplies its war machines' damage range, `Stack::new`; R5 fixture), BAT-WAR-006 (commanded Ballista: `war::commanded_ballista`, `war::is_commanded`, `turn::activate_next`; `shots` per Shoot, double-damage roll in `combat::attack`, `StrikeFlags::DOUBLE_DAMAGE`), quirk Q-0004 (`UNLIMITED_BALLISTA_SHOTS`, index 2, `StackTraits::UNLIMITED_SHOTS`), HER-BAT-005, state hash v11, `h3_pack::BallistaEntry` (replay format v6); `h3_kernel::arith::{mul_wide, cmp_fractions}` for the Ballista ranking (E03 review item done); the content compiler requires speed 0 for war machines.
 
-**Next:** T7b as planned in the epic file.
+**T7b:** BAT-WAR-007 — `Command::Heal { target }` (`war::{commanded_tent, is_patient, patients, heal}`, `CommandError::{CannotHeal, NotAPatient, NoMelee}`; war machines never attack in melee), the commanded tent waits for a command only while an ally is a patient; heal `1..=floor(max × (1 + bonus))`. HER-BAT-005 extended (`derive::grown_effects` shared with HER-BAT-004). **State hash v12**, `h3_pack::TentEntry`, CLI text `heal <stack>`, **replay format v7**, **action encoding v5** (heals at 1245 + stack) and **C ABI v3** (ADR-0011 ties encodings to the ABI; T11's plan adjusted in the epic and design note). `full`: Brea has Basic Gunnery and Mending; `full-s3` 437 commands (22 heals), the attacker still wins. `BattleState` 2152 → 2168 bytes; bench-check re-baselined twice (T7a −2.1 %, T7b −6.0 %: the commanded machines' turns are cheap steps; per step −10.5 % and −10.7 %); ≈ 200 k steps/s on `full`.
+
+**Agent decisions (change freely; in the epic, catalog and ledger):** Q-0004 also for the automatic Ballista; a commanded machine with nothing to do passes its turn; luck and double damage add (VCMI); the hero's effective attack (with artifacts) in the damage range (wiki, VCMI 1.7.5 counts artifacts too); several Artillery effects take the largest values, several First Aid bonuses add; specialty growth exact, not single precision; encoding/ABI bump in T7b rather than T11.
+
+**Next:** the user decides. Recommended: **design batch 1b** (T8–T10 disputes in `docs/rules/surveys/README.md`, the commanded tent's Wait/Defend/target/heal amounts, artifact candidates D1 and open checks 1–2), so the results can arrive before T8–T10. Alternative: **T8** (tactics; OQ-1/OQ-2 would then follow VCMI and the wiki until 1b).
+
+**Traps:** `stack ids`: war machines follow the army in *kind* order (Ballista, Ammo Cart, Tent), not in the order of `BattleSetup.war_machines`. A test's Defend turns raise the defender's defense (the Defend bonus), which spoils exact damage expectations: use `activate` to skip turns. Coverage counts closures that random inputs rarely reach (`Option::map` on a rare `Some`): make property tests deterministic in what they cover. Two `skill_specialty` effects in one specialty are rejected. Sandbox and sync as before (bundle in `Claude outputs/`, deleted afterwards; delete permission for the repo folder).
 
 ---
 

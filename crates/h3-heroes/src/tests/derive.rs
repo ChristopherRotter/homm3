@@ -358,55 +358,91 @@ fn damage_bonuses_sum_skills_artifacts_and_specialty() {
 
 // covers: HER-BAT-005
 #[test]
-fn artillery_makes_the_hero_command_its_ballista() {
+fn artillery_and_first_aid_make_the_hero_command_its_war_machines() {
     // Artillery: one shot and 50 %, two and 75 %, two and 100 % (the base pack's values);
-    // `t:kit` (worn) brings one shot at 90 % as an artifact could; a specialty for Artillery
-    // grows nothing.
+    // First Aid: +100/200/300 % of the tent's largest heal. `t:kit` (worn) brings one shot at
+    // 90 % and +50 % heal as an artifact could. The specialty grows First Aid by 5 % of itself
+    // per level (an Artillery specialty would grow nothing; one specialty per skill only).
     let mut p = effect_pack();
     for s in &mut p.skills {
-        if s.key.to_string() == "t:artillery" {
-            s.levels = [(1, 5000), (2, 7500), (2, 10_000)].map(|(shots, chance)| {
-                vec![HeroEffectDef::Artillery {
-                    shots,
-                    double_damage_chance_bp: chance,
-                }]
-            });
+        match s.key.to_string().as_str() {
+            "t:artillery" => {
+                s.levels = [(1, 5000), (2, 7500), (2, 10_000)].map(|(shots, chance)| {
+                    vec![HeroEffectDef::Artillery {
+                        shots,
+                        double_damage_chance_bp: chance,
+                    }]
+                });
+            }
+            "t:first_aid" => {
+                s.levels = [10_000, 20_000, 30_000]
+                    .map(|heal_bp| vec![HeroEffectDef::FirstAid { heal_bp }]);
+            }
+            _ => {}
         }
     }
     p.heroes[0].specialty.push(HeroEffectDef::SkillSpecialty {
-        skill: key("t:artillery"),
+        skill: key("t:first_aid"),
         bp_per_level: 500,
     });
     let without_kit = compile(p.clone()).unwrap();
     for a in &mut p.artifacts {
         if a.key.to_string() == "t:kit" {
-            a.effects = vec![HeroEffectDef::Artillery {
-                shots: 1,
-                double_damage_chance_bp: 9000,
-            }];
+            a.effects = vec![
+                HeroEffectDef::Artillery {
+                    shots: 1,
+                    double_damage_chance_bp: 9000,
+                },
+                HeroEffectDef::FirstAid { heal_bp: 5000 },
+            ];
         }
     }
     let r = compile(p).unwrap();
-    let control = |r: &Ruleset, level: Option<u8>| {
+    let control = |r: &Ruleset, level: u8, artillery: Option<u8>, first_aid: Option<u8>| {
         let mut d = HeroDetails {
-            level: 20,
+            level,
             ..details(r)
         };
-        d.skills.extend(level.map(|l| (skill(r, "t:artillery"), l)));
-        let hero = derive_battle_hero(&d, r).unwrap();
-        assert_eq!(hero.war_machines.tent, None);
-        hero.war_machines
-            .ballista
-            .map(|b| (b.shots, b.double_damage_chance_bp))
+        d.skills
+            .extend(artillery.map(|l| (skill(r, "t:artillery"), l)));
+        d.skills
+            .extend(first_aid.map(|l| (skill(r, "t:first_aid"), l)));
+        let machines = derive_battle_hero(&d, r).unwrap().war_machines;
+        (
+            machines
+                .ballista
+                .map(|b| (b.shots, b.double_damage_chance_bp)),
+            machines.tent.map(|t| t.heal_bonus_bp),
+        )
     };
-    assert_eq!(control(&without_kit, None), None);
-    assert_eq!(control(&without_kit, Some(1)), Some((1, 5000)));
-    assert_eq!(control(&without_kit, Some(2)), Some((2, 7500)));
-    assert_eq!(control(&without_kit, Some(3)), Some((2, 10_000)));
-    // With the kit: the most shots and the highest chance of all sources.
-    assert_eq!(control(&r, None), Some((1, 9000)));
-    assert_eq!(control(&r, Some(2)), Some((2, 9000)));
-    assert_eq!(control(&r, Some(3)), Some((2, 10_000)));
+    assert_eq!(control(&without_kit, 20, None, None), (None, None));
+    assert_eq!(
+        control(&without_kit, 20, Some(1), None),
+        (Some((1, 5000)), None)
+    );
+    assert_eq!(control(&without_kit, 20, Some(2), None).0, Some((2, 7500)));
+    assert_eq!(
+        control(&without_kit, 20, Some(3), None).0,
+        Some((2, 10_000))
+    );
+    // First Aid at level 1: +5 % of itself; Expert at level 10: 300 % × 1.5 = 450 % (the
+    // executable's 1 + 3 × (1 + 0.05 × 10) = 5.5 times the tent's 25, 137).
+    assert_eq!(
+        control(&without_kit, 1, None, Some(1)),
+        (None, Some(10_500))
+    );
+    assert_eq!(control(&without_kit, 10, None, Some(3)).1, Some(45_000));
+    // With the kit: the most shots and the highest chance of all sources; heal bonuses add up,
+    // the artifact's not grown.
+    assert_eq!(control(&r, 20, None, None), (Some((1, 9000)), Some(5000)));
+    assert_eq!(control(&r, 20, Some(2), None).0, Some((2, 9000)));
+    assert_eq!(control(&r, 20, Some(3), None).0, Some((2, 10_000)));
+    assert_eq!(control(&r, 10, None, Some(3)).1, Some(45_000 + 5000));
+    // Far beyond `u16`: level 255.
+    assert_eq!(
+        control(&r, u8::MAX, None, Some(3)).1,
+        Some(30_000 + 30_000 * 500 * 255 / 10_000 + 5000)
+    );
 }
 
 proptest! {

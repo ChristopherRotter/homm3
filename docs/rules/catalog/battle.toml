@@ -1151,7 +1151,7 @@ id       = "BAT-WAR-001"
 title    = "War machines on the battlefield"
 context  = "battle"
 status   = "implemented"
-summary  = "Each side may bring war machines (BattleSetup.war_machines; creatures with flag war_machine, at most one per kind; they may not stand in army slots): the Ballista (shooting kind), the Ammo Cart (ammo-supply kind) and the First Aid Tent (first-aid kind). They stand at fixed places (battle param war_machine_positions: Ballista (1, 3), Ammo Cart (1, 1), First Aid Tent (1, 9) for the attacker, mirrored for the defender), get stack ids after their side's army and slots 16 + kind. War machines never move (the compiler requires speed 0 for them, E04a T7a; also when their side commands them, BAT-WAR-006), are not affected by morale (BAT-MOR-001) and do not count for the army's alignment (BAT-MOR-002), never retaliate (BAT-RET-001), and do not count as living stacks for the end of the battle (BAT-END-001). The compiler checks that the positions leave room for two-hex machines: every head hex has the hex behind it on the field, and no two footprints of either side (the defender's mirrored) share a hex (E04a T4a); an obstacle of the setup on a machine's place is a NoRoom setup error. Siege machines (Catapult, towers) are out of scope (E04)."
+summary  = "Each side may bring war machines (BattleSetup.war_machines; creatures with flag war_machine, at most one per kind; they may not stand in army slots): the Ballista (shooting kind), the Ammo Cart (ammo-supply kind) and the First Aid Tent (first-aid kind). They stand at fixed places (battle param war_machine_positions: Ballista (1, 3), Ammo Cart (1, 1), First Aid Tent (1, 9) for the attacker, mirrored for the defender), get stack ids after their side's army and slots 16 + kind. War machines never move (the compiler requires speed 0 for them, E04a T7a; also when their side commands them, BAT-WAR-006/007) and never attack in melee (CommandError::NoMelee), are not affected by morale (BAT-MOR-001) and do not count for the army's alignment (BAT-MOR-002), never retaliate (BAT-RET-001), and do not count as living stacks for the end of the battle (BAT-END-001). The compiler checks that the positions leave room for two-hex machines: every head hex has the hex behind it on the field, and no two footprints of either side (the defender's mirrored) share a hex (E04a T4a); an obstacle of the setup on a machine's place is a NoRoom setup error. Siege machines (Catapult, towers) are out of scope (E04)."
 numeric  = "integer"
 
   [[rule.source]]
@@ -1178,7 +1178,7 @@ id       = "BAT-WAR-002"
 title    = "Ballista without Artillery; unlimited shots"
 context  = "battle"
 status   = "implemented"
-summary  = "Without a hero's Artillery skill (E04) the Ballista is controlled by the engine: when it becomes active it shoots at once (it is never blocked: war machines shoot even next to enemies) and its turn ends; without shots it does nothing. Target: among living enemies prefer stacks that are not war machines, then stacks that could attack next turn (can shoot, or can reach an attack position), then the highest value of the expected damage min(T, D) * V / M + K * V (D = average damage capped at the target's total health T, K = average kills, V = AI value, M = hit points per creature), compared exactly; ties go to the lowest stack id. Shots are used like a shooter's (24 for the Ballista; unlimited with an Ammo Cart, BAT-WAR-004). Quirk Q-0004 (quirk.battle.unlimited_ballista_shots, on in faithful; observed, batch 1a R7): the shooting war machine shoots on without shots left, whether automatic or commanded (BAT-WAR-006); its count stays at 0 (the original shows negative counts). With a hero's Artillery the Ballista is commanded instead (BAT-WAR-006)."
+summary  = "Without a hero's Artillery skill (with it: BAT-WAR-006) the Ballista is controlled by the engine: when it becomes active it shoots at once (it is never blocked: war machines shoot even next to enemies) and its turn ends; without shots it does nothing. Target: among living enemies prefer stacks that are not war machines, then stacks that could attack next turn (can shoot, or can reach an attack position), then the highest value of the expected damage min(T, D) * V / M + K * V (D = average damage capped at the target's total health T, K = average kills, V = AI value, M = hit points per creature), compared exactly; ties go to the lowest stack id. Shots are used like a shooter's (24 for the Ballista; unlimited with an Ammo Cart, BAT-WAR-004). Quirk Q-0004 (quirk.battle.unlimited_ballista_shots, on in faithful; observed, batch 1a R7): the shooting war machine shoots on without shots left, whether automatic or commanded (BAT-WAR-006); its count stays at 0 (the original shows negative counts). With a hero's Artillery the Ballista is commanded instead (BAT-WAR-006)."
 quirks   = ["Q-0004"]
 numeric  = "integer"
 
@@ -1207,7 +1207,7 @@ id       = "BAT-WAR-003"
 title    = "First Aid Tent without First Aid"
 context  = "battle"
 status   = "implemented"
-summary  = "Without a hero's First Aid skill (E04) the First Aid Tent acts automatically when it becomes active: a uniformly chosen allied stack that is alive, not a war machine and whose top creature is hurt regains a uniform min_hp..=max_hp hit points (ability first_aid; 1..=25 for the tent) on its top creature, capped at full health, without resurrection; with no such stack nothing happens. Its turn then ends. Source conflict (Q26, user decision): VCMI heals a fixed 10 (firstAid spell at level 0); the wiki's 1..=25 is followed and confirmed by reading the game's code (installation.md section 7.5)."
+summary  = "Without a hero's First Aid skill (with it: BAT-WAR-007) the First Aid Tent acts automatically when it becomes active: a uniformly chosen allied stack that is alive, not a war machine and whose top creature is hurt regains a uniform min_hp..=max_hp hit points (ability first_aid; 1..=25 for the tent) on its top creature, capped at full health, without resurrection; with no such stack nothing happens. Its turn then ends. Source conflict (Q26, user decision): VCMI heals a fixed 10 (firstAid spell at level 0); the wiki's 1..=25 is followed and confirmed by reading the game's code (installation.md section 7.5)."
 numeric  = "integer"
 
   [[rule.source]]
@@ -1309,11 +1309,44 @@ numeric  = "integer"
   confidence = "high"
 
 [[rule]]
+id       = "BAT-WAR-007"
+title    = "The First Aid Tent commanded by First Aid"
+context  = "battle"
+status   = "implemented"
+summary  = "A side whose hero has First Aid (BattleHero.war_machines.tent, BAT-HER-001) commands its first-aid war machine (the First Aid Tent): when the tent becomes active and some allied stack is a patient (alive, not a war machine, its top creature hurt; BAT-WAR-003), it waits for its side's command instead of acting on its own; with no patient its turn passes without action. Legal commands: Heal { target } for each patient (validated: the active stack is a commanded tent, CannotHeal; the target exists and lives, NoSuchTarget; it is a patient, NotAPatient), Wait (once per round) and Defend; never moves or attacks in melee (BAT-WAR-001). A heal restores a uniform min_hp..=max_hp' hit points of the top creature, capped at full health, without resurrection, where max_hp' = floor(max_hp * (10 000 + heal_bonus_bp) / 10 000) (Basic/Advanced/Expert First Aid: +100/200/300 %, so 1-50, 1-75, 1-100 for the tent's 1-25). Observed (batch 1a R6): the commanded tent got no turn while no ally was hurt. Not observed (retry in batch 1b): Wait/Defend for the tent, choosing the target, the heal amounts. The battle keeps the control in its hero record (state hash v12); it is private to the side."
+numeric  = "integer"
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (Q29): the tent heals Random(1, trunc(25 x (1 + First Aid value))), First Aid values 1/2/3 (x (1 + 0.05 x level) for a specialist), i.e. 1-50/1-75/1-100 (docs/formats/installation.md sections 7.4, 7.5)"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "observation"
+  ref        = "experiments/results/E04a-batch-1a.md R6 (SoD 4.0 Complete, 2026-10-03): with Basic First Aid the tent got no turn in rounds 1 and 2, while the Pikemen were at full health"
+  retrieved  = "2026-10-03"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "vcmi"
+  ref        = "server/battles/BattleFlowProcessor.cpp L705-L736 tryMakeAutomaticActionOfFirstAidTent: no healable ally, the tent does nothing even under MANUAL_CONTROL; otherwise automatic unless the owner has MANUAL_CONTROL (First Aid); canBeHealed: top creature hurt, not a war machine (heal amounts differ, Q26)"
+  url        = "https://github.com/vcmi/vcmi/blob/1.7.5/server/battles/BattleFlowProcessor.cpp#L705-L736"
+  retrieved  = "2026-10-04"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "wiki"
+  ref        = "First Aid - Heroes 3 wiki: the hero controls the First Aid Tent, which heals up to 50/75/100 hit points at Basic/Advanced/Expert"
+  url        = "https://heroes.thelazy.net/index.php/First_Aid"
+  retrieved  = "2026-10-01"
+  confidence = "medium"
+
+[[rule]]
 id       = "BAT-HER-001"
 title    = "The heroes leading the sides"
 context  = "battle"
 status   = "implemented"
-summary  = "Each side may be led by a hero (BattleSetup.heroes, a BattleHero derived before the seam or given directly by a scenario; ADR-0013). The battle takes the hero as given and checks only what its rules need to run soundly (OPEN-QUESTIONS Q31): the hero type, every creature an effect names and every spell of the spell book are in the ruleset; the spell book lists each spell once and no creature ability; at most MAX_BATTLE_EFFECTS (64) effects; Tactics and school levels at most 3; damage reduction, surrender discount and a commanded Ballista's double-damage chance at most 10 000 basis points, and a commanded Ballista has at least one shot. Values no real hero could have (attack 255) are accepted. Otherwise the battle does not start (SetupError::InvalidHero). The battle keeps the hero type, the primary skills, the Tactics level, mana and maximum mana, the damage bonuses (BAT-HER-004) and the Ballista's control (BAT-WAR-006); both sides see the hero type, primary skills and mana (ADR-0013 point 9). A side with a hero is 'led by a hero' (quirk Q-0003, BAT-LCK-002). The hero's values take effect with the rules that read them (E04a T5-T10, E04b)."
+summary  = "Each side may be led by a hero (BattleSetup.heroes, a BattleHero derived before the seam or given directly by a scenario; ADR-0013). The battle takes the hero as given and checks only what its rules need to run soundly (OPEN-QUESTIONS Q31): the hero type, every creature an effect names and every spell of the spell book are in the ruleset; the spell book lists each spell once and no creature ability; at most MAX_BATTLE_EFFECTS (64) effects; Tactics and school levels at most 3; damage reduction, surrender discount and a commanded Ballista's double-damage chance at most 10 000 basis points, and a commanded Ballista has at least one shot. Values no real hero could have (attack 255) are accepted. Otherwise the battle does not start (SetupError::InvalidHero). The battle keeps the hero type, the primary skills, the Tactics level, mana and maximum mana, the damage bonuses (BAT-HER-004) and the control of the Ballista and the First Aid Tent (BAT-WAR-006/007); both sides see the hero type, primary skills and mana (ADR-0013 point 9). A side with a hero is 'led by a hero' (quirk Q-0003, BAT-LCK-002). The hero's values take effect with the rules that read them (E04a T5-T10, E04b)."
 numeric  = "integer"
 
   [[rule.source]]

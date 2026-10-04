@@ -1,17 +1,18 @@
-//! War machines (BAT-WAR-001..006): their automatic turns and which of them their side commands.
+//! War machines (BAT-WAR-001..007): their automatic turns and which of them their side commands.
 //!
 //! Without a hero's Artillery or First Aid skill war machines are controlled by the engine: when
 //! one becomes active it acts at once and its turn ends. The Ballista shoots the target VCMI's
 //! automatic control picks (BAT-WAR-002), the First Aid Tent heals a random damaged allied stack
 //! (BAT-WAR-003); the Ammo Cart never becomes active (BAT-WAR-004). A hero with Artillery
-//! commands its side's Ballista instead (BAT-WAR-006).
+//! commands its side's Ballista instead (BAT-WAR-006), one with First Aid its tent (BAT-WAR-007).
 
 use core::cmp::Ordering;
 
+use h3_content::FULL_BP;
 use h3_content::{Ability, Ruleset};
-use h3_contracts::BallistaControl;
+use h3_contracts::{BallistaControl, TentControl};
 use h3_kernel::FixedVec;
-use h3_kernel::arith::cmp_fractions;
+use h3_kernel::arith::{cmp_fractions, mul_div_floor};
 
 use crate::combat::{can_shoot, shoot, shot_damage_range};
 use crate::damage::apply_damage;
@@ -32,12 +33,47 @@ pub(crate) fn commanded_ballista(state: &BattleState, id: StackId) -> Option<Bal
     }
 }
 
+/// How the side of stack `id` commands it, if `id` is a first-aid war machine (the First Aid
+/// Tent) and the side's hero has First Aid (BAT-WAR-007).
+pub(crate) fn commanded_tent(state: &BattleState, id: StackId) -> Option<TentControl> {
+    let s = state.at(id);
+    if s.has(StackTraits::FIRST_AID) {
+        hero::tent(&state.heroes, s.side)
+    } else {
+        None
+    }
+}
+
 /// Whether war machine `id` waits for its side's command on its turn instead of acting on its
-/// own: a commanded Ballista that can shoot (BAT-WAR-006). Otherwise its turn is automatic
-/// (BAT-WAR-002/003; a commanded Ballista that cannot shoot does nothing).
-// rule: BAT-WAR-006
+/// own: a commanded Ballista that can shoot (BAT-WAR-006), a commanded First Aid Tent with a
+/// patient (BAT-WAR-007). Otherwise its turn is automatic (BAT-WAR-002/003; a commanded machine
+/// that has nothing to do does nothing).
+// rule: BAT-WAR-006, BAT-WAR-007
 pub(crate) fn is_commanded(state: &BattleState, field: Field, id: StackId) -> bool {
-    commanded_ballista(state, id).is_some() && can_shoot(state, field, id)
+    (commanded_ballista(state, id).is_some() && can_shoot(state, field, id))
+        || (commanded_tent(state, id).is_some() && !patients(state, id).is_empty())
+}
+
+/// Whether the first-aid war machine `healer` may heal stack `target`: an allied stack that is
+/// alive, not a war machine and whose top creature is hurt (BAT-WAR-003).
+pub(crate) fn is_patient(state: &BattleState, healer: StackId, target: StackId) -> bool {
+    let me = state.at(healer);
+    state.stack(target).is_some_and(|s| {
+        s.side == me.side && s.is_alive() && !s.has(StackTraits::WAR_MACHINE) && s.top_hp < s.max_hp
+    })
+}
+
+/// The stacks the first-aid war machine `healer` may heal, by id ([`is_patient`]).
+pub(crate) fn patients(state: &BattleState, healer: StackId) -> FixedVec<StackId, STACK_CAPACITY> {
+    let mut out = FixedVec::new();
+    for i in 0..state.stacks.len() {
+        // `i < STACK_CAPACITY <= u8::MAX`.
+        let id = StackId(u8::try_from(i).unwrap_or(u8::MAX));
+        if is_patient(state, healer, id) {
+            let _ = out.push(id);
+        }
+    }
+    out
 }
 
 /// The automatic turn of war machine `id` (BAT-WAR-002/003): heal, shoot, or nothing.
@@ -160,30 +196,11 @@ pub(crate) fn shooting_target(
     best
 }
 
-/// The First Aid Tent's turn (BAT-WAR-003): a uniformly chosen allied stack that is alive, not
-/// a war machine and whose top creature is hurt regains a uniform `min_hp..=max_hp` hit points
-/// on its top creature (no resurrection); nothing happens if no stack is hurt.
+/// The First Aid Tent's automatic turn (BAT-WAR-003): a uniformly chosen patient
+/// ([`is_patient`]) is healed ([`heal`]); nothing happens without patients.
 // rule: BAT-WAR-003
 fn first_aid<S: Sink>(state: &mut BattleState, ruleset: &Ruleset, id: StackId, sink: &mut S) {
-    let me = state.at(id);
-    let (min, max) = ruleset
-        .abilities(me.creature)
-        .iter()
-        .find_map(|a| match *a {
-            Ability::FirstAid { min_hp, max_hp } => Some((min_hp, max_hp)),
-            _ => None,
-        })
-        .unwrap_or_default();
-    let mut hurt: FixedVec<StackId, STACK_CAPACITY> = FixedVec::new();
-    for (i, s) in (0u8..).zip(state.stacks.iter()) {
-        if s.side == me.side
-            && s.is_alive()
-            && !s.has(StackTraits::WAR_MACHINE)
-            && s.top_hp < s.max_hp
-        {
-            let _ = hurt.push(StackId(i));
-        }
-    }
+    let hurt = patients(state, id);
     let n = u32::try_from(hurt.len()).unwrap_or(u32::MAX);
     if n == 0 {
         return;
@@ -192,12 +209,44 @@ fn first_aid<S: Sink>(state: &mut BattleState, ruleset: &Ruleset, id: StackId, s
         .get(usize::try_from(state.rng.below(n)).unwrap_or(0))
         .copied()
         .unwrap_or(id);
-    let amount = state.rng.range_inclusive(u32::from(min), u32::from(max));
+    heal(state, ruleset, id, target, sink);
+}
+
+/// The first-aid war machine `healer` heals the top creature of `target` by a uniform
+/// `min_hp..=max_hp` hit points of its ability `first_aid`, capped at full health, without
+/// resurrection (BAT-WAR-003). A commanded tent's largest heal grows by `heal_bonus_bp` of
+/// itself, rounded down (BAT-WAR-007: 1–25 becomes 1–50, 1–75, 1–100 with First Aid).
+// rule: BAT-WAR-003, BAT-WAR-007
+pub(crate) fn heal<S: Sink>(
+    state: &mut BattleState,
+    ruleset: &Ruleset,
+    healer: StackId,
+    target: StackId,
+    sink: &mut S,
+) {
+    let (min, max) = ruleset
+        .abilities(state.at(healer).creature)
+        .iter()
+        .find_map(|a| match *a {
+            Ability::FirstAid { min_hp, max_hp } => Some((u32::from(min_hp), u32::from(max_hp))),
+            _ => None,
+        })
+        .unwrap_or_default();
+    let max = commanded_tent(state, healer).map_or(max, |control| {
+        let full = u64::from(FULL_BP);
+        let grown = mul_div_floor(
+            u64::from(max),
+            full + u64::from(control.heal_bonus_bp),
+            full,
+        );
+        grown.map_or(u32::MAX, |m| u32::try_from(m).unwrap_or(u32::MAX))
+    });
+    let amount = state.rng.range_inclusive(min, max);
     let t = state.at_mut(target);
     let hit_points = amount.min(t.max_hp - t.top_hp);
     t.top_hp += hit_points;
     sink.emit(Event::public(EventKind::Healed {
-        healer: id,
+        healer,
         target,
         hit_points,
     }));
