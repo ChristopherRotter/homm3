@@ -174,7 +174,8 @@ state-hash bump. Left for T9:
   Tactics level exceeds the enemy's gets a zone of 1 + 2 × difference columns (3/5/7) from its
   edge; equal levels cancel. Only that side's army stacks are activated, in round-1 order and
   cycling; commands: `Move { to }` with the footprint, occupancy and obstacle rules of an ordinary
-  move (a walking stack needs a path; flying stacks fly), the speed limit replaced by the zone;
+  move (a walking stack needs a path, which may leave the zone: only the destination must lie in it,
+  user decision 2026-10-04 as VCMI; flying stacks fly), the speed limit replaced by the zone;
   `Wait` (skip to the next stack); and the new `EndTactics`. War machines are not moved. Events
   `TacticsStarted`, `TacticsEnded`; `RoundStarted(1)` follows. Like the battle itself the phase has
   no limit in the rules; the sim's step limit truncates (E01), and E05 handles the action balance.

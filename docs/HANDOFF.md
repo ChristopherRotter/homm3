@@ -5,7 +5,7 @@ Living state between sessions; every session reads it first. Rules (`docs/08-wor
 ## Current state
 
 - Branch `e04a-heroes-in-battle` (the user merges to `master` when an epic closes); `cargo xtask verify --with-original-data` green. Sandbox and syncing: `docs/08-work-process.md`, "Cloud sandbox and syncing" (`scripts/sandbox-setup.sh`).
-- **E04a** (`docs/epics/E04a-heroes-in-battle.md`): T1–T7 done, experiment batches 1a and 1b evaluated (`docs/epics/E04a-design.md`, "Batch 1b results" says what T8–T10 must do). **Next: T8 (tactics)**; at the start, propose a split and let the user confirm it. Then T9, T10, T11, T12.
+- **E04a** (`docs/epics/E04a-heroes-in-battle.md`): T1–T7 done, experiment batches 1a and 1b evaluated (`docs/epics/E04a-design.md`, "Batch 1b results" says what T8–T10 must do). **In progress: T8 (tactics)**, confirmed by the user (2026-10-04, eleventh session) as one checkpoint (it cannot be split green: the `full` scenario's Brea already has Advanced Tactics); user decision: a walking stack's path may leave the zone, only the destination must lie in it (VCMI). Then T9, T10, T11, T12.
 - Versions: state hash v12, ruleset hash v11, replay format v7, action encoding v5, C ABI v3, observation encoding v3. Each new command bumps the action encoding and the C ABI (ADR-0011).
 - No decision is waiting for the user. Long-term open questions: `docs/OPEN-QUESTIONS.md`, section "Open".
 - Working agreement: small increments, the user confirms the seam; token efficiency beats speed (AGENTS.md); the user plays experiment maps in SoD with plain HD and commits the results.
