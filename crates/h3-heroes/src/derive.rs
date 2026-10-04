@@ -15,10 +15,11 @@ use crate::error::DetailsError;
 /// Derives what a battle needs to know about the hero (`BattleSetup.heroes`): the hero type, the
 /// effective primary skills (HER-BAT-001), the Tactics level (HER-BAT-002), the morale and luck
 /// effects (HER-BAT-003), the damage bonuses (HER-BAT-004), the war machines it commands
-/// (HER-BAT-005) and the `NoRetreat` effect (HER-BAT-006); the mana is passed through. The details are validated first.
+/// (HER-BAT-005), the `NoRetreat` effect (HER-BAT-006) and the surrender discount (HER-BAT-007);
+/// the mana is passed through. The details are validated first.
 ///
-/// Later tasks fill the rest; until then it stays neutral: surrender discount (E04a T9), the
-/// other effects (T10), and spell book, maximum mana and schools (E04b).
+/// Later tasks fill the rest; until then it stays neutral: the other effects (T10), and spell
+/// book, maximum mana and schools (E04b).
 ///
 /// # Errors
 /// The [`DetailsError`] of the first rule the details break ([`crate::validate`]).
@@ -77,8 +78,23 @@ pub fn derive_battle_hero(
     // rule: HER-BAT-005
     hero.war_machines = machine_control(details, ruleset);
 
+    // rule: HER-BAT-007
+    hero.surrender_discount_bp = surrender_discount(details, ruleset);
+
     hero.magic.mana = details.mana;
     Ok(hero)
+}
+
+/// The surrender discount (HER-BAT-007): the sum of the grown values of the surrender discounts
+/// of [`grown_effects`] (they add, batch 1b R4), at most 10 000.
+fn surrender_discount(details: &HeroDetails, ruleset: &Ruleset) -> u16 {
+    let sum: u64 = grown_effects(details, ruleset)
+        .filter_map(|(effect, growth_bp)| match *effect {
+            HeroEffect::SurrenderDiscount { bp } => Some(grow(u64::from(bp), growth_bp)),
+            _ => None,
+        })
+        .sum();
+    u16::try_from(sum.min(u64::from(FULL_BP))).unwrap_or(FULL_BP)
 }
 
 /// How often a worn artifact's effects count.

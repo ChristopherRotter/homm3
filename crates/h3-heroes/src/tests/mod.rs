@@ -60,6 +60,7 @@ fn battle() -> BattleParamsDef {
         loose_formation: vec![vec![5], vec![3, 7], vec![2, 5, 8]],
         tight_formation: vec![vec![5], vec![4, 6], vec![4, 5, 6]],
         tactics_zone_columns: vec![3, 5, 7],
+        surrender: None,
     }
 }
 

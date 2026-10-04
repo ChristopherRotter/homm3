@@ -54,6 +54,7 @@ pub(crate) fn battle_def() -> BattleParamsDef {
         loose_formation: vec![vec![5], vec![3, 7], vec![2, 5, 8]],
         tight_formation: vec![vec![5], vec![4, 6], vec![4, 5, 6]],
         tactics_zone_columns: vec![3, 5, 7],
+        surrender: None,
     }
 }
 
@@ -226,6 +227,40 @@ fn hash_is_stable_and_sensitive() {
     tactics.battle.as_mut().unwrap().tactics_zone_columns[2] = 15;
     let tactics = Ruleset::compile(&[tactics], "base:faithful").unwrap();
     assert_ne!(a.content_hash(), tactics.content_hash());
+    // The surrender's resource is resolved like any reference (BAT-FLE-002).
+    let mut surrender = base();
+    surrender.battle.as_mut().unwrap().surrender = Some(crate::SurrenderDef {
+        resource: key("base:gold"),
+        cost_percent: 50,
+    });
+    let priced = Ruleset::compile(&[surrender.clone()], "base:faithful").unwrap();
+    assert_ne!(a.content_hash(), priced.content_hash());
+    let gold = priced
+        .resources()
+        .iter()
+        .position(|r| r.key.as_str() == "base:gold");
+    assert_eq!(
+        priced
+            .battle()
+            .surrender
+            .map(|s| (s.resource.index(), s.cost_percent)),
+        Some((gold.unwrap(), 50))
+    );
+    surrender
+        .battle
+        .as_mut()
+        .unwrap()
+        .surrender
+        .as_mut()
+        .unwrap()
+        .resource = key("base:silver");
+    assert_eq!(
+        Ruleset::compile(&[surrender], "base:faithful").unwrap_err(),
+        CompileError::UnknownReference {
+            kind: "resource",
+            key: "base:silver".into(),
+        }
+    );
     // Golden value: pins the canonical encoding (bump RULESET_HASH_VERSION when it changes).
     assert_eq!(
         a.content_hash(),
@@ -235,7 +270,7 @@ fn hash_is_stable_and_sensitive() {
     );
 }
 
-const GOLDEN_BASE_HASH: u64 = 0x732a_3b74_9763_08ed;
+const GOLDEN_BASE_HASH: u64 = 0xcbe8_d0c0_47e3_c80e;
 
 fn expect(packs: &[ContentPack], profile: &str) -> CompileError {
     Ruleset::compile(packs, profile).unwrap_err()

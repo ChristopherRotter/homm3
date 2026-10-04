@@ -289,3 +289,24 @@ numeric  = "integer"
   kind       = "design"
   ref        = "ADR-0013 point 3: effects are data; the derivation resolves them into BattleEffects"
   confidence = "high"
+
+[[rule]]
+id       = "HER-BAT-007"
+title    = "The battle hero's surrender discount"
+context  = "heroes"
+status   = "implemented"
+summary  = "BattleHero.surrender_discount_bp is the sum of the surrender_discount effects among the hero's effect sources (HER-BAT-001; skills at their levels, a skill's grown by the hero's specialty for it as in HER-BAT-004; worn artifacts once per type with their combinations' parts; the specialty), at most 10 000: Diplomacy 20/40/60 %, Statesman's Medal, Diplomat's Ring and Ambassador's Sash 10 % each. The discounts add (batch 1b R4: Basic Diplomacy with the Medal and the Ring is 40 %). The battle applies it (BAT-FLE-002)."
+numeric  = "integer"
+
+  [[rule.source]]
+  kind       = "observation"
+  ref        = "experiments/results/E04a-batch-1b.md R4 (SoD 4.0 Complete, plain HD, 2026-10-04): Basic Diplomacy, Statesman's Medal and Diplomat's Ring: 10 Pikemen cost 179 = floor(300 x (1 - 0.4)) in single precision (D-2: additive)"
+  retrieved  = "2026-10-04"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "vcmi"
+  ref        = "config/skills.json L118-L153 (Diplomacy 20/40/60), config/artifacts.json L1007-L1042 (10 each); SURRENDER_DISCOUNT values are summed"
+  url        = "https://github.com/vcmi/vcmi/blob/1.7.5/config/skills.json#L118-L153"
+  retrieved  = "2026-10-03"
+  confidence = "high"

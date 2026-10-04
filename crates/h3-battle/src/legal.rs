@@ -27,7 +27,8 @@ pub type LegalCommands = FixedVec<Command, MAX_LEGAL_COMMANDS>;
 /// stack that can shoot, BAT-RNG-001: head, then tail for area shots) or its melee attacks by
 /// canonical position slot (`Field::attack_positions`; never for war machines, BAT-WAR-001),
 /// then for a commanded First Aid Tent its heals by stack id (BAT-WAR-007). Last in both cases,
-/// Retreat if the side may retreat (BAT-FLE-001).
+/// Retreat if the side may retreat (BAT-FLE-001) and Surrender if it may surrender and can pay
+/// (BAT-FLE-002).
 pub fn legal_commands(
     state: &BattleState,
     ruleset: &Ruleset,
@@ -57,6 +58,10 @@ pub fn legal_commands(
     // rule: BAT-FLE-001
     if state.may_retreat(actor) {
         let _ = out.push(Command::Retreat);
+    }
+    // rule: BAT-FLE-002
+    if state.may_surrender(ruleset, actor) {
+        let _ = out.push(Command::Surrender);
     }
 }
 

@@ -318,7 +318,10 @@ machines: each head hex has a hex behind it on the field, and no two footprints 
 (the defender's mirrored) share a hex. Since E04a T8 `tactics_zone_columns` (one width per skill
 level: the tactics zone of a side whose Tactics level exceeds the enemy's by `d` is
 `tactics_zone_columns[d - 1]` columns wide, each between 1 and the standable columns; `[3, 5, 7]`
-in `base`, BAT-TAC-001; ruleset hash v12).
+in `base`, BAT-TAC-001; ruleset hash v12). Since E04a T9b the optional `surrender = { resource,
+cost_percent }` (the price of a surrender is `cost_percent` of the summed cost in `resource` of
+the side's living stacks; `{ resource = "gold", cost_percent = 50 }` in `base`; without it no
+side can surrender; BAT-FLE-002, ruleset hash v13).
 
 **Hero parameters** (`[hero_params]`, Tier 2, E04a T4a; at most one enabled pack provides them,
 a ruleset without them cannot validate hero details): `primary_min` (four values, attack,
@@ -354,26 +357,30 @@ random_obstacles = true          # optional: generate obstacles for the terrain 
 attacker_war_machines = ["synthetic:bolt_thrower", "synthetic:aid_tent"]  # optional, per side:
 defender_war_machines = ["synthetic:supply_wagon"]  # war machines by key, one per kind (BAT-WAR-001)
 tight_formation = ["defender"]   # optional: sides in tight formation, the others loose (BAT-SET-001)
+attacker_funds = 2000            # optional, per side (`defender_funds`): what the side can pay
+                                 # for a surrender (BAT-FLE-002; default 0)
 
 [scenario.attacker_hero]         # optional, per side (`defender_hero`): the battle hero leading
 hero_type = "synthetic:brea"     # the side, given directly (BAT-HER-001, Q31); a side without
 attack = 2                       # one is not led by a hero (quirk Q-0003). Every field but
 defense = 2                      # hero_type defaults to 0 (effects: none); the rest of the battle
-power = 1                        # hero (surrender discount, other effects, spell book, …) joins
-knowledge = 1                    # the format with the rules that read it (E04a T9–T10, E04b)
+power = 1                        # hero (other effects, spell book, …) joins the format with
+knowledge = 1                    # the rules that read it (E04a T10, E04b)
 tactics = 2
 mana = 10
 max_mana = 10
 ranged_bp = 1000                 # damage bonuses in basis points (BAT-HER-004): the side's shots,
 melee_bp = 1000                  # its melee strikes, and the reduction of strikes against it
 reduction_bp = 500               # (at most 10 000)
+surrender_discount_bp = 4000     # optional: the surrender discount (BAT-FLE-002, at most 10 000)
 ballista = { shots = 1, double_damage_chance_bp = 5000 }   # optional: the side commands its
                                  # Ballista (Artillery, BAT-WAR-006)
 tent = { heal_bonus_bp = 10000 } # optional: the side commands its First Aid Tent (First Aid,
                                  # BAT-WAR-007; the bonus of its largest heal)
 effects = [{ kind = "morale", amount = 1 }, { kind = "luck_at_most", value = 0, affects = "enemy" }]
                                  # battle effects as in "Hero effects": so far `morale`, `luck`,
-                                 # `morale_at_most`, `luck_at_most` (BAT-HER-003)
+                                 # `morale_at_most`, `luck_at_most` (BAT-HER-003), `no_retreat`
+                                 # (BAT-FLE-001)
 
 [[attacker]]                     # one entry per stack
 slot = 0

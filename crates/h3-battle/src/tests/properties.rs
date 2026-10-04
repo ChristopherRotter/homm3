@@ -56,6 +56,7 @@ fn arb_command() -> impl Strategy<Value = Command> {
         }),
         8 => (0u8..40).prop_map(|t| Command::Heal { target: StackId(t) }),
         1 => Just(Command::Retreat),
+        1 => Just(Command::Surrender),
     ]
 }
 
@@ -112,7 +113,8 @@ fn arb_game() -> impl Strategy<Value = Game> {
 /// whether it commands its First Aid Tent (bits 25–40: the heal bonus), bits 41–42 the attacker
 /// hero's Tactics level if bit 43 is set, bit 44 whether the defender is led by a hero too, with
 /// Tactics level bits 45–46 (so that some games start with a tactics phase, BAT-TAC-001), bit
-/// 47 whether the attacker's hero wears Shackles of War (no retreat, BAT-FLE-001).
+/// 47 whether the attacker's hero wears Shackles of War (no retreat, BAT-FLE-001), bits 48–55
+/// and 56–63 the attacker's and the defender's funds in hundreds of gold (BAT-FLE-002).
 fn make_setup(
     r: &Ruleset,
     attacker: &[(u8, u8, u32)],
@@ -173,6 +175,7 @@ fn make_setup(
         heroes: [Some(led), defender_hero],
         terrain: None,
         war_machines,
+        funds: [48, 56].map(|bit| u32::try_from((machines >> bit) & 0xff).unwrap() * 100),
         formations: [6, 7].map(|bit| {
             if machines & (1 << bit) == 0 {
                 Formation::Loose

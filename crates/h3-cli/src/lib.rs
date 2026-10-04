@@ -1,11 +1,11 @@
 //! Library side of the `h3` tool: loading packs and scenarios from disk, running random battles,
 //! and the replay file format (TOML). The binary (`main.rs`) only parses arguments.
 //!
-//! Replay file format v9 (`fixtures/replays/*.toml` are examples):
+//! Replay file format v10 (`fixtures/replays/*.toml` are examples):
 //!
 //! ```toml
 //! [replay]
-//! format = 9
+//! format = 10
 //! engine = "0.1.0"
 //! scenario = "skirmish"
 //! seed = "7"                      # u64 as a decimal string
@@ -16,7 +16,7 @@
 //! rng_version = 1
 //! hash = "fnv1a64-le"
 //! hash_version = 1
-//! battle_state_hash_version = 14
+//! battle_state_hash_version = 15
 //! checkpoint_every = 25
 //!
 //! [setup]                         # the rest of the setup (fields default when absent)
@@ -24,6 +24,8 @@
 //! terrain = "base:grass"          # the battlefield's terrain (omitted when none)
 //! attacker_war_machines = ["base:ballista"]  # war machines per side (omitted when none)
 //! tight_formation = ["defender"]  # sides in tight formation (omitted when none)
+//! attacker_funds = 2000           # what a side can pay for a surrender (format 10; omitted
+//!                                 #   when 0)
 //!
 //! [setup.attacker_hero]           # the battle hero per side (format 3; omitted when none):
 //! hero_type = "base:orrin"        #   the fields of `h3_pack::HeroEntry`
@@ -35,6 +37,7 @@
 //! mana = 10
 //! max_mana = 10
 //! melee_bp = 1000                 # damage bonuses (format 5; each omitted when 0)
+//! surrender_discount_bp = 4000    # surrender discount (format 10; omitted when 0)
 //!
 //! [setup.attacker_hero.ballista]  # the side commands its Ballista (format 6; omitted when not):
 //! shots = 1                       #   `h3_pack::BallistaEntry`
@@ -54,7 +57,7 @@
 //! count = 30
 //!
 //! commands = ["A move 45", "D attack 3 57", "A shoot 4 120", "A wait", "D defend", "A heal 2",
-//!             "A end-tactics", "D retreat"]  # in the tactics phase, move places and wait passes
+//!             "A end-tactics", "D retreat", "A surrender"]  # tactics: move places, wait passes
 //! checkpoints = ["0x…"]           # state hash after every `checkpoint_every` commands
 //!
 //! [result]
@@ -187,6 +190,10 @@ struct SetupEntry {
     defender_war_machines: Vec<String>,
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     tight_formation: Vec<String>,
+    #[serde(default, skip_serializing_if = "is_zero")]
+    attacker_funds: u32,
+    #[serde(default, skip_serializing_if = "is_zero")]
+    defender_funds: u32,
     // Tables last: TOML writes values before tables.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     attacker_hero: Option<HeroEntry>,
@@ -219,6 +226,10 @@ fn parse_hex64(s: &str) -> Result<u64, CliError> {
         .ok_or_else(|| CliError::Format(format!("`{s}` is not a 0x-prefixed 64-bit hex value")))
 }
 
+fn is_zero(value: &u32) -> bool {
+    *value == 0
+}
+
 fn side_letter(side: BattleSide) -> &'static str {
     match side {
         BattleSide::Attacker => "A",
@@ -228,7 +239,8 @@ fn side_letter(side: BattleSide) -> &'static str {
 
 /// Text form of one replay command: `"<A|D> move <hex>"`, `"<A|D> attack <stack> <hex>"`,
 /// `"<A|D> shoot <stack> <hex>"`, `"<A|D> wait"`, `"<A|D> defend"`, `"<A|D> heal <stack>"`
-/// (format 7), `"<A|D> end-tactics"` (format 8), `"<A|D> retreat"` (format 9).
+/// (format 7), `"<A|D> end-tactics"` (format 8), `"<A|D> retreat"` (format 9),
+/// `"<A|D> surrender"` (format 10).
 pub fn format_command(side: BattleSide, command: Command) -> String {
     let s = side_letter(side);
     match command {
@@ -240,6 +252,7 @@ pub fn format_command(side: BattleSide, command: Command) -> String {
         Command::Heal { target } => format!("{s} heal {}", target.0),
         Command::EndTactics => format!("{s} end-tactics"),
         Command::Retreat => format!("{s} retreat"),
+        Command::Surrender => format!("{s} surrender"),
     }
 }
 
@@ -275,6 +288,7 @@ pub fn parse_command(text: &str) -> Result<(BattleSide, Command), CliError> {
         },
         (Some("end-tactics"), 2) => Command::EndTactics,
         (Some("retreat"), 2) => Command::Retreat,
+        (Some("surrender"), 2) => Command::Surrender,
         _ => return Err(bad()),
     };
     Ok((side, command))
@@ -376,6 +390,8 @@ pub fn replay_to_toml(
             attacker_war_machines: keys(&replay.setup.war_machines[0]),
             defender_war_machines: keys(&replay.setup.war_machines[1]),
             tight_formation: h3_pack::tight_sides(replay.setup.formations),
+            attacker_funds: replay.setup.funds[0],
+            defender_funds: replay.setup.funds[1],
             attacker_hero: hero(&replay.setup.heroes[0])?,
             defender_hero: hero(&replay.setup.heroes[1])?,
         },
@@ -506,6 +522,7 @@ impl ReplayDoc {
                 ],
                 formations: h3_pack::formations(&f.setup.tight_formation)
                     .map_err(|e| CliError::Format(e.to_string()))?,
+                funds: [f.setup.attacker_funds, f.setup.defender_funds],
             },
             commands: f
                 .commands
@@ -616,6 +633,7 @@ mod tests {
             ),
             (BattleSide::Defender, Command::EndTactics, "D end-tactics"),
             (BattleSide::Attacker, Command::Retreat, "A retreat"),
+            (BattleSide::Defender, Command::Surrender, "D surrender"),
         ];
         for (side, cmd, text) in cases {
             assert_eq!(format_command(side, cmd), text);

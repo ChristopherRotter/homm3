@@ -28,7 +28,7 @@ pub const MAX_ARMY_SLOTS: usize = 16;
 pub const MAX_FIELD_HEXES: usize = 255;
 
 /// Version of the ruleset hash encoding. Bump when the encoding below changes.
-pub const RULESET_HASH_VERSION: u32 = 12;
+pub const RULESET_HASH_VERSION: u32 = 13;
 
 /// A compiled creature type.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -143,6 +143,18 @@ pub struct BattleParams {
     /// Width in columns of the tactics zone by Tactics level difference minus one, each between
     /// 1 and the number of standable columns (BAT-TAC-001).
     pub tactics_zone_columns: [u8; MAX_SKILL_LEVEL as usize],
+    /// How a surrender is priced (BAT-FLE-002); `None`: no side can surrender.
+    pub surrender: Option<SurrenderParams>,
+}
+
+/// The price of a surrender (BAT-FLE-002): `cost_percent` of the summed cost in `resource` of the
+/// surrendering side's living stacks.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct SurrenderParams {
+    /// The resource the price is paid in.
+    pub resource: ResourceId,
+    /// The share of the stacks' cost, percent.
+    pub cost_percent: u16,
 }
 
 /// How an army is arranged at the start of a battle (BAT-SET-001): chosen per army in the
@@ -425,6 +437,7 @@ impl Ruleset {
         let mut creature_index = BTreeMap::new();
         let mut hero = HeroContent::default();
         let mut battle_def: Option<&BattleParamsDef> = None;
+        let mut surrender: Option<SurrenderParams> = None;
         for (pack, closure) in order.iter().zip(&closures) {
             let id = &pack.manifest.id;
             for def in &pack.resources {
@@ -567,6 +580,19 @@ impl Ruleset {
                     return Err(CompileError::DuplicateBattleParams(id.clone()));
                 }
                 battle_def = Some(b);
+                // rule: BAT-FLE-002
+                surrender = b
+                    .surrender
+                    .as_ref()
+                    .map(|s| {
+                        resolve_in(id, closure, &s.resource, &resource_index, "resource").map(
+                            |resource| SurrenderParams {
+                                resource,
+                                cost_percent: s.cost_percent,
+                            },
+                        )
+                    })
+                    .transpose()?;
             }
         }
         for (i, (((stats, info), abils), key)) in creatures
@@ -578,7 +604,10 @@ impl Ruleset {
         {
             validate_creature(i, key, stats, info, abils)?;
         }
-        let battle = compile_battle(battle_def.ok_or(CompileError::MissingBattleParams)?)?;
+        let battle = compile_battle(
+            battle_def.ok_or(CompileError::MissingBattleParams)?,
+            surrender,
+        )?;
         hero.validate(&creatures, battle.army_slots)?;
         for o in &obstacles {
             validate_obstacle(o, &battle)?;
@@ -1070,7 +1099,10 @@ fn validate_obstacle(o: &ObstacleType, battle: &BattleParams) -> Result<(), Comp
     Ok(())
 }
 
-fn compile_battle(def: &BattleParamsDef) -> Result<BattleParams, CompileError> {
+fn compile_battle(
+    def: &BattleParamsDef,
+    surrender: Option<SurrenderParams>,
+) -> Result<BattleParams, CompileError> {
     let invalid = |reason| Err(CompileError::InvalidBattleParams(reason));
     let w = usize::from(def.field_width);
     let h = usize::from(def.field_height);
@@ -1198,6 +1230,7 @@ fn compile_battle(def: &BattleParamsDef) -> Result<BattleParams, CompileError> {
         war_machine_positions,
         formations,
         tactics_zone_columns,
+        surrender,
     })
 }
 
@@ -1231,7 +1264,7 @@ fn compile_formation(
 }
 
 impl CanonicalHash for Ruleset {
-    /// Encoding v12: version, packs (id, version) in load order, profile key, quirk bits,
+    /// Encoding v13: version, packs (id, version) in load order, profile key, quirk bits,
     /// resources (key, name), terrains (key, name), factions (key, name, native terrain as an
     /// optional handle), obstacles (key, terrains, width, height, blocked pairs, absolute flag),
     /// creatures (key, stats in field order including shots
@@ -1245,7 +1278,8 @@ impl CanonicalHash for Ruleset {
     /// ends with the artifact slots and artifacts, and hero effects have nine more kinds. v11
     /// (E04a T4a): artifact slots carry the backpack flag, and the hero content ends with the
     /// hero parameters. v12 (E04a T8): the battle parameters end with the tactics zone widths
-    /// (all entries, no length).
+    /// (all entries, no length); v13 (E04a T9b): then the surrender parameters (presence flag,
+    /// resource handle, percent).
     fn hash_into(&self, h: &mut StateHasher) {
         h.write_u32(RULESET_HASH_VERSION);
         h.write_len(self.packs.len());
@@ -1358,6 +1392,11 @@ impl CanonicalHash for Ruleset {
             h.write_bytes(row);
         }
         h.write_bytes(&b.tactics_zone_columns);
+        h.write_u8(u8::from(b.surrender.is_some()));
+        if let Some(s) = b.surrender {
+            s.resource.hash_into(h);
+            h.write_u16(s.cost_percent);
+        }
         self.hero.hash_into(h);
     }
 }

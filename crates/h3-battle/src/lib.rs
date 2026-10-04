@@ -27,6 +27,7 @@ mod command;
 mod damage;
 mod error;
 mod event;
+mod flee;
 mod geometry;
 mod hero;
 mod legal;

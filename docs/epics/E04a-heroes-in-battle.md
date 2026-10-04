@@ -1,6 +1,6 @@
 # E04a — Heroes in battle (without magic)
 
-Status: **in progress** (refined 2026-10-01; T1–T8 and T9a done by 2026-10-04; T9b next) · Follows E03 (closed 2026-10-01) · The former E04 was split by the user into three epics (OPEN-QUESTIONS Q27): **E04a** (this one), **E04b** battle magic, **E04c** sieges and special battlefields.
+Status: **in progress** (refined 2026-10-01; T1–T8, T9a and T9b done by 2026-10-04; T9c next) · Follows E03 (closed 2026-10-01) · The former E04 was split by the user into three epics (OPEN-QUESTIONS Q27): **E04a** (this one), **E04b** battle magic, **E04c** sieges and special battlefields.
 
 ## Goal
 
@@ -67,7 +67,7 @@ Starting point, installation tables and the full record of done tasks (refinemen
 - [x] **T8 Tactics** — done 2026-10-04 (one checkpoint, Q33): BAT-TAC-001/002, `tactics_zone_columns` (ruleset hash v12), `Command::EndTactics`, `Observation.tactics`; state hash v13, replay format v8, action encoding v6, C ABI v4.
 - [ ] **T9 Retreat, surrender and the richer outcome** — new `BattleResult` variants, casualties per side and creature type, hero fate, the inputs for experience, Necromancy and artifact capture; no application of them. Split with the user (2026-10-04) into three checkpoints in one session:
   - [x] **T9a Retreat** — done 2026-10-04: BAT-FLE-001, HER-BAT-006, `BattleResult::Retreat`/`Surrender`, `Command::Retreat`; state hash v14, replay format v9, action encoding v7, C ABI v5.
-  - [ ] **T9b Surrender** — `BattleSetup.funds`, the price (war machines included, Q-0005 discount), the discount in the derivation, `Command::Surrender`.
+  - [x] **T9b Surrender** — done 2026-10-04: BAT-FLE-002, HER-BAT-007, `BattleSetup.funds`, battle parameter `surrender`, `Command::Surrender`; ruleset hash v13, state hash v15, replay format v10, action encoding v8, C ABI v6.
   - [ ] **T9c The richer outcome** — per-stack records, surrender cost, hero results, rounds.
 - [ ] **T10 Artifacts and specialties without spells** — the effect primitives from the survey, stat and morale/luck artifacts, creature-stat and speed effects, war-machine artifacts, combination artifacts (assembly rules belong to the hero details), specialties of creature, skill and stat kinds. Spell-related ones are E04b.
 - [ ] **T11 Sim, FFI, CLI, scenarios** — heroes in the scenario and replay formats, the action encoding complete for retreat and surrender (T7b added heals as v5 with C ABI v3, T8 `EndTactics` as v6 with C ABI v4; T9 appends its commands), observation encoding v4 and its ABI bump, golden replays re-recorded with notes, benchmark baseline re-measured with the reason, hero-bearing scenarios in the `full` workload.

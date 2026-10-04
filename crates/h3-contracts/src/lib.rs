@@ -104,6 +104,10 @@ pub struct BattleSetup {
     /// Each side's formation (indexed by [`BattleSide::index`]), which decides the starting
     /// rows of its army (BAT-SET-001; E03, Q25). Default: loose.
     pub formations: [Formation; 2],
+    /// What each side's owner can pay for a surrender (indexed by [`BattleSide::index`]), in the
+    /// ruleset's surrender resource (BAT-FLE-002; ignored for a side without a hero). Private to
+    /// the side.
+    pub funds: [u32; 2],
 }
 
 impl BattleSetup {
@@ -224,6 +228,7 @@ mod tests {
             terrain: None,
             war_machines: [vec![], vec![]],
             formations: [Formation::Tight, Formation::Loose],
+            funds: [1000, 0],
         };
         assert_eq!(setup.army(BattleSide::Attacker).stacks, [stack]);
         assert!(setup.army(BattleSide::Defender).stacks.is_empty());

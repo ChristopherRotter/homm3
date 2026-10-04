@@ -14,7 +14,7 @@ use crate::geometry::{Field, Footprint, Hex, HexSet};
 use crate::hero::{self, HeroRecord, HeroView};
 use crate::morale::{self, Modifiers};
 use crate::tactics::{self, TacticsPhase};
-use crate::{terrain, turn};
+use crate::{flee, terrain, turn};
 
 /// Most war machines per side, one of each kind (BAT-WAR-001).
 pub const MAX_WAR_MACHINES: usize = WAR_MACHINE_KINDS;
@@ -23,7 +23,7 @@ pub const MAX_WAR_MACHINES: usize = WAR_MACHINE_KINDS;
 pub const STACK_CAPACITY: usize = 2 * (MAX_ARMY_SLOTS + MAX_WAR_MACHINES);
 
 /// Version of the battle-state hash encoding ([`BattleState::state_hash`]). Bump on any change.
-pub const BATTLE_STATE_HASH_VERSION: u32 = 14;
+pub const BATTLE_STATE_HASH_VERSION: u32 = 15;
 
 /// Index of a stack in its battle (attacker stacks first, in slot order, then defender stacks).
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Default)]
@@ -559,7 +559,8 @@ impl BattleState {
         let mut heroes = [None; 2];
         for (side, hero) in BattleSide::BOTH.into_iter().zip(&setup.heroes) {
             if let Some(hero) = hero {
-                heroes[side.index()] = Some(hero::check(ruleset, side, hero)?);
+                heroes[side.index()] =
+                    Some(hero::check(ruleset, side, hero, setup.funds[side.index()])?);
             }
         }
         let mut taken = obstacles;
@@ -674,6 +675,20 @@ impl BattleState {
         hero::may_retreat(&self.heroes, side)
     }
 
+    /// The price of `side`'s surrender, if it may surrender at all (BAT-FLE-002): it may retreat,
+    /// the enemy is led by a hero and the ruleset prices surrenders. Depends on the side's
+    /// private discount: show it to that side only.
+    pub fn surrender_price(&self, ruleset: &Ruleset, side: BattleSide) -> Option<u32> {
+        flee::surrender_price(self, ruleset, side)
+    }
+
+    /// Whether `side` may surrender now (BAT-FLE-002): its surrender has a price and its funds
+    /// cover it. Private to the side.
+    pub fn may_surrender(&self, ruleset: &Ruleset, side: BattleSide) -> bool {
+        self.surrender_price(ruleset, side)
+            .is_some_and(|price| self.heroes[side.index()].is_some_and(|h| h.funds >= price))
+    }
+
     /// The hexes blocked by obstacles (BAT-GEO-003).
     pub const fn obstacles(&self) -> HexSet {
         self.obstacles
@@ -785,13 +800,14 @@ impl BattleState {
     /// Canonical hash of the full state, including hidden parts such as the RNG (desync detection
     /// and replay verification; never sent to untrusted clients, docs/06-security.md).
     ///
-    /// Encoding v14 (v13 with retreat): version, round, the tactics phase if any (side, zone
+    /// Encoding v15 (v14 with surrender): version, round, the tactics phase if any (side, zone
     /// columns), active, last side, result (0/1 = victory of the attacker/defender, 2 = draw,
     /// 3/4 = retreat and 5/6 = surrender of the attacker/defender), stacks (each with base count,
     /// shots, retaliations, morale, luck and traits), obstacles, modifiers, per side the hero if
     /// any (type, attack, defense, power, knowledge, Tactics level, mana, maximum mana, ranged,
     /// melee and reduction basis points, the Ballista's control if any: shots and double-damage
-    /// chance, the tent's control if any: heal bonus; whether it has a `NoRetreat` effect),
+    /// chance, the tent's control if any: heal bonus; whether it has a `NoRetreat` effect, the
+    /// surrender discount, the funds),
     /// terrain, RNG state.
     pub fn state_hash(&self) -> u64 {
         h3_kernel::hash::hash_of(self)

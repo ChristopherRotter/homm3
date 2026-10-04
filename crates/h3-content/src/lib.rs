@@ -52,7 +52,7 @@ pub use pack::{
     ArtifactDef, ArtifactSlotDef, ArtifactSlotOverride, BattleParamsDef, ContentPack, CreatureDef,
     CreatureInfoDef, CreatureOverride, CreaturePatch, FactionDef, HeroClassDef, HeroParamsDef,
     HeroTypeDef, ObstacleDef, PackManifest, ProfileDef, ResourceDef, SecondarySkillDef, SpellDef,
-    SpellSchoolDef, StartingStackDef, TerrainDef,
+    SpellSchoolDef, StartingStackDef, SurrenderDef, TerrainDef,
 };
 pub use quirks::{
     NO_LUCK_WITHOUT_HERO, QuirkFlag, QuirkRegistry, Quirks, REGISTRY, SINGLE_PRECISION_RATES,
@@ -61,6 +61,6 @@ pub use quirks::{
 pub use ruleset::{
     BattleParams, CreatureInfo, CreatureType, CreatureTypeId, FactionId, FactionInfo, FieldParams,
     Formation, MAX_ARMY_SLOTS, MAX_AURA_VALUES, MAX_FIELD_HEXES, MAX_ROLL_LEVELS, MAX_UPGRADES,
-    ObstacleType, RULESET_HASH_VERSION, ResourceId, ResourceInfo, RollTable, Ruleset, TerrainId,
-    TerrainInfo, WAR_MACHINE_KINDS,
+    ObstacleType, RULESET_HASH_VERSION, ResourceId, ResourceInfo, RollTable, Ruleset,
+    SurrenderParams, TerrainId, TerrainInfo, WAR_MACHINE_KINDS,
 };

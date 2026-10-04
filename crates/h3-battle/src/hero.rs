@@ -53,6 +53,10 @@ pub(crate) struct HeroRecord {
     /// The hero has a `NoRetreat` effect (Shackles of War): no side may retreat or surrender
     /// (BAT-FLE-001; public through the sides' options).
     pub(crate) no_retreat: bool,
+    /// Discount on the price of the side's surrender, basis points (BAT-FLE-002; private).
+    pub(crate) surrender_discount_bp: u16,
+    /// What the side's owner can pay for a surrender (`BattleSetup.funds`, BAT-FLE-002; private).
+    pub(crate) funds: u32,
 }
 
 /// Whether `side` may retreat (BAT-FLE-001): it has a hero, and no hero in the battle has a
@@ -103,15 +107,19 @@ impl CanonicalHash for HeroRecord {
             h.write_u32(t.heal_bonus_bp);
         }
         h.write_u8(u8::from(self.no_retreat));
+        h.write_u16(self.surrender_discount_bp);
+        h.write_u32(self.funds);
     }
 }
 
-/// Checks `side`'s hero for soundness and returns what the battle keeps of it.
+/// Checks `side`'s hero for soundness and returns what the battle keeps of it, with the side's
+/// `funds`.
 // rule: BAT-HER-001
 pub(crate) fn check(
     ruleset: &Ruleset,
     side: BattleSide,
     hero: &BattleHero,
+    funds: u32,
 ) -> Result<HeroRecord, SetupError> {
     let invalid = |error| SetupError::InvalidHero { side, error };
     if ruleset.hero_type(hero.hero_type).is_none() {
@@ -175,6 +183,8 @@ pub(crate) fn check(
         ballista: hero.war_machines.ballista,
         tent: hero.war_machines.tent,
         no_retreat: hero.effects.contains(&BattleEffect::NoRetreat),
+        surrender_discount_bp: hero.surrender_discount_bp,
+        funds,
     })
 }
 

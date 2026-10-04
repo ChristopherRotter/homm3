@@ -333,6 +333,30 @@ fn a_worn_no_retreat_artifact_adds_one_no_retreat_effect() {
     assert_eq!(shackles(&derive_battle_hero(&d, &r).unwrap()), 0);
 }
 
+// covers: HER-BAT-007
+#[test]
+fn surrender_discounts_add_up_to_at_most_all() {
+    let discount = |eye: u16, helm: u16| {
+        let mut p = effect_pack();
+        for a in &mut p.artifacts {
+            let bp = match a.key.to_string().as_str() {
+                "t:eye" => eye,
+                "t:helm" => helm,
+                _ => continue,
+            };
+            a.effects.push(HeroEffectDef::SurrenderDiscount { bp });
+        }
+        let r = compile(p).unwrap();
+        derive_battle_hero(&details(&r), &r)
+            .unwrap()
+            .surrender_discount_bp
+    };
+    // The eye once although two are worn, plus the helm (a part of the worn circle): they add
+    // (batch 1b R4: 20 % + 10 % + 10 % = 40 %).
+    assert_eq!(discount(1000, 2000), 3000);
+    assert_eq!(discount(9000, 2000), 10_000);
+}
+
 // covers: HER-BAT-004
 #[test]
 fn damage_bonuses_sum_skills_artifacts_and_specialty() {

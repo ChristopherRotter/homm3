@@ -190,6 +190,11 @@ pub enum CommandError {
     /// The side may not retreat: it has no hero, or a hero has a `NoRetreat` effect
     /// (BAT-FLE-001).
     CannotRetreat,
+    /// The side may not surrender: it may not retreat, the enemy has no hero, or the ruleset
+    /// prices no surrenders (BAT-FLE-002).
+    CannotSurrender,
+    /// The side's funds do not cover the price of its surrender (BAT-FLE-002).
+    CannotAffordSurrender,
 }
 
 impl fmt::Display for CommandError {
@@ -213,6 +218,8 @@ impl fmt::Display for CommandError {
             Self::NoTacticsPhase => "no tactics phase is running",
             Self::OutsideZone => "the hex lies outside the tactics zone",
             Self::CannotRetreat => "the side cannot retreat",
+            Self::CannotSurrender => "the side cannot surrender",
+            Self::CannotAffordSurrender => "the side cannot pay for its surrender",
         })
     }
 }
@@ -377,6 +384,11 @@ mod tests {
                 "the hex lies outside the tactics zone",
             ),
             (CommandError::CannotRetreat, "the side cannot retreat"),
+            (CommandError::CannotSurrender, "the side cannot surrender"),
+            (
+                CommandError::CannotAffordSurrender,
+                "the side cannot pay for its surrender",
+            ),
         ];
         for (e, text) in all {
             assert_eq!(e.to_string(), text);

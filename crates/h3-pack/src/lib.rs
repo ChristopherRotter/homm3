@@ -15,7 +15,7 @@ use h3_content::{
     CreatureStat, FactionDef, Formation, HeroClassDef, HeroEffect, HeroEffectDef, HeroParamsDef,
     HeroTypeDef, KeyError, ObstacleDef, PackManifest, ProfileDef, ResourceDef, Ruleset,
     SecondarySkillDef, SpellCategory, SpellDef, SpellPolarity, SpellSchoolDef, StartingStackDef,
-    TerrainDef,
+    SurrenderDef, TerrainDef,
 };
 use h3_contracts::{
     Army, ArmyStack, BallistaControl, BattleEffect, BattleHero, BattleSetup, BattleSide,
@@ -193,6 +193,15 @@ struct BattleDto {
     loose_formation: Vec<Vec<u8>>,
     tight_formation: Vec<Vec<u8>>,
     tactics_zone_columns: Vec<u8>,
+    #[serde(default)]
+    surrender: Option<SurrenderDto>,
+}
+
+#[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
+struct SurrenderDto {
+    resource: String,
+    cost_percent: u16,
 }
 
 #[derive(Deserialize)]
@@ -1105,6 +1114,17 @@ pub fn parse_pack(text: &str) -> Result<ContentPack, PackError> {
             })
         })
         .collect::<Result<Vec<_>, PackError>>()?;
+    let surrender = file
+        .battle
+        .as_ref()
+        .and_then(|b| b.surrender.as_ref())
+        .map(|s| -> Result<SurrenderDef, KeyError> {
+            Ok(SurrenderDef {
+                resource: reference(&pack_id, &s.resource)?,
+                cost_percent: s.cost_percent,
+            })
+        })
+        .transpose()?;
     let battle = file.battle.map(|b| BattleParamsDef {
         field_width: b.field_width,
         field_height: b.field_height,
@@ -1129,6 +1149,7 @@ pub fn parse_pack(text: &str) -> Result<ContentPack, PackError> {
         loose_formation: b.loose_formation,
         tight_formation: b.tight_formation,
         tactics_zone_columns: b.tactics_zone_columns,
+        surrender,
     });
     Ok(ContentPack {
         manifest: PackManifest {
@@ -1195,6 +1216,11 @@ struct ScenarioHeader {
     /// Sides in tight formation (`"attacker"`, `"defender"`; the others are loose, BAT-SET-001).
     #[serde(default)]
     tight_formation: Vec<String>,
+    /// What each side's owner can pay for a surrender (BAT-FLE-002; default 0).
+    #[serde(default)]
+    attacker_funds: u32,
+    #[serde(default)]
+    defender_funds: u32,
 }
 
 #[derive(Deserialize, Clone)]
@@ -1247,6 +1273,10 @@ pub struct HeroEntry {
     /// default 0, written only when set).
     #[serde(default, skip_serializing_if = "is_zero")]
     pub reduction_bp: u16,
+    /// Discount on the price of a surrender, basis points ([`BattleHero::surrender_discount_bp`];
+    /// default 0, written only when set).
+    #[serde(default, skip_serializing_if = "is_zero")]
+    pub surrender_discount_bp: u16,
     /// The side commands its Ballista ([`MachineControl::ballista`]; default not, written only
     /// when set).
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -1340,6 +1370,8 @@ pub enum EffectEntry {
         #[serde(default)]
         affects: AffectsEntry,
     },
+    /// [`BattleEffect::NoRetreat`] (a struct variant, so that unknown keys are rejected).
+    NoRetreat {},
 }
 
 impl EffectEntry {
@@ -1362,6 +1394,7 @@ impl EffectEntry {
                 value,
                 affects: affects.into(),
             },
+            Self::NoRetreat {} => BattleEffect::NoRetreat,
         }
     }
 
@@ -1384,6 +1417,7 @@ impl EffectEntry {
                 value,
                 affects: affects.into(),
             },
+            BattleEffect::NoRetreat => Self::NoRetreat {},
             _ => return None,
         })
     }
@@ -1416,6 +1450,7 @@ impl HeroEntry {
         hero.war_machines.tent = self.tent.map(|t| TentControl {
             heal_bonus_bp: t.heal_bonus_bp,
         });
+        hero.surrender_discount_bp = self.surrender_discount_bp;
         hero.effects = self.effects.iter().map(|e| e.effect()).collect();
         Ok(hero)
     }
@@ -1427,9 +1462,8 @@ impl HeroEntry {
     /// [`PackError::HeroNotWritable`] if a field the format does not hold yet is not neutral.
     pub fn of(hero: &BattleHero, ruleset: &Ruleset) -> Result<Self, PackError> {
         let unwritable = [
-            ("surrender discount", hero.surrender_discount_bp != 0),
             (
-                "effects other than morale and luck",
+                "effects other than morale, luck and no retreat",
                 hero.effects.iter().any(|e| EffectEntry::of(e).is_none()),
             ),
             (
@@ -1456,6 +1490,7 @@ impl HeroEntry {
             ranged_bp: hero.damage.ranged_bp,
             melee_bp: hero.damage.melee_bp,
             reduction_bp: hero.damage.reduction_bp,
+            surrender_discount_bp: hero.surrender_discount_bp,
             ballista: hero.war_machines.ballista.map(BallistaEntry::from),
             tent: hero.war_machines.tent.map(|t| TentEntry {
                 heal_bonus_bp: t.heal_bonus_bp,
@@ -1481,6 +1516,7 @@ pub struct ScenarioDef {
     terrain: Option<String>,
     war_machines: [Vec<String>; 2],
     formations: [Formation; 2],
+    funds: [u32; 2],
     /// Whether obstacles are generated for the terrain when the battle starts (the caller does
     /// it, with its seed; BAT-GEO-004). Excludes explicit obstacles.
     pub random_obstacles: bool,
@@ -1595,6 +1631,7 @@ impl ScenarioDef {
                 machines(&self.war_machines[1])?,
             ],
             formations: self.formations,
+            funds: self.funds,
         })
     }
 }
@@ -1632,6 +1669,7 @@ pub fn parse_scenario(text: &str) -> Result<ScenarioDef, PackError> {
             file.scenario.defender_war_machines,
         ],
         formations: formations(&file.scenario.tight_formation)?,
+        funds: [file.scenario.attacker_funds, file.scenario.defender_funds],
         random_obstacles: file.scenario.random_obstacles,
     })
 }
@@ -1877,7 +1915,7 @@ mod tests {
         let extra = SYNTHETIC_FULL.replace("max_mana = 10", "max_mana = 10\nluck = 1");
         assert!(matches!(parse_scenario(&extra), Err(PackError::Syntax(_))));
         for bad in [
-            "kind = \"no_retreat\"",
+            "kind = \"no_retreat\", sides = 2",
             "kind = \"luck\", amount = 1, value = 2",
         ] {
             let text = format!(
@@ -1904,7 +1942,9 @@ mod tests {
                     BattleEffect::LuckAtMost { value: 1, affects },
                 ]
             })
+            .chain([BattleEffect::NoRetreat])
             .collect();
+        every.surrender_discount_bp = 4000;
         let entry = HeroEntry::of(&every, &ruleset).unwrap();
         assert_eq!(entry.resolve(&ruleset), Ok(every));
         let written = toml::to_string(&entry).unwrap();
@@ -1936,11 +1976,14 @@ mod tests {
         );
         // Values the format cannot hold yet.
         type Change = (fn(&mut BattleHero), &'static str);
-        let changes: [Change; 4] = [
-            (|h| h.surrender_discount_bp = 1, "surrender discount"),
+        let changes: [Change; 3] = [
             (
-                |h| h.effects.push(BattleEffect::NoRetreat),
-                "effects other than morale and luck",
+                |h| {
+                    h.effects.push(BattleEffect::NoRangePenalty {
+                        creatures: CreatureSelector::All,
+                    })
+                },
+                "effects other than morale, luck and no retreat",
             ),
             (
                 |h| h.magic.spell_book = Some(vec![]),

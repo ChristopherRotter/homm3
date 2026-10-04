@@ -1,7 +1,7 @@
 //! Dense action encoding (docs/07-simulation-and-ai.md §1: "dense action encoding is defined by
 //! the sim layer, not the domain").
 //!
-//! Layout, version 7 (independent of the ruleset, so agents see a fixed-size action space):
+//! Layout, version 8 (independent of the ruleset, so agents see a fixed-size action space):
 //!
 //! | index | action |
 //! |---|---|
@@ -13,6 +13,7 @@
 //! | 1245 + s | Heal stack `s` (the commanded First Aid Tent, BAT-WAR-007) |
 //! | 1283 | End the tactics phase (BAT-TAC-002) |
 //! | 1284 | Retreat (BAT-FLE-001) |
+//! | 1285 | Surrender (BAT-FLE-002) |
 //!
 //! In the tactics phase `Move` indices place the active stack and Wait (0) passes to the next
 //! stack (BAT-TAC-002).
@@ -20,8 +21,9 @@
 //! Version 2 (E03 T3) replaced the six neighbour directions of version 1 by the 24 canonical
 //! attack positions, which cover two-hex attackers and targets; version 3 (E03 T4) added shots;
 //! version 4 (E03 T8) grew the stack slots from 32 to 38 (`STACK_CAPACITY` includes war machines);
-//! version 5 (E04a T7b) appended the heals, version 6 (E04a T8) `EndTactics` and version 7
-//! (E04a T9a) Retreat, so the earlier indices keep their meaning.
+//! version 5 (E04a T7b) appended the heals, version 6 (E04a T8) `EndTactics`, version 7
+//! (E04a T9a) Retreat and version 8 (E04a T9b) Surrender, so the earlier indices keep their
+//! meaning.
 
 use h3_battle::{
     ATTACK_SLOTS, BattleState, Command, Field, Hex, LegalCommands, STACK_CAPACITY, StackId,
@@ -30,7 +32,7 @@ use h3_content::{MAX_FIELD_HEXES, Ruleset};
 use h3_contracts::BattleSide;
 
 /// Version of this encoding; bump on any change of the layout above.
-pub const ACTION_ENCODING_VERSION: u32 = 7;
+pub const ACTION_ENCODING_VERSION: u32 = 8;
 
 const MOVE_BASE: usize = 2;
 const ATTACK_BASE: usize = MOVE_BASE + MAX_FIELD_HEXES;
@@ -43,8 +45,10 @@ const END_TACTICS: usize = HEAL_BASE + STACK_CAPACITY;
 
 const RETREAT: usize = END_TACTICS + 1;
 
+const SURRENDER: usize = RETREAT + 1;
+
 /// Number of actions.
-pub const ACTION_COUNT: usize = RETREAT + 1;
+pub const ACTION_COUNT: usize = SURRENDER + 1;
 
 /// Legal-action mask.
 pub type ActionMask = [bool; ACTION_COUNT];
@@ -96,6 +100,7 @@ pub fn encode(state: &BattleState, ruleset: &Ruleset, command: Command) -> Optio
         }
         Command::EndTactics => Some(END_TACTICS),
         Command::Retreat => Some(RETREAT),
+        Command::Surrender => Some(SURRENDER),
     }
 }
 
@@ -129,6 +134,7 @@ pub fn decode(state: &BattleState, ruleset: &Ruleset, action: usize) -> Option<C
             .map(|t| Command::Heal { target: StackId(t) }),
         END_TACTICS => Some(Command::EndTactics),
         RETREAT => Some(Command::Retreat),
+        SURRENDER => Some(Command::Surrender),
         _ => None,
     }
 }
@@ -160,11 +166,23 @@ mod tests {
         (r, s)
     }
 
+    /// Decodes an index that does not depend on the state.
+    fn decode_index(action: usize) -> Option<Command> {
+        let (r, s) = env();
+        let command = decode(&s, &r, action);
+        assert_eq!(
+            command.and_then(|c| encode(&s, &r, c)),
+            command.map(|_| action)
+        );
+        command
+    }
+
     #[test]
     fn layout() {
-        assert_eq!(ACTION_COUNT, 2 + 255 + 24 * 38 + 2 * 38 + 38 + 2);
-        assert_eq!((END_TACTICS, RETREAT), (1283, 1284));
-        assert_eq!(ACTION_ENCODING_VERSION, 7);
+        assert_eq!(ACTION_COUNT, 2 + 255 + 24 * 38 + 2 * 38 + 38 + 3);
+        assert_eq!((END_TACTICS, RETREAT, SURRENDER), (1283, 1284, 1285));
+        assert_eq!(ACTION_ENCODING_VERSION, 8);
+        assert_eq!(decode_index(SURRENDER), Some(Command::Surrender));
     }
 
     #[test]
@@ -204,6 +222,7 @@ mod tests {
             terrain: None,
             war_machines: [vec![], vec![]],
             formations: Default::default(),
+            funds: [0; 2],
         };
         let s = BattleState::new(&r, &setup, 1).unwrap();
         let side = s.side_to_act().unwrap();

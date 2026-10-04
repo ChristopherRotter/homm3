@@ -377,6 +377,18 @@ pub struct Battle {
     pub formation_sources: Vec<String>,
     pub tactics_zone_columns: Vec<u8>,
     pub tactics_sources: Vec<String>,
+    pub surrender: Surrender,
+    pub surrender_sources: Vec<String>,
+}
+
+/// The surrender price parameters of `base` (BAT-FLE-002).
+#[derive(Debug, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct Surrender {
+    /// The resource the price is paid in (a key of `base`).
+    pub resource: String,
+    /// The share of the stacks' cost, percent.
+    pub cost_percent: u16,
 }
 
 impl GapFill {
@@ -407,6 +419,7 @@ impl GapFill {
                 .chain(g.table_change.iter().flat_map(|t| &t.sources))
                 .chain(&g.battle.formation_sources)
                 .chain(&g.battle.tactics_sources)
+                .chain(&g.battle.surrender_sources)
                 .chain(g.creature_abilities.iter().flat_map(|a| &a.sources))
                 .chain(g.native_terrain.iter().flat_map(|n| &n.sources))
                 .chain(&g.obstacles.sources)

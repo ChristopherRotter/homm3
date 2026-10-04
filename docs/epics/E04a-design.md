@@ -44,21 +44,11 @@ each task has to do with them:
   points). The automatic Ballista has the range penalty (7–11 at long range).
 - **T8** (done): R2 and R3 are observation sources of BAT-TAC-001/002; the Tactics-formation
   toggle is not modelled (agent decision, BAT-TAC-001).
-- **T9** (R4, R5, B6):
-  - Surrender price (D-1): half the gold cost of the side's living stacks **including war
-    machines**, with the current counts, rounded down (R4: 1472 = ½ × (7 × 60 + 25 + 2500); later
-    1430 = ½ × (6 × 60 + 2500), and Red's gold fell by 1430). The user: a rule, not a quirk (Q32).
-  - Discounts add (D-2: Basic Diplomacy 20 % + Statesman's Medal and Diplomat's Ring 10 % each =
-    40 %) and enter as single-precision values: 179 for B2's 10 Pikemen, not 180 (300 × (1 −
-    0.4000000059604645) = 179.99999821). The user: quirk Q-0005 now covers this rate too (Q32).
-    The observation cannot tell whether each source or the sum is converted; the sum (as T6b does
-    for damage bonuses) gives the observed 179.
-  - No consent (D-5): neither the human nor the computer opponent was asked; the surrender ended
-    the battle at once. Pressing Surrender only shows the price, any number of times; declining is
-    a client matter, so the engine has no offer, answer or once-per-round limit. ADR-0013 point 7
-    amended (the consent step is dropped; HotA does not let the enemy refuse either).
-  - Shackles of War stop retreat (and surrender) also against a monster (B6, D-6: as the wiki for
-    SoD; VCMI follows HotA). Done for retreat in T9a (BAT-FLE-001, HER-BAT-006).
+- **T9** (R4, R5, B6; T9c still to do):
+  - Done in T9a/T9b: the surrender price (D-1, R4: war machines count, a rule), additive discounts
+    entering as one single-precision rate (D-2, Q-0005), no consent (D-5, ADR-0013 point 7
+    amended) and the Shackles also against a monster (B6, D-6): BAT-FLE-001/002,
+    HER-BAT-006/007.
   - Outcome inputs (for the orchestrator): killed war machines give no experience; Learning
     multiplies the whole sum including the +500 (R5: floor(550 × 1.15) = 632; D-3 as the wiki,
     OQ-6 as VCMI); the loser's surviving war machines are not captured (OQ-5; afterwards the winner
@@ -105,11 +95,12 @@ become several effects) and `StatOp { Add, PercentBp }`. What the tasks still ha
   and the Ballista's chance at most 10 000, Tactics and school levels at most 3, the spell
   book's spells of the ruleset and not creature abilities; it does not check the primary-skill
   limits (any `u8` is accepted).
-- **The derivation fills the rest:** `effects` from artifacts and specialties other than morale
-  and luck (T10; morale and luck since T5b, HER-BAT-003; at most 64 in all), surrender discount
-  (T9), magic (E04b); damage bonuses since T6b (HER-BAT-004, applied by BAT-HER-004),
-  war-machine control since T7 (HER-BAT-005, applied by BAT-WAR-006/007). Sums that can exceed the field types saturate; `surrender_discount_bp` is
-  clamped to 10 000 like `reduction_bp`.
+- **The derivation fills the rest:** `effects` from artifacts and specialties other than morale,
+  luck and no-retreat (T10; morale and luck since T5b, HER-BAT-003; `NoRetreat` since T9a,
+  HER-BAT-006; at most 64 in all), magic (E04b); damage bonuses since T6b (HER-BAT-004, applied
+  by BAT-HER-004), war-machine control since T7 (HER-BAT-005, applied by BAT-WAR-006/007), the
+  surrender discount since T9b (HER-BAT-007, applied by BAT-FLE-002). Sums that can exceed the
+  field types saturate; `surrender_discount_bp` is clamped to 10 000 like `reduction_bp`.
 
 ## 5. `BattleSetup`, `BattleOutcome`, `BattleResult` (T9)
 
@@ -119,9 +110,7 @@ hero type, primary skills, Tactics level, mana, maximum mana); each later task a
 its rules read, together with the scenario/replay format field (`h3_pack::HeroEntry`) and a
 state-hash bump. Left for T9:
 
-- `BattleSetup.funds: [u32; 2]`: gold the side's owner can spend on a surrender (ignored for a side
-  without a hero). `war_machines`, `formations`, `terrain` and `obstacles` stay. `war_machines` is
-  filled from `h3_heroes::war_machines`, which returns the Ballista, Ammo Cart and First Aid Tent
+- T9b implemented `BattleSetup.funds` (BAT-FLE-002). `war_machines` is filled from `h3_heroes::war_machines`, which returns the Ballista, Ammo Cart and First Aid Tent
   of the hero's war-machine slots; the **Catapult** is left out outside sieges, and the battle
   keeps rejecting it until E04c (it then belongs to the attacker of a siege, controlled through
   `MachineControl.catapult`).
@@ -161,15 +150,10 @@ state-hash bump. Left for T9:
 ## 7. Phases and commands (T9)
 
 The tactics phase is implemented (T8: BAT-TAC-001/002, `h3_battle` `tactics.rs`), Retreat and the
-results `Retreat(side)`/`Surrender(side)` too (T9a: BAT-FLE-001, `Observation.may_retreat`).
+results `Retreat(side)`/`Surrender(side)` too (T9a: BAT-FLE-001, `Observation.may_retreat`), and
+Surrender with its price (T9b: BAT-FLE-002, `flee.rs`; the price's resource and factor are
+battle parameters, `BattleParams.surrender`).
 
-- **Surrender** (`Surrender`): legal like Retreat (`hero::may_retreat`), and only if the enemy has a hero and the
-  side's `funds` cover the price; it ends the battle at once with `Surrender(side)` (no consent
-  step, batch 1b R4), through the same `leave` as Retreat. The price is a new BAT rule: half (a ruleset factor, 50 %) of Σ over the
-  side's living stacks, **war machines included**, of count × the creature's gold cost, ×
-  (10 000 − discount) / 10 000, rounded down once (R4: 1472, 1430); under Q-0005 the summed
-  discount enters as its single-precision value (R4: 179, not 180). Computed exactly in wide
-  integers (`h3_kernel::arith`).
 - Actors are validated as in ADR-0004: every command comes from the side whose stack is active or
   whose tactics phase runs.
 
@@ -183,7 +167,9 @@ T11). Still to do:
 
 - Public in the observation of both sides: the war machines and who controls them, and whether
   surrender is possible at all (both heroes present, no `NoRetreat`
-  effect; public because it changes both sides' options). Whether a side can afford its surrender, and its price, show only to that side (its action mask).
+  effect; public because it changes both sides' options; T9b left it and the own price out of
+  `Observation`, whose `observe` has no ruleset: T11 decides with the encoding; the action mask
+  already shows the own side's option). Whether a side can afford its surrender, and its price, show only to that side (its action mask).
 - Private to the hero's own side: `tactics` level, the damage bonuses, `surrender_discount_bp`,
   school levels, the `effects` list other than the public consequences above (stat effects show in
   the stacks' public stats), the spell book, `funds`.

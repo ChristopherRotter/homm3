@@ -8,7 +8,8 @@ use std::vec::Vec;
 use h3_content::{
     AbilityDef, AuraTarget, BattleParamsDef, ContentKey, ContentPack, CreatureDef, CreatureInfoDef,
     FactionDef, Formation, HeroClassDef, HeroTypeDef, ObstacleDef, PackManifest, ProfileDef,
-    Ruleset, SpellCategory, SpellDef, SpellPolarity, SpellSchoolDef, StartingStackDef, TerrainDef,
+    ResourceDef, Ruleset, SpellCategory, SpellDef, SpellPolarity, SpellSchoolDef, StartingStackDef,
+    SurrenderDef, TerrainDef,
 };
 use h3_contracts::{Army, ArmyStack, BattleHero, BattleSetup, BattleSide};
 
@@ -473,8 +474,22 @@ pub fn battle_params() -> BattleParamsDef {
             vec![0, 2, 4, 5, 6, 8, 10],
         ],
         tactics_zone_columns: vec![3, 5, 7],
+        surrender: Some(SurrenderDef {
+            resource: ContentKey::new("t", "gold").unwrap(),
+            cost_percent: 50,
+        }),
     }
 }
+
+/// Gold costs of some test creatures (BAT-FLE-002): those of the original's Pikemen, Pixies and
+/// war machines; the others cost nothing.
+pub const COSTS: &[(&str, u32)] = &[
+    ("fixed", 60),
+    ("flyer", 25),
+    ("ballista", 2500),
+    ("cart", 1000),
+    ("tent", 750),
+];
 
 fn obstacle(
     name: &str,
@@ -516,7 +531,14 @@ pub fn ruleset_with(profile: &str, edit: impl FnOnce(&mut BattleParamsDef)) -> R
                     damage_max,
                     hit_points,
                     speed,
-                    info: parse_traits(traits),
+                    info: CreatureInfoDef {
+                        cost: COSTS
+                            .iter()
+                            .filter(|(n, _)| *n == name)
+                            .map(|&(_, gold)| (ContentKey::new("t", "gold").unwrap(), gold))
+                            .collect(),
+                        ..parse_traits(traits)
+                    },
                 }
             },
         )
@@ -621,6 +643,10 @@ pub fn ruleset_with(profile: &str, edit: impl FnOnce(&mut BattleParamsDef)) -> R
             war_machines: vec![],
             specialty: vec![],
         }],
+        resources: vec![ResourceDef {
+            key: ContentKey::new("t", "gold").unwrap(),
+            name: String::from("Gold"),
+        }],
         ..ContentPack::new(PackManifest {
             id: String::from("t"),
             version: String::from("1"),
@@ -665,6 +691,7 @@ pub fn setup(rules: &Ruleset, attacker: &[Spec], defender: &[Spec]) -> BattleSet
         terrain: None,
         war_machines: [vec![], vec![]],
         formations: [Formation::Loose; 2],
+        funds: [0; 2],
     }
 }
 

@@ -55,12 +55,14 @@ pub enum Command {
     EndTactics,
     /// Leave the battle: the actor's side retreats (BAT-FLE-001).
     Retreat,
+    /// Leave the battle: the actor's side surrenders and pays its price (BAT-FLE-002).
+    Surrender,
 }
 
 impl Command {
-    /// Whether the command ends the battle by leaving it (Retreat; Surrender with E04a T9b).
+    /// Whether the command ends the battle by leaving it (Retreat, Surrender).
     pub const fn leaves_battle(self) -> bool {
-        matches!(self, Self::Retreat)
+        matches!(self, Self::Retreat | Self::Surrender)
     }
 }
 
@@ -107,6 +109,9 @@ enum Plan {
     Retreat {
         side: BattleSide,
     },
+    Surrender {
+        side: BattleSide,
+    },
 }
 
 /// Checks `command` for `actor` without changing anything. Shared by `apply` and
@@ -145,11 +150,12 @@ fn plan(
     }
     let field = Field::new(ruleset.battle().field);
     if let Some(phase) = state.tactics {
-        return plan_tactics(state, field, phase, (id, &mover), command);
+        return plan_tactics(state, ruleset, phase, (id, &mover), command);
     }
     match command {
         Command::EndTactics => Err(CommandError::NoTacticsPhase),
         Command::Retreat => retreat(state, actor),
+        Command::Surrender => surrender(state, ruleset, actor),
         Command::Wait => {
             // rule: BAT-TRN-002
             if mover.flags.contains(StackFlags::WAITED) {
@@ -252,16 +258,33 @@ fn retreat(state: &BattleState, side: BattleSide) -> Result<Plan, CommandError> 
     }
 }
 
+/// Validates a surrender of `side`, whose stack is active or whose tactics phase runs.
+// rule: BAT-FLE-002
+fn surrender(
+    state: &BattleState,
+    ruleset: &Ruleset,
+    side: BattleSide,
+) -> Result<Plan, CommandError> {
+    if state.surrender_price(ruleset, side).is_none() {
+        Err(CommandError::CannotSurrender)
+    } else if state.may_surrender(ruleset, side) {
+        Ok(Plan::Surrender { side })
+    } else {
+        Err(CommandError::CannotAffordSurrender)
+    }
+}
+
 /// Validates `command` for the active stack `mover` in the tactics phase: a placement in the
 /// zone, Wait (pass to the next stack) or `EndTactics`; nothing else.
 // rule: BAT-TAC-001, BAT-TAC-002
 fn plan_tactics(
     state: &BattleState,
-    field: Field,
+    ruleset: &Ruleset,
     phase: TacticsPhase,
     (id, mover): (StackId, &Stack),
     command: Command,
 ) -> Result<Plan, CommandError> {
+    let field = Field::new(ruleset.battle().field);
     match command {
         Command::Move { to } => {
             if !field.is_standable(to) {
@@ -283,6 +306,7 @@ fn plan_tactics(
         Command::Wait => Ok(Plan::Pass { mover: id, phase }),
         Command::EndTactics => Ok(Plan::EndTactics),
         Command::Retreat => retreat(state, mover.side),
+        Command::Surrender => surrender(state, ruleset, mover.side),
         Command::Attack { .. } | Command::Shoot { .. } | Command::Defend | Command::Heal { .. } => {
             Err(CommandError::InTacticsPhase)
         }
@@ -347,6 +371,7 @@ pub fn apply<S: Sink>(
         Plan::Pass { mover, phase } => tactics::pass(state, phase, mover, sink),
         Plan::EndTactics => tactics::end(state, ruleset, sink),
         Plan::Retreat { side } => leave(state, BattleResult::Retreat(side), sink),
+        Plan::Surrender { side } => leave(state, BattleResult::Surrender(side), sink),
     }
     Ok(())
 }

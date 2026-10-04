@@ -14,7 +14,7 @@
     } while (0)
 
 int main(void) {
-    CHECK(h3_abi_version() == 5);
+    CHECK(h3_abi_version() == 6);
     uint32_t n_actions = h3_action_count();
     uint32_t n_obs = h3_observation_len();
     uint8_t *mask = malloc(n_actions);

@@ -409,6 +409,18 @@ pub struct BattleParamsDef {
     /// `tactics_zone_columns[d - 1]` for a side whose level exceeds the enemy's by `d`, one
     /// entry per skill level (BAT-TAC-001; 3, 5, 7 in the original).
     pub tactics_zone_columns: Vec<u8>,
+    /// How a surrender is priced (BAT-FLE-002); `None`: no side can surrender.
+    pub surrender: Option<SurrenderDef>,
+}
+
+/// The price of a surrender (BAT-FLE-002): `cost_percent` of the summed cost in `resource` of
+/// the surrendering side's living stacks (50 % of their gold cost in the original).
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct SurrenderDef {
+    /// The resource the price is paid in.
+    pub resource: ContentKey,
+    /// The share of the stacks' cost, percent.
+    pub cost_percent: u16,
 }
 
 /// Hero parameters (Tier 2, E04a T4a): the limits of a hero's details.

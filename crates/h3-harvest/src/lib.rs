@@ -1125,6 +1125,11 @@ fn write_battle(out: &mut String, gap: &GapFill) {
         "tactics_zone_columns = [{}]",
         list(&b.tactics_zone_columns)
     );
+    let _ = writeln!(
+        out,
+        "surrender = {{ resource = \"{}\", cost_percent = {} }}",
+        b.surrender.resource, b.surrender.cost_percent
+    );
 }
 
 #[cfg(test)]

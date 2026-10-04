@@ -374,6 +374,8 @@ tight_formation = [[5], [4, 6], [4, 5, 6]]
 formation_sources = ["s"]
 tactics_zone_columns = [3, 5, 7]
 tactics_sources = ["s"]
+surrender = { resource = "gold", cost_percent = 50 }
+surrender_sources = ["s"]
 
 [[creature_abilities]]
 creature = "Unit 1"
