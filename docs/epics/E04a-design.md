@@ -17,9 +17,8 @@ checked 2026-10-03) touches these battles. Recorded in OPEN-QUESTIONS (Q21, Q23)
 (Q-0004 to Q-0006) and the catalog (BAT-DMG-002, BAT-DMG-009, BAT-WAR-002, BAT-TRN-005). What each
 task has to do with them:
 
-- **T6:** quirk Q-0005 is implemented (T6a: `h3_battle::damage::Factors`, BAT-DMG-002, R1–R3 as
-  fixtures). T6b: the hero's skill, artifact and specialty bonuses enter through
-  `Factors::rate` in basis points, so they get their single-precision values too.
+- **T6** (done): quirk Q-0005 (T6a, BAT-DMG-002, R1–R3 as fixtures); the hero's damage
+  bonuses enter as single-precision rates of their summed basis points (T6b, BAT-HER-004).
 - **T7:** the hero's attack counts twice in the Ballista's damage, as in VCMI: the damage range is
   (2..3) × (hero attack + 1), rolled as one integer in that range (R5: 92 = 56 × 1.65), and the
   Ballista's attack (10 + hero attack) enters the attack advantage. Basic Artillery: one shot per
@@ -63,15 +62,11 @@ become several effects) and `StatOp { Add, PercentBp }`. What the tasks still ha
   and the Ballista's chance at most 10 000, Tactics and school levels at most 3, the spell
   book's spells of the ruleset and not creature abilities; it does not check the primary-skill
   limits (any `u8` is accepted).
-- **How the damage fields enter the damage formula (T6)** (survey `E04-skills.md` §3):
-  `ranged_bp` (the attacker's side) is added to the bonus sum of shots, the Ballista's included;
-  `melee_bp` to the bonus sum of melee attacks and retaliations, a shooter's melee included;
-  never both. `reduction_bp` (the defender's side) is one multiplicative factor
-  `(10 000 − r) / 10 000` on every physical strike against that side's stacks. Q-0005 applies.
 - **The derivation fills the rest:** `effects` from artifacts and specialties other than morale
-  and luck (T10; morale and luck since T5b, HER-BAT-003; at most 64 in all), damage bonuses (T6),
-  machine control (T7), surrender discount (T9), magic (E04b). A specialty's growth and the artifacts' sums can exceed the field types; the
-  derivation saturates and clamps (`reduction_bp`, `surrender_discount_bp` ≤ 10 000).
+  and luck (T10; morale and luck since T5b, HER-BAT-003; at most 64 in all), machine control
+  (T7), surrender discount (T9), magic (E04b); damage bonuses since T6b (HER-BAT-004, applied
+  by BAT-HER-004). Sums that can exceed the field types saturate; `surrender_discount_bp` is
+  clamped to 10 000 like `reduction_bp`.
 
 ## 5. `BattleSetup`, `BattleOutcome`, `BattleResult` (T9)
 

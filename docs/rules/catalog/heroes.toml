@@ -208,3 +208,30 @@ numeric  = "integer"
   url        = "https://github.com/vcmi/vcmi/blob/1.7.5/lib/bonuses/BonusList.cpp#L103-L147"
   retrieved  = "2026-10-04"
   confidence = "high"
+
+[[rule]]
+id       = "HER-BAT-004"
+title    = "The battle hero's damage bonuses"
+context  = "heroes"
+status   = "implemented"
+summary  = "The battle hero's damage bonuses (BattleHero.damage: ranged_bp, melee_bp, reduction_bp) are the sums of the ranged_damage, melee_damage and damage_reduction effects of the hero's effect sources (HER-BAT-001): its secondary skills at their levels (Archery 10/25/50 %, Offense 10/20/30 %, Armorer 5/10/15 %), its worn artifacts and their combinations' parts, each artifact type once (the Archery artifacts +5/+10/+15 % count only with Archery, needs_skill), and its specialty's own. A skill specialty (skill_specialty) grows only that skill's values, by bp_per_level basis points of the value per hero level, rounded down (Orrin at level 10 with Expert Archery: 50 % * (1 + 0.05 * 10) = 75 %); artifacts do not grow. Sums saturate at u16::MAX; the reduction is at most 10 000 (100 %). The battle applies them (BAT-HER-004)."
+numeric  = "integer"
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "SSTRAITS.TXT: Archery 'increases the damage done by range attacking creatures by 10% / 25% / 50%', Offense 'increases all hand-to-hand damage inflicted by the hero's troops by 10% / 20% / 30%', Armorer 'reduces all damage inflicted against the hero's troops by 5% / 10% / 15%' (docs/rules/surveys/E04-skills.md §2.1-2.3); the artifacts' values in the harvested packs (gap-fill [artifacts], sources there)"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "wiki"
+  ref        = "Damage - Heroes 3 wiki: I3 = 0.05 * I2 * hero level for an Archery or Offense specialist, R3 = 0.05 * R2 * level for an Armorer specialist, summed with the skill's term (docs/rules/surveys/E04-skills.md §3); Archery: the artifacts are 'additive with the skill' and have no effect without it"
+  url        = "https://heroes.thelazy.net/index.php/Damage"
+  retrieved  = "2026-10-01"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "vcmi"
+  ref        = "lib/battle/DamageCalculator.cpp L233-L245 and L339-L345: the specialty is part of the same PERCENTAGE_DAMAGE_BOOST / GENERAL_DAMAGE_REDUCTION bonus as the skill; config/artifacts.json L905-L922: the Archery artifacts need the skill (HAS_ANOTHER_BONUS_LIMITER)"
+  url        = "https://github.com/vcmi/vcmi/blob/1.7.5/lib/battle/DamageCalculator.cpp#L233-L245"
+  retrieved  = "2026-10-03"
+  confidence = "high"

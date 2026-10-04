@@ -1318,3 +1318,39 @@ numeric  = "integer"
   url        = "https://github.com/vcmi/vcmi/blob/1.7.5/lib/BasicTypes.cpp#L72-L127"
   retrieved  = "2026-10-04"
   confidence = "high"
+
+[[rule]]
+id       = "BAT-HER-004"
+title    = "The heroes' damage bonuses"
+context  = "battle"
+status   = "implemented"
+summary  = "Every strike of a side's stack (war machines included, so Archery raises the Ballista's shots) adds its hero's ranged_bp (shots) or melee_bp (melee attacks, second attacks and retaliations, a shooter's melee included) to the bonus sum of BAT-DMG-002, never both; every strike against a side's stacks multiplies by (1 - reduction_bp / 10 000) of that side's hero (Armorer), one factor apart from the defense and penalty reductions. A side without a hero has none. The rates enter as single-precision values under quirk Q-0005 (Basic Armorer turns 100 into 94). The battle keeps the bonuses in its hero record (state hash v10); they are private to the side (ADR-0013 point 9). Spells (E04b) and arrow towers (E04c) are outside this rule."
+quirks   = ["Q-0005"]
+numeric  = "integer"
+
+  [[rule.source]]
+  kind       = "wiki"
+  ref        = "Damage - Heroes 3 wiki: DMGf = DMGb * (1+I1+I2+I3+I4+I5) * (1-R1) * (1-R2-R3) * ...; 'Archery and Offense modifiers cannot affect damage simultaneously'; Armorer reduces physical damage in melee or ranged combat, not spells (docs/rules/surveys/E04-skills.md §2-§4)"
+  url        = "https://heroes.thelazy.net/index.php/Damage"
+  retrieved  = "2026-10-01"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "wiki"
+  ref        = "War Machine - Heroes 3 wiki: 'Both the Artillery and Archery secondary skills increase the damage of the Ballista.'"
+  url        = "https://heroes.thelazy.net/index.php/War_Machine"
+  retrieved  = "2026-10-01"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "vcmi"
+  ref        = "lib/battle/DamageCalculator.cpp L233-L245 (Archery when shooting, Offense otherwise, in the attack-factor sum), L339-L345 (the defender's GENERAL_DAMAGE_REDUCTION as one factor); lib/CStack.cpp L69-L79: war machines inherit the hero's bonuses"
+  url        = "https://github.com/vcmi/vcmi/blob/1.7.5/lib/battle/DamageCalculator.cpp#L233-L245"
+  retrieved  = "2026-10-03"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "observation"
+  ref        = "experiments/results/E04a-batch-1a.md R3 (SoD 4.0 Complete): Archangels against Basic Armorer deal 47/94/142/189/237/284 (exact 47/95/..), so Armorer is a single-precision rate (Q-0005)"
+  retrieved  = "2026-10-03"
+  confidence = "high"

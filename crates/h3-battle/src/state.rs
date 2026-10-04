@@ -22,7 +22,7 @@ pub const MAX_WAR_MACHINES: usize = WAR_MACHINE_KINDS;
 pub const STACK_CAPACITY: usize = 2 * (MAX_ARMY_SLOTS + MAX_WAR_MACHINES);
 
 /// Version of the battle-state hash encoding ([`BattleState::state_hash`]). Bump on any change.
-pub const BATTLE_STATE_HASH_VERSION: u32 = 9;
+pub const BATTLE_STATE_HASH_VERSION: u32 = 10;
 
 /// Index of a stack in its battle (attacker stacks first, in slot order, then defender stacks).
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Default)]
@@ -750,11 +750,11 @@ impl BattleState {
     /// Canonical hash of the full state, including hidden parts such as the RNG (desync detection
     /// and replay verification; never sent to untrusted clients, docs/06-security.md).
     ///
-    /// Encoding v9 (v8 with the heroes instead of the hero flags): version, round, active, last
-    /// side, result (0/1 = victory of the attacker/defender, 2 = draw), stacks (each with base
-    /// count, shots, retaliations, morale, luck and traits), obstacles, modifiers, per side the
-    /// hero if any (type, attack, defense, power, knowledge, Tactics level, mana, maximum mana),
-    /// terrain, RNG state.
+    /// Encoding v10 (v9 with the heroes' damage bonuses): version, round, active, last side,
+    /// result (0/1 = victory of the attacker/defender, 2 = draw), stacks (each with base count,
+    /// shots, retaliations, morale, luck and traits), obstacles, modifiers, per side the hero if
+    /// any (type, attack, defense, power, knowledge, Tactics level, mana, maximum mana, ranged,
+    /// melee and reduction basis points), terrain, RNG state.
     pub fn state_hash(&self) -> u64 {
         h3_kernel::hash::hash_of(self)
     }

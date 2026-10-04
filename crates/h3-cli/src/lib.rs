@@ -1,11 +1,11 @@
 //! Library side of the `h3` tool: loading packs and scenarios from disk, running random battles,
 //! and the replay file format (TOML). The binary (`main.rs`) only parses arguments.
 //!
-//! Replay file format v4 (`fixtures/replays/*.toml` are examples):
+//! Replay file format v5 (`fixtures/replays/*.toml` are examples):
 //!
 //! ```toml
 //! [replay]
-//! format = 4
+//! format = 5
 //! engine = "0.1.0"
 //! scenario = "skirmish"
 //! seed = "7"                      # u64 as a decimal string
@@ -16,7 +16,7 @@
 //! rng_version = 1
 //! hash = "fnv1a64-le"
 //! hash_version = 1
-//! battle_state_hash_version = 2
+//! battle_state_hash_version = 10
 //! checkpoint_every = 25
 //!
 //! [setup]                         # the rest of the setup (fields default when absent)
@@ -34,6 +34,7 @@
 //! tactics = 0
 //! mana = 10
 //! max_mana = 10
+//! melee_bp = 1000                 # damage bonuses (format 5; each omitted when 0)
 //!
 //! [[setup.attacker_hero.effects]] # its battle effects (format 4; omitted when none):
 //! kind = "morale"                 #   `h3_pack::EffectEntry`

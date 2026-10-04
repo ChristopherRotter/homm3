@@ -1,22 +1,23 @@
-//! The translation from hero details to the battle hero (ADR-0013 point 2; HER-BAT-001,
-//! HER-BAT-002, HER-BAT-003).
+//! The translation from hero details to the battle hero (ADR-0013 point 2; HER-BAT-001 to
+//! HER-BAT-004).
 
 use alloc::collections::BTreeSet;
 use alloc::vec::Vec;
 
-use h3_content::{Affects, CompiledHeroEffect, HeroEffect, Ruleset};
-use h3_contracts::{BattleEffect, BattleHero};
+use h3_content::{Affects, CompiledHeroEffect, FULL_BP, HeroEffect, Ruleset};
+use h3_contracts::{BattleEffect, BattleHero, DamageBonuses};
 
 use crate::details::{HeroDetails, PrimarySkill, check};
 use crate::error::DetailsError;
 
 /// Derives what a battle needs to know about the hero (`BattleSetup.heroes`): the hero type, the
-/// effective primary skills (HER-BAT-001), the Tactics level (HER-BAT-002) and the morale and
-/// luck effects (HER-BAT-003); the mana is passed through. The details are validated first.
+/// effective primary skills (HER-BAT-001), the Tactics level (HER-BAT-002), the morale and luck
+/// effects (HER-BAT-003) and the damage bonuses (HER-BAT-004); the mana is passed through. The
+/// details are validated first.
 ///
-/// Later tasks fill the rest; until then it stays neutral: damage bonuses (E04a T6), war-machine
-/// control (T7), surrender discount (T9), the other effects (T10), and spell book, maximum mana
-/// and schools (E04b).
+/// Later tasks fill the rest; until then it stays neutral: war-machine control (E04a T7),
+/// surrender discount (T9), the other effects (T10), and spell book, maximum mana and schools
+/// (E04b).
 ///
 /// # Errors
 /// The [`DetailsError`] of the first rule the details break ([`crate::validate`]).
@@ -63,6 +64,9 @@ pub fn derive_battle_hero(
 
     // rule: HER-BAT-003
     hero.effects = morale_and_luck(effects(details, ruleset, Count::OncePerType));
+
+    // rule: HER-BAT-004
+    hero.damage = damage_bonuses(details, ruleset);
 
     hero.magic.mana = details.mana;
     Ok(hero)
@@ -134,11 +138,59 @@ const fn affects_index(affects: Affects) -> usize {
     }
 }
 
+/// The damage bonuses (HER-BAT-004): per kind (ranged, melee, reduction) the sum of the
+/// secondary skills' values, each grown by the hero's specialties for that skill by
+/// `bp_per_level` basis points of itself per hero level (rounded down), the worn artifacts'
+/// values (each artifact type once) and the specialty's own. Sums saturate at `u16::MAX`; the
+/// reduction is at most 10 000.
+fn damage_bonuses(details: &HeroDetails, ruleset: &Ruleset) -> DamageBonuses {
+    // [ranged, melee, reduction]
+    let mut sums = [0u64; 3];
+    let mut add = |effect: &CompiledHeroEffect, growth_bp: u64| {
+        let (kind, bp) = match *effect {
+            HeroEffect::RangedDamage { bp } => (0, bp),
+            HeroEffect::MeleeDamage { bp } => (1, bp),
+            HeroEffect::DamageReduction { bp } => (2, bp),
+            _ => return,
+        };
+        let bp = u64::from(bp);
+        let grown = bp + bp * growth_bp / u64::from(FULL_BP);
+        sums[kind] = sums[kind].saturating_add(grown);
+    };
+    let specialty = specialty(details, ruleset);
+    for &(id, level) in &details.skills {
+        let growth_bp: u64 = specialty
+            .iter()
+            .filter_map(|effect| match *effect {
+                HeroEffect::SkillSpecialty {
+                    skill,
+                    bp_per_level,
+                } if skill == id => Some(u64::from(bp_per_level) * u64::from(details.level)),
+                _ => None,
+            })
+            .sum();
+        let effects = ruleset
+            .skill(id)
+            .map(|skill| skill.effects(level))
+            .unwrap_or_default();
+        for effect in effects {
+            add(effect, growth_bp);
+        }
+    }
+    for effect in artifact_effects(details, ruleset, Count::OncePerType).chain(specialty) {
+        add(effect, 0);
+    }
+    let bp = |sum: u64| u16::try_from(sum).unwrap_or(u16::MAX);
+    DamageBonuses {
+        ranged_bp: bp(sums[0]),
+        melee_bp: bp(sums[1]),
+        reduction_bp: bp(sums[2]).min(FULL_BP),
+    }
+}
+
 /// Every effect the hero's details bring into a battle: its secondary skills at their levels,
-/// its worn artifacts — a combination together with its parts, an artifact that needs a skill
-/// only while the hero has that skill at any level, each artifact once per worn copy or once
-/// per type as `count` says — and its specialty. References the ruleset does not know are
-/// skipped (the details are validated before).
+/// its worn artifacts ([`artifact_effects`]) and its specialty. References the ruleset does not
+/// know are skipped (the details are validated before).
 fn effects<'a>(
     details: &'a HeroDetails,
     ruleset: &'a Ruleset,
@@ -150,8 +202,21 @@ fn effects<'a>(
             .map(|skill| skill.effects(level))
             .unwrap_or_default()
     });
+    skills
+        .chain(artifact_effects(details, ruleset, count))
+        .chain(specialty(details, ruleset))
+}
+
+/// The effects of the worn artifacts: a combination together with its parts, an artifact that
+/// needs a skill only while the hero has that skill at any level, each artifact once per worn
+/// copy or once per type as `count` says.
+fn artifact_effects<'a>(
+    details: &'a HeroDetails,
+    ruleset: &'a Ruleset,
+    count: Count,
+) -> impl Iterator<Item = &'a CompiledHeroEffect> {
     let mut seen = BTreeSet::new();
-    let artifacts = details
+    details
         .worn
         .iter()
         .flat_map(|&id| {
@@ -165,10 +230,13 @@ fn effects<'a>(
                 .needs_skill
                 .is_none_or(|needed| details.skills.iter().any(|&(id, _)| id == needed))
         })
-        .flat_map(|artifact| artifact.effects.iter());
-    let specialty = ruleset
+        .flat_map(|artifact| artifact.effects.iter())
+}
+
+/// The specialty of the hero's type.
+fn specialty<'a>(details: &HeroDetails, ruleset: &'a Ruleset) -> &'a [CompiledHeroEffect] {
+    ruleset
         .hero_type(details.hero_type)
         .map(|hero_type| hero_type.specialty.as_slice())
-        .unwrap_or_default();
-    skills.chain(artifacts).chain(specialty)
+        .unwrap_or_default()
 }

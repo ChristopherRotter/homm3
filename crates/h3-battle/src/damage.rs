@@ -50,6 +50,8 @@ pub(crate) enum Unit {
     Percent,
     /// Thousandths.
     Permille,
+    /// Ten-thousandths.
+    BasisPoints,
 }
 
 impl Unit {
@@ -58,6 +60,7 @@ impl Unit {
         match self {
             Self::Percent => 100,
             Self::Permille => 1000,
+            Self::BasisPoints => 10_000,
         }
     }
 }

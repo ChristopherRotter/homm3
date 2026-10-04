@@ -1,4 +1,4 @@
-//! `derive_battle_hero` (HER-BAT-001, HER-BAT-002, HER-BAT-003).
+//! `derive_battle_hero` (HER-BAT-001 to HER-BAT-004).
 
 use std::vec;
 
@@ -103,6 +103,42 @@ fn morale_ruleset() -> Ruleset {
     compile(p).unwrap()
 }
 
+/// The effect pack plus damage bonuses: Offense +10/20/30 % melee and Armorer 5/10/15 %
+/// reduction; `t:eye` +5 % ranged, `t:loop` (part of `t:circle`, needs Luck) +20 % ranged,
+/// `t:helm` (another part) 90 % reduction; the specialty grows `skill` by `bp_per_level` of
+/// itself per hero level and adds +1 % melee of its own.
+fn damage_ruleset(skill: &str, bp_per_level: u16) -> Ruleset {
+    let mut p = effect_pack();
+    for s in &mut p.skills {
+        match s.key.to_string().as_str() {
+            "t:offense" => {
+                s.levels = [1000, 2000, 3000].map(|bp| vec![HeroEffectDef::MeleeDamage { bp }]);
+            }
+            "t:armorer" => {
+                s.levels = [500, 1000, 1500].map(|bp| vec![HeroEffectDef::DamageReduction { bp }]);
+            }
+            _ => {}
+        }
+    }
+    for a in &mut p.artifacts {
+        let more = match a.key.to_string().as_str() {
+            "t:eye" => HeroEffectDef::RangedDamage { bp: 500 },
+            "t:loop" => HeroEffectDef::RangedDamage { bp: 2000 },
+            "t:helm" => HeroEffectDef::DamageReduction { bp: 9000 },
+            _ => continue,
+        };
+        a.effects.push(more);
+    }
+    p.heroes[0].specialty.extend([
+        HeroEffectDef::SkillSpecialty {
+            skill: key(skill),
+            bp_per_level,
+        },
+        HeroEffectDef::MeleeDamage { bp: 100 },
+    ]);
+    compile(p).unwrap()
+}
+
 /// The battle hero with the given derived values and everything else neutral.
 fn expected(r: &Ruleset, primary: [u8; 4], tactics: u8, mana: u16) -> BattleHero {
     let mut hero = BattleHero::new(r.hero_type_by_key("t:orrin").unwrap());
@@ -121,9 +157,17 @@ fn derived_primary_skills_and_tactics() {
     // (the loop needs Luck); two eyes +4/+6; the specialty +1 defense. Totals 100, 5, 0, 0:
     // attack capped at 99, power and knowledge raised to their minimum 1. Tactics: the skill's
     // Expert level beats the hook's 1.
+    // Basic Archery's +10 % is the only damage bonus (HER-BAT-004).
+    let archer = |hero: BattleHero| BattleHero {
+        damage: DamageBonuses {
+            ranged_bp: 1000,
+            ..DamageBonuses::default()
+        },
+        ..hero
+    };
     assert_eq!(
         derive_battle_hero(&d, &r),
-        Ok(expected(&r, [99, 5, 1, 1], 3, u16::MAX))
+        Ok(archer(expected(&r, [99, 5, 1, 1], 3, u16::MAX)))
     );
 
     // With Luck (any level) the loop counts: +10 each.
@@ -131,7 +175,7 @@ fn derived_primary_skills_and_tactics() {
     lucky.skills.push((skill(&r, "t:luck"), 1));
     assert_eq!(
         derive_battle_hero(&lucky, &r),
-        Ok(expected(&r, [99, 15, 10, 10], 3, u16::MAX))
+        Ok(archer(expected(&r, [99, 15, 10, 10], 3, u16::MAX)))
     );
 
     // Without the Tactics skill the hook's level remains; without any source it is 0.
@@ -166,7 +210,6 @@ fn derived_primary_skills_and_tactics() {
 fn derivation_leaves_later_fields_neutral_and_validates_first() {
     let r = effect_ruleset();
     let hero = derive_battle_hero(&details(&r), &r).unwrap();
-    assert_eq!(hero.damage, DamageBonuses::default());
     assert_eq!(hero.war_machines, MachineControl::default());
     assert_eq!(hero.surrender_discount_bp, 0);
     assert!(hero.effects.is_empty());
@@ -266,8 +309,55 @@ fn morale_and_luck_effects_are_combined_and_count_each_artifact_once() {
     );
 }
 
+// covers: HER-BAT-004
+#[test]
+fn damage_bonuses_sum_skills_artifacts_and_specialty() {
+    let r = damage_ruleset("t:archery", 500);
+    let d = HeroDetails {
+        level: 10,
+        ..details(&r)
+    };
+    let bonuses = |ranged_bp, melee_bp, reduction_bp| DamageBonuses {
+        ranged_bp,
+        melee_bp,
+        reduction_bp,
+    };
+    // Basic Archery 10 % grown by 5 % of itself per level (×1.5 at level 10) and the eye once
+    // although two are worn; the specialty's own melee 1 %; the helm's 90 % (a part of the
+    // worn circle). The loop needs Luck.
+    let derive = |d: &HeroDetails| derive_battle_hero(d, &r).unwrap().damage;
+    assert_eq!(derive(&d), bonuses(1500 + 500, 100, 9000));
+    // Advanced Offense 20 % (no specialty for it); Expert Armorer's 15 % takes the reduction
+    // past 100 %, so it stops there; with Luck the loop's 20 % counts.
+    let mut more = d.clone();
+    more.skills.extend([
+        (skill(&r, "t:offense"), 2),
+        (skill(&r, "t:armorer"), 3),
+        (skill(&r, "t:luck"), 1),
+    ]);
+    assert_eq!(
+        derive(&more),
+        bonuses(1500 + 500 + 2000, 2000 + 100, 10_000)
+    );
+    // An Offense specialist: Archery does not grow now, the artifacts never do; a growth of
+    // 655.35 % per level at level 3 gives 2000 + floor(2000 · 196 605 / 10 000) = 41 321; at
+    // level 10 the sum saturates.
+    let r = damage_ruleset("t:offense", 65_535);
+    let fast = HeroDetails {
+        level: 3,
+        ..more.clone()
+    };
+    let grown = derive_battle_hero(&fast, &r).unwrap().damage;
+    assert_eq!(grown, bonuses(1000 + 500 + 2000, 41_321 + 100, 10_000));
+    let saturated = HeroDetails { level: 10, ..more };
+    assert_eq!(
+        derive_battle_hero(&saturated, &r).unwrap().damage.melee_bp,
+        u16::MAX
+    );
+}
+
 proptest! {
-    // covers: HER-BAT-001, HER-BAT-002, HER-BAT-003
+    // covers: HER-BAT-001, HER-BAT-002, HER-BAT-003, HER-BAT-004
     #[test]
     fn derivation_succeeds_exactly_for_valid_details_and_stays_in_limits(
         worn in proptest::collection::vec(0u16..10, 0..8),
@@ -289,6 +379,7 @@ proptest! {
                 prop_assert!((min..=99).contains(&value));
             }
             prop_assert!(hero.tactics <= 3);
+            prop_assert!(hero.damage.reduction_bp <= 10_000);
             // At most one effect per morale/luck kind and affected sides (HER-BAT-003).
             prop_assert!(hero.effects.len() <= 12);
         }

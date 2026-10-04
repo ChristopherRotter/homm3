@@ -17,6 +17,7 @@ use crate::damage::{
 };
 use crate::event::{Event, EventKind, Sink, StrikeFlags};
 use crate::geometry::{Direction, Field, Footprint, Hex, HexSet};
+use crate::hero::{self, HeroRecord};
 use crate::morale;
 use crate::state::{
     BattleState, STACK_CAPACITY, Stack, StackFlags, StackId, StackTraits, UNLIMITED_RETALIATIONS,
@@ -95,7 +96,7 @@ fn strike<S: Sink>(
         striker.damage_max,
         params.damage_roll_samples,
     );
-    let (factors, flags) = strike_factors(ruleset, (&striker, &victim), flags, blow);
+    let (factors, flags) = strike_factors(ruleset, &state.heroes, (&striker, &victim), flags, blow);
     let damage = factors.apply(base);
     let lost = damage.min(victim.total_hp());
     let kills = apply_damage(state.at_mut(target), damage);
@@ -109,10 +110,12 @@ fn strike<S: Sink>(
     lost
 }
 
-/// The damage factors of a strike of `striker` on `victim` (BAT-DMG-002 and the abilities that
-/// change them), and its flags with the luck and death-blow flags added.
+/// The damage factors of a strike of `striker` on `victim` (BAT-DMG-002, the abilities that
+/// change them and the heroes' damage bonuses), and its flags with the luck and death-blow flags
+/// added.
 fn strike_factors(
     ruleset: &Ruleset,
+    heroes: &[Option<HeroRecord>; 2],
     (striker, victim): (&Stack, &Stack),
     flags: StrikeFlags,
     blow: Blow,
@@ -157,6 +160,16 @@ fn strike_factors(
     if let Some(percent) = penalty(params, field, striker, victim, flags) {
         factors.reduce(factors.rate(percent, Unit::Percent));
     }
+    // rule: BAT-HER-004
+    let own = hero::damage(heroes, striker.side);
+    let bonus = if flags.contains(StrikeFlags::RANGED) {
+        own.ranged_bp
+    } else {
+        own.melee_bp
+    };
+    factors.bonus(factors.rate(bonus, Unit::BasisPoints));
+    let reduction = hero::damage(heroes, victim.side).reduction_bp;
+    factors.reduce(factors.rate(reduction, Unit::BasisPoints));
     (factors, flags)
 }
 
@@ -177,6 +190,7 @@ pub(crate) fn shot_damage_range(
     };
     let (factors, _) = strike_factors(
         ruleset,
+        &state.heroes,
         (striker, state.at(target)),
         StrikeFlags::RANGED,
         blow,

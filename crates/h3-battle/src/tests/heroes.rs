@@ -1,5 +1,6 @@
-//! The heroes leading the sides (BAT-HER-001): what the battle checks, keeps and shows, and the
-//! hero's attack and defense on its stacks (BAT-HER-002).
+//! The heroes leading the sides (BAT-HER-001): what the battle checks, keeps and shows, the
+//! hero's attack and defense on its stacks (BAT-HER-002), its morale and luck effects
+//! (BAT-HER-003) and its damage bonuses (BAT-HER-004).
 
 use std::vec;
 use std::vec::Vec;
@@ -7,7 +8,9 @@ use std::vec::Vec;
 use h3_content::{
     Affects, CreatureFlag, CreatureSelector, CreatureStat, CreatureTypeId, HeroTypeId, SpellId,
 };
-use h3_contracts::{BallistaControl, BattleEffect, BattleHero, MAX_BATTLE_EFFECTS, StatOp};
+use h3_contracts::{
+    BallistaControl, BattleEffect, BattleHero, DamageBonuses, MAX_BATTLE_EFFECTS, StatOp,
+};
 
 use super::support::*;
 use crate::{
@@ -374,4 +377,102 @@ fn hero_morale_and_luck_effects_reach_the_sides_they_name() {
     assert_eq!(b.modifiers.iter().count(), 2 + 8);
     // Morale 1 + 4 (two heroes, own and both / enemy and both), capped at 3; luck 4 → 3.
     assert_eq!(values, [(3, 3), (3, 3)]);
+}
+
+// covers: BAT-HER-004
+#[test]
+fn hero_damage_bonuses_raise_the_sides_strikes_and_reduce_the_strikes_against_it() {
+    // Heroes without attack and defense, with the given damage bonuses (basis points).
+    let led = |r: &h3_content::Ruleset, ranged_bp, melee_bp, reduction_bp| {
+        let mut h = hero(r);
+        [h.attack, h.defense] = [0, 0];
+        h.damage = DamageBonuses {
+            ranged_bp,
+            melee_bp,
+            reduction_bp,
+        };
+        Some(h)
+    };
+    // Melee: 10 fixed (2 damage, attack = defense) strike 10 fixed; the target's 8 survivors
+    // retaliate.
+    let melee = |r: &h3_content::Ruleset, heroes: [Option<BattleHero>; 2]| {
+        let mut b = BattleState::new(r, &with_heroes(r, heroes), 1).unwrap();
+        place(&mut b, r, 0, 7, 5);
+        place(&mut b, r, 1, 8, 5);
+        activate(&mut b, 0);
+        let attack = Command::Attack {
+            target: StackId(1),
+            from: at(r, 7, 5),
+        };
+        act(&mut b, r, attack)
+            .unwrap()
+            .iter()
+            .filter_map(|e| match e.kind {
+                EventKind::Struck { damage, .. } => Some(damage),
+                _ => None,
+            })
+            .collect::<Vec<u64>>()
+    };
+    let r = ruleset();
+    assert_eq!(melee(&r, [None, None]), [20, 16]);
+    // The attacker's Offense +20 % raises its strike (24 kills 2), not the retaliation; its
+    // Archery does not count in melee; its Armorer 50 % halves the retaliation.
+    assert_eq!(melee(&r, [led(&r, 10_000, 2000, 5000), None]), [24, 8]);
+    // The defender's hero: Offense raises the retaliation, Armorer lowers the attack.
+    assert_eq!(melee(&r, [None, led(&r, 0, 5000, 2500)]), [15, 27]);
+    // A shot of 10 archers (base 20..30, defense 10 against attack 6: −10 %, across the field:
+    // −50 %) at 10 fixed: the shooter's side adds its ranged bonus only, the target's side
+    // reduces.
+    let shot = |heroes: [Option<BattleHero>; 2]| {
+        let s = BattleSetup {
+            heroes,
+            ..setup(&r, &[(0, "archer", 10)], &[(0, "fixed", 10)])
+        };
+        let b = BattleState::new(&r, &s, 1).unwrap();
+        crate::combat::shot_damage_range(&b, &r, StackId(0), StackId(1))
+    };
+    assert_eq!(shot([None, None]), (9, 13));
+    assert_eq!(shot([led(&r, 10_000, 0, 0), None]), (18, 27));
+    assert_eq!(shot([led(&r, 0, 10_000, 0), None]), (9, 13));
+    assert_eq!(shot([None, led(&r, 10_000, 10_000, 5000)]), (4, 6));
+    // The Ballista is the side's stack too: its shot (stack 1; damage 2..3, −50 % across the
+    // field) gets the ranged bonus.
+    let ballista = r.creature_by_key("t:ballista").unwrap();
+    let machine_shot = |heroes: [Option<BattleHero>; 2]| {
+        let s = BattleSetup {
+            heroes,
+            war_machines: [vec![ballista], vec![]],
+            ..setup(&r, &[(0, "archer", 10)], &[(0, "fixed", 10)])
+        };
+        let b = BattleState::new(&r, &s, 1).unwrap();
+        crate::combat::shot_damage_range(&b, &r, StackId(1), StackId(2))
+    };
+    assert_eq!(machine_shot([None, None]), (1, 1));
+    assert_eq!(machine_shot([led(&r, 10_000, 0, 0), None]), (2, 3));
+    // Under quirk Q-0005 the reduction is a single-precision rate: 50 fixed (base 100) against
+    // Basic Armorer's 5 % deal 94 instead of 95 (batch 1a R3).
+    let armorer = |profile: &str| {
+        let r = ruleset_with(profile, |_| {});
+        let s = BattleSetup {
+            heroes: [None, led(&r, 0, 0, 500)],
+            ..setup(&r, &[(0, "fixed", 50)], &[(0, "fixed", 100)])
+        };
+        let mut b = BattleState::new(&r, &s, 1).unwrap();
+        place(&mut b, &r, 0, 7, 5);
+        place(&mut b, &r, 1, 8, 5);
+        activate(&mut b, 0);
+        let attack = Command::Attack {
+            target: StackId(1),
+            from: at(&r, 7, 5),
+        };
+        act(&mut b, &r, attack)
+            .unwrap()
+            .iter()
+            .find_map(|e| match e.kind {
+                EventKind::Struck { damage, .. } => Some(damage),
+                _ => None,
+            })
+    };
+    assert_eq!(armorer("t:faithful"), Some(95));
+    assert_eq!(armorer("t:single"), Some(94));
 }

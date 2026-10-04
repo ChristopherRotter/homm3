@@ -356,11 +356,14 @@ tight_formation = ["defender"]   # optional: sides in tight formation, the other
 hero_type = "synthetic:brea"     # the side, given directly (BAT-HER-001, Q31); a side without
 attack = 2                       # one is not led by a hero (quirk Q-0003). Every field but
 defense = 2                      # hero_type defaults to 0 (effects: none); the rest of the battle
-power = 1                        # hero (damage bonuses, war-machine control, other effects, spell
-knowledge = 1                    # book, …) joins the format with the rules that read it (E04a
-tactics = 2                      # T6–T10, E04b)
+power = 1                        # hero (war-machine control, other effects, spell book, …) joins
+knowledge = 1                    # the format with the rules that read it (E04a T7–T10, E04b)
+tactics = 2
 mana = 10
 max_mana = 10
+ranged_bp = 1000                 # damage bonuses in basis points (BAT-HER-004): the side's shots,
+melee_bp = 1000                  # its melee strikes, and the reduction of strikes against it
+reduction_bp = 500               # (at most 10 000)
 effects = [{ kind = "morale", amount = 1 }, { kind = "luck_at_most", value = 0, affects = "enemy" }]
                                  # battle effects as in "Hero effects": so far `morale`, `luck`,
                                  # `morale_at_most`, `luck_at_most` (BAT-HER-003)

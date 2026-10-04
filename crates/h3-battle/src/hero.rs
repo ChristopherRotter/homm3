@@ -7,7 +7,7 @@
 //! accepted; keeping a hero within the game's limits is the derivation's job (HER-BAT-001).
 
 use h3_content::{CreatureSelector, FULL_BP, HeroTypeId, MAX_SKILL_LEVEL, Ruleset, SpellCategory};
-use h3_contracts::{BattleEffect, BattleHero, BattleSide, MAX_BATTLE_EFFECTS};
+use h3_contracts::{BattleEffect, BattleHero, BattleSide, DamageBonuses, MAX_BATTLE_EFFECTS};
 use h3_kernel::{CanonicalHash, StateHasher};
 
 use crate::error::{HeroError, SetupError};
@@ -39,6 +39,14 @@ pub(crate) struct HeroRecord {
     pub(crate) view: HeroView,
     /// Tactics level, 0..=3 (private to the side; the tactics phase arrives in E04a T8).
     pub(crate) tactics: u8,
+    /// Damage bonuses of the side's strikes and reduction of the strikes against it
+    /// (BAT-HER-004; private to the side).
+    pub(crate) damage: DamageBonuses,
+}
+
+/// The damage bonuses of `side` (none without a hero; BAT-HER-004).
+pub(crate) fn damage(heroes: &[Option<HeroRecord>; 2], side: BattleSide) -> DamageBonuses {
+    heroes[side.index()].map(|h| h.damage).unwrap_or_default()
 }
 
 impl CanonicalHash for HeroRecord {
@@ -50,6 +58,10 @@ impl CanonicalHash for HeroRecord {
         }
         h.write_u16(v.mana);
         h.write_u16(v.max_mana);
+        let d = &self.damage;
+        for value in [d.ranged_bp, d.melee_bp, d.reduction_bp] {
+            h.write_u16(value);
+        }
     }
 }
 
@@ -118,6 +130,7 @@ pub(crate) fn check(
             max_mana: magic.max_mana,
         },
         tactics: hero.tactics,
+        damage: hero.damage,
     })
 }
 

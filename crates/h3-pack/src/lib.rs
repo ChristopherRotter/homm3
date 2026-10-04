@@ -1233,9 +1233,27 @@ pub struct HeroEntry {
     /// Maximum spell points (default 0).
     #[serde(default)]
     pub max_mana: u16,
+    /// Bonus of the side's shots, basis points ([`DamageBonuses::ranged_bp`]; default 0, written
+    /// only when set).
+    #[serde(default, skip_serializing_if = "is_zero")]
+    pub ranged_bp: u16,
+    /// Bonus of the side's melee strikes, basis points ([`DamageBonuses::melee_bp`]; default 0,
+    /// written only when set).
+    #[serde(default, skip_serializing_if = "is_zero")]
+    pub melee_bp: u16,
+    /// Reduction of the strikes against the side, basis points ([`DamageBonuses::reduction_bp`];
+    /// default 0, written only when set).
+    #[serde(default, skip_serializing_if = "is_zero")]
+    pub reduction_bp: u16,
     /// Battle effects (default none; written only when there are some, after the values).
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub effects: Vec<EffectEntry>,
+}
+
+/// Whether a value is 0 (serde's `skip_serializing_if`).
+#[allow(clippy::trivially_copy_pass_by_ref)] // serde passes a reference
+fn is_zero(value: &u16) -> bool {
+    *value == 0
 }
 
 /// One battle effect of a hero as scenario and replay files write it: `kind` and the kind's
@@ -1343,6 +1361,11 @@ impl HeroEntry {
         hero.tactics = self.tactics;
         hero.magic.mana = self.mana;
         hero.magic.max_mana = self.max_mana;
+        hero.damage = DamageBonuses {
+            ranged_bp: self.ranged_bp,
+            melee_bp: self.melee_bp,
+            reduction_bp: self.reduction_bp,
+        };
         hero.effects = self.effects.iter().map(|e| e.effect()).collect();
         Ok(hero)
     }
@@ -1354,7 +1377,6 @@ impl HeroEntry {
     /// [`PackError::HeroNotWritable`] if a field the format does not hold yet is not neutral.
     pub fn of(hero: &BattleHero, ruleset: &Ruleset) -> Result<Self, PackError> {
         let unwritable = [
-            ("damage bonuses", hero.damage != DamageBonuses::default()),
             (
                 "war-machine control",
                 hero.war_machines != MachineControl::default(),
@@ -1385,6 +1407,9 @@ impl HeroEntry {
             tactics: hero.tactics,
             mana: hero.magic.mana,
             max_mana: hero.magic.max_mana,
+            ranged_bp: hero.damage.ranged_bp,
+            melee_bp: hero.damage.melee_bp,
+            reduction_bp: hero.damage.reduction_bp,
             effects: hero.effects.iter().filter_map(EffectEntry::of).collect(),
         })
     }
@@ -1753,6 +1778,11 @@ mod tests {
         expected.tactics = 2;
         expected.magic.mana = 10;
         expected.magic.max_mana = 10;
+        expected.damage = DamageBonuses {
+            ranged_bp: 1000,
+            melee_bp: 1000,
+            reduction_bp: 500,
+        };
         expected.effects = vec![
             BattleEffect::Morale {
                 amount: 1,
@@ -1825,6 +1855,10 @@ mod tests {
             "{written}"
         );
         assert_eq!(toml::from_str::<HeroEntry>(&written), Ok(entry));
+        // Damage bonuses are written only when set.
+        assert!(written.contains("ranged_bp = 1000\nmelee_bp = 1000\nreduction_bp = 500\n"));
+        let plain = toml::to_string(&HeroEntry::of(&ansel, &ruleset).unwrap()).unwrap();
+        assert!(!plain.contains("_bp"), "{plain}");
         let mut stranger = expected.clone();
         stranger.hero_type = h3_content::HeroTypeId::from_raw(99);
         assert_eq!(
@@ -1833,8 +1867,7 @@ mod tests {
         );
         // Values the format cannot hold yet.
         type Change = (fn(&mut BattleHero), &'static str);
-        let changes: [Change; 6] = [
-            (|h| h.damage.melee_bp = 1, "damage bonuses"),
+        let changes: [Change; 5] = [
             (
                 |h| {
                     h.war_machines.tent = Some(h3_contracts::TentControl { heal_bonus_bp: 1 });
@@ -2256,6 +2289,7 @@ mod tests {
     }
 
     // covers: HER-ART-001, HER-ART-002, HER-WAR-001, HER-BAT-001, HER-BAT-002, HER-BAT-003
+    // covers: HER-BAT-004
     #[test]
     fn hero_details_fit_the_harvested_slots() {
         use h3_heroes::{DetailsError, HeroDetails, derive_battle_hero, validate, war_machines};
@@ -2312,6 +2346,21 @@ mod tests {
             [28, 27, 23, 23]
         );
         assert_eq!(hero.tactics, 0);
+        // Orrin's specialty grows Expert Archery's 50 % by 5 % of itself per level: 75 % at
+        // level 10 (wiki Hero specialty); the Bow of the Sharpshooter's three parts add 30 %
+        // (HER-BAT-004).
+        assert_eq!(
+            hero.damage,
+            DamageBonuses {
+                ranged_bp: 7500,
+                ..DamageBonuses::default()
+            }
+        );
+        let bow = details(&sod, &["sod:bow_of_the_sharpshooter"], &[]);
+        assert_eq!(
+            derive_battle_hero(&bow, &sod).unwrap().damage.ranged_bp,
+            10_500
+        );
         // Five Clovers of Fortune give luck +1: identical artifacts do not stack (wiki Artifact).
         let luck = |amount| BattleEffect::Luck {
             amount,

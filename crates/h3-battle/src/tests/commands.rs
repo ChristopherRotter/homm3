@@ -226,13 +226,19 @@ fn state_hash_is_pinned() {
     // Golden value: pins the canonical encoding of the initial state (bump
     // BATTLE_STATE_HASH_VERSION when the encoding changes).
     let r = ruleset();
+    let mut led = hero(&r);
+    led.damage = h3_contracts::DamageBonuses {
+        ranged_bp: 1000,
+        melee_bp: 2000,
+        reduction_bp: 500,
+    };
     let setup = BattleSetup {
-        heroes: [Some(hero(&r)), None],
+        heroes: [Some(led), None],
         ..setup(&r, &[(0, "fixed", 3), (2, "wisp", 7)], &[(0, "slow", 4)])
     };
     let s = BattleState::new(&r, &setup, 7).unwrap();
     assert_eq!(s.state_hash(), GOLDEN, "got {:#018x}", s.state_hash());
-    assert_eq!(crate::BATTLE_STATE_HASH_VERSION, 9);
+    assert_eq!(crate::BATTLE_STATE_HASH_VERSION, 10);
 }
 
-const GOLDEN: u64 = 0xc3e0_5879_520d_21bd;
+const GOLDEN: u64 = 0x5d3d_5820_3c0f_b163;
