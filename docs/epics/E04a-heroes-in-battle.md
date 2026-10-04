@@ -1,6 +1,6 @@
 # E04a — Heroes in battle (without magic)
 
-Status: **in progress** (refined 2026-10-01; T1–T10 done by 2026-10-04; T11 in progress) · Follows E03 (closed 2026-10-01) · The former E04 was split by the user into three epics (OPEN-QUESTIONS Q27): **E04a** (this one), **E04b** battle magic, **E04c** sieges and special battlefields.
+Status: **in progress** (refined 2026-10-01; T1–T11 done by 2026-10-04; T12 next) · Follows E03 (closed 2026-10-01) · The former E04 was split by the user into three epics (OPEN-QUESTIONS Q27): **E04a** (this one), **E04b** battle magic, **E04c** sieges and special battlefields.
 
 ## Goal
 
@@ -67,7 +67,7 @@ Starting point, installation tables and the full record of done tasks (refinemen
 - [x] **T8 Tactics** — done 2026-10-04 (one checkpoint, Q33): BAT-TAC-001/002, `tactics_zone_columns` (ruleset hash v12), `Command::EndTactics`, `Observation.tactics`; state hash v13, replay format v8, action encoding v6, C ABI v4.
 - [x] **T9 Retreat, surrender and the richer outcome** — done 2026-10-04 in three checkpoints (T9a Retreat, T9b Surrender, T9c the outcome; split with the user, Q34): BAT-FLE-001/002, BAT-END-003, HER-BAT-006/007; `BattleResult::Retreat`/`Surrender`, `BattleSetup.funds`, the outcome's stack records; ruleset hash v13, state hash v16, replay format v10, action encoding v8, C ABI v6.
 - [x] **T10 Artifacts and specialties without spells** — done 2026-10-04 in three checkpoints (T10a stat effects, T10b stack traits, T10c alignment groups; split with the user, Q35; Q36 the group's form): HER-BAT-008/009/010, BAT-HER-005/006/007; `StatOp::PercentBpDown`, `FactionGroup`, trait `SHOOTS_WHEN_ADJACENT`, `Stack.regeneration`; every `BattleEffect` in scenario and replay files; batch 1a R8/B4–B6 and 1b R1/R8/B7 reproduced with the harvested packs; state hash v17, replay format v13. Q-0006 stays data until E04b.
-- [ ] **T11 Sim, FFI, CLI, scenarios** — in three checkpoints (Q37): T11a the observation (done 2026-10-04: `observe` takes the ruleset; surrender possible and machine control public, the own hero's private part with its surrender price), T11b observation encoding v4 and C ABI v7 (done 2026-10-04), T11c hero-bearing `full` workload, golden replays, benchmark, measurements. Scope: heroes in the scenario and replay formats, the action encoding complete for retreat and surrender (T7b added heals as v5 with C ABI v3, T8 `EndTactics` as v6 with C ABI v4; T9 appends its commands), observation encoding v4 and its ABI bump, golden replays re-recorded with notes, benchmark baseline re-measured with the reason, hero-bearing scenarios in the `full` workload.
+- [x] **T11 Sim, FFI, CLI, scenarios** — done 2026-10-04 in three checkpoints (Q37: T11a the observation, T11b the encoding, T11c the workload): `observe` takes the ruleset (ADR-0004 amended), `Observation.surrender_possible` and machine control public, `Observation.own_hero` private; observation encoding v4, C ABI v7; the defender of `full` led by Corwin (stack stats, traits, regeneration, surrender priced for both), golden replay `full-s3` re-recorded, `bench-check` re-baselined (longer battles), measurements in the log. The experiment-spec runner stays in the BACKLOG (Q37).
 - [ ] **T12 Closure** — fold the experiment results into the catalog (rules `verified` where observed), quirk ledger and profiles, independent review pass (rules against sources, robustness and security), HANDOFF, backlog, ADR-0013 revisions; the E03 hardening items that fit (work bound for death stare, random obstacles in the sim and C ABI).
 
 Order: T1 first and alone; T2 and T3 independent; T4 after T1 and T3; T5–T10 after T4 (T6 wants the batch-1 result, T10 after T5); T11 and T12 last.
@@ -82,7 +82,7 @@ Settled by ADR-0013 (accepted by the user 2026-10-03, Q30). The working detail p
 2. Every rule in scope has a catalog entry with labelled sources and tests; disputed ones have an observation fixture (SoD) or an OPEN-QUESTIONS entry with the experiment.
 3. Quirks are in the ledger with flags; `faithful` and `strict-fixed` differ exactly by them.
 4. All earlier invariants still property-tested, plus: hero isolation (a side's hero never changes the other side's stacks except through modelled events), observation hygiene for hero data, conservation of creatures with casualties accounted.
-5. Golden replays re-recorded with notes; at least 100 k steps/s/core on the `full` scenario with heroes (E03 closed at about 197 k); `bench-check` re-baselined with the reason; state size and clone cost measured and recorded.
+5. ~~Golden replays re-recorded with notes; at least 100 k steps/s/core on the `full` scenario with heroes (E03 closed at about 197 k); `bench-check` re-baselined with the reason; state size and clone cost measured and recorded.~~ (done 2026-10-04, T11c: both sides led by a hero, about 229–237 k steps/s, `BattleState` 2192 bytes, clone ≈ 183 ns; `E04a-log.md`).
 6. The first experiment batch has been run by the user and its results are recorded as fixtures.
 7. `cargo xtask verify` green on Linux and Windows, including `--with-original-data`.
 

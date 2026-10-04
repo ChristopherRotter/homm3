@@ -5,7 +5,7 @@ Living state between sessions; every session reads it first. Rules (`docs/08-wor
 ## Current state
 
 - Branch `e04a-heroes-in-battle` (the user merges to `master` when an epic closes); `cargo xtask verify --with-original-data` green. Sandbox and syncing: `docs/08-work-process.md`, "Cloud sandbox and syncing" (`scripts/sandbox-setup.sh`).
-- **E04a** (`docs/epics/E04a-heroes-in-battle.md`): T1–T10 done, experiment batches 1a and 1b evaluated and folded in (`docs/epics/E04a-design.md`); T10 in three checkpoints (Q35/Q36). T11 in three checkpoints (Q37): T11a (the observation; `observe` takes the ruleset) and T11b (observation encoding v4, C ABI v7) done. **Next: T11c**: the defender of `full` led by a hero too, with T10 effects (stack stats, traits, an alignment group; surrender then priced for both), golden replays re-recorded with notes, `bench-check` re-baselined with the reason, measurements (state size, clone, steps/s ≥ 100 k), T11 closed (epic, log, design note). Then T12 (closure).
+- **E04a** (`docs/epics/E04a-heroes-in-battle.md`): T1–T10 done, experiment batches 1a and 1b evaluated and folded in (`docs/epics/E04a-design.md`); T10 in three checkpoints (Q35/Q36). T11 done in three checkpoints (Q37; the `full` workload now has a hero on both sides). **Next: T12** (closure: experiment results into the catalog with `verified` where observed, quirk ledger and profiles, an independent review pass of rules against sources plus robustness and security, the E03 hardening items that fit, ADR-0013 revisions, the remaining exit criteria checked; propose a split first).
 - Versions: state hash v17, ruleset hash v13, replay format v13, action encoding v8, C ABI v7, observation encoding v4. Each new command bumps the action encoding and the C ABI (ADR-0011).
 - No decision is waiting for the user. Long-term open questions: `docs/OPEN-QUESTIONS.md`, section "Open".
 - Working agreement: small increments, the user confirms the seam; token efficiency beats speed (AGENTS.md); the user plays experiment maps in SoD with plain HD and commits the results.
@@ -46,9 +46,9 @@ Living state between sessions; every session reads it first. Rules (`docs/08-wor
 
 ## Recent sessions
 
-### 2026-10-04 (thirteenth) — E04a T11a and T11b done (observation, encoding v4)
+### 2026-10-04 (thirteenth) — E04a T11 done (observation, encoding v4, hero workload)
 
-T11 split with the user (Q37): T11a and T11b this session, T11c next; `observe` takes the ruleset (ADR-0004 amended); the experiment-spec runner stays in the BACKLOG. T11a (`e527a53`): `Observation.surrender_possible`, `HeroView.commands_ballista`/`commands_tent` public, `Observation.own_hero` (`OwnHeroView`) private; hygiene property test varies every private hero value. T11b (`adffa12`): observation encoding v4 (`OBSERVATION_LEN` 1229), C ABI v7. No state, replay or bench change. Detail: `docs/epics/E04a-log.md`.
+T11 split with the user (Q37): T11a and T11b this session, T11c next; `observe` takes the ruleset (ADR-0004 amended); the experiment-spec runner stays in the BACKLOG. T11a (`e527a53`): `Observation.surrender_possible`, `HeroView.commands_ballista`/`commands_tent` public, `Observation.own_hero` (`OwnHeroView`) private; hygiene property test varies every private hero value. T11b (`adffa12`): observation encoding v4 (`OBSERVATION_LEN` 1229), C ABI v7. Then, on the user's request, T11c: the defender of `full` led by Corwin with T10 effects, both owners able to pay a surrender; `full-s3` re-recorded; `bench-check` re-baselined (+65 % steps, −14 % Ir/step); about 229–237 k steps/s. Detail: `docs/epics/E04a-log.md`.
 
 ### 2026-10-04 (twelfth) — E04a T10 done (stat effects, traits, alignment groups)
 

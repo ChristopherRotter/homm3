@@ -2118,7 +2118,27 @@ mod tests {
                 affects: Affects::Own,
             },
         ];
-        assert_eq!(setup.heroes, [Some(expected.clone()), None]);
+        assert_eq!(setup.heroes[0], Some(expected.clone()));
+        // The defender's Corwin (E04a T11c): Gunnery, a 10 % discount and nine stack effects,
+        // written and read back unchanged; both owners can pay for a surrender.
+        let corwin = setup.heroes[1].as_ref().unwrap();
+        assert_eq!(
+            corwin.hero_type,
+            ruleset.hero_type_by_key("synthetic:corwin").unwrap()
+        );
+        assert_eq!(
+            (corwin.surrender_discount_bp, corwin.effects.len()),
+            (1000, 9)
+        );
+        assert_eq!(corwin.war_machines.ballista, expected.war_machines.ballista);
+        assert_eq!(
+            &HeroEntry::of(corwin, &ruleset)
+                .unwrap()
+                .resolve(&ruleset)
+                .unwrap(),
+            corwin
+        );
+        assert_eq!(setup.funds, [10_000, 10_000]);
         // Fields default to 0; the entry is the inverse of the resolution.
         let header = "[scenario]\nid = \"e\"\npacks = []\nprofile = \"a:b\"\n";
         let text = format!("{header}[scenario.defender_hero]\nhero_type = \"synthetic:ansel\"\n");

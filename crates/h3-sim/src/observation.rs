@@ -217,45 +217,104 @@ mod tests {
 
     #[test]
     fn encodes_the_heroes_and_shows_the_private_part_only_to_its_side() {
+        use BattleSide::{Attacker, Defender};
         let (r, setup) = h3_pack::synthetic(h3_pack::SYNTHETIC_FULL).unwrap();
         let s = BattleState::new(&r, &setup, 1).unwrap();
         let mut out = vec![0.0; OBSERVATION_LEN];
-        // Only the attacker is led by a hero (Brea, `full.toml`); her Tactics give her a tactics
-        // phase with a five-column zone, she may retreat, and nobody may surrender.
-        let brea = f32::from(r.hero_type_by_key("synthetic:brea").unwrap().raw());
-        let public = [1.0, brea, 2.0, 2.0, 1.0, 1.0, 10.0, 10.0, 1.0, 1.0];
-        let private = [
-            2.0, 1000.0, 1000.0, 500.0, 1.0, 5000.0, 10_000.0, 0.0, 0.0, 0.0,
+        // Both sides are led by a hero (`full.toml`): Brea's Tactics give her a tactics phase
+        // with a five-column zone, and both sides may retreat and surrender.
+        let handle = |key| f32::from(r.hero_type_by_key(key).unwrap().raw());
+        let brea = [
+            1.0,
+            handle("synthetic:brea"),
+            2.0,
+            2.0,
+            1.0,
+            1.0,
+            10.0,
+            10.0,
+            1.0,
+            1.0,
         ];
-        encode(&observe(&s, &r, BattleSide::Attacker), 17, &mut out).unwrap();
-        assert_eq!(
-            out[..GLOBALS],
-            [0.0, 1.0, 1.0, 0.0, 1.0, 0.0, 5.0, 1.0, 0.0, 0.0, 0.0]
-        );
-        assert_eq!(hero(&out, 0)[..HERO_PUBLIC_FEATURES], public);
-        assert_eq!(hero(&out, 0)[HERO_PUBLIC_FEATURES..], private);
-        assert!(hero(&out, 1).iter().all(|v| *v == 0.0));
-        // The defender sees her public part only.
-        encode(&observe(&s, &r, BattleSide::Defender), 17, &mut out).unwrap();
-        assert_eq!(
-            out[..GLOBALS],
-            [0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 5.0, 0.0, 1.0, 0.0, 0.0]
-        );
-        assert!(hero(&out, 0).iter().all(|v| *v == 0.0));
-        assert_eq!(hero(&out, 1)[..HERO_PUBLIC_FEATURES], public);
-        assert!(
-            hero(&out, 1)[HERO_PUBLIC_FEATURES..]
-                .iter()
-                .all(|v| *v == 0.0)
-        );
-        // The surrender possibilities and the own price, when there is one.
-        let mut obs = observe(&s, &r, BattleSide::Attacker);
-        obs.surrender_possible = [true, false];
-        obs.own_hero.as_mut().unwrap().surrender_price = Some(1472);
-        obs.own_hero.as_mut().unwrap().funds = 5000;
+        let corwin = [
+            1.0,
+            handle("synthetic:corwin"),
+            1.0,
+            3.0,
+            1.0,
+            1.0,
+            10.0,
+            10.0,
+            1.0,
+            0.0,
+        ];
+        let price = |side| s.surrender_price(&r, side).unwrap() as f32;
+        assert!(price(Attacker) > 0.0 && price(Defender) > 0.0);
+        let brea_private = [
+            2.0,
+            1000.0,
+            1000.0,
+            500.0,
+            1.0,
+            5000.0,
+            10_000.0,
+            0.0,
+            10_000.0,
+            price(Attacker),
+        ];
+        let corwin_private = [
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            1.0,
+            5000.0,
+            0.0,
+            1000.0,
+            10_000.0,
+            price(Defender),
+        ];
+        for (viewer, globals, own, other, private) in [
+            (
+                Attacker,
+                [0.0, 1.0, 1.0, 0.0, 1.0, 0.0, 5.0, 1.0, 1.0, 1.0, 1.0],
+                brea,
+                corwin,
+                brea_private,
+            ),
+            (
+                Defender,
+                [0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 5.0, 1.0, 1.0, 1.0, 1.0],
+                corwin,
+                brea,
+                corwin_private,
+            ),
+        ] {
+            encode(&observe(&s, &r, viewer), 17, &mut out).unwrap();
+            assert_eq!(out[..GLOBALS], globals);
+            assert_eq!(hero(&out, 0)[..HERO_PUBLIC_FEATURES], own);
+            assert_eq!(hero(&out, 0)[HERO_PUBLIC_FEATURES..], private);
+            assert_eq!(hero(&out, 1)[..HERO_PUBLIC_FEATURES], other);
+            // The opponent's private part never shows.
+            assert!(
+                hero(&out, 1)[HERO_PUBLIC_FEATURES..]
+                    .iter()
+                    .all(|v| *v == 0.0)
+            );
+        }
+        // Without an enemy hero: no surrender, a zero block; without a Ballista, zero control.
+        let mut obs = observe(&s, &r, Attacker);
+        obs.heroes[1] = None;
+        obs.may_retreat[1] = false;
+        obs.surrender_possible = [false, false];
+        let own = obs.own_hero.as_mut().unwrap();
+        own.surrender_price = None;
+        own.ballista = None;
         encode(&obs, 17, &mut out).unwrap();
-        assert_eq!(out[9..GLOBALS], [1.0, 0.0]);
-        assert_eq!(hero(&out, 0)[HERO_FEATURES - 2..], [5000.0, 1472.0]);
+        assert_eq!(out[7..GLOBALS], [1.0, 0.0, 0.0, 0.0]);
+        assert!(hero(&out, 1).iter().all(|v| *v == 0.0));
+        assert_eq!(hero(&out, 0)[14..16], [0.0, 0.0]);
+        assert_eq!(hero(&out, 0)[HERO_FEATURES - 1], 0.0);
     }
 
     #[test]

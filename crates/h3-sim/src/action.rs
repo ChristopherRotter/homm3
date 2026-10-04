@@ -267,7 +267,13 @@ mod tests {
                 assert_eq!(decode(&s, &r, i), Some(*c));
                 heals += 1;
             }
-            let command = legal.as_slice()[step % legal.len()];
+            // Stay in the battle: both sides may retreat and surrender.
+            let staying: Vec<Command> = legal
+                .iter()
+                .copied()
+                .filter(|c| !c.leaves_battle())
+                .collect();
+            let command = staying[step % staying.len()];
             h3_battle::apply(&mut s, &r, side, command, &mut h3_battle::NoopSink).unwrap();
         }
         assert!(heals > 0);
@@ -291,7 +297,7 @@ mod tests {
 
     #[test]
     fn tactics_commands_round_trip() {
-        // The full scenario's attacker has Advanced Tactics, the defender no hero (BAT-TAC-001).
+        // The full scenario's attacker has Advanced Tactics, the defender none (BAT-TAC-001).
         let (r, setup) = h3_pack::synthetic(h3_pack::SYNTHETIC_FULL).unwrap();
         let s = BattleState::new(&r, &setup, 3).unwrap();
         assert!(s.tactics().is_some());

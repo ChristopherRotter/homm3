@@ -97,12 +97,16 @@ mod tests {
 
     #[test]
     fn the_random_agent_fights_battles_out() {
-        // Brea may retreat on every turn of the full scenario (BAT-FLE-001); the agent never does.
+        // Both heroes of the full scenario may retreat and surrender on every turn (BAT-FLE-001,
+        // BAT-FLE-002); the agent never does.
         let (r, setup) = h3_pack::synthetic(h3_pack::SYNTHETIC_FULL).unwrap();
         let (r, setup) = (Arc::new(r), Arc::new(setup));
         for seed in 1..4 {
             let mut env = BattleEnv::new(r.clone(), setup.clone(), seed, 0).unwrap();
-            assert!(env.state().may_retreat(BattleSide::Attacker));
+            for side in BattleSide::BOTH {
+                assert!(env.state().may_retreat(side));
+                assert!(env.state().may_surrender(&r, side));
+            }
             let result = random_rollout(&mut env, seed, 5000).result;
             assert!(matches!(
                 result,
