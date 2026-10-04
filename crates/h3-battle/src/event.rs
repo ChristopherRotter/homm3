@@ -19,7 +19,7 @@ pub enum Visibility {
 }
 
 /// How a strike happened (BAT-ATK-001/003, BAT-RET-001, BAT-RNG-001/004, BAT-DMG-007,
-/// BAT-LCK-002).
+/// BAT-LCK-002, BAT-WAR-006).
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub struct StrikeFlags(u8);
 
@@ -36,6 +36,9 @@ impl StrikeFlags {
     pub const DEATH_BLOW: Self = Self(1 << 3);
     /// A lucky strike: +100 % base damage (BAT-LCK-002).
     pub const LUCKY: Self = Self(1 << 4);
+    /// A double-damage shot of a war machine its hero commands (Artillery): +100 % base damage
+    /// (BAT-WAR-006).
+    pub const DOUBLE_DAMAGE: Self = Self(1 << 5);
 
     /// Whether all flags of `other` are set.
     pub const fn contains(self, other: Self) -> bool {

@@ -991,8 +991,9 @@ fn validate_creature(
     if def.hit_points == 0 {
         return invalid("hit_points must be at least 1");
     }
-    if def.speed == 0 && !machine {
-        return invalid("speed must be at least 1 (except for war machines)");
+    // War machines never move, also when their side commands them (BAT-WAR-001, BAT-WAR-006).
+    if (def.speed == 0) != machine {
+        return invalid("speed must be 0 for war machines and at least 1 otherwise");
     }
     if info.level == 0 {
         return invalid("level must be at least 1");

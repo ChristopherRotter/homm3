@@ -1,10 +1,10 @@
-//! Tests of war machines (BAT-WAR-001..004).
+//! Tests of war machines (BAT-WAR-001..006).
 
 use std::vec;
 use std::vec::Vec;
 
 use h3_content::Ruleset;
-use h3_contracts::{BattleResult, BattleSide};
+use h3_contracts::{BallistaControl, BattleHero, BattleResult, BattleSide};
 
 use super::support::*;
 use crate::event::StrikeFlags;
@@ -372,6 +372,236 @@ fn the_ballista_can_win_the_battle_and_stops_without_shots() {
     );
     s.stacks.as_mut_slice()[1].shots = 0;
     assert!(shots_by(&defend_round(&mut s, &r), 1).is_empty());
+}
+
+// covers: BAT-WAR-002
+#[test]
+fn under_quirk_q_0004_the_ballista_shoots_on_without_shots() {
+    // The original's Ballista keeps shooting after its 24 shots (batch 1a R7); the count stays
+    // at 0 here. Other shooters and strict rules are unaffected.
+    for (profile, shoots) in [("t:unlimited", true), ("t:faithful", false)] {
+        let r = ruleset_with(profile, |_| {});
+        let mut s = start(
+            &r,
+            &with_machines(
+                &r,
+                &[(0, "archer", 1)],
+                &[(0, "tank", 9)],
+                [&["ballista"], &[]],
+            ),
+            1,
+        );
+        assert_eq!(
+            s.stacks()[1].has(StackTraits::UNLIMITED_SHOTS),
+            shoots,
+            "{profile}"
+        );
+        assert!(!s.stacks()[0].has(StackTraits::UNLIMITED_SHOTS));
+        s.stacks.as_mut_slice()[1].shots = 1;
+        for round in 0..3 {
+            let fired = shots_by(&defend_round(&mut s, &r), 1).len();
+            assert_eq!(
+                fired,
+                usize::from(round == 0 || shoots),
+                "{profile} {round}"
+            );
+            assert_eq!(s.stacks()[1].shots, 0);
+        }
+    }
+}
+
+// ---------------------------------------------------------------- BAT-WAR-005 hero's attack
+
+/// A hero for the attacker with `attack` and, if `ballista` is set, Artillery.
+fn led(r: &Ruleset, attack: u8, ballista: Option<(u8, u16)>) -> BattleHero {
+    let mut h = hero(r);
+    h.attack = attack;
+    h.war_machines.ballista = ballista.map(|(shots, chance)| BallistaControl {
+        shots,
+        double_damage_chance_bp: chance,
+    });
+    h
+}
+
+// covers: BAT-WAR-005
+#[test]
+fn a_hero_multiplies_its_war_machines_damage_by_its_attack_plus_one() {
+    let r = ruleset();
+    let mut setup = with_machines(
+        &r,
+        &[(0, "fixed", 1)],
+        &[(0, "fixed", 1)],
+        [&["ballista", "tent"], &["ballista"]],
+    );
+    setup.heroes[0] = Some(led(&r, 20, None));
+    let s = start(&r, &setup, 1);
+    let damage = |id: usize| (s.stacks()[id].damage_min, s.stacks()[id].damage_max);
+    // Ids: 0 fixed, 1 ballista, 2 tent (attacker); 3 fixed, 4 ballista (defender, no hero).
+    assert_eq!(damage(1), (42, 63), "2–3 × 21");
+    assert_eq!(damage(2), (0, 0));
+    assert_eq!(damage(4), (2, 3));
+    // Creatures keep their damage; the hero's attack also counts in the Ballista's attack.
+    assert_eq!(damage(0), damage(3));
+    assert_eq!(s.stacks()[1].attack, 30);
+    // An attack of 255 saturates nothing: 3 × 256 fits.
+    setup.heroes[0] = Some(led(&r, 255, None));
+    let s = start(&r, &setup, 1);
+    assert_eq!(
+        (s.stacks()[1].damage_min, s.stacks()[1].damage_max),
+        (512, 768)
+    );
+}
+
+// ---------------------------------------------------------------- BAT-WAR-006 Artillery
+
+/// A battle where the attacker's hero commands its Ballista (`shots`, `chance`): 0 = serf,
+/// 1 = ballista (attacker); 2 = `enemy`, 3 = the defender's ballista.
+fn commanded(enemy: Spec, shots: u8, chance: u16, seed: u64) -> (Ruleset, BattleState) {
+    let r = ruleset();
+    let mut setup = with_machines(
+        &r,
+        &[(0, "serf", 1)],
+        &[enemy],
+        [&["ballista"], &["ballista"]],
+    );
+    setup.heroes[0] = Some(led(&r, 0, Some((shots, chance))));
+    let s = start(&r, &setup, seed);
+    (r, s)
+}
+
+/// Lets every stack defend until the attacker's Ballista (stack 1) is active.
+fn to_ballista(s: &mut BattleState, r: &Ruleset) {
+    while s.active() != Some(StackId(1)) {
+        act(s, r, Command::Defend).unwrap();
+    }
+}
+
+fn shoot_at(s: &mut BattleState, r: &Ruleset, target: u8) -> Vec<Event> {
+    let at = s.stacks()[usize::from(target)].hex;
+    act(
+        s,
+        r,
+        Command::Shoot {
+            target: StackId(target),
+            at,
+        },
+    )
+    .unwrap()
+}
+
+// covers: BAT-WAR-006
+#[test]
+fn a_commanded_ballista_waits_for_its_sides_command() {
+    let (r, mut s) = commanded((0, "tank", 5), 1, 0, 1);
+    to_ballista(&mut s, &r);
+    assert_eq!(s.side_to_act(), Some(BattleSide::Attacker));
+    let mut legal = crate::LegalCommands::new();
+    crate::legal_commands(&s, &r, BattleSide::Attacker, &mut legal);
+    let at = |id: usize| s.stacks()[id].hex;
+    // Wait, Defend and a shot at every enemy, the enemy's war machine included; no moves.
+    assert_eq!(
+        legal.as_slice(),
+        [
+            Command::Wait,
+            Command::Defend,
+            Command::Shoot {
+                target: StackId(2),
+                at: at(2)
+            },
+            Command::Shoot {
+                target: StackId(3),
+                at: at(3)
+            },
+        ]
+    );
+    // It may wait (batch 1a R6) and comes back in the wait phase; the defender's Ballista,
+    // without a hero, has shot on its own meanwhile.
+    let events = act(&mut s, &r, Command::Wait).unwrap();
+    assert!(!shots_by(&events, 3).is_empty());
+    to_ballista(&mut s, &r);
+    assert!(s.stacks()[1].flags.contains(StackFlags::WAITED));
+    let events = shoot_at(&mut s, &r, 3);
+    assert_eq!(shots_by(&events, 1), vec![(3, StrikeFlags::RANGED)]);
+    assert_eq!(s.stacks()[1].shots, 23);
+}
+
+// covers: BAT-WAR-006
+#[test]
+fn a_commanded_ballista_shoots_its_shots_at_one_target() {
+    // Two shots at the same target (Expert Artillery, batch 1a R7) …
+    let (r, mut s) = commanded((0, "tank", 5), 2, 0, 1);
+    to_ballista(&mut s, &r);
+    let events = shoot_at(&mut s, &r, 2);
+    assert_eq!(shots_by(&events, 1), vec![(2, StrikeFlags::RANGED); 2]);
+    assert_eq!(s.stacks()[1].shots, 22);
+    // … but not at a dead one: a serf with 1 hit point falls to the first.
+    let (r, mut s) = commanded((0, "serf", 1), 2, 0, 1);
+    s.stacks.as_mut_slice()[2].top_hp = 1;
+    to_ballista(&mut s, &r);
+    let events = shoot_at(&mut s, &r, 2);
+    assert_eq!(shots_by(&events, 1).len(), 1);
+    assert!(s.is_over());
+    // Nor without shots left.
+    let (r, mut s) = commanded((0, "tank", 5), 2, 0, 1);
+    s.stacks.as_mut_slice()[1].shots = 1;
+    to_ballista(&mut s, &r);
+    assert_eq!(shots_by(&shoot_at(&mut s, &r, 2), 1).len(), 1);
+}
+
+// covers: BAT-WAR-006
+#[test]
+fn artillery_doubles_the_ballistas_damage_by_chance() {
+    let damage = |events: &[Event]| -> Vec<(u64, StrikeFlags)> {
+        events
+            .iter()
+            .filter_map(|e| match e.kind {
+                EventKind::Struck {
+                    attacker: StackId(1),
+                    damage,
+                    flags,
+                    ..
+                } => Some((damage, flags)),
+                _ => None,
+            })
+            .collect()
+    };
+    let doubled = StrikeFlags::RANGED.with(StrikeFlags::DOUBLE_DAMAGE);
+    let mut seen = [false; 2];
+    for seed in 0..40 {
+        // Always (Expert) doubles; never without the chance; 50 % sometimes.
+        for (chance, expect) in [(10_000, Some(true)), (0, Some(false)), (5_000, None)] {
+            let (r, mut s) = commanded((0, "fixed", 9), 1, chance, seed);
+            // Directly, so that nobody defends.
+            activate(&mut s, 1);
+            let hit = damage(&shoot_at(&mut s, &r, 2));
+            let is_double = hit[0].1 == doubled;
+            assert!(is_double || hit[0].1 == StrikeFlags::RANGED);
+            // Attack 10 against defense 10, base 2–3, halved over the distance: +100 % makes
+            // it 2–3, otherwise 1.
+            let (min, max) = if is_double { (2, 3) } else { (1, 1) };
+            assert!((min..=max).contains(&hit[0].0), "{chance} {hit:?}");
+            match expect {
+                Some(e) => assert_eq!(is_double, e),
+                None => seen[usize::from(is_double)] = true,
+            }
+        }
+    }
+    assert_eq!(seen, [true, true]);
+}
+
+// covers: BAT-WAR-006
+#[test]
+fn a_commanded_ballista_that_cannot_shoot_passes_its_turn() {
+    let (r, mut s) = commanded((0, "tank", 5), 1, 0, 1);
+    s.stacks.as_mut_slice()[1].shots = 0;
+    let events = defend_round(&mut s, &r);
+    assert!(
+        events
+            .iter()
+            .any(|e| e.kind == EventKind::TurnStarted { stack: StackId(1) })
+    );
+    assert!(shots_by(&events, 1).is_empty());
+    assert!(s.stacks()[1].flags.contains(StackFlags::ACTED) || s.round() == 2);
 }
 
 // ---------------------------------------------------------------- BAT-WAR-003 first aid

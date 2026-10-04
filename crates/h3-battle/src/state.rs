@@ -3,7 +3,7 @@
 
 use h3_content::{
     Ability, AreaShot, CreatureFlag, CreatureType, CreatureTypeId, MAX_ARMY_SLOTS, Ruleset,
-    TerrainId, WAR_MACHINE_KINDS,
+    TerrainId, UNLIMITED_BALLISTA_SHOTS, WAR_MACHINE_KINDS,
 };
 use h3_contracts::{Army, ArmyStack, BattleOutcome, BattleResult, BattleSetup, BattleSide};
 use h3_kernel::{CanonicalHash, FixedVec, Rng, StateHasher, StreamId};
@@ -22,7 +22,7 @@ pub const MAX_WAR_MACHINES: usize = WAR_MACHINE_KINDS;
 pub const STACK_CAPACITY: usize = 2 * (MAX_ARMY_SLOTS + MAX_WAR_MACHINES);
 
 /// Version of the battle-state hash encoding ([`BattleState::state_hash`]). Bump on any change.
-pub const BATTLE_STATE_HASH_VERSION: u32 = 10;
+pub const BATTLE_STATE_HASH_VERSION: u32 = 11;
 
 /// Index of a stack in its battle (attacker stacks first, in slot order, then defender stacks).
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Default)]
@@ -124,6 +124,9 @@ impl StackTraits {
     pub const AMMO_SUPPLY: Self = Self(1 << 18);
     /// Heals allied stacks on its turn (ability `first_aid`, BAT-WAR-003).
     pub const FIRST_AID: Self = Self(1 << 19);
+    /// Shoots on without shots left: the shooting war machine under quirk Q-0004
+    /// (`quirk.battle.unlimited_ballista_shots`, BAT-WAR-002).
+    pub const UNLIMITED_SHOTS: Self = Self(1 << 20);
 
     /// Whether all traits of `other` are set.
     pub const fn contains(self, other: Self) -> bool {
@@ -267,15 +270,13 @@ fn war_machines(
             .filter(|fp| !fp.hexes().any(|h| taken.contains(h)))
             .ok_or(SetupError::NoRoom { side, slot })?;
         fp.hexes().for_each(|h| taken.insert(h));
-        out[kind] = Some(Stack::new(
-            ruleset,
-            setup,
-            (id, creature),
-            side,
-            slot,
-            head,
-            1,
-        ));
+        let mut stack = Stack::new(ruleset, setup, (id, creature), side, slot, head, 1);
+        // rule: BAT-WAR-002
+        stack.traits = stack.traits.with(
+            StackTraits::UNLIMITED_SHOTS,
+            kind == 0 && ruleset.quirks().is_enabled(UNLIMITED_BALLISTA_SHOTS),
+        );
+        out[kind] = Some(stack);
     }
     Ok(out)
 }
@@ -344,8 +345,8 @@ pub struct Stack {
 
 impl Stack {
     /// A new stack of `count` creatures with the creature's stats, the native-terrain bonus
-    /// (BAT-TER-001), the attack and defense of its side's hero (BAT-HER-002) and its traits and
-    /// retaliations.
+    /// (BAT-TER-001), the attack and defense of its side's hero (BAT-HER-002), for war machines
+    /// the damage grown by the hero's attack (BAT-WAR-005), and its traits and retaliations.
     fn new(
         ruleset: &Ruleset,
         setup: &BattleSetup,
@@ -362,6 +363,14 @@ impl Stack {
         let (hero_attack, hero_defense) = setup.heroes[side.index()]
             .as_ref()
             .map_or((0, 0), |hero| (hero.attack, hero.defense));
+        // rule: BAT-WAR-005
+        let machine_factor = if creature.flags.contains(CreatureFlag::WarMachine) {
+            setup.heroes[side.index()]
+                .as_ref()
+                .map_or(1, |hero| u16::from(hero.attack) + 1)
+        } else {
+            1
+        };
         let retaliations = retaliations_per_round(abilities);
         Self {
             creature: id,
@@ -379,8 +388,8 @@ impl Stack {
                 .defense
                 .saturating_add(native.into())
                 .saturating_add(hero_defense.into()),
-            damage_min: creature.damage_min,
-            damage_max: creature.damage_max,
+            damage_min: creature.damage_min.saturating_mul(machine_factor),
+            damage_max: creature.damage_max.saturating_mul(machine_factor),
             max_hp: creature.hit_points,
             speed: creature.speed.saturating_add(native),
             shots: creature.shots,
@@ -750,11 +759,12 @@ impl BattleState {
     /// Canonical hash of the full state, including hidden parts such as the RNG (desync detection
     /// and replay verification; never sent to untrusted clients, docs/06-security.md).
     ///
-    /// Encoding v10 (v9 with the heroes' damage bonuses): version, round, active, last side,
+    /// Encoding v11 (v10 with the commanded Ballista): version, round, active, last side,
     /// result (0/1 = victory of the attacker/defender, 2 = draw), stacks (each with base count,
     /// shots, retaliations, morale, luck and traits), obstacles, modifiers, per side the hero if
     /// any (type, attack, defense, power, knowledge, Tactics level, mana, maximum mana, ranged,
-    /// melee and reduction basis points), terrain, RNG state.
+    /// melee and reduction basis points, the Ballista's control if any: shots and double-damage
+    /// chance), terrain, RNG state.
     pub fn state_hash(&self) -> u64 {
         h3_kernel::hash::hash_of(self)
     }

@@ -63,15 +63,15 @@ Classes: `exploit-fix` (always fixed, never toggleable) · `preserve` (accepted,
 
 ### Q-0004 — The Ballista has unlimited shots
 - Class: fix-optional (survey S-01, suggested class; confirmed by experiment, Q30 rule)
-- Context / rules affected: battle, BAT-WAR-002 (E04a T7)
+- Context / rules affected: battle, BAT-WAR-002, BAT-WAR-006 (E04a T7a)
 - Original behavior: the Ballista shoots on after its 24 shots without an Ammo Cart; the displayed shot count goes negative. Observed with Expert Artillery: two shots per round, 22 and 20 shots shown after rounds 1 and 2, 0 after round 12, then two shots per round with negative counts.
 - Intended/expected behavior: the Ballista uses its 24 shots unless an Ammo Cart supplies it (HotA fixed it; VCMI and our E03 rule).
 - Impact: gameplay-altering (small)
 - Community status: documented on the wiki (War Machine page), fixed in Horn of the Abyss
 - Sources: observation, `experiments/results/E04a-batch-1a.md` R7 (SoD 4.0 Complete, 2026-10-03); wiki, War Machine (https://heroes.thelazy.net/index.php/War_Machine, retrieved 2026-10-03)
-- Flag: `quirk.battle.unlimited_ballista_shots` (planned; registered by E04a T7 with the rule change)
+- Flag: `quirk.battle.unlimited_ballista_shots` (registered by E04a T7a, index 2): the shooting war machine (stack trait `UNLIMITED_SHOTS`, set at setup) shoots without shots left, automatic or commanded; its count stays at 0 (we do not show negative counts). Agent decision: also the automatic Ballista without Artillery (only observed with Expert Artillery; an automatic Ballista needs 25 rounds to run dry)
 - Defaults: faithful = on, strict-fixed = off
-- Regression test: with the flag (E04a T7)
+- Regression test: `h3-battle` `tests/war.rs` `under_quirk_q_0004_the_ballista_shoots_on_without_shots` (both profiles)
 - Decided by / date: suggested class S-01, confirmed by experiment batch 1a, 2026-10-03
 
 ### Q-0005 — Damage rates are single-precision values

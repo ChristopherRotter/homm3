@@ -19,13 +19,11 @@ task has to do with them:
 
 - **T6** (done): quirk Q-0005 (T6a, BAT-DMG-002, R1–R3 as fixtures); the hero's damage
   bonuses enter as single-precision rates of their summed basis points (T6b, BAT-HER-004).
-- **T7:** the hero's attack counts twice in the Ballista's damage, as in VCMI: the damage range is
-  (2..3) × (hero attack + 1), rolled as one integer in that range (R5: 92 = 56 × 1.65), and the
-  Ballista's attack (10 + hero attack) enters the attack advantage. Basic Artillery: one shot per
-  turn, Expert two (R6, R7; D1). A commanded Ballista may Wait and Defend (R6, OQ-4). Quirk Q-0004:
-  unlimited Ballista shots (R7). A commanded First Aid Tent got no turn while no ally was hurt
-  (R6); its Wait/Defend and the heal amount with the skill were not observable (the Golems
-  destroyed it) — retry in batch 1b with troops hurt before the tent's first turn.
+- **T7a** (done): R5 → BAT-WAR-005, R6/R7 → BAT-WAR-006 and HER-BAT-005, Q-0004 →
+  BAT-WAR-002.
+- **T7b:** a commanded First Aid Tent got no turn while no ally was hurt (R6); its Wait/Defend
+  and the heal amount with the skill were not observable (the Golems destroyed it) — retry in
+  batch 1b with troops hurt before the tent's first turn.
 - **T10** (T3b put the values into the packs): Elixir of Life on Trolls shows 54 hit points: +25 % of the creature's base (40 → 50)
   plus the parts' flat +4 (Ring of Vitality, Ring of Life, Vial of Lifeblood); regeneration restores
   all 54 (R8: survey quirk S-04 not reproduced, no ledger entry). Creature specialties at hero
@@ -63,9 +61,9 @@ become several effects) and `StatOp { Add, PercentBp }`. What the tasks still ha
   book's spells of the ruleset and not creature abilities; it does not check the primary-skill
   limits (any `u8` is accepted).
 - **The derivation fills the rest:** `effects` from artifacts and specialties other than morale
-  and luck (T10; morale and luck since T5b, HER-BAT-003; at most 64 in all), machine control
-  (T7), surrender discount (T9), magic (E04b); damage bonuses since T6b (HER-BAT-004, applied
-  by BAT-HER-004). Sums that can exceed the field types saturate; `surrender_discount_bp` is
+  and luck (T10; morale and luck since T5b, HER-BAT-003; at most 64 in all), the tent's control
+  (T7b; the Ballista's since T7a, HER-BAT-005), surrender discount (T9), magic (E04b); damage
+  bonuses since T6b (HER-BAT-004, applied by BAT-HER-004). Sums that can exceed the field types saturate; `surrender_discount_bp` is
   clamped to 10 000 like `reduction_bp`.
 
 ## 5. `BattleSetup`, `BattleOutcome`, `BattleResult` (T9)
@@ -140,10 +138,9 @@ state-hash bump. Left for T9:
   `surrender_needs_consent` is set (default per D-5; the wiki says the opponent may refuse), the
   battle enters a pending state in which the only legal commands are the opponent's answer; a
   rejection resumes where the offer was made.
-- **Hero-run war machines:** with `MachineControl.ballista` the side commands its Ballista
-  (ordinary `Shoot`, `shots` shots, `double_damage_percent`), with `tent` its First Aid Tent (new
-  `Heal { target }`); otherwise they act automatically as in E03. Wait and Defend stay legal for
-  them (OQ-4).
+- **Hero-run war machines:** the Ballista is done (T7a, BAT-WAR-006). With `MachineControl.tent`
+  the side commands its First Aid Tent (new `Heal { target }`, T7b); otherwise it acts
+  automatically as in E03. Wait and Defend stay legal for it (OQ-4).
 - Actors are validated as in ADR-0004: the answer to a surrender comes from the side it was offered
   to, every other command from the side whose stack is active or whose tactics phase runs.
 

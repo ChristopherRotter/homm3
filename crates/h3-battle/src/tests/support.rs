@@ -568,6 +568,10 @@ pub fn ruleset_with(profile: &str, edit: impl FnOnce(&mut BattleParamsDef)) -> R
                 key: ContentKey::new("t", "single").unwrap(),
                 quirks: vec![(String::from("quirk.battle.single_precision_rates"), true)],
             },
+            ProfileDef {
+                key: ContentKey::new("t", "unlimited").unwrap(),
+                quirks: vec![(String::from("quirk.battle.unlimited_ballista_shots"), true)],
+            },
         ],
         battle: Some(battle),
         spell_schools: vec![SpellSchoolDef {

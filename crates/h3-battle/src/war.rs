@@ -1,21 +1,44 @@
-//! War machines (BAT-WAR-001..004): their automatic turns.
+//! War machines (BAT-WAR-001..006): their automatic turns and which of them their side commands.
 //!
-//! Without a hero's Artillery or First Aid skill (E04) war machines are controlled by the
-//! engine: when one becomes active it acts at once and its turn ends. The Ballista shoots the
-//! target VCMI's automatic control picks (BAT-WAR-002), the First Aid Tent heals a random
-//! damaged allied stack (BAT-WAR-003); the Ammo Cart never becomes active (BAT-WAR-004).
+//! Without a hero's Artillery or First Aid skill war machines are controlled by the engine: when
+//! one becomes active it acts at once and its turn ends. The Ballista shoots the target VCMI's
+//! automatic control picks (BAT-WAR-002), the First Aid Tent heals a random damaged allied stack
+//! (BAT-WAR-003); the Ammo Cart never becomes active (BAT-WAR-004). A hero with Artillery
+//! commands its side's Ballista instead (BAT-WAR-006).
 
 use core::cmp::Ordering;
 
 use h3_content::{Ability, Ruleset};
+use h3_contracts::BallistaControl;
 use h3_kernel::FixedVec;
+use h3_kernel::arith::cmp_fractions;
 
 use crate::combat::{can_shoot, shoot, shot_damage_range};
 use crate::damage::apply_damage;
 use crate::event::{Event, EventKind, Sink};
 use crate::geometry::Field;
+use crate::hero;
 use crate::movement::reachable;
 use crate::state::{BattleState, STACK_CAPACITY, StackId, StackTraits};
+
+/// How the side of stack `id` commands it, if `id` is a shooting war machine (the Ballista) and
+/// the side's hero has Artillery (BAT-WAR-006).
+pub(crate) fn commanded_ballista(state: &BattleState, id: StackId) -> Option<BallistaControl> {
+    let s = state.at(id);
+    if s.has(StackTraits::WAR_MACHINE) && s.has(StackTraits::SHOOTER) {
+        hero::ballista(&state.heroes, s.side)
+    } else {
+        None
+    }
+}
+
+/// Whether war machine `id` waits for its side's command on its turn instead of acting on its
+/// own: a commanded Ballista that can shoot (BAT-WAR-006). Otherwise its turn is automatic
+/// (BAT-WAR-002/003; a commanded Ballista that cannot shoot does nothing).
+// rule: BAT-WAR-006
+pub(crate) fn is_commanded(state: &BattleState, field: Field, id: StackId) -> bool {
+    commanded_ballista(state, id).is_some() && can_shoot(state, field, id)
+}
 
 /// The automatic turn of war machine `id` (BAT-WAR-002/003): heal, shoot, or nothing.
 pub(crate) fn act<S: Sink>(state: &mut BattleState, ruleset: &Ruleset, id: StackId, sink: &mut S) {
@@ -65,7 +88,9 @@ struct Candidate {
 /// The value of shooting `target`: with average damage `D = (min + max) / 2` capped at the
 /// target's health `T`, average kills `K` and AI value `V` per creature of `M` hit points,
 /// `min(T, D) · V / M + K · V` — as the fraction `V · (min(2T, min + max) + (kmin + kmax) · M)`
-/// over `2M`, compared exactly.
+/// over `2M`, compared exactly ([`cmp_fractions`]). No overflow for any stacks: `min + max` and
+/// `2T` are below 2^65, the kills below 2^33 and `M` below 2^32, so the numerator stays below
+/// 2^99 and the denominator below 2^33.
 pub(crate) fn value(
     state: &BattleState,
     ruleset: &Ruleset,
@@ -112,11 +137,10 @@ pub(crate) fn shooting_target(
         }
     }
     let best_class = candidates.iter().any(|c| c.creature);
-    // The higher value wins, then the lower id.
+    // The higher value wins, then the lower id (E03 review: the cross products are compared
+    // in 256 bits, so they cannot overflow).
     let rank = |a: &Candidate, b: &Candidate| -> Ordering {
-        (a.value.0 * b.value.1)
-            .cmp(&(b.value.0 * a.value.1))
-            .then_with(|| b.id.cmp(&a.id))
+        cmp_fractions(a.value, b.value).then_with(|| b.id.cmp(&a.id))
     };
     // Best first (selection, no sort): the first that could attack next turn wins, else the best.
     let mut taken = [false; STACK_CAPACITY];

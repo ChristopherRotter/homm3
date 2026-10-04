@@ -57,6 +57,7 @@ impl QuirkRegistry {
 pub const REGISTRY: QuirkRegistry = QuirkRegistry::new(&[
     "quirk.battle.no_luck_without_hero",
     "quirk.battle.single_precision_rates",
+    "quirk.battle.unlimited_ballista_shots",
 ]);
 
 /// Q-0003: creatures of a side without a hero never get lucky strikes (BAT-LCK-002).
@@ -64,6 +65,9 @@ pub const NO_LUCK_WITHOUT_HERO: QuirkFlag = QuirkFlag(0);
 
 /// Q-0005: the damage factors use the single-precision values of their rates (BAT-DMG-002).
 pub const SINGLE_PRECISION_RATES: QuirkFlag = QuirkFlag(1);
+
+/// Q-0004: the shooting war machine (the Ballista) shoots on without shots left (BAT-WAR-002).
+pub const UNLIMITED_BALLISTA_SHOTS: QuirkFlag = QuirkFlag(2);
 
 /// The set of enabled quirk flags of a ruleset.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
@@ -103,7 +107,7 @@ mod tests {
 
     #[test]
     fn registry_lookup_and_bitset() {
-        assert_eq!(REGISTRY.len(), 2);
+        assert_eq!(REGISTRY.len(), 3);
         assert_eq!(
             REGISTRY.lookup("quirk.battle.no_luck_without_hero"),
             Some(NO_LUCK_WITHOUT_HERO)
@@ -111,6 +115,10 @@ mod tests {
         assert_eq!(
             REGISTRY.lookup("quirk.battle.single_precision_rates"),
             Some(SINGLE_PRECISION_RATES)
+        );
+        assert_eq!(
+            REGISTRY.lookup("quirk.battle.unlimited_ballista_shots"),
+            Some(UNLIMITED_BALLISTA_SHOTS)
         );
         // `new` is a const fn; call it at run time too so coverage sees it.
         let runtime = QuirkRegistry::new(&["quirk.battle.a"]);

@@ -18,8 +18,8 @@ use h3_content::{
     TerrainDef,
 };
 use h3_contracts::{
-    Army, ArmyStack, BattleEffect, BattleHero, BattleSetup, BattleSide, DamageBonuses,
-    MachineControl,
+    Army, ArmyStack, BallistaControl, BattleEffect, BattleHero, BattleSetup, BattleSide,
+    DamageBonuses,
 };
 use serde::{Deserialize, Serialize};
 
@@ -1245,9 +1245,41 @@ pub struct HeroEntry {
     /// default 0, written only when set).
     #[serde(default, skip_serializing_if = "is_zero")]
     pub reduction_bp: u16,
+    /// The side commands its Ballista ([`MachineControl::ballista`]; default not, written only
+    /// when set).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub ballista: Option<BallistaEntry>,
     /// Battle effects (default none; written only when there are some, after the values).
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub effects: Vec<EffectEntry>,
+}
+
+/// How a hero commands its Ballista ([`BallistaControl`]) in scenario and replay files.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct BallistaEntry {
+    /// Shots per turn.
+    pub shots: u8,
+    /// Chance of each shot to deal double damage, basis points.
+    pub double_damage_chance_bp: u16,
+}
+
+impl From<BallistaEntry> for BallistaControl {
+    fn from(e: BallistaEntry) -> Self {
+        Self {
+            shots: e.shots,
+            double_damage_chance_bp: e.double_damage_chance_bp,
+        }
+    }
+}
+
+impl From<BallistaControl> for BallistaEntry {
+    fn from(c: BallistaControl) -> Self {
+        Self {
+            shots: c.shots,
+            double_damage_chance_bp: c.double_damage_chance_bp,
+        }
+    }
 }
 
 /// Whether a value is 0 (serde's `skip_serializing_if`).
@@ -1366,6 +1398,7 @@ impl HeroEntry {
             melee_bp: self.melee_bp,
             reduction_bp: self.reduction_bp,
         };
+        hero.war_machines.ballista = self.ballista.map(BallistaControl::from);
         hero.effects = self.effects.iter().map(|e| e.effect()).collect();
         Ok(hero)
     }
@@ -1377,10 +1410,7 @@ impl HeroEntry {
     /// [`PackError::HeroNotWritable`] if a field the format does not hold yet is not neutral.
     pub fn of(hero: &BattleHero, ruleset: &Ruleset) -> Result<Self, PackError> {
         let unwritable = [
-            (
-                "war-machine control",
-                hero.war_machines != MachineControl::default(),
-            ),
+            ("First Aid Tent control", hero.war_machines.tent.is_some()),
             ("surrender discount", hero.surrender_discount_bp != 0),
             (
                 "effects other than morale and luck",
@@ -1410,6 +1440,7 @@ impl HeroEntry {
             ranged_bp: hero.damage.ranged_bp,
             melee_bp: hero.damage.melee_bp,
             reduction_bp: hero.damage.reduction_bp,
+            ballista: hero.war_machines.ballista.map(BallistaEntry::from),
             effects: hero.effects.iter().filter_map(EffectEntry::of).collect(),
         })
     }
@@ -1670,7 +1701,8 @@ mod tests {
         assert!(matches!(parse_pack(&bad_profile), Err(PackError::Key(_))));
         let quirky = SYNTHETIC_PACK.replace(
             "quirks = { \"quirk.battle.no_luck_without_hero\" = true, \
-             \"quirk.battle.single_precision_rates\" = true }",
+             \"quirk.battle.single_precision_rates\" = true, \
+             \"quirk.battle.unlimited_ballista_shots\" = true }",
             "quirks = { \"quirk.x\" = true }",
         );
         let pack = parse_pack(&quirky).unwrap();
@@ -1783,6 +1815,10 @@ mod tests {
             melee_bp: 1000,
             reduction_bp: 500,
         };
+        expected.war_machines.ballista = Some(BallistaControl {
+            shots: 1,
+            double_damage_chance_bp: 5000,
+        });
         expected.effects = vec![
             BattleEffect::Morale {
                 amount: 1,
@@ -1855,10 +1891,17 @@ mod tests {
             "{written}"
         );
         assert_eq!(toml::from_str::<HeroEntry>(&written), Ok(entry));
-        // Damage bonuses are written only when set.
+        // Damage bonuses and the Ballista's control are written only when set.
         assert!(written.contains("ranged_bp = 1000\nmelee_bp = 1000\nreduction_bp = 500\n"));
+        assert!(
+            written.contains("[ballista]\nshots = 1\ndouble_damage_chance_bp = 5000\n"),
+            "{written}"
+        );
         let plain = toml::to_string(&HeroEntry::of(&ansel, &ruleset).unwrap()).unwrap();
-        assert!(!plain.contains("_bp"), "{plain}");
+        assert!(
+            !plain.contains("_bp") && !plain.contains("ballista"),
+            "{plain}"
+        );
         let mut stranger = expected.clone();
         stranger.hero_type = h3_content::HeroTypeId::from_raw(99);
         assert_eq!(
@@ -1872,7 +1915,7 @@ mod tests {
                 |h| {
                     h.war_machines.tent = Some(h3_contracts::TentControl { heal_bonus_bp: 1 });
                 },
-                "war-machine control",
+                "First Aid Tent control",
             ),
             (|h| h.surrender_discount_bp = 1, "surrender discount"),
             (
@@ -2207,10 +2250,16 @@ mod tests {
             Err(PackError::Compile(CompileError::InvalidCreature { reason, .. }))
                 if reason == "ammo_supply and first_aid require flag war_machine"
         ));
-        let text = SYNTHETIC_PACK.replace(
-            "flags = [\"alive\"]\n",
-            &std::format!("flags = [\"alive\", \"war_machine\"]\n{all}"),
-        );
+        // (War machines have speed 0, BAT-WAR-001.)
+        let text = SYNTHETIC_PACK
+            .replace(
+                "flags = [\"alive\"]\n",
+                &std::format!("flags = [\"alive\", \"war_machine\"]\n{all}"),
+            )
+            .replace(
+                "hit_points = 10\nspeed = 4\n",
+                "hit_points = 10\nspeed = 0\n",
+            );
         let r = compile(&[&text], "synthetic:faithful").unwrap();
         let spearman = r.creature_by_key("synthetic:spearman").unwrap();
         let wisp = r.creature_by_key("synthetic:wisp").unwrap();
@@ -2289,7 +2338,7 @@ mod tests {
     }
 
     // covers: HER-ART-001, HER-ART-002, HER-WAR-001, HER-BAT-001, HER-BAT-002, HER-BAT-003
-    // covers: HER-BAT-004
+    // covers: HER-BAT-004, HER-BAT-005
     #[test]
     fn hero_details_fit_the_harvested_slots() {
         use h3_heroes::{DetailsError, HeroDetails, derive_battle_hero, validate, war_machines};
@@ -2361,6 +2410,24 @@ mod tests {
             derive_battle_hero(&bow, &sod).unwrap().damage.ranged_bp,
             10_500
         );
+        // Artillery: Basic one shot at 50 % double damage, Expert two at 100 % (batch 1a R6, R7;
+        // HER-BAT-005); without it Orrin does not command his Ballista.
+        assert_eq!(hero.war_machines.ballista, None);
+        let mut gunner = details(&sod, &["base:ballista"], &[]);
+        let artillery = sod.skill_by_key("base:artillery").unwrap();
+        for (level, shots, chance) in [(1, 1, 5000), (3, 2, 10_000)] {
+            gunner.skills = vec![(artillery, level)];
+            assert_eq!(
+                derive_battle_hero(&gunner, &sod)
+                    .unwrap()
+                    .war_machines
+                    .ballista,
+                Some(BallistaControl {
+                    shots,
+                    double_damage_chance_bp: chance
+                })
+            );
+        }
         // Five Clovers of Fortune give luck +1: identical artifacts do not stack (wiki Artifact).
         let luck = |amount| BattleEffect::Luck {
             amount,

@@ -827,12 +827,14 @@ pub fn harvest(inputs: &Inputs, gap: &GapFill) -> Result<Harvest, String> {
     base.push_str(
         "\n[[profile]]\nid = \"faithful\"        # default: preserve/fix-optional quirks on\n\
          quirks = { \"quirk.battle.no_luck_without_hero\" = true, \
-         \"quirk.battle.single_precision_rates\" = true }    # Q-0003, Q-0005\n",
+         \"quirk.battle.single_precision_rates\" = true, \
+         \"quirk.battle.unlimited_ballista_shots\" = true }    # Q-0003, Q-0005, Q-0004\n",
     );
     base.push_str(
         "\n[[profile]]\nid = \"strict-fixed\"    # all quirks fixed\n\
          quirks = { \"quirk.battle.no_luck_without_hero\" = false, \
-         \"quirk.battle.single_precision_rates\" = false }   # Q-0003, Q-0005\n",
+         \"quirk.battle.single_precision_rates\" = false, \
+         \"quirk.battle.unlimited_ballista_shots\" = false }   # Q-0003, Q-0005, Q-0004\n",
     );
 
     // ab

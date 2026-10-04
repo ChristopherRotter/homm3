@@ -235,3 +235,31 @@ numeric  = "integer"
   url        = "https://github.com/vcmi/vcmi/blob/1.7.5/lib/battle/DamageCalculator.cpp#L233-L245"
   retrieved  = "2026-10-03"
   confidence = "high"
+
+[[rule]]
+id       = "HER-BAT-005"
+title    = "The war machines the battle hero commands"
+context  = "heroes"
+status   = "implemented"
+summary  = "The battle hero commands its Ballista (BattleHero.war_machines.ballista) if one of its effect sources (HER-BAT-001; skills, worn artifacts once per type with their combinations' parts, specialty) has an artillery effect: shots per turn and double-damage chance are the largest among such effects (Artillery: Basic one shot and 50 %, Advanced two and 75 %, Expert two and 100 %). Skill specialties do not grow them (no original hero specialises in Artillery; the executable's specialty getter has no Artillery value, docs/formats/installation.md section 7.4; VCMI likewise). The battle applies the control (BAT-WAR-006). The First Aid Tent follows in E04a T7b."
+numeric  = "integer"
+
+  [[rule.source]]
+  kind       = "observation"
+  ref        = "experiments/results/E04a-batch-1a.md R6 (Basic Artillery: one shot per turn), R7 (Expert Artillery: two shots per round) (SoD 4.0 Complete, 2026-10-03; dispute D1: the skill text says two shots at every level)"
+  retrieved  = "2026-10-03"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "wiki"
+  ref        = "Artillery - Heroes 3 wiki: SoD Basic 50 % chance of double damage, Advanced and Expert the Ballista shoots twice, 75 %/100 %"
+  url        = "https://heroes.thelazy.net/index.php/Artillery"
+  retrieved  = "2026-10-03"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "vcmi"
+  ref        = "config/skills.json L611-L666 artillery: BONUS_DAMAGE_CHANCE 50/75/100, HERO_GRANTS_ATTACKS 0/1/1, 'generic specialty not applicable, H3 heroes specialize in ballista creature instead'"
+  url        = "https://github.com/vcmi/vcmi/blob/1.7.5/config/skills.json#L611-L666"
+  retrieved  = "2026-10-04"
+  confidence = "high"

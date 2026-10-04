@@ -1,23 +1,23 @@
 //! The translation from hero details to the battle hero (ADR-0013 point 2; HER-BAT-001 to
-//! HER-BAT-004).
+//! HER-BAT-005).
 
 use alloc::collections::BTreeSet;
 use alloc::vec::Vec;
 
 use h3_content::{Affects, CompiledHeroEffect, FULL_BP, HeroEffect, Ruleset};
-use h3_contracts::{BattleEffect, BattleHero, DamageBonuses};
+use h3_contracts::{BallistaControl, BattleEffect, BattleHero, DamageBonuses, MachineControl};
 
 use crate::details::{HeroDetails, PrimarySkill, check};
 use crate::error::DetailsError;
 
 /// Derives what a battle needs to know about the hero (`BattleSetup.heroes`): the hero type, the
 /// effective primary skills (HER-BAT-001), the Tactics level (HER-BAT-002), the morale and luck
-/// effects (HER-BAT-003) and the damage bonuses (HER-BAT-004); the mana is passed through. The
-/// details are validated first.
+/// effects (HER-BAT-003), the damage bonuses (HER-BAT-004) and the war machines it commands
+/// (HER-BAT-005); the mana is passed through. The details are validated first.
 ///
-/// Later tasks fill the rest; until then it stays neutral: war-machine control (E04a T7),
-/// surrender discount (T9), the other effects (T10), and spell book, maximum mana and schools
-/// (E04b).
+/// Later tasks fill the rest; until then it stays neutral: the First Aid Tent's control (E04a
+/// T7b), surrender discount (T9), the other effects (T10), and spell book, maximum mana and
+/// schools (E04b).
 ///
 /// # Errors
 /// The [`DetailsError`] of the first rule the details break ([`crate::validate`]).
@@ -67,6 +67,9 @@ pub fn derive_battle_hero(
 
     // rule: HER-BAT-004
     hero.damage = damage_bonuses(details, ruleset);
+
+    // rule: HER-BAT-005
+    hero.war_machines = machine_control(effects(details, ruleset, Count::OncePerType));
 
     hero.magic.mana = details.mana;
     Ok(hero)
@@ -186,6 +189,31 @@ fn damage_bonuses(details: &HeroDetails, ruleset: &Ruleset) -> DamageBonuses {
         melee_bp: bp(sums[1]),
         reduction_bp: bp(sums[2]).min(FULL_BP),
     }
+}
+
+/// The war machines the hero commands (HER-BAT-005): the Ballista if an effect gives Artillery,
+/// with the most shots and the highest double-damage chance among such effects. Skill
+/// specialties do not grow them (the original has no Artillery specialist and keeps no
+/// Artillery value its specialty getter could scale, `docs/formats/installation.md` §7.4).
+fn machine_control<'a>(effects: impl Iterator<Item = &'a CompiledHeroEffect>) -> MachineControl {
+    let mut control = MachineControl::default();
+    for effect in effects {
+        if let HeroEffect::Artillery {
+            shots,
+            double_damage_chance_bp,
+        } = *effect
+        {
+            let ballista = control.ballista.get_or_insert(BallistaControl {
+                shots,
+                double_damage_chance_bp,
+            });
+            ballista.shots = ballista.shots.max(shots);
+            ballista.double_damage_chance_bp = ballista
+                .double_damage_chance_bp
+                .max(double_damage_chance_bp);
+        }
+    }
+    control
 }
 
 /// Every effect the hero's details bring into a battle: its secondary skills at their levels,

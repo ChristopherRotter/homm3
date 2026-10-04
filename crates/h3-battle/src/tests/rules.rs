@@ -593,6 +593,23 @@ fn single_precision_rates_reproduce_batch_1a() {
     assert_eq!(single_damage(u64::MAX, (0, 0), &[], p), u64::MAX);
 }
 
+// covers: BAT-WAR-005
+#[test]
+fn the_ballista_damage_of_batch_1a_r5() {
+    // R5 (SoD): a hero with attack 20 and no Artillery; its Ballista's 2–3 grows to 42–63
+    // (× 21), its attack 10 + 20 meets the Behemoth's defense 17 (+65 %). The observed shot of 92
+    // is a roll of 56: 56 × 1.65 = 92.4, with decimal or single-precision rates alike.
+    let r = ruleset();
+    let p = r.battle();
+    assert_eq!(single_damage(56, (30, 17), &[], p), 92);
+    assert_eq!(modified_damage(56, 30, 17, p), 92);
+    // No other roll in the range gives 92.
+    let rolls: Vec<u64> = (42..=63)
+        .filter(|&b| single_damage(b, (30, 17), &[], p) == 92)
+        .collect();
+    assert_eq!(rolls, [56]);
+}
+
 // covers: BAT-DMG-002
 #[test]
 fn the_quirk_flag_selects_the_single_precision_rates() {

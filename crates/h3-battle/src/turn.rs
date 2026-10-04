@@ -11,6 +11,7 @@ use h3_content::Ruleset;
 use h3_contracts::BattleSide;
 
 use crate::event::{Event, EventKind, Sink};
+use crate::geometry::Field;
 use crate::state::{BattleState, StackFlags, StackId, StackTraits};
 use crate::{morale, war};
 
@@ -118,7 +119,9 @@ fn pick<S: Sink>(state: &mut BattleState, sink: &mut S) -> Option<StackId> {
 
 /// Activates the next stack: its Defend bonus ends (BAT-TRN-004), it regenerates (BAT-TRN-005),
 /// and bad morale may freeze it (BAT-MOR-004), in which case it loses its turn and the next stack
-/// is activated. While the battle is not over some stack is alive, so a stack is always found.
+/// is activated; so is the next after a war machine that acts on its own (BAT-WAR-002/003; a
+/// commanded one waits for its side's command, BAT-WAR-006). While the battle is not over some
+/// stack is alive, so a stack is always found.
 pub(crate) fn activate_next<S: Sink>(state: &mut BattleState, ruleset: &Ruleset, sink: &mut S) {
     let mut next = pick(state, sink);
     while let Some(id) = next {
@@ -129,7 +132,9 @@ pub(crate) fn activate_next<S: Sink>(state: &mut BattleState, ruleset: &Ruleset,
         // rule: BAT-MOR-004
         if morale::bad_morale(state, ruleset, id) {
             sink.emit(Event::public(EventKind::BadMorale { stack: id }));
-        } else if state.at(id).has(StackTraits::WAR_MACHINE) {
+        } else if state.at(id).has(StackTraits::WAR_MACHINE)
+            && !war::is_commanded(state, Field::new(ruleset.battle().field), id)
+        {
             // rule: BAT-WAR-002, BAT-WAR-003
             war::act(state, ruleset, id, sink);
         } else {

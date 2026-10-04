@@ -4,6 +4,16 @@ Living state. The last agent updates this at the end of every session; the next 
 
 ---
 
+## 2026-10-04 (ninth session) — E04a T7 in progress (T7a done: the Ballista; T7b next)
+
+**State:** branch `e04a-heroes-in-battle`, `cargo xtask verify` green. Scope chosen by the user at the start: T7 split into **T7a** (Ballista) and **T7b** (First Aid Tent and the `Heal` command), both this session as separate checkpoints. **In progress:** T7b (not started when T7a was committed).
+
+**T7a:** BAT-WAR-005 (the hero's attack + 1 multiplies its war machines' damage range, `Stack::new`), BAT-WAR-006 (commanded Ballista: `war::commanded_ballista`, `war::is_commanded`, `turn::activate_next`; `shots` per Shoot, double-damage roll in `combat::attack`, `StrikeFlags::DOUBLE_DAMAGE`), quirk Q-0004 (`UNLIMITED_BALLISTA_SHOTS`, index 2, `StackTraits::UNLIMITED_SHOTS`), HER-BAT-005 (`derive::machine_control`), `HeroRecord.ballista` (**state hash v11**), `h3_pack::BallistaEntry` (**replay format v6**), Brea commands her Bolt Thrower in `full`, golden replays re-recorded (`full-s3` 262 commands). `h3_kernel::arith::{mul_wide, cmp_fractions}` for the ranking (E03 review item done). Compiler: war machines must have speed 0. Bench re-baselined (see the epic).
+
+**Next:** T7b as planned in the epic file.
+
+---
+
 ## 2026-10-04 (eighth session) — E04a T6 done (T6a and T6b: single-precision rates, Archery, Offense, Armorer)
 
 **State:** branch `e04a-heroes-in-battle`, `cargo xtask verify` green (also `--with-original-data`). Scope chosen by the user at the start: T6 split into **T6a** (quirk Q-0005, the rate arithmetic) and **T6b** (Archery, Offense, Armorer through the seam), both this session as separate checkpoints. Nothing half-done.

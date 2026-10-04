@@ -46,6 +46,7 @@ fn luck(amount: i8) -> HeroEffectDef {
 fn pack() -> ContentPack {
     let mut cart = creature("t:cart");
     cart.info.flags = vec!["war_machine".into()];
+    cart.speed = 0;
     let mut kit = artifact("t:kit", Some("t:machine"), vec![]);
     kit.war_machine = Some(key("t:cart"));
     kit.class = ArtifactClass::Special;

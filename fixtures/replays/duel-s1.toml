@@ -150,15 +150,15 @@ commands = [
     "A attack 1 63",
 ]
 checkpoints = [
-    "0xb5a1fa5e094ff374",
-    "0x70f59c42ca23fc41",
-    "0x9d365d3527d3b93c",
-    "0x7f49cbc7131595f1",
-    "0x7147bb479e9baf2f",
+    "0xa939d5da345201d5",
+    "0x41454574d323d864",
+    "0x43e40dc2fea7794d",
+    "0xf2aee61759de2654",
+    "0x08251c1ca560b12e",
 ]
 
 [replay]
-format = 5
+format = 6
 engine = "0.1.0"
 scenario = "duel"
 seed = "1"
@@ -167,12 +167,12 @@ packs = [[
     "0.1.0",
 ]]
 profile = "synthetic:faithful"
-ruleset_hash = "0x0c3ac199657dca68"
+ruleset_hash = "0x539133ea38223a64"
 rng = "xoshiro256starstar+splitmix64"
 rng_version = 1
 hash = "fnv1a64-le"
 hash_version = 1
-battle_state_hash_version = 10
+battle_state_hash_version = 11
 checkpoint_every = 25
 
 [setup]
@@ -200,4 +200,4 @@ count = 20
 
 [result]
 winner = "defender"
-final_hash = "0xbdaab3f423b2dbd8"
+final_hash = "0xadfff3e1dd49511d"

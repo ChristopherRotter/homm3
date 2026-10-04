@@ -7,7 +7,9 @@
 //! accepted; keeping a hero within the game's limits is the derivation's job (HER-BAT-001).
 
 use h3_content::{CreatureSelector, FULL_BP, HeroTypeId, MAX_SKILL_LEVEL, Ruleset, SpellCategory};
-use h3_contracts::{BattleEffect, BattleHero, BattleSide, DamageBonuses, MAX_BATTLE_EFFECTS};
+use h3_contracts::{
+    BallistaControl, BattleEffect, BattleHero, BattleSide, DamageBonuses, MAX_BATTLE_EFFECTS,
+};
 use h3_kernel::{CanonicalHash, StateHasher};
 
 use crate::error::{HeroError, SetupError};
@@ -42,11 +44,21 @@ pub(crate) struct HeroRecord {
     /// Damage bonuses of the side's strikes and reduction of the strikes against it
     /// (BAT-HER-004; private to the side).
     pub(crate) damage: DamageBonuses,
+    /// The side commands its Ballista (Artillery, BAT-WAR-006; private to the side).
+    pub(crate) ballista: Option<BallistaControl>,
 }
 
 /// The damage bonuses of `side` (none without a hero; BAT-HER-004).
 pub(crate) fn damage(heroes: &[Option<HeroRecord>; 2], side: BattleSide) -> DamageBonuses {
     heroes[side.index()].map(|h| h.damage).unwrap_or_default()
+}
+
+/// How `side`'s hero commands its Ballista, if it does (BAT-WAR-006).
+pub(crate) fn ballista(
+    heroes: &[Option<HeroRecord>; 2],
+    side: BattleSide,
+) -> Option<BallistaControl> {
+    heroes[side.index()].and_then(|h| h.ballista)
 }
 
 impl CanonicalHash for HeroRecord {
@@ -61,6 +73,11 @@ impl CanonicalHash for HeroRecord {
         let d = &self.damage;
         for value in [d.ranged_bp, d.melee_bp, d.reduction_bp] {
             h.write_u16(value);
+        }
+        h.write_u8(u8::from(self.ballista.is_some()));
+        if let Some(b) = self.ballista {
+            h.write_u8(b.shots);
+            h.write_u16(b.double_damage_chance_bp);
         }
     }
 }
@@ -131,6 +148,7 @@ pub(crate) fn check(
         },
         tactics: hero.tactics,
         damage: hero.damage,
+        ballista: hero.war_machines.ballista,
     })
 }
 

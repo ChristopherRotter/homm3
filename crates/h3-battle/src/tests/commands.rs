@@ -232,13 +232,17 @@ fn state_hash_is_pinned() {
         melee_bp: 2000,
         reduction_bp: 500,
     };
+    led.war_machines.ballista = Some(h3_contracts::BallistaControl {
+        shots: 2,
+        double_damage_chance_bp: 7500,
+    });
     let setup = BattleSetup {
         heroes: [Some(led), None],
         ..setup(&r, &[(0, "fixed", 3), (2, "wisp", 7)], &[(0, "slow", 4)])
     };
     let s = BattleState::new(&r, &setup, 7).unwrap();
     assert_eq!(s.state_hash(), GOLDEN, "got {:#018x}", s.state_hash());
-    assert_eq!(crate::BATTLE_STATE_HASH_VERSION, 10);
+    assert_eq!(crate::BATTLE_STATE_HASH_VERSION, 11);
 }
 
-const GOLDEN: u64 = 0x5d3d_5820_3c0f_b163;
+const GOLDEN: u64 = 0xf9cf_0c68_043c_5e88;

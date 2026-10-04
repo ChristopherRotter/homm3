@@ -8,7 +8,7 @@
 use std::vec::Vec;
 
 use h3_content::{Formation, Ruleset};
-use h3_contracts::{Army, ArmyStack, BattleSetup, BattleSide};
+use h3_contracts::{Army, ArmyStack, BallistaControl, BattleSetup, BattleSide};
 use h3_kernel::Rng;
 use proptest::collection::{btree_map, vec};
 use proptest::prelude::{Just, Strategy, any, prop_assert, prop_assert_eq, prop_oneof, proptest};
@@ -102,7 +102,8 @@ fn arb_game() -> impl Strategy<Value = Game> {
 
 /// A setup from generated armies and obstacles; bits 0–5 of `machines` choose the attacker's
 /// and the defender's war machines (ballista, ammo cart, first aid tent), bits 6–7 whether the
-/// attacker and the defender stand in tight formation.
+/// attacker and the defender stand in tight formation, bit 8 whether the attacker's hero
+/// commands its Ballista (bit 9: two shots; bits 10–23: the double-damage chance).
 fn make_setup(
     r: &Ruleset,
     attacker: &[(u8, u8, u32)],
@@ -131,11 +132,20 @@ fn make_setup(
             })
             .collect(),
     };
+    let mut led = hero(r);
+    if machines & (1 << 8) != 0 {
+        led.war_machines.ballista = Some(BallistaControl {
+            shots: 1 + u8::from(machines & (1 << 9) != 0),
+            double_damage_chance_bp: u16::try_from((machines >> 10) % 16_384)
+                .unwrap()
+                .min(10_000),
+        });
+    }
     BattleSetup {
         attacker: army(attacker),
         defender: army(defender),
         obstacles: obstacles.to_vec(),
-        heroes: [Some(hero(r)), None],
+        heroes: [Some(led), None],
         terrain: None,
         war_machines,
         formations: [6, 7].map(|bit| {
@@ -400,7 +410,7 @@ fn reference_target(state: &BattleState, r: &Ruleset, shooter: StackId) -> Optio
         .max_by(|a, b| {
             (a.1, a.2)
                 .cmp(&(b.1, b.2))
-                .then_with(|| (a.3.0 * b.3.1).cmp(&(b.3.0 * a.3.1)))
+                .then_with(|| h3_kernel::arith::cmp_fractions(a.3, b.3))
                 .then_with(|| b.0.cmp(&a.0))
         })
         .map(|c| c.0)

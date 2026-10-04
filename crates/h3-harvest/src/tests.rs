@@ -45,7 +45,11 @@ fn inputs() -> Inputs {
         } else {
             format!("Unit {id}")
         };
-        sod.push(row(&name, 7, 4));
+        let mut r = row(&name, 7, 4);
+        if matches!(id, 148 | 149) {
+            r[14] = "0".into(); // war machines have speed 0 (BAT-WAR-001)
+        }
+        sod.push(r);
         let town = match id {
             0..=9 => 0,
             10..=19 => 1,

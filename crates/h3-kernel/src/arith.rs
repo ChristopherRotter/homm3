@@ -11,6 +11,27 @@ pub fn mul_div_floor(a: u64, b: u64, d: u64) -> Option<u64> {
     u64::try_from(q).ok()
 }
 
+/// The exact product `a · b` as its `(high, low)` 128-bit halves (schoolbook on 64-bit limbs;
+/// no overflow for any inputs).
+pub fn mul_wide(a: u128, b: u128) -> (u128, u128) {
+    let mask = u128::from(u64::MAX);
+    let (a1, a0) = (a >> 64, a & mask);
+    let (b1, b0) = (b >> 64, b & mask);
+    let (p00, p01, p10, p11) = (a0 * b0, a0 * b1, a1 * b0, a1 * b1);
+    // At most 3 · (2^64 − 1).
+    let mid = (p00 >> 64) + (p01 & mask) + (p10 & mask);
+    let low = (p00 & mask) | (mid << 64);
+    // The high half of a product below 2^256 fits.
+    let high = p11 + (p01 >> 64) + (p10 >> 64) + (mid >> 64);
+    (high, low)
+}
+
+/// Compares the fractions `a.0 / a.1` and `b.0 / b.1` (positive denominators) exactly, by
+/// their cross products `a.0 · b.1` and `b.0 · a.1` in 256 bits ([`mul_wide`]).
+pub fn cmp_fractions(a: (u128, u128), b: (u128, u128)) -> core::cmp::Ordering {
+    mul_wide(a.0, b.1).cmp(&mul_wide(b.0, a.1))
+}
+
 /// Fraction bits of the numerators [`single_precision`] returns.
 pub const SINGLE_FRAC_BITS: u32 = 40;
 
@@ -167,6 +188,22 @@ mod tests {
     }
 
     #[test]
+    fn wide_products_and_fraction_comparisons() {
+        assert_eq!(mul_wide(0, u128::MAX), (0, 0));
+        assert_eq!(mul_wide(6, 7), (0, 42));
+        assert_eq!(mul_wide(1 << 64, 1 << 64), (1, 0));
+        // (2^128 − 1)^2 = 2^256 − 2^129 + 1.
+        assert_eq!(mul_wide(u128::MAX, u128::MAX), (u128::MAX - 1, 1));
+        assert_eq!(cmp_fractions((1, 3), (1, 2)), core::cmp::Ordering::Less);
+        assert_eq!(cmp_fractions((2, 4), (1, 2)), core::cmp::Ordering::Equal);
+        // Cross products beyond u128: 2^127 / 2^100 = 2^27 > (2^127 − 1) / 2^100.
+        assert_eq!(
+            cmp_fractions((1 << 127, 1 << 100), ((1 << 127) - 1, 1 << 100)),
+            core::cmp::Ordering::Greater
+        );
+    }
+
+    #[test]
     fn single_precision_values() {
         // The rates batch 1a observed (Q-0005): 0.05 = 13421773 / 2^28, 0.025 = 13421773 / 2^29.
         assert_eq!(single_precision(5, 100), Some(13_421_773 << 12));
@@ -186,6 +223,17 @@ mod tests {
         assert_eq!(single_precision(1, u16::MAX), Some(8_388_736 << 1));
         assert_eq!(single_precision(0, 7), Some(0));
         assert_eq!(single_precision(1, 0), None);
+    }
+
+    proptest! {
+        // Below 2^128 the wide product is the plain one; shifted by 64 bits it moves across
+        // the halves.
+        #[test]
+        fn wide_products_agree_with_u128(a: u64, b: u64) {
+            let (a, b) = (u128::from(a), u128::from(b));
+            prop_assert_eq!(mul_wide(a, b), (0, a * b));
+            prop_assert_eq!(mul_wide(a << 64, b), ((a * b) >> 64, (a * b) << 64));
+        }
     }
 
     proptest! {

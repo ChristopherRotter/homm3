@@ -323,17 +323,17 @@ fn too_many_creatures() {
 fn creature_errors() {
     type Edit = fn(&mut CreatureDef);
     const DAMAGE: &str = "damage_min must be at least 1 (war machines: or damage [0, 0])";
-    let cases: [(Edit, &str); 8] = [
+    const SPEED: &str = "speed must be 0 for war machines and at least 1 otherwise";
+    let cases: [(Edit, &str); 9] = [
         (|c| c.damage_min = 0, DAMAGE),
         (
             |c| c.damage_max = 0,
             "damage_max must not be below damage_min",
         ),
         (|c| c.hit_points = 0, "hit_points must be at least 1"),
-        (
-            |c| c.speed = 0,
-            "speed must be at least 1 (except for war machines)",
-        ),
+        (|c| c.speed = 0, SPEED),
+        // War machines never move (BAT-WAR-001).
+        (|c| c.info.flags = vec!["war_machine".into()], SPEED),
         // A war machine may have no damage, but not a damage range starting at 0.
         (
             |c| {

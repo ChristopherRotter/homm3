@@ -7,7 +7,9 @@
 //! (BAT-ATK-001) is the attack, the target's retaliation, and for creatures that strike twice a
 //! second attack.
 
-use h3_content::{Ability, BattleParams, CompiledAbility, Ruleset, SINGLE_PRECISION_RATES};
+use h3_content::{
+    Ability, BattleParams, CompiledAbility, FULL_BP, Ruleset, SINGLE_PRECISION_RATES,
+};
 use h3_contracts::{BattleResult, BattleSide};
 use h3_kernel::arith::mul_div_floor;
 
@@ -18,10 +20,10 @@ use crate::damage::{
 use crate::event::{Event, EventKind, Sink, StrikeFlags};
 use crate::geometry::{Direction, Field, Footprint, Hex, HexSet};
 use crate::hero::{self, HeroRecord};
-use crate::morale;
 use crate::state::{
     BattleState, STACK_CAPACITY, Stack, StackFlags, StackId, StackTraits, UNLIMITED_RETALIATIONS,
 };
+use crate::{morale, war};
 
 /// The secondary targets of an attack, by stack index.
 type Targets = [bool; STACK_CAPACITY];
@@ -41,13 +43,19 @@ pub(crate) fn is_blocked(state: &BattleState, field: Field, id: StackId) -> bool
 }
 
 /// Whether stack `id` can shoot now: a shooter with shots left that is not blocked
-/// (BAT-RNG-001); war machines shoot even when blocked (BAT-WAR-001).
+/// (BAT-RNG-001); war machines shoot even when blocked (BAT-WAR-001), and under quirk Q-0004
+/// the shooting war machine also without shots (BAT-WAR-002).
 // rule: BAT-RNG-001, BAT-WAR-001
 pub(crate) fn can_shoot(state: &BattleState, field: Field, id: StackId) -> bool {
     let s = state.at(id);
     s.has(StackTraits::SHOOTER)
-        && s.shots > 0
+        && has_ammunition(s)
         && (s.has(StackTraits::WAR_MACHINE) || !is_blocked(state, field, id))
+}
+
+/// Whether `stack` has a shot to use: shots left, or none needed (quirk Q-0004, BAT-WAR-002).
+fn has_ammunition(stack: &Stack) -> bool {
+    stack.shots > 0 || stack.has(StackTraits::UNLIMITED_SHOTS)
 }
 
 /// Whether a living stack of `side` supplies ammunition (BAT-WAR-004).
@@ -69,6 +77,8 @@ struct Blow {
     death_blow: bool,
     /// The strike is lucky (BAT-LCK-002; only the strike on the target of the attack, Q18).
     lucky: bool,
+    /// A commanded war machine's double damage (BAT-WAR-006).
+    double_damage: bool,
 }
 
 /// Whether the creature of `stack` has an ability matching `f`.
@@ -157,6 +167,11 @@ fn strike_factors(
         factors.bonus(factors.rate(100, Unit::Percent));
         flags = flags.with(StrikeFlags::DEATH_BLOW);
     }
+    // rule: BAT-WAR-006
+    if blow.double_damage {
+        factors.bonus(factors.rate(100, Unit::Percent));
+        flags = flags.with(StrikeFlags::DOUBLE_DAMAGE);
+    }
     if let Some(percent) = penalty(params, field, striker, victim, flags) {
         factors.reduce(factors.rate(percent, Unit::Percent));
     }
@@ -173,9 +188,9 @@ fn strike_factors(
     (factors, flags)
 }
 
-/// The least and greatest damage a shot of `attacker` would deal to `target` now, without luck
-/// and death blows (the base damage of `count` creatures is between `count · min` and
-/// `count · max` for every sampling, BAT-DMG-001).
+/// The least and greatest damage a shot of `attacker` would deal to `target` now, without luck,
+/// death blows and double damage (the base damage of `count` creatures is between `count · min`
+/// and `count · max` for every sampling, BAT-DMG-001).
 pub(crate) fn shot_damage_range(
     state: &BattleState,
     ruleset: &Ruleset,
@@ -187,6 +202,7 @@ pub(crate) fn shot_damage_range(
         charge: 0,
         death_blow: false,
         lucky: false,
+        double_damage: false,
     };
     let (factors, _) = strike_factors(
         ruleset,
@@ -226,7 +242,8 @@ fn penalty(
 }
 
 /// One attack of `attacker` on `target` that also hits the `others` (BAT-ATK-003, BAT-RNG-004):
-/// the luck roll (BAT-LCK-002) and the death-blow roll (BAT-DMG-007), the strike on the target
+/// the luck roll (BAT-LCK-002), the death-blow roll (BAT-DMG-007) and a commanded war machine's
+/// double-damage roll (BAT-WAR-006, in this order as in VCMI), the strike on the target
 /// (the only one luck applies to, Q18), the strikes on the others in stack-id order, then life
 /// drain (BAT-DMG-008) and death stare (BAT-DMG-009).
 fn attack<S: Sink>(
@@ -252,10 +269,16 @@ fn attack<S: Sink>(
     // Luck is rolled before the death blow, as VCMI does.
     let lucky = morale::lucky(state, ruleset, attacker);
     // rule: BAT-DMG-007
+    let death_blow = death_blow > 0 && state.rng.below(100) < u32::from(death_blow);
+    // rule: BAT-WAR-006
+    let chance = war::commanded_ballista(state, attacker).map_or(0, |b| b.double_damage_chance_bp);
+    let double_damage = chance >= FULL_BP
+        || (chance > 0 && state.rng.below(u32::from(FULL_BP)) < u32::from(chance));
     let blow = Blow {
         charge,
-        death_blow: death_blow > 0 && state.rng.below(100) < u32::from(death_blow),
+        death_blow,
         lucky: false,
+        double_damage,
     };
     // Life drain takes `drain` % of the hit points lost by living targets, rounded down per
     // target.
@@ -524,7 +547,8 @@ fn retaliate<S: Sink>(
 }
 
 /// A shot at `target`, aimed at its hex `at`: one ranged attack per shot (two for shooters that
-/// strike twice, as long as the target lives and shots are left), each using a shot; area shots
+/// strike twice, the commanded Ballista's `shots`, BAT-WAR-006; further shots as long as the
+/// target lives and shots are left), each using a shot (none below 0, quirk Q-0004); area shots
 /// also strike every other living stack around `at` that the area does not spare (BAT-RNG-004).
 /// Shots are not retaliated. Then the end-of-battle check.
 // rule: BAT-RNG-001
@@ -537,17 +561,18 @@ pub(crate) fn shoot<S: Sink>(
     sink: &mut S,
 ) {
     let field = Field::new(ruleset.battle().field);
-    let times = if state.at(shooter).has(StackTraits::STRIKES_TWICE) {
-        2
-    } else {
-        1
+    let times = match war::commanded_ballista(state, shooter) {
+        Some(control) => control.shots,
+        None if state.at(shooter).has(StackTraits::STRIKES_TWICE) => 2,
+        None => 1,
     };
     for i in 0..times {
-        if i > 0 && (!state.at(target).is_alive() || state.at(shooter).shots == 0) {
+        if i > 0 && (!state.at(target).is_alive() || !has_ammunition(state.at(shooter))) {
             break;
         }
         if !ammo_supplied(state, state.at(shooter).side) {
-            state.at_mut(shooter).shots -= 1;
+            let s = state.at_mut(shooter);
+            s.shots = s.shots.saturating_sub(1);
         }
         let others = area(state, field, shooter, target, at);
         let pair = (shooter, target);
