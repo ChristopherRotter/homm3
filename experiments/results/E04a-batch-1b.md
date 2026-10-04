@@ -29,7 +29,7 @@ Map file: `E04a-batch-1b.h3m`. Fill in the blanks below and keep this file; an a
 |   |   |   |
 |   |   |   |
 
-- Anything unexpected: 
+- Anything unexpected: There are no morale modifiers shown in the hero screen (and it says neutral morale), even when unequipping the artifact. Deviating from the scenario, upon entering a battle: It shows "Troops of three alignments -1". When dismissing either pixies or peasants beforehand: neutral morale.
 
 ## R2 — Tactics phase: zone, war machines, placement (OQ-2, OQ-3)
 
@@ -47,13 +47,13 @@ Map file: `E04a-batch-1b.h3m`. Fill in the blanks below and keep this file; an a
 
 **Record**
 
-- Zone: rightmost hex in the top row / in the second row: 
-- Ballista or Tent selectable or movable (yes/no): 
-- Buttons during the phase; Retreat available (yes/no): 
-- Peasants moved more than 3 hexes (yes/no): 
-- A stack moved twice (yes/no); stacks picked freely or in a fixed order: 
-- Enclosed hex available to the Peasants / to the Pixies (yes/no each): 
-- Anything unexpected: 
+- Zone: rightmost hex in the top row / in the second row: 7 for either
+- Ballista or Tent selectable or movable (yes/no): no
+- Buttons during the phase; Retreat available (yes/no): yes
+- Peasants moved more than 3 hexes (yes/no): yes
+- A stack moved twice (yes/no); stacks picked freely or in a fixed order: yes; can move any creature anywhere as long as pathing permits (cannot walk over obstacles), and any creature can move any amount of times; game dictates the order and moving the creature yields control to the next one in sequence
+- Enclosed hex available to the Peasants / to the Pixies (yes/no each): Peasants: no, Pixies: yes
+- Anything unexpected:
 
 ## R3 — Tactics: does a disabled Tactics formation still cancel the enemy's Tactics? (OQ-1)
 
@@ -66,9 +66,9 @@ Map file: `E04a-batch-1b.h3m`. Fill in the blanks below and keep this file; an a
 
 **Record**
 
-- Tactics phase: none / Red / Blue: 
-- If one: outermost zone hex in the top row: 
-- Anything unexpected: 
+- Tactics phase: none / Red / Blue: none
+- If one: outermost zone hex in the top row: n/a
+- Anything unexpected:
 
 ## R4 — Surrender: price, discounts, and whether the enemy may refuse (D-1, D-2, D-5)
 
@@ -84,14 +84,14 @@ Map file: `E04a-batch-1b.h3m`. Fill in the blanks below and keep this file; an a
 
 **Record**
 
-- Step 2: what appeared (text, price, buttons): 
-- Step 2: Surrender pressed again right away: 
-- Step 3: Blue's price: 
-- Step 4: Red Pikemen, Red Pixies, Blue Pikemen; Red's price: 
-- Step 5: was Blue asked? What happened (messages): 
-- Step 5: Red's gold before / after: 
-- Step 6 (only if played): computer accepted or refused, in which rounds: 
-- Anything unexpected: 
+- Step 2: what appeared (text, price, buttons): 'B2 states: "I will accept your surrender and grant you and your troops safe passage for the price of 1472 gold."'
+- Step 2: Surrender pressed again right away: always the same, no matter how many times it is pressed + declined
+- Step 3: Blue's price: 179 gold
+- Step 4: Red Pikemen, Red Pixies, Blue Pikemen; Red's price: Red: 6 Pike, 0 Pixies, Blue: 9 Pike, Red's price: 1430
+- Step 5: was Blue asked? What happened (messages): was not asked
+- Step 5: Red's gold before / after: 30000 -> 28570
+- Step 6 (only if played): computer accepted or refused, in which rounds: surrender just ends battle, computer player was not asked for permission
+- Anything unexpected:
 
 ## R5 — Experience: killed war machines, Learning on the +500, captured war machines (D-3, OQ-6, OQ-5)
 
@@ -105,11 +105,11 @@ Map file: `E04a-batch-1b.h3m`. Fill in the blanks below and keep this file; an a
 
 **Record**
 
-- Experience before the battle: 
-- Experience in the victory message: 
-- Order of kills as played; did the Ammo Cart survive?: 
-- War machines of R5 after the battle: 
-- Anything unexpected: 
+- Experience before the battle: 0
+- Experience in the victory message: 632
+- Order of kills as played; did the Ammo Cart survive?: Ballista, Tent, Golem; Ammo cart survived
+- War machines of R5 after the battle: Catapult only
+- Anything unexpected:
 
 ## R6 — Necromancy: rounding per killed stack or over the sum (D-7)
 
@@ -121,9 +121,9 @@ Map file: `E04a-batch-1b.h3m`. Fill in the blanks below and keep this file; an a
 
 **Record**
 
-- Skeletons in the Necromancy message: 
-- Skeletons in R6's army afterwards: 
-- Anything unexpected: 
+- Skeletons in the Necromancy message: 2
+- Skeletons in R6's army afterwards: 2
+- Anything unexpected:
 
 ## R7 — First Aid Tent under the hero's control: targets, Wait/Defend, heal amounts; Ballista at long range (T7b (BAT-WAR-007), artifacts open 2 (baseline))
 
@@ -138,22 +138,22 @@ Map file: `E04a-batch-1b.h3m`. Fill in the blanks below and keep this file; an a
 
 **Record**
 
-- Tent: target chosen by you (yes/no); Wait / Defend available; Ballista as target (yes/no): 
-- After Wait: did the tent act again later in the round?: 
+- Tent: target chosen by you (yes/no); Wait / Defend available; Ballista as target (yes/no): yes (but Ballista cannot be targeted for healing); yes; yes
+- After Wait: did the tent act again later in the round?: yes
 
 | round | Health Left before | healed |
 |---|---|---|
-|   |   |   |
-|   |   |   |
-|   |   |   |
-|   |   |   |
-|   |   |   |
-|   |   |   |
-|   |   |   |
-|   |   |   |
+|3|99|20|
+|4|119|41|
+|5|100|47|
+|6|105|50|
+|8|102|41|
+|9|98|6|
+|10|104|11|
+|11|110|24|
 
-- Ballista damage per shot: 
-- Anything unexpected: 
+- Ballista damage per shot: 7, 8, 9, 7, 10, 11, 11, 9, 9, 8, 10
+- Anything unexpected: Archers did not enough damage, had to defend with the tent multiple rounds to get Behemoth <= 110 HP
 
 ## R8 — War machines and creature artifacts: health, speed, Golden Bow on the Ballista (artifacts open 1, artifacts open 2)
 
@@ -166,16 +166,16 @@ Map file: `E04a-batch-1b.h3m`. Fill in the blanks below and keep this file; an a
 
 **Record**
 
-- Pikemen on the hero screen: Health, Speed: 
+- Pikemen on the hero screen: Health, Speed: 14, 7
 
 | war machine | Health | Speed |
 |---|---|---|
-|   |   |   |
-|   |   |   |
-|   |   |   |
+|Ballista|254|0|
+|Ammo cart|104|0
+|First aid tent|79|0|
 
-- Ballista damage per shot: 
-- Anything unexpected: 
+- Ballista damage per shot: 23, 17, 20
+- Anything unexpected:
 
 ## B6 — Shackles of War against a monster: can the wearer retreat? (D-6)
 
@@ -188,8 +188,8 @@ Map file: `E04a-batch-1b.h3m`. Fill in the blanks below and keep this file; an a
 
 **Record**
 
-- What happened when Retreat was pressed (message): 
-- Anything unexpected: 
+- What happened when Retreat was pressed (message): 'The Shackles of War are present. B6 can not retreat!'
+- Anything unexpected:
 
 ## B7 — Xeron's specialty: does it raise the Devils' speed? (H-2)
 
@@ -201,6 +201,6 @@ Map file: `E04a-batch-1b.h3m`. Fill in the blanks below and keep this file; an a
 
 | creature | attack | defense | speed |
 |---|---|---|---|
-|   |   |   |   |
+|Devils|23|23|12|
 
-- Anything unexpected: 
+- Anything unexpected:
