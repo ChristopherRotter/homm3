@@ -1,21 +1,23 @@
-//! Morale and luck (BAT-MOR-001..004, BAT-LCK-001/002).
+//! Morale and luck (BAT-MOR-001..004, BAT-LCK-001/002, BAT-HER-003).
 //!
-//! Battle-wide sources (army composition, auras) are modifiers on the sides (ADR-0012), set up
-//! once when the battle starts and kept until it ends (auras persist after their bearers die). A
-//! stack's morale and luck are materialised from them and its creature's minimums; the hot path
-//! reads the plain fields. Rolls use the ruleset's roll tables (Tier 2).
+//! Battle-wide sources (army composition, auras, the heroes' effects) are modifiers on the sides
+//! (ADR-0012), set up once when the battle starts and kept until it ends (auras persist after
+//! their bearers die). A stack's morale and luck are materialised from them and its creature's
+//! minimums; the hot path reads the plain fields. Rolls use the ruleset's roll tables (Tier 2).
 //!
 //! Source keys: fixed keys for army alignment and undead; an aura uses `Ability::aura_key`, which
-//! is equal for equal aura values, so equal auras (Angels and Archangels) count once. Creature
-//! minimums never change during a battle, so they are applied as `AtLeast` when the stats are
-//! materialised instead of being stored in the pool.
+//! is equal for equal aura values, so equal auras (Angels and Archangels) count once; fixed keys
+//! for the heroes' changes (`Add`, both heroes summed) and caps (`AtMost`, the smallest), so a
+//! change and a cap never replace each other. Creature minimums never change during a battle, so
+//! they are applied as `AtLeast` when the stats are materialised instead of being stored in the
+//! pool.
 
 use alloc::collections::BTreeSet;
 
 use h3_content::{
-    Ability, AuraTarget, CreatureFlag, MAX_AURA_VALUES, NO_LUCK_WITHOUT_HERO, Ruleset,
+    Ability, Affects, AuraTarget, CreatureFlag, MAX_AURA_VALUES, NO_LUCK_WITHOUT_HERO, Ruleset,
 };
-use h3_contracts::BattleSide;
+use h3_contracts::{BattleEffect, BattleHero, BattleSide};
 use h3_kernel::modifier::evaluate;
 use h3_kernel::{
     CanonicalHash, Handle, Modifier, ModifierOp, ModifierPool, SourceKey, StateHasher,
@@ -84,9 +86,10 @@ impl CanonicalHash for Expiry {
 }
 
 /// Capacity of the battle's modifier pool. Per side at most: army alignment, undead in the
-/// army, and one modifier per distinct aura value of the ruleset (auras with equal values
-/// replace each other; the compiler caps the distinct values at [`MAX_AURA_VALUES`]).
-pub const MODIFIER_CAPACITY: usize = 2 * (2 + MAX_AURA_VALUES);
+/// army, one modifier per distinct aura value of the ruleset (auras with equal values replace
+/// each other; the compiler caps the distinct values at [`MAX_AURA_VALUES`]), and the heroes'
+/// change and cap of morale and of luck (4).
+pub const MODIFIER_CAPACITY: usize = 2 * (2 + MAX_AURA_VALUES + 4);
 
 /// The battle's modifiers (ADR-0012).
 pub type Modifiers = ModifierPool<Bearer, Stat, Expiry, MODIFIER_CAPACITY>;
@@ -95,8 +98,12 @@ pub type Modifiers = ModifierPool<Bearer, Stat, Expiry, MODIFIER_CAPACITY>;
 const ARMY_ALIGNMENT: SourceKey = SourceKey(1);
 /// Source of the undead-in-the-army morale (BAT-MOR-002).
 const ARMY_UNDEAD: SourceKey = SourceKey(2);
+/// Source of the heroes' morale and luck changes reaching a side, summed (BAT-HER-003).
+const HERO_CHANGE: SourceKey = SourceKey(3);
+/// Source of the heroes' morale and luck caps reaching a side, the smallest (BAT-HER-003).
+const HERO_CAP: SourceKey = SourceKey(4);
 
-/// A side-wide battle modifier.
+/// A side-wide battle modifier that adds `amount`.
 fn side_modifier(
     side: BattleSide,
     stat: Stat,
@@ -113,11 +120,73 @@ fn side_modifier(
     }
 }
 
+/// A hero effect on morale or luck: the stat, whether it caps, the amount and whose stacks.
+fn morale_or_luck(effect: &BattleEffect) -> Option<(Stat, bool, i8, Affects)> {
+    match *effect {
+        BattleEffect::Morale { amount, affects } => Some((Stat::Morale, false, amount, affects)),
+        BattleEffect::Luck { amount, affects } => Some((Stat::Luck, false, amount, affects)),
+        BattleEffect::MoraleAtMost { value, affects } => Some((Stat::Morale, true, value, affects)),
+        BattleEffect::LuckAtMost { value, affects } => Some((Stat::Luck, true, value, affects)),
+        _ => None,
+    }
+}
+
+/// Whether an effect of `hero`'s hero on `affects` reaches the stacks of `bearer`.
+fn reaches(affects: Affects, hero: BattleSide, bearer: BattleSide) -> bool {
+    match affects {
+        Affects::Own => bearer == hero,
+        Affects::Enemy => bearer != hero,
+        Affects::Both => true,
+    }
+}
+
+/// Inserts the heroes' morale and luck effects as side modifiers: per side and stat, the sum of
+/// the changes of both heroes that reach it (`Add`) and the smallest of their caps (`AtMost`)
+/// (BAT-HER-003).
+// rule: BAT-HER-003
+fn hero_modifiers(state: &mut BattleState, heroes: &[Option<BattleHero>; 2]) {
+    for bearer in BattleSide::BOTH {
+        for stat in [Stat::Morale, Stat::Luck] {
+            let (mut change, mut cap) = (None::<i32>, None::<i32>);
+            for (side, hero) in BattleSide::BOTH.into_iter().zip(heroes) {
+                let effects = hero
+                    .iter()
+                    .flat_map(|h| &h.effects)
+                    .filter_map(morale_or_luck);
+                for (s, caps, amount, affects) in effects {
+                    if s != stat || !reaches(affects, side, bearer) {
+                        continue;
+                    }
+                    let amount = i32::from(amount);
+                    if caps {
+                        cap = Some(cap.map_or(amount, |c| c.min(amount)));
+                    } else {
+                        // At most 2 × MAX_BATTLE_EFFECTS amounts of an `i8`: no overflow.
+                        change = Some(change.unwrap_or(0) + amount);
+                    }
+                }
+            }
+            // The pool is sized for these (MODIFIER_CAPACITY).
+            if let Some(amount) = change {
+                let _ = state
+                    .modifiers
+                    .insert(side_modifier(bearer, stat, amount, HERO_CHANGE));
+            }
+            if let Some(amount) = cap {
+                let _ = state.modifiers.insert(Modifier {
+                    op: ModifierOp::AtMost,
+                    ..side_modifier(bearer, stat, amount, HERO_CAP)
+                });
+            }
+        }
+    }
+}
+
 /// Sets up the battle-wide modifiers of a new battle and materialises every stack's morale and
 /// luck: army alignment and undead (BAT-MOR-002), morale and luck auras (BAT-MOR-001,
-/// BAT-LCK-001).
+/// BAT-LCK-001) and the heroes' morale and luck effects (BAT-HER-003).
 // rule: BAT-MOR-001, BAT-MOR-002, BAT-LCK-001
-pub(crate) fn setup(state: &mut BattleState, ruleset: &Ruleset) {
+pub(crate) fn setup(state: &mut BattleState, ruleset: &Ruleset, heroes: &[Option<BattleHero>; 2]) {
     for side in BattleSide::BOTH {
         // War machines are not part of the army (VCMI counts the army's slots).
         let army = || {
@@ -170,6 +239,7 @@ pub(crate) fn setup(state: &mut BattleState, ruleset: &Ruleset) {
                 .insert(side_modifier(side, stat, i32::from(amount), source));
         }
     }
+    hero_modifiers(state, heroes);
     materialize(state, ruleset);
 }
 

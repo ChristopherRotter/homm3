@@ -70,9 +70,9 @@ become several effects) and `StatOp { Add, PercentBp }`. What the tasks still ha
   `melee_bp` to the bonus sum of melee attacks and retaliations, a shooter's melee included;
   never both. `reduction_bp` (the defender's side) is one multiplicative factor
   `(10 000 − r) / 10 000` on every physical strike against that side's stacks. Q-0005 applies.
-- **The derivation fills the rest:** `effects` from Leadership, Luck, artifacts and specialties
-  (T5, T10; at most 64), damage bonuses (T6), machine control (T7), surrender discount (T9),
-  magic (E04b). A specialty's growth and the artifacts' sums can exceed the field types; the
+- **The derivation fills the rest:** `effects` from artifacts and specialties other than morale
+  and luck (T10; morale and luck since T5b, HER-BAT-003; at most 64 in all), damage bonuses (T6),
+  machine control (T7), surrender discount (T9), magic (E04b). A specialty's growth and the artifacts' sums can exceed the field types; the
   derivation saturates and clamps (`reduction_bp`, `surrender_discount_bp` ≤ 10 000).
 
 ## 5. `BattleSetup`, `BattleOutcome`, `BattleResult` (T9)
@@ -116,13 +116,11 @@ state-hash bump. Left for T9:
   T10 adds the `StackStat` effects after them (percentages of the creature's own value, computed
   before any addition). Traits such as regeneration or no range penalty become stack traits. The
   pool (ADR-0012) keeps what changes during a battle; its evaluation starts from these bases.
-- **Morale and luck effects become side modifiers.** The battle sums a hero's effects per affected
-  side, stat and operation at setup and inserts one modifier per (bearer side, stat, operation,
-  source hero): sources are distinct keys for "own hero add", "own hero cap", "enemy hero add",
-  "enemy hero cap", so an `Add` and an `AtMost` from the same hero never replace each other. That is
-  at most 8 per bearer side, 16 in all: `MODIFIER_CAPACITY` grows from 20 to 36 (sized by
-  construction and tested). E04b adds stack bearers and timed expiry and re-derives the capacity
-  (it may keep per-stack spell effects in per-stack arrays if that is cheaper; its decision).
+- **Morale and luck effects become side modifiers:** done in T5b (BAT-HER-003, `h3_battle`
+  `morale.rs`): both heroes' changes summed and their caps combined per side and stat, so 4 per
+  side and `MODIFIER_CAPACITY` 28 (the sketch's per-hero keys would have needed 36 for the same
+  result). E04b adds stack bearers and timed expiry and re-derives the capacity (it may keep
+  per-stack spell effects in per-stack arrays if that is cheaper; its decision).
 - The battle keeps a small per-side hero record (present, tactics level, damage bonuses, machine
   control, retreat and surrender allowed, an offer made this round; E04b: mana, cast this round).
 

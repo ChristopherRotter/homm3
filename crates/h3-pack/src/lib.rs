@@ -18,7 +18,8 @@ use h3_content::{
     TerrainDef,
 };
 use h3_contracts::{
-    Army, ArmyStack, BattleHero, BattleSetup, BattleSide, DamageBonuses, MachineControl,
+    Army, ArmyStack, BattleEffect, BattleHero, BattleSetup, BattleSide, DamageBonuses,
+    MachineControl,
 };
 use serde::{Deserialize, Serialize};
 
@@ -56,7 +57,7 @@ pub enum PackError {
     /// A scenario or replay references a hero type the ruleset does not define.
     UnknownHeroType(String),
     /// A battle hero has values the scenario and replay formats cannot hold yet (they arrive
-    /// with the rules that read them, E04a T5–T10 and E04b).
+    /// with the rules that read them, E04a T6–T10 and E04b).
     HeroNotWritable(&'static str),
 }
 
@@ -533,12 +534,12 @@ enum EffectDto {
     Morale {
         amount: i8,
         #[serde(default)]
-        affects: AffectsDto,
+        affects: AffectsEntry,
     },
     Luck {
         amount: i8,
         #[serde(default)]
-        affects: AffectsDto,
+        affects: AffectsEntry,
     },
     RangedDamage {
         bp: u16,
@@ -593,12 +594,12 @@ enum EffectDto {
     MoraleAtMost {
         value: i8,
         #[serde(default)]
-        affects: AffectsDto,
+        affects: AffectsEntry,
     },
     LuckAtMost {
         value: i8,
         #[serde(default)]
-        affects: AffectsDto,
+        affects: AffectsEntry,
     },
     AlignmentGroup {
         factions: Vec<String>,
@@ -622,13 +623,38 @@ enum EffectDto {
     NoRetreat {},
 }
 
-#[derive(Deserialize, Default)]
+/// Whose stacks a morale or luck effect changes, as files write it (`own` by default, `enemy`,
+/// `both`).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
-enum AffectsDto {
+pub enum AffectsEntry {
+    /// The hero's own stacks.
     #[default]
     Own,
+    /// The enemy's stacks.
     Enemy,
+    /// The stacks of both sides.
     Both,
+}
+
+impl From<AffectsEntry> for Affects {
+    fn from(a: AffectsEntry) -> Self {
+        match a {
+            AffectsEntry::Own => Self::Own,
+            AffectsEntry::Enemy => Self::Enemy,
+            AffectsEntry::Both => Self::Both,
+        }
+    }
+}
+
+impl From<Affects> for AffectsEntry {
+    fn from(a: Affects) -> Self {
+        match a {
+            Affects::Own => Self::Own,
+            Affects::Enemy => Self::Enemy,
+            Affects::Both => Self::Both,
+        }
+    }
 }
 
 #[derive(Deserialize)]
@@ -653,11 +679,7 @@ enum SelectorDto {
 
 impl EffectDto {
     fn into_def(self, pack: &str) -> Result<HeroEffectDef, PackError> {
-        let affects = |a: AffectsDto| match a {
-            AffectsDto::Own => Affects::Own,
-            AffectsDto::Enemy => Affects::Enemy,
-            AffectsDto::Both => Affects::Both,
-        };
+        let affects = Affects::from;
         Ok(match self {
             Self::Morale { amount, affects: a } => HeroEffect::Morale {
                 amount,
@@ -1184,7 +1206,7 @@ struct StackDto {
 /// A battle hero as scenario and replay files write it (`[scenario.attacker_hero]`,
 /// `[setup.defender_hero]`; OPEN-QUESTIONS Q31): the battle hero itself, no derivation. It holds
 /// the fields the battle reads so far; the rest of [`BattleHero`] is neutral and joins the format
-/// with the rule that reads it (E04a T5–T10, E04b).
+/// with the rule that reads it (E04a T6–T10, E04b).
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct HeroEntry {
@@ -1211,6 +1233,96 @@ pub struct HeroEntry {
     /// Maximum spell points (default 0).
     #[serde(default)]
     pub max_mana: u16,
+    /// Battle effects (default none; written only when there are some, after the values).
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub effects: Vec<EffectEntry>,
+}
+
+/// One battle effect of a hero as scenario and replay files write it: `kind` and the kind's
+/// parameters, named as in the packs (`packs/README.md`, "Hero effects"). It holds the kinds
+/// the battle reads so far (morale and luck, BAT-HER-003); later kinds join with their rules.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(tag = "kind", rename_all = "snake_case", deny_unknown_fields)]
+pub enum EffectEntry {
+    /// [`BattleEffect::Morale`].
+    Morale {
+        /// Morale change.
+        amount: i8,
+        /// Whose stacks (default `own`).
+        #[serde(default)]
+        affects: AffectsEntry,
+    },
+    /// [`BattleEffect::Luck`].
+    Luck {
+        /// Luck change.
+        amount: i8,
+        /// Whose stacks (default `own`).
+        #[serde(default)]
+        affects: AffectsEntry,
+    },
+    /// [`BattleEffect::MoraleAtMost`].
+    MoraleAtMost {
+        /// Highest morale.
+        value: i8,
+        /// Whose stacks (default `own`).
+        #[serde(default)]
+        affects: AffectsEntry,
+    },
+    /// [`BattleEffect::LuckAtMost`].
+    LuckAtMost {
+        /// Highest luck.
+        value: i8,
+        /// Whose stacks (default `own`).
+        #[serde(default)]
+        affects: AffectsEntry,
+    },
+}
+
+impl EffectEntry {
+    /// The battle effect.
+    pub fn effect(self) -> BattleEffect {
+        match self {
+            Self::Morale { amount, affects } => BattleEffect::Morale {
+                amount,
+                affects: affects.into(),
+            },
+            Self::Luck { amount, affects } => BattleEffect::Luck {
+                amount,
+                affects: affects.into(),
+            },
+            Self::MoraleAtMost { value, affects } => BattleEffect::MoraleAtMost {
+                value,
+                affects: affects.into(),
+            },
+            Self::LuckAtMost { value, affects } => BattleEffect::LuckAtMost {
+                value,
+                affects: affects.into(),
+            },
+        }
+    }
+
+    /// The entry of `effect`, if the format holds its kind (inverse of [`EffectEntry::effect`]).
+    pub fn of(effect: &BattleEffect) -> Option<Self> {
+        Some(match *effect {
+            BattleEffect::Morale { amount, affects } => Self::Morale {
+                amount,
+                affects: affects.into(),
+            },
+            BattleEffect::Luck { amount, affects } => Self::Luck {
+                amount,
+                affects: affects.into(),
+            },
+            BattleEffect::MoraleAtMost { value, affects } => Self::MoraleAtMost {
+                value,
+                affects: affects.into(),
+            },
+            BattleEffect::LuckAtMost { value, affects } => Self::LuckAtMost {
+                value,
+                affects: affects.into(),
+            },
+            _ => return None,
+        })
+    }
 }
 
 impl HeroEntry {
@@ -1231,6 +1343,7 @@ impl HeroEntry {
         hero.tactics = self.tactics;
         hero.magic.mana = self.mana;
         hero.magic.max_mana = self.max_mana;
+        hero.effects = self.effects.iter().map(|e| e.effect()).collect();
         Ok(hero)
     }
 
@@ -1247,7 +1360,10 @@ impl HeroEntry {
                 hero.war_machines != MachineControl::default(),
             ),
             ("surrender discount", hero.surrender_discount_bp != 0),
-            ("effects", !hero.effects.is_empty()),
+            (
+                "effects other than morale and luck",
+                hero.effects.iter().any(|e| EffectEntry::of(e).is_none()),
+            ),
             (
                 "spell book or schools",
                 hero.magic.spell_book.is_some() || hero.magic.schools != [0; 4],
@@ -1269,6 +1385,7 @@ impl HeroEntry {
             tactics: hero.tactics,
             mana: hero.magic.mana,
             max_mana: hero.magic.max_mana,
+            effects: hero.effects.iter().filter_map(EffectEntry::of).collect(),
         })
     }
 }
@@ -1635,6 +1752,16 @@ mod tests {
         expected.tactics = 2;
         expected.magic.mana = 10;
         expected.magic.max_mana = 10;
+        expected.effects = vec![
+            BattleEffect::Morale {
+                amount: 1,
+                affects: Affects::Own,
+            },
+            BattleEffect::Luck {
+                amount: 1,
+                affects: Affects::Own,
+            },
+        ];
         assert_eq!(setup.heroes, [Some(expected.clone()), None]);
         // Fields default to 0; the entry is the inverse of the resolution.
         let header = "[scenario]\nid = \"e\"\npacks = []\nprofile = \"a:b\"\n";
@@ -1660,6 +1787,43 @@ mod tests {
         );
         let extra = SYNTHETIC_FULL.replace("max_mana = 10", "max_mana = 10\nluck = 1");
         assert!(matches!(parse_scenario(&extra), Err(PackError::Syntax(_))));
+        for bad in [
+            "kind = \"no_retreat\"",
+            "kind = \"luck\", amount = 1, value = 2",
+        ] {
+            let text = format!(
+                "{header}[scenario.defender_hero]\nhero_type = \"synthetic:ansel\"\neffects = [{{ {bad} }}]\n"
+            );
+            assert!(
+                matches!(parse_scenario(&text), Err(PackError::Syntax(_))),
+                "{bad}"
+            );
+        }
+        // Every morale and luck kind for every side survives the round trip, written as a list of
+        // tables after the values.
+        let mut every = expected.clone();
+        every.effects = Affects::ALL
+            .into_iter()
+            .flat_map(|affects| {
+                [
+                    BattleEffect::Morale {
+                        amount: -2,
+                        affects,
+                    },
+                    BattleEffect::Luck { amount: 3, affects },
+                    BattleEffect::MoraleAtMost { value: 0, affects },
+                    BattleEffect::LuckAtMost { value: 1, affects },
+                ]
+            })
+            .collect();
+        let entry = HeroEntry::of(&every, &ruleset).unwrap();
+        assert_eq!(entry.resolve(&ruleset), Ok(every));
+        let written = toml::to_string(&entry).unwrap();
+        assert!(
+            written.contains("[[effects]]\nkind = \"morale_at_most\""),
+            "{written}"
+        );
+        assert_eq!(toml::from_str::<HeroEntry>(&written), Ok(entry));
         let mut stranger = expected.clone();
         stranger.hero_type = h3_content::HeroTypeId::from_raw(99);
         assert_eq!(
@@ -1678,8 +1842,8 @@ mod tests {
             ),
             (|h| h.surrender_discount_bp = 1, "surrender discount"),
             (
-                |h| h.effects.push(h3_contracts::BattleEffect::NoRetreat),
-                "effects",
+                |h| h.effects.push(BattleEffect::NoRetreat),
+                "effects other than morale and luck",
             ),
             (
                 |h| h.magic.spell_book = Some(vec![]),
@@ -2090,7 +2254,7 @@ mod tests {
         assert!(matches!(parse_pack(&bad_override), Err(PackError::Key(_))));
     }
 
-    // covers: HER-ART-001, HER-ART-002, HER-WAR-001, HER-BAT-001, HER-BAT-002
+    // covers: HER-ART-001, HER-ART-002, HER-WAR-001, HER-BAT-001, HER-BAT-002, HER-BAT-003
     #[test]
     fn hero_details_fit_the_harvested_slots() {
         use h3_heroes::{DetailsError, HeroDetails, derive_battle_hero, validate, war_machines};
@@ -2147,6 +2311,43 @@ mod tests {
             [28, 27, 23, 23]
         );
         assert_eq!(hero.tactics, 0);
+        // Five Clovers of Fortune give luck +1: identical artifacts do not stack (wiki Artifact).
+        let luck = |amount| BattleEffect::Luck {
+            amount,
+            affects: Affects::Own,
+        };
+        assert_eq!(hero.effects, [luck(1)]);
+        // Expert Leadership (+3), Pendant of Courage (+3 each), Badge of Courage and two Clovers
+        // (+1 each, once); Spirit of Oppression caps both sides' morale at 0 (the battle clamps
+        // the sums to +3).
+        let mut leader = details(
+            &sod,
+            &[
+                "base:spirit_of_oppression",
+                "base:pendant_of_courage",
+                "base:badge_of_courage",
+                "base:clover_of_fortune",
+                "base:clover_of_fortune",
+            ],
+            &[],
+        );
+        leader
+            .skills
+            .push((sod.skill_by_key("base:leadership").unwrap(), 3));
+        assert_eq!(
+            derive_battle_hero(&leader, &sod).unwrap().effects,
+            [
+                BattleEffect::Morale {
+                    amount: 7,
+                    affects: Affects::Own
+                },
+                luck(4),
+                BattleEffect::MoraleAtMost {
+                    value: 0,
+                    affects: Affects::Both
+                },
+            ]
+        );
         let mut tactician = d.clone();
         tactician
             .skills

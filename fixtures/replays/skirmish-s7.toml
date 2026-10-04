@@ -474,7 +474,7 @@ checkpoints = [
 ]
 
 [replay]
-format = 3
+format = 4
 engine = "0.1.0"
 scenario = "skirmish"
 seed = "7"

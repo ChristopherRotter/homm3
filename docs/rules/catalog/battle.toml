@@ -911,7 +911,7 @@ id       = "BAT-MOR-001"
 title    = "Morale of a stack"
 context  = "battle"
 status   = "implemented"
-summary  = "A stack's morale is the sum of the morale modifiers on its side (ADR-0012): army alignment and undead (BAT-MOR-002) and morale auras; raised to its creature's minimum_morale if lower (Minotaurs: +1); clamped to [-levels of bad_morale_chances, +levels of good_morale_chances] (original: -3..+3). Auras (morale_aura: Angels and Archangels +1 for their side, Bone and Ghost Dragons -1 for the enemy side) are not cumulative: an aura value (kind, amount, affected side) counts once per side; auras hold for the whole battle, also after their bearers die. Creatures with flag no_morale (Golems, Undead, Elementals) always have morale 0. Morale is materialised when the battle starts; in E03 no source changes during a battle. Heroes, artifacts, spells and terrain are E04."
+summary  = "A stack's morale is the sum of the morale modifiers on its side (ADR-0012): army alignment and undead (BAT-MOR-002), morale auras and the heroes' morale changes (BAT-HER-003); raised to its creature's minimum_morale if lower (Minotaurs: +1); lowered to the heroes' cap if any (the upper bound wins, KER-MOD-001); clamped to [-levels of bad_morale_chances, +levels of good_morale_chances] (original: -3..+3). Auras (morale_aura: Angels and Archangels +1 for their side, Bone and Ghost Dragons -1 for the enemy side) are not cumulative: an aura value (kind, amount, affected side) counts once per side; auras hold for the whole battle, also after their bearers die. Creatures with flag no_morale (Golems, Undead, Elementals) always have morale 0. Morale is materialised when the battle starts; no source changes during a battle before E04b (spells). Terrain morale (magic terrains) is E04c."
 numeric  = "integer"
 
   [[rule.source]]
@@ -1040,7 +1040,7 @@ id       = "BAT-LCK-001"
 title    = "Luck of a stack"
 context  = "battle"
 status   = "implemented"
-summary  = "A stack's luck is the sum of the luck modifiers on its side (luck auras: Devils and Arch Devils -1 for the enemy side, not cumulative, for the whole battle like morale auras), raised to its creature's minimum_luck (Halflings: +1), clamped to [0, levels of good_luck_chances] (original 0..3): before HotA there is no bad luck, so negative luck counts as 0. Heroes, artifacts and spells are E04."
+summary  = "A stack's luck is the sum of the luck modifiers on its side (luck auras: Devils and Arch Devils -1 for the enemy side, not cumulative, for the whole battle like morale auras), and the heroes' luck changes and caps (BAT-HER-003), raised to its creature's minimum_luck (Halflings: +1), then lowered to the heroes' cap if any (the upper bound wins, KER-MOD-001), clamped to [0, levels of good_luck_chances] (original 0..3): before HotA there is no bad luck, so negative luck counts as 0. Spells are E04b."
 numeric  = "integer"
 
   [[rule.source]]
@@ -1290,4 +1290,31 @@ numeric  = "integer"
   kind       = "observation"
   ref        = "experiments/results/E04a-batch-1a.md R5 (SoD 4.0 Complete): a hero with attack 20 and no skills; its Ballista hit a Behemoth for 92 = 56 × 1.65, i.e. the Ballista's attack 10 + 20 against the Behemoth's defense 17 (+13 points, +65 %); the damage range part (56 within (2..3) × (20 + 1) = 42..63) is E04a T7"
   retrieved  = "2026-10-03"
+  confidence = "high"
+
+[[rule]]
+id       = "BAT-HER-003"
+title    = "The heroes' morale and luck"
+context  = "battle"
+status   = "implemented"
+summary  = "When the battle starts, the morale and luck effects of both heroes (BattleHero.effects: Morale, Luck, MoraleAtMost, LuckAtMost, each for the hero's own side, the enemy side or both; HER-BAT-003) become side modifiers for the whole battle (ADR-0013 point 6): per side and stat, the changes of both heroes that reach the side are summed into one Add modifier and their caps combine into one AtMost modifier with the smallest value. A side's morale and luck then follow BAT-MOR-001 and BAT-LCK-001: a cap beats a creature's minimum (Spirit of Oppression holds Minotaurs at 0, as in VCMI), and the clamps apply afterwards. War machines take luck like any stack and have no morale. The pool holds at most 4 hero modifiers per side (MODIFIER_CAPACITY 28). The effects themselves stay private to the hero's side; their consequences show in the stacks' public morale and luck (ADR-0013 point 9)."
+numeric  = "integer"
+
+  [[rule.source]]
+  kind       = "wiki"
+  ref        = "Morale - Heroes 3 wiki: morale 'can vary from -3 to +3'; Spirit of Oppression 'negates all positive Morale'; different artifacts of the same kind add up (docs/rules/surveys/E04-artifacts.md §4 and §7)"
+  url        = "https://heroes.thelazy.net/index.php/Morale"
+  retrieved  = "2026-10-03"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "ARTRAITS.TXT texts of Spirit of Oppression and Hourglass of the Evil Hour: they affect 'both you and your opponent' (docs/rules/surveys/E04-artifacts.md §7)"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "vcmi"
+  ref        = "lib/BasicTypes.cpp L72-127: a stack's morale and luck sum every MORALE/LUCK bonus reaching it (hero skills, artifacts, specialty, battle-wide ones); config/artifacts.json L1231-1256: Spirit of Oppression and Hourglass as INDEPENDENT_MIN 0, BATTLE_WIDE; lib/bonuses/BonusList.cpp L140-147: when a cap is below a minimum, the cap wins"
+  url        = "https://github.com/vcmi/vcmi/blob/1.7.5/lib/BasicTypes.cpp#L72-L127"
+  retrieved  = "2026-10-04"
   confidence = "high"

@@ -9,7 +9,8 @@ attacker_war_machines = ["synthetic:bolt_thrower", "synthetic:aid_tent"]
 defender_war_machines = ["synthetic:bolt_thrower", "synthetic:supply_wagon"]
 
 # Only the attacker is led by a hero, so only it may get lucky strikes (Q-0003). The battle hero
-# is given directly (Q31): Brea at level 1, Drill (Tactics) at Advanced.
+# is given directly (Q31): Brea at level 1, Drill (Tactics) at Advanced, wearing a Lucky Knot
+# (morale +1, luck +1).
 [scenario.attacker_hero]
 hero_type = "synthetic:brea"
 attack = 2
@@ -19,6 +20,7 @@ knowledge = 1
 tactics = 2
 mana = 10
 max_mana = 10
+effects = [{ kind = "morale", amount = 1 }, { kind = "luck", amount = 1 }]
 
 [[attacker]]
 slot = 0

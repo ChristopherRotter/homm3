@@ -181,3 +181,30 @@ numeric  = "integer"
   url        = "https://github.com/vcmi/vcmi/blob/1.7.5/lib/battle/BattleInfo.cpp#L397"
   retrieved  = "2026-10-03"
   confidence = "high"
+
+[[rule]]
+id       = "HER-BAT-003"
+title    = "The battle hero's morale and luck effects"
+context  = "heroes"
+status   = "implemented"
+summary  = "The battle hero's morale and luck effects (BattleHero.effects: Morale, Luck, MoraleAtMost, LuckAtMost) come from the hero's effect sources (HER-BAT-001): its secondary skills at their levels (Leadership and Luck +1/+2/+3 for its own stacks), its worn artifacts and their combinations' parts, and its specialty. Unlike primary skills, an artifact type counts once however many copies are worn (two Clovers of Fortune: luck +1), also when it is both worn and part of a worn combination. Per kind and affected sides (own, enemy, both) the changes are summed (saturated to -128..127; a sum of 0 is left out) and the caps combine to the smallest; at most 12 effects, in the order morale, luck, morale cap, luck cap, each for own, enemy, both. The battle clamps morale and luck (BAT-HER-003). A skill specialty does not scale them (no original hero specializes in Leadership or Luck). Angelic Alliance's alignment group is E04a T10."
+numeric  = "integer"
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "SSTRAITS.TXT: Leadership 'increases your hero's troops' morale by 1 / 2 / 3'; Luck 'increases your hero's luck by 1 / 2 / 3' (docs/rules/surveys/E04-battle.md R6c); the artifacts' morale and luck values in the harvested packs (gap-fill [artifacts], sources there)"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "wiki"
+  ref        = "Artifact - Heroes 3 wiki: 'Two similar artifacts will not stack their effect except for Quiet Eye of the Dragon and all the resource-producing artifacts' (docs/rules/surveys/E04-artifacts.md §4)"
+  url        = "https://heroes.thelazy.net/index.php/Artifact"
+  retrieved  = "2026-10-03"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "vcmi"
+  ref        = "docs/modders/Entities_Format/Artifact_Format.md L55-68: 'bonuses' sit on the shared artifact type node and count once, 'instanceBonuses' per copy (only Quiet Eye of the Dragon and the resource producers use them); lib/bonuses/BonusList.cpp L103-147: additive values summed, INDEPENDENT_MIN values (caps) combine to the smallest"
+  url        = "https://github.com/vcmi/vcmi/blob/1.7.5/lib/bonuses/BonusList.cpp#L103-L147"
+  retrieved  = "2026-10-04"
+  confidence = "high"

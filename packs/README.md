@@ -355,12 +355,15 @@ tight_formation = ["defender"]   # optional: sides in tight formation, the other
 [scenario.attacker_hero]         # optional, per side (`defender_hero`): the battle hero leading
 hero_type = "synthetic:brea"     # the side, given directly (BAT-HER-001, Q31); a side without
 attack = 2                       # one is not led by a hero (quirk Q-0003). Every field but
-defense = 2                      # hero_type defaults to 0; the rest of the battle hero (damage
-power = 1                        # bonuses, war-machine control, effects, spell book, …) joins
-knowledge = 1                    # the format with the rules that read it (E04a T5–T10, E04b)
-tactics = 2
+defense = 2                      # hero_type defaults to 0 (effects: none); the rest of the battle
+power = 1                        # hero (damage bonuses, war-machine control, other effects, spell
+knowledge = 1                    # book, …) joins the format with the rules that read it (E04a
+tactics = 2                      # T6–T10, E04b)
 mana = 10
 max_mana = 10
+effects = [{ kind = "morale", amount = 1 }, { kind = "luck_at_most", value = 0, affects = "enemy" }]
+                                 # battle effects as in "Hero effects": so far `morale`, `luck`,
+                                 # `morale_at_most`, `luck_at_most` (BAT-HER-003)
 
 [[attacker]]                     # one entry per stack
 slot = 0

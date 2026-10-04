@@ -265,3 +265,113 @@ fn a_hero_adds_its_attack_and_defense_to_every_stack_of_its_side() {
     assert_eq!(damage([Some(hero(&r)), None]), 23);
     assert_eq!(damage([Some(hero(&r)), Some(hero(&r))]), 21);
 }
+
+// covers: BAT-HER-003
+#[test]
+fn hero_morale_and_luck_effects_reach_the_sides_they_name() {
+    use Affects::{Both, Enemy, Own};
+    use BattleEffect::{Luck, LuckAtMost, Morale, MoraleAtMost};
+    let r = ruleset();
+    let start = |attacker: Vec<BattleEffect>, defender: Vec<BattleEffect>| {
+        let led = |effects| {
+            Some(BattleHero {
+                effects,
+                ..hero(&r)
+            })
+        };
+        let s = BattleSetup {
+            heroes: [led(attacker), led(defender)],
+            ..setup(&r, &[(0, "fixed", 1)], &[(0, "minotaur", 1)])
+        };
+        let b = BattleState::new(&r, &s, 1).unwrap();
+        let values: Vec<(i8, i8)> = b.stacks().iter().map(|s| (s.morale, s.luck)).collect();
+        (values, b)
+    };
+    // Without effects: one alignment on each side (+1), no luck.
+    assert_eq!(start(vec![], vec![]).0, [(1, 0), (1, 0)]);
+    // Changes add up over both heroes: the attacker's own +2 morale and +2 luck with the
+    // defender's −1 luck for its enemy; on the defender's side its own +1 morale and the
+    // attacker's −1 for its enemy cancel. A hero's other effects change neither.
+    let (values, _) = start(
+        vec![
+            Morale {
+                amount: 2,
+                affects: Own,
+            },
+            Luck {
+                amount: 2,
+                affects: Own,
+            },
+            Morale {
+                amount: -1,
+                affects: Enemy,
+            },
+            BattleEffect::NoRetreat,
+        ],
+        vec![
+            Morale {
+                amount: 1,
+                affects: Own,
+            },
+            Luck {
+                amount: -1,
+                affects: Enemy,
+            },
+        ],
+    );
+    assert_eq!(values, [(3, 1), (1, 0)]);
+    // Caps: the attacker's morale at most 0 for both sides (Spirit of Oppression) beats the
+    // Minotaur's minimum +1 (the upper bound wins, KER-MOD-001) and its luck at most 0 for the
+    // enemy beats the defender's own +3; on the attacker's side the smaller cap holds, the
+    // defender's morale at most −1 for its enemy.
+    let (values, b) = start(
+        vec![
+            Morale {
+                amount: 2,
+                affects: Own,
+            },
+            Luck {
+                amount: 2,
+                affects: Own,
+            },
+            MoraleAtMost {
+                value: 0,
+                affects: Both,
+            },
+            LuckAtMost {
+                value: 0,
+                affects: Enemy,
+            },
+        ],
+        vec![
+            Luck {
+                amount: 3,
+                affects: Own,
+            },
+            MoraleAtMost {
+                value: -1,
+                affects: Enemy,
+            },
+        ],
+    );
+    assert_eq!(values, [(-1, 2), (0, 0)]);
+    // One change and one cap at most per side and stat: alignment twice and six from the heroes.
+    assert_eq!(b.modifiers.iter().count(), 8);
+    // The most the heroes insert: every kind for every side from both heroes gives a change and
+    // a cap of morale and luck on each side, 8 in all (MODIFIER_CAPACITY).
+    let every: Vec<BattleEffect> = Affects::ALL
+        .into_iter()
+        .flat_map(|affects| {
+            [
+                Morale { amount: 1, affects },
+                Luck { amount: 1, affects },
+                MoraleAtMost { value: 3, affects },
+                LuckAtMost { value: 3, affects },
+            ]
+        })
+        .collect();
+    let (values, b) = start(every.clone(), every);
+    assert_eq!(b.modifiers.iter().count(), 2 + 8);
+    // Morale 1 + 4 (two heroes, own and both / enemy and both), capped at 3; luck 4 → 3.
+    assert_eq!(values, [(3, 3), (3, 3)]);
+}

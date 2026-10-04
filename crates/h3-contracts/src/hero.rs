@@ -4,8 +4,8 @@
 //! rules need to run soundly, not whether a real hero could have these values.
 //!
 //! Fields that later tasks give a meaning stay at their neutral value until then: the damage
-//! bonuses (E04a T6), war-machine control (T7), the surrender discount (T9), the effects list
-//! (T5, T10) and the magic (E04b).
+//! bonuses (E04a T6), war-machine control (T7), the surrender discount (T9), the effects other
+//! than morale and luck (T10) and the magic (E04b).
 
 use alloc::vec::Vec;
 
@@ -36,7 +36,7 @@ pub struct BattleHero {
     /// Discount on the price of a surrender, basis points (at most 10 000; T9).
     pub surrender_discount_bp: u16,
     /// Every other battle effect of the hero's skills, artifacts and specialty, resolved (at most
-    /// [`MAX_BATTLE_EFFECTS`]; T5, T10).
+    /// [`MAX_BATTLE_EFFECTS`]; morale and luck since E04a T5b, the others with T10).
     pub effects: Vec<BattleEffect>,
     /// Spell book, mana and schools (E04b; carried and ignored before).
     pub magic: BattleMagic,

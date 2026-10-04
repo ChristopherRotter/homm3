@@ -627,7 +627,7 @@ impl BattleState {
             terrain: setup.terrain,
             rng: Rng::for_stream(seed, StreamId::BATTLE),
         };
-        morale::setup(&mut state, ruleset);
+        morale::setup(&mut state, ruleset, &setup.heroes);
         // The first activation runs the usual checks (bad morale, BAT-MOR-004); round 1 starts
         // without a `RoundStarted` event.
         turn::activate_next(&mut state, ruleset, sink);

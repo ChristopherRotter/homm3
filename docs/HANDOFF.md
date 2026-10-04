@@ -4,13 +4,19 @@ Living state. The last agent updates this at the end of every session; the next 
 
 ---
 
-## 2026-10-04 (seventh session) — E04a T5a done; T5b in progress
+## 2026-10-04 (seventh session) — E04a T5 done (T5a and T5b: the hero's stats, morale and luck)
 
-**State:** branch `e04a-heroes-in-battle`, `cargo xtask verify` green. Scope chosen by the user at the start: T5 split at the stats/morale boundary into **T5a and T5b**, both this session as separate checkpoints.
+**State:** branch `e04a-heroes-in-battle`, `cargo xtask verify` green (also `--with-original-data`). Scope chosen by the user at the start: T5 split at the stats/morale boundary into **T5a and T5b**, both this session as separate checkpoints. Nothing half-done.
 
-**T5a (done):** BAT-HER-002 — the hero's attack and defense are added to every stack of its side, war machines included, after the native-terrain bonus (`Stack::new`); they enter the attack advantage and the Defend base (BAT-TRN-004 updated). BAT-DMG-009 — death stare removes whole creatures, the damaged top one first; the new top creature has full health (Q21). No version bumps (encodings unchanged); the pinned initial-state hash and `full-s3` changed with the values (Brea's attack and defense 2 now count; 467 → 599 commands, the attacker still wins). Bench-check re-baselined: the `full` workload's 20 games take 12 % fewer steps (instructions per step +1.8 %); `h3 bench` full 300 games ≈ 165 k steps/s against ≈ 176 k before in the same sandbox (shorter battles amortise setup over fewer steps).
+**T5a:** BAT-HER-002 — the hero's attack and defense are added to every stack of its side, war machines included, after the native-terrain bonus (`Stack::new`); they enter the attack advantage and the Defend base (BAT-TRN-004 updated). BAT-DMG-009 — death stare removes whole creatures, the damaged top one first; the new top creature has full health (Q21). No version bumps; the pinned initial-state hash and `full-s3` changed with the values (Brea's attack and defense now count). Bench-check re-baselined (the `full` workload 12 % fewer steps, instructions per step +1.8 %).
 
-**Next:** T5b (see the epic): derivation fills `effects` with the morale/luck kinds (HER-BAT-003), side modifiers in `h3_battle::morale` (capacity 36), scenario/replay `effects`, state size measured.
+**T5b:** HER-BAT-003 — `derive_battle_hero` fills `effects` with the morale and luck changes and caps of skills, worn artifacts (each type once, `Count::OncePerType`; primary skills stay per copy) and specialty, combined per kind and affected sides (at most 12). BAT-HER-003 — the battle sums both heroes' changes into one `Add` and combines their caps into one `AtMost` per side and stat (`morale::hero_modifiers`, source keys 3 and 4), so a cap beats a creature minimum (VCMI `BonusList.cpp` agrees); `MODIFIER_CAPACITY` 20 → 28 (the design sketch's per-hero keys would have needed 36). Scenario and replay hero tables hold the four kinds (`effects`, `h3_pack::EffectEntry`, `AffectsEntry` replaces the private `AffectsDto`); **replay format v4**; `full` scenario's Brea wears a Lucky Knot; golden replays re-recorded (`full-s3` 621 commands; duel and skirmish header only). Measured: `BattleState` 2032 → 2128 bytes; ≈ 160 k steps/s on `full`. On T5a's workload the T5b binary needs +7 % instructions, entirely in the untouched geometry hot path (`Field::neighbor` inlined differently; callgrind per function) — BACKLOG inbox; bench-check passes without a re-baseline (−0.2 %).
+
+**Agent decisions (change freely; in the epic and design note):** both heroes summed per side (capacity 28, not 36); morale/luck amounts not scaled by a skill specialty (no original specialist); a sum of 0 is left out of the derived effects; replay format bumped for the new field (as T4b2 did for the hero table).
+
+**Next:** the user decides. Recommended: **T6** (Archery, Offense, Armorer as damage factors with quirk Q-0005: single-precision rates computed exactly in integers, fixtures R1–R3; the derivation fills `DamageBonuses`, skill specialties scale them). Alternative: design batch 1b.
+
+**Traps:** callgrind on the release binary: `--toggle-collect='*random_rollout*'` and read the `summary:` line of the out file (the "Collected" line on stderr shows 0); run `h3 bench` from a directory where `packs/` resolves. The geometry hot path's instruction count moves with unrelated changes (codegen), so compare per-function profiles before blaming new code. Sandbox and sync as before (bundle in `Claude outputs/`, deleted afterwards; delete permission for the repo folder; VCMI 1.7.5 shallow clone works through the proxy).
 
 ---
 

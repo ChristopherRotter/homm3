@@ -1,9 +1,9 @@
-//! `derive_battle_hero` (HER-BAT-001, HER-BAT-002).
+//! `derive_battle_hero` (HER-BAT-001, HER-BAT-002, HER-BAT-003).
 
 use std::vec;
 
-use h3_content::{HeroEffectDef, Ruleset};
-use h3_contracts::{BattleHero, BattleMagic, DamageBonuses, MachineControl};
+use h3_content::{Affects, HeroEffectDef, Ruleset};
+use h3_contracts::{BattleEffect, BattleHero, BattleMagic, DamageBonuses, MachineControl};
 use proptest::prelude::*;
 
 use super::*;
@@ -53,6 +53,54 @@ fn effect_pack() -> ContentPack {
 
 fn effect_ruleset() -> Ruleset {
     compile(effect_pack()).unwrap()
+}
+
+/// The effect pack plus morale and luck: Leadership and Luck +1/+2/+3 for the own side; the
+/// combination `t:circle` morale +1, its parts `t:band` morale +1 and enemy luck at most 0 and
+/// `t:helm` morale at most 1 for both sides; `t:eye` luck +1; `t:hook` enemy morale −1 and
+/// morale at most 2 for both sides; the specialty enemy luck −1 and enemy morale +1.
+fn morale_ruleset() -> Ruleset {
+    use Affects::{Both, Enemy, Own};
+    let morale = |amount, affects| HeroEffectDef::Morale { amount, affects };
+    let luck = |amount, affects| HeroEffectDef::Luck { amount, affects };
+    let mut p = effect_pack();
+    for s in &mut p.skills {
+        match s.key.to_string().as_str() {
+            "t:leadership" => s.levels = [1, 2, 3].map(|n| vec![morale(n, Own)]),
+            "t:luck" => s.levels = [1, 2, 3].map(|n| vec![luck(n, Own)]),
+            _ => {}
+        }
+    }
+    for a in &mut p.artifacts {
+        let more = match a.key.to_string().as_str() {
+            "t:circle" => vec![morale(1, Own)],
+            "t:band" => vec![
+                morale(1, Own),
+                HeroEffectDef::LuckAtMost {
+                    value: 0,
+                    affects: Enemy,
+                },
+            ],
+            "t:helm" => vec![HeroEffectDef::MoraleAtMost {
+                value: 1,
+                affects: Both,
+            }],
+            "t:eye" => vec![luck(1, Own)],
+            "t:hook" => vec![
+                morale(-1, Enemy),
+                HeroEffectDef::MoraleAtMost {
+                    value: 2,
+                    affects: Both,
+                },
+            ],
+            _ => vec![],
+        };
+        a.effects.extend(more);
+    }
+    p.heroes[0]
+        .specialty
+        .extend([luck(-1, Enemy), morale(1, Enemy)]);
+    compile(p).unwrap()
 }
 
 /// The battle hero with the given derived values and everything else neutral.
@@ -142,15 +190,91 @@ fn derivation_leaves_later_fields_neutral_and_validates_first() {
     );
 }
 
+// covers: HER-BAT-003
+#[test]
+fn morale_and_luck_effects_are_combined_and_count_each_artifact_once() {
+    use Affects::{Both, Enemy, Own};
+    let r = morale_ruleset();
+    let d = details(&r);
+    // Own morale: the circle and its part band, +1 each; enemy morale: the hook's −1 and the
+    // specialty's +1 cancel and are left out; own luck: the eye once although two are worn;
+    // enemy luck: the specialty's −1; the caps: the smaller of the hook's 2 and the helm's 1
+    // for both sides, the band's 0 for the enemy.
+    let caps = [
+        BattleEffect::MoraleAtMost {
+            value: 1,
+            affects: Both,
+        },
+        BattleEffect::LuckAtMost {
+            value: 0,
+            affects: Enemy,
+        },
+    ];
+    let hero = derive_battle_hero(&d, &r).unwrap();
+    assert_eq!(
+        hero.effects,
+        [
+            &[
+                BattleEffect::Morale {
+                    amount: 2,
+                    affects: Own,
+                },
+                BattleEffect::Luck {
+                    amount: 1,
+                    affects: Own,
+                },
+                BattleEffect::Luck {
+                    amount: -1,
+                    affects: Enemy,
+                },
+            ][..],
+            &caps,
+        ]
+        .concat()
+    );
+    // Advanced Leadership and Basic Luck add to the own morale and luck; without the hook the
+    // specialty's enemy morale +1 remains, and the helm's cap.
+    let mut d = d;
+    d.skills
+        .extend([(skill(&r, "t:leadership"), 2), (skill(&r, "t:luck"), 1)]);
+    d.worn.retain(|&a| a != art(&r, "t:hook"));
+    let hero = derive_battle_hero(&d, &r).unwrap();
+    assert_eq!(
+        hero.effects,
+        [
+            &[
+                BattleEffect::Morale {
+                    amount: 4,
+                    affects: Own,
+                },
+                BattleEffect::Morale {
+                    amount: 1,
+                    affects: Enemy,
+                },
+                BattleEffect::Luck {
+                    amount: 2,
+                    affects: Own,
+                },
+                BattleEffect::Luck {
+                    amount: -1,
+                    affects: Enemy,
+                },
+            ][..],
+            &caps,
+        ]
+        .concat()
+    );
+}
+
 proptest! {
-    // covers: HER-BAT-001, HER-BAT-002
+    // covers: HER-BAT-001, HER-BAT-002, HER-BAT-003
     #[test]
     fn derivation_succeeds_exactly_for_valid_details_and_stays_in_limits(
         worn in proptest::collection::vec(0u16..10, 0..8),
         skills in proptest::collection::vec((0u16..10, 1u8..=3), 0..3),
         primary in proptest::array::uniform4(0u8..=100),
     ) {
-        let r = effect_ruleset();
+        let r = morale_ruleset();
         let d = HeroDetails {
             primary,
             skills: skills.iter().map(|&(s, l)| (SkillId::from_raw(s), l)).collect(),
@@ -165,6 +289,8 @@ proptest! {
                 prop_assert!((min..=99).contains(&value));
             }
             prop_assert!(hero.tactics <= 3);
+            // At most one effect per morale/luck kind and affected sides (HER-BAT-003).
+            prop_assert!(hero.effects.len() <= 12);
         }
     }
 }

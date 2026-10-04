@@ -1,11 +1,11 @@
 //! Library side of the `h3` tool: loading packs and scenarios from disk, running random battles,
 //! and the replay file format (TOML). The binary (`main.rs`) only parses arguments.
 //!
-//! Replay file format v3 (`fixtures/replays/*.toml` are examples):
+//! Replay file format v4 (`fixtures/replays/*.toml` are examples):
 //!
 //! ```toml
 //! [replay]
-//! format = 3
+//! format = 4
 //! engine = "0.1.0"
 //! scenario = "skirmish"
 //! seed = "7"                      # u64 as a decimal string
@@ -34,6 +34,11 @@
 //! tactics = 0
 //! mana = 10
 //! max_mana = 10
+//!
+//! [[setup.attacker_hero.effects]] # its battle effects (format 4; omitted when none):
+//! kind = "morale"                 #   `h3_pack::EffectEntry`
+//! amount = 1
+//! affects = "own"
 //!
 //! [[attacker]]                    # the setup, by creature key
 //! slot = 0
