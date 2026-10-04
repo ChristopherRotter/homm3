@@ -24,8 +24,10 @@ use h3_sim::{ACTION_COUNT, ActionMask, BattleEnv, OBSERVATION_LEN, StepError};
 /// v5 (heals appended; `h3_action_count` grows by the stack slots, earlier indices unchanged).
 /// v4 (E04a T8): action encoding v6 (`EndTactics` appended; `h3_action_count` grows by one).
 /// v5 (E04a T9a): action encoding v7 (Retreat appended) and the `H3_RESULT_*` codes of a retreat
-/// or a surrender. v6 (E04a T9b): action encoding v8 (Surrender appended).
-pub const H3_ABI_VERSION: u32 = 6;
+/// or a surrender. v6 (E04a T9b): action encoding v8 (Surrender appended). v7 (E04a T11b):
+/// observation encoding v4 (the heroes, the tactics phase, retreat and surrender;
+/// `h3_observation_len` grows).
+pub const H3_ABI_VERSION: u32 = 7;
 
 /// `H3StepResult.result`: the battle is not decided (still running, or truncated).
 pub const H3_RESULT_NONE: i32 = -1;
@@ -343,7 +345,7 @@ mod tests {
 
     #[test]
     fn abi_smoke_create_step_destroy() {
-        assert_eq!(h3_abi_version(), 6);
+        assert_eq!(h3_abi_version(), 7);
         assert_eq!(h3_action_count() as usize, ACTION_COUNT);
         assert_eq!(h3_observation_len() as usize, OBSERVATION_LEN);
         assert!(h3_env_create_synthetic(9, 1, 0).is_null());

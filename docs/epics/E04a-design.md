@@ -112,13 +112,11 @@ how the machines work, surrender discount, funds, surrender price). E04b adds it
 the same mechanism: state with an owner side, projected away for the other viewer, events with
 `Visibility::Side` (ADR-0004 §6).
 
-## 9. Encodings (T11)
+## 9. Encodings (done; E04b's casting open)
 
-- T7b already appended `Heal { target }` over the stack slots (action encoding v5, C ABI v3:
-  every legal command must be encodable); the commanded Ballista reuses `Shoot`. T8 appended
-  `EndTactics` (action encoding v6, C ABI v4; placements reuse the `Move` indices, passing reuses
-  Wait); T9 appended `Retreat` (v7, C ABI v5, with result codes for retreats and surrenders) and
-  `Surrender` (v8, C ABI v6); each bump also bumps the C ABI (ADR-0011). Observation encoding v4
-  adds per-side hero features (the public part for the opponent) in T11.
-- E04b's casting (spells × targets) does not fit a flat dense encoding; E04b designs a factorized
-  one together with E05 (BACKLOG). E04a does not pre-empt it.
+Each new command appended its action indices (heals v5, `EndTactics` v6, Retreat v7, Surrender v8)
+and each encoding bump bumped the C ABI (ADR-0011). T11b: observation encoding v4 (globals for the
+tactics phase, retreat and surrender; a hero block per side, the opponent's without its private
+part; the stack traits a hero can give), C ABI v7; the layout is documented in
+`h3_sim::observation`. E04b's casting (spells × targets) does not fit a flat dense encoding;
+E04b designs a factorized one together with E05 (BACKLOG). E04a does not pre-empt it.

@@ -6,7 +6,7 @@ Living state between sessions; every session reads it first. Rules (`docs/08-wor
 
 - Branch `e04a-heroes-in-battle` (the user merges to `master` when an epic closes); `cargo xtask verify --with-original-data` green. Sandbox and syncing: `docs/08-work-process.md`, "Cloud sandbox and syncing" (`scripts/sandbox-setup.sh`).
 - **E04a** (`docs/epics/E04a-heroes-in-battle.md`): T1–T10 done, experiment batches 1a and 1b evaluated and folded in (`docs/epics/E04a-design.md`); T10 in three checkpoints (Q35/Q36). **T11 in progress** in three checkpoints (Q37): T11a the observation (`observe` takes the ruleset), T11b observation encoding v4 and C ABI v7, T11c hero-bearing `full` workload, golden replays, benchmark, measurements; then T12 (closure).
-- Versions: state hash v17, ruleset hash v13, replay format v13, action encoding v8, C ABI v6, observation encoding v3. Each new command bumps the action encoding and the C ABI (ADR-0011).
+- Versions: state hash v17, ruleset hash v13, replay format v13, action encoding v8, C ABI v7, observation encoding v4. Each new command bumps the action encoding and the C ABI (ADR-0011).
 - No decision is waiting for the user. Long-term open questions: `docs/OPEN-QUESTIONS.md`, section "Open".
 - Working agreement: small increments, the user confirms the seam; token efficiency beats speed (AGENTS.md); the user plays experiment maps in SoD with plain HD and commits the results.
 
@@ -47,7 +47,7 @@ Living state between sessions; every session reads it first. Rules (`docs/08-wor
 
 ### 2026-10-04 (thirteenth) — E04a T11 started
 
-T11 split with the user (Q37): T11a and T11b this session, T11c in the next; `observe` takes the ruleset; the experiment-spec runner stays in the BACKLOG. T11a done (the observation: `observe` takes the ruleset, `surrender_possible`, machine control public, `Observation.own_hero` private). **In progress:** T11b.
+T11 split with the user (Q37): T11a and T11b this session, T11c in the next; `observe` takes the ruleset; the experiment-spec runner stays in the BACKLOG. T11a done (the observation: `observe` takes the ruleset, `surrender_possible`, machine control public, `Observation.own_hero` private). T11b done (observation encoding v4, C ABI v7). **Next:** T11c.
 
 ### 2026-10-04 (twelfth) — E04a T10 done (stat effects, traits, alignment groups)
 
