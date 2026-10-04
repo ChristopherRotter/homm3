@@ -295,8 +295,9 @@ research notes and disputes in `docs/rules/surveys/E04-artifacts.md`):
 - Not harvested: the descriptions, the three unused SoD rows (Diplomat's Suit, Mired in Neutrality,
   Ironfist of the Ogre), the combinations' costs (blank in the original table; VCMI's values are
   its own).
-- Angelic Alliance's `alignment_group` names the five towns of the SoD text and the wiki (dispute
-  D1: VCMI lets every non-evil faction mix, Conflux included; an experiment for batch 1b).
+- Angelic Alliance's `alignment_group` names the five towns of the SoD text and the wiki; batch
+  1b R1 confirmed it in SoD (Conflux and neutral creatures stay separate; dispute D1: VCMI lets
+  every non-evil faction mix; BAT-HER-007).
   Speed and hit-point artifacts use the selector "all creatures"; the battle gives war machines
   the hit points but not the speed (batch 1b R8, BAT-HER-005). The Golden Bow's "shooters"
   include the Ballista (open check 2, batch 1b R8; BAT-HER-006).
@@ -365,7 +366,7 @@ hero_type = "synthetic:brea"     # the side, given directly (BAT-HER-001, Q31); 
 attack = 2                       # one is not led by a hero (quirk Q-0003). Every field but
 defense = 2                      # hero_type defaults to 0 (effects: none); the rest of the battle
 power = 1                        # hero (other effects, spell book, …) joins the format with
-knowledge = 1                    # the rules that read it (E04a T10c, E04b)
+knowledge = 1                    # the rules that read it (E04b)
 tactics = 2
 mana = 10
 max_mana = 10
@@ -384,7 +385,8 @@ effects = [{ kind = "morale", amount = 1 }, { kind = "luck_at_most", value = 0, 
                                  # "Hero effects" (omitted: all), `stat`, `op` = `add` |
                                  # `percent_bp` (rounded up) | `percent_bp_down`, `amount`),
                                  # `regeneration`, `no_range_penalty`, `shoot_when_adjacent`
-                                 # (BAT-HER-006, parameters as in "Hero effects")
+                                 # (BAT-HER-006) and `alignment_group` (BAT-HER-007; at most 16
+                                 # factions), parameters as in "Hero effects"
 
 [[attacker]]                     # one entry per stack
 slot = 0

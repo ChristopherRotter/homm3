@@ -9,8 +9,8 @@ use h3_content::{
     HeroEffect, Ruleset,
 };
 use h3_contracts::{
-    BallistaControl, BattleEffect, BattleHero, DamageBonuses, MAX_BATTLE_EFFECTS, MachineControl,
-    StatOp, TentControl,
+    BallistaControl, BattleEffect, BattleHero, DamageBonuses, FactionGroup, MAX_BATTLE_EFFECTS,
+    MachineControl, StatOp, TentControl,
 };
 
 use crate::details::{HeroDetails, PrimarySkill, check};
@@ -20,11 +20,10 @@ use crate::error::DetailsError;
 /// effective primary skills (HER-BAT-001), the Tactics level (HER-BAT-002), the morale and luck
 /// effects (HER-BAT-003), the damage bonuses (HER-BAT-004), the war machines it commands
 /// (HER-BAT-005), the `NoRetreat` effect (HER-BAT-006), the surrender discount (HER-BAT-007),
-/// the stack statistic effects (HER-BAT-008) and the stack trait effects (HER-BAT-009); the mana
-/// is passed through. The details are validated first.
+/// the stack statistic effects (HER-BAT-008), the stack trait effects (HER-BAT-009) and the
+/// alignment groups (HER-BAT-010); the mana is passed through. The details are validated first.
 ///
-/// Later tasks fill the rest; until then it stays neutral: the alignment group (E04a T10c), and
-/// spell book, maximum mana and schools (E04b).
+/// The magic stays neutral until E04b: spell book, maximum mana and schools.
 ///
 /// # Errors
 /// The [`DetailsError`] of the first rule the details break ([`crate::validate`]);
@@ -83,6 +82,9 @@ pub fn derive_battle_hero(
 
     // rule: HER-BAT-009
     hero.effects.extend(stack_traits(details, ruleset));
+
+    // rule: HER-BAT-010
+    hero.effects.extend(alignment_groups(details, ruleset));
     if hero.effects.len() > MAX_BATTLE_EFFECTS {
         return Err(DetailsError::TooManyBattleEffects);
     }
@@ -209,6 +211,24 @@ fn stack_traits(details: &HeroDetails, ruleset: &Ruleset) -> Vec<BattleEffect> {
         };
         if !out.contains(&new) {
             out.push(new);
+        }
+    }
+    out
+}
+
+/// The alignment groups (HER-BAT-010): each `alignment_group` effect, each artifact type once,
+/// equal groups once, in the order of their first appearance.
+fn alignment_groups(details: &HeroDetails, ruleset: &Ruleset) -> Vec<BattleEffect> {
+    let mut out: Vec<BattleEffect> = Vec::new();
+    let groups = effects(details, ruleset, Count::OncePerType).filter_map(|e| match e {
+        // Content holds at most `MAX_ALIGNMENT_FACTIONS` factions per group.
+        HeroEffect::AlignmentGroup { factions } => FactionGroup::new(factions),
+        _ => None,
+    });
+    for factions in groups {
+        let group = BattleEffect::AlignmentGroup { factions };
+        if !out.contains(&group) {
+            out.push(group);
         }
     }
     out

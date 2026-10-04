@@ -966,7 +966,7 @@ id       = "BAT-MOR-002"
 title    = "Army alignment and undead"
 context  = "battle"
 status   = "implemented"
-summary  = "From the armies at the start of the battle: a side whose stacks all belong to one alignment (faction; neutral creatures form one) gets +1 morale; with n >= 2 alignments it gets 2 - n (two: 0, three: -1, four: -2, ...). A side with any undead stack (flag undead) gets another -1. Sides with and without a hero alike."
+summary  = "From the armies at the start of the battle (war machines not counted): a side whose stacks all belong to one alignment (faction; neutral creatures form one; the factions of one of its hero's alignment groups form one, BAT-HER-007) gets +1 morale; with n >= 2 alignments it gets 2 - n (two: 0, three: -1, four: -2, ...). A side with any undead stack (flag undead) gets another -1. Sides with and without a hero alike."
 numeric  = "integer"
 
   [[rule.source]]
@@ -1503,6 +1503,32 @@ numeric  = "integer"
   ref        = "experiments/results/E04a-batch-1b.md R8 (SoD 4.0 Complete, plain HD, 2026-10-04): with the Golden Bow the Ballista deals 23, 17 and 20 at long range, no range penalty (artifacts open check 2); experiments/results/E04a-batch-1a.md R8: Trolls with the Elixir regain all 54 (their own regeneration); the 50 cap is not observed (wiki and VCMI)"
   retrieved  = "2026-10-04"
   confidence = "medium"
+
+[[rule]]
+id       = "BAT-HER-007"
+title    = "The heroes' alignment groups"
+context  = "battle"
+status   = "implemented"
+summary  = "For the army-alignment morale of a side (BAT-MOR-002), the factions of each AlignmentGroup effect of its hero (HER-BAT-010) count as one alignment; groups that share a faction join, also through a faction the army lacks. Neutral creatures and factions outside every group stay alignments of their own. Angelic Alliance in SoD: Castle, Rampart, Tower, Fortress and Stronghold mix; Pikemen, Centaurs, Pixies (Conflux) and Peasants (neutral) are three alignments (-1), without the Pixies or the Peasants two (0), so an army of the five towns only gets +1. Only the hero's side is changed; the morale is public, the effect private. The check of the setup (BAT-HER-001) rejects groups naming factions outside the ruleset (HeroError::UnknownFaction)."
+numeric  = "integer"
+
+  [[rule.source]]
+  kind       = "observation"
+  ref        = "experiments/results/E04a-batch-1b.md R1 (SoD 4.0 Complete, plain HD, 2026-10-04): with Angelic Alliance, Pikemen, Centaurs, Pixies and Peasants show 'Troops of three alignments -1' in battle; without the Pixies or without the Peasants neutral morale (dispute D1: Conflux and neutral creatures do not mix; the hero screen shows no alignment morale)"
+  retrieved  = "2026-10-04"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "ARTRAITS.TXT, Angelic Alliance (id 129): the five towns whose creatures may mix (not committed, ADR-0009; survey docs/rules/surveys/E04-artifacts.md D1)"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "vcmi"
+  ref        = "lib/mapObjects/army/CArmedInstance.cpp L67-L111: with NONEVIL_ALIGNMENT_MIX the mixable factions count as one (factionsInArmy -= mixable - 1), +1 for one alignment, 2 - n otherwise; VCMI counts every non-evil faction, Conflux and neutral included, which SoD does not (R1)"
+  url        = "https://github.com/vcmi/vcmi/blob/1.7.5/lib/mapObjects/army/CArmedInstance.cpp#L67-L111"
+  retrieved  = "2026-10-04"
+  confidence = "high"
 
 [[rule]]
 id       = "BAT-TAC-001"

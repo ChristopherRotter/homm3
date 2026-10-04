@@ -7,7 +7,10 @@
 
 use alloc::vec::Vec;
 
-use h3_content::{Affects, CreatureSelector, CreatureStat, CreatureTypeId, HeroTypeId, SpellId};
+use h3_content::{
+    Affects, CreatureSelector, CreatureStat, CreatureTypeId, FactionId, HeroTypeId,
+    MAX_ALIGNMENT_FACTIONS, SpellId,
+};
 
 /// Most entries in [`BattleHero::effects`].
 pub const MAX_BATTLE_EFFECTS: usize = 64;
@@ -35,7 +38,7 @@ pub struct BattleHero {
     pub surrender_discount_bp: u16,
     /// Every other battle effect of the hero's skills, artifacts and specialty, resolved (at most
     /// [`MAX_BATTLE_EFFECTS`]; morale and luck since E04a T5b, `NoRetreat` since T9a, stack
-    /// statistics since T10a, the others with T10b and T10c).
+    /// statistics and traits since T10a and T10b, alignment groups since T10c).
     pub effects: Vec<BattleEffect>,
     /// Spell book, mana and schools (E04b; carried and ignored before).
     pub magic: BattleMagic,
@@ -149,6 +152,34 @@ pub enum StatOp {
     PercentBpDown,
 }
 
+/// Up to [`MAX_ALIGNMENT_FACTIONS`] factions in a fixed array, so that [`BattleEffect`] stays
+/// `Copy` (user decision, OPEN-QUESTIONS Q36).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct FactionGroup {
+    /// Number of factions in use.
+    len: u8,
+    /// The factions, then default handles.
+    ids: [FactionId; MAX_ALIGNMENT_FACTIONS],
+}
+
+impl FactionGroup {
+    /// A group of `factions`, or `None` if they are more than [`MAX_ALIGNMENT_FACTIONS`].
+    pub fn new(factions: &[FactionId]) -> Option<Self> {
+        let mut ids = [FactionId::default(); MAX_ALIGNMENT_FACTIONS];
+        ids.get_mut(..factions.len())?.copy_from_slice(factions);
+        Some(Self {
+            // At most `MAX_ALIGNMENT_FACTIONS`, which fits.
+            len: u8::try_from(factions.len()).unwrap_or(u8::MAX),
+            ids,
+        })
+    }
+
+    /// The factions, in the order given.
+    pub fn factions(&self) -> &[FactionId] {
+        self.ids.get(..usize::from(self.len)).unwrap_or_default()
+    }
+}
+
 /// One resolved effect of a hero in battle (ADR-0013 point 3). Later tasks add variants (T10,
 /// E04b); the battle checks them like the rest of the setup.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -214,4 +245,10 @@ pub enum BattleEffect {
     },
     /// Neither side may retreat or surrender (Shackles of War).
     NoRetreat,
+    /// Creatures of these factions count as one alignment for the army-alignment morale of the
+    /// hero's side (Angelic Alliance; BAT-MOR-002).
+    AlignmentGroup {
+        /// The factions.
+        factions: FactionGroup,
+    },
 }

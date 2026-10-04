@@ -507,7 +507,7 @@ checkpoints = [
 ]
 
 [replay]
-format = 12
+format = 13
 engine = "0.1.0"
 scenario = "full"
 seed = "3"

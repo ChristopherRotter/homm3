@@ -1,7 +1,7 @@
 //! The heroes leading the sides (BAT-HER-001): what the battle checks, keeps and shows, the
 //! hero's attack and defense on its stacks (BAT-HER-002), its morale and luck effects
-//! (BAT-HER-003), its damage bonuses (BAT-HER-004), its statistic effects (BAT-HER-005) and its
-//! trait effects (BAT-HER-006).
+//! (BAT-HER-003), its damage bonuses (BAT-HER-004), its statistic effects (BAT-HER-005), its
+//! trait effects (BAT-HER-006) and its alignment groups (BAT-HER-007).
 
 use std::vec;
 use std::vec::Vec;
@@ -67,6 +67,13 @@ fn every_effect(r: &h3_content::Ruleset) -> Vec<BattleEffect> {
             creatures: CreatureSelector::Flag(CreatureFlag::Shooter),
         },
         BattleEffect::NoRetreat,
+        BattleEffect::AlignmentGroup {
+            factions: h3_contracts::FactionGroup::new(&[
+                h3_content::FactionId::from_raw(0),
+                h3_content::FactionId::from_raw(1),
+            ])
+            .unwrap(),
+        },
     ]
 }
 
@@ -182,6 +189,18 @@ fn unsound_heroes_are_rejected() {
                 });
             },
             HeroError::UnknownCreature,
+        ),
+        (
+            |_, h| {
+                h.effects = vec![BattleEffect::AlignmentGroup {
+                    factions: h3_contracts::FactionGroup::new(&[
+                        h3_content::FactionId::from_raw(0),
+                        h3_content::FactionId::from_raw(99),
+                    ])
+                    .unwrap(),
+                }];
+            },
+            HeroError::UnknownFaction,
         ),
         (|_, h| h.magic.schools[2] = 4, HeroError::SchoolLevel),
         (
@@ -474,6 +493,60 @@ fn hero_traits_let_shooters_shoot_far_and_close_and_stacks_regenerate() {
         [(0, 50)]
     );
     assert_eq!(s.stacks()[0].top_hp, 60);
+}
+
+// covers: BAT-HER-007, BAT-MOR-002
+#[test]
+fn alignment_groups_count_their_factions_as_one_alignment() {
+    let r = ruleset();
+    let faction = |k: &str| {
+        let i = r
+            .factions()
+            .iter()
+            .position(|f| f.key.as_str() == k)
+            .unwrap();
+        h3_content::FactionId::from_index(i).unwrap()
+    };
+    let group = |keys: &[&str]| BattleEffect::AlignmentGroup {
+        factions: h3_contracts::FactionGroup::new(
+            &keys.iter().map(|k| faction(k)).collect::<Vec<_>>(),
+        )
+        .unwrap(),
+    };
+    // Castle, inferno and neutral creatures: three alignments, −1 for every stack of each side.
+    let army = [(0, "pikeman_c", 1), (1, "imp", 1), (2, "serf", 1)];
+    let morale = |effects: Vec<BattleEffect>| {
+        let mut h = hero(&r);
+        h.effects = effects;
+        let s = BattleSetup {
+            heroes: [Some(h), None],
+            ..setup(&r, &army, &army)
+        };
+        let b = BattleState::new(&r, &s, 1).unwrap();
+        b.stacks().iter().map(|s| s.morale).collect::<Vec<_>>()
+    };
+    assert_eq!(morale(vec![]), [-1; 6]);
+    // Castle and inferno as one: two alignments (0) for the hero's side only.
+    assert_eq!(
+        morale(vec![group(&["t:castle", "t:inferno"])]),
+        [0, 0, 0, -1, -1, -1]
+    );
+    // Groups that share a faction join, even one the army lacks.
+    assert_eq!(
+        morale(vec![
+            group(&["t:castle", "t:necropolis"]),
+            group(&["t:necropolis", "t:inferno"]),
+        ]),
+        [0, 0, 0, -1, -1, -1]
+    );
+    // A group without the castle leaves three alignments.
+    assert_eq!(
+        morale(vec![
+            BattleEffect::NoRetreat,
+            group(&["t:inferno", "t:necropolis"])
+        ]),
+        [-1; 6]
+    );
 }
 
 // covers: BAT-HER-002

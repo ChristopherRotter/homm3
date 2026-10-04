@@ -5,8 +5,8 @@ Living state between sessions; every session reads it first. Rules (`docs/08-wor
 ## Current state
 
 - Branch `e04a-heroes-in-battle` (the user merges to `master` when an epic closes); `cargo xtask verify --with-original-data` green. Sandbox and syncing: `docs/08-work-process.md`, "Cloud sandbox and syncing" (`scripts/sandbox-setup.sh`).
-- **E04a** (`docs/epics/E04a-heroes-in-battle.md`): T1–T9 done, experiment batches 1a and 1b evaluated (`docs/epics/E04a-design.md`, "Batch 1b results" says what T10 must do). **T10 in progress** (split Q35): T10a (stat effects) and T10b (stack traits) done; **next: T10c** (Angelic Alliance's alignment group as `BattleEffect::AlignmentGroup` with a fixed array of up to 16 faction ids, user Q36; BAT-MOR-002 per batch 1b R1; then the T10 closure: measure state size, clone cost, steps/s; prune `E04a-design.md`). Then T11, T12.
-- Versions: state hash v17, ruleset hash v13, replay format v12, action encoding v8, C ABI v6, observation encoding v3. Each new command bumps the action encoding and the C ABI (ADR-0011).
+- **E04a** (`docs/epics/E04a-heroes-in-battle.md`): T1–T10 done, experiment batches 1a and 1b evaluated and folded in (`docs/epics/E04a-design.md`); T10 in three checkpoints (Q35/Q36). **Next: T11** (sim, FFI, CLI, scenarios: heroes in scenarios are in place; the observation encoding v4 with hero features and whether surrender is possible, ABI bump, hero-bearing scenarios in the `full` workload; propose a split first), then T12 (closure).
+- Versions: state hash v17, ruleset hash v13, replay format v13, action encoding v8, C ABI v6, observation encoding v3. Each new command bumps the action encoding and the C ABI (ADR-0011).
 - No decision is waiting for the user. Long-term open questions: `docs/OPEN-QUESTIONS.md`, section "Open".
 - Working agreement: small increments, the user confirms the seam; token efficiency beats speed (AGENTS.md); the user plays experiment maps in SoD with plain HD and commits the results.
 
@@ -45,9 +45,9 @@ Living state between sessions; every session reads it first. Rules (`docs/08-wor
 
 ## Recent sessions
 
-### 2026-10-04 (twelfth) — E04a T10a and T10b done (stat effects and traits on stacks)
+### 2026-10-04 (twelfth) — E04a T10 done (stat effects, traits, alignment groups)
 
-T10 split with the user (Q35: T10a, T10b now, T10c next; Q-0006's profile override deferred to E04b). T10a: HER-BAT-008 (derivation of `creature_stat`, `creature_stat_percent`, `creature_specialty`), BAT-HER-005 (applied in `Stack::new`; war machines no speed), `StatOp::PercentBpDown`, effect kind `stack_stat` in scenario and replay files (replay format v11), batch 1a R8/B4–B6 and 1b R8/B7 reproduced with the harvested packs (`h3-pack` test; `h3-battle` dev-dependency). `Field::neighbors` written out (codegen swing, −12.5 % Ir, re-baselined). T10b: HER-BAT-009, BAT-HER-006 (no range penalty, shooting while adjacent, the hero's regeneration capped at its hit points; `Stack.regeneration`, state hash v17; replay format v12). Detail: `docs/epics/E04a-log.md`.
+T10 split with the user (Q35: T10a, T10b now, T10c next; Q-0006's profile override deferred to E04b). T10a: HER-BAT-008 (derivation of `creature_stat`, `creature_stat_percent`, `creature_specialty`), BAT-HER-005 (applied in `Stack::new`; war machines no speed), `StatOp::PercentBpDown`, effect kind `stack_stat` in scenario and replay files (replay format v11), batch 1a R8/B4–B6 and 1b R8/B7 reproduced with the harvested packs (`h3-pack` test; `h3-battle` dev-dependency). `Field::neighbors` written out (codegen swing, −12.5 % Ir, re-baselined). T10b: HER-BAT-009, BAT-HER-006 (no range penalty, shooting while adjacent, the hero's regeneration capped at its hit points; `Stack.regeneration`, state hash v17). T10c (the user asked to fit it in): `FactionGroup` (Q36), HER-BAT-010, BAT-HER-007 (batch 1b R1 reproduced), replay format v13; T10 measurements in the log. Detail: `docs/epics/E04a-log.md`.
 
 ### 2026-10-04 (eleventh) — E04a T8 and T9 done (tactics; retreat, surrender, outcome)
 

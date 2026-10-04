@@ -1,4 +1,4 @@
-//! `derive_battle_hero` (HER-BAT-001 to HER-BAT-009).
+//! `derive_battle_hero` (HER-BAT-001 to HER-BAT-010).
 
 use std::vec;
 
@@ -668,6 +668,46 @@ fn stack_trait_effects_are_kept_once_per_kind_and_creatures() {
                 hit_points: 10
             },
         ]
+    );
+}
+
+// covers: HER-BAT-010
+#[test]
+fn alignment_groups_are_kept_once_each() {
+    use h3_content::FactionDef;
+    use h3_contracts::FactionGroup;
+    let mut p = pack();
+    for f in ["t:vale", "t:marsh"] {
+        p.factions.push(FactionDef {
+            key: key(f),
+            name: "Faction".into(),
+            native_terrain: None,
+        });
+    }
+    let group = |keys: &[&str]| HeroEffectDef::AlignmentGroup {
+        factions: keys.iter().map(|k| key(k)).collect(),
+    };
+    for a in &mut p.artifacts {
+        a.effects = match a.key.to_string().as_str() {
+            "t:circle" | "t:helm" => vec![group(&["t:town", "t:vale"])],
+            "t:eye" => vec![group(&["t:vale", "t:marsh"])],
+            _ => continue,
+        };
+    }
+    let r = compile(p).unwrap();
+    let id = |i| h3_content::FactionId::from_index(i).unwrap();
+    // The circle's and its part's equal groups once, then the eye's.
+    assert_eq!(
+        derive_battle_hero(&details(&r), &r).unwrap().effects,
+        [[0, 1], [1, 2]].map(|ids| BattleEffect::AlignmentGroup {
+            factions: FactionGroup::new(&ids.map(id)).unwrap()
+        })
+    );
+    // At most 16 factions in a group.
+    assert_eq!(FactionGroup::new(&[id(0); 17]), None);
+    assert_eq!(
+        FactionGroup::new(&[id(2), id(0)]).unwrap().factions(),
+        [id(2), id(0)]
     );
 }
 

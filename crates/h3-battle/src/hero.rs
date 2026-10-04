@@ -238,6 +238,19 @@ pub(crate) fn check(
     {
         return Err(invalid(HeroError::UnknownCreature));
     }
+    let faction_count = ruleset.factions().len();
+    if hero
+        .effects
+        .iter()
+        .filter_map(|e| match e {
+            BattleEffect::AlignmentGroup { factions } => Some(factions.factions()),
+            _ => None,
+        })
+        .flatten()
+        .any(|f| f.index() >= faction_count)
+    {
+        return Err(invalid(HeroError::UnknownFaction));
+    }
     let magic = &hero.magic;
     if magic.schools.iter().any(|&level| level > MAX_SKILL_LEVEL) {
         return Err(invalid(HeroError::SchoolLevel));
@@ -285,7 +298,8 @@ fn creature_of(effect: &BattleEffect) -> Option<CreatureTypeId> {
         | BattleEffect::Luck { .. }
         | BattleEffect::MoraleAtMost { .. }
         | BattleEffect::LuckAtMost { .. }
-        | BattleEffect::NoRetreat => return None,
+        | BattleEffect::NoRetreat
+        | BattleEffect::AlignmentGroup { .. } => return None,
     };
     match selector {
         CreatureSelector::Creature(c) => Some(*c),

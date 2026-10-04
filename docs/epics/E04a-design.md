@@ -43,23 +43,12 @@ each task has to do with them:
   Learning multiplies the whole sum including the +500, the loser's war machines are not
   captured) and R6 (Necromancy rounded down per killed stack) need; those rules are E08–E10's
   (BACKLOG inbox, 2026-10-04).
-- **T10** (R8 and B7 are fixtures of HER-BAT-008/009 and BAT-HER-005/006 since T10a, T10b):
-  - T10c: Angelic Alliance as the packs model it (artifacts D1): the five SoD factions count as one
-    alignment, Conflux and neutral creatures stay separate (R1 in battle: −1 "Troops of three
-    alignments" with all four, 0 without the Pixies or without the Peasants); VCMI (every non-evil
-    faction, +1) and the wiki's "they cancel the bonus" are not the original. The hero screen shows
-    no alignment morale; only the battle does.
+- **T10** (done): R1, R8 and B7 are fixtures of HER-BAT-008 to 010 and BAT-HER-005 to 007
+  (`h3-pack`, `harvested_hero_effects_reproduce_the_experiments`). The hero screen shows no
+  alignment morale; only the battle does (R1).
 - Not staged: D8 (Cloak of the Undead King, E08–E10), Q22.
 
-## 3. Artifacts in the derivation (T10)
-
-T4b1 implemented the effect sources (`h3_heroes` `derive.rs`, `effects`: skills at their levels,
-worn artifacts per copy with a combination's parts, `needs_skill`, the specialty; HER-BAT-001);
-each artifact type counts once except `primary_skills` (HER-BAT-003, HER-BAT-008). **Pending**
-(no battle effect in E04a): see `packs/README.md`, "What the harvested artifacts leave out";
-Necromancy goes with the Necromancy skill (E08–E10).
-
-## 4. `BattleHero` (read by T5–T7, T9, T10)
+## 4. `BattleHero` (done in E04a; magic E04b)
 
 T4b1 implemented the types (`h3_contracts` `hero.rs`, docs there) and `derive_battle_hero`
 (HER-BAT-001/002). Deviations from the ADR-time sketch: `BallistaControl.double_damage_chance_bp`
@@ -67,19 +56,17 @@ T4b1 implemented the types (`h3_contracts` `hero.rs`, docs there) and `derive_ba
 own maximum, as the content's `first_aid` effect; a specialist's growth exceeds `u16`),
 `CatapultControl` an empty `#[non_exhaustive]` struct (cannot be built before E04c),
 `BattleEffect` uses the content's `CreatureSelector` (one creature: a creature and its upgrades
-become several effects) and `StatOp { Add, PercentBp }`. What the tasks still have to do:
+become several effects), `StatOp { Add, PercentBp, PercentBpDown }` (T10a) and `FactionGroup`, a
+fixed array of up to 16 factions (T10c, Q36).
 
 - **Validation (T4b2), user decision Q31:** the battle checks only soundness — references of the
   ruleset, `effects.len() <= MAX_BATTLE_EFFECTS`, `reduction_bp` and `surrender_discount_bp`
   and the Ballista's chance at most 10 000, Tactics and school levels at most 3, the spell
   book's spells of the ruleset and not creature abilities; it does not check the primary-skill
   limits (any `u8` is accepted).
-- **The derivation fills the rest:** `effects` — the alignment group (T10c; morale and luck
-  since T5b, HER-BAT-003; `NoRetreat` since T9a, HER-BAT-006; stack statistics and traits since
-  T10a, T10b, HER-BAT-008/009; at most 64 in all, more is an error), magic (E04b); damage bonuses since T6b (HER-BAT-004, applied
-  by BAT-HER-004), war-machine control since T7 (HER-BAT-005, applied by BAT-WAR-006/007), the
-  surrender discount since T9b (HER-BAT-007, applied by BAT-FLE-002). Sums that can exceed the
-  field types saturate; `surrender_discount_bp` is clamped to 10 000 like `reduction_bp`.
+- **The derivation** (HER-BAT-001 to 010) fills every field except the magic (E04b): sums that
+  can exceed the field types saturate; `surrender_discount_bp` is clamped to 10 000 like
+  `reduction_bp`; more than 64 effects is an error.
 
 ## 5. `BattleSetup`, `BattleOutcome`, `BattleResult` (done)
 
@@ -92,11 +79,11 @@ Tent); the **Catapult** is left out outside sieges, and the battle keeps rejecti
 `StackOrigin`: summoned stacks and clones in E04b) or, for E04c, the reserved optional fields
 `BattleSetup.siege` and `BattleOutcome.siege` and a special-battlefield kind next to `terrain`.
 
-## 6. The hero's effects in the battle state (T5, T10)
+## 6. The hero's effects in the battle state (done; read by E04b)
 
-- **Battle-long stat effects are applied once at setup** (BAT-HER-002 since T5a, the `StackStat`
-  effects BAT-HER-005 and the trait effects BAT-HER-006 since T10a, T10b, `Stack::new`). The pool
-  (ADR-0012) keeps what changes during a battle; its evaluation starts from these bases.
+- **Battle-long stat effects are applied once at setup** (BAT-HER-002, BAT-HER-005, BAT-HER-006,
+  `Stack::new`; the alignment groups BAT-HER-007 in `morale::setup`). The pool (ADR-0012) keeps
+  what changes during a battle; its evaluation starts from these bases.
 - **Morale and luck effects become side modifiers:** done in T5b (BAT-HER-003, `h3_battle`
   `morale.rs`): both heroes' changes summed and their caps combined per side and stat, so 4 per
   side and `MODIFIER_CAPACITY` 28 (the sketch's per-hero keys would have needed 36 for the same

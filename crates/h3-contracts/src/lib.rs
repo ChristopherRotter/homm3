@@ -26,7 +26,7 @@ use alloc::vec::Vec;
 
 pub use hero::{
     BallistaControl, BattleEffect, BattleHero, BattleMagic, CatapultControl, DamageBonuses,
-    MAX_BATTLE_EFFECTS, MachineControl, StatOp, TentControl,
+    FactionGroup, MAX_BATTLE_EFFECTS, MachineControl, StatOp, TentControl,
 };
 
 use h3_content::{CreatureTypeId, Formation, SpellId, TerrainId};

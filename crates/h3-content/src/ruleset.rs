@@ -816,6 +816,14 @@ impl Ruleset {
         &self.factions
     }
 
+    /// Looks a faction up by its `pack:name` key (not for the hot path).
+    pub fn faction_by_key(&self, key: &str) -> Option<FactionId> {
+        self.factions
+            .iter()
+            .position(|f| f.key.as_str() == key)
+            .and_then(FactionId::from_index)
+    }
+
     /// Terrain types, in load order (a [`TerrainId`] indexes this slice).
     pub fn terrains(&self) -> &[TerrainInfo] {
         &self.terrains

@@ -88,6 +88,8 @@ pub enum HeroError {
     TooManyEffects,
     /// An effect names a creature type that is not part of the ruleset.
     UnknownCreature,
+    /// An alignment group names a faction that is not part of the ruleset.
+    UnknownFaction,
     /// A school mastery is above Expert (3).
     SchoolLevel,
     /// A spell in the spell book is not part of the ruleset.
@@ -110,6 +112,7 @@ impl fmt::Display for HeroError {
             Self::SurrenderDiscount => "surrender discount above 10000 basis points",
             Self::TooManyEffects => "too many effects",
             Self::UnknownCreature => "an effect names an unknown creature type",
+            Self::UnknownFaction => "an alignment group names an unknown faction",
             Self::SchoolLevel => "school mastery above 3",
             Self::UnknownSpell => "unknown spell in the spell book",
             Self::DuplicateSpell => "a spell is in the spell book twice",
@@ -326,6 +329,10 @@ mod tests {
             (
                 HeroError::UnknownCreature,
                 "an effect names an unknown creature type",
+            ),
+            (
+                HeroError::UnknownFaction,
+                "an alignment group names an unknown faction",
             ),
             (HeroError::SchoolLevel, "school mastery above 3"),
             (HeroError::UnknownSpell, "unknown spell in the spell book"),

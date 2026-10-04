@@ -13,13 +13,13 @@ use h3_content::{
     ArtifactSlotOverride, AuraTarget, BattleParamsDef, CompileError, ContentKey, ContentPack,
     CreatureDef, CreatureFlag, CreatureInfoDef, CreatureOverride, CreaturePatch, CreatureSelector,
     CreatureStat, CreatureTypeId, FactionDef, Formation, HeroClassDef, HeroEffect, HeroEffectDef,
-    HeroParamsDef, HeroTypeDef, KeyError, ObstacleDef, PackManifest, ProfileDef, ResourceDef,
-    Ruleset, SecondarySkillDef, SpellCategory, SpellDef, SpellPolarity, SpellSchoolDef,
-    StartingStackDef, SurrenderDef, TerrainDef,
+    HeroParamsDef, HeroTypeDef, KeyError, MAX_ALIGNMENT_FACTIONS, ObstacleDef, PackManifest,
+    ProfileDef, ResourceDef, Ruleset, SecondarySkillDef, SpellCategory, SpellDef, SpellPolarity,
+    SpellSchoolDef, StartingStackDef, SurrenderDef, TerrainDef,
 };
 use h3_contracts::{
     Army, ArmyStack, BallistaControl, BattleEffect, BattleHero, BattleSetup, BattleSide,
-    DamageBonuses, StatOp, TentControl,
+    DamageBonuses, FactionGroup, StatOp, TentControl,
 };
 use serde::{Deserialize, Serialize};
 
@@ -54,6 +54,8 @@ pub enum PackError {
     UnknownCreature(String),
     /// A scenario references a terrain the ruleset does not define.
     UnknownTerrain(String),
+    /// A scenario or replay references a faction the ruleset does not define.
+    UnknownFaction(String),
     /// A scenario or replay references a hero type the ruleset does not define.
     UnknownHeroType(String),
     /// A battle hero has values the scenario and replay formats cannot hold yet (they arrive
@@ -69,6 +71,7 @@ impl fmt::Display for PackError {
             Self::Compile(e) => write!(f, "{e}"),
             Self::UnknownCreature(k) => write!(f, "unknown creature `{k}`"),
             Self::UnknownTerrain(k) => write!(f, "unknown terrain `{k}`"),
+            Self::UnknownFaction(k) => write!(f, "unknown faction `{k}`"),
             Self::UnknownHeroType(k) => write!(f, "unknown hero type `{k}`"),
             Self::HeroNotWritable(what) => {
                 write!(f, "the file format cannot hold a hero's {what} yet")
@@ -1399,7 +1402,7 @@ impl From<StatOp> for StatOpEntry {
 /// One battle effect of a hero as scenario and replay files write it: `kind` and the kind's
 /// parameters (`packs/README.md`, "Scenarios"): every kind the battle reads (morale and luck,
 /// BAT-HER-003; no retreat, BAT-FLE-001; stack statistics, BAT-HER-005; stack traits,
-/// BAT-HER-006); later kinds join with their rules.
+/// BAT-HER-006; alignment groups, BAT-HER-007); later kinds join with their rules.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(tag = "kind", rename_all = "snake_case", deny_unknown_fields)]
 pub enum EffectEntry {
@@ -1469,6 +1472,11 @@ pub enum EffectEntry {
         #[serde(default, skip_serializing_if = "Option::is_none")]
         creatures: Option<SelectorEntry>,
     },
+    /// [`BattleEffect::AlignmentGroup`].
+    AlignmentGroup {
+        /// The factions by key (at most [`MAX_ALIGNMENT_FACTIONS`]).
+        factions: Vec<String>,
+    },
 }
 
 impl SelectorEntry {
@@ -1513,7 +1521,9 @@ impl EffectEntry {
     /// The battle effect, its creature references resolved against `ruleset`.
     ///
     /// # Errors
-    /// [`PackError::UnknownCreature`]; an unknown flag ([`CompileError::UnknownFlag`]).
+    /// [`PackError::UnknownCreature`], [`PackError::UnknownFaction`]; an unknown flag
+    /// ([`CompileError::UnknownFlag`]); [`PackError::Syntax`] for an alignment group of more than
+    /// [`MAX_ALIGNMENT_FACTIONS`] factions.
     pub fn effect(&self, ruleset: &Ruleset) -> Result<BattleEffect, PackError> {
         Ok(match self.clone() {
             Self::Morale { amount, affects } => BattleEffect::Morale {
@@ -1557,13 +1567,31 @@ impl EffectEntry {
             Self::ShootWhenAdjacent { creatures } => BattleEffect::ShootWhenAdjacent {
                 creatures: SelectorEntry::resolve(creatures, ruleset)?,
             },
+            Self::AlignmentGroup { factions } => {
+                let ids = factions
+                    .into_iter()
+                    .map(|k| {
+                        ruleset
+                            .faction_by_key(&k)
+                            .ok_or(PackError::UnknownFaction(k))
+                    })
+                    .collect::<Result<Vec<_>, _>>()?;
+                BattleEffect::AlignmentGroup {
+                    factions: FactionGroup::new(&ids).ok_or_else(|| {
+                        PackError::Syntax(format!(
+                            "alignment_group: more than {MAX_ALIGNMENT_FACTIONS} factions"
+                        ))
+                    })?,
+                }
+            }
         })
     }
 
     /// The entry of `effect` (inverse of [`EffectEntry::effect`]).
     ///
     /// # Errors
-    /// [`PackError::UnknownCreature`] for a creature type outside `ruleset`.
+    /// [`PackError::UnknownCreature`] or [`PackError::UnknownFaction`] for a creature type or
+    /// faction outside `ruleset`.
     pub fn of(effect: &BattleEffect, ruleset: &Ruleset) -> Result<Self, PackError> {
         let selector = |creatures| SelectorEntry::of(creatures, ruleset);
         Ok(match *effect {
@@ -1607,6 +1635,19 @@ impl EffectEntry {
             },
             BattleEffect::ShootWhenAdjacent { creatures } => Self::ShootWhenAdjacent {
                 creatures: selector(creatures)?,
+            },
+            BattleEffect::AlignmentGroup { factions } => Self::AlignmentGroup {
+                factions: factions
+                    .factions()
+                    .iter()
+                    .map(|&f| {
+                        ruleset
+                            .factions()
+                            .get(f.index())
+                            .map(|i| i.key.as_str().to_owned())
+                            .ok_or_else(|| PackError::UnknownFaction(format!("#{}", f.raw())))
+                    })
+                    .collect::<Result<_, _>>()?,
             },
         })
     }
@@ -2168,6 +2209,12 @@ mod tests {
                         ruleset.creature_by_key("synthetic:brute").unwrap(),
                     ),
                 },
+                BattleEffect::AlignmentGroup {
+                    factions: FactionGroup::new(&[ruleset
+                        .faction_by_key("synthetic:vale")
+                        .unwrap()])
+                    .unwrap(),
+                },
             ])
             .collect();
         every.surrender_discount_bp = 4000;
@@ -2229,6 +2276,32 @@ mod tests {
             let entry = parse_scenario(&text).unwrap().heroes[1].clone().unwrap();
             assert_eq!(entry.resolve(&ruleset), Err(error));
         }
+        // Alignment groups name known factions, at most 16.
+        let vale = "\"synthetic:vale\"";
+        for (factions, error) in [
+            (
+                "\"synthetic:nowhere\"".to_owned(),
+                PackError::UnknownFaction("synthetic:nowhere".to_owned()),
+            ),
+            (
+                [vale; 17].join(", "),
+                PackError::Syntax("alignment_group: more than 16 factions".to_owned()),
+            ),
+        ] {
+            let text = format!(
+                "{header}[scenario.defender_hero]\nhero_type = \"synthetic:ansel\"\neffects = [{{ kind = \"alignment_group\", factions = [{factions}] }}]\n"
+            );
+            let entry = parse_scenario(&text).unwrap().heroes[1].clone().unwrap();
+            assert_eq!(entry.resolve(&ruleset), Err(error));
+        }
+        let mut stranger_faction = expected.clone();
+        stranger_faction.effects = vec![BattleEffect::AlignmentGroup {
+            factions: FactionGroup::new(&[h3_content::FactionId::from_raw(99)]).unwrap(),
+        }];
+        assert_eq!(
+            HeroEntry::of(&stranger_faction, &ruleset),
+            Err(PackError::UnknownFaction("#99".to_owned()))
+        );
         let mut stranger_creature = expected.clone();
         stranger_creature.effects = vec![BattleEffect::StackStat {
             creatures: CreatureSelector::Creature(CreatureTypeId::from_raw(999)),
@@ -2659,7 +2732,7 @@ mod tests {
     }
 
     // covers: HER-ART-001, HER-ART-002, HER-WAR-001, HER-BAT-001, HER-BAT-002, HER-BAT-003
-    // covers: HER-BAT-004, HER-BAT-005
+    // covers: HER-BAT-004, HER-BAT-005, HER-BAT-010
     #[test]
     fn hero_details_fit_the_harvested_slots() {
         use h3_heroes::{DetailsError, HeroDetails, derive_battle_hero, validate, war_machines};
@@ -2773,11 +2846,22 @@ mod tests {
             })
         );
         // Five Clovers of Fortune give luck +1: identical artifacts do not stack (wiki Artifact).
+        // Angelic Alliance lets the five SoD towns mix (HER-BAT-010).
         let luck = |amount| BattleEffect::Luck {
             amount,
             affects: Affects::Own,
         };
-        assert_eq!(hero.effects, [luck(1)]);
+        let towns = ["castle", "rampart", "tower", "fortress", "stronghold"]
+            .map(|t| sod.faction_by_key(&format!("base:{t}")).unwrap());
+        assert_eq!(
+            hero.effects,
+            [
+                luck(1),
+                BattleEffect::AlignmentGroup {
+                    factions: FactionGroup::new(&towns).unwrap()
+                }
+            ]
+        );
         // Expert Leadership (+3), Pendant of Courage (+3 each), Badge of Courage and two Clovers
         // (+1 each, once); Spirit of Oppression caps both sides' morale at 0 (the battle clamps
         // the sums to +3).
@@ -2848,9 +2932,9 @@ mod tests {
         assert_eq!(validate(&details(&ab, &misc[1..], &[]), &ab), Ok(()));
     }
 
-    // covers: HER-BAT-008, HER-BAT-009, BAT-HER-005, BAT-HER-006
+    // covers: HER-BAT-008, HER-BAT-009, HER-BAT-010, BAT-HER-005, BAT-HER-006, BAT-HER-007
     #[test]
-    fn harvested_statistic_and_trait_effects_reproduce_the_experiments() {
+    fn harvested_hero_effects_reproduce_the_experiments() {
         use h3_battle::{BattleState, Stack, StackTraits};
         use h3_contracts::{Army, ArmyStack};
         use h3_heroes::{HeroDetails, derive_battle_hero, war_machines};
@@ -2974,6 +3058,27 @@ mod tests {
             ),
             [(true, true, 0), (false, false, 0)]
         );
+        // Batch 1b R1: Angelic Alliance lets the five SoD towns' creatures mix: Pikemen
+        // (Castle), Centaurs (Rampart), Pixies (Conflux) and Peasants (neutral) are three
+        // alignments (−1), without the Pixies or the Peasants two (0); without the Alliance four
+        // (−2).
+        let morale = |worn: &[&str], army: &[(&str, u32)]| {
+            battle("base:caitlin", 1, [0, 0, 1, 1], worn, army)
+                .iter()
+                .map(|s| s.morale)
+                .collect::<Vec<_>>()
+        };
+        let alliance = ["sod:angelic_alliance"];
+        let all = [
+            ("base:pikeman", 5),
+            ("base:centaur", 5),
+            ("ab:pixie", 5),
+            ("ab:peasant", 5),
+        ];
+        assert_eq!(morale(&alliance, &all), [-1; 4]);
+        assert_eq!(morale(&alliance, &all[..3]), [0; 3]);
+        assert_eq!(morale(&alliance, &[all[0], all[1], all[3]]), [0; 3]);
+        assert_eq!(morale(&[], &all), [-2; 4]);
         // Batch 1a B4-B6 at level 4 (one step of the creature level 4): Catherine's and Sorsha's
         // Swordsman specialty raises Swordsmen and Crusaders by +1 attack, +1 defense (5 % of
         // 10 or 12, rounded up) and +1 speed; Roland's names the Crusader only (quirk Q-0006,
@@ -3261,6 +3366,10 @@ mod tests {
         assert_eq!(
             PackError::UnknownTerrain("a:t".into()).to_string(),
             "unknown terrain `a:t`"
+        );
+        assert_eq!(
+            PackError::UnknownFaction("a:f".into()).to_string(),
+            "unknown faction `a:f`"
         );
         assert_eq!(
             PackError::UnknownHeroType("a:h".into()).to_string(),

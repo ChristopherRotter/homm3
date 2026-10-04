@@ -13,6 +13,7 @@
 //! pool.
 
 use alloc::collections::BTreeSet;
+use alloc::vec::Vec;
 
 use h3_content::{
     Ability, Affects, AuraTarget, CreatureFlag, MAX_AURA_VALUES, NO_LUCK_WITHOUT_HERO, Ruleset,
@@ -182,6 +183,38 @@ fn hero_modifiers(state: &mut BattleState, heroes: &[Option<BattleHero>; 2]) {
     }
 }
 
+/// What makes an alignment for the army-alignment morale (BAT-MOR-002): a faction (`None`:
+/// neutral creatures) or one of the hero's joined alignment groups (BAT-HER-007).
+#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
+enum AlignmentKey {
+    /// A faction's raw id, `None` for neutral creatures.
+    Faction(Option<u16>),
+    /// The index of a joined group.
+    Group(usize),
+}
+
+/// The alignment groups of `hero` (BAT-HER-007) as sets of faction raw ids, groups that share a
+/// faction joined into one.
+// rule: BAT-HER-007
+fn alignment_groups(hero: Option<&BattleHero>) -> Vec<BTreeSet<u16>> {
+    let mut joined: Vec<BTreeSet<u16>> = Vec::new();
+    let effects = hero.map(|h| h.effects.as_slice()).unwrap_or_default();
+    for effect in effects {
+        let BattleEffect::AlignmentGroup { factions } = effect else {
+            continue;
+        };
+        let mut group: BTreeSet<u16> = factions.factions().iter().map(|f| f.raw()).collect();
+        let (overlapping, rest): (Vec<_>, Vec<_>) =
+            joined.into_iter().partition(|g| !g.is_disjoint(&group));
+        for g in overlapping {
+            group.extend(g);
+        }
+        joined = rest;
+        joined.push(group);
+    }
+    joined
+}
+
 /// Sets up the battle-wide modifiers of a new battle and materialises every stack's morale and
 /// luck: army alignment and undead (BAT-MOR-002), morale and luck auras (BAT-MOR-001,
 /// BAT-LCK-001) and the heroes' morale and luck effects (BAT-HER-003).
@@ -195,13 +228,18 @@ pub(crate) fn setup(state: &mut BattleState, ruleset: &Ruleset, heroes: &[Option
                 .iter()
                 .filter(move |s| s.side == side && !s.has(StackTraits::WAR_MACHINE))
         };
-        // Neutral creatures (no faction) count as one alignment.
-        let alignments: BTreeSet<Option<u16>> = army()
+        // Neutral creatures (no faction) count as one alignment; the factions of the hero's
+        // alignment groups as one each (BAT-HER-007).
+        let groups = alignment_groups(heroes[side.index()].as_ref());
+        let alignments: BTreeSet<AlignmentKey> = army()
             .map(|s| {
-                ruleset
+                let faction = ruleset
                     .creature_info(s.creature)
                     .and_then(|i| i.faction)
-                    .map(Handle::raw)
+                    .map(Handle::raw);
+                faction
+                    .and_then(|f| groups.iter().position(|g| g.contains(&f)))
+                    .map_or(AlignmentKey::Faction(faction), AlignmentKey::Group)
             })
             .collect();
         // Armies are never empty, so there is at least one alignment.

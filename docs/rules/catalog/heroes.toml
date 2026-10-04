@@ -187,7 +187,7 @@ id       = "HER-BAT-003"
 title    = "The battle hero's morale and luck effects"
 context  = "heroes"
 status   = "implemented"
-summary  = "The battle hero's morale and luck effects (BattleHero.effects: Morale, Luck, MoraleAtMost, LuckAtMost) come from the hero's effect sources (HER-BAT-001): its secondary skills at their levels (Leadership and Luck +1/+2/+3 for its own stacks), its worn artifacts and their combinations' parts, and its specialty. Unlike primary skills, an artifact type counts once however many copies are worn (two Clovers of Fortune: luck +1), also when it is both worn and part of a worn combination. Per kind and affected sides (own, enemy, both) the changes are summed (saturated to -128..127; a sum of 0 is left out) and the caps combine to the smallest; at most 12 effects, in the order morale, luck, morale cap, luck cap, each for own, enemy, both. The battle clamps morale and luck (BAT-HER-003). A skill specialty does not scale them (no original hero specializes in Leadership or Luck). Angelic Alliance's alignment group is E04a T10."
+summary  = "The battle hero's morale and luck effects (BattleHero.effects: Morale, Luck, MoraleAtMost, LuckAtMost) come from the hero's effect sources (HER-BAT-001): its secondary skills at their levels (Leadership and Luck +1/+2/+3 for its own stacks), its worn artifacts and their combinations' parts, and its specialty. Unlike primary skills, an artifact type counts once however many copies are worn (two Clovers of Fortune: luck +1), also when it is both worn and part of a worn combination. Per kind and affected sides (own, enemy, both) the changes are summed (saturated to -128..127; a sum of 0 is left out) and the caps combine to the smallest; at most 12 effects, in the order morale, luck, morale cap, luck cap, each for own, enemy, both. The battle clamps morale and luck (BAT-HER-003). A skill specialty does not scale them (no original hero specializes in Leadership or Luck). Angelic Alliance's alignment group: HER-BAT-010."
 numeric  = "integer"
 
   [[rule.source]]
@@ -341,7 +341,7 @@ numeric  = "integer"
 
   [[rule.source]]
   kind       = "observation"
-  ref        = "experiments/results/E04a-batch-1a.md B4-B6 (SoD 4.0 Complete, 2026-10-03): at level 4 Catherine's and Sorsha's Swordsmen and Crusaders +1 attack, +1 defense, +1 speed, Roland's Crusaders only; R8: Trolls with the Elixir of Life 54 hit points. experiments/results/E04a-batch-1b.md B7 (plain HD, 2026-10-04): Xeron's Devils 23 / 23 / 12 (H-2: the +1 speed holds). All reproduced with the harvested packs (crates/h3-pack, harvested_statistic_effects_reproduce_the_experiments)"
+  ref        = "experiments/results/E04a-batch-1a.md B4-B6 (SoD 4.0 Complete, 2026-10-03): at level 4 Catherine's and Sorsha's Swordsmen and Crusaders +1 attack, +1 defense, +1 speed, Roland's Crusaders only; R8: Trolls with the Elixir of Life 54 hit points. experiments/results/E04a-batch-1b.md B7 (plain HD, 2026-10-04): Xeron's Devils 23 / 23 / 12 (H-2: the +1 speed holds). All reproduced with the harvested packs (crates/h3-pack, harvested_hero_effects_reproduce_the_experiments)"
   retrieved  = "2026-10-04"
   confidence = "high"
 
@@ -365,4 +365,25 @@ numeric  = "integer"
   ref        = "config/artifacts.json L1978-L2013 (elixirOfLife: HP_REGENERATION 50 with a LIVING limiter), L1322-L1340 (goldenBow: NO_DISTANCE_PENALTY, SHOOTER_ONLY), L2163-L2194 (bowOfTheSharpshooter: NO_DISTANCE_PENALTY, FREE_SHOOTING, SHOOTER_ONLY)"
   url        = "https://github.com/vcmi/vcmi/blob/1.7.5/config/artifacts.json#L1978-L2013"
   retrieved  = "2026-10-03"
+  confidence = "high"
+
+[[rule]]
+id       = "HER-BAT-010"
+title    = "The battle hero's alignment groups"
+context  = "heroes"
+status   = "implemented"
+summary  = "The battle hero's AlignmentGroup effects come from the alignment_group effects of the hero's effect sources (HER-BAT-001), each worn artifact type once (also inside a combination); equal groups count once, in the order of their first appearance after the stack traits (HER-BAT-009). A group holds its factions in a fixed array of at most MAX_ALIGNMENT_FACTIONS (16), FactionGroup, so that BattleEffect stays Copy (user decision, OPEN-QUESTIONS Q36). Angelic Alliance is the original's only source. The battle applies them (BAT-HER-007)."
+numeric  = "integer"
+
+  [[rule.source]]
+  kind       = "wiki"
+  ref        = "Angelic Alliance - Heroes 3 wiki, SoD branch of {{swh}}: no morale penalty for mixing creatures of Castle, Rampart, Tower, Fortress and Stronghold (survey docs/rules/surveys/E04-artifacts.md §5, D1)"
+  url        = "https://heroes.thelazy.net/index.php/Angelic_Alliance"
+  retrieved  = "2026-10-03"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "observation"
+  ref        = "experiments/results/E04a-batch-1b.md R1 (SoD 4.0 Complete, plain HD, 2026-10-04): reproduced with the harvested packs (crates/h3-pack, harvested_hero_effects_reproduce_the_experiments)"
+  retrieved  = "2026-10-04"
   confidence = "high"
