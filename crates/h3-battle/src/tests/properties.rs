@@ -14,7 +14,7 @@ use proptest::collection::{btree_map, vec};
 use proptest::prelude::{Just, Strategy, any, prop_assert, prop_assert_eq, prop_oneof, proptest};
 use proptest::test_runner::Config;
 
-use super::support::{CREATURES, ruleset_with};
+use super::support::{CREATURES, hero, ruleset_with};
 use crate::event::StrikeFlags;
 use crate::{
     BattleState, Command, Event, EventKind, Hex, LegalCommands, StackId, apply, legal_commands,
@@ -135,7 +135,7 @@ fn make_setup(
         attacker: army(attacker),
         defender: army(defender),
         obstacles: obstacles.to_vec(),
-        led_by_hero: [true, false],
+        heroes: [Some(hero(r)), None],
         terrain: None,
         war_machines,
         formations: [6, 7].map(|bit| {
@@ -289,14 +289,17 @@ proptest! {
         }
     }
 
-    /// Observation hygiene: two states that differ only in hidden information (the RNG) look the
-    /// same to both sides.
+    /// Observation hygiene: two states that differ only in hidden information (the RNG, the
+    /// heroes' Tactics levels) look the same to both sides.
     #[test]
     fn observations_do_not_depend_on_hidden_state((att, def, obstacles, seed, steps) in arb_game(), other_seed: u64) {
         let r = lively();
         let (state, _, _) = play(&r, &make_setup(&r, &att, &def, &obstacles, seed), seed, &steps);
         let mut twin = state.clone();
         twin.rng = Rng::from_seed(other_seed);
+        for hero in twin.heroes.iter_mut().flatten() {
+            hero.tactics = 3 - hero.tactics;
+        }
         for viewer in BattleSide::BOTH {
             prop_assert_eq!(observe(&state, viewer), observe(&twin, viewer));
         }

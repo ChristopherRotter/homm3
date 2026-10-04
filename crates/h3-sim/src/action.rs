@@ -175,7 +175,7 @@ mod tests {
             attacker: stack("base:magog", 10),
             defender: stack("base:hydra", 2),
             obstacles: vec![],
-            led_by_hero: [false; 2],
+            heroes: [None, None],
             terrain: None,
             war_machines: [vec![], vec![]],
             formations: Default::default(),

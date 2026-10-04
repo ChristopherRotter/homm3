@@ -1076,7 +1076,7 @@ id       = "BAT-LCK-002"
 title    = "Lucky strike"
 context  = "battle"
 status   = "implemented"
-summary  = "Every attack (melee attack, second attack, retaliation, shot) of a stack with positive luck l rolls once, before the death blow (BAT-DMG-007): with chance good_luck_chances[l] / luck_dice (original: 1, 2, 3 out of 24) its strike on the attacked stack adds +100 % to the bonus sum, i.e. doubles the base damage (HotA doubles the total instead). Secondary targets of the attack get no luck (Q18). Strike flag LUCKY. Quirk Q-0003 (quirk.battle.no_luck_without_hero, on in faithful): a side that is not led by a hero (BattleSetup.led_by_hero) never gets lucky strikes."
+summary  = "Every attack (melee attack, second attack, retaliation, shot) of a stack with positive luck l rolls once, before the death blow (BAT-DMG-007): with chance good_luck_chances[l] / luck_dice (original: 1, 2, 3 out of 24) its strike on the attacked stack adds +100 % to the bonus sum, i.e. doubles the base damage (HotA doubles the total instead). Secondary targets of the attack get no luck (Q18). Strike flag LUCKY. Quirk Q-0003 (quirk.battle.no_luck_without_hero, on in faithful): a side that is not led by a hero (no BattleSetup.heroes entry, BAT-HER-001) never gets lucky strikes."
 quirks   = ["Q-0003"]
 numeric  = "integer"
 
@@ -1249,4 +1249,17 @@ numeric  = "integer"
   ref        = "lib/battle/CUnitState.cpp CShots::isLimited (ammo cart present: unlimited)"
   url        = "https://github.com/vcmi/vcmi/blob/1.7.5/lib/battle/CUnitState.cpp"
   retrieved  = "2026-10-01"
+  confidence = "high"
+
+[[rule]]
+id       = "BAT-HER-001"
+title    = "The heroes leading the sides"
+context  = "battle"
+status   = "implemented"
+summary  = "Each side may be led by a hero (BattleSetup.heroes, a BattleHero derived before the seam or given directly by a scenario; ADR-0013). The battle takes the hero as given and checks only what its rules need to run soundly (OPEN-QUESTIONS Q31): the hero type, every creature an effect names and every spell of the spell book are in the ruleset; the spell book lists each spell once and no creature ability; at most MAX_BATTLE_EFFECTS (64) effects; Tactics and school levels at most 3; damage reduction, surrender discount and a commanded Ballista's double-damage chance at most 10 000 basis points, and a commanded Ballista has at least one shot. Values no real hero could have (attack 255) are accepted. Otherwise the battle does not start (SetupError::InvalidHero). The battle keeps the hero type, the primary skills, the Tactics level, mana and maximum mana; both sides see everything but the Tactics level (ADR-0013 point 9). A side with a hero is 'led by a hero' (quirk Q-0003, BAT-LCK-002). The hero's values take effect with the rules that read them (E04a T5-T10, E04b)."
+numeric  = "integer"
+
+  [[rule.source]]
+  kind       = "design"
+  ref        = "ADR-0013 points 4, 5 and 9; OPEN-QUESTIONS Q31 (user, 2026-10-04: the battle is fed whatever the game state happens to be and checks only soundness)"
   confidence = "high"

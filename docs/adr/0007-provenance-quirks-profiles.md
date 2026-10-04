@@ -35,7 +35,7 @@ Trusting a single reference implementation (inherits its bugs and license constr
   faithful on, strict-fixed off), read by BAT-LCK-002. Flags are a closed registry in code
   (`h3_content::REGISTRY`, index = position, never reordered); profiles in packs set them with
   `quirks = { "<flag>" = true | false }`, and the harvester writes the packs' profiles.
-- A seam flag carries the condition the quirk needs (`BattleSetup.led_by_hero`, Q17).
+- The seam carries the condition the quirk needs (Q17; since E04a T4b the hero presence in `BattleSetup.heroes`).
 
 ## Revision history
 

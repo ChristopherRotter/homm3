@@ -348,10 +348,19 @@ terrain = "synthetic:meadow"     # optional: the battlefield's terrain (BAT-TER-
 random_obstacles = true          # optional: generate obstacles for the terrain (BAT-GEO-004;
                                  # the tools use stream OBSTACLES of the battle seed); not
                                  # together with `obstacles`
-led_by_hero = ["attacker"]       # optional: sides led by a hero (Q17, quirk Q-0003)
 attacker_war_machines = ["synthetic:bolt_thrower", "synthetic:aid_tent"]  # optional, per side:
 defender_war_machines = ["synthetic:supply_wagon"]  # war machines by key, one per kind (BAT-WAR-001)
 tight_formation = ["defender"]   # optional: sides in tight formation, the others loose (BAT-SET-001)
+
+[scenario.attacker_hero]         # optional, per side (`defender_hero`): the battle hero leading
+hero_type = "synthetic:brea"     # the side, given directly (BAT-HER-001, Q31); a side without
+attack = 2                       # one is not led by a hero (quirk Q-0003). Every field but
+defense = 2                      # hero_type defaults to 0; the rest of the battle hero (damage
+power = 1                        # bonuses, war-machine control, effects, spell book, …) joins
+knowledge = 1                    # the format with the rules that read it (E04a T5–T10, E04b)
+tactics = 2
+mana = 10
+max_mana = 10
 
 [[attacker]]                     # one entry per stack
 slot = 0
@@ -365,4 +374,4 @@ count = 8
 ```
 
 The battle context validates the setup when the battle starts (slots, counts, obstacle hexes,
-war machines).
+war machines, heroes).

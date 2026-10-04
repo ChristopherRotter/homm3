@@ -61,7 +61,64 @@ pub enum SetupError {
     },
     /// The battlefield's terrain is not part of the ruleset (BAT-TER-001).
     UnknownTerrain,
+    /// A side's hero cannot be used (BAT-HER-001).
+    InvalidHero {
+        /// The side.
+        side: BattleSide,
+        /// What is wrong with the hero.
+        error: HeroError,
+    },
 }
+
+/// Why the battle cannot use a hero (BAT-HER-001). The battle checks only what its rules need
+/// to run soundly, not whether a real hero could have the values (OPEN-QUESTIONS Q31).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum HeroError {
+    /// The hero type is not part of the ruleset.
+    UnknownHeroType,
+    /// The Tactics level is above Expert (3).
+    TacticsLevel,
+    /// The damage reduction exceeds 10 000 basis points.
+    DamageReduction,
+    /// A commanded Ballista has no shots or a double-damage chance above 10 000 basis points.
+    BallistaControl,
+    /// The surrender discount exceeds 10 000 basis points.
+    SurrenderDiscount,
+    /// More effects than `MAX_BATTLE_EFFECTS`.
+    TooManyEffects,
+    /// An effect names a creature type that is not part of the ruleset.
+    UnknownCreature,
+    /// A school mastery is above Expert (3).
+    SchoolLevel,
+    /// A spell in the spell book is not part of the ruleset.
+    UnknownSpell,
+    /// A spell is in the spell book twice.
+    DuplicateSpell,
+    /// A spell in the spell book is a creature ability.
+    NotAHeroSpell,
+}
+
+impl fmt::Display for HeroError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.write_str(match self {
+            Self::UnknownHeroType => "unknown hero type",
+            Self::TacticsLevel => "Tactics level above 3",
+            Self::DamageReduction => "damage reduction above 10000 basis points",
+            Self::BallistaControl => {
+                "commanded Ballista without shots or with a chance above 10000 basis points"
+            }
+            Self::SurrenderDiscount => "surrender discount above 10000 basis points",
+            Self::TooManyEffects => "too many effects",
+            Self::UnknownCreature => "an effect names an unknown creature type",
+            Self::SchoolLevel => "school mastery above 3",
+            Self::UnknownSpell => "unknown spell in the spell book",
+            Self::DuplicateSpell => "a spell is in the spell book twice",
+            Self::NotAHeroSpell => "a creature ability in the spell book",
+        })
+    }
+}
+
+impl core::error::Error for HeroError {}
 
 impl fmt::Display for SetupError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -86,6 +143,7 @@ impl fmt::Display for SetupError {
                 write!(f, "{side:?} war machine is not supported or listed twice")
             }
             Self::UnknownTerrain => f.write_str("the terrain is not part of the ruleset"),
+            Self::InvalidHero { side, error } => write!(f, "{side:?} hero: {error}"),
         }
     }
 }
@@ -212,6 +270,48 @@ mod tests {
             SetupError::UnknownTerrain.to_string(),
             "the terrain is not part of the ruleset"
         );
+        assert_eq!(
+            SetupError::InvalidHero {
+                side: Defender,
+                error: HeroError::TacticsLevel
+            }
+            .to_string(),
+            "Defender hero: Tactics level above 3"
+        );
+        let heroes = [
+            (HeroError::UnknownHeroType, "unknown hero type"),
+            (HeroError::TacticsLevel, "Tactics level above 3"),
+            (
+                HeroError::DamageReduction,
+                "damage reduction above 10000 basis points",
+            ),
+            (
+                HeroError::BallistaControl,
+                "commanded Ballista without shots or with a chance above 10000 basis points",
+            ),
+            (
+                HeroError::SurrenderDiscount,
+                "surrender discount above 10000 basis points",
+            ),
+            (HeroError::TooManyEffects, "too many effects"),
+            (
+                HeroError::UnknownCreature,
+                "an effect names an unknown creature type",
+            ),
+            (HeroError::SchoolLevel, "school mastery above 3"),
+            (HeroError::UnknownSpell, "unknown spell in the spell book"),
+            (
+                HeroError::DuplicateSpell,
+                "a spell is in the spell book twice",
+            ),
+            (
+                HeroError::NotAHeroSpell,
+                "a creature ability in the spell book",
+            ),
+        ];
+        for (error, text) in heroes {
+            assert_eq!(error.to_string(), text);
+        }
         let all = [
             (CommandError::BattleOver, "the battle is over"),
             (CommandError::NotYourTurn, "it is not your turn"),

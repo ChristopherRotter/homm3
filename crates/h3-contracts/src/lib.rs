@@ -89,15 +89,17 @@ pub struct BattleSetup {
     pub defender: Army,
     /// Hexes blocked by obstacles (row-major hex indices of the battlefield, each once; E03).
     pub obstacles: Vec<u8>,
-    /// Whether each side (indexed by [`BattleSide::index`]) is led by a hero (E03, Q17; the hero
-    /// itself arrives in E04). Without a hero a side gets no lucky strikes in profiles with the
-    /// quirk `quirk.battle.no_luck_without_hero` (Q-0003).
-    pub led_by_hero: [bool; 2],
+    /// The hero leading each side, if any (indexed by [`BattleSide::index`]; ADR-0013 point 5).
+    /// Without a hero a side gets no lucky strikes in profiles with the quirk
+    /// `quirk.battle.no_luck_without_hero` (Q-0003). The battle checks a hero only for soundness
+    /// (BAT-HER-001, OPEN-QUESTIONS Q31).
+    pub heroes: [Option<BattleHero>; 2],
     /// The battlefield's terrain, if any: creatures of factions native to it get the native
     /// terrain bonus (BAT-TER-001). Obstacles for it are generated before the seam (BAT-GEO-004).
     pub terrain: Option<TerrainId>,
     /// War machines per side (indexed by [`BattleSide::index`]): creature types with flag
-    /// `war_machine`, at most one of each kind (E03, BAT-WAR-001; heroes bring them in E04).
+    /// `war_machine`, at most one of each kind (E03, BAT-WAR-001); a hero's come from its
+    /// artifacts (`h3_heroes::war_machines`).
     pub war_machines: [Vec<CreatureTypeId>; 2],
     /// Each side's formation (indexed by [`BattleSide::index`]), which decides the starting
     /// rows of its army (BAT-SET-001; E03, Q25). Default: loose.
@@ -199,12 +201,16 @@ mod tests {
             },
             defender: Army::default(),
             obstacles: vec![],
-            led_by_hero: [true, false],
+            heroes: [
+                Some(BattleHero::new(h3_content::HeroTypeId::from_raw(0))),
+                None,
+            ],
             terrain: None,
             war_machines: [vec![], vec![]],
             formations: [Formation::Tight, Formation::Loose],
         };
         assert_eq!(setup.army(BattleSide::Attacker).stacks, [stack]);
         assert!(setup.army(BattleSide::Defender).stacks.is_empty());
+        assert!(setup.heroes[0].is_some() && setup.heroes[1].is_none());
     }
 }

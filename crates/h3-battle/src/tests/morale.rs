@@ -310,7 +310,7 @@ fn without_a_hero_there_is_no_luck_under_quirk_q0003() {
     let lucky_first = |profile: &str, led: [bool; 2]| {
         let r = ruleset_with(profile, always);
         let setup = BattleSetup {
-            led_by_hero: led,
+            heroes: led.map(|led| led.then(|| hero(&r))),
             ..setup(&r, &[(0, "halfling", 10)], &[(0, "fixed", 10)])
         };
         let mut s = BattleState::new(&r, &setup, 1).unwrap();

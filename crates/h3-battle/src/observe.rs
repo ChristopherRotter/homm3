@@ -1,15 +1,16 @@
 //! Observations and event projection (ADR-0004 §6, docs/06-security.md "Information hiding").
 //!
-//! In the walking skeleton the battlefield is fully visible to both sides, so the observation is
-//! the state minus what no player may know: the RNG state (it would predict rolls). The API and
-//! its hygiene property test exist so that hidden battle information added later (e.g. an
-//! opponent's spell book) has a place to be projected away.
+//! The battlefield is fully visible to both sides, so the observation is the state minus what
+//! no player may know: the RNG state (it would predict rolls) and the private part of the heroes
+//! (their Tactics level; ADR-0013 point 9). Hidden battle information added later (an opponent's
+//! spell book, E04b) is projected away here too.
 
 use h3_contracts::{BattleResult, BattleSide};
 use h3_kernel::FixedVec;
 
 use crate::event::{Event, Visibility};
 use crate::geometry::HexSet;
+use crate::hero::HeroView;
 use crate::state::{BattleState, STACK_CAPACITY, Stack, StackId};
 
 /// What one side may know about a battle.
@@ -29,8 +30,9 @@ pub struct Observation {
     pub stacks: FixedVec<Stack, STACK_CAPACITY>,
     /// Hexes blocked by obstacles (public).
     pub obstacles: HexSet,
-    /// Which sides are led by a hero (public), indexed by [`BattleSide::index`].
-    pub led_by_hero: [bool; 2],
+    /// The heroes leading the sides, their public part (identity, primary skills, mana;
+    /// ADR-0013 point 9), indexed by [`BattleSide::index`].
+    pub heroes: [Option<HeroView>; 2],
     /// The battlefield's terrain (public).
     pub terrain: Option<h3_content::TerrainId>,
 }
@@ -45,7 +47,7 @@ pub fn observe(state: &BattleState, viewer: BattleSide) -> Observation {
         result: state.result,
         stacks: state.stacks,
         obstacles: state.obstacles,
-        led_by_hero: state.led_by_hero,
+        heroes: BattleSide::BOTH.map(|side| state.hero(side)),
         terrain: state.terrain,
     }
 }

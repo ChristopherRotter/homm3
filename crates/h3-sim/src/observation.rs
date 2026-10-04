@@ -52,8 +52,8 @@ pub fn encode(obs: &Observation, field_width: u8, out: &mut [f32]) -> Result<(),
     out[1] = flag(obs.viewer == BattleSide::Attacker);
     out[2] = flag(to_act == Some(obs.viewer));
     out[3] = flag(obs.result.is_some());
-    out[4] = flag(obs.led_by_hero[obs.viewer.index()]);
-    out[5] = flag(obs.led_by_hero[obs.viewer.opponent().index()]);
+    out[4] = flag(obs.heroes[obs.viewer.index()].is_some());
+    out[5] = flag(obs.heroes[obs.viewer.opponent().index()].is_some());
     for (i, s) in obs.stacks.iter().enumerate() {
         let f = &mut out[GLOBALS + i * STACK_FEATURES..GLOBALS + (i + 1) * STACK_FEATURES];
         let (x, y) = coords(s.hex.0, field_width);

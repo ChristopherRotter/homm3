@@ -250,7 +250,7 @@ pub(crate) fn bad_morale(state: &mut BattleState, ruleset: &Ruleset, id: StackId
 // rule: BAT-LCK-002
 pub(crate) fn lucky(state: &mut BattleState, ruleset: &Ruleset, id: StackId) -> bool {
     let s = state.at(id);
-    let heroless = !state.led_by_hero[s.side.index()];
+    let heroless = !state.has_hero(s.side);
     if s.luck <= 0 || (heroless && ruleset.quirks().is_enabled(NO_LUCK_WITHOUT_HERO)) {
         return false;
     }

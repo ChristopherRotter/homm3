@@ -5,9 +5,20 @@
 id = "full"
 packs = ["synthetic"]
 profile = "synthetic:faithful"
-led_by_hero = ["attacker"]       # Q17: only the attacker may get lucky strikes (Q-0003)
 attacker_war_machines = ["synthetic:bolt_thrower", "synthetic:aid_tent"]
 defender_war_machines = ["synthetic:bolt_thrower", "synthetic:supply_wagon"]
+
+# Only the attacker is led by a hero, so only it may get lucky strikes (Q-0003). The battle hero
+# is given directly (Q31): Brea at level 1, Drill (Tactics) at Advanced.
+[scenario.attacker_hero]
+hero_type = "synthetic:brea"
+attack = 2
+defense = 2
+power = 1
+knowledge = 1
+tactics = 2
+mana = 10
+max_mana = 10
 
 [[attacker]]
 slot = 0

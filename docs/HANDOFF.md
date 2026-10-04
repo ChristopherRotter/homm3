@@ -4,13 +4,19 @@ Living state. The last agent updates this at the end of every session; the next 
 
 ---
 
-## 2026-10-04 (sixth session) — E04a T4b1 done; T4b2 in progress
+## 2026-10-04 (sixth session) — E04a T4 done (T4b1 and T4b2: the battle hero and the seam switch)
 
-**State:** branch `e04a-heroes-in-battle`. Scope chosen by the user at the start: T4b split into **T4b1 and T4b2**, both this session, as separate checkpoints (OPEN-QUESTIONS Q31, which also decided: a scenario is a battle-setup file and gives the battle hero directly; the battle checks a `BattleHero` only for soundness, not whether a real hero could have its values).
+**State:** branch `e04a-heroes-in-battle`, `cargo xtask verify` green (also `--with-original-data`). Scope chosen by the user at the start: T4b split into **T4b1 and T4b2**, both this session, as separate checkpoints. The user also decided (OPEN-QUESTIONS **Q31**): a scenario is a battle-setup file and gives the battle hero **directly** (no derivation); the battle takes a `BattleHero` as given and checks it **only for soundness**, not whether a real hero could have its values. Nothing half-done.
 
-**T4b1 (done, committed):** `h3-contracts` `hero.rs`: `BattleHero` (+ `new`, neutral values), `DamageBonuses`, `MachineControl` (`BallistaControl`, `TentControl`, reserved `CatapultControl`), `BattleMagic`, `BattleEffect`, `StatOp`, `MAX_BATTLE_EFFECTS`; `h3_heroes::derive_battle_hero` (validates, then HER-BAT-001 primary skills, HER-BAT-002 Tactics; `h3-heroes` now depends on `h3-contracts`); tests in `crates/h3-heroes/src/tests/derive.rs` (the old `tests.rs` is now `tests/mod.rs`) and on the real packs in `h3-pack`. No hash changes. Design note §2 deleted, §3/§4 pruned (deviations listed in §4).
+**T4b1:** `h3-contracts` `hero.rs`: `BattleHero` (`new` = neutral), `DamageBonuses`, `MachineControl` (`BallistaControl { shots, double_damage_chance_bp }`, `TentControl { heal_bonus_bp: u32 }`, reserved `#[non_exhaustive] CatapultControl {}`), `BattleMagic`, `BattleEffect` (content's `CreatureSelector`, `StatOp`), `MAX_BATTLE_EFFECTS` 64; `h3_heroes::derive_battle_hero` (validates first; HER-BAT-001 effective primary skills from skills, worn artifacts per copy with a combination's parts, `needs_skill`, specialty, clamped to the hero parameters; HER-BAT-002 Tactics; mana passed through; the rest neutral until T5–T10/E04b). Tests: `crates/h3-heroes/src/tests/derive.rs` (`tests.rs` became `tests/mod.rs`), real packs in `h3-pack` (Angelic Alliance's parts +21).
 
-**T4b2 (next, in progress):** see the epic. Nothing started yet.
+**T4b2:** `BattleSetup.heroes` replaces `led_by_hero`; `h3-battle` `hero.rs`: soundness check (BAT-HER-001; `SetupError::InvalidHero { side, error: HeroError }`), per-side `HeroRecord` (type, primary skills, Tactics, mana, max mana) in the state, `BattleState::hero(side) -> Option<HeroView>`, `Observation.heroes` (public part; Tactics private, hygiene property test extended); Q-0003 reads hero presence; **state hash v9**; `h3_pack::HeroEntry` (scenario `[scenario.attacker_hero]`, replay `[setup.attacker_hero]`; refuses to write fields the format does not hold yet: `PackError::HeroNotWritable`); **replay format v3**; `full` scenario's attacker led by Brea; golden replays re-recorded (hashes and headers only; commands identical). Unchanged: observation encoding v3, action encoding v4, C ABI v2, ruleset hash v11. Measured (release, `h3 bench` full, 300 games): `BattleState` 2008 → 2032 bytes, steps/s unchanged within noise (≈ 170–180 k), identical step count.
+
+**Agent decisions (change freely; in the epic and design note):** `funds` waits for T9; the battle's hero record and the file format hold only what the battle reads so far — each later task adds its fields to record, format and hash together; `derive_battle_hero` returns `Result` (validates first) instead of the sketch's bare `BattleHero`; seam field shapes per design note §4.
+
+**Next:** the user decides. Recommended: **T5** (primary skills and hero morale/luck: the hero's attack and defense on its stacks, Leadership/Luck/artifacts as side modifiers, the pool capacity, the death-stare change Q21). Alternative: design batch 1b.
+
+**Traps:** clippy's `type_complexity` fires on `[(fn(&mut T), &str); N]` in tests (use a type alias). TOML serialization needs table fields (`attacker_hero`) declared after plain values in a serde struct. `git stash` leaves untracked files in place (handy for A/B benchmarks of the old code). Sandbox and sync as before (bundle in `Claude outputs/`, deleted afterwards; delete permission for the repo folder).
 
 ---
 

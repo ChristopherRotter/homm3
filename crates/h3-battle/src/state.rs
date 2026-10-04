@@ -11,6 +11,7 @@ use h3_kernel::{CanonicalHash, FixedVec, Rng, StateHasher, StreamId};
 use crate::error::SetupError;
 use crate::event::{NoopSink, Sink};
 use crate::geometry::{Field, Footprint, Hex, HexSet};
+use crate::hero::{self, HeroRecord, HeroView};
 use crate::morale::{self, Modifiers};
 use crate::{terrain, turn};
 
@@ -21,7 +22,7 @@ pub const MAX_WAR_MACHINES: usize = WAR_MACHINE_KINDS;
 pub const STACK_CAPACITY: usize = 2 * (MAX_ARMY_SLOTS + MAX_WAR_MACHINES);
 
 /// Version of the battle-state hash encoding ([`BattleState::state_hash`]). Bump on any change.
-pub const BATTLE_STATE_HASH_VERSION: u32 = 8;
+pub const BATTLE_STATE_HASH_VERSION: u32 = 9;
 
 /// Index of a stack in its battle (attacker stacks first, in slot order, then defender stacks).
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Default)]
@@ -495,7 +496,7 @@ pub struct BattleState {
     pub(crate) last_side_acted: Option<BattleSide>,
     pub(crate) result: Option<BattleResult>,
     pub(crate) modifiers: Modifiers,
-    pub(crate) led_by_hero: [bool; 2],
+    pub(crate) heroes: [Option<HeroRecord>; 2],
     pub(crate) terrain: Option<TerrainId>,
     pub(crate) rng: Rng,
 }
@@ -527,6 +528,12 @@ impl BattleState {
             .is_some_and(|t| ruleset.terrains().get(t.index()).is_none())
         {
             return Err(SetupError::UnknownTerrain);
+        }
+        let mut heroes = [None; 2];
+        for (side, hero) in BattleSide::BOTH.into_iter().zip(&setup.heroes) {
+            if let Some(hero) = hero {
+                heroes[side.index()] = Some(hero::check(ruleset, side, hero)?);
+            }
         }
         let mut taken = obstacles;
         let mut placed = [Stack::default(); STACK_CAPACITY];
@@ -605,7 +612,7 @@ impl BattleState {
             last_side_acted: None,
             result: None,
             modifiers: Modifiers::new(),
-            led_by_hero: setup.led_by_hero,
+            heroes,
             terrain: setup.terrain,
             rng: Rng::for_stream(seed, StreamId::BATTLE),
         };
@@ -614,6 +621,16 @@ impl BattleState {
         // without a `RoundStarted` event.
         turn::activate_next(&mut state, ruleset, sink);
         Ok(state)
+    }
+
+    /// What both sides see of `side`'s hero, if the side has one (BAT-HER-001).
+    pub fn hero(&self, side: BattleSide) -> Option<HeroView> {
+        self.heroes[side.index()].map(|h| h.view)
+    }
+
+    /// Whether `side` is led by a hero.
+    pub(crate) const fn has_hero(&self, side: BattleSide) -> bool {
+        self.heroes[side.index()].is_some()
     }
 
     /// The hexes blocked by obstacles (BAT-GEO-003).
@@ -722,9 +739,10 @@ impl BattleState {
     /// Canonical hash of the full state, including hidden parts such as the RNG (desync detection
     /// and replay verification; never sent to untrusted clients, docs/06-security.md).
     ///
-    /// Encoding v8 (v7 with the result instead of the winner): version, round, active, last
+    /// Encoding v9 (v8 with the heroes instead of the hero flags): version, round, active, last
     /// side, result (0/1 = victory of the attacker/defender, 2 = draw), stacks (each with base
-    /// count, shots, retaliations, morale, luck and traits), obstacles, modifiers, hero flags,
+    /// count, shots, retaliations, morale, luck and traits), obstacles, modifiers, per side the
+    /// hero if any (type, attack, defense, power, knowledge, Tactics level, mana, maximum mana),
     /// terrain, RNG state.
     pub fn state_hash(&self) -> u64 {
         h3_kernel::hash::hash_of(self)
@@ -785,8 +803,7 @@ impl CanonicalHash for BattleState {
         self.stacks.hash_into(h);
         self.obstacles.hash_into(h);
         self.modifiers.hash_into(h);
-        h.write_bool(self.led_by_hero[0]);
-        h.write_bool(self.led_by_hero[1]);
+        self.heroes.hash_into(h);
         self.terrain.hash_into(h);
         self.rng.hash_into(h);
     }

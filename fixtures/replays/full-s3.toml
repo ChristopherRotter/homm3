@@ -468,28 +468,28 @@ commands = [
     "D attack 6 106",
 ]
 checkpoints = [
-    "0xa5402791f7238337",
-    "0xf3fbbae3c096fddf",
-    "0x2f940588a41f7c4d",
-    "0x929952aa70f0ee84",
-    "0x584929f82bc2ea98",
-    "0x890cda4b79b3c203",
-    "0xbb6a233396888844",
-    "0x1da2854c93c06b7a",
-    "0x88394f6c50d26383",
-    "0xf3071de83df24f7c",
-    "0x7a7cc3ccc648ba87",
-    "0xcf4b2dfe64f7b185",
-    "0xa5773a30cd4d67d4",
-    "0x185f1a716cc08fd4",
-    "0x6ef12a043f71cd87",
-    "0x4e6112f729ec6b9f",
-    "0x378d8762dc2de5d5",
-    "0x288b16cefb55d56d",
+    "0xbdfca5397e59cec3",
+    "0x975bde0f89ea6ddd",
+    "0x31e09ce4369c15cf",
+    "0x4c71a78fe01eaa52",
+    "0x5235a10318f76a62",
+    "0x8e665b81de7c8ccd",
+    "0x50e56e82df2f30fe",
+    "0xc5cba4736ed33f4c",
+    "0x2fd9783d4349d0ab",
+    "0xab0cbe577f2a9b84",
+    "0xf6eeed90302fdea7",
+    "0xc51cefad422aa883",
+    "0x74d144f24fa7d908",
+    "0xcf210a8fdb0156f8",
+    "0xc263efc29b1ba4e5",
+    "0x61a3c712af4c4cc9",
+    "0x796a3dea127b4705",
+    "0xa211497208d3288d",
 ]
 
 [replay]
-format = 2
+format = 3
 engine = "0.1.0"
 scenario = "full"
 seed = "3"
@@ -503,12 +503,11 @@ rng = "xoshiro256starstar+splitmix64"
 rng_version = 1
 hash = "fnv1a64-le"
 hash_version = 1
-battle_state_hash_version = 8
+battle_state_hash_version = 9
 checkpoint_every = 25
 
 [setup]
 obstacles = []
-led_by_hero = ["attacker"]
 attacker_war_machines = [
     "synthetic:bolt_thrower",
     "synthetic:aid_tent",
@@ -517,6 +516,16 @@ defender_war_machines = [
     "synthetic:bolt_thrower",
     "synthetic:supply_wagon",
 ]
+
+[setup.attacker_hero]
+hero_type = "synthetic:brea"
+attack = 2
+defense = 2
+power = 1
+knowledge = 1
+tactics = 2
+mana = 10
+max_mana = 10
 
 [[attacker]]
 slot = 0
@@ -590,4 +599,4 @@ count = 11
 
 [result]
 winner = "attacker"
-final_hash = "0xcf5cff7a69a662fd"
+final_hash = "0x71679bcd44e4a7f1"

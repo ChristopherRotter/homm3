@@ -4,6 +4,7 @@
 mod abilities;
 mod commands;
 mod geometry;
+mod heroes;
 mod morale;
 mod properties;
 mod ranged;

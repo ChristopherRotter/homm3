@@ -17,8 +17,10 @@ use h3_content::{
     SecondarySkillDef, SpellCategory, SpellDef, SpellPolarity, SpellSchoolDef, StartingStackDef,
     TerrainDef,
 };
-use h3_contracts::{Army, ArmyStack, BattleSetup, BattleSide};
-use serde::Deserialize;
+use h3_contracts::{
+    Army, ArmyStack, BattleHero, BattleSetup, BattleSide, DamageBonuses, MachineControl,
+};
+use serde::{Deserialize, Serialize};
 
 /// The synthetic content pack shipped with the repo (tests, benchmarks, FFI smoke, replays).
 pub const SYNTHETIC_PACK: &str = include_str!("../../../packs/synthetic/pack.toml");
@@ -51,6 +53,11 @@ pub enum PackError {
     UnknownCreature(String),
     /// A scenario references a terrain the ruleset does not define.
     UnknownTerrain(String),
+    /// A scenario or replay references a hero type the ruleset does not define.
+    UnknownHeroType(String),
+    /// A battle hero has values the scenario and replay formats cannot hold yet (they arrive
+    /// with the rules that read them, E04a T5–T10 and E04b).
+    HeroNotWritable(&'static str),
 }
 
 impl fmt::Display for PackError {
@@ -61,6 +68,10 @@ impl fmt::Display for PackError {
             Self::Compile(e) => write!(f, "{e}"),
             Self::UnknownCreature(k) => write!(f, "unknown creature `{k}`"),
             Self::UnknownTerrain(k) => write!(f, "unknown terrain `{k}`"),
+            Self::UnknownHeroType(k) => write!(f, "unknown hero type `{k}`"),
+            Self::HeroNotWritable(what) => {
+                write!(f, "the file format cannot hold a hero's {what} yet")
+            }
         }
     }
 }
@@ -1144,9 +1155,9 @@ struct ScenarioHeader {
     /// Obstacle hexes (row-major indices), validated by the battle context.
     #[serde(default)]
     obstacles: Vec<u8>,
-    /// Sides led by a hero (`"attacker"`, `"defender"`; Q17).
-    #[serde(default)]
-    led_by_hero: Vec<String>,
+    /// The battle hero leading each side, if any (BAT-HER-001, Q31).
+    attacker_hero: Option<HeroEntry>,
+    defender_hero: Option<HeroEntry>,
     /// Terrain key of the battlefield (BAT-TER-001).
     terrain: Option<String>,
     /// Generate obstacles for the terrain when the battle starts (BAT-GEO-004).
@@ -1170,6 +1181,98 @@ struct StackDto {
     count: u32,
 }
 
+/// A battle hero as scenario and replay files write it (`[scenario.attacker_hero]`,
+/// `[setup.defender_hero]`; OPEN-QUESTIONS Q31): the battle hero itself, no derivation. It holds
+/// the fields the battle reads so far; the rest of [`BattleHero`] is neutral and joins the format
+/// with the rule that reads it (E04a T5–T10, E04b).
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct HeroEntry {
+    /// Hero type key.
+    pub hero_type: String,
+    /// Attack (default 0).
+    #[serde(default)]
+    pub attack: u8,
+    /// Defense (default 0).
+    #[serde(default)]
+    pub defense: u8,
+    /// Spell power (default 0).
+    #[serde(default)]
+    pub power: u8,
+    /// Knowledge (default 0).
+    #[serde(default)]
+    pub knowledge: u8,
+    /// Tactics level (default 0).
+    #[serde(default)]
+    pub tactics: u8,
+    /// Spell points (default 0).
+    #[serde(default)]
+    pub mana: u16,
+    /// Maximum spell points (default 0).
+    #[serde(default)]
+    pub max_mana: u16,
+}
+
+impl HeroEntry {
+    /// The battle hero, its hero type resolved against `ruleset`. The battle checks the rest
+    /// when it starts (BAT-HER-001).
+    ///
+    /// # Errors
+    /// [`PackError::UnknownHeroType`].
+    pub fn resolve(&self, ruleset: &Ruleset) -> Result<BattleHero, PackError> {
+        let hero_type = ruleset
+            .hero_type_by_key(&self.hero_type)
+            .ok_or_else(|| PackError::UnknownHeroType(self.hero_type.clone()))?;
+        let mut hero = BattleHero::new(hero_type);
+        hero.attack = self.attack;
+        hero.defense = self.defense;
+        hero.power = self.power;
+        hero.knowledge = self.knowledge;
+        hero.tactics = self.tactics;
+        hero.magic.mana = self.mana;
+        hero.magic.max_mana = self.max_mana;
+        Ok(hero)
+    }
+
+    /// The entry of `hero` (inverse of [`HeroEntry::resolve`]).
+    ///
+    /// # Errors
+    /// [`PackError::UnknownHeroType`] for a hero type outside `ruleset`;
+    /// [`PackError::HeroNotWritable`] if a field the format does not hold yet is not neutral.
+    pub fn of(hero: &BattleHero, ruleset: &Ruleset) -> Result<Self, PackError> {
+        let unwritable = [
+            ("damage bonuses", hero.damage != DamageBonuses::default()),
+            (
+                "war-machine control",
+                hero.war_machines != MachineControl::default(),
+            ),
+            ("surrender discount", hero.surrender_discount_bp != 0),
+            ("effects", !hero.effects.is_empty()),
+            (
+                "spell book or schools",
+                hero.magic.spell_book.is_some() || hero.magic.schools != [0; 4],
+            ),
+        ];
+        if let Some((what, _)) = unwritable.into_iter().find(|(_, set)| *set) {
+            return Err(PackError::HeroNotWritable(what));
+        }
+        let key = ruleset
+            .hero_type(hero.hero_type)
+            .map(|t| t.key.as_str().to_owned())
+            .ok_or_else(|| PackError::UnknownHeroType(format!("#{}", hero.hero_type.raw())))?;
+        Ok(Self {
+            hero_type: key,
+            attack: hero.attack,
+            defense: hero.defense,
+            power: hero.power,
+            knowledge: hero.knowledge,
+            tactics: hero.tactics,
+            mana: hero.magic.mana,
+            max_mana: hero.magic.max_mana,
+        })
+    }
+}
+
 /// A parsed scenario whose creature references are not yet resolved against a ruleset.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ScenarioDef {
@@ -1182,7 +1285,7 @@ pub struct ScenarioDef {
     attacker: Vec<(u8, String, u32)>,
     defender: Vec<(u8, String, u32)>,
     obstacles: Vec<u8>,
-    led_by_hero: [bool; 2],
+    heroes: [Option<HeroEntry>; 2],
     terrain: Option<String>,
     war_machines: [Vec<String>; 2],
     formations: [Formation; 2],
@@ -1243,8 +1346,8 @@ pub fn side_names(sides: [bool; 2]) -> Vec<String> {
 }
 
 impl ScenarioDef {
-    /// Resolves creature keys against `ruleset`. The battle context validates the setup itself
-    /// (slots, counts) when the battle starts.
+    /// Resolves creature, terrain and hero-type keys against `ruleset`. The battle context
+    /// validates the setup itself (slots, counts, heroes) when the battle starts.
     pub fn resolve(&self, ruleset: &Ruleset) -> Result<BattleSetup, PackError> {
         let army = |stacks: &[(u8, String, u32)]| -> Result<Army, PackError> {
             let stacks = stacks
@@ -1284,7 +1387,16 @@ impl ScenarioDef {
             attacker: army(&self.attacker)?,
             defender: army(&self.defender)?,
             obstacles: self.obstacles.clone(),
-            led_by_hero: self.led_by_hero,
+            heroes: [
+                self.heroes[0]
+                    .as_ref()
+                    .map(|h| h.resolve(ruleset))
+                    .transpose()?,
+                self.heroes[1]
+                    .as_ref()
+                    .map(|h| h.resolve(ruleset))
+                    .transpose()?,
+            ],
             terrain,
             war_machines: [
                 machines(&self.war_machines[0])?,
@@ -1321,7 +1433,7 @@ pub fn parse_scenario(text: &str) -> Result<ScenarioDef, PackError> {
         attacker: convert(file.attacker),
         defender: convert(file.defender),
         obstacles: file.scenario.obstacles,
-        led_by_hero: parse_sides(&file.scenario.led_by_hero)?,
+        heroes: [file.scenario.attacker_hero, file.scenario.defender_hero],
         terrain: file.scenario.terrain,
         war_machines: [
             file.scenario.attacker_war_machines,
@@ -1484,9 +1596,12 @@ mod tests {
                 Some("side `defender` listed twice"),
             ),
         ] {
-            let text = format!("{header}led_by_hero = {sides}\n");
+            let text = format!("{header}tight_formation = {sides}\n");
             match err {
-                None => assert_eq!(parse_scenario(&text).unwrap().led_by_hero, [true, true]),
+                None => assert_eq!(
+                    parse_scenario(&text).unwrap().formations,
+                    [Formation::Tight; 2]
+                ),
                 Some(e) => assert_eq!(parse_scenario(&text), Err(PackError::Syntax(e.to_owned()))),
             }
         }
@@ -1503,6 +1618,83 @@ mod tests {
             formations(&["x".to_owned()]),
             Err(PackError::Syntax("unknown side `x`".to_owned()))
         );
+    }
+
+    // covers: BAT-HER-001
+    #[test]
+    fn scenario_heroes() {
+        let (ruleset, setup) = synthetic(SYNTHETIC_FULL).unwrap();
+        let brea = ruleset.hero_type_by_key("synthetic:brea").unwrap();
+        let mut expected = BattleHero::new(brea);
+        [
+            expected.attack,
+            expected.defense,
+            expected.power,
+            expected.knowledge,
+        ] = [2, 2, 1, 1];
+        expected.tactics = 2;
+        expected.magic.mana = 10;
+        expected.magic.max_mana = 10;
+        assert_eq!(setup.heroes, [Some(expected.clone()), None]);
+        // Fields default to 0; the entry is the inverse of the resolution.
+        let header = "[scenario]\nid = \"e\"\npacks = []\nprofile = \"a:b\"\n";
+        let text = format!("{header}[scenario.defender_hero]\nhero_type = \"synthetic:ansel\"\n");
+        let entry = parse_scenario(&text).unwrap().heroes[1].clone().unwrap();
+        let ansel = entry.resolve(&ruleset).unwrap();
+        assert_eq!(
+            ansel,
+            BattleHero::new(ruleset.hero_type_by_key("synthetic:ansel").unwrap())
+        );
+        assert_eq!(HeroEntry::of(&ansel, &ruleset), Ok(entry));
+        assert_eq!(
+            HeroEntry::of(&expected, &ruleset)
+                .unwrap()
+                .resolve(&ruleset),
+            Ok(expected.clone())
+        );
+        // Unknown hero types and fields.
+        let unknown = SYNTHETIC_FULL.replace("synthetic:brea", "synthetic:nobody");
+        assert_eq!(
+            synthetic(&unknown),
+            Err(PackError::UnknownHeroType("synthetic:nobody".to_owned()))
+        );
+        let extra = SYNTHETIC_FULL.replace("max_mana = 10", "max_mana = 10\nluck = 1");
+        assert!(matches!(parse_scenario(&extra), Err(PackError::Syntax(_))));
+        let mut stranger = expected.clone();
+        stranger.hero_type = h3_content::HeroTypeId::from_raw(99);
+        assert_eq!(
+            HeroEntry::of(&stranger, &ruleset),
+            Err(PackError::UnknownHeroType("#99".to_owned()))
+        );
+        // Values the format cannot hold yet.
+        type Change = (fn(&mut BattleHero), &'static str);
+        let changes: [Change; 6] = [
+            (|h| h.damage.melee_bp = 1, "damage bonuses"),
+            (
+                |h| {
+                    h.war_machines.tent = Some(h3_contracts::TentControl { heal_bonus_bp: 1 });
+                },
+                "war-machine control",
+            ),
+            (|h| h.surrender_discount_bp = 1, "surrender discount"),
+            (
+                |h| h.effects.push(h3_contracts::BattleEffect::NoRetreat),
+                "effects",
+            ),
+            (
+                |h| h.magic.spell_book = Some(vec![]),
+                "spell book or schools",
+            ),
+            (|h| h.magic.schools[0] = 1, "spell book or schools"),
+        ];
+        for (change, what) in changes {
+            let mut hero = expected.clone();
+            change(&mut hero);
+            assert_eq!(
+                HeroEntry::of(&hero, &ruleset),
+                Err(PackError::HeroNotWritable(what))
+            );
+        }
     }
 
     #[test]
@@ -2257,6 +2449,14 @@ mod tests {
         assert_eq!(
             PackError::UnknownTerrain("a:t".into()).to_string(),
             "unknown terrain `a:t`"
+        );
+        assert_eq!(
+            PackError::UnknownHeroType("a:h".into()).to_string(),
+            "unknown hero type `a:h`"
+        );
+        assert_eq!(
+            PackError::HeroNotWritable("effects").to_string(),
+            "the file format cannot hold a hero's effects yet"
         );
     }
 }

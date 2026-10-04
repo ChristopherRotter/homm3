@@ -1,11 +1,11 @@
 //! Library side of the `h3` tool: loading packs and scenarios from disk, running random battles,
 //! and the replay file format (TOML). The binary (`main.rs`) only parses arguments.
 //!
-//! Replay file format v2 (`fixtures/replays/*.toml` are examples):
+//! Replay file format v3 (`fixtures/replays/*.toml` are examples):
 //!
 //! ```toml
 //! [replay]
-//! format = 2
+//! format = 3
 //! engine = "0.1.0"
 //! scenario = "skirmish"
 //! seed = "7"                      # u64 as a decimal string
@@ -19,12 +19,21 @@
 //! battle_state_hash_version = 2
 //! checkpoint_every = 25
 //!
-//! [setup]                         # the rest of the setup (format 2; fields default when absent)
+//! [setup]                         # the rest of the setup (fields default when absent)
 //! obstacles = [40, 41]            # blocked hexes
-//! led_by_hero = ["attacker"]      # sides led by a hero (omitted when none)
 //! terrain = "base:grass"          # the battlefield's terrain (omitted when none)
 //! attacker_war_machines = ["base:ballista"]  # war machines per side (omitted when none)
 //! tight_formation = ["defender"]  # sides in tight formation (omitted when none)
+//!
+//! [setup.attacker_hero]           # the battle hero per side (format 3; omitted when none):
+//! hero_type = "base:orrin"        #   the fields of `h3_pack::HeroEntry`
+//! attack = 2
+//! defense = 2
+//! power = 1
+//! knowledge = 1
+//! tactics = 0
+//! mana = 10
+//! max_mana = 10
 //!
 //! [[attacker]]                    # the setup, by creature key
 //! slot = 0
@@ -44,9 +53,9 @@ use std::path::{Path, PathBuf};
 
 use h3_battle::{Command, Hex, StackId};
 use h3_content::{CreatureTypeId, Ruleset};
-use h3_contracts::{Army, ArmyStack, BattleResult, BattleSetup, BattleSide};
+use h3_contracts::{Army, ArmyStack, BattleHero, BattleResult, BattleSetup, BattleSide};
 use h3_kernel::{Rng, StreamId};
-use h3_pack::{PackError, ScenarioDef};
+use h3_pack::{HeroEntry, PackError, ScenarioDef};
 use h3_sim::{Replay, ReplayError, ReplayHeader};
 use serde::{Deserialize, Serialize};
 
@@ -155,8 +164,6 @@ struct Meta {
 struct SetupEntry {
     #[serde(default)]
     obstacles: Vec<u8>,
-    #[serde(default, skip_serializing_if = "Vec::is_empty")]
-    led_by_hero: Vec<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     terrain: Option<String>,
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
@@ -165,6 +172,11 @@ struct SetupEntry {
     defender_war_machines: Vec<String>,
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     tight_formation: Vec<String>,
+    // Tables last: TOML writes values before tables.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    attacker_hero: Option<HeroEntry>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    defender_hero: Option<HeroEntry>,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -294,6 +306,12 @@ pub fn replay_to_toml(
             })
             .collect()
     };
+    let hero = |hero: &Option<BattleHero>| -> Result<Option<HeroEntry>, CliError> {
+        hero.as_ref()
+            .map(|h| HeroEntry::of(h, ruleset))
+            .transpose()
+            .map_err(|e| CliError::Format(e.to_string()))
+    };
     let h = &replay.header;
     let file = ReplayFile {
         replay: Meta {
@@ -317,7 +335,6 @@ pub fn replay_to_toml(
         },
         setup: SetupEntry {
             obstacles: replay.setup.obstacles.clone(),
-            led_by_hero: h3_pack::side_names(replay.setup.led_by_hero),
             terrain: replay
                 .setup
                 .terrain
@@ -326,6 +343,8 @@ pub fn replay_to_toml(
             attacker_war_machines: keys(&replay.setup.war_machines[0]),
             defender_war_machines: keys(&replay.setup.war_machines[1]),
             tight_formation: h3_pack::tight_sides(replay.setup.formations),
+            attacker_hero: hero(&replay.setup.heroes[0])?,
+            defender_hero: hero(&replay.setup.heroes[1])?,
         },
         attacker: stacks(&replay.setup.attacker),
         defender: stacks(&replay.setup.defender),
@@ -406,6 +425,12 @@ impl ReplayDoc {
                 })
                 .collect()
         };
+        let hero = |entry: Option<&HeroEntry>| -> Result<Option<BattleHero>, CliError> {
+            entry
+                .map(|e| e.resolve(ruleset))
+                .transpose()
+                .map_err(|e| CliError::Format(e.to_string()))
+        };
         let header = ReplayHeader {
             format_version: m.format,
             engine_version: m.engine,
@@ -428,8 +453,10 @@ impl ReplayDoc {
                 attacker: army(&f.attacker)?,
                 defender: army(&f.defender)?,
                 obstacles: f.setup.obstacles,
-                led_by_hero: h3_pack::parse_sides(&f.setup.led_by_hero)
-                    .map_err(|e| CliError::Format(e.to_string()))?,
+                heroes: [
+                    hero(f.setup.attacker_hero.as_ref())?,
+                    hero(f.setup.defender_hero.as_ref())?,
+                ],
                 terrain: f
                     .setup
                     .terrain

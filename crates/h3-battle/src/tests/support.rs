@@ -7,9 +7,10 @@ use std::vec::Vec;
 
 use h3_content::{
     AbilityDef, AuraTarget, BattleParamsDef, ContentKey, ContentPack, CreatureDef, CreatureInfoDef,
-    FactionDef, Formation, ObstacleDef, PackManifest, ProfileDef, Ruleset, TerrainDef,
+    FactionDef, Formation, HeroClassDef, HeroTypeDef, ObstacleDef, PackManifest, ProfileDef,
+    Ruleset, SpellCategory, SpellDef, SpellPolarity, SpellSchoolDef, StartingStackDef, TerrainDef,
 };
-use h3_contracts::{Army, ArmyStack, BattleSetup, BattleSide};
+use h3_contracts::{Army, ArmyStack, BattleHero, BattleSetup, BattleSide};
 
 use crate::{BattleState, Command, Event, Field, Hex, StackId, apply};
 
@@ -565,6 +566,52 @@ pub fn ruleset_with(profile: &str, edit: impl FnOnce(&mut BattleParamsDef)) -> R
             },
         ],
         battle: Some(battle),
+        spell_schools: vec![SpellSchoolDef {
+            key: ContentKey::new("t", "air").unwrap(),
+            name: String::from("Air"),
+        }],
+        spells: [
+            ("bolt", SpellCategory::Combat),
+            ("gaze", SpellCategory::Ability),
+        ]
+        .iter()
+        .map(|&(name, category)| SpellDef {
+            key: ContentKey::new("t", name).unwrap(),
+            name: String::from(name),
+            category,
+            level: u8::from(category == SpellCategory::Combat),
+            schools: match category {
+                SpellCategory::Ability => vec![],
+                _ => vec![ContentKey::new("t", "air").unwrap()],
+            },
+            cost: [5, 4, 4, 4],
+            power: 10,
+            effect: [10, 10, 20, 30],
+            polarity: SpellPolarity::Negative,
+        })
+        .collect(),
+        hero_classes: vec![HeroClassDef {
+            key: ContentKey::new("t", "knight").unwrap(),
+            name: String::from("Knight"),
+            faction: ContentKey::new("t", "castle").unwrap(),
+            primary: [2, 2, 1, 1],
+            primary_gain: [[35, 45, 10, 10], [30, 30, 20, 20]],
+            skill_weights: vec![],
+        }],
+        heroes: vec![HeroTypeDef {
+            key: ContentKey::new("t", "orrin").unwrap(),
+            name: String::from("Orrin"),
+            class: ContentKey::new("t", "knight").unwrap(),
+            skills: vec![],
+            spell_book: false,
+            spells: vec![],
+            army: vec![StartingStackDef {
+                creature: ContentKey::new("t", "fixed").unwrap(),
+                count: [1, 2],
+            }],
+            war_machines: vec![],
+            specialty: vec![],
+        }],
         ..ContentPack::new(PackManifest {
             id: String::from("t"),
             version: String::from("1"),
@@ -590,12 +637,22 @@ pub fn army(rules: &Ruleset, spec: &[Spec]) -> Army {
     }
 }
 
+/// A battle hero of the test ruleset's only hero type with some primary skills, Tactics and mana.
+pub fn hero(rules: &Ruleset) -> BattleHero {
+    let mut hero = BattleHero::new(rules.hero_type_by_key("t:orrin").unwrap());
+    [hero.attack, hero.defense, hero.power, hero.knowledge] = [3, 2, 1, 1];
+    hero.tactics = 2;
+    hero.magic.mana = 15;
+    hero.magic.max_mana = 10;
+    hero
+}
+
 pub fn setup(rules: &Ruleset, attacker: &[Spec], defender: &[Spec]) -> BattleSetup {
     BattleSetup {
         attacker: army(rules, attacker),
         defender: army(rules, defender),
         obstacles: vec![],
-        led_by_hero: [false; 2],
+        heroes: [None, None],
         terrain: None,
         war_machines: [vec![], vec![]],
         formations: [Formation::Loose; 2],

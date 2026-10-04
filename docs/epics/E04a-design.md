@@ -78,10 +78,14 @@ become several effects) and `StatOp { Add, PercentBp }`. What the tasks still ha
   magic (E04b). A specialty's growth and the artifacts' sums can exceed the field types; the
   derivation saturates and clamps (`reduction_bp`, `surrender_discount_bp` ≤ 10 000).
 
-## 5. `BattleSetup`, `BattleOutcome`, `BattleResult` (T4, T9)
+## 5. `BattleSetup`, `BattleOutcome`, `BattleResult` (T9)
 
-- `BattleSetup.heroes: [Option<BattleHero>; 2]` **replaces `led_by_hero`**. "Led by a hero" is
-  `heroes[side].is_some()`; quirk Q-0003 reads it.
+T4b2 implemented `BattleSetup.heroes` (replaces `led_by_hero`; Q-0003 reads hero presence;
+BAT-HER-001). The battle keeps a small per-side record (`h3_battle` `hero.rs`, `HeroRecord`:
+hero type, primary skills, Tactics level, mana, maximum mana); each later task adds the fields
+its rules read, together with the scenario/replay format field (`h3_pack::HeroEntry`) and a
+state-hash bump. Left for T9:
+
 - `BattleSetup.funds: [u32; 2]`: gold the side's owner can spend on a surrender (ignored for a side
   without a hero). `war_machines`, `formations`, `terrain` and `obstacles` stay. `war_machines` is
   filled from `h3_heroes::war_machines`, which returns the Ballista, Ammo Cart and First Aid Tent
@@ -156,10 +160,13 @@ become several effects) and `StatOp { Add, PercentBp }`. What the tasks still ha
 - Actors are validated as in ADR-0004: the answer to a surrender comes from the side it was offered
   to, every other command from the side whose stack is active or whose tactics phase runs.
 
-## 8. Visibility (T4, T11)
+## 8. Visibility (T7–T9, T11)
 
-- Public in the observation of both sides: `hero_type`, attack, defense, power, knowledge, mana
-  and max mana (the original shows these in battle), the war machines and who controls them, the
+T4b2: `Observation.heroes` shows both sides the public part (`HeroView`: hero type, primary
+skills, mana, maximum mana); the Tactics level stays private (hygiene property test). The
+encoding still has only the two "led by a hero" flags; T11 adds hero features. Still to do:
+
+- Public in the observation of both sides: the war machines and who controls them, the
   tactics phase and its zone, whether each side may retreat and surrender (a `NoRetreat` effect
   changes both sides' options, so it is public), a surrender offer and its price (accepting that an
   offer reveals that the offering side can pay).
