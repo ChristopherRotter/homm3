@@ -516,7 +516,7 @@ id       = "BAT-RNG-002"
 title    = "Distance penalty"
 context  = "battle"
 status   = "implemented"
-summary  = "A shot deals half damage (a reduction of ranged_penalty_percent = 50 %, BAT-DMG-002) when no hex of the target is within ranged_full_damage_distance = 10 hexes of the shooter's position, unless the shooter has the no_distance_penalty ability (Sharpshooter). Scope: siege walls (the obstacle penalty) come with sieges."
+summary  = "A shot deals half damage (a reduction of ranged_penalty_percent = 50 %, BAT-DMG-002) when no hex of the target is within ranged_full_damage_distance = 10 hexes of the shooter's position, unless the shooter has the no_distance_penalty ability (Sharpshooter). This includes the Ballista (observed, batch 1b R7). Scope: siege walls (the obstacle penalty) come with sieges; the Golden Bow's exemption (batch 1b R8) comes with E04a T10."
 numeric  = "integer"
 
   [[rule.source]]
@@ -531,6 +531,12 @@ numeric  = "integer"
   ref        = "lib/battle/CBattleInfoCallback.cpp battleHasDistancePenalty / isEnemyUnitWithinSpecifiedRange (no penalty if any target hex is within 10 of the shooter's position); DamageCalculator.cpp getDefenseRangePenaltiesFactor 0.5"
   url        = "https://github.com/vcmi/vcmi/blob/1.7.5/lib/battle/CBattleInfoCallback.cpp"
   retrieved  = "2026-10-01"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "observation"
+  ref        = "experiments/results/E04a-batch-1b.md R7 (SoD 4.0 Complete, plain HD, 2026-10-04): the automatic Ballista (range 10-15, +55 %) shooting Archers more than 10 hexes away dealt 7-11 (eleven shots), the halved values"
+  retrieved  = "2026-10-04"
   confidence = "high"
 
 [[rule]]
@@ -1313,7 +1319,7 @@ id       = "BAT-WAR-007"
 title    = "The First Aid Tent commanded by First Aid"
 context  = "battle"
 status   = "implemented"
-summary  = "A side whose hero has First Aid (BattleHero.war_machines.tent, BAT-HER-001) commands its first-aid war machine (the First Aid Tent): when the tent becomes active and some allied stack is a patient (alive, not a war machine, its top creature hurt; BAT-WAR-003), it waits for its side's command instead of acting on its own; with no patient its turn passes without action. Legal commands: Heal { target } for each patient (validated: the active stack is a commanded tent, CannotHeal; the target exists and lives, NoSuchTarget; it is a patient, NotAPatient), Wait (once per round) and Defend; never moves or attacks in melee (BAT-WAR-001). A heal restores a uniform min_hp..=max_hp' hit points of the top creature, capped at full health, without resurrection, where max_hp' = floor(max_hp * (10 000 + heal_bonus_bp) / 10 000) (Basic/Advanced/Expert First Aid: +100/200/300 %, so 1-50, 1-75, 1-100 for the tent's 1-25). Observed (batch 1a R6): the commanded tent got no turn while no ally was hurt. Not observed (retry in batch 1b): Wait/Defend for the tent, choosing the target, the heal amounts. The battle keeps the control in its hero record (state hash v12); it is private to the side."
+summary  = "A side whose hero has First Aid (BattleHero.war_machines.tent, BAT-HER-001) commands its first-aid war machine (the First Aid Tent): when the tent becomes active and some allied stack is a patient (alive, not a war machine, its top creature hurt; BAT-WAR-003), it waits for its side's command instead of acting on its own; with no patient its turn passes without action. Legal commands: Heal { target } for each patient (validated: the active stack is a commanded tent, CannotHeal; the target exists and lives, NoSuchTarget; it is a patient, NotAPatient), Wait (once per round) and Defend; never moves or attacks in melee (BAT-WAR-001). A heal restores a uniform min_hp..=max_hp' hit points of the top creature, capped at full health, without resurrection, where max_hp' = floor(max_hp * (10 000 + heal_bonus_bp) / 10 000) (Basic/Advanced/Expert First Aid: +100/200/300 %, so 1-50, 1-75, 1-100 for the tent's 1-25). Observed (batch 1a R6, batch 1b R7): the commanded tent gets no turn while no ally is hurt; the player chooses the patient and cannot choose the hurt Ballista; Wait (the tent acts again later in the round) and Defend are available; eight heals at Basic lay between 6 and 50. The battle keeps the control in its hero record (state hash v12); it is private to the side."
 numeric  = "integer"
 
   [[rule.source]]
@@ -1325,6 +1331,12 @@ numeric  = "integer"
   kind       = "observation"
   ref        = "experiments/results/E04a-batch-1a.md R6 (SoD 4.0 Complete, 2026-10-03): with Basic First Aid the tent got no turn in rounds 1 and 2, while the Pikemen were at full health"
   retrieved  = "2026-10-03"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "observation"
+  ref        = "experiments/results/E04a-batch-1b.md R7 (SoD 4.0 Complete, plain HD, 2026-10-04): with Basic First Aid the player chooses the stack to heal, the hurt Ballista cannot be chosen, Wait and Defend are available and after Wait the tent acts again later in the round; heals 20, 41 (capped at 41 missing), 47, 50, 41, 6, 11, 24"
+  retrieved  = "2026-10-04"
   confidence = "high"
 
   [[rule.source]]

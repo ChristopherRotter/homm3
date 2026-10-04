@@ -37,13 +37,13 @@ are computed before the seam (03-domain). The seam must change once for E04a and
 6. **Battle-long hero effects are applied at setup** to the stacks' base stats; morale and luck
    effects become side modifiers (ADR-0012 pool, capacity sized by construction).
 7. **Phases and commands.** A tactics phase (round 0) reuses `Move` with cycling activations plus
-   `EndTactics`; `Retreat`; `Surrender` with an optional consent step (ruleset parameter); a
+   `EndTactics`; `Retreat`; `Surrender`, which ends the battle at once (no consent step); a
    hero-controlled Ballista uses `Shoot`, a hero-controlled First Aid Tent a new `Heal`.
 8. **The battle prices a surrender**, because every input is in the battle context (living stacks,
    the ruleset's costs, the hero's discount); funds come in through the setup. Should a rule ever
    need information outside the battle, the price becomes an injected input, never an import.
 9. **Visibility.** What the original shows in battle (hero identity, primary skills, mana, war
-   machines, tactics zone, retreat/surrender options and offers) is public; skill levels, bonuses,
+   machines, tactics zone, retreat/surrender options) is public; skill levels, bonuses,
    effects, spell book and funds are private to the hero's side. Hidden battlefield objects (E04b)
    use the same owner-side projection (ADR-0004).
 10. **Encodings.** E04a extends the dense action encoding (v5); E04b designs a factorized one for
@@ -77,3 +77,6 @@ are computed before the seam (03-domain). The seam must change once for E04a and
 - 2026-10-03: Proposed (E04a T1); revised after an internal consistency review.
 - 2026-10-03: Accepted by the user. Cut to its decisions (ADR size rule, `docs/adr/README.md`); the
   working detail moved to `docs/epics/E04a-design.md`. Point 8 records the user's condition.
+- 2026-10-04: point 7 — the optional consent step for a surrender is dropped (user, OPEN-QUESTIONS
+  Q32): in SoD neither a human nor the computer opponent is asked (experiment batch 1b R4), and in
+  HotA the enemy cannot refuse either (wiki, Combat). Point 9 no longer lists offers.

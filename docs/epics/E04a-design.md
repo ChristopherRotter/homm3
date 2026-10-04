@@ -31,6 +31,61 @@ task has to do with them:
 - Not observed: the wiki's Armorer example "2002 → 2001" is not explained by Q-0005 alone; Q22
   (jousting) was not staged.
 
+## Batch 1b results (experiment, SoD; evaluated 2026-10-04)
+
+Results: `experiments/results/E04a-batch-1b.md` (the user's commit `4610112`); predictions:
+`experiments/specs/E04a-batch-1b.toml`. Played with the Complete edition's `Heroes3.exe` through the
+HD Mod 5.6 R9 launcher, plain HD. The user's decisions on the results: OPEN-QUESTIONS Q32. What
+each task has to do with them:
+
+- **T7** (done; observation sources added to BAT-WAR-007 and BAT-RNG-002): R7 — the player chooses
+  the patient, the hurt Ballista is not one, Wait (the tent acts again later in the round) and
+  Defend are available, eight heals at Basic between 6 and 50 (one capped at the 41 missing hit
+  points). The automatic Ballista has the range penalty (7–11 at long range).
+- **T8** (R2, R3; §7 as designed): the zone is the raw columns 1..d of every row, d = 1 + 2 ×
+  difference (7 and 7 at Expert against no Tactics), so its edge zig-zags; war machines cannot be
+  selected or moved; Retreat is available in the phase; speed does not limit a placement; a walker
+  needs a path (obstacles and stacks block it, an enclosed hex is unreachable), a flyer reaches any
+  free hex of the zone; the game hands over the side's army stacks in a fixed order, cycling, a
+  move passes to the next stack, and a stack can be moved any number of times (VCMI's free choice
+  of the stack is not the original; the exact order was not recorded, round-1 order stays). OQ-1
+  (R3): a hero whose Tactics formation is switched off still blocks the enemy's phase (VCMI).
+  Agent decision: the toggle is not modelled — a side that gets the phase can end it at once, and
+  the block counts either way.
+- **T9** (R4, R5, B6):
+  - Surrender price (D-1): half the gold cost of the side's living stacks **including war
+    machines**, with the current counts, rounded down (R4: 1472 = ½ × (7 × 60 + 25 + 2500); later
+    1430 = ½ × (6 × 60 + 2500), and Red's gold fell by 1430). The user: a rule, not a quirk (Q32).
+  - Discounts add (D-2: Basic Diplomacy 20 % + Statesman's Medal and Diplomat's Ring 10 % each =
+    40 %) and enter as single-precision values: 179 for B2's 10 Pikemen, not 180 (300 × (1 −
+    0.4000000059604645) = 179.99999821). The user: quirk Q-0005 now covers this rate too (Q32).
+    The observation cannot tell whether each source or the sum is converted; the sum (as T6b does
+    for damage bonuses) gives the observed 179.
+  - No consent (D-5): neither the human nor the computer opponent was asked; the surrender ended
+    the battle at once. Pressing Surrender only shows the price, any number of times; declining is
+    a client matter, so the engine has no offer, answer or once-per-round limit. ADR-0013 point 7
+    amended (the consent step is dropped; HotA does not let the enemy refuse either).
+  - Shackles of War stop retreat (and surrender) also against a monster (B6, D-6: as the wiki for
+    SoD; VCMI follows HotA).
+  - Outcome inputs (for the orchestrator): killed war machines give no experience; Learning
+    multiplies the whole sum including the +500 (R5: floor(550 × 1.15) = 632; D-3 as the wiki,
+    OQ-6 as VCMI); the loser's surviving war machines are not captured (OQ-5; afterwards the winner
+    had only the Catapult every hero gets).
+  - Necromancy (D-7, an E08–E10 input): rounded down per killed stack (R6: stacks 6, 6, 6, 14, 17
+    at 10 % → 0 + 0 + 0 + 1 + 1 = 2 Skeletons); VCMI's single sum (4) and "at least 1 per stack"
+    (5) are not the original. The outcome's per-stack records (§5) carry what this needs.
+- **T10** (R1, R8, B7):
+  - Angelic Alliance as the packs model it (artifacts D1): the five SoD factions count as one
+    alignment, Conflux and neutral creatures stay separate (R1 in battle: −1 "Troops of three
+    alignments" with all four, 0 without the Pixies or without the Peasants); VCMI (every non-evil
+    faction, +1) and the wiki's "they cancel the bonus" are not the original. The hero screen shows
+    no alignment morale; only the battle does.
+  - War machines get the hit-point artifacts (R8: Ballista 254, Ammo Cart 104, Tent 79 with +4)
+    but not the speed artifacts (speed stays 0) (artifacts open 1; VCMI gives both).
+  - The Golden Bow removes the Ballista's range penalty (R8: 23, 17, 20; open 2, as VCMI).
+  - Xeron's Devils get +1 speed (B7: 23/23/12; H-2, as the packs have it).
+- Not staged: D8 (Cloak of the Undead King, E08–E10), Q22.
+
 ## 3. Artifacts in the derivation (T10)
 
 T4b1 implemented the effect sources (`h3_heroes` `derive.rs`, `effects`: skills at their levels,
@@ -123,21 +178,20 @@ state-hash bump. Left for T9:
   `Wait` (skip to the next stack); and the new `EndTactics`. War machines are not moved. Events
   `TacticsStarted`, `TacticsEnded`; `RoundStarted(1)` follows. Like the battle itself the phase has
   no limit in the rules; the sim's step limit truncates (E01), and E05 handles the action balance.
-  The exact zone geometry and whether placement needs a path are batch-1 questions (OQ-1, OQ-2).
+  Batch 1b confirmed the zone, the path rule, the speed exemption and the cycling ("Batch 1b
+  results"); `Retreat` is also legal in the phase (T9).
 - **Retreat** (`Retreat`): by the side whose stack is active or whose tactics phase runs; legal if
   the side has a hero and no `NoRetreat` effect is in the battle. Ends the battle with
   `Retreat(side)`.
-- **Surrender** (`Surrender`, then `AcceptSurrender` or `RejectSurrender` by the opponent):
-  legal like Retreat, and only if the enemy has a hero, the side has not offered yet in this round
-  (the tactics phase counts as round 0) and its `funds` cover the price. The price is a new BAT
-  rule: Σ over the side's living army stacks (war machines excluded) of count × the creature's
-  gold cost, × a ruleset factor in percent (D-1: 50 or 100), × (10 000 − discount) / 10 000,
-  computed in `u64` and rounded down (D-2 checks the combination). If the ruleset parameter
-  `surrender_needs_consent` is set (default per D-5; the wiki says the opponent may refuse), the
-  battle enters a pending state in which the only legal commands are the opponent's answer; a
-  rejection resumes where the offer was made.
-- Actors are validated as in ADR-0004: the answer to a surrender comes from the side it was offered
-  to, every other command from the side whose stack is active or whose tactics phase runs.
+- **Surrender** (`Surrender`): legal like Retreat, and only if the enemy has a hero and the
+  side's `funds` cover the price; it ends the battle at once with `Surrender(side)` (no consent
+  step, batch 1b R4). The price is a new BAT rule: half (a ruleset factor, 50 %) of Σ over the
+  side's living stacks, **war machines included**, of count × the creature's gold cost, ×
+  (10 000 − discount) / 10 000, rounded down once (R4: 1472, 1430); under Q-0005 the summed
+  discount enters as its single-precision value (R4: 179, not 180). Computed exactly in wide
+  integers (`h3_kernel::arith`).
+- Actors are validated as in ADR-0004: every command comes from the side whose stack is active or
+  whose tactics phase runs.
 
 ## 8. Visibility (T7–T9, T11)
 
@@ -146,9 +200,9 @@ skills, mana, maximum mana); the Tactics level stays private (hygiene property t
 encoding still has only the two "led by a hero" flags; T11 adds hero features. Still to do:
 
 - Public in the observation of both sides: the war machines and who controls them, the
-  tactics phase and its zone, whether each side may retreat and surrender (a `NoRetreat` effect
-  changes both sides' options, so it is public), a surrender offer and its price (accepting that an
-  offer reveals that the offering side can pay).
+  tactics phase and its zone, whether each side may retreat, and whether surrender is possible at
+  all (both heroes present, no `NoRetreat` effect; public because it changes both sides' options).
+  Whether a side can afford its surrender, and its price, show only to that side (its action mask).
 - Private to the hero's own side: `tactics` level, the damage bonuses, `surrender_discount_bp`,
   school levels, the `effects` list other than the public consequences above (stat effects show in
   the stacks' public stats), the spell book, `funds`.
@@ -159,7 +213,7 @@ encoding still has only the two "led by a hero" flags; T11 adds hero features. S
 
 - T7b already appended `Heal { target }` over the stack slots (action encoding v5, C ABI v3:
   every legal command must be encodable); the commanded Ballista reuses `Shoot`. T8/T9 append
-  `EndTactics`, `Retreat`, `Surrender` and the two answers the same way (each bump also bumps
+  `EndTactics`, `Retreat` and `Surrender` the same way (each bump also bumps
   the C ABI, ADR-0011); tactics placement reuses the `Move` indices. Observation encoding v4
   adds per-side hero features (the public part for the opponent) in T11.
 - E04b's casting (spells × targets) does not fit a flat dense encoding; E04b designs a factorized
