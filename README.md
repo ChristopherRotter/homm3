@@ -41,5 +41,6 @@ Tools for the full gate: `cargo install cargo-deny cargo-llvm-cov --locked`,
 | `crates/h3-harvest` | harvester: original files → committed packs `base`/`ab`/`sod` (tool) |
 | `crates/h3-experiment` | experiment compiler: spec → `.h3m` map + results template for the user (tool) |
 | `xtask` | `cargo xtask verify` and the individual gates |
+| `scripts/` | cloud-sandbox setup and background verify for agent sessions (`docs/08-work-process.md`) |
 | `packs/`, `fixtures/`, `benches/` | harvested and synthetic content packs, golden replays, benchmark baselines |
 | `docs/` | vision, architecture, ADRs, rule catalog, backlog, handoff |

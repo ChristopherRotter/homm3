@@ -15,9 +15,9 @@ Working project name: **h3** (provisional; see OPEN-QUESTIONS Q2). Last structur
 | [07-simulation-and-ai.md](07-simulation-and-ai.md) | Simulation environment, baselines, RL strategy, training automation |
 | [08-work-process.md](08-work-process.md) | How agents work in increments, handoff protocol, when to ask |
 | [BACKLOG.md](BACKLOG.md) | Coarse-grained epics, ordered; only the next ones are refined |
-| [HANDOFF.md](HANDOFF.md) | Living state: what was done, what is next, traps |
+| [HANDOFF.md](HANDOFF.md) | Living state: current state, standing traps, the last three sessions (size budget, `08-work-process.md`) |
 | [OPEN-QUESTIONS.md](OPEN-QUESTIONS.md) | Decisions waiting for the user |
-| [epics/](epics/) | Refined epics (only those about to be worked on) and their design notes (`<epic>-design.md`, pruned as tasks implement them) |
+| [epics/](epics/) | Refined epics (only those about to be worked on), their design notes (`<epic>-design.md`, pruned as tasks implement them) and logs (`<epic>-log.md`, the full record of done tasks) |
 | [adr/](adr/) | Architecture Decision Records (binding) |
 | [pull_request_template.md](pull_request_template.md) | Definition-of-Done checklist for changes |
 | [rules/](rules/) | Rule catalog (machine-checked), quirks ledger, [source surveys](rules/surveys/) per epic |

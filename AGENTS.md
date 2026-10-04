@@ -7,10 +7,10 @@ You are one of many agents working on this over time. No single session finishes
 ## Start-of-session checklist
 
 1. Read `docs/HANDOFF.md` (current state, what to do next, traps).
-2. Read `docs/OPEN-QUESTIONS.md` (anything blocking or recently answered).
-3. Read the epic file you are working on (`docs/epics/`) and the relevant parts of `docs/BACKLOG.md`.
+2. Read the "Open" section of `docs/OPEN-QUESTIONS.md` (answered entries are history: read one when a doc points to it).
+3. Read the epic file you are working on (`docs/epics/`; its log `<epic>-log.md` only where a task builds on an earlier one) and the relevant parts of `docs/BACKLOG.md`.
 4. Skim `docs/02-architecture.md`; from the ADR index (`docs/adr/README.md`, column "Read when") read only the ADRs that touch your task, plus the epic's design note if it has one. ADRs are binding; do not silently deviate. ADRs stay short: decisions only, detail in design notes (rule in the ADR index).
-5. Run `cargo xtask verify` (once it exists — see the backlog; until then run the commands listed in HANDOFF) to confirm the repo is green **before** you change anything.
+5. Run `cargo xtask verify` to confirm the repo is green **before** you change anything. In a cloud sandbox, `scripts/sandbox-setup.sh` prepares it and runs verify in the background (`docs/08-work-process.md`, "Cloud sandbox and syncing").
 
 ## Non-negotiables
 
@@ -57,13 +57,13 @@ The user may stop a session at any moment (for example by shutting down the comp
 - **Keep `docs/HANDOFF.md` resumable.** At every task boundary (and before anything long-running) add or refresh a short "in progress" note in the newest entry: what is done, what is next, what is half-done and where.
 - **When the user says they are about to stop, checkpoint first:** finish or cleanly back out of the current step, commit, update HANDOFF, sync, and confirm before they shut down.
 - **Git on the user's machine:** get delete permission for the repo folder before running git there (git must be able to remove its own lock files), and never leave a `.git/*.lock` behind. Do not start a git operation on the user's machine right before an announced stop.
-- **When resuming:** read HANDOFF, then compare the user's repo (branch, last commit, working tree) with any sandbox copy. **The user's repo wins**: the user may have amended or added commits in the meantime, so rebuild your working copy from it before continuing. Re-create sandbox tooling as HANDOFF describes.
+- **When resuming:** read HANDOFF, then compare the user's repo (branch, last commit, working tree) with any sandbox copy. **The user's repo wins**: the user may have amended or added commits in the meantime, so rebuild your working copy from it before continuing. Re-create the sandbox as `docs/08-work-process.md` ("Cloud sandbox and syncing") describes.
 
 ## End-of-session checklist
 
 1. `cargo xtask verify` is green (or the failure is documented in HANDOFF with cause and next step).
-2. Update `docs/HANDOFF.md`: what you did, what is next, decisions taken, traps, anything half-done.
-3. Update the epic file / `docs/BACKLOG.md` status; add newly discovered work as coarse backlog items.
+2. Update `docs/HANDOFF.md`: rewrite "Current state", add one short entry under "Recent sessions" (what you did, decisions, anything half-done) and keep at most three, move lasting traps into "Standing traps" and prune stale ones. `cargo xtask check-docs` enforces the budget (`docs/08-work-process.md`, "Keeping the start-of-session reading small").
+3. Update the epic file (a done task gets one line; its full record goes into the epic's log) and `docs/BACKLOG.md` status; add newly discovered work as coarse backlog items.
 4. New questions → `docs/OPEN-QUESTIONS.md`; new decisions → ADR.
 5. Commit.
 

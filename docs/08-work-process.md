@@ -6,7 +6,7 @@
 2. **Backlog** (`BACKLOG.md`) — coarse epics in rough priority order. Cheap to reorder. One or two lines each until they are close.
 3. **Refined epic** (`epics/Exx-*.md`) — only for the next one or two epics: goal, scope, non-goals, exit criteria, task list. Refine an epic when it becomes next, not before.
 4. **Task** — sized to fit one focused agent session (a coherent change that can be verified). If it does not fit, split it or deliver partially (below).
-5. **HANDOFF.md** — the living state between sessions.
+5. **HANDOFF.md** — the living state between sessions, within a size budget ("Keeping the start-of-session reading small").
 
 Do not over-specify. A refined epic is allowed to be wrong after first contact; update it.
 
@@ -22,10 +22,61 @@ Do not over-specify. A refined epic is allowed to be wrong after first contact; 
 - If you discover work: add a coarse backlog item or a stub registry entry; do not silently expand scope.
 - If you hit a decision that might be big: stop and ask (see below).
 
-**End:** follow the checklist in `AGENTS.md`. A partial delivery is acceptable if:
+**End:** follow the checklist in `AGENTS.md` (HANDOFF and the epic file as in "Keeping the start-of-session reading small"). A partial delivery is acceptable if:
 - the repo builds and `verify` is green,
 - unfinished parts are explicit (stub registry, epic task checklist, HANDOFF "next steps"),
 - nothing half-implemented is reachable in a way that could corrupt state (prefer returning a typed `NotImplemented` error behind the validator over partial behavior).
+
+## Keeping the start-of-session reading small
+
+Every session pays for what it reads before it works, and everything read stays in the context for
+every later step (user, 2026-10-04: the project docs had grown to about 50k tokens of start-up
+reading). So the files every session reads stay short, and detail lives where it is used: rules in
+the catalog, quirks in the ledger, decisions in ADRs, formats in `packs/README.md` and
+`docs/formats/`, history in git.
+
+- **HANDOFF.md** has four parts: a short intro; `## Current state` (branch, verify, the epic's
+  position and next step, decisions waiting for the user, versions; rewritten each session);
+  `## Standing traps` (grouped bullets that still apply: delete a trap when it stops applying,
+  merge duplicates, never copy a trap into a session entry); `## Recent sessions` (one `###`
+  entry per session, newest first, about ten lines: what was done with commit ids and pointers,
+  user and agent decisions, new traps moved up into Standing traps). Keep at most three entries;
+  delete the oldest, git history keeps it. `cargo xtask check-docs` (a verify step) fails above
+  10 000 bytes or three entries: shorten, do not raise the limit.
+- **Epic files:** a done task keeps one line in the task list (date, sub-tasks, rule ids,
+  versions). Its full record (what was built, refinements, agent decisions marked "change
+  freely", measurements) goes into the epic's log, `docs/epics/<epic>-log.md`, which is read only
+  when a task builds on it. The design note is pruned as before (`docs/adr/README.md`).
+- **OPEN-QUESTIONS.md:** sessions read the "Open" section; an answered entry only when a doc
+  points to it.
+
+## Cloud sandbox and syncing
+
+Agents usually work in a cloud sandbox; the user's repo folder is the only durable copy
+(`AGENTS.md`, "Interruptions and resuming"). The device tools are the session's tools for the
+user's computer.
+
+1. **On the user's machine:** get delete permission for the repo folder before any git command
+   (even `git status` can leave `.git/index.lock` behind). Bundle the working branch and `master`
+   (doc-drift needs `master`): `git bundle create "Claude outputs/sync.bundle" <branch> master`.
+2. **Stage** the bundle and `original-data/install/Heroes3.exe`,
+   `original-data/install/Data/H3bitmap.lod`, `original-data/install/Data/H3ab_bmp.lod` and
+   `original-data/extracted/H3bitmap/Objects.txt` (one large LOD per staging call).
+3. **In the sandbox:** `git clone -b <branch> <staged bundle> homm3`, then in it
+   `git fetch <staged bundle> master:master` and `scripts/sandbox-setup.sh`. The script links
+   the image's `stable` toolchain as the pinned one, copies the original data into
+   `original-data/` and starts the tool installs and the baseline verify in the background
+   (about 15 minutes; read the docs meanwhile, then check `tail -n 3 target/sandbox/verify.log`).
+   Later verify runs: `nohup scripts/sandbox-verify.sh --with-original-data > /dev/null 2>&1 &`.
+4. **After every commit:** bundle the new commits (`git bundle create <outputs>/sync-<n>.bundle
+   <last synced>..<branch>`, a new name each time), write it into `Claude outputs/` on the
+   user's machine, there `git fetch "Claude outputs/sync-<n>.bundle" <branch>` and
+   `git merge --ff-only FETCH_HEAD`, delete the bundle, and check that `git status` is clean and
+   no `.git/*.lock` is left. If the user committed in between, their repo wins: bring their
+   commits into the sandbox first.
+5. The sandbox clone's `origin` is a bundle; after a sync point it at the latest bundle
+   (`git remote set-url origin <bundle> && git fetch origin`) so tools do not report unpushed
+   commits.
 
 ## Stub registry
 

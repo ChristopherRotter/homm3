@@ -38,6 +38,7 @@ const STEPS: &[Step] = &[
     step("check-arch", false, || passed(crate::arch::run(&[]))),
     step("check-rules", false, || passed(crate::rules::run(&[]))),
     step("check-stubs", false, || passed(crate::stubs::run(&[]))),
+    step("check-docs", false, || passed(crate::docs::run(&[]))),
     step("test", false, || passed(test())),
     step("coverage", true, || passed(crate::coverage::run(&[]))),
     step("determinism", true, || passed(crate::determinism::run(&[]))),

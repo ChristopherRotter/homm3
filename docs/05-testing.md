@@ -48,6 +48,7 @@ Optional flags: `--with-original-data`, `--mutants`, `--fuzz-smoke`.
 | check-arch | crate graph and logic-crate purity (`arch.toml`) | |
 | check-rules | rule catalog and `rule:`/`covers:` traceability | |
 | check-stubs | stub registry vs. `todo!`/`unimplemented!`/`#[ignore]`/`TODO`/`FIXME` | |
+| check-docs | `docs/HANDOFF.md` within its size budget (10 000 bytes) with at most three entries under "Recent sessions" (`08-work-process.md`, "HANDOFF") | |
 | test | all unit, property, integration (incl. golden replays) and doc tests | |
 | coverage | `cargo llvm-cov`: 100 % lines (lcov, merged over generic instantiations) and regions (merged segments) on logic crates, minus `coverage-exclusions.toml`; fails if a non-test logic file with functions is missing from the report (test files are left out of the report by cargo-llvm-cov) | yes |
 | determinism | golden replays in debug, release, release + `target-cpu=native` | yes |
