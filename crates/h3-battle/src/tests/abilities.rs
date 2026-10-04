@@ -661,6 +661,32 @@ fn death_stare_kills_at_most_a_tenth_rounded_up_with_its_chance() {
     assert!((165..=225).contains(&stared), "{stared}");
 }
 
+// covers: BAT-DMG-009
+#[test]
+fn a_huge_stack_draws_its_stare_kills_at_once() {
+    let r = ruleset();
+    // 100 000 Gorgons (above the roll limit) deal 200 000 to 2 000 000 serfs (20 000 die), then
+    // stare: about 10 % of them, at most 10 000 (ceil of a tenth), drawn at once (KER-RNG-003).
+    const { assert!(100_000 > crate::combat::STARE_ROLL_LIMIT) };
+    let mut capped = 0;
+    for seed in 0..20u64 {
+        let mut s = battle(
+            &r,
+            &[(0, "gorgon", 100_000)],
+            &[(0, "serf", 2_000_000)],
+            seed,
+        );
+        arrange(&mut s, &r, &[(7, 5), (8, 5)]);
+        let found = stares(&hit(&mut s, &r, 1, (7, 5)));
+        let kills = found[0].2;
+        assert!((9_500..=10_000).contains(&kills), "{kills}");
+        assert_eq!(s.stacks()[1].count, 2_000_000 - 20_000 - kills);
+        capped += usize::from(kills == 10_000);
+    }
+    // The cap is the mean: about half the draws reach it.
+    assert!((4..=16).contains(&capped), "{capped}");
+}
+
 // ---------------------------------------------------------------- BAT-TRN-005 regeneration
 
 fn regenerated(events: &[Event]) -> Vec<(u8, u32)> {

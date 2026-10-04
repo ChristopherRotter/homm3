@@ -810,7 +810,7 @@ id       = "BAT-DMG-009"
 title    = "Death stare"
 context  = "battle"
 status   = "verified"
-summary  = "After its attack (also a retaliation), if the target is alive (flag alive) and survived, each creature of a stack with death_stare (Mighty Gorgons: 10 %) independently kills one target creature with that chance, at most ceil(count × percent / 100) kills (trials stop at the cap). The kills remove whole creatures, the damaged top one first, so a surviving stack's new top creature has full health (the wiki; observed, Q21). VCMI deals kills × max_hp damage instead, so its top creature keeps its damage; not followed."
+summary  = "After its attack (also a retaliation), if the target is alive (flag alive) and survived, each creature of a stack with death_stare (Mighty Gorgons: 10 %) independently kills one target creature with that chance, at most ceil(count × percent / 100) kills (trials stop at the cap or once the target is wiped out). Above 65 536 creatures (an engine bound on the work of one attack, far above real armies; user, OPEN-QUESTIONS Q39) the kills are drawn at once from the normal approximation of the same binomial law (KER-RNG-003, about 0.6 % in total variation), then capped. The kills remove whole creatures, the damaged top one first, so a surviving stack's new top creature has full health (the wiki; observed, Q21). VCMI deals kills × max_hp damage instead, so its top creature keeps its damage; not followed."
 numeric  = "integer"
 
   [[rule.source]]

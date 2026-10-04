@@ -36,6 +36,19 @@ numeric  = "integer"
   confidence = "high"
 
 [[rule]]
+id       = "KER-RNG-003"
+title    = "Approximate binomial draws for large counts"
+context  = "kernel"
+status   = "implemented"
+summary  = "binomial_approx(n, percent) draws the number of successes among n trials of percent % each in constant time from the normal approximation: mean n*p, standard deviation sqrt(n*p*(1-p)) (an integer square root in 32.32 fixed point), the normal variate Z as the sum of twelve uniform next_u32 draws scaled to [0,1) minus 6, the count round(mean + sd*Z) clamped to 0..=n; integer arithmetic only. Total-variation distance to the exact binomial law about 0.6 % for n >= 65 536 (computed for 1 %, 10 %, 50 % and 99 %); used only above a per-rule bound where rolling each trial would cost too much (BAT-DMG-009, OPEN-QUESTIONS Q39)."
+numeric  = "integer"
+
+  [[rule.source]]
+  kind       = "design"
+  ref        = "OPEN-QUESTIONS Q39 (user, 2026-10-04): exact rolls below a cutoff, a bounded-cost approximation above; Irwin-Hall sum of twelve uniforms as the normal variate (standard technique)"
+  confidence = "high"
+
+[[rule]]
 id       = "KER-HSH-001"
 title    = "Canonical state hash"
 context  = "kernel"

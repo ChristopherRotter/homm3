@@ -4,10 +4,12 @@ use std::fmt;
 use std::sync::Arc;
 
 use h3_battle::{
-    BattleState, CommandError, LegalCommands, NoopSink, Observation, SetupError, apply, observe,
+    BattleState, CommandError, LegalCommands, NoopSink, Observation, SetupError, apply,
+    generate_obstacles, observe,
 };
 use h3_content::Ruleset;
 use h3_contracts::{BattleResult, BattleSetup, BattleSide};
+use h3_kernel::{Rng, StreamId};
 
 use crate::action::{self, ActionMask};
 use crate::observation;
@@ -67,6 +69,8 @@ impl std::error::Error for StepError {}
 pub struct BattleEnv {
     ruleset: Arc<Ruleset>,
     setup: Arc<BattleSetup>,
+    /// Each episode gets obstacles generated for the setup's terrain from its seed.
+    random_obstacles: bool,
     state: BattleState,
     steps: u32,
     max_steps: u32,
@@ -82,10 +86,34 @@ impl BattleEnv {
         seed: u64,
         max_steps: u32,
     ) -> Result<Self, SetupError> {
-        let state = BattleState::new(&ruleset, &setup, seed)?;
+        Self::build(ruleset, setup, false, seed, max_steps)
+    }
+
+    /// Like [`new`](BattleEnv::new), but every episode (this one and each [`reset`](Self::reset))
+    /// gets obstacles generated for the setup's terrain from stream `OBSTACLES` of its seed, as
+    /// `h3 run` does for a scenario with `random_obstacles` (BAT-GEO-004); the setup's own
+    /// obstacles are replaced. Without a terrain the setup is used as it is.
+    pub fn with_random_obstacles(
+        ruleset: Arc<Ruleset>,
+        setup: Arc<BattleSetup>,
+        seed: u64,
+        max_steps: u32,
+    ) -> Result<Self, SetupError> {
+        Self::build(ruleset, setup, true, seed, max_steps)
+    }
+
+    fn build(
+        ruleset: Arc<Ruleset>,
+        setup: Arc<BattleSetup>,
+        random_obstacles: bool,
+        seed: u64,
+        max_steps: u32,
+    ) -> Result<Self, SetupError> {
+        let state = Self::episode(&ruleset, &setup, random_obstacles, seed)?;
         Ok(Self {
             ruleset,
             setup,
+            random_obstacles,
             state,
             steps: 0,
             max_steps,
@@ -93,9 +121,29 @@ impl BattleEnv {
         })
     }
 
-    /// Restarts the battle with a new seed.
+    /// The first state of an episode with `seed`.
+    fn episode(
+        ruleset: &Ruleset,
+        setup: &BattleSetup,
+        random_obstacles: bool,
+        seed: u64,
+    ) -> Result<BattleState, SetupError> {
+        match (random_obstacles, setup.terrain) {
+            (true, Some(terrain)) => {
+                let mut rng = Rng::for_stream(seed, StreamId::OBSTACLES);
+                let episode = BattleSetup {
+                    obstacles: generate_obstacles(ruleset, terrain, &mut rng),
+                    ..setup.clone()
+                };
+                BattleState::new(ruleset, &episode, seed)
+            }
+            _ => BattleState::new(ruleset, setup, seed),
+        }
+    }
+
+    /// Restarts the battle with a new seed (and, with random obstacles, new obstacles).
     pub fn reset(&mut self, seed: u64) -> Result<(), SetupError> {
-        self.state = BattleState::new(&self.ruleset, &self.setup, seed)?;
+        self.state = Self::episode(&self.ruleset, &self.setup, self.random_obstacles, seed)?;
         self.steps = 0;
         self.truncated = false;
         Ok(())
@@ -204,6 +252,35 @@ mod tests {
     }
 
     #[test]
+    fn random_obstacles_are_drawn_for_each_episode_from_its_seed() {
+        // The duel scenario has a terrain and `random_obstacles` (BAT-GEO-004).
+        let (r, setup) = h3_pack::synthetic(h3_pack::SYNTHETIC_DUEL).unwrap();
+        let terrain = setup.terrain.unwrap();
+        let (r, setup) = (Arc::new(r), Arc::new(setup));
+        let expected = |seed| {
+            let mut rng = Rng::for_stream(seed, StreamId::OBSTACLES);
+            let hexes = generate_obstacles(&r, terrain, &mut rng);
+            let mut set = h3_battle::HexSet::new();
+            hexes.iter().for_each(|&h| set.insert(h3_battle::Hex(h)));
+            set
+        };
+        let mut env = BattleEnv::with_random_obstacles(r.clone(), setup.clone(), 3, 0).unwrap();
+        assert!(!env.state().obstacles().is_empty());
+        assert_eq!(env.state().obstacles(), expected(3));
+        env.reset(4).unwrap();
+        assert_eq!(env.state().obstacles(), expected(4));
+        assert_ne!(expected(3), expected(4));
+        // Without the option, or without a terrain, the setup's own obstacles (none here).
+        assert!(make(0).state().obstacles().is_empty());
+        let bare = Arc::new(BattleSetup {
+            terrain: None,
+            ..(*setup).clone()
+        });
+        let env = BattleEnv::with_random_obstacles(r, bare, 3, 0).unwrap();
+        assert!(env.state().obstacles().is_empty());
+    }
+
+    #[test]
     fn step_mask_and_errors() {
         let mut env = make(0);
         let side = env.to_move().unwrap();
@@ -278,7 +355,7 @@ mod tests {
     #[test]
     fn rewards_on_decision() {
         let mut env = make(0);
-        let mut agent = h3_kernel::Rng::from_seed(5);
+        let mut agent = Rng::from_seed(5);
         let mut legal = LegalCommands::new();
         let mut mask = [false; ACTION_COUNT];
         let mut last = None;

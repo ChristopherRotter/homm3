@@ -139,6 +139,31 @@ impl Rng {
         }
     }
 
+    /// An approximately binomial count in constant time: the number of successes among `trials`
+    /// independent trials of `percent` % each (at most 100), drawn from the normal approximation
+    /// with mean n·p and standard deviation √(n·p·(1 − p)). The normal variate is the sum of
+    /// twelve uniform draws minus six (variance 1, within ±6); the count is rounded to the nearest
+    /// integer and clamped to `0..=trials`. Integer arithmetic only (ADR-0003). Meant for large
+    /// `trials` (tens of thousands and more), where it is within about 0.6 % of the exact law in
+    /// total variation; small counts should roll each trial.
+    // rule: KER-RNG-003
+    pub fn binomial_approx(&mut self, trials: u32, percent: u8) -> u32 {
+        let n = u128::from(trials);
+        let c = u128::from(percent.min(100));
+        // n·c·(100 − c) < 2^44, so the shifted values stay below 2^108.
+        // σ · 2^32 = √(n·c·(100 − c)) · 2^32 / 100.
+        let sigma = ((n * c * (100 - c)) << 64).isqrt() / 100;
+        // The mean n·c / 100 in 64.64 fixed point.
+        let mean = ((n * c) << 64) / 100;
+        // Z · 2^32 for Z = Σ U_i − 6, U_i uniform in [0, 1).
+        let sum: i128 = (0..12).map(|_| i128::from(self.next_u32())).sum();
+        let z = sum - (6 << 32);
+        // σ < 2^47 and |Z| · 2^32 < 2^35: the product stays below 2^82.
+        let x = i128::try_from(mean).unwrap_or(i128::MAX) + i128::try_from(sigma).unwrap_or(0) * z;
+        let k = (x + (1 << 63)) >> 64;
+        u32::try_from(k.clamp(0, i128::from(trials))).unwrap_or(trials)
+    }
+
     /// The raw 256-bit state (for canonical hashing and diagnostics).
     pub const fn state(&self) -> [u64; 4] {
         self.s
@@ -159,6 +184,30 @@ mod tests {
     use super::*;
     use proptest::prelude::{prop_assert, prop_assert_eq, proptest};
     use std::vec::Vec;
+
+    // covers: KER-RNG-003
+    #[test]
+    fn approximate_binomial_draws_have_the_binomial_mean_and_spread() {
+        let mut rng = Rng::from_seed(7);
+        // Certain and impossible trials, and the clamp to 0..=n.
+        assert_eq!(rng.binomial_approx(100_000, 100), 100_000);
+        assert_eq!(rng.binomial_approx(100_000, 0), 0);
+        assert_eq!(rng.binomial_approx(0, 50), 0);
+        assert_eq!(rng.binomial_approx(u32::MAX, 200), u32::MAX);
+        for _ in 0..100 {
+            assert!(rng.binomial_approx(1, 50) <= 1);
+        }
+        // 100 000 trials at 10 %: mean 10 000, standard deviation ≈ 94.9.
+        let draws: Vec<u32> = (0..4000)
+            .map(|_| rng.binomial_approx(100_000, 10))
+            .collect();
+        let sum: i64 = draws.iter().map(|&d| i64::from(d)).sum();
+        assert!((sum - 4000 * 10_000).abs() < 4000 * 5, "{sum}");
+        // The variance n·p·(1 − p) = 9000, within ±750.
+        let squares: i64 = draws.iter().map(|&d| (i64::from(d) - 10_000).pow(2)).sum();
+        assert!((8250 * 4000..=9750 * 4000).contains(&squares), "{squares}");
+        assert!(draws.iter().all(|&d| (9_430..=10_570).contains(&d)));
+    }
 
     // covers: KER-RNG-001
     #[test]

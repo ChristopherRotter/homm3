@@ -320,11 +320,18 @@ fn life_drain<S: Sink>(state: &mut BattleState, stack: StackId, hp: u64, sink: &
     }
 }
 
+/// Above this many creatures a death stare draws its kills at once instead of rolling for each
+/// creature (BAT-DMG-009, OPEN-QUESTIONS Q39): an engine bound on the work of one attack, far
+/// above any real army.
+pub(crate) const STARE_ROLL_LIMIT: u32 = 65_536;
+
 /// After its attack, each creature of `attacker` kills one creature of the living, surviving
 /// `target` with `chance` % probability, at most `ceil(count · chance / 100)` in total (one trial
-/// per creature, stopping at the cap). The kills remove whole creatures, the damaged top one
-/// first, so a surviving stack's new top creature has full health (Q21, observed; VCMI keeps the
-/// damage instead) (BAT-DMG-009).
+/// per creature, stopping at the cap or once the target is wiped out). Above
+/// [`STARE_ROLL_LIMIT`] creatures the kills are drawn at once from the normal approximation of
+/// the same binomial law (KER-RNG-003), then capped. The kills remove whole creatures, the
+/// damaged top one first, so a surviving stack's new top creature has full health (Q21,
+/// observed; VCMI keeps the damage instead) (BAT-DMG-009).
 // rule: BAT-DMG-009
 fn death_stare<S: Sink>(
     state: &mut BattleState,
@@ -337,23 +344,30 @@ fn death_stare<S: Sink>(
         return;
     }
     let count = state.at(attacker).count;
-    let cap = (u64::from(count) * u64::from(chance)).div_ceil(100);
-    let mut successes: u64 = 0;
-    for _ in 0..count {
-        if successes == cap {
-            break;
+    // At most `count · chance / 100` (rounded up) kills, and no more than the target has.
+    let cap = (u64::from(count) * u64::from(chance))
+        .div_ceil(100)
+        .min(u64::from(victim.count));
+    let successes = if count > STARE_ROLL_LIMIT {
+        u64::from(state.rng.binomial_approx(count, chance)).min(cap)
+    } else {
+        let mut successes: u64 = 0;
+        for _ in 0..count {
+            if successes == cap {
+                break;
+            }
+            if state.rng.below(100) < u32::from(chance) {
+                successes += 1;
+            }
         }
-        if state.rng.below(100) < u32::from(chance) {
-            successes += 1;
-        }
-    }
+        successes
+    };
     if successes == 0 {
         return;
     }
     let victim = state.at_mut(target);
-    let kills = u32::try_from(successes)
-        .unwrap_or(u32::MAX)
-        .min(victim.count);
+    // `successes` is at most the target's count.
+    let kills = u32::try_from(successes).unwrap_or(victim.count);
     victim.count -= kills;
     victim.top_hp = if victim.is_alive() { victim.max_hp } else { 0 };
     sink.emit(Event::public(EventKind::DeathStared {

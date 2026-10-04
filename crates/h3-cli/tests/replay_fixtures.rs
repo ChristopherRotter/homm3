@@ -30,3 +30,28 @@ fn golden_replays_reproduce_their_hashes() {
         );
     }
 }
+
+/// `h3 run` and the sim environment draw a scenario's random obstacles alike (BAT-GEO-004): the
+/// same seed gives the same obstacles.
+#[test]
+fn the_cli_and_the_environment_draw_the_same_obstacles() {
+    use std::sync::Arc;
+    let root = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../..");
+    let duel = root.join("packs/synthetic/scenarios/duel.toml");
+    for seed in [1, 2, 3] {
+        let (def, ruleset, setup) =
+            h3_cli::load_scenario(&duel, &root.join("packs"), seed).unwrap();
+        assert!(def.random_obstacles && !setup.obstacles.is_empty());
+        let mut bare = setup.clone();
+        bare.obstacles.clear();
+        let env = h3_sim::BattleEnv::with_random_obstacles(
+            Arc::new(ruleset.clone()),
+            Arc::new(bare),
+            seed,
+            0,
+        )
+        .unwrap();
+        let cli = h3_battle::BattleState::new(&ruleset, &setup, seed).unwrap();
+        assert_eq!(env.state().obstacles(), cli.obstacles());
+    }
+}

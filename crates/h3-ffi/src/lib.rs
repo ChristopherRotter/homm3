@@ -138,8 +138,9 @@ pub extern "C" fn h3_observation_len() -> u32 {
     OBSERVATION_LEN as u32
 }
 
-/// Creates an environment on the built-in synthetic content pack. `scenario`: 0 = duel,
-/// 1 = skirmish, 2 = full armies. `max_steps` = 0 means no step limit. Returns null on error.
+/// Creates an environment on the built-in synthetic content pack. `scenario`: 0 = duel (obstacles
+/// generated for each episode from its seed, BAT-GEO-004), 1 = skirmish, 2 = full armies (both
+/// led by heroes). `max_steps` = 0 means no step limit. Returns null on error.
 #[unsafe(no_mangle)]
 pub extern "C" fn h3_env_create_synthetic(scenario: u32, seed: u64, max_steps: u32) -> *mut H3Env {
     let created = catch_unwind(|| {
@@ -149,8 +150,15 @@ pub extern "C" fn h3_env_create_synthetic(scenario: u32, seed: u64, max_steps: u
             2 => h3_pack::SYNTHETIC_FULL,
             _ => return None,
         };
+        let random_obstacles = h3_pack::parse_scenario(text).ok()?.random_obstacles;
         let (ruleset, setup) = h3_pack::synthetic(text).ok()?;
-        let env = BattleEnv::new(Arc::new(ruleset), Arc::new(setup), seed, max_steps).ok()?;
+        let (ruleset, setup) = (Arc::new(ruleset), Arc::new(setup));
+        let env = if random_obstacles {
+            BattleEnv::with_random_obstacles(ruleset, setup, seed, max_steps)
+        } else {
+            BattleEnv::new(ruleset, setup, seed, max_steps)
+        }
+        .ok()?;
         Some(Box::new(H3Env {
             env,
             legal: LegalCommands::new(),
