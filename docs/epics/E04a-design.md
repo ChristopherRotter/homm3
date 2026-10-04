@@ -41,90 +41,42 @@ task has to do with them:
 - Not observed: the wiki's Armorer example "2002 → 2001" is not explained by Q-0005 alone; Q22
   (jousting) was not staged.
 
-## 2. The translation (T4b)
+## 3. Artifacts in the derivation (T10)
 
-T4a implemented the crate, `HeroDetails`, `validate` and `war_machines` (crate docs,
-`docs/rules/catalog/heroes.toml`). Left for T4b:
+T4b1 implemented the effect sources (`h3_heroes` `derive.rs`, `effects`: skills at their levels,
+worn artifacts per copy with a combination's parts, `needs_skill`, the specialty; HER-BAT-001)
+and the primary skills and Tactics from them. Left for T10:
 
-- `derive_battle_hero(&HeroDetails, &Ruleset) -> BattleHero` in `h3-heroes`, which then also
-  depends on `h3-contracts` (`arch.toml`). Effective primary skills = base + artifacts
-  (`primary_skills` per copy) + specialty, clamped to `HeroParams::primary_min..=primary_max`.
-- `BattleMagic.spell_book` (§4): `HeroDetails` has no book flag (T4a decision): the book is a worn
-  artifact and `spells` the known spells. Until E04b gives the spell book artifact its effect,
-  the derivation cannot tell a book from other artifacts; it returns `None` and E04b fills it.
-- `h3-battle` never depends on `h3-heroes`; it reads only `BattleHero`.
-- `h3-content` owns the definitions and the content-side effect vocabulary (§3), including the
-  creature upgrade relation that selectors need (`Ruleset::upgrades`, T3a).
-
-## 3. Artifacts in the derivation (T4b, T10)
-
-T3a and T3b implemented the content side (`h3_content::HeroEffect`, `ArtifactSlot`,
-`ArtifactType`; `packs/README.md`, "Hero effects" and "Artifacts"). What the derivation in
-`h3-heroes` has to do with it:
-
-- **Which effects count (T10):** each equipped artifact type counts once, except
-  `primary_skills`, which count per copy (two Quiet Eyes: +2/+2); a combination gives its own
-  effects and its parts' effects; `needs_skill` effects only while the hero has the skill (any
-  level); a skill specialty grows only the skill's own values, not the artifacts' (as VCMI). Hero
-  primary totals are clamped (attack, defense ≥ 0; power, knowledge ≥ 1, VCMI).
+- **Which effects count:** each equipped artifact type counts once, except `primary_skills`
+  (per copy, done); a skill specialty grows only the skill's own values, not the artifacts' (as
+  VCMI).
 - **Pending** (no battle effect in E04a): see `packs/README.md`, "What the harvested artifacts
   leave out"; Necromancy goes with the Necromancy skill (E08–E10), not T9.
 
-## 4. `BattleHero` (T4; read by T5–T7, T10)
+## 4. `BattleHero` (read by T5–T7, T9, T10)
 
-```rust
-pub struct BattleHero {
-    pub hero_type: HeroTypeId,       // identity for observation and replays; no rule reads it
-    pub attack: u8,                  // effective primary skills: base + artifacts + specialty,
-    pub defense: u8,                 //   within the ruleset's limits (checked by both sides)
-    pub power: u8,                   // E04b reads power; knowledge only explains max mana
-    pub knowledge: u8,
-    pub tactics: u8,                 // Tactics level 0..=3 (the battle compares both sides')
-    pub damage: DamageBonuses,       // basis points, specialty and artifacts included
-    pub war_machines: MachineControl,
-    pub surrender_discount_bp: u16,  // Diplomacy and artifacts, 0..=10_000
-    pub effects: Vec<BattleEffect>,  // everything else, resolved; at most MAX_BATTLE_EFFECTS = 64
-    pub magic: BattleMagic,          // E04b
-}
-pub struct DamageBonuses { pub ranged_bp: u16, pub melee_bp: u16, pub reduction_bp: u16 }
-pub struct MachineControl {          // all derived from skill level, specialty and artifacts
-    pub ballista: Option<BallistaControl>,   // Some = the side commands its Ballista (Artillery)
-    pub tent: Option<TentControl>,           // Some = the side commands its First Aid Tent
-    pub catapult: Option<CatapultControl>,   // reserved for E04c (Ballistics); None in E04a
-}
-pub struct BallistaControl { pub shots: u8, pub double_damage_percent: u8 }
-pub struct TentControl { pub max_heal: u16 }  // heals 1..=max_heal (installation.md §7.5, Q29)
-pub struct BattleMagic { pub spell_book: Option<Vec<SpellId>>, pub mana: u16, pub max_mana: u16, pub schools: [u8; 4] }
-```
+T4b1 implemented the types (`h3_contracts` `hero.rs`, docs there) and `derive_battle_hero`
+(HER-BAT-001/002). Deviations from the ADR-time sketch: `BallistaControl.double_damage_chance_bp`
+(basis points, as in content), `TentControl.heal_bonus_bp: u32` (the increase over the tent's
+own maximum, as the content's `first_aid` effect; a specialist's growth exceeds `u16`),
+`CatapultControl` an empty `#[non_exhaustive]` struct (cannot be built before E04c),
+`BattleEffect` uses the content's `CreatureSelector` (one creature: a creature and its upgrades
+become several effects) and `StatOp { Add, PercentBp }`. What the tasks still have to do:
 
-- **Hybrid shape:** values the battle reads by name, once per side, on the hot path or for action
-  legality are typed fields; variable, selective effects are the `effects` list. Adding an
-  artifact or specialty kind adds a `BattleEffect` variant, not a field. War-machine control is
-  carried as derived numbers, not skill levels, so specialties and artifacts that change shots,
-  chances or heals need no channel of their own.
-- **Units and ranges:** `ranged_bp` and `melee_bp` may exceed 10 000 (an Archery specialist at a
-  high level); `reduction_bp` and `surrender_discount_bp` are at most 10 000; skill and school
-  levels at most 3; `max_mana` is informative (mana may exceed it, e.g. after a Mana Vortex).
-  The ruleset carries the primary-skill limits; the derivation stays within them and the battle
-  rejects values outside them.
-- **How the damage fields enter the damage formula** (survey `E04-skills.md` §3): `ranged_bp`
-  (the attacker's side) is added to the bonus sum of shots, the Ballista's included; `melee_bp`
-  to the bonus sum of melee attacks and retaliations, a shooter's melee included; never both.
-  `reduction_bp` (the defender's side) is one multiplicative factor `(10 000 − r) / 10 000` on every
-  physical strike against that side's stacks. BAT-DMG-002 stays exact-integer until Q23 is
-  answered.
-- `BattleEffect` (closed enum in contracts, selectors resolved):
-  `Morale { amount: i8, affects }`, `Luck { amount: i8, affects }`,
-  `MoraleAtMost { value: i8, affects }`, `LuckAtMost { value: i8, affects }`,
-  `StackStat { creatures, stat, op, amount: i16 }` with `stat` ∈ {attack, defense, speed, hit
-  points, minimum damage, maximum damage} and `op` ∈ {add, percent of the creature's own value
-  (basis points, rounded up)}, `Regeneration { creatures }`, `NoRangePenalty { creatures }`,
-  `NoRetreat` (neither side may retreat or surrender), plus what T10 adds from the survey list.
-  `affects` ∈ {own side, enemy side, both}; `creatures` is `All`, a `CreatureFlag` trait (living,
-  undead, dragon, shooter, …) or up to four creature types (a creature and its upgrades).
-- **E04b fields are present and validated from E04a on** (ranges, spell ids of the ruleset);
-  E04a's battle carries them and ignores them.
-- The battle validates a `BattleHero` like the rest of the setup (`SetupError`).
+- **Validation (T4b2), user decision Q31:** the battle checks only soundness — references of the
+  ruleset, `effects.len() <= MAX_BATTLE_EFFECTS`, `reduction_bp` and `surrender_discount_bp`
+  and the Ballista's chance at most 10 000, Tactics and school levels at most 3, the spell
+  book's spells of the ruleset and not creature abilities; it does not check the primary-skill
+  limits (any `u8` is accepted).
+- **How the damage fields enter the damage formula (T6)** (survey `E04-skills.md` §3):
+  `ranged_bp` (the attacker's side) is added to the bonus sum of shots, the Ballista's included;
+  `melee_bp` to the bonus sum of melee attacks and retaliations, a shooter's melee included;
+  never both. `reduction_bp` (the defender's side) is one multiplicative factor
+  `(10 000 − r) / 10 000` on every physical strike against that side's stacks. Q-0005 applies.
+- **The derivation fills the rest:** `effects` from Leadership, Luck, artifacts and specialties
+  (T5, T10; at most 64), damage bonuses (T6), machine control (T7), surrender discount (T9),
+  magic (E04b). A specialty's growth and the artifacts' sums can exceed the field types; the
+  derivation saturates and clamps (`reduction_bp`, `surrender_discount_bp` ≤ 10 000).
 
 ## 5. `BattleSetup`, `BattleOutcome`, `BattleResult` (T4, T9)
 

@@ -2,7 +2,7 @@
 //! and secondary skills, artifacts, spells, mana — their validation against a ruleset, and the
 //! pure translations to what a battle needs. No commands and no map or battle state: equipping,
 //! learning and levelling up arrive with the adventure and game epics (E08–E10); the battle never
-//! depends on this crate and reads only the battle hero of the seam (`h3-contracts`, T4b).
+//! depends on this crate and reads only the battle hero of the seam (`h3_contracts::BattleHero`).
 //!
 //! Logic crate: pure, deterministic, `no_std` + `alloc` (ADR-0003, ADR-0005). The lint header
 //! below is required and checked by `cargo xtask check-arch`.
@@ -24,9 +24,11 @@
 
 extern crate alloc;
 
+mod derive;
 mod details;
 mod error;
 
+pub use derive::derive_battle_hero;
 pub use details::{HeroDetails, PrimarySkill, validate, war_machines};
 pub use error::DetailsError;
 

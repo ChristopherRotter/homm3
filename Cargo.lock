@@ -254,6 +254,7 @@ name = "h3-heroes"
 version = "0.1.0"
 dependencies = [
  "h3-content",
+ "h3-contracts",
  "proptest",
 ]
 

@@ -20,7 +20,14 @@
 
 extern crate alloc;
 
+mod hero;
+
 use alloc::vec::Vec;
+
+pub use hero::{
+    BallistaControl, BattleEffect, BattleHero, BattleMagic, CatapultControl, DamageBonuses,
+    MAX_BATTLE_EFFECTS, MachineControl, StatOp, TentControl,
+};
 
 use h3_content::{CreatureTypeId, Formation, TerrainId};
 
@@ -161,6 +168,22 @@ mod tests {
             Some(BattleSide::Defender)
         );
         assert_eq!(BattleResult::Draw.winner(), None);
+    }
+
+    #[test]
+    fn new_battle_hero_is_neutral() {
+        let hero = BattleHero::new(h3_content::HeroTypeId::from_raw(3));
+        assert_eq!(hero.hero_type.raw(), 3);
+        assert_eq!(
+            [hero.attack, hero.defense, hero.power, hero.knowledge],
+            [0; 4]
+        );
+        assert_eq!(hero.tactics, 0);
+        assert_eq!(hero.damage, DamageBonuses::default());
+        assert_eq!(hero.war_machines, MachineControl::default());
+        assert_eq!(hero.surrender_discount_bp, 0);
+        assert!(hero.effects.is_empty());
+        assert_eq!(hero.magic, BattleMagic::default());
     }
 
     #[test]

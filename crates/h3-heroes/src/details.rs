@@ -6,8 +6,8 @@ use alloc::vec;
 use alloc::vec::Vec;
 
 use h3_content::{
-    ArtifactSlotId, ArtifactTypeId, CreatureTypeId, HeroTypeId, MAX_HERO_SKILLS, MAX_SKILL_LEVEL,
-    Ruleset, SkillId, SpellCategory, SpellId,
+    ArtifactSlotId, ArtifactTypeId, CreatureTypeId, HeroParams, HeroTypeId, MAX_HERO_SKILLS,
+    MAX_SKILL_LEVEL, Ruleset, SkillId, SpellCategory, SpellId,
 };
 
 use crate::error::DetailsError;
@@ -47,7 +47,7 @@ impl PrimarySkill {
 
 /// The lasting details of a hero (ADR-0013 point 1): what the hero is between battles, apart
 /// from its army. Values are *base* values; what artifacts and the specialty add is derived
-/// (`derive_battle_hero`, T4b).
+/// ([`crate::derive_battle_hero`]).
 ///
 /// Artifacts are worn by kind of slot: an artifact occupies a position of its own slot, and a
 /// combination one more position of each slot in its `locks` (HER-ART-001). Positions of one
@@ -84,6 +84,14 @@ pub struct HeroDetails {
 /// # Errors
 /// The [`DetailsError`] of the first rule broken.
 pub fn validate(details: &HeroDetails, ruleset: &Ruleset) -> Result<(), DetailsError> {
+    check(details, ruleset).map(|_| ())
+}
+
+/// [`validate`], returning the ruleset's hero parameters the details were checked against.
+pub(crate) fn check<'r>(
+    details: &HeroDetails,
+    ruleset: &'r Ruleset,
+) -> Result<&'r HeroParams, DetailsError> {
     let params = ruleset.hero_params().ok_or(DetailsError::NoHeroParams)?;
     // rule: HER-DET-001
     ruleset
@@ -116,7 +124,8 @@ pub fn validate(details: &HeroDetails, ruleset: &Ruleset) -> Result<(), DetailsE
             return Err(DetailsError::NotForBackpack(id));
         }
     }
-    validate_spells(&details.spells, ruleset)
+    validate_spells(&details.spells, ruleset)?;
+    Ok(params)
 }
 
 /// At most [`MAX_HERO_SKILLS`] skills of the ruleset, each once, at Basic to Expert.

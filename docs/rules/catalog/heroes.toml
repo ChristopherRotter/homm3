@@ -130,3 +130,54 @@ numeric  = "integer"
   url        = "https://github.com/vcmi/vcmi/blob/1.7.5/lib/battle/BattleInfo.cpp"
   retrieved  = "2026-10-03"
   confidence = "high"
+
+[[rule]]
+id       = "HER-BAT-001"
+title    = "The battle hero and its effective primary skills"
+context  = "heroes"
+status   = "implemented"
+summary  = "derive_battle_hero validates the details (HER-DET-001 and the rules after it) and builds the BattleHero of the seam: the hero type and the effective primary skills. Each effective primary skill is the base value plus the primary_skills effects of every effect source, clamped to the ruleset's hero parameters (primary_min 0/0/1/1 to primary_max 99). Effect sources: the secondary skills at their levels, every worn artifact once per worn copy (two Quiet Eyes of the Dragon give +2 attack and +2 defense), a worn combination together with all its parts (Angelic Alliance: its parts give +21 to every primary skill), an artifact that needs a skill only while the hero has that skill at any level, and the hero type's specialty. The hero's mana is passed through. Every other field stays neutral until the task that gives it a meaning: damage bonuses (E04a T6), war-machine control (T7), surrender discount (T9), effects (T5, T10), spell book, maximum mana and schools (E04b)."
+numeric  = "integer"
+
+  [[rule.source]]
+  kind       = "wiki"
+  ref        = "Primary skill - Heroes 3 wiki: \"The upper limit is 99.\" Artifact: \"Two similar artifacts will not stack their effect except for Quiet Eye of the Dragon\"; Quiet Eye of the Dragon: \"Equipping two Quiet Eyes of the Dragon will grant +2 Attack and +2 Defense\" (docs/rules/surveys/E04-artifacts.md, 'Stacking and combination semantics'; E04-heroes.md: the derivation caps at the ruleset's limit)"
+  url        = "https://heroes.thelazy.net/index.php/Primary_skill"
+  retrieved  = "2026-10-03"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "wiki"
+  ref        = "Combination artifact - Heroes 3 wiki: \"Original artifacts still give their regular bonuses and the bonuses given by combining are added to those\"; Archery: \"If a hero does not have the archery skill, these artifacts have no effect\" (the needs_skill rule)"
+  url        = "https://heroes.thelazy.net/index.php/Combination_artifact"
+  retrieved  = "2026-10-03"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "vcmi"
+  ref        = "config/gameConfig.json minimalPrimarySkills [0, 0, 1, 1] and lib/bonuses/BonusCache.cpp L99-102 (totals raised to the minimum); lib/entities/artifact/CArtifactInstance.cpp L40-51 CCombinedArtifactInstance::addPart attaches the parts' bonuses; instanceBonuses count per copy (docs/modders/Entities_Format/Artifact_Format.md L55-68)"
+  url        = "https://github.com/vcmi/vcmi/blob/1.7.5/lib/bonuses/BonusCache.cpp"
+  retrieved  = "2026-10-03"
+  confidence = "high"
+
+[[rule]]
+id       = "HER-BAT-002"
+title    = "The battle hero's Tactics level"
+context  = "heroes"
+status   = "implemented"
+summary  = "The battle hero's Tactics level is the highest level given by a tactics effect among the hero's effect sources (HER-BAT-001): in the original only the Tactics skill, Basic 1 to Expert 3. Without one it is 0. The battle compares both sides' levels (E04a T8)."
+numeric  = "integer"
+
+  [[rule.source]]
+  kind       = "wiki"
+  ref        = "Tactics - Heroes 3 wiki: \"within 3 / 5 / 7 rows ... It negates one / two / three levels of an enemy hero's Tactics skill\" (docs/rules/surveys/E04-skills.md §2.5)"
+  url        = "https://heroes.thelazy.net/index.php/Tactics"
+  retrieved  = "2026-10-03"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "vcmi"
+  ref        = "lib/battle/BattleInfo.cpp L397-437: each side's BEFORE_BATTLE_REPOSITION value (2/4/6 from the skill's three levels) against the enemy's block value"
+  url        = "https://github.com/vcmi/vcmi/blob/1.7.5/lib/battle/BattleInfo.cpp#L397"
+  retrieved  = "2026-10-03"
+  confidence = "high"

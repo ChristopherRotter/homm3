@@ -1898,10 +1898,10 @@ mod tests {
         assert!(matches!(parse_pack(&bad_override), Err(PackError::Key(_))));
     }
 
-    // covers: HER-ART-001, HER-ART-002, HER-WAR-001
+    // covers: HER-ART-001, HER-ART-002, HER-WAR-001, HER-BAT-001, HER-BAT-002
     #[test]
     fn hero_details_fit_the_harvested_slots() {
-        use h3_heroes::{DetailsError, HeroDetails, validate, war_machines};
+        use h3_heroes::{DetailsError, HeroDetails, derive_battle_hero, validate, war_machines};
         let profile = "base:faithful";
         let ab = compile(&[BASE_PACK, AB_PACK], profile).unwrap();
         let sod = compile(&[SOD_PACK, AB_PACK, BASE_PACK], profile).unwrap();
@@ -1947,6 +1947,19 @@ mod tests {
                 creature("base:first_aid_tent")
             ]
         );
+        // In battle the Alliance's six parts give +21 to every primary skill (wiki Angelic
+        // Alliance), the two Quiet Eyes +1 attack and +1 defense each; Tactics from the skill.
+        let hero = derive_battle_hero(&d, &sod).unwrap();
+        assert_eq!(
+            [hero.attack, hero.defense, hero.power, hero.knowledge],
+            [28, 27, 23, 23]
+        );
+        assert_eq!(hero.tactics, 0);
+        let mut tactician = d.clone();
+        tactician
+            .skills
+            .push((sod.skill_by_key("base:tactics").unwrap(), 2));
+        assert_eq!(derive_battle_hero(&tactician, &sod).unwrap().tactics, 2);
         // The Alliance locks the head; machines and the book stay out of the backpack.
         let head = details(
             &sod,

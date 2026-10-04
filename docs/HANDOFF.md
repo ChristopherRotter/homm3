@@ -4,6 +4,16 @@ Living state. The last agent updates this at the end of every session; the next 
 
 ---
 
+## 2026-10-04 (sixth session) — E04a T4b1 done; T4b2 in progress
+
+**State:** branch `e04a-heroes-in-battle`. Scope chosen by the user at the start: T4b split into **T4b1 and T4b2**, both this session, as separate checkpoints (OPEN-QUESTIONS Q31, which also decided: a scenario is a battle-setup file and gives the battle hero directly; the battle checks a `BattleHero` only for soundness, not whether a real hero could have its values).
+
+**T4b1 (done, committed):** `h3-contracts` `hero.rs`: `BattleHero` (+ `new`, neutral values), `DamageBonuses`, `MachineControl` (`BallistaControl`, `TentControl`, reserved `CatapultControl`), `BattleMagic`, `BattleEffect`, `StatOp`, `MAX_BATTLE_EFFECTS`; `h3_heroes::derive_battle_hero` (validates, then HER-BAT-001 primary skills, HER-BAT-002 Tactics; `h3-heroes` now depends on `h3-contracts`); tests in `crates/h3-heroes/src/tests/derive.rs` (the old `tests.rs` is now `tests/mod.rs`) and on the real packs in `h3-pack`. No hash changes. Design note §2 deleted, §3/§4 pruned (deviations listed in §4).
+
+**T4b2 (next, in progress):** see the epic. Nothing started yet.
+
+---
+
 ## 2026-10-04 (fifth session) — E04a T4a done (hero details)
 
 **State:** branch `e04a-heroes-in-battle`, `cargo xtask verify` green (also `--with-original-data`). Scope chosen by the user at the start: T4 split at the seam, **T4a only**. Nothing half-done.
