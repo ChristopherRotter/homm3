@@ -1,6 +1,6 @@
 # E04a — Heroes in battle (without magic)
 
-Status: **in progress** (refined 2026-10-01; T1–T10 done by 2026-10-04; T11 next) · Follows E03 (closed 2026-10-01) · The former E04 was split by the user into three epics (OPEN-QUESTIONS Q27): **E04a** (this one), **E04b** battle magic, **E04c** sieges and special battlefields.
+Status: **in progress** (refined 2026-10-01; T1–T10 done by 2026-10-04; T11 in progress) · Follows E03 (closed 2026-10-01) · The former E04 was split by the user into three epics (OPEN-QUESTIONS Q27): **E04a** (this one), **E04b** battle magic, **E04c** sieges and special battlefields.
 
 ## Goal
 
@@ -58,7 +58,7 @@ Spells, mana in play, spell-like abilities, immunities, spellcasting creatures (
 Starting point, installation tables and the full record of done tasks (refinements, agent decisions, measurements): [`E04a-log.md`](E04a-log.md).
 
 - [x] **T1 Survey and ADR-0013** — done 2026-10-03: surveys in `docs/rules/surveys/`, ADR-0013 accepted (Q30), the executable's tables in `docs/formats/installation.md` §6–§7.
-- [x] **T2 Experiment pipeline** — done 2026-10-04: `crates/h3-experiment`; batches 1a and 1b played by the user and evaluated (`E04a-design.md`, "Batch 1a results" and "Batch 1b results"; `docs/experiments/README.md`). Running specs in our engine: T11.
+- [x] **T2 Experiment pipeline** — done 2026-10-04: `crates/h3-experiment`; batches 1a and 1b played by the user and evaluated (`E04a-design.md`, "Batch 1a results" and "Batch 1b results"; `docs/experiments/README.md`). Running specs in our engine: BACKLOG (Q37).
 - [x] **T3 Content** — done 2026-10-03 (T3a heroes, skills, spell rows; T3b artifacts): pack format v3 (`packs/README.md`), ruleset hash v10.
 - [x] **T4 `h3-heroes` and the seam** — done 2026-10-04 (T4a, T4b1, T4b2): `HeroDetails`, `BattleHero`, `derive_battle_hero`, `BattleSetup.heroes` (Q31); HER-DET/SEC/ART/SPL/WAR, HER-BAT-001/002, BAT-HER-001; state hash v9, ruleset hash v11.
 - [x] **T5 Primary skills, hero morale and luck** — done 2026-10-04 (T5a, T5b): BAT-HER-002/003, HER-BAT-003, BAT-DMG-009 (Q21); replay format v4.
@@ -67,7 +67,7 @@ Starting point, installation tables and the full record of done tasks (refinemen
 - [x] **T8 Tactics** — done 2026-10-04 (one checkpoint, Q33): BAT-TAC-001/002, `tactics_zone_columns` (ruleset hash v12), `Command::EndTactics`, `Observation.tactics`; state hash v13, replay format v8, action encoding v6, C ABI v4.
 - [x] **T9 Retreat, surrender and the richer outcome** — done 2026-10-04 in three checkpoints (T9a Retreat, T9b Surrender, T9c the outcome; split with the user, Q34): BAT-FLE-001/002, BAT-END-003, HER-BAT-006/007; `BattleResult::Retreat`/`Surrender`, `BattleSetup.funds`, the outcome's stack records; ruleset hash v13, state hash v16, replay format v10, action encoding v8, C ABI v6.
 - [x] **T10 Artifacts and specialties without spells** — done 2026-10-04 in three checkpoints (T10a stat effects, T10b stack traits, T10c alignment groups; split with the user, Q35; Q36 the group's form): HER-BAT-008/009/010, BAT-HER-005/006/007; `StatOp::PercentBpDown`, `FactionGroup`, trait `SHOOTS_WHEN_ADJACENT`, `Stack.regeneration`; every `BattleEffect` in scenario and replay files; batch 1a R8/B4–B6 and 1b R1/R8/B7 reproduced with the harvested packs; state hash v17, replay format v13. Q-0006 stays data until E04b.
-- [ ] **T11 Sim, FFI, CLI, scenarios** — heroes in the scenario and replay formats, the action encoding complete for retreat and surrender (T7b added heals as v5 with C ABI v3, T8 `EndTactics` as v6 with C ABI v4; T9 appends its commands), observation encoding v4 and its ABI bump, golden replays re-recorded with notes, benchmark baseline re-measured with the reason, hero-bearing scenarios in the `full` workload.
+- [ ] **T11 Sim, FFI, CLI, scenarios** — in three checkpoints (Q37): T11a the observation (`observe` takes the ruleset; surrender possible and machine control public, the own hero's private part with its surrender price), T11b observation encoding v4 and C ABI v7, T11c hero-bearing `full` workload, golden replays, benchmark, measurements. Scope: heroes in the scenario and replay formats, the action encoding complete for retreat and surrender (T7b added heals as v5 with C ABI v3, T8 `EndTactics` as v6 with C ABI v4; T9 appends its commands), observation encoding v4 and its ABI bump, golden replays re-recorded with notes, benchmark baseline re-measured with the reason, hero-bearing scenarios in the `full` workload.
 - [ ] **T12 Closure** — fold the experiment results into the catalog (rules `verified` where observed), quirk ledger and profiles, independent review pass (rules against sources, robustness and security), HANDOFF, backlog, ADR-0013 revisions; the E03 hardening items that fit (work bound for death stare, random obstacles in the sim and C ABI).
 
 Order: T1 first and alone; T2 and T3 independent; T4 after T1 and T3; T5–T10 after T4 (T6 wants the batch-1 result, T10 after T5); T11 and T12 last.
