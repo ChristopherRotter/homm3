@@ -36,23 +36,26 @@ fn lively() -> Ruleset {
 /// One step of a generated game.
 #[derive(Debug, Clone)]
 enum Step {
-    /// Play the `n`-th legal command (modulo the number of legal commands).
+    /// Play the `n`-th legal command that does not leave the battle (modulo their number;
+    /// leaving is exercised by arbitrary steps and the legality probes).
     Legal(u16),
     /// Try an arbitrary command, as the side to act or its opponent.
     Arbitrary { command: Command, wrong_actor: bool },
 }
 
+/// An arbitrary command; leaving the battle is rare, so that games run long.
 fn arb_command() -> impl Strategy<Value = Command> {
     prop_oneof![
-        Just(Command::Wait),
-        Just(Command::Defend),
-        Just(Command::EndTactics),
-        any::<u8>().prop_map(|h| Command::Move { to: Hex(h) }),
-        (0u8..40, any::<u8>()).prop_map(|(t, h)| Command::Attack {
+        8 => Just(Command::Wait),
+        8 => Just(Command::Defend),
+        8 => Just(Command::EndTactics),
+        8 => any::<u8>().prop_map(|h| Command::Move { to: Hex(h) }),
+        8 => (0u8..40, any::<u8>()).prop_map(|(t, h)| Command::Attack {
             target: StackId(t),
             from: Hex(h)
         }),
-        (0u8..40).prop_map(|t| Command::Heal { target: StackId(t) }),
+        8 => (0u8..40).prop_map(|t| Command::Heal { target: StackId(t) }),
+        1 => Just(Command::Retreat),
     ]
 }
 
@@ -108,7 +111,8 @@ fn arb_game() -> impl Strategy<Value = Game> {
 /// commands its Ballista (bit 9: two shots; bits 10–23: the double-damage chance), bit 24
 /// whether it commands its First Aid Tent (bits 25–40: the heal bonus), bits 41–42 the attacker
 /// hero's Tactics level if bit 43 is set, bit 44 whether the defender is led by a hero too, with
-/// Tactics level bits 45–46 (so that some games start with a tactics phase, BAT-TAC-001).
+/// Tactics level bits 45–46 (so that some games start with a tactics phase, BAT-TAC-001), bit
+/// 47 whether the attacker's hero wears Shackles of War (no retreat, BAT-FLE-001).
 fn make_setup(
     r: &Ruleset,
     attacker: &[(u8, u8, u32)],
@@ -154,6 +158,9 @@ fn make_setup(
     if machines & (1 << 43) != 0 {
         led.tactics = u8::try_from((machines >> 41) & 3).unwrap();
     }
+    if machines & (1 << 47) != 0 {
+        led.effects.push(h3_contracts::BattleEffect::NoRetreat);
+    }
     let defender_hero = (machines & (1 << 44) != 0).then(|| {
         let mut h = hero(r);
         h.tactics = u8::try_from((machines >> 45) & 3).unwrap();
@@ -187,8 +194,10 @@ fn resolve(
     match step {
         Step::Legal(n) => {
             legal_commands(state, r, side, legal);
+            // The commands that leave the battle come last.
+            let staying = legal.iter().take_while(|c| !c.leaves_battle()).count();
             let cmd = legal
-                .get(usize::from(*n) % legal.len().max(1))
+                .get(usize::from(*n) % staying.max(1))
                 .copied()
                 .unwrap_or(Command::Wait);
             (side, cmd)

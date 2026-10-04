@@ -37,7 +37,9 @@ pub fn random_rollout(env: &mut BattleEnv, agent_seed: u64, max_steps: u32) -> R
     }
 }
 
-/// Picks a uniformly random legal command for `side`.
+/// Picks a uniformly random legal command for `side` among those that do not leave the battle:
+/// the baseline agent fights every battle out (Retreat and Surrender stay legal for other
+/// agents; user decision 2026-10-04, so benchmarks and golden replays play whole battles).
 pub fn pick(
     env: &BattleEnv,
     side: BattleSide,
@@ -45,7 +47,15 @@ pub fn pick(
     legal: &mut LegalCommands,
 ) -> Command {
     legal_commands(env.state(), env.ruleset(), side, legal);
-    let n = u32::try_from(legal.len()).unwrap_or(u32::MAX);
+    choose(legal, rng)
+}
+
+/// The baseline agent's choice from a legal set: uniform among the commands that do not leave
+/// the battle (they come last in `legal_commands`). Shared by [`pick`] and
+/// [`crate::Replay::record_random`].
+pub fn choose(legal: &LegalCommands, rng: &mut Rng) -> Command {
+    let staying = legal.iter().take_while(|c| !c.leaves_battle()).count();
+    let n = u32::try_from(staying).unwrap_or(u32::MAX);
     legal
         .get(rng.below(n) as usize)
         .copied()
@@ -83,6 +93,22 @@ mod tests {
         let rc = random_rollout(&mut c, 9, 0);
         assert_eq!(rc.steps, 50);
         assert!(c.is_done());
+    }
+
+    #[test]
+    fn the_random_agent_fights_battles_out() {
+        // Brea may retreat on every turn of the full scenario (BAT-FLE-001); the agent never does.
+        let (r, setup) = h3_pack::synthetic(h3_pack::SYNTHETIC_FULL).unwrap();
+        let (r, setup) = (Arc::new(r), Arc::new(setup));
+        for seed in 1..4 {
+            let mut env = BattleEnv::new(r.clone(), setup.clone(), seed, 0).unwrap();
+            assert!(env.state().may_retreat(BattleSide::Attacker));
+            let result = random_rollout(&mut env, seed, 5000).result;
+            assert!(matches!(
+                result,
+                Some(BattleResult::Victory(_) | BattleResult::Draw)
+            ));
+        }
     }
 
     #[test]

@@ -5,8 +5,8 @@ Living state between sessions; every session reads it first. Rules (`docs/08-wor
 ## Current state
 
 - Branch `e04a-heroes-in-battle` (the user merges to `master` when an epic closes); `cargo xtask verify --with-original-data` green. Sandbox and syncing: `docs/08-work-process.md`, "Cloud sandbox and syncing" (`scripts/sandbox-setup.sh`).
-- **E04a** (`docs/epics/E04a-heroes-in-battle.md`): T1–T8 done, experiment batches 1a and 1b evaluated (`docs/epics/E04a-design.md`, "Batch 1b results" says what T9 and T10 must do). **Next: T9 (retreat, surrender, richer outcome)**; at the start, propose a split and let the user confirm it (T8 was one checkpoint, Q33). Then T10, T11, T12.
-- Versions: state hash v13, ruleset hash v12, replay format v8, action encoding v6, C ABI v4, observation encoding v3. Each new command bumps the action encoding and the C ABI (ADR-0011).
+- **E04a** (`docs/epics/E04a-heroes-in-battle.md`): T1–T8 done, experiment batches 1a and 1b evaluated (`docs/epics/E04a-design.md`, "Batch 1b results" says what T9 and T10 must do). **In progress: T9**, split with the user into T9a Retreat (done), T9b Surrender, T9c the richer outcome (epic file); the baseline random agent never leaves a battle (user). Then T10, T11, T12.
+- Versions: state hash v14, ruleset hash v12, replay format v9, action encoding v7, C ABI v5, observation encoding v3. Each new command bumps the action encoding and the C ABI (ADR-0011).
 - No decision is waiting for the user. Long-term open questions: `docs/OPEN-QUESTIONS.md`, section "Open".
 - Working agreement: small increments, the user confirms the seam; token efficiency beats speed (AGENTS.md); the user plays experiment maps in SoD with plain HD and commits the results.
 

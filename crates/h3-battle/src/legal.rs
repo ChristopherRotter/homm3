@@ -9,14 +9,14 @@ use crate::combat::can_shoot;
 use crate::command::Command;
 use crate::geometry::{ATTACK_SLOTS, Field, Hex};
 use crate::movement::reachable;
-use crate::state::{BattleState, STACK_CAPACITY, StackFlags, StackId, StackTraits};
+use crate::state::{BattleState, STACK_CAPACITY, Stack, StackFlags, StackId, StackTraits};
 use crate::{tactics, war};
 
 /// Upper bound on the number of legal commands: Wait, Defend, one move per hex, and per enemy
 /// stack either its canonical attack positions or two aimed shots (a commanded First Aid Tent:
 /// Wait, Defend and at most one heal per stack; the tactics phase: Wait, `EndTactics` and one
-/// placement per hex).
-pub const MAX_LEGAL_COMMANDS: usize = 2 + MAX_FIELD_HEXES + ATTACK_SLOTS * STACK_CAPACITY;
+/// placement per hex), plus the two commands that leave the battle.
+pub const MAX_LEGAL_COMMANDS: usize = 4 + MAX_FIELD_HEXES + ATTACK_SLOTS * STACK_CAPACITY;
 
 /// Fixed-capacity buffer for [`legal_commands`] (no allocation in the hot path).
 pub type LegalCommands = FixedVec<Command, MAX_LEGAL_COMMANDS>;
@@ -26,7 +26,8 @@ pub type LegalCommands = FixedVec<Command, MAX_LEGAL_COMMANDS>;
 /// by hex (BAT-TAC-002). Otherwise: Wait, Defend, moves by hex, then per enemy stack its shots (a
 /// stack that can shoot, BAT-RNG-001: head, then tail for area shots) or its melee attacks by
 /// canonical position slot (`Field::attack_positions`; never for war machines, BAT-WAR-001),
-/// then for a commanded First Aid Tent its heals by stack id (BAT-WAR-007).
+/// then for a commanded First Aid Tent its heals by stack id (BAT-WAR-007). Last in both cases,
+/// Retreat if the side may retreat (BAT-FLE-001).
 pub fn legal_commands(
     state: &BattleState,
     ruleset: &Ruleset,
@@ -50,13 +51,28 @@ pub fn legal_commands(
                 let _ = out.push(Command::Move { to: hex });
             }
         }
-        return;
+    } else {
+        turn_commands(state, field, (id, &mover), out);
     }
+    // rule: BAT-FLE-001
+    if state.may_retreat(actor) {
+        let _ = out.push(Command::Retreat);
+    }
+}
+
+/// The commands of the active stack `mover` on its turn, in the order of [`legal_commands`].
+fn turn_commands(
+    state: &BattleState,
+    field: Field,
+    (id, mover): (StackId, &Stack),
+    out: &mut LegalCommands,
+) {
+    let actor = mover.side;
     if !mover.flags.contains(StackFlags::WAITED) {
         let _ = out.push(Command::Wait);
     }
     let _ = out.push(Command::Defend);
-    let reach = reachable(state, field, id, &mover);
+    let reach = reachable(state, field, id, mover);
     for i in 0..field.hex_count() {
         let hex = Hex(u8::try_from(i).unwrap_or(u8::MAX));
         if reach.can_move_to(hex) {

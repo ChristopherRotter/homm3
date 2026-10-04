@@ -309,6 +309,30 @@ fn morale_and_luck_effects_are_combined_and_count_each_artifact_once() {
     );
 }
 
+// covers: HER-BAT-006
+#[test]
+fn a_worn_no_retreat_artifact_adds_one_no_retreat_effect() {
+    let mut p = effect_pack();
+    for a in &mut p.artifacts {
+        if a.key.to_string() == "t:eye" {
+            a.effects.push(HeroEffectDef::NoRetreat);
+        }
+    }
+    let r = compile(p).unwrap();
+    // Two eyes are worn (and one is in the backpack): one effect.
+    let mut d = details(&r);
+    let hero = derive_battle_hero(&d, &r).unwrap();
+    let shackles = |h: &BattleHero| {
+        h.effects
+            .iter()
+            .filter(|e| **e == BattleEffect::NoRetreat)
+            .count()
+    };
+    assert_eq!(shackles(&hero), 1);
+    d.worn.retain(|&a| a != art(&r, "t:eye"));
+    assert_eq!(shackles(&derive_battle_hero(&d, &r).unwrap()), 0);
+}
+
 // covers: HER-BAT-004
 #[test]
 fn damage_bonuses_sum_skills_artifacts_and_specialty() {

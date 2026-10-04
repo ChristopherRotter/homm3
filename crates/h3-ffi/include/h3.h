@@ -1,5 +1,5 @@
 /*
- * h3 engine C ABI, version 4 (see crates/h3-ffi/src/lib.rs and ADR-0011).
+ * h3 engine C ABI, version 5 (see crates/h3-ffi/src/lib.rs and ADR-0011).
  * SPDX-License-Identifier: GPL-2.0-or-later
  *
  * Handles are opaque. Functions return H3_OK (0) or a negative error code; they never unwind.
@@ -28,6 +28,10 @@ extern "C" {
 #define H3_RESULT_ATTACKER 0   /* the attacker won */
 #define H3_RESULT_DEFENDER 1   /* the defender won */
 #define H3_RESULT_DRAW 2       /* both armies wiped out at once */
+#define H3_RESULT_ATTACKER_RETREATED 3   /* the attacker retreated: the defender wins */
+#define H3_RESULT_DEFENDER_RETREATED 4   /* the defender retreated: the attacker wins */
+#define H3_RESULT_ATTACKER_SURRENDERED 5 /* the attacker surrendered: the defender wins */
+#define H3_RESULT_DEFENDER_SURRENDERED 6 /* the defender surrendered: the attacker wins */
 
 typedef struct H3Env H3Env;
 

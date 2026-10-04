@@ -19,10 +19,10 @@ pub struct StepResult {
     pub done: bool,
     /// The episode was cut off by the step limit (an RL truncation, not a game rule).
     pub truncated: bool,
-    /// How the battle ended, if it did (a victory or a draw).
+    /// How the battle ended, if it did (a victory, a draw, a retreat or a surrender).
     pub result: Option<BattleResult>,
-    /// Reward per side, indexed by [`BattleSide::index`]: +1 win, −1 loss, 0 otherwise (also
-    /// for a draw, where both armies are gone).
+    /// Reward per side, indexed by [`BattleSide::index`]: +1 win, −1 loss (a side that retreats
+    /// or surrenders loses), 0 otherwise (also for a draw, where both armies are gone).
     pub reward: [f32; 2],
 }
 
@@ -309,5 +309,9 @@ mod tests {
         assert_eq!(won(BattleSide::Defender), [-1.0, 1.0]);
         assert_eq!(rewards(Some(BattleResult::Draw)), [0.0, 0.0]);
         assert_eq!(rewards(None), [0.0, 0.0]);
+        let left = BattleResult::Retreat(BattleSide::Attacker);
+        assert_eq!(rewards(Some(left)), [-1.0, 1.0]);
+        let left = BattleResult::Surrender(BattleSide::Defender);
+        assert_eq!(rewards(Some(left)), [1.0, -1.0]);
     }
 }

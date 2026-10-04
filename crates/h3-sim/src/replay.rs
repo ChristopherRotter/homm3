@@ -17,7 +17,7 @@ use h3_kernel::rng::{RNG_ALGORITHM, RNG_VERSION};
 use h3_kernel::{Rng, StreamId};
 
 /// Version of the replay model (bump when fields change meaning).
-pub const REPLAY_FORMAT_VERSION: u32 = 8;
+pub const REPLAY_FORMAT_VERSION: u32 = 9;
 
 /// Identity of everything a replay depends on.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -167,9 +167,9 @@ impl fmt::Display for ReplayError {
 impl std::error::Error for ReplayError {}
 
 impl Replay {
-    /// Records a game played by the uniformly random legal agent (AGENT stream of `agent_seed`)
-    /// for both sides, for at most `max_steps` commands (0 = no limit, as everywhere in the sim
-    /// layer; a random game can take long).
+    /// Records a game played by the baseline random agent ([`crate::rollout::choose`], AGENT
+    /// stream of `agent_seed`) for both sides, for at most `max_steps` commands (0 = no limit,
+    /// as everywhere in the sim layer; a random game can take long).
     pub fn record_random(
         ruleset: &Ruleset,
         setup: BattleSetup,
@@ -188,11 +188,7 @@ impl Replay {
                 break;
             }
             h3_battle::legal_commands(&state, ruleset, side, &mut legal);
-            let n = u32::try_from(legal.len()).unwrap_or(u32::MAX);
-            let command = legal
-                .get(agent.below(n) as usize)
-                .copied()
-                .unwrap_or(Command::Defend);
+            let command = crate::rollout::choose(&legal, &mut agent);
             // Legal commands are accepted by construction (property-tested in h3-battle).
             let _ = apply(&mut state, ruleset, side, command, &mut NoopSink);
             commands.push((side, command));

@@ -269,3 +269,23 @@ numeric  = "integer"
   ref        = "Heroes3.exe: the First Aid values 0/1/2/3 and the specialty getter 1 + table x (1 + 0.05 x level) (docs/formats/installation.md sections 7.4, 7.5)"
   confidence = "high"
 
+
+[[rule]]
+id       = "HER-BAT-006"
+title    = "The battle hero's NoRetreat effect"
+context  = "heroes"
+status   = "implemented"
+summary  = "The battle hero gets one BattleEffect::NoRetreat (after its morale and luck effects) if one of its effect sources (HER-BAT-001; skills, worn artifacts once per type with their combinations' parts, specialty) has a no_retreat effect: in the original only the Shackles of War. The battle applies it (BAT-FLE-001)."
+numeric  = "integer"
+
+  [[rule.source]]
+  kind       = "wiki"
+  ref        = "Shackles of War - Heroes 3 wiki: neither hero may retreat or surrender"
+  url        = "https://heroes.thelazy.net/index.php/Shackles_of_War"
+  retrieved  = "2026-10-03"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "design"
+  ref        = "ADR-0013 point 3: effects are data; the derivation resolves them into BattleEffects"
+  confidence = "high"

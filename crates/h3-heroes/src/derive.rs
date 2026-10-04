@@ -14,8 +14,8 @@ use crate::error::DetailsError;
 
 /// Derives what a battle needs to know about the hero (`BattleSetup.heroes`): the hero type, the
 /// effective primary skills (HER-BAT-001), the Tactics level (HER-BAT-002), the morale and luck
-/// effects (HER-BAT-003), the damage bonuses (HER-BAT-004) and the war machines it commands
-/// (HER-BAT-005); the mana is passed through. The details are validated first.
+/// effects (HER-BAT-003), the damage bonuses (HER-BAT-004), the war machines it commands
+/// (HER-BAT-005) and the `NoRetreat` effect (HER-BAT-006); the mana is passed through. The details are validated first.
 ///
 /// Later tasks fill the rest; until then it stays neutral: surrender discount (E04a T9), the
 /// other effects (T10), and spell book, maximum mana and schools (E04b).
@@ -65,6 +65,11 @@ pub fn derive_battle_hero(
 
     // rule: HER-BAT-003
     hero.effects = morale_and_luck(effects(details, ruleset, Count::OncePerType));
+
+    // rule: HER-BAT-006
+    if effects(details, ruleset, Count::OncePerType).any(|e| matches!(e, HeroEffect::NoRetreat)) {
+        hero.effects.push(BattleEffect::NoRetreat);
+    }
 
     // rule: HER-BAT-004
     hero.damage = damage_bonuses(details, ruleset);

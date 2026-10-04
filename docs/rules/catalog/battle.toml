@@ -1521,3 +1521,36 @@ numeric  = "integer"
   kind       = "design"
   ref        = "ADR-0013 point 7: the phase reuses Move with cycling activations plus EndTactics (no Place command); the order within the cycle was not recorded in batch 1b, so round-1 order stands (E04a-design.md, Batch 1b results)"
   confidence = "medium"
+
+[[rule]]
+id       = "BAT-FLE-001"
+title    = "Retreat"
+context  = "battle"
+status   = "implemented"
+summary  = "A side led by a hero may retreat (Command::Retreat) when one of its stacks is active or its tactics phase runs (BAT-TAC-002), unless a hero in the battle has a NoRetreat effect (Shackles of War, HER-BAT-006): then neither side may, also against a side without a hero (SoD, batch 1b B6; VCMI follows HotA, where the Shackles only work between heroes). Otherwise CommandError::CannotRetreat. A retreat ends the battle at once with BattleResult::Retreat(side); the enemy wins (BattleResult::winner), the event is BattleEnded. The battle reports the facts; the consequences (the retreating side loses its army, its hero goes to the tavern) are the orchestrator's (ADR-0013 point 5, E08-E10). Retreat comes last among the legal commands; whether each side may retreat is public (Observation.may_retreat). Not modelled here: sieges (E04c: a besieged defender needs an escape tunnel in VCMI) and conditions of the adventure map."
+numeric  = "integer"
+
+  [[rule.source]]
+  kind       = "observation"
+  ref        = "experiments/results/E04a-batch-1b.md R2 (SoD 4.0 Complete, plain HD, 2026-10-04): Retreat is available in the tactics phase; B6: with Shackles of War against a monster, 'The Shackles of War are present. B6 can not retreat!'"
+  retrieved  = "2026-10-04"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "wiki"
+  ref        = "Shackles of War - Heroes 3 wiki: neither hero may retreat or surrender (the hero-to-hero restriction is HotA's; D-6)"
+  url        = "https://heroes.thelazy.net/index.php/Shackles_of_War"
+  retrieved  = "2026-10-03"
+  confidence = "medium"
+
+  [[rule.source]]
+  kind       = "vcmi"
+  ref        = "lib/battle/CBattleInfoEssentials.cpp L297-L328 battleCanFlee: a hero is needed; BATTLE_NO_FLEEING blocks it only against an enemy hero (HotA); a besieged defender needs an escape tunnel"
+  url        = "https://github.com/vcmi/vcmi/blob/1.7.5/lib/battle/CBattleInfoEssentials.cpp#L297-L328"
+  retrieved  = "2026-10-04"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "design"
+  ref        = "ADR-0013 points 5 and 7: Retreat(side) result, the orchestrator applies the consequences"
+  confidence = "high"

@@ -458,8 +458,9 @@ fn legal_commands_of_the_phase() {
     let mut legal = LegalCommands::new();
     legal_commands(&state, &r, BattleSide::Attacker, &mut legal);
     assert_eq!(legal.as_slice()[..2], [Command::Wait, Command::EndTactics]);
-    // Three columns of eleven rows, less the stack's own hex.
-    assert_eq!(legal.len(), 2 + 3 * 11 - 1);
+    // Three columns of eleven rows, less the stack's own hex; then Retreat (BAT-FLE-001).
+    assert_eq!(legal.len(), 2 + 3 * 11 - 1 + 1);
+    assert_eq!(legal.as_slice().last(), Some(&Command::Retreat));
     legal_commands(&state, &r, BattleSide::Defender, &mut legal);
     assert!(legal.is_empty());
 }

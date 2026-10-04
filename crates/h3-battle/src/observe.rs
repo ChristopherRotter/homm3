@@ -23,6 +23,8 @@ pub struct Observation {
     pub round: u16,
     /// The running tactics phase: its side and zone (public, ADR-0013 point 9).
     pub tactics: Option<TacticsPhase>,
+    /// Whether each side may retreat (BAT-FLE-001; public), indexed by [`BattleSide::index`].
+    pub may_retreat: [bool; 2],
     /// The stack whose turn it is.
     pub active: Option<StackId>,
     /// Side of the last stack that took a turn.
@@ -46,6 +48,7 @@ pub fn observe(state: &BattleState, viewer: BattleSide) -> Observation {
         viewer,
         round: state.round,
         tactics: state.tactics,
+        may_retreat: BattleSide::BOTH.map(|side| state.may_retreat(side)),
         active: state.active,
         last_side_acted: state.last_side_acted,
         result: state.result,

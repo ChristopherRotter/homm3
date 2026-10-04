@@ -1,11 +1,11 @@
 //! Library side of the `h3` tool: loading packs and scenarios from disk, running random battles,
 //! and the replay file format (TOML). The binary (`main.rs`) only parses arguments.
 //!
-//! Replay file format v8 (`fixtures/replays/*.toml` are examples):
+//! Replay file format v9 (`fixtures/replays/*.toml` are examples):
 //!
 //! ```toml
 //! [replay]
-//! format = 8
+//! format = 9
 //! engine = "0.1.0"
 //! scenario = "skirmish"
 //! seed = "7"                      # u64 as a decimal string
@@ -16,7 +16,7 @@
 //! rng_version = 1
 //! hash = "fnv1a64-le"
 //! hash_version = 1
-//! battle_state_hash_version = 13
+//! battle_state_hash_version = 14
 //! checkpoint_every = 25
 //!
 //! [setup]                         # the rest of the setup (fields default when absent)
@@ -54,11 +54,12 @@
 //! count = 30
 //!
 //! commands = ["A move 45", "D attack 3 57", "A shoot 4 120", "A wait", "D defend", "A heal 2",
-//!             "A end-tactics"]                # in the tactics phase, move places and wait passes
+//!             "A end-tactics", "D retreat"]  # in the tactics phase, move places and wait passes
 //! checkpoints = ["0x…"]           # state hash after every `checkpoint_every` commands
 //!
 //! [result]
-//! winner = "attacker"             # attacker | defender | draw | none (undecided)
+//! winner = "attacker"             # attacker | defender | draw | none (undecided) |
+//!                                 # attacker-retreated | defender-surrendered | … (format 9)
 //! final_hash = "0x…"
 //! ```
 
@@ -227,7 +228,7 @@ fn side_letter(side: BattleSide) -> &'static str {
 
 /// Text form of one replay command: `"<A|D> move <hex>"`, `"<A|D> attack <stack> <hex>"`,
 /// `"<A|D> shoot <stack> <hex>"`, `"<A|D> wait"`, `"<A|D> defend"`, `"<A|D> heal <stack>"`
-/// (format 7), `"<A|D> end-tactics"` (format 8).
+/// (format 7), `"<A|D> end-tactics"` (format 8), `"<A|D> retreat"` (format 9).
 pub fn format_command(side: BattleSide, command: Command) -> String {
     let s = side_letter(side);
     match command {
@@ -238,6 +239,7 @@ pub fn format_command(side: BattleSide, command: Command) -> String {
         Command::Defend => format!("{s} defend"),
         Command::Heal { target } => format!("{s} heal {}", target.0),
         Command::EndTactics => format!("{s} end-tactics"),
+        Command::Retreat => format!("{s} retreat"),
     }
 }
 
@@ -272,17 +274,23 @@ pub fn parse_command(text: &str) -> Result<(BattleSide, Command), CliError> {
             target: StackId(num(2)?),
         },
         (Some("end-tactics"), 2) => Command::EndTactics,
+        (Some("retreat"), 2) => Command::Retreat,
         _ => return Err(bad()),
     };
     Ok((side, command))
 }
 
-/// The `winner` text of a result: the winning side, `draw` or `none` (undecided).
+/// The `winner` text of a result: the winning side, `draw`, the side that retreated or
+/// surrendered (`attacker-retreated`, …, format 9), or `none` (undecided).
 pub fn result_text(r: Option<BattleResult>) -> &'static str {
     match r {
         Some(BattleResult::Victory(BattleSide::Attacker)) => "attacker",
         Some(BattleResult::Victory(BattleSide::Defender)) => "defender",
         Some(BattleResult::Draw) => "draw",
+        Some(BattleResult::Retreat(BattleSide::Attacker)) => "attacker-retreated",
+        Some(BattleResult::Retreat(BattleSide::Defender)) => "defender-retreated",
+        Some(BattleResult::Surrender(BattleSide::Attacker)) => "attacker-surrendered",
+        Some(BattleResult::Surrender(BattleSide::Defender)) => "defender-surrendered",
         None => "none",
     }
 }
@@ -292,6 +300,10 @@ fn parse_result(s: &str) -> Result<Option<BattleResult>, CliError> {
         "attacker" => Ok(Some(BattleResult::Victory(BattleSide::Attacker))),
         "defender" => Ok(Some(BattleResult::Victory(BattleSide::Defender))),
         "draw" => Ok(Some(BattleResult::Draw)),
+        "attacker-retreated" => Ok(Some(BattleResult::Retreat(BattleSide::Attacker))),
+        "defender-retreated" => Ok(Some(BattleResult::Retreat(BattleSide::Defender))),
+        "attacker-surrendered" => Ok(Some(BattleResult::Surrender(BattleSide::Attacker))),
+        "defender-surrendered" => Ok(Some(BattleResult::Surrender(BattleSide::Defender))),
         "none" => Ok(None),
         other => Err(CliError::Format(format!("bad winner `{other}`"))),
     }
@@ -603,6 +615,7 @@ mod tests {
                 "A heal 2",
             ),
             (BattleSide::Defender, Command::EndTactics, "D end-tactics"),
+            (BattleSide::Attacker, Command::Retreat, "A retreat"),
         ];
         for (side, cmd, text) in cases {
             assert_eq!(format_command(side, cmd), text);
@@ -659,6 +672,10 @@ mod tests {
             Some(BattleResult::Draw),
             Some(BattleResult::Victory(BattleSide::Attacker)),
             Some(BattleResult::Victory(BattleSide::Defender)),
+            Some(BattleResult::Retreat(BattleSide::Attacker)),
+            Some(BattleResult::Retreat(BattleSide::Defender)),
+            Some(BattleResult::Surrender(BattleSide::Attacker)),
+            Some(BattleResult::Surrender(BattleSide::Defender)),
         ] {
             assert_eq!(parse_result(result_text(r)).unwrap(), r);
         }

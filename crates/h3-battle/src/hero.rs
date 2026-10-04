@@ -50,6 +50,16 @@ pub(crate) struct HeroRecord {
     pub(crate) ballista: Option<BallistaControl>,
     /// The side commands its First Aid Tent (First Aid, BAT-WAR-007; private to the side).
     pub(crate) tent: Option<TentControl>,
+    /// The hero has a `NoRetreat` effect (Shackles of War): no side may retreat or surrender
+    /// (BAT-FLE-001; public through the sides' options).
+    pub(crate) no_retreat: bool,
+}
+
+/// Whether `side` may retreat (BAT-FLE-001): it has a hero, and no hero in the battle has a
+/// `NoRetreat` effect (also against a side without a hero, batch 1b B6).
+// rule: BAT-FLE-001
+pub(crate) fn may_retreat(heroes: &[Option<HeroRecord>; 2], side: BattleSide) -> bool {
+    heroes[side.index()].is_some() && !heroes.iter().flatten().any(|h| h.no_retreat)
 }
 
 /// The damage bonuses of `side` (none without a hero; BAT-HER-004).
@@ -92,6 +102,7 @@ impl CanonicalHash for HeroRecord {
         if let Some(t) = self.tent {
             h.write_u32(t.heal_bonus_bp);
         }
+        h.write_u8(u8::from(self.no_retreat));
     }
 }
 
@@ -163,6 +174,7 @@ pub(crate) fn check(
         damage: hero.damage,
         ballista: hero.war_machines.ballista,
         tent: hero.war_machines.tent,
+        no_retreat: hero.effects.contains(&BattleEffect::NoRetreat),
     })
 }
 

@@ -6,7 +6,7 @@
 //! value (reach, damage) come from the state.
 
 use h3_content::Ruleset;
-use h3_contracts::BattleSide;
+use h3_contracts::{BattleResult, BattleSide};
 
 use crate::combat::{can_shoot, melee, shoot};
 use crate::error::CommandError;
@@ -53,6 +53,15 @@ pub enum Command {
     },
     /// End the tactics phase; round 1 starts (BAT-TAC-002).
     EndTactics,
+    /// Leave the battle: the actor's side retreats (BAT-FLE-001).
+    Retreat,
+}
+
+impl Command {
+    /// Whether the command ends the battle by leaving it (Retreat; Surrender with E04a T9b).
+    pub const fn leaves_battle(self) -> bool {
+        matches!(self, Self::Retreat)
+    }
 }
 
 /// A command that passed validation, with everything `apply` needs.
@@ -95,6 +104,9 @@ enum Plan {
         phase: TacticsPhase,
     },
     EndTactics,
+    Retreat {
+        side: BattleSide,
+    },
 }
 
 /// Checks `command` for `actor` without changing anything. Shared by `apply` and
@@ -137,6 +149,7 @@ fn plan(
     }
     match command {
         Command::EndTactics => Err(CommandError::NoTacticsPhase),
+        Command::Retreat => retreat(state, actor),
         Command::Wait => {
             // rule: BAT-TRN-002
             if mover.flags.contains(StackFlags::WAITED) {
@@ -229,6 +242,16 @@ fn plan(
     }
 }
 
+/// Validates a retreat of `side`, whose stack is active or whose tactics phase runs.
+// rule: BAT-FLE-001
+fn retreat(state: &BattleState, side: BattleSide) -> Result<Plan, CommandError> {
+    if state.may_retreat(side) {
+        Ok(Plan::Retreat { side })
+    } else {
+        Err(CommandError::CannotRetreat)
+    }
+}
+
 /// Validates `command` for the active stack `mover` in the tactics phase: a placement in the
 /// zone, Wait (pass to the next stack) or `EndTactics`; nothing else.
 // rule: BAT-TAC-001, BAT-TAC-002
@@ -259,6 +282,7 @@ fn plan_tactics(
         }
         Command::Wait => Ok(Plan::Pass { mover: id, phase }),
         Command::EndTactics => Ok(Plan::EndTactics),
+        Command::Retreat => retreat(state, mover.side),
         Command::Attack { .. } | Command::Shoot { .. } | Command::Defend | Command::Heal { .. } => {
             Err(CommandError::InTacticsPhase)
         }
@@ -322,8 +346,18 @@ pub fn apply<S: Sink>(
         }
         Plan::Pass { mover, phase } => tactics::pass(state, phase, mover, sink),
         Plan::EndTactics => tactics::end(state, ruleset, sink),
+        Plan::Retreat { side } => leave(state, BattleResult::Retreat(side), sink),
     }
     Ok(())
+}
+
+/// Ends the battle at once with `result` (a retreat or a surrender, BAT-FLE-001/002), also from
+/// the tactics phase.
+fn leave<S: Sink>(state: &mut BattleState, result: BattleResult, sink: &mut S) {
+    state.tactics = None;
+    state.active = None;
+    state.result = Some(result);
+    sink.emit(Event::public(EventKind::BattleEnded { result }));
 }
 
 fn move_stack<S: Sink>(state: &mut BattleState, mover: StackId, from: Hex, to: Hex, sink: &mut S) {

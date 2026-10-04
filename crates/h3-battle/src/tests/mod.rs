@@ -3,6 +3,7 @@
 
 mod abilities;
 mod commands;
+mod flee;
 mod geometry;
 mod heroes;
 mod morale;

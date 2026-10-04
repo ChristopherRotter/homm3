@@ -23,7 +23,7 @@ pub const MAX_WAR_MACHINES: usize = WAR_MACHINE_KINDS;
 pub const STACK_CAPACITY: usize = 2 * (MAX_ARMY_SLOTS + MAX_WAR_MACHINES);
 
 /// Version of the battle-state hash encoding ([`BattleState::state_hash`]). Bump on any change.
-pub const BATTLE_STATE_HASH_VERSION: u32 = 13;
+pub const BATTLE_STATE_HASH_VERSION: u32 = 14;
 
 /// Index of a stack in its battle (attacker stacks first, in slot order, then defender stacks).
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Default)]
@@ -499,11 +499,14 @@ pub(crate) const fn side_code(side: BattleSide) -> u8 {
     }
 }
 
-/// Hash code of a result: the winner's side code, 2 for a draw.
+/// Hash code of a result: the winner's side code, 2 for a draw, 3 + the side's code for a
+/// retreat, 5 + the side's code for a surrender.
 const fn result_code(result: BattleResult) -> u8 {
     match result {
         BattleResult::Victory(side) => side_code(side),
         BattleResult::Draw => 2,
+        BattleResult::Retreat(side) => 3 + side_code(side),
+        BattleResult::Surrender(side) => 5 + side_code(side),
     }
 }
 
@@ -664,6 +667,13 @@ impl BattleState {
         self.heroes[side.index()].is_some()
     }
 
+    /// Whether `side` may retreat (BAT-FLE-001; public, ADR-0013 point 9): it has a hero and no
+    /// hero in the battle has a `NoRetreat` effect. It retreats on its own turn or in its
+    /// tactics phase.
+    pub fn may_retreat(&self, side: BattleSide) -> bool {
+        hero::may_retreat(&self.heroes, side)
+    }
+
     /// The hexes blocked by obstacles (BAT-GEO-003).
     pub const fn obstacles(&self) -> HexSet {
         self.obstacles
@@ -775,13 +785,14 @@ impl BattleState {
     /// Canonical hash of the full state, including hidden parts such as the RNG (desync detection
     /// and replay verification; never sent to untrusted clients, docs/06-security.md).
     ///
-    /// Encoding v13 (v12 with the tactics phase): version, round, the tactics phase if any (side,
-    /// zone columns), active, last side,
-    /// result (0/1 = victory of the attacker/defender, 2 = draw), stacks (each with base count,
+    /// Encoding v14 (v13 with retreat): version, round, the tactics phase if any (side, zone
+    /// columns), active, last side, result (0/1 = victory of the attacker/defender, 2 = draw,
+    /// 3/4 = retreat and 5/6 = surrender of the attacker/defender), stacks (each with base count,
     /// shots, retaliations, morale, luck and traits), obstacles, modifiers, per side the hero if
     /// any (type, attack, defense, power, knowledge, Tactics level, mana, maximum mana, ranged,
     /// melee and reduction basis points, the Ballista's control if any: shots and double-damage
-    /// chance, the tent's control if any: heal bonus), terrain, RNG state.
+    /// chance, the tent's control if any: heal bonus; whether it has a `NoRetreat` effect),
+    /// terrain, RNG state.
     pub fn state_hash(&self) -> u64 {
         h3_kernel::hash::hash_of(self)
     }

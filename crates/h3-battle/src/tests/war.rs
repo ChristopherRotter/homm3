@@ -498,7 +498,8 @@ fn a_commanded_ballista_waits_for_its_sides_command() {
     let mut legal = crate::LegalCommands::new();
     crate::legal_commands(&s, &r, BattleSide::Attacker, &mut legal);
     let at = |id: usize| s.stacks()[id].hex;
-    // Wait, Defend and a shot at every enemy, the enemy's war machine included; no moves.
+    // Wait, Defend and a shot at every enemy, the enemy's war machine included; no moves; the
+    // hero's side may retreat (BAT-FLE-001).
     assert_eq!(
         legal.as_slice(),
         [
@@ -512,6 +513,7 @@ fn a_commanded_ballista_waits_for_its_sides_command() {
                 target: StackId(3),
                 at: at(3)
             },
+            Command::Retreat,
         ]
     );
     // It may wait (batch 1a R6) and comes back in the wait phase; the defender's Ballista,
@@ -697,13 +699,14 @@ fn a_commanded_tent_waits_for_a_heal_command_while_an_ally_is_hurt() {
     let mut legal = crate::LegalCommands::new();
     crate::legal_commands(&s, &r, BattleSide::Attacker, &mut legal);
     // Wait, Defend and a heal of the hurt tanks only: not the full serfs, not the hurt
-    // ballista (a war machine), not the enemy.
+    // ballista (a war machine), not the enemy; and the hero's side may retreat.
     assert_eq!(
         legal.as_slice(),
         [
             Command::Wait,
             Command::Defend,
-            Command::Heal { target: StackId(0) }
+            Command::Heal { target: StackId(0) },
+            Command::Retreat,
         ]
     );
     let attack = Command::Attack {

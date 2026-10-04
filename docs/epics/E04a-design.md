@@ -58,7 +58,7 @@ each task has to do with them:
     a client matter, so the engine has no offer, answer or once-per-round limit. ADR-0013 point 7
     amended (the consent step is dropped; HotA does not let the enemy refuse either).
   - Shackles of War stop retreat (and surrender) also against a monster (B6, D-6: as the wiki for
-    SoD; VCMI follows HotA).
+    SoD; VCMI follows HotA). Done for retreat in T9a (BAT-FLE-001, HER-BAT-006).
   - Outcome inputs (for the orchestrator): killed war machines give no experience; Learning
     multiplies the whole sum including the +500 (R5: floor(550 × 1.15) = 632; D-3 as the wiki,
     OQ-6 as VCMI); the loser's surviving war machines are not captured (OQ-5; afterwards the winner
@@ -125,8 +125,6 @@ state-hash bump. Left for T9:
   of the hero's war-machine slots; the **Catapult** is left out outside sieges, and the battle
   keeps rejecting it until E04c (it then belongs to the attacker of a siege, controlled through
   `MachineControl.catapult`).
-- `BattleResult` gains `Retreat(side)` and `Surrender(side)` (the side that left; `winner()` is
-  the other side) next to `Victory(side)` and `Draw`.
 - `BattleOutcome` gains:
   - `stacks: [Vec<StackRecord>; 2]`, **every** stack of both sides in stack order:
     `StackRecord { origin: StackOrigin, creature: CreatureTypeId, start: u32, end: u32 }`,
@@ -162,14 +160,12 @@ state-hash bump. Left for T9:
 
 ## 7. Phases and commands (T9)
 
-The tactics phase is implemented (T8: BAT-TAC-001/002, `h3_battle` `tactics.rs`).
+The tactics phase is implemented (T8: BAT-TAC-001/002, `h3_battle` `tactics.rs`), Retreat and the
+results `Retreat(side)`/`Surrender(side)` too (T9a: BAT-FLE-001, `Observation.may_retreat`).
 
-- **Retreat** (`Retreat`): by the side whose stack is active or whose tactics phase runs (batch 1b
-  R2: Retreat is available in the phase); legal if the side has a hero and no `NoRetreat` effect
-  is in the battle. Ends the battle with `Retreat(side)`.
-- **Surrender** (`Surrender`): legal like Retreat, and only if the enemy has a hero and the
+- **Surrender** (`Surrender`): legal like Retreat (`hero::may_retreat`), and only if the enemy has a hero and the
   side's `funds` cover the price; it ends the battle at once with `Surrender(side)` (no consent
-  step, batch 1b R4). The price is a new BAT rule: half (a ruleset factor, 50 %) of Σ over the
+  step, batch 1b R4), through the same `leave` as Retreat. The price is a new BAT rule: half (a ruleset factor, 50 %) of Σ over the
   side's living stacks, **war machines included**, of count × the creature's gold cost, ×
   (10 000 − discount) / 10 000, rounded down once (R4: 1472, 1430); under Q-0005 the summed
   discount enters as its single-precision value (R4: 179, not 180). Computed exactly in wide
@@ -185,8 +181,8 @@ encoding still has only the two "led by a hero" flags; T11 adds hero features. T
 `Observation.tactics` shows both sides the phase and its zone (the encoding shows round 0 until
 T11). Still to do:
 
-- Public in the observation of both sides: the war machines and who controls them, whether each
-  side may retreat, and whether surrender is possible at all (both heroes present, no `NoRetreat`
+- Public in the observation of both sides: the war machines and who controls them, and whether
+  surrender is possible at all (both heroes present, no `NoRetreat`
   effect; public because it changes both sides' options). Whether a side can afford its surrender, and its price, show only to that side (its action mask).
 - Private to the hero's own side: `tactics` level, the damage bonuses, `surrender_discount_bp`,
   school levels, the `effects` list other than the public consequences above (stat effects show in

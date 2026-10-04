@@ -23,7 +23,9 @@ use h3_sim::{ACTION_COUNT, ActionMask, BattleEnv, OBSERVATION_LEN, StepError};
 /// v4 and observation encoding v3 (v1 had the E01 encodings v1). v3 (E04a T7b): action encoding
 /// v5 (heals appended; `h3_action_count` grows by the stack slots, earlier indices unchanged).
 /// v4 (E04a T8): action encoding v6 (`EndTactics` appended; `h3_action_count` grows by one).
-pub const H3_ABI_VERSION: u32 = 4;
+/// v5 (E04a T9a): action encoding v7 (Retreat appended) and the `H3_RESULT_*` codes of a retreat
+/// or a surrender.
+pub const H3_ABI_VERSION: u32 = 5;
 
 /// `H3StepResult.result`: the battle is not decided (still running, or truncated).
 pub const H3_RESULT_NONE: i32 = -1;
@@ -33,6 +35,14 @@ pub const H3_RESULT_ATTACKER: i32 = 0;
 pub const H3_RESULT_DEFENDER: i32 = 1;
 /// `H3StepResult.result`: a draw (both armies wiped out at once).
 pub const H3_RESULT_DRAW: i32 = 2;
+/// `H3StepResult.result`: the attacker retreated (the defender wins).
+pub const H3_RESULT_ATTACKER_RETREATED: i32 = 3;
+/// `H3StepResult.result`: the defender retreated (the attacker wins).
+pub const H3_RESULT_DEFENDER_RETREATED: i32 = 4;
+/// `H3StepResult.result`: the attacker surrendered (the defender wins).
+pub const H3_RESULT_ATTACKER_SURRENDERED: i32 = 5;
+/// `H3StepResult.result`: the defender surrendered (the attacker wins).
+pub const H3_RESULT_DEFENDER_SURRENDERED: i32 = 6;
 
 /// Success.
 pub const H3_OK: i32 = 0;
@@ -57,7 +67,8 @@ pub struct H3StepResult {
     pub done: u8,
     /// 1 if the episode was truncated by the step limit.
     pub truncated: u8,
-    /// How the battle ended: `H3_RESULT_ATTACKER`, `H3_RESULT_DEFENDER`, `H3_RESULT_DRAW`, or
+    /// How the battle ended: `H3_RESULT_ATTACKER`, `H3_RESULT_DEFENDER`, `H3_RESULT_DRAW`, a
+    /// side's retreat or surrender (`H3_RESULT_*_RETREATED`, `H3_RESULT_*_SURRENDERED`), or
     /// `H3_RESULT_NONE` while it is not decided.
     pub result: i32,
     /// Reward of the attacker.
@@ -96,6 +107,10 @@ fn result_code(value: Option<BattleResult>) -> i32 {
         Some(BattleResult::Victory(BattleSide::Attacker)) => H3_RESULT_ATTACKER,
         Some(BattleResult::Victory(BattleSide::Defender)) => H3_RESULT_DEFENDER,
         Some(BattleResult::Draw) => H3_RESULT_DRAW,
+        Some(BattleResult::Retreat(BattleSide::Attacker)) => H3_RESULT_ATTACKER_RETREATED,
+        Some(BattleResult::Retreat(BattleSide::Defender)) => H3_RESULT_DEFENDER_RETREATED,
+        Some(BattleResult::Surrender(BattleSide::Attacker)) => H3_RESULT_ATTACKER_SURRENDERED,
+        Some(BattleResult::Surrender(BattleSide::Defender)) => H3_RESULT_DEFENDER_SURRENDERED,
     }
 }
 
@@ -328,7 +343,7 @@ mod tests {
 
     #[test]
     fn abi_smoke_create_step_destroy() {
-        assert_eq!(h3_abi_version(), 4);
+        assert_eq!(h3_abi_version(), 5);
         assert_eq!(h3_action_count() as usize, ACTION_COUNT);
         assert_eq!(h3_observation_len() as usize, OBSERVATION_LEN);
         assert!(h3_env_create_synthetic(9, 1, 0).is_null());
@@ -349,7 +364,8 @@ mod tests {
                     h3_env_observe(env, side, obs.as_mut_ptr(), obs.len()),
                     H3_OK
                 );
-                // Prefer attacks (indices ≥ 257), else the first legal action.
+                // Prefer attacks (indices ≥ 257; the skirmish has no heroes, so no Retreat), else
+                // the first legal action.
                 let action = (257..ACTION_COUNT)
                     .find(|&i| mask[i] == 1)
                     .or_else(|| mask.iter().position(|m| *m == 1));
@@ -431,5 +447,12 @@ mod tests {
             H3_RESULT_DEFENDER
         );
         assert_eq!(result_code(Some(BattleResult::Draw)), H3_RESULT_DRAW);
+        let codes = BattleSide::BOTH.map(|side| {
+            [
+                result_code(Some(BattleResult::Retreat(side))),
+                result_code(Some(BattleResult::Surrender(side))),
+            ]
+        });
+        assert_eq!(codes, [[3, 5], [4, 6]]);
     }
 }

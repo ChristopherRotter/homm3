@@ -116,21 +116,29 @@ impl BattleSetup {
     }
 }
 
-/// How a battle ended (BAT-END-001/002).
+/// How a battle ended (BAT-END-001/002, BAT-FLE-001/002).
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum BattleResult {
     /// The side that still has living stacks after the other side has none.
     Victory(BattleSide),
     /// Neither side has living stacks left: both were wiped out by the same action (Q24).
     Draw,
+    /// The side retreated (BAT-FLE-001); the other side wins. The consequences (a retreating
+    /// side loses its army) are the orchestrator's (ADR-0013 point 5).
+    Retreat(BattleSide),
+    /// The side surrendered (BAT-FLE-002); the other side wins. The consequences (a
+    /// surrendering side pays and keeps its army) are the orchestrator's.
+    Surrender(BattleSide),
 }
 
 impl BattleResult {
-    /// The winning side, or `None` for a draw.
+    /// The winning side, or `None` for a draw: the opponent of a side that retreated or
+    /// surrendered.
     pub const fn winner(self) -> Option<BattleSide> {
         match self {
             Self::Victory(side) => Some(side),
             Self::Draw => None,
+            Self::Retreat(side) | Self::Surrender(side) => Some(side.opponent()),
         }
     }
 }
@@ -138,7 +146,7 @@ impl BattleResult {
 /// The result of a finished battle, applied back by the orchestrator.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct BattleOutcome {
-    /// How the battle ended: a victory of one side or a draw.
+    /// How the battle ended: a victory of one side, a draw, a retreat or a surrender.
     pub result: BattleResult,
     /// Surviving stacks per side (indexed by [`BattleSide::index`]), in slot order.
     pub survivors: [Army; 2],
@@ -170,6 +178,14 @@ mod tests {
             Some(BattleSide::Defender)
         );
         assert_eq!(BattleResult::Draw.winner(), None);
+        assert_eq!(
+            BattleResult::Retreat(BattleSide::Attacker).winner(),
+            Some(BattleSide::Defender)
+        );
+        assert_eq!(
+            BattleResult::Surrender(BattleSide::Defender).winner(),
+            Some(BattleSide::Attacker)
+        );
     }
 
     #[test]

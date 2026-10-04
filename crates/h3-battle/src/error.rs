@@ -187,6 +187,9 @@ pub enum CommandError {
     NoTacticsPhase,
     /// The hex lies outside the tactics zone (BAT-TAC-001).
     OutsideZone,
+    /// The side may not retreat: it has no hero, or a hero has a `NoRetreat` effect
+    /// (BAT-FLE-001).
+    CannotRetreat,
 }
 
 impl fmt::Display for CommandError {
@@ -209,6 +212,7 @@ impl fmt::Display for CommandError {
             Self::InTacticsPhase => "not allowed during the tactics phase",
             Self::NoTacticsPhase => "no tactics phase is running",
             Self::OutsideZone => "the hex lies outside the tactics zone",
+            Self::CannotRetreat => "the side cannot retreat",
         })
     }
 }
@@ -372,6 +376,7 @@ mod tests {
                 CommandError::OutsideZone,
                 "the hex lies outside the tactics zone",
             ),
+            (CommandError::CannotRetreat, "the side cannot retreat"),
         ];
         for (e, text) in all {
             assert_eq!(e.to_string(), text);

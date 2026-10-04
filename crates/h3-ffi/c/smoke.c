@@ -14,7 +14,7 @@
     } while (0)
 
 int main(void) {
-    CHECK(h3_abi_version() == 4);
+    CHECK(h3_abi_version() == 5);
     uint32_t n_actions = h3_action_count();
     uint32_t n_obs = h3_observation_len();
     uint8_t *mask = malloc(n_actions);
@@ -48,7 +48,7 @@ int main(void) {
     CHECK(result.done == 1);
     CHECK(result.result == H3_RESULT_NONE ? result.truncated == 1
                                           : result.result >= H3_RESULT_ATTACKER &&
-                                                result.result <= H3_RESULT_DRAW);
+                                                result.result <= H3_RESULT_DEFENDER_SURRENDERED);
     CHECK(h3_env_step(env, 0, 1, &result) == H3_ERR_EPISODE_OVER);
     CHECK(h3_env_step(NULL, 0, 1, &result) == H3_ERR_NULL);
 
