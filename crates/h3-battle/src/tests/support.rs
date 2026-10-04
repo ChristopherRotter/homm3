@@ -501,7 +501,7 @@ pub fn ruleset() -> Ruleset {
 }
 
 /// The test ruleset with profile `profile` (`t:faithful` without quirks, `t:quirky` with
-/// Q-0003) and edited battle parameters.
+/// Q-0003, `t:single` with Q-0005) and edited battle parameters.
 pub fn ruleset_with(profile: &str, edit: impl FnOnce(&mut BattleParamsDef)) -> Ruleset {
     let creatures = CREATURES
         .iter()
@@ -563,6 +563,10 @@ pub fn ruleset_with(profile: &str, edit: impl FnOnce(&mut BattleParamsDef)) -> R
             ProfileDef {
                 key: ContentKey::new("t", "quirky").unwrap(),
                 quirks: vec![(String::from("quirk.battle.no_luck_without_hero"), true)],
+            },
+            ProfileDef {
+                key: ContentKey::new("t", "single").unwrap(),
+                quirks: vec![(String::from("quirk.battle.single_precision_rates"), true)],
             },
         ],
         battle: Some(battle),

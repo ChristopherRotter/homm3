@@ -369,7 +369,7 @@ fn strike_flags_and_factor_limits() {
     // A strike has fewer reductions than the factor capacity; extra ones are ignored.
     let mut factors = crate::damage::Factors::default();
     for _ in 0..7 {
-        factors.reduce(500);
+        factors.reduce(factors.rate(50, crate::damage::Unit::Percent));
     }
     assert_eq!(
         factors.apply(128),

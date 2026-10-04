@@ -82,9 +82,9 @@ Classes: `exploit-fix` (always fixed, never toggleable) · `preserve` (accepted,
 - Impact: gameplay-altering (tiny: at most one damage point per strike)
 - Community status: the Armorer case is on the wiki (Damage page); the cause was unknown
 - Sources: observation, `experiments/results/E04a-batch-1a.md` R1–R3 (SoD 4.0 Complete, 2026-10-03); original-data, the executable's skill tables are f32 (`docs/formats/installation.md` §7.4); wiki, Damage (https://heroes.thelazy.net/index.php/Damage, retrieved 2026-10-01)
-- Flag: `quirk.battle.single_precision_rates` (planned; registered by E04a T6, which computes it exactly in integers, ADR-0003)
+- Flag: `quirk.battle.single_precision_rates` (registered by E04a T6a; computed exactly in integers, ADR-0003: `h3_kernel::arith::single_precision` gives the binary32 value of a rate as an exact fraction over 2^40, and the damage product is exact with one final floor). Every rate and cap of a damage factor is converted, counts multiply the converted rate (22 points: 22 × 13421773/2^28); not observed and chosen for consistency: the 70 % defense cap (0.69999999), jousting's 5 % per hex; a hero's summed skill, artifact and specialty bonus enters as one rate (E04a T6b)
 - Defaults: faithful = on, strict-fixed = off
-- Regression test: R1–R3 as fixtures (E04a T6)
+- Regression test: R1–R3 as fixtures (`crates/h3-battle/src/tests/rules.rs`, `single_precision_rates_reproduce_batch_1a`; the flag in a battle: `the_quirk_flag_selects_the_single_precision_rates`)
 - Decided by / date: confirmed by experiment batch 1a (Q23), 2026-10-03; class fix-optional confirmed by the user, 2026-10-03
 
 ### Q-0006 — Roland's specialty affects only Crusaders

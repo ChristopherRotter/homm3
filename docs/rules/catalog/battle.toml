@@ -619,7 +619,7 @@ id       = "BAT-DMG-002"
 title    = "Attack/defense modifier and final rounding"
 context  = "battle"
 status   = "implemented"
-summary  = "Damage = base * (1 + sum of bonuses) * product of (1 - reduction), rounded down once at the end, at least 1. Attack/defense: if attack A > defense D, a bonus of min(0.05 * (A - D), 3.00); else a reduction of min(0.025 * (D - A), 0.70). The attack bonus is capped at +300 % (at most 4x base damage, reached at 60 points), per user decision 2026-09-30 (OPEN-QUESTIONS Q11). Other bonuses (luck, jousting, hate, death blow) add to the bonus sum; other reductions (ranged/melee penalty, ...) multiply. Rates and caps are ruleset parameters (percent / per mille). Computed exactly in integers: floor(base * (100 + bonus%) * prod(1000 - reduction permille) / (100 * 1000^n)). Observed (Q23, batch 1a): the original uses the single-precision values of the rates (0.05 = 13421773/2^28, 0.025 = 13421773/2^29), so a result can be one lower or stay exact where decimal rates give an integer; quirk Q-0005, to be implemented by E04a T6 (exactly, in integers)."
+summary  = "Damage = base * (1 + sum of bonuses) * product of (1 - reduction), rounded down once at the end, at least 1. Attack/defense: if attack A > defense D, a bonus of min(0.05 * (A - D), 3.00); else a reduction of min(0.025 * (D - A), 0.70). The attack bonus is capped at +300 % (at most 4x base damage, reached at 60 points), per user decision 2026-09-30 (OPEN-QUESTIONS Q11). Other bonuses (luck, jousting, hate, death blow) add to the bonus sum; other reductions (ranged/melee penalty, ...) multiply. Rates and caps are ruleset parameters (percent / per mille). Computed exactly in integers with one final floor (a wide product, h3_kernel::arith::WideUint). Quirk Q-0005 (quirk.battle.single_precision_rates, on in faithful; observed, Q23, batch 1a): every rate and cap of a damage factor enters as its single-precision value (round to nearest; 0.05 = 13421773/2^28, 0.025 = 13421773/2^29, 0.70 = 11744051/2^24; binary fractions such as 0.5 and 1 unchanged), as an exact dyadic fraction (h3_kernel::arith::single_precision), counts multiply it exactly (22 points: 22 * 13421773/2^28), so a result can be one lower or stay exact where decimal rates give an integer. Applies to the attack and defense rates and caps, jousting, hate, luck, death blow and the shooter penalties (and E04a T6b's skill rates); strict-fixed uses the exact decimal rates."
 quirks   = ["Q-0005"]
 numeric  = "integer"
 
@@ -650,7 +650,7 @@ numeric  = "integer"
   ref        = "experiments/results/E04a-batch-1a.md R1-R3 (SoD 4.0 Complete, Heroes3.exe through the HD Mod 5.6 R9 launcher with HD+; none of HD+'s fixes touches these battles): Archangels with +22 attack points deal 105 per 50 base (exact), Angels with -24 points 19/39/../119 (exact 20/40/..), against Basic Armorer 47/94/142/189/237/284 (exact 47/95/..); all match exact arithmetic with single-precision rates, rounded down once"
   retrieved  = "2026-10-03"
   confidence = "high"
-  note       = "Q23 answered; the implementation keeps decimal rates until Q-0005 is implemented (E04a T6)."
+  note       = "Q23 answered; implemented as quirk Q-0005 (E04a T6a), R1-R3 are fixtures in crates/h3-battle/src/tests/rules.rs."
 
   [[rule.source]]
   kind       = "wiki"

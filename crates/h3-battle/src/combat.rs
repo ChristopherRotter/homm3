@@ -7,12 +7,12 @@
 //! (BAT-ATK-001) is the attack, the target's retaliation, and for creatures that strike twice a
 //! second attack.
 
-use h3_content::{Ability, BattleParams, CompiledAbility, Ruleset};
+use h3_content::{Ability, BattleParams, CompiledAbility, Ruleset, SINGLE_PRECISION_RATES};
 use h3_contracts::{BattleResult, BattleSide};
 use h3_kernel::arith::mul_div_floor;
 
 use crate::damage::{
-    Factors, apply_damage, attack_defense, base_damage, effective_defense, reduced_defense,
+    Factors, Unit, apply_damage, attack_defense, base_damage, effective_defense, reduced_defense,
     resurrect,
 };
 use crate::event::{Event, EventKind, Sink, StrikeFlags};
@@ -119,7 +119,7 @@ fn strike_factors(
 ) -> (Factors, StrikeFlags) {
     let params = ruleset.battle();
     let field = Field::new(params.field);
-    let mut factors = Factors::default();
+    let mut factors = Factors::new(ruleset.quirks().is_enabled(SINGLE_PRECISION_RATES));
     let mut defense = effective_defense(victim, params);
     for ability in ruleset.abilities(striker.creature) {
         match *ability {
@@ -128,13 +128,14 @@ fn strike_factors(
                 target: hated,
                 percent,
             } if hated == victim.creature => {
-                factors.bonus(u32::from(percent));
+                factors.bonus(factors.rate(percent, Unit::Percent));
             }
             // rule: BAT-DMG-005
             Ability::Jousting { percent_per_hex }
                 if !has_ability(ruleset, victim, |a| matches!(a, Ability::ChargeImmunity)) =>
             {
-                factors.bonus(u32::from(percent_per_hex) * u32::from(blow.charge));
+                let per_hex = factors.rate(percent_per_hex, Unit::Percent);
+                factors.bonus(per_hex.saturating_mul(u64::from(blow.charge)));
             }
             // rule: BAT-DMG-006
             Ability::DefenseReduction { percent } => defense = reduced_defense(defense, percent),
@@ -145,16 +146,16 @@ fn strike_factors(
     let mut flags = flags;
     // rule: BAT-LCK-002
     if blow.lucky {
-        factors.bonus(100);
+        factors.bonus(factors.rate(100, Unit::Percent));
         flags = flags.with(StrikeFlags::LUCKY);
     }
     // rule: BAT-DMG-007
     if blow.death_blow {
-        factors.bonus(100);
+        factors.bonus(factors.rate(100, Unit::Percent));
         flags = flags.with(StrikeFlags::DEATH_BLOW);
     }
-    if let Some(permille) = penalty(params, field, striker, victim, flags) {
-        factors.reduce(permille);
+    if let Some(percent) = penalty(params, field, striker, victim, flags) {
+        factors.reduce(factors.rate(percent, Unit::Percent));
     }
     (factors, flags)
 }
@@ -187,7 +188,7 @@ pub(crate) fn shot_damage_range(
     )
 }
 
-/// The ranged or melee penalty of a strike, in per mille, if any: shots at a target farther than
+/// The ranged or melee penalty of a strike, in percent, if any: shots at a target farther than
 /// the full-damage distance (BAT-RNG-002), or melee strikes of shooters (BAT-RNG-003).
 fn penalty(
     params: &BattleParams,
@@ -202,11 +203,11 @@ fn penalty(
             field.distance(striker.hex, h) <= u32::from(params.ranged_full_damage_distance)
         });
         (!near && !striker.has(StackTraits::NO_DISTANCE_PENALTY))
-            .then(|| u16::from(params.ranged_penalty_percent) * 10)
+            .then(|| u16::from(params.ranged_penalty_percent))
     } else {
         // rule: BAT-RNG-003
         (striker.has(StackTraits::SHOOTER) && !striker.has(StackTraits::NO_MELEE_PENALTY))
-            .then(|| u16::from(params.melee_penalty_percent) * 10)
+            .then(|| u16::from(params.melee_penalty_percent))
     }
 }
 

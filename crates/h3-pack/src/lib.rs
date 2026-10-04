@@ -1644,7 +1644,8 @@ mod tests {
         let bad_profile = SYNTHETIC_PACK.replace("id = \"faithful\"", "id = \"Faithful\"");
         assert!(matches!(parse_pack(&bad_profile), Err(PackError::Key(_))));
         let quirky = SYNTHETIC_PACK.replace(
-            "quirks = { \"quirk.battle.no_luck_without_hero\" = true }",
+            "quirks = { \"quirk.battle.no_luck_without_hero\" = true, \
+             \"quirk.battle.single_precision_rates\" = true }",
             "quirks = { \"quirk.x\" = true }",
         );
         let pack = parse_pack(&quirky).unwrap();

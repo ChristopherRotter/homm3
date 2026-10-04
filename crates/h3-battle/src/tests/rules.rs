@@ -8,7 +8,7 @@ use h3_contracts::{ArmyStack, BattleResult, BattleSide};
 use h3_kernel::Rng;
 
 use super::support::*;
-use crate::damage::{Factors, apply_damage, attack_defense, base_damage, effective_defense};
+use crate::damage::{Factors, Unit, apply_damage, attack_defense, base_damage, effective_defense};
 use crate::event::StrikeFlags;
 
 /// Damage of `base` with only the attack/defense factor (BAT-DMG-002).
@@ -17,6 +17,22 @@ fn modified_damage(base: u64, attack: u16, defense: u16, p: &h3_content::BattleP
     attack_defense(&mut f, attack, defense, p);
     f.apply(base)
 }
+
+/// The same with the single-precision rates (Q-0005) and further reductions in percent.
+fn single_damage(
+    base: u64,
+    (attack, defense): (u16, u16),
+    reductions: &[u16],
+    p: &h3_content::BattleParams,
+) -> u64 {
+    let mut f = Factors::new(true);
+    attack_defense(&mut f, attack, defense, p);
+    for &r in reductions {
+        f.reduce(f.rate(r, Unit::Percent));
+    }
+    f.apply(base)
+}
+
 use crate::{
     BattleState, Command, CommandError, Event, EventKind, Hex, LegalCommands, StackFlags, StackId,
     legal_commands,
@@ -545,6 +561,63 @@ fn attack_and_defense_difference_modifies_damage() {
     assert_eq!(modified_damage(1, 0, 40, p), 1);
     // Saturates instead of overflowing.
     assert_eq!(modified_damage(u64::MAX, 100, 0, p), u64::MAX);
+}
+
+// covers: BAT-DMG-002
+#[test]
+fn single_precision_rates_reproduce_batch_1a() {
+    // Quirk Q-0005, observed in experiment batch 1a (SoD): Archangels and Angels deal 50 per
+    // creature; the rates are 0.05 = 13421773 / 2^28 and 0.025 = 13421773 / 2^29.
+    let r = ruleset();
+    let p = r.battle();
+    let r1 = [105, 210, 315, 420, 525, 630];
+    let r2 = [19, 39, 59, 79, 99, 119];
+    let r3 = [47, 94, 142, 189, 237, 284];
+    for (i, n) in (1..=6u64).enumerate() {
+        // R1: attack 34 against defense 12: +110 %, slightly more, still the exact integer.
+        assert_eq!(single_damage(50 * n, (34, 12), &[], p), r1[i]);
+        // R2: attack 20 against defense 44: −60 %, slightly more, so one less than exact.
+        assert_eq!(single_damage(50 * n, (20, 44), &[], p), r2[i]);
+        assert_eq!(modified_damage(50 * n, 20, 44, p), 20 * n);
+        // R3: Basic Armorer (−5 %) and no attack/defense difference: 95 becomes 94.
+        assert_eq!(single_damage(50 * n, (30, 30), &[5], p), r3[i]);
+    }
+    // Binary fractions keep their values; the caps are single-precision values too (+300 %
+    // exact, 70 % just below 0.7, so 28 points reach it); at least 1; saturation.
+    assert_eq!(single_damage(101, (10, 10), &[50], p), 50);
+    assert_eq!(single_damage(100, (70, 10), &[], p), 400);
+    assert_eq!(single_damage(100, (0, 28), &[], p), 30);
+    assert_eq!(single_damage(100, (0, 40), &[], p), 30);
+    assert_eq!(single_damage(1, (0, 40), &[], p), 1);
+    assert_eq!(single_damage(u64::MAX, (100, 0), &[], p), u64::MAX);
+    assert_eq!(single_damage(u64::MAX, (0, 0), &[], p), u64::MAX);
+}
+
+// covers: BAT-DMG-002
+#[test]
+fn the_quirk_flag_selects_the_single_precision_rates() {
+    // 2 `fixed` (attack 10, damage 2) hit the tank (defense 20): 4 × (1 − 10 × 0.025) is 3
+    // exactly with decimal rates and just below 3 with 0.025's single-precision value.
+    for (profile, expected) in [("t:faithful", 3), ("t:single", 2)] {
+        let r = ruleset_with(profile, |_| {});
+        let mut s = battle(&r, &[(0, "fixed", 2)], &[(0, "tank", 1)], 1);
+        place(&mut s, &r, 1, 2, 5);
+        place(&mut s, &r, 0, 1, 5);
+        let events = act(
+            &mut s,
+            &r,
+            Command::Attack {
+                target: StackId(1),
+                from: at(&r, 1, 5),
+            },
+        )
+        .unwrap();
+        assert!(
+            matches!(events[0].kind, EventKind::Struck { damage, .. } if damage == expected),
+            "{profile}: {:?}",
+            events[0].kind
+        );
+    }
 }
 
 // ---------------------------------------------------------------- BAT-DMG-003 applying damage

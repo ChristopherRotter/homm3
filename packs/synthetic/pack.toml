@@ -486,8 +486,8 @@ backpack = 3                        # HER-ART-002
 
 [[profile]]
 id = "faithful"        # default: preserve/fix-optional quirks on
-quirks = { "quirk.battle.no_luck_without_hero" = true }    # Q-0003
+quirks = { "quirk.battle.no_luck_without_hero" = true, "quirk.battle.single_precision_rates" = true }    # Q-0003, Q-0005
 
 [[profile]]
 id = "strict-fixed"    # all quirks fixed
-quirks = { "quirk.battle.no_luck_without_hero" = false }   # Q-0003
+quirks = { "quirk.battle.no_luck_without_hero" = false, "quirk.battle.single_precision_rates" = false }   # Q-0003, Q-0005

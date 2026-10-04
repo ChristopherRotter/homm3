@@ -326,8 +326,8 @@ gap-fill file (`[heroes.params]`: 0/0/1/1, 99, 64).
 
 **Profiles** (`[[profile]]` with `quirks = { "quirk.<context>.<name>" = true | false }`; unlisted
 flags are off): the registered flags are in `h3_content::REGISTRY` and the quirks ledger
-(`docs/rules/quirks-ledger.md`); the packs' `faithful` profiles turn Q-0003 on, `strict-fixed`
-off. Profile-level Tier-2 overrides are not implemented yet (backlog).
+(`docs/rules/quirks-ledger.md`); the packs' `faithful` profiles turn Q-0003 and Q-0005 on,
+`strict-fixed` off. Profile-level Tier-2 overrides are not implemented yet (backlog).
 
 The compiled ruleset's canonical hash (encoding v11, `RULESET_HASH_VERSION`) covers packs,
 profile, quirks, resources, terrains, factions, obstacles, all creature fields including abilities

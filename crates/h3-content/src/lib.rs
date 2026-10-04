@@ -54,7 +54,9 @@ pub use pack::{
     HeroTypeDef, ObstacleDef, PackManifest, ProfileDef, ResourceDef, SecondarySkillDef, SpellDef,
     SpellSchoolDef, StartingStackDef, TerrainDef,
 };
-pub use quirks::{NO_LUCK_WITHOUT_HERO, QuirkFlag, QuirkRegistry, Quirks, REGISTRY};
+pub use quirks::{
+    NO_LUCK_WITHOUT_HERO, QuirkFlag, QuirkRegistry, Quirks, REGISTRY, SINGLE_PRECISION_RATES,
+};
 pub use ruleset::{
     BattleParams, CreatureInfo, CreatureType, CreatureTypeId, FactionId, FactionInfo, FieldParams,
     Formation, MAX_ARMY_SLOTS, MAX_AURA_VALUES, MAX_FIELD_HEXES, MAX_ROLL_LEVELS, MAX_UPGRADES,

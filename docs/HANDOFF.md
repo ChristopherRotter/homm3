@@ -4,6 +4,16 @@ Living state. The last agent updates this at the end of every session; the next 
 
 ---
 
+## 2026-10-04 (eighth session) — E04a T6 (T6a done, T6b in progress)
+
+**State:** branch `e04a-heroes-in-battle`. Scope chosen by the user at the start: T6 split into **T6a** (quirk Q-0005, the rate arithmetic) and **T6b** (Archery, Offense, Armorer through the seam), both this session as separate checkpoints.
+
+**T6a (done):** `h3_kernel::arith::single_precision` (the binary32 value of a `u16` fraction as an exact numerator over 2^40, integers only) and `WideUint` (512-bit exact products); `h3_battle::damage::Factors` keeps bonuses and reductions over a scale (basis points, or 2^40 under the quirk) with `Factors::rate(value, Unit)`; attack/defense rates and caps, jousting, hate, luck, death blow and the shooter penalties all go through it (BAT-DMG-002). Quirk flag `quirk.battle.single_precision_rates` registered (index 1), on in the `faithful` profiles (harvester, base pack, synthetic pack), off in `strict-fixed`; the battle test ruleset's `t:faithful` stays without quirks, `t:single` has it. R1–R3 are fixtures (`tests/rules.rs`). Golden replays changed only in the ruleset hash (none of their 203 strikes is affected). bench-check re-baselined (−3.2 %, geometry codegen; BACKLOG inbox item extended).
+
+**Next:** T6b (see the epic). **Traps:** clippy's `should_implement_trait` rejects methods named `div`/`shr` (hence `div_floor`, `shr_floor`). Coverage cannot see unreachable `?` branches, so `WideUint` saturates instead of returning `Option`.
+
+---
+
 ## 2026-10-04 (seventh session) — E04a T5 done (T5a and T5b: the hero's stats, morale and luck)
 
 **State:** branch `e04a-heroes-in-battle`, `cargo xtask verify` green (also `--with-original-data`). Scope chosen by the user at the start: T5 split at the stats/morale boundary into **T5a and T5b**, both this session as separate checkpoints. Nothing half-done.

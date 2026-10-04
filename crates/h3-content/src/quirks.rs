@@ -54,10 +54,16 @@ impl QuirkRegistry {
 
 /// The engine's quirk registry. Add entries together with the ledger entry, the rule and its
 /// tests; a flag's index is its position here and must never change.
-pub const REGISTRY: QuirkRegistry = QuirkRegistry::new(&["quirk.battle.no_luck_without_hero"]);
+pub const REGISTRY: QuirkRegistry = QuirkRegistry::new(&[
+    "quirk.battle.no_luck_without_hero",
+    "quirk.battle.single_precision_rates",
+]);
 
 /// Q-0003: creatures of a side without a hero never get lucky strikes (BAT-LCK-002).
 pub const NO_LUCK_WITHOUT_HERO: QuirkFlag = QuirkFlag(0);
+
+/// Q-0005: the damage factors use the single-precision values of their rates (BAT-DMG-002).
+pub const SINGLE_PRECISION_RATES: QuirkFlag = QuirkFlag(1);
 
 /// The set of enabled quirk flags of a ruleset.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
@@ -97,10 +103,14 @@ mod tests {
 
     #[test]
     fn registry_lookup_and_bitset() {
-        assert_eq!(REGISTRY.len(), 1);
+        assert_eq!(REGISTRY.len(), 2);
         assert_eq!(
             REGISTRY.lookup("quirk.battle.no_luck_without_hero"),
             Some(NO_LUCK_WITHOUT_HERO)
+        );
+        assert_eq!(
+            REGISTRY.lookup("quirk.battle.single_precision_rates"),
+            Some(SINGLE_PRECISION_RATES)
         );
         // `new` is a const fn; call it at run time too so coverage sees it.
         let runtime = QuirkRegistry::new(&["quirk.battle.a"]);

@@ -17,11 +17,9 @@ checked 2026-10-03) touches these battles. Recorded in OPEN-QUESTIONS (Q21, Q23)
 (Q-0004 to Q-0006) and the catalog (BAT-DMG-002, BAT-DMG-009, BAT-WAR-002, BAT-TRN-005). What each
 task has to do with them:
 
-- **T6:** quirk Q-0005: rates enter the damage factors as their single-precision values
-  (`round_to_f32(rate)` as an exact dyadic fraction: 0.05 → 13421773/2^28), the product is rounded
-  down once; computed exactly in integers (u128), behind `quirk.battle.single_precision_rates`.
-  Applies to the attack and defense rates, skill and specialty fractions and artifact percentages;
-  rates that are binary fractions (0.5, 1.0) are unaffected. Fixtures: R1–R3 (18 values).
+- **T6:** quirk Q-0005 is implemented (T6a: `h3_battle::damage::Factors`, BAT-DMG-002, R1–R3 as
+  fixtures). T6b: the hero's skill, artifact and specialty bonuses enter through
+  `Factors::rate` in basis points, so they get their single-precision values too.
 - **T7:** the hero's attack counts twice in the Ballista's damage, as in VCMI: the damage range is
   (2..3) × (hero attack + 1), rolled as one integer in that range (R5: 92 = 56 × 1.65), and the
   Ballista's attack (10 + hero attack) enters the attack advantage. Basic Artillery: one shot per
