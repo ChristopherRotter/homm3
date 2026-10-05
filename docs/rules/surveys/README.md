@@ -16,9 +16,9 @@ The skill, artifact and battle surveys were compiled by sub-agents and reviewed 
 
 ## Disputes: input for experiment batch 1
 
-*Batch 1a results (2026-10-03): `docs/epics/E04a-design.md`, "Batch 1a results"; Q21, Q23, D1, S-01–S-04, OQ-4 (Ballista), H-1 and the Ballista's attack are answered there.*
+*Batch 1a results (2026-10-03): `docs/epics/E04a-log.md`, "The design note at closure"; Q21, Q23, D1, S-01–S-04, OQ-4 (Ballista), H-1 and the Ballista's attack are answered there.*
 
-*Batch 1b (2026-10-04): `experiments/specs/E04a-batch-1b.toml` stages every row marked 1b except D8 (the Cloak of the Undead King, an E08–E10 input), plus the commanded tent (T7b) and the Ballista's range penalty as the baseline for the Golden Bow. Results evaluated in `docs/epics/E04a-design.md`, "Batch 1b results": D-1 (half, war machines included), D-2 (additive, single precision), D-3 (wiki), D-5 (no consent), D-6 (wiki), D-7 (per stack, rounded down), OQ-1–OQ-3, OQ-5, OQ-6, artifacts D1 (as our packs), open checks 1–2 and H-2 are answered there.*
+*Batch 1b (2026-10-04): `experiments/specs/E04a-batch-1b.toml` stages every row marked 1b except D8 (the Cloak of the Undead King, an E08–E10 input), plus the commanded tent (T7b) and the Ballista's range penalty as the baseline for the Golden Bow. Results evaluated in `docs/epics/E04a-log.md`, "The design note at closure": D-1 (half, war machines included), D-2 (additive, single precision), D-3 (wiki), D-5 (no consent), D-6 (wiki), D-7 (per stack, rounded down), OQ-1–OQ-3, OQ-5, OQ-6, artifacts D1 (as our packs), open checks 1–2 and H-2 are answered there.*
 
 Collected from the surveys; ids point into them. "Observable in SoD" means the user can settle it with a staged battle (E04a T2). Batch 1 is split (user, Q30): **1a** for T5–T7, **1b** for T8–T10. Reading the game's code is allowed as a last resort (Q29); the First Aid reading (installation.md §7.5) settles two rows.
 

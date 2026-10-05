@@ -4,10 +4,11 @@ Living state between sessions; every session reads it first. Rules (`docs/08-wor
 
 ## Current state
 
-- Branch `e04a-heroes-in-battle` (the user merges to `master` when an epic closes); `cargo xtask verify --with-original-data` green. Sandbox and syncing: `docs/08-work-process.md`, "Cloud sandbox and syncing" (`scripts/sandbox-setup.sh`).
-- **E04a** (`docs/epics/E04a-heroes-in-battle.md`): T1–T11 done, experiment batches 1a and 1b evaluated and folded in. T12 in three checkpoints (Q38): T12a done (21 rules `verified`, profile and hero-isolation tests, ADR-0013 revised, exit-criteria audit in the epic). T12b done (death-stare cutoff with an approximate draw above 65 536 creatures, Q39; random obstacles per episode in the sim and the C ABI). **Next: T12c in a fresh session**: an independent review pass (rules against sources, robustness, security; findings fixed or filed), then the closure (design note deleted, epic closed, HANDOFF, backlog); the user runs verify on Windows (exit criterion 7) and merges to `master`.
+- Branch `e04a-heroes-in-battle`; `cargo xtask verify --with-original-data` green on Linux. Sandbox and syncing: `docs/08-work-process.md`, "Cloud sandbox and syncing" (`scripts/sandbox-setup.sh`).
+- **E04a is closed** (2026-10-05, `docs/epics/E04a-heroes-in-battle.md`; summary in `docs/BACKLOG.md`). The user runs verify on Windows (exit criterion 7) and merges the branch to `master`.
+- **Next: E04b (battle magic)**, not refined yet: start with a refinement session with the user (scope in BACKLOG and Q27; what E04b needs from E04a: the epic file's last section and `docs/epics/E04a-log.md`, "The design note at closure"). Candidates for its first experiment batch: `docs/experiments/README.md`.
 - Versions: state hash v17, ruleset hash v13, replay format v13, action encoding v8, C ABI v7, observation encoding v4. Each new command bumps the action encoding and the C ABI (ADR-0011).
-- No decision is waiting for the user. Long-term open questions: `docs/OPEN-QUESTIONS.md`, section "Open".
+- No decision is waiting for the user besides the merge. Long-term open questions: `docs/OPEN-QUESTIONS.md`, section "Open".
 - Working agreement: small increments, the user confirms the seam; token efficiency beats speed (AGENTS.md); the user plays experiment maps in SoD with plain HD and commits the results.
 
 ## Standing traps
@@ -17,6 +18,7 @@ Living state between sessions; every session reads it first. Rules (`docs/08-wor
 - Each bundle fetch adds a pack; past 50 packs a fetch starts a detached `git gc --auto`, which dies with the device shell and leaves `.git/gc.log.lock`. Fetch with `git -c gc.auto=0 fetch …`; if packs pile up, run `git gc` in the foreground. Old packs Windows keeps open stay behind as garbage without `.idx` (harmless; 47 such files since 2026-10-04, deletable once nothing holds them).
 - The sandbox VM can restart mid-session (files stay, background jobs and installs die): check `ps` and the logs before waiting on a background job.
 - `cargo xtask verify` outlasts a tool call: run `scripts/sandbox-verify.sh` in the background and poll its log.
+- The background verify tests whatever is in the clone: try ad-hoc tests in a `git worktree` with its own `CARGO_TARGET_DIR`, and commit there on a branch that the clone fast-forwards to. `pkill -f <pattern>` also kills the tool's own shell when the pattern is in the command line: kill by pid.
 - Broad sub-agent surveys burn tokens and hit rate limits; research in narrow steps yourself.
 
 **Sources**
@@ -46,6 +48,10 @@ Living state between sessions; every session reads it first. Rules (`docs/08-wor
 
 ## Recent sessions
 
+### 2026-10-05 (fourteenth) — E04a T12c: independent review, the epic closed
+
+A fresh session reviewed E04a (baseline verify green on `7990c69`). Rules against sources: every E04a rule read against its sources and code, no conflict (the original's text confirms the Spirit of Oppression and Hourglass caps); five rules resting on VCMI or a generalisation are listed for the next batch (`docs/experiments/README.md`). Robustness: two new tests (`cd71ba0`; extreme sound heroes with counts up to `u32::MAX`, and random legal SoD heroes derived and played); 20 000 and 3 000 ad-hoc battles and 60 000 random-obstacle episodes ran clean. Security: commands, prices and private hero values checked; no change. Closure: the design note deleted, its last content in the log, epic, BACKLOG, ADR-0013's header, references and the project status doc updated. Detail: `docs/epics/E04a-log.md` (T12c).
+
 ### 2026-10-04 (thirteenth) — E04a T11, T12a and T12b done
 
 T11 split with the user (Q37): T11a and T11b this session, T11c next; `observe` takes the ruleset (ADR-0004 amended); the experiment-spec runner stays in the BACKLOG. T11a (`e527a53`): `Observation.surrender_possible`, `HeroView.commands_ballista`/`commands_tent` public, `Observation.own_hero` (`OwnHeroView`) private; hygiene property test varies every private hero value. T11b (`adffa12`): observation encoding v4 (`OBSERVATION_LEN` 1229), C ABI v7. Then, on the user's request, T11c: the defender of `full` led by Corwin with T10 effects, both owners able to pay a surrender; `full-s3` re-recorded; `bench-check` re-baselined (+65 % steps, −14 % Ir/step); about 229–237 k steps/s. Then T12 split with the user (Q38) and T12a done: 21 observed rules `verified`, tests for the profiles' quirk flags and hero isolation, ADR-0013 revised. T12b: death-stare cutoff (Q39, KER-RNG-003), `BattleEnv::with_random_obstacles`. Detail: `docs/epics/E04a-log.md`.
@@ -53,7 +59,3 @@ T11 split with the user (Q37): T11a and T11b this session, T11c next; `observe` 
 ### 2026-10-04 (twelfth) — E04a T10 done (stat effects, traits, alignment groups)
 
 T10 split with the user (Q35: T10a, T10b now, T10c next; Q-0006's profile override deferred to E04b). T10a: HER-BAT-008 (derivation of `creature_stat`, `creature_stat_percent`, `creature_specialty`), BAT-HER-005 (applied in `Stack::new`; war machines no speed), `StatOp::PercentBpDown`, effect kind `stack_stat` in scenario and replay files (replay format v11), batch 1a R8/B4–B6 and 1b R8/B7 reproduced with the harvested packs (`h3-pack` test; `h3-battle` dev-dependency). `Field::neighbors` written out (codegen swing, −12.5 % Ir, re-baselined). T10b: HER-BAT-009, BAT-HER-006 (no range penalty, shooting while adjacent, the hero's regeneration capped at its hit points; `Stack.regeneration`, state hash v17). T10c (the user asked to fit it in): `FactionGroup` (Q36), HER-BAT-010, BAT-HER-007 (batch 1b R1 reproduced), replay format v13; T10 measurements in the log. Detail: `docs/epics/E04a-log.md`.
-
-### 2026-10-04 (eleventh) — E04a T8 and T9 done (tactics; retreat, surrender, outcome)
-
-T8 as one checkpoint (Q33; a walking path may leave the zone): BAT-TAC-001/002, `tactics.rs`, battle parameter `tactics_zone_columns`, `EndTactics`; bench re-baselined (+28.6 % Ir: `full` now opens with a tactics phase). T9 in three checkpoints (Q34; the baseline random agent never leaves a battle): T9a Retreat (BAT-FLE-001, HER-BAT-006, results `Retreat`/`Surrender`), T9b Surrender (BAT-FLE-002, HER-BAT-007, `BattleSetup.funds`, battle parameter `surrender`, Q-0005 discount), T9c the outcome (BAT-END-003). Versions now: state hash v16, ruleset hash v13, replay format v10, action encoding v8, C ABI v6. Agent decisions: `docs/epics/E04a-log.md`. On the user's machine a detached auto-gc left a lock and a fast-forward could not replace a file held open (both handled; standing traps).

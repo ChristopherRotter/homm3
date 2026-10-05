@@ -3,7 +3,7 @@
 - Status: Accepted (user, 2026-10-03; OPEN-QUESTIONS Q30)
 - Date: 2026-10-03
 - Deciders: user; agent session (E04a T1)
-- Working detail (field lists, formulas, sizes): [`docs/epics/E04a-design.md`](../epics/E04a-design.md), pruned as E04a's tasks implement it
+- Working detail (field lists, formulas, sizes): the code documentation (`h3_contracts` `hero.rs`, `h3_heroes`, `h3_battle`), the rule catalog and [`docs/epics/E04a-log.md`](../epics/E04a-log.md) ("The design note at closure"; the design note `E04a-design.md` was deleted when E04a closed, 2026-10-05)
 
 ## Context
 
@@ -87,3 +87,5 @@ are computed before the seam (03-domain). The seam must change once for E04a and
   soundness (Q31); point 9: which war machines a hero commands is public, the own side's private
   part is in its observation (T11a, Q37); point 10: the encodings E04a ended with (T11b). Detail
   that stays out of the ADR: `FactionGroup` (Q36) and `StatOp` in the crate docs.
+- 2026-10-05 (E04a closure): no decision changed; the header points to the code documentation and
+  the epic's log, because the design note was deleted.

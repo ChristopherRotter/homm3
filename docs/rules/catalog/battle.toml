@@ -1592,7 +1592,7 @@ numeric  = "integer"
 
   [[rule.source]]
   kind       = "design"
-  ref        = "ADR-0013 point 7: the phase reuses Move with cycling activations plus EndTactics (no Place command); the order within the cycle was not recorded in batch 1b, so round-1 order stands (E04a-design.md, Batch 1b results)"
+  ref        = "ADR-0013 point 7: the phase reuses Move with cycling activations plus EndTactics (no Place command); the order within the cycle was not recorded in batch 1b, so round-1 order stands (docs/epics/E04a-log.md, The design note at closure)"
   confidence = "medium"
 
 [[rule]]
@@ -1672,7 +1672,7 @@ numeric  = "integer"
 
   [[rule.source]]
   kind       = "design"
-  ref        = "ADR-0013 point 5 and E04a-design.md section 5: the outcome reports per-stack start and end counts, the surrender cost, per-hero results and rounds; the orchestrator applies the consequences"
+  ref        = "ADR-0013 point 5 and docs/epics/E04a-log.md (T9c): the outcome reports per-stack start and end counts, the surrender cost, per-hero results and rounds; the orchestrator applies the consequences"
   confidence = "high"
 
   [[rule.source]]

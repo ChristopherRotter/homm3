@@ -1,7 +1,7 @@
 # Experiment batch 1b (E04a T2): tactics, retreat and surrender, the battle outcome, the commanded
 # First Aid Tent, war machines and artifacts. Input for T8 (tactics), T9 (retreat, surrender,
 # outcome) and T10 (artifacts and specialties); disputes from docs/rules/surveys/README.md
-# (column "Batch") and the T7b leftovers (docs/epics/E04a-design.md, "Batch 1a results").
+# (column "Batch") and the T7b leftovers (docs/epics/E04a-log.md, "The design note at closure"; then E04a-design.md).
 # Build: see docs/experiments/README.md. Predictions are for the agent who evaluates the results;
 # the template never shows them.
 #
