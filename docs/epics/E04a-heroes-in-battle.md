@@ -1,6 +1,6 @@
 # E04a — Heroes in battle (without magic)
 
-Status: **closed** 2026-10-05 (refined 2026-10-01; T1–T12 done; exit criterion 7 waits for the user's Windows run before the merge to `master`) · Follows E03 (closed 2026-10-01) · The former E04 was split by the user into three epics (OPEN-QUESTIONS Q27): **E04a** (this one), **E04b** battle magic, **E04c** sieges and special battlefields.
+Status: **closed** 2026-10-05 (refined 2026-10-01; T1–T12 done; verified on Linux and Windows incl. `--with-original-data`) · Follows E03 (closed 2026-10-01) · The former E04 was split by the user into three epics (OPEN-QUESTIONS Q27): **E04a** (this one), **E04b** battle magic, **E04c** sieges and special battlefields.
 
 ## Goal
 
@@ -84,7 +84,7 @@ Settled by ADR-0013 (accepted by the user 2026-10-03, Q30). The design note `E04
 4. ~~All earlier invariants still property-tested, plus: hero isolation (a side's hero never changes the other side's stacks except through modelled events), observation hygiene for hero data, conservation of creatures with casualties accounted.~~ (done 2026-10-04: hero isolation T12a, hygiene T11a, outcomes T9c.)
 5. ~~Golden replays re-recorded with notes; at least 100 k steps/s/core on the `full` scenario with heroes (E03 closed at about 197 k); `bench-check` re-baselined with the reason; state size and clone cost measured and recorded.~~ (done 2026-10-04, T11c: both sides led by a hero, about 229–237 k steps/s, `BattleState` 2192 bytes, clone ≈ 183 ns; `E04a-log.md`).
 6. ~~The first experiment batch has been run by the user and its results are recorded as fixtures.~~ (done: batches 1a and 1b, fixtures in `h3-battle` and `h3-pack` tests.)
-7. `cargo xtask verify` green on Linux and Windows, including `--with-original-data`. (Linux: green at the closure, 2026-10-05; Windows: the user's run before the merge.)
+7. ~~`cargo xtask verify` green on Linux and Windows, including `--with-original-data`.~~ (done 2026-10-05: Linux by the agent, Windows by the user.)
 
 ## What E04b and E04c need from E04a
 

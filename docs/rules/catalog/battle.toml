@@ -1574,7 +1574,7 @@ id       = "BAT-TAC-002"
 title    = "Placing stacks in the tactics phase"
 context  = "battle"
 status   = "verified"
-summary  = "In the tactics phase the phase's side is handed its living army stacks one at a time in round-1 order (BAT-TRN-001: faster first, then the lower army slot), cycling after the last; war machines are never handed over or moved, and nothing acts automatically. Legal commands of the active stack: Move { to } places it with its head on a free position (BAT-GEO-002 footprint, no obstacle or other stack) inside the zone (BAT-TAC-001; CommandError::OutsideZone), without a speed limit: a walker needs a path, which may leave the zone (user decision 2026-10-04, as VCMI), a flyer or teleporter reaches any free position; Wait passes to the next stack (no wait flag, no event besides the next TurnStarted); EndTactics ends the phase (TacticsEnded, then round 1 starts with RoundStarted { round: 1 } and its first activation as usual; last_side_acted stays empty). A placement emits Moved and passes to the next stack; a stack may be placed any number of times. Everything else is refused (InTacticsPhase); EndTactics outside the phase is refused (NoTacticsPhase). Retreat in the phase comes with E04a T9. The phase has no limit in the rules (the sim's step limit truncates)."
+summary  = "In the tactics phase the phase's side is handed its living army stacks one at a time in round-1 order (BAT-TRN-001: faster first, then the lower army slot), cycling after the last (the order and what Wait does are not observed: OPEN-QUESTIONS Q40); war machines are never handed over or moved, and nothing acts automatically. Legal commands of the active stack: Move { to } places it with its head on a free position (BAT-GEO-002 footprint, no obstacle or other stack) inside the zone (BAT-TAC-001; CommandError::OutsideZone), without a speed limit: a walker needs a path, which may leave the zone (user decision 2026-10-04, as VCMI), a flyer or teleporter reaches any free position; Wait passes to the next stack (no wait flag, no event besides the next TurnStarted); EndTactics ends the phase (TacticsEnded, then round 1 starts with RoundStarted { round: 1 } and its first activation as usual; last_side_acted stays empty). A placement emits Moved and passes to the next stack; a stack may be placed any number of times. Everything else is refused (InTacticsPhase); EndTactics outside the phase is refused (NoTacticsPhase). Retreat in the phase comes with E04a T9. The phase has no limit in the rules (the sim's step limit truncates)."
 numeric  = "integer"
 
   [[rule.source]]
@@ -1592,7 +1592,7 @@ numeric  = "integer"
 
   [[rule.source]]
   kind       = "design"
-  ref        = "ADR-0013 point 7: the phase reuses Move with cycling activations plus EndTactics (no Place command); the order within the cycle was not recorded in batch 1b, so round-1 order stands (docs/epics/E04a-log.md, The design note at closure)"
+  ref        = "ADR-0013 point 7: the phase reuses Move with cycling activations plus EndTactics (no Place command); the order within the cycle was not recorded in batch 1b, so round-1 order stands; the user (2026-10-05): the order is a regular round's, but the game's 'next creature' behaves more like Wait, to be settled by an experiment (OPEN-QUESTIONS Q40) (docs/epics/E04a-log.md, The design note at closure)"
   confidence = "medium"
 
 [[rule]]

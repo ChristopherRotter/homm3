@@ -5,10 +5,10 @@ Living state between sessions; every session reads it first. Rules (`docs/08-wor
 ## Current state
 
 - Branch `e04a-heroes-in-battle`; `cargo xtask verify --with-original-data` green on Linux. Sandbox and syncing: `docs/08-work-process.md`, "Cloud sandbox and syncing" (`scripts/sandbox-setup.sh`).
-- **E04a is closed** (2026-10-05, `docs/epics/E04a-heroes-in-battle.md`; summary in `docs/BACKLOG.md`). The user runs verify on Windows (exit criterion 7) and merges the branch to `master`.
-- **Next: E04b (battle magic)**, not refined yet: start with a refinement session with the user (scope in BACKLOG and Q27; what E04b needs from E04a: the epic file's last section and `docs/epics/E04a-log.md`, "The design note at closure"). Candidates for its first experiment batch: `docs/experiments/README.md`.
+- **E04a is closed** (2026-10-05, `docs/epics/E04a-heroes-in-battle.md`; summary in `docs/BACKLOG.md`), verified on Linux and Windows; the user merges the branch to `master`.
+- **Next: E04b (battle magic)**, not refined yet: start with a refinement session with the user (scope in BACKLOG and Q27; what E04b needs from E04a: the epic file's last section and `docs/epics/E04a-log.md`, "The design note at closure"). Candidates for its first experiment batch: `docs/experiments/README.md`, among them Q40 (the tactics hand-over and "next creature").
 - Versions: state hash v17, ruleset hash v13, replay format v13, action encoding v8, C ABI v7, observation encoding v4. Each new command bumps the action encoding and the C ABI (ADR-0011).
-- No decision is waiting for the user besides the merge. Long-term open questions: `docs/OPEN-QUESTIONS.md`, section "Open".
+- No decision is waiting for the user besides the merge. Open questions: `docs/OPEN-QUESTIONS.md`, section "Open" (Q40 waits for an experiment).
 - Working agreement: small increments, the user confirms the seam; token efficiency beats speed (AGENTS.md); the user plays experiment maps in SoD with plain HD and commits the results.
 
 ## Standing traps
@@ -50,7 +50,7 @@ Living state between sessions; every session reads it first. Rules (`docs/08-wor
 
 ### 2026-10-05 (fourteenth) — E04a T12c: independent review, the epic closed
 
-A fresh session reviewed E04a (baseline verify green on `7990c69`). Rules against sources: every E04a rule read against its sources and code, no conflict (the original's text confirms the Spirit of Oppression and Hourglass caps); five rules resting on VCMI or a generalisation are listed for the next batch (`docs/experiments/README.md`). Robustness: two new tests (`cd71ba0`; extreme sound heroes with counts up to `u32::MAX`, and random legal SoD heroes derived and played); 20 000 and 3 000 ad-hoc battles and 60 000 random-obstacle episodes ran clean. Security: commands, prices and private hero values checked; no change. Closure: the design note deleted, its last content in the log, epic, BACKLOG, ADR-0013's header, references and the project status doc updated. Detail: `docs/epics/E04a-log.md` (T12c).
+A fresh session reviewed E04a (baseline verify green on `7990c69`). Rules against sources: every E04a rule read against its sources and code, no conflict (the original's text confirms the Spirit of Oppression and Hourglass caps); five rules resting on VCMI or a generalisation are listed for the next batch (`docs/experiments/README.md`). Robustness: two new tests (`cd71ba0`; extreme sound heroes with counts up to `u32::MAX`, and random legal SoD heroes derived and played); 20 000 and 3 000 ad-hoc battles and 60 000 random-obstacle episodes ran clean. Security: commands, prices and private hero values checked; no change. Closure: the design note deleted, its last content in the log, epic, BACKLOG, ADR-0013's header, references and the project status doc updated. Then the user: Windows verify green; the stale `Claude outputs/AGENTS.md` removed; the tactics hand-over needs an experiment (Q40). Detail: `docs/epics/E04a-log.md` (T12c).
 
 ### 2026-10-04 (thirteenth) — E04a T11, T12a and T12b done
 
