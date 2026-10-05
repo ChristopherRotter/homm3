@@ -41,26 +41,35 @@ which a spell meets a stack, how stacks appear in a battle, how hidden objects s
    magical spells; (4) the effect with the target's reductions and the caster's bonuses; (5) events
    naming affected, resisted and reflected stacks. Draws come from the `BATTLE` stream in stack order
    (ADR-0003); factor order and rounding are per rule, checked by experiment where sources disagree.
-5. **Timed effects live in per-stack inline slots, not in the modifier pool.** A slot holds the spell,
-   the rounds left or an end condition (until attacked, until it attacks, permanent) and the values
-   computed at the cast. One slot per spell and stack: the same spell again replaces it; a counter
-   spell replaces its pair's effect, so the later one wins (Bless, then Curse: cursed); cumulative
-   spells (Disrupting Ray, Acid Breath) add to their slot. Every stack has room for every timed spell
-   of the ruleset, a limit the compiler enforces (capacity by construction, ADR-0012 §3); T3 picks the
-   layout by measurement. Effective stats stay materialised; statuses (Blind, Berserk, Hypnotize,
-   Forgetfulness, petrified, paralysed, bound) are read by rule code like abilities. Rounds fall for
-   all stacks at one fixed point of the round (survey M-3). The side-wide pool keeps side-wide modifiers.
-6. **Stacks created in battle get reserved slots and an origin.** Each side has a fixed number of
-   extra stack slots, fixed in T2c so that the encodings' sizes do not change again; a cast that needs
-   a slot when none is free is not legal. New stacks carry new `StackOrigin` variants (summoned,
-   clone, raised); dead stacks stay addressable for raising. Summoned stacks and clones end with the
-   battle; temporarily raised creatures (Basic Resurrection) do not count in the outcome's end
-   counts; permanently raised creatures and Pit Lord demons do.
+5. **Timed effects live in one growable list per battle, not in the modifier pool.** An entry holds
+   the stack, the spell, the rounds left or an end condition (until attacked, until it attacks,
+   permanent) and the values computed at the cast, in canonical order (stack, then spell) for
+   equality and the state hash. One entry per stack and spell: the same spell again replaces it; a
+   counter spell replaces its pair's effect, so the later one wins (Bless, then Curse: cursed);
+   cumulative spells (Disrupting Ray, Acid Breath) add to their entry. The list is heap storage
+   reserved at the battle's start for the usual case: steady play does not allocate, a fork costs
+   one allocation, and no stack ever needs room for every effect (user, Q42). Each stack's
+   effective stats and statuses (Blind, Berserk, Hypnotize, Forgetfulness, petrified, paralysed,
+   bound) are materialised inline when an entry changes, so hot-path reads never touch the list;
+   rules read the statuses like abilities. Rounds fall for all stacks at one fixed point of the
+   round (survey M-3). The side-wide pool (ADR-0012) keeps side-wide modifiers. This amends
+   ADR-0004 point 8 ("fixed-capacity structures in battle") for lists whose realistic size is far
+   below their worst case; spell obstacles (T5) are kept the same way.
+6. **Stacks created in battle follow the original's limit.** Each side has 21 stack slots, as the
+   original (`installation.md` §7.7). Clone and Summon Elemental are legal only while the caster's
+   side has fewer than 20 stacks (a battle parameter), Summon Elemental only for the side's first
+   elemental type. Raising (Resurrection, Animate Dead, Sacrifice) revives a dead stack in its own
+   slot and is not limited; Pit Lords' demons take the slot of the dead stack they rise from. New
+   stacks carry new `StackOrigin` variants (summoned, clone, raised); dead stacks keep their slots
+   and stay addressable. Summoned stacks and clones end with the battle; temporarily raised
+   creatures (Basic Resurrection) do not count in the outcome's end counts; permanent ones do.
 7. **Hidden battlefield objects have an owner side.** A viewer sees a spell obstacle if it is the
    owner, the obstacle is revealed or of a visible kind (Force Field, Fire Wall), or the viewer's side
    has a living stack on its native terrain (this changes during a battle). Observations project
    hidden objects away, their placement events are `Visibility::Side` (ADR-0004 §6), and legality
-   never uses what the acting side cannot see: a move into an unseen pit is legal and ends there.
+   never uses what the acting side cannot see. A command may therefore resolve differently from
+   what its side expected (user, Q42): a move, or a move and attack, into an unseen Quicksand pit
+   stops there without the attack; an unseen mine goes off. The events tell the side what happened.
 8. **Visibility** (extends ADR-0013 point 9): mana, casts used this round, each cast with its spell,
    targets and results, and the effects on every stack are public, as in the original; the spell book
    and the hero's spell bonuses stay private to its side.
@@ -79,9 +88,10 @@ which a spell meets a stack, how stacks appear in a battle, how hidden objects s
 
 - Most spells become data once their kind exists; the tasks add kinds in order (T2 damage; T3 timed,
   dispel, heal; T4 statuses; T5 obstacles, teleport; T6 summon, clone, raise, sacrifice; T7 creatures).
-- The state grows by the effect slots and the extra stack slots, and the dense action list's
-  stack-indexed blocks grow once (T2c); state size, clone cost and steps/s are measured at T2c, T3,
-  T6 and T9.
+- `BattleState` stays `Clone` (it is not `Copy`); today all its fields are inline, so a fork is
+  one copy without allocation, and the effect list adds one allocation. The stack slots grow to 21
+  per side and the dense action list's stack-indexed blocks grow once (T2c); state size, fork cost
+  and steps/s are measured at T2c, T3, T6 and T9.
 - Enforced by property tests (legal casts and `apply` agree; mana never negative; at most one hero
   cast per side and round; no hidden object or spell book in the other side's observation or mask;
   creatures accounted with created stacks), compiler checks and rule tests.
@@ -91,7 +101,11 @@ which a spell meets a stack, how stacks appear in a battle, how hidden objects s
 
 - Scripts or a VCMI-style bonus tree: Tier 4 by the back door, allocation and evaluation on reads.
 - Timed effects as stack-bearer modifiers in the pool: capacity grows with stacks × stats × sources,
-  and statuses are not stat changes. A few effect slots per stack: not bounded by construction.
+  and statuses are not stat changes. Inline slots with room for every timed spell on every stack
+  (bounded by construction): about 10 KB of mostly empty state copied on every fork (Q42). One list
+  per stack: a fork allocates once per stack with effects.
+- An engine-chosen number of extra stack slots: the original's 21 slots and its limit of 20 are
+  known from its code (Q42).
 - A flat cast block (spells × targets × second targets): too large for masks and policy heads.
   Re-encoding every action as kind and target: churns E04a's encoding for no gain now (E05 may).
 - Mana and costs decided outside the battle: the mask could not tell whether a cast is affordable.
@@ -100,3 +114,7 @@ which a spell meets a stack, how stacks appear in a battle, how hidden objects s
 
 - 2026-10-05: Proposed (E04b T1). Longer than the 80-line target because, like ADR-0013, it holds the
   seam and state decisions of a whole epic; detail is in the design note.
+- 2026-10-05: revised after the user's first review (Q42): point 5 keeps timed effects in one
+  growable list instead of inline slots for every timed spell (amending ADR-0004 point 8); point 6
+  takes the original's 21 stack slots and limit of 20 from its code (`installation.md` §7.7); point
+  7 says how a command resolves when it meets an unseen obstacle.

@@ -45,13 +45,14 @@ Sources: [`docs/rules/surveys/E04b-magic.md`](../rules/surveys/E04b-magic.md).
 
 ## T2c — the sim and the extra stack slots
 
-- **Extra stack slots:** proposal 8 per side (clones of a seven-slot army plus one elemental
-  stack; demons share them); `STACK_CAPACITY` = 2 × (16 + 3 + 8) = 54. The original's limit is
-  unknown (M-5); a cast that needs a slot when none is free is not legal.
-- **Action encoding v9:** the existing blocks in their order, the stack-indexed ones grown to 54
+- **Stack slots:** 21 per side as the original (`installation.md` §7.7), so `STACK_CAPACITY` =
+  42 (today 2 × (16 + 3) = 38); a ruleset whose army slots and war machines exceed 21 is rejected.
+  The creation limit (20, the original's) is a battle parameter checked by Clone and Summon
+  Elemental; Summon Elemental also checks the side's first elemental type.
+- **Action encoding v9:** the existing blocks in their order, the stack-indexed ones grown to 42
   slots, then two entries `HERO_CAST` and `CREATURE_CAST`. Spell head: `MAX_SPELLS` (content
   limit, proposal 128; the compiler rejects more). Target heads: `0` none, `1 + h` for hex
-  `h < 255`, `256 + s` for stack slot `s` (310 entries); the second target has the same layout.
+  `h < 255`, `256 + s` for stack slot `s` (298 entries); the second target has the same layout.
 - **Masks:** per head, conditioned on the earlier choices (entry; entry and spell; entry, spell
   and first target). A property test samples full tuples: a tuple the masks allow applies, and
   `apply` accepts nothing the masks forbid.
@@ -75,29 +76,32 @@ Sources: [`docs/rules/surveys/E04b-magic.md`](../rules/surveys/E04b-magic.md).
   multiplies).
 - Quirk S-18 (Magic Arrow can deal 0 damage to Gold and Diamond Golems) is checked by X-1.
 
-## T3 — effect slots
+## T3 — the effect list
 
-- **Layout options:** (a) an array per stack indexed by a dense timed-spell index the compiler
-  assigns (limit `MAX_TIMED_SPELLS`, proposal 48; SoD has about 34 including abilities); an entry is
-  rounds left (`u8`; 0 inactive, 255 permanent), mastery and end-condition bits, and a `u16` value,
-  so 4 bytes × 48 = 192 bytes per stack and about 10 KB for 54 stacks (today's state: 2 192 bytes,
-  clone ≈ 183 ns). (b) The same capacity as a list of active entries. Measure clone cost and
-  steps/s before choosing; the original keeps one 8-bit duration per spell and stack (S-17).
-- **Materialisation:** base stats (setup) → slot effects in fixed stages (add, percent, bounds, like
-  KER-MOD-001) → rule clamps; recomputed when a slot changes.
-- **Expiry:** one fixed point of the round for all stacks (M-3); end conditions checked by the
-  rules that cause them (attacked, attacks).
+- **Layout:** one `Vec` of active entries per battle (stack, spell, rounds left or end condition,
+  mastery, a value), sorted by (stack, spell); reserved at the start (proposal: 32 entries, measure
+  real battles) so steady play does not allocate. An entry of about 8 bytes; a stack's entries are
+  a contiguous run found by binary search. A fork is one allocation plus the active entries (today:
+  2 192 bytes inline, clone ≈ 183 ns).
+- **Materialisation:** a stack's effective stats and status bits are recomputed from its base
+  stats (setup) and its entries in fixed stages (add, percent, bounds, like KER-MOD-001), then the
+  rule clamps, whenever one of its entries changes; hot-path reads use the inline result.
+- **Expiry:** one fixed point of the round for all stacks (M-3); end conditions are checked by the
+  rules that cause them (attacked, attacks). The original keeps one 8-bit duration per spell and
+  stack (S-17).
 
 ## T5 — battlefield objects
 
-- A spell obstacle: kind, owner side, hexes, revealed, rounds left, value (mine damage). Capacity
-  by construction: at most one spell obstacle of a kind per hex, so kinds × field hexes.
-- Visibility as ADR-0014 point 7; legality and reachability use the acting side's view; triggering
+- A spell obstacle: kind, owner side, hexes, revealed, rounds left, value (mine damage), in a
+  growable list like the effects (ADR-0014 point 5).
+- Visibility as ADR-0014 point 7; legality and reachability use the acting side's view; a move
+  that meets an unseen pit stops there (an attack ordered with it does not happen); triggering
   reveals and emits a public event.
 
 ## T6 — created stacks
 
-- `StackOrigin` gains `Summoned`, `Clone(of)` and `Raised`. A per-stack count of temporarily raised
-  creatures (Basic Resurrection) is subtracted before the outcome. Summoned stacks and clones are
-  reported with their origin and never survive; Pit Lord demons are reported as new stacks for the
-  orchestrator to place.
+- `StackOrigin` gains `Summoned`, `Clone(of)` and `Raised`. Pit Lords' demons replace the dead
+  stack they rise from in its slot. A per-stack count of temporarily raised creatures (Basic
+  Resurrection) is subtracted before the outcome. Summoned stacks and clones are reported with
+  their origin and never survive. Open: whether a vanished clone frees its slot (§7.7; an
+  experiment can clone and kill repeatedly until the limit message appears).

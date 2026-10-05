@@ -308,3 +308,23 @@ Values (`id:flags`, hexadecimal; SoD copy of the executable):
 The AB and SoD copies of `SPTRAITS.TXT` differ only in row 57 (AB: "Fear (disabled)", level 4;
 SoD: Titan's Lightning Bolt, level 5) among the numeric columns; RoE's table is not in the
 installation (Q15).
+
+### 7.7 Code reading: the battle's stack slots and their limit (E04b T1, 2026-10-05)
+
+Read for OPEN-QUESTIONS Q42 (Q29: insight only, nothing copied). The battle manager keeps, per
+side, an array of **21 stack records** of 0x548 bytes at offset +0x54CC (the side stride 0x6EE8 =
+21 × 0x548 occurs in 61 instructions) and the number of stacks per side at +0x54BC. The spell
+dispatcher (VA 0x59ECC4) maps spell ids 10–69 to handlers through a byte table at 0x59F6AC:
+
+- **Clone** (spell 65, handler at 0x59F43E) is refused when the caster's side already has
+  **20 or more** stacks; the game then shows `GENRLTXT.TXT` line 185 (the side "already has %d
+  creature groups" and cannot take more).
+- **Summon Elemental** (spells 66–69, handler at 0x59F55D; the same test as the helper at
+  0x5A93A0, which the game calls at 0x43BE2F) needs fewer than 20 stacks on the side **and**
+  either no elemental summoned yet by that side or the same creature (per side at +0x132A8, −1 =
+  none; spells 66, 67, 68, 69 summon creatures 114, 113, 115, 112: Fire, Earth, Water, Air).
+- No other comparison of the count with 20 or 21 was found. Resurrection, Animate Dead and
+  Sacrifice bring back a dead stack in its own record, so they never need a new one.
+
+Not read: whether a vanished clone frees its record, where Pit Lords' demons go, and why the 21st
+record stays free.

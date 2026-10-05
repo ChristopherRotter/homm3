@@ -62,7 +62,7 @@ Order in `vcmi` (`BattleSpellMechanics.cpp` L339–L541, `CSpellHandler.cpp` L37
 | Phoenix rebirth | not a spell, but a raised stack | `vcmi` `REBIRTH` (not modelled yet) |
 
 - `wiki` Summon Water Elemental: "If you killed all enemies but lost all your army besides the summoned elementals, both sides lose the battle." (T6, with S-20.)
-- A per-side limit on stacks in the original is not documented (wiki searches found none); VCMI has none beyond a free hex. Our `STACK_CAPACITY` (2 × (16 + 3)) needs room for summons and clones.
+- **Stack limit** (`original-data`, code reading for Q42, `installation.md` §7.7): the original keeps 21 stack records per side; Clone and Summon Elemental are refused while the caster's side has 20 or more stacks (with a message), Summon Elemental also when the side already summoned another elemental type. Raising reuses the dead stack's record. VCMI has no limit beyond a free hex; the wiki pages read do not mention one.
 
 ## 6. Hidden battlefield objects
 
@@ -88,7 +88,7 @@ T2: S-18 (Magic Arrow 0 damage to golems). T3: S-16, S-17, S-19. T4: S-09, S-10,
 | M-2 | Magic resistance: add or multiply sources | VCMI adds; the wiki is silent (`E04-skills.md` §2.10) | T2d |
 | M-3 | When durations count down | VCMI: all stacks at the start of a round; SoD unobserved | T3 |
 | M-4 | Hero cast during a commanded war machine's turn | wiki ("one of their creatures") vs VCMI (any own unit) | T2b |
-| M-5 | Per-side stack limit | not documented | T6 |
+| M-5 | Per-side stack limit | settled by code reading (§5): 21 records, Clone and summons refused at 20 stacks; open: whether a vanished clone frees its record | T6 |
 | M-6 | Spell damage rounding | VCMI truncates after each factor; Q-0005 used single precision for physical damage | T2b |
 
 ## 10. Experiment candidates for batch 2a (end of increment 1)
