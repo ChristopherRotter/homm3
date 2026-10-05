@@ -1,0 +1,102 @@
+# ADR-0014: Battle magic — spells as data, casting, timed effects, created stacks, hidden objects
+
+- Status: Proposed (E04b T1, 2026-10-05; work stops for the user's review)
+- Date: 2026-10-05
+- Deciders: agent session (E04b T1); the user reviews
+- Working detail: [`docs/epics/E04b-design.md`](../epics/E04b-design.md); sources:
+  [`docs/rules/surveys/E04b-magic.md`](../rules/surveys/E04b-magic.md)
+
+## Context
+
+E04b adds battle magic (Q27) in increments (Q41): about 60 hero spells, 11 ability spells, some 30
+creature magic abilities, 43 magic artifacts. E04a reserved the hero's magic in the seam (ADR-0013
+points 4, 5, 9, 10); the battle keeps its architecture (pure rules, validated commands, fixed-capacity
+state, events with visibility, at least 100 k steps/s per core). To decide before code: how spells
+are described, how casting enters the commands and the sim, where timed effects live, the order in
+which a spell meets a stack, how stacks appear in a battle, how hidden objects stay hidden.
+
+## Decision
+
+1. **Spells are data over a closed set of effect kinds (Tier 3).** A spell row gains its targeting,
+   the executable's flags (`installation.md` §7.6) and its effects per mastery from a closed
+   `SpellEffect` enum (damage, timed, dispel, heal and raise, summon, clone, teleport, sacrifice,
+   obstacle, remove obstacle; Earthquake with E04c), with target conditions as data. Each kind is one
+   rule in code; a spell of a known kind is a data change. Creature magic is `Ability` variants that
+   name a spell (ADR-0012).
+2. **A hero's cast is optional and at most once per round.** While one of its side's stacks awaits a
+   command (not in tactics, not on an automatic turn), the hero may cast if permitted, never must,
+   and the stack still acts afterwards. Permitted: a spell book with the spell, no magic block or
+   level limit against it, a valid target, mana for the cost. Mastery is the spell's best school
+   level, raised by bonuses, at most Expert; it selects cost, value, area and the mass version. The
+   cost includes the creature modifiers (Mages, Pegasi), never below 0. The battle keeps each hero's
+   mana and casts this round and fills the reserved `HeroOutcome` fields (mana left, spells cast).
+3. **A creature's cast is its stack's action** (Faerie Dragon, Archangel, Pit Lord, Ogre Mage, the AB
+   elementals), limited by its casts per battle. Automatic magic (after-attack spells, the Enchanter,
+   opening spells, triggered obstacles, Fire Shield) is applied by rules. A cast names the spell and up
+   to two targets (Teleport, Sacrifice); the actor comes from the trusted caller (ADR-0004, ADR-0008).
+4. **One resolution order for a spell against a stack:** (1) valid target: target conditions,
+   absolute immunities, then normal immunities unless negated (Orb of Vulnerability); a single-target
+   cast must name a valid target, area and mass casts pass over invalid stacks; (2) Magic Mirror for
+   single-target negative hero spells; (3) magic resistance, one draw per affected stack, for negative
+   magical spells; (4) the effect with the target's reductions and the caster's bonuses; (5) events
+   naming affected, resisted and reflected stacks. Draws come from the `BATTLE` stream in stack order
+   (ADR-0003); factor order and rounding are per rule, checked by experiment where sources disagree.
+5. **Timed effects live in per-stack inline slots, not in the modifier pool.** A slot holds the spell,
+   the rounds left or an end condition (until attacked, until it attacks, permanent) and the values
+   computed at the cast. One slot per spell and stack: the same spell again replaces it; a counter
+   spell replaces its pair's effect, so the later one wins (Bless, then Curse: cursed); cumulative
+   spells (Disrupting Ray, Acid Breath) add to their slot. Every stack has room for every timed spell
+   of the ruleset, a limit the compiler enforces (capacity by construction, ADR-0012 §3); T3 picks the
+   layout by measurement. Effective stats stay materialised; statuses (Blind, Berserk, Hypnotize,
+   Forgetfulness, petrified, paralysed, bound) are read by rule code like abilities. Rounds fall for
+   all stacks at one fixed point of the round (survey M-3). The side-wide pool keeps side-wide modifiers.
+6. **Stacks created in battle get reserved slots and an origin.** Each side has a fixed number of
+   extra stack slots, fixed in T2c so that the encodings' sizes do not change again; a cast that needs
+   a slot when none is free is not legal. New stacks carry new `StackOrigin` variants (summoned,
+   clone, raised); dead stacks stay addressable for raising. Summoned stacks and clones end with the
+   battle; temporarily raised creatures (Basic Resurrection) do not count in the outcome's end
+   counts; permanently raised creatures and Pit Lord demons do.
+7. **Hidden battlefield objects have an owner side.** A viewer sees a spell obstacle if it is the
+   owner, the obstacle is revealed or of a visible kind (Force Field, Fire Wall), or the viewer's side
+   has a living stack on its native terrain (this changes during a battle). Observations project
+   hidden objects away, their placement events are `Visibility::Side` (ADR-0004 §6), and legality
+   never uses what the acting side cannot see: a move into an unseen pit is legal and ends there.
+8. **Visibility** (extends ADR-0013 point 9): mana, casts used this round, each cast with its spell,
+   targets and results, and the effects on every stack are public, as in the original; the spell book
+   and the hero's spell bonuses stay private to its side.
+9. **A factorized casting action.** The sim keeps its dense list of other actions and adds two cast
+   entries (hero, creature); choosing one opens a spell head (by spell id, sized by a content limit)
+   and two target heads (none, a hex or a stack slot), each with a mask conditioned on the earlier
+   choices. The C ABI takes an action as a small struct and serves a mask per head; sizes do not
+   depend on the ruleset (ADR-0011). Each task bumps the encodings it changes.
+10. **Seam changes are additions only** (reviewed with this ADR): `BattleEffect` variants for the
+    hero's magic (spell-damage bonuses, duration bonus, magic resistance, magic blocks and level
+    limits, immunity negation, opening spells), `StackOrigin` variants, and the use of the reserved
+    `BattleMagic` and `HeroOutcome` fields. Battle magic rules use the new area `BAT-MAG`; the
+    hero's derivation continues `HER-BAT`.
+
+## Consequences
+
+- Most spells become data once their kind exists; the tasks add kinds in order (T2 damage; T3 timed,
+  dispel, heal; T4 statuses; T5 obstacles, teleport; T6 summon, clone, raise, sacrifice; T7 creatures).
+- The state grows by the effect slots and the extra stack slots, and the dense action list's
+  stack-indexed blocks grow once (T2c); state size, clone cost and steps/s are measured at T2c, T3,
+  T6 and T9.
+- Enforced by property tests (legal casts and `apply` agree; mana never negative; at most one hero
+  cast per side and round; no hidden object or spell book in the other side's observation or mask;
+  creatures accounted with created stacks), compiler checks and rule tests.
+- Data quirks (Q-0006, S-05) need profile-level overrides: an amendment of ADR-0007 in T8.
+
+## Alternatives considered
+
+- Scripts or a VCMI-style bonus tree: Tier 4 by the back door, allocation and evaluation on reads.
+- Timed effects as stack-bearer modifiers in the pool: capacity grows with stacks × stats × sources,
+  and statuses are not stat changes. A few effect slots per stack: not bounded by construction.
+- A flat cast block (spells × targets × second targets): too large for masks and policy heads.
+  Re-encoding every action as kind and target: churns E04a's encoding for no gain now (E05 may).
+- Mana and costs decided outside the battle: the mask could not tell whether a cast is affordable.
+
+## Revision history
+
+- 2026-10-05: Proposed (E04b T1). Longer than the 80-line target because, like ADR-0013, it holds the
+  seam and state decisions of a whole epic; detail is in the design note.

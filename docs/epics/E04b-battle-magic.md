@@ -30,7 +30,7 @@ Earthquake, sieges and the moat (E04c). The special battlefields' magic (Magic P
 
 **Increment 1** (refined below): T1, T2. Later increments are cut with the user at each checkpoint; order and boundaries of T3–T11 may change.
 
-- [ ] **T1 Magic survey and ADR-0014** — increment 1; ends with a stop for the user's review. *In progress:* survey done 2026-10-05 (`docs/rules/surveys/E04b-magic.md`, spell flags decoded in `docs/formats/installation.md` §7.6); ADR-0014 next.
+- [ ] **T1 Magic survey and ADR-0014** — written 2026-10-05: survey `docs/rules/surveys/E04b-magic.md`, spell flags decoded (`docs/formats/installation.md` §7.6), ADR-0014 Proposed with `docs/epics/E04b-design.md`; **waiting for the user's review (Q42)**.
 - [ ] **T2 Casting core and direct-damage spells** — increment 1, after the review; four checkpoints proposed (T2a–T2d).
 - [ ] T3 Timed effects on stacks: buffs and debuffs, Mass versions at Expert, durations and the artifacts that change them, Dispel, Cure (S-16, S-17, S-19).
 - [ ] T4 Control spells and spell defences: Berserk, Hypnotize, Forgetfulness, Blind; Anti-Magic, Magic Mirror (S-09 to S-11, S-13).
@@ -49,7 +49,7 @@ Order: T1 first and alone; T2 after the review; T3 before T4–T7 (they use time
 A research and design task without engine code, like E04a T1. Work stops for the user's review at its end.
 
 - **Survey** `docs/rules/surveys/E04b-magic.md`, limited to what the ADR decides (Q41), with labelled sources (VCMI 1.7.5 `lib/spells/`, `config/spells/`; the wiki, approved per session; original data; code reading only as the last resort, Q29). Per-spell numbers are not collected here.
-  - Casting rules: who casts and when (once per round per hero; on which turns; not in tactics), the spell book, the cost by mastery (the best school of the spell), cost changes by creatures and artifacts, mana after the battle (`E04-battle.md` §7).
+  - Casting rules: who casts and when (at most once per round per hero and never required; on which turns; not in tactics), the spell book, the cost by mastery (the best school of the spell), cost changes by creatures and artifacts, mana after the battle (`E04-battle.md` §7).
   - Effect kinds and targeting (one stack, hex area, chain, every stack, obstacles, summons, battle-wide), what Expert (Mass) changes; durations: unit, when they count down, replacement or stacking of the same spell, the original's per-stack storage as far as visible (S-17 points to 8-bit durations).
   - The resolution order of a spell against a stack: immunity, Magic Mirror, resistance chance, the effect, damage reduction; which creatures, skills and artifacts enter at each step (lists, not numbers).
   - Stacks created in battle (summons, clones, Sacrifice, raised creatures, Pit Lord demons): limits, slots, their fate after the battle.
@@ -59,7 +59,7 @@ A research and design task without engine code, like E04a T1. Work stops for the
   - S-09 to S-21 mapped to tasks; new quirks found.
 - **ADR-0014 (Proposed)**, decisions only, about 80 lines (ADR size rule); working detail in `docs/epics/E04b-design.md`:
   1. Spells as data: a closed effect-kind enum in content (Tier 3, like `Ability` and `HeroEffect`) with parameters by mastery, targeting as data, rule code per effect kind.
-  2. Casting: the commands (hero casts, creature casts), phases, once per round, cost; validated against the trusted actor (ADR-0004, ADR-0008).
+  2. Casting: the commands (hero casts, creature casts), phases, at most once per round (optional), cost; validated against the trusted actor (ADR-0004, ADR-0008).
   3. Timed effects on stacks: storage (per-stack slots or arrays; whether ADR-0012's pool gains stack bearers), expiry, replacement and stacking, effective stats materialised, capacity by construction.
   4. The resolution order and the random streams it draws from (ADR-0003).
   5. Stacks created in battle: `StackOrigin` variants (ADR-0013 point 5), stack capacity, what the outcome reports.
@@ -75,7 +75,7 @@ A research and design task without engine code, like E04a T1. Work stops for the
 The 13 direct-damage spells: Magic Arrow, Ice Bolt, Lightning Bolt, Titan's Lightning Bolt (SoD), Implosion, Chain Lightning, Frost Ring, Fireball, Inferno, Meteor Shower, Death Ripple, Destroy Undead, Armageddon. Proposed checkpoints:
 
 - **T2a Content and the hero's magic.** Pack format v4: effect kind and targeting of the 13 spells; the spell flags they need (harvested where §7.6 is decoded, otherwise gap-fill with sources). Hero effects for the four magic schools' levels, Sorcery, the spell specialties of these spells and the spell-damage artifacts (the Orbs); `derive_battle_hero` fills `BattleMagic` and the spell-damage bonuses. HER- rules; ruleset hash.
-- **T2b Casting in battle.** The hero's mana and "cast this round" in the state; the cast command (ADR-0014); legality (the side's turn, spell in the book, a combat spell, mana for the cost at the hero's mastery, once per round, not in tactics, a target valid for the spell); the single-target spells with the damage formula (power × factor + effect by mastery; Sorcery, specialty and artifact bonuses; rounding as Q-0005 until batch 2a says otherwise); events with visibility; the observation (cast this round public, the spell book private); the outcome's mana per hero; replay format, state hash.
+- **T2b Casting in battle.** The hero's mana and "cast this round" in the state; the cast command (ADR-0014); legality (the side's turn, spell in the book, a combat spell, mana for the cost at the hero's mastery, at most once per round and never required, not in tactics, a target valid for the spell); the single-target spells with the damage formula (power × factor + effect by mastery; Sorcery, specialty and artifact bonuses; rounding as Q-0005 until batch 2a says otherwise); events with visibility; the observation (cast this round public, the spell book private); the outcome's mana per hero; replay format, state hash.
 - **T2c The sim.** The factorized casting action in `h3-sim` and the C ABI (action encoding v9, C ABI v8), observation encoding v5; a casting hero in the `full` scenario, its golden replay re-recorded, `bench-check` re-baselined with the reason; state size and clone cost measured. Every later spell is then exercised by random rollouts.
 - **T2d Area, chain and battle-wide damage; resistance and immunities.** Area shapes, Chain Lightning, Death Ripple, Destroy Undead, Armageddon; the resolution order (ADR-0014) with the Resistance skill and the creature abilities these spells meet (immunities by level, school or to all spells; resistance chances; damage reductions; S-18), as new `Ability` variants with BAT rules. Then experiment batch 2a compiled for the user (T10; the spec gains spells and mana), so its results are in before increment 2 builds on the damage formula.
 
@@ -83,7 +83,7 @@ The 13 direct-damage spells: Magic Arrow, Ice Bolt, Lightning Bolt, Titan's Ligh
 
 ## Design
 
-ADR-0014 (written in T1, reviewed by the user) with its design note `docs/epics/E04b-design.md`, pruned task by task (ADR index rule). Until then: ADR-0012 (modifiers and abilities), ADR-0013 (the hero seam, points 4, 5, 9, 10) and the E04a notes above.
+[ADR-0014](../adr/0014-battle-magic.md) (Proposed in T1, under the user's review, Q42) with its design note [`E04b-design.md`](E04b-design.md), pruned task by task (ADR index rule); ADR-0012 (modifiers and abilities) and ADR-0013 (the hero seam, points 4, 5, 9, 10) still apply.
 
 ## Exit criteria
 
