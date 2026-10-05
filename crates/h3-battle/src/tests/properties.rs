@@ -7,9 +7,10 @@
 
 use std::vec::Vec;
 
-use h3_content::{Formation, Ruleset};
+use h3_content::{Affects, CreatureFlag, CreatureSelector, CreatureStat, Formation, Ruleset};
 use h3_contracts::{
-    Army, ArmyStack, BallistaControl, BattleSetup, BattleSide, DamageBonuses, TentControl,
+    Army, ArmyStack, BallistaControl, BattleEffect, BattleHero, BattleSetup, BattleSide,
+    DamageBonuses, StatOp, TentControl,
 };
 use h3_kernel::Rng;
 use proptest::collection::{btree_map, vec};
@@ -163,7 +164,7 @@ fn make_setup(
         led.tactics = u8::try_from((machines >> 41) & 3).unwrap();
     }
     if machines & (1 << 47) != 0 {
-        led.effects.push(h3_contracts::BattleEffect::NoRetreat);
+        led.effects.push(BattleEffect::NoRetreat);
     }
     let defender_hero = (machines & (1 << 44) != 0).then(|| {
         let mut h = hero(r);
@@ -535,5 +536,162 @@ proptest! {
             let (actor, cmd) = resolve(&state, &r, step, &mut legal);
             let _ = apply(&mut state, &r, actor, cmd, &mut crate::NoopSink);
         }
+    }
+}
+
+/// One effect of an extreme hero: kind, selector (all, a flag, a creature), statistic,
+/// operation, amount (also the morale/luck value and the regeneration), affected sides.
+type ExtremeEffect = (u8, u8, usize, u8, i16, u8);
+
+/// A battle effect from its generated parts; every kind except `NoRetreat` and the alignment
+/// groups (both covered by `make_setup` and `tests/heroes.rs`).
+fn extreme_effect(
+    r: &Ruleset,
+    &(kind, selector, creature, stat, amount, affects): &ExtremeEffect,
+) -> BattleEffect {
+    let creatures = match selector {
+        0 => CreatureSelector::All,
+        1 => CreatureSelector::Flag(if creature % 2 == 0 {
+            CreatureFlag::Alive
+        } else {
+            CreatureFlag::Shooter
+        }),
+        _ => CreatureSelector::Creature(
+            r.creature_by_key(&std::format!(
+                "t:{}",
+                CREATURES[creature % CREATURES.len()].0
+            ))
+            .unwrap(),
+        ),
+    };
+    let stat = CreatureStat::ALL[usize::from(stat) % CreatureStat::ALL.len()];
+    let affects = Affects::ALL[usize::from(affects) % 3];
+    let op = [StatOp::Add, StatOp::PercentBp, StatOp::PercentBpDown][usize::from(kind) % 3];
+    let value = i8::try_from(amount.clamp(i8::MIN.into(), i8::MAX.into())).unwrap();
+    match kind {
+        0..=2 => BattleEffect::StackStat {
+            creatures,
+            stat,
+            op,
+            amount,
+        },
+        3 => BattleEffect::Regeneration {
+            creatures,
+            hit_points: amount.unsigned_abs(),
+        },
+        4 => BattleEffect::NoRangePenalty { creatures },
+        5 => BattleEffect::ShootWhenAdjacent { creatures },
+        6 => BattleEffect::Morale {
+            amount: value,
+            affects,
+        },
+        7 => BattleEffect::Luck {
+            amount: value,
+            affects,
+        },
+        8 => BattleEffect::MoraleAtMost { value, affects },
+        _ => BattleEffect::LuckAtMost { value, affects },
+    }
+}
+
+/// A sound hero with values no real hero could have (BAT-HER-001, OPEN-QUESTIONS Q31): any
+/// primary skills and damage bonuses, any Ballista and First Aid Tent control, any surrender
+/// discount, any funds and up to 24 effects with extreme amounts.
+fn arb_extreme_hero() -> impl Strategy<Value = Option<(BattleHero, u32)>> {
+    let effect = (
+        0u8..10,
+        0u8..3,
+        0usize..64,
+        any::<u8>(),
+        any::<i16>(),
+        any::<u8>(),
+    );
+    proptest::option::weighted(
+        0.9,
+        (
+            any::<[u8; 4]>(),
+            0u8..=3,
+            (any::<u16>(), any::<u16>(), 0u16..=10_000),
+            proptest::option::of((1u8..=255, 0u16..=10_000)),
+            proptest::option::of(any::<u32>()),
+            0u16..=10_000,
+            vec(effect, 0..24),
+            any::<u32>(),
+        ),
+    )
+    .prop_map(|raw| {
+        raw.map(
+            |(
+                primary,
+                tactics,
+                (ranged_bp, melee_bp, reduction_bp),
+                ballista,
+                tent,
+                discount,
+                effects,
+                funds,
+            )| {
+                let r = lively();
+                let mut h = hero(&r);
+                [h.attack, h.defense, h.power, h.knowledge] = primary;
+                h.tactics = tactics;
+                h.damage = DamageBonuses {
+                    ranged_bp,
+                    melee_bp,
+                    reduction_bp,
+                };
+                h.war_machines.ballista =
+                    ballista.map(|(shots, double_damage_chance_bp)| BallistaControl {
+                        shots,
+                        double_damage_chance_bp,
+                    });
+                h.war_machines.tent = tent.map(|heal_bonus_bp| TentControl { heal_bonus_bp });
+                h.surrender_discount_bp = discount;
+                h.effects = effects.iter().map(|e| extreme_effect(&r, e)).collect();
+                (h, funds)
+            },
+        )
+    })
+}
+
+/// Armies with counts up to `u32::MAX` (above the death stare's roll limit too, KER-RNG-003).
+fn arb_big_army() -> impl Strategy<Value = ArmySpec> {
+    let pool = army_creatures();
+    let count = prop_oneof![1u32..100, 60_000u32..200_000, 1u32..=u32::MAX];
+    btree_map(0u8..7, (0..pool.len(), count), 1..=7).prop_map(move |m| {
+        m.into_iter()
+            .map(|(slot, (c, n))| (slot, pool[c], n))
+            .collect()
+    })
+}
+
+proptest! {
+    #![proptest_config(Config { cases: 48, ..Config::default() })]
+
+    // covers: BAT-HER-001
+    /// Robustness (E04a T12c review): battles led on both sides by sound heroes with extreme
+    /// values (BAT-HER-001 accepts them) and armies of up to `u32::MAX` creatures start, play
+    /// with every legal command accepted (leaving in a quarter of them), and report an outcome when over;
+    /// no arithmetic overflows.
+    #[test]
+    fn extreme_heroes_and_counts_play_without_failures(
+        att in arb_big_army(),
+        def in arb_big_army(),
+        heroes in (arb_extreme_hero(), arb_extreme_hero()),
+        machines in any::<u64>(),
+        seed in any::<u64>(),
+    ) {
+        let r = lively();
+        let mut setup = make_setup(&r, &att, &def, &[], machines);
+        let [a, d] = [heroes.0, heroes.1];
+        setup.funds = [a.as_ref().map_or(0, |h| h.1), d.as_ref().map_or(0, |h| h.1)];
+        setup.heroes = [a.map(|h| h.0), d.map(|h| h.0)];
+        let mut state = BattleState::new(&r, &setup, seed).unwrap();
+        // A quarter of the games may leave the battle (random agents leave early).
+        finish(&mut state, &r, seed, seed % 4 == 0);
+        for side in BattleSide::BOTH {
+            let _ = observe(&state, &r, side);
+        }
+        prop_assert_eq!(state.outcome().is_some(), state.is_over());
     }
 }
