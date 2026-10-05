@@ -4,12 +4,12 @@ Living state between sessions; every session reads it first. Rules (`docs/08-wor
 
 ## Current state
 
-- Branch `e04a-heroes-in-battle`; `cargo xtask verify --with-original-data` green on Linux. Sandbox and syncing: `docs/08-work-process.md`, "Cloud sandbox and syncing" (`scripts/sandbox-setup.sh`).
-- **E04a is closed** (2026-10-05, `docs/epics/E04a-heroes-in-battle.md`; summary in `docs/BACKLOG.md`), verified on Linux and Windows; the user merges the branch to `master`.
-- **Next: E04b (battle magic)**, not refined yet: start with a refinement session with the user (scope in BACKLOG and Q27; what E04b needs from E04a: the epic file's last section and `docs/epics/E04a-log.md`, "The design note at closure"). Candidates for its first experiment batch: `docs/experiments/README.md`, among them Q40 (the tactics hand-over and "next creature").
+- Branch `master`: the user merged `e04a-heroes-in-battle` (`148ed64`, verify green on Linux and Windows incl. `--with-original-data`); the E04b refinement (docs only) is committed on top. Sandbox and syncing: `docs/08-work-process.md`, "Cloud sandbox and syncing" (`scripts/sandbox-setup.sh`).
+- **E04b (battle magic) is refined** (Q41, `docs/epics/E04b-battle-magic.md`): increments with a user checkpoint each. **Increment 1** = T1 (survey and ADR-0014, then **stop for the user's review**) and T2 (casting core, checkpoints T2a–T2d, the factorized casting action in T2c, batch 2a at the end); after T2d the user confirms increment 2 (proposed: T3, T4).
+- **Next:** create `e04b-battle-magic` from `master`; a fresh session starts T1 (wiki fetches need the user's approval; clone VCMI 1.7.5). T1 writes no engine code: the executable's spell flags (`docs/formats/installation.md` §7.6) can be read from `original-data/install/Heroes3.exe` with a script.
 - Versions: state hash v17, ruleset hash v13, replay format v13, action encoding v8, C ABI v7, observation encoding v4. Each new command bumps the action encoding and the C ABI (ADR-0011).
-- No decision is waiting for the user besides the merge. Open questions: `docs/OPEN-QUESTIONS.md`, section "Open" (Q40 waits for an experiment).
-- Working agreement: small increments, the user confirms the seam; token efficiency beats speed (AGENTS.md); the user plays experiment maps in SoD with plain HD and commits the results.
+- No decision is waiting for the user. Open questions: `docs/OPEN-QUESTIONS.md`, section "Open" (Q40 waits for batch 2a).
+- Working agreement: increments of a couple of tasks with a user checkpoint (Q41); the user confirms seams and ADRs; token efficiency beats speed (AGENTS.md); the user plays experiment maps in SoD with plain HD and commits the results.
 
 ## Standing traps
 
@@ -20,6 +20,7 @@ Living state between sessions; every session reads it first. Rules (`docs/08-wor
 - `cargo xtask verify` outlasts a tool call: run `scripts/sandbox-verify.sh` in the background and poll its log.
 - The background verify tests whatever is in the clone: try ad-hoc tests in a `git worktree` with its own `CARGO_TARGET_DIR`, and commit there on a branch that the clone fast-forwards to. `pkill -f <pattern>` also kills the tool's own shell when the pattern is in the command line: kill by pid.
 - Broad sub-agent surveys burn tokens and hit rate limits; research in narrow steps yourself.
+- Docs-only sessions can work in the user's repo directly (the device shell has git and python, no cargo): commit with `-c user.name=... -c user.email=...` (no identity configured there) and check what `check-docs` checks by script (HANDOFF at most 10 000 bytes, three session entries).
 
 **Sources**
 - The wiki is reachable only through WebFetch (summarised) and needs the user's approval per session: ask for verbatim quotes, use `index.php?title=<Page>&action=raw` and `index.php?search=<term>&fulltext=1`; ask for the `swh` template's SoD argument, the summariser otherwise reports HotA.
@@ -48,6 +49,10 @@ Living state between sessions; every session reads it first. Rules (`docs/08-wor
 
 ## Recent sessions
 
+### 2026-10-05 (fifteenth) — E04b refined with the user: increment 1 = T1 + T2
+
+Refinement only, in the user's repo (no sandbox, no code). Proposed a coarse outline T1–T11; the user chose (Q41): one epic in increments with a checkpoint each (not sub-epics); increment 1 = T1 (survey and ADR-0014, stop for review) and T2 (casting core with the 13 direct-damage spells, checkpoints T2a–T2d, then batch 2a); casting enters the sim with the core (T2c); a just-in-time survey. Written: `docs/epics/E04b-battle-magic.md` (S-09 to S-21 mapped to tasks), Q41, BACKLOG (summary, inbox items allocated to E04b tasks), this HANDOFF; project doc `claude/e04b-status.md`.
+
 ### 2026-10-05 (fourteenth) — E04a T12c: independent review, the epic closed
 
 A fresh session reviewed E04a (baseline verify green on `7990c69`). Rules against sources: every E04a rule read against its sources and code, no conflict (the original's text confirms the Spirit of Oppression and Hourglass caps); five rules resting on VCMI or a generalisation are listed for the next batch (`docs/experiments/README.md`). Robustness: two new tests (`cd71ba0`; extreme sound heroes with counts up to `u32::MAX`, and random legal SoD heroes derived and played); 20 000 and 3 000 ad-hoc battles and 60 000 random-obstacle episodes ran clean. Security: commands, prices and private hero values checked; no change. Closure: the design note deleted, its last content in the log, epic, BACKLOG, ADR-0013's header, references and the project status doc updated. Then the user: Windows verify green; the stale `Claude outputs/AGENTS.md` removed; the tactics hand-over needs an experiment (Q40). Detail: `docs/epics/E04a-log.md` (T12c).
@@ -55,7 +60,3 @@ A fresh session reviewed E04a (baseline verify green on `7990c69`). Rules agains
 ### 2026-10-04 (thirteenth) — E04a T11, T12a and T12b done
 
 T11 split with the user (Q37): T11a and T11b this session, T11c next; `observe` takes the ruleset (ADR-0004 amended); the experiment-spec runner stays in the BACKLOG. T11a (`e527a53`): `Observation.surrender_possible`, `HeroView.commands_ballista`/`commands_tent` public, `Observation.own_hero` (`OwnHeroView`) private; hygiene property test varies every private hero value. T11b (`adffa12`): observation encoding v4 (`OBSERVATION_LEN` 1229), C ABI v7. Then, on the user's request, T11c: the defender of `full` led by Corwin with T10 effects, both owners able to pay a surrender; `full-s3` re-recorded; `bench-check` re-baselined (+65 % steps, −14 % Ir/step); about 229–237 k steps/s. Then T12 split with the user (Q38) and T12a done: 21 observed rules `verified`, tests for the profiles' quirk flags and hero isolation, ADR-0013 revised. T12b: death-stare cutoff (Q39, KER-RNG-003), `BattleEnv::with_random_obstacles`. Detail: `docs/epics/E04a-log.md`.
-
-### 2026-10-04 (twelfth) — E04a T10 done (stat effects, traits, alignment groups)
-
-T10 split with the user (Q35: T10a, T10b now, T10c next; Q-0006's profile override deferred to E04b). T10a: HER-BAT-008 (derivation of `creature_stat`, `creature_stat_percent`, `creature_specialty`), BAT-HER-005 (applied in `Stack::new`; war machines no speed), `StatOp::PercentBpDown`, effect kind `stack_stat` in scenario and replay files (replay format v11), batch 1a R8/B4–B6 and 1b R8/B7 reproduced with the harvested packs (`h3-pack` test; `h3-battle` dev-dependency). `Field::neighbors` written out (codegen swing, −12.5 % Ir, re-baselined). T10b: HER-BAT-009, BAT-HER-006 (no range penalty, shooting while adjacent, the hero's regeneration capped at its hit points; `Stack.regeneration`, state hash v17). T10c (the user asked to fit it in): `FactionGroup` (Q36), HER-BAT-010, BAT-HER-007 (batch 1b R1 reproduced), replay format v13; T10 measurements in the log. Detail: `docs/epics/E04a-log.md`.
