@@ -101,7 +101,7 @@ id       = "HER-SPL-001"
 title    = "Known spells"
 context  = "heroes"
 status   = "implemented"
-summary  = "A hero's known spells are spells of the ruleset, each listed once, and none of them a creature ability (spell category `ability`, which never stands in a spell book). Whether the spells need a worn spell book is checked from E04b on, when the spell book artifact gets its effect."
+summary  = "A hero's known spells are spells of the ruleset, each listed once, and none of them a creature ability (spell category `ability`, which never stands in a spell book). Whether the spells need a worn spell book is checked from E04b T8 on; the spell book artifact's effect lets the battle hero cast them (HER-BAT-011, E04b T2a)."
 numeric  = "integer"
 
   [[rule.source]]
@@ -386,4 +386,53 @@ numeric  = "integer"
   kind       = "observation"
   ref        = "experiments/results/E04a-batch-1b.md R1 (SoD 4.0 Complete, plain HD, 2026-10-04): reproduced with the harvested packs (crates/h3-pack, harvested_hero_effects_reproduce_the_experiments)"
   retrieved  = "2026-10-04"
+  confidence = "high"
+
+[[rule]]
+id       = "HER-BAT-011"
+title    = "The battle hero's magic"
+context  = "heroes"
+status   = "implemented"
+summary  = "The battle hero's magic (BattleHero.magic) comes from the hero's effect sources (HER-BAT-001): its spell book is the hero's known spells if one of them has a spell_book effect (the Spell Book artifact; each artifact type once), otherwise none; the mastery of each spell school (BattleMagic.schools, indexed by the school's handle; at most four schools, MAX_SPELL_SCHOOLS) is the highest level of the school_mastery effects for it (the four magic school skills give Basic 1, Advanced 2, Expert 3; 0 without one); the mana is the details' as given (it may exceed the maximum). The maximum mana stays 0, informative only (derived with hero progression, E08-E10). Whether known spells need a worn book, the Tomes and scrolls come in E04b T8. The battle reads the magic from E04b T2b on."
+numeric  = "integer"
+
+  [[rule.source]]
+  kind       = "wiki"
+  ref        = "Air Magic - Heroes 3 wiki: Basic, Advanced and Expert Air Magic let the hero cast air spells at reduced cost and increased (Expert: maximum) effectiveness; the other school skills likewise (packs: gap-fill [[heroes.skill_effects]], source wiki-air-magic)"
+  url        = "https://heroes.thelazy.net/index.php/Air_Magic"
+  retrieved  = "2026-10-05"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "vcmi"
+  ref        = "config/skills.json L434-L550: the four magic skills give MAGIC_SCHOOL_SKILL 1/2/3 for their school; lib/battle/CBattleInfoCallback.cpp L117-L159: a hero without a spell book cannot cast; lib/mapObjects/CGHeroInstance.cpp L401-L407: the spell book is an artifact in its own slot"
+  url        = "https://github.com/vcmi/vcmi/blob/1.7.5/config/skills.json#L434-L550"
+  retrieved  = "2026-10-05"
+  confidence = "high"
+
+[[rule]]
+id       = "HER-BAT-012"
+title    = "The battle hero's spell bonuses"
+context  = "heroes"
+status   = "implemented"
+summary  = "The battle hero's SpellDamage effects are, per scope (every spell, one school, one spell), the sum of the spell_damage values of the hero's effect sources (HER-BAT-001) grown like HER-BAT-004: a skill's value grows by the hero's skill specialty for it by bp_per_level of itself per hero level, rounded down; artifacts once per type and the specialty's own do not grow (Sorcery 5/10/15 % for every spell; the Orbs of the Firmament, Silt, Tempestuous Fire and Driving Rain +50 % for air, earth, fire and water spells; Ciele's specialty +50 % for Magic Arrow, Luna's +100 % for Fire Wall), saturated at u16::MAX, in the order of their first appearance after the alignment groups. A spell_specialty (every other spell specialist) becomes SpellSpecialty with bp = bp_per_level (300 in SoD) times the hero's level: the cast's effect on a stack grows by bp / 10 000 divided by the stack's creature level (wiki C * (1 + 0.03 * L / n)). The battle applies them from E04b T2b on (damage spells; other spell kinds with their tasks); the order of the factors and the rounding are BAT-MAG rules (batch 2a, X-1)."
+numeric  = "integer"
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe Sorcery value table at VA 0x63EA78: f32 0, 0.05, 0.10, 0.15, read by the getter that applies the skill specialty (docs/formats/installation.md §7.4); specialty table kind 3 holds only the spell (§7.2)"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "wiki"
+  ref        = "Hero specialty - Heroes 3 wiki, SoD argument of {{swh}}: C * (1 + 0.03 * L / n) for spell specialists (HotA 0.1, and 0.05 for some spells); fixed: Ciele Magic Arrow +50 %, Luna Fire Wall +100 % (HotA 25 %); Orb of Tempestuous Fire '+50% damage to fire spells' (the other Orbs likewise)"
+  url        = "https://heroes.thelazy.net/index.php/Hero_specialty"
+  retrieved  = "2026-10-05"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "vcmi"
+  ref        = "lib/mapObjects/CGHeroInstance.cpp L815-L837 getSpellBonus: SPELL_DAMAGE for every school (Sorcery, config/skills.json L783-L812), SPECIFIC_SPELL_DAMAGE per spell (Ciele, Luna: config/heroes/conflux.json L280-L332), the best SPELL_DAMAGE of the spell's schools (the Orbs, config/artifacts.json L1166-L1217), SPECIAL_SPELL_LEV val 3 times the hero level divided by the creature level (config/heroes/*.json); each bonus type sums its sources"
+  url        = "https://github.com/vcmi/vcmi/blob/1.7.5/lib/mapObjects/CGHeroInstance.cpp#L815-L837"
+  retrieved  = "2026-10-05"
   confidence = "high"

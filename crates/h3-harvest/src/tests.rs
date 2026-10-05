@@ -233,6 +233,8 @@ fn hero_data() -> HeroData {
             specialty(2, 6, 0, 0, 0),
         ],
         spell_types: vec![0, -1, 1],
+        // Look: adventure; Zap: one stack, damage; Bolt: damage to every stack.
+        spell_flags: vec![0x2, 0x8211, 0x2_0201],
         skill_values: vec![
             (9, int([0, 1, 2, 3])),
             (6, int([0, 1, 2, 3])),
@@ -240,6 +242,7 @@ fn hero_data() -> HeroData {
             (22, float([0.0, 0.1, 0.2, 0.3])),
             (23, float([0.0, 0.05, 0.1, 0.15])),
             (4, float([0.0, 0.2, 0.4, 0.6])),
+            (25, float([0.0, 0.05, 0.1, 0.15])),
             (27, float([0.0, 1.0, 2.0, 3.0])),
         ],
         specialty_growth: 0.05,
@@ -426,6 +429,10 @@ speed = 1
 war_machine_speed = 0
 sources = ["s"]
 
+[heroes.spell_specialty]
+bp_per_level = 300
+sources = ["s"]
+
 [heroes.params]
 primary_min = [0, 0, 1, 1]
 primary_max = 99
@@ -497,6 +504,17 @@ sources = ["s"]
 epic = "E04b"
 what = "spells"
 artifacts = ["Charm", "Relic"]
+
+[[spells.targeting]]
+spell = "Zap"
+chain = { targets = [2, 2, 3, 3], factor_bp = 5000 }
+excludes = ["war_machine"]
+sources = ["s"]
+
+[[spells.targeting]]
+spell = "Bolt"
+requires = ["undead", "alive"]
+sources = ["s"]
 "#;
 
 fn gap() -> GapFill {
@@ -788,6 +806,20 @@ fn harvests_hero_content() {
     assert!(sod.contains("id = \"bolt\"  # original id 2"));
     assert!(sod.contains("schools = [\"base:air\"]\ncost = [7, 8, 9, 10]\npower = 11"));
     assert!(sod.contains("polarity = \"positive\""));
+    // Battle magic: target and effect from the flag word, the rest from the gap-fill file.
+    assert!(base.contains(
+        "polarity = \"negative\"\ntarget = \"stack\"\n\
+         chain = { factor_bp = 5000, targets = [2, 2, 3, 3] }\n\
+         excludes = [\"war_machine\"]\neffects = [{ kind = \"damage\" }]"
+    ));
+    assert!(sod.contains(
+        "polarity = \"positive\"\nrequires = [\"undead\", \"alive\"]\neffects = [{ kind = \"damage\" }]"
+    ));
+    let look = base.split("id = \"look\"").nth(1).unwrap();
+    assert!(!look.split("[[").next().unwrap().contains("effects"));
+    let zap = r.spell(r.spell_by_key("base:zap").unwrap()).unwrap();
+    assert_eq!(zap.magic.effects, [h3_content::SpellEffect::Damage]);
+    assert!(base.contains("expert = [{ kind = \"spell_damage\", bp = 1500 }]"));
     assert!(
         h.report
             .iter()
@@ -803,7 +835,7 @@ fn harvests_hero_content() {
         "war_machines = [\"unit_148\"]",
         "specialty = [{ kind = \"creature_specialty\", creature = \"unit_148\", bp_per_step = 500, speed = 0 }]",
         "spells = [\"zap\"]",
-        "specialty = [{ kind = \"spell_specialty\", spell = \"zap\" }]",
+        "specialty = [{ kind = \"spell_specialty\", spell = \"zap\", bp_per_level = 300 }]",
         "{ kind = \"creature_stat\", stat = \"speed\", amount = 2 }",
         "{ kind = \"creature_stat\", creatures = { flag = \"dragon\" }, stat = \"defense\", amount = 5 }",
     ] {
@@ -861,6 +893,22 @@ fn hero_content_errors() {
     fails(
         &|i| i.hero_data.spell_types.pop().map(drop).unwrap(),
         "the executable has 2",
+    );
+    fails(
+        &|i| i.hero_data.spell_flags.pop().map(drop).unwrap(),
+        "spell `Bolt`: no flag word",
+    );
+    fails(
+        &|i| i.hero_data.spell_flags[1] = 0x2,
+        "flag word 0x2 does not match category combat",
+    );
+    fails(
+        &|i| i.hero_data.spell_flags[0] = 0x9,
+        "does not match category adventure",
+    );
+    fails(
+        &|i| i.hero_data.spell_flags[1] = 0x291,
+        "single target and area",
     );
     fails(&|i| i.hero_data.heroes[1].class = 9, "class 9 out of range");
     fails(
@@ -944,6 +992,28 @@ fn hero_content_errors() {
         },
         "no town 3",
     );
+    // A hex target; a fixed spell specialty.
+    let mut i = inputs();
+    i.hero_data.spell_flags[1] = 0x8281;
+    let fixed = GapFill::parse(
+        &GAP.replace(
+            "bp_per_level = 300\n",
+            "bp_per_level = 300\nfixed = [{ hero = \"Hero 2\", bp = 5000 }]\n",
+        )
+        .replace(
+            "chain = { targets = [2, 2, 3, 3], factor_bp = 5000 }",
+            "area = { inner = 1, radius = [1, 1, 1, 2] }",
+        ),
+    )
+    .unwrap();
+    let h = harvest(&i, &fixed).unwrap();
+    assert!(pack(&h, "base").contains(
+        "polarity = \"negative\"\ntarget = \"hex\"\narea = { inner = 1, radius = [1, 1, 1, 2] }"
+    ));
+    assert!(
+        pack(&h, "base")
+            .contains("specialty = [{ kind = \"spell_damage\", bp = 5000, spell = \"zap\" }]")
+    );
     let mut i = inputs();
     i.hero_tables.heroes.records[3][0] = "Hero 0".into();
     let h = harvest(&i, &g).unwrap();
@@ -984,6 +1054,26 @@ fn hero_content_errors() {
             "creature = \"Unit 21\"\nstat",
             "creature = \"Unit 999\"\nstat",
             "specialty_extra creature",
+        ),
+        (
+            "spell = \"Zap\"",
+            "spell = \"Look\"",
+            "targeting for `Look`, which has no harvested effects",
+        ),
+        (
+            "spell = \"Bolt\"",
+            "spell = \"Nope\"",
+            "targeting for unknown spell `Nope`",
+        ),
+        (
+            "spell = \"Bolt\"",
+            "spell = \"Zap\"",
+            "spell `Zap` has two targeting entries",
+        ),
+        (
+            "bp_per_level = 300\n",
+            "bp_per_level = 300\nfixed = [{ hero = \"Hero 0\", bp = 5000 }]\n",
+            "a fixed spell specialty names no spell specialist",
         ),
     ] {
         let g = GapFill::parse(&GAP.replace(from, to)).unwrap();

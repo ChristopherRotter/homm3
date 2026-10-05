@@ -267,7 +267,10 @@ game's code, not of a data table; such readings are allowed as a last resort, fo
 Static fields per spell id: i32 type (−1 negative, 0 neutral, 1 positive) at +0, pointer to the
 sound name at +4, i32 animation at +8, u32 flag bits at +0xC. All other fields (name, level,
 schools, costs, power, effects, chances, AI values, texts) are zero in the file and filled from
-`SPTRAITS.TXT`. The harvester (E04a T3) writes the type as the spell's `polarity`.
+`SPTRAITS.TXT`. The harvester (E04a T3) writes the type as the spell's `polarity`; since E04b T2a
+it also reads the flag word (`h3_formats::exe::HeroData::spell_flags`): it checks the category bits
+(`0x1`, `0x2`, `0x8`) against the table's group and writes the damage spells' `target` (`0x10` a
+stack, `0x80` a hex, neither: none) and `damage` effect (`0x200`).
 
 **Flag bits** (decoded in E04b T1, 2026-10-05, by matching the 81 values against the spells' known
 behaviour and VCMI 1.7.5's `config/spells/*.json`; no code was read). *Confirmed*: consistent with

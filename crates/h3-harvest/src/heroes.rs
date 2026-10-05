@@ -28,7 +28,7 @@ const SCHOOL_COLUMNS: std::ops::Range<usize> = 3..7;
 
 /// Skills whose battle effect the executable's value table gives (installation.md §7.4): skill
 /// id, effect kind and parameter name, and whether the values are fractions (to basis points).
-const TABLE_SKILLS: [(u8, &str, &str, bool); 7] = [
+const TABLE_SKILLS: [(u8, &str, &str, bool); 8] = [
     (9, "luck", "amount", false),
     (6, "morale", "amount", false),
     (1, "ranged_damage", "bp", true),
@@ -36,7 +36,16 @@ const TABLE_SKILLS: [(u8, &str, &str, bool); 7] = [
     (23, "damage_reduction", "bp", true),
     (4, "surrender_discount", "bp", true),
     (27, "first_aid", "heal_bp", true),
+    (25, "spell_damage", "bp", true),
 ];
+
+/// Bits of the executable's spell flag word the harvester reads (installation.md §7.6).
+const SPELL_COMBAT: u32 = 0x1;
+const SPELL_ADVENTURE: u32 = 0x2;
+const SPELL_ABILITY: u32 = 0x8;
+const SPELL_SINGLE: u32 = 0x10;
+const SPELL_AREA: u32 = 0x80;
+const SPELL_DAMAGE: u32 = 0x200;
 
 /// The pack ranks: content may refer to its own pack and those below it.
 const PACKS: [&str; 3] = ["base", "ab", "sod"];
@@ -413,6 +422,16 @@ pub fn harvest_heroes(
                 ))
             }
         };
+    let mut targeting: BTreeMap<&str, &crate::gapfill::SpellTargeting> = BTreeMap::new();
+    for t in &gap.spells.targeting {
+        if targeting.insert(t.spell.as_str(), t).is_some() {
+            return Err(format!(
+                "gapfill: spell `{}` has two targeting entries",
+                t.spell
+            ));
+        }
+    }
+    let mut damage_spells = 0;
     let sod_spells = spell_rows(&tables.sod_spells, "SPTRAITS.TXT")?;
     let ab_spells = spell_rows(&tables.ab_spells, "H3ab_bmp/SPTRAITS.TXT")?;
     let mut spell_keys: Vec<(String, &'static str)> = Vec::with_capacity(sod_spells.len());
@@ -470,8 +489,64 @@ pub fn harvest_heroes(
         let _ = writeln!(text, "power = {}", number::<u16>(row, 11, &what)?);
         let _ = writeln!(text, "effect = {}", numbers(12..16)?);
         let _ = writeln!(text, "polarity = \"{polarity}\"");
+        // Battle magic (pack format v4, E04b T2a): the damage spells' target from the flag word,
+        // areas, chains and conditions from the gap-fill file; other kinds come with their tasks.
+        let flags = exe
+            .spell_flags
+            .get(id)
+            .copied()
+            .ok_or_else(|| format!("{what}: no flag word"))?;
+        let expected = match category.as_str() {
+            "adventure" => SPELL_ADVENTURE,
+            "combat" => SPELL_COMBAT,
+            _ => SPELL_ABILITY,
+        };
+        if flags & (SPELL_COMBAT | SPELL_ADVENTURE | SPELL_ABILITY) != expected {
+            return Err(format!(
+                "{what}: flag word {flags:#x} does not match category {category}"
+            ));
+        }
+        let extra = targeting.remove(name);
+        if category == "combat" && flags & SPELL_DAMAGE != 0 {
+            let target = match (flags & SPELL_SINGLE != 0, flags & SPELL_AREA != 0) {
+                (false, false) => "none",
+                (true, false) => "stack",
+                (false, true) => "hex",
+                (true, true) => return Err(format!("{what}: single target and area")),
+            };
+            if target != "none" {
+                let _ = writeln!(text, "target = \"{target}\"");
+            }
+            if let Some(t) = extra {
+                if let Some(area) = &t.area {
+                    let _ = writeln!(text, "area = {area}");
+                }
+                if let Some(chain) = &t.chain {
+                    let _ = writeln!(text, "chain = {chain}");
+                }
+                for (field, list) in [("requires", &t.requires), ("excludes", &t.excludes)] {
+                    if !list.is_empty() {
+                        let items: Vec<String> = list.iter().map(|f| quote(f)).collect();
+                        let _ = writeln!(text, "{field} = [{}]", items.join(", "));
+                    }
+                }
+            }
+            let _ = writeln!(text, "effects = [{{ kind = \"damage\" }}]");
+            damage_spells += 1;
+        } else if extra.is_some() {
+            return Err(format!(
+                "gapfill: targeting for `{name}`, which has no harvested effects"
+            ));
+        }
         spell_keys.push((key, pack));
     }
+    if let Some(name) = targeting.keys().next() {
+        return Err(format!("gapfill: targeting for unknown spell `{name}`"));
+    }
+    report.push(format!(
+        "spells: target and damage effect of {damage_spells} damage spells from the flag word; \
+         other effect kinds come with their tasks (E04b T3-T7)"
+    ));
     report.push(
         "SPTRAITS: town chances, AI values, texts and the attribute column not harvested (E04b, E09)"
             .into(),
@@ -551,6 +626,7 @@ pub fn harvest_heroes(
         extras.entry(e.hero.as_str()).or_default().push(e);
     }
     let mut unmodelled: BTreeMap<&str, usize> = BTreeMap::new();
+    let mut fixed_used = 0;
     for (id, ((row, rec), spec)) in hero_rows
         .iter()
         .zip(&exe.heroes)
@@ -679,10 +755,26 @@ pub fn harvest_heroes(
                     ],
                 ));
             }
-            3 => effects.push(inline(
-                "spell_specialty",
-                &[("spell", quote(&spell_ref(spec.id, pack, &what)?))],
-            )),
+            3 => {
+                let spell = quote(&spell_ref(spec.id, pack, &what)?);
+                let ss = &gap.heroes.spell_specialty;
+                effects.push(match ss.fixed.iter().find(|f| f.hero == name) {
+                    Some(f) => {
+                        fixed_used += 1;
+                        inline(
+                            "spell_damage",
+                            &[("bp", f.bp.to_string()), ("spell", spell)],
+                        )
+                    }
+                    None => inline(
+                        "spell_specialty",
+                        &[
+                            ("spell", spell),
+                            ("bp_per_level", ss.bp_per_level.to_string()),
+                        ],
+                    ),
+                });
+            }
             4 => {
                 let sel = format!(
                     "{{ creature = {} }}",
@@ -727,6 +819,9 @@ pub fn harvest_heroes(
         if !effects.is_empty() {
             let _ = writeln!(text, "specialty = {}", effect_list(&effects));
         }
+    }
+    if fixed_used != gap.heroes.spell_specialty.fixed.len() {
+        return Err("gapfill: a fixed spell specialty names no spell specialist".into());
     }
     let counts: Vec<String> = unmodelled.iter().map(|(k, n)| format!("{n} {k}")).collect();
     report.push(format!("specialties not modelled: {}", counts.join(", ")));

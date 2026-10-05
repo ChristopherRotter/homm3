@@ -3,13 +3,14 @@
 //! scenario may also give it directly). The battle takes it as given and checks only what its
 //! rules need to run soundly, not whether a real hero could have these values.
 //!
-//! The magic (E04b) stays at its neutral value until E04b gives it a meaning.
+//! The magic (E04b) is derived since E04b T2a (HER-BAT-011, HER-BAT-012); the battle reads it from
+//! E04b T2b on.
 
 use alloc::vec::Vec;
 
 use h3_content::{
     Affects, CreatureSelector, CreatureStat, CreatureTypeId, FactionId, HeroTypeId,
-    MAX_ALIGNMENT_FACTIONS, SpellId,
+    MAX_ALIGNMENT_FACTIONS, MAX_SPELL_SCHOOLS, SchoolId, SpellId, SpellScope,
 };
 
 /// Most entries in [`BattleHero::effects`].
@@ -135,8 +136,9 @@ pub struct BattleMagic {
     pub mana: u16,
     /// Maximum spell points (informative).
     pub max_mana: u16,
-    /// Mastery of the air, earth, fire and water schools, 0 (none) to 3 (Expert).
-    pub schools: [u8; 4],
+    /// Mastery of each spell school, 0 (none) to 3 (Expert), indexed by the school's handle
+    /// (`SchoolId::index`, the ruleset's load order); entries beyond the ruleset's schools are 0.
+    pub schools: [u8; MAX_SPELL_SCHOOLS],
 }
 
 /// How a [`BattleEffect::StackStat`] changes a statistic.
@@ -250,5 +252,21 @@ pub enum BattleEffect {
     AlignmentGroup {
         /// The factions.
         factions: FactionGroup,
+    },
+    /// More damage from the hero's spells of a scope (Sorcery, the Orbs, Ciele's specialty;
+    /// E04b): one factor per kind of scope (HER-BAT-012).
+    SpellDamage {
+        /// Which spells.
+        scope: SpellScope<SchoolId, SpellId>,
+        /// Bonus in basis points.
+        bp: u16,
+    },
+    /// The effect of the hero's casts of `spell` on a stack grows by `bp` basis points divided
+    /// by the level of the stack's creature (a spell specialty, E04b; HER-BAT-012).
+    SpellSpecialty {
+        /// The spell.
+        spell: SpellId,
+        /// Growth before the division by the creature's level, basis points.
+        bp: u32,
     },
 }

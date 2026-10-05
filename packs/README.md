@@ -151,7 +151,7 @@ override, replacing the list) names the creature types it upgrades into: at most
 none twice; references follow the reference rules and may name later creatures of the pack.
 Hero effects that select "a creature" apply to it and its direct upgrades.
 
-## Hero content (format v3, E04a T3)
+## Hero content (format v3, E04a T3; battle magic format v4, E04b T2a)
 
 Spell schools, spells, secondary skills, hero classes and hero types (ADR-0013). References follow
 the reference rules above; every kind may refer to content of its dependency closure.
@@ -161,7 +161,7 @@ the reference rules above; every kind may refer to content of its dependency clo
 id = "storm"
 name = "Storm"
 
-[[spell]]                          # a data row; what a spell does is battle magic (E04b)
+[[spell]]                          # a data row, and since format v4 its battle magic
 id = "spark"
 name = "Spark"
 category = "combat"                # adventure | combat | ability (a creature ability)
@@ -171,6 +171,10 @@ cost = [6, 5, 5, 5]                # mana by mastery: none, basic, advanced, exp
 power = 10                         # effect per point of spell power (default 0)
 effect = [10, 10, 20, 30]          # base effect by mastery
 polarity = "negative"              # positive | neutral | negative
+target = "hex"                     # v4: none (default) | stack | hex
+area = { inner = 0, radius = [1, 1, 1, 2] }  # v4, target hex: hexes at distance inner..=radius[mastery]
+excludes = ["war_machine"]         # v4: creature flags a reached stack may not have (`requires`: must have)
+effects = [{ kind = "damage" }]    # v4: what it does to each stack reached (default none: not castable)
 
 [[secondary_skill]]
 id = "marksmanship"
@@ -198,6 +202,18 @@ war_machines = ["bolt_thrower"]    # creatures with flag war_machine (not in `ar
 specialty = [{ kind = "skill_specialty", skill = "marksmanship", bp_per_level = 500 }]
 ```
 
+**Battle magic** (pack format v4, E04b T2a; `h3_content::SpellMagic`, ADR-0014 point 1): what
+the caster names (`target`), the stacks a cast reaches and what it does to each. Without `target`
+or with `target = "none"` a spell reaches every stack that meets its conditions (Armageddon).
+`area` (target `hex` only) and `chain = { targets = [4, 4, 5, 5], factor_bp = 5000 }` (target
+`stack` only: stacks struck in all by mastery, 1..=16; each further stack takes `factor_bp` of
+the previous one's value) are exclusive; `requires`/`excludes` are creature flags (not both for one
+flag). Effect kinds (at most four, distinct): `damage` (the value `power × power factor +
+effect[mastery]` as damage; BAT-MAG rules, E04b T2b/T2d). Later tasks add kinds (timed, dispel,
+heal, summon, …). Adventure spells have no battle magic; a spell without effects cannot be cast
+yet. At most four spell schools per ruleset (`MAX_SPELL_SCHOOLS`: the battle hero keeps one mastery
+per school).
+
 **Hero effects** (`h3_content::HeroEffect`, ADR-0013 §3): what a skill level, a specialty or an
 artifact gives. Percentages are **basis points** (`bp`, 1/100 %). The translation to the
 battle (`h3-heroes`, E04a T4) and the rules that read them come with E04a T4–T10. At most 16 per
@@ -216,7 +232,7 @@ different creatures or statistics.
 | `creature_stat` | `creatures` (omitted: all; `{ creature = "x" }`: x and its upgrades; `{ flag = "dragon" }`), `stat` (`attack`, `defense`, `speed`, `hit_points`, `min_damage`, `max_damage`), `amount` (≠ 0) | fixed change of a creature statistic |
 | `skill_specialty` | `skill`, `bp_per_level` (≥ 1) | specialty: the skill's scalable values grow by `bp_per_level` of themselves per hero level |
 | `creature_specialty` | `creature`, `bp_per_step` (≥ 1), `speed` (default 0) | specialty: attack and defense of the creature and its upgrades grow by `bp_per_step` of the creature's value (rounded up) per full step of (creature level) hero levels; speed + `speed` |
-| `spell_specialty` | `spell` | specialty: stronger casts of the spell (formula per spell: E04b) |
+| `spell_specialty` | `spell`, `bp_per_level` (≥ 1) | specialty: the cast's effect on a stack grows by `bp_per_level` per hero level, divided by the stack's creature level (SoD 300: 3 %; HER-BAT-012) |
 | `primary_skills` | `attack`, `defense`, `power`, `knowledge` (each default 0, not all 0) | changes the hero's primary skills (artifacts); the only kind that counts once **per equipped copy** |
 | `morale_at_most`, `luck_at_most` | `value`, `affects` | caps the morale/luck of the affected stacks for the battle (Spirit of Oppression, Hourglass of the Evil Hour: `value = 0`, `affects = "both"`) |
 | `alignment_group` | `factions` (2..=16, distinct) | creatures of these factions count as one alignment for the army-alignment morale of the hero's side (BAT-MOR-002; Angelic Alliance) |
@@ -224,6 +240,9 @@ different creatures or statistics.
 | `regeneration` | `creatures`, `hit_points` (≥ 1) | the top creature of each selected stack regains up to `hit_points` at the start of its turn (Elixir of Life) |
 | `no_range_penalty`, `shoot_when_adjacent` | `creatures` | the selected creatures shoot without the range penalty / also while an enemy is adjacent (Golden Bow, Bow of the Sharpshooter) |
 | `no_retreat` | — | neither side may retreat or surrender (Shackles of War) |
+| `school_mastery` | `school`, `level` (1..=3) | the hero casts the school's spells at this mastery; the highest counts (the magic school skills; HER-BAT-011) |
+| `spell_damage` | `bp` (≥ 1), `school` or `spell` (neither: every spell) | more damage from the hero's spells of that scope; sums per scope (Sorcery, the Orbs, Ciele; HER-BAT-012) |
+| `spell_book` | — | the hero can cast the spells it knows (the Spell Book; HER-BAT-011) |
 
 The three `*_specialty` kinds are allowed in a hero's `specialty` only.
 
@@ -265,12 +284,18 @@ theirs (the derivation, HER-BAT-001). Identical artifacts count once, except `pr
 **What the harvested hero content leaves out** (the harvester's report lists it; sources and
 layouts: `docs/formats/installation.md` §6–§7, `crates/h3-harvest/data/gapfill.toml`):
 
-- Skills without effects yet: the magic skills, Sorcery, Resistance, Intelligence, Mysticism,
-  Wisdom, Eagle Eye (E04b), Ballistics (E04c), Necromancy and Learning (outcome application,
-  E08–E10), and the adventure skills. Their `[[secondary_skill]]` entries exist without levels.
+- Skills without effects yet: Resistance, Intelligence, Mysticism, Wisdom, Eagle Eye (E04b),
+  Ballistics (E04c), Necromancy and Learning (outcome application, E08–E10), and the adventure
+  skills. Their `[[secondary_skill]]` entries exist without levels. The magic school skills give
+  `school_mastery` (gap-fill), Sorcery `spell_damage` (the executable's value table, E04b T2a).
 - Specialties not modelled: 13 resource and 2 creature-upgrade specialties (adventure), Adrienne
-  (none). Spell specialties carry only the spell; their formulas come with E04b.
-- Spells: town chances, AI values and the target/flag attributes (E04b, E09); hero classes:
+  (none). Spell specialties are `spell_specialty` with the SoD growth of 3 % per level (gap-fill
+  `[heroes.spell_specialty]`), Ciele's and Luna's a fixed `spell_damage` (+50 % Magic Arrow,
+  +100 % Fire Wall).
+- Spells: battle magic only for the 13 damage spells (E04b T2a): `target` and the `damage`
+  effect from the executable's flag word (installation.md §7.6), areas, Chain Lightning's chain
+  and the target conditions from the gap-fill file (`[[spells.targeting]]`); the other kinds come
+  with their tasks (E04b T3–T7). Town chances and AI values (E09); hero classes:
   aggression and tavern weights (E09); hero availability (campaign heroes, Lord Haart the Knight
   retired by the expansions; E08–E10).
 - Checked by experiment batch 1a (SoD, `experiments/results/E04a-batch-1a.md`): Artillery gives
@@ -287,7 +312,8 @@ research notes and disputes in `docs/rules/surveys/E04-artifacts.md`):
 - The primary skills come from the executable's table; war machines, combination parts and every
   other effect from the gap-fill file. Effects no epic models yet are **pending** (the pack marks
   such entries `# pending: <epic>`): spells, spell immunity and resistance, mana, spell duration
-  and damage, Eagle Eye (E04b; 43 artifacts, among them the opening spells of Angelic Alliance and
+  and damage, Eagle Eye (E04b; 38 artifacts since T2a gave the Spell Book and the four Orbs their
+  effects, among them the opening spells of Angelic Alliance and
   Armor of the Damned and Titan's Thunder's spell book), the Catapult and the siege obstacle
   penalty (E04c), Necromancy (the three Necromancy artifacts and the Cloak of the Undead King;
   outcome application, E08–E10, together with the Necromancy skill) and the adventure effects
@@ -336,10 +362,10 @@ flags are off): the registered flags are in `h3_content::REGISTRY` and the quirk
 (`docs/rules/quirks-ledger.md`); the packs' `faithful` profiles turn Q-0003 and Q-0005 on,
 `strict-fixed` off. Profile-level Tier-2 overrides are not implemented yet (backlog).
 
-The compiled ruleset's canonical hash (encoding v11, `RULESET_HASH_VERSION`) covers packs,
+The compiled ruleset's canonical hash (encoding v14, `RULESET_HASH_VERSION`) covers packs,
 profile, quirks, resources, terrains, factions, obstacles, all creature fields including abilities
-and upgrades, the battle parameters and the hero content with the artifacts and the hero
-parameters; replays record it.
+and upgrades, the battle parameters and the hero content (spells with their battle magic) with
+the artifacts and the hero parameters; replays record it.
 
 ## Scenarios
 

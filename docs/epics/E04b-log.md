@@ -30,3 +30,38 @@ records how and why the tasks went.
   observer (Q42).
 - **Agent decisions (change freely):** rule area `BAT-MAG`; the confidence labels of the decoded
   flags; the candidate list for batch 2a; the proposals in the design note (sizes, names).
+
+### T2a — Content and the hero's magic (2026-10-05)
+
+- **Split:** the user confirmed T2a–T2d and asked for T2a + T2b in one session with a checkpoint
+  after T2b (then T2c + T2d).
+- **Content** (`h3_content::spell`, pack format v4): `SpellMagic` per spell: `target` (none,
+  stack, hex), `area` (`inner`, radius by mastery), `chain` (stacks by mastery, factor),
+  conditions (`requires`/`excludes` creature flags), `effects` (closed kinds; `damage` only).
+  Validation: adventure spells have none, targeting needs effects, area only with a hex target,
+  chain only with a stack target, limits (radius 16, 16 stacks, four effects). At most four spell
+  schools (`MAX_SPELL_SCHOOLS`): `BattleMagic.schools` is indexed by the school's handle (its doc
+  said "air, earth, fire, water", which the data order did not follow). Hero effects gain a fifth
+  reference type (schools) and the kinds `school_mastery`, `spell_damage` (scope every spell, a
+  school or a spell: `SpellScope`), `spell_book`, and `spell_specialty` a `bp_per_level`. Ruleset
+  hash v14.
+- **Harvest:** the executable's spell flag word is read (`HeroData::spell_flags`); the category
+  bits are checked against `SPTRAITS.TXT`'s groups; the 13 damage spells get `target` and the
+  `damage` effect from bits `0x10`/`0x80`/`0x200`; gap-fill `[[spells.targeting]]` adds areas,
+  Chain Lightning and the conditions (VCMI offensive.json, the game's own spell texts agree);
+  Sorcery from the executable's value table; the four magic skills, the Spell Book and the Orbs
+  from the gap-fill file (38 artifacts still pending for E04b); spell specialists 3 % per level,
+  Ciele and Luna a fixed `spell_damage` (wiki, SoD argument). Survey §11.
+- **Seam** (additions, ADR-0014 point 10): `BattleEffect::SpellDamage { scope, bp }` and
+  `SpellSpecialty { spell, bp }`; the battle validates them (unknown school or spell) and reads
+  nothing yet; scenario and replay files cannot hold them yet (`HeroNotWritable`, joins in T2b).
+- **Derivation:** HER-BAT-011 (spell book from a `spell_book` effect: the known spells; highest
+  mastery per school; mana passed through; `max_mana` stays 0) and HER-BAT-012 (spell damage per
+  scope summed, grown by a skill specialty; specialty `bp_per_level` × level).
+- **Agent decisions (change freely):** no `flags` list in the pack: the flag word's targeting
+  and damage bits are expressed by `target` and `effects` (the design note proposed both; T3 and
+  T4 add the flags they read, mass at Expert and mind); the spell book as a hero effect on its
+  artifact; Luna's Fire Wall bonus harvested now (data only, read in T5); the damage scope
+  summing per scope as VCMI's bonus sums.
+- **Verification:** golden replays re-recorded (only the ruleset hash changed; same battles).
+

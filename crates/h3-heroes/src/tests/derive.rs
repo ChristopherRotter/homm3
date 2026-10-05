@@ -1,4 +1,4 @@
-//! `derive_battle_hero` (HER-BAT-001 to HER-BAT-010).
+//! `derive_battle_hero` (HER-BAT-001 to HER-BAT-012).
 
 use std::vec;
 
@@ -709,6 +709,131 @@ fn alignment_groups_are_kept_once_each() {
         FactionGroup::new(&[id(2), id(0)]).unwrap().factions(),
         [id(2), id(0)]
     );
+}
+
+/// The test pack with magic: a second school `t:fire`; Wisdom gives air mastery 1/2/3 and
+/// Logistics a spell-damage bonus of 5/10/15 % for every spell (as Sorcery); the book gives a
+/// spell book; `t:band` (a part of `t:circle`) fire mastery 2 and +50 % fire damage, `t:helm`
+/// (another part) +25 % for `t:bolt`, `t:eye` +50 % air damage, `t:hook` +1 % for every spell;
+/// the specialty grows Logistics by 5 % per level and is a `t:bolt` specialty of 3 % per level.
+fn magic_ruleset() -> Ruleset {
+    use h3_content::SpellScope;
+    let mut p = pack();
+    p.spell_schools.push(SpellSchoolDef {
+        key: key("t:fire"),
+        name: "Fire".into(),
+    });
+    for s in &mut p.skills {
+        match s.key.to_string().as_str() {
+            "t:wisdom" => {
+                s.levels = [1, 2, 3].map(|level| {
+                    vec![HeroEffectDef::SchoolMastery {
+                        school: key("t:air"),
+                        level,
+                    }]
+                });
+            }
+            "t:logistics" => {
+                s.levels = [500, 1000, 1500].map(|bp| {
+                    vec![HeroEffectDef::SpellDamage {
+                        scope: SpellScope::All,
+                        bp,
+                    }]
+                });
+            }
+            _ => {}
+        }
+    }
+    let damage = |scope, bp| HeroEffectDef::SpellDamage { scope, bp };
+    for a in &mut p.artifacts {
+        a.effects = match a.key.to_string().as_str() {
+            "t:book" => vec![HeroEffectDef::SpellBook],
+            "t:band" => vec![
+                HeroEffectDef::SchoolMastery {
+                    school: key("t:fire"),
+                    level: 2,
+                },
+                damage(SpellScope::School(key("t:fire")), 5000),
+            ],
+            "t:helm" => vec![damage(SpellScope::Spell(key("t:bolt")), 2500)],
+            "t:eye" => vec![damage(SpellScope::School(key("t:air")), 5000)],
+            "t:hook" => vec![damage(SpellScope::All, 100)],
+            _ => continue,
+        };
+    }
+    p.heroes[0].specialty = vec![
+        HeroEffectDef::SkillSpecialty {
+            skill: key("t:logistics"),
+            bp_per_level: 500,
+        },
+        HeroEffectDef::SpellSpecialty {
+            spell: key("t:bolt"),
+            bp_per_level: 300,
+        },
+    ];
+    compile(p).unwrap()
+}
+
+// covers: HER-BAT-011, HER-BAT-012
+#[test]
+fn magic_and_spell_bonuses_are_derived() {
+    use h3_content::{SchoolId, SpellScope};
+    let r = magic_ruleset();
+    let mut d = details(&r);
+    d.level = 10;
+    d.skills
+        .extend([(skill(&r, "t:wisdom"), 2), (skill(&r, "t:logistics"), 3)]);
+    let hero = derive_battle_hero(&d, &r).unwrap();
+    // The book gives the known spells; air from Wisdom, fire from the band; mana as given.
+    assert_eq!(
+        hero.magic,
+        BattleMagic {
+            spell_book: Some(d.spells.clone()),
+            mana: u16::MAX,
+            max_mana: 0,
+            schools: [2, 2, 0, 0],
+        }
+    );
+    // Every spell: Expert Logistics 15 % grown by 5 % x 10 levels (22.5 %) plus the hook's 1 %;
+    // then fire, bolt and air in the order worn (the eye once); then the specialty, 3 % x 10.
+    let bolt = spell_id(&r, "t:bolt");
+    assert_eq!(
+        hero.effects,
+        vec![
+            BattleEffect::SpellDamage {
+                scope: SpellScope::All,
+                bp: 2350,
+            },
+            BattleEffect::SpellDamage {
+                scope: SpellScope::School(SchoolId::from_raw(1)),
+                bp: 5000,
+            },
+            BattleEffect::SpellDamage {
+                scope: SpellScope::Spell(bolt),
+                bp: 2500,
+            },
+            BattleEffect::SpellDamage {
+                scope: SpellScope::School(SchoolId::from_raw(0)),
+                bp: 5000,
+            },
+            BattleEffect::SpellSpecialty {
+                spell: bolt,
+                bp: 3000
+            },
+        ]
+    );
+    // Without the book no spell book; the highest mastery counts; an empty book is a book.
+    let mut d2 = d.clone();
+    d2.worn.retain(|&a| a != art(&r, "t:book"));
+    let plain = derive_battle_hero(&d2, &r).unwrap();
+    assert_eq!(plain.magic.spell_book, None);
+    d2.skills.retain(|&(s, _)| s != skill(&r, "t:wisdom"));
+    d2.skills.push((skill(&r, "t:wisdom"), 1));
+    d2.worn.push(art(&r, "t:book"));
+    d2.spells.clear();
+    let novice = derive_battle_hero(&d2, &r).unwrap();
+    assert_eq!(novice.magic.schools, [1, 2, 0, 0]);
+    assert_eq!(novice.magic.spell_book, Some(vec![]));
 }
 
 // covers: HER-BAT-008

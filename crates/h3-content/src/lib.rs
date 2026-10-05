@@ -30,6 +30,7 @@ mod key;
 mod pack;
 mod quirks;
 mod ruleset;
+mod spell;
 
 pub use ability::{Ability, AbilityDef, AreaShot, AuraTarget, CompiledAbility};
 pub use artifacts::{
@@ -38,14 +39,14 @@ pub use artifacts::{
 };
 pub use effect::{
     Affects, CompiledHeroEffect, CreatureSelector, CreatureStat, FULL_BP, HeroEffect,
-    HeroEffectDef, MAX_ALIGNMENT_FACTIONS, MAX_EFFECTS, MAX_SKILL_LEVEL,
+    HeroEffectDef, MAX_ALIGNMENT_FACTIONS, MAX_EFFECTS, MAX_SKILL_LEVEL, SpellScope,
 };
 pub use error::CompileError;
 pub use flags::{CreatureFlag, CreatureFlags};
 pub use heroes::{
     HeroClass, HeroClassId, HeroParams, HeroType, HeroTypeId, MAX_HERO_SKILLS, MAX_SPELL_LEVEL,
-    SchoolId, SecondarySkill, SkillId, Spell, SpellCategory, SpellId, SpellPolarity, SpellSchool,
-    StartingStack,
+    MAX_SPELL_SCHOOLS, SchoolId, SecondarySkill, SkillId, Spell, SpellCategory, SpellId,
+    SpellPolarity, SpellSchool, StartingStack,
 };
 pub use key::{ContentKey, KeyError};
 pub use pack::{
@@ -63,4 +64,8 @@ pub use ruleset::{
     Formation, MAX_ARMY_SLOTS, MAX_AURA_VALUES, MAX_FIELD_HEXES, MAX_ROLL_LEVELS, MAX_UPGRADES,
     ObstacleType, RULESET_HASH_VERSION, ResourceId, ResourceInfo, RollTable, Ruleset,
     SurrenderParams, TerrainId, TerrainInfo, WAR_MACHINE_KINDS,
+};
+pub use spell::{
+    MAX_AREA_RADIUS, MAX_CHAIN_TARGETS, MAX_SPELL_EFFECTS, SpellArea, SpellChain, SpellEffect,
+    SpellMagic, SpellTarget, TargetConditions,
 };

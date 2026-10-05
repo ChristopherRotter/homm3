@@ -4,13 +4,14 @@ use std::vec;
 use std::vec::Vec;
 
 use super::*;
-use crate::effect::{Affects, CreatureSelector, CreatureStat, HeroEffect};
+use crate::effect::{Affects, CreatureSelector, CreatureStat, HeroEffect, SpellScope};
 use crate::pack::{
     HeroClassDef, HeroParamsDef, HeroTypeDef, ProfileDef, SecondarySkillDef, SpellDef,
     SpellSchoolDef, StartingStackDef,
 };
 use crate::ruleset::Ruleset;
 use crate::ruleset::tests::{battle_def, creature, faction, key, manifest};
+use crate::spell::{SpellEffect, SpellTarget};
 
 fn school(k: &str) -> SpellSchoolDef {
     SpellSchoolDef {
@@ -30,6 +31,11 @@ fn spell(k: &str, schools: &[&str]) -> SpellDef {
         power: 10,
         effect: [10, 10, 20, 30],
         polarity: SpellPolarity::Negative,
+        magic: SpellMagic {
+            target: SpellTarget::Stack,
+            effects: vec![SpellEffect::Damage],
+            ..SpellMagic::default()
+        },
     }
 }
 
@@ -96,6 +102,7 @@ fn pack() -> ContentPack {
     let mut ability = spell("t:gaze", &[]);
     ability.category = SpellCategory::Ability;
     ability.level = 0;
+    ability.magic = SpellMagic::default();
     ContentPack {
         factions: vec![faction("t:town")],
         creatures: vec![peasant, creature("t:farmer"), cart],
@@ -226,6 +233,19 @@ fn every_effect_kind_resolves_and_the_hash_sees_all_content() {
                     double_damage_chance_bp: 7500,
                 },
                 HeroEffect::FirstAid { heal_bp: 10_000 },
+                HeroEffect::SchoolMastery {
+                    school: key("t:fire"),
+                    level: 2,
+                },
+                HeroEffect::SpellDamage {
+                    scope: SpellScope::School(key("t:air")),
+                    bp: 5000,
+                },
+                HeroEffect::SpellDamage {
+                    scope: SpellScope::All,
+                    bp: 500,
+                },
+                HeroEffect::SpellBook,
             ],
             vec![
                 HeroEffect::CreatureStat {
@@ -249,6 +269,11 @@ fn every_effect_kind_resolves_and_the_hash_sees_all_content() {
         },
         HeroEffect::SpellSpecialty {
             spell: key("t:bolt"),
+            bp_per_level: 300,
+        },
+        HeroEffect::SpellDamage {
+            scope: SpellScope::Spell(key("t:bolt")),
+            bp: 5000,
         },
         HeroEffect::CreatureStat {
             creatures: CreatureSelector::Creature(key("t:farmer")),
@@ -260,12 +285,21 @@ fn every_effect_kind_resolves_and_the_hash_sees_all_content() {
     let r = compile(&[p.clone()]).unwrap();
     assert_ne!(r.content_hash(), base);
     assert_eq!(r.skills()[2].effects(3).len(), 2);
-    assert_eq!(r.hero_types()[0].specialty.len(), 3);
+    assert_eq!(r.hero_types()[0].specialty.len(), 4);
+    let fire = r.spell_schools().len() - 1;
+    assert_eq!(
+        r.skills()[2].effects(2)[2],
+        HeroEffect::SchoolMastery {
+            school: Handle::from_raw(u16::try_from(fire).unwrap()),
+            level: 2
+        }
+    );
 
     // Every kind of entry contributes to the hash.
-    let changes: [fn(&mut ContentPack); 6] = [
+    let changes: [fn(&mut ContentPack); 7] = [
         |p| p.spell_schools[0].name = "X".into(),
         |p| p.spells[0].effect[3] = 31,
+        |p| p.spells[0].magic.target = SpellTarget::None,
         |p| p.skills[0].levels[0] = vec![HeroEffect::RangedDamage { bp: 999 }],
         |p| p.hero_classes[0].skill_weights[0].1 = 6,
         |p| p.heroes[0].army[0].count = [10, 21],
@@ -378,6 +412,34 @@ fn unknown_references_are_rejected() {
             |p| {
                 p.heroes[0].specialty = vec![HeroEffect::SpellSpecialty {
                     spell: key("t:nova"),
+                    bp_per_level: 300,
+                }];
+            },
+            unknown("spell", "t:nova"),
+        ),
+        (
+            |p| {
+                p.skills[0].levels[0] = vec![HeroEffect::SchoolMastery {
+                    school: key("t:earth"),
+                    level: 1,
+                }];
+            },
+            unknown("spell school", "t:earth"),
+        ),
+        (
+            |p| {
+                p.skills[0].levels[0] = vec![HeroEffect::SpellDamage {
+                    scope: SpellScope::School(key("t:earth")),
+                    bp: 1,
+                }];
+            },
+            unknown("spell school", "t:earth"),
+        ),
+        (
+            |p| {
+                p.skills[0].levels[0] = vec![HeroEffect::SpellDamage {
+                    scope: SpellScope::Spell(key("t:nova")),
+                    bp: 1,
                 }];
             },
             unknown("spell", "t:nova"),
@@ -470,6 +532,19 @@ fn too_many_entries() {
 }
 
 #[test]
+fn at_most_four_spell_schools() {
+    let mut p = pack();
+    p.spell_schools = (0..5).map(|i| school(&std::format!("t:s{i}"))).collect();
+    p.spells[0].schools = vec![key("t:s0")];
+    assert_eq!(
+        fails(p.clone()),
+        CompileError::TooManyEntries("spell school")
+    );
+    p.spell_schools.pop();
+    assert!(compile(&[p]).is_ok());
+}
+
+#[test]
 fn invalid_entries_are_rejected() {
     let cases: Vec<Case> = vec![
         (
@@ -495,6 +570,14 @@ fn invalid_entries_are_rejected() {
                 "t:bolt",
                 "hero spells need a school, creature abilities have none",
             ),
+        ),
+        (
+            |p| p.spells[0].category = SpellCategory::Adventure,
+            invalid("spell", "t:bolt", "adventure spells have no battle effects"),
+        ),
+        (
+            |p| p.spells[1].magic.target = SpellTarget::Hex,
+            invalid("spell", "t:gaze", "targeting without effects"),
         ),
         (
             |p| p.spells[1].schools = vec![key("t:air")],
@@ -598,6 +681,7 @@ fn invalid_entries_are_rejected() {
             |p| {
                 p.skills[0].levels[0] = vec![HeroEffect::SpellSpecialty {
                     spell: key("t:bolt"),
+                    bp_per_level: 300,
                 }];
             },
             invalid(

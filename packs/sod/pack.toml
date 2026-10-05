@@ -31,6 +31,8 @@ cost = [0, 0, 0, 0]
 power = 0
 effect = [600, 600, 600, 600]
 polarity = "negative"
+target = "stack"
+effects = [{ kind = "damage" }]
 
 [[artifact_slot_override]]
 target = "base:misc"

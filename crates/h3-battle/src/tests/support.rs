@@ -8,8 +8,8 @@ use std::vec::Vec;
 use h3_content::{
     AbilityDef, AuraTarget, BattleParamsDef, ContentKey, ContentPack, CreatureDef, CreatureInfoDef,
     FactionDef, Formation, HeroClassDef, HeroTypeDef, ObstacleDef, PackManifest, ProfileDef,
-    ResourceDef, Ruleset, SpellCategory, SpellDef, SpellPolarity, SpellSchoolDef, StartingStackDef,
-    SurrenderDef, TerrainDef,
+    ResourceDef, Ruleset, SpellCategory, SpellDef, SpellMagic, SpellPolarity, SpellSchoolDef,
+    StartingStackDef, SurrenderDef, TerrainDef,
 };
 use h3_contracts::{Army, ArmyStack, BattleHero, BattleSetup, BattleSide};
 
@@ -637,6 +637,7 @@ pub fn ruleset_with(profile: &str, edit: impl FnOnce(&mut BattleParamsDef)) -> R
             power: 10,
             effect: [10, 10, 20, 30],
             polarity: SpellPolarity::Negative,
+            magic: SpellMagic::default(),
         })
         .collect(),
         hero_classes: vec![HeroClassDef {

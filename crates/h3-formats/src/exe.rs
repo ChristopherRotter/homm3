@@ -226,6 +226,8 @@ pub struct HeroData {
     pub specialties: Vec<SpecialtyRecord>,
     /// Spell type by spell id: −1 negative, 0 neutral, 1 positive.
     pub spell_types: Vec<i32>,
+    /// Spell flag word by spell id (§7.6, decoded in E04b T1).
+    pub spell_flags: Vec<u32>,
     /// Values of levels 0–3 per identified skill table, in table order.
     pub skill_values: Vec<(u8, [SkillValue; 4])>,
     /// Growth of a skill specialty per hero level (0.05).
@@ -541,6 +543,7 @@ pub fn hero_data_at(image: &PeImage<'_>, t: &HeroTables) -> Result<HeroData, For
     }
     let base = at(t.spell_va, "spell table address")?;
     let mut spell_types = Vec::with_capacity(t.spell_count.min(1024));
+    let mut spell_flags = Vec::with_capacity(t.spell_count.min(1024));
     for i in 0..t.spell_count {
         let r = base + i * SPELL_RECORD_SIZE;
         spell_types.push(range(
@@ -549,6 +552,7 @@ pub fn hero_data_at(image: &PeImage<'_>, t: &HeroTables) -> Result<HeroData, For
             -1,
             1,
         )?);
+        spell_flags.push(le::u32_at(image.data, r + 0xC, "spell record")?);
     }
     let mut skill_values = Vec::with_capacity(t.skill_values.len());
     for table in t.skill_values {
@@ -583,6 +587,7 @@ pub fn hero_data_at(image: &PeImage<'_>, t: &HeroTables) -> Result<HeroData, For
         heroes,
         specialties,
         spell_types,
+        spell_flags,
         skill_values,
         specialty_growth: f32::from_bits(growth),
         artifact_primary,
@@ -701,9 +706,10 @@ mod tests {
             put(&mut spec, 4 * k, v);
         }
         p.extend_from_slice(&spec);
-        for t in [-1i32, 1] {
+        for (t, flags) in [(-1i32, 0x8211), (1, 0x4_4845)] {
             let mut r = vec![0u8; SPELL_RECORD_SIZE];
             put(&mut r, 0, t);
+            put(&mut r, 0xC, flags);
             p.extend_from_slice(&r);
         }
         for v in [0i32, 1, 2, 3] {
@@ -759,6 +765,7 @@ mod tests {
             }
         );
         assert_eq!(d.spell_types, vec![-1, 1]);
+        assert_eq!(d.spell_flags, vec![0x8211, 0x4_4845]);
         assert_eq!(
             d.skill_values[0],
             (9, [0, 1, 2, 3].map(SkillValue::Integer))

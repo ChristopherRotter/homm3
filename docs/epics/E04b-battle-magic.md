@@ -1,6 +1,6 @@
 # E04b — Battle magic
 
-Status: **in progress** (refined 2026-10-05; increment 1 = T1–T2; T1 done, ADR-0014 accepted) · Follows E04a (closed 2026-10-05) · Part of the former E04 (OPEN-QUESTIONS Q27): E04a heroes in battle, **E04b** battle magic (this one), E04c sieges and special battlefields.
+Status: **in progress** (refined 2026-10-05; increment 1 = T1–T2; T1 done, ADR-0014 accepted; T2a done) · Follows E04a (closed 2026-10-05) · Part of the former E04 (OPEN-QUESTIONS Q27): E04a heroes in battle, **E04b** battle magic (this one), E04c sieges and special battlefields.
 
 ## Goal
 
@@ -31,7 +31,7 @@ Earthquake, sieges and the moat (E04c). The special battlefields' magic (Magic P
 **Increment 1:** T1 (done), T2 (refined below). Later increments are cut with the user at each checkpoint; order and boundaries of T3–T11 may change.
 
 - [x] **T1 Magic survey and ADR-0014** — done 2026-10-05: survey `docs/rules/surveys/E04b-magic.md`, spell flags and stack records (`docs/formats/installation.md` §7.6, §7.7), ADR-0014 accepted after one revision (Q42; ADR-0004 point 8 amended). Record: [`E04b-log.md`](E04b-log.md).
-- [ ] **T2 Casting core and direct-damage spells** — increment 1, after the review; four checkpoints proposed (T2a–T2d).
+- [ ] **T2 Casting core and direct-damage spells** — increment 1; split T2a–T2d confirmed by the user (2026-10-05), delivered as T2a + T2b, then T2c + T2d, each pair ending at a user checkpoint. T2a done 2026-10-05 ([log](E04b-log.md)).
 - [ ] T3 Timed effects on stacks: buffs and debuffs, Mass versions at Expert, durations and the artifacts that change them, Dispel, Cure (S-16, S-17, S-19).
 - [ ] T4 Control spells and spell defences: Berserk, Hypnotize, Forgetfulness, Blind; Anti-Magic, Magic Mirror (S-09 to S-11, S-13).
 - [ ] T5 Battlefield spells: Quicksand and Land Mine (hidden, owner-side visibility), Force Field, Fire Wall, Remove Obstacle, Teleport.
@@ -48,7 +48,7 @@ Order: T1 first and alone; T2 after the review; T3 before T4–T7 (they use time
 
 The 13 direct-damage spells: Magic Arrow, Ice Bolt, Lightning Bolt, Titan's Lightning Bolt (SoD), Implosion, Chain Lightning, Frost Ring, Fireball, Inferno, Meteor Shower, Death Ripple, Destroy Undead, Armageddon. Proposed checkpoints:
 
-- **T2a Content and the hero's magic.** Pack format v4: effect kind and targeting of the 13 spells; the spell flags they need (harvested where §7.6 is decoded, otherwise gap-fill with sources). Hero effects for the four magic schools' levels, Sorcery, the spell specialties of these spells and the spell-damage artifacts (the Orbs); `derive_battle_hero` fills `BattleMagic` and the spell-damage bonuses. HER- rules; ruleset hash.
+- [x] **T2a Content and the hero's magic** — done 2026-10-05: pack format v4 (target, area, chain, conditions, `damage` for the 13 spells), the flag word harvested, `school_mastery`, `spell_damage`, `spell_book`, `spell_specialty` growth; HER-BAT-011/012; ruleset hash v14. Record: [`E04b-log.md`](E04b-log.md). *As planned:* Pack format v4: effect kind and targeting of the 13 spells; the spell flags they need (harvested where §7.6 is decoded, otherwise gap-fill with sources). Hero effects for the four magic schools' levels, Sorcery, the spell specialties of these spells and the spell-damage artifacts (the Orbs); `derive_battle_hero` fills `BattleMagic` and the spell-damage bonuses. HER- rules; ruleset hash.
 - **T2b Casting in battle.** The hero's mana and "cast this round" in the state; the cast command (ADR-0014); legality (the side's turn, spell in the book, a combat spell, mana for the cost at the hero's mastery, at most once per round and never required, not in tactics, a target valid for the spell); the single-target spells with the damage formula (power × factor + effect by mastery; Sorcery, specialty and artifact bonuses; rounding as Q-0005 until batch 2a says otherwise); events with visibility; the observation (cast this round public, the spell book private); the outcome's mana per hero; replay format, state hash.
 - **T2c The sim.** The factorized casting action in `h3-sim` and the C ABI (action encoding v9, C ABI v8), observation encoding v5; a casting hero in the `full` scenario, its golden replay re-recorded, `bench-check` re-baselined with the reason; state size and clone cost measured. Every later spell is then exercised by random rollouts.
 - **T2d Area, chain and battle-wide damage; resistance and immunities.** Area shapes, Chain Lightning, Death Ripple, Destroy Undead, Armageddon; the resolution order (ADR-0014) with the Resistance skill and the creature abilities these spells meet (immunities by level, school or to all spells; resistance chances; damage reductions; S-18), as new `Ability` variants with BAT rules. Then experiment batch 2a compiled for the user (T10; the spec gains spells and mana), so its results are in before increment 2 builds on the damage formula.

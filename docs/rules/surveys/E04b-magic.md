@@ -94,3 +94,29 @@ T2: S-18 (Magic Arrow 0 damage to golems). T3: S-16, S-17, S-19. T4: S-09, S-10,
 ## 10. Experiment candidates for batch 2a (end of increment 1)
 
 X-1 rounding of spell damage with Sorcery, an Orb and a specialist on a known stack, and Magic Arrow on Gold Golems (S-18); X-2 immunities and double damage (Ice Bolt on Fire Elementals, a level 4 spell on a Gold Dragon); X-3 a hero cast during a commanded Ballista's turn (M-4); X-4 spell costs with Mages, Pegasi and a Familiar; X-5 Implosion on a Ballista (M-1); X-6 Chain Lightning's order and falloff (T2d). Plus the E04a leftovers in `docs/experiments/README.md` (Q40 among them). The experiment spec must gain spells and mana (the `.h3m` writer already writes a hero's spells).
+
+## 11. T2a: the damage spells' targeting and the hero's magic (E04b T2a, 2026-10-05)
+
+- **Targeting** (pack format v4): the executable's flag word gives the 13 damage spells' target
+  (`0x10` one stack, `0x80` a hex, neither: every stack) and the damage kind (`0x200`). Areas,
+  Chain Lightning and the conditions come from `vcmi` `config/spells/offensive.json` L94–L360:
+  Frost Ring the hexes at distance 1, Fireball and Meteor Shower distance 0–1, Inferno 0–2; Chain
+  Lightning 4, 4, 5, 5 stacks with half the previous damage each; Implosion and Death Ripple spare
+  war machines (`SIEGE_WEAPON`), Death Ripple spares undead, Destroy Undead needs undead. The
+  game's own spell descriptions (`SPTRAITS.TXT`, `original-data`) agree: "adjacent to the target
+  location, without inflicting damage on the target", "the target and any adjacent units",
+  "Strikes four units" (five at Advanced and Expert), "half damage", "all non-undead units". The
+  flag `0x1000` sits on Implosion and Death Ripple among the damage spells, as VCMI's war-machine
+  exclusion (dispute M-1 stays open for the timed spells; X-5 checks Implosion on a Ballista).
+- **Spell specialists** (`wiki` Hero specialty, SoD argument of `{{swh}}`, the template shows
+  `{{{2}}}` without HotA): `C * (1 + 0.03 * L / n)`, `L` the hero level, `n` the target's
+  creature level; HotA uses 10 % and 5 % for Meteor Shower, Chain Lightning, Resurrection and
+  Animate Dead. Fixed bonuses: Ciele +50 % Magic Arrow (`wiki` Ciele, no version difference),
+  Luna +100 % Fire Wall (HotA 25 %). `vcmi` agrees (`SPECIAL_SPELL_LEV` 3 × level;
+  `SPECIFIC_SPELL_DAMAGE` 50 and 100) and divides the level term by the creature level in
+  integers before the factor (`CGHeroInstance.cpp` L833–L834); SoD's rounding is X-1.
+- **Sorcery** 5/10/15 % from the executable (`installation.md` §7.4), a Sorcery specialist grows
+  it by 5 % per level; **the Orbs** +50 % for their school (`wiki` Orb of Tempestuous Fire: "+50%
+  damage to fire spells"; `vcmi` `SPELL_DAMAGE` per school, the best of a spell's schools counts).
+- **Magic school skills** set the school's mastery to their level (`wiki` Air Magic; `vcmi`
+  `MAGIC_SCHOOL_SKILL` 1/2/3, `config/skills.json` L434–L550).

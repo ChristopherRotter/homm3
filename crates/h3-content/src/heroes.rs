@@ -18,9 +18,12 @@ use crate::flags::CreatureFlag;
 use crate::key::ContentKey;
 use crate::pack::{ContentPack, HeroParamsDef};
 use crate::ruleset::{CreatureType, CreatureTypeId, FactionId, ResourceId};
+use crate::spell::SpellMagic;
 
 /// Highest spell level.
 pub const MAX_SPELL_LEVEL: u8 = 5;
+/// Most spell schools (the battle hero keeps one mastery per school, `BattleMagic.schools`).
+pub const MAX_SPELL_SCHOOLS: usize = 4;
 /// Most secondary skills a hero can have.
 pub const MAX_HERO_SKILLS: usize = 8;
 
@@ -96,7 +99,7 @@ pub struct SpellSchool {
 /// Handle of a spell school in a [`crate::Ruleset`].
 pub type SchoolId = Handle<SpellSchool>;
 
-/// A compiled spell data row (E04b gives spells their effects).
+/// A compiled spell: its data row and what it does in battle (E04b).
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Spell {
     /// Key.
@@ -117,6 +120,8 @@ pub struct Spell {
     pub effect: [u16; 4],
     /// Good or bad for its target.
     pub polarity: SpellPolarity,
+    /// Targeting and effects in battle.
+    pub magic: SpellMagic,
 }
 
 /// Handle of a spell in a [`crate::Ruleset`].
@@ -387,6 +392,7 @@ impl HeroContent {
                         seen.push(id);
                         Ok(id)
                     },
+                    |l| refs.resolve(l, &self.schools.index, "spell school"),
                 )
             })
             .collect()
@@ -418,6 +424,7 @@ impl HeroContent {
                 power: def.power,
                 effect: def.effect,
                 polarity: def.polarity,
+                magic: def.magic.clone(),
             });
         }
         // Skills may refer to each other (from T3b on), so all are registered first.
@@ -502,6 +509,9 @@ impl HeroContent {
                 .get(id.index())
                 .is_some_and(|c| c.flags.contains(f))
         };
+        if self.schools.items.len() > MAX_SPELL_SCHOOLS {
+            return Err(CompileError::TooManyEntries("spell school"));
+        }
         for s in &self.spells.items {
             let ability = s.category == SpellCategory::Ability;
             let lowest = if ability { 0 } else { 1 };
@@ -518,6 +528,9 @@ impl HeroContent {
                     &s.key,
                     "hero spells need a school, creature abilities have none",
                 ));
+            }
+            if let Some(reason) = s.magic.error(s.category != SpellCategory::Adventure) {
+                return Err(invalid("spell", &s.key, reason));
             }
         }
         for skill in &self.skills.items {
@@ -585,7 +598,7 @@ impl HeroContent {
 
 impl CanonicalHash for HeroContent {
     /// Schools (key, name); spells (key, name, category, level, schools, cost, power, effect,
-    /// polarity); skills (key, name, the three effect lists); classes (key, name, faction,
+    /// polarity, magic (v14)); skills (key, name, the three effect lists); classes (key, name, faction,
     /// primary, gains, weights); hero types (key, name, class, skills, spell book, spells,
     /// army, war machines, specialty); then the artifact content (`hash_artifacts`); then the
     /// hero parameters as presence flag + fields (v11).
@@ -606,6 +619,7 @@ impl CanonicalHash for HeroContent {
                 h.write_u16(*v);
             }
             h.write_u8(s.polarity as u8);
+            s.magic.hash_into(h);
         }
         h.write_len(self.skills.items.len());
         for s in &self.skills.items {

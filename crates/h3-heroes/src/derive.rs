@@ -1,16 +1,16 @@
 //! The translation from hero details to the battle hero (ADR-0013 point 2; HER-BAT-001 to
-//! HER-BAT-005).
+//! HER-BAT-012).
 
 use alloc::collections::BTreeSet;
 use alloc::vec::Vec;
 
 use h3_content::{
     Affects, CompiledHeroEffect, CreatureSelector, CreatureStat, CreatureTypeId, FULL_BP,
-    HeroEffect, Ruleset,
+    HeroEffect, MAX_SPELL_SCHOOLS, Ruleset, SchoolId, SpellId, SpellScope,
 };
 use h3_contracts::{
-    BallistaControl, BattleEffect, BattleHero, DamageBonuses, FactionGroup, MAX_BATTLE_EFFECTS,
-    MachineControl, StatOp, TentControl,
+    BallistaControl, BattleEffect, BattleHero, BattleMagic, DamageBonuses, FactionGroup,
+    MAX_BATTLE_EFFECTS, MachineControl, StatOp, TentControl,
 };
 
 use crate::details::{HeroDetails, PrimarySkill, check};
@@ -20,10 +20,11 @@ use crate::error::DetailsError;
 /// effective primary skills (HER-BAT-001), the Tactics level (HER-BAT-002), the morale and luck
 /// effects (HER-BAT-003), the damage bonuses (HER-BAT-004), the war machines it commands
 /// (HER-BAT-005), the `NoRetreat` effect (HER-BAT-006), the surrender discount (HER-BAT-007),
-/// the stack statistic effects (HER-BAT-008), the stack trait effects (HER-BAT-009) and the
-/// alignment groups (HER-BAT-010); the mana is passed through. The details are validated first.
+/// the stack statistic effects (HER-BAT-008), the stack trait effects (HER-BAT-009), the
+/// alignment groups (HER-BAT-010), the magic (HER-BAT-011: spell book, school masteries, the mana
+/// passed through) and the spell bonuses (HER-BAT-012). The details are validated first.
 ///
-/// The magic stays neutral until E04b: spell book, maximum mana and schools.
+/// The maximum mana stays 0 (informative; it is derived with hero progression, E08–E10).
 ///
 /// # Errors
 /// The [`DetailsError`] of the first rule the details break ([`crate::validate`]);
@@ -85,6 +86,9 @@ pub fn derive_battle_hero(
 
     // rule: HER-BAT-010
     hero.effects.extend(alignment_groups(details, ruleset));
+
+    // rule: HER-BAT-012
+    hero.effects.extend(spell_bonuses(details, ruleset));
     if hero.effects.len() > MAX_BATTLE_EFFECTS {
         return Err(DetailsError::TooManyBattleEffects);
     }
@@ -98,8 +102,74 @@ pub fn derive_battle_hero(
     // rule: HER-BAT-007
     hero.surrender_discount_bp = surrender_discount(details, ruleset);
 
-    hero.magic.mana = details.mana;
+    // rule: HER-BAT-011
+    hero.magic = magic(details, ruleset);
     Ok(hero)
+}
+
+/// The hero's magic (HER-BAT-011): the known spells as its spell book if one of its effects
+/// gives a spell book (each artifact type once), the highest `school_mastery` level per school,
+/// the mana as given.
+fn magic(details: &HeroDetails, ruleset: &Ruleset) -> BattleMagic {
+    let mut schools = [0u8; MAX_SPELL_SCHOOLS];
+    let mut book = false;
+    for effect in effects(details, ruleset, Count::OncePerType) {
+        match *effect {
+            HeroEffect::SchoolMastery { school, level } => {
+                // Content has at most `MAX_SPELL_SCHOOLS` schools.
+                let mastery = &mut schools[school.index().min(MAX_SPELL_SCHOOLS - 1)];
+                *mastery = (*mastery).max(level);
+            }
+            HeroEffect::SpellBook => book = true,
+            _ => {}
+        }
+    }
+    BattleMagic {
+        spell_book: book.then(|| details.spells.clone()),
+        mana: details.mana,
+        max_mana: 0,
+        schools,
+    }
+}
+
+/// The spell bonuses (HER-BAT-012): per scope (every spell, a school, a spell) the sum of the
+/// grown `spell_damage` values of [`grown_effects`] (Sorcery grows with a Sorcery specialty),
+/// saturated at `u16::MAX`, in the order of their first appearance; then the specialty's
+/// `spell_specialty` as `bp_per_level` times the hero's level.
+fn spell_bonuses(details: &HeroDetails, ruleset: &Ruleset) -> Vec<BattleEffect> {
+    let mut totals: Vec<(SpellScope<SchoolId, SpellId>, u64)> = Vec::new();
+    for (effect, growth_bp) in grown_effects(details, ruleset) {
+        let HeroEffect::SpellDamage { scope, bp } = *effect else {
+            continue;
+        };
+        let grown = grow(u64::from(bp), growth_bp);
+        match totals.iter_mut().find(|(s, _)| *s == scope) {
+            Some((_, total)) => *total = total.saturating_add(grown),
+            None => totals.push((scope, grown)),
+        }
+    }
+    let mut out: Vec<BattleEffect> = totals
+        .into_iter()
+        .map(|(scope, sum)| BattleEffect::SpellDamage {
+            scope,
+            bp: u16::try_from(sum).unwrap_or(u16::MAX),
+        })
+        .collect();
+    out.extend(
+        specialty(details, ruleset)
+            .iter()
+            .filter_map(|effect| match *effect {
+                HeroEffect::SpellSpecialty {
+                    spell,
+                    bp_per_level,
+                } => Some(BattleEffect::SpellSpecialty {
+                    spell,
+                    bp: u32::from(bp_per_level) * u32::from(details.level),
+                }),
+                _ => None,
+            }),
+    );
+    out
 }
 
 /// The surrender discount (HER-BAT-007): the sum of the grown values of the surrender discounts

@@ -1000,6 +1000,14 @@ speed = 1
 war_machine_speed = 0           # the wiki excludes the Ballista; VCMI gives it +1 too
 sources = ["wiki-hero-specialty", "vcmi-specialties"]
 
+# Spell specialists (specialty kind 3, E04b T2a). The executable's record holds only the spell;
+# the formula is code: the effect grows by bp_per_level per hero level, divided by the target
+# creature's level. A few heroes have a fixed damage bonus instead (`spell_damage`).
+[heroes.spell_specialty]
+bp_per_level = 300
+fixed = [{ hero = "Ciele", bp = 5000 }, { hero = "Luna", bp = 10000 }]
+sources = ["wiki-spell-specialty", "wiki-ciele", "vcmi-spell-specialties"]
+
 # Limits of a hero's details: the pack's `[hero_params]` (Tier 2, E04a T4a; HER-DET-001,
 # HER-ART-002).
 [heroes.params]
@@ -1015,6 +1023,34 @@ basic = [{ kind = "tactics", level = 1 }]
 advanced = [{ kind = "tactics", level = 2 }]
 expert = [{ kind = "tactics", level = 3 }]
 sources = ["wiki-tactics", "vcmi-skills"]
+
+[[heroes.skill_effects]]
+skill = "Air Magic"
+basic = [{ kind = "school_mastery", school = "air", level = 1 }]
+advanced = [{ kind = "school_mastery", school = "air", level = 2 }]
+expert = [{ kind = "school_mastery", school = "air", level = 3 }]
+sources = ["wiki-air-magic", "vcmi-magic-skills"]
+
+[[heroes.skill_effects]]
+skill = "Earth Magic"
+basic = [{ kind = "school_mastery", school = "earth", level = 1 }]
+advanced = [{ kind = "school_mastery", school = "earth", level = 2 }]
+expert = [{ kind = "school_mastery", school = "earth", level = 3 }]
+sources = ["wiki-air-magic", "vcmi-magic-skills"]
+
+[[heroes.skill_effects]]
+skill = "Fire Magic"
+basic = [{ kind = "school_mastery", school = "fire", level = 1 }]
+advanced = [{ kind = "school_mastery", school = "fire", level = 2 }]
+expert = [{ kind = "school_mastery", school = "fire", level = 3 }]
+sources = ["wiki-air-magic", "vcmi-magic-skills"]
+
+[[heroes.skill_effects]]
+skill = "Water Magic"
+basic = [{ kind = "school_mastery", school = "water", level = 1 }]
+advanced = [{ kind = "school_mastery", school = "water", level = 2 }]
+expert = [{ kind = "school_mastery", school = "water", level = 3 }]
+sources = ["wiki-air-magic", "vcmi-magic-skills"]
 
 [[heroes.skill_effects]]
 skill = "Artillery"
@@ -1178,6 +1214,62 @@ kind = "wiki"
 ref = "Ring of Vitality: +1 hit point to all the hero's creatures"
 url = "https://heroes.thelazy.net/index.php/Ring_of_Vitality"
 retrieved = "2026-10-03"
+
+[[source]]
+id = "wiki-spell-specialty"
+kind = "wiki"
+ref = "Hero specialty - Heroes 3 wiki (SoD argument of the swh template): a spell specialist's effect grows by 3 % per hero level divided by the target creature's level, C * (1 + 0.03 * L / n) (HotA: 10 %, 5 % for some spells); fixed bonuses: Ciele's Magic Arrow +50 % damage, Luna's Fire Wall +100 % (HotA 25 %)"
+url = "https://heroes.thelazy.net/index.php/Hero_specialty"
+retrieved = "2026-10-05"
+
+[[source]]
+id = "wiki-ciele"
+kind = "wiki"
+ref = "Ciele: 'Increases the damage of Magic Arrow by 50%' (no version difference)"
+url = "https://heroes.thelazy.net/index.php/Ciele"
+retrieved = "2026-10-05"
+
+[[source]]
+id = "vcmi-spell-specialties"
+kind = "vcmi"
+ref = "config/heroes/*.json (1.7.5): spell specialists SPECIAL_SPELL_LEV val 3 with updater TIMES_HERO_LEVEL (e.g. castle.json L205-L211, Adelaide's Frost Ring); conflux.json L280-L289 Luna SPECIFIC_SPELL_DAMAGE fireWall 100, L329-L332 Ciele SPECIFIC_SPELL_DAMAGE magicArrow 50; lib/mapObjects/CGHeroInstance.cpp L815-L837 applies them"
+url = "https://github.com/vcmi/vcmi/blob/1.7.5/lib/mapObjects/CGHeroInstance.cpp#L815-L837"
+retrieved = "2026-10-05"
+
+[[source]]
+id = "wiki-air-magic"
+kind = "wiki"
+ref = "Air Magic - Heroes 3 wiki: Basic, Advanced and Expert Air Magic let the hero cast air spells at reduced cost and increased (Expert: maximum) effectiveness; the other three school skills likewise for their schools"
+url = "https://heroes.thelazy.net/index.php/Air_Magic"
+retrieved = "2026-10-05"
+
+[[source]]
+id = "vcmi-magic-skills"
+kind = "vcmi"
+ref = "config/skills.json (1.7.5) L434-L550: fireMagic, airMagic, waterMagic and earthMagic give MAGIC_SCHOOL_SKILL 1/2/3 for their school"
+url = "https://github.com/vcmi/vcmi/blob/1.7.5/config/skills.json#L434-L550"
+retrieved = "2026-10-05"
+
+[[source]]
+id = "vcmi-spells-offensive"
+kind = "vcmi"
+ref = "config/spells/offensive.json (1.7.5) L94-L360: Implosion and Death Ripple spare SIEGE_WEAPON (war machines), Death Ripple spares UNDEAD, Destroy Undead needs UNDEAD; ranges Frost Ring 1, Fireball and Meteor Shower 0-1, Inferno 0-2; Chain Lightning chainLength 4, 4, 5, 5 and chainFactor 0.5. The game's own spell descriptions agree on the areas, the four or five units struck and the halving (SPTRAITS.TXT), and the executable's flag 0x1000 sits on Implosion and Death Ripple among the damage spells (installation.md 7.6)"
+url = "https://github.com/vcmi/vcmi/blob/1.7.5/config/spells/offensive.json#L94-L360"
+retrieved = "2026-10-05"
+
+[[source]]
+id = "wiki-orbs"
+kind = "wiki"
+ref = "Orb of Tempestuous Fire: '+50% damage to fire spells'; the Orbs of the Firmament, Silt and Driving Rain likewise for air, earth and water spells"
+url = "https://heroes.thelazy.net/index.php/Orb_of_Tempestuous_Fire"
+retrieved = "2026-10-05"
+
+[[source]]
+id = "vcmi-magic-artifacts"
+kind = "vcmi"
+ref = "config/artifacts.json (1.7.5): spellBook (L2); orbOfTheFirmament, orbOfSilt, orbOfTempestuousFire, orbOfDrivingRain SPELL_DAMAGE 50 for air, earth, fire, water (L1166-L1217); lib/battle/CBattleInfoCallback.cpp L117-L159: a hero without a spell book cannot cast"
+url = "https://github.com/vcmi/vcmi/blob/1.7.5/config/artifacts.json#L1166-L1217"
+retrieved = "2026-10-05"
 
 [artifacts]
 # The AB-era table's rows that RoE did not have (RoE: rows 0-126).
@@ -1381,18 +1473,42 @@ effects = [
 ]
 sources = ["wiki-bow-of-the-sharpshooter", "vcmi-artifacts"]
 
+[[artifacts.effects]]
+artifacts = ["Spell Book"]
+effects = [{ kind = "spell_book" }]
+sources = ["wiki-artifact", "vcmi-magic-artifacts"]
+
+[[artifacts.effects]]
+artifacts = ["Orb of the Firmament"]
+effects = [{ kind = "spell_damage", bp = 5000, school = "air" }]
+sources = ["wiki-orbs", "vcmi-magic-artifacts"]
+
+[[artifacts.effects]]
+artifacts = ["Orb of Silt"]
+effects = [{ kind = "spell_damage", bp = 5000, school = "earth" }]
+sources = ["wiki-orbs", "vcmi-magic-artifacts"]
+
+[[artifacts.effects]]
+artifacts = ["Orb of Tempestuous Fire"]
+effects = [{ kind = "spell_damage", bp = 5000, school = "fire" }]
+sources = ["wiki-orbs", "vcmi-magic-artifacts"]
+
+[[artifacts.effects]]
+artifacts = ["Orb of Driving Rain"]
+effects = [{ kind = "spell_damage", bp = 5000, school = "water" }]
+sources = ["wiki-orbs", "vcmi-magic-artifacts"]
+
 # Effects no epic has modelled yet; the pack marks these artifacts, and every artifact without a
 # modelled effect must be listed here.
 [[artifacts.pending]]
 epic = "E04b"
 what = "spell book, spells, spell immunity and resistance, spell duration and damage, mana, Eagle Eye"
 artifacts = [
-    "Spell Book", "Spell Scroll", "Badge of Courage",
+    "Spell Scroll", "Badge of Courage",
     "Garniture of Interference", "Surcoat of Counterpoise", "Boots of Polarity",
     "Bird of Perception", "Stoic Watchman", "Emblem of Cognizance",
     "Charm of Mana", "Talisman of Mana", "Mystic Orb of Mana",
     "Collar of Conjuring", "Ring of Conjuring", "Cape of Conjuring",
-    "Orb of the Firmament", "Orb of Silt", "Orb of Tempestuous Fire", "Orb of Driving Rain",
     "Recanter's Cloak", "Tome of Fire Magic", "Tome of Air Magic", "Tome of Water Magic",
     "Tome of Earth Magic", "Sphere of Permanence", "Orb of Vulnerability",
     "Pendant of Dispassion", "Pendant of Second Sight", "Pendant of Holiness", "Pendant of Life",
@@ -1424,3 +1540,46 @@ artifacts = [
     "Legs of Legion", "Loins of Legion", "Torso of Legion", "Arms of Legion", "Head of Legion",
     "Sea Captain's Hat", "Statue of Legion", "Admiral's Hat", "Cornucopia",
 ]
+
+# What spells do in battle beyond what the executable's flag word gives (E04b T2a; pack format
+# v4). The harvester derives `target` and the `damage` effect from the flags (installation.md
+# 7.6); these entries add areas, chains and target conditions, by `SPTRAITS.TXT` name.
+[[spells.targeting]]
+spell = "Implosion"
+excludes = ["war_machine"]      # dispute M-1; batch 2a candidate X-5
+sources = ["vcmi-spells-offensive"]
+
+[[spells.targeting]]
+spell = "Chain Lightning"
+chain = { targets = [4, 4, 5, 5], factor_bp = 5000 }    # order of the jumps: T2d (X-6)
+sources = ["vcmi-spells-offensive"]
+
+[[spells.targeting]]
+spell = "Frost Ring"
+area = { inner = 1, radius = [1, 1, 1, 1] }
+sources = ["vcmi-spells-offensive"]
+
+[[spells.targeting]]
+spell = "Fireball"
+area = { radius = [1, 1, 1, 1] }
+sources = ["vcmi-spells-offensive"]
+
+[[spells.targeting]]
+spell = "Inferno"
+area = { radius = [2, 2, 2, 2] }
+sources = ["vcmi-spells-offensive"]
+
+[[spells.targeting]]
+spell = "Meteor Shower"
+area = { radius = [1, 1, 1, 1] }
+sources = ["vcmi-spells-offensive"]
+
+[[spells.targeting]]
+spell = "Death Ripple"
+excludes = ["undead", "war_machine"]
+sources = ["vcmi-spells-offensive"]
+
+[[spells.targeting]]
+spell = "Destroy Undead"
+requires = ["undead"]
+sources = ["vcmi-spells-offensive"]

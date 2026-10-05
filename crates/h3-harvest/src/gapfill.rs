@@ -38,6 +38,40 @@ pub struct GapFill {
     pub heroes: Heroes,
     /// Artifact facts (E04a T3b).
     pub artifacts: Artifacts,
+    /// What spells do in battle beyond the executable's flags (E04b T2a).
+    #[serde(default)]
+    pub spells: Spells,
+}
+
+/// Spell facts the executable's spell table does not hold (E04b T2a).
+#[derive(Debug, Default, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct Spells {
+    /// Areas, chains and target conditions, per spell.
+    #[serde(default)]
+    pub targeting: Vec<SpellTargeting>,
+}
+
+/// The targeting of one spell beyond its harvested target kind (pack syntax, `packs/README.md`).
+#[derive(Debug, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct SpellTargeting {
+    /// Spell name (as in `SPTRAITS.TXT`).
+    pub spell: String,
+    /// `area = { inner, radius }`, copied verbatim.
+    #[serde(default)]
+    pub area: Option<toml::Value>,
+    /// `chain = { targets, factor_bp }`, copied verbatim.
+    #[serde(default)]
+    pub chain: Option<toml::Value>,
+    /// Creature flags a stack needs.
+    #[serde(default)]
+    pub requires: Vec<String>,
+    /// Creature flags a stack may not have.
+    #[serde(default)]
+    pub excludes: Vec<String>,
+    /// Source ids.
+    pub sources: Vec<String>,
 }
 
 /// Hero content the installation does not hold (E04a T3).
@@ -50,6 +84,8 @@ pub struct Heroes {
     pub upgrade_sources: Vec<String>,
     /// Parameters of creature specialties.
     pub creature_specialty: CreatureSpecialty,
+    /// Parameters of spell specialties (E04b T2a).
+    pub spell_specialty: SpellSpecialty,
     /// Effects of skills without a value table in the executable.
     pub skill_effects: Vec<SkillEffects>,
     /// Specialty parts the executable's records cannot hold.
@@ -85,6 +121,29 @@ pub struct CreatureSpecialty {
     pub war_machine_speed: u8,
     /// Source ids.
     pub sources: Vec<String>,
+}
+
+/// Parameters of spell specialties (specialty kind 3).
+#[derive(Debug, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct SpellSpecialty {
+    /// Growth per hero level before the division by the target's level, basis points.
+    pub bp_per_level: u16,
+    /// Heroes whose specialty is a fixed damage bonus for their spell instead.
+    #[serde(default)]
+    pub fixed: Vec<FixedSpellSpecialty>,
+    /// Source ids.
+    pub sources: Vec<String>,
+}
+
+/// A spell specialist with a fixed damage bonus.
+#[derive(Debug, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct FixedSpellSpecialty {
+    /// Hero name (as in `HOTRAITS.TXT`).
+    pub hero: String,
+    /// Bonus in basis points.
+    pub bp: u16,
 }
 
 /// The effects of one skill's levels, in pack syntax (`kind` plus parameters, no references).
@@ -426,6 +485,7 @@ impl GapFill {
                 .chain(&g.war_machines.sources)
                 .chain(&g.heroes.upgrade_sources)
                 .chain(&g.heroes.creature_specialty.sources)
+                .chain(&g.heroes.spell_specialty.sources)
                 .chain(&g.heroes.params.sources)
                 .chain(g.heroes.skill_effects.iter().flat_map(|e| &e.sources))
                 .chain(g.heroes.specialty_extra.iter().flat_map(|e| &e.sources))
@@ -434,7 +494,8 @@ impl GapFill {
                 .chain(&g.artifacts.no_backpack_sources)
                 .chain(g.artifacts.war_machines.iter().flat_map(|w| &w.sources))
                 .chain(g.artifacts.combinations.iter().flat_map(|c| &c.sources))
-                .chain(g.artifacts.effects.iter().flat_map(|e| &e.sources));
+                .chain(g.artifacts.effects.iter().flat_map(|e| &e.sources))
+                .chain(g.spells.targeting.iter().flat_map(|t| &t.sources));
         for r in refs {
             if !ids.contains(r.as_str()) {
                 return Err(format!("gapfill: unknown source `{r}`"));

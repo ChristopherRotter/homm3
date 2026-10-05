@@ -7,9 +7,9 @@
 //! catalog ids (`HER-…`, `BAT-…`). Percentages are basis points (1/100 %), so every skill and
 //! specialty product stays an exact integer.
 //!
-//! [`HeroEffect`] is generic over how creature types (`C`), secondary skills (`K`), spells (`S`)
-//! and factions (`F`) are referenced: [`ContentKey`]s in packs ([`HeroEffectDef`]), handles once
-//! compiled ([`CompiledHeroEffect`]).
+//! [`HeroEffect`] is generic over how creature types (`C`), secondary skills (`K`), spells (`S`),
+//! factions (`F`) and spell schools (`L`) are referenced: [`ContentKey`]s in packs
+//! ([`HeroEffectDef`]), handles once compiled ([`CompiledHeroEffect`]).
 //!
 //! Effects that only matter outside battle (adventure map, towns, outcome application) get
 //! variants with the epic that reads them; the pack docs list which sources carry such effects.
@@ -19,7 +19,7 @@ use alloc::vec::Vec;
 use h3_kernel::{CanonicalHash, StateHasher};
 
 use crate::flags::CreatureFlag;
-use crate::heroes::{SkillId, SpellId};
+use crate::heroes::{SchoolId, SkillId, SpellId};
 use crate::key::ContentKey;
 use crate::ruleset::{CreatureTypeId, FactionId, Ruleset};
 
@@ -148,10 +148,53 @@ impl CreatureSelector<CreatureTypeId> {
     }
 }
 
-/// One hero effect. `C`, `K`, `S` and `F` are how creature types, secondary skills, spells and
-/// factions are referenced.
+/// Which of the hero's spells a spell-damage bonus applies to (E04b T2a).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum SpellScope<L, S> {
+    /// Every spell (Sorcery).
+    All,
+    /// The spells of this school (the Orbs).
+    School(L),
+    /// This spell (Ciele's specialty).
+    Spell(S),
+}
+
+impl<L, S> SpellScope<L, S> {
+    /// Maps the references.
+    pub fn try_map<L2, S2, E>(
+        &self,
+        school: impl FnOnce(&L) -> Result<L2, E>,
+        spell: impl FnOnce(&S) -> Result<S2, E>,
+    ) -> Result<SpellScope<L2, S2>, E> {
+        Ok(match self {
+            Self::All => SpellScope::All,
+            Self::School(l) => SpellScope::School(school(l)?),
+            Self::Spell(s) => SpellScope::Spell(spell(s)?),
+        })
+    }
+}
+
+impl<L: CanonicalHash, S: CanonicalHash> CanonicalHash for SpellScope<L, S> {
+    /// Tag (0 all, 1 school, 2 spell), then the reference.
+    fn hash_into(&self, h: &mut StateHasher) {
+        match self {
+            Self::All => h.write_u8(0),
+            Self::School(l) => {
+                h.write_u8(1);
+                l.hash_into(h);
+            }
+            Self::Spell(s) => {
+                h.write_u8(2);
+                s.hash_into(h);
+            }
+        }
+    }
+}
+
+/// One hero effect. `C`, `K`, `S`, `F` and `L` are how creature types, secondary skills, spells,
+/// factions and spell schools are referenced.
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub enum HeroEffect<C, K, S, F> {
+pub enum HeroEffect<C, K, S, F, L> {
     /// Changes the morale of the affected stacks for the whole battle (Leadership).
     Morale {
         /// Morale change (not 0).
@@ -233,10 +276,14 @@ pub enum HeroEffect<C, K, S, F> {
         /// Speed bonus.
         speed: u8,
     },
-    /// Specialty: the hero's casts of `spell` are stronger (formula per spell: E04b).
+    /// Specialty: the effect of the hero's casts of `spell` on a stack grows by `bp_per_level`
+    /// basis points per hero level, divided by the level of the stack's creature (SoD: 3 % per
+    /// level; damage since E04b T2, other spell kinds with their tasks).
     SpellSpecialty {
         /// The spell.
         spell: S,
+        /// Growth per hero level before the division, basis points (≥ 1).
+        bp_per_level: u16,
     },
     /// Changes the hero's primary skills (artifacts; the executable's artifact table). Unlike
     /// every other kind, it counts once per equipped copy (two Quiet Eyes of the Dragon give
@@ -302,16 +349,33 @@ pub enum HeroEffect<C, K, S, F> {
     },
     /// Neither side may retreat or surrender (Shackles of War).
     NoRetreat,
+    /// Mastery of a spell school (the magic school skills): the hero casts the school's spells
+    /// at this level, the highest such level counting.
+    SchoolMastery {
+        /// The school.
+        school: L,
+        /// Mastery, 1 (Basic) to 3 (Expert).
+        level: u8,
+    },
+    /// More damage from the hero's spells of a scope (Sorcery, the Orbs, Ciele's specialty).
+    SpellDamage {
+        /// Which spells.
+        scope: SpellScope<L, S>,
+        /// Bonus in basis points (≥ 1).
+        bp: u16,
+    },
+    /// The hero can cast the spells it knows in battle (the Spell Book).
+    SpellBook,
 }
 
 /// An effect as written in a pack (references are keys).
-pub type HeroEffectDef = HeroEffect<ContentKey, ContentKey, ContentKey, ContentKey>;
+pub type HeroEffectDef = HeroEffect<ContentKey, ContentKey, ContentKey, ContentKey, ContentKey>;
 /// An effect with resolved references.
-pub type CompiledHeroEffect = HeroEffect<CreatureTypeId, SkillId, SpellId, FactionId>;
+pub type CompiledHeroEffect = HeroEffect<CreatureTypeId, SkillId, SpellId, FactionId, SchoolId>;
 
-impl<C, K, S, F> HeroEffect<C, K, S, F> {
+impl<C, K, S, F, L> HeroEffect<C, K, S, F, L> {
     /// Pack names, indexed by [`HeroEffect::code`].
-    pub const NAMES: [&'static str; 22] = [
+    pub const NAMES: [&'static str; 25] = [
         "morale",
         "luck",
         "ranged_damage",
@@ -334,6 +398,9 @@ impl<C, K, S, F> HeroEffect<C, K, S, F> {
         "no_range_penalty",
         "shoot_when_adjacent",
         "no_retreat",
+        "school_mastery",
+        "spell_damage",
+        "spell_book",
     ];
 
     /// Stable code of the variant (canonical hash, duplicate checks).
@@ -361,6 +428,9 @@ impl<C, K, S, F> HeroEffect<C, K, S, F> {
             Self::NoRangePenalty { .. } => 19,
             Self::ShootWhenAdjacent { .. } => 20,
             Self::NoRetreat => 21,
+            Self::SchoolMastery { .. } => 22,
+            Self::SpellDamage { .. } => 23,
+            Self::SpellBook => 24,
         }
     }
 
@@ -384,13 +454,14 @@ impl<C, K, S, F> HeroEffect<C, K, S, F> {
     }
 
     /// Maps the references.
-    pub fn try_map<C2, K2, S2, F2, E>(
+    pub fn try_map<C2, K2, S2, F2, L2, E>(
         &self,
         creature: impl FnOnce(&C) -> Result<C2, E>,
         skill: impl FnOnce(&K) -> Result<K2, E>,
         spell: impl FnOnce(&S) -> Result<S2, E>,
         faction: impl FnMut(&F) -> Result<F2, E>,
-    ) -> Result<HeroEffect<C2, K2, S2, F2>, E> {
+        school: impl FnOnce(&L) -> Result<L2, E>,
+    ) -> Result<HeroEffect<C2, K2, S2, F2, L2>, E> {
         Ok(match self {
             Self::Morale { amount, affects } => HeroEffect::Morale {
                 amount: *amount,
@@ -438,7 +509,13 @@ impl<C, K, S, F> HeroEffect<C, K, S, F> {
                 bp_per_step: *bp_per_step,
                 speed: *speed,
             },
-            Self::SpellSpecialty { spell: s } => HeroEffect::SpellSpecialty { spell: spell(s)? },
+            Self::SpellSpecialty {
+                spell: s,
+                bp_per_level,
+            } => HeroEffect::SpellSpecialty {
+                spell: spell(s)?,
+                bp_per_level: *bp_per_level,
+            },
             Self::PrimarySkills {
                 attack,
                 defense,
@@ -484,6 +561,15 @@ impl<C, K, S, F> HeroEffect<C, K, S, F> {
                 creatures: creatures.try_map(creature)?,
             },
             Self::NoRetreat => HeroEffect::NoRetreat,
+            Self::SchoolMastery { school: l, level } => HeroEffect::SchoolMastery {
+                school: school(l)?,
+                level: *level,
+            },
+            Self::SpellDamage { scope, bp } => HeroEffect::SpellDamage {
+                scope: scope.try_map(school, spell)?,
+                bp: *bp,
+            },
+            Self::SpellBook => HeroEffect::SpellBook,
         })
     }
 
@@ -536,15 +622,23 @@ impl<C, K, S, F> HeroEffect<C, K, S, F> {
             Self::Regeneration { hit_points: 0, .. } => {
                 Some("regeneration hit_points must be at least 1")
             }
+            Self::SpellSpecialty {
+                bp_per_level: 0, ..
+            } => Some("spell_specialty bp_per_level must be at least 1"),
+            Self::SchoolMastery { level, .. } if !(1..=MAX_SKILL_LEVEL).contains(level) => {
+                Some("school_mastery level must be 1..=3")
+            }
+            Self::SpellDamage { bp: 0, .. } => Some("spell_damage bp must be at least 1"),
             _ => None,
         }
     }
 }
 
-impl<C: PartialEq, K, S, F> HeroEffect<C, K, S, F> {
+impl<C: PartialEq, K, S: PartialEq, F, L: PartialEq> HeroEffect<C, K, S, F, L> {
     /// Whether two effects may not both appear in one list: the same variant, except morale or
-    /// luck (and their caps) for different sides and creature-selecting kinds for different
-    /// creatures (or statistics).
+    /// luck (and their caps) for different sides, creature-selecting kinds for different
+    /// creatures (or statistics), school masteries for different schools and spell-damage
+    /// bonuses for different scopes.
     fn collides(&self, other: &Self) -> bool {
         match (self, other) {
             (Self::Morale { affects: a, .. }, Self::Morale { affects: b, .. })
@@ -581,6 +675,10 @@ impl<C: PartialEq, K, S, F> HeroEffect<C, K, S, F> {
                     ..
                 },
             ) => a == b && x == y,
+            (Self::SchoolMastery { school: a, .. }, Self::SchoolMastery { school: b, .. }) => {
+                a == b
+            }
+            (Self::SpellDamage { scope: a, .. }, Self::SpellDamage { scope: b, .. }) => a == b,
             _ => self.code() == other.code(),
         }
     }
@@ -588,8 +686,8 @@ impl<C: PartialEq, K, S, F> HeroEffect<C, K, S, F> {
 
 /// Why an effect list is invalid, if it is: too long, invalid parameters, an effect listed twice,
 /// or a specialty variant where `specialty` is false.
-pub(crate) fn list_error<C: PartialEq, K, S, F>(
-    list: &[HeroEffect<C, K, S, F>],
+pub(crate) fn list_error<C: PartialEq, K, S: PartialEq, F, L: PartialEq>(
+    list: &[HeroEffect<C, K, S, F, L>],
     specialty: bool,
 ) -> Option<&'static str> {
     if list.len() > MAX_EFFECTS {
@@ -678,7 +776,13 @@ impl CanonicalHash for CompiledHeroEffect {
                 h.write_u16(*bp_per_step);
                 h.write_u8(*speed);
             }
-            Self::SpellSpecialty { spell } => spell.hash_into(h),
+            Self::SpellSpecialty {
+                spell,
+                bp_per_level,
+            } => {
+                spell.hash_into(h);
+                h.write_u16(*bp_per_level);
+            }
             Self::PrimarySkills {
                 attack,
                 defense,
@@ -713,7 +817,15 @@ impl CanonicalHash for CompiledHeroEffect {
             Self::NoRangePenalty { creatures } | Self::ShootWhenAdjacent { creatures } => {
                 hash_selector(*creatures, h);
             }
-            Self::NoRetreat => {}
+            Self::NoRetreat | Self::SpellBook => {}
+            Self::SchoolMastery { school, level } => {
+                school.hash_into(h);
+                h.write_u8(*level);
+            }
+            Self::SpellDamage { scope, bp } => {
+                scope.hash_into(h);
+                h.write_u16(*bp);
+            }
         }
     }
 }
@@ -726,7 +838,7 @@ mod tests {
 
     use super::*;
 
-    type E = HeroEffect<u8, u8, u8, u8>;
+    type E = HeroEffect<u8, u8, u8, u8, u8>;
 
     fn every() -> Vec<E> {
         std::vec![
@@ -762,7 +874,10 @@ mod tests {
                 bp_per_step: 500,
                 speed: 1,
             },
-            E::SpellSpecialty { spell: 4 },
+            E::SpellSpecialty {
+                spell: 4,
+                bp_per_level: 300,
+            },
             E::PrimarySkills {
                 attack: 12,
                 defense: -3,
@@ -796,6 +911,15 @@ mod tests {
                 creatures: CreatureSelector::Flag(CreatureFlag::Shooter),
             },
             E::NoRetreat,
+            E::SchoolMastery {
+                school: 5,
+                level: 3,
+            },
+            E::SpellDamage {
+                scope: SpellScope::School(5),
+                bp: 5000,
+            },
+            E::SpellBook,
         ]
     }
 
@@ -889,6 +1013,29 @@ mod tests {
             list_error(&retreat, false),
             Some("an effect is listed twice")
         );
+        // School masteries collide only for the same school, spell damage for the same scope.
+        let mastery = |school| E::SchoolMastery { school, level: 1 };
+        let mut schools = std::vec![mastery(1), mastery(2)];
+        assert_eq!(list_error(&schools, false), None);
+        schools.push(mastery(1));
+        assert_eq!(
+            list_error(&schools, false),
+            Some("an effect is listed twice")
+        );
+        let damage = |scope| E::SpellDamage { scope, bp: 1 };
+        let mut scopes = std::vec![
+            damage(SpellScope::All),
+            damage(SpellScope::School(1)),
+            damage(SpellScope::Spell(1)),
+        ];
+        assert_eq!(list_error(&scopes, false), None);
+        scopes.push(damage(SpellScope::School(1)));
+        assert_eq!(
+            list_error(&scopes, false),
+            Some("an effect is listed twice")
+        );
+        let books = [E::SpellBook, E::SpellBook];
+        assert_eq!(list_error(&books, false), Some("an effect is listed twice"));
         let long = std::vec![E::Tactics { level: 1 }; MAX_EFFECTS + 1];
         assert_eq!(list_error(&long, false), Some("more than 16 effects"));
         assert_eq!(
@@ -957,6 +1104,22 @@ mod tests {
                 creatures: CreatureSelector::All,
                 hit_points: 0,
             },
+            E::SpellSpecialty {
+                spell: 0,
+                bp_per_level: 0,
+            },
+            E::SchoolMastery {
+                school: 0,
+                level: 0,
+            },
+            E::SchoolMastery {
+                school: 0,
+                level: 4,
+            },
+            E::SpellDamage {
+                scope: SpellScope::All,
+                bp: 0,
+            },
         ];
         for e in bad {
             assert!(e.parameter_error().is_some(), "{e:?}");
@@ -979,7 +1142,7 @@ mod tests {
     fn try_map_keeps_parameters_and_maps_references() {
         let plus = |v: &u8| Ok::<u16, ()>(u16::from(*v) + 100);
         for e in every() {
-            let m = e.try_map(plus, plus, plus, plus).unwrap();
+            let m = e.try_map(plus, plus, plus, plus, plus).unwrap();
             assert_eq!(m.code(), e.code());
             assert_eq!(m.parameter_error(), None);
         }
@@ -988,7 +1151,7 @@ mod tests {
             bp_per_step: 500,
             speed: 1,
         }
-        .try_map(plus, plus, plus, plus)
+        .try_map(plus, plus, plus, plus, plus)
         .unwrap();
         assert_eq!(
             mapped,
@@ -1000,14 +1163,38 @@ mod tests {
         );
         let fail = |_: &u8| Err::<u16, ()>(());
         assert_eq!(
-            E::SpellSpecialty { spell: 1 }.try_map(plus, plus, fail, plus),
+            E::SpellSpecialty {
+                spell: 1,
+                bp_per_level: 300
+            }
+            .try_map(plus, plus, fail, plus, plus),
             Err(())
+        );
+        let in_school = E::SchoolMastery {
+            school: 1,
+            level: 2,
+        };
+        assert_eq!(in_school.try_map(plus, plus, plus, plus, fail), Err(()));
+        for scope in [SpellScope::School(1), SpellScope::Spell(1)] {
+            let e = E::SpellDamage { scope, bp: 1 };
+            assert_eq!(e.try_map(plus, plus, fail, plus, fail), Err(()), "{e:?}");
+        }
+        assert_eq!(
+            E::SpellDamage {
+                scope: SpellScope::Spell(1),
+                bp: 7
+            }
+            .try_map(plus, plus, plus, plus, plus),
+            Ok(HeroEffect::SpellDamage {
+                scope: SpellScope::Spell(101),
+                bp: 7
+            })
         );
         assert_eq!(
             E::AlignmentGroup {
                 factions: std::vec![1, 2]
             }
-            .try_map(plus, plus, plus, plus),
+            .try_map(plus, plus, plus, plus, plus),
             Ok(HeroEffect::AlignmentGroup {
                 factions: std::vec![101, 102]
             })
@@ -1016,7 +1203,7 @@ mod tests {
             E::AlignmentGroup {
                 factions: std::vec![1, 2]
             }
-            .try_map(plus, plus, plus, fail),
+            .try_map(plus, plus, plus, fail, plus),
             Err(())
         );
         // Every creature-selecting kind fails with its creature reference.
@@ -1044,7 +1231,7 @@ mod tests {
             },
         ];
         for e in selecting {
-            assert_eq!(e.try_map(fail, plus, plus, plus), Err(()), "{e:?}");
+            assert_eq!(e.try_map(fail, plus, plus, plus, plus), Err(()), "{e:?}");
         }
         assert_eq!(
             CreatureSelector::<u8>::Flag(CreatureFlag::Dragon).try_map(fail),

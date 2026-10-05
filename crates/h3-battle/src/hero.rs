@@ -8,7 +8,7 @@
 
 use h3_content::{
     CreatureFlag, CreatureSelector, CreatureStat, CreatureType, CreatureTypeId, FULL_BP,
-    HeroTypeId, MAX_SKILL_LEVEL, Ruleset, SpellCategory,
+    HeroTypeId, MAX_SKILL_LEVEL, Ruleset, SpellCategory, SpellScope,
 };
 use h3_contracts::{
     BallistaControl, BattleEffect, BattleHero, BattleSide, DamageBonuses, MAX_BATTLE_EFFECTS,
@@ -283,6 +283,29 @@ pub(crate) fn check(
     if magic.schools.iter().any(|&level| level > MAX_SKILL_LEVEL) {
         return Err(invalid(HeroError::SchoolLevel));
     }
+    let school_count = ruleset.spell_schools().len();
+    let unknown_school = magic
+        .schools
+        .iter()
+        .skip(school_count)
+        .any(|&level| level > 0)
+        || hero.effects.iter().any(|e| {
+            matches!(e, BattleEffect::SpellDamage { scope: SpellScope::School(l), .. }
+                if l.index() >= school_count)
+        });
+    if unknown_school {
+        return Err(invalid(HeroError::UnknownSchool));
+    }
+    if hero.effects.iter().any(|e| match *e {
+        BattleEffect::SpellDamage {
+            scope: SpellScope::Spell(id),
+            ..
+        }
+        | BattleEffect::SpellSpecialty { spell: id, .. } => ruleset.spell(id).is_none(),
+        _ => false,
+    }) {
+        return Err(invalid(HeroError::UnknownSpell));
+    }
     let book = magic.spell_book.as_deref().unwrap_or_default();
     for (i, &id) in book.iter().enumerate() {
         let spell = ruleset
@@ -329,7 +352,9 @@ fn creature_of(effect: &BattleEffect) -> Option<CreatureTypeId> {
         | BattleEffect::MoraleAtMost { .. }
         | BattleEffect::LuckAtMost { .. }
         | BattleEffect::NoRetreat
-        | BattleEffect::AlignmentGroup { .. } => return None,
+        | BattleEffect::AlignmentGroup { .. }
+        | BattleEffect::SpellDamage { .. }
+        | BattleEffect::SpellSpecialty { .. } => return None,
     };
     match selector {
         CreatureSelector::Creature(c) => Some(*c),

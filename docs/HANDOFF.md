@@ -6,8 +6,9 @@ Living state between sessions; every session reads it first. Rules (`docs/08-wor
 
 - Branch `e04b-battle-magic` (created from `master` = the E04b refinement `3841f22`, on top of the merged E04a, verify green on Linux and Windows incl. `--with-original-data`); docs only since then. Sandbox and syncing: `docs/08-work-process.md`, "Cloud sandbox and syncing" (`scripts/sandbox-setup.sh`).
 - **E04b (battle magic) is refined** (Q41, `docs/epics/E04b-battle-magic.md`): increments with a user checkpoint each. **Increment 1** = T1 (survey and ADR-0014, then **stop for the user's review**) and T2 (casting core, checkpoints T2a–T2d, the factorized casting action in T2c, batch 2a at the end); after T2d the user confirms increment 2 (proposed: T3, T4).
-- **T1 done:** survey `docs/rules/surveys/E04b-magic.md`, `docs/formats/installation.md` §7.6–§7.7, **ADR-0014 accepted** (Q42; ADR-0004 point 8 amended: growable lists in battle), design note `docs/epics/E04b-design.md`, record in `docs/epics/E04b-log.md`. **Next: T2** in a sandbox session (`scripts/sandbox-setup.sh`, baseline verify first): confirm the split T2a–T2d with the user, then T2a. Wiki fetches need the user's approval per session.
-- Versions: state hash v17, ruleset hash v13, replay format v13, action encoding v8, C ABI v7, observation encoding v4. Each new command bumps the action encoding and the C ABI (ADR-0011).
+- **T1 done:** survey `docs/rules/surveys/E04b-magic.md`, **ADR-0014 accepted** (Q42), design note `docs/epics/E04b-design.md`, record in `docs/epics/E04b-log.md`.
+- **T2 split confirmed** (user, 2026-10-05): T2a + T2b, checkpoint; then T2c + T2d, checkpoint and batch 2a. **T2a done** (pack format v4, spell flags harvested, the hero's magic, HER-BAT-011/012). **In progress: T2b** (casting in battle; design note section T2b).
+- Versions: state hash v17, ruleset hash v14, replay format v13, action encoding v8, C ABI v7, observation encoding v4. Each new command bumps the action encoding and the C ABI (ADR-0011).
 - No decision is waiting for the user. Open questions: `docs/OPEN-QUESTIONS.md`, section "Open" (Q40 waits for batch 2a).
 - Working agreement: increments of a couple of tasks with a user checkpoint (Q41); the user confirms seams and ADRs; token efficiency beats speed (AGENTS.md); the user plays experiment maps in SoD with plain HD and commits the results.
 

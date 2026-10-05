@@ -2817,18 +2817,30 @@ name = "Estates"
 [[secondary_skill]]
 id = "fire_magic"
 name = "Fire Magic"
+basic = [{ kind = "school_mastery", level = 1, school = "fire" }]
+advanced = [{ kind = "school_mastery", level = 2, school = "fire" }]
+expert = [{ kind = "school_mastery", level = 3, school = "fire" }]
 
 [[secondary_skill]]
 id = "air_magic"
 name = "Air Magic"
+basic = [{ kind = "school_mastery", level = 1, school = "air" }]
+advanced = [{ kind = "school_mastery", level = 2, school = "air" }]
+expert = [{ kind = "school_mastery", level = 3, school = "air" }]
 
 [[secondary_skill]]
 id = "water_magic"
 name = "Water Magic"
+basic = [{ kind = "school_mastery", level = 1, school = "water" }]
+advanced = [{ kind = "school_mastery", level = 2, school = "water" }]
+expert = [{ kind = "school_mastery", level = 3, school = "water" }]
 
 [[secondary_skill]]
 id = "earth_magic"
 name = "Earth Magic"
+basic = [{ kind = "school_mastery", level = 1, school = "earth" }]
+advanced = [{ kind = "school_mastery", level = 2, school = "earth" }]
+expert = [{ kind = "school_mastery", level = 3, school = "earth" }]
 
 [[secondary_skill]]
 id = "scholar"
@@ -2873,6 +2885,9 @@ name = "Intelligence"
 [[secondary_skill]]
 id = "sorcery"
 name = "Sorcery"
+basic = [{ kind = "spell_damage", bp = 500 }]
+advanced = [{ kind = "spell_damage", bp = 1000 }]
+expert = [{ kind = "spell_damage", bp = 1500 }]
 
 [[secondary_skill]]
 id = "resistance"
@@ -3076,6 +3091,8 @@ cost = [5, 4, 4, 4]
 power = 10
 effect = [10, 10, 20, 30]
 polarity = "negative"
+target = "stack"
+effects = [{ kind = "damage" }]
 
 [[spell]]
 id = "ice_bolt"  # original id 16
@@ -3087,6 +3104,8 @@ cost = [8, 6, 6, 6]
 power = 20
 effect = [10, 10, 20, 50]
 polarity = "negative"
+target = "stack"
+effects = [{ kind = "damage" }]
 
 [[spell]]
 id = "lightning_bolt"  # original id 17
@@ -3098,6 +3117,8 @@ cost = [10, 8, 8, 8]
 power = 25
 effect = [10, 10, 20, 50]
 polarity = "negative"
+target = "stack"
+effects = [{ kind = "damage" }]
 
 [[spell]]
 id = "implosion"  # original id 18
@@ -3109,6 +3130,9 @@ cost = [30, 25, 25, 25]
 power = 75
 effect = [100, 100, 200, 300]
 polarity = "negative"
+target = "stack"
+excludes = ["war_machine"]
+effects = [{ kind = "damage" }]
 
 [[spell]]
 id = "chain_lightning"  # original id 19
@@ -3120,6 +3144,9 @@ cost = [24, 20, 20, 20]
 power = 40
 effect = [25, 25, 50, 100]
 polarity = "neutral"
+target = "stack"
+chain = { factor_bp = 5000, targets = [4, 4, 5, 5] }
+effects = [{ kind = "damage" }]
 
 [[spell]]
 id = "frost_ring"  # original id 20
@@ -3131,6 +3158,9 @@ cost = [12, 9, 9, 9]
 power = 10
 effect = [15, 15, 30, 60]
 polarity = "neutral"
+target = "hex"
+area = { inner = 1, radius = [1, 1, 1, 1] }
+effects = [{ kind = "damage" }]
 
 [[spell]]
 id = "fireball"  # original id 21
@@ -3142,6 +3172,9 @@ cost = [15, 12, 12, 12]
 power = 10
 effect = [15, 15, 30, 60]
 polarity = "neutral"
+target = "hex"
+area = { radius = [1, 1, 1, 1] }
+effects = [{ kind = "damage" }]
 
 [[spell]]
 id = "inferno"  # original id 22
@@ -3153,6 +3186,9 @@ cost = [16, 12, 12, 12]
 power = 10
 effect = [20, 20, 40, 80]
 polarity = "neutral"
+target = "hex"
+area = { radius = [2, 2, 2, 2] }
+effects = [{ kind = "damage" }]
 
 [[spell]]
 id = "meteor_shower"  # original id 23
@@ -3164,6 +3200,9 @@ cost = [16, 12, 12, 12]
 power = 25
 effect = [25, 25, 50, 100]
 polarity = "neutral"
+target = "hex"
+area = { radius = [1, 1, 1, 1] }
+effects = [{ kind = "damage" }]
 
 [[spell]]
 id = "death_ripple"  # original id 24
@@ -3175,6 +3214,8 @@ cost = [10, 8, 8, 8]
 power = 5
 effect = [10, 10, 20, 30]
 polarity = "neutral"
+excludes = ["undead", "war_machine"]
+effects = [{ kind = "damage" }]
 
 [[spell]]
 id = "destroy_undead"  # original id 25
@@ -3186,6 +3227,8 @@ cost = [15, 12, 12, 12]
 power = 10
 effect = [10, 10, 20, 50]
 polarity = "neutral"
+requires = ["undead"]
+effects = [{ kind = "damage" }]
 
 [[spell]]
 id = "armageddon"  # original id 26
@@ -3197,6 +3240,7 @@ cost = [24, 20, 20, 20]
 power = 50
 effect = [30, 30, 60, 120]
 polarity = "neutral"
+effects = [{ kind = "damage" }]
 
 [[spell]]
 id = "shield"  # original id 27
@@ -3982,7 +4026,7 @@ skills = [{ skill = "wisdom", level = 1 }, { skill = "diplomacy", level = 1 }]
 spell_book = true
 spells = ["bless"]
 army = [{ creature = "pikeman", count = [10, 20] }, { creature = "archer", count = [4, 7] }, { creature = "griffin", count = [2, 3] }]
-specialty = [{ kind = "spell_specialty", spell = "bless" }]
+specialty = [{ kind = "spell_specialty", spell = "bless", bp_per_level = 300 }]
 
 [[hero]]
 id = "cuthbert"  # original id 10
@@ -3992,7 +4036,7 @@ skills = [{ skill = "wisdom", level = 1 }, { skill = "estates", level = 1 }]
 spell_book = true
 spells = ["weakness"]
 army = [{ creature = "pikeman", count = [10, 20] }, { creature = "archer", count = [4, 7] }, { creature = "griffin", count = [2, 3] }]
-specialty = [{ kind = "spell_specialty", spell = "weakness" }]
+specialty = [{ kind = "spell_specialty", spell = "weakness", bp_per_level = 300 }]
 
 [[hero]]
 id = "adelaide"  # original id 11
@@ -4002,7 +4046,7 @@ skills = [{ skill = "wisdom", level = 2 }]
 spell_book = true
 spells = ["frost_ring"]
 army = [{ creature = "pikeman", count = [10, 20] }, { creature = "archer", count = [4, 7] }, { creature = "griffin", count = [2, 3] }]
-specialty = [{ kind = "spell_specialty", spell = "frost_ring" }]
+specialty = [{ kind = "spell_specialty", spell = "frost_ring", bp_per_level = 300 }]
 
 [[hero]]
 id = "ingham"  # original id 12
@@ -4032,7 +4076,7 @@ skills = [{ skill = "wisdom", level = 1 }, { skill = "learning", level = 1 }]
 spell_book = true
 spells = ["prayer"]
 army = [{ creature = "pikeman", count = [10, 20] }, { creature = "archer", count = [4, 7] }, { creature = "griffin", count = [2, 3] }]
-specialty = [{ kind = "spell_specialty", spell = "prayer" }]
+specialty = [{ kind = "spell_specialty", spell = "prayer", bp_per_level = 300 }]
 
 [[hero]]
 id = "caitlin"  # original id 15
@@ -4114,7 +4158,7 @@ skills = [{ skill = "wisdom", level = 1 }, { skill = "scholar", level = 1 }]
 spell_book = true
 spells = ["slayer"]
 army = [{ creature = "centaur", count = [12, 24] }, { creature = "dwarf", count = [3, 5] }, { creature = "wood_elf", count = [3, 6] }]
-specialty = [{ kind = "spell_specialty", spell = "slayer" }]
+specialty = [{ kind = "spell_specialty", spell = "slayer", bp_per_level = 300 }]
 
 [[hero]]
 id = "uland"  # original id 25
@@ -4124,7 +4168,7 @@ skills = [{ skill = "wisdom", level = 2 }, { skill = "ballistics", level = 1 }]
 spell_book = true
 spells = ["cure"]
 army = [{ creature = "centaur", count = [12, 24] }, { creature = "dwarf", count = [3, 5] }, { creature = "wood_elf", count = [3, 6] }]
-specialty = [{ kind = "spell_specialty", spell = "cure" }]
+specialty = [{ kind = "spell_specialty", spell = "cure", bp_per_level = 300 }]
 
 [[hero]]
 id = "elleshar"  # original id 26
@@ -4165,7 +4209,7 @@ skills = [{ skill = "wisdom", level = 1 }, { skill = "luck", level = 1 }]
 spell_book = true
 spells = ["fortune"]
 army = [{ creature = "centaur", count = [12, 24] }, { creature = "dwarf", count = [3, 5] }, { creature = "wood_elf", count = [3, 6] }]
-specialty = [{ kind = "spell_specialty", spell = "fortune" }]
+specialty = [{ kind = "spell_specialty", spell = "fortune", bp_per_level = 300 }]
 
 [[hero]]
 id = "alagar"  # original id 30
@@ -4175,7 +4219,7 @@ skills = [{ skill = "wisdom", level = 1 }, { skill = "sorcery", level = 1 }]
 spell_book = true
 spells = ["ice_bolt"]
 army = [{ creature = "centaur", count = [12, 24] }, { creature = "dwarf", count = [3, 5] }, { creature = "wood_elf", count = [3, 6] }]
-specialty = [{ kind = "spell_specialty", spell = "ice_bolt" }]
+specialty = [{ kind = "spell_specialty", spell = "ice_bolt", bp_per_level = 300 }]
 
 [[hero]]
 id = "aeris"  # original id 31
@@ -4275,7 +4319,7 @@ skills = [{ skill = "wisdom", level = 2 }]
 spell_book = true
 spells = ["hypnotize"]
 army = [{ creature = "gremlin", count = [30, 40] }, { creature = "stone_gargoyle", count = [3, 5] }, { creature = "stone_golem", count = [2, 3] }]
-specialty = [{ kind = "spell_specialty", spell = "hypnotize" }]
+specialty = [{ kind = "spell_specialty", spell = "hypnotize", bp_per_level = 300 }]
 
 [[hero]]
 id = "halon"  # original id 41
@@ -4305,7 +4349,7 @@ skills = [{ skill = "wisdom", level = 1 }, { skill = "intelligence", level = 1 }
 spell_book = true
 spells = ["fortune"]
 army = [{ creature = "gremlin", count = [30, 40] }, { creature = "stone_gargoyle", count = [3, 5] }, { creature = "stone_golem", count = [2, 3] }]
-specialty = [{ kind = "spell_specialty", spell = "fortune" }]
+specialty = [{ kind = "spell_specialty", spell = "fortune", bp_per_level = 300 }]
 
 [[hero]]
 id = "theodorus"  # original id 44
@@ -4325,7 +4369,7 @@ skills = [{ skill = "wisdom", level = 1 }, { skill = "sorcery", level = 1 }]
 spell_book = true
 spells = ["chain_lightning"]
 army = [{ creature = "gremlin", count = [30, 40] }, { creature = "stone_gargoyle", count = [3, 5] }, { creature = "stone_golem", count = [2, 3] }]
-specialty = [{ kind = "spell_specialty", spell = "chain_lightning" }]
+specialty = [{ kind = "spell_specialty", spell = "chain_lightning", bp_per_level = 300 }]
 
 [[hero]]
 id = "cyra"  # original id 46
@@ -4335,7 +4379,7 @@ skills = [{ skill = "wisdom", level = 1 }, { skill = "diplomacy", level = 1 }]
 spell_book = true
 spells = ["haste"]
 army = [{ creature = "gremlin", count = [30, 40] }, { creature = "stone_gargoyle", count = [3, 5] }, { creature = "stone_golem", count = [2, 3] }]
-specialty = [{ kind = "spell_specialty", spell = "haste" }]
+specialty = [{ kind = "spell_specialty", spell = "haste", bp_per_level = 300 }]
 
 [[hero]]
 id = "aine"  # original id 47
@@ -4428,7 +4472,7 @@ skills = [{ skill = "wisdom", level = 1 }, { skill = "scholar", level = 1 }]
 spell_book = true
 spells = ["inferno"]
 army = [{ creature = "imp", count = [15, 25] }, { creature = "gog", count = [4, 7] }, { creature = "hell_hound", count = [3, 4] }]
-specialty = [{ kind = "spell_specialty", spell = "inferno" }]
+specialty = [{ kind = "spell_specialty", spell = "inferno", bp_per_level = 300 }]
 
 [[hero]]
 id = "axsis"  # original id 58
@@ -4448,7 +4492,7 @@ skills = [{ skill = "wisdom", level = 1 }, { skill = "ballistics", level = 1 }]
 spell_book = true
 spells = ["weakness"]
 army = [{ creature = "imp", count = [15, 25] }, { creature = "gog", count = [4, 7] }, { creature = "hell_hound", count = [3, 4] }]
-specialty = [{ kind = "spell_specialty", spell = "weakness" }]
+specialty = [{ kind = "spell_specialty", spell = "weakness", bp_per_level = 300 }]
 
 [[hero]]
 id = "calid"  # original id 60
@@ -4467,7 +4511,7 @@ skills = [{ skill = "wisdom", level = 1 }, { skill = "eagle_eye", level = 1 }]
 spell_book = true
 spells = ["bloodlust"]
 army = [{ creature = "imp", count = [15, 25] }, { creature = "gog", count = [4, 7] }, { creature = "hell_hound", count = [3, 4] }]
-specialty = [{ kind = "spell_specialty", spell = "bloodlust" }]
+specialty = [{ kind = "spell_specialty", spell = "bloodlust", bp_per_level = 300 }]
 
 [[hero]]
 id = "zydar"  # original id 62
@@ -4487,7 +4531,7 @@ skills = [{ skill = "wisdom", level = 1 }, { skill = "leadership", level = 1 }]
 spell_book = true
 spells = ["fireball"]
 army = [{ creature = "imp", count = [15, 25] }, { creature = "gog", count = [4, 7] }, { creature = "hell_hound", count = [3, 4] }]
-specialty = [{ kind = "spell_specialty", spell = "fireball" }]
+specialty = [{ kind = "spell_specialty", spell = "fireball", bp_per_level = 300 }]
 
 [[hero]]
 id = "straker"  # original id 64
@@ -4576,7 +4620,7 @@ skills = [{ skill = "necromancy", level = 1 }, { skill = "scholar", level = 1 }]
 spell_book = true
 spells = ["death_ripple"]
 army = [{ creature = "skeleton", count = [20, 30] }, { creature = "walking_dead", count = [4, 6] }, { creature = "wight", count = [4, 6] }]
-specialty = [{ kind = "spell_specialty", spell = "death_ripple" }]
+specialty = [{ kind = "spell_specialty", spell = "death_ripple", bp_per_level = 300 }]
 
 [[hero]]
 id = "aislinn"  # original id 73
@@ -4586,7 +4630,7 @@ skills = [{ skill = "necromancy", level = 1 }, { skill = "wisdom", level = 1 }]
 spell_book = true
 spells = ["meteor_shower"]
 army = [{ creature = "skeleton", count = [20, 30] }, { creature = "walking_dead", count = [4, 6] }, { creature = "wight", count = [4, 6] }]
-specialty = [{ kind = "spell_specialty", spell = "meteor_shower" }]
+specialty = [{ kind = "spell_specialty", spell = "meteor_shower", bp_per_level = 300 }]
 
 [[hero]]
 id = "sandro"  # original id 74
@@ -4616,7 +4660,7 @@ skills = [{ skill = "necromancy", level = 1 }, { skill = "mysticism", level = 1 
 spell_book = true
 spells = ["animate_dead"]
 army = [{ creature = "skeleton", count = [20, 30] }, { creature = "walking_dead", count = [4, 6] }, { creature = "wight", count = [4, 6] }]
-specialty = [{ kind = "spell_specialty", spell = "animate_dead" }]
+specialty = [{ kind = "spell_specialty", spell = "animate_dead", bp_per_level = 300 }]
 
 [[hero]]
 id = "xsi"  # original id 77
@@ -4626,7 +4670,7 @@ skills = [{ skill = "necromancy", level = 1 }, { skill = "learning", level = 1 }
 spell_book = true
 spells = ["stone_skin"]
 army = [{ creature = "skeleton", count = [20, 30] }, { creature = "walking_dead", count = [4, 6] }, { creature = "wight", count = [4, 6] }]
-specialty = [{ kind = "spell_specialty", spell = "stone_skin" }]
+specialty = [{ kind = "spell_specialty", spell = "stone_skin", bp_per_level = 300 }]
 
 [[hero]]
 id = "vidomina"  # original id 78
@@ -4719,7 +4763,7 @@ skills = [{ skill = "wisdom", level = 1 }, { skill = "scholar", level = 1 }]
 spell_book = true
 spells = ["resurrection"]
 army = [{ creature = "troglodyte", count = [30, 40] }, { creature = "harpy", count = [4, 6] }, { creature = "beholder", count = [3, 4] }]
-specialty = [{ kind = "spell_specialty", spell = "resurrection" }]
+specialty = [{ kind = "spell_specialty", spell = "resurrection", bp_per_level = 300 }]
 
 [[hero]]
 id = "jaegar"  # original id 89
@@ -4749,7 +4793,7 @@ skills = [{ skill = "wisdom", level = 2 }]
 spell_book = true
 spells = ["resurrection"]
 army = [{ creature = "troglodyte", count = [30, 40] }, { creature = "harpy", count = [4, 6] }, { creature = "beholder", count = [3, 4] }]
-specialty = [{ kind = "spell_specialty", spell = "resurrection" }]
+specialty = [{ kind = "spell_specialty", spell = "resurrection", bp_per_level = 300 }]
 
 [[hero]]
 id = "geon"  # original id 92
@@ -4769,7 +4813,7 @@ skills = [{ skill = "wisdom", level = 1 }, { skill = "scouting", level = 2 }]
 spell_book = true
 spells = ["meteor_shower"]
 army = [{ creature = "troglodyte", count = [30, 40] }, { creature = "harpy", count = [4, 6] }, { creature = "beholder", count = [3, 4] }]
-specialty = [{ kind = "spell_specialty", spell = "meteor_shower" }]
+specialty = [{ kind = "spell_specialty", spell = "meteor_shower", bp_per_level = 300 }]
 
 [[hero]]
 id = "sephinroth"  # original id 94
@@ -4788,7 +4832,7 @@ skills = [{ skill = "wisdom", level = 1 }, { skill = "learning", level = 1 }]
 spell_book = true
 spells = ["stone_skin"]
 army = [{ creature = "troglodyte", count = [30, 40] }, { creature = "harpy", count = [4, 6] }, { creature = "beholder", count = [3, 4] }]
-specialty = [{ kind = "spell_specialty", spell = "stone_skin" }]
+specialty = [{ kind = "spell_specialty", spell = "stone_skin", bp_per_level = 300 }]
 
 [[hero]]
 id = "yog"  # original id 96
@@ -4893,7 +4937,7 @@ skills = [{ skill = "wisdom", level = 1 }, { skill = "tactics", level = 1 }]
 spell_book = true
 spells = ["haste"]
 army = [{ creature = "goblin", count = [15, 25] }, { creature = "wolf_rider", count = [5, 7] }, { creature = "orc", count = [4, 6] }]
-specialty = [{ kind = "spell_specialty", spell = "haste" }]
+specialty = [{ kind = "spell_specialty", spell = "haste", bp_per_level = 300 }]
 
 [[hero]]
 id = "zubin"  # original id 108
@@ -4903,7 +4947,7 @@ skills = [{ skill = "wisdom", level = 1 }, { skill = "artillery", level = 1 }]
 spell_book = true
 spells = ["precision"]
 army = [{ creature = "goblin", count = [15, 25] }, { creature = "wolf_rider", count = [5, 7] }, { creature = "orc", count = [4, 6] }]
-specialty = [{ kind = "spell_specialty", spell = "precision" }]
+specialty = [{ kind = "spell_specialty", spell = "precision", bp_per_level = 300 }]
 
 [[hero]]
 id = "gundula"  # original id 109
@@ -5007,7 +5051,7 @@ skills = [{ skill = "wisdom", level = 2 }]
 spell_book = true
 spells = ["weakness"]
 army = [{ creature = "gnoll", count = [10, 20] }, { creature = "lizardman", count = [4, 7] }, { creature = "serpent_fly", count = [2, 4] }]
-specialty = [{ kind = "spell_specialty", spell = "weakness" }]
+specialty = [{ kind = "spell_specialty", spell = "weakness", bp_per_level = 300 }]
 
 [[hero]]
 id = "rosic"  # original id 121
@@ -5048,7 +5092,7 @@ skills = [{ skill = "wisdom", level = 1 }, { skill = "learning", level = 1 }]
 spell_book = true
 spells = ["stone_skin"]
 army = [{ creature = "gnoll", count = [10, 20] }, { creature = "lizardman", count = [4, 7] }, { creature = "serpent_fly", count = [2, 4] }]
-specialty = [{ kind = "spell_specialty", spell = "stone_skin" }]
+specialty = [{ kind = "spell_specialty", spell = "stone_skin", bp_per_level = 300 }]
 
 [[hero]]
 id = "styg"  # original id 125
@@ -5156,10 +5200,11 @@ count = 1
 backpack = false
 
 [[artifact]]
-id = "spell_book"  # original id 0; pending: E04b
+id = "spell_book"  # original id 0
 name = "Spell Book"
 class = "special"
 slot = "spell_book"
+effects = [{ kind = "spell_book" }]
 
 [[artifact]]
 id = "spell_scroll"  # original id 1; pending: E04b
@@ -5764,32 +5809,36 @@ cost = { "gold" = 1500 }
 slot = "shoulders"
 
 [[artifact]]
-id = "orb_of_the_firmament"  # original id 79; pending: E04b
+id = "orb_of_the_firmament"  # original id 79
 name = "Orb of the Firmament"
 class = "major"
 cost = { "gold" = 6000 }
 slot = "misc"
+effects = [{ kind = "spell_damage", bp = 5000, school = "air" }]
 
 [[artifact]]
-id = "orb_of_silt"  # original id 80; pending: E04b
+id = "orb_of_silt"  # original id 80
 name = "Orb of Silt"
 class = "major"
 cost = { "gold" = 6000 }
 slot = "misc"
+effects = [{ kind = "spell_damage", bp = 5000, school = "earth" }]
 
 [[artifact]]
-id = "orb_of_tempestuous_fire"  # original id 81; pending: E04b
+id = "orb_of_tempestuous_fire"  # original id 81
 name = "Orb of Tempestuous Fire"
 class = "major"
 cost = { "gold" = 6000 }
 slot = "misc"
+effects = [{ kind = "spell_damage", bp = 5000, school = "fire" }]
 
 [[artifact]]
-id = "orb_of_driving_rain"  # original id 82; pending: E04b
+id = "orb_of_driving_rain"  # original id 82
 name = "Orb of Driving Rain"
 class = "major"
 cost = { "gold" = 6000 }
 slot = "misc"
+effects = [{ kind = "spell_damage", bp = 5000, school = "water" }]
 
 [[artifact]]
 id = "recanters_cloak"  # original id 83; pending: E04b

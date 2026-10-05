@@ -612,7 +612,7 @@ skills = [{ skill = "base:wisdom", level = 1 }, { skill = "base:fire_magic", lev
 spell_book = true
 spells = ["base:fire_wall"]
 army = [{ creature = "pixie", count = [15, 25] }, { creature = "base:air_elemental", count = [3, 5] }, { creature = "base:water_elemental", count = [2, 3] }]
-specialty = [{ kind = "spell_specialty", spell = "base:fire_wall" }]
+specialty = [{ kind = "spell_damage", bp = 10000, spell = "base:fire_wall" }]
 
 [[hero]]
 id = "brissa"  # original id 137
@@ -622,7 +622,7 @@ skills = [{ skill = "base:wisdom", level = 1 }, { skill = "base:air_magic", leve
 spell_book = true
 spells = ["base:haste"]
 army = [{ creature = "pixie", count = [15, 25] }, { creature = "base:air_elemental", count = [3, 5] }, { creature = "base:water_elemental", count = [2, 3] }]
-specialty = [{ kind = "spell_specialty", spell = "base:haste" }]
+specialty = [{ kind = "spell_specialty", spell = "base:haste", bp_per_level = 300 }]
 
 [[hero]]
 id = "ciele"  # original id 138
@@ -632,7 +632,7 @@ skills = [{ skill = "base:wisdom", level = 1 }, { skill = "base:water_magic", le
 spell_book = true
 spells = ["base:magic_arrow"]
 army = [{ creature = "pixie", count = [15, 25] }, { creature = "base:air_elemental", count = [3, 5] }, { creature = "base:water_elemental", count = [2, 3] }]
-specialty = [{ kind = "spell_specialty", spell = "base:magic_arrow" }]
+specialty = [{ kind = "spell_damage", bp = 5000, spell = "base:magic_arrow" }]
 
 [[hero]]
 id = "labetha"  # original id 139
@@ -642,7 +642,7 @@ skills = [{ skill = "base:wisdom", level = 1 }, { skill = "base:earth_magic", le
 spell_book = true
 spells = ["base:stone_skin"]
 army = [{ creature = "pixie", count = [15, 25] }, { creature = "base:air_elemental", count = [3, 5] }, { creature = "base:water_elemental", count = [2, 3] }]
-specialty = [{ kind = "spell_specialty", spell = "base:stone_skin" }]
+specialty = [{ kind = "spell_specialty", spell = "base:stone_skin", bp_per_level = 300 }]
 
 [[hero]]
 id = "inteus"  # original id 140
@@ -652,7 +652,7 @@ skills = [{ skill = "base:wisdom", level = 1 }, { skill = "base:fire_magic", lev
 spell_book = true
 spells = ["base:bloodlust"]
 army = [{ creature = "pixie", count = [15, 25] }, { creature = "base:air_elemental", count = [3, 5] }, { creature = "base:water_elemental", count = [2, 3] }]
-specialty = [{ kind = "spell_specialty", spell = "base:bloodlust" }]
+specialty = [{ kind = "spell_specialty", spell = "base:bloodlust", bp_per_level = 300 }]
 
 [[hero]]
 id = "aenain"  # original id 141
@@ -662,7 +662,7 @@ skills = [{ skill = "base:wisdom", level = 1 }, { skill = "base:air_magic", leve
 spell_book = true
 spells = ["base:disrupting_ray"]
 army = [{ creature = "pixie", count = [15, 25] }, { creature = "base:air_elemental", count = [3, 5] }, { creature = "base:water_elemental", count = [2, 3] }]
-specialty = [{ kind = "spell_specialty", spell = "base:disrupting_ray" }]
+specialty = [{ kind = "spell_specialty", spell = "base:disrupting_ray", bp_per_level = 300 }]
 
 [[hero]]
 id = "gelare"  # original id 142

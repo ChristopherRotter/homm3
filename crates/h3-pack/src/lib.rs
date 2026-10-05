@@ -11,11 +11,12 @@ use std::fmt;
 use h3_content::{
     AbilityDef, Affects, AreaShot, ArtifactClass, ArtifactDef, ArtifactSlotDef,
     ArtifactSlotOverride, AuraTarget, BattleParamsDef, CompileError, ContentKey, ContentPack,
-    CreatureDef, CreatureFlag, CreatureInfoDef, CreatureOverride, CreaturePatch, CreatureSelector,
-    CreatureStat, CreatureTypeId, FactionDef, Formation, HeroClassDef, HeroEffect, HeroEffectDef,
-    HeroParamsDef, HeroTypeDef, KeyError, MAX_ALIGNMENT_FACTIONS, ObstacleDef, PackManifest,
-    ProfileDef, ResourceDef, Ruleset, SecondarySkillDef, SpellCategory, SpellDef, SpellPolarity,
-    SpellSchoolDef, StartingStackDef, SurrenderDef, TerrainDef,
+    CreatureDef, CreatureFlag, CreatureFlags, CreatureInfoDef, CreatureOverride, CreaturePatch,
+    CreatureSelector, CreatureStat, CreatureTypeId, FactionDef, Formation, HeroClassDef,
+    HeroEffect, HeroEffectDef, HeroParamsDef, HeroTypeDef, KeyError, MAX_ALIGNMENT_FACTIONS,
+    ObstacleDef, PackManifest, ProfileDef, ResourceDef, Ruleset, SecondarySkillDef, SpellArea,
+    SpellCategory, SpellChain, SpellDef, SpellEffect, SpellMagic, SpellPolarity, SpellSchoolDef,
+    SpellScope, SpellTarget, StartingStackDef, SurrenderDef, TargetConditions, TerrainDef,
 };
 use h3_contracts::{
     Army, ArmyStack, BallistaControl, BattleEffect, BattleHero, BattleSetup, BattleSide,
@@ -373,7 +374,8 @@ struct OverrideDto {
     upgrades: Option<Vec<String>>,
 }
 
-/// `[[spell]]` (pack format v3, E04a T3): a spell's data row.
+/// `[[spell]]` (pack format v3, E04a T3): a spell's data row; since format v4 (E04b T2a) its
+/// battle magic (targeting and effects).
 #[derive(Deserialize)]
 #[serde(deny_unknown_fields)]
 struct SpellDto {
@@ -389,6 +391,91 @@ struct SpellDto {
     power: u16,
     effect: [u16; 4],
     polarity: SpellPolarityDto,
+    #[serde(default)]
+    target: SpellTargetDto,
+    area: Option<SpellAreaDto>,
+    chain: Option<SpellChainDto>,
+    #[serde(default)]
+    requires: Vec<String>,
+    #[serde(default)]
+    excludes: Vec<String>,
+    #[serde(default)]
+    effects: Vec<SpellEffectDto>,
+}
+
+#[derive(Deserialize, Default)]
+#[serde(rename_all = "snake_case")]
+enum SpellTargetDto {
+    #[default]
+    None,
+    Stack,
+    Hex,
+}
+
+/// `area = { inner = 1, radius = [1, 1, 1, 1] }` (`inner` default 0).
+#[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
+struct SpellAreaDto {
+    #[serde(default)]
+    inner: u8,
+    radius: [u8; 4],
+}
+
+/// `chain = { targets = [4, 4, 5, 5], factor_bp = 5000 }`.
+#[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
+struct SpellChainDto {
+    targets: [u8; 4],
+    factor_bp: u16,
+}
+
+/// One spell effect: `kind` plus that kind's parameters.
+#[derive(Deserialize)]
+#[serde(tag = "kind", rename_all = "snake_case", deny_unknown_fields)]
+enum SpellEffectDto {
+    // A struct variant, so that unknown keys are rejected.
+    Damage {},
+}
+
+impl SpellDto {
+    /// The battle magic of the spell (creature flag names resolved).
+    fn magic(&self) -> Result<SpellMagic, PackError> {
+        let flags = |names: &[String]| {
+            names
+                .iter()
+                .try_fold(CreatureFlags::default(), |set, name| {
+                    CreatureFlag::from_name(name)
+                        .map(|f| set.with(f))
+                        .ok_or_else(|| CompileError::UnknownFlag(name.clone()))
+                })
+        };
+        Ok(SpellMagic {
+            target: match self.target {
+                SpellTargetDto::None => SpellTarget::None,
+                SpellTargetDto::Stack => SpellTarget::Stack,
+                SpellTargetDto::Hex => SpellTarget::Hex,
+            },
+            area: self.area.as_ref().map(|a| SpellArea {
+                inner: a.inner,
+                radius: a.radius,
+            }),
+            chain: self.chain.as_ref().map(|c| SpellChain {
+                targets: c.targets,
+                factor_bp: c.factor_bp,
+            }),
+            conditions: TargetConditions {
+                requires: flags(&self.requires)?,
+                excludes: flags(&self.excludes)?,
+            },
+            effects: self
+                .effects
+                .iter()
+                .map(|e| match e {
+                    SpellEffectDto::Damage {} => SpellEffect::Damage,
+                })
+                .collect(),
+        })
+    }
 }
 
 #[derive(Deserialize)]
@@ -593,6 +680,7 @@ enum EffectDto {
     },
     SpellSpecialty {
         spell: String,
+        bp_per_level: u16,
     },
     PrimarySkills {
         #[serde(default)]
@@ -634,6 +722,17 @@ enum EffectDto {
     },
     // A struct variant, so that unknown keys are rejected like everywhere else.
     NoRetreat {},
+    SchoolMastery {
+        school: String,
+        level: u8,
+    },
+    /// `school` or `spell` (at most one; neither: every spell).
+    SpellDamage {
+        bp: u16,
+        school: Option<String>,
+        spell: Option<String>,
+    },
+    SpellBook {},
 }
 
 /// Whose stacks a morale or luck effect changes, as files write it (`own` by default, `enemy`,
@@ -747,8 +846,12 @@ impl EffectDto {
                 bp_per_step,
                 speed,
             },
-            Self::SpellSpecialty { spell } => HeroEffect::SpellSpecialty {
+            Self::SpellSpecialty {
+                spell,
+                bp_per_level,
+            } => HeroEffect::SpellSpecialty {
                 spell: reference(pack, &spell)?,
+                bp_per_level,
             },
             Self::PrimarySkills {
                 attack,
@@ -795,6 +898,24 @@ impl EffectDto {
                 creatures: selector(pack, creatures)?,
             },
             Self::NoRetreat {} => HeroEffect::NoRetreat,
+            Self::SchoolMastery { school, level } => HeroEffect::SchoolMastery {
+                school: reference(pack, &school)?,
+                level,
+            },
+            Self::SpellDamage { bp, school, spell } => HeroEffect::SpellDamage {
+                scope: match (school, spell) {
+                    (None, None) => SpellScope::All,
+                    (Some(l), None) => SpellScope::School(reference(pack, &l)?),
+                    (None, Some(s)) => SpellScope::Spell(reference(pack, &s)?),
+                    (Some(_), Some(_)) => {
+                        return Err(PackError::Syntax(
+                            "spell_damage takes `school` or `spell`, not both".into(),
+                        ));
+                    }
+                },
+                bp,
+            },
+            Self::SpellBook {} => HeroEffect::SpellBook,
         })
     }
 }
@@ -996,6 +1117,7 @@ pub fn parse_pack(text: &str) -> Result<ContentPack, PackError> {
         .spell
         .into_iter()
         .map(|s| {
+            let magic = s.magic()?;
             Ok(SpellDef {
                 key: ContentKey::new(&pack_id, &s.id)?,
                 name: s.name,
@@ -1009,6 +1131,7 @@ pub fn parse_pack(text: &str) -> Result<ContentPack, PackError> {
                 cost: s.cost,
                 power: s.power,
                 effect: s.effect,
+                magic,
                 polarity: match s.polarity {
                     SpellPolarityDto::Positive => SpellPolarity::Positive,
                     SpellPolarityDto::Neutral => SpellPolarity::Neutral,
@@ -1016,7 +1139,7 @@ pub fn parse_pack(text: &str) -> Result<ContentPack, PackError> {
                 },
             })
         })
-        .collect::<Result<Vec<_>, KeyError>>()?;
+        .collect::<Result<Vec<_>, PackError>>()?;
     let skills = file
         .secondary_skill
         .into_iter()
@@ -1636,6 +1759,10 @@ impl EffectEntry {
             BattleEffect::ShootWhenAdjacent { creatures } => Self::ShootWhenAdjacent {
                 creatures: selector(creatures)?,
             },
+            // The battle reads spell bonuses from E04b T2b on; the format follows then.
+            BattleEffect::SpellDamage { .. } | BattleEffect::SpellSpecialty { .. } => {
+                return Err(PackError::HeroNotWritable("spell effects"));
+            }
             BattleEffect::AlignmentGroup { factions } => Self::AlignmentGroup {
                 factions: factions
                     .factions()
@@ -2335,12 +2462,30 @@ mod tests {
         );
         // Values the format cannot hold yet.
         type Change = (fn(&mut BattleHero), &'static str);
-        let changes: [Change; 2] = [
+        let changes: [Change; 4] = [
             (
                 |h| h.magic.spell_book = Some(vec![]),
                 "spell book or schools",
             ),
             (|h| h.magic.schools[0] = 1, "spell book or schools"),
+            (
+                |h| {
+                    h.effects = vec![BattleEffect::SpellDamage {
+                        scope: SpellScope::All,
+                        bp: 1,
+                    }];
+                },
+                "spell effects",
+            ),
+            (
+                |h| {
+                    h.effects = vec![BattleEffect::SpellSpecialty {
+                        spell: h3_content::SpellId::from_raw(0),
+                        bp: 1,
+                    }];
+                },
+                "spell effects",
+            ),
         ];
         for (change, what) in changes {
             let mut hero = expected.clone();
@@ -2751,6 +2896,75 @@ mod tests {
         assert!(matches!(parse_pack(&bad_override), Err(PackError::Key(_))));
     }
 
+    // covers: HER-BAT-011, HER-BAT-012
+    #[test]
+    fn harvested_magic_derives() {
+        use h3_content::SchoolId;
+        use h3_heroes::{HeroDetails, derive_battle_hero};
+        let sod = compile(&[SOD_PACK, AB_PACK, BASE_PACK], "base:faithful").unwrap();
+        let spell = |k: &str| sod.spell_by_key(k).unwrap();
+        let details = |hero: &str, skills: &[(&str, u8)], worn: &[&str]| HeroDetails {
+            hero_type: sod.hero_type_by_key(hero).unwrap(),
+            level: 12,
+            experience: 0,
+            primary: [1, 1, 5, 5],
+            skills: skills
+                .iter()
+                .map(|&(k, l)| (sod.skill_by_key(k).unwrap(), l))
+                .collect(),
+            worn: worn
+                .iter()
+                .map(|k| sod.artifact_by_key(k).unwrap())
+                .collect(),
+            backpack: vec![],
+            spells: vec![spell("base:magic_arrow"), spell("base:chain_lightning")],
+            mana: 50,
+        };
+        let school = |k: &str| {
+            let i = sod.spell_schools().iter().position(|s| s.key.as_str() == k);
+            SchoolId::from_raw(u16::try_from(i.unwrap()).unwrap())
+        };
+        // Solmyr with Expert Air Magic and Sorcery, the book and the Orb of the Firmament:
+        // Expert air mastery, +15 % for every spell, +50 % for air spells, and his Chain
+        // Lightning specialty at 3 % per level (wiki Hero specialty, SoD).
+        let solmyr = details(
+            "base:solmyr",
+            &[("base:air_magic", 3), ("base:sorcery", 3)],
+            &["base:spell_book", "base:orb_of_the_firmament"],
+        );
+        let hero = derive_battle_hero(&solmyr, &sod).unwrap();
+        assert_eq!(hero.magic.spell_book, Some(solmyr.spells.clone()));
+        assert_eq!(hero.magic.schools[school("base:air").index()], 3);
+        assert_eq!(hero.magic.schools.iter().sum::<u8>(), 3);
+        assert_eq!(
+            hero.effects,
+            [
+                BattleEffect::SpellDamage {
+                    scope: SpellScope::All,
+                    bp: 1500
+                },
+                BattleEffect::SpellDamage {
+                    scope: SpellScope::School(school("base:air")),
+                    bp: 5000
+                },
+                BattleEffect::SpellSpecialty {
+                    spell: spell("base:chain_lightning"),
+                    bp: 3600
+                },
+            ]
+        );
+        // Ciele: +50 % Magic Arrow damage whatever her level (wiki Ciele); no book, no casting.
+        let ciele = derive_battle_hero(&details("ab:ciele", &[], &[]), &sod).unwrap();
+        assert_eq!(ciele.magic.spell_book, None);
+        assert_eq!(
+            ciele.effects,
+            [BattleEffect::SpellDamage {
+                scope: SpellScope::Spell(spell("base:magic_arrow")),
+                bp: 5000
+            }]
+        );
+    }
+
     // covers: HER-ART-001, HER-ART-002, HER-WAR-001, HER-BAT-001, HER-BAT-002, HER-BAT-003
     // covers: HER-BAT-004, HER-BAT-005, HER-BAT-010
     #[test]
@@ -3139,7 +3353,7 @@ mod tests {
     fn artifact_syntax() {
         use h3_content::ArtifactClass;
         let r = compile(&[SYNTHETIC_PACK, SYNTHETIC_EXT_PACK], "synthetic:faithful").unwrap();
-        assert_eq!(r.artifact_slots().len(), 4);
+        assert_eq!(r.artifact_slots().len(), 5);
         let charm = r.artifact_slot_by_key("synthetic:charm").unwrap();
         let crown = r.artifact_slot_by_key("synthetic:crown").unwrap();
         assert_eq!(r.artifact_slot(charm).unwrap().count, 3);
@@ -3151,7 +3365,7 @@ mod tests {
             (params.primary_min, params.primary_max, params.backpack),
             ([0, 0, 1, 2], 40, 3)
         );
-        assert_eq!(r.artifacts().len(), 10);
+        assert_eq!(r.artifacts().len(), 12);
         let by_key = |k: &str| r.artifact(r.artifact_by_key(k).unwrap()).unwrap();
         let regalia = by_key("synthetic-ext:storm_regalia");
         assert_eq!(regalia.class, ArtifactClass::Relic);
@@ -3229,13 +3443,51 @@ mod tests {
         use h3_content::SpellCategory;
         let r = compile(&[SYNTHETIC_PACK, SYNTHETIC_EXT_PACK], "synthetic:faithful").unwrap();
         assert_eq!(r.spell_schools().len(), 2);
-        assert_eq!(r.spells().len(), 4);
+        assert_eq!(r.spells().len(), 7);
+        // Battle magic (format v4): every target kind, an area, a chain, target conditions.
+        let magic = |k: &str| r.spell(r.spell_by_key(k).unwrap()).unwrap().magic.clone();
+        let damage = vec![SpellEffect::Damage];
+        assert_eq!(
+            magic("synthetic:spark"),
+            SpellMagic {
+                target: SpellTarget::Stack,
+                effects: damage.clone(),
+                ..SpellMagic::default()
+            }
+        );
+        assert_eq!(
+            magic("synthetic:cinders"),
+            SpellMagic {
+                target: SpellTarget::Hex,
+                area: Some(SpellArea {
+                    inner: 0,
+                    radius: [1, 1, 1, 2]
+                }),
+                conditions: TargetConditions {
+                    requires: CreatureFlags::default(),
+                    excludes: CreatureFlags::default().with(CreatureFlag::WarMachine),
+                },
+                effects: damage.clone(),
+                ..SpellMagic::default()
+            }
+        );
+        assert_eq!(
+            magic("synthetic:arc").chain,
+            Some(SpellChain {
+                targets: [3, 3, 4, 4],
+                factor_bp: 5000
+            })
+        );
+        let blight = magic("synthetic:blight");
+        assert_eq!(blight.target, SpellTarget::None);
+        assert!(blight.conditions.requires.contains(CreatureFlag::Alive));
+        assert_eq!(magic("synthetic:ward"), SpellMagic::default());
         let ward = r.spell(r.spell_by_key("synthetic:ward").unwrap()).unwrap();
         assert_eq!((ward.level, ward.schools.len(), ward.power), (2, 2, 0));
         assert_eq!(ward.polarity, SpellPolarity::Positive);
         let glare = r.spell(r.spell_by_key("synthetic:glare").unwrap()).unwrap();
         assert_eq!(glare.category, SpellCategory::Ability);
-        assert_eq!(r.skills().len(), 10);
+        assert_eq!(r.skills().len(), 12);
         let omens = r.skill(r.skill_by_key("synthetic:omens").unwrap()).unwrap();
         assert_eq!(
             omens.effects(3)[1],
@@ -3245,7 +3497,7 @@ mod tests {
             }
         );
         assert_eq!(r.hero_classes().len(), 2);
-        assert_eq!(r.hero_classes()[1].skill_weights.len(), 4);
+        assert_eq!(r.hero_classes()[1].skill_weights.len(), 6);
         assert_eq!(r.hero_types().len(), 5);
         let wisp = r.creature_by_key("synthetic:wisp").unwrap();
         let corwin = r
@@ -3282,7 +3534,7 @@ mod tests {
             .chain(r.artifacts().iter().flat_map(|a| &a.effects))
             .map(HeroEffect::name)
             .collect();
-        assert_eq!(kinds.len(), HeroEffect::<u8, u8, u8, u8>::NAMES.len());
+        assert_eq!(kinds.len(), HeroEffect::<u8, u8, u8, u8, u8>::NAMES.len());
 
         // Strict syntax: unknown kinds, parameters, flags and selectors are errors.
         let bad_syntax = [
@@ -3315,6 +3567,25 @@ mod tests {
                 "faction = \"vale\"\nprimary",
                 "faction = \"vale\"\nprimary_skills = [1, 1, 1, 1]\nprimary",
             ),
+            ("target = \"hex\"", "target = \"area\""),
+            (
+                "effects = [{ kind = \"damage\" }]",
+                "effects = [{ kind = \"burn\" }]",
+            ),
+            (
+                "effects = [{ kind = \"damage\" }]",
+                "effects = [{ kind = \"damage\", value = 1 }]",
+            ),
+            ("area = { radius", "area = { shape = 1, radius"),
+            ("chain = { targets", "chain = { jumps = 1, targets"),
+            (
+                "{ kind = \"spell_damage\", bp = 2500, spell = \"spark\" }",
+                "{ kind = \"spell_damage\", bp = 2500, spell = \"spark\", school = \"storm\" }",
+            ),
+            (
+                "{ kind = \"spell_book\" }",
+                "{ kind = \"spell_book\", spells = 1 }",
+            ),
         ];
         for (from, to) in bad_syntax {
             assert!(SYNTHETIC_PACK.contains(from), "{from}");
@@ -3322,6 +3593,17 @@ mod tests {
             assert!(
                 matches!(parse_pack(&text), Err(PackError::Syntax(_))),
                 "{to}"
+            );
+        }
+        for (from, to) in [
+            ("excludes = [\"war_machine\"]", "excludes = [\"winged\"]"),
+            ("requires = [\"alive\"]", "requires = [\"winged\"]"),
+        ] {
+            assert_eq!(
+                parse_pack(&SYNTHETIC_PACK.replace(from, to)),
+                Err(PackError::Compile(CompileError::UnknownFlag(
+                    "winged".into()
+                )))
             );
         }
         let unknown_flag = SYNTHETIC_PACK.replace(
@@ -3350,6 +3632,15 @@ mod tests {
                 "creature = \"B:x\", bp_per_step",
             ),
             ("spell = \"spark\" }", "spell = \"S:x\" }"),
+            (
+                "spell = \"spark\", bp_per_level",
+                "spell = \"S:x\", bp_per_level",
+            ),
+            (
+                "school = \"storm\", level = 1",
+                "school = \"S:x\", level = 1",
+            ),
+            ("school = \"storm\" }", "school = \"S:x\" }"),
             ("faction = \"vale\"\nprimary", "faction = \"V:x\"\nprimary"),
             ("marksmanship = 6", "\"M:x\" = 6"),
             ("class = \"warden\"", "class = \"W:x\""),

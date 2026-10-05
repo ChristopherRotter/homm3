@@ -8,8 +8,8 @@ use h3_content::{
     ArtifactClass, ArtifactDef, ArtifactSlotDef, ArtifactSlotId, ArtifactTypeId, BattleParamsDef,
     CompileError, ContentKey, ContentPack, CreatureDef, CreatureInfoDef, FactionDef, HeroClassDef,
     HeroParamsDef, HeroTypeDef, HeroTypeId, PackManifest, ProfileDef, ResourceDef, Ruleset,
-    SecondarySkillDef, SkillId, SpellCategory, SpellDef, SpellId, SpellPolarity, SpellSchoolDef,
-    StartingStackDef,
+    SecondarySkillDef, SkillId, SpellCategory, SpellDef, SpellId, SpellMagic, SpellPolarity,
+    SpellSchoolDef, StartingStackDef,
 };
 use proptest::prelude::*;
 
@@ -102,6 +102,7 @@ fn spell(k: &str, category: SpellCategory) -> SpellDef {
         power: 10,
         effect: [10, 10, 20, 30],
         polarity: SpellPolarity::Negative,
+        magic: SpellMagic::default(),
     }
 }
 

@@ -92,8 +92,10 @@ pub enum HeroError {
     UnknownFaction,
     /// A school mastery is above Expert (3).
     SchoolLevel,
-    /// A spell in the spell book is not part of the ruleset.
+    /// A spell in the spell book or a spell effect is not part of the ruleset.
     UnknownSpell,
+    /// A school mastery or a spell-damage effect names a spell school the ruleset lacks.
+    UnknownSchool,
     /// A spell is in the spell book twice.
     DuplicateSpell,
     /// A spell in the spell book is a creature ability.
@@ -114,7 +116,8 @@ impl fmt::Display for HeroError {
             Self::UnknownCreature => "an effect names an unknown creature type",
             Self::UnknownFaction => "an alignment group names an unknown faction",
             Self::SchoolLevel => "school mastery above 3",
-            Self::UnknownSpell => "unknown spell in the spell book",
+            Self::UnknownSpell => "unknown spell in the spell book or an effect",
+            Self::UnknownSchool => "a mastery or an effect for an unknown spell school",
             Self::DuplicateSpell => "a spell is in the spell book twice",
             Self::NotAHeroSpell => "a creature ability in the spell book",
         })
@@ -335,7 +338,14 @@ mod tests {
                 "an alignment group names an unknown faction",
             ),
             (HeroError::SchoolLevel, "school mastery above 3"),
-            (HeroError::UnknownSpell, "unknown spell in the spell book"),
+            (
+                HeroError::UnknownSpell,
+                "unknown spell in the spell book or an effect",
+            ),
+            (
+                HeroError::UnknownSchool,
+                "a mastery or an effect for an unknown spell school",
+            ),
             (
                 HeroError::DuplicateSpell,
                 "a spell is in the spell book twice",

@@ -7,7 +7,8 @@ use std::vec;
 use std::vec::Vec;
 
 use h3_content::{
-    Affects, CreatureFlag, CreatureSelector, CreatureStat, CreatureTypeId, HeroTypeId, SpellId,
+    Affects, CreatureFlag, CreatureSelector, CreatureStat, CreatureTypeId, HeroTypeId, SchoolId,
+    SpellId, SpellScope,
 };
 use h3_contracts::{
     BallistaControl, BattleEffect, BattleHero, DamageBonuses, MAX_BATTLE_EFFECTS, StatOp,
@@ -74,6 +75,22 @@ fn every_effect(r: &h3_content::Ruleset) -> Vec<BattleEffect> {
                 h3_content::FactionId::from_raw(1),
             ])
             .unwrap(),
+        },
+        BattleEffect::SpellDamage {
+            scope: SpellScope::All,
+            bp: 1500,
+        },
+        BattleEffect::SpellDamage {
+            scope: SpellScope::School(SchoolId::from_raw(0)),
+            bp: 5000,
+        },
+        BattleEffect::SpellDamage {
+            scope: SpellScope::Spell(r.spell_by_key("t:bolt").unwrap()),
+            bp: 5000,
+        },
+        BattleEffect::SpellSpecialty {
+            spell: r.spell_by_key("t:bolt").unwrap(),
+            bp: 6000,
         },
     ]
 }
@@ -197,7 +214,7 @@ fn values_no_real_hero_could_have_are_accepted() {
     odd.magic.spell_book = Some(vec![r.spell_by_key("t:bolt").unwrap()]);
     odd.magic.mana = u16::MAX;
     odd.magic.max_mana = 0;
-    odd.magic.schools = [3; 4];
+    odd.magic.schools = [3, 0, 0, 0];
     let s = BattleState::new(&r, &with_heroes(&r, [Some(odd.clone()), Some(odd)]), 1).unwrap();
     assert_eq!(s.hero(BattleSide::Defender).unwrap().attack, 255);
 }
@@ -266,6 +283,34 @@ fn unsound_heroes_are_rejected() {
             HeroError::UnknownFaction,
         ),
         (|_, h| h.magic.schools[2] = 4, HeroError::SchoolLevel),
+        (|_, h| h.magic.schools[1] = 1, HeroError::UnknownSchool),
+        (
+            |_, h| {
+                h.effects = vec![BattleEffect::SpellDamage {
+                    scope: SpellScope::School(SchoolId::from_raw(1)),
+                    bp: 1,
+                }];
+            },
+            HeroError::UnknownSchool,
+        ),
+        (
+            |_, h| {
+                h.effects = vec![BattleEffect::SpellDamage {
+                    scope: SpellScope::Spell(SpellId::from_raw(99)),
+                    bp: 1,
+                }];
+            },
+            HeroError::UnknownSpell,
+        ),
+        (
+            |_, h| {
+                h.effects = vec![BattleEffect::SpellSpecialty {
+                    spell: SpellId::from_raw(99),
+                    bp: 1,
+                }];
+            },
+            HeroError::UnknownSpell,
+        ),
         (
             |_, h| h.magic.spell_book = Some(vec![SpellId::from_raw(99)]),
             HeroError::UnknownSpell,

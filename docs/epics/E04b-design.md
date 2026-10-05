@@ -1,25 +1,10 @@
 # E04b design note (working detail for ADR-0014)
 
-A handover, not binding: proposals and sizes for the tasks of ADR-0014 (Proposed). Each task
+A handover, not binding: proposals and sizes for the tasks of ADR-0014 (accepted). T2a's section
+is implemented and deleted (code docs, `packs/README.md`, HER-BAT-011/012). Each task
 settles its section and **deletes it** when the code documentation, the rule catalog and the pack
 docs hold the detail; the file is deleted when E04b closes (ADR index rule). Names are provisional.
 Sources: [`docs/rules/surveys/E04b-magic.md`](../rules/surveys/E04b-magic.md).
-
-## T2a — content and the hero's magic
-
-- **Pack format v4, `[[spell]]`:** `target` (`none`, `stack`, `hex`, `obstacle`, `stack_and_hex`
-  for Teleport, `dead_and_stack` for Sacrifice); `flags` harvested from the executable's flag word
-  (timed, single, mass at Expert, area, damage, mind; the unclear bit `0x1000` is not read until
-  dispute M-1 is settled); `effects` per mastery, T2 only `{ kind = "damage" }`, whose value is
-  `power × power factor + effect[mastery]`; target conditions in creature-flag vocabulary
-  (Death Ripple: not `undead`; Destroy Undead: only `undead`; Implosion: not `war_machine`).
-- **Hero effects** (content `HeroEffect`, resolved to `BattleEffect` or typed fields): the magic
-  skills set `BattleMagic.schools`; Sorcery and the Orbs a spell-damage bonus in basis points (all
-  schools, or one school); a spell specialty of a damage spell scales by
-  `1 + 0.03 × hero level / target creature level` (`E04-heroes.md` §3, SoD). Other specialties
-  come with their spells' tasks.
-- **Derivation:** `spell_book = Some(spells)` when the hero has a spell book (the full "worn spell
-  book" rule and the Tomes are T8); `max_mana` stays informative. Rules continue `HER-BAT`.
 
 ## T2b — casting in battle
 

@@ -193,7 +193,8 @@ flags = ["two_hex", "war_machine", "no_morale"]
 abilities = [{ kind = "first_aid", min_hp = 1, max_hp = 10 }]
 
 # ---- Hero content (pack format v3, E04a T3): invented schools, spells, skills, classes and heroes.
-# Every hero-effect kind appears at least once. Spells are data rows only (effects: E04b).
+# Every hero-effect kind appears at least once. Spells carry their battle magic since format v4
+# (E04b T2a): every target kind, an area, a chain and target conditions appear at least once.
 
 [[spell_school]]
 id = "storm"
@@ -213,6 +214,50 @@ cost = [6, 5, 5, 5]                 # mana by mastery: none, basic, advanced, ex
 power = 10
 effect = [10, 10, 20, 30]
 polarity = "negative"
+target = "stack"                    # none (default) | stack | hex
+effects = [{ kind = "damage" }]     # none: not castable yet
+
+[[spell]]
+id = "cinders"
+name = "Cinders"
+category = "combat"
+level = 3
+schools = ["storm"]
+cost = [12, 10, 10, 10]
+power = 10
+effect = [15, 15, 30, 60]
+polarity = "negative"
+target = "hex"
+area = { radius = [1, 1, 1, 2] }    # hexes at distance inner (default 0) to radius[mastery]
+excludes = ["war_machine"]          # creature flags a stack may not have
+effects = [{ kind = "damage" }]
+
+[[spell]]
+id = "arc"
+name = "Arc"
+category = "combat"
+level = 4
+schools = ["storm"]
+cost = [10, 8, 8, 8]
+power = 25
+effect = [25, 25, 50, 100]
+polarity = "negative"
+target = "stack"
+chain = { targets = [3, 3, 4, 4], factor_bp = 5000 }  # stacks struck by mastery; each next takes half
+effects = [{ kind = "damage" }]
+
+[[spell]]
+id = "blight"
+name = "Blight"
+category = "combat"
+level = 5
+schools = ["stone"]
+cost = [20, 18, 18, 18]
+power = 30
+effect = [40, 40, 80, 120]
+polarity = "negative"
+requires = ["alive"]                # creature flags a stack needs; target none: every such stack
+effects = [{ kind = "damage" }]
 
 [[spell]]
 id = "ward"
@@ -307,6 +352,20 @@ advanced = [{ kind = "surrender_discount", bp = 4000 }]
 expert = [{ kind = "surrender_discount", bp = 6000 }]
 
 [[secondary_skill]]
+id = "stormcraft"
+name = "Stormcraft"
+basic = [{ kind = "school_mastery", school = "storm", level = 1 }]
+advanced = [{ kind = "school_mastery", school = "storm", level = 2 }]
+expert = [{ kind = "school_mastery", school = "storm", level = 3 }]
+
+[[secondary_skill]]
+id = "channeling"
+name = "Channeling"
+basic = [{ kind = "spell_damage", bp = 500 }]   # every spell; `school` or `spell` narrows it
+advanced = [{ kind = "spell_damage", bp = 1000 }]
+expert = [{ kind = "spell_damage", bp = 1500 }]
+
+[[secondary_skill]]
 id = "wayfinding"                   # no battle effect (an adventure skill)
 name = "Wayfinding"
 
@@ -324,7 +383,7 @@ name = "Sage"
 faction = "vale"
 primary = [0, 1, 2, 2]
 primary_gain = [[10, 15, 35, 40], [20, 20, 30, 30]]
-skill_weights = { omens = 6, parley = 5, mending = 5, wayfinding = 8 }
+skill_weights = { omens = 6, parley = 5, mending = 5, wayfinding = 8, stormcraft = 4, channeling = 3 }
 
 [[hero]]
 id = "ansel"
@@ -365,7 +424,7 @@ spell_book = true
 spells = ["spark"]
 army = [{ creature = "wisp", count = [5, 10] }]
 war_machines = ["aid_tent"]
-specialty = [{ kind = "spell_specialty", spell = "spark" }]
+specialty = [{ kind = "spell_specialty", spell = "spark", bp_per_level = 300 }]
 
 [[hero]]
 id = "edda"
@@ -395,6 +454,11 @@ count = 2                           # synthetic-ext raises it to 3
 id = "engine"
 name = "Engine"
 backpack = false                    # HER-ART-002: its artifacts never go to the backpack
+
+[[artifact_slot]]
+id = "tome"
+name = "Tome"
+backpack = false
 
 [[artifact]]
 id = "iron_crown"
@@ -465,6 +529,25 @@ slot = "crown"
 effects = [
     { kind = "creature_stat_percent", creatures = { flag = "alive" }, stat = "hit_points", bp = 2500 },
     { kind = "regeneration", creatures = { flag = "alive" }, hit_points = 10 },
+]
+
+[[artifact]]
+id = "grimoire"
+name = "Grimoire"
+class = "special"
+cost = { coin = 500 }
+slot = "tome"
+effects = [{ kind = "spell_book" }]  # the hero casts the spells it knows
+
+[[artifact]]
+id = "storm_orb"
+name = "Storm Orb"
+class = "major"
+cost = { coin = 6000 }
+slot = "charm"
+effects = [
+    { kind = "spell_damage", bp = 5000, school = "storm" },
+    { kind = "spell_damage", bp = 2500, spell = "spark" },
 ]
 
 [[artifact]]

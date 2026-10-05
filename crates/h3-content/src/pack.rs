@@ -12,6 +12,7 @@ use crate::artifacts::ArtifactClass;
 use crate::effect::HeroEffectDef;
 use crate::heroes::{SpellCategory, SpellPolarity};
 use crate::key::ContentKey;
+use crate::spell::SpellMagic;
 
 /// Identity and dependencies of a pack.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -220,8 +221,8 @@ pub struct SpellSchoolDef {
     pub name: String,
 }
 
-/// A spell's data row (E04a T3): the numbers of the original spell table. What a spell does is
-/// battle magic (E04b); no rule reads these values yet.
+/// A spell's data row (E04a T3): the numbers of the original spell table, and since pack format
+/// v4 (E04b T2a) what it does in battle.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct SpellDef {
     /// Namespaced key.
@@ -242,6 +243,8 @@ pub struct SpellDef {
     pub effect: [u16; 4],
     /// Positive, neutral or negative for its target.
     pub polarity: SpellPolarity,
+    /// Targeting and effects in battle (default: none, not castable yet).
+    pub magic: SpellMagic,
 }
 
 /// A secondary skill with the effects of its three levels (E04a T3).
