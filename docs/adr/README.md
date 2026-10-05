@@ -24,4 +24,4 @@ Binding decisions. One decision per file, numbered, never silently edited once A
 | [0011](0011-portability-and-c-abi.md) | Portability and C ABI | Accepted | FFI, encodings, platform targets |
 | [0012](0012-modifiers-and-abilities.md) | Modifiers and abilities | Accepted (E03) | modifiers (morale, luck, stats) and creature abilities |
 | [0013](0013-heroes-in-battle.md) | Heroes in battle: entities, the `BattleHero` seam, the hero's battle rules | Accepted | hero content, `h3-heroes`, the `BattleHero` seam (E04a–E04c) |
-| [0014](0014-battle-magic.md) | Battle magic: spells as data, casting, timed effects, created stacks, hidden objects | Proposed (E04b T1) | spells, casting, spell effects on stacks, stacks created in battle, hidden obstacles, the casting encoding (E04b, E04c) |
+| [0014](0014-battle-magic.md) | Battle magic: spells as data, casting, timed effects, created stacks, hidden objects | Accepted | spells, casting, spell effects on stacks, stacks created in battle, hidden obstacles, the casting encoding (E04b, E04c) |

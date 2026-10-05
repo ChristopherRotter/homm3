@@ -1,8 +1,8 @@
 # ADR-0014: Battle magic — spells as data, casting, timed effects, created stacks, hidden objects
 
-- Status: Proposed (E04b T1, 2026-10-05; work stops for the user's review)
+- Status: Accepted (user, 2026-10-05; OPEN-QUESTIONS Q42)
 - Date: 2026-10-05
-- Deciders: agent session (E04b T1); the user reviews
+- Deciders: user; agent session (E04b T1)
 - Working detail: [`docs/epics/E04b-design.md`](../epics/E04b-design.md); sources:
   [`docs/rules/surveys/E04b-magic.md`](../rules/surveys/E04b-magic.md)
 
@@ -118,3 +118,4 @@ which a spell meets a stack, how stacks appear in a battle, how hidden objects s
   growable list instead of inline slots for every timed spell (amending ADR-0004 point 8); point 6
   takes the original's 21 stack slots and limit of 20 from its code (`installation.md` §7.7); point
   7 says how a command resolves when it meets an unseen obstacle.
+- 2026-10-05: Accepted by the user (Q42).

@@ -53,11 +53,16 @@ full amendment text of E01–E03 is in git history (this file at commit `22b6bc0
 - **Observation reads the ruleset (E04a T11a, Q37):** `h3_battle::observe(&BattleState,
   &Ruleset, BattleSide)`, with the same precondition as `apply` (the ruleset the battle was built
   with); the viewer's own hero's private part, such as its surrender price, is derived from it.
+- **Growable lists in battle (E04b, ADR-0014 point 5, Q42):** point 8's fixed capacity gives way
+  where the realistic size is far below the worst case (spell effects on stacks, spell obstacles):
+  one heap list per kind, in canonical order, reserved at the battle's start so that steady play
+  does not allocate; a fork costs one allocation per list. `BattleState` stays `Clone`.
 
 ## Revision history
 
 - 2026-09-30: Accepted.
 - 2026-09-30 – 2026-10-01: Amended by E01 and E03 (T3–T9).
 - 2026-10-04: Amended by E04a T11a (the observation reads the ruleset, Q37).
+- 2026-10-05: Amended by ADR-0014 point 5 (growable lists in battle; user, Q42).
 - 2026-10-03: Amendments cut to their decisions (ADR size rule, `docs/adr/README.md`); the
   implementation detail is in the crate docs and in git history.

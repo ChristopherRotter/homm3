@@ -1,6 +1,6 @@
 # E04b — Battle magic
 
-Status: **refined** 2026-10-05 (increment 1: T1–T2 refined; nothing implemented) · Follows E04a (closed 2026-10-05) · Part of the former E04 (OPEN-QUESTIONS Q27): E04a heroes in battle, **E04b** battle magic (this one), E04c sieges and special battlefields.
+Status: **in progress** (refined 2026-10-05; increment 1 = T1–T2; T1 done, ADR-0014 accepted) · Follows E04a (closed 2026-10-05) · Part of the former E04 (OPEN-QUESTIONS Q27): E04a heroes in battle, **E04b** battle magic (this one), E04c sieges and special battlefields.
 
 ## Goal
 
@@ -28,9 +28,9 @@ Earthquake, sieges and the moat (E04c). The special battlefields' magic (Magic P
 
 ## Tasks (outline; refine at the start of each increment; keep status current)
 
-**Increment 1** (refined below): T1, T2. Later increments are cut with the user at each checkpoint; order and boundaries of T3–T11 may change.
+**Increment 1:** T1 (done), T2 (refined below). Later increments are cut with the user at each checkpoint; order and boundaries of T3–T11 may change.
 
-- [ ] **T1 Magic survey and ADR-0014** — written 2026-10-05: survey `docs/rules/surveys/E04b-magic.md`, spell flags decoded (`docs/formats/installation.md` §7.6), ADR-0014 Proposed with `docs/epics/E04b-design.md`; **waiting for the user's review (Q42)**.
+- [x] **T1 Magic survey and ADR-0014** — done 2026-10-05: survey `docs/rules/surveys/E04b-magic.md`, spell flags and stack records (`docs/formats/installation.md` §7.6, §7.7), ADR-0014 accepted after one revision (Q42; ADR-0004 point 8 amended). Record: [`E04b-log.md`](E04b-log.md).
 - [ ] **T2 Casting core and direct-damage spells** — increment 1, after the review; four checkpoints proposed (T2a–T2d).
 - [ ] T3 Timed effects on stacks: buffs and debuffs, Mass versions at Expert, durations and the artifacts that change them, Dispel, Cure (S-16, S-17, S-19).
 - [ ] T4 Control spells and spell defences: Berserk, Hypnotize, Forgetfulness, Blind; Anti-Magic, Magic Mirror (S-09 to S-11, S-13).
@@ -43,32 +43,6 @@ Earthquake, sieges and the moat (E04c). The special battlefields' magic (Magic P
 - [ ] T11 Closure: fold-in, independent review in a fresh session, docs.
 
 Order: T1 first and alone; T2 after the review; T3 before T4–T7 (they use timed effects); T5–T8 independent of each other; T9 and T11 last; T10's batches follow the tasks they check.
-
-### T1 — Magic survey and ADR-0014 (refined)
-
-A research and design task without engine code, like E04a T1. Work stops for the user's review at its end.
-
-- **Survey** `docs/rules/surveys/E04b-magic.md`, limited to what the ADR decides (Q41), with labelled sources (VCMI 1.7.5 `lib/spells/`, `config/spells/`; the wiki, approved per session; original data; code reading only as the last resort, Q29). Per-spell numbers are not collected here.
-  - Casting rules: who casts and when (at most once per round per hero and never required; on which turns; not in tactics), the spell book, the cost by mastery (the best school of the spell), cost changes by creatures and artifacts, mana after the battle (`E04-battle.md` §7).
-  - Effect kinds and targeting (one stack, hex area, chain, every stack, obstacles, summons, battle-wide), what Expert (Mass) changes; durations: unit, when they count down, replacement or stacking of the same spell, the original's per-stack storage as far as visible (S-17 points to 8-bit durations).
-  - The resolution order of a spell against a stack: immunity, Magic Mirror, resistance chance, the effect, damage reduction; which creatures, skills and artifacts enter at each step (lists, not numbers).
-  - Stacks created in battle (summons, clones, Sacrifice, raised creatures, Pit Lord demons): limits, slots, their fate after the battle.
-  - Hidden battlefield objects and what each side sees.
-  - Spell-like creature abilities and spellcasting creatures as a list mapped to effect kinds (the 11 `ability` rows among them).
-  - The executable's spell flag bits (§7.6) decoded as far as the ADR needs them; RoE/AB/SoD differences of the spell rows (the AB and SoD copies of `SPTRAITS.TXT` differ).
-  - S-09 to S-21 mapped to tasks; new quirks found.
-- **ADR-0014 (Proposed)**, decisions only, about 80 lines (ADR size rule); working detail in `docs/epics/E04b-design.md`:
-  1. Spells as data: a closed effect-kind enum in content (Tier 3, like `Ability` and `HeroEffect`) with parameters by mastery, targeting as data, rule code per effect kind.
-  2. Casting: the commands (hero casts, creature casts), phases, at most once per round (optional), cost; validated against the trusted actor (ADR-0004, ADR-0008).
-  3. Timed effects on stacks: storage (per-stack slots or arrays; whether ADR-0012's pool gains stack bearers), expiry, replacement and stacking, effective stats materialised, capacity by construction.
-  4. The resolution order and the random streams it draws from (ADR-0003).
-  5. Stacks created in battle: `StackOrigin` variants (ADR-0013 point 5), stack capacity, what the outcome reports.
-  6. Hidden battlefield objects: owner side, projection, `Visibility::Side` events (ADR-0004 §6, ADR-0013 point 9).
-  7. Encodings: the factorized casting action (heads, a mask per head, its C ABI form, shaped for E05's batch API) and the observation's growth (ADR-0011).
-  8. Seam additions: each hero's mana left and the spells each side cast (Eagle Eye) in the outcome, and whatever else the survey finds; anything beyond ADR-0013 point 5 (variants and reserved fields) is listed for the review.
-  9. Where profile-level overrides for data quirks are decided (here or an amendment of ADR-0007; needed by T8).
-- **Experiment candidates** for batch 2a in `docs/experiments/README.md`.
-- ADR index, OPEN-QUESTIONS entry for the review, HANDOFF. **Stop.**
 
 ### T2 — Casting core and direct-damage spells (refined; the split is confirmed at its start)
 
@@ -83,11 +57,11 @@ The 13 direct-damage spells: Magic Arrow, Ice Bolt, Lightning Bolt, Titan's Ligh
 
 ## Design
 
-[ADR-0014](../adr/0014-battle-magic.md) (Proposed in T1, under the user's review, Q42) with its design note [`E04b-design.md`](E04b-design.md), pruned task by task (ADR index rule); ADR-0012 (modifiers and abilities) and ADR-0013 (the hero seam, points 4, 5, 9, 10) still apply.
+[ADR-0014](../adr/0014-battle-magic.md) (accepted 2026-10-05, Q42) with its design note [`E04b-design.md`](E04b-design.md), pruned task by task (ADR index rule); ADR-0012 (modifiers and abilities) and ADR-0013 (the hero seam, points 4, 5, 9, 10) still apply.
 
 ## Exit criteria
 
-1. ADR-0014 accepted by the user.
+1. ~~ADR-0014 accepted by the user.~~ (done 2026-10-05, Q42.)
 2. Every battle spell in scope and every spell-like creature ability has catalog rules with labelled sources and tests; disputed ones have an observation fixture (SoD) or an OPEN-QUESTIONS entry with the experiment.
 3. Confirmed quirks are in the ledger with flags; `faithful` and `strict-fixed` differ exactly by them; the data quirks Q-0006 and S-05 work through profile overrides; S-14 and S-20 are never reproduced.
 4. Earlier invariants still property-tested, plus: legal casts and `apply` agree, mana never goes negative and a hero casts at most once per round, hidden objects and spell books never reach the other side's observation, stacks created in battle are accounted for in the outcome.
