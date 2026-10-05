@@ -14,6 +14,12 @@ Research notes compiled at the start of an epic, before rules are written. A sur
 
 The skill, artifact and battle surveys were compiled by sub-agents and reviewed by the session that committed them; the wiki was read through a summarising fetch tool, so every wiki fact that ends up in a rule must be re-checked against the page (the surveys mark facts checked against raw wikitext). The executable facts are documented in [`docs/formats/installation.md`](../../formats/installation.md) §6–§7.
 
+## E04b (E04b T1, 2026-10-05)
+
+| File | Contents |
+|---|---|
+| [E04b-magic.md](E04b-magic.md) | just-in-time survey for ADR-0014 (Q41): the spell table and its decoded flags, casting by a hero (book, once per round, mastery, cost, mana), effect kinds and targeting, durations, the resolution order (immunity, resistance, Magic Mirror, damage modifiers), stacks created in battle, hidden obstacles, creature magic, quirks by task, disputes M-1 to M-6, experiment candidates for batch 2a. Per-spell numbers are left to the tasks. |
+
 ## Disputes: input for experiment batch 1
 
 *Batch 1a results (2026-10-03): `docs/epics/E04a-log.md`, "The design note at closure"; Q21, Q23, D1, S-01–S-04, OQ-4 (Ballista), H-1 and the Ballista's attack are answered there.*

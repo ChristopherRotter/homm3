@@ -264,8 +264,47 @@ game's code, not of a data table; such readings are allowed as a last resort, fo
 
 ### 7.6 Spell table — VA 0x685450 (file 0x285450), 81 × 0x88 bytes
 
-Static fields per spell id: i32 type (−1 negative, 0 neutral, 1 positive), pointer to the sound
-name, i32 animation, u32 flag bits (combat/adventure, target kinds, mind spell, …; not decoded yet:
-E04b decodes them with the rules that read them). All other fields (name, level, schools, costs,
-power, effects, chances, AI values, texts) are zero in the file and filled from `SPTRAITS.TXT`.
-The harvester (E04a T3) writes the type as the spell's `polarity`.
+Static fields per spell id: i32 type (−1 negative, 0 neutral, 1 positive) at +0, pointer to the
+sound name at +4, i32 animation at +8, u32 flag bits at +0xC. All other fields (name, level,
+schools, costs, power, effects, chances, AI values, texts) are zero in the file and filled from
+`SPTRAITS.TXT`. The harvester (E04a T3) writes the type as the spell's `polarity`.
+
+**Flag bits** (decoded in E04b T1, 2026-10-05, by matching the 81 values against the spells' known
+behaviour and VCMI 1.7.5's `config/spells/*.json`; no code was read). *Confirmed*: consistent with
+every row and with VCMI; *probable*: a consistent pattern whose meaning is not proven.
+
+| Bit | Meaning | Set on (spell ids) | Confidence |
+|---|---|---|---|
+| `0x1` | combat spell | 10–69 | confirmed |
+| `0x2` | adventure spell | 0–9 | confirmed |
+| `0x4` | timed effect on the target stack | 27–34, 36, 41–46, 48–62 except 57, 70, 71, 73–75 | confirmed (absent on Dispel, Cure, Disrupting Ray (permanent), Bind, Clone (its duration belongs to the new stack)) |
+| `0x8` | creature ability, never in a spell book | 70–80 | confirmed |
+| `0x10` | one target stack, no mass version | 15–19, 29, 34, 36, 38–40, 47, 55–57, 60, 62, 63, 65, 70–80 | confirmed |
+| `0x20` | targets a shooting stack | 61 (Forgetfulness) | probable (one row) |
+| `0x40` | mass version at Expert | 27, 28, 30–33, 35, 37, 41–46, 48–54, 58 | confirmed (VCMI also makes Forgetfulness mass at Expert; see quirk S-10) |
+| `0x80` | targets a hex or area | 10–13, 20–23, 59 (Berserk) | confirmed |
+| `0x100` | targets an obstacle | 64 (Remove Obstacle) | probable (one row) |
+| `0x200` | deals damage | 15–26, 57, 77 (Thunderbolt) | confirmed |
+| `0x400` | mind spell | 49, 50, 56, 59–62 (Mirth, Sorrow, Frenzy, Berserk, Hypnotize, Forgetfulness, Blind) | confirmed |
+| `0x800` | beneficial effect on an own stack | 27–34, 36, 37, 41, 43, 44, 46, 48, 49, 51, 53, 55, 56, 58 | probable |
+| `0x1000` | war machines are not affected (?) | 18, 24, 38–40, 59–63, 65, 70–75 | **unclear**: matches VCMI's war-machine exclusion for these spells, but VCMI also excludes war machines from Bless, Curse, Bloodlust, Haste, Slow, Counterstrike and others that lack the bit (`docs/rules/surveys/E04b-magic.md`, dispute M-1) |
+| `0x2000` | granted by an artifact | 57 (Titan's Lightning Bolt) | probable (one row) |
+| `0x4000` | protective spell | 27–34, 36, 46, 58 | probable |
+| `0x8000`–`0x100000` | AI categories: `0x8000` damage to one target or area, `0x10000` damage that can hit own stacks, `0x20000` damage to every stack, `0x40000` other battle spells, `0x80000` new or raised stacks, `0x100000` special (map movement spells, Earthquake, Titan's Lightning Bolt) | see the values | probable; no rule reads them |
+
+Values (`id:flags`, hexadecimal; SoD copy of the executable):
+
+```text
+ 0:100002  1:2  2:2  3:2  4:2  5:2  6:100002  7:100002  8:100002  9:100002
+10:81 11:81 12:81 13:81 14:100001 15:8211 16:8211 17:8211 18:9211 19:10211
+20:8281 21:8281 22:10281 23:8281 24:21201 25:20201 26:20201 27:44845 28:44845 29:44815
+30:44845 31:44845 32:44845 33:44845 34:44815 35:40041 36:44815 37:40841 38:81011 39:81011
+40:1011 41:40845 42:40045 43:41845 44:40845 45:40045 46:44845 47:40011 48:40845 49:40c45
+50:40445 51:40845 52:40045 53:41845 54:41045 55:40815 56:40c15 57:10a211 58:45845 59:41485
+60:81415 61:1425 62:41415 63:41011 64:101 65:41011 66:80001 67:80001 68:80001 69:80001
+70:101c 71:101c 72:1018 73:101c 74:101c 75:101c 76:18 77:218 78:18 79:18 80:18
+```
+
+The AB and SoD copies of `SPTRAITS.TXT` differ only in row 57 (AB: "Fear (disabled)", level 4;
+SoD: Titan's Lightning Bolt, level 5) among the numeric columns; RoE's table is not in the
+installation (Q15).
