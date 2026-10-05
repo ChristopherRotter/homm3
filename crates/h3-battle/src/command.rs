@@ -5,13 +5,14 @@
 //! to move to, which enemy to attack from where. The acting stack, its owner, and every derived
 //! value (reach, damage) come from the state.
 
-use h3_content::Ruleset;
+use h3_content::{Ruleset, SpellId};
 use h3_contracts::{BattleResult, BattleSide};
 
 use crate::combat::{can_shoot, melee, shoot};
 use crate::error::CommandError;
 use crate::event::{Event, EventKind, Sink};
 use crate::geometry::{Field, Hex};
+use crate::magic::{self, Cast, CastTarget};
 use crate::movement::reachable;
 use crate::state::{BattleState, Stack, StackFlags, StackId, StackTraits};
 use crate::tactics::{self, TacticsPhase};
@@ -57,6 +58,14 @@ pub enum Command {
     Retreat,
     /// Leave the battle: the actor's side surrenders and pays its price (BAT-FLE-002).
     Surrender,
+    /// The actor's hero casts `spell` at `target` during the active stack's turn, which goes on
+    /// (BAT-MAG-001).
+    Cast {
+        /// The spell.
+        spell: SpellId,
+        /// What it is aimed at.
+        target: CastTarget,
+    },
 }
 
 impl Command {
@@ -113,6 +122,7 @@ enum Plan {
         side: BattleSide,
         price: u32,
     },
+    Cast(Cast),
 }
 
 /// Checks `command` for `actor` without changing anything. Shared by `apply` and
@@ -157,6 +167,9 @@ fn plan(
         Command::EndTactics => Err(CommandError::NoTacticsPhase),
         Command::Retreat => retreat(state, actor),
         Command::Surrender => surrender(state, ruleset, actor),
+        Command::Cast { spell, target } => {
+            magic::plan_cast(state, ruleset, actor, spell, target).map(Plan::Cast)
+        }
         Command::Wait => {
             // rule: BAT-TRN-002
             if mover.flags.contains(StackFlags::WAITED) {
@@ -309,9 +322,11 @@ fn plan_tactics(
         Command::EndTactics => Ok(Plan::EndTactics),
         Command::Retreat => retreat(state, mover.side),
         Command::Surrender => surrender(state, ruleset, mover.side),
-        Command::Attack { .. } | Command::Shoot { .. } | Command::Defend | Command::Heal { .. } => {
-            Err(CommandError::InTacticsPhase)
-        }
+        Command::Attack { .. }
+        | Command::Shoot { .. }
+        | Command::Defend
+        | Command::Heal { .. }
+        | Command::Cast { .. } => Err(CommandError::InTacticsPhase),
     }
 }
 
@@ -377,6 +392,7 @@ pub fn apply<S: Sink>(
             state.surrender_cost = Some(price);
             leave(state, BattleResult::Surrender(side), sink);
         }
+        Plan::Cast(cast) => magic::apply_cast(state, cast, sink),
     }
     Ok(())
 }

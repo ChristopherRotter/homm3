@@ -414,6 +414,8 @@ pub struct BattleParamsDef {
     pub tactics_zone_columns: Vec<u8>,
     /// How a surrender is priced (BAT-FLE-002); `None`: no side can surrender.
     pub surrender: Option<SurrenderDef>,
+    /// How many spells a hero may cast per round (BAT-MAG-001; 1 in the original).
+    pub hero_casts_per_round: u8,
 }
 
 /// The price of a surrender (BAT-FLE-002): `cost_percent` of the summed cost in `resource` of

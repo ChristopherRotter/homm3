@@ -4,9 +4,11 @@
 
 use alloc::vec::Vec;
 
+use h3_content::SpellId;
 use h3_contracts::{BattleResult, BattleSide};
 
 use crate::geometry::Hex;
+use crate::magic::CastTarget;
 use crate::state::StackId;
 
 /// Who may see an event.
@@ -156,6 +158,24 @@ pub enum EventKind {
     BadMorale {
         /// The stack.
         stack: StackId,
+    },
+    /// A side's hero cast a spell (BAT-MAG-001; public, ADR-0014 point 8).
+    SpellCast {
+        /// The caster's side.
+        side: BattleSide,
+        /// The spell.
+        spell: SpellId,
+        /// What it was aimed at.
+        target: CastTarget,
+    },
+    /// A spell damaged a stack (BAT-MAG-004).
+    SpellDamage {
+        /// The stack.
+        target: StackId,
+        /// Damage dealt, before capping at the stack's remaining health.
+        damage: u64,
+        /// Creatures killed.
+        kills: u32,
     },
     /// The battle ended (BAT-END-001/002).
     BattleEnded {

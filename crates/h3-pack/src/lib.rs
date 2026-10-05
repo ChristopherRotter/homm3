@@ -14,9 +14,10 @@ use h3_content::{
     CreatureDef, CreatureFlag, CreatureFlags, CreatureInfoDef, CreatureOverride, CreaturePatch,
     CreatureSelector, CreatureStat, CreatureTypeId, FactionDef, Formation, HeroClassDef,
     HeroEffect, HeroEffectDef, HeroParamsDef, HeroTypeDef, KeyError, MAX_ALIGNMENT_FACTIONS,
-    ObstacleDef, PackManifest, ProfileDef, ResourceDef, Ruleset, SecondarySkillDef, SpellArea,
-    SpellCategory, SpellChain, SpellDef, SpellEffect, SpellMagic, SpellPolarity, SpellSchoolDef,
-    SpellScope, SpellTarget, StartingStackDef, SurrenderDef, TargetConditions, TerrainDef,
+    ObstacleDef, PackManifest, ProfileDef, ResourceDef, Ruleset, SchoolId, SecondarySkillDef,
+    SpellArea, SpellCategory, SpellChain, SpellDef, SpellEffect, SpellId, SpellMagic,
+    SpellPolarity, SpellSchoolDef, SpellScope, SpellTarget, StartingStackDef, SurrenderDef,
+    TargetConditions, TargetSide, TerrainDef,
 };
 use h3_contracts::{
     Army, ArmyStack, BallistaControl, BattleEffect, BattleHero, BattleSetup, BattleSide,
@@ -59,9 +60,10 @@ pub enum PackError {
     UnknownFaction(String),
     /// A scenario or replay references a hero type the ruleset does not define.
     UnknownHeroType(String),
-    /// A battle hero has values the scenario and replay formats cannot hold yet (they arrive
-    /// with the rules that read them, E04a T6–T10 and E04b).
-    HeroNotWritable(&'static str),
+    /// A scenario or replay references a spell the ruleset does not define.
+    UnknownSpell(String),
+    /// A scenario or replay references a spell school the ruleset does not define.
+    UnknownSchool(String),
 }
 
 impl fmt::Display for PackError {
@@ -74,9 +76,8 @@ impl fmt::Display for PackError {
             Self::UnknownTerrain(k) => write!(f, "unknown terrain `{k}`"),
             Self::UnknownFaction(k) => write!(f, "unknown faction `{k}`"),
             Self::UnknownHeroType(k) => write!(f, "unknown hero type `{k}`"),
-            Self::HeroNotWritable(what) => {
-                write!(f, "the file format cannot hold a hero's {what} yet")
-            }
+            Self::UnknownSpell(k) => write!(f, "unknown spell `{k}`"),
+            Self::UnknownSchool(k) => write!(f, "unknown spell school `{k}`"),
         }
     }
 }
@@ -199,6 +200,7 @@ struct BattleDto {
     tactics_zone_columns: Vec<u8>,
     #[serde(default)]
     surrender: Option<SurrenderDto>,
+    hero_casts_per_round: u8,
 }
 
 #[derive(Deserialize)]
@@ -396,6 +398,8 @@ struct SpellDto {
     area: Option<SpellAreaDto>,
     chain: Option<SpellChainDto>,
     #[serde(default)]
+    side: TargetSideDto,
+    #[serde(default)]
     requires: Vec<String>,
     #[serde(default)]
     excludes: Vec<String>,
@@ -410,6 +414,15 @@ enum SpellTargetDto {
     None,
     Stack,
     Hex,
+}
+
+#[derive(Deserialize, Default)]
+#[serde(rename_all = "snake_case")]
+enum TargetSideDto {
+    #[default]
+    Any,
+    Enemy,
+    Own,
 }
 
 /// `area = { inner = 1, radius = [1, 1, 1, 1] }` (`inner` default 0).
@@ -463,6 +476,11 @@ impl SpellDto {
                 targets: c.targets,
                 factor_bp: c.factor_bp,
             }),
+            side: match self.side {
+                TargetSideDto::Any => TargetSide::Any,
+                TargetSideDto::Enemy => TargetSide::Enemy,
+                TargetSideDto::Own => TargetSide::Own,
+            },
             conditions: TargetConditions {
                 requires: flags(&self.requires)?,
                 excludes: flags(&self.excludes)?,
@@ -1296,6 +1314,7 @@ pub fn parse_pack(text: &str) -> Result<ContentPack, PackError> {
         tight_formation: b.tight_formation,
         tactics_zone_columns: b.tactics_zone_columns,
         surrender,
+        hero_casts_per_round: b.hero_casts_per_round,
     });
     Ok(ContentPack {
         manifest: PackManifest {
@@ -1378,9 +1397,8 @@ struct StackDto {
 }
 
 /// A battle hero as scenario and replay files write it (`[scenario.attacker_hero]`,
-/// `[setup.defender_hero]`; OPEN-QUESTIONS Q31): the battle hero itself, no derivation. It holds
-/// the fields the battle reads so far; the rest of [`BattleHero`] is neutral and joins the format
-/// with the rule that reads it (E04a T6–T10, E04b).
+/// `[setup.defender_hero]`; OPEN-QUESTIONS Q31): the battle hero itself, no derivation; every
+/// field of [`BattleHero`] (the Catapult's control joins with sieges, E04c).
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct HeroEntry {
@@ -1423,6 +1441,10 @@ pub struct HeroEntry {
     /// default 0, written only when set).
     #[serde(default, skip_serializing_if = "is_zero")]
     pub surrender_discount_bp: u16,
+    /// The spell book by spell key ([`h3_contracts::BattleMagic::spell_book`]; default none,
+    /// written only when the hero has one).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub spell_book: Option<Vec<String>>,
     /// The side commands its Ballista ([`MachineControl::ballista`]; default not, written only
     /// when set).
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -1431,6 +1453,9 @@ pub struct HeroEntry {
     /// when set).
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub tent: Option<TentEntry>,
+    /// Mastery per spell school by school key, 1 to 3 (default none; written only when set).
+    #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
+    pub schools: BTreeMap<String, u8>,
     /// Battle effects (default none; written only when there are some, after the values).
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub effects: Vec<EffectEntry>,
@@ -1600,6 +1625,24 @@ pub enum EffectEntry {
         /// The factions by key (at most [`MAX_ALIGNMENT_FACTIONS`]).
         factions: Vec<String>,
     },
+    /// [`BattleEffect::SpellDamage`]: `school` or `spell` by key (neither: every spell).
+    SpellDamage {
+        /// Bonus in basis points.
+        bp: u16,
+        /// The school (written only when set).
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        school: Option<String>,
+        /// The spell (written only when set).
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        spell: Option<String>,
+    },
+    /// [`BattleEffect::SpellSpecialty`].
+    SpellSpecialty {
+        /// The spell by key.
+        spell: String,
+        /// Growth in basis points before the division by the target's creature level.
+        bp: u32,
+    },
 }
 
 impl SelectorEntry {
@@ -1707,6 +1750,23 @@ impl EffectEntry {
                     })?,
                 }
             }
+            Self::SpellDamage { bp, school, spell } => BattleEffect::SpellDamage {
+                scope: match (school, spell) {
+                    (None, None) => SpellScope::All,
+                    (Some(l), None) => SpellScope::School(school_id(ruleset, l)?),
+                    (None, Some(s)) => SpellScope::Spell(spell_id(ruleset, s)?),
+                    (Some(_), Some(_)) => {
+                        return Err(PackError::Syntax(
+                            "spell_damage takes `school` or `spell`, not both".into(),
+                        ));
+                    }
+                },
+                bp,
+            },
+            Self::SpellSpecialty { spell, bp } => BattleEffect::SpellSpecialty {
+                spell: spell_id(ruleset, spell)?,
+                bp,
+            },
         })
     }
 
@@ -1759,10 +1819,18 @@ impl EffectEntry {
             BattleEffect::ShootWhenAdjacent { creatures } => Self::ShootWhenAdjacent {
                 creatures: selector(creatures)?,
             },
-            // The battle reads spell bonuses from E04b T2b on; the format follows then.
-            BattleEffect::SpellDamage { .. } | BattleEffect::SpellSpecialty { .. } => {
-                return Err(PackError::HeroNotWritable("spell effects"));
+            BattleEffect::SpellDamage { scope, bp } => {
+                let (school, spell) = match scope {
+                    SpellScope::All => (None, None),
+                    SpellScope::School(l) => (Some(school_key(ruleset, l)?), None),
+                    SpellScope::Spell(s) => (None, Some(spell_key(ruleset, s)?)),
+                };
+                Self::SpellDamage { bp, school, spell }
             }
+            BattleEffect::SpellSpecialty { spell, bp } => Self::SpellSpecialty {
+                spell: spell_key(ruleset, spell)?,
+                bp,
+            },
             BattleEffect::AlignmentGroup { factions } => Self::AlignmentGroup {
                 factions: factions
                     .factions()
@@ -1813,17 +1881,46 @@ impl HeroEntry {
             .iter()
             .map(|e| e.effect(ruleset))
             .collect::<Result<_, _>>()?;
+        hero.magic.spell_book = self
+            .spell_book
+            .as_ref()
+            .map(|book| {
+                book.iter()
+                    .map(|k| spell_id(ruleset, k.clone()))
+                    .collect::<Result<_, _>>()
+            })
+            .transpose()?;
+        for (key, &level) in &self.schools {
+            let school = school_id(ruleset, key.clone())?;
+            // A school handle indexes the masteries (at most `MAX_SPELL_SCHOOLS` schools).
+            if let Some(mastery) = hero.magic.schools.get_mut(school.index()) {
+                *mastery = level;
+            }
+        }
         Ok(hero)
     }
 
     /// The entry of `hero` (inverse of [`HeroEntry::resolve`]).
     ///
     /// # Errors
-    /// [`PackError::UnknownHeroType`] for a hero type outside `ruleset`;
-    /// [`PackError::HeroNotWritable`] if a field the format does not hold yet is not neutral.
+    /// [`PackError::UnknownHeroType`], [`PackError::UnknownSpell`], [`PackError::UnknownSchool`]
+    /// and the errors of [`EffectEntry::of`] for references outside `ruleset`.
     pub fn of(hero: &BattleHero, ruleset: &Ruleset) -> Result<Self, PackError> {
-        if hero.magic.spell_book.is_some() || hero.magic.schools != [0; 4] {
-            return Err(PackError::HeroNotWritable("spell book or schools"));
+        let spell_book = hero
+            .magic
+            .spell_book
+            .as_ref()
+            .map(|book| {
+                book.iter()
+                    .map(|&s| spell_key(ruleset, s))
+                    .collect::<Result<_, _>>()
+            })
+            .transpose()?;
+        let mut schools = BTreeMap::new();
+        for (i, &level) in (0u16..).zip(&hero.magic.schools) {
+            if level > 0 {
+                schools.insert(school_key(ruleset, SchoolId::from_raw(i))?, level);
+            }
         }
         let effects = hero
             .effects
@@ -1851,9 +1948,44 @@ impl HeroEntry {
             tent: hero.war_machines.tent.map(|t| TentEntry {
                 heal_bonus_bp: t.heal_bonus_bp,
             }),
+            spell_book,
+            schools,
             effects,
         })
     }
+}
+
+/// The spell with key `key` in `ruleset`.
+fn spell_id(ruleset: &Ruleset, key: String) -> Result<SpellId, PackError> {
+    ruleset
+        .spell_by_key(&key)
+        .ok_or(PackError::UnknownSpell(key))
+}
+
+/// The key of spell `id` in `ruleset`.
+fn spell_key(ruleset: &Ruleset, id: SpellId) -> Result<String, PackError> {
+    ruleset
+        .spell(id)
+        .map(|s| s.key.as_str().to_owned())
+        .ok_or_else(|| PackError::UnknownSpell(format!("#{}", id.raw())))
+}
+
+/// The spell school with key `key` in `ruleset`.
+fn school_id(ruleset: &Ruleset, key: String) -> Result<SchoolId, PackError> {
+    (0u16..)
+        .zip(ruleset.spell_schools())
+        .find(|(_, s)| s.key.as_str() == key)
+        .map(|(i, _)| SchoolId::from_raw(i))
+        .ok_or(PackError::UnknownSchool(key))
+}
+
+/// The key of spell school `id` in `ruleset`.
+fn school_key(ruleset: &Ruleset, id: SchoolId) -> Result<String, PackError> {
+    ruleset
+        .spell_schools()
+        .get(id.index())
+        .map(|s| s.key.as_str().to_owned())
+        .ok_or_else(|| PackError::UnknownSchool(format!("#{}", id.raw())))
 }
 
 /// A parsed scenario whose creature references are not yet resolved against a ruleset.
@@ -2304,6 +2436,7 @@ mod tests {
         }
         // Every morale and luck kind for every side survives the round trip, written as a list of
         // tables after the values.
+        let spark = ruleset.spell_by_key("synthetic:spark").unwrap();
         let mut every = expected.clone();
         every.effects = Affects::ALL
             .into_iter()
@@ -2363,8 +2496,28 @@ mod tests {
                     .unwrap(),
                 },
             ])
+            .chain([
+                BattleEffect::SpellDamage {
+                    scope: SpellScope::All,
+                    bp: 1500,
+                },
+                BattleEffect::SpellDamage {
+                    scope: SpellScope::School(SchoolId::from_raw(1)),
+                    bp: 5000,
+                },
+                BattleEffect::SpellDamage {
+                    scope: SpellScope::Spell(spark),
+                    bp: 2500,
+                },
+                BattleEffect::SpellSpecialty {
+                    spell: spark,
+                    bp: 3600,
+                },
+            ])
             .collect();
         every.surrender_discount_bp = 4000;
+        every.magic.spell_book = Some(vec![spark]);
+        every.magic.schools = [0, 2, 0, 0];
         let entry = HeroEntry::of(&every, &ruleset).unwrap();
         assert_eq!(entry.resolve(&ruleset), Ok(every));
         let written = toml::to_string(&entry).unwrap();
@@ -2393,6 +2546,27 @@ mod tests {
         );
         assert!(
             written.contains("[tent]\nheal_bonus_bp = 10000\n"),
+            "{written}"
+        );
+        // The magic: the spell book among the values, the masteries as a table, the bonuses.
+        assert!(
+            written.contains("spell_book = [\"synthetic:spark\"]\n"),
+            "{written}"
+        );
+        assert!(
+            written.contains("[schools]\n\"synthetic:stone\" = 2\n"),
+            "{written}"
+        );
+        assert!(
+            written.contains(
+                "[[effects]]\nkind = \"spell_damage\"\nbp = 5000\nschool = \"synthetic:stone\"\n"
+            ),
+            "{written}"
+        );
+        assert!(
+            written.contains(
+                "[[effects]]\nkind = \"spell_specialty\"\nspell = \"synthetic:spark\"\nbp = 3600\n"
+            ),
             "{written}"
         );
         let plain = toml::to_string(&HeroEntry::of(&ansel, &ruleset).unwrap()).unwrap();
@@ -2460,40 +2634,71 @@ mod tests {
             HeroEntry::of(&stranger_creature, &ruleset),
             Err(PackError::UnknownCreature("#999".to_owned()))
         );
-        // Values the format cannot hold yet.
-        type Change = (fn(&mut BattleHero), &'static str);
+        // Spells and schools outside the ruleset.
+        type Change = (fn(&mut BattleHero), PackError);
+        let unknown_spell = || PackError::UnknownSpell("#99".to_owned());
         let changes: [Change; 4] = [
             (
-                |h| h.magic.spell_book = Some(vec![]),
-                "spell book or schools",
+                |h| h.magic.spell_book = Some(vec![SpellId::from_raw(99)]),
+                unknown_spell(),
             ),
-            (|h| h.magic.schools[0] = 1, "spell book or schools"),
+            (
+                |h| h.magic.schools[3] = 1,
+                PackError::UnknownSchool("#3".to_owned()),
+            ),
             (
                 |h| {
                     h.effects = vec![BattleEffect::SpellDamage {
-                        scope: SpellScope::All,
+                        scope: SpellScope::School(SchoolId::from_raw(9)),
                         bp: 1,
                     }];
                 },
-                "spell effects",
+                PackError::UnknownSchool("#9".to_owned()),
             ),
             (
                 |h| {
                     h.effects = vec![BattleEffect::SpellSpecialty {
-                        spell: h3_content::SpellId::from_raw(0),
+                        spell: SpellId::from_raw(99),
                         bp: 1,
                     }];
                 },
-                "spell effects",
+                unknown_spell(),
             ),
         ];
-        for (change, what) in changes {
+        for (change, error) in changes {
             let mut hero = expected.clone();
             change(&mut hero);
-            assert_eq!(
-                HeroEntry::of(&hero, &ruleset),
-                Err(PackError::HeroNotWritable(what))
+            assert_eq!(HeroEntry::of(&hero, &ruleset), Err(error));
+        }
+        let entry = |extra: &str| {
+            let text = format!(
+                "{header}[scenario.defender_hero]\nhero_type = \"synthetic:ansel\"\n{extra}\n"
             );
+            parse_scenario(&text).unwrap().heroes[1].clone().unwrap()
+        };
+        for (extra, error) in [
+            (
+                "spell_book = [\"synthetic:nova\"]",
+                PackError::UnknownSpell("synthetic:nova".to_owned()),
+            ),
+            (
+                "schools = { \"synthetic:sky\" = 1 }",
+                PackError::UnknownSchool("synthetic:sky".to_owned()),
+            ),
+            (
+                "effects = [{ kind = \"spell_damage\", bp = 1, school = \"synthetic:storm\", spell = \"synthetic:spark\" }]",
+                PackError::Syntax("spell_damage takes `school` or `spell`, not both".to_owned()),
+            ),
+            (
+                "effects = [{ kind = \"spell_specialty\", spell = \"synthetic:nova\", bp = 1 }]",
+                PackError::UnknownSpell("synthetic:nova".to_owned()),
+            ),
+            (
+                "effects = [{ kind = \"spell_damage\", bp = 1, school = \"synthetic:sky\" }]",
+                PackError::UnknownSchool("synthetic:sky".to_owned()),
+            ),
+        ] {
+            assert_eq!(entry(extra).resolve(&ruleset), Err(error), "{extra}");
         }
     }
 
@@ -2899,7 +3104,6 @@ mod tests {
     // covers: HER-BAT-011, HER-BAT-012
     #[test]
     fn harvested_magic_derives() {
-        use h3_content::SchoolId;
         use h3_heroes::{HeroDetails, derive_battle_hero};
         let sod = compile(&[SOD_PACK, AB_PACK, BASE_PACK], "base:faithful").unwrap();
         let spell = |k: &str| sod.spell_by_key(k).unwrap();
@@ -3451,6 +3655,7 @@ mod tests {
             magic("synthetic:spark"),
             SpellMagic {
                 target: SpellTarget::Stack,
+                side: TargetSide::Enemy,
                 effects: damage.clone(),
                 ..SpellMagic::default()
             }
@@ -3568,6 +3773,7 @@ mod tests {
                 "faction = \"vale\"\nprimary_skills = [1, 1, 1, 1]\nprimary",
             ),
             ("target = \"hex\"", "target = \"area\""),
+            ("side = \"enemy\"", "side = \"foe\""),
             (
                 "effects = [{ kind = \"damage\" }]",
                 "effects = [{ kind = \"burn\" }]",
@@ -3699,8 +3905,12 @@ mod tests {
             "unknown hero type `a:h`"
         );
         assert_eq!(
-            PackError::HeroNotWritable("effects").to_string(),
-            "the file format cannot hold a hero's effects yet"
+            PackError::UnknownSpell("a:s".into()).to_string(),
+            "unknown spell `a:s`"
+        );
+        assert_eq!(
+            PackError::UnknownSchool("a:l".into()).to_string(),
+            "unknown spell school `a:l`"
         );
     }
 }

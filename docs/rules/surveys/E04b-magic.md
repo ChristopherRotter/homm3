@@ -120,3 +120,11 @@ X-1 rounding of spell damage with Sorcery, an Orb and a specialist on a known st
   damage to fire spells"; `vcmi` `SPELL_DAMAGE` per school, the best of a spell's schools counts).
 - **Magic school skills** set the school's mastery to their level (`wiki` Air Magic; `vcmi`
   `MAGIC_SCHOOL_SKILL` 1/2/3, `config/skills.json` L434–L550).
+
+**T2b (2026-10-05).** Single-target damage spells reach only enemies: `vcmi`
+`targetModifier.smart` on Magic Arrow, Ice Bolt, Lightning Bolt, Implosion, Chain Lightning and
+Titan's Lightning Bolt (`lib/spells/effects/UnitEffect.cpp` L288–L293: a smart spell reaches the
+side its polarity disfavours), not on the area and every-stack spells. The executable gives Chain
+Lightning neutral polarity (it can strike own stacks), so its harvested side is any; T2d settles
+its first target with X-6. M-4 is implemented as VCMI (a hero may cast while a war machine it
+commands awaits a command; X-3 checks); M-6 as VCMI's order with exact basis points (X-1 checks).

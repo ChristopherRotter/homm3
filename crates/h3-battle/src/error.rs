@@ -96,6 +96,8 @@ pub enum HeroError {
     UnknownSpell,
     /// A school mastery or a spell-damage effect names a spell school the ruleset lacks.
     UnknownSchool,
+    /// More than `MAX_SPELL_BONUSES` spells have spell-damage or specialty effects of their own.
+    TooManySpellBonuses,
     /// A spell is in the spell book twice.
     DuplicateSpell,
     /// A spell in the spell book is a creature ability.
@@ -118,6 +120,7 @@ impl fmt::Display for HeroError {
             Self::SchoolLevel => "school mastery above 3",
             Self::UnknownSpell => "unknown spell in the spell book or an effect",
             Self::UnknownSchool => "a mastery or an effect for an unknown spell school",
+            Self::TooManySpellBonuses => "too many spells with bonuses of their own",
             Self::DuplicateSpell => "a spell is in the spell book twice",
             Self::NotAHeroSpell => "a creature ability in the spell book",
         })
@@ -201,6 +204,19 @@ pub enum CommandError {
     CannotSurrender,
     /// The side's funds do not cover the price of its surrender (BAT-FLE-002).
     CannotAffordSurrender,
+    /// The side has no hero with this spell in its spell book (BAT-MAG-001).
+    NotInSpellBook,
+    /// The spell is not a combat spell (BAT-MAG-001).
+    NotACombatSpell,
+    /// The side's hero has cast all its spells this round (BAT-MAG-001).
+    AlreadyCast,
+    /// The battle cannot cast this spell yet: its effects or targeting come with a later task
+    /// (`docs/stubs.toml`, STUB-0001).
+    NotCastable,
+    /// The hero's mana does not cover the spell's cost (BAT-MAG-002).
+    NotEnoughMana,
+    /// The target is not one the spell may be cast at (BAT-MAG-003).
+    InvalidSpellTarget,
 }
 
 impl fmt::Display for CommandError {
@@ -226,6 +242,12 @@ impl fmt::Display for CommandError {
             Self::CannotRetreat => "the side cannot retreat",
             Self::CannotSurrender => "the side cannot surrender",
             Self::CannotAffordSurrender => "the side cannot pay for its surrender",
+            Self::NotInSpellBook => "no hero with that spell in its spell book",
+            Self::NotACombatSpell => "not a combat spell",
+            Self::AlreadyCast => "the hero has already cast this round",
+            Self::NotCastable => "the spell cannot be cast in battle yet",
+            Self::NotEnoughMana => "not enough mana",
+            Self::InvalidSpellTarget => "not a target of that spell",
         })
     }
 }
@@ -347,6 +369,10 @@ mod tests {
                 "a mastery or an effect for an unknown spell school",
             ),
             (
+                HeroError::TooManySpellBonuses,
+                "too many spells with bonuses of their own",
+            ),
+            (
                 HeroError::DuplicateSpell,
                 "a spell is in the spell book twice",
             ),
@@ -405,6 +431,24 @@ mod tests {
             (
                 CommandError::CannotAffordSurrender,
                 "the side cannot pay for its surrender",
+            ),
+            (
+                CommandError::NotInSpellBook,
+                "no hero with that spell in its spell book",
+            ),
+            (CommandError::NotACombatSpell, "not a combat spell"),
+            (
+                CommandError::AlreadyCast,
+                "the hero has already cast this round",
+            ),
+            (
+                CommandError::NotCastable,
+                "the spell cannot be cast in battle yet",
+            ),
+            (CommandError::NotEnoughMana, "not enough mana"),
+            (
+                CommandError::InvalidSpellTarget,
+                "not a target of that spell",
             ),
         ];
         for (e, text) in all {

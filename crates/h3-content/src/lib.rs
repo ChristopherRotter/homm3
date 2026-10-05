@@ -45,8 +45,8 @@ pub use error::CompileError;
 pub use flags::{CreatureFlag, CreatureFlags};
 pub use heroes::{
     HeroClass, HeroClassId, HeroParams, HeroType, HeroTypeId, MAX_HERO_SKILLS, MAX_SPELL_LEVEL,
-    MAX_SPELL_SCHOOLS, SchoolId, SecondarySkill, SkillId, Spell, SpellCategory, SpellId,
-    SpellPolarity, SpellSchool, StartingStack,
+    MAX_SPELL_SCHOOLS, MAX_SPELLS, SchoolId, SecondarySkill, SkillId, Spell, SpellCategory,
+    SpellId, SpellPolarity, SpellSchool, StartingStack,
 };
 pub use key::{ContentKey, KeyError};
 pub use pack::{
@@ -67,5 +67,5 @@ pub use ruleset::{
 };
 pub use spell::{
     MAX_AREA_RADIUS, MAX_CHAIN_TARGETS, MAX_SPELL_EFFECTS, SpellArea, SpellChain, SpellEffect,
-    SpellMagic, SpellTarget, TargetConditions,
+    SpellMagic, SpellTarget, TargetConditions, TargetSide,
 };

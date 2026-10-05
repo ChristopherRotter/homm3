@@ -50,10 +50,13 @@ pub(crate) fn next_active(state: &BattleState) -> Option<StackId> {
 }
 
 /// Starts a new round: resets retaliation, wait, morale and acted flags (the Defend bonus lasts
-/// until the stack's next activation, BAT-TRN-004).
-// rule: BAT-TRN-003
+/// until the stack's next activation, BAT-TRN-004) and the heroes' casts (BAT-MAG-001).
+// rule: BAT-TRN-003, BAT-MAG-001
 pub(crate) fn start_round<S: Sink>(state: &mut BattleState, sink: &mut S) {
     state.round = state.round.saturating_add(1);
+    for hero in state.heroes.iter_mut().flatten() {
+        hero.view.casts = 0;
+    }
     for s in state.stacks.as_mut_slice() {
         s.flags.set(StackFlags::ACTED, false);
         s.flags.set(StackFlags::WAITED, false);

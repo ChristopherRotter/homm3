@@ -438,6 +438,8 @@ pub struct Battle {
     pub tactics_sources: Vec<String>,
     pub surrender: Surrender,
     pub surrender_sources: Vec<String>,
+    pub hero_casts_per_round: u8,
+    pub magic_sources: Vec<String>,
 }
 
 /// The surrender price parameters of `base` (BAT-FLE-002).
@@ -479,6 +481,7 @@ impl GapFill {
                 .chain(&g.battle.formation_sources)
                 .chain(&g.battle.tactics_sources)
                 .chain(&g.battle.surrender_sources)
+                .chain(&g.battle.magic_sources)
                 .chain(g.creature_abilities.iter().flat_map(|a| &a.sources))
                 .chain(g.native_terrain.iter().flat_map(|n| &n.sources))
                 .chain(&g.obstacles.sources)

@@ -107,6 +107,7 @@ fn heroes_are_kept_and_shown_to_both_sides() {
         knowledge: 1,
         mana: 15,
         max_mana: 10,
+        casts: 0,
         commands_ballista: false,
         commands_tent: false,
     };
@@ -181,6 +182,9 @@ fn the_private_part_of_a_hero_shows_only_to_its_side() {
             surrender_discount_bp: 2000,
             funds: 5000,
             surrender_price: Some(240),
+            spell_book: crate::SpellSet::default(),
+            schools: [0; 4],
+            spell_bonuses: crate::SpellBonuses::default(),
         })
     );
     let own = defender.own_hero.unwrap();
@@ -283,11 +287,11 @@ fn unsound_heroes_are_rejected() {
             HeroError::UnknownFaction,
         ),
         (|_, h| h.magic.schools[2] = 4, HeroError::SchoolLevel),
-        (|_, h| h.magic.schools[1] = 1, HeroError::UnknownSchool),
+        (|_, h| h.magic.schools[2] = 1, HeroError::UnknownSchool),
         (
             |_, h| {
                 h.effects = vec![BattleEffect::SpellDamage {
-                    scope: SpellScope::School(SchoolId::from_raw(1)),
+                    scope: SpellScope::School(SchoolId::from_raw(2)),
                     bp: 1,
                 }];
             },

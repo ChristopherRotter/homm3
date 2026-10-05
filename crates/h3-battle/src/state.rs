@@ -28,7 +28,7 @@ pub const MAX_WAR_MACHINES: usize = WAR_MACHINE_KINDS;
 pub const STACK_CAPACITY: usize = 2 * (MAX_ARMY_SLOTS + MAX_WAR_MACHINES);
 
 /// Version of the battle-state hash encoding ([`BattleState::state_hash`]). Bump on any change.
-pub const BATTLE_STATE_HASH_VERSION: u32 = 17;
+pub const BATTLE_STATE_HASH_VERSION: u32 = 18;
 
 /// Index of a stack in its battle (attacker stacks first, in slot order, then defender stacks).
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Default)]
@@ -890,7 +890,7 @@ impl BattleState {
             heroes: self.heroes.map(|h| {
                 h.map(|h| HeroOutcome {
                     mana: h.view.mana,
-                    spells_cast: Vec::new(),
+                    spells_cast: h.magic.cast.iter().collect(),
                 })
             }),
             rounds: self.round,
@@ -908,7 +908,8 @@ impl BattleState {
     /// any (type, attack, defense, power, knowledge, Tactics level, mana, maximum mana, ranged,
     /// melee and reduction basis points, the Ballista's control if any: shots and double-damage
     /// chance, the tent's control if any: heal bonus; whether it has a `NoRetreat` effect, the
-    /// surrender discount, the funds),
+    /// surrender discount, the funds; v18: the casts this round after the maximum mana and the
+    /// magic after the funds: spell book and cast spells as bits, masteries, spell bonuses),
     /// terrain, RNG state.
     pub fn state_hash(&self) -> u64 {
         h3_kernel::hash::hash_of(self)

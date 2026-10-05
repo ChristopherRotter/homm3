@@ -175,7 +175,7 @@ pub struct StackRecord {
 pub struct HeroOutcome {
     /// Spell points left.
     pub mana: u16,
-    /// The spells the hero cast, in order (E04b; Eagle Eye needs them). Empty in E04a.
+    /// The distinct spells the hero cast, by spell handle (E04b; Eagle Eye needs them).
     pub spells_cast: Vec<SpellId>,
 }
 

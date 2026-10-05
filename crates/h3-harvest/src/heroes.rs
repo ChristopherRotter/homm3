@@ -517,6 +517,10 @@ pub fn harvest_heroes(
             if target != "none" {
                 let _ = writeln!(text, "target = \"{target}\"");
             }
+            // A single-target spell that harms reaches only the enemy (VCMI's smart targeting).
+            if target == "stack" && polarity == "negative" {
+                let _ = writeln!(text, "side = \"enemy\"");
+            }
             if let Some(t) = extra {
                 if let Some(area) = &t.area {
                     let _ = writeln!(text, "area = {area}");

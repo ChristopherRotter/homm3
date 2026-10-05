@@ -6,10 +6,11 @@ use std::vec;
 use std::vec::Vec;
 
 use h3_content::{
-    AbilityDef, AuraTarget, BattleParamsDef, ContentKey, ContentPack, CreatureDef, CreatureInfoDef,
-    FactionDef, Formation, HeroClassDef, HeroTypeDef, ObstacleDef, PackManifest, ProfileDef,
-    ResourceDef, Ruleset, SpellCategory, SpellDef, SpellMagic, SpellPolarity, SpellSchoolDef,
-    StartingStackDef, SurrenderDef, TerrainDef,
+    AbilityDef, AuraTarget, BattleParamsDef, ContentKey, ContentPack, CreatureDef, CreatureFlag,
+    CreatureFlags, CreatureInfoDef, FactionDef, Formation, HeroClassDef, HeroTypeDef, ObstacleDef,
+    PackManifest, ProfileDef, ResourceDef, Ruleset, SpellArea, SpellCategory, SpellDef,
+    SpellEffect, SpellMagic, SpellPolarity, SpellSchoolDef, SpellTarget, StartingStackDef,
+    SurrenderDef, TargetConditions, TargetSide, TerrainDef,
 };
 use h3_contracts::{Army, ArmyStack, BattleHero, BattleSetup, BattleSide};
 
@@ -336,6 +337,8 @@ pub const CREATURES: &[Creature] = &[
         &["alive", "upgrades=paladin"],
     ),
     ("paladin", 12, 12, 7, 10, 35, 6, &["alive"]),
+    // A level-7 creature (spell specialties divide by the creature's level, BAT-MAG-004).
+    ("titan", 20, 20, 10, 20, 300, 7, &["alive", "level=7"]),
 ];
 
 /// The traits of a test creature as creature info: flags, abilities, shots and faction.
@@ -346,6 +349,7 @@ fn parse_traits(traits: &[&str]) -> CreatureInfoDef {
     let mut faction = None;
     let mut ai = 0;
     let mut upgrades = Vec::new();
+    let mut level = 1;
     for t in traits {
         let (name, value) = t.split_once('=').unwrap_or((t, "0"));
         let n = || value.parse::<u16>().unwrap();
@@ -377,6 +381,10 @@ fn parse_traits(traits: &[&str]) -> CreatureInfoDef {
             }
             "upgrades" => {
                 upgrades.push(ContentKey::new("t", value).unwrap());
+                continue;
+            }
+            "level" => {
+                level = value.parse().unwrap();
                 continue;
             }
             "morale_aura" => {
@@ -444,6 +452,7 @@ fn parse_traits(traits: &[&str]) -> CreatureInfoDef {
         faction,
         ai_value: ai,
         upgrades,
+        level,
         ..CreatureInfoDef::default()
     }
 }
@@ -496,6 +505,7 @@ pub fn battle_params() -> BattleParamsDef {
             resource: ContentKey::new("t", "gold").unwrap(),
             cost_percent: 50,
         }),
+        hero_casts_per_round: 1,
     }
 }
 
@@ -615,31 +625,14 @@ pub fn ruleset_with(profile: &str, edit: impl FnOnce(&mut BattleParamsDef)) -> R
             },
         ],
         battle: Some(battle),
-        spell_schools: vec![SpellSchoolDef {
-            key: ContentKey::new("t", "air").unwrap(),
-            name: String::from("Air"),
-        }],
-        spells: [
-            ("bolt", SpellCategory::Combat),
-            ("gaze", SpellCategory::Ability),
-        ]
-        .iter()
-        .map(|&(name, category)| SpellDef {
-            key: ContentKey::new("t", name).unwrap(),
-            name: String::from(name),
-            category,
-            level: u8::from(category == SpellCategory::Combat),
-            schools: match category {
-                SpellCategory::Ability => vec![],
-                _ => vec![ContentKey::new("t", "air").unwrap()],
-            },
-            cost: [5, 4, 4, 4],
-            power: 10,
-            effect: [10, 10, 20, 30],
-            polarity: SpellPolarity::Negative,
-            magic: SpellMagic::default(),
-        })
-        .collect(),
+        spell_schools: ["air", "fire"]
+            .iter()
+            .map(|&name| SpellSchoolDef {
+                key: ContentKey::new("t", name).unwrap(),
+                name: String::from(name),
+            })
+            .collect(),
+        spells: SPELLS.iter().map(|&spell| spell_def(spell)).collect(),
         hero_classes: vec![HeroClassDef {
             key: ContentKey::new("t", "knight").unwrap(),
             name: String::from("Knight"),
@@ -673,6 +666,113 @@ pub fn ruleset_with(profile: &str, edit: impl FnOnce(&mut BattleParamsDef)) -> R
         })
     };
     Ruleset::compile(&[pack], profile).unwrap()
+}
+
+/// A test spell: name, category, schools, target and side.
+pub type SpellSpec = (
+    &'static str,
+    SpellCategory,
+    &'static [&'static str],
+    SpellTarget,
+    TargetSide,
+);
+
+/// The test spells (BAT-MAG-001 to BAT-MAG-004), all costing 5/4/4/4 and dealing 10 per power
+/// plus 10/10/20/30: `bolt` damages one enemy stack; `smite` any stack that is not undead, in two
+/// schools; `gaze` is a creature ability; `ward` has no effects and `portal` is an adventure
+/// spell; `nova` damages an area (not castable before E04b T2d); `rally` reaches only own stacks.
+pub const SPELLS: &[SpellSpec] = &[
+    (
+        "bolt",
+        SpellCategory::Combat,
+        &["air"],
+        SpellTarget::Stack,
+        TargetSide::Enemy,
+    ),
+    (
+        "gaze",
+        SpellCategory::Ability,
+        &[],
+        SpellTarget::None,
+        TargetSide::Any,
+    ),
+    (
+        "smite",
+        SpellCategory::Combat,
+        &["air", "fire"],
+        SpellTarget::Stack,
+        TargetSide::Any,
+    ),
+    (
+        "ward",
+        SpellCategory::Combat,
+        &["fire"],
+        SpellTarget::None,
+        TargetSide::Any,
+    ),
+    (
+        "portal",
+        SpellCategory::Adventure,
+        &["air"],
+        SpellTarget::None,
+        TargetSide::Any,
+    ),
+    (
+        "nova",
+        SpellCategory::Combat,
+        &["fire"],
+        SpellTarget::Hex,
+        TargetSide::Any,
+    ),
+    (
+        "rally",
+        SpellCategory::Combat,
+        &["air"],
+        SpellTarget::Stack,
+        TargetSide::Own,
+    ),
+];
+
+/// The definition of a test spell.
+fn spell_def((name, category, schools, target, side): SpellSpec) -> SpellDef {
+    let castable = !matches!(name, "gaze" | "ward" | "portal");
+    let excludes = if name == "smite" {
+        CreatureFlags::default().with(CreatureFlag::Undead)
+    } else {
+        CreatureFlags::default()
+    };
+    SpellDef {
+        key: ContentKey::new("t", name).unwrap(),
+        name: String::from(name),
+        category,
+        level: u8::from(category != SpellCategory::Ability),
+        schools: schools
+            .iter()
+            .map(|s| ContentKey::new("t", s).unwrap())
+            .collect(),
+        cost: [5, 4, 4, 4],
+        power: 10,
+        effect: [10, 10, 20, 30],
+        polarity: SpellPolarity::Negative,
+        magic: SpellMagic {
+            target,
+            area: (target == SpellTarget::Hex).then_some(SpellArea {
+                inner: 0,
+                radius: [1; 4],
+            }),
+            side,
+            conditions: TargetConditions {
+                requires: CreatureFlags::default(),
+                excludes,
+            },
+            effects: if castable {
+                vec![SpellEffect::Damage]
+            } else {
+                vec![]
+            },
+            ..SpellMagic::default()
+        },
+    }
 }
 
 /// `(slot, creature name, count)`.

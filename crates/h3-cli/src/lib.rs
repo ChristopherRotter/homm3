@@ -71,8 +71,8 @@
 use std::fmt;
 use std::path::{Path, PathBuf};
 
-use h3_battle::{Command, Hex, StackId};
-use h3_content::{CreatureTypeId, Ruleset};
+use h3_battle::{CastTarget, Command, Hex, StackId};
+use h3_content::{CreatureTypeId, Ruleset, SpellId};
 use h3_contracts::{Army, ArmyStack, BattleHero, BattleResult, BattleSetup, BattleSide};
 use h3_kernel::{Rng, StreamId};
 use h3_pack::{HeroEntry, PackError, ScenarioDef};
@@ -242,7 +242,8 @@ fn side_letter(side: BattleSide) -> &'static str {
 /// Text form of one replay command: `"<A|D> move <hex>"`, `"<A|D> attack <stack> <hex>"`,
 /// `"<A|D> shoot <stack> <hex>"`, `"<A|D> wait"`, `"<A|D> defend"`, `"<A|D> heal <stack>"`
 /// (format 7), `"<A|D> end-tactics"` (format 8), `"<A|D> retreat"` (format 9),
-/// `"<A|D> surrender"` (format 10).
+/// `"<A|D> surrender"` (format 10), `"<A|D> cast <spell> none"`, `"<A|D> cast <spell> stack
+/// <stack>"` and `"<A|D> cast <spell> hex <hex>"` with the spell's handle (format 14).
 pub fn format_command(side: BattleSide, command: Command) -> String {
     let s = side_letter(side);
     match command {
@@ -255,6 +256,14 @@ pub fn format_command(side: BattleSide, command: Command) -> String {
         Command::EndTactics => format!("{s} end-tactics"),
         Command::Retreat => format!("{s} retreat"),
         Command::Surrender => format!("{s} surrender"),
+        Command::Cast { spell, target } => {
+            let target = match target {
+                CastTarget::None => "none".to_owned(),
+                CastTarget::Stack(id) => format!("stack {}", id.0),
+                CastTarget::Hex(h) => format!("hex {}", h.0),
+            };
+            format!("{s} cast {} {target}", spell.raw())
+        }
     }
 }
 
@@ -291,6 +300,20 @@ pub fn parse_command(text: &str) -> Result<(BattleSide, Command), CliError> {
         (Some("end-tactics"), 2) => Command::EndTactics,
         (Some("retreat"), 2) => Command::Retreat,
         (Some("surrender"), 2) => Command::Surrender,
+        (Some("cast"), 4 | 5) => {
+            let spell = parts
+                .get(2)
+                .and_then(|p| p.parse::<u16>().ok())
+                .map(SpellId::from_raw)
+                .ok_or_else(bad)?;
+            let target = match (parts.get(3).copied(), parts.len()) {
+                (Some("none"), 4) => CastTarget::None,
+                (Some("stack"), 5) => CastTarget::Stack(StackId(num(4)?)),
+                (Some("hex"), 5) => CastTarget::Hex(Hex(num(4)?)),
+                _ => return Err(bad()),
+            };
+            Command::Cast { spell, target }
+        }
         _ => return Err(bad()),
     };
     Ok((side, command))
@@ -636,6 +659,30 @@ mod tests {
             (BattleSide::Defender, Command::EndTactics, "D end-tactics"),
             (BattleSide::Attacker, Command::Retreat, "A retreat"),
             (BattleSide::Defender, Command::Surrender, "D surrender"),
+            (
+                BattleSide::Attacker,
+                Command::Cast {
+                    spell: SpellId::from_raw(15),
+                    target: CastTarget::Stack(StackId(9)),
+                },
+                "A cast 15 stack 9",
+            ),
+            (
+                BattleSide::Defender,
+                Command::Cast {
+                    spell: SpellId::from_raw(21),
+                    target: CastTarget::Hex(Hex(100)),
+                },
+                "D cast 21 hex 100",
+            ),
+            (
+                BattleSide::Attacker,
+                Command::Cast {
+                    spell: SpellId::from_raw(26),
+                    target: CastTarget::None,
+                },
+                "A cast 26 none",
+            ),
         ];
         for (side, cmd, text) in cases {
             assert_eq!(format_command(side, cmd), text);
@@ -652,6 +699,15 @@ mod tests {
             "A heal",
             "A heal 300",
             "A end-tactics now",
+            "A cast",
+            "A cast x none",
+            "A cast 1",
+            "A cast 1 none 2",
+            "A cast 1 stack",
+            "A cast 1 stack 300",
+            "A cast 1 hex x",
+            "A cast 1 obstacle 2",
+            "A cast 70000 none",
         ] {
             assert!(parse_command(bad).is_err(), "{bad}");
         }

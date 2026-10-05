@@ -49,6 +49,38 @@ impl SpellTarget {
     }
 }
 
+/// Whose stacks a spell may reach, seen from the caster (VCMI's "smart" targeting: Magic Arrow
+/// only enemies).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Default)]
+pub enum TargetSide {
+    /// Stacks of either side.
+    #[default]
+    Any,
+    /// The enemy's stacks.
+    Enemy,
+    /// The caster's own stacks.
+    Own,
+}
+
+impl TargetSide {
+    /// All values, in code order.
+    pub const ALL: [Self; 3] = [Self::Any, Self::Enemy, Self::Own];
+
+    /// Pack name.
+    pub const fn name(self) -> &'static str {
+        match self {
+            Self::Any => "any",
+            Self::Enemy => "enemy",
+            Self::Own => "own",
+        }
+    }
+
+    /// Looks a value up by its pack name.
+    pub fn from_name(name: &str) -> Option<Self> {
+        Self::ALL.into_iter().find(|s| s.name() == name)
+    }
+}
+
 /// The hexes a spell aimed at a hex reaches: those at a distance of `inner` to `radius[mastery]`
 /// from the target hex (Fireball 0 to 1, Frost Ring 1 to 1, Inferno 0 to 2).
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -121,6 +153,8 @@ pub struct SpellMagic {
     pub area: Option<SpellArea>,
     /// The chain from a stack target, if any.
     pub chain: Option<SpellChain>,
+    /// Whose stacks it may reach.
+    pub side: TargetSide,
     /// The stacks it may affect.
     pub conditions: TargetConditions,
     /// What it does to each stack reached, distinct, in pack order (none: not castable yet).
@@ -171,8 +205,8 @@ impl SpellMagic {
 }
 
 impl CanonicalHash for SpellMagic {
-    /// Target, area (presence, inner, radii), chain (presence, targets, factor), condition bits,
-    /// effects (count, codes).
+    /// Target, area (presence, inner, radii), chain (presence, targets, factor), side (v15),
+    /// condition bits, effects (count, codes).
     fn hash_into(&self, h: &mut StateHasher) {
         h.write_u8(self.target as u8);
         h.write_bool(self.area.is_some());
@@ -185,6 +219,7 @@ impl CanonicalHash for SpellMagic {
             h.write_bytes(&ch.targets);
             h.write_u16(ch.factor_bp);
         }
+        h.write_u8(self.side as u8);
         h.write_u32(self.conditions.requires.bits());
         h.write_u32(self.conditions.excludes.bits());
         h.write_len(self.effects.len());
@@ -211,6 +246,10 @@ mod tests {
         for e in SpellEffect::ALL {
             assert_eq!(SpellEffect::from_name(e.name()), Some(e));
         }
+        for s in TargetSide::ALL {
+            assert_eq!(TargetSide::from_name(s.name()), Some(s));
+        }
+        assert_eq!(TargetSide::from_name("both"), None);
         assert_eq!(SpellTarget::from_name("obstacle"), None);
         assert_eq!(SpellEffect::from_name("heal"), None);
     }
@@ -391,6 +430,7 @@ mod tests {
                 radius: [1; 4],
             }),
             chain: None,
+            side: TargetSide::Any,
             conditions: TargetConditions::default(),
             effects: vec![SpellEffect::Damage],
         };
@@ -428,6 +468,10 @@ mod tests {
             },
             SpellMagic {
                 effects: vec![],
+                ..base.clone()
+            },
+            SpellMagic {
+                side: TargetSide::Enemy,
                 ..base.clone()
             },
         ];

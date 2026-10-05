@@ -7,3 +7,9 @@
 # where  = "crates/h3-battle/src/spells.rs::cast"
 # reason = "Spells are out of scope for E01"
 # epic   = "E03"
+
+[[stub]]
+id     = "STUB-0001"
+where  = "crates/h3-battle/src/magic.rs::implemented"
+reason = "Casting covers damage to one stack (E04b T2b); areas, chains and battle-wide damage come in T2d, the other effect kinds with their tasks (T3-T7)"
+epic   = "E04b"

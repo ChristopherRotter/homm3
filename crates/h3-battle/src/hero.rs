@@ -8,7 +8,7 @@
 
 use h3_content::{
     CreatureFlag, CreatureSelector, CreatureStat, CreatureType, CreatureTypeId, FULL_BP,
-    HeroTypeId, MAX_SKILL_LEVEL, Ruleset, SpellCategory, SpellScope,
+    HeroTypeId, MAX_SKILL_LEVEL, MAX_SPELL_SCHOOLS, Ruleset, SpellCategory, SpellScope,
 };
 use h3_contracts::{
     BallistaControl, BattleEffect, BattleHero, BattleSide, DamageBonuses, MAX_BATTLE_EFFECTS,
@@ -17,10 +17,11 @@ use h3_contracts::{
 use h3_kernel::{CanonicalHash, StateHasher};
 
 use crate::error::{HeroError, SetupError};
+use crate::magic::{HeroMagic, SpellBonuses, SpellSet};
 use crate::state::StackTraits;
 
-/// What both sides see of a side's hero (ADR-0013 point 9): identity, primary skills, mana and
-/// which war machines the hero commands.
+/// What both sides see of a side's hero (ADR-0013 point 9, ADR-0014 point 8): identity, primary
+/// skills, mana, its casts this round and which war machines the hero commands.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct HeroView {
     /// The hero type.
@@ -37,14 +38,17 @@ pub struct HeroView {
     pub mana: u16,
     /// Maximum spell points.
     pub max_mana: u16,
+    /// Spells cast this round (BAT-MAG-001).
+    pub casts: u8,
     /// The hero commands its side's Ballista (BAT-WAR-006); how it shoots is private.
     pub commands_ballista: bool,
     /// The hero commands its side's First Aid Tent (BAT-WAR-007); how it heals is private.
     pub commands_tent: bool,
 }
 
-/// What only the hero's own side sees of it (ADR-0013 point 9; `Observation::own_hero`): the
-/// values of its skills, its surrender discount, its funds and the price of its surrender.
+/// What only the hero's own side sees of it (ADR-0013 point 9, ADR-0014 point 8;
+/// `Observation::own_hero`): the values of its skills, its surrender discount, its funds and the
+/// price of its surrender, its spell book, school masteries and spell bonuses.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct OwnHeroView {
     /// Tactics level, 0..=3 (BAT-TAC-001).
@@ -63,6 +67,12 @@ pub struct OwnHeroView {
     /// The price of the side's surrender now, if it may surrender at all (BAT-FLE-002); it may
     /// surrender now if its funds cover the price.
     pub surrender_price: Option<u32>,
+    /// The spells in its spell book (none without a book; BAT-MAG-001).
+    pub spell_book: SpellSet,
+    /// Mastery per spell school, by school handle (BAT-MAG-002).
+    pub schools: [u8; MAX_SPELL_SCHOOLS],
+    /// Its spell-damage bonuses (BAT-MAG-004).
+    pub spell_bonuses: SpellBonuses,
 }
 
 /// The part of a side's hero the battle keeps in its state. Later tasks add what their rules
@@ -89,6 +99,8 @@ pub(crate) struct HeroRecord {
     pub(crate) surrender_discount_bp: u16,
     /// What the side's owner can pay for a surrender (`BattleSetup.funds`, BAT-FLE-002; private).
     pub(crate) funds: u32,
+    /// Spell book, masteries, spell bonuses and the spells cast (E04b; BAT-MAG-001 to 004).
+    pub(crate) magic: HeroMagic,
 }
 
 /// Whether `side` may retreat (BAT-FLE-001): it has a hero, and no hero in the battle has a
@@ -207,6 +219,7 @@ impl CanonicalHash for HeroRecord {
         }
         h.write_u16(v.mana);
         h.write_u16(v.max_mana);
+        h.write_u8(v.casts);
         let d = &self.damage;
         for value in [d.ranged_bp, d.melee_bp, d.reduction_bp] {
             h.write_u16(value);
@@ -223,6 +236,7 @@ impl CanonicalHash for HeroRecord {
         h.write_u8(u8::from(self.no_retreat));
         h.write_u16(self.surrender_discount_bp);
         h.write_u32(self.funds);
+        self.magic.hash_into(h);
     }
 }
 
@@ -327,6 +341,7 @@ pub(crate) fn check(
             knowledge: hero.knowledge,
             mana: magic.mana,
             max_mana: magic.max_mana,
+            casts: 0,
             commands_ballista: hero.war_machines.ballista.is_some(),
             commands_tent: hero.war_machines.tent.is_some(),
         },
@@ -337,6 +352,7 @@ pub(crate) fn check(
         no_retreat: hero.effects.contains(&BattleEffect::NoRetreat),
         surrender_discount_bp: hero.surrender_discount_bp,
         funds,
+        magic: HeroMagic::of(hero).map_err(invalid)?,
     })
 }
 

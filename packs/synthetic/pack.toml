@@ -50,6 +50,7 @@ tight_formation = [
 ]
 tactics_zone_columns = [3, 5, 7]            # BAT-TAC-001: zone width by Tactics level difference
 surrender = { resource = "coin", cost_percent = 50 }  # BAT-FLE-002: half the coin cost
+hero_casts_per_round = 1                    # BAT-MAG-001 (pack format v4)
 
 # Content of pack format v2 (E02): resource kinds, factions and the non-battle creature fields.
 # Invented names; the values only exercise the format.
@@ -215,6 +216,7 @@ power = 10
 effect = [10, 10, 20, 30]
 polarity = "negative"
 target = "stack"                    # none (default) | stack | hex
+side = "enemy"                      # whose stacks it reaches: any (default) | enemy | own
 effects = [{ kind = "damage" }]     # none: not castable yet
 
 [[spell]]

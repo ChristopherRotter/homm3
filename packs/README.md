@@ -173,6 +173,7 @@ effect = [10, 10, 20, 30]          # base effect by mastery
 polarity = "negative"              # positive | neutral | negative
 target = "hex"                     # v4: none (default) | stack | hex
 area = { inner = 0, radius = [1, 1, 1, 2] }  # v4, target hex: hexes at distance inner..=radius[mastery]
+side = "any"                       # v4: whose stacks it reaches: any (default) | enemy | own
 excludes = ["war_machine"]         # v4: creature flags a reached stack may not have (`requires`: must have)
 effects = [{ kind = "damage" }]    # v4: what it does to each stack reached (default none: not castable)
 
@@ -211,8 +212,10 @@ the previous one's value) are exclusive; `requires`/`excludes` are creature flag
 flag). Effect kinds (at most four, distinct): `damage` (the value `power × power factor +
 effect[mastery]` as damage; BAT-MAG rules, E04b T2b/T2d). Later tasks add kinds (timed, dispel,
 heal, summon, …). Adventure spells have no battle magic; a spell without effects cannot be cast
-yet. At most four spell schools per ruleset (`MAX_SPELL_SCHOOLS`: the battle hero keeps one mastery
-per school).
+yet. `side = "enemy"` is VCMI's smart targeting of the single-target damage spells (the harvester
+writes it for every single-target spell that harms, BAT-MAG-003). At most four spell schools and
+128 spells per ruleset (`MAX_SPELL_SCHOOLS`, `MAX_SPELLS`: the battle keeps one mastery per school
+and spell books as bitsets).
 
 **Hero effects** (`h3_content::HeroEffect`, ADR-0013 §3): what a skill level, a specialty or an
 artifact gives. Percentages are **basis points** (`bp`, 1/100 %). The translation to the
@@ -348,7 +351,8 @@ level: the tactics zone of a side whose Tactics level exceeds the enemy's by `d`
 in `base`, BAT-TAC-001; ruleset hash v12). Since E04a T9b the optional `surrender = { resource,
 cost_percent }` (the price of a surrender is `cost_percent` of the summed cost in `resource` of
 the side's living stacks; `{ resource = "gold", cost_percent = 50 }` in `base`; without it no
-side can surrender; BAT-FLE-002, ruleset hash v13).
+side can surrender; BAT-FLE-002, ruleset hash v13). Since E04b T2b `hero_casts_per_round` (how
+many spells a hero may cast per round, 1 in `base`; BAT-MAG-001, ruleset hash v15).
 
 **Hero parameters** (`[hero_params]`, Tier 2, E04a T4a; at most one enabled pack provides them,
 a ruleset without them cannot validate hero details): `primary_min` (four values, attack,
@@ -362,7 +366,7 @@ flags are off): the registered flags are in `h3_content::REGISTRY` and the quirk
 (`docs/rules/quirks-ledger.md`); the packs' `faithful` profiles turn Q-0003 and Q-0005 on,
 `strict-fixed` off. Profile-level Tier-2 overrides are not implemented yet (backlog).
 
-The compiled ruleset's canonical hash (encoding v14, `RULESET_HASH_VERSION`) covers packs,
+The compiled ruleset's canonical hash (encoding v15, `RULESET_HASH_VERSION`) covers packs,
 profile, quirks, resources, terrains, factions, obstacles, all creature fields including abilities
 and upgrades, the battle parameters and the hero content (spells with their battle magic) with
 the artifacts and the hero parameters; replays record it.
@@ -390,9 +394,9 @@ attacker_funds = 2000            # optional, per side (`defender_funds`): what t
 [scenario.attacker_hero]         # optional, per side (`defender_hero`): the battle hero leading
 hero_type = "synthetic:brea"     # the side, given directly (BAT-HER-001, Q31); a side without
 attack = 2                       # one is not led by a hero (quirk Q-0003). Every field but
-defense = 2                      # hero_type defaults to 0 (effects: none); the rest of the battle
-power = 1                        # hero (other effects, spell book, …) joins the format with
-knowledge = 1                    # the rules that read it (E04b)
+defense = 2                      # hero_type defaults to 0 (effects: none, no spell book); the
+power = 1                        # Catapult's control joins with sieges (E04c)
+knowledge = 1
 tactics = 2
 mana = 10
 max_mana = 10
@@ -400,10 +404,12 @@ ranged_bp = 1000                 # damage bonuses in basis points (BAT-HER-004):
 melee_bp = 1000                  # its melee strikes, and the reduction of strikes against it
 reduction_bp = 500               # (at most 10 000)
 surrender_discount_bp = 4000     # optional: the surrender discount (BAT-FLE-002, at most 10 000)
+spell_book = ["synthetic:spark"] # optional: the spell book by spell key (BAT-MAG-001; E04b T2b)
 ballista = { shots = 1, double_damage_chance_bp = 5000 }   # optional: the side commands its
                                  # Ballista (Artillery, BAT-WAR-006)
 tent = { heal_bonus_bp = 10000 } # optional: the side commands its First Aid Tent (First Aid,
                                  # BAT-WAR-007; the bonus of its largest heal)
+schools = { "synthetic:storm" = 2 }  # optional: mastery per spell school, 1..=3 (BAT-MAG-002)
 effects = [{ kind = "morale", amount = 1 }, { kind = "luck_at_most", value = 0, affects = "enemy" }]
                                  # battle effects as in "Hero effects": so far `morale`, `luck`,
                                  # `morale_at_most`, `luck_at_most` (BAT-HER-003), `no_retreat`
@@ -411,8 +417,11 @@ effects = [{ kind = "morale", amount = 1 }, { kind = "luck_at_most", value = 0, 
                                  # "Hero effects" (omitted: all), `stat`, `op` = `add` |
                                  # `percent_bp` (rounded up) | `percent_bp_down`, `amount`),
                                  # `regeneration`, `no_range_penalty`, `shoot_when_adjacent`
-                                 # (BAT-HER-006) and `alignment_group` (BAT-HER-007; at most 16
-                                 # factions), parameters as in "Hero effects"
+                                 # (BAT-HER-006), `alignment_group` (BAT-HER-007; at most 16
+                                 # factions), `spell_damage` (`bp`, `school` or `spell` by key)
+                                 # and `spell_specialty` (`spell`, `bp`: growth before the
+                                 # division by the target's level; BAT-MAG-004), parameters as in
+                                 # "Hero effects"
 
 [[attacker]]                     # one entry per stack
 slot = 0

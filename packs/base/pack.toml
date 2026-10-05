@@ -3092,6 +3092,7 @@ power = 10
 effect = [10, 10, 20, 30]
 polarity = "negative"
 target = "stack"
+side = "enemy"
 effects = [{ kind = "damage" }]
 
 [[spell]]
@@ -3105,6 +3106,7 @@ power = 20
 effect = [10, 10, 20, 50]
 polarity = "negative"
 target = "stack"
+side = "enemy"
 effects = [{ kind = "damage" }]
 
 [[spell]]
@@ -3118,6 +3120,7 @@ power = 25
 effect = [10, 10, 20, 50]
 polarity = "negative"
 target = "stack"
+side = "enemy"
 effects = [{ kind = "damage" }]
 
 [[spell]]
@@ -3131,6 +3134,7 @@ power = 75
 effect = [100, 100, 200, 300]
 polarity = "negative"
 target = "stack"
+side = "enemy"
 excludes = ["war_machine"]
 effects = [{ kind = "damage" }]
 
@@ -6708,6 +6712,7 @@ loose_formation = [[5], [2, 8], [2, 5, 8], [0, 4, 6, 10], [0, 2, 5, 8, 10], [0, 
 tight_formation = [[5], [4, 6], [4, 5, 6], [2, 4, 6, 8], [2, 4, 5, 6, 8], [0, 2, 4, 6, 8, 10], [0, 2, 4, 5, 6, 8, 10]]
 tactics_zone_columns = [3, 5, 7]
 surrender = { resource = "gold", cost_percent = 50 }
+hero_casts_per_round = 1
 
 # Hero parameters (Tier 2): rule ids in docs/rules/catalog/heroes.toml (sources in the
 # gap-fill file).

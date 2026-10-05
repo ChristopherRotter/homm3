@@ -72,6 +72,7 @@ fn positions(
 /// Encodes a command. Attacks are encoded relative to the target's position and the active
 /// stack's shape, so encoding needs the state; returns `None` for commands that cannot be
 /// expressed (no active stack, unknown target, or a position that is not an attack position).
+/// Casts have no dense index: the factorized casting action comes with E04b T2c.
 pub fn encode(state: &BattleState, ruleset: &Ruleset, command: Command) -> Option<usize> {
     match command {
         Command::Wait => Some(0),
@@ -101,6 +102,7 @@ pub fn encode(state: &BattleState, ruleset: &Ruleset, command: Command) -> Optio
         Command::EndTactics => Some(END_TACTICS),
         Command::Retreat => Some(RETREAT),
         Command::Surrender => Some(SURRENDER),
+        Command::Cast { .. } => None,
     }
 }
 

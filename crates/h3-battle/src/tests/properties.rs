@@ -7,7 +7,9 @@
 
 use std::vec::Vec;
 
-use h3_content::{Affects, CreatureFlag, CreatureSelector, CreatureStat, Formation, Ruleset};
+use h3_content::{
+    Affects, CreatureFlag, CreatureSelector, CreatureStat, Formation, Ruleset, SpellId, SpellScope,
+};
 use h3_contracts::{
     Army, ArmyStack, BallistaControl, BattleEffect, BattleHero, BattleSetup, BattleSide,
     DamageBonuses, StatOp, TentControl,
@@ -20,8 +22,8 @@ use proptest::test_runner::Config;
 use super::support::{CREATURES, hero, ruleset_with};
 use crate::event::StrikeFlags;
 use crate::{
-    BattleState, Command, Event, EventKind, Hex, LegalCommands, StackId, apply, legal_commands,
-    observe,
+    BattleState, CastTarget, CastTargets, Command, Event, EventKind, Hex, LegalCommands, SpellSet,
+    StackId, apply, cast_targets, castable_spells, legal_commands, observe,
 };
 
 /// The test ruleset with frequent good and bad morale and luck (a 4-sided die) and the quirk
@@ -44,6 +46,8 @@ enum Step {
     Legal(u16),
     /// Try an arbitrary command, as the side to act or its opponent.
     Arbitrary { command: Command, wrong_actor: bool },
+    /// Cast the `n`-th castable spell at its `n`-th target (modulo their numbers), if any.
+    Cast(u16),
 }
 
 /// An arbitrary command; leaving the battle is rare, so that games run long.
@@ -58,6 +62,14 @@ fn arb_command() -> impl Strategy<Value = Command> {
             from: Hex(h)
         }),
         8 => (0u8..40).prop_map(|t| Command::Heal { target: StackId(t) }),
+        8 => (0u16..8, 0u8..3, any::<u8>()).prop_map(|(spell, kind, t)| Command::Cast {
+            spell: SpellId::from_raw(spell),
+            target: match kind {
+                0 => CastTarget::None,
+                1 => CastTarget::Stack(StackId(t % 40)),
+                _ => CastTarget::Hex(Hex(t)),
+            },
+        }),
         1 => Just(Command::Retreat),
         1 => Just(Command::Surrender),
     ]
@@ -67,6 +79,7 @@ fn arb_step() -> impl Strategy<Value = Step> {
     prop_oneof![
         3 => any::<u16>().prop_map(Step::Legal),
         1 => (arb_command(), any::<bool>()).prop_map(|(command, wrong_actor)| Step::Arbitrary { command, wrong_actor }),
+        1 => any::<u16>().prop_map(Step::Cast),
     ]
 }
 
@@ -117,7 +130,10 @@ fn arb_game() -> impl Strategy<Value = Game> {
 /// hero's Tactics level if bit 43 is set, bit 44 whether the defender is led by a hero too, with
 /// Tactics level bits 45–46 (so that some games start with a tactics phase, BAT-TAC-001), bit
 /// 47 whether the attacker's hero wears Shackles of War (no retreat, BAT-FLE-001), bits 48–55
-/// and 56–63 the attacker's and the defender's funds in hundreds of gold (BAT-FLE-002).
+/// and 56–63 the attacker's and the defender's funds in hundreds of gold (BAT-FLE-002). Both
+/// heroes have spell books (every combat spell of the test ruleset) and the attacker's some
+/// masteries and spell bonuses; their mana comes from bits 0–5 and 6–11 of `machines`
+/// rotated by 13 (BAT-MAG-001 to BAT-MAG-004).
 fn make_setup(
     r: &Ruleset,
     attacker: &[(u8, u8, u32)],
@@ -166,9 +182,30 @@ fn make_setup(
     if machines & (1 << 47) != 0 {
         led.effects.push(BattleEffect::NoRetreat);
     }
+    let magic = machines.rotate_left(13);
+    let book: Vec<SpellId> = ["bolt", "smite", "ward", "nova", "portal"]
+        .iter()
+        .map(|k| r.spell_by_key(&std::format!("t:{k}")).unwrap())
+        .collect();
+    led.magic.spell_book = Some(book.clone());
+    led.magic.mana = u16::try_from(magic & 63).unwrap();
+    led.magic.schools = [u8::try_from((magic >> 12) & 3).unwrap(), 1, 0, 0];
+    led.power = 2;
+    led.effects.extend([
+        BattleEffect::SpellDamage {
+            scope: SpellScope::All,
+            bp: 1000,
+        },
+        BattleEffect::SpellSpecialty {
+            spell: book[0],
+            bp: 1500,
+        },
+    ]);
     let defender_hero = (machines & (1 << 44) != 0).then(|| {
         let mut h = hero(r);
         h.tactics = u8::try_from((machines >> 45) & 3).unwrap();
+        h.magic.spell_book = Some(book.clone());
+        h.magic.mana = u16::try_from((magic >> 6) & 63).unwrap();
         h
     });
     BattleSetup {
@@ -212,6 +249,16 @@ fn resolve(
             command,
             wrong_actor,
         } => (if *wrong_actor { side.opponent() } else { side }, *command),
+        Step::Cast(n) => {
+            let spells: Vec<SpellId> = castable_spells(state, r, side).iter().collect();
+            let Some(&spell) = spells.get(usize::from(*n) % spells.len().max(1)) else {
+                return (side, Command::Wait);
+            };
+            let mut targets = CastTargets::new();
+            cast_targets(state, r, side, spell, &mut targets);
+            let target = targets.as_slice()[usize::from(*n) % targets.len()];
+            (side, Command::Cast { spell, target })
+        }
     }
 }
 
@@ -257,6 +304,28 @@ proptest! {
             let mut other = LegalCommands::new();
             legal_commands(&state, &r, actor.opponent(), &mut other);
             prop_assert!(other.is_empty() || state.side_to_act() == Some(actor.opponent()));
+            // The same for casts: every listed spell and target is accepted (BAT-MAG-001).
+            let castable = castable_spells(&state, &r, actor);
+            let mut targets = CastTargets::new();
+            for spell in castable.iter() {
+                cast_targets(&state, &r, actor, spell, &mut targets);
+                prop_assert!(!targets.is_empty());
+                for target in targets.iter() {
+                    let mut probe = state.clone();
+                    let c = Command::Cast { spell, target: *target };
+                    prop_assert!(apply(&mut probe, &r, actor, c, &mut crate::NoopSink).is_ok(), "legal {c:?} rejected");
+                }
+            }
+            prop_assert!(castable_spells(&state, &r, actor.opponent()).is_empty() || state.side_to_act() == Some(actor.opponent()));
+            let listed = |c: Command| match c {
+                Command::Cast { spell, target } => {
+                    let mut t = CastTargets::new();
+                    cast_targets(&state, &r, actor, spell, &mut t);
+                    castable.contains(spell) && t.iter().any(|x| *x == target)
+                }
+                other => legal.iter().any(|c| *c == other),
+            };
+            let cmd_listed = listed(cmd);
 
             let before = state.clone();
             let before_hash = state.state_hash();
@@ -269,10 +338,24 @@ proptest! {
                     prop_assert_eq!(state.state_hash(), before_hash);
                     prop_assert!(events.is_empty());
                     // ... and it was not in the legal set.
-                    prop_assert!(!legal.iter().any(|c| *c == cmd), "legal {cmd:?} rejected");
+                    prop_assert!(!cmd_listed, "legal {cmd:?} rejected");
                 }
                 Ok(()) => {
-                    prop_assert!(legal.iter().any(|c| *c == cmd), "illegal {cmd:?} accepted");
+                    prop_assert!(cmd_listed, "illegal {cmd:?} accepted");
+                    // Mana is spent only by casts, by the spell's cost, at most once per round
+                    // and side (BAT-MAG-001, BAT-MAG-002); a cast keeps the turn.
+                    let per_round = r.battle().hero_casts_per_round;
+                    for side in BattleSide::BOTH {
+                        let (b, a) = (before.hero(side), state.hero(side));
+                        if let (Some(b), Some(a)) = (b, a) {
+                            prop_assert!(a.mana <= b.mana && a.casts <= per_round);
+                            let cast_by = matches!(cmd, Command::Cast { .. }) && side == actor;
+                            prop_assert!(cast_by || a.mana == b.mana);
+                        }
+                    }
+                    if let Command::Cast { .. } = cmd {
+                        prop_assert!(state.is_over() || state.active() == before.active());
+                    }
                     let mover = before.active().unwrap();
                     let target = match cmd {
                         Command::Attack { target, .. } | Command::Shoot { target, .. } => Some(target),
@@ -317,7 +400,7 @@ proptest! {
                         if b.side != actor {
                             prop_assert_eq!(a.hex, b.hex);
                             let explained = mentioned(i, |k, i| matches!(k,
-                                EventKind::Struck { target, .. } | EventKind::DeathStared { target, .. } if target.index() == i))
+                                EventKind::Struck { target, .. } | EventKind::DeathStared { target, .. } | EventKind::SpellDamage { target, .. } if target.index() == i))
                                 || mentioned(i, |k, i| matches!(k, EventKind::Regenerated { stack, .. } if stack.index() == i))
                                 || mentioned(i, |k, i| matches!(k, EventKind::Healed { target, .. } if target.index() == i));
                             if !explained {
@@ -364,6 +447,9 @@ proptest! {
                 hero.tent = hero.tent.and(Some(TentControl { heal_bonus_bp: heal }));
                 hero.surrender_discount_bp = discount;
                 hero.funds = funds;
+                hero.magic.book = SpellSet::default();
+                hero.magic.schools = [3; 4];
+                hero.magic.bonuses.all_bp = u32::from(discount);
             }
             let viewer = side.opponent();
             prop_assert_eq!(observe(&state, &r, viewer), observe(&twin, &r, viewer));

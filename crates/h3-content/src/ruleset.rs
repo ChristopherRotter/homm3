@@ -28,7 +28,7 @@ pub const MAX_ARMY_SLOTS: usize = 16;
 pub const MAX_FIELD_HEXES: usize = 255;
 
 /// Version of the ruleset hash encoding. Bump when the encoding below changes.
-pub const RULESET_HASH_VERSION: u32 = 14;
+pub const RULESET_HASH_VERSION: u32 = 15;
 
 /// A compiled creature type.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -145,6 +145,8 @@ pub struct BattleParams {
     pub tactics_zone_columns: [u8; MAX_SKILL_LEVEL as usize],
     /// How a surrender is priced (BAT-FLE-002); `None`: no side can surrender.
     pub surrender: Option<SurrenderParams>,
+    /// How many spells a hero may cast per round (BAT-MAG-001).
+    pub hero_casts_per_round: u8,
 }
 
 /// The price of a surrender (BAT-FLE-002): `cost_percent` of the summed cost in `resource` of the
@@ -1239,6 +1241,7 @@ fn compile_battle(
         formations,
         tactics_zone_columns,
         surrender,
+        hero_casts_per_round: def.hero_casts_per_round,
     })
 }
 
@@ -1289,7 +1292,8 @@ impl CanonicalHash for Ruleset {
     /// (all entries, no length); v13 (E04a T9b): then the surrender parameters (presence flag,
     /// resource handle, percent). v14 (E04b T2a): each spell ends with its battle magic
     /// (`SpellMagic`'s encoding), and hero effects have three more kinds (`school_mastery`,
-    /// `spell_damage`, `spell_book`) and a growth in `spell_specialty`.
+    /// `spell_damage`, `spell_book`) and a growth in `spell_specialty`. v15 (E04b T2b): the
+    /// battle parameters end with the hero casts per round, and the battle magic has a side.
     fn hash_into(&self, h: &mut StateHasher) {
         h.write_u32(RULESET_HASH_VERSION);
         h.write_len(self.packs.len());
@@ -1407,6 +1411,7 @@ impl CanonicalHash for Ruleset {
             s.resource.hash_into(h);
             h.write_u16(s.cost_percent);
         }
+        h.write_u8(b.hero_casts_per_round);
         self.hero.hash_into(h);
     }
 }

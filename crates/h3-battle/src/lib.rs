@@ -31,6 +31,7 @@ mod flee;
 mod geometry;
 mod hero;
 mod legal;
+mod magic;
 mod morale;
 mod movement;
 mod observe;
@@ -47,6 +48,10 @@ pub use geometry::{ATTACK_SLOTS, Direction, Field, Footprint, Hex, HexSet};
 pub use h3_contracts::{BattleOutcome, BattleResult, BattleSetup, BattleSide};
 pub use hero::{HeroView, OwnHeroView};
 pub use legal::{LegalCommands, MAX_LEGAL_COMMANDS, legal_commands};
+pub use magic::{
+    CastTarget, CastTargets, MAX_CAST_TARGETS, MAX_SPELL_BONUSES, SpellBonus, SpellBonuses,
+    SpellSet, cast_targets, castable_spells,
+};
 pub use morale::{Bearer, Expiry, MODIFIER_CAPACITY, Modifiers, Stat};
 pub use observe::{Observation, observe, project};
 pub use state::{

@@ -4,12 +4,12 @@ Living state between sessions; every session reads it first. Rules (`docs/08-wor
 
 ## Current state
 
-- Branch `e04b-battle-magic` (created from `master` = the E04b refinement `3841f22`, on top of the merged E04a, verify green on Linux and Windows incl. `--with-original-data`); docs only since then. Sandbox and syncing: `docs/08-work-process.md`, "Cloud sandbox and syncing" (`scripts/sandbox-setup.sh`).
+- Branch `e04b-battle-magic` (created from `master` = the E04b refinement `3841f22`, on top of the merged E04a); T2a and T2b committed. **First: run verify** — T2b's verify passed up to the tests; coverage, determinism, `bench-check` (state 2 448 bytes, may need a re-baseline with the reason) and original-data were unconfirmed when the session ended. Sandbox and syncing: `docs/08-work-process.md`, "Cloud sandbox and syncing" (`scripts/sandbox-setup.sh`).
 - **E04b (battle magic) is refined** (Q41, `docs/epics/E04b-battle-magic.md`): increments with a user checkpoint each. **Increment 1** = T1 (survey and ADR-0014, then **stop for the user's review**) and T2 (casting core, checkpoints T2a–T2d, the factorized casting action in T2c, batch 2a at the end); after T2d the user confirms increment 2 (proposed: T3, T4).
-- **T1 done:** survey `docs/rules/surveys/E04b-magic.md`, **ADR-0014 accepted** (Q42), design note `docs/epics/E04b-design.md`, record in `docs/epics/E04b-log.md`.
-- **T2 split confirmed** (user, 2026-10-05): T2a + T2b, checkpoint; then T2c + T2d, checkpoint and batch 2a. **T2a done** (pack format v4, spell flags harvested, the hero's magic, HER-BAT-011/012). **In progress: T2b** (casting in battle; design note section T2b).
-- Versions: state hash v17, ruleset hash v14, replay format v13, action encoding v8, C ABI v7, observation encoding v4. Each new command bumps the action encoding and the C ABI (ADR-0011).
-- No decision is waiting for the user. Open questions: `docs/OPEN-QUESTIONS.md`, section "Open" (Q40 waits for batch 2a).
+- **T1 done:** survey `docs/rules/surveys/E04b-magic.md`, ADR-0014 accepted (Q42), design note `docs/epics/E04b-design.md`.
+- **T2 split confirmed** (user, 2026-10-05): T2a + T2b, checkpoint; then T2c + T2d, checkpoint and batch 2a. **T2a and T2b done**: pack format v4 battle magic, the hero's magic (HER-BAT-011/012), hero casting of single-target damage spells (BAT-MAG-001 to 004; `Command::Cast`, `castable_spells`, `cast_targets`). **Next: the user's checkpoint**, then T2c (the factorized casting action in the sim and the C ABI, 21 stack slots per side) and T2d (area, chain and every-stack damage; resistance and immunities; STUB-0001 goes), design note sections T2c and T2d.
+- Versions: state hash v18, ruleset hash v15, replay format v14, action encoding v8, C ABI v7, observation encoding v4. Casts have no dense action index yet (T2c).
+- Waiting for the user: the T2b checkpoint (confirm T2c + T2d). Open questions: `docs/OPEN-QUESTIONS.md`, section "Open" (Q40 waits for batch 2a).
 - Working agreement: increments of a couple of tasks with a user checkpoint (Q41); the user confirms seams and ADRs; token efficiency beats speed (AGENTS.md); the user plays experiment maps in SoD with plain HD and commits the results.
 
 ## Standing traps
@@ -51,6 +51,10 @@ Living state between sessions; every session reads it first. Rules (`docs/08-wor
 
 ## Recent sessions
 
+### 2026-10-05 (sixteenth) — E04b T2a and T2b: spell content, the hero's magic, casting
+
+Sandbox session; the user confirmed T2a–T2d, T2a + T2b now. T2a (`92bbdd4`): pack format v4 `SpellMagic` for the 13 damage spells (flag word, gap-fill), hero effects `school_mastery`, `spell_damage`, `spell_book`, specialty growth (wiki SoD: 3 %/level), HER-BAT-011/012. T2b: `h3_battle::magic`, `Command::Cast`, BAT-MAG-001 to 004, formats, property tests with casts. Detail and decisions: `docs/epics/E04b-log.md`.
+
 ### 2026-10-05 (fifteenth) — E04b refined (increment 1 = T1 + T2), T1 done, ADR-0014 accepted
 
 Refinement, in the user's repo (no sandbox, no code): coarse outline T1–T11; the user chose (Q41) one epic in increments with a checkpoint each; increment 1 = T1 (survey, ADR-0014, stop) and T2 (casting core, 13 direct-damage spells, T2a–T2d, then batch 2a); casting in the sim with the core (T2c); a just-in-time survey. Commit `3841f22` (epic file, Q41, BACKLOG, HANDOFF; project doc `claude/e04b-status.md`). Then, on the user's request, branch `e04b-battle-magic` and T1's survey: VCMI 1.7.5 and wiki fetches, the executable's spell flags decoded by correlation; disputes M-1 to M-6 and candidates X-1 to X-6 for batch 2a (`f98fcc6`). The user clarified that a hero's cast is optional and that a counter spell replaces its pair (the later wins); then ADR-0014 (Proposed, `688739c`) and the design note; the user's first review led to revised points 5–7, then accepted it (Q42).
@@ -58,7 +62,3 @@ Refinement, in the user's repo (no sandbox, no code): coarse outline T1–T11; t
 ### 2026-10-05 (fourteenth) — E04a T12c: independent review, the epic closed
 
 A fresh session reviewed E04a (baseline verify green on `7990c69`): every rule against its sources and code, no conflict; five rules resting on VCMI or a generalisation listed for the next batch (`docs/experiments/README.md`); two robustness tests (`cd71ba0`); security checked. Closure: design note deleted (its last content in the log), epic, BACKLOG, ADR-0013's header. The user: Windows verify green; the tactics hand-over needs an experiment (Q40). Detail: `docs/epics/E04a-log.md` (T12c).
-
-### 2026-10-04 (thirteenth) — E04a T11, T12a and T12b done
-
-T11 split with the user (Q37): `observe` takes the ruleset (ADR-0004 amended); T11a (`e527a53`) the observation's surrender option, machine control and private `own_hero`; T11b (`adffa12`) observation encoding v4, C ABI v7; T11c Corwin leads `full`'s defender, `full-s3` re-recorded, `bench-check` re-baselined (about 229–237 k steps/s). T12 split (Q38): T12a 21 observed rules `verified`, profile and hero-isolation tests, ADR-0013 revised; T12b the death-stare cutoff (Q39, KER-RNG-003) and random obstacles per episode. Detail: `docs/epics/E04a-log.md`.

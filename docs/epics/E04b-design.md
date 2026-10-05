@@ -1,32 +1,11 @@
 # E04b design note (working detail for ADR-0014)
 
-A handover, not binding: proposals and sizes for the tasks of ADR-0014 (accepted). T2a's section
-is implemented and deleted (code docs, `packs/README.md`, HER-BAT-011/012). Each task
+A handover, not binding: proposals and sizes for the tasks of ADR-0014 (accepted). T2a's and T2b's
+sections are implemented and deleted (code docs, `packs/README.md`, HER-BAT-011/012,
+BAT-MAG-001 to BAT-MAG-004). Each task
 settles its section and **deletes it** when the code documentation, the rule catalog and the pack
 docs hold the detail; the file is deleted when E04b closes (ADR index rule). Names are provisional.
 Sources: [`docs/rules/surveys/E04b-magic.md`](../rules/surveys/E04b-magic.md).
-
-## T2b — casting in battle
-
-- **State:** per side the hero's mana (`u16`, from `BattleMagic.mana`), casts this round, and the
-  distinct spells cast in first-cast order (fixed list, capacity the content's spell limit; the
-  `HeroOutcome.spells_cast` doc changes to "distinct, in first-cast order"). Counters reset when a
-  round starts.
-- **Command:** `HeroCast { spell, target, second }` with targets `None | Hex | Stack`. Legality
-  (`BAT-MAG-001`): a stack of the actor's side awaits a command; not the tactics phase; no cast yet
-  this round (a battle parameter, default 1, as VCMI's bonus); the spell in the book and a combat
-  spell; mana at least the cost; a valid target. The creature cost modifiers (Mages, Pegasi,
-  Familiar's channelling, Wraiths' drain) arrive with their abilities in T7; the cost rule
-  (`BAT-MAG-002`) names them in its scope until then.
-- **Damage** (`BAT-MAG-003`): VCMI's order is protection by school (T3), the general reduction
-  (Golems, T2d), more damage from a spell (elementals, T2d), then the caster's Sorcery, specific
-  spell bonus, best school bonus (Orbs) and the level-scaled specialty, truncating after each
-  factor. Rounding in SoD: batch 2a X-1 (Q-0005 used single precision for physical damage).
-  Damage kills like physical damage; no luck, morale or retaliation.
-- **Events:** a public `SpellCast` (side, caster, spell, targets); damage per stack; resisted and
-  reflected stacks (T2d).
-- **Observation:** casts this round public; the spell book in `own_hero` (private). Mana is
-  already public.
 
 ## T2c — the sim and the extra stack slots
 

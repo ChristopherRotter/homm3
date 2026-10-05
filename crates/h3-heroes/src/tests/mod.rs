@@ -61,6 +61,7 @@ fn battle() -> BattleParamsDef {
         tight_formation: vec![vec![5], vec![4, 6], vec![4, 5, 6]],
         tactics_zone_columns: vec![3, 5, 7],
         surrender: None,
+        hero_casts_per_round: 1,
     }
 }
 

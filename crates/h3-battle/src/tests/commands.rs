@@ -243,10 +243,24 @@ fn state_hash_is_pinned() {
     });
     led.surrender_discount_bp = 4000;
     // A regeneration for every stack of the side (BAT-HER-006).
-    led.effects = vec![h3_contracts::BattleEffect::Regeneration {
-        creatures: h3_content::CreatureSelector::All,
-        hit_points: 50,
-    }];
+    // And magic: a spell book, masteries and spell bonuses (BAT-MAG-001 to BAT-MAG-004).
+    let bolt = r.spell_by_key("t:bolt").unwrap();
+    led.effects = vec![
+        h3_contracts::BattleEffect::Regeneration {
+            creatures: h3_content::CreatureSelector::All,
+            hit_points: 50,
+        },
+        h3_contracts::BattleEffect::SpellDamage {
+            scope: h3_content::SpellScope::All,
+            bp: 1500,
+        },
+        h3_contracts::BattleEffect::SpellSpecialty {
+            spell: bolt,
+            bp: 3000,
+        },
+    ];
+    led.magic.spell_book = Some(vec![bolt]);
+    led.magic.schools = [2, 1, 0, 0];
     let setup = BattleSetup {
         heroes: [Some(led), None],
         funds: [1234, 99],
@@ -255,7 +269,7 @@ fn state_hash_is_pinned() {
     let s = BattleState::new(&r, &setup, 7).unwrap();
     assert!(s.tactics().is_some());
     assert_eq!(s.state_hash(), GOLDEN, "got {:#018x}", s.state_hash());
-    assert_eq!(crate::BATTLE_STATE_HASH_VERSION, 17);
+    assert_eq!(crate::BATTLE_STATE_HASH_VERSION, 18);
 }
 
-const GOLDEN: u64 = 0x8b5c_f48d_1b28_1944;
+const GOLDEN: u64 = 0xc023_0e0d_3fa4_ccfe;

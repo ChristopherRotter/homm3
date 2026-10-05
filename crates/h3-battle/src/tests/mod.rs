@@ -6,6 +6,7 @@ mod commands;
 mod flee;
 mod geometry;
 mod heroes;
+mod magic;
 mod morale;
 mod properties;
 mod ranged;

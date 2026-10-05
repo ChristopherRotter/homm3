@@ -65,3 +65,38 @@ records how and why the tasks went.
   summing per scope as VCMI's bonus sums.
 - **Verification:** golden replays re-recorded (only the ruleset hash changed; same battles).
 
+### T2b — Casting in battle (2026-10-05)
+
+- **Content:** at most 128 spells (`MAX_SPELLS`; spell books are bitsets); `SpellMagic.side`
+  (any, enemy, own; the harvester writes `enemy` for single-target spells that harm, VCMI's smart
+  targeting); battle parameter `hero_casts_per_round` (Tier 2, 1 in `base` from the gap-fill
+  file). Ruleset hash v15.
+- **Battle** (`h3_battle::magic`): `SpellSet`, `SpellBonuses` (every spell, per school, at most
+  four single spells: `HeroError::TooManySpellBonuses`), the hero record's magic (book,
+  masteries, bonuses, spells cast); `HeroView.casts` public, `OwnHeroView` gains the book,
+  masteries and bonuses. `Command::Cast { spell, target: CastTarget }` (none, stack, hex; the
+  second target joins with Teleport and Sacrifice); errors `NotInSpellBook`, `NotACombatSpell`,
+  `AlreadyCast`, `NotCastable` (stub STUB-0001: only damage to one stack so far),
+  `NotEnoughMana`, `InvalidSpellTarget`; events `SpellCast`, `SpellDamage`. Casts are not in
+  `legal_commands`: `castable_spells` and `cast_targets` list them (the factorized action's
+  heads). Rounds reset the casts; the outcome lists the distinct spells cast by handle (the
+  contract's doc no longer says "in order"). State hash v18; `BattleState` 2 192 → 2 448 bytes
+  (the hero record 40 → 168 bytes).
+- **Rules:** BAT-MAG-001 (when a hero casts), BAT-MAG-002 (mastery and cost), BAT-MAG-003
+  (targets), BAT-MAG-004 (damage); BAT-HER-001 and BAT-END-003 updated.
+- **Formats:** scenario and replay heroes hold the spell book, the masteries and the spell
+  effects (`PackError::HeroNotWritable` removed; `UnknownSpell`, `UnknownSchool`); the CLI's
+  replay text `cast <spell handle> none|stack <id>|hex <hex>`; replay format v14. The sim's
+  `encode` has no index for casts (T2c adds the factorized action), so the action encoding and
+  the C ABI are unchanged.
+- **Tests:** rule tests `tests/magic.rs`; the property tests cast in generated games (the lists
+  agree with `apply` both ways; mana spent only by casts, at most the per-round limit; a cast keeps
+  the turn; the book, masteries and bonuses stay private).
+- **Agent decisions (change freely):** M-4 as VCMI (casting during a commanded war machine's
+  turn; X-3); the damage computed exactly in basis points with truncation after each factor
+  (VCMI rounds the specialty term to whole percent first; X-1); the damage computed during
+  validation (the plan carries it); the spells cast as a set by handle (Eagle Eye needs the set);
+  four single-spell bonuses per hero.
+- **Verification:** golden replays re-recorded (state hash v18, replay format v14; the same
+  commands).
+

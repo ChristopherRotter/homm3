@@ -22,6 +22,8 @@ use crate::spell::SpellMagic;
 
 /// Highest spell level.
 pub const MAX_SPELL_LEVEL: u8 = 5;
+/// Most spells in a ruleset (the battle keeps spell books as bitsets, E04b T2b).
+pub const MAX_SPELLS: usize = 128;
 /// Most spell schools (the battle hero keeps one mastery per school, `BattleMagic.schools`).
 pub const MAX_SPELL_SCHOOLS: usize = 4;
 /// Most secondary skills a hero can have.
@@ -511,6 +513,9 @@ impl HeroContent {
         };
         if self.schools.items.len() > MAX_SPELL_SCHOOLS {
             return Err(CompileError::TooManyEntries("spell school"));
+        }
+        if self.spells.items.len() > MAX_SPELLS {
+            return Err(CompileError::TooManyEntries("spell"));
         }
         for s in &self.spells.items {
             let ability = s.category == SpellCategory::Ability;

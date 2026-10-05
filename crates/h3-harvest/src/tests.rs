@@ -379,6 +379,8 @@ tactics_zone_columns = [3, 5, 7]
 tactics_sources = ["s"]
 surrender = { resource = "gold", cost_percent = 50 }
 surrender_sources = ["s"]
+hero_casts_per_round = 1
+magic_sources = ["s"]
 
 [[creature_abilities]]
 creature = "Unit 1"
@@ -808,7 +810,7 @@ fn harvests_hero_content() {
     assert!(sod.contains("polarity = \"positive\""));
     // Battle magic: target and effect from the flag word, the rest from the gap-fill file.
     assert!(base.contains(
-        "polarity = \"negative\"\ntarget = \"stack\"\n\
+        "polarity = \"negative\"\ntarget = \"stack\"\nside = \"enemy\"\n\
          chain = { factor_bp = 5000, targets = [2, 2, 3, 3] }\n\
          excludes = [\"war_machine\"]\neffects = [{ kind = \"damage\" }]"
     ));

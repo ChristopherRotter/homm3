@@ -3,8 +3,8 @@
 //! The battlefield is fully visible to both sides, so the observation is the state minus what
 //! the viewer may not know: the RNG state (it would predict rolls) and the private part of the
 //! other side's hero (ADR-0013 point 9: its skill values, surrender discount, funds and price).
-//! The viewer's own hero's private part is shown to the viewer ([`OwnHeroView`]). Hidden battle
-//! information added later (an opponent's spell book, E04b) is projected away here too.
+//! The viewer's own hero's private part is shown to the viewer ([`OwnHeroView`]): its spell book,
+//! masteries and spell bonuses among them (ADR-0014 point 8).
 
 use h3_content::Ruleset;
 use h3_contracts::{BattleResult, BattleSide};
@@ -72,6 +72,9 @@ pub fn observe(state: &BattleState, ruleset: &Ruleset, viewer: BattleSide) -> Ob
             surrender_discount_bp: h.surrender_discount_bp,
             funds: h.funds,
             surrender_price: state.surrender_price(ruleset, viewer),
+            spell_book: h.magic.book,
+            schools: h.magic.schools,
+            spell_bonuses: h.magic.bonuses,
         }),
         terrain: state.terrain,
     }

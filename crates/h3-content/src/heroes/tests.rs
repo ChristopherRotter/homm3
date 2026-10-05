@@ -532,6 +532,19 @@ fn too_many_entries() {
 }
 
 #[test]
+fn at_most_128_spells() {
+    let mut p = pack();
+    p.spells = (0..=MAX_SPELLS)
+        .map(|i| spell(&std::format!("t:s{i}"), &["t:air"]))
+        .collect();
+    p.heroes[0].spells.clear();
+    p.heroes[0].specialty.clear();
+    assert_eq!(fails(p.clone()), CompileError::TooManyEntries("spell"));
+    p.spells.pop();
+    assert!(compile(&[p]).is_ok());
+}
+
+#[test]
 fn at_most_four_spell_schools() {
     let mut p = pack();
     p.spell_schools = (0..5).map(|i| school(&std::format!("t:s{i}"))).collect();

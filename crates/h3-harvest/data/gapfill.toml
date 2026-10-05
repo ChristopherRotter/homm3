@@ -249,6 +249,8 @@ tactics_zone_columns = [3, 5, 7]            # BAT-TAC-001 (by Tactics level diff
 tactics_sources = ["wiki-tactics"]
 surrender = { resource = "gold", cost_percent = 50 }   # BAT-FLE-002 (batch 1b R4: war machines count)
 surrender_sources = ["wiki-combat-surrender"]
+hero_casts_per_round = 1                         # BAT-MAG-001
+magic_sources = ["wiki-combat-casting", "vcmi-casting"]
 
 # ---------------------------------------------------------------------------------------------
 # Creature abilities (E03 T2, ADR-0012): behaviour the original hard-codes per creature, beyond
@@ -1269,6 +1271,20 @@ id = "vcmi-magic-artifacts"
 kind = "vcmi"
 ref = "config/artifacts.json (1.7.5): spellBook (L2); orbOfTheFirmament, orbOfSilt, orbOfTempestuousFire, orbOfDrivingRain SPELL_DAMAGE 50 for air, earth, fire, water (L1166-L1217); lib/battle/CBattleInfoCallback.cpp L117-L159: a hero without a spell book cannot cast"
 url = "https://github.com/vcmi/vcmi/blob/1.7.5/config/artifacts.json#L1166-L1217"
+retrieved = "2026-10-05"
+
+[[source]]
+id = "wiki-combat-casting"
+kind = "wiki"
+ref = "Combat - Heroes 3 wiki: 'A hero may cast a spell only right after activation of one of their creatures, just once per round'"
+url = "https://heroes.thelazy.net/index.php/Combat"
+retrieved = "2026-10-05"
+
+[[source]]
+id = "vcmi-casting"
+kind = "vcmi"
+ref = "lib/battle/CBattleInfoCallback.cpp L117-L159 (1.7.5): a hero casts only with a spell book, not in the tactics phase and while its side's casts this round are below its limit (one); lib/battle/BattleInfo.cpp L651-L670: the counter is reset when a round starts; config/spells/offensive.json targetModifier smart: Magic Arrow, Ice Bolt, Lightning Bolt, Implosion, Chain Lightning and Titan's Lightning Bolt target only the side the spell is bad for (lib/spells/effects/UnitEffect.cpp L288-L293)"
+url = "https://github.com/vcmi/vcmi/blob/1.7.5/lib/battle/CBattleInfoCallback.cpp#L117-L159"
 retrieved = "2026-10-05"
 
 [artifacts]

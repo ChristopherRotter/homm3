@@ -1130,6 +1130,7 @@ fn write_battle(out: &mut String, gap: &GapFill) {
         "surrender = {{ resource = \"{}\", cost_percent = {} }}",
         b.surrender.resource, b.surrender.cost_percent
     );
+    let _ = writeln!(out, "hero_casts_per_round = {}", b.hero_casts_per_round);
 }
 
 #[cfg(test)]

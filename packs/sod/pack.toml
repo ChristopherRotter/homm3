@@ -32,6 +32,7 @@ power = 0
 effect = [600, 600, 600, 600]
 polarity = "negative"
 target = "stack"
+side = "enemy"
 effects = [{ kind = "damage" }]
 
 [[artifact_slot_override]]

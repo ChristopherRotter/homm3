@@ -55,6 +55,7 @@ pub(crate) fn battle_def() -> BattleParamsDef {
         tight_formation: vec![vec![5], vec![4, 6], vec![4, 5, 6]],
         tactics_zone_columns: vec![3, 5, 7],
         surrender: None,
+        hero_casts_per_round: 1,
     }
 }
 
@@ -270,7 +271,7 @@ fn hash_is_stable_and_sensitive() {
     );
 }
 
-const GOLDEN_BASE_HASH: u64 = 0xc6ad_f73e_5158_e7e5;
+const GOLDEN_BASE_HASH: u64 = 0xa1e6_0d88_a466_b57d;
 
 fn expect(packs: &[ContentPack], profile: &str) -> CompileError {
     Ruleset::compile(packs, profile).unwrap_err()
