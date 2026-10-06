@@ -480,3 +480,82 @@ defense can go below 0 after a Disrupting Ray), Prayer subtracts from attack, de
 (unless a war machine) speed, Haste from speed; the others only stop being read. **Disrupting
 Ray is never ended**: 0x444510 returns at once for it, so its duration stops at 1 and the
 defense stays lowered for the rest of the battle.
+
+### 7.10 Code reading: physical damage and the T3b1 spells (E04b T3b1, 2026-10-06)
+
+Read for T3b1 (Q29: insight only, nothing copied; survey §15's reading list). Offsets as in §7.9.
+
+**Physical damage** (0x443F40; the shot routine 0x43F900 calls it for shots, 0x440310 for melee
+strikes and retaliations; 0x442A50 and 0x443D90 are the AI's estimates of the same). Three
+stages, each **truncated**, the last at least 1:
+
+1. *Bonuses as an integer* (0x443840 around 0x443320; base `b` from 0x443160, Bless and Curse
+   included): `B = 0`; jousting (Cavalier, Champion; not against Pikemen and Halberdiers)
+   `B = trunc(b × hexes × 0.05)`; a lucky strike (+0x70, set by the luck roll) `B += b`; if attack
+   ≥ defense (0x442410, 0x442590), `r = min((attack − defense) × 0.05, 3.0)` stored as a double
+   and `B = trunc(b × r + B)`; elemental pairs (Air/Storm against Earth/Magma, Earth/Magma
+   against Air/Storm, Fire/Energy against Water/Ice, Water/Ice against Fire/Energy) `B += b`;
+   hate (Angels/Archangels and Devils/Arch Devils, Genies/Master Genies and Efreet/Efreet
+   Sultans, Titans and Black Dragons, each way) `B += b / 2` (integer); with a hero on the
+   striker's side (the other side's while it is hypnotized), `B = trunc(o × b + B)` with `o`
+   Archery for a shot or Offense for a melee strike (0x4E4160, 0x4E42B0; single-precision rates;
+   then a Bless specialist's bonus, T3c); then a Dread Knight's death blow (20 %) `B += b` and the
+   Ballista's double damage (by the hero's Artillery) `B += b`. The damage so far is `b + B`.
+2. *Times the defense and penalty factor* (0x443B90): `f = 1`; if defense > attack, `f = max(1 −
+   (defense − attack) × 0.025, 0.3)` stored as a double; × 0.5 for a Psychic Elemental against a
+   mind-immune creature and for a Magic Elemental against a Magic Elemental or Black Dragon; for
+   a shot × 0.5 behind a wall (sieges, E04c) and × 0.5 beyond the full-damage distance (0x467600);
+   for a shooter's melee strike × 0.5 unless it has no melee penalty; then the Blind and Paralyze
+   retaliation factors (+0x4C0/+0x4C1, T4/T7). Truncated.
+3. *Times the target's protection factor*: `g = 1`; Air Shield's stored factor for a shot,
+   Shield's for a melee strike (retaliations included); × 0.5 while petrified (spell 70); × `(1 −
+   Armorer)` of the target's hero (0x4E4310: the single-precision rate, grown for a specialist,
+   at most 1). Truncated, at least 1.
+
+The constants 0.05, 0.025, 0.3 and 3.0 are doubles (0.05 and 0.025 slightly above the
+decimals); only the hero rates and the spells' stored factors are single precision. The x87
+precision control is never set by the game's own code (only the runtime's `_ftol` changes the
+rounding mode), so operations round to the thread's default, which on Windows is 53 bits
+(inference; 24 bits is refuted by batch 1a R3, 53 and 64 bits both fit batch 1a and differ in
+other cases, e.g. 4 Angels against one more defense point: 195 at 53 bits, 194 at 64).
+
+**Applying the T3b1 spells** (0x4448F0, cases by spell): Shield, Air Shield and the four
+Protections store `v / 100` as `f32` (Shield +0x4B8, Air Shield +0x4BC, Protection from Air,
+Fire, Water, Earth +0x4A8, +0x4AC, +0x4B0, +0x4B4; Fire Shield +0x4A0, T3b2); Slayer stores the
+caster's **mastery** (+0x48C), not a value; Counterstrike stores `v` (+0x494) and adds it to the
+retaliations left this round (+0x454) at once. As in §7.9, a re-cast changes only the duration
+and the stored mastery, so Slayer's creature set and Counterstrike's count stay those of the
+first cast. Ending (0x444510) gives nothing back for any of them: Counterstrike's extra
+retaliations stay until the next round start.
+
+**Slayer** (0x442410, the attack of a strike against a target): while active, +8 attack
+(a constant in the code; the table's value is 8 at every mastery) against a creature with flag
+`0x80` (king 1) at any mastery, **none included**, with `0x100` (king 2) from Advanced, with
+`0x200` (king 3) at Expert; melee and shots alike; then a Slayer specialist's bonus (T3c).
+
+**Retaliations** (0x447120 at every round start, 0x43D970 at the battle start): 1, Griffins 2,
+Royal Griffins 5000 (unlimited); plus Counterstrike's `v` while it is active; 0 for war machines.
+The round start does this **before** the durations fall, so in the round in which Counterstrike
+runs out the stack still has its extra retaliations. A retaliation uses one (0x441DF7; a
+petrified stack does not retaliate).
+
+**Protections** (0x5A7BB0, confirmed): the damage as `f32` times the stored factor, truncated,
+for the first of the spell's schools, checked earth, air, fire, water, that has its protection
+active; a spell without a school is unchanged. So with `f32(0.7)` slightly below 0.7, Basic
+protection turns a damage of 100 into 69.
+
+**Dispel** (case at 0x5A15CE): on a target stack (below Expert) it ends every active spell but
+Poison (71), each through 0x444510, so Disrupting Ray stays; at Expert it does the same for every
+stack of both sides that it can affect (0x5A8090 above 0, **no resistance roll**), then removes
+every battlefield object whose type has one of the bits `0x3C` (the spell obstacles: Fire Wall,
+Force Field, Quicksand, Land Mine; T5). Which stacks it can affect (0x5A8090 for spell 35):
+none if the stack's hero wears the Sphere of Permanence (artifact 92); below Advanced only the
+caster's own stacks; below Expert only a stack with at least one active spell (ids 10–80); then
+the usual immunity tests. Magic Mirror never redirects Dispel (0x59EE99).
+
+**Cure** (case at 0x5A17E6; 0x446500 per stack): heals the top creature only (lost hit points
+− (power × factor + effect[mastery] + a Cure specialist's bonus), at least 0; no creature comes
+back), and ends Curse, Weakness, Sorrow, Misfortune, Slow, Berserk, Hypnotize, Forgetfulness,
+Blind, Stone Gaze, Poison, Disease, Paralyze and Age (not Bind, not Disrupting Ray, not Frenzy).
+At Expert it does so for every own stack it can affect that is not hypnotized. No test of the
+target's health or spells: Cure may be cast on a healthy stack without negative spells.

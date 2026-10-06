@@ -52,33 +52,27 @@ the catalog, quirks in the ledger, decisions in ADRs, formats in `packs/README.m
 
 ## Cloud sandbox and syncing
 
-Agents usually work in a cloud sandbox; the user's repo folder is the only durable copy
-(`AGENTS.md`, "Interruptions and resuming"). The device tools are the session's tools for the
-user's computer.
+Agents usually work in a cloud sandbox cloned from GitHub (`ChristopherRotter/homm3`); the
+remote branch is the durable copy (`AGENTS.md`, "Interruptions and resuming"). Q49 (2026-10-06).
 
-1. **On the user's machine:** get delete permission for the repo folder before any git command
-   (even `git status` can leave `.git/index.lock` behind). Bundle the working branch and `master`
-   (doc-drift needs `master`): `git bundle create "Claude outputs/sync.bundle" <branch> master`
-   (`mkdir -p "Claude outputs"` first; the folder is not ignored, so remove it after staging).
-2. **Stage** the bundle and `original-data/install/Heroes3.exe`,
+1. **Clone** the working branch: `git clone --depth 1 --branch <branch> <remote> homm3`
+   (`git fetch origin master` before pushing, so the push sends a thin pack; doc-drift needs
+   `master`).
+2. **Original data** (needed for code reading, the harvester and `verify --with-original-data`):
+   when the session is linked to the user's computer, get read access to the user's repo folder
+   (`D:\Users\Christopher\Source\Repos\homm3`) and stage `original-data/install/Heroes3.exe`,
    `original-data/install/Data/H3bitmap.lod`, `original-data/install/Data/H3ab_bmp.lod` and
-   `original-data/extracted/H3bitmap/Objects.txt` (one large LOD per staging call).
-3. **In the sandbox:** `git clone -b <branch> <staged bundle> homm3`, then in it
-   `git fetch <staged bundle> master:master` and `scripts/sandbox-setup.sh`. The script links
-   the image's `stable` toolchain as the pinned one, copies the original data into
-   `original-data/` and starts the tool installs and the baseline verify in the background
-   (about 15 minutes; read the docs meanwhile, then check `tail -n 3 target/sandbox/verify.log`).
-   Later verify runs: `nohup scripts/sandbox-verify.sh --with-original-data > /dev/null 2>&1 &`.
-4. **After every commit:** bundle the new commits (`git bundle create <outputs>/sync-<n>.bundle
-   <last synced>..<branch>`, a new name each time), write it into `Claude outputs/` on the
-   user's machine, there `git -c gc.auto=0 fetch "Claude outputs/sync-<n>.bundle" <branch>` (a
-   detached auto-gc would die with the device shell and leave `.git/gc.log.lock`) and
-   `git merge --ff-only FETCH_HEAD`, delete the bundle, and check that `git status` is clean and
-   no `.git/*.lock` is left. If the user committed in between, their repo wins: bring their
-   commits into the sandbox first.
-5. The sandbox clone's `origin` is a bundle; after a sync point it at the latest bundle
-   (`git remote set-url origin <bundle> && git fetch origin`) so tools do not report unpushed
-   commits.
+   `original-data/extracted/H3bitmap/Objects.txt` (one large LOD per staging call). Without the
+   link, the user may upload them; otherwise the session only prepares (Q48).
+3. **Setup:** `scripts/sandbox-setup.sh` links the image's `stable` toolchain as the pinned one,
+   copies the staged files into `original-data/` and starts the tool installs and the baseline
+   verify in the background (about 15 minutes; read the docs meanwhile, then check
+   `tail -n 3 target/sandbox/verify.log`). Later runs:
+   `nohup scripts/sandbox-verify.sh --with-original-data > /dev/null 2>&1 &`.
+4. **After every commit:** push to the branch. The user's local clone catches up with a fetch;
+   if the user pushed in between, their commits win: rebase onto them first.
+5. Packs written by hand in a session without the original data are confirmed with
+   `cargo xtask verify --with-original-data` before the merge (Q48).
 
 ## Stub registry
 

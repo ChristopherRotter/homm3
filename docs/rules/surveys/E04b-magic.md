@@ -292,3 +292,30 @@ retaliations; effect kinds Dispel and Cure (heal); Dispel's side by mastery.
 
 **Experiment candidates (batch 2b, if the code leaves them open):** Shield with Armorer on a
 fixed hit (rounding); Counterstrike on Griffins; Cure on a healthy stack.
+
+**Results of the reading** (E04b T3b1, 2026-10-06; `installation.md` §7.10):
+
+1. Shield, Air Shield and the Protections store `v / 100` as `f32`; Slayer stores the mastery;
+   Counterstrike stores `v` and adds it to the retaliations left at once.
+2. Ending gives nothing back; Counterstrike's extra retaliations stay until the next round start.
+3. Physical damage has **three truncated stages** (integer bonuses; defense and penalties;
+   Shield or Air Shield, petrification and Armorer), not one rounding as BAT-DMG-002 had it; the
+   attack and defense rates are doubles. Air Shield takes every shot, Shield every melee strike.
+   The user chose to rebuild BAT-DMG-002 in these stages now (Q50).
+4. Confirmed: the first protected school in the order earth, air, fire, water; `f32(0.7)` makes
+   Basic protection one lower on round values (S-19 stands).
+5. Slayer: king 1 at any mastery (VCMI's "none affects nothing" is wrong), king 2 from Advanced,
+   king 3 at Expert; +8 as a constant; melee and shots.
+6. Retaliations: 1, Griffins 2, Royal Griffins unlimited, + Counterstrike while active, reset at
+   the round start **before** durations fall, so Counterstrike's extra lasts one round longer.
+7. Dispel: everything but Poison (Disrupting Ray stays); below Advanced own stacks only, below
+   Expert only a stack with a spell; Expert every stack it can affect without a resistance roll,
+   and the spell obstacles; Sphere of Permanence protects; never mirrored. Open for T3b1b: the
+   roll of a single-target Dispel on an own stack (a neutral spell's share includes the stack's
+   own hero's resistance, §7.8).
+8. Cure: top creature only, no raising; ends 14 negative spells (not Bind); castable on any own
+   stack it can affect, healthy or not (VCMI's condition is not in the original).
+
+**Experiment candidates for batch 2b:** the x87 precision (4 Angels attacking with one defense
+point against them: 195 at 53 bits, 194 at 64; Q50); Counterstrike's extra round; Shield with
+Basic Armorer on a round value.

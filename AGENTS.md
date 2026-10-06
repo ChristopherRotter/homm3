@@ -52,8 +52,8 @@ If the user is not present, do the safe preparatory work, document the decision 
 
 The user may stop a session at any moment (for example by shutting down the computer) and resume later, in the same task or in a new one. Work so that an unplanned stop costs at most the step in progress:
 
-- **The user's repo folder is the only durable copy.** A cloud sandbox is temporary: it can be reclaimed while idle, and anything that exists only there (uncommitted edits, unsynced commits, installed tools) is lost with it.
-- **Sync after every commit.** If you work in a cloud clone, bring each commit into the user's repo right away (git bundle → fast-forward the user's branch). Never let more than the current step exist only in the sandbox.
+- **The GitHub remote (and the user's repo folder) are the durable copies.** A cloud sandbox is temporary: it can be reclaimed while idle, and anything that exists only there (uncommitted edits, unsynced commits, installed tools) is lost with it.
+- **Sync after every commit.** If you work in a cloud clone, push each commit to the branch on GitHub right away (`docs/08-work-process.md`, "Cloud sandbox and syncing"). Never let more than the current step exist only in the sandbox.
 - **Keep `docs/HANDOFF.md` resumable.** At every task boundary (and before anything long-running) add or refresh a short "in progress" note in the newest entry: what is done, what is next, what is half-done and where.
 - **When the user says they are about to stop, checkpoint first:** finish or cleanly back out of the current step, commit, update HANDOFF, sync, and confirm before they shut down.
 - **Git on the user's machine:** get delete permission for the repo folder before running git there (git must be able to remove its own lock files), and never leave a `.git/*.lock` behind. Do not start a git operation on the user's machine right before an announced stop.
