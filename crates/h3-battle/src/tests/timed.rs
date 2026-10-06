@@ -87,6 +87,7 @@ fn haste_lasts_power_rounds_and_ends_at_a_round_start() {
             spell: spell(&r, "haste"),
             rounds: Some(3),
             value: 5,
+            mastery: 2,
             attack: 0,
             defense: 0,
             speed: 5,

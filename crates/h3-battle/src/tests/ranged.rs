@@ -366,14 +366,12 @@ fn strike_flags_and_factor_limits() {
     assert_eq!(f.bits(), 0b110);
     assert!(f.contains(StrikeFlags::RANGED) && !f.contains(StrikeFlags::RETALIATION));
     assert_eq!(StrikeFlags::NONE.bits(), 0);
-    // A strike has fewer reductions than the factor capacity; extra ones are ignored.
-    let mut factors = crate::damage::Factors::default();
-    for _ in 0..7 {
-        factors.reduce(factors.rate(50, crate::damage::Unit::Percent));
-    }
-    assert_eq!(
-        factors.apply(128),
-        2,
-        "128 / 2^6 = 2; the seventh halving is ignored"
-    );
+    // Every reduction at its limit still leaves the minimum of 1.
+    let p = ruleset();
+    let mut all = crate::damage::Strike::new(0, 40);
+    all.penalty_percent = 100;
+    all.protection_percent = 0;
+    all.hero_reduction_bp = 10_000;
+    assert_eq!(all.damage(128, p.battle(), false), 1);
+    assert_eq!(all.damage(128, p.battle(), true), 1);
 }

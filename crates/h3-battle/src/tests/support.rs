@@ -389,6 +389,10 @@ pub const CREATURES: &[Creature] = &[
     ),
     // Timed spells (BAT-MAG-009 to 011): immune to mind spells.
     ("statue", 10, 10, 2, 2, 10, 5, &["mind_immune"]),
+    // Slayer (BAT-MAG-014): the three king levels.
+    ("lord", 10, 10, 2, 2, 50, 4, &["king_1"]),
+    ("duke", 10, 10, 2, 2, 50, 4, &["king_2"]),
+    ("prince", 10, 10, 2, 2, 50, 4, &["king_3"]),
 ];
 
 /// The traits of a test creature as creature info: flags, abilities, shots and faction.
@@ -698,13 +702,26 @@ pub fn ruleset_with(profile: &str, edit: impl FnOnce(&mut BattleParamsDef)) -> R
                 key: ContentKey::new("t", "unlimited").unwrap(),
                 quirks: vec![(String::from("quirk.battle.unlimited_ballista_shots"), true)],
             },
+            ProfileDef {
+                key: ContentKey::new("t", "first").unwrap(),
+                quirks: vec![(String::from("quirk.battle.first_protection"), true)],
+            },
+            ProfileDef {
+                key: ContentKey::new("t", "original").unwrap(),
+                quirks: vec![
+                    (String::from("quirk.battle.first_protection"), true),
+                    (String::from("quirk.battle.single_precision_rates"), true),
+                ],
+            },
         ],
         battle: Some(battle),
-        spell_schools: ["air", "fire"]
+        // Fire's protection is checked before air's (quirk Q-0007), against the pack order.
+        spell_schools: [("air", 1), ("fire", 0)]
             .iter()
-            .map(|&name| SpellSchoolDef {
+            .map(|&(name, protection_rank)| SpellSchoolDef {
                 key: ContentKey::new("t", name).unwrap(),
                 name: String::from(name),
+                protection_rank,
             })
             .collect(),
         spells: SPELLS
@@ -850,9 +867,11 @@ pub type TimedSpec = (
     bool,
 );
 
-/// The timed test spells, all level 1 in the air school, costing 5/4/4/4, after the original's
-/// (survey §14): `haste` and `sloth` (Slow) counter each other; `ray` (Disrupting Ray) is
-/// permanent and cumulative; `bless` and `curse` counter each other.
+/// The timed test spells, all level 1 in the air school (`fireward` in the fire school), costing
+/// 5/4/4/4, after the original's (survey §14, §15): `haste` and `sloth` (Slow) counter each
+/// other; `ray` (Disrupting Ray) is permanent and cumulative; `bless` and `curse` counter each
+/// other; `shield`, `airshield`, `airward` and `fireward` protect, `slayer` is Slayer and
+/// `counter` Counterstrike.
 pub const TIMED: &[TimedSpec] = &[
     (
         "haste",
@@ -998,6 +1017,66 @@ pub const TIMED: &[TimedSpec] = &[
         false,
         false,
     ),
+    (
+        "shield",
+        true,
+        &[TimedChange::MeleeProtection],
+        [85, 85, 70, 70],
+        None,
+        true,
+        false,
+        false,
+    ),
+    (
+        "airshield",
+        true,
+        &[TimedChange::RangedProtection],
+        [75, 75, 50, 50],
+        None,
+        true,
+        false,
+        false,
+    ),
+    (
+        "airward",
+        true,
+        &[TimedChange::SchoolProtection],
+        [50, 50, 50, 50],
+        None,
+        true,
+        false,
+        false,
+    ),
+    (
+        "fireward",
+        true,
+        &[TimedChange::SchoolProtection],
+        [70, 70, 50, 50],
+        None,
+        true,
+        false,
+        false,
+    ),
+    (
+        "slayer",
+        true,
+        &[TimedChange::Slayer],
+        [8, 8, 8, 8],
+        None,
+        false,
+        false,
+        false,
+    ),
+    (
+        "counter",
+        true,
+        &[TimedChange::Retaliations],
+        [1, 1, 2, 2],
+        None,
+        true,
+        false,
+        true,
+    ),
 ];
 
 /// The definition of a timed test spell.
@@ -1010,7 +1089,9 @@ fn timed_def(
         name: String::from(name),
         category: SpellCategory::Combat,
         level: 1,
-        schools: vec![ContentKey::new("t", "air").unwrap()],
+        schools: vec![
+            ContentKey::new("t", if name == "fireward" { "fire" } else { "air" }).unwrap(),
+        ],
         cost: [5, 4, 4, 4],
         power: 0,
         effect,

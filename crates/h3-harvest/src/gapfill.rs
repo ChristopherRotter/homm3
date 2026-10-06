@@ -53,6 +53,14 @@ pub struct Spells {
     /// What timed spells change (E04b T3a), per spell.
     #[serde(default)]
     pub timed: Vec<SpellTimed>,
+    /// The order in which the original checks a damage spell's schools for the target's
+    /// protections (school names; E04b T3b1, `installation.md` §7.8, §7.10): written as the
+    /// schools' `protection_rank`.
+    #[serde(default)]
+    pub protection_order: Vec<String>,
+    /// Sources of `protection_order`.
+    #[serde(default)]
+    pub protection_sources: Vec<String>,
 }
 
 /// The timed effects of one spell (pack format v5, `packs/README.md`; the original's code,
@@ -533,7 +541,8 @@ impl GapFill {
                 .chain(g.artifacts.combinations.iter().flat_map(|c| &c.sources))
                 .chain(g.artifacts.effects.iter().flat_map(|e| &e.sources))
                 .chain(g.spells.targeting.iter().flat_map(|t| &t.sources))
-                .chain(g.spells.timed.iter().flat_map(|t| &t.sources));
+                .chain(g.spells.timed.iter().flat_map(|t| &t.sources))
+                .chain(&g.spells.protection_sources);
         for r in refs {
             if !ids.contains(r.as_str()) {
                 return Err(format!("gapfill: unknown source `{r}`"));

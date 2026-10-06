@@ -134,11 +134,23 @@ pub enum TimedChange {
     Luck,
     /// Luck − v (Misfortune).
     LuckLoss,
+    /// Damage of melee strikes taken × v %, single precision (Shield; BAT-MAG-012).
+    MeleeProtection,
+    /// Damage of shots taken × v %, single precision (Air Shield; BAT-MAG-012).
+    RangedProtection,
+    /// Damage of spells of this spell's schools taken × v % (the Protections; BAT-MAG-013).
+    SchoolProtection,
+    /// Attack + v against creatures of a king level the first cast's mastery reaches: king 1
+    /// always, king 2 from Advanced, king 3 at Expert (Slayer; BAT-MAG-014).
+    Slayer,
+    /// Retaliations per round + v; the first cast adds v to those left at once, the end gives
+    /// nothing back (Counterstrike; BAT-MAG-015).
+    Retaliations,
 }
 
 impl TimedChange {
     /// All values, in code order.
-    pub const ALL: [Self; 14] = [
+    pub const ALL: [Self; 19] = [
         Self::Speed,
         Self::SpeedPercent,
         Self::Attack,
@@ -153,6 +165,11 @@ impl TimedChange {
         Self::MoraleLoss,
         Self::Luck,
         Self::LuckLoss,
+        Self::MeleeProtection,
+        Self::RangedProtection,
+        Self::SchoolProtection,
+        Self::Slayer,
+        Self::Retaliations,
     ];
 
     /// Pack name.
@@ -172,6 +189,11 @@ impl TimedChange {
             Self::MoraleLoss => "morale_loss",
             Self::Luck => "luck",
             Self::LuckLoss => "luck_loss",
+            Self::MeleeProtection => "melee_protection",
+            Self::RangedProtection => "ranged_protection",
+            Self::SchoolProtection => "school_protection",
+            Self::Slayer => "slayer",
+            Self::Retaliations => "retaliations",
         }
     }
 

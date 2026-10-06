@@ -304,3 +304,46 @@ records how and why the tasks went.
   the minimum; the observation shows a stack's first eight effects.
 - **Not done (later tasks):** the specialties in timed spells (T3c; `SpellSpecialty` stays
   damage-only); creature casters' re-casts (T7); Magic Mirror on negative timed spells (T4).
+
+### T3b1a — Staged physical damage and the protective spells (2026-10-06)
+
+- **Seam:** the user had the original files staged from the repo folder through the device link
+  (Q49 answered) and chose: read all of survey §15, then build Shield, Air Shield, the four
+  Protections, Slayer and Counterstrike, checkpoint before Dispel and Cure (T3b1b).
+- **Code reading** (`installation.md` §7.10, survey §15 results): what the five spells store;
+  physical damage in three truncated stages (0x443F40); Slayer's king levels (king 1 at any
+  mastery); retaliations reset before the durations fall; Dispel and Cure read for T3b1b.
+- **Damage formula (Q50, the user: stage it now):** BAT-DMG-002 under quirk Q-0005 follows the
+  executable: integer bonuses each truncated in the code's order (jousting, luck, attack
+  advantage, hate, Offense/Archery, death blow, double damage), then the defense and penalty
+  factor, then the protection factor (Shield or Air Shield and Armorer), each truncated, at
+  least 1; the code's doubles (0.05, 0.025, 0.3, 3.0) and single-precision skill and spell
+  factors in an exact x87 emulation (`h3_kernel::arith::X87`, 53 bits; cross-checked against
+  IEEE doubles by a property test). Strict-fixed keeps exact decimals rounded once
+  (`damage::Strike` replaces `Factors`). Agent decision: the x87 precision is Windows' default
+  of 53 bits (the game never sets it); batch 2b tells it from 64 bits.
+- **Content (pack format v6):** five timed changes (`melee_protection`, `ranged_protection`,
+  `school_protection`, `slayer`, `retaliations`); `protection_rank` on spell schools (the
+  original's check order earth, air, fire, water); quirk Q-0007 (`quirk.battle.first_protection`,
+  S-19). Harvested from the gap-fill (source `exe-protection-spells`); ruleset hash v18.
+- **Battle:** BAT-MAG-012 to 015. `SpellValues` gains the melee, ranged and school protections
+  and Slayer (bonus and the first cast's mastery; `ActiveEffect.mastery`); Counterstrike adds
+  its value at the cast and at every round start from the effect list, before the countdown;
+  the Protections join spell damage after the creature step (`magic::protected`). State hash
+  v21.
+- **Workload:** the synthetic pack gains Aegis (melee and ranged protection), Hallow (storm
+  protection), Smiting (Slayer; the Brute becomes king 1) and Riposte (Counterstrike); in `full`
+  Brea knows Smiting and Riposte, Corwin Aegis and Hallow. Golden replays re-recorded.
+- **Measurements** (this sandbox): the old workload (af5022f's packs) on the new engine 461.2 M
+  Ir for 10 273 steps against 451.4 M for 10 162 (+1.1 % per step; the trajectories differ with
+  the new damage; the staged damage costs ≈ 4 M Ir: `X87::times`, `ratio`). New workload 10 907
+  steps, 490.2 M Ir, `bench-check` re-baselined. `BattleState` 3 336 → 3 672 bytes (`Stack` 60 →
+  68); clone ≈ 340 → 397 ns, fork ≈ 1.10 → 1.28 µs (both engines measured in this session).
+  `h3 bench` full ≈ 155–170 k steps/s.
+- **Tests:** `tests/protect.rs` (Shield and Air Shield in melee and shots, the Protections in
+  three profiles, Slayer by mastery and king level, Counterstrike now, at round starts, on
+  re-cast and with unlimited retaliations); `tests/rules.rs` (batch 1a R1–R3 staged, the stages'
+  truncations, the profile flag); `arith.rs`/`num.rs` (X87 vectors and the double cross-check).
+- **Not done:** Dispel and Cure (T3b1b); Fire Shield and Frenzy (T3b2); the specialties
+  (T3c); petrification's ×0.5 in stage 3 and the Psychic and Magic Elementals' halvings in stage
+  2 (T7 and BACKLOG); the Blind and Paralyze retaliation factors (T4, T7).

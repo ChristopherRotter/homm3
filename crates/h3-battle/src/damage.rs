@@ -1,15 +1,16 @@
 //! Damage (BAT-DMG-001..003, BAT-DMG-006/008, BAT-RNG-002/003) and the Defend bonus (BAT-TRN-004).
 //!
-//! A strike's damage is its base damage (BAT-DMG-001) times the sum of its bonuses and the product
-//! of its reductions, computed exactly with one final rounding down (BAT-DMG-002):
-//! `floor(base · (1 + Σ bonus) · Π (1 − reduction))`, at least 1. The rates are exact decimals or,
-//! with quirk Q-0005, their single-precision values (`h3_kernel::arith::single_precision`).
+//! A strike's damage is its base damage (BAT-DMG-001) with its bonuses and reductions
+//! (BAT-DMG-002). With exact decimal rates it is `floor(base · (1 + Σ bonus) · Π (1 − reduction))`,
+//! at least 1, rounded once. With quirk Q-0005 it follows the executable's three truncated stages
+//! (`docs/formats/installation.md` §7.10), in its x87 arithmetic (`h3_kernel::arith::X87`): the
+//! bonuses as an integer, then the defense and penalty factor, then the protection factor.
 
 use core::num::NonZeroU64;
 
 use h3_content::BattleParams;
 use h3_kernel::Rng;
-use h3_kernel::arith::{SINGLE_FRAC_BITS, WideUint, mul_div_floor, single_precision};
+use h3_kernel::arith::{DOUBLE_BITS, SINGLE_BITS, WideUint, X87, mul_div_floor};
 
 use crate::state::{Stack, StackFlags};
 
@@ -31,148 +32,167 @@ pub(crate) fn base_damage(rng: &mut Rng, count: u32, min: u16, max: u16, samples
     }
 }
 
-/// Most reductions one strike can have.
-const MAX_REDUCTIONS: usize = 6;
-
-/// Scale of the factors with exact decimal rates: basis points.
-const DECIMAL_SCALE: u64 = 10_000;
+/// Scale of the exact decimal rates: basis points.
+const BP: u64 = 10_000;
 
 /// The same as a divisor.
-const DECIMAL_DIVISOR: NonZeroU64 = match NonZeroU64::new(DECIMAL_SCALE) {
+const BP_DIVISOR: NonZeroU64 = match NonZeroU64::new(BP) {
     Some(d) => d,
     None => NonZeroU64::MIN,
 };
 
-/// The unit a rate parameter is given in.
+/// Everything besides its base that decides a strike's damage (BAT-DMG-002), set by the rules
+/// that contribute to it.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub(crate) enum Unit {
-    /// Hundredths.
-    Percent,
-    /// Thousandths.
-    Permille,
-    /// Ten-thousandths.
-    BasisPoints,
+pub(crate) struct Strike {
+    /// Jousting: percent per hex and hexes charged (BAT-DMG-005).
+    pub jousting: (u16, u32),
+    /// A lucky strike: +100 % (BAT-LCK-002).
+    pub lucky: bool,
+    /// The striker's attack and the target's defense as they meet (BAT-MAG-011, BAT-DMG-006,
+    /// BAT-TRN-004).
+    pub attack: i32,
+    /// See `attack`.
+    pub defense: i32,
+    /// Hate against the target, percent (BAT-DMG-004).
+    pub hate_percent: u16,
+    /// The striker's hero's Offense or Archery, basis points (BAT-HER-004).
+    pub hero_bonus_bp: u16,
+    /// A death blow: +100 % (BAT-DMG-007).
+    pub death_blow: bool,
+    /// The Ballista's double damage: +100 % (BAT-WAR-006).
+    pub double_damage: bool,
+    /// The range or melee penalty, percent (BAT-RNG-002/003); 0 = none.
+    pub penalty_percent: u16,
+    /// The share of damage the target's Shield or Air Shield lets through, percent
+    /// (BAT-MAG-012); 100 = none.
+    pub protection_percent: u16,
+    /// The target's hero's Armorer, basis points (BAT-HER-004).
+    pub hero_reduction_bp: u16,
 }
 
-impl Unit {
-    /// The unit's denominator.
-    const fn den(self) -> u16 {
-        match self {
-            Self::Percent => 100,
-            Self::Permille => 1000,
-            Self::BasisPoints => 10_000,
-        }
-    }
-}
-
-/// The bonuses (summed) and reductions (multiplied) of one strike, as numerators over the scale:
-/// basis points with exact decimal rates, `2^SINGLE_FRAC_BITS` with the single-precision values
-/// of the original (quirk Q-0005, `quirk.battle.single_precision_rates`).
-#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
-pub(crate) struct Factors {
-    single: bool,
-    bonus: u64,
-    reductions: [u64; MAX_REDUCTIONS],
-    len: usize,
-}
-
-impl Factors {
-    /// No factors yet; `single` selects the single-precision rates (Q-0005).
-    pub(crate) const fn new(single: bool) -> Self {
+impl Strike {
+    /// A strike of `attack` on `defense` with nothing else.
+    pub(crate) const fn new(attack: i32, defense: i32) -> Self {
         Self {
-            single,
-            bonus: 0,
-            reductions: [0; MAX_REDUCTIONS],
-            len: 0,
+            jousting: (0, 0),
+            lucky: false,
+            attack,
+            defense,
+            hate_percent: 0,
+            hero_bonus_bp: 0,
+            death_blow: false,
+            double_damage: false,
+            penalty_percent: 0,
+            protection_percent: 100,
+            hero_reduction_bp: 0,
         }
     }
 
-    /// The numerator of 1.
-    const fn scale(&self) -> u64 {
-        if self.single {
-            1 << SINGLE_FRAC_BITS
-        } else {
-            DECIMAL_SCALE
-        }
-    }
-
-    /// The rate `value` (in `unit`) at the scale: exact, or its single-precision value (Q-0005).
+    /// The damage of `base` (BAT-DMG-002): in the executable's stages with quirk Q-0005
+    /// (`staged`), else exact and rounded once; at least 1.
     // rule: BAT-DMG-002
-    pub(crate) fn rate(&self, value: u16, unit: Unit) -> u64 {
-        if self.single {
-            // The denominator is never 0.
-            single_precision(value, unit.den()).unwrap_or(0)
+    pub(crate) fn damage(&self, base: u64, params: &BattleParams, staged: bool) -> u64 {
+        if staged {
+            self.staged(base, params)
         } else {
-            u64::from(value) * (DECIMAL_SCALE / u64::from(unit.den()))
+            self.exact(base, params)
         }
+        .max(1)
     }
 
-    /// Adds a bonus (a [`Factors::rate`], possibly times a count) to the bonus sum.
-    pub(crate) fn bonus(&mut self, rate: u64) {
-        self.bonus = self.bonus.saturating_add(rate);
-    }
-
-    /// Adds a reduction (a [`Factors::rate`], at most 1). Reductions of 0 are left out; strikes
-    /// have fewer than `MAX_REDUCTIONS` others by construction (the call sites are the rules
-    /// below), extra ones are ignored.
-    pub(crate) fn reduce(&mut self, rate: u64) {
-        if rate == 0 {
-            return;
+    /// `floor(base · (1 + Σ bonus) · Π (1 − reduction))` with decimal rates, in basis points.
+    /// Saturates on absurd inputs.
+    fn exact(&self, base: u64, p: &BattleParams) -> u64 {
+        let diff = u64::from(self.attack.abs_diff(self.defense));
+        let whole =
+            u64::from(self.lucky) + u64::from(self.death_blow) + u64::from(self.double_damage);
+        let mut bonus = whole * BP
+            + u64::from(self.jousting.0) * u64::from(self.jousting.1) * 100
+            + u64::from(self.hate_percent) * 100
+            + u64::from(self.hero_bonus_bp);
+        let mut reductions = [0u64; 4];
+        if self.attack > self.defense {
+            let per_point = u64::from(p.attack_bonus_per_point_percent) * 100;
+            bonus += (diff * per_point).min(u64::from(p.attack_bonus_cap_percent) * 100);
+        } else {
+            let per_point = u64::from(p.defense_reduction_per_point_permille) * 10;
+            reductions[0] =
+                (diff * per_point).min(u64::from(p.defense_reduction_cap_permille) * 10);
         }
-        let scale = self.scale();
-        if let Some(slot) = self.reductions.get_mut(self.len) {
-            *slot = rate.min(scale);
-            self.len += 1;
-        }
-    }
-
-    /// The damage of `base` with these factors: `floor(base · (1 + Σ bonus) · Π (1 − reduction))`,
-    /// exact, rounded down once, at least 1 (BAT-DMG-002). Saturates on absurd inputs.
-    // rule: BAT-DMG-002
-    pub(crate) fn apply(&self, base: u64) -> u64 {
-        self.product(base).unwrap_or(u64::MAX).max(1)
-    }
-
-    /// The rounded-down product, `None` if it exceeds `u64` (at most eight factors of `u64`, so
-    /// the wide product itself never saturates).
-    fn product(&self, base: u64) -> Option<u64> {
-        let scale = self.scale();
-        let reductions = &self.reductions[..self.len];
-        let mut n = WideUint::new(base).saturating_mul(scale.saturating_add(self.bonus));
+        reductions[1] = u64::from(self.penalty_percent) * 100;
+        reductions[2] = u64::from(100u16.saturating_sub(self.protection_percent)) * 100;
+        reductions[3] = u64::from(self.hero_reduction_bp);
+        // One rounding: the five factors' product (at most 2^64 · (2^64)^5, so the wide
+        // product never saturates) divided by BP^5 at the end.
+        let mut n = WideUint::new(base).saturating_mul(BP + bonus);
         for r in reductions {
-            n = n.saturating_mul(scale - r);
+            n = n.saturating_mul(BP - r.min(BP));
         }
-        let factors = u32::try_from(reductions.len() + 1).unwrap_or(u32::MAX);
-        if self.single {
-            n = n.shr_floor(SINGLE_FRAC_BITS.saturating_mul(factors));
-        } else {
-            for _ in 0..factors {
-                n = n.div_floor(DECIMAL_DIVISOR);
-            }
+        for _ in 0..=reductions.len() {
+            n = n.div_floor(BP_DIVISOR);
         }
-        n.to_u64()
+        n.to_u64().unwrap_or(u64::MAX)
     }
-}
 
-/// The attack/defense part of the factors: a bonus of `per_point` % per point of attack over
-/// defense (capped) or a reduction of `per_point` ‰ per point of defense over attack (capped).
-/// Both may be below 0 after timed effects (BAT-MAG-011); only their difference counts.
-// rule: BAT-DMG-002
-pub(crate) fn attack_defense(
-    factors: &mut Factors,
-    attack: i32,
-    defense: i32,
-    params: &BattleParams,
-) {
-    let diff = u64::from(attack.abs_diff(defense));
-    if attack > defense {
-        let per_point = factors.rate(params.attack_bonus_per_point_percent, Unit::Percent);
-        let cap = factors.rate(params.attack_bonus_cap_percent, Unit::Percent);
-        factors.bonus(diff.saturating_mul(per_point).min(cap));
-    } else {
-        let per_point = factors.rate(params.defense_reduction_per_point_permille, Unit::Permille);
-        let cap = factors.rate(params.defense_reduction_cap_permille, Unit::Permille);
-        factors.reduce(diff.saturating_mul(per_point).min(cap));
+    /// The executable's three stages (0x443F40), each truncated, in x87 arithmetic at
+    /// `X87_PRECISION` bits: the rates of the code are doubles, the hero's and the spells'
+    /// stored factors single precision (quirk Q-0005).
+    fn staged(&self, base: u64, p: &BattleParams) -> u64 {
+        // The code's constants and stored values: doubles and `f32`s (`d > 0` throughout).
+        let double = |n: u16, d: u32| X87::ratio(u32::from(n), d, DOUBLE_BITS).unwrap_or(X87::ZERO);
+        let single = |n: u16, d: u32| X87::ratio(u32::from(n), d, SINGLE_BITS).unwrap_or(X87::ZERO);
+        let stored = |v: u64, bits: u32| X87::int(v).round(bits);
+        let b = stored(base, DOUBLE_BITS);
+        // 1. The bonuses as an integer, each fractional one truncated as it is added.
+        let mut sum = b
+            .times(stored(u64::from(self.jousting.1), DOUBLE_BITS))
+            .times(double(self.jousting.0, 100))
+            .trunc();
+        if self.lucky {
+            sum = sum.saturating_add(base);
+        }
+        if self.attack >= self.defense {
+            let diff = X87::int(u64::from(self.attack.abs_diff(self.defense)));
+            let rate = diff
+                .times(double(p.attack_bonus_per_point_percent, 100))
+                .min(double(p.attack_bonus_cap_percent, 100));
+            sum = b.times(rate).plus(stored(sum, DOUBLE_BITS)).trunc();
+        }
+        sum = sum.saturating_add(mul_div_floor(base, self.hate_percent.into(), 100).unwrap_or(0));
+        if self.hero_bonus_bp > 0 {
+            sum = single(self.hero_bonus_bp, 10_000)
+                .times(stored(base, SINGLE_BITS))
+                .plus(stored(sum, SINGLE_BITS))
+                .trunc();
+        }
+        let whole = u64::from(self.death_blow) + u64::from(self.double_damage);
+        let d1 = base
+            .saturating_add(sum)
+            .saturating_add(base.saturating_mul(whole));
+        // 2. Times the defense and penalty factor.
+        let mut f = X87::ONE;
+        if self.defense > self.attack {
+            let diff = X87::int(u64::from(self.attack.abs_diff(self.defense)));
+            let cap = p.defense_reduction_cap_permille.min(1000);
+            f = X87::ONE
+                .minus(diff.times(double(p.defense_reduction_per_point_permille, 1000)))
+                .max(double(1000 - cap, 1000));
+        }
+        if self.penalty_percent > 0 {
+            f = f.times(double(100u16.saturating_sub(self.penalty_percent), 100));
+        }
+        let d2 = stored(d1, DOUBLE_BITS).times(f).trunc();
+        // 3. Times the protection factor.
+        let mut g = X87::ONE;
+        if self.protection_percent < 100 {
+            g = single(self.protection_percent, 100);
+        }
+        if self.hero_reduction_bp > 0 {
+            let kept = X87::ONE.minus(single(self.hero_reduction_bp.min(10_000), 10_000));
+            g = kept.times(g);
+        }
+        stored(d2, DOUBLE_BITS).times(g).trunc()
     }
 }
 

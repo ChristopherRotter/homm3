@@ -8,29 +8,26 @@ use h3_contracts::{ArmyStack, BattleResult, BattleSide};
 use h3_kernel::Rng;
 
 use super::support::*;
-use crate::damage::{Factors, Unit, apply_damage, attack_defense, base_damage, effective_defense};
+use crate::damage::{Strike, apply_damage, base_damage, effective_defense};
 use crate::event::StrikeFlags;
 
-/// Damage of `base` with only the attack/defense factor (BAT-DMG-002).
+/// Damage of `base` with only the attack/defense factor, exact decimal rates (BAT-DMG-002).
 fn modified_damage(base: u64, attack: u16, defense: u16, p: &h3_content::BattleParams) -> u64 {
-    let mut f = Factors::default();
-    attack_defense(&mut f, attack.into(), defense.into(), p);
-    f.apply(base)
+    Strike::new(attack.into(), defense.into()).damage(base, p, false)
 }
 
-/// The same with the single-precision rates (Q-0005) and further reductions in percent.
-fn single_damage(
+/// The same in the executable's stages (Q-0005), with a penalty in percent and the target's
+/// hero's Armorer in basis points.
+fn staged_damage(
     base: u64,
     (attack, defense): (u16, u16),
-    reductions: &[u16],
+    (penalty_percent, armorer_bp): (u16, u16),
     p: &h3_content::BattleParams,
 ) -> u64 {
-    let mut f = Factors::new(true);
-    attack_defense(&mut f, attack.into(), defense.into(), p);
-    for &r in reductions {
-        f.reduce(f.rate(r, Unit::Percent));
-    }
-    f.apply(base)
+    let mut s = Strike::new(attack.into(), defense.into());
+    s.penalty_percent = penalty_percent;
+    s.hero_reduction_bp = armorer_bp;
+    s.damage(base, p, true)
 }
 
 use crate::{
@@ -569,9 +566,10 @@ fn attack_and_defense_difference_modifies_damage() {
 
 // covers: BAT-DMG-002
 #[test]
-fn single_precision_rates_reproduce_batch_1a() {
+fn the_staged_damage_reproduces_batch_1a() {
     // Quirk Q-0005, observed in experiment batch 1a (SoD): Archangels and Angels deal 50 per
-    // creature; the rates are 0.05 = 13421773 / 2^28 and 0.025 = 13421773 / 2^29.
+    // creature; the executable's stages (installation.md §7.10) with its double rates 0.05 and
+    // 0.025 and Armorer's single-precision rate.
     let r = ruleset();
     let p = r.battle();
     let r1 = [105, 210, 315, 420, 525, 630];
@@ -579,22 +577,62 @@ fn single_precision_rates_reproduce_batch_1a() {
     let r3 = [47, 94, 142, 189, 237, 284];
     for (i, n) in (1..=6u64).enumerate() {
         // R1: attack 34 against defense 12: +110 %, slightly more, still the exact integer.
-        assert_eq!(single_damage(50 * n, (34, 12), &[], p), r1[i]);
+        assert_eq!(staged_damage(50 * n, (34, 12), (0, 0), p), r1[i]);
         // R2: attack 20 against defense 44: −60 %, slightly more, so one less than exact.
-        assert_eq!(single_damage(50 * n, (20, 44), &[], p), r2[i]);
+        assert_eq!(staged_damage(50 * n, (20, 44), (0, 0), p), r2[i]);
         assert_eq!(modified_damage(50 * n, 20, 44, p), 20 * n);
         // R3: Basic Armorer (−5 %) and no attack/defense difference: 95 becomes 94.
-        assert_eq!(single_damage(50 * n, (30, 30), &[5], p), r3[i]);
+        assert_eq!(staged_damage(50 * n, (30, 30), (0, 500), p), r3[i]);
     }
-    // Binary fractions keep their values; the caps are single-precision values too (+300 %
-    // exact, 70 % just below 0.7, so 28 points reach it); at least 1; saturation.
-    assert_eq!(single_damage(101, (10, 10), &[50], p), 50);
-    assert_eq!(single_damage(100, (70, 10), &[], p), 400);
-    assert_eq!(single_damage(100, (0, 28), &[], p), 30);
-    assert_eq!(single_damage(100, (0, 40), &[], p), 30);
-    assert_eq!(single_damage(1, (0, 40), &[], p), 1);
-    assert_eq!(single_damage(u64::MAX, (100, 0), &[], p), u64::MAX);
-    assert_eq!(single_damage(u64::MAX, (0, 0), &[], p), u64::MAX);
+    // Binary fractions keep their values; the caps (+300 %, 0.3 left); at least 1; saturation.
+    assert_eq!(staged_damage(101, (10, 10), (50, 0), p), 50);
+    assert_eq!(staged_damage(100, (70, 10), (0, 0), p), 400);
+    assert_eq!(staged_damage(100, (0, 28), (0, 0), p), 30);
+    assert_eq!(staged_damage(100, (0, 40), (0, 0), p), 30);
+    assert_eq!(staged_damage(1, (0, 40), (0, 0), p), 1);
+    assert_eq!(staged_damage(u64::MAX, (100, 0), (0, 0), p), u64::MAX);
+    assert_eq!(staged_damage(u64::MAX, (0, 0), (0, 0), p), u64::MAX);
+}
+
+// covers: BAT-DMG-002
+#[test]
+fn the_stages_truncate_each_bonus_and_factor() {
+    let r = ruleset();
+    let p = r.battle();
+    // 59 base, one attack point (+5 %) and Basic Armorer: the bonus 2.95 is cut to 2 before
+    // Armorer takes 61 to 57.95, so 57; rounded once it is 59 · 1.05 · 0.95 = 58.85, so 58.
+    assert_eq!(staged_damage(59, (11, 10), (0, 500), p), 57);
+    let mut once = Strike::new(11, 10);
+    once.hero_reduction_bp = 500;
+    assert_eq!(once.damage(59, p, false), 58);
+    // Each fractional bonus is cut on its own: 10 base, +5 % from attack (0.5) and +5 %
+    // Offense (0.5) stay 10; rounded once, 11.
+    let mut both = Strike::new(11, 10);
+    both.hero_bonus_bp = 500;
+    assert_eq!(both.damage(10, p, true), 10);
+    assert_eq!(both.damage(10, p, false), 11);
+    // Jousting (5 % per hex, 3 hexes on 10 base: 1.5, cut to 1), hate (+50 %: 5), luck,
+    // death blow and double damage (+10 each) add up before the defense stage.
+    let mut all = Strike::new(10, 10);
+    all.jousting = (5, 3);
+    all.hate_percent = 50;
+    all.lucky = true;
+    all.death_blow = true;
+    all.double_damage = true;
+    assert_eq!(all.damage(10, p, true), 10 + 1 + 5 + 30);
+    assert_eq!(all.damage(10, p, false), 46);
+    // The protection factor of Shield (85 % let through, single precision) and Armorer
+    // multiply before their one truncation: 100 · 0.85 · 0.95 = 80.75.
+    let mut shielded = Strike::new(10, 10);
+    shielded.protection_percent = 85;
+    shielded.hero_reduction_bp = 500;
+    assert_eq!(shielded.damage(100, p, true), 80);
+    assert_eq!(shielded.damage(100, p, false), 80);
+    // Armorer above 100 % takes everything but the minimum of 1.
+    let mut full = Strike::new(10, 10);
+    full.hero_reduction_bp = 10_001;
+    assert_eq!(full.damage(100, p, true), 1);
+    assert_eq!(full.damage(100, p, false), 1);
 }
 
 // covers: BAT-WAR-005
@@ -605,23 +643,23 @@ fn the_ballista_damage_of_batch_1a_r5() {
     // is a roll of 56: 56 × 1.65 = 92.4, with decimal or single-precision rates alike.
     let r = ruleset();
     let p = r.battle();
-    assert_eq!(single_damage(56, (30, 17), &[], p), 92);
+    assert_eq!(staged_damage(56, (30, 17), (0, 0), p), 92);
     assert_eq!(modified_damage(56, 30, 17, p), 92);
     // No other roll in the range gives 92.
     let rolls: Vec<u64> = (42..=63)
-        .filter(|&b| single_damage(b, (30, 17), &[], p) == 92)
+        .filter(|&b| staged_damage(b, (30, 17), (0, 0), p) == 92)
         .collect();
     assert_eq!(rolls, [56]);
 }
 
 // covers: BAT-DMG-002
 #[test]
-fn the_quirk_flag_selects_the_single_precision_rates() {
-    // 2 `fixed` (attack 10, damage 2) hit the tank (defense 20): 4 × (1 − 10 × 0.025) is 3
-    // exactly with decimal rates and just below 3 with 0.025's single-precision value.
-    for (profile, expected) in [("t:faithful", 3), ("t:single", 2)] {
-        let r = ruleset_with(profile, |_| {});
-        let mut s = battle(&r, &[(0, "fixed", 2)], &[(0, "tank", 1)], 1);
+fn the_quirk_flag_selects_the_staged_damage() {
+    // With 3.5 % per defense point, 10 `fixed` (attack 10, damage 2) hit the tank (defense 20):
+    // 20 × (1 − 10 × 0.035) is 13 exactly and just below 13 with the double rate in stages.
+    for (profile, expected) in [("t:faithful", 13), ("t:single", 12)] {
+        let r = ruleset_with(profile, |b| b.defense_reduction_per_point_permille = 35);
+        let mut s = battle(&r, &[(0, "fixed", 10)], &[(0, "tank", 1)], 1);
         place(&mut s, &r, 1, 2, 5);
         place(&mut s, &r, 0, 1, 5);
         let events = act(

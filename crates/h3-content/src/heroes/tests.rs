@@ -17,6 +17,7 @@ fn school(k: &str) -> SpellSchoolDef {
     SpellSchoolDef {
         key: key(k),
         name: "S".into(),
+        protection_rank: 0,
     }
 }
 

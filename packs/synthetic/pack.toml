@@ -131,7 +131,7 @@ horde_growth = 3
 fight_value = 220
 ai_value = 250
 adventure_count = [10, 25]
-flags = ["alive", "two_hex"]
+flags = ["alive", "two_hex", "king_1"]     # king_1: Smiting counts against it (BAT-MAG-014)
 
 [[creature]]
 id = "wisp"                 # neutral (no faction)
@@ -200,6 +200,7 @@ abilities = [{ kind = "first_aid", min_hp = 1, max_hp = 10 }]
 [[spell_school]]
 id = "storm"
 name = "Storm"
+protection_rank = 1                 # quirk Q-0007: stone's protection is checked first
 
 [[spell_school]]
 id = "stone"
@@ -425,6 +426,66 @@ side = "enemy"
 duration = "permanent"              # rounds (default) | permanent
 cumulative = true                   # every cast applies its changes again
 effects = [{ kind = "timed", change = "defense_loss" }]
+
+# E04b T3b1 (pack format v6): protections, Slayer and extra retaliations.
+[[spell]]
+id = "aegis"
+name = "Aegis"
+category = "combat"
+level = 2
+schools = ["stone"]
+cost = [8, 6, 6, 6]
+effect = [80, 80, 60, 60]           # percent of melee and ranged damage let through
+polarity = "positive"
+target = "stack"
+side = "own"
+mass = "expert"
+effects = [
+    { kind = "timed", change = "melee_protection" },
+    { kind = "timed", change = "ranged_protection" },
+]
+
+[[spell]]
+id = "hallow"
+name = "Hallow"
+category = "combat"
+level = 1
+schools = ["storm"]
+cost = [5, 4, 4, 4]
+effect = [70, 70, 50, 50]           # percent of storm spells' damage let through
+polarity = "positive"
+target = "stack"
+side = "own"
+mass = "expert"
+effects = [{ kind = "timed", change = "school_protection" }]
+
+[[spell]]
+id = "smiting"
+name = "Smiting"
+category = "combat"
+level = 2
+schools = ["storm"]
+cost = [8, 6, 6, 6]
+effect = [6, 6, 6, 6]               # attack against king creatures
+polarity = "positive"
+target = "stack"
+side = "own"
+effects = [{ kind = "timed", change = "slayer" }]
+
+[[spell]]
+id = "riposte"
+name = "Riposte"
+category = "combat"
+level = 2
+schools = ["storm"]
+cost = [10, 8, 8, 8]
+effect = [1, 1, 2, 2]               # extra retaliations per round
+polarity = "positive"
+target = "stack"
+side = "own"
+mass = "expert"
+excludes = ["war_machine"]
+effects = [{ kind = "timed", change = "retaliations" }]
 
 [[secondary_skill]]
 id = "marksmanship"
@@ -717,8 +778,8 @@ backpack = 3                        # HER-ART-002
 
 [[profile]]
 id = "faithful"        # default: preserve/fix-optional quirks on
-quirks = { "quirk.battle.no_luck_without_hero" = true, "quirk.battle.single_precision_rates" = true, "quirk.battle.unlimited_ballista_shots" = true }    # Q-0003, Q-0005, Q-0004
+quirks = { "quirk.battle.no_luck_without_hero" = true, "quirk.battle.single_precision_rates" = true, "quirk.battle.unlimited_ballista_shots" = true, "quirk.battle.first_protection" = true }    # Q-0003, Q-0005, Q-0004, Q-0007
 
 [[profile]]
 id = "strict-fixed"    # all quirks fixed
-quirks = { "quirk.battle.no_luck_without_hero" = false, "quirk.battle.single_precision_rates" = false, "quirk.battle.unlimited_ballista_shots" = false }   # Q-0003, Q-0005, Q-0004
+quirks = { "quirk.battle.no_luck_without_hero" = false, "quirk.battle.single_precision_rates" = false, "quirk.battle.unlimited_ballista_shots" = false, "quirk.battle.first_protection" = false }   # Q-0003, Q-0005, Q-0004, Q-0007

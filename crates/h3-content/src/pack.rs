@@ -219,6 +219,9 @@ pub struct SpellSchoolDef {
     pub key: ContentKey,
     /// Display name.
     pub name: String,
+    /// Where a damage spell of several schools checks this school's protection under quirk
+    /// Q-0007, lower first (pack format v6; default 0).
+    pub protection_rank: u8,
 }
 
 /// A spell's data row (E04a T3): the numbers of the original spell table, and since pack format

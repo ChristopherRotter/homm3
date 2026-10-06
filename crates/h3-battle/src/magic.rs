@@ -15,12 +15,14 @@
 //! per stack, then the damage: the caster's bonuses before the target's reductions.
 
 use h3_content::{
-    Ability, CreatureFlag, CreatureTypeId, FULL_BP, MAX_FIELD_HEXES, MAX_SPELL_SCHOOLS, MAX_SPELLS,
-    Ruleset, SINGLE_PRECISION_RATES, Spell, SpellCategory, SpellEffect, SpellId, SpellPolarity,
-    SpellScope, SpellTarget, TargetSide,
+    Ability, CreatureFlag, CreatureTypeId, FIRST_PROTECTION, FULL_BP, MAX_FIELD_HEXES,
+    MAX_SPELL_SCHOOLS, MAX_SPELLS, Ruleset, SINGLE_PRECISION_RATES, Spell, SpellCategory,
+    SpellEffect, SpellId, SpellPolarity, SpellScope, SpellTarget, TargetSide,
 };
 use h3_contracts::{BattleEffect, BattleHero, BattleSide};
-use h3_kernel::arith::{SINGLE_FRAC_BITS, mul_div_floor, round_single, single_precision};
+use h3_kernel::arith::{
+    SINGLE_BITS, SINGLE_FRAC_BITS, X87, mul_div_floor, round_single, single_precision,
+};
 use h3_kernel::{CanonicalHash, FixedVec, StateHasher};
 
 use crate::combat::check_end;
@@ -592,20 +594,20 @@ fn grow(value: u64, bp: u64) -> u64 {
     mul_div_floor(value, 10_000 + bp, 10_000).unwrap_or(u64::MAX)
 }
 
-/// The damage of `cast` with the value `value` on a stack of `creature` (BAT-MAG-004) after the
-/// caster's bonuses and after the target's extra damage or reduction, in the
-/// original's order (`installation.md` §7.8): the caster's bonuses (× (1 + the best Orb among
-/// the spell's schools) × (1 + Sorcery), kept fractional and rounded down once; then the
-/// spell's own bonus of that, rounded down, and a specialist's `⌈per level × (hero level div
-/// creature level) × that⌉`), then the target's (one spell's extra damage, rounded down; the
-/// spell damage reduction, rounded down). The rates are exact, or single precision with quirk
-/// Q-0005.
+/// The damage of `cast` with the value `value` on a stack of `creature` with the school
+/// protections `protection` (BAT-MAG-004) after the caster's bonuses and after the target's
+/// extra damage or reduction and protection, in the original's order (`installation.md` §7.8):
+/// the caster's bonuses (× (1 + the best Orb among the spell's schools) × (1 + Sorcery), kept
+/// fractional and rounded down once; then the spell's own bonus of that, rounded down, and a
+/// specialist's `⌈per level × (hero level div creature level) × that⌉`), then the target's (one
+/// spell's extra damage, rounded down; the spell damage reduction, rounded down; one protection,
+/// [`protected`]). The rates are exact, or single precision with quirk Q-0005.
 // rule: BAT-MAG-004
 fn spell_damage(
     ruleset: &Ruleset,
     cast: &Cast<'_>,
     value: u64,
-    creature: CreatureTypeId,
+    (creature, protection): (CreatureTypeId, &[u8; MAX_SPELL_SCHOOLS]),
 ) -> (u64, u64) {
     let single = ruleset.quirks().is_enabled(SINGLE_PRECISION_RATES);
     let one = u128::from(scale(single));
@@ -644,7 +646,44 @@ fn spell_damage(
             _ => {}
         }
     }
-    (caster, damage)
+    (caster, protected(ruleset, cast.spell, damage, protection))
+}
+
+/// `damage` after the target's protection against `spell` (BAT-MAG-013; `installation.md` §7.8,
+/// §7.10): among the spell's schools whose protection the target has, the first by the schools'
+/// protection rank with quirk Q-0007 (as the original checks them), else the strongest; the
+/// damage times its share, rounded down, as `f32` values with quirk Q-0005.
+// rule: BAT-MAG-013
+fn protected(
+    ruleset: &Ruleset,
+    spell: &Spell,
+    damage: u64,
+    protection: &[u8; MAX_SPELL_SCHOOLS],
+) -> u64 {
+    let rank = |l: &h3_content::SchoolId| {
+        ruleset
+            .spell_schools()
+            .get(l.index())
+            .map_or(u8::MAX, |s| s.protection_rank)
+    };
+    let shares = spell.schools.iter().filter_map(|l| {
+        let share = protection[l.index().min(MAX_SPELL_SCHOOLS - 1)];
+        (share < 100).then(|| (rank(l), share))
+    });
+    let chosen = if ruleset.quirks().is_enabled(FIRST_PROTECTION) {
+        shares.min_by_key(|&(rank, _)| rank)
+    } else {
+        shares.min_by_key(|&(_, share)| share)
+    };
+    let Some((_, share)) = chosen else {
+        return damage;
+    };
+    if ruleset.quirks().is_enabled(SINGLE_PRECISION_RATES) {
+        let factor = X87::ratio(u32::from(share), 100, SINGLE_BITS).unwrap_or(X87::ZERO);
+        X87::int(damage).round(SINGLE_BITS).times(factor).trunc()
+    } else {
+        damage.saturating_mul(u64::from(share)) / 100
+    }
 }
 
 /// The share of a hostile spell that stack `s` lets through (BAT-MAG-008) in the fixed point
@@ -742,7 +781,9 @@ fn affect<S: Sink>(
     sink: &mut S,
 ) {
     if cast.spell.magic.effects.contains(&SpellEffect::Damage) {
-        let (caster, damage) = spell_damage(ruleset, cast, value, state.at(s).creature);
+        let target = state.at(s);
+        let protection = target.spells.school_protection;
+        let (caster, damage) = spell_damage(ruleset, cast, value, (target.creature, &protection));
         let kills = apply_damage(state.at_mut(s), damage);
         sink.emit(Event::public(EventKind::SpellDamage {
             target: s,

@@ -632,7 +632,7 @@ id       = "BAT-DMG-002"
 title    = "Attack/defense modifier and final rounding"
 context  = "battle"
 status   = "verified"
-summary  = "Damage = base * (1 + sum of bonuses) * product of (1 - reduction), rounded down once at the end, at least 1. Attack/defense: if attack A > defense D, a bonus of min(0.05 * (A - D), 3.00); else a reduction of min(0.025 * (D - A), 0.70). The attack bonus is capped at +300 % (at most 4x base damage, reached at 60 points), per user decision 2026-09-30 (OPEN-QUESTIONS Q11). Other bonuses (luck, jousting, hate, death blow) add to the bonus sum; other reductions (ranged/melee penalty, ...) multiply. Rates and caps are ruleset parameters (percent / per mille). Computed exactly in integers with one final floor (a wide product, h3_kernel::arith::WideUint). Quirk Q-0005 (quirk.battle.single_precision_rates, on in faithful; observed, Q23, batch 1a): every rate and cap of a damage factor enters as its single-precision value (round to nearest; 0.05 = 13421773/2^28, 0.025 = 13421773/2^29, 0.70 = 11744051/2^24; binary fractions such as 0.5 and 1 unchanged), as an exact dyadic fraction (h3_kernel::arith::single_precision), counts multiply it exactly (22 points: 22 * 13421773/2^28), so a result can be one lower or stay exact where decimal rates give an integer. Applies to the attack and defense rates and caps, jousting, hate, luck, death blow and the shooter penalties (and E04a T6b's skill rates); strict-fixed uses the exact decimal rates."
+summary  = "Damage from base damage b (BAT-DMG-001). Attack A against defense D: if A > D, a bonus of min(0.05 * (A - D), 3.00) (+300 % cap at 60 points, user decision Q11); if D > A, the factor max(1 - 0.025 * (D - A), 0.30) (-70 % cap at 28 points). Other bonuses: jousting, luck, hate, the hero's Offense or Archery, death blow, the Ballista's double damage; other factors: the range and melee penalties (BAT-RNG-002/003), Shield and Air Shield (BAT-MAG-012), the target's hero's Armorer (BAT-HER-004). Rates and caps are ruleset parameters. With quirk Q-0005 (faithful) the executable's three stages, each truncated (docs/formats/installation.md §7.10), in its x87 arithmetic (h3_kernel::arith::X87, 53 bits): (1) the bonuses as an integer, each fractional one truncated as it is added in the code's order: jousting trunc(b * hexes * 0.05), luck + b, the attack bonus trunc(b * r + B) with r = min(0.05 * (A - D), 3.0) as a double, hate + b * percent / 100 (integer), Offense or Archery trunc(rate * b + B) with the single-precision rate, death blow + b, double damage + b; (2) times the defense factor (a double) and the penalties, truncated; (3) times Shield's or Air Shield's single-precision factor and 1 - Armorer (single precision), truncated, at least 1. The code's 0.05 and 0.025 are doubles slightly above the decimals; only skill rates and the spells' stored factors are single precision (user decision Q50, 2026-10-06). Without the quirk (strict-fixed): exact decimal rates, base * (1 + sum of bonuses) * product of (1 - reduction), computed exactly in integers (h3_kernel::arith::WideUint) and rounded down once, at least 1."
 quirks   = ["Q-0005"]
 numeric  = "integer"
 
@@ -664,6 +664,12 @@ numeric  = "integer"
   retrieved  = "2026-10-03"
   confidence = "high"
   note       = "Q23 answered; implemented as quirk Q-0005 (E04a T6a), R1-R3 are fixtures in crates/h3-battle/src/tests/rules.rs."
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (docs/formats/installation.md §7.10): the damage routine 0x443F40 in three truncated stages: bonuses 0x443840/0x443320 (jousting, luck, attack advantage with double 0.05 capped at 3.0, elemental and hate pairs, Offense/Archery 0x4E42B0/0x4E4160, death blow, the Ballista's double), the defense and penalty factor 0x443B90 (double 0.025, floor 0.3, halvings), the protection factor (Shield, Air Shield, petrification, Armorer 0x4E4310); R1-R3 of batch 1a fit it at 53 and 64 bits"
+  confidence = "high"
+  note       = "Q50: the user chose the staged formula (E04b T3b1a). The x87 precision is taken as Windows' default of 53 bits (an inference); batch 2b tells it from 64 bits (4 Angels against one more defense point: 195 or 194)."
 
   [[rule.source]]
   kind       = "wiki"
@@ -1433,7 +1439,7 @@ id       = "BAT-HER-004"
 title    = "The heroes' damage bonuses"
 context  = "battle"
 status   = "verified"
-summary  = "Every strike of a side's stack (war machines included, so Archery raises the Ballista's shots) adds its hero's ranged_bp (shots) or melee_bp (melee attacks, second attacks and retaliations, a shooter's melee included) to the bonus sum of BAT-DMG-002, never both; every strike against a side's stacks multiplies by (1 - reduction_bp / 10 000) of that side's hero (Armorer), one factor apart from the defense and penalty reductions. A side without a hero has none. The rates enter as single-precision values under quirk Q-0005 (Basic Armorer turns 100 into 94). The battle keeps the bonuses in its hero record (state hash v10); they are private to the side (ADR-0013 point 9). Spells (E04b) and arrow towers (E04c) are outside this rule."
+summary  = "Every strike of a side's stack (war machines included, so Archery raises the Ballista's shots) adds its hero's ranged_bp (shots) or melee_bp (melee attacks, second attacks and retaliations, a shooter's melee included) to the bonus sum of BAT-DMG-002, never both; every strike against a side's stacks multiplies by (1 - reduction_bp / 10 000) of that side's hero (Armorer), in the last stage of BAT-DMG-002 with Shield and Air Shield. A side without a hero has none. The rates enter as single-precision values under quirk Q-0005 (Basic Armorer turns 100 into 94); there the bonus is truncated on its own before the defense stage (BAT-DMG-002). The battle keeps the bonuses in its hero record (state hash v10); they are private to the side (ADR-0013 point 9). Spells (E04b) and arrow towers (E04c) are outside this rule."
 quirks   = ["Q-0005"]
 numeric  = "integer"
 
@@ -1989,5 +1995,87 @@ numeric  = "integer"
   kind       = "vcmi"
   ref        = "lib/battle/DamageCalculator.cpp L80-L120: ALWAYS_MAXIMUM_DAMAGE / ALWAYS_MINIMUM_DAMAGE with their values added to the range; config/spells/timed.json: Bloodlust ONLY_MELEE_FIGHT, Precision ONLY_DISTANCE_FIGHT, Slow PERCENT_TO_ALL"
   url        = "https://github.com/vcmi/vcmi/blob/1.7.5/lib/battle/DamageCalculator.cpp#L80-L120"
+  retrieved  = "2026-10-06"
+  confidence = "high"
+
+[[rule]]
+id       = "BAT-MAG-012"
+title    = "Shield and Air Shield"
+context  = "battle"
+status   = "implemented"
+summary  = "While Shield is active on a stack, every melee strike it takes (retaliations included) deals its damage times v % (85 at none and Basic, 70 at Advanced and Expert); while Air Shield is active, every shot (war machines' included) times v % (75, 75, 50, 50). Both are timed own-stack spells with a mass version at Expert (BAT-MAG-003, BAT-MAG-009); a re-cast keeps the first value. The factor joins the damage formula's last stage with the target's hero's Armorer (BAT-DMG-002): under quirk Q-0005 it is the single-precision v / 100 the original stores, multiplied with 1 − Armorer and applied with one truncation; strict-fixed multiplies exactly."
+numeric  = "integer"
+quirks   = ["Q-0005"]
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (docs/formats/installation.md §7.10): 0x4448F0 stores v / 100 as f32 (Shield +0x4B8, Air Shield +0x4BC); the damage routine 0x443F40 multiplies the third stage by Air Shield's factor for a shot, Shield's for a melee strike, then by 1 − Armorer (0x4E4310), truncates, at least 1"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "vcmi"
+  ref        = "config/spells/timed.json: shield GENERAL_DAMAGE_REDUCTION 0 (melee) 15/30, airShield GENERAL_DAMAGE_REDUCTION 1 (ranged) 25/50"
+  url        = "https://github.com/vcmi/vcmi/blob/1.7.5/config/spells/timed.json"
+  retrieved  = "2026-10-06"
+  confidence = "high"
+
+[[rule]]
+id       = "BAT-MAG-013"
+title    = "Protection from Air, Fire, Water and Earth"
+context  = "battle"
+status   = "implemented"
+summary  = "While a Protection is active on a stack, spells of its school deal their damage times v % (70 at none and Basic, 50 at Advanced and Expert), after the target creature's extra damage or reduction (BAT-MAG-004). A spell of several schools meets one protection: with quirk Q-0007 (faithful) the first of its schools in the order of the schools' protection rank whose protection is active (the original checks earth, air, fire, water), else the strongest. Under quirk Q-0005 the damage and the factor are single-precision values and the product is truncated (Basic: 100 becomes 69); strict-fixed rounds the exact product down. Timed own-stack spells with a mass version at Expert."
+numeric  = "integer"
+quirks   = ["Q-0005", "Q-0007"]
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (docs/formats/installation.md §7.8, §7.10): 0x4448F0 stores v / 100 as f32 (+0x4A8 to +0x4B4); 0x5A7BB0 converts the damage to f32, multiplies by the factor of the first protected school in the order earth, air, fire, water and truncates"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "vcmi"
+  ref        = "lib/spells/CSpellHandler.cpp adjustRawDamage: the first school with a protection (air, fire, water, earth order of its loop), integer × (100 − r) / 100"
+  url        = "https://github.com/vcmi/vcmi/blob/1.7.5/lib/spells/CSpellHandler.cpp"
+  retrieved  = "2026-10-06"
+  confidence = "medium"
+
+[[rule]]
+id       = "BAT-MAG-014"
+title    = "Slayer"
+context  = "battle"
+status   = "implemented"
+summary  = "While Slayer is active on a stack, its strikes (melee and shots) against a creature with the king_1 flag at any mastery, none included, with king_2 from Advanced, with king_3 at Expert count v (8) more attack, in both stages of the damage formula (BAT-DMG-002). The mastery is the first cast's: a re-cast changes neither it nor v (BAT-MAG-009). A timed own-stack spell without a mass version. A Slayer specialist's bonus joins in E04b T3c."
+numeric  = "integer"
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (docs/formats/installation.md §7.10): 0x4448F0 stores the caster's mastery (+0x48C); 0x442410 adds 8 to the attack against a target with creature flag 0x80 at any stored mastery, 0x100 from 2, 0x200 from 3"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "vcmi"
+  ref        = "config/spells/timed.json slayer: SLAYER bonus with the mastery as value (VCMI's KING bonuses compare it, so at mastery none Slayer affects no creature; the original affects king 1)"
+  url        = "https://github.com/vcmi/vcmi/blob/1.7.5/config/spells/timed.json"
+  retrieved  = "2026-10-06"
+  confidence = "medium"
+
+[[rule]]
+id       = "BAT-MAG-015"
+title    = "Counterstrike"
+context  = "battle"
+status   = "implemented"
+summary  = "While Counterstrike is active on a stack, it has v more retaliations per round (1 at none and Basic, 2 at Advanced and Expert; unlimited stays unlimited): the first cast adds v to those left this round at once, and every round start sets them to the creature's retaliations plus v before the timed effects count down (BAT-TRN-003, BAT-MAG-010), so the stack keeps them for the round in which the spell runs out; the end takes nothing back. A re-cast changes nothing but the duration. A timed own-stack spell with a mass version at Expert that spares war machines."
+numeric  = "integer"
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (docs/formats/installation.md §7.10): 0x4448F0 stores v (+0x494) and adds it to the retaliations left (+0x454); the round start 0x447120 sets them to 1 (Griffins 2, Royal Griffins 5000) plus v while active, then counts the durations down; 0x444510 gives nothing back"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "vcmi"
+  ref        = "config/spells/timed.json counterstrike: ADDITIONAL_RETALIATION 1/1/2/2"
+  url        = "https://github.com/vcmi/vcmi/blob/1.7.5/config/spells/timed.json"
   retrieved  = "2026-10-06"
   confidence = "high"

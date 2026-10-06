@@ -151,6 +151,40 @@ mod tests {
         Real::new(v).unwrap()
     }
 
+    /// The numerator over 2^64 of a positive normal double of at least 2^-12 (its 53-bit
+    /// mantissa shifted to the 2^-64 grid).
+    fn grid(v: f64) -> u128 {
+        let bits = v.to_bits();
+        let exp = ((bits >> 52) & 0x7ff) as u32 + 64 - 1075;
+        u128::from((bits & ((1 << 52) - 1)) | (1 << 52)) << exp
+    }
+
+    proptest::proptest! {
+        // At 53 bits the x87 emulation (`arith::X87`) is IEEE double arithmetic, rounded to
+        // nearest: ratios, products, sums and differences agree bit for bit.
+        #[test]
+        fn x87_at_53_bits_is_double_arithmetic(
+            n1 in 100u32..=1000, d1 in 100u32..=1000,
+            n2 in 100u32..=1000, d2 in 100u32..=1000, k in 1u64..(1 << 20),
+        ) {
+            use crate::arith::{DOUBLE_BITS, X87, X87_PRECISION};
+            proptest::prop_assert_eq!(X87_PRECISION, DOUBLE_BITS);
+            let (x, y) = (f64::from(n1) / f64::from(d1), f64::from(n2) / f64::from(d2));
+            let a = X87::ratio(n1, d1, DOUBLE_BITS).unwrap();
+            let b = X87::ratio(n2, d2, DOUBLE_BITS).unwrap();
+            proptest::prop_assert_eq!(a.raw(), grid(x));
+            proptest::prop_assert_eq!(a.times(b).raw(), grid(x * y));
+            proptest::prop_assert_eq!(a.plus(b).raw(), grid(x + y));
+            let (hi, lo, h, l) = if x >= y { (a, b, x, y) } else { (b, a, y, x) };
+            if h > l {
+                proptest::prop_assert_eq!(hi.minus(lo).raw(), grid(h - l));
+            }
+            let kf = k as f64;
+            proptest::prop_assert_eq!(X87::int(k).times(a).raw(), grid(kf * x));
+            proptest::prop_assert_eq!(X87::int(k).times(a).trunc(), (kf * x) as u64);
+        }
+    }
+
     #[test]
     fn rejects_non_finite() {
         assert_eq!(Real::new(f64::NAN), Err(NumError::NonFinite));

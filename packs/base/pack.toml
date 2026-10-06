@@ -2917,18 +2917,22 @@ expert = [{ kind = "first_aid", heal_bp = 30000 }]
 [[spell_school]]
 id = "earth"
 name = "Earth"
+protection_rank = 0
 
 [[spell_school]]
 id = "water"
 name = "Water"
+protection_rank = 3
 
 [[spell_school]]
 id = "fire"
 name = "Fire"
+protection_rank = 2
 
 [[spell_school]]
 id = "air"
 name = "Air"
+protection_rank = 1
 
 [[spell]]
 id = "summon_boat"  # original id 0
@@ -3271,6 +3275,10 @@ cost = [5, 4, 4, 4]
 power = 0
 effect = [85, 85, 70, 70]
 polarity = "positive"
+target = "stack"
+side = "own"
+mass = "expert"
+effects = [{ kind = "timed", change = "melee_protection" }]
 
 [[spell]]
 id = "air_shield"  # original id 28
@@ -3282,6 +3290,10 @@ cost = [12, 9, 9, 9]
 power = 0
 effect = [75, 75, 50, 50]
 polarity = "positive"
+target = "stack"
+side = "own"
+mass = "expert"
+effects = [{ kind = "timed", change = "ranged_protection" }]
 
 [[spell]]
 id = "fire_shield"  # original id 29
@@ -3304,6 +3316,10 @@ cost = [7, 5, 5, 5]
 power = 0
 effect = [70, 70, 50, 50]
 polarity = "positive"
+target = "stack"
+side = "own"
+mass = "expert"
+effects = [{ kind = "timed", change = "school_protection" }]
 
 [[spell]]
 id = "protection_from_fire"  # original id 31
@@ -3315,6 +3331,10 @@ cost = [5, 4, 4, 4]
 power = 0
 effect = [70, 70, 50, 50]
 polarity = "positive"
+target = "stack"
+side = "own"
+mass = "expert"
+effects = [{ kind = "timed", change = "school_protection" }]
 
 [[spell]]
 id = "prot_from_water"  # original id 32
@@ -3326,6 +3346,10 @@ cost = [5, 4, 4, 4]
 power = 0
 effect = [70, 70, 50, 50]
 polarity = "positive"
+target = "stack"
+side = "own"
+mass = "expert"
+effects = [{ kind = "timed", change = "school_protection" }]
 
 [[spell]]
 id = "prot_from_earth"  # original id 33
@@ -3337,6 +3361,10 @@ cost = [12, 9, 9, 9]
 power = 0
 effect = [70, 70, 50, 50]
 polarity = "positive"
+target = "stack"
+side = "own"
+mass = "expert"
+effects = [{ kind = "timed", change = "school_protection" }]
 
 [[spell]]
 id = "anti_magic"  # original id 34
@@ -3645,6 +3673,9 @@ cost = [16, 12, 12, 12]
 power = 0
 effect = [8, 8, 8, 8]
 polarity = "positive"
+target = "stack"
+side = "own"
+effects = [{ kind = "timed", change = "slayer" }]
 
 [[spell]]
 id = "frenzy"  # original id 56
@@ -3667,6 +3698,11 @@ cost = [24, 20, 20, 20]
 power = 0
 effect = [1, 1, 2, 2]
 polarity = "positive"
+target = "stack"
+side = "own"
+mass = "expert"
+excludes = ["war_machine"]
+effects = [{ kind = "timed", change = "retaliations" }]
 
 [[spell]]
 id = "berserk"  # original id 59
@@ -6810,8 +6846,8 @@ backpack = 64
 
 [[profile]]
 id = "faithful"        # default: preserve/fix-optional quirks on
-quirks = { "quirk.battle.no_luck_without_hero" = true, "quirk.battle.single_precision_rates" = true, "quirk.battle.unlimited_ballista_shots" = true }    # Q-0003, Q-0005, Q-0004
+quirks = { "quirk.battle.no_luck_without_hero" = true, "quirk.battle.single_precision_rates" = true, "quirk.battle.unlimited_ballista_shots" = true, "quirk.battle.first_protection" = true }    # Q-0003, Q-0005, Q-0004, Q-0007
 
 [[profile]]
 id = "strict-fixed"    # all quirks fixed
-quirks = { "quirk.battle.no_luck_without_hero" = false, "quirk.battle.single_precision_rates" = false, "quirk.battle.unlimited_ballista_shots" = false }   # Q-0003, Q-0005, Q-0004
+quirks = { "quirk.battle.no_luck_without_hero" = false, "quirk.battle.single_precision_rates" = false, "quirk.battle.unlimited_ballista_shots" = false, "quirk.battle.first_protection" = false }   # Q-0003, Q-0005, Q-0004, Q-0007

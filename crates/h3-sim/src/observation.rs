@@ -312,7 +312,10 @@ mod tests {
         // cinders, arc, blight, ward, farsight, glare, hasten, drag, fury, zeal, gloom, boon,
         // bane, corrode).
         let schools = [[1.0, 0.0, 0.0, 0.0], [0.0, 3.0, 0.0, 0.0]];
-        let books: [&[usize]; 2] = [&[0, 1, 2, 3, 4, 7, 8, 9], &[0, 2, 3, 10, 11, 12, 13, 14]];
+        let books: [&[usize]; 2] = [
+            &[0, 1, 2, 3, 4, 7, 8, 9, 17, 18],
+            &[0, 2, 3, 10, 11, 12, 13, 14, 15, 16],
+        ];
         let price = |side| s.surrender_price(&r, side).unwrap() as f32;
         assert!(price(Attacker) > 0.0 && price(Defender) > 0.0);
         let brea_private = [
@@ -438,6 +441,7 @@ mod tests {
             spell,
             rounds,
             value: 1,
+            mastery: 0,
             attack: 0,
             defense: 0,
             speed: 0,

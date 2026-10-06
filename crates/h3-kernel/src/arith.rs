@@ -87,6 +87,135 @@ pub fn round_single(num: u64) -> u64 {
     u64::try_from(u128::from(q + u64::from(up)) << shift).unwrap_or(u64::MAX)
 }
 
+/// Significant bits the original's x87 arithmetic keeps in every operation (quirk Q-0005): the
+/// game never sets the precision control, so it runs at the thread default of Windows, 53 bits
+/// (double precision; an inference, `docs/formats/installation.md` §7.10: 24 bits is refuted by
+/// batch 1a, 64 bits is to be told apart by batch 2b).
+pub const X87_PRECISION: u32 = 53;
+
+/// Significant bits of a single-precision (`f32`) value.
+pub const SINGLE_BITS: u32 = 24;
+
+/// Significant bits of a double-precision (`f64`) value.
+pub const DOUBLE_BITS: u32 = 53;
+
+/// Fraction bits of an [`X87`] value.
+const X87_FRAC: u32 = 64;
+
+/// A nonnegative value of the original's x87 arithmetic, computed exactly in integers (ADR-0003:
+/// no floats in logic crates): `numerator / 2^64`, below `2^64`. Each operation rounds its exact
+/// result to [`X87_PRECISION`] significant bits, to nearest, ties to even, as the FPU does;
+/// [`X87::round`] models a store to `f32` or `f64`. Values below `2^-11` lose bits beyond `2^-64`
+/// (no rule uses them). Every value has at most 64 significant bits, so products are exact in
+/// `u128` before their rounding. Results that would reach `2^64` saturate at [`X87::MAX`].
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
+pub struct X87(u128);
+
+impl X87 {
+    /// Zero.
+    pub const ZERO: Self = Self(0);
+    /// One.
+    pub const ONE: Self = Self(1 << X87_FRAC);
+    /// The largest value, `2^64 − 1` (an integer, so 64 significant bits).
+    pub const MAX: Self = Self((u64::MAX as u128) << X87_FRAC);
+
+    /// The integer `n`, exact (as `fild` loads it).
+    pub const fn int(n: u64) -> Self {
+        Self((n as u128) << X87_FRAC)
+    }
+
+    /// The value `num / den` rounded to `bits` significant bits (a constant of the code: 24 for
+    /// `f32`, 53 for `f64`). `None` if `den == 0`.
+    pub fn ratio(num: u32, den: u32, bits: u32) -> Option<Self> {
+        if den == 0 {
+            return None;
+        }
+        if num == 0 {
+            return Some(Self::ZERO);
+        }
+        let (n, d) = (u128::from(num), u128::from(den));
+        // `e = floor(log2(n / d))`, in `-32..=31`.
+        let len = |x: u128| 128 - i64::from(x.leading_zeros());
+        let mut e = len(n) - len(d);
+        let below = if e >= 0 { n < d << e } else { n << -e < d };
+        if below {
+            e -= 1;
+        }
+        // `m = round(n · 2^k / d)` with `k = bits − 1 − e`, so `m` has `bits` bits (or is
+        // `2^bits` after rounding up); `n << k` stays below 2^(32 + 32 + bits), `d << -k` below
+        // 2^(64 − bits).
+        let k = i64::from(bits) - 1 - e;
+        let (scaled, d) = if k >= 0 { (n << k, d) } else { (n, d << -k) };
+        let (mut m, r) = (scaled / d, scaled % d);
+        if 2 * r > d || (2 * r == d && m & 1 == 1) {
+            m += 1;
+        }
+        // The value is `m · 2^-k`; as a numerator over 2^64.
+        let shift = i64::from(X87_FRAC) - k;
+        Some(Self(if shift >= 0 { m << shift } else { m >> -shift }))
+    }
+
+    /// The value rounded to `bits` significant bits, to nearest, ties to even (a store to `f32`
+    /// with [`SINGLE_BITS`] or to `f64` with [`DOUBLE_BITS`]).
+    pub fn round(self, bits: u32) -> Self {
+        let len = 128 - self.0.leading_zeros();
+        if len <= bits {
+            return self;
+        }
+        let k = len - bits;
+        let (q, rest) = (self.0 >> k, self.0 & ((1 << k) - 1));
+        let half = 1 << (k - 1);
+        let up = rest > half || (rest == half && q & 1 == 1);
+        // `q + up <= 2^bits`, and the shift back stays below 2^128 unless the value saturates.
+        match (q + u128::from(up)).checked_mul(1 << k) {
+            Some(v) if v <= Self::MAX.0 => Self(v),
+            _ => Self::MAX,
+        }
+    }
+
+    /// `self · rhs` as the FPU computes it: the exact product rounded to [`X87_PRECISION`] bits.
+    pub fn times(self, rhs: Self) -> Self {
+        if self.0 == 0 || rhs.0 == 0 {
+            return Self::ZERO;
+        }
+        // Both mantissas have at most 64 significant bits, so their product fits in u128.
+        let (ta, tb) = (self.0.trailing_zeros(), rhs.0.trailing_zeros());
+        let product = Self((self.0 >> ta) * (rhs.0 >> tb)).round(X87_PRECISION).0;
+        // The value is `product · 2^(ta + tb − 128)`; as a numerator over 2^64.
+        let shift = i64::from(ta + tb) - i64::from(X87_FRAC);
+        if shift < 0 {
+            return Self(product >> -shift);
+        }
+        let shift = shift.unsigned_abs() as u32;
+        if product.leading_zeros() < shift {
+            return Self::MAX;
+        }
+        Self((product << shift).min(Self::MAX.0))
+    }
+
+    /// `self + rhs` as the FPU computes it, rounded to [`X87_PRECISION`] bits.
+    pub fn plus(self, rhs: Self) -> Self {
+        Self(self.0.saturating_add(rhs.0).min(Self::MAX.0)).round(X87_PRECISION)
+    }
+
+    /// `self − rhs` as the FPU computes it, rounded to [`X87_PRECISION`] bits; 0 if `rhs` is
+    /// larger (no rule subtracts more than it has).
+    pub fn minus(self, rhs: Self) -> Self {
+        Self(self.0.saturating_sub(rhs.0)).round(X87_PRECISION)
+    }
+
+    /// The value rounded toward zero (the runtime's `_ftol`).
+    pub fn trunc(self) -> u64 {
+        (self.0 >> X87_FRAC) as u64
+    }
+
+    /// The numerator over `2^64` (tests compare it with IEEE doubles in `num`).
+    #[cfg(test)]
+    pub(crate) const fn raw(self) -> u128 {
+        self.0
+    }
+}
+
 /// Limbs of [`WideUint`].
 const WIDE_LIMBS: usize = 8;
 
@@ -262,6 +391,82 @@ mod tests {
         assert_eq!(single_precision(1, u16::MAX), Some(8_388_736 << 1));
         assert_eq!(single_precision(0, 7), Some(0));
         assert_eq!(single_precision(1, 0), None);
+    }
+
+    #[test]
+    fn x87_constants() {
+        let d = |n, den| X87::ratio(n, den, DOUBLE_BITS).unwrap().0;
+        // The code's doubles: 0.05 and 0.025 slightly above the decimals, 0.3 below.
+        assert_eq!(d(5, 100), 0x0ccc_cccc_cccc_cd00);
+        assert_eq!(d(25, 1000), 0x0666_6666_6666_6680);
+        assert_eq!(d(3, 10), 0x4ccc_cccc_cccc_cc00);
+        assert_eq!(d(3, 1), 3 << 64);
+        assert_eq!(X87::ratio(1, 1, DOUBLE_BITS), Some(X87::ONE));
+        // f32(0.85) is above 0.85; a ratio above 2^24 rounds to 24 bits (here up to 2^32).
+        assert_eq!(
+            X87::ratio(85, 100, SINGLE_BITS).unwrap().0,
+            0xd999_9a00_0000_0000
+        );
+        assert_eq!(
+            X87::ratio(u32::MAX, 1, SINGLE_BITS),
+            Some(X87::int(1 << 32))
+        );
+        // A tie of the ratio goes to the even neighbour: (2^24 + 1) / 2^24 at 24 bits is 1.
+        assert_eq!(
+            X87::ratio((1 << 24) + 1, 1 << 24, SINGLE_BITS),
+            Some(X87::ONE)
+        );
+        assert_eq!(
+            X87::ratio((1 << 24) + 3, 1 << 24, SINGLE_BITS).unwrap().0,
+            (1 << 64) + (1 << 42)
+        );
+        // Below 2^-11 the value keeps only the bits above 2^-64: 2^-31 is exact still.
+        assert_eq!(X87::ratio(1, 1 << 31, DOUBLE_BITS), Some(X87(1 << 33)));
+        assert_eq!(X87::ratio(0, 7, DOUBLE_BITS), Some(X87::ZERO));
+        assert_eq!(X87::ratio(1, 0, DOUBLE_BITS), None);
+    }
+
+    #[test]
+    fn x87_operations() {
+        let d = |n, den| X87::ratio(n, den, DOUBLE_BITS).unwrap();
+        // 1 − 24 · 0.025 is just below 0.4: 50 base becomes 19 (batch 1a R2).
+        let f24 = X87::ONE.minus(X87::int(24).times(d(25, 1000)));
+        assert_eq!(f24.0, 0x6666_6666_6666_6000);
+        assert_eq!(X87::int(50).times(f24).trunc(), 19);
+        // 1 − 0.025 is just below 0.975; at 53 bits 40 · it rounds back up to 39.
+        let f1 = X87::ONE.minus(d(25, 1000));
+        assert_eq!(f1.0, 0xf999_9999_9999_9800);
+        assert_eq!(X87::int(40).times(f1).trunc(), 39);
+        // 3 · 0.05 rounds above 0.15.
+        assert_eq!(X87::int(3).times(d(5, 100)).0, 0x2666_6666_6666_6800);
+        // Sums round to 53 bits; differences stop at 0.
+        let tiny = X87(1);
+        assert_eq!(X87::int(1 << 20).plus(tiny), X87::int(1 << 20));
+        assert_eq!(X87::ONE.plus(X87::ONE), X87::int(2));
+        assert_eq!(X87::ONE.minus(X87::int(2)), X87::ZERO);
+        assert_eq!(X87::ZERO.times(X87::ONE), X87::ZERO);
+        assert_eq!(X87::ONE.times(X87::ZERO), X87::ZERO);
+        // Saturation at 2^64 − 1.
+        assert_eq!(X87::MAX.times(X87::int(2)), X87::MAX);
+        assert_eq!(X87::MAX.plus(X87::MAX), X87::MAX);
+        assert_eq!(X87::MAX.trunc(), u64::MAX);
+        assert_eq!(X87(u128::MAX).round(DOUBLE_BITS), X87::MAX);
+        // A product far below 2^-64 vanishes.
+        assert_eq!(X87(1).times(X87(1)), X87::ZERO);
+    }
+
+    #[test]
+    fn x87_rounding_ties_go_to_even() {
+        let one = X87::ONE.0;
+        // 1 + 2^-24 is halfway between 1 and 1 + 2^-23 at 24 bits: even, so 1; 1 + 3 · 2^-24 is
+        // halfway between 1 + 2^-23 and 1 + 2^-22: the even one is 1 + 2^-22.
+        assert_eq!(X87(one + (1 << 40)).round(SINGLE_BITS), X87::ONE);
+        assert_eq!(X87(one + (3 << 40)).round(SINGLE_BITS).0, one + (1 << 42));
+        assert_eq!(
+            X87(one + (1 << 40) + 1).round(SINGLE_BITS).0,
+            one + (1 << 41)
+        );
+        assert_eq!(X87::int(3).round(SINGLE_BITS), X87::int(3));
     }
 
     proptest! {

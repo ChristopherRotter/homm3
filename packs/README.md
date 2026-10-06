@@ -159,7 +159,7 @@ override, replacing the list) names the creature types it upgrades into: at most
 none twice; references follow the reference rules and may name later creatures of the pack.
 Hero effects that select "a creature" apply to it and its direct upgrades.
 
-## Hero content (format v3, E04a T3; battle magic format v4, E04b T2a)
+## Hero content (format v3, E04a T3; battle magic format v4, E04b T2a; v5 T3a; v6 T3b1)
 
 Spell schools, spells, secondary skills, hero classes and hero types (ADR-0013). References follow
 the reference rules above; every kind may refer to content of its dependency closure.
@@ -168,6 +168,8 @@ the reference rules above; every kind may refer to content of its dependency clo
 [[spell_school]]
 id = "storm"
 name = "Storm"
+protection_rank = 1                # v6: where a spell of several schools meets this school's
+                                   # protection under quirk Q-0007 (lower first; default 0)
 
 [[spell]]                          # a data row, and since format v4 its battle magic
 id = "spark"
@@ -242,7 +244,10 @@ lasts, `change` alters the stack by `v = effect[mastery]`: `speed` + v (never on
 0), `defense` + v, `defense_loss` − v (at most down to 0, never given back), `melee_attack` /
 `ranged_attack` + v on melee / ranged attacks, `maximum_damage` (each creature deals its maximum +
 v), `minimum_damage` (its minimum − v, at least 1), `morale`, `morale_loss`, `luck`, `luck_loss`
-± v; BAT-MAG-009 to 011). `mass` needs target `stack`; `duration` and `cumulative` need a timed
+± v; BAT-MAG-009 to 011; since v6, E04b T3b1: `melee_protection` / `ranged_protection` (melee
+strikes / shots taken deal v %, BAT-MAG-012), `school_protection` (spells of this spell's schools
+deal v %, BAT-MAG-013), `slayer` (+ v attack against king creatures by mastery, BAT-MAG-014),
+`retaliations` (+ v per round, BAT-MAG-015)). `mass` needs target `stack`; `duration` and `cumulative` need a timed
 effect, `counters` too (and may not name the spell itself). Later tasks add kinds (dispel, heal,
 summon, …). Adventure spells have no battle magic; a spell without effects cannot be cast
 yet. `side` limits whose stacks a stack spell may be *aimed* at (BAT-MAG-003; a chain's jumps

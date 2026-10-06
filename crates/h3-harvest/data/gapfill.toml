@@ -1494,6 +1494,13 @@ url = "https://github.com/vcmi/vcmi/blob/1.7.5/lib/battle/CBattleInfoCallback.cp
 retrieved = "2026-10-05"
 
 [[source]]
+id = "exe-protection-spells"
+kind = "original-data"
+ref = "Heroes3.exe code reading (docs/formats/installation.md 7.8, 7.10): Shield, Air Shield and the Protections store their factor (0x4448F0) read by the damage stages (0x443F40) and the spell protection check (0x5A7BB0, schools checked earth, air, fire, water); Slayer stores the mastery and adds 8 attack against king 1 always, king 2 from Advanced, king 3 at Expert (0x442410); Counterstrike adds its value to the retaliations at the cast and at every round start (0x4448F0, 0x447120)"
+url = "docs/formats/installation.md"
+retrieved = "2026-10-06"
+
+[[source]]
 id = "exe-timed-spells"
 kind = "original-data"
 ref = "Heroes3.exe code reading (docs/formats/installation.md 7.9): the duration bonus of the Conjuring artifacts and the Ring of the Magi (0x4E4DB0); what each timed spell changes when cast (0x4448F0) and gives back when it ends (0x444510); only Bless/Curse and Haste/Slow end each other; Disrupting Ray lowers the defense at every cast and never ends (0x5A1A53)"
@@ -1942,3 +1949,51 @@ changes = ["defense_loss"]
 duration = "permanent"
 cumulative = true
 sources = ["exe-timed-spells", "vcmi-spells-timed"]
+
+# T3b1 (E04b, 2026-10-06; installation.md 7.10): Shield, Air Shield, the four Protections, Slayer
+# and Counterstrike. VCMI 1.7.5 agrees on the values; on Slayer without Fire Magic it does not.
+
+[[spells.timed]]
+spell = "Shield"
+changes = ["melee_protection"]
+sources = ["exe-protection-spells", "vcmi-spells-timed"]
+
+[[spells.timed]]
+spell = "Air Shield"
+changes = ["ranged_protection"]
+sources = ["exe-protection-spells", "vcmi-spells-timed"]
+
+[[spells.timed]]
+spell = "Protection from Air"
+changes = ["school_protection"]
+sources = ["exe-protection-spells", "vcmi-spells-timed"]
+
+[[spells.timed]]
+spell = "Protection from Fire"
+changes = ["school_protection"]
+sources = ["exe-protection-spells", "vcmi-spells-timed"]
+
+[[spells.timed]]
+spell = "Prot. from Water"
+changes = ["school_protection"]
+sources = ["exe-protection-spells", "vcmi-spells-timed"]
+
+[[spells.timed]]
+spell = "Prot. from Earth"
+changes = ["school_protection"]
+sources = ["exe-protection-spells", "vcmi-spells-timed"]
+
+[[spells.timed]]
+spell = "Slayer"
+changes = ["slayer"]
+sources = ["exe-protection-spells"]
+
+[[spells.timed]]
+spell = "Counterstrike"
+changes = ["retaliations"]
+sources = ["exe-protection-spells", "vcmi-spells-timed"]
+
+[spells]
+# The order in which a damage spell's schools meet the target's protections (quirk Q-0007).
+protection_order = ["Earth", "Air", "Fire", "Water"]
+protection_sources = ["exe-protection-spells"]

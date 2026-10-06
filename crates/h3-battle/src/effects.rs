@@ -13,12 +13,15 @@
 
 use alloc::vec::Vec;
 
-use h3_content::{EffectDuration, Ruleset, SINGLE_PRECISION_RATES, Spell, SpellId, TimedChange};
+use h3_content::{
+    EffectDuration, MAX_SPELL_SCHOOLS, Ruleset, SINGLE_PRECISION_RATES, Spell, SpellEffect,
+    SpellId, TimedChange,
+};
 use h3_kernel::arith::{SINGLE_FRAC_BITS, single_precision};
 use h3_kernel::{CanonicalHash, StateHasher};
 
 use crate::event::{Event, EventKind, Sink};
-use crate::state::{BattleState, Stack, StackId, StackTraits};
+use crate::state::{BattleState, Stack, StackFlags, StackId, StackTraits, UNLIMITED_RETALIATIONS};
 
 /// Entries reserved at the battle's start and on every fork (ADR-0014 point 5; measured in T3a).
 pub const EFFECT_CAPACITY: usize = 32;
@@ -34,6 +37,8 @@ pub struct ActiveEffect {
     pub rounds: Option<u16>,
     /// `v`: the spell's effect at the first cast's mastery.
     pub value: u16,
+    /// The first cast's mastery (Slayer reads it, BAT-MAG-014).
+    pub mastery: u8,
     /// What the effect added to the stack's attack (negative: took from it).
     pub attack: i16,
     /// What it added to the stack's defense.
@@ -43,12 +48,13 @@ pub struct ActiveEffect {
 }
 
 impl CanonicalHash for ActiveEffect {
-    /// Stack, spell, rounds (0: permanent), value, attack, defense, speed.
+    /// Stack, spell, rounds (0: permanent), value, mastery (v21), attack, defense, speed.
     fn hash_into(&self, h: &mut StateHasher) {
         h.write_u8(self.stack.0);
         self.spell.hash_into(h);
         h.write_u16(self.rounds.unwrap_or(0));
         h.write_u16(self.value);
+        h.write_u8(self.mastery);
         for v in [self.attack, self.defense, self.speed] {
             h.write_bytes(&v.to_le_bytes());
         }
@@ -125,6 +131,16 @@ pub struct SpellValues {
     pub morale: i8,
     /// Added to the luck before its minimums and caps (Fortune, Misfortune).
     pub luck: i8,
+    /// The share of melee damage let through, percent (100: none; Shield, BAT-MAG-012).
+    pub melee_protection: u8,
+    /// The share of ranged damage let through, percent (100: none; Air Shield, BAT-MAG-012).
+    pub ranged_protection: u8,
+    /// The share of spell damage let through per school handle, percent (100: none; the
+    /// Protections, BAT-MAG-013).
+    pub school_protection: [u8; MAX_SPELL_SCHOOLS],
+    /// Slayer's attack bonus (0: none) and the mastery that decides the creatures it counts
+    /// against (BAT-MAG-014).
+    pub slayer: (u8, u8),
 }
 
 impl SpellValues {
@@ -140,6 +156,10 @@ impl SpellValues {
             speed_percent: 100,
             morale: 0,
             luck: 0,
+            melee_protection: 100,
+            ranged_protection: 100,
+            school_protection: [100; MAX_SPELL_SCHOOLS],
+            slayer: (0, 0),
         }
     }
 }
@@ -152,7 +172,7 @@ impl Default for SpellValues {
 
 impl CanonicalHash for SpellValues {
     /// Attack, defense, speed, melee and ranged attack, the damage roll (code, value), the speed
-    /// share, morale, luck.
+    /// share, morale, luck; since v21 the melee, ranged and school protections and Slayer.
     fn hash_into(&self, h: &mut StateHasher) {
         h.write_bytes(&self.attack.to_le_bytes());
         h.write_bytes(&self.defense.to_le_bytes());
@@ -169,6 +189,11 @@ impl CanonicalHash for SpellValues {
         h.write_u8(self.speed_percent);
         h.write_bytes(&self.morale.to_le_bytes());
         h.write_bytes(&self.luck.to_le_bytes());
+        h.write_u8(self.melee_protection);
+        h.write_u8(self.ranged_protection);
+        h.write_bytes(&self.school_protection);
+        h.write_u8(self.slayer.0);
+        h.write_u8(self.slayer.1);
     }
 }
 
@@ -273,7 +298,7 @@ pub(crate) fn apply<S: Sink>(
             e.rounds
         }
         Err(i) => {
-            let (a, d, sp) = deltas(changes, value, &stack, now);
+            let (a, d, sp) = deltas(changes.clone(), value, &stack, now);
             state.effects.0.insert(
                 i,
                 ActiveEffect {
@@ -281,11 +306,16 @@ pub(crate) fn apply<S: Sink>(
                     spell: cast.id,
                     rounds,
                     value,
+                    mastery: cast.mastery,
                     attack: a,
                     defense: d,
                     speed: sp,
                 },
             );
+            // rule: BAT-MAG-015
+            if changes.into_iter().any(|c| c == TimedChange::Retaliations) {
+                add_retaliations(state.at_mut(s), value);
+            }
             rounds
         }
     };
@@ -295,6 +325,34 @@ pub(crate) fn apply<S: Sink>(
         spell: cast.id,
         rounds,
     }));
+}
+
+/// Adds `v` retaliations to those `stack` has left this round, unless it has unlimited ones
+/// (Counterstrike, BAT-MAG-015).
+fn add_retaliations(stack: &mut Stack, v: u16) {
+    if stack.retaliations != UNLIMITED_RETALIATIONS {
+        let extra = u8::try_from(v).unwrap_or(u8::MAX);
+        stack.retaliations_left = stack.retaliations_left.saturating_add(extra);
+        stack
+            .flags
+            .set(StackFlags::RETALIATED, stack.retaliations_left == 0);
+    }
+}
+
+/// Gives every stack with Counterstrike its extra retaliations at a round start, after the reset
+/// and before the effects count down, as the original does (BAT-MAG-015).
+// rule: BAT-MAG-015
+pub(crate) fn round_retaliations(state: &mut BattleState, ruleset: &Ruleset) {
+    let retaliations = SpellEffect::Timed(TimedChange::Retaliations);
+    let stacks = state.stacks.as_mut_slice();
+    for e in &state.effects.0 {
+        let extra = ruleset
+            .spell(e.spell)
+            .is_some_and(|sp| sp.magic.effects.contains(&retaliations));
+        if extra {
+            add_retaliations(&mut stacks[e.stack.index()], e.value);
+        }
+    }
 }
 
 /// What `changes` with value `v` add to a stack's attack, defense and speed now (BAT-MAG-009), the
@@ -366,10 +424,12 @@ pub(crate) fn recompute(state: &mut BattleState, ruleset: &Ruleset, s: StackId) 
         defense += i32::from(e.defense);
         speed += i32::from(e.speed);
         let v = e.value;
-        let changes = ruleset
-            .spell(e.spell)
+        let spell = ruleset.spell(e.spell);
+        let changes = spell
             .map(|sp| sp.magic.effects.as_slice())
             .unwrap_or_default();
+        let schools = spell.map(|sp| sp.schools.as_slice()).unwrap_or_default();
+        let percent = u8::try_from(v.min(100)).unwrap_or(100);
         for change in changes.iter().filter_map(|c| c.timed()) {
             match change {
                 TimedChange::MeleeAttack => {
@@ -392,6 +452,22 @@ pub(crate) fn recompute(state: &mut BattleState, ruleset: &Ruleset, s: StackId) 
                 TimedChange::MoraleLoss => morale -= i32::from(v),
                 TimedChange::Luck => luck += i32::from(v),
                 TimedChange::LuckLoss => luck -= i32::from(v),
+                TimedChange::MeleeProtection => {
+                    values.melee_protection = values.melee_protection.min(percent);
+                }
+                TimedChange::RangedProtection => {
+                    values.ranged_protection = values.ranged_protection.min(percent);
+                }
+                TimedChange::SchoolProtection => {
+                    for school in schools {
+                        let p = &mut values.school_protection
+                            [school.index().min(MAX_SPELL_SCHOOLS - 1)];
+                        *p = (*p).min(percent);
+                    }
+                }
+                TimedChange::Slayer => {
+                    values.slayer = (u8::try_from(v).unwrap_or(u8::MAX), e.mastery);
+                }
                 _ => {}
             }
         }

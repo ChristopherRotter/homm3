@@ -471,6 +471,20 @@ pub fn harvest_heroes(
             key_of(s),
             quote(s)
         );
+        // The original's protection check order (BAT-MAG-013, quirk Q-0007).
+        if let Some(rank) = gap.spells.protection_order.iter().position(|o| o == s) {
+            let _ = writeln!(out.base, "protection_rank = {rank}");
+        }
+    }
+    if let Some(unknown) = gap
+        .spells
+        .protection_order
+        .iter()
+        .find(|o| !schools.contains(o))
+    {
+        return Err(format!(
+            "gapfill: protection order names unknown school `{unknown}`"
+        ));
     }
     let spell_rows =
         |table: &TextTable, what: &str| -> Result<Vec<(String, Vec<String>)>, String> {

@@ -115,7 +115,7 @@ struct PackFile {
     #[serde(default)]
     creature_override: Vec<OverrideDto>,
     #[serde(default)]
-    spell_school: Vec<NamedDto>,
+    spell_school: Vec<SchoolDto>,
     #[serde(default)]
     spell: Vec<SpellDto>,
     #[serde(default)]
@@ -139,6 +139,16 @@ struct PackFile {
 struct NamedDto {
     id: String,
     name: String,
+}
+
+#[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
+struct SchoolDto {
+    id: String,
+    name: String,
+    /// Pack format v6 (E04b T3b1).
+    #[serde(default)]
+    protection_rank: u8,
 }
 
 #[derive(Deserialize)]
@@ -1196,10 +1206,17 @@ pub fn parse_pack(text: &str) -> Result<ContentPack, PackError> {
             })
         })
         .collect::<Result<Vec<_>, PackError>>()?;
-    let spell_schools = named(file.spell_school)?
+    let spell_schools = file
+        .spell_school
         .into_iter()
-        .map(|(key, name)| SpellSchoolDef { key, name })
-        .collect();
+        .map(|d| {
+            Ok(SpellSchoolDef {
+                key: ContentKey::new(&pack_id, &d.id)?,
+                name: d.name,
+                protection_rank: d.protection_rank,
+            })
+        })
+        .collect::<Result<Vec<_>, PackError>>()?;
     let spells = file
         .spell
         .into_iter()
@@ -2343,7 +2360,8 @@ mod tests {
         let quirky = SYNTHETIC_PACK.replace(
             "quirks = { \"quirk.battle.no_luck_without_hero\" = true, \
              \"quirk.battle.single_precision_rates\" = true, \
-             \"quirk.battle.unlimited_ballista_shots\" = true }",
+             \"quirk.battle.unlimited_ballista_shots\" = true, \
+             \"quirk.battle.first_protection\" = true }",
             "quirks = { \"quirk.x\" = true }",
         );
         let pack = parse_pack(&quirky).unwrap();
@@ -2451,11 +2469,12 @@ mod tests {
         expected.tactics = 2;
         expected.magic.mana = 40;
         expected.magic.max_mana = 40;
-        // The four damage spells, Ward and three timed spells with Basic Storm magic (E04b T2c,
-        // T3a).
+        // The four damage spells, Ward and five timed spells with Basic Storm magic (E04b T2c,
+        // T3a, T3b1).
         expected.magic.spell_book = Some(
             [
-                "spark", "cinders", "arc", "blight", "ward", "hasten", "drag", "fury",
+                "spark", "cinders", "arc", "blight", "ward", "hasten", "drag", "fury", "smiting",
+                "riposte",
             ]
             .map(|k| ruleset.spell_by_key(&format!("synthetic:{k}")).unwrap())
             .to_vec(),
@@ -3760,7 +3779,14 @@ mod tests {
         use h3_content::SpellCategory;
         let r = compile(&[SYNTHETIC_PACK, SYNTHETIC_EXT_PACK], "synthetic:faithful").unwrap();
         assert_eq!(r.spell_schools().len(), 2);
-        assert_eq!(r.spells().len(), 15);
+        assert_eq!(r.spells().len(), 19);
+        // Pack format v6: the storm school's protection rank; stone's defaults to 0.
+        let ranks: Vec<u8> = r
+            .spell_schools()
+            .iter()
+            .map(|s| s.protection_rank)
+            .collect();
+        assert_eq!(ranks, [1, 0]);
         // Battle magic (format v4): every target kind, an area, a chain, target conditions.
         let magic = |k: &str| r.spell(r.spell_by_key(k).unwrap()).unwrap().magic.clone();
         let damage = vec![SpellEffect::Damage];

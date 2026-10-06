@@ -9,6 +9,7 @@ mod heroes;
 mod magic;
 mod morale;
 mod properties;
+mod protect;
 mod ranged;
 mod rules;
 mod spells;

@@ -8,14 +8,13 @@
 //! second attack.
 
 use h3_content::{
-    Ability, BattleParams, CompiledAbility, FULL_BP, Ruleset, SINGLE_PRECISION_RATES,
+    Ability, BattleParams, CompiledAbility, CreatureFlag, FULL_BP, Ruleset, SINGLE_PRECISION_RATES,
 };
 use h3_contracts::{BattleResult, BattleSide};
 use h3_kernel::arith::mul_div_floor;
 
 use crate::damage::{
-    Factors, Unit, apply_damage, attack_defense, base_damage, effective_defense, reduced_defense,
-    resurrect,
+    Strike, apply_damage, base_damage, effective_defense, reduced_defense, resurrect,
 };
 use crate::event::{Event, EventKind, Sink, StrikeFlags};
 use crate::geometry::{Direction, Field, Footprint, Hex, HexSet};
@@ -117,8 +116,8 @@ fn strike<S: Sink>(
             params.damage_roll_samples,
         ),
     };
-    let (factors, flags) = strike_factors(ruleset, &state.heroes, (&striker, &victim), flags, blow);
-    let damage = factors.apply(base);
+    let (inputs, flags) = strike_inputs(ruleset, &state.heroes, (&striker, &victim), flags, blow);
+    let damage = inputs.damage(base, params, staged(ruleset));
     let lost = damage.min(victim.total_hp());
     let kills = apply_damage(state.at_mut(target), damage);
     sink.emit(Event::public(EventKind::Struck {
@@ -131,35 +130,39 @@ fn strike<S: Sink>(
     lost
 }
 
-/// The damage factors of a strike of `striker` on `victim` (BAT-DMG-002, the abilities that
+/// Whether damage follows the executable's stages (quirk Q-0005).
+fn staged(ruleset: &Ruleset) -> bool {
+    ruleset.quirks().is_enabled(SINGLE_PRECISION_RATES)
+}
+
+/// The damage inputs of a strike of `striker` on `victim` (BAT-DMG-002, the abilities that
 /// change them and the heroes' damage bonuses), and its flags with the luck and death-blow flags
 /// added.
-fn strike_factors(
+fn strike_inputs(
     ruleset: &Ruleset,
     heroes: &[Option<HeroRecord>; 2],
     (striker, victim): (&Stack, &Stack),
     flags: StrikeFlags,
     blow: Blow,
-) -> (Factors, StrikeFlags) {
+) -> (Strike, StrikeFlags) {
     let params = ruleset.battle();
     let field = Field::new(params.field);
-    let mut factors = Factors::new(ruleset.quirks().is_enabled(SINGLE_PRECISION_RATES));
+    let ranged = flags.contains(StrikeFlags::RANGED);
     let mut defense = effective_defense(victim, params);
+    let mut hate_percent = 0;
+    let mut jousting = (0, 0);
     for ability in ruleset.abilities(striker.creature) {
         match *ability {
             // rule: BAT-DMG-004
             Ability::Hate {
                 target: hated,
                 percent,
-            } if hated == victim.creature => {
-                factors.bonus(factors.rate(percent, Unit::Percent));
-            }
+            } if hated == victim.creature => hate_percent = percent,
             // rule: BAT-DMG-005
             Ability::Jousting { percent_per_hex }
                 if !has_ability(ruleset, victim, |a| matches!(a, Ability::ChargeImmunity)) =>
             {
-                let per_hex = factors.rate(percent_per_hex, Unit::Percent);
-                factors.bonus(per_hex.saturating_mul(u64::from(blow.charge)));
+                jousting = (percent_per_hex, u32::from(blow.charge));
             }
             // rule: BAT-DMG-006
             Ability::DefenseReduction { percent } => defense = reduced_defense(defense, percent),
@@ -167,38 +170,53 @@ fn strike_factors(
         }
     }
     // rule: BAT-MAG-011
-    let attack = striker.attack_now(flags.contains(StrikeFlags::RANGED));
-    attack_defense(&mut factors, attack, defense, params);
+    let mut attack = striker.attack_now(ranged);
+    // rule: BAT-MAG-014
+    if slays(ruleset, striker.spells.slayer.1, victim) {
+        attack += i32::from(striker.spells.slayer.0);
+    }
+    let mut inputs = Strike::new(attack, defense);
+    inputs.hate_percent = hate_percent;
+    inputs.jousting = jousting;
     let mut flags = flags;
     // rule: BAT-LCK-002
     if blow.lucky {
-        factors.bonus(factors.rate(100, Unit::Percent));
+        inputs.lucky = true;
         flags = flags.with(StrikeFlags::LUCKY);
     }
     // rule: BAT-DMG-007
     if blow.death_blow {
-        factors.bonus(factors.rate(100, Unit::Percent));
+        inputs.death_blow = true;
         flags = flags.with(StrikeFlags::DEATH_BLOW);
     }
     // rule: BAT-WAR-006
     if blow.double_damage {
-        factors.bonus(factors.rate(100, Unit::Percent));
+        inputs.double_damage = true;
         flags = flags.with(StrikeFlags::DOUBLE_DAMAGE);
     }
-    if let Some(percent) = penalty(params, field, striker, victim, flags) {
-        factors.reduce(factors.rate(percent, Unit::Percent));
-    }
+    inputs.penalty_percent = penalty(params, field, striker, victim, flags).unwrap_or(0);
+    // rule: BAT-MAG-012
+    inputs.protection_percent = u16::from(if ranged {
+        victim.spells.ranged_protection
+    } else {
+        victim.spells.melee_protection
+    });
     // rule: BAT-HER-004
     let own = hero::damage(heroes, striker.side);
-    let bonus = if flags.contains(StrikeFlags::RANGED) {
-        own.ranged_bp
-    } else {
-        own.melee_bp
-    };
-    factors.bonus(factors.rate(bonus, Unit::BasisPoints));
-    let reduction = hero::damage(heroes, victim.side).reduction_bp;
-    factors.reduce(factors.rate(reduction, Unit::BasisPoints));
-    (factors, flags)
+    inputs.hero_bonus_bp = if ranged { own.ranged_bp } else { own.melee_bp };
+    inputs.hero_reduction_bp = hero::damage(heroes, victim.side).reduction_bp;
+    (inputs, flags)
+}
+
+/// Whether Slayer cast at `mastery` counts against `victim`'s creature (BAT-MAG-014): king 1 at
+/// any mastery, king 2 from Advanced, king 3 at Expert (`installation.md` §7.10). Without Slayer
+/// its bonus is 0, so the answer does not matter.
+fn slays(ruleset: &Ruleset, mastery: u8, victim: &Stack) -> bool {
+    ruleset.creature(victim.creature).is_some_and(|c| {
+        c.flags.contains(CreatureFlag::King1)
+            || (c.flags.contains(CreatureFlag::King2) && mastery >= 2)
+            || (c.flags.contains(CreatureFlag::King3) && mastery >= 3)
+    })
 }
 
 /// The least and greatest damage a shot of `attacker` would deal to `target` now, without luck,
@@ -218,13 +236,14 @@ pub(crate) fn shot_damage_range(
         lucky: false,
         double_damage: false,
     };
-    let (factors, _) = strike_factors(
+    let (inputs, _) = strike_inputs(
         ruleset,
         &state.heroes,
         (striker, state.at(target)),
         StrikeFlags::RANGED,
         blow,
     );
+    let (params, staged) = (ruleset.battle(), staged(ruleset));
     let n = u64::from(striker.count);
     let (min, max) = (striker.damage_min, striker.damage_max);
     let (low, high) = striker
@@ -233,8 +252,8 @@ pub(crate) fn shot_damage_range(
         .fixed(min, max)
         .map_or((u64::from(min), u64::from(max)), |each| (each, each));
     (
-        factors.apply(n.saturating_mul(low)),
-        factors.apply(n.saturating_mul(high)),
+        inputs.damage(n.saturating_mul(low), params, staged),
+        inputs.damage(n.saturating_mul(high), params, staged),
     )
 }
 

@@ -147,6 +147,7 @@ fn pack() -> ContentPack {
         spell_schools: vec![SpellSchoolDef {
             key: key("t:air"),
             name: "Air".into(),
+            protection_rank: 0,
         }],
         spells: vec![
             spell("t:bolt", SpellCategory::Combat),

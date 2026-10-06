@@ -723,6 +723,7 @@ fn magic_ruleset() -> Ruleset {
     p.spell_schools.push(SpellSchoolDef {
         key: key("t:fire"),
         name: "Fire".into(),
+        protection_rank: 0,
     });
     for s in &mut p.skills {
         match s.key.to_string().as_str() {

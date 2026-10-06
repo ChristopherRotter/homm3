@@ -96,6 +96,9 @@ pub struct SpellSchool {
     pub key: ContentKey,
     /// Display name.
     pub name: String,
+    /// Where a damage spell of several schools checks this school's protection under quirk
+    /// Q-0007, lower first (pack format v6; BAT-MAG-013).
+    pub protection_rank: u8,
 }
 
 /// Handle of a spell school in a [`crate::Ruleset`].
@@ -414,6 +417,7 @@ impl HeroContent {
             self.schools.items.push(SpellSchool {
                 key: def.key.clone(),
                 name: def.name.clone(),
+                protection_rank: def.protection_rank,
             });
         }
         for def in &pack.spells {
@@ -626,7 +630,7 @@ impl HeroContent {
 }
 
 impl CanonicalHash for HeroContent {
-    /// Schools (key, name); spells (key, name, category, level, schools, cost, power, effect,
+    /// Schools (key, name, protection rank (v18)); spells (key, name, category, level, schools, cost, power, effect,
     /// polarity, magic (v14), counters (v17)); skills (key, name, the three effect lists); classes (key, name, faction,
     /// primary, gains, weights); hero types (key, name, class, skills, spell book, spells,
     /// army, war machines, specialty); then the artifact content (`hash_artifacts`); then the
@@ -636,6 +640,7 @@ impl CanonicalHash for HeroContent {
         for s in &self.schools.items {
             s.key.as_str().hash_into(h);
             s.name.as_str().hash_into(h);
+            h.write_u8(s.protection_rank);
         }
         h.write_len(self.spells.items.len());
         for s in &self.spells.items {

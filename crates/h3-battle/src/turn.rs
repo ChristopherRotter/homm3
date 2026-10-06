@@ -49,9 +49,10 @@ pub(crate) fn next_active(state: &BattleState) -> Option<StackId> {
         .map(|(id, _)| StackId(id))
 }
 
-/// Starts a new round: resets retaliation, wait, morale and acted flags (the Defend bonus lasts
-/// until the stack's next activation, BAT-TRN-004) and the heroes' casts (BAT-MAG-001); the
-/// timed effects lose a round or end (BAT-MAG-010).
+/// Starts a new round: resets retaliation (with Counterstrike's extra ones, BAT-MAG-015), wait,
+/// morale and acted flags (the Defend bonus lasts until the stack's next activation,
+/// BAT-TRN-004) and the heroes' casts (BAT-MAG-001); then the timed effects lose a round or end
+/// (BAT-MAG-010).
 // rule: BAT-TRN-003, BAT-MAG-001
 pub(crate) fn start_round<S: Sink>(state: &mut BattleState, ruleset: &Ruleset, sink: &mut S) {
     state.round = state.round.saturating_add(1);
@@ -65,6 +66,7 @@ pub(crate) fn start_round<S: Sink>(state: &mut BattleState, ruleset: &Ruleset, s
         s.flags.set(StackFlags::HAD_MORALE, false);
         s.retaliations_left = s.retaliations;
     }
+    effects::round_retaliations(state, ruleset);
     sink.emit(Event::public(EventKind::RoundStarted {
         round: state.round,
     }));
