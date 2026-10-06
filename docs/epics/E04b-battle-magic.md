@@ -1,6 +1,6 @@
 # E04b — Battle magic
 
-Status: **in progress** (refined 2026-10-05; increment 1 = T1–T2, done 2026-10-06: T1, ADR-0014 accepted, T2a–T2e, batch 2a evaluated; waiting for the increment 2 checkpoint) · Follows E04a (closed 2026-10-05) · Part of the former E04 (OPEN-QUESTIONS Q27): E04a heroes in battle, **E04b** battle magic (this one), E04c sieges and special battlefields.
+Status: **in progress** (refined 2026-10-05; increment 1 = T1–T2, done 2026-10-06: T1, ADR-0014 accepted, T2a–T2e, batch 2a evaluated; increment 2 = T3 in three parts, then T4 (Q46): T3a in progress) · Follows E04a (closed 2026-10-05) · Part of the former E04 (OPEN-QUESTIONS Q27): E04a heroes in battle, **E04b** battle magic (this one), E04c sieges and special battlefields.
 
 ## Goal
 
@@ -28,11 +28,11 @@ Earthquake, sieges and the moat (E04c). The special battlefields' magic (Magic P
 
 ## Tasks (outline; refine at the start of each increment; keep status current)
 
-**Increment 1:** T1 (done), T2 (refined below). Later increments are cut with the user at each checkpoint; order and boundaries of T3–T11 may change.
+**Increment 1:** T1, T2 (done). **Increment 2** (Q46, 2026-10-06): T3 in three parts (refined below), then T4; T3a alone first, with a checkpoint. Later increments are cut with the user at each checkpoint; order and boundaries of T4–T11 may change.
 
 - [x] **T1 Magic survey and ADR-0014** — done 2026-10-05: survey `docs/rules/surveys/E04b-magic.md`, spell flags and stack records (`docs/formats/installation.md` §7.6, §7.7), ADR-0014 accepted after one revision (Q42; ADR-0004 point 8 amended). Record: [`E04b-log.md`](E04b-log.md).
 - [x] **T2 Casting core and direct-damage spells** — done 2026-10-06 (increment 1): T2a + T2b (2026-10-05), T2c + T2d with batch 2a (Q44), then T2e, batch 2a folded in (the user's seam, 2026-10-06). Record: [`E04b-log.md`](E04b-log.md).
-- [ ] T3 Timed effects on stacks: buffs and debuffs, Mass versions at Expert, durations and the artifacts that change them, Dispel, Cure (S-16, S-17, S-19).
+- [ ] **T3 Timed effects on stacks** (refined below): buffs and debuffs, Mass versions at Expert, durations and the artifacts that change them, Dispel, Cure (S-16, S-17, S-19).
 - [ ] T4 Control spells and spell defences: Berserk, Hypnotize, Forgetfulness, Blind; Anti-Magic, Magic Mirror (S-09 to S-11, S-13).
 - [ ] T5 Battlefield spells: Quicksand and Land Mine (hidden, owner-side visibility), Force Field, Fire Wall, Remove Obstacle, Teleport.
 - [ ] T6 Life and summons: Resurrection, Animate Dead, Sacrifice, Clone, the four Elementals; stacks created in battle (`StackOrigin`), temporary resurrection in the outcome (S-15, S-20, S-21).
@@ -55,7 +55,13 @@ The 13 direct-damage spells: Magic Arrow, Ice Bolt, Lightning Bolt, Titan's Ligh
 
 - [x] **T2e Batch 2a folded in** — done 2026-10-06 (the user chose T2e alone before increment 2): the results recorded (observation sources, Q40 and Q44 settled), the executable's targeting code read (`installation.md` §7.8), four rules corrected after the observations: Chain Lightning aimed only at enemies, area spells at any hex outside the side columns, no fizzle from an area spell's centre stack, the tactics hand-over as rounds with Wait (BAT-TAC-002); a stack that always resists is no target; `SpellDamage` carries the value and the caster's damage (the user's R5 note). Q45 (skill specialties' growth in single precision) opened. Record: [`E04b-log.md`](E04b-log.md).
 
-**Checkpoint after T2e:** the user confirms the cut of increment 2 (proposed: T3, refined and probably split in two, then T4) and decides Q45.
+**Checkpoint after T2e** (2026-10-06): the user cut increment 2 (T3 in three parts, T3a alone first; Q46) and decided Q45 (option (b), in T3c).
+
+### T3 — Timed effects on stacks (refined 2026-10-06, Q46)
+
+- [ ] **T3a The effect list and the value spells** (this delivery, then a checkpoint): a survey of the timed spells (the executable's code first: durations, when rounds fall (M-3), how an effect enters a stack's values, the mass versions; VCMI and the wiki for the rest); the effect list of ADR-0014 point 5 (one entry per stack and spell, replacement, counter pairs, cumulative Disrupting Ray (S-17), expiry at one fixed point of the round, values materialised on the stack); duration from power and the Conjuring artifacts; mass versions at Expert; the 14 spells that only change a stack's values: Haste, Slow, Bloodlust, Precision, Weakness, Stone Skin, Disrupting Ray, Prayer, Bless, Curse, Mirth, Sorrow, Fortune, Misfortune. Pack format v5, events, observation encoding (a stack's effects are public), state and ruleset hashes; state size and clone cost measured; `full-s3` and `bench-check` re-baselined.
+- [ ] T3b Spells with their own rules, Dispel and Cure: Shield, Air Shield, Protection from Air, Fire, Water and Earth (S-19), Fire Shield, Slayer, Frenzy (S-16), Counterstrike; Dispel, Cure.
+- [ ] T3c The hero specialties in these spells (16 heroes), Q45 option (b) (skill specialties' rates in single precision across the seam), batch 2b compiled for T3 (with a level-10 specialist).
 
 ## Design
 
