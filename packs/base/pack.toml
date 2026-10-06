@@ -489,6 +489,7 @@ fight_value = 194
 ai_value = 138
 adventure_count = [16, 30]
 flags = ["alive"]
+abilities = [{ kind = "magic_resistance", percent = 20 }]
 upgrades = ["battle_dwarf"]
 
 [[creature]]
@@ -511,6 +512,7 @@ fight_value = 209
 ai_value = 209
 adventure_count = [16, 25]
 flags = ["alive"]
+abilities = [{ kind = "magic_resistance", percent = 40 }]
 
 [[creature]]
 id = "wood_elf"  # original id 18
@@ -661,6 +663,7 @@ fight_value = 1548
 ai_value = 1806
 adventure_count = [5, 12]
 flags = ["two_hex", "alive"]
+abilities = [{ kind = "magic_resistance_aura", percent = 20 }]
 upgrades = ["war_unicorn"]
 
 [[creature]]
@@ -683,6 +686,7 @@ fight_value = 1740
 ai_value = 2030
 adventure_count = [5, 10]
 flags = ["two_hex", "alive"]
+abilities = [{ kind = "magic_resistance_aura", percent = 20 }]
 
 [[creature]]
 id = "green_dragon"  # original id 26
@@ -704,6 +708,7 @@ fight_value = 3654
 ai_value = 4872
 adventure_count = [4, 10]
 flags = ["two_hex", "flying", "breath_attack", "alive", "king_1", "dragon"]
+abilities = [{ kind = "spell_level_immunity", max_level = 3 }]
 upgrades = ["gold_dragon"]
 
 [[creature]]
@@ -726,6 +731,7 @@ fight_value = 6220
 ai_value = 8613
 adventure_count = [3, 8]
 flags = ["two_hex", "flying", "breath_attack", "alive", "king_1", "dragon"]
+abilities = [{ kind = "spell_level_immunity", max_level = 4 }]
 
 [[creature]]
 id = "gremlin"  # original id 28
@@ -833,6 +839,7 @@ fight_value = 339
 ai_value = 250
 adventure_count = [12, 25]
 flags = ["mind_immune", "no_morale"]
+abilities = [{ kind = "spell_damage_reduction", percent = 50 }]
 upgrades = ["iron_golem"]
 
 [[creature]]
@@ -855,6 +862,7 @@ fight_value = 412
 ai_value = 412
 adventure_count = [12, 20]
 flags = ["mind_immune", "no_morale"]
+abilities = [{ kind = "spell_damage_reduction", percent = 75 }]
 
 [[creature]]
 id = "mage"  # original id 34
@@ -1268,7 +1276,7 @@ fight_value = 1413
 ai_value = 1670
 adventure_count = [5, 12]
 flags = ["flying", "alive", "fire_immune"]
-abilities = [{ kind = "hate", creature = "genie", percent = 50 }, { kind = "hate", creature = "master_genie", percent = 50 }]
+abilities = [{ kind = "hate", creature = "genie", percent = 50 }, { kind = "hate", creature = "master_genie", percent = 50 }, { kind = "school_immunity", school = "base:fire" }]
 upgrades = ["efreet_sultan"]
 
 [[creature]]
@@ -1291,7 +1299,7 @@ fight_value = 1584
 ai_value = 1848
 adventure_count = [5, 10]
 flags = ["flying", "alive", "fire_immune"]
-abilities = [{ kind = "hate", creature = "genie", percent = 50 }, { kind = "hate", creature = "master_genie", percent = 50 }]
+abilities = [{ kind = "hate", creature = "genie", percent = 50 }, { kind = "hate", creature = "master_genie", percent = 50 }, { kind = "school_immunity", school = "base:fire" }]
 
 [[creature]]
 id = "devil"  # original id 54
@@ -1929,6 +1937,7 @@ fight_value = 3762
 ai_value = 4702
 adventure_count = [4, 10]
 flags = ["two_hex", "flying", "breath_attack", "alive", "king_1", "dragon"]
+abilities = [{ kind = "spell_level_immunity", max_level = 3 }]
 upgrades = ["black_dragon"]
 
 [[creature]]
@@ -1951,7 +1960,7 @@ fight_value = 6783
 ai_value = 8721
 adventure_count = [3, 8]
 flags = ["two_hex", "flying", "breath_attack", "alive", "king_1", "mind_immune", "dragon"]
-abilities = [{ kind = "hate", creature = "titan", percent = 50 }]
+abilities = [{ kind = "hate", creature = "titan", percent = 50 }, { kind = "spell_level_immunity", max_level = 5 }]
 
 [[creature]]
 id = "goblin"  # original id 84
@@ -2579,7 +2588,7 @@ fight_value = 324
 ai_value = 356
 adventure_count = [8, 12]
 flags = ["mind_immune", "no_morale"]
-abilities = [{ kind = "hate", creature = "earth_elemental", percent = 100 }]
+abilities = [{ kind = "hate", creature = "earth_elemental", percent = 100 }, { kind = "spell_immunity", spell = "base:meteor_shower" }, { kind = "spell_vulnerability", percent = 100, spell = "base:lightning_bolt" }, { kind = "spell_vulnerability", percent = 100, spell = "base:chain_lightning" }, { kind = "spell_vulnerability", percent = 100, spell = "base:armageddon" }]
 
 [[creature]]
 id = "earth_elemental"  # original id 113
@@ -2600,7 +2609,7 @@ fight_value = 415
 ai_value = 330
 adventure_count = [16, 30]
 flags = ["mind_immune", "no_morale"]
-abilities = [{ kind = "hate", creature = "air_elemental", percent = 100 }]
+abilities = [{ kind = "hate", creature = "air_elemental", percent = 100 }, { kind = "spell_immunity", spell = "base:lightning_bolt" }, { kind = "spell_immunity", spell = "base:chain_lightning" }, { kind = "spell_immunity", spell = "base:armageddon" }, { kind = "spell_vulnerability", percent = 100, spell = "base:meteor_shower" }]
 
 [[creature]]
 id = "fire_elemental"  # original id 114
@@ -2621,7 +2630,7 @@ fight_value = 345
 ai_value = 345
 adventure_count = [16, 25]
 flags = ["mind_immune", "fire_immune", "no_morale"]
-abilities = [{ kind = "hate", creature = "water_elemental", percent = 100 }]
+abilities = [{ kind = "hate", creature = "water_elemental", percent = 100 }, { kind = "school_immunity", school = "base:fire" }, { kind = "spell_vulnerability", percent = 100, spell = "base:ice_bolt" }, { kind = "spell_vulnerability", percent = 100, spell = "base:frost_ring" }]
 
 [[creature]]
 id = "water_elemental"  # original id 115
@@ -2642,7 +2651,7 @@ fight_value = 315
 ai_value = 315
 adventure_count = [12, 25]
 flags = ["two_hex", "mind_immune", "no_morale"]
-abilities = [{ kind = "hate", creature = "fire_elemental", percent = 100 }]
+abilities = [{ kind = "hate", creature = "fire_elemental", percent = 100 }, { kind = "spell_immunity", spell = "base:ice_bolt" }, { kind = "spell_immunity", spell = "base:frost_ring" }, { kind = "spell_vulnerability", percent = 100, spell = "base:fireball" }, { kind = "spell_vulnerability", percent = 100, spell = "base:inferno" }, { kind = "spell_vulnerability", percent = 100, spell = "base:armageddon" }]
 
 [[creature]]
 id = "gold_golem"  # original id 116
@@ -2663,6 +2672,7 @@ fight_value = 600
 ai_value = 600
 adventure_count = [10, 16]
 flags = ["mind_immune", "no_morale"]
+abilities = [{ kind = "spell_damage_reduction", percent = 85 }]
 
 [[creature]]
 id = "diamond_golem"  # original id 117
@@ -2683,6 +2693,7 @@ fight_value = 775
 ai_value = 775
 adventure_count = [8, 12]
 flags = ["mind_immune", "no_morale"]
+abilities = [{ kind = "spell_damage_reduction", percent = 95 }]
 
 [[creature]]
 id = "ballista"  # original id 146
@@ -2892,6 +2903,9 @@ expert = [{ kind = "spell_damage", bp = 1500 }]
 [[secondary_skill]]
 id = "resistance"
 name = "Resistance"
+basic = [{ kind = "magic_resistance", bp = 500 }]
+advanced = [{ kind = "magic_resistance", bp = 1000 }]
+expert = [{ kind = "magic_resistance", bp = 2000 }]
 
 [[secondary_skill]]
 id = "first_aid"
@@ -5649,25 +5663,28 @@ cost = { "gold" = 6000 }
 slot = "feet"
 
 [[artifact]]
-id = "garniture_of_interference"  # original id 57; pending: E04b
+id = "garniture_of_interference"  # original id 57
 name = "Garniture of Interference"
 class = "major"
 cost = { "gold" = 2000 }
 slot = "neck"
+effects = [{ kind = "magic_resistance", bp = 500 }]
 
 [[artifact]]
-id = "surcoat_of_counterpoise"  # original id 58; pending: E04b
+id = "surcoat_of_counterpoise"  # original id 58
 name = "Surcoat of Counterpoise"
 class = "major"
 cost = { "gold" = 4000 }
 slot = "shoulders"
+effects = [{ kind = "magic_resistance", bp = 1000 }]
 
 [[artifact]]
-id = "boots_of_polarity"  # original id 59; pending: E04b
+id = "boots_of_polarity"  # original id 59
 name = "Boots of Polarity"
 class = "relic"
 cost = { "gold" = 6000 }
 slot = "feet"
+effects = [{ kind = "magic_resistance", bp = 1500 }]
 
 [[artifact]]
 id = "bow_of_elven_cherrywood"  # original id 60

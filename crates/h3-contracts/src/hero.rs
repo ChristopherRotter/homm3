@@ -261,12 +261,23 @@ pub enum BattleEffect {
         /// Bonus in basis points.
         bp: u16,
     },
-    /// The effect of the hero's casts of `spell` on a stack grows by `bp` basis points divided
-    /// by the level of the stack's creature (a spell specialty, E04b; HER-BAT-012).
+    /// The effect of the hero's casts of `spell` on a stack grows by `bp_per_level` basis
+    /// points for each whole multiple of the stack's creature level in the hero's `level` (a
+    /// spell specialty, E04b; HER-BAT-012, BAT-MAG-004): the original divides the levels in
+    /// whole numbers before it multiplies.
     SpellSpecialty {
         /// The spell.
         spell: SpellId,
-        /// Growth before the division by the creature's level, basis points.
-        bp: u32,
+        /// Growth per hero level, basis points.
+        bp_per_level: u16,
+        /// The hero's level.
+        level: u8,
+    },
+    /// The side's stacks resist hostile spells: their creatures' share a spell affects shrinks
+    /// by `bp` (the Resistance skill and artifacts, one effect per source in the derivation's
+    /// order; E04b T2d; HER-BAT-013, BAT-MAG-008).
+    MagicResistance {
+        /// Resistance in basis points.
+        bp: u16,
     },
 }

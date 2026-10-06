@@ -28,7 +28,7 @@ const SCHOOL_COLUMNS: std::ops::Range<usize> = 3..7;
 
 /// Skills whose battle effect the executable's value table gives (installation.md §7.4): skill
 /// id, effect kind and parameter name, and whether the values are fractions (to basis points).
-const TABLE_SKILLS: [(u8, &str, &str, bool); 8] = [
+const TABLE_SKILLS: [(u8, &str, &str, bool); 9] = [
     (9, "luck", "amount", false),
     (6, "morale", "amount", false),
     (1, "ranged_damage", "bp", true),
@@ -37,6 +37,7 @@ const TABLE_SKILLS: [(u8, &str, &str, bool); 8] = [
     (4, "surrender_discount", "bp", true),
     (27, "first_aid", "heal_bp", true),
     (25, "spell_damage", "bp", true),
+    (26, "magic_resistance", "bp", true),
 ];
 
 /// Bits of the executable's spell flag word the harvester reads (installation.md §7.6).

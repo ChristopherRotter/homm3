@@ -277,6 +277,13 @@ enum AbilityDto {
     AreaShot { effect: AreaShotDto },
     FirstAid { min_hp: u16, max_hp: u16 },
     AmmoSupply {},
+    SpellLevelImmunity { max_level: u8 },
+    SchoolImmunity { school: String },
+    SpellImmunity { spell: String },
+    SpellVulnerability { spell: String, percent: u16 },
+    SpellDamageReduction { percent: u8 },
+    MagicResistance { percent: u8 },
+    MagicResistanceAura { percent: u8 },
 }
 
 #[derive(Deserialize)]
@@ -336,6 +343,20 @@ impl AbilityDto {
             },
             Self::FirstAid { min_hp, max_hp } => AbilityDef::FirstAid { min_hp, max_hp },
             Self::AmmoSupply {} => AbilityDef::AmmoSupply,
+            Self::SpellLevelImmunity { max_level } => AbilityDef::SpellLevelImmunity { max_level },
+            Self::SchoolImmunity { school } => AbilityDef::SchoolImmunity {
+                school: reference(pack, &school)?,
+            },
+            Self::SpellImmunity { spell } => AbilityDef::SpellImmunity {
+                spell: reference(pack, &spell)?,
+            },
+            Self::SpellVulnerability { spell, percent } => AbilityDef::SpellVulnerability {
+                spell: reference(pack, &spell)?,
+                percent,
+            },
+            Self::SpellDamageReduction { percent } => AbilityDef::SpellDamageReduction { percent },
+            Self::MagicResistance { percent } => AbilityDef::MagicResistance { percent },
+            Self::MagicResistanceAura { percent } => AbilityDef::MagicResistanceAura { percent },
         })
     }
 }
@@ -751,6 +772,9 @@ enum EffectDto {
         spell: Option<String>,
     },
     SpellBook {},
+    MagicResistance {
+        bp: u16,
+    },
 }
 
 /// Whose stacks a morale or luck effect changes, as files write it (`own` by default, `enemy`,
@@ -934,6 +958,7 @@ impl EffectDto {
                 bp,
             },
             Self::SpellBook {} => HeroEffect::SpellBook,
+            Self::MagicResistance { bp } => HeroEffect::MagicResistance { bp },
         })
     }
 }
@@ -1640,8 +1665,15 @@ pub enum EffectEntry {
     SpellSpecialty {
         /// The spell by key.
         spell: String,
-        /// Growth in basis points before the division by the target's creature level.
-        bp: u32,
+        /// Growth per hero level, basis points.
+        bp_per_level: u16,
+        /// The hero's level.
+        level: u8,
+    },
+    /// [`BattleEffect::MagicResistance`].
+    MagicResistance {
+        /// Resistance in basis points.
+        bp: u16,
     },
 }
 
@@ -1763,10 +1795,16 @@ impl EffectEntry {
                 },
                 bp,
             },
-            Self::SpellSpecialty { spell, bp } => BattleEffect::SpellSpecialty {
+            Self::SpellSpecialty {
+                spell,
+                bp_per_level,
+                level,
+            } => BattleEffect::SpellSpecialty {
                 spell: spell_id(ruleset, spell)?,
-                bp,
+                bp_per_level,
+                level,
             },
+            Self::MagicResistance { bp } => BattleEffect::MagicResistance { bp },
         })
     }
 
@@ -1827,10 +1865,16 @@ impl EffectEntry {
                 };
                 Self::SpellDamage { bp, school, spell }
             }
-            BattleEffect::SpellSpecialty { spell, bp } => Self::SpellSpecialty {
+            BattleEffect::SpellSpecialty {
+                spell,
+                bp_per_level,
+                level,
+            } => Self::SpellSpecialty {
                 spell: spell_key(ruleset, spell)?,
-                bp,
+                bp_per_level,
+                level,
             },
+            BattleEffect::MagicResistance { bp } => Self::MagicResistance { bp },
             BattleEffect::AlignmentGroup { factions } => Self::AlignmentGroup {
                 factions: factions
                     .factions()
@@ -2518,8 +2562,10 @@ mod tests {
                 },
                 BattleEffect::SpellSpecialty {
                     spell: spark,
-                    bp: 3600,
+                    bp_per_level: 300,
+                    level: 12,
                 },
+                BattleEffect::MagicResistance { bp: 500 },
             ])
             .collect();
         every.surrender_discount_bp = 4000;
@@ -2572,7 +2618,7 @@ mod tests {
         );
         assert!(
             written.contains(
-                "[[effects]]\nkind = \"spell_specialty\"\nspell = \"synthetic:spark\"\nbp = 3600\n"
+                "[[effects]]\nkind = \"spell_specialty\"\nspell = \"synthetic:spark\"\nbp_per_level = 300\nlevel = 12\n"
             ),
             "{written}"
         );
@@ -2666,7 +2712,8 @@ mod tests {
                 |h| {
                     h.effects = vec![BattleEffect::SpellSpecialty {
                         spell: SpellId::from_raw(99),
-                        bp: 1,
+                        bp_per_level: 1,
+                        level: 1,
                     }];
                 },
                 unknown_spell(),
@@ -2697,7 +2744,7 @@ mod tests {
                 PackError::Syntax("spell_damage takes `school` or `spell`, not both".to_owned()),
             ),
             (
-                "effects = [{ kind = \"spell_specialty\", spell = \"synthetic:nova\", bp = 1 }]",
+                "effects = [{ kind = \"spell_specialty\", spell = \"synthetic:nova\", bp_per_level = 1, level = 1 }]",
                 PackError::UnknownSpell("synthetic:nova".to_owned()),
             ),
             (
@@ -2834,8 +2881,9 @@ mod tests {
         assert_eq!(roe.battle().formation_row(Formation::Loose, 7, 3), Some(5));
         assert_eq!(roe.battle().formation_row(Formation::Tight, 3, 0), Some(4));
         // Abilities (E03 T2): RoE elementals hate their opposites; AB adds the Conflux ones.
-        assert_eq!(roe.abilities(air).len(), 1);
-        assert_eq!(ab.abilities(air).len(), 2);
+        // Four magic abilities follow (E04b T2d: one immunity, three vulnerabilities).
+        assert_eq!(roe.abilities(air).len(), 5);
+        assert_eq!(ab.abilities(air).len(), 6);
         let cavalier = roe.creature_by_key("base:cavalier").unwrap();
         assert_eq!(
             roe.abilities(cavalier),
@@ -3160,7 +3208,8 @@ mod tests {
                 },
                 BattleEffect::SpellSpecialty {
                     spell: spell("base:chain_lightning"),
-                    bp: 3600
+                    bp_per_level: 300,
+                    level: 12
                 },
             ]
         );
@@ -3699,7 +3748,7 @@ mod tests {
         assert_eq!(ward.polarity, SpellPolarity::Positive);
         let glare = r.spell(r.spell_by_key("synthetic:glare").unwrap()).unwrap();
         assert_eq!(glare.category, SpellCategory::Ability);
-        assert_eq!(r.skills().len(), 12);
+        assert_eq!(r.skills().len(), 13);
         let omens = r.skill(r.skill_by_key("synthetic:omens").unwrap()).unwrap();
         assert_eq!(
             omens.effects(3)[1],

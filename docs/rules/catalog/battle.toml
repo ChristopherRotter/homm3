@@ -1693,7 +1693,7 @@ id       = "BAT-MAG-001"
 title    = "When a hero casts"
 context  = "battle"
 status   = "implemented"
-summary  = "A side's hero may cast a spell (Command::Cast) while one of its side's stacks awaits a command outside the tactics phase (BAT-TAC-001), also during the turn of a war machine it commands (BAT-WAR-006/007; VCMI, while the wiki says 'one of their creatures': batch 2a X-3). It needs the spell in its spell book (HER-BAT-011), a combat spell, fewer casts this round than the battle parameter hero_casts_per_round (1; the count is reset when a round starts, BAT-TRN-003), the mana for the cost (BAT-MAG-002) and a valid target (BAT-MAG-003). Casting is never required, and the active stack keeps its turn afterwards. A cast is public: a SpellCast event with side, spell and target, and the casts this round in HeroView (ADR-0014 point 8). Only spells whose effects and targeting the battle implements can be cast: damage to one stack since E04b T2b (stub STUB-0001; areas, chains and every-stack spells in T2d). Casts are not in legal_commands; castable_spells and cast_targets list exactly what apply accepts (the factorized action, ADR-0014 point 9)."
+summary  = "A side's hero may cast a spell (Command::Cast) while one of its side's stacks awaits a command outside the tactics phase (BAT-TAC-001), also during the turn of a war machine it commands (BAT-WAR-006/007; VCMI, while the wiki says 'one of their creatures': batch 2a X-3). It needs the spell in its spell book (HER-BAT-011), a combat spell, fewer casts this round than the battle parameter hero_casts_per_round (1; the count is reset when a round starts, BAT-TRN-003), the mana for the cost (BAT-MAG-002) and a valid target (BAT-MAG-003). Casting is never required, and the active stack keeps its turn afterwards. A cast is public: a SpellCast event with side, spell and target, and the casts this round in HeroView (ADR-0014 point 8). Only spells whose effects the battle implements can be cast (CommandError::NotCastable otherwise): the damage spells since E04b T2d (one stack, chain, area and every stack; BAT-MAG-004 to BAT-MAG-008), other effects with their tasks. Casts are not in legal_commands; castable_spells and cast_targets list exactly what apply accepts (the factorized action, ADR-0014 point 9)."
 numeric  = "integer"
 
   [[rule.source]]
@@ -1735,7 +1735,7 @@ id       = "BAT-MAG-003"
 title    = "The target of a spell"
 context  = "battle"
 status   = "implemented"
-summary  = "A spell aimed at a stack (SpellMagic.target = stack) needs a living stack (CastTarget::Stack) on the side the spell may reach (SpellMagic.side: any; enemy, the single-target damage spells as VCMI's smart targeting; own) whose creature has every flag of SpellMagic.conditions.requires and none of excludes (Implosion: no war machine; Destroy Undead: undead; Death Ripple: neither). Any other target is rejected (CommandError::InvalidSpellTarget). Immunities and magic resistance join in E04b T2d."
+summary  = "A spell names its target kind (SpellMagic.target). A stack spell (one stack, Chain Lightning) needs a living stack (CastTarget::Stack) on the side the spell may reach (SpellMagic.side: any; enemy, the single-target damage spells as VCMI's smart targeting; own) that the spell can affect (BAT-MAG-005: the creature conditions and immunities). A hex spell (the area spells) needs a hex a stack may stand on (CastTarget::Hex) whose stack, if any, the spell can reach and whose area reaches at least one stack the spell can reach (BAT-MAG-007; VCMI, the original's validation was not read). A battle-wide spell (Armageddon, Death Ripple, Destroy Undead) takes no target (CastTarget::None) and needs at least one stack it can reach. Any other target is rejected (CommandError::InvalidSpellTarget). Chain Lightning is neutral, so its first target may be any stack (installation.md §7.8). Magic resistance is rolled when the spell takes effect, not checked here (BAT-MAG-008)."
 numeric  = "integer"
 
   [[rule.source]]
@@ -1744,11 +1744,11 @@ numeric  = "integer"
   url        = "https://github.com/vcmi/vcmi/blob/1.7.5/lib/spells/effects/UnitEffect.cpp#L288-L293"
   retrieved  = "2026-10-05"
   confidence = "medium"
-  note       = "Chain Lightning's polarity is neutral in the executable's table, so its harvested side is any; the order of its jumps and whether it may start on an own stack are surveyed in T2d (X-6)"
+  note       = "Chain Lightning's polarity is neutral in the executable's table, so its harvested side is any; the original's code agrees (BAT-MAG-006)"
 
   [[rule.source]]
   kind       = "original-data"
-  ref        = "Heroes3.exe spell flag word (docs/formats/installation.md §7.6): 0x10 one target stack, 0x80 a hex or area; 0x1000 on Implosion and Death Ripple among the damage spells (dispute M-1)"
+  ref        = "Heroes3.exe spell flag word (docs/formats/installation.md §7.6): 0x10 one target stack, 0x80 a hex or area; the cast code tests each stack like a target (§7.8: 0x5A8090; a negative spell never affects the caster's side, a positive one never an enemy, Chain Lightning and the area spells are neutral)"
   confidence = "medium"
 
 [[rule]]
@@ -1756,20 +1756,123 @@ id       = "BAT-MAG-004"
 title    = "Damage of a damage spell"
 context  = "battle"
 status   = "implemented"
-summary  = "A damage spell's value is power × power factor + effect[mastery] (the hero's spell power, the spell's row; BAT-MAG-002). The caster's bonuses follow in VCMI's order, each factor rounded down: × (1 + every-spell bonus) (Sorcery), × (1 + this spell's bonus) (Ciele), × (1 + the best bonus among the spell's schools) (the Orbs), then × (1 + specialty / 10 000 / n) with n the target creature's level, at least 1 (a spell specialist's 3 % per hero level; HER-BAT-012). Values are exact integers in basis points; VCMI rounds the specialty term to whole percent first, and SoD's rounding is unconfirmed (dispute M-6, batch 2a X-1). The damage kills like physical damage (BAT-DMG-003; no luck, morale or retaliation) and is reported as a public SpellDamage event; the battle ends at once if a side has no living stacks left (BAT-END-001/002). Reductions on the target's side (protection spells, Golems, elementals) join in E04b T2d and T3."
+summary  = "A damage spell's value is power × power factor + effect[mastery] (the hero's spell power, the spell's row; BAT-MAG-002). Its damage to a stack follows the original's order (installation.md §7.8): first the caster's bonuses, v × (1 + the best bonus among the spell's schools) (the Orbs, +50 %) × (1 + the every-spell bonus) (Sorcery), the product kept fractional and rounded down once to t; then t + this spell's own bonus of t rounded down (Ciele +50 %, Luna +100 %) + a spell specialist's ⌈per-level rate × (hero level div the stack's creature level, at least 1) × t⌉ (3 % per level in SoD; HER-BAT-012); then the target creature's: × 2 from a spell it is vulnerable to (spell_vulnerability; the elementals) and × (100 − p) / 100 from a spell damage reduction of p % (the Golems: 50, 75, 85, 95), each rounded down. Rates are exact, or single precision under quirk Q-0005 (Sorcery's 5/10/15 %). VCMI applies the target's reductions first and rounds after every factor (dispute M-6 settled by code reading; X-1). The damage kills like physical damage (BAT-DMG-003; no luck, morale or retaliation) and is reported as a public SpellDamage event; the battle ends at once if a side has no living stacks left (BAT-END-001/002). Protection spells on the target join in E04b T3."
 numeric  = "integer"
 
   [[rule.source]]
   kind       = "vcmi"
-  ref        = "lib/spells/CSpellHandler.cpp L421-L424: power × power factor + level power; lib/mapObjects/CGHeroInstance.cpp L815-L837 getSpellBonus: Sorcery (SPELL_DAMAGE, any school), SPECIFIC_SPELL_DAMAGE, the best SPELL_DAMAGE among the spell's schools, SPECIAL_SPELL_LEV / creature level, each truncated"
+  ref        = "lib/spells/CSpellHandler.cpp L421-L424: power × power factor + level power; L380-L412: SPELL_DAMAGE_REDUCTION and MORE_DAMAGE_FROM_SPELL before the caster's bonuses; lib/mapObjects/CGHeroInstance.cpp L815-L837 getSpellBonus: Sorcery (SPELL_DAMAGE, any school), SPECIFIC_SPELL_DAMAGE, the best SPELL_DAMAGE among the spell's schools, SPECIAL_SPELL_LEV / creature level, each truncated"
   url        = "https://github.com/vcmi/vcmi/blob/1.7.5/lib/mapObjects/CGHeroInstance.cpp#L815-L837"
   retrieved  = "2026-10-05"
   confidence = "medium"
+  note       = "the factors and values; the order and rounding differ from the original's code, which wins"
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (docs/formats/installation.md §7.8): damage modifier 0x5A78E0 calls the caster's bonuses 0x4E5760 (Orb × 1.5 once, × (1 + Sorcery) as f32, truncated; specialty 0x4E5FF0 ceil((level div creature level) × t × 0.03), Ciele t >> 1, Luna t) before the creature's 0x44B4B0 (double damage, Golems / 2, / 4, × 15 / 100, / 20)"
+  confidence = "high"
 
   [[rule.source]]
   kind       = "wiki"
   ref        = "Hero specialty - Heroes 3 wiki, SoD argument of {{swh}}: C * (1 + 0.03 * L / n) for spell specialists; Orb of Tempestuous Fire: '+50% damage to fire spells' (survey docs/rules/surveys/E04b-magic.md §11)"
   url        = "https://heroes.thelazy.net/index.php/Hero_specialty"
   retrieved  = "2026-10-05"
+  confidence = "medium"
+
+[[rule]]
+id       = "BAT-MAG-005"
+title    = "Stacks a spell cannot affect"
+context  = "battle"
+status   = "implemented"
+summary  = "A spell cannot affect a stack whose creature misses a flag of SpellMagic.conditions.requires or has one of excludes (war machines against Implosion and Death Ripple, the executable's spell flag 0x1000; Death Ripple spares undead, Destroy Undead needs them), or has an immunity ability: spell_level_immunity up to a spell level (Green, Red and Azure Dragons 3, Gold Dragon 4, Black Dragon and Magic Elemental 5), school_immunity (fire: Fire and Energy Elementals, Efreet, Efreet Sultans, Firebirds, Phoenixes; the harvester checks it against the creature flag fire_immune) or spell_immunity (Air and Storm Elementals: Meteor Shower; Earth and Magma Elementals: Lightning Bolt, Chain Lightning, Armageddon; Water and Ice Elementals: Ice Bolt, Frost Ring). Such a stack is never a target (BAT-MAG-003), never struck by an area or battle-wide spell (BAT-MAG-007), never a chain's next stack (BAT-MAG-006) and never rolls for resistance; immunity holds for positive spells too. The original adds Titan's Lightning Bolt to the Earth/Magma immunities and the Air/Storm vulnerabilities (a SoD pack override once it is castable, E04b T8). Power of the Dragon Father, the Pendants, the Orb of Vulnerability and mind spells join with their tasks (E04b T3, T8)."
+numeric  = "integer"
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (docs/formats/installation.md §7.8): 0x5A8090 → 0x44A4D0 returns 0 (immune) for war machines against spell flag 0x1000, Death Ripple against undead, Destroy Undead against the living, fire spells against creature flag 0x4000, the dragons' level limits and the elementals' spell lists; settles dispute M-1"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "vcmi"
+  ref        = "config/creatures/*.json: LEVEL_SPELL_IMMUNITY, SPELL_SCHOOL_IMMUNITY, SPELL_IMMUNITY per creature (gap-fill source vcmi-magic-creatures); lib/spells/TargetCondition.cpp L135-L160, L225-L240: level immunity; config/spells/offensive.json: the target conditions of Implosion, Death Ripple and Destroy Undead"
+  url        = "https://github.com/vcmi/vcmi/blob/1.7.5/lib/spells/TargetCondition.cpp#L135-L160"
+  retrieved  = "2026-10-06"
+  confidence = "high"
+
+[[rule]]
+id       = "BAT-MAG-006"
+title    = "Chain Lightning"
+context  = "battle"
+status   = "implemented"
+summary  = "A chain spell (SpellMagic.chain) strikes its target, then jumps up to chain.targets[mastery] − 1 times (Chain Lightning 4, 4, 5, 5). If the first target resists (BAT-MAG-008), the whole spell is resisted. Each jump halves the value before the caster's bonuses (value × factor_bp / 10 000, rounded down at every jump), so each stack gets its own bonuses and reductions (BAT-MAG-004). The next stack is the nearest living stack not yet struck that the spell can affect (BAT-MAG-005), of either side, by the distance between the stacks' centres on the original's battle screen rounded down to whole pixels: hexes 44 × 42 pixels, even rows shifted 22 pixels to the right, a two-hex stack's centre 22 pixels towards its second hex (the original also lifts each stack by half its sprite's height, not modelled: OPEN-QUESTIONS Q43). The defender's stacks are searched first, then the attacker's, each by stack id, and the first wins a tie (the wiki's random tie-break is not in the code). Each candidate rolls for resistance when it is examined; one that resists is passed over for that jump only. The chain ends early when no stack is left. The geometry is checked by experiment batch 2a (user, OPEN-QUESTIONS Q44)."
+numeric  = "integer"
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (docs/formats/installation.md §7.8): Chain Lightning handler 0x5A6360, next target 0x5A61F0 (trunc(sqrt(dx² + dy²)), defender's stacks first, strict <), screen getters 0x446660/0x446630, mouse-to-hex 0x464870 (44 × 42 pixel hexes), jumps per mastery at 0x642274"
+  confidence = "medium"
+  note       = "pixel geometry is an inference from the code (user decision Q44: verify in batch 2a); the sprite offset is left out (Q43)"
+
+  [[rule.source]]
+  kind       = "vcmi"
+  ref        = "lib/spells/effects/UnitEffect.cpp L200-L250: the first target resisting ends the chain, a resisting later target is skipped, the next by the closest hex (BattleHex::getClosestTile); lib/spells/effects/Damage.cpp L155-L165: chainFactor^index; config/spells/offensive.json: chainLength 4, 4, 5, 5, chainFactor 0.5"
+  url        = "https://github.com/vcmi/vcmi/blob/1.7.5/lib/spells/effects/UnitEffect.cpp#L200-L250"
+  retrieved  = "2026-10-06"
+  confidence = "medium"
+  note       = "hex distance instead of screen distance; the factor applies to the final damage"
+
+  [[rule.source]]
+  kind       = "wiki"
+  ref        = "Chain Lightning - Heroes 3 wiki: strikes up to four (Expert: five) targets, each jump halving the damage; 'If two or more targets are at the equal distance from previous target, then the stack is randomly chosen' (not in the code; survey docs/rules/surveys/E04b-magic.md §12)"
+  url        = "https://heroes.thelazy.net/index.php/Chain_Lightning"
+  retrieved  = "2026-10-06"
+  confidence = "medium"
+
+[[rule]]
+id       = "BAT-MAG-007"
+title    = "Area and battle-wide spells"
+context  = "battle"
+status   = "implemented"
+summary  = "An area spell aimed at a hex strikes every living stack that the spell can affect (BAT-MAG-005) and that has a hex at a distance from inner to radius[mastery] of the aimed hex (SpellMagic.area: Fireball and Meteor Shower 0-1, Frost Ring 1-1, Inferno 0-2), of either side; a battle-wide spell strikes every such stack on the battlefield (Armageddon; Death Ripple and Destroy Undead by their conditions). If the hex aimed at holds a stack, that stack rolls for resistance first and, if it resists, the whole spell is resisted (a SpellResisted event, nothing else happens). Then each stack struck, by stack id, rolls for resistance (BAT-MAG-008; the aimed stack again) and takes the full value with its own bonuses and reductions (BAT-MAG-004) or is reported as resisting. Stacks killed earlier in the same cast are not struck again."
+numeric  = "integer"
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (docs/formats/installation.md §7.8): the area handler 0x5A4970 (shared by the four area spells) takes one entry per stack on the area's hexes, tests and rolls each, then damages it; the cast's call site 0x5A02EA rolls the stack aimed at first"
+  confidence = "medium"
+
+  [[rule.source]]
+  kind       = "vcmi"
+  ref        = "config/spells/offensive.json: range 0-1 (Fireball, Meteor Shower), 1 (Frost Ring), 0-2 (Inferno), whole battlefield (Armageddon, Death Ripple, Destroy Undead); lib/spells/BattleSpellMechanics.cpp L445-L475: every affected unit rolls separately"
+  url        = "https://github.com/vcmi/vcmi/blob/1.7.5/lib/spells/BattleSpellMechanics.cpp#L445-L475"
+  retrieved  = "2026-10-06"
+  confidence = "high"
+
+[[rule]]
+id       = "BAT-MAG-008"
+title    = "Magic resistance"
+context  = "battle"
+status   = "implemented"
+summary  = "A positive spell always affects a stack it can affect. For a neutral or negative spell, the chance in percent is trunc(f × 100) with f = the creature's share (1 − its magic_resistance: Dwarf and Crystal Dragon 0.8, Battle Dwarf 0.6; 1 without), minus the resistance of the stack's own hero (HER-BAT-013; the sum of its sources, at most 1), at least 0, times 0.8 once if an adjacent allied stack has a magic_resistance_aura (Unicorns 20 %; the strongest counts). A chance of 0 always resists, 100 never; otherwise one draw from 1 to 100 per stack decides (affected if the draw is at most the chance). Under quirk Q-0005 the values are single precision as in the original's x87 code: 10 % hero resistance leaves 89 %, 5 % leaves 94 %. A resisting stack is reported (SpellResisted) and takes nothing; aimed at, it stops the whole spell (BAT-MAG-006/007). Golem spell damage reduction is not resistance (BAT-MAG-004)."
+numeric  = "integer"
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (docs/formats/installation.md §7.8): 0x44A4D0 sets f per creature, f = f32(f − r) with r the hero's resistance (0x4E46E0: Resistance skill, specialty growth, Garniture 0.05, Surcoat 0.10, Boots 0.15, at most 1), the Unicorn aura × 0.8 once; the call sites roll random(1, 100) ≤ trunc(f × 100); settles dispute M-2"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "vcmi"
+  ref        = "lib/CStack.cpp L92-L107 magicResistance: the creature's and the hero's MAGIC_RESISTANCE added, the strongest adjacent SPELL_RESISTANCE_AURA, cast chance (100 − resistance) × (100 − aura) / 100; lib/spells/BattleSpellMechanics.cpp L454-L463: one roll per unit for negative spells"
+  url        = "https://github.com/vcmi/vcmi/blob/1.7.5/lib/CStack.cpp#L92-L107"
+  retrieved  = "2026-10-06"
+  confidence = "high"
+  note       = "the same values; percentages instead of single-precision fractions"
+
+  [[rule.source]]
+  kind       = "wiki"
+  ref        = "Resistance - Heroes 3 wiki: 5 / 10 / 20 %, resistance artifacts work with or without the skill; the Magic resistance and Dwarf pages do not say whether the hero's and the creature's resistance add or multiply (survey docs/rules/surveys/E04-skills.md §2.10)"
+  url        = "https://heroes.thelazy.net/index.php/Resistance"
+  retrieved  = "2026-10-03"
   confidence = "medium"
 

@@ -366,6 +366,13 @@ pub enum HeroEffect<C, K, S, F, L> {
     },
     /// The hero can cast the spells it knows in battle (the Spell Book).
     SpellBook,
+    /// The hero's stacks resist hostile spells: their creatures' share a spell affects shrinks
+    /// by `bp` (the Resistance skill, Garniture of Interference, Surcoat of Counterpoise, Boots of
+    /// Polarity; E04b T2d).
+    MagicResistance {
+        /// Resistance in basis points (1..=10 000).
+        bp: u16,
+    },
 }
 
 /// An effect as written in a pack (references are keys).
@@ -375,7 +382,7 @@ pub type CompiledHeroEffect = HeroEffect<CreatureTypeId, SkillId, SpellId, Facti
 
 impl<C, K, S, F, L> HeroEffect<C, K, S, F, L> {
     /// Pack names, indexed by [`HeroEffect::code`].
-    pub const NAMES: [&'static str; 25] = [
+    pub const NAMES: [&'static str; 26] = [
         "morale",
         "luck",
         "ranged_damage",
@@ -401,6 +408,7 @@ impl<C, K, S, F, L> HeroEffect<C, K, S, F, L> {
         "school_mastery",
         "spell_damage",
         "spell_book",
+        "magic_resistance",
     ];
 
     /// Stable code of the variant (canonical hash, duplicate checks).
@@ -431,6 +439,7 @@ impl<C, K, S, F, L> HeroEffect<C, K, S, F, L> {
             Self::SchoolMastery { .. } => 22,
             Self::SpellDamage { .. } => 23,
             Self::SpellBook => 24,
+            Self::MagicResistance { .. } => 25,
         }
     }
 
@@ -570,6 +579,7 @@ impl<C, K, S, F, L> HeroEffect<C, K, S, F, L> {
                 bp: *bp,
             },
             Self::SpellBook => HeroEffect::SpellBook,
+            Self::MagicResistance { bp } => HeroEffect::MagicResistance { bp: *bp },
         })
     }
 
@@ -629,6 +639,9 @@ impl<C, K, S, F, L> HeroEffect<C, K, S, F, L> {
                 Some("school_mastery level must be 1..=3")
             }
             Self::SpellDamage { bp: 0, .. } => Some("spell_damage bp must be at least 1"),
+            Self::MagicResistance { bp } if !(1..=FULL_BP).contains(bp) => {
+                Some("magic_resistance bp must be 1..=10000")
+            }
             _ => None,
         }
     }
@@ -826,6 +839,7 @@ impl CanonicalHash for CompiledHeroEffect {
                 scope.hash_into(h);
                 h.write_u16(*bp);
             }
+            Self::MagicResistance { bp } => h.write_u16(*bp),
         }
     }
 }
@@ -920,6 +934,7 @@ mod tests {
                 bp: 5000,
             },
             E::SpellBook,
+            E::MagicResistance { bp: 500 },
         ]
     }
 
@@ -1120,6 +1135,8 @@ mod tests {
                 scope: SpellScope::All,
                 bp: 0,
             },
+            E::MagicResistance { bp: 0 },
+            E::MagicResistance { bp: 10_001 },
         ];
         for e in bad {
             assert!(e.parameter_error().is_some(), "{e:?}");

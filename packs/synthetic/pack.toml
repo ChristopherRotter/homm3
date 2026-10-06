@@ -368,6 +368,13 @@ advanced = [{ kind = "spell_damage", bp = 1000 }]
 expert = [{ kind = "spell_damage", bp = 1500 }]
 
 [[secondary_skill]]
+id = "warding"
+name = "Warding"
+basic = [{ kind = "magic_resistance", bp = 500 }]   # chance to resist a hostile spell
+advanced = [{ kind = "magic_resistance", bp = 1000 }]
+expert = [{ kind = "magic_resistance", bp = 2000 }]
+
+[[secondary_skill]]
 id = "wayfinding"                   # no battle effect (an adventure skill)
 name = "Wayfinding"
 

@@ -13,8 +13,8 @@ use crate::effect::MAX_SKILL_LEVEL;
 use crate::error::CompileError;
 use crate::flags::{CreatureFlag, CreatureFlags};
 use crate::heroes::{
-    HeroClass, HeroClassId, HeroContent, HeroParams, HeroType, HeroTypeId, Refs, SecondarySkill,
-    SkillId, Spell, SpellId, SpellSchool,
+    HeroClass, HeroClassId, HeroContent, HeroParams, HeroType, HeroTypeId, Refs, SchoolId,
+    SecondarySkill, SkillId, Spell, SpellId, SpellSchool,
 };
 use crate::key::{ContentKey, is_valid_part};
 use crate::pack::{BattleParamsDef, ContentPack, CreaturePatch};
@@ -28,7 +28,7 @@ pub const MAX_ARMY_SLOTS: usize = 16;
 pub const MAX_FIELD_HEXES: usize = 255;
 
 /// Version of the ruleset hash encoding. Bump when the encoding below changes.
-pub const RULESET_HASH_VERSION: u32 = 15;
+pub const RULESET_HASH_VERSION: u32 = 16;
 
 /// A compiled creature type.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -370,15 +370,28 @@ impl Scope<'_> {
     }
 }
 
-/// Resolves the creature references of an ability list against the creatures compiled so far,
-/// restricted to the pack's dependency closure.
+/// What abilities may refer to: the creatures, spells and spell schools compiled so far.
+struct AbilityIndex<'a> {
+    creatures: &'a BTreeMap<String, CreatureTypeId>,
+    spells: &'a BTreeMap<String, SpellId>,
+    schools: &'a BTreeMap<String, SchoolId>,
+}
+
+/// Resolves the references of an ability list against the content compiled so far, restricted
+/// to the pack's dependency closure.
 fn abilities(
     defs: &[AbilityDef],
     scope: &Scope<'_>,
-    creatures: &BTreeMap<String, CreatureTypeId>,
+    index: &AbilityIndex<'_>,
 ) -> Result<Vec<CompiledAbility>, CompileError> {
     defs.iter()
-        .map(|a| a.try_map(|key| scope.resolve(key, creatures, "creature")))
+        .map(|a| {
+            a.try_map(
+                |key| scope.resolve(key, index.creatures, "creature"),
+                |key| scope.resolve(key, index.spells, "spell"),
+                |key| scope.resolve(key, index.schools, "spell school"),
+            )
+        })
         .collect()
 }
 
@@ -527,6 +540,20 @@ impl Ruleset {
                 });
                 creature_keys.push(def.key.clone());
             }
+            // The pack's spells and schools come first: abilities may name them.
+            let refs = Refs {
+                pack: id,
+                closure,
+                resources: &resource_index,
+                factions: &faction_index,
+                creatures: &creature_index,
+            };
+            hero.add_pack(pack, &refs)?;
+            let index = AbilityIndex {
+                creatures: &creature_index,
+                spells: &hero.spells.index,
+                schools: &hero.schools.index,
+            };
             // Abilities and upgrades may refer to any creature of the closure, including later
             // ones of this pack, so they are resolved once the pack's creatures are registered.
             let first = creature_abilities.len();
@@ -535,7 +562,7 @@ impl Ruleset {
                 .iter()
                 .zip(creature_info.get_mut(first..).unwrap_or_default())
             {
-                creature_abilities.push(abilities(&def.info.abilities, &scope, &creature_index)?);
+                creature_abilities.push(abilities(&def.info.abilities, &scope, &index)?);
                 info.upgrades = upgrades(&def.info.upgrades, &scope, &creature_index)?;
             }
             for o in &pack.creature_overrides {
@@ -565,18 +592,10 @@ impl Ruleset {
                             info,
                             abilities: abils,
                         };
-                        apply_patch(&o.patch, target, &scope, &creature_index)
+                        apply_patch(&o.patch, target, &scope, &index)
                     })
                     .transpose()?;
             }
-            let refs = Refs {
-                pack: id,
-                closure,
-                resources: &resource_index,
-                factions: &faction_index,
-                creatures: &creature_index,
-            };
-            hero.add_pack(pack, &refs)?;
             if let Some(b) = &pack.battle {
                 if battle_def.is_some() {
                     return Err(CompileError::DuplicateBattleParams(id.clone()));
@@ -953,7 +972,7 @@ fn apply_patch(
     p: &CreaturePatch,
     target: Target<'_>,
     scope: &Scope<'_>,
-    creatures: &BTreeMap<String, CreatureTypeId>,
+    index: &AbilityIndex<'_>,
 ) -> Result<(), CompileError> {
     let Target {
         stats,
@@ -991,10 +1010,10 @@ fn apply_patch(
         stats.flags = flags(names)?;
     }
     if let Some(defs) = &p.abilities {
-        *abils = abilities(defs, scope, creatures)?;
+        *abils = abilities(defs, scope, index)?;
     }
     if let Some(keys) = &p.upgrades {
-        info.upgrades = upgrades(keys, scope, creatures)?;
+        info.upgrades = upgrades(keys, scope, index.creatures)?;
     }
     Ok(())
 }

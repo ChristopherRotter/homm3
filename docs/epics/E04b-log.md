@@ -141,3 +141,42 @@ records how and why the tasks went.
   (one sampling rule for every entry); a non-cast entry with a non-zero head does not decode;
   `CREATURE_CAST` reserved now so T7 does not move the entries; the spell book in the observation
   as one feature per spell handle.
+
+### T2d — Area, chain and battle-wide damage; immunities and resistance (2026-10-06)
+
+- **Code reading** (`docs/formats/installation.md` §7.8, survey §12): the damage order, the
+  immunity and resistance test, Chain Lightning's jumps and the area handler from the SoD
+  executable; settles M-1, M-2, M-6 and X-1's rounding, most of X-6. Where VCMI differs (the
+  target's reductions first, truncation after every factor, chain by hex distance), the original
+  wins.
+- **User decisions (Q44):** `BattleEffect::SpellSpecialty` carries the per-level rate and the
+  hero level (contract change); Chain Lightning by screen geometry (hex centres 44 × 42 pixels,
+  the two-hex shift, the code's tie order, no sprite offset: Q43), a pixel-vs-hex case in batch
+  2a; magic resistance single precision under Q-0005.
+- **Content:** abilities `spell_level_immunity`, `school_immunity`, `spell_immunity`,
+  `spell_vulnerability`, `spell_damage_reduction`, `magic_resistance`, `magic_resistance_aura`
+  (codes 22–28; `Ability` gains school and spell references); hero effect `magic_resistance`
+  (code 25); the ruleset resolves abilities after spells and schools; ruleset hash v16. The
+  harvester reads Resistance's value table (skill 26), concatenates a creature's ability entries
+  (one per topic, with its sources) and checks `fire_immune` against `school_immunity` fire; the
+  gap-fill file gains the creatures' magic abilities and the three resistance artifacts.
+- **Heroes:** HER-BAT-012 (specialty with level), HER-BAT-013 (one `MagicResistance` effect per
+  source, the skill grown by a Resistance specialty).
+- **Battle:** `magic` rewritten after the code: BAT-MAG-003 (stack, hex and battle-wide targets),
+  BAT-MAG-004 (the original's order), BAT-MAG-005 (immunities), -006 (Chain Lightning), -007
+  (area and battle-wide spells, the aimed stack's roll first), -008 (resistance; event
+  `SpellResisted`); `h3_kernel::arith::round_single`. STUB-0001 removed: every damage spell is
+  castable. State hash v19, replay format v15.
+- **Tests:** `tests/spells.rs` (immunities and reductions, resistance chances exact and single,
+  the aimed stack's fizzle, areas and battle-wide spells, the chain's screen order and skipped
+  resisting stacks, the hex target list); `the_casters_bonuses_apply_in_the_originals_order`;
+  property tests cast the new spells; harvester and pack tests for the new kinds.
+- **Measurements:** `BattleState` 2 624 → 2 640 bytes (the hero's resistance). `h3 bench --games
+  20` 8 955 steps instead of 11 100 (area and battle-wide spells end battles sooner), 365 502 439
+  Ir: ≈ 40.8 k Ir per step (T2c ≈ 41.3 k); `bench-check` re-baselined for that reason. Golden
+  replays re-recorded (`duel-s1`, `skirmish-s7`: the same commands; `full-s3`: 9 casts).
+- **Agent decisions (change freely):** a hex target must be standable, its stack (if any)
+  reachable, and the area must reach a stack (VCMI; the original's validation not read); S-18
+  cannot occur from a hero's cast (power
+  ≥ 1 gives at least 20 before the Golems' reduction) and stays for creature casters (T7);
+  Titan's Lightning Bolt's elemental entries wait for its castability (T8, BACKLOG).

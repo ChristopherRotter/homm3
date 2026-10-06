@@ -69,6 +69,24 @@ pub fn single_precision(num: u16, den: u16) -> Option<u64> {
     Some(m << (i64::from(SINGLE_FRAC_BITS) - k))
 }
 
+/// The value `num / 2^SINGLE_FRAC_BITS` rounded to single precision (IEEE 754 binary32, to
+/// nearest, ties to even), as a numerator over `2^SINGLE_FRAC_BITS`: what the original's x87 code
+/// keeps when it stores a sum or difference of single-precision values (quirk Q-0005). Values
+/// below `2^-16` keep all their bits (single precision would keep more than the numerator can
+/// hold); no rule distinguishes them from their rounding. Saturates at `u64::MAX`.
+pub fn round_single(num: u64) -> u64 {
+    // 24 significant bits: drop `shift` low bits of a value with `bits` bits.
+    let bits = 64 - num.leading_zeros();
+    let shift = bits.saturating_sub(24);
+    if shift == 0 {
+        return num;
+    }
+    let (q, rest) = (num >> shift, num & ((1 << shift) - 1));
+    let half = 1 << (shift - 1);
+    let up = rest > half || (rest == half && q & 1 == 1);
+    u64::try_from(u128::from(q + u64::from(up)) << shift).unwrap_or(u64::MAX)
+}
+
 /// Limbs of [`WideUint`].
 const WIDE_LIMBS: usize = 8;
 
@@ -201,6 +219,27 @@ mod tests {
             cmp_fractions((1 << 127, 1 << 100), ((1 << 127) - 1, 1 << 100)),
             core::cmp::Ordering::Greater
         );
+    }
+
+    #[test]
+    fn rounding_to_single_precision() {
+        let one = 1u64 << SINGLE_FRAC_BITS;
+        let rate = |n| single_precision(n, 100).unwrap();
+        // Exact values stay; 1 − 0.1 rounds down to 0.89999998 (the original: 10 % hero
+        // resistance leaves 89 % to be affected), 1 − 0.05 to 0.94999999.
+        assert_eq!(round_single(one), one);
+        assert_eq!(round_single(rate(80)), rate(80));
+        assert_eq!(round_single(one - rate(10)), 15_099_494 << 16);
+        assert!(round_single(one - rate(10)) * 100 < 90 * one);
+        assert!(round_single(one - rate(5)) * 100 < 95 * one);
+        assert_eq!(round_single(rate(80) - rate(5)), 3 * one / 4);
+        // Ties go to the even neighbour; small values keep their bits.
+        assert_eq!(round_single((1 << 30) + (1 << 6)), 1 << 30);
+        assert_eq!(round_single((1 << 30) + (3 << 6)), (1 << 30) + (1 << 8));
+        assert_eq!(round_single((1 << 30) + (1 << 6) + 1), (1 << 30) + (1 << 7));
+        assert_eq!(round_single(12_345), 12_345);
+        assert_eq!(round_single(0), 0);
+        assert_eq!(round_single(u64::MAX), u64::MAX);
     }
 
     #[test]

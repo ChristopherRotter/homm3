@@ -76,7 +76,7 @@ impl Command {
 }
 
 /// A command that passed validation, with everything `apply` needs.
-enum Plan {
+enum Plan<'r> {
     Move {
         mover: StackId,
         from: Hex,
@@ -122,7 +122,7 @@ enum Plan {
         side: BattleSide,
         price: u32,
     },
-    Cast(Cast),
+    Cast(Cast<'r>),
 }
 
 /// Checks `command` for `actor` without changing anything. Shared by `apply` and
@@ -147,12 +147,12 @@ fn enemy(state: &BattleState, actor: BattleSide, target: StackId) -> Result<(), 
     Ok(())
 }
 
-fn plan(
+fn plan<'r>(
     state: &BattleState,
-    ruleset: &Ruleset,
+    ruleset: &'r Ruleset,
     actor: BattleSide,
     command: Command,
-) -> Result<Plan, CommandError> {
+) -> Result<Plan<'r>, CommandError> {
     let Some((id, mover)) = state.active_stack() else {
         return Err(CommandError::BattleOver);
     };
@@ -264,7 +264,7 @@ fn plan(
 
 /// Validates a retreat of `side`, whose stack is active or whose tactics phase runs.
 // rule: BAT-FLE-001
-fn retreat(state: &BattleState, side: BattleSide) -> Result<Plan, CommandError> {
+fn retreat(state: &BattleState, side: BattleSide) -> Result<Plan<'static>, CommandError> {
     if state.may_retreat(side) {
         Ok(Plan::Retreat { side })
     } else {
@@ -278,7 +278,7 @@ fn surrender(
     state: &BattleState,
     ruleset: &Ruleset,
     side: BattleSide,
-) -> Result<Plan, CommandError> {
+) -> Result<Plan<'static>, CommandError> {
     let Some(price) = state.surrender_price(ruleset, side) else {
         return Err(CommandError::CannotSurrender);
     };
@@ -298,7 +298,7 @@ fn plan_tactics(
     phase: TacticsPhase,
     (id, mover): (StackId, &Stack),
     command: Command,
-) -> Result<Plan, CommandError> {
+) -> Result<Plan<'static>, CommandError> {
     let field = Field::new(ruleset.battle().field);
     match command {
         Command::Move { to } => {
@@ -392,7 +392,7 @@ pub fn apply<S: Sink>(
             state.surrender_cost = Some(price);
             leave(state, BattleResult::Surrender(side), sink);
         }
-        Plan::Cast(cast) => magic::apply_cast(state, cast, sink),
+        Plan::Cast(cast) => magic::apply_cast(state, ruleset, cast, sink),
     }
     Ok(())
 }

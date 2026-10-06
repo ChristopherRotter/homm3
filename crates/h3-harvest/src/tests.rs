@@ -243,6 +243,7 @@ fn hero_data() -> HeroData {
             (23, float([0.0, 0.05, 0.1, 0.15])),
             (4, float([0.0, 0.2, 0.4, 0.6])),
             (25, float([0.0, 0.05, 0.1, 0.15])),
+            (26, float([0.0, 0.05, 0.1, 0.2])),
             (27, float([0.0, 1.0, 2.0, 3.0])),
         ],
         specialty_growth: 0.05,
@@ -389,10 +390,13 @@ sources = ["s"]
 
 [[creature_abilities]]
 creature = "Unit 2"
-abilities = [
-    { kind = "hate", creature = "Unit 1", percent = 50 },
-    { kind = "hate", creature = "Unit 20", percent = 50 },
-]
+abilities = [{ kind = "hate", creature = "Unit 1", percent = 50 }]
+sources = ["s"]
+
+# A second entry for the same creature adds to the first.
+[[creature_abilities]]
+creature = "Unit 2"
+abilities = [{ kind = "hate", creature = "Unit 20", percent = 50 }]
 sources = ["s"]
 
 [[creature_abilities]]
@@ -695,17 +699,8 @@ fn inconsistencies_are_errors() {
             .contains("AB addition and as RoE")
     );
 
-    // Ability entries: listed twice, for a creature that is not harvested, referring to one
-    // that is not harvested, and with parameters the compiler rejects.
-    let twice = GapFill::parse(&format!(
-        "{GAP}\n[[creature_abilities]]\ncreature = \"Unit 1\"\nabilities = []\nsources = [\"s\"]\n"
-    ))
-    .unwrap();
-    assert!(
-        harvest(&inputs(), &twice)
-            .unwrap_err()
-            .contains("listed twice")
-    );
+    // Ability entries: for a creature that is not harvested, referring to one that is not
+    // harvested, and with parameters the compiler rejects.
     let machine =
         GapFill::parse(&GAP.replace("creature = \"Unit 20\"\n", "creature = \"Unit 149\"\n"))
             .unwrap();
@@ -822,6 +817,7 @@ fn harvests_hero_content() {
     let zap = r.spell(r.spell_by_key("base:zap").unwrap()).unwrap();
     assert_eq!(zap.magic.effects, [h3_content::SpellEffect::Damage]);
     assert!(base.contains("expert = [{ kind = \"spell_damage\", bp = 1500 }]"));
+    assert!(base.contains("expert = [{ kind = \"magic_resistance\", bp = 2000 }]"));
     assert!(
         h.report
             .iter()

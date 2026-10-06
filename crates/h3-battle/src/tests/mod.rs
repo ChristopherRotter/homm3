@@ -11,6 +11,7 @@ mod morale;
 mod properties;
 mod ranged;
 mod rules;
+mod spells;
 mod support;
 mod tactics;
 mod terrain;

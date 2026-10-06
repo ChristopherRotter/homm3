@@ -183,10 +183,12 @@ fn make_setup(
         led.effects.push(BattleEffect::NoRetreat);
     }
     let magic = machines.rotate_left(13);
-    let book: Vec<SpellId> = ["bolt", "smite", "ward", "nova", "portal"]
-        .iter()
-        .map(|k| r.spell_by_key(&std::format!("t:{k}")).unwrap())
-        .collect();
+    let book: Vec<SpellId> = [
+        "bolt", "smite", "ward", "nova", "portal", "chain", "storm", "ring",
+    ]
+    .iter()
+    .map(|k| r.spell_by_key(&std::format!("t:{k}")).unwrap())
+    .collect();
     led.magic.spell_book = Some(book.clone());
     led.magic.mana = u16::try_from(magic & 63).unwrap();
     led.magic.schools = [u8::try_from((magic >> 12) & 3).unwrap(), 1, 0, 0];
@@ -198,8 +200,10 @@ fn make_setup(
         },
         BattleEffect::SpellSpecialty {
             spell: book[0],
-            bp: 1500,
+            bp_per_level: 300,
+            level: 5,
         },
+        BattleEffect::MagicResistance { bp: 500 },
     ]);
     let defender_hero = (machines & (1 << 44) != 0).then(|| {
         let mut h = hero(r);

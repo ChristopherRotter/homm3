@@ -415,7 +415,7 @@ id       = "HER-BAT-012"
 title    = "The battle hero's spell bonuses"
 context  = "heroes"
 status   = "implemented"
-summary  = "The battle hero's SpellDamage effects are, per scope (every spell, one school, one spell), the sum of the spell_damage values of the hero's effect sources (HER-BAT-001) grown like HER-BAT-004: a skill's value grows by the hero's skill specialty for it by bp_per_level of itself per hero level, rounded down; artifacts once per type and the specialty's own do not grow (Sorcery 5/10/15 % for every spell; the Orbs of the Firmament, Silt, Tempestuous Fire and Driving Rain +50 % for air, earth, fire and water spells; Ciele's specialty +50 % for Magic Arrow, Luna's +100 % for Fire Wall), saturated at u16::MAX, in the order of their first appearance after the alignment groups. A spell_specialty (every other spell specialist) becomes SpellSpecialty with bp = bp_per_level (300 in SoD) times the hero's level: the cast's effect on a stack grows by bp / 10 000 divided by the stack's creature level (wiki C * (1 + 0.03 * L / n)). The battle applies them from E04b T2b on (damage spells; other spell kinds with their tasks); the order of the factors and the rounding are BAT-MAG rules (batch 2a, X-1)."
+summary  = "The battle hero's SpellDamage effects are, per scope (every spell, one school, one spell), the sum of the spell_damage values of the hero's effect sources (HER-BAT-001) grown like HER-BAT-004: a skill's value grows by the hero's skill specialty for it by bp_per_level of itself per hero level, rounded down; artifacts once per type and the specialty's own do not grow (Sorcery 5/10/15 % for every spell; the Orbs of the Firmament, Silt, Tempestuous Fire and Driving Rain +50 % for air, earth, fire and water spells; Ciele's specialty +50 % for Magic Arrow, Luna's +100 % for Fire Wall), saturated at u16::MAX, in the order of their first appearance after the alignment groups. A spell_specialty (every other spell specialist) becomes SpellSpecialty with its bp_per_level (300 in SoD) and the hero's level (contract change, user 2026-10-06, Q44): the battle adds ⌈bp_per_level / 10 000 × (hero level div the stack's creature level) × t⌉ (wiki C * (1 + 0.03 * L / n), the integer division from the original's code). The battle applies them from E04b T2b on (damage spells; other spell kinds with their tasks); the order of the factors and the rounding are BAT-MAG-004."
 numeric  = "integer"
 
   [[rule.source]]
@@ -435,4 +435,31 @@ numeric  = "integer"
   ref        = "lib/mapObjects/CGHeroInstance.cpp L815-L837 getSpellBonus: SPELL_DAMAGE for every school (Sorcery, config/skills.json L783-L812), SPECIFIC_SPELL_DAMAGE per spell (Ciele, Luna: config/heroes/conflux.json L280-L332), the best SPELL_DAMAGE of the spell's schools (the Orbs, config/artifacts.json L1166-L1217), SPECIAL_SPELL_LEV val 3 times the hero level divided by the creature level (config/heroes/*.json); each bonus type sums its sources"
   url        = "https://github.com/vcmi/vcmi/blob/1.7.5/lib/mapObjects/CGHeroInstance.cpp#L815-L837"
   retrieved  = "2026-10-05"
+  confidence = "high"
+
+[[rule]]
+id       = "HER-BAT-013"
+title    = "The battle hero's magic resistance"
+context  = "heroes"
+status   = "implemented"
+summary  = "The battle hero has one MagicResistance effect per magic_resistance source among its effect sources (HER-BAT-001), in their order: the Resistance skill (5 / 10 / 20 %) grown by a Resistance specialty like HER-BAT-004 (rounded down), then each artifact type once (Garniture of Interference 5 %, Surcoat of Counterpoise 10 %, Boots of Polarity 15 %), each saturated at u16::MAX basis points. The battle adds them in that order, at most 100 %, and subtracts the sum from the creature's share of its own side's stacks (BAT-MAG-008; under quirk Q-0005 each sum single precision, as the original stores it)."
+numeric  = "integer"
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe Resistance value table (skill 26, docs/formats/installation.md §7.4: f32 0, 0.05, 0.10, 0.20); the hero's resistance 0x4E46E0 (§7.8): the skill value grown × (1 + 0.05 × level) for a Resistance specialist, + 0.05, + 0.10, + 0.15 for the three artifacts, each stored as f32, at most 1"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "vcmi"
+  ref        = "config/skills.json resistance: MAGIC_RESISTANCE 5 / 10 / 20; config/artifacts.json: garnitureOfInterference 5, surcoatOfCounterpoise 10, bootsOfPolarity 15 (MAGIC_RESISTANCE); lib/BasicTypes.cpp L41-L46: summed, at most 100"
+  url        = "https://github.com/vcmi/vcmi/blob/1.7.5/lib/BasicTypes.cpp#L41-L46"
+  retrieved  = "2026-10-06"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "wiki"
+  ref        = "Resistance - Heroes 3 wiki: 5 / 10 / 20 %; resistance artifacts work with or without the skill (survey docs/rules/surveys/E04-skills.md §2.10)"
+  url        = "https://heroes.thelazy.net/index.php/Resistance"
+  retrieved  = "2026-10-03"
   confidence = "high"

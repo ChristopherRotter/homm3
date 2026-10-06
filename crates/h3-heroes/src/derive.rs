@@ -89,6 +89,9 @@ pub fn derive_battle_hero(
 
     // rule: HER-BAT-012
     hero.effects.extend(spell_bonuses(details, ruleset));
+
+    // rule: HER-BAT-013
+    hero.effects.extend(magic_resistance(details, ruleset));
     if hero.effects.len() > MAX_BATTLE_EFFECTS {
         return Err(DetailsError::TooManyBattleEffects);
     }
@@ -135,7 +138,7 @@ fn magic(details: &HeroDetails, ruleset: &Ruleset) -> BattleMagic {
 /// The spell bonuses (HER-BAT-012): per scope (every spell, a school, a spell) the sum of the
 /// grown `spell_damage` values of [`grown_effects`] (Sorcery grows with a Sorcery specialty),
 /// saturated at `u16::MAX`, in the order of their first appearance; then the specialty's
-/// `spell_specialty` as `bp_per_level` times the hero's level.
+/// `spell_specialty` with the hero's level (the battle divides it by the creature's level).
 fn spell_bonuses(details: &HeroDetails, ruleset: &Ruleset) -> Vec<BattleEffect> {
     let mut totals: Vec<(SpellScope<SchoolId, SpellId>, u64)> = Vec::new();
     for (effect, growth_bp) in grown_effects(details, ruleset) {
@@ -164,12 +167,27 @@ fn spell_bonuses(details: &HeroDetails, ruleset: &Ruleset) -> Vec<BattleEffect> 
                     bp_per_level,
                 } => Some(BattleEffect::SpellSpecialty {
                     spell,
-                    bp: u32::from(bp_per_level) * u32::from(details.level),
+                    bp_per_level,
+                    level: details.level,
                 }),
                 _ => None,
             }),
     );
     out
+}
+
+/// The magic resistance (HER-BAT-013): one `MagicResistance` effect per source in the order of
+/// [`grown_effects`] (the Resistance skill grown by a Resistance specialty, then each artifact
+/// type once), saturated at `u16::MAX`; the battle adds them in that order (BAT-MAG-008).
+fn magic_resistance(details: &HeroDetails, ruleset: &Ruleset) -> Vec<BattleEffect> {
+    grown_effects(details, ruleset)
+        .filter_map(|(effect, growth_bp)| match *effect {
+            HeroEffect::MagicResistance { bp } => Some(BattleEffect::MagicResistance {
+                bp: u16::try_from(grow(u64::from(bp), growth_bp)).unwrap_or(u16::MAX),
+            }),
+            _ => None,
+        })
+        .collect()
 }
 
 /// The surrender discount (HER-BAT-007): the sum of the grown values of the surrender discounts

@@ -455,15 +455,15 @@ pub fn harvest(inputs: &Inputs, gap: &GapFill) -> Result<Harvest, String> {
         .iter()
         .map(|c| Ok((by_name(&c.name)?, c.since)))
         .collect::<Result<_, String>>()?;
-    let mut ability_specs: BTreeMap<usize, &[AbilitySpec]> = BTreeMap::new();
+    // A creature's abilities may come from several entries (one per topic, each with its
+    // sources), in file order.
+    let mut ability_specs: BTreeMap<usize, Vec<AbilitySpec>> = BTreeMap::new();
     for entry in &gap.creature_abilities {
         let id = by_name(&entry.creature)?;
-        if ability_specs.insert(id, &entry.abilities).is_some() {
-            return Err(format!(
-                "gapfill: abilities of `{}` are listed twice",
-                entry.creature
-            ));
-        }
+        ability_specs
+            .entry(id)
+            .or_default()
+            .extend(entry.abilities.iter().cloned());
     }
 
     let mut creatures = Vec::new();
@@ -616,6 +616,23 @@ pub fn harvest(inputs: &Inputs, gap: &GapFill) -> Result<Harvest, String> {
     // override.
     let harvested: BTreeMap<usize, &str> =
         creatures.iter().map(|c| (c.id, c.key.as_str())).collect();
+    // The executable's fire-immunity flag protects against the fire school's spells
+    // (installation.md §7.8); the gap-fill names that school for exactly those creatures.
+    for c in &creatures {
+        let flagged = c.flags.contains(&"fire_immune");
+        let listed = ability_specs.get(&c.id).is_some_and(|l| {
+            l.iter().any(|a| {
+                a.kind == "school_immunity"
+                    && a.params.get("school").and_then(toml::Value::as_str) == Some("base:fire")
+            })
+        });
+        if flagged != listed {
+            return Err(format!(
+                "creature `{}`: flag fire_immune and the gap-fill's fire school immunity disagree",
+                c.key
+            ));
+        }
+    }
     if let Some(id) = ability_specs.keys().find(|id| !harvested.contains_key(id)) {
         return Err(format!(
             "gapfill: abilities for `{}`, which is not harvested",

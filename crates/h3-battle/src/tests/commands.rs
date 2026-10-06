@@ -256,8 +256,10 @@ fn state_hash_is_pinned() {
         },
         h3_contracts::BattleEffect::SpellSpecialty {
             spell: bolt,
-            bp: 3000,
+            bp_per_level: 300,
+            level: 10,
         },
+        h3_contracts::BattleEffect::MagicResistance { bp: 500 },
     ];
     led.magic.spell_book = Some(vec![bolt]);
     led.magic.schools = [2, 1, 0, 0];
@@ -269,7 +271,7 @@ fn state_hash_is_pinned() {
     let s = BattleState::new(&r, &setup, 7).unwrap();
     assert!(s.tactics().is_some());
     assert_eq!(s.state_hash(), GOLDEN, "got {:#018x}", s.state_hash());
-    assert_eq!(crate::BATTLE_STATE_HASH_VERSION, 18);
+    assert_eq!(crate::BATTLE_STATE_HASH_VERSION, 19);
 }
 
-const GOLDEN: u64 = 0xc023_0e0d_3fa4_ccfe;
+const GOLDEN: u64 = 0x7216_9334_681d_3838;

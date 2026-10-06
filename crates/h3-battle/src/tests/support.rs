@@ -8,7 +8,7 @@ use std::vec::Vec;
 use h3_content::{
     AbilityDef, AuraTarget, BattleParamsDef, ContentKey, ContentPack, CreatureDef, CreatureFlag,
     CreatureFlags, CreatureInfoDef, FactionDef, Formation, HeroClassDef, HeroTypeDef, ObstacleDef,
-    PackManifest, ProfileDef, ResourceDef, Ruleset, SpellArea, SpellCategory, SpellDef,
+    PackManifest, ProfileDef, ResourceDef, Ruleset, SpellArea, SpellCategory, SpellChain, SpellDef,
     SpellEffect, SpellMagic, SpellPolarity, SpellSchoolDef, SpellTarget, StartingStackDef,
     SurrenderDef, TargetConditions, TargetSide, TerrainDef,
 };
@@ -339,6 +339,53 @@ pub const CREATURES: &[Creature] = &[
     ("paladin", 12, 12, 7, 10, 35, 6, &["alive"]),
     // A level-7 creature (spell specialties divide by the creature's level, BAT-MAG-004).
     ("titan", 20, 20, 10, 20, 300, 7, &["alive", "level=7"]),
+    // Battle magic (BAT-MAG-004 to BAT-MAG-008): all 10/10 with damage 2 and 10 HP.
+    (
+        "dwarf",
+        10,
+        10,
+        2,
+        2,
+        10,
+        5,
+        &["alive", "magic_resistance=20"],
+    ),
+    (
+        "unicorn",
+        10,
+        10,
+        2,
+        2,
+        10,
+        5,
+        &["alive", "magic_resistance_aura=20"],
+    ),
+    (
+        "wyrm",
+        10,
+        10,
+        2,
+        2,
+        10,
+        5,
+        &["alive", "spell_level_immunity=1"],
+    ),
+    ("golem", 10, 10, 2, 2, 10, 5, &["spell_damage_reduction=75"]),
+    (
+        "ember",
+        10,
+        10,
+        2,
+        2,
+        10,
+        5,
+        &[
+            "alive",
+            "school_immunity=fire",
+            "spell_immunity=rally",
+            "spell_vulnerability=bolt:100",
+        ],
+    ),
 ];
 
 /// The traits of a test creature as creature info: flags, abilities, shots and faction.
@@ -434,6 +481,31 @@ fn parse_traits(traits: &[&str]) -> CreatureInfoDef {
             "strike_and_return" => AbilityDef::StrikeAndReturn,
             "attacks_all_adjacent" => AbilityDef::AttacksAllAdjacent,
             "three_headed_attack" => AbilityDef::ThreeHeadedAttack,
+            "magic_resistance" => AbilityDef::MagicResistance {
+                percent: u8::try_from(n()).unwrap(),
+            },
+            "magic_resistance_aura" => AbilityDef::MagicResistanceAura {
+                percent: u8::try_from(n()).unwrap(),
+            },
+            "spell_level_immunity" => AbilityDef::SpellLevelImmunity {
+                max_level: u8::try_from(n()).unwrap(),
+            },
+            "spell_damage_reduction" => AbilityDef::SpellDamageReduction {
+                percent: u8::try_from(n()).unwrap(),
+            },
+            "school_immunity" => AbilityDef::SchoolImmunity {
+                school: ContentKey::new("t", value).unwrap(),
+            },
+            "spell_immunity" => AbilityDef::SpellImmunity {
+                spell: ContentKey::new("t", value).unwrap(),
+            },
+            "spell_vulnerability" => {
+                let (spell, percent) = value.split_once(':').unwrap();
+                AbilityDef::SpellVulnerability {
+                    spell: ContentKey::new("t", spell).unwrap(),
+                    percent: percent.parse().unwrap(),
+                }
+            }
             "shots" => {
                 shots = n();
                 continue;
@@ -677,10 +749,13 @@ pub type SpellSpec = (
     TargetSide,
 );
 
-/// The test spells (BAT-MAG-001 to BAT-MAG-004), all costing 5/4/4/4 and dealing 10 per power
-/// plus 10/10/20/30: `bolt` damages one enemy stack; `smite` any stack that is not undead, in two
-/// schools; `gaze` is a creature ability; `ward` has no effects and `portal` is an adventure
-/// spell; `nova` damages an area (not castable before E04b T2d); `rally` reaches only own stacks.
+/// The test spells (BAT-MAG-001 to BAT-MAG-008), all level 1, costing 5/4/4/4 and dealing 10
+/// per power plus 10/10/20/30, negative unless said otherwise: `bolt` damages one enemy stack;
+/// `smite` any stack that is not undead, in two schools; `gaze` is a creature ability; `ward`
+/// has no effects and `portal` is an adventure spell; `nova` damages the stacks within one hex
+/// of a hex; `rally` (positive) reaches only own stacks; `chain` strikes a stack and jumps to
+/// two more (three from Advanced), each taking half the value (neutral); `storm` strikes every
+/// stack (neutral); `ring` the stacks one hex from a hex, not on it.
 pub const SPELLS: &[SpellSpec] = &[
     (
         "bolt",
@@ -731,6 +806,27 @@ pub const SPELLS: &[SpellSpec] = &[
         SpellTarget::Stack,
         TargetSide::Own,
     ),
+    (
+        "chain",
+        SpellCategory::Combat,
+        &["air"],
+        SpellTarget::Stack,
+        TargetSide::Any,
+    ),
+    (
+        "storm",
+        SpellCategory::Combat,
+        &["fire"],
+        SpellTarget::None,
+        TargetSide::Any,
+    ),
+    (
+        "ring",
+        SpellCategory::Combat,
+        &["fire"],
+        SpellTarget::Hex,
+        TargetSide::Any,
+    ),
 ];
 
 /// The definition of a test spell.
@@ -753,12 +849,20 @@ fn spell_def((name, category, schools, target, side): SpellSpec) -> SpellDef {
         cost: [5, 4, 4, 4],
         power: 10,
         effect: [10, 10, 20, 30],
-        polarity: SpellPolarity::Negative,
+        polarity: match name {
+            "rally" => SpellPolarity::Positive,
+            "chain" | "storm" => SpellPolarity::Neutral,
+            _ => SpellPolarity::Negative,
+        },
         magic: SpellMagic {
             target,
             area: (target == SpellTarget::Hex).then_some(SpellArea {
-                inner: 0,
+                inner: u8::from(name == "ring"),
                 radius: [1; 4],
+            }),
+            chain: (name == "chain").then_some(SpellChain {
+                targets: [3, 3, 4, 4],
+                factor_bp: 5000,
             }),
             side,
             conditions: TargetConditions {
@@ -770,7 +874,6 @@ fn spell_def((name, category, schools, target, side): SpellSpec) -> SpellDef {
             } else {
                 vec![]
             },
-            ..SpellMagic::default()
         },
     }
 }

@@ -1,26 +1,11 @@
 # E04b design note (working detail for ADR-0014)
 
-A handover, not binding: proposals and sizes for the tasks of ADR-0014 (accepted). T2a's, T2b's
-and T2c's sections are implemented and deleted (code docs, `packs/README.md`, HER-BAT-011/012,
-BAT-MAG-001 to BAT-MAG-004, `h3_sim::action`). Each task
+A handover, not binding: proposals and sizes for the tasks of ADR-0014 (accepted). The T2
+sections are implemented and deleted (code docs, `packs/README.md`, HER-BAT-011 to 013,
+BAT-MAG-001 to BAT-MAG-008, `h3_sim::action`). Each task
 settles its section and **deletes it** when the code documentation, the rule catalog and the pack
 docs hold the detail; the file is deleted when E04b closes (ADR index rule). Names are provisional.
 Sources: [`docs/rules/surveys/E04b-magic.md`](../rules/surveys/E04b-magic.md).
-
-## T2d — area, chain and battle-wide spells; resistance and immunities
-
-- **Shapes:** Frost Ring the hexes at distance 1 without the centre; Fireball and Meteor Shower
-  radius 1; Inferno radius 2; Death Ripple, Destroy Undead, Armageddon every stack meeting the
-  condition. Chain Lightning's targets and falloff are surveyed in T2d (X-6).
-- **Ability variants** (ADR-0012): immunity to spells up to a level (Green, Red, Azure, Gold,
-  Black Dragons, Magic Elemental), to a school (fire), to one spell; magic resistance (Dwarves,
-  Crystal Dragon); a resistance aura for adjacent allies (Unicorns); spell damage reduction
-  (Golems); more damage from a spell (elementals). The executable's `mind_immune` and
-  `fire_immune` flags are reconciled with VCMI's lists.
-- **Hero resistance:** the Resistance skill and artifacts as a `BattleEffect` applied at setup to
-  the side's stacks; adding or multiplying with the creature's own is M-2 (VCMI adds, the aura
-  multiplies).
-- Quirk S-18 (Magic Arrow can deal 0 damage to Gold and Diamond Golems) is checked by X-1.
 
 ## T3 — the effect list
 

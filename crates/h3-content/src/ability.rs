@@ -6,14 +6,15 @@
 //! hard-codes per creature. Packs name abilities with their parameters; the compiler validates
 //! them and resolves creature references. Rule code reads them where the rule applies (E03).
 //!
-//! [`Ability`] is generic over how creature types are referenced: [`ContentKey`] in packs
-//! ([`AbilityDef`]), [`CreatureTypeId`] once compiled.
+//! [`Ability`] is generic over how creature types (`C`), spells (`S`) and spell schools (`L`) are
+//! referenced: [`ContentKey`]s in packs ([`AbilityDef`]), handles once compiled
+//! ([`CompiledAbility`]).
 //!
 //! [`ContentKey`]: crate::ContentKey
-//! [`CreatureTypeId`]: crate::CreatureTypeId
 
 use h3_kernel::{CanonicalHash, StateHasher};
 
+use crate::heroes::{SchoolId, SpellId};
 use crate::key::ContentKey;
 use crate::ruleset::CreatureTypeId;
 
@@ -36,9 +37,9 @@ pub enum AreaShot {
     DeathCloud,
 }
 
-/// One ability. `C` is how creature types are referenced.
+/// One ability. `C`, `S` and `L` are how creature types, spells and spell schools are referenced.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum Ability<C> {
+pub enum Ability<C, S, L> {
     /// Deals `percent` % more base damage to `target` (hate, opposite elementals).
     Hate {
         /// The hated creature type.
@@ -133,17 +134,56 @@ pub enum Ability<C> {
     /// War machine: while it lives, its side's shots use no ammunition; it never acts (Ammo
     /// Cart; BAT-WAR-004).
     AmmoSupply,
+    /// Immune to spells of level `max_level` and below (dragons, Magic Elemental; BAT-MAG-005).
+    SpellLevelImmunity {
+        /// Highest level it is immune to (1..=5; 5: every spell).
+        max_level: u8,
+    },
+    /// Immune to the spells of a school (fire immunity; BAT-MAG-005).
+    SchoolImmunity {
+        /// The school.
+        school: L,
+    },
+    /// Immune to one spell (one entry per spell; elementals; BAT-MAG-005).
+    SpellImmunity {
+        /// The spell.
+        spell: S,
+    },
+    /// Takes `percent` % more damage from one spell (one entry per spell; elementals;
+    /// BAT-MAG-004).
+    SpellVulnerability {
+        /// The spell.
+        spell: S,
+        /// Extra damage, percent of the damage (1..=1000).
+        percent: u16,
+    },
+    /// Damage from spells reduced by `percent` % (Golems; BAT-MAG-004).
+    SpellDamageReduction {
+        /// Reduction, percent (1..=100).
+        percent: u8,
+    },
+    /// Resists hostile spells with `percent` % chance (Dwarves, Crystal Dragon; BAT-MAG-008).
+    MagicResistance {
+        /// Chance, percent (1..=100).
+        percent: u8,
+    },
+    /// Adjacent allied stacks (not itself) resist hostile spells, the chance to be affected
+    /// multiplied by `100 − percent` % once however many such neighbours (Unicorns; BAT-MAG-008).
+    MagicResistanceAura {
+        /// Resistance, percent (1..=100).
+        percent: u8,
+    },
 }
 
-/// An ability as written in a pack (creature references are keys).
-pub type AbilityDef = Ability<ContentKey>;
+/// An ability as written in a pack (references are keys).
+pub type AbilityDef = Ability<ContentKey, ContentKey, ContentKey>;
 
-/// A compiled ability (creature references are handles).
-pub type CompiledAbility = Ability<CreatureTypeId>;
+/// A compiled ability (references are handles).
+pub type CompiledAbility = Ability<CreatureTypeId, SpellId, SchoolId>;
 
-impl<C> Ability<C> {
+impl<C, S, L> Ability<C, S, L> {
     /// Every ability name, in code order (the order of [`Ability::code`]).
-    pub const NAMES: [&'static str; 22] = [
+    pub const NAMES: [&'static str; 29] = [
         "hate",
         "jousting",
         "charge_immunity",
@@ -166,6 +206,13 @@ impl<C> Ability<C> {
         "area_shot",
         "first_aid",
         "ammo_supply",
+        "spell_level_immunity",
+        "school_immunity",
+        "spell_immunity",
+        "spell_vulnerability",
+        "spell_damage_reduction",
+        "magic_resistance",
+        "magic_resistance_aura",
     ];
 
     /// Stable numeric code of the ability kind (canonical hashing, duplicate checks).
@@ -193,6 +240,13 @@ impl<C> Ability<C> {
             Self::AreaShot { .. } => 19,
             Self::FirstAid { .. } => 20,
             Self::AmmoSupply => 21,
+            Self::SpellLevelImmunity { .. } => 22,
+            Self::SchoolImmunity { .. } => 23,
+            Self::SpellImmunity { .. } => 24,
+            Self::SpellVulnerability { .. } => 25,
+            Self::SpellDamageReduction { .. } => 26,
+            Self::MagicResistance { .. } => 27,
+            Self::MagicResistanceAura { .. } => 28,
         }
     }
 
@@ -217,11 +271,17 @@ impl<C> Ability<C> {
         Self::NAMES[usize::from(self.code())]
     }
 
-    /// The same ability with creature references mapped by `f` (fails if `f` fails).
-    pub fn try_map<D, E>(&self, f: impl FnOnce(&C) -> Result<D, E>) -> Result<Ability<D>, E> {
+    /// The same ability with its creature, spell and school references mapped (fails if a
+    /// mapping fails).
+    pub fn try_map<C2, S2, L2, E>(
+        &self,
+        creature: impl FnOnce(&C) -> Result<C2, E>,
+        spell: impl FnOnce(&S) -> Result<S2, E>,
+        school: impl FnOnce(&L) -> Result<L2, E>,
+    ) -> Result<Ability<C2, S2, L2>, E> {
         Ok(match self {
             Self::Hate { target, percent } => Ability::Hate {
-                target: f(target)?,
+                target: creature(target)?,
                 percent: *percent,
             },
             Self::Jousting { percent_per_hex } => Ability::Jousting {
@@ -260,6 +320,22 @@ impl<C> Ability<C> {
                 max_hp: *max_hp,
             },
             Self::AmmoSupply => Ability::AmmoSupply,
+            Self::SpellLevelImmunity { max_level } => Ability::SpellLevelImmunity {
+                max_level: *max_level,
+            },
+            Self::SchoolImmunity { school: l } => Ability::SchoolImmunity { school: school(l)? },
+            Self::SpellImmunity { spell: x } => Ability::SpellImmunity { spell: spell(x)? },
+            Self::SpellVulnerability { spell: x, percent } => Ability::SpellVulnerability {
+                spell: spell(x)?,
+                percent: *percent,
+            },
+            Self::SpellDamageReduction { percent } => {
+                Ability::SpellDamageReduction { percent: *percent }
+            }
+            Self::MagicResistance { percent } => Ability::MagicResistance { percent: *percent },
+            Self::MagicResistanceAura { percent } => {
+                Ability::MagicResistanceAura { percent: *percent }
+            }
         })
     }
 
@@ -290,6 +366,19 @@ impl<C> Ability<C> {
             Self::FirstAid { min_hp, max_hp } if *min_hp == 0 || max_hp < min_hp => {
                 Some("first_aid needs 1 <= min_hp <= max_hp")
             }
+            Self::SpellLevelImmunity { max_level } if !(1..=5).contains(max_level) => {
+                Some("spell_level_immunity max_level must be 1..=5")
+            }
+            Self::SpellVulnerability { percent, .. } if !(1..=1000).contains(percent) => {
+                Some("spell_vulnerability percent must be 1..=1000")
+            }
+            Self::SpellDamageReduction { percent }
+            | Self::MagicResistance { percent }
+            | Self::MagicResistanceAura { percent }
+                if !(1..=100).contains(percent) =>
+            {
+                Some("percent must be 1..=100")
+            }
             _ => None,
         }
     }
@@ -299,9 +388,9 @@ const fn signed(v: i8) -> u8 {
     v.to_le_bytes()[0]
 }
 
-impl CanonicalHash for Ability<CreatureTypeId> {
-    /// Encoding: kind code (u8), then the parameters in field order: creature handles as their
-    /// handle encoding, `u8`/`u16` as such, `i8` as its two's-complement byte, `affects`
+impl CanonicalHash for CompiledAbility {
+    /// Encoding: kind code (u8), then the parameters in field order: creature, spell and school
+    /// handles as their handle encoding, `u8`/`u16` as such, `i8` as its two's-complement byte, `affects`
     /// (allies 0, enemies 1) and `effect` (fireball 0, death cloud 1) as one byte.
     fn hash_into(&self, h: &mut StateHasher) {
         h.write_u8(self.code());
@@ -335,6 +424,16 @@ impl CanonicalHash for Ability<CreatureTypeId> {
                 h.write_u16(min_hp);
                 h.write_u16(max_hp);
             }
+            Self::SpellLevelImmunity { max_level } => h.write_u8(max_level),
+            Self::SchoolImmunity { school } => school.hash_into(h),
+            Self::SpellImmunity { spell } => spell.hash_into(h),
+            Self::SpellVulnerability { spell, percent } => {
+                spell.hash_into(h);
+                h.write_u16(percent);
+            }
+            Self::SpellDamageReduction { percent }
+            | Self::MagicResistance { percent }
+            | Self::MagicResistanceAura { percent } => h.write_u8(percent),
             Self::ChargeImmunity
             | Self::Regeneration
             | Self::UnlimitedRetaliations
@@ -349,9 +448,12 @@ impl CanonicalHash for Ability<CreatureTypeId> {
 }
 
 /// Checks a creature's whole ability list: per-ability parameters, at most one ability of each
-/// kind (several `hate` entries are allowed, for different targets), and mutually exclusive
-/// kinds. Returns the reason for the first problem.
-pub(crate) fn list_error<C: PartialEq>(list: &[Ability<C>]) -> Option<&'static str> {
+/// kind (several `hate`, `school_immunity`, `spell_immunity` and `spell_vulnerability` entries
+/// are allowed, for different targets, schools and spells), and mutually exclusive kinds.
+/// Returns the reason for the first problem.
+pub(crate) fn list_error<C: PartialEq, S: PartialEq, L: PartialEq>(
+    list: &[Ability<C, S, L>],
+) -> Option<&'static str> {
     if let Some(e) = list.iter().find_map(Ability::parameter_error) {
         return Some(e);
     }
@@ -359,6 +461,14 @@ pub(crate) fn list_error<C: PartialEq>(list: &[Ability<C>]) -> Option<&'static s
         let earlier = list.get(..i).unwrap_or(&[]);
         let duplicate = earlier.iter().any(|b| match (a, b) {
             (Ability::Hate { target: x, .. }, Ability::Hate { target: y, .. }) => x == y,
+            (Ability::SchoolImmunity { school: x }, Ability::SchoolImmunity { school: y }) => {
+                x == y
+            }
+            (Ability::SpellImmunity { spell: x }, Ability::SpellImmunity { spell: y })
+            | (
+                Ability::SpellVulnerability { spell: x, .. },
+                Ability::SpellVulnerability { spell: y, .. },
+            ) => x == y,
             _ => a.code() == b.code(),
         });
         if duplicate {
@@ -379,9 +489,9 @@ pub(crate) fn list_error<C: PartialEq>(list: &[Ability<C>]) -> Option<&'static s
 mod tests {
     use super::*;
 
-    type A = Ability<u8>;
+    type A = Ability<u8, u8, u8>;
 
-    fn all() -> [A; 22] {
+    fn all() -> [A; 29] {
         [
             A::Hate {
                 target: 3,
@@ -419,6 +529,16 @@ mod tests {
                 max_hp: 25,
             },
             A::AmmoSupply,
+            A::SpellLevelImmunity { max_level: 3 },
+            A::SchoolImmunity { school: 2 },
+            A::SpellImmunity { spell: 4 },
+            A::SpellVulnerability {
+                spell: 5,
+                percent: 100,
+            },
+            A::SpellDamageReduction { percent: 50 },
+            A::MagicResistance { percent: 20 },
+            A::MagicResistanceAura { percent: 20 },
         ]
     }
 
@@ -428,16 +548,40 @@ mod tests {
             assert_eq!(usize::from(a.code()), i);
             assert_eq!(a.name(), A::NAMES[i]);
             assert_eq!(a.parameter_error(), None, "{a:?}");
-            let mapped = a.try_map(|t| Ok::<u16, ()>(u16::from(*t) + 1)).unwrap();
+            let up = |t: &u8| Ok::<u16, ()>(u16::from(*t) + 1);
+            let mapped = a.try_map(up, up, up).unwrap();
             assert_eq!(mapped.code(), a.code());
-            let back = mapped.try_map(|t| u8::try_from(*t - 1)).unwrap();
+            let down = |t: &u16| u8::try_from(*t - 1);
+            let back = mapped.try_map(down, down, down).unwrap();
             assert_eq!(&back, a);
         }
         let hate = A::Hate {
             target: 1,
             percent: 50,
         };
-        assert_eq!(hate.try_map(|_| Err::<u8, _>("nope")), Err("nope"));
+        let fail = |_: &u8| Err::<u8, _>("nope");
+        let ok = |t: &u8| Ok::<u8, &str>(*t);
+        assert_eq!(hate.try_map(fail, ok, ok), Err("nope"));
+        assert_eq!(
+            A::SpellImmunity { spell: 1 }.try_map(ok, fail, ok),
+            Err("nope")
+        );
+        assert_eq!(
+            A::SpellVulnerability {
+                spell: 1,
+                percent: 100
+            }
+            .try_map(ok, fail, ok),
+            Err("nope")
+        );
+        assert_eq!(
+            A::SchoolImmunity { school: 1 }.try_map(ok, ok, fail),
+            Err("nope")
+        );
+        assert_eq!(
+            A::SchoolImmunity { school: 1 }.try_map(fail, fail, ok),
+            Ok(A::SchoolImmunity { school: 1 })
+        );
     }
 
     #[test]
@@ -446,7 +590,13 @@ mod tests {
         let id = CreatureTypeId::from_raw(7);
         let mut seen = alloc::collections::BTreeSet::new();
         for a in all() {
-            let compiled = a.try_map(|_| Ok::<_, ()>(id)).unwrap();
+            let compiled = a
+                .try_map(
+                    |_| Ok::<_, ()>(id),
+                    |&s| Ok(SpellId::from_raw(s.into())),
+                    |&l| Ok(SchoolId::from_raw(l.into())),
+                )
+                .unwrap();
             assert!(seen.insert(hash_of(&compiled)), "{compiled:?}");
         }
         let fireball = CompiledAbility::AreaShot {
@@ -509,6 +659,19 @@ mod tests {
                 min_hp: 5,
                 max_hp: 4,
             },
+            A::SpellLevelImmunity { max_level: 0 },
+            A::SpellLevelImmunity { max_level: 6 },
+            A::SpellVulnerability {
+                spell: 0,
+                percent: 0,
+            },
+            A::SpellVulnerability {
+                spell: 0,
+                percent: 1001,
+            },
+            A::SpellDamageReduction { percent: 0 },
+            A::MagicResistance { percent: 101 },
+            A::MagicResistanceAura { percent: 0 },
         ];
         for a in bad {
             assert!(a.parameter_error().is_some(), "{a:?}");
@@ -518,13 +681,31 @@ mod tests {
 
     #[test]
     fn list_rules() {
-        assert_eq!(list_error::<u8>(&[]), None);
+        assert_eq!(list_error::<u8, u8, u8>(&[]), None);
         assert_eq!(list_error(&all()[..8]), None);
         let hate = |target| A::Hate {
             target,
             percent: 50,
         };
         assert_eq!(list_error(&[hate(1), hate(2)]), None);
+        // Immunities and vulnerabilities to different spells and schools may stack.
+        let immune = |spell| A::SpellImmunity { spell };
+        let weak = |spell| A::SpellVulnerability {
+            spell,
+            percent: 100,
+        };
+        let school = |school| A::SchoolImmunity { school };
+        assert_eq!(
+            list_error(&[immune(1), immune(2), weak(1), weak(2), school(1), school(2)]),
+            None
+        );
+        for twice in [
+            [immune(1), immune(1)],
+            [weak(3), weak(3)],
+            [school(1), school(1)],
+        ] {
+            assert_eq!(list_error(&twice), Some("an ability is listed twice"));
+        }
         assert_eq!(
             list_error(&[hate(1), hate(1)]),
             Some("an ability is listed twice")

@@ -1,4 +1,4 @@
-//! A hero's magic in battle (E04b T2b): BAT-MAG-001 to BAT-MAG-004.
+//! A hero's magic in battle (E04b T2b, T2d): BAT-MAG-001 to BAT-MAG-004.
 
 use std::vec;
 use std::vec::Vec;
@@ -177,9 +177,11 @@ fn casts_need_a_book_a_combat_spell_and_a_valid_target() {
         (at("gaze", stack(2)), CommandError::NotInSpellBook),
         (at("portal", stack(2)), CommandError::NotACombatSpell),
         (at("ward", CastTarget::None), CommandError::NotCastable),
+        // Nova needs a hex: a stack or nothing is no target (BAT-MAG-003).
+        (at("nova", stack(2)), CommandError::InvalidSpellTarget),
         (
-            at("nova", CastTarget::Hex(crate::Hex(100))),
-            CommandError::NotCastable,
+            at("nova", CastTarget::None),
+            CommandError::InvalidSpellTarget,
         ),
         // Bolt reaches only enemies; smite any stack that is not undead.
         (at("bolt", stack(0)), CommandError::InvalidSpellTarget),
@@ -234,7 +236,16 @@ fn casts_need_a_book_a_combat_spell_and_a_valid_target() {
         spell(&r, "nova"),
         &mut targets,
     );
-    assert!(targets.is_empty());
+    // Nova at every standable hex whose area (radius 1) holds a stack it can reach.
+    let field = field(&r);
+    assert!(!targets.is_empty());
+    for t in targets.iter() {
+        let CastTarget::Hex(h) = *t else {
+            panic!("{t:?}")
+        };
+        assert!(field.is_standable(h));
+        assert!(s.stacks().iter().any(|x| field.distance(x.hex, h) <= 1));
+    }
     cast_targets(
         &s,
         &r,
@@ -246,7 +257,10 @@ fn casts_need_a_book_a_combat_spell_and_a_valid_target() {
     let castable: Vec<SpellId> = castable_spells(&s, &r, BattleSide::Attacker)
         .iter()
         .collect();
-    assert_eq!(castable, [spell(&r, "bolt"), spell(&r, "smite")]);
+    assert_eq!(
+        castable,
+        [spell(&r, "bolt"), spell(&r, "smite"), spell(&r, "nova")]
+    );
     assert!(castable_spells(&s, &r, BattleSide::Defender).is_empty());
     // Smite at an own stack; a dead stack is no target. Rally reaches only own stacks.
     let mut ally = led(
@@ -383,7 +397,7 @@ fn a_spell_can_end_the_battle_and_the_outcome_lists_the_spells() {
 
 // covers: BAT-MAG-004
 #[test]
-fn the_casters_bonuses_apply_in_order_each_rounded_down() {
+fn the_casters_bonuses_apply_in_the_originals_order() {
     let r = ruleset();
     let bolt = spell(&r, "bolt");
     let mut h = mage(&r, &["bolt", "smite"]);
@@ -412,31 +426,59 @@ fn the_casters_bonuses_apply_in_order_each_rounded_down() {
         },
         BattleEffect::SpellSpecialty {
             spell: bolt,
-            bp: 3000,
+            bp_per_level: 300,
+            level: 10,
         },
     ];
     let start = |enemy: Spec| led(&r, [Some(h.clone()), None], &[(0, "fast", 1)], &[enemy]);
-    // Bolt on a level-7 titan: 50 → ×1.15 = 57 → ×1.5 = 85 → ×1.5 (air) = 127 →
-    // × (1 + 0.30 / 7) = 132.
+    // Bolt on a level-7 titan: 50 × 1.5 (the air Orb) × 1.15 (Sorcery) = 86.25, kept fractional,
+    // rounded down once to 86; then the spell's own +50 % of that (43) and the specialty's
+    // ⌈3 % × (10 div 7) × 86⌉ = 3: 132.
     let mut s = start((0, "titan", 5));
     assert_eq!(
         spell_damage(&act(&mut s, &r, cast(&r, "bolt", 1)).unwrap()),
         [(1, 132, 0)]
     );
     assert_eq!(s.stacks()[1].top_hp, 168);
-    // On a level-1 stack the specialty adds 30 %: 127 × 1.3 = 165.
+    // On a level-1 stack the specialty adds ⌈30 % × 86⌉ = 26: 155.
     let mut s = start((0, "tank", 5));
     assert_eq!(
         spell_damage(&act(&mut s, &r, cast(&r, "bolt", 1)).unwrap()),
-        [(1, 165, 1)]
+        [(1, 155, 1)]
     );
-    // Smite (air and fire, no bonus of its own): 57, then the better school, 85.
+    // Smite (air and fire, no bonus of its own): the better school, 86.
     let mut s = start((0, "titan", 5));
     assert_eq!(
         spell_damage(&act(&mut s, &r, cast(&r, "smite", 1)).unwrap()),
-        [(1, 85, 0)]
+        [(1, 86, 0)]
+    );
+    // The single-precision rates of quirk Q-0005 lie slightly above the decimals: the same.
+    let single = ruleset_with("t:single", |_| {});
+    let mut s = led(
+        &single,
+        [Some(h.clone()), None],
+        &[(0, "fast", 1)],
+        &[(0, "titan", 5)],
+    );
+    assert_eq!(
+        spell_damage(&act(&mut s, &single, cast(&single, "bolt", 1)).unwrap()),
+        [(1, 132, 0)]
+    );
+    // A specialist below the creature's level adds nothing.
+    let mut low = h.clone();
+    low.effects = vec![BattleEffect::SpellSpecialty {
+        spell: bolt,
+        bp_per_level: 300,
+        level: 6,
+    }];
+    let mut s = led(&r, [Some(low), None], &[(0, "fast", 1)], &[(0, "titan", 5)]);
+    assert_eq!(
+        spell_damage(&act(&mut s, &r, cast(&r, "bolt", 1)).unwrap()),
+        [(1, 50, 0)]
     );
     // The owner sees its bonuses; both sides see the casts.
+    let mut s = start((0, "titan", 5));
+    act(&mut s, &r, cast(&r, "bolt", 1)).unwrap();
     let own = observe(&s, &r, BattleSide::Attacker).own_hero.unwrap();
     assert_eq!(own.spell_bonuses.all_bp, 1500);
     assert_eq!(own.spell_bonuses.school_bp, [5000, 2500, 0, 0]);
@@ -445,7 +487,8 @@ fn the_casters_bonuses_apply_in_order_each_rounded_down() {
         [SpellBonus {
             spell: bolt,
             damage_bp: 5000,
-            specialty_bp: 3000
+            per_level_bp: 300,
+            level: 10,
         }]
     );
     assert_eq!(own.schools, [2, 0, 0, 0]);
@@ -465,7 +508,8 @@ fn at_most_four_spells_have_bonuses_of_their_own() {
         .iter()
         .map(|n| BattleEffect::SpellSpecialty {
             spell: spell(&r, n),
-            bp: 100,
+            bp_per_level: 100,
+            level: 1,
         })
         .collect();
     let setup = BattleSetup {

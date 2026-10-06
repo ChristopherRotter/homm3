@@ -100,7 +100,7 @@ fight_value = 1724
 ai_value = 2012
 adventure_count = [8, 12]
 flags = ["mind_immune", "no_enemy_retaliation", "no_morale", "multi_headed"]
-abilities = [{ kind = "attacks_all_adjacent" }]
+abilities = [{ kind = "attacks_all_adjacent" }, { kind = "spell_level_immunity", max_level = 5 }]
 
 [[creature]]
 id = "ice_elemental"  # original id 123
@@ -122,7 +122,7 @@ fight_value = 315
 ai_value = 380
 adventure_count = [12, 20]
 flags = ["two_hex", "shooter", "mind_immune", "no_morale"]
-abilities = [{ kind = "hate", creature = "base:fire_elemental", percent = 100 }, { kind = "hate", creature = "energy_elemental", percent = 100 }]
+abilities = [{ kind = "hate", creature = "base:fire_elemental", percent = 100 }, { kind = "hate", creature = "energy_elemental", percent = 100 }, { kind = "spell_immunity", spell = "base:ice_bolt" }, { kind = "spell_immunity", spell = "base:frost_ring" }, { kind = "spell_vulnerability", percent = 100, spell = "base:fireball" }, { kind = "spell_vulnerability", percent = 100, spell = "base:inferno" }, { kind = "spell_vulnerability", percent = 100, spell = "base:armageddon" }]
 
 [[creature]]
 id = "magma_elemental"  # original id 125
@@ -144,7 +144,7 @@ fight_value = 490
 ai_value = 490
 adventure_count = [16, 25]
 flags = ["mind_immune", "no_morale"]
-abilities = [{ kind = "hate", creature = "base:air_elemental", percent = 100 }, { kind = "hate", creature = "storm_elemental", percent = 100 }]
+abilities = [{ kind = "hate", creature = "base:air_elemental", percent = 100 }, { kind = "hate", creature = "storm_elemental", percent = 100 }, { kind = "spell_immunity", spell = "base:lightning_bolt" }, { kind = "spell_immunity", spell = "base:chain_lightning" }, { kind = "spell_immunity", spell = "base:armageddon" }, { kind = "spell_vulnerability", percent = 100, spell = "base:meteor_shower" }]
 
 [[creature]]
 id = "storm_elemental"  # original id 127
@@ -166,7 +166,7 @@ fight_value = 324
 ai_value = 486
 adventure_count = [6, 12]
 flags = ["shooter", "mind_immune", "no_morale"]
-abilities = [{ kind = "hate", creature = "base:earth_elemental", percent = 100 }, { kind = "hate", creature = "magma_elemental", percent = 100 }]
+abilities = [{ kind = "hate", creature = "base:earth_elemental", percent = 100 }, { kind = "hate", creature = "magma_elemental", percent = 100 }, { kind = "spell_immunity", spell = "base:meteor_shower" }, { kind = "spell_vulnerability", percent = 100, spell = "base:lightning_bolt" }, { kind = "spell_vulnerability", percent = 100, spell = "base:chain_lightning" }, { kind = "spell_vulnerability", percent = 100, spell = "base:armageddon" }]
 
 [[creature]]
 id = "energy_elemental"  # original id 129
@@ -188,7 +188,7 @@ fight_value = 360
 ai_value = 470
 adventure_count = [12, 25]
 flags = ["flying", "mind_immune", "fire_immune", "no_morale"]
-abilities = [{ kind = "hate", creature = "base:water_elemental", percent = 100 }, { kind = "hate", creature = "ice_elemental", percent = 100 }]
+abilities = [{ kind = "hate", creature = "base:water_elemental", percent = 100 }, { kind = "hate", creature = "ice_elemental", percent = 100 }, { kind = "school_immunity", school = "base:fire" }, { kind = "spell_vulnerability", percent = 100, spell = "base:ice_bolt" }, { kind = "spell_vulnerability", percent = 100, spell = "base:frost_ring" }]
 
 [[creature]]
 id = "firebird"  # original id 130
@@ -210,6 +210,7 @@ fight_value = 3248
 ai_value = 4547
 adventure_count = [4, 10]
 flags = ["two_hex", "flying", "breath_attack", "alive", "king_1", "fire_immune"]
+abilities = [{ kind = "school_immunity", school = "base:fire" }]
 upgrades = ["phoenix"]
 
 [[creature]]
@@ -232,6 +233,7 @@ fight_value = 4929
 ai_value = 6721
 adventure_count = [4, 10]
 flags = ["two_hex", "flying", "breath_attack", "alive", "king_1", "fire_immune"]
+abilities = [{ kind = "school_immunity", school = "base:fire" }]
 
 [[creature]]
 id = "azure_dragon"  # original id 132
@@ -252,6 +254,7 @@ fight_value = 56315
 ai_value = 78845
 adventure_count = [1, 3]
 flags = ["two_hex", "flying", "breath_attack", "alive", "king_1", "dragon"]
+abilities = [{ kind = "spell_level_immunity", max_level = 3 }]
 
 [[creature]]
 id = "crystal_dragon"  # original id 133
@@ -272,6 +275,7 @@ fight_value = 30260
 ai_value = 39338
 adventure_count = [1, 3]
 flags = ["two_hex", "alive", "king_1", "dragon"]
+abilities = [{ kind = "magic_resistance", percent = 20 }]
 
 [[creature]]
 id = "faerie_dragon"  # original id 134
@@ -500,28 +504,28 @@ abilities = [{ kind = "regeneration" }]
 target = "base:air_elemental"
 faction = "conflux"
 level = 2
-abilities = [{ kind = "hate", creature = "base:earth_elemental", percent = 100 }, { kind = "hate", creature = "magma_elemental", percent = 100 }]
+abilities = [{ kind = "hate", creature = "base:earth_elemental", percent = 100 }, { kind = "hate", creature = "magma_elemental", percent = 100 }, { kind = "spell_immunity", spell = "base:meteor_shower" }, { kind = "spell_vulnerability", percent = 100, spell = "base:lightning_bolt" }, { kind = "spell_vulnerability", percent = 100, spell = "base:chain_lightning" }, { kind = "spell_vulnerability", percent = 100, spell = "base:armageddon" }]
 upgrades = ["storm_elemental"]
 
 [[creature_override]]
 target = "base:earth_elemental"
 faction = "conflux"
 level = 5
-abilities = [{ kind = "hate", creature = "base:air_elemental", percent = 100 }, { kind = "hate", creature = "storm_elemental", percent = 100 }]
+abilities = [{ kind = "hate", creature = "base:air_elemental", percent = 100 }, { kind = "hate", creature = "storm_elemental", percent = 100 }, { kind = "spell_immunity", spell = "base:lightning_bolt" }, { kind = "spell_immunity", spell = "base:chain_lightning" }, { kind = "spell_immunity", spell = "base:armageddon" }, { kind = "spell_vulnerability", percent = 100, spell = "base:meteor_shower" }]
 upgrades = ["magma_elemental"]
 
 [[creature_override]]
 target = "base:fire_elemental"
 faction = "conflux"
 level = 4
-abilities = [{ kind = "hate", creature = "base:water_elemental", percent = 100 }, { kind = "hate", creature = "ice_elemental", percent = 100 }]
+abilities = [{ kind = "hate", creature = "base:water_elemental", percent = 100 }, { kind = "hate", creature = "ice_elemental", percent = 100 }, { kind = "school_immunity", school = "base:fire" }, { kind = "spell_vulnerability", percent = 100, spell = "base:ice_bolt" }, { kind = "spell_vulnerability", percent = 100, spell = "base:frost_ring" }]
 upgrades = ["energy_elemental"]
 
 [[creature_override]]
 target = "base:water_elemental"
 faction = "conflux"
 level = 3
-abilities = [{ kind = "hate", creature = "base:fire_elemental", percent = 100 }, { kind = "hate", creature = "energy_elemental", percent = 100 }]
+abilities = [{ kind = "hate", creature = "base:fire_elemental", percent = 100 }, { kind = "hate", creature = "energy_elemental", percent = 100 }, { kind = "spell_immunity", spell = "base:ice_bolt" }, { kind = "spell_immunity", spell = "base:frost_ring" }, { kind = "spell_vulnerability", percent = 100, spell = "base:fireball" }, { kind = "spell_vulnerability", percent = 100, spell = "base:inferno" }, { kind = "spell_vulnerability", percent = 100, spell = "base:armageddon" }]
 upgrades = ["ice_elemental"]
 
 [[hero_class]]

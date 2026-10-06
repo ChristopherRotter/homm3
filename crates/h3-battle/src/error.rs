@@ -210,8 +210,8 @@ pub enum CommandError {
     NotACombatSpell,
     /// The side's hero has cast all its spells this round (BAT-MAG-001).
     AlreadyCast,
-    /// The battle cannot cast this spell yet: its effects or targeting come with a later task
-    /// (`docs/stubs.toml`, STUB-0001).
+    /// The spell has no effects the battle implements: its pack lists none yet (the effect kinds
+    /// after damage come with E04b T3–T7, ADR-0014 point 1).
     NotCastable,
     /// The hero's mana does not cover the spell's cost (BAT-MAG-002).
     NotEnoughMana,

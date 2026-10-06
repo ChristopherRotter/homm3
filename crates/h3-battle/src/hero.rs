@@ -8,7 +8,8 @@
 
 use h3_content::{
     CreatureFlag, CreatureSelector, CreatureStat, CreatureType, CreatureTypeId, FULL_BP,
-    HeroTypeId, MAX_SKILL_LEVEL, MAX_SPELL_SCHOOLS, Ruleset, SpellCategory, SpellScope,
+    HeroTypeId, MAX_SKILL_LEVEL, MAX_SPELL_SCHOOLS, Ruleset, SINGLE_PRECISION_RATES, SpellCategory,
+    SpellScope,
 };
 use h3_contracts::{
     BallistaControl, BattleEffect, BattleHero, BattleSide, DamageBonuses, MAX_BATTLE_EFFECTS,
@@ -352,7 +353,8 @@ pub(crate) fn check(
         no_retreat: hero.effects.contains(&BattleEffect::NoRetreat),
         surrender_discount_bp: hero.surrender_discount_bp,
         funds,
-        magic: HeroMagic::of(hero).map_err(invalid)?,
+        magic: HeroMagic::of(hero, ruleset.quirks().is_enabled(SINGLE_PRECISION_RATES))
+            .map_err(invalid)?,
     })
 }
 
@@ -370,7 +372,8 @@ fn creature_of(effect: &BattleEffect) -> Option<CreatureTypeId> {
         | BattleEffect::NoRetreat
         | BattleEffect::AlignmentGroup { .. }
         | BattleEffect::SpellDamage { .. }
-        | BattleEffect::SpellSpecialty { .. } => return None,
+        | BattleEffect::SpellSpecialty { .. }
+        | BattleEffect::MagicResistance { .. } => return None,
     };
     match selector {
         CreatureSelector::Creature(c) => Some(*c),

@@ -714,7 +714,8 @@ fn alignment_groups_are_kept_once_each() {
 /// The test pack with magic: a second school `t:fire`; Wisdom gives air mastery 1/2/3 and
 /// Logistics a spell-damage bonus of 5/10/15 % for every spell (as Sorcery); the book gives a
 /// spell book; `t:band` (a part of `t:circle`) fire mastery 2 and +50 % fire damage, `t:helm`
-/// (another part) +25 % for `t:bolt`, `t:eye` +50 % air damage, `t:hook` +1 % for every spell;
+/// (another part) +25 % for `t:bolt`, `t:eye` +50 % air damage, `t:hook` +1 % for every spell
+/// and 5 % magic resistance; Logistics also gives 5/10/20 % magic resistance (as Resistance);
 /// the specialty grows Logistics by 5 % per level and is a `t:bolt` specialty of 3 % per level.
 fn magic_ruleset() -> Ruleset {
     use h3_content::SpellScope;
@@ -734,11 +735,14 @@ fn magic_ruleset() -> Ruleset {
                 });
             }
             "t:logistics" => {
-                s.levels = [500, 1000, 1500].map(|bp| {
-                    vec![HeroEffectDef::SpellDamage {
-                        scope: SpellScope::All,
-                        bp,
-                    }]
+                s.levels = [(500, 500), (1000, 1000), (1500, 2000)].map(|(bp, resistance)| {
+                    vec![
+                        HeroEffectDef::SpellDamage {
+                            scope: SpellScope::All,
+                            bp,
+                        },
+                        HeroEffectDef::MagicResistance { bp: resistance },
+                    ]
                 });
             }
             _ => {}
@@ -757,7 +761,10 @@ fn magic_ruleset() -> Ruleset {
             ],
             "t:helm" => vec![damage(SpellScope::Spell(key("t:bolt")), 2500)],
             "t:eye" => vec![damage(SpellScope::School(key("t:air")), 5000)],
-            "t:hook" => vec![damage(SpellScope::All, 100)],
+            "t:hook" => vec![
+                damage(SpellScope::All, 100),
+                HeroEffectDef::MagicResistance { bp: 500 },
+            ],
             _ => continue,
         };
     }
@@ -774,7 +781,7 @@ fn magic_ruleset() -> Ruleset {
     compile(p).unwrap()
 }
 
-// covers: HER-BAT-011, HER-BAT-012
+// covers: HER-BAT-011, HER-BAT-012, HER-BAT-013
 #[test]
 fn magic_and_spell_bonuses_are_derived() {
     use h3_content::{SchoolId, SpellScope};
@@ -795,7 +802,8 @@ fn magic_and_spell_bonuses_are_derived() {
         }
     );
     // Every spell: Expert Logistics 15 % grown by 5 % x 10 levels (22.5 %) plus the hook's 1 %;
-    // then fire, bolt and air in the order worn (the eye once); then the specialty, 3 % x 10.
+    // then fire, bolt and air in the order worn (the eye once); then the specialty, 3 % per
+    // level at level 10.
     let bolt = spell_id(&r, "t:bolt");
     assert_eq!(
         hero.effects,
@@ -818,8 +826,12 @@ fn magic_and_spell_bonuses_are_derived() {
             },
             BattleEffect::SpellSpecialty {
                 spell: bolt,
-                bp: 3000
+                bp_per_level: 300,
+                level: 10,
             },
+            // Expert Logistics' 20 % grown by 50 %, then the hook's 5 % (HER-BAT-013).
+            BattleEffect::MagicResistance { bp: 3000 },
+            BattleEffect::MagicResistance { bp: 500 },
         ]
     );
     // Without the book no spell book; the highest mastery counts; an empty book is a book.

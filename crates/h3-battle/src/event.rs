@@ -168,6 +168,12 @@ pub enum EventKind {
         /// What it was aimed at.
         target: CastTarget,
     },
+    /// A stack resisted a spell (BAT-MAG-008); if it was the stack the spell was aimed at, the
+    /// whole spell is resisted (BAT-MAG-007).
+    SpellResisted {
+        /// The stack.
+        target: StackId,
+    },
     /// A spell damaged a stack (BAT-MAG-004).
     SpellDamage {
         /// The stack.

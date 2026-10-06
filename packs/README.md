@@ -138,10 +138,18 @@ errors:
 | `area_shot` | `effect` (`fireball`/`death_cloud`) | its shots also hit the stacks around the target (requires flag `area_attack`; BAT-RNG-004) |
 | `first_aid` | `min_hp`, `max_hp` (1 ≤ min ≤ max) | war machine only (requires flag `war_machine`; First Aid Tent): on its turn heals the top creature of a random hurt allied stack by a uniform `min_hp..=max_hp` (BAT-WAR-003) |
 | `ammo_supply` | — | war machine only (requires flag `war_machine`; Ammo Cart): while it lives its side's shots use no ammunition; it never acts (BAT-WAR-004) |
+| `spell_level_immunity` | `max_level` (1..=5) | spells of this level and below cannot affect it (dragons, Magic Elemental; BAT-MAG-005) |
+| `school_immunity` | `school` | the school's spells cannot affect it (one entry per school; fire immunity; BAT-MAG-005) |
+| `spell_immunity` | `spell` | the spell cannot affect it (one entry per spell; elementals; BAT-MAG-005) |
+| `spell_vulnerability` | `spell`, `percent` (1..=1000) | +`percent` % damage from the spell (one entry per spell; elementals; BAT-MAG-004) |
+| `spell_damage_reduction` | `percent` (1..=100) | damage from spells × (100 − `percent`) / 100, rounded down (Golems; BAT-MAG-004) |
+| `magic_resistance` | `percent` (1..=100) | the creature lets `100 − percent` % of hostile spells through (Dwarves, Crystal Dragon; BAT-MAG-008) |
+| `magic_resistance_aura` | `percent` (1..=100) | adjacent allied stacks' chance to be affected by a hostile spell × (100 − `percent`) %, the strongest aura once (Unicorns; BAT-MAG-008) |
 
 `creature` references follow the reference rules above (own pack, or `pack:name` in the
 dependency closure) and may name creatures defined later in the same pack. At most one entry of
-each kind, except `hate` with different targets; `extra_retaliations`/`unlimited_retaliations` and
+each kind, except `hate`, the three immunities and `spell_vulnerability` with different targets
+(`school` and `spell` references follow the same rules); `extra_retaliations`/`unlimited_retaliations` and
 the two attack patterns exclude each other. A ruleset has at most 8 distinct aura values (kind,
 amount, `affects`; `MAX_AURA_VALUES`), which sizes the battle's modifier pool. The rule ids say
 which rule reads each kind.
@@ -235,7 +243,7 @@ different creatures or statistics.
 | `creature_stat` | `creatures` (omitted: all; `{ creature = "x" }`: x and its upgrades; `{ flag = "dragon" }`), `stat` (`attack`, `defense`, `speed`, `hit_points`, `min_damage`, `max_damage`), `amount` (≠ 0) | fixed change of a creature statistic |
 | `skill_specialty` | `skill`, `bp_per_level` (≥ 1) | specialty: the skill's scalable values grow by `bp_per_level` of themselves per hero level |
 | `creature_specialty` | `creature`, `bp_per_step` (≥ 1), `speed` (default 0) | specialty: attack and defense of the creature and its upgrades grow by `bp_per_step` of the creature's value (rounded up) per full step of (creature level) hero levels; speed + `speed` |
-| `spell_specialty` | `spell`, `bp_per_level` (≥ 1) | specialty: the cast's effect on a stack grows by `bp_per_level` per hero level, divided by the stack's creature level (SoD 300: 3 %; HER-BAT-012) |
+| `spell_specialty` | `spell`, `bp_per_level` (≥ 1) | specialty: the cast's damage to a stack grows by `bp_per_level` per (hero level div the stack's creature level), rounded up (SoD 300: 3 %; HER-BAT-012, BAT-MAG-004) |
 | `primary_skills` | `attack`, `defense`, `power`, `knowledge` (each default 0, not all 0) | changes the hero's primary skills (artifacts); the only kind that counts once **per equipped copy** |
 | `morale_at_most`, `luck_at_most` | `value`, `affects` | caps the morale/luck of the affected stacks for the battle (Spirit of Oppression, Hourglass of the Evil Hour: `value = 0`, `affects = "both"`) |
 | `alignment_group` | `factions` (2..=16, distinct) | creatures of these factions count as one alignment for the army-alignment morale of the hero's side (BAT-MOR-002; Angelic Alliance) |
@@ -246,6 +254,7 @@ different creatures or statistics.
 | `school_mastery` | `school`, `level` (1..=3) | the hero casts the school's spells at this mastery; the highest counts (the magic school skills; HER-BAT-011) |
 | `spell_damage` | `bp` (≥ 1), `school` or `spell` (neither: every spell) | more damage from the hero's spells of that scope; sums per scope (Sorcery, the Orbs, Ciele; HER-BAT-012) |
 | `spell_book` | — | the hero can cast the spells it knows (the Spell Book; HER-BAT-011) |
+| `magic_resistance` | `bp` (1..=10000) | the hero's stacks resist hostile spells: subtracted from their creatures' share; several sources add (Resistance, three artifacts; HER-BAT-013, BAT-MAG-008) |
 
 The three `*_specialty` kinds are allowed in a hero's `specialty` only.
 
@@ -287,10 +296,11 @@ theirs (the derivation, HER-BAT-001). Identical artifacts count once, except `pr
 **What the harvested hero content leaves out** (the harvester's report lists it; sources and
 layouts: `docs/formats/installation.md` §6–§7, `crates/h3-harvest/data/gapfill.toml`):
 
-- Skills without effects yet: Resistance, Intelligence, Mysticism, Wisdom, Eagle Eye (E04b),
+- Skills without effects yet: Intelligence, Mysticism, Wisdom, Eagle Eye (E04b),
   Ballistics (E04c), Necromancy and Learning (outcome application, E08–E10), and the adventure
   skills. Their `[[secondary_skill]]` entries exist without levels. The magic school skills give
-  `school_mastery` (gap-fill), Sorcery `spell_damage` (the executable's value table, E04b T2a).
+  `school_mastery` (gap-fill), Sorcery `spell_damage` and Resistance `magic_resistance` (the
+  executable's value tables, E04b T2a and T2d).
 - Specialties not modelled: 13 resource and 2 creature-upgrade specialties (adventure), Adrienne
   (none). Spell specialties are `spell_specialty` with the SoD growth of 3 % per level (gap-fill
   `[heroes.spell_specialty]`), Ciele's and Luna's a fixed `spell_damage` (+50 % Magic Arrow,
@@ -418,10 +428,10 @@ effects = [{ kind = "morale", amount = 1 }, { kind = "luck_at_most", value = 0, 
                                  # `percent_bp` (rounded up) | `percent_bp_down`, `amount`),
                                  # `regeneration`, `no_range_penalty`, `shoot_when_adjacent`
                                  # (BAT-HER-006), `alignment_group` (BAT-HER-007; at most 16
-                                 # factions), `spell_damage` (`bp`, `school` or `spell` by key)
-                                 # and `spell_specialty` (`spell`, `bp`: growth before the
-                                 # division by the target's level; BAT-MAG-004), parameters as in
-                                 # "Hero effects"
+                                 # factions), `spell_damage` (`bp`, `school` or `spell` by key),
+                                 # `spell_specialty` (`spell`, `bp_per_level`, `level`: the
+                                 # hero's level; BAT-MAG-004) and `magic_resistance` (`bp`;
+                                 # BAT-MAG-008), parameters as in "Hero effects"
 
 [[attacker]]                     # one entry per stack
 slot = 0

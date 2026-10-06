@@ -923,6 +923,184 @@ creature = "Ammo Cart"
 abilities = [{ kind = "ammo_supply" }]
 sources = ["wiki-ammo-cart"]
 
+# Battle magic (E04b T2d): immunities, spell damage and magic resistance, the executable's
+# values (docs/formats/installation.md §7.8). Titan's Lightning Bolt (SoD) joins the Earth/Magma
+# immunities and the Air/Storm double damage when the spell becomes castable (E04b T8, BACKLOG).
+[[creature_abilities]]
+creature = "Dwarf"
+abilities = [{ kind = "magic_resistance", percent = 20 }]
+sources = ["vcmi-magic-creatures"]
+
+[[creature_abilities]]
+creature = "Battle Dwarf"
+abilities = [{ kind = "magic_resistance", percent = 40 }]
+sources = ["vcmi-magic-creatures"]
+
+[[creature_abilities]]
+creature = "Crystal Dragon"
+abilities = [{ kind = "magic_resistance", percent = 20 }]
+sources = ["vcmi-magic-creatures"]
+
+[[creature_abilities]]
+creature = "Unicorn"
+abilities = [{ kind = "magic_resistance_aura", percent = 20 }]
+sources = ["vcmi-magic-creatures", "wiki-unicorn-aura"]
+
+[[creature_abilities]]
+creature = "War Unicorn"
+abilities = [{ kind = "magic_resistance_aura", percent = 20 }]
+sources = ["vcmi-magic-creatures", "wiki-unicorn-aura"]
+
+[[creature_abilities]]
+creature = "Green Dragon"
+abilities = [{ kind = "spell_level_immunity", max_level = 3 }]
+sources = ["vcmi-magic-creatures"]
+
+[[creature_abilities]]
+creature = "Red Dragon"
+abilities = [{ kind = "spell_level_immunity", max_level = 3 }]
+sources = ["vcmi-magic-creatures"]
+
+[[creature_abilities]]
+creature = "Azure Dragon"
+abilities = [{ kind = "spell_level_immunity", max_level = 3 }]
+sources = ["vcmi-magic-creatures"]
+
+[[creature_abilities]]
+creature = "Gold Dragon"
+abilities = [{ kind = "spell_level_immunity", max_level = 4 }]
+sources = ["vcmi-magic-creatures"]
+
+[[creature_abilities]]
+creature = "Black Dragon"
+abilities = [{ kind = "spell_level_immunity", max_level = 5 }]
+sources = ["vcmi-magic-creatures"]
+
+[[creature_abilities]]
+creature = "Magic Elemental"
+abilities = [{ kind = "spell_level_immunity", max_level = 5 }]
+sources = ["vcmi-magic-creatures"]
+
+[[creature_abilities]]
+creature = "Stone Golem"
+abilities = [{ kind = "spell_damage_reduction", percent = 50 }]
+sources = ["vcmi-magic-creatures"]
+
+[[creature_abilities]]
+creature = "Iron Golem"
+abilities = [{ kind = "spell_damage_reduction", percent = 75 }]
+sources = ["vcmi-magic-creatures"]
+
+[[creature_abilities]]
+creature = "Gold Golem"
+abilities = [{ kind = "spell_damage_reduction", percent = 85 }]
+sources = ["vcmi-magic-creatures"]
+
+[[creature_abilities]]
+creature = "Diamond Golem"
+abilities = [{ kind = "spell_damage_reduction", percent = 95 }]
+sources = ["vcmi-magic-creatures"]
+
+[[creature_abilities]]
+creature = "Air Elemental"
+abilities = [
+    { kind = "spell_immunity", spell = "base:meteor_shower" },
+    { kind = "spell_vulnerability", spell = "base:lightning_bolt", percent = 100 },
+    { kind = "spell_vulnerability", spell = "base:chain_lightning", percent = 100 },
+    { kind = "spell_vulnerability", spell = "base:armageddon", percent = 100 },
+]
+sources = ["vcmi-magic-creatures"]
+
+[[creature_abilities]]
+creature = "Storm Elemental"
+abilities = [
+    { kind = "spell_immunity", spell = "base:meteor_shower" },
+    { kind = "spell_vulnerability", spell = "base:lightning_bolt", percent = 100 },
+    { kind = "spell_vulnerability", spell = "base:chain_lightning", percent = 100 },
+    { kind = "spell_vulnerability", spell = "base:armageddon", percent = 100 },
+]
+sources = ["vcmi-magic-creatures"]
+
+[[creature_abilities]]
+creature = "Earth Elemental"
+abilities = [
+    { kind = "spell_immunity", spell = "base:lightning_bolt" },
+    { kind = "spell_immunity", spell = "base:chain_lightning" },
+    { kind = "spell_immunity", spell = "base:armageddon" },
+    { kind = "spell_vulnerability", spell = "base:meteor_shower", percent = 100 },
+]
+sources = ["vcmi-magic-creatures", "wiki-earth-magma-elementals"]
+
+[[creature_abilities]]
+creature = "Magma Elemental"
+abilities = [
+    { kind = "spell_immunity", spell = "base:lightning_bolt" },
+    { kind = "spell_immunity", spell = "base:chain_lightning" },
+    { kind = "spell_immunity", spell = "base:armageddon" },
+    { kind = "spell_vulnerability", spell = "base:meteor_shower", percent = 100 },
+]
+sources = ["vcmi-magic-creatures", "wiki-earth-magma-elementals"]
+
+[[creature_abilities]]
+creature = "Water Elemental"
+abilities = [
+    { kind = "spell_immunity", spell = "base:ice_bolt" },
+    { kind = "spell_immunity", spell = "base:frost_ring" },
+    { kind = "spell_vulnerability", spell = "base:fireball", percent = 100 },
+    { kind = "spell_vulnerability", spell = "base:inferno", percent = 100 },
+    { kind = "spell_vulnerability", spell = "base:armageddon", percent = 100 },
+]
+sources = ["vcmi-magic-creatures"]
+
+[[creature_abilities]]
+creature = "Ice Elemental"
+abilities = [
+    { kind = "spell_immunity", spell = "base:ice_bolt" },
+    { kind = "spell_immunity", spell = "base:frost_ring" },
+    { kind = "spell_vulnerability", spell = "base:fireball", percent = 100 },
+    { kind = "spell_vulnerability", spell = "base:inferno", percent = 100 },
+    { kind = "spell_vulnerability", spell = "base:armageddon", percent = 100 },
+]
+sources = ["vcmi-magic-creatures"]
+
+[[creature_abilities]]
+creature = "Fire Elemental"
+abilities = [
+    { kind = "school_immunity", school = "base:fire" },
+    { kind = "spell_vulnerability", spell = "base:ice_bolt", percent = 100 },
+    { kind = "spell_vulnerability", spell = "base:frost_ring", percent = 100 },
+]
+sources = ["vcmi-magic-creatures"]
+
+[[creature_abilities]]
+creature = "Energy Elemental"
+abilities = [
+    { kind = "school_immunity", school = "base:fire" },
+    { kind = "spell_vulnerability", spell = "base:ice_bolt", percent = 100 },
+    { kind = "spell_vulnerability", spell = "base:frost_ring", percent = 100 },
+]
+sources = ["vcmi-magic-creatures"]
+
+[[creature_abilities]]
+creature = "Efreeti"
+abilities = [{ kind = "school_immunity", school = "base:fire" }]
+sources = ["vcmi-magic-creatures"]
+
+[[creature_abilities]]
+creature = "Efreet Sultan"
+abilities = [{ kind = "school_immunity", school = "base:fire" }]
+sources = ["vcmi-magic-creatures"]
+
+[[creature_abilities]]
+creature = "Firebird"
+abilities = [{ kind = "school_immunity", school = "base:fire" }]
+sources = ["vcmi-magic-creatures"]
+
+[[creature_abilities]]
+creature = "Phoenix"
+abilities = [{ kind = "school_immunity", school = "base:fire" }]
+sources = ["vcmi-magic-creatures"]
+
 # ---------------------------------------------------------------------------------------------
 # Hero content (E04a T3): what the executable's hero tables and the text tables do not hold.
 # ---------------------------------------------------------------------------------------------
@@ -1281,6 +1459,34 @@ url = "https://heroes.thelazy.net/index.php/Combat"
 retrieved = "2026-10-05"
 
 [[source]]
+id = "vcmi-magic-creatures"
+kind = "vcmi"
+ref = "config/creatures/*.json (1.7.5): LEVEL_SPELL_IMMUNITY (Green, Red, Azure Dragons 3; Gold Dragon 4; Black Dragon, Magic Elemental 5), SPELL_SCHOOL_IMMUNITY fire (Fire and Energy Elementals, Efreet, Firebird, Phoenix), SPELL_IMMUNITY and MORE_DAMAGE_FROM_SPELL 100 (the elementals), SPELL_DAMAGE_REDUCTION (Golems 50/75/85/95), MAGIC_RESISTANCE (Dwarves 20/40, Crystal Dragon 20), SPELL_RESISTANCE_AURA 20 (Unicorns); the executable's code agrees with every value (docs/formats/installation.md §7.8, E04b T2d), which adds Titan's Lightning Bolt to the Earth/Magma immunities and the Air/Storm double damage"
+url = "https://github.com/vcmi/vcmi/tree/1.7.5/config/creatures"
+retrieved = "2026-10-06"
+
+[[source]]
+id = "wiki-earth-magma-elementals"
+kind = "wiki"
+ref = "Earth Elemental and Magma Elemental - Heroes 3 wiki: 'They take no damage from Mind, Lightning Bolt, Chain Lightning, and Armageddon spells'; 'They take double damage from Meteor Shower attacks'"
+url = "https://heroes.thelazy.net/index.php/Earth_Elemental_and_Magma_Elemental"
+retrieved = "2026-10-06"
+
+[[source]]
+id = "wiki-unicorn-aura"
+kind = "wiki"
+ref = "Unicorn and War Unicorn - Heroes 3 wiki: 'project a magic resistant aura which gives adjacent units a 20% chance to ignore the effects of hostile spells'; 'the Aura of Resistance does not apply to the creature itself'; 'This effect does not stack with multiple units of Unicorns'"
+url = "https://heroes.thelazy.net/index.php/Unicorn_and_War_Unicorn"
+retrieved = "2026-10-06"
+
+[[source]]
+id = "vcmi-resistance-artifacts"
+kind = "vcmi"
+ref = "config/artifacts.json (1.7.5) L869-L904: garnitureOfInterference, surcoatOfCounterpoise, bootsOfPolarity MAGIC_RESISTANCE 5, 10, 15; the executable adds 0.05, 0.10, 0.15 for artifacts 57, 58, 59 to the hero's resistance (docs/formats/installation.md §7.8)"
+url = "https://github.com/vcmi/vcmi/blob/1.7.5/config/artifacts.json#L869-L904"
+retrieved = "2026-10-06"
+
+[[source]]
 id = "vcmi-casting"
 kind = "vcmi"
 ref = "lib/battle/CBattleInfoCallback.cpp L117-L159 (1.7.5): a hero casts only with a spell book, not in the tactics phase and while its side's casts this round are below its limit (one); lib/battle/BattleInfo.cpp L651-L670: the counter is reset when a round starts; config/spells/offensive.json targetModifier smart: Magic Arrow, Ice Bolt, Lightning Bolt, Implosion, Chain Lightning and Titan's Lightning Bolt target only the side the spell is bad for (lib/spells/effects/UnitEffect.cpp L288-L293)"
@@ -1514,6 +1720,21 @@ artifacts = ["Orb of Driving Rain"]
 effects = [{ kind = "spell_damage", bp = 5000, school = "water" }]
 sources = ["wiki-orbs", "vcmi-magic-artifacts"]
 
+[[artifacts.effects]]
+artifacts = ["Garniture of Interference"]
+effects = [{ kind = "magic_resistance", bp = 500 }]
+sources = ["vcmi-resistance-artifacts"]
+
+[[artifacts.effects]]
+artifacts = ["Surcoat of Counterpoise"]
+effects = [{ kind = "magic_resistance", bp = 1000 }]
+sources = ["vcmi-resistance-artifacts"]
+
+[[artifacts.effects]]
+artifacts = ["Boots of Polarity"]
+effects = [{ kind = "magic_resistance", bp = 1500 }]
+sources = ["vcmi-resistance-artifacts"]
+
 # Effects no epic has modelled yet; the pack marks these artifacts, and every artifact without a
 # modelled effect must be listed here.
 [[artifacts.pending]]
@@ -1521,7 +1742,6 @@ epic = "E04b"
 what = "spell book, spells, spell immunity and resistance, spell duration and damage, mana, Eagle Eye"
 artifacts = [
     "Spell Scroll", "Badge of Courage",
-    "Garniture of Interference", "Surcoat of Counterpoise", "Boots of Polarity",
     "Bird of Perception", "Stoic Watchman", "Emblem of Cognizance",
     "Charm of Mana", "Talisman of Mana", "Mystic Orb of Mana",
     "Collar of Conjuring", "Ring of Conjuring", "Cape of Conjuring",
@@ -1562,12 +1782,12 @@ artifacts = [
 # 7.6); these entries add areas, chains and target conditions, by `SPTRAITS.TXT` name.
 [[spells.targeting]]
 spell = "Implosion"
-excludes = ["war_machine"]      # dispute M-1; batch 2a candidate X-5
+excludes = ["war_machine"]      # spell flag 0x1000 (installation.md §7.8; M-1 settled)
 sources = ["vcmi-spells-offensive"]
 
 [[spells.targeting]]
 spell = "Chain Lightning"
-chain = { targets = [4, 4, 5, 5], factor_bp = 5000 }    # order of the jumps: T2d (X-6)
+chain = { targets = [4, 4, 5, 5], factor_bp = 5000 }    # the jumps: BAT-MAG-006
 sources = ["vcmi-spells-offensive"]
 
 [[spells.targeting]]

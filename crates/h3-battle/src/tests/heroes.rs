@@ -90,8 +90,10 @@ fn every_effect(r: &h3_content::Ruleset) -> Vec<BattleEffect> {
         },
         BattleEffect::SpellSpecialty {
             spell: r.spell_by_key("t:bolt").unwrap(),
-            bp: 6000,
+            bp_per_level: 300,
+            level: 20,
         },
+        BattleEffect::MagicResistance { bp: 1000 },
     ]
 }
 
@@ -310,7 +312,8 @@ fn unsound_heroes_are_rejected() {
             |_, h| {
                 h.effects = vec![BattleEffect::SpellSpecialty {
                     spell: SpellId::from_raw(99),
-                    bp: 1,
+                    bp_per_level: 1,
+                    level: 1,
                 }];
             },
             HeroError::UnknownSpell,
