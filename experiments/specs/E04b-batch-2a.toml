@@ -1,0 +1,355 @@
+# Experiment batch 2a (E04b, end of increment 1): hero casting of damage spells. Settles what the
+# code reading of the executable (docs/formats/installation.md §7.8, survey
+# docs/rules/surveys/E04b-magic.md §12) left as inference or open: Chain Lightning by screen
+# distance (OPEN-QUESTIONS Q44, BAT-MAG-006) and its tie order, the damage order and rounding
+# (X-1, BAT-MAG-004), immunities and double damage (X-2, BAT-MAG-005), casting during a commanded
+# Ballista's turn (X-3, BAT-MAG-001), spell costs with Mages, Pegasi and Familiars (X-4, for T7),
+# Implosion on a war machine (X-5, M-1), aiming area spells (BAT-MAG-003/007) and the aimed stack's
+# resistance roll (BAT-MAG-007/008); plus the E04a leftover Q40 (tactics hand-over).
+# Build: see docs/experiments/README.md. Predictions are for the agent who evaluates the results;
+# the template never shows them.
+#
+# Played with plain HD (HD+ off). Hero levels: experience 0 (level 1), so no level-up changes the
+# primary skills. Heroes have resource specialties unless the encounter is about a specialty;
+# casters get a Spell Book and only the listed spells; no Wisdom, no school skills (mastery none),
+# no luck sources. Every caster starts with full mana, 10 x knowledge.
+# Not staged: Q-0005's single-precision resistance (10 % hero resistance leaves 89 %, not 90 %: a
+# one-point difference in a chance needs thousands of casts); Q43 (the sprite offset: every chain
+# case below uses one creature type for the stacks it compares, so the offset cancels); the
+# E04a candidates (1)-(4) of docs/experiments/README.md.
+
+[map]
+name = "E04b batch 2a"
+description = "Engine-generated experiment map (E04b, batch 2a). Play it in hot seat with Red and Blue as human players and follow the results template."
+size = 36
+terrain = "dirt"
+instructions = [
+    "Copy `E04b-batch-2a.h3m` into `D:\\Heroes3\\HoMM 3 Complete\\Maps`.",
+    "Use the HD launcher with plain HD (HD+ off).",
+    "Start the map in hot seat: *New Game → Multiplayer → Hot Seat*, two players, Red and Blue both human. In the battles against Blue's heroes you control both sides. Save right away.",
+    "On day 1, play Red's encounters R1–R7 in any order: each Red hero attacks the Blue hero (or the monster) next to it.",
+    "In battle, the combat log at the bottom shows each spell's damage and who resists (scroll it with its arrow); right-click a stack to see its numbers, right-click a hero's portrait to see its spell points. Blue's stacks always Defend unless the encounter says otherwise; Red's stacks Defend unless they are needed. When a stack gets an extra turn from good morale, let it Defend.",
+    "Positions are given as row (counted from the top, 1–11) and hex counted from a side edge of that row. If an obstacle stands on a planned hex, shift the whole pattern by the same number of hexes and rows and note the shift.",
+    "Fill in this file (anything unexpected goes into the last line of an encounter) and keep it in the repo.",
+]
+
+# --- Chain Lightning (BAT-MAG-006, Q44) ------------------------------------------------------------
+
+[[encounter]]
+id = "R1"
+title = "Chain Lightning: screen distance or hex distance"
+questions = ["Q44", "X-6"]
+procedure = [
+    "Before attacking, check R1's spell points (30 expected: knowledge 3).",
+    "Attack the Blue hero. Blue gets the tactics phase (Expert Tactics). Place Blue's three Peasant stacks (counts 100, 101, 102) as follows: the 100 in row 5, 4th hex from the right edge (call it A); the 101 in the same row two hexes to the left of A, one empty hex between them (B); the 102 two rows below A, in row 7, 4th hex from the right edge, so that it stands directly beneath A (C). Then end the tactics phase.",
+    "Round 1: on the Pikemen's turn (they act before the Peasants), cast Chain Lightning at A. Watch the bolt jump and note the order of the stacks it hits; note each Peasant stack's count afterwards and what happened to the Pikemen.",
+    "Round 2: on the Pikemen's turn, open the spell book, choose Chain Lightning and move the cursor over your own Pikemen: can you cast it at them (spell cursor) or not? Do not cast. Then retreat or finish the battle as you like.",
+]
+predictions = """
+Chain Lightning, mastery none: 4 targets, value 1 x 40 + 25 = 65, halved per jump (65, 32, 16, 8).
+Screen centres (hexes 44 x 42 px, even rows shifted half a hex): from A, B is 88 px away, C 84 px;
+in hexes both are 2 away.
+- Ours (BAT-MAG-006, screen distance): A, C, B, Pikemen. Counts A 35, C 70, B 85; Pikemen 10 (8
+  damage to the top one).
+- Hex distance (VCMI: ties to the smallest column for a defender; the code's tie order: Blue's
+  stacks by army slot): A, B, C, Pikemen. Counts A 35, B 69, C 86.
+- Round 2: ours yes (neutral in the executable's spell table; BAT-MAG-003); VCMI marks Chain
+  Lightning "smart" (config/spells/offensive.json), which offers enemies only.
+"""
+[encounter.hero]
+type = "Caitlin"
+specialty = "resource gold"
+primary = [0, 0, 1, 3]
+army = [["Pikeman", 10]]
+artifacts = { "spell book" = "Spell Book" }
+spells = ["Chain Lightning"]
+[encounter.opponent.hero]
+name = "R1b"
+type = "Nagash"
+specialty = "resource gold"
+primary = [0, 0, 0, 0]
+skills = [["Tactics", 3]]
+army = [["Peasant", 100], ["Peasant", 101], ["Peasant", 102]]
+[[encounter.record]]
+field = "spell points at the start"
+[[encounter.record]]
+field = "order of the stacks hit (A, B, C, Pikemen)"
+[[encounter.record]]
+table = ["stack", "count after the cast"]
+rows = 4
+[[encounter.record]]
+field = "round 2: can Chain Lightning target your own Pikemen (yes/no)"
+[[encounter.record]]
+field = "anything odd"
+
+[[encounter]]
+id = "R2"
+title = "Chain Lightning: two stacks at the same distance"
+questions = ["X-6"]
+procedure = [
+    "Attack the Blue hero. In Blue's tactics phase place the Peasants: the 100 in row 5, 4th hex from the right edge (A); the 101 in the same row two hexes to the right of A, one empty hex between them (R, 2nd hex from the right edge); the 102 in the same row two hexes to the left of A, one empty hex between them (L). End the tactics phase.",
+    "Round 1: on the Pikemen's turn, cast Chain Lightning at A. Note the order of the stacks the bolt hits and each Peasant stack's count afterwards.",
+]
+predictions = """
+R and L are both 88 px (and 2 hexes) from A. Values 65, 32, 16, 8.
+- Ours (the code: Blue's stacks searched by army slot, the first of equal distance wins): A, R,
+  L, Pikemen. Counts A 35, R 69, L 86.
+- VCMI (ties to the smallest column for a defender): A, L, R, Pikemen. Counts A 35, L 70, R 85.
+- Wiki ("the stack is randomly chosen"): either.
+"""
+[encounter.hero]
+type = "Jenova"
+specialty = "resource gold"
+primary = [0, 0, 1, 3]
+army = [["Pikeman", 10]]
+artifacts = { "spell book" = "Spell Book" }
+spells = ["Chain Lightning"]
+[encounter.opponent.hero]
+name = "R2b"
+type = "Damacon"
+specialty = "resource gold"
+primary = [0, 0, 0, 0]
+skills = [["Tactics", 3]]
+army = [["Peasant", 100], ["Peasant", 101], ["Peasant", 102]]
+[[encounter.record]]
+field = "order of the stacks hit (A, R, L, Pikemen)"
+[[encounter.record]]
+table = ["stack", "count after the cast"]
+rows = 3
+[[encounter.record]]
+field = "anything odd"
+
+# --- Aiming area spells; resistance of the stack aimed at (BAT-MAG-003, 007, 008; X-5) --------------
+
+[[encounter]]
+id = "R3"
+title = "Aiming Fireball and Implosion; a resisting stack at the centre"
+questions = ["X-5", "BAT-MAG-007"]
+procedure = [
+    "Before attacking, check R3's spell points (120 expected).",
+    "Attack the Blue hero. In Blue's tactics phase place the Battle Dwarves anywhere in the zone, away from the edges, and the Efreeti and both Gnoll stacks on hexes adjacent to the Battle Dwarves. End the tactics phase. (Blue's Ballista stands where the game puts it.)",
+    "Round 1, on the Pikemen's turn: open the spell book and try, without casting yet: (a) Implosion over Blue's Ballista; (b) Fireball over an empty hex far from every stack; (c) Fireball over the Efreeti. Note for each whether the spell cursor allows the cast.",
+    "If (c) allowed it, cast that Fireball and note who lost creatures and what the log says. Otherwise cast Fireball centred on the Battle Dwarves.",
+    "Rounds 2–7: each round, on the Pikemen's turn, cast Fireball centred on the Battle Dwarves (Blue's stacks keep defending, so nobody moves). For each cast note whether the log says the Battle Dwarves resist, and whether the Dwarves, each Gnoll stack and the Efreeti lost creatures.",
+]
+predictions = """
+Fireball, mastery none: 1 x 10 + 15 = 25 per stack (Gnolls 6 HP: 4 die; Battle Dwarves 20 HP: 1
+dies). (a) no: war machines are unaffected by Implosion (spell flag 0x1000, BAT-MAG-005). (b) no
+(VCMI; ours: a hex spell needs a stack it can affect in its area, BAT-MAG-003; the original's
+validation was not read). (c) ours: no (an immune stack's hex is not a target, an agent decision);
+if the game allows it, the result tells whether the whole spell fails (immune centre treated like
+a resisting one) or only the Efreeti is spared.
+Each Fireball at the Dwarves (BAT-MAG-007/008, from the code): the Dwarves roll first (40 %
+resist); if they resist, nothing happens to anybody (one "resist" line). Otherwise both Gnoll
+stacks lose 4 and the Dwarves roll again (40 %): 36 % of all casts hit everyone, 24 % hit the
+Gnolls but not the Dwarves, 40 % hit nobody; the Efreeti is never hit.
+VCMI: the Gnolls are hit by every cast, the Dwarves resist 40 % of them.
+"""
+[encounter.hero]
+type = "Aine"
+specialty = "resource gold"
+primary = [0, 0, 1, 12]
+army = [["Pikeman", 10]]
+artifacts = { "spell book" = "Spell Book" }
+spells = ["Fireball", "Implosion"]
+[encounter.opponent.hero]
+name = "R3b"
+type = "Sephinroth"
+specialty = "resource crystal"
+primary = [0, 0, 0, 0]
+skills = [["Tactics", 3]]
+army = [["Battle Dwarf", 20], ["Efreeti", 5], ["Gnoll", 50], ["Gnoll", 51]]
+artifacts = { "war machine 1" = "Ballista" }
+[[encounter.record]]
+field = "spell points at the start"
+[[encounter.record]]
+field = "(a) Implosion on the Ballista allowed (yes/no)"
+[[encounter.record]]
+field = "(b) Fireball on an empty hex far from all stacks allowed (yes/no)"
+[[encounter.record]]
+field = "(c) Fireball on the Efreeti allowed (yes/no); if cast: what happened"
+[[encounter.record]]
+table = ["cast", "Dwarves resist (log)", "Dwarves lost", "Gnolls 50 lost", "Gnolls 51 lost", "Efreeti lost"]
+rows = 7
+[[encounter.record]]
+field = "anything odd"
+
+# --- Damage order and rounding (BAT-MAG-004, X-1, X-2) -----------------------------------------------
+
+[[encounter]]
+id = "R4"
+title = "A spell specialist's Ice Bolt with Sorcery: specialty rounding, creature level, Golems, elementals"
+questions = ["X-1", "X-2", "M-6"]
+procedure = [
+    "Before attacking, check R4's spell points (40 expected) and spell power (5).",
+    "Attack the Blue hero. Each round, on the Pikemen's turn, cast Ice Bolt at the next target: round 1 the Peasants, round 2 the Wolf Riders, round 3 the Gold Golems, round 4 the Fire Elementals. Note the damage the log reports for each cast.",
+    "Round 5: open the spell book, choose Ice Bolt and move the cursor over the Gold Dragon: can you target it (yes/no)? Do not cast.",
+]
+predictions = """
+Alagar, hero level 1, Ice Bolt specialist (3 % per level), Basic Sorcery 5 %, power 5, mastery
+none: value 5 x 20 + 10 = 110; caster's bonus t = trunc(110 x 1.05) = 115 (single precision:
+115.50000008 -> 115).
+- Ours (the code, BAT-MAG-004): Peasants (level 1): 115 + ceil(1 div 1 x 3 % x 115 = 3.45) = 119;
+  Wolf Riders (level 2): 1 div 2 = 0, 115; Gold Golems: 115 x 15 / 100 = 17; Fire Elementals:
+  115 x 2 = 230 (level 4: no specialty).
+- VCMI (target factors first, each factor truncated, specialty 3 x level / creature level in whole
+  percent): 118, 116 (3 div 2 = 1 %), 16 (110 x 15 / 100 = 16, then x 1.05), 231 (220 x 1.05).
+- Wiki (C x (1 + 0.03 x L / n), rounded down): 118, 116.
+- Gold Dragon: not a target (immune to spells of level 4 and below; Ice Bolt is level 2).
+"""
+[encounter.hero]
+type = "Alagar"
+specialty = "spell Ice Bolt"
+primary = [0, 0, 5, 4]
+skills = [["Sorcery", 1]]
+army = [["Pikeman", 10]]
+artifacts = { "spell book" = "Spell Book" }
+spells = ["Ice Bolt"]
+[encounter.opponent.hero]
+name = "R4b"
+type = "Saurug"
+specialty = "resource gems"
+primary = [0, 0, 0, 0]
+army = [["Peasant", 200], ["Wolf Rider", 20], ["Gold Golem", 5], ["Fire Elemental", 10], ["Gold Dragon", 1]]
+[[encounter.record]]
+field = "spell points and spell power at the start"
+[[encounter.record]]
+table = ["round", "target", "damage (log)"]
+rows = 4
+[[encounter.record]]
+field = "round 5: Ice Bolt can target the Gold Dragon (yes/no)"
+[[encounter.record]]
+field = "anything odd"
+
+[[encounter]]
+id = "R5"
+title = "Ice Bolt with an Orb and Sorcery: one rounding or one per factor"
+questions = ["X-1"]
+procedure = [
+    "Before attacking, check R5's spell points (20 expected) and spell power (5).",
+    "Attack the Blue hero. Round 1, on the Pikemen's turn: cast Ice Bolt at the Wolf Riders and note the damage. Round 2: cast Ice Bolt at the Gold Golems and note the damage.",
+]
+predictions = """
+Value 110 (power 5, mastery none); Orb of Driving Rain +50 % for water spells, Basic Sorcery 5 %.
+- Ours (the code: x 1.5 x 1.05 kept fractional, truncated once; then the Golems' x 15 / 100):
+  Wolf Riders trunc(173.25) = 173; Gold Golems 173 x 15 / 100 = 25.
+- VCMI (Sorcery, then the Orb, truncating after each; target factors first): 172 (115 x 1.5 =
+  172.5); Gold Golems 24 (16 x 1.05 = 16, x 1.5 = 24).
+"""
+[encounter.hero]
+type = "Octavia"
+specialty = "resource gold"
+primary = [0, 0, 5, 2]
+skills = [["Sorcery", 1]]
+army = [["Pikeman", 10]]
+artifacts = { "spell book" = "Spell Book", "misc 1" = "Orb of Driving Rain" }
+spells = ["Ice Bolt"]
+[encounter.opponent.hero]
+name = "R5b"
+type = "Gelare"
+specialty = "resource gold"
+primary = [0, 0, 0, 0]
+army = [["Wolf Rider", 30], ["Gold Golem", 5]]
+[[encounter.record]]
+field = "spell points and spell power at the start"
+[[encounter.record]]
+table = ["round", "target", "damage (log)"]
+rows = 2
+[[encounter.record]]
+field = "anything odd"
+
+# --- Costs and when a hero may cast (X-3, X-4) ------------------------------------------------------
+
+[[encounter]]
+id = "R6"
+title = "Spell costs with Mages, Pegasi and Familiars; casting in the Ballista's turn"
+questions = ["X-3", "X-4", "M-4"]
+procedure = [
+    "Before attacking, check R6's spell points (20 expected) and the Blue hero's (10 expected).",
+    "Attack the Blue hero. Round 1: on the Familiars' turn, cast Magic Arrow at the Gnolls; note R6's spell points before and after. Red's other stacks Defend in round 1. On a Blue turn in round 1 (Pegasus or Gnolls), Blue casts Ice Bolt at the Familiars: note Blue's spell points before and after, and R6's spell points after.",
+    "Round 2: do not cast before the Ballista's turn. On the Ballista's turn (you control it: Basic Artillery), open the spell book: can you cast (yes/no)? If yes, cast Magic Arrow at the Gnolls and note R6's spell points before and after. On the Mages' turn, shoot the Pegasus (kill it). Note whether the Pegasus was still alive when the Ballista's turn came.",
+    "In the next round in which R6 has not cast yet and the Pegasus is dead, cast Magic Arrow at the Gnolls on any Red turn; note R6's spell points before and after.",
+]
+predictions = """
+Magic Arrow costs 5 at mastery none, Ice Bolt 8. Mages: -2 for their own hero's spells; Pegasi: +2
+for the enemy hero's; Familiars: 20 % of the mana the enemy hero spends goes to their hero (VCMI;
+not implemented yet, E04b T7).
+- VCMI: round 1 cost 5 - 2 + 2 = 5; Blue's Ice Bolt costs 8 (Red has no Pegasi), R6 gains 20 % x
+  8 = 1.6 -> 1; with only the Mages left: 3.
+- Ballista's turn: ours (VCMI, BAT-MAG-001 as implemented): the hero may cast while a war machine
+  it commands acts; the wiki ("right after activation of one of their creatures"): no.
+"""
+[encounter.hero]
+type = "Calid"
+specialty = "resource sulfur"
+primary = [0, 0, 1, 2]
+skills = [["Artillery", 1]]
+army = [["Familiar", 10], ["Mage", 10]]
+artifacts = { "spell book" = "Spell Book", "war machine 1" = "Ballista" }
+spells = ["Magic Arrow"]
+[encounter.opponent.hero]
+name = "R6b"
+type = "Grindan"
+specialty = "resource gold"
+primary = [0, 0, 1, 1]
+army = [["Pegasus", 1], ["Gnoll", 20]]
+artifacts = { "spell book" = "Spell Book" }
+spells = ["Ice Bolt"]
+[[encounter.record]]
+field = "spell points at the start (R6, Blue)"
+[[encounter.record]]
+table = ["when", "caster", "spell points before", "spell points after", "R6's spell points after (Blue's casts)", "Pegasus alive?"]
+rows = 3
+[[encounter.record]]
+field = "round 2: can R6 cast in the Ballista's turn (yes/no)"
+[[encounter.record]]
+field = "anything odd (bad morale skips, etc.)"
+
+# --- E04a leftover: the tactics phase (Q40) -----------------------------------------------------------
+
+[[encounter]]
+id = "R7"
+title = "Tactics phase: which stack is handed over next"
+questions = ["Q40", "BAT-TAC-002", "BAT-TRN-001"]
+procedure = [
+    "Attack the Zombies. R7 gets the tactics phase (Expert Tactics). Army slots 1–6: Swordsmen, Griffins, Monks, Marksmen, Cavaliers, Pikemen. Write down every stack the game hands you, in order.",
+    "(a) Note the first stack handed over.",
+    "(b) Press the button that skips to the next creature once and note the stack you get; press it again and note it; keep pressing until every stack has come once and the first comes back; note the whole sequence.",
+    "(c) With the first stack (from a) active again, move it one hex inside the zone; note the stack you get next. Move that one too (it had been skipped in b); note the next.",
+    "(d) Place the Griffins (slot 2) on a hex below the Marksmen (slot 4), so that the Marksmen stand higher on the screen; place the Swordsmen (slot 1) above the Monks (slot 3). Note the final rows of these four. End the tactics phase.",
+    "(e) Round 1: every Red stack Defends; note the order in which Red's stacks act. Round 2: note the order again; on the Griffins' turn fly them to a hex above the Marksmen, the others Defend. Round 3: note the order again. Avoid killing the Zombies.",
+]
+predictions = """
+Speeds: Cavaliers 7, Griffins 6, Marksmen 6, Swordsmen 5, Monks 5, Pikemen 4.
+- Ours (BAT-TAC-002: round-1 order, ties by the lower army slot, cycling; skip and move both pass
+  to the next in that cycle): (a) Cavaliers; (b) Griffins, Marksmen, Swordsmen, Monks, Pikemen,
+  Cavaliers; (c) after moving the Cavaliers: Griffins; after moving them: Marksmen.
+  (e, BAT-TRN-001: ties by army slot) rounds 1-3: Cavaliers, Griffins, Marksmen, Swordsmen,
+  Monks, Pikemen.
+- The user's impression (2026-10-05): "next creature" acts like Wait; ties by the lower hex
+  index (higher on the screen first): round 1 Marksmen before Griffins, Swordsmen before Monks;
+  round 3 (Griffins above): Griffins before Marksmen.
+- Wiki Speed: ties by the slot "before the tactics phase" (same as ours).
+"""
+[encounter.hero]
+type = "Clavius"
+specialty = "resource gold"
+primary = [0, 0, 0, 0]
+skills = [["Tactics", 3]]
+army = [["Swordsman", 5], ["Griffin", 5], ["Monk", 5], ["Marksman", 5], ["Cavalier", 5], ["Pikeman", 5]]
+[encounter.opponent]
+monster = "Zombie"
+count = 10
+[[encounter.record]]
+field = "(a) first stack"
+[[encounter.record]]
+field = "(b) sequence when skipping"
+[[encounter.record]]
+field = "(c) next after moving the first stack; next after moving that one"
+[[encounter.record]]
+field = "(d) rows of Swordsmen, Griffins, Monks, Marksmen"
+[[encounter.record]]
+table = ["round", "order of Red's stacks"]
+rows = 3
+[[encounter.record]]
+field = "anything odd"

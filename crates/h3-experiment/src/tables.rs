@@ -10,6 +10,8 @@ use h3_formats::text::{TextTable, decode_windows_1252};
 
 /// Object class of a fixed wandering monster (subclass = creature id).
 const MONSTER_CLASS: u32 = 54;
+/// The group rows of `SPTRAITS.TXT`, which are not spells.
+const SPELL_GROUPS: [&str; 3] = ["Adventure Spells", "Combat Spells", "Creature Abilities"];
 /// Resource names in `RESTYPES.TXT` order (for specialty descriptions).
 const RESOURCES: [&str; 7] = [
     "wood", "mercury", "ore", "sulfur", "crystal", "gems", "gold",
@@ -23,6 +25,21 @@ pub struct Artifact {
     pub name: String,
     /// Allowed slots.
     pub slots: [bool; ARTIFACT_SLOTS],
+}
+
+/// The text tables [`Tables::from_tables`] reads (`H3bitmap.lod`).
+#[derive(Debug, Clone, Copy)]
+pub struct TextTables<'a> {
+    /// `CRTRAITS.TXT`.
+    pub creatures: &'a TextTable,
+    /// `HOTRAITS.TXT`.
+    pub heroes: &'a TextTable,
+    /// `SSTRAITS.TXT`.
+    pub skills: &'a TextTable,
+    /// `ARTRAITS.TXT`.
+    pub artifacts: &'a TextTable,
+    /// `SPTRAITS.TXT`.
+    pub spells: &'a TextTable,
 }
 
 /// A hero type's specialty as stored in the executable (kind, id).
@@ -50,6 +67,8 @@ pub struct Tables {
     pub skills: Vec<String>,
     /// Artifacts by id (`ARTRAITS.TXT`).
     pub artifacts: Vec<Artifact>,
+    /// Spell names by id (`SPTRAITS.TXT`, without its group rows).
+    pub spells: Vec<String>,
     /// Wandering-monster templates (`Objects.txt`, class 54) as (creature id, template).
     pub monsters: Vec<(u32, ObjectTemplate)>,
 }
@@ -94,10 +113,13 @@ impl Tables {
             TextTable::parse(&entry(name)?).map_err(|e| format!("{name}: {e}"))
         };
         Self::from_tables(
-            &table("CRTRAITS.TXT")?,
-            &table("HOTRAITS.TXT")?,
-            &table("SSTRAITS.TXT")?,
-            &table("ARTRAITS.TXT")?,
+            &TextTables {
+                creatures: &table("CRTRAITS.TXT")?,
+                heroes: &table("HOTRAITS.TXT")?,
+                skills: &table("SSTRAITS.TXT")?,
+                artifacts: &table("ARTRAITS.TXT")?,
+                spells: &table("SPTRAITS.TXT")?,
+            },
             &decode_windows_1252(&entry("OBJECTS.TXT")?),
             hero_classes,
             specialties,
@@ -109,14 +131,18 @@ impl Tables {
     /// # Errors
     /// Missing names or slot columns, or class/specialty lists that do not match the heroes.
     pub fn from_tables(
-        creatures: &TextTable,
-        heroes: &TextTable,
-        skills: &TextTable,
-        artifacts: &TextTable,
+        texts: &TextTables<'_>,
         objects_txt: &str,
         hero_classes: Vec<u8>,
         specialties: Vec<Specialty>,
     ) -> Result<Self, String> {
+        let TextTables {
+            creatures,
+            heroes,
+            skills,
+            artifacts,
+            spells,
+        } = *texts;
         let heroes = names(heroes);
         if heroes.len() != hero_classes.len() || heroes.len() != specialties.len() {
             return Err(format!(
@@ -159,6 +185,10 @@ impl Tables {
             specialties,
             skills: names(skills),
             artifacts,
+            spells: names(spells)
+                .into_iter()
+                .filter(|n| !SPELL_GROUPS.contains(&n.as_str()))
+                .collect(),
             monsters,
         })
     }
@@ -185,7 +215,7 @@ impl Tables {
                     .and_then(|i| RESOURCES.get(i))
                     .map_or_else(|| format!("#{}", s.id), |r| (*r).to_owned())
             ),
-            3 => format!("spell #{}", s.id),
+            3 => format!("spell {}", name(&self.spells)),
             4 => format!("creature stats {}", name(&self.creatures)),
             5 => "speed".into(),
             6 => "upgrade".into(),

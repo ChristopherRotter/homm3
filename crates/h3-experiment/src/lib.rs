@@ -52,6 +52,11 @@ pub const SLOT_NAMES: [&str; ARTIFACT_SLOTS] = [
 ];
 /// Skill level names, 1-based.
 const LEVELS: [&str; 3] = ["Basic", "Advanced", "Expert"];
+/// Spells a map's hero may have in its spell book (bit per spell id in the map; `SPTRAITS.TXT`
+/// ids below this).
+pub const MAP_SPELLS: usize = 70;
+/// The slot of the Spell Book in [`SLOT_NAMES`].
+const SPELL_BOOK_SLOT: &str = "spell book";
 
 /// A whole spec file.
 #[derive(Debug, Clone, Deserialize)]
@@ -145,6 +150,10 @@ pub struct HeroSpec {
     /// unless listed).
     #[serde(default)]
     pub artifacts: BTreeMap<String, String>,
+    /// Spells in the spell book by `SPTRAITS.TXT` name; replaces the hero type's and needs a
+    /// worn `spell book`. The hero starts with full mana (10 × knowledge without Intelligence).
+    #[serde(default)]
+    pub spells: Vec<String>,
     /// Tight formation.
     #[serde(default)]
     pub tight: bool,
@@ -415,6 +424,17 @@ fn hero(
         }
         worn[slot] = Some(id as u16);
     }
+    if !h.spells.is_empty() && !h.artifacts.contains_key(SPELL_BOOK_SLOT) {
+        return Err(format!("spells need a worn `{SPELL_BOOK_SLOT}`"));
+    }
+    let mut spells = [0u8; 9];
+    for name in &h.spells {
+        let id = lookup(&tables.spells, name, "spell")?;
+        if id >= MAP_SPELLS {
+            return Err(format!("{name} is not a hero spell"));
+        }
+        spells[id / 8] |= 1 << (id % 8);
+    }
     Ok(Hero {
         tile,
         owner,
@@ -429,7 +449,7 @@ fn hero(
             worn,
             backpack: Vec::new(),
         }),
-        spells: Some([0; 9]),
+        spells: Some(spells),
         primary: Some(h.primary),
     })
 }
@@ -473,6 +493,11 @@ fn hero_summary(h: &HeroSpec, hero: &Hero, tables: &Tables) -> String {
     if artifacts.is_empty() {
         artifacts = "no artifacts".into();
     }
+    let spells = if h.spells.is_empty() {
+        "no spells".to_owned()
+    } else {
+        format!("spells {}", h.spells.join(", "))
+    };
     let level = if h.experience == 0 {
         String::new()
     } else {
@@ -480,7 +505,7 @@ fn hero_summary(h: &HeroSpec, hero: &Hero, tables: &Tables) -> String {
     };
     format!(
         "{owner} hero **{}** ({}, specialty {}{level}): attack {a}, defense {d}, power {p}, \
-         knowledge {k}; {skills}; {artifacts}; army {army}",
+         knowledge {k}; {skills}; {artifacts}; {spells}; army {army}",
         hero.name.as_deref().unwrap_or_default(),
         tables.heroes[usize::from(hero.hero_type)],
         h.specialty,
@@ -535,6 +560,8 @@ mod tests {
     fn tables() -> Tables {
         let mut slots = [false; ARTIFACT_SLOTS];
         slots[13] = true;
+        let mut book = [false; ARTIFACT_SLOTS];
+        book[17] = true;
         Tables {
             creatures: vec!["Pikeman".into(), "Archangel".into()],
             heroes: vec![
@@ -548,13 +575,20 @@ mod tests {
                 Specialty { kind: 0, id: 0 },
                 Specialty { kind: 2, id: 6 },
                 Specialty { kind: 1, id: 1 },
-                Specialty { kind: -1, id: 0 },
+                Specialty { kind: 3, id: 9 },
             ],
             skills: vec!["Archery".into(), "Armorer".into()],
-            artifacts: vec![Artifact {
-                name: "Ballista".into(),
-                slots,
-            }],
+            artifacts: vec![
+                Artifact {
+                    name: "Ballista".into(),
+                    slots,
+                },
+                Artifact {
+                    name: "Spell Book".into(),
+                    slots: book,
+                },
+            ],
+            spells: (0..=MAP_SPELLS).map(|i| format!("Spell {i}")).collect(),
             monsters: vec![(
                 0,
                 ObjectTemplate::from_objects_txt(
@@ -608,13 +642,24 @@ mod tests {
         specialty = "creature Archangel"
         primary = [1, 2, 3, 4]
         army = [["Pikeman", 5]]
+
+        [[encounter]]
+        id = "M1"
+        title = "Magic"
+        [encounter.hero]
+        type = 3
+        specialty = "spell Spell 9"
+        primary = [0, 0, 1, 2]
+        army = [["Pikeman", 1]]
+        artifacts = { "spell book" = "Spell Book" }
+        spells = ["Spell 0", "Spell 9", "Spell 69"]
     "#;
 
     #[test]
     fn builds_map_and_template() {
         let spec = parse(SPEC).expect("spec");
         let (map, text) = build(&spec, &tables(), "t.h3m").expect("build");
-        assert_eq!(map.objects.len(), 4);
+        assert_eq!(map.objects.len(), 5);
         let MapObject::Hero(h) = &map.objects[0] else {
             panic!("hero first")
         };
@@ -632,6 +677,12 @@ mod tests {
         };
         assert_eq!((blue.owner, blue.hero_type, blue.tile), (1, 2, (10, 3)));
         assert!(map.players[1].is_some());
+        let MapObject::Hero(mage) = &map.objects[4] else {
+            panic!("spell caster")
+        };
+        assert_eq!(mage.spells, Some([0b1, 0b10, 0, 0, 0, 0, 0, 0, 0b10_0000]));
+        assert!(text.contains("Spell Book (spell book); spells Spell 0, Spell 9, Spell 69;"));
+        assert!(text.contains("; no spells;"));
         assert!(text.contains("## R1 — A test (Q23)"));
         assert!(text.contains("| stack | damage |"));
         assert!(text.contains("- anything odd: "));
@@ -655,5 +706,9 @@ mod tests {
         assert!(fails("type = 2", "type = \"Sylvia\"").contains("specialty"));
         assert!(fails("terrain = \"dirt\"", "terrain = \"water\"").contains("terrain"));
         assert!(fails("count = 10", "count = 0").contains("at least one"));
+        assert!(fails("\"Spell 69\"", "\"Spell 70\"").contains("not a hero spell"));
+        assert!(fails("\"Spell 69\"", "\"Spell 99\"").contains("unknown spell"));
+        let no_book = fails("artifacts = { \"spell book\" = \"Spell Book\" }", "");
+        assert!(no_book.contains("need a worn"));
     }
 }

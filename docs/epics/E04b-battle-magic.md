@@ -1,6 +1,6 @@
 # E04b — Battle magic
 
-Status: **in progress** (refined 2026-10-05; increment 1 = T1–T2; T1 done, ADR-0014 accepted; T2a–T2d done, batch 2a next) · Follows E04a (closed 2026-10-05) · Part of the former E04 (OPEN-QUESTIONS Q27): E04a heroes in battle, **E04b** battle magic (this one), E04c sieges and special battlefields.
+Status: **in progress** (refined 2026-10-05; increment 1 = T1–T2; T1 done, ADR-0014 accepted; T2a–T2d done, batch 2a compiled, waiting for the user) · Follows E04a (closed 2026-10-05) · Part of the former E04 (OPEN-QUESTIONS Q27): E04a heroes in battle, **E04b** battle magic (this one), E04c sieges and special battlefields.
 
 ## Goal
 
@@ -31,7 +31,7 @@ Earthquake, sieges and the moat (E04c). The special battlefields' magic (Magic P
 **Increment 1:** T1 (done), T2 (refined below). Later increments are cut with the user at each checkpoint; order and boundaries of T3–T11 may change.
 
 - [x] **T1 Magic survey and ADR-0014** — done 2026-10-05: survey `docs/rules/surveys/E04b-magic.md`, spell flags and stack records (`docs/formats/installation.md` §7.6, §7.7), ADR-0014 accepted after one revision (Q42; ADR-0004 point 8 amended). Record: [`E04b-log.md`](E04b-log.md).
-- [ ] **T2 Casting core and direct-damage spells** — increment 1; split T2a–T2d confirmed by the user (2026-10-05), delivered as T2a + T2b, then T2c + T2d, each pair ending at a user checkpoint. T2a and T2b done 2026-10-05, T2c and T2d 2026-10-06 ([log](E04b-log.md)); the user confirmed T2c + T2d with batch 2a at the checkpoint (Q44).
+- [ ] **T2 Casting core and direct-damage spells** — increment 1; split T2a–T2d confirmed by the user (2026-10-05), delivered as T2a + T2b, then T2c + T2d, each pair ending at a user checkpoint. T2a and T2b done 2026-10-05, T2c and T2d 2026-10-06 ([log](E04b-log.md)); the user confirmed T2c + T2d with batch 2a at the checkpoint (Q44). Batch 2a compiled 2026-10-06 (`experiments/specs/E04b-batch-2a.toml`); T2 closes when its results are recorded.
 - [ ] T3 Timed effects on stacks: buffs and debuffs, Mass versions at Expert, durations and the artifacts that change them, Dispel, Cure (S-16, S-17, S-19).
 - [ ] T4 Control spells and spell defences: Berserk, Hypnotize, Forgetfulness, Blind; Anti-Magic, Magic Mirror (S-09 to S-11, S-13).
 - [ ] T5 Battlefield spells: Quicksand and Land Mine (hidden, owner-side visibility), Force Field, Fire Wall, Remove Obstacle, Teleport.

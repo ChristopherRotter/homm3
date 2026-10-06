@@ -180,3 +180,24 @@ records how and why the tasks went.
   cannot occur from a hero's cast (power
   ≥ 1 gives at least 20 before the Golems' reduction) and stays for creature casters (T7);
   Titan's Lightning Bolt's elemental entries wait for its castability (T8, BACKLOG).
+
+### Batch 2a compiled (2026-10-06)
+
+- **Tool:** experiment specs gain `spells` (`SPTRAITS.TXT` names, ids below 70, a worn spell book
+  required); `--list spells`; spell specialties print by name. Mana comes from knowledge (a map's
+  hero starts with full mana).
+- **Spec** `experiments/specs/E04b-batch-2a.toml`, template `experiments/results/E04b-batch-2a.md`,
+  map `experiments/out/E04b-batch-2a.h3m` (7 encounters, 7 Red and 6 Blue heroes): R1 Chain
+  Lightning screen vs hex distance (Q44: B 88 px / 2 hexes left of A, C 84 px / 2 hexes beneath;
+  every hex model picks B, the screen picks C), R2 its tie order (the code: army slot; VCMI: the
+  smaller column), R3 aiming Implosion at a Ballista, Fireball at an empty hex and at an immune
+  Efreeti, then six Fireballs centred on Battle Dwarves (the whole spell fizzles 40 %), R4 Alagar
+  at level 1 with Basic Sorcery (119 / 115 / 17 / 230 against VCMI's 118 / 116 / 16 / 231), R5
+  an Orb with Sorcery (173 and 25 against 172 and 24), R6 costs with Mages, Pegasi, Familiars
+  and a cast in the Ballista's turn, R7 Q40.
+- **Not staged:** Q-0005's single-precision resistance (one point of a chance), Q43, the E04a
+  candidates (1)–(4). A detail found while predicting: the original grows a Sorcery specialist's
+  rate in single precision (`f32((0.05 × level + 1) × 0.15)`), slightly above the decimal value,
+  while HER-BAT-004 grows it in whole basis points before Q-0005 converts it, slightly below; the
+  two can differ by one damage point when the decimal product is a whole number (level 10, value
+  200: 245 against our 244). Recorded for the Q-0005 review with batch 2a's results.

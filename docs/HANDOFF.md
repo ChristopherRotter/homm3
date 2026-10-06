@@ -4,12 +4,12 @@ Living state between sessions; every session reads it first. Rules (`docs/08-wor
 
 ## Current state
 
-- Branch `e04b-battle-magic` (created from `master` = the E04b refinement `3841f22`, on top of the merged E04a); T2a–T2d committed. **In progress (2026-10-06):** experiment batch 2a (task list below), then the user's increment 1 checkpoint. Sandbox and syncing: `docs/08-work-process.md`, "Cloud sandbox and syncing" (`scripts/sandbox-setup.sh`).
+- Branch `e04b-battle-magic` (created from `master` = the E04b refinement `3841f22`, on top of the merged E04a); T2a–T2d committed, batch 2a compiled. **Waiting for the user (2026-10-06):** play batch 2a (`experiments/results/E04b-batch-2a.md`, map in `experiments/out/`), then the increment 1 checkpoint. Sandbox and syncing: `docs/08-work-process.md`, "Cloud sandbox and syncing" (`scripts/sandbox-setup.sh`).
 - **E04b (battle magic) is refined** (Q41, `docs/epics/E04b-battle-magic.md`): increments with a user checkpoint each. **Increment 1** = T1 (survey, ADR-0014) and T2 (casting core, T2a–T2d, batch 2a at the end); after batch 2a the user confirms increment 2 (proposed: T3, T4).
 - **T1, T2a–T2d done:** survey `docs/rules/surveys/E04b-magic.md` (§12: the executable's code), ADR-0014 accepted (Q42), design note `docs/epics/E04b-design.md` (T3 onwards). The 13 damage spells are castable by heroes: BAT-MAG-001 to 008 (damage order, immunities, Chain Lightning by screen geometry, areas, resistance after `docs/formats/installation.md` §7.8), HER-BAT-011 to 013, the factorized casting action (T2c).
-- **Batch 2a (next):** the experiment spec gains spells and mana; cases: Chain Lightning pixel vs hex distance (a stack two hexes to the right, 88 px, against one two rows down, 84 px; Q44), X-3 (a cast during a commanded Ballista's turn), X-4 (costs with Mages, Pegasi, a Familiar), resistance and the aimed stack's fizzle, single-precision resistance (Q-0005: 10 % leaves 89 %), Q40 (tactics hand-over), rounding of Sorcery × Orb × specialty. Maps to `experiments/out/`.
+- **Batch 2a** (`experiments/specs/E04b-batch-2a.toml`; spec format gains `spells`): R1/R2 Chain Lightning screen vs hex distance and tie order (Q44), R3 aiming and the aimed stack's fizzle, R4/R5 damage rounding (Alagar, Orb), R6 costs and the Ballista-turn cast (X-3, X-4), R7 Q40. Predictions in the spec; evaluate them into the catalog (sources become `observation`), then the user confirms increment 2 (proposed: T3, T4). Open detail for that review: a Sorcery specialist's growth in single precision (`E04b-log.md`, batch 2a).
 - Versions: state hash v19, ruleset hash v16, replay format v15, action encoding v9, C ABI v8, observation encoding v5.
-- Waiting for the user: nothing until batch 2a is compiled. Open questions: `docs/OPEN-QUESTIONS.md`, section "Open" (Q40 and Q43 wait for batch 2a).
+- Waiting for the user: batch 2a's results and the checkpoint. Open questions: `docs/OPEN-QUESTIONS.md`, section "Open" (Q40 and Q43 wait for batch 2a).
 - Working agreement: increments of a couple of tasks with a user checkpoint (Q41); the user confirms seams and ADRs; token efficiency beats speed (AGENTS.md); the user plays experiment maps in SoD with plain HD and commits the results.
 
 ## Standing traps
@@ -53,7 +53,7 @@ Living state between sessions; every session reads it first. Rules (`docs/08-wor
 
 ### 2026-10-06 (seventeenth) — E04b T2c and T2d: the factorized action, the damage spells after the code
 
-Sandbox session; the user confirmed T2c + T2d, then batch 2a, and kept T2b's decisions. T2c (`b7b152a`): 21 stack slots per side, action encoding v9, C ABI v8, observation v5. T2d: the executable's spell code read (`installation.md` §7.8; M-1, M-2, M-6 settled); the user decided (Q44) the specialty contract change, Chain Lightning by screen pixels (checked in batch 2a; sprite offset Q43) and single-precision resistance (Q-0005); seven creature abilities, the hero's `magic_resistance`, BAT-MAG-003 to 008. Detail: `docs/epics/E04b-log.md`.
+Sandbox session; the user confirmed T2c + T2d, then batch 2a, and kept T2b's decisions. T2c (`b7b152a`): 21 stack slots per side, action encoding v9, C ABI v8, observation v5. T2d: the executable's spell code read (`installation.md` §7.8; M-1, M-2, M-6 settled); the user decided (Q44) the specialty contract change, Chain Lightning by screen pixels (checked in batch 2a; sprite offset Q43) and single-precision resistance (Q-0005); seven creature abilities, the hero's `magic_resistance`, BAT-MAG-003 to 008. Then batch 2a compiled (spells in experiment specs). Detail: `docs/epics/E04b-log.md`.
 
 ### 2026-10-05 (sixteenth) — E04b T2a and T2b: spell content, the hero's magic, casting
 

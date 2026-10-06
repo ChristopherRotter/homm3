@@ -9,7 +9,7 @@ use std::process::ExitCode;
 
 use h3_experiment::{Tables, build, parse};
 
-const USAGE: &str = "usage: h3-experiment <spec.toml> --install <dir> --map <out.h3m> --template <out.md>\n       h3-experiment --install <dir> --list heroes|creatures|skills|artifacts";
+const USAGE: &str = "usage: h3-experiment <spec.toml> --install <dir> --map <out.h3m> --template <out.md>\n       h3-experiment --install <dir> --list heroes|creatures|skills|artifacts|spells";
 
 struct Args {
     spec: PathBuf,
@@ -65,6 +65,7 @@ fn list(install: &Path, what: &str) -> Result<(), String> {
         "creatures" => tables.creatures.clone(),
         "skills" => tables.skills.clone(),
         "artifacts" => tables.artifacts.iter().map(|a| a.name.clone()).collect(),
+        "spells" => tables.spells.clone(),
         other => return Err(format!("cannot list `{other}`\n{USAGE}")),
     };
     for (i, n) in names.iter().enumerate() {
