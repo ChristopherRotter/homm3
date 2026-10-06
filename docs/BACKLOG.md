@@ -72,7 +72,7 @@ See `docs/stubs.toml` (empty: no registered stubs after E01).
 
 (Agents: add coarse items here, one line each, with date and your epic ID. Triage into the table at the next planning pass.)
 
-- 2026-09-30 (E01): CI configuration once a host is chosen (Q3): Linux + Windows matrix running `cargo xtask verify`; turn the doc-drift warning into an error for large changes.
+- 2026-09-30 (E01): turn the doc-drift warning into an error in CI for large changes (the Linux + Windows CI running `cargo xtask verify` exists since 2026-10-06, Q3).
 - 2026-09-30 (E01): WASM build check of the logic crates (`wasm32` target could not be installed in the E01 environment); add a `wasm` verify step, ideally running the golden replays under a WASI runtime.
 - 2026-09-30 (E01): machine check for minimal `pub` surface of seam/contract crates (ADR-0005 §4 is not enforced yet).
 - 2026-09-30 (E01): `Trace` sink for rule-level explanations ("explain this damage number", 02-architecture §10).
