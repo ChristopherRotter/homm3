@@ -66,6 +66,7 @@ pub use ruleset::{
     SurrenderParams, TerrainId, TerrainInfo, WAR_MACHINE_KINDS,
 };
 pub use spell::{
-    MAX_AREA_RADIUS, MAX_CHAIN_TARGETS, MAX_SPELL_EFFECTS, SpellArea, SpellChain, SpellEffect,
-    SpellMagic, SpellTarget, TargetConditions, TargetSide,
+    EffectDuration, MASTERY_NAMES, MAX_AREA_RADIUS, MAX_CHAIN_TARGETS, MAX_MASTERY,
+    MAX_SPELL_EFFECTS, SpellArea, SpellChain, SpellEffect, SpellMagic, SpellTarget,
+    TargetConditions, TargetSide, TimedChange,
 };

@@ -281,18 +281,23 @@ pub(crate) fn setup(state: &mut BattleState, ruleset: &Ruleset, heroes: &[Option
     materialize(state, ruleset);
 }
 
-/// Recomputes every stack's morale and luck from the modifiers on its side and its creature's
-/// minimums, clamped to the roll tables' range: morale in `[-bad levels, good levels]`, luck in
-/// `[0, good levels]` (there is no bad luck before HotA). Creatures with flag `no_morale` have
-/// morale 0 (BAT-MOR-001, BAT-LCK-001).
-// rule: BAT-MOR-001, BAT-LCK-001
+/// Recomputes every stack's morale and luck: the changes on its side summed and clamped to the
+/// roll tables' range, then its timed effects' changes (Mirth, Sorrow, Fortune, Misfortune;
+/// BAT-MAG-011), then the side's caps and its creature's minimums, then clamped again: morale to
+/// `[-bad levels, good levels]`, luck to `[0, good levels]` (there is no bad luck before HotA;
+/// the sum is first clamped to `±good levels`, as the original clamps its base luck to ±3).
+/// Creatures with flag `no_morale` have morale 0 (BAT-MOR-001, BAT-LCK-001).
+// rule: BAT-MOR-001, BAT-LCK-001, BAT-MAG-011
 pub(crate) fn materialize(state: &mut BattleState, ruleset: &Ruleset) {
     let params = ruleset.battle();
     let pool = state.modifiers;
+    let good_morale = i32::from(params.good_morale.levels());
+    let bad_morale = i32::from(params.bad_morale.levels());
+    let good_luck = i32::from(params.good_luck.levels());
     for s in state.stacks.as_mut_slice() {
         let bearer = Bearer::Side(s.side);
         let abilities = ruleset.abilities(s.creature);
-        let value = |stat: Stat| {
+        let value = |stat: Stat, (low, high): (i32, i32), spells: i8| {
             let minimum = abilities.iter().filter_map(move |a| match (stat, *a) {
                 (Stat::Morale, Ability::MinimumMorale { value })
                 | (Stat::Luck, Ability::MinimumLuck { value }) => {
@@ -304,13 +309,16 @@ pub(crate) fn materialize(state: &mut BattleState, ruleset: &Ruleset) {
                 .iter()
                 .filter(move |m| m.stat == stat && m.bearer == bearer)
                 .map(|m| (m.op, m.amount));
-            evaluate(0, mods.chain(minimum))
+            let bounds = |op: &ModifierOp| matches!(op, ModifierOp::AtLeast | ModifierOp::AtMost);
+            let sum = evaluate(0, mods.clone().filter(|(op, _)| !bounds(op))).clamp(low, high);
+            evaluate(
+                sum + i32::from(spells),
+                mods.filter(|(op, _)| bounds(op)).chain(minimum),
+            )
         };
-        let morale = value(Stat::Morale).clamp(
-            -i32::from(params.bad_morale.levels()),
-            i32::from(params.good_morale.levels()),
-        );
-        let luck = value(Stat::Luck).clamp(0, i32::from(params.good_luck.levels()));
+        let morale = value(Stat::Morale, (-bad_morale, good_morale), s.spells.morale)
+            .clamp(-bad_morale, good_morale);
+        let luck = value(Stat::Luck, (-good_luck, good_luck), s.spells.luck).clamp(0, good_luck);
         // Both are within ±MAX_ROLL_LEVELS.
         s.morale = if s.has(StackTraits::NO_MORALE) {
             0

@@ -124,6 +124,9 @@ pub struct Spell {
     pub polarity: SpellPolarity,
     /// Targeting and effects in battle.
     pub magic: SpellMagic,
+    /// Spells whose effects a cast ends on each stack it affects (pack format v5; Bless and
+    /// Curse, Haste and Slow).
+    pub counters: Vec<SpellId>,
 }
 
 /// Handle of a spell in a [`crate::Ruleset`].
@@ -427,7 +430,18 @@ impl HeroContent {
                 effect: def.effect,
                 polarity: def.polarity,
                 magic: def.magic.clone(),
+                counters: Vec::new(),
             });
+        }
+        // Counters may name a later spell of the same pack, so all are registered first.
+        let counters = pack
+            .spells
+            .iter()
+            .map(|def| distinct(refs, &def.counters, &self.spells.index, "spell"))
+            .collect::<Result<Vec<_>, _>>()?;
+        let first = self.spells.items.len() - pack.spells.len();
+        for (s, c) in self.spells.items.iter_mut().skip(first).zip(counters) {
+            s.counters = c;
         }
         // Skills may refer to each other (from T3b on), so all are registered first.
         for def in &pack.skills {
@@ -537,6 +551,16 @@ impl HeroContent {
             if let Some(reason) = s.magic.error(s.category != SpellCategory::Adventure) {
                 return Err(invalid("spell", &s.key, reason));
             }
+            let own = self.spells.index.get(s.key.as_str()).copied();
+            if !s.counters.is_empty()
+                && (!s.magic.is_timed() || own.is_some_and(|id| s.counters.contains(&id)))
+            {
+                return Err(invalid(
+                    "spell",
+                    &s.key,
+                    "counters need a timed effect and may not name the spell itself",
+                ));
+            }
         }
         for skill in &self.skills.items {
             if let Some(reason) = skill
@@ -603,7 +627,7 @@ impl HeroContent {
 
 impl CanonicalHash for HeroContent {
     /// Schools (key, name); spells (key, name, category, level, schools, cost, power, effect,
-    /// polarity, magic (v14)); skills (key, name, the three effect lists); classes (key, name, faction,
+    /// polarity, magic (v14), counters (v17)); skills (key, name, the three effect lists); classes (key, name, faction,
     /// primary, gains, weights); hero types (key, name, class, skills, spell book, spells,
     /// army, war machines, specialty); then the artifact content (`hash_artifacts`); then the
     /// hero parameters as presence flag + fields (v11).
@@ -625,6 +649,7 @@ impl CanonicalHash for HeroContent {
             }
             h.write_u8(s.polarity as u8);
             s.magic.hash_into(h);
+            s.counters.hash_into(h);
         }
         h.write_len(self.skills.items.len());
         for s in &self.skills.items {

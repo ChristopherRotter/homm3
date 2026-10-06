@@ -45,8 +45,12 @@ const SPELL_COMBAT: u32 = 0x1;
 const SPELL_ADVENTURE: u32 = 0x2;
 const SPELL_ABILITY: u32 = 0x8;
 const SPELL_SINGLE: u32 = 0x10;
+const SPELL_MASS_ADVANCED: u32 = 0x20;
+const SPELL_MASS_EXPERT: u32 = 0x40;
 const SPELL_AREA: u32 = 0x80;
 const SPELL_DAMAGE: u32 = 0x200;
+const SPELL_MIND: u32 = 0x400;
+const SPELL_NO_WAR_MACHINES: u32 = 0x1000;
 
 /// The pack ranks: content may refer to its own pack and those below it.
 const PACKS: [&str; 3] = ["base", "ab", "sod"];
@@ -263,6 +267,83 @@ pub fn skill_names(tables: &Tables) -> Result<Vec<String>, String> {
 /// Runs the hero-content harvest.
 ///
 /// # Errors
+/// Writes the battle magic of a timed spell (pack format v5, E04b T3a): the target, the side,
+/// the mass version, `mind` and the war-machine exclusion from the flag word (installation.md
+/// §7.6, §7.9), the changes, duration, cumulation and counters from the gap-fill entry.
+fn timed_spell(
+    text: &mut String,
+    (what, pack): (&str, &str),
+    (flags, polarity): (u32, &str),
+    t: &crate::gapfill::SpellTimed,
+    spells: &BTreeMap<String, (String, &'static str)>,
+) -> Result<(), String> {
+    let mass = match (
+        flags & SPELL_SINGLE != 0,
+        flags & SPELL_MASS_ADVANCED != 0,
+        flags & SPELL_MASS_EXPERT != 0,
+    ) {
+        (true, false, false) => None,
+        (false, true, false) => Some("advanced"),
+        (false, false, true) => Some("expert"),
+        _ => {
+            return Err(format!(
+                "{what}: flag word {flags:#x} is no single-target timed spell"
+            ));
+        }
+    };
+    if flags & SPELL_AREA != 0 {
+        return Err(format!("{what}: area timed spells are not harvested yet"));
+    }
+    let side = match polarity {
+        "positive" => "own",
+        "negative" => "enemy",
+        _ => return Err(format!("{what}: a neutral timed spell has no side")),
+    };
+    let _ = writeln!(text, "target = \"stack\"\nside = \"{side}\"");
+    if let Some(m) = mass {
+        let _ = writeln!(text, "mass = \"{m}\"");
+    }
+    if flags & SPELL_MIND != 0 {
+        let _ = writeln!(text, "mind = true");
+    }
+    if flags & SPELL_NO_WAR_MACHINES != 0 {
+        let _ = writeln!(text, "excludes = [\"war_machine\"]");
+    }
+    match t.duration.as_deref() {
+        None => {}
+        Some("permanent") => {
+            let _ = writeln!(text, "duration = \"permanent\"");
+        }
+        Some(other) => return Err(format!("gapfill: duration `{other}` for {what}")),
+    }
+    if t.cumulative {
+        let _ = writeln!(text, "cumulative = true");
+    }
+    if !t.counters.is_empty() {
+        let keys = t
+            .counters
+            .iter()
+            .map(|c| {
+                let (key, owner) = spells
+                    .get(c.as_str())
+                    .ok_or_else(|| format!("gapfill: {what} counters unknown spell `{c}`"))?;
+                reference(key, owner, pack, what).map(|r| quote(&r))
+            })
+            .collect::<Result<Vec<_>, String>>()?;
+        let _ = writeln!(text, "counters = [{}]", keys.join(", "));
+    }
+    if t.changes.is_empty() {
+        return Err(format!("gapfill: {what} has no timed changes"));
+    }
+    let effects: Vec<String> = t
+        .changes
+        .iter()
+        .map(|c| format!("{{ kind = \"timed\", change = {} }}", quote(c)))
+        .collect();
+    let _ = writeln!(text, "effects = [{}]", effects.join(", "));
+    Ok(())
+}
+
 /// Malformed tables, values outside the expected ranges, references the packs cannot express, or
 /// gap-fill entries that do not match the tables.
 #[allow(
@@ -432,9 +513,33 @@ pub fn harvest_heroes(
             ));
         }
     }
+    let mut timed: BTreeMap<&str, &crate::gapfill::SpellTimed> = BTreeMap::new();
+    for t in &gap.spells.timed {
+        if timed.insert(t.spell.as_str(), t).is_some() {
+            return Err(format!(
+                "gapfill: spell `{}` has two timed entries",
+                t.spell
+            ));
+        }
+    }
     let mut damage_spells = 0;
+    let mut timed_spells = 0;
     let sod_spells = spell_rows(&tables.sod_spells, "SPTRAITS.TXT")?;
     let ab_spells = spell_rows(&tables.ab_spells, "H3ab_bmp/SPTRAITS.TXT")?;
+    // Every spell's key and pack by name (counters may name a later spell).
+    let spell_packs: BTreeMap<String, (String, &'static str)> = sod_spells
+        .iter()
+        .zip(&ab_spells)
+        .map(|((_, row), (_, ab_row))| {
+            let name = row[0].trim();
+            let pack = if ab_row[0].trim() == name {
+                "base"
+            } else {
+                "sod"
+            };
+            (name.to_owned(), (key_of(name), pack))
+        })
+        .collect();
     let mut spell_keys: Vec<(String, &'static str)> = Vec::with_capacity(sod_spells.len());
     let mut seen = BTreeSet::new();
     for (id, ((category, row), (_, ab_row))) in sod_spells.iter().zip(&ab_spells).enumerate() {
@@ -548,6 +653,12 @@ pub fn harvest_heroes(
             }
             let _ = writeln!(text, "effects = [{{ kind = \"damage\" }}]");
             damage_spells += 1;
+        } else if let Some(t) = timed.remove(name) {
+            if category != "combat" || extra.is_some() {
+                return Err(format!("gapfill: timed entry for `{name}` is not allowed"));
+            }
+            timed_spell(text, (&what, pack), (flags, polarity), t, &spell_packs)?;
+            timed_spells += 1;
         } else if extra.is_some() {
             return Err(format!(
                 "gapfill: targeting for `{name}`, which has no harvested effects"
@@ -555,12 +666,17 @@ pub fn harvest_heroes(
         }
         spell_keys.push((key, pack));
     }
+    if let Some(name) = timed.keys().next() {
+        return Err(format!("gapfill: timed entry for unknown spell `{name}`"));
+    }
     if let Some(name) = targeting.keys().next() {
         return Err(format!("gapfill: targeting for unknown spell `{name}`"));
     }
     report.push(format!(
         "spells: target and damage effect of {damage_spells} damage spells from the flag word; \
-         other effect kinds come with their tasks (E04b T3-T7)"
+         target, side, mass version and conditions of {timed_spells} timed spells from the flag \
+         word, their changes from the gap-fill file; other effect kinds come with their tasks \
+         (E04b T3-T7)"
     ));
     report.push(
         "SPTRAITS: town chances, AI values, texts and the attribute column not harvested (E04b, E09)"

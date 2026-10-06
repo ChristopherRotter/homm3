@@ -4,12 +4,15 @@
 //! the viewer may not know: the RNG state (it would predict rolls) and the private part of the
 //! other side's hero (ADR-0013 point 9: its skill values, surrender discount, funds and price).
 //! The viewer's own hero's private part is shown to the viewer ([`OwnHeroView`]): its spell book,
-//! masteries and spell bonuses among them (ADR-0014 point 8).
+//! masteries and spell bonuses among them (ADR-0014 point 8). Timed effects on stacks are public.
+
+use alloc::vec::Vec;
 
 use h3_content::Ruleset;
 use h3_contracts::{BattleResult, BattleSide};
 use h3_kernel::FixedVec;
 
+use crate::effects::ActiveEffect;
 use crate::event::{Event, Visibility};
 use crate::geometry::HexSet;
 use crate::hero::{HeroView, OwnHeroView};
@@ -47,6 +50,8 @@ pub struct Observation {
     pub own_hero: Option<OwnHeroView>,
     /// The battlefield's terrain (public).
     pub terrain: Option<h3_content::TerrainId>,
+    /// The timed effects on stacks, by stack and spell (public; BAT-MAG-009).
+    pub effects: Vec<ActiveEffect>,
 }
 
 /// The observation of `state` for `viewer`. `ruleset` must be the one the battle was built
@@ -77,6 +82,7 @@ pub fn observe(state: &BattleState, ruleset: &Ruleset, viewer: BattleSide) -> Ob
             spell_bonuses: h.magic.bonuses,
         }),
         terrain: state.terrain,
+        effects: state.effects().to_vec(),
     }
 }
 

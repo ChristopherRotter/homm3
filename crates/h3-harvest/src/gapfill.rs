@@ -50,6 +50,32 @@ pub struct Spells {
     /// Areas, chains and target conditions, per spell.
     #[serde(default)]
     pub targeting: Vec<SpellTargeting>,
+    /// What timed spells change (E04b T3a), per spell.
+    #[serde(default)]
+    pub timed: Vec<SpellTimed>,
+}
+
+/// The timed effects of one spell (pack format v5, `packs/README.md`; the original's code,
+/// `docs/formats/installation.md` §7.9). Target, side, mass version, mind and the war-machine
+/// exclusion come from the flag word.
+#[derive(Debug, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct SpellTimed {
+    /// Spell name (as in `SPTRAITS.TXT`).
+    pub spell: String,
+    /// Timed change names (`speed`, `attack_loss`, …).
+    pub changes: Vec<String>,
+    /// Spells (by name) whose effects a cast ends.
+    #[serde(default)]
+    pub counters: Vec<String>,
+    /// `permanent` for spells that last the battle.
+    #[serde(default)]
+    pub duration: Option<String>,
+    /// Whether a cast on an affected stack applies the changes again.
+    #[serde(default)]
+    pub cumulative: bool,
+    /// Source ids.
+    pub sources: Vec<String>,
 }
 
 /// The targeting of one spell beyond its harvested target kind (pack syntax, `packs/README.md`).
@@ -461,7 +487,8 @@ impl GapFill {
     /// retrieval date.
     ///
     /// # Errors
-    /// Syntax errors, unknown source ids, sources without URL/date, unused sources.
+    /// Syntax errors, unknown source ids, sources without URL (an `original-data` source may
+    /// name a `docs/` file instead) or date, unused sources.
     pub fn parse(text: &str) -> Result<Self, String> {
         let g: Self = toml::from_str(text).map_err(|e| format!("gapfill: {e}"))?;
         let ids: BTreeSet<&str> = g.source.iter().map(|s| s.id.as_str()).collect();
@@ -469,7 +496,10 @@ impl GapFill {
             return Err("gapfill: duplicate source id".into());
         }
         for s in &g.source {
-            if !s.url.starts_with("https://") || s.retrieved.len() != 10 {
+            // Code reading is cited by the repository document that records it.
+            let url = s.url.starts_with("https://")
+                || (s.kind == "original-data" && s.url.starts_with("docs/"));
+            if !url || s.retrieved.len() != 10 {
                 return Err(format!(
                     "gapfill: source `{}` needs an https URL and a YYYY-MM-DD date",
                     s.id
@@ -502,7 +532,8 @@ impl GapFill {
                 .chain(g.artifacts.war_machines.iter().flat_map(|w| &w.sources))
                 .chain(g.artifacts.combinations.iter().flat_map(|c| &c.sources))
                 .chain(g.artifacts.effects.iter().flat_map(|e| &e.sources))
-                .chain(g.spells.targeting.iter().flat_map(|t| &t.sources));
+                .chain(g.spells.targeting.iter().flat_map(|t| &t.sources))
+                .chain(g.spells.timed.iter().flat_map(|t| &t.sources));
         for r in refs {
             if !ids.contains(r.as_str()) {
                 return Err(format!("gapfill: unknown source `{r}`"));
@@ -552,5 +583,12 @@ mod tests {
         assert!(GapFill::parse(&unused).unwrap_err().contains("not used"));
         let no_url = GAPFILL.replace("https://heroes.thelazy.net/index.php/Cerberus", "n/a");
         assert!(GapFill::parse(&no_url).unwrap_err().contains("https URL"));
+        // Only code reading may cite a repository document.
+        let doc = GAPFILL.replace(
+            "https://heroes.thelazy.net/index.php/Cerberus",
+            "docs/formats/installation.md",
+        );
+        assert!(GapFill::parse(&doc).unwrap_err().contains("https URL"));
+        assert!(GAPFILL.contains("kind = \"original-data\"\nref"));
     }
 }

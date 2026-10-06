@@ -1,0 +1,482 @@
+//! Timed effects on stacks (E04b T3a; ADR-0014 point 5): the battle's effect list, what a timed
+//! spell does to a stack (BAT-MAG-009), how long it lasts and how it ends (BAT-MAG-010), and the
+//! values the stack's rules read while it lasts (BAT-MAG-011).
+//!
+//! The list holds one entry per stack and spell, sorted by (stack, spell), so a stack's entries
+//! are one contiguous run. It is reserved at the battle's start (and on every fork) for the usual
+//! case, so steady play does not allocate. Each entry keeps what the cast changed on the stack's
+//! attack, defense and speed; the stack's [`SpellValues`] are recomputed from its entries whenever
+//! one of them changes, so the hot paths read inline values and never the list. The changes and
+//! their order follow the original's code (`docs/formats/installation.md` §7.9): a change takes
+//! effect at the cast and is given back when the effect ends, so a value can pass below 0 (a
+//! defense that Disrupting Ray pushed to 0 when Stone Skin ends).
+
+use alloc::vec::Vec;
+
+use h3_content::{EffectDuration, Ruleset, SINGLE_PRECISION_RATES, Spell, SpellId, TimedChange};
+use h3_kernel::arith::{SINGLE_FRAC_BITS, single_precision};
+use h3_kernel::{CanonicalHash, StateHasher};
+
+use crate::event::{Event, EventKind, Sink};
+use crate::state::{BattleState, Stack, StackId, StackTraits};
+
+/// Entries reserved at the battle's start and on every fork (ADR-0014 point 5; measured in T3a).
+pub const EFFECT_CAPACITY: usize = 32;
+
+/// One timed effect on a stack (ADR-0014 point 5).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct ActiveEffect {
+    /// The stack.
+    pub stack: StackId,
+    /// The spell.
+    pub spell: SpellId,
+    /// Rounds left, the current one included; `None` for the rest of the battle.
+    pub rounds: Option<u16>,
+    /// `v`: the spell's effect at the first cast's mastery.
+    pub value: u16,
+    /// What the effect added to the stack's attack (negative: took from it).
+    pub attack: i16,
+    /// What it added to the stack's defense.
+    pub defense: i16,
+    /// What it added to the stack's speed.
+    pub speed: i16,
+}
+
+impl CanonicalHash for ActiveEffect {
+    /// Stack, spell, rounds (0: permanent), value, attack, defense, speed.
+    fn hash_into(&self, h: &mut StateHasher) {
+        h.write_u8(self.stack.0);
+        self.spell.hash_into(h);
+        h.write_u16(self.rounds.unwrap_or(0));
+        h.write_u16(self.value);
+        for v in [self.attack, self.defense, self.speed] {
+            h.write_bytes(&v.to_le_bytes());
+        }
+    }
+}
+
+/// The battle's timed effects, sorted by (stack, spell).
+#[derive(Debug, PartialEq, Eq)]
+pub struct Effects(Vec<ActiveEffect>);
+
+impl Effects {
+    /// An empty list with [`EFFECT_CAPACITY`] reserved.
+    pub(crate) fn new() -> Self {
+        Self(Vec::with_capacity(EFFECT_CAPACITY))
+    }
+
+    /// Every active effect, by stack and spell.
+    pub fn as_slice(&self) -> &[ActiveEffect] {
+        &self.0
+    }
+
+    /// The effects on `stack`, by spell.
+    pub fn of(&self, stack: StackId) -> &[ActiveEffect] {
+        let start = self.0.partition_point(|e| e.stack < stack);
+        let end = self.0.partition_point(|e| e.stack <= stack);
+        self.0.get(start..end).unwrap_or_default()
+    }
+
+    /// The position of `spell`'s entry on `stack`, or where it would go.
+    fn find(&self, stack: StackId, spell: SpellId) -> Result<usize, usize> {
+        self.0
+            .binary_search_by(|e| (e.stack, e.spell).cmp(&(stack, spell)))
+    }
+}
+
+impl Clone for Effects {
+    /// A fork keeps the reserve (one allocation, ADR-0014 point 5).
+    fn clone(&self) -> Self {
+        let mut v = Vec::with_capacity(self.0.len().max(EFFECT_CAPACITY));
+        v.extend_from_slice(&self.0);
+        Self(v)
+    }
+}
+
+impl CanonicalHash for Effects {
+    /// Count, then the entries in order.
+    fn hash_into(&self, h: &mut StateHasher) {
+        h.write_len(self.0.len());
+        for e in &self.0 {
+            e.hash_into(h);
+        }
+    }
+}
+
+/// What a stack's timed effects change, materialised from its entries (BAT-MAG-011). The
+/// default is a stack of speed 0 without effects.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct SpellValues {
+    /// Added to the attack (Prayer; Weakness takes).
+    pub attack: i16,
+    /// Added to the defense (Stone Skin, Prayer; Disrupting Ray takes).
+    pub defense: i16,
+    /// The speed now: the stack's speed with what its effects added, slowed (BAT-MAG-011).
+    pub speed: u8,
+    /// Added to the attack of melee attacks (Bloodlust).
+    pub melee_attack: u16,
+    /// Added to the attack of ranged attacks (Precision).
+    pub ranged_attack: u16,
+    /// How each creature's base damage is rolled.
+    pub damage: DamageRoll,
+    /// The share of the speed left while slowed, percent (100: not slowed).
+    pub speed_percent: u8,
+    /// Added to the morale before its minimums and caps (Mirth, Sorrow).
+    pub morale: i8,
+    /// Added to the luck before its minimums and caps (Fortune, Misfortune).
+    pub luck: i8,
+}
+
+impl SpellValues {
+    /// The values of a stack with `speed` and no effects.
+    pub(crate) const fn new(speed: u8) -> Self {
+        Self {
+            attack: 0,
+            defense: 0,
+            speed,
+            melee_attack: 0,
+            ranged_attack: 0,
+            damage: DamageRoll::Random,
+            speed_percent: 100,
+            morale: 0,
+            luck: 0,
+        }
+    }
+}
+
+impl Default for SpellValues {
+    fn default() -> Self {
+        Self::new(0)
+    }
+}
+
+impl CanonicalHash for SpellValues {
+    /// Attack, defense, speed, melee and ranged attack, the damage roll (code, value), the speed
+    /// share, morale, luck.
+    fn hash_into(&self, h: &mut StateHasher) {
+        h.write_bytes(&self.attack.to_le_bytes());
+        h.write_bytes(&self.defense.to_le_bytes());
+        h.write_u8(self.speed);
+        h.write_u16(self.melee_attack);
+        h.write_u16(self.ranged_attack);
+        let (code, v) = match self.damage {
+            DamageRoll::Random => (0, 0),
+            DamageRoll::Maximum(v) => (1, v),
+            DamageRoll::Minimum(v) => (2, v),
+        };
+        h.write_u8(code);
+        h.write_u16(v);
+        h.write_u8(self.speed_percent);
+        h.write_bytes(&self.morale.to_le_bytes());
+        h.write_bytes(&self.luck.to_le_bytes());
+    }
+}
+
+/// How a stack's creatures roll their base damage (BAT-MAG-011).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub enum DamageRoll {
+    /// A roll in the damage range (BAT-DMG-001).
+    #[default]
+    Random,
+    /// The maximum plus the value for every creature (Bless).
+    Maximum(u16),
+    /// The minimum minus the value, at least 1, for every creature (Curse).
+    Minimum(u16),
+}
+
+impl DamageRoll {
+    /// The fixed damage per creature with range `[min, max]`, or `None` to roll.
+    pub(crate) fn fixed(self, min: u16, max: u16) -> Option<u64> {
+        match self {
+            Self::Random => None,
+            Self::Maximum(v) => Some(u64::from(max) + u64::from(v)),
+            Self::Minimum(v) => Some(u64::from(min.saturating_sub(v).max(1))),
+        }
+    }
+}
+
+impl Stack {
+    /// The attack of a melee or (`ranged`) a ranged attack now: the attack with what its effects
+    /// added and Bloodlust's or Precision's bonus (BAT-MAG-011).
+    pub fn attack_now(&self, ranged: bool) -> i32 {
+        let bonus = if ranged {
+            self.spells.ranged_attack
+        } else {
+            self.spells.melee_attack
+        };
+        i32::from(self.attack) + i32::from(self.spells.attack) + i32::from(bonus)
+    }
+
+    /// The defense now, with what its effects added (BAT-MAG-011; below 0 after Disrupting Ray
+    /// and the end of Stone Skin).
+    pub fn defense_now(&self) -> i32 {
+        i32::from(self.defense) + i32::from(self.spells.defense)
+    }
+
+    /// The speed now, with its effects (BAT-MAG-011).
+    pub const fn speed_now(&self) -> u8 {
+        self.spells.speed
+    }
+}
+
+/// A timed cast on one stack: the spell, its mastery and its duration.
+#[derive(Debug, Clone, Copy)]
+pub(crate) struct TimedCast<'r> {
+    /// The spell.
+    pub(crate) id: SpellId,
+    /// Its data.
+    pub(crate) spell: &'r Spell,
+    /// The caster's mastery.
+    pub(crate) mastery: u8,
+    /// The caster's power plus its duration bonus, at least 1 (BAT-MAG-010).
+    pub(crate) rounds: u16,
+}
+
+/// Applies `cast` to the living stack `s` (BAT-MAG-009): its counters end first; an active effect
+/// of the same spell keeps its value and takes the longer duration, unless the spell is
+/// cumulative, which applies its changes again; otherwise a new entry takes the changes. The
+/// stack's values are recomputed and an `EffectApplied` event reports the rounds left.
+// rule: BAT-MAG-009
+pub(crate) fn apply<S: Sink>(
+    state: &mut BattleState,
+    ruleset: &Ruleset,
+    cast: TimedCast<'_>,
+    s: StackId,
+    sink: &mut S,
+) {
+    for &c in &cast.spell.counters {
+        end(state, s, c, sink);
+    }
+    let rounds = match cast.spell.magic.duration {
+        EffectDuration::Rounds => Some(cast.rounds),
+        EffectDuration::Permanent => None,
+    };
+    // stub: STUB-0002 (a specialist's bonus to the value joins in E04b T3c)
+    let value = cast.spell.effect[usize::from(cast.mastery.min(3))];
+    let changes = cast.spell.magic.effects.iter().filter_map(|e| e.timed());
+    let stack = *state.at(s);
+    let now = (
+        i32::from(stack.attack) + i32::from(stack.spells.attack),
+        stack.defense_now(),
+    );
+    let rounds = match state.effects.find(s, cast.id) {
+        Ok(i) => {
+            let e = &mut state.effects.0[i];
+            if cast.spell.magic.cumulative {
+                let (a, d, sp) = deltas(changes, value, &stack, now);
+                e.attack = e.attack.saturating_add(a);
+                e.defense = e.defense.saturating_add(d);
+                e.speed = e.speed.saturating_add(sp);
+            } else {
+                e.rounds = e.rounds.zip(rounds).map(|(a, b)| a.max(b));
+            }
+            e.rounds
+        }
+        Err(i) => {
+            let (a, d, sp) = deltas(changes, value, &stack, now);
+            state.effects.0.insert(
+                i,
+                ActiveEffect {
+                    stack: s,
+                    spell: cast.id,
+                    rounds,
+                    value,
+                    attack: a,
+                    defense: d,
+                    speed: sp,
+                },
+            );
+            rounds
+        }
+    };
+    recompute(state, ruleset, s);
+    sink.emit(Event::public(EventKind::EffectApplied {
+        target: s,
+        spell: cast.id,
+        rounds,
+    }));
+}
+
+/// What `changes` with value `v` add to a stack's attack, defense and speed now (BAT-MAG-009), the
+/// stack's current attack (without Bloodlust and Precision) and defense given: `speed` adds `v`
+/// unless the stack is a war machine, `attack` and `defense` add `v`, `attack_loss` takes `v`
+/// but never more than the attack (the original's comparison, also when the attack is below
+/// 0), `defense_loss` lowers the defense by `v` to at least 0; the other changes are read while
+/// the effect lasts.
+fn deltas(
+    changes: impl Iterator<Item = TimedChange>,
+    v: u16,
+    stack: &Stack,
+    (mut attack, mut defense): (i32, i32),
+) -> (i16, i16, i16) {
+    let v = i32::from(v);
+    let (mut a, mut d, mut s) = (0i32, 0i32, 0i32);
+    for change in changes {
+        match change {
+            TimedChange::Speed if !stack.has(StackTraits::WAR_MACHINE) => s += v,
+            TimedChange::Attack => {
+                a += v;
+                attack += v;
+            }
+            TimedChange::Defense => {
+                d += v;
+                defense += v;
+            }
+            TimedChange::AttackLoss => {
+                let taken = v.min(attack);
+                a -= taken;
+                attack -= taken;
+            }
+            TimedChange::DefenseLoss => {
+                let lowered = (defense - v).max(0);
+                d += lowered - defense;
+                defense = lowered;
+            }
+            _ => {}
+        }
+    }
+    let narrow = |x: i32| i16::try_from(x.clamp(i16::MIN.into(), i16::MAX.into())).unwrap_or(0);
+    (narrow(a), narrow(d), narrow(s))
+}
+
+/// Ends `spell`'s effect on stack `s`, if active, giving back what it changed, and reports it
+/// (BAT-MAG-010). The caller recomputes the stack's values.
+fn end<S: Sink>(state: &mut BattleState, s: StackId, spell: SpellId, sink: &mut S) {
+    if let Ok(i) = state.effects.find(s, spell) {
+        state.effects.0.remove(i);
+        sink.emit(Event::public(EventKind::EffectEnded { target: s, spell }));
+    }
+}
+
+/// Recomputes the [`SpellValues`] of stack `s` from its entries (BAT-MAG-011): the sums of what
+/// they added to attack, defense and speed; Bloodlust's and Precision's bonuses and the morale
+/// and luck changes summed by kind; the base damage from Bless (which wins over Curse, as the
+/// original checks it first) or Curse; the strongest slowing; then the speed: the stack's speed
+/// with what was added, at least 0, and while slowed `max(1, ⌊speed × share⌋)` with the share
+/// exact or, under quirk Q-0005, single precision as the original stores it. Then every stack's
+/// morale and luck are materialised again.
+pub(crate) fn recompute(state: &mut BattleState, ruleset: &Ruleset, s: StackId) {
+    let single = ruleset.quirks().is_enabled(SINGLE_PRECISION_RATES);
+    let mut values = SpellValues::default();
+    let (mut attack, mut defense, mut speed) = (0i32, 0i32, 0i32);
+    let (mut maximum, mut minimum) = (None::<u16>, None::<u16>);
+    let (mut morale, mut luck) = (0i32, 0i32);
+    for e in state.effects.of(s) {
+        attack += i32::from(e.attack);
+        defense += i32::from(e.defense);
+        speed += i32::from(e.speed);
+        let v = e.value;
+        let changes = ruleset
+            .spell(e.spell)
+            .map(|sp| sp.magic.effects.as_slice())
+            .unwrap_or_default();
+        for change in changes.iter().filter_map(|c| c.timed()) {
+            match change {
+                TimedChange::MeleeAttack => {
+                    values.melee_attack = values.melee_attack.saturating_add(v)
+                }
+                TimedChange::RangedAttack => {
+                    values.ranged_attack = values.ranged_attack.saturating_add(v);
+                }
+                TimedChange::MaximumDamage => {
+                    maximum = Some(maximum.unwrap_or(0).saturating_add(v))
+                }
+                TimedChange::MinimumDamage => {
+                    minimum = Some(minimum.unwrap_or(0).saturating_add(v))
+                }
+                TimedChange::SpeedPercent => {
+                    let p = u8::try_from(v.min(100)).unwrap_or(100);
+                    values.speed_percent = values.speed_percent.min(p);
+                }
+                TimedChange::Morale => morale += i32::from(v),
+                TimedChange::MoraleLoss => morale -= i32::from(v),
+                TimedChange::Luck => luck += i32::from(v),
+                TimedChange::LuckLoss => luck -= i32::from(v),
+                _ => {}
+            }
+        }
+    }
+    let narrow16 = |x: i32| i16::try_from(x.clamp(i16::MIN.into(), i16::MAX.into())).unwrap_or(0);
+    let narrow8 = |x: i32| i8::try_from(x.clamp(i8::MIN.into(), i8::MAX.into())).unwrap_or(0);
+    values.attack = narrow16(attack);
+    values.defense = narrow16(defense);
+    values.morale = narrow8(morale);
+    values.luck = narrow8(luck);
+    values.damage = match (maximum, minimum) {
+        (Some(v), _) => DamageRoll::Maximum(v),
+        (None, Some(v)) => DamageRoll::Minimum(v),
+        (None, None) => DamageRoll::Random,
+    };
+    let stack = state.at_mut(s);
+    let base =
+        u8::try_from((i32::from(stack.speed) + speed).clamp(0, u8::MAX.into())).unwrap_or(u8::MAX);
+    values.speed = slowed(base, values.speed_percent, single);
+    stack.spells = values;
+    crate::morale::materialize(state, ruleset);
+}
+
+/// `speed` slowed to `percent` % (100: not slowed): `max(1, ⌊speed × share⌋)`, the share exact or,
+/// with `single` (quirk Q-0005), its single-precision value as the original stores it
+/// (BAT-MAG-011).
+pub(crate) fn slowed(speed: u8, percent: u8, single: bool) -> u8 {
+    if percent >= 100 {
+        return speed;
+    }
+    let speed = u64::from(speed);
+    let value = if single {
+        let rate = single_precision(u16::from(percent), 100).unwrap_or(0);
+        (speed * rate) >> SINGLE_FRAC_BITS
+    } else {
+        speed * u64::from(percent) / 100
+    };
+    u8::try_from(value.max(1)).unwrap_or(u8::MAX)
+}
+
+/// Starts a round for the effects (BAT-MAG-010): on every living stack, each effect with rounds
+/// either ends (its last round has passed) or loses a round; permanent effects stay.
+// rule: BAT-MAG-010
+pub(crate) fn count_down<S: Sink>(state: &mut BattleState, ruleset: &Ruleset, sink: &mut S) {
+    if state.effects.0.is_empty() {
+        return;
+    }
+    let mut changed = [false; crate::state::STACK_CAPACITY];
+    let mut i = 0;
+    while let Some(e) = state.effects.0.get_mut(i) {
+        let (stack, spell) = (e.stack, e.spell);
+        if !state.stacks.as_slice()[stack.index()].is_alive() {
+            i += 1;
+            continue;
+        }
+        match e.rounds {
+            Some(1) => {
+                state.effects.0.remove(i);
+                changed[stack.index()] = true;
+                sink.emit(Event::public(EventKind::EffectEnded {
+                    target: stack,
+                    spell,
+                }));
+            }
+            Some(n) => {
+                e.rounds = Some(n - 1);
+                i += 1;
+            }
+            None => i += 1,
+        }
+    }
+    for (index, _) in changed.iter().enumerate().filter(|(_, c)| **c) {
+        let id = StackId(u8::try_from(index).unwrap_or(u8::MAX));
+        recompute(state, ruleset, id);
+    }
+}
+
+/// Removes the effects of dead stacks (BAT-MAG-010: a stack that dies loses its effects).
+pub(crate) fn remove_dead(state: &mut BattleState) {
+    if state.effects.0.is_empty() {
+        return;
+    }
+    let stacks = state.stacks.as_slice();
+    state
+        .effects
+        .0
+        .retain(|e| stacks.get(e.stack.index()).is_some_and(Stack::is_alive));
+}

@@ -2,24 +2,11 @@
 
 A handover, not binding: proposals and sizes for the tasks of ADR-0014 (accepted). The T2
 sections are implemented and deleted (code docs, `packs/README.md`, HER-BAT-011 to 013,
-BAT-MAG-001 to BAT-MAG-008, `h3_sim::action`). Each task
+BAT-MAG-001 to BAT-MAG-008, `h3_sim::action`); so is T3's effect list (T3a: `h3_battle::effects`,
+BAT-MAG-009 to 011, HER-BAT-014). Each task
 settles its section and **deletes it** when the code documentation, the rule catalog and the pack
 docs hold the detail; the file is deleted when E04b closes (ADR index rule). Names are provisional.
 Sources: [`docs/rules/surveys/E04b-magic.md`](../rules/surveys/E04b-magic.md).
-
-## T3 — the effect list
-
-- **Layout:** one `Vec` of active entries per battle (stack, spell, rounds left or end condition,
-  mastery, a value), sorted by (stack, spell); reserved at the start (proposal: 32 entries, measure
-  real battles) so steady play does not allocate. An entry of about 8 bytes; a stack's entries are
-  a contiguous run found by binary search. A fork is one allocation plus the active entries (today:
-  2 192 bytes inline, clone ≈ 183 ns).
-- **Materialisation:** a stack's effective stats and status bits are recomputed from its base
-  stats (setup) and its entries in fixed stages (add, percent, bounds, like KER-MOD-001), then the
-  rule clamps, whenever one of its entries changes; hot-path reads use the inline result.
-- **Expiry:** one fixed point of the round for all stacks (M-3); end conditions are checked by the
-  rules that cause them (attacked, attacks). The original keeps one 8-bit duration per spell and
-  stack (S-17).
 
 ## T5 — battlefield objects
 

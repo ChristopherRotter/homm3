@@ -245,6 +245,8 @@ pub struct SpellDef {
     pub polarity: SpellPolarity,
     /// Targeting and effects in battle (default: none, not castable yet).
     pub magic: SpellMagic,
+    /// Spells whose effects a cast ends (pack format v5).
+    pub counters: Vec<ContentKey>,
 }
 
 /// A secondary skill with the effects of its three levels (E04a T3).

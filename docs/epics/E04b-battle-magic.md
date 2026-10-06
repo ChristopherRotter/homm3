@@ -1,6 +1,6 @@
 # E04b — Battle magic
 
-Status: **in progress** (refined 2026-10-05; increment 1 = T1–T2, done 2026-10-06: T1, ADR-0014 accepted, T2a–T2e, batch 2a evaluated; increment 2 = T3 in three parts, then T4 (Q46): T3a in progress) · Follows E04a (closed 2026-10-05) · Part of the former E04 (OPEN-QUESTIONS Q27): E04a heroes in battle, **E04b** battle magic (this one), E04c sieges and special battlefields.
+Status: **in progress** (refined 2026-10-05; increment 1 = T1–T2, done 2026-10-06: T1, ADR-0014 accepted, T2a–T2e, batch 2a evaluated; increment 2 = T3 in three parts, then T4 (Q46): T3a done, waiting for the checkpoint) · Follows E04a (closed 2026-10-05) · Part of the former E04 (OPEN-QUESTIONS Q27): E04a heroes in battle, **E04b** battle magic (this one), E04c sieges and special battlefields.
 
 ## Goal
 
@@ -59,9 +59,11 @@ The 13 direct-damage spells: Magic Arrow, Ice Bolt, Lightning Bolt, Titan's Ligh
 
 ### T3 — Timed effects on stacks (refined 2026-10-06, Q46)
 
-- [ ] **T3a The effect list and the value spells** (this delivery, then a checkpoint): a survey of the timed spells (the executable's code first: durations, when rounds fall (M-3), how an effect enters a stack's values, the mass versions; VCMI and the wiki for the rest); the effect list of ADR-0014 point 5 (one entry per stack and spell, replacement, counter pairs, cumulative Disrupting Ray (S-17), expiry at one fixed point of the round, values materialised on the stack); duration from power and the Conjuring artifacts; mass versions at Expert; the 14 spells that only change a stack's values: Haste, Slow, Bloodlust, Precision, Weakness, Stone Skin, Disrupting Ray, Prayer, Bless, Curse, Mirth, Sorrow, Fortune, Misfortune. Pack format v5, events, observation encoding (a stack's effects are public), state and ruleset hashes; state size and clone cost measured; `full-s3` and `bench-check` re-baselined.
+- [x] **T3a The effect list and the value spells** — done 2026-10-06: survey §14 and `installation.md` §7.9 (M-3 settled; Q47: the executable's counter pairs, re-cast keeps the first value, ADR-0014 point 5 amended); pack format v5 (timed changes, mind, mass versions, duration, cumulative, counters; `spell_duration`), HER-BAT-014, BAT-MAG-009 to 011, `h3_battle::effects`; state hash v20, ruleset hash v17, observation encoding v6, C ABI v9; `BattleState` 3 336 bytes, fork one allocation; all golden replays and `bench-check` re-baselined. Record: [`E04b-log.md`](E04b-log.md).
 - [ ] T3b Spells with their own rules, Dispel and Cure: Shield, Air Shield, Protection from Air, Fire, Water and Earth (S-19), Fire Shield, Slayer, Frenzy (S-16), Counterstrike; Dispel, Cure.
 - [ ] T3c The hero specialties in these spells (16 heroes), Q45 option (b) (skill specialties' rates in single precision across the seam), batch 2b compiled for T3 (with a level-10 specialist).
+
+**Checkpoint after T3a:** the user reviews the effect list and its measurements and confirms T3b (proposed alone or with T3c).
 
 ## Design
 

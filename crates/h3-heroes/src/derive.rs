@@ -92,6 +92,9 @@ pub fn derive_battle_hero(
 
     // rule: HER-BAT-013
     hero.effects.extend(magic_resistance(details, ruleset));
+
+    // rule: HER-BAT-014
+    hero.effects.extend(spell_duration(details, ruleset));
     if hero.effects.len() > MAX_BATTLE_EFFECTS {
         return Err(DetailsError::TooManyBattleEffects);
     }
@@ -188,6 +191,21 @@ fn magic_resistance(details: &HeroDetails, ruleset: &Ruleset) -> Vec<BattleEffec
             _ => None,
         })
         .collect()
+}
+
+/// The spell duration bonus (HER-BAT-014): one `SpellDuration` effect with the sum of the
+/// `spell_duration` effects, each artifact type once (a combination's parts count too: the Ring of
+/// the Magi gives 50 + 1 + 2 + 3), saturated at `u8::MAX`; none without any.
+fn spell_duration(details: &HeroDetails, ruleset: &Ruleset) -> Option<BattleEffect> {
+    let sum: u32 = effects(details, ruleset, Count::OncePerType)
+        .filter_map(|effect| match *effect {
+            HeroEffect::SpellDuration { rounds } => Some(u32::from(rounds)),
+            _ => None,
+        })
+        .sum();
+    (sum > 0).then(|| BattleEffect::SpellDuration {
+        rounds: u8::try_from(sum).unwrap_or(u8::MAX),
+    })
 }
 
 /// The surrender discount (HER-BAT-007): the sum of the grown values of the surrender discounts

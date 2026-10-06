@@ -373,6 +373,12 @@ pub enum HeroEffect<C, K, S, F, L> {
         /// Resistance in basis points (1..=10 000).
         bp: u16,
     },
+    /// The hero's timed spells last `rounds` rounds longer (Collar, Ring and Cape of Conjuring,
+    /// Ring of the Magi; E04b T3a).
+    SpellDuration {
+        /// Extra rounds (≥ 1).
+        rounds: u8,
+    },
 }
 
 /// An effect as written in a pack (references are keys).
@@ -382,7 +388,7 @@ pub type CompiledHeroEffect = HeroEffect<CreatureTypeId, SkillId, SpellId, Facti
 
 impl<C, K, S, F, L> HeroEffect<C, K, S, F, L> {
     /// Pack names, indexed by [`HeroEffect::code`].
-    pub const NAMES: [&'static str; 26] = [
+    pub const NAMES: [&'static str; 27] = [
         "morale",
         "luck",
         "ranged_damage",
@@ -409,6 +415,7 @@ impl<C, K, S, F, L> HeroEffect<C, K, S, F, L> {
         "spell_damage",
         "spell_book",
         "magic_resistance",
+        "spell_duration",
     ];
 
     /// Stable code of the variant (canonical hash, duplicate checks).
@@ -440,6 +447,7 @@ impl<C, K, S, F, L> HeroEffect<C, K, S, F, L> {
             Self::SpellDamage { .. } => 23,
             Self::SpellBook => 24,
             Self::MagicResistance { .. } => 25,
+            Self::SpellDuration { .. } => 26,
         }
     }
 
@@ -580,6 +588,7 @@ impl<C, K, S, F, L> HeroEffect<C, K, S, F, L> {
             },
             Self::SpellBook => HeroEffect::SpellBook,
             Self::MagicResistance { bp } => HeroEffect::MagicResistance { bp: *bp },
+            Self::SpellDuration { rounds } => HeroEffect::SpellDuration { rounds: *rounds },
         })
     }
 
@@ -642,6 +651,7 @@ impl<C, K, S, F, L> HeroEffect<C, K, S, F, L> {
             Self::MagicResistance { bp } if !(1..=FULL_BP).contains(bp) => {
                 Some("magic_resistance bp must be 1..=10000")
             }
+            Self::SpellDuration { rounds: 0 } => Some("spell_duration rounds must be at least 1"),
             _ => None,
         }
     }
@@ -840,6 +850,7 @@ impl CanonicalHash for CompiledHeroEffect {
                 h.write_u16(*bp);
             }
             Self::MagicResistance { bp } => h.write_u16(*bp),
+            Self::SpellDuration { rounds } => h.write_u8(*rounds),
         }
     }
 }
@@ -935,6 +946,7 @@ mod tests {
             },
             E::SpellBook,
             E::MagicResistance { bp: 500 },
+            E::SpellDuration { rounds: 2 },
         ]
     }
 
@@ -1137,6 +1149,7 @@ mod tests {
             },
             E::MagicResistance { bp: 0 },
             E::MagicResistance { bp: 10_001 },
+            E::SpellDuration { rounds: 0 },
         ];
         for e in bad {
             assert!(e.parameter_error().is_some(), "{e:?}");

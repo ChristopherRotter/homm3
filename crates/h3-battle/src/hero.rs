@@ -373,7 +373,8 @@ fn creature_of(effect: &BattleEffect) -> Option<CreatureTypeId> {
         | BattleEffect::AlignmentGroup { .. }
         | BattleEffect::SpellDamage { .. }
         | BattleEffect::SpellSpecialty { .. }
-        | BattleEffect::MagicResistance { .. } => return None,
+        | BattleEffect::MagicResistance { .. }
+        | BattleEffect::SpellDuration { .. } => return None,
     };
     match selector {
         CreatureSelector::Creature(c) => Some(*c),

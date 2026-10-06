@@ -1,7 +1,8 @@
-//! A hero's magic in battle (E04b T2b–T2d; ADR-0014 points 2, 4 and 8): spell books, casting by
-//! a hero (BAT-MAG-001), mastery and cost (BAT-MAG-002), targets (BAT-MAG-003), the damage of
-//! damage spells (BAT-MAG-004), immunities (BAT-MAG-005), Chain Lightning (BAT-MAG-006), area and
-//! battle-wide spells (BAT-MAG-007) and magic resistance (BAT-MAG-008).
+//! A hero's magic in battle (E04b T2b–T3a; ADR-0014 points 2, 4 and 8): spell books, casting by
+//! a hero (BAT-MAG-001), mastery and cost (BAT-MAG-002), targets and mass versions (BAT-MAG-003),
+//! the damage of damage spells (BAT-MAG-004), immunities (BAT-MAG-005), Chain Lightning
+//! (BAT-MAG-006), area and battle-wide spells (BAT-MAG-007), magic resistance (BAT-MAG-008) and
+//! timed spells (BAT-MAG-009 to 011, [`crate::effects`]).
 //!
 //! A hero casts during the turn of one of its side's stacks that awaits a command, at most
 //! `hero_casts_per_round` times per round and never by obligation; the stack still acts
@@ -14,9 +15,9 @@
 //! per stack, then the damage: the caster's bonuses before the target's reductions.
 
 use h3_content::{
-    Ability, CreatureTypeId, FULL_BP, MAX_FIELD_HEXES, MAX_SPELL_SCHOOLS, MAX_SPELLS, Ruleset,
-    SINGLE_PRECISION_RATES, Spell, SpellCategory, SpellEffect, SpellId, SpellPolarity, SpellScope,
-    SpellTarget, TargetSide,
+    Ability, CreatureFlag, CreatureTypeId, FULL_BP, MAX_FIELD_HEXES, MAX_SPELL_SCHOOLS, MAX_SPELLS,
+    Ruleset, SINGLE_PRECISION_RATES, Spell, SpellCategory, SpellEffect, SpellId, SpellPolarity,
+    SpellScope, SpellTarget, TargetSide,
 };
 use h3_contracts::{BattleEffect, BattleHero, BattleSide};
 use h3_kernel::arith::{SINGLE_FRAC_BITS, mul_div_floor, round_single, single_precision};
@@ -24,6 +25,7 @@ use h3_kernel::{CanonicalHash, FixedVec, StateHasher};
 
 use crate::combat::check_end;
 use crate::damage::apply_damage;
+use crate::effects::{self, TimedCast};
 use crate::error::{CommandError, HeroError};
 use crate::event::{Event, EventKind, Sink};
 use crate::geometry::{Field, Footprint, Hex};
@@ -191,6 +193,9 @@ pub(crate) struct HeroMagic {
     /// [`scale`]; with quirk Q-0005 each sum is rounded to single precision, as the original
     /// stores it.
     pub(crate) resistance: u64,
+    /// Rounds added to the duration of its timed spells: its `SpellDuration` effects summed
+    /// (HER-BAT-014, BAT-MAG-010; private).
+    pub(crate) duration_bonus: u16,
     /// The distinct spells cast so far (public through the cast events; the outcome's).
     pub(crate) cast: SpellSet,
 }
@@ -204,10 +209,17 @@ impl HeroMagic {
             book.insert(spell);
         }
         let mut resistance = 0u64;
+        let mut duration_bonus = 0u16;
         for effect in &hero.effects {
-            if let BattleEffect::MagicResistance { bp } = *effect {
-                let sum = resistance.saturating_add(rate(single, bp));
-                resistance = if single { round_single(sum) } else { sum };
+            match *effect {
+                BattleEffect::MagicResistance { bp } => {
+                    let sum = resistance.saturating_add(rate(single, bp));
+                    resistance = if single { round_single(sum) } else { sum };
+                }
+                BattleEffect::SpellDuration { rounds } => {
+                    duration_bonus = duration_bonus.saturating_add(rounds.into());
+                }
+                _ => {}
             }
         }
         Ok(Self {
@@ -215,6 +227,7 @@ impl HeroMagic {
             schools: hero.magic.schools,
             bonuses: SpellBonuses::of(hero).ok_or(HeroError::TooManySpellBonuses)?,
             resistance: resistance.min(scale(single)),
+            duration_bonus,
             cast: SpellSet::default(),
         })
     }
@@ -222,7 +235,8 @@ impl HeroMagic {
 
 impl CanonicalHash for HeroMagic {
     /// Book bits, schools, the bonuses (every spell, by school, the single spells as length and
-    /// spell, damage, growth per level, level), the resistance, the cast spells' bits.
+    /// spell, damage, growth per level, level), the resistance, the duration bonus (v20), the
+    /// cast spells' bits.
     fn hash_into(&self, h: &mut StateHasher) {
         for word in self.book.bits().into_iter().chain(self.cast.bits()) {
             h.write_u64(word);
@@ -241,6 +255,7 @@ impl CanonicalHash for HeroMagic {
             h.write_u8(s.level);
         }
         h.write_u64(self.resistance);
+        h.write_u16(self.duration_bonus);
     }
 }
 
@@ -276,13 +291,19 @@ pub(crate) struct Cast<'r> {
     value: u64,
     /// The caster's bonuses (BAT-MAG-004).
     bonuses: SpellBonuses,
+    /// The duration of its timed effects: power plus the duration bonus, at least 1
+    /// (BAT-MAG-010).
+    rounds: u16,
 }
 
-/// Whether the battle implements every effect of `spell` (damage since E04b T2; spells without
-/// effects are not castable yet).
+/// Whether the battle implements every effect of `spell` (damage since E04b T2, timed changes
+/// since T3a; spells without effects are not castable yet).
 fn implemented(spell: &Spell) -> bool {
     let effects = &spell.magic.effects;
-    !effects.is_empty() && effects.iter().all(|e| matches!(e, SpellEffect::Damage))
+    !effects.is_empty()
+        && effects
+            .iter()
+            .all(|e| matches!(e, SpellEffect::Damage | SpellEffect::Timed(_)))
 }
 
 /// The mastery at which `hero` casts `spell`: the best of its schools' masteries, at most
@@ -335,8 +356,9 @@ fn check_spell<'s, 'r>(
 type SpellRef<'r> = (SpellId, &'r Spell);
 
 /// Whether a cast of `spell` can affect a stack of `creature` at all (BAT-MAG-005): the creature
-/// meets the spell's conditions and is not immune to it by the spell's level, one of its schools
-/// or the spell itself. (The Orb of Vulnerability and mind spells join with their tasks.)
+/// meets the spell's conditions and is not immune to it as a mind spell (flag `mind_immune`), by
+/// the spell's level, one of its schools or the spell itself. (The Orb of Vulnerability joins
+/// with T8.)
 // rule: BAT-MAG-005
 fn affects(ruleset: &Ruleset, (id, spell): SpellRef<'_>, creature: CreatureTypeId) -> bool {
     let flags = ruleset
@@ -344,6 +366,7 @@ fn affects(ruleset: &Ruleset, (id, spell): SpellRef<'_>, creature: CreatureTypeI
         .map(|c| c.flags)
         .unwrap_or_default();
     spell.magic.conditions.admits(flags)
+        && !(spell.magic.mind && flags.contains(CreatureFlag::MindImmune))
         && !ruleset.abilities(creature).iter().any(|a| match *a {
             Ability::SpellLevelImmunity { max_level } => spell.level <= max_level,
             Ability::SchoolImmunity { school } => spell.schools.contains(&school),
@@ -425,19 +448,20 @@ fn area_stacks<'a>(
     })
 }
 
-/// Checks that `target` is a target of `side`'s cast of `spell` (BAT-MAG-003): a stack of
-/// [`aimable`] for a stack spell; for a hex spell any hex outside the side columns, whatever
-/// stands on it (the original's cursor test, `installation.md` §7.8; batch 2a R3); nothing for
-/// a battle-wide spell, which must reach at least one stack.
+/// Checks that `target` is a target of `side`'s cast of `spell` at `mastery` (BAT-MAG-003): a
+/// stack of [`aimable`] for a stack spell; for a hex spell any hex outside the side columns,
+/// whatever stands on it (the original's cursor test, `installation.md` §7.8; batch 2a R3);
+/// nothing for a battle-wide spell or a mass version (from the spell's mass mastery), which
+/// must reach at least one stack.
 // rule: BAT-MAG-003
 fn check_target(
     state: &BattleState,
     ruleset: &Ruleset,
     side: BattleSide,
-    spell: SpellRef<'_>,
+    (spell, mastery): (SpellRef<'_>, u8),
     target: CastTarget,
 ) -> Result<(), CommandError> {
-    let ok = match (spell.1.magic.target, target) {
+    let ok = match (spell.1.magic.target_at(mastery), target) {
         (SpellTarget::Stack, CastTarget::Stack(s)) => {
             state.stack(s).is_some() && aimable(state, ruleset, side, spell, s)
         }
@@ -472,7 +496,7 @@ pub(crate) fn plan_cast<'r>(
     target: CastTarget,
 ) -> Result<Cast<'r>, CommandError> {
     let (spell, hero, mastery, cost) = check_spell(state, ruleset, side, id)?;
-    check_target(state, ruleset, side, (id, spell), target)?;
+    check_target(state, ruleset, side, ((id, spell), mastery), target)?;
     Ok(Cast {
         side,
         id,
@@ -482,6 +506,10 @@ pub(crate) fn plan_cast<'r>(
         target,
         value: base_value(hero, spell, mastery),
         bonuses: hero.magic.bonuses,
+        // rule: BAT-MAG-010
+        rounds: u16::from(hero.view.power)
+            .saturating_add(hero.magic.duration_bonus)
+            .max(1),
     })
 }
 
@@ -504,7 +532,7 @@ pub fn cast_targets(
     if !may_cast_now(state, actor) {
         return;
     }
-    let Ok((s, ..)) = check_spell(state, ruleset, actor, spell) else {
+    let Ok((s, _, mastery, _)) = check_spell(state, ruleset, actor, spell) else {
         return;
     };
     let field = Field::new(ruleset.battle().field);
@@ -516,7 +544,7 @@ pub fn cast_targets(
         .chain(stacks)
         .chain(hexes)
     {
-        if check_target(state, ruleset, actor, (spell, s), target).is_ok() {
+        if check_target(state, ruleset, actor, ((spell, s), mastery), target).is_ok() {
             // At most `MAX_CAST_TARGETS` targets by construction.
             let _ = out.push(target);
         }
@@ -530,9 +558,9 @@ fn has_target(
     state: &BattleState,
     ruleset: &Ruleset,
     actor: BattleSide,
-    spell: SpellRef<'_>,
+    (spell, mastery): (SpellRef<'_>, u8),
 ) -> bool {
-    match spell.1.magic.target {
+    match spell.1.magic.target_at(mastery) {
         SpellTarget::Hex => true,
         SpellTarget::Stack => stack_ids(state).any(|s| aimable(state, ruleset, actor, spell, s)),
         SpellTarget::None => stack_ids(state).any(|s| reachable(state, ruleset, actor, spell, s)),
@@ -550,8 +578,8 @@ pub fn castable_spells(state: &BattleState, ruleset: &Ruleset, actor: BattleSide
         return out;
     }
     for spell in hero.magic.book.iter() {
-        if let Ok((s, ..)) = check_spell(state, ruleset, actor, spell)
-            && has_target(state, ruleset, actor, (spell, s))
+        if let Ok((s, _, mastery, _)) = check_spell(state, ruleset, actor, spell)
+            && has_target(state, ruleset, actor, ((spell, s), mastery))
         {
             out.insert(spell);
         }
@@ -704,23 +732,35 @@ fn resists(state: &mut BattleState, ruleset: &Ruleset, spell: &Spell, s: StackId
     }
 }
 
-/// Damages stack `s` with `cast` at the value `value` and reports it.
-fn strike<S: Sink>(
+/// Applies `cast`'s effects to stack `s` at the value `value`: its damage, reported, then, if the
+/// stack still lives, its timed changes (BAT-MAG-009).
+fn affect<S: Sink>(
     state: &mut BattleState,
     ruleset: &Ruleset,
     cast: &Cast<'_>,
     (s, value): (StackId, u64),
     sink: &mut S,
 ) {
-    let (caster, damage) = spell_damage(ruleset, cast, value, state.at(s).creature);
-    let kills = apply_damage(state.at_mut(s), damage);
-    sink.emit(Event::public(EventKind::SpellDamage {
-        target: s,
-        value,
-        caster,
-        damage,
-        kills,
-    }));
+    if cast.spell.magic.effects.contains(&SpellEffect::Damage) {
+        let (caster, damage) = spell_damage(ruleset, cast, value, state.at(s).creature);
+        let kills = apply_damage(state.at_mut(s), damage);
+        sink.emit(Event::public(EventKind::SpellDamage {
+            target: s,
+            value,
+            caster,
+            damage,
+            kills,
+        }));
+    }
+    if cast.spell.magic.is_timed() && state.at(s).is_alive() {
+        let timed = TimedCast {
+            id: cast.id,
+            spell: cast.spell,
+            mastery: cast.mastery,
+            rounds: cast.rounds,
+        };
+        effects::apply(state, ruleset, timed, s, sink);
+    }
 }
 
 /// Reports that stack `s` resisted.
@@ -814,7 +854,7 @@ pub(crate) fn apply_cast<S: Sink>(
                 let mut value = cast.value;
                 let mut current = first;
                 for _ in 0..chain.targets[usize::from(cast.mastery)] {
-                    strike(state, ruleset, &cast, (current, value), sink);
+                    affect(state, ruleset, &cast, (current, value), sink);
                     struck[current.index()] = true;
                     let Some(next) = next_in_chain(state, ruleset, spell, current, &struck) else {
                         break;
@@ -823,7 +863,7 @@ pub(crate) fn apply_cast<S: Sink>(
                     value = value * u64::from(chain.factor_bp) / u64::from(FULL_BP);
                 }
             }
-            (CastTarget::Stack(s), None) => strike(state, ruleset, &cast, (s, cast.value), sink),
+            (CastTarget::Stack(s), None) => affect(state, ruleset, &cast, (s, cast.value), sink),
             (target, _) => {
                 // rule: BAT-MAG-007
                 let mut hits = [false; STACK_CAPACITY];
@@ -840,7 +880,7 @@ pub(crate) fn apply_cast<S: Sink>(
                     if resists(state, ruleset, cast.spell, s) {
                         resisted(s, sink);
                     } else {
-                        strike(state, ruleset, &cast, (s, cast.value), sink);
+                        affect(state, ruleset, &cast, (s, cast.value), sink);
                     }
                 }
             }

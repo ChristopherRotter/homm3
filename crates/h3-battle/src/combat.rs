@@ -102,13 +102,21 @@ fn strike<S: Sink>(
     let params = ruleset.battle();
     let striker = *state.at(attacker);
     let victim = *state.at(target);
-    let base = base_damage(
-        &mut state.rng,
-        striker.count,
-        striker.damage_min,
-        striker.damage_max,
-        params.damage_roll_samples,
-    );
+    // rule: BAT-MAG-011
+    let base = match striker
+        .spells
+        .damage
+        .fixed(striker.damage_min, striker.damage_max)
+    {
+        Some(each) => u64::from(striker.count).saturating_mul(each),
+        None => base_damage(
+            &mut state.rng,
+            striker.count,
+            striker.damage_min,
+            striker.damage_max,
+            params.damage_roll_samples,
+        ),
+    };
     let (factors, flags) = strike_factors(ruleset, &state.heroes, (&striker, &victim), flags, blow);
     let damage = factors.apply(base);
     let lost = damage.min(victim.total_hp());
@@ -158,7 +166,9 @@ fn strike_factors(
             _ => {}
         }
     }
-    attack_defense(&mut factors, striker.attack, defense, params);
+    // rule: BAT-MAG-011
+    let attack = striker.attack_now(flags.contains(StrikeFlags::RANGED));
+    attack_defense(&mut factors, attack, defense, params);
     let mut flags = flags;
     // rule: BAT-LCK-002
     if blow.lucky {
@@ -193,7 +203,8 @@ fn strike_factors(
 
 /// The least and greatest damage a shot of `attacker` would deal to `target` now, without luck,
 /// death blows and double damage (the base damage of `count` creatures is between `count · min`
-/// and `count · max` for every sampling, BAT-DMG-001).
+/// and `count · max` for every sampling, BAT-DMG-001; fixed while blessed or cursed,
+/// BAT-MAG-011).
 pub(crate) fn shot_damage_range(
     state: &BattleState,
     ruleset: &Ruleset,
@@ -215,9 +226,15 @@ pub(crate) fn shot_damage_range(
         blow,
     );
     let n = u64::from(striker.count);
+    let (min, max) = (striker.damage_min, striker.damage_max);
+    let (low, high) = striker
+        .spells
+        .damage
+        .fixed(min, max)
+        .map_or((u64::from(min), u64::from(max)), |each| (each, each));
     (
-        factors.apply(n * u64::from(striker.damage_min)),
-        factors.apply(n * u64::from(striker.damage_max)),
+        factors.apply(n.saturating_mul(low)),
+        factors.apply(n.saturating_mul(high)),
     )
 }
 

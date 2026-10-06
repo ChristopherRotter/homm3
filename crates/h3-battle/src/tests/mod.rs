@@ -15,4 +15,5 @@ mod spells;
 mod support;
 mod tactics;
 mod terrain;
+mod timed;
 mod war;

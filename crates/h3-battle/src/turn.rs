@@ -13,7 +13,7 @@ use h3_contracts::BattleSide;
 use crate::event::{Event, EventKind, Sink};
 use crate::geometry::Field;
 use crate::state::{BattleState, StackFlags, StackId, StackTraits};
-use crate::{morale, war};
+use crate::{effects, morale, war};
 
 /// The next stack to act this round, or `None` if every living stack has acted.
 // rule: BAT-TRN-001, BAT-TRN-002
@@ -39,9 +39,9 @@ pub(crate) fn next_active(state: &BattleState) -> Option<StackId> {
             };
             // Smaller keys act earlier. Normal phase: faster first; wait phases: slower first.
             let speed = if phase == 0 {
-                u8::MAX - s.speed
+                u8::MAX - s.speed_now()
             } else {
-                s.speed
+                s.speed_now()
             };
             // The trailing id makes the key unique, so the order is total (ADR-0003 §9).
             (phase, speed, s.side != preferred, s.slot, *id)
@@ -50,9 +50,10 @@ pub(crate) fn next_active(state: &BattleState) -> Option<StackId> {
 }
 
 /// Starts a new round: resets retaliation, wait, morale and acted flags (the Defend bonus lasts
-/// until the stack's next activation, BAT-TRN-004) and the heroes' casts (BAT-MAG-001).
+/// until the stack's next activation, BAT-TRN-004) and the heroes' casts (BAT-MAG-001); the
+/// timed effects lose a round or end (BAT-MAG-010).
 // rule: BAT-TRN-003, BAT-MAG-001
-pub(crate) fn start_round<S: Sink>(state: &mut BattleState, sink: &mut S) {
+pub(crate) fn start_round<S: Sink>(state: &mut BattleState, ruleset: &Ruleset, sink: &mut S) {
     state.round = state.round.saturating_add(1);
     for hero in state.heroes.iter_mut().flatten() {
         hero.view.casts = 0;
@@ -67,6 +68,7 @@ pub(crate) fn start_round<S: Sink>(state: &mut BattleState, sink: &mut S) {
     sink.emit(Event::public(EventKind::RoundStarted {
         round: state.round,
     }));
+    effects::count_down(state, ruleset, sink);
 }
 
 /// How a turn ended.
@@ -113,9 +115,9 @@ pub(crate) fn end_turn<S: Sink>(
 }
 
 /// The next stack to act, starting a new round if every living stack has acted.
-fn pick<S: Sink>(state: &mut BattleState, sink: &mut S) -> Option<StackId> {
+fn pick<S: Sink>(state: &mut BattleState, ruleset: &Ruleset, sink: &mut S) -> Option<StackId> {
     next_active(state).or_else(|| {
-        start_round(state, sink);
+        start_round(state, ruleset, sink);
         next_active(state)
     })
 }
@@ -126,7 +128,7 @@ fn pick<S: Sink>(state: &mut BattleState, sink: &mut S) -> Option<StackId> {
 /// commanded one waits for its side's command, BAT-WAR-006). While the battle is not over some
 /// stack is alive, so a stack is always found.
 pub(crate) fn activate_next<S: Sink>(state: &mut BattleState, ruleset: &Ruleset, sink: &mut S) {
-    let mut next = pick(state, sink);
+    let mut next = pick(state, ruleset, sink);
     while let Some(id) = next {
         // rule: BAT-TRN-004
         state.at_mut(id).flags.set(StackFlags::DEFENDING, false);
@@ -151,7 +153,7 @@ pub(crate) fn activate_next<S: Sink>(state: &mut BattleState, ruleset: &Ruleset,
         next = if state.result.is_some() {
             None
         } else {
-            pick(state, sink)
+            pick(state, ruleset, sink)
         };
     }
     state.active = next;

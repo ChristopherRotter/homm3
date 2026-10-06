@@ -1,10 +1,12 @@
 //! What a spell does in battle (E04b, ADR-0014 point 1): the target its caster names, the stacks
 //! the cast reaches (an area around a hex, a chain from a stack, or every stack), the conditions
-//! a stack must meet, and its effects from a closed set of kinds (pack format v4, E04b T2a).
+//! a stack must meet, and its effects from a closed set of kinds (pack format v4, E04b T2a; timed
+//! changes and mass versions since format v5, E04b T3a).
 //!
 //! Spells are data over these kinds: each kind is one battle rule (`BAT-MAG-…`), so a new spell of
 //! a known kind is a data change. Kinds join with the task that implements them: damage in T2;
-//! timed effects, dispel and heal in T3; and so on. A spell without effects cannot be cast.
+//! timed changes of a stack's values in T3a; dispel and heal in T3b; and so on. A spell without
+//! effects cannot be cast.
 
 use h3_kernel::{CanonicalHash, StateHasher};
 
@@ -100,6 +102,85 @@ pub struct SpellChain {
     pub factor_bp: u16,
 }
 
+/// How a timed effect changes a stack while it lasts (E04b T3a; the original's code,
+/// `docs/formats/installation.md` §7.9). `v` is the spell's `effect[mastery]`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
+pub enum TimedChange {
+    /// Speed + v, not on war machines (Haste, Prayer).
+    Speed,
+    /// Speed × v %, rounded down, at least 1 (Slow).
+    SpeedPercent,
+    /// Attack + v (Prayer).
+    Attack,
+    /// Attack − v, at most down to 0 (Weakness).
+    AttackLoss,
+    /// Defense + v (Stone Skin, Prayer).
+    Defense,
+    /// Defense − v, at most down to 0, never given back (Disrupting Ray).
+    DefenseLoss,
+    /// Attack + v on melee attacks (Bloodlust).
+    MeleeAttack,
+    /// Attack + v on ranged attacks (Precision).
+    RangedAttack,
+    /// Every creature deals its maximum damage + v (Bless).
+    MaximumDamage,
+    /// Every creature deals its minimum damage − v, at least 1 (Curse).
+    MinimumDamage,
+    /// Morale + v (Mirth).
+    Morale,
+    /// Morale − v (Sorrow).
+    MoraleLoss,
+    /// Luck + v (Fortune).
+    Luck,
+    /// Luck − v (Misfortune).
+    LuckLoss,
+}
+
+impl TimedChange {
+    /// All values, in code order.
+    pub const ALL: [Self; 14] = [
+        Self::Speed,
+        Self::SpeedPercent,
+        Self::Attack,
+        Self::AttackLoss,
+        Self::Defense,
+        Self::DefenseLoss,
+        Self::MeleeAttack,
+        Self::RangedAttack,
+        Self::MaximumDamage,
+        Self::MinimumDamage,
+        Self::Morale,
+        Self::MoraleLoss,
+        Self::Luck,
+        Self::LuckLoss,
+    ];
+
+    /// Pack name.
+    pub const fn name(self) -> &'static str {
+        match self {
+            Self::Speed => "speed",
+            Self::SpeedPercent => "speed_percent",
+            Self::Attack => "attack",
+            Self::AttackLoss => "attack_loss",
+            Self::Defense => "defense",
+            Self::DefenseLoss => "defense_loss",
+            Self::MeleeAttack => "melee_attack",
+            Self::RangedAttack => "ranged_attack",
+            Self::MaximumDamage => "maximum_damage",
+            Self::MinimumDamage => "minimum_damage",
+            Self::Morale => "morale",
+            Self::MoraleLoss => "morale_loss",
+            Self::Luck => "luck",
+            Self::LuckLoss => "luck_loss",
+        }
+    }
+
+    /// Looks a value up by its pack name.
+    pub fn from_name(name: &str) -> Option<Self> {
+        Self::ALL.into_iter().find(|c| c.name() == name)
+    }
+}
+
 /// One effect of a spell on each stack it reaches. The value of a cast is
 /// `power × power factor + effect[mastery]` (the spell's data row), changed per target and caster
 /// by the kind's rule.
@@ -107,24 +188,51 @@ pub struct SpellChain {
 pub enum SpellEffect {
     /// Deals the value as damage (BAT-MAG rules, E04b T2).
     Damage,
+    /// Changes the stack's values while the effect lasts (BAT-MAG-009 to 011, E04b T3a).
+    Timed(TimedChange),
 }
 
 impl SpellEffect {
-    /// All values, in code order.
-    pub const ALL: [Self; 1] = [Self::Damage];
-
-    /// Pack name.
+    /// Pack name of the kind.
     pub const fn name(self) -> &'static str {
         match self {
             Self::Damage => "damage",
+            Self::Timed(_) => "timed",
         }
     }
 
-    /// Looks a value up by its pack name.
-    pub fn from_name(name: &str) -> Option<Self> {
-        Self::ALL.into_iter().find(|e| e.name() == name)
+    /// The timed change, if this is one.
+    pub const fn timed(self) -> Option<TimedChange> {
+        match self {
+            Self::Timed(c) => Some(c),
+            Self::Damage => None,
+        }
+    }
+
+    /// Canonical code (hash): the kind, then the change.
+    fn code(self) -> [u8; 2] {
+        match self {
+            Self::Damage => [0, 0],
+            Self::Timed(c) => [1, c as u8],
+        }
     }
 }
+
+/// How long the timed effects of a spell last.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Default)]
+pub enum EffectDuration {
+    /// The caster's power plus its duration bonuses, in rounds (BAT-MAG-010).
+    #[default]
+    Rounds,
+    /// The rest of the battle (Disrupting Ray).
+    Permanent,
+}
+
+/// Highest mastery (Expert).
+pub const MAX_MASTERY: u8 = 3;
+
+/// Pack names of the masteries that can start a mass version, from Basic (1) to Expert (3).
+pub const MASTERY_NAMES: [&str; 3] = ["basic", "advanced", "expert"];
 
 /// Which stacks a spell may affect, by creature flags (Destroy Undead: only `undead`; Death
 /// Ripple: no `undead`, no `war_machine`).
@@ -159,6 +267,31 @@ pub struct SpellMagic {
     pub conditions: TargetConditions,
     /// What it does to each stack reached, distinct, in pack order (none: not castable yet).
     pub effects: alloc::vec::Vec<SpellEffect>,
+    /// A mind spell (the executable's flag `0x400`): creatures with flag `mind_immune` are immune
+    /// (v5).
+    pub mind: bool,
+    /// The lowest mastery (1..=3) at which the spell has a mass version: it then takes no target
+    /// and reaches every stack it may reach (the flag `0x40`: Expert; v5).
+    pub mass_from: Option<u8>,
+    /// How long its timed effects last (v5).
+    pub duration: EffectDuration,
+    /// A cast on a stack it already affects applies its changes again (Disrupting Ray; v5).
+    pub cumulative: bool,
+}
+
+impl SpellMagic {
+    /// What the caster names at `mastery`: nothing for the mass version.
+    pub fn target_at(&self, mastery: u8) -> SpellTarget {
+        match self.mass_from {
+            Some(from) if mastery >= from => SpellTarget::None,
+            _ => self.target,
+        }
+    }
+
+    /// Whether any effect is a timed change.
+    pub fn is_timed(&self) -> bool {
+        self.effects.iter().any(|e| e.timed().is_some())
+    }
 }
 
 impl SpellMagic {
@@ -198,6 +331,13 @@ impl SpellMagic {
             Some("a chain needs 1..=16 targets and factor_bp <= 10000")
         } else if c.requires.bits() & c.excludes.bits() != 0 {
             Some("a flag is both required and excluded")
+        } else if self
+            .mass_from
+            .is_some_and(|m| self.target != SpellTarget::Stack || !(1..=MAX_MASTERY).contains(&m))
+        {
+            Some("a mass version needs target stack and a mastery 1..=3")
+        } else if (self.cumulative || self.duration != EffectDuration::Rounds) && !self.is_timed() {
+            Some("duration and cumulative need a timed effect")
         } else {
             None
         }
@@ -206,7 +346,8 @@ impl SpellMagic {
 
 impl CanonicalHash for SpellMagic {
     /// Target, area (presence, inner, radii), chain (presence, targets, factor), side (v15),
-    /// condition bits, effects (count, codes).
+    /// condition bits, effects (count, codes: kind and change), mind, mass (0: none), duration,
+    /// cumulative (v17).
     fn hash_into(&self, h: &mut StateHasher) {
         h.write_u8(self.target as u8);
         h.write_bool(self.area.is_some());
@@ -224,8 +365,12 @@ impl CanonicalHash for SpellMagic {
         h.write_u32(self.conditions.excludes.bits());
         h.write_len(self.effects.len());
         for e in &self.effects {
-            h.write_u8(*e as u8);
+            h.write_bytes(&e.code());
         }
+        h.write_bool(self.mind);
+        h.write_u8(self.mass_from.unwrap_or(0));
+        h.write_u8(self.duration as u8);
+        h.write_bool(self.cumulative);
     }
 }
 
@@ -243,15 +388,38 @@ mod tests {
         for t in SpellTarget::ALL {
             assert_eq!(SpellTarget::from_name(t.name()), Some(t));
         }
-        for e in SpellEffect::ALL {
-            assert_eq!(SpellEffect::from_name(e.name()), Some(e));
+        for c in TimedChange::ALL {
+            assert_eq!(TimedChange::from_name(c.name()), Some(c));
+            assert_eq!(SpellEffect::Timed(c).name(), "timed");
+            assert_eq!(SpellEffect::Timed(c).timed(), Some(c));
         }
+        assert_eq!(SpellEffect::Damage.name(), "damage");
+        assert_eq!(SpellEffect::Damage.timed(), None);
+        assert_eq!(TimedChange::from_name("heal"), None);
         for s in TargetSide::ALL {
             assert_eq!(TargetSide::from_name(s.name()), Some(s));
         }
         assert_eq!(TargetSide::from_name("both"), None);
         assert_eq!(SpellTarget::from_name("obstacle"), None);
-        assert_eq!(SpellEffect::from_name("heal"), None);
+    }
+
+    #[test]
+    fn mass_versions_take_no_target() {
+        let haste = SpellMagic {
+            target: SpellTarget::Stack,
+            mass_from: Some(3),
+            effects: vec![SpellEffect::Timed(TimedChange::Speed)],
+            ..SpellMagic::default()
+        };
+        assert_eq!(haste.target_at(2), SpellTarget::Stack);
+        assert_eq!(haste.target_at(3), SpellTarget::None);
+        let single = SpellMagic {
+            mass_from: None,
+            ..haste.clone()
+        };
+        assert_eq!(single.target_at(3), SpellTarget::Stack);
+        assert!(haste.is_timed());
+        assert!(!SpellMagic::default().is_timed());
     }
 
     #[test]
@@ -414,6 +582,61 @@ mod tests {
                 "both required and excluded",
             ),
         ];
+        let timed = |change| SpellMagic {
+            target: SpellTarget::Stack,
+            effects: vec![SpellEffect::Timed(change)],
+            ..SpellMagic::default()
+        };
+        let ray = SpellMagic {
+            duration: EffectDuration::Permanent,
+            cumulative: true,
+            ..timed(TimedChange::DefenseLoss)
+        };
+        assert_eq!(ray.error(true), None);
+        assert_eq!(
+            SpellMagic {
+                mass_from: Some(3),
+                mind: true,
+                ..timed(TimedChange::Morale)
+            }
+            .error(true),
+            None
+        );
+        let bad = bad.into_iter().chain([
+            (
+                SpellMagic {
+                    target: SpellTarget::Hex,
+                    mass_from: Some(3),
+                    ..timed(TimedChange::Speed)
+                },
+                true,
+                "mass version",
+            ),
+            (
+                SpellMagic {
+                    mass_from: Some(0),
+                    ..timed(TimedChange::Speed)
+                },
+                true,
+                "mass version",
+            ),
+            (
+                SpellMagic {
+                    cumulative: true,
+                    ..damage(SpellTarget::Stack)
+                },
+                true,
+                "need a timed effect",
+            ),
+            (
+                SpellMagic {
+                    duration: EffectDuration::Permanent,
+                    ..damage(SpellTarget::Stack)
+                },
+                true,
+                "need a timed effect",
+            ),
+        ]);
         for (m, castable, reason) in bad {
             let error = m.error(castable).unwrap_or_default();
             assert!(error.contains(reason), "{m:?}: {error}");
@@ -433,6 +656,7 @@ mod tests {
             side: TargetSide::Any,
             conditions: TargetConditions::default(),
             effects: vec![SpellEffect::Damage],
+            ..SpellMagic::default()
         };
         let undead = CreatureFlags::default().with(CreatureFlag::Undead);
         let variants = [
@@ -474,7 +698,35 @@ mod tests {
                 side: TargetSide::Enemy,
                 ..base.clone()
             },
+            SpellMagic {
+                effects: vec![SpellEffect::Timed(TimedChange::Speed)],
+                ..base.clone()
+            },
+            SpellMagic {
+                mind: true,
+                ..base.clone()
+            },
+            SpellMagic {
+                mass_from: Some(3),
+                ..base.clone()
+            },
+            SpellMagic {
+                duration: EffectDuration::Permanent,
+                ..base.clone()
+            },
+            SpellMagic {
+                cumulative: true,
+                ..base.clone()
+            },
         ];
+        let timed = |c| SpellMagic {
+            effects: vec![SpellEffect::Timed(c)],
+            ..base.clone()
+        };
+        assert_ne!(
+            digest(&timed(TimedChange::Speed)),
+            digest(&timed(TimedChange::SpeedPercent))
+        );
         for v in &variants {
             assert_ne!(digest(v), digest(&base), "{v:?}");
         }

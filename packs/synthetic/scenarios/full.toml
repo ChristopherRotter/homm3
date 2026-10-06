@@ -17,7 +17,8 @@ defender_funds = 10000
 # commands her Aid Tent: heals 1–20 instead of 1–10), wearing a Lucky Knot (morale +1, luck +1).
 # Her Tactics give her a tactics phase with a five-column zone before round 1 (BAT-TAC-001).
 # Both heroes cast (E04b T2c): Brea knows the four damage spells with Basic Storm magic, so
-# random rollouts exercise every kind of damage spell the battle implements.
+# random rollouts exercise every kind of damage spell the battle implements; since E04b T3a also
+# three timed storm spells.
 [scenario.attacker_hero]
 hero_type = "synthetic:brea"
 attack = 2
@@ -27,7 +28,10 @@ knowledge = 1
 tactics = 2
 mana = 40
 max_mana = 40
-spell_book = ["synthetic:spark", "synthetic:cinders", "synthetic:arc", "synthetic:blight", "synthetic:ward"]
+spell_book = [
+    "synthetic:spark", "synthetic:cinders", "synthetic:arc", "synthetic:blight", "synthetic:ward",
+    "synthetic:hasten", "synthetic:drag", "synthetic:fury",
+]
 schools = { "synthetic:storm" = 1 }
 ranged_bp = 1000
 melee_bp = 1000
@@ -43,8 +47,9 @@ effects = [{ kind = "morale", amount = 1 }, { kind = "luck", amount = 1 }]
 # Far Scope (shooters without range penalty, flying creatures +1 speed, 10 % surrender discount),
 # a Vigor Stone (living creatures +25 % hit points, regenerating 10) and, as the expansion's
 # Storm Regalia gives it, shooters that shoot while adjacent. The base pack has one faction, so
-# an alignment group (BAT-HER-007) could change nothing here. He casts with Advanced Stone
-# magic (Blight) and no Storm mastery (Spark, Arc).
+# an alignment group (BAT-HER-007) could change nothing here. He casts with Expert Stone magic
+# (Blight and the timed stone spells, their mass versions among them; E04b T3a) and no Storm
+# mastery (Spark, Arc), and his timed spells last 2 rounds longer, as a Storm Orb's would.
 [scenario.defender_hero]
 hero_type = "synthetic:corwin"
 attack = 1
@@ -53,8 +58,11 @@ power = 3
 knowledge = 1
 mana = 40
 max_mana = 40
-spell_book = ["synthetic:spark", "synthetic:arc", "synthetic:blight"]
-schools = { "synthetic:stone" = 2 }
+spell_book = [
+    "synthetic:spark", "synthetic:arc", "synthetic:blight", "synthetic:zeal", "synthetic:gloom",
+    "synthetic:boon", "synthetic:bane", "synthetic:corrode",
+]
+schools = { "synthetic:stone" = 3 }
 surrender_discount_bp = 1000
 ballista = { shots = 1, double_damage_chance_bp = 5000 }
 effects = [
@@ -67,6 +75,7 @@ effects = [
     { kind = "stack_stat", creatures = { flag = "alive" }, stat = "hit_points", op = "percent_bp", amount = 2500 },
     { kind = "regeneration", creatures = { flag = "alive" }, hit_points = 10 },
     { kind = "shoot_when_adjacent", creatures = { flag = "shooter" } },
+    { kind = "spell_duration", rounds = 2 },
 ]
 
 [[attacker]]

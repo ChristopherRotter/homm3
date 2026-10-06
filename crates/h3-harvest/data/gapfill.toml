@@ -1493,6 +1493,27 @@ ref = "lib/battle/CBattleInfoCallback.cpp L117-L159 (1.7.5): a hero casts only w
 url = "https://github.com/vcmi/vcmi/blob/1.7.5/lib/battle/CBattleInfoCallback.cpp#L117-L159"
 retrieved = "2026-10-05"
 
+[[source]]
+id = "exe-timed-spells"
+kind = "original-data"
+ref = "Heroes3.exe code reading (docs/formats/installation.md 7.9): the duration bonus of the Conjuring artifacts and the Ring of the Magi (0x4E4DB0); what each timed spell changes when cast (0x4448F0) and gives back when it ends (0x444510); only Bless/Curse and Haste/Slow end each other; Disrupting Ray lowers the defense at every cast and never ends (0x5A1A53)"
+url = "docs/formats/installation.md"
+retrieved = "2026-10-06"
+
+[[source]]
+id = "vcmi-spells-timed"
+kind = "vcmi"
+ref = "config/spells/timed.json (1.7.5): haste, slow, bloodlust, precision, weakness, stoneSkin, disruptingRay (cumulative, permanent), prayer, bless, curse, mirth, sorrow, fortune, misfortune: their bonuses by level and smart mass targets at Expert; counters for five pairs"
+url = "https://github.com/vcmi/vcmi/blob/1.7.5/config/spells/timed.json"
+retrieved = "2026-10-06"
+
+[[source]]
+id = "vcmi-conjuring"
+kind = "vcmi"
+ref = "config/artifacts.json (1.7.5) L1130-L1165, L2214-L2225: collarOfConjuring, ringOfConjuring, capeOfConjuring, ringOfTheMagi SPELL_DURATION 1, 2, 3, 50"
+url = "https://github.com/vcmi/vcmi/blob/1.7.5/config/artifacts.json#L1130-L1165"
+retrieved = "2026-10-06"
+
 [artifacts]
 # The AB-era table's rows that RoE did not have (RoE: rows 0-126).
 ab = ["Vial of Dragon Blood", "Armageddon's Blade"]
@@ -1735,23 +1756,42 @@ artifacts = ["Boots of Polarity"]
 effects = [{ kind = "magic_resistance", bp = 1500 }]
 sources = ["vcmi-resistance-artifacts"]
 
+[[artifacts.effects]]
+artifacts = ["Collar of Conjuring"]
+effects = [{ kind = "spell_duration", rounds = 1 }]
+sources = ["exe-timed-spells", "vcmi-conjuring"]
+
+[[artifacts.effects]]
+artifacts = ["Ring of Conjuring"]
+effects = [{ kind = "spell_duration", rounds = 2 }]
+sources = ["exe-timed-spells", "vcmi-conjuring"]
+
+[[artifacts.effects]]
+artifacts = ["Cape of Conjuring"]
+effects = [{ kind = "spell_duration", rounds = 3 }]
+sources = ["exe-timed-spells", "vcmi-conjuring"]
+
+[[artifacts.effects]]
+artifacts = ["Ring of the Magi"]
+effects = [{ kind = "spell_duration", rounds = 50 }]
+sources = ["exe-timed-spells", "vcmi-conjuring"]
+
 # Effects no epic has modelled yet; the pack marks these artifacts, and every artifact without a
 # modelled effect must be listed here.
 [[artifacts.pending]]
 epic = "E04b"
-what = "spell book, spells, spell immunity and resistance, spell duration and damage, mana, Eagle Eye"
+what = "spell book, spells, spell immunity and resistance, spell damage, mana, Eagle Eye"
 artifacts = [
     "Spell Scroll", "Badge of Courage",
     "Bird of Perception", "Stoic Watchman", "Emblem of Cognizance",
     "Charm of Mana", "Talisman of Mana", "Mystic Orb of Mana",
-    "Collar of Conjuring", "Ring of Conjuring", "Cape of Conjuring",
     "Recanter's Cloak", "Tome of Fire Magic", "Tome of Air Magic", "Tome of Water Magic",
     "Tome of Earth Magic", "Sphere of Permanence", "Orb of Vulnerability",
     "Pendant of Dispassion", "Pendant of Second Sight", "Pendant of Holiness", "Pendant of Life",
     "Pendant of Death", "Pendant of Free Will", "Pendant of Negativity", "Pendant of Total Recall",
     "Spellbinder's Hat", "Orb of Inhibition", "Armageddon's Blade",
     "Angelic Alliance", "Armor of the Damned", "Power of the Dragon Father", "Titan's Thunder",
-    "Wizard's Well", "Ring of the Magi",
+    "Wizard's Well",
 ]
 
 [[artifacts.pending]]
@@ -1822,3 +1862,83 @@ sources = ["vcmi-spells-offensive"]
 spell = "Destroy Undead"
 requires = ["undead"]
 sources = ["vcmi-spells-offensive"]
+
+# Timed spells (E04b T3a; pack format v5): what each changes while active. Target, side, mass
+# version, `mind` and the war-machine exclusion come from the flag word (installation.md 7.6);
+# the changes, counters and Disrupting Ray's permanence from the original's code (7.9).
+
+[[spells.timed]]
+spell = "Haste"
+changes = ["speed"]
+counters = ["Slow"]
+sources = ["exe-timed-spells", "vcmi-spells-timed"]
+
+[[spells.timed]]
+spell = "Slow"
+changes = ["speed_percent"]
+counters = ["Haste"]
+sources = ["exe-timed-spells", "vcmi-spells-timed"]
+
+[[spells.timed]]
+spell = "Bloodlust"
+changes = ["melee_attack"]
+sources = ["exe-timed-spells", "vcmi-spells-timed"]
+
+[[spells.timed]]
+spell = "Precision"
+changes = ["ranged_attack"]
+sources = ["exe-timed-spells", "vcmi-spells-timed"]
+
+[[spells.timed]]
+spell = "Weakness"
+changes = ["attack_loss"]
+sources = ["exe-timed-spells", "vcmi-spells-timed"]
+
+[[spells.timed]]
+spell = "Stone Skin"
+changes = ["defense"]
+sources = ["exe-timed-spells", "vcmi-spells-timed"]
+
+[[spells.timed]]
+spell = "Prayer"
+changes = ["attack", "defense", "speed"]
+sources = ["exe-timed-spells", "vcmi-spells-timed"]
+
+[[spells.timed]]
+spell = "Bless"
+changes = ["maximum_damage"]
+counters = ["Curse"]
+sources = ["exe-timed-spells", "vcmi-spells-timed"]
+
+[[spells.timed]]
+spell = "Curse"
+changes = ["minimum_damage"]
+counters = ["Bless"]
+sources = ["exe-timed-spells", "vcmi-spells-timed"]
+
+[[spells.timed]]
+spell = "Mirth"
+changes = ["morale"]
+sources = ["exe-timed-spells", "vcmi-spells-timed"]
+
+[[spells.timed]]
+spell = "Sorrow"
+changes = ["morale_loss"]
+sources = ["exe-timed-spells", "vcmi-spells-timed"]
+
+[[spells.timed]]
+spell = "Fortune"
+changes = ["luck"]
+sources = ["exe-timed-spells", "vcmi-spells-timed"]
+
+[[spells.timed]]
+spell = "Misfortune"
+changes = ["luck_loss"]
+sources = ["exe-timed-spells", "vcmi-spells-timed"]
+
+[[spells.timed]]
+spell = "Disrupting Ray"
+changes = ["defense_loss"]
+duration = "permanent"
+cumulative = true
+sources = ["exe-timed-spells", "vcmi-spells-timed"]

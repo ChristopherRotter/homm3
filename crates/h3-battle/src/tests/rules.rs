@@ -14,7 +14,7 @@ use crate::event::StrikeFlags;
 /// Damage of `base` with only the attack/defense factor (BAT-DMG-002).
 fn modified_damage(base: u64, attack: u16, defense: u16, p: &h3_content::BattleParams) -> u64 {
     let mut f = Factors::default();
-    attack_defense(&mut f, attack, defense, p);
+    attack_defense(&mut f, attack.into(), defense.into(), p);
     f.apply(base)
 }
 
@@ -26,7 +26,7 @@ fn single_damage(
     p: &h3_content::BattleParams,
 ) -> u64 {
     let mut f = Factors::new(true);
-    attack_defense(&mut f, attack, defense, p);
+    attack_defense(&mut f, attack.into(), defense.into(), p);
     for &r in reductions {
         f.reduce(f.rate(r, Unit::Percent));
     }
@@ -267,7 +267,11 @@ fn defend_adds_a_fifth_of_defense_rounded_down_but_at_least_one() {
     assert_eq!(effective_defense(&tank, p), 24);
     assert_eq!(effective_defense(&slow, p), 2);
     tank.defense = u16::MAX;
-    assert_eq!(effective_defense(&tank, p), u16::MAX);
+    assert_eq!(effective_defense(&tank, p), 65_535 + 13_107);
+    // Below 0 (after timed effects, BAT-MAG-011) the bonus is the minimum.
+    tank.defense = 0;
+    tank.spells.defense = -4;
+    assert_eq!(effective_defense(&tank, p), -3);
 }
 
 // covers: BAT-TRN-004

@@ -156,45 +156,45 @@ impl Factors {
 
 /// The attack/defense part of the factors: a bonus of `per_point` % per point of attack over
 /// defense (capped) or a reduction of `per_point` ‰ per point of defense over attack (capped).
+/// Both may be below 0 after timed effects (BAT-MAG-011); only their difference counts.
 // rule: BAT-DMG-002
 pub(crate) fn attack_defense(
     factors: &mut Factors,
-    attack: u16,
-    defense: u16,
+    attack: i32,
+    defense: i32,
     params: &BattleParams,
 ) {
+    let diff = u64::from(attack.abs_diff(defense));
     if attack > defense {
-        let diff = u64::from(attack - defense);
         let per_point = factors.rate(params.attack_bonus_per_point_percent, Unit::Percent);
         let cap = factors.rate(params.attack_bonus_cap_percent, Unit::Percent);
         factors.bonus(diff.saturating_mul(per_point).min(cap));
     } else {
-        let diff = u64::from(defense - attack);
         let per_point = factors.rate(params.defense_reduction_per_point_permille, Unit::Permille);
         let cap = factors.rate(params.defense_reduction_cap_permille, Unit::Permille);
         factors.reduce(diff.saturating_mul(per_point).min(cap));
     }
 }
 
-/// Defense used when `stack` is hit: its defense plus, while defending, `defend_bonus_percent`
-/// of it rounded down but at least `defend_bonus_min`.
+/// Defense used when `stack` is hit: its defense now (BAT-MAG-011) plus, while defending,
+/// `defend_bonus_percent` of it rounded down (of 0 if it is below 0) but at least
+/// `defend_bonus_min`.
 // rule: BAT-TRN-004
-pub(crate) fn effective_defense(stack: &Stack, params: &BattleParams) -> u16 {
+pub(crate) fn effective_defense(stack: &Stack, params: &BattleParams) -> i32 {
+    let defense = stack.defense_now();
     if !stack.flags.contains(StackFlags::DEFENDING) {
-        return stack.defense;
+        return defense;
     }
-    let pct = u32::from(stack.defense) * u32::from(params.defend_bonus_percent) / 100;
-    let bonus = pct.max(u32::from(params.defend_bonus_min));
-    u16::try_from(u32::from(stack.defense) + bonus).unwrap_or(u16::MAX)
+    let pct = defense.max(0) * i32::from(params.defend_bonus_percent) / 100;
+    defense.saturating_add(pct.max(i32::from(params.defend_bonus_min)))
 }
 
-/// The defense a creature that ignores `percent` % of it sees: `floor(defense · (100 − percent)
-/// / 100)` (Q19).
+/// The defense a creature that ignores `percent` % of it sees: `defense · (100 − percent) / 100`
+/// rounded toward 0 (Q19; rounded down for a defense of at least 0).
 // rule: BAT-DMG-006
-pub(crate) fn reduced_defense(defense: u16, percent: u8) -> u16 {
-    let kept = u32::from(defense) * u32::from(100 - percent.min(100)) / 100;
-    // `kept <= defense`.
-    u16::try_from(kept).unwrap_or(defense)
+pub(crate) fn reduced_defense(defense: i32, percent: u8) -> i32 {
+    // At most |defense| · 100: no overflow for a defense of an `i16` sum.
+    defense.saturating_mul(i32::from(100 - percent.min(100))) / 100
 }
 
 /// Heals the living `stack` by up to `hp` hit points, resurrecting creatures up to its count at

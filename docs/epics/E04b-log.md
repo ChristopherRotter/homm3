@@ -241,3 +241,66 @@ records how and why the tasks went.
   stack starts waiting.
 - **Not done:** the Sorcery specialist's growth in single precision turned out to concern every
   skill specialty and to need a contract change: OPEN-QUESTIONS Q45 for the checkpoint.
+
+### T3a — The effect list and the value spells (2026-10-06)
+
+- **Seam:** increment 2 is T3 in three parts, then T4 (Q46); the user chose T3a alone, with a
+  checkpoint after it to review the effect list and its measurements. Q45 decided: option (b),
+  in T3c.
+- **Survey** (`installation.md` §7.9, survey §14): the executable's timed-spell code decides the
+  rules: duration = power + 0x4E4DB0 (Collar +1, Ring +2, Cape +3 of Conjuring, Ring of the Magi
+  +50 with its parts); a cast changes the stack's record (Weakness takes at most the attack,
+  Stone Skin, Prayer and Haste add) and the end gives it back; Bloodlust, Precision, Bless,
+  Curse, Slow, Mirth, Sorrow, Fortune and Misfortune are read while active; durations fall for
+  every stack at the start of a round (M-3 settled); a dead stack loses its spells; Disrupting
+  Ray lowers the defense at every cast (at least to 0) and is never ended (S-17 narrowed to
+  Berserk and Bind); only Bless/Curse and Haste/Slow end each other; a re-cast keeps the first
+  value and the longer duration. The user chose the executable over VCMI on both points and
+  amended ADR-0014 point 5 (Q47).
+- **Content (pack format v5):** `SpellEffect::Timed(TimedChange)` with 14 changes,
+  `SpellMagic.mind`, `.mass_from`, `.duration`, `.cumulative`, `Spell.counters` (resolved after
+  the pack's spells are registered); hero effect `spell_duration`; HER-BAT-014 (one
+  `BattleEffect::SpellDuration`, the sum, each artifact type once, parts included). The harvester
+  derives target, side, mass, `mind` and the war-machine exclusion from the flag word and takes
+  the changes, counters and Disrupting Ray's permanence from `[[spells.timed]]` (source
+  `exe-timed-spells`, an `original-data` source that names a `docs/` file); the Conjuring
+  artifacts and the Ring of the Magi leave the pending list. Ruleset hash v17.
+- **Battle:** `h3_battle::effects`: the effect list (one entry per stack and spell, sorted, stack
+  runs found by binary search, 32 entries reserved at the start and on every fork), each entry
+  with rounds (or permanent), the first value and what it added to attack, defense and speed;
+  `SpellValues` on each stack recomputed from its entries; `Stack::attack_now`, `defense_now`,
+  `speed_now` (movement, turn order, tactics hand-over); Bless/Curse fix the base damage; morale
+  and luck: the side's sum clamped, then the spells, then caps and minimums; effects fall at the
+  round start and end with `EffectEnded`; dead stacks lose them at the end of the command. Mind
+  immunity (BAT-MAG-005), mass versions (BAT-MAG-003), BAT-MAG-009 to 011. Attack and defense are
+  signed in the damage formula (below 0 after Disrupting Ray and the end of Stone Skin). State
+  hash v20.
+- **Sim and ABI:** observation encoding v6 (attack, defense, speed with the effects; seven effect
+  values and eight effect slots per stack; 54 features per stack), C ABI v9 (ADR-0011 amended);
+  the action encoding is unchanged (mass versions use the target `none`).
+- **Workload:** the synthetic pack gains eight timed spells (every change, mass versions, a mind
+  spell, counters, a permanent cumulative spell) and the Storm Orb `spell_duration`; in `full`
+  Brea knows Hasten, Drag and Fury (Basic Storm), Corwin Zeal, Gloom, Boon, Bane and Corrode with
+  Expert Stone and a duration bonus of 2. All three golden replays re-recorded (the ruleset
+  hash; `full-s3`: 7 casts, three of them timed).
+- **Measurements** (this sandbox, 2 cores): `BattleState` 2 640 → 3 336 bytes (16 bytes of
+  materialised spell values per stack slot, 672; the list's header, 24); a fork allocates once
+  (512 bytes reserved). Criterion: `clone BattleState` ≈ 264 ns, `BattleEnv::fork` ≈ 1.44 µs
+  (T2c in this kind of sandbox ≈ 300 ns and 1.23 µs; noisy). `h3 bench` full ≈ 179 k steps/s.
+  Engine overhead without timed spells: the T2e scenario on the new engine 375 486 125 Ir for the
+  same 8 993 steps (+0.17 %). New workload: 10 162 steps, 451 356 012 Ir (≈ 44.4 k Ir per step:
+  longer battles and larger spell books for `castable_spells`); `bench-check` re-baselined for
+  that reason.
+- **Tests:** `tests/timed.rs` (durations and the bonus, counters and the coexisting pairs,
+  re-cast, Weakness and Disrupting Ray at 0 and a negative defense, mass versions and mind
+  immunity, Prayer on a war machine, death, Bloodlust/Precision/Bless in damage, Slow's rounding
+  exact and single, morale and luck stages, public and hashed effects); the property tests cast
+  every timed test spell and check the list (sorted, living stacks, values equal to a
+  recompute); content, pack, harvester, derivation and observation tests.
+- **Agent decisions (change freely):** a duration of at least 1 round (power 0 does not occur in
+  the original); several `speed_percent` effects: the strongest; several `maximum_damage` or
+  `minimum_damage` effects add, and a maximum wins over a minimum (the original checks Bless
+  first); a dead stack's effects end without an event; the Defend bonus of a defense below 0 is
+  the minimum; the observation shows a stack's first eight effects.
+- **Not done (later tasks):** the specialties in timed spells (T3c; `SpellSpecialty` stays
+  damage-only); creature casters' re-casts (T7); Magic Mirror on negative timed spells (T4).

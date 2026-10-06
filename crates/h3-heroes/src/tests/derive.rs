@@ -759,8 +759,14 @@ fn magic_ruleset() -> Ruleset {
                 },
                 damage(SpellScope::School(key("t:fire")), 5000),
             ],
-            "t:helm" => vec![damage(SpellScope::Spell(key("t:bolt")), 2500)],
-            "t:eye" => vec![damage(SpellScope::School(key("t:air")), 5000)],
+            "t:helm" => vec![
+                damage(SpellScope::Spell(key("t:bolt")), 2500),
+                HeroEffectDef::SpellDuration { rounds: 2 },
+            ],
+            "t:eye" => vec![
+                damage(SpellScope::School(key("t:air")), 5000),
+                HeroEffectDef::SpellDuration { rounds: 3 },
+            ],
             "t:hook" => vec![
                 damage(SpellScope::All, 100),
                 HeroEffectDef::MagicResistance { bp: 500 },
@@ -781,7 +787,7 @@ fn magic_ruleset() -> Ruleset {
     compile(p).unwrap()
 }
 
-// covers: HER-BAT-011, HER-BAT-012, HER-BAT-013
+// covers: HER-BAT-011, HER-BAT-012, HER-BAT-013, HER-BAT-014
 #[test]
 fn magic_and_spell_bonuses_are_derived() {
     use h3_content::{SchoolId, SpellScope};
@@ -832,6 +838,8 @@ fn magic_and_spell_bonuses_are_derived() {
             // Expert Logistics' 20 % grown by 50 %, then the hook's 5 % (HER-BAT-013).
             BattleEffect::MagicResistance { bp: 3000 },
             BattleEffect::MagicResistance { bp: 500 },
+            // The helm's 2 and the eye's 3 rounds, the eye once (HER-BAT-014).
+            BattleEffect::SpellDuration { rounds: 5 },
         ]
     );
     // Without the book no spell book; the highest mastery counts; an empty book is a book.

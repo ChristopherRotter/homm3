@@ -191,6 +191,23 @@ pub enum EventKind {
         /// Creatures killed.
         kills: u32,
     },
+    /// A timed spell took effect on a stack, or renewed its effect (BAT-MAG-009).
+    EffectApplied {
+        /// The stack.
+        target: StackId,
+        /// The spell.
+        spell: SpellId,
+        /// Rounds left, the current one included; `None` for the rest of the battle.
+        rounds: Option<u16>,
+    },
+    /// A timed effect ended: its last round passed or a counter spell ended it (BAT-MAG-009,
+    /// BAT-MAG-010). Effects of a stack that dies end without an event.
+    EffectEnded {
+        /// The stack.
+        target: StackId,
+        /// The spell.
+        spell: SpellId,
+    },
     /// The battle ended (BAT-END-001/002).
     BattleEnded {
         /// A victory of one side, or a draw.

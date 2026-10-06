@@ -205,7 +205,7 @@ fn extra_retaliations_allow_more_retaliations_per_round() {
     assert_eq!(s.stacks()[3].retaliations_left, 0);
     assert!(s.stacks()[3].flags.contains(StackFlags::RETALIATED));
     // A new round restores them.
-    crate::turn::start_round(&mut s, &mut NoopSink);
+    crate::turn::start_round(&mut s, &r, &mut NoopSink);
     assert_eq!(s.stacks()[3].retaliations_left, 2);
     assert!(!s.stacks()[3].flags.contains(StackFlags::RETALIATED));
 }

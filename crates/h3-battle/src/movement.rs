@@ -44,9 +44,9 @@ pub(crate) fn fits(field: Field, mover: &Stack, hex: Hex, blocked: HexSet) -> bo
         })
 }
 
-/// Computes where `mover` (stack `id`) can move this turn: within its speed.
+/// Computes where `mover` (stack `id`) can move this turn: within its speed now (BAT-MAG-011).
 pub(crate) fn reachable(state: &BattleState, field: Field, id: StackId, mover: &Stack) -> Reach {
-    reachable_within(state, field, id, mover, mover.speed)
+    reachable_within(state, field, id, mover, mover.speed_now())
 }
 
 /// Computes where `mover` (stack `id`) can move within `range`. Walkers take up to `range` steps

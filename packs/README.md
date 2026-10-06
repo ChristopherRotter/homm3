@@ -185,6 +185,24 @@ side = "any"                       # v4: whose stacks it reaches: any (default) 
 excludes = ["war_machine"]         # v4: creature flags a reached stack may not have (`requires`: must have)
 effects = [{ kind = "damage" }]    # v4: what it does to each stack reached (default none: not castable)
 
+[[spell]]                          # a timed spell (pack format v5, E04b T3a)
+id = "hasten"
+category = "combat"
+level = 1
+schools = ["storm"]
+cost = [6, 5, 5, 5]
+effect = [3, 3, 5, 5]              # v: the change by mastery
+polarity = "positive"
+target = "stack"
+side = "own"
+mass = "expert"                    # v5: from this mastery no target, every stack it may reach
+mind = false                       # v5: a mind spell (creatures with flag mind_immune are immune)
+excludes = ["war_machine"]
+duration = "rounds"                # v5: rounds (default: power + duration bonuses) | permanent
+cumulative = false                 # v5: a cast on an affected stack applies its changes again
+counters = ["slow"]                # v5: spells whose effects a cast ends on each stack it affects
+effects = [{ kind = "timed", change = "speed" }]
+
 [[secondary_skill]]
 id = "marksmanship"
 name = "Marksmanship"
@@ -218,8 +236,15 @@ or with `target = "none"` a spell reaches every stack that meets its conditions 
 `stack` only: stacks struck in all by mastery, 1..=16; each further stack takes `factor_bp` of
 the previous one's value) are exclusive; `requires`/`excludes` are creature flags (not both for one
 flag). Effect kinds (at most four, distinct): `damage` (the value `power × power factor +
-effect[mastery]` as damage; BAT-MAG rules, E04b T2b/T2d). Later tasks add kinds (timed, dispel,
-heal, summon, …). Adventure spells have no battle magic; a spell without effects cannot be cast
+effect[mastery]` as damage; BAT-MAG rules, E04b T2b/T2d); `timed` (v5, E04b T3a: while the effect
+lasts, `change` alters the stack by `v = effect[mastery]`: `speed` + v (never on war machines),
+`speed_percent` × v % (rounded down, at least 1), `attack` + v, `attack_loss` − v (at most down to
+0), `defense` + v, `defense_loss` − v (at most down to 0, never given back), `melee_attack` /
+`ranged_attack` + v on melee / ranged attacks, `maximum_damage` (each creature deals its maximum +
+v), `minimum_damage` (its minimum − v, at least 1), `morale`, `morale_loss`, `luck`, `luck_loss`
+± v; BAT-MAG-009 to 011). `mass` needs target `stack`; `duration` and `cumulative` need a timed
+effect, `counters` too (and may not name the spell itself). Later tasks add kinds (dispel, heal,
+summon, …). Adventure spells have no battle magic; a spell without effects cannot be cast
 yet. `side` limits whose stacks a stack spell may be *aimed* at (BAT-MAG-003; a chain's jumps
 and an area reach either side): the harvester writes `enemy` for every single-target spell that
 harms (the original's target test), and the gap-fill file for Chain Lightning, which is neutral
@@ -257,6 +282,7 @@ different creatures or statistics.
 | `spell_damage` | `bp` (≥ 1), `school` or `spell` (neither: every spell) | more damage from the hero's spells of that scope; sums per scope (Sorcery, the Orbs, Ciele; HER-BAT-012) |
 | `spell_book` | — | the hero can cast the spells it knows (the Spell Book; HER-BAT-011) |
 | `magic_resistance` | `bp` (1..=10000) | the hero's stacks resist hostile spells: subtracted from their creatures' share; several sources add (Resistance, three artifacts; HER-BAT-013, BAT-MAG-008) |
+| `spell_duration` | `rounds` (≥ 1) | the hero's timed spells last longer; artifact types add once each, a combination's parts too (the Conjuring artifacts, Ring of the Magi; HER-BAT-014, BAT-MAG-010) |
 
 The three `*_specialty` kinds are allowed in a hero's `specialty` only.
 
@@ -432,8 +458,9 @@ effects = [{ kind = "morale", amount = 1 }, { kind = "luck_at_most", value = 0, 
                                  # (BAT-HER-006), `alignment_group` (BAT-HER-007; at most 16
                                  # factions), `spell_damage` (`bp`, `school` or `spell` by key),
                                  # `spell_specialty` (`spell`, `bp_per_level`, `level`: the
-                                 # hero's level; BAT-MAG-004) and `magic_resistance` (`bp`;
-                                 # BAT-MAG-008), parameters as in "Hero effects"
+                                 # hero's level; BAT-MAG-004), `magic_resistance` (`bp`;
+                                 # BAT-MAG-008) and `spell_duration` (`rounds`; BAT-MAG-010),
+                                 # parameters as in "Hero effects"
 
 [[attacker]]                     # one entry per stack
 slot = 0

@@ -280,4 +280,10 @@ pub enum BattleEffect {
         /// Resistance in basis points.
         bp: u16,
     },
+    /// The hero's timed spells last `rounds` rounds longer (the Conjuring artifacts, one effect
+    /// per source; E04b T3a; HER-BAT-014, BAT-MAG-010).
+    SpellDuration {
+        /// Extra rounds.
+        rounds: u8,
+    },
 }

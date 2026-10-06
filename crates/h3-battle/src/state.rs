@@ -13,6 +13,7 @@ use h3_contracts::{
 };
 use h3_kernel::{CanonicalHash, FixedVec, Rng, StateHasher, StreamId};
 
+use crate::effects::{ActiveEffect, Effects, SpellValues};
 use crate::error::SetupError;
 use crate::event::{NoopSink, Sink};
 use crate::geometry::{Field, Footprint, Hex, HexSet};
@@ -37,7 +38,7 @@ pub const STACK_CAPACITY: usize = 2 * SIDE_STACK_SLOTS;
 const _: () = assert!(MAX_ARMY_SLOTS + MAX_WAR_MACHINES <= SIDE_STACK_SLOTS);
 
 /// Version of the battle-state hash encoding ([`BattleState::state_hash`]). Bump on any change.
-pub const BATTLE_STATE_HASH_VERSION: u32 = 19;
+pub const BATTLE_STATE_HASH_VERSION: u32 = 20;
 
 /// Index of a stack in its battle (attacker stacks first, in slot order, then defender stacks).
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Default)]
@@ -333,9 +334,9 @@ pub struct Stack {
     pub base_count: u32,
     /// Hit points of the top creature (`1..=max_hp` while alive, 0 when dead).
     pub top_hp: u32,
-    /// Attack skill.
+    /// Attack skill before timed effects ([`Stack::attack_now`]).
     pub attack: u16,
-    /// Defense skill (before the Defend bonus).
+    /// Defense skill before timed effects and the Defend bonus ([`Stack::defense_now`]).
     pub defense: u16,
     /// Minimum damage per creature.
     pub damage_min: u16,
@@ -343,7 +344,7 @@ pub struct Stack {
     pub damage_max: u16,
     /// Hit points per creature.
     pub max_hp: u32,
-    /// Speed.
+    /// Speed before timed effects ([`Stack::speed_now`]).
     pub speed: u8,
     /// Shots left (BAT-RNG-001).
     pub shots: u16,
@@ -362,6 +363,8 @@ pub struct Stack {
     pub regeneration: u16,
     /// Per-round flags.
     pub flags: StackFlags,
+    /// What its timed effects change, materialised from the battle's effect list (BAT-MAG-011).
+    pub spells: SpellValues,
 }
 
 impl Stack {
@@ -411,6 +414,13 @@ impl Stack {
             id,
             StackTraits::of(creature, abilities),
         );
+        let speed = u8::try_from(changed(
+            creature.speed.saturating_add(native).into(),
+            speed,
+            0,
+            u8::MAX.into(),
+        ))
+        .unwrap_or(u8::MAX);
         Self {
             creature: id,
             side,
@@ -440,13 +450,7 @@ impl Stack {
             .min(damage_max),
             damage_max,
             max_hp,
-            speed: u8::try_from(changed(
-                creature.speed.saturating_add(native).into(),
-                speed,
-                0,
-                u8::MAX.into(),
-            ))
-            .unwrap_or(u8::MAX),
+            speed,
             shots: creature.shots,
             retaliations,
             retaliations_left: retaliations,
@@ -455,6 +459,7 @@ impl Stack {
             traits,
             regeneration,
             flags: StackFlags::default(),
+            spells: SpellValues::new(speed),
         }
     }
 }
@@ -494,6 +499,7 @@ impl Default for Stack {
             traits: StackTraits::default(),
             regeneration: 0,
             flags: StackFlags::default(),
+            spells: SpellValues::default(),
         }
     }
 }
@@ -557,6 +563,7 @@ impl CanonicalHash for Stack {
         h.write_u32(self.traits.bits());
         h.write_u16(self.regeneration);
         h.write_u8(self.flags.bits());
+        self.spells.hash_into(h);
     }
 }
 
@@ -592,6 +599,8 @@ pub struct BattleState {
     pub(crate) modifiers: Modifiers,
     pub(crate) heroes: [Option<HeroRecord>; 2],
     pub(crate) terrain: Option<TerrainId>,
+    /// The timed effects on stacks (ADR-0014 point 5).
+    pub(crate) effects: Effects,
     pub(crate) rng: Rng,
 }
 
@@ -713,6 +722,7 @@ impl BattleState {
             modifiers: Modifiers::new(),
             heroes,
             terrain: setup.terrain,
+            effects: Effects::new(),
             rng: Rng::for_stream(seed, StreamId::BATTLE),
         };
         morale::setup(&mut state, ruleset, &setup.heroes);
@@ -726,6 +736,11 @@ impl BattleState {
             turn::activate_next(&mut state, ruleset, sink);
         }
         Ok(state)
+    }
+
+    /// The timed effects on stacks, by stack and spell (public, ADR-0014 point 8).
+    pub fn effects(&self) -> &[ActiveEffect] {
+        self.effects.as_slice()
     }
 
     /// What both sides see of `side`'s hero, if the side has one (BAT-HER-001).
@@ -919,7 +934,9 @@ impl BattleState {
     /// chance, the tent's control if any: heal bonus; whether it has a `NoRetreat` effect, the
     /// surrender discount, the funds; v18: the casts this round after the maximum mana and the
     /// magic after the funds: spell book and cast spells as bits, masteries, spell bonuses),
-    /// terrain, RNG state.
+    /// terrain, RNG state. v19 (E04b T2d): the hero's resistance. v20 (E04b T3a): each stack's
+    /// spell values after its flags, the hero's duration bonus after its resistance, the effect
+    /// list before the RNG.
     pub fn state_hash(&self) -> u64 {
         h3_kernel::hash::hash_of(self)
     }
@@ -983,6 +1000,7 @@ impl CanonicalHash for BattleState {
         self.modifiers.hash_into(h);
         self.heroes.hash_into(h);
         self.terrain.hash_into(h);
+        self.effects.hash_into(h);
         self.rng.hash_into(h);
     }
 }

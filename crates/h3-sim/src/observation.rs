@@ -1,4 +1,4 @@
-//! Flat observation encoding (version 5) of a per-viewer [`Observation`].
+//! Flat observation encoding (version 6) of a per-viewer [`Observation`].
 //!
 //! Layout: [`GLOBALS`] global features, then two hero blocks of [`HERO_FEATURES`] features (the
 //! viewer's, then the opponent's), then [`STACK_FEATURES`] features for each of the
@@ -23,20 +23,29 @@
 //! damage_min, damage_max, speed, x, y, acted, waited, retaliated, defending, active, morale,
 //! luck, shots, retaliations left (255 = unlimited), had good morale this round, two-hex,
 //! flies, shooter, war machine, no distance penalty, shoots when adjacent, the hero's
-//! regeneration in hit points]` (the last three can come from the side's hero, BAT-HER-006).
+//! regeneration in hit points]` (the last three can come from the side's hero, BAT-HER-006),
+//! then its timed effects (BAT-MAG-009 to 011): `[melee attack bonus, ranged attack bonus,
+//! blessed, cursed, the blessing's or curse's value, speed share in percent (100: not slowed),
+//! number of effects]` and [`EFFECT_SLOTS`] pairs `[spell handle + 1 (0: empty), rounds left
+//! (−1: for the rest of the battle)]`, the stack's first effects by spell handle. Attack,
+//! defense and speed are the values now, with the effects (attack without the melee or ranged
+//! bonus; attack and defense may be below 0).
 //!
 //! v3 (E03 T9): the two hero globals and the per-stack features from `morale` on. v4 (E04a
 //! T11b): the tactics, retreat and surrender globals, the hero blocks (instead of the two hero
 //! globals) and the last three per-stack features. v5 (E04b T2c): the hero's casts this round,
-//! school masteries and spell book; 42 stack slots.
+//! school masteries and spell book; 42 stack slots. v6 (E04b T3a): attack, defense and speed
+//! with the timed effects, and the per-stack effect features.
 
-use h3_battle::{HeroView, Observation, OwnHeroView, STACK_CAPACITY, StackFlags, StackTraits};
+use h3_battle::{
+    DamageRoll, HeroView, Observation, OwnHeroView, STACK_CAPACITY, StackFlags, StackTraits,
+};
 use h3_content::{MAX_SPELL_SCHOOLS, MAX_SPELLS};
 use h3_contracts::BattleSide;
 
 /// Version of this encoding; bump on any change of the layout above (and bump the C ABI
 /// version with it, ADR-0011).
-pub const OBSERVATION_ENCODING_VERSION: u32 = 5;
+pub const OBSERVATION_ENCODING_VERSION: u32 = 6;
 
 /// Global features.
 pub const GLOBALS: usize = 11;
@@ -50,8 +59,14 @@ const HERO_SCHOOLS: usize = HERO_PUBLIC_FEATURES + HERO_PRIVATE_VALUES;
 const HERO_BOOK: usize = HERO_SCHOOLS + MAX_SPELL_SCHOOLS;
 /// Features per hero block.
 pub const HERO_FEATURES: usize = HERO_BOOK + MAX_SPELLS;
+/// Effects per stack the encoding shows.
+pub const EFFECT_SLOTS: usize = 8;
+/// The per-stack features before the effect features.
+const STACK_VALUES: usize = 31;
+/// The effect values before the effect slots.
+const EFFECT_VALUES: usize = 7;
 /// Features per stack slot.
-pub const STACK_FEATURES: usize = 31;
+pub const STACK_FEATURES: usize = STACK_VALUES + EFFECT_VALUES + 2 * EFFECT_SLOTS;
 /// Offset of the viewer's hero block; the opponent's follows it.
 pub const HEROES: usize = GLOBALS;
 /// Offset of the first stack slot.
@@ -148,11 +163,11 @@ pub fn encode(obs: &Observation, field_width: u8, out: &mut [f32]) -> Result<(),
             s.count as f32,
             s.top_hp as f32,
             s.max_hp as f32,
-            f32::from(s.attack),
-            f32::from(s.defense),
+            (s.attack_now(false) - i32::from(s.spells.melee_attack)) as f32,
+            s.defense_now() as f32,
             f32::from(s.damage_min),
             f32::from(s.damage_max),
-            f32::from(s.speed),
+            f32::from(s.speed_now()),
             x,
             y,
             flag(s.flags.contains(StackFlags::ACTED)),
@@ -173,7 +188,30 @@ pub fn encode(obs: &Observation, field_width: u8, out: &mut [f32]) -> Result<(),
             flag(s.has(StackTraits::SHOOTS_WHEN_ADJACENT)),
             f32::from(s.regeneration),
         ];
-        f.copy_from_slice(&values);
+        f[..STACK_VALUES].copy_from_slice(&values);
+        let sp = s.spells;
+        let (blessed, cursed, change) = match sp.damage {
+            DamageRoll::Random => (0.0, 0.0, 0),
+            DamageRoll::Maximum(v) => (1.0, 0.0, v),
+            DamageRoll::Minimum(v) => (0.0, 1.0, v),
+        };
+        let effects = obs.effects.iter().filter(|e| e.stack.index() == i);
+        f[STACK_VALUES..STACK_VALUES + EFFECT_VALUES].copy_from_slice(&[
+            f32::from(sp.melee_attack),
+            f32::from(sp.ranged_attack),
+            blessed,
+            cursed,
+            f32::from(change),
+            f32::from(sp.speed_percent),
+            effects.clone().count() as f32,
+        ]);
+        let slots = f[STACK_VALUES + EFFECT_VALUES..].chunks_exact_mut(2);
+        for (slot, e) in slots.zip(effects) {
+            slot.copy_from_slice(&[
+                f32::from(e.spell.raw()) + 1.0,
+                e.rounds.map_or(-1.0, f32::from),
+            ]);
+        }
     }
     Ok(())
 }
@@ -216,9 +254,12 @@ mod tests {
         // Morale +1 (one-faction army, BAT-MOR-002), luck 0, no shots, one retaliation, two-hex
         // walker, nothing from a hero.
         assert_eq!(
-            s0[19..],
+            s0[19..31],
             [1.0, 0.0, 0.0, 1.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
         );
+        // No timed effects: no bonuses, not slowed, no entries.
+        assert_eq!(s0[31..38], [0.0, 0.0, 0.0, 0.0, 0.0, 100.0, 0.0]);
+        assert!(s0[38..].iter().all(|v| *v == 0.0));
         // Unused slots are zero; the tail beyond OBSERVATION_LEN is untouched.
         assert!(
             out[STACKS + 2 * STACK_FEATURES..OBSERVATION_LEN]
@@ -228,7 +269,7 @@ mod tests {
         assert_eq!(out[OBSERVATION_LEN], 9.0);
         let mut short = vec![0.0; 3];
         assert_eq!(encode(&obs, 17, &mut short), Err(OBSERVATION_LEN));
-        assert_eq!(OBSERVATION_LEN, 11 + 2 * (11 + 10 + 4 + 128) + 31 * 42);
+        assert_eq!(OBSERVATION_LEN, 11 + 2 * (11 + 10 + 4 + 128) + 54 * 42);
         assert_eq!(coords(20, 0), (0.0, 20.0));
     }
 
@@ -268,9 +309,10 @@ mod tests {
             0.0,
         ];
         // Masteries by school handle (storm, stone) and the books by spell handle (spark,
-        // cinders, arc, blight, ward, …).
-        let schools = [[1.0, 0.0, 0.0, 0.0], [0.0, 2.0, 0.0, 0.0]];
-        let books: [&[usize]; 2] = [&[0, 1, 2, 3, 4], &[0, 2, 3]];
+        // cinders, arc, blight, ward, farsight, glare, hasten, drag, fury, zeal, gloom, boon,
+        // bane, corrode).
+        let schools = [[1.0, 0.0, 0.0, 0.0], [0.0, 3.0, 0.0, 0.0]];
+        let books: [&[usize]; 2] = [&[0, 1, 2, 3, 4, 7, 8, 9], &[0, 2, 3, 10, 11, 12, 13, 14]];
         let price = |side| s.surrender_price(&r, side).unwrap() as f32;
         assert!(price(Attacker) > 0.0 && price(Defender) > 0.0);
         let brea_private = [
@@ -381,6 +423,50 @@ mod tests {
         st.regeneration = 50;
         encode(&obs, 17, &mut out).unwrap();
         assert_eq!(stack(&out, 0)[19..24], [2.0, -1.0, 0.0, 1.0, 1.0]);
-        assert_eq!(stack(&out, 0)[28..], [1.0, 1.0, 50.0]);
+        assert_eq!(stack(&out, 0)[28..31], [1.0, 1.0, 50.0]);
+    }
+
+    #[test]
+    fn encodes_the_timed_effects_of_stacks() {
+        use h3_battle::{ActiveEffect, StackId};
+        let (r, setup) = h3_pack::synthetic(h3_pack::SYNTHETIC_FULL).unwrap();
+        let s = BattleState::new(&r, &setup, 1).unwrap();
+        let mut obs = observe(&s, &r, BattleSide::Attacker);
+        let spell = |k: &str| r.spell_by_key(k).unwrap();
+        let entry = |stack, spell, rounds| ActiveEffect {
+            stack: StackId(stack),
+            spell,
+            rounds,
+            value: 1,
+            attack: 0,
+            defense: 0,
+            speed: 0,
+        };
+        obs.effects = std::vec![
+            entry(0, spell("synthetic:hasten"), Some(3)),
+            entry(0, spell("synthetic:corrode"), None),
+        ];
+        let st = &mut obs.stacks.as_mut_slice()[0];
+        st.spells.attack = -2;
+        st.spells.defense = -40;
+        st.spells.speed = 1;
+        st.spells.melee_attack = 3;
+        st.spells.ranged_attack = 4;
+        st.spells.damage = DamageRoll::Minimum(2);
+        st.spells.speed_percent = 50;
+        let (attack, defense) = (f32::from(st.attack) - 2.0, f32::from(st.defense) - 40.0);
+        let mut out = vec![0.0; OBSERVATION_LEN];
+        encode(&obs, 17, &mut out).unwrap();
+        let f = stack(&out, 0);
+        assert_eq!([f[7], f[8], f[11]], [attack, defense, 1.0]);
+        assert_eq!(f[31..38], [3.0, 4.0, 0.0, 1.0, 2.0, 50.0, 2.0]);
+        let hasten = f32::from(spell("synthetic:hasten").raw()) + 1.0;
+        let corrode = f32::from(spell("synthetic:corrode").raw()) + 1.0;
+        assert_eq!(f[38..42], [hasten, 3.0, corrode, -1.0]);
+        assert!(f[42..].iter().all(|v| *v == 0.0));
+        obs.stacks.as_mut_slice()[0].spells.damage = DamageRoll::Maximum(1);
+        encode(&obs, 17, &mut out).unwrap();
+        assert_eq!(stack(&out, 0)[33..36], [1.0, 0.0, 1.0]);
+        assert!(stack(&out, 1)[38..].iter().all(|v| *v == 0.0));
     }
 }

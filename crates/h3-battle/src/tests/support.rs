@@ -7,10 +7,11 @@ use std::vec::Vec;
 
 use h3_content::{
     AbilityDef, AuraTarget, BattleParamsDef, ContentKey, ContentPack, CreatureDef, CreatureFlag,
-    CreatureFlags, CreatureInfoDef, FactionDef, Formation, HeroClassDef, HeroTypeDef, ObstacleDef,
-    PackManifest, ProfileDef, ResourceDef, Ruleset, SpellArea, SpellCategory, SpellChain, SpellDef,
-    SpellEffect, SpellMagic, SpellPolarity, SpellSchoolDef, SpellTarget, StartingStackDef,
-    SurrenderDef, TargetConditions, TargetSide, TerrainDef,
+    CreatureFlags, CreatureInfoDef, EffectDuration, FactionDef, Formation, HeroClassDef,
+    HeroTypeDef, ObstacleDef, PackManifest, ProfileDef, ResourceDef, Ruleset, SpellArea,
+    SpellCategory, SpellChain, SpellDef, SpellEffect, SpellMagic, SpellPolarity, SpellSchoolDef,
+    SpellTarget, StartingStackDef, SurrenderDef, TargetConditions, TargetSide, TerrainDef,
+    TimedChange,
 };
 use h3_contracts::{Army, ArmyStack, BattleHero, BattleSetup, BattleSide};
 
@@ -386,6 +387,8 @@ pub const CREATURES: &[Creature] = &[
             "spell_vulnerability=bolt:100",
         ],
     ),
+    // Timed spells (BAT-MAG-009 to 011): immune to mind spells.
+    ("statue", 10, 10, 2, 2, 10, 5, &["mind_immune"]),
 ];
 
 /// The traits of a test creature as creature info: flags, abilities, shots and faction.
@@ -704,7 +707,11 @@ pub fn ruleset_with(profile: &str, edit: impl FnOnce(&mut BattleParamsDef)) -> R
                 name: String::from(name),
             })
             .collect(),
-        spells: SPELLS.iter().map(|&spell| spell_def(spell)).collect(),
+        spells: SPELLS
+            .iter()
+            .map(|&spell| spell_def(spell))
+            .chain(TIMED.iter().map(|&spell| timed_def(spell)))
+            .collect(),
         hero_classes: vec![HeroClassDef {
             key: ContentKey::new("t", "knight").unwrap(),
             name: String::from("Knight"),
@@ -830,6 +837,220 @@ pub const SPELLS: &[SpellSpec] = &[
     ),
 ];
 
+/// A timed test spell (BAT-MAG-009 to 011): name, positive, changes, effect by mastery, the
+/// spell it counters, mass at Expert, a mind spell, war machines excluded.
+pub type TimedSpec = (
+    &'static str,
+    bool,
+    &'static [TimedChange],
+    [u16; 4],
+    Option<&'static str>,
+    bool,
+    bool,
+    bool,
+);
+
+/// The timed test spells, all level 1 in the air school, costing 5/4/4/4, after the original's
+/// (survey §14): `haste` and `sloth` (Slow) counter each other; `ray` (Disrupting Ray) is
+/// permanent and cumulative; `bless` and `curse` counter each other.
+pub const TIMED: &[TimedSpec] = &[
+    (
+        "haste",
+        true,
+        &[TimedChange::Speed],
+        [3, 3, 5, 5],
+        Some("sloth"),
+        true,
+        false,
+        true,
+    ),
+    (
+        "sloth",
+        false,
+        &[TimedChange::SpeedPercent],
+        [75, 75, 50, 50],
+        Some("haste"),
+        true,
+        false,
+        true,
+    ),
+    (
+        "prayer",
+        true,
+        &[
+            TimedChange::Attack,
+            TimedChange::Defense,
+            TimedChange::Speed,
+        ],
+        [2, 2, 4, 4],
+        None,
+        true,
+        false,
+        false,
+    ),
+    (
+        "weaken",
+        false,
+        &[TimedChange::AttackLoss],
+        [3, 3, 6, 6],
+        None,
+        true,
+        false,
+        false,
+    ),
+    (
+        "ray",
+        false,
+        &[TimedChange::DefenseLoss],
+        [3, 3, 4, 5],
+        None,
+        false,
+        false,
+        false,
+    ),
+    (
+        "skin",
+        true,
+        &[TimedChange::Defense],
+        [3, 3, 6, 6],
+        None,
+        true,
+        false,
+        false,
+    ),
+    (
+        "lust",
+        true,
+        &[TimedChange::MeleeAttack],
+        [3, 3, 6, 6],
+        None,
+        true,
+        false,
+        true,
+    ),
+    (
+        "aim",
+        true,
+        &[TimedChange::RangedAttack],
+        [3, 3, 6, 6],
+        None,
+        true,
+        false,
+        false,
+    ),
+    (
+        "bless",
+        true,
+        &[TimedChange::MaximumDamage],
+        [0, 0, 1, 1],
+        Some("curse"),
+        true,
+        false,
+        false,
+    ),
+    (
+        "curse",
+        false,
+        &[TimedChange::MinimumDamage],
+        [0, 0, 1, 1],
+        Some("bless"),
+        true,
+        false,
+        false,
+    ),
+    (
+        "mirth",
+        true,
+        &[TimedChange::Morale],
+        [1, 1, 2, 2],
+        None,
+        true,
+        true,
+        false,
+    ),
+    (
+        "sorrow",
+        false,
+        &[TimedChange::MoraleLoss],
+        [1, 1, 2, 2],
+        None,
+        true,
+        true,
+        false,
+    ),
+    (
+        "fortune",
+        true,
+        &[TimedChange::Luck],
+        [1, 1, 2, 2],
+        None,
+        true,
+        false,
+        false,
+    ),
+    (
+        "misfortune",
+        false,
+        &[TimedChange::LuckLoss],
+        [1, 1, 2, 2],
+        None,
+        true,
+        false,
+        false,
+    ),
+];
+
+/// The definition of a timed test spell.
+fn timed_def(
+    (name, positive, changes, effect, counter, mass, mind, no_machines): TimedSpec,
+) -> SpellDef {
+    let permanent = name == "ray";
+    SpellDef {
+        key: ContentKey::new("t", name).unwrap(),
+        name: String::from(name),
+        category: SpellCategory::Combat,
+        level: 1,
+        schools: vec![ContentKey::new("t", "air").unwrap()],
+        cost: [5, 4, 4, 4],
+        power: 0,
+        effect,
+        polarity: if positive {
+            SpellPolarity::Positive
+        } else {
+            SpellPolarity::Negative
+        },
+        magic: SpellMagic {
+            target: SpellTarget::Stack,
+            side: if positive {
+                TargetSide::Own
+            } else {
+                TargetSide::Enemy
+            },
+            conditions: TargetConditions {
+                requires: CreatureFlags::default(),
+                excludes: if no_machines {
+                    CreatureFlags::default().with(CreatureFlag::WarMachine)
+                } else {
+                    CreatureFlags::default()
+                },
+            },
+            effects: changes.iter().map(|&c| SpellEffect::Timed(c)).collect(),
+            mind,
+            mass_from: mass.then_some(3),
+            duration: if permanent {
+                EffectDuration::Permanent
+            } else {
+                EffectDuration::Rounds
+            },
+            cumulative: permanent,
+            ..SpellMagic::default()
+        },
+        counters: counter
+            .map(|c| vec![ContentKey::new("t", c).unwrap()])
+            .unwrap_or_default(),
+    }
+}
+
 /// The definition of a test spell.
 fn spell_def((name, category, schools, target, side): SpellSpec) -> SpellDef {
     let castable = !matches!(name, "gaze" | "ward" | "portal");
@@ -875,7 +1096,9 @@ fn spell_def((name, category, schools, target, side): SpellSpec) -> SpellDef {
             } else {
                 vec![]
             },
+            ..SpellMagic::default()
         },
+        counters: vec![],
     }
 }
 

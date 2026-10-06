@@ -33,8 +33,9 @@ use h3_sim::{
 /// an action is an [`H3Action`] (an entry and the cast's spell and target heads), served head by
 /// head by `h3_env_legal_mask`, `h3_env_spell_mask`, `h3_env_target_mask` and
 /// `h3_env_second_mask` (ADR-0014 point 9); `h3_env_step` takes an `H3Action`; the stack slots
-/// grow to 42.
-pub const H3_ABI_VERSION: u32 = 8;
+/// grow to 42. v9 (E04b T3a): observation encoding v6 (the timed effects of stacks;
+/// `h3_observation_len` grows).
+pub const H3_ABI_VERSION: u32 = 9;
 
 /// `H3StepResult.result`: the battle is not decided (still running, or truncated).
 pub const H3_RESULT_NONE: i32 = -1;
@@ -529,7 +530,7 @@ mod tests {
 
     #[test]
     fn abi_smoke_create_step_destroy() {
-        assert_eq!(h3_abi_version(), 8);
+        assert_eq!(h3_abi_version(), 9);
         assert_eq!(h3_action_count() as usize, ACTION_COUNT);
         assert_eq!(h3_spell_count() as usize, SPELL_COUNT);
         assert_eq!(h3_target_count() as usize, TARGET_COUNT);

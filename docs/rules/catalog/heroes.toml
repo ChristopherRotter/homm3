@@ -463,3 +463,23 @@ numeric  = "integer"
   url        = "https://heroes.thelazy.net/index.php/Resistance"
   retrieved  = "2026-10-03"
   confidence = "high"
+
+[[rule]]
+id       = "HER-BAT-014"
+title    = "The battle hero's spell duration bonus"
+context  = "heroes"
+status   = "implemented"
+summary  = "The battle hero has one SpellDuration effect with the sum of the spell_duration effects of its effect sources (HER-BAT-001), each artifact type once and a combination's parts as well (Collar of Conjuring 1, Ring of Conjuring 2, Cape of Conjuring 3, Ring of the Magi 50: worn as the combination 56), saturated at 255; none without any. The battle adds it to the caster's power for the duration of its timed spells (BAT-MAG-010)."
+numeric  = "integer"
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (docs/formats/installation.md §7.9): 0x4E4DB0, added to the spell power for spells with flag 0x4, returns +1 for artifact 76, +2 for 77, +3 for 78 and +50 for 139, each found once among the worn slots or as a part of a worn combination"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "vcmi"
+  ref        = "config/artifacts.json: collarOfConjuring 1, ringOfConjuring 2, capeOfConjuring 3, ringOfTheMagi 50 (SPELL_DURATION); lib/mapObjects/CGHeroInstance.cpp L855-L862 getEnchantPower: spell power plus the SPELL_DURATION bonuses"
+  url        = "https://github.com/vcmi/vcmi/blob/1.7.5/lib/mapObjects/CGHeroInstance.cpp#L855-L862"
+  retrieved  = "2026-10-06"
+  confidence = "high"

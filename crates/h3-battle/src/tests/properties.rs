@@ -184,7 +184,28 @@ fn make_setup(
     }
     let magic = machines.rotate_left(13);
     let book: Vec<SpellId> = [
-        "bolt", "smite", "ward", "nova", "portal", "chain", "storm", "ring",
+        "bolt",
+        "smite",
+        "ward",
+        "nova",
+        "portal",
+        "chain",
+        "storm",
+        "ring",
+        "haste",
+        "sloth",
+        "prayer",
+        "weaken",
+        "ray",
+        "skin",
+        "lust",
+        "aim",
+        "bless",
+        "curse",
+        "mirth",
+        "sorrow",
+        "fortune",
+        "misfortune",
     ]
     .iter()
     .map(|k| r.spell_by_key(&std::format!("t:{k}")).unwrap())
@@ -204,6 +225,7 @@ fn make_setup(
             level: 5,
         },
         BattleEffect::MagicResistance { bp: 500 },
+        BattleEffect::SpellDuration { rounds: 1 },
     ]);
     let defender_hero = (machines & (1 << 44) != 0).then(|| {
         let mut h = hero(r);
@@ -394,8 +416,9 @@ proptest! {
                         prop_assert!(a.count <= b.count || (drained && a.count <= a.base_count));
                         prop_assert!(a.is_alive() || a.top_hp == 0);
                         prop_assert!(!a.is_alive() || (1..=a.max_hp).contains(&a.top_hp));
-                        // Morale and luck are materialised once and stay in range.
-                        prop_assert_eq!((a.morale, a.luck), (b.morale, b.luck));
+                        // Morale and luck are materialised and change only with the stack's timed
+                        // effects (BAT-MAG-011); they stay in range.
+                        prop_assert!((a.morale, a.luck) == (b.morale, b.luck) || a.spells != b.spells);
                         prop_assert!((-3..=3).contains(&a.morale) && (0..=3).contains(&a.luck));
                         // Ownership isolation: the actor's command cannot move or re-stat enemy
                         // stacks, and only changes the enemy stacks it strikes (or that
@@ -412,6 +435,23 @@ proptest! {
                             }
                         }
                     }
+                }
+            }
+            // The effect list (ADR-0014 point 5): sorted by stack and spell, each once, on
+            // living stacks only, timed spells only, never at 0 rounds; each stack's values are
+            // those of its entries (BAT-MAG-009 to 011).
+            let effects = state.effects();
+            prop_assert!(effects.windows(2).all(|w| (w[0].stack, w[0].spell) < (w[1].stack, w[1].spell)));
+            for e in effects {
+                prop_assert!(state.stacks()[e.stack.index()].is_alive());
+                prop_assert!(e.rounds != Some(0));
+                prop_assert!(r.spell(e.spell).unwrap().magic.is_timed());
+            }
+            for i in 0..state.stacks().len() {
+                let mut fresh = state.clone();
+                crate::effects::recompute(&mut fresh, &r, StackId(u8::try_from(i).unwrap()));
+                if state.stacks()[i].is_alive() {
+                    prop_assert_eq!(fresh.stacks()[i].spells, state.stacks()[i].spells);
                 }
             }
             // A battle that is over has no active stack, and vice versa.

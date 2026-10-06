@@ -12,12 +12,12 @@ use h3_content::{
     AbilityDef, Affects, AreaShot, ArtifactClass, ArtifactDef, ArtifactSlotDef,
     ArtifactSlotOverride, AuraTarget, BattleParamsDef, CompileError, ContentKey, ContentPack,
     CreatureDef, CreatureFlag, CreatureFlags, CreatureInfoDef, CreatureOverride, CreaturePatch,
-    CreatureSelector, CreatureStat, CreatureTypeId, FactionDef, Formation, HeroClassDef,
-    HeroEffect, HeroEffectDef, HeroParamsDef, HeroTypeDef, KeyError, MAX_ALIGNMENT_FACTIONS,
-    ObstacleDef, PackManifest, ProfileDef, ResourceDef, Ruleset, SchoolId, SecondarySkillDef,
-    SpellArea, SpellCategory, SpellChain, SpellDef, SpellEffect, SpellId, SpellMagic,
-    SpellPolarity, SpellSchoolDef, SpellScope, SpellTarget, StartingStackDef, SurrenderDef,
-    TargetConditions, TargetSide, TerrainDef,
+    CreatureSelector, CreatureStat, CreatureTypeId, EffectDuration, FactionDef, Formation,
+    HeroClassDef, HeroEffect, HeroEffectDef, HeroParamsDef, HeroTypeDef, KeyError, MASTERY_NAMES,
+    MAX_ALIGNMENT_FACTIONS, ObstacleDef, PackManifest, ProfileDef, ResourceDef, Ruleset, SchoolId,
+    SecondarySkillDef, SpellArea, SpellCategory, SpellChain, SpellDef, SpellEffect, SpellId,
+    SpellMagic, SpellPolarity, SpellSchoolDef, SpellScope, SpellTarget, StartingStackDef,
+    SurrenderDef, TargetConditions, TargetSide, TerrainDef, TimedChange,
 };
 use h3_contracts::{
     Army, ArmyStack, BallistaControl, BattleEffect, BattleHero, BattleSetup, BattleSide,
@@ -398,7 +398,8 @@ struct OverrideDto {
 }
 
 /// `[[spell]]` (pack format v3, E04a T3): a spell's data row; since format v4 (E04b T2a) its
-/// battle magic (targeting and effects).
+/// battle magic (targeting and effects); since format v5 (E04b T3a) mind spells, mass versions,
+/// durations, cumulative spells, counters and timed effects.
 #[derive(Deserialize)]
 #[serde(deny_unknown_fields)]
 struct SpellDto {
@@ -426,6 +427,23 @@ struct SpellDto {
     excludes: Vec<String>,
     #[serde(default)]
     effects: Vec<SpellEffectDto>,
+    #[serde(default)]
+    mind: bool,
+    mass: Option<String>,
+    #[serde(default)]
+    duration: EffectDurationDto,
+    #[serde(default)]
+    cumulative: bool,
+    #[serde(default)]
+    counters: Vec<String>,
+}
+
+#[derive(Deserialize, Default)]
+#[serde(rename_all = "snake_case")]
+enum EffectDurationDto {
+    #[default]
+    Rounds,
+    Permanent,
 }
 
 #[derive(Deserialize, Default)]
@@ -469,6 +487,7 @@ struct SpellChainDto {
 enum SpellEffectDto {
     // A struct variant, so that unknown keys are rejected.
     Damage {},
+    Timed { change: String },
 }
 
 impl SpellDto {
@@ -510,9 +529,30 @@ impl SpellDto {
                 .effects
                 .iter()
                 .map(|e| match e {
-                    SpellEffectDto::Damage {} => SpellEffect::Damage,
+                    SpellEffectDto::Damage {} => Ok(SpellEffect::Damage),
+                    SpellEffectDto::Timed { change } => TimedChange::from_name(change)
+                        .map(SpellEffect::Timed)
+                        .ok_or_else(|| {
+                            PackError::Syntax(format!("unknown timed change `{change}`"))
+                        }),
                 })
-                .collect(),
+                .collect::<Result<_, _>>()?,
+            mind: self.mind,
+            mass_from: self
+                .mass
+                .as_deref()
+                .map(|name| {
+                    (1u8..)
+                        .zip(MASTERY_NAMES)
+                        .find_map(|(m, n)| (n == name).then_some(m))
+                        .ok_or_else(|| PackError::Syntax(format!("unknown mastery `{name}`")))
+                })
+                .transpose()?,
+            duration: match self.duration {
+                EffectDurationDto::Rounds => EffectDuration::Rounds,
+                EffectDurationDto::Permanent => EffectDuration::Permanent,
+            },
+            cumulative: self.cumulative,
         })
     }
 }
@@ -775,6 +815,9 @@ enum EffectDto {
     MagicResistance {
         bp: u16,
     },
+    SpellDuration {
+        rounds: u8,
+    },
 }
 
 /// Whose stacks a morale or luck effect changes, as files write it (`own` by default, `enemy`,
@@ -959,6 +1002,7 @@ impl EffectDto {
             },
             Self::SpellBook {} => HeroEffect::SpellBook,
             Self::MagicResistance { bp } => HeroEffect::MagicResistance { bp },
+            Self::SpellDuration { rounds } => HeroEffect::SpellDuration { rounds },
         })
     }
 }
@@ -1175,6 +1219,7 @@ pub fn parse_pack(text: &str) -> Result<ContentPack, PackError> {
                 power: s.power,
                 effect: s.effect,
                 magic,
+                counters: references(&pack_id, &s.counters)?,
                 polarity: match s.polarity {
                     SpellPolarityDto::Positive => SpellPolarity::Positive,
                     SpellPolarityDto::Neutral => SpellPolarity::Neutral,
@@ -1675,6 +1720,11 @@ pub enum EffectEntry {
         /// Resistance in basis points.
         bp: u16,
     },
+    /// [`BattleEffect::SpellDuration`].
+    SpellDuration {
+        /// Extra rounds.
+        rounds: u8,
+    },
 }
 
 impl SelectorEntry {
@@ -1805,6 +1855,7 @@ impl EffectEntry {
                 level,
             },
             Self::MagicResistance { bp } => BattleEffect::MagicResistance { bp },
+            Self::SpellDuration { rounds } => BattleEffect::SpellDuration { rounds },
         })
     }
 
@@ -1875,6 +1926,7 @@ impl EffectEntry {
                 level,
             },
             BattleEffect::MagicResistance { bp } => Self::MagicResistance { bp },
+            BattleEffect::SpellDuration { rounds } => Self::SpellDuration { rounds },
             BattleEffect::AlignmentGroup { factions } => Self::AlignmentGroup {
                 factions: factions
                     .factions()
@@ -2399,11 +2451,14 @@ mod tests {
         expected.tactics = 2;
         expected.magic.mana = 40;
         expected.magic.max_mana = 40;
-        // The four damage spells and Ward with Basic Storm magic (E04b T2c).
+        // The four damage spells, Ward and three timed spells with Basic Storm magic (E04b T2c,
+        // T3a).
         expected.magic.spell_book = Some(
-            ["spark", "cinders", "arc", "blight", "ward"]
-                .map(|k| ruleset.spell_by_key(&format!("synthetic:{k}")).unwrap())
-                .to_vec(),
+            [
+                "spark", "cinders", "arc", "blight", "ward", "hasten", "drag", "fury",
+            ]
+            .map(|k| ruleset.spell_by_key(&format!("synthetic:{k}")).unwrap())
+            .to_vec(),
         );
         expected.magic.schools[0] = 1;
         expected.damage = DamageBonuses {
@@ -2429,8 +2484,9 @@ mod tests {
             },
         ];
         assert_eq!(setup.heroes[0], Some(expected.clone()));
-        // The defender's Corwin (E04a T11c): Gunnery, a 10 % discount and nine stack effects,
-        // written and read back unchanged; both owners can pay for a surrender.
+        // The defender's Corwin (E04a T11c): Gunnery, a 10 % discount, nine stack effects and a
+        // spell duration bonus (E04b T3a), written and read back unchanged; both owners can pay
+        // for a surrender.
         let corwin = setup.heroes[1].as_ref().unwrap();
         assert_eq!(
             corwin.hero_type,
@@ -2438,8 +2494,9 @@ mod tests {
         );
         assert_eq!(
             (corwin.surrender_discount_bp, corwin.effects.len()),
-            (1000, 9)
+            (1000, 10)
         );
+        assert_eq!(corwin.effects[9], BattleEffect::SpellDuration { rounds: 2 });
         assert_eq!(corwin.war_machines.ballista, expected.war_machines.ballista);
         assert_eq!(
             &HeroEntry::of(corwin, &ruleset)
@@ -3703,7 +3760,7 @@ mod tests {
         use h3_content::SpellCategory;
         let r = compile(&[SYNTHETIC_PACK, SYNTHETIC_EXT_PACK], "synthetic:faithful").unwrap();
         assert_eq!(r.spell_schools().len(), 2);
-        assert_eq!(r.spells().len(), 7);
+        assert_eq!(r.spells().len(), 15);
         // Battle magic (format v4): every target kind, an area, a chain, target conditions.
         let magic = |k: &str| r.spell(r.spell_by_key(k).unwrap()).unwrap().magic.clone();
         let damage = vec![SpellEffect::Damage];
@@ -3748,6 +3805,55 @@ mod tests {
         assert_eq!(ward.polarity, SpellPolarity::Positive);
         let glare = r.spell(r.spell_by_key("synthetic:glare").unwrap()).unwrap();
         assert_eq!(glare.category, SpellCategory::Ability);
+        // Timed spells (format v5): changes, mass versions, mind, counters, a permanent and
+        // cumulative spell.
+        let id = |k: &str| r.spell_by_key(k).unwrap();
+        let hasten = r.spell(id("synthetic:hasten")).unwrap();
+        assert_eq!(
+            hasten.magic,
+            SpellMagic {
+                target: SpellTarget::Stack,
+                side: TargetSide::Own,
+                conditions: TargetConditions {
+                    requires: CreatureFlags::default(),
+                    excludes: CreatureFlags::default().with(CreatureFlag::WarMachine),
+                },
+                effects: vec![SpellEffect::Timed(TimedChange::Speed)],
+                mass_from: Some(3),
+                ..SpellMagic::default()
+            }
+        );
+        assert_eq!(hasten.counters, vec![id("synthetic:drag")]);
+        assert!(magic("synthetic:fury").mind);
+        assert_eq!(magic("synthetic:zeal").effects.len(), 3);
+        let corrode = magic("synthetic:corrode");
+        assert_eq!(
+            (corrode.duration, corrode.cumulative, corrode.mass_from),
+            (EffectDuration::Permanent, true, None)
+        );
+        for (from, to, error) in [
+            (
+                "change = \"speed\" }]",
+                "change = \"warp\" }]",
+                "unknown timed change `warp`",
+            ),
+            (
+                "mass = \"expert\"",
+                "mass = \"grand\"",
+                "unknown mastery `grand`",
+            ),
+        ] {
+            let text = SYNTHETIC_PACK.replacen(from, to, 1);
+            assert_eq!(
+                parse_pack(&text).map(|_| ()),
+                Err(PackError::Syntax(error.into()))
+            );
+        }
+        for mastery in ["basic", "advanced"] {
+            let text =
+                SYNTHETIC_PACK.replacen("mass = \"expert\"", &format!("mass = \"{mastery}\""), 1);
+            assert!(parse_pack(&text).is_ok());
+        }
         assert_eq!(r.skills().len(), 13);
         let omens = r.skill(r.skill_by_key("synthetic:omens").unwrap()).unwrap();
         assert_eq!(

@@ -9,6 +9,7 @@ use h3_content::{Ruleset, SpellId};
 use h3_contracts::{BattleResult, BattleSide};
 
 use crate::combat::{can_shoot, melee, shoot};
+use crate::effects;
 use crate::error::CommandError;
 use crate::event::{Event, EventKind, Sink};
 use crate::geometry::{Field, Hex};
@@ -394,6 +395,8 @@ pub fn apply<S: Sink>(
         }
         Plan::Cast(cast) => magic::apply_cast(state, ruleset, cast, sink),
     }
+    // rule: BAT-MAG-010
+    effects::remove_dead(state);
     Ok(())
 }
 

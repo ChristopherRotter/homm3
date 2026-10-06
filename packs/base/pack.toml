@@ -3425,6 +3425,11 @@ cost = [5, 4, 4, 4]
 power = 0
 effect = [0, 0, 1, 1]
 polarity = "positive"
+target = "stack"
+side = "own"
+mass = "expert"
+counters = ["curse"]
+effects = [{ kind = "timed", change = "maximum_damage" }]
 
 [[spell]]
 id = "curse"  # original id 42
@@ -3436,6 +3441,11 @@ cost = [6, 5, 5, 5]
 power = 0
 effect = [0, 0, 1, 1]
 polarity = "negative"
+target = "stack"
+side = "enemy"
+mass = "expert"
+counters = ["bless"]
+effects = [{ kind = "timed", change = "minimum_damage" }]
 
 [[spell]]
 id = "bloodlust"  # original id 43
@@ -3447,6 +3457,11 @@ cost = [5, 4, 4, 4]
 power = 0
 effect = [3, 3, 6, 6]
 polarity = "positive"
+target = "stack"
+side = "own"
+mass = "expert"
+excludes = ["war_machine"]
+effects = [{ kind = "timed", change = "melee_attack" }]
 
 [[spell]]
 id = "precision"  # original id 44
@@ -3458,6 +3473,10 @@ cost = [8, 6, 6, 6]
 power = 0
 effect = [3, 3, 6, 6]
 polarity = "positive"
+target = "stack"
+side = "own"
+mass = "expert"
+effects = [{ kind = "timed", change = "ranged_attack" }]
 
 [[spell]]
 id = "weakness"  # original id 45
@@ -3469,6 +3488,10 @@ cost = [8, 6, 6, 6]
 power = 0
 effect = [3, 3, 6, 6]
 polarity = "negative"
+target = "stack"
+side = "enemy"
+mass = "expert"
+effects = [{ kind = "timed", change = "attack_loss" }]
 
 [[spell]]
 id = "stone_skin"  # original id 46
@@ -3480,6 +3503,10 @@ cost = [5, 4, 4, 4]
 power = 0
 effect = [3, 3, 6, 6]
 polarity = "positive"
+target = "stack"
+side = "own"
+mass = "expert"
+effects = [{ kind = "timed", change = "defense" }]
 
 [[spell]]
 id = "disrupting_ray"  # original id 47
@@ -3491,6 +3518,11 @@ cost = [10, 8, 8, 8]
 power = 0
 effect = [3, 3, 4, 5]
 polarity = "negative"
+target = "stack"
+side = "enemy"
+duration = "permanent"
+cumulative = true
+effects = [{ kind = "timed", change = "defense_loss" }]
 
 [[spell]]
 id = "prayer"  # original id 48
@@ -3502,6 +3534,10 @@ cost = [16, 12, 12, 12]
 power = 0
 effect = [2, 2, 4, 4]
 polarity = "positive"
+target = "stack"
+side = "own"
+mass = "expert"
+effects = [{ kind = "timed", change = "attack" }, { kind = "timed", change = "defense" }, { kind = "timed", change = "speed" }]
 
 [[spell]]
 id = "mirth"  # original id 49
@@ -3513,6 +3549,11 @@ cost = [12, 9, 9, 9]
 power = 0
 effect = [1, 1, 2, 2]
 polarity = "positive"
+target = "stack"
+side = "own"
+mass = "expert"
+mind = true
+effects = [{ kind = "timed", change = "morale" }]
 
 [[spell]]
 id = "sorrow"  # original id 50
@@ -3524,6 +3565,11 @@ cost = [16, 12, 12, 12]
 power = 0
 effect = [1, 1, 2, 2]
 polarity = "negative"
+target = "stack"
+side = "enemy"
+mass = "expert"
+mind = true
+effects = [{ kind = "timed", change = "morale_loss" }]
 
 [[spell]]
 id = "fortune"  # original id 51
@@ -3535,6 +3581,10 @@ cost = [7, 5, 5, 5]
 power = 0
 effect = [1, 1, 2, 2]
 polarity = "positive"
+target = "stack"
+side = "own"
+mass = "expert"
+effects = [{ kind = "timed", change = "luck" }]
 
 [[spell]]
 id = "misfortune"  # original id 52
@@ -3546,6 +3596,10 @@ cost = [12, 9, 9, 9]
 power = 0
 effect = [1, 1, 2, 2]
 polarity = "negative"
+target = "stack"
+side = "enemy"
+mass = "expert"
+effects = [{ kind = "timed", change = "luck_loss" }]
 
 [[spell]]
 id = "haste"  # original id 53
@@ -3557,6 +3611,12 @@ cost = [6, 5, 5, 5]
 power = 0
 effect = [3, 3, 5, 5]
 polarity = "positive"
+target = "stack"
+side = "own"
+mass = "expert"
+excludes = ["war_machine"]
+counters = ["slow"]
+effects = [{ kind = "timed", change = "speed" }]
 
 [[spell]]
 id = "slow"  # original id 54
@@ -3568,6 +3628,12 @@ cost = [6, 5, 5, 5]
 power = 0
 effect = [75, 75, 50, 50]
 polarity = "negative"
+target = "stack"
+side = "enemy"
+mass = "expert"
+excludes = ["war_machine"]
+counters = ["haste"]
+effects = [{ kind = "timed", change = "speed_percent" }]
 
 [[spell]]
 id = "slayer"  # original id 55
@@ -5810,25 +5876,28 @@ cost = { "gold" = 1500 }
 slot = "misc"
 
 [[artifact]]
-id = "collar_of_conjuring"  # original id 76; pending: E04b
+id = "collar_of_conjuring"  # original id 76
 name = "Collar of Conjuring"
 class = "treasure"
 cost = { "gold" = 500 }
 slot = "neck"
+effects = [{ kind = "spell_duration", rounds = 1 }]
 
 [[artifact]]
-id = "ring_of_conjuring"  # original id 77; pending: E04b
+id = "ring_of_conjuring"  # original id 77
 name = "Ring of Conjuring"
 class = "treasure"
 cost = { "gold" = 1000 }
 slot = "ring"
+effects = [{ kind = "spell_duration", rounds = 2 }]
 
 [[artifact]]
-id = "cape_of_conjuring"  # original id 78; pending: E04b
+id = "cape_of_conjuring"  # original id 78
 name = "Cape of Conjuring"
 class = "treasure"
 cost = { "gold" = 1500 }
 slot = "shoulders"
+effects = [{ kind = "spell_duration", rounds = 3 }]
 
 [[artifact]]
 id = "orb_of_the_firmament"  # original id 79

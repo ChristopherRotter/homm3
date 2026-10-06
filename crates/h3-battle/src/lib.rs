@@ -25,6 +25,7 @@ extern crate std;
 mod combat;
 mod command;
 mod damage;
+mod effects;
 mod error;
 mod event;
 mod flee;
@@ -42,6 +43,7 @@ mod turn;
 mod war;
 
 pub use command::{Command, apply, validate};
+pub use effects::{ActiveEffect, DamageRoll, EFFECT_CAPACITY, SpellValues};
 pub use error::{CommandError, HeroError, SetupError};
 pub use event::{Event, EventKind, NoopSink, Sink, StrikeFlags, Visibility};
 pub use geometry::{ATTACK_SLOTS, Direction, Field, Footprint, Hex, HexSet};

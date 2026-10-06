@@ -14,12 +14,12 @@ use crate::{
     cast_targets, castable_spells,
 };
 
-fn spell(r: &Ruleset, name: &str) -> SpellId {
+pub(super) fn spell(r: &Ruleset, name: &str) -> SpellId {
     r.spell_by_key(&std::format!("t:{name}")).unwrap()
 }
 
 /// A hero with spell power 3, 15 mana and `spells` in its book.
-fn mage(r: &Ruleset, spells: &[&str]) -> BattleHero {
+pub(super) fn mage(r: &Ruleset, spells: &[&str]) -> BattleHero {
     let mut h = hero(r);
     h.power = 3;
     h.magic.spell_book = Some(spells.iter().map(|s| spell(r, s)).collect());
@@ -28,7 +28,7 @@ fn mage(r: &Ruleset, spells: &[&str]) -> BattleHero {
 
 /// A battle with heroes and the stacks placed at `(x, y)`: `attacker` and `defender` as
 /// `(creature, count, x, y)`. The first attacker stack is active.
-fn arena(
+pub(super) fn arena(
     r: &Ruleset,
     heroes: [Option<BattleHero>; 2],
     attacker: &[(&'static str, u32, i32, i32)],
@@ -53,14 +53,14 @@ fn arena(
     s
 }
 
-fn cast(r: &Ruleset, name: &str, target: CastTarget) -> Command {
+pub(super) fn cast(r: &Ruleset, name: &str, target: CastTarget) -> Command {
     Command::Cast {
         spell: spell(r, name),
         target,
     }
 }
 
-fn stack(id: u8) -> CastTarget {
+pub(super) fn stack(id: u8) -> CastTarget {
     CastTarget::Stack(StackId(id))
 }
 

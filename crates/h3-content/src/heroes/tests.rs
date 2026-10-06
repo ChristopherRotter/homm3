@@ -11,7 +11,7 @@ use crate::pack::{
 };
 use crate::ruleset::Ruleset;
 use crate::ruleset::tests::{battle_def, creature, faction, key, manifest};
-use crate::spell::{SpellEffect, SpellTarget};
+use crate::spell::{SpellEffect, SpellTarget, TimedChange};
 
 fn school(k: &str) -> SpellSchoolDef {
     SpellSchoolDef {
@@ -36,6 +36,7 @@ fn spell(k: &str, schools: &[&str]) -> SpellDef {
             effects: vec![SpellEffect::Damage],
             ..SpellMagic::default()
         },
+        counters: vec![],
     }
 }
 
@@ -206,6 +207,68 @@ fn compiles_every_kind_with_resolved_references() {
     );
     assert!(r.upgrades(Handle::from_raw(99)).is_empty());
     assert!(r.hero_type(Handle::from_raw(9)).is_none());
+}
+
+/// A timed spell `k` of the test pack's air school.
+fn timed(k: &str) -> SpellDef {
+    let mut s = spell(k, &["t:air"]);
+    s.magic.effects = vec![SpellEffect::Timed(TimedChange::Speed)];
+    s
+}
+
+#[test]
+fn counters_resolve_within_and_across_packs() {
+    let mut p = pack();
+    // `t:haste` names `t:slow`, which comes after it.
+    let mut haste = timed("t:haste");
+    haste.counters = vec![key("t:slow")];
+    let mut slow = timed("t:slow");
+    slow.counters = vec![key("t:haste")];
+    p.spells.extend([haste, slow]);
+    let r = compile(&[p.clone()]).unwrap();
+    let id = |k: &str| r.spell_by_key(k).unwrap();
+    assert_eq!(r.spell(id("t:haste")).unwrap().counters, vec![id("t:slow")]);
+    assert_eq!(r.spell(id("t:slow")).unwrap().counters, vec![id("t:haste")]);
+    assert!(r.spell(id("t:bolt")).unwrap().counters.is_empty());
+    let mut later = timed("u:rush");
+    later.counters = vec![key("t:slow")];
+    let ext = ContentPack {
+        spells: vec![later],
+        ..ContentPack::new(manifest("u", &["t"]))
+    };
+    let r2 = compile(&[p.clone(), ext]).unwrap();
+    let rush = r2.spell_by_key("u:rush").unwrap();
+    assert_eq!(r2.spell(rush).unwrap().counters, vec![id("t:slow")]);
+    let mut other = p.clone();
+    other.spells[3].counters.clear();
+    assert_ne!(compile(&[other]).unwrap().content_hash(), r.content_hash());
+}
+
+#[test]
+fn counters_are_checked() {
+    let reason = "counters need a timed effect and may not name the spell itself";
+    let mut p = pack();
+    let mut haste = timed("t:haste");
+    haste.counters = vec![key("t:haste")];
+    p.spells.push(haste);
+    assert_eq!(fails(p), invalid("spell", "t:haste", reason));
+    let mut p = pack();
+    p.spells[0].counters = vec![key("t:gaze")];
+    assert_eq!(fails(p), invalid("spell", "t:bolt", reason));
+    let mut p = pack();
+    p.spells[0].counters = vec![key("t:nope")];
+    assert_eq!(
+        fails(p),
+        CompileError::UnknownReference {
+            kind: "spell",
+            key: "t:nope".into()
+        }
+    );
+    let mut p = pack();
+    let mut haste = timed("t:haste");
+    haste.counters = vec![key("t:bolt"), key("t:bolt")];
+    p.spells.push(haste);
+    assert_eq!(fails(p), CompileError::DuplicateKey("t:bolt".into()));
 }
 
 #[test]

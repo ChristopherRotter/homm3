@@ -4,11 +4,12 @@ Living state between sessions; every session reads it first. Rules (`docs/08-wor
 
 ## Current state
 
-- Branch `e04b-battle-magic` (created from `master` = the E04b refinement `3841f22`, on top of the merged E04a); increment 1 done (T1, T2a–T2e, batch 2a evaluated). **Increment 2 (Q46, 2026-10-06): T3 in three parts, then T4; T3a in progress** (the effect list and the 14 value spells; `docs/epics/E04b-battle-magic.md`, T3), then a checkpoint with the user. **In progress:** the survey is done (code reading `installation.md` §7.9, survey §14; Q47: the executable's counter pairs, ADR-0014 point 5 amended); next the pack format v5 and the effect list. Sandbox and syncing: `docs/08-work-process.md`, "Cloud sandbox and syncing" (`scripts/sandbox-setup.sh`).
+- Branch `e04b-battle-magic` (created from `master` = the E04b refinement `3841f22`, on top of the merged E04a); increment 1 done (T1, T2a–T2e, batch 2a evaluated). **Increment 2 (Q46): T3 in three parts, then T4; T3a done 2026-10-06. Waiting for the user's checkpoint** (review the effect list and its measurements; confirm T3b, alone or with T3c). Sandbox and syncing: `docs/08-work-process.md`, "Cloud sandbox and syncing" (`scripts/sandbox-setup.sh`).
 - **E04b (battle magic) is refined** (Q41, `docs/epics/E04b-battle-magic.md`): increments with a user checkpoint each; only the current increment's tasks are refined.
-- **Done:** survey `docs/rules/surveys/E04b-magic.md` (§12 the executable's code, §13 batch 2a), ADR-0014 accepted (Q42), design note `docs/epics/E04b-design.md` (T3 onwards). The 13 damage spells are castable by heroes: BAT-MAG-001 to 008 after the code (`docs/formats/installation.md` §7.8, targeting re-read in T2e) and batch 2a's observations, HER-BAT-011 to 013, the factorized casting action (T2c). T2e corrected Chain Lightning's aim (enemies only), area spells' targets (any hex outside the side columns) and resistance (no fizzle from the centre stack), and the tactics hand-over (BAT-TAC-002: rounds with Wait; Q40 answered).
-- **Open for later tasks:** batch 2a R6's costs (a dead Pegasus' surcharge or the Mages' discount; T7 reads the cost code first); Q43 (sprite offset, keep the approximation); Q45 decided: option (b) in T3c (skill specialties' rates in single precision across the seam).
-- Versions: state hash v19, ruleset hash v16, replay format v15, action encoding v9, C ABI v8, observation encoding v5.
+- **Done:** survey `docs/rules/surveys/E04b-magic.md` (§12–§14), ADR-0014 accepted (Q42; point 5 amended, Q47), design note `docs/epics/E04b-design.md` (T5 onwards). The 13 damage spells (BAT-MAG-001 to 008) and the 14 value spells (Haste, Slow, Bloodlust, Precision, Weakness, Stone Skin, Disrupting Ray, Prayer, Bless, Curse, Mirth, Sorrow, Fortune, Misfortune; BAT-MAG-009 to 011, `h3_battle::effects`) are castable by heroes, with mass versions, mind immunity and the Conjuring durations (HER-BAT-014), after the executable's code (`installation.md` §7.8, §7.9).
+- **Next:** T3b (Shield, Air Shield, the four Protections with S-19, Fire Shield, Slayer, Frenzy with S-16, Counterstrike; Dispel, Cure), T3c (specialties in timed spells: STUB-0002; Q45 option (b); batch 2b), then T4.
+- **Open for later tasks:** batch 2a R6's costs (T7 reads the cost code first); Q43 (sprite offset, keep the approximation); creature casters' re-casts (T7: the first value stays).
+- Versions: state hash v20, ruleset hash v17, replay format v15, action encoding v9, C ABI v9, observation encoding v6; pack format v5.
 - Working agreement: increments of a couple of tasks with a user checkpoint (Q41); the user confirms seams and ADRs; token efficiency beats speed (AGENTS.md); the user plays experiment maps in SoD with plain HD and commits the results.
 
 ## Standing traps
@@ -50,6 +51,10 @@ Living state between sessions; every session reads it first. Rules (`docs/08-wor
 
 ## Recent sessions
 
+### 2026-10-06 (nineteenth) — E04b T3a: the effect list and the value spells
+
+Sandbox session; the user cut increment 2 (Q46: T3a alone, then a checkpoint; Q45 option (b) in T3c). Read the executable's timed-spell code (`installation.md` §7.9, survey §14): durations, what a cast changes and the end gives back, rounds fall at the round start, Disrupting Ray never ends; the user chose the executable's counter pairs and amended ADR-0014 point 5 (Q47). Built pack format v5, HER-BAT-014, BAT-MAG-009 to 011 (`h3_battle::effects`), observation v6, C ABI v9; golden replays and `bench-check` re-baselined (new workload; +0.17 % on the old one). Detail: `docs/epics/E04b-log.md` (T3a).
+
 ### 2026-10-06 (eighteenth) — E04b T2e: batch 2a folded in, increment 1 done
 
 Sandbox session; the user committed batch 2a's results and chose T2e alone as the seam. Confirmed: Chain Lightning's screen geometry and ties, the damage order and rounding, immunities, the Ballista-turn cast. Refuted and fixed after re-reading the targeting code (`installation.md` §7.8): Chain Lightning only at enemies, area spells at any hex, no fizzle from an area spell's centre stack, the tactics hand-over (rounds with Wait, Q40); a stack that always resists is no target; `SpellDamage` carries value and caster damage. `full-s3` and `bench-check` re-baselined. Q45 opened. Detail: `docs/epics/E04b-log.md` (T2e).
@@ -57,7 +62,3 @@ Sandbox session; the user committed batch 2a's results and chose T2e alone as th
 ### 2026-10-06 (seventeenth) — E04b T2c and T2d: the factorized action, the damage spells after the code
 
 Sandbox session; the user confirmed T2c + T2d, then batch 2a, and kept T2b's decisions. T2c (`b7b152a`): 21 stack slots per side, action encoding v9, C ABI v8, observation v5. T2d: the executable's spell code read (`installation.md` §7.8; M-1, M-2, M-6 settled); the user decided (Q44) the specialty contract change, Chain Lightning by screen pixels (checked in batch 2a; sprite offset Q43) and single-precision resistance (Q-0005); seven creature abilities, the hero's `magic_resistance`, BAT-MAG-003 to 008. Then batch 2a compiled (spells in experiment specs). Detail: `docs/epics/E04b-log.md`.
-
-### 2026-10-05 (sixteenth) — E04b T2a and T2b: spell content, the hero's magic, casting
-
-Sandbox session; the user confirmed T2a–T2d, T2a + T2b now. T2a (`92bbdd4`): pack format v4 `SpellMagic` for the 13 damage spells (flag word, gap-fill), hero effects `school_mastery`, `spell_damage`, `spell_book`, specialty growth (wiki SoD: 3 %/level), HER-BAT-011/012. T2b: `h3_battle::magic`, `Command::Cast`, BAT-MAG-001 to 004, formats, property tests with casts. Detail and decisions: `docs/epics/E04b-log.md`.

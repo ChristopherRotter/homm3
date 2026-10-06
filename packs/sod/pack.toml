@@ -114,10 +114,11 @@ slot = "base:misc"
 parts = ["base:charm_of_mana", "base:talisman_of_mana", "base:mystic_orb_of_mana"]
 
 [[artifact]]
-id = "ring_of_the_magi"  # original id 139; pending: E04b
+id = "ring_of_the_magi"  # original id 139
 name = "Ring of the Magi"
 class = "relic"
 slot = "base:ring"
+effects = [{ kind = "spell_duration", rounds = 50 }]
 parts = ["base:collar_of_conjuring", "base:ring_of_conjuring", "base:cape_of_conjuring"]
 
 [[artifact]]

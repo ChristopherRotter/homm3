@@ -49,6 +49,8 @@ Language-specific bindings only (locks out other ecosystems); a network protocol
   `h3_target_count` size the heads; `h3_env_spell_mask`, `h3_env_target_mask` and
   `h3_env_second_mask` serve each head's mask conditioned on the earlier choices (ADR-0014
   point 9). Covers action encoding v9 and observation encoding v5.
+- **ABI v9** (E04b T3a): observation encoding v6 (each stack's timed effects; the length
+  grows). No function changes.
 
 ## Revision history
 
@@ -56,3 +58,4 @@ Language-specific bindings only (locks out other ecosystems); a network protocol
 - 2026-09-30: Amended by E01 (ABI v1 surface and smoke test).
 - 2026-10-01: Amended by E03 T9 (ABI v2: battle result with draws; encodings tied to the ABI version).
 - 2026-10-06: Amended by E04b T2c (ABI v8: the factorized action).
+- 2026-10-06: Amended by E04b T3a (ABI v9: observation encoding v6).

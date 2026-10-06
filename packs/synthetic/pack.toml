@@ -290,6 +290,142 @@ cost = [0, 0, 0, 0]
 effect = [0, 0, 0, 0]
 polarity = "negative"
 
+# Timed spells (pack format v5, E04b T3a): every timed change, a mass version, a mind spell,
+# counters and a permanent cumulative spell appear at least once.
+[[spell]]
+id = "hasten"
+name = "Hasten"
+category = "combat"
+level = 1
+schools = ["storm"]
+cost = [6, 5, 5, 5]
+effect = [3, 3, 5, 5]               # v by mastery
+polarity = "positive"
+target = "stack"
+side = "own"
+mass = "expert"                     # from Expert no target: every stack it may reach
+excludes = ["war_machine"]
+counters = ["drag"]                 # a cast ends these spells' effects
+effects = [{ kind = "timed", change = "speed" }]
+
+[[spell]]
+id = "drag"
+name = "Drag"
+category = "combat"
+level = 1
+schools = ["storm"]
+cost = [6, 5, 5, 5]
+effect = [75, 75, 50, 50]
+polarity = "negative"
+target = "stack"
+side = "enemy"
+mass = "expert"
+excludes = ["war_machine"]
+counters = ["hasten"]
+effects = [{ kind = "timed", change = "speed_percent" }]
+
+[[spell]]
+id = "fury"
+name = "Fury"
+category = "combat"
+level = 2
+schools = ["storm"]
+cost = [8, 6, 6, 6]
+effect = [1, 1, 2, 2]
+polarity = "positive"
+target = "stack"
+side = "own"
+mass = "expert"
+mind = true                         # mind_immune creatures are immune
+effects = [
+    { kind = "timed", change = "melee_attack" },
+    { kind = "timed", change = "ranged_attack" },
+    { kind = "timed", change = "morale" },
+    { kind = "timed", change = "luck" },
+]
+
+[[spell]]
+id = "zeal"
+name = "Zeal"
+category = "combat"
+level = 3
+schools = ["stone"]
+cost = [12, 10, 10, 10]
+effect = [2, 2, 4, 4]
+polarity = "positive"
+target = "stack"
+side = "own"
+mass = "expert"
+effects = [
+    { kind = "timed", change = "attack" },
+    { kind = "timed", change = "defense" },
+    { kind = "timed", change = "speed" },
+]
+
+[[spell]]
+id = "gloom"
+name = "Gloom"
+category = "combat"
+level = 2
+schools = ["stone"]
+cost = [8, 6, 6, 6]
+effect = [1, 1, 2, 2]
+polarity = "negative"
+target = "stack"
+side = "enemy"
+mass = "expert"
+mind = true
+effects = [
+    { kind = "timed", change = "attack_loss" },
+    { kind = "timed", change = "morale_loss" },
+    { kind = "timed", change = "luck_loss" },
+]
+
+[[spell]]
+id = "boon"
+name = "Boon"
+category = "combat"
+level = 1
+schools = ["stone"]
+cost = [5, 4, 4, 4]
+effect = [0, 0, 1, 1]
+polarity = "positive"
+target = "stack"
+side = "own"
+mass = "expert"
+counters = ["bane"]
+effects = [{ kind = "timed", change = "maximum_damage" }]
+
+[[spell]]
+id = "bane"
+name = "Bane"
+category = "combat"
+level = 1
+schools = ["stone"]
+cost = [5, 4, 4, 4]
+effect = [0, 0, 1, 1]
+polarity = "negative"
+target = "stack"
+side = "enemy"
+mass = "expert"
+counters = ["boon"]
+effects = [{ kind = "timed", change = "minimum_damage" }]
+
+[[spell]]
+id = "corrode"
+name = "Corrode"
+category = "combat"
+level = 2
+schools = ["stone"]
+cost = [10, 8, 8, 8]
+effect = [3, 3, 4, 5]
+polarity = "negative"
+target = "stack"
+side = "enemy"
+duration = "permanent"              # rounds (default) | permanent
+cumulative = true                   # every cast applies its changes again
+effects = [{ kind = "timed", change = "defense_loss" }]
+
 [[secondary_skill]]
 id = "marksmanship"
 name = "Marksmanship"
@@ -557,6 +693,7 @@ slot = "charm"
 effects = [
     { kind = "spell_damage", bp = 5000, school = "storm" },
     { kind = "spell_damage", bp = 2500, spell = "spark" },
+    { kind = "spell_duration", rounds = 2 },      # timed spells last 2 rounds longer
 ]
 
 [[artifact]]

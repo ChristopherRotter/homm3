@@ -82,7 +82,11 @@ pub(crate) fn phase(ruleset: &Ruleset, heroes: &[Option<HeroRecord>; 2]) -> Opti
 /// the lower army slot (the id makes the key unique).
 fn order_key(id: u8, s: &Stack) -> (bool, u8, u8, u8) {
     let waited = s.flags.contains(StackFlags::WAITED);
-    let speed = if waited { s.speed } else { u8::MAX - s.speed };
+    let speed = if waited {
+        s.speed_now()
+    } else {
+        u8::MAX - s.speed_now()
+    };
     (waited, speed, s.slot, id)
 }
 
@@ -162,7 +166,7 @@ pub(crate) fn skip<S: Sink>(
 pub(crate) fn end<S: Sink>(state: &mut BattleState, ruleset: &Ruleset, sink: &mut S) {
     state.tactics = None;
     sink.emit(Event::public(EventKind::TacticsEnded));
-    turn::start_round(state, sink);
+    turn::start_round(state, ruleset, sink);
     turn::activate_next(state, ruleset, sink);
 }
 
