@@ -100,3 +100,44 @@ records how and why the tasks went.
 - **Verification:** golden replays re-recorded (state hash v18, replay format v14; the same
   commands).
 
+
+### T2c — The sim (2026-10-06)
+
+- **Checkpoint:** the user confirmed T2c + T2d with batch 2a and kept T2b's three decisions
+  (Q44). The baseline verify of `84d877b` (T2b) was green in full this session (coverage,
+  determinism, bench-check −1.1 %, original data).
+- **Stack slots:** `SIDE_STACK_SLOTS` = 21, `STACK_CAPACITY` = 42 (ADR-0014 point 6; a compile-time
+  check that army slots and war machines fit). The creation limit of 20 moves to T6 with its
+  readers. `BattleState` 2 448 → 2 624 bytes.
+- **Action encoding v9** (`h3_sim::action`): `Action { entry, spell, target, second }`; the dense
+  entries grow to 42 stack slots and gain `HERO_CAST` and `CREATURE_CAST` (never legal until T7);
+  heads: spell by handle (`SPELL_COUNT` = `MAX_SPELLS` = 128), targets `0` none, `1 + h` hex,
+  `256 + s` stack (`TARGET_COUNT` = 298). Masks per head conditioned on the earlier choices
+  (`legal_mask`, `spell_mask`, `target_mask`, `second_mask`); `BattleEnv::step` takes an `Action`.
+  `END_TACTICS`, `RETREAT`, `SURRENDER` are public.
+- **C ABI v8:** `H3Action` by value in `h3_env_step`, `h3_spell_count`, `h3_target_count`,
+  `h3_env_spell_mask`, `h3_env_target_mask`, `h3_env_second_mask`; `include/h3.h`; the C smoke
+  test plays the full scenario choosing every head from its mask (ADR-0011 amended).
+- **Observation encoding v5:** the hero block gains its casts this round (public), the four
+  school masteries and the spell book as 128 features (private); 42 stack slots.
+- **Workload:** both heroes of `full` cast (Brea: the four damage spells and Ward, Basic Storm,
+  power 2, 40 mana; Corwin: Spark, Arc, Blight, Advanced Stone, power 3, 40 mana). The random agent
+  (`rollout::choose`) treats the hero's cast as one more entry, then takes a uniform castable spell
+  and a uniform target; scenarios without spell books draw exactly as before (`duel-s1` and
+  `skirmish-s7` unchanged). `full-s3` re-recorded: 12 casts (only Spark is castable until T2d).
+- **Measurements** (this sandbox, 2 cores): `h3 bench --games 20` 11 100 steps instead of 13 744
+  (spells shorten the battles), 457 942 318 Ir instead of 509 946 255: ≈ 41.3 k Ir per step
+  instead of ≈ 37.1 k (+11 %: the agent asks for the castable spells every step); `bench-check`
+  re-baselined for that reason. `h3 bench` full 300 games ≈ 148–150 k steps/s, the T2b build in the
+  same sandbox ≈ 138–160 k (noise); after the change `check_spell` borrows the hero record
+  instead of copying its 168 bytes. Criterion: `clone BattleState` ≈ 300 ns, `BattleEnv::fork` ≈
+  1.23 µs (the T2b build in the same sandbox, measured under load, ≈ 400 ns and 1.46 µs: this
+  sandbox's wall clock is too noisy to compare; E04a's 183 ns came from another machine).
+- **Tests:** layout, round trips, the non-cast heads, an exhaustive cast check (every spell of the
+  ruleset and every target: the masks allow exactly what `apply` accepts, and allowed tuples
+  round-trip), truncated masks, the observation's hero blocks, the ABI's casting path and error
+  codes.
+- **Agent decisions (change freely):** after a legal non-cast entry each head allows exactly 0
+  (one sampling rule for every entry); a non-cast entry with a non-zero head does not decode;
+  `CREATURE_CAST` reserved now so T7 does not move the entries; the spell book in the observation
+  as one feature per spell handle.

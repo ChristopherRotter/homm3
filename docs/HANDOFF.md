@@ -4,12 +4,12 @@ Living state between sessions; every session reads it first. Rules (`docs/08-wor
 
 ## Current state
 
-- Branch `e04b-battle-magic` (created from `master` = the E04b refinement `3841f22`, on top of the merged E04a); T2a and T2b committed. **First: run verify** — T2b's verify passed up to the tests; coverage, determinism, `bench-check` (state 2 448 bytes, may need a re-baseline with the reason) and original-data were unconfirmed when the session ended. Sandbox and syncing: `docs/08-work-process.md`, "Cloud sandbox and syncing" (`scripts/sandbox-setup.sh`).
+- Branch `e04b-battle-magic` (created from `master` = the E04b refinement `3841f22`, on top of the merged E04a); T2a–T2c committed. **In progress (2026-10-06):** T2d (area, chain and every-stack damage, immunities and resistance after the executable's code, `installation.md` §7.8, survey §12, Q44), then batch 2a, then the user's checkpoint. Sandbox and syncing: `docs/08-work-process.md`, "Cloud sandbox and syncing" (`scripts/sandbox-setup.sh`).
 - **E04b (battle magic) is refined** (Q41, `docs/epics/E04b-battle-magic.md`): increments with a user checkpoint each. **Increment 1** = T1 (survey and ADR-0014, then **stop for the user's review**) and T2 (casting core, checkpoints T2a–T2d, the factorized casting action in T2c, batch 2a at the end); after T2d the user confirms increment 2 (proposed: T3, T4).
 - **T1 done:** survey `docs/rules/surveys/E04b-magic.md`, ADR-0014 accepted (Q42), design note `docs/epics/E04b-design.md`.
-- **T2 split confirmed** (user, 2026-10-05): T2a + T2b, checkpoint; then T2c + T2d, checkpoint and batch 2a. **T2a and T2b done**: pack format v4 battle magic, the hero's magic (HER-BAT-011/012), hero casting of single-target damage spells (BAT-MAG-001 to 004; `Command::Cast`, `castable_spells`, `cast_targets`). **Next: the user's checkpoint**, then T2c (the factorized casting action in the sim and the C ABI, 21 stack slots per side) and T2d (area, chain and every-stack damage; resistance and immunities; STUB-0001 goes), design note sections T2c and T2d.
-- Versions: state hash v18, ruleset hash v15, replay format v14, action encoding v8, C ABI v7, observation encoding v4. Casts have no dense action index yet (T2c).
-- Waiting for the user: the T2b checkpoint (confirm T2c + T2d). Open questions: `docs/OPEN-QUESTIONS.md`, section "Open" (Q40 waits for batch 2a).
+- **T2 split confirmed** (user, 2026-10-05): T2a + T2b, checkpoint; then T2c + T2d, checkpoint and batch 2a. **T2a–T2c done**: pack format v4 battle magic, the hero's magic (HER-BAT-011/012), hero casting of single-target damage spells (BAT-MAG-001 to 004), the factorized casting action in the sim and the C ABI with 21 stack slots per side (T2c). Next: T2d (design note section T2d; STUB-0001 goes), then batch 2a.
+- Versions: state hash v18, ruleset hash v15, replay format v14, action encoding v9 (factorized casts), C ABI v8, observation encoding v5.
+- Waiting for the user: nothing until the T2d checkpoint. Open questions: `docs/OPEN-QUESTIONS.md`, section "Open" (Q40 and Q43 wait for batch 2a).
 - Working agreement: increments of a couple of tasks with a user checkpoint (Q41); the user confirms seams and ADRs; token efficiency beats speed (AGENTS.md); the user plays experiment maps in SoD with plain HD and commits the results.
 
 ## Standing traps

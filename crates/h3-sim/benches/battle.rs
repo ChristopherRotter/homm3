@@ -9,7 +9,8 @@ use std::sync::Arc;
 use criterion::{BatchSize, Criterion, criterion_group, criterion_main};
 use h3_battle::{BattleState, Command, LegalCommands, NoopSink, apply, legal_commands};
 use h3_kernel::{Rng, StreamId};
-use h3_sim::{ACTION_COUNT, BattleEnv};
+use h3_sim::action::HERO_CAST;
+use h3_sim::{ACTION_COUNT, Action, BattleEnv};
 
 fn mid_game_states() -> (Arc<h3_content::Ruleset>, Vec<BattleState>) {
     let (ruleset, setup) = h3_pack::synthetic(h3_pack::SYNTHETIC_FULL).unwrap();
@@ -87,8 +88,9 @@ fn benches(c: &mut Criterion) {
             |e| {
                 let side = e.to_move().unwrap();
                 e.legal_mask(side, &mut legal, &mut mask);
-                let a = mask.iter().rposition(|m| *m).unwrap();
-                black_box(e.step(side, a).unwrap())
+                // The last legal non-cast entry (a cast needs its heads).
+                let a = mask[..HERO_CAST].iter().rposition(|m| *m).unwrap();
+                black_box(e.step(side, Action::entry(a)).unwrap())
             },
             BatchSize::SmallInput,
         )

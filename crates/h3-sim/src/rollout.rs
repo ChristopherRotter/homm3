@@ -1,6 +1,9 @@
 //! Baseline agents: the uniformly random legal agent (also the benchmark workload).
 
-use h3_battle::{Command, LegalCommands, legal_commands};
+use h3_battle::{
+    BattleState, CastTargets, Command, LegalCommands, cast_targets, castable_spells, legal_commands,
+};
+use h3_content::Ruleset;
 use h3_contracts::{BattleResult, BattleSide};
 use h3_kernel::{Rng, StreamId};
 
@@ -37,9 +40,7 @@ pub fn random_rollout(env: &mut BattleEnv, agent_seed: u64, max_steps: u32) -> R
     }
 }
 
-/// Picks a uniformly random legal command for `side` among those that do not leave the battle:
-/// the baseline agent fights every battle out (Retreat and Surrender stay legal for other
-/// agents; user decision 2026-10-04, so benchmarks and golden replays play whole battles).
+/// Picks a random legal command for `side` with [`choose`].
 pub fn pick(
     env: &BattleEnv,
     side: BattleSide,
@@ -47,19 +48,41 @@ pub fn pick(
     legal: &mut LegalCommands,
 ) -> Command {
     legal_commands(env.state(), env.ruleset(), side, legal);
-    choose(legal, rng)
+    choose(env.state(), env.ruleset(), side, legal, rng)
 }
 
-/// The baseline agent's choice from a legal set: uniform among the commands that do not leave
-/// the battle (they come last in `legal_commands`). Shared by [`pick`] and
-/// [`crate::Replay::record_random`].
-pub fn choose(legal: &LegalCommands, rng: &mut Rng) -> Command {
+/// The baseline agent's choice for `side` from its legal commands `legal`: uniform among the
+/// entries of the action encoding that do not leave the battle (the commands before Retreat and
+/// Surrender, which come last in `legal_commands`, and the hero's cast if a spell is castable
+/// now; user decision 2026-10-04: the agent fights every battle out, so benchmarks and golden
+/// replays play whole battles). A cast then takes a uniform castable spell and a uniform target
+/// of it, as an agent samples the factorized action head by head (ADR-0014 point 9). Shared by
+/// [`pick`] and [`crate::Replay::record_random`].
+pub fn choose(
+    state: &BattleState,
+    ruleset: &Ruleset,
+    side: BattleSide,
+    legal: &LegalCommands,
+    rng: &mut Rng,
+) -> Command {
     let staying = legal.iter().take_while(|c| !c.leaves_battle()).count();
-    let n = u32::try_from(staying).unwrap_or(u32::MAX);
-    legal
-        .get(rng.below(n) as usize)
-        .copied()
-        .unwrap_or(Command::Defend)
+    let spells = castable_spells(state, ruleset, side);
+    let entries = staying + usize::from(!spells.is_empty());
+    let i = rng.below(u32::try_from(entries).unwrap_or(u32::MAX)) as usize;
+    if i < staying {
+        return legal.get(i).copied().unwrap_or(Command::Defend);
+    }
+    let count = u32::try_from(spells.iter().count()).unwrap_or(u32::MAX);
+    let nth = rng.below(count) as usize;
+    // A castable spell has at least one target (`castable_spells`).
+    spells.iter().nth(nth).map_or(Command::Defend, |spell| {
+        let mut targets = CastTargets::new();
+        cast_targets(state, ruleset, side, spell, &mut targets);
+        let n = u32::try_from(targets.len()).unwrap_or(u32::MAX);
+        targets
+            .get(rng.below(n) as usize)
+            .map_or(Command::Defend, |&target| Command::Cast { spell, target })
+    })
 }
 
 /// Steps the environment with a domain command (encoded through the action encoding).

@@ -2,7 +2,8 @@
 //! (docs/07-simulation-and-ai.md).
 //!
 //! * [`BattleEnv`]: reset / step / legal mask / fork / state hash for one battle.
-//! * [`action`]: the dense, versioned action encoding (owned by the sim layer, not the domain).
+//! * [`action`]: the versioned action encoding, dense entries with a factorized cast (owned by
+//!   the sim layer, not the domain).
 //! * [`observation`]: the flat, versioned observation encoding of a per-viewer [`Observation`].
 //! * [`replay`]: recording and verifying replays (seed + commands + state hashes).
 //!
@@ -18,7 +19,10 @@ pub mod observation;
 pub mod replay;
 pub mod rollout;
 
-pub use action::{ACTION_COUNT, ACTION_ENCODING_VERSION, ActionMask};
+pub use action::{
+    ACTION_COUNT, ACTION_ENCODING_VERSION, Action, ActionMask, SPELL_COUNT, SpellMask,
+    TARGET_COUNT, TargetMask,
+};
 pub use env::{BattleEnv, StepError, StepResult};
 pub use observation::{OBSERVATION_ENCODING_VERSION, OBSERVATION_LEN};
 pub use replay::{Replay, ReplayError, ReplayHeader};

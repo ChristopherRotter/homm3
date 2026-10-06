@@ -11,7 +11,7 @@ use h3_content::Ruleset;
 use h3_contracts::{BattleResult, BattleSetup, BattleSide};
 use h3_kernel::{Rng, StreamId};
 
-use crate::action::{self, ActionMask};
+use crate::action::{self, Action, ActionMask, SpellMask, TargetMask};
 use crate::observation;
 
 /// Result of one environment step.
@@ -43,7 +43,7 @@ fn rewards(result: Option<BattleResult>) -> [f32; 2] {
 /// Why a step was refused. The environment is unchanged.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum StepError {
-    /// The action index does not decode to a command.
+    /// The action does not decode to a command.
     InvalidAction,
     /// The command was rejected by the battle's validation.
     Rejected(CommandError),
@@ -54,7 +54,7 @@ pub enum StepError {
 impl fmt::Display for StepError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            Self::InvalidAction => f.write_str("invalid action index"),
+            Self::InvalidAction => f.write_str("invalid action"),
             Self::Rejected(e) => write!(f, "rejected: {e}"),
             Self::EpisodeOver => f.write_str("the episode is over"),
         }
@@ -163,17 +163,61 @@ impl BattleEnv {
         self.to_move().is_none()
     }
 
-    /// Fills `mask` with the legal actions of `actor`.
+    /// Fills `mask` with the legal entries of `actor` (the first head of an [`Action`]).
     pub fn legal_mask(&self, actor: BattleSide, legal: &mut LegalCommands, mask: &mut ActionMask) {
-        if self.truncated {
-            mask.fill(false);
-            return;
+        mask.fill(false);
+        if !self.truncated {
+            action::legal_mask(&self.state, &self.ruleset, actor, legal, mask);
         }
-        action::legal_mask(&self.state, &self.ruleset, actor, legal, mask);
+    }
+
+    /// Fills `mask` with the legal spells of `actor` after choosing `entry`
+    /// ([`action::spell_mask`]).
+    pub fn spell_mask(
+        &self,
+        actor: BattleSide,
+        entry: usize,
+        legal: &mut LegalCommands,
+        mask: &mut SpellMask,
+    ) {
+        mask.fill(false);
+        if !self.truncated {
+            action::spell_mask(&self.state, &self.ruleset, actor, entry, legal, mask);
+        }
+    }
+
+    /// Fills `mask` with the legal targets of `actor` after choosing `entry` and `spell`
+    /// ([`action::target_mask`]).
+    pub fn target_mask(
+        &self,
+        actor: BattleSide,
+        prefix: (usize, u16),
+        legal: &mut LegalCommands,
+        mask: &mut TargetMask,
+    ) {
+        mask.fill(false);
+        if !self.truncated {
+            action::target_mask(&self.state, &self.ruleset, actor, prefix, legal, mask);
+        }
+    }
+
+    /// Fills `mask` with the legal second targets of `actor` after choosing `entry`, `spell`
+    /// and `target` ([`action::second_mask`]).
+    pub fn second_mask(
+        &self,
+        actor: BattleSide,
+        prefix: (usize, u16, u16),
+        legal: &mut LegalCommands,
+        mask: &mut TargetMask,
+    ) {
+        mask.fill(false);
+        if !self.truncated {
+            action::second_mask(&self.state, &self.ruleset, actor, prefix, legal, mask);
+        }
     }
 
     /// Plays action `action` for `actor` (the trusted identity of the agent issuing it).
-    pub fn step(&mut self, actor: BattleSide, action: usize) -> Result<StepResult, StepError> {
+    pub fn step(&mut self, actor: BattleSide, action: Action) -> Result<StepResult, StepError> {
         if self.is_done() {
             return Err(StepError::EpisodeOver);
         }
@@ -244,7 +288,7 @@ impl BattleEnv {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::action::ACTION_COUNT;
+    use crate::action::{ACTION_COUNT, SPELL_COUNT, TARGET_COUNT};
 
     fn make(max_steps: u32) -> BattleEnv {
         let (r, setup) = h3_pack::synthetic(h3_pack::SYNTHETIC_DUEL).unwrap();
@@ -289,20 +333,29 @@ mod tests {
         env.legal_mask(side, &mut legal, &mut mask);
         let action = mask.iter().position(|m| *m).unwrap();
         let before = env.state_hash();
+        // The heads of a legal non-cast entry allow exactly 0.
+        let mut spells = [false; SPELL_COUNT];
+        let mut targets = [false; TARGET_COUNT];
+        env.spell_mask(side, action, &mut legal, &mut spells);
+        assert_eq!(spells.iter().position(|m| *m), Some(0));
+        env.target_mask(side, (action, 0), &mut legal, &mut targets);
+        assert_eq!(targets.iter().position(|m| *m), Some(0));
+        env.second_mask(side, (action, 0, 0), &mut legal, &mut targets);
+        assert_eq!(targets.iter().position(|m| *m), Some(0));
         assert_eq!(
-            env.step(side, ACTION_COUNT + 1),
+            env.step(side, Action::entry(ACTION_COUNT + 1)),
             Err(StepError::InvalidAction)
         );
         assert_eq!(
-            env.step(side.opponent(), action),
+            env.step(side.opponent(), Action::entry(action)),
             Err(StepError::Rejected(CommandError::NotYourTurn))
         );
         assert_eq!(env.state_hash(), before, "refused steps change nothing");
-        let result = env.step(side, action).unwrap();
+        let result = env.step(side, Action::entry(action)).unwrap();
         assert!(!result.done);
         assert_eq!(result.reward, [0.0, 0.0]);
         assert_eq!(env.steps(), 1);
-        assert_eq!(StepError::InvalidAction.to_string(), "invalid action index");
+        assert_eq!(StepError::InvalidAction.to_string(), "invalid action");
         assert_eq!(StepError::EpisodeOver.to_string(), "the episode is over");
         assert_eq!(
             StepError::Rejected(CommandError::NotYourTurn).to_string(),
@@ -318,17 +371,27 @@ mod tests {
         for i in 0..2 {
             let side = env.to_move().unwrap();
             // Action 1 = Defend is always legal.
-            let r = env.step(side, 1).unwrap();
+            let r = env.step(side, Action::entry(1)).unwrap();
             assert_eq!(r.truncated, i == 1);
         }
         assert!(env.is_done());
         assert_eq!(env.to_move(), None);
         assert_eq!(
-            env.step(BattleSide::Attacker, 1),
+            env.step(BattleSide::Attacker, Action::entry(1)),
             Err(StepError::EpisodeOver)
         );
         env.legal_mask(BattleSide::Attacker, &mut legal, &mut mask);
         assert!(mask.iter().all(|m| !m));
+        // The heads are empty too.
+        let mut spells = [true; SPELL_COUNT];
+        let mut targets = [true; TARGET_COUNT];
+        env.spell_mask(BattleSide::Attacker, 1, &mut legal, &mut spells);
+        assert!(spells.iter().all(|m| !m));
+        env.target_mask(BattleSide::Attacker, (1, 0), &mut legal, &mut targets);
+        assert!(targets.iter().all(|m| !m));
+        targets = [true; TARGET_COUNT];
+        env.second_mask(BattleSide::Attacker, (1, 0, 0), &mut legal, &mut targets);
+        assert!(targets.iter().all(|m| !m));
         env.reset(3).unwrap();
         assert!(!env.is_done());
         assert_eq!(env.steps(), 0);
@@ -341,12 +404,12 @@ mod tests {
         let mut b = a.fork();
         for _ in 0..4 {
             let side = a.to_move().unwrap();
-            a.step(side, 1).unwrap();
-            b.step(side, 1).unwrap();
+            a.step(side, Action::entry(1)).unwrap();
+            b.step(side, Action::entry(1)).unwrap();
             assert_eq!(a.state_hash(), b.state_hash());
         }
         let side = a.to_move().unwrap();
-        a.step(side, 0).unwrap();
+        a.step(side, Action::entry(0)).unwrap();
         assert_ne!(a.state_hash(), b.state_hash());
         assert_eq!(a.ruleset().creature_count(), 6);
         assert_eq!(a.state().round(), b.state().round());
@@ -370,7 +433,7 @@ mod tests {
                 &attacks
             };
             let a = pool[agent.below(pool.len() as u32) as usize];
-            last = Some(env.step(side, a).unwrap());
+            last = Some(env.step(side, Action::entry(a)).unwrap());
         }
         let r = last.unwrap();
         let w = r.result.and_then(BattleResult::winner).unwrap();

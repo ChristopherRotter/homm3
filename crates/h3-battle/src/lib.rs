@@ -55,8 +55,8 @@ pub use magic::{
 pub use morale::{Bearer, Expiry, MODIFIER_CAPACITY, Modifiers, Stat};
 pub use observe::{Observation, observe, project};
 pub use state::{
-    BATTLE_STATE_HASH_VERSION, BattleState, STACK_CAPACITY, Stack, StackFlags, StackId,
-    StackTraits, UNLIMITED_RETALIATIONS,
+    BATTLE_STATE_HASH_VERSION, BattleState, SIDE_STACK_SLOTS, STACK_CAPACITY, Stack, StackFlags,
+    StackId, StackTraits, UNLIMITED_RETALIATIONS,
 };
 pub use tactics::TacticsPhase;
 pub use terrain::generate_obstacles;

@@ -252,13 +252,14 @@ fn mastery(hero: &HeroRecord, spell: &Spell) -> u8 {
 /// and returns the spell, the hero, the mastery and the cost. The caller has checked that a
 /// stack of `side` awaits a command outside the tactics phase.
 // rule: BAT-MAG-001
-fn check_spell<'r>(
-    state: &BattleState,
+fn check_spell<'s, 'r>(
+    state: &'s BattleState,
     ruleset: &'r Ruleset,
     side: BattleSide,
     id: SpellId,
-) -> Result<(&'r Spell, HeroRecord, u8, u16), CommandError> {
+) -> Result<(&'r Spell, &'s HeroRecord, u8, u16), CommandError> {
     let hero = state.heroes[side.index()]
+        .as_ref()
         .filter(|h| h.magic.book.contains(id))
         .ok_or(CommandError::NotInSpellBook)?;
     // A spell in a book is a spell of the ruleset (BAT-HER-001).
@@ -272,7 +273,7 @@ fn check_spell<'r>(
     if !implemented(spell) {
         return Err(CommandError::NotCastable);
     }
-    let mastery = mastery(&hero, spell);
+    let mastery = mastery(hero, spell);
     let cost = spell.cost[usize::from(mastery)];
     if hero.view.mana < cost {
         return Err(CommandError::NotEnoughMana);
@@ -330,7 +331,7 @@ pub(crate) fn plan_cast(
         spell,
         cost,
         target,
-        damage: spell_damage(ruleset, &hero, (spell, s, mastery), victim),
+        damage: spell_damage(ruleset, hero, (spell, s, mastery), victim),
     })
 }
 
@@ -369,7 +370,7 @@ pub fn cast_targets(
 /// [`cast_targets`] (empty if it is not `actor`'s turn, in the tactics phase or without a hero).
 pub fn castable_spells(state: &BattleState, ruleset: &Ruleset, actor: BattleSide) -> SpellSet {
     let mut out = SpellSet::default();
-    let Some(hero) = state.heroes[actor.index()] else {
+    let Some(hero) = state.heroes[actor.index()].as_ref() else {
         return out;
     };
     let mut targets = CastTargets::new();

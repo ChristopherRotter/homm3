@@ -43,7 +43,7 @@ pub(crate) fn surrender_price(
                 .sum::<u128>()
         })
     };
-    // At most 38 stacks of u32 creatures at u32 costs: below 2^70.
+    // At most 42 stacks of u32 creatures at u32 costs: below 2^70.
     let cost: u128 = state
         .stacks
         .iter()

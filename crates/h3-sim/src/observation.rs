@@ -1,4 +1,4 @@
-//! Flat observation encoding (version 4) of a per-viewer [`Observation`].
+//! Flat observation encoding (version 5) of a per-viewer [`Observation`].
 //!
 //! Layout: [`GLOBALS`] global features, then two hero blocks of [`HERO_FEATURES`] features (the
 //! viewer's, then the opponent's), then [`STACK_FEATURES`] features for each of the
@@ -13,10 +13,12 @@
 //! Hero block, zeros for a side without a hero (which gets no lucky strikes in profiles with
 //! quirk Q-0003): the [`HERO_PUBLIC_FEATURES`] public features `[led by a hero, hero type handle,
 //! attack, defense, power, knowledge, mana, max mana, commands its Ballista, commands its First
-//! Aid Tent]`, then the private ones, zeros in the opponent's block (ADR-0013 point 9):
-//! `[Tactics level, ranged bonus bp, melee bonus bp, damage reduction bp, the commanded
-//! Ballista's shots per turn, its double-damage chance bp, the commanded tent's heal bonus bp,
-//! surrender discount bp, funds, surrender price (0 if the side may not surrender)]`.
+//! Aid Tent, casts this round]`, then the private ones, zeros in the opponent's block (ADR-0013
+//! point 9, ADR-0014 point 8): `[Tactics level, ranged bonus bp, melee bonus bp, damage
+//! reduction bp, the commanded Ballista's shots per turn, its double-damage chance bp, the
+//! commanded tent's heal bonus bp, surrender discount bp, funds, surrender price (0 if the side
+//! may not surrender)]`, the mastery of each of the [`MAX_SPELL_SCHOOLS`] schools by handle,
+//! and the spell book: one feature per spell handle below [`MAX_SPELLS`], 1 if the book has it.
 //! Per stack: `[present, alive, own, creature handle, count, top_hp, max_hp, attack, defense,
 //! damage_min, damage_max, speed, x, y, acted, waited, retaliated, defending, active, morale,
 //! luck, shots, retaliations left (255 = unlimited), had good morale this round, two-hex,
@@ -25,21 +27,29 @@
 //!
 //! v3 (E03 T9): the two hero globals and the per-stack features from `morale` on. v4 (E04a
 //! T11b): the tactics, retreat and surrender globals, the hero blocks (instead of the two hero
-//! globals) and the last three per-stack features.
+//! globals) and the last three per-stack features. v5 (E04b T2c): the hero's casts this round,
+//! school masteries and spell book; 42 stack slots.
 
 use h3_battle::{HeroView, Observation, OwnHeroView, STACK_CAPACITY, StackFlags, StackTraits};
+use h3_content::{MAX_SPELL_SCHOOLS, MAX_SPELLS};
 use h3_contracts::BattleSide;
 
 /// Version of this encoding; bump on any change of the layout above (and bump the C ABI
 /// version with it, ADR-0011).
-pub const OBSERVATION_ENCODING_VERSION: u32 = 4;
+pub const OBSERVATION_ENCODING_VERSION: u32 = 5;
 
 /// Global features.
 pub const GLOBALS: usize = 11;
-/// Features per hero block.
-pub const HERO_FEATURES: usize = 20;
 /// The public features at the start of a hero block; the rest are private to the hero's side.
-pub const HERO_PUBLIC_FEATURES: usize = 10;
+pub const HERO_PUBLIC_FEATURES: usize = 11;
+/// The private features before the school masteries.
+const HERO_PRIVATE_VALUES: usize = 10;
+/// Offset of the school masteries in a hero block.
+const HERO_SCHOOLS: usize = HERO_PUBLIC_FEATURES + HERO_PRIVATE_VALUES;
+/// Offset of the spell book in a hero block.
+const HERO_BOOK: usize = HERO_SCHOOLS + MAX_SPELL_SCHOOLS;
+/// Features per hero block.
+pub const HERO_FEATURES: usize = HERO_BOOK + MAX_SPELLS;
 /// Features per stack slot.
 pub const STACK_FEATURES: usize = 31;
 /// Offset of the viewer's hero block; the opponent's follows it.
@@ -74,10 +84,11 @@ fn encode_hero(view: Option<HeroView>, own: Option<OwnHeroView>, out: &mut [f32]
             f32::from(h.max_mana),
             flag(h.commands_ballista),
             flag(h.commands_tent),
+            f32::from(h.casts),
         ]);
     }
     if let Some(h) = own {
-        out[HERO_PUBLIC_FEATURES..].copy_from_slice(&[
+        out[HERO_PUBLIC_FEATURES..HERO_SCHOOLS].copy_from_slice(&[
             f32::from(h.tactics),
             f32::from(h.damage.ranged_bp),
             f32::from(h.damage.melee_bp),
@@ -90,6 +101,12 @@ fn encode_hero(view: Option<HeroView>, own: Option<OwnHeroView>, out: &mut [f32]
             h.funds as f32,
             h.surrender_price.map_or(0.0, |p| p as f32),
         ]);
+        for (o, level) in out[HERO_SCHOOLS..HERO_BOOK].iter_mut().zip(h.schools) {
+            *o = f32::from(level);
+        }
+        for spell in h.spell_book.iter() {
+            out[HERO_BOOK + spell.index()] = 1.0;
+        }
     }
 }
 
@@ -211,7 +228,7 @@ mod tests {
         assert_eq!(out[OBSERVATION_LEN], 9.0);
         let mut short = vec![0.0; 3];
         assert_eq!(encode(&obs, 17, &mut short), Err(OBSERVATION_LEN));
-        assert_eq!(OBSERVATION_LEN, 11 + 2 * 20 + 31 * 38);
+        assert_eq!(OBSERVATION_LEN, 11 + 2 * (11 + 10 + 4 + 128) + 31 * 42);
         assert_eq!(coords(20, 0), (0.0, 20.0));
     }
 
@@ -229,25 +246,31 @@ mod tests {
             handle("synthetic:brea"),
             2.0,
             2.0,
+            2.0,
+            1.0,
+            40.0,
+            40.0,
             1.0,
             1.0,
-            10.0,
-            10.0,
-            1.0,
-            1.0,
+            0.0,
         ];
         let corwin = [
             1.0,
             handle("synthetic:corwin"),
             1.0,
             3.0,
+            3.0,
             1.0,
-            1.0,
-            10.0,
-            10.0,
+            40.0,
+            40.0,
             1.0,
             0.0,
+            0.0,
         ];
+        // Masteries by school handle (storm, stone) and the books by spell handle (spark,
+        // cinders, arc, blight, ward, …).
+        let schools = [[1.0, 0.0, 0.0, 0.0], [0.0, 2.0, 0.0, 0.0]];
+        let books: [&[usize]; 2] = [&[0, 1, 2, 3, 4], &[0, 2, 3]];
         let price = |side| s.surrender_price(&r, side).unwrap() as f32;
         assert!(price(Attacker) > 0.0 && price(Defender) > 0.0);
         let brea_private = [
@@ -274,13 +297,15 @@ mod tests {
             10_000.0,
             price(Defender),
         ];
-        for (viewer, globals, own, other, private) in [
+        for (viewer, globals, own, other, private, schools, book) in [
             (
                 Attacker,
                 [0.0, 1.0, 1.0, 0.0, 1.0, 0.0, 5.0, 1.0, 1.0, 1.0, 1.0],
                 brea,
                 corwin,
                 brea_private,
+                schools[0],
+                books[0],
             ),
             (
                 Defender,
@@ -288,12 +313,19 @@ mod tests {
                 corwin,
                 brea,
                 corwin_private,
+                schools[1],
+                books[1],
             ),
         ] {
             encode(&observe(&s, &r, viewer), 17, &mut out).unwrap();
             assert_eq!(out[..GLOBALS], globals);
             assert_eq!(hero(&out, 0)[..HERO_PUBLIC_FEATURES], own);
-            assert_eq!(hero(&out, 0)[HERO_PUBLIC_FEATURES..], private);
+            assert_eq!(hero(&out, 0)[HERO_PUBLIC_FEATURES..HERO_SCHOOLS], private);
+            assert_eq!(hero(&out, 0)[HERO_SCHOOLS..HERO_BOOK], schools);
+            let known: Vec<usize> = (0..MAX_SPELLS)
+                .filter(|i| hero(&out, 0)[HERO_BOOK + i] == 1.0)
+                .collect();
+            assert_eq!(known, book);
             assert_eq!(hero(&out, 1)[..HERO_PUBLIC_FEATURES], other);
             // The opponent's private part never shows.
             assert!(
@@ -313,8 +345,8 @@ mod tests {
         encode(&obs, 17, &mut out).unwrap();
         assert_eq!(out[7..GLOBALS], [1.0, 0.0, 0.0, 0.0]);
         assert!(hero(&out, 1).iter().all(|v| *v == 0.0));
-        assert_eq!(hero(&out, 0)[14..16], [0.0, 0.0]);
-        assert_eq!(hero(&out, 0)[HERO_FEATURES - 1], 0.0);
+        assert_eq!(hero(&out, 0)[15..17], [0.0, 0.0]);
+        assert_eq!(hero(&out, 0)[HERO_SCHOOLS - 1], 0.0);
     }
 
     #[test]

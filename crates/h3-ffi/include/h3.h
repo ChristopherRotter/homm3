@@ -1,5 +1,5 @@
 /*
- * h3 engine C ABI, version 7 (see crates/h3-ffi/src/lib.rs and ADR-0011).
+ * h3 engine C ABI, version 8 (see crates/h3-ffi/src/lib.rs and ADR-0011).
  * SPDX-License-Identifier: GPL-2.0-or-later
  *
  * Handles are opaque. Functions return H3_OK (0) or a negative error code; they never unwind.
@@ -35,6 +35,17 @@ extern "C" {
 
 typedef struct H3Env H3Env;
 
+/* An action: an entry of the action encoding and, for a cast, the spell and target heads (all 0
+ * for every other entry). Targets: 0 = none, 1 + h = hex h, 256 + s = stack slot s. Choose the
+ * heads in order, each from its mask: h3_env_legal_mask, h3_env_spell_mask, h3_env_target_mask,
+ * h3_env_second_mask. */
+typedef struct H3Action {
+    uint32_t entry;
+    uint16_t spell;
+    uint16_t target;
+    uint16_t second;
+} H3Action;
+
 typedef struct H3StepResult {
     uint8_t done;
     uint8_t truncated;
@@ -44,7 +55,9 @@ typedef struct H3StepResult {
 } H3StepResult;
 
 uint32_t h3_abi_version(void);
-uint32_t h3_action_count(void);
+uint32_t h3_action_count(void); /* entries */
+uint32_t h3_spell_count(void);  /* values of H3Action.spell */
+uint32_t h3_target_count(void); /* values of H3Action.target and .second */
 uint32_t h3_observation_len(void);
 
 /* scenario: 0 = duel, 1 = skirmish, 2 = full armies; max_steps 0 = unlimited. NULL on error. */
@@ -54,8 +67,13 @@ H3Env *h3_env_fork(const H3Env *env);
 int32_t h3_env_reset(H3Env *env, uint64_t seed);
 int32_t h3_env_to_move(const H3Env *env);
 int32_t h3_env_legal_mask(H3Env *env, int32_t actor, uint8_t *out, size_t len);
+int32_t h3_env_spell_mask(H3Env *env, int32_t actor, uint32_t entry, uint8_t *out, size_t len);
+int32_t h3_env_target_mask(H3Env *env, int32_t actor, uint32_t entry, uint16_t spell, uint8_t *out,
+                           size_t len);
+int32_t h3_env_second_mask(H3Env *env, int32_t actor, uint32_t entry, uint16_t spell,
+                           uint16_t target, uint8_t *out, size_t len);
 int32_t h3_env_observe(const H3Env *env, int32_t viewer, float *out, size_t len);
-int32_t h3_env_step(H3Env *env, int32_t actor, uint32_t action, H3StepResult *out);
+int32_t h3_env_step(H3Env *env, int32_t actor, H3Action action, H3StepResult *out);
 uint64_t h3_env_state_hash(const H3Env *env);
 
 #ifdef __cplusplus

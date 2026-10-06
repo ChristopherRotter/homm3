@@ -42,8 +42,17 @@ Language-specific bindings only (locks out other ecosystems); a network protocol
   contrary to the rule above; no external consumer existed. From now on every encoding bump
   bumps `H3_ABI_VERSION` too.)
 
+## Amendment — E04b battle magic (2026-10-06, T2c)
+
+- **ABI v8:** an action is an `H3Action` (`entry`, then a cast's `spell`, `target` and `second`
+  heads, 0 for every other entry); `h3_env_step` takes it by value; `h3_spell_count` and
+  `h3_target_count` size the heads; `h3_env_spell_mask`, `h3_env_target_mask` and
+  `h3_env_second_mask` serve each head's mask conditioned on the earlier choices (ADR-0014
+  point 9). Covers action encoding v9 and observation encoding v5.
+
 ## Revision history
 
 - 2026-09-30: Accepted.
 - 2026-09-30: Amended by E01 (ABI v1 surface and smoke test).
 - 2026-10-01: Amended by E03 T9 (ABI v2: battle result with draws; encodings tied to the ABI version).
+- 2026-10-06: Amended by E04b T2c (ABI v8: the factorized action).

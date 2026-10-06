@@ -15,7 +15,10 @@ use std::sync::Arc;
 
 use h3_battle::LegalCommands;
 use h3_contracts::{BattleResult, BattleSide};
-use h3_sim::{ACTION_COUNT, ActionMask, BattleEnv, OBSERVATION_LEN, StepError};
+use h3_sim::{
+    ACTION_COUNT, Action, ActionMask, BattleEnv, OBSERVATION_LEN, SPELL_COUNT, SpellMask,
+    StepError, TARGET_COUNT, TargetMask,
+};
 
 /// Version of this ABI (functions, structs, error codes, and the action/observation encodings).
 ///
@@ -26,8 +29,12 @@ use h3_sim::{ACTION_COUNT, ActionMask, BattleEnv, OBSERVATION_LEN, StepError};
 /// v5 (E04a T9a): action encoding v7 (Retreat appended) and the `H3_RESULT_*` codes of a retreat
 /// or a surrender. v6 (E04a T9b): action encoding v8 (Surrender appended). v7 (E04a T11b):
 /// observation encoding v4 (the heroes, the tactics phase, retreat and surrender;
-/// `h3_observation_len` grows).
-pub const H3_ABI_VERSION: u32 = 7;
+/// `h3_observation_len` grows). v8 (E04b T2c): action encoding v9 and observation encoding v5:
+/// an action is an [`H3Action`] (an entry and the cast's spell and target heads), served head by
+/// head by `h3_env_legal_mask`, `h3_env_spell_mask`, `h3_env_target_mask` and
+/// `h3_env_second_mask` (ADR-0014 point 9); `h3_env_step` takes an `H3Action`; the stack slots
+/// grow to 42.
+pub const H3_ABI_VERSION: u32 = 8;
 
 /// `H3StepResult.result`: the battle is not decided (still running, or truncated).
 pub const H3_RESULT_NONE: i32 = -1;
@@ -79,12 +86,52 @@ pub struct H3StepResult {
     pub reward_defender: f32,
 }
 
+/// An action (`h3_sim::Action`): an entry of the action encoding and, for a cast, the spell and
+/// target heads (0 for every other entry).
+#[repr(C)]
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+pub struct H3Action {
+    /// The entry (`h3_action_count()` entries).
+    pub entry: u32,
+    /// A cast's spell (`h3_spell_count()` values).
+    pub spell: u16,
+    /// A cast's target (`h3_target_count()` values: 0 none, `1 + h` hex, `256 + s` stack slot).
+    pub target: u16,
+    /// A cast's second target (same layout; 0 for every spell so far).
+    pub second: u16,
+}
+
+impl From<H3Action> for Action {
+    fn from(a: H3Action) -> Self {
+        Self {
+            entry: a.entry,
+            spell: a.spell,
+            target: a.target,
+            second: a.second,
+        }
+    }
+}
+
 /// Opaque environment handle.
 #[derive(Debug)]
 pub struct H3Env {
     env: BattleEnv,
     legal: LegalCommands,
     mask: ActionMask,
+    spells: SpellMask,
+    targets: TargetMask,
+}
+
+impl H3Env {
+    fn new(env: BattleEnv) -> Self {
+        Self {
+            env,
+            legal: LegalCommands::new(),
+            mask: [false; ACTION_COUNT],
+            spells: [false; SPELL_COUNT],
+            targets: [false; TARGET_COUNT],
+        }
+    }
 }
 
 fn side(value: i32) -> Option<BattleSide> {
@@ -132,6 +179,18 @@ pub extern "C" fn h3_action_count() -> u32 {
     ACTION_COUNT as u32
 }
 
+/// Number of values of the spell head (`H3Action.spell`).
+#[unsafe(no_mangle)]
+pub extern "C" fn h3_spell_count() -> u32 {
+    SPELL_COUNT as u32
+}
+
+/// Number of values of each target head (`H3Action.target`, `H3Action.second`).
+#[unsafe(no_mangle)]
+pub extern "C" fn h3_target_count() -> u32 {
+    TARGET_COUNT as u32
+}
+
 /// Length of the observation encoding (number of `f32`).
 #[unsafe(no_mangle)]
 pub extern "C" fn h3_observation_len() -> u32 {
@@ -159,11 +218,7 @@ pub extern "C" fn h3_env_create_synthetic(scenario: u32, seed: u64, max_steps: u
             BattleEnv::new(ruleset, setup, seed, max_steps)
         }
         .ok()?;
-        Some(Box::new(H3Env {
-            env,
-            legal: LegalCommands::new(),
-            mask: [false; ACTION_COUNT],
-        }))
+        Some(Box::new(H3Env::new(env)))
     });
     match created {
         Ok(Some(b)) => Box::into_raw(b),
@@ -193,13 +248,7 @@ pub unsafe extern "C" fn h3_env_fork(env: *const H3Env) -> *mut H3Env {
     let Some(e) = (unsafe { env.as_ref() }) else {
         return std::ptr::null_mut();
     };
-    let forked = catch_unwind(AssertUnwindSafe(|| {
-        Box::new(H3Env {
-            env: e.env.fork(),
-            legal: LegalCommands::new(),
-            mask: [false; ACTION_COUNT],
-        })
-    }));
+    let forked = catch_unwind(AssertUnwindSafe(|| Box::new(H3Env::new(e.env.fork()))));
     forked.map_or(std::ptr::null_mut(), Box::into_raw)
 }
 
@@ -232,7 +281,35 @@ pub unsafe extern "C" fn h3_env_to_move(env: *const H3Env) -> i32 {
     side_code(e.env.to_move())
 }
 
-/// Writes the legal-action mask of `actor` (0/1 bytes) into `out[0..len]`; `len` must be at
+/// Converts `bools` into 0/1 bytes in `out`.
+fn write_mask(bools: &[bool], out: &mut [u8]) {
+    for (o, m) in out.iter_mut().zip(bools) {
+        *o = u8::from(*m);
+    }
+}
+
+/// Checks the arguments shared by the mask functions and returns the actor and the first `n`
+/// bytes of `out`.
+///
+/// # Safety
+/// `out` must be null or valid for `len` bytes of writes.
+unsafe fn mask_args<'a>(
+    actor: i32,
+    out: *mut u8,
+    len: usize,
+    n: usize,
+) -> Result<(BattleSide, &'a mut [u8]), i32> {
+    if out.is_null() {
+        return Err(H3_ERR_NULL);
+    }
+    let (Some(actor), true) = (side(actor), len >= n) else {
+        return Err(H3_ERR_ARGUMENT);
+    };
+    // SAFETY: `out` is valid for `len >= n` bytes per the contract.
+    Ok((actor, unsafe { std::slice::from_raw_parts_mut(out, n) }))
+}
+
+/// Writes the mask of `actor`'s legal entries (0/1 bytes) into `out[0..len]`; `len` must be at
 /// least `h3_action_count()`.
 ///
 /// # Safety
@@ -249,20 +326,111 @@ pub unsafe extern "C" fn h3_env_legal_mask(
     let Some(e) = (unsafe { env.as_mut() }) else {
         return H3_ERR_NULL;
     };
-    if out.is_null() {
-        return H3_ERR_NULL;
-    }
-    let (Some(actor), true) = (side(actor), len >= ACTION_COUNT) else {
-        return H3_ERR_ARGUMENT;
+    // SAFETY: per the contract.
+    let (actor, out) = match unsafe { mask_args(actor, out, len, ACTION_COUNT) } {
+        Ok(args) => args,
+        Err(code) => return code,
     };
-    // SAFETY: `out` is valid for `len >= ACTION_COUNT` bytes per the contract.
-    let out = unsafe { std::slice::from_raw_parts_mut(out, ACTION_COUNT) };
     guard(|| {
-        let H3Env { env, legal, mask } = e;
-        env.legal_mask(actor, legal, mask);
-        for (o, m) in out.iter_mut().zip(mask.iter()) {
-            *o = u8::from(*m);
-        }
+        e.env.legal_mask(actor, &mut e.legal, &mut e.mask);
+        write_mask(&e.mask, out);
+        H3_OK
+    })
+}
+
+/// Writes the mask of `actor`'s legal spells after choosing `entry` into `out[0..len]`; `len`
+/// must be at least `h3_spell_count()`.
+///
+/// # Safety
+/// As [`h3_env_legal_mask`].
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn h3_env_spell_mask(
+    env: *mut H3Env,
+    actor: i32,
+    entry: u32,
+    out: *mut u8,
+    len: usize,
+) -> i32 {
+    // SAFETY: per the contract.
+    let Some(e) = (unsafe { env.as_mut() }) else {
+        return H3_ERR_NULL;
+    };
+    // SAFETY: per the contract.
+    let (actor, out) = match unsafe { mask_args(actor, out, len, SPELL_COUNT) } {
+        Ok(args) => args,
+        Err(code) => return code,
+    };
+    guard(|| {
+        e.env
+            .spell_mask(actor, entry as usize, &mut e.legal, &mut e.spells);
+        write_mask(&e.spells, out);
+        H3_OK
+    })
+}
+
+/// Writes the mask of `actor`'s legal targets after choosing `entry` and `spell` into
+/// `out[0..len]`; `len` must be at least `h3_target_count()`.
+///
+/// # Safety
+/// As [`h3_env_legal_mask`].
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn h3_env_target_mask(
+    env: *mut H3Env,
+    actor: i32,
+    entry: u32,
+    spell: u16,
+    out: *mut u8,
+    len: usize,
+) -> i32 {
+    // SAFETY: per the contract.
+    let Some(e) = (unsafe { env.as_mut() }) else {
+        return H3_ERR_NULL;
+    };
+    // SAFETY: per the contract.
+    let (actor, out) = match unsafe { mask_args(actor, out, len, TARGET_COUNT) } {
+        Ok(args) => args,
+        Err(code) => return code,
+    };
+    guard(|| {
+        e.env
+            .target_mask(actor, (entry as usize, spell), &mut e.legal, &mut e.targets);
+        write_mask(&e.targets, out);
+        H3_OK
+    })
+}
+
+/// Writes the mask of `actor`'s legal second targets after choosing `entry`, `spell` and
+/// `target` into `out[0..len]`; `len` must be at least `h3_target_count()`.
+///
+/// # Safety
+/// As [`h3_env_legal_mask`].
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn h3_env_second_mask(
+    env: *mut H3Env,
+    actor: i32,
+    entry: u32,
+    spell: u16,
+    target: u16,
+    out: *mut u8,
+    len: usize,
+) -> i32 {
+    // SAFETY: per the contract.
+    let Some(e) = (unsafe { env.as_mut() }) else {
+        return H3_ERR_NULL;
+    };
+    // SAFETY: per the contract.
+    let (actor, out) = match unsafe { mask_args(actor, out, len, TARGET_COUNT) } {
+        Ok(args) => args,
+        Err(code) => return code,
+    };
+    guard(|| {
+        e.env.second_mask(
+            actor,
+            (entry as usize, spell, target),
+            &mut e.legal,
+            &mut e.targets,
+        );
+        write_mask(&e.targets, out);
         H3_OK
     })
 }
@@ -306,7 +474,7 @@ pub unsafe extern "C" fn h3_env_observe(
 pub unsafe extern "C" fn h3_env_step(
     env: *mut H3Env,
     actor: i32,
-    action: u32,
+    action: H3Action,
     out: *mut H3StepResult,
 ) -> i32 {
     // SAFETY: per the contract.
@@ -316,7 +484,7 @@ pub unsafe extern "C" fn h3_env_step(
     let Some(actor) = side(actor) else {
         return H3_ERR_ARGUMENT;
     };
-    guard(|| match e.env.step(actor, action as usize) {
+    guard(|| match e.env.step(actor, action.into()) {
         Ok(r) => {
             let result = H3StepResult {
                 done: u8::from(r.done),
@@ -351,10 +519,20 @@ pub unsafe extern "C" fn h3_env_state_hash(env: *const H3Env) -> u64 {
 mod tests {
     use super::*;
 
+    /// The action of a non-cast entry.
+    fn entry(entry: usize) -> H3Action {
+        H3Action {
+            entry: entry as u32,
+            ..H3Action::default()
+        }
+    }
+
     #[test]
     fn abi_smoke_create_step_destroy() {
-        assert_eq!(h3_abi_version(), 7);
+        assert_eq!(h3_abi_version(), 8);
         assert_eq!(h3_action_count() as usize, ACTION_COUNT);
+        assert_eq!(h3_spell_count() as usize, SPELL_COUNT);
+        assert_eq!(h3_target_count() as usize, TARGET_COUNT);
         assert_eq!(h3_observation_len() as usize, OBSERVATION_LEN);
         assert!(h3_env_create_synthetic(9, 1, 0).is_null());
         let env = h3_env_create_synthetic(1, 42, 500);
@@ -374,13 +552,13 @@ mod tests {
                     h3_env_observe(env, side, obs.as_mut_ptr(), obs.len()),
                     H3_OK
                 );
-                // Prefer attacks (indices ≥ 257; the skirmish has no heroes, so no Retreat), else
-                // the first legal action.
+                // Prefer attacks (entries ≥ 257; the skirmish has no heroes, so no Retreat and no
+                // cast), else the first legal entry.
                 let action = (257..ACTION_COUNT)
                     .find(|&i| mask[i] == 1)
                     .or_else(|| mask.iter().position(|m| *m == 1));
                 assert_eq!(
-                    h3_env_step(env, side, action.unwrap() as u32, &mut result),
+                    h3_env_step(env, side, entry(action.unwrap()), &mut result),
                     H3_OK
                 );
                 steps += 1;
@@ -388,7 +566,10 @@ mod tests {
             assert!(steps > 0);
             assert_eq!(result.done, 1);
             assert!(result.result >= 0 || result.truncated == 1);
-            assert_eq!(h3_env_step(env, 0, 1, &mut result), H3_ERR_EPISODE_OVER);
+            assert_eq!(
+                h3_env_step(env, 0, entry(1), &mut result),
+                H3_ERR_EPISODE_OVER
+            );
             let hash = h3_env_state_hash(env);
             let fork = h3_env_fork(env);
             assert_eq!(h3_env_state_hash(fork), hash);
@@ -400,6 +581,79 @@ mod tests {
     }
 
     #[test]
+    fn a_hero_casts_head_by_head() {
+        // The full scenario's heroes have spell books (E04b T2c): play until a hero may cast,
+        // then choose the cast's heads from their masks.
+        let env = h3_env_create_synthetic(2, 3, 0);
+        let mut mask = vec![0u8; ACTION_COUNT];
+        let mut spells = vec![0u8; SPELL_COUNT];
+        let mut targets = vec![0u8; TARGET_COUNT];
+        let mut seconds = vec![0u8; TARGET_COUNT];
+        let mut casts = 0;
+        unsafe {
+            while casts == 0 && h3_env_to_move(env) >= 0 {
+                let side = h3_env_to_move(env);
+                assert_eq!(
+                    h3_env_legal_mask(env, side, mask.as_mut_ptr(), mask.len()),
+                    H3_OK
+                );
+                let cast = h3_sim::action::HERO_CAST;
+                // Defend, or end the tactics phase.
+                let other = if mask[1] == 1 {
+                    1
+                } else {
+                    h3_sim::action::END_TACTICS
+                };
+                assert_eq!(mask[other], 1);
+                let mut action = entry(other);
+                if mask[cast] == 1 {
+                    let e = cast as u32;
+                    assert_eq!(
+                        h3_env_spell_mask(env, side, e, spells.as_mut_ptr(), spells.len()),
+                        H3_OK
+                    );
+                    let spell = spells.iter().position(|m| *m == 1).unwrap() as u16;
+                    assert_eq!(
+                        h3_env_target_mask(
+                            env,
+                            side,
+                            e,
+                            spell,
+                            targets.as_mut_ptr(),
+                            targets.len()
+                        ),
+                        H3_OK
+                    );
+                    let target = targets.iter().position(|m| *m == 1).unwrap() as u16;
+                    assert_eq!(
+                        h3_env_second_mask(
+                            env,
+                            side,
+                            e,
+                            spell,
+                            target,
+                            seconds.as_mut_ptr(),
+                            seconds.len()
+                        ),
+                        H3_OK
+                    );
+                    assert_eq!(seconds.iter().position(|m| *m == 1), Some(0));
+                    action = H3Action {
+                        entry: e,
+                        spell,
+                        target,
+                        second: 0,
+                    };
+                    casts += 1;
+                }
+                assert_eq!(h3_env_step(env, side, action, std::ptr::null_mut()), H3_OK);
+            }
+            h3_env_destroy(env);
+        }
+        assert_eq!(casts, 1);
+    }
+
+    #[test]
     fn errors_are_codes_not_panics() {
         unsafe {
             let null = std::ptr::null_mut();
@@ -408,8 +662,17 @@ mod tests {
             assert_eq!(h3_env_reset(null, 1), H3_ERR_NULL);
             assert_eq!(h3_env_to_move(null), -1);
             assert_eq!(h3_env_legal_mask(null, 0, &mut byte, 1), H3_ERR_NULL);
+            assert_eq!(h3_env_spell_mask(null, 0, 0, &mut byte, 1), H3_ERR_NULL);
+            assert_eq!(h3_env_target_mask(null, 0, 0, 0, &mut byte, 1), H3_ERR_NULL);
+            assert_eq!(
+                h3_env_second_mask(null, 0, 0, 0, 0, &mut byte, 1),
+                H3_ERR_NULL
+            );
             assert_eq!(h3_env_observe(null, 0, &mut float, 1), H3_ERR_NULL);
-            assert_eq!(h3_env_step(null, 0, 0, std::ptr::null_mut()), H3_ERR_NULL);
+            assert_eq!(
+                h3_env_step(null, 0, entry(0), std::ptr::null_mut()),
+                H3_ERR_NULL
+            );
             assert_eq!(h3_env_state_hash(null), 0);
             assert!(h3_env_fork(null).is_null());
             h3_env_destroy(null);
@@ -424,22 +687,34 @@ mod tests {
                 H3_ERR_ARGUMENT
             );
             assert_eq!(h3_env_legal_mask(env, 0, &mut byte, 1), H3_ERR_ARGUMENT);
+            assert_eq!(h3_env_spell_mask(env, 0, 0, &mut byte, 1), H3_ERR_ARGUMENT);
+            assert_eq!(
+                h3_env_target_mask(env, 0, 0, 0, std::ptr::null_mut(), 0),
+                H3_ERR_NULL
+            );
+            assert_eq!(
+                h3_env_second_mask(env, 3, 0, 0, 0, &mut byte, TARGET_COUNT),
+                H3_ERR_ARGUMENT
+            );
             assert_eq!(h3_env_observe(env, 0, std::ptr::null_mut(), 0), H3_ERR_NULL);
             assert_eq!(h3_env_observe(env, 0, &mut float, 1), H3_ERR_ARGUMENT);
             assert_eq!(
-                h3_env_step(env, 5, 0, std::ptr::null_mut()),
+                h3_env_step(env, 5, entry(0), std::ptr::null_mut()),
                 H3_ERR_ARGUMENT
             );
             assert_eq!(
-                h3_env_step(env, 0, u32::MAX, std::ptr::null_mut()),
+                h3_env_step(env, 0, entry(u32::MAX as usize), std::ptr::null_mut()),
                 H3_ERR_INVALID_ACTION
             );
             let other = 1 - h3_env_to_move(env);
             assert_eq!(
-                h3_env_step(env, other, 1, std::ptr::null_mut()),
+                h3_env_step(env, other, entry(1), std::ptr::null_mut()),
                 H3_ERR_REJECTED
             );
-            assert_eq!(h3_env_step(env, 1 - other, 1, std::ptr::null_mut()), H3_OK);
+            assert_eq!(
+                h3_env_step(env, 1 - other, entry(1), std::ptr::null_mut()),
+                H3_OK
+            );
             h3_env_destroy(env);
         }
         assert_eq!(guard(|| panic!("boom")), H3_ERR_PANIC);

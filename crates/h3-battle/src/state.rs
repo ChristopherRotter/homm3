@@ -24,8 +24,17 @@ use crate::{flee, terrain, turn};
 /// Most war machines per side, one of each kind (BAT-WAR-001).
 pub const MAX_WAR_MACHINES: usize = WAR_MACHINE_KINDS;
 
-/// Maximum number of stacks in a battle (both sides: army slots and war machines).
-pub const STACK_CAPACITY: usize = 2 * (MAX_ARMY_SLOTS + MAX_WAR_MACHINES);
+/// Stack slots per side, as the original keeps 21 stack records per side (ADR-0014 point 6,
+/// `docs/formats/installation.md` §7.7): the army slots and war machines, and room for stacks
+/// created in battle (E04b T6).
+pub const SIDE_STACK_SLOTS: usize = 21;
+
+/// Maximum number of stacks in a battle (both sides).
+pub const STACK_CAPACITY: usize = 2 * SIDE_STACK_SLOTS;
+
+// A side's army slots and war machines fit its stack slots for every ruleset (the content
+// allows at most `MAX_ARMY_SLOTS` army slots).
+const _: () = assert!(MAX_ARMY_SLOTS + MAX_WAR_MACHINES <= SIDE_STACK_SLOTS);
 
 /// Version of the battle-state hash encoding ([`BattleState::state_hash`]). Bump on any change.
 pub const BATTLE_STATE_HASH_VERSION: u32 = 18;

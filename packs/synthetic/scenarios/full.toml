@@ -16,15 +16,19 @@ defender_funds = 10000
 # (she commands her Bolt Thrower: one shot per turn, 50 % double damage) and Basic Mending (she
 # commands her Aid Tent: heals 1–20 instead of 1–10), wearing a Lucky Knot (morale +1, luck +1).
 # Her Tactics give her a tactics phase with a five-column zone before round 1 (BAT-TAC-001).
+# Both heroes cast (E04b T2c): Brea knows the four damage spells with Basic Storm magic, so
+# random rollouts exercise every kind of damage spell the battle implements.
 [scenario.attacker_hero]
 hero_type = "synthetic:brea"
 attack = 2
 defense = 2
-power = 1
+power = 2
 knowledge = 1
 tactics = 2
-mana = 10
-max_mana = 10
+mana = 40
+max_mana = 40
+spell_book = ["synthetic:spark", "synthetic:cinders", "synthetic:arc", "synthetic:blight", "synthetic:ward"]
+schools = { "synthetic:storm" = 1 }
 ranged_bp = 1000
 melee_bp = 1000
 reduction_bp = 500
@@ -39,15 +43,18 @@ effects = [{ kind = "morale", amount = 1 }, { kind = "luck", amount = 1 }]
 # Far Scope (shooters without range penalty, flying creatures +1 speed, 10 % surrender discount),
 # a Vigor Stone (living creatures +25 % hit points, regenerating 10) and, as the expansion's
 # Storm Regalia gives it, shooters that shoot while adjacent. The base pack has one faction, so
-# an alignment group (BAT-HER-007) could change nothing here.
+# an alignment group (BAT-HER-007) could change nothing here. He casts with Advanced Stone
+# magic (Blight) and no Storm mastery (Spark, Arc).
 [scenario.defender_hero]
 hero_type = "synthetic:corwin"
 attack = 1
 defense = 3
-power = 1
+power = 3
 knowledge = 1
-mana = 10
-max_mana = 10
+mana = 40
+max_mana = 40
+spell_book = ["synthetic:spark", "synthetic:arc", "synthetic:blight"]
+schools = { "synthetic:stone" = 2 }
 surrender_discount_bp = 1000
 ballista = { shots = 1, double_damage_chance_bp = 5000 }
 effects = [

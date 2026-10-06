@@ -188,7 +188,7 @@ impl Replay {
                 break;
             }
             h3_battle::legal_commands(&state, ruleset, side, &mut legal);
-            let command = crate::rollout::choose(&legal, &mut agent);
+            let command = crate::rollout::choose(&state, ruleset, side, &legal, &mut agent);
             // Legal commands are accepted by construction (property-tested in h3-battle).
             let _ = apply(&mut state, ruleset, side, command, &mut NoopSink);
             commands.push((side, command));

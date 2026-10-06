@@ -8,7 +8,7 @@ A thin, allocation-conscious wrapper over the game logic:
 
 - `reset(scenario, seed) -> Observation`
 - `step(actions) -> (Observation, reward, done, info)` for each environment in a batch
-- `legal_actions(env) -> mask` (from `legal_commands`; dense action encoding is defined by the sim layer, not the domain)
+- `legal_actions(env) -> mask` (from `legal_commands`; the action encoding is defined by the sim layer, not the domain): dense entries for every command but a cast, and a factorized cast whose spell and target heads have masks conditioned on the earlier choices (ADR-0014 point 9; `h3_sim::action`)
 - `fork(env) -> env` (cheap clone for search/rollouts) and `state_hash(env)`
 - Two environment families: **BattleEnv** (from a `BattleSetup`; first) and **AdventureEnv** (later)
 - Vectorized/batched stepping in Rust, parallel across instances; single-threaded per instance

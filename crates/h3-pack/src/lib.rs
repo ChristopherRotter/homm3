@@ -2351,10 +2351,17 @@ mod tests {
             expected.defense,
             expected.power,
             expected.knowledge,
-        ] = [2, 2, 1, 1];
+        ] = [2, 2, 2, 1];
         expected.tactics = 2;
-        expected.magic.mana = 10;
-        expected.magic.max_mana = 10;
+        expected.magic.mana = 40;
+        expected.magic.max_mana = 40;
+        // The four damage spells and Ward with Basic Storm magic (E04b T2c).
+        expected.magic.spell_book = Some(
+            ["spark", "cinders", "arc", "blight", "ward"]
+                .map(|k| ruleset.spell_by_key(&format!("synthetic:{k}")).unwrap())
+                .to_vec(),
+        );
+        expected.magic.schools[0] = 1;
         expected.damage = DamageBonuses {
             ranged_bp: 1000,
             melee_bp: 1000,
@@ -2420,7 +2427,7 @@ mod tests {
             synthetic(&unknown),
             Err(PackError::UnknownHeroType("synthetic:nobody".to_owned()))
         );
-        let extra = SYNTHETIC_FULL.replace("max_mana = 10", "max_mana = 10\nluck = 1");
+        let extra = SYNTHETIC_FULL.replace("max_mana = 40", "max_mana = 40\nluck = 1");
         assert!(matches!(parse_scenario(&extra), Err(PackError::Syntax(_))));
         for bad in [
             "kind = \"no_retreat\", sides = 2",
