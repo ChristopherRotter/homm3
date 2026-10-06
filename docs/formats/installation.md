@@ -423,3 +423,60 @@ stack of the caster's side (0x59F7BF; batch 2a R1). The single-target spells and
 ones (24–26) need at least one stack the target test accepts before the cursor opens; the area
 spells do not. 0x5A8090 also returns 0 for spells above level 1 on battlefield type 2 (Cursed
 Ground, E04c) and checks a worn artifact 0x53 (Recanter's Cloak, T8) for spells above level 2.
+
+### 7.9 Code reading: timed spells (E04b T3a, 2026-10-06)
+
+Read for T3a (Q29: insight only, nothing copied). Offsets are in the 0x548-byte stack record
+(§7.7): +0x4C creatures alive, +0x84 creature flags (`0x40` war machine), +0xC4 speed, +0xC8
+attack, +0xCC defense, +0xD0/+0xD4 minimum and maximum damage, +0x194 the number of active
+spells, +0x198 `i32 duration[81]` (a spell is active while its duration is above 0), +0x2DC
+`i32 mastery[81]`, from +0x450 one stored value per spell.
+
+**Casting.** For a hero's cast the routine (0x59FE30) takes the side's spell power and, for a
+spell with flag `0x4`, adds 0x4E4DB0: +1 Collar of Conjuring, +2 Ring of Conjuring, +3 Cape of
+Conjuring, +50 Ring of the Magi, each counted once and a part also while it is joined in the
+combination (so the Ring of the Magi gives 56). That sum is the **duration**. The single-target
+handler (case 17 of the switch at 0x5A2838, shared by the timed spells; Bloodlust's own handler
+differs only in its animation) applies the spell to the target stack through
+0x4448F0 (spell, duration, mastery, hero); the mass handler 0x5A66D0 does it for every stack of
+both sides, attacker's first, by record, skipping a stack under Hypnotize (+0x288, T4), each
+after the target test and a roll `random(1, 100) ≤ trunc(f × 100)` (§7.8; so positive spells
+also draw once per stack).
+
+**Applying a spell to a stack** (0x4448F0). Durations are fixed for Disrupting Ray, Berserk and
+Bind (255) and Frenzy (1 or 2, by whether the stack is the active one); otherwise the given
+duration. If the spell is already active, the duration becomes the larger of the two, the
+stored mastery the higher, and **nothing else changes** (the value of the first cast stays).
+Otherwise the active count rises, duration and mastery are stored, and the value `v =
+effect[mastery]` (the spell table, from `SPTRAITS.TXT`; plus the hero's specialty bonus 0x4E5FF0
+for Bloodlust, Precision, Weakness, Stone Skin, Prayer, Fortune and Haste, T3c) is used per
+spell: Bless removes Curse and stores `v`; Curse removes Bless and stores `v`; Bloodlust and
+Precision store `v`; Weakness lowers `v` to the current attack, stores it and subtracts it from
+the attack; Stone Skin stores `v` and adds it to the defense; Prayer stores `v` and adds it to
+attack, defense and, unless a war machine, speed; Mirth, Sorrow, Fortune and Misfortune store
+`v`; Haste (not on a war machine) removes Slow, stores `v` and adds it to the speed; Slow (not on
+a war machine) removes Haste and stores `v / 100` as `f32`. No other pair removes each other:
+Bloodlust and Weakness, Mirth and Sorrow, Fortune and Misfortune can be active together.
+Disrupting Ray has its own cast handler (0x5A1A53): defense − `v` (and the specialty bonus),
+at least 0, at every cast, then 0x4448F0 marks it active.
+
+**Reading the values.** Attack (0x442410): +0xC8, plus Precision's `v` on a ranged attack or
+Bloodlust's `v` on a melee one while active (Slayer, T3b). Defense (0x442590): +0xCC (Frenzy
+and the Behemoths, T3b). Speed (0x448CD0, used for movement and the turn order): +0xC4; while
+slowed `max(1, trunc(f32(speed) × factor))` (0 for a war machine). Base damage per creature
+(0x443180): while blessed `max + v` for every creature (no roll), else while cursed `max(1, min
+− v)`, else the roll; a Ballista's range is already the hero-scaled one. Luck (0x43DF30): the
+base luck, clamped to ±3 by its own function, + Fortune's `v` − Misfortune's `v`, then the
+Halfling minimum; morale (0x43E003): 0 for creatures without morale, else the base morale clamped
+to ±3 + Mirth's `v` − Sorrow's `v`, then the Minotaurs' minimum and Spirit of Oppression; the
+rolls clamp both to ±3 again (0x4649AA, 0x43F936).
+
+**Ending.** At the start of every round (0x4760xx calls 0x447120 for every stack record of both
+sides, attacker's first; skipped in the tactics phase) each active spell of a living stack, in
+spell order, except Frenzy, either ends (duration 1) or loses a round. A stack that dies loses
+all its spells (0x444120). Ending a spell (0x444510) restores what it changed: Weakness adds
+its stored value back, Stone Skin subtracts its value from the defense (not clamped, so the
+defense can go below 0 after a Disrupting Ray), Prayer subtracts from attack, defense and
+(unless a war machine) speed, Haste from speed; the others only stop being read. **Disrupting
+Ray is never ended**: 0x444510 returns at once for it, so its duration stops at 1 and the
+defense stays lowered for the rest of the battle.

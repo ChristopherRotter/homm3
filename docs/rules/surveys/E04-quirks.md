@@ -124,6 +124,7 @@ Outside the E04 scope, listed so they are not lost (no classification needed now
 ### S-17 — Long effects expire after 255 rounds (E04b)
 - Original: HotA changelog: "Berserk, Disrupting Ray, and Dendroid Roots spells were removed from units after 255 rounds".
 - Suggested **preserve** (harmless; an 8-bit duration).
+- E04b T3a (code reading, `installation.md` §7.9): Berserk and Bind get a duration of 255 and end after it; Disrupting Ray gets 255 too but is never ended (the end routine returns at once for it), so in SoD 4.0 its defense loss lasts the whole battle. The quirk concerns Berserk (T4) and Bind (T7).
 
 ### S-18 — Magic Arrow can deal 0 damage to Gold and Diamond Golems (E04b)
 - Original: HotA changelog: "Fixed a bug with 0 damage against Gold and Diamond Golems when attacking with a Magic Arrow with low Power".

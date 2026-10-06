@@ -36,7 +36,7 @@ Sources: `original-data` = the user's SoD installation (`docs/formats/installati
 | remove obstacle | Remove Obstacle (also part of Dispel in VCMI) | an obstacle |
 
 - **Area shapes** (`vcmi` `config/spells/offensive.json`): Frost Ring a ring of radius 1 without its centre; Fireball and Meteor Shower radius 1; Inferno radius 2; Berserk radius 0/0/1/2 by mastery; Death Ripple, Destroy Undead, Armageddon every stack that meets their condition. Mass spells at Expert affect only the side the spell is good or bad for ("smart" targets).
-- **Counters:** casting one spell of a pair replaces the other's effect with its own, so the later spell wins (Bless, then Curse leaves the stack cursed, not neutral; user, 2026-10-05): Bless/Curse, Bloodlust/Weakness, Haste/Slow, Mirth/Sorrow, Fortune/Misfortune, Berserk/Hypnotize (`vcmi` `config/spells/timed.json`).
+- **Counters:** casting one spell of a pair replaces the other's effect with its own, so the later spell wins (Bless, then Curse leaves the stack cursed, not neutral; user, 2026-10-05): Bless/Curse, Bloodlust/Weakness, Haste/Slow, Mirth/Sorrow, Fortune/Misfortune, Berserk/Hypnotize (`vcmi` `config/spells/timed.json`). **Superseded in T3a** (§14, Q47): the executable cancels only Bless/Curse and Haste/Slow (Berserk/Hypnotize: T4).
 - **Durations end on rounds or events** (`vcmi` `timed.json`, `ability.json`): rounds for most; until the stack is attacked (Blind, Stone Gaze, Paralyze), until its own attack (Berserk), until it attacks (Frenzy), permanent (Disrupting Ray, Acid Breath; Bind until the binding ends, see S-14). VCMI counts every stack's rounds down at the start of a new round (`BattleInfo.cpp` L651–L670). Re-casting a spell replaces its effect, except Disrupting Ray and Acid Breath, which stack (`vcmi` `lib/spells/effects/Timed.cpp` L202–L205). The original keeps one duration per spell and stack with 8-bit counters (quirk S-17: effects "expire after 255 rounds").
 - **Encoding consequence:** a cast is spell + first target (stack, hex, obstacle or none) + an optional second target (Teleport, Sacrifice). Creature casts (Faerie Dragon, Archangel, Pit Lord, Ogre Mage, the AB elementals) replace the creature's action; hero casts do not.
 
@@ -86,7 +86,7 @@ T2: S-18 (Magic Arrow 0 damage to golems). T3: S-16, S-17, S-19. T4: S-09, S-10,
 |---|---|---|---|
 | M-1 | Which spells affect war machines (**settled** by code reading, §12: flag `0x1000`) | the executable's bit `0x1000` sits on Implosion, Death Ripple, raising, mind spells, Teleport, Clone and the abilities; VCMI also excludes war machines from Bless, Curse, Bloodlust, Haste, Slow, Counterstrike and others | T2 (Implosion), T3 |
 | M-2 | Magic resistance: add or multiply sources (**settled**, §12: hero and creature add, the aura multiplies) | VCMI adds; the wiki is silent (`E04-skills.md` §2.10) | T2d |
-| M-3 | When durations count down | VCMI: all stacks at the start of a round; SoD unobserved | T3 |
+| M-3 | When durations count down (**settled** by code reading, §14: every stack at the start of a round) | VCMI: all stacks at the start of a round; SoD unobserved | T3 |
 | M-4 | Hero cast during a commanded war machine's turn | wiki ("one of their creatures") vs VCMI (any own unit) | T2b |
 | M-5 | Per-side stack limit | settled by code reading (§5): 21 records, Clone and summons refused at 20 stacks; open: whether a vanished clone frees its record | T6 |
 | M-6 | Spell damage rounding (**settled**, §12) | VCMI truncates after each factor; Q-0005 used single precision for physical damage | T2b |
@@ -192,3 +192,48 @@ predictions (`experiments/specs/E04b-batch-2a.toml`):
   (R5, the user): `SpellDamage` now carries the value, the caster's damage and the damage dealt.
   The Sorcery specialist's growth in single precision generalises to every skill specialty
   (OPEN-QUESTIONS Q45).
+
+## 14. T3a: the timed value spells (E04b T3a, 2026-10-06)
+
+The executable's code (`docs/formats/installation.md` §7.9) decides the rules; VCMI 1.7.5
+(`config/spells/timed.json`, `lib/battle/DamageCalculator.cpp`) agrees on the values and
+differs where noted. Values by mastery (none, Basic, Advanced, Expert) from `SPTRAITS.TXT`.
+
+| Spell | Effect while active | Values |
+|---|---|---|
+| Haste | speed + v (not war machines) | 3, 3, 5, 5 |
+| Slow | speed × v %, rounded down, at least 1 | 75, 75, 50, 50 |
+| Bloodlust / Precision | attack + v on melee / ranged attacks | 3, 3, 6, 6 |
+| Weakness | attack − v, at most down to 0 (the amount taken is given back) | 3, 3, 6, 6 |
+| Stone Skin | defense + v | 3, 3, 6, 6 |
+| Disrupting Ray | defense − v at every cast, at most down to 0, for the rest of the battle | 3, 3, 4, 5 |
+| Prayer | attack, defense + v; speed + v except war machines | 2, 2, 4, 4 |
+| Bless / Curse | base damage per creature: max + v / max(1, min − v) | 0, 0, 1, 1 |
+| Mirth / Sorrow | morale ± v | 1, 1, 2, 2 |
+| Fortune / Misfortune | luck ± v | 1, 1, 2, 2 |
+
+- **Duration:** the caster's power + 1 (Collar), 2 (Ring), 3 (Cape of Conjuring), 50 (Ring of
+  the Magi, whose parts count as well). VCMI: power plus its `SPELL_DURATION` bonuses (same
+  values).
+- **Mass versions** at Expert (flag `0x40`): every stack of the caster's side for a positive
+  spell, of the enemy for a negative one; immune stacks are passed over; every stack draws
+  for resistance (VCMI: "smart" mass targets, the same). Disrupting Ray has no mass version.
+- **Counters (refutes the 2026-10-05 reading of VCMI):** only Bless/Curse and Haste/Slow end
+  each other. Bloodlust and Weakness, Mirth and Sorrow, Fortune and Misfortune can be active at
+  once and add (Mirth +2 with Sorrow −2: morale +0). VCMI counters all five pairs. The user chose
+  the executable (Q47); batch 2b checks one pair.
+- **Re-casting an active spell** keeps the longer duration and the first cast's value (VCMI:
+  replaces). For a hero's casts both give the same; it matters when creatures cast (T7). ADR-0014
+  point 5 amended (Q47).
+- **Rounds fall** for every stack at the start of a round (M-3, as VCMI); an effect cast in round
+  n with duration d is active in rounds n to n + d − 1. A stack that dies loses its effects.
+- **Disrupting Ray never ends** (the end routine returns at once for it; VCMI: permanent).
+  Quirk S-17 therefore concerns Berserk and Bind only (T4, T7).
+- **Order of the stat changes:** Weakness, Stone Skin, Prayer, Haste and Disrupting Ray change
+  the stack's values when cast and change them back when they end, so the result can depend on
+  the order (a defense pushed to 0 by Disrupting Ray goes below 0 when Stone Skin ends; the
+  original's damage formula then counts the negative defense). Morale and luck: the base value is
+  clamped to ±3 before the spells, the minimums and caps apply after them, the rolls clamp again
+  (a base luck of −1 with Fortune +2 gives +1).
+- **Not in T3a:** the hero specialties in these spells (T3c); Magic Mirror on the negative ones
+  (T4); creature casters (T7).

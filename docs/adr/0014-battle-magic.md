@@ -44,9 +44,10 @@ which a spell meets a stack, how stacks appear in a battle, how hidden objects s
 5. **Timed effects live in one growable list per battle, not in the modifier pool.** An entry holds
    the stack, the spell, the rounds left or an end condition (until attacked, until it attacks,
    permanent) and the values computed at the cast, in canonical order (stack, then spell) for
-   equality and the state hash. One entry per stack and spell: the same spell again replaces it; a
-   counter spell replaces its pair's effect, so the later one wins (Bless, then Curse: cursed);
-   cumulative spells (Disrupting Ray, Acid Breath) add to their entry. The list is heap storage
+   equality and the state hash. One entry per stack and spell: the same spell again keeps the
+   longer duration and the first cast's values (the original's code, Q47); a counter spell ends
+   its pair's effect, so the later one wins (Bless, then Curse: cursed; the original has the pairs
+   Bless/Curse and Haste/Slow); cumulative spells (Disrupting Ray, Acid Breath) add to their entry. The list is heap storage
    reserved at the battle's start for the usual case: steady play does not allocate, a fork costs
    one allocation, and no stack ever needs room for every effect (user, Q42). Each stack's
    effective stats and statuses (Blind, Berserk, Hypnotize, Forgetfulness, petrified, paralysed,
@@ -119,3 +120,6 @@ which a spell meets a stack, how stacks appear in a battle, how hidden objects s
   takes the original's 21 stack slots and limit of 20 from its code (`installation.md` §7.7); point
   7 says how a command resolves when it meets an unseen obstacle.
 - 2026-10-05: Accepted by the user (Q42).
+- 2026-10-06: point 5 amended after reading the original's timed-spell code (E04b T3a, Q47): a
+  re-cast keeps the longer duration and the first values instead of replacing the entry; the
+  counter pairs are the original's (Bless/Curse, Haste/Slow).
