@@ -4,11 +4,11 @@ Living state between sessions; every session reads it first. Rules (`docs/08-wor
 
 ## Current state
 
-- Branch `e04b-battle-magic`, rebased onto `master` `d9c139c` (the CI commits) on 2026-10-06; increment 1 done (T1, T2a–T2e, batch 2a evaluated). **Increment 2 (Q46): T3 in three parts, then T4; T3a done 2026-10-06. Waiting for the user's checkpoint** (review the effect list and its measurements; confirm T3b, alone or with T3c). Sandbox and syncing: `docs/08-work-process.md`, "Cloud sandbox and syncing" (`scripts/sandbox-setup.sh`).
+- Branch `e04b-battle-magic`, rebased onto `master` `d9c139c` (the CI commits) on 2026-10-06; increment 1 done (T1, T2a–T2e, batch 2a evaluated). **Increment 2 (Q46, Q48): T3 in parts, then T4; T3a done; T3b1 prepared (2026-10-06), waiting for a session that can read the executable** (Q49). Sandbox and syncing: `docs/08-work-process.md`, "Cloud sandbox and syncing" (`scripts/sandbox-setup.sh`).
 - **GitHub and CI (2026-10-06):** `ChristopherRotter/homm3` (private); `.github/workflows/ci.yml` runs `cargo xtask verify` on Linux for PRs, `master` and weekly (`docs/05-testing.md`, "CI"; Windows verify stays local). Changes reach `master` by pull request; a `bench-check` re-baseline must hold on the CI runner.
 - **E04b (battle magic) is refined** (Q41, `docs/epics/E04b-battle-magic.md`): increments with a user checkpoint each; only the current increment's tasks are refined.
 - **Done:** survey `docs/rules/surveys/E04b-magic.md` (§12–§14), ADR-0014 accepted (Q42; point 5 amended, Q47), design note `docs/epics/E04b-design.md` (T5 onwards). The 13 damage spells (BAT-MAG-001 to 008) and the 14 value spells (Haste, Slow, Bloodlust, Precision, Weakness, Stone Skin, Disrupting Ray, Prayer, Bless, Curse, Mirth, Sorrow, Fortune, Misfortune; BAT-MAG-009 to 011, `h3_battle::effects`) are castable by heroes, with mass versions, mind immunity and the Conjuring durations (HER-BAT-014), after the executable's code (`installation.md` §7.8, §7.9).
-- **Next:** T3b (Shield, Air Shield, the four Protections with S-19, Fire Shield, Slayer, Frenzy with S-16, Counterstrike; Dispel, Cure), T3c (specialties in timed spells: STUB-0002; Q45 option (b); batch 2b), then T4.
+- **Next:** T3b1 (Shield, Air Shield, the four Protections with S-19, Slayer, Counterstrike; Dispel, Cure): first survey §15's reading list in the executable, then the rules; pack rows may be written by hand (Q48). Then T3b2 (Fire Shield, Frenzy, S-16), T3c (specialties in timed spells: STUB-0002; Q45 option (b); batch 2b), T4.
 - **Open for later tasks:** batch 2a R6's costs (T7 reads the cost code first); Q43 (sprite offset, keep the approximation); creature casters' re-casts (T7: the first value stays).
 - Versions: state hash v20, ruleset hash v17, replay format v15, action encoding v9, C ABI v9, observation encoding v6; pack format v5.
 - Working agreement: increments of a couple of tasks with a user checkpoint (Q41); the user confirms seams and ADRs; token efficiency beats speed (AGENTS.md); the user plays experiment maps in SoD with plain HD and commits the results.
@@ -16,12 +16,13 @@ Living state between sessions; every session reads it first. Rules (`docs/08-wor
 ## Standing traps
 
 **Sandbox and sync**
+- A cloud session cloned from GitHub has no `original-data/`: no harvester run, no code reading, no `verify --with-original-data` (Q49). Packs edited by hand there need that check on the user's machine before the merge; sync is a push.
 - Git on the user's machine: get delete permission for the repo folder before *any* git command (even `git status` leaves `.git/index.lock` otherwise). A fast-forward once failed with "unable to unlink … Permission denied" (a file held open on Windows): write the file from `git show <commit>:<path>`, then `git reset --mixed <commit>`.
-- Each bundle fetch adds a pack; past 50 packs a fetch starts a detached `git gc --auto`, which dies with the device shell and leaves `.git/gc.log.lock`. Fetch with `git -c gc.auto=0 fetch …`; if packs pile up, run `git gc` in the foreground. Old packs Windows keeps open stay behind as garbage without `.idx` (harmless; 47 such files since 2026-10-04, deletable once nothing holds them).
+- Each bundle fetch adds a pack; past 50 packs a fetch starts a detached `git gc --auto`, which dies with the device shell and leaves `.git/gc.log.lock`. Fetch with `git -c gc.auto=0 fetch …`; if packs pile up, run `git gc` in the foreground. Old packs Windows keeps open stay behind without `.idx` (harmless).
 - The sandbox VM can restart mid-session (files stay, background jobs and installs die): check `ps` and the logs before waiting on a background job.
 - `cargo xtask verify` outlasts a tool call: run `scripts/sandbox-verify.sh` in the background and poll its log.
 - The background verify tests whatever is in the clone: try ad-hoc tests in a `git worktree` with its own `CARGO_TARGET_DIR`, and commit there on a branch that the clone fast-forwards to. `pkill -f <pattern>` also kills the tool's own shell when the pattern is in the command line: kill by pid.
-- Broad sub-agent surveys burn tokens and hit rate limits; research in narrow steps yourself.
+- Broad sub-agent surveys burn tokens and hit rate limits: research in narrow steps.
 - Docs-only sessions can work in the user's repo directly (the device shell has git and python, no cargo): commit with `-c user.name=... -c user.email=...` (no identity configured there) and check what `check-docs` checks by script (HANDOFF at most 10 000 bytes, three session entries).
 
 **Sources**
@@ -52,6 +53,10 @@ Living state between sessions; every session reads it first. Rules (`docs/08-wor
 
 ## Recent sessions
 
+### 2026-10-06 (twentieth) — E04b T3a checkpoint: T3b split, T3b1 prepared
+
+Cloud session without the original files (Q49). The user split T3b into T3b1 and T3b2 (Fire Shield, Frenzy), chose pack rows by hand for cloud sessions and paused the rules until the executable can be read (Q48). Prepared: survey §15 (VCMI 1.7.5, the flags, S-19 confirmed by the §7.8 notes, a reading list), the epic split; `installation.md` §7.6 corrected (bit `0x1000` also on Bloodlust, Haste, Slow, Counterstrike; the packs were right). No code change.
+
 ### 2026-10-06 (nineteenth) — E04b T3a: the effect list and the value spells
 
 Sandbox session; the user cut increment 2 (Q46: T3a alone, then a checkpoint; Q45 option (b) in T3c). Read the executable's timed-spell code (`installation.md` §7.9, survey §14): durations, what a cast changes and the end gives back, rounds fall at the round start, Disrupting Ray never ends; the user chose the executable's counter pairs and amended ADR-0014 point 5 (Q47). Built pack format v5, HER-BAT-014, BAT-MAG-009 to 011 (`h3_battle::effects`), observation v6, C ABI v9; golden replays and `bench-check` re-baselined (new workload; +0.17 % on the old one). Detail: `docs/epics/E04b-log.md` (T3a).
@@ -59,7 +64,3 @@ Sandbox session; the user cut increment 2 (Q46: T3a alone, then a checkpoint; Q4
 ### 2026-10-06 — CI on GitHub Actions (on `master`, in parallel)
 
 A cloud session added `.github/workflows/ci.yml` (`cargo xtask verify` on `ubuntu-24.04` and `windows-2025`; cache saved from `master` only). Both passed; the user disabled the Windows job (14 against 8 minutes); branch rules are unavailable on this plan. Q3, ADR-0003, `05-testing.md`, `08-work-process.md` and the BACKLOG adjusted. The E04b branch was rebased onto it.
-
-### 2026-10-06 (eighteenth) — E04b T2e: batch 2a folded in, increment 1 done
-
-Sandbox session; the user committed batch 2a's results and chose T2e alone as the seam. Confirmed: Chain Lightning's screen geometry and ties, the damage order and rounding, immunities, the Ballista-turn cast. Refuted and fixed after re-reading the targeting code (`installation.md` §7.8): Chain Lightning only at enemies, area spells at any hex, no fizzle from an area spell's centre stack, the tactics hand-over (rounds with Wait, Q40); a stack that always resists is no target; `SpellDamage` carries value and caster damage. `full-s3` and `bench-check` re-baselined. Q45 opened. Detail: `docs/epics/E04b-log.md` (T2e).

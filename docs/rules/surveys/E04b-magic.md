@@ -84,7 +84,7 @@ T2: S-18 (Magic Arrow 0 damage to golems). T3: S-16, S-17, S-19. T4: S-09, S-10,
 
 | # | Question | Sources | Needed by |
 |---|---|---|---|
-| M-1 | Which spells affect war machines (**settled** by code reading, §12: flag `0x1000`) | the executable's bit `0x1000` sits on Implosion, Death Ripple, raising, mind spells, Teleport, Clone and the abilities; VCMI also excludes war machines from Bless, Curse, Bloodlust, Haste, Slow, Counterstrike and others | T2 (Implosion), T3 |
+| M-1 | Which spells affect war machines (**settled** by code reading, §12: flag `0x1000`) | the executable's bit `0x1000` sits on Implosion, Death Ripple, Bloodlust, Haste, Slow, Counterstrike, raising, the control spells, Teleport, Clone and the abilities; VCMI also excludes war machines from Bless, Curse, Mirth, Sorrow and Frenzy | T2 (Implosion), T3 |
 | M-2 | Magic resistance: add or multiply sources (**settled**, §12: hero and creature add, the aura multiplies) | VCMI adds; the wiki is silent (`E04-skills.md` §2.10) | T2d |
 | M-3 | When durations count down (**settled** by code reading, §14: every stack at the start of a round) | VCMI: all stacks at the start of a round; SoD unobserved | T3 |
 | M-4 | Hero cast during a commanded war machine's turn | wiki ("one of their creatures") vs VCMI (any own unit) | T2b |
@@ -237,3 +237,58 @@ differs where noted. Values by mastery (none, Basic, Advanced, Expert) from `SPT
   (a base luck of −1 with Fortune +2 gives +1).
 - **Not in T3a:** the hero specialties in these spells (T3c); Magic Mirror on the negative ones
   (T4); creature casters (T7).
+
+## 15. T3b1 preparation: what the code reading must settle (2026-10-06, a session without the original files)
+
+T3b1 (Q48): Shield, Air Shield, the four Protections, Slayer, Counterstrike, Dispel, Cure. The
+session had no executable, so the rules wait for a session that can read it; this section is the
+reading list. Values by mastery from the packs (`SPTRAITS.TXT`); flags from §7.6's values;
+VCMI 1.7.5 from `config/spells/timed.json`, `other.json`, `lib/battle/DamageCalculator.cpp`,
+`lib/spells/CSpellHandler.cpp` (`adjustRawDamage`), `lib/spells/effects/Dispel.cpp`.
+
+| Spell (id) | Values | Flags (§7.6) | VCMI 1.7.5 |
+|---|---|---|---|
+| Shield (27) | 85, 85, 70, 70 (melee damage × v %) | timed, mass at Expert, protective | melee reduction 15/30 %, one factor among the defense factors |
+| Air Shield (28) | 75, 75, 50, 50 (ranged damage × v %) | timed, mass at Expert, protective | ranged reduction 25/50 % |
+| Protection from Air, Fire, Water, Earth (30–33) | 70, 70, 50, 50 (spell damage × v %) | timed, mass at Expert, protective | 30/50 % for the school; the first school of the spell that has one (air, fire, water, earth), integer `× (100 − r) / 100` |
+| Slayer (55) | 8 attack | timed, one target (no mass) | `SLAYER` = mastery (none 0, so none affects no creature); attack + v against a creature with king level ≤ it |
+| Counterstrike (58) | 1, 1, 2, 2 retaliations | timed, mass at Expert, war machines not affected | `ADDITIONAL_RETALIATION`; war machines excluded too |
+| Dispel (35) | — | not timed, mass at Expert, neutral | none/Basic own stacks, Advanced any stack, Expert every stack and also the spells' battlefield obstacles; removes every spell effect except persistent spells (Disrupting Ray, Clone, Acid Breath); ignores immunity |
+| Cure (37) | power × 5 + 10, 10, 20, 30 | not timed, mass at Expert, beneficial | heals the top creature (no raising) and removes negative spell effects; castable only if one of the two applies |
+
+**Already known from earlier readings:** the Protections (0x5A7BB0, §7.8): the first of the
+spell's schools in the order earth, air, fire, water for which the stack has its protection
+multiplies by the stored `f32` factor and truncates. That confirms quirk S-19 for SoD (Magic
+Arrow takes the first protection, not the strongest; suggested class fix-optional, flagged with
+T3b1). Durations, the re-cast rule, the round-start count-down and death follow T3a (§14).
+Counterstrike spares war machines (bit `0x1000`); the others affect them.
+
+**To read in the executable** (addresses where known):
+
+1. 0x4448F0 (apply): what Shield, Air Shield, the Protections, Slayer and Counterstrike store
+   (`v` as an integer, or `v / 100` as `f32` like Slow) and whether one changes a record field.
+2. 0x444510 (end): what Counterstrike gives back, if anything.
+3. The physical damage routine (callers of 0x442410 and 0x442590): where Shield's and Air
+   Shield's factors enter, their order with Armorer, the shooting penalties and the obstacle
+   penalty, and their rounding (single-precision as Q-0005 or a truncation of their own); whether
+   Air Shield covers the Ballista's shots.
+4. 0x5A7BB0: the stored factor's value, and nothing for a spell without a school.
+5. 0x442410 (attack): Slayer's king levels by mastery (is none like Basic, or nothing as in
+   VCMI?), melee and ranged alike.
+6. Retaliations: where the per-round count is reset and how Counterstrike adds to it, with
+   unlimited retaliation (Royal Griffins) and the Griffins' two.
+7. Dispel (a case of the switch at 0x5A2838): which effects it ends (each through 0x444510, so
+   Disrupting Ray's defense stays?), the side by mastery, Expert on every stack; whether it ends
+   battlefield spells (Fire Wall, Force Field, Quicksand, Land Mine; T5); resistance and immunity
+   on an enemy stack.
+8. Cure: which effects it ends (polarity −1, or a list; creature-ability effects for T7), the
+   heal (top creature, capped, no raising), and whether it is legal on a healthy stack without
+   negative effects.
+
+**Content to add with T3b1** (pack rows written by hand from these flags and the gap-fill,
+confirmed with `verify --with-original-data` on the user's machine, Q48): timed changes for the
+melee and ranged damage factors, a school protection, Slayer's king levels and extra
+retaliations; effect kinds Dispel and Cure (heal); Dispel's side by mastery.
+
+**Experiment candidates (batch 2b, if the code leaves them open):** Shield with Armorer on a
+fixed hit (rounding); Counterstrike on Griffins; Cure on a healthy stack.

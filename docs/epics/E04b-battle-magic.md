@@ -1,6 +1,6 @@
 # E04b — Battle magic
 
-Status: **in progress** (refined 2026-10-05; increment 1 = T1–T2, done 2026-10-06: T1, ADR-0014 accepted, T2a–T2e, batch 2a evaluated; increment 2 = T3 in three parts, then T4 (Q46): T3a done, waiting for the checkpoint) · Follows E04a (closed 2026-10-05) · Part of the former E04 (OPEN-QUESTIONS Q27): E04a heroes in battle, **E04b** battle magic (this one), E04c sieges and special battlefields.
+Status: **in progress** (refined 2026-10-05; increment 1 = T1–T2, done 2026-10-06: T1, ADR-0014 accepted, T2a–T2e, batch 2a evaluated; increment 2 = T3 in parts, then T4 (Q46, Q48): T3a done; T3b1 prepared, waiting for a session that can read the executable) · Follows E04a (closed 2026-10-05) · Part of the former E04 (OPEN-QUESTIONS Q27): E04a heroes in battle, **E04b** battle magic (this one), E04c sieges and special battlefields.
 
 ## Goal
 
@@ -28,7 +28,7 @@ Earthquake, sieges and the moat (E04c). The special battlefields' magic (Magic P
 
 ## Tasks (outline; refine at the start of each increment; keep status current)
 
-**Increment 1:** T1, T2 (done). **Increment 2** (Q46, 2026-10-06): T3 in three parts (refined below), then T4; T3a alone first, with a checkpoint. Later increments are cut with the user at each checkpoint; order and boundaries of T4–T11 may change.
+**Increment 1:** T1, T2 (done). **Increment 2** (Q46, 2026-10-06): T3 in parts (refined below; T3b split in two, Q48), then T4; T3a alone first, with a checkpoint. Later increments are cut with the user at each checkpoint; order and boundaries of T4–T11 may change.
 
 - [x] **T1 Magic survey and ADR-0014** — done 2026-10-05: survey `docs/rules/surveys/E04b-magic.md`, spell flags and stack records (`docs/formats/installation.md` §7.6, §7.7), ADR-0014 accepted after one revision (Q42; ADR-0004 point 8 amended). Record: [`E04b-log.md`](E04b-log.md).
 - [x] **T2 Casting core and direct-damage spells** — done 2026-10-06 (increment 1): T2a + T2b (2026-10-05), T2c + T2d with batch 2a (Q44), then T2e, batch 2a folded in (the user's seam, 2026-10-06). Record: [`E04b-log.md`](E04b-log.md).
@@ -60,10 +60,11 @@ The 13 direct-damage spells: Magic Arrow, Ice Bolt, Lightning Bolt, Titan's Ligh
 ### T3 — Timed effects on stacks (refined 2026-10-06, Q46)
 
 - [x] **T3a The effect list and the value spells** — done 2026-10-06: survey §14 and `installation.md` §7.9 (M-3 settled; Q47: the executable's counter pairs, re-cast keeps the first value, ADR-0014 point 5 amended); pack format v5 (timed changes, mind, mass versions, duration, cumulative, counters; `spell_duration`), HER-BAT-014, BAT-MAG-009 to 011, `h3_battle::effects`; state hash v20, ruleset hash v17, observation encoding v6, C ABI v9; `BattleState` 3 336 bytes, fork one allocation; all golden replays and `bench-check` re-baselined. Record: [`E04b-log.md`](E04b-log.md).
-- [ ] T3b Spells with their own rules, Dispel and Cure: Shield, Air Shield, Protection from Air, Fire, Water and Earth (S-19), Fire Shield, Slayer, Frenzy (S-16), Counterstrike; Dispel, Cure.
+- [ ] **T3b1** Shield, Air Shield, Protection from Air, Fire, Water and Earth (S-19, confirmed by the code notes), Slayer, Counterstrike; Dispel, Cure. **Prepared** 2026-10-06 (survey §15: VCMI, flags, the reading list); waits for a session that can read the executable (Q48, Q49); its pack rows may be written by hand and confirmed with `verify --with-original-data`.
+- [ ] T3b2 Fire Shield (reflected damage) and Frenzy (S-16; its own duration).
 - [ ] T3c The hero specialties in these spells (16 heroes), Q45 option (b) (skill specialties' rates in single precision across the seam), batch 2b compiled for T3 (with a level-10 specialist).
 
-**Checkpoint after T3a:** the user reviews the effect list and its measurements and confirms T3b (proposed alone or with T3c).
+**Checkpoint after T3a** (2026-10-06, Q48): T3b split into T3b1 and T3b2; T3b1 next, after a code reading.
 
 ## Design
 

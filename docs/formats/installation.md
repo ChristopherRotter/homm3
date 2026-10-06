@@ -290,7 +290,7 @@ every row and with VCMI; *probable*: a consistent pattern whose meaning is not p
 | `0x200` | deals damage | 15–26, 57, 77 (Thunderbolt) | confirmed |
 | `0x400` | mind spell | 49, 50, 56, 59–62 (Mirth, Sorrow, Frenzy, Berserk, Hypnotize, Forgetfulness, Blind) | confirmed |
 | `0x800` | beneficial effect on an own stack | 27–34, 36, 37, 41, 43, 44, 46, 48, 49, 51, 53, 55, 56, 58 | probable |
-| `0x1000` | war machines are not affected | 18, 24, 38–40, 59–63, 65, 70–75 | **confirmed** by code reading (§7.8, E04b T2d): the spell-effect test returns 0 for a war machine against a spell with this bit; VCMI's wider exclusion (Bless, Curse, Bloodlust, Haste, Slow, Counterstrike, …) is not in the original |
+| `0x1000` | war machines are not affected | 18, 24, 38–40, 43, 53, 54, 58–63, 65, 70–75 | **confirmed** by code reading (§7.8, E04b T2d): the spell-effect test returns 0 for a war machine against a spell with this bit. VCMI also spares war machines from Bless, Curse, Mirth, Sorrow and Frenzy, which lack the bit; Bloodlust (43), Haste (53), Slow (54) and Counterstrike (58) have it, as in VCMI (list corrected in E04b T3b1 prep, 2026-10-06: it had left out 43, 53, 54, 58; the values below and the packs were right) |
 | `0x2000` | granted by an artifact | 57 (Titan's Lightning Bolt) | probable (one row) |
 | `0x4000` | protective spell | 27–34, 36, 46, 58 | probable |
 | `0x8000`–`0x100000` | AI categories: `0x8000` damage to one target or area, `0x10000` damage that can hit own stacks, `0x20000` damage to every stack, `0x40000` other battle spells, `0x80000` new or raised stacks, `0x100000` special (map movement spells, Earthquake, Titan's Lightning Bolt) | see the values | probable; no rule reads them |

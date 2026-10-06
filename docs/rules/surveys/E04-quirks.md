@@ -133,6 +133,7 @@ Outside the E04 scope, listed so they are not lost (no classification needed now
 ### S-19 — Magic Arrow uses the wrong protection (E04b)
 - Original: HotA changelog: "Fixed a bug with the priority of protection against magic when casting a Magic Arrow (now the most effective of defenses is used)".
 - Suggested **fix-optional**.
+- **Confirmed for SoD by code reading** (`docs/formats/installation.md` §7.8, 0x5A7BB0; noted 2026-10-06, E04b T3b1 prep): the first of the spell's schools in the order earth, air, fire, water whose protection is active applies, not the strongest. Flagged with E04b T3b1.
 
 ### S-20 — A defender wins and is left without an army (E04b)
 - Original: HotA changelog: "a defending hero could be left without an army after winning a combat if all his stacks had been resurrected with a Basic-level Resurrection spell" (Basic Resurrection is temporary).
