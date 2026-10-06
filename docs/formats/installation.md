@@ -290,7 +290,7 @@ every row and with VCMI; *probable*: a consistent pattern whose meaning is not p
 | `0x200` | deals damage | 15–26, 57, 77 (Thunderbolt) | confirmed |
 | `0x400` | mind spell | 49, 50, 56, 59–62 (Mirth, Sorrow, Frenzy, Berserk, Hypnotize, Forgetfulness, Blind) | confirmed |
 | `0x800` | beneficial effect on an own stack | 27–34, 36, 37, 41, 43, 44, 46, 48, 49, 51, 53, 55, 56, 58 | probable |
-| `0x1000` | war machines are not affected (?) | 18, 24, 38–40, 59–63, 65, 70–75 | **unclear**: matches VCMI's war-machine exclusion for these spells, but VCMI also excludes war machines from Bless, Curse, Bloodlust, Haste, Slow, Counterstrike and others that lack the bit (`docs/rules/surveys/E04b-magic.md`, dispute M-1) |
+| `0x1000` | war machines are not affected | 18, 24, 38–40, 59–63, 65, 70–75 | **confirmed** by code reading (§7.8, E04b T2d): the spell-effect test returns 0 for a war machine against a spell with this bit; VCMI's wider exclusion (Bless, Curse, Bloodlust, Haste, Slow, Counterstrike, …) is not in the original |
 | `0x2000` | granted by an artifact | 57 (Titan's Lightning Bolt) | probable (one row) |
 | `0x4000` | protective spell | 27–34, 36, 46, 58 | probable |
 | `0x8000`–`0x100000` | AI categories: `0x8000` damage to one target or area, `0x10000` damage that can hit own stacks, `0x20000` damage to every stack, `0x40000` other battle spells, `0x80000` new or raised stacks, `0x100000` special (map movement spells, Earthquake, Titan's Lightning Bolt) | see the values | probable; no rule reads them |
@@ -331,3 +331,73 @@ dispatcher (VA 0x59ECC4) maps spell ids 10–69 to handlers through a byte table
 
 Not read: whether a vanished clone frees its record, where Pit Lords' demons go, and why the 21st
 record stays free.
+
+### 7.8 Code reading: damage spells, immunities and magic resistance (E04b T2d, 2026-10-06)
+
+Read for T2d (Q29: insight only, nothing copied; disassembly of the SoD executable with
+`capstone`). Floats are x87: intermediate values are extended precision, stores to memory are
+single precision (`f32`); `_ftol` (0x6179D4) truncates; 0x618CC7 is `ceil` (rounding mode up).
+
+**Effect handlers.** The battle manager's cast routine switches on the spell id through a byte
+table at 0x5A2838 (targets at 0x5A27A0): one handler per damage spell 15–19 and 24–26, the four
+area spells 20–23 share 0x5A4970, Titan's Lightning Bolt (57) shares Lightning Bolt's. A
+single-target spell's value is `power × power factor + effect[mastery]`, passed through the
+damage-modifier function 0x5A78E0, which applies in this order:
+
+1. **The caster's bonuses** (0x4E5760, on the hero): `v = f32(value)`; `× 1.5` if the hero has
+   the Orb of one of the spell's schools (checked air, earth, fire, water; at most once); `× (1 +
+   Sorcery)` (the §7.4 table, grown by `× (1 + 0.05 × level)` for a Sorcery specialist); both
+   products are stored as `f32`, **not truncated**; then, if the spell has a target stack, the
+   specialty bonus (0x4E5FF0) computed from `t = trunc(v)` is added as an integer and the result
+   truncated. Specialty bonus, for a hero whose specialty is this spell: by default
+   `ceil((hero level div creature level) × t × 0.03)` (integer division first; the creature
+   level is the stack's 0-based level + 1); Magic Arrow `t >> 1` (Ciele, +50 %); Fire Wall `t`
+   (Luna, +100 %); a few timed spells use their own tables (T3).
+2. **The target creature** (0x44B4B0, integer): Air and Storm Elementals double damage from
+   Lightning Bolt, Chain Lightning, Armageddon and Titan's Lightning Bolt; Fire and Energy
+   Elementals from Ice Bolt and Frost Ring; Earth and Magma Elementals from Meteor Shower; Water
+   and Ice Elementals from Fireball, Inferno and Armageddon. Stone Golem `/ 2`, Iron Golem `/ 4`,
+   Gold Golem `× 15 / 100`, Diamond Golem `/ 20` (C division, truncating).
+3. **Protection spells on the target** (0x5A7BB0): the first of the spell's schools, checked
+   earth, air, fire, water, for which the stack has its protection active multiplies by the
+   stored `f32` factor and truncates (quirk S-19 for Magic Arrow; T3).
+
+**Chain Lightning** (0x5A6360): the first target takes the full value; each later target takes
+the *value before the caster's bonuses* halved by integer division at every jump, then step 1–3
+for that target (so the specialty divides by each target's level). The next target (0x5A61F0) is
+the stack not yet hit with the smallest `trunc(sqrt(dx² + dy²))`, searched defender's stacks
+first, then the attacker's, each by stack record, keeping the first on ties (strict `<`); each
+candidate is first tested like a spell target (below): when casting for real, a candidate that
+fails its resistance roll is skipped for that jump (it can be chosen at a later jump); an immune
+one is never chosen. `dx`, `dy` come from getters 0x446660/0x446630: the stack's hex record's
+screen position, x shifted by ±22 for a two-hex stack (towards its second hex), y lifted by
+half of `267 − top offset of the creature's sprite frame` (a graphics value; inference: screen
+pixels, as the mouse-to-hex code at 0x464870 uses 44 × 42 pixel hexes and the bolt's animation
+length is derived from the same distance). Jumps per mastery from the table at 0x642274.
+
+**Area spells** (0x5A4970): the stacks on the area's hexes (one entry per stack), each tested
+and rolled separately, then damaged with steps 1–3.
+
+**Can a spell affect a stack** (0x5A8090 → 0x44A4D0; returns a factor `f` in [0, 1], 0 =
+immune): absolute cases first: the stack's hero wears Power of the Dragon Father and the spell
+is level 1–4; war machines (creature flag `0x40`) against spells with flag `0x1000` (Implosion,
+Death Ripple, …; settles dispute M-1: the bit means "war machines are not affected"); creature
+149 (arrow tower); per-spell hero artifacts (the Pendants, T8); Death Ripple spares undead
+(creature flag `0x40000`), Destroy Undead affects only undead. Then, unless either hero has the
+Orb of Vulnerability: mind spells (flag `0x400`) against mind-immune creatures (`0x400`); fire
+spells (school bit 2) against fire-immune creatures (`0x4000`); per creature: Dwarf and Crystal
+Dragon `f = 0.8`, Battle Dwarf `0.6`; Air and Storm Elementals immune to Meteor Shower (and
+Blind); Earth and Magma Elementals to Lightning Bolt, Chain Lightning, Armageddon and Titan's
+Lightning Bolt; Water and Ice Elementals to Ice Bolt and Frost Ring; Green, Red and Azure Dragons
+to spells of level ≤ 3, Gold Dragon ≤ 4, Black Dragon and Magic Elemental to all. Then `f =
+f32(f − r)` with `r` the resistance of the stack's own hero (0x4E46E0: the §7.4 Resistance
+value, grown `× (1 + 0.05 × level)` for a Resistance specialist, `+ 0.05` Garniture of
+Interference, `+ 0.10` Surcoat of Counterpoise, `+ 0.15` Boots of Polarity, each stored as
+`f32`, at most 1); `f < 0` becomes 0. A positive spell ignores `f` (only immunity counts). For a
+neutral or negative spell, a stack with an adjacent Unicorn aura (a list on the stack record)
+gets `f × 0.8` (once, however many Unicorns). The cast rolls `random(1, 100) ≤ trunc(f × 100)`
+to affect the stack (the call sites at 0x5A02EA and in the area and chain handlers), so the hero
+resistance adds to the creature's and the aura multiplies (dispute M-2), and single-precision
+values make 10 % hero resistance a 89 % chance to be affected and 5 % a 94 % chance (quirk
+Q-0005). A negative spell never affects a stack of the caster's side through this test, a
+positive one never an enemy (Chain Lightning and the area spells are neutral).

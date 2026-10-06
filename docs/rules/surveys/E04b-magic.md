@@ -84,12 +84,12 @@ T2: S-18 (Magic Arrow 0 damage to golems). T3: S-16, S-17, S-19. T4: S-09, S-10,
 
 | # | Question | Sources | Needed by |
 |---|---|---|---|
-| M-1 | Which spells affect war machines | the executable's bit `0x1000` sits on Implosion, Death Ripple, raising, mind spells, Teleport, Clone and the abilities; VCMI also excludes war machines from Bless, Curse, Bloodlust, Haste, Slow, Counterstrike and others | T2 (Implosion), T3 |
-| M-2 | Magic resistance: add or multiply sources | VCMI adds; the wiki is silent (`E04-skills.md` §2.10) | T2d |
+| M-1 | Which spells affect war machines (**settled** by code reading, §12: flag `0x1000`) | the executable's bit `0x1000` sits on Implosion, Death Ripple, raising, mind spells, Teleport, Clone and the abilities; VCMI also excludes war machines from Bless, Curse, Bloodlust, Haste, Slow, Counterstrike and others | T2 (Implosion), T3 |
+| M-2 | Magic resistance: add or multiply sources (**settled**, §12: hero and creature add, the aura multiplies) | VCMI adds; the wiki is silent (`E04-skills.md` §2.10) | T2d |
 | M-3 | When durations count down | VCMI: all stacks at the start of a round; SoD unobserved | T3 |
 | M-4 | Hero cast during a commanded war machine's turn | wiki ("one of their creatures") vs VCMI (any own unit) | T2b |
 | M-5 | Per-side stack limit | settled by code reading (§5): 21 records, Clone and summons refused at 20 stacks; open: whether a vanished clone frees its record | T6 |
-| M-6 | Spell damage rounding | VCMI truncates after each factor; Q-0005 used single precision for physical damage | T2b |
+| M-6 | Spell damage rounding (**settled**, §12) | VCMI truncates after each factor; Q-0005 used single precision for physical damage | T2b |
 
 ## 10. Experiment candidates for batch 2a (end of increment 1)
 
@@ -128,3 +128,38 @@ side its polarity disfavours), not on the area and every-stack spells. The execu
 Lightning neutral polarity (it can strike own stacks), so its harvested side is any; T2d settles
 its first target with X-6. M-4 is implemented as VCMI (a hero may cast while a war machine it
 commands awaits a command; X-3 checks); M-6 as VCMI's order with exact basis points (X-1 checks).
+
+## 12. T2d: code reading of the damage spells, immunities and resistance (2026-10-06)
+
+The executable answered most of T2d's open points (`original-data`, `docs/formats/installation.md`
+§7.8; Q29, insight only). Where it differs from VCMI, the original wins:
+
+- **Damage order** (settles M-6 and X-1's rounding): the caster's bonuses come *before* the
+  target's reductions: value → × 1.5 for an Orb of one of the spell's schools → × (1 + Sorcery),
+  kept fractional → truncate → + the specialty bonus (`ceil(3 % × (hero level div creature
+  level) × value)`, Ciele `value div 2`, Luna `value`) → the creature's double damage or Golem
+  reduction (integer) → protection spells (T3). VCMI applies the reductions first and truncates
+  after every factor; BAT-MAG-004 is corrected accordingly.
+- **Immunities and resistance** (settles M-1 and M-2): spell flag `0x1000` spares war machines;
+  the per-creature lists match VCMI except that Titan's Lightning Bolt joins the Earth/Magma
+  Elementals' immunity and the Air/Storm Elementals' double damage; the hero's resistance
+  (skill, Resistance specialty, three artifacts) is *subtracted* from the creature's effect
+  factor (VCMI adds percentages: the same), the Unicorn aura multiplies by 0.8 once; one roll
+  `1..100` per stack; single-precision values shift 5 % and 10 % hero resistance by one point
+  (quirk Q-0005).
+- **Chain Lightning** (most of X-6): the first target may be any stack (neutral polarity); if it
+  resists, the spell ends; each jump halves the value before the caster's bonuses (integer), so
+  each target gets its own specialty and reduction; the next target is the nearest stack not yet
+  hit by screen distance (hex centres 44 × 42 pixels, a two-hex stack's centre shifted half a hex
+  towards its second hex; plus a sprite offset not modelled, OPEN-QUESTIONS Q43), ties to the
+  defender's stacks first, then by stack record; a candidate that fails its resistance roll is
+  skipped for that jump only. The wiki's random tie-break (`wiki` Chain Lightning: "If two or
+  more targets are at the equal distance from previous target, then the stack is randomly
+  chosen") is not in the code. Batch 2a checks the geometry (user, 2026-10-06).
+- **User decisions** (2026-10-06): the specialty effect carries the per-level rate and the hero
+  level (contract change); Chain Lightning by screen geometry without the sprite offset, checked
+  in batch 2a; magic resistance in single precision under Q-0005.
+- Still open: whether an area spell may target a hex where it affects no stack (VCMI: no; the
+  cast-validation code was not read); S-18 (Magic Arrow 0 damage to Golems) needs a value below
+  20 (Diamond) or 7 (Gold) before the reduction, which a hero's cast cannot produce (power ≥ 1 gives
+  at least 20); it remains for creature casters (T7).
