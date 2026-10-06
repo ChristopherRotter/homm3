@@ -22,18 +22,18 @@ Map file: `E04b-batch-2a.h3m`. Fill in the blanks below and keep this file; an a
 
 **Record**
 
-- spell points at the start: 
-- order of the stacks hit (A, B, C, Pikemen): 
+- spell points at the start: 30
+- order of the stacks hit (A, B, C, Pikemen): A, C, B, Pikemen
 
 | stack | count after the cast |
 |---|---|
-|   |   |
-|   |   |
-|   |   |
-|   |   |
+|A|35|
+|C|70|
+|B|85|
+|Pikemen|10|
 
-- round 2: can Chain Lightning target your own Pikemen (yes/no): 
-- anything odd: 
+- round 2: can Chain Lightning target your own Pikemen (yes/no): no
+- anything odd: (pattern was shifted one hex to the left due to obstacle)
 
 ## R2 — Chain Lightning: two stacks at the same distance (X-6)
 
@@ -45,15 +45,15 @@ Map file: `E04b-batch-2a.h3m`. Fill in the blanks below and keep this file; an a
 
 **Record**
 
-- order of the stacks hit (A, R, L, Pikemen): 
+- order of the stacks hit (A, R, L, Pikemen): A, R, L, Pikemen
 
 | stack | count after the cast |
 |---|---|
-|   |   |
-|   |   |
-|   |   |
+|A|35|
+|R|69|
+|L|86|
 
-- anything odd: 
+- anything odd: (pattern was shifted one hex down-left due to obstacle)
 
 ## R3 — Aiming Fireball and Implosion; a resisting stack at the centre (X-5, BAT-MAG-007)
 
@@ -68,22 +68,22 @@ Map file: `E04b-batch-2a.h3m`. Fill in the blanks below and keep this file; an a
 
 **Record**
 
-- spell points at the start: 
-- (a) Implosion on the Ballista allowed (yes/no): 
-- (b) Fireball on an empty hex far from all stacks allowed (yes/no): 
-- (c) Fireball on the Efreeti allowed (yes/no); if cast: what happened: 
+- spell points at the start: 120
+- (a) Implosion on the Ballista allowed (yes/no): no
+- (b) Fireball on an empty hex far from all stacks allowed (yes/no): yes
+- (c) Fireball on the Efreeti allowed (yes/no); if cast: what happened: yes, but game indicates they won't be affected (hex and creature are not highlighted); casting on Efreet only deals damage to Battle Dwarves
 
 | cast | Dwarves resist (log) | Dwarves lost | Gnolls 50 lost | Gnolls 51 lost | Efreeti lost |
 |---|---|---|---|---|---|
-|   |   |   |   |   |   |
-|   |   |   |   |   |   |
-|   |   |   |   |   |   |
-|   |   |   |   |   |   |
-|   |   |   |   |   |   |
-|   |   |   |   |   |   |
-|   |   |   |   |   |   |
+|0 (target Efreet)|no|1|0|0|0|
+|1|yes, but not logged|0|4|4|0|
+|2|yes, but not logged|0|4|4|0|
+|3|no|1|4|4|0|
+|4|no|1|4|4|0|
+|5|no|2|4|4|0|
+|6|yes, but not logged|0|5|5|0|
 
-- anything odd: 
+- anything odd:
 
 ## R4 — A spell specialist's Ice Bolt with Sorcery: specialty rounding, creature level, Golems, elementals (X-1, X-2, M-6)
 
@@ -96,17 +96,17 @@ Map file: `E04b-batch-2a.h3m`. Fill in the blanks below and keep this file; an a
 
 **Record**
 
-- spell points and spell power at the start: 
+- spell points and spell power at the start: 40, 5
 
 | round | target | damage (log) |
 |---|---|---|
-|   |   |   |
-|   |   |   |
-|   |   |   |
-|   |   |   |
+|1|Peasants|119|
+|2|Wolf Riders|115|
+|3|Gold Golems|17|
+|4|Fire Elemental|230|
 
-- round 5: Ice Bolt can target the Gold Dragon (yes/no): 
-- anything odd: 
+- round 5: Ice Bolt can target the Gold Dragon (yes/no): no
+- anything odd:
 
 ## R5 — Ice Bolt with an Orb and Sorcery: one rounding or one per factor (X-1)
 
@@ -118,14 +118,14 @@ Map file: `E04b-batch-2a.h3m`. Fill in the blanks below and keep this file; an a
 
 **Record**
 
-- spell points and spell power at the start: 
+- spell points and spell power at the start: 20, 5
 
 | round | target | damage (log) |
 |---|---|---|
-|   |   |   |
-|   |   |   |
+|1|Wolf Riders|173|
+|2|Gold Golems|25|
 
-- anything odd: 
+- anything odd: Not odd, but an observation: Extra damage and resisted damage (Golems) are logged explicitly, so the battle calculation / outcome must pass that information in its result onto the caller
 
 ## R6 — Spell costs with Mages, Pegasi and Familiars; casting in the Ballista's turn (X-3, X-4, M-4)
 
@@ -139,16 +139,17 @@ Map file: `E04b-batch-2a.h3m`. Fill in the blanks below and keep this file; an a
 
 **Record**
 
-- spell points at the start (R6, Blue): 
+- spell points at the start (R6, Blue): 20, 10
 
 | when | caster | spell points before | spell points after | R6's spell points after (Blue's casts) | Pegasus alive? |
 |---|---|---|---|---|---|
-|   |   |   |   |   |   |
-|   |   |   |   |   |   |
-|   |   |   |   |   |   |
+|Familiar's turn (1)|Red|20|15|n/a|yes|
+|Gnol's turn (1)|Blue|10|2|16|yes|
+|Ballista's turn (2)|Red|16|11|n/a|yes|
+|Familiar's turn (3)|Red|11|6|n/a|no (killed by Mage in round 2, was alive by the time Ballista's turn came)|
 
-- round 2: can R6 cast in the Ballista's turn (yes/no): 
-- anything odd (bad morale skips, etc.): 
+- round 2: can R6 cast in the Ballista's turn (yes/no): yes
+- anything odd (bad morale skips, etc.):
 
 ## R7 — Tactics phase: which stack is handed over next (Q40, BAT-TAC-002, BAT-TRN-001)
 
@@ -164,15 +165,15 @@ Map file: `E04b-batch-2a.h3m`. Fill in the blanks below and keep this file; an a
 
 **Record**
 
-- (a) first stack: 
-- (b) sequence when skipping: 
-- (c) next after moving the first stack; next after moving that one: 
-- (d) rows of Swordsmen, Griffins, Monks, Marksmen: 
+- (a) first stack: Cavaliers
+- (b) sequence when skipping: Griffins, Marksmen, Swordsmen, Monks, Pikemen (2x), Swordsmen, Monks, Griffins, Marksmen, Cavaliers
+- (c) next after moving the first stack; next after moving that one: Cavaliers (despite just having moved them, therefore skipping to the next creature at this point); Then moving Griffins, which yields control to Marksmen
+- (d) rows of Swordsmen, Griffins, Monks, Marksmen: 4, 8, 5, 7
 
 | round | order of Red's stacks |
 |---|---|
-|   |   |
-|   |   |
-|   |   |
+|1|Cavaliers, Griffins, Marksmen, Swordsmen, Monks, Pikemen|
+|2|Cavaliers, Griffins, Marksmen, Swordsmen, Monks, Pikemen|
+|3|Cavaliers, Griffins, Marksmen, Swordsmen, Monks, Pikemen|
 
-- anything odd: 
+- anything odd:
