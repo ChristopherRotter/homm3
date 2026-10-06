@@ -1,0 +1,68 @@
+# CI: the single quality gate `cargo xtask verify` (docs/05-testing.md, ADR-0010) on Linux and
+# Windows, the two CI platforms of the determinism matrix (ADR-0003 §5, §11; Q3, Q7).
+#
+# Local-only parts stay local: `--with-original-data` needs the user's installation copy, which is
+# never committed (ADR-0009). Linux runs every gate; on Windows `bench-check` (valgrind) and
+# `ffi-smoke` (no `cc` on MSVC) report N/A by design.
+name: CI
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+  workflow_dispatch:
+  # Weekly, so that new RustSec advisories (the `deny` gate) surface without a code change.
+  schedule:
+    - cron: "17 4 * * 1"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  verify:
+    name: verify (${{ matrix.os }})
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-24.04, windows-2025]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          # `doc-drift` compares with the merge base of `master`.
+          fetch-depth: 0
+
+      # rustup reads the pinned toolchain from rust-toolchain.toml; coverage additionally needs
+      # the LLVM tools, which rust-toolchain.toml leaves out on purpose.
+      - name: Toolchain
+        shell: bash
+        run: |
+          cargo --version
+          rustup component add llvm-tools-preview
+          rustc --version
+
+      - name: valgrind (bench-check)
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq valgrind
+
+      - uses: taiki-e/install-action@v2
+        with:
+          tool: cargo-deny,cargo-llvm-cov
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          # Branches restore master's cache but do not write their own.
+          save-if: ${{ github.ref == 'refs/heads/master' }}
+
+      - name: cargo xtask verify
+        run: cargo xtask verify
