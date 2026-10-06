@@ -5,7 +5,7 @@ Living state between sessions; every session reads it first. Rules (`docs/08-wor
 ## Current state
 
 - Branch `master`: the user merged `e04a-heroes-in-battle` (`148ed64`, verify green on Linux and Windows incl. `--with-original-data`); the E04b refinement (docs only) is committed on top. Sandbox and syncing: `docs/08-work-process.md`, "Cloud sandbox and syncing" (`scripts/sandbox-setup.sh`).
-- **GitHub and CI (2026-10-06):** the repo is on GitHub (`ChristopherRotter/homm3`, private); `.github/workflows/ci.yml` runs `cargo xtask verify` on Linux and Windows for PRs, pushes to `master` and weekly (`docs/05-testing.md`, "CI"). Changes reach `master` by pull request.
+- **GitHub and CI (2026-10-06):** the repo is on GitHub (`ChristopherRotter/homm3`, private); `.github/workflows/ci.yml` runs `cargo xtask verify` on Linux for PRs, pushes to `master` and weekly (`docs/05-testing.md`, "CI"); the Windows job is disabled (too slow), so Windows verify stays the user's local run. Changes reach `master` by pull request (not enforceable on this plan).
 - **E04b (battle magic) is refined** (Q41, `docs/epics/E04b-battle-magic.md`): increments with a user checkpoint each. **Increment 1** = T1 (survey and ADR-0014, then **stop for the user's review**) and T2 (casting core, checkpoints T2a–T2d, the factorized casting action in T2c, batch 2a at the end); after T2d the user confirms increment 2 (proposed: T3, T4).
 - **Next:** create `e04b-battle-magic` from `master`; a fresh session starts T1 (wiki fetches need the user's approval; clone VCMI 1.7.5). T1 writes no engine code: the executable's spell flags (`docs/formats/installation.md` §7.6) can be read from `original-data/install/Heroes3.exe` with a script.
 - Versions: state hash v17, ruleset hash v13, replay format v13, action encoding v8, C ABI v7, observation encoding v4. Each new command bumps the action encoding and the C ABI (ADR-0011).
@@ -52,7 +52,7 @@ Living state between sessions; every session reads it first. Rules (`docs/08-wor
 
 ### 2026-10-06 (sixteenth) — CI on GitHub Actions
 
-The repo was published to GitHub; a cloud session (clone from GitHub, rustup reachable) added `.github/workflows/ci.yml`: `cargo xtask verify` on `ubuntu-24.04` and `windows-2025` (pinned toolchain plus `llvm-tools-preview`, cargo-deny and cargo-llvm-cov via `taiki-e/install-action`, valgrind on Linux, `Swatinem/rust-cache` saved from `master` only, full history for doc-drift). Q3 updated, ADR-0003's determinism note, `05-testing.md` ("CI"), `08-work-process.md` (branching) and the BACKLOG inbox item adjusted. No engine change.
+The repo was published to GitHub; a cloud session (clone from GitHub, rustup reachable) added `.github/workflows/ci.yml`: `cargo xtask verify` on `ubuntu-24.04` and `windows-2025` (pinned toolchain plus `llvm-tools-preview`, cargo-deny and cargo-llvm-cov via `taiki-e/install-action`, valgrind on Linux, `Swatinem/rust-cache` saved from `master` only, full history for doc-drift). Both jobs passed; the user then disabled the Windows job (about 14 against 8 minutes) and found branch rules unavailable for a private repo on this plan. Q3 updated, ADR-0003's determinism note, `05-testing.md` ("CI"), `08-work-process.md` (branching) and the BACKLOG inbox item adjusted. No engine change.
 
 ### 2026-10-05 (fifteenth) — E04b refined with the user: increment 1 = T1 + T2
 

@@ -1,9 +1,13 @@
-# CI: the single quality gate `cargo xtask verify` (docs/05-testing.md, ADR-0010) on Linux and
-# Windows, the two CI platforms of the determinism matrix (ADR-0003 §5, §11; Q3, Q7).
+# CI: the single quality gate `cargo xtask verify` (docs/05-testing.md, ADR-0010) on Linux, where
+# every gate runs.
+#
+# Windows (the second platform of the determinism matrix, ADR-0003 §5, §11; Q3, Q7) is disabled
+# for now because it takes about twice as long (user, 2026-10-06); it stays a local run. To
+# re-enable it, add `windows-2025` to the matrix: `bench-check` (valgrind) and `ffi-smoke` (no `cc`
+# on MSVC) report N/A there by design, everything else passed on 2026-10-06.
 #
 # Local-only parts stay local: `--with-original-data` needs the user's installation copy, which is
-# never committed (ADR-0009). Linux runs every gate; on Windows `bench-check` (valgrind) and
-# `ffi-smoke` (no `cc` on MSVC) report N/A by design.
+# never committed (ADR-0009).
 name: CI
 
 on:
@@ -31,7 +35,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-24.04, windows-2025]
+        os: [ubuntu-24.04]
     runs-on: ${{ matrix.os }}
     timeout-minutes: 90
     steps:
