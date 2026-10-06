@@ -55,6 +55,7 @@ fn spell_damage(events: &[Event]) -> Vec<(u8, u64, u32)> {
                 target,
                 damage,
                 kills,
+                ..
             } => Some((target.0, damage, kills)),
             _ => None,
         })
@@ -236,15 +237,17 @@ fn casts_need_a_book_a_combat_spell_and_a_valid_target() {
         spell(&r, "nova"),
         &mut targets,
     );
-    // Nova at every standable hex whose area (radius 1) holds a stack it can reach.
+    // Nova at every standable hex (BAT-MAG-003).
     let field = field(&r);
-    assert!(!targets.is_empty());
+    let standable = (0u8..)
+        .take(field.hex_count())
+        .filter(|&h| field.is_standable(crate::Hex(h)));
+    assert_eq!(targets.len(), standable.count());
     for t in targets.iter() {
         let CastTarget::Hex(h) = *t else {
             panic!("{t:?}")
         };
         assert!(field.is_standable(h));
-        assert!(s.stacks().iter().any(|x| field.distance(x.hex, h) <= 1));
     }
     cast_targets(
         &s,

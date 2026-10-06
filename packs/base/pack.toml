@@ -3163,6 +3163,7 @@ power = 40
 effect = [25, 25, 50, 100]
 polarity = "neutral"
 target = "stack"
+side = "enemy"
 chain = { factor_bp = 5000, targets = [4, 4, 5, 5] }
 effects = [{ kind = "damage" }]
 

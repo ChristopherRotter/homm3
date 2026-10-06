@@ -2,8 +2,10 @@
 //!
 //! The side whose hero has the higher Tactics level places its army stacks in a zone at its edge
 //! before the first round; the battle is in round 0 meanwhile. The game hands the side its army
-//! stacks one at a time in round-1 order, cycling; a placement passes to the next stack, Wait
-//! skips to it, and `EndTactics` starts round 1. War machines are not placed.
+//! stacks one at a time in rounds like regular ones (batch 2a R7): a placement ends the stack's
+//! turn, Wait (the game's "next creature") makes it wait or, if it has waited, ends its turn, and
+//! when every stack has had its turn the next round of the phase starts. `EndTactics` starts
+//! round 1. War machines are not placed.
 
 use h3_content::Ruleset;
 use h3_contracts::BattleSide;
@@ -13,7 +15,7 @@ use crate::event::{Event, EventKind, Sink};
 use crate::geometry::{Field, Hex};
 use crate::hero::HeroRecord;
 use crate::movement::{Reach, reachable_within};
-use crate::state::{BattleState, Stack, StackId, StackTraits, side_code};
+use crate::state::{BattleState, Stack, StackFlags, StackId, StackTraits, side_code};
 use crate::turn;
 
 /// A running tactics phase: the side that places its stacks and the width of its zone.
@@ -75,41 +77,42 @@ pub(crate) fn phase(ruleset: &Ruleset, heroes: &[Option<HeroRecord>; 2]) -> Opti
     Some(TacticsPhase { side, columns })
 }
 
-/// Placement order of the side's living army stacks: round-1 order (BAT-TRN-001: faster first,
-/// then the lower army slot; the id makes the key unique).
-fn order_key(id: u8, s: &Stack) -> (u8, u8, u8) {
-    (u8::MAX - s.speed, s.slot, id)
+/// Hand-over order of the side's living army stacks, as in a regular round (BAT-TRN-001/002):
+/// first those that have not waited, faster first, then those that waited, slower first; ties to
+/// the lower army slot (the id makes the key unique).
+fn order_key(id: u8, s: &Stack) -> (bool, u8, u8, u8) {
+    let waited = s.flags.contains(StackFlags::WAITED);
+    let speed = if waited { s.speed } else { u8::MAX - s.speed };
+    (waited, speed, s.slot, id)
 }
 
-/// The stack to place after `current` (the first one for `None`), wrapping around after the
-/// last. War machines are not placed (batch 1b R2).
+/// The side's next stack that has not had its turn in this round of the phase. War machines are
+/// not placed (batch 1b R2).
+fn pick(state: &BattleState, phase: TacticsPhase) -> Option<StackId> {
+    (0u8..)
+        .zip(state.stacks.iter())
+        .filter(|(_, s)| {
+            s.side == phase.side
+                && s.is_alive()
+                && !s.has(StackTraits::WAR_MACHINE)
+                && !s.flags.contains(StackFlags::ACTED)
+        })
+        .min_by_key(|&(id, s)| order_key(id, s))
+        .map(|(id, _)| StackId(id))
+}
+
+/// Hands the next stack to the phase's side; when every stack has had its turn, the next round
+/// of the phase starts (the stacks' turn flags are cleared, batch 2a R7c).
 // rule: BAT-TAC-002
-fn next(state: &BattleState, phase: TacticsPhase, current: Option<StackId>) -> StackId {
-    let after = current.map(|id| order_key(id.0, state.at(id)));
-    let candidates = || {
-        (0u8..)
-            .zip(state.stacks.iter())
-            .filter(|(_, s)| {
-                s.side == phase.side && s.is_alive() && !s.has(StackTraits::WAR_MACHINE)
-            })
-            .map(|(id, s)| (order_key(id, s), id))
-    };
-    // The side has an army stack (the setup requires one), so a stack is always found.
-    candidates()
-        .filter(|(key, _)| after.is_none_or(|a| *key > a))
-        .min()
-        .or_else(|| candidates().min())
-        .map_or(StackId(0), |(_, id)| StackId(id))
-}
-
-/// Hands the next stack after `current` to the phase's side.
-fn activate<S: Sink>(
-    state: &mut BattleState,
-    phase: TacticsPhase,
-    current: Option<StackId>,
-    sink: &mut S,
-) {
-    let id = next(state, phase, current);
+fn activate<S: Sink>(state: &mut BattleState, phase: TacticsPhase, sink: &mut S) {
+    let id = pick(state, phase).unwrap_or_else(|| {
+        for s in state.stacks.as_mut_slice() {
+            s.flags.set(StackFlags::ACTED, false);
+            s.flags.set(StackFlags::WAITED, false);
+        }
+        // The side has an army stack (the setup requires one), so a stack is always found.
+        pick(state, phase).unwrap_or(StackId(0))
+    });
     state.active = Some(id);
     sink.emit(Event::public(EventKind::TurnStarted { stack: id }));
 }
@@ -122,17 +125,37 @@ pub(crate) fn begin<S: Sink>(state: &mut BattleState, phase: TacticsPhase, sink:
         side: phase.side,
         columns: phase.columns,
     }));
-    activate(state, phase, None, sink);
+    activate(state, phase, sink);
 }
 
-/// Passes from `current` to the next stack (after a placement or a Wait).
-pub(crate) fn pass<S: Sink>(
+/// Ends `current`'s turn in the phase after a placement; the next stack follows.
+pub(crate) fn placed<S: Sink>(
     state: &mut BattleState,
     phase: TacticsPhase,
     current: StackId,
     sink: &mut S,
 ) {
-    activate(state, phase, Some(current), sink);
+    state.at_mut(current).flags.set(StackFlags::ACTED, true);
+    activate(state, phase, sink);
+}
+
+/// Wait in the phase (the game's "next creature"): `current` waits (event `Waited`) or, if it has
+/// waited in this round of the phase, its turn ends; the next stack follows (batch 2a R7b).
+// rule: BAT-TAC-002
+pub(crate) fn skip<S: Sink>(
+    state: &mut BattleState,
+    phase: TacticsPhase,
+    current: StackId,
+    sink: &mut S,
+) {
+    let stack = state.at_mut(current);
+    if stack.flags.contains(StackFlags::WAITED) {
+        stack.flags.set(StackFlags::ACTED, true);
+    } else {
+        stack.flags.set(StackFlags::WAITED, true);
+        sink.emit(Event::public(EventKind::Waited { stack: current }));
+    }
+    activate(state, phase, sink);
 }
 
 /// Ends the phase: round 1 starts and its first stack is activated as usual.

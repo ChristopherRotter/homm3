@@ -70,6 +70,10 @@ pub struct SpellTargeting {
     /// Creature flags a stack may not have.
     #[serde(default)]
     pub excludes: Vec<String>,
+    /// The side a stack spell may be aimed at (`enemy` or `own`) when the flag word and the
+    /// polarity do not give it (Chain Lightning: the original's targeting code, E04b T2e).
+    #[serde(default)]
+    pub side: Option<String>,
     /// Source ids.
     pub sources: Vec<String>,
 }

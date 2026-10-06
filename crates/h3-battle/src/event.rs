@@ -174,11 +174,19 @@ pub enum EventKind {
         /// The stack.
         target: StackId,
     },
-    /// A spell damaged a stack (BAT-MAG-004).
+    /// A spell damaged a stack (BAT-MAG-004). The three amounts let a client show what the
+    /// original's combat log shows: the caster's extra damage (`caster − value`) and the
+    /// target's extra damage or reduction (`damage` against `caster`; batch 2a R5).
     SpellDamage {
         /// The stack.
         target: StackId,
-        /// Damage dealt, before capping at the stack's remaining health.
+        /// The spell's value for this stack: power × power factor + effect, halved at every
+        /// jump of a chain.
+        value: u64,
+        /// The value after the caster's bonuses (the Orbs, Sorcery, the spell's own bonuses).
+        caster: u64,
+        /// Damage dealt, after the target's extra damage or reduction, before capping at the
+        /// stack's remaining health.
         damage: u64,
         /// Creatures killed.
         kills: u32,

@@ -159,7 +159,36 @@ The executable answered most of T2d's open points (`original-data`, `docs/format
 - **User decisions** (2026-10-06): the specialty effect carries the per-level rate and the hero
   level (contract change); Chain Lightning by screen geometry without the sprite offset, checked
   in batch 2a; magic resistance in single precision under Q-0005.
-- Still open: whether an area spell may target a hex where it affects no stack (VCMI: no; the
-  cast-validation code was not read); S-18 (Magic Arrow 0 damage to Golems) needs a value below
+- Settled by batch 2a and the re-read in T2e (§13): an area spell may target a hex where it
+  affects no stack. S-18 (Magic Arrow 0 damage to Golems) needs a value below
   20 (Diamond) or 7 (Gold) before the reduction, which a hero's cast cannot produce (power ≥ 1 gives
   at least 20); it remains for creature casters (T7).
+
+## 13. Batch 2a results and the targeting code (E04b T2e, 2026-10-06)
+
+`experiments/results/E04b-batch-2a.md` (SoD 4.0 Complete, plain HD) against the spec's
+predictions (`experiments/specs/E04b-batch-2a.toml`):
+
+- **Confirmed:** Chain Lightning by screen distance and the code's tie order (R1: A, C, B, then the
+  caster's Pikemen; R2: A, R, L; every count as predicted; Q44, X-6); the damage order and
+  rounding (R4: 119, 115, 17, 230; R5: 173, 25; X-1, X-2); immunities (Gold Dragon, Efreeti,
+  Implosion on a Ballista; X-2, X-5); a hero casts in its commanded Ballista's turn (R6; X-3,
+  M-4); Familiars return 20 % of the enemy hero's cost, rounded down (R6: 1 of 8; for T7); speed
+  ties by army slot (R7e).
+- **Refuted, fixed in T2e:** Chain Lightning cannot be aimed at the caster's own stacks (R1); an
+  area spell may be aimed at an empty hex or an immune stack's hex, which is spared (R3b, R3c);
+  the stack on an area spell's centre does not stop the spell by resisting (R3: the Gnolls beside
+  the Battle Dwarves were struck by all six Fireballs, the Dwarves resisted three, no log line);
+  the tactics hand-over (R7b, R7c; OPEN-QUESTIONS Q40).
+- **Why the first code reading was wrong:** the aimed stack's roll at 0x5A02EA applies only to a
+  spell that takes a target stack (0x59E060), never to an area spell; and the targeting code
+  (0x59F700, 0x5A39C0) had not been read. Both are in `installation.md` §7.8 now, with the flag
+  `0x20` (Forgetfulness: mass from Advanced, quirk S-10) settled in §7.6.
+- **Open for T7** (X-4, M-?): costs. Red's Magic Arrow cost 5 in rounds 1 and 2 (Mages and the
+  enemy's Pegasus alive: VCMI 5 − 2 + 2) and 5 again in round 3 after the Pegasus died (VCMI: 3);
+  Blue's Ice Bolt cost 8. Either the Pegasus' surcharge outlives it (fixed at the start of the
+  battle?) or the Mages' discount does not apply; T7 reads the cost code before implementing it.
+- **Noted for later:** the combat log names the caster's extra damage and the Golems' reduction
+  (R5, the user): `SpellDamage` now carries the value, the caster's damage and the damage dealt.
+  The Sorcery specialist's growth in single precision generalises to every skill specialty
+  (OPEN-QUESTIONS Q45).

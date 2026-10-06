@@ -220,8 +220,10 @@ the previous one's value) are exclusive; `requires`/`excludes` are creature flag
 flag). Effect kinds (at most four, distinct): `damage` (the value `power × power factor +
 effect[mastery]` as damage; BAT-MAG rules, E04b T2b/T2d). Later tasks add kinds (timed, dispel,
 heal, summon, …). Adventure spells have no battle magic; a spell without effects cannot be cast
-yet. `side = "enemy"` is VCMI's smart targeting of the single-target damage spells (the harvester
-writes it for every single-target spell that harms, BAT-MAG-003). At most four spell schools and
+yet. `side` limits whose stacks a stack spell may be *aimed* at (BAT-MAG-003; a chain's jumps
+and an area reach either side): the harvester writes `enemy` for every single-target spell that
+harms (the original's target test), and the gap-fill file for Chain Lightning, which is neutral
+but which the original's targeting code refuses on the caster's own stacks (E04b T2e). At most four spell schools and
 128 spells per ruleset (`MAX_SPELL_SCHOOLS`, `MAX_SPELLS`: the battle keeps one mastery per school
 and spell books as bitsets).
 
@@ -307,7 +309,7 @@ layouts: `docs/formats/installation.md` §6–§7, `crates/h3-harvest/data/gapfi
   +100 % Fire Wall).
 - Spells: battle magic only for the 13 damage spells (E04b T2a): `target` and the `damage`
   effect from the executable's flag word (installation.md §7.6), areas, Chain Lightning's chain
-  and the target conditions from the gap-fill file (`[[spells.targeting]]`); the other kinds come
+  and side and the target conditions from the gap-fill file (`[[spells.targeting]]`); the other kinds come
   with their tasks (E04b T3–T7). Town chances and AI values (E09); hero classes:
   aggression and tavern weights (E09); hero availability (campaign heroes, Lord Haart the Knight
   retired by the expansions; E08–E10).

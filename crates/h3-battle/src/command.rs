@@ -290,7 +290,7 @@ fn surrender(
 }
 
 /// Validates `command` for the active stack `mover` in the tactics phase: a placement in the
-/// zone, Wait (pass to the next stack) or `EndTactics`; nothing else.
+/// zone, Wait (the game's "next creature", always allowed) or `EndTactics`; nothing else.
 // rule: BAT-TAC-001, BAT-TAC-002
 fn plan_tactics(
     state: &BattleState,
@@ -383,9 +383,9 @@ pub fn apply<S: Sink>(
             phase,
         } => {
             move_stack(state, mover, from, to, sink);
-            tactics::pass(state, phase, mover, sink);
+            tactics::placed(state, phase, mover, sink);
         }
-        Plan::Pass { mover, phase } => tactics::pass(state, phase, mover, sink),
+        Plan::Pass { mover, phase } => tactics::skip(state, phase, mover, sink),
         Plan::EndTactics => tactics::end(state, ruleset, sink),
         Plan::Retreat { side } => leave(state, BattleResult::Retreat(side), sink),
         Plan::Surrender { side, price } => {

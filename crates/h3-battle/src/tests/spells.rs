@@ -107,11 +107,9 @@ fn immunities_by_level_school_and_spell_and_the_targets_reductions() {
         cast(&r, "bolt", stack(2)),
         cast(&r, "smite", stack(3)),
         cast(&r, "rally", stack(1)),
-        // A hex spell may not be aimed at a stack it cannot affect.
-        cast(&r, "nova", CastTarget::Hex(at(&r, 12, 5))),
-        // ... nor at a hex outside the standable columns, or where its area reaches nobody.
+        // A hex spell may not be aimed at a side column.
         cast(&r, "nova", CastTarget::Hex(at(&r, 0, 5))),
-        cast(&r, "nova", CastTarget::Hex(at(&r, 7, 1))),
+        cast(&r, "nova", CastTarget::Hex(at(&r, 16, 5))),
     ] {
         let before = s.clone();
         assert_eq!(
@@ -138,18 +136,50 @@ fn immunities_by_level_school_and_spell_and_the_targets_reductions() {
         &mut targets,
     );
     assert_eq!(targets.as_slice(), [stack(0)]);
-    // The ember takes double damage from bolt (40 → 80), the golem a quarter (40 → 10).
-    let (damage, _) = effects(&act(&mut s, &r, cast(&r, "bolt", stack(3))).unwrap());
-    assert_eq!(damage, [(3, 80)]);
+    // The ember takes double damage from bolt (40 → 80), the golem a quarter (40 → 10); the
+    // event carries the value, the caster's damage and the damage dealt (batch 2a R5).
+    let events = act(&mut s, &r, cast(&r, "bolt", stack(3))).unwrap();
+    assert_eq!(effects(&events).0, [(3, 80)]);
     let mut s = start();
-    let (damage, _) = effects(&act(&mut s, &r, cast(&r, "bolt", stack(4))).unwrap());
-    assert_eq!(damage, [(4, 10)]);
+    let events = act(&mut s, &r, cast(&r, "bolt", stack(4))).unwrap();
+    let damage: Vec<EventKind> = events
+        .iter()
+        .map(|e| e.kind)
+        .filter(|k| matches!(k, EventKind::SpellDamage { .. }))
+        .collect();
+    assert_eq!(
+        damage,
+        [EventKind::SpellDamage {
+            target: StackId(4),
+            value: 40,
+            caster: 40,
+            damage: 10,
+            kills: 1,
+        }]
+    );
     // Nova (fire) at the golem's hex: the golem and the wyrm's neighbour... the ember next to
     // it is passed over (fire immune), the golem takes its quarter.
     let mut s = start();
     let (damage, resisted) =
         effects(&act(&mut s, &r, cast(&r, "nova", CastTarget::Hex(at(&r, 12, 7)))).unwrap());
     assert_eq!((damage, resisted), (std::vec![(4, 10)], std::vec![]));
+    // Nova aimed at an immune ember: the ember is spared, the stack beside it struck (batch 2a
+    // R3c); aimed where its area reaches nobody, it is cast for nothing (R3b).
+    let mut s = arena(
+        &r,
+        [Some(mage(&r, &book)), None],
+        &[("fixed", 1, 3, 5)],
+        &[("ember", 5, 12, 5), ("fixed", 5, 13, 5)],
+        1,
+    );
+    let (damage, _) =
+        effects(&act(&mut s, &r, cast(&r, "nova", CastTarget::Hex(at(&r, 12, 5)))).unwrap());
+    assert_eq!(damage, [(2, 40)]);
+    let mut s = start();
+    let (damage, resisted) =
+        effects(&act(&mut s, &r, cast(&r, "nova", CastTarget::Hex(at(&r, 7, 1)))).unwrap());
+    assert!(damage.is_empty() && resisted.is_empty());
+    assert_eq!(s.hero(BattleSide::Attacker).unwrap().casts, 1);
 }
 
 // covers: BAT-MAG-008
@@ -213,55 +243,40 @@ fn resistance_adds_the_heros_to_the_creatures_and_the_aura_multiplies() {
     assert_eq!(affect_chance(&s, &r, bolt, StackId(0)), 80);
 }
 
-/// Casts `name` at `target` in battles with seeds `1..=n` and returns how many were resisted
-/// (with no damage at all) and how many struck.
-fn resisted_and_struck(
-    r: &Ruleset,
-    name: &str,
-    target: CastTarget,
-    defender: &[(&'static str, u32, i32, i32)],
-    n: u64,
-) -> (usize, usize) {
-    let (mut resisted, mut struck) = (0, 0);
+/// Casts `name` at `target` in battles with seeds `1..=n` against Dwarves (id 1) beside a stack
+/// without resistance (id 2); returns how often the Dwarves resisted and how often the spell did
+/// nothing at all.
+fn dwarves_resisting(r: &Ruleset, name: &str, target: CastTarget, n: u64) -> (usize, usize) {
+    let (mut dwarves, mut nothing) = (0, 0);
     for seed in 1..=n {
         let mut s = arena(
             r,
             [Some(mage(r, &[name])), None],
             &[("fixed", 1, 2, 5)],
-            defender,
+            &[("dwarf", 5, 12, 5), ("fixed", 5, 13, 5)],
             seed,
         );
         let events = act(&mut s, r, cast(r, name, target)).unwrap();
         // The cast is paid and counted either way.
         assert_eq!(s.hero(BattleSide::Attacker).unwrap().casts, 1);
-        match effects(&events) {
-            (damage, aimed) if damage.is_empty() => {
-                assert_eq!(aimed, [1]);
-                resisted += 1;
-            }
-            // Struck: the aimed stack rolls again among the area's stacks (nova), so it may
-            // still resist while its neighbour is struck.
-            (damage, _) => {
-                assert!(damage.iter().any(|&(id, _)| id == 1 || id == 2));
-                struck += 1;
-            }
-        }
+        let (damage, resisted) = effects(&events);
+        dwarves += usize::from(resisted.contains(&1));
+        nothing += usize::from(damage.is_empty());
     }
-    (resisted, struck)
+    (dwarves, nothing)
 }
 
-// covers: BAT-MAG-007, BAT-MAG-008
+// covers: BAT-MAG-006, BAT-MAG-007, BAT-MAG-008
 #[test]
-fn a_stack_aimed_at_that_resists_stops_the_whole_spell() {
+fn a_stack_aimed_at_that_resists_stops_a_stack_spell_but_not_an_area_spell() {
     let r = ruleset();
-    // Dwarves resist one cast in five: bolt at them, and nova at their hex, which then spares
-    // the stack beside them too.
-    let pair = [("dwarf", 5, 12, 5), ("fixed", 5, 13, 5)];
-    let (resisted, struck) = resisted_and_struck(&r, "bolt", stack(1), &pair, 60);
-    assert!(resisted > 3 && struck > 30, "{resisted} {struck}");
-    let aim = CastTarget::Hex(at(&r, 12, 5));
-    let (resisted, struck) = resisted_and_struck(&r, "nova", aim, &pair, 60);
-    assert!(resisted > 3 && struck > 30, "{resisted} {struck}");
+    // Dwarves resist one cast in five. Bolt at them does nothing when they resist.
+    let (dwarves, nothing) = dwarves_resisting(&r, "bolt", stack(1), 60);
+    assert!(dwarves > 3 && dwarves == nothing, "{dwarves} {nothing}");
+    // Nova at their hex: they roll once like every stack in the area, and the stack beside them
+    // is struck every time (the original's code and batch 2a R3).
+    let (dwarves, nothing) = dwarves_resisting(&r, "nova", CastTarget::Hex(at(&r, 12, 5)), 60);
+    assert!(dwarves > 3 && nothing == 0, "{dwarves} {nothing}");
 }
 
 // covers: BAT-MAG-007
@@ -298,7 +313,8 @@ fn area_and_battle_wide_spells_strike_every_stack_they_reach() {
     let mut s = start();
     let (damage, _) = effects(&act(&mut s, &r, cast(&r, "storm", CastTarget::None)).unwrap());
     assert_eq!(damage, [(0, 40), (1, 40), (2, 40), (3, 40), (5, 40)]);
-    // A spell that reaches nobody cannot be cast: only wyrms left.
+    // A battle-wide spell that reaches nobody cannot be cast: only wyrms left. Hex spells can
+    // still be aimed at any hex.
     let mut s = arena(
         &r,
         [Some(mage(&r, &book)), None],
@@ -306,7 +322,10 @@ fn area_and_battle_wide_spells_strike_every_stack_they_reach() {
         &[("wyrm", 1, 12, 5)],
         1,
     );
-    assert!(castable_spells(&s, &r, BattleSide::Attacker).is_empty());
+    let castable: Vec<SpellId> = castable_spells(&s, &r, BattleSide::Attacker)
+        .iter()
+        .collect();
+    assert_eq!(castable, [spell(&r, "nova"), spell(&r, "ring")]);
     assert_eq!(
         act(&mut s, &r, cast(&r, "storm", CastTarget::None)),
         Err(CommandError::InvalidSpellTarget)
@@ -355,17 +374,44 @@ fn chain_lightning_jumps_to_the_nearest_stack_on_the_screen() {
         1,
     );
     assert_eq!(chain(&mut s, 1), [(1, 40), (3, 20), (0, 10)]);
-    // A stack that cannot be affected at all (its hero's resistance) is never jumped to.
-    let mut warded = hero(&r);
+    // Stacks that always resist (their hero's resistance) are never jumped to: the caster's
+    // own here, next to the target.
+    let mut warded = mage(&r, &["chain"]);
     warded.effects = std::vec![BattleEffect::MagicResistance { bp: 10_000 }];
     let mut s = arena(
         &r,
-        [Some(mage(&r, &["chain"])), Some(warded)],
-        &[("tank", 5, 2, 1), ("tank", 5, 2, 9)],
-        &[("tank", 5, 9, 5), ("tank", 5, 10, 5)],
+        [Some(warded), None],
+        &[("tank", 5, 9, 5), ("tank", 5, 2, 9)],
+        &[("tank", 5, 10, 5), ("tank", 5, 13, 5)],
         1,
     );
-    assert_eq!(chain(&mut s, 0), [(0, 40), (1, 20)]);
+    assert_eq!(chain(&mut s, 2), [(2, 40), (3, 20)]);
+    // The chain is aimed only at enemies (batch 2a R1), and not at a stack that always
+    // resists: not at the defender's stacks when their hero resists everything.
+    let mut s = arena(
+        &r,
+        [Some(mage(&r, &["chain"])), None],
+        &[("tank", 5, 2, 5)],
+        &[("tank", 5, 10, 5)],
+        1,
+    );
+    assert_eq!(
+        act(&mut s, &r, cast(&r, "chain", stack(0))),
+        Err(CommandError::InvalidSpellTarget)
+    );
+    let mut warded = hero(&r);
+    warded.effects = std::vec![BattleEffect::MagicResistance { bp: 10_000 }];
+    let s = arena(
+        &r,
+        [Some(mage(&r, &["chain", "bolt", "nova"])), Some(warded)],
+        &[("tank", 5, 2, 5)],
+        &[("tank", 5, 10, 5)],
+        1,
+    );
+    let castable: Vec<SpellId> = castable_spells(&s, &r, BattleSide::Attacker)
+        .iter()
+        .collect();
+    assert_eq!(castable, [spell(&r, "nova")]);
 }
 
 // covers: BAT-MAG-006, BAT-MAG-008
@@ -415,29 +461,18 @@ fn hex_spells_list_every_hex_they_may_be_aimed_at() {
             })
             .collect()
     };
-    // Nova (fire, radius 1): the seven hexes around each fixed stack; none around the
-    // fire-immune ember, whose area reaches nobody else.
-    cast_targets(
-        &s,
-        &r,
-        BattleSide::Attacker,
-        spell(&r, "nova"),
-        &mut targets,
-    );
-    let nova = hexes(&targets);
-    assert_eq!(nova.len(), 7 + 7);
-    assert!(!nova.contains(&at(&r, 8, 5)));
-    assert!(nova.iter().all(|&h| field.is_standable(h)));
-    // Ring (distance 1 only): not on the stacks' own hexes.
-    cast_targets(
-        &s,
-        &r,
-        BattleSide::Attacker,
-        spell(&r, "ring"),
-        &mut targets,
-    );
-    let ring = hexes(&targets);
-    assert!(!ring.contains(&at(&r, 12, 9)) && ring.contains(&at(&r, 11, 9)));
+    // Nova and ring: every hex outside the side columns, empty ones far from every stack and
+    // the immune ember's included (batch 2a R3b, R3c; the original's cursor test).
+    let standable: Vec<Hex> = (0u8..)
+        .take(field.hex_count())
+        .map(Hex)
+        .filter(|&h| field.is_standable(h))
+        .collect();
+    for name in ["nova", "ring"] {
+        cast_targets(&s, &r, BattleSide::Attacker, spell(&r, name), &mut targets);
+        assert_eq!(hexes(&targets), standable, "{name}");
+    }
+    assert!(standable.contains(&at(&r, 8, 5)) && !standable.contains(&at(&r, 0, 5)));
     assert_eq!(
         castable_spells(&s, &r, BattleSide::Attacker).iter().count(),
         2

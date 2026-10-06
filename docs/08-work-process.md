@@ -58,7 +58,8 @@ user's computer.
 
 1. **On the user's machine:** get delete permission for the repo folder before any git command
    (even `git status` can leave `.git/index.lock` behind). Bundle the working branch and `master`
-   (doc-drift needs `master`): `git bundle create "Claude outputs/sync.bundle" <branch> master`.
+   (doc-drift needs `master`): `git bundle create "Claude outputs/sync.bundle" <branch> master`
+   (`mkdir -p "Claude outputs"` first; the folder is not ignored, so remove it after staging).
 2. **Stage** the bundle and `original-data/install/Heroes3.exe`,
    `original-data/install/Data/H3bitmap.lod`, `original-data/install/Data/H3ab_bmp.lod` and
    `original-data/extracted/H3bitmap/Objects.txt` (one large LOD per staging call).

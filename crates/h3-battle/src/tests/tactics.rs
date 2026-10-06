@@ -179,7 +179,7 @@ fn the_phase_starts_in_round_0_and_is_public() {
 
 // covers: BAT-TAC-002
 #[test]
-fn stacks_are_handed_over_in_round_one_order_cycling() {
+fn stacks_are_handed_over_in_rounds_and_next_creature_waits() {
     let r = ruleset();
     let mut s = BattleSetup {
         war_machines: [vec![r.creature_by_key("t:ballista").unwrap()], vec![]],
@@ -200,27 +200,40 @@ fn stacks_are_handed_over_in_round_one_order_cycling() {
         double_damage_chance_bp: 0,
     });
     let (mut state, _) = start(&r, &s);
-    // Speed 9 (slot 1, then slot 3), 5, 2; the Ballista (stack 4) is never handed over.
+    // Speed 9 (slot 1, then slot 3), 5, 2; the Ballista (stack 4) is never handed over. Wait
+    // ("next creature") makes each stack wait; the waiting stacks come back slowest first, and
+    // Wait on a stack that has waited ends its turn; then the next round of the phase starts
+    // with the fastest (batch 2a R7b).
     let mut seen = vec![active(&state)];
-    for _ in 0..5 {
+    for _ in 0..8 {
+        let before = StackId(active(&state));
+        let waited = state
+            .stack(before)
+            .unwrap()
+            .flags
+            .contains(StackFlags::WAITED);
         let events = act(&mut state, &r, Command::Wait).unwrap();
-        // Passing emits only the next stack's turn, and no stack counts as having waited.
-        assert_eq!(
-            kinds(&events),
-            [EventKind::TurnStarted {
-                stack: state.active().unwrap()
-            }]
-        );
+        let next = EventKind::TurnStarted {
+            stack: state.active().unwrap(),
+        };
+        let expected = if waited {
+            vec![next]
+        } else {
+            vec![EventKind::Waited { stack: before }, next]
+        };
+        assert_eq!(kinds(&events), expected);
         seen.push(active(&state));
     }
-    assert_eq!(seen, [1, 3, 2, 0, 1, 3]);
+    assert_eq!(seen, [1, 3, 2, 0, 0, 2, 1, 3, 1]);
     assert!(
         state
             .stacks()
             .iter()
             .all(|st| st.flags == StackFlags::default())
     );
-    // A placement passes to the next stack too, and a stack may be placed again and again.
+    // A placement ends the stack's turn; a stack may be placed again in the next round of the
+    // phase, which starts after the last stack's turn (R7c).
+    act(&mut state, &r, Command::Wait).unwrap();
     let events = act(&mut state, &r, Command::Move { to: at(&r, 6, 0) }).unwrap();
     assert_eq!(
         kinds(&events),
@@ -233,12 +246,25 @@ fn stacks_are_handed_over_in_round_one_order_cycling() {
             EventKind::TurnStarted { stack: StackId(2) },
         ]
     );
-    for _ in 0..3 {
+    let mut seen = vec![];
+    for _ in 0..5 {
         act(&mut state, &r, Command::Wait).unwrap();
+        seen.push(active(&state));
     }
+    // 2 and 0 wait, 0 and 2 end their turns, 1 (waited) ends its turn: a new round.
+    assert_eq!(seen, [0, 0, 2, 1, 1]);
+    act(&mut state, &r, Command::Wait).unwrap();
     assert_eq!(active(&state), 3);
     act(&mut state, &r, Command::Move { to: at(&r, 7, 10) }).unwrap();
     assert_eq!(state.stack(StackId(3)).unwrap().hex, at(&r, 7, 10));
+    // Round 1 resets the phase's turn flags (BAT-TRN-003).
+    act(&mut state, &r, Command::EndTactics).unwrap();
+    assert!(
+        state
+            .stacks()
+            .iter()
+            .all(|st| !st.flags.contains(StackFlags::WAITED))
+    );
 }
 
 // covers: BAT-TAC-001, BAT-TAC-002
@@ -318,7 +344,7 @@ fn walkers_need_a_path_and_flyers_do_not() {
         .map(|h| h.0)
         .collect();
     let (mut state, _) = start(&r, &s);
-    // The flyer (speed 7) comes first; pass to the walker.
+    // The flyer (speed 7) comes first; it waits, the walker follows.
     assert_eq!(active(&state), 1);
     act(&mut state, &r, Command::Wait).unwrap();
     assert!(!moves(&state, &r).contains(&enclosed));
@@ -327,7 +353,10 @@ fn walkers_need_a_path_and_flyers_do_not() {
         act(&mut copy, &r, Command::Move { to: enclosed }),
         Err(CommandError::Unreachable)
     );
+    // The walker waits too; the waiting stacks come back slowest first: the walker, the flyer.
     act(&mut state, &r, Command::Wait).unwrap();
+    act(&mut state, &r, Command::Wait).unwrap();
+    assert_eq!(active(&state), 1);
     assert!(moves(&state, &r).contains(&enclosed));
     act(&mut state, &r, Command::Move { to: enclosed }).unwrap();
     assert_eq!(state.stack(StackId(1)).unwrap().hex, enclosed);

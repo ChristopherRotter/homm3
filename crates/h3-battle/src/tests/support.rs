@@ -753,8 +753,9 @@ pub type SpellSpec = (
 /// per power plus 10/10/20/30, negative unless said otherwise: `bolt` damages one enemy stack;
 /// `smite` any stack that is not undead, in two schools; `gaze` is a creature ability; `ward`
 /// has no effects and `portal` is an adventure spell; `nova` damages the stacks within one hex
-/// of a hex; `rally` (positive) reaches only own stacks; `chain` strikes a stack and jumps to
-/// two more (three from Advanced), each taking half the value (neutral); `storm` strikes every
+/// of a hex; `rally` (positive) reaches only own stacks; `chain` strikes an enemy stack and jumps
+/// to two more of either side (three from Advanced), each taking half the value (neutral, aimed
+/// only at enemies like Chain Lightning); `storm` strikes every
 /// stack (neutral); `ring` the stacks one hex from a hex, not on it.
 pub const SPELLS: &[SpellSpec] = &[
     (
@@ -811,7 +812,7 @@ pub const SPELLS: &[SpellSpec] = &[
         SpellCategory::Combat,
         &["air"],
         SpellTarget::Stack,
-        TargetSide::Any,
+        TargetSide::Enemy,
     ),
     (
         "storm",

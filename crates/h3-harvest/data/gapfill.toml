@@ -1788,7 +1788,10 @@ sources = ["vcmi-spells-offensive"]
 [[spells.targeting]]
 spell = "Chain Lightning"
 chain = { targets = [4, 4, 5, 5], factor_bp = 5000 }    # the jumps: BAT-MAG-006
-sources = ["vcmi-spells-offensive"]
+# Neutral in the spell table, but the original's targeting code refuses the caster's own stacks
+# for spell 19 (installation.md §7.8; observed in batch 2a R1); VCMI makes it smart.
+side = "enemy"
+sources = ["vcmi-spells-offensive", "vcmi-casting"]
 
 [[spells.targeting]]
 spell = "Frost Ring"

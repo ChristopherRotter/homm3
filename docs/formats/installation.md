@@ -283,7 +283,7 @@ every row and with VCMI; *probable*: a consistent pattern whose meaning is not p
 | `0x4` | timed effect on the target stack | 27–34, 36, 41–46, 48–62 except 57, 70, 71, 73–75 | confirmed (absent on Dispel, Cure, Disrupting Ray (permanent), Bind, Clone (its duration belongs to the new stack)) |
 | `0x8` | creature ability, never in a spell book | 70–80 | confirmed |
 | `0x10` | one target stack, no mass version | 15–19, 29, 34, 36, 38–40, 47, 55–57, 60, 62, 63, 65, 70–80 | confirmed |
-| `0x20` | targets a shooting stack | 61 (Forgetfulness) | probable (one row) |
+| `0x20` | mass version from Advanced | 61 (Forgetfulness) | **confirmed** by code reading (§7.8, E04b T2e): 0x59E060 gives the spell a target stack only below Advanced; agrees with quirk S-10 |
 | `0x40` | mass version at Expert | 27, 28, 30–33, 35, 37, 41–46, 48–54, 58 | confirmed (VCMI also makes Forgetfulness mass at Expert; see quirk S-10) |
 | `0x80` | targets a hex or area | 10–13, 20–23, 59 (Berserk) | confirmed |
 | `0x100` | targets an obstacle | 64 (Remove Obstacle) | probable (one row) |
@@ -396,8 +396,30 @@ Interference, `+ 0.10` Surcoat of Counterpoise, `+ 0.15` Boots of Polarity, each
 `f32`, at most 1); `f < 0` becomes 0. A positive spell ignores `f` (only immunity counts). For a
 neutral or negative spell, a stack with an adjacent Unicorn aura (a list on the stack record)
 gets `f × 0.8` (once, however many Unicorns). The cast rolls `random(1, 100) ≤ trunc(f × 100)`
-to affect the stack (the call sites at 0x5A02EA and in the area and chain handlers), so the hero
+to affect the stack (the call site at 0x5A02EA and those in the area and chain handlers), so the hero
 resistance adds to the creature's and the aura multiplies (dispute M-2), and single-precision
 values make 10 % hero resistance a 89 % chance to be affected and 5 % a 94 % chance (quirk
 Q-0005). A negative spell never affects a stack of the caster's side through this test, a
 positive one never an enemy (Chain Lightning and the area spells are neutral).
+
+**Targets and the aimed stack's roll** (re-read in E04b T2e, 2026-10-06, after batch 2a refuted
+the first reading). The cast routine (0x59FE30; arguments spell, target hex, caster kind (0 a
+hero, 1 a creature), second hex) rolls at 0x5A02EA only for the stack on the target hex of a
+spell that *takes a target stack*: 0x59E060 (spell, mastery) says so for flag `0x10`, for `0x40`
+below Expert and for `0x20` below Advanced (Forgetfulness, quirk S-10); never for a creature's
+cast. If that stack resists, a message names it and the spell ends. An area spell (`0x80`) has no
+such roll: each stack in its area rolls once in the area handler, silently (batch 2a R3: the log
+names no resisting stack). The second hex is Teleport's destination, Sacrifice's victim, or the
+stack a Magic Mirror (0x4487F0, chance per stack) redirects a spell to, chosen at random among
+the caster's own stacks except arrow towers (that stack rolls at the same call site). The
+targeting cursor (0x59F700, used by the hero's spell book at 0x59ED5A–0x59F04B) accepts a hex
+outside the two side columns (`hex mod 17` not 0 or 16) that the target test 0x5A39C0 accepts:
+for a spell that takes a target stack (flags `0x20070`), a living stack on the hex with `f > 0`
+(so a stack that would always resist is no target); Remove Obstacle, Fire Wall and Force Field
+have their own hex tests (T5); every other hex is accepted, so an area spell may be aimed at an
+empty hex, an obstacle or an immune stack's hex (batch 2a R3b, R3c). For Chain Lightning (spell
+19) the cursor, the book's "any target" check and the creature casters' (0x5A40D0) also refuse a
+stack of the caster's side (0x59F7BF; batch 2a R1). The single-target spells and the battle-wide
+ones (24–26) need at least one stack the target test accepts before the cursor opens; the area
+spells do not. 0x5A8090 also returns 0 for spells above level 1 on battlefield type 2 (Cursed
+Ground, E04c) and checks a worn artifact 0x53 (Recanter's Cloak, T8) for spells above level 2.

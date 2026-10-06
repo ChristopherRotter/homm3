@@ -1016,6 +1016,17 @@ fn hero_content_errors() {
     i.hero_tables.heroes.records[3][0] = "Hero 0".into();
     let h = harvest(&i, &g).unwrap();
     assert!(pack(&h, "base").contains("id = \"hero_0_class_1\""));
+    // A neutral stack spell gets its side from the gap-fill file (Chain Lightning, E04b T2e).
+    let mut i = inputs();
+    i.hero_data.spell_types[1] = 0;
+    let sided =
+        GapFill::parse(&GAP.replace("excludes = [\"war_machine\"]\n", "side = \"enemy\"\n"))
+            .unwrap();
+    let h = harvest(&i, &sided).unwrap();
+    assert!(
+        pack(&h, "base")
+            .contains("polarity = \"neutral\"\ntarget = \"stack\"\nside = \"enemy\"\nchain")
+    );
     // Gap-fill entries that do not match the tables.
     for (from, to, error) in [
         (
@@ -1067,6 +1078,16 @@ fn hero_content_errors() {
             "spell = \"Bolt\"",
             "spell = \"Zap\"",
             "spell `Zap` has two targeting entries",
+        ),
+        (
+            "excludes = [\"war_machine\"]\n",
+            "excludes = [\"war_machine\"]\nside = \"enemy\"\n",
+            "side for `Zap` is not allowed",
+        ),
+        (
+            "requires = [\"undead\", \"alive\"]\n",
+            "requires = [\"undead\", \"alive\"]\nside = \"own\"\n",
+            "side for `Bolt` is not allowed",
         ),
         (
             "bp_per_level = 300\n",

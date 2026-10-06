@@ -201,3 +201,43 @@ records how and why the tasks went.
   while HER-BAT-004 grows it in whole basis points before Q-0005 converts it, slightly below; the
   two can differ by one damage point when the decimal product is a whole number (level 10, value
   200: 245 against our 244). Recorded for the Q-0005 review with batch 2a's results.
+
+### T2e — Batch 2a folded in (2026-10-06)
+
+- **Seam:** the user chose T2e alone (fold batch 2a in, close increment 1) before increment 2.
+- **Results** (`experiments/results/E04b-batch-2a.md`, evaluation in the survey §13): confirmed
+  Chain Lightning's screen geometry and tie order (R1, R2; Q44), the damage order and rounding
+  (R4, R5: 119/115/17/230, 173/25), the immunities (R3, R4), the cast in a commanded Ballista's
+  turn (R6; X-3), the Familiars' 20 % rounded down (R6, for T7) and speed ties by army slot
+  (R7e). Refuted: Chain Lightning at an own stack (R1 round 2: not allowed), Fireball at an
+  empty or an immune stack's hex (R3b/c: allowed), the area spell's fizzle when its centre stack
+  resists (R3: Gnolls struck by all six casts, Dwarves resisting three), the tactics hand-over
+  (R7b/c). Open: R6 round 3 cost 5 with the Pegasus dead (VCMI 3; T7).
+- **Code re-read** (`installation.md` §7.8): the aimed roll at 0x5A02EA belongs to spells that
+  take a target stack (0x59E060), not to area spells; the cursor 0x59F700 and the target test
+  0x5A39C0 (side columns refused; a target stack needs `f > 0`; any other hex accepted; Chain
+  Lightning refuses own stacks at 0x59F7BF); flag `0x20` = mass from Advanced (§7.6, S-10).
+- **Battle:** BAT-MAG-003 (`aimable`: side, immunity and a share above 0; hex spells any
+  standable hex; `has_target` simplified), BAT-MAG-007 (no aimed roll for hex spells), the
+  resistance split into `share` and `aura` (the aura's abilities checked before the geometry),
+  `SpellDamage { value, caster, damage, kills }`; BAT-TAC-002 (`tactics::placed`/`skip` with the
+  ACTED/WAITED flags in round 0; Wait emits `Waited` when the stack waits). No version changes
+  (the state already hashes the flags; events are not encoded).
+- **Content:** the gap-fill file's spell targeting gains `side` (only for a stack spell whose
+  side the flags and the polarity do not give); Chain Lightning `side = "enemy"`; packs
+  regenerated (`base` one line; the ruleset hash value changes, not its version).
+- **Tests:** spells (aimed stack vs area centre, any hex, the immune centre spared, no target
+  that always resists, Chain Lightning only at enemies, the event's amounts), tactics (R7's
+  sequence: waits, passes, new rounds, placements), harvester (`side` from the gap-fill file and
+  its errors).
+- **Measurements:** `h3 bench --games 20` 8 993 steps (T2d 8 955), 374 856 140 Ir: ≈ 41.7 k Ir
+  per step (T2d ≈ 40.8 k, +2.1 %: `castable_spells` now checks each stack spell's target for a
+  share above 0); `bench-check` re-baselined for that reason. `full-s3` re-recorded (the
+  tactics hand-over and the hex targets change the random agent's draws: 7 casts, 378 commands
+  instead of 9 and 776); `duel-s1` and `skirmish-s7` unchanged.
+- **Agent decisions (change freely):** a hex spell aimed where it strikes nobody is legal and
+  listed in the cast mask (faithful; ADR-0014 lists exactly what `apply` accepts; pruning useless
+  casts is the agents' business, E05); Wait in the tactics phase emits `Waited` only when the
+  stack starts waiting.
+- **Not done:** the Sorcery specialist's growth in single precision turned out to concern every
+  skill specialty and to need a contract change: OPEN-QUESTIONS Q45 for the checkpoint.

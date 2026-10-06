@@ -370,17 +370,24 @@ fn reachable(
     stack.is_alive() && side_ok && affects(ruleset, spell, stack.creature)
 }
 
+/// Whether `side`'s cast of a stack spell may be aimed at stack `s` (BAT-MAG-003): a stack it
+/// may reach whose share left after resistance is above zero (the original's target test,
+/// `installation.md` §7.8: a stack that always resists is no target).
+fn aimable(
+    state: &BattleState,
+    ruleset: &Ruleset,
+    side: BattleSide,
+    spell: SpellRef<'_>,
+    s: StackId,
+) -> bool {
+    reachable(state, ruleset, side, spell, s)
+        && (spell.1.polarity == SpellPolarity::Positive
+            || (share(state, ruleset, s).0 > 0 && aura(state, ruleset, s) != Some(100)))
+}
+
 /// Every stack id of the battle.
 fn stack_ids(state: &BattleState) -> impl Iterator<Item = StackId> + use<> {
     (0u8..).take(state.stacks.len()).map(StackId)
-}
-
-/// The living stack covering `hex`, if any.
-fn occupant(state: &BattleState, field: Field, hex: Hex) -> Option<StackId> {
-    stack_ids(state).find(|&s| {
-        let stack = state.at(s);
-        stack.is_alive() && stack.footprint(field).covers(hex)
-    })
 }
 
 /// The distances from an area's centre that the area of `spell` at `mastery` covers: from
@@ -418,40 +425,24 @@ fn area_stacks<'a>(
     })
 }
 
-/// Whether `hex` is a target of `side`'s cast of a hex spell (BAT-MAG-003): a hex a stack may
-/// stand on, whose stack (if any) the spell can reach, and whose area reaches a stack.
-fn hex_target(
-    state: &BattleState,
-    ruleset: &Ruleset,
-    side: BattleSide,
-    (spell, mastery): (SpellRef<'_>, u8),
-    hex: Hex,
-) -> bool {
-    let field = Field::new(ruleset.battle().field);
-    field.is_standable(hex)
-        && occupant(state, field, hex).is_none_or(|s| reachable(state, ruleset, side, spell, s))
-        && area_stacks(state, ruleset, side, (spell, mastery), hex)
-            .next()
-            .is_some()
-}
-
-/// Checks that `target` is a target of `side`'s cast of `spell` at `mastery` (BAT-MAG-003): a
-/// stack the spell can reach for a stack spell; for a hex spell a hex of [`hex_target`]; nothing
-/// for a battle-wide spell, which must reach at least one stack.
+/// Checks that `target` is a target of `side`'s cast of `spell` (BAT-MAG-003): a stack of
+/// [`aimable`] for a stack spell; for a hex spell any hex outside the side columns, whatever
+/// stands on it (the original's cursor test, `installation.md` §7.8; batch 2a R3); nothing for
+/// a battle-wide spell, which must reach at least one stack.
 // rule: BAT-MAG-003
 fn check_target(
     state: &BattleState,
     ruleset: &Ruleset,
     side: BattleSide,
-    (spell, mastery): (SpellRef<'_>, u8),
+    spell: SpellRef<'_>,
     target: CastTarget,
 ) -> Result<(), CommandError> {
     let ok = match (spell.1.magic.target, target) {
         (SpellTarget::Stack, CastTarget::Stack(s)) => {
-            state.stack(s).is_some() && reachable(state, ruleset, side, spell, s)
+            state.stack(s).is_some() && aimable(state, ruleset, side, spell, s)
         }
         (SpellTarget::Hex, CastTarget::Hex(h)) => {
-            hex_target(state, ruleset, side, (spell, mastery), h)
+            Field::new(ruleset.battle().field).is_standable(h)
         }
         (SpellTarget::None, CastTarget::None) => {
             stack_ids(state).any(|s| reachable(state, ruleset, side, spell, s))
@@ -481,7 +472,7 @@ pub(crate) fn plan_cast<'r>(
     target: CastTarget,
 ) -> Result<Cast<'r>, CommandError> {
     let (spell, hero, mastery, cost) = check_spell(state, ruleset, side, id)?;
-    check_target(state, ruleset, side, ((id, spell), mastery), target)?;
+    check_target(state, ruleset, side, (id, spell), target)?;
     Ok(Cast {
         side,
         id,
@@ -513,7 +504,7 @@ pub fn cast_targets(
     if !may_cast_now(state, actor) {
         return;
     }
-    let Ok((s, _, mastery, _)) = check_spell(state, ruleset, actor, spell) else {
+    let Ok((s, ..)) = check_spell(state, ruleset, actor, spell) else {
         return;
     };
     let field = Field::new(ruleset.battle().field);
@@ -525,48 +516,27 @@ pub fn cast_targets(
         .chain(stacks)
         .chain(hexes)
     {
-        if check_target(state, ruleset, actor, ((spell, s), mastery), target).is_ok() {
+        if check_target(state, ruleset, actor, (spell, s), target).is_ok() {
             // At most `MAX_CAST_TARGETS` targets by construction.
             let _ = out.push(target);
         }
     }
 }
 
-/// The hexes at a distance in `(inner, radius)` from `centre`.
-fn around(field: Field, centre: Hex, (inner, radius): (u32, u32)) -> impl Iterator<Item = Hex> {
-    let (x, y) = field.coords(centre);
-    let r = i32::try_from(radius).unwrap_or(i32::MAX);
-    (y.saturating_sub(r)..=y.saturating_add(r))
-        .flat_map(move |row| {
-            (x.saturating_sub(r + 1)..=x.saturating_add(r + 1)).map(move |col| (col, row))
-        })
-        .filter_map(move |(col, row)| field.hex(col, row))
-        .filter(move |&h| {
-            let d = field.distance(centre, h);
-            inner <= d && d <= radius
-        })
-}
-
-/// Whether `actor`'s cast of `spell` at `mastery` has a target ([`cast_targets`] not empty,
-/// computed without listing every hex): a hex spell needs a hex of [`hex_target`] near a stack
-/// it can reach.
+/// Whether `actor`'s cast of `spell` has a target ([`cast_targets`] not empty, computed without
+/// listing every hex): a stack spell needs a stack of [`aimable`], a battle-wide spell a stack it
+/// reaches; a hex spell always has one.
 fn has_target(
     state: &BattleState,
     ruleset: &Ruleset,
     actor: BattleSide,
-    (spell, mastery): (SpellRef<'_>, u8),
+    spell: SpellRef<'_>,
 ) -> bool {
-    let mut stacks = stack_ids(state).filter(|&s| reachable(state, ruleset, actor, spell, s));
-    if spell.1.magic.target != SpellTarget::Hex {
-        return stacks.next().is_some();
+    match spell.1.magic.target {
+        SpellTarget::Hex => true,
+        SpellTarget::Stack => stack_ids(state).any(|s| aimable(state, ruleset, actor, spell, s)),
+        SpellTarget::None => stack_ids(state).any(|s| reachable(state, ruleset, actor, spell, s)),
     }
-    let field = Field::new(ruleset.battle().field);
-    let range = area(spell.1, mastery);
-    stacks.any(|s| {
-        state.at(s).footprint(field).hexes().any(|f| {
-            around(field, f, range).any(|h| hex_target(state, ruleset, actor, (spell, mastery), h))
-        })
-    })
 }
 
 /// The spells `actor`'s hero may cast now: those with at least one target in
@@ -580,8 +550,8 @@ pub fn castable_spells(state: &BattleState, ruleset: &Ruleset, actor: BattleSide
         return out;
     }
     for spell in hero.magic.book.iter() {
-        if let Ok((s, _, mastery, _)) = check_spell(state, ruleset, actor, spell)
-            && has_target(state, ruleset, actor, ((spell, s), mastery))
+        if let Ok((s, ..)) = check_spell(state, ruleset, actor, spell)
+            && has_target(state, ruleset, actor, (spell, s))
         {
             out.insert(spell);
         }
@@ -594,7 +564,8 @@ fn grow(value: u64, bp: u64) -> u64 {
     mul_div_floor(value, 10_000 + bp, 10_000).unwrap_or(u64::MAX)
 }
 
-/// The damage of `cast` with the value `value` on a stack of `creature` (BAT-MAG-004), in the
+/// The damage of `cast` with the value `value` on a stack of `creature` (BAT-MAG-004) after the
+/// caster's bonuses and after the target's extra damage or reduction, in the
 /// original's order (`installation.md` §7.8): the caster's bonuses (× (1 + the best Orb among
 /// the spell's schools) × (1 + Sorcery), kept fractional and rounded down once; then the
 /// spell's own bonus of that, rounded down, and a specialist's `⌈per level × (hero level div
@@ -602,7 +573,12 @@ fn grow(value: u64, bp: u64) -> u64 {
 /// spell damage reduction, rounded down). The rates are exact, or single precision with quirk
 /// Q-0005.
 // rule: BAT-MAG-004
-fn spell_damage(ruleset: &Ruleset, cast: &Cast<'_>, value: u64, creature: CreatureTypeId) -> u64 {
+fn spell_damage(
+    ruleset: &Ruleset,
+    cast: &Cast<'_>,
+    value: u64,
+    creature: CreatureTypeId,
+) -> (u64, u64) {
     let single = ruleset.quirks().is_enabled(SINGLE_PRECISION_RATES);
     let one = u128::from(scale(single));
     let b = &cast.bonuses;
@@ -627,7 +603,8 @@ fn spell_damage(ruleset: &Ruleset, cast: &Cast<'_>, value: u64, creature: Creatu
     let specialty = (u128::from(t) * u128::from(own.per_level_bp) * u128::from(steps))
         .div_ceil(u128::from(FULL_BP));
     let fixed = u128::from(t) * u128::from(own.damage_bp) / u128::from(FULL_BP);
-    let mut damage = u64::try_from(u128::from(t) + specialty + fixed).unwrap_or(u64::MAX);
+    let caster = u64::try_from(u128::from(t) + specialty + fixed).unwrap_or(u64::MAX);
+    let mut damage = caster;
     for ability in ruleset.abilities(creature) {
         match *ability {
             Ability::SpellVulnerability { spell, percent } if spell == cast.id => {
@@ -639,15 +616,66 @@ fn spell_damage(ruleset: &Ruleset, cast: &Cast<'_>, value: u64, creature: Creatu
             _ => {}
         }
     }
-    damage
+    (caster, damage)
+}
+
+/// The share of a hostile spell that stack `s` lets through (BAT-MAG-008) in the fixed point
+/// `one`, as `(share, one)`: 1 − its creature's magic resistance minus its side hero's
+/// resistance, at least 0. With quirk Q-0005 the values are single precision and the difference
+/// is rounded to it, as the original's x87 code computes it (`installation.md` §7.8).
+fn share(state: &BattleState, ruleset: &Ruleset, s: StackId) -> (u64, u64) {
+    let single = ruleset.quirks().is_enabled(SINGLE_PRECISION_RATES);
+    let one = scale(single);
+    let stack = state.at(s);
+    let creature = ruleset
+        .abilities(stack.creature)
+        .iter()
+        .find_map(|a| match *a {
+            Ability::MagicResistance { percent } => Some(percent_rate(single, percent)),
+            _ => None,
+        })
+        .unwrap_or(one);
+    let hero = state.heroes[stack.side.index()]
+        .as_ref()
+        .map_or(0, |h| h.magic.resistance);
+    let share = creature.saturating_sub(hero);
+    (if single { round_single(share) } else { share }, one)
+}
+
+/// 1 − `percent` as a rate in the fixed point of [`scale`].
+fn percent_rate(single: bool, percent: u8) -> u64 {
+    rate(single, u16::from(100 - percent.min(100)) * 100)
+}
+
+/// The strongest magic resistance aura of a living allied stack adjacent to stack `s`, percent
+/// (BAT-MAG-008).
+fn aura(state: &BattleState, ruleset: &Ruleset, s: StackId) -> Option<u8> {
+    let field = Field::new(ruleset.battle().field);
+    let stack = state.at(s);
+    let footprint = stack.footprint(field);
+    stack_ids(state)
+        .filter(|&n| n != s)
+        .map(|n| state.at(n))
+        .filter(|n| n.is_alive() && n.side == stack.side)
+        .filter_map(|n| {
+            let percent = ruleset
+                .abilities(n.creature)
+                .iter()
+                .filter_map(|a| match *a {
+                    Ability::MagicResistanceAura { percent } => Some(percent),
+                    _ => None,
+                })
+                .max()?;
+            field
+                .touches(n.footprint(field), footprint)
+                .then_some(percent)
+        })
+        .max()
 }
 
 /// The chance in percent that a cast of `spell` affects stack `s` (BAT-MAG-008): always for a
-/// positive spell; otherwise the share the stack's creature lets through (1 − its magic
-/// resistance), minus its side hero's resistance, at least 0, times 1 − the strongest magic
-/// resistance aura of an adjacent allied stack, as a whole percentage rounded down. With quirk
-/// Q-0005 the values are single precision and the difference is rounded to it, as the
-/// original's x87 code computes it (`installation.md` §7.8): 10 % hero resistance leaves 89 %.
+/// positive spell; otherwise its [`share`] times 1 − the strongest [`aura`], as a whole
+/// percentage rounded down (with quirk Q-0005, 10 % hero resistance leaves 89 %).
 // rule: BAT-MAG-008
 pub(crate) fn affect_chance(
     state: &BattleState,
@@ -659,37 +687,8 @@ pub(crate) fn affect_chance(
         return 100;
     }
     let single = ruleset.quirks().is_enabled(SINGLE_PRECISION_RATES);
-    let one = scale(single);
-    let field = Field::new(ruleset.battle().field);
-    let stack = state.at(s);
-    let percent_rate = |percent: u8| rate(single, u16::from(100 - percent.min(100)) * 100);
-    let creature = ruleset
-        .abilities(stack.creature)
-        .iter()
-        .find_map(|a| match *a {
-            Ability::MagicResistance { percent } => Some(percent_rate(percent)),
-            _ => None,
-        })
-        .unwrap_or(one);
-    let hero = state.heroes[stack.side.index()]
-        .as_ref()
-        .map_or(0, |h| h.magic.resistance);
-    let share = creature.saturating_sub(hero);
-    let share = if single { round_single(share) } else { share };
-    let footprint = stack.footprint(field);
-    let aura = stack_ids(state)
-        .filter(|&n| n != s)
-        .map(|n| state.at(n))
-        .filter(|n| {
-            n.is_alive() && n.side == stack.side && field.touches(n.footprint(field), footprint)
-        })
-        .flat_map(|n| ruleset.abilities(n.creature))
-        .filter_map(|a| match *a {
-            Ability::MagicResistanceAura { percent } => Some(percent),
-            _ => None,
-        })
-        .max()
-        .map_or(one, percent_rate);
+    let (share, one) = share(state, ruleset, s);
+    let aura = aura(state, ruleset, s).map_or(one, |p| percent_rate(single, p));
     let chance = u128::from(share) * u128::from(aura) * 100 / (u128::from(one) * u128::from(one));
     u32::try_from(chance).unwrap_or(100).min(100)
 }
@@ -713,10 +712,12 @@ fn strike<S: Sink>(
     (s, value): (StackId, u64),
     sink: &mut S,
 ) {
-    let damage = spell_damage(ruleset, cast, value, state.at(s).creature);
+    let (caster, damage) = spell_damage(ruleset, cast, value, state.at(s).creature);
     let kills = apply_damage(state.at_mut(s), damage);
     sink.emit(Event::public(EventKind::SpellDamage {
         target: s,
+        value,
+        caster,
         damage,
         kills,
     }));
@@ -797,15 +798,11 @@ pub(crate) fn apply_cast<S: Sink>(
         spell: cast.id,
         target: cast.target,
     }));
-    let field = Field::new(ruleset.battle().field);
     let spell = (cast.id, cast.spell);
-    // A stack aimed at rolls first: if it resists, the whole spell does (BAT-MAG-007).
-    let aimed = match cast.target {
-        CastTarget::Stack(s) => Some(s),
-        CastTarget::Hex(h) => occupant(state, field, h),
-        CastTarget::None => None,
-    };
-    if let Some(s) = aimed
+    // The stack a stack spell is aimed at rolls first: if it resists, the whole spell does
+    // (BAT-MAG-006, BAT-MAG-008). An area spell has no such roll: every stack in its area
+    // rolls once (BAT-MAG-007; batch 2a R3).
+    if let CastTarget::Stack(s) = cast.target
         && resists(state, ruleset, cast.spell, s)
     {
         resisted(s, sink);

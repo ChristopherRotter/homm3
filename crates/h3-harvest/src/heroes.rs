@@ -518,9 +518,19 @@ pub fn harvest_heroes(
             if target != "none" {
                 let _ = writeln!(text, "target = \"{target}\"");
             }
-            // A single-target spell that harms reaches only the enemy (VCMI's smart targeting).
-            if target == "stack" && polarity == "negative" {
-                let _ = writeln!(text, "side = \"enemy\"");
+            // A single-target spell that harms reaches only the enemy (the original's target
+            // test, installation.md §7.8); the gap-fill file names the exceptions.
+            let derived = (target == "stack" && polarity == "negative").then_some("enemy");
+            let given = extra.and_then(|t| t.side.as_deref());
+            match (derived, given) {
+                (Some(side), None) => {
+                    let _ = writeln!(text, "side = \"{side}\"");
+                }
+                (None, Some(side @ ("enemy" | "own"))) if target == "stack" => {
+                    let _ = writeln!(text, "side = \"{side}\"");
+                }
+                (None, None) => {}
+                _ => return Err(format!("gapfill: side for `{name}` is not allowed")),
             }
             if let Some(t) = extra {
                 if let Some(area) = &t.area {

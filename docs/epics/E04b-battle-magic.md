@@ -1,6 +1,6 @@
 # E04b — Battle magic
 
-Status: **in progress** (refined 2026-10-05; increment 1 = T1–T2; T1 done, ADR-0014 accepted; T2a–T2d done, batch 2a compiled, waiting for the user) · Follows E04a (closed 2026-10-05) · Part of the former E04 (OPEN-QUESTIONS Q27): E04a heroes in battle, **E04b** battle magic (this one), E04c sieges and special battlefields.
+Status: **in progress** (refined 2026-10-05; increment 1 = T1–T2, done 2026-10-06: T1, ADR-0014 accepted, T2a–T2e, batch 2a evaluated; waiting for the increment 2 checkpoint) · Follows E04a (closed 2026-10-05) · Part of the former E04 (OPEN-QUESTIONS Q27): E04a heroes in battle, **E04b** battle magic (this one), E04c sieges and special battlefields.
 
 ## Goal
 
@@ -31,12 +31,12 @@ Earthquake, sieges and the moat (E04c). The special battlefields' magic (Magic P
 **Increment 1:** T1 (done), T2 (refined below). Later increments are cut with the user at each checkpoint; order and boundaries of T3–T11 may change.
 
 - [x] **T1 Magic survey and ADR-0014** — done 2026-10-05: survey `docs/rules/surveys/E04b-magic.md`, spell flags and stack records (`docs/formats/installation.md` §7.6, §7.7), ADR-0014 accepted after one revision (Q42; ADR-0004 point 8 amended). Record: [`E04b-log.md`](E04b-log.md).
-- [ ] **T2 Casting core and direct-damage spells** — increment 1; split T2a–T2d confirmed by the user (2026-10-05), delivered as T2a + T2b, then T2c + T2d, each pair ending at a user checkpoint. T2a and T2b done 2026-10-05, T2c and T2d 2026-10-06 ([log](E04b-log.md)); the user confirmed T2c + T2d with batch 2a at the checkpoint (Q44). Batch 2a compiled 2026-10-06 (`experiments/specs/E04b-batch-2a.toml`); T2 closes when its results are recorded.
+- [x] **T2 Casting core and direct-damage spells** — done 2026-10-06 (increment 1): T2a + T2b (2026-10-05), T2c + T2d with batch 2a (Q44), then T2e, batch 2a folded in (the user's seam, 2026-10-06). Record: [`E04b-log.md`](E04b-log.md).
 - [ ] T3 Timed effects on stacks: buffs and debuffs, Mass versions at Expert, durations and the artifacts that change them, Dispel, Cure (S-16, S-17, S-19).
 - [ ] T4 Control spells and spell defences: Berserk, Hypnotize, Forgetfulness, Blind; Anti-Magic, Magic Mirror (S-09 to S-11, S-13).
 - [ ] T5 Battlefield spells: Quicksand and Land Mine (hidden, owner-side visibility), Force Field, Fire Wall, Remove Obstacle, Teleport.
 - [ ] T6 Life and summons: Resurrection, Animate Dead, Sacrifice, Clone, the four Elementals; stacks created in battle (`StackOrigin`), temporary resurrection in the outcome (S-15, S-20, S-21).
-- [ ] T7 Creature magic: spell-like attack effects (curse, blind, petrify, bind, dispel, weakness, age, poison, …), spellcasting creatures, creature effects on mana and costs (S-12, S-14).
+- [ ] T7 Creature magic: spell-like attack effects (curse, blind, petrify, bind, dispel, weakness, age, poison, …), spellcasting creatures, creature effects on mana and costs (S-12, S-14; batch 2a R6: a dead Pegasus' surcharge or the Mages' discount, read the cost code first; survey §13).
 - [ ] T8 Hero-side long tail: the remaining magic artifacts (opening spells, spell-level limits, the Tomes, spell scrolls as instances, "known spells need a worn spell book"), Eagle Eye's outcome inputs, profile-level overrides for data quirks (Q-0006, S-05).
 - [ ] T9 Workload and measurements: casting heroes with the full spell range in the `full` scenario, golden replays, `bench-check`, state size and clone cost, observation completeness.
 - [ ] T10 Experiments: batch 2a compiled at the end of increment 1 (direct-damage spells and the E04a leftovers, Q40 among them); later batches with the tasks they check; the experiment-spec runner (BACKLOG, Q37) when a batch needs predictions.
@@ -53,7 +53,9 @@ The 13 direct-damage spells: Magic Arrow, Ice Bolt, Lightning Bolt, Titan's Ligh
 - [x] **T2c The sim** — done 2026-10-06: 21 stack slots per side (`SIDE_STACK_SLOTS`), the factorized action (`h3_sim::Action`, entries plus spell and target heads with conditioned masks; action encoding v9), C ABI v8 (`H3Action`, mask per head), observation encoding v5 (casts, masteries, spell book); both heroes of `full` cast, `full-s3` re-recorded, `bench-check` re-baselined. Record: [`E04b-log.md`](E04b-log.md). *As planned:* The factorized casting action in `h3-sim` and the C ABI (action encoding v9, C ABI v8), observation encoding v5; a casting hero in the `full` scenario, its golden replay re-recorded, `bench-check` re-baselined with the reason; state size and clone cost measured. Every later spell is then exercised by random rollouts.
 - [x] **T2d Area, chain and battle-wide damage; resistance and immunities** — done 2026-10-06: the damage order, immunities, Chain Lightning, area and battle-wide spells and magic resistance after the executable's code (BAT-MAG-003 to 008, HER-BAT-012/013; `installation.md` §7.8), seven creature abilities and the hero's `magic_resistance`, every damage spell castable (STUB-0001 gone); state hash v19, ruleset hash v16, replay format v15. Record: [`E04b-log.md`](E04b-log.md). *Still in T2:* experiment batch 2a compiled for the user (T10; the spec gains spells and mana), so its results are in before increment 2 builds on the damage formula.
 
-**Checkpoint after T2d:** the user plays batch 2a and confirms the cut of increment 2 (proposed: T3 and T4).
+- [x] **T2e Batch 2a folded in** — done 2026-10-06 (the user chose T2e alone before increment 2): the results recorded (observation sources, Q40 and Q44 settled), the executable's targeting code read (`installation.md` §7.8), four rules corrected after the observations: Chain Lightning aimed only at enemies, area spells at any hex outside the side columns, no fizzle from an area spell's centre stack, the tactics hand-over as rounds with Wait (BAT-TAC-002); a stack that always resists is no target; `SpellDamage` carries the value and the caster's damage (the user's R5 note). Q45 (skill specialties' growth in single precision) opened. Record: [`E04b-log.md`](E04b-log.md).
+
+**Checkpoint after T2e:** the user confirms the cut of increment 2 (proposed: T3, refined and probably split in two, then T4) and decides Q45.
 
 ## Design
 
