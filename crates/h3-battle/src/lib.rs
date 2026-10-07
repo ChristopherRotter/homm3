@@ -24,6 +24,7 @@ extern crate std;
 
 mod combat;
 mod command;
+mod control;
 mod damage;
 mod effects;
 mod error;

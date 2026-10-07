@@ -447,8 +447,13 @@ struct SpellDto {
     fixed_mass: Option<String>,
     #[serde(default)]
     duration: EffectDurationDto,
+    fixed_rounds: Option<u16>,
     #[serde(default)]
     ends: EffectEndDto,
+    #[serde(default)]
+    health_limit: bool,
+    #[serde(default)]
+    refuses: Vec<String>,
     #[serde(default)]
     cumulative: bool,
     #[serde(default)]
@@ -490,6 +495,7 @@ enum EffectDurationDto {
     Rounds,
     Permanent,
     OwnTurn,
+    Fixed,
 }
 
 #[derive(Deserialize, Default)]
@@ -498,6 +504,7 @@ enum EffectEndDto {
     #[default]
     Never,
     Damaged,
+    OwnAttack,
 }
 
 #[derive(Deserialize, Default)]
@@ -601,12 +608,28 @@ impl SpellDto {
             ends: match self.ends {
                 EffectEndDto::Never => EffectEnd::Never,
                 EffectEndDto::Damaged => EffectEnd::Damaged,
+                EffectEndDto::OwnAttack => EffectEnd::OwnAttack,
             },
-            duration: match self.duration {
-                EffectDurationDto::Rounds => EffectDuration::Rounds,
-                EffectDurationDto::Permanent => EffectDuration::Permanent,
-                EffectDurationDto::OwnTurn => EffectDuration::OwnTurn,
+            duration: match (&self.duration, self.fixed_rounds) {
+                (EffectDurationDto::Rounds, None) => EffectDuration::Rounds,
+                (EffectDurationDto::Permanent, None) => EffectDuration::Permanent,
+                (EffectDurationDto::OwnTurn, None) => EffectDuration::OwnTurn,
+                (EffectDurationDto::Fixed, Some(rounds)) => EffectDuration::Fixed(rounds),
+                _ => {
+                    return Err(PackError::Syntax(String::from(
+                        "`fixed_rounds` goes with `duration = \"fixed\"` and only with it",
+                    )));
+                }
             },
+            health_limit: self.health_limit,
+            refuses: self
+                .refuses
+                .iter()
+                .map(|c| {
+                    TimedChange::from_name(c)
+                        .ok_or_else(|| PackError::Syntax(format!("unknown timed change `{c}`")))
+                })
+                .collect::<Result<_, _>>()?,
             cumulative: self.cumulative,
             any_side_from: self.any_side.as_deref().map(mastery_named).transpose()?,
             needs_effect: self.needs_effect,
@@ -2458,7 +2481,8 @@ mod tests {
              \"quirk.battle.counterstrike_extra_round\" = true, \
              \"quirk.battle.frenzy_reduced_defense\" = true, \
              \"quirk.battle.fire_shield_first_stage\" = true, \
-             \"quirk.battle.early_mass_version\" = true }",
+             \"quirk.battle.early_mass_version\" = true, \
+             \"quirk.battle.mass_cure_skips_hypnotized\" = true }",
             "quirks = { \"quirk.x\" = true }",
         );
         let pack = parse_pack(&quirky).unwrap();
@@ -2566,12 +2590,12 @@ mod tests {
         expected.tactics = 2;
         expected.magic.mana = 40;
         expected.magic.max_mana = 40;
-        // The four damage spells, Ward, five timed spells, Mend, Blaze, Glass and Haze with Basic
-        // Storm magic (E04b T2c, T3a, T3b1, T3b1b, T3b2, T4a, T4b).
+        // The four damage spells, Ward, five timed spells, Mend, Blaze, Glass, Haze and Charm with
+        // Basic Storm magic (E04b T2c, T3a, T3b1, T3b1b, T3b2, T4a, T4b, T4c).
         expected.magic.spell_book = Some(
             [
                 "spark", "cinders", "arc", "blight", "ward", "hasten", "drag", "fury", "smiting",
-                "riposte", "mend", "blaze", "glass", "haze",
+                "riposte", "mend", "blaze", "glass", "haze", "charm",
             ]
             .map(|k| ruleset.spell_by_key(&format!("synthetic:{k}")).unwrap())
             .to_vec(),
@@ -3904,7 +3928,7 @@ mod tests {
         use h3_content::SpellCategory;
         let r = compile(&[SYNTHETIC_PACK, SYNTHETIC_EXT_PACK], "synthetic:faithful").unwrap();
         assert_eq!(r.spell_schools().len(), 2);
-        assert_eq!(r.spells().len(), 27);
+        assert_eq!(r.spells().len(), 29);
         // Pack format v6: the storm school's protection rank; stone's defaults to 0.
         let ranks: Vec<u8> = r
             .spell_schools()
@@ -4074,6 +4098,38 @@ mod tests {
             )
         );
         assert_eq!(magic("synthetic:veil").ends, EffectEnd::Never);
+        // Format v12: Berserk's fixed duration and end, Hypnotize's limit and refusal.
+        let (rampage, charm) = (magic("synthetic:rampage"), magic("synthetic:charm"));
+        assert_eq!(
+            (rampage.duration, rampage.ends, rampage.target),
+            (
+                EffectDuration::Fixed(255),
+                EffectEnd::OwnAttack,
+                SpellTarget::Hex
+            )
+        );
+        assert_eq!(
+            (charm.health_limit, charm.refuses),
+            (true, vec![TimedChange::MagicMirror])
+        );
+        for (from, to) in [
+            ("fixed_rounds = 255\n", ""),
+            (
+                "duration = \"own_turn\"\n",
+                "duration = \"own_turn\"\nfixed_rounds = 1\n",
+            ),
+            ("refuses = [\"magic_mirror\"]", "refuses = [\"mirror\"]"),
+        ] {
+            assert!(SYNTHETIC_PACK.contains(from), "{from}");
+            let text = SYNTHETIC_PACK.replacen(from, to, 1);
+            assert!(
+                matches!(
+                    compile(&[&text], "synthetic:faithful"),
+                    Err(PackError::Syntax(_))
+                ),
+                "{to}"
+            );
+        }
         // Format v9: a specialist's rule of the spell's own.
         assert_eq!(
             [

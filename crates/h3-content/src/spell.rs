@@ -166,11 +166,17 @@ pub enum TimedChange {
     /// damage (damage stage 2), not at all at 0 (Blind; BAT-MAG-024, v11). Ends with any damage
     /// when the spell `ends = "damaged"`.
     Blind,
+    /// The stack's turns are automatic: it attacks the nearest other stack; every other stack is
+    /// its enemy and it is every stack's (Berserk; BAT-MAG-025, v12).
+    Berserk,
+    /// The other side controls the stack: it commands its turns, and the stack fights for it
+    /// (Hypnotize; BAT-MAG-026, v12).
+    Hypnotize,
 }
 
 impl TimedChange {
     /// All values, in code order.
-    pub const ALL: [Self; 25] = [
+    pub const ALL: [Self; 27] = [
         Self::Speed,
         Self::SpeedPercent,
         Self::Attack,
@@ -196,6 +202,8 @@ impl TimedChange {
         Self::MagicMirror,
         Self::Forgetfulness,
         Self::Blind,
+        Self::Berserk,
+        Self::Hypnotize,
     ];
 
     /// Pack name.
@@ -226,6 +234,8 @@ impl TimedChange {
             Self::MagicMirror => "magic_mirror",
             Self::Forgetfulness => "forgetfulness",
             Self::Blind => "blind",
+            Self::Berserk => "berserk",
+            Self::Hypnotize => "hypnotize",
         }
     }
 
@@ -292,6 +302,20 @@ pub enum EffectDuration {
     /// Through the stack's next turn: 1 round on the active stack, else 2, counted down at the
     /// stack's own turn start instead of the round start (Frenzy; BAT-MAG-019, v8).
     OwnTurn,
+    /// This many rounds whatever the caster's power (Berserk: 255, the original's; v12).
+    Fixed(u16),
+}
+
+impl EffectDuration {
+    /// Canonical code (hash): the kind, then the rounds of a fixed duration.
+    const fn code(self) -> (u8, u16) {
+        match self {
+            Self::Rounds => (0, 0),
+            Self::Permanent => (1, 0),
+            Self::OwnTurn => (2, 0),
+            Self::Fixed(rounds) => (3, rounds),
+        }
+    }
 }
 
 /// What ends a timed effect before its rounds run out, besides Dispel and Cure (v11).
@@ -303,17 +327,21 @@ pub enum EffectEnd {
     /// Any damage the stack takes: strikes, shots, spells, a reflection (Blind; BAT-MAG-024,
     /// `installation.md` §7.14).
     Damaged,
+    /// The stack's own attack: its melee attack or its shot, not a retaliation (Berserk;
+    /// BAT-MAG-025, v12).
+    OwnAttack,
 }
 
 impl EffectEnd {
     /// All values, in code order.
-    pub const ALL: [Self; 2] = [Self::Never, Self::Damaged];
+    pub const ALL: [Self; 3] = [Self::Never, Self::Damaged, Self::OwnAttack];
 
     /// Pack name.
     pub const fn name(self) -> &'static str {
         match self {
             Self::Never => "never",
             Self::Damaged => "damaged",
+            Self::OwnAttack => "own_attack",
         }
     }
 
@@ -438,6 +466,12 @@ pub struct SpellMagic {
     pub cumulative: bool,
     /// What a specialist in the spell adds to its value by a rule of its own (v9).
     pub specialist: Option<SpecialistBonus>,
+    /// A stack it may affect has full hit points (creatures × hit points per creature) at most
+    /// the cast's value, a specialist's bonus included (Hypnotize; v12).
+    pub health_limit: bool,
+    /// A stack with an active effect that makes one of these changes is no target (Hypnotize:
+    /// Magic Mirror; v12).
+    pub refuses: alloc::vec::Vec<TimedChange>,
 }
 
 impl SpellMagic {
@@ -523,10 +557,14 @@ impl SpellMagic {
             Some("a mass version needs target stack and a mastery 1..=3")
         } else if (self.cumulative
             || self.duration != EffectDuration::Rounds
-            || self.ends != EffectEnd::Never)
+            || self.ends != EffectEnd::Never
+            || self.health_limit
+            || !self.refuses.is_empty())
             && !self.is_timed()
         {
-            Some("duration, ends and cumulative need a timed effect")
+            Some("duration, ends, cumulative, health_limit and refuses need a timed effect")
+        } else if self.duration == EffectDuration::Fixed(0) {
+            Some("a fixed duration needs at least 1 round")
         } else if self
             .fixed_mass_from
             .is_some_and(|f| self.mass_from.is_none_or(|m| f <= m) || f > MAX_MASTERY)
@@ -550,7 +588,8 @@ impl CanonicalHash for SpellMagic {
     /// condition bits, effects (count, codes: kind and change), mind, mass (0: none), duration,
     /// cumulative (v17); any side (0: never), needs effect, ignores immunity (v19); the
     /// specialist bonus (presence, then the bonus; v20); what ends it, the fixed mass version
-    /// (0: none; v21).
+    /// (0: none; v21); a fixed duration's rounds, the health limit, the refused changes (count,
+    /// codes; v22).
     fn hash_into(&self, h: &mut StateHasher) {
         h.write_u8(self.target as u8);
         h.write_bool(self.area.is_some());
@@ -572,7 +611,8 @@ impl CanonicalHash for SpellMagic {
         }
         h.write_bool(self.mind);
         h.write_u8(self.mass_from.unwrap_or(0));
-        h.write_u8(self.duration as u8);
+        let (duration, rounds) = self.duration.code();
+        h.write_u8(duration);
         h.write_bool(self.cumulative);
         h.write_u8(self.any_side_from.unwrap_or(0));
         h.write_bool(self.needs_effect);
@@ -583,6 +623,12 @@ impl CanonicalHash for SpellMagic {
         }
         h.write_u8(self.ends as u8);
         h.write_u8(self.fixed_mass_from.unwrap_or(0));
+        h.write_u16(rounds);
+        h.write_bool(self.health_limit);
+        h.write_len(self.refuses.len());
+        for &c in &self.refuses {
+            h.write_u8(c as u8);
+        }
     }
 }
 
@@ -846,6 +892,23 @@ mod tests {
             ..timed(TimedChange::DefenseLoss)
         };
         assert_eq!(ray.error(true), None);
+        let berserk = SpellMagic {
+            target: SpellTarget::Hex,
+            area: Some(SpellArea {
+                inner: 0,
+                radius: [0, 0, 1, 2],
+            }),
+            duration: EffectDuration::Fixed(255),
+            ends: EffectEnd::OwnAttack,
+            ..timed(TimedChange::Berserk)
+        };
+        assert_eq!(berserk.error(true), None);
+        let hypnotize = SpellMagic {
+            health_limit: true,
+            refuses: vec![TimedChange::MagicMirror],
+            ..timed(TimedChange::Hypnotize)
+        };
+        assert_eq!(hypnotize.error(true), None);
         assert_eq!(
             SpellMagic {
                 mass_from: Some(3),
@@ -944,6 +1007,30 @@ mod tests {
                 },
                 true,
                 "fixed_mass needs",
+            ),
+            (
+                SpellMagic {
+                    duration: EffectDuration::Fixed(0),
+                    ..timed(TimedChange::Berserk)
+                },
+                true,
+                "at least 1 round",
+            ),
+            (
+                SpellMagic {
+                    health_limit: true,
+                    ..damage(SpellTarget::Stack)
+                },
+                true,
+                "need a timed effect",
+            ),
+            (
+                SpellMagic {
+                    refuses: vec![TimedChange::MagicMirror],
+                    ..damage(SpellTarget::Stack)
+                },
+                true,
+                "need a timed effect",
             ),
             (
                 SpellMagic {
@@ -1076,6 +1163,22 @@ mod tests {
                 ..base.clone()
             },
             SpellMagic {
+                duration: EffectDuration::OwnTurn,
+                ..base.clone()
+            },
+            SpellMagic {
+                duration: EffectDuration::Fixed(255),
+                ..base.clone()
+            },
+            SpellMagic {
+                health_limit: true,
+                ..base.clone()
+            },
+            SpellMagic {
+                refuses: vec![TimedChange::MagicMirror],
+                ..base.clone()
+            },
+            SpellMagic {
                 ignores_immunity: true,
                 ..base.clone()
             },
@@ -1115,5 +1218,10 @@ mod tests {
         for v in &variants {
             assert_ne!(digest(v), digest(&base), "{v:?}");
         }
+        let fixed = |rounds| SpellMagic {
+            duration: EffectDuration::Fixed(rounds),
+            ..base.clone()
+        };
+        assert_ne!(digest(&fixed(254)), digest(&fixed(255)));
     }
 }

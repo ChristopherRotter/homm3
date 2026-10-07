@@ -57,8 +57,8 @@ pub use pack::{
 };
 pub use quirks::{
     COUNTERSTRIKE_EXTRA_ROUND, EARLY_MASS_VERSION, FIRE_SHIELD_FIRST_STAGE, FIRST_PROTECTION,
-    FRENZY_REDUCED_DEFENSE, NO_LUCK_WITHOUT_HERO, QuirkFlag, QuirkRegistry, Quirks, REGISTRY,
-    SINGLE_PRECISION_RATES, UNLIMITED_BALLISTA_SHOTS,
+    FRENZY_REDUCED_DEFENSE, MASS_CURE_SKIPS_HYPNOTIZED, NO_LUCK_WITHOUT_HERO, QuirkFlag,
+    QuirkRegistry, Quirks, REGISTRY, SINGLE_PRECISION_RATES, UNLIMITED_BALLISTA_SHOTS,
 };
 pub use ruleset::{
     BattleParams, CreatureInfo, CreatureType, CreatureTypeId, FactionId, FactionInfo, FieldParams,

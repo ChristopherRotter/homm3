@@ -15,7 +15,7 @@ Sources: `wiki` = https://heroes.thelazy.net (retrieved 2026-10-03; pages named 
 | confirmed by original data | S-05 (the exe's creature table holds the bugged levels) |
 | exploit-fix, no confirmation needed (never implemented) | S-08, S-14, S-20 |
 | batch 1a (E04a), evaluated 2026-10-03 | confirmed: S-01 (ledger Q-0004), S-02 with Q23 (Q-0005, all damage rates), S-03 for Roland only (Q-0006); not reproduced in SoD: S-04 (dropped) |
-| to confirm in an E04b or E04c batch | S-06, S-07, S-11 (code reading incomplete, Q53), S-12, S-13, S-15, S-17, S-18, S-21 (confirmed by code reading: S-19 as Q-0007, S-16 as Q-0009, S-10 as Q-0011; S-09 the rule in every profile, Q53) |
+| to confirm in an E04b or E04c batch | S-06, S-07, S-11 (code reading incomplete, Q53), S-12, S-15, S-17 (Berserk's 255 rounds read, the data in every profile), S-18, S-21 (confirmed by code reading: S-19 as Q-0007, S-16 as Q-0009, S-10 as Q-0011, S-13 as Q-0012; S-09 the rule in every profile, Q53) |
 | to confirm when the battle setup is derived from the map (E04c or E08) | S-22 |
 
 ## Overview
@@ -111,6 +111,7 @@ Outside the E04 scope, listed so they are not lost (no classification needed now
 ### S-13 — Expert Cure cannot remove Hypnotize (E04b)
 - Original: wiki Cure: Basic and Advanced Cure remove Hypnotize, Expert Cure cannot ("This may/may not be a bug").
 - Suggested **fix-optional**; low confidence, experiment candidate for an E04b batch.
+- **Confirmed by code reading** (E04b T4c, `installation.md` §7.14): Expert Cure's loop skips hypnotized stacks. Ledger **Q-0012** (user, Q53).
 
 ### S-14 — Harpies stay bound forever after Dendroid roots (E04b)
 - Original: wiki Harpy and Harpy Hag: a Harpy that attacks a Dendroid stack returns and is then bound; if the Dendroids move or die the binding never lapses "(fixed in Horn of the Abyss)".
@@ -129,6 +130,7 @@ Outside the E04 scope, listed so they are not lost (no classification needed now
 - Original: HotA changelog: "Berserk, Disrupting Ray, and Dendroid Roots spells were removed from units after 255 rounds".
 - Suggested **preserve** (harmless; an 8-bit duration).
 - E04b T3a (code reading, `installation.md` §7.9): Berserk and Bind get a duration of 255 and end after it; Disrupting Ray gets 255 too but is never ended (the end routine returns at once for it), so in SoD 4.0 its defense loss lasts the whole battle. The quirk concerns Berserk (T4) and Bind (T7).
+- E04b T4c: Berserk's 255 rounds are the spell's data (`duration = "fixed"`, `fixed_rounds = 255`) in every profile (agent decision, to confirm at the T4 checkpoint: a flag would only matter after 255 rounds).
 
 ### S-18 — Magic Arrow can deal 0 damage to Gold and Diamond Golems (E04b)
 - Original: HotA changelog: "Fixed a bug with 0 damage against Gold and Diamond Golems when attacking with a Magic Arrow with low Power".

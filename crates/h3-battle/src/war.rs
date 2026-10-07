@@ -55,12 +55,16 @@ pub(crate) fn is_commanded(state: &BattleState, field: Field, id: StackId) -> bo
         || (commanded_tent(state, id).is_some() && !patients(state, id).is_empty())
 }
 
-/// Whether the first-aid war machine `healer` may heal stack `target`: an allied stack that is
-/// alive, not a war machine and whose top creature is hurt (BAT-WAR-003).
+/// Whether the first-aid war machine `healer` may heal stack `target`: an allied stack (of the
+/// same controller, BAT-MAG-026) that is alive, not a war machine and whose top creature is hurt
+/// (BAT-WAR-003).
 pub(crate) fn is_patient(state: &BattleState, healer: StackId, target: StackId) -> bool {
     let me = state.at(healer);
     state.stack(target).is_some_and(|s| {
-        s.side == me.side && s.is_alive() && !s.has(StackTraits::WAR_MACHINE) && s.top_hp < s.max_hp
+        s.controller() == me.controller()
+            && s.is_alive()
+            && !s.has(StackTraits::WAR_MACHINE)
+            && s.top_hp < s.max_hp
     })
 }
 
@@ -91,18 +95,18 @@ pub(crate) fn act<S: Sink>(state: &mut BattleState, ruleset: &Ruleset, id: Stack
     }
 }
 
-/// Whether stack `id` could attack next turn: it can shoot, or some enemy has an attack position
-/// it can reach (VCMI `getCanAttackNextTurn`).
+/// Whether stack `id` could attack next turn: it can shoot, or some enemy (BAT-MAG-025/026) has
+/// an attack position it can reach (VCMI `getCanAttackNextTurn`).
 pub(crate) fn can_attack_next_turn(state: &BattleState, field: Field, id: StackId) -> bool {
     if can_shoot(state, field, id) {
         return true;
     }
     let me = state.at(id);
     let reach = reachable(state, field, id, me);
-    state
-        .stacks
-        .iter()
-        .filter(|t| t.is_alive() && t.side != me.side)
+    (0u8..)
+        .zip(state.stacks.iter())
+        .filter(|&(i, t)| i != id.0 && t.is_alive() && me.is_hostile_to(t))
+        .map(|(_, t)| t)
         .any(|t| {
             field
                 .attack_positions(me.is_two_hex(), me.side, t.footprint(field))
@@ -146,7 +150,8 @@ pub(crate) fn value(
     (ai * (dealt + (kills(min) + kills(max)) * m), 2 * m)
 }
 
-/// The target a war machine shoots (BAT-WAR-002, ported from VCMI): among the living enemies,
+/// The target a war machine shoots (BAT-WAR-002, ported from VCMI): among the living enemies
+/// (BAT-MAG-025/026: a berserk stack of its own side too),
 /// prefer stacks that are not war machines, then stacks that could attack next turn, then the
 /// highest value of the expected damage ([`value`]); ties go to the lowest stack id.
 ///
@@ -160,11 +165,11 @@ pub(crate) fn shooting_target(
     field: Field,
     shooter: StackId,
 ) -> Option<StackId> {
-    let side = state.at(shooter).side;
+    let me = *state.at(shooter);
     // Fixed capacity, no allocation (ADR-0004 §8): at most every stack is a candidate.
     let mut candidates: FixedVec<Candidate, STACK_CAPACITY> = FixedVec::new();
     for (i, s) in (0u8..).zip(state.stacks.iter()) {
-        if s.is_alive() && s.side != side {
+        if i != shooter.0 && s.is_alive() && me.is_hostile_to(s) {
             let id = StackId(i);
             let _ = candidates.push(Candidate {
                 id,

@@ -160,7 +160,7 @@ pub struct SpellValues {
     pub status: Status,
 }
 
-/// What a stack's timed effects make of it (BAT-MAG-023, BAT-MAG-024), materialised with its
+/// What a stack's timed effects make of it (BAT-MAG-023 to BAT-MAG-026), materialised with its
 /// [`SpellValues`] so that the hot paths never read the effect list.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub struct Status(u8);
@@ -174,6 +174,12 @@ impl Status {
     pub const BLIND: Self = Self(1 << 2);
     /// One of its effects ends when it takes damage (Blind, BAT-MAG-024).
     pub const DAMAGE_ENDS: Self = Self(1 << 3);
+    /// Its turns are automatic and every other stack is its enemy (Berserk, BAT-MAG-025).
+    pub const BERSERK: Self = Self(1 << 4);
+    /// The other side controls it (Hypnotize, BAT-MAG-026).
+    pub const HYPNOTIZED: Self = Self(1 << 5);
+    /// One of its effects ends after its own attack (Berserk, BAT-MAG-025).
+    pub const ATTACK_ENDS: Self = Self(1 << 6);
 
     /// Whether all bits of `other` are set.
     pub const fn contains(self, other: Self) -> bool {
@@ -343,6 +349,8 @@ pub(crate) fn apply<S: Sink>(
         EffectDuration::Permanent => None,
         // rule: BAT-MAG-019
         EffectDuration::OwnTurn => Some(if state.active == Some(s) { 1 } else { 2 }),
+        // rule: BAT-MAG-025
+        EffectDuration::Fixed(n) => Some(n),
     };
     let stack = *state.at(s);
     let mut value = cast.spell.effect[usize::from(cast.mastery.min(3))];
@@ -509,17 +517,20 @@ pub(crate) fn dispel<S: Sink>(
     s: StackId,
     sink: &mut S,
 ) {
-    let ended = end_where(state, s, sink, |e| {
-        e.rounds.is_some()
-            && if spell.dispels.is_empty() {
-                !spell.spares.contains(&e.spell)
-            } else {
-                spell.dispels.contains(&e.spell)
-            }
-    });
-    if ended {
+    if end_where(state, s, sink, |e| dispel_ends(spell, e)) {
         recompute(state, ruleset, s);
     }
+}
+
+/// Whether `spell`'s dispel effect ends the active effect `e` (BAT-MAG-016): a timed one of its
+/// `dispels`, or, without that list, any timed one but those of its `spares`.
+pub(crate) fn dispel_ends(spell: &Spell, e: &ActiveEffect) -> bool {
+    e.rounds.is_some()
+        && if spell.dispels.is_empty() {
+            !spell.spares.contains(&e.spell)
+        } else {
+            spell.dispels.contains(&e.spell)
+        }
 }
 
 /// Ends the effects on stack `s` that `ends` selects, reporting each, and says whether any
@@ -569,6 +580,30 @@ pub(crate) fn damaged<S: Sink>(
     recompute(state, ruleset, s);
 }
 
+/// Ends the effects on the living stack `s` that its own attack ends (BAT-MAG-025: Berserk; the
+/// original's 0x441F55 and 0x4402F7, `installation.md` §7.14), after its melee attack or shot,
+/// reporting each.
+// rule: BAT-MAG-025
+pub(crate) fn attacked<S: Sink>(
+    state: &mut BattleState,
+    ruleset: &Ruleset,
+    s: StackId,
+    sink: &mut S,
+) {
+    let stack = state.at(s);
+    if !stack.is_alive() || !stack.spells.status.contains(Status::ATTACK_ENDS) {
+        return;
+    }
+    let ends = |e: &ActiveEffect| {
+        ruleset
+            .spell(e.spell)
+            .is_some_and(|sp| sp.magic.ends == EffectEnd::OwnAttack)
+    };
+    // The status says an effect that the attack ends is active, so one ends.
+    end_where(state, s, sink, ends);
+    recompute(state, ruleset, s);
+}
+
 /// The share of its retaliation's damage, percent, that stack `s` deals while blind (BAT-MAG-024:
 /// Blind's value), or `None` if it is not blind.
 pub(crate) fn blind_share(state: &BattleState, ruleset: &Ruleset, s: StackId) -> Option<u16> {
@@ -614,8 +649,11 @@ pub(crate) fn recompute(state: &mut BattleState, ruleset: &Ruleset, s: StackId) 
         let schools = spell.map(|sp| sp.schools.as_slice()).unwrap_or_default();
         let percent = u8::try_from(v.min(100)).unwrap_or(100);
         let small = u8::try_from(v).unwrap_or(u8::MAX);
-        let ends_on_damage = spell.is_some_and(|sp| sp.magic.ends == EffectEnd::Damaged);
-        values.status = values.status.with(Status::DAMAGE_ENDS, ends_on_damage);
+        let ends = spell.map_or(EffectEnd::Never, |sp| sp.magic.ends);
+        values.status = values
+            .status
+            .with(Status::DAMAGE_ENDS, ends == EffectEnd::Damaged)
+            .with(Status::ATTACK_ENDS, ends == EffectEnd::OwnAttack);
         for change in changes.iter().filter_map(|c| c.timed()) {
             match change {
                 TimedChange::MeleeAttack => {
@@ -669,6 +707,12 @@ pub(crate) fn recompute(state: &mut BattleState, ruleset: &Ruleset, s: StackId) 
                 }
                 // rule: BAT-MAG-024
                 TimedChange::Blind => values.status = values.status.with(Status::BLIND, true),
+                // rule: BAT-MAG-025
+                TimedChange::Berserk => values.status = values.status.with(Status::BERSERK, true),
+                // rule: BAT-MAG-026
+                TimedChange::Hypnotize => {
+                    values.status = values.status.with(Status::HYPNOTIZED, true);
+                }
                 _ => {}
             }
         }

@@ -727,6 +727,13 @@ pub fn ruleset_with(profile: &str, edit: impl FnOnce(&mut BattleParamsDef)) -> R
                 quirks: vec![(String::from("quirk.battle.early_mass_version"), true)],
             },
             ProfileDef {
+                key: ContentKey::new("t", "hypnosis").unwrap(),
+                quirks: vec![(
+                    String::from("quirk.battle.mass_cure_skips_hypnotized"),
+                    true,
+                )],
+            },
+            ProfileDef {
                 key: ContentKey::new("t", "original").unwrap(),
                 quirks: vec![
                     (String::from("quirk.battle.first_protection"), true),
@@ -1232,7 +1239,7 @@ fn timed_def(
 
 /// The test Dispel (`t:dispel`, like the original's: own stacks below Advanced, a target with an
 /// effect, no immunity or resistance, mass at Expert; it spares `t:sloth`) and Cure (`t:cure`:
-/// power × 5 + 10, 10, 20, 30; it ends `t:curse` and `t:sloth` only).
+/// power × 5 + 10, 10, 20, 30; it ends `t:curse`, `t:sloth` and `t:hypnotize` only).
 pub fn other_defs() -> [SpellDef; 2] {
     let key = |k: &str| ContentKey::new("t", k).unwrap();
     let def = |name: &str, polarity, effect, magic| SpellDef {
@@ -1270,7 +1277,7 @@ pub fn other_defs() -> [SpellDef; 2] {
             )
         },
         SpellDef {
-            dispels: vec![key("curse"), key("sloth")],
+            dispels: vec![key("curse"), key("sloth"), key("hypnotize")],
             ..def(
                 "cure",
                 SpellPolarity::Positive,
@@ -1288,8 +1295,12 @@ pub fn other_defs() -> [SpellDef; 2] {
 }
 
 /// The test Forgetfulness (`t:forget`: level 3, enemy shooters, a mind spell sparing war
-/// machines, the mass version from Advanced with quirk Q-0011, else at Expert) and Blind
-/// (`t:blind`: level 2, 50, 50, 25, 0 %, ended by any damage, sparing the undead).
+/// machines, the mass version from Advanced with quirk Q-0011, else at Expert), Blind
+/// (`t:blind`: level 2, 50, 50, 25, 0 %, ended by any damage, sparing the undead), Berserk
+/// (`t:berserk`: level 4, the stacks of either side within 0, 0, 1, 2 hexes of its hex, 255
+/// rounds, ended by the stack's own attack) and Hypnotize (`t:hypnotize`: level 3, power × 25 +
+/// 10, 10, 20, 50 full hit points, never on a mirrored stack); each of the last two ends the
+/// other.
 pub fn control_defs() -> Vec<SpellDef> {
     let key = |k: &str| ContentKey::new("t", k).unwrap();
     let flags = |list: &[CreatureFlag]| {
@@ -1310,6 +1321,10 @@ pub fn control_defs() -> Vec<SpellDef> {
         counters: vec![],
         dispels: vec![],
         spares: vec![],
+    };
+    let machines = TargetConditions {
+        requires: CreatureFlags::default(),
+        excludes: flags(&[CreatureFlag::WarMachine]),
     };
     let enemy = |change, conditions| SpellMagic {
         target: SpellTarget::Stack,
@@ -1351,6 +1366,39 @@ pub fn control_defs() -> Vec<SpellDef> {
                 )
             },
         ),
+        SpellDef {
+            counters: vec![key("hypnotize")],
+            ..def(
+                "berserk",
+                4,
+                [0, 0, 1, 2],
+                SpellMagic {
+                    target: SpellTarget::Hex,
+                    side: TargetSide::Any,
+                    area: Some(SpellArea {
+                        inner: 0,
+                        radius: [0, 0, 1, 2],
+                    }),
+                    duration: EffectDuration::Fixed(255),
+                    ends: EffectEnd::OwnAttack,
+                    ..enemy(TimedChange::Berserk, machines)
+                },
+            )
+        },
+        SpellDef {
+            counters: vec![key("berserk")],
+            power: 25,
+            ..def(
+                "hypnotize",
+                3,
+                [10, 10, 20, 50],
+                SpellMagic {
+                    health_limit: true,
+                    refuses: vec![TimedChange::MagicMirror],
+                    ..enemy(TimedChange::Hypnotize, machines)
+                },
+            )
+        },
     ]
 }
 

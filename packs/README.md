@@ -159,7 +159,7 @@ override, replacing the list) names the creature types it upgrades into: at most
 none twice; references follow the reference rules and may name later creatures of the pack.
 Hero effects that select "a creature" apply to it and its direct upgrades.
 
-## Hero content (format v3, E04a T3; battle magic format v4, E04b T2a; v5 T3a; v6 T3b1; v7 T3b1b; v8 T3b2; v9 T3c; v10 T4a; v11 T4b)
+## Hero content (format v3, E04a T3; battle magic format v4, E04b T2a; v5 T3a; v6 T3b1; v7 T3b1b; v8 T3b2; v9 T3c; v10 T4a; v11 T4b; v12 T4c)
 
 Spell schools, spells, secondary skills, hero classes and hero types (ADR-0013). References follow
 the reference rules above; every kind may refer to content of its dependency closure.
@@ -204,10 +204,16 @@ mind = false                       # v5: a mind spell (creatures with flag mind_
 excludes = ["war_machine"]
 duration = "rounds"                # v5: rounds (default: power + duration bonuses) | permanent;
                                    # v8: own_turn (1 turn on the active stack, else 2, counted at
-                                   # the stack's own turn start: Frenzy)
+                                   # the stack's own turn start: Frenzy); v12: fixed, with
+                                   # `fixed_rounds = 255` (whatever the power: Berserk)
 cumulative = false                 # v5: a cast on an affected stack applies its changes again
 ends = "never"                     # v11: never (default) | damaged (any damage the stack takes
-                                   # ends the effect: Blind)
+                                   # ends the effect: Blind); v12: own_attack (its melee attack or
+                                   # shot ends it, not a retaliation: Berserk)
+health_limit = false               # v12: a stack's full hit points must not exceed the cast's
+                                   # value (Hypnotize)
+refuses = []                       # v12: timed changes whose active effects keep a stack from
+                                   # being a target (Hypnotize: ["magic_mirror"])
 counters = ["slow"]                # v5: spells whose effects a cast ends on each stack it affects
 effects = [{ kind = "timed", change = "speed" }]
 specialist = { kind = "creature_level", values = [3, 3, 2, 2, 1, 1, 0] }
@@ -287,12 +293,15 @@ the other side goes with a chance of v % to a random living stack of the caster'
 BAT-MAG-022); since v11, E04b T4b: `forgetfulness` (a shooter counts half its creatures, at
 least one, on every strike; from the first cast's Advanced mastery it cannot shoot,
 BAT-MAG-023), `blind` (the stack loses its turns; struck in melee while blind it retaliates
-with v % of its damage, not at all at 0, BAT-MAG-024)); since v7, E04b T3b1b: `dispel` (ends the stack's
+with v % of its damage, not at all at 0, BAT-MAG-024); since v12, E04b T4c: `berserk` (its
+turns are automatic, attacking the nearest stack; every other stack is its enemy,
+BAT-MAG-025), `hypnotize` (the other side controls it, BAT-MAG-026)); since v7, E04b T3b1b: `dispel` (ends the stack's
 timed effects: those of the spells in `dispels`, or without that list every one but those in
 `spares`; never a permanent one; BAT-MAG-016) and `heal` (heals the top creature by the value,
 raising none; BAT-MAG-017), applied after damage and before timed changes. `mass` needs target
-`stack`, `fixed_mass` a `mass` and a later mastery; `duration`, `ends` and `cumulative` need a
-timed effect, `counters` too (and may not name the
+`stack`, `fixed_mass` a `mass` and a later mastery; `duration`, `ends`, `cumulative`,
+`health_limit` and `refuses` need a timed effect (an area timed spell, Berserk, has target
+`hex`), `counters` too (and may not name the
 spell itself); `dispels` and `spares` need a dispel effect; `any_side` (a mastery) needs a `side`;
 `needs_effect` needs target `stack`. Later tasks add kinds (summon, …). Adventure spells have no battle magic; a spell without effects cannot be cast
 yet. `side` limits whose stacks a stack spell may be *aimed* at (BAT-MAG-003; a chain's jumps

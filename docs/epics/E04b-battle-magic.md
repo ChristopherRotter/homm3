@@ -1,6 +1,6 @@
 # E04b — Battle magic
 
-Status: **in progress** (refined 2026-10-05; increment 1 = T1–T2, done 2026-10-06: T1, ADR-0014 accepted, T2a–T2e, batch 2a evaluated; increment 2 = T3 in parts, then T4 (Q46, Q48): T3a, T3b1a, T3b1b, T3b2, T3c1, T3c2, T3c3 (batch 2b compiled), T4a and T4b done; T4c in progress (Q53)) · Follows E04a (closed 2026-10-05) · Part of the former E04 (OPEN-QUESTIONS Q27): E04a heroes in battle, **E04b** battle magic (this one), E04c sieges and special battlefields.
+Status: **in progress** (refined 2026-10-05; increment 1 = T1–T2, done 2026-10-06: T1, ADR-0014 accepted, T2a–T2e, batch 2a evaluated; increment 2 = T3 in parts, then T4 (Q46, Q48): T3a, T3b1a, T3b1b, T3b2, T3c1, T3c2, T3c3 (batch 2b compiled), T4a, T4b and T4c done; checkpoint before T5–T8 (Q53)) · Follows E04a (closed 2026-10-05) · Part of the former E04 (OPEN-QUESTIONS Q27): E04a heroes in battle, **E04b** battle magic (this one), E04c sieges and special battlefields.
 
 ## Goal
 
@@ -33,7 +33,7 @@ Earthquake, sieges and the moat (E04c). The special battlefields' magic (Magic P
 - [x] **T1 Magic survey and ADR-0014** — done 2026-10-05: survey `docs/rules/surveys/E04b-magic.md`, spell flags and stack records (`docs/formats/installation.md` §7.6, §7.7), ADR-0014 accepted after one revision (Q42; ADR-0004 point 8 amended). Record: [`E04b-log.md`](E04b-log.md).
 - [x] **T2 Casting core and direct-damage spells** — done 2026-10-06 (increment 1): T2a + T2b (2026-10-05), T2c + T2d with batch 2a (Q44), then T2e, batch 2a folded in (the user's seam, 2026-10-06). Record: [`E04b-log.md`](E04b-log.md).
 - [ ] **T3 Timed effects on stacks** (refined below): buffs and debuffs, Mass versions at Expert, durations and the artifacts that change them, Dispel, Cure (S-16, S-17, S-19).
-- [ ] **T4 Control spells and spell defences** (refined 2026-10-07, Q52): Berserk, Hypnotize, Forgetfulness, Blind; Anti-Magic, Magic Mirror (S-09 to S-11, S-13). In three parts: T4a, T4b, T4c (below).
+- [x] **T4 Control spells and spell defences** — done 2026-10-07 (Q52, Q53): Berserk, Hypnotize, Forgetfulness, Blind; Anti-Magic, Magic Mirror (S-09, S-10, S-13 settled, S-11 unconfirmed). In three parts: T4a, T4b, T4c (below).
 - [ ] T5 Battlefield spells: Quicksand and Land Mine (hidden, owner-side visibility), Force Field, Fire Wall, Remove Obstacle, Teleport.
 - [ ] T6 Life and summons: Resurrection, Animate Dead, Sacrifice, Clone, the four Elementals; stacks created in battle (`StackOrigin`), temporary resurrection in the outcome (S-15, S-20, S-21).
 - [ ] T7 Creature magic: spell-like attack effects (curse, blind, petrify, bind, dispel, weakness, age, poison, …), spellcasting creatures, creature effects on mana and costs (S-12, S-14; batch 2a R6: a dead Pegasus' surcharge or the Mages' discount, read the cost code first; survey §13).
@@ -75,7 +75,7 @@ The 13 direct-damage spells: Magic Arrow, Ice Bolt, Lightning Bolt, Titan's Ligh
 
 - [x] **T4a The spell defences** — done 2026-10-07: read in the executable (`installation.md` §7.13); pack format v10 (`spell_immunity`, `magic_mirror`), BAT-MAG-021 (Anti-Magic: spells below its level kept off whatever their polarity, the negative ones below it ended at the cast), BAT-MAG-022 (Magic Mirror: a stack spell at an enemy stack goes to a random living stack of the caster's side, which rolls); state hash v24; replays and `bench-check` re-baselined. Record: [`E04b-log.md`](E04b-log.md).
 - [x] **T4b Stacks that lose actions** — done 2026-10-07 (with T4c, Q53): read in the executable (`installation.md` §7.14); pack format v11 (`forgetfulness`, `blind`, `ends = "damaged"`, `fixed_mass`), BAT-MAG-023 (half the creatures count on every strike, S-09 the rule; no shooting from Advanced; mass from Advanced under quirk Q-0011, S-10), BAT-MAG-024 (no turns, any damage ends it, the retaliation's share in stage 2); state hash v25, ruleset hash v21; replays and `bench-check` re-baselined. Record: [`E04b-log.md`](E04b-log.md).
-- [ ] T4c Control: Berserk and Hypnotize: automatic turns, a stack acting for the other side, their counter pair, S-11, S-13; the hypnotized stack's controller for Fire Shield, the specialists, the Sphere and Expert Cure (BACKLOG).
+- [x] **T4c Control** — done 2026-10-07: pack format v12 (`berserk`, `hypnotize`, `duration = "fixed"`, `ends = "own_attack"`, `health_limit`, `refuses`), BAT-MAG-025 (automatic turns against the nearest stack, either side in its area, every stack's enemy, ended by its own attack), BAT-MAG-026 (the controller commands it and its hero's bonuses apply; mass versions skip it, Expert Cure under quirk Q-0012, S-13); ruleset hash v22; old workload +0.68 %; replays and `bench-check` re-baselined. Record: [`E04b-log.md`](E04b-log.md).
 
 **Checkpoint after T3b2** (2026-10-07): the user classified Fire Shield's base as fix-optional (Q-0010) and kept the breath's second stack as the rule (no flag), and chose T3c1 + T3c2 for the session, a checkpoint before batch 2b (T3c3).
 

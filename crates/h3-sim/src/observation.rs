@@ -6,7 +6,9 @@
 //! `f32` (normalisation is the trainer's business). Stacks and sides are described relative to
 //! the viewer ("own" flag, "viewer"/"opponent"), so one policy can play both sides.
 //!
-//! Globals: `[round (0 in the tactics phase), viewer is attacker, viewer to act, battle over,
+//! Globals: `[round (0 in the tactics phase), viewer is attacker, viewer to act (the viewer
+//! controls the active stack: a hypnotized stack's controller is the other side, BAT-MAG-026;
+//! its "own" flag below stays its owner's), battle over,
 //! viewer places in a tactics phase, opponent places in a tactics phase, the phase's zone in
 //! columns, viewer may retreat, opponent may retreat, viewer may surrender at all, opponent may
 //! surrender at all]` (BAT-TAC-001, BAT-FLE-001, BAT-FLE-002).
@@ -130,10 +132,11 @@ fn encode_hero(view: Option<HeroView>, own: Option<OwnHeroView>, out: &mut [f32]
 pub fn encode(obs: &Observation, field_width: u8, out: &mut [f32]) -> Result<(), usize> {
     let out = out.get_mut(..OBSERVATION_LEN).ok_or(OBSERVATION_LEN)?;
     out.fill(0.0);
+    // The active stack's controller acts (a hypnotized stack's is the other side, BAT-MAG-026).
     let to_act = obs
         .active
         .and_then(|id| obs.stacks.get(id.index()))
-        .map(|s| s.side);
+        .map(|s| s.controller());
     let (own, other) = (obs.viewer.index(), obs.viewer.opponent().index());
     let phase = obs.tactics;
     out[..GLOBALS].copy_from_slice(&[
@@ -311,11 +314,11 @@ mod tests {
         // Masteries by school handle (storm, stone) and the books by spell handle (spark,
         // cinders, arc, blight, ward, farsight, glare, hasten, drag, fury, zeal, gloom, boon,
         // bane, corrode, aegis, hallow, smiting, riposte, purge, mend, blaze, rage, veil, glass,
-        // haze, dazzle).
+        // haze, dazzle, rampage, charm).
         let schools = [[1.0, 0.0, 0.0, 0.0], [0.0, 3.0, 0.0, 0.0]];
         let books: [&[usize]; 2] = [
-            &[0, 1, 2, 3, 4, 7, 8, 9, 17, 18, 20, 21, 24, 25],
-            &[0, 2, 3, 10, 11, 12, 13, 14, 15, 16, 19, 22, 23, 26],
+            &[0, 1, 2, 3, 4, 7, 8, 9, 17, 18, 20, 21, 24, 25, 28],
+            &[0, 2, 3, 10, 11, 12, 13, 14, 15, 16, 19, 22, 23, 26, 27],
         ];
         let price = |side| s.surrender_price(&r, side).unwrap() as f32;
         assert!(price(Attacker) > 0.0 && price(Defender) > 0.0);

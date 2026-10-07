@@ -33,15 +33,14 @@ type Targets = [bool; STACK_CAPACITY];
 /// No secondary targets.
 const NO_TARGETS: Targets = [false; STACK_CAPACITY];
 
-/// Whether stack `id` is next to a living enemy (its footprint touches one), which keeps a
-/// shooter from shooting (BAT-RNG-001).
+/// Whether stack `id` is next to a living enemy (its footprint touches one; enemies as
+/// BAT-MAG-025/026 have them), which keeps a shooter from shooting (BAT-RNG-001).
 pub(crate) fn is_blocked(state: &BattleState, field: Field, id: StackId) -> bool {
     let me = state.at(id);
     let fp = me.footprint(field);
-    state
-        .stacks
-        .iter()
-        .any(|s| s.is_alive() && s.side != me.side && field.touches(fp, s.footprint(field)))
+    (0u8..).zip(state.stacks.iter()).any(|(i, s)| {
+        i != id.0 && s.is_alive() && me.is_hostile_to(s) && field.touches(fp, s.footprint(field))
+    })
 }
 
 /// Whether stack `id` can shoot now: a shooter with shots left that is not blocked
@@ -268,10 +267,10 @@ fn strike_inputs(
     } else {
         victim.spells.melee_protection
     });
-    // rule: BAT-HER-004
-    let own = hero::damage(heroes, striker.side);
+    // rule: BAT-HER-004, BAT-MAG-026
+    let own = hero::damage(heroes, striker.controller());
     inputs.hero_bonus = if ranged { own.ranged } else { own.melee };
-    inputs.hero_reduction = hero::damage(heroes, victim.side).reduction;
+    inputs.hero_reduction = hero::damage(heroes, victim.controller()).reduction;
     (inputs, flags)
 }
 
@@ -280,13 +279,13 @@ fn strike_inputs(
 type SpecialistTerms = (i32, Option<Specialist>);
 
 /// The [`SpecialistTerms`] of stack `s` (BAT-MAG-020; `installation.md` §7.12): the hero of its
-/// side (the controller's in the original; a hypnotized stack's, E04b T4) as a specialist in its
-/// Slayer, the bonus of Slayer's value by the stack's level, and in its Bless.
+/// controller (BAT-MAG-026) as a specialist in its Slayer, the bonus of Slayer's value by the
+/// stack's level, and in its Bless.
 // rule: BAT-MAG-020
 fn specialist_terms(state: &BattleState, ruleset: &Ruleset, s: StackId) -> SpecialistTerms {
     let striker = state.at(s);
     let blessed = matches!(striker.spells.damage, DamageRoll::Maximum(_));
-    let hero = state.heroes[striker.side.index()]
+    let hero = state.heroes[striker.controller().index()]
         .as_ref()
         .filter(|h| (blessed || striker.spells.slayer.0 > 0) && h.magic.bonuses.has_specialty());
     let mut terms = (0, None);
@@ -568,7 +567,9 @@ fn death_stare<S: Sink>(
 /// The secondary targets of a melee attack of `attacker` on `target` (BAT-ATK-003), from the
 /// current positions: every adjacent enemy for creatures that attack all adjacent enemies; for
 /// three-headed attacks, enemies on the two hexes beside the attacked hex towards the attacker;
-/// for breath attacks, any stack on the hex behind the attacked hex. Never the target itself.
+/// for breath attacks, any stack on the hex behind the attacked hex. Never the target or the
+/// attacker itself; enemies as BAT-MAG-025/026 have them (a berserk Hydra strikes every
+/// adjacent stack).
 // rule: BAT-ATK-003
 fn melee_secondaries(
     state: &BattleState,
@@ -585,9 +586,10 @@ fn melee_secondaries(
     let (enemy_hexes, any_hexes) = pattern_hexes(field, me, fp, state.at(target).footprint(field));
     core::array::from_fn(|i| {
         state.stacks.get(i).is_some_and(|s| {
-            let enemy = s.side != me.side;
+            let enemy = me.is_hostile_to(s);
             let other = s.footprint(field);
             i != target.index()
+                && i != attacker.index()
                 && s.is_alive()
                 && ((enemy && all_adjacent && field.touches(fp, other))
                     || other
@@ -657,8 +659,8 @@ fn pattern_hexes(field: Field, me: &Stack, fp: Footprint, victim: Footprint) -> 
 /// A melee attack of `attacker`, which started its turn on `start` and travelled `charge` hexes,
 /// on `target` (BAT-ATK-001): the attack, the target's retaliation (BAT-RET-001..003; reduced
 /// or none if the target was blind, BAT-MAG-024), for creatures that strike twice a second attack
-/// (BAT-ATK-002), the return to `start` of creatures that strike and return (BAT-ATK-004), then
-/// the end-of-battle check (BAT-END-001).
+/// (BAT-ATK-002), the return to `start` of creatures that strike and return (BAT-ATK-004), the
+/// end of the attacker's Berserk (BAT-MAG-025), then the end-of-battle check (BAT-END-001).
 pub(crate) fn melee<S: Sink>(
     state: &mut BattleState,
     ruleset: &Ruleset,
@@ -709,6 +711,7 @@ pub(crate) fn melee<S: Sink>(
             to: start,
         }));
     }
+    effects::attacked(state, ruleset, attacker, sink);
     check_end(state, sink);
 }
 
@@ -758,9 +761,10 @@ fn retaliate<S: Sink>(
 
 /// A shot at `target`, aimed at its hex `at`: one ranged attack per shot (two for shooters that
 /// strike twice, the commanded Ballista's `shots`, BAT-WAR-006; further shots as long as the
-/// target lives and shots are left), each using a shot (none below 0, quirk Q-0004); area shots
-/// also strike every other living stack around `at` that the area does not spare (BAT-RNG-004).
-/// Shots are not retaliated. Then the end-of-battle check.
+/// target lives and shots are left), each using a shot (none below 0, quirk Q-0004; the
+/// controller's Ammo Cart supplies them); area shots also strike every other living stack around
+/// `at` that the area does not spare (BAT-RNG-004). Shots are not retaliated. Then the end of the
+/// shooter's Berserk (BAT-MAG-025) and the end-of-battle check.
 // rule: BAT-RNG-001
 pub(crate) fn shoot<S: Sink>(
     state: &mut BattleState,
@@ -780,7 +784,7 @@ pub(crate) fn shoot<S: Sink>(
         if i > 0 && (!state.at(target).is_alive() || !has_ammunition(state.at(shooter))) {
             break;
         }
-        if !ammo_supplied(state, state.at(shooter).side) {
+        if !ammo_supplied(state, state.at(shooter).controller()) {
             let s = state.at_mut(shooter);
             s.shots = s.shots.saturating_sub(1);
         }
@@ -789,6 +793,7 @@ pub(crate) fn shoot<S: Sink>(
         let how = (StrikeFlags::RANGED, 0, 100);
         attack(state, ruleset, pair, &others, how, sink);
     }
+    effects::attacked(state, ruleset, shooter, sink);
     check_end(state, sink);
 }
 

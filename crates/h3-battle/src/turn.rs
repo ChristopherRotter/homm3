@@ -15,7 +15,7 @@ use crate::effects::Status;
 use crate::event::{Event, EventKind, Sink};
 use crate::geometry::Field;
 use crate::state::{BattleState, Stack, StackFlags, StackId, StackTraits};
-use crate::{effects, morale, war};
+use crate::{control, effects, morale, war};
 
 /// Whether stack `s` is a blind stack whose turn has passed this round (BAT-MAG-024): it is passed
 /// over until its blindness ends.
@@ -141,8 +141,9 @@ fn pick<S: Sink>(state: &mut BattleState, ruleset: &Ruleset, sink: &mut S) -> Op
 /// (BAT-MAG-019); a blind stack then passes without acting (BAT-MAG-024), and bad morale may
 /// freeze it (BAT-MOR-004), in which case it loses its turn; either way the next stack is
 /// activated, as after a war machine that acts on its own (BAT-WAR-002/003; a commanded one
-/// waits for its side's command, BAT-WAR-006). While the battle is not over some stack is alive,
-/// so a stack is always found.
+/// waits for its side's command, BAT-WAR-006) and after a berserk stack's automatic turn
+/// (BAT-MAG-025; unless good morale gives it, no longer berserk, another turn). While the battle
+/// is not over some stack is alive, so a stack is always found.
 pub(crate) fn activate_next<S: Sink>(state: &mut BattleState, ruleset: &Ruleset, sink: &mut S) {
     let mut next = pick(state, ruleset, sink);
     while let Some(id) = next {
@@ -170,7 +171,9 @@ pub(crate) fn activate_next<S: Sink>(state: &mut BattleState, ruleset: &Ruleset,
         {
             // rule: BAT-WAR-002, BAT-WAR-003
             war::act(state, ruleset, id, sink);
-        } else {
+        } else if !state.at(id).spells.status.contains(Status::BERSERK)
+            || berserk_turn(state, ruleset, id, sink)
+        {
             break;
         }
         let done = state.at_mut(id);
@@ -185,6 +188,52 @@ pub(crate) fn activate_next<S: Sink>(state: &mut BattleState, ruleset: &Ruleset,
         };
     }
     state.active = next;
+}
+
+/// The automatic turns of the berserk stack `id` (BAT-MAG-025): it acts ([`control::berserk`]);
+/// good morale may give it another turn (BAT-MOR-003), automatic while it is still berserk.
+/// Returns whether the stack keeps the turn, no longer berserk, for its side's command.
+// rule: BAT-MAG-025
+pub(crate) fn berserk_turn<S: Sink>(
+    state: &mut BattleState,
+    ruleset: &Ruleset,
+    id: StackId,
+    sink: &mut S,
+) -> bool {
+    loop {
+        let acted = control::berserk(state, ruleset, id, sink);
+        state.last_side_acted = Some(state.at(id).side);
+        if state.result.is_some() || !acted || !morale::good_morale(state, ruleset, id) {
+            return false;
+        }
+        state.at_mut(id).flags.set(StackFlags::HAD_MORALE, true);
+        sink.emit(Event::public(EventKind::GoodMorale { stack: id }));
+        sink.emit(Event::public(EventKind::TurnStarted { stack: id }));
+        if !state.at(id).spells.status.contains(Status::BERSERK) {
+            return true;
+        }
+    }
+}
+
+/// If a cast made the active stack berserk during its own turn, it takes its automatic turn at
+/// once (the original's battle loop checks the active stack, `installation.md` §7.14) and, unless
+/// it keeps the turn, its turn ends (BAT-MAG-025).
+pub(crate) fn berserk_now<S: Sink>(state: &mut BattleState, ruleset: &Ruleset, sink: &mut S) {
+    let Some(id) = state
+        .active
+        .filter(|&id| state.at(id).spells.status.contains(Status::BERSERK))
+    else {
+        return;
+    };
+    if berserk_turn(state, ruleset, id, sink) {
+        return;
+    }
+    state.at_mut(id).flags.set(StackFlags::ACTED, true);
+    if state.result.is_some() {
+        state.active = None;
+    } else {
+        activate_next(state, ruleset, sink);
+    }
 }
 
 /// At the start of its first turn of the round (not after waiting), a regenerating stack's top

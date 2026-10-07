@@ -1522,6 +1522,13 @@ url = "docs/formats/installation.md"
 retrieved = "2026-10-07"
 
 [[source]]
+id = "exe-berserk-hypnotize"
+kind = "original-data"
+ref = "Heroes3.exe code reading (docs/formats/installation.md 7.14): Berserk (59) reaches the stacks within the radius 0, 0, 1, 2 (table 0x642264) of its hex (0x5A1D80, 0x5A4810), and 0x5A8090's polarity test excepts it, so the caster's stacks too; 0x4448F0 fixes its duration at 255 and ends Hypnotize; its turn is automatic (0x4745DF, 0x4456D0) and it ends after the stack's own attack (0x441F55, 0x4402F7); Hypnotize (60) qualifies a stack whose full hit points (+0xC0 x +0x4C) are at most power x 25 + effect + the specialist bonus and which has no Magic Mirror (0x5A8363), ends Berserk, and gives the stack to the other side's control (0x442690)"
+url = "docs/formats/installation.md"
+retrieved = "2026-10-07"
+
+[[source]]
 id = "exe-forgetfulness-blind"
 kind = "original-data"
 ref = "Heroes3.exe code reading (docs/formats/installation.md 7.14): Forgetfulness (61) stores the caster's mastery (0x4448F0, +0x4C4); while active the base damage 0x443160 counts max(1, n / 2) creatures of a shooter for every strike, and from a stored mastery of 2 every can-shoot test answers no; 0x44A4D0 lets it affect only shooters (flag 0x4); Blind (62) stores v / 100 as f32 (+0x49C); the battle loop 0x465080 starts a blind stack's turn (0x446E30) and skips it; the damage routine 0x444090 ends spells 62, 70 and 74; a blind stack struck in melee retaliates with the stored factor in damage stage 2, not at all at 0 (0x441C85, 0x443CD5); 0x44A4D0 spares Troglodytes (70, 71) and undead absolutely, Air and Storm Elementals (112, 127) as a normal immunity"
@@ -2095,6 +2102,29 @@ changes = ["blind"]
 ends = "damaged"
 excludes = ["undead"]
 sources = ["exe-forgetfulness-blind"]
+
+# T4c (E04b, 2026-10-07; installation.md 7.14): control. Berserk's area (the table 0x642264) and
+# its exception to the polarity test (it also reaches the caster's stacks), its fixed 255 rounds
+# (survey S-17) and its end at the stack's own attack; Hypnotize's limit by the stack's full hit
+# points and its refusal of a mirrored stack. Each ends the other.
+[[spells.timed]]
+spell = "Berserk"
+changes = ["berserk"]
+area = { radius = [0, 0, 1, 2] }
+side = "any"
+duration = "fixed"
+fixed_rounds = 255
+ends = "own_attack"
+counters = ["Hypnotize"]
+sources = ["exe-berserk-hypnotize"]
+
+[[spells.timed]]
+spell = "Hypnotize"
+changes = ["hypnotize"]
+health_limit = true
+refuses = ["magic_mirror"]
+counters = ["Berserk"]
+sources = ["exe-berserk-hypnotize"]
 
 # Dispel and Cure (E04b T3b1b, pack format v7; installation.md 7.10). Target and the mass version
 # at Expert come from the flag word.

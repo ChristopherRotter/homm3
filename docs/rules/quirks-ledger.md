@@ -164,3 +164,16 @@ Classes: `exploit-fix` (always fixed, never toggleable) · `preserve` (accepted,
 - Defaults: faithful = on, strict-fixed = off
 - Regression test: `crates/h3-battle/src/tests/actions.rs`, `forgetfulness_reaches_enemy_shooters_and_is_mass_from_advanced_with_its_quirk`
 - Decided by / date: user, 2026-10-07 (E04b T4a checkpoint, Q53). Considered at the same checkpoint and not a quirk: a forgetful shooter's melee strikes and retaliations count half its creatures too (survey S-09), the rule in every profile (BAT-MAG-023).
+
+### Q-0012 — Expert Cure skips hypnotized stacks
+- Class: fix-optional (survey S-13, suggested class; confirmed for SoD by code reading; user, 2026-10-07, Q53)
+- Context / rules affected: battle, BAT-MAG-026, BAT-MAG-003
+- Original behavior: Expert Cure loops over the caster's own stacks and skips those under Hypnotize (0x5A1847), as the mass handler of every other mass version does (0x5A66D0), so it never frees a hypnotized stack; a single Cure from its owner reaches it (the side tests use the real side) and ends Hypnotize.
+- Intended/expected behavior: Expert Cure also cures the caster's hypnotized stacks and ends their Hypnotize (strict-fixed: a mass version whose dispel ends the stack's Hypnotize reaches it; the other mass versions still pass over hypnotized stacks).
+- Impact: gameplay-altering (small)
+- Community status: unknown ("may/may not be a bug", wiki Cure)
+- Sources: original-data, `docs/formats/installation.md` §7.14; wiki Cure (survey S-13)
+- Flag: `quirk.battle.mass_cure_skips_hypnotized` (E04b T4c)
+- Defaults: faithful = on, strict-fixed = off
+- Regression test: `crates/h3-battle/src/tests/control.rs`, `mass_versions_pass_over_hypnotized_stacks_and_expert_cure_only_with_q0012`
+- Decided by / date: user, 2026-10-07 (E04b T4a checkpoint, Q53)

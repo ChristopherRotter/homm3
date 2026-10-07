@@ -22,7 +22,9 @@ defender_funds = 10000
 # T3b1b Mend (a Cure: it heals and ends the negative spells), since T3b2 Blaze (a Fire Shield);
 # since T3c she is a level-6 specialist in Hasten (by the creature level, BAT-MAG-020); since T4a
 # she mirrors (Glass, a Magic Mirror: Corwin's spells at a mirrored stack may hit his own); since
-# T4b she makes one shooter forget (Haze, a Forgetfulness at Basic: half its creatures count).
+# T4b she makes one shooter forget (Haze, a Forgetfulness at Basic: half its creatures count);
+# since T4c she charms a stack of up to 60 hit points (Charm, a Hypnotize: power 2 × 25 + 10), which
+# then fights for her.
 [scenario.attacker_hero]
 hero_type = "synthetic:brea"
 attack = 2
@@ -36,7 +38,7 @@ spell_book = [
     "synthetic:spark", "synthetic:cinders", "synthetic:arc", "synthetic:blight", "synthetic:ward",
     "synthetic:hasten", "synthetic:drag", "synthetic:fury", "synthetic:smiting",
     "synthetic:riposte", "synthetic:mend", "synthetic:blaze", "synthetic:glass",
-    "synthetic:haze",
+    "synthetic:haze", "synthetic:charm",
 ]
 schools = { "synthetic:storm" = 1 }
 ranged_bp = 1000
@@ -65,7 +67,9 @@ effects = [
 # enrages one (a Frenzy); since T3c he is a level-1 specialist in Boon (a Bless: his blessed
 # stacks' strikes gain 3 % of their base per level step, BAT-MAG-020), as given; since T4a he
 # veils a stack (Veil, an Anti-Magic: Expert keeps spells below level 5 off it); since T4b he
-# dazzles one (Dazzle, a Blind at Expert: it loses its turns and does not retaliate).
+# dazzles one (Dazzle, a Blind at Expert: it loses its turns and does not retaliate); since T4c
+# he enrages the stacks around a hex (Rampage, a Berserk at Expert: two hexes around, his own
+# stacks too), which then attack the nearest stack on their own.
 [scenario.defender_hero]
 hero_type = "synthetic:corwin"
 attack = 1
@@ -78,7 +82,7 @@ spell_book = [
     "synthetic:spark", "synthetic:arc", "synthetic:blight", "synthetic:zeal", "synthetic:gloom",
     "synthetic:boon", "synthetic:bane", "synthetic:corrode", "synthetic:aegis",
     "synthetic:hallow", "synthetic:purge", "synthetic:rage", "synthetic:veil",
-    "synthetic:dazzle",
+    "synthetic:dazzle", "synthetic:rampage",
 ]
 schools = { "synthetic:stone" = 3 }
 surrender_discount_bp = 1000

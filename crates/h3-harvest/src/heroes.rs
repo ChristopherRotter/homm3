@@ -337,7 +337,24 @@ fn timed_spell(
     t: &crate::gapfill::SpellTimed,
     spells: &BTreeMap<String, (String, &'static str)>,
 ) -> Result<(), String> {
-    stack_spell(text, what, (flags, polarity), None)?;
+    if flags & SPELL_AREA == 0 {
+        if t.side.is_some() || t.area.is_some() {
+            return Err(format!(
+                "gapfill: side and area are for area spells, not {what}"
+            ));
+        }
+        stack_spell(text, what, (flags, polarity), None)?;
+    } else {
+        // An area timed spell (Berserk): a hex target, its area and side from the gap-fill.
+        let (Some(side @ ("any" | "enemy" | "own")), Some(area)) = (t.side.as_deref(), &t.area)
+        else {
+            return Err(format!("gapfill: {what} needs an area and a side"));
+        };
+        let _ = writeln!(text, "target = \"hex\"\narea = {area}");
+        if side != "any" {
+            let _ = writeln!(text, "side = \"{side}\"");
+        }
+    }
     if let Some(m) = &t.fixed_mass {
         let _ = writeln!(text, "fixed_mass = {}", quote(m));
     }
@@ -355,19 +372,22 @@ fn timed_spell(
     if !excludes.is_empty() {
         let _ = writeln!(text, "excludes = [{}]", excludes.join(", "));
     }
-    match t.duration.as_deref() {
-        None => {}
-        Some(d @ ("permanent" | "own_turn")) => {
+    match (t.duration.as_deref(), t.fixed_rounds) {
+        (None, None) => {}
+        (Some(d @ ("permanent" | "own_turn")), None) => {
             let _ = writeln!(text, "duration = \"{d}\"");
         }
-        Some(other) => return Err(format!("gapfill: duration `{other}` for {what}")),
+        (Some("fixed"), Some(rounds)) => {
+            let _ = writeln!(text, "duration = \"fixed\"\nfixed_rounds = {rounds}");
+        }
+        (other, _) => return Err(format!("gapfill: duration `{other:?}` for {what}")),
     }
     if t.cumulative {
         let _ = writeln!(text, "cumulative = true");
     }
     match t.ends.as_deref() {
         None => {}
-        Some(e @ "damaged") => {
+        Some(e @ ("damaged" | "own_attack")) => {
             let _ = writeln!(text, "ends = \"{e}\"");
         }
         Some(other) => return Err(format!("gapfill: ends `{other}` for {what}")),
@@ -375,6 +395,13 @@ fn timed_spell(
     if !t.counters.is_empty() {
         let keys = spell_refs(&t.counters, (what, pack), spells)?;
         let _ = writeln!(text, "counters = [{}]", keys.join(", "));
+    }
+    if t.health_limit {
+        let _ = writeln!(text, "health_limit = true");
+    }
+    if !t.refuses.is_empty() {
+        let names: Vec<String> = t.refuses.iter().map(|c| quote(c)).collect();
+        let _ = writeln!(text, "refuses = [{}]", names.join(", "));
     }
     if t.changes.is_empty() {
         return Err(format!("gapfill: {what} has no timed changes"));

@@ -21,8 +21,8 @@ pub const MAX_LEGAL_COMMANDS: usize = 4 + MAX_FIELD_HEXES + ATTACK_SLOTS * STACK
 /// Fixed-capacity buffer for [`legal_commands`] (no allocation in the hot path).
 pub type LegalCommands = FixedVec<Command, MAX_LEGAL_COMMANDS>;
 
-/// Fills `out` with every command `actor` may issue now (empty if it is not the actor's turn or
-/// the battle is over). In the tactics phase: Wait, `EndTactics`, then the placements in the zone
+/// Fills `out` with every command `actor` may issue now (empty if the active stack's controller
+/// is not `actor`, BAT-MAG-026, or the battle is over). In the tactics phase: Wait, `EndTactics`, then the placements in the zone
 /// by hex (BAT-TAC-002). Otherwise: Wait, Defend, moves by hex, then per enemy stack its shots (a
 /// stack that can shoot, BAT-RNG-001: head, then tail for area shots) or its melee attacks by
 /// canonical position slot (`Field::attack_positions`; never for war machines, BAT-WAR-001),
@@ -36,7 +36,10 @@ pub fn legal_commands(
     out: &mut LegalCommands,
 ) {
     out.clear();
-    let Some((id, mover)) = state.active_stack().filter(|(_, s)| s.side == actor) else {
+    let Some((id, mover)) = state
+        .active_stack()
+        .filter(|(_, s)| s.controller() == actor)
+    else {
         return;
     };
     // `out` has room for every command by construction (MAX_LEGAL_COMMANDS), so pushes cannot fail.
@@ -65,14 +68,14 @@ pub fn legal_commands(
     }
 }
 
-/// The commands of the active stack `mover` on its turn, in the order of [`legal_commands`].
+/// The commands of the active stack `mover` on its turn, in the order of [`legal_commands`];
+/// its targets are the stacks it is hostile to (BAT-MAG-025/026).
 fn turn_commands(
     state: &BattleState,
     field: Field,
     (id, mover): (StackId, &Stack),
     out: &mut LegalCommands,
 ) {
-    let actor = mover.side;
     if !mover.flags.contains(StackFlags::WAITED) {
         let _ = out.push(Command::Wait);
     }
@@ -86,7 +89,8 @@ fn turn_commands(
     }
     let shooting = can_shoot(state, field, id);
     for (tid, target) in (0u8..).zip(state.stacks.iter()) {
-        if !target.is_alive() || target.side == actor {
+        // A stack is hostile to itself only while berserk: the id test rarely runs.
+        if !target.is_alive() || !mover.is_hostile_to(target) || tid == id.0 {
             continue;
         }
         let fp = target.footprint(field);

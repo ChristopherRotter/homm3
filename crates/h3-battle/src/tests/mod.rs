@@ -4,6 +4,7 @@
 mod abilities;
 mod actions;
 mod commands;
+mod control;
 mod defences;
 mod dispel;
 mod flee;

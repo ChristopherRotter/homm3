@@ -13,7 +13,7 @@ use h3_contracts::{
 };
 use h3_kernel::{CanonicalHash, FixedVec, Rng, StateHasher, StreamId};
 
-use crate::effects::{ActiveEffect, Effects, SpellValues};
+use crate::effects::{ActiveEffect, Effects, SpellValues, Status};
 use crate::error::SetupError;
 use crate::event::{NoopSink, Sink};
 use crate::geometry::{Field, Footprint, Hex, HexSet};
@@ -535,6 +535,38 @@ impl Stack {
             })
     }
 
+    /// The side that controls the stack: its own, or the other while it is hypnotized
+    /// (BAT-MAG-026). The controller commands its turns and its hero's bonuses apply to it.
+    pub const fn controller(&self) -> BattleSide {
+        if self.spells.status.contains(Status::HYPNOTIZED) {
+            self.side.opponent()
+        } else {
+            self.side
+        }
+    }
+
+    /// Whether `other`, another stack, is this stack's enemy: of the other controller, or either
+    /// of them berserk (BAT-MAG-025, BAT-MAG-026; the original's 0x442880).
+    pub const fn is_hostile_to(&self, other: &Self) -> bool {
+        let berserk = Status::BERSERK;
+        let special = berserk.bits() | Status::HYPNOTIZED.bits();
+        // The usual case first: neither stack is berserk or hypnotized.
+        if (self.spells.status.bits() | other.spells.status.bits()) & special == 0 {
+            return !matches!(
+                (self.side, other.side),
+                (BattleSide::Attacker, BattleSide::Attacker)
+                    | (BattleSide::Defender, BattleSide::Defender)
+            );
+        }
+        self.spells.status.contains(berserk)
+            || other.spells.status.contains(berserk)
+            || !matches!(
+                (self.controller(), other.controller()),
+                (BattleSide::Attacker, BattleSide::Attacker)
+                    | (BattleSide::Defender, BattleSide::Defender)
+            )
+    }
+
     /// Total remaining hit points: `(count - 1) · max_hp + top_hp` (BAT-DMG-003).
     pub fn total_hp(&self) -> u64 {
         if self.count == 0 {
@@ -842,9 +874,12 @@ impl BattleState {
         self.active
     }
 
-    /// The side whose turn it is, or `None` once the battle is over.
+    /// The side whose turn it is, or `None` once the battle is over: the active stack's
+    /// controller (BAT-MAG-026).
     pub fn side_to_act(&self) -> Option<BattleSide> {
-        self.active.and_then(|id| self.stack(id)).map(|s| s.side)
+        self.active
+            .and_then(|id| self.stack(id))
+            .map(Stack::controller)
     }
 
     /// The side of the last stack that took a turn (speed tie-breaks, BAT-TRN-001).

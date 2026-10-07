@@ -100,6 +100,22 @@ pub struct SpellTimed {
     /// Creature flags a stack may not have, besides `war_machine` from the flag word.
     #[serde(default)]
     pub excludes: Vec<String>,
+    /// The rounds of `duration = "fixed"` (Berserk: 255).
+    #[serde(default)]
+    pub fixed_rounds: Option<u16>,
+    /// `area = { inner, radius }` of an area timed spell (flag `0x80`: Berserk), copied verbatim.
+    #[serde(default)]
+    pub area: Option<toml::Value>,
+    /// The side an area timed spell reaches (`any`, `enemy` or `own`; Berserk: `any`).
+    #[serde(default)]
+    pub side: Option<String>,
+    /// A stack's full hit points must not exceed the cast's value (Hypnotize).
+    #[serde(default)]
+    pub health_limit: bool,
+    /// Timed change names whose active effects keep a stack from being a target (Hypnotize:
+    /// `magic_mirror`).
+    #[serde(default)]
+    pub refuses: Vec<String>,
     /// Source ids.
     pub sources: Vec<String>,
 }

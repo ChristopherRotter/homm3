@@ -590,3 +590,45 @@ records how and why the tasks went.
   version with and without Q-0011; a blind stack passing its turns, acting after a shot ends
   its blindness in the same round, Blind running out; the retaliation at 50 %, 25 % and none,
   exact and staged; spell damage ending it, the undead spared).
+
+### T4c — Control: Berserk and Hypnotize (2026-10-07)
+
+- **Seam (Q53):** with T4b; read in the same pass (`installation.md` §7.14); S-11 the engine's
+  pathfinding (unconfirmed), S-13 fix-optional (Q-0012).
+- **Content (pack format v12):** timed changes `berserk` and `hypnotize`; `duration = "fixed"`
+  with `fixed_rounds` (Berserk's 255, S-17 as data in every profile: an agent decision to
+  confirm); `ends = "own_attack"`; `health_limit`; `refuses` (timed changes whose active effects
+  keep a stack from being a target: Hypnotize's `magic_mirror`); the gap-fill's timed entries
+  take an area and a side (Berserk: an area timed spell, flag `0x80`, either side) and these
+  fields (source `exe-berserk-hypnotize`). Ruleset hash v22. The synthetic pack gains Rampage (a
+  Berserk) and Charm (a Hypnotize).
+- **Battle:** BAT-MAG-025 (`control::berserk`: the nearest of every other living stack, by hex
+  distance for a shooter, else by the steps to its nearest attack position over the whole field;
+  a draw among the nearest; shoot, walk and attack, walk towards it, or pass;
+  `turn::berserk_turn` with good morale, `turn::berserk_now` after a cast that makes the active
+  stack berserk; `effects::attacked` ends it after its own melee attack or shot). BAT-MAG-026
+  (`Stack::controller`, `Stack::is_hostile_to`: legality, validation, `side_to_act`, blocking,
+  secondary targets, the war machines' targets and patients use them; the controller's hero in
+  BAT-HER-004, BAT-MAG-008/018/020; `magic::admits` for the health limit and the refused
+  changes, also for a Magic Mirror's new target; `magic::skips_hypnotized` for mass versions,
+  Expert Cure under quirk Q-0012). `Status` gains berserk, hypnotized, ended by its attack. No
+  state-hash change (the status byte holds them; v25 since T4b).
+- **Performance:** the old workload (`5196b7d`'s synthetic pack) first cost +2.84 % on the new
+  engine: `magic::reachable` was no longer inlined into its 300 k calls per workload and the aura
+  recomputed the stack's controller per neighbour. `#[inline(always)]` on `reachable`, the
+  controller hoisted, and a fast path in `is_hostile_to` (neither stack berserk nor hypnotized:
+  the sides) bring it to 498.14 M Ir against 494.80 M (+0.68 %). The new workload: 11 368
+  steps, 535.05 M Ir; `bench-check` re-baselined; golden replays re-recorded. `h3 bench` full
+  about 240 k steps/s.
+- **Agent decisions (change freely):** the draw among the nearest only when there are several;
+  where a walker beyond its speed stops (the lowest hex at its speed on a shortest path) and a
+  flyer (the position within its speed nearest to the goal); a hypnotized stack's morale, luck,
+  turn-order tie-break, battle end and outcome by its owner (the original's statistics and
+  tie-break; the battle end not read); the observation's "viewer to act" is the controller's.
+- **Tests:** `tests/control.rs` (Berserk's area on both sides by mastery, 255 rounds, the
+  counter pair; the automatic attack on the nearest stack, own stacks attacking it, its
+  retaliation not ending it; the shooter, the draw among equals; walking towards a far target,
+  a flyer, passing; a cast on the active stack; good morale; Hypnotize's limit, the wounded
+  stack, the mirror; a hypnotized stack's turn and the controller's damage bonus; the battle
+  going on; mass versions and Expert Cure with and without Q-0012, a single Cure; the
+  controller's resistance).

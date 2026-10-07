@@ -63,6 +63,7 @@ pub const REGISTRY: QuirkRegistry = QuirkRegistry::new(&[
     "quirk.battle.frenzy_reduced_defense",
     "quirk.battle.fire_shield_first_stage",
     "quirk.battle.early_mass_version",
+    "quirk.battle.mass_cure_skips_hypnotized",
 ]);
 
 /// Q-0003: creatures of a side without a hero never get lucky strikes (BAT-LCK-002).
@@ -95,6 +96,11 @@ pub const FIRE_SHIELD_FIRST_STAGE: QuirkFlag = QuirkFlag(6);
 /// version (`SpellMagic::fixed_mass_from`) has it from that earlier mastery: Forgetfulness from
 /// Advanced (BAT-MAG-023).
 pub const EARLY_MASS_VERSION: QuirkFlag = QuirkFlag(7);
+
+/// Q-0012 (S-13): every mass version skips hypnotized stacks, also one whose dispel ends
+/// Hypnotize (Expert Cure), which the clean version lets reach the caster's hypnotized stacks
+/// (BAT-MAG-026).
+pub const MASS_CURE_SKIPS_HYPNOTIZED: QuirkFlag = QuirkFlag(8);
 
 /// The set of enabled quirk flags of a ruleset.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
@@ -134,7 +140,7 @@ mod tests {
 
     #[test]
     fn registry_lookup_and_bitset() {
-        assert_eq!(REGISTRY.len(), 8);
+        assert_eq!(REGISTRY.len(), 9);
         assert_eq!(
             REGISTRY.lookup("quirk.battle.no_luck_without_hero"),
             Some(NO_LUCK_WITHOUT_HERO)
@@ -166,6 +172,10 @@ mod tests {
         assert_eq!(
             REGISTRY.lookup("quirk.battle.early_mass_version"),
             Some(EARLY_MASS_VERSION)
+        );
+        assert_eq!(
+            REGISTRY.lookup("quirk.battle.mass_cure_skips_hypnotized"),
+            Some(MASS_CURE_SKIPS_HYPNOTIZED)
         );
         // `new` is a const fn; call it at run time too so coverage sees it.
         let runtime = QuirkRegistry::new(&["quirk.battle.a"]);

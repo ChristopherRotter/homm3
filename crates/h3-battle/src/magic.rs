@@ -18,9 +18,9 @@ use core::num::NonZeroU32;
 
 use h3_content::{
     Ability, CreatureFlag, CreatureTypeId, EARLY_MASS_VERSION, FIRST_PROTECTION, FULL_BP,
-    MAX_FIELD_HEXES, MAX_SPELL_SCHOOLS, MAX_SPELLS, Ruleset, SINGLE_PRECISION_RATES,
-    SpecialistBonus, Spell, SpellCategory, SpellEffect, SpellId, SpellPolarity, SpellScope,
-    SpellTarget, TargetSide, TimedChange,
+    MASS_CURE_SKIPS_HYPNOTIZED, MAX_FIELD_HEXES, MAX_SPELL_SCHOOLS, MAX_SPELLS, Ruleset,
+    SINGLE_PRECISION_RATES, SpecialistBonus, Spell, SpellCategory, SpellEffect, SpellId,
+    SpellPolarity, SpellScope, SpellTarget, TargetSide, TimedChange,
 };
 use h3_contracts::{BattleEffect, BattleHero, BattleSide, Rate};
 use h3_kernel::arith::{
@@ -30,7 +30,7 @@ use h3_kernel::{CanonicalHash, FixedVec, StateHasher};
 
 use crate::combat::check_end;
 use crate::damage::apply_damage;
-use crate::effects::{self, TimedCast};
+use crate::effects::{self, Status, TimedCast};
 use crate::error::{CommandError, HeroError};
 use crate::event::{Event, EventKind, Sink};
 use crate::geometry::{Field, Footprint, Hex};
@@ -435,8 +435,11 @@ fn affects_stack(state: &BattleState, ruleset: &Ruleset, spell: SpellRef<'_>, s:
 }
 
 /// Whether `side`'s cast of `spell` at `mastery` may reach stack `s` (BAT-MAG-003,
-/// BAT-MAG-005): a living stack on the side the spell may reach at that mastery that the spell
-/// can affect.
+/// BAT-MAG-005): a living stack on the side the spell may reach at that mastery (its own side,
+/// whoever controls it: the original's side tests, `installation.md` §7.14) that the spell can
+/// affect and [`admits`], unless a mass version passes over it hypnotized
+/// ([`skips_hypnotized`]).
+#[inline(always)]
 fn reachable(
     state: &BattleState,
     ruleset: &Ruleset,
@@ -450,7 +453,79 @@ fn reachable(
         TargetSide::Enemy => stack.side != side,
         TargetSide::Own => stack.side == side,
     };
-    side_ok && affects_stack(state, ruleset, spell, s)
+    // The spell's own tests and hypnotized stacks are rare: test them only when they apply.
+    let own_tests = spell.1.magic.health_limit || !spell.1.magic.refuses.is_empty();
+    side_ok
+        && affects_stack(state, ruleset, spell, s)
+        && (!own_tests || admits(state, ruleset, side, (spell, mastery), s))
+        && !(stack.spells.status.contains(Status::HYPNOTIZED)
+            && skips_hypnotized(state, ruleset, (spell, mastery), s))
+}
+
+/// Whether `side`'s cast of `spell` at `mastery` admits stack `s` by the spell's own tests
+/// (BAT-MAG-026, `installation.md` §7.14): no active effect of a change the spell refuses
+/// (Hypnotize: Magic Mirror), and with a health limit, full hit points (creatures × hit points
+/// per creature, the top creature's wounds not counted) at most the cast's value with the
+/// casting hero's specialist bonus for the stack (BAT-MAG-020).
+// rule: BAT-MAG-026
+fn admits(
+    state: &BattleState,
+    ruleset: &Ruleset,
+    side: BattleSide,
+    ((id, spell), mastery): (SpellRef<'_>, u8),
+    s: StackId,
+) -> bool {
+    let stack = state.at(s);
+    let refused = !spell.magic.refuses.is_empty()
+        && state.effects.of(s).iter().any(|e| {
+            ruleset.spell(e.spell).is_some_and(|sp| {
+                sp.magic
+                    .effects
+                    .iter()
+                    .filter_map(|c| c.timed())
+                    .any(|c| spell.magic.refuses.contains(&c))
+            })
+        });
+    let within = !spell.magic.health_limit
+        || state.heroes[side.index()].as_ref().is_some_and(|hero| {
+            let value = base_value(hero, spell, mastery);
+            let own = hero.magic.bonuses.spell(id);
+            let limit = value.saturating_add_signed(specialist_bonus(
+                ruleset,
+                spell,
+                own,
+                stack.creature,
+                value,
+            ));
+            u64::from(stack.count) * u64::from(stack.max_hp) <= limit
+        });
+    !refused && within
+}
+
+/// Whether the mass version of `spell` at `mastery` passes over stack `s` because it is
+/// hypnotized (BAT-MAG-026; the original's mass handler 0x5A66D0 and Expert Cure's loop skip
+/// them, `installation.md` §7.14): with quirk Q-0012 every mass version does, without it those
+/// whose dispel does not end the stack's Hypnotize (Cure's does).
+fn skips_hypnotized(
+    state: &BattleState,
+    ruleset: &Ruleset,
+    ((_, spell), mastery): (SpellRef<'_>, u8),
+    s: StackId,
+) -> bool {
+    let mass = spell.magic.target == SpellTarget::Stack
+        && target_at(ruleset, spell, mastery) == SpellTarget::None;
+    if !mass {
+        return false;
+    }
+    let hypnosis = SpellEffect::Timed(TimedChange::Hypnotize);
+    let ends_it = spell.magic.dispels()
+        && state.effects.of(s).iter().any(|e| {
+            ruleset
+                .spell(e.spell)
+                .is_some_and(|sp| sp.magic.effects.contains(&hypnosis))
+                && effects::dispel_ends(spell, e)
+        });
+    ruleset.quirks().is_enabled(MASS_CURE_SKIPS_HYPNOTIZED) || !ends_it
 }
 
 /// Whether `side`'s cast of a stack spell at `mastery` may be aimed at stack `s` (BAT-MAG-003):
@@ -818,7 +893,7 @@ pub(crate) fn reflection(
     } else {
         mul_div_floor(first, u64::from(percent), 100).unwrap_or(u64::MAX)
     };
-    let side = state.at(target).side;
+    let side = state.at(target).controller();
     let bonuses = state.heroes[side.index()]
         .as_ref()
         .map_or_else(SpellBonuses::default, |h| h.magic.bonuses);
@@ -869,8 +944,8 @@ fn protected(
 }
 
 /// The share of a hostile spell that stack `s` lets through (BAT-MAG-008) in the fixed point
-/// `one`, as `(share, one)`: 1 − its creature's magic resistance minus its side hero's
-/// resistance, at least 0. With quirk Q-0005 the values are single precision and the difference
+/// `one`, as `(share, one)`: 1 − its creature's magic resistance minus the resistance of its
+/// controller's hero (BAT-MAG-026), at least 0. With quirk Q-0005 the values are single precision and the difference
 /// is rounded to it, as the original's x87 code computes it (`installation.md` §7.8).
 fn share(state: &BattleState, ruleset: &Ruleset, s: StackId) -> (u64, u64) {
     let single = ruleset.quirks().is_enabled(SINGLE_PRECISION_RATES);
@@ -884,7 +959,7 @@ fn share(state: &BattleState, ruleset: &Ruleset, s: StackId) -> (u64, u64) {
             _ => None,
         })
         .unwrap_or(one);
-    let hero = state.heroes[stack.side.index()]
+    let hero = state.heroes[stack.controller().index()]
         .as_ref()
         .map_or(0, |h| h.magic.resistance);
     let share = creature.saturating_sub(hero);
@@ -896,16 +971,17 @@ fn percent_rate(single: bool, percent: u8) -> u64 {
     rate(single, u16::from(100 - percent.min(100)) * 100)
 }
 
-/// The strongest magic resistance aura of a living allied stack adjacent to stack `s`, percent
-/// (BAT-MAG-008).
+/// The strongest magic resistance aura of a living allied stack (of the same controller,
+/// BAT-MAG-026) adjacent to stack `s`, percent (BAT-MAG-008).
 fn aura(state: &BattleState, ruleset: &Ruleset, s: StackId) -> Option<u8> {
     let field = Field::new(ruleset.battle().field);
     let stack = state.at(s);
     let footprint = stack.footprint(field);
+    let controller = stack.controller();
     stack_ids(state)
         .filter(|&n| n != s)
         .map(|n| state.at(n))
-        .filter(|n| n.is_alive() && n.side == stack.side)
+        .filter(|n| n.is_alive() && n.controller() == controller)
         .filter_map(|n| {
             let percent = ruleset
                 .abilities(n.creature)
@@ -1125,7 +1201,9 @@ pub(crate) fn apply_cast<S: Sink>(
     // affect resists (BAT-MAG-022). An area spell has no such roll: every stack in its area
     // rolls once (BAT-MAG-007; batch 2a R3).
     if let CastTarget::Stack(s) = target
-        && (!affects_stack(state, ruleset, spell, s) || resists(state, ruleset, cast.spell, s))
+        && (!affects_stack(state, ruleset, spell, s)
+            || !admits(state, ruleset, cast.side, (spell, cast.mastery), s)
+            || resists(state, ruleset, cast.spell, s))
     {
         resisted(s, sink);
     } else {

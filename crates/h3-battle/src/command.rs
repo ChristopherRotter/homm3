@@ -19,7 +19,7 @@ use crate::magic::{self, Cast, CastTarget};
 use crate::movement::reachable;
 use crate::state::{BattleState, Stack, StackFlags, StackId, StackTraits};
 use crate::tactics::{self, TacticsPhase};
-use crate::turn::{TurnEnd, end_turn};
+use crate::turn::{self, TurnEnd, end_turn};
 use crate::war;
 
 /// A player's intent for the active stack. In the tactics phase (BAT-TAC-002) `Move` places the
@@ -140,12 +140,16 @@ pub fn validate(
     plan(state, ruleset, actor, command).map(|_| ())
 }
 
-/// The living enemy stack `target` of `actor`.
-fn enemy(state: &BattleState, actor: BattleSide, target: StackId) -> Result<(), CommandError> {
+/// The living stack `target`, an enemy of the active stack `mover` (BAT-MAG-025/026).
+fn enemy(
+    state: &BattleState,
+    (id, mover): (StackId, &Stack),
+    target: StackId,
+) -> Result<(), CommandError> {
     let Some(victim) = state.stack(target).filter(|s| s.is_alive()) else {
         return Err(CommandError::NoSuchTarget);
     };
-    if victim.side == actor {
+    if target == id || !mover.is_hostile_to(victim) {
         return Err(CommandError::NotAnEnemy);
     }
     Ok(())
@@ -160,7 +164,8 @@ fn plan<'r>(
     let Some((id, mover)) = state.active_stack() else {
         return Err(CommandError::BattleOver);
     };
-    if mover.side != actor {
+    // rule: BAT-MAG-026
+    if mover.controller() != actor {
         return Err(CommandError::NotYourTurn);
     }
     let field = Field::new(ruleset.battle().field);
@@ -196,7 +201,7 @@ fn plan<'r>(
             })
         }
         Command::Attack { target, from } => {
-            enemy(state, actor, target)?;
+            enemy(state, (id, &mover), target)?;
             // rule: BAT-RNG-001
             if can_shoot(state, field, id) {
                 return Err(CommandError::MustShoot);
@@ -233,7 +238,7 @@ fn plan<'r>(
             })
         }
         Command::Shoot { target, at } => {
-            enemy(state, actor, target)?;
+            enemy(state, (id, &mover), target)?;
             // rule: BAT-RNG-001
             if !can_shoot(state, field, id) {
                 return Err(CommandError::CannotShoot);
@@ -396,7 +401,11 @@ pub fn apply<S: Sink>(
             state.surrender_cost = Some(price);
             leave(state, BattleResult::Surrender(side), sink);
         }
-        Plan::Cast(cast) => magic::apply_cast(state, ruleset, *cast, sink),
+        Plan::Cast(cast) => {
+            magic::apply_cast(state, ruleset, *cast, sink);
+            // A stack the cast made berserk on its own turn acts at once (BAT-MAG-025).
+            turn::berserk_now(state, ruleset, sink);
+        }
     }
     // rule: BAT-MAG-010
     effects::remove_dead(state);

@@ -850,7 +850,8 @@ pub fn harvest(inputs: &Inputs, gap: &GapFill) -> Result<Harvest, String> {
          \"quirk.battle.counterstrike_extra_round\" = true, \
          \"quirk.battle.frenzy_reduced_defense\" = true, \
          \"quirk.battle.fire_shield_first_stage\" = true, \
-         \"quirk.battle.early_mass_version\" = true }    # Q-0003, Q-0005, Q-0004, Q-0007, Q-0008, Q-0009, Q-0010, Q-0011\n",
+         \"quirk.battle.early_mass_version\" = true, \
+         \"quirk.battle.mass_cure_skips_hypnotized\" = true }    # Q-0003, Q-0005, Q-0004, Q-0007, Q-0008, Q-0009, Q-0010, Q-0011, Q-0012\n",
     );
     base.push_str(
         "\n[[profile]]\nid = \"strict-fixed\"    # all quirks fixed\n\
@@ -861,7 +862,8 @@ pub fn harvest(inputs: &Inputs, gap: &GapFill) -> Result<Harvest, String> {
          \"quirk.battle.counterstrike_extra_round\" = false, \
          \"quirk.battle.frenzy_reduced_defense\" = false, \
          \"quirk.battle.fire_shield_first_stage\" = false, \
-         \"quirk.battle.early_mass_version\" = false }   # Q-0003, Q-0005, Q-0004, Q-0007, Q-0008, Q-0009, Q-0010, Q-0011\n",
+         \"quirk.battle.early_mass_version\" = false, \
+         \"quirk.battle.mass_cure_skips_hypnotized\" = false }   # Q-0003, Q-0005, Q-0004, Q-0007, Q-0008, Q-0009, Q-0010, Q-0011, Q-0012\n",
     );
 
     // ab
