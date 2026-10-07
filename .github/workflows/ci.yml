@@ -68,5 +68,12 @@ jobs:
           # Branches restore master's cache but do not write their own.
           save-if: ${{ github.ref == 'refs/heads/master' }}
 
+      # The determinism step builds into target/native with `-C target-cpu=native`, which also
+      # compiles the proc macros for the CPU of the runner that built them. Restored from the cache
+      # on a runner with another CPU model, such a proc macro dies with SIGILL (seen 2026-10-07),
+      # so that directory is never reused.
+      - name: Drop cached native builds
+        run: rm -rf target/native
+
       - name: cargo xtask verify
         run: cargo xtask verify
