@@ -33,10 +33,10 @@ Map file: `E04b-batch-2c.h3m`. Fill in the blanks below and keep this file; an a
 |   |   |   |
 |   |   |   |
 
-- Fire Wall on X; on the hex down-left of X; far from obstacles (allowed/refused, other hex free?): 
-- the Phoenix lands on X (yes/no): 
-- Remove Obstacle cast on X in round 3: what disappears: 
-- anything odd: 
+- Fire Wall on X; on the hex down-left of X; far from obstacles (allowed/refused, other hex free?):
+- the Phoenix lands on X (yes/no): Fire wall can be cast all around the obstacle(s), as long as none of the two Fire wall hexes overlap with the obstacle-blocked hexes. Note that Fire wall's "target hex" is the bottom left hex, and to its top right it blocks its second hex
+- Remove Obstacle cast on X in round 3: what disappears:
+- anything odd: Remove obstacle cannot be cast, it says right away: "That spell will not affect anything." (despite there being some seemingly large obstacles)
 
 ## A2 — Anchor hexes: a second battlefield (Q55)
 
@@ -49,17 +49,17 @@ Map file: `E04b-batch-2c.h3m`. Fill in the blanks below and keep this file; an a
 
 | obstacle (look, size, place) | own hexes take Remove Obstacle (yes/no) | free hexes that take it (where; none) |
 |---|---|---|
-|   |   |   |
-|   |   |   |
+|Rock with trees, 3x1, two cells touch a 5x1 obstacle|yes|the one to the left also does|
+|Rock, 2x1, free on all sides|yes|none|
 |   |   |   |
 |   |   |   |
 |   |   |   |
 |   |   |   |
 
-- Fire Wall on X; on the hex down-left of X; far from obstacles (allowed/refused, other hex free?): 
-- the Phoenix lands on X (yes/no): 
-- Remove Obstacle cast on X in round 3: what disappears: 
-- anything odd: 
+- Fire Wall on X; on the hex down-left of X; far from obstacles (allowed/refused, other hex free?): allowed in all cases except when a cell-to-be-blocked by Fire wall either lands on X, is already blocked by an obstacle, or off the hex grid entirely
+- the Phoenix lands on X (yes/no): yes
+- Remove Obstacle cast on X in round 3: what disappears: The Rock with trees (3x1)
+- anything odd: Some large obstacles (5x1) cannot be removed (they are very similar to the A1 experiment)
 
 ## A3 — Anchor hexes: a third battlefield (only if A1 and A2 found no X) (Q55)
 
@@ -79,10 +79,10 @@ Map file: `E04b-batch-2c.h3m`. Fill in the blanks below and keep this file; an a
 |   |   |   |
 |   |   |   |
 
-- Fire Wall on X; on the hex down-left of X; far from obstacles (allowed/refused, other hex free?): 
-- the Phoenix lands on X (yes/no): 
-- Remove Obstacle cast on X in round 3: what disappears: 
-- anything odd: 
+- Fire Wall on X; on the hex down-left of X; far from obstacles (allowed/refused, other hex free?):
+- the Phoenix lands on X (yes/no):
+- Remove Obstacle cast on X in round 3: what disappears:
+- anything odd:
 
 ## F1 — Fire Wall burns on entering, on Wait and on Defend; the shapes the defender casts (BAT-MAG-027, BAT-MAG-028)
 
@@ -96,17 +96,17 @@ Map file: `E04b-batch-2c.h3m`. Fill in the blanks below and keep this file; an a
 
 **Record**
 
-- Blue's Force Field (round 1): covers the clicked hex and its up-right or up-left neighbour: 
+- Blue's Force Field (round 1): covers the clicked hex and its up-right or up-left neighbour: up-right
 
 | step | log lines (copy) | Pikemen left |
 |---|---|---|
-|   |   |   |
-|   |   |   |
-|   |   |   |
+|1|The Fire Wall does 20 damage. 2 Pikemen perish.|48|
+|2|The Fire Wall does 20 damage. 2 Pikemen perish.|46|
+|3|The Fire Wall does 20 damage. 2 Pikemen perish.|44|
 
-- Blue's Fire Wall (round 2): second hex up-right or up-left: 
-- round 3: Red's Fire Wall still there (yes/no): 
-- anything odd: 
+- Blue's Fire Wall (round 2): second hex up-right or up-left: up-left
+- round 3: Red's Fire Wall still there (yes/no): no
+- anything odd:
 
 ## F2 — A walker with two equally short paths past a Fire Wall (BAT-MOV-003, BAT-MAG-028)
 
@@ -122,10 +122,10 @@ Map file: `E04b-batch-2c.h3m`. Fill in the blanks below and keep this file; an a
 
 | walker | burnt (yes/no; log line) | Pikemen left |
 |---|---|---|
-|   |   |   |
-|   |   |   |
+|Pikemen (red)|yes; "The Fire Wall does 20 damage. 2 Pikemen perish."|8|
+|Pikemen (blue)|no|10|
 
-- anything odd: 
+- anything odd:
 
 ## B1 — Berserk: which of two equally near stacks is attacked (BAT-MAG-025)
 
@@ -140,11 +140,11 @@ Map file: `E04b-batch-2c.h3m`. Fill in the blanks below and keep this file; an a
 
 | try | the Swordsmen attack (upper/lower Pikemen) |
 |---|---|
-|   |   |
-|   |   |
-|   |   |
+|1|lower|
+|2|upper|
+|3|lower|
 
-- anything odd: 
+- anything odd:
 
 ## H1 — Hypnotize against a wounded stack; Expert Cure on a hypnotized stack (BAT-MAG-026, Q-0012)
 
@@ -158,13 +158,13 @@ Map file: `E04b-batch-2c.h3m`. Fill in the blanks below and keep this file; an a
 
 **Record**
 
-- round 1: Hypnotize on 2 Swordsmen, on 1 Swordsman (allowed/refused): 
-- Magic Arrow: damage; 2 Swordsmen afterwards: number, health of the top one: 
-- round 2: Hypnotize on the wounded 2 Swordsmen (allowed/refused): 
-- after Expert Cure: Hypnotize still listed on the 1 Swordsman (yes/no); 2 Swordsmen's top one health: 
-- round 2, after the Cure: the 1 Swordsman commanded by (Red/Blue): 
-- round 3: the 1 Swordsman commanded by (Red/Blue): 
-- anything odd: 
+- round 1: Hypnotize on 2 Swordsmen, on 1 Swordsman (allowed/refused): refused, allowed
+- Magic Arrow: damage; 2 Swordsmen afterwards: number, health of the top one: 30, 2, 5
+- round 2: Hypnotize on the wounded 2 Swordsmen (allowed/refused): refused
+- after Expert Cure: Hypnotize still listed on the 1 Swordsman (yes/no); 2 Swordsmen's top one health: yes; 35
+- round 2, after the Cure: the 1 Swordsman commanded by (Red/Blue): Red
+- round 3: the 1 Swordsman commanded by (Red/Blue): Blue
+- anything odd: Probably not odd, but some remark: While hypnotized, that stack can attack it's original side (Blue), but Blue's stacks cannot attack the hypnotized stack. Also, the hypnotized stack keeps facing left, as normally only Blue's stacks would (i.e., as if it was still allied with Blue).
 
 ## C1 — Basic Cure on a hypnotized stack (BAT-MAG-026, Q-0012)
 
@@ -177,6 +177,6 @@ Map file: `E04b-batch-2c.h3m`. Fill in the blanks below and keep this file; an a
 
 **Record**
 
-- Cure on the hypnotized Swordsman: allowed (yes/no); Hypnotize still listed afterwards (yes/no): 
-- round 2: the Swordsman commanded by (Red/Blue): 
-- anything odd: 
+- Cure on the hypnotized Swordsman: allowed (yes/no); Hypnotize still listed afterwards (yes/no): yes; no
+- round 2: the Swordsman commanded by (Red/Blue): Blue
+- anything odd:
