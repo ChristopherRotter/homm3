@@ -9,7 +9,7 @@ Living state between sessions; every session reads it first. Rules (`docs/08-wor
 - **E04b (battle magic) is refined** (Q41, `docs/epics/E04b-battle-magic.md`): increments with a user checkpoint each; only the current increment's tasks are refined.
 - **Done:** survey `docs/rules/surveys/E04b-magic.md` (§12–§15), ADR-0014 accepted (point 5 amended, Q47), design note `docs/epics/E04b-design.md`. Castable by heroes: the 13 damage spells, the 14 value spells, Shield, Air Shield, the Protections (Q-0007), Slayer, Counterstrike (Q-0008), Dispel, Cure, Fire Shield (Q-0010) and Frenzy (Q-0009) (BAT-MAG-001 to 019), the spell specialists (BAT-MAG-020), all after the executable's code (`installation.md` §7.8–§7.12). **Physical damage follows the executable's three truncated stages** under Q-0005 (Q50, BAT-DMG-002, `h3_kernel::arith::X87` at 53 bits).
 - **Hero rates** cross the seam as `h3_contracts::Rate` (basis points plus, under Q-0005, the original's single-precision value as an f32 bit pattern where it differs; Q45 (b), T3c2).
-- **Next:** T4a, then the checkpoint; batch 2b (`experiments/specs/E04b-batch-2b.toml`) is with the user, fold it in when the results are in (T4b Forgetfulness and Blind, T4c Berserk and Hypnotize).
+- **Next:** T4a, then the checkpoint (T4b Forgetfulness and Blind, T4c Berserk and Hypnotize); batch 2b (`experiments/specs/E04b-batch-2b.toml`) is with the user: fold it in when its results are in.
 - **Open for later tasks:** batch 2a R6's costs (T7); Q43 (sprite offset, keep the approximation); creature casters' re-casts (T7); the damage stages' creature factors; Dispel's and Fire Shield's loose ends (Sphere T8, obstacles T5, the Sultans' shield T7; BACKLOG); a hypnotized stack's controller for Fire Shield and the specialists (T4).
 - Versions: state hash v23, ruleset hash v20, replay format v16, action encoding v9, C ABI v9, observation encoding v6; pack format v9.
 - Working agreement: increments of a couple of tasks with a user checkpoint (Q41); the user confirms seams and ADRs; token efficiency beats speed (AGENTS.md); the user plays experiment maps in SoD with plain HD and commits the results.
@@ -55,7 +55,7 @@ Living state between sessions; every session reads it first. Rules (`docs/08-wor
 
 ### 2026-10-07 (twenty-fourth) — E04b T3c3 and T4a (in progress)
 
-Linked cloud session. The user's checkpoint (Q52): batch 2b now, T4 in three parts (T4a defences, T4b Forgetfulness and Blind, T4c control), T3c3 + T4a this session; `Rate` keeps the f32 bit pattern. T3c3 done: batch 2b compiled (six encounters, predictions checked against the engine; the user plays it while T4 proceeds). **In progress:** T4a (the code reading of Anti-Magic and Magic Mirror).
+Linked cloud session. The user's checkpoint (Q52): batch 2b now, T4 in three parts (T4a defences, T4b Forgetfulness and Blind, T4c control), T3c3 + T4a this session; `Rate` keeps the f32 bit pattern. T3c3 done (batch 2b compiled, predictions checked against the engine). **In progress:** T4a (reading Anti-Magic and Magic Mirror).
 
 ### 2026-10-07 (twenty-third) — E04b T3c1 and T3c2: spell specialists, Q45
 
