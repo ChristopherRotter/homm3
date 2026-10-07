@@ -516,3 +516,41 @@ records how and why the tasks went.
 - **Design notes for the player:** the stacks whose defense matters never Defend before they
   are struck (the Angels act first, or the target moves instead of defending); Mephala's
   level-ups are the user's choice and cannot change R6 (the attack bonus is capped).
+
+### T4a — The spell defences: Anti-Magic and Magic Mirror (2026-10-07)
+
+- **Seam (Q52):** T4 in three parts by mechanism; T4a with T3c3 this session, a checkpoint after.
+- **Code reading** (`installation.md` §7.13): Anti-Magic stores v (4, 4, 5, 6) and ends the
+  active negative spells below level v that are not creature abilities (Sorrow and Berserk, level
+  4, survive a Basic one; Disrupting Ray never ends); while active, 0x5A8090 refuses every spell
+  below level v whatever its polarity, after Dispel's own test. Magic Mirror stores its chance;
+  the redirect lives where a player's cast is entered (0x59EC50): a single-target cast at a
+  living enemy stack, Dispel excepted, goes with `random(1, 100) ≤ chance` to a uniformly drawn
+  living stack of the caster's side (arrow towers excepted, war machines not), which rolls with
+  the polarity tests skipped; the first target never rolls. Also found: a stack with Magic Mirror
+  cannot be hypnotized (T4c); a clone cannot receive Anti-Magic (T6); the computer player's
+  casts skip the redirect (the original's AI only). VCMI differs on Anti-Magic's dispel (every
+  negative and neutral effect) and leaves war machines out of the redirect.
+- **Content (pack format v10):** timed changes `spell_immunity` and `magic_mirror`; the gap-fill
+  gives them to Anti-Magic and Magic Mirror (sources `exe-anti-magic-mirror`,
+  `vcmi-spells-defences`); `ignores_immunity` (Dispel) also passes Anti-Magic and the mirror.
+  The synthetic pack gains Veil (an Anti-Magic) and Glass (a Magic Mirror).
+- **Battle:** BAT-MAG-021 (`magic::kept_off`, `affects_stack` in every reach test: stack spells,
+  areas, mass and battle-wide spells, Chain Lightning's jumps; `effects::apply` ends the
+  negative effects below the level at the first cast, through `end_where`, which Dispel now
+  shares); BAT-MAG-022 (`magic::mirror` in `apply_cast`, `SpellRedirected`; the new stack takes
+  the spell through `affects_stack` and the resistance roll). `SpellValues` gains
+  `spell_immunity` and `mirror`; state hash v24.
+- **Agent decisions (change freely):** the chance is drawn only when the stack has a mirror (the
+  original draws for every cast at an enemy stack; draws are ours, ADR-0003); Bloodlust's and
+  Precision's inline bonuses are `u8` now (saturating at 255), so the two new values keep the
+  stack record at 72 bytes and `BattleState` at 3 904.
+- **Workload:** Brea casts Glass, Corwin Veil; golden replays re-recorded. The old workload
+  (`8c90804`'s synthetic pack) on the new engine: 421.11 M Ir against T3c2's 419.80 M (+0.31 %;
+  +1.02 % on the T3c1 baseline); the new one 10 070 steps (was 8 818), 472.93 M Ir;
+  `bench-check` re-baselined. `h3 bench` full ≈ 190 k steps/s (noisy sandbox).
+- **Tests:** `tests/defences.rs` (the cast's dispel by level and polarity, own and enemy spells
+  kept off, areas and battle-wide spells passing over, Dispel ending it, a Basic one keeping
+  level 1, abilities never kept off; the redirect of damage, timed and chain spells, no redirect
+  for areas, own targets and Dispel, an immune or resisting new stack, the chance and the draw
+  among living stacks).

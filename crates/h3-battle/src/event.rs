@@ -184,6 +184,14 @@ pub enum EventKind {
         /// The stack.
         target: StackId,
     },
+    /// A Magic Mirror sent a spell aimed at one stack to another (BAT-MAG-022); the spell then
+    /// goes on as if aimed at the new stack.
+    SpellRedirected {
+        /// The stack the spell was aimed at.
+        from: StackId,
+        /// The stack it went to.
+        to: StackId,
+    },
     /// A spell damaged a stack (BAT-MAG-004). The three amounts let a client show what the
     /// original's combat log shows: the caster's extra damage (`caster − value`) and the
     /// target's extra damage or reduction (`damage` against `caster`; batch 2a R5).

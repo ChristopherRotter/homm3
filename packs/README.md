@@ -159,7 +159,7 @@ override, replacing the list) names the creature types it upgrades into: at most
 none twice; references follow the reference rules and may name later creatures of the pack.
 Hero effects that select "a creature" apply to it and its direct upgrades.
 
-## Hero content (format v3, E04a T3; battle magic format v4, E04b T2a; v5 T3a; v6 T3b1; v7 T3b1b; v8 T3b2; v9 T3c)
+## Hero content (format v3, E04a T3; battle magic format v4, E04b T2a; v5 T3a; v6 T3b1; v7 T3b1b; v8 T3b2; v9 T3c; v10 T4a)
 
 Spell schools, spells, secondary skills, hero classes and hero types (ADR-0013). References follow
 the reference rules above; every kind may refer to content of its dependency closure.
@@ -225,7 +225,8 @@ target = "stack"
 side = "own"
 any_side = "advanced"              # v7: from this mastery it reaches either side
 needs_effect = true                # v7: a stack it is aimed at needs an active timed effect
-ignores_immunity = true            # v7: no immunity, magic resistance or aura applies
+ignores_immunity = true            # v7: no immunity, magic resistance or aura applies; v10: nor
+                                   # Anti-Magic, and a Magic Mirror never sends it away
 mass = "expert"
 spares = ["poison"]                # v7: its dispel effect ends every effect but these (or
                                    # `dispels = [...]`: only these; not both)
@@ -275,7 +276,11 @@ strikes / shots taken deal v %, BAT-MAG-012), `school_protection` (spells of thi
 deal v %, BAT-MAG-013), `slayer` (+ v attack against king creatures by mastery, BAT-MAG-014),
 `retaliations` (+ v per round, BAT-MAG-015); since v8, E04b T3b2: `fire_shield` (melee strikes
 taken reflect v % of their first stage onto the striker, BAT-MAG-018), `frenzy` (attack + defense
-× v %, defense 0 when struck, BAT-MAG-019)); since v7, E04b T3b1b: `dispel` (ends the stack's
+× v %, defense 0 when struck, BAT-MAG-019); since v10, E04b T4a: `spell_immunity` (no spell below
+level v reaches the stack unless it is a creature ability or ignores immunity; the first cast ends
+its negative effects below level v, BAT-MAG-021), `magic_mirror` (a stack spell aimed at it by
+the other side goes with a chance of v % to a random living stack of the caster's side,
+BAT-MAG-022)); since v7, E04b T3b1b: `dispel` (ends the stack's
 timed effects: those of the spells in `dispels`, or without that list every one but those in
 `spares`; never a permanent one; BAT-MAG-016) and `heal` (heals the top creature by the value,
 raising none; BAT-MAG-017), applied after damage and before timed changes. `mass` needs target

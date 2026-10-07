@@ -151,11 +151,18 @@ pub enum TimedChange {
     FireShield,
     /// Attack + its defense × v %, defense 0 when struck (Frenzy; BAT-MAG-019, v8).
     Frenzy,
+    /// Immune to every spell below level v that is not a creature ability, whatever its
+    /// polarity; the first cast ends the stack's negative effects below level v (Anti-Magic;
+    /// BAT-MAG-021, v10).
+    SpellImmunity,
+    /// A single-target spell aimed at the stack from the other side goes, with a chance of v %, to
+    /// a random living stack of the caster's side instead (Magic Mirror; BAT-MAG-022, v10).
+    MagicMirror,
 }
 
 impl TimedChange {
     /// All values, in code order.
-    pub const ALL: [Self; 21] = [
+    pub const ALL: [Self; 23] = [
         Self::Speed,
         Self::SpeedPercent,
         Self::Attack,
@@ -177,6 +184,8 @@ impl TimedChange {
         Self::Retaliations,
         Self::FireShield,
         Self::Frenzy,
+        Self::SpellImmunity,
+        Self::MagicMirror,
     ];
 
     /// Pack name.
@@ -203,6 +212,8 @@ impl TimedChange {
             Self::Retaliations => "retaliations",
             Self::FireShield => "fire_shield",
             Self::Frenzy => "frenzy",
+            Self::SpellImmunity => "spell_immunity",
+            Self::MagicMirror => "magic_mirror",
         }
     }
 
@@ -362,7 +373,8 @@ pub struct SpellMagic {
     /// A stack it is aimed at needs an active timed effect (Dispel below Expert; v7).
     pub needs_effect: bool,
     /// No creature is immune to it and none resists it: no immunity, magic resistance or
-    /// resistance aura applies (Dispel, `installation.md` §7.10; v7).
+    /// resistance aura applies (Dispel, `installation.md` §7.10; v7); nor do Anti-Magic and
+    /// Magic Mirror (§7.13; v10).
     pub ignores_immunity: bool,
     /// The stacks it may affect.
     pub conditions: TargetConditions,

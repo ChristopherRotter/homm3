@@ -20,7 +20,8 @@ defender_funds = 10000
 # random rollouts exercise every kind of damage spell the battle implements; since E04b T3a also
 # three timed storm spells, since T3b1 Smiting (Slayer) and Riposte (extra retaliations), since
 # T3b1b Mend (a Cure: it heals and ends the negative spells), since T3b2 Blaze (a Fire Shield);
-# since T3c she is a level-6 specialist in Hasten (by the creature level, BAT-MAG-020).
+# since T3c she is a level-6 specialist in Hasten (by the creature level, BAT-MAG-020); since T4a
+# she mirrors (Glass, a Magic Mirror: Corwin's spells at a mirrored stack may hit his own).
 [scenario.attacker_hero]
 hero_type = "synthetic:brea"
 attack = 2
@@ -33,7 +34,7 @@ max_mana = 40
 spell_book = [
     "synthetic:spark", "synthetic:cinders", "synthetic:arc", "synthetic:blight", "synthetic:ward",
     "synthetic:hasten", "synthetic:drag", "synthetic:fury", "synthetic:smiting",
-    "synthetic:riposte", "synthetic:mend", "synthetic:blaze",
+    "synthetic:riposte", "synthetic:mend", "synthetic:blaze", "synthetic:glass",
 ]
 schools = { "synthetic:storm" = 1 }
 ranged_bp = 1000
@@ -60,7 +61,8 @@ effects = [
 # E04b T3b1 he shields his stacks (Aegis, mass at Expert) and hallows them against storm spells;
 # since T3b1b he purges every stack's effects (mass at Expert, sparing Drag), since T3b2 he
 # enrages one (a Frenzy); since T3c he is a level-1 specialist in Boon (a Bless: his blessed
-# stacks' strikes gain 3 % of their base per level step, BAT-MAG-020), as given.
+# stacks' strikes gain 3 % of their base per level step, BAT-MAG-020), as given; since T4a he
+# veils a stack (Veil, an Anti-Magic: Expert keeps spells below level 5 off it).
 [scenario.defender_hero]
 hero_type = "synthetic:corwin"
 attack = 1
@@ -72,7 +74,7 @@ max_mana = 40
 spell_book = [
     "synthetic:spark", "synthetic:arc", "synthetic:blight", "synthetic:zeal", "synthetic:gloom",
     "synthetic:boon", "synthetic:bane", "synthetic:corrode", "synthetic:aegis",
-    "synthetic:hallow", "synthetic:purge", "synthetic:rage",
+    "synthetic:hallow", "synthetic:purge", "synthetic:rage", "synthetic:veil",
 ]
 schools = { "synthetic:stone" = 3 }
 surrender_discount_bp = 1000

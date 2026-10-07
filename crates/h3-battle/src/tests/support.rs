@@ -890,7 +890,9 @@ pub type TimedSpec = (
 /// other; `ray` (Disrupting Ray) is permanent and cumulative; `bless` and `curse` counter each
 /// other; `shield`, `airshield`, `airward` and `fireward` protect, `slayer` is Slayer,
 /// `counter` Counterstrike, `fireshield` (fire school) Fire Shield and `frenzy` Frenzy (through
-/// the stack's next turn).
+/// the stack's next turn); `antimagic` keeps spells below level 1, 1, 2, 2 off a stack (an
+/// Anti-Magic), `mirror` redirects with 50, 50, 100, 100 % (a Magic Mirror) and `gloom` is a
+/// level-2 Sorrow.
 pub const TIMED: &[TimedSpec] = &[
     (
         "haste",
@@ -1116,6 +1118,36 @@ pub const TIMED: &[TimedSpec] = &[
         true,
         false,
     ),
+    (
+        "antimagic",
+        true,
+        &[TimedChange::SpellImmunity],
+        [1, 1, 2, 2],
+        None,
+        false,
+        false,
+        false,
+    ),
+    (
+        "mirror",
+        true,
+        &[TimedChange::MagicMirror],
+        [50, 50, 100, 100],
+        None,
+        false,
+        false,
+        false,
+    ),
+    (
+        "gloom",
+        false,
+        &[TimedChange::MoraleLoss],
+        [1, 1, 2, 2],
+        None,
+        false,
+        false,
+        false,
+    ),
 ];
 
 /// The definition of a timed test spell.
@@ -1127,7 +1159,7 @@ fn timed_def(
         key: ContentKey::new("t", name).unwrap(),
         name: String::from(name),
         category: SpellCategory::Combat,
-        level: 1,
+        level: if name == "gloom" { 2 } else { 1 },
         schools: vec![
             ContentKey::new(
                 "t",

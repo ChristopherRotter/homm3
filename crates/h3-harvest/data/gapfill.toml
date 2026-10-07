@@ -1508,6 +1508,13 @@ url = "docs/formats/installation.md"
 retrieved = "2026-10-07"
 
 [[source]]
+id = "exe-anti-magic-mirror"
+kind = "original-data"
+ref = "Heroes3.exe code reading (docs/formats/installation.md 7.13): Anti-Magic stores v (0x4448F0, +0x460) and ends the active negative spells below level v that are not creature abilities (flag 0x8); while active 0x5A8090 returns 0 for every such spell below level v whatever its polarity, after Dispel's own test; Magic Mirror stores v (+0x4E4), read by 0x4487F0; the player's cast entry 0x59EC50 redirects a single-target cast at a living enemy stack (not Dispel) with random(1, 100) <= v to a random living stack of the caster's side (not an arrow tower), which 0x59FE30 rolls with the polarity tests skipped"
+url = "docs/formats/installation.md"
+retrieved = "2026-10-07"
+
+[[source]]
 id = "exe-fire-shield-frenzy"
 kind = "original-data"
 ref = "Heroes3.exe code reading (docs/formats/installation.md 7.11): Fire Shield stores v/100 (0x4448F0) read by 0x443130; the physical damage routine 0x443F40 reflects trunc(min(stage 1, the target's hit points) x factor) through the spell modifiers 0x5A78E0 onto a melee striker (0x422440, 0x441610); Frenzy lasts 1 or 2 turns of the stack (0x4448F0, 0x446E30) and adds its defense x v/100 to the attack (0x442410) while its defense is 0 when struck (0x442590)"
@@ -1533,6 +1540,13 @@ id = "vcmi-spell-specialist"
 kind = "vcmi"
 ref = "lib/spells/effects/Timed.cpp (1.7.5): SPECIAL_PECULIAR_ENCHANT +3, +2, +1 for tiers 1-2, 3-4, 5-6; lib/battle/DamageCalculator.cpp: Coronius' Slayer + max(5 - tier, 0); config/heroes: Aenain's Disrupting Ray SPECIAL_ADD_VALUE_ENCHANT 2, Melodia's Fortune SPECIAL_FIXED_VALUE_ENCHANT 3"
 url = "https://github.com/vcmi/vcmi/blob/1.7.5/lib/spells/effects/Timed.cpp"
+retrieved = "2026-10-07"
+
+[[source]]
+id = "vcmi-spells-defences"
+kind = "vcmi"
+ref = "config/spells/timed.json (1.7.5) antiMagic (LEVEL_SPELL_IMMUNITY 3/3/4/5, dispels negative and neutral effects) and magicMirror (MAGIC_MIRROR 20/20/30/40); lib/spells/BattleSpellMechanics.cpp isReflected, reflect, getRandomUnit"
+url = "https://github.com/vcmi/vcmi/blob/1.7.5/config/spells/timed.json"
 retrieved = "2026-10-07"
 
 [[source]]
@@ -2031,6 +2045,18 @@ spell = "Frenzy"
 changes = ["frenzy"]
 duration = "own_turn"
 sources = ["exe-fire-shield-frenzy"]
+
+# T4a (E04b, 2026-10-07; installation.md 7.13): the spell defences. One own stack each, no mass
+# version (the flag word).
+[[spells.timed]]
+spell = "Anti-Magic"
+changes = ["spell_immunity"]
+sources = ["exe-anti-magic-mirror", "vcmi-spells-defences"]
+
+[[spells.timed]]
+spell = "Magic Mirror"
+changes = ["magic_mirror"]
+sources = ["exe-anti-magic-mirror", "vcmi-spells-defences"]
 
 # Dispel and Cure (E04b T3b1b, pack format v7; installation.md 7.10). Target and the mass version
 # at Expert come from the flag word.

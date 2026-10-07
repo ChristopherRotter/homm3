@@ -1,6 +1,6 @@
 # E04b — Battle magic
 
-Status: **in progress** (refined 2026-10-05; increment 1 = T1–T2, done 2026-10-06: T1, ADR-0014 accepted, T2a–T2e, batch 2a evaluated; increment 2 = T3 in parts, then T4 (Q46, Q48): T3a, T3b1a, T3b1b, T3b2, T3c1, T3c2 and T3c3 (batch 2b compiled) done; T4a in progress (Q52)) · Follows E04a (closed 2026-10-05) · Part of the former E04 (OPEN-QUESTIONS Q27): E04a heroes in battle, **E04b** battle magic (this one), E04c sieges and special battlefields.
+Status: **in progress** (refined 2026-10-05; increment 1 = T1–T2, done 2026-10-06: T1, ADR-0014 accepted, T2a–T2e, batch 2a evaluated; increment 2 = T3 in parts, then T4 (Q46, Q48): T3a, T3b1a, T3b1b, T3b2, T3c1, T3c2, T3c3 (batch 2b compiled) and T4a done; checkpoint before T4b (Q52)) · Follows E04a (closed 2026-10-05) · Part of the former E04 (OPEN-QUESTIONS Q27): E04a heroes in battle, **E04b** battle magic (this one), E04c sieges and special battlefields.
 
 ## Goal
 
@@ -71,7 +71,7 @@ The 13 direct-damage spells: Magic Arrow, Ice Bolt, Lightning Bolt, Titan's Ligh
 
 ### T4 — Control spells and spell defences (refined 2026-10-07, Q52)
 
-- [ ] T4a The spell defences: Anti-Magic and Magic Mirror, read in the executable; both act inside the cast's resolution order (ADR-0014 point 4: immunity, the mirror, resistance); the mirror's redirect in the original's draw order.
+- [x] **T4a The spell defences** — done 2026-10-07: read in the executable (`installation.md` §7.13); pack format v10 (`spell_immunity`, `magic_mirror`), BAT-MAG-021 (Anti-Magic: spells below its level kept off whatever their polarity, the negative ones below it ended at the cast), BAT-MAG-022 (Magic Mirror: a stack spell at an enemy stack goes to a random living stack of the caster's side, which rolls); state hash v24; replays and `bench-check` re-baselined. Record: [`E04b-log.md`](E04b-log.md).
 - [ ] T4b Stacks that lose actions: Forgetfulness (S-09, S-10) and Blind (ends when attacked, its retaliation factor in damage stage 2); legality and the sim's masks.
 - [ ] T4c Control: Berserk and Hypnotize: automatic turns, a stack acting for the other side, their counter pair, S-11, S-13; the hypnotized stack's controller for Fire Shield, the specialists, the Sphere and Expert Cure (BACKLOG).
 

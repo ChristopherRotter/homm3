@@ -554,6 +554,32 @@ mind = true
 duration = "own_turn"
 effects = [{ kind = "timed", change = "frenzy" }]
 
+[[spell]]                           # format v10: an Anti-Magic
+id = "veil"
+name = "Veil"
+category = "combat"
+level = 3
+schools = ["stone"]
+cost = [12, 10, 10, 10]
+effect = [3, 3, 4, 5]               # spells below this level are kept off the stack
+polarity = "positive"
+target = "stack"
+side = "own"
+effects = [{ kind = "timed", change = "spell_immunity" }]
+
+[[spell]]                           # format v10: a Magic Mirror
+id = "glass"
+name = "Glass"
+category = "combat"
+level = 4
+schools = ["storm"]
+cost = [16, 14, 14, 14]
+effect = [20, 20, 30, 40]           # chance to send a spell aimed at the stack elsewhere, percent
+polarity = "positive"
+target = "stack"
+side = "own"
+effects = [{ kind = "timed", change = "magic_mirror" }]
+
 [[secondary_skill]]
 id = "marksmanship"
 name = "Marksmanship"

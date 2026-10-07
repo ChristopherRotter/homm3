@@ -3,6 +3,7 @@
 
 mod abilities;
 mod commands;
+mod defences;
 mod dispel;
 mod flee;
 mod geometry;

@@ -416,6 +416,24 @@ fn affects(ruleset: &Ruleset, (id, spell): SpellRef<'_>, creature: CreatureTypeI
         })
 }
 
+/// Whether Anti-Magic on `stack` keeps `spell` off it (BAT-MAG-021): a spell below the level it
+/// bounds, whatever its polarity, unless the spell is a creature ability or ignores immunity
+/// (Dispel; the original tests both before Anti-Magic, `installation.md` §7.13).
+// rule: BAT-MAG-021
+pub(crate) fn kept_off(stack: &Stack, spell: &Spell) -> bool {
+    spell.level < stack.spells.spell_immunity
+        && spell.category != SpellCategory::Ability
+        && !spell.magic.ignores_immunity
+}
+
+/// Whether `spell` can affect the living stack `s` at all, wherever its caster stands
+/// (BAT-MAG-005, BAT-MAG-021): its creature meets the spell's conditions and immunities, and
+/// Anti-Magic does not keep the spell off it.
+fn affects_stack(state: &BattleState, ruleset: &Ruleset, spell: SpellRef<'_>, s: StackId) -> bool {
+    let stack = state.at(s);
+    stack.is_alive() && affects(ruleset, spell, stack.creature) && !kept_off(stack, spell.1)
+}
+
 /// Whether `side`'s cast of `spell` at `mastery` may reach stack `s` (BAT-MAG-003,
 /// BAT-MAG-005): a living stack on the side the spell may reach at that mastery that the spell
 /// can affect.
@@ -432,7 +450,7 @@ fn reachable(
         TargetSide::Enemy => stack.side != side,
         TargetSide::Own => stack.side == side,
     };
-    stack.is_alive() && side_ok && affects(ruleset, spell, stack.creature)
+    side_ok && affects_stack(state, ruleset, spell, s)
 }
 
 /// Whether `side`'s cast of a stack spell at `mastery` may be aimed at stack `s` (BAT-MAG-003):
@@ -452,6 +470,14 @@ fn aimable(
         && (spell.1.polarity == SpellPolarity::Positive
             || magic.ignores_immunity
             || (share(state, ruleset, s).0 > 0 && aura(state, ruleset, s) != Some(100)))
+}
+
+/// The living stacks of `side`, by id.
+fn living(state: &BattleState, side: BattleSide) -> impl Iterator<Item = StackId> + '_ {
+    stack_ids(state).filter(move |&s| {
+        let stack = state.at(s);
+        stack.side == side && stack.is_alive()
+    })
 }
 
 /// Every stack id of the battle.
@@ -1020,11 +1046,9 @@ fn next_in_chain(
     let mut best: Option<(u64, StackId)> = None;
     for side in [BattleSide::Defender, BattleSide::Attacker] {
         for s in stack_ids(state) {
-            let stack = state.at(s);
-            let candidate = stack.side == side
-                && stack.is_alive()
+            let candidate = state.at(s).side == side
                 && !struck[s.index()]
-                && affects(ruleset, spell, stack.creature);
+                && affects_stack(state, ruleset, spell, s);
             if !candidate || resists(state, ruleset, spell.1, s) {
                 continue;
             }
@@ -1036,6 +1060,30 @@ fn next_in_chain(
         }
     }
     best.map(|(_, s)| s)
+}
+
+/// Where `cast`, aimed at stack `s`, goes (BAT-MAG-022): with Magic Mirror active on an enemy
+/// stack, a draw below its chance sends the spell to a living stack of the caster's side drawn
+/// with equal chances, and a `SpellRedirected` event reports it; otherwise to `s`. A spell that
+/// ignores immunity (Dispel) is never sent away. (The original draws its chance for every cast at
+/// an enemy stack and leaves out arrow towers, E04c; `installation.md` §7.13.)
+// rule: BAT-MAG-022
+fn mirror<S: Sink>(state: &mut BattleState, cast: &Cast<'_>, s: StackId, sink: &mut S) -> StackId {
+    let stack = state.at(s);
+    let chance = u32::from(stack.spells.mirror);
+    if stack.side == cast.side
+        || chance == 0
+        || cast.spell.magic.ignores_immunity
+        || state.rng.below(100) >= chance
+    {
+        return s;
+    }
+    // The caster's side has a living stack while the battle goes on.
+    let count = u32::try_from(living(state, cast.side).count()).unwrap_or(u32::MAX);
+    let k = usize::try_from(state.rng.below(count)).unwrap_or(0);
+    let to = living(state, cast.side).nth(k).unwrap_or(s);
+    sink.emit(Event::public(EventKind::SpellRedirected { from: s, to }));
+    to
 }
 
 /// Applies a validated cast: the hero pays the cost and counts the cast, then the spell takes
@@ -1058,15 +1106,20 @@ pub(crate) fn apply_cast<S: Sink>(
         target: cast.target,
     }));
     let spell = (cast.id, cast.spell);
+    let target = match cast.target {
+        CastTarget::Stack(s) => CastTarget::Stack(mirror(state, &cast, s, sink)),
+        other => other,
+    };
     // The stack a stack spell is aimed at rolls first: if it resists, the whole spell does
-    // (BAT-MAG-006, BAT-MAG-008). An area spell has no such roll: every stack in its area
+    // (BAT-MAG-006, BAT-MAG-008); a stack a Magic Mirror sent the spell to that it cannot
+    // affect resists (BAT-MAG-022). An area spell has no such roll: every stack in its area
     // rolls once (BAT-MAG-007; batch 2a R3).
-    if let CastTarget::Stack(s) = cast.target
-        && resists(state, ruleset, cast.spell, s)
+    if let CastTarget::Stack(s) = target
+        && (!affects_stack(state, ruleset, spell, s) || resists(state, ruleset, cast.spell, s))
     {
         resisted(s, sink);
     } else {
-        match (cast.target, cast.spell.magic.chain) {
+        match (target, cast.spell.magic.chain) {
             (CastTarget::Stack(first), Some(chain)) => {
                 // rule: BAT-MAG-006
                 let mut struck = [false; STACK_CAPACITY];

@@ -15,7 +15,7 @@ use alloc::vec::Vec;
 
 use h3_content::{
     COUNTERSTRIKE_EXTRA_ROUND, EffectDuration, MAX_SPELL_SCHOOLS, Ruleset, SINGLE_PRECISION_RATES,
-    Spell, SpellEffect, SpellId, TimedChange,
+    Spell, SpellCategory, SpellEffect, SpellId, SpellPolarity, TimedChange,
 };
 use h3_kernel::arith::{SINGLE_FRAC_BITS, single_precision};
 use h3_kernel::{CanonicalHash, StateHasher};
@@ -120,10 +120,11 @@ pub struct SpellValues {
     pub defense: i16,
     /// The speed now: the stack's speed with what its effects added, slowed (BAT-MAG-011).
     pub speed: u8,
-    /// Added to the attack of melee attacks (Bloodlust).
-    pub melee_attack: u16,
-    /// Added to the attack of ranged attacks (Precision).
-    pub ranged_attack: u16,
+    /// Added to the attack of melee attacks (Bloodlust; at most 255, which keeps the stack
+    /// record at 72 bytes since v24).
+    pub melee_attack: u8,
+    /// Added to the attack of ranged attacks (Precision; at most 255).
+    pub ranged_attack: u8,
     /// How each creature's base damage is rolled.
     pub damage: DamageRoll,
     /// The share of the speed left while slowed, percent (100: not slowed).
@@ -148,6 +149,12 @@ pub struct SpellValues {
     /// The share of its defense added to its attack, percent (0: not frenzied; Frenzy,
     /// BAT-MAG-019).
     pub frenzy: u16,
+    /// Spells below this level are kept off it unless they are creature abilities (0: none;
+    /// Anti-Magic, BAT-MAG-021).
+    pub spell_immunity: u8,
+    /// The chance that a single-target spell aimed at it from the other side goes to another
+    /// stack, percent (0: none; Magic Mirror, BAT-MAG-022).
+    pub mirror: u8,
 }
 
 impl SpellValues {
@@ -169,6 +176,8 @@ impl SpellValues {
             slayer: (0, 0),
             fire_shield: 0,
             frenzy: 0,
+            spell_immunity: 0,
+            mirror: 0,
         }
     }
 }
@@ -180,15 +189,16 @@ impl Default for SpellValues {
 }
 
 impl CanonicalHash for SpellValues {
-    /// Attack, defense, speed, melee and ranged attack, the damage roll (code, value), the speed
-    /// share, morale, luck; since v21 the melee, ranged and school protections and Slayer; since
-    /// v22 Fire Shield and Frenzy.
+    /// Attack, defense, speed, melee and ranged attack (u8 since v24), the damage roll (code,
+    /// value), the speed share, morale, luck; since v21 the melee, ranged and school protections
+    /// and Slayer; since v22 Fire Shield and Frenzy; since v24 Anti-Magic's level and Magic
+    /// Mirror's chance.
     fn hash_into(&self, h: &mut StateHasher) {
         h.write_bytes(&self.attack.to_le_bytes());
         h.write_bytes(&self.defense.to_le_bytes());
         h.write_u8(self.speed);
-        h.write_u16(self.melee_attack);
-        h.write_u16(self.ranged_attack);
+        h.write_u8(self.melee_attack);
+        h.write_u8(self.ranged_attack);
         let (code, v) = match self.damage {
             DamageRoll::Random => (0, 0),
             DamageRoll::Maximum(v) => (1, v),
@@ -206,6 +216,8 @@ impl CanonicalHash for SpellValues {
         h.write_u8(self.slayer.1);
         h.write_u8(self.fire_shield);
         h.write_u16(self.frenzy);
+        h.write_u8(self.spell_immunity);
+        h.write_u8(self.mirror);
     }
 }
 
@@ -341,8 +353,19 @@ pub(crate) fn apply<S: Sink>(
                 },
             );
             // rule: BAT-MAG-015
-            if changes.into_iter().any(|c| c == TimedChange::Retaliations) {
+            if changes.clone().any(|c| c == TimedChange::Retaliations) {
                 add_retaliations(state.at_mut(s), value);
+            }
+            // rule: BAT-MAG-021
+            if changes.into_iter().any(|c| c == TimedChange::SpellImmunity) {
+                end_where(state, s, sink, |e| {
+                    e.rounds.is_some()
+                        && ruleset.spell(e.spell).is_some_and(|sp| {
+                            sp.polarity == SpellPolarity::Negative
+                                && sp.category != SpellCategory::Ability
+                                && u16::from(sp.level) < value
+                        })
+                });
             }
             rounds
         }
@@ -449,14 +472,27 @@ pub(crate) fn dispel<S: Sink>(
     s: StackId,
     sink: &mut S,
 ) {
-    let ends = |e: &ActiveEffect| {
+    let ended = end_where(state, s, sink, |e| {
         e.rounds.is_some()
             && if spell.dispels.is_empty() {
                 !spell.spares.contains(&e.spell)
             } else {
                 spell.dispels.contains(&e.spell)
             }
-    };
+    });
+    if ended {
+        recompute(state, ruleset, s);
+    }
+}
+
+/// Ends the effects on stack `s` that `ends` selects, reporting each, and says whether any
+/// ended. The caller recomputes the stack's values.
+fn end_where<S: Sink>(
+    state: &mut BattleState,
+    s: StackId,
+    sink: &mut S,
+    ends: impl Fn(&ActiveEffect) -> bool,
+) -> bool {
     let mut i = state.effects.0.partition_point(|e| e.stack < s);
     let mut ended = false;
     while let Some(&e) = state.effects.0.get(i).filter(|e| e.stack == s) {
@@ -471,9 +507,7 @@ pub(crate) fn dispel<S: Sink>(
             i += 1;
         }
     }
-    if ended {
-        recompute(state, ruleset, s);
-    }
+    ended
 }
 
 /// Recomputes the [`SpellValues`] of stack `s` from its entries (BAT-MAG-011): the sums of what
@@ -500,13 +534,14 @@ pub(crate) fn recompute(state: &mut BattleState, ruleset: &Ruleset, s: StackId) 
             .unwrap_or_default();
         let schools = spell.map(|sp| sp.schools.as_slice()).unwrap_or_default();
         let percent = u8::try_from(v.min(100)).unwrap_or(100);
+        let small = u8::try_from(v).unwrap_or(u8::MAX);
         for change in changes.iter().filter_map(|c| c.timed()) {
             match change {
                 TimedChange::MeleeAttack => {
-                    values.melee_attack = values.melee_attack.saturating_add(v)
+                    values.melee_attack = values.melee_attack.saturating_add(small)
                 }
                 TimedChange::RangedAttack => {
-                    values.ranged_attack = values.ranged_attack.saturating_add(v);
+                    values.ranged_attack = values.ranged_attack.saturating_add(small);
                 }
                 TimedChange::MaximumDamage => {
                     maximum = Some(maximum.unwrap_or(0).saturating_add(v))
@@ -540,6 +575,10 @@ pub(crate) fn recompute(state: &mut BattleState, ruleset: &Ruleset, s: StackId) 
                 }
                 TimedChange::FireShield => values.fire_shield = values.fire_shield.max(percent),
                 TimedChange::Frenzy => values.frenzy = values.frenzy.max(v),
+                TimedChange::SpellImmunity => {
+                    values.spell_immunity = values.spell_immunity.max(small);
+                }
+                TimedChange::MagicMirror => values.mirror = values.mirror.max(percent),
                 _ => {}
             }
         }
