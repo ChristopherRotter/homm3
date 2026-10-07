@@ -250,6 +250,10 @@ pub struct SpellDef {
     pub magic: SpellMagic,
     /// Spells whose effects a cast ends (pack format v5).
     pub counters: Vec<ContentKey>,
+    /// The only spells whose effects its dispel effect ends (pack format v7).
+    pub dispels: Vec<ContentKey>,
+    /// Spells whose effects its dispel effect spares, without `dispels` (pack format v7).
+    pub spares: Vec<ContentKey>,
 }
 
 /// A secondary skill with the effects of its three levels (E04a T3).

@@ -59,6 +59,7 @@ pub const REGISTRY: QuirkRegistry = QuirkRegistry::new(&[
     "quirk.battle.single_precision_rates",
     "quirk.battle.unlimited_ballista_shots",
     "quirk.battle.first_protection",
+    "quirk.battle.counterstrike_extra_round",
 ]);
 
 /// Q-0003: creatures of a side without a hero never get lucky strikes (BAT-LCK-002).
@@ -74,6 +75,10 @@ pub const UNLIMITED_BALLISTA_SHOTS: QuirkFlag = QuirkFlag(2);
 /// Q-0007: a damage spell of several schools meets the target's first protection by school
 /// rank, not its strongest (BAT-MAG-013).
 pub const FIRST_PROTECTION: QuirkFlag = QuirkFlag(3);
+
+/// Q-0008: Counterstrike's extra retaliations are given at the round start in which the spell
+/// runs out, as the reset comes before the countdown (BAT-MAG-015).
+pub const COUNTERSTRIKE_EXTRA_ROUND: QuirkFlag = QuirkFlag(4);
 
 /// The set of enabled quirk flags of a ruleset.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
@@ -113,7 +118,7 @@ mod tests {
 
     #[test]
     fn registry_lookup_and_bitset() {
-        assert_eq!(REGISTRY.len(), 4);
+        assert_eq!(REGISTRY.len(), 5);
         assert_eq!(
             REGISTRY.lookup("quirk.battle.no_luck_without_hero"),
             Some(NO_LUCK_WITHOUT_HERO)
@@ -129,6 +134,10 @@ mod tests {
         assert_eq!(
             REGISTRY.lookup("quirk.battle.first_protection"),
             Some(FIRST_PROTECTION)
+        );
+        assert_eq!(
+            REGISTRY.lookup("quirk.battle.counterstrike_extra_round"),
+            Some(COUNTERSTRIKE_EXTRA_ROUND)
         );
         // `new` is a const fn; call it at run time too so coverage sees it.
         let runtime = QuirkRegistry::new(&["quirk.battle.a"]);

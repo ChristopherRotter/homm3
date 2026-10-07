@@ -310,9 +310,10 @@ fixed hit (rounding); Counterstrike on Griffins; Cure on a healthy stack.
    the round start **before** durations fall, so Counterstrike's extra lasts one round longer.
 7. Dispel: everything but Poison (Disrupting Ray stays); below Advanced own stacks only, below
    Expert only a stack with a spell; Expert every stack it can affect without a resistance roll,
-   and the spell obstacles; Sphere of Permanence protects; never mirrored. Open for T3b1b: the
-   roll of a single-target Dispel on an own stack (a neutral spell's share includes the stack's
-   own hero's resistance, §7.8).
+   and the spell obstacles; Sphere of Permanence protects; never mirrored. Settled in T3b1b
+   (2026-10-07): Dispel's own test returns 1 before the immunity, resistance and aura tests, so
+   no stack is immune to it and none resists it (single target or mass), unlike the first
+   reading's "then the usual immunity tests".
 8. Cure: top creature only, no raising; ends 14 negative spells (not Bind); castable on any own
    stack it can affect, healthy or not (VCMI's condition is not in the original).
 

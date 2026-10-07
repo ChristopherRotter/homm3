@@ -53,6 +53,9 @@ pub struct Spells {
     /// What timed spells change (E04b T3a), per spell.
     #[serde(default)]
     pub timed: Vec<SpellTimed>,
+    /// Stack spells of the other effect kinds (dispel and heal, E04b T3b1b), per spell.
+    #[serde(default)]
+    pub other: Vec<SpellOther>,
     /// The order in which the original checks a damage spell's schools for the target's
     /// protections (school names; E04b T3b1, `installation.md` §7.8, §7.10): written as the
     /// schools' `protection_rank`.
@@ -82,6 +85,38 @@ pub struct SpellTimed {
     /// Whether a cast on an affected stack applies the changes again.
     #[serde(default)]
     pub cumulative: bool,
+    /// Source ids.
+    pub sources: Vec<String>,
+}
+
+/// A stack spell with effects other than damage and timed changes (pack format v7,
+/// `packs/README.md`; the original's code, `docs/formats/installation.md` §7.10). Target and
+/// mass version come from the flag word, the side from the polarity unless given.
+#[derive(Debug, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct SpellOther {
+    /// Spell name (as in `SPTRAITS.TXT`).
+    pub spell: String,
+    /// Effect kind names (`dispel`, `heal`), in order.
+    pub effects: Vec<String>,
+    /// The side (`own` or `enemy`) of a neutral spell.
+    #[serde(default)]
+    pub side: Option<String>,
+    /// The mastery from which it reaches either side.
+    #[serde(default)]
+    pub any_side: Option<String>,
+    /// A stack it is aimed at needs an active effect.
+    #[serde(default)]
+    pub needs_effect: bool,
+    /// No immunity, resistance or aura applies.
+    #[serde(default)]
+    pub ignores_immunity: bool,
+    /// Spells (by name) whose effects alone its dispel effect ends.
+    #[serde(default)]
+    pub dispels: Vec<String>,
+    /// Spells (by name) whose effects its dispel effect spares.
+    #[serde(default)]
+    pub spares: Vec<String>,
     /// Source ids.
     pub sources: Vec<String>,
 }
@@ -542,6 +577,7 @@ impl GapFill {
                 .chain(g.artifacts.effects.iter().flat_map(|e| &e.sources))
                 .chain(g.spells.targeting.iter().flat_map(|t| &t.sources))
                 .chain(g.spells.timed.iter().flat_map(|t| &t.sources))
+                .chain(g.spells.other.iter().flat_map(|t| &t.sources))
                 .chain(&g.spells.protection_sources);
         for r in refs {
             if !ids.contains(r.as_str()) {

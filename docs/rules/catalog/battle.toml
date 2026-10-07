@@ -1762,7 +1762,7 @@ id       = "BAT-MAG-003"
 title    = "The target of a spell"
 context  = "battle"
 status   = "implemented"
-summary  = "A spell names its target kind (SpellMagic.target). A stack spell (one stack, Chain Lightning) needs a living stack (CastTarget::Stack) on the side the spell may be aimed at (SpellMagic.side: any; enemy, the negative single-target spells and Chain Lightning; own) that the spell can affect (BAT-MAG-005) and that does not always resist: its share after resistance (BAT-MAG-008) is above zero, unless the spell is positive. A hex spell (the area spells) may be aimed at any hex outside the side columns (CastTarget::Hex), whatever stands there: an empty hex, an obstacle, a stack it cannot affect (batch 2a R3). A battle-wide spell (Armageddon, Death Ripple, Destroy Undead) takes no target (CastTarget::None) and needs at least one stack it can reach. A spell with a mass version (SpellMagic.mass_from: the executable's flag 0x40, Expert; the timed spells of E04b T3a) is a stack spell below that mastery and from it takes no target and reaches every stack of its side (own for positive spells, enemy for negative ones) that it can affect, like a battle-wide spell. Any other target is rejected (CommandError::InvalidSpellTarget). Magic resistance is rolled when the spell takes effect, not checked here (BAT-MAG-008)."
+summary  = "A spell names its target kind (SpellMagic.target). A stack spell (one stack, Chain Lightning) needs a living stack (CastTarget::Stack) on the side the spell may be aimed at (SpellMagic.side: any; enemy, the negative single-target spells and Chain Lightning; own) that the spell can affect (BAT-MAG-005) and that does not always resist: its share after resistance (BAT-MAG-008) is above zero, unless the spell is positive. A hex spell (the area spells) may be aimed at any hex outside the side columns (CastTarget::Hex), whatever stands there: an empty hex, an obstacle, a stack it cannot affect (batch 2a R3). A battle-wide spell (Armageddon, Death Ripple, Destroy Undead) takes no target (CastTarget::None) and needs at least one stack it can reach. A spell with a mass version (SpellMagic.mass_from: the executable's flag 0x40, Expert; the timed spells of E04b T3a) is a stack spell below that mastery and from it takes no target and reaches every stack of its side (own for positive spells, enemy for negative ones) that it can affect, like a battle-wide spell. Any other target is rejected (CommandError::InvalidSpellTarget). Magic resistance is rolled when the spell takes effect, not checked here (BAT-MAG-008). Since E04b T3b1b a spell may widen its side by mastery (SpellMagic.any_side_from: Dispel reaches only own stacks below Advanced, either side from it) and a stack spell may need a target with an active timed effect (SpellMagic.needs_effect: Dispel below Expert; at Expert, mass, it reaches every stack); a spell that ignores immunity (Dispel) is aimable regardless of resistance."
 numeric  = "integer"
 
   [[rule.source]]
@@ -1824,7 +1824,7 @@ id       = "BAT-MAG-005"
 title    = "Stacks a spell cannot affect"
 context  = "battle"
 status   = "implemented"
-summary  = "A spell cannot affect a stack whose creature misses a flag of SpellMagic.conditions.requires or has one of excludes (war machines against Implosion and Death Ripple, the executable's spell flag 0x1000; Death Ripple spares undead, Destroy Undead needs them), or has an immunity ability: spell_level_immunity up to a spell level (Green, Red and Azure Dragons 3, Gold Dragon 4, Black Dragon and Magic Elemental 5), school_immunity (fire: Fire and Energy Elementals, Efreet, Efreet Sultans, Firebirds, Phoenixes; the harvester checks it against the creature flag fire_immune) or spell_immunity (Air and Storm Elementals: Meteor Shower; Earth and Magma Elementals: Lightning Bolt, Chain Lightning, Armageddon; Water and Ice Elementals: Ice Bolt, Frost Ring). Such a stack is never a target (BAT-MAG-003), never struck by an area or battle-wide spell (BAT-MAG-007), never a chain's next stack (BAT-MAG-006) and never rolls for resistance; immunity holds for positive spells too. The original adds Titan's Lightning Bolt to the Earth/Magma immunities and the Air/Storm vulnerabilities (a SoD pack override once it is castable, E04b T8). A mind spell (SpellMagic.mind: the executable's flag 0x400; Mirth, Sorrow and later Berserk, Hypnotize, Forgetfulness, Blind, Frenzy) cannot affect a creature with flag mind_immune (E04b T3a). Power of the Dragon Father, the Pendants and the Orb of Vulnerability join with T8."
+summary  = "A spell cannot affect a stack whose creature misses a flag of SpellMagic.conditions.requires or has one of excludes (war machines against Implosion and Death Ripple, the executable's spell flag 0x1000; Death Ripple spares undead, Destroy Undead needs them), or has an immunity ability: spell_level_immunity up to a spell level (Green, Red and Azure Dragons 3, Gold Dragon 4, Black Dragon and Magic Elemental 5), school_immunity (fire: Fire and Energy Elementals, Efreet, Efreet Sultans, Firebirds, Phoenixes; the harvester checks it against the creature flag fire_immune) or spell_immunity (Air and Storm Elementals: Meteor Shower; Earth and Magma Elementals: Lightning Bolt, Chain Lightning, Armageddon; Water and Ice Elementals: Ice Bolt, Frost Ring). Such a stack is never a target (BAT-MAG-003), never struck by an area or battle-wide spell (BAT-MAG-007), never a chain's next stack (BAT-MAG-006) and never rolls for resistance; immunity holds for positive spells too. The original adds Titan's Lightning Bolt to the Earth/Magma immunities and the Air/Storm vulnerabilities (a SoD pack override once it is castable, E04b T8). A mind spell (SpellMagic.mind: the executable's flag 0x400; Mirth, Sorrow and later Berserk, Hypnotize, Forgetfulness, Blind, Frenzy) cannot affect a creature with flag mind_immune (E04b T3a). Power of the Dragon Father, the Pendants and the Orb of Vulnerability join with T8. A spell that ignores immunity (SpellMagic.ignores_immunity: Dispel, whose test in the original returns before the immunity tests, installation.md §7.10) is affected by none of these, only by its conditions; the Sphere of Permanence, which protects its hero's stacks from Dispel, joins with the Pendants in E04b T8."
 numeric  = "integer"
 
   [[rule.source]]
@@ -1913,7 +1913,7 @@ id       = "BAT-MAG-008"
 title    = "Magic resistance"
 context  = "battle"
 status   = "implemented"
-summary  = "A positive spell always affects a stack it can affect. For a neutral or negative spell, the chance in percent is trunc(f × 100) with f = the creature's share (1 − its magic_resistance: Dwarf and Crystal Dragon 0.8, Battle Dwarf 0.6; 1 without), minus the resistance of the stack's own hero (HER-BAT-013; the sum of its sources, at most 1), at least 0, times 0.8 once if an adjacent allied stack has a magic_resistance_aura (Unicorns 20 %; the strongest counts). A chance of 0 always resists, 100 never; otherwise one draw from 1 to 100 per stack decides (affected if the draw is at most the chance). Under quirk Q-0005 the values are single precision as in the original's x87 code: 10 % hero resistance leaves 89 %, 5 % leaves 94 %. A resisting stack is reported (SpellResisted) and takes nothing; as the target of a stack spell it stops the whole spell (BAT-MAG-006); a stack whose share is 0 is no target at all (BAT-MAG-003). Golem spell damage reduction is not resistance (BAT-MAG-004)."
+summary  = "A positive spell always affects a stack it can affect. For a neutral or negative spell, the chance in percent is trunc(f × 100) with f = the creature's share (1 − its magic_resistance: Dwarf and Crystal Dragon 0.8, Battle Dwarf 0.6; 1 without), minus the resistance of the stack's own hero (HER-BAT-013; the sum of its sources, at most 1), at least 0, times 0.8 once if an adjacent allied stack has a magic_resistance_aura (Unicorns 20 %; the strongest counts). A chance of 0 always resists, 100 never; otherwise one draw from 1 to 100 per stack decides (affected if the draw is at most the chance). Under quirk Q-0005 the values are single precision as in the original's x87 code: 10 % hero resistance leaves 89 %, 5 % leaves 94 %. A resisting stack is reported (SpellResisted) and takes nothing; as the target of a stack spell it stops the whole spell (BAT-MAG-006); a stack whose share is 0 is no target at all (BAT-MAG-003). Golem spell damage reduction is not resistance (BAT-MAG-004). A spell that ignores immunity (Dispel) always affects the stacks it reaches: no resistance, aura or roll (E04b T3b1b)."
 numeric  = "integer"
 
   [[rule.source]]
@@ -2065,7 +2065,7 @@ id       = "BAT-MAG-015"
 title    = "Counterstrike"
 context  = "battle"
 status   = "implemented"
-summary  = "While Counterstrike is active on a stack, it has v more retaliations per round (1 at none and Basic, 2 at Advanced and Expert; unlimited stays unlimited): the first cast adds v to those left this round at once, and every round start sets them to the creature's retaliations plus v before the timed effects count down (BAT-TRN-003, BAT-MAG-010), so the stack keeps them for the round in which the spell runs out; the end takes nothing back. A re-cast changes nothing but the duration. A timed own-stack spell with a mass version at Expert that spares war machines."
+summary  = "While Counterstrike is active on a stack, it has v more retaliations per round (1 at none and Basic, 2 at Advanced and Expert; unlimited stays unlimited): the first cast adds v to those left this round at once, and every round start sets them to the creature's retaliations plus v before the timed effects count down (BAT-TRN-003, BAT-MAG-010); under quirk Q-0008 (faithful) also in the round start at which the spell runs out, so the stack keeps them for that round, as the original does; without it (strict-fixed) not. The end takes nothing back. A re-cast changes nothing but the duration. A timed own-stack spell with a mass version at Expert that spares war machines."
 numeric  = "integer"
 
   [[rule.source]]
@@ -2079,3 +2079,43 @@ numeric  = "integer"
   url        = "https://github.com/vcmi/vcmi/blob/1.7.5/config/spells/timed.json"
   retrieved  = "2026-10-06"
   confidence = "high"
+
+[[rule]]
+id       = "BAT-MAG-016"
+title    = "Dispel and the dispel effect"
+context  = "battle"
+status   = "implemented"
+summary  = "A dispel effect (SpellEffect::Dispel) ends timed effects on each stack it affects: those of the spells in the spell's dispels list, or, without that list, every one but those of its spares list; a permanent effect (Disrupting Ray) never ends, as the original's end routine refuses it (BAT-MAG-010). Each ending is reported (EffectEnded) and gives back what the effect changed. Dispel (a neutral water spell of level 1) spares Poison; below Advanced it may be aimed only at an own stack, from Advanced at any stack, below Expert only at a stack with an active timed effect; at Expert (mass) it reaches every living stack of both sides; it ignores immunity, magic resistance and auras (BAT-MAG-005, BAT-MAG-008). Cure ends the effects of Curse, Weakness, Sorrow, Misfortune, Slow, Berserk, Hypnotize, Forgetfulness, Blind, Stone Gaze, Poison, Disease, Paralyze and Age before it heals (BAT-MAG-017). Not yet: Expert Dispel also removes the spell obstacles (Fire Wall, Force Field, Quicksand, Land Mine; E04b T5); the Sphere of Permanence protects its hero's stacks (E04b T8); Magic Mirror never redirects Dispel and a hypnotized stack counts for its controller (E04b T4)."
+numeric  = "integer"
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (docs/formats/installation.md §7.10): Dispel's case at 0x5A15CE calls the end routine 0x444510 for every spell id 0-80 but 71 (Poison) on the target, at Expert on every stack whose test 0x5A8090 is above 0, then removes the battlefield objects with type bits 0x3C; 0x5A8090 for spell 35 returns 0 for a stack whose hero wears artifact 92, below Advanced (0x4E5080) for a stack of the other side, below Expert for a stack without an active spell (durations of ids 10-80), and 1 otherwise, before the immunity, resistance and aura tests; Cure (0x446500) ends 14 listed spells"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "vcmi"
+  ref        = "config/spells/other.json dispel (own stacks at none and Basic, any at Advanced, every stack at Expert; ignores immunity) and lib/spells/effects/Dispel.cpp"
+  url        = "https://github.com/vcmi/vcmi/blob/1.7.5/config/spells/other.json"
+  retrieved  = "2026-10-06"
+  confidence = "medium"
+
+[[rule]]
+id       = "BAT-MAG-017"
+title    = "Cure's heal"
+context  = "battle"
+status   = "implemented"
+summary  = "A heal effect (SpellEffect::Heal) restores up to the value (power × power factor + effect[mastery]; Cure: power × 5 + 10, 10, 20, 30) of the top creature's lost hit points, never above its full hit points and raising no creature; it applies after the spell's dispel effect (BAT-MAG-016) and is reported (SpellHealed) when it heals anything. Cure is a positive water spell of level 1 aimed at an own stack it can affect (immunities count), healthy or not and with or without negative effects (the original has no such test), mass at Expert on every own stack it can affect. A Cure specialist's bonus joins in E04b T3c (STUB-0002); Cure skips a hypnotized stack at Expert (E04b T4); Age's hit points (E04b T7)."
+numeric  = "integer"
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (docs/formats/installation.md §7.10): Cure's case at 0x5A17E6 calls 0x446500 on the target, at Expert on every own stack that is not hypnotized and whose test 0x5A8090 is above 0; 0x446500 ends 14 spells through 0x444510, then lowers the top creature's lost hit points (+0x58) by power × factor + effect[mastery] + the specialty bonus (0x4E5FF0), at least 0"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "vcmi"
+  ref        = "config/spells/other.json cure: heals the top creature without resurrection and removes negative effects; VCMI makes it castable only when one of the two applies, the original does not"
+  url        = "https://github.com/vcmi/vcmi/blob/1.7.5/config/spells/other.json"
+  retrieved  = "2026-10-06"
+  confidence = "medium"

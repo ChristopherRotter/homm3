@@ -14,8 +14,8 @@
 use alloc::vec::Vec;
 
 use h3_content::{
-    EffectDuration, MAX_SPELL_SCHOOLS, Ruleset, SINGLE_PRECISION_RATES, Spell, SpellEffect,
-    SpellId, TimedChange,
+    COUNTERSTRIKE_EXTRA_ROUND, EffectDuration, MAX_SPELL_SCHOOLS, Ruleset, SINGLE_PRECISION_RATES,
+    Spell, SpellEffect, SpellId, TimedChange,
 };
 use h3_kernel::arith::{SINGLE_FRAC_BITS, single_precision};
 use h3_kernel::{CanonicalHash, StateHasher};
@@ -340,15 +340,18 @@ fn add_retaliations(stack: &mut Stack, v: u16) {
 }
 
 /// Gives every stack with Counterstrike its extra retaliations at a round start, after the reset
-/// and before the effects count down, as the original does (BAT-MAG-015).
+/// and before the effects count down (BAT-MAG-015). With quirk Q-0008, as the original does,
+/// also an effect in its last round, which ends at this round start; without it, not.
 // rule: BAT-MAG-015
 pub(crate) fn round_retaliations(state: &mut BattleState, ruleset: &Ruleset) {
     let retaliations = SpellEffect::Timed(TimedChange::Retaliations);
+    let last_round = ruleset.quirks().is_enabled(COUNTERSTRIKE_EXTRA_ROUND);
     let stacks = state.stacks.as_mut_slice();
     for e in &state.effects.0 {
-        let extra = ruleset
-            .spell(e.spell)
-            .is_some_and(|sp| sp.magic.effects.contains(&retaliations));
+        let extra = (last_round || e.rounds != Some(1))
+            && ruleset
+                .spell(e.spell)
+                .is_some_and(|sp| sp.magic.effects.contains(&retaliations));
         if extra {
             add_retaliations(&mut stacks[e.stack.index()], e.value);
         }
@@ -403,6 +406,45 @@ fn end<S: Sink>(state: &mut BattleState, s: StackId, spell: SpellId, sink: &mut 
     if let Ok(i) = state.effects.find(s, spell) {
         state.effects.0.remove(i);
         sink.emit(Event::public(EventKind::EffectEnded { target: s, spell }));
+    }
+}
+
+/// Ends the timed effects on the living stack `s` that `spell`'s dispel effect ends
+/// (BAT-MAG-016): those of the spell's `dispels`, or, without that list, every one but those of
+/// its `spares`; a permanent effect never ends (BAT-MAG-010, the original's end routine). Each
+/// ending is reported; the stack's values are recomputed if any ended.
+// rule: BAT-MAG-016
+pub(crate) fn dispel<S: Sink>(
+    state: &mut BattleState,
+    ruleset: &Ruleset,
+    spell: &Spell,
+    s: StackId,
+    sink: &mut S,
+) {
+    let ends = |e: &ActiveEffect| {
+        e.rounds.is_some()
+            && if spell.dispels.is_empty() {
+                !spell.spares.contains(&e.spell)
+            } else {
+                spell.dispels.contains(&e.spell)
+            }
+    };
+    let mut i = state.effects.0.partition_point(|e| e.stack < s);
+    let mut ended = false;
+    while let Some(&e) = state.effects.0.get(i).filter(|e| e.stack == s) {
+        if ends(&e) {
+            state.effects.0.remove(i);
+            ended = true;
+            sink.emit(Event::public(EventKind::EffectEnded {
+                target: s,
+                spell: e.spell,
+            }));
+        } else {
+            i += 1;
+        }
+    }
+    if ended {
+        recompute(state, ruleset, s);
     }
 }
 

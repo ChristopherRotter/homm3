@@ -1501,6 +1501,13 @@ url = "docs/formats/installation.md"
 retrieved = "2026-10-06"
 
 [[source]]
+id = "exe-dispel-cure"
+kind = "original-data"
+ref = "Heroes3.exe code reading (docs/formats/installation.md 7.10): Dispel (case at 0x5A15CE) ends every spell but Poison through the end routine, at Expert on every stack it can affect and the spell obstacles; whether it can affect a stack (0x5A8090 for spell 35) returns 1 or 0 by its own test (the stack's hero's Sphere of Permanence, own stacks below Advanced, a stack with an active spell below Expert) without the immunity, resistance and aura tests; Cure (0x446500) ends 14 spells, then heals the top creature without raising, at Expert on every own stack it can affect that is not hypnotized"
+url = "docs/formats/installation.md"
+retrieved = "2026-10-07"
+
+[[source]]
 id = "exe-timed-spells"
 kind = "original-data"
 ref = "Heroes3.exe code reading (docs/formats/installation.md 7.9): the duration bonus of the Conjuring artifacts and the Ring of the Magi (0x4E4DB0); what each timed spell changes when cast (0x4448F0) and gives back when it ends (0x444510); only Bless/Curse and Haste/Slow end each other; Disrupting Ray lowers the defense at every cast and never ends (0x5A1A53)"
@@ -1992,6 +1999,24 @@ sources = ["exe-protection-spells"]
 spell = "Counterstrike"
 changes = ["retaliations"]
 sources = ["exe-protection-spells", "vcmi-spells-timed"]
+
+# Dispel and Cure (E04b T3b1b, pack format v7; installation.md 7.10). Target and the mass version
+# at Expert come from the flag word.
+[[spells.other]]
+spell = "Dispel"
+effects = ["dispel"]
+side = "own"
+any_side = "advanced"
+needs_effect = true
+ignores_immunity = true
+spares = ["Poison"]
+sources = ["exe-dispel-cure"]
+
+[[spells.other]]
+spell = "Cure"
+effects = ["dispel", "heal"]
+dispels = ["Curse", "Weakness", "Sorrow", "Misfortune", "Slow", "Berserk", "Hypnotize", "Forgetfulness", "Blind", "Stone Gaze", "Poison", "Disease", "Paralyze", "Age"]
+sources = ["exe-dispel-cure"]
 
 [spells]
 # The order in which a damage spell's schools meet the target's protections (quirk Q-0007).

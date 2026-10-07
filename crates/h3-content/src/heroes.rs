@@ -130,6 +130,11 @@ pub struct Spell {
     /// Spells whose effects a cast ends on each stack it affects (pack format v5; Bless and
     /// Curse, Haste and Slow).
     pub counters: Vec<SpellId>,
+    /// The only spells whose effects its dispel effect ends (pack format v7; Cure's fourteen).
+    pub dispels: Vec<SpellId>,
+    /// Spells whose effects its dispel effect spares when `dispels` is empty (pack format v7;
+    /// Dispel spares Poison).
+    pub spares: Vec<SpellId>,
 }
 
 /// Handle of a spell in a [`crate::Ruleset`].
@@ -435,17 +440,30 @@ impl HeroContent {
                 polarity: def.polarity,
                 magic: def.magic.clone(),
                 counters: Vec::new(),
+                dispels: Vec::new(),
+                spares: Vec::new(),
             });
         }
-        // Counters may name a later spell of the same pack, so all are registered first.
-        let counters = pack
+        // Counters and dispel lists may name a later spell of the same pack, so all are
+        // registered first.
+        let lists = pack
             .spells
             .iter()
-            .map(|def| distinct(refs, &def.counters, &self.spells.index, "spell"))
-            .collect::<Result<Vec<_>, _>>()?;
+            .map(|def| {
+                let list = |keys| distinct(refs, keys, &self.spells.index, "spell");
+                Ok((
+                    list(&def.counters)?,
+                    list(&def.dispels)?,
+                    list(&def.spares)?,
+                ))
+            })
+            .collect::<Result<Vec<_>, CompileError>>()?;
         let first = self.spells.items.len() - pack.spells.len();
-        for (s, c) in self.spells.items.iter_mut().skip(first).zip(counters) {
-            s.counters = c;
+        for (s, (counters, dispels, spares)) in self.spells.items.iter_mut().skip(first).zip(lists)
+        {
+            s.counters = counters;
+            s.dispels = dispels;
+            s.spares = spares;
         }
         // Skills may refer to each other (from T3b on), so all are registered first.
         for def in &pack.skills {
@@ -565,6 +583,14 @@ impl HeroContent {
                     "counters need a timed effect and may not name the spell itself",
                 ));
             }
+            let lists = (s.dispels.is_empty(), s.spares.is_empty());
+            if lists != (true, true) && (!s.magic.dispels() || lists == (false, false)) {
+                return Err(invalid(
+                    "spell",
+                    &s.key,
+                    "dispels or spares (not both) need a dispel effect",
+                ));
+            }
         }
         for skill in &self.skills.items {
             if let Some(reason) = skill
@@ -631,7 +657,7 @@ impl HeroContent {
 
 impl CanonicalHash for HeroContent {
     /// Schools (key, name, protection rank (v18)); spells (key, name, category, level, schools, cost, power, effect,
-    /// polarity, magic (v14), counters (v17)); skills (key, name, the three effect lists); classes (key, name, faction,
+    /// polarity, magic (v14), counters (v17), dispels and spares (v19)); skills (key, name, the three effect lists); classes (key, name, faction,
     /// primary, gains, weights); hero types (key, name, class, skills, spell book, spells,
     /// army, war machines, specialty); then the artifact content (`hash_artifacts`); then the
     /// hero parameters as presence flag + fields (v11).
@@ -655,6 +681,8 @@ impl CanonicalHash for HeroContent {
             h.write_u8(s.polarity as u8);
             s.magic.hash_into(h);
             s.counters.hash_into(h);
+            s.dispels.hash_into(h);
+            s.spares.hash_into(h);
         }
         h.write_len(self.skills.items.len());
         for s in &self.skills.items {

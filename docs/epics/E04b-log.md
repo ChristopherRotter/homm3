@@ -347,3 +347,40 @@ records how and why the tasks went.
 - **Not done:** Dispel and Cure (T3b1b); Fire Shield and Frenzy (T3b2); the specialties
   (T3c); petrification's ×0.5 in stage 3 and the Psychic and Magic Elementals' halvings in stage
   2 (T7 and BACKLOG); the Blind and Paralyze retaliation factors (T4, T7).
+
+### T3b1b — Dispel and Cure (2026-10-07)
+
+- **Seam:** the user chose T3b1b and T3b2 for this session (checkpoint before T3c) and
+  classified Counterstrike's extra round as fix-optional (Q-0008, `quirk.battle.
+  counterstrike_extra_round`: without it the round start gives no extra retaliations for an
+  effect that ends at it).
+- **Code reading** (`installation.md` §7.10, survey §15 point 7 settled): Dispel's test
+  (0x5A8090 for spell 35) returns 1 before the immunity, resistance and aura tests, so no stack
+  is immune to Dispel and none resists it (the first reading had "then the usual immunity
+  tests"); the Sphere is checked on the controlling hero (0x442690). Cure ends its 14 spells,
+  then heals.
+- **Content (pack format v7):** effect kinds `dispel` and `heal`; `any_side` (a mastery from
+  which the side is any), `needs_effect`, `ignores_immunity`; `dispels`/`spares` on the spell
+  (resolved like `counters`; not both, a dispel effect needed). Harvested from a new gap-fill
+  list `spells.other` (source `exe-dispel-cure`); the harvester's stack-spell targeting is shared
+  with the timed spells (a neutral spell names its side). Ruleset hash v19. Agent decision
+  (change freely): a permanent effect is never dispelled, standing for the original's end
+  routine refusing Disrupting Ray; Cure's list is explicit, Dispel's an exception list.
+- **Battle:** BAT-MAG-016 (`effects::dispel`), BAT-MAG-017 (heal in `magic::affect`, event
+  `SpellHealed`); `affect` applies damage, dispel, heal, then timed changes; `reachable` and
+  `aimable` take the mastery (side by mastery, a target with an effect); `affects` and
+  `affect_chance` honour `ignores_immunity`. No state change (state hash v21 stays).
+- **Workload:** the synthetic pack gains Purge (Dispel, stone; Corwin casts it mass at Expert)
+  and Mend (Cure, storm; Brea); golden replays re-recorded (duel and skirmish: ruleset hash
+  only).
+- **Measurements** (this sandbox): the old workload (e12e312's packs with the new flag on) on the
+  new engine: 10 907 steps as before, 491.9 M Ir against the baseline's 490.2 M (+0.35 %). New
+  workload 10 613 steps, 483.2 M Ir, `bench-check` re-baselined. `BattleState` 3 672 bytes
+  (unchanged). `h3 bench` full ≈ 136 k steps/s.
+- **Tests:** `tests/dispel.rs` (Dispel by mastery, spares and permanence, immunity and
+  resistance ignored, castable at Expert without effects; Cure's order, cap, healthy target,
+  mass), `tests/protect.rs` (Counterstrike in both profiles), content and pack tests for the new
+  fields.
+- **Moved out:** the Sphere of Permanence to T8 (one hero effect with the Pendants, a seam
+  addition); Expert Dispel's removal of the spell obstacles to T5; Magic Mirror, hypnotized
+  stacks to T4; Dispel Helpful Spells to T7 (BACKLOG).

@@ -160,7 +160,15 @@ fn slayer_counts_against_the_king_levels_its_mastery_reaches() {
 // covers: BAT-MAG-015
 #[test]
 fn counterstrike_adds_retaliations_now_and_at_each_round_start() {
-    let r = ruleset();
+    // Quirk Q-0008: the round in which the spell runs out still has the extra retaliation.
+    counterstrike("t:counterstrike", 2);
+    counterstrike("t:faithful", 1);
+}
+
+/// Counterstrike on a stack, the retaliations of the round in which it runs out being
+/// `last_round`.
+fn counterstrike(profile: &str, last_round: u8) {
+    let r = ruleset_with(profile, |_| {});
     let mut s = arena(
         &r,
         [Some(adept(&r, &["counter"], (0, 0))), None],
@@ -177,7 +185,7 @@ fn counterstrike_adds_retaliations_now_and_at_each_round_start() {
     assert_eq!(st.retaliations_left, 1);
     assert!(!st.flags.contains(StackFlags::RETALIATED));
     // Each round start gives 1 + 1; a re-cast adds nothing (it renews the three rounds of
-    // power 3), and the round in which the spell runs out still has the extra one.
+    // power 3).
     next_round(&mut s, &r, 0);
     assert_eq!(s.stacks()[0].retaliations_left, 2);
     act(&mut s, &r, cast(&r, "counter", stack(0))).unwrap();
@@ -186,7 +194,7 @@ fn counterstrike_adds_retaliations_now_and_at_each_round_start() {
     next_round(&mut s, &r, 0);
     assert!(!s.effects().is_empty());
     next_round(&mut s, &r, 0);
-    assert_eq!(s.stacks()[0].retaliations_left, 2);
+    assert_eq!(s.stacks()[0].retaliations_left, last_round);
     assert!(
         s.effects().is_empty(),
         "the spell ran out at this round start"

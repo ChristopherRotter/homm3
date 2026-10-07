@@ -298,14 +298,11 @@ pub(crate) struct Cast<'r> {
     rounds: u16,
 }
 
-/// Whether the battle implements every effect of `spell` (damage since E04b T2, timed changes
-/// since T3a; spells without effects are not castable yet).
+/// Whether the battle implements the effects of `spell`: every effect kind is implemented
+/// (damage since E04b T2, timed changes since T3a, dispel and heal since T3b1b), so a spell is
+/// castable once it has effects.
 fn implemented(spell: &Spell) -> bool {
-    let effects = &spell.magic.effects;
-    !effects.is_empty()
-        && effects
-            .iter()
-            .all(|e| matches!(e, SpellEffect::Damage | SpellEffect::Timed(_)))
+    !spell.magic.effects.is_empty()
 }
 
 /// The mastery at which `hero` casts `spell`: the best of its schools' masteries, at most
@@ -358,15 +355,18 @@ fn check_spell<'s, 'r>(
 type SpellRef<'r> = (SpellId, &'r Spell);
 
 /// Whether a cast of `spell` can affect a stack of `creature` at all (BAT-MAG-005): the creature
-/// meets the spell's conditions and is not immune to it as a mind spell (flag `mind_immune`), by
-/// the spell's level, one of its schools or the spell itself. (The Orb of Vulnerability joins
-/// with T8.)
+/// meets the spell's conditions and, unless the spell ignores immunity (Dispel), is not immune
+/// to it as a mind spell (flag `mind_immune`), by the spell's level, one of its schools or the
+/// spell itself. (The Orb of Vulnerability joins with T8.)
 // rule: BAT-MAG-005
 fn affects(ruleset: &Ruleset, (id, spell): SpellRef<'_>, creature: CreatureTypeId) -> bool {
     let flags = ruleset
         .creature(creature)
         .map(|c| c.flags)
         .unwrap_or_default();
+    if spell.magic.ignores_immunity {
+        return spell.magic.conditions.admits(flags);
+    }
     spell.magic.conditions.admits(flags)
         && !(spell.magic.mind && flags.contains(CreatureFlag::MindImmune))
         && !ruleset.abilities(creature).iter().any(|a| match *a {
@@ -377,17 +377,18 @@ fn affects(ruleset: &Ruleset, (id, spell): SpellRef<'_>, creature: CreatureTypeI
         })
 }
 
-/// Whether `side`'s cast of `spell` may reach stack `s` (BAT-MAG-003, BAT-MAG-005): a living
-/// stack on the side the spell may reach that the spell can affect.
+/// Whether `side`'s cast of `spell` at `mastery` may reach stack `s` (BAT-MAG-003,
+/// BAT-MAG-005): a living stack on the side the spell may reach at that mastery that the spell
+/// can affect.
 fn reachable(
     state: &BattleState,
     ruleset: &Ruleset,
     side: BattleSide,
-    spell: SpellRef<'_>,
+    (spell, mastery): (SpellRef<'_>, u8),
     s: StackId,
 ) -> bool {
     let stack = state.at(s);
-    let side_ok = match spell.1.magic.side {
+    let side_ok = match spell.1.magic.side_at(mastery) {
         TargetSide::Any => true,
         TargetSide::Enemy => stack.side != side,
         TargetSide::Own => stack.side == side,
@@ -395,18 +396,22 @@ fn reachable(
     stack.is_alive() && side_ok && affects(ruleset, spell, stack.creature)
 }
 
-/// Whether `side`'s cast of a stack spell may be aimed at stack `s` (BAT-MAG-003): a stack it
-/// may reach whose share left after resistance is above zero (the original's target test,
-/// `installation.md` §7.8: a stack that always resists is no target).
+/// Whether `side`'s cast of a stack spell at `mastery` may be aimed at stack `s` (BAT-MAG-003):
+/// a stack it may reach, with an active timed effect if the spell needs one (Dispel), whose
+/// share left after resistance is above zero (the original's target test, `installation.md`
+/// §7.8: a stack that always resists is no target).
 fn aimable(
     state: &BattleState,
     ruleset: &Ruleset,
     side: BattleSide,
-    spell: SpellRef<'_>,
+    (spell, mastery): (SpellRef<'_>, u8),
     s: StackId,
 ) -> bool {
-    reachable(state, ruleset, side, spell, s)
+    let magic = &spell.1.magic;
+    reachable(state, ruleset, side, (spell, mastery), s)
+        && (!magic.needs_effect || !state.effects.of(s).is_empty())
         && (spell.1.polarity == SpellPolarity::Positive
+            || magic.ignores_immunity
             || (share(state, ruleset, s).0 > 0 && aura(state, ruleset, s) != Some(100)))
 }
 
@@ -445,7 +450,7 @@ fn area_stacks<'a>(
     let field = Field::new(ruleset.battle().field);
     let range = area(spell.1, mastery);
     stack_ids(state).filter(move |&s| {
-        reachable(state, ruleset, side, spell, s)
+        reachable(state, ruleset, side, (spell, mastery), s)
             && in_area(field, hex, range, state.at(s).footprint(field))
     })
 }
@@ -465,13 +470,13 @@ fn check_target(
 ) -> Result<(), CommandError> {
     let ok = match (spell.1.magic.target_at(mastery), target) {
         (SpellTarget::Stack, CastTarget::Stack(s)) => {
-            state.stack(s).is_some() && aimable(state, ruleset, side, spell, s)
+            state.stack(s).is_some() && aimable(state, ruleset, side, (spell, mastery), s)
         }
         (SpellTarget::Hex, CastTarget::Hex(h)) => {
             Field::new(ruleset.battle().field).is_standable(h)
         }
         (SpellTarget::None, CastTarget::None) => {
-            stack_ids(state).any(|s| reachable(state, ruleset, side, spell, s))
+            stack_ids(state).any(|s| reachable(state, ruleset, side, (spell, mastery), s))
         }
         _ => false,
     };
@@ -564,8 +569,12 @@ fn has_target(
 ) -> bool {
     match spell.1.magic.target_at(mastery) {
         SpellTarget::Hex => true,
-        SpellTarget::Stack => stack_ids(state).any(|s| aimable(state, ruleset, actor, spell, s)),
-        SpellTarget::None => stack_ids(state).any(|s| reachable(state, ruleset, actor, spell, s)),
+        SpellTarget::Stack => {
+            stack_ids(state).any(|s| aimable(state, ruleset, actor, (spell, mastery), s))
+        }
+        SpellTarget::None => {
+            stack_ids(state).any(|s| reachable(state, ruleset, actor, (spell, mastery), s))
+        }
     }
 }
 
@@ -741,8 +750,9 @@ fn aura(state: &BattleState, ruleset: &Ruleset, s: StackId) -> Option<u8> {
 }
 
 /// The chance in percent that a cast of `spell` affects stack `s` (BAT-MAG-008): always for a
-/// positive spell; otherwise its [`share`] times 1 − the strongest [`aura`], as a whole
-/// percentage rounded down (with quirk Q-0005, 10 % hero resistance leaves 89 %).
+/// positive spell and one that ignores immunity (Dispel); otherwise its [`share`] times 1 − the
+/// strongest [`aura`], as a whole percentage rounded down (with quirk Q-0005, 10 % hero
+/// resistance leaves 89 %).
 // rule: BAT-MAG-008
 pub(crate) fn affect_chance(
     state: &BattleState,
@@ -750,7 +760,7 @@ pub(crate) fn affect_chance(
     spell: &Spell,
     s: StackId,
 ) -> u32 {
-    if spell.polarity == SpellPolarity::Positive {
+    if spell.polarity == SpellPolarity::Positive || spell.magic.ignores_immunity {
         return 100;
     }
     let single = ruleset.quirks().is_enabled(SINGLE_PRECISION_RATES);
@@ -772,7 +782,9 @@ fn resists(state: &mut BattleState, ruleset: &Ruleset, spell: &Spell, s: StackId
 }
 
 /// Applies `cast`'s effects to stack `s` at the value `value`: its damage, reported, then, if the
-/// stack still lives, its timed changes (BAT-MAG-009).
+/// stack still lives, its dispel (BAT-MAG-016), its heal (BAT-MAG-017) and its timed changes
+/// (BAT-MAG-009), in this order (Cure ends the effects before it heals, `installation.md`
+/// §7.10).
 fn affect<S: Sink>(
     state: &mut BattleState,
     ruleset: &Ruleset,
@@ -793,7 +805,26 @@ fn affect<S: Sink>(
             kills,
         }));
     }
-    if cast.spell.magic.is_timed() && state.at(s).is_alive() {
+    if !state.at(s).is_alive() {
+        return;
+    }
+    if cast.spell.magic.dispels() {
+        effects::dispel(state, ruleset, cast.spell, s, sink);
+    }
+    if cast.spell.magic.effects.contains(&SpellEffect::Heal) {
+        // rule: BAT-MAG-017
+        let stack = state.at_mut(s);
+        let lost = stack.max_hp.saturating_sub(stack.top_hp);
+        let healed = u32::try_from(value).unwrap_or(u32::MAX).min(lost);
+        stack.top_hp += healed;
+        if healed > 0 {
+            sink.emit(Event::public(EventKind::SpellHealed {
+                target: s,
+                hit_points: healed,
+            }));
+        }
+    }
+    if cast.spell.magic.is_timed() {
         let timed = TimedCast {
             id: cast.id,
             spell: cast.spell,
@@ -914,7 +945,7 @@ pub(crate) fn apply_cast<S: Sink>(
                             area_stacks(state, ruleset, cast.side, (spell, cast.mastery), h)
                                 .any(|a| a == s)
                         }
-                        _ => reachable(state, ruleset, cast.side, spell, s),
+                        _ => reachable(state, ruleset, cast.side, (spell, cast.mastery), s),
                     };
                 }
                 for s in stack_ids(state).filter(|s| hits[s.index()]) {

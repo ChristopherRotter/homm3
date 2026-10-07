@@ -487,6 +487,40 @@ mass = "expert"
 excludes = ["war_machine"]
 effects = [{ kind = "timed", change = "retaliations" }]
 
+[[spell]]                           # format v7 (E04b T3b1b): a dispel like the original's Dispel
+id = "purge"
+name = "Purge"
+category = "combat"
+level = 1
+schools = ["stone"]
+cost = [5, 4, 4, 4]
+effect = [0, 0, 0, 0]
+polarity = "neutral"
+target = "stack"
+side = "own"
+any_side = "advanced"               # either side from Advanced
+needs_effect = true                 # a stack it is aimed at needs an effect
+ignores_immunity = true             # no immunity, resistance or aura
+mass = "expert"
+spares = ["drag"]                   # it ends every effect but Drag's
+effects = [{ kind = "dispel" }]
+
+[[spell]]                           # format v7: a heal that ends three spells, like Cure
+id = "mend"
+name = "Mend"
+category = "combat"
+level = 1
+schools = ["storm"]
+cost = [6, 5, 5, 5]
+power = 5
+effect = [10, 10, 20, 30]
+polarity = "positive"
+target = "stack"
+side = "own"
+mass = "expert"
+dispels = ["drag", "bane", "gloom"] # it ends only these
+effects = [{ kind = "dispel" }, { kind = "heal" }]
+
 [[secondary_skill]]
 id = "marksmanship"
 name = "Marksmanship"
@@ -778,8 +812,8 @@ backpack = 3                        # HER-ART-002
 
 [[profile]]
 id = "faithful"        # default: preserve/fix-optional quirks on
-quirks = { "quirk.battle.no_luck_without_hero" = true, "quirk.battle.single_precision_rates" = true, "quirk.battle.unlimited_ballista_shots" = true, "quirk.battle.first_protection" = true }    # Q-0003, Q-0005, Q-0004, Q-0007
+quirks = { "quirk.battle.no_luck_without_hero" = true, "quirk.battle.single_precision_rates" = true, "quirk.battle.unlimited_ballista_shots" = true, "quirk.battle.first_protection" = true, "quirk.battle.counterstrike_extra_round" = true }    # Q-0003, Q-0005, Q-0004, Q-0007, Q-0008
 
 [[profile]]
 id = "strict-fixed"    # all quirks fixed
-quirks = { "quirk.battle.no_luck_without_hero" = false, "quirk.battle.single_precision_rates" = false, "quirk.battle.unlimited_ballista_shots" = false, "quirk.battle.first_protection" = false }   # Q-0003, Q-0005, Q-0004, Q-0007
+quirks = { "quirk.battle.no_luck_without_hero" = false, "quirk.battle.single_precision_rates" = false, "quirk.battle.unlimited_ballista_shots" = false, "quirk.battle.first_protection" = false, "quirk.battle.counterstrike_extra_round" = false }   # Q-0003, Q-0005, Q-0004, Q-0007, Q-0008

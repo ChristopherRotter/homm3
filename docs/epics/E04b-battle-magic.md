@@ -1,6 +1,6 @@
 # E04b — Battle magic
 
-Status: **in progress** (refined 2026-10-05; increment 1 = T1–T2, done 2026-10-06: T1, ADR-0014 accepted, T2a–T2e, batch 2a evaluated; increment 2 = T3 in parts, then T4 (Q46, Q48): T3a and T3b1a done; T3b1b next) · Follows E04a (closed 2026-10-05) · Part of the former E04 (OPEN-QUESTIONS Q27): E04a heroes in battle, **E04b** battle magic (this one), E04c sieges and special battlefields.
+Status: **in progress** (refined 2026-10-05; increment 1 = T1–T2, done 2026-10-06: T1, ADR-0014 accepted, T2a–T2e, batch 2a evaluated; increment 2 = T3 in parts, then T4 (Q46, Q48): T3a, T3b1a and T3b1b done; T3b2 next) · Follows E04a (closed 2026-10-05) · Part of the former E04 (OPEN-QUESTIONS Q27): E04a heroes in battle, **E04b** battle magic (this one), E04c sieges and special battlefields.
 
 ## Goal
 
@@ -61,9 +61,11 @@ The 13 direct-damage spells: Magic Arrow, Ice Bolt, Lightning Bolt, Titan's Ligh
 
 - [x] **T3a The effect list and the value spells** — done 2026-10-06: survey §14 and `installation.md` §7.9 (M-3 settled; Q47: the executable's counter pairs, re-cast keeps the first value, ADR-0014 point 5 amended); pack format v5 (timed changes, mind, mass versions, duration, cumulative, counters; `spell_duration`), HER-BAT-014, BAT-MAG-009 to 011, `h3_battle::effects`; state hash v20, ruleset hash v17, observation encoding v6, C ABI v9; `BattleState` 3 336 bytes, fork one allocation; all golden replays and `bench-check` re-baselined. Record: [`E04b-log.md`](E04b-log.md).
 - [x] **T3b1a Staged damage and the protective spells** — done 2026-10-06: survey §15 read in the executable (`installation.md` §7.10); BAT-DMG-002 in the executable's three truncated stages under Q-0005 (Q50, `h3_kernel::arith::X87`); Shield, Air Shield, the four Protections with Q-0007 (S-19), Slayer, Counterstrike (BAT-MAG-012 to 015); pack format v6, ruleset hash v18, state hash v21; replays and `bench-check` re-baselined. Record: [`E04b-log.md`](E04b-log.md).
-- [ ] **T3b1b** Dispel and Cure: two non-timed effect kinds (end effects, heal the top creature) after §7.10: Dispel's side by mastery, a target with a spell below Expert, Expert on every stack without a roll and the spell obstacles (with T5), the Sphere of Permanence; Cure's 14 negative spells and no health test. Open: a single-target Dispel's roll on an own stack (survey §15 point 7).
+- [x] **T3b1b Dispel and Cure** — done 2026-10-07: Dispel's test re-read (`installation.md` §7.10: no immunity, resistance or aura); pack format v7 (effect kinds `dispel` and `heal`, `any_side`, `needs_effect`, `ignores_immunity`, `dispels`/`spares`), BAT-MAG-016/017; quirk Q-0008 (Counterstrike's extra round, fix-optional, the user); ruleset hash v19; replays and `bench-check` re-baselined. The Sphere of Permanence moved to T8 (with the Pendants), the spell obstacles to T5. Record: [`E04b-log.md`](E04b-log.md).
 - [ ] T3b2 Fire Shield (reflected damage) and Frenzy (S-16; its own duration).
 - [ ] T3c The hero specialties in these spells (16 heroes), Q45 option (b) (skill specialties' rates in single precision across the seam), batch 2b compiled for T3 (with a level-10 specialist).
+
+**Checkpoint after T3b1a** (2026-10-07): the user chose T3b1b and T3b2 for the next increment (checkpoint before T3c) and classified Counterstrike's extra round as fix-optional (Q-0008).
 
 **Checkpoint after T3a** (2026-10-06, Q48): T3b split into T3b1 and T3b2; T3b1 next, after a code reading. **T3b1** (2026-10-06, Q49): the user split it again at the start: T3b1a (the reading and the five timed spells), then a checkpoint, then T3b1b (Dispel, Cure).
 

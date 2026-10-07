@@ -548,14 +548,21 @@ protection turns a damage of 100 into 69.
 Poison (71), each through 0x444510, so Disrupting Ray stays; at Expert it does the same for every
 stack of both sides that it can affect (0x5A8090 above 0, **no resistance roll**), then removes
 every battlefield object whose type has one of the bits `0x3C` (the spell obstacles: Fire Wall,
-Force Field, Quicksand, Land Mine; T5). Which stacks it can affect (0x5A8090 for spell 35):
-none if the stack's hero wears the Sphere of Permanence (artifact 92); below Advanced only the
-caster's own stacks; below Expert only a stack with at least one active spell (ids 10–80); then
-the usual immunity tests. Magic Mirror never redirects Dispel (0x59EE99).
+Force Field, Quicksand, Land Mine; T5). Which stacks it can affect (0x5A8090 for spell 35, re-read
+in E04b T3b1b): 0 if the stack's controlling hero (0x442690: the other side's while it is
+hypnotized) wears the Sphere of Permanence (artifact 92); below Advanced (0x4E5080) 0 for a stack
+of the other side; below Expert 0 for a stack without an active spell (a duration above 0 among
+ids 10–80); otherwise **1, returned before the immunity, resistance and aura tests**: no creature
+is immune to Dispel and none resists it (the aimed stack's roll at 0x5A02EA always passes; the
+mass version does not roll). Magic Mirror never redirects Dispel (0x59EE99). Dispel Helpful
+Spells (78) has a twin test (the Sphere, then a stack with an active spell of positive type) and
+handler (0x5A177E: ends the active spells whose table type is positive; T7).
 
-**Cure** (case at 0x5A17E6; 0x446500 per stack): heals the top creature only (lost hit points
+**Cure** (case at 0x5A17E6; 0x446500 per stack): first resets Slow's stored factor and the
+hit points (an aged stack's are recomputed, T7), then ends Curse, Weakness, Sorrow, Misfortune,
+Slow, Berserk, Hypnotize, Forgetfulness, Blind, Stone Gaze, Poison, Disease, Paralyze and Age
+(not Bind, not Disrupting Ray, not Frenzy), then heals the top creature only (lost hit points
 − (power × factor + effect[mastery] + a Cure specialist's bonus), at least 0; no creature comes
-back), and ends Curse, Weakness, Sorrow, Misfortune, Slow, Berserk, Hypnotize, Forgetfulness,
-Blind, Stone Gaze, Poison, Disease, Paralyze and Age (not Bind, not Disrupting Ray, not Frenzy).
+back).
 At Expert it does so for every own stack it can affect that is not hypnotized. No test of the
 target's health or spells: Cure may be cast on a healthy stack without negative spells.

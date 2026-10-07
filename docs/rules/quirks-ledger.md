@@ -112,3 +112,16 @@ Classes: `exploit-fix` (always fixed, never toggleable) · `preserve` (accepted,
 - Defaults: faithful = on, strict-fixed = off
 - Regression test: `crates/h3-battle/src/tests/protect.rs`, `a_spell_of_two_schools_meets_one_protection`
 - Decided by / date: suggested class S-19; confirmed for SoD by code reading, 2026-10-06 (E04b T3b1)
+
+### Q-0008 — Counterstrike's extra retaliations last into the round in which it runs out
+- Class: fix-optional (user, 2026-10-07)
+- Context / rules affected: battle, BAT-MAG-015
+- Original behavior: every round start first resets each stack's retaliations (adding Counterstrike's `v` while the spell is active) and only then counts the timed effects down, so in the round at whose start Counterstrike runs out the stack still has its extra retaliations, although the spell is gone.
+- Intended/expected behavior: the extra retaliations last exactly as long as the spell (strict-fixed: the round start gives no extra for an effect that ends at it).
+- Impact: gameplay-altering (tiny)
+- Community status: unknown
+- Sources: original-data, `docs/formats/installation.md` §7.10 (0x447120 before the countdown); batch 2b to observe
+- Flag: `quirk.battle.counterstrike_extra_round` (E04b T3b1b)
+- Defaults: faithful = on, strict-fixed = off
+- Regression test: `crates/h3-battle/src/tests/protect.rs`, `counterstrike_adds_retaliations_now_and_at_each_round_start`
+- Decided by / date: user, 2026-10-07 (E04b T3b1a checkpoint); found by code reading, 2026-10-06 (E04b T3b1a)

@@ -4,13 +4,13 @@ Living state between sessions; every session reads it first. Rules (`docs/08-wor
 
 ## Current state
 
-- Branch `e04b-battle-magic` on GitHub (pushed after every commit; Q49); increment 1 done (T1, T2a–T2e, batch 2a evaluated). **Increment 2 (Q46, Q48): T3 in parts, then T4; T3a and T3b1a done (2026-10-06); checkpoint with the user before T3b1b** (Dispel, Cure). Sandbox: `docs/08-work-process.md`, "Cloud sandbox and syncing" (original files staged from the user's repo folder through the device link, `scripts/sandbox-setup.sh`).
+- Branch `e04b-battle-magic` on GitHub (pushed after every commit; Q49); increment 1 done (T1, T2a–T2e, batch 2a evaluated). **Increment 2 (Q46, Q48): T3 in parts, then T4; T3a, T3b1a, T3b1b done; T3b2 next, then a checkpoint before T3c** (the user's seam, 2026-10-07). Sandbox: `docs/08-work-process.md`, "Cloud sandbox and syncing" (original files staged from the user's repo folder through the device link, `scripts/sandbox-setup.sh`).
 - **GitHub and CI:** `ChristopherRotter/homm3` (private); `.github/workflows/ci.yml` runs `cargo xtask verify` on Linux for PRs, `master` and weekly; changes reach `master` by pull request; a `bench-check` re-baseline must hold on the CI runner.
 - **E04b (battle magic) is refined** (Q41, `docs/epics/E04b-battle-magic.md`): increments with a user checkpoint each; only the current increment's tasks are refined.
-- **Done:** survey `docs/rules/surveys/E04b-magic.md` (§12–§15), ADR-0014 accepted (point 5 amended, Q47), design note `docs/epics/E04b-design.md`. Castable by heroes: the 13 damage spells (BAT-MAG-001 to 008), the 14 value spells (BAT-MAG-009 to 011), Shield, Air Shield, the four Protections (Q-0007), Slayer, Counterstrike (BAT-MAG-012 to 015), all after the executable's code (`installation.md` §7.8–§7.10). **Physical damage follows the executable's three truncated stages** under Q-0005 (Q50, BAT-DMG-002, `h3_kernel::arith::X87` at 53 bits).
-- **Next:** T3b1b (Dispel, Cure; §7.10 has the reading), then T3b2 (Fire Shield, Frenzy, S-16), T3c (specialties: STUB-0002; Q45 option (b); batch 2b with the x87 precision check, Counterstrike's extra round and Shield with Armorer), T4.
-- **Open for later tasks:** batch 2a R6's costs (T7); Q43 (sprite offset, keep the approximation); creature casters' re-casts (T7); the damage stages' creature factors (BACKLOG).
-- Versions: state hash v21, ruleset hash v18, replay format v15, action encoding v9, C ABI v9, observation encoding v6; pack format v6.
+- **Done:** survey `docs/rules/surveys/E04b-magic.md` (§12–§15), ADR-0014 accepted (point 5 amended, Q47), design note `docs/epics/E04b-design.md`. Castable by heroes: the 13 damage spells (BAT-MAG-001 to 008), the 14 value spells (BAT-MAG-009 to 011), Shield, Air Shield, the four Protections (Q-0007), Slayer, Counterstrike (BAT-MAG-012 to 015; Q-0008), Dispel and Cure (BAT-MAG-016/017), all after the executable's code (`installation.md` §7.8–§7.10). **Physical damage follows the executable's three truncated stages** under Q-0005 (Q50, BAT-DMG-002, `h3_kernel::arith::X87` at 53 bits).
+- **Next:** T3b2 (Fire Shield, Frenzy, S-16; read the executable first), checkpoint, then T3c (specialties: STUB-0002; Q45 option (b); batch 2b with the x87 precision check, Counterstrike's extra round and Shield with Armorer), T4.
+- **Open for later tasks:** batch 2a R6's costs (T7); Q43 (sprite offset, keep the approximation); creature casters' re-casts (T7); the damage stages' creature factors; Dispel's loose ends (Sphere T8, obstacles T5; BACKLOG).
+- Versions: state hash v21, ruleset hash v19, replay format v15, action encoding v9, C ABI v9, observation encoding v6; pack format v7.
 - Working agreement: increments of a couple of tasks with a user checkpoint (Q41); the user confirms seams and ADRs; token efficiency beats speed (AGENTS.md); the user plays experiment maps in SoD with plain HD and commits the results.
 
 ## Standing traps
@@ -51,6 +51,10 @@ Living state between sessions; every session reads it first. Rules (`docs/08-wor
 
 ## Recent sessions
 
+### 2026-10-07 (twenty-second) — E04b T3b1b: Dispel and Cure
+
+Cloud session linked to the user's computer. The user chose T3b1b + T3b2 (checkpoint before T3c) and Q-0008 fix-optional (Counterstrike's extra round). Re-read Dispel's test: it skips immunity, resistance and aura. Built pack format v7 (`dispel`, `heal`, `any_side`, `needs_effect`, `ignores_immunity`, `dispels`/`spares`), BAT-MAG-016/017, Q-0008; ruleset hash v19; replays and `bench-check` re-baselined (old workload +0.35 %). Sphere of Permanence → T8. **In progress:** T3b2 (reading not started). Detail: `docs/epics/E04b-log.md` (T3b1b).
+
 ### 2026-10-06 (twenty-first) — E04b T3b1a: staged damage and the protective spells
 
 Cloud session linked to the user's computer: the original files came from the repo folder (Q49 answered). The user chose the seam (read all of survey §15, build the five timed spells, checkpoint before Dispel and Cure). Reading the damage routine showed three truncated stages; the user chose to rebuild BAT-DMG-002 now (Q50; x87 at 53 bits, an inference for batch 2b). Built `X87`, `damage::Strike`, pack format v6, Q-0007, BAT-MAG-012 to 015; replays and `bench-check` re-baselined (+1.1 % per step on the old workload; `BattleState` 3 672 bytes). Detail: `docs/epics/E04b-log.md` (T3b1a).
@@ -58,7 +62,3 @@ Cloud session linked to the user's computer: the original files came from the re
 ### 2026-10-06 (twentieth) — E04b T3a checkpoint: T3b split, T3b1 prepared
 
 Cloud session without the original files (Q49). The user split T3b into T3b1 and T3b2 (Fire Shield, Frenzy), chose pack rows by hand for cloud sessions and paused the rules until the executable can be read (Q48). Prepared: survey §15 (VCMI 1.7.5, the flags, S-19 confirmed by the §7.8 notes, a reading list), the epic split; `installation.md` §7.6 corrected (bit `0x1000` also on Bloodlust, Haste, Slow, Counterstrike; the packs were right). No code change.
-
-### 2026-10-06 (nineteenth) — E04b T3a: the effect list and the value spells
-
-Sandbox session; the user cut increment 2 (Q46: T3a alone, then a checkpoint; Q45 option (b) in T3c). Read the executable's timed-spell code (`installation.md` §7.9, survey §14): durations, what a cast changes and the end gives back, rounds fall at the round start, Disrupting Ray never ends; the user chose the executable's counter pairs and amended ADR-0014 point 5 (Q47). Built pack format v5, HER-BAT-014, BAT-MAG-009 to 011 (`h3_battle::effects`), observation v6, C ABI v9; golden replays and `bench-check` re-baselined (new workload; +0.17 % on the old one). Detail: `docs/epics/E04b-log.md` (T3a).

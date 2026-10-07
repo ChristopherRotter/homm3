@@ -3387,6 +3387,14 @@ cost = [5, 4, 4, 4]
 power = 0
 effect = [0, 0, 0, 0]
 polarity = "neutral"
+target = "stack"
+side = "own"
+mass = "expert"
+any_side = "advanced"
+needs_effect = true
+ignores_immunity = true
+spares = ["poison"]
+effects = [{ kind = "dispel" }]
 
 [[spell]]
 id = "magic_mirror"  # original id 36
@@ -3409,6 +3417,11 @@ cost = [6, 5, 5, 5]
 power = 5
 effect = [10, 10, 20, 30]
 polarity = "positive"
+target = "stack"
+side = "own"
+mass = "expert"
+dispels = ["curse", "weakness", "sorrow", "misfortune", "slow", "berserk", "hypnotize", "forgetfulness", "blind", "stone_gaze", "poison", "disease", "paralyze", "age"]
+effects = [{ kind = "dispel" }, { kind = "heal" }]
 
 [[spell]]
 id = "resurrection"  # original id 38
@@ -6846,8 +6859,8 @@ backpack = 64
 
 [[profile]]
 id = "faithful"        # default: preserve/fix-optional quirks on
-quirks = { "quirk.battle.no_luck_without_hero" = true, "quirk.battle.single_precision_rates" = true, "quirk.battle.unlimited_ballista_shots" = true, "quirk.battle.first_protection" = true }    # Q-0003, Q-0005, Q-0004, Q-0007
+quirks = { "quirk.battle.no_luck_without_hero" = true, "quirk.battle.single_precision_rates" = true, "quirk.battle.unlimited_ballista_shots" = true, "quirk.battle.first_protection" = true, "quirk.battle.counterstrike_extra_round" = true }    # Q-0003, Q-0005, Q-0004, Q-0007, Q-0008
 
 [[profile]]
 id = "strict-fixed"    # all quirks fixed
-quirks = { "quirk.battle.no_luck_without_hero" = false, "quirk.battle.single_precision_rates" = false, "quirk.battle.unlimited_ballista_shots" = false, "quirk.battle.first_protection" = false }   # Q-0003, Q-0005, Q-0004, Q-0007
+quirks = { "quirk.battle.no_luck_without_hero" = false, "quirk.battle.single_precision_rates" = false, "quirk.battle.unlimited_ballista_shots" = false, "quirk.battle.first_protection" = false, "quirk.battle.counterstrike_extra_round" = false }   # Q-0003, Q-0005, Q-0004, Q-0007, Q-0008

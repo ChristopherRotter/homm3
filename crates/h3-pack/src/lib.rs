@@ -409,7 +409,9 @@ struct OverrideDto {
 
 /// `[[spell]]` (pack format v3, E04a T3): a spell's data row; since format v4 (E04b T2a) its
 /// battle magic (targeting and effects); since format v5 (E04b T3a) mind spells, mass versions,
-/// durations, cumulative spells, counters and timed effects.
+/// durations, cumulative spells, counters and timed effects; since format v7 (E04b T3b1b)
+/// dispel and heal effects, the side by mastery, targets that need an effect, spells that ignore
+/// immunity and the dispel lists.
 #[derive(Deserialize)]
 #[serde(deny_unknown_fields)]
 struct SpellDto {
@@ -446,6 +448,23 @@ struct SpellDto {
     cumulative: bool,
     #[serde(default)]
     counters: Vec<String>,
+    any_side: Option<String>,
+    #[serde(default)]
+    needs_effect: bool,
+    #[serde(default)]
+    ignores_immunity: bool,
+    #[serde(default)]
+    dispels: Vec<String>,
+    #[serde(default)]
+    spares: Vec<String>,
+}
+
+/// The mastery (1..=3) named `name` in a pack (`basic`, `advanced`, `expert`).
+fn mastery_named(name: &str) -> Result<u8, PackError> {
+    (1u8..)
+        .zip(MASTERY_NAMES)
+        .find_map(|(m, n)| (n == name).then_some(m))
+        .ok_or_else(|| PackError::Syntax(format!("unknown mastery `{name}`")))
 }
 
 #[derive(Deserialize, Default)]
@@ -498,6 +517,8 @@ enum SpellEffectDto {
     // A struct variant, so that unknown keys are rejected.
     Damage {},
     Timed { change: String },
+    Dispel {},
+    Heal {},
 }
 
 impl SpellDto {
@@ -540,6 +561,8 @@ impl SpellDto {
                 .iter()
                 .map(|e| match e {
                     SpellEffectDto::Damage {} => Ok(SpellEffect::Damage),
+                    SpellEffectDto::Dispel {} => Ok(SpellEffect::Dispel),
+                    SpellEffectDto::Heal {} => Ok(SpellEffect::Heal),
                     SpellEffectDto::Timed { change } => TimedChange::from_name(change)
                         .map(SpellEffect::Timed)
                         .ok_or_else(|| {
@@ -548,21 +571,15 @@ impl SpellDto {
                 })
                 .collect::<Result<_, _>>()?,
             mind: self.mind,
-            mass_from: self
-                .mass
-                .as_deref()
-                .map(|name| {
-                    (1u8..)
-                        .zip(MASTERY_NAMES)
-                        .find_map(|(m, n)| (n == name).then_some(m))
-                        .ok_or_else(|| PackError::Syntax(format!("unknown mastery `{name}`")))
-                })
-                .transpose()?,
+            mass_from: self.mass.as_deref().map(mastery_named).transpose()?,
             duration: match self.duration {
                 EffectDurationDto::Rounds => EffectDuration::Rounds,
                 EffectDurationDto::Permanent => EffectDuration::Permanent,
             },
             cumulative: self.cumulative,
+            any_side_from: self.any_side.as_deref().map(mastery_named).transpose()?,
+            needs_effect: self.needs_effect,
+            ignores_immunity: self.ignores_immunity,
         })
     }
 }
@@ -1237,6 +1254,8 @@ pub fn parse_pack(text: &str) -> Result<ContentPack, PackError> {
                 effect: s.effect,
                 magic,
                 counters: references(&pack_id, &s.counters)?,
+                dispels: references(&pack_id, &s.dispels)?,
+                spares: references(&pack_id, &s.spares)?,
                 polarity: match s.polarity {
                     SpellPolarityDto::Positive => SpellPolarity::Positive,
                     SpellPolarityDto::Neutral => SpellPolarity::Neutral,
@@ -2361,7 +2380,8 @@ mod tests {
             "quirks = { \"quirk.battle.no_luck_without_hero\" = true, \
              \"quirk.battle.single_precision_rates\" = true, \
              \"quirk.battle.unlimited_ballista_shots\" = true, \
-             \"quirk.battle.first_protection\" = true }",
+             \"quirk.battle.first_protection\" = true, \
+             \"quirk.battle.counterstrike_extra_round\" = true }",
             "quirks = { \"quirk.x\" = true }",
         );
         let pack = parse_pack(&quirky).unwrap();
@@ -2469,12 +2489,12 @@ mod tests {
         expected.tactics = 2;
         expected.magic.mana = 40;
         expected.magic.max_mana = 40;
-        // The four damage spells, Ward and five timed spells with Basic Storm magic (E04b T2c,
-        // T3a, T3b1).
+        // The four damage spells, Ward, five timed spells and Mend with Basic Storm magic
+        // (E04b T2c, T3a, T3b1, T3b1b).
         expected.magic.spell_book = Some(
             [
                 "spark", "cinders", "arc", "blight", "ward", "hasten", "drag", "fury", "smiting",
-                "riposte",
+                "riposte", "mend",
             ]
             .map(|k| ruleset.spell_by_key(&format!("synthetic:{k}")).unwrap())
             .to_vec(),
@@ -3779,7 +3799,7 @@ mod tests {
         use h3_content::SpellCategory;
         let r = compile(&[SYNTHETIC_PACK, SYNTHETIC_EXT_PACK], "synthetic:faithful").unwrap();
         assert_eq!(r.spell_schools().len(), 2);
-        assert_eq!(r.spells().len(), 19);
+        assert_eq!(r.spells().len(), 21);
         // Pack format v6: the storm school's protection rank; stone's defaults to 0.
         let ranks: Vec<u8> = r
             .spell_schools()
@@ -3880,6 +3900,36 @@ mod tests {
                 SYNTHETIC_PACK.replacen("mass = \"expert\"", &format!("mass = \"{mastery}\""), 1);
             assert!(parse_pack(&text).is_ok());
         }
+        // Format v7: dispel and heal effects, the side by mastery, the dispel lists.
+        let purge = r.spell(id("synthetic:purge")).unwrap();
+        assert_eq!(
+            purge.magic,
+            SpellMagic {
+                target: SpellTarget::Stack,
+                side: TargetSide::Own,
+                any_side_from: Some(2),
+                needs_effect: true,
+                ignores_immunity: true,
+                mass_from: Some(3),
+                effects: vec![SpellEffect::Dispel],
+                ..SpellMagic::default()
+            }
+        );
+        assert_eq!(
+            (purge.spares.clone(), purge.dispels.is_empty()),
+            (vec![id("synthetic:drag")], true)
+        );
+        let mend = r.spell(id("synthetic:mend")).unwrap();
+        assert_eq!(mend.magic.effects, [SpellEffect::Dispel, SpellEffect::Heal]);
+        assert_eq!(
+            mend.dispels,
+            ["drag", "bane", "gloom"].map(|k| id(&format!("synthetic:{k}")))
+        );
+        let text = SYNTHETIC_PACK.replacen("any_side = \"advanced\"", "any_side = \"all\"", 1);
+        assert_eq!(
+            parse_pack(&text).map(|_| ()),
+            Err(PackError::Syntax("unknown mastery `all`".into()))
+        );
         assert_eq!(r.skills().len(), 13);
         let omens = r.skill(r.skill_by_key("synthetic:omens").unwrap()).unwrap();
         assert_eq!(

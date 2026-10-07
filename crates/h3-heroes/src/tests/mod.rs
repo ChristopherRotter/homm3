@@ -105,6 +105,8 @@ fn spell(k: &str, category: SpellCategory) -> SpellDef {
         polarity: SpellPolarity::Negative,
         magic: SpellMagic::default(),
         counters: vec![],
+        dispels: vec![],
+        spares: vec![],
     }
 }
 

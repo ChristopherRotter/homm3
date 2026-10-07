@@ -159,7 +159,7 @@ override, replacing the list) names the creature types it upgrades into: at most
 none twice; references follow the reference rules and may name later creatures of the pack.
 Hero effects that select "a creature" apply to it and its direct upgrades.
 
-## Hero content (format v3, E04a T3; battle magic format v4, E04b T2a; v5 T3a; v6 T3b1)
+## Hero content (format v3, E04a T3; battle magic format v4, E04b T2a; v5 T3a; v6 T3b1; v7 T3b1b)
 
 Spell schools, spells, secondary skills, hero classes and hero types (ADR-0013). References follow
 the reference rules above; every kind may refer to content of its dependency closure.
@@ -205,6 +205,24 @@ cumulative = false                 # v5: a cast on an affected stack applies its
 counters = ["slow"]                # v5: spells whose effects a cast ends on each stack it affects
 effects = [{ kind = "timed", change = "speed" }]
 
+[[spell]]                          # a dispel spell (pack format v7, E04b T3b1b)
+id = "purge"
+category = "combat"
+level = 1
+schools = ["storm"]
+cost = [5, 4, 4, 4]
+effect = [0, 0, 0, 0]
+polarity = "neutral"
+target = "stack"
+side = "own"
+any_side = "advanced"              # v7: from this mastery it reaches either side
+needs_effect = true                # v7: a stack it is aimed at needs an active timed effect
+ignores_immunity = true            # v7: no immunity, magic resistance or aura applies
+mass = "expert"
+spares = ["poison"]                # v7: its dispel effect ends every effect but these (or
+                                   # `dispels = [...]`: only these; not both)
+effects = [{ kind = "dispel" }]
+
 [[secondary_skill]]
 id = "marksmanship"
 name = "Marksmanship"
@@ -247,9 +265,13 @@ v), `minimum_damage` (its minimum − v, at least 1), `morale`, `morale_loss`, `
 ± v; BAT-MAG-009 to 011; since v6, E04b T3b1: `melee_protection` / `ranged_protection` (melee
 strikes / shots taken deal v %, BAT-MAG-012), `school_protection` (spells of this spell's schools
 deal v %, BAT-MAG-013), `slayer` (+ v attack against king creatures by mastery, BAT-MAG-014),
-`retaliations` (+ v per round, BAT-MAG-015)). `mass` needs target `stack`; `duration` and `cumulative` need a timed
-effect, `counters` too (and may not name the spell itself). Later tasks add kinds (dispel, heal,
-summon, …). Adventure spells have no battle magic; a spell without effects cannot be cast
+`retaliations` (+ v per round, BAT-MAG-015)); since v7, E04b T3b1b: `dispel` (ends the stack's
+timed effects: those of the spells in `dispels`, or without that list every one but those in
+`spares`; never a permanent one; BAT-MAG-016) and `heal` (heals the top creature by the value,
+raising none; BAT-MAG-017), applied after damage and before timed changes. `mass` needs target
+`stack`; `duration` and `cumulative` need a timed effect, `counters` too (and may not name the
+spell itself); `dispels` and `spares` need a dispel effect; `any_side` (a mastery) needs a `side`;
+`needs_effect` needs target `stack`. Later tasks add kinds (summon, …). Adventure spells have no battle magic; a spell without effects cannot be cast
 yet. `side` limits whose stacks a stack spell may be *aimed* at (BAT-MAG-003; a chain's jumps
 and an area reach either side): the harvester writes `enemy` for every single-target spell that
 harms (the original's target test), and the gap-fill file for Chain Lightning, which is neutral

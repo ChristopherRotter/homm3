@@ -212,6 +212,11 @@ pub enum SpellEffect {
     Damage,
     /// Changes the stack's values while the effect lasts (BAT-MAG-009 to 011, E04b T3a).
     Timed(TimedChange),
+    /// Ends the stack's timed effects: those of the spell's `dispels`, or, without that list,
+    /// every one but those of its `spares`; never a permanent one (BAT-MAG-016, E04b T3b1b).
+    Dispel,
+    /// Heals the stack's top creature by the value, raising none (BAT-MAG-017, E04b T3b1b).
+    Heal,
 }
 
 impl SpellEffect {
@@ -220,6 +225,8 @@ impl SpellEffect {
         match self {
             Self::Damage => "damage",
             Self::Timed(_) => "timed",
+            Self::Dispel => "dispel",
+            Self::Heal => "heal",
         }
     }
 
@@ -227,7 +234,7 @@ impl SpellEffect {
     pub const fn timed(self) -> Option<TimedChange> {
         match self {
             Self::Timed(c) => Some(c),
-            Self::Damage => None,
+            Self::Damage | Self::Dispel | Self::Heal => None,
         }
     }
 
@@ -236,6 +243,8 @@ impl SpellEffect {
         match self {
             Self::Damage => [0, 0],
             Self::Timed(c) => [1, c as u8],
+            Self::Dispel => [2, 0],
+            Self::Heal => [3, 0],
         }
     }
 }
@@ -283,8 +292,16 @@ pub struct SpellMagic {
     pub area: Option<SpellArea>,
     /// The chain from a stack target, if any.
     pub chain: Option<SpellChain>,
-    /// Whose stacks it may reach.
+    /// Whose stacks it may reach (below [`Self::any_side_from`]).
     pub side: TargetSide,
+    /// The lowest mastery (1..=3) from which it may reach stacks of either side (Dispel: from
+    /// Advanced; v7).
+    pub any_side_from: Option<u8>,
+    /// A stack it is aimed at needs an active timed effect (Dispel below Expert; v7).
+    pub needs_effect: bool,
+    /// No creature is immune to it and none resists it: no immunity, magic resistance or
+    /// resistance aura applies (Dispel, `installation.md` §7.10; v7).
+    pub ignores_immunity: bool,
     /// The stacks it may affect.
     pub conditions: TargetConditions,
     /// What it does to each stack reached, distinct, in pack order (none: not castable yet).
@@ -310,9 +327,22 @@ impl SpellMagic {
         }
     }
 
+    /// Whose stacks it may reach at `mastery`.
+    pub fn side_at(&self, mastery: u8) -> TargetSide {
+        match self.any_side_from {
+            Some(from) if mastery >= from => TargetSide::Any,
+            _ => self.side,
+        }
+    }
+
     /// Whether any effect is a timed change.
     pub fn is_timed(&self) -> bool {
         self.effects.iter().any(|e| e.timed().is_some())
+    }
+
+    /// Whether it has a dispel effect.
+    pub fn dispels(&self) -> bool {
+        self.effects.contains(&SpellEffect::Dispel)
     }
 }
 
@@ -360,6 +390,13 @@ impl SpellMagic {
             Some("a mass version needs target stack and a mastery 1..=3")
         } else if (self.cumulative || self.duration != EffectDuration::Rounds) && !self.is_timed() {
             Some("duration and cumulative need a timed effect")
+        } else if self
+            .any_side_from
+            .is_some_and(|m| self.side == TargetSide::Any || !(1..=MAX_MASTERY).contains(&m))
+        {
+            Some("any_side needs a side and a mastery 1..=3")
+        } else if self.needs_effect && self.target != SpellTarget::Stack {
+            Some("needs_effect needs target stack")
         } else {
             None
         }
@@ -369,7 +406,7 @@ impl SpellMagic {
 impl CanonicalHash for SpellMagic {
     /// Target, area (presence, inner, radii), chain (presence, targets, factor), side (v15),
     /// condition bits, effects (count, codes: kind and change), mind, mass (0: none), duration,
-    /// cumulative (v17).
+    /// cumulative (v17); any side (0: never), needs effect, ignores immunity (v19).
     fn hash_into(&self, h: &mut StateHasher) {
         h.write_u8(self.target as u8);
         h.write_bool(self.area.is_some());
@@ -393,6 +430,9 @@ impl CanonicalHash for SpellMagic {
         h.write_u8(self.mass_from.unwrap_or(0));
         h.write_u8(self.duration as u8);
         h.write_bool(self.cumulative);
+        h.write_u8(self.any_side_from.unwrap_or(0));
+        h.write_bool(self.needs_effect);
+        h.write_bool(self.ignores_immunity);
     }
 }
 
@@ -417,6 +457,10 @@ mod tests {
         }
         assert_eq!(SpellEffect::Damage.name(), "damage");
         assert_eq!(SpellEffect::Damage.timed(), None);
+        assert_eq!(SpellEffect::Dispel.name(), "dispel");
+        assert_eq!(SpellEffect::Heal.name(), "heal");
+        assert_eq!(SpellEffect::Dispel.timed(), None);
+        assert_eq!(SpellEffect::Heal.timed(), None);
         assert_eq!(TimedChange::from_name("heal"), None);
         for s in TargetSide::ALL {
             assert_eq!(TargetSide::from_name(s.name()), Some(s));
@@ -442,6 +486,28 @@ mod tests {
         assert_eq!(single.target_at(3), SpellTarget::Stack);
         assert!(haste.is_timed());
         assert!(!SpellMagic::default().is_timed());
+        assert!(!haste.dispels());
+    }
+
+    #[test]
+    fn the_side_may_widen_by_mastery() {
+        let dispel = SpellMagic {
+            target: SpellTarget::Stack,
+            side: TargetSide::Own,
+            any_side_from: Some(2),
+            effects: vec![SpellEffect::Dispel],
+            ..SpellMagic::default()
+        };
+        assert_eq!(dispel.side_at(1), TargetSide::Own);
+        assert_eq!(dispel.side_at(2), TargetSide::Any);
+        assert_eq!(dispel.side_at(3), TargetSide::Any);
+        assert!(dispel.dispels());
+        let fixed = SpellMagic {
+            any_side_from: None,
+            ..dispel.clone()
+        };
+        assert_eq!(fixed.side_at(3), TargetSide::Own);
+        assert_eq!(dispel.error(true), None);
     }
 
     #[test]
@@ -624,7 +690,39 @@ mod tests {
             .error(true),
             None
         );
+        let other = |side, any_side_from, needs_effect| SpellMagic {
+            target: SpellTarget::Stack,
+            side,
+            any_side_from,
+            needs_effect,
+            effects: vec![SpellEffect::Dispel],
+            ..SpellMagic::default()
+        };
+        assert_eq!(other(TargetSide::Own, Some(2), true).error(true), None);
         let bad = bad.into_iter().chain([
+            (
+                other(TargetSide::Any, Some(2), false),
+                true,
+                "any_side needs",
+            ),
+            (
+                other(TargetSide::Own, Some(0), false),
+                true,
+                "any_side needs",
+            ),
+            (
+                other(TargetSide::Own, Some(4), false),
+                true,
+                "any_side needs",
+            ),
+            (
+                SpellMagic {
+                    target: SpellTarget::None,
+                    ..other(TargetSide::Own, None, true)
+                },
+                true,
+                "needs_effect needs",
+            ),
             (
                 SpellMagic {
                     target: SpellTarget::Hex,
@@ -738,6 +836,26 @@ mod tests {
             },
             SpellMagic {
                 cumulative: true,
+                ..base.clone()
+            },
+            SpellMagic {
+                any_side_from: Some(2),
+                ..base.clone()
+            },
+            SpellMagic {
+                needs_effect: true,
+                ..base.clone()
+            },
+            SpellMagic {
+                ignores_immunity: true,
+                ..base.clone()
+            },
+            SpellMagic {
+                effects: vec![SpellEffect::Dispel],
+                ..base.clone()
+            },
+            SpellMagic {
+                effects: vec![SpellEffect::Heal],
                 ..base.clone()
             },
         ];

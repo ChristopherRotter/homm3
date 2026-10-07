@@ -707,6 +707,10 @@ pub fn ruleset_with(profile: &str, edit: impl FnOnce(&mut BattleParamsDef)) -> R
                 quirks: vec![(String::from("quirk.battle.first_protection"), true)],
             },
             ProfileDef {
+                key: ContentKey::new("t", "counterstrike").unwrap(),
+                quirks: vec![(String::from("quirk.battle.counterstrike_extra_round"), true)],
+            },
+            ProfileDef {
                 key: ContentKey::new("t", "original").unwrap(),
                 quirks: vec![
                     (String::from("quirk.battle.first_protection"), true),
@@ -728,6 +732,7 @@ pub fn ruleset_with(profile: &str, edit: impl FnOnce(&mut BattleParamsDef)) -> R
             .iter()
             .map(|&spell| spell_def(spell))
             .chain(TIMED.iter().map(|&spell| timed_def(spell)))
+            .chain(other_defs())
             .collect(),
         hero_classes: vec![HeroClassDef {
             key: ContentKey::new("t", "knight").unwrap(),
@@ -1129,7 +1134,66 @@ fn timed_def(
         counters: counter
             .map(|c| vec![ContentKey::new("t", c).unwrap()])
             .unwrap_or_default(),
+        dispels: vec![],
+        spares: vec![],
     }
+}
+
+/// The test Dispel (`t:dispel`, like the original's: own stacks below Advanced, a target with an
+/// effect, no immunity or resistance, mass at Expert; it spares `t:sloth`) and Cure (`t:cure`:
+/// power × 5 + 10, 10, 20, 30; it ends `t:curse` and `t:sloth` only).
+pub fn other_defs() -> [SpellDef; 2] {
+    let key = |k: &str| ContentKey::new("t", k).unwrap();
+    let def = |name: &str, polarity, effect, magic| SpellDef {
+        key: key(name),
+        name: String::from(name),
+        category: SpellCategory::Combat,
+        level: 1,
+        schools: vec![key("air")],
+        cost: [5, 4, 4, 4],
+        power: if name == "cure" { 5 } else { 0 },
+        effect,
+        polarity,
+        magic,
+        counters: vec![],
+        dispels: vec![],
+        spares: vec![],
+    };
+    [
+        SpellDef {
+            spares: vec![key("sloth")],
+            ..def(
+                "dispel",
+                SpellPolarity::Neutral,
+                [0; 4],
+                SpellMagic {
+                    target: SpellTarget::Stack,
+                    side: TargetSide::Own,
+                    any_side_from: Some(2),
+                    needs_effect: true,
+                    ignores_immunity: true,
+                    mass_from: Some(3),
+                    effects: vec![SpellEffect::Dispel],
+                    ..SpellMagic::default()
+                },
+            )
+        },
+        SpellDef {
+            dispels: vec![key("curse"), key("sloth")],
+            ..def(
+                "cure",
+                SpellPolarity::Positive,
+                [10, 10, 20, 30],
+                SpellMagic {
+                    target: SpellTarget::Stack,
+                    side: TargetSide::Own,
+                    mass_from: Some(3),
+                    effects: vec![SpellEffect::Dispel, SpellEffect::Heal],
+                    ..SpellMagic::default()
+                },
+            )
+        },
+    ]
 }
 
 /// The definition of a test spell.
@@ -1180,6 +1244,8 @@ fn spell_def((name, category, schools, target, side): SpellSpec) -> SpellDef {
             ..SpellMagic::default()
         },
         counters: vec![],
+        dispels: vec![],
+        spares: vec![],
     }
 }
 

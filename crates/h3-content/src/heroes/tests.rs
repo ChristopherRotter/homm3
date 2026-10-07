@@ -38,6 +38,8 @@ fn spell(k: &str, schools: &[&str]) -> SpellDef {
             ..SpellMagic::default()
         },
         counters: vec![],
+        dispels: vec![],
+        spares: vec![],
     }
 }
 
@@ -270,6 +272,58 @@ fn counters_are_checked() {
     haste.counters = vec![key("t:bolt"), key("t:bolt")];
     p.spells.push(haste);
     assert_eq!(fails(p), CompileError::DuplicateKey("t:bolt".into()));
+}
+
+/// A dispel spell `k` of the test pack's air school.
+fn dispel(k: &str) -> SpellDef {
+    let mut s = spell(k, &["t:air"]);
+    s.magic.effects = vec![SpellEffect::Dispel];
+    s
+}
+
+#[test]
+fn dispel_lists_resolve_and_are_checked() {
+    let mut p = pack();
+    // `t:purge` spares `t:haste`, which comes after it; `t:mend` ends only `t:haste`.
+    let mut purge = dispel("t:purge");
+    purge.spares = vec![key("t:haste")];
+    let mut mend = dispel("t:mend");
+    mend.dispels = vec![key("t:haste")];
+    p.spells.extend([purge, mend, timed("t:haste")]);
+    let r = compile(&[p.clone()]).unwrap();
+    let id = |k: &str| r.spell_by_key(k).unwrap();
+    assert_eq!(r.spell(id("t:purge")).unwrap().spares, vec![id("t:haste")]);
+    assert_eq!(r.spell(id("t:mend")).unwrap().dispels, vec![id("t:haste")]);
+    assert!(r.spell(id("t:purge")).unwrap().dispels.is_empty());
+    for (i, field) in [(2, "spares"), (3, "dispels")] {
+        let mut other = p.clone();
+        if field == "spares" {
+            other.spells[i].spares.clear();
+        } else {
+            other.spells[i].dispels.clear();
+        }
+        assert_ne!(compile(&[other]).unwrap().content_hash(), r.content_hash());
+    }
+    let reason = "dispels or spares (not both) need a dispel effect";
+    let mut both = p.clone();
+    both.spells[2].dispels = vec![key("t:haste")];
+    assert_eq!(fails(both), invalid("spell", "t:purge", reason));
+    let mut timed_only = p.clone();
+    timed_only.spells[4].spares = vec![key("t:purge")];
+    assert_eq!(fails(timed_only), invalid("spell", "t:haste", reason));
+    let mut timed_only = p.clone();
+    timed_only.spells[4].dispels = vec![key("t:purge")];
+    assert_eq!(fails(timed_only), invalid("spell", "t:haste", reason));
+    let unknown = CompileError::UnknownReference {
+        kind: "spell",
+        key: "t:nope".into(),
+    };
+    let mut bad = p.clone();
+    bad.spells[2].spares = vec![key("t:nope")];
+    assert_eq!(fails(bad), unknown);
+    let mut bad = p;
+    bad.spells[3].dispels = vec![key("t:nope")];
+    assert_eq!(fails(bad), unknown);
 }
 
 #[test]
