@@ -19,6 +19,7 @@ use crate::event::{NoopSink, Sink};
 use crate::geometry::{Field, Footprint, Hex, HexSet};
 use crate::hero::{self, HeroRecord, HeroView};
 use crate::morale::{self, Modifiers};
+use crate::obstacles::{SpellObstacle, SpellObstacles};
 use crate::tactics::{self, TacticsPhase};
 use crate::{flee, terrain, turn};
 
@@ -38,7 +39,7 @@ pub const STACK_CAPACITY: usize = 2 * SIDE_STACK_SLOTS;
 const _: () = assert!(MAX_ARMY_SLOTS + MAX_WAR_MACHINES <= SIDE_STACK_SLOTS);
 
 /// Version of the battle-state hash encoding ([`BattleState::state_hash`]). Bump on any change.
-pub const BATTLE_STATE_HASH_VERSION: u32 = 25;
+pub const BATTLE_STATE_HASH_VERSION: u32 = 26;
 
 /// Index of a stack in its battle (attacker stacks first, in slot order, then defender stacks).
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Default)]
@@ -637,6 +638,8 @@ pub struct BattleState {
     pub(crate) terrain: Option<TerrainId>,
     /// The timed effects on stacks (ADR-0014 point 5).
     pub(crate) effects: Effects,
+    /// The spell obstacles (ADR-0014 points 5 and 7).
+    pub(crate) spell_obstacles: SpellObstacles,
     pub(crate) rng: Rng,
 }
 
@@ -759,6 +762,7 @@ impl BattleState {
             heroes,
             terrain: setup.terrain,
             effects: Effects::new(),
+            spell_obstacles: SpellObstacles::new(),
             rng: Rng::for_stream(seed, StreamId::BATTLE),
         };
         morale::setup(&mut state, ruleset, &setup.heroes);
@@ -777,6 +781,11 @@ impl BattleState {
     /// The timed effects on stacks, by stack and spell (public, ADR-0014 point 8).
     pub fn effects(&self) -> &[ActiveEffect] {
         self.effects.as_slice()
+    }
+
+    /// The spell obstacles, in the order they were placed (BAT-MAG-027).
+    pub fn spell_obstacles(&self) -> &[SpellObstacle] {
+        self.spell_obstacles.as_slice()
     }
 
     /// What both sides see of `side`'s hero, if the side has one (BAT-HER-001).
@@ -822,16 +831,25 @@ impl BattleState {
         self.obstacles
     }
 
-    /// The hexes that block `except`'s movement: obstacles and the footprints of every other
-    /// living stack (BAT-MOV-001).
+    /// The hexes that block `except`'s movement: obstacles, the hexes Force Fields block
+    /// (BAT-MAG-027) and the footprints of every other living stack (BAT-MOV-001).
     pub(crate) fn blocked_for(&self, field: Field, except: StackId) -> HexSet {
-        let mut blocked = self.obstacles;
+        let mut blocked = self.obstacles.union(self.spell_obstacles.walls());
         for (id, s) in (0u8..).zip(self.stacks.iter()) {
             if s.is_alive() && StackId(id) != except {
                 s.footprint(field).hexes().for_each(|h| blocked.insert(h));
             }
         }
         blocked
+    }
+
+    /// The hexes of every living stack.
+    pub(crate) fn living_hexes(&self, field: Field) -> HexSet {
+        let mut taken = HexSet::new();
+        for s in self.stacks.iter().filter(|s| s.is_alive()) {
+            s.footprint(field).hexes().for_each(|h| taken.insert(h));
+        }
+        taken
     }
 
     /// All stacks (dead ones included; they keep their id).
@@ -976,7 +994,7 @@ impl BattleState {
     /// terrain, RNG state. v19 (E04b T2d): the hero's resistance. v20 (E04b T3a): each stack's
     /// spell values after its flags, the hero's duration bonus after its resistance, the effect
     /// list before the RNG. v25 (E04b T4b): the stack flag `STARTED` and the spell values'
-    /// status bits.
+    /// status bits. v26 (E04b T5a): the spell obstacles after the effect list.
     pub fn state_hash(&self) -> u64 {
         h3_kernel::hash::hash_of(self)
     }
@@ -1041,6 +1059,7 @@ impl CanonicalHash for BattleState {
         self.heroes.hash_into(h);
         self.terrain.hash_into(h);
         self.effects.hash_into(h);
+        self.spell_obstacles.hash_into(h);
         self.rng.hash_into(h);
     }
 }

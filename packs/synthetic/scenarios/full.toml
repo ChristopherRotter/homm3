@@ -24,7 +24,8 @@ defender_funds = 10000
 # she mirrors (Glass, a Magic Mirror: Corwin's spells at a mirrored stack may hit his own); since
 # T4b she makes one shooter forget (Haze, a Forgetfulness at Basic: half its creatures count);
 # since T4c she charms a stack of up to 60 hit points (Charm, a Hypnotize: power 2 × 25 + 10), which
-# then fights for her.
+# then fights for her; since T5a she raises a two-hex wall of fire (Scorch, a Fire Wall: 30 damage
+# to a stack that enters it or acts on it) and moves her own stacks anywhere (Blink, a Teleport).
 [scenario.attacker_hero]
 hero_type = "synthetic:brea"
 attack = 2
@@ -38,7 +39,7 @@ spell_book = [
     "synthetic:spark", "synthetic:cinders", "synthetic:arc", "synthetic:blight", "synthetic:ward",
     "synthetic:hasten", "synthetic:drag", "synthetic:fury", "synthetic:smiting",
     "synthetic:riposte", "synthetic:mend", "synthetic:blaze", "synthetic:glass",
-    "synthetic:haze", "synthetic:charm",
+    "synthetic:haze", "synthetic:charm", "synthetic:scorch", "synthetic:blink",
 ]
 schools = { "synthetic:storm" = 1 }
 ranged_bp = 1000
@@ -69,7 +70,8 @@ effects = [
 # veils a stack (Veil, an Anti-Magic: Expert keeps spells below level 5 off it); since T4b he
 # dazzles one (Dazzle, a Blind at Expert: it loses its turns and does not retaliate); since T4c
 # he enrages the stacks around a hex (Rampage, a Berserk at Expert: two hexes around, his own
-# stacks too), which then attack the nearest stack on their own.
+# stacks too), which then attack the nearest stack on their own; since T5a he raises a three-hex
+# wall (Bulwark, a Force Field at Expert), and his Purge at Expert also removes the walls and fire.
 [scenario.defender_hero]
 hero_type = "synthetic:corwin"
 attack = 1
@@ -82,7 +84,7 @@ spell_book = [
     "synthetic:spark", "synthetic:arc", "synthetic:blight", "synthetic:zeal", "synthetic:gloom",
     "synthetic:boon", "synthetic:bane", "synthetic:corrode", "synthetic:aegis",
     "synthetic:hallow", "synthetic:purge", "synthetic:rage", "synthetic:veil",
-    "synthetic:dazzle", "synthetic:rampage",
+    "synthetic:dazzle", "synthetic:rampage", "synthetic:bulwark",
 ]
 schools = { "synthetic:stone" = 3 }
 surrender_discount_bp = 1000

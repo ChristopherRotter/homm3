@@ -15,7 +15,7 @@ use crate::effects::Status;
 use crate::event::{Event, EventKind, Sink};
 use crate::geometry::Field;
 use crate::state::{BattleState, Stack, StackFlags, StackId, StackTraits};
-use crate::{control, effects, morale, war};
+use crate::{control, effects, morale, obstacles, war};
 
 /// Whether stack `s` is a blind stack whose turn has passed this round (BAT-MAG-024): it is passed
 /// over until its blindness ends.
@@ -63,7 +63,7 @@ pub(crate) fn next_active(state: &BattleState) -> Option<StackId> {
 /// Starts a new round: resets retaliation (with Counterstrike's extra ones, BAT-MAG-015), wait,
 /// morale, started and acted flags (the Defend bonus lasts until the stack's next activation,
 /// BAT-TRN-004) and the heroes' casts (BAT-MAG-001); then the timed effects lose a round or end
-/// (BAT-MAG-010).
+/// (BAT-MAG-010), then the spell obstacles (BAT-MAG-027).
 // rule: BAT-TRN-003, BAT-MAG-001
 pub(crate) fn start_round<S: Sink>(state: &mut BattleState, ruleset: &Ruleset, sink: &mut S) {
     state.round = state.round.saturating_add(1);
@@ -83,6 +83,7 @@ pub(crate) fn start_round<S: Sink>(state: &mut BattleState, ruleset: &Ruleset, s
         round: state.round,
     }));
     effects::count_down(state, ruleset, sink);
+    obstacles::count_down(state, sink);
 }
 
 /// How a turn ended.

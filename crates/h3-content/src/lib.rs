@@ -67,7 +67,8 @@ pub use ruleset::{
     SurrenderParams, TerrainId, TerrainInfo, WAR_MACHINE_KINDS,
 };
 pub use spell::{
-    EffectDuration, EffectEnd, MASTERY_NAMES, MAX_AREA_RADIUS, MAX_CHAIN_TARGETS, MAX_MASTERY,
-    MAX_SPELL_EFFECTS, SPECIALIST_LEVELS, SpecialistBonus, SpellArea, SpellChain, SpellEffect,
-    SpellMagic, SpellTarget, TargetConditions, TargetSide, TimedChange,
+    EffectDuration, EffectEnd, HexStep, MASTERY_NAMES, MAX_AREA_RADIUS, MAX_CHAIN_TARGETS,
+    MAX_MASTERY, MAX_OBSTACLE_HEXES, MAX_SPELL_EFFECTS, ObstacleKind, ObstacleShape,
+    SPECIALIST_LEVELS, SpecialistBonus, SpellArea, SpellChain, SpellEffect, SpellMagic,
+    SpellTarget, TargetConditions, TargetSide, TimedChange,
 };

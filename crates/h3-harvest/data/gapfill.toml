@@ -1536,6 +1536,13 @@ url = "docs/formats/installation.md"
 retrieved = "2026-10-07"
 
 [[source]]
+id = "exe-obstacle-spells"
+kind = "original-data"
+ref = "Heroes3.exe code reading (docs/formats/installation.md 7.15): Force Field (0x5A0759) places one object over the target hex, its upper right neighbour and from Advanced that one's upper left (descriptors 0x63CF18, 0x63CF2C, flags 0x22: blocked), 2 rounds; Fire Wall (0x5A0821) places one object per hex, 2 hexes below Advanced and 3 from it, the second the upper right neighbour for the attacker and the upper left for the defender, each 2 rounds with the value power x 10 + effect; the target test 0x5A39C0 wants every hex free (no object bit 0x3F, no stack, not a side column); 0x46A570 runs the Fire Wall trigger 0x59FCD0 for each hex a stack enters once per move and for its own hexes after an action without a move; the trigger damages a stack with f > 0 (no resistance roll) through 0x5A78E0 with the owner's hero as the caster; the round start removes an object whose rounds run out (0x476152); Teleport (0x5A1B4D) moves a stack to a free position without entering hexes (0x5A3700); Expert Dispel removes every object with a bit of 0x3C"
+url = "docs/formats/installation.md"
+retrieved = "2026-10-07"
+
+[[source]]
 id = "exe-anti-magic-mirror"
 kind = "original-data"
 ref = "Heroes3.exe code reading (docs/formats/installation.md 7.13): Anti-Magic stores v (0x4448F0, +0x460) and ends the active negative spells below level v that are not creature abilities (flag 0x8); while active 0x5A8090 returns 0 for every such spell below level v whatever its polarity, after Dispel's own test; Magic Mirror stores v (+0x4E4), read by 0x4487F0; the player's cast entry 0x59EC50 redirects a single-target cast at a living enemy stack (not Dispel) with random(1, 100) <= v to a random living stack of the caster's side (not an arrow tower), which 0x59FE30 rolls with the polarity tests skipped"
@@ -2136,7 +2143,8 @@ any_side = "advanced"
 needs_effect = true
 ignores_immunity = true
 spares = ["Poison"]
-sources = ["exe-dispel-cure"]
+clears_obstacles = "expert"     # E04b T5a, installation.md 7.15
+sources = ["exe-dispel-cure", "exe-obstacle-spells"]
 
 [[spells.other]]
 spell = "Cure"
@@ -2171,3 +2179,23 @@ sources = ["exe-spell-specialist", "vcmi-spell-specialist"]
 # The order in which a damage spell's schools meet the target's protections (quirk Q-0007).
 protection_order = ["Earth", "Air", "Fire", "Water"]
 protection_sources = ["exe-protection-spells"]
+
+# Battlefield spells (E04b T5a, pack format v13; installation.md 7.15). The hex target comes from
+# the flag word. A shape's steps lead from the target hex as the attacker casts it; Fire Wall's
+# are mirrored for the defender, Force Field's are not.
+[[spells.obstacle]]
+spell = "Force Field"
+obstacle = "wall"
+shape = { steps = ["top_right", "top_left"], hexes = [2, 2, 3, 3], rounds = 2 }
+sources = ["exe-obstacle-spells"]
+
+[[spells.obstacle]]
+spell = "Fire Wall"
+obstacle = "fire"
+shape = { steps = ["top_right", "top_left"], hexes = [2, 2, 3, 3], mirrored = true, separate = true, rounds = 2 }
+sources = ["exe-obstacle-spells"]
+
+[[spells.other]]
+spell = "Teleport"
+effects = ["teleport"]
+sources = ["exe-obstacle-spells"]

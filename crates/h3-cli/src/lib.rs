@@ -243,7 +243,9 @@ fn side_letter(side: BattleSide) -> &'static str {
 /// `"<A|D> shoot <stack> <hex>"`, `"<A|D> wait"`, `"<A|D> defend"`, `"<A|D> heal <stack>"`
 /// (format 7), `"<A|D> end-tactics"` (format 8), `"<A|D> retreat"` (format 9),
 /// `"<A|D> surrender"` (format 10), `"<A|D> cast <spell> none"`, `"<A|D> cast <spell> stack
-/// <stack>"` and `"<A|D> cast <spell> hex <hex>"` with the spell's handle (format 14).
+/// <stack>"` and `"<A|D> cast <spell> hex <hex>"` with the spell's handle (format 14), and a
+/// second target after the first, `"<A|D> cast <spell> stack <stack> hex <hex>"` (Teleport,
+/// format 17).
 pub fn format_command(side: BattleSide, command: Command) -> String {
     let s = side_letter(side);
     match command {
@@ -256,13 +258,21 @@ pub fn format_command(side: BattleSide, command: Command) -> String {
         Command::EndTactics => format!("{s} end-tactics"),
         Command::Retreat => format!("{s} retreat"),
         Command::Surrender => format!("{s} surrender"),
-        Command::Cast { spell, target } => {
-            let target = match target {
+        Command::Cast {
+            spell,
+            target,
+            second,
+        } => {
+            let text = |t| match t {
                 CastTarget::None => "none".to_owned(),
                 CastTarget::Stack(id) => format!("stack {}", id.0),
                 CastTarget::Hex(h) => format!("hex {}", h.0),
             };
-            format!("{s} cast {} {target}", spell.raw())
+            let second = match second {
+                CastTarget::None => String::new(),
+                other => format!(" {}", text(other)),
+            };
+            format!("{s} cast {} {}{second}", spell.raw(), text(target))
         }
     }
 }
@@ -300,19 +310,27 @@ pub fn parse_command(text: &str) -> Result<(BattleSide, Command), CliError> {
         (Some("end-tactics"), 2) => Command::EndTactics,
         (Some("retreat"), 2) => Command::Retreat,
         (Some("surrender"), 2) => Command::Surrender,
-        (Some("cast"), 4 | 5) => {
+        (Some("cast"), 4 | 5 | 7) => {
             let spell = parts
                 .get(2)
                 .and_then(|p| p.parse::<u16>().ok())
                 .map(SpellId::from_raw)
                 .ok_or_else(bad)?;
-            let target = match (parts.get(3).copied(), parts.len()) {
-                (Some("none"), 4) => CastTarget::None,
-                (Some("stack"), 5) => CastTarget::Stack(StackId(num(4)?)),
-                (Some("hex"), 5) => CastTarget::Hex(Hex(num(4)?)),
-                _ => return Err(bad()),
+            let target = |i: usize| match parts.get(i).copied() {
+                Some("stack") => Ok(CastTarget::Stack(StackId(num(i + 1)?))),
+                Some("hex") => Ok(CastTarget::Hex(Hex(num(i + 1)?))),
+                _ => Err(bad()),
             };
-            Command::Cast { spell, target }
+            let (target, second) = match (parts.get(3).copied(), parts.len()) {
+                (Some("none"), 4) => (CastTarget::None, CastTarget::None),
+                (_, 5) => (target(3)?, CastTarget::None),
+                _ => (target(3)?, target(5)?),
+            };
+            Command::Cast {
+                spell,
+                target,
+                second,
+            }
         }
         _ => return Err(bad()),
     };
@@ -664,14 +682,25 @@ mod tests {
                 Command::Cast {
                     spell: SpellId::from_raw(15),
                     target: CastTarget::Stack(StackId(9)),
+                    second: CastTarget::None,
                 },
                 "A cast 15 stack 9",
+            ),
+            (
+                BattleSide::Attacker,
+                Command::Cast {
+                    spell: SpellId::from_raw(63),
+                    target: CastTarget::Stack(StackId(2)),
+                    second: CastTarget::Hex(Hex(80)),
+                },
+                "A cast 63 stack 2 hex 80",
             ),
             (
                 BattleSide::Defender,
                 Command::Cast {
                     spell: SpellId::from_raw(21),
                     target: CastTarget::Hex(Hex(100)),
+                    second: CastTarget::None,
                 },
                 "D cast 21 hex 100",
             ),
@@ -680,6 +709,7 @@ mod tests {
                 Command::Cast {
                     spell: SpellId::from_raw(26),
                     target: CastTarget::None,
+                    second: CastTarget::None,
                 },
                 "A cast 26 none",
             ),
@@ -707,6 +737,10 @@ mod tests {
             "A cast 1 stack 300",
             "A cast 1 hex x",
             "A cast 1 obstacle 2",
+            "A cast 1 stack 2 hex",
+            "A cast 1 stack 2 hex 300",
+            "A cast 1 stack 2 obstacle 3",
+            "A cast 1 none 2 3 4",
             "A cast 70000 none",
         ] {
             assert!(parse_command(bad).is_err(), "{bad}");

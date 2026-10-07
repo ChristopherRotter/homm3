@@ -16,6 +16,7 @@ use crate::effects::ActiveEffect;
 use crate::event::{Event, Visibility};
 use crate::geometry::HexSet;
 use crate::hero::{HeroView, OwnHeroView};
+use crate::obstacles::SpellObstacle;
 use crate::state::{BattleState, STACK_CAPACITY, Stack, StackId};
 use crate::tactics::TacticsPhase;
 
@@ -52,6 +53,9 @@ pub struct Observation {
     pub terrain: Option<h3_content::TerrainId>,
     /// The timed effects on stacks, by stack and spell (public; BAT-MAG-009).
     pub effects: Vec<ActiveEffect>,
+    /// The spell obstacles the viewer sees, in the order they were placed (BAT-MAG-027; Force
+    /// Field and Fire Wall are public, ADR-0014 point 7).
+    pub spell_obstacles: Vec<SpellObstacle>,
 }
 
 /// The observation of `state` for `viewer`. `ruleset` must be the one the battle was built
@@ -83,6 +87,7 @@ pub fn observe(state: &BattleState, ruleset: &Ruleset, viewer: BattleSide) -> Ob
         }),
         terrain: state.terrain,
         effects: state.effects().to_vec(),
+        spell_obstacles: state.spell_obstacles().to_vec(),
     }
 }
 

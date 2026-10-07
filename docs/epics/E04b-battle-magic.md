@@ -1,6 +1,6 @@
 # E04b — Battle magic
 
-Status: **in progress** (refined 2026-10-05; increment 1 = T1–T2, done 2026-10-06: T1, ADR-0014 accepted, T2a–T2e, batch 2a evaluated; increment 2 = T3 in parts, then T4 (Q46, Q48): T3a, T3b1a, T3b1b, T3b2, T3c1, T3c2, T3c3 (batch 2b compiled), T4a, T4b and T4c done; checkpoint before T5–T8 (Q53)) · Follows E04a (closed 2026-10-05) · Part of the former E04 (OPEN-QUESTIONS Q27): E04a heroes in battle, **E04b** battle magic (this one), E04c sieges and special battlefields.
+Status: **in progress** (refined 2026-10-05; increment 1 = T1–T2, done 2026-10-06: T1, ADR-0014 accepted, T2a–T2e, batch 2a evaluated; increment 2 = T3 in parts, then T4 (Q46, Q48): T3a, T3b1a, T3b1b, T3b2, T3c1, T3c2, T3c3 (batch 2b compiled), T4a, T4b and T4c done; increment 3 = T5 in three parts (Q54): T5a done, T5b waits for an experiment (Q55)) · Follows E04a (closed 2026-10-05) · Part of the former E04 (OPEN-QUESTIONS Q27): E04a heroes in battle, **E04b** battle magic (this one), E04c sieges and special battlefields.
 
 ## Goal
 
@@ -34,7 +34,7 @@ Earthquake, sieges and the moat (E04c). The special battlefields' magic (Magic P
 - [x] **T2 Casting core and direct-damage spells** — done 2026-10-06 (increment 1): T2a + T2b (2026-10-05), T2c + T2d with batch 2a (Q44), then T2e, batch 2a folded in (the user's seam, 2026-10-06). Record: [`E04b-log.md`](E04b-log.md).
 - [ ] **T3 Timed effects on stacks** (refined below): buffs and debuffs, Mass versions at Expert, durations and the artifacts that change them, Dispel, Cure (S-16, S-17, S-19).
 - [x] **T4 Control spells and spell defences** — done 2026-10-07 (Q52, Q53): Berserk, Hypnotize, Forgetfulness, Blind; Anti-Magic, Magic Mirror (S-09, S-10, S-13 settled, S-11 unconfirmed). In three parts: T4a, T4b, T4c (below).
-- [ ] T5 Battlefield spells: Quicksand and Land Mine (hidden, owner-side visibility), Force Field, Fire Wall, Remove Obstacle, Teleport.
+- [ ] **T5 Battlefield spells** (refined 2026-10-07, Q54): Force Field, Fire Wall, Teleport (T5a), Remove Obstacle (T5b), Quicksand and Land Mine (hidden, owner-side visibility; T5c). In three parts (below).
 - [ ] T6 Life and summons: Resurrection, Animate Dead, Sacrifice, Clone, the four Elementals; stacks created in battle (`StackOrigin`), temporary resurrection in the outcome (S-15, S-20, S-21).
 - [ ] T7 Creature magic: spell-like attack effects (curse, blind, petrify, bind, dispel, weakness, age, poison, …), spellcasting creatures, creature effects on mana and costs (S-12, S-14; batch 2a R6: a dead Pegasus' surcharge or the Mages' discount, read the cost code first; survey §13).
 - [ ] T8 Hero-side long tail: the remaining magic artifacts (opening spells, spell-level limits, the Tomes, spell scrolls as instances, "known spells need a worn spell book"), Eagle Eye's outcome inputs, profile-level overrides for data quirks (Q-0006, S-05).
@@ -70,6 +70,14 @@ The 13 direct-damage spells: Magic Arrow, Ice Bolt, Lightning Bolt, Titan's Ligh
 **Checkpoint after T4a** (2026-10-07, Q53): the user chose T4b + T4c in one session and, after the reading, the quirk classes: S-09 the rule, S-10 fix-optional (Q-0011), S-11 unconfirmed (the engine's pathfinding), S-13 fix-optional.
 
 **Checkpoint after T3c2** (2026-10-07, Q52): the user chose batch 2b now (T3c3, played while T4 proceeds), T4 in three parts by mechanism with T4a this session (a checkpoint after), and kept `Rate`'s f32 bit pattern.
+
+### T5 — Battlefield spells (refined 2026-10-07, Q54)
+
+- [x] **T5a Visible spell obstacles and Teleport** — done 2026-10-07: read in the executable (`installation.md` §7.15); pack format v13 (effect kinds `obstacle` with a shape and `teleport`, `clears_obstacles`), BAT-MAG-027 (spell obstacles, Force Field), BAT-MAG-028 (Fire Wall: entering and acting on its hexes), BAT-MAG-029 (Teleport, the cast's second target), BAT-MAG-030 (Expert Dispel's clearing), BAT-MOV-003 (a walker's path, the engine's own on ties); state hash v26, ruleset hash v23, replay format v17, action encoding v10, C ABI v10; replays and `bench-check` re-baselined. Record: [`E04b-log.md`](E04b-log.md).
+- [ ] **T5b Remove Obstacle** (waits for Q55): the natural obstacles as removable pieces with their anchors (a seam change of `BattleSetup.obstacles`; the user decides after an experiment confirms the anchor hexes), Remove Obstacle by mastery (natural ones; Advanced also Fire Wall; Expert any spell obstacle), the anchors in Fire Wall's and Force Field's test.
+- [ ] **T5c Quicksand and Land Mine**: hidden from the other side (ADR-0014 point 7), revealed when triggered or to a side with natives; legality and paths by the acting side's view; a move into an unseen pit stops there.
+
+**Checkpoint after T4c** (2026-10-07, Q54): the user chose T5a + T5b for the session (a checkpoint before T5c), kept S-17 as data in every profile and the T4c agent decisions.
 
 ### T4 — Control spells and spell defences (refined 2026-10-07, Q52)
 

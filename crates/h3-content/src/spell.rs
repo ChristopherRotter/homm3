@@ -259,6 +259,11 @@ pub enum SpellEffect {
     Dispel,
     /// Heals the stack's top creature by the value, raising none (BAT-MAG-017, E04b T3b1b).
     Heal,
+    /// Places a battlefield obstacle of this kind on the spell's [`ObstacleShape`] at the target
+    /// hex; it reaches no stack (BAT-MAG-027, E04b T5a, v13).
+    Obstacle(ObstacleKind),
+    /// Moves the target stack to the cast's second target, a hex (BAT-MAG-029, E04b T5a, v13).
+    Teleport,
 }
 
 impl SpellEffect {
@@ -269,6 +274,8 @@ impl SpellEffect {
             Self::Timed(_) => "timed",
             Self::Dispel => "dispel",
             Self::Heal => "heal",
+            Self::Obstacle(_) => "obstacle",
+            Self::Teleport => "teleport",
         }
     }
 
@@ -276,18 +283,166 @@ impl SpellEffect {
     pub const fn timed(self) -> Option<TimedChange> {
         match self {
             Self::Timed(c) => Some(c),
-            Self::Damage | Self::Dispel | Self::Heal => None,
+            Self::Damage | Self::Dispel | Self::Heal | Self::Obstacle(_) | Self::Teleport => None,
         }
     }
 
-    /// Canonical code (hash): the kind, then the change.
+    /// Whether the kind acts on the battlefield rather than on the stacks a cast reaches
+    /// (obstacles, Teleport): such an effect is the spell's only one.
+    pub const fn is_field(self) -> bool {
+        matches!(self, Self::Obstacle(_) | Self::Teleport)
+    }
+
+    /// Canonical code (hash): the kind, then the change or the obstacle kind.
     fn code(self) -> [u8; 2] {
         match self {
             Self::Damage => [0, 0],
             Self::Timed(c) => [1, c as u8],
             Self::Dispel => [2, 0],
             Self::Heal => [3, 0],
+            Self::Obstacle(k) => [4, k as u8],
+            Self::Teleport => [5, 0],
         }
+    }
+}
+
+/// What a spell's battlefield obstacle does (E04b T5; ADR-0014 point 7). Each kind is one rule.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
+pub enum ObstacleKind {
+    /// Blocks its hexes like a natural obstacle: no stack enters or stands on them (Force Field;
+    /// BAT-MAG-027).
+    Wall,
+    /// Burns a stack that enters one of its hexes, or acts while standing on one, with the
+    /// spell's damage; the hexes stay passable (Fire Wall; BAT-MAG-028).
+    Fire,
+}
+
+impl ObstacleKind {
+    /// All values, in code order.
+    pub const ALL: [Self; 2] = [Self::Wall, Self::Fire];
+
+    /// Pack name.
+    pub const fn name(self) -> &'static str {
+        match self {
+            Self::Wall => "wall",
+            Self::Fire => "fire",
+        }
+    }
+
+    /// Looks a value up by its pack name.
+    pub fn from_name(name: &str) -> Option<Self> {
+        Self::ALL.into_iter().find(|k| k.name() == name)
+    }
+}
+
+/// A step from a hex to one of its neighbours (the battlefield's geometry, BAT-GEO-001).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
+pub enum HexStep {
+    /// Same row, next column.
+    Right,
+    /// Row below, towards the right.
+    BottomRight,
+    /// Row below, towards the left.
+    BottomLeft,
+    /// Same row, previous column.
+    Left,
+    /// Row above, towards the left.
+    TopLeft,
+    /// Row above, towards the right.
+    TopRight,
+}
+
+impl HexStep {
+    /// All values, in code order.
+    pub const ALL: [Self; 6] = [
+        Self::Right,
+        Self::BottomRight,
+        Self::BottomLeft,
+        Self::Left,
+        Self::TopLeft,
+        Self::TopRight,
+    ];
+
+    /// Pack name.
+    pub const fn name(self) -> &'static str {
+        match self {
+            Self::Right => "right",
+            Self::BottomRight => "bottom_right",
+            Self::BottomLeft => "bottom_left",
+            Self::Left => "left",
+            Self::TopLeft => "top_left",
+            Self::TopRight => "top_right",
+        }
+    }
+
+    /// Looks a value up by its pack name.
+    pub fn from_name(name: &str) -> Option<Self> {
+        Self::ALL.into_iter().find(|s| s.name() == name)
+    }
+
+    /// The step mirrored left to right (the defender's view of an attacker's step).
+    #[must_use]
+    pub const fn mirrored(self) -> Self {
+        match self {
+            Self::Right => Self::Left,
+            Self::BottomRight => Self::BottomLeft,
+            Self::BottomLeft => Self::BottomRight,
+            Self::Left => Self::Right,
+            Self::TopLeft => Self::TopRight,
+            Self::TopRight => Self::TopLeft,
+        }
+    }
+}
+
+/// Most hexes one obstacle spell covers.
+pub const MAX_OBSTACLE_HEXES: usize = 8;
+
+/// Where an obstacle spell's obstacles go and how long they last (E04b T5a, v13; the original's
+/// object descriptors, `docs/formats/installation.md` §7.15).
+#[derive(Debug, Clone, PartialEq, Eq, Default)]
+pub struct ObstacleShape {
+    /// The hexes after the target hex: each the previous one's neighbour in this direction, as
+    /// the attacker's hero casts it.
+    pub steps: alloc::vec::Vec<HexStep>,
+    /// How many hexes a cast covers by mastery (none, basic, advanced, expert): the target hex
+    /// and the first steps' hexes; 1 to `steps + 1`.
+    pub hexes: [u8; 4],
+    /// The defender's hero casts the steps mirrored left to right (Fire Wall).
+    pub mirrored: bool,
+    /// Each hex is an obstacle of its own (Fire Wall); otherwise one obstacle covers them all.
+    pub separate: bool,
+    /// Rounds an obstacle lasts, the cast's included: it loses one at every round start and goes
+    /// when none is left (BAT-MAG-027).
+    pub rounds: u8,
+}
+
+impl ObstacleShape {
+    /// Why the shape is invalid, if it is.
+    fn error(&self) -> Option<&'static str> {
+        let most = self.steps.len() + 1;
+        if most > MAX_OBSTACLE_HEXES {
+            Some("an obstacle covers at most 8 hexes")
+        } else if self.hexes.iter().any(|&n| n == 0 || usize::from(n) > most) {
+            Some("an obstacle's hexes must be 1..=steps + 1")
+        } else if self.rounds == 0 {
+            Some("an obstacle lasts at least 1 round")
+        } else {
+            None
+        }
+    }
+}
+
+impl CanonicalHash for ObstacleShape {
+    /// Steps (count, codes), hexes by mastery, mirrored, separate, rounds.
+    fn hash_into(&self, h: &mut StateHasher) {
+        h.write_len(self.steps.len());
+        for &s in &self.steps {
+            h.write_u8(s as u8);
+        }
+        h.write_bytes(&self.hexes);
+        h.write_bool(self.mirrored);
+        h.write_bool(self.separate);
+        h.write_u8(self.rounds);
     }
 }
 
@@ -472,6 +627,11 @@ pub struct SpellMagic {
     /// A stack with an active effect that makes one of these changes is no target (Hypnotize:
     /// Magic Mirror; v12).
     pub refuses: alloc::vec::Vec<TimedChange>,
+    /// Where an obstacle effect's obstacles go (v13).
+    pub obstacle: Option<ObstacleShape>,
+    /// The lowest mastery (1..=3) from which a cast also removes every spell obstacle of the
+    /// battlefield (Dispel at Expert; BAT-MAG-030, v13).
+    pub clears_obstacles_from: Option<u8>,
 }
 
 impl SpellMagic {
@@ -510,6 +670,19 @@ impl SpellMagic {
     /// Whether it has a dispel effect.
     pub fn dispels(&self) -> bool {
         self.effects.contains(&SpellEffect::Dispel)
+    }
+
+    /// The kind of obstacle it places, if it places one.
+    pub fn obstacle_kind(&self) -> Option<ObstacleKind> {
+        self.effects.iter().find_map(|e| match *e {
+            SpellEffect::Obstacle(k) => Some(k),
+            _ => None,
+        })
+    }
+
+    /// Whether it moves its target stack to a second target (Teleport).
+    pub fn teleports(&self) -> bool {
+        self.effects.contains(&SpellEffect::Teleport)
     }
 }
 
@@ -578,6 +751,32 @@ impl SpellMagic {
         } else if self.needs_effect && self.target != SpellTarget::Stack {
             Some("needs_effect needs target stack")
         } else {
+            self.field_error()
+        }
+    }
+
+    /// Why the battlefield effects (obstacles, Teleport; v13) are invalid, if they are.
+    fn field_error(&self) -> Option<&'static str> {
+        let field = self.effects.iter().any(|e| e.is_field());
+        if field && self.effects.len() > 1 {
+            Some("an obstacle or teleport effect is the spell's only effect")
+        } else if field && (self.area.is_some() || self.chain.is_some() || self.mass_from.is_some())
+        {
+            Some("an obstacle or teleport spell has no area, chain or mass version")
+        } else if self.obstacle_kind().is_some() != self.obstacle.is_some() {
+            Some("an obstacle effect and its shape go together")
+        } else if self.obstacle_kind().is_some() && self.target != SpellTarget::Hex {
+            Some("an obstacle effect needs target hex")
+        } else if self.teleports() && self.target != SpellTarget::Stack {
+            Some("a teleport effect needs target stack")
+        } else if let Some(e) = self.obstacle.as_ref().and_then(ObstacleShape::error) {
+            Some(e)
+        } else if self
+            .clears_obstacles_from
+            .is_some_and(|m| !self.dispels() || !(1..=MAX_MASTERY).contains(&m))
+        {
+            Some("clears_obstacles needs a dispel effect and a mastery 1..=3")
+        } else {
             None
         }
     }
@@ -589,7 +788,8 @@ impl CanonicalHash for SpellMagic {
     /// cumulative (v17); any side (0: never), needs effect, ignores immunity (v19); the
     /// specialist bonus (presence, then the bonus; v20); what ends it, the fixed mass version
     /// (0: none; v21); a fixed duration's rounds, the health limit, the refused changes (count,
-    /// codes; v22).
+    /// codes; v22); the obstacle shape (presence, then the shape) and the mastery that clears
+    /// obstacles (0: none; v23).
     fn hash_into(&self, h: &mut StateHasher) {
         h.write_u8(self.target as u8);
         h.write_bool(self.area.is_some());
@@ -629,6 +829,11 @@ impl CanonicalHash for SpellMagic {
         for &c in &self.refuses {
             h.write_u8(c as u8);
         }
+        h.write_bool(self.obstacle.is_some());
+        if let Some(shape) = &self.obstacle {
+            shape.hash_into(h);
+        }
+        h.write_u8(self.clears_obstacles_from.unwrap_or(0));
     }
 }
 
@@ -1223,5 +1428,244 @@ mod tests {
             ..base.clone()
         };
         assert_ne!(digest(&fixed(254)), digest(&fixed(255)));
+        let wall = |shape: ObstacleShape| SpellMagic {
+            target: SpellTarget::Hex,
+            effects: vec![SpellEffect::Obstacle(ObstacleKind::Wall)],
+            obstacle: Some(shape),
+            ..SpellMagic::default()
+        };
+        let shape = ObstacleShape {
+            steps: vec![HexStep::TopRight],
+            hexes: [2; 4],
+            mirrored: false,
+            separate: false,
+            rounds: 2,
+        };
+        let shapes = [
+            ObstacleShape {
+                steps: vec![HexStep::TopLeft],
+                ..shape.clone()
+            },
+            ObstacleShape {
+                hexes: [1, 1, 2, 2],
+                ..shape.clone()
+            },
+            ObstacleShape {
+                mirrored: true,
+                ..shape.clone()
+            },
+            ObstacleShape {
+                separate: true,
+                ..shape.clone()
+            },
+            ObstacleShape {
+                rounds: 3,
+                ..shape.clone()
+            },
+        ];
+        for s in shapes {
+            assert_ne!(
+                digest(&wall(s.clone())),
+                digest(&wall(shape.clone())),
+                "{s:?}"
+            );
+        }
+        let fire = SpellMagic {
+            effects: vec![SpellEffect::Obstacle(ObstacleKind::Fire)],
+            ..wall(shape.clone())
+        };
+        assert_ne!(digest(&fire), digest(&wall(shape)));
+        let dispel = SpellMagic {
+            effects: vec![SpellEffect::Dispel],
+            ..base.clone()
+        };
+        let clears = SpellMagic {
+            clears_obstacles_from: Some(3),
+            ..dispel.clone()
+        };
+        assert_ne!(digest(&clears), digest(&dispel));
+    }
+
+    #[test]
+    fn battlefield_effects() {
+        for k in ObstacleKind::ALL {
+            assert_eq!(ObstacleKind::from_name(k.name()), Some(k));
+            let e = SpellEffect::Obstacle(k);
+            assert_eq!(
+                (e.name(), e.timed(), e.is_field()),
+                ("obstacle", None, true)
+            );
+        }
+        assert_eq!(ObstacleKind::from_name("pit"), None);
+        for s in HexStep::ALL {
+            assert_eq!(HexStep::from_name(s.name()), Some(s));
+            assert_eq!(s.mirrored().mirrored(), s);
+            assert_ne!(s.mirrored(), s);
+        }
+        assert_eq!(HexStep::TopRight.mirrored(), HexStep::TopLeft);
+        assert_eq!(HexStep::from_name("up"), None);
+        let teleport = SpellMagic {
+            target: SpellTarget::Stack,
+            side: TargetSide::Own,
+            effects: vec![SpellEffect::Teleport],
+            ..SpellMagic::default()
+        };
+        assert_eq!(SpellEffect::Teleport.name(), "teleport");
+        assert_eq!(SpellEffect::Teleport.timed(), None);
+        assert!(teleport.teleports() && !SpellEffect::Damage.is_field());
+        assert_eq!(teleport.obstacle_kind(), None);
+        assert_eq!(teleport.error(true), None);
+        let shape = ObstacleShape {
+            steps: vec![HexStep::TopRight, HexStep::TopLeft],
+            hexes: [2, 2, 3, 3],
+            mirrored: true,
+            separate: true,
+            rounds: 2,
+        };
+        let fire = SpellMagic {
+            target: SpellTarget::Hex,
+            effects: vec![SpellEffect::Obstacle(ObstacleKind::Fire)],
+            obstacle: Some(shape.clone()),
+            ..SpellMagic::default()
+        };
+        assert_eq!(fire.error(true), None);
+        assert_eq!(fire.obstacle_kind(), Some(ObstacleKind::Fire));
+        assert!(!fire.teleports());
+        let dispel = SpellMagic {
+            target: SpellTarget::Stack,
+            effects: vec![SpellEffect::Dispel],
+            clears_obstacles_from: Some(3),
+            ..SpellMagic::default()
+        };
+        assert_eq!(dispel.error(true), None);
+        let bad = [
+            (
+                SpellMagic {
+                    effects: vec![SpellEffect::Teleport, SpellEffect::Damage],
+                    ..teleport.clone()
+                },
+                "only effect",
+            ),
+            (
+                SpellMagic {
+                    mass_from: Some(3),
+                    ..teleport.clone()
+                },
+                "no area, chain or mass",
+            ),
+            (
+                SpellMagic {
+                    area: Some(SpellArea {
+                        inner: 0,
+                        radius: [1; 4],
+                    }),
+                    ..fire.clone()
+                },
+                "no area, chain or mass",
+            ),
+            (
+                SpellMagic {
+                    chain: Some(SpellChain {
+                        targets: [2; 4],
+                        factor_bp: 5000,
+                    }),
+                    ..teleport.clone()
+                },
+                "no area, chain or mass",
+            ),
+            (
+                SpellMagic {
+                    obstacle: None,
+                    ..fire.clone()
+                },
+                "go together",
+            ),
+            (
+                SpellMagic {
+                    obstacle: Some(shape.clone()),
+                    ..teleport.clone()
+                },
+                "go together",
+            ),
+            (
+                SpellMagic {
+                    target: SpellTarget::Stack,
+                    ..fire.clone()
+                },
+                "needs target hex",
+            ),
+            (
+                SpellMagic {
+                    target: SpellTarget::Hex,
+                    ..teleport.clone()
+                },
+                "needs target stack",
+            ),
+            (
+                SpellMagic {
+                    obstacle: Some(ObstacleShape {
+                        steps: vec![HexStep::Right; 8],
+                        ..shape.clone()
+                    }),
+                    ..fire.clone()
+                },
+                "at most 8",
+            ),
+            (
+                SpellMagic {
+                    obstacle: Some(ObstacleShape {
+                        hexes: [0, 2, 3, 3],
+                        ..shape.clone()
+                    }),
+                    ..fire.clone()
+                },
+                "1..=steps + 1",
+            ),
+            (
+                SpellMagic {
+                    obstacle: Some(ObstacleShape {
+                        hexes: [2, 2, 3, 4],
+                        ..shape.clone()
+                    }),
+                    ..fire.clone()
+                },
+                "1..=steps + 1",
+            ),
+            (
+                SpellMagic {
+                    obstacle: Some(ObstacleShape {
+                        rounds: 0,
+                        ..shape.clone()
+                    }),
+                    ..fire.clone()
+                },
+                "at least 1 round",
+            ),
+            (
+                SpellMagic {
+                    clears_obstacles_from: Some(0),
+                    ..dispel.clone()
+                },
+                "clears_obstacles",
+            ),
+            (
+                SpellMagic {
+                    clears_obstacles_from: Some(4),
+                    ..dispel.clone()
+                },
+                "clears_obstacles",
+            ),
+            (
+                SpellMagic {
+                    clears_obstacles_from: Some(3),
+                    ..teleport.clone()
+                },
+                "clears_obstacles",
+            ),
+        ];
+        for (m, want) in bad {
+            let got = m.error(true);
+            assert!(got.is_some_and(|e| e.contains(want)), "{m:?}: {got:?}");
+        }
     }
 }

@@ -4,13 +4,13 @@ Living state between sessions; every session reads it first. Rules (`docs/08-wor
 
 ## Current state
 
-- Branch `e04b-battle-magic` on GitHub (pushed after every commit; Q49); increment 1 done (T1, T2a–T2e, batch 2a evaluated). **Increment 2 (Q46, Q48): T3 in parts, then T4; T3a–T3c3 and T4a–T4c done** (Q53); the user's checkpoint before T5–T8 is next; batch 2b with the user. Sandbox: `docs/08-work-process.md`, "Cloud sandbox and syncing".
+- Branch `e04b-battle-magic` on GitHub (pushed after every commit; Q49); increments 1 (T1–T2) and 2 (T3, T4) done. **Increment 3 (Q54): T5 in three parts; T5a done; T5b (Remove Obstacle) waits for an experiment on anchor hexes (Q55)**; batch 2b with the user. Sandbox: `docs/08-work-process.md`, "Cloud sandbox and syncing".
 - **GitHub and CI:** `ChristopherRotter/homm3` (private); `.github/workflows/ci.yml` runs `cargo xtask verify` on Linux for PRs, `master` and weekly; changes reach `master` by pull request; a `bench-check` re-baseline must hold on the CI runner.
-- **Done:** survey `docs/rules/surveys/E04b-magic.md` (§12–§15), ADR-0014 accepted (point 5 amended, Q47), design note `docs/epics/E04b-design.md`. Castable by heroes: the 13 damage spells, the 14 value spells, Shield, Air Shield, the Protections (Q-0007), Slayer, Counterstrike (Q-0008), Dispel, Cure, Fire Shield (Q-0010) and Frenzy (Q-0009) (BAT-MAG-001 to 019), the spell specialists (BAT-MAG-020), Anti-Magic and Magic Mirror (BAT-MAG-021/022), Forgetfulness and Blind (BAT-MAG-023/024), Berserk and Hypnotize (BAT-MAG-025/026; a stack's `controller()` commands it), all after the executable's code (`installation.md` §7.8–§7.14). **Physical damage follows the executable's three truncated stages** under Q-0005 (Q50, BAT-DMG-002, `h3_kernel::arith::X87` at 53 bits).
+- **Done:** survey `docs/rules/surveys/E04b-magic.md` (§12–§15), ADR-0014 accepted (point 5 amended, Q47), design note `docs/epics/E04b-design.md`. Castable by heroes: the 13 damage spells, the 14 value spells, Shield, Air Shield, the Protections (Q-0007), Slayer, Counterstrike (Q-0008), Dispel, Cure, Fire Shield (Q-0010) and Frenzy (Q-0009) (BAT-MAG-001 to 019), the spell specialists (BAT-MAG-020), Anti-Magic and Magic Mirror (BAT-MAG-021/022), Forgetfulness and Blind (BAT-MAG-023/024), Berserk and Hypnotize (BAT-MAG-025/026; a stack's `controller()` commands it), Force Field, Fire Wall, Teleport and Expert Dispel's clearing (BAT-MAG-027 to 030; `h3_battle::obstacles`), all after the executable's code (`installation.md` §7.8–§7.15). **Physical damage follows the executable's three truncated stages** under Q-0005 (Q50, BAT-DMG-002, `h3_kernel::arith::X87` at 53 bits).
 - **Hero rates** cross the seam as `h3_contracts::Rate` (basis points plus, under Q-0005, the original's single-precision value as an f32 bit pattern where it differs; Q45 (b), T3c2).
-- **Next:** the user's checkpoint: confirm S-17 (Berserk's 255 rounds as data in every profile, Q53) and pick the next of T5–T8 (epic file); batch 2b (`experiments/specs/E04b-batch-2b.toml`) is with the user: fold it in when its results are in.
+- **Next:** the user decides Q55 (the setup's natural obstacles as pieces with anchors) after an experiment on anchor hexes; then T5b (Remove Obstacle), T5c (Quicksand, Land Mine); batch 2b (`experiments/specs/E04b-batch-2b.toml`) is with the user: fold it in when its results are in.
 - **Open for later tasks:** batch 2a R6's costs (T7); Q43 (sprite offset, keep the approximation); creature casters' re-casts (T7); the damage stages' creature factors; Dispel's and Fire Shield's loose ends (Sphere T8, obstacles T5, the Sultans' shield T7; BACKLOG); T4a's and T4c's loose ends (BACKLOG).
-- Versions: state hash v25, ruleset hash v22, replay format v16, action encoding v9, C ABI v9, observation encoding v6; pack format v12.
+- Versions: state hash v26, ruleset hash v23, replay format v17, action encoding v10, C ABI v10, observation encoding v6; pack format v13.
 - Working agreement: increments of a couple of tasks with a user checkpoint (Q41); the user confirms seams and ADRs; token efficiency beats speed (AGENTS.md); the user plays experiment maps in SoD with plain HD and commits the results.
 
 ## Standing traps
@@ -51,14 +51,14 @@ Living state between sessions; every session reads it first. Rules (`docs/08-wor
 
 ## Recent sessions
 
+### 2026-10-07 (twenty-sixth) — E04b T5a, T5b in progress
+
+Linked cloud session. Q54: T5a + T5b, then a checkpoint; S-17 and the T4c decisions kept. T5a done (`installation.md` §7.15; pack format v13; BAT-MAG-027 to 030, BAT-MOV-003; old workload +0.58 %; replays and `bench-check` re-baselined). T5b waits: the user wants the anchor hexes (Q55) observed before the seam decision. Detail: `docs/epics/E04b-log.md` (T5a).
+
 ### 2026-10-07 (twenty-fifth) — E04b T4b and T4c: Forgetfulness, Blind, Berserk, Hypnotize
 
-Linked cloud session. The user's checkpoint (Q53): T4b + T4c; after the reading (`installation.md` §7.14) S-09 the rule in every profile (melee and retaliation halved too, no flag), S-10 fix-optional (Q-0011), S-11 unconfirmed, S-13 fix-optional (Q-0012). T4b: pack format v11, BAT-MAG-023/024, `StackFlags::STARTED`, state hash v25; old workload −0.08 %. T4c: pack format v12, BAT-MAG-025/026, `Stack::controller()`, the berserk turn (`control.rs`), Q-0011/Q-0012, ruleset hash v22; old workload +0.68 %. Replays and `bench-check` re-baselined. Detail: `docs/epics/E04b-log.md` (T4b, T4c).
+Linked cloud session. Q53: T4b + T4c; after the reading (`installation.md` §7.14) S-09 the rule (no flag), S-10 fix-optional (Q-0011), S-11 unconfirmed, S-13 fix-optional (Q-0012). T4b: pack format v11, BAT-MAG-023/024, `StackFlags::STARTED`, state hash v25; old workload −0.08 %. T4c: pack format v12, BAT-MAG-025/026, `Stack::controller()`, the berserk turn (`control.rs`), Q-0011/Q-0012, ruleset hash v22; old workload +0.68 %. Replays and `bench-check` re-baselined. Detail: `docs/epics/E04b-log.md` (T4b, T4c).
 
 ### 2026-10-07 (twenty-fourth) — E04b T3c3 and T4a: batch 2b, Anti-Magic, Magic Mirror
 
 Linked cloud session. The user's checkpoint (Q52): batch 2b now, T4 in three parts (T4a defences, T4b Forgetfulness and Blind, T4c control), T3c3 + T4a this session; `Rate` keeps the f32 bit pattern. T3c3: batch 2b compiled (six encounters, predictions from the engine). T4a: read in the executable (`installation.md` §7.13), pack format v10, BAT-MAG-021/022, state hash v24 (Bloodlust's and Precision's inline bonuses `u8`: `BattleState` stays 3 904 bytes); old workload +0.31 %; replays and `bench-check` re-baselined. Detail: `docs/epics/E04b-log.md` (T3c3, T4a).
-
-### 2026-10-07 (twenty-third) — E04b T3c1 and T3c2: spell specialists, Q45
-
-Linked cloud session. The user classified Fire Shield's base as fix-optional (Q-0010), kept the breath's second stack as the rule, and chose T3c1 + T3c2 (Q51). T3c1: read 0x4E5FF0 (`installation.md` §7.12), pack format v9, BAT-MAG-020, ruleset hash v20 (old workload +0.05 %). T3c2: `Rate` across the seam, the derivation in x87 single precision, state hash v23, replay format v16 (+0.71 % Ir). Detail: `docs/epics/E04b-log.md` (T3c1, T3c2).

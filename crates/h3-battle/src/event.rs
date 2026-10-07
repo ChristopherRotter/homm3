@@ -7,7 +7,7 @@ use alloc::vec::Vec;
 use h3_content::SpellId;
 use h3_contracts::{BattleResult, BattleSide};
 
-use crate::geometry::Hex;
+use crate::geometry::{Hex, HexSet};
 use crate::magic::CastTarget;
 use crate::state::StackId;
 
@@ -182,6 +182,8 @@ pub enum EventKind {
         spell: SpellId,
         /// What it was aimed at.
         target: CastTarget,
+        /// Its second target (Teleport's destination), else none.
+        second: CastTarget,
     },
     /// A stack resisted a spell (BAT-MAG-008); if it was the stack the spell was aimed at, the
     /// whole spell is resisted (BAT-MAG-007).
@@ -238,6 +240,42 @@ pub enum EventKind {
         target: StackId,
         /// The spell.
         spell: SpellId,
+    },
+    /// A spell placed an obstacle (BAT-MAG-027).
+    ObstaclePlaced {
+        /// The side whose hero cast it.
+        side: BattleSide,
+        /// The spell.
+        spell: SpellId,
+        /// Its hexes.
+        hexes: HexSet,
+    },
+    /// A spell obstacle went: its last round passed or a spell removed it (BAT-MAG-027,
+    /// BAT-MAG-030).
+    ObstacleRemoved {
+        /// The spell that placed it.
+        spell: SpellId,
+        /// Its hexes.
+        hexes: HexSet,
+    },
+    /// A stack entered a hex of a spell obstacle that acts on it, or acted on one (Fire Wall,
+    /// BAT-MAG-028); what it does follows (`SpellDamage`).
+    ObstacleTriggered {
+        /// The stack.
+        stack: StackId,
+        /// The spell that placed the obstacle.
+        spell: SpellId,
+        /// The hex.
+        hex: Hex,
+    },
+    /// A spell moved a stack (Teleport, BAT-MAG-029).
+    Teleported {
+        /// The stack.
+        stack: StackId,
+        /// Its position before.
+        from: Hex,
+        /// Its position now.
+        to: Hex,
     },
     /// The battle ended (BAT-END-001/002).
     BattleEnded {

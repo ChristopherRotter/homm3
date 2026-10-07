@@ -508,6 +508,7 @@ needs_effect = true                 # a stack it is aimed at needs an effect
 ignores_immunity = true             # no immunity, resistance or aura
 mass = "expert"
 spares = ["drag"]                   # it ends every effect but Drag's
+clears_obstacles = "expert"         # v13: at Expert it also removes every spell obstacle
 effects = [{ kind = "dispel" }]
 
 [[spell]]                           # format v7: a heal that ends three spells, like Cure
@@ -651,6 +652,47 @@ health_limit = true
 refuses = ["magic_mirror"]
 counters = ["rampage"]
 effects = [{ kind = "timed", change = "hypnotize" }]
+
+[[spell]]                           # format v13 (E04b T5a): a Force Field, 2 hexes, 3 from Advanced
+id = "bulwark"
+name = "Bulwark"
+category = "combat"
+level = 3
+schools = ["stone"]
+cost = [12, 9, 9, 9]
+effect = [0, 0, 0, 0]
+polarity = "neutral"
+target = "hex"
+obstacle = { steps = ["top_right", "top_left"], hexes = [2, 2, 3, 3], rounds = 2 }
+effects = [{ kind = "obstacle", obstacle = "wall" }]
+
+[[spell]]                           # format v13: a Fire Wall, one obstacle per hex, mirrored for
+id = "scorch"                       # the defender
+name = "Scorch"
+category = "combat"
+level = 2
+schools = ["storm"]
+cost = [8, 6, 6, 6]
+power = 10
+effect = [10, 10, 20, 50]
+polarity = "neutral"
+target = "hex"
+obstacle = { steps = ["top_right", "top_left"], hexes = [2, 2, 3, 3], mirrored = true, separate = true, rounds = 2 }
+effects = [{ kind = "obstacle", obstacle = "fire" }]
+
+[[spell]]                           # format v13: a Teleport (target: an own stack; second target:
+id = "blink"                        # the hex it goes to)
+name = "Blink"
+category = "combat"
+level = 3
+schools = ["storm"]
+cost = [15, 12, 6, 3]
+effect = [0, 0, 0, 0]
+polarity = "positive"
+target = "stack"
+side = "own"
+excludes = ["war_machine"]
+effects = [{ kind = "teleport" }]
 
 [[secondary_skill]]
 id = "marksmanship"

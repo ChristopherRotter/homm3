@@ -632,3 +632,53 @@ records how and why the tasks went.
   stack, the mirror; a hypnotized stack's turn and the controller's damage bonus; the battle
   going on; mass versions and Expert Cure with and without Q-0012, a single Cure; the
   controller's resistance).
+
+### T5a — Visible spell obstacles and Teleport (2026-10-07)
+
+- **Seam (Q54):** T5 in three parts, T5a + T5b this session, a checkpoint before T5c; S-17 and
+  the T4c agent decisions confirmed.
+- **Reading** (`installation.md` §7.15): the battle's object list and hex flags, Force Field's
+  and Fire Wall's handlers and descriptors, their target test, the triggers when a stack enters
+  a hex (0x46A570: Fire Wall 0x59FCD0, Land Mine 0x59FB40, Quicksand 0x469E50) and where they
+  are called (each step of a walk, a flyer's landing, after an action without a move), the round
+  countdown, Teleport's handler and destination test, Remove Obstacle's mastery table (T5b),
+  Expert Dispel's clearing.
+- **Content (pack format v13):** effect kinds `obstacle` (`wall`, `fire`) with the spell's
+  `obstacle` shape (steps from the target hex as the attacker casts it, hexes by mastery,
+  mirrored, separate, rounds) and `teleport`; `clears_obstacles` (Dispel: Expert). Gap-fill
+  `[[spells.obstacle]]` and Teleport as `[[spells.other]]` (source `exe-obstacle-spells`); the
+  harvester writes the war-machine exclusion of the other kinds' flag word (Teleport). Ruleset
+  hash v23. The synthetic pack gains Bulwark (a Force Field), Scorch (a Fire Wall) and Blink (a
+  Teleport); Purge clears obstacles at Expert; Brea casts Scorch and Blink, Corwin Bulwark.
+- **Battle:** `h3_battle::obstacles` (the list in placement order, reserved like the effects, with
+  the blocked and burning hexes as sets; `place`, `count_down` after the effects at the round
+  start, `clear`, `travel` (a move: a walker's path entered hex by hex, a flyer's landing; fast
+  path without Fire Walls), `stand` (after defend, wait, a shot, a melee attack from where it
+  stands)); `movement::path` (BAT-MOV-003); `magic::burn` (BAT-MAG-028: `f > 0`, no roll, the
+  owner's hero's bonuses); `Command::Cast.second`, `second_targets`, `CastTarget::hex`; events
+  `ObstaclePlaced`, `ObstacleRemoved`, `ObstacleTriggered`, `Teleported`, `SpellCast.second`;
+  the observation's `spell_obstacles` (the flat sim encoding unchanged, BACKLOG). State hash v26;
+  `BattleState` 3 992 bytes.
+- **Sim and formats:** action encoding v10 (the second head: Teleport's destination), C ABI v10,
+  replay format v17 (`cast <spell> stack <s> hex <h>`); random rollouts draw a second target only
+  when there are several.
+- **Performance:** the old workload (`2c4ca11`'s synthetic pack) on the new engine: 538.14 M Ir
+  against 535.05 M (+0.58 %; at first +0.98 %: `second_targets` listed every hex for spells
+  without a second target, and `travel` and `stand` now split a small inline test from their
+  out-of-line Fire Wall paths); the rest is `legal_commands` (+1.5 M, a larger `Command`) and
+  inlining. The new workload: 10 776 steps, 569.60 M Ir; `bench-check` re-baselined; golden
+  replays re-recorded and a fourth one added (`full-s3-a362`: Bulwark, Scorch twice, Blink).
+- **Agent decisions (change freely):** a walker's path among equally short ones (BAT-MOV-003;
+  the original's pathfinder not read, BACKLOG); no burn once the battle is over after a melee
+  attack from where the stack stands (the original checks the end only after a shot); Teleport
+  takes the head hex of a two-hex stack's position, not the original's click adjustment; the flat
+  observation has no obstacle features.
+- **Tests:** `tests/obstacles.rs` (Force Field's shape by mastery and side, blocking, two rounds,
+  events, observation; free hexes for a cast; Fire Wall's mirrored shape, one obstacle per hex,
+  values; burns of a walker per hex entered, a two-hex walker once per hex, a flyer only where it
+  lands, the moves split at a burn; death on the way, no attack, the battle's end; burns after
+  defend, wait, a shot, an attack in place, not after a walk and attack; immunity, reduction, no
+  resistance roll, the caster's bonus; a two-hex stack on two burning hexes; berserk walkers;
+  Teleport's targets, destinations, no burn, refused second targets; Expert Dispel; the path);
+  the property tests' books gain the four spells and check every second target; sim, CLI, pack
+  and content tests for the second head, the text form, format v13 and validation.

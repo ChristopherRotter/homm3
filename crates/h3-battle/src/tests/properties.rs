@@ -23,7 +23,7 @@ use super::support::{CREATURES, Rate, hero, ruleset_with};
 use crate::event::StrikeFlags;
 use crate::{
     BattleState, CastTarget, CastTargets, Command, Event, EventKind, Hex, LegalCommands, SpellSet,
-    StackId, apply, cast_targets, castable_spells, legal_commands, observe,
+    StackId, apply, cast_targets, castable_spells, legal_commands, observe, second_targets,
 };
 
 /// The test ruleset with frequent good and bad morale and luck (a 4-sided die) and the quirk
@@ -62,13 +62,14 @@ fn arb_command() -> impl Strategy<Value = Command> {
             from: Hex(h)
         }),
         8 => (0u8..40).prop_map(|t| Command::Heal { target: StackId(t) }),
-        8 => (0u16..8, 0u8..3, any::<u8>()).prop_map(|(spell, kind, t)| Command::Cast {
+        8 => (0u16..12, 0u8..3, any::<u8>(), any::<Option<u8>>()).prop_map(|(spell, kind, t, h)| Command::Cast {
             spell: SpellId::from_raw(spell),
             target: match kind {
                 0 => CastTarget::None,
                 1 => CastTarget::Stack(StackId(t % 40)),
                 _ => CastTarget::Hex(Hex(t)),
             },
+            second: h.map_or(CastTarget::None, |h| CastTarget::Hex(Hex(h))),
         }),
         1 => Just(Command::Retreat),
         1 => Just(Command::Surrender),
@@ -206,6 +207,10 @@ fn make_setup(
         "sorrow",
         "fortune",
         "misfortune",
+        "dispel",
+        "wall",
+        "firewall",
+        "teleport",
     ]
     .iter()
     .map(|k| r.spell_by_key(&std::format!("t:{k}")).unwrap())
@@ -285,7 +290,16 @@ fn resolve(
             let mut targets = CastTargets::new();
             cast_targets(state, r, side, spell, &mut targets);
             let target = targets.as_slice()[usize::from(*n) % targets.len()];
-            (side, Command::Cast { spell, target })
+            second_targets(state, r, side, (spell, target), &mut targets);
+            let second = targets.as_slice()[usize::from(*n) % targets.len()];
+            (
+                side,
+                Command::Cast {
+                    spell,
+                    target,
+                    second,
+                },
+            )
         }
     }
 }
@@ -332,24 +346,32 @@ proptest! {
             let mut other = LegalCommands::new();
             legal_commands(&state, &r, actor.opponent(), &mut other);
             prop_assert!(other.is_empty() || state.side_to_act() == Some(actor.opponent()));
-            // The same for casts: every listed spell and target is accepted (BAT-MAG-001).
+            // The same for casts: every listed spell, target and second target is accepted
+            // (BAT-MAG-001, BAT-MAG-029).
             let castable = castable_spells(&state, &r, actor);
             let mut targets = CastTargets::new();
+            let mut seconds = CastTargets::new();
             for spell in castable.iter() {
                 cast_targets(&state, &r, actor, spell, &mut targets);
                 prop_assert!(!targets.is_empty());
                 for target in targets.iter() {
-                    let mut probe = state.clone();
-                    let c = Command::Cast { spell, target: *target };
-                    prop_assert!(apply(&mut probe, &r, actor, c, &mut crate::NoopSink).is_ok(), "legal {c:?} rejected");
+                    second_targets(&state, &r, actor, (spell, *target), &mut seconds);
+                    prop_assert!(!seconds.is_empty());
+                    for second in seconds.iter() {
+                        let mut probe = state.clone();
+                        let c = Command::Cast { spell, target: *target, second: *second };
+                        prop_assert!(apply(&mut probe, &r, actor, c, &mut crate::NoopSink).is_ok(), "legal {c:?} rejected");
+                    }
                 }
             }
             prop_assert!(castable_spells(&state, &r, actor.opponent()).is_empty() || state.side_to_act() == Some(actor.opponent()));
             let listed = |c: Command| match c {
-                Command::Cast { spell, target } => {
+                Command::Cast { spell, target, second } => {
                     let mut t = CastTargets::new();
                     cast_targets(&state, &r, actor, spell, &mut t);
-                    castable.contains(spell) && t.iter().any(|x| *x == target)
+                    let first = castable.contains(spell) && t.iter().any(|x| *x == target);
+                    second_targets(&state, &r, actor, (spell, target), &mut t);
+                    first && t.iter().any(|x| *x == second)
                 }
                 other => legal.iter().any(|c| *c == other),
             };

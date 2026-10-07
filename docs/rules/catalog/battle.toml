@@ -329,7 +329,7 @@ id       = "BAT-MOV-002"
 title    = "Flying and teleporting movement"
 context  = "battle"
 status   = "implemented"
-summary  = "A stack whose creature has flag flying, or the teleports ability (Devils), moves its head to any position at a hex distance of at most its speed where its whole footprint is free (standable, no obstacle, no other living stack); what lies between does not matter. Moving to its own position is not a move. Scope: no quicksand, moat, land mines or fire walls yet (flyers would ignore quicksand and the moat)."
+summary  = "A stack whose creature has flag flying, or the teleports ability (Devils), moves its head to any position at a hex distance of at most its speed where its whole footprint is free (standable, no obstacle, no other living stack); what lies between does not matter. Moving to its own position is not a move. A Force Field blocks like an obstacle (BAT-MAG-027); of a Fire Wall only the hexes it lands on act on it (BAT-MAG-028). Scope: no quicksand, moat or land mines yet (flyers would ignore quicksand and the moat)."
 numeric  = "integer"
 
   [[rule.source]]
@@ -353,6 +353,20 @@ numeric  = "integer"
   retrieved  = "2026-10-01"
   confidence = "medium"
   note       = "The page does not mention a range limit; VCMI limits teleports by speed like flying, which we follow (Devils have speed 11 and 17)."
+
+[[rule]]
+id       = "BAT-MOV-003"
+title    = "A walker's path"
+context  = "battle"
+status   = "implemented"
+summary  = "A walking stack (BAT-MOV-001) that moves to a position passes the positions of a shortest path between free positions, chosen from its end: each position's predecessor is its first neighbour, in the neighbour order of BAT-GEO-001 (right, bottom right, bottom left, left, top left, top right), one step nearer the start. The path matters only where the hexes a stack enters act on it (Fire Wall, BAT-MAG-028); a flyer enters only the hexes it lands on (BAT-MOV-002). The engine's own choice: the original walks the path its battle pathfinder chose (0x5239D0 -> 0x4B3400, the pathfinder of survey S-11, not read), which on ties between shortest paths may pass other hexes (OPEN-QUESTIONS Q53, BACKLOG)."
+numeric  = "integer"
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (docs/formats/installation.md §7.15): the walk 0x441FA0 asks the pathfinder (0x5239D0 -> 0x4B3400) for the path and steps along it, entering each hex (0x46A570) and stopping when the stack dies; the pathfinder's blocked map avoids Quicksand the stack's side can see and nothing else (0x4B3384); its tie order is not read"
+  confidence = "medium"
+  note       = "the choice among equally short paths is the engine's own"
 
 [[rule]]
 id       = "BAT-ATK-001"
@@ -2085,7 +2099,7 @@ id       = "BAT-MAG-016"
 title    = "Dispel and the dispel effect"
 context  = "battle"
 status   = "implemented"
-summary  = "A dispel effect (SpellEffect::Dispel) ends timed effects on each stack it affects: those of the spells in the spell's dispels list, or, without that list, every one but those of its spares list; a permanent effect (Disrupting Ray) never ends, as the original's end routine refuses it (BAT-MAG-010). Each ending is reported (EffectEnded) and gives back what the effect changed. Dispel (a neutral water spell of level 1) spares Poison; below Advanced it may be aimed only at an own stack, from Advanced at any stack, below Expert only at a stack with an active timed effect; at Expert (mass) it reaches every living stack of both sides; it ignores immunity, magic resistance and auras (BAT-MAG-005, BAT-MAG-008). Cure ends the effects of Curse, Weakness, Sorrow, Misfortune, Slow, Berserk, Hypnotize, Forgetfulness, Blind, Stone Gaze, Poison, Disease, Paralyze and Age before it heals (BAT-MAG-017). Not yet: Expert Dispel also removes the spell obstacles (Fire Wall, Force Field, Quicksand, Land Mine; E04b T5); the Sphere of Permanence protects its hero's stacks (E04b T8); Magic Mirror never redirects Dispel and a hypnotized stack counts for its controller (E04b T4)."
+summary  = "A dispel effect (SpellEffect::Dispel) ends timed effects on each stack it affects: those of the spells in the spell's dispels list, or, without that list, every one but those of its spares list; a permanent effect (Disrupting Ray) never ends, as the original's end routine refuses it (BAT-MAG-010). Each ending is reported (EffectEnded) and gives back what the effect changed. Dispel (a neutral water spell of level 1) spares Poison; below Advanced it may be aimed only at an own stack, from Advanced at any stack, below Expert only at a stack with an active timed effect; at Expert (mass) it reaches every living stack of both sides; it ignores immunity, magic resistance and auras (BAT-MAG-005, BAT-MAG-008). Cure ends the effects of Curse, Weakness, Sorrow, Misfortune, Slow, Berserk, Hypnotize, Forgetfulness, Blind, Stone Gaze, Poison, Disease, Paralyze and Age before it heals (BAT-MAG-017). At Expert Dispel also removes every spell obstacle (BAT-MAG-030). Not yet: the Sphere of Permanence protects its hero's stacks (E04b T8)."
 numeric  = "integer"
 
   [[rule.source]]
@@ -2311,3 +2325,63 @@ numeric  = "integer"
   url        = "https://github.com/vcmi/vcmi/blob/1.7.5/config/spells/timed.json"
   retrieved  = "2026-10-07"
   confidence = "medium"
+
+[[rule]]
+id       = "BAT-MAG-027"
+title    = "Spell obstacles and Force Field"
+context  = "battle"
+status   = "implemented"
+summary  = "An obstacle effect (SpellEffect::Obstacle, a spell with target hex and an ObstacleShape) places battlefield obstacles owned by the caster's side: on the target hex and on the hexes its shape's steps lead to, each the previous one's neighbour (as the attacker's hero casts it; mirrored left to right for the defender's hero when the shape says so), as many hexes as the shape gives for the cast's mastery; one obstacle over all of them, or one per hex for a separate shape. The target must be such that every hex is inside the field, outside the side columns, free of obstacles of either kind (natural or spell) and of living stacks; otherwise the target is invalid (and a spell with no such hex is not castable). An obstacle lasts the shape's rounds, the cast's included: at every round start, after the timed effects (BAT-MAG-010), each loses a round and goes when none is left (ObstacleRemoved). Its placing and going are public events, and it is public in the observation (ADR-0014 point 7). A wall (Force Field: a neutral earth spell of level 3, the target hex and its upper right neighbour, from Advanced also that one's upper left, for either side alike; 2 rounds) blocks its hexes like a natural obstacle: no stack enters or stands on them (BAT-MOV-001/002). Spell obstacles are kept in one list per battle, in the order they were placed (ADR-0014 point 5). Not yet: the anchor hex of a usual natural obstacle that does not block it, which the original's target test refuses too (the setup has no anchors; OPEN-QUESTIONS Q55, to verify by experiment); Remove Obstacle (E04b T5b), Quicksand and Land Mine (E04b T5c)."
+numeric  = "integer"
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (docs/formats/installation.md §7.15): the cast routine's case for spell 12 (0x5A0759) places one object with the descriptor 0x63CF18 (offsets 0, -16) below Advanced or 0x63CF2C (0, -16, -34) from Advanced, owner the current side, revealed, 2 rounds, hex flags 0x22 (0x2 blocks, 0x469A10); the target test 0x5A39C0 wants each hex inside the field, outside the side columns, without object bits (0x3F) and without a stack; the round start (0x476152) lowers each object's rounds and removes it at 0"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "vcmi"
+  ref        = "config/spells/other.json forceField: 2 rounds, not passable, its shape by side and mastery"
+  url        = "https://github.com/vcmi/vcmi/blob/1.7.5/config/spells/other.json"
+  retrieved  = "2026-10-07"
+  confidence = "medium"
+  note       = "VCMI mirrors the shape for the defender; the original's descriptor does not"
+
+[[rule]]
+id       = "BAT-MAG-028"
+title    = "Fire Wall"
+context  = "battle"
+status   = "implemented"
+summary  = "A fire obstacle (Fire Wall: a neutral fire spell of level 2; one obstacle per hex: the target hex and its upper right neighbour as the attacker casts it, upper left as the defender does, from Advanced also two rows above the target; 2 rounds, BAT-MAG-027) keeps the value power x power factor + effect[mastery] of the cast (10 x power + 10, 10, 20, 50), without bonuses. Its hexes stay passable. A living stack is burnt by a fire obstacle on a hex it enters during a move, each hex of its footprint at most once per move and not those it started on (a walker along its path, BAT-MOV-003, its head's hex before its tail's; a flyer or a teleporting creature only on the hexes it lands on), and on each hex it stands on after an action that does not move it (it defends, waits, shoots, or attacks from where it stands; after the strike), unless the battle is over. A stack that moved and then attacks is not burnt again after its attack. A burn: if the spell can affect the stack (immunities, Anti-Magic; BAT-MAG-005, BAT-MAG-021) and its share after resistance is above zero (BAT-MAG-008), with no resistance roll, the value takes the bonuses of the hero of the side that cast it (the Orb of Fire, Sorcery, a specialist's) and the stack's reductions and protection as the spell's damage (BAT-MAG-004), reported (ObstacleTriggered, SpellDamage); any damage ends what it ends (BAT-MAG-024). Fire Wall hurts either side's stacks. A walker that dies stops where it died and does not attack; the battle may end. Teleport and berserk turns: BAT-MAG-029, BAT-MAG-025."
+numeric  = "integer"
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (docs/formats/installation.md §7.15): the case for spell 13 (0x5A0821) places one object per hex (2, from Advanced 3: the target, hex - 17 adjusted by row and side, hex - 34), each with power x factor + effect[mastery] passed through 0x5A78E0 without a hero or stack; 0x46A570 runs the trigger 0x59FCD0 for a stack's hex and second hex, each once per move (0x46A520 marks the start), from the walk 0x441FA0 at each step, from the flight 0x4B49C0 and the teleport 0x4B4E90 at the landing, and after a defend (0x4798F3), a wait (0x479AD6), a shot or a melee attack without a move (0x4792D7, 0x4789C7); 0x59FCD0 tests 0x5A8090 (spell 13, the owner's side) > 0 without a roll and takes 0x5A78E0 with the owner's hero, the stack's controlling hero and the stack"
+  confidence = "high"
+
+[[rule]]
+id       = "BAT-MAG-029"
+title    = "Teleport"
+context  = "battle"
+status   = "implemented"
+summary  = "A teleport effect (SpellEffect::Teleport; Teleport: a positive water spell of level 3, not on war machines) takes two targets: a stack the spell may be aimed at (an own living stack it can affect, BAT-MAG-003), and a second target, a hex: a position other than the stack's own where its footprint fits (inside the field, outside the side columns, no obstacle or Force Field, no other living stack; its own hexes do not block it). It moves the stack there (Teleported); no hex it lands on acts on it (Fire Wall, BAT-MAG-028), and the active stack keeps its turn. A cast names its second target (Command::Cast.second; none for every other spell, which rejects any other); castable_spells and cast_targets list only targets with a second target, second_targets lists them (the sim's second head, action encoding v10). Outside sieges every mastery is alike (E04c: the wall and the moat)."
+numeric  = "integer"
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (docs/formats/installation.md §7.15): the case for spell 63 (0x5A1B4D) takes the stack off its hexes and places it on the second hex (adjusted for a two-hex stack by 0x446C40) without calling 0x46A570; the destination test 0x5A3700 refuses the stack's own hex and a position 0x446C40 refuses (outside the field, a side column, a blocked hex 0x469A10, another stack), and only in a siege (0x467840) the wall and the moat by mastery; the flag word 0x41011: one target stack, no war machines"
+  confidence = "high"
+
+[[rule]]
+id       = "BAT-MAG-030"
+title    = "Expert Dispel removes the spell obstacles"
+context  = "battle"
+status   = "implemented"
+summary  = "A spell with clears_obstacles_from (Dispel: Expert) cast at that mastery or above removes every spell obstacle of the battlefield after its effects on stacks, whoever cast it, each reported (ObstacleRemoved): Force Fields and Fire Walls (and Quicksand and Land Mines, E04b T5c)."
+numeric  = "integer"
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (docs/formats/installation.md §7.10, §7.15): Expert Dispel (0x5A16FB) walks the object list and removes each object whose anchor hex has a bit of 0x3C (Quicksand 0x4, Land Mine 0x8, Fire Wall 0x10, Force Field 0x20), after dispelling the stacks"
+  confidence = "high"

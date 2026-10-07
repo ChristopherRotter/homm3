@@ -43,6 +43,7 @@ fn cast(r: &Ruleset, name: &str, target: u8) -> Command {
     Command::Cast {
         spell: spell(r, name),
         target: CastTarget::Stack(StackId(target)),
+        second: CastTarget::None,
     }
 }
 
@@ -81,6 +82,7 @@ fn a_hero_casts_once_per_round_and_its_stack_still_acts() {
             side: BattleSide::Attacker,
             spell: bolt,
             target: CastTarget::Stack(StackId(1)),
+            second: CastTarget::None,
         }
     );
     assert_eq!(spell_damage(&events), [(1, 40, 4)]);
@@ -172,6 +174,7 @@ fn casts_need_a_book_a_combat_spell_and_a_valid_target() {
     let at = |name: &str, target: CastTarget| Command::Cast {
         spell: spell(&r, name),
         target,
+        second: CastTarget::None,
     };
     let stack = |id| CastTarget::Stack(StackId(id));
     for (command, error) in [
@@ -300,7 +303,8 @@ fn casts_need_a_book_a_combat_spell_and_a_valid_target() {
             &r,
             Command::Cast {
                 spell: unknown,
-                target: stack(3)
+                target: stack(3),
+                second: CastTarget::None,
             }
         ),
         Err(CommandError::NotInSpellBook)

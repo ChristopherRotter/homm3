@@ -3078,6 +3078,9 @@ cost = [12, 9, 9, 9]
 power = 0
 effect = [0, 0, 0, 0]
 polarity = "neutral"
+target = "hex"
+obstacle = { hexes = [2, 2, 3, 3], rounds = 2, steps = ["top_right", "top_left"] }
+effects = [{ kind = "obstacle", obstacle = "wall" }]
 
 [[spell]]
 id = "fire_wall"  # original id 13
@@ -3089,6 +3092,9 @@ cost = [8, 6, 6, 6]
 power = 10
 effect = [10, 10, 20, 50]
 polarity = "neutral"
+target = "hex"
+obstacle = { hexes = [2, 2, 3, 3], mirrored = true, rounds = 2, separate = true, steps = ["top_right", "top_left"] }
+effects = [{ kind = "obstacle", obstacle = "fire" }]
 
 [[spell]]
 id = "earthquake"  # original id 14
@@ -3399,6 +3405,7 @@ target = "stack"
 side = "own"
 mass = "expert"
 any_side = "advanced"
+clears_obstacles = "expert"
 needs_effect = true
 ignores_immunity = true
 spares = ["poison"]
@@ -3827,6 +3834,10 @@ cost = [15, 12, 6, 3]
 power = 0
 effect = [0, 0, 0, 0]
 polarity = "positive"
+target = "stack"
+side = "own"
+excludes = ["war_machine"]
+effects = [{ kind = "teleport" }]
 
 [[spell]]
 id = "remove_obstacle"  # original id 64

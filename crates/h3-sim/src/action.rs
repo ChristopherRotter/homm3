@@ -4,12 +4,12 @@
 //! An [`Action`] is an *entry* and three heads: a spell and two targets. Every command but a
 //! cast is one entry of the dense list below with all three heads 0; a cast is the entry
 //! [`HERO_CAST`] with the spell's handle in the spell head and its target in the target head
-//! (`0` none, `1 + h` hex `h < 255`, `256 + s` stack slot `s`); the second target (Teleport,
-//! Sacrifice; later spells) has the same layout and is 0 for every spell so far. The heads'
-//! masks are conditioned on the earlier choices ([`legal_mask`], [`spell_mask`],
-//! [`target_mask`], [`second_mask`]); after a legal non-cast entry each head allows exactly 0.
+//! (`0` none, `1 + h` hex `h < 255`, `256 + s` stack slot `s`); the second target has the same
+//! layout: Teleport's destination hex (BAT-MAG-029), 0 for every other spell. The heads' masks
+//! are conditioned on the earlier choices ([`legal_mask`], [`spell_mask`], [`target_mask`],
+//! [`second_mask`]); after a legal non-cast entry each head allows exactly 0.
 //!
-//! Entries, version 9 (independent of the ruleset, so agents see a fixed-size action space):
+//! Entries, version 10 (independent of the ruleset, so agents see a fixed-size action space):
 //!
 //! | entry | action |
 //! |---|---|
@@ -34,17 +34,17 @@
 //! version 5 (E04a T7b) appended the heals, version 6 (E04a T8) `EndTactics`, version 7
 //! (E04a T9a) Retreat and version 8 (E04a T9b) Surrender. Version 9 (E04b T2c) grew the stack
 //! slots to 42 (21 per side, ADR-0014 point 6), appended the two cast entries and added the
-//! spell and target heads.
+//! spell and target heads. Version 10 (E04b T5a) uses the second target head (Teleport).
 
 use h3_battle::{
     ATTACK_SLOTS, BattleState, CastTarget, CastTargets, Command, Field, Hex, LegalCommands,
-    STACK_CAPACITY, StackId, cast_targets, castable_spells,
+    STACK_CAPACITY, StackId, cast_targets, castable_spells, second_targets,
 };
 use h3_content::{MAX_FIELD_HEXES, MAX_SPELLS, Ruleset, SpellId};
 use h3_contracts::BattleSide;
 
 /// Version of this encoding; bump on any change of the layout above.
-pub const ACTION_ENCODING_VERSION: u32 = 9;
+pub const ACTION_ENCODING_VERSION: u32 = 10;
 
 const MOVE_BASE: usize = 2;
 const ATTACK_BASE: usize = MOVE_BASE + MAX_FIELD_HEXES;
@@ -102,7 +102,7 @@ pub struct Action {
     pub spell: u16,
     /// A cast's target.
     pub target: u16,
-    /// A cast's second target (0 for every spell so far).
+    /// A cast's second target (Teleport's destination; 0 for every other spell).
     pub second: u16,
 }
 
@@ -193,12 +193,17 @@ fn encode_entry(state: &BattleState, ruleset: &Ruleset, command: Command) -> Opt
 /// expressed (no active stack, unknown target, a position that is not an attack position, a
 /// spell or target beyond the heads).
 pub fn encode(state: &BattleState, ruleset: &Ruleset, command: Command) -> Option<Action> {
-    if let Command::Cast { spell, target } = command {
+    if let Command::Cast {
+        spell,
+        target,
+        second,
+    } = command
+    {
         return (spell.index() < SPELL_COUNT).then_some(Action {
             entry: HERO_CAST_ENTRY,
             spell: spell.raw(),
             target: target_index(target)?,
-            second: 0,
+            second: target_index(second)?,
         });
     }
     encode_entry(state, ruleset, command).map(Action::entry)
@@ -244,12 +249,13 @@ fn decode_entry(state: &BattleState, ruleset: &Ruleset, entry: usize) -> Option<
 pub fn decode(state: &BattleState, ruleset: &Ruleset, action: Action) -> Option<Command> {
     let entry = action.entry as usize;
     if entry == HERO_CAST {
-        if action.second != 0 || usize::from(action.spell) >= SPELL_COUNT {
+        if usize::from(action.spell) >= SPELL_COUNT {
             return None;
         }
         return Some(Command::Cast {
             spell: SpellId::from_raw(action.spell),
             target: target_at(action.target)?,
+            second: target_at(action.second)?,
         });
     }
     if (action.spell, action.target, action.second) != (0, 0, 0) {
@@ -349,8 +355,8 @@ pub fn target_mask(
 }
 
 /// Fills `mask` with the legal second targets of `actor` after choosing `entry`, `spell` and
-/// `target`: only 0 when that prefix is legal (no spell takes a second target yet), nothing
-/// otherwise.
+/// `target`: for [`HERO_CAST`] those of the cast at that target ([`second_targets`]: Teleport's
+/// destinations, only 0 for other spells); only 0 for another legal prefix; nothing otherwise.
 pub fn second_mask(
     state: &BattleState,
     ruleset: &Ruleset,
@@ -359,10 +365,28 @@ pub fn second_mask(
     legal: &mut LegalCommands,
     mask: &mut TargetMask,
 ) {
-    let mut targets = [false; TARGET_COUNT];
-    target_mask(state, ruleset, actor, (entry, spell), legal, &mut targets);
     mask.fill(false);
-    mask[0] = targets.get(usize::from(target)).copied().unwrap_or(false);
+    if entry == HERO_CAST {
+        let mut seconds = CastTargets::new();
+        if let (true, Some(first)) = (usize::from(spell) < SPELL_COUNT, target_at(target)) {
+            second_targets(
+                state,
+                ruleset,
+                actor,
+                (SpellId::from_raw(spell), first),
+                &mut seconds,
+            );
+        }
+        for t in seconds.iter() {
+            if let Some(i) = target_index(*t) {
+                mask[usize::from(i)] = true;
+            }
+        }
+    } else {
+        let mut targets = [false; TARGET_COUNT];
+        target_mask(state, ruleset, actor, (entry, spell), legal, &mut targets);
+        mask[0] = targets.get(usize::from(target)).copied().unwrap_or(false);
+    }
 }
 
 #[cfg(test)]
@@ -392,14 +416,15 @@ mod tests {
         command
     }
 
-    /// The full scenario played until a hero may cast (both heroes have spell books).
+    /// The full scenario played until the attacker's hero may cast (Brea, whose book has the
+    /// most spells, Blink's teleport among them).
     fn until_a_cast() -> (Ruleset, BattleState, BattleSide) {
         let (r, setup) = h3_pack::synthetic(h3_pack::SYNTHETIC_FULL).unwrap();
         let mut s = BattleState::new(&r, &setup, 3).unwrap();
         let mut legal = LegalCommands::new();
         for _ in 0..200 {
             let side = s.side_to_act().unwrap();
-            if !castable_spells(&s, &r, side).is_empty() {
+            if side == BattleSide::Attacker && !castable_spells(&s, &r, side).is_empty() {
                 return (r, s, side);
             }
             h3_battle::legal_commands(&s, &r, side, &mut legal);
@@ -419,7 +444,7 @@ mod tests {
         assert_eq!((END_TACTICS, RETREAT, SURRENDER), (1391, 1392, 1393));
         assert_eq!((HERO_CAST, CREATURE_CAST), (1394, 1395));
         assert_eq!((SPELL_COUNT, TARGET_COUNT), (128, 298));
-        assert_eq!(ACTION_ENCODING_VERSION, 9);
+        assert_eq!(ACTION_ENCODING_VERSION, 10);
         assert_eq!(decode_index(SURRENDER), Some(Command::Surrender));
         assert_eq!(decode_index(CREATURE_CAST), None);
         assert_eq!(Action::entry(usize::MAX).entry, u32::MAX);
@@ -507,37 +532,54 @@ mod tests {
         let book: Vec<u16> = (0..r.spells().len())
             .map(|i| u16::try_from(i).unwrap())
             .collect();
+        let mut teleports = 0;
         for &spell in &book {
             target_mask(&s, &r, side, (HERO_CAST, spell), &mut legal, &mut targets);
             assert_eq!(targets.iter().any(|m| *m), spells[usize::from(spell)]);
+            let teleport = r
+                .spell(SpellId::from_raw(spell))
+                .is_some_and(|sp| sp.magic.teleports());
             for (t, &allowed) in targets.iter().enumerate() {
-                let action = Action {
-                    entry: u32::try_from(HERO_CAST).unwrap(),
-                    spell,
-                    target: u16::try_from(t).unwrap(),
-                    second: 0,
-                };
-                let command = decode(&s, &r, action).unwrap();
-                let mut fork = s.clone();
-                let applied = h3_battle::apply(&mut fork, &r, side, command, &mut NoopSink);
-                assert_eq!(applied.is_ok(), allowed, "{command:?}");
-                if allowed {
-                    assert_eq!(encode(&s, &r, command), Some(action));
-                    second_mask(
-                        &s,
-                        &r,
-                        side,
-                        (HERO_CAST, spell, action.target),
-                        &mut legal,
-                        &mut seconds,
-                    );
+                let target = u16::try_from(t).unwrap();
+                second_mask(
+                    &s,
+                    &r,
+                    side,
+                    (HERO_CAST, spell, target),
+                    &mut legal,
+                    &mut seconds,
+                );
+                assert_eq!(seconds.iter().any(|m| *m), allowed);
+                // Every second target of a teleport; else 0 and 1.
+                let tried = if allowed && teleport { TARGET_COUNT } else { 2 };
+                for (k, &ok) in seconds.iter().enumerate().take(tried) {
+                    let action = Action {
+                        entry: u32::try_from(HERO_CAST).unwrap(),
+                        spell,
+                        target,
+                        second: u16::try_from(k).unwrap(),
+                    };
+                    let command = decode(&s, &r, action).unwrap();
+                    let mut fork = s.clone();
+                    let applied = h3_battle::apply(&mut fork, &r, side, command, &mut NoopSink);
+                    assert_eq!(applied.is_ok(), ok, "{command:?}");
+                    if ok {
+                        assert_eq!(encode(&s, &r, command), Some(action));
+                        casts += 1;
+                        teleports += usize::from(teleport);
+                    }
+                }
+                if allowed && !teleport {
                     assert_eq!(seconds.iter().position(|m| *m), Some(0));
                     assert_eq!(seconds.iter().filter(|m| **m).count(), 1);
-                    casts += 1;
                 }
             }
         }
-        assert!(casts > 0);
+        assert!(casts > 0 && teleports > 0);
+        second_mask(&s, &r, side, (HERO_CAST, 200, 0), &mut legal, &mut seconds);
+        assert!(seconds.iter().all(|m| !m));
+        second_mask(&s, &r, side, (HERO_CAST, 0, 400), &mut legal, &mut seconds);
+        assert!(seconds.iter().all(|m| !m));
         // Out of range heads.
         let cast = |spell, target, second| Action {
             entry: u32::try_from(HERO_CAST).unwrap(),
@@ -545,14 +587,15 @@ mod tests {
             target,
             second,
         };
-        assert_eq!(decode(&s, &r, cast(0, 0, 1)), None);
+        assert_eq!(decode(&s, &r, cast(0, 0, 298)), None);
         assert_eq!(decode(&s, &r, cast(128, 0, 0)), None);
         assert_eq!(decode(&s, &r, cast(0, 298, 0)), None);
         assert_eq!(
             decode(&s, &r, cast(0, 3, 0)),
             Some(Command::Cast {
                 spell: SpellId::from_raw(0),
-                target: CastTarget::Hex(Hex(2))
+                target: CastTarget::Hex(Hex(2)),
+                second: CastTarget::None,
             })
         );
         assert_eq!(
@@ -561,7 +604,8 @@ mod tests {
                 &r,
                 Command::Cast {
                     spell: SpellId::from_raw(128),
-                    target: CastTarget::None
+                    target: CastTarget::None,
+                    second: CastTarget::None,
                 }
             ),
             None
@@ -572,7 +616,8 @@ mod tests {
                 &r,
                 Command::Cast {
                     spell: SpellId::from_raw(0),
-                    target: CastTarget::Stack(StackId(42))
+                    target: CastTarget::Stack(StackId(42)),
+                    second: CastTarget::None,
                 }
             ),
             None

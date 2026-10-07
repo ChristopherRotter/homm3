@@ -159,7 +159,7 @@ override, replacing the list) names the creature types it upgrades into: at most
 none twice; references follow the reference rules and may name later creatures of the pack.
 Hero effects that select "a creature" apply to it and its direct upgrades.
 
-## Hero content (format v3, E04a T3; battle magic format v4, E04b T2a; v5 T3a; v6 T3b1; v7 T3b1b; v8 T3b2; v9 T3c; v10 T4a; v11 T4b; v12 T4c)
+## Hero content (format v3, E04a T3; battle magic format v4, E04b T2a; v5 T3a; v6 T3b1; v7 T3b1b; v8 T3b2; v9 T3c; v10 T4a; v11 T4b; v12 T4c; v13 T5a)
 
 Spell schools, spells, secondary skills, hero classes and hero types (ADR-0013). References follow
 the reference rules above; every kind may refer to content of its dependency closure.
@@ -240,7 +240,42 @@ ignores_immunity = true            # v7: no immunity, magic resistance or aura a
 mass = "expert"
 spares = ["poison"]                # v7: its dispel effect ends every effect but these (or
                                    # `dispels = [...]`: only these; not both)
+clears_obstacles = "expert"        # v13: from this mastery a cast also removes every spell
+                                   # obstacle (Expert Dispel; needs a dispel effect)
 effects = [{ kind = "dispel" }]
+
+[[spell]]                          # an obstacle spell (pack format v13, E04b T5a)
+id = "scorch"
+category = "combat"
+level = 2
+schools = ["storm"]
+cost = [8, 6, 6, 6]
+power = 10
+effect = [10, 10, 20, 50]          # a fire obstacle keeps power × power + effect as its value
+polarity = "neutral"
+target = "hex"                     # an obstacle spell has target hex, no area
+obstacle = { steps = ["top_right", "top_left"], hexes = [2, 2, 3, 3], mirrored = true, separate = true, rounds = 2 }
+                                   # v13: the hexes after the target hex, each the previous one's
+                                   # neighbour (right, bottom_right, bottom_left, left, top_left,
+                                   # top_right) as the attacker casts it; `hexes`: how many by
+                                   # mastery (1..=steps + 1); `mirrored`: the defender's hero casts
+                                   # them mirrored left to right (default false); `separate`: one
+                                   # obstacle per hex (default false: one over all); `rounds` it
+                                   # lasts, the cast's included (at least 1)
+effects = [{ kind = "obstacle", obstacle = "fire" }]   # v13: wall | fire
+
+[[spell]]                          # a teleport (pack format v13): an own stack to a hex
+id = "blink"
+category = "combat"
+level = 3
+schools = ["storm"]
+cost = [15, 12, 6, 3]
+effect = [0, 0, 0, 0]
+polarity = "positive"
+target = "stack"
+side = "own"
+excludes = ["war_machine"]
+effects = [{ kind = "teleport" }]  # v13: the cast's second target is the hex the stack goes to
 
 [[secondary_skill]]
 id = "marksmanship"
@@ -295,7 +330,12 @@ least one, on every strike; from the first cast's Advanced mastery it cannot sho
 BAT-MAG-023), `blind` (the stack loses its turns; struck in melee while blind it retaliates
 with v % of its damage, not at all at 0, BAT-MAG-024); since v12, E04b T4c: `berserk` (its
 turns are automatic, attacking the nearest stack; every other stack is its enemy,
-BAT-MAG-025), `hypnotize` (the other side controls it, BAT-MAG-026)); since v7, E04b T3b1b: `dispel` (ends the stack's
+BAT-MAG-025), `hypnotize` (the other side controls it, BAT-MAG-026)); since v13, E04b T5a: `obstacle` (with `obstacle = "wall"` or `"fire"` and the
+spell's `obstacle` shape: places obstacles on the target hex's shape for its rounds; a wall blocks
+its hexes, BAT-MAG-027; fire burns a stack that enters a hex or acts on one with the value as the
+spell's damage, BAT-MAG-028) and `teleport` (moves the target stack to the cast's second target,
+a free hex, BAT-MAG-029), each the spell's only effect, without area, chain or mass version; since
+v7, E04b T3b1b: `dispel` (ends the stack's
 timed effects: those of the spells in `dispels`, or without that list every one but those in
 `spares`; never a permanent one; BAT-MAG-016) and `heal` (heals the top creature by the value,
 raising none; BAT-MAG-017), applied after damage and before timed changes. `mass` needs target

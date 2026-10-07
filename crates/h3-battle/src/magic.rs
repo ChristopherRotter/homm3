@@ -35,6 +35,8 @@ use crate::error::{CommandError, HeroError};
 use crate::event::{Event, EventKind, Sink};
 use crate::geometry::{Field, Footprint, Hex};
 use crate::hero::{HeroRecord, hash_rate};
+use crate::movement;
+use crate::obstacles::{self, SpellObstacle};
 use crate::state::{BattleState, STACK_CAPACITY, Stack, StackId};
 
 /// A set of spells by handle (the content allows at most [`MAX_SPELLS`]).
@@ -300,8 +302,8 @@ impl CanonicalHash for HeroMagic {
     }
 }
 
-/// What a cast is aimed at (ADR-0014 point 3; the second target of Teleport and Sacrifice
-/// joins with those spells).
+/// What a cast is aimed at (ADR-0014 point 3): its target, and its second target where the spell
+/// takes one (Teleport's destination hex, BAT-MAG-029; Sacrifice's victim joins with T6).
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Default)]
 pub enum CastTarget {
     /// Nothing (Armageddon).
@@ -311,6 +313,16 @@ pub enum CastTarget {
     Stack(StackId),
     /// A hex.
     Hex(Hex),
+}
+
+impl CastTarget {
+    /// The hex, if this is one.
+    pub const fn hex(self) -> Option<Hex> {
+        match self {
+            Self::Hex(h) => Some(h),
+            Self::None | Self::Stack(_) => None,
+        }
+    }
 }
 
 /// Most targets of one spell: none, every stack, every hex.
@@ -328,6 +340,8 @@ pub(crate) struct Cast<'r> {
     cost: u16,
     mastery: u8,
     target: CastTarget,
+    /// The second target (Teleport's destination).
+    second: CastTarget,
     /// `power × power factor + effect[mastery]` (BAT-MAG-004).
     value: u64,
     /// The caster's bonuses (BAT-MAG-004).
@@ -595,36 +609,95 @@ fn area_stacks<'a>(
     })
 }
 
-/// Checks that `target` is a target of `side`'s cast of `spell` at `mastery` (BAT-MAG-003): a
+/// Whether `target` is a first target of `side`'s cast of `spell` at `mastery` (BAT-MAG-003): a
 /// stack of [`aimable`] for a stack spell; for a hex spell any hex outside the side columns,
-/// whatever stands on it (the original's cursor test, `installation.md` §7.8; batch 2a R3);
-/// nothing for a battle-wide spell or a mass version (from the spell's mass mastery), which
-/// must reach at least one stack.
+/// whatever stands on it (the original's cursor test, `installation.md` §7.8; batch 2a R3),
+/// but for an obstacle spell a hex where its shape fits free hexes (BAT-MAG-027); nothing for a
+/// battle-wide spell or a mass version (from the spell's mass mastery), which must reach at least
+/// one stack. Whether a second target exists is not checked here.
 // rule: BAT-MAG-003
-fn check_target(
+fn first_target(
     state: &BattleState,
     ruleset: &Ruleset,
     side: BattleSide,
     (spell, mastery): (SpellRef<'_>, u8),
     target: CastTarget,
-) -> Result<(), CommandError> {
-    let ok = match (target_at(ruleset, spell.1, mastery), target) {
+) -> bool {
+    match (target_at(ruleset, spell.1, mastery), target) {
         (SpellTarget::Stack, CastTarget::Stack(s)) => {
             state.stack(s).is_some() && aimable(state, ruleset, side, (spell, mastery), s)
         }
         (SpellTarget::Hex, CastTarget::Hex(h)) => {
-            Field::new(ruleset.battle().field).is_standable(h)
+            let field = Field::new(ruleset.battle().field);
+            match &spell.1.magic.obstacle {
+                Some(shape) => {
+                    // rule: BAT-MAG-027
+                    obstacles::shape_hexes(field, shape, (side, mastery), h)
+                        .is_some_and(|hexes| obstacles::free(state, field, hexes.as_slice()))
+                }
+                None => field.is_standable(h),
+            }
         }
         (SpellTarget::None, CastTarget::None) => {
             stack_ids(state).any(|s| reachable(state, ruleset, side, (spell, mastery), s))
         }
         _ => false,
-    };
-    if ok {
+    }
+}
+
+/// Whether `second` is the second target of a cast of `spell` aimed at `target` (BAT-MAG-029):
+/// for Teleport a hex, other than the stack's position, where the stack fits (inside the field,
+/// outside the side columns, not blocked by an obstacle or another living stack; the original's
+/// 0x5A3700, the same at every mastery outside sieges, `installation.md` §7.15); none for every
+/// other spell.
+// rule: BAT-MAG-029
+fn second_target(
+    state: &BattleState,
+    ruleset: &Ruleset,
+    spell: &Spell,
+    (target, second): (CastTarget, CastTarget),
+) -> bool {
+    match (spell.magic.teleports(), target, second) {
+        (true, CastTarget::Stack(s), CastTarget::Hex(h)) => {
+            let field = Field::new(ruleset.battle().field);
+            let stack = state.at(s);
+            h != stack.hex && movement::fits(field, stack, h, state.blocked_for(field, s))
+        }
+        (false, _, CastTarget::None) => true,
+        _ => false,
+    }
+}
+
+/// Checks that `(target, second)` are the targets of `side`'s cast of `spell` at `mastery`
+/// ([`first_target`], [`second_target`]).
+fn check_target(
+    state: &BattleState,
+    ruleset: &Ruleset,
+    side: BattleSide,
+    (spell, mastery): (SpellRef<'_>, u8),
+    (target, second): (CastTarget, CastTarget),
+) -> Result<(), CommandError> {
+    if first_target(state, ruleset, side, (spell, mastery), target)
+        && second_target(state, ruleset, spell.1, (target, second))
+    {
         Ok(())
     } else {
         Err(CommandError::InvalidSpellTarget)
     }
+}
+
+/// Whether a cast of `spell` aimed at `target` has a second target ([`second_target`]): every
+/// target of a spell without one does.
+fn has_second(state: &BattleState, ruleset: &Ruleset, spell: &Spell, target: CastTarget) -> bool {
+    !spell.magic.teleports()
+        || hex_targets(ruleset).any(|h| second_target(state, ruleset, spell, (target, h)))
+}
+
+/// Every hex of the field as a target.
+fn hex_targets(ruleset: &Ruleset) -> impl Iterator<Item = CastTarget> + use<> {
+    (0u8..)
+        .take(Field::new(ruleset.battle().field).hex_count())
+        .map(|h| CastTarget::Hex(Hex(h)))
 }
 
 /// What a cast of `spell` at `mastery` is aimed at (BAT-MAG-003): nothing for its mass version,
@@ -648,10 +721,16 @@ pub(crate) fn plan_cast<'r>(
     ruleset: &'r Ruleset,
     side: BattleSide,
     id: SpellId,
-    target: CastTarget,
+    (target, second): (CastTarget, CastTarget),
 ) -> Result<Cast<'r>, CommandError> {
     let (spell, hero, mastery, cost) = check_spell(state, ruleset, side, id)?;
-    check_target(state, ruleset, side, ((id, spell), mastery), target)?;
+    check_target(
+        state,
+        ruleset,
+        side,
+        ((id, spell), mastery),
+        (target, second),
+    )?;
     Ok(Cast {
         side,
         id,
@@ -659,6 +738,7 @@ pub(crate) fn plan_cast<'r>(
         cost,
         mastery,
         target,
+        second,
         value: base_value(hero, spell, mastery),
         bonuses: hero.magic.bonuses,
         // rule: BAT-MAG-010
@@ -673,9 +753,9 @@ fn may_cast_now(state: &BattleState, actor: BattleSide) -> bool {
     state.tactics.is_none() && state.side_to_act() == Some(actor)
 }
 
-/// Fills `out` with every target [`crate::apply`] accepts for `actor`'s hero casting `spell` now
-/// (BAT-MAG-001 to BAT-MAG-003): stacks by id, hexes by index, or none. Empty if the hero may
-/// not cast the spell now.
+/// Fills `out` with every first target [`crate::apply`] accepts for `actor`'s hero casting
+/// `spell` now (BAT-MAG-001 to BAT-MAG-003) with some second target ([`second_targets`]):
+/// stacks by id, hexes by index, or none. Empty if the hero may not cast the spell now.
 pub fn cast_targets(
     state: &BattleState,
     ruleset: &Ruleset,
@@ -690,25 +770,54 @@ pub fn cast_targets(
     let Ok((s, _, mastery, _)) = check_spell(state, ruleset, actor, spell) else {
         return;
     };
-    let field = Field::new(ruleset.battle().field);
-    let hexes = (0u8..)
-        .take(field.hex_count())
-        .map(|h| CastTarget::Hex(Hex(h)));
     let stacks = stack_ids(state).map(CastTarget::Stack);
     for target in core::iter::once(CastTarget::None)
         .chain(stacks)
-        .chain(hexes)
+        .chain(hex_targets(ruleset))
     {
-        if check_target(state, ruleset, actor, ((spell, s), mastery), target).is_ok() {
+        if first_target(state, ruleset, actor, ((spell, s), mastery), target)
+            && has_second(state, ruleset, s, target)
+        {
             // At most `MAX_CAST_TARGETS` targets by construction.
             let _ = out.push(target);
         }
     }
 }
 
+/// Fills `out` with every second target [`crate::apply`] accepts for `actor`'s hero casting
+/// `spell` at `target` now (BAT-MAG-029): Teleport's destination hexes, or only none for a spell
+/// without a second target. Empty if `target` is no target of the cast now.
+pub fn second_targets(
+    state: &BattleState,
+    ruleset: &Ruleset,
+    actor: BattleSide,
+    (spell, target): (SpellId, CastTarget),
+    out: &mut CastTargets,
+) {
+    out.clear();
+    if !may_cast_now(state, actor) {
+        return;
+    }
+    let Ok((s, _, mastery, _)) = check_spell(state, ruleset, actor, spell) else {
+        return;
+    };
+    if !first_target(state, ruleset, actor, ((spell, s), mastery), target) {
+        return;
+    }
+    // Only Teleport has hexes as second targets (`second_target`).
+    let hexes = hex_targets(ruleset).take(if s.magic.teleports() { usize::MAX } else { 0 });
+    for second in core::iter::once(CastTarget::None).chain(hexes) {
+        if second_target(state, ruleset, s, (target, second)) {
+            // At most `MAX_CAST_TARGETS` targets by construction.
+            let _ = out.push(second);
+        }
+    }
+}
+
 /// Whether `actor`'s cast of `spell` has a target ([`cast_targets`] not empty, computed without
-/// listing every hex): a stack spell needs a stack of [`aimable`], a battle-wide spell a stack it
-/// reaches; a hex spell always has one.
+/// listing every hex where it can be avoided): a stack spell needs a stack of [`aimable`] with a
+/// second target, a battle-wide spell a stack it reaches; a hex spell always has one, but an
+/// obstacle spell needs a hex where its shape fits.
 fn has_target(
     state: &BattleState,
     ruleset: &Ruleset,
@@ -716,10 +825,14 @@ fn has_target(
     (spell, mastery): (SpellRef<'_>, u8),
 ) -> bool {
     match target_at(ruleset, spell.1, mastery) {
-        SpellTarget::Hex => true,
-        SpellTarget::Stack => {
-            stack_ids(state).any(|s| aimable(state, ruleset, actor, (spell, mastery), s))
+        SpellTarget::Hex if spell.1.magic.obstacle.is_some() => {
+            hex_targets(ruleset).any(|h| first_target(state, ruleset, actor, (spell, mastery), h))
         }
+        SpellTarget::Hex => true,
+        SpellTarget::Stack => stack_ids(state).any(|s| {
+            aimable(state, ruleset, actor, (spell, mastery), s)
+                && has_second(state, ruleset, spell.1, CastTarget::Stack(s))
+        }),
         SpellTarget::None => {
             stack_ids(state).any(|s| reachable(state, ruleset, actor, (spell, mastery), s))
         }
@@ -1190,8 +1303,28 @@ pub(crate) fn apply_cast<S: Sink>(
         side: cast.side,
         spell: cast.id,
         target: cast.target,
+        second: cast.second,
     }));
     let spell = (cast.id, cast.spell);
+    let magic = &cast.spell.magic;
+    if let (Some(kind), Some(shape), CastTarget::Hex(h)) =
+        (magic.obstacle_kind(), &magic.obstacle, cast.target)
+    {
+        // rule: BAT-MAG-027
+        let field = Field::new(ruleset.battle().field);
+        // Validated: the shape fits.
+        let hexes =
+            obstacles::shape_hexes(field, shape, (cast.side, cast.mastery), h).unwrap_or_default();
+        let placed = (cast.id, kind, shape);
+        obstacles::place(
+            state,
+            placed,
+            cast.side,
+            (hexes.as_slice(), cast.value),
+            sink,
+        );
+        return;
+    }
     let target = match cast.target {
         CastTarget::Stack(s) => CastTarget::Stack(mirror(state, &cast, s, sink)),
         other => other,
@@ -1223,6 +1356,11 @@ pub(crate) fn apply_cast<S: Sink>(
                     value = value * u64::from(chain.factor_bp) / u64::from(FULL_BP);
                 }
             }
+            (CastTarget::Stack(s), None) if cast.spell.magic.teleports() => {
+                // Validated: the second target is a hex.
+                let to = cast.second.hex().unwrap_or(state.at(s).hex);
+                teleport(state, s, to, sink);
+            }
             (CastTarget::Stack(s), None) => affect(state, ruleset, &cast, (s, cast.value), sink),
             (target, _) => {
                 // rule: BAT-MAG-007
@@ -1246,8 +1384,66 @@ pub(crate) fn apply_cast<S: Sink>(
             }
         }
     }
+    if cast
+        .spell
+        .magic
+        .clears_obstacles_from
+        .is_some_and(|m| cast.mastery >= m)
+    {
+        obstacles::clear(state, sink);
+    }
     check_end(state, sink);
     if state.result.is_some() {
         state.active = None;
     }
+}
+
+/// Moves stack `s` to the hex `to` of its validated second target (Teleport, BAT-MAG-029): no
+/// hex it lands on acts on it (`installation.md` §7.15).
+// rule: BAT-MAG-029
+fn teleport<S: Sink>(state: &mut BattleState, s: StackId, to: Hex, sink: &mut S) {
+    let from = core::mem::replace(&mut state.at_mut(s).hex, to);
+    sink.emit(Event::public(EventKind::Teleported { stack: s, from, to }));
+}
+
+/// Fire Wall's damage to stack `s` from the obstacle `fire` (BAT-MAG-028; the original's
+/// 0x59FCD0, `installation.md` §7.15): none if the spell cannot affect the stack (BAT-MAG-005,
+/// BAT-MAG-021) or its share after resistance is 0 (BAT-MAG-008), but no resistance roll; else
+/// the obstacle's value as the spell's damage with the bonuses of the hero of the side that cast
+/// it as the caster's and the stack's reductions and protection ([`spell_damage`]), reported;
+/// any damage ends what it ends (BAT-MAG-024).
+// rule: BAT-MAG-028
+pub(crate) fn burn<S: Sink>(
+    state: &mut BattleState,
+    ruleset: &Ruleset,
+    fire: &SpellObstacle,
+    s: StackId,
+    sink: &mut S,
+) {
+    let found = ruleset.spell(fire.spell).filter(|spell| {
+        affects_stack(state, ruleset, (fire.spell, spell), s) && share(state, ruleset, s).0 > 0
+    });
+    let Some(spell) = found else {
+        return;
+    };
+    let bonuses = state.heroes[fire.side.index()]
+        .as_ref()
+        .map_or_else(SpellBonuses::default, |h| h.magic.bonuses);
+    let target = state.at(s);
+    let protection = target.spells.school_protection;
+    let (caster, damage) = spell_damage(
+        ruleset,
+        ((fire.spell, spell), &bonuses),
+        fire.value,
+        (target.creature, &protection),
+    );
+    let kills = apply_damage(state.at_mut(s), damage);
+    sink.emit(Event::public(EventKind::SpellDamage {
+        target: s,
+        value: fire.value,
+        caster,
+        damage,
+        kills,
+    }));
+    effects::damaged(state, ruleset, s, sink);
 }

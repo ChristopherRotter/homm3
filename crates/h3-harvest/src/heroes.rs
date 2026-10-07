@@ -425,8 +425,14 @@ fn other_spell(
     spells: &BTreeMap<String, (String, &'static str)>,
 ) -> Result<(), String> {
     stack_spell(text, what, (flags, polarity), t.side.as_deref())?;
+    if flags & SPELL_NO_WAR_MACHINES != 0 {
+        let _ = writeln!(text, "excludes = [\"war_machine\"]");
+    }
     if let Some(m) = &t.any_side {
         let _ = writeln!(text, "any_side = {}", quote(m));
+    }
+    if let Some(m) = &t.clears_obstacles {
+        let _ = writeln!(text, "clears_obstacles = {}", quote(m));
     }
     for (field, on) in [
         ("needs_effect", t.needs_effect),
@@ -451,6 +457,28 @@ fn other_spell(
         .map(|k| format!("{{ kind = {} }}", quote(k)))
         .collect();
     let _ = writeln!(text, "effects = [{}]", effects.join(", "));
+    Ok(())
+}
+
+/// Writes the battle magic of a spell that places obstacles (pack format v13, E04b T5a): a hex
+/// target, which the flag word must give (`0x80` without `0x10`), the obstacle kind and shape from
+/// the gap-fill entry.
+fn obstacle_spell(
+    text: &mut String,
+    what: &str,
+    flags: u32,
+    t: &crate::gapfill::SpellObstacle,
+) -> Result<(), String> {
+    if flags & (SPELL_AREA | SPELL_SINGLE) != SPELL_AREA {
+        return Err(format!("{what}: flag word {flags:#x} names no hex target"));
+    }
+    let _ = writeln!(text, "target = \"hex\"");
+    let _ = writeln!(text, "obstacle = {}", t.shape);
+    let _ = writeln!(
+        text,
+        "effects = [{{ kind = \"obstacle\", obstacle = {} }}]",
+        quote(&t.obstacle)
+    );
     Ok(())
 }
 
@@ -656,6 +684,18 @@ pub fn harvest_heroes(
             ));
         }
     }
+    let mut obstacle: BTreeMap<&str, &crate::gapfill::SpellObstacle> = BTreeMap::new();
+    for t in &gap.spells.obstacle {
+        if obstacle.insert(t.spell.as_str(), t).is_some()
+            || timed.contains_key(t.spell.as_str())
+            || other.contains_key(t.spell.as_str())
+        {
+            return Err(format!(
+                "gapfill: spell `{}` has two effect entries",
+                t.spell
+            ));
+        }
+    }
     let mut specialist: BTreeMap<&str, &toml::Value> = BTreeMap::new();
     for t in &gap.spells.specialist {
         for name in &t.spells {
@@ -811,6 +851,14 @@ pub fn harvest_heroes(
             }
             other_spell(text, (&what, pack), (flags, polarity), t, &spell_packs)?;
             other_spells += 1;
+        } else if let Some(t) = obstacle.remove(name) {
+            if category != "combat" || extra.is_some() {
+                return Err(format!(
+                    "gapfill: obstacle entry for `{name}` is not allowed"
+                ));
+            }
+            obstacle_spell(text, &what, flags, t)?;
+            other_spells += 1;
         } else if extra.is_some() {
             return Err(format!(
                 "gapfill: targeting for `{name}`, which has no harvested effects"
@@ -830,6 +878,7 @@ pub fn harvest_heroes(
     if let Some(name) = timed
         .keys()
         .chain(other.keys())
+        .chain(obstacle.keys())
         .chain(specialist.keys())
         .next()
     {
@@ -842,9 +891,9 @@ pub fn harvest_heroes(
         "spells: target and damage effect of {damage_spells} damage spells from the flag word; \
          target, side, mass version and conditions of {timed_spells} timed spells from the flag \
          word, their changes from the gap-fill file; target and mass version of {other_spells} \
-         dispel and heal spells from the flag word, the rest from the gap-fill file; \
-         {specialists} specialist bonuses from the gap-fill file; other effect kinds come with \
-         their tasks (E04b T4-T7)"
+         dispel, heal, teleport and obstacle spells from the flag word, the rest from the \
+         gap-fill file; {specialists} specialist bonuses from the gap-fill file; other effect \
+         kinds come with their tasks (E04b T5-T7)"
     ));
     report.push(
         "SPTRAITS: town chances, AI values, texts and the attribute column not harvested (E04b, E09)"

@@ -317,8 +317,8 @@ mod tests {
         // haze, dazzle, rampage, charm).
         let schools = [[1.0, 0.0, 0.0, 0.0], [0.0, 3.0, 0.0, 0.0]];
         let books: [&[usize]; 2] = [
-            &[0, 1, 2, 3, 4, 7, 8, 9, 17, 18, 20, 21, 24, 25, 28],
-            &[0, 2, 3, 10, 11, 12, 13, 14, 15, 16, 19, 22, 23, 26, 27],
+            &[0, 1, 2, 3, 4, 7, 8, 9, 17, 18, 20, 21, 24, 25, 28, 30, 31],
+            &[0, 2, 3, 10, 11, 12, 13, 14, 15, 16, 19, 22, 23, 26, 27, 29],
         ];
         let price = |side| s.surrender_price(&r, side).unwrap() as f32;
         assert!(price(Attacker) > 0.0 && price(Defender) > 0.0);

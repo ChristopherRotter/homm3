@@ -14,12 +14,12 @@ use h3_content::{
     ArtifactSlotOverride, AuraTarget, BattleParamsDef, CompileError, ContentKey, ContentPack,
     CreatureDef, CreatureFlag, CreatureFlags, CreatureInfoDef, CreatureOverride, CreaturePatch,
     CreatureSelector, CreatureStat, CreatureTypeId, EffectDuration, EffectEnd, FactionDef,
-    Formation, HeroClassDef, HeroEffect, HeroEffectDef, HeroParamsDef, HeroTypeDef, KeyError,
-    MASTERY_NAMES, MAX_ALIGNMENT_FACTIONS, ObstacleDef, PackManifest, ProfileDef, ResourceDef,
-    Ruleset, SPECIALIST_LEVELS, SchoolId, SecondarySkillDef, SpecialistBonus, SpellArea,
-    SpellCategory, SpellChain, SpellDef, SpellEffect, SpellId, SpellMagic, SpellPolarity,
-    SpellSchoolDef, SpellScope, SpellTarget, StartingStackDef, SurrenderDef, TargetConditions,
-    TargetSide, TerrainDef, TimedChange,
+    Formation, HeroClassDef, HeroEffect, HeroEffectDef, HeroParamsDef, HeroTypeDef, HexStep,
+    KeyError, MASTERY_NAMES, MAX_ALIGNMENT_FACTIONS, ObstacleDef, ObstacleKind, ObstacleShape,
+    PackManifest, ProfileDef, ResourceDef, Ruleset, SPECIALIST_LEVELS, SchoolId, SecondarySkillDef,
+    SpecialistBonus, SpellArea, SpellCategory, SpellChain, SpellDef, SpellEffect, SpellId,
+    SpellMagic, SpellPolarity, SpellSchoolDef, SpellScope, SpellTarget, StartingStackDef,
+    SurrenderDef, TargetConditions, TargetSide, TerrainDef, TimedChange,
 };
 use h3_contracts::{
     Army, ArmyStack, BallistaControl, BattleEffect, BattleHero, BattleSetup, BattleSide,
@@ -468,6 +468,43 @@ struct SpellDto {
     #[serde(default)]
     spares: Vec<String>,
     specialist: Option<SpecialistDto>,
+    obstacle: Option<ObstacleShapeDto>,
+    clears_obstacles: Option<String>,
+}
+
+/// `obstacle = { steps = ["top_right", "top_left"], hexes = [2, 2, 3, 3], mirrored = true,
+/// separate = true, rounds = 2 }` (pack format v13, E04b T5a; `mirrored` and `separate` default
+/// false).
+#[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
+struct ObstacleShapeDto {
+    #[serde(default)]
+    steps: Vec<String>,
+    hexes: [u8; 4],
+    #[serde(default)]
+    mirrored: bool,
+    #[serde(default)]
+    separate: bool,
+    rounds: u8,
+}
+
+impl ObstacleShapeDto {
+    fn shape(&self) -> Result<ObstacleShape, PackError> {
+        Ok(ObstacleShape {
+            steps: self
+                .steps
+                .iter()
+                .map(|n| {
+                    HexStep::from_name(n)
+                        .ok_or_else(|| PackError::Syntax(format!("unknown hex step `{n}`")))
+                })
+                .collect::<Result<_, _>>()?,
+            hexes: self.hexes,
+            mirrored: self.mirrored,
+            separate: self.separate,
+            rounds: self.rounds,
+        })
+    }
 }
 
 /// `specialist = { kind = "creature_level", values = [3, 3, 2, 2, 1, 1, 0] }` (or `{ kind =
@@ -551,6 +588,8 @@ enum SpellEffectDto {
     Timed { change: String },
     Dispel {},
     Heal {},
+    Obstacle { obstacle: String },
+    Teleport {},
 }
 
 impl SpellDto {
@@ -595,6 +634,12 @@ impl SpellDto {
                     SpellEffectDto::Damage {} => Ok(SpellEffect::Damage),
                     SpellEffectDto::Dispel {} => Ok(SpellEffect::Dispel),
                     SpellEffectDto::Heal {} => Ok(SpellEffect::Heal),
+                    SpellEffectDto::Teleport {} => Ok(SpellEffect::Teleport),
+                    SpellEffectDto::Obstacle { obstacle } => ObstacleKind::from_name(obstacle)
+                        .map(SpellEffect::Obstacle)
+                        .ok_or_else(|| {
+                            PackError::Syntax(format!("unknown obstacle kind `{obstacle}`"))
+                        }),
                     SpellEffectDto::Timed { change } => TimedChange::from_name(change)
                         .map(SpellEffect::Timed)
                         .ok_or_else(|| {
@@ -639,6 +684,16 @@ impl SpellDto {
                 SpecialistDto::Fixed { amount } => SpecialistBonus::Fixed(amount),
                 SpecialistDto::Total { value } => SpecialistBonus::Total(value),
             }),
+            obstacle: self
+                .obstacle
+                .as_ref()
+                .map(ObstacleShapeDto::shape)
+                .transpose()?,
+            clears_obstacles_from: self
+                .clears_obstacles
+                .as_deref()
+                .map(mastery_named)
+                .transpose()?,
         })
     }
 }
@@ -2590,12 +2645,13 @@ mod tests {
         expected.tactics = 2;
         expected.magic.mana = 40;
         expected.magic.max_mana = 40;
-        // The four damage spells, Ward, five timed spells, Mend, Blaze, Glass, Haze and Charm with
-        // Basic Storm magic (E04b T2c, T3a, T3b1, T3b1b, T3b2, T4a, T4b, T4c).
+        // The four damage spells, Ward, five timed spells, Mend, Blaze, Glass, Haze, Charm,
+        // Scorch and Blink with Basic Storm magic (E04b T2c, T3a, T3b1, T3b1b, T3b2, T4a, T4b,
+        // T4c, T5a).
         expected.magic.spell_book = Some(
             [
                 "spark", "cinders", "arc", "blight", "ward", "hasten", "drag", "fury", "smiting",
-                "riposte", "mend", "blaze", "glass", "haze", "charm",
+                "riposte", "mend", "blaze", "glass", "haze", "charm", "scorch", "blink",
             ]
             .map(|k| ruleset.spell_by_key(&format!("synthetic:{k}")).unwrap())
             .to_vec(),
@@ -3928,7 +3984,7 @@ mod tests {
         use h3_content::SpellCategory;
         let r = compile(&[SYNTHETIC_PACK, SYNTHETIC_EXT_PACK], "synthetic:faithful").unwrap();
         assert_eq!(r.spell_schools().len(), 2);
-        assert_eq!(r.spells().len(), 29);
+        assert_eq!(r.spells().len(), 32);
         // Pack format v6: the storm school's protection rank; stone's defaults to 0.
         let ranks: Vec<u8> = r
             .spell_schools()
@@ -4042,6 +4098,7 @@ mod tests {
                 ignores_immunity: true,
                 mass_from: Some(3),
                 effects: vec![SpellEffect::Dispel],
+                clears_obstacles_from: Some(3),
                 ..SpellMagic::default()
             }
         );
@@ -4112,6 +4169,30 @@ mod tests {
             (charm.health_limit, charm.refuses),
             (true, vec![TimedChange::MagicMirror])
         );
+        // Format v13: obstacles, Teleport, Expert Dispel's clearing.
+        let (bulwark, scorch) = (magic("synthetic:bulwark"), magic("synthetic:scorch"));
+        assert_eq!(
+            (
+                bulwark.effects,
+                bulwark.obstacle.map(|o| (o.hexes, o.mirrored))
+            ),
+            (
+                vec![SpellEffect::Obstacle(ObstacleKind::Wall)],
+                Some(([2, 2, 3, 3], false))
+            )
+        );
+        assert_eq!(
+            scorch.obstacle,
+            Some(ObstacleShape {
+                steps: vec![HexStep::TopRight, HexStep::TopLeft],
+                hexes: [2, 2, 3, 3],
+                mirrored: true,
+                separate: true,
+                rounds: 2,
+            })
+        );
+        assert_eq!(magic("synthetic:blink").effects, [SpellEffect::Teleport]);
+        assert_eq!(magic("synthetic:purge").clears_obstacles_from, Some(3));
         for (from, to) in [
             ("fixed_rounds = 255\n", ""),
             (
@@ -4119,6 +4200,15 @@ mod tests {
                 "duration = \"own_turn\"\nfixed_rounds = 1\n",
             ),
             ("refuses = [\"magic_mirror\"]", "refuses = [\"mirror\"]"),
+            ("obstacle = \"wall\"", "obstacle = \"pit\""),
+            (
+                "steps = [\"top_right\", \"top_left\"], hexes = [2, 2, 3, 3], rounds",
+                "steps = [\"up\"], hexes = [2, 2, 3, 3], rounds",
+            ),
+            (
+                "clears_obstacles = \"expert\"",
+                "clears_obstacles = \"master\"",
+            ),
         ] {
             assert!(SYNTHETIC_PACK.contains(from), "{from}");
             let text = SYNTHETIC_PACK.replacen(from, to, 1);

@@ -10,11 +10,16 @@ Sources: [`docs/rules/surveys/E04b-magic.md`](../rules/surveys/E04b-magic.md).
 
 ## T5 — battlefield objects
 
-- A spell obstacle: kind, owner side, hexes, revealed, rounds left, value (mine damage), in a
-  growable list like the effects (ADR-0014 point 5).
+The spell obstacle list, Force Field, Fire Wall, Teleport and Expert Dispel's clearing are
+implemented (T5a: `h3_battle::obstacles`, BAT-MAG-027 to 030, BAT-MOV-003). For T5c:
+
+- An obstacle gains whether it is revealed (Quicksand once triggered) and the mine's damage
+  (`SpellObstacle::value` holds it already); the original keeps a revealed flag per object
+  (`installation.md` §7.15).
 - Visibility as ADR-0014 point 7; legality and reachability use the acting side's view; a move
   that meets an unseen pit stops there (an attack ordered with it does not happen); triggering
-  reveals and emits a public event.
+  reveals and emits a public event. `obstacles::travel` already enters the hexes of a path in
+  order and stops a stack where it dies.
 
 ## T6 — created stacks
 

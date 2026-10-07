@@ -36,9 +36,9 @@ extern "C" {
 typedef struct H3Env H3Env;
 
 /* An action: an entry of the action encoding and, for a cast, the spell and target heads (all 0
- * for every other entry). Targets: 0 = none, 1 + h = hex h, 256 + s = stack slot s. Choose the
- * heads in order, each from its mask: h3_env_legal_mask, h3_env_spell_mask, h3_env_target_mask,
- * h3_env_second_mask. */
+ * for every other entry). Targets: 0 = none, 1 + h = hex h, 256 + s = stack slot s; the second
+ * target is Teleport's destination hex, 0 for every other spell. Choose the heads in order, each
+ * from its mask: h3_env_legal_mask, h3_env_spell_mask, h3_env_target_mask, h3_env_second_mask. */
 typedef struct H3Action {
     uint32_t entry;
     uint16_t spell;

@@ -1,8 +1,10 @@
-//! Movement (BAT-MOV-001 walking, BAT-MOV-002 flying and teleporting).
+//! Movement (BAT-MOV-001 walking, BAT-MOV-002 flying and teleporting, BAT-MOV-003 a walker's
+//! path).
 //!
 //! A position is the hex of a stack's head; a two-hex stack's tail follows it (BAT-GEO-002). A
 //! position is free for a stack when every hex of its footprint there is standable and not
-//! blocked by an obstacle or another living stack (its own current hexes do not block it).
+//! blocked by an obstacle (a Force Field among them, BAT-MAG-027) or another living stack (its
+//! own current hexes do not block it).
 
 use h3_content::MAX_FIELD_HEXES;
 
@@ -98,4 +100,41 @@ pub(crate) fn reachable_within(
         }
     }
     reach
+}
+
+/// Most positions on a walker's path.
+pub(crate) const MAX_PATH: usize = MAX_FIELD_HEXES;
+
+/// The positions a walker `mover` (stack `id`) passes on its way to the position `to`, in order,
+/// `to` last and its start left out (BAT-MOV-003): a shortest path between free positions,
+/// chosen from the end: each position's predecessor is its first neighbour, in
+/// [`crate::Direction::ALL`] order, one step nearer the start. Empty if `to` is the start or out
+/// of its reach. Only spell obstacles that act on the hexes a stack enters (Fire Wall,
+/// BAT-MAG-028) make the path matter. The original walks the path its pathfinder chose (0x4B3400,
+/// not read: survey S-11), so on ties it may pass other hexes.
+// rule: BAT-MOV-003
+pub(crate) fn path(
+    state: &BattleState,
+    field: Field,
+    id: StackId,
+    mover: &Stack,
+    to: Hex,
+) -> ([Hex; MAX_PATH], usize) {
+    let reach = reachable_within(state, field, id, mover, u8::MAX - 1);
+    let mut out = [Hex(0); MAX_PATH];
+    let Some(steps) = reach.steps(to).map(usize::from) else {
+        return (out, 0);
+    };
+    let mut at = to;
+    for i in (0..steps).rev() {
+        out[i] = at;
+        // A reached position other than the start has a neighbour one step nearer.
+        at = field
+            .neighbors(at)
+            .into_iter()
+            .flatten()
+            .find(|&n| reach.steps(n).is_some_and(|d| usize::from(d) == i))
+            .unwrap_or(at);
+    }
+    (out, steps)
 }

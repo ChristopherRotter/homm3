@@ -53,9 +53,13 @@ pub struct Spells {
     /// What timed spells change (E04b T3a), per spell.
     #[serde(default)]
     pub timed: Vec<SpellTimed>,
-    /// Stack spells of the other effect kinds (dispel and heal, E04b T3b1b), per spell.
+    /// Stack spells of the other effect kinds (dispel and heal, E04b T3b1b; teleport, T5a), per
+    /// spell.
     #[serde(default)]
     pub other: Vec<SpellOther>,
+    /// Spells that place battlefield obstacles (E04b T5a), per spell.
+    #[serde(default)]
+    pub obstacle: Vec<SpellObstacle>,
     /// What specialists in some spells add by a rule of the spell's own (E04b T3c).
     #[serde(default)]
     pub specialist: Vec<SpellSpecialist>,
@@ -148,6 +152,24 @@ pub struct SpellOther {
     /// Spells (by name) whose effects its dispel effect spares.
     #[serde(default)]
     pub spares: Vec<String>,
+    /// The mastery from which a cast also removes every spell obstacle (Dispel: `expert`).
+    #[serde(default)]
+    pub clears_obstacles: Option<String>,
+    /// Source ids.
+    pub sources: Vec<String>,
+}
+
+/// A spell that places battlefield obstacles (pack format v13, `packs/README.md`; the original's
+/// code, `docs/formats/installation.md` §7.15). The target hex comes from the flag word.
+#[derive(Debug, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct SpellObstacle {
+    /// Spell name (as in `SPTRAITS.TXT`).
+    pub spell: String,
+    /// The obstacle kind (`wall`, `fire`).
+    pub obstacle: String,
+    /// `{ steps, hexes, mirrored, separate, rounds }`, copied verbatim.
+    pub shape: toml::Value,
     /// Source ids.
     pub sources: Vec<String>,
 }
@@ -622,6 +644,7 @@ impl GapFill {
                 .chain(g.spells.targeting.iter().flat_map(|t| &t.sources))
                 .chain(g.spells.timed.iter().flat_map(|t| &t.sources))
                 .chain(g.spells.other.iter().flat_map(|t| &t.sources))
+                .chain(g.spells.obstacle.iter().flat_map(|t| &t.sources))
                 .chain(g.spells.specialist.iter().flat_map(|t| &t.sources))
                 .chain(&g.spells.protection_sources);
         for r in refs {

@@ -13,6 +13,7 @@ use crate::combat::{can_shoot, melee, shoot};
 use crate::event::{Event, EventKind, Sink};
 use crate::geometry::{Field, Hex};
 use crate::movement::{Reach, reachable_within};
+use crate::obstacles;
 use crate::state::{BattleState, STACK_CAPACITY, Stack, StackId, StackTraits};
 
 /// A range beyond any battlefield: a walk of every reachable position.
@@ -78,19 +79,25 @@ pub(crate) fn berserk<S: Sink>(
     };
     if shooting {
         shoot(state, ruleset, id, target, from, sink);
+        obstacles::stand(state, ruleset, id, sink);
         return true;
     }
     let speed = u32::from(me.speed_now());
     if d <= speed {
-        walk(state, id, me.hex, from, sink);
         // `d <= speed <= 255`.
         let charge = u8::try_from(d).unwrap_or(u8::MAX);
-        melee(state, ruleset, id, target, me.hex, charge, sink);
+        // As a commanded attack (BAT-MAG-028).
+        if from == me.hex {
+            melee(state, ruleset, id, target, me.hex, charge, sink);
+            obstacles::stand(state, ruleset, id, sink);
+        } else if obstacles::travel(state, ruleset, id, (me.hex, from), sink) {
+            melee(state, ruleset, id, target, me.hex, charge, sink);
+        }
         return true;
     }
     match towards(state, field, (id, &me), &reach, from) {
         Some(to) => {
-            walk(state, id, me.hex, to, sink);
+            obstacles::travel(state, ruleset, id, (me.hex, to), sink);
             true
         }
         None => {
@@ -143,16 +150,4 @@ fn towards(
                     .is_some_and(|b| u32::from(speed) + u32::from(b) == total)
         })
         .min_by_key(|h| h.0)
-}
-
-/// Moves stack `id` from `from` to `to`, reported (nothing if they are the same).
-fn walk<S: Sink>(state: &mut BattleState, id: StackId, from: Hex, to: Hex, sink: &mut S) {
-    if from != to {
-        state.at_mut(id).hex = to;
-        sink.emit(Event::public(EventKind::Moved {
-            stack: id,
-            from,
-            to,
-        }));
-    }
 }

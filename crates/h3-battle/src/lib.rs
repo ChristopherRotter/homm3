@@ -37,6 +37,7 @@ mod magic;
 mod morale;
 mod movement;
 mod observe;
+mod obstacles;
 mod state;
 mod tactics;
 mod terrain;
@@ -53,10 +54,11 @@ pub use hero::{HeroView, OwnHeroView};
 pub use legal::{LegalCommands, MAX_LEGAL_COMMANDS, legal_commands};
 pub use magic::{
     CastTarget, CastTargets, MAX_CAST_TARGETS, MAX_SPELL_BONUSES, SpellBonus, SpellBonuses,
-    SpellSet, cast_targets, castable_spells,
+    SpellSet, cast_targets, castable_spells, second_targets,
 };
 pub use morale::{Bearer, Expiry, MODIFIER_CAPACITY, Modifiers, Stat};
 pub use observe::{Observation, observe, project};
+pub use obstacles::{OBSTACLE_CAPACITY, SpellObstacle};
 pub use state::{
     BATTLE_STATE_HASH_VERSION, BattleState, SIDE_STACK_SLOTS, STACK_CAPACITY, Stack, StackFlags,
     StackId, StackTraits, UNLIMITED_RETALIATIONS,

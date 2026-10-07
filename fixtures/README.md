@@ -14,14 +14,16 @@ cross-platform determinism check (ADR-0003 §11, E01 exit criterion 2).
 | `duel-s1.toml` | duel | 1 | 1 |
 | `skirmish-s7.toml` | skirmish | 7 | 8 |
 | `full-s3.toml` | full | 3 | 4 |
+| `full-s3-a362.toml` | full | 3 | 362 (E04b T5a: its game casts Bulwark, Scorch twice and Blink) |
 
 Regenerate (only when a change *intentionally* alters game behavior, the synthetic pack, or an
 algorithm/encoding version — say so in the commit message):
 
 ```sh
 cargo build -p h3-cli
-for spec in "duel 1 1" "skirmish 7 8" "full 3 4"; do set -- $spec
+for spec in "duel 1 1 duel-s1" "skirmish 7 8 skirmish-s7" "full 3 4 full-s3" "full 3 362 full-s3-a362"; do
+  set -- $spec
   ./target/debug/h3 run --scenario packs/synthetic/scenarios/$1.toml --seed $2 --agent-seed $3 \
-    --max-steps 2000 --checkpoint-every 25 --record fixtures/replays/$1-s$2.toml
+    --max-steps 2000 --checkpoint-every 25 --record fixtures/replays/$4.toml
 done
 ```

@@ -51,6 +51,8 @@ Language-specific bindings only (locks out other ecosystems); a network protocol
   point 9). Covers action encoding v9 and observation encoding v5.
 - **ABI v9** (E04b T3a): observation encoding v6 (each stack's timed effects; the length
   grows). No function changes.
+- **ABI v10** (E04b T5a): action encoding v10 (the second target head carries Teleport's
+  destination hex). No function changes.
 
 ## Revision history
 

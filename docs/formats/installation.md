@@ -798,3 +798,80 @@ hypnotized stacks, and so does Expert Cure, which loops over the caster's own st
 +0x5754 = Hypnotize's duration): an Expert Cure never reaches them (quirk S-13), a single Cure
 does. VCMI 1.7.5 (`config/spells/ability.json`, `BattleInfo`) limits Hypnotize by the stack's
 remaining health.
+
+### 7.15 Code reading: battlefield objects, Force Field, Fire Wall, Teleport, Remove Obstacle (E04b T5a/T5b, 2026-10-07)
+
+Read for T5a and T5b (Q29: insight only, nothing copied). The cast routine's switch (§7.8) sends
+Quicksand (10) to 0x5A0354, Land Mine (11) to 0x5A0536, Force Field (12) to 0x5A0759, Fire Wall
+(13) to 0x5A0821, Teleport (63) to 0x5A1B4D and Remove Obstacle (64) to 0x5A1C04; the spell
+book's handler 0x59EC50 picks the cursor mode per spell (Quicksand casts at once, Land Mine first
+tests the native terrain, T5c).
+
+**Battlefield objects.** The battle manager keeps a vector of objects at +0x13D58 (begin +0x13D5C,
+end +0x13D60), 0x18 bytes each: +0 the graphic (0 once removed), +4 the type descriptor, +8 the
+anchor hex, +9 the owner side (−1 for the battlefield's own obstacles), +0xA revealed (shown to
+both sides), +0xC a value (Fire Wall's and Land Mine's damage), +0x10 rounds left (0: lasts the
+battle), +0x14 the animation played when it goes (−1: fade out). A descriptor (0x14 bytes) holds
+a count of blocked hexes at +6 and their offsets from the anchor at +8 (`hex + offset`, one hex
+to the left when the anchor's row is odd and the result's even: VCMI's rule, BAT-GEO-004).
+Placing an object (0x4669B0) sets, on each hex record (stride 0x70 from +0x1C4), flag bits at
++0x10 and the object's index at +0x14; the anchor also gets bit `0x1` and the index, even where
+the descriptor does not block it (28 of the 55 usual obstacle types in the harvested `base` pack
+leave out the offset (0, 0)). Read so, such an anchor hex may be stood on and walked through, but
+takes no Fire Wall or Force Field (their test wants none of the bits `0x3F`) and Remove Obstacle
+aimed at it removes its obstacle (the test wants an index); not observed yet (OPEN-QUESTIONS Q55). The flag bits:
+`0x2` blocked (natural obstacles and Force Field), `0x4` Quicksand, `0x8` Land Mine, `0x10` Fire
+Wall, `0x20` Force Field; `0x3C` are the spell objects. Only `0x2` blocks movement and standing
+(0x469A10); Quicksand, Land Mine and Fire Wall hexes may be entered and stood on. The usual
+obstacles (0x466010) become objects (side −1, revealed, permanent); the absolute ones (0x466939)
+only set `0x2` on their hexes and have no object, so nothing can remove them. Removing an object
+(0x466B30) clears the flags and index of each of its hexes and its graphic. At every round start
+(0x476152, after the stacks' effects, §7.9) each object with rounds left loses one; at 0 it is
+removed.
+
+**Force Field** (12): one object over 2 hexes (offsets 0, −16) below Advanced, 3 (0, −16, −34)
+from Advanced (descriptors 0x63CF18, 0x63CF2C), for both sides alike: the target hex, its upper
+right neighbour, and that one's upper left; revealed, 2 rounds, flags `0x22`. **Fire Wall** (13):
+one object per hex, 2 hexes below Advanced and 3 from it: the target hex, its upper right
+neighbour for the attacker's hero or upper left for the defender's, and two rows above the
+target (the upper left, resp. upper right, of the second); each revealed, 2 rounds, flag `0x10`,
+with the value `power × power factor + effect[mastery]` (0x5A78E0 called without a hero or a
+stack: no bonus yet). The target test 0x5A39C0 wants every hex of either inside the field,
+outside the side columns, without any object bit (`0x3F`) and without a stack.
+
+**Entering a hex** (0x46A570, for a stack's hex and, if it is a two-hex stack, its second hex,
+each at most once per move: a per-hex array cleared at the start of a move with the starting
+hexes already marked, 0x46A520) calls in turn the Fire Wall trigger 0x59FCD0, the Land Mine
+trigger 0x59FB40 and the Quicksand test 0x469E50 (T5c). A walker (0x441FA0) enters each hex of
+the path its pathfinder chose (0x5239D0 → 0x4B3400, the pathfinder of survey S-11, which avoids
+Quicksand its side can see and nothing else) and stops when it dies; a flyer (0x4B49C0) and a
+teleporting creature (0x4B4E90) enter only the hexes they land on. After an action that does not
+move the stack (defend 0x4798F3, wait 0x479AD6, a shot or melee attack from where it stands
+0x4792D7, 0x4789C7) the array is cleared and the stack's own hexes are entered again; a stack that
+moved and then attacked is not (0x478900 skips it). After a shot the battle's end is checked first
+(0x4762F0 → 0x465830) and nothing is entered once it is over; after a melee attack from where the
+stack stands no such check was found (the engine skips the burn once the battle is over there
+too). Arrow towers (creature 149) never enter.
+
+**Fire Wall's damage** (0x59FCD0): for a living stack on a Fire Wall hex, if 0x5A8090 (spell 13,
+the object's owner as the caster's side) gives `f > 0` (Fire Wall is neutral: either side's
+stacks; immunities, Anti-Magic and the stack's hero's resistance count only through `f > 0`:
+**no resistance roll**), 0x5A78E0 with the owner's hero as the caster, the stack's controlling
+hero as the target's, and the stack: the caster's bonuses (the Orb of Fire, Sorcery, Luna's +100 %,
+§7.12), the creature's factor, Protection from Fire (§7.8), then the hit points (0x444090, which
+also ends Blind and the like, §7.14). The object stays.
+
+**Teleport** (63): a positive stack spell (flag `0x1000`: no war machine). The handler moves the
+stack to the second hex (0x5A1B4D: off its hexes, the destination adjusted for a two-hex stack by
+0x446C40, placed) and enters no hex: no trigger fires. The destination test 0x5A3700: not the
+stack's own hex, a position where it fits (0x446C40: inside the field, outside the side columns,
+not blocked, no other stack, for a two-hex stack also its second hex); in a siege, below Advanced
+not across the wall and below Expert only where 0x467840 allows (E04c); outside sieges every
+mastery is alike.
+
+**Remove Obstacle** (64; flag `0x100`): the target test wants a hex with an object (index ≥ 0)
+whose flags allow it at the caster's mastery (table 0x5A3C64): below Advanced no spell object
+(`0x3C`); Advanced also Fire Wall (`0x10`); Expert any object. The handler removes the whole
+object (0x466B30), a single Fire Wall hex being an object of its own.
+
+**Expert Dispel** (§7.10) removes every object with a spell bit (`0x3C`), whoever cast it.

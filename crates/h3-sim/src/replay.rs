@@ -17,7 +17,7 @@ use h3_kernel::rng::{RNG_ALGORITHM, RNG_VERSION};
 use h3_kernel::{Rng, StreamId};
 
 /// Version of the replay model (bump when fields change meaning).
-pub const REPLAY_FORMAT_VERSION: u32 = 16;
+pub const REPLAY_FORMAT_VERSION: u32 = 17;
 
 /// Identity of everything a replay depends on.
 #[derive(Debug, Clone, PartialEq, Eq)]

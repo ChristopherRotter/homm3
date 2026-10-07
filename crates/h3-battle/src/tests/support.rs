@@ -8,10 +8,10 @@ use std::vec::Vec;
 use h3_content::{
     AbilityDef, AuraTarget, BattleParamsDef, ContentKey, ContentPack, CreatureDef, CreatureFlag,
     CreatureFlags, CreatureInfoDef, EffectDuration, EffectEnd, FactionDef, Formation, HeroClassDef,
-    HeroTypeDef, ObstacleDef, PackManifest, ProfileDef, ResourceDef, Ruleset, SpecialistBonus,
-    SpellArea, SpellCategory, SpellChain, SpellDef, SpellEffect, SpellMagic, SpellPolarity,
-    SpellSchoolDef, SpellTarget, StartingStackDef, SurrenderDef, TargetConditions, TargetSide,
-    TerrainDef, TimedChange,
+    HeroTypeDef, HexStep, ObstacleDef, ObstacleKind, ObstacleShape, PackManifest, ProfileDef,
+    ResourceDef, Ruleset, SpecialistBonus, SpellArea, SpellCategory, SpellChain, SpellDef,
+    SpellEffect, SpellMagic, SpellPolarity, SpellSchoolDef, SpellTarget, StartingStackDef,
+    SurrenderDef, TargetConditions, TargetSide, TerrainDef, TimedChange,
 };
 pub use h3_contracts::Rate;
 use h3_contracts::{Army, ArmyStack, BattleHero, BattleSetup, BattleSide};
@@ -758,6 +758,7 @@ pub fn ruleset_with(profile: &str, edit: impl FnOnce(&mut BattleParamsDef)) -> R
             .chain(TIMED.iter().map(|&spell| timed_def(spell)))
             .chain(other_defs())
             .chain(control_defs())
+            .chain(field_defs())
             .collect(),
         hero_classes: vec![HeroClassDef {
             key: ContentKey::new("t", "knight").unwrap(),
@@ -1272,6 +1273,7 @@ pub fn other_defs() -> [SpellDef; 2] {
                     ignores_immunity: true,
                     mass_from: Some(3),
                     effects: vec![SpellEffect::Dispel],
+                    clears_obstacles_from: Some(3),
                     ..SpellMagic::default()
                 },
             )
@@ -1399,6 +1401,76 @@ pub fn control_defs() -> Vec<SpellDef> {
                 },
             )
         },
+    ]
+}
+
+/// The test Force Field (`t:wall`: level 3, the target hex and its upper right neighbour, from
+/// Advanced also that one's upper left, for either side; 2 rounds), Fire Wall (`t:firewall`: a
+/// fire spell of level 2, power × 10 + 10, 10, 20, 50 damage, the same hexes mirrored for the
+/// defender, one obstacle per hex, 2 rounds) and Teleport (`t:teleport`: level 3, an own stack
+/// that is no war machine to a free hex).
+pub fn field_defs() -> Vec<SpellDef> {
+    let key = |k: &str| ContentKey::new("t", k).unwrap();
+    let def = |name: &str, (level, school), polarity, magic| SpellDef {
+        key: key(name),
+        name: String::from(name),
+        category: SpellCategory::Combat,
+        level,
+        schools: vec![key(school)],
+        cost: [5, 4, 4, 4],
+        power: 0,
+        effect: [0; 4],
+        polarity,
+        magic,
+        counters: vec![],
+        dispels: vec![],
+        spares: vec![],
+    };
+    let shape = |mirrored, separate| ObstacleShape {
+        steps: vec![HexStep::TopRight, HexStep::TopLeft],
+        hexes: [2, 2, 3, 3],
+        mirrored,
+        separate,
+        rounds: 2,
+    };
+    let obstacle = |kind, shape| SpellMagic {
+        target: SpellTarget::Hex,
+        obstacle: Some(shape),
+        effects: vec![SpellEffect::Obstacle(kind)],
+        ..SpellMagic::default()
+    };
+    vec![
+        def(
+            "wall",
+            (3, "air"),
+            SpellPolarity::Neutral,
+            obstacle(ObstacleKind::Wall, shape(false, false)),
+        ),
+        SpellDef {
+            power: 10,
+            effect: [10, 10, 20, 50],
+            ..def(
+                "firewall",
+                (2, "fire"),
+                SpellPolarity::Neutral,
+                obstacle(ObstacleKind::Fire, shape(true, true)),
+            )
+        },
+        def(
+            "teleport",
+            (3, "air"),
+            SpellPolarity::Positive,
+            SpellMagic {
+                target: SpellTarget::Stack,
+                side: TargetSide::Own,
+                conditions: TargetConditions {
+                    requires: CreatureFlags::default(),
+                    excludes: CreatureFlags::default().with(CreatureFlag::WarMachine),
+                },
+                effects: vec![SpellEffect::Teleport],
+                ..SpellMagic::default()
+            },
+        ),
     ]
 }
 

@@ -12,6 +12,7 @@ mod geometry;
 mod heroes;
 mod magic;
 mod morale;
+mod obstacles;
 mod properties;
 mod protect;
 mod rage;

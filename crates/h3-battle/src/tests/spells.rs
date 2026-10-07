@@ -57,6 +57,7 @@ pub(super) fn cast(r: &Ruleset, name: &str, target: CastTarget) -> Command {
     Command::Cast {
         spell: spell(r, name),
         target,
+        second: CastTarget::None,
     }
 }
 

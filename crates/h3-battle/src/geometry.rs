@@ -9,7 +9,7 @@
 //! rightmost columns exist (the original keeps heroes and war machines there) but no stack can
 //! stand in them.
 
-use h3_content::FieldParams;
+use h3_content::{FieldParams, HexStep};
 use h3_contracts::BattleSide;
 use h3_kernel::{CanonicalHash, StateHasher};
 
@@ -61,6 +61,17 @@ impl HexSet {
     /// Whether the set is empty.
     pub const fn is_empty(self) -> bool {
         self.len() == 0
+    }
+
+    /// The hexes in either set.
+    #[must_use]
+    pub const fn union(self, other: Self) -> Self {
+        Self([
+            self.0[0] | other.0[0],
+            self.0[1] | other.0[1],
+            self.0[2] | other.0[2],
+            self.0[3] | other.0[3],
+        ])
     }
 
     /// The hexes in ascending order.
@@ -131,6 +142,18 @@ impl Direction {
         Self::TopLeft,
         Self::TopRight,
     ];
+
+    /// The direction of a content step (an obstacle spell's shape, BAT-MAG-027).
+    pub const fn from_step(step: HexStep) -> Self {
+        match step {
+            HexStep::Right => Self::Right,
+            HexStep::BottomRight => Self::BottomRight,
+            HexStep::BottomLeft => Self::BottomLeft,
+            HexStep::Left => Self::Left,
+            HexStep::TopLeft => Self::TopLeft,
+            HexStep::TopRight => Self::TopRight,
+        }
+    }
 
     /// This direction turned `steps` sixths of a full turn clockwise.
     #[must_use]

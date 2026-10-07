@@ -17,6 +17,7 @@ use crate::event::{Event, EventKind, Sink};
 use crate::geometry::{Field, Hex};
 use crate::magic::{self, Cast, CastTarget};
 use crate::movement::reachable;
+use crate::obstacles;
 use crate::state::{BattleState, Stack, StackFlags, StackId, StackTraits};
 use crate::tactics::{self, TacticsPhase};
 use crate::turn::{self, TurnEnd, end_turn};
@@ -68,6 +69,9 @@ pub enum Command {
         spell: SpellId,
         /// What it is aimed at.
         target: CastTarget,
+        /// Its second target: Teleport's destination hex (BAT-MAG-029); none for every other
+        /// spell.
+        second: CastTarget,
     },
 }
 
@@ -176,9 +180,12 @@ fn plan<'r>(
         Command::EndTactics => Err(CommandError::NoTacticsPhase),
         Command::Retreat => retreat(state, actor),
         Command::Surrender => surrender(state, ruleset, actor),
-        Command::Cast { spell, target } => {
-            magic::plan_cast(state, ruleset, actor, spell, target).map(|c| Plan::Cast(Box::new(c)))
-        }
+        Command::Cast {
+            spell,
+            target,
+            second,
+        } => magic::plan_cast(state, ruleset, actor, spell, (target, second))
+            .map(|c| Plan::Cast(Box::new(c))),
         Command::Wait => {
             // rule: BAT-TRN-002
             if mover.flags.contains(StackFlags::WAITED) {
@@ -353,15 +360,17 @@ pub fn apply<S: Sink>(
     match plan {
         Plan::Wait { mover } => {
             sink.emit(Event::public(EventKind::Waited { stack: mover }));
+            obstacles::stand(state, ruleset, mover, sink);
             end_turn(state, ruleset, mover, TurnEnd::Waited, sink);
         }
         Plan::Defend { mover } => {
             state.at_mut(mover).flags.set(StackFlags::DEFENDING, true);
             sink.emit(Event::public(EventKind::Defended { stack: mover }));
+            obstacles::stand(state, ruleset, mover, sink);
             end_turn(state, ruleset, mover, TurnEnd::Defended, sink);
         }
         Plan::Move { mover, from, to } => {
-            move_stack(state, mover, from, to, sink);
+            obstacles::travel(state, ruleset, mover, (from, to), sink);
             end_turn(state, ruleset, mover, TurnEnd::Acted, sink);
         }
         Plan::Attack {
@@ -371,14 +380,19 @@ pub fn apply<S: Sink>(
             charge,
             target,
         } => {
-            if from != to {
-                move_stack(state, mover, from, to, sink);
+            // A stack that dies on its way does not attack (BAT-MAG-028); one that attacks from
+            // where it stands burns after the attack.
+            if from == to {
+                melee(state, ruleset, mover, target, from, charge, sink);
+                obstacles::stand(state, ruleset, mover, sink);
+            } else if obstacles::travel(state, ruleset, mover, (from, to), sink) {
+                melee(state, ruleset, mover, target, from, charge, sink);
             }
-            melee(state, ruleset, mover, target, from, charge, sink);
             end_turn(state, ruleset, mover, TurnEnd::Acted, sink);
         }
         Plan::Shoot { mover, target, at } => {
             shoot(state, ruleset, mover, target, at, sink);
+            obstacles::stand(state, ruleset, mover, sink);
             end_turn(state, ruleset, mover, TurnEnd::Acted, sink);
         }
         Plan::Heal { mover, target } => {
@@ -391,7 +405,8 @@ pub fn apply<S: Sink>(
             to,
             phase,
         } => {
-            move_stack(state, mover, from, to, sink);
+            // No spell obstacle exists in the tactics phase: a placement is a plain move.
+            obstacles::travel(state, ruleset, mover, (from, to), sink);
             tactics::placed(state, phase, mover, sink);
         }
         Plan::Pass { mover, phase } => tactics::skip(state, phase, mover, sink),
@@ -419,13 +434,4 @@ fn leave<S: Sink>(state: &mut BattleState, result: BattleResult, sink: &mut S) {
     state.active = None;
     state.result = Some(result);
     sink.emit(Event::public(EventKind::BattleEnded { result }));
-}
-
-fn move_stack<S: Sink>(state: &mut BattleState, mover: StackId, from: Hex, to: Hex, sink: &mut S) {
-    state.at_mut(mover).hex = to;
-    sink.emit(Event::public(EventKind::Moved {
-        stack: mover,
-        from,
-        to,
-    }));
 }

@@ -1,7 +1,8 @@
 //! Baseline agents: the uniformly random legal agent (also the benchmark workload).
 
 use h3_battle::{
-    BattleState, CastTargets, Command, LegalCommands, cast_targets, castable_spells, legal_commands,
+    BattleState, CastTargets, Command, LegalCommands, cast_targets, castable_spells,
+    legal_commands, second_targets,
 };
 use h3_content::Ruleset;
 use h3_contracts::{BattleResult, BattleSide};
@@ -78,14 +79,25 @@ pub fn choose(
     }
     let count = u32::try_from(spells.iter().count()).unwrap_or(u32::MAX);
     let nth = rng.below(count) as usize;
-    // A castable spell has at least one target (`castable_spells`).
+    // A castable spell has at least one target (`castable_spells`), and each target a second
+    // (`cast_targets`): none for every spell but Teleport, whose destination is drawn too.
     spells.iter().nth(nth).map_or(Command::Defend, |spell| {
         let mut targets = CastTargets::new();
         cast_targets(state, ruleset, side, spell, &mut targets);
         let n = u32::try_from(targets.len()).unwrap_or(u32::MAX);
-        targets
+        let target = targets
             .get(rng.below(n) as usize)
-            .map_or(Command::Defend, |&target| Command::Cast { spell, target })
+            .copied()
+            .unwrap_or_default();
+        second_targets(state, ruleset, side, (spell, target), &mut targets);
+        let n = u32::try_from(targets.len()).unwrap_or(u32::MAX);
+        let k = if n > 1 { rng.below(n) as usize } else { 0 };
+        let second = targets.get(k).copied().unwrap_or_default();
+        Command::Cast {
+            spell,
+            target,
+            second,
+        }
     })
 }
 
