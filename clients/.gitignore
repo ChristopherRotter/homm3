@@ -1,0 +1,5 @@
+# The client workspace's build output.
+/target/
+# Screenshots from the headless render-to-PNG mode and other local output: never committed, they
+# show original assets (ADR-0009).
+/out/

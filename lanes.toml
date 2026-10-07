@@ -57,7 +57,6 @@ paths = [
     "docs/adr/",
     "docs/rules/catalog/README.md",
     "docs/rules/catalog/kernel.toml",
-    "docs/lanes/README.md",
 ]
 
 # Any lane may change these (lane-prefixed ids keep concurrent additions apart).
