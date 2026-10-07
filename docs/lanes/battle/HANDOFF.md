@@ -4,7 +4,7 @@ The battle lane's living state; read after the global `docs/HANDOFF.md`. Format 
 
 ## Current state
 
-- **Branch:** `e04b-battle-magic` (= `master` `b7a5db2` when Phase 0 started; delete it once Phase 0 has merged). Continue on `battle/<task>` branches from `master`, one per task or increment, merged at its checkpoint; HANDOFF content goes here, not into `docs/HANDOFF.md`.
+- **Branch:** `battle/e04b-t5c1` (T5c1). Work on `battle/<task>` branches from `master`, one per task or increment, merged at its checkpoint; HANDOFF content goes here, not into `docs/HANDOFF.md`. The stale `e04b-battle-magic` and `claude/hopeful-mayer-ppui03` (both in `master`) wait for the user to delete them: the session proxy refuses ref deletion.
 - **E04b increment 3 (Q54, Q56):** T5a done; batch 2b folded in (all six encounters as predicted); batch 2c compiled and with the user; T5b (Remove Obstacle) waits for its A1–A3 (Q55); T5c next. Sandbox: `docs/08-work-process.md`, "Cloud sandbox".
 - **Done:** survey `docs/rules/surveys/E04b-magic.md` (§12–§15), ADR-0014 accepted (point 5 amended, Q47), design note `docs/epics/E04b-design.md`. Castable by heroes: the 13 damage spells, the 14 value spells, Shield, Air Shield, the Protections (Q-0007), Slayer, Counterstrike (Q-0008), Dispel, Cure, Fire Shield (Q-0010) and Frenzy (Q-0009) (BAT-MAG-001 to 019), the spell specialists (BAT-MAG-020), Anti-Magic and Magic Mirror (BAT-MAG-021/022), Forgetfulness and Blind (BAT-MAG-023/024), Berserk and Hypnotize (BAT-MAG-025/026; a stack's `controller()` commands it), Force Field, Fire Wall, Teleport and Expert Dispel's clearing (BAT-MAG-027 to 030; `h3_battle::obstacles`), all after the executable's code (`installation.md` §7.8–§7.15). **Physical damage follows the executable's three truncated stages** under Q-0005 (Q50, BAT-DMG-002, `h3_kernel::arith::X87` at 53 bits).
 - **Hero rates** cross the seam as `h3_contracts::Rate` (basis points plus, under Q-0005, the original's single-precision value as an f32 bit pattern where it differs; Q45 (b), T3c2).
@@ -37,6 +37,10 @@ The battle lane's living state; read after the global `docs/HANDOFF.md`. Format 
 
 ## Recent sessions
 
+### 2026-10-07 (twenty-eighth) — E04b T5c1 in progress
+
+Linked cloud session, branch `battle/e04b-t5c1`. BAT-Q1: T5c1 alone (Quicksand, hidden obstacles), a checkpoint before T5c2 (Land Mine); the natives' sight (BAT-QUIRK-1) and an attack from a seen pit (BAT-QUIRK-2) fix-optional; ADR-0014 point 7 amended in `shared/adr-0014-natives`. Read so far (`installation.md` §7.16 to write): Quicksand 0x5A0354 (4/4/6/8 pits, random free hexes without objects, stacks or corpses), the walker 0x441FA0 and the stop array 0x4B3290; 0x469E50 is the moat, not Quicksand (§7.15 corrected). In progress: the code.
+
 ### 2026-10-07 (twenty-seventh) — batch 2b folded in, batch 2c compiled
 
 Linked cloud session. Q56: the fold-in and batch 2c only, a checkpoint after (T5c next). Batch 2b: every encounter as the engine's faithful prediction (53 bits, Q-0008, Q-0010, Q47, Q45 (b)); observation sources on nine rules, the ledger, fixtures; no behaviour change. Batch 2c: Q55 (A1–A3), Fire Wall (F1, F2), Berserk (B1), Hypnotize and Cure (H1, C1). Detail: `docs/epics/E04b-log.md`.
@@ -44,7 +48,3 @@ Linked cloud session. Q56: the fold-in and batch 2c only, a checkpoint after (T5
 ### 2026-10-07 (twenty-sixth) — E04b T5a, T5b in progress
 
 Linked cloud session. Q54: T5a + T5b, then a checkpoint; S-17 and the T4c decisions kept. T5a done (`installation.md` §7.15; pack format v13; BAT-MAG-027 to 030, BAT-MOV-003; old workload +0.58 %; replays and `bench-check` re-baselined). T5b waits: the user wants the anchor hexes (Q55) observed first. Detail: `docs/epics/E04b-log.md` (T5a).
-
-### 2026-10-07 (twenty-fifth) — E04b T4b and T4c: Forgetfulness, Blind, Berserk, Hypnotize
-
-Linked cloud session. Q53: T4b + T4c; after the reading (`installation.md` §7.14) S-09 the rule (no flag), S-10 fix-optional (Q-0011), S-11 unconfirmed, S-13 fix-optional (Q-0012). T4b: pack format v11, BAT-MAG-023/024, `StackFlags::STARTED`, state hash v25; old workload −0.08 %. T4c: pack format v12, BAT-MAG-025/026, `Stack::controller()`, the berserk turn (`control.rs`), Q-0011/Q-0012, ruleset hash v22; old workload +0.68 %. Replays and `bench-check` re-baselined. Detail: `docs/epics/E04b-log.md` (T4b, T4c).

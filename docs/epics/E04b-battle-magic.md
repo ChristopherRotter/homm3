@@ -77,7 +77,9 @@ The 13 direct-damage spells: Magic Arrow, Ice Bolt, Lightning Bolt, Titan's Ligh
 - [x] **Batch 2b folded in** — done 2026-10-07 (Q56): every encounter as the engine's faithful prediction (53 bits, Q-0008, Q-0010, Q47, Q45 (b)); observation sources on nine rules, fixtures; no behaviour change. Record: [`E04b-log.md`](E04b-log.md).
 - [x] **Batch 2c compiled** — done 2026-10-07 (Q56): `experiments/specs/E04b-batch-2c.toml`, eight encounters: Q55's anchor hexes on three battlefields (A1–A3), Fire Wall's burns and the defender's shapes (F1), a walker's path past a Fire Wall (F2), Berserk's tie (B1), Hypnotize's limit and Expert Cure (H1), Basic Cure (C1). Record: [`E04b-log.md`](E04b-log.md).
 - [ ] **T5b Remove Obstacle** (waits for Q55, batch 2c A1–A3): the natural obstacles as removable pieces with their anchors (a seam change of `BattleSetup.obstacles`; the user decides after an experiment confirms the anchor hexes), Remove Obstacle by mastery (natural ones; Advanced also Fire Wall; Expert any spell obstacle), the anchors in Fire Wall's and Force Field's test.
-- [ ] **T5c Quicksand and Land Mine**: hidden from the other side (ADR-0014 point 7), revealed when triggered or to a side with natives; legality and paths by the acting side's view; a move into an unseen pit stops there.
+- [ ] **T5c Quicksand and Land Mine**: hidden from the other side (ADR-0014 point 7), revealed when triggered or to a side with natives; legality and paths by the acting side's view; a move into an unseen pit stops there. In two parts (BAT-Q1): **T5c1** Quicksand and the hidden-obstacle machinery (the natives' sight BAT-QUIRK-1, an attack from a seen pit BAT-QUIRK-2), **T5c2** Land Mine.
+
+**Checkpoint before T5c** (2026-10-07, BAT-Q1): the user chose T5c1 alone for the session, a checkpoint before T5c2; the natives' sight and an attack from a seen pit as fix-optional quirks.
 
 **Checkpoint after T5a** (2026-10-07, Q56): with T5b waiting, the user chose the batch 2b fold-in and batch 2c (Q55 with T5a's and T4c's candidates) for the session, a checkpoint after; T5c next.
 
