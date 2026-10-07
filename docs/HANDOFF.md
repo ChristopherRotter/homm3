@@ -4,11 +4,11 @@ Living state between sessions; every session reads it first. Rules (`docs/08-wor
 
 ## Current state
 
-- Branch `e04b-battle-magic` on GitHub (pushed after every commit; Q49); increments 1 (T1–T2) and 2 (T3, T4) done. **Increment 3 (Q54): T5 in three parts; T5a done; T5b (Remove Obstacle) waits for an experiment on anchor hexes (Q55)**; batch 2b with the user. Sandbox: `docs/08-work-process.md`, "Cloud sandbox and syncing".
+- Branch `e04b-battle-magic` on GitHub (pushed after every commit; Q49); increments 1 (T1–T2) and 2 (T3, T4) done. **Increment 3 (Q54, Q56): T5a done; batch 2b folded in (all six encounters as predicted); batch 2c compiled and with the user; T5b (Remove Obstacle) waits for its A1–A3 (Q55); T5c next.** Sandbox: `docs/08-work-process.md`, "Cloud sandbox and syncing".
 - **GitHub and CI:** `ChristopherRotter/homm3` (private); `.github/workflows/ci.yml` runs `cargo xtask verify` on Linux for PRs, `master` and weekly; changes reach `master` by pull request; a `bench-check` re-baseline must hold on the CI runner.
 - **Done:** survey `docs/rules/surveys/E04b-magic.md` (§12–§15), ADR-0014 accepted (point 5 amended, Q47), design note `docs/epics/E04b-design.md`. Castable by heroes: the 13 damage spells, the 14 value spells, Shield, Air Shield, the Protections (Q-0007), Slayer, Counterstrike (Q-0008), Dispel, Cure, Fire Shield (Q-0010) and Frenzy (Q-0009) (BAT-MAG-001 to 019), the spell specialists (BAT-MAG-020), Anti-Magic and Magic Mirror (BAT-MAG-021/022), Forgetfulness and Blind (BAT-MAG-023/024), Berserk and Hypnotize (BAT-MAG-025/026; a stack's `controller()` commands it), Force Field, Fire Wall, Teleport and Expert Dispel's clearing (BAT-MAG-027 to 030; `h3_battle::obstacles`), all after the executable's code (`installation.md` §7.8–§7.15). **Physical damage follows the executable's three truncated stages** under Q-0005 (Q50, BAT-DMG-002, `h3_kernel::arith::X87` at 53 bits).
 - **Hero rates** cross the seam as `h3_contracts::Rate` (basis points plus, under Q-0005, the original's single-precision value as an f32 bit pattern where it differs; Q45 (b), T3c2).
-- **Next:** an experiment on anchor hexes (batch 2c, when the user wants it; the layout comes from the map tile, so the user probes free hexes beside small obstacles; add T5a's candidates, BACKLOG), then Q55; then T5b (Remove Obstacle), T5c (Quicksand, Land Mine); batch 2b (`experiments/specs/E04b-batch-2b.toml`) is with the user: fold it in when its results are in.
+- **Next:** the user's checkpoint (Q56 planned T5c: Quicksand, Land Mine, hidden, ADR-0014 point 7) while the user plays batch 2c (`experiments/specs/E04b-batch-2c.toml`; the map is in the user's `experiments/out/`); when its results are in, fold them in, put Q55's options to the user, then T5b.
 - **Open for later tasks:** batch 2a R6's costs (T7); Q43 (sprite offset, keep the approximation); creature casters' re-casts (T7); the damage stages' creature factors; Dispel's and Fire Shield's loose ends (Sphere T8, obstacles T5, the Sultans' shield T7; BACKLOG); T4a's and T4c's loose ends (BACKLOG).
 - Versions: state hash v26, ruleset hash v23, replay format v17, action encoding v10, C ABI v10, observation encoding v6; pack format v13.
 - Working agreement: increments of a couple of tasks with a user checkpoint (Q41); the user confirms seams and ADRs; token efficiency beats speed (AGENTS.md); the user plays experiment maps in SoD with plain HD and commits the results.
@@ -47,9 +47,13 @@ Living state between sessions; every session reads it first. Rules (`docs/08-wor
 
 **Experiments in the original game**
 - The installation is read-only: maps go to the gitignored `experiments/out/`, the user copies them. Results hold for SoD; observation sources name the setup.
-- The `.h3m` writer knows dirt, grass and water tiles only (dirt: native to Necropolis only). A hero type once per map, at most eight heroes per player. Wandering monsters act on their own: use a Blue hero when the opponent must hold still. Every hero has a Catapult in the game; the hero screen shows no army-alignment morale.
+- The `.h3m` writer knows dirt, grass and water tiles only (dirt: native to Necropolis only). A hero type once per map, at most eight heroes per player. Wandering monsters act on their own: use a Blue hero when the opponent must hold still. Check every move against the stack's speed (the armies start 14 columns apart). A single-alignment army has +1 morale: mix two where an extra turn would spoil a count. Every hero has a Catapult in the game; the hero screen shows no army-alignment morale.
 
 ## Recent sessions
+
+### 2026-10-07 (twenty-seventh) — batch 2b folded in, batch 2c compiled
+
+Linked cloud session. Q56: the fold-in and batch 2c only, a checkpoint after (T5c next). Batch 2b: every encounter as the engine's faithful prediction (53 bits, Q-0008, Q-0010, Q47, Q45 (b)); observation sources on nine rules, the ledger, fixtures; no behaviour change. Batch 2c: Q55 (A1–A3), Fire Wall (F1, F2), Berserk (B1), Hypnotize and Cure (H1, C1). Detail: `docs/epics/E04b-log.md`.
 
 ### 2026-10-07 (twenty-sixth) — E04b T5a, T5b in progress
 
@@ -58,7 +62,3 @@ Linked cloud session. Q54: T5a + T5b, then a checkpoint; S-17 and the T4c decisi
 ### 2026-10-07 (twenty-fifth) — E04b T4b and T4c: Forgetfulness, Blind, Berserk, Hypnotize
 
 Linked cloud session. Q53: T4b + T4c; after the reading (`installation.md` §7.14) S-09 the rule (no flag), S-10 fix-optional (Q-0011), S-11 unconfirmed, S-13 fix-optional (Q-0012). T4b: pack format v11, BAT-MAG-023/024, `StackFlags::STARTED`, state hash v25; old workload −0.08 %. T4c: pack format v12, BAT-MAG-025/026, `Stack::controller()`, the berserk turn (`control.rs`), Q-0011/Q-0012, ruleset hash v22; old workload +0.68 %. Replays and `bench-check` re-baselined. Detail: `docs/epics/E04b-log.md` (T4b, T4c).
-
-### 2026-10-07 (twenty-fourth) — E04b T3c3 and T4a: batch 2b, Anti-Magic, Magic Mirror
-
-Linked cloud session. The user's checkpoint (Q52): batch 2b now, T4 in three parts (T4a defences, T4b Forgetfulness and Blind, T4c control), T3c3 + T4a this session; `Rate` keeps the f32 bit pattern. T3c3: batch 2b compiled (six encounters, predictions from the engine). T4a: read in the executable (`installation.md` §7.13), pack format v10, BAT-MAG-021/022, state hash v24 (Bloodlust's and Precision's inline bonuses `u8`: `BattleState` stays 3 904 bytes); old workload +0.31 %; replays and `bench-check` re-baselined. Detail: `docs/epics/E04b-log.md` (T3c3, T4a).

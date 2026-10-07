@@ -707,3 +707,26 @@ records how and why the tasks went.
   `the_staged_damage_reproduces_batch_2b` (R1, R3, R4, R6 through `damage::Strike`) and
   Mephala's and Octavia's Armorer from the harvested packs (`harvested_magic_derives`); the
   mechanism tests cite R2, R3 and R5. No behaviour or version changes.
+
+### Batch 2c compiled (2026-10-07)
+
+- **Seam (Q56):** Q55's anchors with T5a's and T4c's candidates; E04a's (1)–(4) and T4a's wait.
+- **Spec** `experiments/specs/E04b-batch-2c.toml`, template `experiments/results/E04b-batch-2c.md`,
+  map `experiments/out/E04b-batch-2c.h3m` (8 encounters, 8 Red and 8 Blue heroes; dirt, where 6
+  of the 16 usual obstacle types leave their anchor free: obstacle_5, 6, 8, 13, 14, 15). A1–A3
+  (A3 only if needed): a Phoenix's hero tries Remove Obstacle's cursor on the free hexes beside
+  each obstacle, Fire Wall's on the hex found (X) and on its down-left neighbour, lands on X and
+  casts Remove Obstacle on X in round 3 (ours: one free hex per such obstacle takes it, Fire Wall
+  refused, the landing allowed, the whole obstacle removed; VCMI: no free hex takes it). F1: Fire
+  Wall (20 per burn) on 50 Pikemen: entering, Wait, Defend (48, 46, 44); Blue's Force Field
+  (ours up-right, VCMI up-left) and Fire Wall (up-left). F2: both sides' Pikemen walk two rows
+  straight up past a Fire Wall on their up-right (Red) or up-left (Blue) neighbour (ours: Red
+  burnt, Blue not; checked in a scratch test, not committed). B1: Berserk on the middle of three
+  Blue stacks, two equally near (ours draws; up to three tries). H1: Hypnotize (limit 60) on 2
+  Swordsmen before and after a 30-point Magic Arrow (ours refused both times, VCMI allowed after),
+  then Expert Cure (ours: Hypnotize stays, Q-0012). C1: Basic Cure on a hypnotized Swordsman
+  (ends it: the control for H1).
+- **Design notes for the player:** the battlefield's obstacles come from the map tile, so every
+  step has a fallback when an obstacle is in the way; F1's and F2's armies mix two alignments
+  (morale 0: no extra turn adds a burn); every move is within the stack's speed (the batch 2b
+  note); the hex grid and the movement shadow on; a spell's cursor is tried and cancelled.

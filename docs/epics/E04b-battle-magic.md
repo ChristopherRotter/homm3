@@ -1,6 +1,6 @@
 # E04b — Battle magic
 
-Status: **in progress** (refined 2026-10-05; increment 1 = T1–T2, done 2026-10-06: T1, ADR-0014 accepted, T2a–T2e, batch 2a evaluated; increment 2 = T3 in parts, then T4 (Q46, Q48): T3a, T3b1a, T3b1b, T3b2, T3c1, T3c2, T3c3 (batch 2b compiled), T4a, T4b and T4c done; increment 3 = T5 in three parts (Q54): T5a done, T5b waits for an experiment (Q55)) · Follows E04a (closed 2026-10-05) · Part of the former E04 (OPEN-QUESTIONS Q27): E04a heroes in battle, **E04b** battle magic (this one), E04c sieges and special battlefields.
+Status: **in progress** (refined 2026-10-05; increment 1 = T1–T2, done 2026-10-06: T1, ADR-0014 accepted, T2a–T2e, batch 2a evaluated; increment 2 = T3 in parts, then T4 (Q46, Q48): T3a, T3b1a, T3b1b, T3b2, T3c1, T3c2, T3c3 (batch 2b compiled), T4a, T4b and T4c done; increment 3 = T5 in three parts (Q54): T5a done, batch 2b folded in and batch 2c compiled (Q56), T5b waits for batch 2c (Q55), T5c next) · Follows E04a (closed 2026-10-05) · Part of the former E04 (OPEN-QUESTIONS Q27): E04a heroes in battle, **E04b** battle magic (this one), E04c sieges and special battlefields.
 
 ## Goal
 
@@ -74,8 +74,12 @@ The 13 direct-damage spells: Magic Arrow, Ice Bolt, Lightning Bolt, Titan's Ligh
 ### T5 — Battlefield spells (refined 2026-10-07, Q54)
 
 - [x] **T5a Visible spell obstacles and Teleport** — done 2026-10-07: read in the executable (`installation.md` §7.15); pack format v13 (effect kinds `obstacle` with a shape and `teleport`, `clears_obstacles`), BAT-MAG-027 (spell obstacles, Force Field), BAT-MAG-028 (Fire Wall: entering and acting on its hexes), BAT-MAG-029 (Teleport, the cast's second target), BAT-MAG-030 (Expert Dispel's clearing), BAT-MOV-003 (a walker's path, the engine's own on ties); state hash v26, ruleset hash v23, replay format v17, action encoding v10, C ABI v10; replays and `bench-check` re-baselined. Record: [`E04b-log.md`](E04b-log.md).
-- [ ] **T5b Remove Obstacle** (waits for Q55): the natural obstacles as removable pieces with their anchors (a seam change of `BattleSetup.obstacles`; the user decides after an experiment confirms the anchor hexes), Remove Obstacle by mastery (natural ones; Advanced also Fire Wall; Expert any spell obstacle), the anchors in Fire Wall's and Force Field's test.
+- [x] **Batch 2b folded in** — done 2026-10-07 (Q56): every encounter as the engine's faithful prediction (53 bits, Q-0008, Q-0010, Q47, Q45 (b)); observation sources on nine rules, fixtures; no behaviour change. Record: [`E04b-log.md`](E04b-log.md).
+- [x] **Batch 2c compiled** — done 2026-10-07 (Q56): `experiments/specs/E04b-batch-2c.toml`, eight encounters: Q55's anchor hexes on three battlefields (A1–A3), Fire Wall's burns and the defender's shapes (F1), a walker's path past a Fire Wall (F2), Berserk's tie (B1), Hypnotize's limit and Expert Cure (H1), Basic Cure (C1). Record: [`E04b-log.md`](E04b-log.md).
+- [ ] **T5b Remove Obstacle** (waits for Q55, batch 2c A1–A3): the natural obstacles as removable pieces with their anchors (a seam change of `BattleSetup.obstacles`; the user decides after an experiment confirms the anchor hexes), Remove Obstacle by mastery (natural ones; Advanced also Fire Wall; Expert any spell obstacle), the anchors in Fire Wall's and Force Field's test.
 - [ ] **T5c Quicksand and Land Mine**: hidden from the other side (ADR-0014 point 7), revealed when triggered or to a side with natives; legality and paths by the acting side's view; a move into an unseen pit stops there.
+
+**Checkpoint after T5a** (2026-10-07, Q56): with T5b waiting, the user chose the batch 2b fold-in and batch 2c (Q55 with T5a's and T4c's candidates) for the session, a checkpoint after; T5c next.
 
 **Checkpoint after T4c** (2026-10-07, Q54): the user chose T5a + T5b for the session (a checkpoint before T5c), kept S-17 as data in every profile and the T4c agent decisions.
 

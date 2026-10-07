@@ -49,7 +49,8 @@ syntax `obstacles = [{ hexes = [58, 75], anchor = 58 }]`; replay format v18); (b
 `{ obstacle type, anchor }`, the battle deriving hexes and absoluteness from the ruleset; (c)
 additive: keep the hexes and add the removable pieces' hexes, without anchors. **User
 (2026-10-07): verify the anchor behaviour by experiment first; the decision waits for the
-results.** T5b waits with it.
+results.** T5b waits with it. Batch 2c stages it (A1–A3, with the predictions of both
+readings).
 
 ## Answered
 
