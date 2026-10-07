@@ -2,7 +2,7 @@
 
 Questions waiting for the user. Agents add new ones here (context, options, recommendation, what is blocked). When answered, record the decision (ADR or doc) and move the entry to "Answered".
 
-Since Phase 0 (2026-10-07) every lane adds its questions here with a lane id that counts per lane: `BAT-Q1`, `ADV-Q1`, `SRV-Q1`, `CLT-Q1` (`lanes.toml`); the numbered ids (`Q55`) stay. Add a new entry at the end of the "Open" section.
+Since Phase 0 (2026-10-07) every lane adds its questions here with a lane id that counts per lane: `BAT-Q1`, `ADV-Q1`, `SRV-Q1`, `CLT-Q1` (`lanes.toml`); the numbered ids (`Q55`) stay. A new entry goes under its lane's block at the end of the "Open" section, as `#### <CODE>-Q<n> — title` (blocks keep concurrent lanes from editing the same lines).
 
 ## Open
 
@@ -53,6 +53,22 @@ additive: keep the hexes and add the removable pieces' hexes, without anchors. *
 (2026-10-07): verify the anchor behaviour by experiment first; the decision waits for the
 results.** T5b waits with it. Batch 2c stages it (A1–A3, with the predictions of both
 readings).
+
+### Battle lane (`BAT-Q<n>`)
+
+(no open questions)
+
+### Adventure lane (`ADV-Q<n>`)
+
+(no open questions)
+
+### Server lane (`SRV-Q<n>`)
+
+(no open questions)
+
+### Client lane (`CLT-Q<n>`)
+
+(no open questions)
 
 ## Answered
 

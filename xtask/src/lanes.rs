@@ -628,7 +628,16 @@ paths = ["crates/h3-adventure/", "crates/h3-battle/src/seam/"]
             );
         }
         assert_eq!(c.owner("lanes.toml"), Owner::Shared);
+        assert_eq!(c.owner("Cargo.lock"), Owner::Common);
         assert_eq!(c.owner("crates/h3-kernel/src/lib.rs"), Owner::Shared);
+        assert_eq!(
+            c.owner("experiments/specs/E04b-batch-2c.toml"),
+            Owner::Lane("battle".to_owned())
+        );
+        assert_eq!(
+            c.owner("experiments/specs/E08-batch-1.toml"),
+            Owner::Lane("adventure".to_owned())
+        );
         assert_eq!(
             c.owner("crates/h3-pack/src/lib.rs"),
             Owner::Lane("battle".to_owned())

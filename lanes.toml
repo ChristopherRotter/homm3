@@ -13,13 +13,13 @@
 #
 # Ownership decided by the user on 2026-10-07: all of `h3-content` and `h3-pack` stay with battle
 # until further notice. The formats/tools crates (`h3-formats`, `h3-harvest`, `h3-experiment`) are
-# battle's until a formats/tools lane opens; an AI lane takes `h3-sim`/`h3-ffi` at E05.
+# battle's until a formats/tools lane opens; an AI lane takes `h3-sim`/`h3-ffi` at E05. The epics
+# E11, E15 and E18–E20 have no lane yet: their files get a pattern here when they start.
 
 [shared]
 paths = [
     # Workspace, toolchain, gates, CI.
     "Cargo.toml",
-    "Cargo.lock",
     "arch.toml",
     "lanes.toml",
     "deny.toml",
@@ -59,11 +59,15 @@ paths = [
     "docs/rules/catalog/kernel.toml",
 ]
 
-# Any lane may change these (lane-prefixed ids keep concurrent additions apart).
+# Any lane may change these: the two registries (lane-prefixed ids and one block per lane keep
+# concurrent additions apart) and the lockfile (generated; a lane may add a dependency to its own
+# crate, the full verify's `deny` gate checks it, and a heavy dependency stops the line anyway;
+# user, 2026-10-07).
 [common]
 paths = [
     "docs/OPEN-QUESTIONS.md",
     "docs/stubs.toml",
+    "Cargo.lock",
 ]
 
 [[lane]]
@@ -114,6 +118,24 @@ paths = [
     "docs/rules/surveys/E08*",
     "docs/rules/surveys/E09*",
     "docs/rules/surveys/E10*",
+    "docs/rules/surveys/E12*",
+    "docs/rules/surveys/E13*",
+    "docs/rules/surveys/E14*",
+    # Experiments in the original game follow the epic prefix (`experiments/specs/E07-batch-1.toml`).
+    "experiments/specs/E07*",
+    "experiments/specs/E08*",
+    "experiments/specs/E09*",
+    "experiments/specs/E10*",
+    "experiments/specs/E12*",
+    "experiments/specs/E13*",
+    "experiments/specs/E14*",
+    "experiments/results/E07*",
+    "experiments/results/E08*",
+    "experiments/results/E09*",
+    "experiments/results/E10*",
+    "experiments/results/E12*",
+    "experiments/results/E13*",
+    "experiments/results/E14*",
     "docs/epics/E07*",
     "docs/epics/E08*",
     "docs/epics/E09*",

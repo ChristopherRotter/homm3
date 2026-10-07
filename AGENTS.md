@@ -10,7 +10,7 @@ You are one of many agents working on this over time. No single session finishes
 2. Read `docs/HANDOFF.md` (the lane index and the traps of every lane), then `docs/lanes/<lane>/HANDOFF.md` (the lane's state, traps and last sessions) and your task: the lane's `QUEUE.md` entry, or the epic task the user names.
 3. Read the "Open" section of `docs/OPEN-QUESTIONS.md` (answered entries are history: read one when a doc points to it).
 4. Read your lane's reading list (below): the epic file you are working on (`docs/epics/`; its log `<epic>-log.md` only where a task builds on an earlier one) and, from the ADR index (`docs/adr/README.md`, column "Read when"), only the ADRs that touch your task. ADRs are binding; do not silently deviate. ADRs stay short: decisions only, detail in design notes (rule in the ADR index).
-5. Confirm the starting point is green: CI's verify on `master` (or on the branch you continue), and locally `cargo xtask verify --scope <lane> --summary` **before** you change anything. In a cloud sandbox, `scripts/sandbox-setup.sh` prepares it (`docs/08-work-process.md`, "Cloud sandbox").
+5. Confirm the starting point is green: CI's verify on `master` (or on the branch you continue), and locally `cargo xtask verify --scope <lane> --summary` with no failing step (a scoped run exits 2 by design; it is never "green") **before** you change anything. In a cloud sandbox, `scripts/sandbox-setup.sh` prepares it (`docs/08-work-process.md`, "Cloud sandbox").
 
 ## Non-negotiables
 
@@ -42,11 +42,7 @@ If the user is not present, do the safe preparatory work, document the decision 
 
 ## Lanes
 
-Several agents work in parallel, **one agent at a time per lane** (`docs/08-work-process.md`, "Lanes"). `lanes.toml` says which paths each lane owns; a lane's pull request changes only its own paths and the common ones (`docs/OPEN-QUESTIONS.md`, `docs/stubs.toml`). **Shared paths** (`h3-kernel`, `h3-contracts`, `Cargo.toml`, `arch.toml`, `lanes.toml`, `xtask`, CI, ADRs, process docs, `BACKLOG.md`, the global HANDOFF) change only through a small, separate `shared/<topic>` pull request that merges first. `cargo xtask check-lane` enforces this on every pull request; a deliberate cross-lane change needs the user's consent and the PR label `cross-lane`.
-
-- **Ids:** new questions, quirks and stubs carry the lane code (`lanes.toml`): `ADV-Q1`, `ADV-QUIRK-1`, `ADV-STUB-1`; existing ids stay. ADRs are written as drafts in `docs/lanes/<lane>/adr-drafts/` and numbered when the user accepts them.
-- **Versions:** each version constant has one owning lane (the lane HANDOFF lists them). When two lanes bump a shared version at once, the second sees a textual conflict and bumps again.
-- **Checkpoints and autonomy:** the domain lanes (battle, adventure) work in increments with a user checkpoint, and "When to stop and ask" applies in full. The client and server lanes have checkpoints per milestone, under the autonomy contract in their HANDOFF with three tiers: *agent decides* (marked provisional), *queue for the milestone review*, *stop the line* (seams and contracts, heavy dependencies, licence, anything touching another lane). A fresh reviewer agent checks each milestone before the user does.
+Several agents work in parallel, **one agent at a time per lane** (`docs/08-work-process.md`, "Lanes": ownership, ids, versions, checkpoints, the runner/worker model; read it when you run a lane, not only a task). `lanes.toml` says which paths each lane owns; a lane's pull request changes only its own paths and the common ones (`docs/OPEN-QUESTIONS.md`, `docs/stubs.toml`, `Cargo.lock`). **Shared paths** (`h3-kernel`, `h3-contracts`, `Cargo.toml`, `arch.toml`, `lanes.toml`, `xtask`, CI, ADRs, process docs, `BACKLOG.md`, the global HANDOFF) change only through a small, separate `shared/<topic>` pull request that merges first. `cargo xtask check-lane` enforces this on every pull request; a deliberate cross-lane change needs the user's consent and the PR label `cross-lane`. New questions, quirks and stubs carry the lane code (`ADV-Q1`, `ADV-QUIRK-1`, `ADV-STUB-1`; the registries' headers say where they go); ADRs start as drafts in `docs/lanes/<lane>/adr-drafts/`; the client and server lanes work under the autonomy contract in their HANDOFF, the domain lanes with a user checkpoint per increment.
 
 **Reading lists** (after the two HANDOFFs and your task; open the rest only when the task touches it):
 
@@ -58,7 +54,7 @@ Several agents work in parallel, **one agent at a time per lane** (`docs/08-work
 | client | `clients/README.md`, ADR-0009, the asset notes in the lane HANDOFF | `docs/formats/installation.md` (archives), `docs/02-architecture.md` |
 | shared | `docs/02-architecture.md`, `docs/05-testing.md`, `lanes.toml` | the ADRs the change touches |
 
-**Long unattended runs (runner and workers).** A context fills in one to two hours, so a lane can run as a chain of fresh contexts. A thin *runner* session takes the first ready task of the lane's `QUEUE.md`, hands it to a fresh *worker* sub-agent (brief: the task entry, the lane, its reading list, this file) and keeps only the worker's short structured report: result (done, blocked, failed), branch and commits, the scoped verify's summary line, question ids, inbox lines, at most five lines for the HANDOFF. The runner updates `QUEUE.md` and the lane HANDOFF from it and takes the next task. A blocked task records its question and stays in the queue; the runner takes the next independent task. A scheduled task restarts the runner as a safety net; it resumes from `QUEUE.md` and the HANDOFF. Workers run `cargo xtask verify --scope <lane> --summary` and leave the full verify to CI.
+**Long unattended runs.** A lane runs as a chain of fresh contexts: a thin *runner* session hands each task of the lane's `QUEUE.md` to a fresh *worker* sub-agent and keeps only its short report (`docs/08-work-process.md`, "Queues and long runs": the brief, the report, the `in progress` mark that keeps a second runner out of the lane). Workers run `cargo xtask verify --scope <lane> --summary` and leave the full verify to CI.
 
 ## Working rules
 
@@ -81,7 +77,7 @@ The user may stop a session at any moment (for example by shutting down the comp
 
 ## End-of-session checklist
 
-1. `cargo xtask verify --scope <lane> --summary` is green locally and CI's full verify is green on the pull request (or the failure is documented in the lane HANDOFF with cause and next step).
+1. `cargo xtask verify --scope <lane> --summary` has no failing step locally (exit 2 is its normal result) and CI's full verify is green on the pull request (or the failure is documented in the lane HANDOFF with cause and next step).
 2. Update `docs/lanes/<lane>/HANDOFF.md`: rewrite "Current state", add one short entry under "Recent sessions" (what you did, decisions, anything half-done) and keep at most three, move lasting traps into "Standing traps" (traps of every lane: note them for a `shared/` change to the global HANDOFF) and prune stale ones. `cargo xtask check-docs` enforces the budgets (`docs/08-work-process.md`, "Keeping the start-of-session reading small").
 3. Update the epic file (a done task gets one line; its full record goes into the epic's log) and the lane's `QUEUE.md` (a done task leaves it; new work goes into its "Inbox"). The status in `docs/BACKLOG.md` changes only when an epic starts or ends, in a `shared/` pull request.
 4. New questions → `docs/OPEN-QUESTIONS.md` with a lane id; new decisions → an ADR draft in the lane folder.

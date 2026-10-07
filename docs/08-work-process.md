@@ -77,12 +77,15 @@ time per lane**. A lane owns paths; everything else it may not change in its own
   (`clients/README.md`), E17.
 - **Later lanes:** formats/tools when needed, AI at E05. Opening a lane is a `lanes.toml` change.
 - **Shared** (a small, separate pull request that merges first): `h3-kernel`, `h3-contracts`,
-  `Cargo.toml`, `Cargo.lock`, `arch.toml`, `lanes.toml`, `xtask`, `scripts/`, CI, the toolchain
-  and lint configuration, ADRs, `AGENTS.md`, the numbered docs, `BACKLOG.md`, the global HANDOFF,
-  the catalog's README and kernel rules. Creating a lane's new crate is a shared change (the
+  `Cargo.toml`, `arch.toml`, `lanes.toml`, `xtask`, `scripts/`, CI, the toolchain and lint
+  configuration, ADRs, `AGENTS.md`, the numbered docs, `BACKLOG.md`, the global HANDOFF, the
+  catalog's README and kernel rules. Creating a lane's new crate is a shared change (the
   workspace members and `arch.toml`).
-- **Common** (any lane): `docs/OPEN-QUESTIONS.md` and `docs/stubs.toml`; lane ids keep
-  concurrent additions apart.
+- **Common** (any lane): `docs/OPEN-QUESTIONS.md` and `docs/stubs.toml` (lane ids and one block
+  per lane keep concurrent additions apart: add to your lane's block, not at the end), and
+  `Cargo.lock` (generated: a lane may add a dependency to its own crate; the full verify's `deny`
+  gate checks it on the pull request, and a heavy dependency stops the line under the autonomy
+  contract; user, 2026-10-07).
 
 **Branches and pull requests.** A lane works on a branch `<lane>/<task>` per task or increment and
 merges it at its checkpoint; a shared change goes on `shared/<topic>`. `cargo xtask check-lane`
@@ -112,19 +115,33 @@ conflict on rebase and bumps again.
 | C ABI | `H3_ABI_VERSION`, `h3-ffi` | battle (AI lane from E05) |
 | kernel RNG and hash | `RNG_VERSION`, `HASH_VERSION`, `h3-kernel` | shared |
 
-**Queues and long runs.** Each lane has a `QUEUE.md` of pre-refined tasks (scope, acceptance
-criteria, dependencies, status; about half a context each; its header describes the format) and
-an inbox of discovered work. Long unattended runs use the runner/worker model (`AGENTS.md`,
-"Lanes"): a thin runner hands each task to a fresh worker sub-agent and keeps only its short
-report; a blocked task records its question and the runner takes the next independent one; a
-scheduled task restarts the runner as a safety net. Less context per task: `verify --summary`,
-the per-lane reading lists, the full verify left to CI.
+**Queues and long runs.** Each lane has a `QUEUE.md`: its pre-refined tasks in order, each about
+half a context of work, then an **Inbox** of discovered work (one line each, until a refinement
+turns it into tasks or a backlog item). A task has **Scope** (what to build or decide, with
+pointers: epic task, ADR, rule ids), **Acceptance** (what must hold when it is done; always the
+Definition of Done in `05-testing.md`), **Depends on** (tasks, questions or user input that must
+come first) and **Status**: `ready`, `waiting` (for the user, with what), `blocked` (with the
+question id) or `in progress` (branch, UTC start time). Done tasks leave the queue; the epic file
+and its log keep the record. A context fills in one to two hours, so a long unattended run is a
+chain of fresh contexts: a thin *runner* session takes the first ready task, hands it to a fresh
+*worker* sub-agent (brief: the task entry, the lane, its reading list, `AGENTS.md`) and keeps only
+the worker's short structured report (result: done, blocked or failed; branch and commits; the
+scoped verify's summary line; question ids; inbox lines; at most five lines for the HANDOFF). The
+runner updates `QUEUE.md` and the lane HANDOFF from it and takes the next task. A blocked task
+records its question and stays in the queue; the runner takes the next independent task. A
+scheduled task restarts the runner as a safety net; it resumes from `QUEUE.md` and the HANDOFF.
+**One runner per lane:** before the worker starts, the runner sets the task's status to
+`in progress (<branch>, <UTC time>)`, commits and pushes that on the lane branch; a runner that
+finds such a mark younger than three hours stops (the previous runner may still be alive), an
+older one resumes from that branch. Less context per task: `verify --summary`, the per-lane
+reading lists, the full verify left to CI.
 
 **Local loop and gates.** `cargo xtask verify --scope <lane>` lints, tests and covers the lane's
 crates, runs the lane's own gates (golden replays, the C ABI smoke test, its benchmark workloads)
-and `check-lane`; it never counts as green. CI runs the full verify on every pull request. Each
-benchmark workload has its own baseline file, `benches/<lane>/<workload>.toml`, so each lane's
-+2 % gate is its own (`benches/README.md`).
+and `check-lane`; it never counts as green (exit 2 with no failing step is its normal result). On
+a `shared/` or cross-lane branch its `check-lane` step fails by design: run the full verify there.
+CI runs the full verify on every pull request. Each benchmark workload has its own baseline file,
+`benches/<lane>/<workload>.toml`, so each lane's +2 % gate is its own (`benches/README.md`).
 
 **Checkpoints.** The domain lanes (battle, adventure) close increments at a checkpoint with the
 user, as before. The client and server lanes have a checkpoint per milestone, under an autonomy
