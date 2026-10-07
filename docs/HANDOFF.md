@@ -4,12 +4,12 @@ Living state between sessions; every session reads it first. Rules (`docs/08-wor
 
 ## Current state
 
-- Branch `e04b-battle-magic` on GitHub (pushed after every commit; Q49); increment 1 done (T1, T2a–T2e, batch 2a evaluated). **Increment 2 (Q46, Q48): T3 in parts, then T4; T3a, T3b1a, T3b1b, T3b2, T3c1, T3c2 done; checkpoint with the user before batch 2b (T3c3)** (the user's seam, 2026-10-07, Q51). Sandbox: `docs/08-work-process.md`, "Cloud sandbox and syncing" (original files staged from the user's repo folder through the device link, `scripts/sandbox-setup.sh`).
+- Branch `e04b-battle-magic` on GitHub (pushed after every commit; Q49); increment 1 done (T1, T2a–T2e, batch 2a evaluated). **Increment 2 (Q46, Q48): T3 in parts, then T4; T3a, T3b1a, T3b1b, T3b2, T3c1, T3c2 done; this session T3c3 (batch 2b) and T4a (Anti-Magic, Magic Mirror), a checkpoint after** (Q52: T4 in three parts by mechanism). Sandbox: `docs/08-work-process.md`, "Cloud sandbox and syncing" (original files staged from the user's repo folder through the device link, `scripts/sandbox-setup.sh`).
 - **GitHub and CI:** `ChristopherRotter/homm3` (private); `.github/workflows/ci.yml` runs `cargo xtask verify` on Linux for PRs, `master` and weekly; changes reach `master` by pull request; a `bench-check` re-baseline must hold on the CI runner.
 - **E04b (battle magic) is refined** (Q41, `docs/epics/E04b-battle-magic.md`): increments with a user checkpoint each; only the current increment's tasks are refined.
 - **Done:** survey `docs/rules/surveys/E04b-magic.md` (§12–§15), ADR-0014 accepted (point 5 amended, Q47), design note `docs/epics/E04b-design.md`. Castable by heroes: the 13 damage spells, the 14 value spells, Shield, Air Shield, the Protections (Q-0007), Slayer, Counterstrike (Q-0008), Dispel, Cure, Fire Shield (Q-0010) and Frenzy (Q-0009) (BAT-MAG-001 to 019), the spell specialists (BAT-MAG-020), all after the executable's code (`installation.md` §7.8–§7.12). **Physical damage follows the executable's three truncated stages** under Q-0005 (Q50, BAT-DMG-002, `h3_kernel::arith::X87` at 53 bits).
 - **Hero rates** cross the seam as `h3_contracts::Rate` (basis points plus, under Q-0005, the original's single-precision value as an f32 bit pattern where it differs; Q45 (b), T3c2).
-- **Next:** the checkpoint, then T3c3 (batch 2b: the x87 precision, Q-0008, Q-0010, Shield with Armorer, a counter pair, a level-10 specialist), T4.
+- **Next:** T3c3 (batch 2b: the x87 precision, Q-0008, Q-0010, Shield with Armorer, a counter pair, a level-10 specialist), T4a, then the checkpoint (T4b Forgetfulness and Blind, T4c Berserk and Hypnotize).
 - **Open for later tasks:** batch 2a R6's costs (T7); Q43 (sprite offset, keep the approximation); creature casters' re-casts (T7); the damage stages' creature factors; Dispel's and Fire Shield's loose ends (Sphere T8, obstacles T5, the Sultans' shield T7; BACKLOG); a hypnotized stack's controller for Fire Shield and the specialists (T4).
 - Versions: state hash v23, ruleset hash v20, replay format v16, action encoding v9, C ABI v9, observation encoding v6; pack format v9.
 - Working agreement: increments of a couple of tasks with a user checkpoint (Q41); the user confirms seams and ADRs; token efficiency beats speed (AGENTS.md); the user plays experiment maps in SoD with plain HD and commits the results.
@@ -53,6 +53,10 @@ Living state between sessions; every session reads it first. Rules (`docs/08-wor
 
 ## Recent sessions
 
+### 2026-10-07 (twenty-fourth) — E04b T3c3 and T4a (in progress)
+
+Linked cloud session. The user's checkpoint (Q52): batch 2b now, T4 in three parts (T4a defences, T4b Forgetfulness and Blind, T4c control), T3c3 + T4a this session; `Rate` keeps the f32 bit pattern. **In progress:** T3c3.
+
 ### 2026-10-07 (twenty-third) — E04b T3c1 and T3c2: spell specialists, Q45
 
 Linked cloud session. The user classified Fire Shield's base as fix-optional (Q-0010), kept the breath's second stack as the rule, and chose T3c1 + T3c2 (Q51). T3c1: read 0x4E5FF0 (`installation.md` §7.12), pack format v9, BAT-MAG-020, ruleset hash v20 (old workload +0.05 %). T3c2: `Rate` across the seam, the derivation in x87 single precision, state hash v23, replay format v16 (+0.71 % Ir). Fixed the x87 property test's helper. Detail: `docs/epics/E04b-log.md` (T3c1, T3c2).
@@ -60,7 +64,3 @@ Linked cloud session. The user classified Fire Shield's base as fix-optional (Q-
 ### 2026-10-07 (twenty-second) — E04b T3b1b and T3b2: Dispel, Cure, Fire Shield, Frenzy
 
 Linked cloud session. The user chose T3b1b + T3b2 (checkpoint before T3c), Q-0008 fix-optional and the executable's Behemoth rounding under Q-0005 (BAT-DMG-006). Read in the executable: Dispel skips immunity and resistance; Fire Shield reflects from stage 1; Frenzy by own turns, S-16 confirmed (Q-0009). Pack formats v7 and v8, BAT-MAG-016 to 019; state hash v22 (`BattleState` 3 840 bytes); replays and `bench-check` re-baselined (old workloads +0.35 %, +0.53 %); the bench gate links `h3` without RELRO. Sphere of Permanence → T8. Detail: `docs/epics/E04b-log.md` (T3b1b, T3b2).
-
-### 2026-10-06 (twenty-first) — E04b T3b1a: staged damage and the protective spells
-
-Linked cloud session (Q49 answered). The user's seam: survey §15 read, the five timed spells, checkpoint before Dispel and Cure; staged damage rebuilt now (Q50; x87 at 53 bits, to check in batch 2b). `X87`, `damage::Strike`, pack format v6, Q-0007, BAT-MAG-012 to 015; replays and `bench-check` re-baselined (+1.1 % per step). Detail: `docs/epics/E04b-log.md` (T3b1a).

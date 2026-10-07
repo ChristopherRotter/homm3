@@ -1,6 +1,6 @@
 # E04b — Battle magic
 
-Status: **in progress** (refined 2026-10-05; increment 1 = T1–T2, done 2026-10-06: T1, ADR-0014 accepted, T2a–T2e, batch 2a evaluated; increment 2 = T3 in parts, then T4 (Q46, Q48): T3a, T3b1a, T3b1b, T3b2, T3c1 and T3c2 done; checkpoint before batch 2b (T3c3)) · Follows E04a (closed 2026-10-05) · Part of the former E04 (OPEN-QUESTIONS Q27): E04a heroes in battle, **E04b** battle magic (this one), E04c sieges and special battlefields.
+Status: **in progress** (refined 2026-10-05; increment 1 = T1–T2, done 2026-10-06: T1, ADR-0014 accepted, T2a–T2e, batch 2a evaluated; increment 2 = T3 in parts, then T4 (Q46, Q48): T3a, T3b1a, T3b1b, T3b2, T3c1 and T3c2 done; batch 2b (T3c3) and T4a in progress (Q52)) · Follows E04a (closed 2026-10-05) · Part of the former E04 (OPEN-QUESTIONS Q27): E04a heroes in battle, **E04b** battle magic (this one), E04c sieges and special battlefields.
 
 ## Goal
 
@@ -33,7 +33,7 @@ Earthquake, sieges and the moat (E04c). The special battlefields' magic (Magic P
 - [x] **T1 Magic survey and ADR-0014** — done 2026-10-05: survey `docs/rules/surveys/E04b-magic.md`, spell flags and stack records (`docs/formats/installation.md` §7.6, §7.7), ADR-0014 accepted after one revision (Q42; ADR-0004 point 8 amended). Record: [`E04b-log.md`](E04b-log.md).
 - [x] **T2 Casting core and direct-damage spells** — done 2026-10-06 (increment 1): T2a + T2b (2026-10-05), T2c + T2d with batch 2a (Q44), then T2e, batch 2a folded in (the user's seam, 2026-10-06). Record: [`E04b-log.md`](E04b-log.md).
 - [ ] **T3 Timed effects on stacks** (refined below): buffs and debuffs, Mass versions at Expert, durations and the artifacts that change them, Dispel, Cure (S-16, S-17, S-19).
-- [ ] T4 Control spells and spell defences: Berserk, Hypnotize, Forgetfulness, Blind; Anti-Magic, Magic Mirror (S-09 to S-11, S-13).
+- [ ] **T4 Control spells and spell defences** (refined 2026-10-07, Q52): Berserk, Hypnotize, Forgetfulness, Blind; Anti-Magic, Magic Mirror (S-09 to S-11, S-13). In three parts: T4a, T4b, T4c (below).
 - [ ] T5 Battlefield spells: Quicksand and Land Mine (hidden, owner-side visibility), Force Field, Fire Wall, Remove Obstacle, Teleport.
 - [ ] T6 Life and summons: Resurrection, Animate Dead, Sacrifice, Clone, the four Elementals; stacks created in battle (`StackOrigin`), temporary resurrection in the outcome (S-15, S-20, S-21).
 - [ ] T7 Creature magic: spell-like attack effects (curse, blind, petrify, bind, dispel, weakness, age, poison, …), spellcasting creatures, creature effects on mana and costs (S-12, S-14; batch 2a R6: a dead Pegasus' surcharge or the Mages' discount, read the cost code first; survey §13).
@@ -66,6 +66,14 @@ The 13 direct-damage spells: Magic Arrow, Ice Bolt, Lightning Bolt, Titan's Ligh
 - [x] **T3c1 The spell specialists** — done 2026-10-07: read in the executable (`installation.md` §7.12); pack format v9 (`specialist`: by creature level, fixed, total), BAT-MAG-020 (the timed values at the cast, Slayer and Bless at the strike, Cure), STUB-0002 gone; quirk Q-0010 (Fire Shield's base, fix-optional, the user); ruleset hash v20; replays and `bench-check` re-baselined. Record: [`E04b-log.md`](E04b-log.md).
 - [x] **T3c2 Q45 option (b)** — done 2026-10-07: `h3_contracts::Rate` (basis points and the original's single-precision value as an f32 bit pattern where it differs) for the damage bonuses, `SpellDamage`, `MagicResistance` and the tent's heal; the derivation grows skill rates and adds the getters' artifacts in the original's x87 single precision under Q-0005 (HER-BAT-004/005/012/013), the battle uses them (BAT-HER-004, BAT-MAG-004/008, BAT-WAR-007); `X87` f32 bit patterns; state hash v23, replay format v16; `BattleState` 3 904 bytes. Record: [`E04b-log.md`](E04b-log.md).
 - [ ] T3c3 Batch 2b compiled for T3: the x87 precision, Counterstrike's extra round (Q-0008), Fire Shield's base (Q-0010), Shield with Armorer, one counter pair, a level-10 specialist.
+
+**Checkpoint after T3c2** (2026-10-07, Q52): the user chose batch 2b now (T3c3, played while T4 proceeds), T4 in three parts by mechanism with T4a this session (a checkpoint after), and kept `Rate`'s f32 bit pattern.
+
+### T4 — Control spells and spell defences (refined 2026-10-07, Q52)
+
+- [ ] T4a The spell defences: Anti-Magic and Magic Mirror, read in the executable; both act inside the cast's resolution order (ADR-0014 point 4: immunity, the mirror, resistance); the mirror's redirect in the original's draw order.
+- [ ] T4b Stacks that lose actions: Forgetfulness (S-09, S-10) and Blind (ends when attacked, its retaliation factor in damage stage 2); legality and the sim's masks.
+- [ ] T4c Control: Berserk and Hypnotize: automatic turns, a stack acting for the other side, their counter pair, S-11, S-13; the hypnotized stack's controller for Fire Shield, the specialists, the Sphere and Expert Cure (BACKLOG).
 
 **Checkpoint after T3b2** (2026-10-07): the user classified Fire Shield's base as fix-optional (Q-0010) and kept the breath's second stack as the rule (no flag), and chose T3c1 + T3c2 for the session, a checkpoint before batch 2b (T3c3).
 
