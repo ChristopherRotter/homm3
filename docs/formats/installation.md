@@ -919,3 +919,36 @@ leaves it freely on its next turn.
 **Information the original gives away** (fixed, Q-0002): Fire Wall's and Force Field's target test
 (0x5A39C0) refuses a hex with the other side's hidden pit, so the cursor shows it; the stops of a
 hypnotized stack are its real side's, so its controller sees where the owner's pits lie.
+
+### 7.17 Code reading: Land Mine (E04b T5c2, 2026-10-07)
+
+Read for T5c2 (Q29: insight only, nothing copied).
+
+**The spell book** (0x59ECEE) refuses Land Mine (11) while the other side's natives byte
+(+0x1329C, §7.16) is set: it shows a message (0x4F6570) and sets no cast mode, so nothing is cast
+or paid. Otherwise it casts at once, as Quicksand (0x59ECDF: no target). No other code reads the
+byte for Land Mine; the AI never casts it (wiki). A side whose stacks on their native terrain are
+all immune to the spell still has the byte set (0x46402C tests only the stacks' native flag
++0x4D8, set at 0x43D7DD without an immunity test), so the book refuses Land Mine against it too;
+the wiki says the opposite (experiment candidate, `docs/experiments/README.md`).
+
+**The cast** (0x5A0536): the mines by mastery come from the table 0x642224 (4, 4, 6, 8), the
+damage from the spell's values: `power × power factor + effect[mastery]`, passed through 0x5A78E0
+without a hero or a stack (no bonus yet, as Fire Wall's, §7.15). The hexes are drawn as
+Quicksand's pits (§7.16: the same sampler and test, outside the side columns, none of the object
+bits `0x3F`, no living stack, no corpse). Each mine is an object of its own (descriptor 0x63CF00:
+one hex), owner the casting side, revealed if the other side's natives byte is set (never, as the
+book refuses then), with the damage as its value, lasting the battle (rounds 0), flag `0x8`.
+
+**The trigger** (0x59FB40), called by 0x46A570 for each hex a stack enters, after Fire Wall's
+(§7.15): nothing for a dead stack or a hex without bit `0x8`; nothing for a stack whose side
+(+0xF4, the real side even when hypnotized) owns the mine, nor when the mine is revealed; nothing
+when 0x5A8090 (spell 11, the owner as the caster's side) gives `f ≤ 0`, so an immune stack crosses
+and the mine stays as it was. Otherwise the damage is Fire Wall's with spell 11 (0x5A78E0 with
+the owner's hero as the caster, the stack's controlling hero and the stack: the caster's bonuses,
+the creature's factor, Protection from Fire; no resistance roll), 0x444090 applies it, the mine
+is removed (0x466B30) and, as after Fire Wall's damage, the Phoenixes' rebirth is checked
+(0x469440, creature 131; E04b T7). The walker ignores the trigger's result (0x44237E): a stack
+that survives a mine walks on, and a move and attack still attacks. A stack standing on a mine
+it did not trigger (Teleport places it without entering; or it was immune then) triggers it when
+it acts without moving (§7.15).
