@@ -1543,6 +1543,13 @@ url = "docs/formats/installation.md"
 retrieved = "2026-10-07"
 
 [[source]]
+id = "exe-land-mine"
+kind = "original-data"
+ref = "Heroes3.exe code reading (docs/formats/installation.md 7.17): the spell book refuses Land Mine while the other side had natives at the battle's start (0x59ECEE, byte 0x1329C) and otherwise casts it at once; its handler (0x5A0536) places 4, 4, 6 or 8 mines by mastery (table 0x642224) on hexes drawn as Quicksand's pits, each an object of its own (descriptor 0x63CF00, one hex) owned by the casting side with the value power x 10 + effect, lasting the battle (rounds 0), flag 0x8; the trigger 0x59FB40 spares the owner's stacks, revealed mines and stacks with f <= 0, does Fire Wall's damage with spell 11 and removes the mine"
+url = "docs/formats/installation.md"
+retrieved = "2026-10-07"
+
+[[source]]
 id = "exe-obstacle-spells"
 kind = "original-data"
 ref = "Heroes3.exe code reading (docs/formats/installation.md 7.15): Force Field (0x5A0759) places one object over the target hex, its upper right neighbour and from Advanced that one's upper left (descriptors 0x63CF18, 0x63CF2C, flags 0x22: blocked), 2 rounds; Fire Wall (0x5A0821) places one object per hex, 2 hexes below Advanced and 3 from it, the second the upper right neighbour for the attacker and the upper left for the defender, each 2 rounds with the value power x 10 + effect; the target test 0x5A39C0 wants every hex free (no object bit 0x3F, no stack, not a side column); 0x46A570 runs the Fire Wall trigger 0x59FCD0 for each hex a stack enters once per move and for its own hexes after an action without a move; the trigger damages a stack with f > 0 (no resistance roll) through 0x5A78E0 with the owner's hero as the caster; the round start removes an object whose rounds run out (0x476152); Teleport (0x5A1B4D) moves a stack to a free position without entering hexes (0x5A3700); Expert Dispel removes every object with a bit of 0x3C"
@@ -2210,6 +2217,15 @@ spell = "Quicksand"
 obstacle = "pit"
 shape = { hexes = [4, 4, 6, 8], random = true, separate = true }
 sources = ["exe-quicksand"]
+
+# Land Mine (E04b T5c2, pack format v15; installation.md 7.17): random mines for the whole battle,
+# hidden from the other side, with the spell's damage; cast at once as Quicksand (target none),
+# refused by the engine while the other side's natives would see the mines (BAT-MAG-033).
+[[spells.obstacle]]
+spell = "Land Mine"
+obstacle = "mine"
+shape = { hexes = [4, 4, 6, 8], random = true, separate = true }
+sources = ["exe-land-mine"]
 
 [[spells.other]]
 spell = "Teleport"

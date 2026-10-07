@@ -800,3 +800,50 @@ records how and why the tasks went.
 - **Recorded:** observation sources on BAT-MAG-025 to 028 and BAT-MOV-003; the ledger's Q-0012;
   Q55 updated (the reading confirmed; the seam options wait for the user); BAT-Q2 answered. No
   behaviour or version changes.
+
+### T5c2 — Land Mine, and the Q55 survey (2026-10-07)
+
+- **Seam (BAT-Q3):** after PR #4 was merged, T5c2 with the Q55 community survey, a checkpoint
+  after (Q55's class and seam option, then T5b).
+- **Reading** (`installation.md` §7.17): the spell book's refusal while the other side's natives
+  byte is set (no cast, no cost; no immunity test in that byte, against the wiki), the handler
+  (mines by mastery from the table 0x642224, Quicksand's sampler, one object per mine with the
+  cast's value, flag `0x8`), the trigger after Fire Wall's (spares the owner's stacks by the real
+  side, revealed mines and stacks with `f ≤ 0`; Fire Wall's damage with spell 11; the mine
+  removed; the Phoenix rebirth check 0x469440 as after Fire Wall, T7), and the walker, which
+  ignores the trigger's result.
+- **Content (pack format v15):** obstacle kind `mine` (hidden, `ObstacleKind::has_value`); the
+  gap-fill's Land Mine (source `exe-land-mine`); the synthetic pack's Snare (a Land Mine), which
+  Brea casts. Ruleset hash scheme unchanged (v24).
+- **Battle:** `SpellObstacles` keeps the mine hexes; `obstacles::may_place` (no mines while the
+  other side's natives would see them: at the start under BAT-QUIRK-1, living natives without
+  it) in the cast's target tests; entering a hex (`enter`, for walkers, flyers' landing and the
+  stand after an action without a move) burns, then sets off a mine its side does not see and
+  whose spell hurts it (`mine_under`, `magic::hurts`: Fire Wall's `f > 0`), which is revealed,
+  triggered, does Fire Wall's damage (`magic::burn`) and is removed, all public; a mine that does
+  not go off changes nothing, not even how the move is reported (a split `Moved` would give it
+  away). Rule BAT-MAG-033; BAT-MAG-027 and 031 updated. State hash v27 unchanged (the mine set
+  follows from the list); `BattleState` 4 064 bytes (+32). Replay format, action and observation
+  encodings, C ABI unchanged.
+- **Performance:** the old workload (no Snare) on the new engine: 609.73 M Ir against 610.18 M
+  (−0.07 %). The new workload: 10 878 steps against 11 424 (mines kill), 584.17 M Ir (−4.26 %,
+  +0.54 % per step); `bench-check` re-baselined; golden replays re-recorded; `full-s3-a246`
+  replaces `full-s3-a5`, which no longer cast Mire (two Snares, eight mines go off, Mire's pits
+  stop walkers 14 times).
+- **Agent decisions (change freely):** the cast test follows BAT-QUIRK-1 (strict-fixed: living
+  natives at the cast) rather than a quirk of its own; with live sight a mine the stack's side
+  sees does not go off (the original's revealed mine); a mine's events are public and follow its
+  `Moved`; a mine-immune stack (or the owner's) crossing a mine reports a single move.
+- **Tests:** `tests/mines.rs` (mines by mastery with the value, hidden, the whole battle; the
+  refusal with and without BAT-QUIRK-1 and the caster's own natives; an enemy walker sets one off
+  and walks on, the battle ends on a mine; a move and attack still attacks; own and immune stacks
+  cross without a trace; a flyer's landing; a stack standing on a mine; Fire Wall then mine on
+  one hex; a two-hex walker once; a hypnotized stack by its owner's side; living natives' sight);
+  the property tests' books gain Land Mine, the hidden-obstacle property places mines too and
+  checks that the acting side's non-cast commands report the same with and without what it does
+  not see (unless a hidden obstacle shows itself); pack and content tests for format v15.
+- **Q55 survey:** nobody describes the anchors: the wiki's pages, HotA's changelog (1.7.0 fixed
+  Remove Obstacle's highlighting of invisible Quicksand), VCMI's battle bug list (#1219), df2.ru's
+  spell and reference threads; heroesworld.ru's old threads redirect, the web archive is blocked,
+  Celestial Heavens refuses the fetch. Recorded in OPEN-QUESTIONS Q55 with the recommendation
+  fix-optional and seam option (a).

@@ -1,9 +1,10 @@
-//! Spell obstacles on the battlefield (E04b T5a, T5c1; ADR-0014 points 5 and 7): what an
+//! Spell obstacles on the battlefield (E04b T5a, T5c1, T5c2; ADR-0014 points 5 and 7): what an
 //! obstacle spell places (BAT-MAG-027: Force Field blocks its hexes), Fire Wall's damage to a
 //! stack that enters one of its hexes or acts on one (BAT-MAG-028), the rounds they last, Expert
-//! Dispel's clearing (BAT-MAG-030), who sees a hidden obstacle (BAT-MAG-031) and Quicksand's pits,
-//! which stop a walker (BAT-MAG-032). The original's objects and their triggers:
-//! `docs/formats/installation.md` §7.15, §7.16.
+//! Dispel's clearing (BAT-MAG-030), who sees a hidden obstacle (BAT-MAG-031), Quicksand's pits,
+//! which stop a walker (BAT-MAG-032), and Land Mine's mines, which go off under an enemy stack
+//! (BAT-MAG-033). The original's objects and their triggers: `docs/formats/installation.md`
+//! §7.15 to §7.17.
 //!
 //! The obstacles live in one growable list per battle in the order they were placed (ADR-0014
 //! point 5). Most battles have none: the list reserves its room when the first obstacle is
@@ -42,12 +43,13 @@ pub struct SpellObstacle {
     pub hexes: HexSet,
     /// Rounds left, the current one included; 0: the whole battle (Quicksand).
     pub rounds: u8,
-    /// Fire Wall's value at the cast: `power × power factor + effect[mastery]`, before any bonus
-    /// (BAT-MAG-028); 0 for other kinds.
+    /// Fire Wall's or a mine's value at the cast: `power × power factor + effect[mastery]`, before
+    /// any bonus (BAT-MAG-028, BAT-MAG-033); 0 for other kinds.
     pub value: u64,
     /// Both sides see it (BAT-MAG-031): a kind that is not hidden, a hidden one placed while the
     /// other side had natives at the battle's start (quirk BAT-QUIRK-1), or one a stack of the
-    /// side that did not see it ran into (Quicksand, BAT-MAG-032).
+    /// side that did not see it ran into (Quicksand, BAT-MAG-032; a mine goes off and is gone,
+    /// BAT-MAG-033).
     pub revealed: bool,
 }
 
@@ -65,14 +67,15 @@ impl CanonicalHash for SpellObstacle {
 }
 
 /// The battle's spell obstacles, in the order they were placed, with the hexes Force Fields
-/// block, those Fire Walls burn and those Quicksand's pits cover, and the sides' sight of hidden
-/// obstacles (BAT-MAG-031).
+/// block, those Fire Walls burn and those Quicksand's pits and the mines cover, and the sides'
+/// sight of hidden obstacles (BAT-MAG-031).
 #[derive(Debug, PartialEq, Eq)]
 pub struct SpellObstacles {
     list: Vec<SpellObstacle>,
     walls: HexSet,
     fire: HexSet,
     pits: HexSet,
+    mines: HexSet,
     /// Whether each side had a stack on its native terrain at the battle's start.
     natives: [bool; 2],
     /// Quirk BAT-QUIRK-1 fixed: a side sees hidden obstacles while it has a living native stack,
@@ -88,6 +91,7 @@ impl SpellObstacles {
             walls: HexSet::new(),
             fire: HexSet::new(),
             pits: HexSet::new(),
+            mines: HexSet::new(),
             natives: [false; 2],
             live_sight: false,
         }
@@ -120,6 +124,16 @@ impl SpellObstacles {
         self.pits
     }
 
+    /// The hexes with a mine, seen or not (Land Mine, BAT-MAG-033).
+    pub const fn mines(&self) -> HexSet {
+        self.mines
+    }
+
+    /// Whether a hidden obstacle lies on the battlefield, seen or not (BAT-MAG-031).
+    const fn has_hidden(&self) -> bool {
+        !self.pits.is_empty() || !self.mines.is_empty()
+    }
+
     /// Every hex an obstacle covers.
     pub fn hexes(&self) -> HexSet {
         self.list
@@ -138,6 +152,7 @@ impl SpellObstacles {
         self.walls = of(ObstacleKind::Wall);
         self.fire = of(ObstacleKind::Fire);
         self.pits = of(ObstacleKind::Pit);
+        self.mines = of(ObstacleKind::Mine);
     }
 
     /// Keeps only the obstacles `keep` picks (tests: a twin without what a side does not see).
@@ -169,6 +184,7 @@ impl Clone for SpellObstacles {
             walls: self.walls,
             fire: self.fire,
             pits: self.pits,
+            mines: self.mines,
             natives: self.natives,
             live_sight: self.live_sight,
         }
@@ -197,6 +213,26 @@ fn natives_see(state: &BattleState, viewer: BattleSide) -> bool {
             .stacks
             .iter()
             .any(|s| s.side == viewer && s.is_alive() && s.has(StackTraits::NATIVE))
+}
+
+/// Whether `viewer` would see a hidden obstacle the other side places now because of its natives
+/// (BAT-MAG-031): it had natives at the battle's start (quirk BAT-QUIRK-1), or, with the quirk
+/// fixed, it has a living stack on its native terrain.
+fn natives_sight(state: &BattleState, viewer: BattleSide) -> bool {
+    let o = &state.spell_obstacles;
+    if o.live_sight {
+        natives_see(state, viewer)
+    } else {
+        o.natives[viewer.index()]
+    }
+}
+
+/// Whether `side`'s hero may place obstacles of kind `kind` now (BAT-MAG-033; the original's
+/// spell book, 0x59ECEE, `installation.md` §7.17): no mines while the other side's natives would
+/// see them; any other kind.
+// rule: BAT-MAG-033
+pub(crate) fn may_place(state: &BattleState, side: BattleSide, kind: ObstacleKind) -> bool {
+    kind != ObstacleKind::Mine || !natives_sight(state, side.opponent())
 }
 
 /// Whether `viewer` sees obstacle `o` (BAT-MAG-031; ADR-0014 point 7): its own, a revealed one,
@@ -272,7 +308,7 @@ pub(crate) fn shape_hexes(
 /// them.
 pub(crate) fn free(state: &BattleState, field: Field, side: BattleSide, hexes: &[Hex]) -> bool {
     let o = &state.spell_obstacles;
-    let seen = if o.pits.is_empty() {
+    let seen = if !o.has_hidden() {
         o.hexes()
     } else {
         o.list
@@ -324,10 +360,10 @@ pub(crate) fn random_hexes(
 }
 
 /// Places the obstacles of kind `kind` and shape `shape` of `side`'s cast of `id` on `hexes` with
-/// the value `value` (BAT-MAG-027): one per hex for a separate shape (Fire Wall, Quicksand), else
-/// one over all; each reported to the sides that see it (BAT-MAG-031). A hidden kind is revealed
-/// at once if the other side had natives at the battle's start (quirk BAT-QUIRK-1; the original's
-/// 0x5A0442, `installation.md` §7.16).
+/// the value `value` (BAT-MAG-027): one per hex for a separate shape (Fire Wall, Quicksand, Land
+/// Mine), else one over all; each reported to the sides that see it (BAT-MAG-031). A hidden kind
+/// is revealed at once if the other side had natives at the battle's start (quirk BAT-QUIRK-1;
+/// the original's 0x5A0442, `installation.md` §7.16; mines are never cast then, BAT-MAG-033).
 pub(crate) fn place<S: Sink>(
     state: &mut BattleState,
     (id, kind, shape): (SpellId, ObstacleKind, &ObstacleShape),
@@ -335,7 +371,7 @@ pub(crate) fn place<S: Sink>(
     (hexes, value): (&[Hex], u64),
     sink: &mut S,
 ) {
-    let value = if kind == ObstacleKind::Fire { value } else { 0 };
+    let value = if kind.has_value() { value } else { 0 };
     let sight = &state.spell_obstacles;
     // rule: BAT-MAG-031
     let revealed =
@@ -438,44 +474,101 @@ pub(crate) fn clear<S: Sink>(state: &mut BattleState, sink: &mut S) {
     remove(state, |_| true, sink);
 }
 
-/// The burning hexes stack `s` enters, `(hex, its Fire Wall)`: those of `hexes` a Fire Wall
-/// covers, in order.
-fn burning(state: &BattleState, hexes: [Option<Hex>; 2]) -> [Option<(Hex, SpellObstacle)>; 2] {
-    hexes.map(|h| h.and_then(|h| state.spell_obstacles.fire_at(h).map(|o| (h, o))))
+/// The index of the mine on `hex` that goes off under stack `s` (BAT-MAG-033; the original's
+/// 0x59FB40, `installation.md` §7.17): one its side does not see (not its own, not revealed, not
+/// seen by its natives; the stack's own side even when it is hypnotized) and whose spell hurts it
+/// (an immune stack crosses and the mine stays as it was).
+fn mine_under(state: &BattleState, ruleset: &Ruleset, s: StackId, hex: Hex) -> Option<usize> {
+    let side = state.at(s).side;
+    state.spell_obstacles.list.iter().position(|o| {
+        o.kind == ObstacleKind::Mine
+            && o.hexes.contains(hex)
+            && !sees(state, side, o)
+            && magic::hurts(state, ruleset, o, s)
+    })
 }
 
-/// Burns stack `s` on each of `entered`, its head's hex first, while it lives (BAT-MAG-028); the
-/// battle may end. Returns whether it still lives.
-fn burn_hexes<S: Sink>(
+/// Whether entering `hex` acts on stack `s`: a Fire Wall burns there (BAT-MAG-028) or a mine
+/// goes off under it (BAT-MAG-033). A mine that does not go off changes nothing, not even how the
+/// move is reported.
+fn acts_on(state: &BattleState, ruleset: &Ruleset, s: StackId, hex: Hex) -> bool {
+    let o = &state.spell_obstacles;
+    o.fire.contains(hex) || (o.mines.contains(hex) && mine_under(state, ruleset, s, hex).is_some())
+}
+
+/// Stack `s` enters each of `hexes` in turn, while it lives: on each a Fire Wall burns it
+/// (BAT-MAG-028), then a mine may go off under it (BAT-MAG-033), as the original's 0x46A570
+/// (`installation.md` §7.15, §7.17); the battle may end. Returns whether it still lives.
+fn enter<S: Sink>(
     state: &mut BattleState,
     ruleset: &Ruleset,
     s: StackId,
-    entered: [Option<(Hex, SpellObstacle)>; 2],
+    hexes: [Option<Hex>; 2],
     sink: &mut S,
 ) -> bool {
-    for (hex, fire) in entered.into_iter().flatten() {
+    for hex in hexes.into_iter().flatten() {
         if !state.at(s).is_alive() {
             break;
         }
-        sink.emit(Event::public(EventKind::ObstacleTriggered {
-            stack: s,
-            spell: fire.spell,
-            hex,
-        }));
-        magic::burn(state, ruleset, &fire, s, sink);
-        // Only this stack takes damage: the battle was not over before this burn.
-        check_end(state, sink);
+        if let Some(fire) = state.spell_obstacles.fire_at(hex) {
+            sink.emit(Event::public(EventKind::ObstacleTriggered {
+                stack: s,
+                spell: fire.spell,
+                hex,
+            }));
+            magic::burn(state, ruleset, &fire, s, sink);
+            // Only this stack takes damage: the battle was not over before this burn.
+            check_end(state, sink);
+        }
+        if state.at(s).is_alive()
+            && let Some(i) = mine_under(state, ruleset, s, hex)
+        {
+            explode(state, ruleset, (s, hex), i, sink);
+        }
     }
     state.at(s).is_alive()
 }
 
+/// The mine `i` goes off under stack `s` on `hex` (BAT-MAG-033): it is revealed and reported to
+/// both sides, does its spell's damage as a Fire Wall does (BAT-MAG-028) and is gone; the battle
+/// may end.
+// rule: BAT-MAG-033
+fn explode<S: Sink>(
+    state: &mut BattleState,
+    ruleset: &Ruleset,
+    (s, hex): (StackId, Hex),
+    i: usize,
+    sink: &mut S,
+) {
+    let mine = state.spell_obstacles.list.remove(i);
+    state.spell_obstacles.refresh();
+    sink.emit(Event::public(EventKind::ObstacleRevealed {
+        side: mine.side,
+        spell: mine.spell,
+        hexes: mine.hexes,
+    }));
+    sink.emit(Event::public(EventKind::ObstacleTriggered {
+        stack: s,
+        spell: mine.spell,
+        hex,
+    }));
+    magic::burn(state, ruleset, &mine, s, sink);
+    sink.emit(Event::public(EventKind::ObstacleRemoved {
+        spell: mine.spell,
+        hexes: mine.hexes,
+    }));
+    // Only this stack takes damage: the battle was not over before.
+    check_end(state, sink);
+}
+
 /// Moves stack `mover` from `from` to another free position `to` (BAT-MOV-001 to 003), reported
 /// by `Moved` events. Every hex of its footprint it enters on the way, each once (not those it
-/// starts on), may burn it (BAT-MAG-028) or stop it (a pit, BAT-MAG-032): a walker enters the
-/// hexes of each position of its path in turn, stops at the first position where it enters a pit
-/// (revealing a pit its controller did not see) and stops where it dies; a flyer (and a
-/// teleporting creature) enters only those it lands on and no pit stops it. Returns whether the
-/// stack arrived at `to` alive (an attack ordered with the move happens only then).
+/// starts on), may burn it (BAT-MAG-028), stop it (a pit, BAT-MAG-032) or blow up under it (a
+/// mine, BAT-MAG-033): a walker enters the hexes of each position of its path in turn, stops at
+/// the first position where it enters a pit (revealing a pit its controller did not see) and
+/// stops where it dies, but walks on after a mine; a flyer (and a teleporting creature) enters
+/// only those it lands on and no pit stops it. Returns whether the stack arrived at `to` alive
+/// (an attack ordered with the move happens only then).
 #[inline]
 pub(crate) fn travel<S: Sink>(
     state: &mut BattleState,
@@ -485,7 +578,7 @@ pub(crate) fn travel<S: Sink>(
     sink: &mut S,
 ) -> bool {
     let o = &state.spell_obstacles;
-    if o.fire().is_empty() && o.pits().is_empty() {
+    if o.fire().is_empty() && !o.has_hidden() {
         moved(state, mover, (from, to), sink);
         return true;
     }
@@ -502,7 +595,7 @@ fn moved<S: Sink>(state: &mut BattleState, mover: StackId, (a, b): (Hex, Hex), s
     }));
 }
 
-/// [`travel`] while a Fire Wall or a pit lies on the battlefield.
+/// [`travel`] while a Fire Wall, a pit or a mine lies on the battlefield.
 #[inline(never)]
 fn travel_through<S: Sink>(
     state: &mut BattleState,
@@ -511,7 +604,6 @@ fn travel_through<S: Sink>(
     (from, to): (Hex, Hex),
     sink: &mut S,
 ) -> bool {
-    let fire = state.spell_obstacles.fire();
     let field = Field::new(ruleset.battle().field);
     let stack = *state.at(mover);
     let walks = !stack.has(StackTraits::FLIES);
@@ -520,7 +612,7 @@ fn travel_through<S: Sink>(
     } else {
         HexSet::new()
     };
-    // rule: BAT-MAG-028
+    // rule: BAT-MAG-028, BAT-MAG-033
     let mut visited = stack
         .footprint(field)
         .hexes()
@@ -547,13 +639,12 @@ fn travel_through<S: Sink>(
         {
             if !visited.contains(hex) {
                 visited.insert(hex);
-                *slot = Some(hex).filter(|&h| fire.contains(h));
+                *slot = Some(hex).filter(|&h| acts_on(state, ruleset, mover, h));
                 *pit = Some(hex).filter(|&h| pits.contains(h));
             }
         }
-        let entered = burning(state, new);
         let stops = in_pit.iter().any(Option::is_some);
-        if stops || entered.iter().any(Option::is_some) {
+        if stops || new.iter().any(Option::is_some) {
             moved(state, mover, (start, at), sink);
             start = at;
             if stops {
@@ -561,10 +652,10 @@ fn travel_through<S: Sink>(
                 for hex in in_pit.into_iter().flatten() {
                     stuck(state, mover, hex, sink);
                 }
-                burn_hexes(state, ruleset, mover, entered, sink);
+                enter(state, ruleset, mover, new, sink);
                 return false;
             }
-            if !burn_hexes(state, ruleset, mover, entered, sink) {
+            if !enter(state, ruleset, mover, new, sink) {
                 return false;
             }
         }
@@ -606,19 +697,21 @@ fn stuck<S: Sink>(state: &mut BattleState, mover: StackId, hex: Hex, sink: &mut 
 }
 
 /// After stack `s` acted without moving (it defended, waited, shot, or attacked from where it
-/// stands), each hex it stands on that a Fire Wall covers burns it (BAT-MAG-028; the original
-/// enters them again), unless the battle is over.
-// rule: BAT-MAG-028
+/// stands), it enters the hexes it stands on again (the original's 0x46A570): a Fire Wall there
+/// burns it (BAT-MAG-028) and a mine there that it did not set off yet goes off (it was placed
+/// there by Teleport, or it was immune when it came; BAT-MAG-033), unless the battle is over.
+// rule: BAT-MAG-028, BAT-MAG-033
 #[inline]
 pub(crate) fn stand<S: Sink>(state: &mut BattleState, ruleset: &Ruleset, s: StackId, sink: &mut S) {
-    if !state.spell_obstacles.fire().is_empty() {
-        stand_burning(state, ruleset, s, sink);
+    let o = &state.spell_obstacles;
+    if !o.fire().is_empty() || !o.mines().is_empty() {
+        stand_on(state, ruleset, s, sink);
     }
 }
 
-/// [`stand`] while a Fire Wall stands.
+/// [`stand`] while a Fire Wall or a mine lies on the battlefield.
 #[inline(never)]
-fn stand_burning<S: Sink>(state: &mut BattleState, ruleset: &Ruleset, s: StackId, sink: &mut S) {
+fn stand_on<S: Sink>(state: &mut BattleState, ruleset: &Ruleset, s: StackId, sink: &mut S) {
     if state.result.is_some() || !state.at(s).is_alive() {
         return;
     }
@@ -628,6 +721,5 @@ fn stand_burning<S: Sink>(state: &mut BattleState, ruleset: &Ruleset, s: StackId
     for (slot, hex) in on.iter_mut().zip(footprint.hexes()) {
         *slot = Some(hex);
     }
-    let entered = burning(state, on);
-    burn_hexes(state, ruleset, s, entered, sink);
+    enter(state, ruleset, s, on, sink);
 }

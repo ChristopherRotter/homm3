@@ -462,8 +462,9 @@ fn other_spell(
 
 /// Writes the battle magic of a spell that places obstacles (pack format v13, E04b T5a): a hex
 /// target, which the flag word must give (`0x80` without `0x10`), the obstacle kind and shape from
-/// the gap-fill entry; a random shape (v14, Quicksand) has no target, as the spell book casts it
-/// at once (`installation.md` §7.16), although its flag word names a hex.
+/// the gap-fill entry; a random shape (v14, Quicksand; v15, Land Mine) has no target, as the
+/// spell book casts it at once (`installation.md` §7.16, §7.17), although its flag word names a
+/// hex.
 fn obstacle_spell(
     text: &mut String,
     what: &str,

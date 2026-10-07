@@ -11,6 +11,7 @@ mod flee;
 mod geometry;
 mod heroes;
 mod magic;
+mod mines;
 mod morale;
 mod obstacles;
 mod pits;
