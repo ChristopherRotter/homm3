@@ -161,6 +161,12 @@ fn llvm_tools_available() -> bool {
 }
 
 pub fn run(_args: &[String]) -> Result<(), String> {
+    gate(None)
+}
+
+/// The gate. With `packages` (a lane scope, `verify --scope`), only those packages' tests run and
+/// only their logic crates are gated; coverage of other crates is left to the full verify.
+pub fn gate(packages: Option<&[String]>) -> Result<(), String> {
     if !has_cargo_subcommand("llvm-cov") {
         return Err(
             "cargo-llvm-cov is not installed: `cargo install cargo-llvm-cov --locked`".to_owned(),
@@ -178,15 +184,29 @@ pub fn run(_args: &[String]) -> Result<(), String> {
     let target = crate::util::target_dir()?;
     let json_path = target.join("coverage.json");
     let lcov_path = target.join("coverage.lcov");
+    let config = arch::load_config(&root)?;
+    let in_scope = |name: &str| packages.is_none_or(|p| p.iter().any(|q| q == name));
+    let logic: Vec<arch::Package> = arch::load_packages()?
+        .into_iter()
+        .filter(|p| config.crates.get(&p.name).is_some_and(|c| c.logic) && in_scope(&p.name))
+        .collect();
+    if packages.is_some() && logic.is_empty() {
+        println!("coverage: no logic crate in scope");
+        return Ok(());
+    }
     let mut test = cargo();
-    test.args([
-        "llvm-cov",
-        "--workspace",
-        "--exclude",
-        "xtask",
-        "--all-targets",
-        "--no-report",
-    ]);
+    test.arg("llvm-cov");
+    match packages {
+        None => {
+            test.args(["--workspace", "--exclude", "xtask"]);
+        }
+        Some(list) => {
+            for p in list {
+                test.args(["-p", p]);
+            }
+        }
+    }
+    test.args(["--all-targets", "--no-report"]);
     run_cmd(test)?;
     let mut json_report = cargo();
     json_report
@@ -204,11 +224,8 @@ pub fn run(_args: &[String]) -> Result<(), String> {
         &parse_lcov(&read(&lcov_path)?, &root),
     );
 
-    let config = arch::load_config(&root)?;
-    let packages = arch::load_packages()?;
-    let gated: Vec<String> = packages
+    let gated: Vec<String> = logic
         .iter()
-        .filter(|p| config.crates.get(&p.name).is_some_and(|c| c.logic))
         .map(|p| format!("{}/src/", rel(&root, &p.dir)))
         .collect();
     let exclusions = load_exclusions(&root)?;
@@ -223,10 +240,7 @@ pub fn run(_args: &[String]) -> Result<(), String> {
     // cargo-llvm-cov leaves test files out of the report by default.)
     let reported: BTreeSet<&str> = files.iter().map(|f| f.file.as_str()).collect();
     let mut missing = Vec::new();
-    for p in packages
-        .iter()
-        .filter(|p| config.crates.get(&p.name).is_some_and(|c| c.logic))
-    {
+    for p in &logic {
         for (file, is_test) in crate::scan::classify_crate(&p.dir)? {
             let r = rel(&root, &file);
             if is_test || excluded.contains(&r) || reported.contains(r.as_str()) {

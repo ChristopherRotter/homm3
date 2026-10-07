@@ -106,14 +106,41 @@ pub fn load_catalog(dir: &Path) -> Result<Vec<(String, CatalogFile)>, String> {
     Ok(out)
 }
 
-/// Quirk IDs (`Q-NNNN`) declared as `### Q-NNNN` headings in the quirks ledger.
-pub fn ledger_ids(text: &str) -> BTreeSet<String> {
+/// Quirk IDs declared as `### <id>` headings in a quirks ledger: `Q-NNNN` (from before the
+/// lanes) or `<LANE CODE>-QUIRK-<n>` with a code from `codes` (lanes.toml).
+pub fn ledger_ids(text: &str, codes: &BTreeSet<String>) -> BTreeSet<String> {
     text.lines()
         .filter_map(|l| l.strip_prefix("### "))
         .filter_map(|rest| rest.split_whitespace().next())
-        .filter(|id| id.starts_with("Q-"))
+        .filter(|id| id.starts_with("Q-") || crate::lanes::is_lane_id(id, "QUIRK", codes))
         .map(str::to_owned)
         .collect()
+}
+
+/// The quirk IDs of every ledger: `docs/rules/quirks-ledger.md` (battle's) and the other lanes'
+/// `docs/rules/quirks-<lane>.md`.
+pub fn load_ledgers(root: &Path, codes: &BTreeSet<String>) -> Result<BTreeSet<String>, String> {
+    let dir = root.join("docs/rules");
+    let mut ids = BTreeSet::new();
+    let entries = fs::read_dir(&dir).map_err(|e| format!("{}: {e}", dir.display()))?;
+    let mut files: Vec<_> = entries
+        .filter_map(Result::ok)
+        .map(|e| e.path())
+        .filter(|p| {
+            p.file_name()
+                .is_some_and(|n| n.to_string_lossy().starts_with("quirks"))
+                && p.extension().is_some_and(|e| e == "md")
+        })
+        .collect();
+    files.sort();
+    if files.is_empty() {
+        return Err("docs/rules/: no quirks ledger".to_owned());
+    }
+    for path in files {
+        let text = fs::read_to_string(&path).map_err(|e| format!("{}: {e}", path.display()))?;
+        ids.extend(ledger_ids(&text, codes));
+    }
+    Ok(ids)
 }
 
 /// Collects `rule:` and `covers:` markers from all `.rs` files below `crates_dir`.
@@ -209,7 +236,7 @@ pub fn check(
             for q in &r.quirks {
                 if !quirks.contains(q) {
                     v.push(format!(
-                        "{at}: quirk `{q}` is not in docs/rules/quirks-ledger.md"
+                        "{at}: quirk `{q}` is in no quirks ledger (docs/rules/quirks*.md)"
                     ));
                 }
             }
@@ -314,16 +341,10 @@ pub fn check(
 pub fn run(_args: &[String]) -> Result<(), String> {
     let root = workspace_root();
     let catalog = load_catalog(&root.join("docs/rules/catalog"))?;
-    let ledger_path = root.join("docs/rules/quirks-ledger.md");
-    let ledger =
-        fs::read_to_string(&ledger_path).map_err(|e| format!("{}: {e}", ledger_path.display()))?;
+    let codes = crate::lanes::Config::load(&root)?.codes();
+    let quirks = load_ledgers(&root, &codes)?;
     let (rule_markers, cover_markers) = collect_markers(&root, &root.join("crates"))?;
-    let violations = check(
-        &catalog,
-        &ledger_ids(&ledger),
-        &rule_markers,
-        &cover_markers,
-    );
+    let violations = check(&catalog, &quirks, &rule_markers, &cover_markers);
     let count: usize = catalog.iter().map(|(_, c)| c.rule.len()).sum();
     println!(
         "check-rules: {count} rule(s), {} rule marker(s), {} covers marker(s)",
@@ -379,7 +400,13 @@ summary = "Lemire."
     }
 
     fn quirks() -> BTreeSet<String> {
-        ledger_ids("# Ledger\n### Q-0001 — A\n### Q-0002 — B\n## Entries\n")
+        let codes = ["ADV".to_owned()].into();
+        let ids = ledger_ids(
+            "# Ledger\n### Q-0001 — A\n### Q-0002 — B\n### ADV-QUIRK-1 — C\n### XY-QUIRK-1 — D\n",
+            &codes,
+        );
+        assert!(ids.contains("ADV-QUIRK-1") && !ids.contains("XY-QUIRK-1"));
+        ids
     }
 
     #[test]
@@ -533,7 +560,7 @@ summary = "s"
         assert_eq!(valid_id("BAT-DMG-001-2"), None);
         assert!(valid_date("2026-09-30"));
         assert!(!valid_date("2026-9-30"));
-        assert_eq!(quirks().len(), 2);
+        assert_eq!(quirks().len(), 3);
     }
 
     #[test]
@@ -557,11 +584,10 @@ summary = "s"
     fn the_real_catalog_passes() {
         let root = workspace_root();
         let catalog = load_catalog(&root.join("docs/rules/catalog")).unwrap();
-        let ledger = fs::read_to_string(root.join("docs/rules/quirks-ledger.md")).unwrap();
+        let codes = crate::lanes::Config::load(&root).unwrap().codes();
+        let quirks = load_ledgers(&root, &codes).unwrap();
+        assert!(quirks.contains("Q-0001"));
         let (r, c) = collect_markers(&root, &root.join("crates")).unwrap();
-        assert_eq!(
-            check(&catalog, &ledger_ids(&ledger), &r, &c),
-            Vec::<String>::new()
-        );
+        assert_eq!(check(&catalog, &quirks, &r, &c), Vec::<String>::new());
     }
 }

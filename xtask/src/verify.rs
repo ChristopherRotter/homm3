@@ -1,8 +1,21 @@
 //! `cargo xtask verify`: the single quality gate (docs/05-testing.md, ADR-0010).
+//!
+//! - `--scope <lane>` is the lane's fast local loop (lanes.toml): lint, test and cover only the
+//!   lane's crates, run the lane's own gates (golden replays, C ABI smoke test, its benchmark
+//!   workloads) and `check-lane`, and skip what belongs to shared paths (`deny`). A scoped run
+//!   never counts as green; CI runs the full verify on every pull request.
+//! - `--summary` prints one line per gate and the end of the first failure's output; the full
+//!   output goes to `<target>/verify/verify.log`. Each gate then runs in a child process
+//!   (`cargo xtask verify-step`), so that everything it prints lands in the log.
 
+use std::fs::{self, File, OpenOptions};
+use std::io::{Read, Seek, SeekFrom};
+use std::path::PathBuf;
+use std::process::{Command, Stdio};
 use std::time::Instant;
 
-use crate::util::{cargo, has_cargo_subcommand, run_cmd};
+use crate::lanes::Config;
+use crate::util::{cargo, has_cargo_subcommand, rel, run_cmd, workspace_root};
 
 /// How a gate ended when it did not fail.
 #[derive(Debug, PartialEq, Eq)]
@@ -14,16 +27,52 @@ pub enum Status {
     NotApplicable(String),
 }
 
+/// The lane a scoped run is restricted to.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct LaneScope {
+    pub lane: String,
+    /// Workspace packages the lane owns.
+    pub packages: Vec<String>,
+}
+
+/// How a gate behaves under `--scope <lane>`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum InScope {
+    /// Runs as in a full verify (fast, repository-wide checks).
+    Whole,
+    /// Runs on the lane's packages; skipped when the lane has none.
+    Packages,
+    /// Runs when the lane owns this package (the gate exercises it).
+    Owner(&'static str),
+    /// Runs on the lane's benchmark workloads; skipped when it has none.
+    Workloads,
+    /// Skipped: the gate guards shared paths only.
+    Shared,
+    /// Runs only in a scoped verify (CI runs it as its own job).
+    ScopedOnly,
+}
+
 /// One gate of the verify pipeline.
 struct Step {
     name: &'static str,
     /// Slow steps are skipped by `--quick`.
     slow: bool,
-    action: fn() -> Result<Status, String>,
+    in_scope: InScope,
+    action: fn(Option<&LaneScope>) -> Result<Status, String>,
 }
 
-const fn step(name: &'static str, slow: bool, action: fn() -> Result<Status, String>) -> Step {
-    Step { name, slow, action }
+const fn step(
+    name: &'static str,
+    slow: bool,
+    in_scope: InScope,
+    action: fn(Option<&LaneScope>) -> Result<Status, String>,
+) -> Step {
+    Step {
+        name,
+        slow,
+        in_scope,
+        action,
+    }
 }
 
 fn passed(r: Result<(), String>) -> Result<Status, String> {
@@ -32,20 +81,58 @@ fn passed(r: Result<(), String>) -> Result<Status, String> {
 
 /// The gates, in order (docs/05-testing.md "Gates").
 const STEPS: &[Step] = &[
-    step("fmt", false, || passed(fmt())),
-    step("clippy", false, || passed(clippy())),
-    step("deny", false, || passed(deny())),
-    step("check-arch", false, || passed(crate::arch::run(&[]))),
-    step("check-rules", false, || passed(crate::rules::run(&[]))),
-    step("check-stubs", false, || passed(crate::stubs::run(&[]))),
-    step("check-docs", false, || passed(crate::docs::run(&[]))),
-    step("test", false, || passed(test())),
-    step("coverage", true, || passed(crate::coverage::run(&[]))),
-    step("determinism", true, || passed(crate::determinism::run(&[]))),
-    step("ffi-smoke", false, crate::determinism::ffi_smoke_status),
-    step("bench-check", true, crate::bench::check_status),
-    step("doc-drift", false, crate::drift::status),
+    step("fmt", false, InScope::Whole, |_| passed(fmt())),
+    step("clippy", false, InScope::Packages, |s| passed(clippy(s))),
+    step("deny", false, InScope::Shared, |_| passed(deny())),
+    step("check-arch", false, InScope::Whole, |_| {
+        passed(crate::arch::run(&[]))
+    }),
+    step("check-rules", false, InScope::Whole, |_| {
+        passed(crate::rules::run(&[]))
+    }),
+    step("check-stubs", false, InScope::Whole, |_| {
+        passed(crate::stubs::run(&[]))
+    }),
+    step("check-docs", false, InScope::Whole, |_| {
+        passed(crate::docs::run(&[]))
+    }),
+    step("check-lane", false, InScope::ScopedOnly, |s| {
+        passed(crate::lanes::check(s.map(|s| s.lane.as_str()), None, false))
+    }),
+    step("test", false, InScope::Packages, |s| passed(test(s))),
+    step("coverage", true, InScope::Packages, |s| {
+        passed(crate::coverage::gate(s.map(|s| s.packages.as_slice())))
+    }),
+    step("determinism", true, InScope::Owner("h3-cli"), |_| {
+        passed(crate::determinism::run(&[]))
+    }),
+    step("ffi-smoke", false, InScope::Owner("h3-ffi"), |_| {
+        crate::determinism::ffi_smoke_status()
+    }),
+    step("bench-check", true, InScope::Workloads, |s| {
+        crate::bench::check(
+            false,
+            s.map_or(crate::bench::Selection::All, |s| {
+                crate::bench::Selection::Lane(&s.lane)
+            }),
+        )
+    }),
+    step("doc-drift", false, InScope::Whole, |_| {
+        crate::drift::status()
+    }),
 ];
+
+/// `-p <package>` for each package of the scope, or `--workspace`.
+fn package_args(scope: Option<&LaneScope>) -> Vec<String> {
+    match scope {
+        None => vec!["--workspace".to_owned()],
+        Some(s) => s
+            .packages
+            .iter()
+            .flat_map(|p| ["-p".to_owned(), p.clone()])
+            .collect(),
+    }
+}
 
 fn fmt() -> Result<(), String> {
     let mut cmd = cargo();
@@ -53,16 +140,11 @@ fn fmt() -> Result<(), String> {
     run_cmd(cmd)
 }
 
-fn clippy() -> Result<(), String> {
+fn clippy(scope: Option<&LaneScope>) -> Result<(), String> {
     let mut cmd = cargo();
-    cmd.args([
-        "clippy",
-        "--workspace",
-        "--all-targets",
-        "--",
-        "-D",
-        "warnings",
-    ]);
+    cmd.arg("clippy")
+        .args(package_args(scope))
+        .args(["--all-targets", "--", "-D", "warnings"]);
     run_cmd(cmd)
 }
 
@@ -79,19 +161,25 @@ fn deny() -> Result<(), String> {
     run_cmd(cmd)
 }
 
-fn test() -> Result<(), String> {
+fn test(scope: Option<&LaneScope>) -> Result<(), String> {
     let mut cmd = cargo();
-    cmd.args(["test", "--workspace", "--all-targets", "--quiet"]);
+    cmd.arg("test")
+        .args(package_args(scope))
+        .args(["--all-targets", "--quiet"]);
     run_cmd(cmd)?;
     // Doc tests are not part of --all-targets.
     let mut doc = cargo();
-    doc.args(["test", "--workspace", "--doc", "--quiet"]);
+    doc.arg("test")
+        .args(package_args(scope))
+        .args(["--doc", "--quiet"]);
     run_cmd(doc)
 }
 
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, PartialEq, Eq, Default)]
 struct Options {
     quick: bool,
+    summary: bool,
+    scope: Option<String>,
     skip: Vec<String>,
     /// `--with-original-data [path]`: also re-harvest from the user's installation copy and
     /// require the committed packs to match (local only, never CI; E02 T5).
@@ -100,6 +188,9 @@ struct Options {
 
 /// Default location of the installation copy (gitignored, ADR-0009).
 const DEFAULT_ORIGINAL_DATA: &str = "original-data/install";
+
+/// Name of the `--with-original-data` step.
+const ORIGINAL_DATA: &str = "original-data";
 
 /// Re-harvests from `install` and compares with the committed packs (read-only on `install`).
 fn harvest_check(install: &str) -> Result<(), String> {
@@ -120,15 +211,15 @@ fn harvest_check(install: &str) -> Result<(), String> {
 }
 
 fn parse(args: &[String]) -> Result<Options, String> {
-    let mut options = Options {
-        quick: false,
-        skip: Vec::new(),
-        original_data: None,
-    };
+    let mut options = Options::default();
     let mut iter = args.iter();
     while let Some(arg) = iter.next() {
         match arg.as_str() {
             "--quick" => options.quick = true,
+            "--summary" => options.summary = true,
+            "--scope" => {
+                options.scope = Some(iter.next().ok_or("--scope needs a lane")?.clone());
+            }
             "--with-original-data" => {
                 let path = match iter.as_slice().first() {
                     Some(next) if !next.starts_with("--") => {
@@ -157,73 +248,298 @@ fn parse(args: &[String]) -> Result<Options, String> {
 }
 
 /// Error text used to signal "passed with skipped steps" (exit code 2, see main.rs).
-pub const NOT_GREEN: &str = "verify incomplete: steps were skipped";
+pub const NOT_GREEN: &str = "verify incomplete: steps were skipped or the run was scoped";
+
+/// Exit code of `verify-step` for a gate that is not applicable on this platform.
+pub const EXIT_NOT_APPLICABLE: u8 = 3;
+/// Prefix of the reason line `verify-step` prints for a gate that is not applicable.
+const NOT_APPLICABLE_LINE: &str = "verify-step: N/A: ";
 
 enum Outcome {
     Passed,
     NotApplicable(String),
     Failed(String),
-    Skipped(&'static str),
+    Skipped(String),
+}
+
+/// The lane scope for `lane`: its packages from `cargo metadata` and lanes.toml.
+pub fn lane_scope(lane: &str) -> Result<LaneScope, String> {
+    let root = workspace_root();
+    let config = Config::load(&root)?;
+    if config.lane(lane).is_none() {
+        return Err(format!(
+            "unknown lane `{lane}`; lanes: {}",
+            config.lane_names().join(", ")
+        ));
+    }
+    let packages: Vec<(String, String)> = crate::arch::load_packages()?
+        .into_iter()
+        .map(|p| (p.name, rel(&root, &p.dir)))
+        .collect();
+    let owned = config
+        .lane_packages(lane, &packages)
+        .into_iter()
+        .map(str::to_owned)
+        .collect();
+    Ok(LaneScope {
+        lane: lane.to_owned(),
+        packages: owned,
+    })
+}
+
+/// Why a gate does not run under `scope`, if it does not.
+fn out_of_scope(step: &Step, scope: Option<&LaneScope>) -> Option<String> {
+    let s = scope?;
+    match step.in_scope {
+        InScope::Whole | InScope::ScopedOnly => None,
+        InScope::Packages if s.packages.is_empty() => {
+            Some(format!("lane `{}` has no crates yet", s.lane))
+        }
+        InScope::Packages => None,
+        InScope::Owner(package) if s.packages.iter().any(|p| p == package) => None,
+        InScope::Owner(package) => Some(format!("`{package}` is not lane `{}`'s", s.lane)),
+        InScope::Workloads => {
+            let has = crate::bench::load(&workspace_root())
+                .is_ok_and(|entries| entries.iter().any(|e| e.lane == s.lane));
+            (!has).then(|| format!("lane `{}` has no benchmark workload", s.lane))
+        }
+        InScope::Shared => Some("shared paths only; CI runs it".to_owned()),
+    }
+}
+
+/// Runs one gate in this process.
+fn run_step(
+    name: &str,
+    scope: Option<&LaneScope>,
+    install: Option<&str>,
+) -> Result<Status, String> {
+    if name == ORIGINAL_DATA {
+        let install = install.unwrap_or(DEFAULT_ORIGINAL_DATA);
+        return harvest_check(install).map(|()| Status::Passed);
+    }
+    let step = STEPS
+        .iter()
+        .find(|s| s.name == name)
+        .ok_or_else(|| format!("unknown step `{name}`"))?;
+    (step.action)(scope)
+}
+
+/// `cargo xtask verify-step <step> [--scope <lane>] [--install <path>]`: one gate, for
+/// `verify --summary`. Exit code 0 passed, 1 failed, [`EXIT_NOT_APPLICABLE`] not applicable.
+pub fn run_one(args: &[String]) -> Result<Status, String> {
+    let mut iter = args.iter();
+    let name = iter.next().ok_or("verify-step needs a step name")?.clone();
+    let mut scope = None;
+    let mut install = None;
+    while let Some(arg) = iter.next() {
+        match arg.as_str() {
+            "--scope" => scope = Some(lane_scope(iter.next().ok_or("--scope needs a lane")?)?),
+            "--install" => install = Some(iter.next().ok_or("--install needs a path")?.clone()),
+            other => return Err(format!("unknown verify-step option `{other}`")),
+        }
+    }
+    let status = run_step(&name, scope.as_ref(), install.as_deref())?;
+    if let Status::NotApplicable(why) = &status {
+        println!("{NOT_APPLICABLE_LINE}{why}");
+    }
+    Ok(status)
+}
+
+/// The log of a `--summary` run.
+fn summary_log() -> Result<PathBuf, String> {
+    let dir = crate::util::target_dir()?.join("verify");
+    fs::create_dir_all(&dir).map_err(|e| format!("{}: {e}", dir.display()))?;
+    Ok(dir.join("verify.log"))
+}
+
+/// Runs one gate as a child process whose output is appended to `log`.
+fn run_logged(
+    log: &PathBuf,
+    name: &str,
+    scope: Option<&LaneScope>,
+    install: Option<&str>,
+) -> Result<Outcome, String> {
+    let mut file = OpenOptions::new()
+        .append(true)
+        .open(log)
+        .map_err(|e| format!("{}: {e}", log.display()))?;
+    let start = file.seek(SeekFrom::End(0)).map_err(|e| e.to_string())?;
+    let header = format!("\n==> {name}\n");
+    std::io::Write::write_all(&mut file, header.as_bytes()).map_err(|e| e.to_string())?;
+    let exe = std::env::current_exe().map_err(|e| format!("current_exe: {e}"))?;
+    let mut cmd = Command::new(exe);
+    cmd.current_dir(workspace_root())
+        .args(["verify-step", name]);
+    if let Some(s) = scope {
+        cmd.args(["--scope", &s.lane]);
+    }
+    if let Some(path) = install {
+        cmd.args(["--install", path]);
+    }
+    let out = file.try_clone().map_err(|e| e.to_string())?;
+    let err = file.try_clone().map_err(|e| e.to_string())?;
+    let status = cmd
+        .stdin(Stdio::null())
+        .stdout(out)
+        .stderr(err)
+        .status()
+        .map_err(|e| format!("could not start verify-step {name}: {e}"))?;
+    let mut section = String::new();
+    let mut reader = File::open(log).map_err(|e| e.to_string())?;
+    reader
+        .seek(SeekFrom::Start(start))
+        .map_err(|e| e.to_string())?;
+    reader
+        .read_to_string(&mut section)
+        .map_err(|e| e.to_string())?;
+    Ok(match status.code() {
+        Some(0) => Outcome::Passed,
+        Some(code) if code == i32::from(EXIT_NOT_APPLICABLE) => Outcome::NotApplicable(
+            section
+                .lines()
+                .find_map(|l| l.strip_prefix(NOT_APPLICABLE_LINE))
+                .unwrap_or("not applicable")
+                .to_owned(),
+        ),
+        _ => Outcome::Failed(section),
+    })
+}
+
+/// The last `n` lines of `text`.
+fn tail(text: &str, n: usize) -> String {
+    let lines: Vec<&str> = text.lines().collect();
+    lines[lines.len().saturating_sub(n)..].join("\n")
+}
+
+/// The one-line reason of a failed gate's output: its `error:` line, else its last line.
+fn failure_line(section: &str) -> String {
+    section
+        .lines()
+        .rev()
+        .find_map(|l| l.strip_prefix("error: "))
+        .or_else(|| section.lines().rev().find(|l| !l.trim().is_empty()))
+        .unwrap_or("failed")
+        .to_owned()
 }
 
 pub fn run_steps(args: &[String]) -> Result<(), String> {
     let options = parse(args)?;
+    let scope = options.scope.as_deref().map(lane_scope).transpose()?;
+    let log = if options.summary {
+        let path = summary_log()?;
+        File::create(&path).map_err(|e| format!("{}: {e}", path.display()))?;
+        println!("verify --summary: full log in {}", path.display());
+        Some(path)
+    } else {
+        None
+    };
+    if let Some(s) = &scope {
+        println!(
+            "verify scoped to lane `{}` (crates: {})",
+            s.lane,
+            if s.packages.is_empty() {
+                "none yet".to_owned()
+            } else {
+                s.packages.join(", ")
+            }
+        );
+    }
+    let mut names: Vec<&str> = STEPS
+        .iter()
+        .filter(|s| scope.is_some() || s.in_scope != InScope::ScopedOnly)
+        .map(|s| s.name)
+        .collect();
+    if options.original_data.is_some() {
+        names.push(ORIGINAL_DATA);
+    }
     let mut results = Vec::new();
-    for step in STEPS {
-        let outcome = if options.skip.iter().any(|s| s == step.name) {
-            Outcome::Skipped("--skip")
-        } else if options.quick && step.slow {
-            Outcome::Skipped("--quick")
+    let mut first_failure: Option<(&str, String)> = None;
+    for name in names {
+        let step = STEPS.iter().find(|s| s.name == name);
+        let skipped = if options.skip.iter().any(|s| s == name) {
+            Some("--skip".to_owned())
+        } else if options.quick && step.is_some_and(|s| s.slow) {
+            Some("--quick".to_owned())
         } else {
-            println!("\n==> {}", step.name);
-            let start = Instant::now();
-            let result = (step.action)();
-            let elapsed = start.elapsed();
-            println!("<== {} ({:.1}s)", step.name, elapsed.as_secs_f64());
+            step.and_then(|s| out_of_scope(s, scope.as_ref()))
+                .map(|why| format!("--scope: {why}"))
+        };
+        let start = Instant::now();
+        let outcome = if let Some(why) = skipped {
+            Outcome::Skipped(why)
+        } else if let Some(log) = &log {
+            run_logged(log, name, scope.as_ref(), options.original_data.as_deref())?
+        } else {
+            println!("\n==> {name}");
+            let result = run_step(name, scope.as_ref(), options.original_data.as_deref());
+            println!("<== {name} ({:.1}s)", start.elapsed().as_secs_f64());
             match result {
                 Ok(Status::Passed) => Outcome::Passed,
                 Ok(Status::NotApplicable(why)) => Outcome::NotApplicable(why),
                 Err(e) => Outcome::Failed(e),
             }
         };
-        results.push((step.name, outcome));
-    }
-    if let Some(install) = &options.original_data {
-        println!("\n==> original-data ({install})");
-        let outcome = match harvest_check(install) {
-            Ok(()) => Outcome::Passed,
-            Err(e) => Outcome::Failed(e),
-        };
-        results.push(("original-data", outcome));
+        if log.is_some() {
+            let secs = start.elapsed().as_secs_f64();
+            match &outcome {
+                Outcome::Passed => println!("  PASS  {name} ({secs:.1}s)"),
+                Outcome::NotApplicable(why) => println!("  N/A   {name}: {why}"),
+                Outcome::Failed(section) => {
+                    println!("  FAIL  {name} ({secs:.1}s): {}", failure_line(section));
+                }
+                Outcome::Skipped(why) => println!("  SKIP  {name} ({why})"),
+            }
+        }
+        if let (Outcome::Failed(text), None) = (&outcome, &first_failure) {
+            first_failure = Some((name, text.clone()));
+        }
+        results.push((name, outcome));
     }
 
-    println!("\nverify summary:");
-    let mut failed = 0;
-    let mut skipped = 0;
-    for (name, outcome) in &results {
-        match outcome {
-            Outcome::Passed => println!("  PASS  {name}"),
-            Outcome::NotApplicable(why) => println!("  N/A   {name}: {why}"),
-            Outcome::Failed(e) => {
-                failed += 1;
-                println!("  FAIL  {name}: {e}");
-            }
-            Outcome::Skipped(why) => {
-                skipped += 1;
-                println!("  SKIP  {name} ({why})");
+    let failed = results
+        .iter()
+        .filter(|(_, o)| matches!(o, Outcome::Failed(_)))
+        .count();
+    let skipped = results
+        .iter()
+        .filter(|(_, o)| matches!(o, Outcome::Skipped(_)))
+        .count();
+    if let Some(log) = &log {
+        if let Some((name, section)) = &first_failure {
+            println!(
+                "\nfirst failure: {name} (end of its output; all of it in {}):",
+                log.display()
+            );
+            println!("{}", tail(section, 25));
+        }
+    } else {
+        println!("\nverify summary:");
+        for (name, outcome) in &results {
+            match outcome {
+                Outcome::Passed => println!("  PASS  {name}"),
+                Outcome::NotApplicable(why) => println!("  N/A   {name}: {why}"),
+                Outcome::Failed(e) => println!("  FAIL  {name}: {e}"),
+                Outcome::Skipped(why) => println!("  SKIP  {name} ({why})"),
             }
         }
     }
     if failed > 0 {
         return Err(format!("{failed} verify step(s) failed"));
     }
-    if skipped > 0 {
-        println!("\nverify passed with {skipped} skipped step(s): this is NOT a green verify.");
+    if skipped > 0 || scope.is_some() {
+        if let Some(s) = &scope {
+            println!(
+                "\nverify passed for lane `{}` with {skipped} skipped step(s): a scoped run is NOT \
+                 a green verify (CI runs the full one).",
+                s.lane
+            );
+        } else {
+            println!("\nverify passed with {skipped} skipped step(s): this is NOT a green verify.");
+        }
         // Exit code 2: nothing failed, but the run does not count as green.
         return Err(NOT_GREEN.to_owned());
-    } else {
-        println!("\nverify is green.");
     }
+    println!("\nverify is green.");
     Ok(())
 }
 
@@ -240,12 +556,22 @@ mod tests {
     }
 
     #[test]
-    fn parses_quick_and_skip() {
-        let options = parse(&strings(&["--quick", "--skip", "deny"])).unwrap();
+    fn parses_quick_skip_summary_and_scope() {
+        let options = parse(&strings(&[
+            "--quick",
+            "--skip",
+            "deny",
+            "--summary",
+            "--scope",
+            "battle",
+        ]))
+        .unwrap();
         assert_eq!(
             options,
             Options {
                 quick: true,
+                summary: true,
+                scope: Some("battle".to_owned()),
                 skip: vec!["deny".to_owned()],
                 original_data: None,
             }
@@ -268,6 +594,62 @@ mod tests {
     fn rejects_unknown_step_and_option() {
         assert!(parse(&strings(&["--skip", "nope"])).is_err());
         assert!(parse(&strings(&["--skip"])).is_err());
+        assert!(parse(&strings(&["--scope"])).is_err());
         assert!(parse(&strings(&["--frobnicate"])).is_err());
+        assert!(run_one(&strings(&[])).is_err());
+        assert!(run_one(&strings(&["nope"])).is_err());
+        assert!(run_one(&strings(&["fmt", "--what"])).is_err());
+    }
+
+    #[test]
+    fn scopes_steps() {
+        let step = |name| STEPS.iter().find(|s| s.name == name).unwrap();
+        let battle = LaneScope {
+            lane: "battle".to_owned(),
+            packages: vec!["h3-cli".to_owned(), "h3-battle".to_owned()],
+        };
+        let client = LaneScope {
+            lane: "client".to_owned(),
+            packages: Vec::new(),
+        };
+        assert_eq!(out_of_scope(step("fmt"), Some(&client)), None);
+        assert_eq!(out_of_scope(step("test"), None), None);
+        assert_eq!(out_of_scope(step("test"), Some(&battle)), None);
+        assert!(out_of_scope(step("test"), Some(&client)).is_some());
+        assert_eq!(out_of_scope(step("determinism"), Some(&battle)), None);
+        assert!(out_of_scope(step("ffi-smoke"), Some(&battle)).is_some());
+        assert!(out_of_scope(step("deny"), Some(&battle)).is_some());
+        assert_eq!(out_of_scope(step("check-lane"), Some(&client)), None);
+        assert_eq!(out_of_scope(step("bench-check"), Some(&battle)), None);
+        assert!(out_of_scope(step("bench-check"), Some(&client)).is_some());
+        assert_eq!(
+            package_args(Some(&battle)),
+            strings(&["-p", "h3-cli", "-p", "h3-battle"])
+        );
+        assert_eq!(package_args(None), strings(&["--workspace"]));
+    }
+
+    #[test]
+    fn lane_scopes_come_from_lanes_toml() {
+        let battle = lane_scope("battle").unwrap();
+        assert!(battle.packages.iter().any(|p| p == "h3-battle"));
+        assert!(
+            !battle
+                .packages
+                .iter()
+                .any(|p| p == "h3-kernel" || p == "xtask")
+        );
+        assert!(lane_scope("client").unwrap().packages.is_empty());
+        assert!(lane_scope("nope").is_err());
+    }
+
+    #[test]
+    fn summarises_failures() {
+        let section = "==> test\ncompiling\nerror: `cargo test` failed\n";
+        assert_eq!(failure_line(section), "`cargo test` failed");
+        assert_eq!(failure_line("a\nlast line\n\n"), "last line");
+        assert_eq!(failure_line(""), "failed");
+        assert_eq!(tail("1\n2\n3", 2), "2\n3");
+        assert_eq!(tail("1", 5), "1");
     }
 }

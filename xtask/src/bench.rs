@@ -1,15 +1,18 @@
 //! `cargo xtask bench` (criterion wall-time benchmarks, local only) and
-//! `cargo xtask bench-check [--update]` (deterministic instruction-count regression gate).
+//! `cargo xtask bench-check [--update] [--lane <lane>] [--workload <name>]` (deterministic
+//! instruction-count regression gate).
 //!
 //! The gate runs fixed workloads of the release `h3` binary under valgrind/callgrind, counting
 //! instructions (`Ir`) only inside the hot function selected by `collect`, and compares them
-//! with `benches/baseline.toml`. Counts are deterministic for a given toolchain, target and
-//! source, so the baseline records the toolchain and target and is only compared when both
-//! match (a mismatch fails: re-baseline deliberately). Changes beyond the threshold fail in both
-//! directions. valgrind exists on Linux only; elsewhere the gate is not applicable.
+//! with their baselines. Each workload has its own file, `benches/<lane>/<workload>.toml`, so each
+//! lane's threshold is its own and two lanes never re-baseline the same file (lanes.toml). Counts
+//! are deterministic for a given toolchain, target and source, so a baseline records the
+//! toolchain and target and is only compared when both match (a mismatch fails: re-baseline
+//! deliberately). Changes beyond the threshold fail in both directions. valgrind exists on Linux
+//! only; elsewhere the gate is not applicable.
 
 use std::fs;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::process::Command;
 
 use serde::{Deserialize, Serialize};
@@ -17,18 +20,18 @@ use serde::{Deserialize, Serialize};
 use crate::util::{cargo, run_cmd, workspace_root};
 use crate::verify::Status;
 
+/// One baseline file: `benches/<lane>/<workload>.toml`.
 #[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Eq)]
 #[serde(deny_unknown_fields)]
 pub struct Baseline {
     pub toolchain: String,
     pub target: String,
-    pub workload: Vec<Workload>,
+    pub workload: Workload,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Eq)]
 #[serde(deny_unknown_fields)]
 pub struct Workload {
-    pub name: String,
     pub description: String,
     pub args: Vec<String>,
     pub collect: String,
@@ -36,11 +39,41 @@ pub struct Workload {
     pub threshold_percent: u64,
 }
 
+/// A baseline with where it lives.
+#[derive(Debug, Clone)]
+pub struct Entry {
+    /// The owning lane (the directory name).
+    pub lane: String,
+    /// The workload name (the file stem).
+    pub name: String,
+    pub path: PathBuf,
+    pub baseline: Baseline,
+}
+
+/// Which workloads a run measures.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Selection<'a> {
+    All,
+    Lane(&'a str),
+    Workload(&'a str),
+}
+
+impl Selection<'_> {
+    fn selects(&self, e: &Entry) -> bool {
+        match self {
+            Selection::All => true,
+            Selection::Lane(lane) => e.lane == *lane,
+            Selection::Workload(name) => e.name == *name,
+        }
+    }
+}
+
 const HEADER: &str = "\
-# Instruction-count baselines for `cargo xtask bench-check` (valgrind/callgrind, event Ir).
-# Counts are deterministic for a given toolchain + target + source and are compared only when
-# both match this file. A change above `threshold_percent` fails verify. Update intentionally
-# with `cargo xtask bench-check --update` and state the reason in the commit message.
+# Instruction-count baseline of one `cargo xtask bench-check` workload (valgrind/callgrind, event
+# Ir); the directory names the owning lane (lanes.toml). Counts are deterministic for a given
+# toolchain + target + source and are compared only when both match this file. A change above
+# `threshold_percent` fails verify. Update intentionally with
+# `cargo xtask bench-check --update --workload <name>` and state the reason in the commit message.
 ";
 
 /// Verdict for one workload.
@@ -88,9 +121,9 @@ fn toolchain_and_target() -> Result<(String, String), String> {
     Ok((toolchain, target))
 }
 
-fn measure(root: &Path, w: &Workload) -> Result<u64, String> {
+fn measure(root: &Path, name: &str, w: &Workload) -> Result<u64, String> {
     let target = crate::util::target_dir()?;
-    let out_file = target.join(format!("callgrind.{}.out", w.name));
+    let out_file = target.join(format!("callgrind.{name}.out"));
     let mut cmd = Command::new("valgrind");
     cmd.current_dir(root)
         .arg("--tool=callgrind")
@@ -105,14 +138,47 @@ fn measure(root: &Path, w: &Workload) -> Result<u64, String> {
     parse_callgrind(&text).ok_or_else(|| format!("{}: no `summary:` line", out_file.display()))
 }
 
-fn load(root: &Path) -> Result<Baseline, String> {
-    let path = root.join("benches/baseline.toml");
-    let text = fs::read_to_string(&path).map_err(|e| format!("{}: {e}", path.display()))?;
-    toml::from_str(&text).map_err(|e| format!("benches/baseline.toml: {e}"))
+/// Every baseline under `benches/<lane>/*.toml`, sorted by lane and name.
+pub fn load(root: &Path) -> Result<Vec<Entry>, String> {
+    let benches = root.join("benches");
+    let mut entries = Vec::new();
+    let dirs = fs::read_dir(&benches).map_err(|e| format!("{}: {e}", benches.display()))?;
+    for dir in dirs {
+        let dir = dir.map_err(|e| e.to_string())?.path();
+        if !dir.is_dir() {
+            continue;
+        }
+        let lane = dir
+            .file_name()
+            .map(|n| n.to_string_lossy().into_owned())
+            .unwrap_or_default();
+        for file in fs::read_dir(&dir).map_err(|e| format!("{}: {e}", dir.display()))? {
+            let path = file.map_err(|e| e.to_string())?.path();
+            if path.extension().is_none_or(|e| e != "toml") {
+                continue;
+            }
+            let name = path
+                .file_stem()
+                .map(|n| n.to_string_lossy().into_owned())
+                .unwrap_or_default();
+            let text = fs::read_to_string(&path).map_err(|e| format!("{}: {e}", path.display()))?;
+            let baseline =
+                toml::from_str(&text).map_err(|e| format!("benches/{lane}/{name}.toml: {e}"))?;
+            entries.push(Entry {
+                lane: lane.clone(),
+                name,
+                path,
+                baseline,
+            });
+        }
+    }
+    entries.sort_by(|a, b| (&a.lane, &a.name).cmp(&(&b.lane, &b.name)));
+    Ok(entries)
 }
 
-/// The gate. `update` rewrites the baseline with the current toolchain and measurements.
-pub fn check(update: bool) -> Result<Status, String> {
+/// The gate. `update` rewrites the selected baselines with the current toolchain and
+/// measurements.
+pub fn check(update: bool, selection: Selection<'_>) -> Result<Status, String> {
     if !cfg!(target_os = "linux") {
         return Ok(Status::NotApplicable(
             "instruction counting needs valgrind (Linux only)".to_owned(),
@@ -125,14 +191,25 @@ pub fn check(update: bool) -> Result<Status, String> {
         );
     }
     let root = workspace_root();
-    let mut baseline = load(&root)?;
+    let mut entries: Vec<Entry> = load(&root)?
+        .into_iter()
+        .filter(|e| selection.selects(e))
+        .collect();
+    if entries.is_empty() {
+        return Err(format!("no bench-check workload matches {selection:?}"));
+    }
     let (toolchain, target) = toolchain_and_target()?;
-    if !update && (baseline.toolchain != toolchain || baseline.target != target) {
-        return Err(format!(
-            "baseline recorded with `{}` on {}, this is `{toolchain}` on {target}; \
-             re-baseline with `cargo xtask bench-check --update` and say why in the commit",
-            baseline.toolchain, baseline.target
-        ));
+    if !update {
+        for e in &entries {
+            if e.baseline.toolchain != toolchain || e.baseline.target != target {
+                return Err(format!(
+                    "{}: baseline recorded with `{}` on {}, this is `{toolchain}` on {target}; \
+                     re-baseline with `cargo xtask bench-check --update --workload {}` and say \
+                     why in the commit",
+                    e.name, e.baseline.toolchain, e.baseline.target, e.name
+                ));
+            }
+        }
     }
     // The binary is linked without RELRO, a single writable segment: valgrind 3.22 reads no
     // symbols from an lld-linked executable whose two writable segments the kernel maps as
@@ -153,31 +230,32 @@ pub fn check(update: bool) -> Result<Status, String> {
     ]);
     run_cmd(build)?;
     let mut failures = Vec::new();
-    for w in &mut baseline.workload {
-        let measured = measure(&root, w)?;
+    for e in &mut entries {
+        let w = &mut e.baseline.workload;
+        let measured = measure(&root, &e.name, w)?;
         if measured == 0 {
             return Err(format!(
                 "{}: 0 instructions measured; the collect pattern `{}` matched nothing",
-                w.name, w.collect
+                e.name, w.collect
             ));
         }
         let delta =
             (measured as f64 - w.instructions as f64) / w.instructions.max(1) as f64 * 100.0;
         println!(
-            "bench-check: {}: {measured} Ir (baseline {}, {delta:+.2}%)",
-            w.name, w.instructions
+            "bench-check: {}/{}: {measured} Ir (baseline {}, {delta:+.2}%)",
+            e.lane, e.name, w.instructions
         );
         match judge(w.instructions, measured, w.threshold_percent) {
             Verdict::Ok => {}
             Verdict::Improved => failures.push(format!(
                 "{} dropped by {delta:+.2}% (threshold {}%): if the improvement is real, record it \
-                 with `cargo xtask bench-check --update`; a large drop can also mean the workload \
-                 no longer measures what it should",
-                w.name, w.threshold_percent
+                 with `cargo xtask bench-check --update --workload {}`; a large drop can also mean \
+                 the workload no longer measures what it should",
+                e.name, w.threshold_percent, e.name
             )),
             Verdict::Regressed => failures.push(format!(
                 "{} regressed by {delta:+.2}% (threshold {}%)",
-                w.name, w.threshold_percent
+                e.name, w.threshold_percent
             )),
         }
         if update {
@@ -185,15 +263,13 @@ pub fn check(update: bool) -> Result<Status, String> {
         }
     }
     if update {
-        baseline.toolchain = toolchain;
-        baseline.target = target;
-        let body = toml::to_string_pretty(&baseline).map_err(|e| e.to_string())?;
-        fs::write(
-            root.join("benches/baseline.toml"),
-            format!("{HEADER}\n{body}"),
-        )
-        .map_err(|e| e.to_string())?;
-        println!("bench-check: baseline updated");
+        for e in &mut entries {
+            e.baseline.toolchain.clone_from(&toolchain);
+            e.baseline.target.clone_from(&target);
+            let body = toml::to_string_pretty(&e.baseline).map_err(|err| err.to_string())?;
+            fs::write(&e.path, format!("{HEADER}\n{body}")).map_err(|err| err.to_string())?;
+            println!("bench-check: {}/{}: baseline updated", e.lane, e.name);
+        }
         return Ok(Status::Passed);
     }
     if failures.is_empty() {
@@ -203,15 +279,28 @@ pub fn check(update: bool) -> Result<Status, String> {
     }
 }
 
-/// [`check`] for the verify pipeline.
-pub fn check_status() -> Result<Status, String> {
-    check(false)
-}
-
-/// `cargo xtask bench-check [--update]`.
+/// `cargo xtask bench-check [--update] [--lane <lane>] [--workload <name>]`.
 pub fn run_check(args: &[String]) -> Result<(), String> {
-    let update = args.iter().any(|a| a == "--update");
-    match check(update)? {
+    let mut update = false;
+    let mut lane = None;
+    let mut workload = None;
+    let mut iter = args.iter();
+    while let Some(arg) = iter.next() {
+        match arg.as_str() {
+            "--update" => update = true,
+            "--lane" => lane = Some(iter.next().ok_or("--lane needs a name")?.as_str()),
+            "--workload" => {
+                workload = Some(iter.next().ok_or("--workload needs a name")?.as_str());
+            }
+            other => return Err(format!("unknown bench-check option `{other}`")),
+        }
+    }
+    let selection = match (lane, workload) {
+        (_, Some(name)) => Selection::Workload(name),
+        (Some(lane), None) => Selection::Lane(lane),
+        (None, None) => Selection::All,
+    };
+    match check(update, selection)? {
         Status::Passed => Ok(()),
         Status::NotApplicable(why) => {
             println!("bench-check: not applicable: {why}");
@@ -252,13 +341,25 @@ mod tests {
     }
 
     #[test]
-    fn baseline_file_parses() {
-        let b = load(&workspace_root()).unwrap();
-        assert!(!b.workload.is_empty());
-        assert!(
-            b.workload
-                .iter()
-                .all(|w| w.instructions > 0 && w.threshold_percent > 0)
-        );
+    fn baseline_files_parse_and_belong_to_lanes() {
+        let root = workspace_root();
+        let entries = load(&root).unwrap();
+        assert!(!entries.is_empty());
+        let lanes = crate::lanes::Config::load(&root).unwrap();
+        for e in &entries {
+            let w = &e.baseline.workload;
+            assert!(w.instructions > 0 && w.threshold_percent > 0, "{}", e.name);
+            assert!(
+                lanes.lane(&e.lane).is_some(),
+                "benches/{}/ is not a lane",
+                e.lane
+            );
+        }
+        let all = Selection::All;
+        let first = &entries[0];
+        assert!(all.selects(first));
+        assert!(Selection::Lane(&first.lane).selects(first));
+        assert!(Selection::Workload(&first.name).selects(first));
+        assert!(!Selection::Lane("no-such-lane").selects(first));
     }
 }

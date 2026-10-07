@@ -3,9 +3,7 @@
 //! commits since the merge base with `master` and never fails verify (there is no CI yet to
 //! turn it into an error for large changes, OPEN-QUESTIONS Q3).
 
-use std::process::Command;
-
-use crate::util::workspace_root;
+use crate::util::git;
 use crate::verify::Status;
 
 /// Paths whose change counts as "documentation kept current".
@@ -28,17 +26,6 @@ pub fn drifted(changed: &[String]) -> bool {
         .iter()
         .any(|p| DOC_PATHS.iter().any(|d| p.starts_with(d)));
     logic && !docs
-}
-
-fn git(args: &[&str]) -> Option<String> {
-    let out = Command::new("git")
-        .current_dir(workspace_root())
-        .args(args)
-        .output()
-        .ok()?;
-    out.status
-        .success()
-        .then(|| String::from_utf8_lossy(&out.stdout).into_owned())
 }
 
 pub fn status() -> Result<Status, String> {
