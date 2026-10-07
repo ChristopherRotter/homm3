@@ -1,0 +1,146 @@
+# Lanes: which paths each work lane owns (docs/08-work-process.md, "Lanes"; AGENTS.md, "Lanes").
+#
+# One agent at a time works in a lane, on a branch `<lane>/<task>`, and a lane's pull request
+# changes only its own paths and the common ones. Shared paths change only through small, separate
+# pull requests (branch `shared/<topic>`) that merge first. `cargo xtask check-lane` enforces this
+# on every pull request (CI, `.github/workflows/lanes.yml`); a deliberate cross-lane change carries
+# the PR label `cross-lane` (locally: `--cross-lane`).
+#
+# Patterns: `dir/` matches everything below `dir`; `prefix*` matches every path starting with
+# `prefix`; anything else matches that one file. The longest matching pattern decides the owner.
+# Every tracked path must have an owner: a new top-level file or directory is added here first
+# (a shared change).
+#
+# Ownership decided by the user on 2026-10-07: all of `h3-content` and `h3-pack` stay with battle
+# until further notice. The formats/tools crates (`h3-formats`, `h3-harvest`, `h3-experiment`) are
+# battle's until a formats/tools lane opens; an AI lane takes `h3-sim`/`h3-ffi` at E05.
+
+[shared]
+paths = [
+    # Workspace, toolchain, gates, CI.
+    "Cargo.toml",
+    "Cargo.lock",
+    "arch.toml",
+    "lanes.toml",
+    "deny.toml",
+    "clippy.toml",
+    "rustfmt.toml",
+    "rust-toolchain.toml",
+    "coverage-exclusions.toml",
+    ".cargo/",
+    ".github/",
+    ".gitattributes",
+    ".gitignore",
+    "xtask/",
+    "scripts/",
+    "benches/README.md",
+    # Seam and kernel crates.
+    "crates/h3-kernel/",
+    "crates/h3-contracts/",
+    # Project-wide docs and process.
+    "AGENTS.md",
+    "CLAUDE.md",
+    "README.md",
+    "LICENSE",
+    "docs/README.md",
+    "docs/01-vision.md",
+    "docs/02-architecture.md",
+    "docs/03-domain.md",
+    "docs/04-rules-and-sources.md",
+    "docs/05-testing.md",
+    "docs/06-security.md",
+    "docs/07-simulation-and-ai.md",
+    "docs/08-work-process.md",
+    "docs/BACKLOG.md",
+    "docs/HANDOFF.md",
+    "docs/pull_request_template.md",
+    "docs/adr/",
+    "docs/rules/catalog/README.md",
+    "docs/rules/catalog/kernel.toml",
+    "docs/lanes/README.md",
+]
+
+# Any lane may change these (lane-prefixed ids keep concurrent additions apart).
+[common]
+paths = [
+    "docs/OPEN-QUESTIONS.md",
+    "docs/stubs.toml",
+]
+
+[[lane]]
+name = "battle"
+code = "BAT"
+paths = [
+    "crates/h3-battle/",
+    "crates/h3-heroes/",
+    "crates/h3-content/",
+    "crates/h3-pack/",
+    # Until the AI lane (E05).
+    "crates/h3-sim/",
+    "crates/h3-ffi/",
+    "crates/h3-cli/",
+    # Until a formats/tools lane opens.
+    "crates/h3-formats/",
+    "crates/h3-harvest/",
+    "crates/h3-experiment/",
+    "docs/formats/",
+    "packs/",
+    "fixtures/",
+    "experiments/",
+    "benches/battle/",
+    "docs/rules/catalog/battle.toml",
+    "docs/rules/catalog/heroes.toml",
+    "docs/rules/quirks-ledger.md",
+    "docs/rules/surveys/",
+    "docs/experiments/",
+    "docs/epics/E01*",
+    "docs/epics/E02*",
+    "docs/epics/E03*",
+    "docs/epics/E04*",
+    "docs/epics/E05*",
+    "docs/epics/E06*",
+    "docs/lanes/battle/",
+]
+
+[[lane]]
+name = "adventure"
+code = "ADV"
+paths = [
+    "crates/h3-adventure/",
+    "benches/adventure/",
+    "docs/rules/catalog/adventure.toml",
+    "docs/rules/catalog/town.toml",
+    "docs/rules/quirks-adventure.md",
+    "docs/rules/surveys/E07*",
+    "docs/rules/surveys/E08*",
+    "docs/rules/surveys/E09*",
+    "docs/rules/surveys/E10*",
+    "docs/epics/E07*",
+    "docs/epics/E08*",
+    "docs/epics/E09*",
+    "docs/epics/E10*",
+    "docs/epics/E12*",
+    "docs/epics/E13*",
+    "docs/epics/E14*",
+    "docs/lanes/adventure/",
+]
+
+[[lane]]
+name = "server"
+code = "SRV"
+paths = [
+    "crates/h3-protocol/",
+    "crates/h3-server/",
+    "benches/server/",
+    "docs/epics/E16*",
+    "docs/lanes/server/",
+]
+
+[[lane]]
+name = "client"
+code = "CLT"
+paths = [
+    "clients/",
+    "docs/epics/E17*",
+    "docs/lanes/client/",
+]

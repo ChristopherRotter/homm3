@@ -52,6 +52,18 @@ pub fn run_cmd(mut cmd: Command) -> Result<(), String> {
     }
 }
 
+/// Runs `git` in the workspace root and returns its stdout, or `None` if git is missing or failed.
+pub fn git(args: &[&str]) -> Option<String> {
+    let out = Command::new("git")
+        .current_dir(workspace_root())
+        .args(args)
+        .output()
+        .ok()?;
+    out.status
+        .success()
+        .then(|| String::from_utf8_lossy(&out.stdout).into_owned())
+}
+
 /// Whether a cargo subcommand (e.g. `deny`, `llvm-cov`) is installed.
 pub fn has_cargo_subcommand(name: &str) -> bool {
     cargo()

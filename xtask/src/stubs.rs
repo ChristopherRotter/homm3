@@ -130,13 +130,19 @@ pub fn check_file(
     v
 }
 
-pub fn check(registry: &Registry, files: &[(String, Scanned)]) -> Vec<String> {
+/// `codes` are the lane codes (lanes.toml): new stubs are numbered per lane, `<CODE>-STUB-<n>`.
+pub fn check(
+    registry: &Registry,
+    files: &[(String, Scanned)],
+    codes: &BTreeSet<String>,
+) -> Vec<String> {
     let mut v = Vec::new();
     let mut registered = BTreeSet::new();
     for s in &registry.stub {
-        if !valid_stub_id(&s.id) {
+        if !valid_stub_id(&s.id) && !crate::lanes::is_lane_id(&s.id, "STUB", codes) {
             v.push(format!(
-                "docs/stubs.toml: `{}` must look like STUB-NNNN",
+                "docs/stubs.toml: `{}` must look like <LANE CODE>-STUB-<n> (e.g. ADV-STUB-1; \
+                 STUB-NNNN for stubs from before the lanes)",
                 s.id
             ));
         }
@@ -182,7 +188,8 @@ pub fn run(_args: &[String]) -> Result<(), String> {
     let root = workspace_root();
     let registry = load_registry(&root.join("docs/stubs.toml"))?;
     let files = scan_crates(&root, &root.join("crates"))?;
-    let violations = check(&registry, &files);
+    let codes = crate::lanes::Config::load(&root)?.codes();
+    let violations = check(&registry, &files, &codes);
     println!("check-stubs: {} registered stub(s)", registry.stub.len());
     report("check-stubs", &violations)
 }
@@ -199,6 +206,10 @@ mod tests {
     const ONE: &str =
         "[[stub]]\nid = \"STUB-0001\"\nwhere = \"a.rs::f\"\nreason = \"later\"\nepic = \"E03\"\n";
 
+    fn codes() -> BTreeSet<String> {
+        ["ADV".to_owned()].into()
+    }
+
     fn files(src: &str) -> Vec<(String, Scanned)> {
         vec![("a.rs".to_owned(), scan::scan(src, false))]
     }
@@ -207,7 +218,7 @@ mod tests {
     fn registered_and_marked_debt_passes() {
         let src =
             "fn f() {\n    // stub: STUB-0001\n    todo!()\n}\n// TODO(later) stub: STUB-0001\n";
-        let v = check(&registry(ONE), &files(src));
+        let v = check(&registry(ONE), &files(src), &codes());
         assert!(v.is_empty(), "{v:?}");
     }
 
@@ -215,7 +226,7 @@ mod tests {
     fn unmarked_debt_fails() {
         let src = "fn f() { todo!() }\nfn g() { unimplemented!() }\n#[test]\n#[ignore]\nfn h() {}\n// TODO: later\n// FIXME\n\
                    #[cfg_attr(unix, ignore)]\nfn i() {}\n";
-        let v = check(&registry("stub = []"), &files(src));
+        let v = check(&registry("stub = []"), &files(src), &codes());
         for needle in [
             "`todo!`",
             "`unimplemented!`",
@@ -237,7 +248,11 @@ mod tests {
     #[test]
     fn registry_consistency() {
         // Marker for an unregistered id; registered id without a marker; malformed entries.
-        let v = check(&registry(ONE), &files("// stub: STUB-0002\nfn f() {}\n"));
+        let v = check(
+            &registry(ONE),
+            &files("// stub: STUB-0002\nfn f() {}\n"),
+            &codes(),
+        );
         assert!(
             v.iter()
                 .any(|m| m.contains("`stub: STUB-0002` is not registered")),
@@ -249,9 +264,10 @@ mod tests {
             "{v:?}"
         );
         let bad = "[[stub]]\nid = \"S-1\"\nwhere = \"\"\nreason = \"r\"\nepic = \"E\"\n[[stub]]\nid = \"S-1\"\nwhere = \"w\"\nreason = \"r\"\nepic = \"E\"\n";
-        let v = check(&registry(bad), &files("// stub: S-1\n"));
+        let v = check(&registry(bad), &files("// stub: S-1\n"), &codes());
         assert!(
-            v.iter().any(|m| m.contains("must look like STUB-NNNN")),
+            v.iter()
+                .any(|m| m.contains("must look like <LANE CODE>-STUB-<n>")),
             "{v:?}"
         );
         assert!(v.iter().any(|m| m.contains("duplicate stub id")), "{v:?}");
@@ -262,11 +278,27 @@ mod tests {
     }
 
     #[test]
+    fn lane_stub_ids() {
+        let lane = "[[stub]]\nid = \"ADV-STUB-1\"\nwhere = \"a.rs::f\"\nreason = \"later\"\nepic = \"E08\"\n";
+        let src = "fn f() {\n    // stub: ADV-STUB-1\n    todo!()\n}\n";
+        let v = check(&registry(lane), &files(src), &codes());
+        assert!(v.is_empty(), "{v:?}");
+        let other = lane.replace("ADV-", "SRV-");
+        let v = check(
+            &registry(&other),
+            &files(&src.replace("ADV-", "SRV-")),
+            &codes(),
+        );
+        assert!(v.iter().any(|m| m.contains("must look like")), "{v:?}");
+    }
+
+    #[test]
     fn words_not_substrings() {
         // `TODOS`, `todo_list` and strings do not count.
         let v = check(
             &registry("stub = []"),
             &files("// TODOS are fine\nfn todo_list() {}\nlet s = \"TODO\";\n"),
+            &codes(),
         );
         assert!(v.is_empty(), "{v:?}");
     }
@@ -277,11 +309,12 @@ mod tests {
         dir.write("crates/a/src/lib.rs", "fn f() { todo!() }\n");
         let found = scan_crates(dir.path(), &dir.path().join("crates")).unwrap();
         assert_eq!(found.len(), 1);
-        assert_eq!(check(&registry("stub = []"), &found).len(), 1);
+        assert_eq!(check(&registry("stub = []"), &found, &codes()).len(), 1);
 
         let root = workspace_root();
         let reg = load_registry(&root.join("docs/stubs.toml")).unwrap();
         let files = scan_crates(&root, &root.join("crates")).unwrap();
-        assert_eq!(check(&reg, &files), Vec::<String>::new());
+        let codes = crate::lanes::Config::load(&root).unwrap().codes();
+        assert_eq!(check(&reg, &files, &codes), Vec::<String>::new());
     }
 }
