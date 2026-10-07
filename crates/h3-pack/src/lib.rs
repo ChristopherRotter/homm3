@@ -3494,6 +3494,22 @@ mod tests {
                 },
             ]
         );
+        // Batch 2b (SoD, plain HD): Mephala at level 10 with Expert Armorer reduces by 15 %
+        // grown 5 % per level in single precision, 0.22500000894 (R6: 619 and 154, rules.rs);
+        // Octavia's Basic Armorer is the skill's 5 % (R4: 189).
+        let armorer = |hero: &str, level: u8, mastery: u8| {
+            let mut d = details(hero, &[("base:armorer", mastery)], &[]);
+            d.level = level;
+            derive_battle_hero(&d, &sod).unwrap().damage.reduction
+        };
+        assert_eq!(
+            armorer("base:mephala", 10, 3),
+            Rate {
+                bp: 2250,
+                single: NonZeroU32::new(0x3e66_6667)
+            }
+        );
+        assert_eq!(armorer("base:octavia", 10, 1), Rate::bp(500));
         // Ciele: +50 % Magic Arrow damage whatever her level (wiki Ciele); no book, no casting.
         let ciele = derive_battle_hero(&details("ab:ciele", &[], &[]), &sod).unwrap();
         assert_eq!(ciele.magic.spell_book, None);

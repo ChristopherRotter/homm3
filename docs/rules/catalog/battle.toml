@@ -683,7 +683,7 @@ numeric  = "integer"
   kind       = "original-data"
   ref        = "Heroes3.exe code reading (docs/formats/installation.md §7.10): the damage routine 0x443F40 in three truncated stages: bonuses 0x443840/0x443320 (jousting, luck, attack advantage with double 0.05 capped at 3.0, elemental and hate pairs, Offense/Archery 0x4E42B0/0x4E4160, death blow, the Ballista's double), the defense and penalty factor 0x443B90 (double 0.025, floor 0.3, halvings), the protection factor (Shield, Air Shield, petrification, Armorer 0x4E4310); R1-R3 of batch 1a fit it at 53 and 64 bits"
   confidence = "high"
-  note       = "Q50: the user chose the staged formula (E04b T3b1a). The x87 precision is taken as Windows' default of 53 bits (an inference); batch 2b tells it from 64 bits (4 Angels against one more defense point: 195 or 194)."
+  note       = "Q50: the user chose the staged formula (E04b T3b1a). The x87 precision is Windows' default of 53 bits, confirmed by batch 2b R1 (4 Angels against one more defense point: 195, not 194)."
 
   [[rule.source]]
   kind       = "wiki"
@@ -691,6 +691,13 @@ numeric  = "integer"
   url        = "https://heroes.thelazy.net/index.php/Damage"
   retrieved  = "2026-10-01"
   confidence = "high"
+
+  [[rule.source]]
+  kind       = "observation"
+  ref        = "experiments/results/E04b-batch-2b.md R1, R4 (SoD 4.0 Complete, plain HD, 2026-10-07): 4 and 8 Angels (attack 20) deal 195 and 390 to Peasants with defense 21: the x87 at 53 bits (64 bits: 194, 389); at equal attack and defense, Shield with Basic Armorer 121 of 150 and 40 of 50 in one product (truncated one after the other: 120, 39), Basic Armorer alone 189 of 200 (exact: 190)"
+  retrieved  = "2026-10-07"
+  confidence = "high"
+  note       = "Q50: 53 bits confirmed; fixtures in crates/h3-battle/src/tests/rules.rs (the_staged_damage_reproduces_batch_2b)."
 
 [[rule]]
 id       = "BAT-DMG-003"
@@ -1484,6 +1491,12 @@ numeric  = "integer"
   retrieved  = "2026-10-03"
   confidence = "high"
 
+  [[rule.source]]
+  kind       = "observation"
+  ref        = "experiments/results/E04b-batch-2b.md R4, R6 (SoD 4.0 Complete, plain HD, 2026-10-07): Basic Armorer alone: 189 of 200 (exact 190); with Shield one product, 121 of 150; Mephala at level 10 with Expert Armorer under Angels at the attack cap: 619 and 154 of 800 and 200 (exact 22.5 %: 620, 155)"
+  retrieved  = "2026-10-07"
+  confidence = "high"
+
 [[rule]]
 id       = "BAT-HER-005"
 title    = "The heroes' statistic effects on their stacks"
@@ -1955,7 +1968,7 @@ numeric  = "integer"
 id       = "BAT-MAG-009"
 title    = "A timed spell on a stack"
 context  = "battle"
-status   = "implemented"
+status   = "verified"
 summary  = "A timed spell (SpellEffect::Timed) that takes effect on a living stack first ends the effects of the spells it counters (Spell.counters: Bless and Curse, Haste and Slow end each other; Bloodlust and Weakness, Mirth and Sorrow, Fortune and Misfortune do not and add up). If its own effect is already on the stack, the effect keeps its value and takes the longer of the two durations; a cumulative spell (Disrupting Ray) instead applies its changes again. Otherwise a new entry joins the battle's effect list with v = effect[mastery] (plus a specialist's bonus for a spell with a rule of its own, BAT-MAG-020) and the changes made now: speed + v (never on a war machine; Haste, Prayer), attack + v (Prayer), defense + v (Stone Skin, Prayer), attack_loss takes min(v, the attack now) (Weakness; the attack now without Bloodlust and Precision, even below 0), defense_loss sets the defense now to max(0, defense − v) (Disrupting Ray). The other changes are read while the effect lasts (BAT-MAG-011). Events: EffectApplied with the rounds left, EffectEnded for each countered effect. The effect list and the stacks' values are public and part of the state hash."
 numeric  = "integer"
 
@@ -1972,11 +1985,18 @@ numeric  = "integer"
   confidence = "medium"
   note       = "VCMI cancels five pairs and replaces a re-cast effect; the executable cancels two pairs and keeps the first value (user decision Q47)"
 
+  [[rule.source]]
+  kind       = "observation"
+  ref        = "experiments/results/E04b-batch-2b.md R5 (SoD 4.0 Complete, plain HD, 2026-10-07): on Pikemen (mastery none) Bloodlust then Weakness are both listed, the attack shown 4 (4 + 3 - 3); Haste then Slow: Haste is gone, Bloodlust, Weakness and Slow listed"
+  retrieved  = "2026-10-07"
+  confidence = "high"
+  note       = "VCMI would end Bloodlust with Weakness (Q47 confirmed)."
+
 [[rule]]
 id       = "BAT-MAG-010"
 title    = "How long a timed effect lasts"
 context  = "battle"
-status   = "implemented"
+status   = "verified"
 summary  = "A hero's timed spell lasts its power plus its duration bonus (HER-BAT-014: the Conjuring artifacts, the Ring of the Magi), at least 1 round, counting the round of the cast; a permanent spell (Disrupting Ray) lasts the rest of the battle. At the start of every round each effect on a living stack either ends (its last round has passed) or loses a round: an effect cast in round n with duration d is active in rounds n to n + d − 1. An ending effect gives back what it changed (the attack Weakness took; Stone Skin's, Prayer's and Haste's additions, so a defense Disrupting Ray pushed to 0 can fall below 0) and is reported (EffectEnded). A stack that dies loses its effects (without events). The minimum of 1 round is the engine's: the original's heroes have at least 1 power. Effects counted by their stack's own turns (Frenzy, EffectDuration::OwnTurn, BAT-MAG-019) are skipped at the round start."
 numeric  = "integer"
 
@@ -1992,11 +2012,17 @@ numeric  = "integer"
   retrieved  = "2026-10-06"
   confidence = "high"
 
+  [[rule.source]]
+  kind       = "observation"
+  ref        = "experiments/results/E04b-batch-2b.md R2 (SoD 4.0 Complete, plain HD, 2026-10-07): Counterstrike cast at power 1 in round 2 is no longer listed in round 3"
+  retrieved  = "2026-10-07"
+  confidence = "high"
+
 [[rule]]
 id       = "BAT-MAG-011"
 title    = "What a stack's timed effects change"
 context  = "battle"
-status   = "implemented"
+status   = "verified"
 summary  = "While its effects last, a stack's attack is its attack plus their attack changes, plus Bloodlust's v on melee attacks or Precision's v on ranged ones; its defense is its defense plus their defense changes (before the Defend bonus, which adds its share of a defense of at least 0; both may be below 0, and the damage formula counts the difference, BAT-DMG-002); its speed is its speed plus their speed changes, and while slowed max(1, ⌊speed × v %⌋) (several slowings: the strongest; under quirk Q-0005 the share is single precision, as the original stores it), used for movement, the turn order and the tactics hand-over. While blessed every creature's base damage is its maximum + v (no roll); while cursed max(1, minimum − v); Bless wins if both were active. Morale and luck: the changes on the side summed and clamped to ±3, then Mirth's and Fortune's v added and Sorrow's and Misfortune's subtracted, then the side's caps and the creature's minimums, then clamped again (luck to 0..3)."
 numeric  = "integer"
 
@@ -2012,11 +2038,17 @@ numeric  = "integer"
   retrieved  = "2026-10-06"
   confidence = "high"
 
+  [[rule.source]]
+  kind       = "observation"
+  ref        = "experiments/results/E04b-batch-2b.md R5 (SoD 4.0 Complete, plain HD, 2026-10-07): the Pikemen's attack shown 4 with Bloodlust and Weakness (+3, -3), their speed 3 when slowed (75 % of 4, rounded down)"
+  retrieved  = "2026-10-07"
+  confidence = "high"
+
 [[rule]]
 id       = "BAT-MAG-012"
 title    = "Shield and Air Shield"
 context  = "battle"
-status   = "implemented"
+status   = "verified"
 summary  = "While Shield is active on a stack, every melee strike it takes (retaliations included) deals its damage times v % (85 at none and Basic, 70 at Advanced and Expert); while Air Shield is active, every shot (war machines' included) times v % (75, 75, 50, 50). Both are timed own-stack spells with a mass version at Expert (BAT-MAG-003, BAT-MAG-009); a re-cast keeps the first value. The factor joins the damage formula's last stage with the target's hero's Armorer (BAT-DMG-002): under quirk Q-0005 it is the single-precision v / 100 the original stores, multiplied with 1 − Armorer and applied with one truncation; strict-fixed multiplies exactly."
 numeric  = "integer"
 quirks   = ["Q-0005"]
@@ -2031,6 +2063,12 @@ quirks   = ["Q-0005"]
   ref        = "config/spells/timed.json: shield GENERAL_DAMAGE_REDUCTION 0 (melee) 15/30, airShield GENERAL_DAMAGE_REDUCTION 1 (ranged) 25/50"
   url        = "https://github.com/vcmi/vcmi/blob/1.7.5/config/spells/timed.json"
   retrieved  = "2026-10-06"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "observation"
+  ref        = "experiments/results/E04b-batch-2b.md R4 (SoD 4.0 Complete, plain HD, 2026-10-07): Shield (mastery none) with Basic Armorer at equal attack and defense: Angels deal 121 of 150 and 40 of 50 (85 % times 95 %, one truncation)"
+  retrieved  = "2026-10-07"
   confidence = "high"
 
 [[rule]]
@@ -2078,7 +2116,7 @@ numeric  = "integer"
 id       = "BAT-MAG-015"
 title    = "Counterstrike"
 context  = "battle"
-status   = "implemented"
+status   = "verified"
 summary  = "While Counterstrike is active on a stack, it has v more retaliations per round (1 at none and Basic, 2 at Advanced and Expert; unlimited stays unlimited): the first cast adds v to those left this round at once, and every round start sets them to the creature's retaliations plus v before the timed effects count down (BAT-TRN-003, BAT-MAG-010); under quirk Q-0008 (faithful) also in the round start at which the spell runs out, so the stack keeps them for that round, as the original does; without it (strict-fixed) not. The end takes nothing back. A re-cast changes nothing but the duration. A timed own-stack spell with a mass version at Expert that spares war machines."
 numeric  = "integer"
 
@@ -2093,6 +2131,13 @@ numeric  = "integer"
   url        = "https://github.com/vcmi/vcmi/blob/1.7.5/config/spells/timed.json"
   retrieved  = "2026-10-06"
   confidence = "high"
+
+  [[rule.source]]
+  kind       = "observation"
+  ref        = "experiments/results/E04b-batch-2b.md R2 (SoD 4.0 Complete, plain HD, 2026-10-07): Counterstrike at power 1 cast in round 2: both Wolf Rider attacks struck back in round 2 and again in round 3, when the spell is no longer listed; only the first in round 4"
+  retrieved  = "2026-10-07"
+  confidence = "high"
+  note       = "Quirk Q-0008 confirmed."
 
 [[rule]]
 id       = "BAT-MAG-016"
@@ -2138,7 +2183,7 @@ numeric  = "integer"
 id       = "BAT-MAG-018"
 title    = "Fire Shield"
 context  = "battle"
-status   = "implemented"
+status   = "verified"
 summary  = "While Fire Shield is active on a stack (v = 20, 20, 25, 30 %), every melee strike on it (an attack, a retaliation or a second strike; never a shot) reflects damage onto the striker unless the striker is fire-immune (creature flag fire_immune): x = with quirk Q-0010 (faithful), as the original, the strike's first damage stage (BAT-DMG-002: the base with its bonuses, before the target's defense, the penalties, Shield and Armorer), capped at the target's hit points before the strike; without it (strict-fixed) the hit points the strike took (the spell's text: a share of the damage dealt; VCMI); r = x × v % rounded down (single precision under quirk Q-0005); then r is the shield spell's damage (BAT-MAG-004) with the bonuses of the struck stack's hero as the caster's (Sorcery, the Orb of Fire, a specialty) and the striker's reductions and fire protection (BAT-MAG-013); no immunity or magic resistance applies. Only the attacked stack reflects: a breath's second stack never does, in every profile (the user, 2026-10-07: considered as a quirk and kept as the rule, no flag); a multi-headed striker (attacks all adjacent, three-headed) takes back the sum of every stack it struck. The damage comes after the attack's life drain and death stare and before the retaliation (Reflected); the striker may die of it. A timed own-stack spell without a mass version. Not yet: the Efreet Sultans' own 20 % shield (E04b T7), a hypnotized stack's controller as the caster (E04b T4)."
 numeric  = "integer"
 
@@ -2153,6 +2198,13 @@ numeric  = "integer"
   url        = "https://github.com/vcmi/vcmi/blob/1.7.5/config/spells/timed.json"
   retrieved  = "2026-10-07"
   confidence = "medium"
+
+  [[rule.source]]
+  kind       = "observation"
+  ref        = "experiments/results/E04b-batch-2b.md R3 (SoD 4.0 Complete, plain HD, 2026-10-07): 10 Naga Queens deal 150 (first stage 300) to Fire-Shielded Peasants (mastery none); the log: 'The Fire Shield does 60 damage.'; 10 Naga Queens left, the top one at 50 of 110: 20 % of the first stage, not of the 150 dealt (30)"
+  retrieved  = "2026-10-07"
+  confidence = "high"
+  note       = "Quirk Q-0010 confirmed."
 
 [[rule]]
 id       = "BAT-MAG-019"

@@ -115,7 +115,7 @@ fn fire_shield_reflects_a_share_of_the_first_stage_capped_at_the_targets_health_
     // The first stage in the executable's rounding (quirk Q-0005 too).
     assert_eq!(tank_reflects("t:original", 1), [(0, 20, 2)]);
     // 10 Fixed (stage 1: 20, dealt: 15) on a shielded Tank: with quirk Q-0010 4 back (20 % of
-    // the first stage), without it 3 (of the damage dealt).
+    // the first stage), without it 3 (of the damage dealt); batch 2b R3: 60 of 300, not 30.
     let tank = |r: &Ruleset| {
         let mut s = field_of(r, &[(0, "fixed", 10)], &[(0, "tank", 1)], &[(7, 5), (8, 5)]);
         give(&mut s, r, 1, "fireshield", 1);

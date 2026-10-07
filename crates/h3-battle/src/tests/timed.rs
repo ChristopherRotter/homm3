@@ -151,7 +151,8 @@ fn counters_end_each_other_and_other_pairs_add_up() {
         1,
     );
     let morale = s.stacks()[0].morale;
-    // Round 1: the attacker hastes its stack, the defender slows it: Haste ends.
+    // Round 1: the attacker hastes its stack, the defender slows it: Haste ends (batch 2b R5,
+    // like Bloodlust and Weakness staying together below).
     act(&mut s, &r, cast(&r, "haste", stack(0))).unwrap();
     assert_eq!(s.stacks()[0].speed_now(), 10);
     activate(&mut s, 1);

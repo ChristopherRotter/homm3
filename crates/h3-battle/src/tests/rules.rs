@@ -596,6 +596,58 @@ fn the_staged_damage_reproduces_batch_1a() {
 
 // covers: BAT-DMG-002
 #[test]
+fn the_staged_damage_reproduces_batch_2b() {
+    // Quirk Q-0005, observed in experiment batch 2b (SoD, plain HD): Angels deal 50 per
+    // creature, Naga Queens 30.
+    let r = ruleset();
+    let p = r.battle();
+    // R1: attack 20 against defense 21: 1 − 0.025 (the double, slightly above the decimal)
+    // makes 194.99999999999999556 of 200, which the x87 at 53 bits rounds to 195 before the
+    // truncation (64 bits would keep 194, then 389; installation.md §7.10).
+    assert_eq!(staged_damage(200, (20, 21), (0, 0), p), 195);
+    assert_eq!(staged_damage(400, (20, 21), (0, 0), p), 390);
+    // R3: 10 Naga Queens (attack 16) on Peasants with defense 36: stage 1 stays 300, the
+    // strike 150; Fire Shield reflects 20 % of the 300 (60, quirk Q-0010, the log's line),
+    // not of the 150 (rage.rs, BAT-MAG-018).
+    let naga = Strike::new(16, 36);
+    assert_eq!(naga.stage_one(300, p, true), 300);
+    assert_eq!(naga.damage(300, p, true), 150);
+    // R4: attack 20 against defense 20; Shield (85 % let through) and Basic Armorer multiply
+    // before one truncation: 121 and 40 (truncated one after the other: 120 and 39); Armorer
+    // alone with its single-precision 0.05: 189 (exact: 190).
+    let mut shielded = Strike::new(20, 20);
+    shielded.protection_percent = 85;
+    shielded.hero_reduction = Rate::bp(500);
+    assert_eq!(shielded.damage(150, p, true), 121);
+    assert_eq!(shielded.damage(50, p, true), 40);
+    assert_eq!(staged_damage(200, (20, 20), (0, 500), p), 189);
+    assert_eq!(modified_damage_reduced(200, 500, p), 190);
+    // R6: Clavius's Angels at attack 90 against defense 6 (the +300 % cap: stage 1 is four
+    // times the base) under Mephala at level 10 with Expert Armorer: 15 % grown by 5 % per
+    // level in single precision is 0.22500000894 (HER-BAT-004, Q45 (b)): 619 and 154; with
+    // f32(0.225) or exact, 620 and 155.
+    let mut mephala = Strike::new(90, 6);
+    mephala.hero_reduction = Rate {
+        bp: 2250,
+        single: core::num::NonZeroU32::new(0x3e66_6667),
+    };
+    assert_eq!(mephala.damage(200, p, true), 619);
+    assert_eq!(mephala.damage(50, p, true), 154);
+    mephala.hero_reduction = Rate::bp(2250);
+    assert_eq!(mephala.damage(200, p, false), 620);
+    assert_eq!(mephala.damage(50, p, false), 155);
+}
+
+/// Exact damage (no stages) of `base` with equal attack and defense and Armorer in basis
+/// points.
+fn modified_damage_reduced(base: u64, armorer_bp: u16, p: &h3_content::BattleParams) -> u64 {
+    let mut s = Strike::new(0, 0);
+    s.hero_reduction = Rate::bp(armorer_bp.into());
+    s.damage(base, p, false)
+}
+
+// covers: BAT-DMG-002
+#[test]
 fn the_stages_truncate_each_bonus_and_factor() {
     let r = ruleset();
     let p = r.battle();

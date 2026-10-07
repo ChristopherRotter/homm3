@@ -686,3 +686,24 @@ records how and why the tasks went.
   Teleport's targets, destinations, no burn, refused second targets; Expert Dispel; the path);
   the property tests' books gain the four spells and check every second target; sim, CLI, pack
   and content tests for the second head, the text form, format v13 and validation.
+
+### Batch 2b folded in (2026-10-07)
+
+- **Seam (Q56):** the batch 2b fold-in and batch 2c, a checkpoint after; T5c next.
+- **Results** (`experiments/results/E04b-batch-2b.md`, SoD 4.0 Complete, plain HD): every
+  encounter as the engine's faithful prediction (T3c3). R1 195 and 390: the x87 at 53 bits
+  (Q50; 64 bits gives 194, 389). R2: both Wolf Rider attacks struck back in rounds 2 and 3,
+  Counterstrike no longer listed in round 3, only the first in round 4 (Q-0008). R3: 150 dealt,
+  "The Fire Shield does 60 damage.", the top Naga Queen at 50 (Q-0010; of the damage dealt: 30).
+  R4: 121, 40 (Shield and Basic Armorer in one product) and 189 (Armorer alone, Q-0005). R5:
+  Bloodlust and Weakness both listed, attack 4; Slow ended Haste, speed 3 (Q47). R6: Mephala
+  at level 10 (attack 2, defense 5), 619 and 154 (Q45 (b)). The retaliations' kills (5, 5, 6, 5,
+  5) fit the damage range.
+- **Play notes:** in R1, R4 and R6 the Angels (speed 12) could not reach the Peasants in round
+  1; the user moved or waited first, which changes none of the values (the struck stacks never
+  defended). Batch 2c's spec checks reach against speed.
+- **Recorded:** observation sources on BAT-DMG-002, BAT-HER-004, BAT-MAG-009 to 012, 015, 018
+  and HER-BAT-004 (now verified); the quirks ledger's Q-0005, Q-0008 and Q-0010; fixtures
+  `the_staged_damage_reproduces_batch_2b` (R1, R3, R4, R6 through `damage::Strike`) and
+  Mephala's and Octavia's Armorer from the harvested packs (`harvested_magic_derives`); the
+  mechanism tests cite R2, R3 and R5. No behaviour or version changes.

@@ -160,7 +160,8 @@ fn slayer_counts_against_the_king_levels_its_mastery_reaches() {
 // covers: BAT-MAG-015
 #[test]
 fn counterstrike_adds_retaliations_now_and_at_each_round_start() {
-    // Quirk Q-0008: the round in which the spell runs out still has the extra retaliation.
+    // Quirk Q-0008: the round in which the spell runs out still has the extra retaliation
+    // (batch 2b R2: both attacks struck back in that round, the spell no longer listed).
     counterstrike("t:counterstrike", 2);
     counterstrike("t:faithful", 1);
 }
