@@ -159,7 +159,7 @@ override, replacing the list) names the creature types it upgrades into: at most
 none twice; references follow the reference rules and may name later creatures of the pack.
 Hero effects that select "a creature" apply to it and its direct upgrades.
 
-## Hero content (format v3, E04a T3; battle magic format v4, E04b T2a; v5 T3a; v6 T3b1; v7 T3b1b; v8 T3b2; v9 T3c; v10 T4a; v11 T4b; v12 T4c; v13 T5a; v14 T5c1; v15 T5c2)
+## Hero content (format v3, E04a T3; battle magic format v4, E04b T2a; v5 T3a; v6 T3b1; v7 T3b1b; v8 T3b2; v9 T3c; v10 T4a; v11 T4b; v12 T4c; v13 T5a; v14 T5c1; v15 T5c2; v16 T5b)
 
 Spell schools, spells, secondary skills, hero classes and hero types (ADR-0013). References follow
 the reference rules above; every kind may refer to content of its dependency closure.
@@ -293,6 +293,20 @@ target = "stack"
 side = "own"
 excludes = ["war_machine"]
 effects = [{ kind = "teleport" }]  # v13: the cast's second target is the hex the stack goes to
+
+[[spell]]                          # a remove effect (pack format v16, E04b T5b): the obstacle on
+id = "uproot"                      # the target hex goes (BAT-MAG-034)
+category = "combat"
+level = 2
+schools = ["stone"]
+cost = [7, 5, 5, 5]
+effect = [0, 0, 0, 0]
+polarity = "neutral"
+target = "hex"
+removes = { fire = "advanced", wall = "expert", pit = "expert", mine = "expert" }
+                                   # v16: a removable natural obstacle at every mastery; a spell
+                                   # obstacle of a kind from the mastery named (default: never)
+effects = [{ kind = "remove_obstacle" }]
 
 [[secondary_skill]]
 id = "marksmanship"

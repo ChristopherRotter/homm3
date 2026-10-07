@@ -155,7 +155,7 @@ fn quicksand_places_random_pits_by_mastery_for_the_whole_battle() {
             &[("fixed", 5, 12, 5)],
             u64::from(mastery) + 7,
         );
-        s.obstacles.insert(at(&r, 8, 8));
+        s.natural.block(at(&r, 8, 8));
         let events = quicksand(&mut s, &r, 0);
         let list = s.spell_obstacles();
         assert_eq!(list.len(), count, "mastery {mastery}");
@@ -204,7 +204,7 @@ fn quicksand_avoids_obstacles_stacks_and_corpses_and_is_cast_without_a_free_hex(
     );
     for h in (0u8..).take(field.hex_count()).map(Hex) {
         if field.is_standable(h) && !keep.contains(&h) {
-            s.obstacles.insert(h);
+            s.natural.block(h);
         }
     }
     s.stacks.as_mut_slice()[1].count = 0;

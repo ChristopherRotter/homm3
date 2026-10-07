@@ -337,12 +337,13 @@ fn walkers_need_a_path_and_flyers_do_not() {
         &[(0, "fixed", 5)],
         [Some(3), None],
     );
-    s.obstacles = f
-        .neighbors(enclosed)
-        .into_iter()
-        .flatten()
-        .map(|h| h.0)
-        .collect();
+    s.obstacles = blocked(
+        f.neighbors(enclosed)
+            .into_iter()
+            .flatten()
+            .map(|h| h.0)
+            .collect(),
+    );
     let (mut state, _) = start(&r, &s);
     // The flyer (speed 7) comes first; it waits, the walker follows.
     assert_eq!(active(&state), 1);
@@ -371,13 +372,14 @@ fn a_walking_path_may_leave_the_zone() {
     // way in leads through column 4, outside the zone (user decision 2026-10-04, as VCMI).
     let target = at(&r, 3, 5);
     let mut s = led(&r, &[(0, "slow", 5)], &[(0, "fixed", 5)], [Some(1), None]);
-    s.obstacles = f
-        .neighbors(target)
-        .into_iter()
-        .flatten()
-        .filter(|&h| f.coords(h).0 <= 3)
-        .map(|h| h.0)
-        .collect();
+    s.obstacles = blocked(
+        f.neighbors(target)
+            .into_iter()
+            .flatten()
+            .filter(|&h| f.coords(h).0 <= 3)
+            .map(|h| h.0)
+            .collect(),
+    );
     let (mut state, _) = start(&r, &s);
     assert_eq!(
         act(&mut state.clone(), &r, Command::Move { to: at(&r, 4, 5) }),

@@ -264,6 +264,10 @@ pub enum SpellEffect {
     Obstacle(ObstacleKind),
     /// Moves the target stack to the cast's second target, a hex (BAT-MAG-029, E04b T5a, v13).
     Teleport,
+    /// Removes the obstacle on the target hex: a removable natural one at every mastery, a spell
+    /// obstacle of a kind from its mastery in [`SpellMagic::removes_from`] (BAT-MAG-034, E04b T5b,
+    /// v16).
+    RemoveObstacle,
 }
 
 impl SpellEffect {
@@ -276,6 +280,7 @@ impl SpellEffect {
             Self::Heal => "heal",
             Self::Obstacle(_) => "obstacle",
             Self::Teleport => "teleport",
+            Self::RemoveObstacle => "remove_obstacle",
         }
     }
 
@@ -283,14 +288,22 @@ impl SpellEffect {
     pub const fn timed(self) -> Option<TimedChange> {
         match self {
             Self::Timed(c) => Some(c),
-            Self::Damage | Self::Dispel | Self::Heal | Self::Obstacle(_) | Self::Teleport => None,
+            Self::Damage
+            | Self::Dispel
+            | Self::Heal
+            | Self::Obstacle(_)
+            | Self::Teleport
+            | Self::RemoveObstacle => None,
         }
     }
 
     /// Whether the kind acts on the battlefield rather than on the stacks a cast reaches
-    /// (obstacles, Teleport): such an effect is the spell's only one.
+    /// (obstacles, Teleport, Remove Obstacle): such an effect is the spell's only one.
     pub const fn is_field(self) -> bool {
-        matches!(self, Self::Obstacle(_) | Self::Teleport)
+        matches!(
+            self,
+            Self::Obstacle(_) | Self::Teleport | Self::RemoveObstacle
+        )
     }
 
     /// Canonical code (hash): the kind, then the change or the obstacle kind.
@@ -302,6 +315,7 @@ impl SpellEffect {
             Self::Heal => [3, 0],
             Self::Obstacle(k) => [4, k as u8],
             Self::Teleport => [5, 0],
+            Self::RemoveObstacle => [6, 0],
         }
     }
 }
@@ -661,6 +675,10 @@ pub struct SpellMagic {
     /// The lowest mastery (1..=3) from which a cast also removes every spell obstacle of the
     /// battlefield (Dispel at Expert; BAT-MAG-030, v13).
     pub clears_obstacles_from: Option<u8>,
+    /// A remove effect: the lowest mastery (1..=3) from which it removes a spell obstacle of each
+    /// kind, indexed by [`ObstacleKind`] (`None`: never; Remove Obstacle: fire from Advanced, the
+    /// others at Expert; BAT-MAG-034, v16).
+    pub removes_from: [Option<u8>; 4],
 }
 
 impl SpellMagic {
@@ -712,6 +730,16 @@ impl SpellMagic {
     /// Whether it moves its target stack to a second target (Teleport).
     pub fn teleports(&self) -> bool {
         self.effects.contains(&SpellEffect::Teleport)
+    }
+
+    /// Whether it removes the obstacle on its target hex (Remove Obstacle).
+    pub fn removes_obstacles(&self) -> bool {
+        self.effects.contains(&SpellEffect::RemoveObstacle)
+    }
+
+    /// Whether a cast at `mastery` removes a spell obstacle of kind `kind` (BAT-MAG-034).
+    pub fn removes_at(&self, kind: ObstacleKind, mastery: u8) -> bool {
+        self.removes_from[kind as usize].is_some_and(|m| mastery >= m)
     }
 }
 
@@ -804,6 +832,15 @@ impl SpellMagic {
             Some("an obstacle effect needs target hex")
         } else if self.teleports() && self.target != SpellTarget::Stack {
             Some("a teleport effect needs target stack")
+        } else if self.removes_obstacles() && self.target != SpellTarget::Hex {
+            Some("a remove_obstacle effect needs target hex")
+        } else if self
+            .removes_from
+            .iter()
+            .flatten()
+            .any(|&m| !self.removes_obstacles() || !(1..=MAX_MASTERY).contains(&m))
+        {
+            Some("removes needs a remove_obstacle effect and masteries 1..=3")
         } else if let Some(e) = self.obstacle.as_ref().and_then(ObstacleShape::error) {
             Some(e)
         } else if self
@@ -824,7 +861,7 @@ impl CanonicalHash for SpellMagic {
     /// specialist bonus (presence, then the bonus; v20); what ends it, the fixed mass version
     /// (0: none; v21); a fixed duration's rounds, the health limit, the refused changes (count,
     /// codes; v22); the obstacle shape (presence, then the shape) and the mastery that clears
-    /// obstacles (0: none; v23).
+    /// obstacles (0: none; v23); the masteries that remove each obstacle kind (0: never; v25).
     fn hash_into(&self, h: &mut StateHasher) {
         h.write_u8(self.target as u8);
         h.write_bool(self.area.is_some());
@@ -869,6 +906,9 @@ impl CanonicalHash for SpellMagic {
             shape.hash_into(h);
         }
         h.write_u8(self.clears_obstacles_from.unwrap_or(0));
+        for m in self.removes_from {
+            h.write_u8(m.unwrap_or(0));
+        }
     }
 }
 
@@ -1599,7 +1639,46 @@ mod tests {
             ..SpellMagic::default()
         };
         assert_eq!(dispel.error(true), None);
+        // Remove Obstacle: natural obstacles always, fire from Advanced, the rest at Expert.
+        let remove = SpellMagic {
+            target: SpellTarget::Hex,
+            effects: vec![SpellEffect::RemoveObstacle],
+            removes_from: [Some(3), Some(2), Some(3), Some(3)],
+            ..SpellMagic::default()
+        };
+        assert_eq!(remove.error(true), None);
+        assert_eq!(SpellEffect::RemoveObstacle.name(), "remove_obstacle");
+        assert_eq!(SpellEffect::RemoveObstacle.timed(), None);
+        assert!(SpellEffect::RemoveObstacle.is_field());
+        assert!(remove.removes_obstacles() && !fire.removes_obstacles());
+        assert!(!remove.removes_at(ObstacleKind::Fire, 1));
+        assert!(
+            remove.removes_at(ObstacleKind::Fire, 2) && !remove.removes_at(ObstacleKind::Mine, 2)
+        );
+        assert!(remove.removes_at(ObstacleKind::Mine, 3));
+        assert!(!fire.removes_at(ObstacleKind::Fire, 3));
         let bad = [
+            (
+                SpellMagic {
+                    target: SpellTarget::Stack,
+                    ..remove.clone()
+                },
+                "remove_obstacle effect needs target hex",
+            ),
+            (
+                SpellMagic {
+                    removes_from: [None, Some(0), None, None],
+                    ..remove.clone()
+                },
+                "removes needs",
+            ),
+            (
+                SpellMagic {
+                    removes_from: [Some(3), None, None, None],
+                    ..fire.clone()
+                },
+                "removes needs",
+            ),
             (
                 SpellMagic {
                     effects: vec![SpellEffect::Teleport, SpellEffect::Damage],

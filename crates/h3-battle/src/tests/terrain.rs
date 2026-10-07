@@ -15,12 +15,22 @@ fn terrain(r: &Ruleset, name: &str) -> h3_content::TerrainId {
     r.terrain_by_key(&std::format!("t:{name}")).unwrap()
 }
 
-fn generate(r: &Ruleset, name: &str, seed: u64) -> Vec<u8> {
+fn pieces(r: &Ruleset, name: &str, seed: u64) -> Vec<h3_contracts::Obstacle> {
     generate_obstacles(
         r,
         terrain(r, name),
         &mut Rng::for_stream(seed, StreamId::OBSTACLES),
     )
+}
+
+/// The generated obstacles' hexes, in hex order.
+fn generate(r: &Ruleset, name: &str, seed: u64) -> Vec<u8> {
+    let mut hexes: Vec<u8> = pieces(r, name, seed)
+        .into_iter()
+        .flat_map(|o| o.hexes)
+        .collect();
+    hexes.sort_unstable();
+    hexes
 }
 
 // ---------------------------------------------------------------- BAT-TER-001 native terrain
@@ -85,9 +95,16 @@ fn generated_obstacles_block_five_to_twelve_hexes_away_from_the_armies() {
             assert!((3..=13).contains(&x) && (2..=9).contains(&y), "({x}, {y})");
         }
         seen.insert(hexes.clone());
+        // Each stone keeps its anchor, its bottom-left hex (Q55).
+        let ps = pieces(&r, "plain", seed);
+        assert!(
+            ps.iter()
+                .all(|o| o.hexes.len() == 2 && o.anchor == Some(o.hexes[0])),
+            "{ps:?}"
+        );
         // The setup is valid and the armies still find their places.
         let s = BattleSetup {
-            obstacles: hexes,
+            obstacles: ps,
             ..setup(&r, &[(0, "serf", 1)], &[(0, "serf", 1)])
         };
         BattleState::new(&r, &s, seed).unwrap();
@@ -108,6 +125,9 @@ fn absolute_obstacles_appear_with_their_chance_and_count_half() {
         let hexes = generate(&r, "lava", seed);
         if cliff.iter().all(|h| hexes.contains(h)) {
             with_cliff += 1;
+            // An absolute obstacle comes first and has no anchor: no spell removes it.
+            let first = &pieces(&r, "lava", seed)[0];
+            assert_eq!((&first.hexes, first.anchor), (&cliff, None));
             // The cliff counts 2 of 5..=12, the stones fill 3..=10: 2..=5 stones.
             assert!((8..=14).contains(&hexes.len()), "{hexes:?}");
         }

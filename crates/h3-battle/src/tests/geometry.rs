@@ -141,8 +141,8 @@ fn obstacles_are_validated_and_observed() {
     }
     let mut bad = setup(&r, &[(0, "fixed", 1)], &[(0, "slow", 1)]);
     for hexes in [vec![at(&r, 0, 5).0], vec![200], vec![40, 41, 40]] {
-        bad.obstacles = hexes;
-        let repeated = *bad.obstacles.last().unwrap();
+        let repeated = *hexes.last().unwrap();
+        bad.obstacles = blocked(hexes);
         assert_eq!(
             BattleState::new(&r, &bad, 1),
             Err(SetupError::InvalidObstacle(repeated))
@@ -197,9 +197,11 @@ fn placement_fails_when_no_hex_is_free() {
     let r = ruleset();
     let mut sp = setup(&r, &[(0, "fixed", 1)], &[(0, "slow", 1)]);
     // Block every standable hex.
-    sp.obstacles = (0..187u8)
-        .filter(|h| field(&r).is_standable(Hex(*h)))
-        .collect();
+    sp.obstacles = blocked(
+        (0..187u8)
+            .filter(|h| field(&r).is_standable(Hex(*h)))
+            .collect(),
+    );
     assert_eq!(
         BattleState::new(&r, &sp, 1),
         Err(SetupError::NoRoom {

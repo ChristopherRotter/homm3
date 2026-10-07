@@ -28,7 +28,7 @@ pub const MAX_ARMY_SLOTS: usize = 16;
 pub const MAX_FIELD_HEXES: usize = 255;
 
 /// Version of the ruleset hash encoding. Bump when the encoding below changes.
-pub const RULESET_HASH_VERSION: u32 = 24;
+pub const RULESET_HASH_VERSION: u32 = 25;
 
 /// A compiled creature type.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -1316,7 +1316,8 @@ impl CanonicalHash for Ruleset {
     /// v17 (E04b T3a): the battle magic's effects are coded as kind and change and end with
     /// mind, mass, duration and cumulative; each spell ends with its counters; hero effects have
     /// `spell_duration`. v24 (E04b T5c1): an obstacle shape has `random`, an obstacle kind
-    /// `pit`.
+    /// `pit`. v25 (E04b T5b): the battle magic ends with the masteries that remove each
+    /// obstacle kind; effect kind `remove_obstacle`.
     fn hash_into(&self, h: &mut StateHasher) {
         h.write_u32(RULESET_HASH_VERSION);
         h.write_len(self.packs.len());

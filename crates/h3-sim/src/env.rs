@@ -303,9 +303,12 @@ mod tests {
         let (r, setup) = (Arc::new(r), Arc::new(setup));
         let expected = |seed| {
             let mut rng = Rng::for_stream(seed, StreamId::OBSTACLES);
-            let hexes = generate_obstacles(&r, terrain, &mut rng);
+            let pieces = generate_obstacles(&r, terrain, &mut rng);
             let mut set = h3_battle::HexSet::new();
-            hexes.iter().for_each(|&h| set.insert(h3_battle::Hex(h)));
+            pieces
+                .iter()
+                .flat_map(|o| &o.hexes)
+                .for_each(|&h| set.insert(h3_battle::Hex(h)));
             set
         };
         let mut env = BattleEnv::with_random_obstacles(r.clone(), setup.clone(), 3, 0).unwrap();

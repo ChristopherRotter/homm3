@@ -39,6 +39,11 @@ pub enum SetupError {
     },
     /// An obstacle hex is outside the standable field or listed twice.
     InvalidObstacle(u8),
+    /// An obstacle's anchor hex is outside the standable field (E04b T5b).
+    InvalidAnchor(u8),
+    /// More removable obstacles than a battle holds, or one with more hexes than a removable
+    /// obstacle has (E04b T5b; `MAX_REMOVABLE_OBSTACLES`, `MAX_REMOVABLE_HEXES`).
+    TooManyObstacles,
     /// No free hex is left for a stack.
     NoRoom {
         /// The side.
@@ -144,6 +149,11 @@ impl fmt::Display for SetupError {
             Self::InvalidObstacle(hex) => {
                 write!(f, "obstacle hex {hex} is not a standable hex or repeats")
             }
+            Self::InvalidAnchor(hex) => write!(f, "obstacle anchor {hex} is not a standable hex"),
+            Self::TooManyObstacles => write!(
+                f,
+                "more than 16 removable obstacles, or one blocking more than 8 hexes"
+            ),
             Self::NoRoom { side, slot } => write!(f, "no free hex for {side:?} slot {slot}"),
             Self::WarMachineInArmy { side, slot } => {
                 write!(f, "{side:?} slot {slot} holds a war machine")
@@ -304,6 +314,14 @@ mod tests {
         assert_eq!(
             SetupError::InvalidObstacle(3).to_string(),
             "obstacle hex 3 is not a standable hex or repeats"
+        );
+        assert_eq!(
+            SetupError::InvalidAnchor(0).to_string(),
+            "obstacle anchor 0 is not a standable hex"
+        );
+        assert_eq!(
+            SetupError::TooManyObstacles.to_string(),
+            "more than 16 removable obstacles, or one blocking more than 8 hexes"
         );
         assert_eq!(
             SetupError::NoRoom {

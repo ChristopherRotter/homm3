@@ -175,7 +175,7 @@ fn an_obstacle_needs_free_hexes() {
         &[("fixed", 5, 12, 5)],
         1,
     );
-    s.obstacles.insert(at(&r, 8, 8));
+    s.natural.block(at(&r, 8, 8));
     let mut out = CastTargets::new();
     cast_targets(&s, &r, BattleSide::Attacker, spell(&r, "wall"), &mut out);
     let hexes: Vec<Hex> = out

@@ -9,6 +9,7 @@
 use alloc::vec::Vec;
 
 use h3_content::{CreatureTypeId, ObstacleType, Ruleset, TerrainId};
+use h3_contracts::Obstacle;
 use h3_kernel::Rng;
 
 use crate::geometry::{Field, Hex, HexSet};
@@ -74,13 +75,14 @@ fn placement(
     Some(hexes)
 }
 
-/// Generates the obstacles of a battle on `terrain` and returns their hexes in hex order
-/// (BAT-GEO-004): block 5–12 hexes; with 40 % chance first place one absolute obstacle of the
-/// terrain (it counts half its hexes); then, while hexes remain to be blocked, place a uniformly
-/// chosen usual obstacle of the terrain at a uniformly chosen allowed anchor (rows 1 to
-/// `height − 2`), stopping early if no obstacle or no anchor is left.
+/// Generates the obstacles of a battle on `terrain` (BAT-GEO-004), in the order placed, each
+/// with its hexes in hex order: block 5–12 hexes; with 40 % chance first place one absolute
+/// obstacle of the terrain (it counts half its hexes; no anchor); then, while hexes remain to be
+/// blocked, place a uniformly chosen usual obstacle of the terrain at a uniformly chosen allowed
+/// anchor (rows 1 to `height − 2`; the obstacle keeps it), stopping early if no obstacle or no
+/// anchor is left.
 // rule: BAT-GEO-004
-pub fn generate_obstacles(ruleset: &Ruleset, terrain: TerrainId, rng: &mut Rng) -> Vec<u8> {
+pub fn generate_obstacles(ruleset: &Ruleset, terrain: TerrainId, rng: &mut Rng) -> Vec<Obstacle> {
     let params = ruleset.battle().field;
     let field = Field::new(params);
     let (width, height) = (i32::from(params.width), i32::from(params.height));
@@ -92,16 +94,27 @@ pub fn generate_obstacles(ruleset: &Ruleset, terrain: TerrainId, rng: &mut Rng) 
             .collect()
     };
     let mut blocked = HexSet::new();
+    let mut out = Vec::new();
+    let piece = |hexes: HexSet, anchor: Option<Hex>| Obstacle {
+        hexes: hexes.iter().map(|h| h.0).collect(),
+        anchor: anchor.map(|a| a.0),
+    };
     // 5..=12 always fits in an i32.
     let mut to_block = i32::try_from(rng.range_inclusive(5, 12)).unwrap_or(0);
     if rng.range_inclusive(1, 100) <= 40
         && let Some(o) = pick(rng, &of_terrain(true))
     {
         // The compiler checked that absolute obstacles block hexes of the field.
-        o.blocked
+        let hexes = o
+            .blocked
             .iter()
             .filter_map(|&(x, y)| field.hex(i32::from(x), i32::from(y)))
-            .for_each(|h| blocked.insert(h));
+            .fold(HexSet::new(), |mut set, h| {
+                set.insert(h);
+                set
+            });
+        blocked = blocked.union(hexes);
+        out.push(piece(hexes, None));
         to_block -= i32::try_from(o.blocked.len() / 2).unwrap_or(i32::MAX);
     }
     let usual = of_terrain(false);
@@ -112,16 +125,17 @@ pub fn generate_obstacles(ruleset: &Ruleset, terrain: TerrainId, rng: &mut Rng) 
         // Anchors from row 1, column 1 to row `height − 2`, column `width − 2`, in hex order.
         let first = u8::try_from(width + 1).unwrap_or(u8::MAX);
         let last = u8::try_from((height - 1) * width - 2).unwrap_or(0);
-        let anchors: Vec<HexSet> = (first..=last)
-            .filter_map(|i| placement(field, width, o, Hex(i), blocked))
+        let anchors: Vec<(Hex, HexSet)> = (first..=last)
+            .filter_map(|i| placement(field, width, o, Hex(i), blocked).map(|s| (Hex(i), s)))
             .collect();
-        let Some(hexes) = pick(rng, &anchors) else {
+        let Some((anchor, hexes)) = pick(rng, &anchors) else {
             break;
         };
-        hexes.iter().for_each(|h| blocked.insert(h));
+        blocked = blocked.union(hexes);
+        out.push(piece(hexes, Some(anchor)));
         to_block -= i32::try_from(o.blocked.len()).unwrap_or(i32::MAX);
     }
-    blocked.iter().map(|h: Hex| h.0).collect()
+    out
 }
 
 /// The hexes obstacle `o` blocks at `anchor` on an empty field (tests only).

@@ -23,7 +23,7 @@ use h3_content::{
 };
 use h3_contracts::{
     Army, ArmyStack, BallistaControl, BattleEffect, BattleHero, BattleSetup, BattleSide,
-    DamageBonuses, FactionGroup, Rate, StatOp, TentControl,
+    DamageBonuses, FactionGroup, Obstacle, Rate, StatOp, TentControl,
 };
 use serde::{Deserialize, Serialize};
 
@@ -470,6 +470,10 @@ struct SpellDto {
     specialist: Option<SpecialistDto>,
     obstacle: Option<ObstacleShapeDto>,
     clears_obstacles: Option<String>,
+    /// `removes = { fire = "advanced", wall = "expert" }`: the mastery from which a remove effect
+    /// removes a spell obstacle of each kind (pack format v16, E04b T5b).
+    #[serde(default)]
+    removes: BTreeMap<String, String>,
 }
 
 /// `obstacle = { steps = ["top_right", "top_left"], hexes = [2, 2, 3, 3], mirrored = true,
@@ -596,6 +600,7 @@ enum SpellEffectDto {
     Heal {},
     Obstacle { obstacle: String },
     Teleport {},
+    RemoveObstacle {},
 }
 
 impl SpellDto {
@@ -641,6 +646,7 @@ impl SpellDto {
                     SpellEffectDto::Dispel {} => Ok(SpellEffect::Dispel),
                     SpellEffectDto::Heal {} => Ok(SpellEffect::Heal),
                     SpellEffectDto::Teleport {} => Ok(SpellEffect::Teleport),
+                    SpellEffectDto::RemoveObstacle {} => Ok(SpellEffect::RemoveObstacle),
                     SpellEffectDto::Obstacle { obstacle } => ObstacleKind::from_name(obstacle)
                         .map(SpellEffect::Obstacle)
                         .ok_or_else(|| {
@@ -700,7 +706,19 @@ impl SpellDto {
                 .as_deref()
                 .map(mastery_named)
                 .transpose()?,
+            removes_from: self.removes_from()?,
         })
+    }
+
+    /// The masteries from which a remove effect removes each obstacle kind (`removes`).
+    fn removes_from(&self) -> Result<[Option<u8>; 4], PackError> {
+        let mut out = [None; 4];
+        for (kind, mastery) in &self.removes {
+            let k = ObstacleKind::from_name(kind)
+                .ok_or_else(|| PackError::Syntax(format!("unknown obstacle kind `{kind}`")))?;
+            out[k as usize] = Some(mastery_named(mastery)?);
+        }
+        Ok(out)
     }
 }
 
@@ -1588,9 +1606,9 @@ struct ScenarioHeader {
     id: String,
     packs: Vec<String>,
     profile: String,
-    /// Obstacle hexes (row-major indices), validated by the battle context.
+    /// The natural obstacles, validated by the battle context (pieces since E04b T5b).
     #[serde(default)]
-    obstacles: Vec<u8>,
+    obstacles: Vec<ObstacleEntry>,
     /// The battle hero leading each side, if any (BAT-HER-001, Q31).
     attacker_hero: Option<HeroEntry>,
     defender_hero: Option<HeroEntry>,
@@ -2278,6 +2296,37 @@ fn school_key(ruleset: &Ruleset, id: SchoolId) -> Result<String, PackError> {
         .ok_or_else(|| PackError::UnknownSchool(format!("#{}", id.raw())))
 }
 
+/// One natural obstacle in a scenario or replay file (E04b T5b, OPEN-QUESTIONS Q55):
+/// `{ hexes = [58, 75], anchor = 58 }`, the hexes it blocks and, for a removable (usual) one, its
+/// anchor hex ([`Obstacle`]).
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct ObstacleEntry {
+    /// The hexes it blocks.
+    pub hexes: Vec<u8>,
+    /// Its anchor hex, if it is removable.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub anchor: Option<u8>,
+}
+
+impl ObstacleEntry {
+    /// The entry of `o`.
+    pub fn of(o: &Obstacle) -> Self {
+        Self {
+            hexes: o.hexes.clone(),
+            anchor: o.anchor,
+        }
+    }
+
+    /// The obstacle of the entry.
+    pub fn to_obstacle(&self) -> Obstacle {
+        Obstacle {
+            hexes: self.hexes.clone(),
+            anchor: self.anchor,
+        }
+    }
+}
+
 /// A parsed scenario whose creature references are not yet resolved against a ruleset.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ScenarioDef {
@@ -2289,7 +2338,7 @@ pub struct ScenarioDef {
     pub profile: String,
     attacker: Vec<(u8, String, u32)>,
     defender: Vec<(u8, String, u32)>,
-    obstacles: Vec<u8>,
+    obstacles: Vec<Obstacle>,
     heroes: [Option<HeroEntry>; 2],
     terrain: Option<String>,
     war_machines: [Vec<String>; 2],
@@ -2439,7 +2488,12 @@ pub fn parse_scenario(text: &str) -> Result<ScenarioDef, PackError> {
         profile: file.scenario.profile,
         attacker: convert(file.attacker),
         defender: convert(file.defender),
-        obstacles: file.scenario.obstacles,
+        obstacles: file
+            .scenario
+            .obstacles
+            .iter()
+            .map(ObstacleEntry::to_obstacle)
+            .collect(),
         heroes: [file.scenario.attacker_hero, file.scenario.defender_hero],
         terrain: file.scenario.terrain,
         war_machines: [
@@ -2545,7 +2599,9 @@ mod tests {
              \"quirk.battle.early_mass_version\" = true, \
              \"quirk.battle.mass_cure_skips_hypnotized\" = true, \
              \"quirk.battle.natives_sight_at_start\" = true, \
-             \"quirk.battle.attack_from_seen_pit\" = true }",
+             \"quirk.battle.attack_from_seen_pit\" = true, \
+             \"quirk.battle.obstacle_anchors\" = true, \
+             \"quirk.battle.draws_avoid_hidden\" = true }",
             "quirks = { \"quirk.x\" = true }",
         );
         let pack = parse_pack(&quirky).unwrap();

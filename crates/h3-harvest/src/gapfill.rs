@@ -60,6 +60,9 @@ pub struct Spells {
     /// Spells that place battlefield obstacles (E04b T5a), per spell.
     #[serde(default)]
     pub obstacle: Vec<SpellObstacle>,
+    /// Spells that remove the obstacle on a hex (E04b T5b), per spell.
+    #[serde(default)]
+    pub remove: Vec<SpellRemove>,
     /// What specialists in some spells add by a rule of the spell's own (E04b T3c).
     #[serde(default)]
     pub specialist: Vec<SpellSpecialist>,
@@ -171,6 +174,20 @@ pub struct SpellObstacle {
     pub obstacle: String,
     /// `{ steps, hexes, random, mirrored, separate, rounds }`, copied verbatim.
     pub shape: toml::Value,
+    /// Source ids.
+    pub sources: Vec<String>,
+}
+
+/// A spell that removes the obstacle on its target hex (pack format v16, `packs/README.md`; the
+/// original's code, `docs/formats/installation.md` §7.15). The target hex comes from the flag
+/// word (`0x100`).
+#[derive(Debug, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct SpellRemove {
+    /// Spell name (as in `SPTRAITS.TXT`).
+    pub spell: String,
+    /// `removes = { fire = "advanced", … }` in pack syntax, copied verbatim.
+    pub removes: toml::Value,
     /// Source ids.
     pub sources: Vec<String>,
 }
@@ -646,6 +663,7 @@ impl GapFill {
                 .chain(g.spells.timed.iter().flat_map(|t| &t.sources))
                 .chain(g.spells.other.iter().flat_map(|t| &t.sources))
                 .chain(g.spells.obstacle.iter().flat_map(|t| &t.sources))
+                .chain(g.spells.remove.iter().flat_map(|t| &t.sources))
                 .chain(g.spells.specialist.iter().flat_map(|t| &t.sources))
                 .chain(&g.spells.protection_sources);
         for r in refs {

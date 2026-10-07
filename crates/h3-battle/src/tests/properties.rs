@@ -120,6 +120,19 @@ fn arb_obstacles() -> impl Strategy<Value = Vec<u8>> {
         .prop_map(|s| s.into_iter().collect())
 }
 
+/// The obstacles over `hexes`, one per hex: by the hex modulo 3 without an anchor, anchored on
+/// itself, or anchored on its left neighbour (which it does not block, BAT-QUIRK-3; perhaps
+/// another obstacle's hex).
+fn pieces(hexes: &[u8]) -> Vec<h3_contracts::Obstacle> {
+    hexes
+        .iter()
+        .map(|&h| h3_contracts::Obstacle {
+            hexes: std::vec![h],
+            anchor: [None, Some(h), Some(h - 1)][usize::from(h % 3)],
+        })
+        .collect()
+}
+
 fn arb_game() -> impl Strategy<Value = Game> {
     (
         arb_army(),
@@ -221,6 +234,7 @@ fn make_setup(
         "teleport",
         "quicksand",
         "landmine",
+        "remove",
     ]
     .iter()
     .map(|k| r.spell_by_key(&std::format!("t:{k}")).unwrap())
@@ -254,7 +268,7 @@ fn make_setup(
     BattleSetup {
         attacker: army(attacker),
         defender: army(defender),
-        obstacles: obstacles.to_vec(),
+        obstacles: pieces(obstacles),
         heroes: [Some(led), defender_hero],
         terrain: match (magic >> 14) & 3 {
             1 => r.terrain_by_key("t:plain"),
@@ -542,15 +556,22 @@ proptest! {
     /// does not see changes neither its observation nor what it may do (its legal commands,
     /// castable spells and their targets), with the natives' sight of either profile; nor what
     /// its commands report to it while no hidden obstacle shows itself (a pit it runs into, a
-    /// mine that goes off: BAT-MAG-032, BAT-MAG-033). Casts are left out of the last check: a
-    /// random obstacle spell's hexes avoid every obstacle (BAT-MAG-032).
+    /// mine that goes off: BAT-MAG-032, BAT-MAG-033), casts included: without quirk BAT-QUIRK-4
+    /// a random obstacle spell draws among the hexes its side sees free (BAT-MAG-032), and Remove
+    /// Obstacle finds only what the caster sees (BAT-MAG-034). Anchors (BAT-QUIRK-3) in half the
+    /// games.
     #[test]
     fn hidden_obstacles_do_not_show(
         (att, def, obstacles, seed, steps) in arb_game(),
         at_start: bool,
+        anchors: bool,
         extra in proptest::collection::btree_set((1u8..16, 0u8..11), 0..6),
     ) {
-        let r = lively_with(if at_start { "t:sight" } else { "t:quirky" });
+        let r = match (at_start, anchors) {
+            (true, _) => lively_with("t:sight"),
+            (false, true) => lively_with("t:anchors"),
+            (false, false) => lively_with("t:quirky"),
+        };
         let (mut state, _, _) =
             play(&r, &make_setup(&r, &att, &def, &obstacles, seed), seed, &steps);
         // More pits and mines of either side, so that most games have hidden ones.
@@ -582,9 +603,6 @@ proptest! {
                 prop_assert_eq!(a.as_slice(), b.as_slice());
             }
             for &command in a.as_slice() {
-                if matches!(command, Command::Cast { .. }) {
-                    continue;
-                }
                 let (mut x, mut y) = (state.clone(), twin.clone());
                 let (mut ex, mut ey) = (Vec::new(), Vec::new());
                 prop_assert!(apply(&mut x, &r, viewer, command, &mut ex).is_ok());

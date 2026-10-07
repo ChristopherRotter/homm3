@@ -124,7 +124,7 @@ fn war_machine_setups_are_validated() {
     let r = ruleset();
     let error = |att: &[Spec], machines: [&[&str]; 2], obstacles: &[(i32, i32)]| {
         let mut s = with_machines(&r, att, &[(0, "serf", 1)], machines);
-        s.obstacles = obstacles.iter().map(|&(x, y)| at(&r, x, y).0).collect();
+        s.obstacles = blocked(obstacles.iter().map(|&(x, y)| at(&r, x, y).0).collect());
         BattleState::new(&r, &s, 1).unwrap_err()
     };
     let invalid = SetupError::InvalidWarMachine {
@@ -154,7 +154,7 @@ fn war_machine_setups_are_validated() {
     // The compiler keeps the machines' places apart (BAT-WAR-001), but an obstacle of the setup
     // can still stand on one: the Ballista's head hex (1, 3) is hex 52.
     let mut s = with_machines(&r, serf, serf, [&["ballista"], &[]]);
-    s.obstacles = vec![52];
+    s.obstacles = blocked(vec![52]);
     assert_eq!(
         BattleState::new(&r, &s, 1).unwrap_err(),
         SetupError::NoRoom {
