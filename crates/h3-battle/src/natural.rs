@@ -63,14 +63,21 @@ impl CanonicalHash for RemovableObstacle {
     }
 }
 
-/// The natural obstacles of a battle (BAT-GEO-003).
+/// The natural obstacles of a battle (BAT-GEO-003), modelled on the original's hex records
+/// (`installation.md` §7.15): a removable obstacle gives each hex it blocks, and with quirk
+/// BAT-QUIRK-3 its anchor hex, its index, the obstacle placed last winning; removing one
+/// (0x466B30) clears the bits and the index of its blocked hexes and the anchor bit and the index
+/// of its anchor hex, so such a hex leads to no obstacle any more.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) struct NaturalObstacles {
     /// Every hex a natural obstacle blocks.
     blocked: HexSet,
-    /// The removable ones, in setup order.
+    /// The removable ones, in setup order (the order placed).
     removable: FixedVec<RemovableObstacle, MAX_REMOVABLE_OBSTACLES>,
-    /// Their anchor hexes while quirk BAT-QUIRK-3 holds, else none.
+    /// The hexes a removal cleared: no obstacle's index or anchor bit is left on them.
+    cleared: HexSet,
+    /// The anchor hexes that belong to their obstacles: with quirk BAT-QUIRK-3 every removable
+    /// obstacle's not cleared, else none.
     anchors: HexSet,
     /// Quirk BAT-QUIRK-3: an anchor hex belongs to its obstacle.
     anchored: bool,
@@ -119,6 +126,7 @@ impl NaturalObstacles {
         let mut natural = Self {
             blocked,
             removable,
+            cleared: HexSet::new(),
             anchors: HexSet::new(),
             anchored,
         };
@@ -141,30 +149,38 @@ impl NaturalObstacles {
         self.removable.as_slice()
     }
 
-    /// Whether some hex leads to a removable obstacle ([`Self::removable_at`]): one blocks a hex,
-    /// or has an anchor that belongs to it (quirk BAT-QUIRK-3).
-    pub(crate) fn any_removable(&self) -> bool {
-        self.removable.iter().any(|o| o.len > 0 || self.anchored)
+    /// The removable obstacles, in setup order, by value (observations).
+    pub(crate) const fn removable_list(
+        &self,
+    ) -> FixedVec<RemovableObstacle, MAX_REMOVABLE_OBSTACLES> {
+        self.removable
     }
 
-    /// The index of the removable obstacle on `hex` (BAT-MAG-034): the one that blocks it, else,
-    /// with quirk BAT-QUIRK-3, the last whose anchor it is (the original's hex holds the index of
-    /// the object placed last).
+    /// Whether some hex leads to a removable obstacle ([`Self::removable_at`]): one blocks a hex
+    /// (a removal never clears the blocked hexes of another), or has an anchor that belongs to it.
+    pub(crate) fn any_removable(&self) -> bool {
+        self.removable
+            .iter()
+            .any(|o| o.len > 0 || self.anchors.contains(o.anchor))
+    }
+
+    /// The index of the removable obstacle on `hex` (BAT-MAG-034): of those that block it or, with
+    /// quirk BAT-QUIRK-3, have it as their anchor, the one placed last, as the original's hex
+    /// holds the index of the object placed last; none on a hex a removal cleared.
     // rule: BAT-MAG-034
     pub(crate) fn removable_at(&self, hex: Hex) -> Option<usize> {
-        let pieces = self.removable.as_slice();
-        pieces
+        if self.cleared.contains(hex) {
+            return None;
+        }
+        self.removable
             .iter()
-            .position(|o| o.hexes().contains(&hex))
-            .or_else(|| {
-                self.anchors
-                    .contains(hex)
-                    .then(|| pieces.iter().rposition(|o| o.anchor == hex))
-                    .flatten()
-            })
+            .rposition(|o| o.hexes().contains(&hex) || (self.anchored && o.anchor == hex))
     }
 
-    /// Removes the removable obstacle `i` (a validated index) and returns it: its hexes are free.
+    /// Removes the removable obstacle `i` (a validated index) and returns it: its blocked hexes
+    /// are free and, with quirk BAT-QUIRK-3, its anchor hex is cleared too (the original's
+    /// 0x466B30): another obstacle's anchor there no longer belongs to it, and a hex another
+    /// obstacle blocks there stays blocked but leads to none.
     pub(crate) fn remove(&mut self, i: usize) -> RemovableObstacle {
         let gone = self.removable.get(i).copied().unwrap_or_default();
         let mut at = 0;
@@ -173,6 +189,10 @@ impl NaturalObstacles {
             at - 1 == i
         });
         self.blocked = self.blocked.without(gone.hex_set());
+        self.cleared = self.cleared.union(gone.hex_set());
+        if self.anchored {
+            self.cleared.insert(gone.anchor);
+        }
         self.refresh();
         gone
     }
@@ -183,13 +203,16 @@ impl NaturalObstacles {
         self.blocked.insert(hex);
     }
 
-    /// Recomputes the anchors from the removable obstacles.
+    /// Recomputes the anchors from the removable obstacles and the cleared hexes.
     fn refresh(&mut self) {
         self.anchors = if self.anchored {
-            self.removable.iter().fold(HexSet::new(), |mut set, o| {
-                set.insert(o.anchor);
-                set
-            })
+            self.removable
+                .iter()
+                .fold(HexSet::new(), |mut set, o| {
+                    set.insert(o.anchor);
+                    set
+                })
+                .without(self.cleared)
         } else {
             HexSet::new()
         };
@@ -197,11 +220,12 @@ impl NaturalObstacles {
 }
 
 impl CanonicalHash for NaturalObstacles {
-    /// The blocked hexes, the removable obstacles (count, each), whether anchors belong to their
-    /// obstacles (state hash v28).
+    /// The blocked hexes, the removable obstacles (count, each), the cleared hexes, whether
+    /// anchors belong to their obstacles (state hash v28).
     fn hash_into(&self, h: &mut StateHasher) {
         self.blocked.hash_into(h);
         self.removable.hash_into(h);
+        self.cleared.hash_into(h);
         h.write_bool(self.anchored);
     }
 }

@@ -24,13 +24,12 @@ fn caster(r: &Ruleset, spells: &[&str], air: u8) -> BattleHero {
     h
 }
 
+/// A natural obstacle as cells: its blocked hexes and its anchor.
+type Piece<'a> = (&'a [(i32, i32)], Option<(i32, i32)>);
+
 /// A battle with the attacker's hero `hero`, a serf per side at (2, 5) and (14, 5), and the
-/// natural obstacles `obstacles` given as `(hexes, anchor)` cells; the attacker is active.
-fn field_with(
-    r: &Ruleset,
-    hero: BattleHero,
-    obstacles: &[(&[(i32, i32)], Option<(i32, i32)>)],
-) -> BattleState {
+/// natural obstacles `obstacles`; the attacker is active.
+fn field_with(r: &Ruleset, hero: BattleHero, obstacles: &[Piece<'_>]) -> BattleState {
     let setup = BattleSetup {
         heroes: [Some(hero), None],
         obstacles: obstacles
@@ -210,17 +209,20 @@ fn anchors_belong_to_their_obstacles_with_bat_quirk_3() {
 
 // covers: BAT-MAG-034
 #[test]
-fn an_anchor_hex_leads_to_the_obstacle_placed_last() {
+fn an_anchor_hex_leads_to_the_obstacle_placed_last_until_a_removal_clears_it() {
     let r = ruleset_with("t:anchors", |_| {});
-    // Two stones share the anchor (6, 4); a cliff (absolute) covers the anchor (9, 6) of a third.
+    // Two stones share the anchor (6, 4); a cliff (absolute) covers the anchor (9, 6) of a third;
+    // a fifth stone's anchor (11, 4) is blocked by a sixth, listed later.
     let mut s = field_with(
         &r,
-        caster(&r, &["remove"], 0),
+        caster(&r, &["remove", "firewall"], 0),
         &[
             (&[(7, 4)], Some((6, 4))),
             (&[(5, 4)], Some((6, 4))),
             (&[(9, 6)], None),
             (&[(10, 6)], Some((9, 6))),
+            (&[(12, 2)], Some((11, 4))),
+            (&[(11, 4), (12, 4)], Some((13, 4))),
         ],
     );
     let gone = |events: &[Event]| -> Vec<HexSet> {
@@ -232,16 +234,53 @@ fn an_anchor_hex_leads_to_the_obstacle_placed_last() {
             })
             .collect()
     };
-    // The original's hex holds the index of the object placed last: the second stone, then the
-    // first. The absolute cliff has no object, so its hex still leads to the third stone.
+    // The original's hex holds the index of the object placed last: the second stone. Its removal
+    // clears the anchor hex (bit and index, 0x466B30): it leads to no stone any more and is free
+    // for a Fire Wall; the first stone is still reached through its own hex.
     let events = cast_at(&mut s, &r, "remove", (6, 4));
     assert_eq!(gone(&events), [cells(&r, &[(5, 4)])]);
-    let events = cast_at(&mut s, &r, "remove", (6, 4));
+    s.heroes[0].as_mut().unwrap().view.casts = 0;
+    assert!(!targets(&s, &r, "remove").contains(at(&r, 6, 4)));
+    assert!(targets(&s, &r, "firewall").contains(at(&r, 6, 4)));
+    let events = cast_at(&mut s, &r, "remove", (7, 4));
     assert_eq!(gone(&events), [cells(&r, &[(7, 4)])]);
+    // The absolute cliff has no object, so its hex still leads to the third stone; it stays.
     let events = cast_at(&mut s, &r, "remove", (9, 6));
     assert_eq!(gone(&events), [cells(&r, &[(10, 6)])]);
+    // The sixth stone, placed later, gave (11, 4) its index; removing the fifth through (12, 2)
+    // clears its anchor hex there, which stays blocked but leads to the sixth no more.
+    s.heroes[0].as_mut().unwrap().view.casts = 0;
+    assert!(targets(&s, &r, "remove").contains(at(&r, 11, 4)));
+    let events = cast_at(&mut s, &r, "remove", (12, 2));
+    assert_eq!(gone(&events), [cells(&r, &[(12, 2)])]);
+    s.heroes[0].as_mut().unwrap().view.casts = 0;
+    assert_eq!(targets(&s, &r, "remove"), cells(&r, &[(12, 4), (13, 4)]));
+    assert!(s.obstacles().contains(at(&r, 11, 4)));
+    cast_at(&mut s, &r, "remove", (13, 4));
     assert_eq!(s.obstacles(), cells(&r, &[(9, 6)]));
-    assert!(targets(&s, &r, "remove").is_empty());
+    assert!(s.removable_obstacles().is_empty());
+}
+
+// covers: BAT-MAG-034, BAT-GEO-003
+#[test]
+fn an_obstacle_blocking_nothing_is_reached_only_through_its_anchor() {
+    for quirk in [false, true] {
+        let r = if quirk {
+            ruleset_with("t:anchors", |_| {})
+        } else {
+            ruleset()
+        };
+        let s = field_with(&r, caster(&r, &["remove"], 0), &[(&[], Some((6, 4)))]);
+        // Without the quirk it has no hex at all: nothing to remove.
+        assert_eq!(
+            castable_spells(&s, &r, BattleSide::Attacker).contains(spell(&r, "remove")),
+            quirk
+        );
+        assert_eq!(
+            observe(&s, &r, BattleSide::Defender).obstacle_anchors.len(),
+            u32::from(quirk)
+        );
+    }
 }
 
 // covers: BAT-MAG-034

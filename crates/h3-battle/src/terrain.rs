@@ -42,8 +42,9 @@ fn pick<T: Copy>(rng: &mut Rng, items: &[T]) -> Option<T> {
 }
 
 /// The hexes obstacle `o` blocks with its anchor at `(x, y)` (bottom-left hex), or `None` if the
-/// placement is not allowed: the anchor needs `height` rows above it, column ≥ 1 and `width`
-/// columns to its right within the first `field width − 2` columns; every blocked hex must be
+/// placement is not allowed: the anchor needs `height` rows above it, a standable hex (column ≥ 1
+/// with the original's one side column) and `width` columns to its right within the first
+/// `field width − 2` columns; every blocked hex must be
 /// on the field, free, and in columns 3 to `field width − 4` (the two columns next to each
 /// army's starting column stay free). From an odd row, blocked hexes in even rows shift one
 /// column left, so that `(1, -1)` is always the top-right neighbour.
@@ -56,7 +57,7 @@ fn placement(
 ) -> Option<HexSet> {
     let (x, y) = field.coords(anchor);
     if y <= i32::from(o.height)
-        || x == 0
+        || !field.is_standable(anchor)
         || x + i32::from(o.width) > width - 2
         || blocked.contains(anchor)
     {

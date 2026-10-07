@@ -853,3 +853,62 @@ records how and why the tasks went.
   problem; two tests tightened (Fire Wall's burn before the mine on one hex, a comment); found
   that Quicksand's and Land Mine's random hexes avoid the other side's hidden obstacles, a small
   leak the original has (T5c1 kept it): OPEN-QUESTIONS BAT-Q4 for the user.
+
+### T5b — Remove Obstacle, the obstacles as pieces, BAT-QUIRK-3 and BAT-QUIRK-4 (2026-10-07)
+
+- **Seam (BAT-Q5, Q55, BAT-Q4):** after PR #5 was merged, the user chose to finish T5 in one
+  battle pull request labelled `cross-lane` (the contract cannot compile without the battle
+  crates that use it); the anchors fix-optional with seam option (a), the draws fix-optional. The
+  user then left for some hours: the session went on unattended (the original files were staged
+  before the computer went offline).
+- **Seam change:** `BattleSetup.obstacles: Vec<h3_contracts::Obstacle>` with `Obstacle { hexes,
+  anchor: Option<u8> }` (ADR-0014 point 10 and ADR-0004 amended: a change of a field's type, not
+  an addition); `generate_obstacles` returns the pieces in the order placed, each usual one with
+  its anchor; scenario and replay files carry `{ hexes, anchor }` (`h3_pack::ObstacleEntry`;
+  replay format v18, `[[setup.obstacles]]` after the plain values).
+- **Battle:** `h3_battle::natural` keeps the blocked hexes, the removable pieces by value (at most
+  16 of at most 8 hexes: no allocation on a fork; `SetupError::InvalidAnchor`, `TooManyObstacles`)
+  and the original's hex records as far as they matter: the anchors that belong to their pieces
+  (BAT-QUIRK-3) and the hexes a removal cleared. A hex leads to the piece listed last among those
+  touching it; removing a piece clears its blocked hexes and, with the quirk, its anchor hex (the
+  original's 0x466B30, re-read for this: bits `0x3F` and the index on the descriptor's hexes,
+  `0x1` and the index on the anchor). The anchors keep Fire Wall, Force Field and the random
+  draws off (`obstacles::free`, `random_hexes`). Remove Obstacle (BAT-MAG-034, effect
+  `remove_obstacle`, `removes` by obstacle kind, pack format v16): the natural piece on the hex,
+  else the spell obstacles there that the caster sees and the mastery removes; the Expert
+  cursor's leak fixed under Q-0002. BAT-QUIRK-4: Quicksand's and Land Mine's draws avoid every
+  spell obstacle (faithful) or those the caster sees (strict-fixed, overlap allowed). Event
+  `NaturalObstacleRemoved` (public); the observation gains the removable pieces and the anchors.
+- **Content:** synthetic Uproot (Corwin's, in the `full` scenario); the harvester's gap-fill kind
+  `[[spells.remove]]` and source `exe-remove-obstacle` (base: Remove Obstacle, target from flag
+  `0x100`); profiles with `quirk.battle.obstacle_anchors` and `quirk.battle.draws_avoid_hidden`; a
+  random obstacle shape must be `separate` (else a full field would place an empty obstacle).
+- **Versions:** pack format v16, ruleset hash v25, state hash v28, replay format v18; action and
+  observation encodings, C ABI unchanged (the flat observation has no obstacle features, E05/T9).
+  `BattleState` 4 304 bytes (+240).
+- **Performance:** the old workload (no Uproot) on the new code: 585.81 M Ir against 584.17 M
+  (+0.28 %, same 10 878 steps). The new workload (Corwin knows Uproot): 10 867 steps, 580.60 M Ir
+  (−0.61 %); `bench-check` re-baselined. A first version tested a remove spell's castability over
+  every hex (+9.6 %); `obstacles::any_removable` tests the obstacles directly.
+- **Replays:** all re-recorded; a sixth, `full-s3-a138`, where Corwin's Uproot takes away a hex of
+  Brea's Scorch.
+- **Agent decisions (change freely):** a hex shared by several pieces in a hand-written setup
+  follows setup order as the placement order; with several spell obstacles on one hex (only the
+  other side's unseen ones can overlap), Expert Remove Obstacle takes each it sees there; the
+  cast's public target hex may show where the caster's own hidden obstacle was (as the original);
+  Uproot only in the `full` scenario (no natural obstacles there; the duel has them but no
+  heroes).
+- **Tests:** `tests/remove.rs` (a whole stone removed, the cliff never; anchors with and without
+  BAT-QUIRK-3 for Remove Obstacle, Fire Wall, Force Field, Quicksand's draw and a stack standing
+  there; the hex placed last and the clearing; a piece blocking nothing; spell obstacles by
+  mastery and sight, an overlapped hex; the draws with and without BAT-QUIRK-4; setup
+  validation); the generator keeps the anchors; the property games get anchored pieces and Remove
+  Obstacle, and the hidden-obstacle property applies casts too (it had silently left them out:
+  the inner target list shadowed the legal commands); pack, content, harvester and sim tests.
+- **Review** (an independent sub-agent on the diff): the property test's shadowed list; a region
+  never executed (`any_removable` for a piece without hexes, also caught by the coverage gate);
+  the clearing after a removal, which the model had re-derived from the remaining pieces (fixed
+  after re-reading 0x466B30); generator anchors in a side column with more than one side column
+  (`placement` now asks `is_standable`); a random shape that is not separate (rejected); the
+  public cast target (documented); the observation's allocation (now by value); the per-kind
+  table sized by `ObstacleKind::COUNT`. All fixed.

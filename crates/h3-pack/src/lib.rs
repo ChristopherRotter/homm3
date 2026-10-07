@@ -711,8 +711,8 @@ impl SpellDto {
     }
 
     /// The masteries from which a remove effect removes each obstacle kind (`removes`).
-    fn removes_from(&self) -> Result<[Option<u8>; 4], PackError> {
-        let mut out = [None; 4];
+    fn removes_from(&self) -> Result<[Option<u8>; ObstacleKind::COUNT], PackError> {
+        let mut out = [None; ObstacleKind::COUNT];
         for (kind, mastery) in &self.removes {
             let k = ObstacleKind::from_name(kind)
                 .ok_or_else(|| PackError::Syntax(format!("unknown obstacle kind `{kind}`")))?;

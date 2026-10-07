@@ -150,11 +150,11 @@ commands = [
     "A attack 1 63",
 ]
 checkpoints = [
-    "0x3a50bb31dcf21191",
-    "0x0c3b851ad16bad80",
-    "0x0c98bc73ce5df963",
-    "0x00a240251791a1e0",
-    "0x9910efcafaf99d2c",
+    "0xacba1ddba981a591",
+    "0xc726362d57676b00",
+    "0xba70179855302563",
+    "0xa18ae2482af15a60",
+    "0xe21ba05c43350eac",
 ]
 
 [replay]
@@ -213,4 +213,4 @@ count = 20
 
 [result]
 winner = "defender"
-final_hash = "0xa000346cc65146c9"
+final_hash = "0x82066b390a1529c9"
