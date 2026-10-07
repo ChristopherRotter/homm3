@@ -3506,6 +3506,7 @@ side = "own"
 mass = "expert"
 excludes = ["war_machine"]
 effects = [{ kind = "timed", change = "melee_attack" }]
+specialist = { kind = "creature_level", values = [3, 3, 2, 2, 1, 1, 0] }
 
 [[spell]]
 id = "precision"  # original id 44
@@ -3521,6 +3522,7 @@ target = "stack"
 side = "own"
 mass = "expert"
 effects = [{ kind = "timed", change = "ranged_attack" }]
+specialist = { kind = "creature_level", values = [3, 3, 2, 2, 1, 1, 0] }
 
 [[spell]]
 id = "weakness"  # original id 45
@@ -3536,6 +3538,7 @@ target = "stack"
 side = "enemy"
 mass = "expert"
 effects = [{ kind = "timed", change = "attack_loss" }]
+specialist = { kind = "creature_level", values = [3, 3, 2, 2, 1, 1, 0] }
 
 [[spell]]
 id = "stone_skin"  # original id 46
@@ -3551,6 +3554,7 @@ target = "stack"
 side = "own"
 mass = "expert"
 effects = [{ kind = "timed", change = "defense" }]
+specialist = { kind = "creature_level", values = [3, 3, 2, 2, 1, 1, 0] }
 
 [[spell]]
 id = "disrupting_ray"  # original id 47
@@ -3567,6 +3571,7 @@ side = "enemy"
 duration = "permanent"
 cumulative = true
 effects = [{ kind = "timed", change = "defense_loss" }]
+specialist = { amount = 2, kind = "fixed" }
 
 [[spell]]
 id = "prayer"  # original id 48
@@ -3582,6 +3587,7 @@ target = "stack"
 side = "own"
 mass = "expert"
 effects = [{ kind = "timed", change = "attack" }, { kind = "timed", change = "defense" }, { kind = "timed", change = "speed" }]
+specialist = { kind = "creature_level", values = [3, 3, 2, 2, 1, 1, 0] }
 
 [[spell]]
 id = "mirth"  # original id 49
@@ -3629,6 +3635,7 @@ target = "stack"
 side = "own"
 mass = "expert"
 effects = [{ kind = "timed", change = "luck" }]
+specialist = { kind = "total", value = 3 }
 
 [[spell]]
 id = "misfortune"  # original id 52
@@ -3661,6 +3668,7 @@ mass = "expert"
 excludes = ["war_machine"]
 counters = ["slow"]
 effects = [{ kind = "timed", change = "speed" }]
+specialist = { kind = "creature_level", values = [3, 3, 2, 2, 1, 1, 0] }
 
 [[spell]]
 id = "slow"  # original id 54
@@ -3692,6 +3700,7 @@ polarity = "positive"
 target = "stack"
 side = "own"
 effects = [{ kind = "timed", change = "slayer" }]
+specialist = { kind = "creature_level", values = [4, 3, 2, 1, 0, 0, 0] }
 
 [[spell]]
 id = "frenzy"  # original id 56

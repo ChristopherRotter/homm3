@@ -14,6 +14,7 @@ mod protect;
 mod rage;
 mod ranged;
 mod rules;
+mod specialist;
 mod spells;
 mod support;
 mod tactics;

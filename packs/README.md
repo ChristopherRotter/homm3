@@ -159,7 +159,7 @@ override, replacing the list) names the creature types it upgrades into: at most
 none twice; references follow the reference rules and may name later creatures of the pack.
 Hero effects that select "a creature" apply to it and its direct upgrades.
 
-## Hero content (format v3, E04a T3; battle magic format v4, E04b T2a; v5 T3a; v6 T3b1; v7 T3b1b; v8 T3b2)
+## Hero content (format v3, E04a T3; battle magic format v4, E04b T2a; v5 T3a; v6 T3b1; v7 T3b1b; v8 T3b2; v9 T3c)
 
 Spell schools, spells, secondary skills, hero classes and hero types (ADR-0013). References follow
 the reference rules above; every kind may refer to content of its dependency closure.
@@ -206,6 +206,12 @@ duration = "rounds"                # v5: rounds (default: power + duration bonus
 cumulative = false                 # v5: a cast on an affected stack applies its changes again
 counters = ["slow"]                # v5: spells whose effects a cast ends on each stack it affects
 effects = [{ kind = "timed", change = "speed" }]
+specialist = { kind = "creature_level", values = [3, 3, 2, 2, 1, 1, 0] }
+                                   # v9: what a hero specialised in the spell adds to its value
+                                   # by a rule of the spell's own: by the stack's creature level
+                                   # 1 to 7, `{ kind = "fixed", amount = 2 }` or `{ kind =
+                                   # "total", value = 3 }` (the value becomes 3); without it the
+                                   # hero's spell_specialty rate scales the value (BAT-MAG-020)
 
 [[spell]]                          # a dispel spell (pack format v7, E04b T3b1b)
 id = "purge"

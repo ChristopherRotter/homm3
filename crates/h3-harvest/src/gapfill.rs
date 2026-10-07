@@ -56,6 +56,9 @@ pub struct Spells {
     /// Stack spells of the other effect kinds (dispel and heal, E04b T3b1b), per spell.
     #[serde(default)]
     pub other: Vec<SpellOther>,
+    /// What specialists in some spells add by a rule of the spell's own (E04b T3c).
+    #[serde(default)]
+    pub specialist: Vec<SpellSpecialist>,
     /// The order in which the original checks a damage spell's schools for the target's
     /// protections (school names; E04b T3b1, `installation.md` §7.8, §7.10): written as the
     /// schools' `protection_rank`.
@@ -117,6 +120,19 @@ pub struct SpellOther {
     /// Spells (by name) whose effects its dispel effect spares.
     #[serde(default)]
     pub spares: Vec<String>,
+    /// Source ids.
+    pub sources: Vec<String>,
+}
+
+/// The bonus a specialist in some spells adds to their value by a rule of the spells' own (pack
+/// format v9, `packs/README.md`; the original's code, `docs/formats/installation.md` §7.12).
+#[derive(Debug, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct SpellSpecialist {
+    /// Spell names (as in `SPTRAITS.TXT`).
+    pub spells: Vec<String>,
+    /// `bonus = { kind, … }` in pack syntax, copied verbatim.
+    pub bonus: toml::Value,
     /// Source ids.
     pub sources: Vec<String>,
 }
@@ -578,6 +594,7 @@ impl GapFill {
                 .chain(g.spells.targeting.iter().flat_map(|t| &t.sources))
                 .chain(g.spells.timed.iter().flat_map(|t| &t.sources))
                 .chain(g.spells.other.iter().flat_map(|t| &t.sources))
+                .chain(g.spells.specialist.iter().flat_map(|t| &t.sources))
                 .chain(&g.spells.protection_sources);
         for r in refs {
             if !ids.contains(r.as_str()) {

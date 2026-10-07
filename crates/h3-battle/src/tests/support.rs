@@ -8,10 +8,10 @@ use std::vec::Vec;
 use h3_content::{
     AbilityDef, AuraTarget, BattleParamsDef, ContentKey, ContentPack, CreatureDef, CreatureFlag,
     CreatureFlags, CreatureInfoDef, EffectDuration, FactionDef, Formation, HeroClassDef,
-    HeroTypeDef, ObstacleDef, PackManifest, ProfileDef, ResourceDef, Ruleset, SpellArea,
-    SpellCategory, SpellChain, SpellDef, SpellEffect, SpellMagic, SpellPolarity, SpellSchoolDef,
-    SpellTarget, StartingStackDef, SurrenderDef, TargetConditions, TargetSide, TerrainDef,
-    TimedChange,
+    HeroTypeDef, ObstacleDef, PackManifest, ProfileDef, ResourceDef, Ruleset, SpecialistBonus,
+    SpellArea, SpellCategory, SpellChain, SpellDef, SpellEffect, SpellMagic, SpellPolarity,
+    SpellSchoolDef, SpellTarget, StartingStackDef, SurrenderDef, TargetConditions, TargetSide,
+    TerrainDef, TimedChange,
 };
 use h3_contracts::{Army, ArmyStack, BattleHero, BattleSetup, BattleSide};
 
@@ -393,6 +393,9 @@ pub const CREATURES: &[Creature] = &[
     ("lord", 10, 10, 2, 2, 50, 4, &["king_1"]),
     ("duke", 10, 10, 2, 2, 50, 4, &["king_2"]),
     ("prince", 10, 10, 2, 2, 50, 4, &["king_3"]),
+    // Spell specialists (BAT-MAG-020): creature levels 3 and 5.
+    ("tier3", 10, 10, 2, 2, 10, 5, &["level=3"]),
+    ("tier5", 10, 10, 2, 2, 10, 5, &["level=5"]),
 ];
 
 /// The traits of a test creature as creature info: flags, abilities, shots and faction.
@@ -1168,6 +1171,16 @@ fn timed_def(
                 EffectDuration::Rounds
             },
             cumulative: permanent,
+            // The original's specialist rules (`installation.md` §7.12).
+            specialist: match name {
+                "haste" | "prayer" | "weaken" | "skin" | "lust" | "aim" => {
+                    Some(SpecialistBonus::CreatureLevel([3, 3, 2, 2, 1, 1, 0]))
+                }
+                "slayer" => Some(SpecialistBonus::CreatureLevel([4, 3, 2, 1, 0, 0, 0])),
+                "ray" => Some(SpecialistBonus::Fixed(2)),
+                "fortune" => Some(SpecialistBonus::Total(3)),
+                _ => None,
+            },
             ..SpellMagic::default()
         },
         counters: counter

@@ -14,10 +14,11 @@ use h3_content::{
     CreatureDef, CreatureFlag, CreatureFlags, CreatureInfoDef, CreatureOverride, CreaturePatch,
     CreatureSelector, CreatureStat, CreatureTypeId, EffectDuration, FactionDef, Formation,
     HeroClassDef, HeroEffect, HeroEffectDef, HeroParamsDef, HeroTypeDef, KeyError, MASTERY_NAMES,
-    MAX_ALIGNMENT_FACTIONS, ObstacleDef, PackManifest, ProfileDef, ResourceDef, Ruleset, SchoolId,
-    SecondarySkillDef, SpellArea, SpellCategory, SpellChain, SpellDef, SpellEffect, SpellId,
-    SpellMagic, SpellPolarity, SpellSchoolDef, SpellScope, SpellTarget, StartingStackDef,
-    SurrenderDef, TargetConditions, TargetSide, TerrainDef, TimedChange,
+    MAX_ALIGNMENT_FACTIONS, ObstacleDef, PackManifest, ProfileDef, ResourceDef, Ruleset,
+    SPECIALIST_LEVELS, SchoolId, SecondarySkillDef, SpecialistBonus, SpellArea, SpellCategory,
+    SpellChain, SpellDef, SpellEffect, SpellId, SpellMagic, SpellPolarity, SpellSchoolDef,
+    SpellScope, SpellTarget, StartingStackDef, SurrenderDef, TargetConditions, TargetSide,
+    TerrainDef, TimedChange,
 };
 use h3_contracts::{
     Army, ArmyStack, BallistaControl, BattleEffect, BattleHero, BattleSetup, BattleSide,
@@ -411,7 +412,7 @@ struct OverrideDto {
 /// battle magic (targeting and effects); since format v5 (E04b T3a) mind spells, mass versions,
 /// durations, cumulative spells, counters and timed effects; since format v7 (E04b T3b1b)
 /// dispel and heal effects, the side by mastery, targets that need an effect, spells that ignore
-/// immunity and the dispel lists.
+/// immunity and the dispel lists; since format v9 (E04b T3c) a specialist's bonus.
 #[derive(Deserialize)]
 #[serde(deny_unknown_fields)]
 struct SpellDto {
@@ -457,6 +458,17 @@ struct SpellDto {
     dispels: Vec<String>,
     #[serde(default)]
     spares: Vec<String>,
+    specialist: Option<SpecialistDto>,
+}
+
+/// `specialist = { kind = "creature_level", values = [3, 3, 2, 2, 1, 1, 0] }` (or `{ kind =
+/// "fixed", amount = 2 }`, `{ kind = "total", value = 3 }`; pack format v9, E04b T3c).
+#[derive(Deserialize)]
+#[serde(tag = "kind", rename_all = "snake_case", deny_unknown_fields)]
+enum SpecialistDto {
+    CreatureLevel { values: [u8; SPECIALIST_LEVELS] },
+    Fixed { amount: u16 },
+    Total { value: u16 },
 }
 
 /// The mastery (1..=3) named `name` in a pack (`basic`, `advanced`, `expert`).
@@ -582,6 +594,11 @@ impl SpellDto {
             any_side_from: self.any_side.as_deref().map(mastery_named).transpose()?,
             needs_effect: self.needs_effect,
             ignores_immunity: self.ignores_immunity,
+            specialist: self.specialist.as_ref().map(|b| match *b {
+                SpecialistDto::CreatureLevel { values } => SpecialistBonus::CreatureLevel(values),
+                SpecialistDto::Fixed { amount } => SpecialistBonus::Fixed(amount),
+                SpecialistDto::Total { value } => SpecialistBonus::Total(value),
+            }),
         })
     }
 }
@@ -2525,11 +2542,16 @@ mod tests {
                 amount: 1,
                 affects: Affects::Own,
             },
+            BattleEffect::SpellSpecialty {
+                spell: ruleset.spell_by_key("synthetic:hasten").unwrap(),
+                bp_per_level: 300,
+                level: 6,
+            },
         ];
         assert_eq!(setup.heroes[0], Some(expected.clone()));
-        // The defender's Corwin (E04a T11c): Gunnery, a 10 % discount, nine stack effects and a
-        // spell duration bonus (E04b T3a), written and read back unchanged; both owners can pay
-        // for a surrender.
+        // The defender's Corwin (E04a T11c): Gunnery, a 10 % discount, nine stack effects, a
+        // spell duration bonus (E04b T3a) and a spell specialty (T3c), written and read back
+        // unchanged; both owners can pay for a surrender.
         let corwin = setup.heroes[1].as_ref().unwrap();
         assert_eq!(
             corwin.hero_type,
@@ -2537,7 +2559,7 @@ mod tests {
         );
         assert_eq!(
             (corwin.surrender_discount_bp, corwin.effects.len()),
-            (1000, 10)
+            (1000, 11)
         );
         assert_eq!(corwin.effects[9], BattleEffect::SpellDuration { rounds: 2 });
         assert_eq!(corwin.war_machines.ballista, expected.war_machines.ballista);
@@ -3870,6 +3892,7 @@ mod tests {
                 },
                 effects: vec![SpellEffect::Timed(TimedChange::Speed)],
                 mass_from: Some(3),
+                specialist: Some(SpecialistBonus::CreatureLevel([3, 3, 2, 2, 1, 1, 0])),
                 ..SpellMagic::default()
             }
         );
@@ -3943,6 +3966,26 @@ mod tests {
             magic("synthetic:blaze").effects,
             [SpellEffect::Timed(TimedChange::FireShield)]
         );
+        // Format v9: a specialist's rule of the spell's own.
+        assert_eq!(
+            [
+                magic("synthetic:corrode").specialist,
+                magic("synthetic:boon").specialist,
+            ],
+            [Some(SpecialistBonus::Fixed(2)), None]
+        );
+        let total = SYNTHETIC_PACK.replacen(
+            "specialist = { kind = \"fixed\", amount = 2 }",
+            "specialist = { kind = \"total\", value = 3 }",
+            1,
+        );
+        let other = compile(&[&total], "synthetic:faithful").unwrap();
+        let corrode = other
+            .spell(other.spell_by_key("synthetic:corrode").unwrap())
+            .unwrap();
+        assert_eq!(corrode.magic.specialist, Some(SpecialistBonus::Total(3)));
+        let bad = SYNTHETIC_PACK.replacen("amount = 2 }", "amount = 2, value = 3 }", 1);
+        assert!(matches!(parse_pack(&bad), Err(PackError::Syntax(_))));
         let text = SYNTHETIC_PACK.replacen("any_side = \"advanced\"", "any_side = \"all\"", 1);
         assert_eq!(
             parse_pack(&text).map(|_| ()),

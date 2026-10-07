@@ -611,8 +611,19 @@ pub fn harvest_heroes(
             ));
         }
     }
+    let mut specialist: BTreeMap<&str, &toml::Value> = BTreeMap::new();
+    for t in &gap.spells.specialist {
+        for name in &t.spells {
+            if specialist.insert(name.as_str(), &t.bonus).is_some() {
+                return Err(format!(
+                    "gapfill: spell `{name}` has two specialist entries"
+                ));
+            }
+        }
+    }
     let mut timed_spells = 0;
     let mut other_spells = 0;
+    let mut specialists = 0;
     let sod_spells = spell_rows(&tables.sod_spells, "SPTRAITS.TXT")?;
     let ab_spells = spell_rows(&tables.ab_spells, "H3ab_bmp/SPTRAITS.TXT")?;
     // Every spell's key and pack by name (counters may name a later spell).
@@ -702,6 +713,7 @@ pub fn harvest_heroes(
             ));
         }
         let extra = targeting.remove(name);
+        let with_effects = damage_spells + timed_spells + other_spells;
         if category == "combat" && flags & SPELL_DAMAGE != 0 {
             let target = match (flags & SPELL_SINGLE != 0, flags & SPELL_AREA != 0) {
                 (false, false) => "none",
@@ -759,9 +771,23 @@ pub fn harvest_heroes(
                 "gapfill: targeting for `{name}`, which has no harvested effects"
             ));
         }
+        if let Some(bonus) = specialist.remove(name) {
+            specialists += 1;
+            if damage_spells + timed_spells + other_spells == with_effects {
+                return Err(format!(
+                    "gapfill: specialist for `{name}`, which has no effects"
+                ));
+            }
+            let _ = writeln!(text, "specialist = {bonus}");
+        }
         spell_keys.push((key, pack));
     }
-    if let Some(name) = timed.keys().chain(other.keys()).next() {
+    if let Some(name) = timed
+        .keys()
+        .chain(other.keys())
+        .chain(specialist.keys())
+        .next()
+    {
         return Err(format!("gapfill: effect entry for unknown spell `{name}`"));
     }
     if let Some(name) = targeting.keys().next() {
@@ -771,8 +797,9 @@ pub fn harvest_heroes(
         "spells: target and damage effect of {damage_spells} damage spells from the flag word; \
          target, side, mass version and conditions of {timed_spells} timed spells from the flag \
          word, their changes from the gap-fill file; target and mass version of {other_spells} \
-         dispel and heal spells from the flag word, the rest from the gap-fill file; other \
-         effect kinds come with their tasks (E04b T4-T7)"
+         dispel and heal spells from the flag word, the rest from the gap-fill file; \
+         {specialists} specialist bonuses from the gap-fill file; other effect kinds come with \
+         their tasks (E04b T4-T7)"
     ));
     report.push(
         "SPTRAITS: town chances, AI values, texts and the attribute column not harvested (E04b, E09)"

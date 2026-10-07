@@ -308,6 +308,9 @@ mass = "expert"                     # from Expert no target: every stack it may 
 excludes = ["war_machine"]
 counters = ["drag"]                 # a cast ends these spells' effects
 effects = [{ kind = "timed", change = "speed" }]
+# v9: what a specialist in it adds, by the stack's creature level 1 to 7 (or a fixed `amount`,
+# or a `total` the value becomes); without it a specialty scales the value by the hero's level
+specialist = { kind = "creature_level", values = [3, 3, 2, 2, 1, 1, 0] }
 
 [[spell]]
 id = "drag"
@@ -426,6 +429,7 @@ side = "enemy"
 duration = "permanent"              # rounds (default) | permanent
 cumulative = true                   # every cast applies its changes again
 effects = [{ kind = "timed", change = "defense_loss" }]
+specialist = { kind = "fixed", amount = 2 }
 
 # E04b T3b1 (pack format v6): protections, Slayer and extra retaliations.
 [[spell]]
@@ -471,6 +475,7 @@ polarity = "positive"
 target = "stack"
 side = "own"
 effects = [{ kind = "timed", change = "slayer" }]
+specialist = { kind = "creature_level", values = [4, 3, 2, 1, 0, 0, 0] }
 
 [[spell]]
 id = "riposte"

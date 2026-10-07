@@ -19,7 +19,8 @@ defender_funds = 10000
 # Both heroes cast (E04b T2c): Brea knows the four damage spells with Basic Storm magic, so
 # random rollouts exercise every kind of damage spell the battle implements; since E04b T3a also
 # three timed storm spells, since T3b1 Smiting (Slayer) and Riposte (extra retaliations), since
-# T3b1b Mend (a Cure: it heals and ends the negative spells), since T3b2 Blaze (a Fire Shield).
+# T3b1b Mend (a Cure: it heals and ends the negative spells), since T3b2 Blaze (a Fire Shield);
+# since T3c she is a level-6 specialist in Hasten (by the creature level, BAT-MAG-020).
 [scenario.attacker_hero]
 hero_type = "synthetic:brea"
 attack = 2
@@ -40,7 +41,11 @@ melee_bp = 1000
 reduction_bp = 500
 ballista = { shots = 1, double_damage_chance_bp = 5000 }
 tent = { heal_bonus_bp = 10000 }
-effects = [{ kind = "morale", amount = 1 }, { kind = "luck", amount = 1 }]
+effects = [
+    { kind = "morale", amount = 1 },
+    { kind = "luck", amount = 1 },
+    { kind = "spell_specialty", spell = "synthetic:hasten", bp_per_level = 300, level = 6 },
+]
 
 # The defender is led by a hero too (E04a T11c), so both sides may retreat and surrender (the
 # owners can pay) and the workload runs the heroes' stack effects (BAT-HER-005/006). Corwin at
@@ -54,7 +59,8 @@ effects = [{ kind = "morale", amount = 1 }, { kind = "luck", amount = 1 }]
 # mastery (Spark, Arc), and his timed spells last 2 rounds longer, as a Storm Orb's would. Since
 # E04b T3b1 he shields his stacks (Aegis, mass at Expert) and hallows them against storm spells;
 # since T3b1b he purges every stack's effects (mass at Expert, sparing Drag), since T3b2 he
-# enrages one (a Frenzy).
+# enrages one (a Frenzy); since T3c he is a level-1 specialist in Boon (a Bless: his blessed
+# stacks' strikes gain 3 % of their base per level step, BAT-MAG-020), as given.
 [scenario.defender_hero]
 hero_type = "synthetic:corwin"
 attack = 1
@@ -82,6 +88,7 @@ effects = [
     { kind = "regeneration", creatures = { flag = "alive" }, hit_points = 10 },
     { kind = "shoot_when_adjacent", creatures = { flag = "shooter" } },
     { kind = "spell_duration", rounds = 2 },
+    { kind = "spell_specialty", spell = "synthetic:boon", bp_per_level = 300, level = 1 },
 ]
 
 [[attacker]]

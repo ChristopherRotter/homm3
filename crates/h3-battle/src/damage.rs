@@ -14,6 +14,7 @@ use h3_kernel::arith::{
     DOUBLE_BITS, SINGLE_BITS, SINGLE_FRAC_BITS, WideUint, X87, mul_div_floor, single_precision,
 };
 
+use crate::magic::Specialist;
 use crate::state::{Stack, StackFlags};
 
 /// Base damage of a stack of `count` creatures with damage range `[min, max]`: for up to
@@ -60,6 +61,9 @@ pub(crate) struct Strike {
     pub hate_percent: u16,
     /// The striker's hero's Offense or Archery, basis points (BAT-HER-004).
     pub hero_bonus_bp: u16,
+    /// The striker's hero's specialty in the striker's Bless: its bonus of the base joins the
+    /// first stage (BAT-MAG-020).
+    pub blessing: Option<Specialist>,
     /// A death blow: +100 % (BAT-DMG-007).
     pub death_blow: bool,
     /// The Ballista's double damage: +100 % (BAT-WAR-006).
@@ -83,6 +87,7 @@ impl Strike {
             defense,
             hate_percent: 0,
             hero_bonus_bp: 0,
+            blessing: None,
             death_blow: false,
             double_damage: false,
             penalty_percent: 0,
@@ -105,14 +110,24 @@ impl Strike {
 
     /// The first stage of the damage of `base`, before the defense, the penalties and the
     /// protections: the executable's stage 1 with quirk Q-0005 (`staged`), else `floor(base ·
-    /// (1 + Σ bonus))` with decimal rates (Fire Shield's base, BAT-MAG-018).
+    /// (1 + Σ bonus))` with decimal rates, plus a Bless specialist's bonus (Fire Shield's base,
+    /// BAT-MAG-018).
     pub(crate) fn stage_one(&self, base: u64, params: &BattleParams, staged: bool) -> u64 {
         if staged {
             self.staged_one(base, params)
         } else {
             let bonus = self.exact_bonus(params);
-            mul_div_floor(base, BP + bonus, BP).unwrap_or(u64::MAX)
+            mul_div_floor(base, BP + bonus, BP)
+                .unwrap_or(u64::MAX)
+                .saturating_add_signed(self.blessed(base))
         }
+    }
+
+    /// A Bless specialist's bonus of `base` (BAT-MAG-020), or 0; never below `−base`.
+    fn blessed(&self, base: u64) -> i64 {
+        self.blessing.map_or(0, |b| {
+            b.bonus(base).max(-i64::try_from(base).unwrap_or(i64::MAX))
+        })
     }
 
     /// The bonus sum of the exact formula in basis points: the whole bonuses, jousting, hate,
@@ -132,8 +147,8 @@ impl Strike {
         bonus
     }
 
-    /// `floor(base · (1 + Σ bonus) · Π (1 − reduction))` with decimal rates, in basis points.
-    /// Saturates on absurd inputs.
+    /// `floor((base · (1 + Σ bonus) + a Bless specialist's bonus) · Π (1 − reduction))` with
+    /// decimal rates, in basis points. Saturates on absurd inputs.
     fn exact(&self, base: u64, p: &BattleParams) -> u64 {
         let diff = u64::from(self.attack.abs_diff(self.defense));
         let bonus = self.exact_bonus(p);
@@ -147,8 +162,14 @@ impl Strike {
         reductions[2] = u64::from(100u16.saturating_sub(self.protection_percent)) * 100;
         reductions[3] = u64::from(self.hero_reduction_bp);
         // One rounding: the five factors' product (at most 2^64 · (2^64)^5, so the wide
-        // product never saturates) divided by BP^5 at the end.
-        let mut n = WideUint::new(base).saturating_mul(BP + bonus);
+        // product never saturates) divided by BP^5 at the end. The specialist's bonus is a
+        // whole amount (at least −base), so the first stage is `(base + extra) · BP + base ·
+        // bonus` over BP.
+        let extra = self.blessed(base);
+        let whole = base.saturating_add_signed(extra);
+        let mut n = WideUint::new(whole)
+            .saturating_mul(BP)
+            .saturating_add(WideUint::new(base).saturating_mul(bonus));
         for r in reductions {
             n = n.saturating_mul(BP - r.min(BP));
         }
@@ -214,6 +235,8 @@ impl Strike {
                 .plus(stored(sum, SINGLE_BITS))
                 .trunc();
         }
+        // A Bless specialist's bonus right after the hero's (`installation.md` §7.12).
+        sum = sum.saturating_add_signed(self.blessed(base));
         let whole = u64::from(self.death_blow) + u64::from(self.double_damage);
         base.saturating_add(sum)
             .saturating_add(base.saturating_mul(whole))

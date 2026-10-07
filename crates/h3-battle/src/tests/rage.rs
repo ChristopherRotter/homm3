@@ -22,6 +22,7 @@ fn give(s: &mut BattleState, r: &Ruleset, id: u8, name: &str, mastery: u8) {
         spell: r.spell(id_of).unwrap(),
         mastery,
         rounds: 5,
+        own: crate::magic::SpellBonus::default(),
     };
     crate::effects::apply(s, r, cast, StackId(id), &mut Vec::<Event>::new());
 }

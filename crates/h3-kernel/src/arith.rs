@@ -220,8 +220,8 @@ impl X87 {
 const WIDE_LIMBS: usize = 8;
 
 /// An unsigned integer of 512 bits for exact products of up to eight `u64` factors (damage
-/// formulas with several rates). Only what those need: multiply by a `u64`, divide by a `u64`
-/// or a power of two, rounding down.
+/// formulas with several rates). Only what those need: add, multiply by a `u64`, divide by a
+/// `u64` or a power of two, rounding down.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct WideUint {
     /// Little-endian limbs.
@@ -264,6 +264,24 @@ impl WideUint {
             }
             out.len += 1;
         }
+        out.trim();
+        out
+    }
+
+    /// `self + rhs`, saturating at [`WideUint::MAX`].
+    pub fn saturating_add(self, rhs: Self) -> Self {
+        let mut out = Self::new(0);
+        let mut carry = false;
+        for ((o, &a), &b) in out.limbs.iter_mut().zip(&self.limbs).zip(&rhs.limbs) {
+            let (sum, c1) = a.overflowing_add(b);
+            let (sum, c2) = sum.overflowing_add(u64::from(carry));
+            *o = sum;
+            carry = c1 || c2;
+        }
+        if carry {
+            return Self::MAX;
+        }
+        out.len = WIDE_LIMBS;
         out.trim();
         out
     }
@@ -504,6 +522,8 @@ mod tests {
             prop_assert_eq!(lo(w), p);
             prop_assert_eq!(lo(w.div_floor(d)), p / u128::from(d.get()));
             prop_assert_eq!(lo(w.shr_floor(s)), p.checked_shr(s).unwrap_or(0));
+            let sum = WideUint::new(a).saturating_add(WideUint::new(b));
+            prop_assert_eq!(lo(sum), u128::from(a) + u128::from(b));
         }
     }
 
@@ -531,6 +551,15 @@ mod tests {
         assert_eq!(w.shr_floor(448), WideUint::new(u64::MAX - 7));
         assert_eq!(w.shr_floor(449), WideUint::new((u64::MAX - 7) >> 1));
         assert_eq!(WideUint::new(0).saturating_mul(5), WideUint::new(0));
+        // Sums carry into the next limb and saturate at the top.
+        let two64 = WideUint::new(u64::MAX).saturating_add(WideUint::new(1));
+        assert_eq!(two64.shr_floor(64), WideUint::new(1));
+        assert_eq!(two64.to_u64(), None);
+        assert_eq!(w.saturating_add(WideUint::new(0)), w);
+        assert_eq!(
+            WideUint::MAX.saturating_add(WideUint::new(1)),
+            WideUint::MAX
+        );
         assert_eq!(WideUint::new(0).to_u64(), Some(0));
         // 2^128 · 3 shifted by 128 is 3 (whole-limb shift).
         let big = WideUint::new(1 << 32)

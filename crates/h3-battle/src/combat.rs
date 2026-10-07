@@ -9,7 +9,7 @@
 
 use h3_content::{
     Ability, BattleParams, CompiledAbility, CreatureFlag, FIRE_SHIELD_FIRST_STAGE,
-    FRENZY_REDUCED_DEFENSE, FULL_BP, Ruleset, SINGLE_PRECISION_RATES,
+    FRENZY_REDUCED_DEFENSE, FULL_BP, Ruleset, SINGLE_PRECISION_RATES, TimedChange,
 };
 use h3_contracts::{BattleResult, BattleSide};
 use h3_kernel::arith::mul_div_floor;
@@ -17,9 +17,11 @@ use h3_kernel::arith::mul_div_floor;
 use crate::damage::{
     Strike, apply_damage, base_damage, effective_defense, frenzied, reduced_defense, resurrect,
 };
+use crate::effects::DamageRoll;
 use crate::event::{Event, EventKind, Sink, StrikeFlags};
 use crate::geometry::{Direction, Field, Footprint, Hex, HexSet};
 use crate::hero::{self, HeroRecord};
+use crate::magic::Specialist;
 use crate::state::{
     BattleState, STACK_CAPACITY, Stack, StackFlags, StackId, StackTraits, UNLIMITED_RETALIATIONS,
 };
@@ -120,7 +122,14 @@ fn strike<S: Sink>(
             params.damage_roll_samples,
         ),
     };
-    let (inputs, flags) = strike_inputs(ruleset, &state.heroes, (&striker, &victim), flags, blow);
+    let terms = specialist_terms(state, ruleset, attacker);
+    let (inputs, flags) = strike_inputs(
+        ruleset,
+        &state.heroes,
+        (&striker, &victim),
+        (flags, terms),
+        blow,
+    );
     let staged = staged(ruleset);
     let damage = inputs.damage(base, params, staged);
     let lost = damage.min(victim.total_hp());
@@ -161,7 +170,7 @@ fn strike_inputs(
     ruleset: &Ruleset,
     heroes: &[Option<HeroRecord>; 2],
     (striker, victim): (&Stack, &Stack),
-    flags: StrikeFlags,
+    (flags, (slayer_bonus, blessing)): (StrikeFlags, SpecialistTerms),
     blow: Blow,
 ) -> (Strike, StrikeFlags) {
     let params = ruleset.battle();
@@ -200,7 +209,7 @@ fn strike_inputs(
     let mut attack = striker.attack_now(ranged);
     // rule: BAT-MAG-014
     if slays(ruleset, striker.spells.slayer.1, victim) {
-        attack += i32::from(striker.spells.slayer.0);
+        attack += i32::from(striker.spells.slayer.0) + slayer_bonus;
     }
     // rule: BAT-MAG-019
     if striker.spells.frenzy > 0 {
@@ -212,6 +221,7 @@ fn strike_inputs(
         );
     }
     let mut inputs = Strike::new(attack, defense);
+    inputs.blessing = blessing;
     inputs.hate_percent = hate_percent;
     inputs.jousting = jousting;
     let mut flags = flags;
@@ -242,6 +252,46 @@ fn strike_inputs(
     inputs.hero_bonus_bp = if ranged { own.ranged_bp } else { own.melee_bp };
     inputs.hero_reduction_bp = hero::damage(heroes, victim.side).reduction_bp;
     (inputs, flags)
+}
+
+/// What the striker's hero adds at a strike as a specialist in spells active on the striker
+/// (BAT-MAG-020): to Slayer's attack bonus, and to the first damage stage of a blessed striker.
+type SpecialistTerms = (i32, Option<Specialist>);
+
+/// The [`SpecialistTerms`] of stack `s` (BAT-MAG-020; `installation.md` §7.12): the hero of its
+/// side (the controller's in the original; a hypnotized stack's, E04b T4) as a specialist in its
+/// Slayer, the bonus of Slayer's value by the stack's level, and in its Bless.
+// rule: BAT-MAG-020
+fn specialist_terms(state: &BattleState, ruleset: &Ruleset, s: StackId) -> SpecialistTerms {
+    let striker = state.at(s);
+    let blessed = matches!(striker.spells.damage, DamageRoll::Maximum(_));
+    let hero = state.heroes[striker.side.index()]
+        .as_ref()
+        .filter(|h| (blessed || striker.spells.slayer.0 > 0) && h.magic.bonuses.has_specialty());
+    let mut terms = (0, None);
+    let Some(hero) = hero else {
+        return terms;
+    };
+    let specialties = state.effects.of(s).iter().filter_map(|e| {
+        ruleset.spell(e.spell).and_then(|spell| {
+            let own = hero.magic.bonuses.spell(e.spell);
+            Specialist::of(ruleset, spell, own, striker.creature).map(|sp| (spell, sp, e.value))
+        })
+    });
+    for (spell, specialist, value) in specialties {
+        for change in spell.magic.effects.iter().filter_map(|c| c.timed()) {
+            match change {
+                TimedChange::Slayer => {
+                    let bonus = specialist.bonus(value.into());
+                    terms.0 =
+                        i32::try_from(bonus.clamp(i32::MIN.into(), i32::MAX.into())).unwrap_or(0);
+                }
+                TimedChange::MaximumDamage => terms.1 = Some(specialist),
+                _ => {}
+            }
+        }
+    }
+    terms
 }
 
 /// The defense a frenzied `striker` adds to its attack (BAT-MAG-019): its defense with the Defend
@@ -287,11 +337,12 @@ pub(crate) fn shot_damage_range(
         lucky: false,
         double_damage: false,
     };
+    let terms = specialist_terms(state, ruleset, attacker);
     let (inputs, _) = strike_inputs(
         ruleset,
         &state.heroes,
         (striker, state.at(target)),
-        StrikeFlags::RANGED,
+        (StrikeFlags::RANGED, terms),
         blow,
     );
     let (params, staged) = (ruleset.battle(), staged(ruleset));

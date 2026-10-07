@@ -521,6 +521,11 @@ sources = ["s"]
 spell = "Bolt"
 requires = ["undead", "alive"]
 sources = ["s"]
+
+[[spells.specialist]]
+spells = ["Bolt"]
+bonus = { kind = "fixed", amount = 2 }
+sources = ["s"]
 "#;
 
 fn gap() -> GapFill {
@@ -810,7 +815,8 @@ fn harvests_hero_content() {
          excludes = [\"war_machine\"]\neffects = [{ kind = \"damage\" }]"
     ));
     assert!(sod.contains(
-        "polarity = \"positive\"\nrequires = [\"undead\", \"alive\"]\neffects = [{ kind = \"damage\" }]"
+        "polarity = \"positive\"\nrequires = [\"undead\", \"alive\"]\neffects = [{ kind = \"damage\" }]\n\
+         specialist = { amount = 2, kind = \"fixed\" }"
     ));
     let look = base.split("id = \"look\"").nth(1).unwrap();
     assert!(!look.split("[[").next().unwrap().contains("effects"));
@@ -1093,6 +1099,21 @@ fn hero_content_errors() {
             "bp_per_level = 300\n",
             "bp_per_level = 300\nfixed = [{ hero = \"Hero 0\", bp = 5000 }]\n",
             "a fixed spell specialty names no spell specialist",
+        ),
+        (
+            "spells = [\"Bolt\"]",
+            "spells = [\"Look\"]",
+            "specialist for `Look`, which has no effects",
+        ),
+        (
+            "spells = [\"Bolt\"]",
+            "spells = [\"Nope\"]",
+            "effect entry for unknown spell `Nope`",
+        ),
+        (
+            "spells = [\"Bolt\"]",
+            "spells = [\"Bolt\", \"Bolt\"]",
+            "spell `Bolt` has two specialist entries",
         ),
     ] {
         let g = GapFill::parse(&GAP.replace(from, to)).unwrap();

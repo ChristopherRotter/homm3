@@ -1522,6 +1522,20 @@ url = "docs/formats/installation.md"
 retrieved = "2026-10-06"
 
 [[source]]
+id = "exe-spell-specialist"
+kind = "original-data"
+ref = "Heroes3.exe code reading (docs/formats/installation.md 7.12): the specialty bonus 0x4E5FF0 switches on the spell (byte table 0x4E60E8, jumps 0x4E60CC): Bloodlust, Precision, Weakness, Stone Skin, Prayer and Haste by the stack's creature level (i32 table 0x63EAA8: 3, 3, 2, 2, 1, 1, 0), Slayer likewise (0x63EAC4: 4, 3, 2, 1, 0, 0, 0), Disrupting Ray 2, Fortune 3 - v; every other spell ceil((hero level div creature level) x t x 0.03)"
+url = "docs/formats/installation.md"
+retrieved = "2026-10-07"
+
+[[source]]
+id = "vcmi-spell-specialist"
+kind = "vcmi"
+ref = "lib/spells/effects/Timed.cpp (1.7.5): SPECIAL_PECULIAR_ENCHANT +3, +2, +1 for tiers 1-2, 3-4, 5-6; lib/battle/DamageCalculator.cpp: Coronius' Slayer + max(5 - tier, 0); config/heroes: Aenain's Disrupting Ray SPECIAL_ADD_VALUE_ENCHANT 2, Melodia's Fortune SPECIAL_FIXED_VALUE_ENCHANT 3"
+url = "https://github.com/vcmi/vcmi/blob/1.7.5/lib/spells/effects/Timed.cpp"
+retrieved = "2026-10-07"
+
+[[source]]
 id = "vcmi-spells-timed"
 kind = "vcmi"
 ref = "config/spells/timed.json (1.7.5): haste, slow, bloodlust, precision, weakness, stoneSkin, disruptingRay (cumulative, permanent), prayer, bless, curse, mirth, sorrow, fortune, misfortune: their bonuses by level and smart mass targets at Expert; counters for five pairs"
@@ -2035,6 +2049,29 @@ spell = "Cure"
 effects = ["dispel", "heal"]
 dispels = ["Curse", "Weakness", "Sorrow", "Misfortune", "Slow", "Berserk", "Hypnotize", "Forgetfulness", "Blind", "Stone Gaze", "Poison", "Disease", "Paralyze", "Age"]
 sources = ["exe-dispel-cure"]
+
+# What a specialist in a spell adds to its value by a rule of the spell's own (E04b T3c, pack
+# format v9; installation.md 7.12). Every other spell specialty scales the value by the hero's
+# rate (heroes.spell_specialty).
+[[spells.specialist]]
+spells = ["Bloodlust", "Precision", "Weakness", "Stone Skin", "Prayer", "Haste"]
+bonus = { kind = "creature_level", values = [3, 3, 2, 2, 1, 1, 0] }
+sources = ["exe-spell-specialist", "vcmi-spell-specialist"]
+
+[[spells.specialist]]
+spells = ["Slayer"]
+bonus = { kind = "creature_level", values = [4, 3, 2, 1, 0, 0, 0] }
+sources = ["exe-spell-specialist", "vcmi-spell-specialist"]
+
+[[spells.specialist]]
+spells = ["Disrupting Ray"]
+bonus = { kind = "fixed", amount = 2 }
+sources = ["exe-spell-specialist", "vcmi-spell-specialist"]
+
+[[spells.specialist]]
+spells = ["Fortune"]
+bonus = { kind = "total", value = 3 }
+sources = ["exe-spell-specialist", "vcmi-spell-specialist"]
 
 [spells]
 # The order in which a damage spell's schools meet the target's protections (quirk Q-0007).

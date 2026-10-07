@@ -271,6 +271,56 @@ pub enum EffectDuration {
     OwnTurn,
 }
 
+/// Creature levels a [`SpecialistBonus::CreatureLevel`] table covers (1 to 7).
+pub const SPECIALIST_LEVELS: usize = 7;
+
+/// What a hero specialised in a spell adds to the spell's value on a stack, when the spell has a
+/// rule of its own (`docs/formats/installation.md` §7.12; v9). Without one, the hero's
+/// `spell_specialty` rate scales the value (damage, Cure, Bless).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum SpecialistBonus {
+    /// An amount by the stack's creature level, 1 to 7 (higher levels: the last).
+    CreatureLevel([u8; SPECIALIST_LEVELS]),
+    /// A fixed amount.
+    Fixed(u16),
+    /// The value becomes this total, whatever the mastery.
+    Total(u16),
+}
+
+impl SpecialistBonus {
+    /// The bonus to the value `t` on a stack of creature level `level` (at least 1).
+    pub fn bonus(self, level: u8, t: u64) -> i64 {
+        match self {
+            Self::CreatureLevel(values) => {
+                let i = usize::from(level.max(1) - 1).min(SPECIALIST_LEVELS - 1);
+                i64::from(values[i])
+            }
+            Self::Fixed(amount) => i64::from(amount),
+            Self::Total(total) => i64::from(total) - i64::try_from(t).unwrap_or(i64::MAX),
+        }
+    }
+}
+
+impl CanonicalHash for SpecialistBonus {
+    /// Kind (0 creature level, 1 fixed, 2 total) and its values.
+    fn hash_into(&self, h: &mut StateHasher) {
+        match *self {
+            Self::CreatureLevel(values) => {
+                h.write_u8(0);
+                h.write_bytes(&values);
+            }
+            Self::Fixed(amount) => {
+                h.write_u8(1);
+                h.write_u16(amount);
+            }
+            Self::Total(total) => {
+                h.write_u8(2);
+                h.write_u16(total);
+            }
+        }
+    }
+}
+
 /// Highest mastery (Expert).
 pub const MAX_MASTERY: u8 = 3;
 
@@ -328,6 +378,8 @@ pub struct SpellMagic {
     pub duration: EffectDuration,
     /// A cast on a stack it already affects applies its changes again (Disrupting Ray; v5).
     pub cumulative: bool,
+    /// What a specialist in the spell adds to its value by a rule of its own (v9).
+    pub specialist: Option<SpecialistBonus>,
 }
 
 impl SpellMagic {
@@ -418,7 +470,8 @@ impl SpellMagic {
 impl CanonicalHash for SpellMagic {
     /// Target, area (presence, inner, radii), chain (presence, targets, factor), side (v15),
     /// condition bits, effects (count, codes: kind and change), mind, mass (0: none), duration,
-    /// cumulative (v17); any side (0: never), needs effect, ignores immunity (v19).
+    /// cumulative (v17); any side (0: never), needs effect, ignores immunity (v19); the
+    /// specialist bonus (presence, then the bonus; v20).
     fn hash_into(&self, h: &mut StateHasher) {
         h.write_u8(self.target as u8);
         h.write_bool(self.area.is_some());
@@ -445,6 +498,10 @@ impl CanonicalHash for SpellMagic {
         h.write_u8(self.any_side_from.unwrap_or(0));
         h.write_bool(self.needs_effect);
         h.write_bool(self.ignores_immunity);
+        h.write_bool(self.specialist.is_some());
+        if let Some(b) = self.specialist {
+            b.hash_into(h);
+        }
     }
 }
 
@@ -762,6 +819,14 @@ mod tests {
             ),
             (
                 SpellMagic {
+                    specialist: Some(SpecialistBonus::Fixed(2)),
+                    ..SpellMagic::default()
+                },
+                true,
+                "targeting without effects",
+            ),
+            (
+                SpellMagic {
                     duration: EffectDuration::Permanent,
                     ..damage(SpellTarget::Stack)
                 },
@@ -773,6 +838,20 @@ mod tests {
             let error = m.error(castable).unwrap_or_default();
             assert!(error.contains(reason), "{m:?}: {error}");
         }
+    }
+
+    #[test]
+    fn specialist_bonuses_by_kind() {
+        let table = SpecialistBonus::CreatureLevel([3, 3, 2, 2, 1, 1, 0]);
+        assert_eq!(table.bonus(1, 6), 3);
+        assert_eq!(table.bonus(4, 6), 2);
+        assert_eq!(table.bonus(7, 6), 0);
+        // Level 0 counts as 1, levels above 7 as 7.
+        assert_eq!(table.bonus(0, 6), 3);
+        assert_eq!(table.bonus(9, 6), 0);
+        assert_eq!(SpecialistBonus::Fixed(2).bonus(3, 5), 2);
+        assert_eq!(SpecialistBonus::Total(3).bonus(3, 1), 2);
+        assert_eq!(SpecialistBonus::Total(3).bonus(3, 5), -2);
     }
 
     #[test]
@@ -868,6 +947,22 @@ mod tests {
             },
             SpellMagic {
                 effects: vec![SpellEffect::Heal],
+                ..base.clone()
+            },
+            SpellMagic {
+                specialist: Some(SpecialistBonus::CreatureLevel([3, 3, 2, 2, 1, 1, 0])),
+                ..base.clone()
+            },
+            SpellMagic {
+                specialist: Some(SpecialistBonus::CreatureLevel([4, 3, 2, 1, 0, 0, 0])),
+                ..base.clone()
+            },
+            SpellMagic {
+                specialist: Some(SpecialistBonus::Fixed(2)),
+                ..base.clone()
+            },
+            SpellMagic {
+                specialist: Some(SpecialistBonus::Total(2)),
                 ..base.clone()
             },
         ];

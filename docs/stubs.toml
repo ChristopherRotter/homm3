@@ -7,9 +7,3 @@
 # where  = "crates/h3-battle/src/spells.rs::cast"
 # reason = "Spells are out of scope for E01"
 # epic   = "E03"
-
-[[stub]]
-id     = "STUB-0002"
-where  = "crates/h3-battle/src/effects.rs::apply"
-reason = "A spell specialist's bonus to a timed spell's value (the original's 0x4E5FF0 for Bloodlust, Precision, Weakness, Stone Skin, Disrupting Ray, Prayer, Fortune, Haste) is not added yet"
-epic   = "E04b T3c"

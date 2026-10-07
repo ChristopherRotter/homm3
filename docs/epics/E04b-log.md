@@ -422,3 +422,41 @@ records how and why the tasks went.
   play), `tests/abilities.rs` (BAT-DMG-006 in both roundings).
 - **Left:** the Efreet Sultans' own shield (T7), a clone's health of 1 for the cap (T6), a
   hypnotized stack's controller (T4); two quirk candidates for the user (BACKLOG).
+
+### T3c1 — The spell specialists, quirk Q-0010 (2026-10-07)
+
+- **Seam:** the user classified Fire Shield's base as fix-optional and kept the breath's second
+  stack as the rule in every profile (considered, no flag), and cut T3c in three: the
+  specialists (T3c1) and Q45 option (b) (T3c2) this session, a checkpoint before batch 2b (T3c3).
+- **Q-0010** (`31fbd01`): `quirk.battle.fire_shield_first_stage`; strict-fixed reflects from the
+  hit points the strike took. The same commit fixes the x87 property test's helper (a
+  difference below 2^-12 panicked a coverage run; now a unit test).
+- **Code reading** (`installation.md` §7.12): 0x4E5FF0 switches on the spell: Bloodlust,
+  Precision, Weakness, Stone Skin, Prayer, Haste by the stack's level (3, 3, 2, 2, 1, 1, 0),
+  Slayer (4, 3, 2, 1, 0, 0, 0), Disrupting Ray 2, Fortune 3 − v, Magic Arrow and Fire Wall as
+  known, else the scaled formula. Its callers: the cast of the seven timed spells (caster,
+  target), Disrupting Ray, Cure, Bless in stage 1 after Offense or Archery and Slayer's attack
+  (the striker's side's hero, the striker's level). VCMI agrees except Bless (an additive
+  premium).
+- **Content (pack format v9):** `SpellMagic.specialist` (`SpecialistBonus`: creature level,
+  fixed, total), harvested from the gap-fill (`[[spells.specialist]]`, sources
+  `exe-spell-specialist`, `vcmi-spell-specialist`); ruleset hash v20.
+- **Battle:** BAT-MAG-020 (`magic::Specialist`, `specialist_bonus`): at the cast for a spell
+  with a rule of its own (`TimedCast.own`), Cure's heal, the damage spells (as before), Slayer
+  and Bless at the strike (`combat::specialist_terms`, `Strike::blessing`). `WideUint` gains
+  `saturating_add`. No state change.
+- **Agent decisions (change freely):** Slayer's bonus is added at the strike, not stored at the
+  cast (as the original; only a hypnotized stack would differ); in strict-fixed a Bless
+  specialist's bonus is a whole amount rounded up, as BAT-MAG-004's, added to the exact first
+  stage before the one rounding; a timed spell without a rule of its own gets no scaled bonus at
+  the cast (the original's call sites); levels above 7 read the table's last value.
+- **Workload:** Brea is a level-6 Hasten specialist, Corwin a level-1 Boon (Bless) specialist;
+  golden replays re-recorded. The old workload (`31fbd01`'s packs) on the new engine: 9 141
+  steps, 426.55 M Ir against 426.33 M (+0.05 %); the new one 8 818 steps, 416.84 M Ir;
+  `bench-check` re-baselined. `h3 bench` full ≈ 100–130 k steps/s (noisy sandbox).
+- **Tests:** `tests/specialist.rs` (the creature-level table through a cast and on levels 1–7,
+  another spell's specialty, Mirth without a rule, Weakness before the cut, Disrupting Ray to 0,
+  Fortune's total, Slayer and Bless at the strike in both roundings, Cure by level); the pack
+  and harvester tests for `specialist`.
+- **Left:** a hypnotized stack's controller as the hero (T4), the raising spells' and
+  Hypnotize's specialist values (T6, T4).

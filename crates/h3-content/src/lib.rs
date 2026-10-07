@@ -68,6 +68,6 @@ pub use ruleset::{
 };
 pub use spell::{
     EffectDuration, MASTERY_NAMES, MAX_AREA_RADIUS, MAX_CHAIN_TARGETS, MAX_MASTERY,
-    MAX_SPELL_EFFECTS, SpellArea, SpellChain, SpellEffect, SpellMagic, SpellTarget,
-    TargetConditions, TargetSide, TimedChange,
+    MAX_SPELL_EFFECTS, SPECIALIST_LEVELS, SpecialistBonus, SpellArea, SpellChain, SpellEffect,
+    SpellMagic, SpellTarget, TargetConditions, TargetSide, TimedChange,
 };

@@ -21,6 +21,7 @@ use h3_kernel::arith::{SINGLE_FRAC_BITS, single_precision};
 use h3_kernel::{CanonicalHash, StateHasher};
 
 use crate::event::{Event, EventKind, Sink};
+use crate::magic::{SpellBonus, specialist_bonus};
 use crate::state::{BattleState, Stack, StackFlags, StackId, StackTraits, UNLIMITED_RETALIATIONS};
 
 /// Entries reserved at the battle's start and on every fork (ADR-0014 point 5; measured in T3a).
@@ -266,12 +267,17 @@ pub(crate) struct TimedCast<'r> {
     pub(crate) mastery: u8,
     /// The caster's power plus its duration bonus, at least 1 (BAT-MAG-010).
     pub(crate) rounds: u16,
+    /// The casting hero's bonuses for the spell (none for a creature's cast; BAT-MAG-020).
+    pub(crate) own: SpellBonus,
 }
 
-/// Applies `cast` to the living stack `s` (BAT-MAG-009): its counters end first; an active effect
-/// of the same spell keeps its value and takes the longer duration, unless the spell is
-/// cumulative, which applies its changes again; otherwise a new entry takes the changes. The
-/// stack's values are recomputed and an `EffectApplied` event reports the rounds left.
+/// Applies `cast` to the living stack `s` (BAT-MAG-009): its counters end first; the value is the
+/// spell's effect at the mastery plus, for a spell with a specialist's rule of its own, the
+/// caster's specialist bonus for the stack (BAT-MAG-020; Slayer's counts at the strike); an
+/// active effect of the same spell keeps its value and takes the longer duration, unless the
+/// spell is cumulative, which applies its changes again; otherwise a new entry takes the
+/// changes. The stack's values are recomputed and an `EffectApplied` event reports the rounds
+/// left.
 // rule: BAT-MAG-009
 pub(crate) fn apply<S: Sink>(
     state: &mut BattleState,
@@ -289,10 +295,19 @@ pub(crate) fn apply<S: Sink>(
         // rule: BAT-MAG-019
         EffectDuration::OwnTurn => Some(if state.active == Some(s) { 1 } else { 2 }),
     };
-    // stub: STUB-0002 (a specialist's bonus to the value joins in E04b T3c)
-    let value = cast.spell.effect[usize::from(cast.mastery.min(3))];
-    let changes = cast.spell.magic.effects.iter().filter_map(|e| e.timed());
     let stack = *state.at(s);
+    let mut value = cast.spell.effect[usize::from(cast.mastery.min(3))];
+    let changes = cast.spell.magic.effects.iter().filter_map(|e| e.timed());
+    // rule: BAT-MAG-020
+    if cast.spell.magic.specialist.is_some() && !changes.clone().any(|c| c == TimedChange::Slayer) {
+        let bonus = specialist_bonus(ruleset, cast.spell, cast.own, stack.creature, value.into());
+        value = u16::try_from(
+            i64::from(value)
+                .saturating_add(bonus)
+                .clamp(0, u16::MAX.into()),
+        )
+        .unwrap_or(u16::MAX);
+    }
     let now = (
         i32::from(stack.attack) + i32::from(stack.spells.attack),
         stack.defense_now(),

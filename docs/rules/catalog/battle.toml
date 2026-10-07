@@ -1942,7 +1942,7 @@ id       = "BAT-MAG-009"
 title    = "A timed spell on a stack"
 context  = "battle"
 status   = "implemented"
-summary  = "A timed spell (SpellEffect::Timed) that takes effect on a living stack first ends the effects of the spells it counters (Spell.counters: Bless and Curse, Haste and Slow end each other; Bloodlust and Weakness, Mirth and Sorrow, Fortune and Misfortune do not and add up). If its own effect is already on the stack, the effect keeps its value and takes the longer of the two durations; a cumulative spell (Disrupting Ray) instead applies its changes again. Otherwise a new entry joins the battle's effect list with v = effect[mastery] and the changes made now: speed + v (never on a war machine; Haste, Prayer), attack + v (Prayer), defense + v (Stone Skin, Prayer), attack_loss takes min(v, the attack now) (Weakness; the attack now without Bloodlust and Precision, even below 0), defense_loss sets the defense now to max(0, defense − v) (Disrupting Ray). The other changes are read while the effect lasts (BAT-MAG-011). Events: EffectApplied with the rounds left, EffectEnded for each countered effect. The effect list and the stacks' values are public and part of the state hash."
+summary  = "A timed spell (SpellEffect::Timed) that takes effect on a living stack first ends the effects of the spells it counters (Spell.counters: Bless and Curse, Haste and Slow end each other; Bloodlust and Weakness, Mirth and Sorrow, Fortune and Misfortune do not and add up). If its own effect is already on the stack, the effect keeps its value and takes the longer of the two durations; a cumulative spell (Disrupting Ray) instead applies its changes again. Otherwise a new entry joins the battle's effect list with v = effect[mastery] (plus a specialist's bonus for a spell with a rule of its own, BAT-MAG-020) and the changes made now: speed + v (never on a war machine; Haste, Prayer), attack + v (Prayer), defense + v (Stone Skin, Prayer), attack_loss takes min(v, the attack now) (Weakness; the attack now without Bloodlust and Precision, even below 0), defense_loss sets the defense now to max(0, defense − v) (Disrupting Ray). The other changes are read while the effect lasts (BAT-MAG-011). Events: EffectApplied with the rounds left, EffectEnded for each countered effect. The effect list and the stacks' values are public and part of the state hash."
 numeric  = "integer"
 
   [[rule.source]]
@@ -2045,7 +2045,7 @@ id       = "BAT-MAG-014"
 title    = "Slayer"
 context  = "battle"
 status   = "implemented"
-summary  = "While Slayer is active on a stack, its strikes (melee and shots) against a creature with the king_1 flag at any mastery, none included, with king_2 from Advanced, with king_3 at Expert count v (8) more attack, in both stages of the damage formula (BAT-DMG-002). The mastery is the first cast's: a re-cast changes neither it nor v (BAT-MAG-009). A timed own-stack spell without a mass version. A Slayer specialist's bonus joins in E04b T3c."
+summary  = "While Slayer is active on a stack, its strikes (melee and shots) against a creature with the king_1 flag at any mastery, none included, with king_2 from Advanced, with king_3 at Expert count v (8) more attack, in both stages of the damage formula (BAT-DMG-002). The mastery is the first cast's: a re-cast changes neither it nor v (BAT-MAG-009). A timed own-stack spell without a mass version. A Slayer specialist adds by the striker's level at each strike (BAT-MAG-020)."
 numeric  = "integer"
 
   [[rule.source]]
@@ -2105,7 +2105,7 @@ id       = "BAT-MAG-017"
 title    = "Cure's heal"
 context  = "battle"
 status   = "implemented"
-summary  = "A heal effect (SpellEffect::Heal) restores up to the value (power × power factor + effect[mastery]; Cure: power × 5 + 10, 10, 20, 30) of the top creature's lost hit points, never above its full hit points and raising no creature; it applies after the spell's dispel effect (BAT-MAG-016) and is reported (SpellHealed) when it heals anything. Cure is a positive water spell of level 1 aimed at an own stack it can affect (immunities count), healthy or not and with or without negative effects (the original has no such test), mass at Expert on every own stack it can affect. A Cure specialist's bonus joins in E04b T3c (STUB-0002); Cure skips a hypnotized stack at Expert (E04b T4); Age's hit points (E04b T7)."
+summary  = "A heal effect (SpellEffect::Heal) restores up to the value (power × power factor + effect[mastery]; Cure: power × 5 + 10, 10, 20, 30) of the top creature's lost hit points, never above its full hit points and raising no creature; it applies after the spell's dispel effect (BAT-MAG-016) and is reported (SpellHealed) when it heals anything. Cure is a positive water spell of level 1 aimed at an own stack it can affect (immunities count), healthy or not and with or without negative effects (the original has no such test), mass at Expert on every own stack it can affect. A Cure specialist heals more (BAT-MAG-020); Cure skips a hypnotized stack at Expert (E04b T4); Age's hit points (E04b T7)."
 numeric  = "integer"
 
   [[rule.source]]
@@ -2157,5 +2157,25 @@ numeric  = "integer"
   kind       = "vcmi"
   ref        = "config/spells/timed.json frenzy: attack + defense × 100/100/150/200 %, defense 0, until the stack's next turn"
   url        = "https://github.com/vcmi/vcmi/blob/1.7.5/config/spells/timed.json"
+  retrieved  = "2026-10-07"
+  confidence = "medium"
+
+[[rule]]
+id       = "BAT-MAG-020"
+title    = "Spell specialists"
+context  = "battle"
+status   = "implemented"
+summary  = "A hero whose specialty is a spell (BattleEffect::SpellSpecialty: the growth per level, 3 % in the original, and the hero's level) adds a bonus to the spell's value t on a stack: by the spell's own rule if it has one (pack field specialist): by the stack's creature level 1 to 7 (Bloodlust, Precision, Weakness, Stone Skin, Prayer, Haste: 3, 3, 2, 2, 1, 1, 0; Slayer: 4, 3, 2, 1, 0, 0, 0), a fixed amount (Disrupting Ray: 2) or what makes the value a total (Fortune: luck 3 at every mastery); otherwise ⌈per level × (hero level div creature level) × t⌉, the levels divided in whole numbers first. Where it applies: a timed spell with a rule of its own adds it to its value at the cast, from the casting hero, by the target's level (before Weakness's cut to the attack; Disrupting Ray takes it as well, the defense still at least 0); Slayer's counts at each strike against a creature Slayer counts against, from the hero of the striker's side, by the striker's level, on Slayer's 8; Bless's scaled bonus of a blessed striker's base damage b joins the first damage stage right after Offense or Archery, from the hero of the striker's side, by the striker's level, in both roundings (BAT-DMG-002; Fire Shield's base includes it); Cure heals its value plus the scaled bonus by the target's level; the damage spells as in BAT-MAG-004. Without a specialty in the spell, or for a creature's cast, nothing; the other timed spells (Bless's value, Curse, Mirth, Sorrow, Misfortune, Slow, the protections, Counterstrike, Fire Shield, Frenzy) get nothing at the cast. Not yet: a hypnotized stack's controller as the hero (E04b T4), the raising spells (T6), Hypnotize's hit-point limit (T4)."
+numeric  = "integer"
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (docs/formats/installation.md §7.12): 0x4E5FF0 returns 0 unless the hero's specialty is the spell; it switches on the spell (0x4E60E8, 0x4E60CC): the i32 tables 0x63EAA8 (3, 3, 2, 2, 1, 1, 0) and 0x63EAC4 (4, 3, 2, 1, 0, 0, 0) by the stack's 0-based level, Disrupting Ray 2, Fortune 3 − t, Magic Arrow t >> 1, Fire Wall t, else ceil((hero level div (level + 1)) × t × 0.03); called by 0x4448F0 for Bloodlust, Precision, Weakness, Stone Skin, Prayer, Fortune and Haste, by 0x5A1A53 (Disrupting Ray), 0x446500 (Cure), 0x443320 at 0x443776 (Bless, stage 1) and 0x442410 at 0x4424F7 (Slayer)"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "vcmi"
+  ref        = "lib/spells/effects/Timed.cpp SPECIAL_PECULIAR_ENCHANT (+3/+2/+1 by tier), lib/battle/DamageCalculator.cpp (Coronius: + max(5 − tier, 0)), config/heroes (Aenain +2, Melodia fixed 3; Adela's Bless a GENERAL_DAMAGE_PREMY of 3 % × level / tier among the additive bonuses: not followed, the original adds a separate term rounded up)"
+  url        = "https://github.com/vcmi/vcmi/blob/1.7.5/lib/spells/effects/Timed.cpp"
   retrieved  = "2026-10-07"
   confidence = "medium"

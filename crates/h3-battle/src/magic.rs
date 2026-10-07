@@ -16,8 +16,9 @@
 
 use h3_content::{
     Ability, CreatureFlag, CreatureTypeId, FIRST_PROTECTION, FULL_BP, MAX_FIELD_HEXES,
-    MAX_SPELL_SCHOOLS, MAX_SPELLS, Ruleset, SINGLE_PRECISION_RATES, Spell, SpellCategory,
-    SpellEffect, SpellId, SpellPolarity, SpellScope, SpellTarget, TargetSide, TimedChange,
+    MAX_SPELL_SCHOOLS, MAX_SPELLS, Ruleset, SINGLE_PRECISION_RATES, SpecialistBonus, Spell,
+    SpellCategory, SpellEffect, SpellId, SpellPolarity, SpellScope, SpellTarget, TargetSide,
+    TimedChange,
 };
 use h3_contracts::{BattleEffect, BattleHero, BattleSide};
 use h3_kernel::arith::{
@@ -150,8 +151,13 @@ impl SpellBonuses {
         Some(out)
     }
 
+    /// Whether a spell specialty is among them (BAT-MAG-020).
+    pub(crate) fn has_specialty(&self) -> bool {
+        self.spells.iter().any(|b| b.per_level_bp > 0)
+    }
+
     /// The bonuses for `spell` (zero without any).
-    fn spell(&self, spell: SpellId) -> SpellBonus {
+    pub(crate) fn spell(&self, spell: SpellId) -> SpellBonus {
         self.spells
             .iter()
             .find(|b| b.spell == spell)
@@ -608,7 +614,7 @@ fn grow(value: u64, bp: u64) -> u64 {
 /// extra damage or reduction and protection, in the original's order (`installation.md` §7.8):
 /// the caster's bonuses (× (1 + the best Orb among the spell's schools) × (1 + Sorcery), kept
 /// fractional and rounded down once; then the spell's own bonus of that, rounded down, and a
-/// specialist's `⌈per level × (hero level div creature level) × that⌉`), then the target's (one
+/// specialist's bonus of that, [`specialist_bonus`]), then the target's (one
 /// spell's extra damage, rounded down; the spell damage reduction, rounded down; one protection,
 /// [`protected`]). The rates are exact, or single precision with quirk Q-0005.
 // rule: BAT-MAG-004
@@ -630,17 +636,10 @@ fn spell_damage(
     let factor = (one + u128::from(bp(school))) * (one + u128::from(bp(b.all_bp)));
     let t = u64::try_from(u128::from(value) * factor / (one * one)).unwrap_or(u64::MAX);
     let own = b.spell(id);
-    let level = u64::from(
-        ruleset
-            .creature_info(creature)
-            .map_or(1, |c| c.level)
-            .max(1),
-    );
-    let steps = u64::from(own.level) / level;
-    let specialty = (u128::from(t) * u128::from(own.per_level_bp) * u128::from(steps))
-        .div_ceil(u128::from(FULL_BP));
+    let specialty = specialist_bonus(ruleset, spell, own, creature, t);
     let fixed = u128::from(t) * u128::from(own.damage_bp) / u128::from(FULL_BP);
-    let caster = u64::try_from(u128::from(t) + specialty + fixed).unwrap_or(u64::MAX);
+    let caster =
+        u64::try_from(u128::from(t.saturating_add_signed(specialty)) + fixed).unwrap_or(u64::MAX);
     let mut damage = caster;
     for ability in ruleset.abilities(creature) {
         match *ability {
@@ -654,6 +653,70 @@ fn spell_damage(
         }
     }
     (caster, protected(ruleset, spell, damage, protection))
+}
+
+/// A hero's specialty in a spell, for its casts or effects on one stack (BAT-MAG-020; the
+/// original's 0x4E5FF0, `installation.md` §7.12).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) struct Specialist {
+    /// The spell's own rule, if it has one.
+    rule: Option<SpecialistBonus>,
+    /// The hero's growth per level, basis points (the scaled rule).
+    per_level_bp: u32,
+    /// The hero's level.
+    hero_level: u8,
+    /// The stack's creature level, at least 1.
+    creature_level: u8,
+}
+
+impl Specialist {
+    /// The specialty of a hero whose bonuses for `spell` are `own`, on a stack of `creature`;
+    /// `None` if it has no specialty in the spell.
+    pub(crate) fn of(
+        ruleset: &Ruleset,
+        spell: &Spell,
+        own: SpellBonus,
+        creature: CreatureTypeId,
+    ) -> Option<Self> {
+        (own.per_level_bp > 0).then(|| Self {
+            rule: spell.magic.specialist,
+            per_level_bp: own.per_level_bp,
+            hero_level: own.level,
+            creature_level: ruleset
+                .creature_info(creature)
+                .map_or(1, |c| c.level)
+                .max(1),
+        })
+    }
+
+    /// The bonus to the value `t`: the spell's own rule (by the creature's level, a fixed
+    /// amount, or what makes the value a total), or else the scaled one, `⌈per level × (hero
+    /// level div creature level) × t⌉`, the levels divided in whole numbers.
+    // rule: BAT-MAG-020
+    pub(crate) fn bonus(self, t: u64) -> i64 {
+        match self.rule {
+            Some(rule) => rule.bonus(self.creature_level, t),
+            None => {
+                let steps = u128::from(self.hero_level / self.creature_level);
+                let bonus = (u128::from(t) * u128::from(self.per_level_bp) * steps)
+                    .div_ceil(u128::from(FULL_BP));
+                i64::try_from(bonus).unwrap_or(i64::MAX)
+            }
+        }
+    }
+}
+
+/// A spell specialist's bonus to the value `t` of `spell` on a stack of `creature`, `own` being
+/// the hero's bonuses for the spell: [`Specialist::bonus`], 0 without a specialty in the spell
+/// (BAT-MAG-020).
+pub(crate) fn specialist_bonus(
+    ruleset: &Ruleset,
+    spell: &Spell,
+    own: SpellBonus,
+    creature: CreatureTypeId,
+    t: u64,
+) -> i64 {
+    Specialist::of(ruleset, spell, own, creature).map_or(0, |s| s.bonus(t))
 }
 
 /// The damage a stack with Fire Shield reflects onto `striker` from a melee strike on the struck
@@ -859,9 +922,14 @@ fn affect<S: Sink>(
     }
     if cast.spell.magic.effects.contains(&SpellEffect::Heal) {
         // rule: BAT-MAG-017
+        let own = cast.bonuses.spell(cast.id);
+        let creature = state.at(s).creature;
+        // rule: BAT-MAG-020
+        let heal = value
+            .saturating_add_signed(specialist_bonus(ruleset, cast.spell, own, creature, value));
         let stack = state.at_mut(s);
         let lost = stack.max_hp.saturating_sub(stack.top_hp);
-        let healed = u32::try_from(value).unwrap_or(u32::MAX).min(lost);
+        let healed = u32::try_from(heal).unwrap_or(u32::MAX).min(lost);
         stack.top_hp += healed;
         if healed > 0 {
             sink.emit(Event::public(EventKind::SpellHealed {
@@ -876,6 +944,7 @@ fn affect<S: Sink>(
             spell: cast.spell,
             mastery: cast.mastery,
             rounds: cast.rounds,
+            own: cast.bonuses.spell(cast.id),
         };
         effects::apply(state, ruleset, timed, s, sink);
     }
