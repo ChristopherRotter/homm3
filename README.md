@@ -17,6 +17,7 @@ deterministically, at ≈ 245 k steps/s per core, behind a single quality gate.
 
 ```sh
 cargo xtask verify                 # all gates (see docs/05-testing.md); --quick for inner loop
+cargo xtask verify --scope battle --summary   # a lane's local loop, one line per gate
 cargo run -p h3-cli -- run --scenario packs/synthetic/scenarios/skirmish.toml --seed 7 --record /tmp/r.toml
 cargo run -p h3-cli -- verify /tmp/r.toml fixtures/replays/*.toml
 cargo run --release -p h3-cli -- bench
@@ -40,7 +41,9 @@ Tools for the full gate: `cargo install cargo-deny cargo-llvm-cov --locked`,
 | `crates/h3-formats` | readers for the original game's files (LOD, TXT, exe tables), used by the harvester, and the `.h3m` writer for experiment maps (adapter) |
 | `crates/h3-harvest` | harvester: original files → committed packs `base`/`ab`/`sod` (tool) |
 | `crates/h3-experiment` | experiment compiler: spec → `.h3m` map + results template for the user (tool) |
-| `xtask` | `cargo xtask verify` and the individual gates |
+| `xtask` | `cargo xtask verify` and the individual gates, `check-lane` |
+| `lanes.toml` | which paths each work lane owns (`docs/08-work-process.md`, "Lanes") |
+| `clients/` | playable clients: a separate Cargo workspace, outside the core (`clients/README.md`) |
 | `scripts/` | cloud-sandbox setup and background verify for agent sessions (`docs/08-work-process.md`) |
 | `packs/`, `fixtures/`, `benches/` | harvested and synthetic content packs, golden replays, benchmark baselines |
-| `docs/` | vision, architecture, ADRs, rule catalog, backlog, handoff |
+| `docs/` | vision, architecture, ADRs, rule catalog, backlog, handoff; `docs/lanes/` per lane |

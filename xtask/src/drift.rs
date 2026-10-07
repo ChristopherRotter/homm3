@@ -7,7 +7,13 @@ use crate::util::git;
 use crate::verify::Status;
 
 /// Paths whose change counts as "documentation kept current".
-const DOC_PATHS: &[&str] = &["docs/HANDOFF.md", "docs/rules/", "docs/adr/", "docs/epics/"];
+const DOC_PATHS: &[&str] = &[
+    "docs/HANDOFF.md",
+    "docs/lanes/",
+    "docs/rules/",
+    "docs/adr/",
+    "docs/epics/",
+];
 /// Logic crates (see arch.toml).
 const LOGIC_PATHS: &[&str] = &[
     "crates/h3-kernel/",
@@ -51,7 +57,7 @@ pub fn status() -> Result<Status, String> {
     if drifted(&changed) {
         println!(
             "doc-drift: WARNING: logic crates changed since master but none of {} did. \
-             Update HANDOFF, the rule catalog, ADRs or the epic file in the same change.",
+             Update the lane HANDOFF, the rule catalog, ADRs or the epic file in the same change.",
             DOC_PATHS.join(", ")
         );
     } else {

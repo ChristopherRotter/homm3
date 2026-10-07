@@ -1,6 +1,6 @@
 # Quirks ledger
 
-Every known difference between the original game's behavior and a clean design. See `docs/04-rules-and-sources.md` for classes, the decision guide and profiles.
+Every known difference between the original game's behavior and a clean design. See `docs/04-rules-and-sources.md` for classes, the decision guide and profiles. This is the battle lane's ledger; new entries take the id `BAT-QUIRK-<n>` (the `Q-NNNN` ids stay). Other lanes keep their own `docs/rules/quirks-<lane>.md` (`docs/08-work-process.md`, "Lanes").
 
 Classes: `exploit-fix` (always fixed, never toggleable) · `preserve` (accepted, flag on in `faithful`) · `fix-optional` (flag; default per profile).
 

@@ -58,8 +58,12 @@ crates/
   h3-sim/          RL environment API (batched, fork/clone, masks, observations)
   h3-ffi/          C ABI
   h3-cli/          headless runner, replay tool
-xtask/             verify, check-arch, check-rules, coverage, bench gates
+  h3-protocol/ h3-server/   wire protocol and hosting (adapters, server lane, E16)
+xtask/             verify, check-arch, check-rules, coverage, bench gates, check-lane
+clients/           playable clients: a separate Cargo workspace (own lockfile, own CI job), asset decoding and rendering; never a dependency of the core (clients/README.md)
 ```
+
+Work on the crates is split into lanes (battle, adventure, server, client) that own paths (`lanes.toml`, `docs/08-work-process.md`, "Lanes"); the layers above are unchanged by it.
 
 Start with the smallest set the walking skeleton needs (kernel, content, battle, sim, cli, xtask, plus minimal game/contracts if required). Split crates when a context actually exists — but the dependency rules apply from day one.
 
@@ -107,7 +111,7 @@ An *extension* (AB, SoD, later WoG/HotA) is a **content pack** (Tier 1–3 data)
   | `BattleState` size / clone | 944 bytes / ≈ 90 ns (≈ 95 ns per KB) | clone ≪ 1 µs per KB (met) |
   | `BattleEnv::fork` (clone + two `Arc` increments) | ≈ 260 ns | — |
   | `state_hash` (FNV-1a over the canonical encoding) | ≈ 0.5 µs | fine for per-N-step checkpoints; revisit if search needs per-node hashing |
-  | Instruction count, `random-rollouts-full` workload | 387 614 575 Ir for 10 402 steps (≈ 37 k Ir/step) | **regression gate: +2 %** (`benches/baseline.toml`) |
+  | Instruction count, `random-rollouts-full` workload | 387 614 575 Ir for 10 402 steps (≈ 37 k Ir/step) | **regression gate: +2 %** (`benches/battle/random-rollouts-full.toml`) |
 
   Wall-time numbers are indicative (shared cloud CPU, ±5 %); the deterministic gate is the instruction count. Re-measure on the user's Ryzen when convenient.
 - Benchmarks: `criterion` for local wall time (`cargo xtask bench`), plus instruction counts under valgrind/callgrind for the deterministic regression gate (`cargo xtask bench-check`, Linux only; counts are compared only for the toolchain and target recorded in the baseline). Chosen over `iai-callgrind` to avoid a runner binary that must match the library version; see ADR-0002.

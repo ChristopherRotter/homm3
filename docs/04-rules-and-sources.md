@@ -57,7 +57,7 @@ Status meaning: **specified** = written down with sources; **implemented** = cod
 
 ### Classification
 
-Every known difference between "what the original does" and "what a clean design would do" becomes a quirk entry in `docs/rules/quirks-ledger.md`:
+Every known difference between "what the original does" and "what a clean design would do" becomes a quirk entry in a quirks ledger: `docs/rules/quirks-ledger.md` (the battle lane's, ids `Q-NNNN` and from Phase 0 on `BAT-QUIRK-<n>`) or a lane's own `docs/rules/quirks-<lane>.md` (ids `<CODE>-QUIRK-<n>`, e.g. `ADV-QUIRK-1`; `docs/08-work-process.md`, "Lanes"). `check-rules` reads every `docs/rules/quirks*.md`:
 
 | Class | Meaning | Engine behavior |
 |---|---|---|

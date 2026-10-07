@@ -38,7 +38,7 @@ One entry point, used locally and in CI; all must pass:
 
 Optional flags: `--with-original-data`, `--mutants`, `--fuzz-smoke`.
 
-**As implemented in E01** (`cargo xtask verify`; `--quick` skips the slow steps and never counts as green; `--skip <step>` makes the run explicitly not green):
+**As implemented in E01** (`cargo xtask verify`; `--quick` skips the slow steps and never counts as green; `--skip <step>` makes the run explicitly not green; `--scope <lane>` and `--summary` since Phase 0, below):
 
 | Step | What | Slow |
 |---|---|---|
@@ -48,17 +48,20 @@ Optional flags: `--with-original-data`, `--mutants`, `--fuzz-smoke`.
 | check-arch | crate graph and logic-crate purity (`arch.toml`) | |
 | check-rules | rule catalog and `rule:`/`covers:` traceability | |
 | check-stubs | stub registry vs. `todo!`/`unimplemented!`/`#[ignore]`/`TODO`/`FIXME` | |
-| check-docs | `docs/HANDOFF.md` within its size budget (10 000 bytes) with at most three entries under "Recent sessions" (`08-work-process.md`, "HANDOFF") | |
+| check-docs | the global `docs/HANDOFF.md` within 6 000 bytes; each lane's `docs/lanes/<lane>/HANDOFF.md` within 10 000 bytes with at most three entries under "Recent sessions"; every lane in `lanes.toml` has a `HANDOFF.md` and a `QUEUE.md` (`08-work-process.md`, "Keeping the start-of-session reading small") | |
+| check-lane | only under `--scope <lane>`: the branch changes only the lane's and common paths (`lanes.toml`); CI runs it on every pull request as its own workflow | |
 | test | all unit, property, integration (incl. golden replays) and doc tests | |
 | coverage | `cargo llvm-cov`: 100 % lines (lcov, merged over generic instantiations) and regions (merged segments) on logic crates, minus `coverage-exclusions.toml`; fails if a non-test logic file with functions is missing from the report (test files are left out of the report by cargo-llvm-cov) | yes |
 | determinism | golden replays in debug, release, release + `target-cpu=native` | yes |
 | ffi-smoke | compile and run the C smoke program against the static library (N/A on Windows) | |
-| bench-check | instruction counts (valgrind/callgrind) vs. `benches/baseline.toml`, +2 % threshold (N/A off Linux or for another toolchain/target); the measured `h3` is linked without RELRO, as valgrind 3.22 may read no symbols from an lld-linked binary otherwise | yes |
-| doc-drift | warning only: logic crates changed since `master` without HANDOFF/rules/ADR/epic changes | |
+| bench-check | instruction counts (valgrind/callgrind) vs. one baseline file per workload, `benches/<lane>/<workload>.toml`, +2 % threshold each (`benches/README.md`) (N/A off Linux or for another toolchain/target); the measured `h3` is linked without RELRO, as valgrind 3.22 may read no symbols from an lld-linked binary otherwise | yes |
+| doc-drift | warning only: logic crates changed since `master` without HANDOFF/lane docs/rules/ADR/epic changes | |
+
+**Lane scope and summary (Phase 0).** `--scope <lane>` is the lane's fast local loop: clippy, test and coverage run on the lane's crates only (coverage gates the lane's logic crates), determinism and ffi-smoke run only for the lane that owns `h3-cli` and `h3-ffi`, bench-check measures the lane's workloads, `deny` is skipped (dependencies are shared), the repository-wide checks run as usual, and `check-lane` runs too. A scoped run always exits 2 (not green); CI runs the full verify. `--summary` prints one line per gate plus the last 25 lines of the first failure and writes everything to `<target>/verify/verify.log` (each gate runs as a child `cargo xtask verify-step <gate>`). Both combine with `--quick`.
 
 Exit codes: 0 = complete and green; 1 = a step failed; 2 = nothing failed but steps were skipped (`--quick`/`--skip`), which is not green. A step may report **N/A** only for a platform limitation (not for a tool that could be installed; a bench-check baseline for another toolchain fails rather than being N/A). Local setup: `cargo install cargo-deny cargo-llvm-cov --locked`, `rustup component add llvm-tools-preview` (or set `LLVM_COV`/`LLVM_PROFDATA` to compatible LLVM tools), a C compiler, and valgrind on Linux.
 
-**CI** (GitHub Actions, `.github/workflows/ci.yml`; Q3): every pull request, every push to `master`, a weekly run (new RustSec advisories) and manual dispatch run the full `cargo xtask verify` on `ubuntu-24.04`, where every step runs. A `windows-2025` job passed once (2026-10-06) and is disabled for being slow (about 14 minutes against 8; the workflow's header says how to re-enable it), so the Windows verify stays a local run by the user. CI is not enforced: the private repo on a free plan cannot enforce branch rules, so a red `master` must be fixed by whoever sees it. The bench-check baseline is compared on the Linux runner, so a re-baseline must produce counts that hold there (re-baseline from the CI runner if the sandbox and the runner disagree). `--with-original-data` stays local (ADR-0009). Branches restore the cache from `master` but do not write their own.
+**CI** (GitHub Actions, `.github/workflows/ci.yml`; Q3): `lanes.yml` runs `cargo xtask check-lane` on every pull request (the label `cross-lane` passes `--cross-lane`; a label change re-runs only this check). Every pull request, every push to `master`, a weekly run (new RustSec advisories) and manual dispatch run the full `cargo xtask verify` on `ubuntu-24.04`, where every step runs. A `windows-2025` job passed once (2026-10-06) and is disabled for being slow (about 14 minutes against 8; the workflow's header says how to re-enable it), so the Windows verify stays a local run by the user. CI is not enforced: the private repo on a free plan cannot enforce branch rules, so a red `master` must be fixed by whoever sees it. The bench-check baseline is compared on the Linux runner, so a re-baseline must produce counts that hold there (re-baseline from the CI runner if the sandbox and the runner disagree). `--with-original-data` stays local (ADR-0009). Branches restore the cache from `master` but do not write their own.
 
 **Coverage lesson (E01):** LLVM counts the implicit `else` of an `if let` and the error path of `?` as regions. Code must not contain branches that cannot execute: express invariants structurally (validated ids → infallible accessors; combinators such as `Option::inspect`/`or_else`), not as defensive dead branches.
 
@@ -68,7 +71,7 @@ Exit codes: 0 = complete and green; 1 = a step failed; 2 = nothing failed but st
 2. **Rule traceability is mechanical.** A rule cannot reach `implemented` without a referencing test, and a marker for a nonexistent rule fails the build.
 3. **No silent debt.** `#[ignore]`, `todo!()`, `unimplemented!()` and `// TODO` in non-test logic code fail `check-stubs` unless registered in `docs/stubs.toml` with an owner epic and reason. The registry is visible in the backlog.
 4. **Definition of Done** (below) is in the PR template and in every epic file; the end-of-session checklist in `AGENTS.md` repeats it.
-5. **Doc-drift check:** a change that touches logic crates but none of `docs/HANDOFF.md`, `docs/rules/`, `docs/adr/` or the epic file is flagged by `xtask verify` as a warning that becomes an error in CI for changes above a size threshold (heuristic; tune later).
+5. **Doc-drift check:** a change that touches logic crates but none of `docs/HANDOFF.md`, `docs/lanes/`, `docs/rules/`, `docs/adr/` or the epic file is flagged by `xtask verify` as a warning that becomes an error in CI for changes above a size threshold (heuristic; tune later).
 6. **Coverage exclusions are centralized** and diffs to `coverage-exclusions.toml` are surfaced in the gate output.
 7. **Bug rule:** every fixed bug gets a regression test first.
 
@@ -80,9 +83,9 @@ Exit codes: 0 = complete and green; 1 = a step failed; 2 = nothing failed but st
 - [ ] Quirks considered: any known original deviation has a ledger entry and a flag where applicable
 - [ ] Security considered: commands validated against actor and state; hidden info not leaked (`06-security.md`)
 - [ ] Performance considered: no allocation regressions in hot paths; benchmarks updated if relevant
-- [ ] `cargo xtask verify` green
+- [ ] `cargo xtask verify` green (CI on the pull request; locally `verify --scope <lane>`); `check-lane` passes
 - [ ] ADR added/updated for any architectural decision; OPEN-QUESTIONS updated for any open one
-- [ ] HANDOFF updated; epic/backlog status updated
+- [ ] Lane HANDOFF updated; epic file and lane QUEUE updated (BACKLOG status only when an epic starts or ends)
 
 ## Test data policy
 

@@ -4,33 +4,36 @@ Coarse epics in rough priority order. Only epics marked **Refined** have an epic
 
 Status: `todo` · `next` · `in-progress` · `partial` · `done`
 
-| ID | Epic | Status | Detail level |
-|---|---|---|---|
-| E00 | Foundations: vision, architecture, ADRs, process docs | done (2026-09-30) | — |
-| E01 | **Walking skeleton**: minimal battle end to end (workspace, gates, kernel, tiny content pack, battle core, commands + validation, observation, sim env, CLI, replay + hash, benchmark) | done (2026-09-30; verified on Linux and Windows) | **Refined** → [epics/E01-walking-skeleton.md](epics/E01-walking-skeleton.md) |
-| E02 | Content pipeline: catalogue the user's game archives/data tables, harvest them once into committed `base`/`ab`/`sod` packs (toggleable expansions), pack format v2, synthetic test packs | done (2026-10-01; verified on Linux and Windows incl. `--with-original-data`) | **Refined** → [epics/E02-content-pipeline.md](epics/E02-content-pipeline.md) |
-| E03 | Battle core (RoE rules): modifier system, abilities via Tier-3 primitives, obstacles, two-hex units, ranged, morale/luck, damage, war machines | done (2026-10-01; verified on Linux and Windows incl. `--with-original-data`) | **Refined** → [epics/E03-battle-core.md](epics/E03-battle-core.md) |
-| E04a | **Heroes in battle (no magic)** — the first third of the former E04 (split by the user, Q27): hero content (classes, heroes, secondary skills, artifacts, specialties, spell data rows), `h3-heroes` and the `BattleHero` seam (ADR-0013, reviewed by the user before work continues), primary skills, damage skills, artifacts and specialties without spells, hero-run Ballista and First Aid Tent, tactics, retreat/surrender, richer outcome, the experiment pipeline (spec → `.h3m`, SoD only) | done (2026-10-05; verified on Linux and Windows incl. `--with-original-data`) | **Refined** → [epics/E04a-heroes-in-battle.md](epics/E04a-heroes-in-battle.md) |
-| E04b | **Battle magic** — spell effects and rules, spell book and mana in battle, casting, timed effects on stacks, summons and clones, obstacle spells, resistance, spell-like creature abilities, spell immunities, spellcasting creatures, spell-related skills/artifacts/specialties, hidden-information rules, casting in the sim encodings (needs a factorized action design, flag to E05) | in-progress (increment 1 done: T1, T2a–T2e, batch 2a evaluated; increment 2 (Q46, Q48): T3a, T3b1a, T3b1b, T3b2, T3c1, T3c2, T3c3 (batch 2b compiled), T4a, T4b, T4c done (T4 in three parts, Q52, Q53); increment 3 (Q54, Q56): T5a done, batch 2b folded in, batch 2c compiled, T5b waits for it (Q55), T5c next) | **Refined** (increment 1: T1–T2; increment 2: T3; Q41, Q46) → [epics/E04b-battle-magic.md](epics/E04b-battle-magic.md) |
-| E04c | **Sieges and special battlefields** — siege setup derived from the town, walls, gate, moat, towers, Catapult, Ballistics, Earthquake, shooting at and through walls, magic terrains (Holy Ground, Cursed Ground, …), coast and ship battles | todo | sketch (scope fixed by Q27) |
-| E05 | Simulation env v1 + baselines: batch API, forkable envs, masks, random + heuristic bots, FFI, Python smoke binding | todo | sketch |
-| E06 | Battle AI v1 + local training pipeline v0 (evaluation gate, opponent ladder, experiment records) | todo | sketch |
-| E07 | Formats: map (.h3m) reader, scenario loading, validation/fuzzing | todo | sketch |
-| E08 | Adventure map core: tiles, movement, pathing, day/week/month, resources, a first subset of objects, fog of war | todo | sketch |
-| E09 | Town & economy: buildings, construction, recruitment, growth | todo | sketch |
-| E10 | Game orchestration: players/teams, turns, battle integration via contracts, victory/defeat, projections/visibility (security), scenario setup | todo | sketch |
-| E11 | AB and SoD completeness (content + rules), expanded from E02–E04 as needed | todo | sketch |
-| E12 | Map objects long tail | todo | sketch |
-| E13 | Adventure AI (hierarchical) + training on generated maps | todo | sketch |
-| E14 | Map generator (seeded from user's existing project; objective-driven: zone balance, few teleports, …) | todo | sketch |
-| E15 | Acceptance tests (BDD) suite — grows alongside features | todo | parallel/ongoing |
-| E16 | Server, protocol, auth hooks, rate limiting, fuzzing/hardening | todo | sketch |
-| E17 | Clients & asset pipeline (web/WASM, desktop) — outside the core | todo | sketch |
-| E18 | Extension API spike (WoG/HotA-shaped requirements), modding tooling | todo | sketch |
-| E19 | Original save-file import (low priority) | todo | future |
-| E20 | Campaigns | todo | future |
+| ID | Epic | Lane | Status | Detail level |
+|---|---|---|---|---|
+| E00 | Foundations: vision, architecture, ADRs, process docs | shared | done (2026-09-30) | — |
+| E01 | **Walking skeleton**: minimal battle end to end (workspace, gates, kernel, tiny content pack, battle core, commands + validation, observation, sim env, CLI, replay + hash, benchmark) | battle | done (2026-09-30; verified on Linux and Windows) | **Refined** → [epics/E01-walking-skeleton.md](epics/E01-walking-skeleton.md) |
+| E02 | Content pipeline: catalogue the user's game archives/data tables, harvest them once into committed `base`/`ab`/`sod` packs (toggleable expansions), pack format v2, synthetic test packs | battle | done (2026-10-01; verified on Linux and Windows incl. `--with-original-data`) | **Refined** → [epics/E02-content-pipeline.md](epics/E02-content-pipeline.md) |
+| E03 | Battle core (RoE rules): modifier system, abilities via Tier-3 primitives, obstacles, two-hex units, ranged, morale/luck, damage, war machines | battle | done (2026-10-01; verified on Linux and Windows incl. `--with-original-data`) | **Refined** → [epics/E03-battle-core.md](epics/E03-battle-core.md) |
+| E04a | **Heroes in battle (no magic)** — the first third of the former E04 (split by the user, Q27): hero content (classes, heroes, secondary skills, artifacts, specialties, spell data rows), `h3-heroes` and the `BattleHero` seam (ADR-0013, reviewed by the user before work continues), primary skills, damage skills, artifacts and specialties without spells, hero-run Ballista and First Aid Tent, tactics, retreat/surrender, richer outcome, the experiment pipeline (spec → `.h3m`, SoD only) | battle | done (2026-10-05; verified on Linux and Windows incl. `--with-original-data`) | **Refined** → [epics/E04a-heroes-in-battle.md](epics/E04a-heroes-in-battle.md) |
+| E04b | **Battle magic** — spell effects and rules, spell book and mana in battle, casting, timed effects on stacks, summons and clones, obstacle spells, resistance, spell-like creature abilities, spell immunities, spellcasting creatures, spell-related skills/artifacts/specialties, hidden-information rules, casting in the sim encodings (needs a factorized action design, flag to E05) | battle | in-progress (increments, tasks and the next step: [lanes/battle/HANDOFF.md](lanes/battle/HANDOFF.md) and the epic file) | **Refined** (increment 1: T1–T2; increment 2: T3; Q41, Q46) → [epics/E04b-battle-magic.md](epics/E04b-battle-magic.md) |
+| E04c | **Sieges and special battlefields** — siege setup derived from the town, walls, gate, moat, towers, Catapult, Ballistics, Earthquake, shooting at and through walls, magic terrains (Holy Ground, Cursed Ground, …), coast and ship battles | battle | todo | sketch (scope fixed by Q27) |
+| E07 | Formats: map (.h3m) reader, scenario loading, validation/fuzzing | adventure | next (refinement session, brief in [lanes/adventure/HANDOFF.md](lanes/adventure/HANDOFF.md); map reader or synthetic maps first is its first question) | sketch |
+| E08 | Adventure map core: tiles, movement, pathing, day/week/month, resources, a first subset of objects, fog of war | adventure | next (refined with E07) | sketch |
+| E09 | Town & economy: buildings, construction, recruitment, growth | adventure | todo | sketch |
+| E10 | Game orchestration: players/teams, turns, battle integration via contracts, victory/defeat, projections/visibility (security), scenario setup | adventure | todo | sketch |
+| E05 | Simulation env v1 + baselines: batch API, forkable envs, masks, random + heuristic bots, FFI, Python smoke binding | battle (an AI lane takes `h3-sim`/`h3-ffi` here) | todo | sketch |
+| E06 | Battle AI v1 + local training pipeline v0 (evaluation gate, opponent ladder, experiment records) | battle, later AI | todo | sketch |
+| E11 | AB and SoD completeness (content + rules), expanded from E02–E04 as needed | battle, adventure | todo | sketch |
+| E12 | Map objects long tail | adventure | todo | sketch |
+| E13 | Adventure AI (hierarchical) + training on generated maps | adventure, later AI | todo | sketch |
+| E14 | Map generator (seeded from user's existing project; objective-driven: zone balance, few teleports, …) | adventure | todo | sketch |
+| E15 | Acceptance tests (BDD) suite — grows alongside features | every lane | todo | parallel/ongoing |
+| E16 | Server, protocol, auth hooks, rate limiting, fuzzing/hardening | server | next: refinement session and protocol ADR draft (brief in [lanes/server/HANDOFF.md](lanes/server/HANDOFF.md)); implementation once the battle actions are mostly stable (E04b) | sketch |
+| E17a | **Asset notes** — a session in which the user dictates their knowledge of the game assets and their traps; first input to the E17 refinement | client | next | — |
+| E17 | **Clients and asset pipeline**, outside the core in the `clients/` workspace: a walking skeleton on the real assets from the start (no placeholder graphics): a battle replay viewer, later a full game record/replay viewer. Asset decoding in `clients/crates/h3-assets` (DEF, PCX, palettes, fonts, sound; LOD through `h3-formats`), the renderer chosen in the client ADR (Rust by default), a headless render-to-PNG mode for agents; assets read from the user's installation at run time, never in git or CI; decoders tested on synthetic sprites plus a local real-asset gate | client | todo: refinement after E17a; implementation once the battle actions are mostly stable (E04b; the user may start the asset and render-to-PNG layer earlier) | sketch → [clients/README.md](../clients/README.md) |
+| E18 | Extension API spike (WoG/HotA-shaped requirements), modding tooling | — | todo | sketch |
+| E19 | Original save-file import (low priority) | adventure | todo | future |
+| E20 | Campaigns | adventure | todo | future |
 
 ## Ordering rationale
+
+*(2026-10-07, Phase 0)* Work runs in lanes (`docs/08-work-process.md`, "Lanes"); the Lane column says which lane owns an epic. **Adventure (E07–E10) moved ahead of E05/E06**: the battle lane continues E04b and E04c while the adventure lane starts with E07/E08 in parallel; E05/E06 (simulation env, battle AI) follow in the battle lane until an AI lane opens. The server (E16) and client (E17) lanes refine and write their ADRs now and implement once the battle actions are mostly stable (E04b); the client starts with the user's asset notes (E17a). This table is a shared path: its status cells change when an epic starts or ends; the lane HANDOFFs carry the detail.
 
 *(2026-10-01)* The former E04 is now E04a, E04b and E04c, in that order: magic builds on the hero seam, and the special battlefields' school-based effects build on magic. Comments in code and older docs that say "E04" mean this group; the tasks they refer to are listed in the epic files and in HANDOFF.
 
