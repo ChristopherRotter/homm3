@@ -494,3 +494,25 @@ records how and why the tasks went.
   (Q45's 245 against 244), `tests/magic.rs` (the same through a cast), `tests/war.rs` (the
   tent's 114), `tests/heroes.rs` (a reduction above 1 rejected), `arith.rs` (bit patterns,
   round trip property), the pack's scenario round trip with single values.
+
+### T3c3 — Batch 2b compiled (2026-10-07)
+
+- **Seam (Q52):** batch 2b now, its predictions from the finished T3 engine; the user plays it
+  while T4 proceeds; the results are folded in at a later checkpoint.
+- **Spec** `experiments/specs/E04b-batch-2b.toml`, template `experiments/results/E04b-batch-2b.md`,
+  map `experiments/out/E04b-batch-2b.h3m` (6 encounters, 6 Red and 6 Blue heroes): R1 4 and 8
+  Angels against one defense point more (53 bits 195 and 390, 64 bits 194 and 389; Q50); R2
+  Counterstrike at power 1 cast in round 2, retaliations in rounds 2–4 (faithful: two in round 3,
+  Q-0008); R3 10 Naga Queens (no retaliation) on Fire-Shielded Peasants at a 20-point defense
+  deficit (150 dealt; reflection 60 from stage 1, Q-0010, against 30); R4 Shield with Basic
+  Armorer on Angels at equal attack and defense (150: 121 in one product against 120 truncated
+  per factor or added; 50: 40 against 39) and Armorer alone (200: 189 with Q-0005 against 190);
+  R5 Bloodlust then Weakness (both listed, Q47) and Haste then Slow (Slow ends Haste); R6
+  Mephala at level 10 with Expert Armorer under Angels at the attack cap (800: 619 with the
+  single-precision growth against 620; 200: 154 against 155; levels 9 and 11 tabulated).
+- **Checked against the engine:** R1, R4 and R6 through `damage::Strike` and the derivation's
+  growth (bit pattern `0x3e666667`) in a scratch test (not committed); the 64-bit alternative
+  from exact rational arithmetic.
+- **Design notes for the player:** the stacks whose defense matters never Defend before they
+  are struck (the Angels act first, or the target moves instead of defending); Mephala's
+  level-ups are the user's choice and cannot change R6 (the attack bonus is capped).

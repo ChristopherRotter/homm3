@@ -1,6 +1,6 @@
 # E04b — Battle magic
 
-Status: **in progress** (refined 2026-10-05; increment 1 = T1–T2, done 2026-10-06: T1, ADR-0014 accepted, T2a–T2e, batch 2a evaluated; increment 2 = T3 in parts, then T4 (Q46, Q48): T3a, T3b1a, T3b1b, T3b2, T3c1 and T3c2 done; batch 2b (T3c3) and T4a in progress (Q52)) · Follows E04a (closed 2026-10-05) · Part of the former E04 (OPEN-QUESTIONS Q27): E04a heroes in battle, **E04b** battle magic (this one), E04c sieges and special battlefields.
+Status: **in progress** (refined 2026-10-05; increment 1 = T1–T2, done 2026-10-06: T1, ADR-0014 accepted, T2a–T2e, batch 2a evaluated; increment 2 = T3 in parts, then T4 (Q46, Q48): T3a, T3b1a, T3b1b, T3b2, T3c1, T3c2 and T3c3 (batch 2b compiled) done; T4a in progress (Q52)) · Follows E04a (closed 2026-10-05) · Part of the former E04 (OPEN-QUESTIONS Q27): E04a heroes in battle, **E04b** battle magic (this one), E04c sieges and special battlefields.
 
 ## Goal
 
@@ -65,7 +65,7 @@ The 13 direct-damage spells: Magic Arrow, Ice Bolt, Lightning Bolt, Titan's Ligh
 - [x] **T3b2 Fire Shield and Frenzy** — done 2026-10-07: read in the executable (`installation.md` §7.11); pack format v8 (`fire_shield`, `frenzy`, duration `own_turn`), BAT-MAG-018/019; quirk Q-0009 (S-16 confirmed); BAT-DMG-006 under Q-0005 follows the executable's rounding (the user); state hash v22; replays and `bench-check` re-baselined. Fire Shield quirk candidates in BACKLOG. Record: [`E04b-log.md`](E04b-log.md).
 - [x] **T3c1 The spell specialists** — done 2026-10-07: read in the executable (`installation.md` §7.12); pack format v9 (`specialist`: by creature level, fixed, total), BAT-MAG-020 (the timed values at the cast, Slayer and Bless at the strike, Cure), STUB-0002 gone; quirk Q-0010 (Fire Shield's base, fix-optional, the user); ruleset hash v20; replays and `bench-check` re-baselined. Record: [`E04b-log.md`](E04b-log.md).
 - [x] **T3c2 Q45 option (b)** — done 2026-10-07: `h3_contracts::Rate` (basis points and the original's single-precision value as an f32 bit pattern where it differs) for the damage bonuses, `SpellDamage`, `MagicResistance` and the tent's heal; the derivation grows skill rates and adds the getters' artifacts in the original's x87 single precision under Q-0005 (HER-BAT-004/005/012/013), the battle uses them (BAT-HER-004, BAT-MAG-004/008, BAT-WAR-007); `X87` f32 bit patterns; state hash v23, replay format v16; `BattleState` 3 904 bytes. Record: [`E04b-log.md`](E04b-log.md).
-- [ ] T3c3 Batch 2b compiled for T3: the x87 precision, Counterstrike's extra round (Q-0008), Fire Shield's base (Q-0010), Shield with Armorer, one counter pair, a level-10 specialist.
+- [x] **T3c3 Batch 2b compiled** — done 2026-10-07: `experiments/specs/E04b-batch-2b.toml`, six encounters (the x87 precision, Q-0008, Q-0010, Shield with Armorer, Bloodlust/Weakness and Haste/Slow, Mephala at level 10), predictions checked against the engine; the user plays it while T4 proceeds (Q52). Record: [`E04b-log.md`](E04b-log.md).
 
 **Checkpoint after T3c2** (2026-10-07, Q52): the user chose batch 2b now (T3c3, played while T4 proceeds), T4 in three parts by mechanism with T4a this session (a checkpoint after), and kept `Rate`'s f32 bit pattern.
 
