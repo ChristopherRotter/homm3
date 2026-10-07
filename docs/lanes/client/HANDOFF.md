@@ -1,6 +1,6 @@
 # Client lane — HANDOFF
 
-The client lane's living state (`docs/08-work-process.md`, "Lanes"). Read after the global `docs/HANDOFF.md`. Rewrite **Current state** each session, keep **Standing traps** to client traps that still apply, add one short entry to **Recent sessions** and keep at most three (`cargo xtask check-docs`: 10 000 bytes, three entries). Tasks waiting: `QUEUE.md`.
+The client lane's living state; read after the global `docs/HANDOFF.md`. Format and budgets (`check-docs`: 10 000 bytes, three sessions): `docs/08-work-process.md`, "Keeping the start-of-session reading small". Traps of every lane go into the global HANDOFF (a shared change). Tasks waiting: `QUEUE.md`.
 
 ## Current state
 

@@ -3,9 +3,18 @@
 # and a matching `// stub: <id>` marker in the code. `cargo xtask check-stubs` enforces both directions.
 # Any lane may add entries. New ids carry the lane code from lanes.toml and count per lane:
 # `BAT-STUB-1`, `ADV-STUB-1`, `SRV-STUB-1`, `CLT-STUB-1`; ids from before the lanes look like `STUB-0001`.
+# Add an entry under its lane's block below, so that concurrent lanes do not edit the same lines.
 #
 # [[stub]]
 # id     = "STUB-0001"
 # where  = "crates/h3-battle/src/spells.rs::cast"
 # reason = "Spells are out of scope for E01"
 # epic   = "E03"
+
+# --- battle (BAT-STUB-<n>) ---
+
+# --- adventure (ADV-STUB-<n>) ---
+
+# --- server (SRV-STUB-<n>) ---
+
+# --- client (CLT-STUB-<n>) ---

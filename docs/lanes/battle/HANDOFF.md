@@ -1,10 +1,10 @@
 # Battle lane — HANDOFF
 
-The battle lane's living state (`docs/08-work-process.md`, "Lanes"). Read after the global `docs/HANDOFF.md`. Rewrite **Current state** each session, keep **Standing traps** to battle traps that still apply (traps of every lane go into the global HANDOFF, a shared change), add one short entry (about ten lines) to **Recent sessions** and keep at most three. `cargo xtask check-docs` enforces 10 000 bytes and three entries. Tasks waiting: `QUEUE.md`.
+The battle lane's living state; read after the global `docs/HANDOFF.md`. Format and budgets (`check-docs`: 10 000 bytes, three sessions): `docs/08-work-process.md`, "Keeping the start-of-session reading small". Traps of every lane go into the global HANDOFF (a shared change). Tasks waiting: `QUEUE.md`.
 
 ## Current state
 
-- **Branch:** `e04b-battle-magic` (= `master` `b7a5db2` when Phase 0 started). After Phase 0 merges, rebase onto `master` and continue on `battle/<task>` branches, one per task or increment, merged at its checkpoint; HANDOFF content goes here, not into `docs/HANDOFF.md`.
+- **Branch:** `e04b-battle-magic` (= `master` `b7a5db2` when Phase 0 started; delete it once Phase 0 has merged). Continue on `battle/<task>` branches from `master`, one per task or increment, merged at its checkpoint; HANDOFF content goes here, not into `docs/HANDOFF.md`.
 - **E04b increment 3 (Q54, Q56):** T5a done; batch 2b folded in (all six encounters as predicted); batch 2c compiled and with the user; T5b (Remove Obstacle) waits for its A1–A3 (Q55); T5c next. Sandbox: `docs/08-work-process.md`, "Cloud sandbox".
 - **Done:** survey `docs/rules/surveys/E04b-magic.md` (§12–§15), ADR-0014 accepted (point 5 amended, Q47), design note `docs/epics/E04b-design.md`. Castable by heroes: the 13 damage spells, the 14 value spells, Shield, Air Shield, the Protections (Q-0007), Slayer, Counterstrike (Q-0008), Dispel, Cure, Fire Shield (Q-0010) and Frenzy (Q-0009) (BAT-MAG-001 to 019), the spell specialists (BAT-MAG-020), Anti-Magic and Magic Mirror (BAT-MAG-021/022), Forgetfulness and Blind (BAT-MAG-023/024), Berserk and Hypnotize (BAT-MAG-025/026; a stack's `controller()` commands it), Force Field, Fire Wall, Teleport and Expert Dispel's clearing (BAT-MAG-027 to 030; `h3_battle::obstacles`), all after the executable's code (`installation.md` §7.8–§7.15). **Physical damage follows the executable's three truncated stages** under Q-0005 (Q50, BAT-DMG-002, `h3_kernel::arith::X87` at 53 bits).
 - **Hero rates** cross the seam as `h3_contracts::Rate` (basis points plus, under Q-0005, the original's single-precision value as an f32 bit pattern where it differs; Q45 (b), T3c2).
@@ -18,6 +18,9 @@ The battle lane's living state (`docs/08-work-process.md`, "Lanes"). Read after 
 
 **Content and packs**
 - `packs/base|ab|sod` are generated: change `crates/h3-harvest` or its gap-fill file and re-run the harvester (`cargo run -p h3-harvest -- --install original-data/install --out packs`); never edit them by hand. Harvested keys may coincide across kinds (`base:ballista` is a creature and an artifact).
+
+**Code reading**
+- The executable's x87 runs at 53 bits (`installation.md` §7.10): emulate it with `h3_kernel::arith::X87` and test against vectors from exact rational arithmetic; check each float constant's width (`qword` double or `dword` f32).
 
 **Battle code and tests**
 - Stack ids: war machines follow the army in kind order (Ballista, Ammo Cart, Tent), not in the order of `BattleSetup.war_machines`.

@@ -1,13 +1,6 @@
 # Battle lane — QUEUE
 
-Pre-refined tasks of the battle lane, in order (`docs/08-work-process.md`, "Lanes"). A runner hands the first ready task to a fresh worker and keeps only the worker's short report; a worker reads AGENTS.md, the global and lane HANDOFF, the lane's reading list and its one task. A task is about half a context of work and has:
-
-- **Scope:** what to build or decide, with pointers (epic task, ADR, rule ids).
-- **Acceptance:** what must hold when it is done (always: the Definition of Done in `docs/05-testing.md`).
-- **Depends on:** tasks, questions or user input that must come first.
-- **Status:** `ready`, `waiting` (for the user, with what), `blocked` (with the question id; the runner takes the next independent task) or `in progress` (branch).
-
-Done tasks leave the queue (the epic file and its log keep the record). **Inbox:** discovered work, one line each, until a refinement turns it into tasks or a backlog item.
+Pre-refined tasks of the battle lane, in order, then the inbox of discovered work. The task format, the runner/worker model and the `in progress` mark: `docs/08-work-process.md`, "Queues and long runs".
 
 ## Tasks
 

@@ -11,7 +11,7 @@ Every session reads this file first, then its lane's `docs/lanes/<lane>/HANDOFF.
 | server | `h3-protocol`, `h3-server` (new) | refinement session next (E16) | [HANDOFF](lanes/server/HANDOFF.md), [QUEUE](lanes/server/QUEUE.md) |
 | client | `clients/` (own Cargo workspace) | waits for the user's asset notes | [HANDOFF](lanes/client/HANDOFF.md), [QUEUE](lanes/client/QUEUE.md) |
 
-Shared (own pull request, merged first): `h3-kernel`, `h3-contracts`, workspace and gate files (`Cargo.toml`, `arch.toml`, `lanes.toml`, `xtask`, CI), ADRs, process docs, `BACKLOG.md`, this file. Common (any lane): `OPEN-QUESTIONS.md`, `docs/stubs.toml`.
+Shared (own pull request, merged first): `h3-kernel`, `h3-contracts`, workspace and gate files (`Cargo.toml`, `arch.toml`, `lanes.toml`, `xtask`, CI), ADRs, process docs, `BACKLOG.md`, this file. Common (any lane): `OPEN-QUESTIONS.md` and `docs/stubs.toml` (one block per lane), `Cargo.lock`.
 
 - **GitHub and CI:** `ChristopherRotter/homm3` (private). `.github/workflows/ci.yml` runs the full `cargo xtask verify` on Linux for pull requests, `master` and weekly; `lanes.yml` runs `cargo xtask check-lane` on pull requests. Changes reach `master` by pull request only.
 - **Phase 0** (2026-10-07, `shared/lanes-phase-0`): lanes, `check-lane`, `verify --scope`/`--summary`, per-workload baselines, lane docs. The battle lane rebases onto it at its next checkpoint: battle's HANDOFF now lives in `docs/lanes/battle/`.
@@ -20,7 +20,7 @@ Shared (own pull request, merged first): `h3-kernel`, `h3-contracts`, workspace 
 
 **Sandbox and sync**
 - Original files in a cloud session: stage them from the user's repo folder (`D:\Users\Christopher\Source\Repos\homm3\original-data`, read access through the device link; one large LOD per staging call), then `scripts/sandbox-setup.sh`. Without the link the session only prepares (Q48). Sync is `git push` (fetch `master` first so the push is thin).
-- Git on the user's machine: get delete permission for the repo folder before *any* git command (even `git status` leaves `.git/index.lock` otherwise); it has no GitHub credentials, so it cannot push.
+- Git on the user's machine: get delete permission for the repo folder before *any* git command (even `git status` leaves `.git/index.lock` otherwise) and pass `-c user.name -c user.email`; it has no GitHub credentials, so it cannot push. A cloud session with GitHub attached pushes and opens pull requests through the REST API (GraphQL is blocked there).
 - The sandbox VM can restart mid-session (files stay, background jobs die): check `ps` and the logs before waiting on a background job.
 - `cargo xtask verify` outlasts a tool call: run `scripts/sandbox-verify.sh` in the background and poll its log, or use `verify --summary` (full log in `target/verify/verify.log`). The inner loop is `verify --scope <lane> --quick`; CI runs the full verify.
 - The background verify tests whatever is in the clone: try ad-hoc tests in a `git worktree` with its own `CARGO_TARGET_DIR`. `pkill -f <pattern>` also kills the tool's own shell when the pattern is in the command line: kill by pid.
