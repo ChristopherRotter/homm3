@@ -36,69 +36,9 @@ Wiki (Cavalier page): the bonus is "calculated based on the distance between sta
 
 The original picks Chain Lightning's next target by screen distance; the y position of each stack is lifted by half of `267 − the top offset of its creature's sprite frame` (`docs/formats/installation.md` §7.8). The offset comes from the creature's DEF file (`H3sprite.lod`), a graphics value the packs do not hold. **Implemented (user, 2026-10-06):** hex-centre geometry with the two-hex shift and the original's tie order, without the offset (BAT-MAG-006); batch 2a checks the geometry. **Options later:** harvest the offset per creature (stage `H3sprite.lod`, a minimal DEF reader in `h3-harvest`, a creature field), or keep the approximation. Matters only when two candidates are nearly equally far; decide after batch 2a. **Batch 2a** (R1, R2) confirmed the screen geometry and the tie order with stacks of one creature type, where the offset cancels; it says nothing about mixed types. Still the agent's recommendation: keep the approximation until a task needs the sprite data anyway.
 
-### Q55 — Natural obstacles as pieces, and their anchor hexes (E04b T5b)
-
-Remove Obstacle takes away one whole natural obstacle, but `BattleSetup.obstacles` is a flat list
-of blocked hexes, so T5b needs a seam change. The code reading (`docs/formats/installation.md`
-§7.15) adds a detail: the original marks a usual obstacle's anchor hex (bit `0x1` and the
-obstacle's index) even when the obstacle does not block it (28 of the 55 usual types). Read so,
-that hex may be stood on, but takes no Fire Wall or Force Field, and Remove Obstacle aimed at it
-removes the obstacle; absolute obstacles have no anchor and cannot be removed. T5a's Fire Wall
-and Force Field do not know anchors yet (the setup has none). **Options** (the agent's
-recommendation first): (a) `obstacles: Vec<Obstacle>` with `Obstacle { hexes, anchor:
-Option<u8> }` (an anchor marks a usual, removable obstacle; the generator fills it; scenario
-syntax `obstacles = [{ hexes = [58, 75], anchor = 58 }]`; replay format v18); (b) typed pieces
-`{ obstacle type, anchor }`, the battle deriving hexes and absoluteness from the ruleset; (c)
-additive: keep the hexes and add the removable pieces' hexes, without anchors. **User
-(2026-10-07): verify the anchor behaviour by experiment first; the decision waits for the
-results.** T5b waits with it. Batch 2c stages it (A1–A3, with the predictions of both
-readings). **Batch 2c (2026-10-07) confirms the reading:** in A2 the free hex left of a 3×1 rock
-takes Remove Obstacle, refuses Fire Wall as either of its hexes, takes the Phoenix, and Remove
-Obstacle cast on it removes the whole rock; the 5×1 obstacles (absolute) refuse it, and on A1's
-battlefield, apparently absolute obstacles only, the spell is refused at once ("That spell will
-not affect anything."). VCMI's reading (no anchors) is refuted. **User (2026-10-07, T5c1
-checkpoint): the anchor becomes a quirk** (faithful: as the original, the anchor takes no Fire
-Wall or Force Field and Remove Obstacle reaches the obstacle through it; fixed: no anchor, or one
-without gameplay effect), **after a survey of how widely the behaviour is known and how the
-community sees it**; the seam option follows from that (faithful anchors need (a) or (b)). Survey
-so far (2026-10-07, agent): the wiki's Remove Obstacle page (raw text through WebFetch) does not
-mention anchors or hexes beside obstacles; four web searches (English: the behaviour, HotA's
-changelog, VCMI) found nothing. Still to search at T5b's start: the HotA and Russian community
-forums (heroesworld.ru, df2.ru), Celestial Heavens, VCMI's issue tracker. The same wiki page
-records a known leak T5b must not copy (Q-0002): "It is possible to locate Land Mines and
-Quicksands with an expert Remove Obstacle spell without spending mana just by hovering over hexes
-with a cursor." The next increment is the user's choice at the next session's start. **Survey
-finished (2026-10-07, T5c2 session, agent): nobody describes the anchors.** Searched: the wiki
-(Remove Obstacle, Fire Wall, Force Field, Quicksand, Tricks; a full-text search for "Remove
-Obstacle", 22 pages); HotA's whole changelog on the wiki (no line on hexes beside obstacles; 1.7.0
-fixed "invisible Quicksand was highlighted as an available target for the Remove Obstacle spell",
-so HotA treats that leak as a bug); VCMI's battle bug list (issue #1219: obstacles' drawing order,
-Remove Obstacle's fade-out, nothing on anchors); df2.ru (the spell threads t39106 and t13056, the
-reference guide t2342, HotA's novelties t27888: none); heroesworld.ru's old threads now redirect
-to the forum's start and the web archive is blocked; Celestial Heavens refuses the fetch (403);
-eleven English and Russian web searches besides the four before. So the behaviour is unknown to the community (or never
-written down) and no fork (VCMI, HotA) says it changed it. **Agent's recommendation:
-fix-optional** (faithful: the anchors as read; strict-fixed: no anchor hex, Remove Obstacle aimed
-at the obstacle's blocked hexes), like BAT-QUIRK-1; the seam option (a) serves both (an anchor
-that the fixed profile ignores). The class and the seam option are the user's at the T5c2
-checkpoint.
-
 ### Battle lane (`BAT-Q<n>`)
 
-#### BAT-Q4 — Quicksand's and Land Mine's random hexes avoid the other side's hidden obstacles (E04b T5c2)
-
-Found by the T5c2 review. Both spells draw their hexes among those without any obstacle,
-the other side's hidden pits and mines included (the original's 0x5A0354 and 0x5A0536,
-`installation.md` §7.16, §7.17; BAT-MAG-032 "hidden ones too", T5c1). The caster sees where its
-new pits and mines land, so it learns that no hidden enemy obstacle lies there: a small leak of
-the kind Q-0002 fixes (as Fire Wall's cursor, which the engine lets go over an unseen pit). The
-hidden-obstacle property test leaves casts out for this reason. **Options** (the agent's
-recommendation first): (a) fix it in every profile under Q-0002: draw among the hexes free as the
-caster's side sees them, and a drawn hex with an unseen enemy pit or mine takes the new obstacle
-over it (both stay; a walker there meets both, the pit stops it, a mine goes off as usual); the
-property test then covers casts too; (b) keep the original's draw (a faithful detail, the leak
-stays, documented); (c) a fix-optional quirk (faithful draws as the original, strict-fixed as
-(a)). Not blocking: T5b and later tasks do not depend on it.
+(no open questions)
 
 ### Adventure lane (`ADV-Q<n>`)
 
@@ -114,6 +54,9 @@ stays, documented); (c) a fix-optional quirk (faithful draws as the original, st
 
 ## Answered
 
+- *(2026-10-07, BAT-Q5, E04b T5c2 checkpoint)* **The next increment and how the seam change goes in.** PR #5 (T5c2, the Q55 survey) was merged. The agent proposed finishing T5: the seam change (`BattleSetup.obstacles` as pieces), T5b (Remove Obstacle) and BAT-Q4, a checkpoint after; or the seam and T5b only; or the seam alone; or T6 first. **User: finish T5.** The seam change touches `h3-contracts` (shared) and cannot compile without the battle crates that use it; the agent proposed a `shared/` pull request labelled `cross-lane` with only the contract and mechanical fixes, merged first, or one battle pull request labelled `cross-lane` for all of it. **User: one battle pull request, `cross-lane`** (`battle/e04b-t5b`).
+- *(2026-10-07, BAT-Q4, E04b T5c2 checkpoint)* **Quicksand's and Land Mine's random hexes avoid the other side's hidden obstacles.** Found by the T5c2 review: both spells draw among the hexes without any obstacle, the other side's hidden pits and mines included (0x5A0354, 0x5A0536, `installation.md` §7.16, §7.17), so the caster learns where no hidden enemy obstacle lies. Options: (a) fix in every profile under Q-0002 (the agent's recommendation); (b) keep the original's draw; (c) a fix-optional quirk. **User: (c), fix-optional** (BAT-QUIRK-4): `faithful` draws as the original; `strict-fixed` draws among the hexes free as the caster's side sees them, and a drawn hex with an unseen pit or mine of the other side takes the new obstacle over it (both stay; a walker there meets both).
+- *(2026-10-07, Q55, E04b T5c2 checkpoint)* **Natural obstacles as pieces, and their anchor hexes.** Remove Obstacle takes away a whole natural obstacle, but `BattleSetup.obstacles` was a flat list of blocked hexes. The code reading (`installation.md` §7.15) found the original marking a usual obstacle's anchor hex even where the obstacle does not block it (28 of the 55 usual types): the hex may be stood on, takes no Fire Wall or Force Field, and Remove Obstacle aimed at it removes the obstacle; absolute obstacles have no anchor and cannot be removed. Batch 2c (A1–A3) confirmed the reading and refuted VCMI's (no anchors); the community survey (wiki, HotA's changelog, VCMI's issues, df2.ru; heroesworld.ru and Celestial Heavens unreachable) found nobody describing it. Seam options: (a) `Obstacle { hexes, anchor: Option<u8> }`, (b) typed pieces `{ obstacle type, anchor }`, (c) additive, without anchors. **User: fix-optional, seam option (a)** (BAT-QUIRK-3): `faithful` as the original; `strict-fixed` ignores the anchor (an anchor hex the obstacle does not block is a plain free hex, and Remove Obstacle is aimed at the obstacle's blocked hexes). The same wiki page records a leak T5b must not copy (Q-0002): the Expert cursor finds hidden Quicksand and mines (HotA 1.7.0 fixed it for Quicksand).
 - *(2026-10-07, BAT-Q3, E04b T5c1 checkpoint)* **The next increment.** PR #4 (T5c1 and the batch 2c fold-in) was merged. The agent proposed T5c2 (Land Mine) with the Q55 community survey, a checkpoint after (T5b needs the user's class and seam choice and a `shared/` pull request first, and its hidden-obstacle test then covers pits and mines); or T5c2 alone; or the survey and T5b. **User: T5c2 and the Q55 survey**, a checkpoint after. The user also allowed one more try at deleting the merged branches (`battle/e04b-t5c1`, `shared/adr-0014-natives`, `shared/lanes-phase-0`): the REST API refuses it too ("Write access to this GitHub API path is not permitted through this proxy"), so they stay for the user.
 - *(2026-10-07, BAT-Q2, batch 2c fold-in)* **H1's round 3: Hypnotize a round early?** The first record said Blue commanded the hypnotized Swordsman in round 3, where a duration of 2 from round 2 predicts Red (§7.9, BAT-MAG-010). **User: Red in round 3** (a mix-up between several replays; the results file corrected). Every H1 line now matches the engine; nothing changes.
 - *(2026-10-07, BAT-Q1, E04b checkpoint before T5c)* **T5c's cut; the natives' sight; an attack from a seen pit.** (1) The agent proposed T5c in two parts, T5c1 (the Quicksand reading, hidden obstacles, the acting side's view, events and observations) and T5c2 (Land Mine), both this session or T5c1 alone. **User: T5c1 alone**, a checkpoint before T5c2. (2) The reading (`installation.md` §7.16) found the natives' sight unlike ADR-0014 point 7 (VCMI's, while a native stack lives): the original computes per side once at the battle start whether a stack fights on its native terrain and, when it places Quicksand or a Land Mine, shows it to both sides if the other side had natives; nothing changes when natives die or appear. **User: the original's rule in `faithful`, the ADR's as its fix** (BAT-QUIRK-1, fix-optional; ADR-0014 point 7 amended by a `shared/` pull request). (3) The original's walker stops on entering any Quicksand its side sees, also as the last hex of a move and attack, and then skips the attack. **User: a quirk too: faithful legal (the attack is skipped), strict-fixed not legal** (BAT-QUIRK-2, fix-optional). Also: the user asked to delete the stale branches `e04b-battle-magic` and `claude/hopeful-mayer-ppui03`; the session's GitHub proxy refuses ref deletion (REST and `git push --delete`), so they stay for the user.

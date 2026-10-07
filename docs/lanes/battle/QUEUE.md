@@ -6,10 +6,10 @@ Pre-refined tasks of the battle lane, in order, then the inbox of discovered wor
 
 ### E04b T5b — Remove Obstacle
 
-- **Scope:** `docs/epics/E04b-battle-magic.md`, T5b: the natural obstacles as removable pieces with their anchors (a seam change of `BattleSetup.obstacles`: its own `shared/` pull request first), Remove Obstacle by mastery, the anchors in Fire Wall's and Force Field's test.
+- **Scope:** `docs/epics/E04b-battle-magic.md`, T5b: the natural obstacles as removable pieces with their anchors (a seam change of `BattleSetup.obstacles`: in the same pull request, labelled `cross-lane`, BAT-Q5), Remove Obstacle by mastery, the anchors in Fire Wall's and Force Field's test.
 - **Acceptance:** the epic's T5b line; the seam change accepted by the user.
 - **Depends on:** Q55 (batch 2c A2 confirmed the anchor reading; the community survey is done, nobody describes the anchors: the user chooses the quirk's class and the seam option at the T5c2 checkpoint); Remove Obstacle's target test must not reveal hidden obstacles (Q-0002: the original's Expert cursor finds Quicksand and mines, wiki; HotA fixed it for Quicksand).
-- **Status:** blocked (Q55, the user's choice).
+- **Status:** in progress (`battle/e04b-t5b`, BAT-Q5: with the seam change and BAT-Q4 in one `cross-lane` pull request; Q55 decided: fix-optional, option (a)).
 
 ## Inbox
 
