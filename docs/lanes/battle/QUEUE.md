@@ -4,13 +4,6 @@ Pre-refined tasks of the battle lane, in order, then the inbox of discovered wor
 
 ## Tasks
 
-### E04b batch 2c fold-in
-
-- **Scope:** record the user's results of batch 2c (`experiments/results/E04b-batch-2c.md`): Q55's anchor hexes (A1–A3), Fire Wall (F1, F2), Berserk (B1), Hypnotize and Cure (H1, C1); observation sources, ledger and fixtures as in batch 2b's fold-in (`docs/epics/E04b-log.md`); then put Q55's options to the user.
-- **Acceptance:** every encounter compared with the engine's prediction; a mismatch is fixed or becomes a question; `verify` green.
-- **Depends on:** the user's batch 2c results.
-- **Status:** waiting (the user plays batch 2c).
-
 ### E04b T5c2 — Land Mine
 
 - **Scope:** `docs/epics/E04b-battle-magic.md`, T5c2: read Land Mine (cast 0x5A0536, the spell book's native test 0x59ECEE, trigger 0x59FB40); its cast refusal when the enemy had natives, the mine's damage on entering, who crosses safely, the mine goes once triggered; on T5c1's hidden-obstacle machinery.
@@ -22,7 +15,7 @@ Pre-refined tasks of the battle lane, in order, then the inbox of discovered wor
 
 - **Scope:** `docs/epics/E04b-battle-magic.md`, T5b: the natural obstacles as removable pieces with their anchors (a seam change of `BattleSetup.obstacles`: its own `shared/` pull request first), Remove Obstacle by mastery, the anchors in Fire Wall's and Force Field's test.
 - **Acceptance:** the epic's T5b line; the seam change accepted by the user.
-- **Depends on:** batch 2c fold-in; Q55.
+- **Depends on:** Q55 (batch 2c A2 confirmed the anchor reading; the user chooses the seam option at the T5c1 checkpoint).
 - **Status:** blocked (Q55).
 
 ## Inbox

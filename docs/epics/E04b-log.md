@@ -780,3 +780,23 @@ records how and why the tasks went.
   (natives), and a new property checks that what a side does not see changes neither its
   observation nor its legal commands, castable spells and targets; pack, content and harvester
   tests for format v14.
+
+### Batch 2c folded in (2026-10-07)
+
+- **Seam:** the user pushed the results to `battle/e04b-t5c1` during T5c1 and let the agent fold
+  them in on the same branch ("at your discretion").
+- **Results** (`experiments/results/E04b-batch-2c.md`, SoD 4.0 Complete, plain HD): A2 confirms
+  the anchor reading of Q55 (the free hex left of a 3×1 rock takes Remove Obstacle, refuses Fire
+  Wall as either hex, takes the Phoenix, and Remove Obstacle there removes the whole rock; the
+  5×1 obstacles, absolute, refuse it); on A1's battlefield the spell was refused at once ("That
+  spell will not affect anything."), as for absolute obstacles only; A3 not needed. F1: 48, 46,
+  44 (entering, Wait, Defend; 20 per burn), the defender's Force Field up-right (not mirrored),
+  its Fire Wall up-left, Red's wall gone in round 3. F2: Red burnt (8), Blue not (10): the
+  original's walker passes the up-right neighbour, as BAT-MOV-003. B1: lower, upper, lower (a
+  random choice). H1: refused, allowed; Magic Arrow 30, 2 Swordsmen with the top at 5; refused
+  at 40 of 70; Hypnotize listed after Expert Cure (Q-0012), the healed top at 35; Red in round 2
+  — but **Blue in round 3**, where a duration of 2 predicts Red (BAT-Q2, the user re-checks).
+  C1: Basic Cure allowed, Hypnotize ended, Blue in round 2.
+- **Recorded:** observation sources on BAT-MAG-025 to 028 and BAT-MOV-003; the ledger's Q-0012;
+  Q55 updated (the reading confirmed; the seam options wait for the user); BAT-Q2 opened. No
+  behaviour or version changes.

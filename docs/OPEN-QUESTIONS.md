@@ -52,11 +52,27 @@ syntax `obstacles = [{ hexes = [58, 75], anchor = 58 }]`; replay format v18); (b
 additive: keep the hexes and add the removable pieces' hexes, without anchors. **User
 (2026-10-07): verify the anchor behaviour by experiment first; the decision waits for the
 results.** T5b waits with it. Batch 2c stages it (A1–A3, with the predictions of both
-readings).
+readings). **Batch 2c (2026-10-07) confirms the reading:** in A2 the free hex left of a 3×1 rock
+takes Remove Obstacle, refuses Fire Wall as either of its hexes, takes the Phoenix, and Remove
+Obstacle cast on it removes the whole rock; the 5×1 obstacles (absolute) refuse it, and on A1's
+battlefield, apparently absolute obstacles only, the spell is refused at once ("That spell will
+not affect anything."). VCMI's reading (no anchors) is refuted. The seam options above are the
+user's to choose at the T5c1 checkpoint.
 
 ### Battle lane (`BAT-Q<n>`)
 
-(no open questions)
+#### BAT-Q2 — Hypnotize lasted one round less than predicted (batch 2c H1)
+
+Batch 2c H1 (`experiments/results/E04b-batch-2c.md`): Red's hero (power 2, mastery none, no
+duration artifacts) hypnotized Blue's 1 Swordsman in round 2; after Blue's Expert Cure (which
+left Hypnotize listed, Q-0012) Red commanded it in round 2, but Blue commanded it in round 3. The
+engine (BAT-MAG-010, BAT-MAG-026) and the original's code as read (§7.9: a duration of 2 at the
+cast, at each round start a spell with duration 1 ends and others lose one; 0x447120 has no case
+for Hypnotize; the only writes of its duration are the apply routine's) predict Red in round 3.
+Every other duration observed so far fit (batch 2b R2). **Asked (2026-10-07):** the user re-checks
+the rounds left shown on the stack after the cast and whether Hypnotize is listed at round 3's
+start. Options after that: a duration rule of Hypnotize's own (read the cast routine 0x59FE30
+for spell 60), or an observation slip. Nothing in the engine changes until then.
 
 ### Adventure lane (`ADV-Q<n>`)
 

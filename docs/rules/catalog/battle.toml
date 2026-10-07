@@ -368,6 +368,12 @@ numeric  = "integer"
   confidence = "medium"
   note       = "the choice among equally short paths is the engine's own"
 
+  [[rule.source]]
+  kind       = "observation"
+  ref        = "experiments/results/E04b-batch-2c.md F2 (SoD 4.0 Complete, plain HD, 2026-10-07): a walker going two rows straight up with a Fire Wall on its up-right neighbour is burnt (Red, 10 -> 8 Pikemen), with the wall on its up-left neighbour it is not (Blue, 10): the original's path passes the up-right neighbour, as the engine's"
+  retrieved  = "2026-10-07"
+  confidence = "high"
+
 [[rule]]
 id       = "BAT-ATK-001"
 title    = "Melee attack"
@@ -2350,6 +2356,12 @@ numeric  = "integer"
   ref        = "SPTRAITS.TXT: Berserk's effect 0, 0, 1, 2 (the radius); its text: the stacks attack the nearest stack, friend or foe, until they have attacked once"
   confidence = "high"
 
+  [[rule.source]]
+  kind       = "observation"
+  ref        = "experiments/results/E04b-batch-2c.md B1 (SoD 4.0 Complete, plain HD, 2026-10-07): a berserk Swordsman stack equally near two Pikemen stacks attacked the lower, the upper, then the lower one in three tries from a save: a random choice, not a fixed order"
+  retrieved  = "2026-10-07"
+  confidence = "high"
+
 [[rule]]
 id       = "BAT-MAG-026"
 title    = "Hypnotize"
@@ -2378,12 +2390,18 @@ numeric  = "integer"
   retrieved  = "2026-10-07"
   confidence = "medium"
 
+  [[rule.source]]
+  kind       = "observation"
+  ref        = "experiments/results/E04b-batch-2c.md H1, C1 (SoD 4.0 Complete, plain HD, 2026-10-07): power 2 at mastery none (limit 60): Hypnotize refused on 2 Swordsmen (70), allowed on 1 (35), refused on 2 Swordsmen at 40 of 70 hit points after a Magic Arrow (the full hit points count); Expert Cure leaves Hypnotize on the caster's hypnotized stack (Q-0012) and Red commands it after the Cure; a Basic Cure from its owner ends Hypnotize (Blue commands it in the next round). Open: H1 round 3, Blue commanded the stack although a duration of 2 predicts Red (BAT-Q2)"
+  retrieved  = "2026-10-07"
+  confidence = "high"
+
 [[rule]]
 id       = "BAT-MAG-027"
 title    = "Spell obstacles and Force Field"
 context  = "battle"
 status   = "implemented"
-summary  = "An obstacle effect (SpellEffect::Obstacle, a spell with target hex and an ObstacleShape) places battlefield obstacles owned by the caster's side: on the target hex and on the hexes its shape's steps lead to, each the previous one's neighbour (as the attacker's hero casts it; mirrored left to right for the defender's hero when the shape says so), as many hexes as the shape gives for the cast's mastery; one obstacle over all of them, or one per hex for a separate shape. The target must be such that every hex is inside the field, outside the side columns, free of natural obstacles, of spell obstacles the caster's side sees (a hidden one it does not see is no hindrance: the new obstacle goes over it, BAT-MAG-031, Q-0002) and of living stacks; otherwise the target is invalid (and a spell with no such hex is not castable). An obstacle lasts the shape's rounds, the cast's included: at every round start, after the timed effects (BAT-MAG-010), each loses a round and goes when none is left (ObstacleRemoved); one of a shape with 0 rounds lasts the battle (Quicksand, BAT-MAG-032). Its placing and going are events for the sides that see it, and it is in their observations (ADR-0014 point 7, BAT-MAG-031). A wall (Force Field: a neutral earth spell of level 3, the target hex and its upper right neighbour, from Advanced also that one's upper left, for either side alike; 2 rounds) blocks its hexes like a natural obstacle: no stack enters or stands on them (BAT-MOV-001/002). Spell obstacles are kept in one list per battle, in the order they were placed (ADR-0014 point 5). Not yet: the anchor hex of a usual natural obstacle that does not block it, which the original's target test refuses too (the setup has no anchors; OPEN-QUESTIONS Q55, to verify by experiment); Remove Obstacle (E04b T5b), Land Mine (E04b T5c2)."
+summary  = "An obstacle effect (SpellEffect::Obstacle, a spell with target hex and an ObstacleShape) places battlefield obstacles owned by the caster's side: on the target hex and on the hexes its shape's steps lead to, each the previous one's neighbour (as the attacker's hero casts it; mirrored left to right for the defender's hero when the shape says so), as many hexes as the shape gives for the cast's mastery; one obstacle over all of them, or one per hex for a separate shape. The target must be such that every hex is inside the field, outside the side columns, free of natural obstacles, of spell obstacles the caster's side sees (a hidden one it does not see is no hindrance: the new obstacle goes over it, BAT-MAG-031, Q-0002) and of living stacks; otherwise the target is invalid (and a spell with no such hex is not castable). An obstacle lasts the shape's rounds, the cast's included: at every round start, after the timed effects (BAT-MAG-010), each loses a round and goes when none is left (ObstacleRemoved); one of a shape with 0 rounds lasts the battle (Quicksand, BAT-MAG-032). Its placing and going are events for the sides that see it, and it is in their observations (ADR-0014 point 7, BAT-MAG-031). A wall (Force Field: a neutral earth spell of level 3, the target hex and its upper right neighbour, from Advanced also that one's upper left, for either side alike; 2 rounds) blocks its hexes like a natural obstacle: no stack enters or stands on them (BAT-MOV-001/002). Spell obstacles are kept in one list per battle, in the order they were placed (ADR-0014 point 5). Not yet: the anchor hex of a usual natural obstacle that does not block it, which the original's target test refuses too (the setup has no anchors; OPEN-QUESTIONS Q55, observed in batch 2c A2); Remove Obstacle (E04b T5b), Land Mine (E04b T5c2)."
 numeric  = "integer"
 
   [[rule.source]]
@@ -2399,6 +2417,12 @@ numeric  = "integer"
   confidence = "medium"
   note       = "VCMI mirrors the shape for the defender; the original's descriptor does not"
 
+  [[rule.source]]
+  kind       = "observation"
+  ref        = "experiments/results/E04b-batch-2c.md F1 (SoD 4.0 Complete, plain HD, 2026-10-07): the defender's Force Field covers the clicked hex and its up-right neighbour (not mirrored; VCMI mirrors it); Red's Fire Wall cast in round 1 is gone in round 3 (2 rounds); A2: a usual obstacle's free anchor hex (left of a 3x1 rock) refuses Fire Wall as either of its hexes"
+  retrieved  = "2026-10-07"
+  confidence = "high"
+
 [[rule]]
 id       = "BAT-MAG-028"
 title    = "Fire Wall"
@@ -2410,6 +2434,12 @@ numeric  = "integer"
   [[rule.source]]
   kind       = "original-data"
   ref        = "Heroes3.exe code reading (docs/formats/installation.md §7.15): the case for spell 13 (0x5A0821) places one object per hex (2, from Advanced 3: the target, hex - 17 adjusted by row and side, hex - 34), each with power x factor + effect[mastery] passed through 0x5A78E0 without a hero or stack; 0x46A570 runs the trigger 0x59FCD0 for a stack's hex and second hex, each once per move (0x46A520 marks the start), from the walk 0x441FA0 at each step, from the flight 0x4B49C0 and the teleport 0x4B4E90 at the landing, and after a defend (0x4798F3), a wait (0x479AD6), a shot or a melee attack without a move (0x4792D7, 0x4789C7); 0x59FCD0 tests 0x5A8090 (spell 13, the owner's side) > 0 without a roll and takes 0x5A78E0 with the owner's hero, the stack's controlling hero and the stack"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "observation"
+  ref        = "experiments/results/E04b-batch-2c.md F1 (SoD 4.0 Complete, plain HD, 2026-10-07): 50 Pikemen walking into the lower hex of a power-1 Fire Wall: 'The Fire Wall does 20 damage. 2 Pikemen perish.' (48), again on Wait (46) and on Defend (44) in the next round; the defender's Fire Wall's second hex is up-left (mirrored)"
+  retrieved  = "2026-10-07"
   confidence = "high"
 
 [[rule]]
