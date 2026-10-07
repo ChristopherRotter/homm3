@@ -125,3 +125,16 @@ Classes: `exploit-fix` (always fixed, never toggleable) · `preserve` (accepted,
 - Defaults: faithful = on, strict-fixed = off
 - Regression test: `crates/h3-battle/src/tests/protect.rs`, `counterstrike_adds_retaliations_now_and_at_each_round_start`
 - Decided by / date: user, 2026-10-07 (E04b T3b1a checkpoint); found by code reading, 2026-10-06 (E04b T3b1a)
+
+### Q-0009 — Frenzy's attack bonus counts a Behemoth's defense reduction
+- Class: fix-optional (survey S-16, suggested class; confirmed for SoD by code reading)
+- Context / rules affected: battle, BAT-MAG-019, BAT-DMG-006
+- Original behavior: a frenzied stack adds its defense × v % to its attack, computing that defense as the struck stack would see it: against a Behemoth (Ancient Behemoth) it is first reduced by 40 % (80 %), so a frenzied stack attacking Behemoths gains less (0x442410 calls 0x442590 with the target).
+- Intended/expected behavior: the frenzied stack's own defense, unreduced (HotA's fix).
+- Impact: gameplay-altering (small)
+- Community status: fixed in Horn of the Abyss (changelog, survey S-16)
+- Sources: original-data, `docs/formats/installation.md` §7.11; HotA changelog (survey S-16)
+- Flag: `quirk.battle.frenzy_reduced_defense` (E04b T3b2)
+- Defaults: faithful = on, strict-fixed = off
+- Regression test: `crates/h3-battle/src/tests/rage.rs`, `frenzy_against_a_behemoth_counts_its_reduction_with_quirk_q0009`
+- Decided by / date: suggested class S-16 (user, Q30); confirmed for SoD by code reading, 2026-10-07 (E04b T3b2)

@@ -53,7 +53,7 @@ Optional flags: `--with-original-data`, `--mutants`, `--fuzz-smoke`.
 | coverage | `cargo llvm-cov`: 100 % lines (lcov, merged over generic instantiations) and regions (merged segments) on logic crates, minus `coverage-exclusions.toml`; fails if a non-test logic file with functions is missing from the report (test files are left out of the report by cargo-llvm-cov) | yes |
 | determinism | golden replays in debug, release, release + `target-cpu=native` | yes |
 | ffi-smoke | compile and run the C smoke program against the static library (N/A on Windows) | |
-| bench-check | instruction counts (valgrind/callgrind) vs. `benches/baseline.toml`, +2 % threshold (N/A off Linux or for another toolchain/target) | yes |
+| bench-check | instruction counts (valgrind/callgrind) vs. `benches/baseline.toml`, +2 % threshold (N/A off Linux or for another toolchain/target); the measured `h3` is linked without RELRO, as valgrind 3.22 may read no symbols from an lld-linked binary otherwise | yes |
 | doc-drift | warning only: logic crates changed since `master` without HANDOFF/rules/ADR/epic changes | |
 
 Exit codes: 0 = complete and green; 1 = a step failed; 2 = nothing failed but steps were skipped (`--quick`/`--skip`), which is not green. A step may report **N/A** only for a platform limitation (not for a tool that could be installed; a bench-check baseline for another toolchain fails rather than being N/A). Local setup: `cargo install cargo-deny cargo-llvm-cov --locked`, `rustup component add llvm-tools-preview` (or set `LLVM_COV`/`LLVM_PROFDATA` to compatible LLVM tools), a C compiler, and valgrind on Linux.

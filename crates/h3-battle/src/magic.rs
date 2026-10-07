@@ -17,7 +17,7 @@
 use h3_content::{
     Ability, CreatureFlag, CreatureTypeId, FIRST_PROTECTION, FULL_BP, MAX_FIELD_HEXES,
     MAX_SPELL_SCHOOLS, MAX_SPELLS, Ruleset, SINGLE_PRECISION_RATES, Spell, SpellCategory,
-    SpellEffect, SpellId, SpellPolarity, SpellScope, SpellTarget, TargetSide,
+    SpellEffect, SpellId, SpellPolarity, SpellScope, SpellTarget, TargetSide, TimedChange,
 };
 use h3_contracts::{BattleEffect, BattleHero, BattleSide};
 use h3_kernel::arith::{
@@ -32,7 +32,7 @@ use crate::error::{CommandError, HeroError};
 use crate::event::{Event, EventKind, Sink};
 use crate::geometry::{Field, Footprint, Hex};
 use crate::hero::HeroRecord;
-use crate::state::{BattleState, STACK_CAPACITY, StackId};
+use crate::state::{BattleState, STACK_CAPACITY, Stack, StackId};
 
 /// A set of spells by handle (the content allows at most [`MAX_SPELLS`]).
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
@@ -614,16 +614,14 @@ fn grow(value: u64, bp: u64) -> u64 {
 // rule: BAT-MAG-004
 fn spell_damage(
     ruleset: &Ruleset,
-    cast: &Cast<'_>,
+    ((id, spell), b): (SpellRef<'_>, &SpellBonuses),
     value: u64,
     (creature, protection): (CreatureTypeId, &[u8; MAX_SPELL_SCHOOLS]),
 ) -> (u64, u64) {
     let single = ruleset.quirks().is_enabled(SINGLE_PRECISION_RATES);
     let one = u128::from(scale(single));
-    let b = &cast.bonuses;
     let bp = |sum: u32| rate(single, u16::try_from(sum).unwrap_or(u16::MAX));
-    let school = cast
-        .spell
+    let school = spell
         .schools
         .iter()
         .map(|l| b.school_bp[l.index().min(MAX_SPELL_SCHOOLS - 1)])
@@ -631,7 +629,7 @@ fn spell_damage(
         .unwrap_or(0);
     let factor = (one + u128::from(bp(school))) * (one + u128::from(bp(b.all_bp)));
     let t = u64::try_from(u128::from(value) * factor / (one * one)).unwrap_or(u64::MAX);
-    let own = b.spell(cast.id);
+    let own = b.spell(id);
     let level = u64::from(
         ruleset
             .creature_info(creature)
@@ -646,7 +644,7 @@ fn spell_damage(
     let mut damage = caster;
     for ability in ruleset.abilities(creature) {
         match *ability {
-            Ability::SpellVulnerability { spell, percent } if spell == cast.id => {
+            Ability::SpellVulnerability { spell, percent } if spell == id => {
                 damage = grow(damage, u64::from(percent) * 100);
             }
             Ability::SpellDamageReduction { percent } => {
@@ -655,7 +653,52 @@ fn spell_damage(
             _ => {}
         }
     }
-    (caster, protected(ruleset, cast.spell, damage, protection))
+    (caster, protected(ruleset, spell, damage, protection))
+}
+
+/// The damage a stack with Fire Shield reflects onto `striker` from a melee strike whose first
+/// damage stage, capped at the struck stack `target`'s hit points, is `first` (BAT-MAG-018): none
+/// for a fire-immune striker; else `first × v %` rounded down (with quirk Q-0005 in the
+/// original's single precision), then the shield's spell damage with the bonuses of the struck
+/// stack's hero as the caster's and the striker's reductions and protection
+/// ([`spell_damage`]; `installation.md` §7.11). No immunity or resistance applies.
+// rule: BAT-MAG-018
+pub(crate) fn reflection(
+    state: &BattleState,
+    ruleset: &Ruleset,
+    (striker, target): (&Stack, StackId),
+    first: u64,
+) -> u64 {
+    let shield = SpellEffect::Timed(TimedChange::FireShield);
+    let fire_immune = ruleset
+        .creature(striker.creature)
+        .is_some_and(|c| c.flags.contains(CreatureFlag::FireImmune));
+    let found = state.effects.of(target).iter().find_map(|e| {
+        ruleset
+            .spell(e.spell)
+            .filter(|spell| spell.magic.effects.contains(&shield))
+            .map(|spell| (e.spell, spell, e.value))
+    });
+    let Some((id, spell, percent)) = found.filter(|_| !fire_immune) else {
+        return 0;
+    };
+    let value = if ruleset.quirks().is_enabled(SINGLE_PRECISION_RATES) {
+        let factor = X87::ratio(u32::from(percent), 100, SINGLE_BITS).unwrap_or(X87::ZERO);
+        X87::int(first).round(SINGLE_BITS).times(factor).trunc()
+    } else {
+        mul_div_floor(first, u64::from(percent), 100).unwrap_or(u64::MAX)
+    };
+    let side = state.at(target).side;
+    let bonuses = state.heroes[side.index()]
+        .as_ref()
+        .map_or_else(SpellBonuses::default, |h| h.magic.bonuses);
+    spell_damage(
+        ruleset,
+        ((id, spell), &bonuses),
+        value,
+        (striker.creature, &striker.spells.school_protection),
+    )
+    .1
 }
 
 /// `damage` after the target's protection against `spell` (BAT-MAG-013; `installation.md` §7.8,
@@ -795,7 +838,9 @@ fn affect<S: Sink>(
     if cast.spell.magic.effects.contains(&SpellEffect::Damage) {
         let target = state.at(s);
         let protection = target.spells.school_protection;
-        let (caster, damage) = spell_damage(ruleset, cast, value, (target.creature, &protection));
+        let caster_ref = ((cast.id, cast.spell), &cast.bonuses);
+        let (caster, damage) =
+            spell_damage(ruleset, caster_ref, value, (target.creature, &protection));
         let kills = apply_damage(state.at_mut(s), damage);
         sink.emit(Event::public(EventKind::SpellDamage {
             target: s,

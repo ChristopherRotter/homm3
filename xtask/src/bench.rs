@@ -134,8 +134,23 @@ pub fn check(update: bool) -> Result<Status, String> {
             baseline.toolchain, baseline.target
         ));
     }
+    // The binary is linked without RELRO, a single writable segment: valgrind 3.22 reads no
+    // symbols from an lld-linked executable whose two writable segments the kernel maps as
+    // one (the RELRO end falling on a page boundary), and the gate would then measure nothing
+    // (E04b T3b2). Only the final link differs; the code measured is the same.
     let mut build = cargo();
-    build.args(["build", "--release", "--quiet", "-p", "h3-cli"]);
+    build.args([
+        "rustc",
+        "--release",
+        "--quiet",
+        "-p",
+        "h3-cli",
+        "--bin",
+        "h3",
+        "--",
+        "-C",
+        "link-arg=-Wl,-z,norelro",
+    ]);
     run_cmd(build)?;
     let mut failures = Vec::new();
     for w in &mut baseline.workload {

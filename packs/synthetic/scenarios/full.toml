@@ -19,7 +19,7 @@ defender_funds = 10000
 # Both heroes cast (E04b T2c): Brea knows the four damage spells with Basic Storm magic, so
 # random rollouts exercise every kind of damage spell the battle implements; since E04b T3a also
 # three timed storm spells, since T3b1 Smiting (Slayer) and Riposte (extra retaliations), since
-# T3b1b Mend (a Cure: it heals and ends the negative spells).
+# T3b1b Mend (a Cure: it heals and ends the negative spells), since T3b2 Blaze (a Fire Shield).
 [scenario.attacker_hero]
 hero_type = "synthetic:brea"
 attack = 2
@@ -32,7 +32,7 @@ max_mana = 40
 spell_book = [
     "synthetic:spark", "synthetic:cinders", "synthetic:arc", "synthetic:blight", "synthetic:ward",
     "synthetic:hasten", "synthetic:drag", "synthetic:fury", "synthetic:smiting",
-    "synthetic:riposte", "synthetic:mend",
+    "synthetic:riposte", "synthetic:mend", "synthetic:blaze",
 ]
 schools = { "synthetic:storm" = 1 }
 ranged_bp = 1000
@@ -53,7 +53,8 @@ effects = [{ kind = "morale", amount = 1 }, { kind = "luck", amount = 1 }]
 # (Blight and the timed stone spells, their mass versions among them; E04b T3a) and no Storm
 # mastery (Spark, Arc), and his timed spells last 2 rounds longer, as a Storm Orb's would. Since
 # E04b T3b1 he shields his stacks (Aegis, mass at Expert) and hallows them against storm spells;
-# since T3b1b he purges every stack's effects (mass at Expert, sparing Drag).
+# since T3b1b he purges every stack's effects (mass at Expert, sparing Drag), since T3b2 he
+# enrages one (a Frenzy).
 [scenario.defender_hero]
 hero_type = "synthetic:corwin"
 attack = 1
@@ -65,7 +66,7 @@ max_mana = 40
 spell_book = [
     "synthetic:spark", "synthetic:arc", "synthetic:blight", "synthetic:zeal", "synthetic:gloom",
     "synthetic:boon", "synthetic:bane", "synthetic:corrode", "synthetic:aegis",
-    "synthetic:hallow", "synthetic:purge",
+    "synthetic:hallow", "synthetic:purge", "synthetic:rage",
 ]
 schools = { "synthetic:stone" = 3 }
 surrender_discount_bp = 1000

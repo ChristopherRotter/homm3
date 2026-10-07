@@ -15,7 +15,7 @@ Sources: `wiki` = https://heroes.thelazy.net (retrieved 2026-10-03; pages named 
 | confirmed by original data | S-05 (the exe's creature table holds the bugged levels) |
 | exploit-fix, no confirmation needed (never implemented) | S-08, S-14, S-20 |
 | batch 1a (E04a), evaluated 2026-10-03 | confirmed: S-01 (ledger Q-0004), S-02 with Q23 (Q-0005, all damage rates), S-03 for Roland only (Q-0006); not reproduced in SoD: S-04 (dropped) |
-| to confirm in an E04b or E04c batch | S-06, S-07, S-09 – S-13, S-15 – S-18, S-21 (S-19 confirmed by code reading: Q-0007) |
+| to confirm in an E04b or E04c batch | S-06, S-07, S-09 – S-13, S-15, S-17, S-18, S-21 (S-19 confirmed by code reading: Q-0007; S-16: Q-0009) |
 | to confirm when the battle setup is derived from the map (E04c or E08) | S-22 |
 
 ## Overview
@@ -120,6 +120,7 @@ Outside the E04 scope, listed so they are not lost (no classification needed now
 ### S-16 — Frenzy counts Behemoth defense reduction (E04b)
 - Original: HotA changelog: "when calculating the bonus attack from the Frenzy spell, defense penalties from enemy creatures (such as Behemoths and Ancient Behemoths) were accounted for".
 - Suggested **fix-optional**.
+- E04b T3b2 (code reading, `installation.md` §7.11): confirmed; ledger Q-0009 (`quirk.battle.frenzy_reduced_defense`).
 
 ### S-17 — Long effects expire after 255 rounds (E04b)
 - Original: HotA changelog: "Berserk, Disrupting Ray, and Dendroid Roots spells were removed from units after 255 rounds".

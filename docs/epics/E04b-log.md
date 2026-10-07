@@ -384,3 +384,41 @@ records how and why the tasks went.
 - **Moved out:** the Sphere of Permanence to T8 (one hero effect with the Pendants, a seam
   addition); Expert Dispel's removal of the spell obstacles to T5; Magic Mirror, hypnotized
   stacks to T4; Dispel Helpful Spells to T7 (BACKLOG).
+
+### T3b2 — Fire Shield and Frenzy (2026-10-07)
+
+- **Seam:** the user's (T3b1b and T3b2 in one session, checkpoint before T3c).
+- **Code reading** (`installation.md` §7.11): Fire Shield's reflection is computed inside the
+  physical damage routine from stage 1, capped at the target's hit points, passed through the
+  spell-damage modifiers with the target's hero as the caster; shots drop it; only the attacked
+  stack reflects, a multi-headed attack sums; it lands before the retaliation. Frenzy: 1 or 2
+  turns of the stack, counted at its own turn start (once per round); attack + own defense ×
+  factor as the struck stack sees it (S-16 confirmed), defense 0 when struck. The Behemoths'
+  reduction truncates the share taken, so the defense left rounds up: the user chose to follow
+  it under Q-0005 and keep Q19 in strict-fixed (BAT-DMG-006).
+- **Content (pack format v8):** timed changes `fire_shield` and `frenzy`, duration `own_turn`;
+  quirk Q-0009 (`quirk.battle.frenzy_reduced_defense`, S-16). Harvested from the gap-fill
+  (source `exe-fire-shield-frenzy`).
+- **Battle:** BAT-MAG-018 (`magic::reflection`, `combat::reflect`, event `Reflected`;
+  `Strike::stage_one`; `spell_damage` takes the spell and the caster's bonuses instead of a
+  cast), BAT-MAG-019 (`damage::frenzied`, `effects::own_turn` called at a stack's first
+  activation of the round, `count_down` skips own-turn effects), BAT-DMG-006 (`reduced_defense`
+  with the executable's rounding under Q-0005). `SpellValues` gains `fire_shield` and `frenzy`:
+  state hash v22, `Stack` 68 → 72 bytes, `BattleState` 3 672 → 3 840 bytes.
+- **Workload:** the synthetic pack gains Blaze (Fire Shield, Brea) and Rage (Frenzy, Corwin);
+  golden replays re-recorded (the state hash changes every checkpoint).
+- **bench-check:** the new binary hit a valgrind 3.22 limitation (no symbols read from an
+  lld-linked executable whose two writable segments the kernel merges: the RELRO end fell on a
+  page boundary), so the gate measured 0. `xtask bench` now links the measured `h3` with `-z
+  norelro` (`cargo rustc`, the final link only). Agent decision (change freely).
+- **Measurements** (this sandbox): the old workload (9431440's packs) on the new engine 10 613
+  steps as before, 485.7 M Ir against 483.2 M (+0.53 %: the larger stack, the Frenzy and Fire
+  Shield checks per strike). New workload 9 141 steps, 426.3 M Ir; `bench-check` re-baselined.
+  Clone ≈ 513 → 598 ns, fork ≈ 2.20 → 2.00 µs (criterion, both engines in this sandbox, which
+  is noisy: the fork moved the other way); `h3 bench` full ≈ 114 k steps/s.
+- **Tests:** `tests/rage.rs` (the reflection's base, cap, retaliations, shots, fire immunity,
+  breath and multi-headed attacks, the caster's bonuses and the striker's reductions; Frenzy's
+  attack and defense by mastery, rounding, S-16 in both profiles, the own-turn countdown in
+  play), `tests/abilities.rs` (BAT-DMG-006 in both roundings).
+- **Left:** the Efreet Sultans' own shield (T7), a clone's health of 1 for the cap (T6), a
+  hypnotized stack's controller (T4); two quirk candidates for the user (BACKLOG).

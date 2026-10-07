@@ -756,7 +756,7 @@ id       = "BAT-DMG-006"
 title    = "Defense reduction"
 context  = "battle"
 status   = "implemented"
-summary  = "A creature with defense_reduction (Behemoths 40 %, Ancient Behemoths 80 %) strikes as if the target's defense were floor(D × (100 − percent) / 100), where D is the target's effective defense including the Defend bonus (BAT-TRN-004); also on retaliations."
+summary  = "A creature with defense_reduction (Behemoths 40 %, Ancient Behemoths 80 %) strikes as if the target's defense D (its effective defense including the Defend bonus, BAT-TRN-004) were reduced; also on retaliations. Under quirk Q-0005 (faithful) as the executable computes it: D − trunc(f32(D) × f32(percent / 100)), the share taken truncated toward 0, so the defense left rounds up (7 leaves 5 against a Behemoth, 2 against an Ancient Behemoth; installation.md §7.11, the user 2026-10-07); without it (strict-fixed) floor(D × (100 − percent) / 100) toward 0 (Q19; 7 leaves 4 and 1). A frenzied striker's own defense meets the same reduction under quirk Q-0009 (BAT-MAG-019)."
 numeric  = "integer"
 
   [[rule.source]]
@@ -1963,7 +1963,7 @@ id       = "BAT-MAG-010"
 title    = "How long a timed effect lasts"
 context  = "battle"
 status   = "implemented"
-summary  = "A hero's timed spell lasts its power plus its duration bonus (HER-BAT-014: the Conjuring artifacts, the Ring of the Magi), at least 1 round, counting the round of the cast; a permanent spell (Disrupting Ray) lasts the rest of the battle. At the start of every round each effect on a living stack either ends (its last round has passed) or loses a round: an effect cast in round n with duration d is active in rounds n to n + d − 1. An ending effect gives back what it changed (the attack Weakness took; Stone Skin's, Prayer's and Haste's additions, so a defense Disrupting Ray pushed to 0 can fall below 0) and is reported (EffectEnded). A stack that dies loses its effects (without events). The minimum of 1 round is the engine's: the original's heroes have at least 1 power."
+summary  = "A hero's timed spell lasts its power plus its duration bonus (HER-BAT-014: the Conjuring artifacts, the Ring of the Magi), at least 1 round, counting the round of the cast; a permanent spell (Disrupting Ray) lasts the rest of the battle. At the start of every round each effect on a living stack either ends (its last round has passed) or loses a round: an effect cast in round n with duration d is active in rounds n to n + d − 1. An ending effect gives back what it changed (the attack Weakness took; Stone Skin's, Prayer's and Haste's additions, so a defense Disrupting Ray pushed to 0 can fall below 0) and is reported (EffectEnded). A stack that dies loses its effects (without events). The minimum of 1 round is the engine's: the original's heroes have at least 1 power. Effects counted by their stack's own turns (Frenzy, EffectDuration::OwnTurn, BAT-MAG-019) are skipped at the round start."
 numeric  = "integer"
 
   [[rule.source]]
@@ -2118,4 +2118,44 @@ numeric  = "integer"
   ref        = "config/spells/other.json cure: heals the top creature without resurrection and removes negative effects; VCMI makes it castable only when one of the two applies, the original does not"
   url        = "https://github.com/vcmi/vcmi/blob/1.7.5/config/spells/other.json"
   retrieved  = "2026-10-06"
+  confidence = "medium"
+
+[[rule]]
+id       = "BAT-MAG-018"
+title    = "Fire Shield"
+context  = "battle"
+status   = "implemented"
+summary  = "While Fire Shield is active on a stack (v = 20, 20, 25, 30 %), every melee strike on it (an attack, a retaliation or a second strike; never a shot) reflects damage onto the striker unless the striker is fire-immune (creature flag fire_immune): x = the strike's first damage stage (BAT-DMG-002: the base with its bonuses, before the target's defense, the penalties, Shield and Armorer), capped at the target's hit points before the strike; r = x × v % rounded down (single precision under quirk Q-0005); then r is the shield spell's damage (BAT-MAG-004) with the bonuses of the struck stack's hero as the caster's (Sorcery, the Orb of Fire, a specialty) and the striker's reductions and fire protection (BAT-MAG-013); no immunity or magic resistance applies. Only the attacked stack reflects (not a breath's second stack); a multi-headed striker (attacks all adjacent, three-headed) takes back the sum of every stack it struck. The damage comes after the attack's life drain and death stare and before the retaliation (Reflected); the striker may die of it. A timed own-stack spell without a mass version. Not yet: the Efreet Sultans' own 20 % shield (E04b T7), a hypnotized stack's controller as the caster (E04b T4)."
+numeric  = "integer"
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (docs/formats/installation.md §7.11): 0x4448F0 stores v/100 as f32 (+0x4A0); 0x443F40 calls 0x422440 after stage 1: 0 for a fire-immune striker (flag 0x4000), else trunc(f32(min(stage 1, the target's hit points)) × factor) through 0x5A78E0 for spell 29 with the target's hero as the caster; the shot routines drop the value; 0x441610 keeps the attacked stack's (0x440310 sums a multi-headed attack's) and applies it to the striker (0x4409C0) before the retaliation"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "vcmi"
+  ref        = "config/spells/timed.json fireShield (FIRE_SHIELD 20/20/25/30) and the damage after all reductions (lib/battle/DamageCalculator.cpp; not followed: the original reflects from the first stage)"
+  url        = "https://github.com/vcmi/vcmi/blob/1.7.5/config/spells/timed.json"
+  retrieved  = "2026-10-07"
+  confidence = "medium"
+
+[[rule]]
+id       = "BAT-MAG-019"
+title    = "Frenzy"
+context  = "battle"
+status   = "implemented"
+summary  = "While Frenzy is active on a stack (v = 100, 100, 150, 200 %), its attack in every strike (melee and shots) is its attack (after Bloodlust or Precision and Slayer) plus its defense (with the Defend bonus) × v %, the sum rounded toward 0 (the share single precision under quirk Q-0005); under quirk Q-0009 (S-16, faithful) the defense added is reduced as the struck creature would reduce it (Behemoths, BAT-DMG-006), as the original does. Struck, the frenzied stack has defense 0. It lasts by the stack's own turns (EffectDuration::OwnTurn): 1 if cast on the active stack, else 2, whatever the caster's power; the round start does not count it (BAT-MAG-010), the stack's first turn start of a round (not after waiting) does: above 1 it loses one, else it ends; so it lasts through the stack's next turn. A re-cast keeps the longer count. A timed own-stack mind spell without a mass version."
+numeric  = "integer"
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (docs/formats/installation.md §7.9, §7.11): 0x4448F0 sets the duration to 1 for the active stack, else 2, and stores v/100 as f32 (+0x498); 0x447120 skips spell 56; the turn start 0x446E30 (once per round, +0x4F0) counts it down; 0x442410 adds trunc(f32(attack) + f32(own defense against the target) × factor); 0x442590 returns 0 for a frenzied stack when struck and applies a Behemoth's share to the own defense"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "vcmi"
+  ref        = "config/spells/timed.json frenzy: attack + defense × 100/100/150/200 %, defense 0, until the stack's next turn"
+  url        = "https://github.com/vcmi/vcmi/blob/1.7.5/config/spells/timed.json"
+  retrieved  = "2026-10-07"
   confidence = "medium"

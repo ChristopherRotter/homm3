@@ -707,6 +707,10 @@ pub fn ruleset_with(profile: &str, edit: impl FnOnce(&mut BattleParamsDef)) -> R
                 quirks: vec![(String::from("quirk.battle.first_protection"), true)],
             },
             ProfileDef {
+                key: ContentKey::new("t", "frenzy").unwrap(),
+                quirks: vec![(String::from("quirk.battle.frenzy_reduced_defense"), true)],
+            },
+            ProfileDef {
                 key: ContentKey::new("t", "counterstrike").unwrap(),
                 quirks: vec![(String::from("quirk.battle.counterstrike_extra_round"), true)],
             },
@@ -875,8 +879,9 @@ pub type TimedSpec = (
 /// The timed test spells, all level 1 in the air school (`fireward` in the fire school), costing
 /// 5/4/4/4, after the original's (survey §14, §15): `haste` and `sloth` (Slow) counter each
 /// other; `ray` (Disrupting Ray) is permanent and cumulative; `bless` and `curse` counter each
-/// other; `shield`, `airshield`, `airward` and `fireward` protect, `slayer` is Slayer and
-/// `counter` Counterstrike.
+/// other; `shield`, `airshield`, `airward` and `fireward` protect, `slayer` is Slayer,
+/// `counter` Counterstrike, `fireshield` (fire school) Fire Shield and `frenzy` Frenzy (through
+/// the stack's next turn).
 pub const TIMED: &[TimedSpec] = &[
     (
         "haste",
@@ -1082,6 +1087,26 @@ pub const TIMED: &[TimedSpec] = &[
         false,
         true,
     ),
+    (
+        "fireshield",
+        true,
+        &[TimedChange::FireShield],
+        [20, 20, 25, 30],
+        None,
+        false,
+        false,
+        false,
+    ),
+    (
+        "frenzy",
+        true,
+        &[TimedChange::Frenzy],
+        [100, 100, 150, 200],
+        None,
+        false,
+        true,
+        false,
+    ),
 ];
 
 /// The definition of a timed test spell.
@@ -1095,7 +1120,15 @@ fn timed_def(
         category: SpellCategory::Combat,
         level: 1,
         schools: vec![
-            ContentKey::new("t", if name == "fireward" { "fire" } else { "air" }).unwrap(),
+            ContentKey::new(
+                "t",
+                if name == "fireward" || name == "fireshield" {
+                    "fire"
+                } else {
+                    "air"
+                },
+            )
+            .unwrap(),
         ],
         cost: [5, 4, 4, 4],
         power: 0,
@@ -1125,6 +1158,8 @@ fn timed_def(
             mass_from: mass.then_some(3),
             duration: if permanent {
                 EffectDuration::Permanent
+            } else if name == "frenzy" {
+                EffectDuration::OwnTurn
             } else {
                 EffectDuration::Rounds
             },

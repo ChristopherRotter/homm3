@@ -10,7 +10,9 @@ use core::num::NonZeroU64;
 
 use h3_content::BattleParams;
 use h3_kernel::Rng;
-use h3_kernel::arith::{DOUBLE_BITS, SINGLE_BITS, WideUint, X87, mul_div_floor};
+use h3_kernel::arith::{
+    DOUBLE_BITS, SINGLE_BITS, SINGLE_FRAC_BITS, WideUint, X87, mul_div_floor, single_precision,
+};
 
 use crate::state::{Stack, StackFlags};
 
@@ -101,21 +103,42 @@ impl Strike {
         .max(1)
     }
 
-    /// `floor(base · (1 + Σ bonus) · Π (1 − reduction))` with decimal rates, in basis points.
-    /// Saturates on absurd inputs.
-    fn exact(&self, base: u64, p: &BattleParams) -> u64 {
-        let diff = u64::from(self.attack.abs_diff(self.defense));
+    /// The first stage of the damage of `base`, before the defense, the penalties and the
+    /// protections: the executable's stage 1 with quirk Q-0005 (`staged`), else `floor(base ·
+    /// (1 + Σ bonus))` with decimal rates (Fire Shield's base, BAT-MAG-018).
+    pub(crate) fn stage_one(&self, base: u64, params: &BattleParams, staged: bool) -> u64 {
+        if staged {
+            self.staged_one(base, params)
+        } else {
+            let bonus = self.exact_bonus(params);
+            mul_div_floor(base, BP + bonus, BP).unwrap_or(u64::MAX)
+        }
+    }
+
+    /// The bonus sum of the exact formula in basis points: the whole bonuses, jousting, hate,
+    /// the hero's bonus and the attack advantage (capped).
+    fn exact_bonus(&self, p: &BattleParams) -> u64 {
         let whole =
             u64::from(self.lucky) + u64::from(self.death_blow) + u64::from(self.double_damage);
         let mut bonus = whole * BP
             + u64::from(self.jousting.0) * u64::from(self.jousting.1) * 100
             + u64::from(self.hate_percent) * 100
             + u64::from(self.hero_bonus_bp);
-        let mut reductions = [0u64; 4];
         if self.attack > self.defense {
+            let diff = u64::from(self.attack.abs_diff(self.defense));
             let per_point = u64::from(p.attack_bonus_per_point_percent) * 100;
             bonus += (diff * per_point).min(u64::from(p.attack_bonus_cap_percent) * 100);
-        } else {
+        }
+        bonus
+    }
+
+    /// `floor(base · (1 + Σ bonus) · Π (1 − reduction))` with decimal rates, in basis points.
+    /// Saturates on absurd inputs.
+    fn exact(&self, base: u64, p: &BattleParams) -> u64 {
+        let diff = u64::from(self.attack.abs_diff(self.defense));
+        let bonus = self.exact_bonus(p);
+        let mut reductions = [0u64; 4];
+        if self.attack <= self.defense {
             let per_point = u64::from(p.defense_reduction_per_point_permille) * 10;
             reductions[0] =
                 (diff * per_point).min(u64::from(p.defense_reduction_cap_permille) * 10);
@@ -139,37 +162,7 @@ impl Strike {
     /// `X87_PRECISION` bits: the rates of the code are doubles, the hero's and the spells'
     /// stored factors single precision (quirk Q-0005).
     fn staged(&self, base: u64, p: &BattleParams) -> u64 {
-        // The code's constants and stored values: doubles and `f32`s (`d > 0` throughout).
-        let double = |n: u16, d: u32| X87::ratio(u32::from(n), d, DOUBLE_BITS).unwrap_or(X87::ZERO);
-        let single = |n: u16, d: u32| X87::ratio(u32::from(n), d, SINGLE_BITS).unwrap_or(X87::ZERO);
-        let stored = |v: u64, bits: u32| X87::int(v).round(bits);
-        let b = stored(base, DOUBLE_BITS);
-        // 1. The bonuses as an integer, each fractional one truncated as it is added.
-        let mut sum = b
-            .times(stored(u64::from(self.jousting.1), DOUBLE_BITS))
-            .times(double(self.jousting.0, 100))
-            .trunc();
-        if self.lucky {
-            sum = sum.saturating_add(base);
-        }
-        if self.attack >= self.defense {
-            let diff = X87::int(u64::from(self.attack.abs_diff(self.defense)));
-            let rate = diff
-                .times(double(p.attack_bonus_per_point_percent, 100))
-                .min(double(p.attack_bonus_cap_percent, 100));
-            sum = b.times(rate).plus(stored(sum, DOUBLE_BITS)).trunc();
-        }
-        sum = sum.saturating_add(mul_div_floor(base, self.hate_percent.into(), 100).unwrap_or(0));
-        if self.hero_bonus_bp > 0 {
-            sum = single(self.hero_bonus_bp, 10_000)
-                .times(stored(base, SINGLE_BITS))
-                .plus(stored(sum, SINGLE_BITS))
-                .trunc();
-        }
-        let whole = u64::from(self.death_blow) + u64::from(self.double_damage);
-        let d1 = base
-            .saturating_add(sum)
-            .saturating_add(base.saturating_mul(whole));
+        let d1 = self.staged_one(base, p);
         // 2. Times the defense and penalty factor.
         let mut f = X87::ONE;
         if self.defense > self.attack {
@@ -194,6 +187,52 @@ impl Strike {
         }
         stored(d2, DOUBLE_BITS).times(g).trunc()
     }
+
+    /// The executable's stage 1: the bonuses as an integer, each fractional one truncated as it
+    /// is added, plus the base.
+    fn staged_one(&self, base: u64, p: &BattleParams) -> u64 {
+        let b = stored(base, DOUBLE_BITS);
+        // 1. The bonuses as an integer, each fractional one truncated as it is added.
+        let mut sum = b
+            .times(stored(u64::from(self.jousting.1), DOUBLE_BITS))
+            .times(double(self.jousting.0, 100))
+            .trunc();
+        if self.lucky {
+            sum = sum.saturating_add(base);
+        }
+        if self.attack >= self.defense {
+            let diff = X87::int(u64::from(self.attack.abs_diff(self.defense)));
+            let rate = diff
+                .times(double(p.attack_bonus_per_point_percent, 100))
+                .min(double(p.attack_bonus_cap_percent, 100));
+            sum = b.times(rate).plus(stored(sum, DOUBLE_BITS)).trunc();
+        }
+        sum = sum.saturating_add(mul_div_floor(base, self.hate_percent.into(), 100).unwrap_or(0));
+        if self.hero_bonus_bp > 0 {
+            sum = single(self.hero_bonus_bp, 10_000)
+                .times(stored(base, SINGLE_BITS))
+                .plus(stored(sum, SINGLE_BITS))
+                .trunc();
+        }
+        let whole = u64::from(self.death_blow) + u64::from(self.double_damage);
+        base.saturating_add(sum)
+            .saturating_add(base.saturating_mul(whole))
+    }
+}
+
+/// A rate of the code's constants: `n / d` as a double (`d > 0` throughout).
+fn double(n: u16, d: u32) -> X87 {
+    X87::ratio(u32::from(n), d, DOUBLE_BITS).unwrap_or(X87::ZERO)
+}
+
+/// A stored factor: `n / d` as an `f32`.
+fn single(n: u16, d: u32) -> X87 {
+    X87::ratio(u32::from(n), d, SINGLE_BITS).unwrap_or(X87::ZERO)
+}
+
+/// An integer stored at `bits` of precision.
+fn stored(v: u64, bits: u32) -> X87 {
+    X87::int(v).round(bits)
 }
 
 /// Defense used when `stack` is hit: its defense now (BAT-MAG-011) plus, while defending,
@@ -209,12 +248,39 @@ pub(crate) fn effective_defense(stack: &Stack, params: &BattleParams) -> i32 {
     defense.saturating_add(pct.max(i32::from(params.defend_bonus_min)))
 }
 
-/// The defense a creature that ignores `percent` % of it sees: `defense · (100 − percent) / 100`
-/// rounded toward 0 (Q19; rounded down for a defense of at least 0).
+/// The defense a creature that ignores `percent` % of it sees: with quirk Q-0005 (`staged`) the
+/// executable's `defense − trunc(f32(defense) × f32(percent / 100))`, the share taken rounded
+/// toward 0 (`installation.md` §7.11; 7 against a Behemoth leaves 5); else `defense · (100 −
+/// percent) / 100` rounded toward 0 (Q19; 7 leaves 4).
 // rule: BAT-DMG-006
-pub(crate) fn reduced_defense(defense: i32, percent: u8) -> i32 {
-    // At most |defense| · 100: no overflow for a defense of an `i16` sum.
-    defense.saturating_mul(i32::from(100 - percent.min(100))) / 100
+pub(crate) fn reduced_defense(defense: i32, percent: u8, staged: bool) -> i32 {
+    let percent = percent.min(100);
+    if staged {
+        let taken = stored(u64::from(defense.unsigned_abs()), SINGLE_BITS)
+            .times(single(u16::from(percent), 100))
+            .trunc();
+        // At most |defense|.
+        defense - defense.signum() * i32::try_from(taken).unwrap_or(0)
+    } else {
+        // At most |defense| · 100: no overflow for a defense of an `i16` sum.
+        defense.saturating_mul(i32::from(100 - percent)) / 100
+    }
+}
+
+/// The attack of a frenzied stack (BAT-MAG-019): `attack + defense × percent / 100` rounded
+/// toward 0, with quirk Q-0005 (`staged`) the share `percent / 100` single precision as the
+/// executable stores it (`installation.md` §7.11; exact for attacks and defenses below 2^20).
+pub(crate) fn frenzied(attack: i32, defense: i32, percent: u16, staged: bool) -> i32 {
+    let (num, scale) = if staged {
+        (
+            i128::from(single_precision(percent, 100).unwrap_or(0)),
+            1i128 << SINGLE_FRAC_BITS,
+        )
+    } else {
+        (i128::from(percent), 100)
+    };
+    let total = i128::from(attack) * scale + i128::from(defense) * num;
+    i32::try_from(total / scale).unwrap_or(i32::MAX)
 }
 
 /// Heals the living `stack` by up to `hp` hit points, resurrecting creatures up to its count at

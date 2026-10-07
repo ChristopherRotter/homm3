@@ -3305,6 +3305,9 @@ cost = [16, 12, 12, 12]
 power = 0
 effect = [20, 20, 25, 30]
 polarity = "positive"
+target = "stack"
+side = "own"
+effects = [{ kind = "timed", change = "fire_shield" }]
 
 [[spell]]
 id = "protection_from_air"  # original id 30
@@ -3700,6 +3703,11 @@ cost = [16, 12, 12, 12]
 power = 0
 effect = [100, 100, 150, 200]
 polarity = "positive"
+target = "stack"
+side = "own"
+mind = true
+duration = "own_turn"
+effects = [{ kind = "timed", change = "frenzy" }]
 
 [[spell]]
 id = "counterstrike"  # original id 58
@@ -6859,8 +6867,8 @@ backpack = 64
 
 [[profile]]
 id = "faithful"        # default: preserve/fix-optional quirks on
-quirks = { "quirk.battle.no_luck_without_hero" = true, "quirk.battle.single_precision_rates" = true, "quirk.battle.unlimited_ballista_shots" = true, "quirk.battle.first_protection" = true, "quirk.battle.counterstrike_extra_round" = true }    # Q-0003, Q-0005, Q-0004, Q-0007, Q-0008
+quirks = { "quirk.battle.no_luck_without_hero" = true, "quirk.battle.single_precision_rates" = true, "quirk.battle.unlimited_ballista_shots" = true, "quirk.battle.first_protection" = true, "quirk.battle.counterstrike_extra_round" = true, "quirk.battle.frenzy_reduced_defense" = true }    # Q-0003, Q-0005, Q-0004, Q-0007, Q-0008, Q-0009
 
 [[profile]]
 id = "strict-fixed"    # all quirks fixed
-quirks = { "quirk.battle.no_luck_without_hero" = false, "quirk.battle.single_precision_rates" = false, "quirk.battle.unlimited_ballista_shots" = false, "quirk.battle.first_protection" = false, "quirk.battle.counterstrike_extra_round" = false }   # Q-0003, Q-0005, Q-0004, Q-0007, Q-0008
+quirks = { "quirk.battle.no_luck_without_hero" = false, "quirk.battle.single_precision_rates" = false, "quirk.battle.unlimited_ballista_shots" = false, "quirk.battle.first_protection" = false, "quirk.battle.counterstrike_extra_round" = false, "quirk.battle.frenzy_reduced_defense" = false }   # Q-0003, Q-0005, Q-0004, Q-0007, Q-0008, Q-0009

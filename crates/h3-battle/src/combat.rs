@@ -8,13 +8,14 @@
 //! second attack.
 
 use h3_content::{
-    Ability, BattleParams, CompiledAbility, CreatureFlag, FULL_BP, Ruleset, SINGLE_PRECISION_RATES,
+    Ability, BattleParams, CompiledAbility, CreatureFlag, FRENZY_REDUCED_DEFENSE, FULL_BP, Ruleset,
+    SINGLE_PRECISION_RATES,
 };
 use h3_contracts::{BattleResult, BattleSide};
 use h3_kernel::arith::mul_div_floor;
 
 use crate::damage::{
-    Strike, apply_damage, base_damage, effective_defense, reduced_defense, resurrect,
+    Strike, apply_damage, base_damage, effective_defense, frenzied, reduced_defense, resurrect,
 };
 use crate::event::{Event, EventKind, Sink, StrikeFlags};
 use crate::geometry::{Direction, Field, Footprint, Hex, HexSet};
@@ -22,7 +23,7 @@ use crate::hero::{self, HeroRecord};
 use crate::state::{
     BattleState, STACK_CAPACITY, Stack, StackFlags, StackId, StackTraits, UNLIMITED_RETALIATIONS,
 };
-use crate::{morale, war};
+use crate::{magic, morale, war};
 
 /// The secondary targets of an attack, by stack index.
 type Targets = [bool; STACK_CAPACITY];
@@ -89,7 +90,8 @@ fn has_ability(ruleset: &Ruleset, stack: &Stack, f: fn(&CompiledAbility) -> bool
 }
 
 /// One strike of `attacker` on `target`: base damage, factors, damage applied, event. Returns the
-/// hit points the target lost (the damage, capped at what it had).
+/// hit points the target lost (the damage, capped at what it had) and, for a melee strike on a
+/// stack with Fire Shield, the damage it reflects (BAT-MAG-018).
 fn strike<S: Sink>(
     state: &mut BattleState,
     ruleset: &Ruleset,
@@ -97,7 +99,7 @@ fn strike<S: Sink>(
     flags: StrikeFlags,
     blow: Blow,
     sink: &mut S,
-) -> u64 {
+) -> (u64, u64) {
     let params = ruleset.battle();
     let striker = *state.at(attacker);
     let victim = *state.at(target);
@@ -117,8 +119,20 @@ fn strike<S: Sink>(
         ),
     };
     let (inputs, flags) = strike_inputs(ruleset, &state.heroes, (&striker, &victim), flags, blow);
-    let damage = inputs.damage(base, params, staged(ruleset));
+    let staged = staged(ruleset);
+    let damage = inputs.damage(base, params, staged);
     let lost = damage.min(victim.total_hp());
+    let reflected = if victim.spells.fire_shield > 0 && !flags.contains(StrikeFlags::RANGED) {
+        let first = inputs.stage_one(base, params, staged);
+        magic::reflection(
+            state,
+            ruleset,
+            (&striker, target),
+            first.min(victim.total_hp()),
+        )
+    } else {
+        0
+    };
     let kills = apply_damage(state.at_mut(target), damage);
     sink.emit(Event::public(EventKind::Struck {
         attacker,
@@ -127,7 +141,7 @@ fn strike<S: Sink>(
         kills,
         flags,
     }));
-    lost
+    (lost, reflected)
 }
 
 /// Whether damage follows the executable's stages (quirk Q-0005).
@@ -148,7 +162,13 @@ fn strike_inputs(
     let params = ruleset.battle();
     let field = Field::new(params.field);
     let ranged = flags.contains(StrikeFlags::RANGED);
-    let mut defense = effective_defense(victim, params);
+    let staged = staged(ruleset);
+    // rule: BAT-MAG-019
+    let mut defense = if victim.spells.frenzy > 0 {
+        0
+    } else {
+        effective_defense(victim, params)
+    };
     let mut hate_percent = 0;
     let mut jousting = (0, 0);
     for ability in ruleset.abilities(striker.creature) {
@@ -165,7 +185,9 @@ fn strike_inputs(
                 jousting = (percent_per_hex, u32::from(blow.charge));
             }
             // rule: BAT-DMG-006
-            Ability::DefenseReduction { percent } => defense = reduced_defense(defense, percent),
+            Ability::DefenseReduction { percent } => {
+                defense = reduced_defense(defense, percent, staged);
+            }
             _ => {}
         }
     }
@@ -174,6 +196,15 @@ fn strike_inputs(
     // rule: BAT-MAG-014
     if slays(ruleset, striker.spells.slayer.1, victim) {
         attack += i32::from(striker.spells.slayer.0);
+    }
+    // rule: BAT-MAG-019
+    if striker.spells.frenzy > 0 {
+        attack = frenzied(
+            attack,
+            frenzy_defense(ruleset, striker, victim),
+            striker.spells.frenzy,
+            staged,
+        );
     }
     let mut inputs = Strike::new(attack, defense);
     inputs.hate_percent = hate_percent;
@@ -206,6 +237,21 @@ fn strike_inputs(
     inputs.hero_bonus_bp = if ranged { own.ranged_bp } else { own.melee_bp };
     inputs.hero_reduction_bp = hero::damage(heroes, victim.side).reduction_bp;
     (inputs, flags)
+}
+
+/// The defense a frenzied `striker` adds to its attack (BAT-MAG-019): its defense with the Defend
+/// bonus and, with quirk Q-0009 (S-16), as `victim` sees it: reduced by the share a Behemoth
+/// ignores (BAT-DMG-006), as the original computes it (`installation.md` §7.11).
+fn frenzy_defense(ruleset: &Ruleset, striker: &Stack, victim: &Stack) -> i32 {
+    let mut defense = effective_defense(striker, ruleset.battle());
+    if ruleset.quirks().is_enabled(FRENZY_REDUCED_DEFENSE) {
+        for ability in ruleset.abilities(victim.creature) {
+            if let Ability::DefenseReduction { percent } = *ability {
+                defense = reduced_defense(defense, percent, staged(ruleset));
+            }
+        }
+    }
+    defense
 }
 
 /// Whether Slayer cast at `mastery` counts against `victim`'s creature (BAT-MAG-014): king 1 at
@@ -328,19 +374,40 @@ fn attack<S: Sink>(
             0
         }
     };
-    let lost = strike(state, ruleset, pair, flags, Blow { lucky, ..blow }, sink);
+    let (lost, mut reflected) = strike(state, ruleset, pair, flags, Blow { lucky, ..blow }, sink);
     let mut heal = drained(state, target, lost);
     let secondary = flags.with(StrikeFlags::SECONDARY);
+    // A multi-headed striker takes back what every stack it strikes reflects, others only the
+    // target's (BAT-MAG-018).
+    let me = state.at(attacker);
+    let every = me.has(StackTraits::ALL_ADJACENT) || me.has(StackTraits::THREE_HEADED);
     for (i, _) in others.iter().enumerate().filter(|(_, hit)| **hit) {
         // `i < STACK_CAPACITY <= u8::MAX`.
         let id = StackId(u8::try_from(i).unwrap_or(u8::MAX));
-        let lost = strike(state, ruleset, (attacker, id), secondary, blow, sink);
+        let (lost, r) = strike(state, ruleset, (attacker, id), secondary, blow, sink);
         heal = heal.saturating_add(drained(state, id, lost));
+        if every {
+            reflected = reflected.saturating_add(r);
+        }
     }
     life_drain(state, attacker, heal, sink);
     if stare > 0 {
         death_stare(state, pair, stare, sink);
     }
+    if reflected > 0 {
+        reflect(state, attacker, reflected, sink);
+    }
+}
+
+/// Deals the `damage` its targets' Fire Shields reflect to `stack` (BAT-MAG-018).
+// rule: BAT-MAG-018
+fn reflect<S: Sink>(state: &mut BattleState, stack: StackId, damage: u64, sink: &mut S) {
+    let kills = apply_damage(state.at_mut(stack), damage);
+    sink.emit(Event::public(EventKind::Reflected {
+        stack,
+        damage,
+        kills,
+    }));
 }
 
 /// Heals and resurrects `stack` by `hp` hit points drained from its targets (BAT-DMG-008).

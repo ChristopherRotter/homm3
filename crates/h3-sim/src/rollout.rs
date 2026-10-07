@@ -21,6 +21,10 @@ pub struct RolloutResult {
 /// Plays both sides with uniformly random legal commands until the episode ends (or
 /// `max_steps` if the env has no limit and `max_steps > 0`). Agent randomness comes from the
 /// AGENT stream of `agent_seed`, so it never perturbs the battle's own RNG stream.
+///
+/// Never inlined: `cargo xtask bench-check` counts the instructions inside this function, which
+/// thin LTO may otherwise fold into its caller (E04b T3b2).
+#[inline(never)]
 pub fn random_rollout(env: &mut BattleEnv, agent_seed: u64, max_steps: u32) -> RolloutResult {
     let mut rng = Rng::for_stream(agent_seed, StreamId::AGENT);
     let mut legal = LegalCommands::new();

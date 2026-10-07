@@ -346,8 +346,8 @@ fn timed_spell(
     }
     match t.duration.as_deref() {
         None => {}
-        Some("permanent") => {
-            let _ = writeln!(text, "duration = \"permanent\"");
+        Some(d @ ("permanent" | "own_turn")) => {
+            let _ = writeln!(text, "duration = \"{d}\"");
         }
         Some(other) => return Err(format!("gapfill: duration `{other}` for {what}")),
     }

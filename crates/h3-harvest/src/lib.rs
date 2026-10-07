@@ -847,7 +847,8 @@ pub fn harvest(inputs: &Inputs, gap: &GapFill) -> Result<Harvest, String> {
          \"quirk.battle.single_precision_rates\" = true, \
          \"quirk.battle.unlimited_ballista_shots\" = true, \
          \"quirk.battle.first_protection\" = true, \
-         \"quirk.battle.counterstrike_extra_round\" = true }    # Q-0003, Q-0005, Q-0004, Q-0007, Q-0008\n",
+         \"quirk.battle.counterstrike_extra_round\" = true, \
+         \"quirk.battle.frenzy_reduced_defense\" = true }    # Q-0003, Q-0005, Q-0004, Q-0007, Q-0008, Q-0009\n",
     );
     base.push_str(
         "\n[[profile]]\nid = \"strict-fixed\"    # all quirks fixed\n\
@@ -855,7 +856,8 @@ pub fn harvest(inputs: &Inputs, gap: &GapFill) -> Result<Harvest, String> {
          \"quirk.battle.single_precision_rates\" = false, \
          \"quirk.battle.unlimited_ballista_shots\" = false, \
          \"quirk.battle.first_protection\" = false, \
-         \"quirk.battle.counterstrike_extra_round\" = false }   # Q-0003, Q-0005, Q-0004, Q-0007, Q-0008\n",
+         \"quirk.battle.counterstrike_extra_round\" = false, \
+         \"quirk.battle.frenzy_reduced_defense\" = false }   # Q-0003, Q-0005, Q-0004, Q-0007, Q-0008, Q-0009\n",
     );
 
     // ab

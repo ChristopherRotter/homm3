@@ -141,6 +141,12 @@ pub struct SpellValues {
     /// Slayer's attack bonus (0: none) and the mastery that decides the creatures it counts
     /// against (BAT-MAG-014).
     pub slayer: (u8, u8),
+    /// The share of a melee strike's first-stage damage reflected onto the striker, percent
+    /// (0: none; Fire Shield, BAT-MAG-018).
+    pub fire_shield: u8,
+    /// The share of its defense added to its attack, percent (0: not frenzied; Frenzy,
+    /// BAT-MAG-019).
+    pub frenzy: u16,
 }
 
 impl SpellValues {
@@ -160,6 +166,8 @@ impl SpellValues {
             ranged_protection: 100,
             school_protection: [100; MAX_SPELL_SCHOOLS],
             slayer: (0, 0),
+            fire_shield: 0,
+            frenzy: 0,
         }
     }
 }
@@ -172,7 +180,8 @@ impl Default for SpellValues {
 
 impl CanonicalHash for SpellValues {
     /// Attack, defense, speed, melee and ranged attack, the damage roll (code, value), the speed
-    /// share, morale, luck; since v21 the melee, ranged and school protections and Slayer.
+    /// share, morale, luck; since v21 the melee, ranged and school protections and Slayer; since
+    /// v22 Fire Shield and Frenzy.
     fn hash_into(&self, h: &mut StateHasher) {
         h.write_bytes(&self.attack.to_le_bytes());
         h.write_bytes(&self.defense.to_le_bytes());
@@ -194,6 +203,8 @@ impl CanonicalHash for SpellValues {
         h.write_bytes(&self.school_protection);
         h.write_u8(self.slayer.0);
         h.write_u8(self.slayer.1);
+        h.write_u8(self.fire_shield);
+        h.write_u16(self.frenzy);
     }
 }
 
@@ -275,6 +286,8 @@ pub(crate) fn apply<S: Sink>(
     let rounds = match cast.spell.magic.duration {
         EffectDuration::Rounds => Some(cast.rounds),
         EffectDuration::Permanent => None,
+        // rule: BAT-MAG-019
+        EffectDuration::OwnTurn => Some(if state.active == Some(s) { 1 } else { 2 }),
     };
     // stub: STUB-0002 (a specialist's bonus to the value joins in E04b T3c)
     let value = cast.spell.effect[usize::from(cast.mastery.min(3))];
@@ -510,6 +523,8 @@ pub(crate) fn recompute(state: &mut BattleState, ruleset: &Ruleset, s: StackId) 
                 TimedChange::Slayer => {
                     values.slayer = (u8::try_from(v).unwrap_or(u8::MAX), e.mastery);
                 }
+                TimedChange::FireShield => values.fire_shield = values.fire_shield.max(percent),
+                TimedChange::Frenzy => values.frenzy = values.frenzy.max(v),
                 _ => {}
             }
         }
@@ -550,8 +565,17 @@ pub(crate) fn slowed(speed: u8, percent: u8, single: bool) -> u8 {
     u8::try_from(value.max(1)).unwrap_or(u8::MAX)
 }
 
+/// Whether the effect of `spell` counts down at its stack's own turn start (Frenzy,
+/// BAT-MAG-019) rather than at the round start.
+fn on_own_turn(ruleset: &Ruleset, spell: SpellId) -> bool {
+    ruleset
+        .spell(spell)
+        .is_some_and(|sp| sp.magic.duration == EffectDuration::OwnTurn)
+}
+
 /// Starts a round for the effects (BAT-MAG-010): on every living stack, each effect with rounds
-/// either ends (its last round has passed) or loses a round; permanent effects stay.
+/// either ends (its last round has passed) or loses a round; permanent effects stay, and those
+/// counted at the stack's own turn wait for it ([`own_turn`]).
 // rule: BAT-MAG-010
 pub(crate) fn count_down<S: Sink>(state: &mut BattleState, ruleset: &Ruleset, sink: &mut S) {
     if state.effects.0.is_empty() {
@@ -561,7 +585,7 @@ pub(crate) fn count_down<S: Sink>(state: &mut BattleState, ruleset: &Ruleset, si
     let mut i = 0;
     while let Some(e) = state.effects.0.get_mut(i) {
         let (stack, spell) = (e.stack, e.spell);
-        if !state.stacks.as_slice()[stack.index()].is_alive() {
+        if !state.stacks.as_slice()[stack.index()].is_alive() || on_own_turn(ruleset, spell) {
             i += 1;
             continue;
         }
@@ -584,6 +608,39 @@ pub(crate) fn count_down<S: Sink>(state: &mut BattleState, ruleset: &Ruleset, si
     for (index, _) in changed.iter().enumerate().filter(|(_, c)| **c) {
         let id = StackId(u8::try_from(index).unwrap_or(u8::MAX));
         recompute(state, ruleset, id);
+    }
+}
+
+/// Starts stack `s`'s turn for its effects counted at its own turns (BAT-MAG-019): each either
+/// ends (its last turn has come) or loses one. The caller calls this once per round, at the
+/// stack's first turn (not after waiting).
+// rule: BAT-MAG-019
+pub(crate) fn own_turn<S: Sink>(
+    state: &mut BattleState,
+    ruleset: &Ruleset,
+    s: StackId,
+    sink: &mut S,
+) {
+    let mut i = state.effects.0.partition_point(|e| e.stack < s);
+    let mut ended = false;
+    while let Some(e) = state.effects.0.get_mut(i).filter(|e| e.stack == s) {
+        match e.rounds {
+            Some(n) if on_own_turn(ruleset, e.spell) => {
+                if n > 1 {
+                    e.rounds = Some(n - 1);
+                    i += 1;
+                } else {
+                    let spell = e.spell;
+                    state.effects.0.remove(i);
+                    ended = true;
+                    sink.emit(Event::public(EventKind::EffectEnded { target: s, spell }));
+                }
+            }
+            _ => i += 1,
+        }
+    }
+    if ended {
+        recompute(state, ruleset, s);
     }
 }
 

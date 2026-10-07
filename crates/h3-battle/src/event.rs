@@ -115,6 +115,16 @@ pub enum EventKind {
         /// How the strike happened.
         flags: StrikeFlags,
     },
+    /// The Fire Shields of the stacks a melee attack struck dealt damage back to the striker
+    /// (BAT-MAG-018).
+    Reflected {
+        /// The striker.
+        stack: StackId,
+        /// Damage dealt (capped at its remaining health when applied).
+        damage: u64,
+        /// Creatures killed.
+        kills: u32,
+    },
     /// A stack healed and resurrected itself from the damage it dealt (BAT-DMG-008).
     LifeDrained {
         /// The draining stack.

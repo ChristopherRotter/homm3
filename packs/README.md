@@ -159,7 +159,7 @@ override, replacing the list) names the creature types it upgrades into: at most
 none twice; references follow the reference rules and may name later creatures of the pack.
 Hero effects that select "a creature" apply to it and its direct upgrades.
 
-## Hero content (format v3, E04a T3; battle magic format v4, E04b T2a; v5 T3a; v6 T3b1; v7 T3b1b)
+## Hero content (format v3, E04a T3; battle magic format v4, E04b T2a; v5 T3a; v6 T3b1; v7 T3b1b; v8 T3b2)
 
 Spell schools, spells, secondary skills, hero classes and hero types (ADR-0013). References follow
 the reference rules above; every kind may refer to content of its dependency closure.
@@ -200,7 +200,9 @@ side = "own"
 mass = "expert"                    # v5: from this mastery no target, every stack it may reach
 mind = false                       # v5: a mind spell (creatures with flag mind_immune are immune)
 excludes = ["war_machine"]
-duration = "rounds"                # v5: rounds (default: power + duration bonuses) | permanent
+duration = "rounds"                # v5: rounds (default: power + duration bonuses) | permanent;
+                                   # v8: own_turn (1 turn on the active stack, else 2, counted at
+                                   # the stack's own turn start: Frenzy)
 cumulative = false                 # v5: a cast on an affected stack applies its changes again
 counters = ["slow"]                # v5: spells whose effects a cast ends on each stack it affects
 effects = [{ kind = "timed", change = "speed" }]
@@ -265,7 +267,9 @@ v), `minimum_damage` (its minimum − v, at least 1), `morale`, `morale_loss`, `
 ± v; BAT-MAG-009 to 011; since v6, E04b T3b1: `melee_protection` / `ranged_protection` (melee
 strikes / shots taken deal v %, BAT-MAG-012), `school_protection` (spells of this spell's schools
 deal v %, BAT-MAG-013), `slayer` (+ v attack against king creatures by mastery, BAT-MAG-014),
-`retaliations` (+ v per round, BAT-MAG-015)); since v7, E04b T3b1b: `dispel` (ends the stack's
+`retaliations` (+ v per round, BAT-MAG-015); since v8, E04b T3b2: `fire_shield` (melee strikes
+taken reflect v % of their first stage onto the striker, BAT-MAG-018), `frenzy` (attack + defense
+× v %, defense 0 when struck, BAT-MAG-019)); since v7, E04b T3b1b: `dispel` (ends the stack's
 timed effects: those of the spells in `dispels`, or without that list every one but those in
 `spares`; never a permanent one; BAT-MAG-016) and `heal` (heals the top creature by the value,
 raising none; BAT-MAG-017), applied after damage and before timed changes. `mass` needs target

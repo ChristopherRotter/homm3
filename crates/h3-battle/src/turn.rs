@@ -125,6 +125,7 @@ fn pick<S: Sink>(state: &mut BattleState, ruleset: &Ruleset, sink: &mut S) -> Op
 }
 
 /// Activates the next stack: its Defend bonus ends (BAT-TRN-004), it regenerates (BAT-TRN-005),
+/// at its first turn of the round its effects counted by its own turns count down (BAT-MAG-019),
 /// and bad morale may freeze it (BAT-MOR-004), in which case it loses its turn and the next stack
 /// is activated; so is the next after a war machine that acts on its own (BAT-WAR-002/003; a
 /// commanded one waits for its side's command, BAT-WAR-006). While the battle is not over some
@@ -136,6 +137,9 @@ pub(crate) fn activate_next<S: Sink>(state: &mut BattleState, ruleset: &Ruleset,
         state.at_mut(id).flags.set(StackFlags::DEFENDING, false);
         sink.emit(Event::public(EventKind::TurnStarted { stack: id }));
         regenerate(state, id, sink);
+        if !state.at(id).flags.contains(StackFlags::WAITED) {
+            effects::own_turn(state, ruleset, id, sink);
+        }
         // rule: BAT-MOR-004
         if morale::bad_morale(state, ruleset, id) {
             sink.emit(Event::public(EventKind::BadMorale { stack: id }));

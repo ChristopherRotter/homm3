@@ -450,10 +450,24 @@ fn jousting_adds_its_bonus_per_hex_travelled() {
 // covers: BAT-DMG-006
 #[test]
 fn defense_reduction_ignores_a_share_of_the_defense_rounded_down() {
-    assert_eq!(reduced_defense(17, 40), 10);
-    assert_eq!(reduced_defense(17, 80), 3);
-    assert_eq!(reduced_defense(0, 40), 0);
-    assert_eq!(reduced_defense(5, 100), 0);
+    // Without quirk Q-0005 the defense left rounds toward 0 (Q19).
+    assert_eq!(reduced_defense(17, 40, false), 10);
+    assert_eq!(reduced_defense(17, 80, false), 3);
+    assert_eq!(reduced_defense(7, 40, false), 4);
+    assert_eq!(reduced_defense(-3, 40, false), -1);
+    assert_eq!(reduced_defense(0, 40, false), 0);
+    assert_eq!(reduced_defense(5, 100, false), 0);
+    // With it the share taken does, in single precision, as the executable has it
+    // (installation.md §7.11): 17 − trunc(6.8) = 11, 7 − trunc(2.8) = 5, 7 − trunc(5.6) = 2,
+    // 10 − trunc(4.00000006) = 6, −3 − trunc(−1.2) = −2.
+    assert_eq!(reduced_defense(17, 40, true), 11);
+    assert_eq!(reduced_defense(17, 80, true), 4);
+    assert_eq!(reduced_defense(7, 40, true), 5);
+    assert_eq!(reduced_defense(7, 80, true), 2);
+    assert_eq!(reduced_defense(10, 40, true), 6);
+    assert_eq!(reduced_defense(-3, 40, true), -2);
+    assert_eq!(reduced_defense(0, 40, true), 0);
+    assert_eq!(reduced_defense(5, 100, true), 0);
     let r = ruleset();
     // Tank defense 20 → 12: 10 − 12 = −2 points, −5 %: 20 → 19.
     let mut s = battle(&r, &[(0, "behemoth", 10)], &[(0, "tank", 1)], 1);

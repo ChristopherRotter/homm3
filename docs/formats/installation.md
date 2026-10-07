@@ -566,3 +566,43 @@ Slow, Berserk, Hypnotize, Forgetfulness, Blind, Stone Gaze, Poison, Disease, Par
 back).
 At Expert it does so for every own stack it can affect that is not hypnotized. No test of the
 target's health or spells: Cure may be cast on a healthy stack without negative spells.
+
+### 7.11 Code reading: Fire Shield and Frenzy (E04b T3b2, 2026-10-07)
+
+Read for T3b2 (Q29: insight only, nothing copied). Offsets as in §7.9.
+
+**Fire Shield** (spell 29; one target, no mass version): 0x4448F0 stores `v / 100` as `f32`
+(+0x4A0); ending gives nothing back. The factor getter 0x443130 returns that value while the
+spell is active, else 0.2 for an Efreet Sultan (creature 53, its own shield; T7), else 0. The
+physical damage routine 0x443F40 computes the reflection right after stage 1 (§7.10), when its
+caller passes an out pointer: 0x422440 returns 0 if the target has neither the spell nor the
+Sultan's shield or if the striker is fire-immune (creature flag `0x4000`); otherwise `x =
+min(stage 1, the target's hit points before the strike)` (1 for a stack with the stack flag
+`0x800000`, a clone, T6), `r = trunc(f32(x) × factor)`, then `r` passes the spell-damage
+modifiers 0x5A78E0 for spell 29 with the **target's** controlling hero as the caster (the Orb of
+Fire, Sorcery and a Fire Shield specialty, §7.8) and the striker as the stack (the creature's
+own factors, the striker's Protection from Fire). No immunity, resistance or aura test. The shot
+routines pass the out pointer but drop the value: **shots are never reflected**. The melee
+strike routine 0x441610 (attacks, retaliations and second strikes alike) keeps the value of the
+attacked stack only (a breath attack's second stack reflects nothing); for a multi-headed
+striker (creature flag `0x80000`, the attack-all-adjacent loop 0x440310) it sums the values of
+every stack struck. After the strike and its kills (0x440BC0), a positive sum damages the
+striker (0x4409C0 → 0x444090) before the retaliation (0x441DC5), which follows only if the
+struck stack lives (0x441DD4; whether a striker killed by the reflection is still struck back
+was not read: the engine never retaliates against a dead stack).
+
+**Frenzy** (spell 56; one target, a mind spell): 0x4448F0 sets its duration to 1 if the target is
+the active stack, else 2 (whatever the caster's power), and stores `v / 100` as `f32` (+0x498).
+The round start's countdown skips it (§7.9); the stack's turn start 0x446E30 (once per round:
+the flag +0x4F0, cleared at the round start 0x447120) counts it down: above 1 it loses a round,
+else it ends. So it lasts through the stack's next turn. **Attack** (0x442410, last, after
+Slayer): `trunc(f32(attack) + f32(d) × factor)` with `d` the frenzied stack's own defense as the
+struck stack sees it (0x442590 with the struck stack as the other side, flag 0): +0xCC (the
+Defend bonus included) reduced by a Behemoth's or Ancient Behemoth's share when the **struck**
+stack is one (quirk S-16, confirmed), and the siege moat's −3 (E04c). **Defense** when struck
+(0x442590 flag 1, used by the damage stages 0x4433A8 and 0x443BBD): 0 while frenzied.
+
+**Behemoths** (0x442590, read for S-16): against a Behemoth (creature 96) the defense is `D −
+trunc(f32(D) × f32(0.4))`, against an Ancient Behemoth (97) `D − trunc(f32(D) × f32(0.8))`: the
+share taken is truncated, so the defense left rounds up (D = 7: 5 and 2), not down as Q19 chose
+(4 and 1). The user (2026-10-07): follow it under quirk Q-0005, keep Q19 in strict-fixed.

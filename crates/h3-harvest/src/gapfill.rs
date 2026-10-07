@@ -79,7 +79,7 @@ pub struct SpellTimed {
     /// Spells (by name) whose effects a cast ends.
     #[serde(default)]
     pub counters: Vec<String>,
-    /// `permanent` for spells that last the battle.
+    /// `permanent` for spells that last the battle, `own_turn` for Frenzy.
     #[serde(default)]
     pub duration: Option<String>,
     /// Whether a cast on an affected stack applies the changes again.

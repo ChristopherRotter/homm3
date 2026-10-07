@@ -146,11 +146,16 @@ pub enum TimedChange {
     /// Retaliations per round + v; the first cast adds v to those left at once, the end gives
     /// nothing back (Counterstrike; BAT-MAG-015).
     Retaliations,
+    /// Melee strikes on the stack reflect v % of their first-stage damage onto the striker as
+    /// this spell's damage (Fire Shield; BAT-MAG-018, v8).
+    FireShield,
+    /// Attack + its defense × v %, defense 0 when struck (Frenzy; BAT-MAG-019, v8).
+    Frenzy,
 }
 
 impl TimedChange {
     /// All values, in code order.
-    pub const ALL: [Self; 19] = [
+    pub const ALL: [Self; 21] = [
         Self::Speed,
         Self::SpeedPercent,
         Self::Attack,
@@ -170,6 +175,8 @@ impl TimedChange {
         Self::SchoolProtection,
         Self::Slayer,
         Self::Retaliations,
+        Self::FireShield,
+        Self::Frenzy,
     ];
 
     /// Pack name.
@@ -194,6 +201,8 @@ impl TimedChange {
             Self::SchoolProtection => "school_protection",
             Self::Slayer => "slayer",
             Self::Retaliations => "retaliations",
+            Self::FireShield => "fire_shield",
+            Self::Frenzy => "frenzy",
         }
     }
 
@@ -257,6 +266,9 @@ pub enum EffectDuration {
     Rounds,
     /// The rest of the battle (Disrupting Ray).
     Permanent,
+    /// Through the stack's next turn: 1 round on the active stack, else 2, counted down at the
+    /// stack's own turn start instead of the round start (Frenzy; BAT-MAG-019, v8).
+    OwnTurn,
 }
 
 /// Highest mastery (Expert).

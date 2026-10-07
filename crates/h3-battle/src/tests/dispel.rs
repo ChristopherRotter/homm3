@@ -44,11 +44,11 @@ fn on(s: &BattleState, r: &Ruleset, id: u8) -> Vec<std::string::String> {
         .collect()
 }
 
+/// The ended effects (`(stack, spell name)`) and the heals (`(stack, hit points)`) of events.
+type EndsAndHeals = (Vec<(u8, std::string::String)>, Vec<(u8, u32)>);
+
 /// The ended effects (`(stack, spell name)`) and the heals (`(stack, hit points)`) in `events`.
-fn ends_and_heals(
-    r: &Ruleset,
-    events: &[Event],
-) -> (Vec<(u8, std::string::String)>, Vec<(u8, u32)>) {
+fn ends_and_heals(r: &Ruleset, events: &[Event]) -> EndsAndHeals {
     let mut ends = Vec::new();
     let mut heals = Vec::new();
     for e in events {

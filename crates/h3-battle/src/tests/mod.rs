@@ -11,6 +11,7 @@ mod magic;
 mod morale;
 mod properties;
 mod protect;
+mod rage;
 mod ranged;
 mod rules;
 mod spells;

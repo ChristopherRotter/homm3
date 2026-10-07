@@ -60,6 +60,7 @@ pub const REGISTRY: QuirkRegistry = QuirkRegistry::new(&[
     "quirk.battle.unlimited_ballista_shots",
     "quirk.battle.first_protection",
     "quirk.battle.counterstrike_extra_round",
+    "quirk.battle.frenzy_reduced_defense",
 ]);
 
 /// Q-0003: creatures of a side without a hero never get lucky strikes (BAT-LCK-002).
@@ -79,6 +80,10 @@ pub const FIRST_PROTECTION: QuirkFlag = QuirkFlag(3);
 /// Q-0008: Counterstrike's extra retaliations are given at the round start in which the spell
 /// runs out, as the reset comes before the countdown (BAT-MAG-015).
 pub const COUNTERSTRIKE_EXTRA_ROUND: QuirkFlag = QuirkFlag(4);
+
+/// Q-0009 (S-16): Frenzy's attack bonus counts the frenzied stack's defense as the struck
+/// stack sees it, reduced by a Behemoth's share (BAT-MAG-019).
+pub const FRENZY_REDUCED_DEFENSE: QuirkFlag = QuirkFlag(5);
 
 /// The set of enabled quirk flags of a ruleset.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
@@ -118,7 +123,7 @@ mod tests {
 
     #[test]
     fn registry_lookup_and_bitset() {
-        assert_eq!(REGISTRY.len(), 5);
+        assert_eq!(REGISTRY.len(), 6);
         assert_eq!(
             REGISTRY.lookup("quirk.battle.no_luck_without_hero"),
             Some(NO_LUCK_WITHOUT_HERO)
@@ -138,6 +143,10 @@ mod tests {
         assert_eq!(
             REGISTRY.lookup("quirk.battle.counterstrike_extra_round"),
             Some(COUNTERSTRIKE_EXTRA_ROUND)
+        );
+        assert_eq!(
+            REGISTRY.lookup("quirk.battle.frenzy_reduced_defense"),
+            Some(FRENZY_REDUCED_DEFENSE)
         );
         // `new` is a const fn; call it at run time too so coverage sees it.
         let runtime = QuirkRegistry::new(&["quirk.battle.a"]);

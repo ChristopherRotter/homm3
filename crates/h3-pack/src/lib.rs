@@ -473,6 +473,7 @@ enum EffectDurationDto {
     #[default]
     Rounds,
     Permanent,
+    OwnTurn,
 }
 
 #[derive(Deserialize, Default)]
@@ -575,6 +576,7 @@ impl SpellDto {
             duration: match self.duration {
                 EffectDurationDto::Rounds => EffectDuration::Rounds,
                 EffectDurationDto::Permanent => EffectDuration::Permanent,
+                EffectDurationDto::OwnTurn => EffectDuration::OwnTurn,
             },
             cumulative: self.cumulative,
             any_side_from: self.any_side.as_deref().map(mastery_named).transpose()?,
@@ -2381,7 +2383,8 @@ mod tests {
              \"quirk.battle.single_precision_rates\" = true, \
              \"quirk.battle.unlimited_ballista_shots\" = true, \
              \"quirk.battle.first_protection\" = true, \
-             \"quirk.battle.counterstrike_extra_round\" = true }",
+             \"quirk.battle.counterstrike_extra_round\" = true, \
+             \"quirk.battle.frenzy_reduced_defense\" = true }",
             "quirks = { \"quirk.x\" = true }",
         );
         let pack = parse_pack(&quirky).unwrap();
@@ -2489,12 +2492,12 @@ mod tests {
         expected.tactics = 2;
         expected.magic.mana = 40;
         expected.magic.max_mana = 40;
-        // The four damage spells, Ward, five timed spells and Mend with Basic Storm magic
-        // (E04b T2c, T3a, T3b1, T3b1b).
+        // The four damage spells, Ward, five timed spells, Mend and Blaze with Basic Storm magic
+        // (E04b T2c, T3a, T3b1, T3b1b, T3b2).
         expected.magic.spell_book = Some(
             [
                 "spark", "cinders", "arc", "blight", "ward", "hasten", "drag", "fury", "smiting",
-                "riposte", "mend",
+                "riposte", "mend", "blaze",
             ]
             .map(|k| ruleset.spell_by_key(&format!("synthetic:{k}")).unwrap())
             .to_vec(),
@@ -3799,7 +3802,7 @@ mod tests {
         use h3_content::SpellCategory;
         let r = compile(&[SYNTHETIC_PACK, SYNTHETIC_EXT_PACK], "synthetic:faithful").unwrap();
         assert_eq!(r.spell_schools().len(), 2);
-        assert_eq!(r.spells().len(), 21);
+        assert_eq!(r.spells().len(), 23);
         // Pack format v6: the storm school's protection rank; stone's defaults to 0.
         let ranks: Vec<u8> = r
             .spell_schools()
@@ -3924,6 +3927,20 @@ mod tests {
         assert_eq!(
             mend.dispels,
             ["drag", "bane", "gloom"].map(|k| id(&format!("synthetic:{k}")))
+        );
+        // Format v8: Fire Shield and Frenzy, a duration by the stack's own turns.
+        let rage = magic("synthetic:rage");
+        assert_eq!(
+            (rage.effects, rage.duration, rage.mind),
+            (
+                vec![SpellEffect::Timed(TimedChange::Frenzy)],
+                EffectDuration::OwnTurn,
+                true
+            )
+        );
+        assert_eq!(
+            magic("synthetic:blaze").effects,
+            [SpellEffect::Timed(TimedChange::FireShield)]
         );
         let text = SYNTHETIC_PACK.replacen("any_side = \"advanced\"", "any_side = \"all\"", 1);
         assert_eq!(
