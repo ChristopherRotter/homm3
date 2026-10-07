@@ -66,6 +66,8 @@ pub const REGISTRY: QuirkRegistry = QuirkRegistry::new(&[
     "quirk.battle.mass_cure_skips_hypnotized",
     "quirk.battle.natives_sight_at_start",
     "quirk.battle.attack_from_seen_pit",
+    "quirk.battle.obstacle_anchors",
+    "quirk.battle.draws_avoid_hidden",
 ]);
 
 /// Q-0003: creatures of a side without a hero never get lucky strikes (BAT-LCK-002).
@@ -113,6 +115,16 @@ pub const NATIVES_SIGHT_AT_START: QuirkFlag = QuirkFlag(9);
 /// entering the pit and the attack is skipped (BAT-MAG-032). Off: such an attack is not legal.
 pub const ATTACK_FROM_SEEN_PIT: QuirkFlag = QuirkFlag(10);
 
+/// BAT-QUIRK-3: a removable natural obstacle's anchor hex is part of it even where the obstacle
+/// does not block it: it takes no Fire Wall, Force Field, pit or mine, and Remove Obstacle aimed at
+/// it removes the obstacle (BAT-GEO-003, BAT-MAG-034). Off: such an anchor hex is a free hex.
+pub const OBSTACLE_ANCHORS: QuirkFlag = QuirkFlag(11);
+
+/// BAT-QUIRK-4: Quicksand's and Land Mine's random hexes avoid every obstacle, the other side's
+/// hidden ones included, which tells the caster where none lies (BAT-MAG-032). Off: they avoid
+/// only the obstacles the caster's side sees, and may land on a hidden one of the other side.
+pub const DRAWS_AVOID_HIDDEN: QuirkFlag = QuirkFlag(12);
+
 /// The set of enabled quirk flags of a ruleset.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub struct Quirks {
@@ -151,7 +163,7 @@ mod tests {
 
     #[test]
     fn registry_lookup_and_bitset() {
-        assert_eq!(REGISTRY.len(), 11);
+        assert_eq!(REGISTRY.len(), 13);
         assert_eq!(
             REGISTRY.lookup("quirk.battle.no_luck_without_hero"),
             Some(NO_LUCK_WITHOUT_HERO)
@@ -195,6 +207,14 @@ mod tests {
         assert_eq!(
             REGISTRY.lookup("quirk.battle.attack_from_seen_pit"),
             Some(ATTACK_FROM_SEEN_PIT)
+        );
+        assert_eq!(
+            REGISTRY.lookup("quirk.battle.obstacle_anchors"),
+            Some(OBSTACLE_ANCHORS)
+        );
+        assert_eq!(
+            REGISTRY.lookup("quirk.battle.draws_avoid_hidden"),
+            Some(DRAWS_AVOID_HIDDEN)
         );
         // `new` is a const fn; call it at run time too so coverage sees it.
         let runtime = QuirkRegistry::new(&["quirk.battle.a"]);

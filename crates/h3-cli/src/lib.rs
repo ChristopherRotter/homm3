@@ -20,12 +20,15 @@
 //! checkpoint_every = 25
 //!
 //! [setup]                         # the rest of the setup (fields default when absent)
-//! obstacles = [40, 41]            # blocked hexes
 //! terrain = "base:grass"          # the battlefield's terrain (omitted when none)
 //! attacker_war_machines = ["base:ballista"]  # war machines per side (omitted when none)
 //! tight_formation = ["defender"]  # sides in tight formation (omitted when none)
 //! attacker_funds = 2000           # what a side can pay for a surrender (format 10; omitted
 //!                                 #   when 0)
+//!
+//! [[setup.obstacles]]             # the natural obstacles (format 18: pieces; omitted when none)
+//! hexes = [40, 41]                #   the hexes it blocks
+//! anchor = 40                     #   a removable obstacle's anchor hex (omitted when none)
 //!
 //! [setup.attacker_hero]           # the battle hero per side (format 3; omitted when none):
 //! hero_type = "base:orrin"        #   the fields of `h3_pack::HeroEntry`
@@ -75,7 +78,7 @@ use h3_battle::{CastTarget, Command, Hex, StackId};
 use h3_content::{CreatureTypeId, Ruleset, SpellId};
 use h3_contracts::{Army, ArmyStack, BattleHero, BattleResult, BattleSetup, BattleSide};
 use h3_kernel::{Rng, StreamId};
-use h3_pack::{HeroEntry, PackError, ScenarioDef};
+use h3_pack::{HeroEntry, ObstacleEntry, PackError, ScenarioDef};
 use h3_sim::{Replay, ReplayError, ReplayHeader};
 use serde::{Deserialize, Serialize};
 
@@ -182,8 +185,6 @@ struct Meta {
 #[derive(Debug, Default, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 struct SetupEntry {
-    #[serde(default)]
-    obstacles: Vec<u8>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     terrain: Option<String>,
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
@@ -197,6 +198,8 @@ struct SetupEntry {
     #[serde(default, skip_serializing_if = "is_zero")]
     defender_funds: u32,
     // Tables last: TOML writes values before tables.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    obstacles: Vec<ObstacleEntry>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     attacker_hero: Option<HeroEntry>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -424,7 +427,12 @@ pub fn replay_to_toml(
             checkpoint_every: replay.checkpoint_every,
         },
         setup: SetupEntry {
-            obstacles: replay.setup.obstacles.clone(),
+            obstacles: replay
+                .setup
+                .obstacles
+                .iter()
+                .map(ObstacleEntry::of)
+                .collect(),
             terrain: replay
                 .setup
                 .terrain
@@ -544,7 +552,12 @@ impl ReplayDoc {
             setup: BattleSetup {
                 attacker: army(&f.attacker)?,
                 defender: army(&f.defender)?,
-                obstacles: f.setup.obstacles,
+                obstacles: f
+                    .setup
+                    .obstacles
+                    .iter()
+                    .map(ObstacleEntry::to_obstacle)
+                    .collect(),
                 heroes: [
                     hero(f.setup.attacker_hero.as_ref())?,
                     hero(f.setup.defender_hero.as_ref())?,

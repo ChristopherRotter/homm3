@@ -79,6 +79,19 @@ pub struct Army {
     pub stacks: Vec<ArmyStack>,
 }
 
+/// One natural obstacle of a battlefield (E03; as pieces since E04b T5b, OPEN-QUESTIONS Q55):
+/// the hexes it blocks and, for a usual obstacle, its anchor hex, which makes it removable
+/// (Remove Obstacle, BAT-MAG-034). An absolute obstacle has no anchor and cannot be removed. The
+/// anchor (the obstacle's bottom-left hex, BAT-GEO-004) belongs to the obstacle even where the
+/// obstacle does not block it, under quirk BAT-QUIRK-3 (BAT-GEO-003).
+#[derive(Debug, Clone, PartialEq, Eq, Default)]
+pub struct Obstacle {
+    /// The hexes it blocks (row-major hex indices of the battlefield).
+    pub hexes: Vec<u8>,
+    /// Its anchor hex, if it is a usual (removable) obstacle.
+    pub anchor: Option<u8>,
+}
+
 /// Everything the battle context needs to start a battle (docs/03-domain.md, "Seams"). All
 /// derived values are computed by the caller before the seam.
 #[derive(Debug, Clone, PartialEq, Eq, Default)]
@@ -87,8 +100,9 @@ pub struct BattleSetup {
     pub attacker: Army,
     /// The defending army.
     pub defender: Army,
-    /// Hexes blocked by obstacles (row-major hex indices of the battlefield, each once; E03).
-    pub obstacles: Vec<u8>,
+    /// The natural obstacles (E03; pieces with anchors since E04b T5b): every blocked hex once
+    /// across all of them. Generated before the seam for a terrain (BAT-GEO-004).
+    pub obstacles: Vec<Obstacle>,
     /// The hero leading each side, if any (indexed by [`BattleSide::index`]; ADR-0013 point 5).
     /// Without a hero a side gets no lucky strikes in profiles with the quirk
     /// `quirk.battle.no_luck_without_hero` (Q-0003). The battle checks a hero only for soundness
@@ -266,7 +280,10 @@ mod tests {
                 stacks: vec![stack],
             },
             defender: Army::default(),
-            obstacles: vec![],
+            obstacles: vec![Obstacle {
+                hexes: vec![40, 41],
+                anchor: Some(40),
+            }],
             heroes: [
                 Some(BattleHero::new(h3_content::HeroTypeId::from_raw(0))),
                 None,
@@ -279,5 +296,7 @@ mod tests {
         assert_eq!(setup.army(BattleSide::Attacker).stacks, [stack]);
         assert!(setup.army(BattleSide::Defender).stacks.is_empty());
         assert!(setup.heroes[0].is_some() && setup.heroes[1].is_none());
+        assert_eq!(setup.obstacles[0].anchor, Some(40));
+        assert_eq!(Obstacle::default().anchor, None);
     }
 }

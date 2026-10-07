@@ -853,7 +853,9 @@ pub fn harvest(inputs: &Inputs, gap: &GapFill) -> Result<Harvest, String> {
          \"quirk.battle.early_mass_version\" = true, \
          \"quirk.battle.mass_cure_skips_hypnotized\" = true, \
          \"quirk.battle.natives_sight_at_start\" = true, \
-         \"quirk.battle.attack_from_seen_pit\" = true }    # Q-0003, Q-0005, Q-0004, Q-0007, Q-0008, Q-0009, Q-0010, Q-0011, Q-0012, BAT-QUIRK-1, BAT-QUIRK-2\n",
+         \"quirk.battle.attack_from_seen_pit\" = true, \
+         \"quirk.battle.obstacle_anchors\" = true, \
+         \"quirk.battle.draws_avoid_hidden\" = true }    # Q-0003, Q-0005, Q-0004, Q-0007, Q-0008, Q-0009, Q-0010, Q-0011, Q-0012, BAT-QUIRK-1 to BAT-QUIRK-4\n",
     );
     base.push_str(
         "\n[[profile]]\nid = \"strict-fixed\"    # all quirks fixed\n\
@@ -867,7 +869,9 @@ pub fn harvest(inputs: &Inputs, gap: &GapFill) -> Result<Harvest, String> {
          \"quirk.battle.early_mass_version\" = false, \
          \"quirk.battle.mass_cure_skips_hypnotized\" = false, \
          \"quirk.battle.natives_sight_at_start\" = false, \
-         \"quirk.battle.attack_from_seen_pit\" = false }   # Q-0003, Q-0005, Q-0004, Q-0007, Q-0008, Q-0009, Q-0010, Q-0011, Q-0012, BAT-QUIRK-1, BAT-QUIRK-2\n",
+         \"quirk.battle.attack_from_seen_pit\" = false, \
+         \"quirk.battle.obstacle_anchors\" = false, \
+         \"quirk.battle.draws_avoid_hidden\" = false }   # Q-0003, Q-0005, Q-0004, Q-0007, Q-0008, Q-0009, Q-0010, Q-0011, Q-0012, BAT-QUIRK-1 to BAT-QUIRK-4\n",
     );
 
     // ab

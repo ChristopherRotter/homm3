@@ -15,7 +15,9 @@
 
 use alloc::vec::Vec;
 
-use h3_content::{MAX_FIELD_HEXES, ObstacleKind, ObstacleShape, Ruleset, SpellId};
+use h3_content::{
+    DRAWS_AVOID_HIDDEN, MAX_FIELD_HEXES, ObstacleKind, ObstacleShape, Ruleset, SpellId, SpellMagic,
+};
 use h3_contracts::BattleSide;
 use h3_kernel::{CanonicalHash, FixedVec, StateHasher};
 
@@ -162,6 +164,15 @@ impl SpellObstacles {
         self.refresh();
     }
 
+    /// Reveals the obstacles on `hex` to both sides (tests).
+    #[cfg(test)]
+    pub(crate) fn reveal_for_tests(&mut self, hex: Hex) {
+        self.list
+            .iter_mut()
+            .filter(|o| o.hexes.contains(hex))
+            .for_each(|o| o.revealed = true);
+    }
+
     /// The first Fire Wall obstacle on `hex`.
     fn fire_at(&self, hex: Hex) -> Option<SpellObstacle> {
         self.list
@@ -301,39 +312,62 @@ pub(crate) fn shape_hexes(
     Some(out)
 }
 
-/// Whether `side`'s hero may place an obstacle on every hex of `hexes` (BAT-MAG-027; the
-/// original's target test, `installation.md` §7.15): each outside the side columns, without an
-/// obstacle the side sees and without a living stack. The original also refuses the other side's
-/// hidden obstacles, which gives them away (Q-0002, BAT-MAG-031): here the new obstacle goes over
-/// them.
-pub(crate) fn free(state: &BattleState, field: Field, side: BattleSide, hexes: &[Hex]) -> bool {
+/// The hexes of the spell obstacles `side` sees (BAT-MAG-031).
+fn seen_hexes(state: &BattleState, side: BattleSide) -> HexSet {
     let o = &state.spell_obstacles;
-    let seen = if !o.has_hidden() {
-        o.hexes()
-    } else {
+    if o.has_hidden() {
         o.list
             .iter()
             .filter(|o| sees(state, side, o))
             .fold(HexSet::new(), |set, o| set.union(o.hexes))
-    };
-    let taken = state.obstacles.union(seen).union(state.living_hexes(field));
+    } else {
+        o.hexes()
+    }
+}
+
+/// Whether `side`'s hero may place an obstacle on every hex of `hexes` (BAT-MAG-027; the
+/// original's target test, `installation.md` §7.15): each outside the side columns, without a
+/// natural obstacle, an anchor hex (quirk BAT-QUIRK-3, BAT-GEO-003), a spell obstacle the side
+/// sees or a living stack. The original also refuses the other side's hidden obstacles, which
+/// gives them away (Q-0002, BAT-MAG-031): here the new obstacle goes over them.
+pub(crate) fn free(state: &BattleState, field: Field, side: BattleSide, hexes: &[Hex]) -> bool {
+    let taken = state
+        .natural
+        .blocked()
+        .union(state.natural.anchors())
+        .union(seen_hexes(state, side))
+        .union(state.living_hexes(field));
     hexes
         .iter()
         .all(|&h| field.is_standable(h) && !taken.contains(h))
 }
 
-/// Up to `count` random hexes for a random shape's obstacles (Quicksand, BAT-MAG-032; the
-/// original's 0x5A0354, `installation.md` §7.16), in the order drawn: each drawn with equal
-/// chances among the hexes not yet drawn that are outside the side columns, without an obstacle
-/// of any kind (hidden ones too) and without a stack, living or dead. The original draws from
-/// every hex and skips the unsuitable ones, which gives the same chances.
+/// Up to `count` random hexes for `side`'s random obstacles (Quicksand, Land Mine; BAT-MAG-032;
+/// the original's 0x5A0354, `installation.md` §7.16), in the order drawn: each drawn with equal
+/// chances among the hexes not yet drawn that are outside the side columns, without a natural
+/// obstacle, an anchor hex (quirk BAT-QUIRK-3), a spell obstacle and a stack, living or dead. With
+/// quirk BAT-QUIRK-4 every spell obstacle counts, the other side's hidden ones too (which tells
+/// the caster where none lies); without it only those `side` sees, and a new one may go over a
+/// hidden one of the other side (Q-0002). The original draws from every hex and skips the
+/// unsuitable ones, which gives the same chances.
 // rule: BAT-MAG-032
 pub(crate) fn random_hexes(
     state: &mut BattleState,
-    field: Field,
+    ruleset: &Ruleset,
+    side: BattleSide,
     count: u8,
 ) -> FixedVec<Hex, { h3_content::MAX_OBSTACLE_HEXES }> {
-    let mut taken = state.obstacles.union(state.spell_obstacles.hexes());
+    let field = Field::new(ruleset.battle().field);
+    let spells = if ruleset.quirks().is_enabled(DRAWS_AVOID_HIDDEN) {
+        state.spell_obstacles.hexes()
+    } else {
+        seen_hexes(state, side)
+    };
+    let mut taken = state
+        .natural
+        .blocked()
+        .union(state.natural.anchors())
+        .union(spells);
     for s in state.stacks.iter() {
         s.footprint(field).hexes().for_each(|h| taken.insert(h));
     }
@@ -463,6 +497,58 @@ pub(crate) fn count_down<S: Sink>(state: &mut BattleState, sink: &mut S) {
             }
             o.rounds -= 1;
             o.rounds == 0
+        },
+        sink,
+    );
+}
+
+/// Whether `side`'s hero casting a remove effect `magic` at `mastery` finds an obstacle on `hex`
+/// (BAT-MAG-034; the original's target test, `installation.md` §7.15): a removable natural
+/// obstacle there (its blocked hexes, and its anchor hex under quirk BAT-QUIRK-3), or a spell
+/// obstacle there that the side sees and that `magic` removes at `mastery`. The original's
+/// Expert cursor also finds the other side's hidden obstacles, which gives them away (Q-0002,
+/// the wiki's Remove Obstacle page): here they are no target.
+// rule: BAT-MAG-034
+pub(crate) fn removable(
+    state: &BattleState,
+    side: BattleSide,
+    (magic, mastery): (&SpellMagic, u8),
+    hex: Hex,
+) -> bool {
+    state.natural.removable_at(hex).is_some()
+        || state.spell_obstacles.list.iter().any(|o| {
+            o.hexes.contains(hex) && magic.removes_at(o.kind, mastery) && sees(state, side, o)
+        })
+}
+
+/// Removes what `side`'s validated remove cast `magic` at `mastery` finds on `hex`
+/// (BAT-MAG-034; the original's 0x5A1C04 removes the whole object, `installation.md` §7.15): the
+/// removable natural obstacle there, reported to both sides; else every spell obstacle there that
+/// the side sees and `magic` removes at `mastery` (one Fire Wall hex is an obstacle of its own),
+/// each reported to the sides that saw it (BAT-MAG-031).
+// rule: BAT-MAG-034
+pub(crate) fn remove_at<S: Sink>(
+    state: &mut BattleState,
+    side: BattleSide,
+    (magic, mastery): (&SpellMagic, u8),
+    hex: Hex,
+    sink: &mut S,
+) {
+    if let Some(i) = state.natural.removable_at(hex) {
+        let gone = state.natural.remove(i);
+        sink.emit(Event::public(EventKind::NaturalObstacleRemoved {
+            anchor: gone.anchor(),
+            hexes: gone.hex_set(),
+        }));
+        return;
+    }
+    let natives = natives_see(state, side);
+    remove(
+        state,
+        |o| {
+            o.hexes.contains(hex)
+                && magic.removes_at(o.kind, mastery)
+                && (o.side == side || o.revealed || natives)
         },
         sink,
     );

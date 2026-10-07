@@ -1557,6 +1557,13 @@ url = "docs/formats/installation.md"
 retrieved = "2026-10-07"
 
 [[source]]
+id = "exe-remove-obstacle"
+kind = "original-data"
+ref = "Heroes3.exe code reading (docs/formats/installation.md 7.15): Remove Obstacle (64, flag 0x100) goes to 0x5A1C04, which removes the whole object on the target hex (0x466B30; one Fire Wall hex is an object of its own); the target test wants a hex with an object (an index, which a usual obstacle also gives its anchor hex) whose flags the table 0x5A3C64 allows at the caster's mastery: below Advanced no spell object (0x3C), Advanced also Fire Wall (0x10), Expert any object; the absolute obstacles have no object and cannot be removed"
+url = "docs/formats/installation.md"
+retrieved = "2026-10-07"
+
+[[source]]
 id = "exe-anti-magic-mirror"
 kind = "original-data"
 ref = "Heroes3.exe code reading (docs/formats/installation.md 7.13): Anti-Magic stores v (0x4448F0, +0x460) and ends the active negative spells below level v that are not creature abilities (flag 0x8); while active 0x5A8090 returns 0 for every such spell below level v whatever its polarity, after Dispel's own test; Magic Mirror stores v (+0x4E4), read by 0x4487F0; the player's cast entry 0x59EC50 redirects a single-target cast at a living enemy stack (not Dispel) with random(1, 100) <= v to a random living stack of the caster's side (not an arrow tower), which 0x59FE30 rolls with the polarity tests skipped"
@@ -2231,3 +2238,11 @@ sources = ["exe-land-mine"]
 spell = "Teleport"
 effects = ["teleport"]
 sources = ["exe-obstacle-spells"]
+
+# Remove Obstacle (E04b T5b, pack format v16; installation.md 7.15): the target hex comes from the
+# flag word (0x100); a removable natural obstacle at every mastery, the spell obstacles by the
+# table 0x5A3C64 (Fire Wall from Advanced, any at Expert).
+[[spells.remove]]
+spell = "Remove Obstacle"
+removes = { fire = "advanced", wall = "expert", pit = "expert", mine = "expert" }
+sources = ["exe-remove-obstacle"]

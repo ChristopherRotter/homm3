@@ -259,6 +259,13 @@ pub enum EventKind {
         /// Its hexes.
         hexes: HexSet,
     },
+    /// A spell removed a natural obstacle (BAT-MAG-034): its hexes are free (public).
+    NaturalObstacleRemoved {
+        /// Its anchor hex.
+        anchor: Hex,
+        /// The hexes it blocked.
+        hexes: HexSet,
+    },
     /// A hidden spell obstacle became visible to both sides: a stack that did not see it ran
     /// into it (Quicksand, BAT-MAG-031/032).
     ObstacleRevealed {

@@ -19,6 +19,7 @@ mod properties;
 mod protect;
 mod rage;
 mod ranged;
+mod remove;
 mod rules;
 mod specialist;
 mod spells;

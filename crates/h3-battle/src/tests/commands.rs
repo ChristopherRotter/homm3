@@ -266,15 +266,21 @@ fn state_hash_is_pinned() {
     ];
     led.magic.spell_book = Some(vec![bolt]);
     led.magic.schools = [2, 1, 0, 0];
+    // One removable obstacle (v28): a stone with its anchor beside it.
+    let stone = h3_contracts::Obstacle {
+        hexes: vec![at(&r, 7, 4).0, at(&r, 8, 4).0],
+        anchor: Some(at(&r, 6, 4).0),
+    };
     let setup = BattleSetup {
         heroes: [Some(led), None],
         funds: [1234, 99],
+        obstacles: vec![stone],
         ..setup(&r, &[(0, "fixed", 3), (2, "wisp", 7)], &[(0, "slow", 4)])
     };
     let s = BattleState::new(&r, &setup, 7).unwrap();
     assert!(s.tactics().is_some());
     assert_eq!(s.state_hash(), GOLDEN, "got {:#018x}", s.state_hash());
-    assert_eq!(crate::BATTLE_STATE_HASH_VERSION, 27);
+    assert_eq!(crate::BATTLE_STATE_HASH_VERSION, 28);
 }
 
-const GOLDEN: u64 = 0xd94a_c00d_0522_0e07;
+const GOLDEN: u64 = 0x147a_4c9d_e551_6b12;

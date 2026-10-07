@@ -164,7 +164,7 @@ fn land_mine_hides_mines_by_mastery_with_the_spells_value_for_the_whole_battle()
             &[("fixed", 5, 12, 5)],
             u64::from(mastery) + 3,
         );
-        s.obstacles.insert(at(&r, 8, 8));
+        s.natural.block(at(&r, 8, 8));
         let events = act(&mut s, &r, land_mine(&r)).unwrap();
         let field = field(&r);
         let mut hexes = HexSet::new();

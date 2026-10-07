@@ -742,6 +742,14 @@ pub fn ruleset_with(profile: &str, edit: impl FnOnce(&mut BattleParamsDef)) -> R
                 quirks: vec![(String::from("quirk.battle.attack_from_seen_pit"), true)],
             },
             ProfileDef {
+                key: ContentKey::new("t", "anchors").unwrap(),
+                quirks: vec![(String::from("quirk.battle.obstacle_anchors"), true)],
+            },
+            ProfileDef {
+                key: ContentKey::new("t", "draws").unwrap(),
+                quirks: vec![(String::from("quirk.battle.draws_avoid_hidden"), true)],
+            },
+            ProfileDef {
                 key: ContentKey::new("t", "original").unwrap(),
                 quirks: vec![
                     (String::from("quirk.battle.first_protection"), true),
@@ -1521,6 +1529,17 @@ pub fn field_defs() -> Vec<SpellDef> {
                 },
             )
         },
+        def(
+            "remove",
+            (2, "air"),
+            SpellPolarity::Neutral,
+            SpellMagic {
+                target: SpellTarget::Hex,
+                effects: vec![SpellEffect::RemoveObstacle],
+                removes_from: [Some(3), Some(2), Some(3), Some(3)],
+                ..SpellMagic::default()
+            },
+        ),
     ]
 }
 
@@ -1628,8 +1647,16 @@ pub fn battle_with_obstacles(
     obstacles: &[(i32, i32)],
 ) -> BattleState {
     let mut s = setup(rules, attacker, defender);
-    s.obstacles = obstacles.iter().map(|&(x, y)| at(rules, x, y).0).collect();
+    s.obstacles = blocked(obstacles.iter().map(|&(x, y)| at(rules, x, y).0).collect());
     BattleState::new(rules, &s, 1).unwrap()
+}
+
+/// One obstacle without an anchor over `hexes` (it cannot be removed).
+pub fn blocked(hexes: Vec<u8>) -> Vec<h3_contracts::Obstacle> {
+    vec![h3_contracts::Obstacle {
+        hexes,
+        anchor: None,
+    }]
 }
 
 pub fn field(rules: &Ruleset) -> Field {

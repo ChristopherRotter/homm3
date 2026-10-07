@@ -4,7 +4,8 @@
 use alloc::vec::Vec;
 use h3_content::{
     Ability, AreaShot, CreatureFlag, CreatureType, CreatureTypeId, MAX_ARMY_SLOTS,
-    NATIVES_SIGHT_AT_START, Ruleset, TerrainId, UNLIMITED_BALLISTA_SHOTS, WAR_MACHINE_KINDS,
+    NATIVES_SIGHT_AT_START, OBSTACLE_ANCHORS, Ruleset, TerrainId, UNLIMITED_BALLISTA_SHOTS,
+    WAR_MACHINE_KINDS,
 };
 
 use h3_contracts::{
@@ -19,6 +20,7 @@ use crate::event::{NoopSink, Sink};
 use crate::geometry::{Field, Footprint, Hex, HexSet};
 use crate::hero::{self, HeroRecord, HeroView};
 use crate::morale::{self, Modifiers};
+use crate::natural::{NaturalObstacles, RemovableObstacle};
 use crate::obstacles::{SpellObstacle, SpellObstacles};
 use crate::tactics::{self, TacticsPhase};
 use crate::{flee, terrain, turn};
@@ -39,7 +41,7 @@ pub const STACK_CAPACITY: usize = 2 * SIDE_STACK_SLOTS;
 const _: () = assert!(MAX_ARMY_SLOTS + MAX_WAR_MACHINES <= SIDE_STACK_SLOTS);
 
 /// Version of the battle-state hash encoding ([`BattleState::state_hash`]). Bump on any change.
-pub const BATTLE_STATE_HASH_VERSION: u32 = 27;
+pub const BATTLE_STATE_HASH_VERSION: u32 = 28;
 
 /// Index of a stack in its battle (attacker stacks first, in slot order, then defender stacks).
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Default)]
@@ -630,7 +632,8 @@ const fn result_code(result: BattleResult) -> u8 {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct BattleState {
     pub(crate) stacks: FixedVec<Stack, STACK_CAPACITY>,
-    pub(crate) obstacles: HexSet,
+    /// The natural obstacles (BAT-GEO-003; pieces since E04b T5b).
+    pub(crate) natural: NaturalObstacles,
     pub(crate) round: u16,
     pub(crate) tactics: Option<TacticsPhase>,
     pub(crate) active: Option<StackId>,
@@ -669,7 +672,11 @@ impl BattleState {
     ) -> Result<Self, SetupError> {
         let params = ruleset.battle();
         let field = Field::new(params.field);
-        let obstacles = obstacles(field, &setup.obstacles)?;
+        let natural = NaturalObstacles::new(
+            field,
+            &setup.obstacles,
+            ruleset.quirks().is_enabled(OBSTACLE_ANCHORS),
+        )?;
         // rule: BAT-TER-001
         if setup
             .terrain
@@ -684,7 +691,7 @@ impl BattleState {
                     Some(hero::check(ruleset, side, hero, setup.funds[side.index()])?);
             }
         }
-        let mut taken = obstacles;
+        let mut taken = natural.blocked();
         let mut placed = [Stack::default(); STACK_CAPACITY];
         let mut len = 0;
         for side in BattleSide::BOTH {
@@ -755,7 +762,7 @@ impl BattleState {
         }
         let mut state = Self {
             stacks: FixedVec::from_array_prefix(placed, len),
-            obstacles,
+            natural,
             round: 1,
             tactics: None,
             active: None,
@@ -839,15 +846,20 @@ impl BattleState {
             .is_some_and(|price| self.heroes[side.index()].is_some_and(|h| h.funds >= price))
     }
 
-    /// The hexes blocked by obstacles (BAT-GEO-003).
+    /// The hexes blocked by natural obstacles (BAT-GEO-003).
     pub const fn obstacles(&self) -> HexSet {
-        self.obstacles
+        self.natural.blocked()
+    }
+
+    /// The natural obstacles a spell can remove, in setup order (BAT-MAG-034; public).
+    pub fn removable_obstacles(&self) -> &[RemovableObstacle] {
+        self.natural.removable()
     }
 
     /// The hexes that block `except`'s movement: obstacles, the hexes Force Fields block
     /// (BAT-MAG-027) and the footprints of every other living stack (BAT-MOV-001).
     pub(crate) fn blocked_for(&self, field: Field, except: StackId) -> HexSet {
-        let mut blocked = self.obstacles.union(self.spell_obstacles.walls());
+        let mut blocked = self.natural.blocked().union(self.spell_obstacles.walls());
         for (id, s) in (0u8..).zip(self.stacks.iter()) {
             if s.is_alive() && StackId(id) != except {
                 s.footprint(field).hexes().for_each(|h| blocked.insert(h));
@@ -1007,24 +1019,12 @@ impl BattleState {
     /// terrain, RNG state. v19 (E04b T2d): the hero's resistance. v20 (E04b T3a): each stack's
     /// spell values after its flags, the hero's duration bonus after its resistance, the effect
     /// list before the RNG. v25 (E04b T4b): the stack flag `STARTED` and the spell values'
-    /// status bits. v26 (E04b T5a): the spell obstacles after the effect list.
+    /// status bits. v26 (E04b T5a): the spell obstacles after the effect list. v28 (E04b T5b):
+    /// the obstacles as the blocked hexes, the removable obstacles (count; each anchor, count,
+    /// hexes) and whether anchors belong to them.
     pub fn state_hash(&self) -> u64 {
         h3_kernel::hash::hash_of(self)
     }
-}
-
-/// Validates the setup's obstacle hexes: inside the field, not in a side column, each once.
-// rule: BAT-GEO-003
-fn obstacles(field: Field, hexes: &[u8]) -> Result<HexSet, SetupError> {
-    let mut set = HexSet::new();
-    for &raw in hexes {
-        let hex = Hex(raw);
-        if !field.is_standable(hex) || set.contains(hex) {
-            return Err(SetupError::InvalidObstacle(raw));
-        }
-        set.insert(hex);
-    }
-    Ok(set)
 }
 
 /// The head hex closest to `desired` where a stack of this shape fits: every hex of its
@@ -1067,7 +1067,7 @@ impl CanonicalHash for BattleState {
         self.result.map(result_code).hash_into(h);
         self.surrender_cost.hash_into(h);
         self.stacks.hash_into(h);
-        self.obstacles.hash_into(h);
+        self.natural.hash_into(h);
         self.modifiers.hash_into(h);
         self.heroes.hash_into(h);
         self.terrain.hash_into(h);

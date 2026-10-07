@@ -18,6 +18,7 @@ use crate::effects::ActiveEffect;
 use crate::event::{Event, Visibility};
 use crate::geometry::HexSet;
 use crate::hero::{HeroView, OwnHeroView};
+use crate::natural::RemovableObstacle;
 use crate::obstacles::{self, SpellObstacle};
 use crate::state::{BattleState, STACK_CAPACITY, Stack, StackId};
 use crate::tactics::TacticsPhase;
@@ -44,8 +45,10 @@ pub struct Observation {
     pub result: Option<BattleResult>,
     /// All stacks (public in battle).
     pub stacks: FixedVec<Stack, STACK_CAPACITY>,
-    /// Hexes blocked by obstacles (public).
+    /// Hexes blocked by natural obstacles (public).
     pub obstacles: HexSet,
+    /// The natural obstacles a spell can remove, with their anchors (public; BAT-MAG-034).
+    pub removable_obstacles: Vec<RemovableObstacle>,
     /// The heroes leading the sides, their public part (identity, primary skills, mana, the war
     /// machines they command; ADR-0013 point 9), indexed by [`BattleSide::index`].
     pub heroes: [Option<HeroView>; 2],
@@ -73,7 +76,8 @@ pub fn observe(state: &BattleState, ruleset: &Ruleset, viewer: BattleSide) -> Ob
         last_side_acted: state.last_side_acted,
         result: state.result,
         stacks: state.stacks,
-        obstacles: state.obstacles,
+        obstacles: state.obstacles(),
+        removable_obstacles: state.removable_obstacles().to_vec(),
         heroes: BattleSide::BOTH.map(|side| state.hero(side)),
         own_hero: state.heroes[viewer.index()].map(|h| OwnHeroView {
             tactics: h.tactics,

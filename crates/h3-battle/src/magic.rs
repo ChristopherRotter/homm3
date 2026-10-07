@@ -630,6 +630,10 @@ fn first_target(
         (SpellTarget::Stack, CastTarget::Stack(s)) => {
             state.stack(s).is_some() && aimable(state, ruleset, side, (spell, mastery), s)
         }
+        (SpellTarget::Hex, CastTarget::Hex(h)) if spell.1.magic.removes_obstacles() => {
+            // rule: BAT-MAG-034
+            obstacles::removable(state, side, (&spell.1.magic, mastery), h)
+        }
         (SpellTarget::Hex, CastTarget::Hex(h)) => {
             let field = Field::new(ruleset.battle().field);
             match &spell.1.magic.obstacle {
@@ -825,7 +829,8 @@ pub fn second_targets(
 /// listing every hex where it can be avoided): a stack spell needs a stack of [`aimable`] with a
 /// second target, a battle-wide spell a stack it reaches, but a random obstacle spell none (mines
 /// only while the other side's natives would not see them); a hex spell always has one, but an
-/// obstacle spell needs a hex where its shape fits.
+/// obstacle spell needs a hex where its shape fits and a remove spell a hex with an obstacle it
+/// removes.
 fn has_target(
     state: &BattleState,
     ruleset: &Ruleset,
@@ -833,7 +838,9 @@ fn has_target(
     (spell, mastery): (SpellRef<'_>, u8),
 ) -> bool {
     match target_at(ruleset, spell.1, mastery) {
-        SpellTarget::Hex if spell.1.magic.obstacle.is_some() => {
+        SpellTarget::Hex
+            if spell.1.magic.obstacle.is_some() || spell.1.magic.removes_obstacles() =>
+        {
             hex_targets(ruleset).any(|h| first_target(state, ruleset, actor, (spell, mastery), h))
         }
         SpellTarget::Hex => true,
@@ -1316,6 +1323,13 @@ pub(crate) fn apply_cast<S: Sink>(
     }));
     let spell = (cast.id, cast.spell);
     let magic = &cast.spell.magic;
+    if magic.removes_obstacles() {
+        // rule: BAT-MAG-034
+        // Validated: the target is a hex with something to remove.
+        let hex = cast.target.hex().unwrap_or_default();
+        obstacles::remove_at(state, cast.side, (magic, cast.mastery), hex, sink);
+        return;
+    }
     if let (Some(kind), Some(shape)) = (magic.obstacle_kind(), &magic.obstacle) {
         // rule: BAT-MAG-027
         let field = Field::new(ruleset.battle().field);
@@ -1326,7 +1340,12 @@ pub(crate) fn apply_cast<S: Sink>(
                     .unwrap_or_default()
             }
             // A random shape (validated: target none).
-            _ => obstacles::random_hexes(state, field, shape.hexes[usize::from(cast.mastery)]),
+            _ => obstacles::random_hexes(
+                state,
+                ruleset,
+                cast.side,
+                shape.hexes[usize::from(cast.mastery)],
+            ),
         };
         let placed = (cast.id, kind, shape);
         obstacles::place(

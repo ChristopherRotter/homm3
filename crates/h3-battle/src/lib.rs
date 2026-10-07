@@ -36,6 +36,7 @@ mod legal;
 mod magic;
 mod morale;
 mod movement;
+mod natural;
 mod observe;
 mod obstacles;
 mod state;
@@ -57,6 +58,7 @@ pub use magic::{
     SpellSet, cast_targets, castable_spells, second_targets,
 };
 pub use morale::{Bearer, Expiry, MODIFIER_CAPACITY, Modifiers, Stat};
+pub use natural::{MAX_REMOVABLE_HEXES, MAX_REMOVABLE_OBSTACLES, RemovableObstacle};
 pub use observe::{Observation, observe, project};
 pub use obstacles::{OBSTACLE_CAPACITY, SpellObstacle};
 pub use state::{
