@@ -3069,6 +3069,8 @@ cost = [18, 15, 15, 15]
 power = 10
 effect = [25, 25, 50, 100]
 polarity = "neutral"
+obstacle = { hexes = [4, 4, 6, 8], random = true, separate = true }
+effects = [{ kind = "obstacle", obstacle = "mine" }]
 
 [[spell]]
 id = "force_field"  # original id 12

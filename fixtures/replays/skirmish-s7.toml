@@ -483,7 +483,7 @@ packs = [[
     "0.1.0",
 ]]
 profile = "synthetic:faithful"
-ruleset_hash = "0x9a78aead381e7548"
+ruleset_hash = "0x22fda3c33e0c0b10"
 rng = "xoshiro256starstar+splitmix64"
 rng_version = 1
 hash = "fnv1a64-le"

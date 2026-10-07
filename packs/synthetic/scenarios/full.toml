@@ -25,7 +25,9 @@ defender_funds = 10000
 # T4b she makes one shooter forget (Haze, a Forgetfulness at Basic: half its creatures count);
 # since T4c she charms a stack of up to 60 hit points (Charm, a Hypnotize: power 2 × 25 + 10), which
 # then fights for her; since T5a she raises a two-hex wall of fire (Scorch, a Fire Wall: 30 damage
-# to a stack that enters it or acts on it) and moves her own stacks anywhere (Blink, a Teleport).
+# to a stack that enters it or acts on it) and moves her own stacks anywhere (Blink, a Teleport);
+# since T5c2 she hides four mines (Snare, a Land Mine at Basic: 45 damage to a Corwin stack that
+# steps on one unseen; Corwin has no natives, as the battlefield has no terrain).
 [scenario.attacker_hero]
 hero_type = "synthetic:brea"
 attack = 2
@@ -40,6 +42,7 @@ spell_book = [
     "synthetic:hasten", "synthetic:drag", "synthetic:fury", "synthetic:smiting",
     "synthetic:riposte", "synthetic:mend", "synthetic:blaze", "synthetic:glass",
     "synthetic:haze", "synthetic:charm", "synthetic:scorch", "synthetic:blink",
+    "synthetic:snare",
 ]
 schools = { "synthetic:storm" = 1 }
 ranged_bp = 1000

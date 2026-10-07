@@ -1416,8 +1416,10 @@ pub fn control_defs() -> Vec<SpellDef> {
 /// Advanced also that one's upper left, for either side; 2 rounds), Fire Wall (`t:firewall`: a
 /// fire spell of level 2, power × 10 + 10, 10, 20, 50 damage, the same hexes mirrored for the
 /// defender, one obstacle per hex, 2 rounds), Teleport (`t:teleport`: level 3, an own stack
-/// that is no war machine to a free hex) and Quicksand (`t:quicksand`: level 2, 4, 4, 6 or 8 pits
-/// on random free hexes for the whole battle, hidden from the other side).
+/// that is no war machine to a free hex), Quicksand (`t:quicksand`: level 2, 4, 4, 6 or 8 pits
+/// on random free hexes for the whole battle, hidden from the other side) and Land Mine
+/// (`t:landmine`: a fire spell of level 3, as many mines as Quicksand's pits, each doing power ×
+/// 10 + 25, 25, 50, 100 damage to a stack of the other side that enters it unseen).
 pub fn field_defs() -> Vec<SpellDef> {
     let key = |k: &str| ContentKey::new("t", k).unwrap();
     let def = |name: &str, (level, school), polarity, magic| SpellDef {
@@ -1498,6 +1500,27 @@ pub fn field_defs() -> Vec<SpellDef> {
                 ..SpellMagic::default()
             },
         ),
+        SpellDef {
+            power: 10,
+            effect: [25, 25, 50, 100],
+            ..def(
+                "landmine",
+                (3, "fire"),
+                SpellPolarity::Neutral,
+                SpellMagic {
+                    obstacle: Some(ObstacleShape {
+                        steps: vec![],
+                        hexes: [4, 4, 6, 8],
+                        random: true,
+                        mirrored: false,
+                        separate: true,
+                        rounds: 0,
+                    }),
+                    effects: vec![SpellEffect::Obstacle(ObstacleKind::Mine)],
+                    ..SpellMagic::default()
+                },
+            )
+        },
     ]
 }
 

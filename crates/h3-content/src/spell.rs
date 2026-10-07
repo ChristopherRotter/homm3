@@ -318,11 +318,15 @@ pub enum ObstacleKind {
     /// Stops a walker that enters one of its hexes; hidden from the other side until revealed
     /// (Quicksand; BAT-MAG-031, BAT-MAG-032).
     Pit,
+    /// Goes off under a stack of the other side that enters its hex unseen, with the spell's
+    /// damage, and is gone; hidden from the other side, and not cast while that side's natives
+    /// would see it (Land Mine; BAT-MAG-031, BAT-MAG-033; v15).
+    Mine,
 }
 
 impl ObstacleKind {
     /// All values, in code order.
-    pub const ALL: [Self; 3] = [Self::Wall, Self::Fire, Self::Pit];
+    pub const ALL: [Self; 4] = [Self::Wall, Self::Fire, Self::Pit, Self::Mine];
 
     /// Pack name.
     pub const fn name(self) -> &'static str {
@@ -330,13 +334,20 @@ impl ObstacleKind {
             Self::Wall => "wall",
             Self::Fire => "fire",
             Self::Pit => "pit",
+            Self::Mine => "mine",
         }
     }
 
     /// Whether the other side does not see it until it is revealed (ADR-0014 point 7,
-    /// BAT-MAG-031): a pit; walls and fire are seen by both sides.
+    /// BAT-MAG-031): a pit or a mine; walls and fire are seen by both sides.
     pub const fn is_hidden(self) -> bool {
-        matches!(self, Self::Pit)
+        matches!(self, Self::Pit | Self::Mine)
+    }
+
+    /// Whether it carries the cast's value (`power × power factor + effect[mastery]`): fire and
+    /// mines, which do the spell's damage (BAT-MAG-028, BAT-MAG-033).
+    pub const fn has_value(self) -> bool {
+        matches!(self, Self::Fire | Self::Mine)
     }
 
     /// Looks a value up by its pack name.
@@ -1526,8 +1537,10 @@ mod tests {
             );
         }
         assert_eq!(ObstacleKind::from_name("trap"), None);
-        assert!(ObstacleKind::Pit.is_hidden());
+        assert!(ObstacleKind::Pit.is_hidden() && ObstacleKind::Mine.is_hidden());
         assert!(!ObstacleKind::Wall.is_hidden() && !ObstacleKind::Fire.is_hidden());
+        assert!(ObstacleKind::Fire.has_value() && ObstacleKind::Mine.has_value());
+        assert!(!ObstacleKind::Wall.has_value() && !ObstacleKind::Pit.has_value());
         for s in HexStep::ALL {
             assert_eq!(HexStep::from_name(s.name()), Some(s));
             assert_eq!(s.mirrored().mirrored(), s);

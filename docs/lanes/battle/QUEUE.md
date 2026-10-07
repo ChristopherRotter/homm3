@@ -4,19 +4,12 @@ Pre-refined tasks of the battle lane, in order, then the inbox of discovered wor
 
 ## Tasks
 
-### E04b T5c2 — Land Mine
-
-- **Scope:** `docs/epics/E04b-battle-magic.md`, T5c2: read Land Mine (cast 0x5A0536, the spell book's native test 0x59ECEE, trigger 0x59FB40); its cast refusal when the enemy had natives, the mine's damage on entering, who crosses safely, the mine goes once triggered; on T5c1's hidden-obstacle machinery.
-- **Acceptance:** BAT rules with sources and tests; observation hygiene; `verify` green.
-- **Depends on:** T5c1 (done, merged in PR #4); the user's checkpoint after it (BAT-Q3: T5c2 and the Q55 survey).
-- **Status:** in progress (2026-10-07, branch `battle/e04b-t5c2`; read: `installation.md` §7.17).
-
 ### E04b T5b — Remove Obstacle
 
 - **Scope:** `docs/epics/E04b-battle-magic.md`, T5b: the natural obstacles as removable pieces with their anchors (a seam change of `BattleSetup.obstacles`: its own `shared/` pull request first), Remove Obstacle by mastery, the anchors in Fire Wall's and Force Field's test.
 - **Acceptance:** the epic's T5b line; the seam change accepted by the user.
-- **Depends on:** Q55 (batch 2c A2 confirmed the anchor reading; the user wants it as a quirk after a community survey, then the seam option); Remove Obstacle's target test must not reveal hidden obstacles (Q-0002: the original's Expert cursor finds Quicksand and mines, wiki).
-- **Status:** blocked (Q55).
+- **Depends on:** Q55 (batch 2c A2 confirmed the anchor reading; the community survey is done, nobody describes the anchors: the user chooses the quirk's class and the seam option at the T5c2 checkpoint); Remove Obstacle's target test must not reveal hidden obstacles (Q-0002: the original's Expert cursor finds Quicksand and mines, wiki; HotA fixed it for Quicksand).
+- **Status:** blocked (Q55, the user's choice).
 
 ## Inbox
 
@@ -42,3 +35,4 @@ Pre-refined tasks of the battle lane, in order, then the inbox of discovered wor
 - 2026-10-07 (E04b T4c): loose ends of Berserk and Hypnotize (`installation.md` §7.14): the original's berserk target choice by its AI pathfinder (0x4B3400, survey S-11) if an experiment ever shows a difference (HD, the user's setup, fixes S-11); the battle end with only hypnotized stacks left (not read: the engine counts them for their owner); Dispel's Sphere and the Pendants on the controller's hero (T8); a hypnotized stack's Unicorn aura lists are rebuilt in the original at the cast and its end (the engine computes the aura from the controllers at each test); Faerie Dragons and other casters' Berserk or Hypnotize (T7). Experiment candidates (staged in batch 2c, B1, H1, C1): a berserk stack choosing between two equally near stacks; Expert Cure on a hypnotized stack (S-13); Hypnotize refused by a stack whose wounded top creature would bring its health under the limit.
 - 2026-10-07 (E04b T5a): loose ends of the battlefield spells (`installation.md` §7.15): a walker's path among equally short ones is the engine's own (BAT-MOV-003); the original's pathfinder 0x4B3400 (also survey S-11's) decides which hexes a walker enters, so read its tie order if an experiment shows a stack burnt where the engine's path avoids the fire (or the reverse); Teleport in sieges by mastery (the wall below Advanced, 0x467840 below Expert; E04c); the flat sim observation (encoding v6) has no hex features, so neither the natural obstacles nor the spell obstacles reach agents: decide with E05 (E04b T9 observation completeness). Experiment candidates (staged in batch 2c, F1, F2, with Q55's anchors in A1–A3): a walker beside a two-hex Fire Wall with two equally short paths; a stack standing in Fire Wall that waits and then defends (burnt twice in one round); Force Field's shape for the defender (not mirrored in the original's descriptor, mirrored in VCMI).
 - 2026-10-07 (E04b T5c1): loose ends of Quicksand and the hidden obstacles (`installation.md` §7.16): the moat (0x469E50 damages a stack entering it; 0x4B3290 makes its hexes stops) and special battlefield 2 (+0x53C0, no stack native there) for E04c; the original's interface may not offer an attack from a seen pit (BAT-QUIRK-2's faithful variant accepts it); the flat sim observation still has no obstacle features (E05, T9). Experiment candidates: `docs/experiments/README.md` (from T5c1).
+- 2026-10-07 (E04b T5c2): loose ends of Land Mine (`installation.md` §7.17): after a mine's or Fire Wall's damage the original checks the Phoenixes' rebirth (0x469440; T7 with the ability); the Tower moat's mines (E04c, on this machinery); the AI never casts Land Mine (wiki; nothing for the engine). Experiment candidates: `docs/experiments/README.md` (from T5c2: the book's refusal against immune natives, which the wiki contradicts).

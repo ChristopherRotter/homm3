@@ -10,18 +10,11 @@ Sources: [`docs/rules/surveys/E04b-magic.md`](../rules/surveys/E04b-magic.md).
 
 ## T5 — battlefield objects
 
-The spell obstacle list, Force Field, Fire Wall, Teleport and Expert Dispel's clearing are
-implemented (T5a: `h3_battle::obstacles`, BAT-MAG-027 to 030, BAT-MOV-003), so are the hidden
-obstacles and Quicksand (T5c1: BAT-MAG-031/032, quirks BAT-QUIRK-1/2). For T5c2 (Land Mine):
-
-- A mine is a hidden obstacle kind of its own (pack format: an obstacle kind `mine`) with the
-  spell's value in `SpellObstacle::value`; its placement as Quicksand's (a random shape), its
-  cast test (the spell book refuses it while the other side had natives at the battle's start,
-  0x59ECEE: the faithful sight of BAT-QUIRK-1; the fix needs a rule of its own), its trigger
-  (0x59FB40, between Fire Wall's and the moat's when a hex is entered) and who crosses safely:
-  read them first (`installation.md` §7.15 lists the addresses).
-- `obstacles::travel_through` enters the hexes in order and already handles a stop and a death
-  on the way; a mine that goes off goes (ObstacleRemoved) and its reveal follows BAT-MAG-031.
+Force Field, Fire Wall, Teleport, Expert Dispel's clearing, the hidden obstacles, Quicksand and
+Land Mine are implemented (T5a, T5c1, T5c2: `h3_battle::obstacles`, BAT-MAG-027 to 033). Left:
+T5b (Remove Obstacle and the natural obstacles as pieces with their anchors): waits for the
+user's class and seam option for Q55 (`docs/OPEN-QUESTIONS.md`); its target test must not show
+the other side's hidden pits and mines (Q-0002).
 
 ## T6 — created stacks
 

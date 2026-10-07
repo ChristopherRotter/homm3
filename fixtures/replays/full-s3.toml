@@ -32,7 +32,7 @@ commands = [
     "D move 31",
     "A move 87",
     "D move 99",
-    "A cast 17 stack 2",
+    "A cast 18 stack 2",
     "A move 155",
     "D shoot 6 155",
     "A shoot 11 44",
@@ -74,7 +74,7 @@ commands = [
     "D shoot 0 122",
     "A shoot 10 11",
     "A wait",
-    "A cast 24 stack 0",
+    "A cast 25 stack 11",
     "A heal 4",
     "D move 77",
     "D move 107",
@@ -567,28 +567,28 @@ commands = [
     "A attack 10 128",
 ]
 checkpoints = [
-    "0xbb5cf841b860bc87",
-    "0xb85af6e278e19c53",
-    "0x2c0849e55feab484",
-    "0xc10cc07b4da630e4",
-    "0x888e81ddeeaa8c21",
-    "0xd48be343ffa5e8e4",
-    "0x312c300e0167462b",
-    "0xa6c772fc8881135f",
-    "0xe8ce2b73bef22537",
-    "0xdb9f52e8c614e615",
-    "0x8204d442f2327f36",
-    "0x30257edfd4a03a0e",
-    "0x6f379d0320072635",
-    "0x777521dde7166aa2",
-    "0x01ad7ba074a5111e",
-    "0x8bf43d67880f8d1b",
-    "0xb366738dca59329b",
-    "0x60696f90e7afc716",
-    "0x7c8070e37cfc7bbe",
-    "0x504087b71605632c",
-    "0xdc79582bf2bb6763",
-    "0x350d214a71876566",
+    "0xfae391a62b9a00cd",
+    "0x3dea9ee29899dee1",
+    "0x21301080bdaa6767",
+    "0x875986cb4dd22a08",
+    "0x8dfe25685ed930ed",
+    "0x3e44e6ecc0016862",
+    "0xb3b860c35a97061b",
+    "0x7fa6f11bd417c05f",
+    "0x0eea620ffea29b47",
+    "0xac7d66e55c720935",
+    "0x6fbbb581de3792ca",
+    "0x068ca2bb202ccd5a",
+    "0x5c382bcea98ecf61",
+    "0xa3a6fc6109a90b96",
+    "0xfd1ec787642c52b2",
+    "0x59db5b5ea5b797ff",
+    "0x7fb4640c8c8bc147",
+    "0x0cf38002730aa57a",
+    "0x49fb38c3cd7f3412",
+    "0x5e417c8a51721ae8",
+    "0xde04a9945336355f",
+    "0x8c6193d6aa91c882",
 ]
 
 [replay]
@@ -601,7 +601,7 @@ packs = [[
     "0.1.0",
 ]]
 profile = "synthetic:faithful"
-ruleset_hash = "0x9a78aead381e7548"
+ruleset_hash = "0x22fda3c33e0c0b10"
 rng = "xoshiro256starstar+splitmix64"
 rng_version = 1
 hash = "fnv1a64-le"
@@ -652,6 +652,7 @@ spell_book = [
     "synthetic:charm",
     "synthetic:scorch",
     "synthetic:blink",
+    "synthetic:snare",
 ]
 
 [setup.attacker_hero.ballista]
@@ -872,4 +873,4 @@ count = 11
 
 [result]
 winner = "defender"
-final_hash = "0x29fb47378b2b7865"
+final_hash = "0xe24a6dca5a900e19"

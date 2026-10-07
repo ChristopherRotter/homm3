@@ -475,7 +475,8 @@ struct SpellDto {
 /// `obstacle = { steps = ["top_right", "top_left"], hexes = [2, 2, 3, 3], mirrored = true,
 /// separate = true, rounds = 2 }` (pack format v13, E04b T5a; `mirrored` and `separate` default
 /// false) or `obstacle = { hexes = [4, 4, 6, 8], random = true, separate = true }` (v14, E04b
-/// T5c1: `random` defaults false, `rounds` 0, the whole battle).
+/// T5c1: `random` defaults false, `rounds` 0, the whole battle; the kinds `pit`, v14, and `mine`,
+/// v15, T5c2).
 #[derive(Deserialize)]
 #[serde(deny_unknown_fields)]
 struct ObstacleShapeDto {
@@ -2654,11 +2655,11 @@ mod tests {
         expected.magic.max_mana = 40;
         // The four damage spells, Ward, five timed spells, Mend, Blaze, Glass, Haze, Charm,
         // Scorch and Blink with Basic Storm magic (E04b T2c, T3a, T3b1, T3b1b, T3b2, T4a, T4b,
-        // T4c, T5a).
+        // T4c, T5a, T5c2).
         expected.magic.spell_book = Some(
             [
                 "spark", "cinders", "arc", "blight", "ward", "hasten", "drag", "fury", "smiting",
-                "riposte", "mend", "blaze", "glass", "haze", "charm", "scorch", "blink",
+                "riposte", "mend", "blaze", "glass", "haze", "charm", "scorch", "blink", "snare",
             ]
             .map(|k| ruleset.spell_by_key(&format!("synthetic:{k}")).unwrap())
             .to_vec(),
@@ -4007,7 +4008,7 @@ mod tests {
         use h3_content::SpellCategory;
         let r = compile(&[SYNTHETIC_PACK, SYNTHETIC_EXT_PACK], "synthetic:faithful").unwrap();
         assert_eq!(r.spell_schools().len(), 2);
-        assert_eq!(r.spells().len(), 33);
+        assert_eq!(r.spells().len(), 34);
         // Pack format v6: the storm school's protection rank; stone's defaults to 0.
         let ranks: Vec<u8> = r
             .spell_schools()
@@ -4231,6 +4232,20 @@ mod tests {
                     separate: true,
                     rounds: 0,
                 })
+            )
+        );
+        // Format v15: random mines (with the spell's value) for the whole battle.
+        let snare = magic("synthetic:snare");
+        assert_eq!(
+            (
+                snare.target,
+                snare.effects,
+                snare.obstacle.map(|o| o.random)
+            ),
+            (
+                SpellTarget::None,
+                vec![SpellEffect::Obstacle(ObstacleKind::Mine)],
+                Some(true)
             )
         );
         assert_eq!(magic("synthetic:purge").clears_obstacles_from, Some(3));

@@ -167,7 +167,7 @@ pub struct SpellOther {
 pub struct SpellObstacle {
     /// Spell name (as in `SPTRAITS.TXT`).
     pub spell: String,
-    /// The obstacle kind (`wall`, `fire`, `pit`).
+    /// The obstacle kind (`wall`, `fire`, `pit`, `mine`).
     pub obstacle: String,
     /// `{ steps, hexes, random, mirrored, separate, rounds }`, copied verbatim.
     pub shape: toml::Value,

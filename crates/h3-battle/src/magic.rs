@@ -615,8 +615,9 @@ fn area_stacks<'a>(
 /// but for an obstacle spell a hex where its shape fits hexes free as the side sees them
 /// (BAT-MAG-027, BAT-MAG-031); nothing for a battle-wide spell or a mass version (from the
 /// spell's mass mastery), which must reach at least one stack, or for an obstacle spell of a
-/// random shape, which is always cast (BAT-MAG-032). Whether a second target exists is not
-/// checked here.
+/// random shape, which is cast whether or not a hex is free (BAT-MAG-032) but for mines not
+/// while the other side's natives would see them (BAT-MAG-033). Whether a second target exists
+/// is not checked here.
 // rule: BAT-MAG-003
 fn first_target(
     state: &BattleState,
@@ -642,8 +643,10 @@ fn first_target(
         }
         (SpellTarget::None, CastTarget::None) => {
             // rule: BAT-MAG-032
-            spell.1.magic.obstacle.is_some()
-                || stack_ids(state).any(|s| reachable(state, ruleset, side, (spell, mastery), s))
+            spell.1.magic.obstacle_kind().map_or_else(
+                || stack_ids(state).any(|s| reachable(state, ruleset, side, (spell, mastery), s)),
+                |kind| obstacles::may_place(state, side, kind),
+            )
         }
         _ => false,
     }
@@ -820,8 +823,9 @@ pub fn second_targets(
 
 /// Whether `actor`'s cast of `spell` has a target ([`cast_targets`] not empty, computed without
 /// listing every hex where it can be avoided): a stack spell needs a stack of [`aimable`] with a
-/// second target, a battle-wide spell a stack it reaches, but a random obstacle spell none; a hex
-/// spell always has one, but an obstacle spell needs a hex where its shape fits.
+/// second target, a battle-wide spell a stack it reaches, but a random obstacle spell none (mines
+/// only while the other side's natives would not see them); a hex spell always has one, but an
+/// obstacle spell needs a hex where its shape fits.
 fn has_target(
     state: &BattleState,
     ruleset: &Ruleset,
@@ -837,10 +841,10 @@ fn has_target(
             aimable(state, ruleset, actor, (spell, mastery), s)
                 && has_second(state, ruleset, spell.1, CastTarget::Stack(s))
         }),
-        SpellTarget::None => {
-            spell.1.magic.obstacle.is_some()
-                || stack_ids(state).any(|s| reachable(state, ruleset, actor, (spell, mastery), s))
-        }
+        SpellTarget::None => spell.1.magic.obstacle_kind().map_or_else(
+            || stack_ids(state).any(|s| reachable(state, ruleset, actor, (spell, mastery), s)),
+            |kind| obstacles::may_place(state, actor, kind),
+        ),
     }
 }
 
@@ -1415,12 +1419,21 @@ fn teleport<S: Sink>(state: &mut BattleState, s: StackId, to: Hex, sink: &mut S)
     sink.emit(Event::public(EventKind::Teleported { stack: s, from, to }));
 }
 
-/// Fire Wall's damage to stack `s` from the obstacle `fire` (BAT-MAG-028; the original's
-/// 0x59FCD0, `installation.md` §7.15): none if the spell cannot affect the stack (BAT-MAG-005,
-/// BAT-MAG-021) or its share after resistance is 0 (BAT-MAG-008), but no resistance roll; else
-/// the obstacle's value as the spell's damage with the bonuses of the hero of the side that cast
-/// it as the caster's and the stack's reductions and protection ([`spell_damage`]), reported;
-/// any damage ends what it ends (BAT-MAG-024).
+/// Whether the spell of the obstacle `o` hurts stack `s` (the original's `f > 0`, 0x59FCD0 and
+/// 0x59FB40, `installation.md` §7.15, §7.17): the spell can affect the stack (BAT-MAG-005,
+/// BAT-MAG-021) and its share after resistance is above 0 (BAT-MAG-008); there is no resistance
+/// roll.
+pub(crate) fn hurts(state: &BattleState, ruleset: &Ruleset, o: &SpellObstacle, s: StackId) -> bool {
+    ruleset.spell(o.spell).is_some_and(|spell| {
+        affects_stack(state, ruleset, (o.spell, spell), s) && share(state, ruleset, s).0 > 0
+    })
+}
+
+/// The damage of the obstacle `fire` (Fire Wall, BAT-MAG-028, or a mine, BAT-MAG-033; the
+/// original's 0x59FCD0 and 0x59FB40) to stack `s`: none unless its spell [`hurts`] the stack;
+/// else the obstacle's value as the spell's damage with the bonuses of the hero of the side that
+/// cast it as the caster's and the stack's reductions and protection ([`spell_damage`]),
+/// reported; any damage ends what it ends (BAT-MAG-024).
 // rule: BAT-MAG-028
 pub(crate) fn burn<S: Sink>(
     state: &mut BattleState,
@@ -1429,9 +1442,9 @@ pub(crate) fn burn<S: Sink>(
     s: StackId,
     sink: &mut S,
 ) {
-    let found = ruleset.spell(fire.spell).filter(|spell| {
-        affects_stack(state, ruleset, (fire.spell, spell), s) && share(state, ruleset, s).0 > 0
-    });
+    let found = ruleset
+        .spell(fire.spell)
+        .filter(|_| hurts(state, ruleset, fire, s));
     let Some(spell) = found else {
         return;
     };

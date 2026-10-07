@@ -8,7 +8,8 @@
 use std::vec::Vec;
 
 use h3_content::{
-    Affects, CreatureFlag, CreatureSelector, CreatureStat, Formation, Ruleset, SpellId, SpellScope,
+    Affects, CreatureFlag, CreatureSelector, CreatureStat, Formation, ObstacleKind, Ruleset,
+    SpellId, SpellScope,
 };
 use h3_contracts::{
     Army, ArmyStack, BallistaControl, BattleEffect, BattleHero, BattleSetup, BattleSide,
@@ -23,7 +24,8 @@ use super::support::{CREATURES, Rate, hero, ruleset_with};
 use crate::event::StrikeFlags;
 use crate::{
     BattleState, CastTarget, CastTargets, Command, Event, EventKind, Hex, LegalCommands, SpellSet,
-    StackId, apply, cast_targets, castable_spells, legal_commands, observe, second_targets,
+    StackId, apply, cast_targets, castable_spells, legal_commands, observe, project,
+    second_targets,
 };
 
 /// The test ruleset with frequent good and bad morale and luck (a 4-sided die) and the quirk
@@ -218,6 +220,7 @@ fn make_setup(
         "firewall",
         "teleport",
         "quicksand",
+        "landmine",
     ]
     .iter()
     .map(|k| r.spell_by_key(&std::format!("t:{k}")).unwrap())
@@ -537,7 +540,10 @@ proptest! {
 
     /// Observation hygiene for hidden obstacles (ADR-0014 point 7, BAT-MAG-031): what a side
     /// does not see changes neither its observation nor what it may do (its legal commands,
-    /// castable spells and their targets), with the natives' sight of either profile.
+    /// castable spells and their targets), with the natives' sight of either profile; nor what
+    /// its commands report to it while no hidden obstacle shows itself (a pit it runs into, a
+    /// mine that goes off: BAT-MAG-032, BAT-MAG-033). Casts are left out of the last check: a
+    /// random obstacle spell's hexes avoid every obstacle (BAT-MAG-032).
     #[test]
     fn hidden_obstacles_do_not_show(
         (att, def, obstacles, seed, steps) in arb_game(),
@@ -547,14 +553,16 @@ proptest! {
         let r = lively_with(if at_start { "t:sight" } else { "t:quirky" });
         let (mut state, _, _) =
             play(&r, &make_setup(&r, &att, &def, &obstacles, seed), seed, &steps);
-        // More pits of either side, so that most games have hidden ones.
-        let quicksand = r.spell_by_key("t:quicksand").unwrap();
-        let shape = r.spell(quicksand).unwrap().magic.obstacle.clone().unwrap();
+        // More pits and mines of either side, so that most games have hidden ones.
+        let kinds = [("t:quicksand", ObstacleKind::Pit), ("t:landmine", ObstacleKind::Mine)];
         for (i, (x, y)) in extra.into_iter().enumerate() {
             let side = BattleSide::BOTH[i % 2];
+            let (key, kind) = kinds[i / 2 % 2];
+            let id = r.spell_by_key(key).unwrap();
+            let shape = r.spell(id).unwrap().magic.obstacle.clone().unwrap();
             let hex = [Hex(x + 17 * y)];
-            let placed = (quicksand, h3_content::ObstacleKind::Pit, &shape);
-            crate::obstacles::place(&mut state, placed, side, (&hex, 0), &mut Vec::new());
+            let placed = (id, kind, &shape);
+            crate::obstacles::place(&mut state, placed, side, (&hex, 40), &mut Vec::new());
         }
         for viewer in BattleSide::BOTH {
             let mut twin = state.clone();
@@ -572,6 +580,23 @@ proptest! {
                 cast_targets(&state, &r, viewer, spell, &mut a);
                 cast_targets(&twin, &r, viewer, spell, &mut b);
                 prop_assert_eq!(a.as_slice(), b.as_slice());
+            }
+            for &command in a.as_slice() {
+                if matches!(command, Command::Cast { .. }) {
+                    continue;
+                }
+                let (mut x, mut y) = (state.clone(), twin.clone());
+                let (mut ex, mut ey) = (Vec::new(), Vec::new());
+                prop_assert!(apply(&mut x, &r, viewer, command, &mut ex).is_ok());
+                prop_assert!(apply(&mut y, &r, viewer, command, &mut ey).is_ok());
+                if ex.iter().any(|e| matches!(e.kind, EventKind::ObstacleRevealed { .. })) {
+                    continue;
+                }
+                let told = |events: &[Event]| -> Vec<Event> {
+                    events.iter().filter_map(|e| project(e, viewer)).collect()
+                };
+                prop_assert_eq!(told(&ex), told(&ey));
+                prop_assert_eq!(observe(&x, &r, viewer), observe(&y, &r, viewer));
             }
         }
     }

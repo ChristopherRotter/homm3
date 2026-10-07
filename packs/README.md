@@ -159,7 +159,7 @@ override, replacing the list) names the creature types it upgrades into: at most
 none twice; references follow the reference rules and may name later creatures of the pack.
 Hero effects that select "a creature" apply to it and its direct upgrades.
 
-## Hero content (format v3, E04a T3; battle magic format v4, E04b T2a; v5 T3a; v6 T3b1; v7 T3b1b; v8 T3b2; v9 T3c; v10 T4a; v11 T4b; v12 T4c; v13 T5a; v14 T5c1)
+## Hero content (format v3, E04a T3; battle magic format v4, E04b T2a; v5 T3a; v6 T3b1; v7 T3b1b; v8 T3b2; v9 T3c; v10 T4a; v11 T4b; v12 T4c; v13 T5a; v14 T5c1; v15 T5c2)
 
 Spell schools, spells, secondary skills, hero classes and hero types (ADR-0013). References follow
 the reference rules above; every kind may refer to content of its dependency closure.
@@ -262,7 +262,7 @@ obstacle = { steps = ["top_right", "top_left"], hexes = [2, 2, 3, 3], mirrored =
                                    # them mirrored left to right (default false); `separate`: one
                                    # obstacle per hex (default false: one over all); `rounds` it
                                    # lasts, the cast's included (v14: default 0, the whole battle)
-effects = [{ kind = "obstacle", obstacle = "fire" }]   # v13: wall | fire; v14: pit
+effects = [{ kind = "obstacle", obstacle = "fire" }]   # v13: wall | fire; v14: pit; v15: mine
 
 [[spell]]                          # an obstacle spell of a random shape (pack format v14, E04b
 id = "mire"                        # T5c1): no target; each hex a random free one
@@ -276,6 +276,10 @@ obstacle = { hexes = [4, 4, 6, 8], random = true, separate = true }
                                    # v14: `random` (default false): no steps, not mirrored, hexes
                                    # 1..=8 by mastery; the spell's target is none
 effects = [{ kind = "obstacle", obstacle = "pit" }]
+                                   # v15: `mine` (Land Mine, BAT-MAG-033): hidden as a pit, with
+                                   # the cast's value (`power` x 10 + `effect`) as its damage to a
+                                   # stack of the other side that enters it unseen; not cast while
+                                   # the other side's natives would see it
 
 [[spell]]                          # a teleport (pack format v13): an own stack to a hex
 id = "blink"
