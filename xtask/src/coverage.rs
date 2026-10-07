@@ -176,7 +176,7 @@ pub fn gate(packages: Option<&[String]>) -> Result<(), String> {
         return Err(
             "LLVM tools not found: `rustup component add llvm-tools-preview`, or set \
                     LLVM_COV and LLVM_PROFDATA to llvm-cov/llvm-profdata binaries whose LLVM \
-                    version is compatible with rustc's (see docs/HANDOFF.md)"
+                    version is compatible with rustc's (scripts/sandbox-verify.sh sets them)"
                 .to_owned(),
         );
     }

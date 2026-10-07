@@ -2,6 +2,8 @@
 
 Binding decisions. One decision per file, numbered, never silently edited once Accepted (supersede instead). Template: `0000-template.md`.
 
+**Drafts (Phase 0, 2026-10-07).** A lane writes a new ADR as a draft in `docs/lanes/<lane>/adr-drafts/<slug>.md` (status Proposed, no number). When the user accepts it, a `shared/` pull request gives it the next free number, moves it here and adds it to the table; so two lanes never race for a number.
+
 **Keep ADRs short (user directive, 2026-10-03).** Agents read the ADRs that touch their task before working, so every line costs context in every later session.
 
 - An ADR states *decisions*: short, checkable statements, with context, consequences and rejected alternatives in a few lines each. Target: about 80 lines; a longer one needs a reason.

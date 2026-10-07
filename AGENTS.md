@@ -6,11 +6,11 @@ You are one of many agents working on this over time. No single session finishes
 
 ## Start-of-session checklist
 
-1. Read `docs/HANDOFF.md` (current state, what to do next, traps).
-2. Read the "Open" section of `docs/OPEN-QUESTIONS.md` (answered entries are history: read one when a doc points to it).
-3. Read the epic file you are working on (`docs/epics/`; its log `<epic>-log.md` only where a task builds on an earlier one) and the relevant parts of `docs/BACKLOG.md`.
-4. Skim `docs/02-architecture.md`; from the ADR index (`docs/adr/README.md`, column "Read when") read only the ADRs that touch your task, plus the epic's design note if it has one. ADRs are binding; do not silently deviate. ADRs stay short: decisions only, detail in design notes (rule in the ADR index).
-5. Run `cargo xtask verify` to confirm the repo is green **before** you change anything. In a cloud sandbox, `scripts/sandbox-setup.sh` prepares it and runs verify in the background (`docs/08-work-process.md`, "Cloud sandbox and syncing").
+1. Know your lane (`battle`, `adventure`, `server`, `client`, or `shared` for a change to shared paths): the task, the branch (`<lane>/<task>`) or the user says which. See "Lanes" below.
+2. Read `docs/HANDOFF.md` (the lane index and the traps of every lane), then `docs/lanes/<lane>/HANDOFF.md` (the lane's state, traps and last sessions) and your task: the lane's `QUEUE.md` entry, or the epic task the user names.
+3. Read the "Open" section of `docs/OPEN-QUESTIONS.md` (answered entries are history: read one when a doc points to it).
+4. Read your lane's reading list (below): the epic file you are working on (`docs/epics/`; its log `<epic>-log.md` only where a task builds on an earlier one) and, from the ADR index (`docs/adr/README.md`, column "Read when"), only the ADRs that touch your task. ADRs are binding; do not silently deviate. ADRs stay short: decisions only, detail in design notes (rule in the ADR index).
+5. Confirm the starting point is green: CI's verify on `master` (or on the branch you continue), and locally `cargo xtask verify --scope <lane> --summary` **before** you change anything. In a cloud sandbox, `scripts/sandbox-setup.sh` prepares it (`docs/08-work-process.md`, "Cloud sandbox").
 
 ## Non-negotiables
 
@@ -40,33 +40,53 @@ Stop, write the question in `docs/OPEN-QUESTIONS.md` (context, options, your rec
 
 If the user is not present, do the safe preparatory work, document the decision needed, and stop at that point rather than guessing.
 
+## Lanes
+
+Several agents work in parallel, **one agent at a time per lane** (`docs/08-work-process.md`, "Lanes"). `lanes.toml` says which paths each lane owns; a lane's pull request changes only its own paths and the common ones (`docs/OPEN-QUESTIONS.md`, `docs/stubs.toml`). **Shared paths** (`h3-kernel`, `h3-contracts`, `Cargo.toml`, `arch.toml`, `lanes.toml`, `xtask`, CI, ADRs, process docs, `BACKLOG.md`, the global HANDOFF) change only through a small, separate `shared/<topic>` pull request that merges first. `cargo xtask check-lane` enforces this on every pull request; a deliberate cross-lane change needs the user's consent and the PR label `cross-lane`.
+
+- **Ids:** new questions, quirks and stubs carry the lane code (`lanes.toml`): `ADV-Q1`, `ADV-QUIRK-1`, `ADV-STUB-1`; existing ids stay. ADRs are written as drafts in `docs/lanes/<lane>/adr-drafts/` and numbered when the user accepts them.
+- **Versions:** each version constant has one owning lane (the lane HANDOFF lists them). When two lanes bump a shared version at once, the second sees a textual conflict and bumps again.
+- **Checkpoints and autonomy:** the domain lanes (battle, adventure) work in increments with a user checkpoint, and "When to stop and ask" applies in full. The client and server lanes have checkpoints per milestone, under the autonomy contract in their HANDOFF with three tiers: *agent decides* (marked provisional), *queue for the milestone review*, *stop the line* (seams and contracts, heavy dependencies, licence, anything touching another lane). A fresh reviewer agent checks each milestone before the user does.
+
+**Reading lists** (after the two HANDOFFs and your task; open the rest only when the task touches it):
+
+| Lane | Read | When the task touches it |
+|---|---|---|
+| battle | the current epic file (`docs/epics/E04b-battle-magic.md`), ADR-0014 | ADR-0003 (numbers), ADR-0012/0013, `docs/04-rules-and-sources.md`, the quirks ledger, `docs/formats/installation.md` §7 (code reading), `docs/experiments/README.md` |
+| adventure | `docs/03-domain.md`, the adventure epic file once refined | `docs/02-architecture.md`, ADR-0003/0004/0005/0006, `docs/04-rules-and-sources.md`, `docs/formats/h3m.md` |
+| server | `docs/06-security.md`, ADR-0004, ADR-0008 | ADR-0011 (encodings), `docs/02-architecture.md`, `h3-sim`'s action and observation encodings |
+| client | `clients/README.md`, ADR-0009, the asset notes in the lane HANDOFF | `docs/formats/installation.md` (archives), `docs/02-architecture.md` |
+| shared | `docs/02-architecture.md`, `docs/05-testing.md`, `lanes.toml` | the ADRs the change touches |
+
+**Long unattended runs (runner and workers).** A context fills in one to two hours, so a lane can run as a chain of fresh contexts. A thin *runner* session takes the first ready task of the lane's `QUEUE.md`, hands it to a fresh *worker* sub-agent (brief: the task entry, the lane, its reading list, this file) and keeps only the worker's short structured report: result (done, blocked, failed), branch and commits, the scoped verify's summary line, question ids, inbox lines, at most five lines for the HANDOFF. The runner updates `QUEUE.md` and the lane HANDOFF from it and takes the next task. A blocked task records its question and stays in the queue; the runner takes the next independent task. A scheduled task restarts the runner as a safety net; it resumes from `QUEUE.md` and the HANDOFF. Workers run `cargo xtask verify --scope <lane> --summary` and leave the full verify to CI.
+
 ## Working rules
 
 - Small, coherent commits; keep the main line green. Partial delivery is fine; a red or undocumented repo is not.
 - Incomplete features must be visible: use the stub registry convention in `docs/08-work-process.md` (no silent `todo!()`, no untracked `#[ignore]`).
 - Prefer the smallest design that satisfies the current epic. Do not over-specify the future; do not paint the project into a corner either (see the guardrails in ADR-0006).
 - Keep documentation current in the same change as the code (architecture, rules catalog, quirks ledger, ADRs).
-- **Token efficiency beats speed** (user directive, 2026-10-03). Completion speed is not a requirement; token use is. Prefer doing the work yourself, sequentially. Use sub-agents only for narrow, well-bounded jobs (one question, one table, a handful of files or pages) with a concise brief and a short, structured answer; never hand a sub-agent a broad survey whose context grows with every file or page it reads. Do not run several large sub-agents in parallel. Read big files in slices, and summarise into the repo's docs as you go instead of re-reading.
+- **Token efficiency beats speed** (user directive, 2026-10-03). Completion speed is not a requirement; token use is. Prefer doing the work yourself, sequentially. Use sub-agents only for narrow, well-bounded jobs (one question, one table, a handful of files or pages) with a concise brief and a short, structured answer; never hand a sub-agent a broad survey whose context grows with every file or page it reads. One worker sub-agent per queued task is fine (the runner/worker model under "Lanes"): it replaces the runner's context instead of adding to it. Do not run several large sub-agents in parallel. Read big files in slices, and summarise into the repo's docs as you go instead of re-reading.
 
 ## Interruptions and resuming
 
 The user may stop a session at any moment (for example by shutting down the computer) and resume later, in the same task or in a new one. Work so that an unplanned stop costs at most the step in progress:
 
-- **The GitHub remote (and the user's repo folder) are the durable copies.** A cloud sandbox is temporary: it can be reclaimed while idle, and anything that exists only there (uncommitted edits, unsynced commits, installed tools) is lost with it.
-- **Sync after every commit.** If you work in a cloud clone, push each commit to the branch on GitHub right away (`docs/08-work-process.md`, "Cloud sandbox and syncing"). Never let more than the current step exist only in the sandbox.
-- **Keep `docs/HANDOFF.md` resumable.** At every task boundary (and before anything long-running) add or refresh a short "in progress" note in the newest entry: what is done, what is next, what is half-done and where.
+- **The GitHub remote (and the user's repo folder) are the durable copies.** A cloud sandbox is temporary: it can be reclaimed while idle, and anything that exists only there (uncommitted edits, unpushed commits, installed tools) is lost with it.
+- **Push after every commit.** Push each commit to your lane branch on GitHub right away (`docs/08-work-process.md`, "Branches, pull requests and syncing"). Never let more than the current step exist only in the sandbox.
+- **Keep your lane's HANDOFF resumable.** At every task boundary (and before anything long-running) add or refresh a short "in progress" note in the newest entry of `docs/lanes/<lane>/HANDOFF.md`: what is done, what is next, what is half-done and where.
 - **When the user says they are about to stop, checkpoint first:** finish or cleanly back out of the current step, commit, update HANDOFF, sync, and confirm before they shut down.
 - **Git on the user's machine:** get delete permission for the repo folder before running git there (git must be able to remove its own lock files), and never leave a `.git/*.lock` behind. Do not start a git operation on the user's machine right before an announced stop.
-- **When resuming:** read HANDOFF, then compare the user's repo (branch, last commit, working tree) with any sandbox copy. **The user's repo wins**: the user may have amended or added commits in the meantime, so rebuild your working copy from it before continuing. Re-create the sandbox as `docs/08-work-process.md` ("Cloud sandbox and syncing") describes.
+- **When resuming:** read the HANDOFFs, then compare the branch on GitHub (and the user's repo, if they work locally) with any sandbox copy. **Their commits win**: the user may have amended or added commits in the meantime, so rebuild your working copy from them before continuing. Re-create the sandbox as `docs/08-work-process.md` ("Cloud sandbox") describes.
 
 ## End-of-session checklist
 
-1. `cargo xtask verify` is green (or the failure is documented in HANDOFF with cause and next step).
-2. Update `docs/HANDOFF.md`: rewrite "Current state", add one short entry under "Recent sessions" (what you did, decisions, anything half-done) and keep at most three, move lasting traps into "Standing traps" and prune stale ones. `cargo xtask check-docs` enforces the budget (`docs/08-work-process.md`, "Keeping the start-of-session reading small").
-3. Update the epic file (a done task gets one line; its full record goes into the epic's log) and `docs/BACKLOG.md` status; add newly discovered work as coarse backlog items.
-4. New questions → `docs/OPEN-QUESTIONS.md`; new decisions → ADR.
-5. Commit.
+1. `cargo xtask verify --scope <lane> --summary` is green locally and CI's full verify is green on the pull request (or the failure is documented in the lane HANDOFF with cause and next step).
+2. Update `docs/lanes/<lane>/HANDOFF.md`: rewrite "Current state", add one short entry under "Recent sessions" (what you did, decisions, anything half-done) and keep at most three, move lasting traps into "Standing traps" (traps of every lane: note them for a `shared/` change to the global HANDOFF) and prune stale ones. `cargo xtask check-docs` enforces the budgets (`docs/08-work-process.md`, "Keeping the start-of-session reading small").
+3. Update the epic file (a done task gets one line; its full record goes into the epic's log) and the lane's `QUEUE.md` (a done task leaves it; new work goes into its "Inbox"). The status in `docs/BACKLOG.md` changes only when an epic starts or ends, in a `shared/` pull request.
+4. New questions → `docs/OPEN-QUESTIONS.md` with a lane id; new decisions → an ADR draft in the lane folder.
+5. Commit, push, and open or update the lane's pull request (`docs/pull_request_template.md`).
 
 ## Map of the docs
 
-`docs/README.md` indexes everything. Key files: vision (`01`), architecture (`02`), domain (`03`), rules & sources (`04`), testing (`05`), security (`06`), simulation & AI (`07`), work process (`08`), plus `BACKLOG.md`, `HANDOFF.md`, `OPEN-QUESTIONS.md`, `epics/`, `adr/`, `rules/`.
+`docs/README.md` indexes everything. Key files: vision (`01`), architecture (`02`), domain (`03`), rules & sources (`04`), testing (`05`), security (`06`), simulation & AI (`07`), work process (`08`), plus `BACKLOG.md`, `HANDOFF.md`, `lanes/`, `OPEN-QUESTIONS.md`, `epics/`, `adr/`, `rules/`; `lanes.toml` at the root.
