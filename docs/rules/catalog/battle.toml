@@ -141,7 +141,7 @@ id       = "BAT-TRN-001"
 title    = "Turn order within a round"
 context  = "battle"
 status   = "implemented"
-summary  = "In the normal phase living stacks that have not acted or waited act in descending speed. Speed ties: the stack of the side that did not act last goes first (the attacker at the start of the battle; the rule carries across rounds), then the lower army slot. The order is re-evaluated before every activation. Good morale gives the stack that just acted another turn outside this order (BAT-MOR-003). War machines take their turns in this order too (speed 0, so last in the normal phase; BAT-WAR-002/003), as in VCMI. Scope: no siege phases (E04), speed never changes during a round."
+summary  = "In the normal phase living stacks that have not acted or waited act in descending speed. Speed ties: the stack of the side that did not act last goes first (the attacker at the start of the battle; the rule carries across rounds), then the lower army slot. The order is re-evaluated before every activation. A blind stack's turn starts and passes (BAT-MAG-024); it is then passed over until its blindness ends, and acts in the same round if that happens before the round is over. Good morale gives the stack that just acted another turn outside this order (BAT-MOR-003). War machines take their turns in this order too (speed 0, so last in the normal phase; BAT-WAR-002/003), as in VCMI. Scope: no siege phases (E04), speed never changes during a round."
 numeric  = "integer"
 
   [[rule.source]]
@@ -632,7 +632,7 @@ id       = "BAT-DMG-002"
 title    = "Attack/defense modifier and final rounding"
 context  = "battle"
 status   = "verified"
-summary  = "Damage from base damage b (BAT-DMG-001). Attack A against defense D: if A > D, a bonus of min(0.05 * (A - D), 3.00) (+300 % cap at 60 points, user decision Q11); if D > A, the factor max(1 - 0.025 * (D - A), 0.30) (-70 % cap at 28 points). Other bonuses: jousting, luck, hate, the hero's Offense or Archery, death blow, the Ballista's double damage; other factors: the range and melee penalties (BAT-RNG-002/003), Shield and Air Shield (BAT-MAG-012), the target's hero's Armorer (BAT-HER-004). Rates and caps are ruleset parameters. With quirk Q-0005 (faithful) the executable's three stages, each truncated (docs/formats/installation.md §7.10), in its x87 arithmetic (h3_kernel::arith::X87, 53 bits): (1) the bonuses as an integer, each fractional one truncated as it is added in the code's order: jousting trunc(b * hexes * 0.05), luck + b, the attack bonus trunc(b * r + B) with r = min(0.05 * (A - D), 3.0) as a double, hate + b * percent / 100 (integer), Offense or Archery trunc(rate * b + B) with the single-precision rate, death blow + b, double damage + b; (2) times the defense factor (a double) and the penalties, truncated; (3) times Shield's or Air Shield's single-precision factor and 1 - Armorer (single precision), truncated, at least 1. The code's 0.05 and 0.025 are doubles slightly above the decimals; only skill rates and the spells' stored factors are single precision (user decision Q50, 2026-10-06). Without the quirk (strict-fixed): exact decimal rates, base * (1 + sum of bonuses) * product of (1 - reduction), computed exactly in integers (h3_kernel::arith::WideUint) and rounded down once, at least 1."
+summary  = "Damage from base damage b (BAT-DMG-001). Attack A against defense D: if A > D, a bonus of min(0.05 * (A - D), 3.00) (+300 % cap at 60 points, user decision Q11); if D > A, the factor max(1 - 0.025 * (D - A), 0.30) (-70 % cap at 28 points). Other bonuses: jousting, luck, hate, the hero's Offense or Archery, death blow, the Ballista's double damage; other factors: the range and melee penalties (BAT-RNG-002/003), a blind stack's retaliation share (BAT-MAG-024), Shield and Air Shield (BAT-MAG-012), the target's hero's Armorer (BAT-HER-004). Rates and caps are ruleset parameters. With quirk Q-0005 (faithful) the executable's three stages, each truncated (docs/formats/installation.md §7.10), in its x87 arithmetic (h3_kernel::arith::X87, 53 bits): (1) the bonuses as an integer, each fractional one truncated as it is added in the code's order: jousting trunc(b * hexes * 0.05), luck + b, the attack bonus trunc(b * r + B) with r = min(0.05 * (A - D), 3.0) as a double, hate + b * percent / 100 (integer), Offense or Archery trunc(rate * b + B) with the single-precision rate, death blow + b, double damage + b; (2) times the defense factor (a double), the penalties and a blind stack's retaliation share (its stored single-precision factor), truncated; (3) times Shield's or Air Shield's single-precision factor and 1 - Armorer (single precision), truncated, at least 1. The code's 0.05 and 0.025 are doubles slightly above the decimals; only skill rates and the spells' stored factors are single precision (user decision Q50, 2026-10-06). Without the quirk (strict-fixed): exact decimal rates, base * (1 + sum of bonuses) * product of (1 - reduction), computed exactly in integers (h3_kernel::arith::WideUint) and rounded down once, at least 1."
 quirks   = ["Q-0005"]
 numeric  = "integer"
 
@@ -2219,3 +2219,49 @@ numeric  = "integer"
   url        = "https://github.com/vcmi/vcmi/blob/1.7.5/lib/spells/BattleSpellMechanics.cpp"
   retrieved  = "2026-10-07"
   confidence = "medium"
+
+[[rule]]
+id       = "BAT-MAG-023"
+title    = "Forgetfulness"
+context  = "battle"
+status   = "implemented"
+summary  = "Forgetfulness (a negative mind spell that spares war machines; effect 0) affects only shooters (an absolute condition, creature flag shooter). It stores the first cast's mastery; a re-cast keeps it (BAT-MAG-009), so a stack under a Basic Forgetfulness still shoots after an Advanced one. While active: (1) the stack's strikes count half its creatures, rounded down, at least one, for the base damage (BAT-DMG-001), on every strike: shots, melee attacks and retaliations (survey S-09: the in-game text means ranged attacks, the original halves every strike; the rule in every profile, user Q53); one creature deals full damage, three deal as one; (2) from the stored mastery Advanced it cannot shoot (no Shoot commands; it fights in melee with the shooter's melee penalty, BAT-RNG-003). One target stack below the mass version; with quirk Q-0011 (faithful) the mass version starts at Advanced, as the original's flag 0x20, reaching every enemy shooter it can affect (each rolling for resistance); without it (strict-fixed) at Expert. Ending gives nothing back. Not yet: the Pendant of Total Recall (E04b T8)."
+quirks   = ["Q-0011"]
+numeric  = "integer"
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (docs/formats/installation.md §7.14): 0x4448F0 stores the mastery (+0x4C4); the base damage 0x443160 counts max(1, n / 2) creatures of a shooter (flag 0x4) while spell 61 is active; the can-shoot tests (0x447D92, 0x4429B2, 0x445556) answer no from a stored mastery of 2; 0x44A4D0 affects only shooters; flag 0x20 and 0x59E060 give the spell a target stack only below Advanced"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "wiki"
+  ref        = "Damage: 'Due to a bug, a shooter's melee attack damage (when affected by Forgetfulness), is also decreased by half'; Forgetfulness: 'Contrary to description and other spells, advanced level affects all enemy ranged units (fixed in HotA)'"
+  url        = "https://heroes.thelazy.net/index.php/Forgetfulness"
+  retrieved  = "2026-10-03"
+  confidence = "medium"
+
+  [[rule.source]]
+  kind       = "vcmi"
+  ref        = "lib/battle/DamageCalculator.cpp getDefenseForgetfulnessFactor: 0.5 on shots at None and Basic only (the clean reading of the spell's text); config/spells/timed.json: the mass version at Expert"
+  url        = "https://github.com/vcmi/vcmi/blob/1.7.5/lib/battle/DamageCalculator.cpp"
+  retrieved  = "2026-10-07"
+  confidence = "medium"
+
+[[rule]]
+id       = "BAT-MAG-024"
+title    = "Blind"
+context  = "battle"
+status   = "implemented"
+summary  = "Blind (a negative mind spell on one enemy stack that spares war machines, the undead absolutely and Troglodytes, Air and Storm Elementals; v = 50, 50, 25, 0 %) lasts the caster's rounds (BAT-MAG-010). While active the stack has no turns: when its turn comes in the order (BAT-TRN-001) its turn starts (its Defend bonus ends, it regenerates, its own-turn effects count down: the original's turn start) and passes (TurnPassed) without a morale roll or an action; it is not marked as acted, so if its blindness ends later in the round it then acts. Any damage it takes ends Blind (a strike, a shot, a damage spell, a reflection; the effect's end `damaged`). A stack blind when a melee attack on it begins retaliates after the strike has ended its blindness (if it may, BAT-RET-001..003) with v % of its damage, applied in damage stage 2 (BAT-DMG-002); at v = 0 (Expert) it does not retaliate and keeps its retaliation. Not yet: Paralyze and Stone Gaze, which share the mechanism (E04b T7), the Pendant (E04b T8), the Orb of Vulnerability's absolute cases (T8)."
+numeric  = "integer"
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (docs/formats/installation.md §7.14): 0x4448F0 stores v / 100 as f32 (+0x49C); the battle loop 0x465080 runs the turn start 0x446E30 once per round (+0x4F0) and picks again while spell 62 (or 70, 74) is active; the damage routine 0x444090 ends spells 62, 70 and 74; 0x441D9C marks a blind struck stack (+0x4C0), 0x441C85 suppresses the retaliation at a factor of 0, stage 2 (0x443CD5) multiplies by the stored factor; 0x44A4D0 spares creatures 70 and 71 and undead absolutely, creatures 112 and 127 as a normal immunity"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "SPTRAITS.TXT: Blind's effect 50, 50, 25, 0; its text: the creature cannot move, counterattacks at half (Advanced: a quarter, Expert: not at all), until attacked or dispelled"
+  confidence = "high"

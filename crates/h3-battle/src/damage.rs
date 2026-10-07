@@ -71,6 +71,9 @@ pub(crate) struct Strike {
     pub double_damage: bool,
     /// The range or melee penalty, percent (BAT-RNG-002/003); 0 = none.
     pub penalty_percent: u16,
+    /// The share of its damage a retaliation of a stack that was blind when attacked deals,
+    /// percent (BAT-MAG-024; the original's stage 2); 100 = none.
+    pub retaliation_percent: u16,
     /// The share of damage the target's Shield or Air Shield lets through, percent
     /// (BAT-MAG-012); 100 = none.
     pub protection_percent: u16,
@@ -92,6 +95,7 @@ impl Strike {
             death_blow: false,
             double_damage: false,
             penalty_percent: 0,
+            retaliation_percent: 100,
             protection_percent: 100,
             hero_reduction: Rate::bp(0),
         }
@@ -153,7 +157,7 @@ impl Strike {
     fn exact(&self, base: u64, p: &BattleParams) -> u64 {
         let diff = u64::from(self.attack.abs_diff(self.defense));
         let bonus = self.exact_bonus(p);
-        let mut reductions = [0u64; 4];
+        let mut reductions = [0u64; 5];
         if self.attack <= self.defense {
             let per_point = u64::from(p.defense_reduction_per_point_permille) * 10;
             reductions[0] =
@@ -162,8 +166,9 @@ impl Strike {
         reductions[1] = u64::from(self.penalty_percent) * 100;
         reductions[2] = u64::from(100u16.saturating_sub(self.protection_percent)) * 100;
         reductions[3] = u64::from(self.hero_reduction.bp);
-        // One rounding: the five factors' product (at most 2^64 · (2^64)^5, so the wide
-        // product never saturates) divided by BP^5 at the end. The specialist's bonus is a
+        reductions[4] = u64::from(100u16.saturating_sub(self.retaliation_percent)) * 100;
+        // One rounding: the six factors' product (at most 2^78 · (2^14)^5, so the wide
+        // product never saturates) divided by BP^6 at the end. The specialist's bonus is a
         // whole amount (at least −base), so the first stage is `(base + extra) · BP + base ·
         // bonus` over BP.
         let extra = self.blessed(base);
@@ -196,6 +201,10 @@ impl Strike {
         }
         if self.penalty_percent > 0 {
             f = f.times(double(100u16.saturating_sub(self.penalty_percent), 100));
+        }
+        // Blind's retaliation factor, stored as an `f32` (`installation.md` §7.14).
+        if self.retaliation_percent < 100 {
+            f = f.times(single(self.retaliation_percent, 100));
         }
         let d2 = stored(d1, DOUBLE_BITS).times(f).trunc();
         // 3. Times the protection factor.

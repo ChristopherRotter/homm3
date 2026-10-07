@@ -2,6 +2,7 @@
 //! mandatory invariant property tests (`properties`, docs/05-testing.md).
 
 mod abilities;
+mod actions;
 mod commands;
 mod defences;
 mod dispel;

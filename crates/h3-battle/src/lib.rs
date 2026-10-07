@@ -43,7 +43,7 @@ mod turn;
 mod war;
 
 pub use command::{Command, apply, validate};
-pub use effects::{ActiveEffect, DamageRoll, EFFECT_CAPACITY, SpellValues};
+pub use effects::{ActiveEffect, DamageRoll, EFFECT_CAPACITY, SpellValues, Status};
 pub use error::{CommandError, HeroError, SetupError};
 pub use event::{Event, EventKind, NoopSink, Sink, StrikeFlags, Visibility};
 pub use geometry::{ATTACK_SLOTS, Direction, Field, Footprint, Hex, HexSet};

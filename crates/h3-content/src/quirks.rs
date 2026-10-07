@@ -62,6 +62,7 @@ pub const REGISTRY: QuirkRegistry = QuirkRegistry::new(&[
     "quirk.battle.counterstrike_extra_round",
     "quirk.battle.frenzy_reduced_defense",
     "quirk.battle.fire_shield_first_stage",
+    "quirk.battle.early_mass_version",
 ]);
 
 /// Q-0003: creatures of a side without a hero never get lucky strikes (BAT-LCK-002).
@@ -89,6 +90,11 @@ pub const FRENZY_REDUCED_DEFENSE: QuirkFlag = QuirkFlag(5);
 /// Q-0010: Fire Shield reflects a share of the strike's first damage stage (before the struck
 /// stack's defense and protections), not of the damage dealt (BAT-MAG-018).
 pub const FIRE_SHIELD_FIRST_STAGE: QuirkFlag = QuirkFlag(6);
+
+/// Q-0011 (S-10): a spell whose mass version the original starts earlier than its clean
+/// version (`SpellMagic::fixed_mass_from`) has it from that earlier mastery: Forgetfulness from
+/// Advanced (BAT-MAG-023).
+pub const EARLY_MASS_VERSION: QuirkFlag = QuirkFlag(7);
 
 /// The set of enabled quirk flags of a ruleset.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
@@ -128,7 +134,7 @@ mod tests {
 
     #[test]
     fn registry_lookup_and_bitset() {
-        assert_eq!(REGISTRY.len(), 7);
+        assert_eq!(REGISTRY.len(), 8);
         assert_eq!(
             REGISTRY.lookup("quirk.battle.no_luck_without_hero"),
             Some(NO_LUCK_WITHOUT_HERO)
@@ -156,6 +162,10 @@ mod tests {
         assert_eq!(
             REGISTRY.lookup("quirk.battle.fire_shield_first_stage"),
             Some(FIRE_SHIELD_FIRST_STAGE)
+        );
+        assert_eq!(
+            REGISTRY.lookup("quirk.battle.early_mass_version"),
+            Some(EARLY_MASS_VERSION)
         );
         // `new` is a const fn; call it at run time too so coverage sees it.
         let runtime = QuirkRegistry::new(&["quirk.battle.a"]);

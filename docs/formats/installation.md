@@ -705,3 +705,96 @@ VCMI 1.7.5 (`lib/spells/BattleSpellMechanics.cpp`, `isReflected`, `getRandomUnit
 hero's direct negative spell with `random(0, 99) < chance` to a random valid unit of the
 caster's side other than war machines (`SIEGE_WEAPON`), and marks an immune new target as
 resisting.
+
+### 7.14 Code reading: Forgetfulness, Blind, Berserk and Hypnotize (E04b T4b/T4c, 2026-10-07)
+
+Read for T4b and T4c (Q29: insight only, nothing copied). Offsets as in §7.9; a spell is active
+while its duration `+0x198 + 4 × id` is above 0 (Berserk +0x284, Hypnotize +0x288, Forgetfulness
++0x28C, Blind +0x290; Stone Gaze +0x2B0 and Paralyze +0x2C0, T7, share Blind's code). All four
+are mind spells (flag `0x400`) that spare war machines (`0x1000`). The creature test 0x44A4D0
+(§7.8) has absolute cases for them, before the Orb of Vulnerability: a stack whose controlling
+hero wears a Pendant (Berserk artifact 100, Hypnotize 105, Forgetfulness 107, Blind 101; T8) is
+immune; **Forgetfulness affects only shooters** (creature flag `0x4`); **Blind spares the
+Troglodytes (creatures 70, 71) and every undead** (`0x40000`), even under the Orb.
+
+**Forgetfulness** (spell 61; effect 0 at every mastery; flag `0x20`: one target below Advanced,
+the mass version from Advanced, §7.8, quirk S-10). Both go through the timed handler 0x5A107F
+(the mass one through 0x5A66D0, which skips hypnotized stacks, each stack tested and rolled),
+duration as §7.9. 0x4448F0 stores the caster's **mastery** (+0x4C4); as for every spell a re-cast
+keeps it (the general mastery array +0x2DC takes the higher one, nothing reads it here), so a
+stack under a Basic Forgetfulness can still shoot after an Advanced one. While active:
+- the creatures a strike counts (0x443160, the base damage of every strike: shots, melee
+  attacks, retaliations): `max(1, n / 2)` instead of `n` (`n / 2` truncated) for a stack with the
+  shooter flag, at any mastery. The in-game text of None and Basic says half the stack forgets
+  to shoot; the melee and retaliation part is quirk S-09 (the rule in every profile, Q53);
+- from a stored mastery of 2 (Advanced) the stack cannot shoot: every can-shoot test (0x447D92,
+  0x4429B2, 0x445556 for the berserk turn, 0x448A47 and 0x448C90 for the cursor) answers no, so
+  it fights in melee with the shooter's melee penalty (§7.10) and the halved count.
+Ending gives nothing back.
+
+**Blind** (spell 62; effect 50, 50, 25, 0; one target). 0x4448F0 stores `v / 100` as `f32`
+(+0x49C). Duration as §7.9. While active:
+- *No turns.* The battle loop (0x465080) picks the next stack by speed among those not done
+  (+0x84 bits 21, 25, 26) and, for a stack whose turn has started this round (+0x4F0), only if it
+  is not blind, petrified or paralysed; it then runs the stack's turn start 0x446E30 once per
+  round (+0x4F0 set; the Defend bonus ends, regeneration, Frenzy's countdown, §7.11) and, if the
+  stack is blind, petrified or paralysed, picks again without marking it done. No morale roll, no
+  action. A stack whose blindness ends later in the round (it is struck) has its turn started and
+  is not done, so it can still act that round.
+- *Any damage ends it* (and Stone Gaze and Paralyze): the routine that takes hit points 0x444090
+  calls the end routine for spells 62, 70 and 74 every time, whoever deals the damage: strikes,
+  shots, damage spells, Fire Shield's reflection.
+- *Retaliation.* Before a melee attack (0x441D9C) the struck stack is marked if it is blind
+  (+0x4C0) or paralysed (+0x4C1); the strike then ends the blindness. If the mark is set and the
+  stored factor is 0 (Expert), the strike routine answers "no retaliation" (0x441C85): it does
+  not retaliate and keeps its retaliation. Otherwise it retaliates as usual (if alive, with a
+  retaliation left, the attacker not exempt, not petrified), and stage 2 of the damage (0x443CD5,
+  §7.10) multiplies the factor by the stored `f32` (blind) or by Blind's Advanced effect / 100
+  (paralysed; the smaller of the two if both). The marks are cleared after the retaliation.
+Ending gives nothing back. Shots and spells end it without a retaliation.
+
+**Berserk** (spell 59; effect 0, 0, 1, 2; flags: a hex target, `0x80`). The handler 0x5A1D80
+collects the stacks on the hexes within the radius of the table 0x642264 (0, 0, 1, 2 by mastery)
+around the target hex (0x5A4810, one entry per living stack), tests and rolls each (0x5A8090,
+`random(1, 100) ≤ trunc(f × 100)`) and applies it to those that fail. The polarity test of
+0x5A8090 (which, for a negative spell, refuses a stack of the caster's side) **makes an exception
+for spell 59**: Berserk also affects the caster's own stacks in its area. 0x4448F0 fixes the
+duration at 255 (quirk S-17) and ends Hypnotize first. While active:
+- every other stack is its enemy and it is every stack's enemy (0x442880 answers yes when either
+  stack is berserk);
+- its turn is automatic (0x4745DF → 0x4456D0): the candidates (0x445490) are the other living
+  stacks except arrow towers: for a stack that can shoot (as above, the Forgetfulness test
+  included), by hex distance; otherwise, from the AI pathfinder's map over the whole field
+  (0x4B2DA0 → 0x4B3400 with side −1, so every stack is an enemy to reach), the stacks whose hex
+  has an attack position the stack can walk to, by the path cost to that position. The nearest
+  ones are kept and one is drawn with equal chances (0x50B230). None: the stack does nothing
+  (action 12, done without the Defend bonus). A shooter shoots at it (action 7); otherwise
+  0x4222C0 walks the path towards it and attacks from the last hex if the attack position is
+  within its speed, else only walks as far as it can (action 6, or a plain move);
+- after its own attack (the melee attack routine 0x441F55, the shot routine 0x4402F7) it ends; a
+  retaliation does not end it. Cure, Dispel and an Anti-Magic of level 5 or more end it.
+The wiki's pathing bug (S-11) was not read: it would sit in 0x4B3400. Q53: the engine uses its
+own pathfinding; S-11 stays unconfirmed.
+
+**Hypnotize** (spell 60; power factor 25, effect 10, 10, 20, 50; one target). Target test
+(0x5A8090 case 60, after the general tests): 0 if the stack has Magic Mirror active (§7.13);
+else the limit is `power × 25 + effect[mastery] + the specialist bonus (0x4E5FF0, by the stack's
+level, of the limit)`, and the stack qualifies if `hit points per creature × creatures` (the full
+hit points, the top creature's wounds not counted) is at most the limit. Duration as §7.9.
+0x4448F0 ends Berserk first and rebuilds the stack's Unicorn aura lists (+0x514/+0x524, the
+adjacent Unicorns of the same controller; 0x43EA70), as its end does. While active, the stack's
+**controller** is the other side (0x442690 and the inline copies `side ^ hypnotized`): the
+controller commands its turns (the battle loop sets the acting side to it, 0x465389, so the
+controller's hero may cast during that turn), and these use the controller and its hero:
+friend and enemy (0x442880), the Offense or Archery and the Bless specialist of its strikes and
+the Armorer of strikes on it (stage 1 and 3, 0x443898, 0x443DE6), the hero's resistance and the
+Pendants against spells on it (0x5A8090 → 0x44A4D0), Dispel's Sphere test (§7.10), the target's
+hero in spell damage and Fire Shield (0x5A0D1C, 0x4224AF), the Unicorn aura. These keep the
+real side (+0xF4): the stack's statistics set at the battle's start (its hero's primary skills,
+morale and luck), the turn order's tie-break (0x46502A), and the side tests of spells (0x5A82F8):
+the owner may cast its positive spells on its hypnotized stack (Cure ends Hypnotize, §7.10) but no
+negative ones, the controller the other way round. Mass versions (0x5A66D0, §7.9) skip
+hypnotized stacks, and so does Expert Cure, which loops over the caster's own stacks (0x5A1847,
++0x5754 = Hypnotize's duration): an Expert Cure never reaches them (quirk S-13), a single Cure
+does. VCMI 1.7.5 (`config/spells/ability.json`, `BattleInfo`) limits Hypnotize by the stack's
+remaining health.

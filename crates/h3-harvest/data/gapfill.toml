@@ -1005,21 +1005,35 @@ sources = ["vcmi-magic-creatures"]
 creature = "Air Elemental"
 abilities = [
     { kind = "spell_immunity", spell = "base:meteor_shower" },
+    { kind = "spell_immunity", spell = "base:blind" },
     { kind = "spell_vulnerability", spell = "base:lightning_bolt", percent = 100 },
     { kind = "spell_vulnerability", spell = "base:chain_lightning", percent = 100 },
     { kind = "spell_vulnerability", spell = "base:armageddon", percent = 100 },
 ]
-sources = ["vcmi-magic-creatures"]
+sources = ["vcmi-magic-creatures", "exe-forgetfulness-blind"]
 
 [[creature_abilities]]
 creature = "Storm Elemental"
 abilities = [
     { kind = "spell_immunity", spell = "base:meteor_shower" },
+    { kind = "spell_immunity", spell = "base:blind" },
     { kind = "spell_vulnerability", spell = "base:lightning_bolt", percent = 100 },
     { kind = "spell_vulnerability", spell = "base:chain_lightning", percent = 100 },
     { kind = "spell_vulnerability", spell = "base:armageddon", percent = 100 },
 ]
-sources = ["vcmi-magic-creatures"]
+sources = ["vcmi-magic-creatures", "exe-forgetfulness-blind"]
+
+# Blind spares Troglodytes absolutely (0x44A4D0, before the Orb of Vulnerability; the Orb's
+# absolute cases join with T8).
+[[creature_abilities]]
+creature = "Troglodyte"
+abilities = [{ kind = "spell_immunity", spell = "base:blind" }]
+sources = ["exe-forgetfulness-blind"]
+
+[[creature_abilities]]
+creature = "Infernal Troglodyte"
+abilities = [{ kind = "spell_immunity", spell = "base:blind" }]
+sources = ["exe-forgetfulness-blind"]
 
 [[creature_abilities]]
 creature = "Earth Elemental"
@@ -1504,6 +1518,13 @@ retrieved = "2026-10-06"
 id = "exe-dispel-cure"
 kind = "original-data"
 ref = "Heroes3.exe code reading (docs/formats/installation.md 7.10): Dispel (case at 0x5A15CE) ends every spell but Poison through the end routine, at Expert on every stack it can affect and the spell obstacles; whether it can affect a stack (0x5A8090 for spell 35) returns 1 or 0 by its own test (the stack's hero's Sphere of Permanence, own stacks below Advanced, a stack with an active spell below Expert) without the immunity, resistance and aura tests; Cure (0x446500) ends 14 spells, then heals the top creature without raising, at Expert on every own stack it can affect that is not hypnotized"
+url = "docs/formats/installation.md"
+retrieved = "2026-10-07"
+
+[[source]]
+id = "exe-forgetfulness-blind"
+kind = "original-data"
+ref = "Heroes3.exe code reading (docs/formats/installation.md 7.14): Forgetfulness (61) stores the caster's mastery (0x4448F0, +0x4C4); while active the base damage 0x443160 counts max(1, n / 2) creatures of a shooter for every strike, and from a stored mastery of 2 every can-shoot test answers no; 0x44A4D0 lets it affect only shooters (flag 0x4); Blind (62) stores v / 100 as f32 (+0x49C); the battle loop 0x465080 starts a blind stack's turn (0x446E30) and skips it; the damage routine 0x444090 ends spells 62, 70 and 74; a blind stack struck in melee retaliates with the stored factor in damage stage 2, not at all at 0 (0x441C85, 0x443CD5); 0x44A4D0 spares Troglodytes (70, 71) and undead absolutely, Air and Storm Elementals (112, 127) as a normal immunity"
 url = "docs/formats/installation.md"
 retrieved = "2026-10-07"
 
@@ -2057,6 +2078,23 @@ sources = ["exe-anti-magic-mirror", "vcmi-spells-defences"]
 spell = "Magic Mirror"
 changes = ["magic_mirror"]
 sources = ["exe-anti-magic-mirror", "vcmi-spells-defences"]
+
+# T4b (E04b, 2026-10-07; installation.md 7.14): stacks that lose actions. Target, the mass
+# version from Advanced (Forgetfulness, flag 0x20), mind and the war-machine exclusion come from
+# the flag word; without quirk Q-0011 Forgetfulness is mass at Expert, as VCMI has it.
+[[spells.timed]]
+spell = "Forgetfulness"
+changes = ["forgetfulness"]
+fixed_mass = "expert"
+requires = ["shooter"]
+sources = ["exe-forgetfulness-blind"]
+
+[[spells.timed]]
+spell = "Blind"
+changes = ["blind"]
+ends = "damaged"
+excludes = ["undead"]
+sources = ["exe-forgetfulness-blind"]
 
 # Dispel and Cure (E04b T3b1b, pack format v7; installation.md 7.10). Target and the mass version
 # at Expert come from the flag word.

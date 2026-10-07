@@ -38,7 +38,7 @@ pub const STACK_CAPACITY: usize = 2 * SIDE_STACK_SLOTS;
 const _: () = assert!(MAX_ARMY_SLOTS + MAX_WAR_MACHINES <= SIDE_STACK_SLOTS);
 
 /// Version of the battle-state hash encoding ([`BattleState::state_hash`]). Bump on any change.
-pub const BATTLE_STATE_HASH_VERSION: u32 = 24;
+pub const BATTLE_STATE_HASH_VERSION: u32 = 25;
 
 /// Index of a stack in its battle (attacker stacks first, in slot order, then defender stacks).
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Default)]
@@ -66,6 +66,10 @@ impl StackFlags {
     pub const DEFENDING: Self = Self(1 << 3);
     /// The stack had a good-morale turn this round (BAT-MOR-003).
     pub const HAD_MORALE: Self = Self(1 << 4);
+    /// The stack's turn has started this round (the original's +0x4F0, `installation.md`
+    /// §7.14): its turn-start rules ran, and while blind it is passed over (BAT-TRN-001,
+    /// BAT-MAG-024).
+    pub const STARTED: Self = Self(1 << 5);
 
     /// Whether all flags of `other` are set.
     pub const fn contains(self, other: Self) -> bool {
@@ -936,7 +940,8 @@ impl BattleState {
     /// magic after the funds: spell book and cast spells as bits, masteries, spell bonuses),
     /// terrain, RNG state. v19 (E04b T2d): the hero's resistance. v20 (E04b T3a): each stack's
     /// spell values after its flags, the hero's duration bonus after its resistance, the effect
-    /// list before the RNG.
+    /// list before the RNG. v25 (E04b T4b): the stack flag `STARTED` and the spell values'
+    /// status bits.
     pub fn state_hash(&self) -> u64 {
         h3_kernel::hash::hash_of(self)
     }

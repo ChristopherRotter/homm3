@@ -88,6 +88,18 @@ pub struct SpellTimed {
     /// Whether a cast on an affected stack applies the changes again.
     #[serde(default)]
     pub cumulative: bool,
+    /// `damaged` for effects that any damage ends (Blind).
+    #[serde(default)]
+    pub ends: Option<String>,
+    /// The mastery of the mass version without quirk Q-0011 (Forgetfulness: `expert`).
+    #[serde(default)]
+    pub fixed_mass: Option<String>,
+    /// Creature flags a stack needs (Forgetfulness: `shooter`).
+    #[serde(default)]
+    pub requires: Vec<String>,
+    /// Creature flags a stack may not have, besides `war_machine` from the flag word.
+    #[serde(default)]
+    pub excludes: Vec<String>,
     /// Source ids.
     pub sources: Vec<String>,
 }

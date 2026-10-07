@@ -554,3 +554,39 @@ records how and why the tasks went.
   level 1, abilities never kept off; the redirect of damage, timed and chain spells, no redirect
   for areas, own targets and Dispel, an immune or resisting new stack, the chance and the draw
   among living stacks).
+
+### T4b — Stacks that lose actions: Forgetfulness and Blind (2026-10-07)
+
+- **Seam (Q53):** the user chose T4b + T4c in one session (the agent had proposed T4b alone), a
+  checkpoint after; the quirk classes asked after the reading.
+- **Code reading** (`installation.md` §7.14, for T4b and T4c): Forgetfulness stores the mastery;
+  the base damage counts `max(1, n / 2)` creatures of a forgetful shooter on every strike (S-09
+  confirmed); from Advanced no shooting; flag `0x20` makes it mass from Advanced (S-10
+  confirmed). Blind stores its factor; the battle loop starts a blind stack's turn and passes it;
+  any damage ends it (0x444090); the retaliation of a stack blind at the attack takes the factor
+  in damage stage 2, none at 0. Absolute immunities: Forgetfulness only shooters, Blind never
+  undead or Troglodytes; Air and Storm Elementals are immune to Blind.
+- **User (Q53):** S-09 the rule in every profile (no flag); S-10 fix-optional (Q-0011,
+  `quirk.battle.early_mass_version`); S-11 the engine's pathfinding, unconfirmed; S-13
+  fix-optional (T4c).
+- **Content (pack format v11):** timed changes `forgetfulness` and `blind`; `ends = "damaged"`;
+  `fixed_mass` (the mass version's mastery without Q-0011); the gap-fill's timed entries take
+  `requires`, `excludes`, `ends`, `fixed_mass`; Blind immunities for Troglodytes and Air and
+  Storm Elementals (source `exe-forgetfulness-blind`). Ruleset hash v21. The synthetic pack gains
+  Haze (a Forgetfulness) and Dazzle (a Blind).
+- **Battle:** BAT-MAG-023 (`combat::striking_count`, `can_shoot`, `magic::target_at` with the
+  quirk), BAT-MAG-024 (`effects::damaged` after every strike, reflection and spell damage,
+  `effects::blind_share` before a melee attack, `Strike::retaliation_percent` in stage 2 and the
+  exact formula, no retaliation at 0); BAT-TRN-001 and BAT-DMG-002 amended. `SpellValues`
+  gains `status` (`effects::Status`: forgetful, no shooting, blind, ended by damage) in the
+  record's spare byte; `StackFlags::STARTED` (the original's +0x4F0) passes a blind stack and
+  guards the turn-start rules (regeneration, own-turn effects) instead of `WAITED`; event
+  `TurnPassed`. State hash v25; `BattleState` stays 3 904 bytes.
+- **Workload:** Brea casts Haze, Corwin Dazzle; golden replays re-recorded. The old workload
+  (`7812d9d`'s synthetic pack) on the new engine: 472.54 M Ir against T4a's 472.93 M (−0.08 %,
+  10 070 steps); the new one 10 682 steps, 494.80 M Ir; `bench-check` re-baselined.
+- **Tests:** `tests/actions.rs` (the halved count by shot, melee and retaliation, one creature
+  in full; no shooting from Advanced, a Basic cast keeping its mastery; the targets and the mass
+  version with and without Q-0011; a blind stack passing its turns, acting after a shot ends
+  its blindness in the same round, Blind running out; the retaliation at 50 %, 25 % and none,
+  exact and staged; spell damage ending it, the undead spared).

@@ -1,6 +1,6 @@
 # E04b — Battle magic
 
-Status: **in progress** (refined 2026-10-05; increment 1 = T1–T2, done 2026-10-06: T1, ADR-0014 accepted, T2a–T2e, batch 2a evaluated; increment 2 = T3 in parts, then T4 (Q46, Q48): T3a, T3b1a, T3b1b, T3b2, T3c1, T3c2, T3c3 (batch 2b compiled) and T4a done; checkpoint before T4b (Q52)) · Follows E04a (closed 2026-10-05) · Part of the former E04 (OPEN-QUESTIONS Q27): E04a heroes in battle, **E04b** battle magic (this one), E04c sieges and special battlefields.
+Status: **in progress** (refined 2026-10-05; increment 1 = T1–T2, done 2026-10-06: T1, ADR-0014 accepted, T2a–T2e, batch 2a evaluated; increment 2 = T3 in parts, then T4 (Q46, Q48): T3a, T3b1a, T3b1b, T3b2, T3c1, T3c2, T3c3 (batch 2b compiled), T4a and T4b done; T4c in progress (Q53)) · Follows E04a (closed 2026-10-05) · Part of the former E04 (OPEN-QUESTIONS Q27): E04a heroes in battle, **E04b** battle magic (this one), E04c sieges and special battlefields.
 
 ## Goal
 
@@ -67,12 +67,14 @@ The 13 direct-damage spells: Magic Arrow, Ice Bolt, Lightning Bolt, Titan's Ligh
 - [x] **T3c2 Q45 option (b)** — done 2026-10-07: `h3_contracts::Rate` (basis points and the original's single-precision value as an f32 bit pattern where it differs) for the damage bonuses, `SpellDamage`, `MagicResistance` and the tent's heal; the derivation grows skill rates and adds the getters' artifacts in the original's x87 single precision under Q-0005 (HER-BAT-004/005/012/013), the battle uses them (BAT-HER-004, BAT-MAG-004/008, BAT-WAR-007); `X87` f32 bit patterns; state hash v23, replay format v16; `BattleState` 3 904 bytes. Record: [`E04b-log.md`](E04b-log.md).
 - [x] **T3c3 Batch 2b compiled** — done 2026-10-07: `experiments/specs/E04b-batch-2b.toml`, six encounters (the x87 precision, Q-0008, Q-0010, Shield with Armorer, Bloodlust/Weakness and Haste/Slow, Mephala at level 10), predictions checked against the engine; the user plays it while T4 proceeds (Q52). Record: [`E04b-log.md`](E04b-log.md).
 
+**Checkpoint after T4a** (2026-10-07, Q53): the user chose T4b + T4c in one session and, after the reading, the quirk classes: S-09 the rule, S-10 fix-optional (Q-0011), S-11 unconfirmed (the engine's pathfinding), S-13 fix-optional.
+
 **Checkpoint after T3c2** (2026-10-07, Q52): the user chose batch 2b now (T3c3, played while T4 proceeds), T4 in three parts by mechanism with T4a this session (a checkpoint after), and kept `Rate`'s f32 bit pattern.
 
 ### T4 — Control spells and spell defences (refined 2026-10-07, Q52)
 
 - [x] **T4a The spell defences** — done 2026-10-07: read in the executable (`installation.md` §7.13); pack format v10 (`spell_immunity`, `magic_mirror`), BAT-MAG-021 (Anti-Magic: spells below its level kept off whatever their polarity, the negative ones below it ended at the cast), BAT-MAG-022 (Magic Mirror: a stack spell at an enemy stack goes to a random living stack of the caster's side, which rolls); state hash v24; replays and `bench-check` re-baselined. Record: [`E04b-log.md`](E04b-log.md).
-- [ ] T4b Stacks that lose actions: Forgetfulness (S-09, S-10) and Blind (ends when attacked, its retaliation factor in damage stage 2); legality and the sim's masks.
+- [x] **T4b Stacks that lose actions** — done 2026-10-07 (with T4c, Q53): read in the executable (`installation.md` §7.14); pack format v11 (`forgetfulness`, `blind`, `ends = "damaged"`, `fixed_mass`), BAT-MAG-023 (half the creatures count on every strike, S-09 the rule; no shooting from Advanced; mass from Advanced under quirk Q-0011, S-10), BAT-MAG-024 (no turns, any damage ends it, the retaliation's share in stage 2); state hash v25, ruleset hash v21; replays and `bench-check` re-baselined. Record: [`E04b-log.md`](E04b-log.md).
 - [ ] T4c Control: Berserk and Hypnotize: automatic turns, a stack acting for the other side, their counter pair, S-11, S-13; the hypnotized stack's controller for Fire Shield, the specialists, the Sphere and Expert Cure (BACKLOG).
 
 **Checkpoint after T3b2** (2026-10-07): the user classified Fire Shield's base as fix-optional (Q-0010) and kept the breath's second stack as the rule (no flag), and chose T3c1 + T3c2 for the session, a checkpoint before batch 2b (T3c3).

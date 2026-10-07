@@ -169,6 +169,11 @@ pub enum EventKind {
         /// The stack.
         stack: StackId,
     },
+    /// A blind stack's turn passes without an action (BAT-MAG-024).
+    TurnPassed {
+        /// The stack.
+        stack: StackId,
+    },
     /// A side's hero cast a spell (BAT-MAG-001; public, ADR-0014 point 8).
     SpellCast {
         /// The caster's side.

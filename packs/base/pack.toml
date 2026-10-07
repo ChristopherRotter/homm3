@@ -1675,6 +1675,7 @@ fight_value = 73
 ai_value = 59
 adventure_count = [20, 50]
 flags = ["alive"]
+abilities = [{ kind = "spell_immunity", spell = "base:blind" }]
 upgrades = ["infernal_troglodyte"]
 
 [[creature]]
@@ -1697,6 +1698,7 @@ fight_value = 84
 ai_value = 84
 adventure_count = [20, 30]
 flags = ["alive"]
+abilities = [{ kind = "spell_immunity", spell = "base:blind" }]
 
 [[creature]]
 id = "harpy"  # original id 72
@@ -2588,7 +2590,7 @@ fight_value = 324
 ai_value = 356
 adventure_count = [8, 12]
 flags = ["mind_immune", "no_morale"]
-abilities = [{ kind = "hate", creature = "earth_elemental", percent = 100 }, { kind = "spell_immunity", spell = "base:meteor_shower" }, { kind = "spell_vulnerability", percent = 100, spell = "base:lightning_bolt" }, { kind = "spell_vulnerability", percent = 100, spell = "base:chain_lightning" }, { kind = "spell_vulnerability", percent = 100, spell = "base:armageddon" }]
+abilities = [{ kind = "hate", creature = "earth_elemental", percent = 100 }, { kind = "spell_immunity", spell = "base:meteor_shower" }, { kind = "spell_immunity", spell = "base:blind" }, { kind = "spell_vulnerability", percent = 100, spell = "base:lightning_bolt" }, { kind = "spell_vulnerability", percent = 100, spell = "base:chain_lightning" }, { kind = "spell_vulnerability", percent = 100, spell = "base:armageddon" }]
 
 [[creature]]
 id = "earth_elemental"  # original id 113
@@ -3772,6 +3774,14 @@ cost = [12, 9, 9, 9]
 power = 0
 effect = [0, 0, 0, 0]
 polarity = "negative"
+target = "stack"
+side = "enemy"
+mass = "advanced"
+fixed_mass = "expert"
+mind = true
+requires = ["shooter"]
+excludes = ["war_machine"]
+effects = [{ kind = "timed", change = "forgetfulness" }]
 
 [[spell]]
 id = "blind"  # original id 62
@@ -3783,6 +3793,12 @@ cost = [10, 8, 8, 8]
 power = 0
 effect = [50, 50, 25, 0]
 polarity = "negative"
+target = "stack"
+side = "enemy"
+mind = true
+excludes = ["undead", "war_machine"]
+ends = "damaged"
+effects = [{ kind = "timed", change = "blind" }]
 
 [[spell]]
 id = "teleport"  # original id 63
@@ -6882,8 +6898,8 @@ backpack = 64
 
 [[profile]]
 id = "faithful"        # default: preserve/fix-optional quirks on
-quirks = { "quirk.battle.no_luck_without_hero" = true, "quirk.battle.single_precision_rates" = true, "quirk.battle.unlimited_ballista_shots" = true, "quirk.battle.first_protection" = true, "quirk.battle.counterstrike_extra_round" = true, "quirk.battle.frenzy_reduced_defense" = true, "quirk.battle.fire_shield_first_stage" = true }    # Q-0003, Q-0005, Q-0004, Q-0007, Q-0008, Q-0009, Q-0010
+quirks = { "quirk.battle.no_luck_without_hero" = true, "quirk.battle.single_precision_rates" = true, "quirk.battle.unlimited_ballista_shots" = true, "quirk.battle.first_protection" = true, "quirk.battle.counterstrike_extra_round" = true, "quirk.battle.frenzy_reduced_defense" = true, "quirk.battle.fire_shield_first_stage" = true, "quirk.battle.early_mass_version" = true }    # Q-0003, Q-0005, Q-0004, Q-0007, Q-0008, Q-0009, Q-0010, Q-0011
 
 [[profile]]
 id = "strict-fixed"    # all quirks fixed
-quirks = { "quirk.battle.no_luck_without_hero" = false, "quirk.battle.single_precision_rates" = false, "quirk.battle.unlimited_ballista_shots" = false, "quirk.battle.first_protection" = false, "quirk.battle.counterstrike_extra_round" = false, "quirk.battle.frenzy_reduced_defense" = false, "quirk.battle.fire_shield_first_stage" = false }   # Q-0003, Q-0005, Q-0004, Q-0007, Q-0008, Q-0009, Q-0010
+quirks = { "quirk.battle.no_luck_without_hero" = false, "quirk.battle.single_precision_rates" = false, "quirk.battle.unlimited_ballista_shots" = false, "quirk.battle.first_protection" = false, "quirk.battle.counterstrike_extra_round" = false, "quirk.battle.frenzy_reduced_defense" = false, "quirk.battle.fire_shield_first_stage" = false, "quirk.battle.early_mass_version" = false }   # Q-0003, Q-0005, Q-0004, Q-0007, Q-0008, Q-0009, Q-0010, Q-0011

@@ -56,9 +56,9 @@ pub use pack::{
     SpellSchoolDef, StartingStackDef, SurrenderDef, TerrainDef,
 };
 pub use quirks::{
-    COUNTERSTRIKE_EXTRA_ROUND, FIRE_SHIELD_FIRST_STAGE, FIRST_PROTECTION, FRENZY_REDUCED_DEFENSE,
-    NO_LUCK_WITHOUT_HERO, QuirkFlag, QuirkRegistry, Quirks, REGISTRY, SINGLE_PRECISION_RATES,
-    UNLIMITED_BALLISTA_SHOTS,
+    COUNTERSTRIKE_EXTRA_ROUND, EARLY_MASS_VERSION, FIRE_SHIELD_FIRST_STAGE, FIRST_PROTECTION,
+    FRENZY_REDUCED_DEFENSE, NO_LUCK_WITHOUT_HERO, QuirkFlag, QuirkRegistry, Quirks, REGISTRY,
+    SINGLE_PRECISION_RATES, UNLIMITED_BALLISTA_SHOTS,
 };
 pub use ruleset::{
     BattleParams, CreatureInfo, CreatureType, CreatureTypeId, FactionId, FactionInfo, FieldParams,
@@ -67,7 +67,7 @@ pub use ruleset::{
     SurrenderParams, TerrainId, TerrainInfo, WAR_MACHINE_KINDS,
 };
 pub use spell::{
-    EffectDuration, MASTERY_NAMES, MAX_AREA_RADIUS, MAX_CHAIN_TARGETS, MAX_MASTERY,
+    EffectDuration, EffectEnd, MASTERY_NAMES, MAX_AREA_RADIUS, MAX_CHAIN_TARGETS, MAX_MASTERY,
     MAX_SPELL_EFFECTS, SPECIALIST_LEVELS, SpecialistBonus, SpellArea, SpellChain, SpellEffect,
     SpellMagic, SpellTarget, TargetConditions, TargetSide, TimedChange,
 };

@@ -7,7 +7,7 @@ use std::vec::Vec;
 
 use h3_content::{
     AbilityDef, AuraTarget, BattleParamsDef, ContentKey, ContentPack, CreatureDef, CreatureFlag,
-    CreatureFlags, CreatureInfoDef, EffectDuration, FactionDef, Formation, HeroClassDef,
+    CreatureFlags, CreatureInfoDef, EffectDuration, EffectEnd, FactionDef, Formation, HeroClassDef,
     HeroTypeDef, ObstacleDef, PackManifest, ProfileDef, ResourceDef, Ruleset, SpecialistBonus,
     SpellArea, SpellCategory, SpellChain, SpellDef, SpellEffect, SpellMagic, SpellPolarity,
     SpellSchoolDef, SpellTarget, StartingStackDef, SurrenderDef, TargetConditions, TargetSide,
@@ -723,6 +723,10 @@ pub fn ruleset_with(profile: &str, edit: impl FnOnce(&mut BattleParamsDef)) -> R
                 quirks: vec![(String::from("quirk.battle.fire_shield_first_stage"), true)],
             },
             ProfileDef {
+                key: ContentKey::new("t", "early").unwrap(),
+                quirks: vec![(String::from("quirk.battle.early_mass_version"), true)],
+            },
+            ProfileDef {
                 key: ContentKey::new("t", "original").unwrap(),
                 quirks: vec![
                     (String::from("quirk.battle.first_protection"), true),
@@ -746,6 +750,7 @@ pub fn ruleset_with(profile: &str, edit: impl FnOnce(&mut BattleParamsDef)) -> R
             .map(|&spell| spell_def(spell))
             .chain(TIMED.iter().map(|&spell| timed_def(spell)))
             .chain(other_defs())
+            .chain(control_defs())
             .collect(),
         hero_classes: vec![HeroClassDef {
             key: ContentKey::new("t", "knight").unwrap(),
@@ -1279,6 +1284,73 @@ pub fn other_defs() -> [SpellDef; 2] {
                 },
             )
         },
+    ]
+}
+
+/// The test Forgetfulness (`t:forget`: level 3, enemy shooters, a mind spell sparing war
+/// machines, the mass version from Advanced with quirk Q-0011, else at Expert) and Blind
+/// (`t:blind`: level 2, 50, 50, 25, 0 %, ended by any damage, sparing the undead).
+pub fn control_defs() -> Vec<SpellDef> {
+    let key = |k: &str| ContentKey::new("t", k).unwrap();
+    let flags = |list: &[CreatureFlag]| {
+        list.iter()
+            .fold(CreatureFlags::default(), |set, &f| set.with(f))
+    };
+    let def = |name: &str, level, effect, magic| SpellDef {
+        key: key(name),
+        name: String::from(name),
+        category: SpellCategory::Combat,
+        level,
+        schools: vec![key("air")],
+        cost: [5, 4, 4, 4],
+        power: 0,
+        effect,
+        polarity: SpellPolarity::Negative,
+        magic,
+        counters: vec![],
+        dispels: vec![],
+        spares: vec![],
+    };
+    let enemy = |change, conditions| SpellMagic {
+        target: SpellTarget::Stack,
+        side: TargetSide::Enemy,
+        mind: true,
+        conditions,
+        effects: vec![SpellEffect::Timed(change)],
+        ..SpellMagic::default()
+    };
+    vec![
+        def(
+            "forget",
+            3,
+            [0; 4],
+            SpellMagic {
+                mass_from: Some(2),
+                fixed_mass_from: Some(3),
+                ..enemy(
+                    TimedChange::Forgetfulness,
+                    TargetConditions {
+                        requires: flags(&[CreatureFlag::Shooter]),
+                        excludes: flags(&[CreatureFlag::WarMachine]),
+                    },
+                )
+            },
+        ),
+        def(
+            "blind",
+            2,
+            [50, 50, 25, 0],
+            SpellMagic {
+                ends: EffectEnd::Damaged,
+                ..enemy(
+                    TimedChange::Blind,
+                    TargetConditions {
+                        requires: CreatureFlags::default(),
+                        excludes: flags(&[CreatureFlag::Undead, CreatureFlag::WarMachine]),
+                    },
+                )
+            },
+        ),
     ]
 }
 

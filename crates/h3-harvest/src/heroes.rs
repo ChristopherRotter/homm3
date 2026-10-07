@@ -338,11 +338,22 @@ fn timed_spell(
     spells: &BTreeMap<String, (String, &'static str)>,
 ) -> Result<(), String> {
     stack_spell(text, what, (flags, polarity), None)?;
+    if let Some(m) = &t.fixed_mass {
+        let _ = writeln!(text, "fixed_mass = {}", quote(m));
+    }
     if flags & SPELL_MIND != 0 {
         let _ = writeln!(text, "mind = true");
     }
+    if !t.requires.is_empty() {
+        let names: Vec<String> = t.requires.iter().map(|f| quote(f)).collect();
+        let _ = writeln!(text, "requires = [{}]", names.join(", "));
+    }
+    let mut excludes: Vec<String> = t.excludes.iter().map(|f| quote(f)).collect();
     if flags & SPELL_NO_WAR_MACHINES != 0 {
-        let _ = writeln!(text, "excludes = [\"war_machine\"]");
+        excludes.push(quote("war_machine"));
+    }
+    if !excludes.is_empty() {
+        let _ = writeln!(text, "excludes = [{}]", excludes.join(", "));
     }
     match t.duration.as_deref() {
         None => {}
@@ -353,6 +364,13 @@ fn timed_spell(
     }
     if t.cumulative {
         let _ = writeln!(text, "cumulative = true");
+    }
+    match t.ends.as_deref() {
+        None => {}
+        Some(e @ "damaged") => {
+            let _ = writeln!(text, "ends = \"{e}\"");
+        }
+        Some(other) => return Err(format!("gapfill: ends `{other}` for {what}")),
     }
     if !t.counters.is_empty() {
         let keys = spell_refs(&t.counters, (what, pack), spells)?;

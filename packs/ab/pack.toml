@@ -166,7 +166,7 @@ fight_value = 324
 ai_value = 486
 adventure_count = [6, 12]
 flags = ["shooter", "mind_immune", "no_morale"]
-abilities = [{ kind = "hate", creature = "base:earth_elemental", percent = 100 }, { kind = "hate", creature = "magma_elemental", percent = 100 }, { kind = "spell_immunity", spell = "base:meteor_shower" }, { kind = "spell_vulnerability", percent = 100, spell = "base:lightning_bolt" }, { kind = "spell_vulnerability", percent = 100, spell = "base:chain_lightning" }, { kind = "spell_vulnerability", percent = 100, spell = "base:armageddon" }]
+abilities = [{ kind = "hate", creature = "base:earth_elemental", percent = 100 }, { kind = "hate", creature = "magma_elemental", percent = 100 }, { kind = "spell_immunity", spell = "base:meteor_shower" }, { kind = "spell_immunity", spell = "base:blind" }, { kind = "spell_vulnerability", percent = 100, spell = "base:lightning_bolt" }, { kind = "spell_vulnerability", percent = 100, spell = "base:chain_lightning" }, { kind = "spell_vulnerability", percent = 100, spell = "base:armageddon" }]
 
 [[creature]]
 id = "energy_elemental"  # original id 129
@@ -504,7 +504,7 @@ abilities = [{ kind = "regeneration" }]
 target = "base:air_elemental"
 faction = "conflux"
 level = 2
-abilities = [{ kind = "hate", creature = "base:earth_elemental", percent = 100 }, { kind = "hate", creature = "magma_elemental", percent = 100 }, { kind = "spell_immunity", spell = "base:meteor_shower" }, { kind = "spell_vulnerability", percent = 100, spell = "base:lightning_bolt" }, { kind = "spell_vulnerability", percent = 100, spell = "base:chain_lightning" }, { kind = "spell_vulnerability", percent = 100, spell = "base:armageddon" }]
+abilities = [{ kind = "hate", creature = "base:earth_elemental", percent = 100 }, { kind = "hate", creature = "magma_elemental", percent = 100 }, { kind = "spell_immunity", spell = "base:meteor_shower" }, { kind = "spell_immunity", spell = "base:blind" }, { kind = "spell_vulnerability", percent = 100, spell = "base:lightning_bolt" }, { kind = "spell_vulnerability", percent = 100, spell = "base:chain_lightning" }, { kind = "spell_vulnerability", percent = 100, spell = "base:armageddon" }]
 upgrades = ["storm_elemental"]
 
 [[creature_override]]

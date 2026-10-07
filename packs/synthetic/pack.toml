@@ -580,6 +580,40 @@ target = "stack"
 side = "own"
 effects = [{ kind = "timed", change = "magic_mirror" }]
 
+[[spell]]                           # format v11: a Forgetfulness
+id = "haze"
+name = "Haze"
+category = "combat"
+level = 3
+schools = ["storm"]
+cost = [12, 9, 9, 9]
+effect = [0, 0, 0, 0]
+polarity = "negative"
+target = "stack"
+side = "enemy"
+mass = "advanced"                   # the original's; with quirk Q-0011 off from Expert
+fixed_mass = "expert"
+mind = true
+requires = ["shooter"]
+excludes = ["war_machine"]
+effects = [{ kind = "timed", change = "forgetfulness" }]
+
+[[spell]]                           # format v11: a Blind, ended by any damage
+id = "dazzle"
+name = "Dazzle"
+category = "combat"
+level = 2
+schools = ["stone"]
+cost = [10, 8, 8, 8]
+effect = [50, 50, 25, 0]            # share of the retaliation's damage, percent
+polarity = "negative"
+target = "stack"
+side = "enemy"
+mind = true
+excludes = ["undead", "war_machine"]
+ends = "damaged"
+effects = [{ kind = "timed", change = "blind" }]
+
 [[secondary_skill]]
 id = "marksmanship"
 name = "Marksmanship"
@@ -871,8 +905,8 @@ backpack = 3                        # HER-ART-002
 
 [[profile]]
 id = "faithful"        # default: preserve/fix-optional quirks on
-quirks = { "quirk.battle.no_luck_without_hero" = true, "quirk.battle.single_precision_rates" = true, "quirk.battle.unlimited_ballista_shots" = true, "quirk.battle.first_protection" = true, "quirk.battle.counterstrike_extra_round" = true, "quirk.battle.frenzy_reduced_defense" = true, "quirk.battle.fire_shield_first_stage" = true }    # Q-0003, Q-0005, Q-0004, Q-0007, Q-0008, Q-0009, Q-0010
+quirks = { "quirk.battle.no_luck_without_hero" = true, "quirk.battle.single_precision_rates" = true, "quirk.battle.unlimited_ballista_shots" = true, "quirk.battle.first_protection" = true, "quirk.battle.counterstrike_extra_round" = true, "quirk.battle.frenzy_reduced_defense" = true, "quirk.battle.fire_shield_first_stage" = true, "quirk.battle.early_mass_version" = true }    # Q-0003, Q-0005, Q-0004, Q-0007, Q-0008, Q-0009, Q-0010, Q-0011
 
 [[profile]]
 id = "strict-fixed"    # all quirks fixed
-quirks = { "quirk.battle.no_luck_without_hero" = false, "quirk.battle.single_precision_rates" = false, "quirk.battle.unlimited_ballista_shots" = false, "quirk.battle.first_protection" = false, "quirk.battle.counterstrike_extra_round" = false, "quirk.battle.frenzy_reduced_defense" = false, "quirk.battle.fire_shield_first_stage" = false }   # Q-0003, Q-0005, Q-0004, Q-0007, Q-0008, Q-0009, Q-0010
+quirks = { "quirk.battle.no_luck_without_hero" = false, "quirk.battle.single_precision_rates" = false, "quirk.battle.unlimited_ballista_shots" = false, "quirk.battle.first_protection" = false, "quirk.battle.counterstrike_extra_round" = false, "quirk.battle.frenzy_reduced_defense" = false, "quirk.battle.fire_shield_first_stage" = false, "quirk.battle.early_mass_version" = false }   # Q-0003, Q-0005, Q-0004, Q-0007, Q-0008, Q-0009, Q-0010, Q-0011

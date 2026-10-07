@@ -158,11 +158,19 @@ pub enum TimedChange {
     /// A single-target spell aimed at the stack from the other side goes, with a chance of v %, to
     /// a random living stack of the caster's side instead (Magic Mirror; BAT-MAG-022, v10).
     MagicMirror,
+    /// A shooter counts half its creatures, at least one, for the damage of every strike (melee
+    /// and retaliations too: survey S-09, the rule, Q53); from the first cast's Advanced mastery
+    /// it cannot shoot (Forgetfulness; BAT-MAG-023, v11).
+    Forgetfulness,
+    /// The stack loses its turns; struck in melee while blind, it retaliates with v % of the
+    /// damage (damage stage 2), not at all at 0 (Blind; BAT-MAG-024, v11). Ends with any damage
+    /// when the spell `ends = "damaged"`.
+    Blind,
 }
 
 impl TimedChange {
     /// All values, in code order.
-    pub const ALL: [Self; 23] = [
+    pub const ALL: [Self; 25] = [
         Self::Speed,
         Self::SpeedPercent,
         Self::Attack,
@@ -186,6 +194,8 @@ impl TimedChange {
         Self::Frenzy,
         Self::SpellImmunity,
         Self::MagicMirror,
+        Self::Forgetfulness,
+        Self::Blind,
     ];
 
     /// Pack name.
@@ -214,6 +224,8 @@ impl TimedChange {
             Self::Frenzy => "frenzy",
             Self::SpellImmunity => "spell_immunity",
             Self::MagicMirror => "magic_mirror",
+            Self::Forgetfulness => "forgetfulness",
+            Self::Blind => "blind",
         }
     }
 
@@ -280,6 +292,35 @@ pub enum EffectDuration {
     /// Through the stack's next turn: 1 round on the active stack, else 2, counted down at the
     /// stack's own turn start instead of the round start (Frenzy; BAT-MAG-019, v8).
     OwnTurn,
+}
+
+/// What ends a timed effect before its rounds run out, besides Dispel and Cure (v11).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Default)]
+pub enum EffectEnd {
+    /// Nothing.
+    #[default]
+    Never,
+    /// Any damage the stack takes: strikes, shots, spells, a reflection (Blind; BAT-MAG-024,
+    /// `installation.md` §7.14).
+    Damaged,
+}
+
+impl EffectEnd {
+    /// All values, in code order.
+    pub const ALL: [Self; 2] = [Self::Never, Self::Damaged];
+
+    /// Pack name.
+    pub const fn name(self) -> &'static str {
+        match self {
+            Self::Never => "never",
+            Self::Damaged => "damaged",
+        }
+    }
+
+    /// Looks a value up by its pack name.
+    pub fn from_name(name: &str) -> Option<Self> {
+        Self::ALL.into_iter().find(|e| e.name() == name)
+    }
 }
 
 /// Creature levels a [`SpecialistBonus::CreatureLevel`] table covers (1 to 7).
@@ -386,8 +427,13 @@ pub struct SpellMagic {
     /// The lowest mastery (1..=3) at which the spell has a mass version: it then takes no target
     /// and reaches every stack it may reach (the flag `0x40`: Expert; v5).
     pub mass_from: Option<u8>,
+    /// The mass version's mastery when quirk Q-0011 is off, later than `mass_from` (the
+    /// original's Forgetfulness is mass from Advanced, the fixed one at Expert; v11).
+    pub fixed_mass_from: Option<u8>,
     /// How long its timed effects last (v5).
     pub duration: EffectDuration,
+    /// What else ends its timed effects (v11).
+    pub ends: EffectEnd,
     /// A cast on a stack it already affects applies its changes again (Disrupting Ray; v5).
     pub cumulative: bool,
     /// What a specialist in the spell adds to its value by a rule of its own (v9).
@@ -395,9 +441,20 @@ pub struct SpellMagic {
 }
 
 impl SpellMagic {
-    /// What the caster names at `mastery`: nothing for the mass version.
-    pub fn target_at(&self, mastery: u8) -> SpellTarget {
-        match self.mass_from {
+    /// The lowest mastery of its mass version: `mass_from`, or, without the original's earlier
+    /// one (`early` false: quirk Q-0011 off), `fixed_mass_from` where it has one.
+    pub fn mass_version(&self, early: bool) -> Option<u8> {
+        if early {
+            self.mass_from
+        } else {
+            self.fixed_mass_from.or(self.mass_from)
+        }
+    }
+
+    /// What the caster names at `mastery`: nothing for the mass version
+    /// ([`Self::mass_version`]).
+    pub fn target_at(&self, mastery: u8, early: bool) -> SpellTarget {
+        match self.mass_version(early) {
             Some(from) if mastery >= from => SpellTarget::None,
             _ => self.target,
         }
@@ -464,8 +521,17 @@ impl SpellMagic {
             .is_some_and(|m| self.target != SpellTarget::Stack || !(1..=MAX_MASTERY).contains(&m))
         {
             Some("a mass version needs target stack and a mastery 1..=3")
-        } else if (self.cumulative || self.duration != EffectDuration::Rounds) && !self.is_timed() {
-            Some("duration and cumulative need a timed effect")
+        } else if (self.cumulative
+            || self.duration != EffectDuration::Rounds
+            || self.ends != EffectEnd::Never)
+            && !self.is_timed()
+        {
+            Some("duration, ends and cumulative need a timed effect")
+        } else if self
+            .fixed_mass_from
+            .is_some_and(|f| self.mass_from.is_none_or(|m| f <= m) || f > MAX_MASTERY)
+        {
+            Some("fixed_mass needs a mass version and a later mastery up to 3")
         } else if self
             .any_side_from
             .is_some_and(|m| self.side == TargetSide::Any || !(1..=MAX_MASTERY).contains(&m))
@@ -483,7 +549,8 @@ impl CanonicalHash for SpellMagic {
     /// Target, area (presence, inner, radii), chain (presence, targets, factor), side (v15),
     /// condition bits, effects (count, codes: kind and change), mind, mass (0: none), duration,
     /// cumulative (v17); any side (0: never), needs effect, ignores immunity (v19); the
-    /// specialist bonus (presence, then the bonus; v20).
+    /// specialist bonus (presence, then the bonus; v20); what ends it, the fixed mass version
+    /// (0: none; v21).
     fn hash_into(&self, h: &mut StateHasher) {
         h.write_u8(self.target as u8);
         h.write_bool(self.area.is_some());
@@ -514,6 +581,8 @@ impl CanonicalHash for SpellMagic {
         if let Some(b) = self.specialist {
             b.hash_into(h);
         }
+        h.write_u8(self.ends as u8);
+        h.write_u8(self.fixed_mass_from.unwrap_or(0));
     }
 }
 
@@ -543,6 +612,10 @@ mod tests {
         assert_eq!(SpellEffect::Dispel.timed(), None);
         assert_eq!(SpellEffect::Heal.timed(), None);
         assert_eq!(TimedChange::from_name("heal"), None);
+        for e in EffectEnd::ALL {
+            assert_eq!(EffectEnd::from_name(e.name()), Some(e));
+        }
+        assert_eq!(EffectEnd::from_name("attacked"), None);
         for s in TargetSide::ALL {
             assert_eq!(TargetSide::from_name(s.name()), Some(s));
         }
@@ -558,13 +631,24 @@ mod tests {
             effects: vec![SpellEffect::Timed(TimedChange::Speed)],
             ..SpellMagic::default()
         };
-        assert_eq!(haste.target_at(2), SpellTarget::Stack);
-        assert_eq!(haste.target_at(3), SpellTarget::None);
+        assert_eq!(haste.target_at(2, true), SpellTarget::Stack);
+        assert_eq!(haste.target_at(3, false), SpellTarget::None);
         let single = SpellMagic {
             mass_from: None,
             ..haste.clone()
         };
-        assert_eq!(single.target_at(3), SpellTarget::Stack);
+        assert_eq!(single.target_at(3, true), SpellTarget::Stack);
+        // Forgetfulness: mass from Advanced in the original, at Expert without quirk Q-0011.
+        let forget = SpellMagic {
+            mass_from: Some(2),
+            fixed_mass_from: Some(3),
+            ..haste.clone()
+        };
+        assert_eq!(forget.target_at(2, true), SpellTarget::None);
+        assert_eq!(forget.target_at(2, false), SpellTarget::Stack);
+        assert_eq!(forget.target_at(3, false), SpellTarget::None);
+        assert_eq!(forget.mass_version(false), Some(3));
+        assert_eq!(forget.error(true), None);
         assert!(haste.is_timed());
         assert!(!SpellMagic::default().is_timed());
         assert!(!haste.dispels());
@@ -845,6 +929,40 @@ mod tests {
                 true,
                 "need a timed effect",
             ),
+            (
+                SpellMagic {
+                    ends: EffectEnd::Damaged,
+                    ..damage(SpellTarget::Stack)
+                },
+                true,
+                "need a timed effect",
+            ),
+            (
+                SpellMagic {
+                    fixed_mass_from: Some(3),
+                    ..timed(TimedChange::Blind)
+                },
+                true,
+                "fixed_mass needs",
+            ),
+            (
+                SpellMagic {
+                    mass_from: Some(3),
+                    fixed_mass_from: Some(3),
+                    ..timed(TimedChange::Blind)
+                },
+                true,
+                "fixed_mass needs",
+            ),
+            (
+                SpellMagic {
+                    mass_from: Some(2),
+                    fixed_mass_from: Some(4),
+                    ..timed(TimedChange::Blind)
+                },
+                true,
+                "fixed_mass needs",
+            ),
         ]);
         for (m, castable, reason) in bad {
             let error = m.error(castable).unwrap_or_default();
@@ -947,6 +1065,14 @@ mod tests {
             },
             SpellMagic {
                 needs_effect: true,
+                ..base.clone()
+            },
+            SpellMagic {
+                ends: EffectEnd::Damaged,
+                ..base.clone()
+            },
+            SpellMagic {
+                fixed_mass_from: Some(3),
                 ..base.clone()
             },
             SpellMagic {

@@ -15,7 +15,7 @@ Sources: `wiki` = https://heroes.thelazy.net (retrieved 2026-10-03; pages named 
 | confirmed by original data | S-05 (the exe's creature table holds the bugged levels) |
 | exploit-fix, no confirmation needed (never implemented) | S-08, S-14, S-20 |
 | batch 1a (E04a), evaluated 2026-10-03 | confirmed: S-01 (ledger Q-0004), S-02 with Q23 (Q-0005, all damage rates), S-03 for Roland only (Q-0006); not reproduced in SoD: S-04 (dropped) |
-| to confirm in an E04b or E04c batch | S-06, S-07, S-09 – S-13, S-15, S-17, S-18, S-21 (S-19 confirmed by code reading: Q-0007; S-16: Q-0009) |
+| to confirm in an E04b or E04c batch | S-06, S-07, S-11 (code reading incomplete, Q53), S-12, S-13, S-15, S-17, S-18, S-21 (confirmed by code reading: S-19 as Q-0007, S-16 as Q-0009, S-10 as Q-0011; S-09 the rule in every profile, Q53) |
 | to confirm when the battle setup is derived from the map (E04c or E08) | S-22 |
 
 ## Overview
@@ -92,14 +92,17 @@ Outside the E04 scope, listed so they are not lost (no classification needed now
 ### S-09 — Forgetfulness halves a shooter's melee damage (E04b)
 - Original: wiki Damage: "Due to a bug, a shooter's melee attack damage (when affected by Forgetfulness), is also decreased by half"; wiki Forgetfulness calls it "more like a bug". HotA kept it and documented it.
 - Suggested **preserve**.
+- **Confirmed by code reading** (E04b T4b, `installation.md` §7.14): the base damage counts `max(1, n / 2)` creatures of a forgetful shooter on every strike. **User (Q53): the rule in every profile, no flag** (BAT-MAG-023).
 
 ### S-10 — Advanced Forgetfulness affects all enemy shooters (E04b)
 - Original: wiki Forgetfulness: "Contrary to description and other spells, advanced level affects all enemy ranged units (fixed in HotA)".
 - Suggested **fix-optional**.
+- **Confirmed by code reading** (flag `0x20`, `installation.md` §7.6, §7.14): ledger **Q-0011** (user, Q53).
 
 ### S-11 — Berserk: units fail to path around obstacles (E04b)
 - Original: wiki Berserk: berserk units treat blocked hexes as unreachable and wait; two-hex units miscount positions and pass although a target is reachable (fixed in HD mod/HotA).
 - Suggested **fix-optional** (the berserk unit's automatic behaviour is a rule we must specify anyway).
+- **Partly read** (E04b T4, `installation.md` §7.14): the berserk turn picks its target from the AI pathfinder's map (0x4B3400); the bug would sit there and was not read. HD fixes it, so the user's setup cannot show it. **User (Q53): the engine's own pathfinding in every profile; S-11 stays unconfirmed.**
 
 ### S-12 — Enchanters choose spells by the first stack's stats only (E04b)
 - Original: wiki Enchanter: "the spell relevance is calculated based on stats of the first stack only (fixed in HotA)".

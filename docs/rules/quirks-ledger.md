@@ -151,3 +151,16 @@ Classes: `exploit-fix` (always fixed, never toggleable) · `preserve` (accepted,
 - Defaults: faithful = on, strict-fixed = off
 - Regression test: `crates/h3-battle/src/tests/rage.rs`, `fire_shield_reflects_a_share_of_the_first_stage_capped_at_the_targets_health_with_quirk_q0010`
 - Decided by / date: user, 2026-10-07 (E04b T3b2 checkpoint); found by code reading, 2026-10-07 (E04b T3b2). Considered at the same checkpoint and not a quirk: a breath attack's second stack reflects nothing, in every profile (the rule, BAT-MAG-018).
+
+### Q-0011 — Forgetfulness is the mass version from Advanced
+- Class: fix-optional (survey S-10, suggested class; confirmed for SoD by code reading; user, 2026-10-07, Q53)
+- Context / rules affected: battle, BAT-MAG-023, BAT-MAG-003
+- Original behavior: the spell table's flag `0x20` gives Forgetfulness a target stack only below Advanced (0x59E060), so from Advanced it reaches every enemy shooter it can affect, against its in-game text (Advanced: "the selected enemy unit").
+- Intended/expected behavior: one target at Advanced, every enemy shooter at Expert (the text; VCMI 1.7.5, `config/spells/timed.json`; HotA's fix).
+- Impact: gameplay-altering
+- Community status: fixed in Horn of the Abyss (wiki Forgetfulness)
+- Sources: original-data, `docs/formats/installation.md` §7.6, §7.8, §7.14; wiki Forgetfulness (survey S-10)
+- Flag: `quirk.battle.early_mass_version` (E04b T4b): a spell's mass version starts at `mass` (the original's flag word) with the flag, at its `fixed_mass` without it (pack format v11)
+- Defaults: faithful = on, strict-fixed = off
+- Regression test: `crates/h3-battle/src/tests/actions.rs`, `forgetfulness_reaches_enemy_shooters_and_is_mass_from_advanced_with_its_quirk`
+- Decided by / date: user, 2026-10-07 (E04b T4a checkpoint, Q53). Considered at the same checkpoint and not a quirk: a forgetful shooter's melee strikes and retaliations count half its creatures too (survey S-09), the rule in every profile (BAT-MAG-023).

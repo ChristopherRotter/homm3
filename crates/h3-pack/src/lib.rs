@@ -13,13 +13,13 @@ use h3_content::{
     AbilityDef, Affects, AreaShot, ArtifactClass, ArtifactDef, ArtifactSlotDef,
     ArtifactSlotOverride, AuraTarget, BattleParamsDef, CompileError, ContentKey, ContentPack,
     CreatureDef, CreatureFlag, CreatureFlags, CreatureInfoDef, CreatureOverride, CreaturePatch,
-    CreatureSelector, CreatureStat, CreatureTypeId, EffectDuration, FactionDef, Formation,
-    HeroClassDef, HeroEffect, HeroEffectDef, HeroParamsDef, HeroTypeDef, KeyError, MASTERY_NAMES,
-    MAX_ALIGNMENT_FACTIONS, ObstacleDef, PackManifest, ProfileDef, ResourceDef, Ruleset,
-    SPECIALIST_LEVELS, SchoolId, SecondarySkillDef, SpecialistBonus, SpellArea, SpellCategory,
-    SpellChain, SpellDef, SpellEffect, SpellId, SpellMagic, SpellPolarity, SpellSchoolDef,
-    SpellScope, SpellTarget, StartingStackDef, SurrenderDef, TargetConditions, TargetSide,
-    TerrainDef, TimedChange,
+    CreatureSelector, CreatureStat, CreatureTypeId, EffectDuration, EffectEnd, FactionDef,
+    Formation, HeroClassDef, HeroEffect, HeroEffectDef, HeroParamsDef, HeroTypeDef, KeyError,
+    MASTERY_NAMES, MAX_ALIGNMENT_FACTIONS, ObstacleDef, PackManifest, ProfileDef, ResourceDef,
+    Ruleset, SPECIALIST_LEVELS, SchoolId, SecondarySkillDef, SpecialistBonus, SpellArea,
+    SpellCategory, SpellChain, SpellDef, SpellEffect, SpellId, SpellMagic, SpellPolarity,
+    SpellSchoolDef, SpellScope, SpellTarget, StartingStackDef, SurrenderDef, TargetConditions,
+    TargetSide, TerrainDef, TimedChange,
 };
 use h3_contracts::{
     Army, ArmyStack, BallistaControl, BattleEffect, BattleHero, BattleSetup, BattleSide,
@@ -444,8 +444,11 @@ struct SpellDto {
     #[serde(default)]
     mind: bool,
     mass: Option<String>,
+    fixed_mass: Option<String>,
     #[serde(default)]
     duration: EffectDurationDto,
+    #[serde(default)]
+    ends: EffectEndDto,
     #[serde(default)]
     cumulative: bool,
     #[serde(default)]
@@ -487,6 +490,14 @@ enum EffectDurationDto {
     Rounds,
     Permanent,
     OwnTurn,
+}
+
+#[derive(Deserialize, Default)]
+#[serde(rename_all = "snake_case")]
+enum EffectEndDto {
+    #[default]
+    Never,
+    Damaged,
 }
 
 #[derive(Deserialize, Default)]
@@ -586,6 +597,11 @@ impl SpellDto {
                 .collect::<Result<_, _>>()?,
             mind: self.mind,
             mass_from: self.mass.as_deref().map(mastery_named).transpose()?,
+            fixed_mass_from: self.fixed_mass.as_deref().map(mastery_named).transpose()?,
+            ends: match self.ends {
+                EffectEndDto::Never => EffectEnd::Never,
+                EffectEndDto::Damaged => EffectEnd::Damaged,
+            },
             duration: match self.duration {
                 EffectDurationDto::Rounds => EffectDuration::Rounds,
                 EffectDurationDto::Permanent => EffectDuration::Permanent,
@@ -2441,7 +2457,8 @@ mod tests {
              \"quirk.battle.first_protection\" = true, \
              \"quirk.battle.counterstrike_extra_round\" = true, \
              \"quirk.battle.frenzy_reduced_defense\" = true, \
-             \"quirk.battle.fire_shield_first_stage\" = true }",
+             \"quirk.battle.fire_shield_first_stage\" = true, \
+             \"quirk.battle.early_mass_version\" = true }",
             "quirks = { \"quirk.x\" = true }",
         );
         let pack = parse_pack(&quirky).unwrap();
@@ -2549,12 +2566,12 @@ mod tests {
         expected.tactics = 2;
         expected.magic.mana = 40;
         expected.magic.max_mana = 40;
-        // The four damage spells, Ward, five timed spells, Mend, Blaze and Glass with Basic Storm
-        // magic (E04b T2c, T3a, T3b1, T3b1b, T3b2, T4a).
+        // The four damage spells, Ward, five timed spells, Mend, Blaze, Glass and Haze with Basic
+        // Storm magic (E04b T2c, T3a, T3b1, T3b1b, T3b2, T4a, T4b).
         expected.magic.spell_book = Some(
             [
                 "spark", "cinders", "arc", "blight", "ward", "hasten", "drag", "fury", "smiting",
-                "riposte", "mend", "blaze", "glass",
+                "riposte", "mend", "blaze", "glass", "haze",
             ]
             .map(|k| ruleset.spell_by_key(&format!("synthetic:{k}")).unwrap())
             .to_vec(),
@@ -3064,9 +3081,10 @@ mod tests {
         assert_eq!(roe.battle().formation_row(Formation::Loose, 7, 3), Some(5));
         assert_eq!(roe.battle().formation_row(Formation::Tight, 3, 0), Some(4));
         // Abilities (E03 T2): RoE elementals hate their opposites; AB adds the Conflux ones.
-        // Four magic abilities follow (E04b T2d: one immunity, three vulnerabilities).
-        assert_eq!(roe.abilities(air).len(), 5);
-        assert_eq!(ab.abilities(air).len(), 6);
+        // Four magic abilities follow (E04b T2d: one immunity, three vulnerabilities), and
+        // Blind's immunity (E04b T4b).
+        assert_eq!(roe.abilities(air).len(), 6);
+        assert_eq!(ab.abilities(air).len(), 7);
         let cavalier = roe.creature_by_key("base:cavalier").unwrap();
         assert_eq!(
             roe.abilities(cavalier),
@@ -3886,7 +3904,7 @@ mod tests {
         use h3_content::SpellCategory;
         let r = compile(&[SYNTHETIC_PACK, SYNTHETIC_EXT_PACK], "synthetic:faithful").unwrap();
         assert_eq!(r.spell_schools().len(), 2);
-        assert_eq!(r.spells().len(), 25);
+        assert_eq!(r.spells().len(), 27);
         // Pack format v6: the storm school's protection rank; stone's defaults to 0.
         let ranks: Vec<u8> = r
             .spell_schools()
@@ -4038,6 +4056,24 @@ mod tests {
                 vec![SpellEffect::Timed(TimedChange::MagicMirror)]
             ]
         );
+        // Format v11: Forgetfulness's fixed mass version and Blind's end by damage.
+        let (haze, dazzle) = (magic("synthetic:haze"), magic("synthetic:dazzle"));
+        assert_eq!(
+            (haze.mass_from, haze.fixed_mass_from, haze.effects),
+            (
+                Some(2),
+                Some(3),
+                vec![SpellEffect::Timed(TimedChange::Forgetfulness)]
+            )
+        );
+        assert_eq!(
+            (dazzle.ends, dazzle.effects),
+            (
+                EffectEnd::Damaged,
+                vec![SpellEffect::Timed(TimedChange::Blind)]
+            )
+        );
+        assert_eq!(magic("synthetic:veil").ends, EffectEnd::Never);
         // Format v9: a specialist's rule of the spell's own.
         assert_eq!(
             [

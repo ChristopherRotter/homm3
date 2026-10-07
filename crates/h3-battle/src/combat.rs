@@ -17,7 +17,7 @@ use h3_kernel::arith::mul_div_floor;
 use crate::damage::{
     Strike, apply_damage, base_damage, effective_defense, frenzied, reduced_defense, resurrect,
 };
-use crate::effects::DamageRoll;
+use crate::effects::{self, DamageRoll, Status};
 use crate::event::{Event, EventKind, Sink, StrikeFlags};
 use crate::geometry::{Direction, Field, Footprint, Hex, HexSet};
 use crate::hero::{self, HeroRecord};
@@ -45,13 +45,15 @@ pub(crate) fn is_blocked(state: &BattleState, field: Field, id: StackId) -> bool
 }
 
 /// Whether stack `id` can shoot now: a shooter with shots left that is not blocked
-/// (BAT-RNG-001); war machines and stacks whose hero lets them shoot while adjacent shoot even
-/// when blocked (BAT-WAR-001, BAT-HER-006), and under quirk Q-0004 the shooting war machine also
-/// without shots (BAT-WAR-002).
-// rule: BAT-RNG-001, BAT-WAR-001
+/// (BAT-RNG-001) and has not forgotten how (Forgetfulness from Advanced, BAT-MAG-023); war
+/// machines and stacks whose hero lets them shoot while adjacent shoot even when blocked
+/// (BAT-WAR-001, BAT-HER-006), and under quirk Q-0004 the shooting war machine also without
+/// shots (BAT-WAR-002).
+// rule: BAT-RNG-001, BAT-WAR-001, BAT-MAG-023
 pub(crate) fn can_shoot(state: &BattleState, field: Field, id: StackId) -> bool {
     let s = state.at(id);
     s.has(StackTraits::SHOOTER)
+        && !s.spells.status.contains(Status::NO_SHOOTING)
         && has_ammunition(s)
         && (s.has(StackTraits::WAR_MACHINE)
             || s.has(StackTraits::SHOOTS_WHEN_ADJACENT)
@@ -72,6 +74,18 @@ fn ammo_supplied(state: &BattleState, side: BattleSide) -> bool {
         .any(|s| s.side == side && s.is_alive() && s.has(StackTraits::AMMO_SUPPLY))
 }
 
+/// The creatures of `stack` that count for the damage of its strikes: all, or for a forgetful
+/// shooter half of them, rounded down, at least one, whatever the strike (BAT-MAG-023; survey
+/// S-09: the original halves its melee strikes and retaliations too, the rule in every profile).
+// rule: BAT-MAG-023
+fn striking_count(stack: &Stack) -> u32 {
+    if stack.spells.status.contains(Status::FORGETFUL) && stack.has(StackTraits::SHOOTER) {
+        (stack.count / 2).max(1)
+    } else {
+        stack.count
+    }
+}
+
 /// What all strikes of one attack share.
 #[derive(Debug, Clone, Copy)]
 struct Blow {
@@ -84,6 +98,9 @@ struct Blow {
     lucky: bool,
     /// A commanded war machine's double damage (BAT-WAR-006).
     double_damage: bool,
+    /// The share of its damage the striker deals as a retaliation after being attacked blind,
+    /// percent (BAT-MAG-024; 100: full).
+    retaliation_percent: u16,
 }
 
 /// Whether the creature of `stack` has an ability matching `f`.
@@ -107,16 +124,17 @@ fn strike<S: Sink>(
     let params = ruleset.battle();
     let striker = *state.at(attacker);
     let victim = *state.at(target);
+    let count = striking_count(&striker);
     // rule: BAT-MAG-011
     let base = match striker
         .spells
         .damage
         .fixed(striker.damage_min, striker.damage_max)
     {
-        Some(each) => u64::from(striker.count).saturating_mul(each),
+        Some(each) => u64::from(count).saturating_mul(each),
         None => base_damage(
             &mut state.rng,
-            striker.count,
+            count,
             striker.damage_min,
             striker.damage_max,
             params.damage_roll_samples,
@@ -155,6 +173,7 @@ fn strike<S: Sink>(
         kills,
         flags,
     }));
+    effects::damaged(state, ruleset, target, sink);
     (lost, reflected)
 }
 
@@ -241,6 +260,8 @@ fn strike_inputs(
         flags = flags.with(StrikeFlags::DOUBLE_DAMAGE);
     }
     inputs.penalty_percent = penalty(params, field, striker, victim, flags).unwrap_or(0);
+    // rule: BAT-MAG-024
+    inputs.retaliation_percent = blow.retaliation_percent;
     // rule: BAT-MAG-012
     inputs.protection_percent = u16::from(if ranged {
         victim.spells.ranged_protection
@@ -336,6 +357,7 @@ pub(crate) fn shot_damage_range(
         death_blow: false,
         lucky: false,
         double_damage: false,
+        retaliation_percent: 100,
     };
     let terms = specialist_terms(state, ruleset, attacker);
     let (inputs, _) = strike_inputs(
@@ -346,7 +368,7 @@ pub(crate) fn shot_damage_range(
         blow,
     );
     let (params, staged) = (ruleset.battle(), staged(ruleset));
-    let n = u64::from(striker.count);
+    let n = u64::from(striking_count(striker));
     let (min, max) = (striker.damage_min, striker.damage_max);
     let (low, high) = striker
         .spells
@@ -392,8 +414,7 @@ fn attack<S: Sink>(
     ruleset: &Ruleset,
     pair: (StackId, StackId),
     others: &Targets,
-    flags: StrikeFlags,
-    charge: u8,
+    (flags, charge, retaliation_percent): (StrikeFlags, u8, u16),
     sink: &mut S,
 ) {
     let (attacker, target) = pair;
@@ -420,6 +441,7 @@ fn attack<S: Sink>(
         death_blow,
         lucky: false,
         double_damage,
+        retaliation_percent,
     };
     // Life drain takes `drain` % of the hit points lost by living targets, rounded down per
     // target.
@@ -451,19 +473,26 @@ fn attack<S: Sink>(
         death_stare(state, pair, stare, sink);
     }
     if reflected > 0 {
-        reflect(state, attacker, reflected, sink);
+        reflect(state, ruleset, attacker, reflected, sink);
     }
 }
 
 /// Deals the `damage` its targets' Fire Shields reflect to `stack` (BAT-MAG-018).
 // rule: BAT-MAG-018
-fn reflect<S: Sink>(state: &mut BattleState, stack: StackId, damage: u64, sink: &mut S) {
+fn reflect<S: Sink>(
+    state: &mut BattleState,
+    ruleset: &Ruleset,
+    stack: StackId,
+    damage: u64,
+    sink: &mut S,
+) {
     let kills = apply_damage(state.at_mut(stack), damage);
     sink.emit(Event::public(EventKind::Reflected {
         stack,
         damage,
         kills,
     }));
+    effects::damaged(state, ruleset, stack, sink);
 }
 
 /// Heals and resurrects `stack` by `hp` hit points drained from its targets (BAT-DMG-008).
@@ -626,9 +655,10 @@ fn pattern_hexes(field: Field, me: &Stack, fp: Footprint, victim: Footprint) -> 
 }
 
 /// A melee attack of `attacker`, which started its turn on `start` and travelled `charge` hexes,
-/// on `target` (BAT-ATK-001): the attack, the target's retaliation (BAT-RET-001..003), for
-/// creatures that strike twice a second attack (BAT-ATK-002), the return to `start` of creatures
-/// that strike and return (BAT-ATK-004), then the end-of-battle check (BAT-END-001).
+/// on `target` (BAT-ATK-001): the attack, the target's retaliation (BAT-RET-001..003; reduced
+/// or none if the target was blind, BAT-MAG-024), for creatures that strike twice a second attack
+/// (BAT-ATK-002), the return to `start` of creatures that strike and return (BAT-ATK-004), then
+/// the end-of-battle check (BAT-END-001).
 pub(crate) fn melee<S: Sink>(
     state: &mut BattleState,
     ruleset: &Ruleset,
@@ -646,6 +676,9 @@ pub(crate) fn melee<S: Sink>(
     } else {
         1
     };
+    // Whether the target is blind as the attack begins (the original's mark, `installation.md`
+    // §7.14): the strike ends the blindness, the retaliation keeps its factor.
+    let blind = effects::blind_share(state, ruleset, target);
     for i in 0..times {
         if !state.at(attacker).is_alive() || !state.at(target).is_alive() {
             break;
@@ -658,12 +691,11 @@ pub(crate) fn melee<S: Sink>(
             ruleset,
             pair,
             &others,
-            StrikeFlags::NONE,
-            charge,
+            (StrikeFlags::NONE, charge, 100),
             sink,
         );
         if i == 0 {
-            retaliate(state, ruleset, target, attacker, sink);
+            retaliate(state, ruleset, (target, attacker), blind, sink);
         }
     }
     // rule: BAT-ATK-004
@@ -682,13 +714,15 @@ pub(crate) fn melee<S: Sink>(
 
 /// The retaliation of `retaliator` on `attacker` (BAT-RET-001): if both live, the attacker's
 /// strikes allow retaliation (BAT-RET-002) and the retaliator has a retaliation left this round
-/// (BAT-RET-003), it attacks back with its full attack pattern.
-// rule: BAT-RET-001, BAT-RET-002, BAT-RET-003
+/// (BAT-RET-003), it attacks back with its full attack pattern. A retaliator that was blind when
+/// attacked (`blind`: Blind's share) deals that share of its damage, and none at 0, keeping its
+/// retaliation (BAT-MAG-024).
+// rule: BAT-RET-001, BAT-RET-002, BAT-RET-003, BAT-MAG-024
 fn retaliate<S: Sink>(
     state: &mut BattleState,
     ruleset: &Ruleset,
-    retaliator: StackId,
-    attacker: StackId,
+    (retaliator, attacker): (StackId, StackId),
+    blind: Option<u16>,
     sink: &mut S,
 ) {
     let r = state.at(retaliator);
@@ -699,6 +733,7 @@ fn retaliate<S: Sink>(
         || a.has(StackTraits::NO_ENEMY_RETALIATION)
         || r.has(StackTraits::WAR_MACHINE)
         || r.retaliations_left == 0
+        || blind == Some(0)
     {
         return;
     }
@@ -716,8 +751,7 @@ fn retaliate<S: Sink>(
         ruleset,
         pair,
         &others,
-        StrikeFlags::RETALIATION,
-        0,
+        (StrikeFlags::RETALIATION, 0, blind.unwrap_or(100)),
         sink,
     );
 }
@@ -752,7 +786,8 @@ pub(crate) fn shoot<S: Sink>(
         }
         let others = area(state, field, shooter, target, at);
         let pair = (shooter, target);
-        attack(state, ruleset, pair, &others, StrikeFlags::RANGED, 0, sink);
+        let how = (StrikeFlags::RANGED, 0, 100);
+        attack(state, ruleset, pair, &others, how, sink);
     }
     check_end(state, sink);
 }

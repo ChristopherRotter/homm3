@@ -17,10 +17,10 @@
 use core::num::NonZeroU32;
 
 use h3_content::{
-    Ability, CreatureFlag, CreatureTypeId, FIRST_PROTECTION, FULL_BP, MAX_FIELD_HEXES,
-    MAX_SPELL_SCHOOLS, MAX_SPELLS, Ruleset, SINGLE_PRECISION_RATES, SpecialistBonus, Spell,
-    SpellCategory, SpellEffect, SpellId, SpellPolarity, SpellScope, SpellTarget, TargetSide,
-    TimedChange,
+    Ability, CreatureFlag, CreatureTypeId, EARLY_MASS_VERSION, FIRST_PROTECTION, FULL_BP,
+    MAX_FIELD_HEXES, MAX_SPELL_SCHOOLS, MAX_SPELLS, Ruleset, SINGLE_PRECISION_RATES,
+    SpecialistBonus, Spell, SpellCategory, SpellEffect, SpellId, SpellPolarity, SpellScope,
+    SpellTarget, TargetSide, TimedChange,
 };
 use h3_contracts::{BattleEffect, BattleHero, BattleSide, Rate};
 use h3_kernel::arith::{
@@ -533,7 +533,7 @@ fn check_target(
     (spell, mastery): (SpellRef<'_>, u8),
     target: CastTarget,
 ) -> Result<(), CommandError> {
-    let ok = match (spell.1.magic.target_at(mastery), target) {
+    let ok = match (target_at(ruleset, spell.1, mastery), target) {
         (SpellTarget::Stack, CastTarget::Stack(s)) => {
             state.stack(s).is_some() && aimable(state, ruleset, side, (spell, mastery), s)
         }
@@ -550,6 +550,14 @@ fn check_target(
     } else {
         Err(CommandError::InvalidSpellTarget)
     }
+}
+
+/// What a cast of `spell` at `mastery` is aimed at (BAT-MAG-003): nothing for its mass version,
+/// which starts at the original's earlier mastery with quirk Q-0011 (BAT-MAG-023: Forgetfulness
+/// from Advanced), else at the fixed one.
+fn target_at(ruleset: &Ruleset, spell: &Spell, mastery: u8) -> SpellTarget {
+    let early = ruleset.quirks().is_enabled(EARLY_MASS_VERSION);
+    spell.magic.target_at(mastery, early)
 }
 
 /// `power × power factor + effect[mastery]` of `hero`'s cast (BAT-MAG-004).
@@ -632,7 +640,7 @@ fn has_target(
     actor: BattleSide,
     (spell, mastery): (SpellRef<'_>, u8),
 ) -> bool {
-    match spell.1.magic.target_at(mastery) {
+    match target_at(ruleset, spell.1, mastery) {
         SpellTarget::Hex => true,
         SpellTarget::Stack => {
             stack_ids(state).any(|s| aimable(state, ruleset, actor, (spell, mastery), s))
@@ -971,6 +979,8 @@ fn affect<S: Sink>(
             damage,
             kills,
         }));
+        // rule: BAT-MAG-024
+        effects::damaged(state, ruleset, s, sink);
     }
     if !state.at(s).is_alive() {
         return;

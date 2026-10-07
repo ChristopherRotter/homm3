@@ -14,8 +14,8 @@
 use alloc::vec::Vec;
 
 use h3_content::{
-    COUNTERSTRIKE_EXTRA_ROUND, EffectDuration, MAX_SPELL_SCHOOLS, Ruleset, SINGLE_PRECISION_RATES,
-    Spell, SpellCategory, SpellEffect, SpellId, SpellPolarity, TimedChange,
+    COUNTERSTRIKE_EXTRA_ROUND, EffectDuration, EffectEnd, MAX_SPELL_SCHOOLS, Ruleset,
+    SINGLE_PRECISION_RATES, Spell, SpellCategory, SpellEffect, SpellId, SpellPolarity, TimedChange,
 };
 use h3_kernel::arith::{SINGLE_FRAC_BITS, single_precision};
 use h3_kernel::{CanonicalHash, StateHasher};
@@ -155,6 +155,41 @@ pub struct SpellValues {
     /// The chance that a single-target spell aimed at it from the other side goes to another
     /// stack, percent (0: none; Magic Mirror, BAT-MAG-022).
     pub mirror: u8,
+    /// What its effects make of the stack (Forgetfulness, Blind; since v25, in the byte the
+    /// record had spare).
+    pub status: Status,
+}
+
+/// What a stack's timed effects make of it (BAT-MAG-023, BAT-MAG-024), materialised with its
+/// [`SpellValues`] so that the hot paths never read the effect list.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub struct Status(u8);
+
+impl Status {
+    /// A shooter that counts half its creatures for damage (Forgetfulness, BAT-MAG-023).
+    pub const FORGETFUL: Self = Self(1);
+    /// It cannot shoot (Forgetfulness cast at Advanced or Expert, BAT-MAG-023).
+    pub const NO_SHOOTING: Self = Self(1 << 1);
+    /// It loses its turns (Blind, BAT-MAG-024).
+    pub const BLIND: Self = Self(1 << 2);
+    /// One of its effects ends when it takes damage (Blind, BAT-MAG-024).
+    pub const DAMAGE_ENDS: Self = Self(1 << 3);
+
+    /// Whether all bits of `other` are set.
+    pub const fn contains(self, other: Self) -> bool {
+        self.0 & other.0 == other.0
+    }
+
+    /// The set with the bits of `other` added if `on`.
+    #[must_use]
+    pub const fn with(self, other: Self, on: bool) -> Self {
+        if on { Self(self.0 | other.0) } else { self }
+    }
+
+    /// The raw bits.
+    pub const fn bits(self) -> u8 {
+        self.0
+    }
 }
 
 impl SpellValues {
@@ -178,6 +213,7 @@ impl SpellValues {
             frenzy: 0,
             spell_immunity: 0,
             mirror: 0,
+            status: Status(0),
         }
     }
 }
@@ -192,7 +228,7 @@ impl CanonicalHash for SpellValues {
     /// Attack, defense, speed, melee and ranged attack (u8 since v24), the damage roll (code,
     /// value), the speed share, morale, luck; since v21 the melee, ranged and school protections
     /// and Slayer; since v22 Fire Shield and Frenzy; since v24 Anti-Magic's level and Magic
-    /// Mirror's chance.
+    /// Mirror's chance; since v25 the status bits.
     fn hash_into(&self, h: &mut StateHasher) {
         h.write_bytes(&self.attack.to_le_bytes());
         h.write_bytes(&self.defense.to_le_bytes());
@@ -218,6 +254,7 @@ impl CanonicalHash for SpellValues {
         h.write_u16(self.frenzy);
         h.write_u8(self.spell_immunity);
         h.write_u8(self.mirror);
+        h.write_u8(self.status.bits());
     }
 }
 
@@ -510,6 +547,48 @@ fn end_where<S: Sink>(
     ended
 }
 
+/// Ends the effects on stack `s` that any damage ends (BAT-MAG-024: Blind; the original's
+/// 0x444090, `installation.md` §7.14), after it took damage, reporting each.
+// rule: BAT-MAG-024
+pub(crate) fn damaged<S: Sink>(
+    state: &mut BattleState,
+    ruleset: &Ruleset,
+    s: StackId,
+    sink: &mut S,
+) {
+    if !state.at(s).spells.status.contains(Status::DAMAGE_ENDS) {
+        return;
+    }
+    let ends = |e: &ActiveEffect| {
+        ruleset
+            .spell(e.spell)
+            .is_some_and(|sp| sp.magic.ends == EffectEnd::Damaged)
+    };
+    // The status says an effect that damage ends is active, so one ends.
+    end_where(state, s, sink, ends);
+    recompute(state, ruleset, s);
+}
+
+/// The share of its retaliation's damage, percent, that stack `s` deals while blind (BAT-MAG-024:
+/// Blind's value), or `None` if it is not blind.
+pub(crate) fn blind_share(state: &BattleState, ruleset: &Ruleset, s: StackId) -> Option<u16> {
+    let blind = SpellEffect::Timed(TimedChange::Blind);
+    state
+        .at(s)
+        .spells
+        .status
+        .contains(Status::BLIND)
+        .then(|| {
+            state.effects.of(s).iter().find_map(|e| {
+                ruleset
+                    .spell(e.spell)
+                    .filter(|sp| sp.magic.effects.contains(&blind))
+                    .map(|_| e.value.min(100))
+            })
+        })
+        .flatten()
+}
+
 /// Recomputes the [`SpellValues`] of stack `s` from its entries (BAT-MAG-011): the sums of what
 /// they added to attack, defense and speed; Bloodlust's and Precision's bonuses and the morale
 /// and luck changes summed by kind; the base damage from Bless (which wins over Curse, as the
@@ -535,6 +614,8 @@ pub(crate) fn recompute(state: &mut BattleState, ruleset: &Ruleset, s: StackId) 
         let schools = spell.map(|sp| sp.schools.as_slice()).unwrap_or_default();
         let percent = u8::try_from(v.min(100)).unwrap_or(100);
         let small = u8::try_from(v).unwrap_or(u8::MAX);
+        let ends_on_damage = spell.is_some_and(|sp| sp.magic.ends == EffectEnd::Damaged);
+        values.status = values.status.with(Status::DAMAGE_ENDS, ends_on_damage);
         for change in changes.iter().filter_map(|c| c.timed()) {
             match change {
                 TimedChange::MeleeAttack => {
@@ -579,6 +660,15 @@ pub(crate) fn recompute(state: &mut BattleState, ruleset: &Ruleset, s: StackId) 
                     values.spell_immunity = values.spell_immunity.max(small);
                 }
                 TimedChange::MagicMirror => values.mirror = values.mirror.max(percent),
+                // rule: BAT-MAG-023
+                TimedChange::Forgetfulness => {
+                    values.status = values
+                        .status
+                        .with(Status::FORGETFUL, true)
+                        .with(Status::NO_SHOOTING, e.mastery >= 2);
+                }
+                // rule: BAT-MAG-024
+                TimedChange::Blind => values.status = values.status.with(Status::BLIND, true),
                 _ => {}
             }
         }
