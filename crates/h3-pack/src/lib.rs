@@ -2384,7 +2384,8 @@ mod tests {
              \"quirk.battle.unlimited_ballista_shots\" = true, \
              \"quirk.battle.first_protection\" = true, \
              \"quirk.battle.counterstrike_extra_round\" = true, \
-             \"quirk.battle.frenzy_reduced_defense\" = true }",
+             \"quirk.battle.frenzy_reduced_defense\" = true, \
+             \"quirk.battle.fire_shield_first_stage\" = true }",
             "quirks = { \"quirk.x\" = true }",
         );
         let pack = parse_pack(&quirky).unwrap();

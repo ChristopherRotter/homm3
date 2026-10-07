@@ -138,3 +138,16 @@ Classes: `exploit-fix` (always fixed, never toggleable) · `preserve` (accepted,
 - Defaults: faithful = on, strict-fixed = off
 - Regression test: `crates/h3-battle/src/tests/rage.rs`, `frenzy_against_a_behemoth_counts_its_reduction_with_quirk_q0009`
 - Decided by / date: suggested class S-16 (user, Q30); confirmed for SoD by code reading, 2026-10-07 (E04b T3b2)
+
+### Q-0010 — Fire Shield reflects a share of the strike before the defense and protections
+- Class: fix-optional (user, 2026-10-07)
+- Context / rules affected: battle, BAT-MAG-018
+- Original behavior: the reflected damage is `v %` of the strike's first damage stage (the base damage with its bonuses: luck, attack advantage, Offense, …), capped at the struck stack's hit points, taken before the struck stack's defense, the penalties, Shield, Air Shield, the Protections and Armorer reduce the strike; a well-defended shielded stack reflects more than `v %` of what it lost (0x443F40 passes stage 1 to 0x422440)
+- Intended/expected behavior: `v %` of the damage dealt, as the spell's text says (VCMI; strict-fixed: the hit points the strike took).
+- Impact: gameplay-altering (small)
+- Community status: unknown
+- Sources: original-data, `docs/formats/installation.md` §7.11; VCMI 1.7.5 (`lib/battle/DamageCalculator.cpp`, the damage after all reductions); batch 2b to observe
+- Flag: `quirk.battle.fire_shield_first_stage` (E04b T3c)
+- Defaults: faithful = on, strict-fixed = off
+- Regression test: `crates/h3-battle/src/tests/rage.rs`, `fire_shield_reflects_a_share_of_the_first_stage_capped_at_the_targets_health_with_quirk_q0010`
+- Decided by / date: user, 2026-10-07 (E04b T3b2 checkpoint); found by code reading, 2026-10-07 (E04b T3b2). Considered at the same checkpoint and not a quirk: a breath attack's second stack reflects nothing, in every profile (the rule, BAT-MAG-018).

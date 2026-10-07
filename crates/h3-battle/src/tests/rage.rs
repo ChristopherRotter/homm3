@@ -103,23 +103,27 @@ fn tank_reflects(profile: &str, mastery: u8) -> Vec<(u8, u64, u32)> {
 
 // covers: BAT-MAG-018
 #[test]
-fn fire_shield_reflects_a_share_of_the_first_stage_capped_at_the_targets_health() {
+fn fire_shield_reflects_a_share_of_the_first_stage_capped_at_the_targets_health_with_quirk_q0010() {
     // Stage 1 is 200 (the attack is below the defense); the 150 damage kill the Tank, whose
-    // 100 hit points cap the base: 20 % of 100, two Fixed. Single precision changes nothing
-    // here (f32(0.2) is slightly above 0.2).
+    // 100 hit points cap the base with or without quirk Q-0010: 20 % of 100, two Fixed. Single
+    // precision changes nothing here (f32(0.2) is slightly above 0.2).
     assert_eq!(tank_reflects("t:faithful", 1), [(0, 20, 2)]);
     assert_eq!(tank_reflects("t:single", 1), [(0, 20, 2)]);
     assert_eq!(tank_reflects("t:faithful", 3), [(0, 30, 3)]);
-    let r = ruleset();
-    // 10 Fixed (stage 1: 20) on a shielded Tank: 4 back, before the Tank's retaliation.
-    let mut s = field_of(
-        &r,
-        &[(0, "fixed", 10)],
-        &[(0, "tank", 1)],
-        &[(7, 5), (8, 5)],
-    );
-    give(&mut s, &r, 1, "fireshield", 1);
-    let events = hit(&mut s, &r, 1, (7, 5));
+    assert_eq!(tank_reflects("t:fireshield", 1), [(0, 20, 2)]);
+    // 10 Fixed (stage 1: 20, dealt: 15) on a shielded Tank: with quirk Q-0010 4 back (20 % of
+    // the first stage), without it 3 (of the damage dealt).
+    let tank = |r: &Ruleset| {
+        let mut s = field_of(r, &[(0, "fixed", 10)], &[(0, "tank", 1)], &[(7, 5), (8, 5)]);
+        give(&mut s, r, 1, "fireshield", 1);
+        let events = hit(&mut s, r, 1, (7, 5));
+        (s, events)
+    };
+    assert_eq!(reflected(&tank(&ruleset()).1), [(0, 3, 0)]);
+    let r = ruleset_with("t:fireshield", |_| {});
+    let (s, events) = tank(&r);
+    assert_eq!(strikes(&events)[0], (0, 1, 15));
+    // The reflection comes before the Tank's retaliation.
     assert_eq!(reflected(&events), [(0, 4, 0)]);
     let reflection = events
         .iter()
@@ -212,7 +216,7 @@ fn a_breath_burns_on_its_target_only_a_multi_headed_striker_on_every_stack() {
 // covers: BAT-MAG-018, BAT-MAG-004, BAT-MAG-013
 #[test]
 fn the_reflection_is_the_shields_spell_damage() {
-    let r = ruleset();
+    let r = ruleset_with("t:fireshield", |_| {});
     // The struck stack's hero adds 50 % to its spells (its attack and defense are 0).
     let mut h = hero(&r);
     (h.attack, h.defense) = (0, 0);

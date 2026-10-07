@@ -656,9 +656,10 @@ fn spell_damage(
     (caster, protected(ruleset, spell, damage, protection))
 }
 
-/// The damage a stack with Fire Shield reflects onto `striker` from a melee strike whose first
-/// damage stage, capped at the struck stack `target`'s hit points, is `first` (BAT-MAG-018): none
-/// for a fire-immune striker; else `first × v %` rounded down (with quirk Q-0005 in the
+/// The damage a stack with Fire Shield reflects onto `striker` from a melee strike on the struck
+/// stack `target` whose reflected base is `first` (BAT-MAG-018; the strike's first damage stage
+/// capped at the target's hit points with quirk Q-0010, else the hit points it lost): none for a
+/// fire-immune striker; else `first × v %` rounded down (with quirk Q-0005 in the
 /// original's single precision), then the shield's spell damage with the bonuses of the struck
 /// stack's hero as the caster's and the striker's reductions and protection
 /// ([`spell_damage`]; `installation.md` §7.11). No immunity or resistance applies.

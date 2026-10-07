@@ -2125,7 +2125,7 @@ id       = "BAT-MAG-018"
 title    = "Fire Shield"
 context  = "battle"
 status   = "implemented"
-summary  = "While Fire Shield is active on a stack (v = 20, 20, 25, 30 %), every melee strike on it (an attack, a retaliation or a second strike; never a shot) reflects damage onto the striker unless the striker is fire-immune (creature flag fire_immune): x = the strike's first damage stage (BAT-DMG-002: the base with its bonuses, before the target's defense, the penalties, Shield and Armorer), capped at the target's hit points before the strike; r = x × v % rounded down (single precision under quirk Q-0005); then r is the shield spell's damage (BAT-MAG-004) with the bonuses of the struck stack's hero as the caster's (Sorcery, the Orb of Fire, a specialty) and the striker's reductions and fire protection (BAT-MAG-013); no immunity or magic resistance applies. Only the attacked stack reflects (not a breath's second stack); a multi-headed striker (attacks all adjacent, three-headed) takes back the sum of every stack it struck. The damage comes after the attack's life drain and death stare and before the retaliation (Reflected); the striker may die of it. A timed own-stack spell without a mass version. Not yet: the Efreet Sultans' own 20 % shield (E04b T7), a hypnotized stack's controller as the caster (E04b T4)."
+summary  = "While Fire Shield is active on a stack (v = 20, 20, 25, 30 %), every melee strike on it (an attack, a retaliation or a second strike; never a shot) reflects damage onto the striker unless the striker is fire-immune (creature flag fire_immune): x = with quirk Q-0010 (faithful), as the original, the strike's first damage stage (BAT-DMG-002: the base with its bonuses, before the target's defense, the penalties, Shield and Armorer), capped at the target's hit points before the strike; without it (strict-fixed) the hit points the strike took (the spell's text: a share of the damage dealt; VCMI); r = x × v % rounded down (single precision under quirk Q-0005); then r is the shield spell's damage (BAT-MAG-004) with the bonuses of the struck stack's hero as the caster's (Sorcery, the Orb of Fire, a specialty) and the striker's reductions and fire protection (BAT-MAG-013); no immunity or magic resistance applies. Only the attacked stack reflects: a breath's second stack never does, in every profile (the user, 2026-10-07: considered as a quirk and kept as the rule, no flag); a multi-headed striker (attacks all adjacent, three-headed) takes back the sum of every stack it struck. The damage comes after the attack's life drain and death stare and before the retaliation (Reflected); the striker may die of it. A timed own-stack spell without a mass version. Not yet: the Efreet Sultans' own 20 % shield (E04b T7), a hypnotized stack's controller as the caster (E04b T4)."
 numeric  = "integer"
 
   [[rule.source]]
@@ -2135,7 +2135,7 @@ numeric  = "integer"
 
   [[rule.source]]
   kind       = "vcmi"
-  ref        = "config/spells/timed.json fireShield (FIRE_SHIELD 20/20/25/30) and the damage after all reductions (lib/battle/DamageCalculator.cpp; not followed: the original reflects from the first stage)"
+  ref        = "config/spells/timed.json fireShield (FIRE_SHIELD 20/20/25/30) and the damage after all reductions (lib/battle/DamageCalculator.cpp; followed in strict-fixed only: with quirk Q-0010 the original reflects from the first stage)"
   url        = "https://github.com/vcmi/vcmi/blob/1.7.5/config/spells/timed.json"
   retrieved  = "2026-10-07"
   confidence = "medium"

@@ -56,8 +56,9 @@ pub use pack::{
     SpellSchoolDef, StartingStackDef, SurrenderDef, TerrainDef,
 };
 pub use quirks::{
-    COUNTERSTRIKE_EXTRA_ROUND, FIRST_PROTECTION, FRENZY_REDUCED_DEFENSE, NO_LUCK_WITHOUT_HERO,
-    QuirkFlag, QuirkRegistry, Quirks, REGISTRY, SINGLE_PRECISION_RATES, UNLIMITED_BALLISTA_SHOTS,
+    COUNTERSTRIKE_EXTRA_ROUND, FIRE_SHIELD_FIRST_STAGE, FIRST_PROTECTION, FRENZY_REDUCED_DEFENSE,
+    NO_LUCK_WITHOUT_HERO, QuirkFlag, QuirkRegistry, Quirks, REGISTRY, SINGLE_PRECISION_RATES,
+    UNLIMITED_BALLISTA_SHOTS,
 };
 pub use ruleset::{
     BattleParams, CreatureInfo, CreatureType, CreatureTypeId, FactionId, FactionInfo, FieldParams,

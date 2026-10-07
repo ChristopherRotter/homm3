@@ -715,6 +715,10 @@ pub fn ruleset_with(profile: &str, edit: impl FnOnce(&mut BattleParamsDef)) -> R
                 quirks: vec![(String::from("quirk.battle.counterstrike_extra_round"), true)],
             },
             ProfileDef {
+                key: ContentKey::new("t", "fireshield").unwrap(),
+                quirks: vec![(String::from("quirk.battle.fire_shield_first_stage"), true)],
+            },
+            ProfileDef {
                 key: ContentKey::new("t", "original").unwrap(),
                 quirks: vec![
                     (String::from("quirk.battle.first_protection"), true),

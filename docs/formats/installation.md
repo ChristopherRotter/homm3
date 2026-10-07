@@ -352,7 +352,7 @@ damage-modifier function 0x5A78E0, which applies in this order:
    truncated. Specialty bonus, for a hero whose specialty is this spell: by default
    `ceil((hero level div creature level) × t × 0.03)` (integer division first; the creature
    level is the stack's 0-based level + 1); Magic Arrow `t >> 1` (Ciele, +50 %); Fire Wall `t`
-   (Luna, +100 %); a few timed spells use their own tables (T3).
+   (Luna, +100 %); a few timed spells use their own tables (§7.12).
 2. **The target creature** (0x44B4B0, integer): Air and Storm Elementals double damage from
    Lightning Bolt, Chain Lightning, Armageddon and Titan's Lightning Bolt; Fire and Energy
    Elementals from Ice Bolt and Frost Ring; Earth and Magma Elementals from Meteor Shower; Water
@@ -449,7 +449,7 @@ duration. If the spell is already active, the duration becomes the larger of the
 stored mastery the higher, and **nothing else changes** (the value of the first cast stays).
 Otherwise the active count rises, duration and mastery are stored, and the value `v =
 effect[mastery]` (the spell table, from `SPTRAITS.TXT`; plus the hero's specialty bonus 0x4E5FF0
-for Bloodlust, Precision, Weakness, Stone Skin, Prayer, Fortune and Haste, T3c) is used per
+for Bloodlust, Precision, Weakness, Stone Skin, Prayer, Fortune and Haste, §7.12) is used per
 spell: Bless removes Curse and stores `v`; Curse removes Bless and stores `v`; Bloodlust and
 Precision store `v`; Weakness lowers `v` to the current attack, stores it and subtracts it from
 the attack; Stone Skin stores `v` and adds it to the defense; Prayer stores `v` and adds it to
@@ -499,7 +499,7 @@ stages, each **truncated**, the last at least 1:
    Sultans, Titans and Black Dragons, each way) `B += b / 2` (integer); with a hero on the
    striker's side (the other side's while it is hypnotized), `B = trunc(o × b + B)` with `o`
    Archery for a shot or Offense for a melee strike (0x4E4160, 0x4E42B0; single-precision rates;
-   then a Bless specialist's bonus, T3c); then a Dread Knight's death blow (20 %) `B += b` and the
+   then a Bless specialist's bonus, §7.12); then a Dread Knight's death blow (20 %) `B += b` and the
    Ballista's double damage (by the hero's Artillery) `B += b`. The damage so far is `b + B`.
 2. *Times the defense and penalty factor* (0x443B90): `f = 1`; if defense > attack, `f = max(1 −
    (defense − attack) × 0.025, 0.3)` stored as a double; × 0.5 for a Psychic Elemental against a
@@ -606,3 +606,47 @@ stack is one (quirk S-16, confirmed), and the siege moat's −3 (E04c). **Defens
 trunc(f32(D) × f32(0.4))`, against an Ancient Behemoth (97) `D − trunc(f32(D) × f32(0.8))`: the
 share taken is truncated, so the defense left rounds up (D = 7: 5 and 2), not down as Q19 chose
 (4 and 1). The user (2026-10-07): follow it under quirk Q-0005, keep Q19 in strict-fixed.
+
+### 7.12 Code reading: spell specialists (E04b T3c, 2026-10-07)
+
+Read for T3c (Q29: insight only, nothing copied). The specialty bonus 0x4E5FF0 (on a hero; its
+arguments are the spell, the 0-based creature level `c` of a stack (+0x78) and a value `t`)
+returns 0 unless the hero's specialty (§7.2) is of kind 3, a spell, and names this spell. Then
+it switches on the spell (a byte table at 0x4E60E8 for spells 13–55, jump table 0x4E60CC):
+
+| Spell | Bonus |
+|---|---|
+| Fire Wall (13) | `t` (Luna) |
+| Magic Arrow (15) | `t >> 1` (Ciele) |
+| Bloodlust, Precision, Weakness, Stone Skin, Prayer, Haste (43–46, 48, 53) | by creature level, the `i32` table at 0x63EAA8: 3, 3, 2, 2, 1, 1, 0 for levels 1–7 |
+| Disrupting Ray (47) | 2 |
+| Fortune (51) | `3 − t`: the value becomes 3 |
+| Slayer (55) | by creature level, the `i32` table at 0x63EAC4: 4, 3, 2, 1, 0, 0, 0 |
+| every other spell | `ceil((hero level div (c + 1)) × t × 0.03)`: the division and the product in integers, then the double 0.03 (§7.8) |
+
+The callers decide which value, which hero and which stack:
+
+- **Applying a timed spell** (0x4448F0, §7.9), with the casting hero (none for a creature's
+  cast) and the target: Bloodlust, Precision, Weakness (before the cut to the current attack),
+  Stone Skin, Prayer, Fortune and Haste add the bonus of `t = v` to the stored value. No other
+  spell calls it there: Bless, Curse, Mirth, Sorrow, Misfortune, Slow and the spells of §7.10 and
+  §7.11 get nothing at the cast.
+- **Disrupting Ray** (0x5A1A53): defense − `v`, then − the bonus (2), then at least 0.
+- **Cure** (0x446500, §7.10): the heal `t = power × factor + effect[mastery]` plus the bonus of
+  the caster for the target.
+- **Bless** (stage 1 of physical damage, 0x443320 at 0x443776, §7.10): with a hero on the
+  striker's side (the other side while the striker is hypnotized) and Bless active on the
+  striker (its duration +0x23C), `B += bonus(41, the striker's level, b)` right after the
+  Offense or Archery term. The hero is the striker's controller at the strike, not the caster.
+- **Slayer** (the attack, 0x442410 at 0x4424F7): when Slayer counts against the struck stack,
+  attack + 8 + `bonus(55, the striker's level, 8)` with the striker's side's hero (the other side
+  while hypnotized).
+- Elsewhere: the damage spells (0x4E5760, §7.8); 0x5A196B and 0x5A84FB, the cast values of the
+  raising spells (T6); 0x5A839F, Hypnotize's hit-point limit (T4); 0x423D93 outside battle (not
+  read).
+
+VCMI 1.7.5 agrees on the creature-level table (`SPECIAL_PECULIAR_ENCHANT`,
+`lib/spells/effects/Timed.cpp`), Slayer's `max(5 − level, 0)` (`DamageCalculator.cpp`),
+Disrupting Ray's 2 and Fortune's fixed 3 (`config/heroes`); it gives a Bless specialist a
+damage premium of 3 % per hero level divided by the stack's level among the additive bonuses
+(`GENERAL_DAMAGE_PREMY`) instead of a separate term rounded up.

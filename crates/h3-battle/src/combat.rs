@@ -8,8 +8,8 @@
 //! second attack.
 
 use h3_content::{
-    Ability, BattleParams, CompiledAbility, CreatureFlag, FRENZY_REDUCED_DEFENSE, FULL_BP, Ruleset,
-    SINGLE_PRECISION_RATES,
+    Ability, BattleParams, CompiledAbility, CreatureFlag, FIRE_SHIELD_FIRST_STAGE,
+    FRENZY_REDUCED_DEFENSE, FULL_BP, Ruleset, SINGLE_PRECISION_RATES,
 };
 use h3_contracts::{BattleResult, BattleSide};
 use h3_kernel::arith::mul_div_floor;
@@ -91,7 +91,9 @@ fn has_ability(ruleset: &Ruleset, stack: &Stack, f: fn(&CompiledAbility) -> bool
 
 /// One strike of `attacker` on `target`: base damage, factors, damage applied, event. Returns the
 /// hit points the target lost (the damage, capped at what it had) and, for a melee strike on a
-/// stack with Fire Shield, the damage it reflects (BAT-MAG-018).
+/// stack with Fire Shield, the damage it reflects (BAT-MAG-018): from the strike's first damage
+/// stage capped at the target's hit points with quirk Q-0010, as the original, else from the hit
+/// points lost.
 fn strike<S: Sink>(
     state: &mut BattleState,
     ruleset: &Ruleset,
@@ -122,14 +124,17 @@ fn strike<S: Sink>(
     let staged = staged(ruleset);
     let damage = inputs.damage(base, params, staged);
     let lost = damage.min(victim.total_hp());
+    // rule: BAT-MAG-018
     let reflected = if victim.spells.fire_shield > 0 && !flags.contains(StrikeFlags::RANGED) {
-        let first = inputs.stage_one(base, params, staged);
-        magic::reflection(
-            state,
-            ruleset,
-            (&striker, target),
-            first.min(victim.total_hp()),
-        )
+        // Quirk Q-0010: the original reflects a share of the first damage stage.
+        let from = if ruleset.quirks().is_enabled(FIRE_SHIELD_FIRST_STAGE) {
+            inputs
+                .stage_one(base, params, staged)
+                .min(victim.total_hp())
+        } else {
+            lost
+        };
+        magic::reflection(state, ruleset, (&striker, target), from)
     } else {
         0
     };

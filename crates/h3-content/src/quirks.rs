@@ -61,6 +61,7 @@ pub const REGISTRY: QuirkRegistry = QuirkRegistry::new(&[
     "quirk.battle.first_protection",
     "quirk.battle.counterstrike_extra_round",
     "quirk.battle.frenzy_reduced_defense",
+    "quirk.battle.fire_shield_first_stage",
 ]);
 
 /// Q-0003: creatures of a side without a hero never get lucky strikes (BAT-LCK-002).
@@ -84,6 +85,10 @@ pub const COUNTERSTRIKE_EXTRA_ROUND: QuirkFlag = QuirkFlag(4);
 /// Q-0009 (S-16): Frenzy's attack bonus counts the frenzied stack's defense as the struck
 /// stack sees it, reduced by a Behemoth's share (BAT-MAG-019).
 pub const FRENZY_REDUCED_DEFENSE: QuirkFlag = QuirkFlag(5);
+
+/// Q-0010: Fire Shield reflects a share of the strike's first damage stage (before the struck
+/// stack's defense and protections), not of the damage dealt (BAT-MAG-018).
+pub const FIRE_SHIELD_FIRST_STAGE: QuirkFlag = QuirkFlag(6);
 
 /// The set of enabled quirk flags of a ruleset.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
@@ -123,7 +128,7 @@ mod tests {
 
     #[test]
     fn registry_lookup_and_bitset() {
-        assert_eq!(REGISTRY.len(), 6);
+        assert_eq!(REGISTRY.len(), 7);
         assert_eq!(
             REGISTRY.lookup("quirk.battle.no_luck_without_hero"),
             Some(NO_LUCK_WITHOUT_HERO)
@@ -147,6 +152,10 @@ mod tests {
         assert_eq!(
             REGISTRY.lookup("quirk.battle.frenzy_reduced_defense"),
             Some(FRENZY_REDUCED_DEFENSE)
+        );
+        assert_eq!(
+            REGISTRY.lookup("quirk.battle.fire_shield_first_stage"),
+            Some(FIRE_SHIELD_FIRST_STAGE)
         );
         // `new` is a const fn; call it at run time too so coverage sees it.
         let runtime = QuirkRegistry::new(&["quirk.battle.a"]);

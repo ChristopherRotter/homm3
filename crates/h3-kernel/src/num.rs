@@ -151,12 +151,24 @@ mod tests {
         Real::new(v).unwrap()
     }
 
-    /// The numerator over 2^64 of a positive normal double of at least 2^-12 (its 53-bit
-    /// mantissa shifted to the 2^-64 grid).
+    /// The numerator over 2^64 of a positive normal double of at least 2^-52 on the 2^-64 grid
+    /// (its 53-bit mantissa shifted there; exact for the values compared below: a difference
+    /// of two values near each other has zeros in the low bits it shifts out).
     fn grid(v: f64) -> u128 {
         let bits = v.to_bits();
-        let exp = ((bits >> 52) & 0x7ff) as u32 + 64 - 1075;
-        u128::from((bits & ((1 << 52) - 1)) | (1 << 52)) << exp
+        let exp = ((bits >> 52) & 0x7ff) as u32 + 128 - 1075;
+        (u128::from((bits & ((1 << 52) - 1)) | (1 << 52)) << 64) >> (128 - exp)
+    }
+
+    #[test]
+    fn x87_differences_of_close_values_are_exact() {
+        // A proptest case (2026-10-07): 354/612 − 439/759 is below 2^-12.
+        use crate::arith::{DOUBLE_BITS, X87};
+        let (x, y) = (354.0_f64 / 612.0, 439.0_f64 / 759.0);
+        let a = X87::ratio(354, 612, DOUBLE_BITS).unwrap();
+        let b = X87::ratio(439, 759, DOUBLE_BITS).unwrap();
+        assert!(x - y < 1.0 / 4096.0);
+        assert_eq!(a.minus(b).raw(), grid(x - y));
     }
 
     proptest::proptest! {
