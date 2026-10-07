@@ -8,8 +8,8 @@ Pre-refined tasks of the battle lane, in order, then the inbox of discovered wor
 
 - **Scope:** `docs/epics/E04b-battle-magic.md`, T5c2: read Land Mine (cast 0x5A0536, the spell book's native test 0x59ECEE, trigger 0x59FB40); its cast refusal when the enemy had natives, the mine's damage on entering, who crosses safely, the mine goes once triggered; on T5c1's hidden-obstacle machinery.
 - **Acceptance:** BAT rules with sources and tests; observation hygiene; `verify` green.
-- **Depends on:** T5c1 (done, `battle/e04b-t5c1`); the user's checkpoint after it (BAT-Q1).
-- **Status:** waiting (checkpoint after T5c1).
+- **Depends on:** T5c1 (done, merged in PR #4); the user's checkpoint after it (BAT-Q3: T5c2 and the Q55 survey).
+- **Status:** in progress (2026-10-07, branch `battle/e04b-t5c2`; read: `installation.md` §7.17).
 
 ### E04b T5b — Remove Obstacle
 

@@ -67,7 +67,21 @@ changelog, VCMI) found nothing. Still to search at T5b's start: the HotA and Rus
 forums (heroesworld.ru, df2.ru), Celestial Heavens, VCMI's issue tracker. The same wiki page
 records a known leak T5b must not copy (Q-0002): "It is possible to locate Land Mines and
 Quicksands with an expert Remove Obstacle spell without spending mana just by hovering over hexes
-with a cursor." The next increment is the user's choice at the next session's start.
+with a cursor." The next increment is the user's choice at the next session's start. **Survey
+finished (2026-10-07, T5c2 session, agent): nobody describes the anchors.** Searched: the wiki
+(Remove Obstacle, Fire Wall, Force Field, Quicksand, Tricks; a full-text search for "Remove
+Obstacle", 22 pages); HotA's whole changelog on the wiki (no line on hexes beside obstacles; 1.7.0
+fixed "invisible Quicksand was highlighted as an available target for the Remove Obstacle spell",
+so HotA treats that leak as a bug); VCMI's battle bug list (issue #1219: obstacles' drawing order,
+Remove Obstacle's fade-out, nothing on anchors); df2.ru (the spell threads t39106 and t13056, the
+reference guide t2342, HotA's novelties t27888: none); heroesworld.ru's old threads now redirect
+to the forum's start and the web archive is blocked; Celestial Heavens refuses the fetch (403);
+eleven English and Russian web searches besides the four before. So the behaviour is unknown to the community (or never
+written down) and no fork (VCMI, HotA) says it changed it. **Agent's recommendation:
+fix-optional** (faithful: the anchors as read; strict-fixed: no anchor hex, Remove Obstacle aimed
+at the obstacle's blocked hexes), like BAT-QUIRK-1; the seam option (a) serves both (an anchor
+that the fixed profile ignores). The class and the seam option are the user's at the T5c2
+checkpoint.
 
 ### Battle lane (`BAT-Q<n>`)
 
@@ -87,6 +101,7 @@ with a cursor." The next increment is the user's choice at the next session's st
 
 ## Answered
 
+- *(2026-10-07, BAT-Q3, E04b T5c1 checkpoint)* **The next increment.** PR #4 (T5c1 and the batch 2c fold-in) was merged. The agent proposed T5c2 (Land Mine) with the Q55 community survey, a checkpoint after (T5b needs the user's class and seam choice and a `shared/` pull request first, and its hidden-obstacle test then covers pits and mines); or T5c2 alone; or the survey and T5b. **User: T5c2 and the Q55 survey**, a checkpoint after. The user also allowed one more try at deleting the merged branches (`battle/e04b-t5c1`, `shared/adr-0014-natives`, `shared/lanes-phase-0`): the REST API refuses it too ("Write access to this GitHub API path is not permitted through this proxy"), so they stay for the user.
 - *(2026-10-07, BAT-Q2, batch 2c fold-in)* **H1's round 3: Hypnotize a round early?** The first record said Blue commanded the hypnotized Swordsman in round 3, where a duration of 2 from round 2 predicts Red (§7.9, BAT-MAG-010). **User: Red in round 3** (a mix-up between several replays; the results file corrected). Every H1 line now matches the engine; nothing changes.
 - *(2026-10-07, BAT-Q1, E04b checkpoint before T5c)* **T5c's cut; the natives' sight; an attack from a seen pit.** (1) The agent proposed T5c in two parts, T5c1 (the Quicksand reading, hidden obstacles, the acting side's view, events and observations) and T5c2 (Land Mine), both this session or T5c1 alone. **User: T5c1 alone**, a checkpoint before T5c2. (2) The reading (`installation.md` §7.16) found the natives' sight unlike ADR-0014 point 7 (VCMI's, while a native stack lives): the original computes per side once at the battle start whether a stack fights on its native terrain and, when it places Quicksand or a Land Mine, shows it to both sides if the other side had natives; nothing changes when natives die or appear. **User: the original's rule in `faithful`, the ADR's as its fix** (BAT-QUIRK-1, fix-optional; ADR-0014 point 7 amended by a `shared/` pull request). (3) The original's walker stops on entering any Quicksand its side sees, also as the last hex of a move and attack, and then skips the attack. **User: a quirk too: faithful legal (the attack is skipped), strict-fixed not legal** (BAT-QUIRK-2, fix-optional). Also: the user asked to delete the stale branches `e04b-battle-magic` and `claude/hopeful-mayer-ppui03`; the session's GitHub proxy refuses ref deletion (REST and `git push --delete`), so they stay for the user.
 - *(2026-10-07, Q56, E04b T5a checkpoint)* **The next increment while T5b waits; batch 2c's scope.** Batch 2b's results arrived (all six encounters as the engine's faithful predictions). (1) The agent proposed folding batch 2b in, compiling batch 2c (so the user plays it while T5c is built) and T5c, a checkpoint after T5c; or the two small tasks alone; or the fold-in and T5c. **User: the batch 2b fold-in and batch 2c only**, a checkpoint after; T5c next. (2) Batch 2c always covers Q55 (the anchor hexes); the agent offered T5a's candidates, T4c's, E04a's leftovers (1)–(4) and T4a's. **User: Q55 with T5a's and T4c's candidates** (E04a's and T4a's stay in `docs/experiments/README.md` for a later batch).
