@@ -173,7 +173,7 @@ Classes: `exploit-fix` (always fixed, never toggleable) · `preserve` (accepted,
 - Intended/expected behavior: Expert Cure also cures the caster's hypnotized stacks and ends their Hypnotize (strict-fixed: a mass version whose dispel ends the stack's Hypnotize reaches it; the other mass versions still pass over hypnotized stacks).
 - Impact: gameplay-altering (small)
 - Community status: unknown ("may/may not be a bug", wiki Cure)
-- Sources: original-data, `docs/formats/installation.md` §7.14; wiki Cure (survey S-13)
+- Sources: original-data, `docs/formats/installation.md` §7.14; wiki Cure (survey S-13); observation `experiments/results/E04b-batch-2c.md` H1 (SoD 4.0 Complete, plain HD, 2026-10-07: Hypnotize still listed after Expert Cure, which healed the caster's other Swordsmen to 35) and C1 (a Basic Cure ends it)
 - Flag: `quirk.battle.mass_cure_skips_hypnotized` (E04b T4c)
 - Defaults: faithful = on, strict-fixed = off
 - Regression test: `crates/h3-battle/src/tests/control.rs`, `mass_versions_pass_over_hypnotized_stacks_and_expert_cure_only_with_q0012`
