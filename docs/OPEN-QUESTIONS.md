@@ -56,8 +56,18 @@ readings). **Batch 2c (2026-10-07) confirms the reading:** in A2 the free hex le
 takes Remove Obstacle, refuses Fire Wall as either of its hexes, takes the Phoenix, and Remove
 Obstacle cast on it removes the whole rock; the 5×1 obstacles (absolute) refuse it, and on A1's
 battlefield, apparently absolute obstacles only, the spell is refused at once ("That spell will
-not affect anything."). VCMI's reading (no anchors) is refuted. The seam options above are the
-user's to choose at the T5c1 checkpoint.
+not affect anything."). VCMI's reading (no anchors) is refuted. **User (2026-10-07, T5c1
+checkpoint): the anchor becomes a quirk** (faithful: as the original, the anchor takes no Fire
+Wall or Force Field and Remove Obstacle reaches the obstacle through it; fixed: no anchor, or one
+without gameplay effect), **after a survey of how widely the behaviour is known and how the
+community sees it**; the seam option follows from that (faithful anchors need (a) or (b)). Survey
+so far (2026-10-07, agent): the wiki's Remove Obstacle page (raw text through WebFetch) does not
+mention anchors or hexes beside obstacles; four web searches (English: the behaviour, HotA's
+changelog, VCMI) found nothing. Still to search at T5b's start: the HotA and Russian community
+forums (heroesworld.ru, df2.ru), Celestial Heavens, VCMI's issue tracker. The same wiki page
+records a known leak T5b must not copy (Q-0002): "It is possible to locate Land Mines and
+Quicksands with an expert Remove Obstacle spell without spending mana just by hovering over hexes
+with a cursor." The next increment is the user's choice at the next session's start.
 
 ### Battle lane (`BAT-Q<n>`)
 
