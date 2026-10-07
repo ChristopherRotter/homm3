@@ -496,8 +496,9 @@ mod tests {
         assert_eq!(X87::fixed(f), X87::ratio(500, 10_000, SINGLE_BITS).unwrap());
         assert_eq!(X87::fixed(f).to_fixed(), f);
         assert_eq!(X87::MAX.to_fixed(), u64::MAX);
-        // IEEE binary32 bit patterns, both ways: f32(0.05), 1, 3.6, 2^-41 (below the bits kept
-        // exactly, 2^-64 is kept), 2^70 (saturates), 0 and the patterns counted as 0.
+        // IEEE binary32 bit patterns, both ways: f32(0.05), 1, 3.6, 2^-41 and 2^-42 (below 2^-41
+        // only the bits above 2^-64 are kept), 2^-64, 2^70 (saturates), 0 and the patterns
+        // counted as 0.
         let f05 = X87::ratio(500, 10_000, SINGLE_BITS).unwrap();
         assert_eq!(X87::from_f32_bits(0x3d4c_cccd), f05);
         assert_eq!(f05.to_f32_bits(), 0x3d4c_cccd);
@@ -508,6 +509,7 @@ mod tests {
             0x4066_6666
         );
         assert_eq!(X87::from_f32_bits(0x2b00_0000), X87(1 << 23));
+        assert_eq!(X87::from_f32_bits(0x2a80_0000), X87(1 << 22));
         assert_eq!(X87(1).to_f32_bits(), 0x1f80_0000);
         assert_eq!(X87::from_f32_bits(0x6280_0000), X87::MAX);
         assert_eq!(X87::from_f32_bits(0x5f7f_ffff).to_f32_bits(), 0x5f7f_ffff);
