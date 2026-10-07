@@ -11,11 +11,18 @@ Pre-refined tasks of the battle lane, in order, then the inbox of discovered wor
 - **Depends on:** the user's batch 2c results.
 - **Status:** waiting (the user plays batch 2c).
 
-### E04b T5c — Quicksand and Land Mine
+### E04b T5c1 — Quicksand and hidden obstacles
 
-- **Scope:** `docs/epics/E04b-battle-magic.md`, T5c: hidden from the other side (ADR-0014 point 7), revealed when triggered or to a side with natives; legality and paths by the acting side's view; a move into an unseen pit stops there. Refine at the checkpoint (Q56 planned it next).
-- **Acceptance:** the epic's T5c line; BAT rules with sources and tests; observation hygiene for the hidden obstacles (`docs/06-security.md`).
-- **Depends on:** the user's checkpoint after T5a (Q56).
+- **Scope:** `docs/epics/E04b-battle-magic.md`, T5c1 (BAT-Q1): read Quicksand in the executable (`installation.md` §7.16); hidden obstacles with an owner and a revealed flag (ADR-0014 point 7), the natives' sight as the original's (BAT-QUIRK-1, fix-optional); Quicksand's random pits; legality and paths by the acting side's view, a walker stops in a pit, an attack from a seen pit (BAT-QUIRK-2, fix-optional); events and observations without the hidden obstacles.
+- **Acceptance:** BAT rules with sources and tests; observation hygiene for the hidden obstacles (`docs/06-security.md`); the two quirk flags in the profiles; `verify` green.
+- **Depends on:** the ADR-0014 point 7 amendment (`shared/` pull request, merged first).
+- **Status:** in progress (`battle/e04b-t5c1`, 2026-10-07T18:23Z).
+
+### E04b T5c2 — Land Mine
+
+- **Scope:** `docs/epics/E04b-battle-magic.md`, T5c2: read Land Mine (cast 0x5A0536, the spell book's native test 0x59ECEE, trigger 0x59FB40); its cast refusal when the enemy had natives, the mine's damage on entering, who crosses safely, the mine goes once triggered; on T5c1's hidden-obstacle machinery.
+- **Acceptance:** BAT rules with sources and tests; observation hygiene; `verify` green.
+- **Depends on:** T5c1; the user's checkpoint after it (BAT-Q1).
 - **Status:** waiting (checkpoint).
 
 ### E04b T5b — Remove Obstacle
