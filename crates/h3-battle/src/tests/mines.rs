@@ -402,18 +402,26 @@ fn a_stack_standing_on_a_mine_sets_it_off_when_it_acts_there() {
     .unwrap();
     place(&mut s, &r, 0, 4, 5);
     let events = act(&mut s, &r, walk(&r, (8, 5))).unwrap();
-    // The fire's 40 (power 3 × 10 + 10) kills four, the mine's 40 four more.
+    // The fire's 40 (power 3 × 10 + 10) kills four, then the mine's 40 four more.
     assert_eq!(
         blasts(&events),
         [(0, at(&r, 6, 5), 40, 4), (0, at(&r, 6, 5), 40, 4)]
     );
+    let triggered: Vec<_> = events
+        .iter()
+        .filter_map(|e| match e.kind {
+            EventKind::ObstacleTriggered { spell, .. } => Some(spell),
+            _ => None,
+        })
+        .collect();
+    assert_eq!(triggered, [spell(&r, "firewall"), spell(&r, "landmine")]);
 }
 
 // covers: BAT-MAG-033
 #[test]
 fn a_two_hex_walker_sets_off_a_mine_once() {
     let r = ruleset();
-    // Its head enters (6, 5) first, its tail follows over a hex the mine has left.
+    // Its head enters (6, 5); its tail, which follows, enters no hex twice in one move.
     let mut s = arena(
         &r,
         [None, None],

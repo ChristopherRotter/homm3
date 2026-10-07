@@ -65,8 +65,9 @@ int main(void) {
         CHECK(action.target < n_targets);
         CHECK(h3_env_second_mask(env, side, action.entry, action.spell, action.target, targets,
                                  n_targets) == H3_OK);
+        /* None (index 0) but for Teleport's destination (E04b T5a). */
         action.second = (uint16_t)pick_index(targets, n_targets, &lcg);
-        CHECK(action.second == 0);
+        CHECK(action.second < n_targets);
         casts += action.entry == n_actions - 2;
         CHECK(h3_env_step(env, side, action, &result) == H3_OK);
         steps++;
