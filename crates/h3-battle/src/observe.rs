@@ -18,7 +18,7 @@ use crate::effects::ActiveEffect;
 use crate::event::{Event, Visibility};
 use crate::geometry::HexSet;
 use crate::hero::{HeroView, OwnHeroView};
-use crate::natural::RemovableObstacle;
+use crate::natural::{MAX_REMOVABLE_OBSTACLES, RemovableObstacle};
 use crate::obstacles::{self, SpellObstacle};
 use crate::state::{BattleState, STACK_CAPACITY, Stack, StackId};
 use crate::tactics::TacticsPhase;
@@ -48,7 +48,9 @@ pub struct Observation {
     /// Hexes blocked by natural obstacles (public).
     pub obstacles: HexSet,
     /// The natural obstacles a spell can remove, with their anchors (public; BAT-MAG-034).
-    pub removable_obstacles: Vec<RemovableObstacle>,
+    pub removable_obstacles: FixedVec<RemovableObstacle, MAX_REMOVABLE_OBSTACLES>,
+    /// The anchor hexes that belong to their obstacles (quirk BAT-QUIRK-3; public, BAT-GEO-003).
+    pub obstacle_anchors: HexSet,
     /// The heroes leading the sides, their public part (identity, primary skills, mana, the war
     /// machines they command; ADR-0013 point 9), indexed by [`BattleSide::index`].
     pub heroes: [Option<HeroView>; 2],
@@ -77,7 +79,8 @@ pub fn observe(state: &BattleState, ruleset: &Ruleset, viewer: BattleSide) -> Ob
         result: state.result,
         stacks: state.stacks,
         obstacles: state.obstacles(),
-        removable_obstacles: state.removable_obstacles().to_vec(),
+        removable_obstacles: state.natural.removable_list(),
+        obstacle_anchors: state.natural.anchors(),
         heroes: BattleSide::BOTH.map(|side| state.hero(side)),
         own_hero: state.heroes[viewer.index()].map(|h| OwnHeroView {
             tactics: h.tactics,

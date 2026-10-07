@@ -340,19 +340,19 @@ commands = [
     "D attack 0 59",
 ]
 checkpoints = [
-    "0x918401dc689fc99d",
-    "0x77dd9da7c80af8de",
-    "0xc7eabcd2aae5c043",
-    "0x7c3bb5a57582238a",
-    "0x259867300044feac",
-    "0xad9a47fa755946b6",
-    "0x6f3f6fcdfbaa6a6a",
-    "0xceec8a8b0110b7b3",
-    "0xed233e225463f388",
-    "0xc3d1daf86e83efed",
-    "0x89045bc181096b33",
-    "0xa6f7097f9b6a7ddd",
-    "0x733a677f19c85619",
+    "0x74052f681e24469d",
+    "0x715faafdfd083d5e",
+    "0x27e40ab1f4e06143",
+    "0x59c601d83aa0e18a",
+    "0x1d5540d7f4062c2c",
+    "0x414c827af6e51fb6",
+    "0x5cd050a5d433446a",
+    "0xf4b4b665366ad3b3",
+    "0x83af664c9ce56008",
+    "0x2783b4b5f44d636d",
+    "0x20d4c0b3b6d57933",
+    "0x7b52d04e1cd285dd",
+    "0x63db2031d192cb19",
 ]
 
 [replay]
@@ -637,4 +637,4 @@ count = 11
 
 [result]
 winner = "defender"
-final_hash = "0xd95fb0300b5d8972"
+final_hash = "0xd0fd1a38118827f2"

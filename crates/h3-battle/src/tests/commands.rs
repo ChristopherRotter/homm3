@@ -283,4 +283,4 @@ fn state_hash_is_pinned() {
     assert_eq!(crate::BATTLE_STATE_HASH_VERSION, 28);
 }
 
-const GOLDEN: u64 = 0x147a_4c9d_e551_6b12;
+const GOLDEN: u64 = 0xd67c_ccce_4718_8212;

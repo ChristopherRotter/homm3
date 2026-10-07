@@ -594,15 +594,30 @@ proptest! {
             legal_commands(&state, &r, viewer, &mut a);
             legal_commands(&twin, &r, viewer, &mut b);
             prop_assert_eq!(a.as_slice(), b.as_slice());
+            let mut commands: Vec<Command> = a.as_slice().to_vec();
             let spells = castable_spells(&state, &r, viewer);
             prop_assert_eq!(spells, castable_spells(&twin, &r, viewer));
             for spell in spells.iter() {
-                let (mut a, mut b) = (CastTargets::new(), CastTargets::new());
-                cast_targets(&state, &r, viewer, spell, &mut a);
-                cast_targets(&twin, &r, viewer, spell, &mut b);
-                prop_assert_eq!(a.as_slice(), b.as_slice());
+                let (mut ta, mut tb) = (CastTargets::new(), CastTargets::new());
+                cast_targets(&state, &r, viewer, spell, &mut ta);
+                cast_targets(&twin, &r, viewer, spell, &mut tb);
+                prop_assert_eq!(ta.as_slice(), tb.as_slice());
+                // Casts too: the first, middle and last target, each with its first second
+                // target (legal commands list no casts).
+                let n = ta.len();
+                let mut picks = std::vec![0, n / 2, n.saturating_sub(1)];
+                picks.dedup();
+                for target in picks.into_iter().filter_map(|i| ta.get(i).copied()) {
+                    let (mut sa, mut sb) = (CastTargets::new(), CastTargets::new());
+                    second_targets(&state, &r, viewer, (spell, target), &mut sa);
+                    second_targets(&twin, &r, viewer, (spell, target), &mut sb);
+                    prop_assert_eq!(sa.as_slice(), sb.as_slice());
+                    if let Some(&second) = sa.get(0) {
+                        commands.push(Command::Cast { spell, target, second });
+                    }
+                }
             }
-            for &command in a.as_slice() {
+            for &command in &commands {
                 let (mut x, mut y) = (state.clone(), twin.clone());
                 let (mut ex, mut ey) = (Vec::new(), Vec::new());
                 prop_assert!(apply(&mut x, &r, viewer, command, &mut ex).is_ok());

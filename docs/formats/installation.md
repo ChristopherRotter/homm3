@@ -826,7 +826,10 @@ Wall, `0x20` Force Field; `0x3C` are the spell objects. Only `0x2` blocks moveme
 (0x469A10); Quicksand, Land Mine and Fire Wall hexes may be entered and stood on. The usual
 obstacles (0x466010) become objects (side −1, revealed, permanent); the absolute ones (0x466939)
 only set `0x2` on their hexes and have no object, so nothing can remove them. Removing an object
-(0x466B30) clears the flags and index of each of its hexes and its graphic. At every round start
+(0x466B30, re-read in T5b) clears all six bits `0x3F` and the index (−1) of each hex its
+descriptor names, then the bit `0x1` and the index of its anchor hex (the bit `0x2` stays), and
+its graphic: a hex the removed object shared with another (a later object blocking an earlier
+one's anchor, or two objects with one anchor hex) leads to no object afterwards. At every round start
 (0x476152, after the stacks' effects, §7.9) each object with rounds left loses one; at 0 it is
 removed.
 

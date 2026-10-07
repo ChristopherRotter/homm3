@@ -4,12 +4,7 @@ Pre-refined tasks of the battle lane, in order, then the inbox of discovered wor
 
 ## Tasks
 
-### E04b T5b — Remove Obstacle
-
-- **Scope:** `docs/epics/E04b-battle-magic.md`, T5b: the natural obstacles as removable pieces with their anchors (a seam change of `BattleSetup.obstacles`: in the same pull request, labelled `cross-lane`, BAT-Q5), Remove Obstacle by mastery, the anchors in Fire Wall's and Force Field's test.
-- **Acceptance:** the epic's T5b line; the seam change accepted by the user.
-- **Depends on:** Q55 (batch 2c A2 confirmed the anchor reading; the community survey is done, nobody describes the anchors: the user chooses the quirk's class and the seam option at the T5c2 checkpoint); Remove Obstacle's target test must not reveal hidden obstacles (Q-0002: the original's Expert cursor finds Quicksand and mines, wiki; HotA fixed it for Quicksand).
-- **Status:** in progress (`battle/e04b-t5b`, BAT-Q5: with the seam change and BAT-Q4 in one `cross-lane` pull request; Q55 decided: fix-optional, option (a)).
+(none refined: T5 is done; the next cut, T6 life and summons or T7 creature magic, is the user's at the T5b checkpoint.)
 
 ## Inbox
 
@@ -36,3 +31,4 @@ Pre-refined tasks of the battle lane, in order, then the inbox of discovered wor
 - 2026-10-07 (E04b T5a): loose ends of the battlefield spells (`installation.md` §7.15): a walker's path among equally short ones is the engine's own (BAT-MOV-003); the original's pathfinder 0x4B3400 (also survey S-11's) decides which hexes a walker enters, so read its tie order if an experiment shows a stack burnt where the engine's path avoids the fire (or the reverse); Teleport in sieges by mastery (the wall below Advanced, 0x467840 below Expert; E04c); the flat sim observation (encoding v6) has no hex features, so neither the natural obstacles nor the spell obstacles reach agents: decide with E05 (E04b T9 observation completeness). Experiment candidates (staged in batch 2c, F1, F2, with Q55's anchors in A1–A3): a walker beside a two-hex Fire Wall with two equally short paths; a stack standing in Fire Wall that waits and then defends (burnt twice in one round); Force Field's shape for the defender (not mirrored in the original's descriptor, mirrored in VCMI).
 - 2026-10-07 (E04b T5c1): loose ends of Quicksand and the hidden obstacles (`installation.md` §7.16): the moat (0x469E50 damages a stack entering it; 0x4B3290 makes its hexes stops) and special battlefield 2 (+0x53C0, no stack native there) for E04c; the original's interface may not offer an attack from a seen pit (BAT-QUIRK-2's faithful variant accepts it); the flat sim observation still has no obstacle features (E05, T9). Experiment candidates: `docs/experiments/README.md` (from T5c1).
 - 2026-10-07 (E04b T5c2): loose ends of Land Mine (`installation.md` §7.17): after a mine's or Fire Wall's damage the original checks the Phoenixes' rebirth (0x469440; T7 with the ability); the Tower moat's mines (E04c, on this machinery); the AI never casts Land Mine (wiki; nothing for the engine). Experiment candidates: `docs/experiments/README.md` (from T5c2: the book's refusal against immune natives, which the wiki contradicts).
+- 2026-10-07 (E04b T5b): loose ends of Remove Obstacle and the natural obstacles (`installation.md` §7.15): the original's random obstacle generator was never read (BAT-GEO-004 is VCMI's), so whether it keeps a later obstacle off an earlier one's free anchor hex is unknown (ours does not; the clearing after a removal follows 0x466B30 either way); harvest the obstacle table from `Heroes3.exe` (inbox, E03 T7) would settle the anchors' offsets too; sieges' moat and walls (E04c) are objects of this machinery. Experiment candidates: `docs/experiments/README.md` (from T5b).

@@ -567,28 +567,28 @@ commands = [
     "A attack 10 128",
 ]
 checkpoints = [
-    "0xc33fbf301a0e805b",
-    "0xc03469b0d008f5d3",
-    "0x8f368b66abd0a2e9",
-    "0x1ee2124c4c41edfe",
-    "0xd04e5f8b3b021d3b",
-    "0x7a101d7304d3287e",
-    "0x078da68ac37a020b",
-    "0x52344187adaf3791",
-    "0x23f84dde8428e3fb",
-    "0x1a510149cbe0d4a3",
-    "0x23edc9c4a526ef48",
-    "0x1c6b68dc98262f06",
-    "0x4282974af787dcc3",
-    "0xcdc17c3421faada8",
-    "0x403c84119a72208c",
-    "0xca404b68696a05bd",
-    "0x6578cf5033bdce5d",
-    "0x57e0f51ae35ac3a0",
-    "0xe93451baf6992b68",
-    "0x906680389de41eda",
-    "0xea50b4ea478f96a3",
-    "0x7641458fd2ea6cb6",
+    "0x53b844dc3d2fa95b",
+    "0xcaf078ea662ff6d3",
+    "0x3117fa510a211fe9",
+    "0xad902fefbadb2cfe",
+    "0x674d292a45dec53b",
+    "0x98167e1bb19e9efe",
+    "0x884cffe13a5a348b",
+    "0x6892a8202652a291",
+    "0xff2dc18b4a7a457b",
+    "0x580e7a57efe521a3",
+    "0xe633cbb2daad7248",
+    "0x4a6d25f5431fb986",
+    "0x55bafc6a4b1b5bc3",
+    "0xc269dca9571163a8",
+    "0x4f0efe059f479a8c",
+    "0x1e9d91cb0bc615bd",
+    "0xd9a8a2e5ff67345d",
+    "0x87afcbc4147b4da0",
+    "0x42ca15ec91b15e68",
+    "0x38a39a11ec2006da",
+    "0x412e777388334623",
+    "0x995dc63524573836",
 ]
 
 [replay]
@@ -873,4 +873,4 @@ count = 11
 
 [result]
 winner = "defender"
-final_hash = "0xbf9ebcf0047193bd"
+final_hash = "0x64a33dd016caaa3d"

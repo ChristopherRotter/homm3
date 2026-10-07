@@ -342,6 +342,9 @@ impl ObstacleKind {
     /// All values, in code order.
     pub const ALL: [Self; 4] = [Self::Wall, Self::Fire, Self::Pit, Self::Mine];
 
+    /// How many kinds there are (the size of tables indexed by kind).
+    pub const COUNT: usize = Self::ALL.len();
+
     /// Pack name.
     pub const fn name(self) -> &'static str {
         match self {
@@ -443,7 +446,7 @@ pub struct ObstacleShape {
     /// and the first steps' hexes; 1 to `steps + 1` (a random shape: 1 to 8).
     pub hexes: [u8; 4],
     /// The cast has no target: each hex is a random free hex of the battlefield (Quicksand;
-    /// BAT-MAG-032; v14). A random shape has no steps and is not mirrored.
+    /// BAT-MAG-032; v14). A random shape has no steps, is not mirrored and puts one obstacle on each hex.
     pub random: bool,
     /// The defender's hero casts the steps mirrored left to right (Fire Wall).
     pub mirrored: bool,
@@ -464,8 +467,8 @@ impl ObstacleShape {
         };
         if self.steps.len() + 1 > MAX_OBSTACLE_HEXES {
             Some("an obstacle covers at most 8 hexes")
-        } else if self.random && (!self.steps.is_empty() || self.mirrored) {
-            Some("a random obstacle shape has no steps and is not mirrored")
+        } else if self.random && (!self.steps.is_empty() || self.mirrored || !self.separate) {
+            Some("a random obstacle shape has no steps, is not mirrored and is separate")
         } else if self.hexes.iter().any(|&n| n == 0 || usize::from(n) > most) {
             Some("an obstacle's hexes must be 1..=steps + 1 (random: 1..=8)")
         } else {
@@ -678,7 +681,7 @@ pub struct SpellMagic {
     /// A remove effect: the lowest mastery (1..=3) from which it removes a spell obstacle of each
     /// kind, indexed by [`ObstacleKind`] (`None`: never; Remove Obstacle: fire from Advanced, the
     /// others at Expert; BAT-MAG-034, v16).
-    pub removes_from: [Option<u8>; 4],
+    pub removes_from: [Option<u8>; ObstacleKind::COUNT],
 }
 
 impl SpellMagic {
@@ -1804,6 +1807,16 @@ mod tests {
                     ..pits.clone()
                 },
                 "not mirrored",
+            ),
+            (
+                SpellMagic {
+                    obstacle: Some(ObstacleShape {
+                        separate: false,
+                        ..random.clone()
+                    }),
+                    ..pits.clone()
+                },
+                "is separate",
             ),
             (
                 SpellMagic {
