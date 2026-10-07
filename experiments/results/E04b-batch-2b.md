@@ -22,10 +22,10 @@ Map file: `E04b-batch-2b.h3m`. Fill in the blanks below and keep this file; an a
 
 | strike | damage (log) | Peasants killed (log) |
 |---|---|---|
-|   |   |   |
-|   |   |   |
+|1|195|195|
+|2|390|390|
 
-- anything odd: 
+- anything odd: Angles speed is insufficient to reach peasants in round 1, therefore they just moved closr in rounf 1 and everything else was conducted in round 2
 
 ## R2 — Counterstrike: retaliations in the round after it ends (Q-0008)
 
@@ -40,19 +40,19 @@ Map file: `E04b-batch-2b.h3m`. Fill in the blanks below and keep this file; an a
 
 **Record**
 
-- spell points and spell power at the start: 
+- spell points and spell power at the start: 30, 1
 
 | round | attack by | Pikemen struck back (yes/no) | Wolf Riders killed by the retaliation (log) |
 |---|---|---|---|
-|   |   |   |   |
-|   |   |   |   |
-|   |   |   |   |
-|   |   |   |   |
-|   |   |   |   |
-|   |   |   |   |
+|2|Wolf Riders A|yes|5|
+|2|Wolf Riders B|yes|5|
+|3|Wolf Riders A|yes|6|
+|3|Wolf Riders B|yes|5|
+|4|Wolf Riders A|yes|5|
+|4|Wolf Riders B|no|n/a|
 
-- round 3: Counterstrike still listed on the Pikemen (yes/no): 
-- anything odd: 
+- round 3: Counterstrike still listed on the Pikemen (yes/no): no
+- anything odd:
 
 ## R3 — Fire Shield: a share of the strike before the defense, or of the damage dealt (Q-0010)
 
@@ -66,10 +66,10 @@ Map file: `E04b-batch-2b.h3m`. Fill in the blanks below and keep this file; an a
 
 **Record**
 
-- damage and kills of the Naga Queens' attack (log): 
-- log line about the fire shield, if any (copy it): 
-- Naga Queens afterwards: number, health left of the top one: 
-- anything odd: 
+- damage and kills of the Naga Queens' attack (log): 150, 150
+- log line about the fire shield, if any (copy it): "The Fire Shield does 60 damage."
+- Naga Queens afterwards: number, health left of the top one: 10, 50
+- anything odd:
 
 ## R4 — Shield with Basic Armorer, and Armorer alone (BAT-DMG-002, Q-0005)
 
@@ -84,11 +84,11 @@ Map file: `E04b-batch-2b.h3m`. Fill in the blanks below and keep this file; an a
 
 | strike | damage (log) | Peasants killed (log) |
 |---|---|---|
-|   |   |   |
-|   |   |   |
-|   |   |   |
+|1|121|121|
+|2|40|40|
+|3|189|189|
 
-- anything odd: 
+- anything odd: Had to let the angels wait so that peasants could move close enough to be within reach, otherwise Angels' speed is too low to reach them
 
 ## R5 — Bloodlust and Weakness on one stack; Haste and Slow (Q47)
 
@@ -102,9 +102,9 @@ Map file: `E04b-batch-2b.h3m`. Fill in the blanks below and keep this file; an a
 
 **Record**
 
-- after round 1: Pikemen attack as shown, spells listed: 
-- after round 2: Pikemen attack, speed, spells listed: 
-- anything odd: 
+- after round 1: Pikemen attack as shown, spells listed: 4, (Bloodlust, Weakness)
+- after round 2: Pikemen attack, speed, spells listed: 4, 3, (Bloodlust, Weakness, Slow)
+- anything odd:
 
 ## R6 — Mephala at level 10: the Armorer specialty grown in single precision (Q45)
 
@@ -117,11 +117,11 @@ Map file: `E04b-batch-2b.h3m`. Fill in the blanks below and keep this file; an a
 
 **Record**
 
-- R6 after the level-ups: level, attack, defense, secondary skills: 
+- R6 after the level-ups: level, attack, defense, secondary skills: 10, 2, 5, (Epert Armorer, Advanced Estates, Expert Offense, Basic Wisdom, Expert Archery)
 
 | strike | damage (log) | Peasants killed (log) |
 |---|---|---|
-|   |   |   |
-|   |   |   |
+|1|619|619|
+|2|154|154|
 
-- anything odd: 
+- anything odd: Usual problem with Angles' speed being insufficient
