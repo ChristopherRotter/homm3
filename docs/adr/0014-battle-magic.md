@@ -66,7 +66,10 @@ which a spell meets a stack, how stacks appear in a battle, how hidden objects s
    creatures (Basic Resurrection) do not count in the outcome's end counts; permanent ones do.
 7. **Hidden battlefield objects have an owner side.** A viewer sees a spell obstacle if it is the
    owner, the obstacle is revealed or of a visible kind (Force Field, Fire Wall), or the viewer's side
-   has a living stack on its native terrain (this changes during a battle). Observations project
+   has natives: as the original by default, a side that had a stack on its native terrain at the
+   battle start sees the other side's hidden objects from their placement on, whatever happens to
+   its natives later; with quirk BAT-QUIRK-1 fixed, while it has a living stack on its native
+   terrain (this changes during a battle). Observations project
    hidden objects away, their placement events are `Visibility::Side` (ADR-0004 §6), and legality
    never uses what the acting side cannot see. A command may therefore resolve differently from
    what its side expected (user, Q42): a move, or a move and attack, into an unseen Quicksand pit
@@ -123,3 +126,6 @@ which a spell meets a stack, how stacks appear in a battle, how hidden objects s
 - 2026-10-06: point 5 amended after reading the original's timed-spell code (E04b T3a, Q47): a
   re-cast keeps the longer duration and the first values instead of replacing the entry; the
   counter pairs are the original's (Bless/Curse, Haste/Slow).
+- 2026-10-07: point 7 amended after reading the original's Quicksand code (E04b T5c1, BAT-Q1): the
+  natives' sight is fixed at the battle start and given to an object when it is placed
+  (`installation.md` §7.16); the living-natives rule stays as the fix of BAT-QUIRK-1.
