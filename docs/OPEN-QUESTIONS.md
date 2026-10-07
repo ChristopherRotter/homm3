@@ -85,7 +85,20 @@ checkpoint.
 
 ### Battle lane (`BAT-Q<n>`)
 
-(no open questions)
+#### BAT-Q4 — Quicksand's and Land Mine's random hexes avoid the other side's hidden obstacles (E04b T5c2)
+
+Found by the T5c2 review. Both spells draw their hexes among those without any obstacle,
+the other side's hidden pits and mines included (the original's 0x5A0354 and 0x5A0536,
+`installation.md` §7.16, §7.17; BAT-MAG-032 "hidden ones too", T5c1). The caster sees where its
+new pits and mines land, so it learns that no hidden enemy obstacle lies there: a small leak of
+the kind Q-0002 fixes (as Fire Wall's cursor, which the engine lets go over an unseen pit). The
+hidden-obstacle property test leaves casts out for this reason. **Options** (the agent's
+recommendation first): (a) fix it in every profile under Q-0002: draw among the hexes free as the
+caster's side sees them, and a drawn hex with an unseen enemy pit or mine takes the new obstacle
+over it (both stay; a walker there meets both, the pit stops it, a mine goes off as usual); the
+property test then covers casts too; (b) keep the original's draw (a faithful detail, the leak
+stays, documented); (c) a fix-optional quirk (faithful draws as the original, strict-fixed as
+(a)). Not blocking: T5b and later tasks do not depend on it.
 
 ### Adventure lane (`ADV-Q<n>`)
 

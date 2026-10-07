@@ -841,9 +841,15 @@ records how and why the tasks went.
   one hex; a two-hex walker once; a hypnotized stack by its owner's side; living natives' sight);
   the property tests' books gain Land Mine, the hidden-obstacle property places mines too and
   checks that the acting side's non-cast commands report the same with and without what it does
-  not see (unless a hidden obstacle shows itself); pack and content tests for format v15.
+  not see (unless a hidden obstacle shows itself); pack and content tests for format v15. The C
+  smoke test's `second == 0` check, stale since T5a's Teleport (the game merely never chose it),
+  now accepts any second target from its mask.
 - **Q55 survey:** nobody describes the anchors: the wiki's pages, HotA's changelog (1.7.0 fixed
   Remove Obstacle's highlighting of invisible Quicksand), VCMI's battle bug list (#1219), df2.ru's
   spell and reference threads; heroesworld.ru's old threads redirect, the web archive is blocked,
   Celestial Heavens refuses the fetch. Recorded in OPEN-QUESTIONS Q55 with the recommendation
   fix-optional and seam option (a).
+- **Review** (an independent sub-agent on the diff against §7.17 and BAT-MAG-031/033): no code
+  problem; two tests tightened (Fire Wall's burn before the mine on one hex, a comment); found
+  that Quicksand's and Land Mine's random hexes avoid the other side's hidden obstacles, a small
+  leak the original has (T5c1 kept it): OPEN-QUESTIONS BAT-Q4 for the user.

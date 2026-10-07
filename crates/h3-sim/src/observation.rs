@@ -314,10 +314,12 @@ mod tests {
         // Masteries by school handle (storm, stone) and the books by spell handle (spark,
         // cinders, arc, blight, ward, farsight, glare, hasten, drag, fury, zeal, gloom, boon,
         // bane, corrode, aegis, hallow, smiting, riposte, purge, mend, blaze, rage, veil, glass,
-        // haze, dazzle, rampage, charm).
+        // haze, dazzle, rampage, charm, bulwark, scorch, blink, mire, snare).
         let schools = [[1.0, 0.0, 0.0, 0.0], [0.0, 3.0, 0.0, 0.0]];
         let books: [&[usize]; 2] = [
-            &[0, 1, 2, 3, 4, 7, 8, 9, 17, 18, 20, 21, 24, 25, 28, 30, 31],
+            &[
+                0, 1, 2, 3, 4, 7, 8, 9, 17, 18, 20, 21, 24, 25, 28, 30, 31, 33,
+            ],
             &[
                 0, 2, 3, 10, 11, 12, 13, 14, 15, 16, 19, 22, 23, 26, 27, 29, 32,
             ],
