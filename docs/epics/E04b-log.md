@@ -672,7 +672,11 @@ records how and why the tasks went.
   the original's pathfinder not read, BACKLOG); no burn once the battle is over after a melee
   attack from where the stack stands (the original checks the end only after a shot); Teleport
   takes the head hex of a two-hex stack's position, not the original's click adjustment; the flat
-  observation has no obstacle features.
+  observation has no obstacle features; the spell obstacle list reserves its room with the first
+  obstacle and a fork copies it only when it has any, so a fork without obstacles still costs one
+  allocation (ADR-0014 point 5's aim; `clone BattleState` about 387 ns here).
+- **Q55 (open):** the anchor hexes of natural obstacles (`installation.md` §7.15) and T5b's seam
+  change wait for an experiment (the user, 2026-10-07).
 - **Tests:** `tests/obstacles.rs` (Force Field's shape by mastery and side, blocking, two rounds,
   events, observation; free hexes for a cast; Fire Wall's mirrored shape, one obstacle per hex,
   values; burns of a walker per hex entered, a two-hex walker once per hex, a flyer only where it

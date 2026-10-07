@@ -8,7 +8,7 @@ Living state between sessions; every session reads it first. Rules (`docs/08-wor
 - **GitHub and CI:** `ChristopherRotter/homm3` (private); `.github/workflows/ci.yml` runs `cargo xtask verify` on Linux for PRs, `master` and weekly; changes reach `master` by pull request; a `bench-check` re-baseline must hold on the CI runner.
 - **Done:** survey `docs/rules/surveys/E04b-magic.md` (§12–§15), ADR-0014 accepted (point 5 amended, Q47), design note `docs/epics/E04b-design.md`. Castable by heroes: the 13 damage spells, the 14 value spells, Shield, Air Shield, the Protections (Q-0007), Slayer, Counterstrike (Q-0008), Dispel, Cure, Fire Shield (Q-0010) and Frenzy (Q-0009) (BAT-MAG-001 to 019), the spell specialists (BAT-MAG-020), Anti-Magic and Magic Mirror (BAT-MAG-021/022), Forgetfulness and Blind (BAT-MAG-023/024), Berserk and Hypnotize (BAT-MAG-025/026; a stack's `controller()` commands it), Force Field, Fire Wall, Teleport and Expert Dispel's clearing (BAT-MAG-027 to 030; `h3_battle::obstacles`), all after the executable's code (`installation.md` §7.8–§7.15). **Physical damage follows the executable's three truncated stages** under Q-0005 (Q50, BAT-DMG-002, `h3_kernel::arith::X87` at 53 bits).
 - **Hero rates** cross the seam as `h3_contracts::Rate` (basis points plus, under Q-0005, the original's single-precision value as an f32 bit pattern where it differs; Q45 (b), T3c2).
-- **Next:** the user decides Q55 (the setup's natural obstacles as pieces with anchors) after an experiment on anchor hexes; then T5b (Remove Obstacle), T5c (Quicksand, Land Mine); batch 2b (`experiments/specs/E04b-batch-2b.toml`) is with the user: fold it in when its results are in.
+- **Next:** an experiment on anchor hexes (batch 2c, when the user wants it; the layout comes from the map tile, so the user probes free hexes beside small obstacles; add T5a's candidates, BACKLOG), then Q55; then T5b (Remove Obstacle), T5c (Quicksand, Land Mine); batch 2b (`experiments/specs/E04b-batch-2b.toml`) is with the user: fold it in when its results are in.
 - **Open for later tasks:** batch 2a R6's costs (T7); Q43 (sprite offset, keep the approximation); creature casters' re-casts (T7); the damage stages' creature factors; Dispel's and Fire Shield's loose ends (Sphere T8, obstacles T5, the Sultans' shield T7; BACKLOG); T4a's and T4c's loose ends (BACKLOG).
 - Versions: state hash v26, ruleset hash v23, replay format v17, action encoding v10, C ABI v10, observation encoding v6; pack format v13.
 - Working agreement: increments of a couple of tasks with a user checkpoint (Q41); the user confirms seams and ADRs; token efficiency beats speed (AGENTS.md); the user plays experiment maps in SoD with plain HD and commits the results.
@@ -18,7 +18,7 @@ Living state between sessions; every session reads it first. Rules (`docs/08-wor
 **Sandbox and sync**
 - Original files in a cloud session: stage them from the user's repo folder (`D:\Users\Christopher\Source\Repos\homm3\original-data`, read access through the device link; one large LOD per staging call), then `scripts/sandbox-setup.sh`. Without the link the session only prepares (Q48). Sync is `git push` (fetch `master` first so the push is thin).
 - Git on the user's machine: get delete permission for the repo folder before *any* git command (even `git status` leaves `.git/index.lock` otherwise).
-- The sandbox VM can restart mid-session (files stay, background jobs and installs die): check `ps` and the logs before waiting on a background job.
+- The sandbox VM can restart mid-session (files stay, background jobs die): check `ps` and the logs before waiting on a background job.
 - `cargo xtask verify` outlasts a tool call: run `scripts/sandbox-verify.sh` in the background and poll its log.
 - bench-check at 0 Ir: valgrind 3.22 read no symbols from the lld-linked `h3` (the gate links it with `-z norelro` since T3b2).
 - The background verify tests whatever is in the clone: try ad-hoc tests in a `git worktree` with its own `CARGO_TARGET_DIR`, and commit there on a branch that the clone fast-forwards to. `pkill -f <pattern>` also kills the tool's own shell when the pattern is in the command line: kill by pid.
@@ -53,7 +53,7 @@ Living state between sessions; every session reads it first. Rules (`docs/08-wor
 
 ### 2026-10-07 (twenty-sixth) — E04b T5a, T5b in progress
 
-Linked cloud session. Q54: T5a + T5b, then a checkpoint; S-17 and the T4c decisions kept. T5a done (`installation.md` §7.15; pack format v13; BAT-MAG-027 to 030, BAT-MOV-003; old workload +0.58 %; replays and `bench-check` re-baselined). T5b waits: the user wants the anchor hexes (Q55) observed before the seam decision. Detail: `docs/epics/E04b-log.md` (T5a).
+Linked cloud session. Q54: T5a + T5b, then a checkpoint; S-17 and the T4c decisions kept. T5a done (`installation.md` §7.15; pack format v13; BAT-MAG-027 to 030, BAT-MOV-003; old workload +0.58 %; replays and `bench-check` re-baselined). T5b waits: the user wants the anchor hexes (Q55) observed first. Detail: `docs/epics/E04b-log.md` (T5a).
 
 ### 2026-10-07 (twenty-fifth) — E04b T4b and T4c: Forgetfulness, Blind, Berserk, Hypnotize
 
