@@ -163,7 +163,7 @@ Map file: `E04b-batch-2c.h3m`. Fill in the blanks below and keep this file; an a
 - round 2: Hypnotize on the wounded 2 Swordsmen (allowed/refused): refused
 - after Expert Cure: Hypnotize still listed on the 1 Swordsman (yes/no); 2 Swordsmen's top one health: yes; 35
 - round 2, after the Cure: the 1 Swordsman commanded by (Red/Blue): Red
-- round 3: the 1 Swordsman commanded by (Red/Blue): Blue
+- round 3: the 1 Swordsman commanded by (Red/Blue): Red (corrected by the user, 2026-10-07: first noted Blue, a mix-up between several replays)
 - anything odd: Probably not odd, but some remark: While hypnotized, that stack can attack it's original side (Blue), but Blue's stacks cannot attack the hypnotized stack. Also, the hypnotized stack keeps facing left, as normally only Blue's stacks would (i.e., as if it was still allied with Blue).
 
 ## C1 — Basic Cure on a hypnotized stack (BAT-MAG-026, Q-0012)

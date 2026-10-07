@@ -2392,7 +2392,7 @@ numeric  = "integer"
 
   [[rule.source]]
   kind       = "observation"
-  ref        = "experiments/results/E04b-batch-2c.md H1, C1 (SoD 4.0 Complete, plain HD, 2026-10-07): power 2 at mastery none (limit 60): Hypnotize refused on 2 Swordsmen (70), allowed on 1 (35), refused on 2 Swordsmen at 40 of 70 hit points after a Magic Arrow (the full hit points count); Expert Cure leaves Hypnotize on the caster's hypnotized stack (Q-0012) and Red commands it after the Cure; a Basic Cure from its owner ends Hypnotize (Blue commands it in the next round). Open: H1 round 3, Blue commanded the stack although a duration of 2 predicts Red (BAT-Q2)"
+  ref        = "experiments/results/E04b-batch-2c.md H1, C1 (SoD 4.0 Complete, plain HD, 2026-10-07): power 2 at mastery none (limit 60): Hypnotize refused on 2 Swordsmen (70), allowed on 1 (35), refused on 2 Swordsmen at 40 of 70 hit points after a Magic Arrow (the full hit points count); Expert Cure leaves Hypnotize on the caster's hypnotized stack (Q-0012) and Red commands it after the Cure; Red commands it in rounds 2 and 3 (a duration of 2 from round 2); a Basic Cure from its owner ends Hypnotize (Blue commands it in the next round)"
   retrieved  = "2026-10-07"
   confidence = "high"
 

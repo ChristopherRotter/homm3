@@ -61,18 +61,7 @@ user's to choose at the T5c1 checkpoint.
 
 ### Battle lane (`BAT-Q<n>`)
 
-#### BAT-Q2 — Hypnotize lasted one round less than predicted (batch 2c H1)
-
-Batch 2c H1 (`experiments/results/E04b-batch-2c.md`): Red's hero (power 2, mastery none, no
-duration artifacts) hypnotized Blue's 1 Swordsman in round 2; after Blue's Expert Cure (which
-left Hypnotize listed, Q-0012) Red commanded it in round 2, but Blue commanded it in round 3. The
-engine (BAT-MAG-010, BAT-MAG-026) and the original's code as read (§7.9: a duration of 2 at the
-cast, at each round start a spell with duration 1 ends and others lose one; 0x447120 has no case
-for Hypnotize; the only writes of its duration are the apply routine's) predict Red in round 3.
-Every other duration observed so far fit (batch 2b R2). **Asked (2026-10-07):** the user re-checks
-the rounds left shown on the stack after the cast and whether Hypnotize is listed at round 3's
-start. Options after that: a duration rule of Hypnotize's own (read the cast routine 0x59FE30
-for spell 60), or an observation slip. Nothing in the engine changes until then.
+(no open questions)
 
 ### Adventure lane (`ADV-Q<n>`)
 
@@ -88,6 +77,7 @@ for spell 60), or an observation slip. Nothing in the engine changes until then.
 
 ## Answered
 
+- *(2026-10-07, BAT-Q2, batch 2c fold-in)* **H1's round 3: Hypnotize a round early?** The first record said Blue commanded the hypnotized Swordsman in round 3, where a duration of 2 from round 2 predicts Red (§7.9, BAT-MAG-010). **User: Red in round 3** (a mix-up between several replays; the results file corrected). Every H1 line now matches the engine; nothing changes.
 - *(2026-10-07, BAT-Q1, E04b checkpoint before T5c)* **T5c's cut; the natives' sight; an attack from a seen pit.** (1) The agent proposed T5c in two parts, T5c1 (the Quicksand reading, hidden obstacles, the acting side's view, events and observations) and T5c2 (Land Mine), both this session or T5c1 alone. **User: T5c1 alone**, a checkpoint before T5c2. (2) The reading (`installation.md` §7.16) found the natives' sight unlike ADR-0014 point 7 (VCMI's, while a native stack lives): the original computes per side once at the battle start whether a stack fights on its native terrain and, when it places Quicksand or a Land Mine, shows it to both sides if the other side had natives; nothing changes when natives die or appear. **User: the original's rule in `faithful`, the ADR's as its fix** (BAT-QUIRK-1, fix-optional; ADR-0014 point 7 amended by a `shared/` pull request). (3) The original's walker stops on entering any Quicksand its side sees, also as the last hex of a move and attack, and then skips the attack. **User: a quirk too: faithful legal (the attack is skipped), strict-fixed not legal** (BAT-QUIRK-2, fix-optional). Also: the user asked to delete the stale branches `e04b-battle-magic` and `claude/hopeful-mayer-ppui03`; the session's GitHub proxy refuses ref deletion (REST and `git push --delete`), so they stay for the user.
 - *(2026-10-07, Q56, E04b T5a checkpoint)* **The next increment while T5b waits; batch 2c's scope.** Batch 2b's results arrived (all six encounters as the engine's faithful predictions). (1) The agent proposed folding batch 2b in, compiling batch 2c (so the user plays it while T5c is built) and T5c, a checkpoint after T5c; or the two small tasks alone; or the fold-in and T5c. **User: the batch 2b fold-in and batch 2c only**, a checkpoint after; T5c next. (2) Batch 2c always covers Q55 (the anchor hexes); the agent offered T5a's candidates, T4c's, E04a's leftovers (1)–(4) and T4a's. **User: Q55 with T5a's and T4c's candidates** (E04a's and T4a's stay in `docs/experiments/README.md` for a later batch).
 - *(2026-10-07, Q54, E04b T4c checkpoint)* **The next increment; S-17; the T4c agent decisions.** (1) The agent proposed T5 in three parts: T5a (the reading, Force Field, Fire Wall, Teleport, Expert Dispel's clearing), T5b (Remove Obstacle, which needs the natural obstacles as pieces in `BattleSetup`: a seam change to propose first), T5c (Quicksand and Land Mine, hidden); **user: T5a + T5b this session**, a checkpoint before T5c. (2) S-17 (Berserk's 255 rounds, read in the code) as data in every profile, no flag: **user: yes.** (3) The T4c agent decisions (a berserk walker beyond its speed stops on a shortest path, a flyer at the nearest position; a hypnotized stack keeps its owner's morale, luck, turn order and counts for its owner at the battle's end; the observation's "viewer to act" is the controller's): **user: keep all three** (the battle end stays a BACKLOG item to read).

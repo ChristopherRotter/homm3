@@ -794,9 +794,9 @@ records how and why the tasks went.
   its Fire Wall up-left, Red's wall gone in round 3. F2: Red burnt (8), Blue not (10): the
   original's walker passes the up-right neighbour, as BAT-MOV-003. B1: lower, upper, lower (a
   random choice). H1: refused, allowed; Magic Arrow 30, 2 Swordsmen with the top at 5; refused
-  at 40 of 70; Hypnotize listed after Expert Cure (Q-0012), the healed top at 35; Red in round 2
-  — but **Blue in round 3**, where a duration of 2 predicts Red (BAT-Q2, the user re-checks).
+  at 40 of 70; Hypnotize listed after Expert Cure (Q-0012), the healed top at 35; Red in rounds 2
+  and 3 (first noted Blue for round 3, a mix-up the user corrected: BAT-Q2, answered).
   C1: Basic Cure allowed, Hypnotize ended, Blue in round 2.
 - **Recorded:** observation sources on BAT-MAG-025 to 028 and BAT-MOV-003; the ledger's Q-0012;
-  Q55 updated (the reading confirmed; the seam options wait for the user); BAT-Q2 opened. No
+  Q55 updated (the reading confirmed; the seam options wait for the user); BAT-Q2 answered. No
   behaviour or version changes.
