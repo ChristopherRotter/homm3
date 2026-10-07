@@ -71,7 +71,8 @@ effects = [
 # dazzles one (Dazzle, a Blind at Expert: it loses its turns and does not retaliate); since T4c
 # he enrages the stacks around a hex (Rampage, a Berserk at Expert: two hexes around, his own
 # stacks too), which then attack the nearest stack on their own; since T5a he raises a three-hex
-# wall (Bulwark, a Force Field at Expert), and his Purge at Expert also removes the walls and fire.
+# wall (Bulwark, a Force Field at Expert), and his Purge at Expert also removes the walls and fire;
+# since T5c1 he hides eight pits (Mire, a Quicksand at Expert), which stop Brea's walkers.
 [scenario.defender_hero]
 hero_type = "synthetic:corwin"
 attack = 1
@@ -84,7 +85,7 @@ spell_book = [
     "synthetic:spark", "synthetic:arc", "synthetic:blight", "synthetic:zeal", "synthetic:gloom",
     "synthetic:boon", "synthetic:bane", "synthetic:corrode", "synthetic:aegis",
     "synthetic:hallow", "synthetic:purge", "synthetic:rage", "synthetic:veil",
-    "synthetic:dazzle", "synthetic:rampage", "synthetic:bulwark",
+    "synthetic:dazzle", "synthetic:rampage", "synthetic:bulwark", "synthetic:mire",
 ]
 schools = { "synthetic:stone" = 3 }
 surrender_discount_bp = 1000

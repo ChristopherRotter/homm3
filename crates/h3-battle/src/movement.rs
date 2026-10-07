@@ -4,20 +4,23 @@
 //! A position is the hex of a stack's head; a two-hex stack's tail follows it (BAT-GEO-002). A
 //! position is free for a stack when every hex of its footprint there is standable and not
 //! blocked by an obstacle (a Force Field among them, BAT-MAG-027) or another living stack (its
-//! own current hexes do not block it).
+//! own current hexes do not block it). A walker's move ends at a position where it enters a pit
+//! its controller sees (Quicksand, BAT-MAG-032): it may stop there but not go on.
 
 use h3_content::MAX_FIELD_HEXES;
 
 use crate::geometry::{Field, Hex, HexSet};
+use crate::obstacles;
 use crate::state::{BattleState, Stack, StackId, StackTraits};
 
 const UNREACHABLE: u8 = u8::MAX;
 
-/// Positions a stack can reach this turn, with their step counts.
+/// Positions a stack can reach this turn, with their step counts, and those where a walk stops.
 #[derive(Debug, Clone)]
 pub(crate) struct Reach {
     start: Hex,
     dist: [u8; MAX_FIELD_HEXES + 1],
+    stops: HexSet,
 }
 
 impl Reach {
@@ -33,10 +36,17 @@ impl Reach {
     pub(crate) fn can_move_to(&self, hex: Hex) -> bool {
         hex != self.start && self.steps(hex).is_some()
     }
+
+    /// Whether a walk to `hex` stops there because the stack enters a pit its controller sees
+    /// (BAT-MAG-032): an attack ordered with that move would not happen.
+    pub(crate) const fn stops_at(&self, hex: Hex) -> bool {
+        self.stops.contains(hex)
+    }
 }
 
 /// Whether a stack shaped like `mover` fits with its head on `hex`: every hex of the footprint is
 /// standable and not in `blocked`.
+#[inline]
 pub(crate) fn fits(field: Field, mover: &Stack, hex: Hex, blocked: HexSet) -> bool {
     field
         .footprint(hex, mover.is_two_hex(), mover.side)
@@ -52,9 +62,10 @@ pub(crate) fn reachable(state: &BattleState, field: Field, id: StackId, mover: &
 }
 
 /// Computes where `mover` (stack `id`) can move within `range`. Walkers take up to `range` steps
-/// between neighbouring free positions (BAT-MOV-001); flyers and teleporters reach every free
-/// position whose hex distance is at most `range`, whatever lies in between (BAT-MOV-002). Dead
-/// stacks do not block.
+/// between neighbouring free positions (BAT-MOV-001) and go on from none where they enter a pit
+/// their controller sees, other than those they start on (BAT-MAG-032; the original's stops,
+/// `installation.md` §7.16); flyers and teleporters reach every free position whose hex distance
+/// is at most `range`, whatever lies in between (BAT-MOV-002). Dead stacks do not block.
 // rule: BAT-MOV-001, BAT-MOV-002
 pub(crate) fn reachable_within(
     state: &BattleState,
@@ -67,6 +78,7 @@ pub(crate) fn reachable_within(
     let mut reach = Reach {
         start: mover.hex,
         dist: [UNREACHABLE; MAX_FIELD_HEXES + 1],
+        stops: HexSet::new(),
     };
     reach.dist[mover.hex.index()] = 0;
     if mover.traits.contains(StackTraits::FLIES) {
@@ -80,6 +92,19 @@ pub(crate) fn reachable_within(
         }
         return reach;
     }
+    // rule: BAT-MAG-032
+    let mut pits = obstacles::seen_pits(state, mover.controller());
+    if !pits.is_empty() {
+        let own = mover
+            .footprint(field)
+            .hexes()
+            .fold(HexSet::new(), |mut own, h| {
+                own.insert(h);
+                own
+            });
+        pits = pits.without(own);
+    }
+    let any_pits = !pits.is_empty();
     let mut queue = [Hex(0); MAX_FIELD_HEXES + 1];
     let (mut head, mut tail) = (0usize, 1usize);
     queue[0] = mover.hex;
@@ -94,6 +119,10 @@ pub(crate) fn reachable_within(
             let i = next.index();
             if reach.dist[i] == UNREACHABLE && fits(field, mover, next, blocked) {
                 reach.dist[i] = d + 1;
+                if any_pits && enters(field, mover, next, pits) {
+                    reach.stops.insert(next);
+                    continue;
+                }
                 queue[tail] = next;
                 tail += 1;
             }
@@ -102,16 +131,25 @@ pub(crate) fn reachable_within(
     reach
 }
 
+/// Whether `mover` with its head on `hex` covers a hex of `pits`.
+fn enters(field: Field, mover: &Stack, hex: Hex, pits: HexSet) -> bool {
+    field
+        .footprint(hex, mover.is_two_hex(), mover.side)
+        .is_some_and(|fp| fp.hexes().any(|h| pits.contains(h)))
+}
+
 /// Most positions on a walker's path.
 pub(crate) const MAX_PATH: usize = MAX_FIELD_HEXES;
 
 /// The positions a walker `mover` (stack `id`) passes on its way to the position `to`, in order,
 /// `to` last and its start left out (BAT-MOV-003): a shortest path between free positions,
 /// chosen from the end: each position's predecessor is its first neighbour, in
-/// [`crate::Direction::ALL`] order, one step nearer the start. Empty if `to` is the start or out
-/// of its reach. Only spell obstacles that act on the hexes a stack enters (Fire Wall,
-/// BAT-MAG-028) make the path matter. The original walks the path its pathfinder chose (0x4B3400,
-/// not read: survey S-11), so on ties it may pass other hexes.
+/// [`crate::Direction::ALL`] order, one step nearer the start, never one where the walk stops (a
+/// seen pit, BAT-MAG-032). Empty if `to` is the start or out of its reach this turn (every walk is
+/// within the stack's speed, BAT-MOV-001, so the search stops there). Only spell obstacles
+/// that act on the hexes a stack enters (Fire Wall, BAT-MAG-028; an unseen pit, BAT-MAG-032) make
+/// the path matter. The original walks the path its pathfinder chose (0x4B3400, not read: survey
+/// S-11), so on ties it may pass other hexes.
 // rule: BAT-MOV-003
 pub(crate) fn path(
     state: &BattleState,
@@ -120,7 +158,7 @@ pub(crate) fn path(
     mover: &Stack,
     to: Hex,
 ) -> ([Hex; MAX_PATH], usize) {
-    let reach = reachable_within(state, field, id, mover, u8::MAX - 1);
+    let reach = reachable_within(state, field, id, mover, mover.speed_now());
     let mut out = [Hex(0); MAX_PATH];
     let Some(steps) = reach.steps(to).map(usize::from) else {
         return (out, 0);
@@ -133,7 +171,7 @@ pub(crate) fn path(
             .neighbors(at)
             .into_iter()
             .flatten()
-            .find(|&n| reach.steps(n).is_some_and(|d| usize::from(d) == i))
+            .find(|&n| reach.steps(n).is_some_and(|d| usize::from(d) == i) && !reach.stops_at(n))
             .unwrap_or(at);
     }
     (out, steps)

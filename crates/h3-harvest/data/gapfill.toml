@@ -1536,6 +1536,13 @@ url = "docs/formats/installation.md"
 retrieved = "2026-10-07"
 
 [[source]]
+id = "exe-quicksand"
+kind = "original-data"
+ref = "Heroes3.exe code reading (docs/formats/installation.md 7.16): the spell book casts Quicksand at once (0x59ECDF); its handler (0x5A0354) places 4, 4, 6 or 8 pits by mastery (table 0x642214) on hexes drawn at random without repetition (0x50C6E0, 0x50C740) that are outside the side columns and have no object bit 0x3F, no living stack and no corpse; each pit is an object of its own (descriptor 0x63CEE8, one hex), owned by the casting side, revealed if the other side had natives at the battle's start (0x1329C), lasting the battle (rounds 0), flag 0x4"
+url = "docs/formats/installation.md"
+retrieved = "2026-10-07"
+
+[[source]]
 id = "exe-obstacle-spells"
 kind = "original-data"
 ref = "Heroes3.exe code reading (docs/formats/installation.md 7.15): Force Field (0x5A0759) places one object over the target hex, its upper right neighbour and from Advanced that one's upper left (descriptors 0x63CF18, 0x63CF2C, flags 0x22: blocked), 2 rounds; Fire Wall (0x5A0821) places one object per hex, 2 hexes below Advanced and 3 from it, the second the upper right neighbour for the attacker and the upper left for the defender, each 2 rounds with the value power x 10 + effect; the target test 0x5A39C0 wants every hex free (no object bit 0x3F, no stack, not a side column); 0x46A570 runs the Fire Wall trigger 0x59FCD0 for each hex a stack enters once per move and for its own hexes after an action without a move; the trigger damages a stack with f > 0 (no resistance roll) through 0x5A78E0 with the owner's hero as the caster; the round start removes an object whose rounds run out (0x476152); Teleport (0x5A1B4D) moves a stack to a free position without entering hexes (0x5A3700); Expert Dispel removes every object with a bit of 0x3C"
@@ -2194,6 +2201,15 @@ spell = "Fire Wall"
 obstacle = "fire"
 shape = { steps = ["top_right", "top_left"], hexes = [2, 2, 3, 3], mirrored = true, separate = true, rounds = 2 }
 sources = ["exe-obstacle-spells"]
+
+# Quicksand (E04b T5c1, pack format v14; installation.md 7.16): random pits for the whole battle,
+# hidden from the other side; the spell book casts it at once, so the harvester writes target
+# none for a random shape although the flag word names a hex.
+[[spells.obstacle]]
+spell = "Quicksand"
+obstacle = "pit"
+shape = { hexes = [4, 4, 6, 8], random = true, separate = true }
+sources = ["exe-quicksand"]
 
 [[spells.other]]
 spell = "Teleport"

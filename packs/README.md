@@ -159,7 +159,7 @@ override, replacing the list) names the creature types it upgrades into: at most
 none twice; references follow the reference rules and may name later creatures of the pack.
 Hero effects that select "a creature" apply to it and its direct upgrades.
 
-## Hero content (format v3, E04a T3; battle magic format v4, E04b T2a; v5 T3a; v6 T3b1; v7 T3b1b; v8 T3b2; v9 T3c; v10 T4a; v11 T4b; v12 T4c; v13 T5a)
+## Hero content (format v3, E04a T3; battle magic format v4, E04b T2a; v5 T3a; v6 T3b1; v7 T3b1b; v8 T3b2; v9 T3c; v10 T4a; v11 T4b; v12 T4c; v13 T5a; v14 T5c1)
 
 Spell schools, spells, secondary skills, hero classes and hero types (ADR-0013). References follow
 the reference rules above; every kind may refer to content of its dependency closure.
@@ -261,8 +261,21 @@ obstacle = { steps = ["top_right", "top_left"], hexes = [2, 2, 3, 3], mirrored =
                                    # mastery (1..=steps + 1); `mirrored`: the defender's hero casts
                                    # them mirrored left to right (default false); `separate`: one
                                    # obstacle per hex (default false: one over all); `rounds` it
-                                   # lasts, the cast's included (at least 1)
-effects = [{ kind = "obstacle", obstacle = "fire" }]   # v13: wall | fire
+                                   # lasts, the cast's included (v14: default 0, the whole battle)
+effects = [{ kind = "obstacle", obstacle = "fire" }]   # v13: wall | fire; v14: pit
+
+[[spell]]                          # an obstacle spell of a random shape (pack format v14, E04b
+id = "mire"                        # T5c1): no target; each hex a random free one
+category = "combat"
+level = 2
+schools = ["stone"]
+cost = [8, 6, 6, 6]
+effect = [0, 0, 0, 0]
+polarity = "neutral"
+obstacle = { hexes = [4, 4, 6, 8], random = true, separate = true }
+                                   # v14: `random` (default false): no steps, not mirrored, hexes
+                                   # 1..=8 by mastery; the spell's target is none
+effects = [{ kind = "obstacle", obstacle = "pit" }]
 
 [[spell]]                          # a teleport (pack format v13): an own stack to a hex
 id = "blink"
@@ -333,7 +346,8 @@ turns are automatic, attacking the nearest stack; every other stack is its enemy
 BAT-MAG-025), `hypnotize` (the other side controls it, BAT-MAG-026)); since v13, E04b T5a: `obstacle` (with `obstacle = "wall"` or `"fire"` and the
 spell's `obstacle` shape: places obstacles on the target hex's shape for its rounds; a wall blocks
 its hexes, BAT-MAG-027; fire burns a stack that enters a hex or acts on one with the value as the
-spell's damage, BAT-MAG-028) and `teleport` (moves the target stack to the cast's second target,
+spell's damage, BAT-MAG-028; since v14, E04b T5c1, `"pit"`: hidden from the other side until revealed,
+it stops a walker that enters it, BAT-MAG-031/032) and `teleport` (moves the target stack to the cast's second target,
 a free hex, BAT-MAG-029), each the spell's only effect, without area, chain or mass version; since
 v7, E04b T3b1b: `dispel` (ends the stack's
 timed effects: those of the spells in `dispels`, or without that list every one but those in

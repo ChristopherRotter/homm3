@@ -3,8 +3,8 @@
 
 use alloc::vec::Vec;
 use h3_content::{
-    Ability, AreaShot, CreatureFlag, CreatureType, CreatureTypeId, MAX_ARMY_SLOTS, Ruleset,
-    TerrainId, UNLIMITED_BALLISTA_SHOTS, WAR_MACHINE_KINDS,
+    Ability, AreaShot, CreatureFlag, CreatureType, CreatureTypeId, MAX_ARMY_SLOTS,
+    NATIVES_SIGHT_AT_START, Ruleset, TerrainId, UNLIMITED_BALLISTA_SHOTS, WAR_MACHINE_KINDS,
 };
 
 use h3_contracts::{
@@ -39,7 +39,7 @@ pub const STACK_CAPACITY: usize = 2 * SIDE_STACK_SLOTS;
 const _: () = assert!(MAX_ARMY_SLOTS + MAX_WAR_MACHINES <= SIDE_STACK_SLOTS);
 
 /// Version of the battle-state hash encoding ([`BattleState::state_hash`]). Bump on any change.
-pub const BATTLE_STATE_HASH_VERSION: u32 = 26;
+pub const BATTLE_STATE_HASH_VERSION: u32 = 27;
 
 /// Index of a stack in its battle (attacker stacks first, in slot order, then defender stacks).
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Default)]
@@ -151,6 +151,9 @@ impl StackTraits {
     /// May shoot while an enemy stands next to it (its hero's `ShootWhenAdjacent`, Bow of the
     /// Sharpshooter; BAT-HER-006).
     pub const SHOOTS_WHEN_ADJACENT: Self = Self(1 << 21);
+    /// Fights on its native terrain (BAT-TER-001): its side may see the other side's hidden
+    /// obstacles (BAT-MAG-031).
+    pub const NATIVE: Self = Self(1 << 22);
 
     /// Whether all traits of `other` are set.
     pub const fn contains(self, other: Self) -> bool {
@@ -419,6 +422,7 @@ impl Stack {
             id,
             StackTraits::of(creature, abilities),
         );
+        let traits = traits.with(StackTraits::NATIVE, native != 0);
         let speed = u8::try_from(changed(
             creature.speed.saturating_add(native).into(),
             speed,
@@ -766,6 +770,15 @@ impl BattleState {
             rng: Rng::for_stream(seed, StreamId::BATTLE),
         };
         morale::setup(&mut state, ruleset, &setup.heroes);
+        // rule: BAT-MAG-031
+        let natives = BattleSide::BOTH.map(|side| {
+            state
+                .stacks
+                .iter()
+                .any(|s| s.side == side && s.has(StackTraits::NATIVE))
+        });
+        let at_start = ruleset.quirks().is_enabled(NATIVES_SIGHT_AT_START);
+        state.spell_obstacles.set_sight(natives, !at_start);
         // rule: BAT-TAC-001
         if let Some(phase) = tactics::phase(ruleset, &state.heroes) {
             // Round 0: the tactics phase; `EndTactics` starts round 1 (BAT-TAC-002).

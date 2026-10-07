@@ -41,6 +41,7 @@ Classes: `exploit-fix` (always fixed, never toggleable) · `preserve` (accepted,
 - Context: game/projection (security)
 - Original behavior: the original client holds full game state; information a player should not see can be read by a modified client (user-reported concern).
 - Intended behavior: clients receive only projected observations/events.
+- Instances found in the original's code (fixed): Fire Wall's and Force Field's target test refuses a hex with the other side's hidden Quicksand, so the cursor shows it; a hypnotized stack's stops are its owner's pits, so its controller sees where they lie (E04b T5c1, `docs/formats/installation.md` §7.16, BAT-MAG-031).
 - Impact: exploit
 - Sources: user requirement (2026-09-30)
 - Flag: none
@@ -177,3 +178,29 @@ Classes: `exploit-fix` (always fixed, never toggleable) · `preserve` (accepted,
 - Defaults: faithful = on, strict-fixed = off
 - Regression test: `crates/h3-battle/src/tests/control.rs`, `mass_versions_pass_over_hypnotized_stacks_and_expert_cure_only_with_q0012`
 - Decided by / date: user, 2026-10-07 (E04b T4a checkpoint, Q53)
+
+### BAT-QUIRK-1 — The natives' sight of hidden obstacles is fixed at the battle's start
+- Class: fix-optional (user, 2026-10-07, BAT-Q1)
+- Context / rules affected: battle, BAT-MAG-031 (ADR-0014 point 7, amended)
+- Original behavior: at the battle's start the original sets one byte per side (+0x1329C, 0x46402C): whether any of its stacks fights on its native terrain. When Quicksand or a Land Mine is placed, the object is revealed to both sides if the other side's byte is set (0x5A0442). Nothing writes the byte again: a side whose natives die keeps seeing what is placed later, and stacks created later change nothing.
+- Intended/expected behavior: a side sees the other side's hidden obstacles while it has a living stack on its native terrain (VCMI's `nativeVisible`; strict-fixed), so its sight comes and goes with its natives.
+- Impact: gameplay-altering (small)
+- Community status: unknown (the wiki describes the natives' sight without timing)
+- Sources: original-data, `docs/formats/installation.md` §7.16; VCMI 1.7.5 `lib/battle/CObstacleInstance.cpp` (survey E04b-magic)
+- Flag: `quirk.battle.natives_sight_at_start` (E04b T5c1)
+- Defaults: faithful = on, strict-fixed = off
+- Regression test: `crates/h3-battle/src/tests/pits.rs`, `natives_at_the_start_reveal_the_other_sides_pits_with_bat_quirk_1`, `living_natives_see_the_other_sides_pits_without_bat_quirk_1`
+- Decided by / date: user, 2026-10-07 (E04b checkpoint before T5c, BAT-Q1)
+
+### BAT-QUIRK-2 — An attack from a seen Quicksand pit is accepted and skipped
+- Class: fix-optional (user, 2026-10-07, BAT-Q1)
+- Context / rules affected: battle, BAT-MAG-032
+- Original behavior: the walker (0x441FA0) stops at a step into a hex its side's stops mark (a pit it sees), also when that hex is the move's destination, and returns false; a move and attack (0x478971) then skips the attack. A command to attack from a seen pit therefore moves the stack into the pit and does nothing else.
+- Intended/expected behavior: such an attack is not legal (strict-fixed), as it can never happen; the plain move into the pit stays legal.
+- Impact: cosmetic for players (the original's interface may not offer it; not read), relevant for agents (an action that never does what it names)
+- Community status: unknown
+- Sources: original-data, `docs/formats/installation.md` §7.16
+- Flag: `quirk.battle.attack_from_seen_pit` (E04b T5c1)
+- Defaults: faithful = on, strict-fixed = off
+- Regression test: `crates/h3-battle/src/tests/pits.rs`, `an_attack_from_a_seen_pit_is_legal_only_with_bat_quirk_2`
+- Decided by / date: user, 2026-10-07 (E04b checkpoint before T5c, BAT-Q1)

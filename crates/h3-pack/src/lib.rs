@@ -474,7 +474,8 @@ struct SpellDto {
 
 /// `obstacle = { steps = ["top_right", "top_left"], hexes = [2, 2, 3, 3], mirrored = true,
 /// separate = true, rounds = 2 }` (pack format v13, E04b T5a; `mirrored` and `separate` default
-/// false).
+/// false) or `obstacle = { hexes = [4, 4, 6, 8], random = true, separate = true }` (v14, E04b
+/// T5c1: `random` defaults false, `rounds` 0, the whole battle).
 #[derive(Deserialize)]
 #[serde(deny_unknown_fields)]
 struct ObstacleShapeDto {
@@ -482,9 +483,12 @@ struct ObstacleShapeDto {
     steps: Vec<String>,
     hexes: [u8; 4],
     #[serde(default)]
+    random: bool,
+    #[serde(default)]
     mirrored: bool,
     #[serde(default)]
     separate: bool,
+    #[serde(default)]
     rounds: u8,
 }
 
@@ -500,6 +504,7 @@ impl ObstacleShapeDto {
                 })
                 .collect::<Result<_, _>>()?,
             hexes: self.hexes,
+            random: self.random,
             mirrored: self.mirrored,
             separate: self.separate,
             rounds: self.rounds,
@@ -2537,7 +2542,9 @@ mod tests {
              \"quirk.battle.frenzy_reduced_defense\" = true, \
              \"quirk.battle.fire_shield_first_stage\" = true, \
              \"quirk.battle.early_mass_version\" = true, \
-             \"quirk.battle.mass_cure_skips_hypnotized\" = true }",
+             \"quirk.battle.mass_cure_skips_hypnotized\" = true, \
+             \"quirk.battle.natives_sight_at_start\" = true, \
+             \"quirk.battle.attack_from_seen_pit\" = true }",
             "quirks = { \"quirk.x\" = true }",
         );
         let pack = parse_pack(&quirky).unwrap();
@@ -4000,7 +4007,7 @@ mod tests {
         use h3_content::SpellCategory;
         let r = compile(&[SYNTHETIC_PACK, SYNTHETIC_EXT_PACK], "synthetic:faithful").unwrap();
         assert_eq!(r.spell_schools().len(), 2);
-        assert_eq!(r.spells().len(), 32);
+        assert_eq!(r.spells().len(), 33);
         // Pack format v6: the storm school's protection rank; stone's defaults to 0.
         let ranks: Vec<u8> = r
             .spell_schools()
@@ -4202,12 +4209,30 @@ mod tests {
             Some(ObstacleShape {
                 steps: vec![HexStep::TopRight, HexStep::TopLeft],
                 hexes: [2, 2, 3, 3],
+                random: false,
                 mirrored: true,
                 separate: true,
                 rounds: 2,
             })
         );
         assert_eq!(magic("synthetic:blink").effects, [SpellEffect::Teleport]);
+        // Format v14: random pits for the whole battle (`rounds` defaults to 0).
+        let mire = magic("synthetic:mire");
+        assert_eq!(
+            (mire.target, mire.effects, mire.obstacle),
+            (
+                SpellTarget::None,
+                vec![SpellEffect::Obstacle(ObstacleKind::Pit)],
+                Some(ObstacleShape {
+                    steps: vec![],
+                    hexes: [4, 4, 6, 8],
+                    random: true,
+                    mirrored: false,
+                    separate: true,
+                    rounds: 0,
+                })
+            )
+        );
         assert_eq!(magic("synthetic:purge").clears_obstacles_from, Some(3));
         for (from, to) in [
             ("fixed_rounds = 255\n", ""),
@@ -4216,7 +4241,8 @@ mod tests {
                 "duration = \"own_turn\"\nfixed_rounds = 1\n",
             ),
             ("refuses = [\"magic_mirror\"]", "refuses = [\"mirror\"]"),
-            ("obstacle = \"wall\"", "obstacle = \"pit\""),
+            ("obstacle = \"wall\"", "obstacle = \"trap\""),
+            ("random = true", "random = 1"),
             (
                 "steps = [\"top_right\", \"top_left\"], hexes = [2, 2, 3, 3], rounds",
                 "steps = [\"up\"], hexes = [2, 2, 3, 3], rounds",

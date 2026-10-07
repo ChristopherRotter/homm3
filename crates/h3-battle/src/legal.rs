@@ -1,7 +1,7 @@
 //! Legal commands (ADR-0004 §7): the exact set of commands `apply` accepts for an actor, built
 //! from the same reachability and adjacency rules. Consistency with `apply` is property-tested.
 
-use h3_content::{MAX_FIELD_HEXES, Ruleset};
+use h3_content::{ATTACK_FROM_SEEN_PIT, MAX_FIELD_HEXES, Ruleset};
 use h3_contracts::BattleSide;
 use h3_kernel::FixedVec;
 
@@ -56,7 +56,8 @@ pub fn legal_commands(
             }
         }
     } else {
-        turn_commands(state, field, (id, &mover), out);
+        let pit_attacks = ruleset.quirks().is_enabled(ATTACK_FROM_SEEN_PIT);
+        turn_commands(state, (field, pit_attacks), (id, &mover), out);
     }
     // rule: BAT-FLE-001
     if state.may_retreat(actor) {
@@ -69,10 +70,12 @@ pub fn legal_commands(
 }
 
 /// The commands of the active stack `mover` on its turn, in the order of [`legal_commands`];
-/// its targets are the stacks it is hostile to (BAT-MAG-025/026).
+/// its targets are the stacks it is hostile to (BAT-MAG-025/026). A melee attack from a position
+/// where the walk stops in a seen pit is legal only with quirk BAT-QUIRK-2 (`pit_attacks`), as the
+/// attack would not happen (BAT-MAG-032).
 fn turn_commands(
     state: &BattleState,
-    field: Field,
+    (field, pit_attacks): (Field, bool),
     (id, mover): (StackId, &Stack),
     out: &mut LegalCommands,
 ) {
@@ -112,7 +115,10 @@ fn turn_commands(
         }
         let positions = field.attack_positions(mover.is_two_hex(), mover.side, fp);
         for from in positions.into_iter().flatten() {
-            if from == mover.hex || reach.can_move_to(from) {
+            // rule: BAT-MAG-032
+            if from == mover.hex
+                || (reach.can_move_to(from) && (pit_attacks || !reach.stops_at(from)))
+            {
                 let _ = out.push(Command::Attack {
                     target: StackId(tid),
                     from,

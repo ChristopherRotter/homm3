@@ -60,7 +60,7 @@ impl HexSet {
 
     /// Whether the set is empty.
     pub const fn is_empty(self) -> bool {
-        self.len() == 0
+        self.0[0] | self.0[1] | self.0[2] | self.0[3] == 0
     }
 
     /// The hexes in either set.
@@ -71,6 +71,17 @@ impl HexSet {
             self.0[1] | other.0[1],
             self.0[2] | other.0[2],
             self.0[3] | other.0[3],
+        ])
+    }
+
+    /// The hexes of this set that are not in `other`.
+    #[must_use]
+    pub const fn without(self, other: Self) -> Self {
+        Self([
+            self.0[0] & !other.0[0],
+            self.0[1] & !other.0[1],
+            self.0[2] & !other.0[2],
+            self.0[3] & !other.0[3],
         ])
     }
 

@@ -66,7 +66,7 @@ Order in `vcmi` (`BattleSpellMechanics.cpp` L339–L541, `CSpellHandler.cpp` L37
 
 ## 6. Hidden battlefield objects
 
-- Quicksand and Land Mine are hidden from the enemy; the caster's side sees them; a triggered Quicksand pit is revealed to all; a side with a stack fighting on its native terrain sees them, and its natives cross mines safely (`wiki` Quicksand, Land Mine; `vcmi` `lib/battle/CObstacleInstance.cpp` L152–L162, `nativeVisible`). Visibility therefore changes during a battle (natives die, pits trigger).
+- Quicksand and Land Mine are hidden from the enemy; the caster's side sees them; a triggered Quicksand pit is revealed to all; a side with a stack fighting on its native terrain sees them, and its natives cross mines safely (`wiki` Quicksand, Land Mine; `vcmi` `lib/battle/CObstacleInstance.cpp` L152–L162, `nativeVisible`). Visibility therefore changes during a battle (natives die, pits trigger). *(E04b T5c1: the original fixes the natives' sight at the battle's start and gives it to an obstacle when it is placed, `installation.md` §7.16; VCMI's living natives are the fix of BAT-QUIRK-1.)*
 - `wiki` Land Mine: it cannot be cast while the enemy has native-terrain stacks that are not immune; the caster's troops cross mines safely; flying creatures ignore Quicksand; Magic Elementals are still caught by it. A mine lasts until touched; Quicksand lasts the whole battle and is removed only by Expert Remove Obstacle or Expert Dispel.
 - Force Field and Fire Wall are visible (`E04-battle.md` §7).
 

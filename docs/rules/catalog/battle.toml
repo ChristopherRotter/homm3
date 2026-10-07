@@ -359,7 +359,7 @@ id       = "BAT-MOV-003"
 title    = "A walker's path"
 context  = "battle"
 status   = "implemented"
-summary  = "A walking stack (BAT-MOV-001) that moves to a position passes the positions of a shortest path between free positions, chosen from its end: each position's predecessor is its first neighbour, in the neighbour order of BAT-GEO-001 (right, bottom right, bottom left, left, top left, top right), one step nearer the start. The path matters only where the hexes a stack enters act on it (Fire Wall, BAT-MAG-028); a flyer enters only the hexes it lands on (BAT-MOV-002). The engine's own choice: the original walks the path its battle pathfinder chose (0x5239D0 -> 0x4B3400, the pathfinder of survey S-11, not read), which on ties between shortest paths may pass other hexes (OPEN-QUESTIONS Q53, BACKLOG)."
+summary  = "A walking stack (BAT-MOV-001) that moves to a position passes the positions of a shortest path between free positions, chosen from its end: each position's predecessor is its first neighbour, in the neighbour order of BAT-GEO-001 (right, bottom right, bottom left, left, top left, top right), one step nearer the start. The path never passes a position where the walk stops (a pit the stack's controller sees, BAT-MAG-032). The path matters only where the hexes a stack enters act on it (Fire Wall, BAT-MAG-028; an unseen pit, BAT-MAG-032); a flyer enters only the hexes it lands on (BAT-MOV-002). The engine's own choice: the original walks the path its battle pathfinder chose (0x5239D0 -> 0x4B3400, the pathfinder of survey S-11, not read), which on ties between shortest paths may pass other hexes (OPEN-QUESTIONS Q53, BACKLOG)."
 numeric  = "integer"
 
   [[rule.source]]
@@ -2383,7 +2383,7 @@ id       = "BAT-MAG-027"
 title    = "Spell obstacles and Force Field"
 context  = "battle"
 status   = "implemented"
-summary  = "An obstacle effect (SpellEffect::Obstacle, a spell with target hex and an ObstacleShape) places battlefield obstacles owned by the caster's side: on the target hex and on the hexes its shape's steps lead to, each the previous one's neighbour (as the attacker's hero casts it; mirrored left to right for the defender's hero when the shape says so), as many hexes as the shape gives for the cast's mastery; one obstacle over all of them, or one per hex for a separate shape. The target must be such that every hex is inside the field, outside the side columns, free of obstacles of either kind (natural or spell) and of living stacks; otherwise the target is invalid (and a spell with no such hex is not castable). An obstacle lasts the shape's rounds, the cast's included: at every round start, after the timed effects (BAT-MAG-010), each loses a round and goes when none is left (ObstacleRemoved). Its placing and going are public events, and it is public in the observation (ADR-0014 point 7). A wall (Force Field: a neutral earth spell of level 3, the target hex and its upper right neighbour, from Advanced also that one's upper left, for either side alike; 2 rounds) blocks its hexes like a natural obstacle: no stack enters or stands on them (BAT-MOV-001/002). Spell obstacles are kept in one list per battle, in the order they were placed (ADR-0014 point 5). Not yet: the anchor hex of a usual natural obstacle that does not block it, which the original's target test refuses too (the setup has no anchors; OPEN-QUESTIONS Q55, to verify by experiment); Remove Obstacle (E04b T5b), Quicksand and Land Mine (E04b T5c)."
+summary  = "An obstacle effect (SpellEffect::Obstacle, a spell with target hex and an ObstacleShape) places battlefield obstacles owned by the caster's side: on the target hex and on the hexes its shape's steps lead to, each the previous one's neighbour (as the attacker's hero casts it; mirrored left to right for the defender's hero when the shape says so), as many hexes as the shape gives for the cast's mastery; one obstacle over all of them, or one per hex for a separate shape. The target must be such that every hex is inside the field, outside the side columns, free of natural obstacles, of spell obstacles the caster's side sees (a hidden one it does not see is no hindrance: the new obstacle goes over it, BAT-MAG-031, Q-0002) and of living stacks; otherwise the target is invalid (and a spell with no such hex is not castable). An obstacle lasts the shape's rounds, the cast's included: at every round start, after the timed effects (BAT-MAG-010), each loses a round and goes when none is left (ObstacleRemoved); one of a shape with 0 rounds lasts the battle (Quicksand, BAT-MAG-032). Its placing and going are events for the sides that see it, and it is in their observations (ADR-0014 point 7, BAT-MAG-031). A wall (Force Field: a neutral earth spell of level 3, the target hex and its upper right neighbour, from Advanced also that one's upper left, for either side alike; 2 rounds) blocks its hexes like a natural obstacle: no stack enters or stands on them (BAT-MOV-001/002). Spell obstacles are kept in one list per battle, in the order they were placed (ADR-0014 point 5). Not yet: the anchor hex of a usual natural obstacle that does not block it, which the original's target test refuses too (the setup has no anchors; OPEN-QUESTIONS Q55, to verify by experiment); Remove Obstacle (E04b T5b), Land Mine (E04b T5c2)."
 numeric  = "integer"
 
   [[rule.source]]
@@ -2430,10 +2430,53 @@ id       = "BAT-MAG-030"
 title    = "Expert Dispel removes the spell obstacles"
 context  = "battle"
 status   = "implemented"
-summary  = "A spell with clears_obstacles_from (Dispel: Expert) cast at that mastery or above removes every spell obstacle of the battlefield after its effects on stacks, whoever cast it, each reported (ObstacleRemoved): Force Fields and Fire Walls (and Quicksand and Land Mines, E04b T5c)."
+summary  = "A spell with clears_obstacles_from (Dispel: Expert) cast at that mastery or above removes every spell obstacle of the battlefield after its effects on stacks, whoever cast it, each reported (ObstacleRemoved, to the sides that saw it, BAT-MAG-031): Force Fields, Fire Walls and Quicksand's pits (and Land Mines, E04b T5c2)."
 numeric  = "integer"
 
   [[rule.source]]
   kind       = "original-data"
   ref        = "Heroes3.exe code reading (docs/formats/installation.md §7.10, §7.15): Expert Dispel (0x5A16FB) walks the object list and removes each object whose anchor hex has a bit of 0x3C (Quicksand 0x4, Land Mine 0x8, Fire Wall 0x10, Force Field 0x20), after dispelling the stacks"
   confidence = "high"
+
+[[rule]]
+id       = "BAT-MAG-031"
+title    = "Hidden spell obstacles and the sides' sight"
+context  = "battle"
+status   = "implemented"
+summary  = "A spell obstacle of a hidden kind (ObstacleKind::is_hidden: a pit, Quicksand; Land Mine with E04b T5c2) is seen by its side (the side whose hero cast it) and by the other side only once it is revealed, or by natives: with quirk BAT-QUIRK-1 (faithful) a hidden obstacle is placed revealed when the other side had a stack on its native terrain (BAT-TER-001) at the battle's start, and nothing changes when natives die or appear later; without it (strict-fixed) a side sees every hidden obstacle while it has a living stack on its native terrain (ADR-0014 point 7). Force Field and Fire Wall are revealed when placed. A walker that runs into a pit its controller does not see reveals it (BAT-MAG-032). An observation lists only the spell obstacles its viewer sees; ObstaclePlaced, ObstacleRemoved and ObstacleTriggered are public while the other side sees the obstacle, else only for its side; ObstacleRevealed is public. What a side does not see never changes what it may do: its walkers' paths and stops use the pits their controller sees (a hypnotized stack's controller's), and an obstacle spell's target test ignores the hidden obstacles the caster's side does not see (the original's cursor refuses them and so gives them away, and its stops of a hypnotized stack are its owner's: both fixed under Q-0002)."
+numeric  = "integer"
+quirks   = ["BAT-QUIRK-1", "Q-0002"]
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (docs/formats/installation.md §7.16): stack byte +0x4D8 (native: the faction's terrain from table 0x643698 is the battlefield's, 0x43D7DD); one byte per side at +0x1329C set at the battle's start (0x46402C) if any of its stacks is native, never written again; Quicksand's handler (0x5A0442) sets the object's revealed flag +0xA from the other side's byte; the walker (0x441FA0) reveals a pit its side does not see; the stops (0x4B3290) take the pits of the stack's side (+0xF4) or revealed ones; the target test 0x5A39C0 refuses any object bit 0x3F"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "vcmi"
+  ref        = "lib/battle/CObstacleInstance.cpp L152-L162 (nativeVisible: a side with a living native stack sees the other side's hidden obstacles), as the E04b survey records it (docs/rules/surveys/E04b-magic.md)"
+  url        = "https://github.com/vcmi/vcmi/blob/1.7.5/lib/battle/CObstacleInstance.cpp"
+  retrieved  = "2026-10-05"
+  confidence = "medium"
+  note       = "VCMI's living-natives rule is the fix of BAT-QUIRK-1"
+
+[[rule]]
+id       = "BAT-MAG-032"
+title    = "Quicksand"
+context  = "battle"
+status   = "implemented"
+summary  = "An obstacle spell with a random shape (target none: Quicksand, a neutral earth spell of level 2) is always castable and places one pit (ObstacleKind::Pit, hidden, BAT-MAG-031) per hex on as many hexes as the shape gives for the cast's mastery (Quicksand: 4, 4, 6, 8), each drawn with equal chances among the hexes not yet drawn that are outside the side columns, without an obstacle of any kind (hidden ones too) and without a stack, living or dead; with fewer such hexes, fewer pits. Pits last the battle (rounds 0; Expert Dispel removes them, BAT-MAG-030). A walker (not a flyer or teleporter, BAT-MOV-002) that enters a pit hex with its head or tail stops at that position (ObstacleTriggered after its Moved): a pit its controller did not see is revealed to both sides (ObstacleRevealed); Fire Wall there still burns it (BAT-MAG-028). Its controller's walks never pass a pit it sees (BAT-MOV-003) but may end in one; the hexes a stack starts on never stop it, so it leaves a pit freely. An attack ordered with a move happens only if the stack arrives: a move and attack into an unseen pit stops there without the attack; with quirk BAT-QUIRK-2 (faithful) an attack from a position whose walk stops in a seen pit is legal and the attack is skipped, as the original's, without it (strict-fixed) it is not legal (CommandError::Unreachable)."
+numeric  = "integer"
+quirks   = ["BAT-QUIRK-2"]
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (docs/formats/installation.md §7.16): the spell book casts Quicksand at once (0x59ECDF); its handler 0x5A0354 places 4, 4, 6, 8 pits by mastery (table 0x642214) on hexes drawn without repetition (0x50C6E0, 0x50C740) outside the side columns, without object bits 0x3F, a living stack (hex record +0x18) or a corpse (+0x1C), each an object of one hex (descriptor 0x63CEE8), rounds 0, flag 0x4; the walker 0x441FA0 stops at a step whose new head or tail hex is a stop (0x4B3290: seen pits, the stack's own hexes left out; none for flyers and creatures 54, 55) or has Quicksand (then revealed), and the move and attack 0x478971 skips the attack when the walk returns false"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "wiki"
+  ref        = "Quicksand and Land Mine pages as the E04b survey records them (docs/rules/surveys/E04b-magic.md): hidden from the enemy, revealed when triggered, seen by a side fighting on its native terrain; flying creatures ignore Quicksand; it lasts the whole battle"
+  url        = "https://heroes.thelazy.net/index.php/Quicksand"
+  retrieved  = "2026-10-05"
+  confidence = "medium"

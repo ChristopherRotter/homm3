@@ -315,18 +315,28 @@ pub enum ObstacleKind {
     /// Burns a stack that enters one of its hexes, or acts while standing on one, with the
     /// spell's damage; the hexes stay passable (Fire Wall; BAT-MAG-028).
     Fire,
+    /// Stops a walker that enters one of its hexes; hidden from the other side until revealed
+    /// (Quicksand; BAT-MAG-031, BAT-MAG-032).
+    Pit,
 }
 
 impl ObstacleKind {
     /// All values, in code order.
-    pub const ALL: [Self; 2] = [Self::Wall, Self::Fire];
+    pub const ALL: [Self; 3] = [Self::Wall, Self::Fire, Self::Pit];
 
     /// Pack name.
     pub const fn name(self) -> &'static str {
         match self {
             Self::Wall => "wall",
             Self::Fire => "fire",
+            Self::Pit => "pit",
         }
+    }
+
+    /// Whether the other side does not see it until it is revealed (ADR-0014 point 7,
+    /// BAT-MAG-031): a pit; walls and fire are seen by both sides.
+    pub const fn is_hidden(self) -> bool {
+        matches!(self, Self::Pit)
     }
 
     /// Looks a value up by its pack name.
@@ -397,35 +407,42 @@ impl HexStep {
 /// Most hexes one obstacle spell covers.
 pub const MAX_OBSTACLE_HEXES: usize = 8;
 
-/// Where an obstacle spell's obstacles go and how long they last (E04b T5a, v13; the original's
-/// object descriptors, `docs/formats/installation.md` §7.15).
+/// Where an obstacle spell's obstacles go and how long they last (E04b T5a, v13; random shapes
+/// v14, T5c1; the original's object descriptors, `docs/formats/installation.md` §7.15, §7.16).
 #[derive(Debug, Clone, PartialEq, Eq, Default)]
 pub struct ObstacleShape {
     /// The hexes after the target hex: each the previous one's neighbour in this direction, as
     /// the attacker's hero casts it.
     pub steps: alloc::vec::Vec<HexStep>,
     /// How many hexes a cast covers by mastery (none, basic, advanced, expert): the target hex
-    /// and the first steps' hexes; 1 to `steps + 1`.
+    /// and the first steps' hexes; 1 to `steps + 1` (a random shape: 1 to 8).
     pub hexes: [u8; 4],
+    /// The cast has no target: each hex is a random free hex of the battlefield (Quicksand;
+    /// BAT-MAG-032; v14). A random shape has no steps and is not mirrored.
+    pub random: bool,
     /// The defender's hero casts the steps mirrored left to right (Fire Wall).
     pub mirrored: bool,
     /// Each hex is an obstacle of its own (Fire Wall); otherwise one obstacle covers them all.
     pub separate: bool,
     /// Rounds an obstacle lasts, the cast's included: it loses one at every round start and goes
-    /// when none is left (BAT-MAG-027).
+    /// when none is left (BAT-MAG-027); 0: the whole battle (Quicksand; v14).
     pub rounds: u8,
 }
 
 impl ObstacleShape {
     /// Why the shape is invalid, if it is.
     fn error(&self) -> Option<&'static str> {
-        let most = self.steps.len() + 1;
-        if most > MAX_OBSTACLE_HEXES {
+        let most = if self.random {
+            MAX_OBSTACLE_HEXES
+        } else {
+            self.steps.len() + 1
+        };
+        if self.steps.len() + 1 > MAX_OBSTACLE_HEXES {
             Some("an obstacle covers at most 8 hexes")
+        } else if self.random && (!self.steps.is_empty() || self.mirrored) {
+            Some("a random obstacle shape has no steps and is not mirrored")
         } else if self.hexes.iter().any(|&n| n == 0 || usize::from(n) > most) {
-            Some("an obstacle's hexes must be 1..=steps + 1")
-        } else if self.rounds == 0 {
-            Some("an obstacle lasts at least 1 round")
+            Some("an obstacle's hexes must be 1..=steps + 1 (random: 1..=8)")
         } else {
             None
         }
@@ -433,13 +450,14 @@ impl ObstacleShape {
 }
 
 impl CanonicalHash for ObstacleShape {
-    /// Steps (count, codes), hexes by mastery, mirrored, separate, rounds.
+    /// Steps (count, codes), hexes by mastery, random (v24), mirrored, separate, rounds.
     fn hash_into(&self, h: &mut StateHasher) {
         h.write_len(self.steps.len());
         for &s in &self.steps {
             h.write_u8(s as u8);
         }
         h.write_bytes(&self.hexes);
+        h.write_bool(self.random);
         h.write_bool(self.mirrored);
         h.write_bool(self.separate);
         h.write_u8(self.rounds);
@@ -765,7 +783,13 @@ impl SpellMagic {
             Some("an obstacle or teleport spell has no area, chain or mass version")
         } else if self.obstacle_kind().is_some() != self.obstacle.is_some() {
             Some("an obstacle effect and its shape go together")
-        } else if self.obstacle_kind().is_some() && self.target != SpellTarget::Hex {
+        } else if self.obstacle.as_ref().is_some_and(|o| o.random)
+            && self.target != SpellTarget::None
+        {
+            Some("an obstacle effect with a random shape needs target none")
+        } else if self.obstacle.as_ref().is_some_and(|o| !o.random)
+            && self.target != SpellTarget::Hex
+        {
             Some("an obstacle effect needs target hex")
         } else if self.teleports() && self.target != SpellTarget::Stack {
             Some("a teleport effect needs target stack")
@@ -1437,6 +1461,7 @@ mod tests {
         let shape = ObstacleShape {
             steps: vec![HexStep::TopRight],
             hexes: [2; 4],
+            random: false,
             mirrored: false,
             separate: false,
             rounds: 2,
@@ -1460,6 +1485,10 @@ mod tests {
             },
             ObstacleShape {
                 rounds: 3,
+                ..shape.clone()
+            },
+            ObstacleShape {
+                random: true,
                 ..shape.clone()
             },
         ];
@@ -1496,7 +1525,9 @@ mod tests {
                 ("obstacle", None, true)
             );
         }
-        assert_eq!(ObstacleKind::from_name("pit"), None);
+        assert_eq!(ObstacleKind::from_name("trap"), None);
+        assert!(ObstacleKind::Pit.is_hidden());
+        assert!(!ObstacleKind::Wall.is_hidden() && !ObstacleKind::Fire.is_hidden());
         for s in HexStep::ALL {
             assert_eq!(HexStep::from_name(s.name()), Some(s));
             assert_eq!(s.mirrored().mirrored(), s);
@@ -1518,6 +1549,7 @@ mod tests {
         let shape = ObstacleShape {
             steps: vec![HexStep::TopRight, HexStep::TopLeft],
             hexes: [2, 2, 3, 3],
+            random: false,
             mirrored: true,
             separate: true,
             rounds: 2,
@@ -1531,6 +1563,22 @@ mod tests {
         assert_eq!(fire.error(true), None);
         assert_eq!(fire.obstacle_kind(), Some(ObstacleKind::Fire));
         assert!(!fire.teleports());
+        // Quicksand: random pits for the whole battle, no target.
+        let random = ObstacleShape {
+            steps: vec![],
+            hexes: [4, 4, 6, 8],
+            random: true,
+            mirrored: false,
+            separate: true,
+            rounds: 0,
+        };
+        let pits = SpellMagic {
+            target: SpellTarget::None,
+            effects: vec![SpellEffect::Obstacle(ObstacleKind::Pit)],
+            obstacle: Some(random.clone()),
+            ..SpellMagic::default()
+        };
+        assert_eq!(pits.error(true), None);
         let dispel = SpellMagic {
             target: SpellTarget::Stack,
             effects: vec![SpellEffect::Dispel],
@@ -1633,13 +1681,47 @@ mod tests {
             ),
             (
                 SpellMagic {
-                    obstacle: Some(ObstacleShape {
-                        rounds: 0,
-                        ..shape.clone()
-                    }),
+                    target: SpellTarget::Hex,
+                    ..pits.clone()
+                },
+                "random shape needs target none",
+            ),
+            (
+                SpellMagic {
+                    target: SpellTarget::None,
                     ..fire.clone()
                 },
-                "at least 1 round",
+                "needs target hex",
+            ),
+            (
+                SpellMagic {
+                    obstacle: Some(ObstacleShape {
+                        steps: vec![HexStep::Right],
+                        ..random.clone()
+                    }),
+                    ..pits.clone()
+                },
+                "no steps",
+            ),
+            (
+                SpellMagic {
+                    obstacle: Some(ObstacleShape {
+                        mirrored: true,
+                        ..random.clone()
+                    }),
+                    ..pits.clone()
+                },
+                "not mirrored",
+            ),
+            (
+                SpellMagic {
+                    obstacle: Some(ObstacleShape {
+                        hexes: [4, 4, 6, 9],
+                        ..random.clone()
+                    }),
+                    ..pits.clone()
+                },
+                "random: 1..=8",
             ),
             (
                 SpellMagic {

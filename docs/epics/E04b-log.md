@@ -730,3 +730,53 @@ records how and why the tasks went.
   step has a fallback when an obstacle is in the way; F1's and F2's armies mix two alignments
   (morale 0: no extra turn adds a burn); every move is within the stack's speed (the batch 2b
   note); the hex grid and the movement shadow on; a spell's cursor is tried and cancelled.
+
+### T5c1 — Quicksand and hidden obstacles (2026-10-07)
+
+- **Seam (BAT-Q1):** T5c in two parts, T5c1 alone this session, a checkpoint before T5c2 (Land
+  Mine). After the reading the user made the natives' sight (BAT-QUIRK-1) and an attack from a
+  seen pit (BAT-QUIRK-2) fix-optional quirks; ADR-0014 point 7 amended in `shared/adr-0014-natives`.
+- **Reading** (`installation.md` §7.16): the natives' byte per stack and per side (set once at the
+  battle's start), Quicksand's handler (pits by mastery from a table, a sampler without
+  repetition, the free-hex test with corpses), the walker's stops and reveal, the stop array of
+  the pathfinder (flyers and Devils none), the move and attack skipping its attack. Correction:
+  0x469E50, called when a hex is entered, is the moat's damage, not a Quicksand test (§7.15).
+- **Content (pack format v14):** obstacle kind `pit` (hidden: `ObstacleKind::is_hidden`), a
+  random shape (`random`, target none; `rounds` 0 = the whole battle, now the default); quirk
+  flags `quirk.battle.natives_sight_at_start` and `quirk.battle.attack_from_seen_pit` in both
+  profiles; ruleset hash v24. Gap-fill Quicksand (source `exe-quicksand`; the harvester writes no
+  target for a random shape). The synthetic pack gains Mire (a Quicksand); Corwin casts it.
+- **Battle:** `SpellObstacle::revealed`; `SpellObstacles` keeps the pit hexes and the sides'
+  sight (natives at the start, live sight when BAT-QUIRK-1 is off); `StackTraits::NATIVE`;
+  `obstacles::{sees, seen_by, seen_pits, random_hexes}`; `Reach::stops_at` and walks that never
+  pass a seen pit (`movement::reachable_within`, `path`, now searched within the stack's speed);
+  `travel` returns whether the stack arrived and stops a walker at the first pit it enters
+  (`stuck`: reveal, `ObstacleRevealed`, `ObstacleTriggered`); obstacle events carry the
+  visibility of BAT-MAG-031; the observation lists what the viewer sees; Fire Wall's and Force
+  Field's target test ignores what the caster's side does not see (Q-0002); legality and
+  validation of attacks from seen pits by BAT-QUIRK-2 (`CommandError::Unreachable` when fixed);
+  the berserk turn the same. Rules BAT-MAG-031/032; BAT-MAG-027, 030 and BAT-MOV-003 updated.
+  State hash v27; `BattleState` 4 032 bytes (+40). Replay format, action and observation
+  encodings, C ABI unchanged.
+- **Performance:** the old workload (no Mire) on the new engine: 568.44 M Ir against 569.60 M
+  (−0.20 %; at first +1.3 %: `movement::fits` fell out of line and the target test built its
+  hex set through the visibility filter, now inlined and only with pits). The new workload:
+  11 424 steps against 10 776 (pits stop walkers), 610.18 M Ir (+7.13 %, +1.05 % per step: walks
+  through pits compute their path; the path search now stops at the stack's speed instead of
+  the whole field); `bench-check` re-baselined; golden replays re-recorded and a fifth one added
+  (`full-s3-a5`: Mire's pits stop Brea's walkers, four revealed).
+- **Agent decisions (change freely):** a hypnotized walker's stops and reveals use its
+  controller's view (the original's its owner's, Q-0002); a Fire Wall or Force Field may go over
+  a hidden pit its caster does not see (both objects stay; the original refuses the hex); the
+  pit's trigger event follows `Moved` (the original reveals before moving); a hex with a corpse
+  takes no pit (the original's +0x1C test; the engine's dead stacks keep their hexes); the
+  natives' sight ignores special battlefield 2, where the original has no natives (E04c).
+- **Tests:** `tests/pits.rs` (counts by mastery, free hexes, no free hex, the whole battle;
+  observations and projected events; an unseen pit stops and reveals, a stack leaves a pit, paths
+  around a seen pit, its own pit not revealed, flyers ignore pits; a two-hex walker's tail; an
+  attack from a seen pit with and without BAT-QUIRK-2; a move and attack into an unseen pit; the
+  natives' sight with and without BAT-QUIRK-1, Expert Dispel's events; Fire Wall over a hidden
+  pit; a hypnotized walker); the property tests' books gain Quicksand, the battlefield a terrain
+  (natives), and a new property checks that what a side does not see changes neither its
+  observation nor its legal commands, castable spells and targets; pack, content and harvester
+  tests for format v14.
