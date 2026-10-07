@@ -1,5 +1,8 @@
 [workspace]
 resolver = "3"
+# The playable clients are a separate workspace with their own lockfile and CI job
+# (clients/README.md, lanes.toml); the engine core stays free of graphics and assets.
+exclude = ["clients"]
 members = [
     "crates/h3-kernel",
     "crates/h3-content",
