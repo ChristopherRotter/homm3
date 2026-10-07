@@ -842,9 +842,10 @@ outside the side columns, without any object bit (`0x3F`) and without a stack.
 **Entering a hex** (0x46A570, for a stack's hex and, if it is a two-hex stack, its second hex,
 each at most once per move: a per-hex array cleared at the start of a move with the starting
 hexes already marked, 0x46A520) calls in turn the Fire Wall trigger 0x59FCD0, the Land Mine
-trigger 0x59FB40 and the Quicksand test 0x469E50 (T5c). A walker (0x441FA0) enters each hex of
-the path its pathfinder chose (0x5239D0 → 0x4B3400, the pathfinder of survey S-11, which avoids
-Quicksand its side can see and nothing else) and stops when it dies; a flyer (0x4B49C0) and a
+trigger 0x59FB40 and the moat's damage 0x469E50 (sieges, E04c; Quicksand acts in the walker,
+§7.16). A walker (0x441FA0) enters each hex of the path its pathfinder chose (0x5239D0 →
+0x4B3400, the pathfinder of survey S-11, which avoids Quicksand its side can see and nothing
+else, §7.16) and stops when it dies; a flyer (0x4B49C0) and a
 teleporting creature (0x4B4E90) enter only the hexes they land on. After an action that does not
 move the stack (defend 0x4798F3, wait 0x479AD6, a shot or melee attack from where it stands
 0x4792D7, 0x4789C7) the array is cleared and the stack's own hexes are entered again; a stack that
@@ -875,3 +876,46 @@ whose flags allow it at the caster's mastery (table 0x5A3C64): below Advanced no
 object (0x466B30), a single Fire Wall hex being an object of its own.
 
 **Expert Dispel** (§7.10) removes every object with a spell bit (`0x3C`), whoever cast it.
+
+### 7.16 Code reading: Quicksand, the natives' sight, the walker's stops (E04b T5c1, 2026-10-07)
+
+Read for T5c1 (Q29: insight only, nothing copied).
+
+**The natives' sight.** When a stack is set up (0x43D7DD), its byte +0x4D8 says whether it fights
+on its native terrain: its faction's (+0x74; the table 0x643698 maps factions to terrains, −1 to
+none) is the battlefield's (+0x5394), except on special battlefield 2 (+0x53C0, E04c), where no
+stack is native; while +0x1F698 of the game object 0x6994E8 is 0 (likely the RoE game version, not
+read) the elementals (creatures 112–115) have no faction. At the battle's
+start (0x46402C) the battle sets one byte per side at +0x1329C: whether any of the side's stacks has
+that byte. Nothing writes it again; it is read only when Quicksand or a Land Mine is placed and by
+Land Mine's cast test (T5c2): an object placed by side `s` gets the revealed flag (+0xA, shown to
+both sides) if the other side's byte is set. Natives that die or appear later change nothing
+(BAT-QUIRK-1; VCMI tests the living natives each time).
+
+**Quicksand** (10; the spell book casts it at once, no target, 0x59ECDF): the pits by mastery come
+from the table 0x642214 (4, 4, 6, 8), not from the spell's effect values. A sampler over the hexes
+0..186 (0x50C6E0, 0x50C740) draws each hex at most once, uniformly among those not yet drawn; a
+drawn hex takes a pit if it is outside the side columns, has none of the object bits `0x3F`
+(natural obstacles, anchors and every spell object, hidden ones included), no living stack (hex
+record +0x18) and no corpse (+0x1C counts the dead stacks on it; a dead two-hex stack counts on both
+hexes, 0x444380); otherwise the next hex is drawn, until the pits are placed or the hexes run out.
+Each pit is an object of its own (descriptor 0x63CEE8: one hex), owner the casting side, revealed
+as above, value 0, lasting the battle (rounds 0), flag `0x4` (0x4669B0).
+
+**The walker's stops.** Before a walker moves (0x4B3290, called from the pathfinder 0x4B3400) the
+battle marks the hexes where it must stop: in a siege the moat, and every Quicksand hex whose
+object belongs to the stack's side (+0xF4, the real side even when hypnotized) or is revealed; the
+stack's own hexes are left out. Flyers (stack flag `0x2`) and Devils and Arch Devils (creatures 54,
+55) get no stops. The pathfinder lets a path end on a stop but not go on from it (a stop costs the
+rest of the move). The walker (0x441FA0), at each step of its path, before it moves: if the new
+hex of its head or, for a two-hex stack, of its tail is a stop, this step is the last; else if it
+has Quicksand, the walker reveals that pit (+0xA = 1) and this step is the last; then it moves and
+enters the hexes (§7.15: Fire Wall, Land Mine, the moat). Either way the walk returns false, and a
+move and attack (0x478971) then skips the attack, also when the pit was the move's destination and
+seen (BAT-QUIRK-2). A flyer (0x4B49C0) and a teleporting creature (0x4B4E90) never test the pits;
+Teleport places the stack without entering. Standing on a pit has no further effect: the stack
+leaves it freely on its next turn.
+
+**Information the original gives away** (fixed, Q-0002): Fire Wall's and Force Field's target test
+(0x5A39C0) refuses a hex with the other side's hidden pit, so the cursor shows it; the stops of a
+hypnotized stack are its real side's, so its controller sees where the owner's pits lie.
