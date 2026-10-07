@@ -13,6 +13,7 @@ use h3_content::{
     SpellSchoolDef, SpellTarget, StartingStackDef, SurrenderDef, TargetConditions, TargetSide,
     TerrainDef, TimedChange,
 };
+pub use h3_contracts::Rate;
 use h3_contracts::{Army, ArmyStack, BattleHero, BattleSetup, BattleSide};
 
 use crate::{BattleState, Command, Event, Field, Hex, StackId, apply};
@@ -726,6 +727,7 @@ pub fn ruleset_with(profile: &str, edit: impl FnOnce(&mut BattleParamsDef)) -> R
                 quirks: vec![
                     (String::from("quirk.battle.first_protection"), true),
                     (String::from("quirk.battle.single_precision_rates"), true),
+                    (String::from("quirk.battle.fire_shield_first_stage"), true),
                 ],
             },
         ],

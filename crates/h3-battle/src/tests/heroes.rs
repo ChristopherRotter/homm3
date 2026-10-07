@@ -78,22 +78,24 @@ fn every_effect(r: &h3_content::Ruleset) -> Vec<BattleEffect> {
         },
         BattleEffect::SpellDamage {
             scope: SpellScope::All,
-            bp: 1500,
+            rate: Rate::bp(1500),
         },
         BattleEffect::SpellDamage {
             scope: SpellScope::School(SchoolId::from_raw(0)),
-            bp: 5000,
+            rate: Rate::bp(5000),
         },
         BattleEffect::SpellDamage {
             scope: SpellScope::Spell(r.spell_by_key("t:bolt").unwrap()),
-            bp: 5000,
+            rate: Rate::bp(5000),
         },
         BattleEffect::SpellSpecialty {
             spell: r.spell_by_key("t:bolt").unwrap(),
             bp_per_level: 300,
             level: 20,
         },
-        BattleEffect::MagicResistance { bp: 1000 },
+        BattleEffect::MagicResistance {
+            rate: Rate::bp(1000),
+        },
     ]
 }
 
@@ -141,9 +143,9 @@ fn heroes_are_kept_and_shown_to_both_sides() {
 fn the_private_part_of_a_hero_shows_only_to_its_side() {
     let r = ruleset();
     let damage = DamageBonuses {
-        ranged_bp: 1000,
-        melee_bp: 2000,
-        reduction_bp: 500,
+        ranged: Rate::bp(1000),
+        melee: Rate::bp(2000),
+        reduction: Rate::bp(500),
     };
     let mut commander = hero(&r);
     commander.tactics = 2;
@@ -153,7 +155,7 @@ fn the_private_part_of_a_hero_shows_only_to_its_side() {
         double_damage_chance_bp: 7500,
     };
     let tent = TentControl {
-        heal_bonus_bp: 10_000,
+        heal_bonus: Rate::bp(10_000),
     };
     commander.war_machines.ballista = Some(ballista);
     commander.war_machines.tent = Some(tent);
@@ -206,9 +208,9 @@ fn values_no_real_hero_could_have_are_accepted() {
     let mut odd = hero(&r);
     [odd.attack, odd.defense, odd.power, odd.knowledge] = [255, 200, 0, 0];
     odd.tactics = 3;
-    odd.damage.ranged_bp = u16::MAX;
-    odd.damage.melee_bp = u16::MAX;
-    odd.damage.reduction_bp = 10_000;
+    odd.damage.ranged = Rate::bp(u16::MAX.into());
+    odd.damage.melee = Rate::bp(u16::MAX.into());
+    odd.damage.reduction = Rate::bp(10_000);
     odd.surrender_discount_bp = 10_000;
     odd.war_machines.ballista = Some(BallistaControl {
         shots: 255,
@@ -238,7 +240,16 @@ fn unsound_heroes_are_rejected() {
         ),
         (|_, h| h.tactics = 4, HeroError::TacticsLevel),
         (
-            |_, h| h.damage.reduction_bp = 10_001,
+            |_, h| h.damage.reduction = Rate::bp(10_001),
+            HeroError::DamageReduction,
+        ),
+        (
+            |_, h| {
+                h.damage.reduction = Rate {
+                    bp: 10_000,
+                    single: core::num::NonZeroU32::new(0x3f80_0001),
+                };
+            },
             HeroError::DamageReduction,
         ),
         (
@@ -294,7 +305,7 @@ fn unsound_heroes_are_rejected() {
             |_, h| {
                 h.effects = vec![BattleEffect::SpellDamage {
                     scope: SpellScope::School(SchoolId::from_raw(2)),
-                    bp: 1,
+                    rate: Rate::bp(1),
                 }];
             },
             HeroError::UnknownSchool,
@@ -303,7 +314,7 @@ fn unsound_heroes_are_rejected() {
             |_, h| {
                 h.effects = vec![BattleEffect::SpellDamage {
                     scope: SpellScope::Spell(SpellId::from_raw(99)),
-                    bp: 1,
+                    rate: Rate::bp(1),
                 }];
             },
             HeroError::UnknownSpell,
@@ -845,9 +856,9 @@ fn hero_damage_bonuses_raise_the_sides_strikes_and_reduce_the_strikes_against_it
         let mut h = hero(r);
         [h.attack, h.defense] = [0, 0];
         h.damage = DamageBonuses {
-            ranged_bp,
-            melee_bp,
-            reduction_bp,
+            ranged: Rate::bp(ranged_bp),
+            melee: Rate::bp(melee_bp),
+            reduction: Rate::bp(reduction_bp),
         };
         Some(h)
     };

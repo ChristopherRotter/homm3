@@ -112,6 +112,8 @@ fn fire_shield_reflects_a_share_of_the_first_stage_capped_at_the_targets_health_
     assert_eq!(tank_reflects("t:single", 1), [(0, 20, 2)]);
     assert_eq!(tank_reflects("t:faithful", 3), [(0, 30, 3)]);
     assert_eq!(tank_reflects("t:fireshield", 1), [(0, 20, 2)]);
+    // The first stage in the executable's rounding (quirk Q-0005 too).
+    assert_eq!(tank_reflects("t:original", 1), [(0, 20, 2)]);
     // 10 Fixed (stage 1: 20, dealt: 15) on a shielded Tank: with quirk Q-0010 4 back (20 % of
     // the first stage), without it 3 (of the damage dealt).
     let tank = |r: &Ruleset| {
@@ -223,7 +225,7 @@ fn the_reflection_is_the_shields_spell_damage() {
     (h.attack, h.defense) = (0, 0);
     h.effects = vec![BattleEffect::SpellDamage {
         scope: SpellScope::All,
-        bp: 5000,
+        rate: Rate::bp(5000),
     }];
     let burnt = |striker: &'static str, ward: bool| {
         let setup = BattleSetup {

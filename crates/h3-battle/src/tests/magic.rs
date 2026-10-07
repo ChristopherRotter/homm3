@@ -409,23 +409,23 @@ fn the_casters_bonuses_apply_in_the_originals_order() {
     h.effects = vec![
         BattleEffect::SpellDamage {
             scope: SpellScope::All,
-            bp: 1000,
+            rate: Rate::bp(1000),
         },
         BattleEffect::SpellDamage {
             scope: SpellScope::All,
-            bp: 500,
+            rate: Rate::bp(500),
         },
         BattleEffect::SpellDamage {
             scope: SpellScope::Spell(bolt),
-            bp: 5000,
+            rate: Rate::bp(5000),
         },
         BattleEffect::SpellDamage {
             scope: SpellScope::School(SchoolId::from_raw(0)),
-            bp: 5000,
+            rate: Rate::bp(5000),
         },
         BattleEffect::SpellDamage {
             scope: SpellScope::School(SchoolId::from_raw(1)),
-            bp: 2500,
+            rate: Rate::bp(2500),
         },
         BattleEffect::SpellSpecialty {
             spell: bolt,
@@ -483,8 +483,8 @@ fn the_casters_bonuses_apply_in_the_originals_order() {
     let mut s = start((0, "titan", 5));
     act(&mut s, &r, cast(&r, "bolt", 1)).unwrap();
     let own = observe(&s, &r, BattleSide::Attacker).own_hero.unwrap();
-    assert_eq!(own.spell_bonuses.all_bp, 1500);
-    assert_eq!(own.spell_bonuses.school_bp, [5000, 2500, 0, 0]);
+    assert_eq!(own.spell_bonuses.all, Rate::bp(1500));
+    assert_eq!(own.spell_bonuses.school, [5000, 2500, 0, 0].map(Rate::bp));
     assert_eq!(
         own.spell_bonuses.spells.as_slice(),
         [SpellBonus {
@@ -499,6 +499,32 @@ fn the_casters_bonuses_apply_in_the_originals_order() {
     for viewer in BattleSide::BOTH {
         assert_eq!(observe(&s, &r, viewer).heroes[0].unwrap().casts, 1);
     }
+}
+
+// covers: BAT-MAG-004, HER-BAT-012
+#[test]
+fn a_grown_spell_bonus_counts_with_its_single_precision_value_with_quirk_q0005() {
+    // OPEN-QUESTIONS Q45's example: bolt at value 200 (power 19, no mastery: 190 + 10) from a
+    // hero whose spells gain 22.5 % (a Sorcery specialist's 15 % at level 10). Kept as
+    // 0.2250000089… it deals 245; f32(0.225) = 0.2249999940… deals 244; exact, 245.
+    let damage = |profile: &str, rate: Rate| {
+        let r = ruleset_with(profile, |_| {});
+        let mut h = mage(&r, &["bolt"]);
+        h.power = 19;
+        h.effects = vec![BattleEffect::SpellDamage {
+            scope: SpellScope::All,
+            rate,
+        }];
+        let mut s = led(&r, [Some(h), None], &[(0, "fast", 1)], &[(0, "titan", 5)]);
+        spell_damage(&act(&mut s, &r, cast(&r, "bolt", 1)).unwrap())[0].1
+    };
+    let grown = Rate {
+        bp: 2250,
+        single: core::num::NonZeroU32::new(0x3e66_6667),
+    };
+    assert_eq!(damage("t:single", grown), 245);
+    assert_eq!(damage("t:single", Rate::bp(2250)), 244);
+    assert_eq!(damage("t:faithful", grown), 245);
 }
 
 // covers: BAT-HER-001
@@ -530,7 +556,7 @@ fn at_most_four_spells_have_bonuses_of_their_own() {
     h.effects.pop();
     h.effects.push(BattleEffect::SpellDamage {
         scope: SpellScope::Spell(spell(&r, "bolt")),
-        bp: 200,
+        rate: Rate::bp(200),
     });
     let s = led(&r, [Some(h), None], &[(0, "fixed", 1)], &[(0, "fixed", 1)]);
     let own = observe(&s, &r, BattleSide::Attacker).own_hero.unwrap();

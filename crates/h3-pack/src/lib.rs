@@ -7,6 +7,7 @@
 
 use std::collections::BTreeMap;
 use std::fmt;
+use std::num::NonZeroU32;
 
 use h3_content::{
     AbilityDef, Affects, AreaShot, ArtifactClass, ArtifactDef, ArtifactSlotDef,
@@ -22,7 +23,7 @@ use h3_content::{
 };
 use h3_contracts::{
     Army, ArmyStack, BallistaControl, BattleEffect, BattleHero, BattleSetup, BattleSide,
-    DamageBonuses, FactionGroup, StatOp, TentControl,
+    DamageBonuses, FactionGroup, Rate, StatOp, TentControl,
 };
 use serde::{Deserialize, Serialize};
 
@@ -1550,18 +1551,28 @@ pub struct HeroEntry {
     /// Maximum spell points (default 0).
     #[serde(default)]
     pub max_mana: u16,
-    /// Bonus of the side's shots, basis points ([`DamageBonuses::ranged_bp`]; default 0, written
+    /// Bonus of the side's shots, basis points ([`DamageBonuses::ranged`]; default 0, written
     /// only when set).
     #[serde(default, skip_serializing_if = "is_zero")]
-    pub ranged_bp: u16,
-    /// Bonus of the side's melee strikes, basis points ([`DamageBonuses::melee_bp`]; default 0,
+    pub ranged_bp: u32,
+    /// Its single-precision value, an `f32` bit pattern (`h3_contracts::Rate::single`; written
+    /// only when set, E04b T3c).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub ranged_single: Option<NonZeroU32>,
+    /// Bonus of the side's melee strikes, basis points ([`DamageBonuses::melee`]; default 0,
     /// written only when set).
     #[serde(default, skip_serializing_if = "is_zero")]
-    pub melee_bp: u16,
-    /// Reduction of the strikes against the side, basis points ([`DamageBonuses::reduction_bp`];
+    pub melee_bp: u32,
+    /// Its single-precision value (as `ranged_single`).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub melee_single: Option<NonZeroU32>,
+    /// Reduction of the strikes against the side, basis points ([`DamageBonuses::reduction`];
     /// default 0, written only when set).
     #[serde(default, skip_serializing_if = "is_zero")]
-    pub reduction_bp: u16,
+    pub reduction_bp: u32,
+    /// Its single-precision value (as `ranged_single`).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub reduction_single: Option<NonZeroU32>,
     /// Discount on the price of a surrender, basis points ([`BattleHero::surrender_discount_bp`];
     /// default 0, written only when set).
     #[serde(default, skip_serializing_if = "is_zero")]
@@ -1620,12 +1631,14 @@ impl From<BallistaControl> for BallistaEntry {
 pub struct TentEntry {
     /// Increase of the tent's largest heal, basis points of the tent's own maximum.
     pub heal_bonus_bp: u32,
+    /// Its single-precision value, an `f32` bit pattern (written only when set, E04b T3c).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub single: Option<NonZeroU32>,
 }
 
 /// Whether a value is 0 (serde's `skip_serializing_if`).
-#[allow(clippy::trivially_copy_pass_by_ref)] // serde passes a reference
-fn is_zero(value: &u16) -> bool {
-    *value == 0
+fn is_zero<T: Default + PartialEq>(value: &T) -> bool {
+    *value == T::default()
 }
 
 /// Which creatures a battle effect applies to, as scenario and replay files write it
@@ -1753,7 +1766,10 @@ pub enum EffectEntry {
     /// [`BattleEffect::SpellDamage`]: `school` or `spell` by key (neither: every spell).
     SpellDamage {
         /// Bonus in basis points.
-        bp: u16,
+        bp: u32,
+        /// Its single-precision value, an `f32` bit pattern (written only when set).
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        single: Option<NonZeroU32>,
         /// The school (written only when set).
         #[serde(default, skip_serializing_if = "Option::is_none")]
         school: Option<String>,
@@ -1773,7 +1789,10 @@ pub enum EffectEntry {
     /// [`BattleEffect::MagicResistance`].
     MagicResistance {
         /// Resistance in basis points.
-        bp: u16,
+        bp: u32,
+        /// Its single-precision value, an `f32` bit pattern (written only when set).
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        single: Option<NonZeroU32>,
     },
     /// [`BattleEffect::SpellDuration`].
     SpellDuration {
@@ -1887,7 +1906,12 @@ impl EffectEntry {
                     })?,
                 }
             }
-            Self::SpellDamage { bp, school, spell } => BattleEffect::SpellDamage {
+            Self::SpellDamage {
+                bp,
+                single,
+                school,
+                spell,
+            } => BattleEffect::SpellDamage {
                 scope: match (school, spell) {
                     (None, None) => SpellScope::All,
                     (Some(l), None) => SpellScope::School(school_id(ruleset, l)?),
@@ -1898,7 +1922,7 @@ impl EffectEntry {
                         ));
                     }
                 },
-                bp,
+                rate: Rate { bp, single },
             },
             Self::SpellSpecialty {
                 spell,
@@ -1909,7 +1933,9 @@ impl EffectEntry {
                 bp_per_level,
                 level,
             },
-            Self::MagicResistance { bp } => BattleEffect::MagicResistance { bp },
+            Self::MagicResistance { bp, single } => BattleEffect::MagicResistance {
+                rate: Rate { bp, single },
+            },
             Self::SpellDuration { rounds } => BattleEffect::SpellDuration { rounds },
         })
     }
@@ -1963,13 +1989,18 @@ impl EffectEntry {
             BattleEffect::ShootWhenAdjacent { creatures } => Self::ShootWhenAdjacent {
                 creatures: selector(creatures)?,
             },
-            BattleEffect::SpellDamage { scope, bp } => {
+            BattleEffect::SpellDamage { scope, rate } => {
                 let (school, spell) = match scope {
                     SpellScope::All => (None, None),
                     SpellScope::School(l) => (Some(school_key(ruleset, l)?), None),
                     SpellScope::Spell(s) => (None, Some(spell_key(ruleset, s)?)),
                 };
-                Self::SpellDamage { bp, school, spell }
+                Self::SpellDamage {
+                    bp: rate.bp,
+                    single: rate.single,
+                    school,
+                    spell,
+                }
             }
             BattleEffect::SpellSpecialty {
                 spell,
@@ -1980,7 +2011,10 @@ impl EffectEntry {
                 bp_per_level,
                 level,
             },
-            BattleEffect::MagicResistance { bp } => Self::MagicResistance { bp },
+            BattleEffect::MagicResistance { rate } => Self::MagicResistance {
+                bp: rate.bp,
+                single: rate.single,
+            },
             BattleEffect::SpellDuration { rounds } => Self::SpellDuration { rounds },
             BattleEffect::AlignmentGroup { factions } => Self::AlignmentGroup {
                 factions: factions
@@ -2017,14 +2051,15 @@ impl HeroEntry {
         hero.tactics = self.tactics;
         hero.magic.mana = self.mana;
         hero.magic.max_mana = self.max_mana;
+        let rate = |bp, single| Rate { bp, single };
         hero.damage = DamageBonuses {
-            ranged_bp: self.ranged_bp,
-            melee_bp: self.melee_bp,
-            reduction_bp: self.reduction_bp,
+            ranged: rate(self.ranged_bp, self.ranged_single),
+            melee: rate(self.melee_bp, self.melee_single),
+            reduction: rate(self.reduction_bp, self.reduction_single),
         };
         hero.war_machines.ballista = self.ballista.map(BallistaControl::from);
         hero.war_machines.tent = self.tent.map(|t| TentControl {
-            heal_bonus_bp: t.heal_bonus_bp,
+            heal_bonus: rate(t.heal_bonus_bp, t.single),
         });
         hero.surrender_discount_bp = self.surrender_discount_bp;
         hero.effects = self
@@ -2091,13 +2126,17 @@ impl HeroEntry {
             tactics: hero.tactics,
             mana: hero.magic.mana,
             max_mana: hero.magic.max_mana,
-            ranged_bp: hero.damage.ranged_bp,
-            melee_bp: hero.damage.melee_bp,
-            reduction_bp: hero.damage.reduction_bp,
+            ranged_bp: hero.damage.ranged.bp,
+            ranged_single: hero.damage.ranged.single,
+            melee_bp: hero.damage.melee.bp,
+            melee_single: hero.damage.melee.single,
+            reduction_bp: hero.damage.reduction.bp,
+            reduction_single: hero.damage.reduction.single,
             surrender_discount_bp: hero.surrender_discount_bp,
             ballista: hero.war_machines.ballista.map(BallistaEntry::from),
             tent: hero.war_machines.tent.map(|t| TentEntry {
-                heal_bonus_bp: t.heal_bonus_bp,
+                heal_bonus_bp: t.heal_bonus.bp,
+                single: t.heal_bonus.single,
             }),
             spell_book,
             schools,
@@ -2522,16 +2561,16 @@ mod tests {
         );
         expected.magic.schools[0] = 1;
         expected.damage = DamageBonuses {
-            ranged_bp: 1000,
-            melee_bp: 1000,
-            reduction_bp: 500,
+            ranged: Rate::bp(1000),
+            melee: Rate::bp(1000),
+            reduction: Rate::bp(500),
         };
         expected.war_machines.ballista = Some(BallistaControl {
             shots: 1,
             double_damage_chance_bp: 5000,
         });
         expected.war_machines.tent = Some(TentControl {
-            heal_bonus_bp: 10_000,
+            heal_bonus: Rate::bp(10_000),
         });
         expected.effects = vec![
             BattleEffect::Morale {
@@ -2672,24 +2711,39 @@ mod tests {
             .chain([
                 BattleEffect::SpellDamage {
                     scope: SpellScope::All,
-                    bp: 1500,
+                    rate: Rate {
+                        bp: 2250,
+                        single: NonZeroU32::new(0x3e66_6667),
+                    },
                 },
                 BattleEffect::SpellDamage {
                     scope: SpellScope::School(SchoolId::from_raw(1)),
-                    bp: 5000,
+                    rate: Rate::bp(5000),
                 },
                 BattleEffect::SpellDamage {
                     scope: SpellScope::Spell(spark),
-                    bp: 2500,
+                    rate: Rate::bp(2500),
                 },
                 BattleEffect::SpellSpecialty {
                     spell: spark,
                     bp_per_level: 300,
                     level: 12,
                 },
-                BattleEffect::MagicResistance { bp: 500 },
+                BattleEffect::MagicResistance {
+                    rate: Rate {
+                        bp: 3000,
+                        single: NonZeroU32::new(0x3e99_999a),
+                    },
+                },
             ])
             .collect();
+        // Single-precision values of their own (E04b T3c, OPEN-QUESTIONS Q45).
+        every.damage.ranged.single = NonZeroU32::new(0x3eb5_c290);
+        every.damage.melee.single = NonZeroU32::new(1);
+        every.damage.reduction.single = NonZeroU32::new(2);
+        if let Some(tent) = &mut every.war_machines.tent {
+            tent.heal_bonus.single = NonZeroU32::new(0x40ce_6667);
+        }
         every.surrender_discount_bp = 4000;
         every.magic.spell_book = Some(vec![spark]);
         every.magic.schools = [0, 2, 0, 0];
@@ -2714,7 +2768,14 @@ mod tests {
             ),
             "{written}"
         );
-        assert!(written.contains("ranged_bp = 1000\nmelee_bp = 1000\nreduction_bp = 500\n"));
+        assert!(
+            written.contains(
+                "ranged_bp = 1000\nranged_single = 1052099216\nmelee_bp = 1000\nmelee_single = 1\n\
+                 reduction_bp = 500\nreduction_single = 2\n"
+            ),
+            "{written}"
+        );
+        assert!(written.contains("heal_bonus_bp = 10000\nsingle = 1087268455\n"));
         assert!(
             written.contains("[ballista]\nshots = 1\ndouble_damage_chance_bp = 5000\n"),
             "{written}"
@@ -2825,7 +2886,7 @@ mod tests {
                 |h| {
                     h.effects = vec![BattleEffect::SpellDamage {
                         scope: SpellScope::School(SchoolId::from_raw(9)),
-                        bp: 1,
+                        rate: Rate::bp(1),
                     }];
                 },
                 PackError::UnknownSchool("#9".to_owned()),
@@ -3322,11 +3383,11 @@ mod tests {
             [
                 BattleEffect::SpellDamage {
                     scope: SpellScope::All,
-                    bp: 1500
+                    rate: Rate::bp(1500)
                 },
                 BattleEffect::SpellDamage {
                     scope: SpellScope::School(school("base:air")),
-                    bp: 5000
+                    rate: Rate::bp(5000)
                 },
                 BattleEffect::SpellSpecialty {
                     spell: spell("base:chain_lightning"),
@@ -3342,7 +3403,7 @@ mod tests {
             ciele.effects,
             [BattleEffect::SpellDamage {
                 scope: SpellScope::Spell(spell("base:magic_arrow")),
-                bp: 5000
+                rate: Rate::bp(5000)
             }]
         );
     }
@@ -3411,13 +3472,13 @@ mod tests {
         assert_eq!(
             hero.damage,
             DamageBonuses {
-                ranged_bp: 7500,
+                ranged: Rate::bp(7500),
                 ..DamageBonuses::default()
             }
         );
         let bow = details(&sod, &["sod:bow_of_the_sharpshooter"], &[]);
         assert_eq!(
-            derive_battle_hero(&bow, &sod).unwrap().damage.ranged_bp,
+            derive_battle_hero(&bow, &sod).unwrap().damage.ranged.bp,
             10_500
         );
         // Artillery: Basic one shot at 50 % double damage, Expert two at 100 % (batch 1a R6, R7;
@@ -3447,7 +3508,7 @@ mod tests {
         assert_eq!(
             tent(&gunner),
             Some(TentControl {
-                heal_bonus_bp: 10_000
+                heal_bonus: Rate::bp(10_000)
             })
         );
         let rion = HeroDetails {
@@ -3458,7 +3519,7 @@ mod tests {
         assert_eq!(
             tent(&rion),
             Some(TentControl {
-                heal_bonus_bp: 45_000
+                heal_bonus: Rate::bp(45_000)
             })
         );
         // Five Clovers of Fortune give luck +1: identical artifacts do not stack (wiki Artifact).

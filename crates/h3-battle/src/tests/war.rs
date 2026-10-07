@@ -661,7 +661,12 @@ fn the_tent_heals_at_most_the_missing_hit_points_and_waits_without_patients() {
 /// A battle where the attacker's hero commands its tent with `bonus`: 0 = tank ×3 (top creature
 /// at 50 of 100 hit points), 1 = serf, 2 = ballista (hurt), 3 = tent (attacker); 4 = `enemy`.
 fn nursed(bonus: u32, enemy: Spec, seed: u64) -> (Ruleset, BattleState) {
-    let r = ruleset();
+    nursed_in("t:faithful", Rate::bp(bonus), enemy, seed)
+}
+
+/// [`nursed`] in profile `profile` with the heal bonus `bonus`.
+fn nursed_in(profile: &str, bonus: Rate, enemy: Spec, seed: u64) -> (Ruleset, BattleState) {
+    let r = ruleset_with(profile, |_| {});
     let mut setup = with_machines(
         &r,
         &[(0, "tank", 3), (1, "serf", 2)],
@@ -669,9 +674,7 @@ fn nursed(bonus: u32, enemy: Spec, seed: u64) -> (Ruleset, BattleState) {
         [&["tent", "ballista"], &[]],
     );
     let mut h = hero(&r);
-    h.war_machines.tent = Some(TentControl {
-        heal_bonus_bp: bonus,
-    });
+    h.war_machines.tent = Some(TentControl { heal_bonus: bonus });
     setup.heroes[0] = Some(h);
     let mut s = start(&r, &setup, seed);
     s.stacks.as_mut_slice()[0].top_hp = 50;
@@ -757,6 +760,35 @@ fn first_aid_grows_the_tents_largest_heal() {
         }
         assert_eq!(amounts.first(), Some(&1));
         assert_eq!(amounts.last(), Some(&top), "{bonus}");
+    }
+}
+
+// covers: BAT-WAR-007
+#[test]
+fn a_grown_heal_bonus_is_single_precision_with_quirk_q0005() {
+    // A First Aid specialist at level 4 with Expert First Aid: 300 % grown by 20 % is 360 %;
+    // the original keeps f32(3.6) = 3.5999999…, so its tent heals at most ⌊25 × 4.5999999…⌋ =
+    // 114 (OPEN-QUESTIONS Q45); exact, 115.
+    let rion = Rate {
+        bp: 36_000,
+        single: core::num::NonZeroU32::new(0x4066_6666),
+    };
+    for (profile, bonus, top) in [
+        ("t:faithful", rion, 115),
+        ("t:single", rion, 114),
+        ("t:single", Rate::bp(36_000), 114),
+    ] {
+        let mut amounts = std::collections::BTreeSet::new();
+        for seed in 0..600 {
+            let (r, mut s) = nursed_in(profile, bonus, (0, "fixed", 1), seed);
+            // A patient that can take the largest heal.
+            let patient = &mut s.stacks.as_mut_slice()[0];
+            (patient.max_hp, patient.top_hp) = (200, 1);
+            activate(&mut s, 3);
+            let events = act(&mut s, &r, Command::Heal { target: StackId(0) }).unwrap();
+            amounts.insert(healed(&events)[0].2);
+        }
+        assert_eq!(amounts.last(), Some(&top), "{profile}");
     }
 }
 

@@ -205,10 +205,17 @@ fn pack() -> ContentPack {
             artifact("t:book", Some("t:book")),
             artifact("t:grail", None),
         ],
-        profiles: vec![ProfileDef {
-            key: key("t:faithful"),
-            quirks: vec![],
-        }],
+        profiles: vec![
+            ProfileDef {
+                key: key("t:faithful"),
+                quirks: vec![],
+            },
+            // The original's single-precision rates (quirk Q-0005).
+            ProfileDef {
+                key: key("t:original"),
+                quirks: vec![("quirk.battle.single_precision_rates".into(), true)],
+            },
+        ],
         battle: Some(battle()),
         hero_params: Some(HeroParamsDef {
             primary_min: [0, 0, 1, 1],

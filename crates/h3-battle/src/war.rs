@@ -9,16 +9,17 @@
 use core::cmp::Ordering;
 
 use h3_content::FULL_BP;
-use h3_content::{Ability, Ruleset};
+use h3_content::{Ability, Ruleset, SINGLE_PRECISION_RATES};
 use h3_contracts::{BallistaControl, TentControl};
 use h3_kernel::FixedVec;
-use h3_kernel::arith::{cmp_fractions, mul_div_floor};
+use h3_kernel::arith::{X87, cmp_fractions, mul_div_floor};
 
 use crate::combat::{can_shoot, shoot, shot_damage_range};
 use crate::damage::apply_damage;
 use crate::event::{Event, EventKind, Sink};
 use crate::geometry::Field;
 use crate::hero;
+use crate::magic::hero_rate;
 use crate::movement::reachable;
 use crate::state::{BattleState, STACK_CAPACITY, StackId, StackTraits};
 
@@ -214,8 +215,10 @@ fn first_aid<S: Sink>(state: &mut BattleState, ruleset: &Ruleset, id: StackId, s
 
 /// The first-aid war machine `healer` heals the top creature of `target` by a uniform
 /// `min_hp..=max_hp` hit points of its ability `first_aid`, capped at full health, without
-/// resurrection (BAT-WAR-003). A commanded tent's largest heal grows by `heal_bonus_bp` of
-/// itself, rounded down (BAT-WAR-007: 1–25 becomes 1–50, 1–75, 1–100 with First Aid).
+/// resurrection (BAT-WAR-003). A commanded tent's largest heal grows by its `heal_bonus` of
+/// itself, rounded down (BAT-WAR-007: 1–25 becomes 1–50, 1–75, 1–100 with First Aid); with quirk
+/// Q-0005 as the original computes it, `trunc(max × (1 + bonus))` with the bonus in single
+/// precision (a First Aid specialist's growth, OPEN-QUESTIONS Q45).
 // rule: BAT-WAR-003, BAT-WAR-007
 pub(crate) fn heal<S: Sink>(
     state: &mut BattleState,
@@ -232,14 +235,18 @@ pub(crate) fn heal<S: Sink>(
             _ => None,
         })
         .unwrap_or_default();
+    let single = ruleset.quirks().is_enabled(SINGLE_PRECISION_RATES);
     let max = commanded_tent(state, healer).map_or(max, |control| {
-        let full = u64::from(FULL_BP);
-        let grown = mul_div_floor(
-            u64::from(max),
-            full + u64::from(control.heal_bonus_bp),
-            full,
-        );
-        grown.map_or(u32::MAX, |m| u32::try_from(m).unwrap_or(u32::MAX))
+        let bonus = hero_rate(single, control.heal_bonus);
+        let grown = if single {
+            X87::int(max.into())
+                .times(X87::ONE.plus(X87::fixed(bonus)))
+                .trunc()
+        } else {
+            let full = u64::from(FULL_BP);
+            mul_div_floor(u64::from(max), full + bonus, full).unwrap_or(u64::MAX)
+        };
+        u32::try_from(grown).unwrap_or(u32::MAX)
     });
     let amount = state.rng.range_inclusive(min, max);
     let t = state.at_mut(target);

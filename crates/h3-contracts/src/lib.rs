@@ -26,7 +26,7 @@ use alloc::vec::Vec;
 
 pub use hero::{
     BallistaControl, BattleEffect, BattleHero, BattleMagic, CatapultControl, DamageBonuses,
-    FactionGroup, MAX_BATTLE_EFFECTS, MachineControl, StatOp, TentControl,
+    FactionGroup, MAX_BATTLE_EFFECTS, MachineControl, Rate, StatOp, TentControl,
 };
 
 use h3_content::{CreatureTypeId, Formation, SpellId, TerrainId};
@@ -247,6 +247,7 @@ mod tests {
         );
         assert_eq!(hero.tactics, 0);
         assert_eq!(hero.damage, DamageBonuses::default());
+        assert_eq!(hero.damage.melee, Rate::bp(0));
         assert_eq!(hero.war_machines, MachineControl::default());
         assert_eq!(hero.surrender_discount_bp, 0);
         assert!(hero.effects.is_empty());

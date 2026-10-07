@@ -9,12 +9,13 @@
 use core::num::NonZeroU64;
 
 use h3_content::BattleParams;
+use h3_contracts::Rate;
 use h3_kernel::Rng;
 use h3_kernel::arith::{
     DOUBLE_BITS, SINGLE_BITS, SINGLE_FRAC_BITS, WideUint, X87, mul_div_floor, single_precision,
 };
 
-use crate::magic::Specialist;
+use crate::magic::{Specialist, hero_rate};
 use crate::state::{Stack, StackFlags};
 
 /// Base damage of a stack of `count` creatures with damage range `[min, max]`: for up to
@@ -59,8 +60,8 @@ pub(crate) struct Strike {
     pub defense: i32,
     /// Hate against the target, percent (BAT-DMG-004).
     pub hate_percent: u16,
-    /// The striker's hero's Offense or Archery, basis points (BAT-HER-004).
-    pub hero_bonus_bp: u16,
+    /// The striker's hero's Offense or Archery (BAT-HER-004).
+    pub hero_bonus: Rate,
     /// The striker's hero's specialty in the striker's Bless: its bonus of the base joins the
     /// first stage (BAT-MAG-020).
     pub blessing: Option<Specialist>,
@@ -73,8 +74,8 @@ pub(crate) struct Strike {
     /// The share of damage the target's Shield or Air Shield lets through, percent
     /// (BAT-MAG-012); 100 = none.
     pub protection_percent: u16,
-    /// The target's hero's Armorer, basis points (BAT-HER-004).
-    pub hero_reduction_bp: u16,
+    /// The target's hero's Armorer (BAT-HER-004).
+    pub hero_reduction: Rate,
 }
 
 impl Strike {
@@ -86,13 +87,13 @@ impl Strike {
             attack,
             defense,
             hate_percent: 0,
-            hero_bonus_bp: 0,
+            hero_bonus: Rate::bp(0),
             blessing: None,
             death_blow: false,
             double_damage: false,
             penalty_percent: 0,
             protection_percent: 100,
-            hero_reduction_bp: 0,
+            hero_reduction: Rate::bp(0),
         }
     }
 
@@ -138,7 +139,7 @@ impl Strike {
         let mut bonus = whole * BP
             + u64::from(self.jousting.0) * u64::from(self.jousting.1) * 100
             + u64::from(self.hate_percent) * 100
-            + u64::from(self.hero_bonus_bp);
+            + u64::from(self.hero_bonus.bp);
         if self.attack > self.defense {
             let diff = u64::from(self.attack.abs_diff(self.defense));
             let per_point = u64::from(p.attack_bonus_per_point_percent) * 100;
@@ -160,7 +161,7 @@ impl Strike {
         }
         reductions[1] = u64::from(self.penalty_percent) * 100;
         reductions[2] = u64::from(100u16.saturating_sub(self.protection_percent)) * 100;
-        reductions[3] = u64::from(self.hero_reduction_bp);
+        reductions[3] = u64::from(self.hero_reduction.bp);
         // One rounding: the five factors' product (at most 2^64 · (2^64)^5, so the wide
         // product never saturates) divided by BP^5 at the end. The specialist's bonus is a
         // whole amount (at least −base), so the first stage is `(base + extra) · BP + base ·
@@ -202,8 +203,9 @@ impl Strike {
         if self.protection_percent < 100 {
             g = single(self.protection_percent, 100);
         }
-        if self.hero_reduction_bp > 0 {
-            let kept = X87::ONE.minus(single(self.hero_reduction_bp.min(10_000), 10_000));
+        let reduction = hero_rate(true, self.hero_reduction);
+        if reduction > 0 {
+            let kept = X87::ONE.minus(X87::fixed(reduction).min(X87::ONE));
             g = kept.times(g);
         }
         stored(d2, DOUBLE_BITS).times(g).trunc()
@@ -229,8 +231,9 @@ impl Strike {
             sum = b.times(rate).plus(stored(sum, DOUBLE_BITS)).trunc();
         }
         sum = sum.saturating_add(mul_div_floor(base, self.hate_percent.into(), 100).unwrap_or(0));
-        if self.hero_bonus_bp > 0 {
-            sum = single(self.hero_bonus_bp, 10_000)
+        let bonus = hero_rate(true, self.hero_bonus);
+        if bonus > 0 {
+            sum = X87::fixed(bonus)
                 .times(stored(base, SINGLE_BITS))
                 .plus(stored(sum, SINGLE_BITS))
                 .trunc();

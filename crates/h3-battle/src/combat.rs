@@ -249,8 +249,8 @@ fn strike_inputs(
     });
     // rule: BAT-HER-004
     let own = hero::damage(heroes, striker.side);
-    inputs.hero_bonus_bp = if ranged { own.ranged_bp } else { own.melee_bp };
-    inputs.hero_reduction_bp = hero::damage(heroes, victim.side).reduction_bp;
+    inputs.hero_bonus = if ranged { own.ranged } else { own.melee };
+    inputs.hero_reduction = hero::damage(heroes, victim.side).reduction;
     (inputs, flags)
 }
 

@@ -460,3 +460,37 @@ records how and why the tasks went.
   and harvester tests for `specialist`.
 - **Left:** a hypnotized stack's controller as the hero (T4), the raising spells' and
   Hypnotize's specialist values (T6, T4).
+
+### T3c2 — Q45 option (b): the hero's rates in the original's single precision (2026-10-07)
+
+- **Code reading** (`installation.md` §7.4 confirmed): each skill getter grows its value as
+  `f32(r × (f32(level) × 0.05f + 1))` in x87 arithmetic; Archery's getter then adds the three
+  bows (artifacts 60, 61, 62; only with the skill), Resistance's the Garniture, Surcoat and
+  Boots (57, 58, 59; also without the skill), each sum stored as `f32`, in id order.
+- **Contract (Q45 (b), agent's shape):** `h3_contracts::Rate { bp: u32, single:
+  Option<NonZeroU32> }`, `single` the original's value as an f32 bit pattern where it differs
+  from the single-precision value of `bp`; `DamageBonuses { ranged, melee, reduction }`,
+  `SpellDamage { scope, rate }`, `MagicResistance { rate }`, `TentControl { heal_bonus }`. A
+  numerator over 2^40 (Q45's wording) made `BattleState` 352 bytes larger; the bit pattern
+  costs 64. The surrender discount keeps basis points (no Diplomacy specialist exists).
+- **Derivation:** `Growth`, `RateSum` (HER-BAT-004/005/012/013): under Q-0005 the grown values
+  and the artifacts' sums in the original's order (artifacts by type for every rate source
+  now, so the `SpellDamage` effects of artifacts follow the types' order); `h3-heroes` depends
+  on `h3-kernel` (`arch.toml`).
+- **Battle:** `magic::hero_rate`, `add_rates`; the strike's hero bonus and Armorer
+  (`Strike::hero_bonus`, `hero_reduction`), Sorcery and the Orbs, magic resistance, and the
+  tent's largest heal under Q-0005 `⌊max × (1 + bonus)⌋` in x87 (BAT-WAR-007: Rion at level 4
+  with Expert First Aid heals at most 114, exact 115). `Plan::Cast` is boxed (the larger
+  `SpellBonuses` tripped clippy's `large_enum_variant`). `X87::from_f32_bits`, `to_f32_bits`,
+  `fixed`, `to_fixed`.
+- **Formats:** scenario and replay files gain optional `ranged_single`, `melee_single`,
+  `reduction_single`, the tent's and the effects' `single`; replay format v16; state hash v23
+  (`BattleState` 3 840 → 3 904 bytes). The workload is unchanged (8 818 steps); 419.80 M Ir
+  against the T3c1 baseline's 416.84 M (+0.71 %, within the gate; not re-baselined).
+- **Also:** the coverage run of `54f9a65` found `Strike::stage_one`'s staged branch unexecuted
+  (the new golden replays no longer reach it); a test profile with Q-0005 and Q-0010 covers it.
+- **Tests:** `tests/derive.rs` (an Archery specialist with the loop and the eye, Q45's
+  Logistics example, a First Aid specialist at level 23, normalised rates), `tests/rules.rs`
+  (Q45's 245 against 244), `tests/magic.rs` (the same through a cast), `tests/war.rs` (the
+  tent's 114), `tests/heroes.rs` (a reduction above 1 rejected), `arith.rs` (bit patterns,
+  round trip property), the pack's scenario round trip with single values.

@@ -204,6 +204,55 @@ impl X87 {
         Self(self.0.saturating_sub(rhs.0)).round(X87_PRECISION)
     }
 
+    /// The value of the IEEE 754 binary32 bit pattern `bits` of a nonnegative `f32` (a value the
+    /// original stores), exact; a negative, infinite or NaN pattern counts as 0, a value of
+    /// `2^64` or more saturates at [`X87::MAX`], a subnormal one is 0.
+    pub fn from_f32_bits(bits: u32) -> Self {
+        let exponent = (bits >> 23) & 0xff;
+        if bits >> 31 != 0 || exponent == 0 || exponent == 0xff {
+            return Self::ZERO;
+        }
+        // `value = m · 2^(exponent − 150)`, a numerator over 2^64: `m · 2^(exponent − 86)`;
+        // from exponent 191 on the value is at least 2^64.
+        let mantissa = u128::from((bits & 0x7f_ffff) | 0x80_0000);
+        if exponent >= 191 {
+            Self::MAX
+        } else if exponent >= 86 {
+            Self(mantissa << (exponent - 86))
+        } else {
+            Self(mantissa >> (86 - exponent))
+        }
+    }
+
+    /// The IEEE 754 binary32 bit pattern of the value rounded to single precision (to nearest,
+    /// ties to even, [`X87::round`]); 0 for 0.
+    pub fn to_f32_bits(self) -> u32 {
+        let v = self.round(SINGLE_BITS).0;
+        if v == 0 {
+            return 0;
+        }
+        // The leading bit is at `len − 1`, the value's exponent `len − 65`, biased `len + 62`.
+        let len = 128 - v.leading_zeros();
+        let mantissa = if len >= 24 {
+            v >> (len - 24)
+        } else {
+            v << (24 - len)
+        };
+        ((len + 62) << 23) | (mantissa as u32 & 0x7f_ffff)
+    }
+
+    /// The value `num / 2^SINGLE_FRAC_BITS` (a numerator of [`single_precision`]'s fixed
+    /// point), exact.
+    pub const fn fixed(num: u64) -> Self {
+        Self((num as u128) << (X87_FRAC - SINGLE_FRAC_BITS))
+    }
+
+    /// The value as a numerator over `2^SINGLE_FRAC_BITS`, rounded down (exact for a
+    /// single-precision value of at least `2^-16`; saturating).
+    pub fn to_fixed(self) -> u64 {
+        u64::try_from(self.0 >> (X87_FRAC - SINGLE_FRAC_BITS)).unwrap_or(u64::MAX)
+    }
+
     /// The value rounded toward zero (the runtime's `_ftol`).
     pub fn trunc(self) -> u64 {
         (self.0 >> X87_FRAC) as u64
@@ -442,6 +491,30 @@ mod tests {
         assert_eq!(X87::ratio(1, 1 << 31, DOUBLE_BITS), Some(X87(1 << 33)));
         assert_eq!(X87::ratio(0, 7, DOUBLE_BITS), Some(X87::ZERO));
         assert_eq!(X87::ratio(1, 0, DOUBLE_BITS), None);
+        // The fixed point of `single_precision`, both ways: f32(0.05) exactly.
+        let f = single_precision(500, 10_000).unwrap();
+        assert_eq!(X87::fixed(f), X87::ratio(500, 10_000, SINGLE_BITS).unwrap());
+        assert_eq!(X87::fixed(f).to_fixed(), f);
+        assert_eq!(X87::MAX.to_fixed(), u64::MAX);
+        // IEEE binary32 bit patterns, both ways: f32(0.05), 1, 3.6, 2^-41 (below the bits kept
+        // exactly, 2^-64 is kept), 2^70 (saturates), 0 and the patterns counted as 0.
+        let f05 = X87::ratio(500, 10_000, SINGLE_BITS).unwrap();
+        assert_eq!(X87::from_f32_bits(0x3d4c_cccd), f05);
+        assert_eq!(f05.to_f32_bits(), 0x3d4c_cccd);
+        assert_eq!(X87::from_f32_bits(0x3f80_0000), X87::ONE);
+        assert_eq!(X87::ONE.to_f32_bits(), 0x3f80_0000);
+        assert_eq!(
+            X87::ratio(36, 10, SINGLE_BITS).unwrap().to_f32_bits(),
+            0x4066_6666
+        );
+        assert_eq!(X87::from_f32_bits(0x2b00_0000), X87(1 << 23));
+        assert_eq!(X87(1).to_f32_bits(), 0x1f80_0000);
+        assert_eq!(X87::from_f32_bits(0x6280_0000), X87::MAX);
+        assert_eq!(X87::from_f32_bits(0x5f7f_ffff).to_f32_bits(), 0x5f7f_ffff);
+        assert_eq!(X87::ZERO.to_f32_bits(), 0);
+        for bits in [0, 0x8000_0001, 0x7f80_0000, 0x7fc0_0000, 0x0000_0001] {
+            assert_eq!(X87::from_f32_bits(bits), X87::ZERO);
+        }
     }
 
     #[test]
@@ -510,6 +583,12 @@ mod tests {
             let exact_scaled = u128::from(num) << SINGLE_FRAC_BITS; // / den
             let diff = (u128::from(v) * u128::from(den)).abs_diff(exact_scaled);
             prop_assert!(2 * diff <= ulp * u128::from(den));
+        }
+
+        #[test]
+        fn f32_bits_round_trip(bits in 0x2b00_0000u32..0x5f80_0000) {
+            // Exact from 2^-41 (exponent 86) up to below 2^64.
+            prop_assert_eq!(X87::from_f32_bits(bits).to_f32_bits(), bits);
         }
 
         #[test]

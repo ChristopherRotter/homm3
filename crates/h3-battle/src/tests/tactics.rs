@@ -416,7 +416,9 @@ fn war_machines_are_neither_placed_nor_active_in_the_phase() {
         ],
         ..led(&r, &[(0, "fixed", 5)], &[(0, "fixed", 5)], [None, Some(2)])
     };
-    s.heroes[1].as_mut().unwrap().war_machines.tent = Some(TentControl { heal_bonus_bp: 0 });
+    s.heroes[1].as_mut().unwrap().war_machines.tent = Some(TentControl {
+        heal_bonus: Rate::bp(0),
+    });
     let (mut state, events) = start(&r, &s);
     // The defender places; the attacker's automatic machines do not act before round 1.
     assert_eq!(state.tactics().unwrap().side, BattleSide::Defender);

@@ -6,13 +6,15 @@
 //! the ranges where the rules are defined. Values no real hero could have (attack 200) are
 //! accepted; keeping a hero within the game's limits is the derivation's job (HER-BAT-001).
 
+use core::num::NonZeroU32;
+
 use h3_content::{
     CreatureFlag, CreatureSelector, CreatureStat, CreatureType, CreatureTypeId, FULL_BP,
     HeroTypeId, MAX_SKILL_LEVEL, MAX_SPELL_SCHOOLS, Ruleset, SINGLE_PRECISION_RATES, SpellCategory,
     SpellScope,
 };
 use h3_contracts::{
-    BallistaControl, BattleEffect, BattleHero, BattleSide, DamageBonuses, MAX_BATTLE_EFFECTS,
+    BallistaControl, BattleEffect, BattleHero, BattleSide, DamageBonuses, MAX_BATTLE_EFFECTS, Rate,
     StatOp, TentControl,
 };
 use h3_kernel::{CanonicalHash, StateHasher};
@@ -222,8 +224,8 @@ impl CanonicalHash for HeroRecord {
         h.write_u16(v.max_mana);
         h.write_u8(v.casts);
         let d = &self.damage;
-        for value in [d.ranged_bp, d.melee_bp, d.reduction_bp] {
-            h.write_u16(value);
+        for r in [d.ranged, d.melee, d.reduction] {
+            hash_rate(h, r);
         }
         h.write_u8(u8::from(self.ballista.is_some()));
         if let Some(b) = self.ballista {
@@ -232,13 +234,20 @@ impl CanonicalHash for HeroRecord {
         }
         h.write_u8(u8::from(self.tent.is_some()));
         if let Some(t) = self.tent {
-            h.write_u32(t.heal_bonus_bp);
+            hash_rate(h, t.heal_bonus);
         }
         h.write_u8(u8::from(self.no_retreat));
         h.write_u16(self.surrender_discount_bp);
         h.write_u32(self.funds);
         self.magic.hash_into(h);
     }
+}
+
+/// Hashes one of a hero's rates: its basis points, then its single-precision value's bits (0
+/// without; state hash v23).
+pub(crate) fn hash_rate(h: &mut StateHasher, r: Rate) {
+    h.write_u32(r.bp);
+    h.write_u32(r.single.map_or(0, NonZeroU32::get));
 }
 
 /// Checks `side`'s hero for soundness and returns what the battle keeps of it, with the side's
@@ -257,7 +266,9 @@ pub(crate) fn check(
     if hero.tactics > MAX_SKILL_LEVEL {
         return Err(invalid(HeroError::TacticsLevel));
     }
-    if hero.damage.reduction_bp > FULL_BP {
+    let reduction = hero.damage.reduction;
+    // Positive binary32 patterns order as their values; 0x3f80_0000 is 1.
+    if reduction.bp > FULL_BP.into() || reduction.single.is_some_and(|b| b.get() > 0x3f80_0000) {
         return Err(invalid(HeroError::DamageReduction));
     }
     if hero

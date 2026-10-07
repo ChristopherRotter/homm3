@@ -3,7 +3,7 @@
 use std::vec;
 
 use h3_content::{Affects, HeroEffectDef, Ruleset};
-use h3_contracts::{BattleEffect, BattleHero, BattleMagic, DamageBonuses, MachineControl};
+use h3_contracts::{BattleEffect, BattleHero, BattleMagic, DamageBonuses, MachineControl, Rate};
 use proptest::prelude::*;
 
 use super::*;
@@ -108,6 +108,11 @@ fn morale_ruleset() -> Ruleset {
 /// `t:helm` (another part) 90 % reduction; the specialty grows `skill` by `bp_per_level` of
 /// itself per hero level and adds +1 % melee of its own.
 fn damage_ruleset(skill: &str, bp_per_level: u16) -> Ruleset {
+    compile(damage_pack(skill, bp_per_level)).unwrap()
+}
+
+/// The pack of [`damage_ruleset`].
+fn damage_pack(skill: &str, bp_per_level: u16) -> ContentPack {
     let mut p = effect_pack();
     for s in &mut p.skills {
         match s.key.to_string().as_str() {
@@ -136,7 +141,7 @@ fn damage_ruleset(skill: &str, bp_per_level: u16) -> Ruleset {
         },
         HeroEffectDef::MeleeDamage { bp: 100 },
     ]);
-    compile(p).unwrap()
+    p
 }
 
 /// The battle hero with the given derived values and everything else neutral.
@@ -160,7 +165,7 @@ fn derived_primary_skills_and_tactics() {
     // Basic Archery's +10 % is the only damage bonus (HER-BAT-004).
     let archer = |hero: BattleHero| BattleHero {
         damage: DamageBonuses {
-            ranged_bp: 1000,
+            ranged: Rate::bp(1000),
             ..DamageBonuses::default()
         },
         ..hero
@@ -365,10 +370,10 @@ fn damage_bonuses_sum_skills_artifacts_and_specialty() {
         level: 10,
         ..details(&r)
     };
-    let bonuses = |ranged_bp, melee_bp, reduction_bp| DamageBonuses {
-        ranged_bp,
-        melee_bp,
-        reduction_bp,
+    let bonuses = |ranged, melee, reduction| DamageBonuses {
+        ranged: Rate::bp(ranged),
+        melee: Rate::bp(melee),
+        reduction: Rate::bp(reduction),
     };
     // Basic Archery 10 % grown by 5 % of itself per level (×1.5 at level 10) and the eye once
     // although two are worn; the specialty's own melee 1 %; the helm's 90 % (a part of the
@@ -399,8 +404,8 @@ fn damage_bonuses_sum_skills_artifacts_and_specialty() {
     assert_eq!(grown, bonuses(1000 + 500 + 2000, 41_321 + 100, 10_000));
     let saturated = HeroDetails { level: 10, ..more };
     assert_eq!(
-        derive_battle_hero(&saturated, &r).unwrap().damage.melee_bp,
-        u16::MAX
+        derive_battle_hero(&saturated, &r).unwrap().damage.melee.bp,
+        u32::from(u16::MAX)
     );
 }
 
@@ -460,7 +465,7 @@ fn artillery_and_first_aid_make_the_hero_command_its_war_machines() {
             machines
                 .ballista
                 .map(|b| (b.shots, b.double_damage_chance_bp)),
-            machines.tent.map(|t| t.heal_bonus_bp),
+            machines.tent.map(|t| t.heal_bonus.bp),
         )
     };
     assert_eq!(control(&without_kit, 20, None, None), (None, None));
@@ -718,6 +723,11 @@ fn alignment_groups_are_kept_once_each() {
 /// and 5 % magic resistance; Logistics also gives 5/10/20 % magic resistance (as Resistance);
 /// the specialty grows Logistics by 5 % per level and is a `t:bolt` specialty of 3 % per level.
 fn magic_ruleset() -> Ruleset {
+    compile(magic_pack()).unwrap()
+}
+
+/// The pack of [`magic_ruleset`].
+fn magic_pack() -> ContentPack {
     use h3_content::SpellScope;
     let mut p = pack();
     p.spell_schools.push(SpellSchoolDef {
@@ -785,7 +795,7 @@ fn magic_ruleset() -> Ruleset {
             bp_per_level: 300,
         },
     ];
-    compile(p).unwrap()
+    p
 }
 
 // covers: HER-BAT-011, HER-BAT-012, HER-BAT-013, HER-BAT-014
@@ -809,27 +819,27 @@ fn magic_and_spell_bonuses_are_derived() {
         }
     );
     // Every spell: Expert Logistics 15 % grown by 5 % x 10 levels (22.5 %) plus the hook's 1 %;
-    // then fire, bolt and air in the order worn (the eye once); then the specialty, 3 % per
-    // level at level 10.
+    // then bolt, fire and air in the order of the artifact types, as the original's getters add
+    // them (the eye once); then the specialty, 3 % per level at level 10.
     let bolt = spell_id(&r, "t:bolt");
     assert_eq!(
         hero.effects,
         vec![
             BattleEffect::SpellDamage {
                 scope: SpellScope::All,
-                bp: 2350,
-            },
-            BattleEffect::SpellDamage {
-                scope: SpellScope::School(SchoolId::from_raw(1)),
-                bp: 5000,
+                rate: Rate::bp(2350),
             },
             BattleEffect::SpellDamage {
                 scope: SpellScope::Spell(bolt),
-                bp: 2500,
+                rate: Rate::bp(2500),
+            },
+            BattleEffect::SpellDamage {
+                scope: SpellScope::School(SchoolId::from_raw(1)),
+                rate: Rate::bp(5000),
             },
             BattleEffect::SpellDamage {
                 scope: SpellScope::School(SchoolId::from_raw(0)),
-                bp: 5000,
+                rate: Rate::bp(5000),
             },
             BattleEffect::SpellSpecialty {
                 spell: bolt,
@@ -837,8 +847,12 @@ fn magic_and_spell_bonuses_are_derived() {
                 level: 10,
             },
             // Expert Logistics' 20 % grown by 50 %, then the hook's 5 % (HER-BAT-013).
-            BattleEffect::MagicResistance { bp: 3000 },
-            BattleEffect::MagicResistance { bp: 500 },
+            BattleEffect::MagicResistance {
+                rate: Rate::bp(3000)
+            },
+            BattleEffect::MagicResistance {
+                rate: Rate::bp(500)
+            },
             // The helm's 2 and the eye's 3 rounds, the eye once (HER-BAT-014).
             BattleEffect::SpellDuration { rounds: 5 },
         ]
@@ -913,9 +927,95 @@ proptest! {
                 prop_assert!((min..=99).contains(&value));
             }
             prop_assert!(hero.tactics <= 3);
-            prop_assert!(hero.damage.reduction_bp <= 10_000);
+            prop_assert!(hero.damage.reduction.bp <= 10_000);
             // At most one effect per morale/luck kind and affected sides (HER-BAT-003).
             prop_assert!(hero.effects.len() <= 12);
         }
     }
+}
+
+/// `p` compiled with the original's single-precision rates (quirk Q-0005).
+fn original(p: ContentPack) -> Ruleset {
+    Ruleset::compile(&[p], "t:original").unwrap()
+}
+
+// covers: HER-BAT-004, HER-BAT-005, HER-BAT-012, HER-BAT-013
+#[test]
+fn with_quirk_q0005_rates_carry_the_originals_single_precision_values() {
+    // An Archery specialist at level 1 with Luck: Basic Archery's 10 % grown by 5 % in the
+    // original's single precision, then the loop's 20 % and the eye's 5 % in the order of their
+    // types, each sum stored as f32: one unit above f32(0.355). Offense's 10 % and the
+    // specialty's 1 %, and the helm's 90 %, equal their basis points' single values: none of
+    // their own.
+    let d = |r: &Ruleset| {
+        let mut d = details(r);
+        d.skills
+            .extend([(skill(r, "t:luck"), 1), (skill(r, "t:offense"), 1)]);
+        d
+    };
+    let r = original(damage_pack("t:archery", 500));
+    let damage = derive_battle_hero(&d(&r), &r).unwrap().damage;
+    assert_eq!(
+        damage.ranged,
+        Rate {
+            bp: 1050 + 2000 + 500,
+            single: core::num::NonZeroU32::new(0x3eb5_c290),
+        }
+    );
+    assert_eq!(damage.melee, Rate::bp(1100));
+    assert_eq!(damage.reduction, Rate::bp(9000));
+    // Without the quirk only the basis points.
+    let r = damage_ruleset("t:archery", 500);
+    let exact = derive_battle_hero(&d(&r), &r).unwrap().damage;
+    assert_eq!(exact.ranged, Rate::bp(3550));
+    // Expert Logistics (15 % to every spell, 20 % resistance) at level 10 (OPEN-QUESTIONS Q45's
+    // example): 22.5 % in single precision is 0.2250000089…, above f32(0.225); with the hook's
+    // 1 % the sum stays one unit above f32(0.235). The resistance's 30 % is f32(0.3).
+    let r = original(magic_pack());
+    let mut d = details(&r);
+    d.level = 10;
+    d.skills.push((skill(&r, "t:logistics"), 3));
+    let effects = derive_battle_hero(&d, &r).unwrap().effects;
+    assert_eq!(
+        effects[0],
+        BattleEffect::SpellDamage {
+            scope: h3_content::SpellScope::All,
+            rate: Rate {
+                bp: 2350,
+                single: core::num::NonZeroU32::new(0x3e70_a3d8),
+            },
+        }
+    );
+    assert!(effects.contains(&BattleEffect::MagicResistance {
+        rate: Rate::bp(3000)
+    }));
+    // A First Aid specialist at level 23 with Expert First Aid: 300 % grown by 115 %, one unit
+    // above f32(6.45).
+    let mut p = effect_pack();
+    for s in &mut p.skills {
+        if s.key.to_string() == "t:first_aid" {
+            s.levels =
+                [10_000, 20_000, 30_000].map(|heal_bp| vec![HeroEffectDef::FirstAid { heal_bp }]);
+        }
+    }
+    p.heroes[0].specialty = vec![HeroEffectDef::SkillSpecialty {
+        skill: key("t:first_aid"),
+        bp_per_level: 500,
+    }];
+    let r = original(p);
+    let mut d = details(&r);
+    d.level = 23;
+    d.skills.push((skill(&r, "t:first_aid"), 3));
+    let tent = derive_battle_hero(&d, &r)
+        .unwrap()
+        .war_machines
+        .tent
+        .unwrap();
+    assert_eq!(
+        tent.heal_bonus,
+        Rate {
+            bp: 64_500,
+            single: core::num::NonZeroU32::new(0x40ce_6667),
+        }
+    );
 }

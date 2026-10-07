@@ -14,13 +14,15 @@
 //! installation.md` §7.8): whether the spell can affect a stack at all, then one resistance roll
 //! per stack, then the damage: the caster's bonuses before the target's reductions.
 
+use core::num::NonZeroU32;
+
 use h3_content::{
     Ability, CreatureFlag, CreatureTypeId, FIRST_PROTECTION, FULL_BP, MAX_FIELD_HEXES,
     MAX_SPELL_SCHOOLS, MAX_SPELLS, Ruleset, SINGLE_PRECISION_RATES, SpecialistBonus, Spell,
     SpellCategory, SpellEffect, SpellId, SpellPolarity, SpellScope, SpellTarget, TargetSide,
     TimedChange,
 };
-use h3_contracts::{BattleEffect, BattleHero, BattleSide};
+use h3_contracts::{BattleEffect, BattleHero, BattleSide, Rate};
 use h3_kernel::arith::{
     SINGLE_BITS, SINGLE_FRAC_BITS, X87, mul_div_floor, round_single, single_precision,
 };
@@ -32,7 +34,7 @@ use crate::effects::{self, TimedCast};
 use crate::error::{CommandError, HeroError};
 use crate::event::{Event, EventKind, Sink};
 use crate::geometry::{Field, Footprint, Hex};
-use crate::hero::HeroRecord;
+use crate::hero::{HeroRecord, hash_rate};
 use crate::state::{BattleState, STACK_CAPACITY, Stack, StackId};
 
 /// A set of spells by handle (the content allows at most [`MAX_SPELLS`]).
@@ -96,10 +98,10 @@ pub struct SpellBonus {
 /// its `SpellDamage` and `SpellSpecialty` effects summed per scope (HER-BAT-012).
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub struct SpellBonuses {
-    /// More damage from every spell, basis points (Sorcery).
-    pub all_bp: u32,
-    /// More damage from the spells of each school, basis points, by school handle (the Orbs).
-    pub school_bp: [u32; MAX_SPELL_SCHOOLS],
+    /// More damage from every spell (Sorcery).
+    pub all: Rate,
+    /// More damage from the spells of each school, by school handle (the Orbs).
+    pub school: [Rate; MAX_SPELL_SCHOOLS],
     /// Bonuses of single spells, in the order of their first effect.
     pub spells: FixedVec<SpellBonus, MAX_SPELL_BONUSES>,
 }
@@ -111,18 +113,20 @@ impl SpellBonuses {
         let mut out = Self::default();
         for effect in &hero.effects {
             let (spell, damage_bp, per_level_bp, level) = match *effect {
-                BattleEffect::SpellDamage { scope, bp } => match scope {
+                BattleEffect::SpellDamage { scope, rate } => match scope {
                     SpellScope::All => {
-                        out.all_bp = out.all_bp.saturating_add(bp.into());
+                        out.all = add_rates(out.all, rate);
                         continue;
                     }
                     SpellScope::School(l) => {
                         // Validated: the school exists, and there are at most four.
                         let i = l.index().min(MAX_SPELL_SCHOOLS - 1);
-                        out.school_bp[i] = out.school_bp[i].saturating_add(bp.into());
+                        out.school[i] = add_rates(out.school[i], rate);
                         continue;
                     }
-                    SpellScope::Spell(s) => (s, u32::from(bp), 0, 0),
+                    // A single spell's bonus is whole (Ciele's `t >> 1`, Luna's `t`): its
+                    // basis points.
+                    SpellScope::Spell(s) => (s, rate.bp, 0, 0),
                 },
                 BattleEffect::SpellSpecialty {
                     spell,
@@ -163,6 +167,36 @@ impl SpellBonuses {
             .find(|b| b.spell == spell)
             .copied()
             .unwrap_or_default()
+    }
+}
+
+/// The single-precision value of `bp` basis points, as a numerator over `2^SINGLE_FRAC_BITS`.
+fn single_bp(bp: u32) -> u64 {
+    X87::ratio(bp, u32::from(FULL_BP), SINGLE_BITS).map_or(0, X87::to_fixed)
+}
+
+/// The hero's `rate` at the [`scale`] (OPEN-QUESTIONS Q45): its basis points, or with `single`
+/// (quirk Q-0005) its single-precision value, the original's where the derivation gave one.
+pub(crate) fn hero_rate(single: bool, r: Rate) -> u64 {
+    match (single, r.single) {
+        (false, _) => u64::from(r.bp),
+        (true, Some(bits)) => X87::from_f32_bits(bits.get()).to_fixed(),
+        (true, None) => single_bp(r.bp),
+    }
+}
+
+/// The sum of two of a hero's rates: the basis points added (saturating) and, if either has a
+/// single-precision value of its own, the two single-precision values added and rounded to
+/// single precision, as the original adds its stored rates.
+fn add_rates(a: Rate, b: Rate) -> Rate {
+    Rate {
+        bp: a.bp.saturating_add(b.bp),
+        single: (a.single.is_some() || b.single.is_some())
+            .then(|| {
+                let sum = hero_rate(true, a).saturating_add(hero_rate(true, b));
+                NonZeroU32::new(X87::fixed(sum).to_f32_bits())
+            })
+            .flatten(),
     }
 }
 
@@ -220,8 +254,8 @@ impl HeroMagic {
         let mut duration_bonus = 0u16;
         for effect in &hero.effects {
             match *effect {
-                BattleEffect::MagicResistance { bp } => {
-                    let sum = resistance.saturating_add(rate(single, bp));
+                BattleEffect::MagicResistance { rate } => {
+                    let sum = resistance.saturating_add(hero_rate(single, rate));
                     resistance = if single { round_single(sum) } else { sum };
                 }
                 BattleEffect::SpellDuration { rounds } => {
@@ -242,18 +276,17 @@ impl HeroMagic {
 }
 
 impl CanonicalHash for HeroMagic {
-    /// Book bits, schools, the bonuses (every spell, by school, the single spells as length and
-    /// spell, damage, growth per level, level), the resistance, the duration bonus (v20), the
-    /// cast spells' bits.
+    /// Book bits, schools, the bonuses (every spell, by school (rates since v23), the single
+    /// spells as length and spell, damage, growth per level, level), the resistance, the
+    /// duration bonus (v20), the cast spells' bits.
     fn hash_into(&self, h: &mut StateHasher) {
         for word in self.book.bits().into_iter().chain(self.cast.bits()) {
             h.write_u64(word);
         }
         h.write_bytes(&self.schools);
         let b = &self.bonuses;
-        h.write_u32(b.all_bp);
-        for bp in b.school_bp {
-            h.write_u32(bp);
+        for r in core::iter::once(b.all).chain(b.school) {
+            hash_rate(h, r);
         }
         h.write_len(b.spells.len());
         for s in &b.spells {
@@ -626,14 +659,13 @@ fn spell_damage(
 ) -> (u64, u64) {
     let single = ruleset.quirks().is_enabled(SINGLE_PRECISION_RATES);
     let one = u128::from(scale(single));
-    let bp = |sum: u32| rate(single, u16::try_from(sum).unwrap_or(u16::MAX));
     let school = spell
         .schools
         .iter()
-        .map(|l| b.school_bp[l.index().min(MAX_SPELL_SCHOOLS - 1)])
+        .map(|l| hero_rate(single, b.school[l.index().min(MAX_SPELL_SCHOOLS - 1)]))
         .max()
         .unwrap_or(0);
-    let factor = (one + u128::from(bp(school))) * (one + u128::from(bp(b.all_bp)));
+    let factor = (one + u128::from(school)) * (one + u128::from(hero_rate(single, b.all)));
     let t = u64::try_from(u128::from(value) * factor / (one * one)).unwrap_or(u64::MAX);
     let own = b.spell(id);
     let specialty = specialist_bonus(ruleset, spell, own, creature, t);

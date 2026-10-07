@@ -7,6 +7,7 @@
 //! E04b T2b on.
 
 use alloc::vec::Vec;
+use core::num::NonZeroU32;
 
 use h3_content::{
     Affects, CreatureSelector, CreatureStat, CreatureTypeId, FactionId, HeroTypeId,
@@ -57,9 +58,9 @@ impl BattleHero {
             knowledge: 0,
             tactics: 0,
             damage: DamageBonuses {
-                ranged_bp: 0,
-                melee_bp: 0,
-                reduction_bp: 0,
+                ranged: Rate::bp(0),
+                melee: Rate::bp(0),
+                reduction: Rate::bp(0),
             },
             war_machines: MachineControl {
                 ballista: None,
@@ -78,18 +79,38 @@ impl BattleHero {
     }
 }
 
-/// Damage bonuses of a hero's side, in basis points (T6; survey `E04-skills.md` §3).
+/// A rate of the hero's as it crosses the seam (OPEN-QUESTIONS Q45): basis points, and the
+/// single-precision value the original computes for it when the derivation follows quirk Q-0005
+/// (a skill specialist's growth, artifacts added to a skill's value).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub struct Rate {
+    /// The rate in basis points (exact; a specialist's growth rounded down).
+    pub bp: u32,
+    /// The original's single-precision value, the bit pattern of a positive IEEE 754 binary32
+    /// value (`h3_kernel::arith::X87::from_f32_bits`); `None`: the single-precision value of
+    /// `bp`.
+    pub single: Option<NonZeroU32>,
+}
+
+impl Rate {
+    /// The rate of `bp` basis points, without a single-precision value of its own.
+    pub const fn bp(bp: u32) -> Self {
+        Self { bp, single: None }
+    }
+}
+
+/// Damage bonuses of a hero's side (T6; survey `E04-skills.md` §3).
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub struct DamageBonuses {
     /// Added to the bonus sum of the side's shots, the Ballista's included (Archery). May exceed
-    /// 10 000.
-    pub ranged_bp: u16,
+    /// 10 000 basis points.
+    pub ranged: Rate,
     /// Added to the bonus sum of the side's melee attacks and retaliations (Offense). May exceed
-    /// 10 000.
-    pub melee_bp: u16,
-    /// One factor `(10 000 − reduction) / 10 000` on every physical strike against the side's
-    /// stacks (Armorer); at most 10 000.
-    pub reduction_bp: u16,
+    /// 10 000 basis points.
+    pub melee: Rate,
+    /// One factor `1 − reduction` on every physical strike against the side's stacks
+    /// (Armorer); at most 10 000 basis points.
+    pub reduction: Rate,
 }
 
 /// The war machines a hero commands (T7). Without control a machine acts on its own (E03).
@@ -116,9 +137,9 @@ pub struct BallistaControl {
 /// How a commanded First Aid Tent heals.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct TentControl {
-    /// Increase of the tent's largest heal, basis points of the tent's own maximum (a First Aid
-    /// specialist's growth can take it far beyond 10 000).
-    pub heal_bonus_bp: u32,
+    /// Increase of the tent's largest heal, a share of the tent's own maximum (a First Aid
+    /// specialist's growth can take it far beyond 10 000 basis points).
+    pub heal_bonus: Rate,
 }
 
 /// How a commanded Catapult shoots: reserved for sieges (E04c), which define its contents.
@@ -258,8 +279,8 @@ pub enum BattleEffect {
     SpellDamage {
         /// Which spells.
         scope: SpellScope<SchoolId, SpellId>,
-        /// Bonus in basis points.
-        bp: u16,
+        /// The bonus.
+        rate: Rate,
     },
     /// The effect of the hero's casts of `spell` on a stack grows by `bp_per_level` basis
     /// points for each whole multiple of the stack's creature level in the hero's `level` (a
@@ -274,11 +295,11 @@ pub enum BattleEffect {
         level: u8,
     },
     /// The side's stacks resist hostile spells: their creatures' share a spell affects shrinks
-    /// by `bp` (the Resistance skill and artifacts, one effect per source in the derivation's
+    /// by `rate` (the Resistance skill and artifacts, one effect per source in the derivation's
     /// order; E04b T2d; HER-BAT-013, BAT-MAG-008).
     MagicResistance {
-        /// Resistance in basis points.
-        bp: u16,
+        /// The resistance.
+        rate: Rate,
     },
     /// The hero's timed spells last `rounds` rounds longer (the Conjuring artifacts, one effect
     /// per source; E04b T3a; HER-BAT-014, BAT-MAG-010).

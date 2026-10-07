@@ -5,6 +5,8 @@
 //! to move to, which enemy to attack from where. The acting stack, its owner, and every derived
 //! value (reach, damage) come from the state.
 
+use alloc::boxed::Box;
+
 use h3_content::{Ruleset, SpellId};
 use h3_contracts::{BattleResult, BattleSide};
 
@@ -123,7 +125,8 @@ enum Plan<'r> {
         side: BattleSide,
         price: u32,
     },
-    Cast(Cast<'r>),
+    /// Boxed: a cast carries the caster's bonuses, far larger than the other plans.
+    Cast(Box<Cast<'r>>),
 }
 
 /// Checks `command` for `actor` without changing anything. Shared by `apply` and
@@ -169,7 +172,7 @@ fn plan<'r>(
         Command::Retreat => retreat(state, actor),
         Command::Surrender => surrender(state, ruleset, actor),
         Command::Cast { spell, target } => {
-            magic::plan_cast(state, ruleset, actor, spell, target).map(Plan::Cast)
+            magic::plan_cast(state, ruleset, actor, spell, target).map(|c| Plan::Cast(Box::new(c)))
         }
         Command::Wait => {
             // rule: BAT-TRN-002
@@ -393,7 +396,7 @@ pub fn apply<S: Sink>(
             state.surrender_cost = Some(price);
             leave(state, BattleResult::Surrender(side), sink);
         }
-        Plan::Cast(cast) => magic::apply_cast(state, ruleset, cast, sink),
+        Plan::Cast(cast) => magic::apply_cast(state, ruleset, *cast, sink),
     }
     // rule: BAT-MAG-010
     effects::remove_dead(state);

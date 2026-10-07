@@ -128,7 +128,7 @@ dev_external = ["proptest"]
 [crate.h3-heroes]
 layer = "domain"
 logic = true
-deps = ["h3-content", "h3-contracts"]
+deps = ["h3-kernel", "h3-content", "h3-contracts"]
 external = []
 dev_deps = []
 dev_external = ["proptest"]

@@ -105,13 +105,13 @@ fn encode_hero(view: Option<HeroView>, own: Option<OwnHeroView>, out: &mut [f32]
     if let Some(h) = own {
         out[HERO_PUBLIC_FEATURES..HERO_SCHOOLS].copy_from_slice(&[
             f32::from(h.tactics),
-            f32::from(h.damage.ranged_bp),
-            f32::from(h.damage.melee_bp),
-            f32::from(h.damage.reduction_bp),
+            h.damage.ranged.bp as f32,
+            h.damage.melee.bp as f32,
+            h.damage.reduction.bp as f32,
             h.ballista.map_or(0.0, |b| f32::from(b.shots)),
             h.ballista
                 .map_or(0.0, |b| f32::from(b.double_damage_chance_bp)),
-            h.tent.map_or(0.0, |t| t.heal_bonus_bp as f32),
+            h.tent.map_or(0.0, |t| t.heal_bonus.bp as f32),
             f32::from(h.surrender_discount_bp),
             h.funds as f32,
             h.surrender_price.map_or(0.0, |p| p as f32),

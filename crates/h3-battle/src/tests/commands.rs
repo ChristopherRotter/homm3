@@ -230,16 +230,16 @@ fn state_hash_is_pinned() {
     // Advanced Tactics against no hero: the state is in a tactics phase (BAT-TAC-001).
     led.tactics = 2;
     led.damage = h3_contracts::DamageBonuses {
-        ranged_bp: 1000,
-        melee_bp: 2000,
-        reduction_bp: 500,
+        ranged: Rate::bp(1000),
+        melee: Rate::bp(2000),
+        reduction: Rate::bp(500),
     };
     led.war_machines.ballista = Some(h3_contracts::BallistaControl {
         shots: 2,
         double_damage_chance_bp: 7500,
     });
     led.war_machines.tent = Some(h3_contracts::TentControl {
-        heal_bonus_bp: 45_000,
+        heal_bonus: Rate::bp(45_000),
     });
     led.surrender_discount_bp = 4000;
     // A regeneration for every stack of the side (BAT-HER-006).
@@ -252,14 +252,16 @@ fn state_hash_is_pinned() {
         },
         h3_contracts::BattleEffect::SpellDamage {
             scope: h3_content::SpellScope::All,
-            bp: 1500,
+            rate: Rate::bp(1500),
         },
         h3_contracts::BattleEffect::SpellSpecialty {
             spell: bolt,
             bp_per_level: 300,
             level: 10,
         },
-        h3_contracts::BattleEffect::MagicResistance { bp: 500 },
+        h3_contracts::BattleEffect::MagicResistance {
+            rate: Rate::bp(500),
+        },
         h3_contracts::BattleEffect::SpellDuration { rounds: 2 },
     ];
     led.magic.spell_book = Some(vec![bolt]);
@@ -272,7 +274,7 @@ fn state_hash_is_pinned() {
     let s = BattleState::new(&r, &setup, 7).unwrap();
     assert!(s.tactics().is_some());
     assert_eq!(s.state_hash(), GOLDEN, "got {:#018x}", s.state_hash());
-    assert_eq!(crate::BATTLE_STATE_HASH_VERSION, 22);
+    assert_eq!(crate::BATTLE_STATE_HASH_VERSION, 23);
 }
 
-const GOLDEN: u64 = 0x9fee_4b8f_d41b_3561;
+const GOLDEN: u64 = 0x39cc_7f82_352a_b07a;

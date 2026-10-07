@@ -371,7 +371,7 @@ fn strike_flags_and_factor_limits() {
     let mut all = crate::damage::Strike::new(0, 40);
     all.penalty_percent = 100;
     all.protection_percent = 0;
-    all.hero_reduction_bp = 10_000;
+    all.hero_reduction = Rate::bp(10_000);
     assert_eq!(all.damage(128, p.battle(), false), 1);
     assert_eq!(all.damage(128, p.battle(), true), 1);
 }

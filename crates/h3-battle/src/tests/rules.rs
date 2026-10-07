@@ -26,7 +26,7 @@ fn staged_damage(
 ) -> u64 {
     let mut s = Strike::new(attack.into(), defense.into());
     s.penalty_percent = penalty_percent;
-    s.hero_reduction_bp = armorer_bp;
+    s.hero_reduction = Rate::bp(armorer_bp.into());
     s.damage(base, p, true)
 }
 
@@ -603,12 +603,12 @@ fn the_stages_truncate_each_bonus_and_factor() {
     // Armorer takes 61 to 57.95, so 57; rounded once it is 59 · 1.05 · 0.95 = 58.85, so 58.
     assert_eq!(staged_damage(59, (11, 10), (0, 500), p), 57);
     let mut once = Strike::new(11, 10);
-    once.hero_reduction_bp = 500;
+    once.hero_reduction = Rate::bp(500);
     assert_eq!(once.damage(59, p, false), 58);
     // Each fractional bonus is cut on its own: 10 base, +5 % from attack (0.5) and +5 %
     // Offense (0.5) stay 10; rounded once, 11.
     let mut both = Strike::new(11, 10);
-    both.hero_bonus_bp = 500;
+    both.hero_bonus = Rate::bp(500);
     assert_eq!(both.damage(10, p, true), 10);
     assert_eq!(both.damage(10, p, false), 11);
     // Jousting (5 % per hex, 3 hexes on 10 base: 1.5, cut to 1), hate (+50 %: 5), luck,
@@ -625,12 +625,24 @@ fn the_stages_truncate_each_bonus_and_factor() {
     // multiply before their one truncation: 100 · 0.85 · 0.95 = 80.75.
     let mut shielded = Strike::new(10, 10);
     shielded.protection_percent = 85;
-    shielded.hero_reduction_bp = 500;
+    shielded.hero_reduction = Rate::bp(500);
     assert_eq!(shielded.damage(100, p, true), 80);
     assert_eq!(shielded.damage(100, p, false), 80);
+    // A hero's rate with a single-precision value of its own (OPEN-QUESTIONS Q45): an
+    // Offense specialist's 22.5 % kept as 0.2250000089… gives 200 · 1.225… = 245 in stages,
+    // f32(0.225) = 0.2249999940… only 244; exact, 245.
+    let mut grown = Strike::new(10, 10);
+    grown.hero_bonus = Rate {
+        bp: 2250,
+        single: core::num::NonZeroU32::new(0x3e66_6667),
+    };
+    assert_eq!(grown.damage(200, p, true), 245);
+    assert_eq!(grown.damage(200, p, false), 245);
+    grown.hero_bonus = Rate::bp(2250);
+    assert_eq!(grown.damage(200, p, true), 244);
     // Armorer above 100 % takes everything but the minimum of 1.
     let mut full = Strike::new(10, 10);
-    full.hero_reduction_bp = 10_001;
+    full.hero_reduction = Rate::bp(10_001);
     assert_eq!(full.damage(100, p, true), 1);
     assert_eq!(full.damage(100, p, false), 1);
 }

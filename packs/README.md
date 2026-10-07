@@ -477,7 +477,12 @@ mana = 10
 max_mana = 10
 ranged_bp = 1000                 # damage bonuses in basis points (BAT-HER-004): the side's shots,
 melee_bp = 1000                  # its melee strikes, and the reduction of strikes against it
-reduction_bp = 500               # (at most 10 000)
+reduction_bp = 500               # (at most 10 000); optional `ranged_single`, `melee_single`,
+                                 # `reduction_single`: the original's single-precision value of
+                                 # the rate as an f32 bit pattern, which a derived hero carries
+                                 # under quirk Q-0005 (OPEN-QUESTIONS Q45, E04b T3c); the tent's
+                                 # and the `spell_damage` and `magic_resistance` effects' as
+                                 # `single`
 surrender_discount_bp = 4000     # optional: the surrender discount (BAT-FLE-002, at most 10 000)
 spell_book = ["synthetic:spark"] # optional: the spell book by spell key (BAT-MAG-001; E04b T2b)
 ballista = { shots = 1, double_damage_chance_bp = 5000 }   # optional: the side commands its

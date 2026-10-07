@@ -3,15 +3,18 @@
 
 use alloc::collections::BTreeSet;
 use alloc::vec::Vec;
+use core::num::NonZeroU32;
 
 use h3_content::{
-    Affects, CompiledHeroEffect, CreatureSelector, CreatureStat, CreatureTypeId, FULL_BP,
-    HeroEffect, MAX_SPELL_SCHOOLS, Ruleset, SchoolId, SpellId, SpellScope,
+    Affects, ArtifactTypeId, CompiledHeroEffect, CreatureSelector, CreatureStat, CreatureTypeId,
+    FULL_BP, HeroEffect, MAX_SPELL_SCHOOLS, Ruleset, SINGLE_PRECISION_RATES, SchoolId, SpellId,
+    SpellScope,
 };
 use h3_contracts::{
     BallistaControl, BattleEffect, BattleHero, BattleMagic, DamageBonuses, FactionGroup,
-    MAX_BATTLE_EFFECTS, MachineControl, StatOp, TentControl,
+    MAX_BATTLE_EFFECTS, MachineControl, Rate, StatOp, TentControl,
 };
+use h3_kernel::arith::{SINGLE_BITS, X87};
 
 use crate::details::{HeroDetails, PrimarySkill, check};
 use crate::error::DetailsError;
@@ -138,27 +141,32 @@ fn magic(details: &HeroDetails, ruleset: &Ruleset) -> BattleMagic {
     }
 }
 
-/// The spell bonuses (HER-BAT-012): per scope (every spell, a school, a spell) the sum of the
-/// grown `spell_damage` values of [`grown_effects`] (Sorcery grows with a Sorcery specialty),
-/// saturated at `u16::MAX`, in the order of their first appearance; then the specialty's
-/// `spell_specialty` with the hero's level (the battle divides it by the creature's level).
+/// The spell bonuses (HER-BAT-012): per scope (every spell, a school, a spell) the [`RateSum`] of
+/// the `spell_damage` values of [`grown_effects`] (Sorcery grows with a Sorcery specialty),
+/// saturated at `u16::MAX` basis points, in the order of their first appearance; then the
+/// specialty's `spell_specialty` with the hero's level (the battle divides it by the creature's
+/// level).
 fn spell_bonuses(details: &HeroDetails, ruleset: &Ruleset) -> Vec<BattleEffect> {
-    let mut totals: Vec<(SpellScope<SchoolId, SpellId>, u64)> = Vec::new();
-    for (effect, growth_bp) in grown_effects(details, ruleset) {
+    let single = single_precision(ruleset);
+    let mut totals: Vec<(SpellScope<SchoolId, SpellId>, RateSum)> = Vec::new();
+    for (effect, growth) in grown_effects(details, ruleset) {
         let HeroEffect::SpellDamage { scope, bp } = *effect else {
             continue;
         };
-        let grown = grow(u64::from(bp), growth_bp);
-        match totals.iter_mut().find(|(s, _)| *s == scope) {
-            Some((_, total)) => *total = total.saturating_add(grown),
-            None => totals.push((scope, grown)),
-        }
+        let index = match totals.iter().position(|(s, _)| *s == scope) {
+            Some(i) => i,
+            None => {
+                totals.push((scope, RateSum::default()));
+                totals.len() - 1
+            }
+        };
+        totals[index].1.add(bp.into(), growth, single);
     }
     let mut out: Vec<BattleEffect> = totals
         .into_iter()
         .map(|(scope, sum)| BattleEffect::SpellDamage {
             scope,
-            bp: u16::try_from(sum).unwrap_or(u16::MAX),
+            rate: sum.rate(u16::MAX.into()),
         })
         .collect();
     out.extend(
@@ -181,13 +189,20 @@ fn spell_bonuses(details: &HeroDetails, ruleset: &Ruleset) -> Vec<BattleEffect> 
 
 /// The magic resistance (HER-BAT-013): one `MagicResistance` effect per source in the order of
 /// [`grown_effects`] (the Resistance skill grown by a Resistance specialty, then each artifact
-/// type once), saturated at `u16::MAX`; the battle adds them in that order (BAT-MAG-008).
+/// type once, in the order of the types, as the original's getter adds them), saturated at
+/// `u16::MAX` basis points, with quirk Q-0005 each with the single-precision value the original
+/// computes ([`Growth::single`]); the battle adds them in that order (BAT-MAG-008).
 fn magic_resistance(details: &HeroDetails, ruleset: &Ruleset) -> Vec<BattleEffect> {
+    let single = single_precision(ruleset);
     grown_effects(details, ruleset)
-        .filter_map(|(effect, growth_bp)| match *effect {
-            HeroEffect::MagicResistance { bp } => Some(BattleEffect::MagicResistance {
-                bp: u16::try_from(grow(u64::from(bp), growth_bp)).unwrap_or(u16::MAX),
-            }),
+        .filter_map(|(effect, growth)| match *effect {
+            HeroEffect::MagicResistance { bp } => {
+                let mut sum = RateSum::default();
+                sum.add(bp.into(), growth, single);
+                Some(BattleEffect::MagicResistance {
+                    rate: sum.rate(u16::MAX.into()),
+                })
+            }
             _ => None,
         })
         .collect()
@@ -212,8 +227,8 @@ fn spell_duration(details: &HeroDetails, ruleset: &Ruleset) -> Option<BattleEffe
 /// of [`grown_effects`] (they add, batch 1b R4), at most 10 000.
 fn surrender_discount(details: &HeroDetails, ruleset: &Ruleset) -> u16 {
     let sum: u64 = grown_effects(details, ruleset)
-        .filter_map(|(effect, growth_bp)| match *effect {
-            HeroEffect::SurrenderDiscount { bp } => Some(grow(u64::from(bp), growth_bp)),
+        .filter_map(|(effect, growth)| match *effect {
+            HeroEffect::SurrenderDiscount { bp } => Some(growth.grow(u64::from(bp))),
             _ => None,
         })
         .sum();
@@ -409,58 +424,159 @@ const fn affects_index(affects: Affects) -> usize {
 /// Every effect with the growth its value gets (HER-BAT-004, HER-BAT-005): the secondary skills'
 /// effects at their levels, each grown by the hero's specialties for that skill by
 /// `bp_per_level` basis points of itself per hero level; the worn artifacts' (each artifact type
-/// once) and the specialty's own, not grown.
+/// once, in the order of the types, as the original's skill getters add them) and the
+/// specialty's own, not grown.
 fn grown_effects<'a>(
     details: &'a HeroDetails,
     ruleset: &'a Ruleset,
-) -> impl Iterator<Item = (&'a CompiledHeroEffect, u64)> {
+) -> impl Iterator<Item = (&'a CompiledHeroEffect, Growth)> {
     let specialty = specialty(details, ruleset);
     let skills = details.skills.iter().flat_map(move |&(id, level)| {
-        let growth_bp: u64 = specialty
+        let per_level_bp: u64 = specialty
             .iter()
             .filter_map(|effect| match *effect {
                 HeroEffect::SkillSpecialty {
                     skill,
                     bp_per_level,
-                } if skill == id => Some(u64::from(bp_per_level) * u64::from(details.level)),
+                } if skill == id => Some(u64::from(bp_per_level)),
                 _ => None,
             })
             .sum();
+        let growth = Growth {
+            per_level_bp,
+            level: details.level,
+        };
         ruleset
             .skill(id)
             .map(|skill| skill.effects(level))
             .unwrap_or_default()
             .iter()
-            .map(move |effect| (effect, growth_bp))
+            .map(move |effect| (effect, growth))
     });
-    let others = artifact_effects(details, ruleset, Count::OncePerType).chain(specialty);
-    skills.chain(others.map(|effect| (effect, 0)))
+    let mut types = BTreeSet::new();
+    for &id in &details.worn {
+        types.insert(id);
+        let parts = ruleset.artifact(id).map(|a| a.parts.as_slice());
+        types.extend(parts.unwrap_or_default().iter().copied());
+    }
+    let artifacts = types
+        .into_iter()
+        .filter_map(|id: ArtifactTypeId| ruleset.artifact(id))
+        .filter(|artifact| {
+            artifact
+                .needs_skill
+                .is_none_or(|needed| details.skills.iter().any(|&(id, _)| id == needed))
+        })
+        .flat_map(|artifact| artifact.effects.iter());
+    let others = artifacts.chain(specialty);
+    skills.chain(others.map(|effect| (effect, Growth::NONE)))
 }
 
-/// `bp` grown by `growth_bp` basis points of itself, rounded down.
-fn grow(bp: u64, growth_bp: u64) -> u64 {
-    bp.saturating_add(bp.saturating_mul(growth_bp) / u64::from(FULL_BP))
+/// Whether the derivation follows the original's single-precision rates (quirk Q-0005,
+/// OPEN-QUESTIONS Q45).
+fn single_precision(ruleset: &Ruleset) -> bool {
+    ruleset.quirks().is_enabled(SINGLE_PRECISION_RATES)
+}
+
+/// A skill specialty's growth of a value (HER-BAT-004): basis points of itself per hero level
+/// (0: none) and the hero's level.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+struct Growth {
+    /// Growth per hero level, basis points.
+    per_level_bp: u64,
+    /// The hero's level.
+    level: u8,
+}
+
+impl Growth {
+    /// No growth.
+    const NONE: Self = Self {
+        per_level_bp: 0,
+        level: 0,
+    };
+
+    /// `bp` grown, rounded down.
+    fn grow(self, bp: u64) -> u64 {
+        let growth = self.per_level_bp * u64::from(self.level);
+        bp.saturating_add(bp.saturating_mul(growth) / u64::from(FULL_BP))
+    }
+
+    /// The single-precision value of `bp` basis points grown as the original's skill getters
+    /// grow it (`installation.md` §7.4, OPEN-QUESTIONS Q45): `f32(r × (f32(level) × g + 1))` in
+    /// its x87 arithmetic, with `r` and `g` (the growth per level) single precision; `f32(r)`
+    /// without growth.
+    fn single(self, bp: u32) -> X87 {
+        let ratio = |n: u64| {
+            let n = u32::try_from(n).unwrap_or(u32::MAX);
+            X87::ratio(n, FULL_BP.into(), SINGLE_BITS).unwrap_or(X87::ZERO)
+        };
+        let rate = ratio(bp.into());
+        if self.per_level_bp == 0 {
+            return rate;
+        }
+        X87::int(self.level.into())
+            .round(SINGLE_BITS)
+            .times(ratio(self.per_level_bp))
+            .plus(X87::ONE)
+            .times(rate)
+            .round(SINGLE_BITS)
+    }
+}
+
+/// A rate summed from several sources (OPEN-QUESTIONS Q45): the basis points, each grown value
+/// rounded down (saturating), and, with quirk Q-0005, the single-precision sum the original
+/// keeps, each source's [`Growth::single`] added and the sum rounded to single precision in the
+/// order of the sources.
+#[derive(Debug, Clone, Copy, Default)]
+struct RateSum {
+    /// Basis points.
+    bp: u64,
+    /// The single-precision sum.
+    single: Option<X87>,
+}
+
+impl RateSum {
+    /// Adds `bp` basis points grown by `growth`; with `single` also its single-precision value.
+    fn add(&mut self, bp: u32, growth: Growth, single: bool) {
+        self.bp = self.bp.saturating_add(growth.grow(bp.into()));
+        if single {
+            let sum = self.single.unwrap_or(X87::ZERO).plus(growth.single(bp));
+            self.single = Some(sum.round(SINGLE_BITS));
+        }
+    }
+
+    /// The rate, its basis points at most `max` and its single-precision value at most that of
+    /// `max`; the single-precision value only where it differs from that of the basis points.
+    fn rate(self, max: u32) -> Rate {
+        let bp = u32::try_from(self.bp).unwrap_or(u32::MAX).min(max);
+        let single = self
+            .single
+            .map(|v| v.min(Growth::NONE.single(max)))
+            .filter(|&v| v != Growth::NONE.single(bp))
+            .and_then(|v| NonZeroU32::new(v.to_f32_bits()));
+        Rate { bp, single }
+    }
 }
 
 /// The damage bonuses (HER-BAT-004): per kind (ranged, melee, reduction) the sum of the grown
 /// values of [`grown_effects`]. Sums saturate at `u16::MAX`; the reduction is at most 10 000.
 fn damage_bonuses(details: &HeroDetails, ruleset: &Ruleset) -> DamageBonuses {
+    let single = single_precision(ruleset);
     // [ranged, melee, reduction]
-    let mut sums = [0u64; 3];
-    for (effect, growth_bp) in grown_effects(details, ruleset) {
+    let mut sums = [RateSum::default(); 3];
+    for (effect, growth) in grown_effects(details, ruleset) {
         let (kind, bp) = match *effect {
             HeroEffect::RangedDamage { bp } => (0, bp),
             HeroEffect::MeleeDamage { bp } => (1, bp),
             HeroEffect::DamageReduction { bp } => (2, bp),
             _ => continue,
         };
-        sums[kind] = sums[kind].saturating_add(grow(u64::from(bp), growth_bp));
+        sums[kind].add(bp.into(), growth, single);
     }
-    let bp = |sum: u64| u16::try_from(sum).unwrap_or(u16::MAX);
     DamageBonuses {
-        ranged_bp: bp(sums[0]),
-        melee_bp: bp(sums[1]),
-        reduction_bp: bp(sums[2]).min(FULL_BP),
+        ranged: sums[0].rate(u16::MAX.into()),
+        melee: sums[1].rate(u16::MAX.into()),
+        reduction: sums[2].rate(FULL_BP.into()),
     }
 }
 
@@ -471,8 +587,10 @@ fn damage_bonuses(details: &HeroDetails, ruleset: &Ruleset) -> DamageBonuses {
 /// First Aid Tent if an effect gives First Aid, its heal bonus the sum of the grown `heal_bp`
 /// values of [`grown_effects`] (a First Aid specialist's grows by 5 % per level), saturated.
 fn machine_control(details: &HeroDetails, ruleset: &Ruleset) -> MachineControl {
+    let single = single_precision(ruleset);
     let mut control = MachineControl::default();
-    for (effect, growth_bp) in grown_effects(details, ruleset) {
+    let mut heal = RateSum::default();
+    for (effect, growth) in grown_effects(details, ruleset) {
         match *effect {
             HeroEffect::Artillery {
                 shots,
@@ -488,9 +606,10 @@ fn machine_control(details: &HeroDetails, ruleset: &Ruleset) -> MachineControl {
                     .max(double_damage_chance_bp);
             }
             HeroEffect::FirstAid { heal_bp } => {
-                let tent = control.tent.get_or_insert(TentControl { heal_bonus_bp: 0 });
-                let grown = u32::try_from(grow(u64::from(heal_bp), growth_bp)).unwrap_or(u32::MAX);
-                tent.heal_bonus_bp = tent.heal_bonus_bp.saturating_add(grown);
+                heal.add(heal_bp.into(), growth, single);
+                control.tent = Some(TentControl {
+                    heal_bonus: heal.rate(u32::MAX),
+                });
             }
             _ => {}
         }

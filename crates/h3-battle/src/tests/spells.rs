@@ -191,7 +191,9 @@ fn resistance_adds_the_heros_to_the_creatures_and_the_aura_multiplies() {
         let mut h = hero(&r);
         h.effects = bp
             .iter()
-            .map(|&bp| BattleEffect::MagicResistance { bp })
+            .map(|&bp| BattleEffect::MagicResistance {
+                rate: Rate::bp(bp.into()),
+            })
             .collect();
         h
     };
@@ -377,7 +379,9 @@ fn chain_lightning_jumps_to_the_nearest_stack_on_the_screen() {
     // Stacks that always resist (their hero's resistance) are never jumped to: the caster's
     // own here, next to the target.
     let mut warded = mage(&r, &["chain"]);
-    warded.effects = std::vec![BattleEffect::MagicResistance { bp: 10_000 }];
+    warded.effects = std::vec![BattleEffect::MagicResistance {
+        rate: Rate::bp(10_000)
+    }];
     let mut s = arena(
         &r,
         [Some(warded), None],
@@ -400,7 +404,9 @@ fn chain_lightning_jumps_to_the_nearest_stack_on_the_screen() {
         Err(CommandError::InvalidSpellTarget)
     );
     let mut warded = hero(&r);
-    warded.effects = std::vec![BattleEffect::MagicResistance { bp: 10_000 }];
+    warded.effects = std::vec![BattleEffect::MagicResistance {
+        rate: Rate::bp(10_000)
+    }];
     let s = arena(
         &r,
         [Some(mage(&r, &["chain", "bolt", "nova"])), Some(warded)],

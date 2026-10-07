@@ -19,7 +19,7 @@ use proptest::collection::{btree_map, vec};
 use proptest::prelude::{Just, Strategy, any, prop_assert, prop_assert_eq, prop_oneof, proptest};
 use proptest::test_runner::Config;
 
-use super::support::{CREATURES, hero, ruleset_with};
+use super::support::{CREATURES, Rate, hero, ruleset_with};
 use crate::event::StrikeFlags;
 use crate::{
     BattleState, CastTarget, CastTargets, Command, Event, EventKind, Hex, LegalCommands, SpellSet,
@@ -173,7 +173,7 @@ fn make_setup(
     }
     if machines & (1 << 24) != 0 {
         led.war_machines.tent = Some(TentControl {
-            heal_bonus_bp: u32::try_from((machines >> 25) & 0xffff).unwrap(),
+            heal_bonus: Rate::bp(u32::try_from((machines >> 25) & 0xffff).unwrap()),
         });
     }
     if machines & (1 << 43) != 0 {
@@ -217,14 +217,16 @@ fn make_setup(
     led.effects.extend([
         BattleEffect::SpellDamage {
             scope: SpellScope::All,
-            bp: 1000,
+            rate: Rate::bp(1000),
         },
         BattleEffect::SpellSpecialty {
             spell: book[0],
             bp_per_level: 300,
             level: 5,
         },
-        BattleEffect::MagicResistance { bp: 500 },
+        BattleEffect::MagicResistance {
+            rate: Rate::bp(500),
+        },
         BattleEffect::SpellDuration { rounds: 1 },
     ]);
     let defender_hero = (machines & (1 << 44) != 0).then(|| {
@@ -482,18 +484,18 @@ proptest! {
             for hero in twin.heroes[side.index()].iter_mut() {
                 hero.tactics = 3 - hero.tactics;
                 hero.damage = DamageBonuses {
-                    ranged_bp: damage[0],
-                    melee_bp: damage[1],
-                    reduction_bp: reduction,
+                    ranged: Rate::bp(damage[0].into()),
+                    melee: Rate::bp(damage[1].into()),
+                    reduction: Rate::bp(reduction.into()),
                 };
                 let ballista = BallistaControl { shots, double_damage_chance_bp: chance };
                 hero.ballista = hero.ballista.and(Some(ballista));
-                hero.tent = hero.tent.and(Some(TentControl { heal_bonus_bp: heal }));
+                hero.tent = hero.tent.and(Some(TentControl { heal_bonus: Rate::bp(heal )}));
                 hero.surrender_discount_bp = discount;
                 hero.funds = funds;
                 hero.magic.book = SpellSet::default();
                 hero.magic.schools = [3; 4];
-                hero.magic.bonuses.all_bp = u32::from(discount);
+                hero.magic.bonuses.all = Rate::bp(discount.into());
             }
             let viewer = side.opponent();
             prop_assert_eq!(observe(&state, &r, viewer), observe(&twin, &r, viewer));
@@ -766,16 +768,18 @@ fn arb_extreme_hero() -> impl Strategy<Value = Option<(BattleHero, u32)>> {
                 [h.attack, h.defense, h.power, h.knowledge] = primary;
                 h.tactics = tactics;
                 h.damage = DamageBonuses {
-                    ranged_bp,
-                    melee_bp,
-                    reduction_bp,
+                    ranged: Rate::bp(ranged_bp.into()),
+                    melee: Rate::bp(melee_bp.into()),
+                    reduction: Rate::bp(reduction_bp.into()),
                 };
                 h.war_machines.ballista =
                     ballista.map(|(shots, double_damage_chance_bp)| BallistaControl {
                         shots,
                         double_damage_chance_bp,
                     });
-                h.war_machines.tent = tent.map(|heal_bonus_bp| TentControl { heal_bonus_bp });
+                h.war_machines.tent = tent.map(|bp| TentControl {
+                    heal_bonus: Rate::bp(bp),
+                });
                 h.surrender_discount_bp = discount;
                 h.effects = effects.iter().map(|e| extreme_effect(&r, e)).collect();
                 (h, funds)
