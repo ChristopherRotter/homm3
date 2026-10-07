@@ -650,3 +650,58 @@ VCMI 1.7.5 agrees on the creature-level table (`SPECIAL_PECULIAR_ENCHANT`,
 Disrupting Ray's 2 and Fortune's fixed 3 (`config/heroes`); it gives a Bless specialist a
 damage premium of 3 % per hero level divided by the stack's level among the additive bonuses
 (`GENERAL_DAMAGE_PREMY`) instead of a separate term rounded up.
+
+### 7.13 Code reading: Anti-Magic and Magic Mirror (E04b T4a, 2026-10-07)
+
+Read for T4a (Q29: insight only, nothing copied). Both spells go through the timed handler
+0x5A107F like Shield (one target, no mass version), so their duration is the caster's power plus
+the duration bonus and a re-cast keeps the first value (§7.9).
+
+**Anti-Magic** (spell 34; effect 4, 4, 5, 6 by mastery). 0x4448F0 stores `v` as an `i32`
+(+0x460) and then, for every spell of the table whose type is negative (−1), whose level is
+below `v` and which is not a creature ability (flag `0x8`), calls the end routine 0x444510 for
+the target: the active negative spells of levels 1–3 end (1–4 at Advanced, 1–5 at Expert),
+Disrupting Ray excepted (it never ends, §7.9); Sorrow and Berserk (level 4) survive a Basic
+Anti-Magic. Positive spells stay. While the spell is active (its duration +0x220 above 0), the
+spell-effect test 0x5A8090 returns 0 for every spell whose level is below the stored `v` and
+which is not a creature ability, **whatever its polarity**: the stack is immune to its own
+side's spells of those levels too (Bless, Cure, a second Anti-Magic). The test comes after
+Cursed Ground and Recanter's Cloak and after Dispel's and Dispel Helpful's own tests (they
+return first, so Dispel ends Anti-Magic), before the dead-stack, polarity, per-spell and
+creature tests (§7.8), so the Orb of Vulnerability does not lift it. The per-spell case of
+0x5A8090 refuses Anti-Magic on a clone (stack flag `0x800000`, T6). 0x5A298E words the
+message of a spell that fails on it. VCMI 1.7.5 (`config/spells/timed.json`) agrees on the
+levels (`LEVEL_SPELL_IMMUNITY` 3, 3, 4, 5) and dispels every negative and neutral effect
+whatever its level.
+
+**Magic Mirror** (spell 36; effect 20, 20, 30, 40). 0x4448F0 stores `v` as an `i32` (+0x4E4).
+The chance getter 0x4487F0 returns `v` while the spell is active (duration +0x228), else 0; for
+a Faerie Dragon (creature 134) the larger of that and the table's `effect[0]` of spell 36 (20;
+T7). The redirect is decided where a player's cast is entered (0x59EC50, the spell book and the
+creature casters' button, at 0x59EE7A): for a cast that takes a target stack (0x59E060: the
+single-target spells and the mass spells below their mass mastery, §7.8) whose target stack is
+not Dispel's, belongs to the other side and is alive, the game draws `r = random(1, 100)`
+(drawn for every such cast, with or without a mirror) and redirects when `r ≤ chance`. The new
+target is drawn uniformly (0x50C6E0/0x50C740: draws without replacement until one fits) among
+the caster's side's stack records that are alive and not an arrow tower (creature 149): war
+machines, summoned and cloned stacks count. Its hex is the cast's second hex. The cast routine
+0x59FE30 then shows the mirror's animation on the first target, takes the stack on the second
+hex (looked up for the other side, 0x5A3950) as the target and rolls it at 0x5A02EA with the
+reflected flag set: 0x5A8090 skips its polarity tests for it (a negative spell may affect a
+stack of the caster's side), but every immunity, Anti-Magic, the hero resistance of that stack's
+own side and the Unicorn aura apply; if it resists, the spell ends. The spell's value and the
+caster's bonuses are unchanged; Chain Lightning starts its jumps at the new target. The first
+target never rolls. Area spells, mass versions and battle-wide spells are never redirected,
+nor is anything cast at an own stack. 0x5A8090's case for Hypnotize (60) returns 0 for a stack
+with Magic Mirror active: such a stack cannot be hypnotized (T4c).
+
+The computer player's casts are entered without 0x59EC50 (0x43CAD1 writes the action itself
+with the candidate's second hex); its evaluation 0x43A78F only scales a candidate's value by
+`(50 − chance) / 50`, so the computer player's spells are never redirected. This concerns the
+original's AI only: every cast here is a player's command (ADR-0004) and follows the player's
+path.
+
+VCMI 1.7.5 (`lib/spells/BattleSpellMechanics.cpp`, `isReflected`, `getRandomUnit`) redirects a
+hero's direct negative spell with `random(0, 99) < chance` to a random valid unit of the
+caster's side other than war machines (`SIEGE_WEAPON`), and marks an immune new target as
+resisting.

@@ -55,7 +55,7 @@ Living state between sessions; every session reads it first. Rules (`docs/08-wor
 
 ### 2026-10-07 (twenty-fourth) — E04b T3c3 and T4a (in progress)
 
-Linked cloud session. The user's checkpoint (Q52): batch 2b now, T4 in three parts (T4a defences, T4b Forgetfulness and Blind, T4c control), T3c3 + T4a this session; `Rate` keeps the f32 bit pattern. T3c3 done (batch 2b compiled, predictions checked against the engine). **In progress:** T4a (reading Anti-Magic and Magic Mirror).
+Linked cloud session. The user's checkpoint (Q52): batch 2b now, T4 in three parts (T4a defences, T4b Forgetfulness and Blind, T4c control), T3c3 + T4a this session; `Rate` keeps the f32 bit pattern. T3c3 done (batch 2b compiled, predictions checked against the engine). T4a's reading is in `installation.md` §7.13. **In progress:** T4a's build (BAT-MAG-021/022, pack format v10).
 
 ### 2026-10-07 (twenty-third) — E04b T3c1 and T3c2: spell specialists, Q45
 
