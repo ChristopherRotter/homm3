@@ -11,15 +11,17 @@ Sources: [`docs/rules/surveys/E04b-magic.md`](../rules/surveys/E04b-magic.md).
 ## T5 — battlefield objects
 
 The spell obstacle list, Force Field, Fire Wall, Teleport and Expert Dispel's clearing are
-implemented (T5a: `h3_battle::obstacles`, BAT-MAG-027 to 030, BAT-MOV-003). For T5c:
+implemented (T5a: `h3_battle::obstacles`, BAT-MAG-027 to 030, BAT-MOV-003), so are the hidden
+obstacles and Quicksand (T5c1: BAT-MAG-031/032, quirks BAT-QUIRK-1/2). For T5c2 (Land Mine):
 
-- An obstacle gains whether it is revealed (Quicksand once triggered) and the mine's damage
-  (`SpellObstacle::value` holds it already); the original keeps a revealed flag per object
-  (`installation.md` §7.15).
-- Visibility as ADR-0014 point 7; legality and reachability use the acting side's view; a move
-  that meets an unseen pit stops there (an attack ordered with it does not happen); triggering
-  reveals and emits a public event. `obstacles::travel` already enters the hexes of a path in
-  order and stops a stack where it dies.
+- A mine is a hidden obstacle kind of its own (pack format: an obstacle kind `mine`) with the
+  spell's value in `SpellObstacle::value`; its placement as Quicksand's (a random shape), its
+  cast test (the spell book refuses it while the other side had natives at the battle's start,
+  0x59ECEE: the faithful sight of BAT-QUIRK-1; the fix needs a rule of its own), its trigger
+  (0x59FB40, between Fire Wall's and the moat's when a hex is entered) and who crosses safely:
+  read them first (`installation.md` §7.15 lists the addresses).
+- `obstacles::travel_through` enters the hexes in order and already handles a stop and a death
+  on the way; a mine that goes off goes (ObstacleRemoved) and its reveal follows BAT-MAG-031.
 
 ## T6 — created stacks
 

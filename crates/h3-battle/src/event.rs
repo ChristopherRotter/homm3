@@ -241,7 +241,8 @@ pub enum EventKind {
         /// The spell.
         spell: SpellId,
     },
-    /// A spell placed an obstacle (BAT-MAG-027).
+    /// A spell placed an obstacle (BAT-MAG-027); a hidden one is reported only to the sides that
+    /// see it (BAT-MAG-031).
     ObstaclePlaced {
         /// The side whose hero cast it.
         side: BattleSide,
@@ -251,15 +252,26 @@ pub enum EventKind {
         hexes: HexSet,
     },
     /// A spell obstacle went: its last round passed or a spell removed it (BAT-MAG-027,
-    /// BAT-MAG-030).
+    /// BAT-MAG-030); a hidden one is reported only to the sides that saw it (BAT-MAG-031).
     ObstacleRemoved {
         /// The spell that placed it.
         spell: SpellId,
         /// Its hexes.
         hexes: HexSet,
     },
+    /// A hidden spell obstacle became visible to both sides: a stack that did not see it ran
+    /// into it (Quicksand, BAT-MAG-031/032).
+    ObstacleRevealed {
+        /// The side whose hero cast it.
+        side: BattleSide,
+        /// The spell.
+        spell: SpellId,
+        /// Its hexes.
+        hexes: HexSet,
+    },
     /// A stack entered a hex of a spell obstacle that acts on it, or acted on one (Fire Wall,
-    /// BAT-MAG-028); what it does follows (`SpellDamage`).
+    /// BAT-MAG-028); what it does follows (`SpellDamage`). A walker that entered a pit stops there
+    /// (Quicksand, BAT-MAG-032).
     ObstacleTriggered {
         /// The stack.
         stack: StackId,

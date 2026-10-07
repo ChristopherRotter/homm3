@@ -160,15 +160,16 @@ pub struct SpellOther {
 }
 
 /// A spell that places battlefield obstacles (pack format v13, `packs/README.md`; the original's
-/// code, `docs/formats/installation.md` §7.15). The target hex comes from the flag word.
+/// code, `docs/formats/installation.md` §7.15, §7.16). The target hex comes from the flag word;
+/// a random shape (v14) has none.
 #[derive(Debug, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct SpellObstacle {
     /// Spell name (as in `SPTRAITS.TXT`).
     pub spell: String,
-    /// The obstacle kind (`wall`, `fire`).
+    /// The obstacle kind (`wall`, `fire`, `pit`).
     pub obstacle: String,
-    /// `{ steps, hexes, mirrored, separate, rounds }`, copied verbatim.
+    /// `{ steps, hexes, random, mirrored, separate, rounds }`, copied verbatim.
     pub shape: toml::Value,
     /// Source ids.
     pub sources: Vec<String>,

@@ -11,19 +11,12 @@ Pre-refined tasks of the battle lane, in order, then the inbox of discovered wor
 - **Depends on:** the user's batch 2c results.
 - **Status:** waiting (the user plays batch 2c).
 
-### E04b T5c1 — Quicksand and hidden obstacles
-
-- **Scope:** `docs/epics/E04b-battle-magic.md`, T5c1 (BAT-Q1): read Quicksand in the executable (`installation.md` §7.16); hidden obstacles with an owner and a revealed flag (ADR-0014 point 7), the natives' sight as the original's (BAT-QUIRK-1, fix-optional); Quicksand's random pits; legality and paths by the acting side's view, a walker stops in a pit, an attack from a seen pit (BAT-QUIRK-2, fix-optional); events and observations without the hidden obstacles.
-- **Acceptance:** BAT rules with sources and tests; observation hygiene for the hidden obstacles (`docs/06-security.md`); the two quirk flags in the profiles; `verify` green.
-- **Depends on:** the ADR-0014 point 7 amendment (`shared/` pull request, merged first).
-- **Status:** in progress (`battle/e04b-t5c1`, 2026-10-07T18:23Z).
-
 ### E04b T5c2 — Land Mine
 
 - **Scope:** `docs/epics/E04b-battle-magic.md`, T5c2: read Land Mine (cast 0x5A0536, the spell book's native test 0x59ECEE, trigger 0x59FB40); its cast refusal when the enemy had natives, the mine's damage on entering, who crosses safely, the mine goes once triggered; on T5c1's hidden-obstacle machinery.
 - **Acceptance:** BAT rules with sources and tests; observation hygiene; `verify` green.
-- **Depends on:** T5c1; the user's checkpoint after it (BAT-Q1).
-- **Status:** waiting (checkpoint).
+- **Depends on:** T5c1 (done, `battle/e04b-t5c1`); the user's checkpoint after it (BAT-Q1).
+- **Status:** waiting (checkpoint after T5c1).
 
 ### E04b T5b — Remove Obstacle
 
@@ -55,3 +48,4 @@ Pre-refined tasks of the battle lane, in order, then the inbox of discovered wor
 - 2026-10-07 (E04b T4b): loose ends of Forgetfulness and Blind (`installation.md` §7.14): Paralyze and Stone Gaze share Blind's turn passing and end by damage (T7: the effect's `ends = "damaged"`, a status per change); the Pendants of Total Recall and Dispassion (artifacts 107, 101; T8); under the Orb of Vulnerability (T8) Blind still spares the undead (a condition, already absolute) and Troglodytes (today a creature immunity, which the Orb would lift: make it absolute then), and Forgetfulness still needs a shooter. Experiment candidates: a blind stack acting in the same round after a shot ends its blindness; one forgetful archer dealing full damage.
 - 2026-10-07 (E04b T4c): loose ends of Berserk and Hypnotize (`installation.md` §7.14): the original's berserk target choice by its AI pathfinder (0x4B3400, survey S-11) if an experiment ever shows a difference (HD, the user's setup, fixes S-11); the battle end with only hypnotized stacks left (not read: the engine counts them for their owner); Dispel's Sphere and the Pendants on the controller's hero (T8); a hypnotized stack's Unicorn aura lists are rebuilt in the original at the cast and its end (the engine computes the aura from the controllers at each test); Faerie Dragons and other casters' Berserk or Hypnotize (T7). Experiment candidates (staged in batch 2c, B1, H1, C1): a berserk stack choosing between two equally near stacks; Expert Cure on a hypnotized stack (S-13); Hypnotize refused by a stack whose wounded top creature would bring its health under the limit.
 - 2026-10-07 (E04b T5a): loose ends of the battlefield spells (`installation.md` §7.15): a walker's path among equally short ones is the engine's own (BAT-MOV-003); the original's pathfinder 0x4B3400 (also survey S-11's) decides which hexes a walker enters, so read its tie order if an experiment shows a stack burnt where the engine's path avoids the fire (or the reverse); Teleport in sieges by mastery (the wall below Advanced, 0x467840 below Expert; E04c); the flat sim observation (encoding v6) has no hex features, so neither the natural obstacles nor the spell obstacles reach agents: decide with E05 (E04b T9 observation completeness). Experiment candidates (staged in batch 2c, F1, F2, with Q55's anchors in A1–A3): a walker beside a two-hex Fire Wall with two equally short paths; a stack standing in Fire Wall that waits and then defends (burnt twice in one round); Force Field's shape for the defender (not mirrored in the original's descriptor, mirrored in VCMI).
+- 2026-10-07 (E04b T5c1): loose ends of Quicksand and the hidden obstacles (`installation.md` §7.16): the moat (0x469E50 damages a stack entering it; 0x4B3290 makes its hexes stops) and special battlefield 2 (+0x53C0, no stack native there) for E04c; the original's interface may not offer an attack from a seen pit (BAT-QUIRK-2's faithful variant accepts it); the flat sim observation still has no obstacle features (E05, T9). Experiment candidates: `docs/experiments/README.md` (from T5c1).

@@ -694,6 +694,18 @@ side = "own"
 excludes = ["war_machine"]
 effects = [{ kind = "teleport" }]
 
+[[spell]]                           # format v14: a Quicksand, random pits for the whole battle,
+id = "mire"                         # hidden from the other side (no target)
+name = "Mire"
+category = "combat"
+level = 2
+schools = ["stone"]
+cost = [8, 6, 6, 6]
+effect = [0, 0, 0, 0]
+polarity = "neutral"
+obstacle = { hexes = [4, 4, 6, 8], random = true, separate = true }
+effects = [{ kind = "obstacle", obstacle = "pit" }]
+
 [[secondary_skill]]
 id = "marksmanship"
 name = "Marksmanship"
@@ -985,8 +997,8 @@ backpack = 3                        # HER-ART-002
 
 [[profile]]
 id = "faithful"        # default: preserve/fix-optional quirks on
-quirks = { "quirk.battle.no_luck_without_hero" = true, "quirk.battle.single_precision_rates" = true, "quirk.battle.unlimited_ballista_shots" = true, "quirk.battle.first_protection" = true, "quirk.battle.counterstrike_extra_round" = true, "quirk.battle.frenzy_reduced_defense" = true, "quirk.battle.fire_shield_first_stage" = true, "quirk.battle.early_mass_version" = true, "quirk.battle.mass_cure_skips_hypnotized" = true }    # Q-0003, Q-0005, Q-0004, Q-0007, Q-0008, Q-0009, Q-0010, Q-0011, Q-0012
+quirks = { "quirk.battle.no_luck_without_hero" = true, "quirk.battle.single_precision_rates" = true, "quirk.battle.unlimited_ballista_shots" = true, "quirk.battle.first_protection" = true, "quirk.battle.counterstrike_extra_round" = true, "quirk.battle.frenzy_reduced_defense" = true, "quirk.battle.fire_shield_first_stage" = true, "quirk.battle.early_mass_version" = true, "quirk.battle.mass_cure_skips_hypnotized" = true, "quirk.battle.natives_sight_at_start" = true, "quirk.battle.attack_from_seen_pit" = true }    # Q-0003, Q-0005, Q-0004, Q-0007, Q-0008, Q-0009, Q-0010, Q-0011, Q-0012, BAT-QUIRK-1, BAT-QUIRK-2
 
 [[profile]]
 id = "strict-fixed"    # all quirks fixed
-quirks = { "quirk.battle.no_luck_without_hero" = false, "quirk.battle.single_precision_rates" = false, "quirk.battle.unlimited_ballista_shots" = false, "quirk.battle.first_protection" = false, "quirk.battle.counterstrike_extra_round" = false, "quirk.battle.frenzy_reduced_defense" = false, "quirk.battle.fire_shield_first_stage" = false, "quirk.battle.early_mass_version" = false, "quirk.battle.mass_cure_skips_hypnotized" = false }   # Q-0003, Q-0005, Q-0004, Q-0007, Q-0008, Q-0009, Q-0010, Q-0011, Q-0012
+quirks = { "quirk.battle.no_luck_without_hero" = false, "quirk.battle.single_precision_rates" = false, "quirk.battle.unlimited_ballista_shots" = false, "quirk.battle.first_protection" = false, "quirk.battle.counterstrike_extra_round" = false, "quirk.battle.frenzy_reduced_defense" = false, "quirk.battle.fire_shield_first_stage" = false, "quirk.battle.early_mass_version" = false, "quirk.battle.mass_cure_skips_hypnotized" = false, "quirk.battle.natives_sight_at_start" = false, "quirk.battle.attack_from_seen_pit" = false }   # Q-0003, Q-0005, Q-0004, Q-0007, Q-0008, Q-0009, Q-0010, Q-0011, Q-0012, BAT-QUIRK-1, BAT-QUIRK-2

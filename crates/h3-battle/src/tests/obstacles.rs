@@ -731,7 +731,7 @@ fn a_walkers_path_is_a_shortest_one_chosen_from_its_end() {
     let r = ruleset();
     let s = battle_with_obstacles(
         &r,
-        &[(0, "fixed", 1)],
+        &[(0, "fast", 1)],
         &[(0, "fixed", 1)],
         &[(6, 4), (6, 5), (6, 6)],
     );
@@ -749,7 +749,11 @@ fn a_walkers_path_is_a_shortest_one_chosen_from_its_end() {
         assert_eq!(field.distance(a, b), 1);
     }
     assert!(!cells.contains(&(6, 4)) && !cells.contains(&(6, 5)) && !cells.contains(&(6, 6)));
-    // The start, or a position it cannot reach: no path.
+    // The start, or a position it cannot reach (blocked, or beyond its speed 9): no path.
+    assert_eq!(
+        crate::movement::path(&s, field, StackId(0), &me, at(&r, 14, 5)).1,
+        0
+    );
     let enclosed = at(&r, 6, 5);
     assert_eq!(
         crate::movement::path(&s, field, StackId(0), &me, enclosed).1,

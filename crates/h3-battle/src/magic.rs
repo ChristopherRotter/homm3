@@ -612,9 +612,11 @@ fn area_stacks<'a>(
 /// Whether `target` is a first target of `side`'s cast of `spell` at `mastery` (BAT-MAG-003): a
 /// stack of [`aimable`] for a stack spell; for a hex spell any hex outside the side columns,
 /// whatever stands on it (the original's cursor test, `installation.md` §7.8; batch 2a R3),
-/// but for an obstacle spell a hex where its shape fits free hexes (BAT-MAG-027); nothing for a
-/// battle-wide spell or a mass version (from the spell's mass mastery), which must reach at least
-/// one stack. Whether a second target exists is not checked here.
+/// but for an obstacle spell a hex where its shape fits hexes free as the side sees them
+/// (BAT-MAG-027, BAT-MAG-031); nothing for a battle-wide spell or a mass version (from the
+/// spell's mass mastery), which must reach at least one stack, or for an obstacle spell of a
+/// random shape, which is always cast (BAT-MAG-032). Whether a second target exists is not
+/// checked here.
 // rule: BAT-MAG-003
 fn first_target(
     state: &BattleState,
@@ -633,13 +635,15 @@ fn first_target(
                 Some(shape) => {
                     // rule: BAT-MAG-027
                     obstacles::shape_hexes(field, shape, (side, mastery), h)
-                        .is_some_and(|hexes| obstacles::free(state, field, hexes.as_slice()))
+                        .is_some_and(|hexes| obstacles::free(state, field, side, hexes.as_slice()))
                 }
                 None => field.is_standable(h),
             }
         }
         (SpellTarget::None, CastTarget::None) => {
-            stack_ids(state).any(|s| reachable(state, ruleset, side, (spell, mastery), s))
+            // rule: BAT-MAG-032
+            spell.1.magic.obstacle.is_some()
+                || stack_ids(state).any(|s| reachable(state, ruleset, side, (spell, mastery), s))
         }
         _ => false,
     }
@@ -816,8 +820,8 @@ pub fn second_targets(
 
 /// Whether `actor`'s cast of `spell` has a target ([`cast_targets`] not empty, computed without
 /// listing every hex where it can be avoided): a stack spell needs a stack of [`aimable`] with a
-/// second target, a battle-wide spell a stack it reaches; a hex spell always has one, but an
-/// obstacle spell needs a hex where its shape fits.
+/// second target, a battle-wide spell a stack it reaches, but a random obstacle spell none; a hex
+/// spell always has one, but an obstacle spell needs a hex where its shape fits.
 fn has_target(
     state: &BattleState,
     ruleset: &Ruleset,
@@ -834,7 +838,8 @@ fn has_target(
                 && has_second(state, ruleset, spell.1, CastTarget::Stack(s))
         }),
         SpellTarget::None => {
-            stack_ids(state).any(|s| reachable(state, ruleset, actor, (spell, mastery), s))
+            spell.1.magic.obstacle.is_some()
+                || stack_ids(state).any(|s| reachable(state, ruleset, actor, (spell, mastery), s))
         }
     }
 }
@@ -1307,14 +1312,18 @@ pub(crate) fn apply_cast<S: Sink>(
     }));
     let spell = (cast.id, cast.spell);
     let magic = &cast.spell.magic;
-    if let (Some(kind), Some(shape), CastTarget::Hex(h)) =
-        (magic.obstacle_kind(), &magic.obstacle, cast.target)
-    {
+    if let (Some(kind), Some(shape)) = (magic.obstacle_kind(), &magic.obstacle) {
         // rule: BAT-MAG-027
         let field = Field::new(ruleset.battle().field);
-        // Validated: the shape fits.
-        let hexes =
-            obstacles::shape_hexes(field, shape, (cast.side, cast.mastery), h).unwrap_or_default();
+        let hexes = match cast.target {
+            // Validated: the shape fits.
+            CastTarget::Hex(h) => {
+                obstacles::shape_hexes(field, shape, (cast.side, cast.mastery), h)
+                    .unwrap_or_default()
+            }
+            // A random shape (validated: target none).
+            _ => obstacles::random_hexes(state, field, shape.hexes[usize::from(cast.mastery)]),
+        };
         let placed = (cast.id, kind, shape);
         obstacles::place(
             state,

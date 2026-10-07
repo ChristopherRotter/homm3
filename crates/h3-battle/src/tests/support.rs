@@ -734,6 +734,14 @@ pub fn ruleset_with(profile: &str, edit: impl FnOnce(&mut BattleParamsDef)) -> R
                 )],
             },
             ProfileDef {
+                key: ContentKey::new("t", "sight").unwrap(),
+                quirks: vec![(String::from("quirk.battle.natives_sight_at_start"), true)],
+            },
+            ProfileDef {
+                key: ContentKey::new("t", "pits").unwrap(),
+                quirks: vec![(String::from("quirk.battle.attack_from_seen_pit"), true)],
+            },
+            ProfileDef {
                 key: ContentKey::new("t", "original").unwrap(),
                 quirks: vec![
                     (String::from("quirk.battle.first_protection"), true),
@@ -1407,8 +1415,9 @@ pub fn control_defs() -> Vec<SpellDef> {
 /// The test Force Field (`t:wall`: level 3, the target hex and its upper right neighbour, from
 /// Advanced also that one's upper left, for either side; 2 rounds), Fire Wall (`t:firewall`: a
 /// fire spell of level 2, power × 10 + 10, 10, 20, 50 damage, the same hexes mirrored for the
-/// defender, one obstacle per hex, 2 rounds) and Teleport (`t:teleport`: level 3, an own stack
-/// that is no war machine to a free hex).
+/// defender, one obstacle per hex, 2 rounds), Teleport (`t:teleport`: level 3, an own stack
+/// that is no war machine to a free hex) and Quicksand (`t:quicksand`: level 2, 4, 4, 6 or 8 pits
+/// on random free hexes for the whole battle, hidden from the other side).
 pub fn field_defs() -> Vec<SpellDef> {
     let key = |k: &str| ContentKey::new("t", k).unwrap();
     let def = |name: &str, (level, school), polarity, magic| SpellDef {
@@ -1429,6 +1438,7 @@ pub fn field_defs() -> Vec<SpellDef> {
     let shape = |mirrored, separate| ObstacleShape {
         steps: vec![HexStep::TopRight, HexStep::TopLeft],
         hexes: [2, 2, 3, 3],
+        random: false,
         mirrored,
         separate,
         rounds: 2,
@@ -1468,6 +1478,23 @@ pub fn field_defs() -> Vec<SpellDef> {
                     excludes: CreatureFlags::default().with(CreatureFlag::WarMachine),
                 },
                 effects: vec![SpellEffect::Teleport],
+                ..SpellMagic::default()
+            },
+        ),
+        def(
+            "quicksand",
+            (2, "air"),
+            SpellPolarity::Neutral,
+            SpellMagic {
+                obstacle: Some(ObstacleShape {
+                    steps: vec![],
+                    hexes: [4, 4, 6, 8],
+                    random: true,
+                    mirrored: false,
+                    separate: true,
+                    rounds: 0,
+                }),
+                effects: vec![SpellEffect::Obstacle(ObstacleKind::Pit)],
                 ..SpellMagic::default()
             },
         ),

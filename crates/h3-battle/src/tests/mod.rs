@@ -13,6 +13,7 @@ mod heroes;
 mod magic;
 mod morale;
 mod obstacles;
+mod pits;
 mod properties;
 mod protect;
 mod rage;

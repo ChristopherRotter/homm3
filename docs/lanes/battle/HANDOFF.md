@@ -4,13 +4,13 @@ The battle lane's living state; read after the global `docs/HANDOFF.md`. Format 
 
 ## Current state
 
-- **Branch:** `battle/e04b-t5c1` (T5c1). Work on `battle/<task>` branches from `master`, one per task or increment, merged at its checkpoint; HANDOFF content goes here, not into `docs/HANDOFF.md`. The stale `e04b-battle-magic` and `claude/hopeful-mayer-ppui03` (both in `master`) wait for the user to delete them: the session proxy refuses ref deletion.
-- **E04b increment 3 (Q54, Q56):** T5a done; batch 2b folded in (all six encounters as predicted); batch 2c compiled and with the user; T5b (Remove Obstacle) waits for its A1–A3 (Q55); T5c next. Sandbox: `docs/08-work-process.md`, "Cloud sandbox".
-- **Done:** survey `docs/rules/surveys/E04b-magic.md` (§12–§15), ADR-0014 accepted (point 5 amended, Q47), design note `docs/epics/E04b-design.md`. Castable by heroes: the 13 damage spells, the 14 value spells, Shield, Air Shield, the Protections (Q-0007), Slayer, Counterstrike (Q-0008), Dispel, Cure, Fire Shield (Q-0010) and Frenzy (Q-0009) (BAT-MAG-001 to 019), the spell specialists (BAT-MAG-020), Anti-Magic and Magic Mirror (BAT-MAG-021/022), Forgetfulness and Blind (BAT-MAG-023/024), Berserk and Hypnotize (BAT-MAG-025/026; a stack's `controller()` commands it), Force Field, Fire Wall, Teleport and Expert Dispel's clearing (BAT-MAG-027 to 030; `h3_battle::obstacles`), all after the executable's code (`installation.md` §7.8–§7.15). **Physical damage follows the executable's three truncated stages** under Q-0005 (Q50, BAT-DMG-002, `h3_kernel::arith::X87` at 53 bits).
+- **Branch:** `battle/e04b-t5c1` (T5c1, its pull request after `shared/adr-0014-natives`, PR #3). Work on `battle/<task>` branches from `master`, one per task or increment, merged at its checkpoint; HANDOFF content goes here, not into `docs/HANDOFF.md`. The stale `e04b-battle-magic` and `claude/hopeful-mayer-ppui03` (both in `master`) wait for the user to delete them: the session proxy refuses ref deletion.
+- **E04b increment 3 (Q54, Q56):** T5a done; batch 2b folded in (all six encounters as predicted); batch 2c compiled and with the user; T5b (Remove Obstacle) waits for its A1–A3 (Q55); T5c in two parts (BAT-Q1): T5c1 done, T5c2 (Land Mine) after the checkpoint. Sandbox: `docs/08-work-process.md`, "Cloud sandbox".
+- **Done:** survey `docs/rules/surveys/E04b-magic.md` (§12–§15), ADR-0014 accepted (point 5 amended, Q47), design note `docs/epics/E04b-design.md`. Castable by heroes: the 13 damage spells, the 14 value spells, Shield, Air Shield, the Protections (Q-0007), Slayer, Counterstrike (Q-0008), Dispel, Cure, Fire Shield (Q-0010) and Frenzy (Q-0009) (BAT-MAG-001 to 019), the spell specialists (BAT-MAG-020), Anti-Magic and Magic Mirror (BAT-MAG-021/022), Forgetfulness and Blind (BAT-MAG-023/024), Berserk and Hypnotize (BAT-MAG-025/026; a stack's `controller()` commands it), Force Field, Fire Wall, Teleport and Expert Dispel's clearing (BAT-MAG-027 to 030; `h3_battle::obstacles`), hidden obstacles and Quicksand (BAT-MAG-031/032; BAT-QUIRK-1/2), all after the executable's code (`installation.md` §7.8–§7.16). **Physical damage follows the executable's three truncated stages** under Q-0005 (Q50, BAT-DMG-002, `h3_kernel::arith::X87` at 53 bits).
 - **Hero rates** cross the seam as `h3_contracts::Rate` (basis points plus, under Q-0005, the original's single-precision value as an f32 bit pattern where it differs; Q45 (b), T3c2).
-- **Next:** the user's checkpoint (Q56 planned T5c: Quicksand, Land Mine, hidden, ADR-0014 point 7) while the user plays batch 2c (`experiments/specs/E04b-batch-2c.toml`; the map is in the user's `experiments/out/`); when its results are in, fold them in, put Q55's options to the user, then T5b.
+- **Next:** the user merges PR #3 (ADR-0014 point 7), the T5c1 branch rebases onto it and merges at the checkpoint; then T5c2 (Land Mine, `E04b-design.md` T5). Batch 2c is with the user (`experiments/specs/E04b-batch-2c.toml`); when its results are in, fold them in, put Q55's options to the user, then T5b.
 - **Open for later tasks:** batch 2a R6's costs (T7); Q43 (sprite offset, keep the approximation); creature casters' re-casts (T7); the damage stages' creature factors; Dispel's and Fire Shield's loose ends (Sphere T8, obstacles T5, the Sultans' shield T7); T4a's and T4c's loose ends (all in `QUEUE.md`, "Inbox").
-- **Versions (battle owns them):** state hash v26, ruleset hash v23, replay format v17, action encoding v10, C ABI v10, observation encoding v6; pack format v13. New ids: `BAT-Q<n>`, `BAT-QUIRK-<n>`, `BAT-STUB-<n>` (old ids stay).
+- **Versions (battle owns them):** state hash v27, ruleset hash v24, replay format v17, action encoding v10, C ABI v10, observation encoding v6; pack format v14. New ids: `BAT-Q<n>`, `BAT-QUIRK-<n>`, `BAT-STUB-<n>` (old ids stay).
 - **Ownership:** `h3-content` and `h3-pack` stay with battle until further notice (user, 2026-10-07); `h3-kernel` and `h3-contracts` are shared, so a seam change is its own `shared/` pull request, merged before the battle change that uses it.
 - Working agreement: increments of a couple of tasks with a user checkpoint (Q41); the user confirms seams and ADRs; token efficiency beats speed (AGENTS.md); the user plays experiment maps in SoD with plain HD and commits the results.
 
@@ -21,6 +21,7 @@ The battle lane's living state; read after the global `docs/HANDOFF.md`. Format 
 
 **Code reading**
 - The executable's x87 runs at 53 bits (`installation.md` §7.10): emulate it with `h3_kernel::arith::X87` and test against vectors from exact rational arithmetic; check each float constant's width (`qword` double or `dword` f32).
+- Name an address only after reading its code: §7.15 had called 0x469E50 (the moat's damage) a Quicksand test.
 
 **Battle code and tests**
 - Stack ids: war machines follow the army in kind order (Ballista, Ammo Cart, Tent), not in the order of `BattleSetup.war_machines`.
@@ -29,6 +30,7 @@ The battle lane's living state; read after the global `docs/HANDOFF.md`. Format 
 
 **Fixtures and benchmarks**
 - Golden replays and the `benches/battle/` baselines change with behavior, the synthetic pack, an encoding or the toolchain: regenerate deliberately (`fixtures/README.md`, `cargo xtask bench-check --update --workload random-rollouts-full`) and give the reason in the commit.
+- Code added to `movement::reachable_within` can push `fits` out of line (+1 % Ir in T5c1; it is `#[inline]` now): compare per-function profiles (`callgrind_annotate --inclusive=no`) of the old and new binaries on the old workload.
 - Before re-baselining, compare `h3 bench --games 20` step counts (a shorter workload looks like a speed-up; build the old commit in a `git worktree` with its own target dir; `git stash` keeps untracked files). The geometry hot path moves with unrelated codegen: compare per-function callgrind profiles (`--toggle-collect='*random_rollout*'`, read the out file's `summary:` line; run `h3 bench` where `packs/` resolves).
 
 **Experiments in the original game**
@@ -37,9 +39,9 @@ The battle lane's living state; read after the global `docs/HANDOFF.md`. Format 
 
 ## Recent sessions
 
-### 2026-10-07 (twenty-eighth) — E04b T5c1 in progress
+### 2026-10-07 (twenty-eighth) — E04b T5c1: Quicksand and hidden obstacles
 
-Linked cloud session, branch `battle/e04b-t5c1`. BAT-Q1: T5c1 alone (Quicksand, hidden obstacles), a checkpoint before T5c2 (Land Mine); the natives' sight (BAT-QUIRK-1) and an attack from a seen pit (BAT-QUIRK-2) fix-optional; ADR-0014 point 7 amended in `shared/adr-0014-natives`. Read so far (`installation.md` §7.16 to write): Quicksand 0x5A0354 (4/4/6/8 pits, random free hexes without objects, stacks or corpses), the walker 0x441FA0 and the stop array 0x4B3290; 0x469E50 is the moat, not Quicksand (§7.15 corrected). In progress: the code.
+Linked cloud session, branch `battle/e04b-t5c1`. BAT-Q1: T5c1 alone, a checkpoint before T5c2; the natives' sight (BAT-QUIRK-1) and an attack from a seen pit (BAT-QUIRK-2) fix-optional; ADR-0014 point 7 amended in `shared/adr-0014-natives` (PR #3). Reading `installation.md` §7.16 (0x469E50 is the moat's). Pack format v14, BAT-MAG-031/032, state hash v27, ruleset hash v24; old workload −0.20 %, new +7.13 % (+6 % steps); replays (a fifth, `full-s3-a5`) and `bench-check` re-baselined. Detail: `docs/epics/E04b-log.md` (T5c1).
 
 ### 2026-10-07 (twenty-seventh) — batch 2b folded in, batch 2c compiled
 

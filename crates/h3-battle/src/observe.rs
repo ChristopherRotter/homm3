@@ -2,9 +2,11 @@
 //!
 //! The battlefield is fully visible to both sides, so the observation is the state minus what
 //! the viewer may not know: the RNG state (it would predict rolls) and the private part of the
-//! other side's hero (ADR-0013 point 9: its skill values, surrender discount, funds and price).
-//! The viewer's own hero's private part is shown to the viewer ([`OwnHeroView`]): its spell book,
-//! masteries and spell bonuses among them (ADR-0014 point 8). Timed effects on stacks are public.
+//! other side's hero (ADR-0013 point 9: its skill values, surrender discount, funds and price)
+//! and the other side's hidden spell obstacles the viewer does not see (ADR-0014 point 7,
+//! BAT-MAG-031). The viewer's own hero's private part is shown to the viewer ([`OwnHeroView`]):
+//! its spell book, masteries and spell bonuses among them (ADR-0014 point 8). Timed effects on
+//! stacks are public.
 
 use alloc::vec::Vec;
 
@@ -16,7 +18,7 @@ use crate::effects::ActiveEffect;
 use crate::event::{Event, Visibility};
 use crate::geometry::HexSet;
 use crate::hero::{HeroView, OwnHeroView};
-use crate::obstacles::SpellObstacle;
+use crate::obstacles::{self, SpellObstacle};
 use crate::state::{BattleState, STACK_CAPACITY, Stack, StackId};
 use crate::tactics::TacticsPhase;
 
@@ -54,7 +56,7 @@ pub struct Observation {
     /// The timed effects on stacks, by stack and spell (public; BAT-MAG-009).
     pub effects: Vec<ActiveEffect>,
     /// The spell obstacles the viewer sees, in the order they were placed (BAT-MAG-027; Force
-    /// Field and Fire Wall are public, ADR-0014 point 7).
+    /// Field and Fire Wall are public, a hidden one only when the viewer sees it, BAT-MAG-031).
     pub spell_obstacles: Vec<SpellObstacle>,
 }
 
@@ -87,7 +89,8 @@ pub fn observe(state: &BattleState, ruleset: &Ruleset, viewer: BattleSide) -> Ob
         }),
         terrain: state.terrain,
         effects: state.effects().to_vec(),
-        spell_obstacles: state.spell_obstacles().to_vec(),
+        // rule: BAT-MAG-031
+        spell_obstacles: obstacles::seen_by(state, viewer),
     }
 }
 

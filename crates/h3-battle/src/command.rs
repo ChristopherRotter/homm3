@@ -7,7 +7,7 @@
 
 use alloc::boxed::Box;
 
-use h3_content::{Ruleset, SpellId};
+use h3_content::{ATTACK_FROM_SEEN_PIT, Ruleset, SpellId};
 use h3_contracts::{BattleResult, BattleSide};
 
 use crate::combat::{can_shoot, melee, shoot};
@@ -231,7 +231,11 @@ fn plan<'r>(
             let charge = if from == mover.hex {
                 0
             } else {
-                let Some(steps) = reachable(state, field, id, &mover).steps(from) else {
+                let reach = reachable(state, field, id, &mover);
+                // rule: BAT-MAG-032
+                let Some(steps) = reach.steps(from).filter(|_| {
+                    !reach.stops_at(from) || ruleset.quirks().is_enabled(ATTACK_FROM_SEEN_PIT)
+                }) else {
                     return Err(CommandError::Unreachable);
                 };
                 steps
@@ -370,6 +374,7 @@ pub fn apply<S: Sink>(
             end_turn(state, ruleset, mover, TurnEnd::Defended, sink);
         }
         Plan::Move { mover, from, to } => {
+            // A pit may stop it short (BAT-MAG-032).
             obstacles::travel(state, ruleset, mover, (from, to), sink);
             end_turn(state, ruleset, mover, TurnEnd::Acted, sink);
         }
@@ -380,8 +385,8 @@ pub fn apply<S: Sink>(
             charge,
             target,
         } => {
-            // A stack that dies on its way does not attack (BAT-MAG-028); one that attacks from
-            // where it stands burns after the attack.
+            // A stack that dies on its way (BAT-MAG-028) or stops in a pit (BAT-MAG-032) does not
+            // attack; one that attacks from where it stands burns after the attack.
             if from == to {
                 melee(state, ruleset, mover, target, from, charge, sink);
                 obstacles::stand(state, ruleset, mover, sink);

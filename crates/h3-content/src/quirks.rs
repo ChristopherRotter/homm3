@@ -64,6 +64,8 @@ pub const REGISTRY: QuirkRegistry = QuirkRegistry::new(&[
     "quirk.battle.fire_shield_first_stage",
     "quirk.battle.early_mass_version",
     "quirk.battle.mass_cure_skips_hypnotized",
+    "quirk.battle.natives_sight_at_start",
+    "quirk.battle.attack_from_seen_pit",
 ]);
 
 /// Q-0003: creatures of a side without a hero never get lucky strikes (BAT-LCK-002).
@@ -101,6 +103,15 @@ pub const EARLY_MASS_VERSION: QuirkFlag = QuirkFlag(7);
 /// Hypnotize (Expert Cure), which the clean version lets reach the caster's hypnotized stacks
 /// (BAT-MAG-026).
 pub const MASS_CURE_SKIPS_HYPNOTIZED: QuirkFlag = QuirkFlag(8);
+
+/// BAT-QUIRK-1: a side sees the other side's hidden obstacles (Quicksand) if it had a stack on
+/// its native terrain at the battle's start, given to each obstacle when it is placed; natives
+/// that die or appear later change nothing (BAT-MAG-031). Off: while it has a living one.
+pub const NATIVES_SIGHT_AT_START: QuirkFlag = QuirkFlag(9);
+
+/// BAT-QUIRK-2: a walker may be commanded to attack from a pit its side sees; it stops on
+/// entering the pit and the attack is skipped (BAT-MAG-032). Off: such an attack is not legal.
+pub const ATTACK_FROM_SEEN_PIT: QuirkFlag = QuirkFlag(10);
 
 /// The set of enabled quirk flags of a ruleset.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
@@ -140,7 +151,7 @@ mod tests {
 
     #[test]
     fn registry_lookup_and_bitset() {
-        assert_eq!(REGISTRY.len(), 9);
+        assert_eq!(REGISTRY.len(), 11);
         assert_eq!(
             REGISTRY.lookup("quirk.battle.no_luck_without_hero"),
             Some(NO_LUCK_WITHOUT_HERO)
@@ -176,6 +187,14 @@ mod tests {
         assert_eq!(
             REGISTRY.lookup("quirk.battle.mass_cure_skips_hypnotized"),
             Some(MASS_CURE_SKIPS_HYPNOTIZED)
+        );
+        assert_eq!(
+            REGISTRY.lookup("quirk.battle.natives_sight_at_start"),
+            Some(NATIVES_SIGHT_AT_START)
+        );
+        assert_eq!(
+            REGISTRY.lookup("quirk.battle.attack_from_seen_pit"),
+            Some(ATTACK_FROM_SEEN_PIT)
         );
         // `new` is a const fn; call it at run time too so coverage sees it.
         let runtime = QuirkRegistry::new(&["quirk.battle.a"]);

@@ -462,7 +462,8 @@ fn other_spell(
 
 /// Writes the battle magic of a spell that places obstacles (pack format v13, E04b T5a): a hex
 /// target, which the flag word must give (`0x80` without `0x10`), the obstacle kind and shape from
-/// the gap-fill entry.
+/// the gap-fill entry; a random shape (v14, Quicksand) has no target, as the spell book casts it
+/// at once (`installation.md` §7.16), although its flag word names a hex.
 fn obstacle_spell(
     text: &mut String,
     what: &str,
@@ -472,7 +473,14 @@ fn obstacle_spell(
     if flags & (SPELL_AREA | SPELL_SINGLE) != SPELL_AREA {
         return Err(format!("{what}: flag word {flags:#x} names no hex target"));
     }
-    let _ = writeln!(text, "target = \"hex\"");
+    let random = t
+        .shape
+        .get("random")
+        .and_then(toml::Value::as_bool)
+        .unwrap_or(false);
+    if !random {
+        let _ = writeln!(text, "target = \"hex\"");
+    }
     let _ = writeln!(text, "obstacle = {}", t.shape);
     let _ = writeln!(
         text,

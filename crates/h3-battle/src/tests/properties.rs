@@ -29,7 +29,12 @@ use crate::{
 /// The test ruleset with frequent good and bad morale and luck (a 4-sided die) and the quirk
 /// Q-0003 on, so that generated games exercise them.
 fn lively() -> Ruleset {
-    ruleset_with("t:quirky", |b| {
+    lively_with("t:quirky")
+}
+
+/// [`lively`] with the profile `profile`.
+fn lively_with(profile: &str) -> Ruleset {
+    ruleset_with(profile, |b| {
         b.morale_dice = 4;
         b.good_morale_chances = std::vec![1, 2, 3];
         b.bad_morale_chances = std::vec![1, 2, 3];
@@ -134,7 +139,8 @@ fn arb_game() -> impl Strategy<Value = Game> {
 /// and 56–63 the attacker's and the defender's funds in hundreds of gold (BAT-FLE-002). Both
 /// heroes have spell books (every combat spell of the test ruleset) and the attacker's some
 /// masteries and spell bonuses; their mana comes from bits 0–5 and 6–11 of `machines`
-/// rotated by 13 (BAT-MAG-001 to BAT-MAG-004).
+/// rotated by 13 (BAT-MAG-001 to BAT-MAG-004), the battlefield's terrain from its bits 14–15
+/// (none, the plain or lava, so that some stacks are native: BAT-TER-001, BAT-MAG-031).
 fn make_setup(
     r: &Ruleset,
     attacker: &[(u8, u8, u32)],
@@ -211,6 +217,7 @@ fn make_setup(
         "wall",
         "firewall",
         "teleport",
+        "quicksand",
     ]
     .iter()
     .map(|k| r.spell_by_key(&std::format!("t:{k}")).unwrap())
@@ -246,7 +253,11 @@ fn make_setup(
         defender: army(defender),
         obstacles: obstacles.to_vec(),
         heroes: [Some(led), defender_hero],
-        terrain: None,
+        terrain: match (magic >> 14) & 3 {
+            1 => r.terrain_by_key("t:plain"),
+            2 => r.terrain_by_key("t:lava"),
+            _ => None,
+        },
         war_machines,
         funds: [48, 56].map(|bit| u32::try_from((machines >> bit) & 0xff).unwrap() * 100),
         formations: [6, 7].map(|bit| {
@@ -521,6 +532,47 @@ proptest! {
             }
             let viewer = side.opponent();
             prop_assert_eq!(observe(&state, &r, viewer), observe(&twin, &r, viewer));
+        }
+    }
+
+    /// Observation hygiene for hidden obstacles (ADR-0014 point 7, BAT-MAG-031): what a side
+    /// does not see changes neither its observation nor what it may do (its legal commands,
+    /// castable spells and their targets), with the natives' sight of either profile.
+    #[test]
+    fn hidden_obstacles_do_not_show(
+        (att, def, obstacles, seed, steps) in arb_game(),
+        at_start: bool,
+        extra in proptest::collection::btree_set((1u8..16, 0u8..11), 0..6),
+    ) {
+        let r = lively_with(if at_start { "t:sight" } else { "t:quirky" });
+        let (mut state, _, _) =
+            play(&r, &make_setup(&r, &att, &def, &obstacles, seed), seed, &steps);
+        // More pits of either side, so that most games have hidden ones.
+        let quicksand = r.spell_by_key("t:quicksand").unwrap();
+        let shape = r.spell(quicksand).unwrap().magic.obstacle.clone().unwrap();
+        for (i, (x, y)) in extra.into_iter().enumerate() {
+            let side = BattleSide::BOTH[i % 2];
+            let hex = [Hex(x + 17 * y)];
+            let placed = (quicksand, h3_content::ObstacleKind::Pit, &shape);
+            crate::obstacles::place(&mut state, placed, side, (&hex, 0), &mut Vec::new());
+        }
+        for viewer in BattleSide::BOTH {
+            let mut twin = state.clone();
+            let seen: Vec<_> = crate::obstacles::seen_by(&state, viewer);
+            twin.spell_obstacles.retain(|o| seen.contains(o));
+            prop_assert_eq!(observe(&state, &r, viewer), observe(&twin, &r, viewer));
+            let (mut a, mut b) = (LegalCommands::new(), LegalCommands::new());
+            legal_commands(&state, &r, viewer, &mut a);
+            legal_commands(&twin, &r, viewer, &mut b);
+            prop_assert_eq!(a.as_slice(), b.as_slice());
+            let spells = castable_spells(&state, &r, viewer);
+            prop_assert_eq!(spells, castable_spells(&twin, &r, viewer));
+            for spell in spells.iter() {
+                let (mut a, mut b) = (CastTargets::new(), CastTargets::new());
+                cast_targets(&state, &r, viewer, spell, &mut a);
+                cast_targets(&twin, &r, viewer, spell, &mut b);
+                prop_assert_eq!(a.as_slice(), b.as_slice());
+            }
         }
     }
 
