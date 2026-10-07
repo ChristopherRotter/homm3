@@ -714,38 +714,38 @@ commands = [
     "D attack 0 142",
 ]
 checkpoints = [
-    "0xe85963204877b3a1",
-    "0xb681def560086d6a",
-    "0x2de8d97795d9e311",
-    "0x172a81fc099a902d",
-    "0xf504c17742aadbb4",
-    "0xb93b4298173ee5cb",
-    "0xa4304eb3874cbc99",
-    "0x12af00954486fc96",
-    "0x4e638200c4658536",
-    "0x59da40cf2f606fee",
-    "0x97b29cb3ddc12170",
-    "0x20c1247d13727e56",
-    "0x02332729173756c4",
-    "0x62951f7874a82bcc",
-    "0x0ba83ef1659fd75f",
-    "0x0f69a80472dc15c1",
-    "0x696cd66a101a2831",
-    "0x9291520c192de8a9",
-    "0x45dbbaac098f10be",
-    "0xc0013f01dd93abb2",
-    "0x53e901dd7f4721c0",
-    "0xa76e01905dda3202",
-    "0xdbc62ecbf43b4951",
-    "0xa05cc308cd8e1b18",
-    "0xa555d40d0ab80c30",
-    "0x7fe6c30b07bbfbc3",
-    "0x6a163e95b7e5cade",
-    "0xf190c8663d26724c",
+    "0xc9a4427accb1af35",
+    "0xf9c4932730ab13a0",
+    "0x382eb17bc5a58a8d",
+    "0xcc98ab9d31a53351",
+    "0x03df2d5f7a4b0142",
+    "0x5fd88c1f424e615f",
+    "0x250d677e9e907bd1",
+    "0x99ee549e8b25f544",
+    "0x20355b2677767d1a",
+    "0xb5f979f230fcfaf2",
+    "0xb83cfebdfde69c10",
+    "0xbcb9c29c85f17e88",
+    "0x7a5113a0219046be",
+    "0x9e2cefa60353aa72",
+    "0xdd8752f2ae53e48b",
+    "0x7c38332e61596787",
+    "0xb39d46cfeed192fb",
+    "0xefbd5a8cc7f5b1f5",
+    "0x365588f454e4f01c",
+    "0xf5c59d32f4fb846e",
+    "0x4f15513dd4947c04",
+    "0x79cb9ef58180ad78",
+    "0xc8e758cfabc86633",
+    "0x7f0e36aef1e44638",
+    "0x3877798fd97635ce",
+    "0x6582c02062f60b55",
+    "0x8410b91606aa1552",
+    "0x4b8921e0824d929a",
 ]
 
 [replay]
-format = 17
+format = 18
 engine = "0.1.0"
 scenario = "full"
 seed = "3"
@@ -754,16 +754,15 @@ packs = [[
     "0.1.0",
 ]]
 profile = "synthetic:faithful"
-ruleset_hash = "0x22fda3c33e0c0b10"
+ruleset_hash = "0x9de4ebf4146016db"
 rng = "xoshiro256starstar+splitmix64"
 rng_version = 1
 hash = "fnv1a64-le"
 hash_version = 1
-battle_state_hash_version = 27
+battle_state_hash_version = 28
 checkpoint_every = 25
 
 [setup]
-obstacles = []
 attacker_war_machines = [
     "synthetic:bolt_thrower",
     "synthetic:aid_tent",
@@ -862,6 +861,7 @@ spell_book = [
     "synthetic:rampage",
     "synthetic:bulwark",
     "synthetic:mire",
+    "synthetic:uproot",
 ]
 
 [setup.defender_hero.ballista]
@@ -1026,4 +1026,4 @@ count = 11
 
 [result]
 winner = "defender"
-final_hash = "0xca57b77540643191"
+final_hash = "0x519da576f5fc48c7"

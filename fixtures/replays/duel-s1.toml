@@ -150,15 +150,15 @@ commands = [
     "A attack 1 63",
 ]
 checkpoints = [
-    "0x233427ca70d686d8",
-    "0xcf272c3fc993ac0d",
-    "0xb67280d1c88b5766",
-    "0xdeb029b5c4531029",
-    "0xf3654d29f482eac9",
+    "0x3a50bb31dcf21191",
+    "0x0c3b851ad16bad80",
+    "0x0c98bc73ce5df963",
+    "0x00a240251791a1e0",
+    "0x9910efcafaf99d2c",
 ]
 
 [replay]
-format = 17
+format = 18
 engine = "0.1.0"
 scenario = "duel"
 seed = "1"
@@ -167,26 +167,39 @@ packs = [[
     "0.1.0",
 ]]
 profile = "synthetic:faithful"
-ruleset_hash = "0x22fda3c33e0c0b10"
+ruleset_hash = "0x9de4ebf4146016db"
 rng = "xoshiro256starstar+splitmix64"
 rng_version = 1
 hash = "fnv1a64-le"
 hash_version = 1
-battle_state_hash_version = 27
+battle_state_hash_version = 28
 checkpoint_every = 25
 
 [setup]
-obstacles = [
+terrain = "synthetic:meadow"
+
+[[setup.obstacles]]
+hexes = [
+    147,
+    148,
+]
+anchor = 147
+
+[[setup.obstacles]]
+hexes = [
     80,
     97,
     98,
+]
+anchor = 97
+
+[[setup.obstacles]]
+hexes = [
     141,
-    147,
-    148,
     158,
     159,
 ]
-terrain = "synthetic:meadow"
+anchor = 158
 
 [[attacker]]
 slot = 0
@@ -200,4 +213,4 @@ count = 20
 
 [result]
 winner = "defender"
-final_hash = "0xd722fd4bbf4c8fb8"
+final_hash = "0xa000346cc65146c9"

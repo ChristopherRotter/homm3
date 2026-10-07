@@ -819,7 +819,8 @@ Placing an object (0x4669B0) sets, on each hex record (stride 0x70 from +0x1C4),
 the descriptor does not block it (28 of the 55 usual obstacle types in the harvested `base` pack
 leave out the offset (0, 0)). Read so, such an anchor hex may be stood on and walked through, but
 takes no Fire Wall or Force Field (their test wants none of the bits `0x3F`) and Remove Obstacle
-aimed at it removes its obstacle (the test wants an index); not observed yet (OPEN-QUESTIONS Q55). The flag bits:
+aimed at it removes its obstacle (the test wants an index); batch 2c A2 confirmed it (quirk
+BAT-QUIRK-3, fix-optional; OPEN-QUESTIONS Q55, BAT-GEO-003, BAT-MAG-034). The flag bits:
 `0x2` blocked (natural obstacles and Force Field), `0x4` Quicksand, `0x8` Land Mine, `0x10` Fire
 Wall, `0x20` Force Field; `0x3C` are the spell objects. Only `0x2` blocks movement and standing
 (0x469A10); Quicksand, Land Mine and Fire Wall hexes may be entered and stood on. The usual

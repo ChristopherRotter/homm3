@@ -366,7 +366,9 @@ spell's `obstacle` shape: places obstacles on the target hex's shape for its rou
 its hexes, BAT-MAG-027; fire burns a stack that enters a hex or acts on one with the value as the
 spell's damage, BAT-MAG-028; since v14, E04b T5c1, `"pit"`: hidden from the other side until revealed,
 it stops a walker that enters it, BAT-MAG-031/032) and `teleport` (moves the target stack to the cast's second target,
-a free hex, BAT-MAG-029), each the spell's only effect, without area, chain or mass version; since
+a free hex, BAT-MAG-029); since v16, E04b T5b: `remove_obstacle` (target `hex`: takes away the
+removable natural obstacle there, or the spell obstacles there of the kinds in `removes` from the
+mastery named, as the caster sees them; BAT-MAG-034), each the spell's only effect, without area, chain or mass version; since
 v7, E04b T3b1b: `dispel` (ends the stack's
 timed effects: those of the spells in `dispels`, or without that list every one but those in
 `spares`; never a permanent one; BAT-MAG-016) and `heal` (heals the top creature by the value,

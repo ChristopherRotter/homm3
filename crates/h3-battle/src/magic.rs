@@ -829,8 +829,7 @@ pub fn second_targets(
 /// listing every hex where it can be avoided): a stack spell needs a stack of [`aimable`] with a
 /// second target, a battle-wide spell a stack it reaches, but a random obstacle spell none (mines
 /// only while the other side's natives would not see them); a hex spell always has one, but an
-/// obstacle spell needs a hex where its shape fits and a remove spell a hex with an obstacle it
-/// removes.
+/// obstacle spell needs a hex where its shape fits and a remove spell an obstacle it removes.
 fn has_target(
     state: &BattleState,
     ruleset: &Ruleset,
@@ -838,9 +837,10 @@ fn has_target(
     (spell, mastery): (SpellRef<'_>, u8),
 ) -> bool {
     match target_at(ruleset, spell.1, mastery) {
-        SpellTarget::Hex
-            if spell.1.magic.obstacle.is_some() || spell.1.magic.removes_obstacles() =>
-        {
+        SpellTarget::Hex if spell.1.magic.removes_obstacles() => {
+            obstacles::any_removable(state, actor, (&spell.1.magic, mastery))
+        }
+        SpellTarget::Hex if spell.1.magic.obstacle.is_some() => {
             hex_targets(ruleset).any(|h| first_target(state, ruleset, actor, (spell, mastery), h))
         }
         SpellTarget::Hex => true,
