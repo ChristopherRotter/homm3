@@ -74,6 +74,8 @@ which a spell meets a stack, how stacks appear in a battle, how hidden objects s
    never uses what the acting side cannot see. A command may therefore resolve differently from
    what its side expected (user, Q42): a move, or a move and attack, into an unseen Quicksand pit
    stops there without the attack; an unseen mine goes off. The events tell the side what happened.
+   As the original, Quicksand's and Land Mine's random hexes avoid the other side's hidden objects
+   (quirk BAT-QUIRK-4, fix-optional: the fix draws among the hexes the caster's side sees free).
 8. **Visibility** (extends ADR-0013 point 9): mana, casts used this round, each cast with its spell,
    targets and results, and the effects on every stack are public, as in the original; the spell book
    and the hero's spell bonuses stay private to its side.
@@ -86,7 +88,9 @@ which a spell meets a stack, how stacks appear in a battle, how hidden objects s
     hero's magic (spell-damage bonuses, duration bonus, magic resistance, magic blocks and level
     limits, immunity negation, opening spells), `StackOrigin` variants, and the use of the reserved
     `BattleMagic` and `HeroOutcome` fields. Battle magic rules use the new area `BAT-MAG`; the
-    hero's derivation continues `HER-BAT`.
+    hero's derivation continues `HER-BAT`. One exception (user, Q55): `BattleSetup.obstacles`
+    becomes a list of natural obstacles, each with its blocked hexes and an optional anchor hex
+    (removable by Remove Obstacle; the anchor's own effects are quirk BAT-QUIRK-3).
 
 ## Consequences
 
@@ -129,3 +133,6 @@ which a spell meets a stack, how stacks appear in a battle, how hidden objects s
 - 2026-10-07: point 7 amended after reading the original's Quicksand code (E04b T5c1, BAT-Q1): the
   natives' sight is fixed at the battle start and given to an object when it is placed
   (`installation.md` §7.16); the living-natives rule stays as the fix of BAT-QUIRK-1.
+- 2026-10-07: points 7 and 10 amended (E04b T5b; user, Q55, BAT-Q4, BAT-Q5): the natural
+  obstacles cross the seam as pieces with an optional anchor, a change of a field's type rather
+  than an addition; the random draws of hidden objects follow the original under BAT-QUIRK-4.

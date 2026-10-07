@@ -46,7 +46,8 @@ full amendment text of E01–E03 is in git history (this file at commit `22b6bc0
 - **Replays (E01):** a header (packs, versions, profile, ruleset hash, encoding versions), the
   seed, the setup, the command log, a state hash every N commands and the final hash.
 - **Seam growth (E03):** `BattleSetup` and `BattleOutcome` grow by fields that default to
-  "absent"; each change is a user decision (Q16, Q17, Q24, Q25; heroes: ADR-0013).
+  "absent"; each change is a user decision (Q16, Q17, Q24, Q25; heroes: ADR-0013; the obstacles
+  as pieces with anchors, a change of a field's type: ADR-0014 point 10, Q55).
 - **Setup randomness before the seam (E03 T7):** random battle inputs such as obstacles are drawn
   before the seam (`h3_battle::generate_obstacles`, stream `OBSTACLES`) and passed in; the battle
   draws only in-battle randomness.
@@ -64,5 +65,6 @@ full amendment text of E01–E03 is in git history (this file at commit `22b6bc0
 - 2026-09-30 – 2026-10-01: Amended by E01 and E03 (T3–T9).
 - 2026-10-04: Amended by E04a T11a (the observation reads the ruleset, Q37).
 - 2026-10-05: Amended by ADR-0014 point 5 (growable lists in battle; user, Q42).
+- 2026-10-07: Amended by ADR-0014 point 10 (the obstacles as pieces; user, Q55).
 - 2026-10-03: Amendments cut to their decisions (ADR size rule, `docs/adr/README.md`); the
   implementation detail is in the crate docs and in git history.

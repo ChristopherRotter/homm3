@@ -15,7 +15,8 @@ cross-platform determinism check (ADR-0003 §11, E01 exit criterion 2).
 | `skirmish-s7.toml` | skirmish | 7 | 8 |
 | `full-s3.toml` | full | 3 | 4 |
 | `full-s3-a362.toml` | full | 3 | 362 (E04b T5a: its game casts Scorch and Blink; since T5c2 also Snare) |
-| `full-s3-a246.toml` | full | 3 | 246 (E04b T5c2, replacing T5c1's `full-s3-a5`, which no longer casts Mire: Snare twice, eight mines go off under Corwin's stacks; Mire's pits stop walkers 14 times) |
+| `full-s3-a246.toml` | full | 3 | 246 (E04b T5c2, replacing T5c1's `full-s3-a5`, which no longer casts Mire: Snare twice, eight mines go off under Corwin's stacks; since T5b Mire's pits stop walkers 8 times) |
+| `full-s3-a138.toml` | full | 3 | 138 (E04b T5b: Corwin's Uproot takes away a hex of Brea's Scorch) |
 
 Regenerate (only when a change *intentionally* alters game behavior, the synthetic pack, or an
 algorithm/encoding version — say so in the commit message):
@@ -23,7 +24,7 @@ algorithm/encoding version — say so in the commit message):
 ```sh
 cargo build -p h3-cli
 for spec in "duel 1 1 duel-s1" "skirmish 7 8 skirmish-s7" "full 3 4 full-s3" "full 3 362 full-s3-a362" \
-    "full 3 246 full-s3-a246"; do
+    "full 3 246 full-s3-a246" "full 3 138 full-s3-a138"; do
   set -- $spec
   ./target/debug/h3 run --scenario packs/synthetic/scenarios/$1.toml --seed $2 --agent-seed $3 \
     --max-steps 2000 --checkpoint-every 25 --record fixtures/replays/$4.toml

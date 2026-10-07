@@ -41,7 +41,7 @@ Classes: `exploit-fix` (always fixed, never toggleable) · `preserve` (accepted,
 - Context: game/projection (security)
 - Original behavior: the original client holds full game state; information a player should not see can be read by a modified client (user-reported concern).
 - Intended behavior: clients receive only projected observations/events.
-- Instances found in the original's code (fixed): Fire Wall's and Force Field's target test refuses a hex with the other side's hidden Quicksand, so the cursor shows it; a hypnotized stack's stops are its owner's pits, so its controller sees where they lie (E04b T5c1, `docs/formats/installation.md` §7.16, BAT-MAG-031).
+- Instances found in the original's code (fixed): Fire Wall's and Force Field's target test refuses a hex with the other side's hidden Quicksand, so the cursor shows it; a hypnotized stack's stops are its owner's pits, so its controller sees where they lie (E04b T5c1, `docs/formats/installation.md` §7.16, BAT-MAG-031); Expert Remove Obstacle's target test finds the other side's hidden pits and mines (the wiki's Remove Obstacle page; E04b T5b, §7.15, BAT-MAG-034). Quicksand's and Land Mine's random draws avoiding the other side's hidden obstacles are a leak of the same kind that the user classified fix-optional (BAT-QUIRK-4).
 - Impact: exploit
 - Sources: user requirement (2026-09-30)
 - Flag: none
@@ -204,3 +204,29 @@ Classes: `exploit-fix` (always fixed, never toggleable) · `preserve` (accepted,
 - Defaults: faithful = on, strict-fixed = off
 - Regression test: `crates/h3-battle/src/tests/pits.rs`, `an_attack_from_a_seen_pit_is_legal_only_with_bat_quirk_2`
 - Decided by / date: user, 2026-10-07 (E04b checkpoint before T5c, BAT-Q1)
+
+### BAT-QUIRK-3 — A natural obstacle's anchor hex belongs to it
+- Class: fix-optional (user, 2026-10-07, OPEN-QUESTIONS Q55)
+- Context / rules affected: battle, BAT-GEO-003, BAT-MAG-027, BAT-MAG-032, BAT-MAG-034
+- Original behavior: a usual obstacle is an object whose anchor hex (its bottom-left hex) gets bit `0x1` and the object's index even where the obstacle does not block it (28 of the 55 usual types; 0x4669B0). Such a hex may be stood on and walked through, but the spell obstacles' target test and Quicksand's and Land Mine's draws want none of the bits `0x3F`, so it takes no Fire Wall, Force Field, pit or mine, and Remove Obstacle aimed at it removes the obstacle.
+- Intended/expected behavior: the anchor is no part of the obstacle: a hex the obstacle does not block is a free hex, and Remove Obstacle is aimed at the obstacle's blocked hexes (strict-fixed).
+- Impact: gameplay-altering (small: one hex beside some obstacles)
+- Community status: unknown (the Q55 survey: the wiki, HotA's changelog, VCMI's issues and df2.ru describe nothing of it; VCMI has no anchors)
+- Sources: original-data, `docs/formats/installation.md` §7.15; observation, `experiments/results/E04b-batch-2c.md` A1, A2
+- Flag: `quirk.battle.obstacle_anchors` (E04b T5b)
+- Defaults: faithful = on, strict-fixed = off
+- Regression test: `crates/h3-battle/src/tests/remove.rs`, `anchors_belong_to_their_obstacles_with_bat_quirk_3`
+- Decided by / date: user, 2026-10-07 (E04b T5c2 checkpoint, Q55)
+
+### BAT-QUIRK-4 — Quicksand's and Land Mine's random hexes avoid the other side's hidden obstacles
+- Class: fix-optional (user, 2026-10-07, BAT-Q4)
+- Context / rules affected: battle, BAT-MAG-032, BAT-MAG-033
+- Original behavior: Quicksand (0x5A0354) and Land Mine (0x5A0536) draw their hexes among those without any object bit `0x3F`, the other side's hidden pits and mines included, so the caster learns where none of them lies.
+- Intended/expected behavior: the draw avoids only the obstacles the caster's side sees; a new pit or mine may go over a hidden one of the other side, and both stay (strict-fixed, as Q-0002 fixes the cursor leaks).
+- Impact: gameplay-altering (small information leak)
+- Community status: unknown
+- Sources: original-data, `docs/formats/installation.md` §7.16, §7.17; found by the T5c2 review
+- Flag: `quirk.battle.draws_avoid_hidden` (E04b T5b)
+- Defaults: faithful = on, strict-fixed = off
+- Regression test: `crates/h3-battle/src/tests/remove.rs`, `random_draws_avoid_hidden_obstacles_only_with_bat_quirk_4`; the property test `hidden_obstacles_do_not_show` covers casts without it
+- Decided by / date: user, 2026-10-07 (E04b T5c2 checkpoint, BAT-Q4)

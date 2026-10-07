@@ -567,32 +567,32 @@ commands = [
     "A attack 10 128",
 ]
 checkpoints = [
-    "0xfae391a62b9a00cd",
-    "0x3dea9ee29899dee1",
-    "0x21301080bdaa6767",
-    "0x875986cb4dd22a08",
-    "0x8dfe25685ed930ed",
-    "0x3e44e6ecc0016862",
-    "0xb3b860c35a97061b",
-    "0x7fa6f11bd417c05f",
-    "0x0eea620ffea29b47",
-    "0xac7d66e55c720935",
-    "0x6fbbb581de3792ca",
-    "0x068ca2bb202ccd5a",
-    "0x5c382bcea98ecf61",
-    "0xa3a6fc6109a90b96",
-    "0xfd1ec787642c52b2",
-    "0x59db5b5ea5b797ff",
-    "0x7fb4640c8c8bc147",
-    "0x0cf38002730aa57a",
-    "0x49fb38c3cd7f3412",
-    "0x5e417c8a51721ae8",
-    "0xde04a9945336355f",
-    "0x8c6193d6aa91c882",
+    "0xc33fbf301a0e805b",
+    "0xc03469b0d008f5d3",
+    "0x8f368b66abd0a2e9",
+    "0x1ee2124c4c41edfe",
+    "0xd04e5f8b3b021d3b",
+    "0x7a101d7304d3287e",
+    "0x078da68ac37a020b",
+    "0x52344187adaf3791",
+    "0x23f84dde8428e3fb",
+    "0x1a510149cbe0d4a3",
+    "0x23edc9c4a526ef48",
+    "0x1c6b68dc98262f06",
+    "0x4282974af787dcc3",
+    "0xcdc17c3421faada8",
+    "0x403c84119a72208c",
+    "0xca404b68696a05bd",
+    "0x6578cf5033bdce5d",
+    "0x57e0f51ae35ac3a0",
+    "0xe93451baf6992b68",
+    "0x906680389de41eda",
+    "0xea50b4ea478f96a3",
+    "0x7641458fd2ea6cb6",
 ]
 
 [replay]
-format = 17
+format = 18
 engine = "0.1.0"
 scenario = "full"
 seed = "3"
@@ -601,16 +601,15 @@ packs = [[
     "0.1.0",
 ]]
 profile = "synthetic:faithful"
-ruleset_hash = "0x22fda3c33e0c0b10"
+ruleset_hash = "0x9de4ebf4146016db"
 rng = "xoshiro256starstar+splitmix64"
 rng_version = 1
 hash = "fnv1a64-le"
 hash_version = 1
-battle_state_hash_version = 27
+battle_state_hash_version = 28
 checkpoint_every = 25
 
 [setup]
-obstacles = []
 attacker_war_machines = [
     "synthetic:bolt_thrower",
     "synthetic:aid_tent",
@@ -709,6 +708,7 @@ spell_book = [
     "synthetic:rampage",
     "synthetic:bulwark",
     "synthetic:mire",
+    "synthetic:uproot",
 ]
 
 [setup.defender_hero.ballista]
@@ -873,4 +873,4 @@ count = 11
 
 [result]
 winner = "defender"
-final_hash = "0xe24a6dca5a900e19"
+final_hash = "0xbf9ebcf0047193bd"

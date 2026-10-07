@@ -2637,6 +2637,34 @@ mod tests {
         assert_eq!(empty.id, "e");
         assert!(empty.packs.is_empty());
         assert_eq!(parse_scenario(SYNTHETIC_DUEL).unwrap().packs, ["synthetic"]);
+        // Obstacles as pieces (E04b T5b): the hexes and an optional anchor.
+        let pieces = parse_scenario(
+            "[scenario]\nid = \"e\"\npacks = []\nprofile = \"a:b\"\n\
+             obstacles = [{ hexes = [58, 75], anchor = 57 }, { hexes = [93] }]\n",
+        )
+        .unwrap();
+        assert_eq!(
+            pieces.obstacles,
+            [
+                Obstacle {
+                    hexes: vec![58, 75],
+                    anchor: Some(57)
+                },
+                Obstacle {
+                    hexes: vec![93],
+                    anchor: None
+                }
+            ]
+        );
+        let entry = ObstacleEntry::of(&pieces.obstacles[0]);
+        assert_eq!(entry.to_obstacle(), pieces.obstacles[0]);
+        assert!(
+            parse_scenario(
+                "[scenario]\nid = \"e\"\npacks = []\nprofile = \"a:b\"\n\
+                 obstacles = [{ hexes = [1], ancor = 2 }]\n"
+            )
+            .is_err()
+        );
         let header = "[scenario]\nid = \"e\"\npacks = []\nprofile = \"a:b\"\n";
         for (extra, error) in [
             (
@@ -2644,7 +2672,7 @@ mod tests {
                 "random_obstacles needs a terrain",
             ),
             (
-                "random_obstacles = true\nterrain = \"a:t\"\nobstacles = [40]\n",
+                "random_obstacles = true\nterrain = \"a:t\"\nobstacles = [{ hexes = [40] }]\n",
                 "random_obstacles excludes an obstacles list",
             ),
         ] {
@@ -4064,7 +4092,7 @@ mod tests {
         use h3_content::SpellCategory;
         let r = compile(&[SYNTHETIC_PACK, SYNTHETIC_EXT_PACK], "synthetic:faithful").unwrap();
         assert_eq!(r.spell_schools().len(), 2);
-        assert_eq!(r.spells().len(), 34);
+        assert_eq!(r.spells().len(), 35);
         // Pack format v6: the storm school's protection rank; stone's defaults to 0.
         let ranks: Vec<u8> = r
             .spell_schools()
@@ -4305,6 +4333,16 @@ mod tests {
             )
         );
         assert_eq!(magic("synthetic:purge").clears_obstacles_from, Some(3));
+        // Format v16: a remove effect with the masteries per obstacle kind (BAT-MAG-034).
+        let uproot = magic("synthetic:uproot");
+        assert_eq!(
+            (uproot.target, uproot.effects, uproot.removes_from),
+            (
+                SpellTarget::Hex,
+                vec![SpellEffect::RemoveObstacle],
+                [Some(3), Some(2), Some(3), Some(3)]
+            )
+        );
         for (from, to) in [
             ("fixed_rounds = 255\n", ""),
             (
@@ -4321,6 +4359,14 @@ mod tests {
             (
                 "clears_obstacles = \"expert\"",
                 "clears_obstacles = \"master\"",
+            ),
+            (
+                "removes = { fire = \"advanced\"",
+                "removes = { trap = \"advanced\"",
+            ),
+            (
+                "removes = { fire = \"advanced\"",
+                "removes = { fire = \"master\"",
             ),
         ] {
             assert!(SYNTHETIC_PACK.contains(from), "{from}");

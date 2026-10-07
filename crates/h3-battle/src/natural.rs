@@ -141,6 +141,12 @@ impl NaturalObstacles {
         self.removable.as_slice()
     }
 
+    /// Whether some hex leads to a removable obstacle ([`Self::removable_at`]): one blocks a hex,
+    /// or has an anchor that belongs to it (quirk BAT-QUIRK-3).
+    pub(crate) fn any_removable(&self) -> bool {
+        self.removable.iter().any(|o| o.len > 0 || self.anchored)
+    }
+
     /// The index of the removable obstacle on `hex` (BAT-MAG-034): the one that blocks it, else,
     /// with quirk BAT-QUIRK-3, the last whose anchor it is (the original's hex holds the index of
     /// the object placed last).
