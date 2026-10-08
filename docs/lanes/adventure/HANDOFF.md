@@ -4,25 +4,20 @@ The adventure lane's living state; read after the global `docs/HANDOFF.md`. Form
 
 ## Current state
 
-- **Not started.** The lane owns (`lanes.toml`) the new `h3-adventure` crate, later the town, the ADV rules (`docs/rules/catalog/adventure.toml`, `town.toml`), its own quirks ledger (`docs/rules/quirks-adventure.md`), its benchmark workload (`benches/adventure/`) and the epic files E07–E10 and E12–E14. Creating the crate touches `Cargo.toml` and `arch.toml`: the crate skeleton is its own `shared/` pull request, merged first.
-- **Next:** the refinement session with the user (brief below); it fills `QUEUE.md` with the first tasks. Branches: `adventure/<task>`.
-- **Ids:** questions `ADV-Q<n>`, quirks `ADV-QUIRK-<n>`, stubs `ADV-STUB-<n>`. ADR drafts go to `docs/lanes/adventure/adr-drafts/` and get a number when the user accepts them.
+- **E08 refined** (2026-10-08, with E07's map reader inside it): `docs/epics/E08-adventure-map.md`, decisions 1–12. Increment 1 = T1–T10 (`QUEUE.md`); real `.h3m` maps from the start, every object an inert blocker; new crates `h3-map`, `h3-content-adventure`, `h3-pack-adventure`, `h3-adventure`, `h3-game` (no domain crate depends on another; `h3-game` holds players, turn groups, calendar, RNG streams and the cross-context translations).
+- **Next:** T1 (survey, quirks, ADR draft), then a checkpoint with the user for the ADR review. Branches: `adventure/<task>`.
+- **Not before E04b closes:** the split of `h3-content`/`h3-pack`, the move of the `.h3m` writer into `h3-map` and of `derive_battle_hero`/`war_machines` into `h3-game` (decision 3). Until then adventure crates use only the core items of `h3-content` (keys, packs, resources, factions, terrain ids, creature identity/cost/speed, hero types, artifact and spell identity).
+- **Ownership:** the lane owns (`lanes.toml`) `h3-adventure` and its docs now; T2 adds the other new crates and `packs/*/adventure.toml`. `h3-heroes` moves to this lane when hero progression starts (increment 3).
+- **Ids:** questions `ADV-Q<n>`, quirks `ADV-QUIRK-<n>` (the fog fringe is `ADV-QUIRK-1`), stubs `ADV-STUB-<n>`. ADR drafts go to `docs/lanes/adventure/adr-drafts/` and get a number when the user accepts them.
 - **Working agreement:** increments of a couple of tasks with a user checkpoint, as in the battle lane; the user confirms seams and ADRs; token efficiency beats speed (AGENTS.md).
-
-## Brief for the refinement session (E07/E08)
-
-Adventure moved ahead of E05/E06 in the backlog (Phase 0). Prepare each point with options and a recommendation; the user decides.
-
-1. **Map reader or synthetic maps first.** E07 reads `.h3m` maps; a writer exists (`h3_formats::h3m`, for experiment maps; `docs/formats/h3m.md`), and E08 needs maps to run on. Options: (a) the reader first, so E08 runs on real maps from the start; (b) synthetic maps built in code or in a small TOML format first, the reader later; (c) both thin. The formats crates belong to battle until a formats/tools lane opens (`lanes.toml`), so a reader in `h3-formats` means opening that lane or a cross-lane pull request: part of the decision.
-2. **The first adventure-map slice:** the smallest end-to-end loop (state, commands with validation, events, observation, a determinism replay, a benchmark workload), as E01 was for the battle. A candidate: tiles and terrain, one hero moving with movement points and pathing, the day advance, picking up resources, fog of war; no towns and no battles yet. The map-object representation (closed enum or data-driven behaviour primitives; `docs/03-domain.md`, "Open domain design questions") needs an ADR draft.
-3. **The adventure ↔ battle seam:** `BattleSetup` and `BattleOutcome` exist (`h3-contracts`, `docs/03-domain.md`, "Seams"), and the battle runs standalone from them. What adventure builds before the seam (the hero's battle profile through `h3_heroes::derive_battle_hero`, armies, terrain, obstacles) and applies after it (batch 1b's findings on experience, Necromancy and captured war machines: `QUEUE.md`, "Inbox"). Seam changes are `shared/` pull requests and stop the line in both lanes.
-4. **`h3-heroes` ownership:** battle owns it now; it moves to adventure with a handover checkpoint when hero progression starts (E08–E10: experience, levels, skill offers, the hero commands). Decide when, and what the battle lane finishes in it first (Spell Scroll instances, E04b T8).
-5. **Questions for the user:** the rules of the first slices (RoE objects only, or the expansions' too); how adventure content enters the packs while `h3-content` and `h3-pack` stay with battle; the adventure benchmark workload; how much of the town (E09) the first slices need.
 
 ## Standing traps
 
-(None yet; the global HANDOFF's traps apply.)
+- Cheap forks are a hard requirement (decision 6): no per-fork deep copy of map-sized data; pointer identity never in logic or the hash.
+- RNG seeds and stream positions are server-only state (decision 9): never in an observation, never seeded from client data.
 
 ## Recent sessions
 
-(None yet.)
+### 2026-10-07/08 — refinement session (E07/E08)
+
+The brief's five points settled with the user: real maps first (reader fills E07), the crate split per context after E04b, `h3-game` from increment 1, `h3-heroes` keeps only the hero's own state and rules, cheap forks via a wide persistent grid (quadtree rejected), fog fringe as a quirk (faithful: objects shown; fixed: terrain only), simultaneous turns designed in (turn groups, per-player server-only RNG streams, no blocking prompts; target: commuting commands). Epic file, queue and this HANDOFF written; no code.
