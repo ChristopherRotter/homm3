@@ -3,7 +3,7 @@
 //! - `--scope <lane>` is the lane's fast local loop (lanes.toml): lint, test and cover only the
 //!   lane's crates, run the lane's own gates (golden replays, C ABI smoke test, its benchmark
 //!   workloads) and `check-lane`, and skip what belongs to shared paths (`deny`). A scoped run
-//!   never counts as green; CI runs the full verify on every pull request.
+//!   never counts as green; CI runs the full verify on every pull request (once per code state).
 //! - `--summary` prints one line per gate and the end of the first failure's output; the full
 //!   output goes to `<target>/verify/verify.log`. Each gate then runs in a child process
 //!   (`cargo xtask verify-step`), so that everything it prints lands in the log.
@@ -48,7 +48,7 @@ enum InScope {
     Workloads,
     /// Skipped: the gate guards shared paths only.
     Shared,
-    /// Runs only in a scoped verify (CI runs it as its own job).
+    /// Runs only in a scoped verify (CI runs it before the verify).
     ScopedOnly,
 }
 

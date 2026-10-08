@@ -13,7 +13,7 @@ Every session reads this file first, then its lane's `docs/lanes/<lane>/HANDOFF.
 
 Shared (own pull request, merged first): `h3-kernel`, `h3-contracts`, workspace and gate files (`Cargo.toml`, `arch.toml`, `lanes.toml`, `xtask`, CI), ADRs, process docs, `BACKLOG.md`, this file. Common (any lane): `OPEN-QUESTIONS.md` and `docs/stubs.toml` (one block per lane), `Cargo.lock`.
 
-- **GitHub and CI:** `ChristopherRotter/homm3` (private). `.github/workflows/ci.yml` runs the full `cargo xtask verify` on Linux for pull requests, `master` and weekly; `lanes.yml` runs `cargo xtask check-lane` on pull requests. Changes reach `master` by pull request only.
+- **GitHub and CI:** `ChristopherRotter/homm3` (private, free plan: Actions minutes are scarce). `.github/workflows/ci.yml` runs `check-lane` and the full `cargo xtask verify` on Linux for pull requests and `master`, but never twice for the same code (code fingerprint, `05-testing.md` "CI"), and weekly `cargo deny check advisories`. Changes reach `master` by pull request only; **open a pull request only when its branch is ready for merging**.
 - **Phase 0** (2026-10-07, `shared/lanes-phase-0`): lanes, `check-lane`, `verify --scope`/`--summary`, per-workload baselines, lane docs; every lane works on it (the battle lane since increment 4).
 
 ## Traps for every lane
