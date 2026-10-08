@@ -152,6 +152,9 @@ pub struct SpellOther {
     /// No immunity, resistance or aura applies.
     #[serde(default)]
     pub ignores_immunity: bool,
+    /// Its dispel effect ends only positive spells' effects (Dispel Helpful Spells; v19).
+    #[serde(default)]
+    pub dispels_positive: bool,
     /// Spells (by name) whose effects alone its dispel effect ends.
     #[serde(default)]
     pub dispels: Vec<String>,

@@ -1117,6 +1117,59 @@ creature = "Phoenix"
 abilities = [{ kind = "school_immunity", school = "base:fire" }]
 sources = ["vcmi-magic-creatures"]
 
+# Spells after a melee strike (E04b T7a1, pack format v19; installation.md 7.20): the original's
+# code (0x440500, 0x440BC0) casts them after every melee strike, retaliations included, as a
+# creature's cast at mastery 0 (the Dragon Fly's Weakness at 2) with power 3, the rounds.
+[[source]]
+id = "exe-after-strike"
+kind = "original-data"
+ref = "Heroes3.exe code reading (docs/formats/installation.md 7.20): after each melee strike (0x441610) the striker's creature puts a spell in the target's pending spell (0x440500: Unicorns Blind 20 %, Black and Dread Knights and Mummies Curse 25 %), cast at the strike's end (0x468990) as a creature's cast at mastery 0 with power 3 if the test 0x5A8640 passes (0x5A8090 without its side test, then a draw on f x 100); 0x440BC0: Thunderbirds 20 %, Lightning Bolt's test, 10 damage per creature through 0x5A78E0 without a hero; Serpent and Dragon Flies Dispel Helpful Spells (its own test: an active positive spell), Dragon Flies then Weakness at mastery 2 on a stack without it"
+url = "docs/formats/installation.md"
+retrieved = "2026-10-08"
+
+[[creature_abilities]]
+creature = "Unicorn"
+abilities = [{ kind = "spell_after_strike", spell = "base:blind", chance_percent = 20, mastery = 0, rounds = 3 }]
+sources = ["exe-after-strike"]
+
+[[creature_abilities]]
+creature = "War Unicorn"
+abilities = [{ kind = "spell_after_strike", spell = "base:blind", chance_percent = 20, mastery = 0, rounds = 3 }]
+sources = ["exe-after-strike"]
+
+[[creature_abilities]]
+creature = "Black Knight"
+abilities = [{ kind = "spell_after_strike", spell = "base:curse", chance_percent = 25, mastery = 0, rounds = 3 }]
+sources = ["exe-after-strike"]
+
+[[creature_abilities]]
+creature = "Dread Knight"
+abilities = [{ kind = "spell_after_strike", spell = "base:curse", chance_percent = 25, mastery = 0, rounds = 3 }]
+sources = ["exe-after-strike"]
+
+[[creature_abilities]]
+creature = "Mummy"
+abilities = [{ kind = "spell_after_strike", spell = "base:curse", chance_percent = 25, mastery = 0, rounds = 3 }]
+sources = ["exe-after-strike"]
+
+[[creature_abilities]]
+creature = "Thunderbird"
+abilities = [{ kind = "spell_damage_after_strike", spell = "base:lightning_bolt", chance_percent = 20, per_creature = 10 }]
+sources = ["exe-after-strike"]
+
+[[creature_abilities]]
+creature = "Serpent Fly"
+abilities = [{ kind = "spell_after_strike", spell = "base:dispel_helpful_spells", chance_percent = 100, mastery = 0, rounds = 3 }]
+sources = ["exe-after-strike"]
+
+[[creature_abilities]]
+creature = "Dragon Fly"
+abilities = [
+    { kind = "spell_after_strike", spell = "base:dispel_helpful_spells", chance_percent = 100, mastery = 0, rounds = 3 },
+    { kind = "spell_after_strike", spell = "base:weakness", chance_percent = 100, mastery = 2, rounds = 3, unless_active = true },
+]
+sources = ["exe-after-strike"]
+
 # ---------------------------------------------------------------------------------------------
 # Hero content (E04a T3): what the executable's hero tables and the text tables do not hold.
 # ---------------------------------------------------------------------------------------------
@@ -2189,6 +2242,16 @@ ignores_immunity = true
 spares = ["Poison"]
 clears_obstacles = "expert"     # E04b T5a, installation.md 7.15
 sources = ["exe-dispel-cure", "exe-obstacle-spells"]
+
+# Dispel Helpful Spells (E04b T7a1, pack format v19; installation.md 7.20): the flies' strike
+# spell ends the active spells of positive type (0x5A177E); its own test (0x5A8090) needs one and
+# lets no immunity, resistance or aura apply.
+[[spells.other]]
+spell = "Dispel Helpful Spells"
+effects = ["dispel"]
+ignores_immunity = true
+dispels_positive = true
+sources = ["exe-after-strike"]
 
 [[spells.other]]
 spell = "Cure"

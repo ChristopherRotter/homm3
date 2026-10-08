@@ -133,6 +133,13 @@ fight_value = 220
 ai_value = 250
 adventure_count = [10, 25]
 flags = ["alive", "two_hex", "king_1"]     # king_1: Smiting counts against it (BAT-MAG-014)
+# Format v19: spells after a melee strike (BAT-MAG-040 to BAT-MAG-042).
+abilities = [
+    { kind = "spell_after_strike", spell = "glare", chance_percent = 100, mastery = 0, rounds = 3 },
+    { kind = "spell_after_strike", spell = "dazzle", chance_percent = 20, mastery = 0, rounds = 3, unless_active = true },
+    { kind = "spell_after_strike", spell = "bane", chance_percent = 25, mastery = 0, rounds = 3, living = true },
+    { kind = "spell_damage_after_strike", spell = "spark", chance_percent = 20, per_creature = 2 },
+]
 
 [[creature]]
 id = "wisp"                 # neutral (no faction)
@@ -308,6 +315,11 @@ level = 0
 cost = [0, 0, 0, 0]
 effect = [0, 0, 0, 0]
 polarity = "negative"
+target = "stack"                    # format v19: cast by the Brutes' strikes (BAT-MAG-042):
+side = "enemy"                      #   it ends positive spells only, on any stack with one
+ignores_immunity = true
+dispels_positive = true
+effects = [{ kind = "dispel" }]
 
 # Timed spells (pack format v5, E04b T3a): every timed change, a mass version, a mind spell,
 # counters and a permanent cumulative spell appear at least once.

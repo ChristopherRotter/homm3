@@ -145,10 +145,12 @@ errors:
 | `spell_damage_reduction` | `percent` (1..=100) | damage from spells × (100 − `percent`) / 100, rounded down (Golems; BAT-MAG-004) |
 | `magic_resistance` | `percent` (1..=100) | the creature lets `100 − percent` % of hostile spells through (Dwarves, Crystal Dragon; BAT-MAG-008) |
 | `magic_resistance_aura` | `percent` (1..=100) | adjacent allied stacks' chance to be affected by a hostile spell × (100 − `percent`) %, the strongest aura once (Unicorns; BAT-MAG-008) |
+| `spell_after_strike` | `spell`, `chance_percent` (1..=100), `mastery` (0..=3), `rounds` (≥ 1), `living`, `unless_active` (default false) | since v19: after each melee strike casts `spell` (timed or dispel effects only) on the struck stack: the chance drawn (none at 100), the stack alive, of a living creature if `living`, not under the spell if `unless_active`, then the spell's test without the side test; at `mastery`, lasting `rounds`, without a hero (one entry per spell; Unicorns, Black Knights, the flies; BAT-MAG-040) |
+| `spell_damage_after_strike` | `spell`, `chance_percent` (1..=100), `per_creature` (≥ 1) | since v19: after each melee strike deals `per_creature` × its creatures damage as `spell` (a damage spell) to the struck stack, after the chance and the spell's test (the Thunderbird; BAT-MAG-041) |
 
 `creature` references follow the reference rules above (own pack, or `pack:name` in the
 dependency closure) and may name creatures defined later in the same pack. At most one entry of
-each kind, except `hate`, the three immunities and `spell_vulnerability` with different targets
+each kind, except `hate`, the three immunities, `spell_vulnerability` and `spell_after_strike` with different targets
 (`school` and `spell` references follow the same rules); `extra_retaliations`/`unlimited_retaliations` and
 the two attack patterns exclude each other. A ruleset has at most 8 distinct aura values (kind,
 amount, `affects`; `MAX_AURA_VALUES`), which sizes the battle's modifier pool. The rule ids say
@@ -159,7 +161,7 @@ override, replacing the list) names the creature types it upgrades into: at most
 none twice; references follow the reference rules and may name later creatures of the pack.
 Hero effects that select "a creature" apply to it and its direct upgrades.
 
-## Hero content (format v3, E04a T3; battle magic format v4, E04b T2a; v5 T3a; v6 T3b1; v7 T3b1b; v8 T3b2; v9 T3c; v10 T4a; v11 T4b; v12 T4c; v13 T5a; v14 T5c1; v15 T5c2; v16 T5b; v17 T6a; v18 T6b)
+## Hero content (format v3, E04a T3; battle magic format v4, E04b T2a; v5 T3a; v6 T3b1; v7 T3b1b; v8 T3b2; v9 T3c; v10 T4a; v11 T4b; v12 T4c; v13 T5a; v14 T5c1; v15 T5c2; v16 T5b; v17 T6a; v18 T6b; v19 T7a1)
 
 Spell schools, spells, secondary skills, hero classes and hero types (ADR-0013). References follow
 the reference rules above; every kind may refer to content of its dependency closure.
@@ -242,6 +244,9 @@ spares = ["poison"]                # v7: its dispel effect ends every effect but
                                    # `dispels = [...]`: only these; not both)
 clears_obstacles = "expert"        # v13: from this mastery a cast also removes every spell
                                    # obstacle (Expert Dispel; needs a dispel effect)
+# dispels_positive = true          # v19: the dispel effect ends only positive spells' effects,
+                                   # and a strike casts it only on a stack with one (Dispel
+                                   # Helpful Spells, a creature ability; BAT-MAG-042)
 effects = [{ kind = "dispel" }]
 
 [[spell]]                          # an obstacle spell (pack format v13, E04b T5a)
@@ -447,7 +452,7 @@ raising none; BAT-MAG-017), applied after damage and before timed changes. `mass
 `stack`, `fixed_mass` a `mass` and a later mastery; `duration`, `ends`, `cumulative`,
 `health_limit` and `refuses` need a timed effect (an area timed spell, Berserk, has target
 `hex`), `counters` too (and may not name the
-spell itself); `dispels` and `spares` need a dispel effect; `any_side` (a mastery) needs a `side`;
+spell itself); `dispels`, `spares` and `dispels_positive` need a dispel effect; `any_side` (a mastery) needs a `side`;
 `needs_effect` needs target `stack`. Later tasks add kinds. Adventure spells have no battle magic; a spell without effects cannot be cast
 yet. `side` limits whose stacks a stack spell may be *aimed* at (BAT-MAG-003; a chain's jumps
 and an area reach either side): the harvester writes `enemy` for every single-target spell that

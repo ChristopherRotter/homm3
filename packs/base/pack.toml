@@ -663,7 +663,7 @@ fight_value = 1548
 ai_value = 1806
 adventure_count = [5, 12]
 flags = ["two_hex", "alive"]
-abilities = [{ kind = "magic_resistance_aura", percent = 20 }]
+abilities = [{ kind = "magic_resistance_aura", percent = 20 }, { kind = "spell_after_strike", chance_percent = 20, mastery = 0, rounds = 3, spell = "base:blind" }]
 upgrades = ["war_unicorn"]
 
 [[creature]]
@@ -686,7 +686,7 @@ fight_value = 1740
 ai_value = 2030
 adventure_count = [5, 10]
 flags = ["two_hex", "alive"]
-abilities = [{ kind = "magic_resistance_aura", percent = 20 }]
+abilities = [{ kind = "magic_resistance_aura", percent = 20 }, { kind = "spell_after_strike", chance_percent = 20, mastery = 0, rounds = 3, spell = "base:blind" }]
 
 [[creature]]
 id = "green_dragon"  # original id 26
@@ -1586,6 +1586,7 @@ fight_value = 1753
 ai_value = 2087
 adventure_count = [5, 12]
 flags = ["two_hex", "mind_immune", "no_morale", "undead"]
+abilities = [{ kind = "spell_after_strike", chance_percent = 25, mastery = 0, rounds = 3, spell = "base:curse" }]
 upgrades = ["dread_knight"]
 
 [[creature]]
@@ -1608,7 +1609,7 @@ fight_value = 2029
 ai_value = 2382
 adventure_count = [5, 10]
 flags = ["two_hex", "mind_immune", "no_morale", "undead"]
-abilities = [{ kind = "death_blow", chance_percent = 20 }]
+abilities = [{ kind = "death_blow", chance_percent = 20 }, { kind = "spell_after_strike", chance_percent = 25, mastery = 0, rounds = 3, spell = "base:curse" }]
 
 [[creature]]
 id = "bone_dragon"  # original id 68
@@ -2178,6 +2179,7 @@ fight_value = 869
 ai_value = 1106
 adventure_count = [8, 12]
 flags = ["two_hex", "flying", "alive"]
+abilities = [{ kind = "spell_damage_after_strike", chance_percent = 20, per_creature = 10, spell = "base:lightning_bolt" }]
 
 [[creature]]
 id = "cyclops"  # original id 94
@@ -2417,6 +2419,7 @@ fight_value = 215
 ai_value = 268
 adventure_count = [10, 20]
 flags = ["flying", "alive"]
+abilities = [{ kind = "spell_after_strike", chance_percent = 100, mastery = 0, rounds = 3, spell = "base:dispel_helpful_spells" }]
 upgrades = ["dragon_fly"]
 
 [[creature]]
@@ -2439,6 +2442,7 @@ fight_value = 250
 ai_value = 312
 adventure_count = [10, 16]
 flags = ["flying", "alive"]
+abilities = [{ kind = "spell_after_strike", chance_percent = 100, mastery = 0, rounds = 3, spell = "base:dispel_helpful_spells" }, { kind = "spell_after_strike", chance_percent = 100, mastery = 2, rounds = 3, spell = "base:weakness", unless_active = true }]
 
 [[creature]]
 id = "basilisk"  # original id 106
@@ -4030,6 +4034,11 @@ cost = [0, 0, 0, 0]
 power = 0
 effect = [0, 0, 0, 0]
 polarity = "negative"
+target = "stack"
+side = "enemy"
+ignores_immunity = true
+dispels_positive = true
+effects = [{ kind = "dispel" }]
 
 [[spell]]
 id = "death_stare"  # original id 79

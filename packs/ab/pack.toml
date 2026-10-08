@@ -438,6 +438,7 @@ fight_value = 270
 ai_value = 270
 adventure_count = [12, 25]
 flags = ["mind_immune", "no_morale", "undead"]
+abilities = [{ kind = "spell_after_strike", chance_percent = 25, mastery = 0, rounds = 3, spell = "base:curse" }]
 
 [[creature]]
 id = "nomad"  # original id 142

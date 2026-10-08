@@ -376,6 +376,64 @@ fn a_sacrifice_names_the_raise_spell_it_is_tested_as() {
 }
 
 #[test]
+fn strike_abilities_name_spells_that_do_what_they_need() {
+    use crate::ability::AbilityDef;
+    let mut p = pack();
+    let mut unbless = dispel("t:unbless");
+    unbless.magic.dispels_positive = true;
+    p.spells.extend([timed("t:haste"), unbless]);
+    let after = |spell: &str| AbilityDef::SpellAfterStrike {
+        spell: key(spell),
+        chance_percent: 20,
+        mastery: 0,
+        rounds: 3,
+        living: false,
+        unless_active: false,
+    };
+    let damage = |spell: &str| AbilityDef::SpellDamageAfterStrike {
+        spell: key(spell),
+        chance_percent: 20,
+        per_creature: 10,
+    };
+    p.creatures[0].info.abilities = vec![after("t:haste"), after("t:unbless"), damage("t:bolt")];
+    let r = compile(&[p.clone()]).unwrap();
+    let unbless = r.spell_by_key("t:unbless").unwrap();
+    assert!(r.spell(unbless).unwrap().magic.dispels_positive);
+    let invalid = |reason| CompileError::InvalidCreature {
+        key: "t:peasant".into(),
+        reason,
+    };
+    for (ability, reason) in [
+        (
+            after("t:bolt"),
+            "spell_after_strike needs a spell with timed or dispel effects only",
+        ),
+        (
+            after("t:gaze"),
+            "spell_after_strike needs a spell with timed or dispel effects only",
+        ),
+        (
+            damage("t:haste"),
+            "spell_damage_after_strike needs a spell with a damage effect",
+        ),
+    ] {
+        let mut bad = p.clone();
+        bad.creatures[0].info.abilities = vec![ability];
+        assert_eq!(fails(bad), invalid(reason));
+    }
+    let mut no_dispel = p;
+    no_dispel.spells[2].magic.dispels_positive = true;
+    assert_eq!(
+        fails(no_dispel),
+        invalid_spell("t:haste", "dispels_positive needs a dispel effect")
+    );
+}
+
+fn invalid_spell(k: &str, reason: &'static str) -> CompileError {
+    invalid("spell", k, reason)
+}
+
+#[test]
 fn a_summon_spell_names_its_creature() {
     let mut p = pack();
     let mut conjure = spell("t:conjure", &["t:air"]);
