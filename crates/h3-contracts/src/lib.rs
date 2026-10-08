@@ -225,9 +225,10 @@ pub struct BattleOutcome {
     /// [`BattleOutcome::stacks`] with creatures left.
     pub war_machines: [Vec<CreatureTypeId>; 2],
     /// Every stack of each side (indexed by [`BattleSide::index`]) in stack order, dead ones
-    /// included: army stacks in slot order, war machines, then the stacks the battle created or
-    /// raised, in the order of the battle's stack slots. A slot a later created or raised stack
-    /// took over reports only that one, as the original's records (ADR-0014 point 6).
+    /// included: army stacks in slot order (one a Clone turned into a created stack keeps its
+    /// place, BAT-QUIRK-7), war machines, then the stacks the battle created or raised, in the
+    /// order of the battle's stack slots. A slot a later created or raised stack took over
+    /// reports only that one, as the original's records (ADR-0014 point 6).
     pub stacks: [Vec<StackRecord>; 2],
     /// What the side that surrendered pays (BAT-FLE-002); `None` for any other result.
     pub surrender_cost: Option<u32>,
