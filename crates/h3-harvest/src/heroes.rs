@@ -454,6 +454,7 @@ fn other_spell(
         ("needs_effect", t.needs_effect),
         ("ignores_immunity", t.ignores_immunity),
         ("dispels_positive", t.dispels_positive),
+        ("restores_health", t.restores_health),
     ] {
         if on {
             let _ = writeln!(text, "{field} = true");
@@ -863,7 +864,21 @@ pub fn harvest_heroes(
         }
         let _ = writeln!(text, "cost = {}", numbers(7..11)?);
         let _ = writeln!(text, "power = {}", number::<u16>(row, 11, &what)?);
-        let _ = writeln!(text, "effect = {}", numbers(12..16)?);
+        // The code's values for a creature ability whose row holds none (E04b T7a2).
+        match timed.get(name).and_then(|t| t.effect) {
+            Some(values) if category == "ability" => {
+                let v: Vec<String> = values.iter().map(u16::to_string).collect();
+                let _ = writeln!(text, "effect = [{}]", v.join(", "));
+            }
+            Some(_) => {
+                return Err(format!(
+                    "gapfill: effect values for `{name}` are not allowed"
+                ));
+            }
+            None => {
+                let _ = writeln!(text, "effect = {}", numbers(12..16)?);
+            }
+        }
         let _ = writeln!(text, "polarity = \"{polarity}\"");
         // Battle magic (pack format v4, E04b T2a): the damage spells' target from the flag word,
         // areas, chains and conditions from the gap-fill file; other kinds come with their tasks.
@@ -925,7 +940,8 @@ pub fn harvest_heroes(
             let _ = writeln!(text, "effects = [{{ kind = \"damage\" }}]");
             damage_spells += 1;
         } else if let Some(t) = timed.remove(name) {
-            if category != "combat" || extra.is_some() {
+            // Creature abilities cast by a strike (Stone Gaze, Poison, …; E04b T7a2) too.
+            if category == "adventure" || extra.is_some() {
                 return Err(format!("gapfill: timed entry for `{name}` is not allowed"));
             }
             timed_spell(text, (&what, pack), (flags, polarity), t, &spell_packs)?;

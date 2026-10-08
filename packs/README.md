@@ -161,7 +161,7 @@ override, replacing the list) names the creature types it upgrades into: at most
 none twice; references follow the reference rules and may name later creatures of the pack.
 Hero effects that select "a creature" apply to it and its direct upgrades.
 
-## Hero content (format v3, E04a T3; battle magic format v4, E04b T2a; v5 T3a; v6 T3b1; v7 T3b1b; v8 T3b2; v9 T3c; v10 T4a; v11 T4b; v12 T4c; v13 T5a; v14 T5c1; v15 T5c2; v16 T5b; v17 T6a; v18 T6b; v19 T7a1)
+## Hero content (format v3, E04a T3; battle magic format v4, E04b T2a; v5 T3a; v6 T3b1; v7 T3b1b; v8 T3b2; v9 T3c; v10 T4a; v11 T4b; v12 T4c; v13 T5a; v14 T5c1; v15 T5c2; v16 T5b; v17 T6a; v18 T6b; v19 T7a1; v20 T7a2)
 
 Spell schools, spells, secondary skills, hero classes and hero types (ADR-0013). References follow
 the reference rules above; every kind may refer to content of its dependency closure.
@@ -247,6 +247,8 @@ clears_obstacles = "expert"        # v13: from this mastery a cast also removes 
 # dispels_positive = true          # v19: the dispel effect ends only positive spells' effects,
                                    # and a strike casts it only on a stack with one (Dispel
                                    # Helpful Spells, a creature ability; BAT-MAG-042)
+# restores_health = true           # v20: (with a heal effect) a cast first gives back what
+                                   # Poison took (Cure; BAT-MAG-044)
 effects = [{ kind = "dispel" }]
 
 [[spell]]                          # an obstacle spell (pack format v13, E04b T5a)
@@ -426,7 +428,12 @@ least one, on every strike; from the first cast's Advanced mastery it cannot sho
 BAT-MAG-023), `blind` (the stack loses its turns; struck in melee while blind it retaliates
 with v % of its damage, not at all at 0, BAT-MAG-024); since v12, E04b T4c: `berserk` (its
 turns are automatic, attacking the nearest stack; every other stack is its enemy,
-BAT-MAG-025), `hypnotize` (the other side controls it, BAT-MAG-026)); since v13, E04b T5a: `obstacle` (with `obstacle = "wall"` or `"fire"` and the
+BAT-MAG-025), `hypnotize` (the other side controls it, BAT-MAG-026); since v20, E04b T7a2:
+`petrify` (the stack loses its turns, takes half the damage of strikes and does not retaliate),
+`paralyze` (it loses its turns; struck in melee it retaliates with v %, the smaller with Blind's;
+both BAT-MAG-043), `poison` (its hit points per creature fall by a tenth of their start value at
+the cast and at each round start while it lasts, to half, and stay down after it ends) and `age`
+(halved while it lasts; both BAT-MAG-044)); since v13, E04b T5a: `obstacle` (with `obstacle = "wall"` or `"fire"` and the
 spell's `obstacle` shape: places obstacles on the target hex's shape for its rounds; a wall blocks
 its hexes, BAT-MAG-027; fire burns a stack that enters a hex or acts on one with the value as the
 spell's damage, BAT-MAG-028; since v14, E04b T5c1, `"pit"`: hidden from the other side until revealed,
@@ -452,7 +459,7 @@ raising none; BAT-MAG-017), applied after damage and before timed changes. `mass
 `stack`, `fixed_mass` a `mass` and a later mastery; `duration`, `ends`, `cumulative`,
 `health_limit` and `refuses` need a timed effect (an area timed spell, Berserk, has target
 `hex`), `counters` too (and may not name the
-spell itself); `dispels`, `spares` and `dispels_positive` need a dispel effect; `any_side` (a mastery) needs a `side`;
+spell itself); `dispels`, `spares` and `dispels_positive` need a dispel effect, `restores_health` a heal effect; `any_side` (a mastery) needs a `side`;
 `needs_effect` needs target `stack`. Later tasks add kinds. Adventure spells have no battle magic; a spell without effects cannot be cast
 yet. `side` limits whose stacks a stack spell may be *aimed* at (BAT-MAG-003; a chain's jumps
 and an area reach either side): the harvester writes `enemy` for every single-target spell that

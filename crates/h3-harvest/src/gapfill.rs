@@ -126,6 +126,10 @@ pub struct SpellTimed {
     /// `magic_mirror`).
     #[serde(default)]
     pub refuses: Vec<String>,
+    /// The effect values by mastery the original's code uses for a creature ability whose
+    /// table row holds none (Disease: 2; Paralyze: Blind's Advanced 25; pack format v20).
+    #[serde(default)]
+    pub effect: Option<[u16; 4]>,
     /// Source ids.
     pub sources: Vec<String>,
 }
@@ -155,6 +159,9 @@ pub struct SpellOther {
     /// Its dispel effect ends only positive spells' effects (Dispel Helpful Spells; v19).
     #[serde(default)]
     pub dispels_positive: bool,
+    /// A cast first gives back Poison's lost hit points (Cure; v20).
+    #[serde(default)]
+    pub restores_health: bool,
     /// Spells (by name) whose effects alone its dispel effect ends.
     #[serde(default)]
     pub dispels: Vec<String>,

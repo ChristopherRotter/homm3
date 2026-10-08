@@ -1170,6 +1170,77 @@ abilities = [
 ]
 sources = ["exe-after-strike"]
 
+# The strike's statuses (E04b T7a2, pack format v20; installation.md 7.20): 0x440500 puts them
+# in the struck stack's pending spell; Zombies, Ghost Dragons and Wyvern Monarchs only on living
+# creatures (flag 0x10). Stone Gaze spares the Troglodytes and Poison the Gargoyles absolutely
+# (0x44A4D0, before the Orb of Vulnerability; T8 makes these absolute).
+[[source]]
+id = "exe-strike-statuses"
+kind = "original-data"
+ref = "Heroes3.exe code reading (docs/formats/installation.md 7.20, 7.14, 7.10): 0x440500 puts Disease (Zombies 20 %), Age (Ghost Dragons 20 %) and Poison (Wyvern Monarchs 30 %) on living creatures, Stone Gaze (Medusas, Basilisks 20 %) and Paralyze (Scorpicores 20 %) on any; 0x4448F0: Disease takes up to 2 attack and 2 defense, Poison lowers the factor +0x4A4 by f32(0.1) to 0.5 and sets the hit points per creature to trunc(f32(H x factor) + f32(0.95)), Age the same times 0.5, the top creature keeping at least 1; 0x447120 lowers the factor again at each round start while Poison lasts; 0x444510 gives Disease back and recomputes Age's hit points, not Poison's; Cure (0x446500) resets the factor first; 0x44A4D0 spares Troglodytes from Stone Gaze, non-living creatures and Gargoyles from Poison; a petrified stack takes half damage (stage 3) and does not retaliate (0x441DED); a paralysed one retaliates with Blind's Advanced effect (0x443CD5)"
+url = "docs/formats/installation.md"
+retrieved = "2026-10-08"
+
+[[creature_abilities]]
+creature = "Zombie"
+abilities = [{ kind = "spell_after_strike", spell = "base:disease", chance_percent = 20, mastery = 0, rounds = 3, living = true }]
+sources = ["exe-strike-statuses"]
+
+[[creature_abilities]]
+creature = "Ghost Dragon"
+abilities = [{ kind = "spell_after_strike", spell = "base:age", chance_percent = 20, mastery = 0, rounds = 3, living = true }]
+sources = ["exe-strike-statuses"]
+
+[[creature_abilities]]
+creature = "Wyvern Monarch"
+abilities = [{ kind = "spell_after_strike", spell = "base:poison", chance_percent = 30, mastery = 0, rounds = 3, living = true }]
+sources = ["exe-strike-statuses"]
+
+[[creature_abilities]]
+creature = "Medusa"
+abilities = [{ kind = "spell_after_strike", spell = "base:stone_gaze", chance_percent = 20, mastery = 0, rounds = 3 }]
+sources = ["exe-strike-statuses"]
+
+[[creature_abilities]]
+creature = "Medusa Queen"
+abilities = [{ kind = "spell_after_strike", spell = "base:stone_gaze", chance_percent = 20, mastery = 0, rounds = 3 }]
+sources = ["exe-strike-statuses"]
+
+[[creature_abilities]]
+creature = "Basilisk"
+abilities = [{ kind = "spell_after_strike", spell = "base:stone_gaze", chance_percent = 20, mastery = 0, rounds = 3 }]
+sources = ["exe-strike-statuses"]
+
+[[creature_abilities]]
+creature = "Greater Basilisk"
+abilities = [{ kind = "spell_after_strike", spell = "base:stone_gaze", chance_percent = 20, mastery = 0, rounds = 3 }]
+sources = ["exe-strike-statuses"]
+
+[[creature_abilities]]
+creature = "Scorpicore"
+abilities = [{ kind = "spell_after_strike", spell = "base:paralyze", chance_percent = 20, mastery = 0, rounds = 3 }]
+sources = ["exe-strike-statuses"]
+
+[[creature_abilities]]
+creature = "Troglodyte"
+abilities = [{ kind = "spell_immunity", spell = "base:stone_gaze" }]
+sources = ["exe-strike-statuses"]
+
+[[creature_abilities]]
+creature = "Infernal Troglodyte"
+abilities = [{ kind = "spell_immunity", spell = "base:stone_gaze" }]
+sources = ["exe-strike-statuses"]
+
+[[creature_abilities]]
+creature = "Stone Gargoyle"
+abilities = [{ kind = "spell_immunity", spell = "base:poison" }]
+sources = ["exe-strike-statuses"]
+
+[[creature_abilities]]
+creature = "Obsidian Gargoyle"
+abilities = [{ kind = "spell_immunity", spell = "base:poison" }]
+sources = ["exe-strike-statuses"]
+
 # ---------------------------------------------------------------------------------------------
 # Hero content (E04a T3): what the executable's hero tables and the text tables do not hold.
 # ---------------------------------------------------------------------------------------------
@@ -2243,6 +2314,38 @@ spares = ["Poison"]
 clears_obstacles = "expert"     # E04b T5a, installation.md 7.15
 sources = ["exe-dispel-cure", "exe-obstacle-spells"]
 
+# The strike's statuses (E04b T7a2, pack format v20; installation.md 7.20): creature abilities
+# with a target stack (flag word); their rounds come from the striker's ability.
+[[spells.timed]]
+spell = "Stone Gaze"
+changes = ["petrify"]
+ends = "damaged"
+sources = ["exe-strike-statuses", "exe-forgetfulness-blind"]
+
+[[spells.timed]]
+spell = "Paralyze"
+changes = ["paralyze"]
+ends = "damaged"
+effect = [25, 25, 25, 25]       # the retaliation's share: Blind's Advanced effect (0x443CD5)
+sources = ["exe-strike-statuses", "exe-forgetfulness-blind"]
+
+[[spells.timed]]
+spell = "Disease"
+changes = ["attack_loss", "defense_loss"]
+effect = [2, 2, 2, 2]           # 0x4448F0 takes up to 2 of each
+sources = ["exe-strike-statuses"]
+
+[[spells.timed]]
+spell = "Age"
+changes = ["age"]
+sources = ["exe-strike-statuses"]
+
+[[spells.timed]]
+spell = "Poison"
+changes = ["poison"]
+requires = ["alive"]            # 0x44A4D0 spares creatures that are not living
+sources = ["exe-strike-statuses"]
+
 # Dispel Helpful Spells (E04b T7a1, pack format v19; installation.md 7.20): the flies' strike
 # spell ends the active spells of positive type (0x5A177E); its own test (0x5A8090) needs one and
 # lets no immunity, resistance or aura apply.
@@ -2256,6 +2359,7 @@ sources = ["exe-after-strike"]
 [[spells.other]]
 spell = "Cure"
 effects = ["dispel", "heal"]
+restores_health = true         # E04b T7a2: Poison's lost hit points first (0x446500)
 dispels = ["Curse", "Weakness", "Sorrow", "Misfortune", "Slow", "Berserk", "Hypnotize", "Forgetfulness", "Blind", "Stone Gaze", "Poison", "Disease", "Paralyze", "Age"]
 sources = ["exe-dispel-cure"]
 

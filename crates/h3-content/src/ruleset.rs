@@ -34,7 +34,7 @@ pub const MAX_SIDE_STACKS: usize = 21;
 pub const MAX_FIELD_HEXES: usize = 255;
 
 /// Version of the ruleset hash encoding. Bump when the encoding below changes.
-pub const RULESET_HASH_VERSION: u32 = 28;
+pub const RULESET_HASH_VERSION: u32 = 29;
 
 /// A compiled creature type.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -1376,7 +1376,9 @@ impl CanonicalHash for Ruleset {
     /// obstacle kind; effect kind `remove_obstacle`. v27 (E04b T6b): the battle parameters end
     /// with the side stack limit; each spell ends with the creature it summons; effect kinds
     /// `clone` and `summon`. v28 (E04b T7a1): the battle magic ends with `dispels_positive`;
-    /// abilities `spell_after_strike` (29) and `spell_damage_after_strike` (30).
+    /// abilities `spell_after_strike` (29) and `spell_damage_after_strike` (30). v29 (E04b T7a2): the
+    /// battle magic ends with `restores_health`; timed changes `petrify`, `paralyze`, `poison`,
+    /// `age` (27 to 30).
     fn hash_into(&self, h: &mut StateHasher) {
         h.write_u32(RULESET_HASH_VERSION);
         h.write_len(self.packs.len());
