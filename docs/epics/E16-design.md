@@ -200,7 +200,39 @@ contains seeds, tokens, nonces or signatures.
 - The leaderboard: rating, deviation, games, wins, losses, draws; pages of 50; a player's own
   row and rating history on request.
 
-## 12. Threats the server answers, and how
+## 12. Server identity and discovery (M6)
+
+- **Server key.** Generated at first start into `server-data/server.key`; the public key is
+  the server's identity. `Hello` carries a client nonce; `Welcome` carries the server's key and
+  `sign(server_key, nonce || key || address)`. The client pins the key per address on first
+  contact and refuses a changed key until the player confirms.
+- **Card.** `ServerCard { key, name, description, addresses, protocol, engine, content:
+  [(packs, profile, ruleset_hash)], ladders: [(id, name, season, players)], players_online,
+  games_open, anonymous, operator, issued, expires, peers: [(key, address)] }` with a
+  signature over the canonical JSON; expiry a day by default; `Describe` returns it.
+- **Peers.** `[[peer]] key = "…" address = "…"` in the configuration. Every hour (and at
+  start) the server connects to each peer as a client (`tungstenite`'s client side), sends
+  `Hello` and `Describe`, checks that the signature verifies and that the key is the configured
+  one, caches the card until it expires, and also takes the peer's own cached cards up to a
+  configured depth (default 2 hops) and count (default 200). `ListPeers` returns the cache,
+  each card with the chain of keys it came through. A card that fails verification is dropped
+  and logged; a peer that keeps serving bad cards is reported to the operator.
+- **Lists.** `ServerList { key, name, issued, expires, cards }` signed by the list key; files
+  the operator places in `server-data/lists/`, served in `ListPeers` marked with the list's
+  key. How a list reaches the server (download, cron, a git checkout) is the operator's. A
+  client may fetch lists itself where it has HTTPS (web clients do).
+- **Client side** (the client lane): bookmarks with pinned keys; a browser view that merges
+  the cards from every known server and list, groups them by content the client has, shows the
+  vouching chain and the age of each card, and connects only on the player's choice.
+- **LAN.** With the feature enabled, the server announces `_h3._tcp.local` with TXT records
+  `key=<fingerprint> name=<name> protocol=<n>`; a client browses the same (the `mdns-sd`
+  crate, MIT/Apache-2.0; a UDP multicast socket).
+- **Deferred: resolution by key.** If addresses change often or vouching does not scale,
+  publish `(key → addresses)` as a signed mutable record in the BitTorrent mainline DHT
+  (BEP 44, keyed by the server's Ed25519 key, as Pkarr does); clients resolve a pinned key
+  without DNS. Needs a DHT crate, a UDP socket reachable through NAT, and bootstrap nodes.
+
+## 13. Threats the server answers, and how
 
 | Threat | Answer |
 |---|---|
@@ -216,3 +248,7 @@ contains seeds, tokens, nonces or signatures.
 | A crash or a pause | the write-ahead journal and a deterministic re-run restore the exact state |
 | A leaked data directory | holds public keys, names, ratings, records and finished replays; no password, no secret |
 | A stolen password | the same as anywhere: the operator can rebind the name by hand; no server-side reset exists |
+| A forged or replayed server card | signed by the server's key, with issue and expiry times; relayers cannot alter it |
+| Connecting to an impostor | the key pinned on first contact and the signed welcome; TLS for the channel on the internet |
+| Discovery spam | only vouched cards are relayed, with hop and count bounds; the chain is shown; the player chooses |
+| Browsing reveals the player's address | cards are relayed by servers the player already knows; a new server is contacted only on the player's choice |

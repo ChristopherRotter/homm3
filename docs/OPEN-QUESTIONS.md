@@ -88,6 +88,10 @@ Journals and JSON-lines logs in a data directory, synced per write and rebuilt a
 
 Ranked battles (M4) before the whole game (M5), as proposed.
 
+#### SRV-Q11 — Server discovery
+
+A web of trust between servers (recommended: every server has a keypair and signs a card describing itself; operators vouch for peers in the configuration; clients browse the cards relayed by servers they know and see the vouching chain; signed community lists as files; mDNS on the LAN), with resolution by key through a DHT deferred; or a DHT from the start; or no discovery in the core (community lists on a web page). Draft: `docs/lanes/server/adr-drafts/discovery.md`.
+
 ### Client lane (`CLT-Q<n>`)
 
 (no open questions)

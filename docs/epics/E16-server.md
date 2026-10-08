@@ -1,8 +1,8 @@
 # E16 — Server: protocol, hosting, lobbies and ladders
 
 Status: **draft** (2026-10-08, refinement session; second draft for the user's review, nothing
-decided, nothing implemented). ADR drafts: `docs/lanes/server/adr-drafts/protocol.md` and
-`identity-and-ladders.md`. Working detail (messages, flows, journals, the ladder sketch):
+decided, nothing implemented). ADR drafts: `docs/lanes/server/adr-drafts/protocol.md`,
+`identity-and-ladders.md` and `discovery.md`. Working detail (messages, flows, journals, the ladder sketch):
 `docs/epics/E16-design.md`. Lane: server (`docs/lanes/server/HANDOFF.md`).
 
 **How the drafts become decisions.** Each ADR draft stays "Proposed" until the milestone that
@@ -170,6 +170,21 @@ question):
   store only if a server outgrows memory (SRV-Q9).
 - *Internet.* TLS by a reverse proxy; native TLS later behind the transport trait.
 
+**D. Server identity and discovery** (the discovery ADR; the user's third idea):
+
+- *The problem.* Find servers without a registry, and know that the server reached is the one
+  described. Options: a central master server (a party to trust and run), DNS records per
+  operator (cheap, but browsing still needs a list), a DHT (real decentralized resolution,
+  heavy, NAT trouble), **a web of trust between servers** (each server has a keypair, signs a
+  card describing itself, and vouches for peers; clients browse from the servers they know and
+  see the vouching chain), plus signed community lists and mDNS on the LAN. **The web of
+  trust**, reusing the account crypto for server keys; the DHT stays the documented next step
+  if the ecosystem outgrows vouching (SRV-Q11).
+- *What it gives.* Cards cannot be forged or replayed; a server is pinned by its key on first
+  contact, as SSH does; browsing reveals the player's address to no unknown server, because
+  known servers relay the cards; spam is bounded by vouching. What it does not give: a
+  judgement of a server's quality, which stays the player's.
+
 ## Milestones
 
 Each milestone ends with a fresh reviewer agent and the user's checkpoint; tasks are about half
@@ -205,9 +220,13 @@ a context each. The order of M4 and M5 is SRV-Q10.
   system commands for disconnects and turn timers, sequence numbers against duplicates,
   concurrent battles); `h3-game` must expose what SRV-Q6 asks; long journals and the case for
   state saves measured.
+- **M6 Discovery:** the server keypair and the signed welcome (can come with M3, same crate),
+  the server card and `Describe`, peers in the configuration, the peer crawl with its bounds,
+  `ListPeers`, signed lists from files, mDNS on the LAN as a feature; a client-side server
+  browser is the client lane's (the record of what it needs goes to CLT).
 - **Later:** native TLS, agent seats with the sim encodings for an external policy process,
   content delivery, an embedded store if needed, state saves across upgrades once ADR-0004's
-  save format exists.
+  save format exists, address resolution by key through a DHT if vouching no longer scales.
 
 ## M1 tasks
 
@@ -259,7 +278,7 @@ written by the server verifies with `h3 replay verify`; the lane HANDOFF, the ep
   embedded store, licence doubts, changes to ADR-0008's model, anything in another lane's
   paths, logic-crate dependencies beyond `serde` and `serde_json`.
 
-## Questions for the user (filed as `SRV-Q1` to `SRV-Q10` in `docs/OPEN-QUESTIONS.md`)
+## Questions for the user (filed as `SRV-Q1` to `SRV-Q11` in `docs/OPEN-QUESTIONS.md`)
 
 - **SRV-Q1 Where the server runs first.** Loopback on the user's machine, the LAN, or the
   internet. *Recommendation:* loopback and LAN until M3; the internet needs accounts (M3) and
@@ -287,6 +306,9 @@ written by the server verifies with `h3 replay verify`; the lane HANDOFF, the ep
   embedded store from the start. The journal is the same under both.
 - **SRV-Q10 Milestone order.** Ranked battles (M4) before the whole game (M5), as proposed,
   since a battle ladder with mirrored armies is playable long before the adventure map is.
+- **SRV-Q11 Discovery.** The web of trust as proposed (server keys, signed cards, peers,
+  signed lists, mDNS on the LAN), with the DHT deferred; or a DHT from the start; or no
+  discovery in the core at all (community lists on a web page).
 
 ## Risks
 
