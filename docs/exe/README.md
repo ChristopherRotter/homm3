@@ -142,7 +142,7 @@ rule.
 ## Status and next steps
 
 Seeded 2026-10-09 (`shared/exe-map`): 253 entries (160 functions, 47 sites, 39 tables, 7
-globals; 12 of them inferred) cover all 314 addresses cited in the docs and code; structs for the
+globals; 23 of them inferred) cover all 314 addresses cited in the docs and code; structs for the
 battle stack (70 fields), battle manager, hex record, battle object and the static tables'
 records. About 7 700 functions are detected, 160 named by us, about 280 more by H3API only.
 
