@@ -1,0 +1,484 @@
+# Experiment batch 2d (E04b, after T6): stacks a battle creates and the raising spells. Checks what
+# the code reading of the executable (docs/formats/installation.md §7.18, §7.19) inferred but no
+# observation has shown, before the user decides BAT-QUIRK-7, BAT-Q7 and the clone's shots (T6
+# checkpoint, 2026-10-08): where a clone appears (BAT-MAG-038), a clone on its own crowded two-hex
+# original (BAT-QUIRK-7), a clone's turn, shots, rounds and death by any damage, the surrender price
+# with created stacks (BAT-FLE-002, BAT-Q7), where Summon Elemental puts its stack, the reused slot
+# of a dead elemental and the side's limit of 20 stacks (BAT-MAG-037, BAT-MAG-039), a side left
+# with only created stacks against an elimination, a retreat and a surrender (BAT-END-001, BAT-Q7),
+# Necromancy and experience after killing created stacks (BAT-Q7), the elementals' native terrain
+# (BAT-TER-001), and the raising spells' targets, corpses and temporary creatures (BAT-MAG-035/036,
+# quirks BAT-QUIRK-5, BAT-QUIRK-6, survey S-15, S-20).
+# Build: see docs/experiments/README.md. Predictions are for the agent who evaluates the results;
+# the template never shows them. Predictions are the engine's at db9588a (faithful profile unless a
+# line names another; computed in a scratch test against the harvested SoD packs on grass, without
+# natural obstacles); "the code" is the reading in installation.md §7.18/§7.19 where the engine
+# deliberately differs (BAT-QUIRK-6, BAT-QUIRK-7, BAT-Q7); the alternatives name their source.
+#
+# Played with plain HD (HD+ off): HD+ changes Clone and lets a hero end a battle without an army,
+# both of which this batch observes. Heroes at level 1 with resource or adventure-only
+# specialties; casters get a Spell Book and only the listed spells; no Wisdom; no school skills
+# except where listed (mastery none: Clone up to creature level 5, a summon of 2 x power
+# elementals, Resurrection power x 50 + 40 hit points and temporary below Advanced); no Sorcery,
+# no Orbs. Every caster starts with full mana, 10 x knowledge. A clone lasts power rounds (no
+# duration artifacts). Terrain grass: Castle, Rampart and Conflux creatures are natives (+1 attack,
+# defense and speed; BAT-TER-001), the engine counts the four elementals as Conflux natives.
+# The layout of the battlefield (its obstacles) comes from the map tile (the game's choice): each
+# encounter says what to do if an obstacle is in the way.
+# Creatures (on grass): Pikeman 10 hit points, speed 5; Archer 10, speed 5, 12 shots; Swordsman 35,
+# speed 6; Peasant 1, speed 3; Air Elemental 25, speed 7 (8 as a native); Earth Elemental 40, speed
+# 4 (5); Skeleton 6, speed 4; Titan 300; Gold Dragon 250 (immune to spells of levels 1-4);
+# Griffin, Cavalier, Wolf Rider and Gold Dragon take two hexes.
+# Not staged: a clone killed by 0 damage (the original kills a clone whatever the damage, VCMI
+# 1.7.5 not by 0; no hero spell deals 0 in SoD, S-18); the elementals' native terrain with the game
+# setting that keeps it (0x43D730, not read).
+
+[map]
+name = "E04b batch 2d"
+description = "Engine-generated experiment map (E04b, batch 2d). Play it in hot seat with Red and Blue as human players and follow the results template."
+size = 36
+terrain = "grass"
+instructions = [
+    "Copy `E04b-batch-2d.h3m` into `D:\\Heroes3\\HoMM 3 Complete\\Maps`.",
+    "Use the HD launcher with plain HD (HD+ off): HD+ changes Clone and a hero left without an army, which this batch looks at.",
+    "Start the map in hot seat: *New Game → Multiplayer → Hot Seat*, two players, Red and Blue both human. In the battles against Blue's heroes you control both sides. Save right away.",
+    "On day 1, play Red's encounters CL1, CL2, RA1, RA4, RA2, RA3 and NE in any order, then SU last: each Red hero attacks the Blue hero next to it. Before SU's battle, save the game under its own name (SU's variants b and c load it again).",
+    "In battle, switch on the hex grid and the movement shadow in the combat options (the button at the bottom left). The combat log at the bottom shows each strike's and each spell's damage and kills (scroll it with its arrow); right-click a stack to see its numbers (count, health left of the top creature, attack, defense, speed, shots, active spells). To try a spell's cursor without casting, choose the spell in the book, move the cursor over the hex and cancel (right-click or Esc): the normal spell cursor means the spell may be cast there, the crossed-out cursor that it may not. Unless an encounter says otherwise, a stack that is not needed Defends, and a stack that gets an extra turn from good morale Defends.",
+    "\"Up-right\", \"up-left\", \"down-left\", \"down-right\" mean the neighbouring hex in that direction; rows are counted from the top (row 0) to the bottom (row 10).",
+    "Fill in this file (anything unexpected goes into the last line of an encounter) and keep it in the repo.",
+]
+
+# --- Clone (BAT-MAG-038, BAT-QUIRK-7) -------------------------------------------------------------
+
+[[encounter]]
+id = "CL1"
+title = "Clone: where it appears, its turn, its shots, its rounds, death by any damage; the surrender price with a clone"
+questions = ["BAT-MAG-038", "BAT-Q7", "BAT-FLE-002"]
+procedure = [
+    "Attack the Blue hero. Round 1, the Archers' turn (Red's first): open the surrender dialog (*Surrender*), note the price and cancel. The Archers shoot Blue's Peasants; right-click the Archers: shots left.",
+    "Blue's Pikemen's turn: Blue casts Clone on its Pikemen. Where does the clone appear, seen from the Pikemen (the up-left, left, down-left, … neighbour, or further away)? The Pikemen Defend.",
+    "Red's Pikemen's turn: Red casts Clone on the Archers. Where does the clone appear, seen from the Archers (the up-right, right, down-right, … neighbour, or further away)? Open the surrender dialog again: price? Cancel. The Pikemen Defend.",
+    "Do the two clones get a turn in round 1? Before the Archer clone acts, right-click it: shots? Let it shoot the Peasants (shots afterwards?). Blue's clone Defends. Blue's Peasants Defend.",
+    "Round 2, on the first turn of a Blue stack: Blue casts Magic Arrow at Red's Archer clone. How many Archers of the clone die (the combat log; right-click if anything is left)? Everything else Defends.",
+    "Round 3 starts: is Blue's Pikemen clone still there? Finish the battle as you like (Red may retreat).",
+]
+predictions = """
+Red's power 3, Blue's power 2, mastery none (Clone up to level 5; Archers and Pikemen are level 1
+and 2). Magic Arrow 10 x 2 + 10 = 30; the Archers would lose 3 of 10, a clone loses all.
+- Surrender price (50 % of the living stacks' cost, BAT-FLE-002): before 800 (10 Archers 1 000, 10
+  Pikemen 600). After Red's Clone: ours **1 300** (the engine counts every living stack, the clone
+  of 10 Archers too; the original was not read); VCMI 1.7.5 800 (army slots only).
+- Place (the code, 0x5A6C70; the engine): the attacker's clone at the **up-right** neighbour of its
+  original, the defender's at the **up-left** one (ring 1 starts there and never takes right or
+  left). VCMI 1.7.5 (the free hex nearest the original, the attacker preferring the larger column):
+  Red's clone at the **right** neighbour, Blue's at the **left** one.
+- Both clones act in round 1 (created as at the battle's start, 0x47A100; the engine's order: Blue's
+  clone, then Red's). The Archer clone shows **12 shots** (full, as the creature) although the
+  original has 11; 11 after its shot (code, engine, VCMI).
+- Round 2: Magic Arrow (30) kills **all 10** Archers of the clone (0x444090: any damage kills a
+  clone; engine and VCMI the same).
+- Blue's clone (power 2: two rounds) **vanishes at the start of round 3**, without a corpse.
+"""
+[encounter.hero]
+type = "Aine"
+specialty = "resource gold"
+primary = [0, 0, 3, 5]
+army = [["Archer", 10], ["Pikeman", 10]]
+artifacts = { "spell book" = "Spell Book" }
+spells = ["Clone"]
+[encounter.opponent.hero]
+name = "CL1b"
+type = "Damacon"
+specialty = "resource gold"
+primary = [0, 0, 2, 5]
+army = [["Pikeman", 10], ["Peasant", 100]]
+artifacts = { "spell book" = "Spell Book" }
+spells = ["Clone", "Magic Arrow"]
+[[encounter.record]]
+field = "surrender price before Red's Clone; after it"
+[[encounter.record]]
+field = "Blue's clone: where, seen from Blue's Pikemen"
+[[encounter.record]]
+field = "Red's clone: where, seen from the Archers"
+[[encounter.record]]
+field = "round 1: the clones get a turn (Blue's yes/no, Red's yes/no); the Archer clone's shots before and after its shot; the Archers' shots"
+[[encounter.record]]
+field = "round 2: Magic Arrow at the Archer clone: damage, Archers killed, anything left"
+[[encounter.record]]
+field = "start of round 3: Blue's clone still there (yes/no); a corpse where it stood (yes/no)"
+[[encounter.record]]
+field = "anything odd"
+
+[[encounter]]
+id = "CL2"
+title = "Clone on a crowded two-hex stack: the original becomes the clone"
+questions = ["BAT-QUIRK-7", "BAT-MAG-038"]
+procedure = [
+    "Attack the Blue hero. Red's Griffins and Blue's Wolf Riders start in the top row (row 0), Red's at the left edge, Blue's at the right edge. If one of them does not, move it there on its first turn (two hexes in row 0, next to the side column) and do the rest one round later. Call the Griffins' right hex G (their head) and the Wolf Riders' left hex W (their head).",
+    "Round 1, on each stack's own turn: the Cavalier moves into row 1 so that it covers the hexes down-left and down-right of G (its head on the down-right one). The Marksmen move to row 0, two hexes right of G: the hex right of G stays free. Blue's Goblins move onto the hex down-left of W. Blue's Hobgoblins move to row 0, two hexes left of W: the hex left of W stays free. Every other stack Defends. If an obstacle already covers one of these target hexes, leave that stack where it is and note it; if an obstacle covers the hex right of G (or left of W), that side's test does not work: note it and still go on with the other side.",
+    "Round 2, on the first Red turn: Red casts Clone on the Griffins. Does a clone appear, and where? Right-click the Griffins: anything new among their spells? On the first Blue turn: Blue casts Clone on the Wolf Riders: the same questions. Every stack Defends.",
+    "Round 3 starts: are the Griffins and the Wolf Riders still there (corpses?)? Then win the battle with Red (Blue's stacks Defend; Red's attack them) and look at Red's army on the hero screen afterwards.",
+]
+predictions = """
+Power 1 (a clone lasts one round). The crowd leaves every place of ring 1 taken: from the tail, only
+the hexes below it (the Cavalier); from G, the right hex (its front hex is the Marksmen's) and the
+hexes below G (the Cavalier). The search then goes on with ring 2.
+- The code (0x5A6C70, 0x446C40 counts the original's own hexes as free): ring 2, from the tail, to
+  the right: the clone's position is G itself, with its front on the free hex right of G. The
+  creation fails (G holds a living stack) and the cast flags **the original** as summoned with the
+  clone's rounds: **no clone appears**, and at the start of round 3 **the Griffins vanish** (no
+  corpse); after the battle Red's army has no Griffins. The same for Blue: no clone, **the Wolf
+  Riders vanish** at the start of round 3. This is BAT-QUIRK-7 (exploit-fix, provisional).
+- The engine (BAT-QUIRK-7 fixed: the original's hexes are taken, still ring 2): Red's clone in row 2,
+  on the hexes down-right of the Cavalier's two hexes; Blue's in row 2, on the hexes down-left and
+  down-right of the Goblins; both clones vanish at the start of round 3, the Griffins and Wolf
+  Riders stay; Red's army keeps 2 Griffins.
+- VCMI 1.7.5 (the free place nearest the original's head, the attacker preferring the larger
+  column): the same places as the engine; the original is never affected.
+- If a clone appears next to the original, its front hex shares a hex with the original, or anything
+  else happens, describe it (the code's other case: only the clone's front hex is the original's).
+"""
+[encounter.hero]
+type = "Caitlin"
+specialty = "resource gold"
+primary = [0, 0, 1, 3]
+army = [["Griffin", 2], ["Cavalier", 1], ["Marksman", 2], ["Pikeman", 2]]
+artifacts = { "spell book" = "Spell Book" }
+spells = ["Clone"]
+[encounter.opponent.hero]
+name = "CL2b"
+type = "Jenova"
+specialty = "resource gold"
+primary = [0, 0, 1, 3]
+army = [["Wolf Rider", 2], ["Goblin", 2], ["Hobgoblin", 2], ["Orc", 2]]
+artifacts = { "spell book" = "Spell Book" }
+spells = ["Clone"]
+[[encounter.record]]
+field = "setup: every stack where it should be (yes/no); obstacles in the way (where)"
+[[encounter.record]]
+field = "Red's Clone on the Griffins: a clone appears (yes/no; where); the Griffins' spells afterwards"
+[[encounter.record]]
+field = "Blue's Clone on the Wolf Riders: a clone appears (yes/no; where); the Wolf Riders' spells afterwards"
+[[encounter.record]]
+field = "start of round 3: Griffins still there (yes/no; corpse?); Wolf Riders still there (yes/no; corpse?); any clone still there"
+[[encounter.record]]
+field = "Red's army after the battle"
+[[encounter.record]]
+field = "anything odd"
+
+# --- The raising spells (BAT-MAG-035/036, BAT-QUIRK-5, BAT-QUIRK-6) -----------------------------
+
+[[encounter]]
+id = "RA1"
+title = "Resurrection's and Sacrifice's targets: a wounded full stack, the hit-point test, Gold Dragons, the victim"
+questions = ["BAT-MAG-035", "BAT-MAG-036", "BAT-QUIRK-5", "S-15"]
+procedure = [
+    "Attack the Blue hero. Rounds 1 and 2: all of Red's stacks Defend (the Titans do not shoot).",
+    "Round 1, Blue's Archers' turn: Blue casts Implosion at the Titans (both die), then the Archers shoot Red's Swordsmen. Right-click the Swordsmen: number, health of the top one.",
+    "Round 2, Blue's Archers' turn: Blue casts Implosion at the Gold Dragons (both die), then the Archers shoot Red's Pikemen. Right-click the Pikemen: number.",
+    "Round 3, on a Red turn, try these cursors and cancel each (allowed or refused): Resurrection on the Swordsmen; on the Titans' corpse; on each hex of the Gold Dragons' corpse; on the Pikemen. Then Sacrifice, its first cursor on the Titans' corpse, on the Gold Dragons' corpse and on the Pikemen; with the Pikemen chosen, its second cursor (the victim) on the Pikemen themselves and on the Swordsmen. Cancel.",
+    "Finish the battle as you like (Red may retreat).",
+]
+predictions = """
+Red's power 5, Earth and Fire mastery none: Resurrection raises 5 x 50 + 40 = 290 hit points;
+Sacrifice would raise (victim's health + 3 + 5) x victims, with the 10 Swordsmen 430.
+Implosion (Blue's power 10) 850: both Titans (600) and both Gold Dragons (500; Implosion is level 5)
+die. The Archers shoot from afar (half damage): the Swordsmen keep all 10 (the top one wounded),
+the Pikemen lose at least one.
+- Resurrection (the code 0x5A3CC0/0x5A8090; the engine): Swordsmen **refused** (no creature lost);
+  Titans **refused** (290 hit points do not raise one 300-point Titan); Gold Dragons **refused**
+  (immune to level 4); Pikemen **allowed**.
+- Sacrifice, faithful (quirk BAT-QUIRK-5: the raised stack is tested as Resurrection's target, S-15):
+  Titans **refused**, Gold Dragons **refused**, Pikemen allowed; victims for the Pikemen: the
+  Swordsmen allowed, the Pikemen themselves **refused** (the engine; the original's second cursor
+  was not read). Strict-fixed: Titans and Gold Dragons allowed as Sacrifice's first target.
+"""
+[encounter.hero]
+type = "Sylvia"
+specialty = "skill Navigation"
+primary = [0, 0, 5, 5]
+army = [["Swordsman", 10], ["Titan", 2], ["Gold Dragon", 2], ["Pikeman", 10]]
+artifacts = { "spell book" = "Spell Book" }
+spells = ["Resurrection", "Sacrifice"]
+[encounter.opponent.hero]
+name = "RA1b"
+type = "Kyrre"
+specialty = "skill Logistics"
+primary = [0, 0, 10, 6]
+army = [["Archer", 10]]
+artifacts = { "spell book" = "Spell Book" }
+spells = ["Implosion"]
+[[encounter.record]]
+field = "after the shots: Swordsmen number and top health; Pikemen number"
+[[encounter.record]]
+field = "Resurrection (allowed/refused): on the Swordsmen; the Titans' corpse; the Gold Dragons' corpse (each hex); the Pikemen"
+[[encounter.record]]
+field = "Sacrifice's first cursor (allowed/refused): the Titans' corpse; the Gold Dragons' corpse; the Pikemen"
+[[encounter.record]]
+field = "Sacrifice's victim with the Pikemen chosen (allowed/refused): the Pikemen themselves; the Swordsmen"
+[[encounter.record]]
+field = "anything odd"
+
+[[encounter]]
+id = "RA4"
+title = "Corpses: two stacks dead on one hex, a two-hex corpse with a living stack on its other hex"
+questions = ["BAT-MAG-035"]
+procedure = [
+    "Attack the Blue hero. Every Red stack Defends unless a step moves it; Blue's Peasant Defends after its hero's cast.",
+    "Round 1, Blue's turn: Blue casts Lightning Bolt at the Pikemen (they die; note the hex, call it P).",
+    "Round 2: the Swordsman walks onto P. Blue's turn: Lightning Bolt at the Swordsman (it dies on P).",
+    "Round 3, Blue's turn: Lightning Bolt at the Wolf Riders (they die).",
+    "Round 4: the Archers walk onto the Wolf Riders' front hex (their right hex).",
+    "Round 5, the Archers' turn: try Resurrection's cursor on the Wolf Riders' other hex (left) and on the hex the Archers stand on (cancel each). Then cast Resurrection on P: which stack comes back (Pikemen or Swordsman), and how many? Then the Archers walk away to a hex touching neither Wolf Rider hex.",
+    "Round 6, Red's first turn: Resurrection's cursor on the Wolf Riders' left hex again (cancel). Finish the battle as you like.",
+]
+predictions = """
+Red's power 5: Resurrection 290 hit points (temporary at mastery none). Blue's Lightning Bolt 260
+kills each of the three stacks.
+- The code (0x5A3950: a hex's corpses from the last added to the first) and the engine: Resurrection
+  on P raises **the Swordsman** (1, the later death); the Pikemen stay a corpse under it.
+- A two-hex corpse whose other hex holds a living stack is no target: round 5 **refused** on the
+  Wolf Riders' left hex (and on the Archers' hex: a living full stack is the only candidate there);
+  round 6, after the Archers left: **allowed**.
+"""
+[encounter.hero]
+type = "Dessa"
+specialty = "skill Logistics"
+primary = [0, 0, 5, 4]
+army = [["Pikeman", 2], ["Swordsman", 1], ["Wolf Rider", 2], ["Archer", 5]]
+artifacts = { "spell book" = "Spell Book" }
+spells = ["Resurrection"]
+[encounter.opponent.hero]
+name = "RA4b"
+type = "Gunnar"
+specialty = "skill Logistics"
+primary = [0, 0, 10, 3]
+army = [["Peasant", 1]]
+artifacts = { "spell book" = "Spell Book" }
+spells = ["Lightning Bolt"]
+[[encounter.record]]
+field = "round 5: Resurrection on the Wolf Riders' left hex; on the Archers' hex (allowed/refused)"
+[[encounter.record]]
+field = "round 5: Resurrection on P raises (Pikemen/Swordsman), how many"
+[[encounter.record]]
+field = "round 6: Resurrection on the Wolf Riders' left hex (allowed/refused)"
+[[encounter.record]]
+field = "anything odd"
+
+[[encounter]]
+id = "RA2"
+title = "Basic Resurrection: losses after the raise and the army after a won battle"
+questions = ["BAT-MAG-035", "BAT-QUIRK-6", "S-20"]
+procedure = [
+    "Attack the Blue hero. Round 1: the Swordsmen Defend. Blue's turn: Blue casts Lightning Bolt at the Swordsmen. Right-click them: number, health of the top one. The Peasants Defend.",
+    "Round 2, the Swordsmen's turn: Red casts Resurrection on the Swordsmen. Right-click them: number? They Defend. Blue's turn: Lightning Bolt at the Swordsmen again: number afterwards? The Peasants Defend.",
+    "From round 3: the Swordsmen walk to the Peasants and attack them until none are left; the Peasants Defend (never attack).",
+    "After the battle, open Red's hero screen: the army (creatures and numbers).",
+]
+predictions = """
+Blue's Lightning Bolt 25 x 7 + 10 = 185; Red's Resurrection at Basic 50 + 40 = 90 hit points,
+temporary. 10 Swordsmen (350) -> 5 (top 25) -> raised to 8 (3 temporary, top 10) -> 2 (top 35).
+- The code (0x5A7560: the temporary counter is never lowered; 0x4774E2: each record loses its
+  temporary creatures, and a side left with 0 keeps one in its last record) and the engine: the 2
+  survivors minus 3 temporary = 0, so **1 Swordsman** stays in the army.
+- VCMI 1.7.5 (lowers the counter as creatures die): 2 Swordsmen.
+"""
+[encounter.hero]
+type = "Gelare"
+specialty = "resource gold"
+primary = [0, 0, 1, 2]
+skills = [["Earth Magic", 1]]
+army = [["Swordsman", 10]]
+artifacts = { "spell book" = "Spell Book" }
+spells = ["Resurrection"]
+[encounter.opponent.hero]
+name = "RA2b"
+type = "Grindan"
+specialty = "resource gold"
+primary = [0, 0, 7, 2]
+army = [["Peasant", 10]]
+artifacts = { "spell book" = "Spell Book" }
+spells = ["Lightning Bolt"]
+[[encounter.record]]
+field = "Swordsmen after the first Lightning Bolt (number, top health); after Resurrection (number); after the second Lightning Bolt (number)"
+[[encounter.record]]
+field = "Red's army after the battle"
+[[encounter.record]]
+field = "anything odd"
+
+[[encounter]]
+id = "RA3"
+title = "The same with a Ballista: a hero left without an army"
+questions = ["BAT-MAG-035", "BAT-QUIRK-6", "S-20"]
+procedure = [
+    "As RA2. The Ballista shoots on its own at the end of each round (no Artillery).",
+    "After the battle, open Red's hero screen: the army (creatures and numbers) and the war machines. Then try to move the hero one step on the map: anything odd?",
+]
+predictions = """
+As RA2 (10 -> 5 -> 8 -> 2). The Ballista kills a few Peasants per shot; 10 Peasants outlast round 2.
+- The code (0x4774E2 sums every record, the Ballista too; 0x4641F0 then leaves the Ballista out of
+  the army): the sum is 1, so no creature is kept: **no creature in the army**, only the Ballista
+  (S-20; plain HD does not fix it).
+- The engine (BAT-QUIRK-6, S-20 fixed: only army stacks count): 1 Swordsman.
+- VCMI 1.7.5: 2 Swordsmen.
+"""
+[encounter.hero]
+type = "Saurug"
+specialty = "resource gems"
+primary = [0, 0, 1, 2]
+skills = [["Earth Magic", 1]]
+army = [["Swordsman", 10]]
+artifacts = { "spell book" = "Spell Book", "war machine 1" = "Ballista" }
+spells = ["Resurrection"]
+[encounter.opponent.hero]
+name = "RA3b"
+type = "Sephinroth"
+specialty = "resource crystal"
+primary = [0, 0, 7, 2]
+army = [["Peasant", 10]]
+artifacts = { "spell book" = "Spell Book" }
+spells = ["Lightning Bolt"]
+[[encounter.record]]
+field = "Swordsmen after the first Lightning Bolt (number, top health); after Resurrection (number); after the second Lightning Bolt (number)"
+[[encounter.record]]
+field = "Red's army and war machines after the battle; the hero moves on the map (yes/no; anything odd)"
+[[encounter.record]]
+field = "anything odd"
+
+# --- Created stacks at the end of the battle (BAT-Q7) ----------------------------------------------
+
+[[encounter]]
+id = "NE"
+title = "Necromancy and experience after killing summoned elementals and a clone; the elementals' native terrain"
+questions = ["BAT-Q7", "BAT-TER-001", "BAT-MAG-039"]
+procedure = [
+    "Before attacking, note Red's experience on the hero screen.",
+    "Attack the Blue hero. Round 1, before Red's first stack acts: right-click Red's Archangels, Air Elementals and Pixies: attack, defense, speed. All of Red's stacks Defend in rounds 1 and 2.",
+    "Round 1, Blue's Pikemen's turn: Blue casts Earth Elemental. Note the number and place of the elementals; right-click them: speed. The Pikemen Defend; the elementals Defend.",
+    "Round 2, Blue's Pikemen's turn: Blue casts Clone on the Pikemen. The Pikemen and the clone Defend.",
+    "Round 3: kill the clone first (or the Pikemen, which takes the clone along), then the Pikemen and the Earth Elementals, all before round 5 starts if you can (the clone vanishes then). Blue's stacks Defend.",
+    "After the battle: note the Necromancy message (Skeletons raised), the Skeletons in Red's army and Red's experience on the hero screen.",
+]
+predictions = """
+Red: Expert Necromancy (30 %, rounded down per killed stack, at least 1 in total: batch 1b R6).
+Blue's power 3: 6 Earth Elementals (in a random free row of the column next to Blue's edge,
+column 15), a clone of 10 Pikemen (three rounds).
+- Necromancy: the code (0x4775E1 counts every record's killed creatures, created ones included):
+  Pikemen 3 + Earth Elementals 1 (1.8) + clone 3 = **7 Skeletons**. VCMI 1.7.5 (summoned stacks,
+  clones included, are left out of the casualties): **3**. The engine's outcome reports only the 10
+  Pikemen (BAT-Q7 option (a)): an orchestrator would raise 3. (4: the elementals counted but not the
+  clone; 6: the clone but not the elementals.)
+- Experience: the code (0x46A350 leaves created stacks out): 10 x 10 + 500 = **600**; VCMI 600;
+  with created stacks 940.
+- Native terrain on grass (BAT-TER-001): Archangels 31/31/19, Pixies 3/3/8 (Conflux natives if
+  Conflux's terrain is grass). Air Elementals: the code (0x43D730 clears the town of creatures
+  112-115) **9/9/7**, the engine 10/10/8. Blue's Earth Elementals: code speed 4, engine 5.
+"""
+[encounter.hero]
+type = "Clavius"
+specialty = "resource gold"
+primary = [0, 0, 1, 1]
+skills = [["Necromancy", 3]]
+army = [["Archangel", 3], ["Air Elemental", 5], ["Pixie", 10]]
+[encounter.opponent.hero]
+name = "NEb"
+type = "Rissa"
+specialty = "resource mercury"
+primary = [0, 0, 3, 6]
+army = [["Pikeman", 10]]
+artifacts = { "spell book" = "Spell Book" }
+spells = ["Earth Elemental", "Clone"]
+[[encounter.record]]
+field = "Red's experience before the battle"
+[[encounter.record]]
+table = ["stack (Red's Archangels, Air Elementals, Pixies; Blue's Earth Elementals)", "attack", "defense", "speed"]
+rows = 4
+[[encounter.record]]
+field = "Earth Elementals: number, place (column, row)"
+[[encounter.record]]
+field = "Necromancy message: Skeletons raised; Skeletons in Red's army"
+[[encounter.record]]
+field = "Red's experience after the battle"
+[[encounter.record]]
+field = "anything odd"
+
+[[encounter]]
+id = "SU"
+title = "Summon Elemental: column and row, a dead elemental's slot, the limit of 20 stacks; a side left with only elementals"
+questions = ["BAT-MAG-037", "BAT-MAG-039", "BAT-Q7", "BAT-END-001", "BAT-FLE-002", "BAT-TER-001"]
+procedure = [
+    "Play this encounter last on day 1 and save the game under its own name before attacking. Variant a is the main battle; b and c load that save and replay its start.",
+    "a. Attack the Blue hero. Round 1: Blue's Skeletons act first: they Defend. On the first Peasant's turn: open the surrender dialog (price?) and cancel; Red casts Air Elemental (call the stack E1): note its place (column counted from the left edge, which is column 0, so the Peasants stand in column 1; row). Surrender dialog again: price? Cancel. Every Peasant Defends. Does E1 get a turn in round 1? Right-click E1: attack, defense, speed. E1 Defends.",
+    "a. Round 2: on E1's turn Red casts Air Elemental again (E2): place? E1 and E2 Defend. Blue's Skeletons' turn: Blue casts Death Ripple (all seven Peasants die). The Skeletons Defend.",
+    "a. Round 3: E1 and E2 Wait. Blue's Skeletons' turn: Blue casts Implosion at E1 (it dies). The Skeletons Defend. When E2 acts again (the wait phase), Red casts Air Elemental (E3): place? E2 and E3 Defend.",
+    "a. Round 4: in which order do E2 and E3 act (the one that acts first)? From now on, on the first elemental's turn of each round Red casts Air Elemental and notes its place, and every stack Defends, until the spell book no longer lets Air Elemental be cast (what happens? note the round and how many Air Elemental casts succeeded in all, E1 included). This part is long (about 13 rounds): stop it early if you like and note where you stopped.",
+    "a. If you reached the limit: on the Skeletons' turn Blue casts Implosion at one elemental stack (it dies); in the next round try Air Elemental again (allowed?).",
+    "a. End: Red's elementals attack the Skeletons until none are left. Note the result window and afterwards whether Red's hero and Blue's hero are still on the map.",
+    "b. Load the save. Replay rounds 1 and 2 as in a (E1, E2, Death Ripple; prices need not be noted again). Round 3: the elementals Defend; on the Skeletons' turn Blue retreats. Note the result windows and whether Red's hero is still on the map afterwards (and where Blue's hero went).",
+    "c. Load the save again. Replay rounds 1 and 2 as in a. Round 3: on the Skeletons' turn Blue surrenders: note the price, both players' gold before and after, the result windows and whether Red's hero is still on the map afterwards.",
+]
+predictions = """
+Red's power 1: 2 Air Elementals per cast. Red's side has 7 Peasants, an Ammo Cart (row 1 of the
+army's column, column 1) and a First Aid Tent (row 9): 9 records. Blue's Death Ripple 1 x 5 + 10 =
+15 kills every Peasant and costs each elemental stack 15 (no elemental dies); Implosion 175 kills
+a stack of 2. The Skeletons are undead (Death Ripple spares them), not natives on grass.
+- Prices (Red, 50 %): before the summon **910** (7 Peasants 70, Ammo Cart 1 000, First Aid Tent
+  750); after it: ours **1 160** (the elementals at 250 each counted; the original was not read);
+  VCMI 910 (army slots only).
+- Place (0x5A7080; the engine): the attacker's first column (column 1) while it has a free row, a
+  row drawn at random among its free rows: E1 in **row 3 or row 7** (the Peasants hold 0, 2, 4, 5, 6,
+  8 and 10); after the Death Ripple the corpses do not block, so E2, E3, … land at random rows of
+  column 1, column 2 once column 1 is full. VCMI 1.7.5: the free hex nearest the top left corner,
+  always the same.
+- E1 acts in round 1 (created as at the battle's start). Air Elementals: the code 9/9/7, the engine
+  10/10/8 (BAT-TER-001).
+- Round 3: E3 takes E1's dead record (0x47A100); in round 4 **E3 acts before E2** (equal speed, the
+  lower record first; the engine the same).
+- The limit (§7.7: refused at 20 records in use, dead ones included; a reused record does not count
+  again): 9 + 11 new records = 20 after **12 successful casts** (E1 to E12, E3 reused E1's record);
+  the 13th is refused. After Blue kills another stack, Air Elemental is **still refused** (the
+  engine the same).
+- End a (only elementals left on Red's side kill the last Skeleton): the code (0x4658B0: a winner
+  needs a living stack that is neither summoned nor a war machine) and the engine (Draw): **nobody
+  wins: both heroes lose** (both disappear from the map).
+- b, Blue retreats: the code: nobody wins, **Red's hero loses too** (disappears); Blue's hero
+  retreats as usual. The engine reports Retreat(Defender), which says Red won (BAT-Q7 (b) if the
+  code is confirmed).
+- c, Blue surrenders: the code: nobody wins (Red's hero loses too); whether Blue pays and Red gets
+  the gold was not read. Blue's price: 10 Skeletons 600 x 50 % = 300. The engine reports
+  Surrender(Defender) with Red as the winner.
+"""
+[encounter.hero]
+type = "Octavia"
+specialty = "resource gold"
+primary = [0, 0, 1, 35]
+army = [["Peasant", 1], ["Peasant", 1], ["Peasant", 1], ["Peasant", 1], ["Peasant", 1], ["Peasant", 1], ["Peasant", 1]]
+artifacts = { "spell book" = "Spell Book", "war machine 2" = "Ammo Cart", "war machine 3" = "First Aid Tent" }
+spells = ["Air Elemental"]
+[encounter.opponent.hero]
+name = "SUb"
+type = "Calid"
+specialty = "resource sulfur"
+primary = [0, 0, 1, 10]
+army = [["Skeleton", 10]]
+artifacts = { "spell book" = "Spell Book" }
+spells = ["Death Ripple", "Implosion"]
+[[encounter.record]]
+field = "a, round 1: surrender price before the summon; after it"
+[[encounter.record]]
+field = "a, E1: place (column, row); gets a turn in round 1 (yes/no); attack, defense, speed"
+[[encounter.record]]
+table = ["summon", "round", "column", "row"]
+rows = 14
+[[encounter.record]]
+field = "a, round 4: the first of E2 and E3 to act"
+[[encounter.record]]
+field = "a, the limit: round reached; successful casts in all; what happens at the refused cast; after Blue's Implosion: allowed (yes/no)"
+[[encounter.record]]
+field = "a, end: result window(s); Red's hero on the map afterwards (yes/no); Blue's hero (yes/no)"
+[[encounter.record]]
+field = "b, Blue retreats: result window(s); Red's hero on the map afterwards (yes/no); Blue's hero"
+[[encounter.record]]
+field = "c, Blue surrenders: price; Red's and Blue's gold before and after; result window(s); Red's hero on the map afterwards (yes/no)"
+[[encounter.record]]
+field = "anything odd"
