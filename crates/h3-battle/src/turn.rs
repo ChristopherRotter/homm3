@@ -4,7 +4,8 @@
 //! A round has three phases. In the normal phase stacks act from fastest to slowest; then stacks
 //! that waited during a good-morale turn, then the other stacks that waited, each from slowest to
 //! fastest. Speed ties go to the side that did not act last (the attacker at the start of the
-//! battle), then to the lower army slot. A blind stack's turn starts and passes (BAT-MAG-024).
+//! battle), then to the lower army slot (war machines after the army, then the stacks created in
+//! the battle, by id: BAT-MAG-037). A blind stack's turn starts and passes (BAT-MAG-024).
 //! When every living stack has acted or passed blind, a new round starts and per-round flags are
 //! reset.
 

@@ -152,8 +152,11 @@ fn strike<S: Sink>(
     let lost = damage.min(victim.total_hp());
     // rule: BAT-MAG-018
     let reflected = if victim.spells.fire_shield > 0 && !flags.contains(StrikeFlags::RANGED) {
-        // Quirk Q-0010: the original reflects a share of the first damage stage.
-        let from = if ruleset.quirks().is_enabled(FIRE_SHIELD_FIRST_STAGE) {
+        // Quirk Q-0010: the original reflects a share of the first damage stage; of a clone's, one
+        // hit point (0x422440, BAT-MAG-038).
+        let from = if victim.has(StackTraits::CLONE) {
+            1
+        } else if ruleset.quirks().is_enabled(FIRE_SHIELD_FIRST_STAGE) {
             inputs
                 .stage_one(base, params, staged)
                 .min(victim.total_hp())
@@ -461,6 +464,10 @@ fn attack<S: Sink>(
     for (i, _) in others.iter().enumerate().filter(|(_, hit)| **hit) {
         // `i < STACK_CAPACITY <= u8::MAX`.
         let id = StackId(u8::try_from(i).unwrap_or(u8::MAX));
+        if !state.at(id).is_alive() {
+            // Its original's death took a clone (BAT-MAG-038).
+            continue;
+        }
         let (lost, r) = strike(state, ruleset, (attacker, id), secondary, blow, sink);
         heal = heal.saturating_add(drained(state, id, lost));
         if every {
@@ -471,7 +478,8 @@ fn attack<S: Sink>(
     if stare > 0 {
         death_stare(state, pair, stare, sink);
     }
-    if reflected > 0 {
+    // A clone that killed its own original is gone (BAT-MAG-038).
+    if reflected > 0 && state.at(attacker).is_alive() {
         reflect(state, ruleset, attacker, reflected, sink);
     }
 }
@@ -497,6 +505,8 @@ fn reflect<S: Sink>(
 /// Heals and resurrects `stack` by `hp` hit points drained from its targets (BAT-DMG-008).
 // rule: BAT-DMG-008
 fn life_drain<S: Sink>(state: &mut BattleState, stack: StackId, hp: u64, sink: &mut S) {
+    // A clone that killed its own original is gone (BAT-MAG-038).
+    let hp = if state.at(stack).is_alive() { hp } else { 0 };
     let (hit_points, resurrected) = resurrect(state.at_mut(stack), hp);
     if hit_points > 0 {
         sink.emit(Event::public(EventKind::LifeDrained {

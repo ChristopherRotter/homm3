@@ -558,8 +558,9 @@ fn end_where<S: Sink>(
     ended
 }
 
-/// Ends the effects on stack `s` that any damage ends (BAT-MAG-024: Blind; the original's
-/// 0x444090, `installation.md` §7.14), after it took damage, reporting each.
+/// After stack `s` took damage: if it died, its clone vanishes or, a clone, it frees its original
+/// (BAT-MAG-038); the effects on it that any damage ends end (BAT-MAG-024: Blind; the original's
+/// 0x444090, `installation.md` §7.14), reported.
 // rule: BAT-MAG-024
 pub(crate) fn damaged<S: Sink>(
     state: &mut BattleState,

@@ -88,7 +88,7 @@ T2: S-18 (Magic Arrow 0 damage to golems). T3: S-16, S-17, S-19. T4: S-09, S-10,
 | M-2 | Magic resistance: add or multiply sources (**settled**, §12: hero and creature add, the aura multiplies) | VCMI adds; the wiki is silent (`E04-skills.md` §2.10) | T2d |
 | M-3 | When durations count down (**settled** by code reading, §14: every stack at the start of a round) | VCMI: all stacks at the start of a round; SoD unobserved | T3 |
 | M-4 | Hero cast during a commanded war machine's turn | wiki ("one of their creatures") vs VCMI (any own unit) | T2b |
-| M-5 | Per-side stack limit | settled by code reading (§5): 21 records, Clone and summons refused at 20 stacks; open: whether a vanished clone frees its record | T6 |
+| M-5 | Per-side stack limit | settled by code reading (§5; `installation.md` §7.7, §7.19): 21 records, Clone and summons refused at 20 stacks in use, dead ones included; a new created stack takes a dead created stack's record (E04b T6b, BAT-MAG-037) | T6 |
 | M-6 | Spell damage rounding (**settled**, §12) | VCMI truncates after each factor; Q-0005 used single precision for physical damage | T2b |
 
 ## 10. Experiment candidates for batch 2a (end of increment 1)

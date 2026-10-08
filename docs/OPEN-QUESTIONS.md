@@ -38,7 +38,15 @@ The original picks Chain Lightning's next target by screen distance; the y posit
 
 ### Battle lane (`BAT-Q<n>`)
 
-(no open questions)
+#### BAT-Q7 — Created stacks at the end of the battle: Necromancy, and a retreat against summons (E04b T6b)
+
+**Context.** Since T6a (ADR-0014 points 6 and 10, PR #7) the outcome leaves stacks created in battle (summoned elementals, clones) out. The T6b code reading (`docs/formats/installation.md` §7.19) found two places where the original does count them:
+
+1. **Necromancy** (0x4775E1) adds up the killed creatures of every stack record, summoned stacks and clones included; the experience (0x46A350) leaves them out. The outcome cannot report them, so the orchestrator's Necromancy (E08–E10) would raise fewer skeletons than the original after a battle with killed elementals or clones.
+2. **A retreat or surrender against a side left with only created stacks:** the original names no winner (0x4658B0 wants a living stack that is neither summoned nor a war machine), so that side loses too. `BattleResult::Retreat(side)` and `Surrender(side)` imply the other side wins, so the orchestrator would see a winner without an army. (The elimination case is handled: a side left with only created stacks does not win, `Draw`; BAT-MAG-037, BAT-END-001.)
+3. **The surrender price** (BAT-FLE-002) counts every living stack of the side, created ones included, at their creatures' cost; whether the original does was not read (VCMI counts only army slots, from memory). The engine keeps counting them for now (an experiment candidate).
+
+**Options.** (a) Keep the seam as is: Necromancy without created stacks (a small difference from the original; HotA's choice is not known), the orchestrator treats a winner whose survivors are empty as having lost (the adventure rule that a hero needs an army), and the surrender price as it is until an experiment says otherwise. (b) Report the created stacks' killed creatures per side in `BattleOutcome` (a seam addition, ADR-0014 point 10), and say "no winner" for a retreat/surrender against only created stacks (a contract change of `BattleResult`). **Recommendation: (a)** now, with an experiment for the Necromancy count (`docs/experiments/README.md`, T6b); (b) only if E08–E10 need the exact count. Blocks nothing in E04b.
 
 ### Adventure lane (`ADV-Q<n>`)
 

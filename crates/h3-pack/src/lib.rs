@@ -2779,7 +2779,7 @@ mod tests {
             [
                 "spark", "cinders", "arc", "blight", "ward", "hasten", "drag", "fury", "smiting",
                 "riposte", "mend", "blaze", "glass", "haze", "charm", "scorch", "blink", "snare",
-                "revive", "offer",
+                "revive", "offer", "copy",
             ]
             .map(|k| ruleset.spell_by_key(&format!("synthetic:{k}")).unwrap())
             .to_vec(),

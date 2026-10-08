@@ -1165,7 +1165,7 @@ id       = "BAT-END-001"
 title    = "End of battle"
 context  = "battle"
 status   = "implemented"
-summary  = "After every action (a whole melee sequence with retaliation and second attack, or a whole shot sequence; as VCMI checks after each action), if one side has no living stacks the battle ends and the other side wins (BattleResult::Victory); no stack is active afterwards and every command is rejected. War machines do not count as living stacks (BAT-WAR-001). The outcome lists the result, the surviving army stacks per side and, separately, the surviving war machines. If neither side has living stacks left the battle is a draw (BAT-END-002). Scope: no retreat/surrender yet (E04 with heroes), no summons (which will not count as living either)."
+summary  = "After every action (a whole melee sequence with retaliation and second attack, or a whole shot sequence; as VCMI checks after each action), if one side has no living stacks the battle ends and the other side wins (BattleResult::Victory); no stack is active afterwards and every command is rejected. War machines do not count as living stacks (BAT-WAR-001). The outcome lists the result, the surviving army stacks per side and, separately, the surviving war machines. If neither side has living stacks left the battle is a draw (BAT-END-002). Stacks created in battle (summoned stacks, clones) count as living, but a side whose living stacks are all created ones does not win: the battle is then a draw, both sides lose (BAT-MAG-037; the original's 0x4658B0, installation.md §7.19). Retreat and surrender: BAT-FLE-001/002."
 numeric  = "integer"
 
   [[rule.source]]
@@ -1732,7 +1732,7 @@ id       = "BAT-END-003"
 title    = "The outcome of a battle"
 context  = "battle"
 status   = "implemented"
-summary  = "Once the battle is over, BattleState::outcome reports facts for the orchestrator (ADR-0013 point 5): the result (victory, draw, retreat, surrender; BAT-END-001/002, BAT-FLE-001/002); per side every stack in stack order, dead ones included, as StackRecord { origin: army slot or war machine, creature, start: the count at the start, end: the count alive at the end, whatever the result, without the creatures raised for the battle only (Basic Resurrection, BAT-MAG-035; E04b T6a), but a side whose living army creatures are all such keeps one in its last living army stack (BAT-QUIRK-6) }; the survivors (army stacks with end > 0, by slot) and surviving war machines derived from those records; the surrender's cost (the price paid, BAT-FLE-002) or none; per side the hero's mana left and the distinct spells it cast, by spell handle (E04b T2b; Eagle Eye's input); the last round started (0 if the battle ended in the tactics phase). The battle applies no consequence: casualties, a retreating side's lost army, the payment, captured artifacts, experience (killed war machines give none; Learning multiplies the whole sum including the +500, batch 1b R5) and Necromancy (rounded down per killed stack, R6) are applied by the orchestrator with the epics that own hero progression (E08-E10)."
+summary  = "Once the battle is over, BattleState::outcome reports facts for the orchestrator (ADR-0013 point 5): the result (victory, draw, retreat, surrender; BAT-END-001/002, BAT-FLE-001/002); per side every stack in stack order, dead ones included, but none created in the battle (summoned stacks and clones, BAT-MAG-037; E04b T6b), as StackRecord { origin: army slot or war machine, creature, start: the count at the start, end: the count alive at the end, whatever the result, without the creatures raised for the battle only (Basic Resurrection, BAT-MAG-035; E04b T6a), but a side whose living army creatures are all such keeps one in its last living army stack (BAT-QUIRK-6) }; the survivors (army stacks with end > 0, by slot) and surviving war machines derived from those records; the surrender's cost (the price paid, BAT-FLE-002) or none; per side the hero's mana left and the distinct spells it cast, by spell handle (E04b T2b; Eagle Eye's input); the last round started (0 if the battle ended in the tactics phase). The battle applies no consequence: casualties, a retreating side's lost army, the payment, captured artifacts, experience (killed war machines give none; Learning multiplies the whole sum including the +500, batch 1b R5) and Necromancy (rounded down per killed stack, R6) are applied by the orchestrator with the epics that own hero progression (E08-E10)."
 numeric  = "integer"
 
   [[rule.source]]
@@ -2202,7 +2202,7 @@ id       = "BAT-MAG-018"
 title    = "Fire Shield"
 context  = "battle"
 status   = "verified"
-summary  = "While Fire Shield is active on a stack (v = 20, 20, 25, 30 %), every melee strike on it (an attack, a retaliation or a second strike; never a shot) reflects damage onto the striker unless the striker is fire-immune (creature flag fire_immune): x = with quirk Q-0010 (faithful), as the original, the strike's first damage stage (BAT-DMG-002: the base with its bonuses, before the target's defense, the penalties, Shield and Armorer), capped at the target's hit points before the strike; without it (strict-fixed) the hit points the strike took (the spell's text: a share of the damage dealt; VCMI); r = x × v % rounded down (single precision under quirk Q-0005); then r is the shield spell's damage (BAT-MAG-004) with the bonuses of the struck stack's hero as the caster's (Sorcery, the Orb of Fire, a specialty) and the striker's reductions and fire protection (BAT-MAG-013); no immunity or magic resistance applies. Only the attacked stack reflects: a breath's second stack never does, in every profile (the user, 2026-10-07: considered as a quirk and kept as the rule, no flag); a multi-headed striker (attacks all adjacent, three-headed) takes back the sum of every stack it struck. The damage comes after the attack's life drain and death stare and before the retaliation (Reflected); the striker may die of it. A timed own-stack spell without a mass version. Not yet: the Efreet Sultans' own 20 % shield (E04b T7), a hypnotized stack's controller as the caster (E04b T4)."
+summary  = "While Fire Shield is active on a stack (v = 20, 20, 25, 30 %), every melee strike on it (an attack, a retaliation or a second strike; never a shot) reflects damage onto the striker unless the striker is fire-immune (creature flag fire_immune): x = with quirk Q-0010 (faithful), as the original, the strike's first damage stage (BAT-DMG-002: the base with its bonuses, before the target's defense, the penalties, Shield and Armorer), capped at the target's hit points before the strike (a clone's: 1, in either profile; the original's 0x422440, E04b T6b); without it (strict-fixed) the hit points the strike took (the spell's text: a share of the damage dealt; VCMI); r = x × v % rounded down (single precision under quirk Q-0005); then r is the shield spell's damage (BAT-MAG-004) with the bonuses of the struck stack's hero as the caster's (Sorcery, the Orb of Fire, a specialty) and the striker's reductions and fire protection (BAT-MAG-013); no immunity or magic resistance applies. Only the attacked stack reflects: a breath's second stack never does, in every profile (the user, 2026-10-07: considered as a quirk and kept as the rule, no flag); a multi-headed striker (attacks all adjacent, three-headed) takes back the sum of every stack it struck. The damage comes after the attack's life drain and death stare and before the retaliation (Reflected); the striker may die of it. A timed own-stack spell without a mass version. Not yet: the Efreet Sultans' own 20 % shield (E04b T7), a hypnotized stack's controller as the caster (E04b T4)."
 numeric  = "integer"
 
   [[rule.source]]
@@ -2269,7 +2269,7 @@ id       = "BAT-MAG-021"
 title    = "Anti-Magic"
 context  = "battle"
 status   = "implemented"
-summary  = "Anti-Magic on an own stack (v = 4, 4, 5, 6 by mastery): the first cast ends the stack's active negative spells below level v that are not creature abilities (Curse, Slow, Weakness, Misfortune, Blind, Forgetfulness, Hypnotize: levels 1-3; from Advanced also Sorrow and Berserk, level 4), never a permanent one (Disrupting Ray stays); positive spells stay. While it lasts, no spell below level v reaches the stack, whatever its polarity (its own side's Bless, Cure or a second Anti-Magic neither), unless it is a creature ability or ignores immunity (Dispel, which may end it): a stack spell may not be aimed at it, an area, chain, mass or battle-wide spell passes over it. The Orb of Vulnerability does not lift it (the original tests it first). A timed own-stack spell without a mass version; VCMI also ends neutral effects and every level (not followed). Not yet: a clone may not receive it (E04b T6)."
+summary  = "Anti-Magic on an own stack (v = 4, 4, 5, 6 by mastery): the first cast ends the stack's active negative spells below level v that are not creature abilities (Curse, Slow, Weakness, Misfortune, Blind, Forgetfulness, Hypnotize: levels 1-3; from Advanced also Sorrow and Berserk, level 4), never a permanent one (Disrupting Ray stays); positive spells stay. While it lasts, no spell below level v reaches the stack, whatever its polarity (its own side's Bless, Cure or a second Anti-Magic neither), unless it is a creature ability or ignores immunity (Dispel, which may end it): a stack spell may not be aimed at it, an area, chain, mass or battle-wide spell passes over it. The Orb of Vulnerability does not lift it (the original tests it first). A timed own-stack spell without a mass version; VCMI also ends neutral effects and every level (not followed). No clone may be aimed at (the original's 0x5A8090, installation.md §7.13; E04b T6b, BAT-MAG-038)."
 numeric  = "integer"
 
   [[rule.source]]
@@ -2604,7 +2604,7 @@ id       = "BAT-MAG-036"
 title    = "Sacrifice"
 context  = "battle"
 status   = "implemented"
-summary  = "A spell with a sacrifice effect (SpellEffect::Sacrifice: Sacrifice, a positive fire spell of level 5, not on war machines) takes two targets: the stack it raises (the target), then a victim (the second target, a stack: Command::Cast.second; the sim's second head). With quirk BAT-QUIRK-5 (faithful) the target is tested as the tests_as spell's would be (Resurrection's, BAT-MAG-035: its conditions, its level 4 against immunities and Anti-Magic, so Gold Dragons are never a target (survey S-15), and its hit points at the caster's mastery in it, which must reach one creature's health); without it by Sacrifice's own conditions and level, with no hit-point minimum. The victim is a living stack of the caster's side that the side controls (not hypnotized), other than the target, that the spell can affect (flag alive, not undead; immunities; Anti-Magic). The cast kills every creature of the victim (Sacrificed); it leaves no corpse (BattleState::corpse NO_CORPSE: never raised); then it raises the target for good by (the victim's creature's base hit points + power x power factor + effect[mastery]) x the victim's creatures (BAT-MAG-035's raise, no specialist bonus): a raise smaller than one creature's health still brings back one, wounded. A victim that was the active stack loses its turn (BAT-MAG-001). Engine choice: the original's code does not compare the victim with the target (its second cursor was not read); the engine refuses the target as its own victim, which would restore a stack for nothing."
+summary  = "A spell with a sacrifice effect (SpellEffect::Sacrifice: Sacrifice, a positive fire spell of level 5, not on war machines) takes two targets: the stack it raises (the target), then a victim (the second target, a stack: Command::Cast.second; the sim's second head). With quirk BAT-QUIRK-5 (faithful) the target is tested as the tests_as spell's would be (Resurrection's, BAT-MAG-035: its conditions, its level 4 against immunities and Anti-Magic, so Gold Dragons are never a target (survey S-15), and its hit points at the caster's mastery in it, which must reach one creature's health); without it by Sacrifice's own conditions and level, with no hit-point minimum. The victim is a living stack of the caster's side that the side controls (not hypnotized), not created in the battle (BAT-MAG-037), other than the target, that the spell can affect (flag alive, not undead; immunities; Anti-Magic). The cast kills every creature of the victim (Sacrificed) and the victim's clone vanishes (BAT-MAG-038); it leaves no corpse (BattleState::corpse NO_CORPSE: never raised); then it raises the target for good by (the victim's creature's base hit points + power x power factor + effect[mastery]) x the victim's creatures (BAT-MAG-035's raise, no specialist bonus): a raise smaller than one creature's health still brings back one, wounded. A victim that was the active stack loses its turn (BAT-MAG-001). Engine choice: the original's code does not compare the victim with the target (its second cursor was not read); the engine refuses the target as its own victim, which would restore a stack for nothing."
 numeric  = "integer"
 quirks   = ["BAT-QUIRK-5"]
 
@@ -2618,4 +2618,79 @@ quirks   = ["BAT-QUIRK-5"]
   ref        = "Gold Dragon page, trivia (survey S-15): Gold Dragons are susceptible to the sacrificing part of Sacrifice but not to the resurrection"
   url        = "https://heroes.thelazy.net/index.php/Gold_Dragon"
   retrieved  = "2026-10-03"
+  confidence = "medium"
+
+[[rule]]
+id       = "BAT-MAG-037"
+title    = "Stacks created in battle"
+context  = "battle"
+status   = "implemented"
+summary  = "Clone (BAT-MAG-038) and Summon Elemental (BAT-MAG-039) create stacks of the caster's side, legal only while the side has fewer stacks than the battle parameter side_stack_limit (20 in the original; at most 21, the engine's slots per side), dead ones included. A created stack takes the slot of its side's first (lowest id) dead created stack, else a new id after every existing one; it starts as a stack of its side at the battle's start would (the side's hero's attack, defense and stack effects, the native terrain, morale and luck), with Stack::slot CREATED_SLOT (after army slots and war machines in BAT-TRN-001's tie-break) and the trait SUMMONED, and without the round's flags, so it acts in the round it appears if its turn comes (StackCreated). Created stacks leave no corpse (BattleState::corpse NO_CORPSE: never raised, BAT-MAG-035), are no victim of a sacrifice (BAT-MAG-036), count as living for the end of the battle, but a side whose living stacks are all created does not win (both lose: Draw, BAT-END-001), and the outcome leaves them out (BAT-END-003): nothing about them crosses the seam (ADR-0014 point 6). Not modelled: the original's message when no hex is free (nothing happens; the mana is spent)."
+numeric  = "integer"
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (docs/formats/installation.md §7.7, §7.19): the spell book refuses Clone and Summon Elemental while the side's records in use (+0x54BC) are 20 or more; 0x47A100 takes the first of records 0-19 that is empty or holds a dead summoned stack and sets it up as at the battle's start (0x43D8B0); 0x444120 leaves no corpse for a summoned stack (0x400000); the winner test 0x4658B0 wants a living stack that is neither summoned nor a war machine; the rebuild 0x4641F0 leaves summoned stacks and clones out of the army"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "wiki"
+  ref        = "Summon Water Elemental: if you killed all enemies but lost all your army besides the summoned elementals, both sides lose the battle"
+  url        = "https://heroes.thelazy.net/index.php/Summon_Water_Elemental"
+  retrieved  = "2026-10-05"
+  confidence = "high"
+
+[[rule]]
+id       = "BAT-MAG-038"
+title    = "Clone"
+context  = "battle"
+status   = "implemented"
+summary  = "A spell with a clone effect (SpellEffect::Clone: Clone, a positive water spell of level 4, not on war machines) is aimed at a living stack of the caster's side (its own, whoever controls it) that the spell can affect (immunities, Anti-Magic), that is no clone and has no living clone, and whose creature's level is at most the spell's effect[mastery] (5, 5, 6, 7 in the original), while the side may create a stack (BAT-MAG-037). An elemental (summoned, no clone) qualifies. The clone is a fresh stack (BAT-MAG-037) of the target's creature with its statistics, count (its start count too) and side, with traits SUMMONED and CLONE, that lasts the caster's power + its duration bonus rounds (at least 1, as timed spells, BAT-MAG-010): each round's start (after the timed effects) takes one, and the start that leaves none removes it (Vanished; BattleState::clone_rounds). Any damage kills all its creatures, and it vanishes when its original dies (also sacrificed); its death frees the original for another clone. Its place: in rings 1 to 10 around the target, from the target's position (its tail, or its only hex) and, for a two-hex target, from its head, along the six directions (from top right clockwise for the attacker, from top left anticlockwise for the defender), the hexes 1 to the ring's number away, the first where the clone fits (standable, unblocked, no living stack); skipped: right and left of the position in ring 1, and from the head towards the tail in rings 1 and 2. No place: nothing happens. Quirk BAT-QUIRK-7 (fixed): the original counts the target's own hexes as free."
+numeric  = "integer"
+quirks   = ["BAT-QUIRK-7"]
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (docs/formats/installation.md §7.19): 0x5A8090 case 0x5A841A (no clone bit 0x800000, no clone +0x28, level + 1 <= effect[mastery]); 0x5A6C70 places the clone along the rays (0x446C40 for the fit) with the original's count, flags 0x800000 and 0x400000, rounds power + 0x4E4DB0; 0x447120 counts the rounds down at each round's start; 0x444090 kills every creature of a clone; 0x444120 kills an original's clone and frees a dead clone's original"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "wiki"
+  ref        = "Clone: creature level up to 5/6/7 (Basic/Advanced/Expert); one clone per stack; lasts power rounds; removed by any damage or when the original dies"
+  url        = "https://heroes.thelazy.net/index.php/Clone"
+  retrieved  = "2026-10-05"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "vcmi"
+  ref        = "VCMI 1.7.5 lib/spells/effects/Clone.cpp (survey E04b-magic.md §5)"
+  url        = "https://github.com/vcmi/vcmi/blob/1.7.5/lib/spells/effects/Clone.cpp"
+  retrieved  = "2026-10-05"
+  confidence = "medium"
+
+[[rule]]
+id       = "BAT-MAG-039"
+title    = "Summon Elemental"
+context  = "battle"
+status   = "implemented"
+summary  = "A spell with a summon effect (SpellEffect::Summon: the four Summon Elemental spells, neutral, level 5, of the fire, earth, water and air schools; Spell::summons names the creature: Fire, Earth, Water and Air Elementals) takes no target and is legal while the caster's side may create a stack (BAT-MAG-037) and has summoned no other creature in the battle; the first cast binds the side to its creature. It creates a stack of effect[mastery] (2, 2, 3, 4) x the caster's power creatures, as the side would have it at the battle's start (BAT-MAG-037), in the first column from the side's edge inwards (the attacker's from column 1, the defender's from column 15) with a row where it fits, at a random such row (uniform; one draw). Each cast makes a new stack. No place: nothing happens (the side stays bound)."
+numeric  = "integer"
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (docs/formats/installation.md §7.7, §7.19): the spell book wants no other summoned creature (+0x132A8); 0x5A7080 counts effect[mastery] x power, draws rows of the first column that has one fitting (0x50C6E0, 0x50C740, 0x446C40), binds the side to the creature and creates the stack (0x47A100, flag 0x400000)"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "wiki"
+  ref        = "Summon Water Elemental: power x 2/3/4 creatures (Basic/Advanced/Expert); one elemental type per battle"
+  url        = "https://heroes.thelazy.net/index.php/Summon_Water_Elemental"
+  retrieved  = "2026-10-05"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "vcmi"
+  ref        = "VCMI 1.7.5 lib/spells/effects/Summon.cpp (survey E04b-magic.md §5)"
+  url        = "https://github.com/vcmi/vcmi/blob/1.7.5/lib/spells/effects/Summon.cpp"
+  retrieved  = "2026-10-05"
   confidence = "medium"

@@ -159,7 +159,7 @@ override, replacing the list) names the creature types it upgrades into: at most
 none twice; references follow the reference rules and may name later creatures of the pack.
 Hero effects that select "a creature" apply to it and its direct upgrades.
 
-## Hero content (format v3, E04a T3; battle magic format v4, E04b T2a; v5 T3a; v6 T3b1; v7 T3b1b; v8 T3b2; v9 T3c; v10 T4a; v11 T4b; v12 T4c; v13 T5a; v14 T5c1; v15 T5c2; v16 T5b; v17 T6a)
+## Hero content (format v3, E04a T3; battle magic format v4, E04b T2a; v5 T3a; v6 T3b1; v7 T3b1b; v8 T3b2; v9 T3c; v10 T4a; v11 T4b; v12 T4c; v13 T5a; v14 T5c1; v15 T5c2; v16 T5b; v17 T6a; v18 T6b)
 
 Spell schools, spells, secondary skills, hero classes and hero types (ADR-0013). References follow
 the reference rules above; every kind may refer to content of its dependency closure.
@@ -342,6 +342,32 @@ tests_as = "revive"                # v17: a raise spell; under quirk BAT-QUIRK-5
                                    # tested as that spell's (required with a sacrifice effect)
 effects = [{ kind = "sacrifice" }]
 
+[[spell]]                          # a clone effect (v18, E04b T6b): a Clone (BAT-MAG-038)
+id = "copy"
+category = "combat"
+level = 4
+schools = ["storm"]
+cost = [24, 20, 20, 20]
+power = 0
+effect = [1, 1, 2, 3]              # the highest creature level it copies, by mastery
+polarity = "positive"
+target = "stack"                   # an own living stack
+side = "own"
+excludes = ["war_machine"]
+effects = [{ kind = "clone" }]
+
+[[spell]]                          # a summon effect (v18): a Summon Elemental (BAT-MAG-039)
+id = "conjure"
+category = "combat"
+level = 5
+schools = ["stone"]
+cost = [25, 20, 20, 20]
+power = 0
+effect = [2, 2, 3, 4]              # creatures per point of the caster's power, by mastery
+polarity = "neutral"
+summons = "shade"                  # v18: the creature (required with a summon effect)
+effects = [{ kind = "summon" }]
+
 [[secondary_skill]]
 id = "marksmanship"
 name = "Marksmanship"
@@ -408,6 +434,12 @@ that count; below `temporary_below` for the battle only; BAT-MAG-035) and `sacri
 second target a victim of the side: kills it and raises the target by `(its creature's hit points + the
 value) × its creatures`; `tests_as` names the raise spell whose test the target takes under quirk
 BAT-QUIRK-5; BAT-MAG-036), each the spell's only effect, without area, chain or mass version; since
+v18, E04b T6b: `clone` (target `stack`: an own stack of a creature level up to effect[mastery], no
+clone and without one, is copied for the caster's power + its duration bonus rounds; BAT-MAG-038) and
+`summon` (no target: effect[mastery] × the caster's power creatures of `summons` join the caster's
+side; one summoned creature per side and battle; BAT-MAG-039), each the spell's only effect, a ruleset
+having at most four summon spells; both create a stack only while the side has fewer than
+`side_stack_limit` stacks (BAT-MAG-037); since
 v7, E04b T3b1b: `dispel` (ends the stack's
 timed effects: those of the spells in `dispels`, or without that list every one but those in
 `spares`; never a permanent one; BAT-MAG-016) and `heal` (heals the top creature by the value,
@@ -416,7 +448,7 @@ raising none; BAT-MAG-017), applied after damage and before timed changes. `mass
 `health_limit` and `refuses` need a timed effect (an area timed spell, Berserk, has target
 `hex`), `counters` too (and may not name the
 spell itself); `dispels` and `spares` need a dispel effect; `any_side` (a mastery) needs a `side`;
-`needs_effect` needs target `stack`. Later tasks add kinds (summon, …). Adventure spells have no battle magic; a spell without effects cannot be cast
+`needs_effect` needs target `stack`. Later tasks add kinds. Adventure spells have no battle magic; a spell without effects cannot be cast
 yet. `side` limits whose stacks a stack spell may be *aimed* at (BAT-MAG-003; a chain's jumps
 and an area reach either side): the harvester writes `enemy` for every single-target spell that
 harms (the original's target test), and the gap-fill file for Chain Lightning, which is neutral
@@ -562,7 +594,9 @@ in `base`, BAT-TAC-001; ruleset hash v12). Since E04a T9b the optional `surrende
 cost_percent }` (the price of a surrender is `cost_percent` of the summed cost in `resource` of
 the side's living stacks; `{ resource = "gold", cost_percent = 50 }` in `base`; without it no
 side can surrender; BAT-FLE-002, ruleset hash v13). Since E04b T2b `hero_casts_per_round` (how
-many spells a hero may cast per round, 1 in `base`; BAT-MAG-001, ruleset hash v15).
+many spells a hero may cast per round, 1 in `base`; BAT-MAG-001, ruleset hash v15). Since E04b
+T6b `side_stack_limit` (a side creates stacks, Clone and Summon Elemental, only while it has fewer
+stacks, dead ones included; 20 in `base`, at most 21; BAT-MAG-037, ruleset hash v27).
 
 **Hero parameters** (`[hero_params]`, Tier 2, E04a T4a; at most one enabled pack provides them,
 a ruleset without them cannot validate hero details): `primary_min` (four values, attack,

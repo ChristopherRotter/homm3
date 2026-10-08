@@ -329,8 +329,8 @@ dispatcher (VA 0x59ECC4) maps spell ids 10–69 to handlers through a byte table
 - No other comparison of the count with 20 or 21 was found. Resurrection, Animate Dead and
   Sacrifice bring back a dead stack in its own record, so they never need a new one.
 
-Not read: whether a vanished clone frees its record, where Pit Lords' demons go, and why the 21st
-record stays free.
+Not read: where Pit Lords' demons go, and why the 21st record stays free. A dead clone's or summoned
+stack's record goes to the next stack the side creates (§7.19).
 
 ### 7.8 Code reading: damage spells, immunities and magic resistance (E04b T2d, 2026-10-06)
 
