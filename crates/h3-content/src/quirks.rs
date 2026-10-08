@@ -69,6 +69,7 @@ pub const REGISTRY: QuirkRegistry = QuirkRegistry::new(&[
     "quirk.battle.obstacle_anchors",
     "quirk.battle.draws_avoid_hidden",
     "quirk.battle.sacrifice_tests_as_resurrection",
+    "quirk.battle.creature_mirror_untested",
 ]);
 
 /// Q-0003: creatures of a side without a hero never get lucky strikes (BAT-LCK-002).
@@ -133,6 +134,12 @@ pub const DRAWS_AVOID_HIDDEN: QuirkFlag = QuirkFlag(12);
 /// conditions, without a hit-point minimum.
 pub const SACRIFICE_TESTS_AS_RESURRECTION: QuirkFlag = QuirkFlag(13);
 
+/// BAT-QUIRK-9: a creature's spell that Magic Mirror sends to a stack of the caster's side takes
+/// effect on that stack without a test: its immunities, Anti-Magic and resistance do not apply
+/// (the original tests no stack of a creature's cast, `installation.md` §7.21; BAT-MAG-049). Off:
+/// that stack is tested and rolls as the new target of a hero's cast does (BAT-MAG-022).
+pub const CREATURE_MIRROR_UNTESTED: QuirkFlag = QuirkFlag(14);
+
 /// The set of enabled quirk flags of a ruleset.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub struct Quirks {
@@ -171,7 +178,11 @@ mod tests {
 
     #[test]
     fn registry_lookup_and_bitset() {
-        assert_eq!(REGISTRY.len(), 14);
+        assert_eq!(REGISTRY.len(), 15);
+        assert_eq!(
+            REGISTRY.lookup("quirk.battle.creature_mirror_untested"),
+            Some(CREATURE_MIRROR_UNTESTED)
+        );
         assert_eq!(
             REGISTRY.lookup("quirk.battle.no_luck_without_hero"),
             Some(NO_LUCK_WITHOUT_HERO)

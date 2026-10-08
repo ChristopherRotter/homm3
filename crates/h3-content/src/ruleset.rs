@@ -34,7 +34,7 @@ pub const MAX_SIDE_STACKS: usize = 21;
 pub const MAX_FIELD_HEXES: usize = 255;
 
 /// Version of the ruleset hash encoding. Bump when the encoding below changes.
-pub const RULESET_HASH_VERSION: u32 = 31;
+pub const RULESET_HASH_VERSION: u32 = 32;
 
 /// A compiled creature type.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -1115,7 +1115,8 @@ fn validate_creature(
 /// BAT-MAG-046), a damage spell after a strike has a damage effect (BAT-MAG-041), a caster's spell
 /// has damage, timed, dispel or heal effects only and takes a target stack at the caster's
 /// mastery in every profile, without a health limit (the original's casters cast none; a health
-/// limit reads the hero, BAT-MAG-048).
+/// limit reads the hero, BAT-MAG-048); a random caster's drawn spell likewise, aimed at a stack
+/// or a hex and placing no obstacle (BAT-MAG-049).
 fn validate_strike_spells(
     key: &ContentKey,
     abils: &[CompiledAbility],
@@ -1163,6 +1164,42 @@ fn validate_strike_spells(
                 (!(kinds && aimed)).then_some(
                     "spell_caster needs a spell with damage, timed, dispel or heal effects and no \
                      health limit that takes a target stack at its mastery",
+                )
+            }
+            Ability::DrawnSpell { spell: id, .. } => {
+                // A drawn spell needs its caster (`ability::list_error`).
+                let mastery = abils
+                    .iter()
+                    .find_map(|a| match *a {
+                        Ability::RandomSpellCaster { mastery, .. } => Some(mastery),
+                        _ => None,
+                    })
+                    .unwrap_or(0);
+                let effects = spell(id);
+                let kinds = !effects.is_empty()
+                    && effects.iter().all(|e| {
+                        matches!(
+                            e,
+                            SpellEffect::Damage
+                                | SpellEffect::Timed(_)
+                                | SpellEffect::Dispel
+                                | SpellEffect::Heal
+                        )
+                    });
+                let aimed = spells.get(id.index()).is_some_and(|s| {
+                    !s.magic.health_limit
+                        && s.magic.obstacle.is_none()
+                        && [false, true].iter().all(|&early| {
+                            matches!(
+                                s.magic.target_at(mastery, early),
+                                SpellTarget::Stack | SpellTarget::Hex
+                            )
+                        })
+                });
+                (!(kinds && aimed)).then_some(
+                    "drawn_spell needs a spell with damage, timed, dispel or heal effects and no \
+                     health limit or obstacle that takes a target stack or hex at its caster's \
+                     mastery",
                 )
             }
             _ => None,

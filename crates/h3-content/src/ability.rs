@@ -227,6 +227,26 @@ pub enum Ability<C, S, L> {
         /// The caster's power: the rounds of its timed effects and its value's power (≥ 1).
         power: u8,
     },
+    /// At each activation of its stack while it has a cast left, draws a spell from its creature's
+    /// `drawn_spell` entries by weight and may cast it as its stack's action, as many times a
+    /// battle as its creature's `casts`, at a stack other than itself that the spell can affect
+    /// (a hex spell at that stack's hex): a creature's cast at `mastery` with `power_per_creature`
+    /// times its creatures as power (the Faerie Dragon at Advanced, 5 per creature; BAT-MAG-049,
+    /// v23).
+    RandomSpellCaster {
+        /// The mastery it casts at (0..=3).
+        mastery: u8,
+        /// The caster's power per creature of its stack (≥ 1).
+        power_per_creature: u8,
+    },
+    /// A spell a random caster may draw, with its weight among its creature's `drawn_spell`
+    /// entries (≥ 1; BAT-MAG-049, v23).
+    DrawnSpell {
+        /// The spell.
+        spell: S,
+        /// Its weight.
+        weight: u8,
+    },
 }
 
 /// An ability as written in a pack (references are keys).
@@ -237,7 +257,7 @@ pub type CompiledAbility = Ability<CreatureTypeId, SpellId, SchoolId>;
 
 impl<C, S, L> Ability<C, S, L> {
     /// Every ability name, in code order (the order of [`Ability::code`]).
-    pub const NAMES: [&'static str; 33] = [
+    pub const NAMES: [&'static str; 35] = [
         "hate",
         "jousting",
         "charge_immunity",
@@ -271,6 +291,8 @@ impl<C, S, L> Ability<C, S, L> {
         "spell_damage_after_strike",
         "damage_after_strike",
         "spell_caster",
+        "random_spell_caster",
+        "drawn_spell",
     ];
 
     /// Stable numeric code of the ability kind (canonical hashing, duplicate checks).
@@ -309,6 +331,8 @@ impl<C, S, L> Ability<C, S, L> {
             Self::SpellDamageAfterStrike { .. } => 30,
             Self::DamageAfterStrike { .. } => 31,
             Self::SpellCaster { .. } => 32,
+            Self::RandomSpellCaster { .. } => 33,
+            Self::DrawnSpell { .. } => 34,
         }
     }
 
@@ -440,6 +464,17 @@ impl<C, S, L> Ability<C, S, L> {
                 mastery: *mastery,
                 power: *power,
             },
+            Self::RandomSpellCaster {
+                mastery,
+                power_per_creature,
+            } => Ability::RandomSpellCaster {
+                mastery: *mastery,
+                power_per_creature: *power_per_creature,
+            },
+            Self::DrawnSpell { spell: x, weight } => Ability::DrawnSpell {
+                spell: spell(x)?,
+                weight: *weight,
+            },
         })
     }
 
@@ -484,6 +519,14 @@ impl<C, S, L> Ability<C, S, L> {
                 Some("spell_caster mastery must be 0..=3")
             }
             Self::SpellCaster { power: 0, .. } => Some("spell_caster power must be at least 1"),
+            Self::RandomSpellCaster { mastery, .. } if *mastery > 3 => {
+                Some("random_spell_caster mastery must be 0..=3")
+            }
+            Self::RandomSpellCaster {
+                power_per_creature: 0,
+                ..
+            } => Some("random_spell_caster power_per_creature must be at least 1"),
+            Self::DrawnSpell { weight: 0, .. } => Some("drawn_spell weight must be at least 1"),
             Self::SpellDamageAfterStrike {
                 per_creature: 0, ..
             } => Some("spell_damage_after_strike per_creature must be at least 1"),
@@ -592,6 +635,14 @@ impl CanonicalHash for CompiledAbility {
                 spell.hash_into(h);
                 h.write_bytes(&[mastery, power]);
             }
+            Self::RandomSpellCaster {
+                mastery,
+                power_per_creature,
+            } => h.write_bytes(&[mastery, power_per_creature]),
+            Self::DrawnSpell { spell, weight } => {
+                spell.hash_into(h);
+                h.write_u8(weight);
+            }
             Self::ChargeImmunity
             | Self::Regeneration
             | Self::UnlimitedRetaliations
@@ -631,7 +682,10 @@ pub(crate) fn list_error<C: PartialEq, S: PartialEq, L: PartialEq>(
             | (
                 Ability::SpellAfterStrike { spell: x, .. },
                 Ability::SpellAfterStrike { spell: y, .. },
-            ) => x == y,
+            )
+            | (Ability::DrawnSpell { spell: x, .. }, Ability::DrawnSpell { spell: y, .. }) => {
+                x == y
+            }
             _ => a.code() == b.code(),
         });
         if duplicate {
@@ -645,6 +699,14 @@ pub(crate) fn list_error<C: PartialEq, S: PartialEq, L: PartialEq>(
     if has(11) && has(12) {
         return Some("attacks_all_adjacent and three_headed_attack exclude each other");
     }
+    if has(32) && has(33) {
+        return Some("spell_caster and random_spell_caster exclude each other");
+    }
+    if has(33) != has(34) {
+        return Some(
+            "random_spell_caster needs drawn_spell entries and drawn_spell a random caster",
+        );
+    }
     None
 }
 
@@ -654,7 +716,7 @@ mod tests {
 
     type A = Ability<u8, u8, u8>;
 
-    fn all() -> [A; 33] {
+    fn all() -> [A; 35] {
         [
             A::Hate {
                 target: 3,
@@ -725,6 +787,14 @@ mod tests {
                 mastery: 2,
                 power: 6,
             },
+            A::RandomSpellCaster {
+                mastery: 2,
+                power_per_creature: 5,
+            },
+            A::DrawnSpell {
+                spell: 9,
+                weight: 22,
+            },
         ]
     }
 
@@ -764,7 +834,11 @@ mod tests {
             A::SchoolImmunity { school: 1 }.try_map(ok, ok, fail),
             Err("nope")
         );
-        for a in all()[29..31].iter().chain(&all()[32..]) {
+        for a in all()[29..31]
+            .iter()
+            .chain(&all()[32..33])
+            .chain(&all()[34..])
+        {
             assert_eq!(a.try_map(ok, fail, ok), Err("nope"));
         }
         assert_eq!(
@@ -916,6 +990,18 @@ mod tests {
                 mastery: 2,
                 power: 0,
             },
+            A::RandomSpellCaster {
+                mastery: 4,
+                power_per_creature: 5,
+            },
+            A::RandomSpellCaster {
+                mastery: 2,
+                power_per_creature: 0,
+            },
+            A::DrawnSpell {
+                spell: 0,
+                weight: 0,
+            },
         ];
         for a in bad {
             assert!(a.parameter_error().is_some(), "{a:?}");
@@ -980,5 +1066,29 @@ mod tests {
                 .unwrap()
                 .contains("exclude")
         );
+        // A random caster and its spells (BAT-MAG-049).
+        let random = A::RandomSpellCaster {
+            mastery: 2,
+            power_per_creature: 5,
+        };
+        let drawn = |spell| A::DrawnSpell { spell, weight: 10 };
+        assert_eq!(list_error(&[random, drawn(1), drawn(2)]), None);
+        assert_eq!(
+            list_error(&[random, drawn(1), drawn(1)]),
+            Some("an ability is listed twice")
+        );
+        let fixed = A::SpellCaster {
+            spell: 1,
+            mastery: 2,
+            power: 6,
+        };
+        assert!(
+            list_error(&[fixed, random, drawn(1)])
+                .unwrap()
+                .contains("exclude")
+        );
+        for alone in [[random], [drawn(1)]] {
+            assert!(list_error(&alone).unwrap().contains("drawn_spell"));
+        }
     }
 }
