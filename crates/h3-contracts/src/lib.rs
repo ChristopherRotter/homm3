@@ -161,8 +161,8 @@ impl BattleResult {
     }
 }
 
-/// Where a battle stack came from ([`StackRecord::origin`]). E04b adds summoned stacks and
-/// clones.
+/// Where a battle stack came from ([`StackRecord::origin`]). Stacks created in battle (summoned
+/// stacks, clones) are not reported (ADR-0014 point 6).
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum StackOrigin {
     /// A stack of the side's army, by army slot.

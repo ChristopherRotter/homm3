@@ -60,10 +60,11 @@ which a spell meets a stack, how stacks appear in a battle, how hidden objects s
    original (`installation.md` §7.7). Clone and Summon Elemental are legal only while the caster's
    side has fewer than 20 stacks (a battle parameter), Summon Elemental only for the side's first
    elemental type. Raising (Resurrection, Animate Dead, Sacrifice) revives a dead stack in its own
-   slot and is not limited; Pit Lords' demons take the slot of the dead stack they rise from. New
-   stacks carry new `StackOrigin` variants (summoned, clone, raised); dead stacks keep their slots
-   and stay addressable. Summoned stacks and clones end with the battle; temporarily raised
-   creatures (Basic Resurrection) do not count in the outcome's end counts; permanent ones do.
+   slot and is not limited; Pit Lords' demons take the slot of the dead stack they rise from. Dead
+   stacks keep their slots and stay addressable. Stacks created in battle cross no seam: summoned
+   stacks and clones end with the battle and the outcome leaves them out (no `StackOrigin`
+   variant); temporarily raised creatures (Basic Resurrection) do not count in the outcome's end
+   counts; permanent ones do. Pit Lords' demons, which stay, are decided with T7.
 7. **Hidden battlefield objects have an owner side.** A viewer sees a spell obstacle if it is the
    owner, the obstacle is revealed or of a visible kind (Force Field, Fire Wall), or the viewer's side
    has natives: as the original by default, a side that had a stack on its native terrain at the
@@ -86,7 +87,7 @@ which a spell meets a stack, how stacks appear in a battle, how hidden objects s
    depend on the ruleset (ADR-0011). Each task bumps the encodings it changes.
 10. **Seam changes are additions only** (reviewed with this ADR): `BattleEffect` variants for the
     hero's magic (spell-damage bonuses, duration bonus, magic resistance, magic blocks and level
-    limits, immunity negation, opening spells), `StackOrigin` variants, and the use of the reserved
+    limits, immunity negation, opening spells) and the use of the reserved
     `BattleMagic` and `HeroOutcome` fields. Battle magic rules use the new area `BAT-MAG`; the
     hero's derivation continues `HER-BAT`. One exception (user, Q55): `BattleSetup.obstacles`
     becomes a list of natural obstacles, each with its blocked hexes and an optional anchor hex
@@ -136,3 +137,8 @@ which a spell meets a stack, how stacks appear in a battle, how hidden objects s
 - 2026-10-07: points 7 and 10 amended (E04b T5b; user, Q55, BAT-Q4, BAT-Q5): the natural
   obstacles cross the seam as pieces with an optional anchor, a change of a field's type rather
   than an addition; the random draws of hidden objects follow the original under BAT-QUIRK-4.
+- 2026-10-08: points 6 and 10 amended (E04b T6a; the user): stacks created in battle cross no seam.
+  Only army stacks and war machines enter a battle, and the orchestrator needs records only to
+  update the army, so the battle leaves summoned stacks and clones out of the outcome instead of
+  reporting them with new `StackOrigin` variants (VCMI also leaves temporary summons out of the
+  casualties and the experience); Pit Lords' demons, which stay in the army, are T7's question.
