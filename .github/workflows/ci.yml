@@ -7,9 +7,11 @@
 #
 # - The code fingerprint hashes every tracked file except `docs/`, `experiments/`, `clients/` (its
 #   own workspace; a client job gets its own fingerprint) and `*.md`: no heavy gate (fmt, clippy,
-#   deny, test, coverage, determinism, ffi-smoke, bench-check) reads those. A passing full verify
-#   stores the artifact `verified-<os>-<fingerprint>`; a run whose fingerprint has one, from any
-#   branch, skips the full verify and runs only the gates that read the left-out paths
+#   deny, test, coverage, determinism, ffi-smoke, bench-check) reads those. A successful run records
+#   it as the commit status `verified (<os>)`, description `code <fingerprint>`, on the commit it
+#   checked (a pull request's head). A run that finds its fingerprint on the pull request's head
+#   or previous head, on the heads of the pull requests a push merged, or on the last ten commits of
+#   the target branch skips the full verify and runs only the gates that read the left-out paths
 #   (check-rules, check-stubs, check-docs). A gate or test that starts reading a left-out path must
 #   take it out of BOTH exclusion lists below (`paths-ignore` and the "Plan" step).
 # - Pushes to `master` that change only left-out paths start no run.
@@ -18,7 +20,7 @@
 #   do nothing. Closing or merging a pull request cancels its running CI (`master` verifies the
 #   merged result).
 # - Weekly: only `cargo deny check advisories`, so that new RustSec advisories surface without a
-#   code change. Manual dispatch always runs the full verify.
+#   code change. Manual dispatch and the re-run of a run always run the full verify.
 #
 # Windows (the second platform of the determinism matrix, ADR-0003 §5, §11; Q3, Q7) is disabled
 # for now because it takes about twice as long (user, 2026-10-06); it stays a local run. To
@@ -42,8 +44,10 @@ on:
 
 permissions:
   contents: read
-  # The "Plan" step looks up `verified-*` artifacts.
-  actions: read
+  # The fingerprint: "Plan" reads commit statuses and a push's merged pull requests, "Record"
+  # writes the status.
+  statuses: write
+  pull-requests: read
 
 # One run per pull request or branch; a newer run cancels the older one (a merge or close cancels
 # the pull request's run). The weekly run and label events other than `cross-lane` get a group of
@@ -83,20 +87,42 @@ jobs:
         id: plan
         env:
           GH_TOKEN: ${{ github.token }}
-          FORCE: ${{ github.event_name == 'workflow_dispatch' }}
+          FORCE: ${{ github.event_name == 'workflow_dispatch' || github.run_attempt > 1 }}
           OS: ${{ matrix.os }}
+          EVENT: ${{ github.event_name }}
+          HEAD: ${{ github.event.pull_request.head.sha }}
+          BASE: ${{ github.event.pull_request.base.sha }}
+          BEFORE: ${{ github.event.before }}
         run: |
           fp=$(git ls-files -s -- . ':!docs/' ':!experiments/' ':!clients/' ':!*.md' \
             | sha256sum | cut -c1-40)
-          name="verified-$OS-$fp"
-          found=$(gh api "repos/$GITHUB_REPOSITORY/actions/artifacts?name=$name" \
-            --jq '[.artifacts[] | select(.expired | not)] | length') || found=0
-          if [ "$FORCE" = true ] || [ "${found:-0}" = 0 ]; then
+          echo "fingerprint=$fp" >> "$GITHUB_OUTPUT"
+          # Commits whose status may already record this fingerprint.
+          cands=("$HEAD" "$BEFORE")
+          if [ "$EVENT" = push ]; then
+            base=$BEFORE
+            mapfile -t -O 2 cands < <(gh api "repos/$GITHUB_REPOSITORY/commits/$GITHUB_SHA/pulls" \
+              --jq '.[].head.sha' || true)
+          else
+            base=$BASE
+          fi
+          # Pushes that change only left-out paths start no run: look a few commits further back.
+          if [ -n "$base" ] && git cat-file -e "$base^{commit}" 2>/dev/null; then
+            mapfile -t -O "${#cands[@]}" cands < <(git rev-list --first-parent -n 10 "$base")
+          fi
+          found=
+          for c in "${cands[@]}"; do
+            case "$c" in ""|0000000000000000000000000000000000000000) continue ;; esac
+            ids=$(gh api "repos/$GITHUB_REPOSITORY/commits/$c/statuses?per_page=100" --jq ".[]
+              | select(.context == \"verified ($OS)\" and .state == \"success\"
+                       and .description == \"code $fp\") | .id") || ids=
+            if [ -n "$ids" ]; then found=$c; break; fi
+          done
+          if [ "$FORCE" = true ] || [ -z "$found" ]; then
             full=true; why="full verify"
           else
-            full=false; why="code verified before: only check-rules, check-stubs, check-docs"
+            full=false; why="verified on $found: only check-rules, check-stubs, check-docs"
           fi
-          echo "artifact=$name" >> "$GITHUB_OUTPUT"
           echo "full=$full" >> "$GITHUB_OUTPUT"
           echo "Code fingerprint \`$fp\`: $why." | tee -a "$GITHUB_STEP_SUMMARY"
 
@@ -153,17 +179,16 @@ jobs:
           cargo xtask check-stubs
           cargo xtask check-docs
 
+      # Also after the cheap gates, so that the fingerprint follows the commits that carry it.
       - name: Record the verified code
-        if: steps.plan.outputs.full == 'true'
-        run: echo "${{ github.sha }}" > verified.txt
-
-      - uses: actions/upload-artifact@v7
-        if: steps.plan.outputs.full == 'true'
-        with:
-          name: ${{ steps.plan.outputs.artifact }}
-          path: verified.txt
-          retention-days: 30
-          overwrite: true
+        env:
+          GH_TOKEN: ${{ github.token }}
+          SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+          OS: ${{ matrix.os }}
+          FP: ${{ steps.plan.outputs.fingerprint }}
+        run: |
+          gh api "repos/$GITHUB_REPOSITORY/statuses/$SHA" -f state=success \
+            -f context="verified ($OS)" -f description="code $FP" > /dev/null
 
   # The weekly run: new RustSec advisories surface without a code change. Licenses, bans and
   # sources change only with the code, which the verify checks.
