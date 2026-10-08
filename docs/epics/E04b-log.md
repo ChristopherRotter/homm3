@@ -1395,3 +1395,31 @@ records how and why the tasks went.
   controller only, no target without a useful spell, every usefulness case, the enemy's shooters,
   war machines, spell book and kings); the content's list and compile rules; the sim's spell head
   0; the pack's unknown usefulness; the hero view's book flag.
+
+### Increment 9 start and T6c: the created stacks' follow-ups (2026-10-08)
+
+- **Seam** (the user): increment 9 = T6c with T7b3 as planned, one checkpoint after both; one
+  shared PR for the outcome (#26, `shared/battle-outcome-raised`), then T6c and T7b3 as stacked
+  battle PRs.
+- **Code reading** (`installation.md` §7.21, "The raisers and the end of the battle"): the Pit
+  Lord's Demons are an ordinary army stack in the corpse's army slot; Necromancy (0x4775E1) and
+  the experience (0x46A350) count per record, `start − count`; a reused record starts afresh; the
+  death 0x444120 keeps the dying stack's count but zeroes an original's clone; Clone on its
+  original flags the stack on the position's hex (0x4E7170) `0x400000`, not `0x800000`.
+- **Decisions** (the user, BAT-Q13): the Demons as `StackOrigin::Raised(slot)`; created stacks as
+  records with `StackOrigin::Created` (exact per-record Necromancy; the experience leaves them out
+  by origin), instead of BAT-Q7 (b)'s sum by creature; a reused record's lost losses the rule, no
+  flag (ledger BAT-QUIRK-11). ADR-0014 points 6, 9 and 10 amended in #26.
+- **Content:** quirk flag 15 `quirk.battle.clone_on_its_original` (BAT-QUIRK-7; faithful on,
+  strict-fixed off); packs regenerated (the base and synthetic profiles).
+- **Battle:** `created::clone_place` returns a `ClonePlace`; with the flag the original's hexes are
+  free and a place on them turns the original (`created::turn`: `SUMMONED` without `CLONE`, the
+  clone's rounds, linked to itself; event `TurnedSummoned`); a place whose front hex is the
+  original's is skipped in every profile (BAT-QUIRK-8). `Created.vanished` keeps the creatures a
+  stack vanished with when its rounds ran out (state hash v36); `BattleState::outcome` reports
+  every stack by origin, `end` with the vanished creatures, BAT-QUIRK-6's keep-one over army
+  stacks only.
+- **Tests:** `tests/created.rs` (BAT-QUIRK-7 both ways, BAT-QUIRK-8 under the flag, the outcome
+  per created stack with a reused slot and a clone gone with its original, the vanished count);
+  the property `outcomes_account_for_every_stack` covers every stack by origin. Golden replays:
+  hashes re-recorded (same commands and results).
