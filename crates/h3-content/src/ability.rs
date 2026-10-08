@@ -764,7 +764,7 @@ mod tests {
             A::SchoolImmunity { school: 1 }.try_map(ok, ok, fail),
             Err("nope")
         );
-        for a in &all()[29..31] {
+        for a in all()[29..31].iter().chain(&all()[32..]) {
             assert_eq!(a.try_map(ok, fail, ok), Err("nope"));
         }
         assert_eq!(

@@ -473,6 +473,7 @@ mod tests {
                 CommandError::InvalidSpellTarget,
                 "not a target of that spell",
             ),
+            (CommandError::CannotCast, "the stack cannot cast"),
         ];
         for (e, text) in all {
             assert_eq!(e.to_string(), text);
