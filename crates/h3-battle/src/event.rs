@@ -209,6 +209,18 @@ pub enum EventKind {
         /// The spell.
         spell: SpellId,
     },
+    /// A stack's ability dealt extra damage to the stack it struck in melee, without a test (the
+    /// Rust Dragon, BAT-MAG-047).
+    StrikeDamage {
+        /// The striking stack.
+        striker: StackId,
+        /// The struck stack.
+        target: StackId,
+        /// Damage dealt, before capping at the stack's remaining health.
+        damage: u64,
+        /// Creatures killed.
+        kills: u32,
+    },
     /// Poison took another tenth of a stack's hit points at a round start (BAT-MAG-044).
     Poisoned {
         /// The stack.

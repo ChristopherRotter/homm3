@@ -389,6 +389,7 @@ fn strike_abilities_name_spells_that_do_what_they_need() {
         rounds: 3,
         living: false,
         unless_active: false,
+        defended: false,
     };
     let damage = |spell: &str| AbilityDef::SpellDamageAfterStrike {
         spell: key(spell),

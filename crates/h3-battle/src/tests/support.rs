@@ -531,6 +531,42 @@ pub const CREATURES: &[Creature] = &[
         5,
         &["alive", "strikes_twice", "spell_after_strike=blind:100:0:3"],
     ),
+    // Bind, Acid Breath and the extra damage (BAT-MAG-045 to BAT-MAG-047): `:defended`; extra
+    // damage `chance:percent`.
+    (
+        "binder",
+        10,
+        10,
+        2,
+        2,
+        10,
+        3,
+        &["alive", "spell_after_strike=tether:100:0:3"],
+    ),
+    (
+        "corroder",
+        10,
+        10,
+        2,
+        4,
+        10,
+        5,
+        &[
+            "alive",
+            "spell_after_strike=acid:100:0:3:defended",
+            "damage_after_strike=100:50",
+        ],
+    ),
+    (
+        "nibbler",
+        10,
+        10,
+        1,
+        1,
+        10,
+        5,
+        &["alive", "damage_after_strike=20:50"],
+    ),
 ];
 
 /// The traits of a test creature as creature info: flags, abilities, shots and faction.
@@ -666,6 +702,14 @@ fn parse_traits(traits: &[&str]) -> CreatureInfoDef {
                     rounds: rounds.parse().unwrap(),
                     living: rest.contains(&"living"),
                     unless_active: rest.contains(&"unless"),
+                    defended: rest.contains(&"defended"),
+                }
+            }
+            "damage_after_strike" => {
+                let (chance, percent) = value.split_once(':').unwrap();
+                AbilityDef::DamageAfterStrike {
+                    chance_percent: chance.parse().unwrap(),
+                    percent: percent.parse().unwrap(),
                 }
             }
             "spell_damage_after_strike" => {
@@ -1510,7 +1554,9 @@ pub fn other_defs() -> [SpellDef; 3] {
 /// The strike's statuses (BAT-MAG-043, BAT-MAG-044), creature abilities sparing war machines:
 /// `t:petrify` (Stone Gaze: level 3, ended by any damage), `t:paralysis` (Paralyze: level 4, a
 /// 25 % retaliation, ended by any damage), `t:plague` (Disease: level 2, −2 attack and defense),
-/// `t:wither` (Age: level 5) and `t:venom` (Poison: level 0, living creatures only).
+/// `t:wither` (Age: level 5) and `t:venom` (Poison: level 0, living creatures only); cast without
+/// a test (ignoring immunity), `t:tether` (Bind: 255 rounds) and `t:acid` (Acid Breath: −3
+/// defense for the battle, cumulative, also on war machines) (BAT-MAG-045, BAT-MAG-046).
 pub fn strike_defs() -> Vec<SpellDef> {
     let key = |k: &str| ContentKey::new("t", k).unwrap();
     let def = |name: &str, level, effect, changes: &[TimedChange], ends, requires| SpellDef {
@@ -1582,6 +1628,34 @@ pub fn strike_defs() -> Vec<SpellDef> {
             EffectEnd::Never,
             none.with(CreatureFlag::Alive),
         ),
+        {
+            let mut tether = def(
+                "tether",
+                0,
+                [0; 4],
+                &[TimedChange::Bind],
+                EffectEnd::Never,
+                none,
+            );
+            tether.magic.duration = EffectDuration::Fixed(255);
+            tether.magic.ignores_immunity = true;
+            tether
+        },
+        {
+            let mut acid = def(
+                "acid",
+                0,
+                [3; 4],
+                &[TimedChange::DefenseLoss],
+                EffectEnd::Never,
+                none,
+            );
+            acid.magic.duration = EffectDuration::Permanent;
+            acid.magic.cumulative = true;
+            acid.magic.ignores_immunity = true;
+            acid.magic.conditions.excludes = none;
+            acid
+        },
     ]
 }
 

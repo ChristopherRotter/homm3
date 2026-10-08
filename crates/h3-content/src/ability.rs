@@ -175,7 +175,8 @@ pub enum Ability<C, S, L> {
     },
     /// After each of its melee strikes (attacks, retaliations, second strikes; never shots),
     /// casts `spell` on the struck stack as a creature's cast without a hero (Unicorns' Blind,
-    /// Black Knights' Curse, the flies' Dispel Helpful Spells and Weakness; BAT-MAG-040).
+    /// Black Knights' Curse, the flies' Dispel Helpful Spells and Weakness, BAT-MAG-040; the
+    /// Dendroids' Bind and the Rust Dragon's Acid Breath, BAT-MAG-045, BAT-MAG-046).
     SpellAfterStrike {
         /// The spell.
         spell: S,
@@ -189,6 +190,8 @@ pub enum Ability<C, S, L> {
         living: bool,
         /// Not on a stack the spell already affects.
         unless_active: bool,
+        /// Only on a stack whose defense is above 0 (Acid Breath; v21).
+        defended: bool,
     },
     /// After each of its melee strikes, deals `per_creature` damage per creature of its stack to
     /// the struck stack as `spell` without a hero (the Thunderbird's thunderbolt as Lightning
@@ -201,6 +204,15 @@ pub enum Ability<C, S, L> {
         /// Damage per creature (≥ 1).
         per_creature: u16,
     },
+    /// After each of its melee strikes, deals `percent` % of one roll of its damage range per
+    /// creature of its stack to the struck stack, without a test (the Rust Dragon's extra damage;
+    /// BAT-MAG-047, v21).
+    DamageAfterStrike {
+        /// Chance per strike in percent (1..=100).
+        chance_percent: u8,
+        /// The share of the roll per creature, percent (1..=100).
+        percent: u8,
+    },
 }
 
 /// An ability as written in a pack (references are keys).
@@ -211,7 +223,7 @@ pub type CompiledAbility = Ability<CreatureTypeId, SpellId, SchoolId>;
 
 impl<C, S, L> Ability<C, S, L> {
     /// Every ability name, in code order (the order of [`Ability::code`]).
-    pub const NAMES: [&'static str; 31] = [
+    pub const NAMES: [&'static str; 32] = [
         "hate",
         "jousting",
         "charge_immunity",
@@ -243,6 +255,7 @@ impl<C, S, L> Ability<C, S, L> {
         "magic_resistance_aura",
         "spell_after_strike",
         "spell_damage_after_strike",
+        "damage_after_strike",
     ];
 
     /// Stable numeric code of the ability kind (canonical hashing, duplicate checks).
@@ -279,6 +292,7 @@ impl<C, S, L> Ability<C, S, L> {
             Self::MagicResistanceAura { .. } => 28,
             Self::SpellAfterStrike { .. } => 29,
             Self::SpellDamageAfterStrike { .. } => 30,
+            Self::DamageAfterStrike { .. } => 31,
         }
     }
 
@@ -375,6 +389,7 @@ impl<C, S, L> Ability<C, S, L> {
                 rounds,
                 living,
                 unless_active,
+                defended,
             } => Ability::SpellAfterStrike {
                 spell: spell(x)?,
                 chance_percent: *chance_percent,
@@ -382,6 +397,7 @@ impl<C, S, L> Ability<C, S, L> {
                 rounds: *rounds,
                 living: *living,
                 unless_active: *unless_active,
+                defended: *defended,
             },
             Self::SpellDamageAfterStrike {
                 spell: x,
@@ -391,6 +407,13 @@ impl<C, S, L> Ability<C, S, L> {
                 spell: spell(x)?,
                 chance_percent: *chance_percent,
                 per_creature: *per_creature,
+            },
+            Self::DamageAfterStrike {
+                chance_percent,
+                percent,
+            } => Ability::DamageAfterStrike {
+                chance_percent: *chance_percent,
+                percent: *percent,
             },
         })
     }
@@ -409,6 +432,7 @@ impl<C, S, L> Ability<C, S, L> {
             | Self::DeathStare { chance_percent }
             | Self::SpellAfterStrike { chance_percent, .. }
             | Self::SpellDamageAfterStrike { chance_percent, .. }
+            | Self::DamageAfterStrike { chance_percent, .. }
                 if !(1..=100).contains(chance_percent) =>
             {
                 Some("chance_percent must be 1..=100")
@@ -443,6 +467,7 @@ impl<C, S, L> Ability<C, S, L> {
             Self::SpellDamageReduction { percent }
             | Self::MagicResistance { percent }
             | Self::MagicResistanceAura { percent }
+            | Self::DamageAfterStrike { percent, .. }
                 if !(1..=100).contains(percent) =>
             {
                 Some("percent must be 1..=100")
@@ -509,11 +534,13 @@ impl CanonicalHash for CompiledAbility {
                 rounds,
                 living,
                 unless_active,
+                defended,
             } => {
                 spell.hash_into(h);
                 h.write_bytes(&[chance_percent, mastery, rounds]);
                 h.write_bool(living);
                 h.write_bool(unless_active);
+                h.write_bool(defended);
             }
             Self::SpellDamageAfterStrike {
                 spell,
@@ -524,6 +551,10 @@ impl CanonicalHash for CompiledAbility {
                 h.write_u8(chance_percent);
                 h.write_u16(per_creature);
             }
+            Self::DamageAfterStrike {
+                chance_percent,
+                percent,
+            } => h.write_bytes(&[chance_percent, percent]),
             Self::ChargeImmunity
             | Self::Regeneration
             | Self::UnlimitedRetaliations
@@ -586,7 +617,7 @@ mod tests {
 
     type A = Ability<u8, u8, u8>;
 
-    fn all() -> [A; 31] {
+    fn all() -> [A; 32] {
         [
             A::Hate {
                 target: 3,
@@ -641,11 +672,16 @@ mod tests {
                 rounds: 3,
                 living: true,
                 unless_active: false,
+                defended: false,
             },
             A::SpellDamageAfterStrike {
                 spell: 7,
                 chance_percent: 20,
                 per_creature: 10,
+            },
+            A::DamageAfterStrike {
+                chance_percent: 20,
+                percent: 50,
             },
         ]
     }
@@ -686,7 +722,7 @@ mod tests {
             A::SchoolImmunity { school: 1 }.try_map(ok, ok, fail),
             Err("nope")
         );
-        for a in &all()[29..] {
+        for a in &all()[29..31] {
             assert_eq!(a.try_map(ok, fail, ok), Err("nope"));
         }
         assert_eq!(
@@ -790,6 +826,7 @@ mod tests {
                 rounds: 3,
                 living: false,
                 unless_active: false,
+                defended: false,
             },
             A::SpellAfterStrike {
                 spell: 0,
@@ -798,6 +835,7 @@ mod tests {
                 rounds: 3,
                 living: false,
                 unless_active: false,
+                defended: false,
             },
             A::SpellAfterStrike {
                 spell: 0,
@@ -806,6 +844,7 @@ mod tests {
                 rounds: 0,
                 living: false,
                 unless_active: false,
+                defended: false,
             },
             A::SpellDamageAfterStrike {
                 spell: 0,
@@ -816,6 +855,14 @@ mod tests {
                 spell: 0,
                 chance_percent: 20,
                 per_creature: 0,
+            },
+            A::DamageAfterStrike {
+                chance_percent: 0,
+                percent: 50,
+            },
+            A::DamageAfterStrike {
+                chance_percent: 20,
+                percent: 101,
             },
         ];
         for a in bad {
@@ -852,6 +899,7 @@ mod tests {
             rounds: 3,
             living: false,
             unless_active: false,
+            defended: false,
         };
         assert_eq!(list_error(&[strike(1), strike(2)]), None);
         for twice in [

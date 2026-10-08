@@ -498,7 +498,7 @@ proptest! {
                         if b.side != actor {
                             prop_assert_eq!(a.hex, b.hex);
                             let explained = mentioned(i, |k, i| matches!(k,
-                                EventKind::Struck { target, .. } | EventKind::DeathStared { target, .. } | EventKind::SpellDamage { target, .. } if target.index() == i))
+                                EventKind::Struck { target, .. } | EventKind::DeathStared { target, .. } | EventKind::SpellDamage { target, .. } | EventKind::StrikeDamage { target, .. } if target.index() == i))
                                 || mentioned(i, |k, i| matches!(k, EventKind::Regenerated { stack, .. } | EventKind::Vanished { stack, .. } if stack.index() == i))
                                 || mentioned(i, |k, i| matches!(k, EventKind::Healed { target, .. } if target.index() == i))
                                 // Poison and Age change the hit points per creature (BAT-MAG-044).

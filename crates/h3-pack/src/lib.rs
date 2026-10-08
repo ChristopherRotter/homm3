@@ -351,11 +351,17 @@ enum AbilityDto {
         living: bool,
         #[serde(default)]
         unless_active: bool,
+        #[serde(default)]
+        defended: bool,
     },
     SpellDamageAfterStrike {
         spell: String,
         chance_percent: u8,
         per_creature: u16,
+    },
+    DamageAfterStrike {
+        chance_percent: u8,
+        percent: u8,
     },
 }
 
@@ -437,6 +443,7 @@ impl AbilityDto {
                 rounds,
                 living,
                 unless_active,
+                defended,
             } => AbilityDef::SpellAfterStrike {
                 spell: reference(pack, &spell)?,
                 chance_percent,
@@ -444,6 +451,7 @@ impl AbilityDto {
                 rounds,
                 living,
                 unless_active,
+                defended,
             },
             Self::SpellDamageAfterStrike {
                 spell,
@@ -453,6 +461,13 @@ impl AbilityDto {
                 spell: reference(pack, &spell)?,
                 chance_percent,
                 per_creature,
+            },
+            Self::DamageAfterStrike {
+                chance_percent,
+                percent,
+            } => AbilityDef::DamageAfterStrike {
+                chance_percent,
+                percent,
             },
         })
     }
@@ -4222,7 +4237,7 @@ mod tests {
         use h3_content::SpellCategory;
         let r = compile(&[SYNTHETIC_PACK, SYNTHETIC_EXT_PACK], "synthetic:faithful").unwrap();
         assert_eq!(r.spell_schools().len(), 2);
-        assert_eq!(r.spells().len(), 44);
+        assert_eq!(r.spells().len(), 46);
         // Pack format v6: the storm school's protection rank; stone's defaults to 0.
         let ranks: Vec<u8> = r
             .spell_schools()

@@ -1241,6 +1241,34 @@ creature = "Obsidian Gargoyle"
 abilities = [{ kind = "spell_immunity", spell = "base:poison" }]
 sources = ["exe-strike-statuses"]
 
+# Bind and Acid Breath (E04b T7a3, pack format v21; installation.md 7.20): 0x440500 puts them in
+# the struck stack's pending spell without a test (Bind only once per binder, Acid Breath only on
+# a stack whose defense is above 0); 0x440BC0 adds the Rust Dragon's extra damage after them.
+[[source]]
+id = "exe-bind-acid"
+kind = "original-data"
+ref = "Heroes3.exe code reading (docs/formats/installation.md 7.20): 0x440500 puts Bind (Dendroids) in the struck stack's pending spell unless the striker is among its binders (lists +0x504 and +0x4F4), Acid Breath (Rust Dragons) if its defense is above 0, both without the test 0x5A8640; Bind lasts 255 rounds (0x5A15C7), the pathfinder gives a stack under it no movement (0x4B2DE0, 0x4B350B), 0x43EE10 releases a binder's targets when it walks (0x4420A3), flies (0x4B49E1), teleports as a Devil (0x4B4EB1), dies (0x4441C7) or is teleported (0x5A1B88), and a stack teleported loses its Bind (0x5A1B91); Acid Breath lowers the defense by 3 to at least 0 for the battle (0x5A1E70); 0x440BC0: Rust Dragons 20 %, a roll of the damage range times the creatures, halved"
+url = "docs/formats/installation.md"
+retrieved = "2026-10-08"
+
+[[creature_abilities]]
+creature = "Dendroid Guard"
+abilities = [{ kind = "spell_after_strike", spell = "base:bind", chance_percent = 100, mastery = 0, rounds = 3 }]
+sources = ["exe-bind-acid"]
+
+[[creature_abilities]]
+creature = "Dendroid Soldier"
+abilities = [{ kind = "spell_after_strike", spell = "base:bind", chance_percent = 100, mastery = 0, rounds = 3 }]
+sources = ["exe-bind-acid"]
+
+[[creature_abilities]]
+creature = "Rust Dragon"
+abilities = [
+    { kind = "spell_after_strike", spell = "base:acid_breath", chance_percent = 100, mastery = 0, rounds = 3, defended = true },
+    { kind = "damage_after_strike", chance_percent = 20, percent = 50 },
+]
+sources = ["exe-bind-acid"]
+
 # ---------------------------------------------------------------------------------------------
 # Hero content (E04a T3): what the executable's hero tables and the text tables do not hold.
 # ---------------------------------------------------------------------------------------------
@@ -2345,6 +2373,26 @@ spell = "Poison"
 changes = ["poison"]
 requires = ["alive"]            # 0x44A4D0 spares creatures that are not living
 sources = ["exe-strike-statuses"]
+
+# Bind and Acid Breath (E04b T7a3, pack format v21; installation.md 7.20): cast after a strike
+# without a test; Bind lasts 255 rounds, Acid Breath the battle, lowering the defense again at
+# each strike.
+[[spells.timed]]
+spell = "Bind"
+changes = ["bind"]
+duration = "fixed"
+fixed_rounds = 255
+ignores_immunity = true
+sources = ["exe-bind-acid"]
+
+[[spells.timed]]
+spell = "Acid breath"
+changes = ["defense_loss"]
+duration = "permanent"
+cumulative = true
+ignores_immunity = true
+effect = [3, 3, 3, 3]           # 0x5A1E70 takes 3
+sources = ["exe-bind-acid"]
 
 # Dispel Helpful Spells (E04b T7a1, pack format v19; installation.md 7.20): the flies' strike
 # spell ends the active spells of positive type (0x5A177E); its own test (0x5A8090) needs one and

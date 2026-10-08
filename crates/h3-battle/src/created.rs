@@ -313,11 +313,17 @@ fn created<S: Sink>(state: &BattleState, id: StackId, original: Option<StackId>,
     }));
 }
 
-/// After stack `s` died (BAT-MAG-038; the original's 0x444120): a dead clone leaves its original
-/// free to be cloned again, a dead original takes its clone with it.
-pub(crate) fn died<S: Sink>(state: &mut BattleState, s: StackId, sink: &mut S) {
+/// After stack `s` took damage or lost creatures, if it died (the original's 0x444120): the stacks
+/// it binds are released (BAT-MAG-045); a dead clone leaves its original free to be cloned again,
+/// a dead original takes its clone with it (BAT-MAG-038).
+pub(crate) fn died<S: Sink>(state: &mut BattleState, ruleset: &Ruleset, s: StackId, sink: &mut S) {
+    if state.at(s).is_alive() {
+        return;
+    }
+    // rule: BAT-MAG-045
+    crate::binds::died(state, ruleset, s, sink);
     let link = state.created.link[s.index()];
-    if link == NO_LINK || state.at(s).is_alive() {
+    if link == NO_LINK {
         return;
     }
     state.created.link[s.index()] = NO_LINK;
@@ -325,12 +331,13 @@ pub(crate) fn died<S: Sink>(state: &mut BattleState, s: StackId, sink: &mut S) {
     if state.at(s).has(StackTraits::CLONE) {
         state.created.rounds[s.index()] = 0;
     } else {
-        vanish(state, StackId(link), sink);
+        vanish(state, ruleset, StackId(link), sink);
     }
 }
 
-/// Clone `c` vanishes (BAT-MAG-038): all its creatures are gone, without a corpse.
-fn vanish<S: Sink>(state: &mut BattleState, c: StackId, sink: &mut S) {
+/// Clone `c` vanishes (BAT-MAG-038): all its creatures are gone, without a corpse; the stacks it
+/// binds are released (BAT-MAG-045).
+fn vanish<S: Sink>(state: &mut BattleState, ruleset: &Ruleset, c: StackId, sink: &mut S) {
     let clone = state.at_mut(c);
     let creatures = clone.count;
     clone.count = 0;
@@ -341,12 +348,13 @@ fn vanish<S: Sink>(state: &mut BattleState, c: StackId, sink: &mut S) {
         stack: c,
         creatures,
     }));
+    crate::binds::died(state, ruleset, c, sink);
 }
 
 /// At a round's start, after the timed effects (BAT-MAG-038; the original's 0x447120): every
 /// living clone (one with rounds left) loses a round, and one left with none vanishes, freeing its
 /// original.
-pub(crate) fn count_down<S: Sink>(state: &mut BattleState, sink: &mut S) {
+pub(crate) fn count_down<S: Sink>(state: &mut BattleState, ruleset: &Ruleset, sink: &mut S) {
     for i in 0..state.stacks.len() {
         let rounds = &mut state.created.rounds[i];
         if *rounds == 0 {
@@ -355,8 +363,8 @@ pub(crate) fn count_down<S: Sink>(state: &mut BattleState, sink: &mut S) {
         *rounds -= 1;
         if *rounds == 0 {
             let c = StackId(u8::try_from(i).unwrap_or(u8::MAX));
-            vanish(state, c, sink);
-            died(state, c, sink);
+            vanish(state, ruleset, c, sink);
+            died(state, ruleset, c, sink);
         }
     }
 }

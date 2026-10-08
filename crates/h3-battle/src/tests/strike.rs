@@ -1,23 +1,30 @@
-//! Spells after a melee strike (E04b T7a1): the strike's spell (BAT-MAG-040), the damage spell
-//! after a strike (BAT-MAG-041) and Dispel Helpful Spells (BAT-MAG-042), after the original's
-//! code (`docs/formats/installation.md` §7.20).
+//! Spells after a melee strike (E04b T7a): the strike's spell (BAT-MAG-040), the damage spell
+//! after a strike (BAT-MAG-041), Dispel Helpful Spells (BAT-MAG-042), the strike's statuses
+//! (BAT-MAG-043, BAT-MAG-044), Bind (BAT-MAG-045), Acid Breath (BAT-MAG-046) and the extra damage
+//! (BAT-MAG-047), after the original's code (`docs/formats/installation.md` §7.20).
 //!
 //! The test creatures are 10/10 with damage 2 and 10 HP: `blinder` casts `t:blind` after every
 //! strike, `hexer` `t:curse` with 25 % on living stacks, `fly` `t:unbless` and then `t:weaken`
 //! at Advanced unless active, `stormbird` deals 10 per creature as `t:bolt`, `twinblinder`
-//! strikes twice and blinds, `weakener` casts `t:weaken`.
+//! strikes twice and blinds, `weakener` casts `t:weaken`; `binder` (speed 3) binds with
+//! `t:tether`, `corroder` (damage 2 to 4) breathes `t:acid` and deals half a roll per creature,
+//! `nibbler` (damage 1) a fifth of the time half a roll.
 
 use std::string::String;
 use std::vec;
 use std::vec::Vec;
 
 use h3_content::{Ruleset, SpellId};
+use h3_contracts::{BattleHero, BattleSide};
 
 use super::spells::{arena, spell};
 use super::support::*;
 use crate::effects::TimedCast;
 use crate::magic::SpellBonus;
-use crate::{BattleState, Command, Event, EventKind, StackId, Status};
+use crate::{
+    BattleState, CastTarget, Command, Event, EventKind, LegalCommands, StackId, Status,
+    legal_commands,
+};
 
 /// The active stack attacks `target` from `(x, y)`.
 fn hit(s: &mut BattleState, r: &Ruleset, target: u8, (x, y): (i32, i32)) -> Vec<Event> {
@@ -516,4 +523,268 @@ fn poison_takes_a_tenth_at_the_strike_and_each_round_and_stays_until_a_cure() {
     let (mut s, _) = struck(&r, "wyvern", "serf");
     crate::created::clone(&mut s, &r, (StackId(2), 3), &mut Vec::<Event>::new());
     assert_eq!(s.at(StackId(3)).max_hp, 10);
+}
+
+// ---------------------------------------------------------------- BAT-MAG-045 to 047
+
+/// Whether `events` report the end of `t:tether` (Bind) on stack `id`.
+fn unbound(r: &Ruleset, events: &[Event], id: u8) -> bool {
+    events.contains(&Event::public(EventKind::EffectEnded {
+        target: StackId(id),
+        spell: spell(r, "tether"),
+    }))
+}
+
+/// Two binders at (7, 5) and (9, 5), `fixed` ×10 between them at (8, 5); the first has struck
+/// it, `fixed` ×5 waits at (3, 3).
+fn bound(r: &Ruleset, heroes: [Option<BattleHero>; 2]) -> BattleState {
+    let mut s = arena(
+        r,
+        heroes,
+        &[("binder", 5, 7, 5), ("binder", 1, 9, 5), ("fixed", 5, 3, 3)],
+        &[("fixed", 10, 8, 5)],
+        1,
+    );
+    let events = hit(&mut s, r, 3, (7, 5));
+    assert_eq!(
+        strike_spells(r, &events),
+        vec![(0, 3, String::from("tether"))]
+    );
+    s
+}
+
+// covers: BAT-MAG-045
+#[test]
+fn bind_holds_the_struck_stack_for_255_rounds_where_it_attacks_only_next_to_it() {
+    let r = ruleset();
+    let mut s = bound(&r, [None, None]);
+    // No test, fixed rounds; the struck stack retaliated and is bound.
+    assert_eq!(on(&s, &r, 3), vec![(String::from("tether"), Some(255), 0)]);
+    assert!(crate::binds::is_bound(&s, StackId(3)));
+    // Its commands: no move, attacks from where it stands only (both binders next to it).
+    activate(&mut s, 3);
+    let mut legal = LegalCommands::new();
+    legal_commands(&s, &r, BattleSide::Defender, &mut legal);
+    assert!(!legal.iter().any(|c| matches!(c, Command::Move { .. })));
+    let attacks: Vec<_> = legal
+        .iter()
+        .filter_map(|c| match *c {
+            Command::Attack { target, from } => Some((target.0, from)),
+            _ => None,
+        })
+        .collect();
+    let here = at(&r, 8, 5);
+    assert_eq!(attacks, vec![(0, here), (1, here)]);
+    let walk = Command::Move { to: at(&r, 8, 6) };
+    assert_eq!(act(&mut s, &r, walk), Err(crate::CommandError::Unreachable));
+    // The same binder strikes again: nothing (it already binds the stack).
+    activate(&mut s, 0);
+    assert!(strike_spells(&r, &hit(&mut s, &r, 3, (7, 5))).is_empty());
+    // The rounds pass; a stack left without binders is free (rounds counted down meanwhile).
+    new_round(&mut s, &r);
+    assert_eq!(on(&s, &r, 3), vec![(String::from("tether"), Some(254), 0)]);
+}
+
+// covers: BAT-MAG-045
+#[test]
+fn bind_ends_when_its_last_binder_moves_or_dies() {
+    let r = ruleset();
+    let mut s = bound(&r, [None, None]);
+    // The second binder joins (the struck stack retaliated already this round).
+    activate(&mut s, 1);
+    let events = hit(&mut s, &r, 3, (9, 5));
+    assert_eq!(
+        strike_spells(&r, &events),
+        vec![(1, 3, String::from("tether"))]
+    );
+    // The first one walks away: the second still binds it.
+    activate(&mut s, 0);
+    let events = act(&mut s, &r, Command::Move { to: at(&r, 6, 5) }).unwrap();
+    assert!(!unbound(&r, &events, 3));
+    assert!(crate::binds::is_bound(&s, StackId(3)));
+    // The bound stack kills the second binder: free.
+    activate(&mut s, 3);
+    let events = hit(&mut s, &r, 1, (8, 5));
+    assert!(!s.at(StackId(1)).is_alive());
+    assert!(unbound(&r, &events, 3));
+    assert!(!crate::binds::is_bound(&s, StackId(3)));
+    assert!(on(&s, &r, 3).is_empty());
+    // Now it moves.
+    activate(&mut s, 3);
+    act(&mut s, &r, Command::Move { to: at(&r, 8, 6) }).unwrap();
+}
+
+// covers: BAT-MAG-045
+#[test]
+fn teleport_ends_the_bind_of_a_stack_teleported_and_frees_the_stacks_of_a_binder() {
+    let r = ruleset();
+    let porter = || {
+        let mut h = super::spells::mage(&r, &["teleport"]);
+        h.magic.mana = 100;
+        Some(h)
+    };
+    let s = bound(&r, [porter(), porter()]);
+    let teleport = |id: u8, x, y| Command::Cast {
+        spell: spell(&r, "teleport"),
+        target: super::spells::stack(id),
+        second: CastTarget::Hex(at(&r, x, y)),
+    };
+    // The bound stack's hero teleports it.
+    let mut t = s.clone();
+    activate(&mut t, 3);
+    let events = act(&mut t, &r, teleport(3, 12, 5)).unwrap();
+    assert!(unbound(&r, &events, 3));
+    assert!(!crate::binds::is_bound(&t, StackId(3)));
+    // The binder's hero teleports the binder.
+    let mut t = s.clone();
+    activate(&mut t, 0);
+    let events = act(&mut t, &r, teleport(0, 2, 2)).unwrap();
+    assert!(unbound(&r, &events, 3));
+    // Any other cast keeps it.
+    let mut t = s;
+    activate(&mut t, 0);
+    let events = act(&mut t, &r, teleport(2, 2, 2)).unwrap();
+    assert!(!unbound(&r, &events, 3));
+}
+
+// covers: BAT-MAG-045
+#[test]
+fn dispel_ends_bind_cure_does_not_and_the_binder_may_bind_again() {
+    let r = ruleset();
+    let cleric = || {
+        let mut h = super::spells::mage(&r, &["cure", "dispel"]);
+        h.magic.mana = 100;
+        Some(h)
+    };
+    let mut s = bound(&r, [None, cleric()]);
+    activate(&mut s, 3);
+    let cure = super::spells::cast(&r, "cure", super::spells::stack(3));
+    act(&mut s, &r, cure).unwrap();
+    assert!(crate::binds::is_bound(&s, StackId(3)));
+    new_round(&mut s, &r);
+    activate(&mut s, 3);
+    let dispel = super::spells::cast(&r, "dispel", super::spells::stack(3));
+    let events = act(&mut s, &r, dispel).unwrap();
+    assert!(unbound(&r, &events, 3));
+    activate(&mut s, 0);
+    let events = hit(&mut s, &r, 3, (7, 5));
+    assert_eq!(
+        strike_spells(&r, &events),
+        vec![(0, 3, String::from("tether"))]
+    );
+}
+
+// covers: BAT-MAG-025, BAT-MAG-045
+#[test]
+fn a_bound_berserk_stack_attacks_only_next_to_it() {
+    let r = ruleset();
+    let mut s = arena(
+        &r,
+        [None, None],
+        &[("fixed", 5, 2, 5)],
+        &[("fixed", 5, 4, 5)],
+        1,
+    );
+    give(&mut s, &r, (0, "berserk"), 1);
+    give(&mut s, &r, (0, "tether"), 0);
+    let mut events = Vec::new();
+    crate::turn::berserk_now(&mut s, &r, &mut events);
+    assert!(events.contains(&Event::public(EventKind::TurnPassed { stack: StackId(0) })));
+    assert_eq!(s.at(StackId(0)).hex, at(&r, 2, 5));
+    // Next to a stack, it attacks it.
+    place(&mut s, &r, 1, 3, 5);
+    activate(&mut s, 0);
+    let mut events = Vec::new();
+    crate::turn::berserk_now(&mut s, &r, &mut events);
+    assert_eq!(strikes(&events), vec![(0, 1), (1, 0)]);
+}
+
+/// The extra damage `events` report, as `(striker, target, damage, kills)`.
+fn extra(events: &[Event]) -> Vec<(u8, u8, u64, u32)> {
+    events
+        .iter()
+        .filter_map(|e| match e.kind {
+            EventKind::StrikeDamage {
+                striker,
+                target,
+                damage,
+                kills,
+            } => Some((striker.0, target.0, damage, kills)),
+            _ => None,
+        })
+        .collect()
+}
+
+// covers: BAT-MAG-046
+#[test]
+fn acid_breath_lowers_the_defense_by_three_for_the_battle_down_to_0() {
+    let r = ruleset();
+    let mut s = duel(&r, "corroder", "seraph", 1);
+    let mut defenses = Vec::new();
+    for _ in 0..8 {
+        activate(&mut s, 0);
+        let events = hit(&mut s, &r, 1, (7, 5));
+        let acid = strike_spells(&r, &events).len();
+        defenses.push((acid, s.at(StackId(1)).defense_now()));
+    }
+    // 20, 17, …, 2, then 0; at 0 the breath does nothing.
+    let lowered = [17, 14, 11, 8, 5, 2, 0].map(|d| (1, d));
+    assert_eq!(defenses, [&lowered[..], &[(0, 0)]].concat());
+    assert_eq!(on(&s, &r, 1), vec![(String::from("acid"), None, 3)]);
+    // For the battle: the rounds pass.
+    for _ in 0..4 {
+        new_round(&mut s, &r);
+    }
+    assert_eq!(s.at(StackId(1)).defense_now(), 0);
+    // Without a test: also on a stack immune to its level.
+    let mut s = duel(&r, "corroder", "gilded", 1);
+    let events = hit(&mut s, &r, 1, (7, 5));
+    assert_eq!(
+        strike_spells(&r, &events),
+        vec![(0, 1, String::from("acid"))]
+    );
+}
+
+// covers: BAT-MAG-047
+#[test]
+fn the_extra_damage_is_a_share_of_one_roll_per_creature_after_the_breath() {
+    let r = ruleset();
+    let mut s = duel(&r, "corroder", "seraph", 1);
+    let events = hit(&mut s, &r, 1, (7, 5));
+    // The strike, the breath, then 50 % of one roll of 2 to 4 times five creatures.
+    let rows = extra(&events);
+    assert_eq!(rows.len(), 1);
+    let (striker, target, damage, kills) = rows[0];
+    assert_eq!((striker, target, kills), (0, 1, 0));
+    assert!([5, 7, 10].contains(&damage), "{damage}");
+    let order: Vec<_> = events
+        .iter()
+        .filter(|e| {
+            matches!(
+                e.kind,
+                EventKind::StrikeSpell { .. } | EventKind::StrikeDamage { .. }
+            )
+        })
+        .collect();
+    assert!(matches!(order[0].kind, EventKind::StrikeSpell { .. }));
+    let struck = damages(&events)[0].2;
+    let seraphs = s.at(StackId(1));
+    assert_eq!(u64::from(seraphs.max_hp - seraphs.top_hp), struck + damage);
+    // A draw per strike; nothing when the share rounds to 0 (one nibbler: half of 1).
+    let mut drawn = 0;
+    for seed in 0..10 {
+        let mut s = arena(
+            &r,
+            [None, None],
+            &[("nibbler", 1, 7, 5), ("nibbler", 4, 9, 5)],
+            &[("seraph", 10, 8, 5)],
+            seed,
+        );
+        assert!(extra(&hit(&mut s, &r, 2, (7, 5))).is_empty());
+        activate(&mut s, 1);
+        let rows = extra(&hit(&mut s, &r, 2, (9, 5)));
+        assert!(rows.iter().all(|&(_, _, damage, _)| damage == 2));
+        drawn += rows.len();
+    }
+    assert!((1..10).contains(&drawn), "{drawn}");
 }

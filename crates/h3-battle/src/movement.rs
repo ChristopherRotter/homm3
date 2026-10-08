@@ -9,6 +9,7 @@
 
 use h3_content::MAX_FIELD_HEXES;
 
+use crate::binds;
 use crate::geometry::{Field, Hex, HexSet};
 use crate::obstacles;
 use crate::state::{BattleState, Stack, StackId, StackTraits};
@@ -56,9 +57,21 @@ pub(crate) fn fits(field: Field, mover: &Stack, hex: Hex, blocked: HexSet) -> bo
         .is_some_and(|fp| free(fp.head) && fp.tail.is_none_or(free))
 }
 
-/// Computes where `mover` (stack `id`) can move this turn: within its speed now (BAT-MAG-011).
+/// Computes where `mover` (stack `id`) can move this turn: within its speed now (BAT-MAG-011),
+/// nowhere while it is bound (BAT-MAG-045).
 pub(crate) fn reachable(state: &BattleState, field: Field, id: StackId, mover: &Stack) -> Reach {
-    reachable_within(state, field, id, mover, mover.speed_now())
+    reachable_within(state, field, id, mover, range(state, id, mover))
+}
+
+/// How far `mover` (stack `id`) moves this turn: its speed now (BAT-MAG-011), 0 while it is
+/// bound (BAT-MAG-045).
+// rule: BAT-MAG-045
+pub(crate) fn range(state: &BattleState, id: StackId, mover: &Stack) -> u8 {
+    if binds::is_bound(state, id) {
+        0
+    } else {
+        mover.speed_now()
+    }
 }
 
 /// Computes where `mover` (stack `id`) can move within `range`. Walkers take up to `range` steps
@@ -158,7 +171,7 @@ pub(crate) fn path(
     mover: &Stack,
     to: Hex,
 ) -> ([Hex; MAX_PATH], usize) {
-    let reach = reachable_within(state, field, id, mover, mover.speed_now());
+    let reach = reachable(state, field, id, mover);
     let mut out = [Hex(0); MAX_PATH];
     let Some(steps) = reach.steps(to).map(usize::from) else {
         return (out, 0);

@@ -23,6 +23,7 @@ extern crate alloc;
 extern crate std;
 
 mod after_strike;
+mod binds;
 mod combat;
 mod command;
 mod control;

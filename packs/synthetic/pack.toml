@@ -133,7 +133,8 @@ fight_value = 220
 ai_value = 250
 adventure_count = [10, 25]
 flags = ["alive", "two_hex", "king_1"]     # king_1: Smiting counts against it (BAT-MAG-014)
-# Format v19: spells after a melee strike (BAT-MAG-040 to BAT-MAG-042); v20: the statuses.
+# Format v19: spells after a melee strike (BAT-MAG-040 to BAT-MAG-042); v20: the statuses; v21:
+# Bind, Acid Breath and the extra damage (BAT-MAG-045 to BAT-MAG-047).
 abilities = [
     { kind = "spell_after_strike", spell = "glare", chance_percent = 100, mastery = 0, rounds = 3 },
     { kind = "spell_after_strike", spell = "dazzle", chance_percent = 20, mastery = 0, rounds = 3, unless_active = true },
@@ -144,6 +145,9 @@ abilities = [
     { kind = "spell_after_strike", spell = "rot", chance_percent = 10, mastery = 0, rounds = 3, living = true },
     { kind = "spell_after_strike", spell = "wane", chance_percent = 10, mastery = 0, rounds = 3, living = true },
     { kind = "spell_after_strike", spell = "taint", chance_percent = 30, mastery = 0, rounds = 3, living = true },
+    { kind = "spell_after_strike", spell = "tangle", chance_percent = 25, mastery = 0, rounds = 3 },
+    { kind = "spell_after_strike", spell = "etch", chance_percent = 30, mastery = 0, rounds = 3, defended = true },
+    { kind = "damage_after_strike", chance_percent = 20, percent = 50 },
 ]
 
 [[creature]]
@@ -898,6 +902,38 @@ side = "enemy"
 requires = ["alive"]
 excludes = ["war_machine"]
 effects = [{ kind = "timed", change = "poison" }]
+
+# Format v21: Bind and Acid Breath (BAT-MAG-045, BAT-MAG-046), cast by the Brutes' strikes without
+# a test.
+[[spell]]
+id = "tangle"                       # a Bind: no movement while a striker that bound it stays
+name = "Tangle"
+category = "ability"
+level = 0
+cost = [0, 0, 0, 0]
+effect = [0, 0, 0, 0]
+polarity = "negative"
+target = "stack"
+side = "enemy"
+duration = "fixed"
+fixed_rounds = 255
+ignores_immunity = true
+effects = [{ kind = "timed", change = "bind" }]
+
+[[spell]]
+id = "etch"                         # an Acid Breath: −1 defense for the battle, at every strike
+name = "Etch"
+category = "ability"
+level = 0
+cost = [0, 0, 0, 0]
+effect = [1, 1, 1, 1]
+polarity = "negative"
+target = "stack"
+side = "enemy"
+duration = "permanent"
+cumulative = true
+ignores_immunity = true
+effects = [{ kind = "timed", change = "defense_loss" }]
 
 [[secondary_skill]]
 id = "marksmanship"

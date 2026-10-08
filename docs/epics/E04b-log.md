@@ -1161,3 +1161,30 @@ records how and why the tasks went.
 - **Versions:** pack format v20, ruleset hash v29 (`restores_health`, the new timed changes),
   state hash v31 (the vitality table), observation encoding v7 (the effects list and the hit
   points already show it), C ABI v11, replay format v18.
+
+### T7a3 — Bind, Acid Breath and the Rust Dragon's extra damage (2026-10-08)
+
+- **Code reading** (§7.20, extended): the binder release 0x43EE10 runs on every move of a binder
+  (the move handler 0x445990: walk, flight, a Devil's teleporting move), at its death (0x444120)
+  and on Teleport (0x5A1B88), which also ends the teleported stack's own Bind (0x5A1B91); the
+  pathfinder reads Bind's duration, not the lists; the Rust Dragon case 0x44149F (T alive, the
+  draw, a roll × creatures / 2 if above 0). Not reproduced: a binder listed on a stack its strike
+  killed (BAT-Q8, recommendation: a harmless bug, not reproduced).
+- **Content:** timed change `bind`; `spell_after_strike` gains `defended`; ability
+  `damage_after_strike`; the gap-fill's timed entries may ignore immunity; Bind (255 rounds) for
+  the Dendroids, Acid Breath (effect 3, permanent, cumulative) and the extra damage (20 %, 50 %)
+  for the Rust Dragon, source `exe-bind-acid` (pack format v21). The synthetic Brute strikes with
+  Tangle (a Bind, 25 %), Etch (an Acid Breath of 1, 30 %, `defended`) and the extra damage.
+- **Battle:** a spell after a strike that ignores immunity is cast without any test (also on war
+  machines); `h3_battle::binds` keeps the bound stacks (materialised in `effects::recompute`, a
+  dead stack never bound) and each stack's binders beside the stacks; a bound stack's movement
+  range is 0 (`movement::range`; a berserk one picks only neighbours); `release` on
+  `obstacles::travel`, Teleport and the death hook `created::died` (which now takes the ruleset;
+  a vanishing clone releases too); `StrikeDamage` event (BAT-MAG-047).
+- **Measurements:** the new binary on T7a2's workload +0.30 % Ir (the per-move and per-death
+  checks); the new workload has 7.1 % fewer steps (bound stacks do not move, battles end
+  sooner) and 6.45 % fewer instructions, re-baselined. Replays re-recorded with new agent seeds:
+  a471, a53, a6, a126, a235.
+- **Versions:** pack format v21, ruleset hash v30 (`defended`, `damage_after_strike`, `bind`),
+  state hash v32 (the binds table), observation encoding v7 (the effects list shows Bind), C ABI
+  v11, replay format v18.

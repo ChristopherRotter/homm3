@@ -245,6 +245,6 @@ pub(crate) fn sacrifice<S: Sink>(
         creatures,
     }));
     // rule: BAT-MAG-038
-    crate::created::died(state, v, sink);
+    crate::created::died(state, ruleset, v, sink);
     (u64::from(health) + value).saturating_mul(u64::from(creatures))
 }

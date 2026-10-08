@@ -50,6 +50,12 @@ The original picks Chain Lightning's next target by screen distance; the y posit
 
 **User (2026-10-08, T6 checkpoint): experiment first, then decide.** The engine keeps today's behaviour until the batch is evaluated. Staged in batch 2d (2026-10-08): Necromancy and experience (NE), the end against only elementals by elimination, retreat and surrender (SU), the surrender price with a clone and with elementals (CL1, SU).
 
+#### BAT-Q8 — Bind: a binder listed on a stack its strike killed (E04b T7a3)
+
+**Context.** The original's strike (0x440500, `docs/formats/installation.md` §7.20) adds a Dendroid to the binder list of the struck stack before it checks that the stack lives; a stack the strike killed keeps that entry (no Bind is cast) until the Dendroid moves or dies. If the dead stack is raised in the meantime (Resurrection, Animate Dead) and the same Dendroid strikes it, the original does not bind it. Whether the death or the raising clears the list was not read.
+
+**Options.** (a) Do not reproduce: the engine binds only a living stack and a dead stack has no binders (as built in T7a3). (b) Reproduce it as a `preserve` quirk with a flag. **Recommendation: (a)**, as a harmless original bug: it needs a raising between two strikes of the same Dendroid that did not move, and costs an extra list state that the engine's invariant (only a bound stack has binders) avoids. An experiment could settle whether the original really keeps the entry. Blocks nothing.
+
 ### Adventure lane (`ADV-Q<n>`)
 
 (no open questions)

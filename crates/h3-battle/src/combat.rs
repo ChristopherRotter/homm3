@@ -488,7 +488,7 @@ fn attack<S: Sink>(
     let heal = heal * u64::from(state.at(attacker).is_alive());
     life_drain(state, attacker, heal, sink);
     if stare > 0 {
-        death_stare(state, pair, stare, sink);
+        death_stare(state, ruleset, pair, stare, sink);
     }
     // A clone that killed its own original is gone (BAT-MAG-038).
     if reflected > 0 && state.at(attacker).is_alive() {
@@ -543,6 +543,7 @@ pub(crate) const STARE_ROLL_LIMIT: u32 = 65_536;
 // rule: BAT-DMG-009
 fn death_stare<S: Sink>(
     state: &mut BattleState,
+    ruleset: &Ruleset,
     (attacker, target): (StackId, StackId),
     chance: u8,
     sink: &mut S,
@@ -584,7 +585,7 @@ fn death_stare<S: Sink>(
         kills,
     }));
     // rule: BAT-MAG-038
-    crate::created::died(state, target, sink);
+    crate::created::died(state, ruleset, target, sink);
 }
 
 /// The secondary targets of a melee attack of `attacker` on `target` (BAT-ATK-003), from the

@@ -9,6 +9,7 @@
 use h3_content::{ATTACK_FROM_SEEN_PIT, Ruleset};
 use h3_kernel::FixedVec;
 
+use crate::binds;
 use crate::combat::{can_shoot, melee, shoot};
 use crate::event::{Event, EventKind, Sink};
 use crate::geometry::{Field, Hex};
@@ -29,7 +30,8 @@ type Choice = (StackId, Hex, u32);
 /// or fly to, by the steps to the nearest such position (the first in canonical order on ties).
 /// One of the nearest is drawn with equal chances. A shooter shoots at it; a stack that reaches
 /// the position this turn walks there and attacks; one that does not walks towards it as far as
-/// its speed takes it. Without candidates, or unable to move, its turn passes (`TurnPassed`).
+/// its speed takes it. A bound stack does not move: its candidates are those next to it
+/// (BAT-MAG-045). Without candidates, or unable to move, its turn passes (`TurnPassed`).
 /// Returns whether it moved, attacked or shot.
 // rule: BAT-MAG-025
 pub(crate) fn berserk<S: Sink>(
@@ -41,7 +43,13 @@ pub(crate) fn berserk<S: Sink>(
     let field = Field::new(ruleset.battle().field);
     let me = *state.at(id);
     let shooting = can_shoot(state, field, id);
-    let reach = reachable_within(state, field, id, &me, ANY_RANGE);
+    // rule: BAT-MAG-045
+    let range = if binds::is_bound(state, id) {
+        0
+    } else {
+        ANY_RANGE
+    };
+    let reach = reachable_within(state, field, id, &me, range);
     let pit_attacks = ruleset.quirks().is_enabled(ATTACK_FROM_SEEN_PIT);
     let mut nearest: FixedVec<Choice, STACK_CAPACITY> = FixedVec::new();
     let candidates = (0u8..)
