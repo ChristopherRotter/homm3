@@ -2694,3 +2694,42 @@ numeric  = "integer"
   url        = "https://github.com/vcmi/vcmi/blob/1.7.5/lib/spells/effects/Summon.cpp"
   retrieved  = "2026-10-05"
   confidence = "medium"
+
+[[rule]]
+id       = "BAT-MAG-040"
+title    = "Spells after a melee strike"
+context  = "battle"
+status   = "implemented"
+summary  = "A creature with spell_after_strike abilities (Ability::SpellAfterStrike: Unicorns Blind 20 %, Black and Dread Knights and Mummies Curse 25 %, Serpent and Dragon Flies Dispel Helpful Spells (BAT-MAG-042), Dragon Flies Weakness at mastery 2 unless active) casts, after each of its melee strikes (the attack, its retaliation, the second strike; never a shot), once the strike's damage is dealt and before life drain and death stare, each ability's spell on the struck stack, in ability order: if the ability needs a living creature (flag alive) the stack has one; the ability's chance (one draw, none at 100 %); the stack is alive; with unless_active the spell is not active on it; then the creature's test: the spell can affect the stack (its conditions, immunities, Anti-Magic; BAT-MAG-005, BAT-MAG-021) and the stack does not resist it (magic resistance and aura with their own draw, BAT-MAG-008; none for a positive spell), with no side test (a hypnotized or berserk striker's own stacks may be struck) and no Magic Mirror. The spell then acts as a creature's cast without a hero at the ability's mastery (0: Blind's 50 % retaliation share, Curse's 0), its timed effects lasting the ability's rounds (3), with no specialist or duration bonus (BAT-MAG-009); StrikeSpell reports it before the spell's own events. A spell that stops the target's turns (Blind) also stops its retaliation to that attack, and an attacker that a retaliation's spell blinded makes no second strike."
+numeric  = "integer"
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (docs/formats/installation.md §7.20): 0x441CB0 (retaliation unless petrified or the strike answers no retaliation; second strike unless blind, petrified or paralysed); 0x441610 runs 0x440500 (the pending spell by the striker's creature, chance draw, 0x5A8640 = 0x5A8090 without its side test and a draw on f x 100), 0x468990 (casts the pending spells with 0x59FE30 as a creature, mastery 0, power 3), then 0x440BC0 (the striker's effects); 0x440BC0 casts Dispel Helpful Spells and the Dragon Fly's Weakness at mastery 2 directly"
+  confidence = "high"
+
+[[rule]]
+id       = "BAT-MAG-041"
+title    = "A damage spell after a melee strike"
+context  = "battle"
+status   = "implemented"
+summary  = "A creature with a spell_damage_after_strike ability (Ability::SpellDamageAfterStrike: the Thunderbird's thunderbolt as Lightning Bolt, 20 %, 10 per creature) deals, after each of its melee strikes with the spells of BAT-MAG-040, if the struck stack is alive and the ability's chance is drawn, per_creature x its creatures damage as the named spell: the spell's test as in BAT-MAG-040 (Earth and Magma Elementals immune to Lightning Bolt, the dragons' level immunity, Anti-Magic, resistance and aura), then the damage without a hero's bonuses and with the target's extra damage, reduction and school protection (BAT-MAG-004); StrikeSpell and SpellDamage report it, and what damage ends ends (BAT-MAG-024, BAT-MAG-038)."
+numeric  = "integer"
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (docs/formats/installation.md §7.20): 0x440BC0 case 93: random(1, 100) <= 20, 0x5A8640 for spell 17, damage 0x5A78E0(count x 10, spell 17) without a hero, then 0x444090"
+  confidence = "high"
+
+[[rule]]
+id       = "BAT-MAG-042"
+title    = "Dispel Helpful Spells"
+context  = "battle"
+status   = "implemented"
+summary  = "A spell whose dispel effect has dispels_positive (Dispel Helpful Spells, a creature ability) ends only the timed effects of positive spells (BAT-MAG-016), and a strike casts it (BAT-MAG-040) only on a stack with such an effect, with no immunity, Anti-Magic, resistance or aura test (it ends Anti-Magic too). The Sphere of Permanence's protection joins with the artifacts (E04b T8)."
+numeric  = "integer"
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (docs/formats/installation.md §7.10, §7.20): 0x5A177E ends every active spell 10-69 of positive type (0x444510); 0x5A8090's case for spell 78 returns 0 for the Sphere of Permanence, else 1 if the stack has an active positive spell, before the immunity, Anti-Magic, resistance and aura tests"
+  confidence = "high"

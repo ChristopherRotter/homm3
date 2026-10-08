@@ -1098,3 +1098,37 @@ records how and why the tasks went.
 - **Not staged:** a clone killed by 0 damage (VCMI 1.7.5 spares a clone from a 0-damage hit, the
   original kills it; no hero spell deals 0 in SoD); the elementals' native terrain with the game
   setting that keeps it (0x43D730, not read).
+
+### T7 cut and T7a1 — the strike's spells (2026-10-08)
+
+- **Cut** (the user, increment 6): T7a in two parts (T7a1 the strike's spells, T7a2 the new
+  statuses), batch 2d folded in at the checkpoint after T7a2; T7b (casting creatures) and T7c
+  (defences, auras, mana) refined then. The code reading confirmed the split.
+- **Code reading** (`installation.md` §7.20): the melee attack 0x441CB0 (retaliation unless
+  petrified or the strike answers "no retaliation"; the second strike unless the attacker is blind,
+  petrified or paralysed), the strike 0x441610 (damage, then 0x440500 puts the striker's spell in
+  the target's pending spell, 0x468990 casts the pending spells as a creature at mastery 0 with
+  power 3, then 0x440BC0's striker effects, then Fire Shield), the table of 0x440500 (chances,
+  living targets, Bind's lists, Acid Breath without a test), the test 0x5A8640 (0x5A8090 without
+  its side test, a second draw), 0x440BC0 (Thunderbird, flies, Rust Dragon), the cast routine's
+  handlers for spells 70–80 and their cases in 0x4448F0, 0x444510 and the round start 0x447120
+  (Poison's tenths kept after it ends; Age, Disease, Bind's release), 0x44A4D0's absolute cases
+  (Stone Gaze spares Troglodytes, Poison the non-living and Gargoyles). Nothing in the shot routine.
+- **Content:** abilities `spell_after_strike` (spell, chance, mastery, rounds, living, unless
+  active; several per creature for different spells) and `spell_damage_after_strike` (spell,
+  chance, per creature), the compiler checks their spells' effects; `dispels_positive` on a
+  dispel effect (pack format v19); gap-fill: Unicorns and War Unicorns Blind 20 %, Black and
+  Dread Knights and Mummies Curse 25 %, Thunderbirds Lightning Bolt 20 % × 10, Serpent Flies
+  Dispel Helpful Spells, Dragon Flies that and Weakness at Advanced unless active (source
+  `exe-after-strike`); the harvester accepts effect entries on ability spells; the synthetic
+  Brute strikes with Glare (a Dispel Helpful), Dazzle, Bane and Spark.
+- **Battle:** `h3_battle::after_strike` (BAT-MAG-040 to BAT-MAG-042): after the strikes of a melee
+  attack and before life drain, in ability order; `StrikeSpell` event; `affects_stack`,
+  `resists` and `spell_damage` shared with the hero's casts; a turn-stopping spell (Blind) stops
+  the retaliation, a blinded attacker loses its second strike; `dispel_ends` honours
+  `dispels_positive`.
+- **Measurements:** the new binary on the old workload −0.11 % Ir; the new workload (Brutes'
+  spells: +7.2 % steps) +8.52 %, re-baselined. Golden replays re-recorded (ruleset hash) with new
+  agent seeds showing T5–T6's features and the strike spells: a385, a1059, a124, a300, a301.
+- **Versions:** pack format v19, ruleset hash v28; state hash v30, observation encoding v7, C ABI
+  v11, replay format and action encoding unchanged.
