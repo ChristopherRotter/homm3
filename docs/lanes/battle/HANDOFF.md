@@ -4,11 +4,11 @@ The battle lane's living state; read after the global `docs/HANDOFF.md`. Format 
 
 ## Current state
 
-- **Branch:** `battle/e04b-t6-checkpoint` (the checkpoint's notes). PRs #7, #8 and #9 (T6) are merged; their branches are gone. Work on `battle/<task>` branches from `master`, one per task or increment, merged at its checkpoint; HANDOFF content goes here, not into `docs/HANDOFF.md`.
-- **E04b increment 4 (the user, 2026-10-08): T6 done (T6a, T6b) and merged.** Increment 3 (T5, batches 2b and 2c) done. Sandbox: `docs/08-work-process.md`, "Cloud sandbox".
+- **Branch:** `battle/e04b-batch-2d` (batch 2d). PRs #7 to #10 (T6 and its checkpoint) are merged; their branches are gone. Work on `battle/<task>` branches from `master`, one per task or increment, merged at its checkpoint; HANDOFF content goes here, not into `docs/HANDOFF.md`.
+- **E04b increment 5 (the user, 2026-10-08): batch 2d alone, compiled** (`experiments/specs/E04b-batch-2d.toml`; the user plays it). Increment 4 (T6a, T6b) done and merged. Sandbox: `docs/08-work-process.md`, "Cloud sandbox".
 - **Done:** survey `docs/rules/surveys/E04b-magic.md` (§12–§15), ADR-0014 accepted (point 5 amended, Q47), design note `docs/epics/E04b-design.md`. Castable by heroes: the 13 damage spells, the 14 value spells, Shield, Air Shield, the Protections (Q-0007), Slayer, Counterstrike (Q-0008), Dispel, Cure, Fire Shield (Q-0010) and Frenzy (Q-0009) (BAT-MAG-001 to 019), the spell specialists (BAT-MAG-020), Anti-Magic and Magic Mirror (BAT-MAG-021/022), Forgetfulness and Blind (BAT-MAG-023/024), Berserk and Hypnotize (BAT-MAG-025/026; a stack's `controller()` commands it), Force Field, Fire Wall, Teleport and Expert Dispel's clearing (BAT-MAG-027 to 030; `h3_battle::obstacles`), hidden obstacles, Quicksand and Land Mine (BAT-MAG-031 to 033; BAT-QUIRK-1/2/4), Remove Obstacle and the natural obstacles as pieces with anchors (BAT-MAG-034, BAT-GEO-003; `h3_battle::natural`, BAT-QUIRK-3), Resurrection, Animate Dead and Sacrifice (BAT-MAG-035/036; `h3_battle::raise`, BAT-QUIRK-5/6), Clone and Summon Elemental (BAT-MAG-037 to 039; `h3_battle::created`, BAT-QUIRK-7), all after the executable's code (`installation.md` §7.8–§7.19). **Physical damage follows the executable's three truncated stages** under Q-0005 (Q50, BAT-DMG-002, `h3_kernel::arith::X87` at 53 bits).
 - **Hero rates** cross the seam as `h3_contracts::Rate` (basis points plus, under Q-0005, the original's single-precision value as an f32 bit pattern where it differs; Q45 (b), T3c2).
-- **Next:** the user decided at the T6 checkpoint to settle BAT-QUIRK-7, BAT-Q7 and the clone's shots by experiment (QUEUE inbox); the next increment (that batch, T7 creature magic) is cut with the user.
+- **Next:** the user plays batch 2d and commits the results; then fold it in (BAT-QUIRK-7, BAT-Q7, the clone's shots; QUEUE inbox) and cut T7 (creature magic) with the user.
 - **Open for later tasks:** batch 2a R6's costs (T7); Q43 (sprite offset, keep the approximation); creature casters' re-casts (T7); the damage stages' creature factors; Dispel's and Fire Shield's loose ends (Sphere T8, obstacles T5, the Sultans' shield T7); T4a's and T4c's loose ends (all in `QUEUE.md`, "Inbox").
 - **Versions (battle owns them):** state hash v30, ruleset hash v27, replay format v18, action encoding v10, C ABI v11, observation encoding v7; pack format v18. New ids: `BAT-Q<n>`, `BAT-QUIRK-<n>`, `BAT-STUB-<n>` (old ids stay).
 - **Ownership:** `h3-content` and `h3-pack` stay with battle until further notice (user, 2026-10-07); `h3-kernel` and `h3-contracts` are shared, so a seam change is its own `shared/` pull request, merged before the battle change that uses it.
@@ -43,6 +43,10 @@ The battle lane's living state; read after the global `docs/HANDOFF.md`. Format 
 
 ## Recent sessions
 
+### 2026-10-08 (thirty-third) — E04b batch 2d compiled
+
+Linked cloud session; PRs #7 to #10 merged, master's CI green, the baseline verify green. The user cut increment 5 as batch 2d alone (T6's candidates only). Eight encounters on grass (CL1, CL2, RA1–RA4, NE, SU), predictions from the engine in a scratch test (harvested SoD packs; for BAT-QUIRK-7 a scratch copy of the place search with the original's hexes free), the code reading and VCMI 1.7.5. CI note: T6b's `cargo xtask verify` failed on the first attempt of two commits (logs not downloadable here). Detail: `docs/epics/E04b-log.md` (batch 2d compiled).
+
 ### 2026-10-08 (thirty-second) — E04b T6b: Clone and Summon Elemental
 
 Same cloud session as T6a, branch `battle/e04b-t6b` (from T6a's head). Reading `installation.md` §7.19: the stack creation (a dead created stack's record reused), Clone's test and place search, its rounds and deaths, Summon Elemental's column and row, the winner test (a side left with only created stacks does not win: `Draw`, the doc in PR #7). `h3_battle::created`, BAT-MAG-037 to 039, BAT-QUIRK-7 (a clone on its own original: exploit-fix, agent). Pack format v18, ruleset hash v27, state hash v30, observation v7, C ABI v11; `BattleState` 5 288 bytes. `movement::fits` without the footprint iterator: old workload −11.3 %, re-baselined. Replays re-recorded with new seeds. An independent review found two T6 items left from T3b2/T4a (Anti-Magic on a clone, a clone's Fire Shield reflection) and targets struck after a clone vanished: fixed. Open: BAT-Q7. Detail: `docs/epics/E04b-log.md` (T6b).
@@ -50,7 +54,3 @@ Same cloud session as T6a, branch `battle/e04b-t6b` (from T6a's head). Reading `
 ### 2026-10-08 (thirty-first) — E04b T6a: Resurrection, Animate Dead, Sacrifice
 
 Linked cloud session; PR #6 had been merged. The user cut T6 (T6a + T6b) before T7 and questioned the `StackOrigin` variants: created stacks cross no seam (ADR-0014 amended, PR #7). Reading `installation.md` §7.18. BAT-QUIRK-5 (Sacrifice tested as Resurrection, fix-optional; S-15), BAT-QUIRK-6 (S-20: one creature kept, counting only army stacks). Pack format v17, ruleset hash v26, state hash v29; a cast that kills the active stack ends its turn; old workload +1.28 %, new +3.45 % (re-baselined); replays re-recorded (a199, a325, a52, a149). Detail: `docs/epics/E04b-log.md` (T6a).
-
-### 2026-10-07/08 (thirtieth) — E04b T5b: Remove Obstacle, obstacles as pieces, BAT-QUIRK-3/4
-
-Cloud session, branch `battle/e04b-t5b`. BAT-Q5: T5 finished in one `cross-lane` PR; Q55 fix-optional (a), BAT-Q4 fix-optional; unattended after the decisions. `BattleSetup.obstacles` as `Obstacle { hexes, anchor }` (ADR-0014 point 10 amended), `h3_battle::natural`, BAT-MAG-034, BAT-QUIRK-3/4. Pack format v16, state hash v28, replay format v18; replays re-recorded, `bench-check` re-baselined. Detail: `docs/epics/E04b-log.md` (T5b).

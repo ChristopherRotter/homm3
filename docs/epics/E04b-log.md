@@ -1061,3 +1061,40 @@ records how and why the tasks went.
   cases, a duplicate summon template); stale docs (stack ids, `base_count`, the turn order's tie,
   `damaged`, the target docs, §7.7, S-21). All fixed; the surrender price with created stacks
   went to BAT-Q7.
+
+### Batch 2d compiled (2026-10-08)
+
+- **Seam:** the user cut increment 5 as batch 2d alone, with T6's candidates only (the older
+  waiting ones, E04a's (1)–(4) and T4a's to T5b's, stay in `docs/experiments/README.md`); T7 is cut
+  at the next checkpoint.
+- **Spec** `experiments/specs/E04b-batch-2d.toml`, template `experiments/results/E04b-batch-2d.md`,
+  map `experiments/out/E04b-batch-2d.h3m` (8 encounters, 8 Red and 8 Blue heroes; grass, so the
+  elementals' native terrain shows). CL1: Clone on both sides in the open (the code: up-right for
+  the attacker, up-left for the defender; VCMI: right, left), both clones act in round 1, the
+  Archer clone's 12 shots after the original fired, Magic Arrow (30) kills the whole clone, the
+  defender's clone gone at the start of round 3; Red's surrender price 800 → 1 300 with the clone
+  (the engine; VCMI 800). CL2 (BAT-QUIRK-7): Griffins and Wolf Riders in row 0 at their edges,
+  blocked below and at the second hex beside the head by a Cavalier and Marksmen (Red) or Goblins
+  and Hobgoblins (Blue), the hex beside the head free: the code's ring 2 takes the head as the
+  clone's position, so no clone appears and the originals vanish at the start of round 3 (the
+  engine's fixed search, and VCMI: a clone in row 2). RA1: Resurrection (290) and Sacrifice refused
+  on a wounded full stack, dead Titans (300) and dead Gold Dragons (immune to level 4), allowed on
+  Pikemen; Sacrifice's victim the target itself (the engine refuses; not read). RA4: the later of
+  two corpses on a hex is raised; a two-hex corpse whose other hex a living stack holds is refused.
+  RA2/RA3: 10 Swordsmen → 5 → 8 (3 temporary) → 2: the army keeps 1 (the code, the engine) or none
+  with a Ballista (the code, S-20; the engine keeps 1; VCMI 2 in both). NE: Necromancy from 10
+  Pikemen, 6 Earth Elementals and a clone of 10 Pikemen at 30 %: the code 7, VCMI 3, the engine's
+  outcome 3; experience 600 (created stacks left out); Air Elementals in an army 9/9/7 (the code)
+  or 10/10/8 (the engine) on grass. SU: Air Elemental with 7 one-Peasant stacks, an Ammo Cart and a
+  First Aid Tent, Blue's Death Ripple and Implosion: E1 in row 3 or 7 of column 1, later summons at
+  random rows of column 1 then 2 (VCMI: always the hex nearest the top left), E3 in E1's record acts
+  before E2, 12 casts until the 20-stack limit, still refused after another dies; ends a (both
+  heroes lose), b (Blue retreats: the code names no winner) and c (Blue surrenders) by reloading.
+- **Predictions** were computed in a scratch test (not committed) on the harvested SoD packs
+  without natural obstacles: `BattleState::start` with derived heroes, commands as in the
+  procedures; for CL2 a scratch copy of `created::clone_place` with the original's hexes free gave
+  the code's place. Found on the way: an army of four alignments lost a blocker's turn to bad
+  morale, so CL2's Blue army is all Stronghold.
+- **Not staged:** a clone killed by 0 damage (VCMI 1.7.5 spares a clone from a 0-damage hit, the
+  original kills it; no hero spell deals 0 in SoD); the elementals' native terrain with the game
+  setting that keeps it (0x43D730, not read).

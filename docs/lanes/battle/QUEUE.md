@@ -4,7 +4,7 @@ Pre-refined tasks of the battle lane, in order, then the inbox of discovered wor
 
 ## Tasks
 
-(none: the next increment, T7 creature magic, is refined at the T6 checkpoint with the user)
+(none: batch 2d is with the user; its fold-in and T7 creature magic are cut at the next checkpoint)
 
 ## Inbox
 
@@ -34,4 +34,4 @@ Pre-refined tasks of the battle lane, in order, then the inbox of discovered wor
 - 2026-10-07 (E04b T5b): loose ends of Remove Obstacle and the natural obstacles (`installation.md` §7.15): the original's random obstacle generator was never read (BAT-GEO-004 is VCMI's), so whether it keeps a later obstacle off an earlier one's free anchor hex is unknown (ours does not; the clearing after a removal follows 0x466B30 either way); harvest the obstacle table from `Heroes3.exe` (inbox, E03 T7) would settle the anchors' offsets too; sieges' moat and walls (E04c) are objects of this machinery. Experiment candidates: `docs/experiments/README.md` (from T5b).
 - 2026-10-08 (E04b T6a): loose ends of the raising spells (`installation.md` §7.18): creature casters' raises (0x5A8090's sixth argument 1: the active stack's count × 100 for Archangels, × 50 otherwise; T7), Pit Lords' demons (T7, the one created stack that stays: decide its outcome record then); the corpse limit of 14 per hex (not modelled). Experiment candidates: `docs/experiments/README.md` (from T6a).
 - 2026-10-08 (E04b T6b): loose ends of the created stacks (`installation.md` §7.19): BAT-Q7 (Necromancy counts killed created stacks, a retreat or surrender against only created stacks names no winner, the surrender price); creature casters that create stacks (T7: Pit Lords' demons); the native terrain of Fire, Earth, Water and Air Elementals in an army (0x43D730 clears their town unless a game setting is on; BAT-TER-001, read the setting); the original's message when no hex is free. Experiment candidates: `docs/experiments/README.md` (from T6b).
-- 2026-10-08 (E04b T6 checkpoint, the user): an experiment batch before deciding BAT-QUIRK-7 (a clone on its own crowded two-hex original), BAT-Q7 (Necromancy from killed elementals and clones, a retreat or surrender against only summons, the surrender price) and the clone's shots (a shooter's clone after it fired); with T6's other candidates (`docs/experiments/README.md`).
+- 2026-10-08 (E04b T6 checkpoint, the user): an experiment batch before deciding BAT-QUIRK-7 (a clone on its own crowded two-hex original), BAT-Q7 (Necromancy from killed elementals and clones, a retreat or surrender against only summons, the surrender price) and the clone's shots (a shooter's clone after it fired); with T6's other candidates (`docs/experiments/README.md`). *(Batch 2d compiled 2026-10-08: `experiments/specs/E04b-batch-2d.toml`; the fold-in follows the user's results.)*
