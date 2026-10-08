@@ -6,7 +6,7 @@ Every session reads this file first, then its lane's `docs/lanes/<lane>/HANDOFF.
 
 | Lane | Owns (`lanes.toml`) | State | Files |
 |---|---|---|---|
-| battle | `h3-battle`, `h3-heroes`, `h3-content`, `h3-pack`, `h3-sim`, `h3-ffi`, `h3-cli`, the formats/tools crates, packs, fixtures, experiments | active: E04b, increment 6 (T7a) and its checkpoint done; the T7b/T7c cut proposed, waiting for the user | [HANDOFF](lanes/battle/HANDOFF.md), [QUEUE](lanes/battle/QUEUE.md) |
+| battle | `h3-battle`, `h3-heroes`, `h3-content`, `h3-pack`, `h3-sim`, `h3-ffi`, `h3-cli`, the formats/tools crates, packs, fixtures, experiments | active: E04b, increment 7 = T7b1 (the creature's cast, PR #19) done; next T7b2, then T6c with T7b3 (the user, BAT-Q10) | [HANDOFF](lanes/battle/HANDOFF.md), [QUEUE](lanes/battle/QUEUE.md) |
 | adventure | `h3-adventure` (new) | refinement session next (E07/E08) | [HANDOFF](lanes/adventure/HANDOFF.md), [QUEUE](lanes/adventure/QUEUE.md) |
 | server | `h3-protocol`, `h3-server` (new) | refinement session next (E16) | [HANDOFF](lanes/server/HANDOFF.md), [QUEUE](lanes/server/QUEUE.md) |
 | client | `clients/` (own Cargo workspace) | waits for the user's asset notes | [HANDOFF](lanes/client/HANDOFF.md), [QUEUE](lanes/client/QUEUE.md) |
