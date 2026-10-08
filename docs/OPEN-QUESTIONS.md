@@ -76,13 +76,13 @@ A player actor for `apply`, `observe` for a player and a spectator, pending deci
 
 Start M0 now (the mapping's "other" fallback protects the build from E04b/E04c additions) or wait for E04b's close.
 
-#### SRV-Q8 — Identity model
+#### SRV-Q8 — Account model
 
-Keypair (recommended; one crypto crate, `ed25519-dalek`) or bearer tokens per server (no dependency, no cross-server identity).
+Password-derived keypair (recommended: name and password become a signing key on the device, no secret is sent or stored, any device with the password has the account; two crypto crates, `ed25519-dalek` and `argon2`) or classic password accounts hashed on each server (one crate; the password travels, so every login needs TLS). A keypair per device was dropped: a new device would need the key file (the user, 2026-10-08).
 
 #### SRV-Q9 — Persistence
 
-JSON-lines logs in a data directory (recommended) or an embedded store from the start.
+Journals and JSON-lines logs in a data directory, synced per write and rebuilt at start (recommended), or an embedded store from the start. The write-ahead journal, which restores open games after a crash or a pause by re-running them, is the same under both.
 
 #### SRV-Q10 — Milestone order
 
