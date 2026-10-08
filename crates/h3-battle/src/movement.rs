@@ -48,12 +48,12 @@ impl Reach {
 /// standable and not in `blocked`.
 #[inline]
 pub(crate) fn fits(field: Field, mover: &Stack, hex: Hex, blocked: HexSet) -> bool {
+    // Head and tail tested directly: the footprint's hex iterator is not always inlined in this
+    // hot path (BACKLOG, codegen swings).
+    let free = |h: Hex| field.is_standable(h) && !blocked.contains(h);
     field
         .footprint(hex, mover.is_two_hex(), mover.side)
-        .is_some_and(|fp| {
-            fp.hexes()
-                .all(|h| field.is_standable(h) && !blocked.contains(h))
-        })
+        .is_some_and(|fp| free(fp.head) && fp.tail.is_none_or(free))
 }
 
 /// Computes where `mover` (stack `id`) can move this turn: within its speed now (BAT-MAG-011).

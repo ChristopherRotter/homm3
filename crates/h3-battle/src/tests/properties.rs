@@ -42,6 +42,8 @@ fn lively_with(profile: &str) -> Ruleset {
         b.bad_morale_chances = std::vec![1, 2, 3];
         b.luck_dice = 4;
         b.good_luck_chances = std::vec![1, 2, 3];
+        // Low enough for the casts of a battle to reach it (BAT-MAG-037).
+        b.side_stack_limit = 12;
     })
 }
 
@@ -238,6 +240,9 @@ fn make_setup(
         "rise",
         "animate",
         "offering",
+        "copy",
+        "sprites",
+        "serfs",
     ]
     .iter()
     .map(|k| r.spell_by_key(&std::format!("t:{k}")).unwrap())
@@ -468,6 +473,11 @@ proptest! {
                     }
                     let mentioned = |i: usize, f: fn(&EventKind, usize) -> bool| events.iter().any(|e| f(&e.kind, i));
                     for (i, (b, a)) in before.stacks().iter().zip(state.stacks()).enumerate() {
+                        // A created stack may take a dead created stack's slot (BAT-MAG-037).
+                        if mentioned(i, |k, i| matches!(k, EventKind::StackCreated { stack, .. } if stack.index() == i)) {
+                            prop_assert!(!b.is_alive() && b.is_created() && a.is_created() && a.side == b.side);
+                            continue;
+                        }
                         // Conservation: creatures only ever die, except that life drain and the
                         // raising spells bring back up to the starting count (BAT-DMG-008,
                         // BAT-MAG-035); the creatures raised for the battle only are among them.
@@ -489,7 +499,7 @@ proptest! {
                             prop_assert_eq!(a.hex, b.hex);
                             let explained = mentioned(i, |k, i| matches!(k,
                                 EventKind::Struck { target, .. } | EventKind::DeathStared { target, .. } | EventKind::SpellDamage { target, .. } if target.index() == i))
-                                || mentioned(i, |k, i| matches!(k, EventKind::Regenerated { stack, .. } if stack.index() == i))
+                                || mentioned(i, |k, i| matches!(k, EventKind::Regenerated { stack, .. } | EventKind::Vanished { stack, .. } if stack.index() == i))
                                 || mentioned(i, |k, i| matches!(k, EventKind::Healed { target, .. } if target.index() == i));
                             if !explained {
                                 prop_assert_eq!((a.count, a.top_hp), (b.count, b.top_hp));
@@ -517,6 +527,27 @@ proptest! {
             }
             // A battle that is over has no active stack, and vice versa.
             prop_assert_eq!(state.is_over(), state.active().is_none());
+            // Living stacks never share a hex (BAT-GEO-002; a clone neither, BAT-QUIRK-7); a side
+            // has at most the stack limit of stacks; exactly the living clones have rounds left,
+            // and created stacks leave no corpse (BAT-MAG-037, BAT-MAG-038).
+            let field = crate::geometry::Field::new(r.battle().field);
+            let mut taken = crate::geometry::HexSet::new();
+            for (i, s) in state.stacks().iter().enumerate() {
+                let id = StackId(u8::try_from(i).unwrap());
+                if s.is_alive() {
+                    for h in s.footprint(field).hexes() {
+                        prop_assert!(!taken.contains(h), "two stacks on {h:?}");
+                        taken.insert(h);
+                    }
+                }
+                let clone = s.is_alive() && s.has(crate::StackTraits::CLONE);
+                prop_assert_eq!(clone, state.clone_rounds(id) > 0);
+                prop_assert!(s.is_alive() || !s.is_created() || state.corpse(id) == crate::NO_CORPSE);
+            }
+            for side in BattleSide::BOTH {
+                let n = state.stacks().iter().filter(|s| s.side == side).count();
+                prop_assert!(n <= usize::from(r.battle().side_stack_limit));
+            }
         }
     }
 
@@ -719,7 +750,8 @@ proptest! {
         prop_assert_eq!(Some(o.result), state.result());
         prop_assert_eq!(o.rounds, state.round());
         for side in BattleSide::BOTH {
-            let stacks: Vec<_> = (0u8..).zip(state.stacks()).filter(|(_, s)| s.side == side).collect();
+            // Stacks created in battle are left out (BAT-MAG-037).
+            let stacks: Vec<_> = (0u8..).zip(state.stacks()).filter(|(_, s)| s.side == side && !s.is_created()).collect();
             let records = &o.stacks[side.index()];
             prop_assert_eq!(records.len(), stacks.len());
             for (record, &(id, s)) in records.iter().zip(&stacks) {

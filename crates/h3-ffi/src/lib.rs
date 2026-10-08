@@ -35,8 +35,9 @@ use h3_sim::{
 /// `h3_env_second_mask` (ADR-0014 point 9); `h3_env_step` takes an `H3Action`; the stack slots
 /// grow to 42. v9 (E04b T3a): observation encoding v6 (the timed effects of stacks;
 /// `h3_observation_len` grows). v10 (E04b T5a): action encoding v10 (the second target head
-/// carries Teleport's destination hex); no function changes.
-pub const H3_ABI_VERSION: u32 = 10;
+/// carries Teleport's destination hex); no function changes. v11 (E04b T6b): observation
+/// encoding v7 (created stacks and clones; `h3_observation_len` grows).
+pub const H3_ABI_VERSION: u32 = 11;
 
 /// `H3StepResult.result`: the battle is not decided (still running, or truncated).
 pub const H3_RESULT_NONE: i32 = -1;
@@ -532,7 +533,7 @@ mod tests {
 
     #[test]
     fn abi_smoke_create_step_destroy() {
-        assert_eq!(h3_abi_version(), 10);
+        assert_eq!(h3_abi_version(), 11);
         assert_eq!(h3_action_count() as usize, ACTION_COUNT);
         assert_eq!(h3_spell_count() as usize, SPELL_COUNT);
         assert_eq!(h3_target_count() as usize, TARGET_COUNT);
