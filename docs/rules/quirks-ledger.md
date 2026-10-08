@@ -255,3 +255,15 @@ Classes: `exploit-fix` (always fixed, never toggleable) · `preserve` (accepted,
 - Flag: none
 - Regression test: `crates/h3-battle/src/tests/raise.rs`, `a_side_left_with_creatures_raised_for_the_battle_only_keeps_one`; the property `outcomes_account_for_every_stack`
 - Decided by / date: user, 2026-10-08 (E04b T6a)
+
+### BAT-QUIRK-7 — A clone placed on its own original (E04b T6b)
+- Class: exploit-fix
+- Context / rules affected: battle, BAT-MAG-038
+- Original behavior: Clone's place search (0x5A6C70, `docs/formats/installation.md` §7.19) tests each hex with 0x446C40, which counts the original's own hexes as free. Around a crowded two-hex original (every place in ring 1 taken), ring 2 can then pick the original's head as the clone's position: the stack creation (0x47A100) refuses the occupied hex and creates nothing, and the cast goes on to flag *the original* as summoned with the clone's rounds and as its own clone, so it vanishes when the rounds run out and its army slot is lost after the battle; or it picks a position whose front hex is the original's, and the two stacks share a hex.
+- Intended/expected behavior: the original's hexes are taken like any living stack's; the search goes on (BAT-MAG-038).
+- Impact: game-breaking (a stack lost from the army, two stacks on one hex)
+- Community status: not documented (found by code reading)
+- Sources: original-data, `docs/formats/installation.md` §7.19
+- Flag: none
+- Regression test: `crates/h3-battle/src/tests/created.rs`, `a_crowded_two_hex_stack_is_never_covered_by_its_clone`; the property invariant that living stacks never share a hex (`tests/properties.rs`)
+- Decided by / date: agent, 2026-10-08 (E04b T6b; state-corrupting bugs are always fixed, AGENTS.md), to confirm at the T6 checkpoint

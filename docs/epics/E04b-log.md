@@ -984,3 +984,80 @@ records how and why the tasks went.
   a wall over a corpse, the specialist, BAT-QUIRK-5 on a dead target, a raised stack's turn); the
   sim's head-by-head test assumed only Teleport had second targets. All fixed; the counter's
   lowering (VCMI lowers it) was settled by the end-of-battle reading.
+
+### T6b — Clone and Summon Elemental (2026-10-08)
+
+- **Code reading** (`installation.md` §7.19): the stack creation 0x47A100 (the first of records
+  0–19 empty or holding a dead summoned stack; set up as at the battle's start, so it acts in the
+  round it appears); Clone's target test (case 0x5A841A: no clone, none made, level + 1 ≤
+  effect[mastery]) and place search 0x5A6C70 (rings 1–10, rays per direction from the position
+  and a two-hex stack's other hex, three skips; 0x446C40 for the fit), its rounds (power + the
+  duration bonus, counted down at each round's start, 0x447120), death by any damage (0x444090)
+  and with its original (0x444120); Summon Elemental 0x5A7080 (effect[mastery] × power, the
+  first column from the side's edge with a fitting row, a sampler's row); the winner test
+  0x4658B0 (a living stack neither summoned nor a war machine: a side left with only created
+  stacks does not win, also against a retreat); the experience 0x46A350 leaves created stacks
+  out, Necromancy 0x4775E1 counts them. Found on the way: 0x43D730 clears the town of creatures
+  112–115 unless a game setting is on (their native terrain; left for BAT-TER-001).
+- **Quirk:** BAT-QUIRK-7 (exploit-fix, agent; to confirm at the checkpoint): 0x446C40 counts
+  the original's hexes as free, so around a crowded two-hex original the clone may get the
+  original's head (the creation fails and the cast flags the original as summoned with the
+  clone's rounds: it vanishes and is lost from the army) or share a hex with it. The engine takes
+  the original's hexes. S-21 cannot occur in SoD (one clone per stack, a dying original kills
+  it).
+- **Battle:** `h3_battle::created`: `BattleState.created` (per stack the clone link and the
+  clone's rounds; per side the summoned creature and, computed at setup, a stack of each creature
+  its hero's book summons, as `Stack::new` makes it); traits `SUMMONED` and `CLONE`;
+  `CREATED_SLOT`; `clonable`, `may_summon` (the side's stacks, dead ones included, below
+  `side_stack_limit`), `clone_place`, `summon`, `add` (a dead created stack's slot, else a new
+  id); `died` (after damage, a death stare or a sacrifice: a dead clone frees its original, a
+  dead original takes its clone); the round's countdown; `StackCreated`, `Vanished`; corpses,
+  sacrifice victims, the winner test (`check_end`: `Draw` when the side left has only created
+  stacks) and the outcome leave created stacks out; `apply_damage` kills a whole clone.
+- **Content:** effect kinds `clone` and `summon`, `Spell::summons`, at most four summon spells,
+  `BattleParams::side_stack_limit` (≤ `MAX_SIDE_STACKS` = 21) (pack format v18); gap-fill
+  `[[spells.summon]]` (spell, original creature id) and the battle's `side_stack_limit`; the base
+  pack's Clone and Fire, Earth, Water and Air Elemental; synthetic Copy (Brea, Basic: level 1) and
+  Conjure (Corwin, Expert: 12 Shades), a new creature Shade.
+- **Seam:** `BattleResult::Draw`'s doc and ADR-0014 point 6 say that a side left with only
+  created stacks does not win (a second commit in PR #7). BAT-Q7 asks about Necromancy counting
+  killed created stacks and a retreat or surrender against only created stacks (the contract's
+  `Retreat`/`Surrender` imply a winner; the original names none).
+- **Versions:** pack format v18, ruleset hash v27, state hash v30, observation encoding v7 (per
+  stack: created, clone, rounds left), C ABI v11; replay format and action encoding unchanged.
+  `BattleState` 5 288 bytes (+728: the summon templates, 576).
+- **Performance:** the old workload on the new code first measured +2.20 % (613.86 M Ir, the same
+  10 913 steps): `reachable_within` +9.9 M (a codegen swing again, through the footprint's hex
+  iterator in `movement::fits`) and the summon test in `castable_spells` (+2.4 M, `no_target`).
+  `movement::fits` now tests a footprint's head and tail directly: 532.53 M Ir (−11.3 %). The new
+  workload (Copy and Conjure in the books): 11 750 steps, 548.40 M Ir; `bench-check`
+  re-baselined.
+- **Replays:** all re-recorded; new agent seeds as the books changed: `full-s3-a1396` (Blink,
+  Scorch, Snare's mines and Mire's pits), `full-s3-a300` (Conjure; Uproot takes away Scorch;
+  mines and pits), `full-s3-a1476` (Offer; Revive at Expert), `full-s3-a1436` (a temporary raise,
+  an attacker victory with 14 such creatures), `full-s3-a728` (Conjure; Copy of 30, the clone
+  vanishes; a defender victory with Shades alive) replace a199, a325, a52, a149.
+- **Agent decisions (change freely):** a summon count of 0 creates nothing (the original would
+  create an empty stack; a hero's power is at least 1); without a free hex nothing happens and
+  the mana is spent (the original shows a message); a created stack's morale and luck are
+  materialised as its side's stacks' at its creation; the clone copies the original's statistics
+  (equal to a fresh stack of its creature and side: the original sets it up afresh) and gets its
+  creature's full shots.
+- **Tests:** `tests/created.rs` (Clone's targets by level, immunity and side, the copy, its
+  rounds, the outcome; the place along the rays for both sides and a two-hex stack; a crowded
+  two-hex stack (BAT-QUIRK-7) and no place; the clone's end by rounds, damage, its original's
+  death; Summon Elemental's count, column, hero bonuses, binding, a second stack, the defender's
+  column 15 and 14; the limit with dead stacks and the reused slot; a side with only created
+  stacks does not win; created stacks are no victims, a sacrificed original takes its clone); the
+  property games cast Copy and the two summons (limit 12 in `lively`), with new invariants (no
+  hex shared by living stacks, clone rounds, the side limit, no corpse) and the outcome without
+  created stacks; content, pack, harvester, sim and C ABI tests.
+- **Review** (an independent sub-agent on the diff): two T6 items left from T3b2 and T4a (no
+  Anti-Magic on a clone; a clone's Fire Shield reflects a share of one hit point, in either
+  profile); target lists fixed before damage struck a clone that had vanished with its original
+  (secondary strikes, area and battle-wide spells), and a draining or shielded clone that killed
+  its own original could act on after vanishing (now skipped); a clone spell aimed at the enemy
+  could overfill that side (content now wants side own); uncovered lines (a summon's impossible
+  cases, a duplicate summon template); stale docs (stack ids, `base_count`, the turn order's tie,
+  `damaged`, the target docs, §7.7, S-21). All fixed; the surrender price with created stacks
+  went to BAT-Q7.

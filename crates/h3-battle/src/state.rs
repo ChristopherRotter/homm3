@@ -51,7 +51,8 @@ pub const CREATED_SLOT: u8 = u8::MAX;
 /// Version of the battle-state hash encoding ([`BattleState::state_hash`]). Bump on any change.
 pub const BATTLE_STATE_HASH_VERSION: u32 = 30;
 
-/// Index of a stack in its battle (attacker stacks first, in slot order, then defender stacks).
+/// Index of a stack in its battle (attacker stacks first, in slot order, then defender stacks, then
+/// the stacks created in the battle in the order they appear, BAT-MAG-037).
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Default)]
 pub struct StackId(pub u8);
 
@@ -336,28 +337,25 @@ fn summon_templates(
 ) -> FixedVec<Stack, MAX_SUMMON_SPELLS> {
     let mut out = FixedVec::new();
     let book = hero.map(|h| h.magic.book).unwrap_or_default();
-    for spell in book.iter().filter_map(|id| ruleset.spell(id)) {
-        let Some((id, creature)) = spell
-            .summons
-            .and_then(|id| ruleset.creature(id).map(|c| (id, c)))
-        else {
-            continue;
-        };
-        if out.iter().any(|t: &Stack| t.creature == id) {
-            continue;
+    let creatures = book
+        .iter()
+        .filter_map(|id| ruleset.spell(id).and_then(|s| s.summons))
+        .filter_map(|id| ruleset.creature(id).map(|c| (id, c)));
+    for (id, creature) in creatures {
+        if !out.iter().any(|t: &Stack| t.creature == id) {
+            let mut stack = Stack::new(
+                ruleset,
+                setup,
+                (id, creature),
+                side,
+                CREATED_SLOT,
+                Hex(0),
+                1,
+            );
+            stack.traits = stack.traits.with(StackTraits::SUMMONED, true);
+            // The content has at most `MAX_SUMMON_SPELLS` summon spells.
+            let _ = out.push(stack);
         }
-        let mut stack = Stack::new(
-            ruleset,
-            setup,
-            (id, creature),
-            side,
-            CREATED_SLOT,
-            Hex(0),
-            1,
-        );
-        stack.traits = stack.traits.with(StackTraits::SUMMONED, true);
-        // The content has at most `MAX_SUMMON_SPELLS` summon spells.
-        let _ = out.push(stack);
     }
     out
 }
@@ -393,7 +391,8 @@ pub struct Stack {
     pub hex: Hex,
     /// Living creatures (0 = dead).
     pub count: u32,
-    /// Creatures at the start of the battle (resurrection limit, BAT-DMG-008).
+    /// Creatures at the start of the battle, or when the battle created it (resurrection limit,
+    /// BAT-DMG-008).
     pub base_count: u32,
     /// Hit points of the top creature (`1..=max_hp` while alive, 0 when dead).
     pub top_hp: u32,
@@ -980,7 +979,8 @@ impl BattleState {
         taken
     }
 
-    /// All stacks (dead ones included; they keep their id).
+    /// All stacks (dead ones included; they keep their id, but a new created stack takes a dead
+    /// created stack's, BAT-MAG-037).
     pub fn stacks(&self) -> &[Stack] {
         self.stacks.as_slice()
     }

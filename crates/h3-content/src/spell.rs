@@ -952,10 +952,13 @@ impl SpellMagic {
             Some("a clone or summon effect is the spell's only effect")
         } else if self.clones()
             && (self.target != SpellTarget::Stack
+                || self.side != TargetSide::Own
+                || self.any_side_from.is_some()
                 || self.chain.is_some()
                 || self.mass_from.is_some())
         {
-            Some("a clone effect needs target stack, without chain or mass")
+            // The clone joins the caster's side, whose room the cast checks.
+            Some("a clone effect needs target stack and side own, without chain or mass")
         } else if self.summons() && self.target != SpellTarget::None {
             // Without a target there is no area, chain or mass version.
             Some("a summon effect needs target none")
@@ -2069,6 +2072,7 @@ mod tests {
         // Clone takes a stack, Summon Elemental nothing (v18).
         let clone = SpellMagic {
             target: SpellTarget::Stack,
+            side: TargetSide::Own,
             effects: vec![SpellEffect::Clone],
             ..SpellMagic::default()
         };
@@ -2119,6 +2123,20 @@ mod tests {
                     ..clone.clone()
                 },
                 "clone effect needs target stack",
+            ),
+            (
+                SpellMagic {
+                    side: TargetSide::Enemy,
+                    ..clone.clone()
+                },
+                "clone effect needs target stack and side own",
+            ),
+            (
+                SpellMagic {
+                    any_side_from: Some(3),
+                    ..clone.clone()
+                },
+                "clone effect needs target stack and side own",
             ),
             (
                 SpellMagic {

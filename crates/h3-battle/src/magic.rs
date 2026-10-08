@@ -39,7 +39,7 @@ use crate::hero::{HeroRecord, hash_rate};
 use crate::movement;
 use crate::obstacles::{self, SpellObstacle};
 use crate::raise;
-use crate::state::{BattleState, STACK_CAPACITY, Stack, StackId};
+use crate::state::{BattleState, STACK_CAPACITY, Stack, StackId, StackTraits};
 
 /// A set of spells by handle (the content allows at most [`MAX_SPELLS`]).
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
@@ -641,10 +641,19 @@ fn raise_test<'r>(
     })
 }
 
+/// Whether `spell` makes its stacks immune to spells (Anti-Magic): no clone takes it (BAT-MAG-021;
+/// the original's 0x5A8090, `installation.md` §7.13).
+fn grants_immunity(spell: &Spell) -> bool {
+    spell
+        .magic
+        .effects
+        .contains(&SpellEffect::Timed(TimedChange::SpellImmunity))
+}
+
 /// Whether `side`'s cast of the stack spell `spell` at `mastery`, whose [`raise_test`] is `raise`,
 /// may be aimed at stack `s`: one of [`aimable`], for Clone also [`created::clonable`]
-/// (BAT-MAG-038), or for a spell that raises creatures one of [`raise::raisable`] (BAT-MAG-035,
-/// BAT-MAG-036), dead stacks included.
+/// (BAT-MAG-038), for Anti-Magic no clone (BAT-MAG-021), or for a spell that raises creatures one
+/// of [`raise::raisable`] (BAT-MAG-035, BAT-MAG-036), dead stacks included.
 fn stack_target(
     state: &BattleState,
     ruleset: &Ruleset,
@@ -660,6 +669,8 @@ fn stack_target(
                 // rule: BAT-MAG-038
                 && (!spell.1.magic.clones()
                     || created::clonable(state, ruleset, side, (spell.1, mastery), s))
+                // rule: BAT-MAG-021
+                && !(state.at(s).has(StackTraits::CLONE) && grants_immunity(spell.1))
         }
     }
 }
@@ -668,10 +679,8 @@ fn stack_target(
 /// stack of [`stack_target`] for a stack spell; for a hex spell any hex outside the side columns,
 /// whatever stands on it (the original's cursor test, `installation.md` §7.8; batch 2a R3),
 /// but for an obstacle spell a hex where its shape fits hexes free as the side sees them
-/// (BAT-MAG-027, BAT-MAG-031); nothing for a battle-wide spell or a mass version (from the
-/// spell's mass mastery), which must reach at least one stack, or for an obstacle spell of a
-/// random shape, which is cast whether or not a hex is free (BAT-MAG-032) but for mines not
-/// while the other side's natives would see them (BAT-MAG-033). Whether a second target exists
+/// (BAT-MAG-027, BAT-MAG-031); nothing for the spells of [`no_target`]: a battle-wide spell or a
+/// mass version, an obstacle spell of a random shape, a summon. Whether a second target exists
 /// is not checked here.
 // rule: BAT-MAG-003
 fn first_target(
@@ -906,9 +915,8 @@ pub fn second_targets(
 
 /// Whether `actor`'s cast of `spell` has a target ([`cast_targets`] not empty, computed without
 /// listing every hex where it can be avoided): a stack spell needs a stack of [`stack_target`] with a
-/// second target, a battle-wide spell a stack it reaches, but a random obstacle spell none (mines
-/// only while the other side's natives would not see them); a hex spell always has one, but an
-/// obstacle spell needs a hex where its shape fits and a remove spell an obstacle it removes.
+/// second target, a spell without a target what [`no_target`] asks; a hex spell always has one, but
+/// an obstacle spell needs a hex where its shape fits and a remove spell an obstacle it removes.
 fn has_target(
     state: &BattleState,
     ruleset: &Ruleset,
@@ -937,7 +945,8 @@ fn has_target(
 /// Whether `side` may cast `spell` at `mastery` without a target now (BAT-MAG-003): a summon
 /// while the side may summon its creature (BAT-MAG-039), an obstacle spell of a random shape
 /// whether or not a hex is free (BAT-MAG-032) but mines not while the other side's natives would
-/// see them (BAT-MAG-033), any other spell if it reaches a stack.
+/// see them (BAT-MAG-033), any other (a battle-wide spell, a mass version from the spell's mass
+/// mastery) if it reaches a stack.
 fn no_target(
     state: &BattleState,
     ruleset: &Ruleset,
@@ -1482,9 +1491,11 @@ pub(crate) fn apply_cast<S: Sink>(
         created::clone(state, ruleset, (s, cast.rounds), sink);
     } else if magic.summons() {
         // rule: BAT-MAG-039
+        // Validated: the spell summons a creature.
+        let creature = cast.spell.summons.unwrap_or_default();
         let effect = cast.spell.effect[usize::from(cast.mastery)];
         let count = u32::from(effect) * u32::from(cast.power);
-        created::summon(state, ruleset, (cast.side, cast.spell), count, sink);
+        created::summon(state, ruleset, (cast.side, creature), count, sink);
     } else {
         reach_stacks(state, ruleset, &cast, sink);
     }
@@ -1562,6 +1573,10 @@ fn reach_stacks<S: Sink>(
                     };
                 }
                 for s in stack_ids(state).filter(|s| hits[s.index()]) {
+                    if !state.at(s).is_alive() {
+                        // Its original's death took a clone (BAT-MAG-038).
+                        continue;
+                    }
                     if resists(state, ruleset, cast.spell, s) {
                         resisted(s, sink);
                     } else {

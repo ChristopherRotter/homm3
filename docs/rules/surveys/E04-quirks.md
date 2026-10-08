@@ -15,7 +15,7 @@ Sources: `wiki` = https://heroes.thelazy.net (retrieved 2026-10-03; pages named 
 | confirmed by original data | S-05 (the exe's creature table holds the bugged levels) |
 | exploit-fix, no confirmation needed (never implemented) | S-08, S-14, S-20 |
 | batch 1a (E04a), evaluated 2026-10-03 | confirmed: S-01 (ledger Q-0004), S-02 with Q23 (Q-0005, all damage rates), S-03 for Roland only (Q-0006); not reproduced in SoD: S-04 (dropped) |
-| to confirm in an E04b or E04c batch | S-06, S-07, S-11 (code reading incomplete, Q53), S-12, S-15, S-17 (Berserk's 255 rounds read, the data in every profile), S-18, S-21 (confirmed by code reading: S-19 as Q-0007, S-16 as Q-0009, S-10 as Q-0011, S-13 as Q-0012; S-09 the rule in every profile, Q53) |
+| to confirm in an E04b or E04c batch | S-06, S-07, S-11 (code reading incomplete, Q53), S-12, S-15, S-17 (Berserk's 255 rounds read, the data in every profile), S-18 (confirmed by code reading: S-19 as Q-0007, S-16 as Q-0009, S-10 as Q-0011, S-13 as Q-0012; S-09 the rule in every profile, Q53) |
 | to confirm when the battle setup is derived from the map (E04c or E08) | S-22 |
 
 ## Overview
@@ -42,7 +42,7 @@ Sources: `wiki` = https://heroes.thelazy.net (retrieved 2026-10-03; pages named 
 | S-18 | Magic Arrow can deal 0 damage to Gold and Diamond Golems | E04b | gameplay-altering (tiny) | fix-optional | medium (HotA changelog) |
 | S-19 | Magic Arrow uses the wrong protection when several apply | E04b | gameplay-altering (tiny) | fix-optional | medium (HotA changelog) |
 | S-20 | A defender can win and be left without an army (Basic Resurrection) | E04b | state corruption | exploit-fix | medium (HotA changelog) |
-| S-21 | Killing a multiply-cloned stack removes only one clone | E04b | gameplay-altering | fix-optional | low (HotA changelog; may be HotA's own bug) |
+| S-21 | Killing a multiply-cloned stack removes only one clone | E04b | none: cannot occur in SoD (code reading, E04b T6b) | — | low (HotA changelog; may be HotA's own bug) |
 | S-22 | Battles underground always use the subterranean battlefield | E04c (setup) | gameplay-altering (native bonus) | preserve | high (wiki Terrain) |
 
 Outside the E04 scope, listed so they are not lost (no classification needed now): experience overflow (level 75 jumps to 88, endless level-ups past 6424; wiki Experience) → exploit-fix with hero progression (E08–E10); primary skill reset to 0 at 129 (wiki Primary skill) → exploit-fix with progression; the siege "attack yourself" glitch (wiki Combat) → exploit-fix in the orchestrator (E10); AI-only behaviour (AI Necromancy always raises 1, wiki Necromancy; AI cannot cast Berserk, wiki Berserk; AI treats arrow-tower damage as 1, wiki Arrow tower) → not modelled; morale triggering after a creature spell ended the battle (HotA changelog) → not modelled (our battle ends at once).
@@ -150,7 +150,7 @@ Outside the E04 scope, listed so they are not lost (no classification needed now
 
 ### S-21 — Killing a multiply-cloned stack removes only one clone (E04b)
 - Original: HotA changelog: "upon death of a stack that had been cloned several times, only one clone would disappear". May be a HotA regression rather than an original bug.
-- Suggested **fix-optional**; verify in an E04b batch.
+- **Settled by code reading** (E04b T6b, `installation.md` §7.19): SoD keeps one clone per stack (+0x28; Clone's target test refuses a stack that has one), and a dying original kills its clone (0x444120), so the bug cannot occur in SoD; no ledger entry (BAT-MAG-038).
 
 ### S-22 — Underground battles always use the subterranean battlefield (E04c / battle setup)
 - Original: wiki Terrain: subterranean "is the only combat terrain for the underground layer (fixed in Horn of the Abyss)". The battlefield, and with it the native-terrain bonus (BAT-TER-001), comes from the layer, not from the tile's terrain.

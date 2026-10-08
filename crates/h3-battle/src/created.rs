@@ -3,7 +3,7 @@
 //! summons a stack of the spell's creature (BAT-MAG-039). Both take a dead created stack's slot of
 //! the side or a new one, while the side has fewer stacks than the limit (BAT-MAG-037).
 
-use h3_content::{CreatureTypeId, MAX_SUMMON_SPELLS, Ruleset, Spell};
+use h3_content::{CreatureTypeId, MAX_FIELD_HEXES, MAX_SUMMON_SPELLS, Ruleset, Spell};
 use h3_contracts::BattleSide;
 use h3_kernel::{CanonicalHash, FixedVec, StateHasher};
 
@@ -209,30 +209,26 @@ fn fits(field: Field, taken: HexSet, (at, two_hex): (Hex, bool), side: BattleSid
         .map(|fp| fp.head)
 }
 
-/// Summons `count` creatures of the summon `spell` for `side` (BAT-MAG-039; the original's
-/// 0x5A7080): the side's summons are bound to its creature from now on; a stack of it, as the
-/// side would have at the battle's start, goes to a random row where it fits of the first column
-/// with one, from the side's edge inwards (the original's sampler draws rows until one fits);
-/// without one nothing happens.
+/// Summons `count` creatures of `creature` for `side` (BAT-MAG-039; the original's 0x5A7080):
+/// the side's summons are bound to the creature from now on; a stack of it, as the side would have
+/// at the battle's start, goes to a random row where it fits of the first column with one, from
+/// the side's edge inwards (the original's sampler draws rows until one fits); without one (or
+/// without creatures) nothing happens. The side's hero's book has a spell that summons the
+/// creature, so the side has its template.
 pub(crate) fn summon<S: Sink>(
     state: &mut BattleState,
     ruleset: &Ruleset,
-    (side, spell): (BattleSide, &Spell),
+    (side, creature): (BattleSide, CreatureTypeId),
     count: u32,
     sink: &mut S,
 ) {
-    let Some(creature) = spell.summons else {
-        return;
-    };
     state.created.summoned[side.index()] = Some(creature);
-    // A spell of the side's hero's book has its template.
-    let Some(template) = state.created.templates[side.index()]
+    let templates = &state.created.templates[side.index()];
+    let template = templates
         .iter()
         .find(|t| t.creature == creature)
         .copied()
-    else {
-        return;
-    };
+        .unwrap_or_default();
     let field = Field::new(ruleset.battle().field);
     let taken = state.blocked_for(field, StackId(u8::MAX));
     let two_hex = template.has(StackTraits::TWO_HEX);
@@ -241,30 +237,28 @@ pub(crate) fn summon<S: Sink>(
         field.last_standable_column(),
     );
     let rows = i32::from(ruleset.battle().field.height);
-    let at = |x: i32, y: i32| {
-        field
-            .hex(x, y)
-            .and_then(|h| fits(field, taken, (h, two_hex), side))
-    };
     for i in 0..=last - first {
         let x = match side {
             BattleSide::Attacker => first + i,
             BattleSide::Defender => last - i,
         };
-        let fitting = (0..rows).filter(|&y| at(x, y).is_some()).count();
-        if fitting == 0 || count == 0 {
+        let mut heads: FixedVec<Hex, { MAX_FIELD_HEXES }> = FixedVec::new();
+        for head in (0..rows).filter_map(|y| {
+            field
+                .hex(x, y)
+                .and_then(|h| fits(field, taken, (h, two_hex), side))
+        }) {
+            // At most one per hex of the field.
+            let _ = heads.push(head);
+        }
+        if heads.is_empty() || count == 0 {
             continue;
         }
-        // At most the field's rows.
-        let pick = state.rng.below(u32::try_from(fitting).unwrap_or(1));
-        let Some(head) = (0..rows)
-            .filter_map(|y| at(x, y))
-            .nth(usize::try_from(pick).unwrap_or(0))
-        else {
-            return;
-        };
+        // At most the field's hexes, within `u32`.
+        let len = u32::try_from(heads.len()).unwrap_or(u32::MAX);
+        let pick = usize::try_from(state.rng.below(len)).unwrap_or(0);
         let stack = Stack {
-            hex: head,
+            hex: heads.as_slice()[pick],
             count,
             base_count: count,
             ..template

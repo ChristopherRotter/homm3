@@ -431,3 +431,102 @@ fn created_stacks_are_no_victims_and_a_sacrificed_original_takes_its_clone() {
     assert_eq!(vanished(&events), vec![(3, 4)]);
     assert_eq!(s.stacks()[0].count, 10);
 }
+
+/// The stacks struck, in order.
+fn struck(events: &[Event]) -> Vec<u8> {
+    events
+        .iter()
+        .filter_map(|e| match e.kind {
+            EventKind::Struck { target, .. } | EventKind::SpellDamage { target, .. } => {
+                Some(target.0)
+            }
+            _ => None,
+        })
+        .collect()
+}
+
+// covers: BAT-MAG-021, BAT-MAG-018, BAT-MAG-038
+#[test]
+fn a_clone_takes_no_anti_magic_reflects_one_hit_point_and_is_struck_no_more_once_gone() {
+    let r = ruleset();
+    let mut guard = mage(&r, &["antimagic", "copy"]);
+    guard.magic.mana = 100;
+    // A Hydra (head at (7, 5)) next to the defender's serfs at (8, 5) and their clone, top left of
+    // them at (7, 4).
+    let new = |r: &Ruleset| {
+        let mut s = arena(
+            r,
+            [None, Some(guard.clone())],
+            &[("hydra", 10, 7, 5)],
+            &[("serf", 1, 8, 5)],
+            1,
+        );
+        crate::created::clone(&mut s, r, (StackId(1), 3), &mut Vec::<Event>::new());
+        assert_eq!(s.stacks()[2].hex, at(r, 7, 4));
+        s
+    };
+    let mut s = new(&r);
+    activate(&mut s, 1);
+    assert_eq!(targets(&s, &r, BattleSide::Defender, "antimagic"), vec![1]);
+    // The serfs die first and take their clone with them: the Hydra's other head strikes nothing.
+    activate(&mut s, 0);
+    let events = act(
+        &mut s,
+        &r,
+        Command::Attack {
+            target: StackId(1),
+            from: at(&r, 7, 5),
+        },
+    )
+    .unwrap();
+    assert_eq!(
+        (struck(&events), vanished(&events)),
+        (vec![1], vec![(2, 1)])
+    );
+    // A clone with a Fire Shield reflects a share of one hit point: nothing.
+    let mut s = new(&r);
+    let shield = spell(&r, "fireshield");
+    let cast = effects::TimedCast {
+        id: shield,
+        spell: r.spell(shield).unwrap(),
+        mastery: 3,
+        rounds: 5,
+        own: crate::magic::SpellBonus::default(),
+    };
+    effects::apply(&mut s, &r, cast, StackId(2), &mut Vec::<Event>::new());
+    activate(&mut s, 0);
+    let events = act(
+        &mut s,
+        &r,
+        Command::Attack {
+            target: StackId(2),
+            from: at(&r, 7, 5),
+        },
+    )
+    .unwrap();
+    assert_eq!(struck(&events), vec![2, 1]);
+    assert!(
+        !events
+            .iter()
+            .any(|e| matches!(e.kind, EventKind::Reflected { .. }))
+    );
+}
+
+// covers: BAT-MAG-038
+#[test]
+fn a_battle_wide_spell_passes_over_a_clone_gone_with_its_original() {
+    let r = ruleset();
+    let mut hero = creator(&r, 1, 0);
+    hero.magic.spell_book = Some(vec![spell(&r, "copy"), spell(&r, "storm")]);
+    let mut s = arena(
+        &r,
+        [Some(hero), None],
+        &[("serf", 1, 5, 5)],
+        &[("serf", 20, 14, 5)],
+        1,
+    );
+    cast(&mut s, &r, "copy", stack(0)).unwrap();
+    let events = cast(&mut s, &r, "storm", CastTarget::None).unwrap();
+    assert!(!struck(&events).contains(&2));
+    assert_eq!(vanished(&events), vec![(2, 1)]);
+}
