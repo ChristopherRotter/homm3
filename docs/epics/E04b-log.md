@@ -1302,3 +1302,55 @@ records how and why the tasks went.
 - **Tests:** `tests/casters.rs` (the cast and its turn end, the refusals, a hypnotized caster, no
   resistance roll, good morale after a cast, a clone's casts), the property test's legality and
   casts-left checks, the sim's head-by-head test, the C ABI's head-by-head test.
+
+### T7b2a: the Faerie Dragon (2026-10-08)
+
+- **Seam and decisions** (the user, BAT-Q11, at the start of increment 8): T7b2 in two parts with
+  one checkpoint after both (T7b2a Faerie Dragon, T7b2b Master Genie; T6c with T7b3 becomes
+  increment 9); the drawn spell is private to the dragon's controller until it casts (ADR-0014
+  point 8 amended, shared PR #22); the Genie's spell head allows only 0 and the observation
+  counts its candidates (point 9, for T7b2b); S-18 is not reproducible in SoD (no flag); a quirk
+  found in the reading, BAT-QUIRK-9, fix-optional.
+- **Code reading** (`installation.md` §7.21, "The Faerie Dragon, re-read for T7b2a"): the draw
+  (0x447510) at every activation (0x465330) with casts left, again after Wait and good morale, not
+  in the tactics phase; `rand() mod 100` over 0x63B850 in table order; a combat-log line for a
+  local human controller; +0x4E0 read only for the active stack. The target (0x4476C0 case 7,
+  the table 0x447A00 decoded for every caster): a stack on the hex that 0x5A3C80 accepts (its
+  polarity test only: Chain Lightning and the area spells may hit own stacks); the cursor
+  (0x4766FC) any stack but the caster, an empty hex never (0x47684B → 0x4473D0, the Archangel's
+  and Pit Lord's). The cast: 0x59FE30(spell, hex, 1, −1, 2, 5 × creatures). Magic Mirror: the
+  creature caster's button goes through 0x59EC50 (action 10), and 0x59FE30 skips the test of
+  caster kind 1 at 0x5A02CB, the redirected stack included: BAT-QUIRK-9.
+- **Content:** abilities `random_spell_caster` (mastery, power per creature) and `drawn_spell`
+  (spell, weight), one entry per spell (pack format v23; the compiler: they need each other,
+  exclude `spell_caster`, a drawn spell takes a stack or hex at the caster's mastery and places no
+  obstacle; ruleset hash v32). Harvested from the gap-fill (`exe-faerie-dragon`): Ice Bolt 22,
+  Lightning Bolt 22, Fireball 21, Magic Arrow 10, Frost Ring 10, Chain Lightning 5, Meteor Shower
+  5, Inferno 5, Advanced, 5 per creature. Quirk flag 14 `quirk.battle.creature_mirror_untested`
+  (faithful on, strict-fixed off). The synthetic Drake (Spark 5, Cinders 3, Arc 2, Advanced, 2
+  per creature, three casts) replaces the defender's last Brute stack in `full.toml`.
+- **Battle:** `casters::activated` (from `activate_next`, the good-morale turn and a berserk
+  stack that keeps its turn) draws with the battle's RNG into `Casts.drawn` (the active stack's,
+  forgotten at any other activation; state hash v34) and emits `SpellDrawn` to the controller;
+  `casters::stack_cast` gives the drawn spell, power per creature × creatures; `magic::drawn_target`
+  and `affectable` (polarity side, immunities, Anti-Magic, share and aura above zero, never the
+  caster; a hex spell at a hex of such a stack), `magic::creature_targets` (hexes from the
+  stacks' footprints); `mirror` returns whether it sent the spell away, and `reach_stacks` tests
+  and rolls a creature's redirected target unless BAT-QUIRK-9 is on. Observation `drawn` (only
+  for the controller of the active stack).
+- **Sim and ABI:** observation encoding v9 (a 12th global: the drawn spell's handle + 1 for its
+  controller), C ABI v13; the spell head shows the drawn spell, the target head may hold hexes
+  (layout unchanged, action encoding v11).
+- **Fixed on the way:** a random game on `master` failed `hidden_obstacles_do_not_show`: a raised
+  native gave its side sight of a hidden mine again (BAT-MAG-031 without BAT-QUIRK-1), which the
+  property did not allow for; it now skips a command after which the viewer sees an obstacle it
+  did not see (the engine was right; the case is kept in the proptest regressions).
+- **Measurements:** the new binary on T7b1's workload +0.25 % Ir. The new workload (a Drake
+  stack): 9 835 steps (+3.2 %), +8.63 % Ir (the drawn spells' targets, `affectable`, about 1.1 %;
+  the rest the flying two-hex caster's play), re-baselined. Replays re-recorded with new agent
+  seeds keeping T5–T7b1's features and showing the Drakes' casts: a759, a804, a1522, a1432, a155.
+- **Tests:** `tests/casters.rs` (the draw by weight and its visibility, no casts and forgetting,
+  the targets of a negative and a neutral drawn spell, an area at a stack's hex hitting the
+  caster, power per creature and S-18's golems, a hypnotized dragon, the draws after good morale
+  and Wait, BAT-QUIRK-9 in both profiles); the hidden-state property covers the drawn spell; the
+  content's list rules; the sim's drawn-spell global.

@@ -15,7 +15,8 @@ Sources: `wiki` = https://heroes.thelazy.net (retrieved 2026-10-03; pages named 
 | confirmed by original data | S-05 (the exe's creature table holds the bugged levels) |
 | exploit-fix, no confirmation needed (never implemented) | S-08, S-14, S-20 |
 | batch 1a (E04a), evaluated 2026-10-03 | confirmed: S-01 (ledger Q-0004), S-02 with Q23 (Q-0005, all damage rates), S-03 for Roland only (Q-0006); not reproduced in SoD: S-04 (dropped) |
-| to confirm in an E04b or E04c batch | S-06, S-07, S-11 (code reading incomplete, Q53), S-12, S-15, S-17 (Berserk's 255 rounds read, the data in every profile), S-18 (confirmed by code reading: S-19 as Q-0007, S-16 as Q-0009, S-10 as Q-0011, S-13 as Q-0012; S-09 the rule in every profile, Q53) |
+| to confirm in an E04b or E04c batch | S-06, S-07, S-11 (code reading incomplete, Q53), S-12, S-15, S-17 (Berserk's 255 rounds read, the data in every profile) (confirmed by code reading: S-19 as Q-0007, S-16 as Q-0009, S-10 as Q-0011, S-13 as Q-0012; S-09 the rule in every profile, Q53) |
+| not reproducible in SoD by code reading | S-18 (E04b T7b2a, BAT-Q11: no caster's Magic Arrow is low enough) |
 | to confirm when the battle setup is derived from the map (E04c or E08) | S-22 |
 
 ## Overview
@@ -39,7 +40,7 @@ Sources: `wiki` = https://heroes.thelazy.net (retrieved 2026-10-03; pages named 
 | S-15 | Gold Dragons are affected by hero Dispel and Sacrifice | E04b | gameplay-altering (small) | fix-optional | medium (wiki Trivia) |
 | S-16 | Frenzy counts Behemoth defense reduction in its attack bonus | E04b | gameplay-altering (small) | fix-optional | medium (HotA changelog) |
 | S-17 | Berserk, Disrupting Ray and Dendroid roots expire after 255 rounds | E04b | cosmetic | preserve | medium (HotA changelog) |
-| S-18 | Magic Arrow can deal 0 damage to Gold and Diamond Golems | E04b | gameplay-altering (tiny) | fix-optional | medium (HotA changelog) |
+| S-18 | Magic Arrow can deal 0 damage to Gold and Diamond Golems | E04b | gameplay-altering (tiny) | not reproducible in SoD (T7b2a) | medium (HotA changelog) |
 | S-19 | Magic Arrow uses the wrong protection when several apply | E04b | gameplay-altering (tiny) | fix-optional | medium (HotA changelog) |
 | S-20 | A defender can win and be left without an army (Basic Resurrection) | E04b | state corruption | exploit-fix | medium (HotA changelog) |
 | S-21 | Killing a multiply-cloned stack removes only one clone | E04b | none: cannot occur in SoD (code reading, E04b T6b) | — | low (HotA changelog; may be HotA's own bug) |
@@ -137,6 +138,7 @@ Outside the E04 scope, listed so they are not lost (no classification needed now
 ### S-18 — Magic Arrow can deal 0 damage to Gold and Diamond Golems (E04b)
 - Original: HotA changelog: "Fixed a bug with 0 damage against Gold and Diamond Golems when attacking with a Magic Arrow with low Power".
 - Suggested **fix-optional**.
+- **Not reproducible in SoD** (E04b T7b2a, `docs/formats/installation.md` §7.21; the user, 2026-10-08, BAT-Q11): 0 needs a value below 7 (Gold) or 20 (Diamond) before the golem's factor, but a hero's Magic Arrow is at least 20 (power ≥ 1) and a Faerie Dragon's at least 70 (Advanced, power 5 per creature). Only a protection on a Diamond Golem cuts a power-1 Magic Arrow's 1 to 0, the truncation every spell takes. No flag; the original's arithmetic in every profile (BAT-MAG-049's test pins the dragon's case).
 
 ### S-19 — Magic Arrow uses the wrong protection (E04b)
 - Original: HotA changelog: "Fixed a bug with the priority of protection against magic when casting a Magic Arrow (now the most effective of defenses is used)".
