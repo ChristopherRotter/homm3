@@ -956,3 +956,63 @@ is removed (0x466B30) and, as after Fire Wall's damage, the Phoenixes' rebirth i
 that survives a mine walks on, and a move and attack still attacks. A stack standing on a mine
 it did not trigger (Teleport places it without entering; or it was immune then) triggers it when
 it acts without moving (§7.15).
+
+### 7.18 Code reading: Resurrection, Animate Dead and Sacrifice (E04b T6a, 2026-10-08)
+
+Read for T6a (Q29: insight only, nothing copied). The cast routine's switch (§7.8) sends
+Resurrection (38) and Animate Dead (39) to 0x5A1907 and Sacrifice (40) to 0x5A199C; the spell
+book (0x59ED5A for 38 and 39, 0x59F196 for 40) opens the cursor only if some hex passes the target
+test 0x5A39C0 (Sacrifice: some hex for the raised stack and some hex for the victim).
+
+**Corpses.** A hex record (§7.15) lists the dead stacks lying on it: their number at +0x1C (at most
+14), their sides at +0x20, their record indices at +0x2E and, per corpse, the other hex of a
+two-hex one at +0x3C (0 the next hex, 1 the previous, otherwise none). A stack's death (0x444120)
+appends it to the list of each hex it covers, unless the hex already holds 14; a stack flagged
+sacrificed (`0x10000000`) or summoned (`0x400000`) leaves no corpse. Raising removes it from them
+(0x5A7320).
+
+**Which stack a cast raises.** 0x5A3950 finds the stack for spells 38 and 39 (and for Sacrifice's
+raised stack) by hex, through 0x5A3CC0 (Resurrection) and 0x5A3F50 (Animate Dead):
+
+- a living stack on the hex (+0x18) is the only candidate: it must be of the caster's side (+0xF4,
+  the real side), have the creature flag `0x10` (living; Animate Dead: `0x40000`, undead), fewer
+  creatures (+0x4C) than at the battle's start (+0x60), and pass the spell test 0x5A8090;
+- otherwise, if the hex is not blocked (bit `0x2`), the corpses from the last added to the first:
+  the first of the caster's side with the flag, whose other hex (a two-hex one) has no living
+  stack and is not blocked, and which passes 0x5A8090.
+
+0x5A8090 lets only spells 38–40 reach a dead stack (bit `0x200000`), and for 38 and 39 (case
+0x5A8467) asks that the stack has fewer creatures than at the start and that the spell's hit
+points (below) reach one creature's health (+0xC0), then applies the usual immunity factor
+(0x44A4D0: Anti-Magic, the creature's spell-level immunity). A positive spell takes no enemy
+stack. So a full stack that is only wounded is no target, and nor is a stack whose creatures
+have more health than the spell raises. **0x5A3CC0 tests with spell 38 whichever spell asked**,
+so Sacrifice's raised stack must be a valid Resurrection target: Resurrection's level 4 for the
+immunities (Gold Dragons, immune to levels 1–4, cannot be raised by Sacrifice; survey S-15) and
+Resurrection's hit points at the caster's Earth mastery for the health test.
+
+**Resurrection and Animate Dead** (0x5A1907): hit points `power × factor + effect[mastery]` plus
+the specialty bonus 0x4E5FF0 with the target's level (§7.12: `ceil((hero level div (c + 1)) × t ×
+0.03)`); temporary when the caster's mastery is below Advanced (Resurrection only). The raise
+(0x5A7560, stack, hit points, temporary): the stack's total health (0 if dead) plus the hit points
+gives the count `ceil(total / health)` and the top creature's loss, both capped at the start count
+(full health then); a temporary raise adds the creatures gained to the counter +0x54, which is
+capped at the start count and written nowhere else (0 at setup, 0x43D861; no loss lowers it). A
+dead stack comes back on its own hex (0x43EA70 revives it, 0x4687C0 places it) and leaves the
+corpse lists; at the end the raise clears the dead bit `0x200000` (0x5A7867) and touches no other
+flag, so a stack that had acted this round before it died stays done. Its spells ended at its
+death (0x444120 ends every active spell, then sets the dead bit).
+
+**Sacrifice** (0x5A199C): the victim is the living stack on the cast's second hex. 0x5A8090 (case
+0x5A8523) wants it living (`0x10`), not summoned (`0x400000`), not undead, with creatures, and of
+the caster's side by both its controller (the other side while hypnotized) and its real side; the
+raised stack takes the immunity factor of spell 38 as above, the victim that of spell 40 (level
+5: no creature's spell-level immunity reaches it). The hit points are `(the victim's creature's
+health from the creature table + effect[mastery] + power) × the victim's creatures`: the base
+health, not the stack's (+0xC0). The victim takes its whole health as damage (0x444090), is flagged
+sacrificed (no corpse) and the raised stack gets the hit points as a permanent raise. No code
+compares the victim with the raised stack (the second cursor, 0x59F700, was not read).
+
+Not found: where the counter +0x54 is subtracted at the battle's end (no read of it outside the
+raise and the interface, 0x596xxx); VCMI subtracts the temporary creatures' health from the
+stack's (`CStackState::takeResurrected`), and S-20 (HotA) presupposes a subtraction.
