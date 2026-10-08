@@ -6,7 +6,7 @@ Every session reads this file first, then its lane's `docs/lanes/<lane>/HANDOFF.
 
 | Lane | Owns (`lanes.toml`) | State | Files |
 |---|---|---|---|
-| battle | `h3-battle`, `h3-heroes`, `h3-content`, `h3-pack`, `h3-sim`, `h3-ffi`, `h3-cli`, the formats/tools crates, packs, fixtures, experiments | active: E04b, increment 3 (T5) done; next cut at the checkpoint | [HANDOFF](lanes/battle/HANDOFF.md), [QUEUE](lanes/battle/QUEUE.md) |
+| battle | `h3-battle`, `h3-heroes`, `h3-content`, `h3-pack`, `h3-sim`, `h3-ffi`, `h3-cli`, the formats/tools crates, packs, fixtures, experiments | active: E04b, increment 6 (T7a) and its checkpoint done; the T7b/T7c cut proposed, waiting for the user | [HANDOFF](lanes/battle/HANDOFF.md), [QUEUE](lanes/battle/QUEUE.md) |
 | adventure | `h3-adventure` (new) | refinement session next (E07/E08) | [HANDOFF](lanes/adventure/HANDOFF.md), [QUEUE](lanes/adventure/QUEUE.md) |
 | server | `h3-protocol`, `h3-server` (new) | refinement session next (E16) | [HANDOFF](lanes/server/HANDOFF.md), [QUEUE](lanes/server/QUEUE.md) |
 | client | `clients/` (own Cargo workspace) | waits for the user's asset notes | [HANDOFF](lanes/client/HANDOFF.md), [QUEUE](lanes/client/QUEUE.md) |
@@ -14,7 +14,7 @@ Every session reads this file first, then its lane's `docs/lanes/<lane>/HANDOFF.
 Shared (own pull request, merged first): `h3-kernel`, `h3-contracts`, workspace and gate files (`Cargo.toml`, `arch.toml`, `lanes.toml`, `xtask`, CI), ADRs, process docs, `BACKLOG.md`, this file. Common (any lane): `OPEN-QUESTIONS.md` and `docs/stubs.toml` (one block per lane), `Cargo.lock`.
 
 - **GitHub and CI:** `ChristopherRotter/homm3` (private). `.github/workflows/ci.yml` runs the full `cargo xtask verify` on Linux for pull requests, `master` and weekly; `lanes.yml` runs `cargo xtask check-lane` on pull requests. Changes reach `master` by pull request only.
-- **Phase 0** (2026-10-07, `shared/lanes-phase-0`): lanes, `check-lane`, `verify --scope`/`--summary`, per-workload baselines, lane docs. The battle lane rebases onto it at its next checkpoint: battle's HANDOFF now lives in `docs/lanes/battle/`.
+- **Phase 0** (2026-10-07, `shared/lanes-phase-0`): lanes, `check-lane`, `verify --scope`/`--summary`, per-workload baselines, lane docs; every lane works on it (the battle lane since increment 4).
 
 ## Traps for every lane
 
