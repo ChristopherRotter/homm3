@@ -293,3 +293,16 @@ Classes: `exploit-fix` (always fixed, never toggleable) · `preserve` (accepted,
 - Defaults: faithful = on, strict-fixed = off
 - Regression test: `crates/h3-battle/src/tests/casters.rs`, `a_mirrored_random_cast_is_untested_with_quirk_bat_quirk_9`
 - Decided by / date: user, 2026-10-08 (E04b T7b2a, BAT-Q11)
+
+### BAT-QUIRK-10 — The Master Genie's Slayer test counts dead stacks and only the first king level (E04b T7b2b)
+- Class: preserve, no flag: the rule in every profile (user, 2026-10-08, BAT-Q12)
+- Context / rules affected: battle, BAT-MAG-050
+- Original behavior: the usefulness test 0x447A80 counts Slayer as useful if any record of the opposite side has creature flag `0x80` (king 1); it does not test whether the stack is alive, and enemies of king level 2 or 3 alone (which Slayer at the Genie's Advanced mastery also affects at level 2) do not make it useful (`docs/formats/installation.md` §7.21).
+- Intended/expected behavior: none decided; it only shapes which spell the Genie (and later the Enchanter) draws, not a rule players see.
+- Impact: gameplay-altering (tiny)
+- Community status: unknown
+- Sources: original-data, `docs/formats/installation.md` §7.21 ("The Master Genie, re-read for T7b2b")
+- Flag: none
+- Defaults: n/a
+- Regression test: `crates/h3-battle/src/tests/casters.rs`, `the_enemy_decides_the_shields_protections_and_slayer`
+- Decided by / date: user, 2026-10-08 (E04b T7b2b, BAT-Q12)

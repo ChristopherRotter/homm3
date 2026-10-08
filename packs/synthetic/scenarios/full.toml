@@ -141,8 +141,8 @@ creature = "synthetic:wisp"
 count = 18
 [[attacker]]
 slot = 6
-creature = "synthetic:spearman"
-count = 33
+creature = "synthetic:djinn"
+count = 6
 
 [[defender]]
 slot = 0

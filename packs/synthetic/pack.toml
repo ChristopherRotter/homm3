@@ -256,6 +256,36 @@ abilities = [
     { kind = "drawn_spell", spell = "arc", weight = 2 },
 ]
 
+[[creature]]
+id = "djinn"                # neutral (no faction)
+name = "Djinn"
+plural = "Djinns"
+level = 3
+attack = 9
+defense = 8
+damage = [3, 6]
+hit_points = 30
+speed = 7
+casts = 3
+cost = { coin = 400 }
+growth = 4
+fight_value = 500
+ai_value = 550
+adventure_count = [4, 8]
+flags = ["alive", "flying"]
+# Format v24: casts at another own stack a spell drawn at the cast among those useful for it, at
+# Advanced with power 6, three times a battle (a Master Genie's draw, BAT-MAG-050).
+abilities = [
+    { kind = "helpful_spell_caster", mastery = 2, power = 6 },
+    { kind = "drawn_spell", spell = "hasten", weight = 1 },
+    { kind = "drawn_spell", spell = "fury", weight = 1 },
+    { kind = "drawn_spell", spell = "boon", weight = 1 },
+    { kind = "drawn_spell", spell = "aegis", weight = 1 },
+    { kind = "drawn_spell", spell = "hallow", weight = 1 },
+    { kind = "drawn_spell", spell = "smiting", weight = 1 },
+    { kind = "drawn_spell", spell = "mend", weight = 1 },
+]
+
 # ---- Hero content (pack format v3, E04a T3): invented schools, spells, skills, classes and heroes.
 # Every hero-effect kind appears at least once. Spells carry their battle magic since format v4
 # (E04b T2a): every target kind, an area, a chain and target conditions appear at least once.
@@ -415,6 +445,7 @@ effects = [
     { kind = "timed", change = "morale" },
     { kind = "timed", change = "luck" },
 ]
+useful = "melee"                 # format v24: when a helpful caster finds it useful (BAT-MAG-050)
 
 [[spell]]
 id = "zeal"
@@ -516,6 +547,7 @@ effects = [
     { kind = "timed", change = "melee_protection" },
     { kind = "timed", change = "ranged_protection" },
 ]
+useful = "enemy_melee"                 # format v24: when a helpful caster finds it useful (BAT-MAG-050)
 
 [[spell]]
 id = "hallow"
@@ -530,6 +562,7 @@ target = "stack"
 side = "own"
 mass = "expert"
 effects = [{ kind = "timed", change = "school_protection" }]
+useful = "enemy_spell_book"                 # format v24: when a helpful caster finds it useful (BAT-MAG-050)
 
 [[spell]]
 id = "smiting"
@@ -544,6 +577,7 @@ target = "stack"
 side = "own"
 effects = [{ kind = "timed", change = "slayer" }]
 specialist = { kind = "creature_level", values = [4, 3, 2, 1, 0, 0, 0] }
+useful = "enemy_king"                 # format v24: when a helpful caster finds it useful (BAT-MAG-050)
 
 [[spell]]
 id = "riposte"
@@ -595,6 +629,7 @@ mass = "expert"
 dispels = ["drag", "bane", "gloom"] # it ends only these
 restores_health = true              # format v20: gives back what Taint took first (BAT-MAG-044)
 effects = [{ kind = "dispel" }, { kind = "heal" }]
+useful = "wounded"                 # format v24: when a helpful caster finds it useful (BAT-MAG-050)
 
 [[spell]]                           # format v8 (E04b T3b2): a Fire Shield
 id = "blaze"

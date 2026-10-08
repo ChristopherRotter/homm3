@@ -1354,3 +1354,44 @@ records how and why the tasks went.
   caster, power per creature and S-18's golems, a hypnotized dragon, the draws after good morale
   and Wait, BAT-QUIRK-9 in both profiles); the hidden-state property covers the drawn spell; the
   content's list rules; the sim's drawn-spell global.
+
+### T7b2b: the Master Genie (2026-10-08)
+
+- **Decisions** (the user, BAT-Q12): whether a hero carries a spell book becomes public (the
+  Genie's test reads it and its draw counts would reveal it; ADR-0014 point 8 amended, shared PR
+  #24; the spells stay private); the test's Slayer case (dead enemies count, king level 1 only)
+  is the rule in every profile (ledger BAT-QUIRK-10).
+- **Code reading** (`installation.md` §7.21, "The Master Genie, re-read for T7b2b"): 0x4476C0's
+  table 0x447A00 decoded; case 1: a stack the acting side owns (the cursor), not the caster, for
+  which 0x447A80 accepts a spell of 10–69 with flag `0x800` (21 spells); 0x447EE0 draws
+  `random(1, n)` among them in spell order and casts at mastery 2, power 6. 0x447A80: not active,
+  0x5A3C80, then the cases (byte table 0x447E8C): Shield and Fire Shield an enemy that cannot
+  shoot, Air Shield one that can (alive, not blind, petrified or paralysed, not 147/148), the
+  Protections, Anti-Magic and Magic Mirror an enemy hero's spell book, Cure a wounded top
+  creature, Bloodlust a stack that cannot shoot, Precision one that can (0x4428F0), Prayer not
+  acted this round, Slayer an enemy record with king 1, dead or alive.
+- **Content:** ability `helpful_spell_caster` (mastery, power) with `drawn_spell` entries (the
+  compiler: a helpful caster's drawn spells take a stack; the three caster kinds exclude each
+  other), the spell field `useful` (`Usefulness`: always, enemy_melee, enemy_shooter,
+  enemy_spell_book, wounded, melee, shooting, not_acted, enemy_king; pack format v24, ruleset
+  hash v33); the gap-fill writes `useful` for 14 spells (`spells.useful`, source `exe-useful`) and
+  gives the Master Genie its 21 spells with weight 1 (`exe-genie`). The synthetic Djinn (Hasten,
+  Fury, Boon, Aegis, Hallow, Smiting, Mend) replaces the attacker's last Spearman stack in
+  `full.toml`; five synthetic spells got `useful`.
+- **Battle:** the public `CastSpell` (`Named`, `AtResolution`) for `stack_spell` and
+  `creature_cast_spell`; `casters::useful` (with `combat::can_shoot` and the hero view's
+  `spell_book`), `useful_spells`, `candidates`; `magic::helpful_target`, `plan_creature_cast`
+  takes the first useful spell and `Cast::draws`, `draw_useful` draws by weight in `apply_cast`
+  before the cast is reported; `HeroView.spell_book` (public; state hash v35); observation
+  `cast_candidates`.
+- **Sim and ABI:** the Genie's spell head allows only 0 (`spell_head`), decode checks it;
+  observation encoding v10 (the hero block's 12th public feature, the stack's 36th value), C ABI
+  v14.
+- **Measurements:** the new binary on T7b2a's workload +0.01 % Ir. The new workload (a Djinn
+  stack): 8 838 steps (−10.1 %), −6.42 % Ir (+4.1 % per step; `useful` and its `can_shoot` about
+  0.3 %), re-baselined. Replays re-recorded with new agent seeds showing T5–T7b2a's features and
+  the Djinns' casts: a1914, a1535, a1886, a463, a1825.
+- **Tests:** `tests/casters.rs` (the draw among the useful spells and its counts for the
+  controller only, no target without a useful spell, every usefulness case, the enemy's shooters,
+  war machines, spell book and kings); the content's list and compile rules; the sim's spell head
+  0; the pack's unknown usefulness; the hero view's book flag.
