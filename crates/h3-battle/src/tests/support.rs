@@ -415,6 +415,72 @@ pub const CREATURES: &[Creature] = &[
     // Created stacks (BAT-MAG-037 to BAT-MAG-039): a summoned creature that is not alive, of
     // level 2.
     ("sprite", 6, 6, 2, 3, 15, 7, &["level=2"]),
+    // Spells after a strike (BAT-MAG-040 to BAT-MAG-042): `spell:chance:mastery:rounds` plus
+    // `:living` and `:unless`; a damage spell `spell:chance:per creature`.
+    (
+        "blinder",
+        10,
+        10,
+        2,
+        2,
+        10,
+        5,
+        &["alive", "spell_after_strike=blind:100:0:3"],
+    ),
+    (
+        "hexer",
+        10,
+        10,
+        2,
+        2,
+        10,
+        5,
+        &["alive", "spell_after_strike=curse:25:0:3:living"],
+    ),
+    (
+        "weakener",
+        10,
+        10,
+        2,
+        2,
+        10,
+        5,
+        &["alive", "spell_after_strike=weaken:100:0:3"],
+    ),
+    (
+        "fly",
+        10,
+        10,
+        2,
+        2,
+        10,
+        5,
+        &[
+            "alive",
+            "spell_after_strike=unbless:100:0:3",
+            "spell_after_strike=weaken:100:2:3:unless",
+        ],
+    ),
+    (
+        "stormbird",
+        10,
+        10,
+        2,
+        2,
+        10,
+        5,
+        &["alive", "spell_damage_after_strike=bolt:100:10"],
+    ),
+    (
+        "twinblinder",
+        10,
+        10,
+        2,
+        2,
+        10,
+        5,
+        &["alive", "strikes_twice", "spell_after_strike=blind:100:0:3"],
+    ),
 ];
 
 /// The traits of a test creature as creature info: flags, abilities, shots and faction.
@@ -533,6 +599,32 @@ fn parse_traits(traits: &[&str]) -> CreatureInfoDef {
                 AbilityDef::SpellVulnerability {
                     spell: ContentKey::new("t", spell).unwrap(),
                     percent: percent.parse().unwrap(),
+                }
+            }
+            "spell_after_strike" => {
+                let mut parts = value.split(':');
+                let mut next = || parts.next().unwrap_or("");
+                let spell = ContentKey::new("t", next()).unwrap();
+                let (chance, mastery, rounds) = (next(), next(), next());
+                let rest: Vec<&str> = core::iter::from_fn(|| Some(next()))
+                    .take_while(|p| !p.is_empty())
+                    .collect();
+                AbilityDef::SpellAfterStrike {
+                    spell,
+                    chance_percent: chance.parse().unwrap(),
+                    mastery: mastery.parse().unwrap(),
+                    rounds: rounds.parse().unwrap(),
+                    living: rest.contains(&"living"),
+                    unless_active: rest.contains(&"unless"),
+                }
+            }
+            "spell_damage_after_strike" => {
+                let mut parts = value.split(':');
+                let mut next = || parts.next().unwrap();
+                AbilityDef::SpellDamageAfterStrike {
+                    spell: ContentKey::new("t", next()).unwrap(),
+                    chance_percent: next().parse().unwrap(),
+                    per_creature: next().parse().unwrap(),
                 }
             }
             "shots" => {
@@ -1285,9 +1377,10 @@ fn timed_def(
 }
 
 /// The test Dispel (`t:dispel`, like the original's: own stacks below Advanced, a target with an
-/// effect, no immunity or resistance, mass at Expert; it spares `t:sloth`) and Cure (`t:cure`:
-/// power × 5 + 10, 10, 20, 30; it ends `t:curse`, `t:sloth` and `t:hypnotize` only).
-pub fn other_defs() -> [SpellDef; 2] {
+/// effect, no immunity or resistance, mass at Expert; it spares `t:sloth`), Cure (`t:cure`:
+/// power × 5 + 10, 10, 20, 30; it ends `t:curse`, `t:sloth` and `t:hypnotize` only) and Dispel
+/// Helpful Spells (`t:unbless`: a creature ability ending positive spells' effects, BAT-MAG-042).
+pub fn other_defs() -> [SpellDef; 3] {
     let key = |k: &str| ContentKey::new("t", k).unwrap();
     let def = |name: &str, polarity, effect, magic| SpellDef {
         key: key(name),
@@ -1337,6 +1430,24 @@ pub fn other_defs() -> [SpellDef; 2] {
                     side: TargetSide::Own,
                     mass_from: Some(3),
                     effects: vec![SpellEffect::Dispel, SpellEffect::Heal],
+                    ..SpellMagic::default()
+                },
+            )
+        },
+        SpellDef {
+            category: SpellCategory::Ability,
+            level: 0,
+            schools: vec![],
+            ..def(
+                "unbless",
+                SpellPolarity::Negative,
+                [0; 4],
+                SpellMagic {
+                    target: SpellTarget::Stack,
+                    side: TargetSide::Enemy,
+                    ignores_immunity: true,
+                    dispels_positive: true,
+                    effects: vec![SpellEffect::Dispel],
                     ..SpellMagic::default()
                 },
             )

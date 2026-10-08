@@ -199,6 +199,16 @@ pub enum EventKind {
         /// The stack it went to.
         to: StackId,
     },
+    /// A stack's ability cast a spell on the stack it struck in melee, as a creature's cast
+    /// without a hero (BAT-MAG-040, BAT-MAG-041); the spell's own events follow.
+    StrikeSpell {
+        /// The striking stack.
+        striker: StackId,
+        /// The struck stack.
+        target: StackId,
+        /// The spell.
+        spell: SpellId,
+    },
     /// A spell damaged a stack (BAT-MAG-004). The three amounts let a client show what the
     /// original's combat log shows: the caster's extra damage (`caster − value`) and the
     /// target's extra damage or reduction (`damage` against `caster`; batch 2a R5).

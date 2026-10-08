@@ -25,7 +25,7 @@ use crate::magic::Specialist;
 use crate::state::{
     BattleState, STACK_CAPACITY, Stack, StackFlags, StackId, StackTraits, UNLIMITED_RETALIATIONS,
 };
-use crate::{magic, morale, war};
+use crate::{after_strike, magic, morale, war};
 
 /// The secondary targets of an attack, by stack index.
 type Targets = [bool; STACK_CAPACITY];
@@ -409,8 +409,10 @@ fn penalty(
 /// One attack of `attacker` on `target` that also hits the `others` (BAT-ATK-003, BAT-RNG-004):
 /// the luck roll (BAT-LCK-002), the death-blow roll (BAT-DMG-007) and a commanded war machine's
 /// double-damage roll (BAT-WAR-006, in this order as in VCMI), the strike on the target
-/// (the only one luck applies to, Q18), the strikes on the others in stack-id order, then life
-/// drain (BAT-DMG-008) and death stare (BAT-DMG-009).
+/// (the only one luck applies to, Q18), the strikes on the others in stack-id order, for a melee
+/// attack the spells of the attacker's abilities on the target (BAT-MAG-040, BAT-MAG-041), then
+/// life drain (BAT-DMG-008) and death stare (BAT-DMG-009). Returns whether those spells stopped
+/// the target's turns (it then does not retaliate).
 fn attack<S: Sink>(
     state: &mut BattleState,
     ruleset: &Ruleset,
@@ -418,7 +420,7 @@ fn attack<S: Sink>(
     others: &Targets,
     (flags, charge, retaliation_percent): (StrikeFlags, u8, u16),
     sink: &mut S,
-) {
+) -> bool {
     let (attacker, target) = pair;
     let abilities = ruleset.abilities(state.at(attacker).creature);
     let (mut death_blow, mut drain, mut stare) = (0u8, 0u16, 0u8);
@@ -474,6 +476,12 @@ fn attack<S: Sink>(
             reflected = reflected.saturating_add(r);
         }
     }
+    // The original casts them after the strike's damage, before the striker's own effects
+    // (0x441610, `installation.md` §7.20); only melee strikes have them.
+    // rule: BAT-MAG-040, BAT-MAG-041
+    let stopped = !flags.contains(StrikeFlags::RANGED)
+        && state.at(attacker).is_alive()
+        && after_strike::cast(state, ruleset, pair, sink);
     // A clone that killed its own original is gone: nothing to drain into (BAT-MAG-038).
     let heal = heal * u64::from(state.at(attacker).is_alive());
     life_drain(state, attacker, heal, sink);
@@ -484,6 +492,7 @@ fn attack<S: Sink>(
     if reflected > 0 && state.at(attacker).is_alive() {
         reflect(state, ruleset, attacker, reflected, sink);
     }
+    stopped
 }
 
 /// Deals the `damage` its targets' Fire Shields reflect to `stack` (BAT-MAG-018).
@@ -670,8 +679,9 @@ fn pattern_hexes(field: Field, me: &Stack, fp: Footprint, victim: Footprint) -> 
 
 /// A melee attack of `attacker`, which started its turn on `start` and travelled `charge` hexes,
 /// on `target` (BAT-ATK-001): the attack, the target's retaliation (BAT-RET-001..003; reduced
-/// or none if the target was blind, BAT-MAG-024), for creatures that strike twice a second attack
-/// (BAT-ATK-002), the return to `start` of creatures that strike and return (BAT-ATK-004), the
+/// or none if the target was blind, BAT-MAG-024; none if the attack's spells stopped its turns,
+/// BAT-MAG-040), for creatures that strike twice a second attack unless the attacker now loses
+/// its turns (BAT-ATK-002), the return to `start` of creatures that strike and return (BAT-ATK-004), the
 /// end of the attacker's Berserk (BAT-MAG-025), then the end-of-battle check (BAT-END-001).
 pub(crate) fn melee<S: Sink>(
     state: &mut BattleState,
@@ -694,13 +704,17 @@ pub(crate) fn melee<S: Sink>(
     // §7.14): the strike ends the blindness, the retaliation keeps its factor.
     let blind = effects::blind_share(state, ruleset, target);
     for i in 0..times {
-        if !state.at(attacker).is_alive() || !state.at(target).is_alive() {
+        let me = state.at(attacker);
+        // A second strike needs an attacker that does not lose its turns (a retaliating
+        // Unicorn may have blinded it; the original's 0x441E91, `installation.md` §7.20).
+        let lost = i > 0 && me.spells.status.contains(Status::BLIND);
+        if !me.is_alive() || !state.at(target).is_alive() || lost {
             break;
         }
         let others = melee_secondaries(state, field, attacker, target);
         let charge = if i == 0 { charge } else { 0 };
         let pair = (attacker, target);
-        attack(
+        let stopped = attack(
             state,
             ruleset,
             pair,
@@ -708,7 +722,8 @@ pub(crate) fn melee<S: Sink>(
             (StrikeFlags::NONE, charge, 100),
             sink,
         );
-        if i == 0 {
+        // rule: BAT-MAG-040
+        if i == 0 && !stopped {
             retaliate(state, ruleset, (target, attacker), blind, sink);
         }
     }
