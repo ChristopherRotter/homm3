@@ -1,5 +1,26 @@
 # CI: the single quality gate `cargo xtask verify` (docs/05-testing.md, ADR-0010) on Linux, where
-# every gate runs.
+# every gate runs, and the lane check `cargo xtask check-lane` on pull requests (lanes.toml,
+# docs/08-work-process.md, "Lanes").
+#
+# Actions minutes are scarce (private repo on the free plan: 2 000 minutes a month; user,
+# 2026-10-08), so CI verifies each state of the code once (docs/05-testing.md, "CI"):
+#
+# - The code fingerprint hashes every tracked file except `docs/`, `experiments/`, `clients/` (its
+#   own workspace; a client job gets its own fingerprint) and `*.md`: no heavy gate (fmt, clippy,
+#   deny, test, coverage, determinism, ffi-smoke, bench-check) reads those. A successful run records
+#   it as the commit status `verified (<os>)`, description `code <fingerprint>`, on the commit it
+#   checked (a pull request's head). A run that finds its fingerprint on the pull request's head
+#   or previous head, on the heads of the pull requests a push merged, or on the last ten commits of
+#   the target branch skips the full verify and runs only the gates that read the left-out paths
+#   (check-rules, check-stubs, check-docs). A gate or test that starts reading a left-out path must
+#   take it out of BOTH exclusion lists below (`paths-ignore` and the "Plan" step).
+# - Pushes to `master` that change only left-out paths start no run.
+# - Pull requests: check-lane, then the verify. The label `cross-lane` passes `--cross-lane`;
+#   adding or removing it re-runs the job, which skips a verify that already passed. Other labels
+#   do nothing. Closing or merging a pull request cancels its running CI (`master` verifies the
+#   merged result).
+# - Weekly: only `cargo deny check advisories`, so that new RustSec advisories surface without a
+#   code change. Manual dispatch and the re-run of a run always run the full verify.
 #
 # Windows (the second platform of the determinism matrix, ADR-0003 §5, §11; Q3, Q7) is disabled
 # for now because it takes about twice as long (user, 2026-10-06); it stays a local run. To
@@ -13,17 +34,26 @@ name: CI
 on:
   push:
     branches: [master]
+    # Keep in step with the exclusions of the "Plan" step.
+    paths-ignore: ["docs/**", "experiments/**", "clients/**", "**.md"]
   pull_request:
+    types: [opened, synchronize, reopened, labeled, unlabeled, closed]
   workflow_dispatch:
-  # Weekly, so that new RustSec advisories (the `deny` gate) surface without a code change.
   schedule:
     - cron: "17 4 * * 1"
 
 permissions:
   contents: read
+  # The fingerprint: "Plan" reads commit statuses and a push's merged pull requests, "Record"
+  # writes the status.
+  statuses: write
+  pull-requests: read
 
+# One run per pull request or branch; a newer run cancels the older one (a merge or close cancels
+# the pull request's run). The weekly run and label events other than `cross-lane` get a group of
+# their own, so that they cancel nothing.
 concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}
+  group: ${{ github.workflow }}-${{ github.event_name == 'schedule' && 'schedule' || github.ref }}${{ contains(fromJSON('["labeled", "unlabeled"]'), github.event.action) && github.event.label.name != 'cross-lane' && format('-{0}', github.run_id) || '' }}
   cancel-in-progress: true
 
 env:
@@ -32,41 +62,97 @@ env:
 jobs:
   verify:
     name: verify (${{ matrix.os }})
+    if: >-
+      github.event_name != 'schedule'
+      && github.event.action != 'closed'
+      && (!contains(fromJSON('["labeled", "unlabeled"]'), github.event.action)
+          || github.event.label.name == 'cross-lane')
     strategy:
       fail-fast: false
       matrix:
         os: [ubuntu-24.04]
     runs-on: ${{ matrix.os }}
-    timeout-minutes: 90
+    timeout-minutes: 40
+    defaults:
+      run:
+        shell: bash
     steps:
       - uses: actions/checkout@v7
         with:
-          # `doc-drift` compares with the merge base of `master`.
+          # `check-lane` and `doc-drift` compare with the merge base of the target branch.
           fetch-depth: 0
 
-      # rustup reads the pinned toolchain from rust-toolchain.toml; coverage additionally needs
-      # the LLVM tools, which rust-toolchain.toml leaves out on purpose.
+      # Full verify, or only the gates that read the paths left out of the code fingerprint.
+      - name: Plan
+        id: plan
+        env:
+          GH_TOKEN: ${{ github.token }}
+          FORCE: ${{ github.event_name == 'workflow_dispatch' || github.run_attempt > 1 }}
+          OS: ${{ matrix.os }}
+          EVENT: ${{ github.event_name }}
+          HEAD: ${{ github.event.pull_request.head.sha }}
+          BASE: ${{ github.event.pull_request.base.sha }}
+          BEFORE: ${{ github.event.before }}
+        run: |
+          fp=$(git ls-files -s -- . ':!docs/' ':!experiments/' ':!clients/' ':!*.md' \
+            | sha256sum | cut -c1-40)
+          echo "fingerprint=$fp" >> "$GITHUB_OUTPUT"
+          # Commits whose status may already record this fingerprint.
+          cands=("$HEAD" "$BEFORE")
+          if [ "$EVENT" = push ]; then
+            base=$BEFORE
+            mapfile -t -O 2 cands < <(gh api "repos/$GITHUB_REPOSITORY/commits/$GITHUB_SHA/pulls" \
+              --jq '.[].head.sha' || true)
+          else
+            base=$BASE
+          fi
+          # Pushes that change only left-out paths start no run: look a few commits further back.
+          if [ -n "$base" ] && git cat-file -e "$base^{commit}" 2>/dev/null; then
+            mapfile -t -O "${#cands[@]}" cands < <(git rev-list --first-parent -n 10 "$base")
+          fi
+          found=
+          for c in "${cands[@]}"; do
+            case "$c" in ""|0000000000000000000000000000000000000000) continue ;; esac
+            ids=$(gh api "repos/$GITHUB_REPOSITORY/commits/$c/statuses?per_page=100" --jq ".[]
+              | select(.context == \"verified ($OS)\" and .state == \"success\"
+                       and .description == \"code $fp\") | .id") || ids=
+            if [ -n "$ids" ]; then found=$c; break; fi
+          done
+          if [ "$FORCE" = true ] || [ -z "$found" ]; then
+            full=true; why="full verify"
+          else
+            full=false; why="verified on $found: only check-rules, check-stubs, check-docs"
+          fi
+          echo "full=$full" >> "$GITHUB_OUTPUT"
+          echo "Code fingerprint \`$fp\`: $why." | tee -a "$GITHUB_STEP_SUMMARY"
+
+      # rustup reads the pinned toolchain from rust-toolchain.toml.
       - name: Toolchain
-        shell: bash
         run: |
           cargo --version
-          rustup component add llvm-tools-preview
           rustc --version
 
+      # Coverage additionally needs the LLVM tools, which rust-toolchain.toml leaves out on purpose.
+      - name: LLVM tools (coverage)
+        if: steps.plan.outputs.full == 'true'
+        run: rustup component add llvm-tools-preview
+
       - name: valgrind (bench-check)
-        if: runner.os == 'Linux'
+        if: steps.plan.outputs.full == 'true' && runner.os == 'Linux'
         run: |
           sudo apt-get update -qq
           sudo apt-get install -y -qq valgrind
 
       - uses: taiki-e/install-action@v2
+        if: steps.plan.outputs.full == 'true'
         with:
           tool: cargo-deny,cargo-llvm-cov
 
       - uses: Swatinem/rust-cache@v2
         with:
-          # Branches restore master's cache but do not write their own.
-          save-if: ${{ github.ref == 'refs/heads/master' }}
+          # Only master's full verifies write the cache; branches restore it. A run of the cheap
+          # gates alone would store a cache without the verify's builds.
+          save-if: ${{ github.ref == 'refs/heads/master' && steps.plan.outputs.full == 'true' }}
 
       # The determinism step builds into target/native with `-C target-cpu=native`, which also
       # compiles the proc macros for the CPU of the runner that built them. Restored from the cache
@@ -75,5 +161,47 @@ jobs:
       - name: Drop cached native builds
         run: rm -rf target/native
 
+      # First, so that a pull request in the wrong shape fails within a minute.
+      - name: cargo xtask check-lane
+        if: github.event_name == 'pull_request'
+        env:
+          CROSS_LANE: ${{ contains(github.event.pull_request.labels.*.name, 'cross-lane') && '--cross-lane' || '' }}
+        run: cargo xtask check-lane --base "origin/${{ github.base_ref }}" $CROSS_LANE
+
       - name: cargo xtask verify
+        if: steps.plan.outputs.full == 'true'
         run: cargo xtask verify
+
+      - name: Gates that read the left-out paths
+        if: steps.plan.outputs.full != 'true'
+        run: |
+          cargo xtask check-rules
+          cargo xtask check-stubs
+          cargo xtask check-docs
+
+      # Also after the cheap gates, so that the fingerprint follows the commits that carry it.
+      - name: Record the verified code
+        env:
+          GH_TOKEN: ${{ github.token }}
+          SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+          OS: ${{ matrix.os }}
+          FP: ${{ steps.plan.outputs.fingerprint }}
+        run: |
+          gh api "repos/$GITHUB_REPOSITORY/statuses/$SHA" -f state=success \
+            -f context="verified ($OS)" -f description="code $FP" > /dev/null
+
+  # The weekly run: new RustSec advisories surface without a code change. Licenses, bans and
+  # sources change only with the code, which the verify checks.
+  advisories:
+    if: github.event_name == 'schedule'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: taiki-e/install-action@v2
+        with:
+          tool: cargo-deny
+
+      - name: cargo deny check advisories
+        run: cargo deny --all-features check advisories
