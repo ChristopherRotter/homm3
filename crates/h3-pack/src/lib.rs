@@ -2798,7 +2798,8 @@ mod tests {
              \"quirk.battle.obstacle_anchors\" = true, \
              \"quirk.battle.draws_avoid_hidden\" = true, \
              \"quirk.battle.sacrifice_tests_as_resurrection\" = true, \
-             \"quirk.battle.creature_mirror_untested\" = true }",
+             \"quirk.battle.creature_mirror_untested\" = true, \
+             \"quirk.battle.clone_on_its_original\" = true }",
             "quirks = { \"quirk.x\" = true }",
         );
         let pack = parse_pack(&quirky).unwrap();
