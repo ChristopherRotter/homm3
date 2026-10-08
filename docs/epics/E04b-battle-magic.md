@@ -1,6 +1,6 @@
 # E04b — Battle magic
 
-Status: **in progress** (refined 2026-10-05; increment 1 = T1–T2, done 2026-10-06: T1, ADR-0014 accepted, T2a–T2e, batch 2a evaluated; increment 2 = T3 in parts, then T4 (Q46, Q48): T3a, T3b1a, T3b1b, T3b2, T3c1, T3c2, T3c3 (batch 2b compiled), T4a, T4b and T4c done; increment 3 = T5 in three parts (Q54): T5a done, batch 2b folded in and batch 2c compiled (Q56), batch 2c folded in, T5c in two parts (BAT-Q1): T5c1 and T5c2 done; the Q55 survey done (BAT-Q3); T5b done (BAT-Q5), T5 complete; increment 4 = T6 in two parts (the user, 2026-10-08): T6a and T6b done; increment 5 = batch 2d alone (the user, 2026-10-08): compiled) · Follows E04a (closed 2026-10-05) · Part of the former E04 (OPEN-QUESTIONS Q27): E04a heroes in battle, **E04b** battle magic (this one), E04c sieges and special battlefields.
+Status: **in progress** (refined 2026-10-05; increment 1 = T1–T2, done 2026-10-06: T1, ADR-0014 accepted, T2a–T2e, batch 2a evaluated; increment 2 = T3 in parts, then T4 (Q46, Q48): T3a, T3b1a, T3b1b, T3b2, T3c1, T3c2, T3c3 (batch 2b compiled), T4a, T4b and T4c done; increment 3 = T5 in three parts (Q54): T5a done, batch 2b folded in and batch 2c compiled (Q56), batch 2c folded in, T5c in two parts (BAT-Q1): T5c1 and T5c2 done; the Q55 survey done (BAT-Q3); T5b done (BAT-Q5), T5 complete; increment 4 = T6 in two parts (the user, 2026-10-08): T6a and T6b done; increment 5 = batch 2d alone (the user, 2026-10-08): compiled; increment 6 = T7a in two parts, batch 2d folded in at its checkpoint (the user, 2026-10-08): T7 cut, T7a1 next) · Follows E04a (closed 2026-10-05) · Part of the former E04 (OPEN-QUESTIONS Q27): E04a heroes in battle, **E04b** battle magic (this one), E04c sieges and special battlefields.
 
 ## Goal
 
@@ -36,7 +36,7 @@ Earthquake, sieges and the moat (E04c). The special battlefields' magic (Magic P
 - [x] **T4 Control spells and spell defences** — done 2026-10-07 (Q52, Q53): Berserk, Hypnotize, Forgetfulness, Blind; Anti-Magic, Magic Mirror (S-09, S-10, S-13 settled, S-11 unconfirmed). In three parts: T4a, T4b, T4c (below).
 - [x] **T5 Battlefield spells** — done 2026-10-07 (Q54): Force Field, Fire Wall, Teleport (T5a), Remove Obstacle with the natural obstacles as pieces (T5b), Quicksand and Land Mine (hidden, owner-side visibility; T5c). In three parts (below).
 - [x] **T6 Life and summons** — done 2026-10-08: Resurrection, Animate Dead, Sacrifice (T6a), Clone and the four Elementals (T6b); temporary resurrection in the outcome (S-15, S-20 settled; S-21 cannot occur in SoD). In two parts (below).
-- [ ] T7 Creature magic: spell-like attack effects (curse, blind, petrify, bind, dispel, weakness, age, poison, …), spellcasting creatures, creature effects on mana and costs (S-12, S-14; batch 2a R6: a dead Pegasus' surcharge or the Mages' discount, read the cost code first; survey §13).
+- [ ] **T7 Creature magic** (refined below, 2026-10-08: T7a the strike's effects in two parts, then T7b casters and T7c defences): spell-like attack effects (curse, blind, petrify, bind, dispel, weakness, age, poison, …), spellcasting creatures, creature effects on mana and costs (S-12, S-14; batch 2a R6: a dead Pegasus' surcharge or the Mages' discount, read the cost code first; survey §13).
 - [ ] T8 Hero-side long tail: the remaining magic artifacts (opening spells, spell-level limits, the Tomes, spell scrolls as instances, "known spells need a worn spell book"), Eagle Eye's outcome inputs, profile-level overrides for data quirks (Q-0006, S-05).
 - [ ] T9 Workload and measurements: casting heroes with the full spell range in the `full` scenario, golden replays, `bench-check`, state size and clone cost, observation completeness.
 - [ ] T10 Experiments: batch 2a compiled at the end of increment 1 (direct-damage spells and the E04a leftovers, Q40 among them); later batches with the tasks they check; the experiment-spec runner (the battle queue's inbox, Q37) when a batch needs predictions.
@@ -70,6 +70,32 @@ The 13 direct-damage spells: Magic Arrow, Ice Bolt, Lightning Bolt, Titan's Ligh
 **Checkpoint after T4a** (2026-10-07, Q53): the user chose T4b + T4c in one session and, after the reading, the quirk classes: S-09 the rule, S-10 fix-optional (Q-0011), S-11 unconfirmed (the engine's pathfinding), S-13 fix-optional.
 
 **Checkpoint after T3c2** (2026-10-07, Q52): the user chose batch 2b now (T3c3, played while T4 proceeds), T4 in three parts by mechanism with T4a this session (a checkpoint after), and kept `Rate`'s f32 bit pattern.
+
+### T7 — Creature magic (refined 2026-10-08, the user: T7a first, in two parts)
+
+Cut after the code reading of the strike's creature magic (`installation.md` §7.20), which confirmed
+three parts: **T7a** the effects of a melee strike (increment 6), **T7b** casting creatures, **T7c**
+creature defences, auras and mana; T7b and T7c are refined at the checkpoint after T7a. The strike's
+effects are `Ability` variants that name a spell (ADR-0012, ADR-0014 points 1 and 3): automatic,
+no command, so no action encoding changes.
+
+- [ ] **T7a1 The strike's spells** — the hook in every melee strike (attack, retaliation, second
+  strike; not shots): the striker's chance draw, the target alive (and living where the ability
+  says so), the creature test (immunities, resistance, aura; no side test) with its own draw, the
+  cast at mastery 0 for 3 rounds without a hero, before life drain and death stare; a spell that
+  stops the target's turns also stops its retaliation, and a blind attacker loses its second
+  strike. With the spells that exist: Blind (Unicorns), Curse (Black and Dread Knights, Mummies,
+  25 %), Weakness at Advanced unless active (Dragon Fly), Dispel Helpful Spells (Serpent and Dragon
+  Fly: ends positive spells; its own test), Thunderbolt (Thunderbird: Lightning Bolt's tests and
+  damage factors, 10 per creature). Pack format v19 (two `Ability` variants, Dispel Helpful's
+  dispel by polarity), rule ids from BAT-MAG-040.
+- [ ] **T7a2 The new statuses** — Stone Gaze (no turns, ends on damage, half damage, no
+  retaliation), Paralyze (no turns, ends on damage, a quarter retaliation), Poison (a tenth of the
+  hit points at the strike and each round start while it lasts, at most half, kept after it ends
+  until Cure), Disease (−2 attack and defense), Age (half the hit points while it lasts), Bind
+  (Dendroids: no movement while a binder stays; released when a binder moves, dies or is
+  teleported), Acid Breath (−3 defense for good; 20 % extra damage of half a roll per dragon);
+  Cure's reset of the hit points; the observation's new statuses. May split again if it grows.
 
 ### T6 — Life and summons (refined 2026-10-08, the user)
 
