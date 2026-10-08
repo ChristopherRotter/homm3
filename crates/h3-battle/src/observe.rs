@@ -45,6 +45,8 @@ pub struct Observation {
     pub result: Option<BattleResult>,
     /// All stacks (public in battle).
     pub stacks: FixedVec<Stack, STACK_CAPACITY>,
+    /// The rounds left of each clone, by stack id (0: not a clone; public, BAT-MAG-038).
+    pub clone_rounds: [u16; STACK_CAPACITY],
     /// Hexes blocked by natural obstacles (public).
     pub obstacles: HexSet,
     /// The natural obstacles a spell can remove, with their anchors (public; BAT-MAG-034).
@@ -78,6 +80,7 @@ pub fn observe(state: &BattleState, ruleset: &Ruleset, viewer: BattleSide) -> Ob
         last_side_acted: state.last_side_acted,
         result: state.result,
         stacks: state.stacks,
+        clone_rounds: state.created.rounds,
         obstacles: state.obstacles(),
         removable_obstacles: state.natural.removable_list(),
         obstacle_anchors: state.natural.anchors(),

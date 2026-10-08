@@ -51,6 +51,7 @@ tight_formation = [
 tactics_zone_columns = [3, 5, 7]            # BAT-TAC-001: zone width by Tactics level difference
 surrender = { resource = "coin", cost_percent = 50 }  # BAT-FLE-002: half the coin cost
 hero_casts_per_round = 1                    # BAT-MAG-001 (pack format v4)
+side_stack_limit = 20                       # BAT-MAG-037 (pack format v18)
 
 # Content of pack format v2 (E02): resource kinds, factions and the non-battle creature fields.
 # Invented names; the values only exercise the format.
@@ -192,6 +193,23 @@ speed = 0
 ai_value = 120
 flags = ["two_hex", "war_machine", "no_morale"]
 abilities = [{ kind = "first_aid", min_hp = 1, max_hp = 10 }]
+
+[[creature]]
+id = "shade"                # format v18: summoned by Conjure (BAT-MAG-039), not living
+name = "Shade"
+plural = "Shades"
+level = 2
+attack = 5
+defense = 5
+damage = [2, 4]
+hit_points = 15
+speed = 6
+cost = { coin = 100 }
+growth = 6
+fight_value = 150
+ai_value = 160
+adventure_count = [10, 20]
+flags = ["no_morale"]
 
 # ---- Hero content (pack format v3, E04a T3): invented schools, spells, skills, classes and heroes.
 # Every hero-effect kind appears at least once. Spells carry their battle magic since format v4
@@ -765,6 +783,34 @@ requires = ["alive"]
 excludes = ["undead", "war_machine"]
 tests_as = "revive"
 effects = [{ kind = "sacrifice" }]
+
+[[spell]]                           # format v18 (E04b T6b): a Clone, of a stack up to level 1, 1, 2, 3
+id = "copy"                         # by mastery, for the caster's power in rounds
+name = "Copy"
+category = "combat"
+level = 4
+schools = ["storm"]
+cost = [24, 20, 20, 20]
+power = 0
+effect = [1, 1, 2, 3]
+polarity = "positive"
+target = "stack"
+side = "own"
+excludes = ["war_machine"]
+effects = [{ kind = "clone" }]
+
+[[spell]]                           # format v18: a Summon Elemental, effect × power Shades on the
+id = "conjure"                      # caster's side (no target)
+name = "Conjure"
+category = "combat"
+level = 5
+schools = ["stone"]
+cost = [25, 20, 20, 20]
+power = 0
+effect = [2, 2, 3, 4]
+polarity = "neutral"
+summons = "shade"
+effects = [{ kind = "summon" }]
 
 [[secondary_skill]]
 id = "marksmanship"

@@ -257,6 +257,9 @@ pub struct SpellDef {
     /// The raise spell whose target test a sacrifice effect's target takes under quirk
     /// BAT-QUIRK-5 (pack format v17; Sacrifice: Resurrection).
     pub tests_as: Option<ContentKey>,
+    /// The creature a summon effect summons (pack format v18; Summon Fire Elemental: the Fire
+    /// Elemental).
+    pub summons: Option<ContentKey>,
 }
 
 /// A secondary skill with the effects of its three levels (E04a T3).
@@ -428,6 +431,9 @@ pub struct BattleParamsDef {
     pub surrender: Option<SurrenderDef>,
     /// How many spells a hero may cast per round (BAT-MAG-001; 1 in the original).
     pub hero_casts_per_round: u8,
+    /// A side may create a stack (Clone, Summon Elemental) only while it has fewer stacks, dead
+    /// ones included (BAT-MAG-037; 20 in the original).
+    pub side_stack_limit: u8,
 }
 
 /// The price of a surrender (BAT-FLE-002): `cost_percent` of the summed cost in `resource` of

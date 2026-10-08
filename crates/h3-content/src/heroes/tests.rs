@@ -1,5 +1,6 @@
 extern crate std;
 
+use std::format;
 use std::vec;
 use std::vec::Vec;
 
@@ -11,7 +12,7 @@ use crate::pack::{
 };
 use crate::ruleset::Ruleset;
 use crate::ruleset::tests::{battle_def, creature, faction, key, manifest};
-use crate::spell::{SpellEffect, SpellTarget, TimedChange};
+use crate::spell::{SpellEffect, SpellMagic, SpellTarget, TimedChange};
 
 fn school(k: &str) -> SpellSchoolDef {
     SpellSchoolDef {
@@ -41,6 +42,7 @@ fn spell(k: &str, schools: &[&str]) -> SpellDef {
         dispels: vec![],
         spares: vec![],
         tests_as: None,
+        summons: None,
     }
 }
 
@@ -371,6 +373,51 @@ fn a_sacrifice_names_the_raise_spell_it_is_tested_as() {
     other.spells[first].tests_as = None;
     other.spells[first].magic.effects = vec![SpellEffect::Raise];
     assert_ne!(compile(&[other]).unwrap().content_hash(), r.content_hash());
+}
+
+#[test]
+fn a_summon_spell_names_its_creature() {
+    let mut p = pack();
+    let mut conjure = spell("t:conjure", &["t:air"]);
+    conjure.magic = SpellMagic {
+        effects: vec![SpellEffect::Summon],
+        ..SpellMagic::default()
+    };
+    conjure.summons = Some(key("t:farmer"));
+    p.spells.push(conjure);
+    let r = compile(&[p.clone()]).unwrap();
+    let id = r.spell_by_key("t:conjure").unwrap();
+    let farmer = r.creature_by_key("t:farmer").unwrap();
+    assert_eq!(r.spell(id).unwrap().summons, Some(farmer));
+    let reason = "a summon effect and the creature it summons go together";
+    let last = p.spells.len() - 1;
+    let mut missing = p.clone();
+    missing.spells[last].summons = None;
+    assert_eq!(fails(missing), invalid("spell", "t:conjure", reason));
+    let mut no_summon = p.clone();
+    no_summon.spells[0].summons = Some(key("t:farmer"));
+    let first = no_summon.spells[0].key.clone();
+    assert_eq!(fails(no_summon), invalid("spell", first.as_str(), reason));
+    let mut unknown = p.clone();
+    unknown.spells[last].summons = Some(key("t:nope"));
+    assert_eq!(
+        fails(unknown),
+        CompileError::UnknownReference {
+            kind: "creature",
+            key: "t:nope".into(),
+        }
+    );
+    let mut other = p.clone();
+    other.spells[last].summons = Some(key("t:peasant"));
+    assert_ne!(compile(&[other]).unwrap().content_hash(), r.content_hash());
+    // At most `MAX_SUMMON_SPELLS` (4) summon spells.
+    let mut many = p;
+    for i in 0..MAX_SUMMON_SPELLS {
+        let mut extra = many.spells[last].clone();
+        extra.key = key(&format!("t:conjure{i}"));
+        many.spells.push(extra);
+    }
+    assert_eq!(fails(many), CompileError::TooManyEntries("summon spell"));
 }
 
 #[test]

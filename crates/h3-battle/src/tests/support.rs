@@ -412,6 +412,9 @@ pub const CREATURES: &[Creature] = &[
     ),
     ("ghoul", 10, 10, 2, 2, 10, 5, &["undead"]),
     ("seraph", 20, 20, 2, 2, 200, 5, &["alive"]),
+    // Created stacks (BAT-MAG-037 to BAT-MAG-039): a summoned creature that is not alive, of
+    // level 2.
+    ("sprite", 6, 6, 2, 3, 15, 7, &["level=2"]),
 ];
 
 /// The traits of a test creature as creature info: flags, abilities, shots and faction.
@@ -604,6 +607,7 @@ pub fn battle_params() -> BattleParamsDef {
             cost_percent: 50,
         }),
         hero_casts_per_round: 1,
+        side_stack_limit: 20,
     }
 }
 
@@ -798,6 +802,7 @@ pub fn ruleset_with(profile: &str, edit: impl FnOnce(&mut BattleParamsDef)) -> R
             .chain(control_defs())
             .chain(field_defs())
             .chain(raise_defs())
+            .chain(create_defs())
             .collect(),
         hero_classes: vec![HeroClassDef {
             key: ContentKey::new("t", "knight").unwrap(),
@@ -1275,6 +1280,7 @@ fn timed_def(
         dispels: vec![],
         spares: vec![],
         tests_as: None,
+        summons: None,
     }
 }
 
@@ -1298,6 +1304,7 @@ pub fn other_defs() -> [SpellDef; 2] {
         dispels: vec![],
         spares: vec![],
         tests_as: None,
+        summons: None,
     };
     [
         SpellDef {
@@ -1365,6 +1372,7 @@ pub fn control_defs() -> Vec<SpellDef> {
         dispels: vec![],
         spares: vec![],
         tests_as: None,
+        summons: None,
     };
     let machines = TargetConditions {
         requires: CreatureFlags::default(),
@@ -1471,6 +1479,7 @@ pub fn field_defs() -> Vec<SpellDef> {
         dispels: vec![],
         spares: vec![],
         tests_as: None,
+        summons: None,
     };
     let shape = |mirrored, separate| ObstacleShape {
         steps: vec![HexStep::TopRight, HexStep::TopLeft],
@@ -1595,6 +1604,7 @@ pub fn raise_defs() -> Vec<SpellDef> {
         dispels: vec![],
         spares: vec![],
         tests_as: None,
+        summons: None,
     };
     let magic = |requires, excludes, effect| SpellMagic {
         target: SpellTarget::Stack,
@@ -1622,6 +1632,7 @@ pub fn raise_defs() -> Vec<SpellDef> {
         ),
         SpellDef {
             tests_as: Some(key("rise")),
+            summons: None,
             ..def(
                 "offering",
                 (5, "fire"),
@@ -1633,6 +1644,62 @@ pub fn raise_defs() -> Vec<SpellDef> {
                 ),
             )
         },
+    ]
+}
+
+/// The spells that create stacks (BAT-MAG-037 to BAT-MAG-039): `copy` (Clone: an air spell of
+/// level 4, of creatures up to level 1, 1, 2, 3 by mastery), `sprites` and `serfs` (Summon
+/// Elemental: fire, level 5, 2, 2, 3, 4 creatures per power of `sprite` and of `serf`).
+pub fn create_defs() -> Vec<SpellDef> {
+    let key = |k: &str| ContentKey::new("t", k).unwrap();
+    let def = |name: &str, (level, school), polarity, magic| SpellDef {
+        key: key(name),
+        name: String::from(name),
+        category: SpellCategory::Combat,
+        level,
+        schools: vec![key(school)],
+        cost: [5, 4, 4, 4],
+        power: 0,
+        effect: [1, 1, 2, 3],
+        polarity,
+        magic,
+        counters: vec![],
+        dispels: vec![],
+        spares: vec![],
+        tests_as: None,
+        summons: None,
+    };
+    let summon = |name: &str, creature: &str| SpellDef {
+        effect: [2, 2, 3, 4],
+        summons: Some(key(creature)),
+        ..def(
+            name,
+            (5, "fire"),
+            SpellPolarity::Neutral,
+            SpellMagic {
+                effects: vec![SpellEffect::Summon],
+                ..SpellMagic::default()
+            },
+        )
+    };
+    vec![
+        def(
+            "copy",
+            (4, "air"),
+            SpellPolarity::Positive,
+            SpellMagic {
+                target: SpellTarget::Stack,
+                side: TargetSide::Own,
+                conditions: TargetConditions {
+                    requires: CreatureFlags::default(),
+                    excludes: CreatureFlags::default().with(CreatureFlag::WarMachine),
+                },
+                effects: vec![SpellEffect::Clone],
+                ..SpellMagic::default()
+            },
+        ),
+        summon("sprites", "sprite"),
+        summon("serfs", "serf"),
     ]
 }
 
@@ -1687,6 +1754,7 @@ fn spell_def((name, category, schools, target, side): SpellSpec) -> SpellDef {
         dispels: vec![],
         spares: vec![],
         tests_as: None,
+        summons: None,
     }
 }
 

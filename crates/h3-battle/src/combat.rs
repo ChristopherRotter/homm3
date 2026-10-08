@@ -562,6 +562,8 @@ fn death_stare<S: Sink>(
         target,
         kills,
     }));
+    // rule: BAT-MAG-038
+    crate::created::died(state, target, sink);
 }
 
 /// The secondary targets of a melee attack of `attacker` on `target` (BAT-ATK-003), from the
@@ -824,7 +826,8 @@ fn area(state: &BattleState, field: Field, shooter: StackId, target: StackId, at
 }
 
 /// The battle ends when a side has no living stacks other than war machines (BAT-WAR-001): the
-/// other side wins (BAT-END-001), or nobody if neither side has any left (BAT-END-002).
+/// other side wins (BAT-END-001), or nobody if neither side has any left (BAT-END-002) or the
+/// other side's are all created in the battle (both lose, BAT-MAG-037; the original's 0x4658B0).
 // rule: BAT-END-001, BAT-END-002
 pub(crate) fn check_end<S: Sink>(state: &mut BattleState, sink: &mut S) {
     let alive = |side: BattleSide| {
@@ -833,10 +836,21 @@ pub(crate) fn check_end<S: Sink>(state: &mut BattleState, sink: &mut S) {
             .iter()
             .any(|s: &Stack| s.side == side && s.is_alive() && !s.has(StackTraits::WAR_MACHINE))
     };
+    // rule: BAT-MAG-037
+    let wins = |side: BattleSide| {
+        let army = |s: &Stack| {
+            s.side == side && s.is_alive() && !s.is_created() && !s.has(StackTraits::WAR_MACHINE)
+        };
+        if state.stacks.iter().any(army) {
+            BattleResult::Victory(side)
+        } else {
+            BattleResult::Draw
+        }
+    };
     let result = match (alive(BattleSide::Attacker), alive(BattleSide::Defender)) {
         (true, true) => None,
-        (true, false) => Some(BattleResult::Victory(BattleSide::Attacker)),
-        (false, true) => Some(BattleResult::Victory(BattleSide::Defender)),
+        (true, false) => Some(wins(BattleSide::Attacker)),
+        (false, true) => Some(wins(BattleSide::Defender)),
         (false, false) => Some(BattleResult::Draw),
     };
     if let Some(r) = result {

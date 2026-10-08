@@ -213,6 +213,7 @@ struct BattleDto {
     #[serde(default)]
     surrender: Option<SurrenderDto>,
     hero_casts_per_round: u8,
+    side_stack_limit: u8,
 }
 
 #[derive(Deserialize)]
@@ -480,6 +481,9 @@ struct SpellDto {
     /// `tests_as = "resurrection"`: the spell whose target test a sacrifice effect's target
     /// takes under quirk BAT-QUIRK-5 (pack format v17, E04b T6a).
     tests_as: Option<String>,
+    /// `summons = "fire_elemental"`: the creature a summon effect summons (pack format v18, E04b
+    /// T6b).
+    summons: Option<String>,
 }
 
 /// `obstacle = { steps = ["top_right", "top_left"], hexes = [2, 2, 3, 3], mirrored = true,
@@ -609,6 +613,8 @@ enum SpellEffectDto {
     RemoveObstacle {},
     Raise {},
     Sacrifice {},
+    Clone {},
+    Summon {},
 }
 
 impl SpellDto {
@@ -657,6 +663,8 @@ impl SpellDto {
                     SpellEffectDto::RemoveObstacle {} => Ok(SpellEffect::RemoveObstacle),
                     SpellEffectDto::Raise {} => Ok(SpellEffect::Raise),
                     SpellEffectDto::Sacrifice {} => Ok(SpellEffect::Sacrifice),
+                    SpellEffectDto::Clone {} => Ok(SpellEffect::Clone),
+                    SpellEffectDto::Summon {} => Ok(SpellEffect::Summon),
                     SpellEffectDto::Obstacle { obstacle } => ObstacleKind::from_name(obstacle)
                         .map(SpellEffect::Obstacle)
                         .ok_or_else(|| {
@@ -1414,6 +1422,11 @@ pub fn parse_pack(text: &str) -> Result<ContentPack, PackError> {
                     .as_deref()
                     .map(|k| reference(&pack_id, k))
                     .transpose()?,
+                summons: s
+                    .summons
+                    .as_deref()
+                    .map(|k| reference(&pack_id, k))
+                    .transpose()?,
                 polarity: match s.polarity {
                     SpellPolarityDto::Positive => SpellPolarity::Positive,
                     SpellPolarityDto::Neutral => SpellPolarity::Neutral,
@@ -1579,6 +1592,7 @@ pub fn parse_pack(text: &str) -> Result<ContentPack, PackError> {
         tactics_zone_columns: b.tactics_zone_columns,
         surrender,
         hero_casts_per_round: b.hero_casts_per_round,
+        side_stack_limit: b.side_stack_limit,
     });
     Ok(ContentPack {
         manifest: PackManifest {
@@ -2552,7 +2566,7 @@ mod tests {
     fn synthetic_pack_and_scenarios_load() {
         for text in [SYNTHETIC_SKIRMISH, SYNTHETIC_DUEL, SYNTHETIC_FULL] {
             let (ruleset, setup) = synthetic(text).unwrap();
-            assert_eq!(ruleset.creature_count(), 6);
+            assert_eq!(ruleset.creature_count(), 7);
             assert!(!setup.attacker.stacks.is_empty());
             assert!(!setup.defender.stacks.is_empty());
         }
@@ -3210,7 +3224,7 @@ mod tests {
         let both = compile(&[SYNTHETIC_EXT_PACK, SYNTHETIC_PACK], "synthetic:faithful").unwrap();
         let ids: Vec<&str> = both.packs().iter().map(|(id, _)| id.as_str()).collect();
         assert_eq!(ids, ["synthetic", "synthetic-ext"]);
-        assert_eq!(both.creature_count(), 7);
+        assert_eq!(both.creature_count(), 8);
         let wisp_info = both.creature_info(wisp).unwrap();
         let marsh = wisp_info.faction.unwrap();
         assert_eq!(
@@ -4114,7 +4128,7 @@ mod tests {
         use h3_content::SpellCategory;
         let r = compile(&[SYNTHETIC_PACK, SYNTHETIC_EXT_PACK], "synthetic:faithful").unwrap();
         assert_eq!(r.spell_schools().len(), 2);
-        assert_eq!(r.spells().len(), 37);
+        assert_eq!(r.spells().len(), 39);
         // Pack format v6: the storm school's protection rank; stone's defaults to 0.
         let ranks: Vec<u8> = r
             .spell_schools()
@@ -4386,6 +4400,29 @@ mod tests {
             )
         );
         assert!(offer.magic.sacrifices() && !offer.magic.raises());
+        // Format v18: a clone effect, a summon effect with the creature it summons, and the
+        // side stack limit (BAT-MAG-037 to BAT-MAG-039).
+        let copy = magic("synthetic:copy");
+        assert_eq!(
+            (copy.target, copy.effects.clone()),
+            (SpellTarget::Stack, vec![SpellEffect::Clone])
+        );
+        let conjure = r
+            .spell(r.spell_by_key("synthetic:conjure").unwrap())
+            .unwrap();
+        assert_eq!(
+            (
+                conjure.magic.target,
+                conjure.magic.effects.clone(),
+                conjure.summons
+            ),
+            (
+                SpellTarget::None,
+                vec![SpellEffect::Summon],
+                r.creature_by_key("synthetic:shade")
+            )
+        );
+        assert_eq!(r.battle().side_stack_limit, 20);
         for (from, to) in [
             ("fixed_rounds = 255\n", ""),
             (
@@ -4419,6 +4456,11 @@ mod tests {
                 "effects = [{ kind = \"sacrifice\" }]",
                 "effects = [{ kind = \"sacrifice\", value = 1 }]",
             ),
+            (
+                "effects = [{ kind = \"clone\" }]",
+                "effects = [{ kind = \"clone\", rounds = 1 }]",
+            ),
+            ("side_stack_limit = 20", "side_stack_limit = -1"),
         ] {
             assert!(SYNTHETIC_PACK.contains(from), "{from}");
             let text = SYNTHETIC_PACK.replacen(from, to, 1);

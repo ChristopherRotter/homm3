@@ -527,6 +527,18 @@ fn remove_spell(
     Ok(())
 }
 
+/// Writes the battle magic of a spell that summons a creature (pack format v18, E04b T6b): no
+/// target, which the flag word must confirm (no stack, area or obstacle bit), the creature from
+/// the gap-fill entry.
+fn summon_spell(text: &mut String, what: &str, flags: u32, creature: &str) -> Result<(), String> {
+    if flags & (SPELL_SINGLE | SPELL_AREA | SPELL_OBSTACLE) != 0 {
+        return Err(format!("{what}: flag word {flags:#x} names a target"));
+    }
+    let _ = writeln!(text, "summons = {}", quote(creature));
+    let _ = writeln!(text, "effects = [{{ kind = \"summon\" }}]");
+    Ok(())
+}
+
 /// Malformed tables, values outside the expected ranges, references the packs cannot express, or
 /// gap-fill entries that do not match the tables.
 #[allow(
@@ -754,6 +766,20 @@ pub fn harvest_heroes(
             ));
         }
     }
+    let mut summon: BTreeMap<&str, &crate::gapfill::SpellSummon> = BTreeMap::new();
+    for t in &gap.spells.summon {
+        if summon.insert(t.spell.as_str(), t).is_some()
+            || timed.contains_key(t.spell.as_str())
+            || other.contains_key(t.spell.as_str())
+            || obstacle.contains_key(t.spell.as_str())
+            || remove.contains_key(t.spell.as_str())
+        {
+            return Err(format!(
+                "gapfill: spell `{}` has two effect entries",
+                t.spell
+            ));
+        }
+    }
     let mut specialist: BTreeMap<&str, &toml::Value> = BTreeMap::new();
     for t in &gap.spells.specialist {
         for name in &t.spells {
@@ -923,6 +949,12 @@ pub fn harvest_heroes(
             }
             remove_spell(text, &what, flags, t)?;
             other_spells += 1;
+        } else if let Some(t) = summon.remove(name) {
+            if category != "combat" || extra.is_some() {
+                return Err(format!("gapfill: summon entry for `{name}` is not allowed"));
+            }
+            summon_spell(text, &what, flags, &creature(t.creature, pack, &what)?)?;
+            other_spells += 1;
         } else if extra.is_some() {
             return Err(format!(
                 "gapfill: targeting for `{name}`, which has no harvested effects"
@@ -944,6 +976,7 @@ pub fn harvest_heroes(
         .chain(other.keys())
         .chain(obstacle.keys())
         .chain(remove.keys())
+        .chain(summon.keys())
         .chain(specialist.keys())
         .next()
     {
@@ -956,7 +989,7 @@ pub fn harvest_heroes(
         "spells: target and damage effect of {damage_spells} damage spells from the flag word; \
          target, side, mass version and conditions of {timed_spells} timed spells from the flag \
          word, their changes from the gap-fill file; target and mass version of {other_spells} \
-         dispel, heal, teleport, obstacle and remove spells from the flag word, the rest from the \
+         dispel, heal, teleport, raise, clone, obstacle, remove and summon spells from the flag word, the rest from the \
          gap-fill file; {specialists} specialist bonuses from the gap-fill file; other effect \
          kinds come with their tasks (E04b T5-T7)"
     ));
