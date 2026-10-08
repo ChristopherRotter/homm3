@@ -724,6 +724,9 @@ pub struct SpellMagic {
     /// battle; below it they are raised for the battle only (Resurrection: Advanced;
     /// BAT-MAG-035, v17).
     pub temporary_below: Option<u8>,
+    /// Its dispel effect ends only the effects of positive spells, and a strike casts it only on
+    /// a stack with one (Dispel Helpful Spells, `installation.md` §7.20; BAT-MAG-042, v19).
+    pub dispels_positive: bool,
 }
 
 impl SpellMagic {
@@ -877,6 +880,8 @@ impl SpellMagic {
             Some("any_side needs a side and a mastery 1..=3")
         } else if self.needs_effect && self.target != SpellTarget::Stack {
             Some("needs_effect needs target stack")
+        } else if self.dispels_positive && !self.dispels() {
+            Some("dispels_positive needs a dispel effect")
         } else {
             self.field_error()
         }
@@ -1025,6 +1030,7 @@ impl CanonicalHash for SpellMagic {
             h.write_u8(m.unwrap_or(0));
         }
         h.write_u8(self.temporary_below.unwrap_or(0));
+        h.write_bool(self.dispels_positive);
     }
 }
 
@@ -1346,6 +1352,14 @@ mod tests {
                 },
                 true,
                 "needs_effect needs",
+            ),
+            (
+                SpellMagic {
+                    dispels_positive: true,
+                    ..timed(TimedChange::Speed)
+                },
+                true,
+                "dispels_positive needs",
             ),
             (
                 SpellMagic {

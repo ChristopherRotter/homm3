@@ -19,6 +19,7 @@ use crate::heroes::{
 use crate::key::{ContentKey, is_valid_part};
 use crate::pack::{BattleParamsDef, ContentPack, CreaturePatch};
 use crate::quirks::{QuirkRegistry, Quirks, REGISTRY};
+use crate::spell::SpellEffect;
 
 /// Engine limit for army slots per side (the original uses 7, a ruleset parameter). The battle
 /// context sizes its fixed-capacity state from this.
@@ -33,7 +34,7 @@ pub const MAX_SIDE_STACKS: usize = 21;
 pub const MAX_FIELD_HEXES: usize = 255;
 
 /// Version of the ruleset hash encoding. Bump when the encoding below changes.
-pub const RULESET_HASH_VERSION: u32 = 27;
+pub const RULESET_HASH_VERSION: u32 = 28;
 
 /// A compiled creature type.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -638,6 +639,9 @@ impl Ruleset {
             surrender,
         )?;
         hero.validate(&creatures, battle.army_slots)?;
+        for (abils, key) in creature_abilities.iter().zip(&creature_keys) {
+            validate_strike_spells(key, abils, &hero.spells.items)?;
+        }
         for o in &obstacles {
             validate_obstacle(o, &battle)?;
         }
@@ -1106,6 +1110,45 @@ fn validate_creature(
     Ok(())
 }
 
+/// Checks that the spells a creature's strike abilities name do what the abilities need: a
+/// spell after a strike has a timed or dispel effect and nothing else (BAT-MAG-040), a damage
+/// spell after a strike has a damage effect (BAT-MAG-041).
+fn validate_strike_spells(
+    key: &ContentKey,
+    abils: &[CompiledAbility],
+    spells: &[Spell],
+) -> Result<(), CompileError> {
+    for a in abils {
+        let spell = |id: SpellId| {
+            spells
+                .get(id.index())
+                .map_or(&[][..], |s| &s.magic.effects[..])
+        };
+        let reason = match *a {
+            Ability::SpellAfterStrike { spell: id, .. } => {
+                let effects = spell(id);
+                let fits = !effects.is_empty()
+                    && effects
+                        .iter()
+                        .all(|e| e.timed().is_some() || *e == SpellEffect::Dispel);
+                (!fits)
+                    .then_some("spell_after_strike needs a spell with timed or dispel effects only")
+            }
+            Ability::SpellDamageAfterStrike { spell: id, .. } => (!spell(id)
+                .contains(&SpellEffect::Damage))
+            .then_some("spell_damage_after_strike needs a spell with a damage effect"),
+            _ => None,
+        };
+        if let Some(reason) = reason {
+            return Err(CompileError::InvalidCreature {
+                key: String::from(key.as_str()),
+                reason,
+            });
+        }
+    }
+    Ok(())
+}
+
 /// Checks an obstacle type against the battlefield: at least one terrain and one blocked hex;
 /// usual obstacles need a width and height of at least 1 and blocked hexes no lower than the
 /// anchor (`dy <= 0`); absolute obstacles block standable hexes of the field.
@@ -1332,7 +1375,8 @@ impl CanonicalHash for Ruleset {
     /// `pit`. v25 (E04b T5b): the battle magic ends with the masteries that remove each
     /// obstacle kind; effect kind `remove_obstacle`. v27 (E04b T6b): the battle parameters end
     /// with the side stack limit; each spell ends with the creature it summons; effect kinds
-    /// `clone` and `summon`.
+    /// `clone` and `summon`. v28 (E04b T7a1): the battle magic ends with `dispels_positive`;
+    /// abilities `spell_after_strike` (29) and `spell_damage_after_strike` (30).
     fn hash_into(&self, h: &mut StateHasher) {
         h.write_u32(RULESET_HASH_VERSION);
         h.write_len(self.packs.len());

@@ -453,6 +453,7 @@ fn other_spell(
     for (field, on) in [
         ("needs_effect", t.needs_effect),
         ("ignores_immunity", t.ignores_immunity),
+        ("dispels_positive", t.dispels_positive),
     ] {
         if on {
             let _ = writeln!(text, "{field} = true");
@@ -930,7 +931,8 @@ pub fn harvest_heroes(
             timed_spell(text, (&what, pack), (flags, polarity), t, &spell_packs)?;
             timed_spells += 1;
         } else if let Some(t) = other.remove(name) {
-            if category != "combat" || extra.is_some() {
+            // Creature abilities cast by a strike (Dispel Helpful Spells, E04b T7a1) too.
+            if category == "adventure" || extra.is_some() {
                 return Err(format!("gapfill: effect entry for `{name}` is not allowed"));
             }
             other_spell(text, (&what, pack), (flags, polarity), t, &spell_packs)?;

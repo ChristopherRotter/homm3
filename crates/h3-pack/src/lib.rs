@@ -268,35 +268,95 @@ struct CreatureDto {
 #[derive(Deserialize)]
 #[serde(tag = "kind", rename_all = "snake_case", deny_unknown_fields)]
 enum AbilityDto {
-    Hate { creature: String, percent: u16 },
-    Jousting { percent_per_hex: u16 },
+    Hate {
+        creature: String,
+        percent: u16,
+    },
+    Jousting {
+        percent_per_hex: u16,
+    },
     ChargeImmunity {},
-    DefenseReduction { percent: u8 },
-    DeathBlow { chance_percent: u8 },
-    LifeDrain { percent: u16 },
+    DefenseReduction {
+        percent: u8,
+    },
+    DeathBlow {
+        chance_percent: u8,
+    },
+    LifeDrain {
+        percent: u16,
+    },
     Regeneration {},
-    DeathStare { chance_percent: u8 },
-    ExtraRetaliations { count: u8 },
+    DeathStare {
+        chance_percent: u8,
+    },
+    ExtraRetaliations {
+        count: u8,
+    },
     UnlimitedRetaliations {},
     StrikeAndReturn {},
     AttacksAllAdjacent {},
     ThreeHeadedAttack {},
     Teleports {},
-    MoraleAura { amount: i8, affects: AuraDto },
-    LuckAura { amount: i8, affects: AuraDto },
-    MinimumMorale { value: i8 },
-    MinimumLuck { value: i8 },
+    MoraleAura {
+        amount: i8,
+        affects: AuraDto,
+    },
+    LuckAura {
+        amount: i8,
+        affects: AuraDto,
+    },
+    MinimumMorale {
+        value: i8,
+    },
+    MinimumLuck {
+        value: i8,
+    },
     NoDistancePenalty {},
-    AreaShot { effect: AreaShotDto },
-    FirstAid { min_hp: u16, max_hp: u16 },
+    AreaShot {
+        effect: AreaShotDto,
+    },
+    FirstAid {
+        min_hp: u16,
+        max_hp: u16,
+    },
     AmmoSupply {},
-    SpellLevelImmunity { max_level: u8 },
-    SchoolImmunity { school: String },
-    SpellImmunity { spell: String },
-    SpellVulnerability { spell: String, percent: u16 },
-    SpellDamageReduction { percent: u8 },
-    MagicResistance { percent: u8 },
-    MagicResistanceAura { percent: u8 },
+    SpellLevelImmunity {
+        max_level: u8,
+    },
+    SchoolImmunity {
+        school: String,
+    },
+    SpellImmunity {
+        spell: String,
+    },
+    SpellVulnerability {
+        spell: String,
+        percent: u16,
+    },
+    SpellDamageReduction {
+        percent: u8,
+    },
+    MagicResistance {
+        percent: u8,
+    },
+    MagicResistanceAura {
+        percent: u8,
+    },
+    SpellAfterStrike {
+        spell: String,
+        chance_percent: u8,
+        mastery: u8,
+        rounds: u8,
+        #[serde(default)]
+        living: bool,
+        #[serde(default)]
+        unless_active: bool,
+    },
+    SpellDamageAfterStrike {
+        spell: String,
+        chance_percent: u8,
+        per_creature: u16,
+    },
 }
 
 #[derive(Deserialize)]
@@ -370,6 +430,30 @@ impl AbilityDto {
             Self::SpellDamageReduction { percent } => AbilityDef::SpellDamageReduction { percent },
             Self::MagicResistance { percent } => AbilityDef::MagicResistance { percent },
             Self::MagicResistanceAura { percent } => AbilityDef::MagicResistanceAura { percent },
+            Self::SpellAfterStrike {
+                spell,
+                chance_percent,
+                mastery,
+                rounds,
+                living,
+                unless_active,
+            } => AbilityDef::SpellAfterStrike {
+                spell: reference(pack, &spell)?,
+                chance_percent,
+                mastery,
+                rounds,
+                living,
+                unless_active,
+            },
+            Self::SpellDamageAfterStrike {
+                spell,
+                chance_percent,
+                per_creature,
+            } => AbilityDef::SpellDamageAfterStrike {
+                spell: reference(pack, &spell)?,
+                chance_percent,
+                per_creature,
+            },
         })
     }
 }
@@ -484,6 +568,10 @@ struct SpellDto {
     /// `summons = "fire_elemental"`: the creature a summon effect summons (pack format v18, E04b
     /// T6b).
     summons: Option<String>,
+    /// `dispels_positive = true`: the dispel effect ends only positive spells' effects (pack
+    /// format v19, E04b T7a1; Dispel Helpful Spells).
+    #[serde(default)]
+    dispels_positive: bool,
 }
 
 /// `obstacle = { steps = ["top_right", "top_left"], hexes = [2, 2, 3, 3], mirrored = true,
@@ -709,6 +797,7 @@ impl SpellDto {
             any_side_from: self.any_side.as_deref().map(mastery_named).transpose()?,
             needs_effect: self.needs_effect,
             ignores_immunity: self.ignores_immunity,
+            dispels_positive: self.dispels_positive,
             specialist: self.specialist.as_ref().map(|b| match *b {
                 SpecialistDto::CreatureLevel { values } => SpecialistBonus::CreatureLevel(values),
                 SpecialistDto::Fixed { amount } => SpecialistBonus::Fixed(amount),
