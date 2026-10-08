@@ -94,7 +94,7 @@ pub(crate) fn start_round<S: Sink>(state: &mut BattleState, ruleset: &Ruleset, s
 /// How a turn ended.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(crate) enum TurnEnd {
-    /// The stack moved, attacked or shot.
+    /// The stack moved, attacked, shot or cast (BAT-MAG-048).
     Acted,
     /// The stack waited (BAT-TRN-002).
     Waited,
@@ -102,7 +102,7 @@ pub(crate) enum TurnEnd {
     Defended,
 }
 
-/// Ends `mover`'s turn. After moving, attacking or shooting, good morale may give it another turn
+/// Ends `mover`'s turn. After moving, attacking, shooting or casting, good morale may give it another turn
 /// right away (BAT-MOR-003); otherwise it is marked as waited or acted and the next stack is
 /// activated, starting a new round if needed. Once the battle is over no stack is active.
 pub(crate) fn end_turn<S: Sink>(

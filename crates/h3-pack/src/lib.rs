@@ -363,6 +363,11 @@ enum AbilityDto {
         chance_percent: u8,
         percent: u8,
     },
+    SpellCaster {
+        spell: String,
+        mastery: u8,
+        power: u8,
+    },
 }
 
 #[derive(Deserialize)]
@@ -468,6 +473,15 @@ impl AbilityDto {
             } => AbilityDef::DamageAfterStrike {
                 chance_percent,
                 percent,
+            },
+            Self::SpellCaster {
+                spell,
+                mastery,
+                power,
+            } => AbilityDef::SpellCaster {
+                spell: reference(pack, &spell)?,
+                mastery,
+                power,
             },
         })
     }

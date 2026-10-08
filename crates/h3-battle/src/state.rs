@@ -15,6 +15,7 @@ use h3_contracts::{
 use h3_kernel::{CanonicalHash, FixedVec, Rng, StateHasher, StreamId};
 
 use crate::binds::Binds;
+use crate::casters::Casts;
 use crate::created::Created;
 use crate::effects::{ActiveEffect, Effects, SpellValues, Status};
 use crate::error::SetupError;
@@ -51,7 +52,7 @@ const _: () = assert!(MAX_SIDE_STACKS <= SIDE_STACK_SLOTS);
 pub const CREATED_SLOT: u8 = u8::MAX;
 
 /// Version of the battle-state hash encoding ([`BattleState::state_hash`]). Bump on any change.
-pub const BATTLE_STATE_HASH_VERSION: u32 = 32;
+pub const BATTLE_STATE_HASH_VERSION: u32 = 33;
 
 /// Index of a stack in its battle (attacker stacks first, in slot order, then defender stacks, then
 /// the stacks created in the battle in the order they appear, BAT-MAG-037).
@@ -750,6 +751,8 @@ pub struct BattleState {
     pub(crate) vitality: Vitality,
     /// What Bind keeps per stack (BAT-MAG-045).
     pub(crate) binds: Binds,
+    /// The casts each stack has left (BAT-MAG-048).
+    pub(crate) casts: Casts,
     pub(crate) rng: Rng,
 }
 
@@ -884,6 +887,7 @@ impl BattleState {
                 })),
                 vitality: Vitality::default(),
                 binds: Binds::default(),
+                casts: Casts::at_start(ruleset, &placed[..len]),
                 rng: Rng::for_stream(seed, StreamId::BATTLE),
             };
         morale::setup(&mut state, ruleset, &setup.heroes);
@@ -1013,6 +1017,12 @@ impl BattleState {
     /// the round its last one ends; 0 for any other stack.
     pub fn clone_rounds(&self, id: StackId) -> u16 {
         self.created.rounds.get(id.index()).copied().unwrap_or(0)
+    }
+
+    /// The casts stack `id` has left this battle (BAT-MAG-048): its creature's casts per battle
+    /// less those it used; 0 for no stack.
+    pub fn casts_left(&self, id: StackId) -> u8 {
+        self.casts.left.get(id.index()).copied().unwrap_or(0)
     }
 
     /// The active stack and its id, if the battle is not over.
@@ -1225,6 +1235,7 @@ impl CanonicalHash for BattleState {
         self.created.hash_into(h);
         self.vitality.hash_into(h);
         self.binds.hash_into(h);
+        self.casts.hash_into(h);
         self.rng.hash_into(h);
     }
 }

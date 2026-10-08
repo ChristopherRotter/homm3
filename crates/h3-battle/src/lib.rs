@@ -24,6 +24,7 @@ extern crate std;
 
 mod after_strike;
 mod binds;
+mod casters;
 mod combat;
 mod command;
 mod control;
@@ -50,6 +51,7 @@ mod turn;
 mod vitality;
 mod war;
 
+pub use casters::{creature_cast_spell, creature_cast_targets, stack_spell};
 pub use command::{Command, apply, validate};
 pub use effects::{ActiveEffect, DamageRoll, EFFECT_CAPACITY, SpellValues, Status};
 pub use error::{CommandError, HeroError, SetupError};

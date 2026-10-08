@@ -1,4 +1,4 @@
-//! Flat observation encoding (version 7) of a per-viewer [`Observation`].
+//! Flat observation encoding (version 8) of a per-viewer [`Observation`].
 //!
 //! Layout: [`GLOBALS`] global features, then two hero blocks of [`HERO_FEATURES`] features (the
 //! viewer's, then the opponent's), then [`STACK_FEATURES`] features for each of the
@@ -25,9 +25,9 @@
 //! damage_min, damage_max, speed, x, y, acted, waited, retaliated, defending, active, morale,
 //! luck, shots, retaliations left (255 = unlimited), had good morale this round, two-hex,
 //! flies, shooter, war machine, no distance penalty, shoots when adjacent, the hero's
-//! regeneration in hit points, created in battle, clone, the clone's rounds left]` (no distance
-//! penalty, shoots when adjacent and regeneration can come from the side's hero, BAT-HER-006;
-//! created stacks and clones: BAT-MAG-037, BAT-MAG-038),
+//! regeneration in hit points, created in battle, clone, the clone's rounds left, casts left]`
+//! (no distance penalty, shoots when adjacent and regeneration can come from the side's hero,
+//! BAT-HER-006; created stacks and clones: BAT-MAG-037, BAT-MAG-038; casts: BAT-MAG-048),
 //! then its timed effects (BAT-MAG-009 to 011): `[melee attack bonus, ranged attack bonus,
 //! blessed, cursed, the blessing's or curse's value, speed share in percent (100: not slowed),
 //! number of effects]` and [`EFFECT_SLOTS`] pairs `[spell handle + 1 (0: empty), rounds left
@@ -40,7 +40,7 @@
 //! globals) and the last three per-stack features. v5 (E04b T2c): the hero's casts this round,
 //! school masteries and spell book; 42 stack slots. v6 (E04b T3a): attack, defense and speed
 //! with the timed effects, and the per-stack effect features. v7 (E04b T6b): created in battle,
-//! clone and the clone's rounds left.
+//! clone and the clone's rounds left. v8 (E04b T7b1): casts left.
 
 use h3_battle::{
     DamageRoll, HeroView, Observation, OwnHeroView, STACK_CAPACITY, StackFlags, StackTraits,
@@ -50,7 +50,7 @@ use h3_contracts::BattleSide;
 
 /// Version of this encoding; bump on any change of the layout above (and bump the C ABI
 /// version with it, ADR-0011).
-pub const OBSERVATION_ENCODING_VERSION: u32 = 7;
+pub const OBSERVATION_ENCODING_VERSION: u32 = 8;
 
 /// Global features.
 pub const GLOBALS: usize = 11;
@@ -67,7 +67,7 @@ pub const HERO_FEATURES: usize = HERO_BOOK + MAX_SPELLS;
 /// Effects per stack the encoding shows.
 pub const EFFECT_SLOTS: usize = 8;
 /// The per-stack features before the effect features.
-const STACK_VALUES: usize = 34;
+const STACK_VALUES: usize = 35;
 /// The effect values before the effect slots.
 const EFFECT_VALUES: usize = 7;
 /// Features per stack slot.
@@ -196,6 +196,7 @@ pub fn encode(obs: &Observation, field_width: u8, out: &mut [f32]) -> Result<(),
             flag(s.is_created()),
             flag(s.has(StackTraits::CLONE)),
             f32::from(obs.clone_rounds[i]),
+            f32::from(obs.casts_left[i]),
         ];
         f[..STACK_VALUES].copy_from_slice(&values);
         let sp = s.spells;
@@ -267,10 +268,10 @@ mod tests {
             [1.0, 0.0, 0.0, 1.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
         );
         // No timed effects: no bonuses, not slowed, no entries.
-        // Not created in battle, no clone (BAT-MAG-037, BAT-MAG-038).
-        assert_eq!(s0[31..34], [0.0, 0.0, 0.0]);
-        assert_eq!(s0[34..41], [0.0, 0.0, 0.0, 0.0, 0.0, 100.0, 0.0]);
-        assert!(s0[41..].iter().all(|v| *v == 0.0));
+        // Not created in battle, no clone (BAT-MAG-037, BAT-MAG-038), no casts (BAT-MAG-048).
+        assert_eq!(s0[31..35], [0.0, 0.0, 0.0, 0.0]);
+        assert_eq!(s0[35..42], [0.0, 0.0, 0.0, 0.0, 0.0, 100.0, 0.0]);
+        assert!(s0[42..].iter().all(|v| *v == 0.0));
         // Unused slots are zero; the tail beyond OBSERVATION_LEN is untouched.
         assert!(
             out[STACKS + 2 * STACK_FEATURES..OBSERVATION_LEN]
@@ -280,7 +281,7 @@ mod tests {
         assert_eq!(out[OBSERVATION_LEN], 9.0);
         let mut short = vec![0.0; 3];
         assert_eq!(encode(&obs, 17, &mut short), Err(OBSERVATION_LEN));
-        assert_eq!(OBSERVATION_LEN, 11 + 2 * (11 + 10 + 4 + 128) + 57 * 42);
+        assert_eq!(OBSERVATION_LEN, 11 + 2 * (11 + 10 + 4 + 128) + 58 * 42);
         assert_eq!(coords(20, 0), (0.0, 20.0));
         // A clone with three rounds left (BAT-MAG-038).
         let mut obs = obs;
@@ -290,8 +291,9 @@ mod tests {
             .with(StackTraits::SUMMONED, true)
             .with(StackTraits::CLONE, true);
         obs.clone_rounds[1] = 3;
+        obs.casts_left[1] = 2;
         encode(&obs, r.battle().field.width, &mut out).unwrap();
-        assert_eq!(stack(&out, 1)[31..34], [1.0, 1.0, 3.0]);
+        assert_eq!(stack(&out, 1)[31..35], [1.0, 1.0, 3.0, 2.0]);
     }
 
     #[test]
@@ -489,14 +491,14 @@ mod tests {
         encode(&obs, 17, &mut out).unwrap();
         let f = stack(&out, 0);
         assert_eq!([f[7], f[8], f[11]], [attack, defense, 1.0]);
-        assert_eq!(f[34..41], [3.0, 4.0, 0.0, 1.0, 2.0, 50.0, 2.0]);
+        assert_eq!(f[35..42], [3.0, 4.0, 0.0, 1.0, 2.0, 50.0, 2.0]);
         let hasten = f32::from(spell("synthetic:hasten").raw()) + 1.0;
         let corrode = f32::from(spell("synthetic:corrode").raw()) + 1.0;
-        assert_eq!(f[41..45], [hasten, 3.0, corrode, -1.0]);
-        assert!(f[45..].iter().all(|v| *v == 0.0));
+        assert_eq!(f[42..46], [hasten, 3.0, corrode, -1.0]);
+        assert!(f[46..].iter().all(|v| *v == 0.0));
         obs.stacks.as_mut_slice()[0].spells.damage = DamageRoll::Maximum(1);
         encode(&obs, 17, &mut out).unwrap();
-        assert_eq!(stack(&out, 0)[36..39], [1.0, 0.0, 1.0]);
-        assert!(stack(&out, 1)[41..].iter().all(|v| *v == 0.0));
+        assert_eq!(stack(&out, 0)[37..40], [1.0, 0.0, 1.0]);
+        assert!(stack(&out, 1)[42..].iter().all(|v| *v == 0.0));
     }
 }

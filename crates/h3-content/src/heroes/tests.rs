@@ -430,6 +430,58 @@ fn strike_abilities_name_spells_that_do_what_they_need() {
     );
 }
 
+#[test]
+fn a_casters_spell_takes_a_target_stack_at_its_mastery() {
+    use crate::ability::{Ability, AbilityDef};
+    let mut p = pack();
+    // Haste: one stack below Expert, all of them from Expert (its mass version); with quirk
+    // Q-0011's earlier mass version from Advanced (`mass_from`, `fixed_mass_from` without it).
+    let mut haste = timed("t:haste");
+    haste.magic.mass_from = Some(2);
+    haste.magic.fixed_mass_from = Some(3);
+    let mut charm = timed("t:charm");
+    charm.magic.health_limit = true;
+    let mut wall = timed("t:wall");
+    wall.magic.target = SpellTarget::Hex;
+    p.spells
+        .extend([haste, charm, wall, raising("t:rise", SpellEffect::Raise)]);
+    let caster = |spell: &str, mastery| AbilityDef::SpellCaster {
+        spell: key(spell),
+        mastery,
+        power: 6,
+    };
+    for ok in [caster("t:bolt", 3), caster("t:haste", 1)] {
+        let mut good = p.clone();
+        good.creatures[0].info.abilities = vec![ok];
+        let r = compile(&[good]).unwrap();
+        let peasant = r.creature_by_key("t:peasant").unwrap();
+        assert!(matches!(
+            r.abilities(peasant),
+            [Ability::SpellCaster { power: 6, .. }]
+        ));
+    }
+    let reason = "spell_caster needs a spell with damage, timed, dispel or heal effects and no \
+                  health limit that takes a target stack at its mastery";
+    for bad_ability in [
+        caster("t:gaze", 0),
+        caster("t:haste", 2),
+        caster("t:haste", 3),
+        caster("t:charm", 0),
+        caster("t:wall", 0),
+        caster("t:rise", 0),
+    ] {
+        let mut bad = p.clone();
+        bad.creatures[0].info.abilities = vec![bad_ability];
+        assert_eq!(
+            fails(bad),
+            CompileError::InvalidCreature {
+                key: "t:peasant".into(),
+                reason,
+            }
+        );
+    }
+}
+
 fn invalid_spell(k: &str, reason: &'static str) -> CompileError {
     invalid("spell", k, reason)
 }

@@ -1262,3 +1262,43 @@ records how and why the tasks went.
 - **Recorded:** observation sources on BAT-TER-001, BAT-END-001, BAT-FLE-002, BAT-END-003 and
   BAT-MAG-035 to 039; the ledger's BAT-QUIRK-5/6 (observed), BAT-QUIRK-7 (fix-optional, the flag
   queued) and BAT-QUIRK-8; BAT-Q7 answered; `installation.md` §7.19's notes; T6c queued.
+
+### T7b1: the creature's cast (2026-10-08)
+
+- **Seam** (the user, BAT-Q10, at the start of increment 7): T7b1 alone, with a checkpoint
+  after; T6c goes with T7b3 in increment 8 (both change `BattleOutcome`: one `shared/` pull
+  request); the command is a new `CreatureCast { target }` that names no spell, as the original's
+  action 10 (ADR-0014 points 3 and 9 amended in the shared PR #18, merged first).
+- **Code reading** (`installation.md` §7.21, "Who may cast, and at what"): 0x4476C0 and the cursor
+  0x4766EA: casts left, magic allowed for the controller's side (0x41F890: not Cursed Ground, not
+  an anti-magic garrison, no Orb of Inhibition), a living stack on the hex the spell can affect
+  (0x5A3C80), only another stack of the acting side and **never the caster itself**; 0x448260
+  casts through 0x59FE30(spell, hex, 1, −1, 2, 6); the dispatcher rolls good morale after it
+  (0x464920) and does not re-enter the caster's hexes (no 0x441F70); a created stack gets its
+  creature's casts (0x47A100).
+- **Content:** ability `spell_caster` (spell, mastery, power; pack format v22, ruleset hash v31);
+  the compiler accepts a spell with damage, timed, dispel or heal effects only, no health limit
+  (the health limit reads the hero), aimed at a stack at that mastery in every profile. Harvested
+  from the gap-fill (`exe-creature-cast`): Ogre Mage Bloodlust, Storm/Ice/Energy/Magma Elementals
+  the Protections from Air/Water/Fire/Earth, Advanced, power 6. The synthetic Wisp casts Hasten
+  twice a battle.
+- **Battle:** `h3_battle::casters` (casts left beside the stacks, set at the start and when a
+  stack is created; `stack_spell`, `creature_cast_spell`, `creature_cast_targets`, `plan`);
+  `magic::plan_creature_cast` and `creature_target` (another stack of `first_target` at the
+  caster's mastery), `Cast::by` (the casting stack: no payment, `StackCast` event, no resistance
+  roll for the aimed stack); `Command::CreatureCast`, `CommandError::CannotCast`; the turn ends
+  as `Acted` (good morale may follow, no `obstacles::stand`); observation `casts_left`; state
+  hash v33. BAT-MAG-048; BAT-MOR-003 gains the cast.
+- **Sim and ABI:** entry 1395 legal: spell head the stack's spell only, target head its targets,
+  second head only 0 (action encoding v11); the random agent draws it as one more entry, then a
+  uniform target; observation encoding v8 (casts left), C ABI v12; replay text
+  `creature-cast stack <s>` (replay format v19). Fixed: the cast heads encoded hex 255 as the
+  first stack's index (`target_index` now refuses hexes beyond the field's limit).
+- **Measurements:** the new binary on T7a3's workload +0.42 % Ir after making the random agent's
+  check cheap (the active stack's casts first; the targets' buffer only for a caster; +2.11 %
+  before); the new workload has 2.7 % more steps (9 526, Wisps cast Hasten) and +6.98 % Ir
+  (hasted stacks reach further), re-baselined. Replays re-recorded with new agent seeds keeping
+  T5–T7a's features and showing the Wisps' casts: a51, a168, a42, a225, a123.
+- **Tests:** `tests/casters.rs` (the cast and its turn end, the refusals, a hypnotized caster, no
+  resistance roll, good morale after a cast, a clone's casts), the property test's legality and
+  casts-left checks, the sim's head-by-head test, the C ABI's head-by-head test.

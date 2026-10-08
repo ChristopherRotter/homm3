@@ -19,7 +19,7 @@ use crate::heroes::{
 use crate::key::{ContentKey, is_valid_part};
 use crate::pack::{BattleParamsDef, ContentPack, CreaturePatch};
 use crate::quirks::{QuirkRegistry, Quirks, REGISTRY};
-use crate::spell::SpellEffect;
+use crate::spell::{SpellEffect, SpellTarget};
 
 /// Engine limit for army slots per side (the original uses 7, a ruleset parameter). The battle
 /// context sizes its fixed-capacity state from this.
@@ -34,7 +34,7 @@ pub const MAX_SIDE_STACKS: usize = 21;
 pub const MAX_FIELD_HEXES: usize = 255;
 
 /// Version of the ruleset hash encoding. Bump when the encoding below changes.
-pub const RULESET_HASH_VERSION: u32 = 30;
+pub const RULESET_HASH_VERSION: u32 = 31;
 
 /// A compiled creature type.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -1110,9 +1110,12 @@ fn validate_creature(
     Ok(())
 }
 
-/// Checks that the spells a creature's strike abilities name do what the abilities need: a
-/// spell after a strike has a timed or dispel effect and nothing else (BAT-MAG-040, BAT-MAG-045,
-/// BAT-MAG-046), a damage spell after a strike has a damage effect (BAT-MAG-041).
+/// Checks that the spells a creature's strike and cast abilities name do what the abilities need:
+/// a spell after a strike has a timed or dispel effect and nothing else (BAT-MAG-040, BAT-MAG-045,
+/// BAT-MAG-046), a damage spell after a strike has a damage effect (BAT-MAG-041), a caster's spell
+/// has damage, timed, dispel or heal effects only and takes a target stack at the caster's
+/// mastery in every profile, without a health limit (the original's casters cast none; a health
+/// limit reads the hero, BAT-MAG-048).
 fn validate_strike_spells(
     key: &ContentKey,
     abils: &[CompiledAbility],
@@ -1137,6 +1140,31 @@ fn validate_strike_spells(
             Ability::SpellDamageAfterStrike { spell: id, .. } => (!spell(id)
                 .contains(&SpellEffect::Damage))
             .then_some("spell_damage_after_strike needs a spell with a damage effect"),
+            Ability::SpellCaster {
+                spell: id, mastery, ..
+            } => {
+                let effects = spell(id);
+                let kinds = !effects.is_empty()
+                    && effects.iter().all(|e| {
+                        matches!(
+                            e,
+                            SpellEffect::Damage
+                                | SpellEffect::Timed(_)
+                                | SpellEffect::Dispel
+                                | SpellEffect::Heal
+                        )
+                    });
+                let aimed = spells.get(id.index()).is_some_and(|s| {
+                    !s.magic.health_limit
+                        && [false, true]
+                            .iter()
+                            .all(|&early| s.magic.target_at(mastery, early) == SpellTarget::Stack)
+                });
+                (!(kinds && aimed)).then_some(
+                    "spell_caster needs a spell with damage, timed, dispel or heal effects and no \
+                     health limit that takes a target stack at its mastery",
+                )
+            }
             _ => None,
         };
         if let Some(reason) = reason {
@@ -1379,7 +1407,8 @@ impl CanonicalHash for Ruleset {
     /// abilities `spell_after_strike` (29) and `spell_damage_after_strike` (30). v29 (E04b T7a2): the
     /// battle magic ends with `restores_health`; timed changes `petrify`, `paralyze`, `poison`,
     /// `age` (27 to 30). v30 (E04b T7a3): `spell_after_strike` ends with `defended`; ability
-    /// `damage_after_strike` (31); timed change `bind` (31).
+    /// `damage_after_strike` (31); timed change `bind` (31). v31 (E04b T7b1): ability
+    /// `spell_caster` (32).
     fn hash_into(&self, h: &mut StateHasher) {
         h.write_u32(RULESET_HASH_VERSION);
         h.write_len(self.packs.len());

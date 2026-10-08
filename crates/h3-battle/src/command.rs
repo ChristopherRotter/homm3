@@ -10,6 +10,7 @@ use alloc::boxed::Box;
 use h3_content::{ATTACK_FROM_SEEN_PIT, Ruleset, SpellId};
 use h3_contracts::{BattleResult, BattleSide};
 
+use crate::casters;
 use crate::combat::{can_shoot, melee, shoot};
 use crate::effects;
 use crate::error::CommandError;
@@ -74,6 +75,12 @@ pub enum Command {
         /// (BAT-MAG-036); none for every other spell.
         second: CastTarget,
     },
+    /// The active stack casts its spell at `target` as its action (BAT-MAG-048): the command
+    /// names no spell, the stack's creature decides it (ADR-0014 point 3).
+    CreatureCast {
+        /// What it is aimed at.
+        target: CastTarget,
+    },
 }
 
 impl Command {
@@ -132,6 +139,11 @@ enum Plan<'r> {
     },
     /// Boxed: a cast carries the caster's bonuses, far larger than the other plans.
     Cast(Box<Cast<'r>>),
+    /// A stack's cast as its action (BAT-MAG-048).
+    CreatureCast {
+        mover: StackId,
+        cast: Box<Cast<'r>>,
+    },
 }
 
 /// Checks `command` for `actor` without changing anything. Shared by `apply` and
@@ -187,6 +199,12 @@ fn plan<'r>(
             second,
         } => magic::plan_cast(state, ruleset, actor, spell, (target, second))
             .map(|c| Plan::Cast(Box::new(c))),
+        Command::CreatureCast { target } => {
+            casters::plan(state, ruleset, actor, target).map(|c| Plan::CreatureCast {
+                mover: id,
+                cast: Box::new(c),
+            })
+        }
         Command::Wait => {
             // rule: BAT-TRN-002
             if mover.flags.contains(StackFlags::WAITED) {
@@ -347,7 +365,8 @@ fn plan_tactics(
         | Command::Shoot { .. }
         | Command::Defend
         | Command::Heal { .. }
-        | Command::Cast { .. } => Err(CommandError::InTacticsPhase),
+        | Command::Cast { .. }
+        | Command::CreatureCast { .. } => Err(CommandError::InTacticsPhase),
     }
 }
 
@@ -431,6 +450,13 @@ pub fn apply<S: Sink>(
             }
             // A stack the cast made berserk on its own turn acts at once (BAT-MAG-025).
             turn::berserk_now(state, ruleset, sink);
+        }
+        Plan::CreatureCast { mover, cast } => {
+            // rule: BAT-MAG-048
+            // The turn ends as after a move, an attack or a shot (good morale may follow, the
+            // original's 0x464920), without entering its hexes again (no 0x441F70).
+            magic::apply_cast(state, ruleset, *cast, sink);
+            end_turn(state, ruleset, mover, TurnEnd::Acted, sink);
         }
     }
     // rule: BAT-MAG-010

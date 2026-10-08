@@ -24,8 +24,8 @@ use super::support::{CREATURES, Rate, hero, ruleset_with};
 use crate::event::StrikeFlags;
 use crate::{
     BattleState, CastTarget, CastTargets, Command, Event, EventKind, Hex, LegalCommands, SpellSet,
-    StackId, apply, cast_targets, castable_spells, legal_commands, observe, project,
-    second_targets,
+    StackId, apply, cast_targets, castable_spells, creature_cast_targets, legal_commands, observe,
+    project, second_targets,
 };
 
 /// The test ruleset with frequent good and bad morale and luck (a 4-sided die) and the quirk
@@ -55,7 +55,9 @@ enum Step {
     Legal(u16),
     /// Try an arbitrary command, as the side to act or its opponent.
     Arbitrary { command: Command, wrong_actor: bool },
-    /// Cast the `n`-th castable spell at its `n`-th target (modulo their numbers), if any.
+    /// Cast the `n`-th castable spell at its `n`-th target (modulo their numbers), if any; for an
+    /// odd `n` (or no castable spell) the active stack casts at its `n`-th target instead, if it
+    /// may (BAT-MAG-048).
     Cast(u16),
 }
 
@@ -79,6 +81,13 @@ fn arb_command() -> impl Strategy<Value = Command> {
                 _ => CastTarget::Hex(Hex(t)),
             },
             second: h.map_or(CastTarget::None, |h| CastTarget::Hex(Hex(h))),
+        }),
+        8 => (0u8..3, any::<u8>()).prop_map(|(kind, t)| Command::CreatureCast {
+            target: match kind {
+                0 => CastTarget::None,
+                1 => CastTarget::Stack(StackId(t % 40)),
+                _ => CastTarget::Hex(Hex(t)),
+            },
         }),
         1 => Just(Command::Retreat),
         1 => Just(Command::Surrender),
@@ -320,6 +329,12 @@ fn resolve(
         } => (if *wrong_actor { side.opponent() } else { side }, *command),
         Step::Cast(n) => {
             let spells: Vec<SpellId> = castable_spells(state, r, side).iter().collect();
+            let mut creature = CastTargets::new();
+            creature_cast_targets(state, r, side, &mut creature);
+            if !creature.is_empty() && (n % 2 == 1 || spells.is_empty()) {
+                let target = creature.as_slice()[usize::from(*n) % creature.len()];
+                return (side, Command::CreatureCast { target });
+            }
             let Some(&spell) = spells.get(usize::from(*n) % spells.len().max(1)) else {
                 return (side, Command::Wait);
             };
@@ -401,6 +416,15 @@ proptest! {
                 }
             }
             prop_assert!(castable_spells(&state, &r, actor.opponent()).is_empty() || state.side_to_act() == Some(actor.opponent()));
+            // And for the active stack's casts (BAT-MAG-048).
+            creature_cast_targets(&state, &r, actor, &mut targets);
+            for target in targets.iter() {
+                let mut probe = state.clone();
+                let c = Command::CreatureCast { target: *target };
+                prop_assert!(apply(&mut probe, &r, actor, c, &mut crate::NoopSink).is_ok(), "legal {c:?} rejected");
+            }
+            creature_cast_targets(&state, &r, actor.opponent(), &mut targets);
+            prop_assert!(targets.is_empty() || state.side_to_act() == Some(actor.opponent()));
             let listed = |c: Command| match c {
                 Command::Cast { spell, target, second } => {
                     let mut t = CastTargets::new();
@@ -408,6 +432,11 @@ proptest! {
                     let first = castable.contains(spell) && t.iter().any(|x| *x == target);
                     second_targets(&state, &r, actor, (spell, target), &mut t);
                     first && t.iter().any(|x| *x == second)
+                }
+                Command::CreatureCast { target } => {
+                    let mut t = CastTargets::new();
+                    creature_cast_targets(&state, &r, actor, &mut t);
+                    t.iter().any(|x| *x == target)
                 }
                 other => legal.iter().any(|c| *c == other),
             };
@@ -446,6 +475,14 @@ proptest! {
                         prop_assert!(state.is_over() || state.active() == before.active() || killed);
                     }
                     let mover = before.active().unwrap();
+                    // A stack's cast uses one of its casts and nothing else does (BAT-MAG-048).
+                    let used = usize::from(matches!(cmd, Command::CreatureCast { .. }));
+                    for (i, _) in before.stacks().iter().enumerate() {
+                        let id = StackId(u8::try_from(i).unwrap());
+                        let spent = usize::from(id == mover) * used;
+                        let reused = events.iter().any(|e| matches!(e.kind, EventKind::StackCreated { stack, .. } if stack == id));
+                        prop_assert!(reused || usize::from(before.casts_left(id)) == usize::from(state.casts_left(id)) + spent);
+                    }
                     let target = match cmd {
                         Command::Attack { target, .. } | Command::Shoot { target, .. } => Some(target),
                         _ => None,

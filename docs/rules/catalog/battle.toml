@@ -1058,7 +1058,7 @@ id       = "BAT-MOR-003"
 title    = "Good morale"
 context  = "battle"
 status   = "implemented"
-summary  = "After a stack moves, attacks or shoots (not after Wait or Defend, and also when it acts in a wait phase), if its morale m is positive, it is still alive, it has had no good-morale turn this round and the battle is not over, it gets another turn right away with chance good_morale_chances[m] / morale_dice (original: 1, 2, 3 out of 24). The extra turn is a normal turn without activation effects (no regeneration, no bad-morale check); if the stack waits in it, it acts in the morale-and-wait phase (BAT-TRN-002). Event GoodMorale, then TurnStarted for the same stack. Rolls are independent (VCMI's optional bias is not used)."
+summary  = "After a stack moves, attacks, shoots or casts (BAT-MAG-048; not after Wait or Defend, and also when it acts in a wait phase), if its morale m is positive, it is still alive, it has had no good-morale turn this round and the battle is not over, it gets another turn right away with chance good_morale_chances[m] / morale_dice (original: 1, 2, 3 out of 24). The extra turn is a normal turn without activation effects (no regeneration, no bad-morale check); if the stack waits in it, it acts in the morale-and-wait phase (BAT-TRN-002). Event GoodMorale, then TurnStarted for the same stack. Rolls are independent (VCMI's optional bias is not used)."
 numeric  = "integer"
 
   [[rule.source]]
@@ -1080,6 +1080,11 @@ numeric  = "integer"
   ref        = "server/battles/BattleFlowProcessor.cpp rollGoodMorale (not hadMorale, not defending, not waiting, alive) and onActionMade; lib/gameState/GameStatePackVisitor.cpp clears 'waiting' when a stack starts to act; config/gameConfig.json goodMoraleChance [1, 2, 3], moraleDiceSize 24"
   url        = "https://github.com/vcmi/vcmi/blob/1.7.5/server/battles/BattleFlowProcessor.cpp"
   retrieved  = "2026-10-01"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (docs/formats/installation.md §7.21): the action dispatcher calls the good-morale roll 0x464920 (random(1, 24) <= morale, at most 3) after a walk, an attack, a shot and a creature's cast (case 10, 0x4793A9), not after Wait or Defend"
   confidence = "high"
 
 [[rule]]
@@ -2865,3 +2870,23 @@ numeric  = "integer"
   kind       = "original-data"
   ref        = "Heroes3.exe code reading (docs/formats/installation.md §7.20): 0x440BC0's case for creature 135 (0x44149F): the target's count above 0, random(1, 100) <= 20, then random(min, max damage +0xD0, +0xD4) x the striker's count / 2, taken through 0x444090 if above 0"
   confidence = "high"
+
+[[rule]]
+id       = "BAT-MAG-048"
+title    = "A creature's cast"
+context  = "battle"
+status   = "implemented"
+summary  = "A stack whose creature has spell_caster (spell, mastery, power) may, as its action on its own turn outside the tactics phase and while it has casts left (its creature's casts per battle, set when the stack enters the battle, a created stack too), cast the spell at a target its controller names (CreatureCast; the command names no spell): another living stack, never itself, that the spell may be aimed at by its controller's side (BAT-MAG-003, BAT-MAG-005, BAT-MAG-021; a positive spell: its controller's own stacks). The cast uses one of its casts first, then resolves as a creature's cast through the shared path: at mastery, value power x power factor + effect[mastery], timed effects lasting power rounds, no hero bonuses, cost or cast count, and the stack it is aimed at never rolls for resistance (an area spell's stacks would). A StackCast event reports it. Its turn then ends as after an action: good morale may follow (BAT-MOR-003), and it does not enter its hexes again (no Fire Wall or mine there acts on it). A hypnotized caster casts for its controller. Casters: the Ogre Mage (Bloodlust), the Storm, Ice, Energy and Magma Elementals (Protection from Air, Water, Fire, Earth), at Advanced with power 6. Not yet: Cursed Ground, the anti-magic garrison and the Orb of Inhibition forbid it (E04c, T8); Magic Plains raise its mastery to Expert (E04c); the Faerie Dragon, Master Genie, Archangel, Pit Lord and Enchanter (T7b2 to T7b4)."
+numeric  = "integer"
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (docs/formats/installation.md §7.21): the dispatcher's case 10 (0x47936E) calls 0x448260, which lowers the casts left (+0xDC) and calls 0x59FE30(spell, hex, 1, -1, 2, 6) for Ogre Mage (43), Storm (30), Ice (32), Energy (31) and Magma Elementals (33); 0x4476C0 needs casts left, magic allowed for the caster's side (0x41F890(side, 0): not Cursed Ground, not an anti-magic garrison, no Orb of Inhibition), a living stack on the hex and 0x5A3C80 (the spell can affect it); the cursor 0x4766EA offers it only over another stack of the acting side (not the caster; any stack for a Faerie Dragon); the side is the controller's (+0x288); 0x59FE30 never rolls the aimed stack's resistance for caster kind 1 (0x5A02EA); after the cast the dispatcher rolls good morale (0x4793A9) and does not re-enter the stack's hexes (no 0x441F70)"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "vcmi"
+  ref        = "config/creatures/stronghold.json ogreMage: SPELLCASTER bloodlust at level 2, CASTS 3; server/battles/BattleFlowProcessor.cpp: a unit's spell is a unit action and rolls good morale"
+  url        = "https://github.com/vcmi/vcmi/blob/1.7.5/config/creatures/stronghold.json"
+  retrieved  = "2026-10-08"
+  confidence = "medium"

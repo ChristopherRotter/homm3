@@ -4,28 +4,21 @@ Pre-refined tasks of the battle lane, in order, then the inbox of discovered wor
 
 ## Tasks
 
-Increment 6 (the user, 2026-10-08): T7a in parts, all done; its checkpoint done and batch 2d folded in (2026-10-08). The T7b/T7c cut is proposed (`docs/epics/E04b-battle-magic.md`, T7; `docs/formats/installation.md` §7.21) and waits for the user.
+Increment 7 (the user, 2026-10-08, BAT-Q10): T7b1 alone, done; the T7b/T7c cut confirmed (`docs/epics/E04b-battle-magic.md`, T7; `docs/formats/installation.md` §7.21). Next, at the user's checkpoint: T7b2; then T6c with T7b3 (increment 8, one `shared/` change to `BattleOutcome`); T7b4; T7c.
 
-### T6c — Created stacks' follow-ups from batch 2d (E04b, proposed)
+### T7b2 — The random casters (E04b, next)
+
+- **Scope:** the epic's T7b2; §7.21 (0x447510's table, 0x447EE0, 0x447A80 read in full). Faerie Dragon (a spell drawn at its activation while it has casts, Advanced, power 5 × creatures; the drawn spell's visibility; S-18; Magic Mirror on its casts; its cursor allows any stack and empty hexes, 0x4766FC and 0x47684B; its spell's area may include itself) and Master Genie (a random useful beneficial spell for the target). Builds on T7b1's `h3_battle::casters` and `Cast::by`: the spell head shows the drawn spell; settle the Genie's spell head (ADR-0014 point 9) and an ability variant per caster kind.
+- **Acceptance:** the Definition of Done; rule tests (the draw's weights, a cast per drawn spell, the Genie's usefulness cases).
+- **Depends on:** T7b1 (done); the user's checkpoint.
+- **Status:** proposed.
+
+### T6c — Created stacks' follow-ups from batch 2d (E04b increment 8, with T7b3)
 
 - **Scope:** the epic's T6c. (1) BAT-QUIRK-7's flag `quirk.battle.clone_on_its_original` (fix-optional, faithful on; ledger): with it the place search counts the original's hexes as free (`installation.md` §7.19); a place on the original's head creates no clone and turns the original into one (summoned, the clone's rounds, linked to itself: it vanishes without a corpse when they run out, and the outcome reports its slot lost); a place whose front hex is the original's is skipped in every profile (BAT-QUIRK-8). (2) BAT-Q7 (b): a `shared/` PR first (ADR-0014 point 10 amended; `BattleOutcome` gains per side the killed creatures of created stacks, by creature; `BattleResult`'s doc: a side with no army survivors whose opponent retreated or surrendered has lost too and still receives the price, BAT-Q7 (a)), then the battle fills it after the original's per-record count (0x4775E1; whether a reused record drops its losses, as SU a suggests, is an experiment candidate); sim and C ABI where the outcome crosses them.
 - **Acceptance:** the Definition of Done; rule tests for the flag in both profiles (batch 2d CL2) and for the reported kills (batch 2d NE: 10 Pikemen, a clone of 10 and 6 Earth Elementals); the outcome property extended.
-- **Depends on:** the user's go and its place against T7b; the `shared/` PR merged before the battle part.
-- **Status:** proposed.
-
-### T7b1 — The creature's cast and the casters of one spell (E04b increment 7, proposed)
-
-- **Scope:** the epic's T7b1; `installation.md` §7.21 (0x448260, 0x59FE30's mastery and power), §7.8 (a creature's cast: no hero bonuses, no aimed roll), §7.13 (Magic Mirror on creature casts). Casts left per stack (beside the stacks); the creature-cast command (shape decided with the user first) and the sim's `CREATURE_CAST` entry made legal (spell head: the stack's spell; target heads); legality; resolution through the shared cast path at the creature's mastery and power; event, observation (casts left), encodings. Ogre Mage (Bloodlust), Storm, Ice, Energy, Magma Elementals (Protections): Advanced, power 6.
-- **Acceptance:** the Definition of Done; rule tests per caster and for legality (no casts left, not its turn, a refused target); random rollouts and golden replays exercise the cast; encodings bumped as changed.
-- **Depends on:** the user's go for the cut.
-- **Status:** proposed.
-
-### T7b2 — The random casters (E04b increment 7, proposed)
-
-- **Scope:** the epic's T7b2; §7.21 (0x447510's table, 0x447EE0, 0x447A80 read in full). Faerie Dragon (a spell drawn at its activation while it has casts, Advanced, power 5 × creatures; the drawn spell's visibility; S-18; Magic Mirror on its casts) and Master Genie (a random useful beneficial spell for the target).
-- **Acceptance:** the Definition of Done; rule tests (the draw's weights, a cast per drawn spell, the Genie's usefulness cases).
-- **Depends on:** T7b1.
-- **Status:** proposed.
+- **Depends on:** increment 8 with T7b3 (the user, BAT-Q10): one `shared/` PR for both outcome changes (created stacks' kills, the Pit Lord's Demons), merged before the battle part.
+- **Status:** queued (increment 8).
 
 ## Inbox
 
@@ -58,3 +51,4 @@ Increment 6 (the user, 2026-10-08): T7a in parts, all done; its checkpoint done 
 - 2026-10-08 (E04b T6 checkpoint, the user): an experiment batch before deciding BAT-QUIRK-7 (a clone on its own crowded two-hex original), BAT-Q7 (Necromancy from killed elementals and clones, a retreat or surrender against only summons, the surrender price) and the clone's shots (a shooter's clone after it fired); with T6's other candidates (`docs/experiments/README.md`). *(Batch 2d compiled and folded in 2026-10-08: the surrender price fixed, BAT-Q7 answered, BAT-QUIRK-7 fix-optional and BAT-QUIRK-8; the rest is T6c.)*
 - 2026-10-08 (E04b T7a): loose ends of the strike's creature magic (`installation.md` §7.20): the ability spells' levels against Cursed Ground (none above 1) and Recanter's Cloak (none above 2) (E04c, T8), the Orb of Vulnerability lifting the normal immunities and the Sphere of Permanence refusing the flies' Dispel Helpful Spells (T8), a creature's cast at Expert on Magic Plains (E04c); BAT-Q8 decided (the user, 2026-10-08: not reproduced); Q-0005's extension to Poison and Age confirmed (the user, 2026-10-08). The QUEUE's inbox was lost in T7a2's docs commit (5751e65) and restored at the T7a checkpoint.
 - 2026-10-08 (E04b T7a review): the observation shows Bind's effect but not who binds whom (`binds.by`), which decides when a Bind ends and is public in the game; Poison's lost tenths are hidden too (the hit points show them, ambiguous while aged). Add per-stack binder masks (as `clone_rounds`) with T9's observation completeness (observation encoding bump). Also untested so far: a release by a flying or teleporting binder's move (the same `obstacles::travel` path as a walk).
+- 2026-10-08 (E04b T7b1): loose ends of the creature's cast (`installation.md` §7.21): no creature casts on Cursed Ground or at an anti-magic garrison (0x41F890's flag 0; E04c with the special battlefields, the garrison a battle setup input), nor while either hero wears the Orb of Inhibition (126; T8); Magic Plains raise a creature's mastery to Expert (E04c); a hero's cast needs a worn spell book there (artifact 0; T8 with "known spells need a worn spell book"). The stack bit `0x4000000` the dispatcher sets after a cast is not read yet.

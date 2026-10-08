@@ -77,7 +77,7 @@ damage = [2, 5]                  # min >= 1 (war machines: or [0, 0]), max >= mi
 hit_points = 18                  # >= 1
 speed = 5                        # >= 1 (war machines: 0)
 shots = 0                        # default 0
-casts = 0                        # spell casts per battle, default 0
+casts = 0                        # spell casts per battle, default 0 (`spell_caster`, BAT-MAG-048)
 cost = { coin = 120, shard = 1 } # resource -> amount, default {}
 growth = 7                       # weekly growth, default 0
 horde_growth = 3                 # default 0
@@ -148,6 +148,7 @@ errors:
 | `spell_after_strike` | `spell`, `chance_percent` (1..=100), `mastery` (0..=3), `rounds` (≥ 1), `living`, `unless_active`, `defended` (v21) (default false) | since v19: after each melee strike casts `spell` (timed or dispel effects only) on the struck stack: the chance drawn (none at 100), the stack alive, of a living creature if `living`, not under the spell if `unless_active`, with a defense above 0 if `defended`, then the spell's test without the side test (none for a spell that `ignores_immunity`; a `bind` spell only once per striker); at `mastery`, lasting `rounds`, without a hero (one entry per spell; Unicorns, Black Knights, the flies, BAT-MAG-040; Dendroids, Rust Dragons, BAT-MAG-045, BAT-MAG-046) |
 | `spell_damage_after_strike` | `spell`, `chance_percent` (1..=100), `per_creature` (≥ 1) | since v19: after each melee strike deals `per_creature` × its creatures damage as `spell` (a damage spell) to the struck stack, after the chance and the spell's test (the Thunderbird; BAT-MAG-041) |
 | `damage_after_strike` | `chance_percent` (1..=100), `percent` (1..=100) | since v21: after each melee strike, on a living struck stack and after the chance, deals `percent` % of one roll of its damage range × its creatures (truncated; nothing if 0), without a test (the Rust Dragon; BAT-MAG-047) |
+| `spell_caster` | `spell`, `mastery` (0..=3), `power` (≥ 1) | since v22: its stack may cast `spell` as its action, its creature's `casts` times a battle, at another living stack the spell may be aimed at (a creature's cast: `mastery`, value `power` × power factor + effect, timed effects lasting `power` rounds, no hero bonuses or cost, no resistance roll for the aimed stack); the spell has damage, timed, dispel or heal effects only, no health limit, and takes a target stack at `mastery` in every profile (Ogre Mage, the AB elementals; BAT-MAG-048) |
 
 `creature` references follow the reference rules above (own pack, or `pack:name` in the
 dependency closure) and may name creatures defined later in the same pack. At most one entry of
@@ -162,7 +163,7 @@ override, replacing the list) names the creature types it upgrades into: at most
 none twice; references follow the reference rules and may name later creatures of the pack.
 Hero effects that select "a creature" apply to it and its direct upgrades.
 
-## Hero content (format v3, E04a T3; battle magic format v4, E04b T2a; v5 T3a; v6 T3b1; v7 T3b1b; v8 T3b2; v9 T3c; v10 T4a; v11 T4b; v12 T4c; v13 T5a; v14 T5c1; v15 T5c2; v16 T5b; v17 T6a; v18 T6b; v19 T7a1; v20 T7a2; v21 T7a3)
+## Hero content (format v3, E04a T3; battle magic format v4, E04b T2a; v5 T3a; v6 T3b1; v7 T3b1b; v8 T3b2; v9 T3c; v10 T4a; v11 T4b; v12 T4c; v13 T5a; v14 T5c1; v15 T5c2; v16 T5b; v17 T6a; v18 T6b; v19 T7a1; v20 T7a2; v21 T7a3; v22 T7b1)
 
 Spell schools, spells, secondary skills, hero classes and hero types (ADR-0013). References follow
 the reference rules above; every kind may refer to content of its dependency closure.

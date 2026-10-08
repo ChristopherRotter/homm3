@@ -2,11 +2,14 @@
 //! sim layer, not the domain"), factorized for casting (ADR-0014 point 9).
 //!
 //! An [`Action`] is an *entry* and three heads: a spell and two targets. Every command but a
-//! cast is one entry of the dense list below with all three heads 0; a cast is the entry
+//! cast is one entry of the dense list below with all three heads 0; a hero's cast is the entry
 //! [`HERO_CAST`] with the spell's handle in the spell head and its target in the target head
 //! (`0` none, `1 + h` hex `h < 255`, `256 + s` stack slot `s`); the second target has the same
 //! layout: Teleport's destination hex (BAT-MAG-029), Sacrifice's victim stack (BAT-MAG-036, E04b
-//! T6a; the layout is unchanged), 0 for every other spell. The heads' masks
+//! T6a; the layout is unchanged), 0 for every other spell. A stack's cast (BAT-MAG-048) is the
+//! entry [`CREATURE_CAST`]: its command names only the target (ADR-0014 point 3), so the spell
+//! head allows only the active stack's spell ([`h3_battle::stack_spell`]) and the second target
+//! head only 0. The heads' masks
 //! are conditioned on the earlier choices ([`legal_mask`], [`spell_mask`], [`target_mask`],
 //! [`second_mask`]); after a legal non-cast entry each head allows exactly 0.
 //!
@@ -24,7 +27,7 @@
 //! | 1392 | Retreat (BAT-FLE-001) |
 //! | 1393 | Surrender (BAT-FLE-002) |
 //! | 1394 | The hero casts (heads: spell, target, second target; BAT-MAG-001) |
-//! | 1395 | A stack casts (creature spells, E04b T7; never legal yet) |
+//! | 1395 | The active stack casts (heads: its spell, the target, 0; BAT-MAG-048) |
 //!
 //! In the tactics phase `Move` entries place the active stack and Wait (0) passes to the next
 //! stack (BAT-TAC-002).
@@ -36,16 +39,18 @@
 //! (E04a T9a) Retreat and version 8 (E04a T9b) Surrender. Version 9 (E04b T2c) grew the stack
 //! slots to 42 (21 per side, ADR-0014 point 6), appended the two cast entries and added the
 //! spell and target heads. Version 10 (E04b T5a) uses the second target head (Teleport).
+//! Version 11 (E04b T7b1) makes the stack's cast legal.
 
 use h3_battle::{
     ATTACK_SLOTS, BattleState, CastTarget, CastTargets, Command, Field, Hex, LegalCommands,
-    STACK_CAPACITY, StackId, cast_targets, castable_spells, second_targets,
+    STACK_CAPACITY, StackId, cast_targets, castable_spells, creature_cast_spell,
+    creature_cast_targets, second_targets, stack_spell,
 };
 use h3_content::{MAX_FIELD_HEXES, MAX_SPELLS, Ruleset, SpellId};
 use h3_contracts::BattleSide;
 
 /// Version of this encoding; bump on any change of the layout above.
-pub const ACTION_ENCODING_VERSION: u32 = 10;
+pub const ACTION_ENCODING_VERSION: u32 = 11;
 
 const MOVE_BASE: usize = 2;
 const ATTACK_BASE: usize = MOVE_BASE + MAX_FIELD_HEXES;
@@ -66,7 +71,7 @@ pub const SURRENDER: usize = RETREAT + 1;
 /// The entry of a hero's cast.
 pub const HERO_CAST: usize = SURRENDER + 1;
 
-/// The entry of a stack's cast (creature spells, E04b T7; never legal yet).
+/// The entry of the active stack's cast (BAT-MAG-048).
 pub const CREATURE_CAST: usize = HERO_CAST + 1;
 
 /// Number of entries.
@@ -74,6 +79,8 @@ pub const ACTION_COUNT: usize = CREATURE_CAST + 1;
 
 /// [`HERO_CAST`] as an [`Action::entry`] value.
 const HERO_CAST_ENTRY: u32 = HERO_CAST as u32;
+/// [`CREATURE_CAST`] as an [`Action::entry`] value.
+const CREATURE_CAST_ENTRY: u32 = CREATURE_CAST as u32;
 const _: () = assert!(ACTION_COUNT <= u32::MAX as usize);
 
 /// Size of the spell head: spells by handle (the content allows at most [`MAX_SPELLS`]).
@@ -118,11 +125,13 @@ impl Action {
     }
 }
 
-/// The target head's index of `target`.
+/// The target head's index of `target` (none for a hex beyond the field's limit, which would
+/// otherwise take the first stack's index).
 fn target_index(target: CastTarget) -> Option<u16> {
     let i = match target {
         CastTarget::None => 0,
-        CastTarget::Hex(h) => 1 + usize::from(h.0),
+        CastTarget::Hex(h) if h.index() < MAX_FIELD_HEXES => 1 + h.index(),
+        CastTarget::Hex(_) => return None,
         CastTarget::Stack(s) => TARGET_STACK_BASE + s.index(),
     };
     (i < TARGET_COUNT).then(|| u16::try_from(i).ok()).flatten()
@@ -186,8 +195,15 @@ fn encode_entry(state: &BattleState, ruleset: &Ruleset, command: Command) -> Opt
         Command::EndTactics => Some(END_TACTICS),
         Command::Retreat => Some(RETREAT),
         Command::Surrender => Some(SURRENDER),
-        Command::Cast { .. } => None,
+        Command::Cast { .. } | Command::CreatureCast { .. } => None,
     }
+}
+
+/// The spell of the active stack's cast: its creature's spell (BAT-MAG-048).
+fn active_spell(state: &BattleState, ruleset: &Ruleset) -> Option<SpellId> {
+    state
+        .active()
+        .and_then(|id| stack_spell(state, ruleset, id))
 }
 
 /// Encodes a command. Attacks are encoded relative to the target's position and the active
@@ -206,6 +222,14 @@ pub fn encode(state: &BattleState, ruleset: &Ruleset, command: Command) -> Optio
             spell: spell.raw(),
             target: target_index(target)?,
             second: target_index(second)?,
+        });
+    }
+    if let Command::CreatureCast { target } = command {
+        return Some(Action {
+            entry: CREATURE_CAST_ENTRY,
+            spell: active_spell(state, ruleset)?.raw(),
+            target: target_index(target)?,
+            second: 0,
         });
     }
     encode_entry(state, ruleset, command).map(Action::entry)
@@ -260,6 +284,13 @@ pub fn decode(state: &BattleState, ruleset: &Ruleset, action: Action) -> Option<
             second: target_at(action.second)?,
         });
     }
+    if entry == CREATURE_CAST {
+        let spell = active_spell(state, ruleset)?;
+        return (action.spell == spell.raw() && action.second == 0)
+            .then(|| target_at(action.target))
+            .flatten()
+            .map(|target| Command::CreatureCast { target });
+    }
     if (action.spell, action.target, action.second) != (0, 0, 0) {
         return None;
     }
@@ -267,8 +298,9 @@ pub fn decode(state: &BattleState, ruleset: &Ruleset, action: Action) -> Option<
 }
 
 /// Fills `mask` with the legal entries of `actor` (all false if it is not the actor's turn):
-/// the entries of [`h3_battle::legal_commands`], and [`HERO_CAST`] if the hero may cast a spell
-/// now ([`castable_spells`]).
+/// the entries of [`h3_battle::legal_commands`], [`HERO_CAST`] if the hero may cast a spell
+/// now ([`castable_spells`]) and [`CREATURE_CAST`] if the active stack may cast at a target
+/// ([`creature_cast_targets`]).
 pub fn legal_mask(
     state: &BattleState,
     ruleset: &Ruleset,
@@ -284,6 +316,17 @@ pub fn legal_mask(
         }
     }
     mask[HERO_CAST] = !castable_spells(state, ruleset, actor).is_empty();
+    mask[CREATURE_CAST] = creature_cast_possible(state, ruleset, actor);
+}
+
+/// Whether the active stack of `actor` may cast at some target now (BAT-MAG-048).
+fn creature_cast_possible(state: &BattleState, ruleset: &Ruleset, actor: BattleSide) -> bool {
+    // Most stacks may not cast: skip the targets' buffer for them.
+    creature_cast_spell(state, ruleset, actor).is_some_and(|_| {
+        let mut targets = CastTargets::new();
+        creature_cast_targets(state, ruleset, actor, &mut targets);
+        !targets.is_empty()
+    })
 }
 
 /// Whether `entry` is a legal non-cast entry of `actor`.
@@ -301,7 +344,8 @@ fn legal_entry(
 }
 
 /// Fills `mask` with the legal spells of `actor` after choosing `entry`: the castable spells
-/// for [`HERO_CAST`], only 0 for another legal entry, nothing otherwise.
+/// for [`HERO_CAST`], the active stack's spell for a legal [`CREATURE_CAST`], only 0 for another
+/// legal entry, nothing otherwise.
 pub fn spell_mask(
     state: &BattleState,
     ruleset: &Ruleset,
@@ -315,14 +359,21 @@ pub fn spell_mask(
         for spell in castable_spells(state, ruleset, actor).iter() {
             mask[spell.index()] = true;
         }
-    } else if entry != CREATURE_CAST && legal_entry(state, ruleset, actor, entry, legal) {
+    } else if entry == CREATURE_CAST {
+        if let Some(spell) = creature_cast_spell(state, ruleset, actor)
+            .filter(|_| creature_cast_possible(state, ruleset, actor))
+        {
+            mask[spell.index()] = true;
+        }
+    } else if legal_entry(state, ruleset, actor, entry, legal) {
         mask[0] = true;
     }
 }
 
 /// Fills `mask` with the legal targets of `actor` after choosing `entry` and `spell`: the
-/// targets of the cast for [`HERO_CAST`] ([`cast_targets`]), only 0 for another legal entry
-/// with spell 0, nothing otherwise.
+/// targets of the cast for [`HERO_CAST`] ([`cast_targets`]), for [`CREATURE_CAST`] with the
+/// active stack's spell those of its cast ([`creature_cast_targets`]), only 0 for another legal
+/// entry with spell 0, nothing otherwise.
 pub fn target_mask(
     state: &BattleState,
     ruleset: &Ruleset,
@@ -348,18 +399,25 @@ pub fn target_mask(
                 mask[usize::from(i)] = true;
             }
         }
-    } else if spell == 0
-        && entry != CREATURE_CAST
-        && legal_entry(state, ruleset, actor, entry, legal)
-    {
+    } else if entry == CREATURE_CAST {
+        let mut targets = CastTargets::new();
+        if creature_cast_spell(state, ruleset, actor).is_some_and(|s| s.raw() == spell) {
+            creature_cast_targets(state, ruleset, actor, &mut targets);
+        }
+        for t in targets.iter() {
+            if let Some(i) = target_index(*t) {
+                mask[usize::from(i)] = true;
+            }
+        }
+    } else if spell == 0 && legal_entry(state, ruleset, actor, entry, legal) {
         mask[0] = true;
     }
 }
 
 /// Fills `mask` with the legal second targets of `actor` after choosing `entry`, `spell` and
 /// `target`: for [`HERO_CAST`] those of the cast at that target ([`second_targets`]: Teleport's
-/// destinations, Sacrifice's victims, only 0 for other spells); only 0 for another legal prefix;
-/// nothing otherwise.
+/// destinations, Sacrifice's victims, only 0 for other spells); only 0 for another legal prefix
+/// ([`CREATURE_CAST`] included); nothing otherwise.
 pub fn second_mask(
     state: &BattleState,
     ruleset: &Ruleset,
@@ -447,7 +505,7 @@ mod tests {
         assert_eq!((END_TACTICS, RETREAT, SURRENDER), (1391, 1392, 1393));
         assert_eq!((HERO_CAST, CREATURE_CAST), (1394, 1395));
         assert_eq!((SPELL_COUNT, TARGET_COUNT), (128, 298));
-        assert_eq!(ACTION_ENCODING_VERSION, 10);
+        assert_eq!(ACTION_ENCODING_VERSION, 11);
         assert_eq!(decode_index(SURRENDER), Some(Command::Surrender));
         assert_eq!(decode_index(CREATURE_CAST), None);
         assert_eq!(Action::entry(usize::MAX).entry, u32::MAX);
@@ -460,7 +518,9 @@ mod tests {
         let mut legal = LegalCommands::new();
         let mut mask = [false; ACTION_COUNT];
         legal_mask(&s, &r, side, &mut legal, &mut mask);
-        assert_eq!(mask.iter().filter(|m| **m).count(), legal.len());
+        let creature = usize::from(creature_cast_possible(&s, &r, side));
+        assert_eq!(mask.iter().filter(|m| **m).count(), legal.len() + creature);
+        assert_eq!(mask[CREATURE_CAST], creature == 1);
         for c in legal.iter() {
             let a = encode(&s, &r, *c).unwrap();
             assert!(mask[a.entry as usize]);
@@ -497,7 +557,14 @@ mod tests {
         assert!(spells.iter().all(|m| !m));
         spell_mask(&s, &r, side.opponent(), 1, &mut legal, &mut spells);
         assert!(spells.iter().all(|m| !m));
-        spell_mask(&s, &r, side, CREATURE_CAST, &mut legal, &mut spells);
+        spell_mask(
+            &s,
+            &r,
+            side.opponent(),
+            CREATURE_CAST,
+            &mut legal,
+            &mut spells,
+        );
         assert!(spells.iter().all(|m| !m));
         target_mask(&s, &r, side, (CREATURE_CAST, 0), &mut legal, &mut targets);
         assert!(targets.iter().all(|m| !m));
@@ -518,8 +585,12 @@ mod tests {
         let mut legal = LegalCommands::new();
         let mut mask = [false; ACTION_COUNT];
         legal_mask(&s, &r, side, &mut legal, &mut mask);
-        assert!(mask[HERO_CAST] && !mask[CREATURE_CAST]);
-        assert_eq!(mask.iter().filter(|m| **m).count(), legal.len() + 1);
+        let creature = creature_cast_possible(&s, &r, side);
+        assert!(mask[HERO_CAST] && mask[CREATURE_CAST] == creature);
+        assert_eq!(
+            mask.iter().filter(|m| **m).count(),
+            legal.len() + 1 + usize::from(creature)
+        );
         let mut spells = [false; SPELL_COUNT];
         spell_mask(&s, &r, side, HERO_CAST, &mut legal, &mut spells);
         let castable = castable_spells(&s, &r, side);
@@ -688,6 +759,137 @@ mod tests {
         assert_eq!(decode(&s, &r, at(SHOOT_BASE + 1)), None);
     }
 
+    /// The skirmish played (defending) until the active stack may cast (a Wisp's Hasten).
+    fn until_a_stack_casts() -> (Ruleset, BattleState, BattleSide) {
+        let (r, mut s) = env();
+        let mut legal = LegalCommands::new();
+        for _ in 0..200 {
+            let side = s.side_to_act().unwrap();
+            if creature_cast_possible(&s, &r, side) {
+                return (r, s, side);
+            }
+            h3_battle::legal_commands(&s, &r, side, &mut legal);
+            let c = *legal.iter().find(|c| matches!(c, Command::Defend)).unwrap();
+            h3_battle::apply(&mut s, &r, side, c, &mut NoopSink).unwrap();
+        }
+        panic!("no stack's cast in 200 steps");
+    }
+
+    #[test]
+    fn a_stacks_cast_is_chosen_head_by_head() {
+        let (r, s, side) = until_a_stack_casts();
+        let hasten = r.spell_by_key("synthetic:hasten").unwrap();
+        let mut legal = LegalCommands::new();
+        let mut mask = [false; ACTION_COUNT];
+        legal_mask(&s, &r, side, &mut legal, &mut mask);
+        assert!(mask[CREATURE_CAST]);
+        // The spell head: the stack's spell only.
+        let mut spells = [false; SPELL_COUNT];
+        spell_mask(&s, &r, side, CREATURE_CAST, &mut legal, &mut spells);
+        let allowed: Vec<usize> = (0..SPELL_COUNT).filter(|&i| spells[i]).collect();
+        assert_eq!(allowed, std::vec![hasten.index()]);
+        spell_mask(
+            &s,
+            &r,
+            side.opponent(),
+            CREATURE_CAST,
+            &mut legal,
+            &mut spells,
+        );
+        assert!(spells.iter().all(|m| !m));
+        // The target head: the stacks of its cast; none for another spell.
+        let mut targets = [false; TARGET_COUNT];
+        target_mask(
+            &s,
+            &r,
+            side,
+            (CREATURE_CAST, hasten.raw()),
+            &mut legal,
+            &mut targets,
+        );
+        let mut listed = CastTargets::new();
+        creature_cast_targets(&s, &r, side, &mut listed);
+        assert!(!listed.is_empty());
+        for t in listed.iter() {
+            assert!(targets[usize::from(target_index(*t).unwrap())]);
+        }
+        assert_eq!(targets.iter().filter(|m| **m).count(), listed.len());
+        let other = hasten.raw() + 1;
+        let mut none = [false; TARGET_COUNT];
+        target_mask(&s, &r, side, (CREATURE_CAST, other), &mut legal, &mut none);
+        assert!(none.iter().all(|m| !m));
+        // The second target head: only 0.
+        let target = target_index(listed.as_slice()[0]).unwrap();
+        let mut seconds = [false; TARGET_COUNT];
+        let prefix = (CREATURE_CAST, hasten.raw(), target);
+        second_mask(&s, &r, side, prefix, &mut legal, &mut seconds);
+        assert_eq!(seconds.iter().position(|m| *m), Some(0));
+        assert_eq!(seconds.iter().filter(|m| **m).count(), 1);
+        // Encoding and decoding: the spell head carries the stack's spell.
+        let command = Command::CreatureCast {
+            target: listed.as_slice()[0],
+        };
+        let action = encode(&s, &r, command).unwrap();
+        assert_eq!(
+            action,
+            Action {
+                entry: CREATURE_CAST_ENTRY,
+                spell: hasten.raw(),
+                target,
+                second: 0,
+            }
+        );
+        assert_eq!(decode(&s, &r, action), Some(command));
+        assert_eq!(
+            decode(
+                &s,
+                &r,
+                Action {
+                    spell: other,
+                    ..action
+                }
+            ),
+            None
+        );
+        assert_eq!(
+            decode(
+                &s,
+                &r,
+                Action {
+                    second: 1,
+                    ..action
+                }
+            ),
+            None
+        );
+        assert_eq!(
+            decode(
+                &s,
+                &r,
+                Action {
+                    target: u16::MAX,
+                    ..action
+                }
+            ),
+            None
+        );
+        let target_max = Command::CreatureCast {
+            target: CastTarget::Hex(Hex(255)),
+        };
+        assert_eq!(encode(&s, &r, target_max), None);
+        // A stack that is no caster: nothing to encode or decode.
+        let mut plain = s.clone();
+        while plain
+            .active()
+            .is_some_and(|id| stack_spell(&plain, &r, id).is_some())
+        {
+            let side = plain.side_to_act().unwrap();
+            h3_battle::apply(&mut plain, &r, side, Command::Defend, &mut NoopSink).unwrap();
+        }
+        assert_eq!(encode(&plain, &r, command), None);
+        assert_eq!(decode(&plain, &r, action), None);
+    }
+
     #[test]
     fn heals_of_the_commanded_tent_round_trip() {
         // The full scenario's attacker commands its tent (BAT-WAR-007): play until it may heal.
@@ -699,7 +901,7 @@ mod tests {
         for step in 0..2000 {
             let Some(side) = s.side_to_act() else { break };
             legal_mask(&s, &r, side, &mut legal, &mut mask);
-            let cast = usize::from(mask[HERO_CAST]);
+            let cast = usize::from(mask[HERO_CAST]) + usize::from(mask[CREATURE_CAST]);
             assert_eq!(mask.iter().filter(|m| **m).count(), legal.len() + cast);
             for c in legal.iter().filter(|c| matches!(c, Command::Heal { .. })) {
                 let a = encode(&s, &r, *c).unwrap();

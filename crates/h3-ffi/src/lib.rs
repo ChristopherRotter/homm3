@@ -36,8 +36,11 @@ use h3_sim::{
 /// grow to 42. v9 (E04b T3a): observation encoding v6 (the timed effects of stacks;
 /// `h3_observation_len` grows). v10 (E04b T5a): action encoding v10 (the second target head
 /// carries Teleport's destination hex); no function changes. v11 (E04b T6b): observation
-/// encoding v7 (created stacks and clones; `h3_observation_len` grows).
-pub const H3_ABI_VERSION: u32 = 11;
+/// encoding v7 (created stacks and clones; `h3_observation_len` grows). v12 (E04b T7b1): action
+/// encoding v11 (the stack's cast, entry 1395, becomes legal; its spell head allows the stack's
+/// spell, its second target head 0) and observation encoding v8 (casts left;
+/// `h3_observation_len` grows).
+pub const H3_ABI_VERSION: u32 = 12;
 
 /// `H3StepResult.result`: the battle is not decided (still running, or truncated).
 pub const H3_RESULT_NONE: i32 = -1;
@@ -533,7 +536,7 @@ mod tests {
 
     #[test]
     fn abi_smoke_create_step_destroy() {
-        assert_eq!(h3_abi_version(), 11);
+        assert_eq!(h3_abi_version(), 12);
         assert_eq!(h3_action_count() as usize, ACTION_COUNT);
         assert_eq!(h3_spell_count() as usize, SPELL_COUNT);
         assert_eq!(h3_target_count() as usize, TARGET_COUNT);
@@ -556,9 +559,9 @@ mod tests {
                     h3_env_observe(env, side, obs.as_mut_ptr(), obs.len()),
                     H3_OK
                 );
-                // Prefer attacks (entries ≥ 257; the skirmish has no heroes, so no Retreat and no
-                // cast), else the first legal entry.
-                let action = (257..ACTION_COUNT)
+                // Prefer attacks (entries from 257 up to the casts; the skirmish has no heroes, so
+                // no Retreat and no hero's cast), else the first legal entry.
+                let action = (257..h3_sim::action::HERO_CAST)
                     .find(|&i| mask[i] == 1)
                     .or_else(|| mask.iter().position(|m| *m == 1));
                 assert_eq!(
@@ -642,6 +645,74 @@ mod tests {
                         H3_OK
                     );
                     assert_eq!(seconds.iter().position(|m| *m == 1), Some(0));
+                    action = H3Action {
+                        entry: e,
+                        spell,
+                        target,
+                        second: 0,
+                    };
+                    casts += 1;
+                }
+                assert_eq!(h3_env_step(env, side, action, std::ptr::null_mut()), H3_OK);
+            }
+            h3_env_destroy(env);
+        }
+        assert_eq!(casts, 1);
+    }
+
+    #[test]
+    fn a_stack_casts_head_by_head() {
+        // The skirmish's Wisps cast Hasten (E04b T7b1): play until one may, then choose its
+        // heads from their masks: its spell only, a target, no second target.
+        let env = h3_env_create_synthetic(1, 7, 0);
+        let mut mask = vec![0u8; ACTION_COUNT];
+        let mut spells = vec![0u8; SPELL_COUNT];
+        let mut targets = vec![0u8; TARGET_COUNT];
+        let mut seconds = vec![0u8; TARGET_COUNT];
+        let mut casts = 0;
+        let cast = h3_sim::action::CREATURE_CAST;
+        let e = cast as u32;
+        unsafe {
+            while casts == 0 && h3_env_to_move(env) >= 0 {
+                let side = h3_env_to_move(env);
+                assert_eq!(
+                    h3_env_legal_mask(env, side, mask.as_mut_ptr(), mask.len()),
+                    H3_OK
+                );
+                let mut action = entry(1);
+                if mask[cast] == 1 {
+                    assert_eq!(
+                        h3_env_spell_mask(env, side, e, spells.as_mut_ptr(), spells.len()),
+                        H3_OK
+                    );
+                    assert_eq!(spells.iter().filter(|m| **m == 1).count(), 1);
+                    let spell = spells.iter().position(|m| *m == 1).unwrap() as u16;
+                    assert_eq!(
+                        h3_env_target_mask(
+                            env,
+                            side,
+                            e,
+                            spell,
+                            targets.as_mut_ptr(),
+                            targets.len()
+                        ),
+                        H3_OK
+                    );
+                    let target = targets.iter().position(|m| *m == 1).unwrap() as u16;
+                    assert_eq!(
+                        h3_env_second_mask(
+                            env,
+                            side,
+                            e,
+                            spell,
+                            target,
+                            seconds.as_mut_ptr(),
+                            seconds.len()
+                        ),
+                        H3_OK
+                    );
+                    assert_eq!(seconds.iter().filter(|m| **m == 1).count(), 1);
+                    assert_eq!(seconds[0], 1);
                     action = H3Action {
                         entry: e,
                         spell,

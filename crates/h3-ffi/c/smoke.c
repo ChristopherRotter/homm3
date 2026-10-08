@@ -28,7 +28,7 @@ static uint32_t pick_index(const uint8_t *mask, uint32_t n, uint64_t *lcg) {
 }
 
 int main(void) {
-    CHECK(h3_abi_version() == 11);
+    CHECK(h3_abi_version() == 12);
     uint32_t n_actions = h3_action_count();
     uint32_t n_spells = h3_spell_count();
     uint32_t n_targets = h3_target_count();
@@ -46,6 +46,7 @@ int main(void) {
     H3StepResult result = {0};
     int steps = 0;
     int casts = 0;
+    int stack_casts = 0;
     while (h3_env_to_move(env) >= 0) {
         int32_t side = h3_env_to_move(env);
         CHECK(h3_env_legal_mask(env, side, mask, n_actions) == H3_OK);
@@ -69,6 +70,8 @@ int main(void) {
         action.second = (uint16_t)pick_index(targets, n_targets, &lcg);
         CHECK(action.second < n_targets);
         casts += action.entry == n_actions - 2;
+        /* The active stack's cast (E04b T7b1): the Wisps' Hasten. */
+        stack_casts += action.entry == n_actions - 1;
         CHECK(h3_env_step(env, side, action, &result) == H3_OK);
         steps++;
     }
@@ -91,7 +94,7 @@ int main(void) {
     free(spells);
     free(targets);
     free(obs);
-    printf("ffi smoke ok: %d steps, %d casts, result %d, final hash %016llx\n", steps, casts,
-           (int)result.result, (unsigned long long)hash);
+    printf("ffi smoke ok: %d steps, %d casts, %d stack casts, result %d, final hash %016llx\n",
+           steps, casts, stack_casts, (int)result.result, (unsigned long long)hash);
     return 0;
 }

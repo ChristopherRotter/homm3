@@ -28,7 +28,9 @@ pub type LegalCommands = FixedVec<Command, MAX_LEGAL_COMMANDS>;
 /// canonical position slot (`Field::attack_positions`; never for war machines, BAT-WAR-001),
 /// then for a commanded First Aid Tent its heals by stack id (BAT-WAR-007). Last in both cases,
 /// Retreat if the side may retreat (BAT-FLE-001) and Surrender if it may surrender and can pay
-/// (BAT-FLE-002).
+/// (BAT-FLE-002). Casts are not listed: a hero's are [`crate::cast_targets`] ×
+/// [`crate::second_targets`] (BAT-MAG-001), a stack's [`crate::creature_cast_targets`]
+/// (BAT-MAG-048).
 pub fn legal_commands(
     state: &BattleState,
     ruleset: &Ruleset,
