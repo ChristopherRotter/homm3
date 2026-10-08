@@ -47,6 +47,9 @@ pub struct HeroView {
     pub commands_ballista: bool,
     /// The hero commands its side's First Aid Tent (BAT-WAR-007); how it heals is private.
     pub commands_tent: bool,
+    /// The hero carries a spell book (public, ADR-0014 point 8: the Master Genie's test reads it,
+    /// BAT-MAG-050); the spells in it are private.
+    pub spell_book: bool,
 }
 
 /// What only the hero's own side sees of it (ADR-0013 point 9, ADR-0014 point 8;
@@ -240,6 +243,7 @@ impl CanonicalHash for HeroRecord {
         h.write_u16(self.surrender_discount_bp);
         h.write_u32(self.funds);
         self.magic.hash_into(h);
+        h.write_bool(v.spell_book);
     }
 }
 
@@ -356,6 +360,7 @@ pub(crate) fn check(
             casts: 0,
             commands_ballista: hero.war_machines.ballista.is_some(),
             commands_tent: hero.war_machines.tent.is_some(),
+            spell_book: hero.magic.spell_book.is_some(),
         },
         tactics: hero.tactics,
         damage: hero.damage,

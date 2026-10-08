@@ -954,7 +954,7 @@ fight_value = 748
 ai_value = 942
 adventure_count = [8, 12]
 flags = ["flying", "alive"]
-abilities = [{ kind = "hate", creature = "efreeti", percent = 50 }, { kind = "hate", creature = "efreet_sultan", percent = 50 }]
+abilities = [{ kind = "hate", creature = "efreeti", percent = 50 }, { kind = "hate", creature = "efreet_sultan", percent = 50 }, { kind = "helpful_spell_caster", mastery = 2, power = 6 }, { kind = "drawn_spell", spell = "base:shield", weight = 1 }, { kind = "drawn_spell", spell = "base:air_shield", weight = 1 }, { kind = "drawn_spell", spell = "base:fire_shield", weight = 1 }, { kind = "drawn_spell", spell = "base:protection_from_air", weight = 1 }, { kind = "drawn_spell", spell = "base:protection_from_fire", weight = 1 }, { kind = "drawn_spell", spell = "base:prot_from_water", weight = 1 }, { kind = "drawn_spell", spell = "base:prot_from_earth", weight = 1 }, { kind = "drawn_spell", spell = "base:anti_magic", weight = 1 }, { kind = "drawn_spell", spell = "base:magic_mirror", weight = 1 }, { kind = "drawn_spell", spell = "base:cure", weight = 1 }, { kind = "drawn_spell", spell = "base:bless", weight = 1 }, { kind = "drawn_spell", spell = "base:bloodlust", weight = 1 }, { kind = "drawn_spell", spell = "base:precision", weight = 1 }, { kind = "drawn_spell", spell = "base:stone_skin", weight = 1 }, { kind = "drawn_spell", spell = "base:prayer", weight = 1 }, { kind = "drawn_spell", spell = "base:mirth", weight = 1 }, { kind = "drawn_spell", spell = "base:fortune", weight = 1 }, { kind = "drawn_spell", spell = "base:haste", weight = 1 }, { kind = "drawn_spell", spell = "base:slayer", weight = 1 }, { kind = "drawn_spell", spell = "base:frenzy", weight = 1 }, { kind = "drawn_spell", spell = "base:counterstrike", weight = 1 }]
 
 [[creature]]
 id = "naga"  # original id 38
@@ -3307,6 +3307,7 @@ target = "stack"
 side = "own"
 mass = "expert"
 effects = [{ kind = "timed", change = "melee_protection" }]
+useful = "enemy_melee"
 
 [[spell]]
 id = "air_shield"  # original id 28
@@ -3322,6 +3323,7 @@ target = "stack"
 side = "own"
 mass = "expert"
 effects = [{ kind = "timed", change = "ranged_protection" }]
+useful = "enemy_shooter"
 
 [[spell]]
 id = "fire_shield"  # original id 29
@@ -3336,6 +3338,7 @@ polarity = "positive"
 target = "stack"
 side = "own"
 effects = [{ kind = "timed", change = "fire_shield" }]
+useful = "enemy_melee"
 
 [[spell]]
 id = "protection_from_air"  # original id 30
@@ -3351,6 +3354,7 @@ target = "stack"
 side = "own"
 mass = "expert"
 effects = [{ kind = "timed", change = "school_protection" }]
+useful = "enemy_spell_book"
 
 [[spell]]
 id = "protection_from_fire"  # original id 31
@@ -3366,6 +3370,7 @@ target = "stack"
 side = "own"
 mass = "expert"
 effects = [{ kind = "timed", change = "school_protection" }]
+useful = "enemy_spell_book"
 
 [[spell]]
 id = "prot_from_water"  # original id 32
@@ -3381,6 +3386,7 @@ target = "stack"
 side = "own"
 mass = "expert"
 effects = [{ kind = "timed", change = "school_protection" }]
+useful = "enemy_spell_book"
 
 [[spell]]
 id = "prot_from_earth"  # original id 33
@@ -3396,6 +3402,7 @@ target = "stack"
 side = "own"
 mass = "expert"
 effects = [{ kind = "timed", change = "school_protection" }]
+useful = "enemy_spell_book"
 
 [[spell]]
 id = "anti_magic"  # original id 34
@@ -3410,6 +3417,7 @@ polarity = "positive"
 target = "stack"
 side = "own"
 effects = [{ kind = "timed", change = "spell_immunity" }]
+useful = "enemy_spell_book"
 
 [[spell]]
 id = "dispel"  # original id 35
@@ -3444,6 +3452,7 @@ polarity = "positive"
 target = "stack"
 side = "own"
 effects = [{ kind = "timed", change = "magic_mirror" }]
+useful = "enemy_spell_book"
 
 [[spell]]
 id = "cure"  # original id 37
@@ -3461,6 +3470,7 @@ mass = "expert"
 restores_health = true
 dispels = ["curse", "weakness", "sorrow", "misfortune", "slow", "berserk", "hypnotize", "forgetfulness", "blind", "stone_gaze", "poison", "disease", "paralyze", "age"]
 effects = [{ kind = "dispel" }, { kind = "heal" }]
+useful = "wounded"
 
 [[spell]]
 id = "resurrection"  # original id 38
@@ -3560,6 +3570,7 @@ mass = "expert"
 excludes = ["war_machine"]
 effects = [{ kind = "timed", change = "melee_attack" }]
 specialist = { kind = "creature_level", values = [3, 3, 2, 2, 1, 1, 0] }
+useful = "melee"
 
 [[spell]]
 id = "precision"  # original id 44
@@ -3576,6 +3587,7 @@ side = "own"
 mass = "expert"
 effects = [{ kind = "timed", change = "ranged_attack" }]
 specialist = { kind = "creature_level", values = [3, 3, 2, 2, 1, 1, 0] }
+useful = "shooting"
 
 [[spell]]
 id = "weakness"  # original id 45
@@ -3641,6 +3653,7 @@ side = "own"
 mass = "expert"
 effects = [{ kind = "timed", change = "attack" }, { kind = "timed", change = "defense" }, { kind = "timed", change = "speed" }]
 specialist = { kind = "creature_level", values = [3, 3, 2, 2, 1, 1, 0] }
+useful = "not_acted"
 
 [[spell]]
 id = "mirth"  # original id 49
@@ -3754,6 +3767,7 @@ target = "stack"
 side = "own"
 effects = [{ kind = "timed", change = "slayer" }]
 specialist = { kind = "creature_level", values = [4, 3, 2, 1, 0, 0, 0] }
+useful = "enemy_king"
 
 [[spell]]
 id = "frenzy"  # original id 56

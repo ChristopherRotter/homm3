@@ -9,6 +9,7 @@ use h3_contracts::BattleSide;
 
 use super::spells::{arena, mage, spell, stack};
 use super::support::*;
+use crate::CastSpell::{AtResolution, Named};
 use crate::state::StackFlags;
 use crate::{
     BattleState, CastTarget, CastTargets, Command, CommandError, Event, EventKind, Hex, StackId,
@@ -59,12 +60,12 @@ fn a_caster_casts_its_spell_at_another_stack_of_its_side_and_ends_its_turn() {
         1,
     );
     let haste = spell(&r, "haste");
-    assert_eq!(stack_spell(&s, &r, StackId(0)), Some(haste));
+    assert_eq!(stack_spell(&s, &r, StackId(0)), Some(Named(haste)));
     assert_eq!(stack_spell(&s, &r, StackId(1)), None);
     assert_eq!(stack_spell(&s, &r, StackId(9)), None);
     assert_eq!(
         creature_cast_spell(&s, &r, BattleSide::Attacker),
-        Some(haste)
+        Some(Named(haste))
     );
     assert_eq!(creature_cast_spell(&s, &r, BattleSide::Defender), None);
     // Not itself (the original's cursor), not the enemy (a positive spell).
@@ -349,10 +350,10 @@ fn a_random_caster_draws_its_spell_by_weight_and_only_its_controller_is_told() {
             }]
         );
         assert_eq!(crate::project(&events[0], BattleSide::Defender), None);
-        assert_eq!(stack_spell(&s, &r, StackId(0)), Some(expected));
+        assert_eq!(stack_spell(&s, &r, StackId(0)), Some(Named(expected)));
         assert_eq!(
             creature_cast_spell(&s, &r, BattleSide::Attacker),
-            Some(expected)
+            Some(Named(expected))
         );
         assert_eq!(observe(&s, &r, BattleSide::Attacker).drawn, Some(expected));
         assert_eq!(observe(&s, &r, BattleSide::Defender).drawn, None);
@@ -382,7 +383,10 @@ fn a_random_caster_without_casts_draws_nothing_and_another_activation_forgets_it
     activate(&mut s, 1);
     assert_eq!(stack_spell(&s, &r, StackId(0)), None);
     activate(&mut s, 0);
-    assert_eq!(stack_spell(&s, &r, StackId(0)), Some(spell(&r, "bolt")));
+    assert_eq!(
+        stack_spell(&s, &r, StackId(0)),
+        Some(Named(spell(&r, "bolt")))
+    );
     // Another stack's activation forgets it.
     assert!(drawing(&mut s, &r, 1).is_empty());
     activate(&mut s, 0);
@@ -662,4 +666,196 @@ fn a_mirrored_random_cast_is_untested_with_quirk_bat_quirk_9() {
         assert!(outcomes.contains(&(1, "dwarf", true)));
         assert_eq!(outcomes.contains(&(1, "dwarf", false)), !untested);
     }
+}
+
+/// Whether `name` is useful on stack `target` for a helpful caster of the attacker (BAT-MAG-050).
+fn is_useful(s: &BattleState, r: &Ruleset, name: &str, target: u8) -> bool {
+    let id = spell(r, name);
+    crate::casters::useful(
+        s,
+        r,
+        BattleSide::Attacker,
+        (id, r.spell(id).unwrap()),
+        StackId(target),
+    )
+}
+
+// covers: BAT-MAG-050
+#[test]
+fn a_helpful_caster_casts_a_spell_drawn_among_those_useful_for_its_target() {
+    let r = ruleset();
+    // For an own melee stack against an enemy melee stack, without heroes, wounds or kings:
+    // Shield, Bless, Bloodlust and Prayer, in the jinn's order.
+    let useful = ["shield", "bless", "lust", "prayer"].map(|n| spell(&r, n));
+    let mut seen = std::collections::BTreeSet::new();
+    for seed in 0..30 {
+        let mut s = arena(
+            &r,
+            [None, None],
+            &[("jinn", 2, 3, 5), ("fixed", 3, 3, 7)],
+            &[("fixed", 3, 13, 5)],
+            seed,
+        );
+        // Nothing is drawn at the activation; the cast names no spell.
+        assert!(drawing(&mut s, &r, 0).is_empty());
+        assert_eq!(stack_spell(&s, &r, StackId(0)), Some(AtResolution));
+        assert_eq!(
+            creature_cast_spell(&s, &r, BattleSide::Attacker),
+            Some(AtResolution)
+        );
+        assert_eq!(targets(&s, &r, BattleSide::Attacker), vec![1]);
+        let mut counts = [0; crate::STACK_CAPACITY];
+        counts[1] = 4;
+        assert_eq!(
+            observe(&s, &r, BattleSide::Attacker).cast_candidates,
+            counts
+        );
+        assert_eq!(
+            observe(&s, &r, BattleSide::Defender).cast_candidates,
+            [0; crate::STACK_CAPACITY]
+        );
+        let expected = useful[s.rng.clone().below(4) as usize];
+        let events = act(&mut s, &r, at_stack(1)).unwrap();
+        assert_eq!(
+            events[0].kind,
+            EventKind::StackCast {
+                stack: StackId(0),
+                spell: expected,
+                target: stack(1),
+            }
+        );
+        // Advanced, power 6: six rounds.
+        assert_eq!(applied(&events), vec![(1, expected, Some(6))]);
+        assert_eq!(s.casts_left(StackId(0)), 2);
+        seen.insert(expected);
+    }
+    assert_eq!(seen.len(), 4);
+}
+
+// covers: BAT-MAG-050
+#[test]
+fn a_helpful_caster_needs_another_own_stack_with_a_useful_spell() {
+    let r = ruleset();
+    let mut s = arena(
+        &r,
+        [None, None],
+        &[("jinn", 2, 3, 5), ("fixed", 3, 3, 7)],
+        &[("fixed", 3, 13, 5)],
+        1,
+    );
+    s.stacks.as_mut_slice()[1].count = 0;
+    assert!(targets(&s, &r, BattleSide::Attacker).is_empty());
+    assert_eq!(
+        observe(&s, &r, BattleSide::Attacker).cast_candidates,
+        [0; crate::STACK_CAPACITY]
+    );
+    let before = s.clone();
+    for target in [
+        stack(0),
+        stack(1),
+        stack(2),
+        stack(40),
+        CastTarget::None,
+        CastTarget::Hex(at(&r, 3, 7)),
+    ] {
+        assert_eq!(
+            act(&mut s, &r, Command::CreatureCast { target }),
+            Err(CommandError::InvalidSpellTarget),
+            "{target:?}"
+        );
+    }
+    assert_eq!(s, before);
+}
+
+// covers: BAT-MAG-050
+#[test]
+fn a_spell_is_useful_as_the_originals_test_says() {
+    let r = ruleset();
+    let mut s = arena(
+        &r,
+        [None, None],
+        &[("jinn", 2, 3, 5), ("fixed", 3, 3, 7), ("sniper", 3, 3, 9)],
+        &[("fixed", 3, 13, 5)],
+        1,
+    );
+    // Always, unless active, for an own stack it can affect.
+    assert!(is_useful(&s, &r, "bless", 1));
+    assert!(!is_useful(&s, &r, "bless", 3));
+    let mut warded = s.clone();
+    give(&mut warded, &r, (1, "antimagic"), 3);
+    assert!(!is_useful(&warded, &r, "bless", 1));
+    give(&mut warded, &r, (2, "bless"), 0);
+    assert!(!is_useful(&warded, &r, "bless", 2));
+    // An enemy that cannot shoot: Shield, not Air Shield.
+    assert!(is_useful(&s, &r, "shield", 1));
+    assert!(!is_useful(&s, &r, "airshield", 1));
+    // Bloodlust for a stack that cannot shoot, Precision for one that can.
+    let sniper = 2;
+    assert!(is_useful(&s, &r, "lust", 1) && !is_useful(&s, &r, "aim", 1));
+    assert!(is_useful(&s, &r, "aim", sniper) && !is_useful(&s, &r, "lust", sniper));
+    // A blocked shooter fights in melee.
+    let mut blocked = s.clone();
+    place(&mut blocked, &r, 3, 4, 9);
+    assert!(is_useful(&blocked, &r, "lust", sniper) && !is_useful(&blocked, &r, "aim", sniper));
+    // Prayer before the stack acted; Cure for a wounded top creature.
+    assert!(is_useful(&s, &r, "prayer", 1));
+    assert!(!is_useful(&s, &r, "cure", 1));
+    let st = &mut s.stacks.as_mut_slice()[1];
+    st.flags.set(StackFlags::ACTED, true);
+    st.top_hp -= 1;
+    assert!(!is_useful(&s, &r, "prayer", 1));
+    assert!(is_useful(&s, &r, "cure", 1));
+    // No king among the enemies.
+    assert!(!is_useful(&s, &r, "slayer", 1));
+}
+
+// covers: BAT-MAG-050
+#[test]
+fn the_enemy_decides_the_shields_protections_and_slayer() {
+    let r = ruleset();
+    let enemy = |name: &'static str, heroes: [Option<h3_contracts::BattleHero>; 2]| {
+        arena(
+            &r,
+            heroes,
+            &[("jinn", 2, 3, 5), ("fixed", 3, 3, 7)],
+            &[(name, 3, 13, 5)],
+            1,
+        )
+    };
+    // A shooter that can shoot: Air Shield, not Shield; neither once it cannot fight (blind,
+    // petrified or paralysed) or is dead, or is a war machine that heals or supplies.
+    let mut s = enemy("sniper", [None, None]);
+    assert!(is_useful(&s, &r, "airshield", 1) && !is_useful(&s, &r, "shield", 1));
+    for change in 0..3 {
+        let mut t = s.clone();
+        let st = &mut t.stacks.as_mut_slice()[2];
+        match change {
+            0 => st.spells.status = st.spells.status.with(Status::NO_TURNS, true),
+            1 => st.count = 0,
+            _ => st.traits = st.traits.with(crate::state::StackTraits::FIRST_AID, true),
+        }
+        assert!(!is_useful(&t, &r, "airshield", 1) && !is_useful(&t, &r, "shield", 1));
+    }
+    let st = &mut s.stacks.as_mut_slice()[2];
+    st.traits = st.traits.with(crate::state::StackTraits::AMMO_SUPPLY, true);
+    assert!(!is_useful(&s, &r, "airshield", 1));
+    // The protections need an enemy hero with a spell book.
+    for (heroes, expected) in [
+        ([None, None], false),
+        ([None, Some(hero(&r))], false),
+        ([None, Some(mage(&r, &["bolt"]))], true),
+    ] {
+        let s = enemy("fixed", heroes);
+        assert_eq!(is_useful(&s, &r, "airward", 1), expected);
+        assert_eq!(
+            s.hero(BattleSide::Defender).is_some_and(|h| h.spell_book),
+            expected
+        );
+    }
+    // Slayer: an enemy stack of the first king level, even a dead one; not the second alone.
+    let mut s = enemy("lord", [None, None]);
+    assert!(is_useful(&s, &r, "slayer", 1));
+    s.stacks.as_mut_slice()[2].count = 0;
+    assert!(is_useful(&s, &r, "slayer", 1));
+    assert!(!is_useful(&enemy("duke", [None, None]), &r, "slayer", 1));
 }

@@ -53,6 +53,10 @@ pub struct Observation {
     /// The spell the active stack drew at its activation, if it is a random caster the viewer
     /// controls (private to its controller until it casts, ADR-0014 point 8; BAT-MAG-049).
     pub drawn: Option<h3_content::SpellId>,
+    /// Per stack, by stack id, how many spells the active stack's cast could draw for it, if it is
+    /// a helpful caster the viewer commands and may cast now (0 otherwise and for a stack that is
+    /// no target; ADR-0014 point 9, BAT-MAG-050).
+    pub cast_candidates: [u8; STACK_CAPACITY],
     /// Hexes blocked by natural obstacles (public).
     pub obstacles: HexSet,
     /// The natural obstacles a spell can remove, with their anchors (public; BAT-MAG-034).
@@ -94,6 +98,8 @@ pub fn observe(state: &BattleState, ruleset: &Ruleset, viewer: BattleSide) -> Ob
             .drawn
             .filter(|&(s, _)| state.active == Some(s) && state.at(s).controller() == viewer)
             .map(|(_, spell)| spell),
+        // rule: BAT-MAG-050
+        cast_candidates: crate::casters::candidates(state, ruleset, viewer),
         obstacles: state.obstacles(),
         removable_obstacles: state.natural.removable_list(),
         obstacle_anchors: state.natural.anchors(),

@@ -114,6 +114,7 @@ fn heroes_are_kept_and_shown_to_both_sides() {
         casts: 0,
         commands_ballista: false,
         commands_tent: false,
+        spell_book: false,
     };
     let s = BattleState::new(&r, &with_heroes(&r, [Some(hero(&r)), None]), 1).unwrap();
     assert_eq!(s.hero(BattleSide::Attacker), Some(view));

@@ -616,6 +616,70 @@ impl EffectEnd {
     }
 }
 
+/// When a spell is useful on a stack for a creature that draws among the useful spells of its
+/// `drawn_spell` entries (the Master Genie; the original's 0x447A80, `installation.md` §7.21;
+/// v24). Besides its own test, a useful spell is not active on the stack and can affect it. The
+/// enemy is the side opposite the caster's controller; its stacks are those it owns.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Default)]
+pub enum Usefulness {
+    /// Always.
+    #[default]
+    Always,
+    /// An enemy stack that cannot shoot now, among those alive, not blind, petrified or
+    /// paralysed and no war machine that heals or supplies (Shield, Fire Shield).
+    EnemyMelee,
+    /// An enemy stack among the same that can shoot now (Air Shield).
+    EnemyShooter,
+    /// The enemy hero carries a spell book (the Protections, Anti-Magic, Magic Mirror).
+    EnemySpellBook,
+    /// The stack's top creature has lost hit points (Cure).
+    Wounded,
+    /// The stack cannot shoot now (Bloodlust).
+    Melee,
+    /// The stack can shoot now (Precision).
+    Shooting,
+    /// The stack has not acted this round (Prayer).
+    NotActed,
+    /// An enemy stack, dead or alive, whose creature has flag `king_1` (Slayer: the original's
+    /// test, the rule in every profile).
+    EnemyKing,
+}
+
+impl Usefulness {
+    /// All values, in code order.
+    pub const ALL: [Self; 9] = [
+        Self::Always,
+        Self::EnemyMelee,
+        Self::EnemyShooter,
+        Self::EnemySpellBook,
+        Self::Wounded,
+        Self::Melee,
+        Self::Shooting,
+        Self::NotActed,
+        Self::EnemyKing,
+    ];
+
+    /// Pack name.
+    pub const fn name(self) -> &'static str {
+        match self {
+            Self::Always => "always",
+            Self::EnemyMelee => "enemy_melee",
+            Self::EnemyShooter => "enemy_shooter",
+            Self::EnemySpellBook => "enemy_spell_book",
+            Self::Wounded => "wounded",
+            Self::Melee => "melee",
+            Self::Shooting => "shooting",
+            Self::NotActed => "not_acted",
+            Self::EnemyKing => "enemy_king",
+        }
+    }
+
+    /// Looks a value up by its pack name.
+    pub fn from_name(name: &str) -> Option<Self> {
+        Self::ALL.into_iter().find(|e| e.name() == name)
+    }
+}
+
 /// Creature levels a [`SpecialistBonus::CreatureLevel`] table covers (1 to 7).
 pub const SPECIALIST_LEVELS: usize = 7;
 
@@ -756,6 +820,9 @@ pub struct SpellMagic {
     /// A cast first gives back the hit points Poison took for good and recomputes those Age
     /// takes, before its dispel (Cure, `installation.md` §7.10; BAT-MAG-044, v20).
     pub restores_health: bool,
+    /// When it is useful on a stack for a creature that draws among useful spells (BAT-MAG-050,
+    /// v24).
+    pub useful: Usefulness,
 }
 
 impl SpellMagic {
@@ -1012,7 +1079,8 @@ impl CanonicalHash for SpellMagic {
     /// (0: none; v21); a fixed duration's rounds, the health limit, the refused changes (count,
     /// codes; v22); the obstacle shape (presence, then the shape) and the mastery that clears
     /// obstacles (0: none; v23); the masteries that remove each obstacle kind (0: never; v25);
-    /// the mastery from which a raise lasts (0: always; v26).
+    /// the mastery from which a raise lasts (0: always; v26); then dispels positive, restores
+    /// health; when it is useful (v33).
     fn hash_into(&self, h: &mut StateHasher) {
         h.write_u8(self.target as u8);
         h.write_bool(self.area.is_some());
@@ -1063,6 +1131,7 @@ impl CanonicalHash for SpellMagic {
         h.write_u8(self.temporary_below.unwrap_or(0));
         h.write_bool(self.dispels_positive);
         h.write_bool(self.restores_health);
+        h.write_u8(self.useful as u8);
     }
 }
 
@@ -1096,6 +1165,10 @@ mod tests {
             assert_eq!(EffectEnd::from_name(e.name()), Some(e));
         }
         assert_eq!(EffectEnd::from_name("attacked"), None);
+        for u in Usefulness::ALL {
+            assert_eq!(Usefulness::from_name(u.name()), Some(u));
+        }
+        assert_eq!(Usefulness::from_name("never"), None);
         for s in TargetSide::ALL {
             assert_eq!(TargetSide::from_name(s.name()), Some(s));
         }

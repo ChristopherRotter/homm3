@@ -1,4 +1,4 @@
-//! Flat observation encoding (version 9) of a per-viewer [`Observation`].
+//! Flat observation encoding (version 10) of a per-viewer [`Observation`].
 //!
 //! Layout: [`GLOBALS`] global features, then two hero blocks of [`HERO_FEATURES`] features (the
 //! viewer's, then the opponent's), then [`STACK_FEATURES`] features for each of the
@@ -16,7 +16,7 @@
 //! Hero block, zeros for a side without a hero (which gets no lucky strikes in profiles with
 //! quirk Q-0003): the [`HERO_PUBLIC_FEATURES`] public features `[led by a hero, hero type handle,
 //! attack, defense, power, knowledge, mana, max mana, commands its Ballista, commands its First
-//! Aid Tent, casts this round]`, then the private ones, zeros in the opponent's block (ADR-0013
+//! Aid Tent, casts this round, carries a spell book]`, then the private ones, zeros in the opponent's block (ADR-0013
 //! point 9, ADR-0014 point 8): `[Tactics level, ranged bonus bp, melee bonus bp, damage
 //! reduction bp, the commanded Ballista's shots per turn, its double-damage chance bp, the
 //! commanded tent's heal bonus bp, surrender discount bp, funds, surrender price (0 if the side
@@ -26,9 +26,11 @@
 //! damage_min, damage_max, speed, x, y, acted, waited, retaliated, defending, active, morale,
 //! luck, shots, retaliations left (255 = unlimited), had good morale this round, two-hex,
 //! flies, shooter, war machine, no distance penalty, shoots when adjacent, the hero's
-//! regeneration in hit points, created in battle, clone, the clone's rounds left, casts left]`
-//! (no distance penalty, shoots when adjacent and regeneration can come from the side's hero,
-//! BAT-HER-006; created stacks and clones: BAT-MAG-037, BAT-MAG-038; casts: BAT-MAG-048),
+//! regeneration in hit points, created in battle, clone, the clone's rounds left, casts left, the
+//! spells the active stack's cast could draw for it]` (no distance penalty, shoots when adjacent
+//! and regeneration can come from the side's hero, BAT-HER-006; created stacks and clones:
+//! BAT-MAG-037, BAT-MAG-038; casts: BAT-MAG-048; the draw: BAT-MAG-050, for the viewer that
+//! commands a helpful caster, else 0),
 //! then its timed effects (BAT-MAG-009 to 011): `[melee attack bonus, ranged attack bonus,
 //! blessed, cursed, the blessing's or curse's value, speed share in percent (100: not slowed),
 //! number of effects]` and [`EFFECT_SLOTS`] pairs `[spell handle + 1 (0: empty), rounds left
@@ -42,7 +44,7 @@
 //! school masteries and spell book; 42 stack slots. v6 (E04b T3a): attack, defense and speed
 //! with the timed effects, and the per-stack effect features. v7 (E04b T6b): created in battle,
 //! clone and the clone's rounds left. v8 (E04b T7b1): casts left. v9 (E04b T7b2a): the drawn
-//! spell global.
+//! spell global. v10 (E04b T7b2b): the hero's spell book and the stack's draw candidates.
 
 use h3_battle::{
     DamageRoll, HeroView, Observation, OwnHeroView, STACK_CAPACITY, StackFlags, StackTraits,
@@ -52,12 +54,12 @@ use h3_contracts::BattleSide;
 
 /// Version of this encoding; bump on any change of the layout above (and bump the C ABI
 /// version with it, ADR-0011).
-pub const OBSERVATION_ENCODING_VERSION: u32 = 9;
+pub const OBSERVATION_ENCODING_VERSION: u32 = 10;
 
 /// Global features.
 pub const GLOBALS: usize = 12;
 /// The public features at the start of a hero block; the rest are private to the hero's side.
-pub const HERO_PUBLIC_FEATURES: usize = 11;
+pub const HERO_PUBLIC_FEATURES: usize = 12;
 /// The private features before the school masteries.
 const HERO_PRIVATE_VALUES: usize = 10;
 /// Offset of the school masteries in a hero block.
@@ -69,7 +71,7 @@ pub const HERO_FEATURES: usize = HERO_BOOK + MAX_SPELLS;
 /// Effects per stack the encoding shows.
 pub const EFFECT_SLOTS: usize = 8;
 /// The per-stack features before the effect features.
-const STACK_VALUES: usize = 35;
+const STACK_VALUES: usize = 36;
 /// The effect values before the effect slots.
 const EFFECT_VALUES: usize = 7;
 /// Features per stack slot.
@@ -107,6 +109,7 @@ fn encode_hero(view: Option<HeroView>, own: Option<OwnHeroView>, out: &mut [f32]
             flag(h.commands_ballista),
             flag(h.commands_tent),
             f32::from(h.casts),
+            flag(h.spell_book),
         ]);
     }
     if let Some(h) = own {
@@ -200,6 +203,7 @@ pub fn encode(obs: &Observation, field_width: u8, out: &mut [f32]) -> Result<(),
             flag(s.has(StackTraits::CLONE)),
             f32::from(obs.clone_rounds[i]),
             f32::from(obs.casts_left[i]),
+            f32::from(obs.cast_candidates[i]),
         ];
         f[..STACK_VALUES].copy_from_slice(&values);
         let sp = s.spells;
@@ -272,9 +276,9 @@ mod tests {
         );
         // No timed effects: no bonuses, not slowed, no entries.
         // Not created in battle, no clone (BAT-MAG-037, BAT-MAG-038), no casts (BAT-MAG-048).
-        assert_eq!(s0[31..35], [0.0, 0.0, 0.0, 0.0]);
-        assert_eq!(s0[35..42], [0.0, 0.0, 0.0, 0.0, 0.0, 100.0, 0.0]);
-        assert!(s0[42..].iter().all(|v| *v == 0.0));
+        assert_eq!(s0[31..36], [0.0, 0.0, 0.0, 0.0, 0.0]);
+        assert_eq!(s0[36..43], [0.0, 0.0, 0.0, 0.0, 0.0, 100.0, 0.0]);
+        assert!(s0[43..].iter().all(|v| *v == 0.0));
         // Unused slots are zero; the tail beyond OBSERVATION_LEN is untouched.
         assert!(
             out[STACKS + 2 * STACK_FEATURES..OBSERVATION_LEN]
@@ -284,7 +288,7 @@ mod tests {
         assert_eq!(out[OBSERVATION_LEN], 9.0);
         let mut short = vec![0.0; 3];
         assert_eq!(encode(&obs, 17, &mut short), Err(OBSERVATION_LEN));
-        assert_eq!(OBSERVATION_LEN, 12 + 2 * (11 + 10 + 4 + 128) + 58 * 42);
+        assert_eq!(OBSERVATION_LEN, 12 + 2 * (12 + 10 + 4 + 128) + 59 * 42);
         assert_eq!(coords(20, 0), (0.0, 20.0));
         // A clone with three rounds left (BAT-MAG-038).
         let mut obs = obs;
@@ -297,8 +301,10 @@ mod tests {
         obs.casts_left[1] = 2;
         // A drawn spell (BAT-MAG-049): its handle + 1.
         obs.drawn = Some(h3_content::SpellId::from_raw(4));
+        // The spells a helpful caster's draw could pick for it (BAT-MAG-050).
+        obs.cast_candidates[1] = 5;
         encode(&obs, r.battle().field.width, &mut out).unwrap();
-        assert_eq!(stack(&out, 1)[31..35], [1.0, 1.0, 3.0, 2.0]);
+        assert_eq!(stack(&out, 1)[31..36], [1.0, 1.0, 3.0, 2.0, 5.0]);
         assert_eq!(out[GLOBALS - 1], 5.0);
     }
 
@@ -323,6 +329,7 @@ mod tests {
             1.0,
             1.0,
             0.0,
+            1.0,
         ];
         let corwin = [
             1.0,
@@ -336,6 +343,7 @@ mod tests {
             1.0,
             0.0,
             0.0,
+            1.0,
         ];
         // Masteries by school handle (storm, stone) and the books by spell handle (spark,
         // cinders, arc, blight, ward, farsight, glare, hasten, drag, fury, zeal, gloom, boon,
@@ -424,7 +432,7 @@ mod tests {
         encode(&obs, 17, &mut out).unwrap();
         assert_eq!(out[7..GLOBALS], [1.0, 0.0, 0.0, 0.0, 0.0]);
         assert!(hero(&out, 1).iter().all(|v| *v == 0.0));
-        assert_eq!(hero(&out, 0)[15..17], [0.0, 0.0]);
+        assert_eq!(hero(&out, 0)[16..18], [0.0, 0.0]);
         assert_eq!(hero(&out, 0)[HERO_SCHOOLS - 1], 0.0);
     }
 
@@ -497,14 +505,14 @@ mod tests {
         encode(&obs, 17, &mut out).unwrap();
         let f = stack(&out, 0);
         assert_eq!([f[7], f[8], f[11]], [attack, defense, 1.0]);
-        assert_eq!(f[35..42], [3.0, 4.0, 0.0, 1.0, 2.0, 50.0, 2.0]);
+        assert_eq!(f[36..43], [3.0, 4.0, 0.0, 1.0, 2.0, 50.0, 2.0]);
         let hasten = f32::from(spell("synthetic:hasten").raw()) + 1.0;
         let corrode = f32::from(spell("synthetic:corrode").raw()) + 1.0;
-        assert_eq!(f[42..46], [hasten, 3.0, corrode, -1.0]);
-        assert!(f[46..].iter().all(|v| *v == 0.0));
+        assert_eq!(f[43..47], [hasten, 3.0, corrode, -1.0]);
+        assert!(f[47..].iter().all(|v| *v == 0.0));
         obs.stacks.as_mut_slice()[0].spells.damage = DamageRoll::Maximum(1);
         encode(&obs, 17, &mut out).unwrap();
-        assert_eq!(stack(&out, 0)[37..40], [1.0, 0.0, 1.0]);
-        assert!(stack(&out, 1)[42..].iter().all(|v| *v == 0.0));
+        assert_eq!(stack(&out, 0)[38..41], [1.0, 0.0, 1.0]);
+        assert!(stack(&out, 1)[43..].iter().all(|v| *v == 0.0));
     }
 }

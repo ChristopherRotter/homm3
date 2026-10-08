@@ -72,5 +72,5 @@ pub use spell::{
     EffectDuration, EffectEnd, HexStep, MASTERY_NAMES, MAX_AREA_RADIUS, MAX_CHAIN_TARGETS,
     MAX_MASTERY, MAX_OBSTACLE_HEXES, MAX_SPELL_EFFECTS, ObstacleKind, ObstacleShape,
     SPECIALIST_LEVELS, SpecialistBonus, SpellArea, SpellChain, SpellEffect, SpellMagic,
-    SpellTarget, TargetConditions, TargetSide, TimedChange,
+    SpellTarget, TargetConditions, TargetSide, TimedChange, Usefulness,
 };

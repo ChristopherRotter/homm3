@@ -1315,6 +1315,51 @@ ref = "Heroes3.exe code reading (docs/formats/installation.md 7.21): at a stack'
 url = "docs/formats/installation.md"
 retrieved = "2026-10-08"
 
+# The Master Genie casts a spell drawn at the cast among the beneficial spells useful for the
+# stack it is aimed at (E04b T7b2b, BAT-MAG-050): the spells 10-69 with flag 0x800, in id order,
+# each with the same chance (random(1, n)), at mastery 2 with power 6.
+[[source]]
+id = "exe-genie"
+kind = "original-data"
+ref = "Heroes3.exe code reading (docs/formats/installation.md 7.21): the cast's case 37 (0x448260) calls 0x447EE0(hex): over spells 10-69 with flag 0x800 of the spell table (Shield, Air Shield, Fire Shield, the Protections, Anti-Magic, Magic Mirror, Cure, Bless, Bloodlust, Precision, Stone Skin, Prayer, Mirth, Fortune, Haste, Slayer, Frenzy, Counterstrike) it counts those 0x447A80 accepts for the stack on the hex, draws k = random(1, n) and casts the k-th through 0x59FE30(spell, hex, 1, -1, 2, 6); 0x4476C0's case 1 (table 0x447A00) needs a stack on the hex with n above 0"
+url = "docs/formats/installation.md"
+retrieved = "2026-10-08"
+
+[[source]]
+id = "exe-useful"
+kind = "original-data"
+ref = "Heroes3.exe code reading (docs/formats/installation.md 7.21): 0x447A80(spell, stack) refuses a spell active on the stack (+0x198 + 4 x spell) or that 0x5A3C80 refuses, then switches on spell - 27 (byte table 0x447E8C, targets 0x447E68): Shield and Fire Shield need an enemy stack that cannot shoot (0x4428F0) and Air Shield one that can, among the enemy's records alive and not blind, petrified or paralysed and not creature 147 or 148; the Protections, Anti-Magic and Magic Mirror need the enemy hero to wear a spell book (artifact 0); Cure a wounded top creature (+0x58); Bloodlust a stack that cannot shoot, Precision one that can; Prayer a stack that has not acted this round (bit 0x4000000); Slayer an enemy record, dead or alive, with creature flag 0x80; every other spell is useful"
+url = "docs/formats/installation.md"
+retrieved = "2026-10-08"
+
+[[creature_abilities]]
+creature = "Master Genie"
+abilities = [
+    { kind = "helpful_spell_caster", mastery = 2, power = 6 },
+    { kind = "drawn_spell", spell = "base:shield", weight = 1 },
+    { kind = "drawn_spell", spell = "base:air_shield", weight = 1 },
+    { kind = "drawn_spell", spell = "base:fire_shield", weight = 1 },
+    { kind = "drawn_spell", spell = "base:protection_from_air", weight = 1 },
+    { kind = "drawn_spell", spell = "base:protection_from_fire", weight = 1 },
+    { kind = "drawn_spell", spell = "base:prot_from_water", weight = 1 },
+    { kind = "drawn_spell", spell = "base:prot_from_earth", weight = 1 },
+    { kind = "drawn_spell", spell = "base:anti_magic", weight = 1 },
+    { kind = "drawn_spell", spell = "base:magic_mirror", weight = 1 },
+    { kind = "drawn_spell", spell = "base:cure", weight = 1 },
+    { kind = "drawn_spell", spell = "base:bless", weight = 1 },
+    { kind = "drawn_spell", spell = "base:bloodlust", weight = 1 },
+    { kind = "drawn_spell", spell = "base:precision", weight = 1 },
+    { kind = "drawn_spell", spell = "base:stone_skin", weight = 1 },
+    { kind = "drawn_spell", spell = "base:prayer", weight = 1 },
+    { kind = "drawn_spell", spell = "base:mirth", weight = 1 },
+    { kind = "drawn_spell", spell = "base:fortune", weight = 1 },
+    { kind = "drawn_spell", spell = "base:haste", weight = 1 },
+    { kind = "drawn_spell", spell = "base:slayer", weight = 1 },
+    { kind = "drawn_spell", spell = "base:frenzy", weight = 1 },
+    { kind = "drawn_spell", spell = "base:counterstrike", weight = 1 },
+]
+sources = ["exe-genie"]
+
 [[creature_abilities]]
 creature = "Faerie Dragon"
 abilities = [
@@ -2494,6 +2539,49 @@ sources = ["exe-spell-specialist", "vcmi-spell-specialist"]
 spells = ["Fortune"]
 bonus = { kind = "total", value = 3 }
 sources = ["exe-spell-specialist", "vcmi-spell-specialist"]
+
+# When a spell is useful on a stack for a creature that draws among useful spells (E04b T7b2b,
+# pack format v24; installation.md 7.21, 0x447A80): every other spell is useful whenever it is not
+# active on the stack and can affect it.
+[[spells.useful]]
+spells = ["Shield", "Fire Shield"]
+when = "enemy_melee"
+sources = ["exe-useful"]
+
+[[spells.useful]]
+spells = ["Air Shield"]
+when = "enemy_shooter"
+sources = ["exe-useful"]
+
+[[spells.useful]]
+spells = ["Protection from Air", "Protection from Fire", "Prot. from Water", "Prot. from Earth", "Anti-Magic", "Magic Mirror"]
+when = "enemy_spell_book"
+sources = ["exe-useful"]
+
+[[spells.useful]]
+spells = ["Cure"]
+when = "wounded"
+sources = ["exe-useful"]
+
+[[spells.useful]]
+spells = ["Bloodlust"]
+when = "melee"
+sources = ["exe-useful"]
+
+[[spells.useful]]
+spells = ["Precision"]
+when = "shooting"
+sources = ["exe-useful"]
+
+[[spells.useful]]
+spells = ["Prayer"]
+when = "not_acted"
+sources = ["exe-useful"]
+
+[[spells.useful]]
+spells = ["Slayer"]
+when = "enemy_king"
+sources = ["exe-useful"]
 
 [spells]
 # The order in which a damage spell's schools meet the target's protections (quirk Q-0007).

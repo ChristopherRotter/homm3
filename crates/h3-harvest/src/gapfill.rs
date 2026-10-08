@@ -69,6 +69,9 @@ pub struct Spells {
     /// What specialists in some spells add by a rule of the spell's own (E04b T3c).
     #[serde(default)]
     pub specialist: Vec<SpellSpecialist>,
+    /// When some spells are useful for a helpful caster (E04b T7b2b).
+    #[serde(default)]
+    pub useful: Vec<SpellUseful>,
     /// The order in which the original checks a damage spell's schools for the target's
     /// protections (school names; E04b T3b1, `installation.md` §7.8, §7.10): written as the
     /// schools' `protection_rank`.
@@ -245,6 +248,19 @@ pub struct SpellSpecialist {
     pub spells: Vec<String>,
     /// `bonus = { kind, … }` in pack syntax, copied verbatim.
     pub bonus: toml::Value,
+    /// Source ids.
+    pub sources: Vec<String>,
+}
+
+/// When some spells are useful on a stack for a creature that draws among useful spells (pack
+/// format v24, `packs/README.md`; the original's code, `docs/formats/installation.md` §7.21).
+#[derive(Debug, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct SpellUseful {
+    /// Spell names (as in `SPTRAITS.TXT`).
+    pub spells: Vec<String>,
+    /// The usefulness name (`enemy_melee`, …), copied verbatim.
+    pub when: String,
     /// Source ids.
     pub sources: Vec<String>,
 }
@@ -714,6 +730,7 @@ impl GapFill {
                 .chain(g.spells.remove.iter().flat_map(|t| &t.sources))
                 .chain(g.spells.summon.iter().flat_map(|t| &t.sources))
                 .chain(g.spells.specialist.iter().flat_map(|t| &t.sources))
+                .chain(g.spells.useful.iter().flat_map(|t| &t.sources))
                 .chain(&g.spells.protection_sources);
         for r in refs {
             if !ids.contains(r.as_str()) {

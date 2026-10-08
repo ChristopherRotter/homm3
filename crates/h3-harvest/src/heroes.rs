@@ -795,6 +795,14 @@ pub fn harvest_heroes(
             }
         }
     }
+    let mut useful: BTreeMap<&str, &str> = BTreeMap::new();
+    for t in &gap.spells.useful {
+        for name in &t.spells {
+            if useful.insert(name.as_str(), t.when.as_str()).is_some() {
+                return Err(format!("gapfill: spell `{name}` has two useful entries"));
+            }
+        }
+    }
     let mut timed_spells = 0;
     let mut other_spells = 0;
     let mut specialists = 0;
@@ -990,6 +998,9 @@ pub fn harvest_heroes(
             }
             let _ = writeln!(text, "specialist = {bonus}");
         }
+        if let Some(when) = useful.remove(name) {
+            let _ = writeln!(text, "useful = {}", quote(when));
+        }
         spell_keys.push((key, pack));
     }
     if let Some(name) = timed
@@ -999,6 +1010,7 @@ pub fn harvest_heroes(
         .chain(remove.keys())
         .chain(summon.keys())
         .chain(specialist.keys())
+        .chain(useful.keys())
         .next()
     {
         return Err(format!("gapfill: effect entry for unknown spell `{name}`"));

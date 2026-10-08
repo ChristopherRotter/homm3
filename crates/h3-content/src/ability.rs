@@ -247,6 +247,16 @@ pub enum Ability<C, S, L> {
         /// Its weight.
         weight: u8,
     },
+    /// As its stack's action, as many times a battle as its creature's `casts`, casts at another
+    /// stack of its side a spell drawn at the cast among its creature's `drawn_spell` entries
+    /// that are useful for that stack (each spell's `useful`), by weight: a creature's cast at
+    /// `mastery` with `power` (the Master Genie at Advanced with power 6; BAT-MAG-050, v24).
+    HelpfulSpellCaster {
+        /// The mastery it casts at (0..=3).
+        mastery: u8,
+        /// The caster's power (≥ 1).
+        power: u8,
+    },
 }
 
 /// An ability as written in a pack (references are keys).
@@ -257,7 +267,7 @@ pub type CompiledAbility = Ability<CreatureTypeId, SpellId, SchoolId>;
 
 impl<C, S, L> Ability<C, S, L> {
     /// Every ability name, in code order (the order of [`Ability::code`]).
-    pub const NAMES: [&'static str; 35] = [
+    pub const NAMES: [&'static str; 36] = [
         "hate",
         "jousting",
         "charge_immunity",
@@ -293,6 +303,7 @@ impl<C, S, L> Ability<C, S, L> {
         "spell_caster",
         "random_spell_caster",
         "drawn_spell",
+        "helpful_spell_caster",
     ];
 
     /// Stable numeric code of the ability kind (canonical hashing, duplicate checks).
@@ -333,6 +344,7 @@ impl<C, S, L> Ability<C, S, L> {
             Self::SpellCaster { .. } => 32,
             Self::RandomSpellCaster { .. } => 33,
             Self::DrawnSpell { .. } => 34,
+            Self::HelpfulSpellCaster { .. } => 35,
         }
     }
 
@@ -475,6 +487,10 @@ impl<C, S, L> Ability<C, S, L> {
                 spell: spell(x)?,
                 weight: *weight,
             },
+            Self::HelpfulSpellCaster { mastery, power } => Ability::HelpfulSpellCaster {
+                mastery: *mastery,
+                power: *power,
+            },
         })
     }
 
@@ -527,6 +543,12 @@ impl<C, S, L> Ability<C, S, L> {
                 ..
             } => Some("random_spell_caster power_per_creature must be at least 1"),
             Self::DrawnSpell { weight: 0, .. } => Some("drawn_spell weight must be at least 1"),
+            Self::HelpfulSpellCaster { mastery, .. } if *mastery > 3 => {
+                Some("helpful_spell_caster mastery must be 0..=3")
+            }
+            Self::HelpfulSpellCaster { power: 0, .. } => {
+                Some("helpful_spell_caster power must be at least 1")
+            }
             Self::SpellDamageAfterStrike {
                 per_creature: 0, ..
             } => Some("spell_damage_after_strike per_creature must be at least 1"),
@@ -643,6 +665,7 @@ impl CanonicalHash for CompiledAbility {
                 spell.hash_into(h);
                 h.write_u8(weight);
             }
+            Self::HelpfulSpellCaster { mastery, power } => h.write_bytes(&[mastery, power]),
             Self::ChargeImmunity
             | Self::Regeneration
             | Self::UnlimitedRetaliations
@@ -699,12 +722,15 @@ pub(crate) fn list_error<C: PartialEq, S: PartialEq, L: PartialEq>(
     if has(11) && has(12) {
         return Some("attacks_all_adjacent and three_headed_attack exclude each other");
     }
-    if has(32) && has(33) {
-        return Some("spell_caster and random_spell_caster exclude each other");
-    }
-    if has(33) != has(34) {
+    if [32, 33, 35].iter().filter(|&&c| has(c)).count() > 1 {
         return Some(
-            "random_spell_caster needs drawn_spell entries and drawn_spell a random caster",
+            "spell_caster, random_spell_caster and helpful_spell_caster exclude each other",
+        );
+    }
+    if (has(33) || has(35)) != has(34) {
+        return Some(
+            "random_spell_caster and helpful_spell_caster need drawn_spell entries, and \
+             drawn_spell such a caster",
         );
     }
     None
@@ -716,7 +742,7 @@ mod tests {
 
     type A = Ability<u8, u8, u8>;
 
-    fn all() -> [A; 35] {
+    fn all() -> [A; 36] {
         [
             A::Hate {
                 target: 3,
@@ -795,6 +821,10 @@ mod tests {
                 spell: 9,
                 weight: 22,
             },
+            A::HelpfulSpellCaster {
+                mastery: 2,
+                power: 6,
+            },
         ]
     }
 
@@ -837,7 +867,7 @@ mod tests {
         for a in all()[29..31]
             .iter()
             .chain(&all()[32..33])
-            .chain(&all()[34..])
+            .chain(&all()[34..35])
         {
             assert_eq!(a.try_map(ok, fail, ok), Err("nope"));
         }
@@ -1002,6 +1032,14 @@ mod tests {
                 spell: 0,
                 weight: 0,
             },
+            A::HelpfulSpellCaster {
+                mastery: 4,
+                power: 6,
+            },
+            A::HelpfulSpellCaster {
+                mastery: 2,
+                power: 0,
+            },
         ];
         for a in bad {
             assert!(a.parameter_error().is_some(), "{a:?}");
@@ -1090,5 +1128,17 @@ mod tests {
         for alone in [[random], [drawn(1)]] {
             assert!(list_error(&alone).unwrap().contains("drawn_spell"));
         }
+        // A helpful caster (BAT-MAG-050) draws among its drawn spells too.
+        let helpful = A::HelpfulSpellCaster {
+            mastery: 2,
+            power: 6,
+        };
+        assert_eq!(list_error(&[helpful, drawn(1), drawn(2)]), None);
+        assert!(list_error(&[helpful]).unwrap().contains("drawn_spell"));
+        assert!(
+            list_error(&[random, helpful, drawn(1)])
+                .unwrap()
+                .contains("exclude")
+        );
     }
 }

@@ -19,7 +19,7 @@ use h3_content::{
     PackManifest, ProfileDef, ResourceDef, Ruleset, SPECIALIST_LEVELS, SchoolId, SecondarySkillDef,
     SpecialistBonus, SpellArea, SpellCategory, SpellChain, SpellDef, SpellEffect, SpellId,
     SpellMagic, SpellPolarity, SpellSchoolDef, SpellScope, SpellTarget, StartingStackDef,
-    SurrenderDef, TargetConditions, TargetSide, TerrainDef, TimedChange,
+    SurrenderDef, TargetConditions, TargetSide, TerrainDef, TimedChange, Usefulness,
 };
 use h3_contracts::{
     Army, ArmyStack, BallistaControl, BattleEffect, BattleHero, BattleSetup, BattleSide,
@@ -376,6 +376,10 @@ enum AbilityDto {
         spell: String,
         weight: u8,
     },
+    HelpfulSpellCaster {
+        mastery: u8,
+        power: u8,
+    },
 }
 
 #[derive(Deserialize)]
@@ -502,6 +506,9 @@ impl AbilityDto {
                 spell: reference(pack, &spell)?,
                 weight,
             },
+            Self::HelpfulSpellCaster { mastery, power } => {
+                AbilityDef::HelpfulSpellCaster { mastery, power }
+            }
         })
     }
 }
@@ -624,6 +631,9 @@ struct SpellDto {
     /// v20, E04b T7a2; Cure).
     #[serde(default)]
     restores_health: bool,
+    /// `useful = "<when>"`: when the spell is useful on a stack for a helpful caster (pack
+    /// format v24, E04b T7b2b; `Usefulness` names; default `always`).
+    useful: Option<String>,
 }
 
 /// `obstacle = { steps = ["top_right", "top_left"], hexes = [2, 2, 3, 3], mirrored = true,
@@ -851,6 +861,15 @@ impl SpellDto {
             ignores_immunity: self.ignores_immunity,
             dispels_positive: self.dispels_positive,
             restores_health: self.restores_health,
+            useful: self
+                .useful
+                .as_deref()
+                .map(|name| {
+                    Usefulness::from_name(name)
+                        .ok_or_else(|| PackError::Syntax(format!("unknown usefulness `{name}`")))
+                })
+                .transpose()?
+                .unwrap_or_default(),
             specialist: self.specialist.as_ref().map(|b| match *b {
                 SpecialistDto::CreatureLevel { values } => SpecialistBonus::CreatureLevel(values),
                 SpecialistDto::Fixed { amount } => SpecialistBonus::Fixed(amount),
@@ -2708,7 +2727,7 @@ mod tests {
     fn synthetic_pack_and_scenarios_load() {
         for text in [SYNTHETIC_SKIRMISH, SYNTHETIC_DUEL, SYNTHETIC_FULL] {
             let (ruleset, setup) = synthetic(text).unwrap();
-            assert_eq!(ruleset.creature_count(), 8);
+            assert_eq!(ruleset.creature_count(), 9);
             assert!(!setup.attacker.stacks.is_empty());
             assert!(!setup.defender.stacks.is_empty());
         }
@@ -2788,6 +2807,8 @@ mod tests {
             compile(&[&quirky], "synthetic:faithful"),
             Err(PackError::Compile(_))
         ));
+        let useless = SYNTHETIC_PACK.replace("id = \"spark\"", "id = \"spark\"\nuseful = \"nope\"");
+        assert!(matches!(parse_pack(&useless), Err(PackError::Syntax(_))));
         let no_battle = parse_pack("[pack]\nid = \"x\"\nversion = \"1\"\n").unwrap();
         assert!(no_battle.battle.is_none() && no_battle.creatures.is_empty());
     }
@@ -3367,7 +3388,7 @@ mod tests {
         let both = compile(&[SYNTHETIC_EXT_PACK, SYNTHETIC_PACK], "synthetic:faithful").unwrap();
         let ids: Vec<&str> = both.packs().iter().map(|(id, _)| id.as_str()).collect();
         assert_eq!(ids, ["synthetic", "synthetic-ext"]);
-        assert_eq!(both.creature_count(), 9);
+        assert_eq!(both.creature_count(), 10);
         let wisp_info = both.creature_info(wisp).unwrap();
         let marsh = wisp_info.faction.unwrap();
         assert_eq!(

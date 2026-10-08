@@ -1345,3 +1345,27 @@ Magic Arrow from one dragon is 5 × 10 + 20 = 70 before the target's factors (§
 least 20 (power ≥ 1, HER-DET-001), so neither falls below Gold Golems' 7 or Diamond Golems' 20;
 in SoD only a protection on a Diamond Golem cuts a power-1 Magic Arrow's 1 to 0, the truncation
 every spell takes (the user: not reproducible, no flag, BAT-Q11).
+
+**The Master Genie, re-read for T7b2b** (BAT-MAG-050, 2026-10-08). The target test 0x4476C0
+switches through the byte table 0x447A00 (creature − 13) to eight cases: 0 Archangel and Pit Lord,
+1 Master Genie, 2 Ogre Mage, 3 to 6 the Ice, Magma, Storm and Energy Elementals, 7 the Faerie
+Dragon. *Case 1*: a stack on the hex for which 0x447A80 accepts at least one spell of 10–69
+with flag `0x800` (Shield, Air Shield, Fire Shield, the four Protections, Anti-Magic, Magic Mirror,
+Cure, Bless, Bloodlust, Precision, Stone Skin, Prayer, Mirth, Fortune, Haste, Slayer, Frenzy,
+Counterstrike: 21); the cursor (0x4766EA) offers only stacks the acting side owns, not the caster.
+*The cast* (0x448260 case 37 → 0x447EE0): the same count n, `k = random(1, n)`, the k-th in spell
+order through 0x59FE30(spell, hex, 1, −1, 2, 6). *0x447A80(spell, stack)*: 0 if the spell is active
+on the stack (+0x198 + 4 × spell) or 0x5A3C80(spell, the acting side, stack, 1, 1) refuses it,
+then a switch on spell − 27 (byte table 0x447E8C, targets 0x447E68); every spell not named here is
+useful. Shield and Fire Shield: over the records of the side opposite the acting one (by owner),
+skipping the dead (bit 21), the blind (+0x290), petrified (+0x2B0) and paralysed (+0x2C0) and
+creatures 147 and 148 (First Aid Tent, Ammo Cart), one that cannot shoot now; Air Shield: one that
+can. "Can shoot now" is 0x4428F0: the Ballista and the arrow tower always; otherwise a shooter
+(flag `0x4`) with shots, not blocked at either hex (0x469600) unless its controller's hero wears
+artifact 137, and not forgetful at mastery 2 or more (+0x28C, +0x4C4). The Protections,
+Anti-Magic and Magic Mirror: the opposite hero wears artifact 0 (a spell book). Cure: the top
+creature lost hit points (+0x58 above 0). Bloodlust: the stack cannot shoot now (the Ballista and
+the tower never qualify); Precision: it can. Prayer: the stack's bit `0x4000000` (acted this round)
+is clear. Slayer: a record of the opposite side with creature flag `0x80` (king 1), whether dead
+or alive: dead stacks count and king 2 or 3 alone does not (the user: the rule in every profile,
+BAT-Q12; ledger BAT-QUIRK-10). The Enchanter (0x447FE0, T7b4) uses the same test.
