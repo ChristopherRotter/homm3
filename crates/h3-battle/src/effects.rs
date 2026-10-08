@@ -173,7 +173,8 @@ impl Status {
     pub const NO_SHOOTING: Self = Self(1 << 1);
     /// It loses its turns (Blind, BAT-MAG-024; Stone Gaze, Paralyze, BAT-MAG-043).
     pub const NO_TURNS: Self = Self(1 << 2);
-    /// One of its effects ends when it takes damage (Blind, BAT-MAG-024).
+    /// One of its effects ends when it takes damage (Blind, BAT-MAG-024; Stone Gaze, Paralyze,
+    /// BAT-MAG-043).
     pub const DAMAGE_ENDS: Self = Self(1 << 3);
     /// Its turns are automatic and every other stack is its enemy (Berserk, BAT-MAG-025).
     pub const BERSERK: Self = Self(1 << 4);
@@ -587,9 +588,9 @@ fn end_where<S: Sink>(
 }
 
 /// After stack `s` took damage: if it died, its clone vanishes or, a clone, it frees its original
-/// (BAT-MAG-038); the effects on it that any damage ends end (BAT-MAG-024: Blind; the original's
-/// 0x444090, `installation.md` §7.14), reported.
-// rule: BAT-MAG-024
+/// (BAT-MAG-038); the effects on it that any damage ends end (BAT-MAG-024: Blind; BAT-MAG-043:
+/// Stone Gaze, Paralyze; the original's 0x444090, `installation.md` §7.14, §7.20), reported.
+// rule: BAT-MAG-024, BAT-MAG-043
 pub(crate) fn damaged<S: Sink>(
     state: &mut BattleState,
     ruleset: &Ruleset,
@@ -919,14 +920,26 @@ pub(crate) fn own_turn<S: Sink>(
     }
 }
 
-/// Removes the effects of dead stacks (BAT-MAG-010: a stack that dies loses its effects).
-pub(crate) fn remove_dead(state: &mut BattleState) {
+/// Removes the effects of dead stacks (BAT-MAG-010: a stack that dies loses its effects) and
+/// recomputes what they changed, as the original's death routine ends every active spell
+/// (0x444120, `installation.md` §7.9): Age's hit points come back before a raise counts them,
+/// Poison's lost tenths stay (BAT-MAG-044).
+pub(crate) fn remove_dead(state: &mut BattleState, ruleset: &Ruleset) {
     if state.effects.0.is_empty() {
         return;
     }
     let stacks = state.stacks.as_slice();
-    state
-        .effects
-        .0
-        .retain(|e| stacks.get(e.stack.index()).is_some_and(Stack::is_alive));
+    let mut dead = 0u64;
+    state.effects.0.retain(|e| {
+        let alive = stacks.get(e.stack.index()).is_some_and(Stack::is_alive);
+        if !alive {
+            dead |= 1 << e.stack.0;
+        }
+        alive
+    });
+    while dead != 0 {
+        let s = StackId(u8::try_from(dead.trailing_zeros()).unwrap_or(u8::MAX));
+        dead &= dead - 1;
+        recompute(state, ruleset, s);
+    }
 }

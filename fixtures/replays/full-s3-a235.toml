@@ -443,20 +443,20 @@ checkpoints = [
     "0x5af0416d1b4763dd",
     "0x0c1aa1421e49a0bc",
     "0x96e0eb177bbf3151",
-    "0x3095de860c1400e0",
-    "0xf073a45958a5dbdd",
-    "0xaf87c6b6e63bd608",
-    "0x8c5cae48124524b9",
-    "0x0ebbea81fd4678a1",
-    "0xb9068bfe3d05e1c2",
-    "0xac409dcf9816ba5b",
-    "0x2720225c78d83525",
-    "0xf4ae10df67aa1146",
-    "0x92a4f116d1a82d99",
-    "0x95229e371e24e970",
-    "0xfa5eda5d30c5a7a0",
-    "0x775c8719284fe11c",
-    "0x0e52c06455965a7e",
+    "0x1555258c371725e8",
+    "0xe131d795bd6b05c3",
+    "0x03ed87b8e9b5acce",
+    "0x127dbfefa225da87",
+    "0xd99a491790c3472c",
+    "0x62bb0df2b7e64e57",
+    "0xbada789662ac288e",
+    "0xf541624a9b2ebcfc",
+    "0xd728d29e06ab3e61",
+    "0xd17e993fc753a81e",
+    "0x6e1f3ebcfd96b697",
+    "0x692234a74a720943",
+    "0x26e52c5a684d1f2b",
+    "0xd5f9fea35a92371d",
 ]
 
 [replay]
@@ -746,4 +746,4 @@ count = 11
 
 [result]
 winner = "defender"
-final_hash = "0x29a372d6b14e2a1a"
+final_hash = "0x630432b11fa3d3e7"

@@ -4,11 +4,11 @@ The battle lane's living state; read after the global `docs/HANDOFF.md`. Format 
 
 ## Current state
 
-- **Branch:** `battle/e04b-t7a3` (T7a3 done, from T7a2's head). PRs #7 to #12 are merged; #13 = T7a2. Work on `battle/<task>` branches from `master`, one per task or increment, merged at its checkpoint; HANDOFF content goes here, not into `docs/HANDOFF.md`.
-- **E04b increment 6 (the user, 2026-10-08): T7a in three parts, all done; its checkpoint is next (`QUEUE.md`), batch 2d folded in there.** Batch 2d (`experiments/specs/E04b-batch-2d.toml`) is with the user. Sandbox: `docs/08-work-process.md`, "Cloud sandbox".
+- **Branch:** `battle/e04b-t7a-checkpoint` (the T7a checkpoint: inbox, review fixes, S-14, the T7b reading and proposed cut). PRs up to #14 are merged. Work on `battle/<task>` branches from `master`, one per task or increment, merged at its checkpoint; HANDOFF content goes here, not into `docs/HANDOFF.md`.
+- **E04b increment 6 (the user, 2026-10-08): T7a done, its checkpoint done (2026-10-08) except batch 2d,** whose results the user has not committed yet (`experiments/results/E04b-batch-2d.md` is still the template). Sandbox: `docs/08-work-process.md`, "Cloud sandbox".
 - **Done:** survey `docs/rules/surveys/E04b-magic.md` (§12–§15), ADR-0014 accepted (point 5 amended, Q47), design note `docs/epics/E04b-design.md`. Castable by heroes: the 13 damage spells, the 14 value spells, Shield, Air Shield, the Protections (Q-0007), Slayer, Counterstrike (Q-0008), Dispel, Cure, Fire Shield (Q-0010) and Frenzy (Q-0009) (BAT-MAG-001 to 019), the spell specialists (BAT-MAG-020), Anti-Magic and Magic Mirror (BAT-MAG-021/022), Forgetfulness and Blind (BAT-MAG-023/024), Berserk and Hypnotize (BAT-MAG-025/026; a stack's `controller()` commands it), Force Field, Fire Wall, Teleport and Expert Dispel's clearing (BAT-MAG-027 to 030; `h3_battle::obstacles`), hidden obstacles, Quicksand and Land Mine (BAT-MAG-031 to 033; BAT-QUIRK-1/2/4), Remove Obstacle and the natural obstacles as pieces with anchors (BAT-MAG-034, BAT-GEO-003; `h3_battle::natural`, BAT-QUIRK-3), Resurrection, Animate Dead and Sacrifice (BAT-MAG-035/036; `h3_battle::raise`, BAT-QUIRK-5/6), Clone and Summon Elemental (BAT-MAG-037 to 039; `h3_battle::created`, BAT-QUIRK-7), the creature magic after a melee strike (BAT-MAG-040 to 047; `h3_battle::after_strike`, `vitality`, `binds`), all after the executable's code (`installation.md` §7.8–§7.20). **Physical damage follows the executable's three truncated stages** under Q-0005 (Q50, BAT-DMG-002, `h3_kernel::arith::X87` at 53 bits).
 - **Hero rates** cross the seam as `h3_contracts::Rate` (basis points plus, under Q-0005, the original's single-precision value as an f32 bit pattern where it differs; Q45 (b), T3c2).
-- **Next:** the T7a checkpoint (`QUEUE.md`): batch 2d once the user committed its results (BAT-QUIRK-7, BAT-Q7, the clone's shots), Q-0005's extension and BAT-Q8, then cut T7b/T7c.
+- **Next:** the user confirms the proposed T7b/T7c cut (epic, T7; `installation.md` §7.21; proposed increment 7 = T7b1 + T7b2, QUEUE) and decides T7b1's command shape; batch 2d's fold-in once its results are committed. T7b3 needs the Pit Lord's outcome decision, T7b4 S-12's class.
 - **Open for later tasks:** batch 2a R6's costs (T7); Q43 (sprite offset, keep the approximation); creature casters' re-casts (T7); the damage stages' creature factors; Dispel's and Fire Shield's loose ends (Sphere T8, obstacles T5, the Sultans' shield T7); T4a's and T4c's loose ends (all in `QUEUE.md`, "Inbox").
 - **Versions (battle owns them):** state hash v32, ruleset hash v30, replay format v18, action encoding v10, C ABI v11, observation encoding v7; pack format v21. New ids: `BAT-Q<n>`, `BAT-QUIRK-<n>`, `BAT-STUB-<n>` (old ids stay).
 - **Ownership:** `h3-content` and `h3-pack` stay with battle until further notice (user, 2026-10-07); `h3-kernel` and `h3-contracts` are shared, so a seam change is its own `shared/` pull request, merged before the battle change that uses it.
@@ -20,6 +20,7 @@ The battle lane's living state; read after the global `docs/HANDOFF.md`. Format 
 - `packs/base|ab|sod` are generated: change `crates/h3-harvest` or its gap-fill file and re-run the harvester (`cargo run -p h3-harvest -- --install original-data/install --out packs`); never edit them by hand. Harvested keys may coincide across kinds (`base:ballista` is a creature and an artifact).
 
 **Code reading**
+- Edit docs with targeted replacements, never by rewriting a file from memory: T7a2's rewrite of `QUEUE.md` dropped its whole inbox (restored at the T7a checkpoint).
 - The executable's x87 runs at 53 bits (`installation.md` §7.10): emulate it with `h3_kernel::arith::X87` and test against vectors from exact rational arithmetic; check each float constant's width (`qword` double or `dword` f32).
 - Name an address only after reading its code: §7.15 had called 0x469E50 (the moat's damage) a Quicksand test.
 
@@ -46,10 +47,14 @@ The battle lane's living state; read after the global `docs/HANDOFF.md`. Format 
 
 ## Recent sessions
 
+### 2026-10-08 (thirty-fifth) — E04b T7a checkpoint, review, S-14, the T7b reading
+
+Linked cloud session; master's verify green with original data. The user chose: close T7a, then read the casting creatures and propose the cut, then stop; BAT-Q8 not reproduced, Q-0005's extension confirmed. The QUEUE's inbox (lost in 5751e65) restored. Review fixes: a death recomputes the stack (Age's hit points), S-14 read (0x4789F8, 0x43EE10) and fixed after the user's look at community sentiment (BAT-Q9: no flag, a bound stack does not return; blind, petrified, paralysed Harpies stay), test gaps; replays' hashes re-recorded. T7b reading `installation.md` §7.21; the cut proposed in the epic. Detail: `docs/epics/E04b-log.md`.
+
 ### 2026-10-08 (thirty-fourth) — E04b T7 cut, T7a1 to T7a3: the creature magic after a strike
 
-Linked cloud session; the baseline verify green with original data. The user cut increment 6 as T7a in parts, batch 2d at its checkpoint. Code reading `installation.md` §7.20. T7a1 (PR #12, merged): `h3_battle::after_strike` (BAT-MAG-040 to 042). T7a2 (PR #13, rebased after #12's rebase merge): Stone Gaze, Paralyze (BAT-MAG-043), Poison, Age (BAT-MAG-044, `vitality`; Q-0005 extended, to confirm), Disease. T7a3: Bind (BAT-MAG-045, `binds`; BAT-Q8), Acid Breath (046), the Rust Dragon's extra damage (047). Replays and bench re-baselined each time. Detail: `docs/epics/E04b-log.md`.
+Linked cloud session; the baseline verify green with original data. The user cut increment 6 as T7a in parts, batch 2d at its checkpoint. Code reading `installation.md` §7.20. T7a1 (PR #12, merged): `h3_battle::after_strike` (BAT-MAG-040 to 042). T7a2 (PR #13): Stone Gaze, Paralyze (BAT-MAG-043), Poison, Age (BAT-MAG-044, `vitality`; Q-0005 extended), Disease. T7a3: Bind (BAT-MAG-045, `binds`; BAT-Q8), Acid Breath (046), the Rust Dragon's extra damage (047). Replays and bench re-baselined each time. Detail: `docs/epics/E04b-log.md`.
 
 ### 2026-10-08 (thirty-third) — E04b batch 2d compiled
 
-Linked cloud session; PRs #7 to #10 merged, master's CI green, the baseline verify green. The user cut increment 5 as batch 2d alone (T6's candidates only). Eight encounters on grass (CL1, CL2, RA1–RA4, NE, SU), predictions from the engine in a scratch test (harvested SoD packs; for BAT-QUIRK-7 a scratch copy of the place search with the original's hexes free), the code reading and VCMI 1.7.5. CI note: T6b's `cargo xtask verify` failed on the first attempt of two commits (logs not downloadable here). Detail: `docs/epics/E04b-log.md` (batch 2d compiled).
+The user cut increment 5 as batch 2d alone (T6's candidates). Eight encounters on grass (CL1, CL2, RA1–RA4, NE, SU), predictions from the engine in a scratch test, the code reading and VCMI 1.7.5. Detail: `docs/epics/E04b-log.md` (batch 2d compiled).

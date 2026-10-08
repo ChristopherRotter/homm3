@@ -329,7 +329,7 @@ fn summon_elemental_places_effect_times_power_creatures_in_the_first_free_column
     assert_eq!(serfs.flags, StackFlags::default());
 }
 
-// covers: BAT-MAG-037
+// covers: BAT-MAG-037, BAT-MAG-044
 #[test]
 fn a_side_creates_stacks_below_the_limit_and_reuses_dead_created_ones() {
     let r = ruleset();
@@ -349,11 +349,18 @@ fn a_side_creates_stacks_below_the_limit_and_reuses_dead_created_ones() {
         [2, 3, 4]
     );
     // A new stack takes the first dead created stack's slot, which starts afresh.
+    // A poisoned created stack dies; its slot's new stack keeps nothing of it (BAT-MAG-044).
+    s.vitality.base[3] = s.stacks()[3].max_hp;
+    s.vitality.poison[3] = 3;
     hurt(&mut s, &r, 4, 1000);
     hurt(&mut s, &r, 3, 1000);
     mark_corpses(&mut s);
     assert_eq!(sprites(&mut s), 3);
     assert_eq!((s.stacks().len(), s.corpse(StackId(3))), (5, 0));
+    assert_eq!((s.vitality.base[3], s.vitality.poison[3]), (0, 0));
+    let full = s.stacks()[3].max_hp;
+    effects::recompute(&mut s, &r, StackId(3));
+    assert_eq!(s.stacks()[3].max_hp, full);
     // The limit is 20 stacks of a side, dead ones included (the next cast reuses 4).
     assert_eq!(sprites(&mut s), 4);
     for _ in 0..16 {

@@ -580,25 +580,25 @@ checkpoints = [
     "0xf064e08448a87150",
     "0x17c34d6c3c8fcfe6",
     "0xb9d2d9be034b721d",
-    "0x7ac034ab7705b50f",
-    "0x77e4388f079fe26f",
-    "0x928b5fbc50633eaf",
-    "0xa7dd0fc5d4309c27",
-    "0x9fdbb64755707b33",
-    "0x3782a8fe9a075544",
-    "0x79d146ccd903f98e",
-    "0xfc0a9cdeacb8eb54",
-    "0xcc21913082f4001e",
-    "0x1b8e850255f5dc85",
-    "0xc4c5f9d7abc53ba0",
-    "0x68ce8a35ba3ae5a3",
-    "0xcc1fa4f4a347045f",
-    "0x6237a1d889ef71f5",
-    "0xa19826834c2d7d14",
-    "0x59cd4e477123b299",
-    "0x7c9956512c17c27d",
-    "0xf2347538a892085e",
-    "0x2e09386335710b36",
+    "0x6cc2d6253aa70cd9",
+    "0x881cbb7c64044809",
+    "0x40f3fbefcfb2badd",
+    "0xd6f40dc936f8a9a1",
+    "0x611d5a5b7dc4374b",
+    "0x6246d74f8a33ae0c",
+    "0xef3ca45935f858b6",
+    "0xec3cd6c75d2b468c",
+    "0x2ebc26397bf993d6",
+    "0x4c7a22ac12c4006d",
+    "0x2ca7decbc10eb748",
+    "0x2a5866cc5a2ff06b",
+    "0xb0dce0ed3debe297",
+    "0xc89e301a22186b4d",
+    "0x9de32a140916f52c",
+    "0x912a9f4b48b665b1",
+    "0x790f6bfd03997065",
+    "0x2c0a3a378f511f16",
+    "0x6bc7e1713e05d53e",
 ]
 
 [replay]
@@ -888,4 +888,4 @@ count = 11
 
 [result]
 winner = "attacker"
-final_hash = "0x2e09386335710b36"
+final_hash = "0x6bc7e1713e05d53e"

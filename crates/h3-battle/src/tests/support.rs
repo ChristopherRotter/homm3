@@ -567,6 +567,8 @@ pub const CREATURES: &[Creature] = &[
         5,
         &["alive", "damage_after_strike=20:50"],
     ),
+    // Attack and defense below Disease's 2 (BAT-MAG-009, T7a review).
+    ("peasant", 1, 1, 1, 1, 10, 3, &["alive"]),
 ];
 
 /// The traits of a test creature as creature info: flags, abilities, shots and faction.

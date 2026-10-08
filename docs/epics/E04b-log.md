@@ -1188,3 +1188,40 @@ records how and why the tasks went.
 - **Versions:** pack format v21, ruleset hash v30 (`defended`, `damage_after_strike`, `bind`),
   state hash v32 (the binds table), observation encoding v7 (the effects list shows Bind), C ABI
   v11, replay format v18.
+
+### T7a checkpoint, the review and the T7b reading (2026-10-08)
+
+- **Seam** (the user): close T7a (the QUEUE's inbox, an independent review with fixes, the global
+  HANDOFF's battle row), then read the casting creatures and propose the T7b/T7c cut, and stop.
+  Batch 2d's results are not committed yet (the results file is still the template), so
+  BAT-QUIRK-7, BAT-Q7 and the clone's shots wait. Decided: BAT-Q8 not reproduced; Q-0005's
+  extension to Poison and Age confirmed.
+- **Inbox:** T7a2's docs commit (5751e65) had dropped the QUEUE's whole "Inbox" section; restored
+  from b1df5ad, with T7a's closed items marked and its loose ends added.
+- **Review** (an independent sub-agent on T7a's diff against §7.20): (1) a stack that died aged
+  kept its halved hit points per creature, so a raise counted twice the creatures (fixed:
+  `effects::remove_dead` recomputes the stacks whose effects it drops, as the original's death
+  0x444120 ends every spell; Poison's tenths stay); (2) a bound Harpy flew back from the
+  Dendroids it attacked (survey S-14, below); (3) the observation lacks the binder lists (inbox,
+  T9); (4) the order of a creature's strike abilities is the pack's (documented on the ability;
+  the harvested packs follow the original); (5) test gaps (a reused slot's vitality, a vanishing
+  binding clone, Magic Mirror on a strike's spell, Disease below 2, a bound shooter) filled;
+  (6) stale docs, and §7.20's Poison formula (`f32(H) × factor`, the product not stored, 0x444F65).
+- **S-14 read** (`installation.md` §7.20): the action handler returns Harpies (0x4789F8) unless
+  dead, blind, petrified or paralysed, not testing Bind; the flight's 0x43EE10 also empties the
+  moving stack's own binder lists without ending its Bind, so the original's bound Harpy stays
+  bound whatever its binders do. Community: known only as a bug (wiki; fixed in HotA 1.3.3; VCMI
+  does not return a bound stack). **User (BAT-Q9): no flag; a bound stack does not return.** A
+  blinded, petrified or paralysed Harpy stays as well (BAT-ATK-004).
+- **Golden replays:** hashes re-recorded with the same seeds; the command logs and results are
+  unchanged (a dead stack's recomputed values enter the state hash). `bench-check` passes
+  without a new baseline.
+- **T7b reading** (`installation.md` §7.21): the creature's cast action (case 10 → 0x448260: no
+  spell named, casts left −1, a switch by creature), the cast routine's mastery and power
+  arguments (2 and 6 for the Ogre Mage, the four AB elementals and the Master Genie; 2 and 5 ×
+  creatures for the Faerie Dragon), the Faerie Dragon's weighted draw at its activation, the
+  Master Genie's random useful spell (flag `0x800`, 0x447A80), the Archangel's raise (100 ×
+  creatures) and the Pit Lord's Demons (0x447330, 0x5A7390), the Enchanter's per-side counter
+  and weighted table (S-12 confirmed: the first stack decides), the hero's spell cost with
+  Pegasi and Mages read from the armies (batch 2a R6 round 3 explained) and the Familiars'
+  channel. Proposed cut in the epic (T7b1–T7b4, T7c), to confirm.

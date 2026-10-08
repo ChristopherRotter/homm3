@@ -434,7 +434,7 @@ pub fn apply<S: Sink>(
         }
     }
     // rule: BAT-MAG-010
-    effects::remove_dead(state);
+    effects::remove_dead(state, ruleset);
     // rule: BAT-MAG-035
     raise::mark_corpses(state);
     Ok(())

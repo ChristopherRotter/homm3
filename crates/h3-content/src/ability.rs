@@ -176,7 +176,10 @@ pub enum Ability<C, S, L> {
     /// After each of its melee strikes (attacks, retaliations, second strikes; never shots),
     /// casts `spell` on the struck stack as a creature's cast without a hero (Unicorns' Blind,
     /// Black Knights' Curse, the flies' Dispel Helpful Spells and Weakness, BAT-MAG-040; the
-    /// Dendroids' Bind and the Rust Dragon's Acid Breath, BAT-MAG-045, BAT-MAG-046).
+    /// Dendroids' Bind and the Rust Dragon's Acid Breath, BAT-MAG-045, BAT-MAG-046). The battle
+    /// applies a creature's strike abilities in list order: list the original's pending spells
+    /// (its 0x440500 table) before the striker's own effects (0x440BC0: the Thunderbird's bolt, the
+    /// flies, the Rust Dragon's extra damage), as the harvested packs do (`installation.md` §7.20).
     SpellAfterStrike {
         /// The spell.
         spell: S,

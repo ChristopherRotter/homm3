@@ -1166,12 +1166,13 @@ longer duration and the higher mastery. Per spell:
   Stone Gaze, Paralyze and Bind store no value.
 - *Disease* takes `min(2, attack)` and `min(2, defense)` and stores both (+0x4D4, +0x4D0).
 - *Poison*: the stack's poison factor (+0x4A4, 1.0 at the battle's start) becomes `f32(max(factor
-  − f32(0.1), 0.5))`; then the hit points per creature (+0xC0) become `trunc(f32(H × factor) +
-  f32(0.95))`, times 0.5 inside while aged, with `H` the stack's hit points per creature at the
-  battle's start (+0x6C), and the top creature's lost hit points (+0x58) become at most the new
-  value − 1 (no creature dies).
-- *Age*: the hit points per creature become `trunc(H × factor × 0.5 + 0.95)` (single precision),
-  with the same cap.
+  − f32(0.1), 0.5))`; then the hit points per creature (+0xC0) become `trunc(f32(H) × factor +
+  f32(0.95))`, the product times f32(0.5) while aged, at the x87's 53 bits (0x444F65: `H` and the
+  factor are stored as f32, the product is not; corrected at the T7a review), with `H` the
+  stack's hit points per creature at the battle's start (+0x6C), and the top creature's lost hit
+  points (+0x58) become at most the new value − 1 (no creature dies).
+- *Age*: the hit points per creature become `trunc(f32(H) × factor × f32(0.5) + f32(0.95))`
+  (0x444FBE, as Poison's), with the same cap.
 - *Acid Breath* (0x5A1E70): defense − 3, at least 0, for the rest of the battle (no duration, no
   entry in the active spells; each Rust Dragon strike lowers it again).
 - *Dispel Helpful Spells* (0x5A177E): ends every active spell 10–69 whose table type is positive
@@ -1193,9 +1194,19 @@ handler 0x445990: the walk 0x441FA0 at 0x4420A3, the flight 0x4B49C0 at 0x4B49E1
 teleporting move 0x4B4E90 at 0x4B4EB1), dies (the death routine 0x444120 at 0x4441C7) or is
 teleported by Teleport (0x5A1B88): the binder leaves the bound-by list of each stack it binds
 (from its own list's end), a stack whose list becomes empty has its Bind ended (0x444510(72)),
-and the binder's own list is emptied. Teleport then ends the teleported stack's own Bind as well
-(0x5A1B91, `push 0x48; call 0x444510`). The pathfinder's test reads Bind's duration (+0x2B8), not
-the lists. Bind is ended by Dispel, not by Cure (§7.10). Bind and Acid Breath skip the test, so
+and the binder's own list is emptied. Then 0x43EE10 does the same for the moving stack as a bound
+one (0x43EEED): it leaves the list of each of its binders and its own bound-by list is emptied,
+**without ending its Bind**. Teleport then ends the teleported stack's own Bind as well (0x5A1B91,
+`push 0x48; call 0x444510`). The pathfinder's test reads Bind's duration (+0x2B8), not the lists,
+so a bound stack moves only where the pathfinder is not asked: the Harpies' return.
+
+**Strike and return** (read at the T7a review): after the attack the action handler flies a Harpy
+or Harpy Hag (72, 73) that moved back to its start hex (0x4789F8, the move 0x445D10 → 0x445950)
+unless it is dead or its Blind (+0x290), Stone Gaze (+0x2B0) or Paralyze (+0x2C0) duration is
+above 0; Bind's (+0x2B8) is not tested. So a Harpy bound by the Dendroids' retaliation flies back
+and the flight's 0x43EE10 empties its lists without ending its Bind: no binder's move or death
+releases it any more, only Teleport, Dispel or its 255 rounds (survey S-14, the wiki's "bound down
+forever"; fixed in every profile, the user 2026-10-08: a bound stack does not return, BAT-ATK-004). Bind is ended by Dispel, not by Cure (§7.10). Bind and Acid Breath skip the test, so
 the flag word's war-machine bit (`0x1000`, set on Bind) does not keep them off a war machine.
 *Not reproduced (BAT-Q8):* 0x440500 lists the striker among the binders of a T its strike killed
 (no cast follows); the entry stays until the striker moves or dies, so a T raised meanwhile would
@@ -1216,3 +1227,70 @@ not be bound by that striker's next strike. The engine binds only a living T.
   / 2` (truncated; S's +0xD0, +0xD4) taken through 0x444090 if above 0, with no test and no
   reduction (after Acid Breath, step 2); a message, then the pending spells are cast again
   (0x468990).
+
+### 7.21 Code reading: casting creatures, the Enchanter and the spell cost (E04b T7b cut, 2026-10-08)
+
+Read for the T7b/T7c cut (Q29: insight only, nothing copied); the parts each task builds are
+re-read there. Creature ids as in §5 (13 Archangel, 34, 35 Mage, Arch Mage, 37 Master Genie, 20,
+21 Pegasi, 43 Familiar, 48 Demon, 51 Pit Lord, 61 Wraith, 91 Ogre Mage, 123, 125, 127, 129 Ice,
+Magma, Storm and Energy Elementals, 131 Phoenix, 134 Faerie Dragon, 136 Enchanter). Stack
+offsets as in §7.9; **+0xDC is the casts left** (the creature's casts per battle, `casts` in the
+packs), +0x4E0 a Faerie Dragon's spell.
+
+**The cast routine's arguments** (0x59FE30, §7.8): spell, target hex, caster kind (0 hero, 1
+creature), second hex, **mastery**, **power**. A hero's cast passes 0 and 3 and takes its own
+mastery and power; a creature's cast takes the arguments, and Magic Plains (battlefield type 1,
+E04c) raise its mastery to 3. A creature's cast has no hero bonuses, and the aimed stack never
+rolls for resistance (§7.8; area spells still roll per stack).
+
+**The creature's cast action** (the action dispatcher's case 10, 0x47936E → 0x448260, stack,
+target hex; the action names no spell): it turns the stack towards the hex (animation only),
+**lowers its casts left by 1**, then switches on the creature (0x448768/0x448740):
+
+| Creature | What it casts (0x59FE30 arguments: spell, mastery, power) |
+|---|---|
+| Ogre Mage | Bloodlust (43), mastery 2, power 6 |
+| Storm, Ice, Energy, Magma Elemental | Protection from Air (30), Water (32), Fire (31), Earth (33), mastery 2, power 6 |
+| Faerie Dragon | its drawn spell (+0x4E0), mastery 2, power **5 × creatures** |
+| Master Genie | 0x447EE0: a random spell for the stack on the hex (below), mastery 2, power 6 |
+| Archangel | no cast routine: 0x5A3CC0(side, hex, 1) finds the stack (Resurrection's test, §7.18, with the creature's hit points), then 0x5A7560 raises it by **creatures × 100** hit points, permanently |
+| Pit Lord | 0x5A3E40(side, hex) finds the topmost corpse on a free hex of the caster's side whose creature is living (`0x10`); 0x5A7390 raises **Demons** (48) there as a created stack (0x47A100, §7.19), which takes the corpse's +0x5C: `min(start count, min(50 × Pit Lords, start count × hit points) div Demon's hit points)` (0x447330) |
+
+Every other creature does nothing there. With mastery 2 the timed spells take their Advanced
+value and last 6 rounds (the power, §7.9).
+
+**At a stack's activation** (0x465330, after the hero's opening spells, T8): a Faerie Dragon with
+casts left draws its spell (0x447510) from the weighted table 0x63B850, Ice Bolt 22, Lightning
+Bolt 22, Fireball 21, Magic Arrow 10, Frost Ring 10, Chain Lightning 5, Meteor Shower 5, Inferno 5
+(of 100; the draw is the C library's `rand() mod 100`, not the battle's random generator; VCMI
+gives Magic Arrow 22), and a message tells its controller; a Wraith lowers the enemy hero's mana
+by 2, at least 0 (T7c); an Enchanter casts on its own (below). A Phoenix's rebirth also uses its
+casts left (0x469480, T7c).
+
+**Master Genie** (0x447EE0): over spells 10–69 with flag `0x800` (beneficial on an own stack,
+§7.6: Shield, Air Shield, Fire Shield, the Protections, Anti-Magic, Magic Mirror, Cure, Bless,
+Bloodlust, Precision, Stone Skin, Prayer, Mirth, Fortune, Haste, Slayer, Frenzy, Counterstrike), it
+counts those 0x447A80 accepts for the target stack, draws one with the battle's `random(1, n)`
+and casts it. 0x447A80(spell, stack): not active on it, 0x5A3C80 lets it affect the stack, then a
+usefulness case (0x447E8C/0x447E68) for Shield and Fire Shield, Air Shield, the Protections
+with Anti-Magic and Magic Mirror (an enemy hero with a spell book), Cure (a wounded top creature),
+Bloodlust, Precision, Prayer (the stack has not acted this round), Slayer (an enemy stack with a
+creature flag `0x80`); the cases not named here are read in T7b; every other spell is useful.
+
+**Enchanter** (0x447FE0, at its activation if its side's counter is above 2): each side's counter
+(+0x132A0) rises by 1 at every round start (0x4760F8) and returns to 0 after a cast, so a side's
+Enchanters cast once in three rounds, the first of them to act. Over the weighted table 0x6608B8,
+Haste 15, Air Shield 10, Slow 10, Stone Skin 15, Bloodlust 5, Bless 15, Cure 10, Weakness 4, a
+spell counts if 0x447A80 accepts it on a stack of the side it is aimed at (the enemy's for a
+negative spell); **the loop tests the side's first stack every time** (it never advances the
+record: survey S-12, confirmed). It draws among the counted weights with `rand()` and casts the
+spell on no hex at **mastery 3** (Expert: the mass versions) with **power 3**. If nothing counts,
+nothing is cast and the counter stays.
+
+**The hero's spell cost** (0x4E5240: hero, spell, the enemy's army, battlefield): Titan's
+Lightning Bolt costs 0; otherwise the cost at the hero's mastery (Armageddon at Expert with
+Armageddon's Blade, T8), **+2 if the enemy's army holds Pegasi or Silver Pegasi, −2 if the hero's
+own army holds Mages or Arch Mages**, at least 1. Both tests read the armies (0x44AB80), not the
+battle's stacks, so a dead Pegasus stack still counts (batch 2a R6 round 3: 5, VCMI 3) and a
+summoned or cloned one does not. After a hero's cast of cost 5 or more, the other side's living
+Familiars channel `cost div 5` (0x5A2170, T7c; batch 2a R6).

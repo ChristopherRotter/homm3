@@ -20,7 +20,7 @@ use crate::{control, effects, morale, obstacles, war};
 
 /// Whether stack `s` loses its turns (blind, petrified, paralysed) and its turn has passed this
 /// round (BAT-MAG-024, BAT-MAG-043): it is passed over until the effect ends.
-fn passed_blind(s: &Stack) -> bool {
+fn passed_without_turns(s: &Stack) -> bool {
     s.spells.status.contains(Status::NO_TURNS) && s.flags.contains(StackFlags::STARTED)
 }
 
@@ -38,7 +38,7 @@ pub(crate) fn next_active(state: &BattleState) -> Option<StackId> {
             s.is_alive()
                 && !s.flags.contains(StackFlags::ACTED)
                 && !s.has(StackTraits::AMMO_SUPPLY)
-                && !passed_blind(s)
+                && !passed_without_turns(s)
         })
         .min_by_key(|(id, s)| {
             // Phases: normal, waited during a good-morale turn, waited (BAT-MOR-003).
