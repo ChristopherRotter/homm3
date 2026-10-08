@@ -63,7 +63,8 @@ which a spell meets a stack, how stacks appear in a battle, how hidden objects s
    slot and is not limited; Pit Lords' demons take the slot of the dead stack they rise from. Dead
    stacks keep their slots and stay addressable. Stacks created in battle cross no seam: summoned
    stacks and clones end with the battle and the outcome leaves them out (no `StackOrigin`
-   variant); temporarily raised creatures (Basic Resurrection) do not count in the outcome's end
+   variant), and a side left with only such stacks does not win (`BattleResult::Draw`, as the
+   original); temporarily raised creatures (Basic Resurrection) do not count in the outcome's end
    counts; permanent ones do. Pit Lords' demons, which stay, are decided with T7.
 7. **Hidden battlefield objects have an owner side.** A viewer sees a spell obstacle if it is the
    owner, the obstacle is revealed or of a visible kind (Force Field, Fire Wall), or the viewer's side
