@@ -58,6 +58,9 @@ Language-specific bindings only (locks out other ecosystems); a network protocol
 - **ABI v12** (E04b T7b1): action encoding v11 (the stack's cast, entry 1395, becomes legal: its
   spell head allows the stack's spell, its second target head 0) and observation encoding v8
   (casts left; the length grows). No function changes.
+- **ABI v13** (E04b T7b2a): observation encoding v9 (a global: the spell the active stack drew,
+  shown only to its controller; the length grows); the stack's cast's target head may carry hexes
+  (a Faerie Dragon's area spells). No function changes.
 
 ## Revision history
 
