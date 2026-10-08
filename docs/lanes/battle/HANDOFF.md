@@ -44,7 +44,7 @@ The battle lane's living state; read after the global `docs/HANDOFF.md`. Format 
 
 ### 2026-10-08 (thirty-first) — E04b T6a: Resurrection, Animate Dead, Sacrifice (T6b in progress)
 
-Linked cloud session; PR #6 had been merged. The user cut T6 (T6a + T6b) before T7 and questioned the `StackOrigin` variants: created stacks cross no seam (ADR-0014 amended, PR #7). Reading `installation.md` §7.18. BAT-QUIRK-5 (Sacrifice tested as Resurrection, fix-optional; S-15), BAT-QUIRK-6 (S-20, the orchestrator's fix). Pack format v17, ruleset hash v26, state hash v29; a cast that kills the active stack ends its turn; old workload +1.04 %, new +3.20 % (re-baselined); replays re-recorded (a199, a325, a52, a149). Detail: `docs/epics/E04b-log.md` (T6a).
+Linked cloud session; PR #6 had been merged. The user cut T6 (T6a + T6b) before T7 and questioned the `StackOrigin` variants: created stacks cross no seam (ADR-0014 amended, PR #7). Reading `installation.md` §7.18. BAT-QUIRK-5 (Sacrifice tested as Resurrection, fix-optional; S-15), BAT-QUIRK-6 (S-20: one creature kept, counting only army stacks). Pack format v17, ruleset hash v26, state hash v29; a cast that kills the active stack ends its turn; old workload +1.28 %, new +3.45 % (re-baselined); replays re-recorded (a199, a325, a52, a149). Detail: `docs/epics/E04b-log.md` (T6a).
 
 ### 2026-10-07/08 (thirtieth) — E04b T5b: Remove Obstacle, obstacles as pieces, BAT-QUIRK-3/4
 

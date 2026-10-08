@@ -182,7 +182,7 @@ pub enum EventKind {
         spell: SpellId,
         /// What it was aimed at.
         target: CastTarget,
-        /// Its second target (Teleport's destination), else none.
+        /// Its second target (Teleport's destination, Sacrifice's victim), else none.
         second: CastTarget,
     },
     /// A stack resisted a spell (BAT-MAG-008); if it was the stack the spell was aimed at, the

@@ -318,8 +318,9 @@ pub(crate) fn frenzied(attack: i32, defense: i32, percent: u16, staged: bool) ->
     i32::try_from(total / scale).unwrap_or(i32::MAX)
 }
 
-/// Heals the living `stack` by up to `hp` hit points, resurrecting creatures up to its count at
-/// the start of the battle; returns the hit points regained and the creatures brought back.
+/// Heals `stack` by up to `hp` hit points, resurrecting creatures up to its count at the start of
+/// the battle (a dead stack too: BAT-MAG-035); returns the hit points regained and the creatures
+/// brought back.
 // rule: BAT-DMG-008
 pub(crate) fn resurrect(stack: &mut Stack, hp: u64) -> (u64, u32) {
     let max_hp = u64::from(stack.max_hp);

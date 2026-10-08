@@ -1013,6 +1013,12 @@ health, not the stack's (+0xC0). The victim takes its whole health as damage (0x
 sacrificed (no corpse) and the raised stack gets the hit points as a permanent raise. No code
 compares the victim with the raised stack (the second cursor, 0x59F700, was not read).
 
-Not found: where the counter +0x54 is subtracted at the battle's end (no read of it outside the
-raise and the interface, 0x596xxx); VCMI subtracts the temporary creatures' health from the
-stack's (`CStackState::takeResurrected`), and S-20 (HotA) presupposes a subtraction.
+**The end of the battle** (0x4774E2, before the armies are rebuilt by 0x4641F0): for each side,
+every record 0–19 with a creature type and creatures loses its temporary creatures (`count −
++0x54`, at least 0) and the counts left are summed; if the sum is 0 while some record had
+creatures, the last such record keeps **one creature**. The sum counts every record, war machines
+and summoned stacks or clones included, which the rebuild 0x4641F0 then leaves out of the army
+(alive, not dead, not summoned `0x400000`, not a clone `0x800000`, not a war machine `0x40`, an
+army slot 0–6): a hero whose army was raised at Basic but who keeps a Ballista or an elemental is
+left without an army (survey S-20). VCMI instead lowers its counter as creatures die
+(`CHealth::damage`); the original never lowers +0x54 during the battle.

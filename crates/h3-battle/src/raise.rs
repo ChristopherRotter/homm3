@@ -17,8 +17,9 @@ use crate::magic::{
 use crate::state::{BattleState, NO_CORPSE, StackId};
 
 /// Marks the corpses of the stacks that died since the last mark, by stack id, each above every
-/// earlier one (BAT-MAG-035; after every command, so stacks killed by one command lie on no
-/// common hex).
+/// earlier one (BAT-MAG-035): after every command, before every activation and after every
+/// automatic berserk action, so the stacks marked together died in one action and lie on no
+/// common hex.
 pub(crate) fn mark_corpses(state: &mut BattleState) {
     let corpses = &mut state.raised.corpse;
     let fresh = |s: &crate::state::Stack, c: u16| !s.is_alive() && c == 0;

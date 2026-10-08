@@ -148,6 +148,9 @@ fn pick<S: Sink>(state: &mut BattleState, ruleset: &Ruleset, sink: &mut S) -> Op
 pub(crate) fn activate_next<S: Sink>(state: &mut BattleState, ruleset: &Ruleset, sink: &mut S) {
     let mut next = pick(state, ruleset, sink);
     while let Some(id) = next {
+        // The stacks the last action killed lie below any killed later (BAT-MAG-035): automatic
+        // turns may follow within one command.
+        crate::raise::mark_corpses(state);
         let stack = state.at_mut(id);
         // rule: BAT-TRN-004
         stack.flags.set(StackFlags::DEFENDING, false);
@@ -203,6 +206,8 @@ pub(crate) fn berserk_turn<S: Sink>(
 ) -> bool {
     loop {
         let acted = control::berserk(state, ruleset, id, sink);
+        // rule: BAT-MAG-035
+        crate::raise::mark_corpses(state);
         state.last_side_acted = Some(state.at(id).side);
         if state.result.is_some() || !acted || !morale::good_morale(state, ruleset, id) {
             return false;

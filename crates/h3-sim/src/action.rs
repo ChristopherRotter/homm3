@@ -5,7 +5,8 @@
 //! cast is one entry of the dense list below with all three heads 0; a cast is the entry
 //! [`HERO_CAST`] with the spell's handle in the spell head and its target in the target head
 //! (`0` none, `1 + h` hex `h < 255`, `256 + s` stack slot `s`); the second target has the same
-//! layout: Teleport's destination hex (BAT-MAG-029), 0 for every other spell. The heads' masks
+//! layout: Teleport's destination hex (BAT-MAG-029), Sacrifice's victim stack (BAT-MAG-036, E04b
+//! T6a; the layout is unchanged), 0 for every other spell. The heads' masks
 //! are conditioned on the earlier choices ([`legal_mask`], [`spell_mask`], [`target_mask`],
 //! [`second_mask`]); after a legal non-cast entry each head allows exactly 0.
 //!
@@ -102,7 +103,8 @@ pub struct Action {
     pub spell: u16,
     /// A cast's target.
     pub target: u16,
-    /// A cast's second target (Teleport's destination; 0 for every other spell).
+    /// A cast's second target (Teleport's destination, Sacrifice's victim; 0 for every other
+    /// spell).
     pub second: u16,
 }
 
@@ -356,7 +358,8 @@ pub fn target_mask(
 
 /// Fills `mask` with the legal second targets of `actor` after choosing `entry`, `spell` and
 /// `target`: for [`HERO_CAST`] those of the cast at that target ([`second_targets`]: Teleport's
-/// destinations, only 0 for other spells); only 0 for another legal prefix; nothing otherwise.
+/// destinations, Sacrifice's victims, only 0 for other spells); only 0 for another legal prefix;
+/// nothing otherwise.
 pub fn second_mask(
     state: &BattleState,
     ruleset: &Ruleset,
@@ -539,6 +542,10 @@ mod tests {
             let teleport = r
                 .spell(SpellId::from_raw(spell))
                 .is_some_and(|sp| sp.magic.teleports());
+            // A sacrifice's second target is a stack (BAT-MAG-036).
+            let several = teleport
+                || r.spell(SpellId::from_raw(spell))
+                    .is_some_and(|sp| sp.magic.sacrifices());
             for (t, &allowed) in targets.iter().enumerate() {
                 let target = u16::try_from(t).unwrap();
                 second_mask(
@@ -550,8 +557,8 @@ mod tests {
                     &mut seconds,
                 );
                 assert_eq!(seconds.iter().any(|m| *m), allowed);
-                // Every second target of a teleport; else 0 and 1.
-                let tried = if allowed && teleport { TARGET_COUNT } else { 2 };
+                // Every second target of a teleport or a sacrifice; else 0 and 1.
+                let tried = if allowed && several { TARGET_COUNT } else { 2 };
                 for (k, &ok) in seconds.iter().enumerate().take(tried) {
                     let action = Action {
                         entry: u32::try_from(HERO_CAST).unwrap(),
@@ -569,7 +576,7 @@ mod tests {
                         teleports += usize::from(teleport);
                     }
                 }
-                if allowed && !teleport {
+                if allowed && !several {
                     assert_eq!(seconds.iter().position(|m| *m), Some(0));
                     assert_eq!(seconds.iter().filter(|m| **m).count(), 1);
                 }
@@ -588,6 +595,14 @@ mod tests {
             second,
         };
         assert_eq!(decode(&s, &r, cast(0, 0, 298)), None);
+        // A stack as the second target (Sacrifice's victim, BAT-MAG-036) decodes as one.
+        assert!(matches!(
+            decode(&s, &r, cast(0, 3, 256 + 4)),
+            Some(Command::Cast {
+                second: CastTarget::Stack(StackId(4)),
+                ..
+            })
+        ));
         assert_eq!(decode(&s, &r, cast(128, 0, 0)), None);
         assert_eq!(decode(&s, &r, cast(0, 298, 0)), None);
         assert_eq!(
