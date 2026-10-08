@@ -31,9 +31,12 @@ which a spell meets a stack, how stacks appear in a battle, how hidden objects s
    cost includes the creature modifiers (Mages, Pegasi), never below 0. The battle keeps each hero's
    mana and casts this round and fills the reserved `HeroOutcome` fields (mana left, spells cast).
 3. **A creature's cast is its stack's action** (Faerie Dragon, Archangel, Pit Lord, Ogre Mage, the AB
-   elementals), limited by its casts per battle. Automatic magic (after-attack spells, the Enchanter,
-   opening spells, triggered obstacles, Fire Shield) is applied by rules. A cast names the spell and up
-   to two targets (Teleport, Sacrifice); the actor comes from the trusted caller (ADR-0004, ADR-0008).
+   elementals, Master Genie), limited by its casts per battle. Automatic magic (after-attack spells,
+   the Enchanter, opening spells, triggered obstacles, Fire Shield) is applied by rules. A hero's cast
+   names the spell and up to two targets (Teleport, Sacrifice). A creature's cast names only its
+   target, as the original's action does: the stack decides the spell (its ability's, a Faerie
+   Dragon's drawn spell, the Master Genie's draw at resolution) or raises without one (Archangel, Pit
+   Lord). The actor comes from the trusted caller (ADR-0004, ADR-0008).
 4. **One resolution order for a spell against a stack:** (1) valid target: target conditions,
    absolute immunities, then normal immunities unless negated (Orb of Vulnerability); a single-target
    cast must name a valid target, area and mass casts pass over invalid stacks; (2) Magic Mirror for
@@ -84,8 +87,11 @@ which a spell meets a stack, how stacks appear in a battle, how hidden objects s
 9. **A factorized casting action.** The sim keeps its dense list of other actions and adds two cast
    entries (hero, creature); choosing one opens a spell head (by spell id, sized by a content limit)
    and two target heads (none, a hex or a stack slot), each with a mask conditioned on the earlier
-   choices. The C ABI takes an action as a small struct and serves a mask per head; sizes do not
-   depend on the ruleset (ADR-0011). Each task bumps the encodings it changes.
+   choices. The creature entry's spell head allows only the spell the active stack is going to cast,
+   where one is known before its resolution (point 3; the Master Genie, the Archangel and the Pit Lord
+   are settled with their tasks), and its second target head only none. The C ABI takes an action as
+   a small struct and serves a mask per head; sizes do not depend on the ruleset (ADR-0011). Each
+   task bumps the encodings it changes.
 10. **Seam changes are additions only** (reviewed with this ADR): `BattleEffect` variants for the
     hero's magic (spell-damage bonuses, duration bonus, magic resistance, magic blocks and level
     limits, immunity negation, opening spells) and the use of the reserved
@@ -119,6 +125,9 @@ which a spell meets a stack, how stacks appear in a battle, how hidden objects s
 - A flat cast block (spells × targets × second targets): too large for masks and policy heads.
   Re-encoding every action as kind and target: churns E04a's encoding for no gain now (E05 may).
 - Mana and costs decided outside the battle: the mask could not tell whether a cast is affordable.
+- A creature's cast as the hero's cast command with a caster kind: the command would name a spell
+  the Master Genie draws only at its resolution and the Archangel and the Pit Lord do not cast
+  (BAT-Q10).
 
 ## Revision history
 
@@ -143,3 +152,7 @@ which a spell meets a stack, how stacks appear in a battle, how hidden objects s
   update the army, so the battle leaves summoned stacks and clones out of the outcome instead of
   reporting them with new `StackOrigin` variants (VCMI also leaves temporary summons out of the
   casualties and the experience); Pit Lords' demons, which stay in the army, are T7's question.
+- 2026-10-08: points 3 and 9 amended (E04b T7b1; the user, BAT-Q10): a creature's cast names only
+  its target, as the original's action (the dispatcher's case 10, `installation.md` §7.21); the
+  stack decides the spell. The sim's creature entry keeps its spell head, which shows the spell the
+  stack will cast.
