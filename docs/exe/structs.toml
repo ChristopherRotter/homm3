@@ -1,0 +1,221 @@
+# Record layouts in Heroes3.exe: our readings (docs/exe/README.md).
+#
+# One struct per [[struct]], its fields one per line, sorted by offset. A field inside an array
+# field may be listed on its own when the docs cite it (e.g. one spell's duration). H3API's
+# layouts (docs/exe/h3api.toml, `[[struct]]`, guesses) cover far more; a field read here goes here.
+# confidence as in map.toml: read | inferred | guess. Seeded 2026-10-08 from installation.md §5–§7.
+
+[[struct]]
+name = "battle_stack"
+size = 0x548
+summary = "A stack record of the battle manager (21 per side, from +0x54CC; H3API's H3CombatCreature). The creature's table entry is copied in at +0x74."
+refs = ["installation.md §7.7", "installation.md §7.9"]
+h3api = "H3CombatCreature"
+fields = [
+  { offset = 0x24, name = "clone_original", type = "i32", summary = "a clone's original (record index)", confidence = "read", refs = ["installation.md §7.19"] },
+  { offset = 0x28, name = "clone", type = "i32", summary = "the original's clone (record index), -1 none", confidence = "read", refs = ["installation.md §7.19"] },
+  { offset = 0x2C, name = "clone_rounds_left", type = "i32", summary = "a clone's rounds left", confidence = "read", refs = ["installation.md §7.19"] },
+  { offset = 0x34, name = "creature", type = "i32", summary = "creature id", confidence = "inferred", refs = ["installation.md §7.21"] },
+  { offset = 0x38, name = "position", type = "i32", summary = "hex 0..186", confidence = "read", refs = ["installation.md §7.19"] },
+  { offset = 0x44, name = "facing", type = "i32", summary = "where a two-hex stack's other hex lies (position +- 1)", confidence = "read", refs = ["installation.md §7.19"] },
+  { offset = 0x4C, name = "count", type = "i32", summary = "creatures alive", confidence = "read", refs = ["installation.md §7.9"] },
+  { offset = 0x54, name = "temporary_creatures", type = "i32", summary = "creatures raised temporarily (Basic Resurrection); capped at the start count, never lowered in battle", confidence = "read", refs = ["installation.md §7.18"] },
+  { offset = 0x58, name = "top_lost_hit_points", type = "i32", summary = "hit points the top creature lost", confidence = "read", refs = ["installation.md §7.20", "installation.md §7.21"] },
+  { offset = 0x5C, name = "army_slot", type = "i32", summary = "army slot; Pit Lord's Demons take the corpse's", confidence = "inferred", refs = ["installation.md §7.21"] },
+  { offset = 0x60, name = "start_count", type = "i32", summary = "creatures at the battle's start", confidence = "read", refs = ["installation.md §7.18"] },
+  { offset = 0x6C, name = "base_hit_points", type = "i32", summary = "hit points per creature at the battle's start (Poison and Age scale it)", confidence = "read", refs = ["installation.md §7.20"] },
+  { offset = 0x70, name = "lucky", type = "i32", summary = "set by the luck roll: a lucky strike", confidence = "read", refs = ["installation.md §7.10"] },
+  { offset = 0x74, name = "creature_info", type = "creature_record", summary = "copy of the creature's table entry; +0x74 faction (town) is read for the native terrain", confidence = "read", refs = ["installation.md §5", "installation.md §7.16"] },
+  { offset = 0x78, name = "level", type = "i32", summary = "creature level, 0-based (in the copy)", confidence = "read", refs = ["installation.md §7.12", "installation.md §7.19"] },
+  { offset = 0x84, name = "flags", type = "u32", summary = "creature flags (§5) plus run-time bits: 0x200000 dead, 0x400000 summoned, 0x800000 clone, 0x1000000 good morale, 0x4000000 acted, 0x10000000 sacrificed; done bits 21, 25, 26", confidence = "read", refs = ["installation.md §7.14", "installation.md §7.18", "installation.md §7.19", "installation.md §7.21"] },
+  { offset = 0xC0, name = "hit_points", type = "i32", summary = "hit points per creature (Poison and Age lower it)", confidence = "read", refs = ["installation.md §7.18", "installation.md §7.20"] },
+  { offset = 0xC4, name = "speed", type = "i32", summary = "speed", confidence = "read", refs = ["installation.md §7.9"] },
+  { offset = 0xC8, name = "attack", type = "i32", summary = "attack", confidence = "read", refs = ["installation.md §7.9"] },
+  { offset = 0xCC, name = "defense", type = "i32", summary = "defense (Defend bonus included)", confidence = "read", refs = ["installation.md §7.9", "installation.md §7.11"] },
+  { offset = 0xD0, name = "min_damage", type = "i32", summary = "minimum damage", confidence = "read", refs = ["installation.md §7.9", "installation.md §7.20"] },
+  { offset = 0xD4, name = "max_damage", type = "i32", summary = "maximum damage", confidence = "read", refs = ["installation.md §7.9", "installation.md §7.20"] },
+  { offset = 0xDC, name = "casts_left", type = "i32", summary = "the creature's casts left this battle", confidence = "read", refs = ["installation.md §7.21"] },
+  { offset = 0xEC, name = "pending_spell", type = "i32", summary = "spell a strike put on it, cast after the animation; -1 none", confidence = "read", refs = ["installation.md §7.20"] },
+  { offset = 0xF4, name = "side", type = "i32", summary = "the real side (owner), 0 attacker, 1 defender", confidence = "read", refs = ["installation.md §7.14", "installation.md §7.16"] },
+  { offset = 0x194, name = "active_spells", type = "i32", summary = "number of active spells", confidence = "read", refs = ["installation.md §7.9"] },
+  { offset = 0x198, name = "spell_duration", type = "i32[81]", summary = "rounds left per spell id (active while above 0)", confidence = "read", refs = ["installation.md §7.9"] },
+  { offset = 0x220, name = "duration_anti_magic", type = "i32", summary = "Anti-Magic's duration (spell 34)", confidence = "read", refs = ["installation.md §7.13"] },
+  { offset = 0x228, name = "duration_magic_mirror", type = "i32", summary = "Magic Mirror's duration (36)", confidence = "read", refs = ["installation.md §7.13"] },
+  { offset = 0x23C, name = "duration_bless", type = "i32", summary = "Bless's duration (41)", confidence = "read", refs = ["installation.md §7.12"] },
+  { offset = 0x24C, name = "duration_weakness", type = "i32", summary = "Weakness's duration (45)", confidence = "read", refs = ["installation.md §7.20"] },
+  { offset = 0x25C, name = "duration_mirth", type = "i32", summary = "Mirth's duration (49), read by morale", confidence = "read", refs = ["installation.md §7.9"] },
+  { offset = 0x260, name = "duration_sorrow", type = "i32", summary = "Sorrow's duration (50), read by morale", confidence = "read", refs = ["installation.md §7.9"] },
+  { offset = 0x264, name = "duration_fortune", type = "i32", summary = "Fortune's duration (51), read by luck", confidence = "read", refs = ["installation.md §7.9"] },
+  { offset = 0x268, name = "duration_misfortune", type = "i32", summary = "Misfortune's duration (52), read by luck", confidence = "read", refs = ["installation.md §7.9"] },
+  { offset = 0x284, name = "duration_berserk", type = "i32", summary = "Berserk's duration (59)", confidence = "read", refs = ["installation.md §7.14"] },
+  { offset = 0x288, name = "duration_hypnotize", type = "i32", summary = "Hypnotize's duration (60); while above 0 the controller is the other side", confidence = "read", refs = ["installation.md §7.14", "installation.md §7.21"] },
+  { offset = 0x28C, name = "duration_forgetfulness", type = "i32", summary = "Forgetfulness's duration (61)", confidence = "read", refs = ["installation.md §7.14"] },
+  { offset = 0x290, name = "duration_blind", type = "i32", summary = "Blind's duration (62)", confidence = "read", refs = ["installation.md §7.14", "installation.md §7.20"] },
+  { offset = 0x2B0, name = "duration_stone_gaze", type = "i32", summary = "Stone Gaze's duration (70)", confidence = "read", refs = ["installation.md §7.20"] },
+  { offset = 0x2B8, name = "duration_bind", type = "i32", summary = "Bind's duration (72); the pathfinder reads it", confidence = "read", refs = ["installation.md §7.20"] },
+  { offset = 0x2C0, name = "duration_paralyze", type = "i32", summary = "Paralyze's duration (74)", confidence = "read", refs = ["installation.md §7.20"] },
+  { offset = 0x2DC, name = "spell_mastery", type = "i32[81]", summary = "mastery per spell id (a re-cast keeps the higher)", confidence = "read", refs = ["installation.md §7.9"] },
+  { offset = 0x454, name = "retaliations_left", type = "i32", summary = "retaliations left this round", confidence = "read", refs = ["installation.md §7.10"] },
+  { offset = 0x460, name = "anti_magic_level", type = "i32", summary = "Anti-Magic's v: spells below this level do not affect the stack", confidence = "read", refs = ["installation.md §7.13"] },
+  { offset = 0x48C, name = "slayer_mastery", type = "i32", summary = "Slayer's caster mastery", confidence = "read", refs = ["installation.md §7.10"] },
+  { offset = 0x494, name = "counterstrike_value", type = "i32", summary = "Counterstrike's extra retaliations", confidence = "read", refs = ["installation.md §7.10"] },
+  { offset = 0x498, name = "frenzy_factor", type = "f32", summary = "Frenzy's v / 100", confidence = "read", refs = ["installation.md §7.11"] },
+  { offset = 0x49C, name = "blind_factor", type = "f32", summary = "Blind's v / 100: the retaliation factor", confidence = "read", refs = ["installation.md §7.14"] },
+  { offset = 0x4A0, name = "fire_shield_factor", type = "f32", summary = "Fire Shield's v / 100", confidence = "read", refs = ["installation.md §7.10", "installation.md §7.11"] },
+  { offset = 0x4A4, name = "poison_factor", type = "f32", summary = "poison factor, 1.0 at the start, -0.1 per poisoning, at least 0.5", confidence = "read", refs = ["installation.md §7.20"] },
+  { offset = 0x4A8, name = "protection_air_factor", type = "f32", summary = "Protection from Air's factor", confidence = "read", refs = ["installation.md §7.10"] },
+  { offset = 0x4AC, name = "protection_fire_factor", type = "f32", summary = "Protection from Fire's factor", confidence = "read", refs = ["installation.md §7.10"] },
+  { offset = 0x4B0, name = "protection_water_factor", type = "f32", summary = "Protection from Water's factor", confidence = "read", refs = ["installation.md §7.10"] },
+  { offset = 0x4B4, name = "protection_earth_factor", type = "f32", summary = "Protection from Earth's factor", confidence = "read", refs = ["installation.md §7.10"] },
+  { offset = 0x4B8, name = "shield_factor", type = "f32", summary = "Shield's factor (melee)", confidence = "read", refs = ["installation.md §7.10"] },
+  { offset = 0x4BC, name = "air_shield_factor", type = "f32", summary = "Air Shield's factor (shots)", confidence = "read", refs = ["installation.md §7.10"] },
+  { offset = 0x4C0, name = "blind_mark", type = "u8", summary = "marked blind before a melee attack (retaliation factor)", confidence = "read", refs = ["installation.md §7.14"] },
+  { offset = 0x4C1, name = "paralyze_mark", type = "u8", summary = "marked paralysed before a melee attack", confidence = "read", refs = ["installation.md §7.14"] },
+  { offset = 0x4C4, name = "forgetfulness_mastery", type = "i32", summary = "Forgetfulness's caster mastery (2+: cannot shoot)", confidence = "read", refs = ["installation.md §7.14", "installation.md §7.21"] },
+  { offset = 0x4D0, name = "disease_defense", type = "i32", summary = "defense Disease took", confidence = "read", refs = ["installation.md §7.20"] },
+  { offset = 0x4D4, name = "disease_attack", type = "i32", summary = "attack Disease took", confidence = "read", refs = ["installation.md §7.20"] },
+  { offset = 0x4D8, name = "native", type = "u8", summary = "fights on its native terrain", confidence = "read", refs = ["installation.md §7.16"] },
+  { offset = 0x4E0, name = "faerie_dragon_spell", type = "i32", summary = "a Faerie Dragon's drawn spell", confidence = "read", refs = ["installation.md §7.21"] },
+  { offset = 0x4E4, name = "magic_mirror_value", type = "i32", summary = "Magic Mirror's v (the chance)", confidence = "read", refs = ["installation.md §7.13"] },
+  { offset = 0x4F0, name = "turn_started", type = "i32", summary = "the stack's turn started this round (cleared at the round start)", confidence = "read", refs = ["installation.md §7.11", "installation.md §7.14"] },
+  { offset = 0x4F4, name = "binds", type = "list", summary = "the stacks this stack binds", confidence = "read", refs = ["installation.md §7.20"] },
+  { offset = 0x504, name = "bound_by", type = "list", summary = "the stacks that bind this stack", confidence = "read", refs = ["installation.md §7.20"] },
+  { offset = 0x514, name = "unicorn_aura_1", type = "list", summary = "adjacent Unicorns of the same controller (aura list)", confidence = "read", refs = ["installation.md §7.14"] },
+  { offset = 0x524, name = "unicorn_aura_2", type = "list", summary = "second aura list", confidence = "read", refs = ["installation.md §7.14"] },
+]
+
+[[struct]]
+name = "battle_manager"
+size = 0x140EC
+summary = "The battle manager (pointer at 0x6993D0; H3API's H3CombatManager, whose size is used here)."
+refs = ["installation.md §7.7", "installation.md §7.15", "installation.md §7.16"]
+h3api = "H3CombatManager"
+fields = [
+  { offset = 0x1C4, name = "hexes", type = "hex_record[187]", summary = "the hex records, stride 0x70", confidence = "read", refs = ["installation.md §7.15"] },
+  { offset = 0x5394, name = "terrain", type = "i32", summary = "the battlefield's terrain", confidence = "read", refs = ["installation.md §7.16"] },
+  { offset = 0x53C0, name = "special_field", type = "i32", summary = "special battlefield type (1 Magic Plains, 2 Cursed Ground)", confidence = "read", refs = ["installation.md §7.16", "installation.md §7.21"] },
+  { offset = 0x53C4, name = "anti_magic_garrison", type = "i32", summary = "set at the start for object 33 subtype 1", confidence = "read", refs = ["installation.md §7.21"] },
+  { offset = 0x54A4, name = "local_human", type = "i32[2]", summary = "whether each side is a local human", confidence = "read", refs = ["installation.md §7.21"] },
+  { offset = 0x54BC, name = "stack_count", type = "i32[2]", summary = "records in use per side", confidence = "read", refs = ["installation.md §7.7", "installation.md §7.19"] },
+  { offset = 0x54CC, name = "stacks", type = "battle_stack[2][21]", summary = "stack records, side stride 0x6EE8", confidence = "read", refs = ["installation.md §7.7"] },
+  { offset = 0x1329C, name = "natives", type = "u8[2]", summary = "per side: any stack native at the battle's start", confidence = "read", refs = ["installation.md §7.16", "installation.md §7.17"] },
+  { offset = 0x132A0, name = "enchanter_counter", type = "i32[2]", summary = "rounds since the side's Enchanters cast", confidence = "read", refs = ["installation.md §7.21"] },
+  { offset = 0x132A8, name = "summoned_elemental", type = "i32[2]", summary = "the side's summoned elemental creature, -1 none", confidence = "read", refs = ["installation.md §7.7", "installation.md §7.19"] },
+  { offset = 0x132B0, name = "retreated", type = "u8[2]", summary = "the side retreated", confidence = "read", refs = ["installation.md §7.19"] },
+  { offset = 0x132B2, name = "surrendered", type = "u8[2]", summary = "the side surrendered", confidence = "read", refs = ["installation.md §7.19"] },
+  { offset = 0x132C0, name = "acting_side", type = "i32", summary = "the side acting now", confidence = "read", refs = ["installation.md §7.21"] },
+  { offset = 0x13D58, name = "objects", type = "vector<battle_object>", summary = "battlefield objects (begin +0x13D5C, end +0x13D60)", confidence = "read", refs = ["installation.md §7.15"] },
+  { offset = 0x13D68, name = "tactics_phase", type = "i32", summary = "in the tactics phase", confidence = "read", refs = ["installation.md §7.21"] },
+]
+
+[[struct]]
+name = "hex_record"
+size = 0x70
+summary = "A battlefield hex (187 from battle_manager +0x1C4; H3API's H3CombatSquare)."
+refs = ["installation.md §7.15", "installation.md §7.18"]
+h3api = "H3CombatSquare"
+fields = [
+  { offset = 0x10, name = "flags", type = "u8", summary = "0x1 anchor, 0x2 blocked, 0x4 Quicksand, 0x8 Land Mine, 0x10 Fire Wall, 0x20 Force Field", confidence = "read", refs = ["installation.md §7.15"] },
+  { offset = 0x14, name = "object", type = "i32", summary = "object index, -1 none", confidence = "read", refs = ["installation.md §7.15"] },
+  { offset = 0x18, name = "stack", type = "stack ref", summary = "the living stack on it", confidence = "read", refs = ["installation.md §7.16", "installation.md §7.18"] },
+  { offset = 0x1C, name = "corpse_count", type = "i32", summary = "dead stacks lying on it (at most 14)", confidence = "read", refs = ["installation.md §7.16", "installation.md §7.18"] },
+  { offset = 0x20, name = "corpse_sides", type = "u8[14]", summary = "their sides", confidence = "read", refs = ["installation.md §7.18"] },
+  { offset = 0x2E, name = "corpse_records", type = "u8[14]", summary = "their record indices", confidence = "read", refs = ["installation.md §7.18"] },
+  { offset = 0x3C, name = "corpse_other_hex", type = "u8[14]", summary = "per corpse the other hex of a two-hex one (0 next, 1 previous)", confidence = "read", refs = ["installation.md §7.18"] },
+]
+
+[[struct]]
+name = "battle_object"
+size = 0x18
+summary = "A battlefield object (obstacle, Quicksand pit, Land Mine, Fire Wall hex, Force Field)."
+refs = ["installation.md §7.15"]
+fields = [
+  { offset = 0x0, name = "graphic", type = "ptr", summary = "graphic, 0 once removed", confidence = "read" },
+  { offset = 0x4, name = "descriptor", type = "object_descriptor*", summary = "type descriptor", confidence = "read" },
+  { offset = 0x8, name = "anchor", type = "u8", summary = "anchor hex", confidence = "read" },
+  { offset = 0x9, name = "owner", type = "i8", summary = "owner side, -1 the battlefield's", confidence = "read" },
+  { offset = 0xA, name = "revealed", type = "u8", summary = "shown to both sides", confidence = "read" },
+  { offset = 0xC, name = "value", type = "i32", summary = "Fire Wall's and Land Mine's damage", confidence = "read" },
+  { offset = 0x10, name = "rounds_left", type = "i32", summary = "0: lasts the battle", confidence = "read" },
+  { offset = 0x14, name = "vanish_animation", type = "i32", summary = "animation when it goes, -1 fade out", confidence = "read" },
+]
+
+[[struct]]
+name = "object_descriptor"
+size = 0x14
+summary = "A battlefield object type: its blocked hexes as offsets from the anchor."
+refs = ["installation.md §7.15"]
+fields = [
+  { offset = 0x6, name = "hex_count", type = "u8", summary = "blocked hexes", confidence = "read" },
+  { offset = 0x8, name = "hex_offsets", type = "i8[]", summary = "offsets from the anchor (odd/even row rule, BAT-GEO-004)", confidence = "read" },
+]
+
+[[struct]]
+name = "creature_record"
+size = 0x74
+summary = "A creature table record (0x6703B8, 150 of them; H3API's H3CreatureInformation). Copied into battle_stack at +0x74."
+refs = ["installation.md §5"]
+h3api = "H3CreatureInformation"
+fields = [
+  { offset = 0x0, name = "town", type = "i32", summary = "faction 0-8, -1 neutral", confidence = "read" },
+  { offset = 0x4, name = "level", type = "i32", summary = "level 0-6, -1 unused", confidence = "read" },
+  { offset = 0x8, name = "sound_prefix", type = "char*", summary = "sound name prefix", confidence = "read" },
+  { offset = 0xC, name = "def_name", type = "char*", summary = "DEF name", confidence = "read" },
+  { offset = 0x10, name = "flags", type = "u32", summary = "ability flags (installation.md §5)", confidence = "read" },
+]
+
+[[struct]]
+name = "spell_record"
+size = 0x88
+summary = "A spell table record (0x685450, 81 of them; H3API's H3Spell); only these fields are static, the rest come from SPTRAITS.TXT."
+refs = ["installation.md §7.6"]
+h3api = "H3Spell"
+fields = [
+  { offset = 0x0, name = "polarity", type = "i32", summary = "-1 negative, 0 neutral, 1 positive", confidence = "read" },
+  { offset = 0x4, name = "sound", type = "char*", summary = "sound name", confidence = "read" },
+  { offset = 0x8, name = "animation", type = "i32", summary = "animation", confidence = "read" },
+  { offset = 0xC, name = "flags", type = "u32", summary = "flag bits (installation.md §7.6)", confidence = "read" },
+]
+
+[[struct]]
+name = "hero_record"
+size = 0x5C
+summary = "A static hero record (0x679DD0, 156 + 1)."
+refs = ["installation.md §7.1"]
+fields = [
+  { offset = 0x0, name = "female", type = "i32", summary = "female", confidence = "read" },
+  { offset = 0x8, name = "class", type = "i32", summary = "class 0-17", confidence = "read" },
+  { offset = 0xC, name = "starting_skills", type = "(i32, i32)[2]", summary = "secondary skill and level 1-3, -1 none", confidence = "read" },
+  { offset = 0x1C, name = "has_spell_book", type = "u8", summary = "starts with a spell book", confidence = "read" },
+  { offset = 0x20, name = "starting_spell", type = "i32", summary = "-1 none", confidence = "read" },
+  { offset = 0x24, name = "starting_creatures", type = "i32[3]", summary = "creature types", confidence = "read" },
+  { offset = 0x30, name = "portraits", type = "char*[2]", summary = "small and large portrait", confidence = "read" },
+  { offset = 0x38, name = "flags", type = "u8[4]", summary = "RoE hero, expansions, campaign hero", confidence = "read" },
+  { offset = 0x3C, name = "name", type = "char*", summary = "filled from HOTRAITS.TXT", confidence = "read" },
+  { offset = 0x40, name = "starting_counts", type = "(i32, i32)[3]", summary = "low and high starting stack sizes, filled from HOTRAITS.TXT", confidence = "read" },
+]
+
+[[struct]]
+name = "hero_specialty_record"
+size = 0x28
+summary = "A hero specialty record (0x678420, 156)."
+refs = ["installation.md §7.2"]
+fields = [
+  { offset = 0x0, name = "kind", type = "i32", summary = "0 skill, 1 creature by level, 2 resource, 3 spell, 4 creature stats, 5 speed, 6 upgrade, 7 dragons, -1 none", confidence = "read" },
+  { offset = 0x4, name = "id", type = "i32", summary = "skill, creature, resource or spell id", confidence = "read" },
+  { offset = 0x8, name = "attack", type = "i32", summary = "kind 4", confidence = "read" },
+  { offset = 0xC, name = "defense", type = "i32", summary = "kind 4", confidence = "read" },
+  { offset = 0x10, name = "damage", type = "i32", summary = "kind 4", confidence = "read" },
+  { offset = 0x14, name = "upgrade_1", type = "i32", summary = "kind 6", confidence = "read" },
+  { offset = 0x18, name = "upgrade_2", type = "i32", summary = "kind 6", confidence = "read" },
+]
+
+[[struct]]
+name = "hero"
+size = 0x492
+summary = "A hero in the game (H3API's H3Hero, whose size is used here); only what the docs cite."
+refs = ["installation.md §7.4"]
+h3api = "H3Hero"
+fields = [
+  { offset = 0xC9, name = "secondary_skill_levels", type = "u8[28]", summary = "level per secondary skill id", confidence = "read", refs = ["installation.md §7.4"] },
+]
