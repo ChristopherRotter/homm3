@@ -257,7 +257,33 @@ pub enum Ability<C, S, L> {
         /// The caster's power (≥ 1).
         power: u8,
     },
+    /// As its stack's action, as many times a battle as its creature's `casts`, raises another
+    /// stack of its side, living or dead, for good by `hit_points_per_creature` × its creatures
+    /// hit points, under the raise spell `spell`'s test (its conditions, level and immunities;
+    /// the hit points must reach one creature's health): the Archangel with Resurrection's test
+    /// and 100 (BAT-MAG-051, v25).
+    StackRaiser {
+        /// The raise spell whose test applies.
+        spell: S,
+        /// The hit points it raises per creature of its stack (≥ 1).
+        hit_points_per_creature: u16,
+    },
+    /// As its stack's action, as many times a battle as its creature's `casts`, raises a stack of
+    /// `creature` from the corpse of a stack of its side whose creature is alive, in that stack's
+    /// army slot: `min(start, min(hit_points_per_creature × its creatures, start × health) div
+    /// the creature's health)` creatures, with the corpse's start count and health (the Pit
+    /// Lord's Demons with 50; BAT-MAG-052, v25).
+    CorpseRaiser {
+        /// The creature it raises.
+        creature: C,
+        /// The hit points per creature of its stack (≥ 1).
+        hit_points_per_creature: u16,
+    },
 }
+
+/// Most creatures `corpse_raiser` abilities raise in a ruleset (the battle keeps a stack of each
+/// per side from the battle's start, BAT-MAG-052; the Demons in the original).
+pub const MAX_RAISED_CREATURES: usize = 1;
 
 /// An ability as written in a pack (references are keys).
 pub type AbilityDef = Ability<ContentKey, ContentKey, ContentKey>;
@@ -267,7 +293,7 @@ pub type CompiledAbility = Ability<CreatureTypeId, SpellId, SchoolId>;
 
 impl<C, S, L> Ability<C, S, L> {
     /// Every ability name, in code order (the order of [`Ability::code`]).
-    pub const NAMES: [&'static str; 36] = [
+    pub const NAMES: [&'static str; 38] = [
         "hate",
         "jousting",
         "charge_immunity",
@@ -304,6 +330,8 @@ impl<C, S, L> Ability<C, S, L> {
         "random_spell_caster",
         "drawn_spell",
         "helpful_spell_caster",
+        "stack_raiser",
+        "corpse_raiser",
     ];
 
     /// Stable numeric code of the ability kind (canonical hashing, duplicate checks).
@@ -345,6 +373,8 @@ impl<C, S, L> Ability<C, S, L> {
             Self::RandomSpellCaster { .. } => 33,
             Self::DrawnSpell { .. } => 34,
             Self::HelpfulSpellCaster { .. } => 35,
+            Self::StackRaiser { .. } => 36,
+            Self::CorpseRaiser { .. } => 37,
         }
     }
 
@@ -491,6 +521,20 @@ impl<C, S, L> Ability<C, S, L> {
                 mastery: *mastery,
                 power: *power,
             },
+            Self::StackRaiser {
+                spell: x,
+                hit_points_per_creature,
+            } => Ability::StackRaiser {
+                spell: spell(x)?,
+                hit_points_per_creature: *hit_points_per_creature,
+            },
+            Self::CorpseRaiser {
+                creature: x,
+                hit_points_per_creature,
+            } => Ability::CorpseRaiser {
+                creature: creature(x)?,
+                hit_points_per_creature: *hit_points_per_creature,
+            },
         })
     }
 
@@ -549,6 +593,14 @@ impl<C, S, L> Ability<C, S, L> {
             Self::HelpfulSpellCaster { power: 0, .. } => {
                 Some("helpful_spell_caster power must be at least 1")
             }
+            Self::StackRaiser {
+                hit_points_per_creature: 0,
+                ..
+            } => Some("stack_raiser hit_points_per_creature must be at least 1"),
+            Self::CorpseRaiser {
+                hit_points_per_creature: 0,
+                ..
+            } => Some("corpse_raiser hit_points_per_creature must be at least 1"),
             Self::SpellDamageAfterStrike {
                 per_creature: 0, ..
             } => Some("spell_damage_after_strike per_creature must be at least 1"),
@@ -666,6 +718,20 @@ impl CanonicalHash for CompiledAbility {
                 h.write_u8(weight);
             }
             Self::HelpfulSpellCaster { mastery, power } => h.write_bytes(&[mastery, power]),
+            Self::StackRaiser {
+                spell,
+                hit_points_per_creature,
+            } => {
+                spell.hash_into(h);
+                h.write_u16(hit_points_per_creature);
+            }
+            Self::CorpseRaiser {
+                creature,
+                hit_points_per_creature,
+            } => {
+                creature.hash_into(h);
+                h.write_u16(hit_points_per_creature);
+            }
             Self::ChargeImmunity
             | Self::Regeneration
             | Self::UnlimitedRetaliations
@@ -722,9 +788,10 @@ pub(crate) fn list_error<C: PartialEq, S: PartialEq, L: PartialEq>(
     if has(11) && has(12) {
         return Some("attacks_all_adjacent and three_headed_attack exclude each other");
     }
-    if [32, 33, 35].iter().filter(|&&c| has(c)).count() > 1 {
+    if [32, 33, 35, 36, 37].iter().filter(|&&c| has(c)).count() > 1 {
         return Some(
-            "spell_caster, random_spell_caster and helpful_spell_caster exclude each other",
+            "spell_caster, random_spell_caster, helpful_spell_caster, stack_raiser and \
+             corpse_raiser exclude each other",
         );
     }
     if (has(33) || has(35)) != has(34) {
@@ -742,7 +809,7 @@ mod tests {
 
     type A = Ability<u8, u8, u8>;
 
-    fn all() -> [A; 36] {
+    fn all() -> [A; 38] {
         [
             A::Hate {
                 target: 3,
@@ -825,6 +892,14 @@ mod tests {
                 mastery: 2,
                 power: 6,
             },
+            A::StackRaiser {
+                spell: 7,
+                hit_points_per_creature: 100,
+            },
+            A::CorpseRaiser {
+                creature: 5,
+                hit_points_per_creature: 50,
+            },
         ]
     }
 
@@ -868,9 +943,11 @@ mod tests {
             .iter()
             .chain(&all()[32..33])
             .chain(&all()[34..35])
+            .chain(&all()[36..37])
         {
             assert_eq!(a.try_map(ok, fail, ok), Err("nope"));
         }
+        assert_eq!(all()[37].try_map(fail, ok, ok), Err("nope"));
         assert_eq!(
             A::SchoolImmunity { school: 1 }.try_map(fail, fail, ok),
             Ok(A::SchoolImmunity { school: 1 })
@@ -1040,6 +1117,14 @@ mod tests {
                 mastery: 2,
                 power: 0,
             },
+            A::StackRaiser {
+                spell: 1,
+                hit_points_per_creature: 0,
+            },
+            A::CorpseRaiser {
+                creature: 1,
+                hit_points_per_creature: 0,
+            },
         ];
         for a in bad {
             assert!(a.parameter_error().is_some(), "{a:?}");
@@ -1137,6 +1222,14 @@ mod tests {
         assert!(list_error(&[helpful]).unwrap().contains("drawn_spell"));
         assert!(
             list_error(&[random, helpful, drawn(1)])
+                .unwrap()
+                .contains("exclude")
+        );
+        // The raisers (BAT-MAG-051, BAT-MAG-052) are casters of their own kind.
+        let raisers = (all()[36], all()[37]);
+        assert_eq!(list_error(&[raisers.0]), None);
+        assert!(
+            list_error(&[raisers.0, raisers.1])
                 .unwrap()
                 .contains("exclude")
         );

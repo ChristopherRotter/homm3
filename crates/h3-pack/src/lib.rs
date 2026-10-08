@@ -380,6 +380,14 @@ enum AbilityDto {
         mastery: u8,
         power: u8,
     },
+    StackRaiser {
+        spell: String,
+        hit_points_per_creature: u16,
+    },
+    CorpseRaiser {
+        creature: String,
+        hit_points_per_creature: u16,
+    },
 }
 
 #[derive(Deserialize)]
@@ -509,6 +517,20 @@ impl AbilityDto {
             Self::HelpfulSpellCaster { mastery, power } => {
                 AbilityDef::HelpfulSpellCaster { mastery, power }
             }
+            Self::StackRaiser {
+                spell,
+                hit_points_per_creature,
+            } => AbilityDef::StackRaiser {
+                spell: reference(pack, &spell)?,
+                hit_points_per_creature,
+            },
+            Self::CorpseRaiser {
+                creature,
+                hit_points_per_creature,
+            } => AbilityDef::CorpseRaiser {
+                creature: reference(pack, &creature)?,
+                hit_points_per_creature,
+            },
         })
     }
 }
