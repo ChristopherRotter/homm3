@@ -1279,9 +1279,9 @@ pub(crate) fn resists(
 }
 
 /// Applies `cast`'s effects to stack `s` at the value `value`: its damage, reported, then, if the
-/// stack still lives, its dispel (BAT-MAG-016), its heal (BAT-MAG-017) and its timed changes
-/// (BAT-MAG-009), in this order (Cure ends the effects before it heals, `installation.md`
-/// §7.10).
+/// stack still lives, Cure's restoring of what Poison took (BAT-MAG-044), its dispel
+/// (BAT-MAG-016), its heal (BAT-MAG-017) and its timed changes (BAT-MAG-009), in this order (Cure
+/// resets the hit points and ends the effects before it heals, `installation.md` §7.10).
 fn affect<S: Sink>(
     state: &mut BattleState,
     ruleset: &Ruleset,
@@ -1308,6 +1308,11 @@ fn affect<S: Sink>(
     }
     if !state.at(s).is_alive() {
         return;
+    }
+    // rule: BAT-MAG-044
+    if cast.spell.magic.restores_health {
+        crate::vitality::restore(state, s);
+        effects::recompute(state, ruleset, s);
     }
     if cast.spell.magic.dispels() {
         effects::dispel(state, ruleset, cast.spell, s, sink);

@@ -119,11 +119,14 @@ pub(crate) fn clone<S: Sink>(
     };
     let original = *state.at(s);
     let shots = ruleset.creature(original.creature).map_or(0, |c| c.shots);
+    // Set up as a new stack, without its original's Poison and Age (BAT-MAG-044).
+    let max_hp = crate::vitality::start_hit_points(state, s);
     let stack = Stack {
         hex: head,
         slot: CREATED_SLOT,
         base_count: original.count,
-        top_hp: original.max_hp,
+        max_hp,
+        top_hp: max_hp,
         shots,
         retaliations_left: original.retaliations,
         traits: original
@@ -293,6 +296,7 @@ fn add(state: &mut BattleState, ruleset: &Ruleset, stack: Stack) -> StackId {
     state.raised.corpse[id.index()] = 0;
     state.created.link[id.index()] = NO_LINK;
     state.created.rounds[id.index()] = 0;
+    crate::vitality::reset(state, id);
     morale::materialize(state, ruleset);
     id
 }

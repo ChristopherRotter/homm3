@@ -209,6 +209,13 @@ pub enum EventKind {
         /// The spell.
         spell: SpellId,
     },
+    /// Poison took another tenth of a stack's hit points at a round start (BAT-MAG-044).
+    Poisoned {
+        /// The stack.
+        stack: StackId,
+        /// Its hit points per creature now.
+        hit_points: u32,
+    },
     /// A spell damaged a stack (BAT-MAG-004). The three amounts let a client show what the
     /// original's combat log shows: the caster's extra damage (`caster − value`) and the
     /// target's extra damage or reduction (`damage` against `caster`; batch 2a R5).

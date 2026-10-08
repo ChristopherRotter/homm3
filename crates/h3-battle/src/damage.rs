@@ -79,6 +79,8 @@ pub(crate) struct Strike {
     pub protection_percent: u16,
     /// The target's hero's Armorer (BAT-HER-004).
     pub hero_reduction: Rate,
+    /// The target is petrified: half the damage, in the original's stage 3 (BAT-MAG-043).
+    pub petrified: bool,
 }
 
 impl Strike {
@@ -98,6 +100,7 @@ impl Strike {
             retaliation_percent: 100,
             protection_percent: 100,
             hero_reduction: Rate::bp(0),
+            petrified: false,
         }
     }
 
@@ -157,7 +160,7 @@ impl Strike {
     fn exact(&self, base: u64, p: &BattleParams) -> u64 {
         let diff = u64::from(self.attack.abs_diff(self.defense));
         let bonus = self.exact_bonus(p);
-        let mut reductions = [0u64; 5];
+        let mut reductions = [0u64; 6];
         if self.attack <= self.defense {
             let per_point = u64::from(p.defense_reduction_per_point_permille) * 10;
             reductions[0] =
@@ -167,8 +170,9 @@ impl Strike {
         reductions[2] = u64::from(100u16.saturating_sub(self.protection_percent)) * 100;
         reductions[3] = u64::from(self.hero_reduction.bp);
         reductions[4] = u64::from(100u16.saturating_sub(self.retaliation_percent)) * 100;
-        // One rounding: the six factors' product (at most 2^78 · (2^14)^5, so the wide
-        // product never saturates) divided by BP^6 at the end. The specialist's bonus is a
+        reductions[5] = u64::from(self.petrified) * BP / 2;
+        // One rounding: the seven factors' product (at most 2^78 · (2^14)^6, so the wide
+        // product never saturates) divided by BP^7 at the end. The specialist's bonus is a
         // whole amount (at least −base), so the first stage is `(base + extra) · BP + base ·
         // bonus` over BP.
         let extra = self.blessed(base);
@@ -211,6 +215,10 @@ impl Strike {
         let mut g = X87::ONE;
         if self.protection_percent < 100 {
             g = single(self.protection_percent, 100);
+        }
+        // Stone Gaze's half (`installation.md` §7.10).
+        if self.petrified {
+            g = g.times(double(1, 2));
         }
         let reduction = hero_rate(true, self.hero_reduction);
         if reduction > 0 {

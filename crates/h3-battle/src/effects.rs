@@ -23,6 +23,7 @@ use h3_kernel::{CanonicalHash, StateHasher};
 use crate::event::{Event, EventKind, Sink};
 use crate::magic::{SpellBonus, specialist_bonus};
 use crate::state::{BattleState, Stack, StackFlags, StackId, StackTraits, UNLIMITED_RETALIATIONS};
+use crate::vitality;
 
 /// Entries reserved at the battle's start and on every fork (ADR-0014 point 5; measured in T3a).
 pub const EFFECT_CAPACITY: usize = 32;
@@ -170,8 +171,8 @@ impl Status {
     pub const FORGETFUL: Self = Self(1);
     /// It cannot shoot (Forgetfulness cast at Advanced or Expert, BAT-MAG-023).
     pub const NO_SHOOTING: Self = Self(1 << 1);
-    /// It loses its turns (Blind, BAT-MAG-024).
-    pub const BLIND: Self = Self(1 << 2);
+    /// It loses its turns (Blind, BAT-MAG-024; Stone Gaze, Paralyze, BAT-MAG-043).
+    pub const NO_TURNS: Self = Self(1 << 2);
     /// One of its effects ends when it takes damage (Blind, BAT-MAG-024).
     pub const DAMAGE_ENDS: Self = Self(1 << 3);
     /// Its turns are automatic and every other stack is its enemy (Berserk, BAT-MAG-025).
@@ -180,6 +181,8 @@ impl Status {
     pub const HYPNOTIZED: Self = Self(1 << 5);
     /// One of its effects ends after its own attack (Berserk, BAT-MAG-025).
     pub const ATTACK_ENDS: Self = Self(1 << 6);
+    /// It takes half the damage of strikes and does not retaliate (Stone Gaze, BAT-MAG-043).
+    pub const PETRIFIED: Self = Self(1 << 7);
 
     /// Whether all bits of `other` are set.
     pub const fn contains(self, other: Self) -> bool {
@@ -401,6 +404,10 @@ pub(crate) fn apply<S: Sink>(
             if changes.clone().any(|c| c == TimedChange::Retaliations) {
                 add_retaliations(state.at_mut(s), value);
             }
+            // rule: BAT-MAG-044
+            if changes.clone().any(|c| c == TimedChange::Poison) {
+                vitality::poison(state, s);
+            }
             // rule: BAT-MAG-021
             if changes.into_iter().any(|c| c == TimedChange::SpellImmunity) {
                 end_where(state, s, sink, |e| {
@@ -612,24 +619,34 @@ pub(crate) fn attacked<S: Sink>(
     recompute(state, ruleset, s);
 }
 
-/// The share of its retaliation's damage, percent, that stack `s` deals while blind (BAT-MAG-024:
-/// Blind's value), or `None` if it is not blind.
-pub(crate) fn blind_share(state: &BattleState, ruleset: &Ruleset, s: StackId) -> Option<u16> {
-    let blind = SpellEffect::Timed(TimedChange::Blind);
+/// The share of its retaliation's damage, percent, that stack `s` deals while it loses its turns:
+/// Blind's value (BAT-MAG-024) or Paralyze's (BAT-MAG-043), the smaller if both; `None` if it
+/// is neither.
+pub(crate) fn retaliation_share(state: &BattleState, ruleset: &Ruleset, s: StackId) -> Option<u16> {
+    let shares = [TimedChange::Blind, TimedChange::Paralyze].map(SpellEffect::Timed);
+    if !state.at(s).spells.status.contains(Status::NO_TURNS) {
+        return None;
+    }
     state
-        .at(s)
-        .spells
-        .status
-        .contains(Status::BLIND)
-        .then(|| {
-            state.effects.of(s).iter().find_map(|e| {
-                ruleset
-                    .spell(e.spell)
-                    .filter(|sp| sp.magic.effects.contains(&blind))
-                    .map(|_| e.value.min(100))
-            })
+        .effects
+        .of(s)
+        .iter()
+        .filter(|e| {
+            ruleset
+                .spell(e.spell)
+                .is_some_and(|sp| shares.iter().any(|c| sp.magic.effects.contains(c)))
         })
-        .flatten()
+        .map(|e| e.value.min(100))
+        .min()
+}
+
+/// Whether a timed `change` makes the stack lose its turns (BAT-MAG-024, BAT-MAG-043): a spell
+/// after a strike with one stops the struck stack's retaliation (BAT-MAG-040).
+pub(crate) const fn stops_turns(change: TimedChange) -> bool {
+    matches!(
+        change,
+        TimedChange::Blind | TimedChange::Petrify | TimedChange::Paralyze
+    )
 }
 
 /// Recomputes the [`SpellValues`] of stack `s` from its entries (BAT-MAG-011): the sums of what
@@ -637,14 +654,16 @@ pub(crate) fn blind_share(state: &BattleState, ruleset: &Ruleset, s: StackId) ->
 /// and luck changes summed by kind; the base damage from Bless (which wins over Curse, as the
 /// original checks it first) or Curse; the strongest slowing; then the speed: the stack's speed
 /// with what was added, at least 0, and while slowed `max(1, ⌊speed × share⌋)` with the share
-/// exact or, under quirk Q-0005, single precision as the original stores it. Then every stack's
-/// morale and luck are materialised again.
+/// exact or, under quirk Q-0005, single precision as the original stores it; its hit points per
+/// creature under Poison and Age (BAT-MAG-044). Then every stack's morale and luck are
+/// materialised again.
 pub(crate) fn recompute(state: &mut BattleState, ruleset: &Ruleset, s: StackId) {
     let single = ruleset.quirks().is_enabled(SINGLE_PRECISION_RATES);
     let mut values = SpellValues::default();
     let (mut attack, mut defense, mut speed) = (0i32, 0i32, 0i32);
     let (mut maximum, mut minimum) = (None::<u16>, None::<u16>);
     let (mut morale, mut luck) = (0i32, 0i32);
+    let mut aged = false;
     for e in state.effects.of(s) {
         attack += i32::from(e.attack);
         defense += i32::from(e.defense);
@@ -713,8 +732,19 @@ pub(crate) fn recompute(state: &mut BattleState, ruleset: &Ruleset, s: StackId) 
                         .with(Status::FORGETFUL, true)
                         .with(Status::NO_SHOOTING, e.mastery >= 2);
                 }
-                // rule: BAT-MAG-024
-                TimedChange::Blind => values.status = values.status.with(Status::BLIND, true),
+                // rule: BAT-MAG-024, BAT-MAG-043
+                TimedChange::Blind | TimedChange::Paralyze => {
+                    values.status = values.status.with(Status::NO_TURNS, true);
+                }
+                // rule: BAT-MAG-043
+                TimedChange::Petrify => {
+                    values.status = values
+                        .status
+                        .with(Status::NO_TURNS, true)
+                        .with(Status::PETRIFIED, true);
+                }
+                // rule: BAT-MAG-044
+                TimedChange::Age => aged = true,
                 // rule: BAT-MAG-025
                 TimedChange::Berserk => values.status = values.status.with(Status::BERSERK, true),
                 // rule: BAT-MAG-026
@@ -741,6 +771,8 @@ pub(crate) fn recompute(state: &mut BattleState, ruleset: &Ruleset, s: StackId) 
         u8::try_from((i32::from(stack.speed) + speed).clamp(0, u8::MAX.into())).unwrap_or(u8::MAX);
     values.speed = slowed(base, values.speed_percent, single);
     stack.spells = values;
+    // rule: BAT-MAG-044
+    vitality::materialize(state, ruleset, s, aged);
     crate::morale::materialize(state, ruleset);
 }
 
@@ -771,7 +803,9 @@ fn on_own_turn(ruleset: &Ruleset, spell: SpellId) -> bool {
 
 /// Starts a round for the effects (BAT-MAG-010): on every living stack, each effect with rounds
 /// either ends (its last round has passed) or loses a round; permanent effects stay, and those
-/// counted at the stack's own turn wait for it ([`own_turn`]).
+/// counted at the stack's own turn wait for it ([`own_turn`]). Then Poison, where it still
+/// lasts, takes another tenth (BAT-MAG-044; the original's 0x447120), reported when the hit
+/// points fell.
 // rule: BAT-MAG-010
 pub(crate) fn count_down<S: Sink>(state: &mut BattleState, ruleset: &Ruleset, sink: &mut S) {
     if state.effects.0.is_empty() {
@@ -801,9 +835,35 @@ pub(crate) fn count_down<S: Sink>(state: &mut BattleState, ruleset: &Ruleset, si
             None => i += 1,
         }
     }
-    for (index, _) in changed.iter().enumerate().filter(|(_, c)| **c) {
+    // rule: BAT-MAG-044
+    let poison = SpellEffect::Timed(TimedChange::Poison);
+    let mut poisoned = [false; crate::state::STACK_CAPACITY];
+    for e in &state.effects.0 {
+        let alive = state.stacks.as_slice()[e.stack.index()].is_alive();
+        if alive
+            && ruleset
+                .spell(e.spell)
+                .is_some_and(|sp| sp.magic.effects.contains(&poison))
+        {
+            poisoned[e.stack.index()] = true;
+        }
+    }
+    for (index, (&c, &p)) in changed.iter().zip(&poisoned).enumerate() {
         let id = StackId(u8::try_from(index).unwrap_or(u8::MAX));
-        recompute(state, ruleset, id);
+        if p {
+            let before = state.at(id).max_hp;
+            vitality::poison(state, id);
+            recompute(state, ruleset, id);
+            let hit_points = state.at(id).max_hp;
+            if hit_points < before {
+                sink.emit(Event::public(EventKind::Poisoned {
+                    stack: id,
+                    hit_points,
+                }));
+            }
+        } else if c {
+            recompute(state, ruleset, id);
+        }
     }
 }
 
