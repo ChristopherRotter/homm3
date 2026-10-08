@@ -150,7 +150,8 @@ errors:
 | `damage_after_strike` | `chance_percent` (1..=100), `percent` (1..=100) | since v21: after each melee strike, on a living struck stack and after the chance, deals `percent` % of one roll of its damage range × its creatures (truncated; nothing if 0), without a test (the Rust Dragon; BAT-MAG-047) |
 | `spell_caster` | `spell`, `mastery` (0..=3), `power` (≥ 1) | since v22: its stack may cast `spell` as its action, its creature's `casts` times a battle, at another living stack the spell may be aimed at (a creature's cast: `mastery`, value `power` × power factor + effect, timed effects lasting `power` rounds, no hero bonuses or cost, no resistance roll for the aimed stack); the spell has damage, timed, dispel or heal effects only, no health limit, and takes a target stack at `mastery` in every profile (Ogre Mage, the AB elementals; BAT-MAG-048) |
 | `random_spell_caster` | `mastery` (0..=3), `power_per_creature` (≥ 1) | since v23: at each activation of its stack while it has casts left it draws one of its creature's `drawn_spell` entries by weight and may cast it as its action, its creature's `casts` times a battle, at a living stack other than itself that the spell can affect by its polarity (either side for a neutral spell; a hex spell at a hex of that stack, never an empty hex): a creature's cast at `mastery` with power `power_per_creature` × its creatures; the draw is private to its controller (the Faerie Dragon; BAT-MAG-049). Excludes `spell_caster`; needs `drawn_spell` entries |
-| `drawn_spell` | `spell`, `weight` (≥ 1) | since v23: one spell a random caster may draw, with its weight among the creature's entries (one entry per spell); the spell has damage, timed, dispel or heal effects only, no health limit or obstacle, and takes a target stack or hex at the caster's mastery in every profile (BAT-MAG-049) |
+| `drawn_spell` | `spell`, `weight` (≥ 1) | since v23: one spell a random caster (since v24 a helpful caster: then a stack spell) may draw, with its weight among the creature's entries (one entry per spell); the spell has damage, timed, dispel or heal effects only, no health limit or obstacle, and takes a target stack or hex at the caster's mastery in every profile (BAT-MAG-049) |
+| `helpful_spell_caster` | `mastery` (0..=3), `power` (≥ 1) | since v24: its stack may cast as its action, its creature's `casts` times a battle, at another stack its side owns for which one of its creature's `drawn_spell` entries is useful (the spell's `useful`); the spell is drawn at the cast among the useful ones by weight: a creature's cast at `mastery` with `power` (the Master Genie; BAT-MAG-050). Excludes `spell_caster` and `random_spell_caster`; needs `drawn_spell` entries |
 
 `creature` references follow the reference rules above (own pack, or `pack:name` in the
 dependency closure) and may name creatures defined later in the same pack. At most one entry of
@@ -165,7 +166,7 @@ override, replacing the list) names the creature types it upgrades into: at most
 none twice; references follow the reference rules and may name later creatures of the pack.
 Hero effects that select "a creature" apply to it and its direct upgrades.
 
-## Hero content (format v3, E04a T3; battle magic format v4, E04b T2a; v5 T3a; v6 T3b1; v7 T3b1b; v8 T3b2; v9 T3c; v10 T4a; v11 T4b; v12 T4c; v13 T5a; v14 T5c1; v15 T5c2; v16 T5b; v17 T6a; v18 T6b; v19 T7a1; v20 T7a2; v21 T7a3; v22 T7b1; v23 T7b2a)
+## Hero content (format v3, E04a T3; battle magic format v4, E04b T2a; v5 T3a; v6 T3b1; v7 T3b1b; v8 T3b2; v9 T3c; v10 T4a; v11 T4b; v12 T4c; v13 T5a; v14 T5c1; v15 T5c2; v16 T5b; v17 T6a; v18 T6b; v19 T7a1; v20 T7a2; v21 T7a3; v22 T7b1; v23 T7b2a; v24 T7b2b)
 
 Spell schools, spells, secondary skills, hero classes and hero types (ADR-0013). References follow
 the reference rules above; every kind may refer to content of its dependency closure.
@@ -254,6 +255,10 @@ clears_obstacles = "expert"        # v13: from this mastery a cast also removes 
                                    # Helpful Spells, a creature ability; BAT-MAG-042)
 # restores_health = true           # v20: (with a heal effect) a cast first gives back what
                                    # Poison took (Cure; BAT-MAG-044)
+# useful = "wounded"               # v24: when a helpful caster finds it useful on a stack
+                                   # (BAT-MAG-050): always (default), enemy_melee,
+                                   # enemy_shooter, enemy_spell_book, wounded, melee, shooting,
+                                   # not_acted, enemy_king
 effects = [{ kind = "dispel" }]
 
 [[spell]]                          # an obstacle spell (pack format v13, E04b T5a)

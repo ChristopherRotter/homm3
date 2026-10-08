@@ -524,13 +524,21 @@ fn a_random_casters_drawn_spells_take_a_stack_or_a_hex_at_its_mastery() {
         );
     }
     let reason = "drawn_spell needs a spell with damage, timed, dispel or heal effects and no \
-                  health limit or obstacle that takes a target stack or hex at its caster's \
-                  mastery";
+                  health limit or obstacle that takes a target stack or hex (for a helpful \
+                  caster a stack) at its caster's mastery";
+    let helpful = AbilityDef::HelpfulSpellCaster {
+        mastery: 2,
+        power: 6,
+    };
+    let mut good = p.clone();
+    good.creatures[0].info.abilities = vec![drawn("t:haste"), helpful.clone()];
+    assert!(compile(&[good]).is_ok());
     for bad_abilities in [
         vec![random(2), drawn("t:gaze")],
         vec![random(2), drawn("t:charm")],
         vec![random(2), drawn("t:rise")],
         vec![random(3), drawn("t:haste")],
+        vec![helpful, drawn("t:wall")],
     ] {
         let mut bad = p.clone();
         bad.creatures[0].info.abilities = bad_abilities;

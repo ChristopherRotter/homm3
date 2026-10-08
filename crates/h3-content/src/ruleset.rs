@@ -34,7 +34,7 @@ pub const MAX_SIDE_STACKS: usize = 21;
 pub const MAX_FIELD_HEXES: usize = 255;
 
 /// Version of the ruleset hash encoding. Bump when the encoding below changes.
-pub const RULESET_HASH_VERSION: u32 = 32;
+pub const RULESET_HASH_VERSION: u32 = 33;
 
 /// A compiled creature type.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -1168,13 +1168,14 @@ fn validate_strike_spells(
             }
             Ability::DrawnSpell { spell: id, .. } => {
                 // A drawn spell needs its caster (`ability::list_error`).
-                let mastery = abils
+                let (mastery, stack_only) = abils
                     .iter()
                     .find_map(|a| match *a {
-                        Ability::RandomSpellCaster { mastery, .. } => Some(mastery),
+                        Ability::RandomSpellCaster { mastery, .. } => Some((mastery, false)),
+                        Ability::HelpfulSpellCaster { mastery, .. } => Some((mastery, true)),
                         _ => None,
                     })
-                    .unwrap_or(0);
+                    .unwrap_or((0, false));
                 let effects = spell(id);
                 let kinds = !effects.is_empty()
                     && effects.iter().all(|e| {
@@ -1190,16 +1191,15 @@ fn validate_strike_spells(
                     !s.magic.health_limit
                         && s.magic.obstacle.is_none()
                         && [false, true].iter().all(|&early| {
-                            matches!(
-                                s.magic.target_at(mastery, early),
-                                SpellTarget::Stack | SpellTarget::Hex
-                            )
+                            let target = s.magic.target_at(mastery, early);
+                            target == SpellTarget::Stack
+                                || (!stack_only && target == SpellTarget::Hex)
                         })
                 });
                 (!(kinds && aimed)).then_some(
                     "drawn_spell needs a spell with damage, timed, dispel or heal effects and no \
-                     health limit or obstacle that takes a target stack or hex at its caster's \
-                     mastery",
+                     health limit or obstacle that takes a target stack or hex (for a helpful \
+                     caster a stack) at its caster's mastery",
                 )
             }
             _ => None,
