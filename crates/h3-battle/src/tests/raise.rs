@@ -27,11 +27,11 @@ fn raiser(r: &Ruleset, air: u8, fire: u8) -> BattleHero {
 }
 
 /// Kills stack `id` as a command would, and marks its corpse.
-fn kill(s: &mut BattleState, id: u8) {
+fn kill(s: &mut BattleState, r: &Ruleset, id: u8) {
     let stack = &mut s.stacks.as_mut_slice()[usize::from(id)];
     stack.count = 0;
     stack.top_hp = 0;
-    effects::remove_dead(s);
+    effects::remove_dead(s, r);
     mark_corpses(s);
 }
 
@@ -126,7 +126,7 @@ fn resurrection_raises_a_wounded_stack_for_the_battle_below_advanced() {
     s.stacks.as_mut_slice()[1].count = 1;
     assert_eq!(targets(&s, &r, "rise"), Vec::<u8>::new());
     // The temporary creatures are left out of the end count (S-20's winner keeps the rest).
-    kill(&mut s, 2);
+    kill(&mut s, &r, 2);
     crate::combat::check_end(&mut s, &mut Vec::<Event>::new());
     let outcome = s.outcome().unwrap();
     assert_eq!(outcome.result, BattleResult::Victory(BattleSide::Attacker));
@@ -185,7 +185,7 @@ fn a_dead_stack_comes_back_on_its_hexes_without_effects_and_keeps_its_round() {
     s.stacks.as_mut_slice()[1]
         .flags
         .set(crate::StackFlags::ACTED, true);
-    kill(&mut s, 1);
+    kill(&mut s, &r, 1);
     assert_eq!(s.corpse(StackId(1)), 1);
     assert_eq!(targets(&s, &r, "rise"), vec![1]);
     // Expert: 3 × 50 + 160 = 310 hit points, capped at 40: all four back, for good.
@@ -221,14 +221,14 @@ fn a_corpse_is_raised_only_from_a_free_hex_and_from_the_top() {
         1,
     );
     // Serfs 1 and 2 die on the same hex, 2 last: only 2 is on top.
-    kill(&mut s, 1);
+    kill(&mut s, &r, 1);
     place(&mut s, &r, 2, 5, 5);
-    kill(&mut s, 2);
+    kill(&mut s, &r, 2);
     assert_eq!((s.corpse(StackId(1)), s.corpse(StackId(2))), (1, 2));
     assert_eq!(targets(&s, &r, "rise"), vec![2]);
     // A corpse that does not pass the test does not cover one below it: a ghoul on top.
     place(&mut s, &r, 3, 5, 5);
-    kill(&mut s, 3);
+    kill(&mut s, &r, 3);
     assert_eq!(targets(&s, &r, "rise"), vec![2]);
     assert_eq!(targets(&s, &r, "animate"), vec![3]);
     // A living stack on the hex hides every corpse there.
@@ -236,7 +236,7 @@ fn a_corpse_is_raised_only_from_a_free_hex_and_from_the_top() {
     assert_eq!(targets(&s, &r, "rise"), Vec::<u8>::new());
     place(&mut s, &r, 0, 2, 1);
     // A dead two-hex stack needs both its hexes free.
-    kill(&mut s, 4);
+    kill(&mut s, &r, 4);
     let ogre = s.stacks()[4];
     assert_eq!(targets(&s, &r, "rise"), vec![2, 4]);
     let tail = ogre
@@ -281,7 +281,7 @@ fn sacrifice_kills_its_victim_without_a_corpse_and_raises_its_target() {
         &[("serf", 1, 14, 5)],
         1,
     );
-    kill(&mut s, 1);
+    kill(&mut s, &r, 1);
     // Without quirk BAT-QUIRK-5 the dead seraphs are a target by Sacrifice's own test.
     assert_eq!(targets(&s, &r, "offering"), vec![1]);
     // Victims: a stack of living creatures of the side, other than the target.
@@ -451,13 +451,13 @@ fn a_corpse_under_a_wall_or_below_corpses_that_do_not_count() {
         1,
     );
     // The own serfs die on (5, 5); an enemy serf dies there later: it does not hide them.
-    kill(&mut s, 1);
+    kill(&mut s, &r, 1);
     place(&mut s, &r, 3, 5, 5);
-    kill(&mut s, 3);
+    kill(&mut s, &r, 3);
     assert_eq!(targets(&s, &r, "rise"), vec![1]);
     // A two-hex corpse above them whose other hex is held does not hide them either.
     place(&mut s, &r, 2, 5, 5);
-    kill(&mut s, 2);
+    kill(&mut s, &r, 2);
     let ogre = s.stacks()[2];
     let tail = ogre
         .footprint(field(&r))
@@ -518,7 +518,7 @@ fn with_bat_quirk_5_a_dead_target_takes_resurrections_test_too() {
         &[("serf", 1, 14, 5)],
         1,
     );
-    kill(&mut s, 1);
+    kill(&mut s, &r, 1);
     // 190 hit points of Resurrection do not reach a seraph's 200: no target, dead or alive.
     assert_eq!(targets(&s, &r, "offering"), Vec::<u8>::new());
     s.heroes[0].as_mut().unwrap().magic.schools[0] = 2;
@@ -536,7 +536,7 @@ fn a_raised_stack_that_had_not_acted_gets_its_turn() {
         &[("tank", 1, 14, 5)],
         1,
     );
-    kill(&mut s, 1);
+    kill(&mut s, &r, 1);
     cast(&mut s, &r, "rise", (stack(1), CastTarget::None)).unwrap();
     let order = order(&mut s, &r, 3);
     assert!(order.contains(&1), "{order:?}");
@@ -579,8 +579,8 @@ fn a_side_left_with_creatures_raised_for_the_battle_only_keeps_one() {
     place(&mut s, &r, 1, 2, 5);
     activate(&mut s, 0);
     // Both serf stacks die; Basic Resurrection raises them for the battle only.
-    kill(&mut s, 0);
-    kill(&mut s, 1);
+    kill(&mut s, &r, 0);
+    kill(&mut s, &r, 1);
     for id in [0, 1] {
         s.heroes[0].as_mut().unwrap().view.casts = 0;
         cast(&mut s, &r, "rise", (stack(id), CastTarget::None)).unwrap();
@@ -591,7 +591,7 @@ fn a_side_left_with_creatures_raised_for_the_battle_only_keeps_one() {
         .iter()
         .position(|st| st.side == BattleSide::Defender)
         .unwrap();
-    kill(&mut s, u8::try_from(defender).unwrap());
+    kill(&mut s, &r, u8::try_from(defender).unwrap());
     crate::combat::check_end(&mut s, &mut Vec::<Event>::new());
     let outcome = s.outcome().unwrap();
     assert_eq!(outcome.result, BattleResult::Victory(BattleSide::Attacker));

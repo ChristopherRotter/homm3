@@ -277,7 +277,7 @@ pub(crate) fn summon<S: Sink>(
 /// have them. Returns its id.
 fn add(state: &mut BattleState, ruleset: &Ruleset, stack: Stack) -> StackId {
     // A dead stack's effects are gone after every command; a reused slot starts without them.
-    effects::remove_dead(state);
+    effects::remove_dead(state, ruleset);
     let reused = (0u8..)
         .zip(state.stacks.iter())
         .find(|(_, s)| s.side == stack.side && s.is_created() && !s.is_alive())

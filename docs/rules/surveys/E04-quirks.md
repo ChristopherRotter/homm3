@@ -116,6 +116,7 @@ Outside the E04 scope, listed so they are not lost (no classification needed now
 ### S-14 — Harpies stay bound forever after Dendroid roots (E04b)
 - Original: wiki Harpy and Harpy Hag: a Harpy that attacks a Dendroid stack returns and is then bound; if the Dendroids move or die the binding never lapses "(fixed in Horn of the Abyss)".
 - Suggested **exploit-fix** (a stack stuck by a stale effect).
+- **Confirmed by code reading and fixed** (E04b T7a review, `installation.md` §7.20): the return (0x4789F8) skips blind, petrified and paralysed Harpies but not bound ones, and the move's binder release (0x43EE10) empties the Harpy's lists without ending its Bind, so only Teleport, Dispel or the 255 rounds free it. Known only as a bug (wiki; fixed in HotA 1.3.3; VCMI does not return a bound stack). **User (2026-10-08): no quirk flag; a bound stack does not return, in every profile** (BAT-ATK-004, BAT-MAG-045).
 
 ### S-15 — Gold Dragons are affected by hero Dispel and by Sacrifice (E04b)
 - Original: wiki Trivia: "Gold Dragons are susceptible to Dispel cast by heroes, the Sacrificing part of Sacrifice (but not the Resurrection)", although they are immune to spells of levels 1–4.

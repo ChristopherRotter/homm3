@@ -25,7 +25,7 @@ use crate::magic::Specialist;
 use crate::state::{
     BattleState, STACK_CAPACITY, Stack, StackFlags, StackId, StackTraits, UNLIMITED_RETALIATIONS,
 };
-use crate::{after_strike, magic, morale, war};
+use crate::{after_strike, binds, magic, morale, war};
 
 /// The secondary targets of an attack, by stack index.
 type Targets = [bool; STACK_CAPACITY];
@@ -412,8 +412,8 @@ fn penalty(
 /// the luck roll (BAT-LCK-002), the death-blow roll (BAT-DMG-007) and a commanded war machine's
 /// double-damage roll (BAT-WAR-006, in this order as in VCMI), the strike on the target
 /// (the only one luck applies to, Q18), the strikes on the others in stack-id order, for a melee
-/// attack the spells of the attacker's abilities on the target (BAT-MAG-040, BAT-MAG-041), then
-/// life drain (BAT-DMG-008) and death stare (BAT-DMG-009). Returns whether those spells stopped
+/// attack the spells and extra damage of the attacker's abilities on the target (BAT-MAG-040 to
+/// BAT-MAG-047), then life drain (BAT-DMG-008) and death stare (BAT-DMG-009). Returns whether those spells stopped
 /// the target's turns (it then does not retaliate).
 fn attack<S: Sink>(
     state: &mut BattleState,
@@ -684,8 +684,9 @@ fn pattern_hexes(field: Field, me: &Stack, fp: Footprint, victim: Footprint) -> 
 /// on `target` (BAT-ATK-001): the attack, the target's retaliation (BAT-RET-001..003; reduced
 /// or none if the target was blind, BAT-MAG-024; none if the attack's spells stopped its turns,
 /// BAT-MAG-040), for creatures that strike twice a second attack unless the attacker now loses
-/// its turns (BAT-ATK-002), the return to `start` of creatures that strike and return (BAT-ATK-004), the
-/// end of the attacker's Berserk (BAT-MAG-025), then the end-of-battle check (BAT-END-001).
+/// its turns (BAT-ATK-002), the return to `start` of creatures that strike and return unless the
+/// attacker now loses its turns or is bound (BAT-ATK-004, BAT-MAG-045), the end of the attacker's
+/// Berserk (BAT-MAG-025), then the end-of-battle check (BAT-END-001).
 pub(crate) fn melee<S: Sink>(
     state: &mut BattleState,
     ruleset: &Ruleset,
@@ -731,9 +732,18 @@ pub(crate) fn melee<S: Sink>(
             retaliate(state, ruleset, (target, attacker), blind, sink);
         }
     }
-    // rule: BAT-ATK-004
+    // rule: BAT-ATK-004, BAT-MAG-045
+    // The original's return (0x4789F8, `installation.md` §7.20) skips a stack that the
+    // retaliation blinded, petrified or paralysed; a bound one stays too (survey S-14, fixed in
+    // every profile: the original flies it back still bound, clears its binder lists on the move
+    // and so never releases it).
     let me = state.at(attacker);
-    if me.has(StackTraits::STRIKE_AND_RETURN) && me.is_alive() && me.hex != start {
+    if me.has(StackTraits::STRIKE_AND_RETURN)
+        && me.is_alive()
+        && me.hex != start
+        && !me.spells.status.contains(Status::NO_TURNS)
+        && !binds::is_bound(state, attacker)
+    {
         let from = me.hex;
         state.at_mut(attacker).hex = start;
         sink.emit(Event::public(EventKind::Moved {

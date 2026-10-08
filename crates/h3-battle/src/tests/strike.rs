@@ -251,6 +251,27 @@ fn a_hypnotized_striker_blinds_a_stack_of_its_own_side() {
 
 // ---------------------------------------------------------------- BAT-MAG-042
 
+// covers: BAT-MAG-040
+#[test]
+fn magic_mirror_never_sends_a_strikes_spell_away() {
+    let r = ruleset();
+    let mut s = arena(
+        &r,
+        [None, None],
+        &[("blinder", 5, 7, 5), ("fixed", 5, 9, 5)],
+        &[("fixed", 10, 8, 5)],
+        1,
+    );
+    // An Expert mirror redirects every spell it may; the strike's Blind still lands.
+    give(&mut s, &r, (2, "mirror"), 3);
+    let events = hit(&mut s, &r, 2, (7, 5));
+    assert_eq!(
+        strike_spells(&r, &events),
+        vec![(0, 2, String::from("blind"))]
+    );
+    assert!(s.at(StackId(2)).spells.status.contains(Status::NO_TURNS));
+}
+
 // covers: BAT-MAG-040, BAT-MAG-042
 #[test]
 fn a_fly_dispels_positive_spells_and_weakens_at_advanced_unless_weakened() {
@@ -449,6 +470,27 @@ fn disease_takes_two_attack_and_defense_from_living_stacks_for_its_rounds() {
     assert!(strike_spells(&r, &events).is_empty());
 }
 
+// covers: BAT-MAG-009, BAT-MAG-040
+#[test]
+fn disease_takes_no_more_attack_and_defense_than_there_is() {
+    let r = ruleset();
+    // Peasants have 1 attack and 1 defense: Disease takes 1 of each and gives back 1.
+    let (mut s, events) = struck(&r, "rotter", "peasant");
+    assert_eq!(
+        strike_spells(&r, &events),
+        vec![(0, 2, String::from("plague"))]
+    );
+    let peasants = |s: &BattleState| {
+        let p = s.at(StackId(2));
+        (p.attack_now(false), p.defense_now())
+    };
+    assert_eq!(peasants(&s), (0, 0));
+    for _ in 0..3 {
+        new_round(&mut s, &r);
+    }
+    assert_eq!(peasants(&s), (1, 1));
+}
+
 // covers: BAT-MAG-044
 #[test]
 fn age_halves_the_hit_points_per_creature_while_it_lasts() {
@@ -471,6 +513,30 @@ fn age_halves_the_hit_points_per_creature_while_it_lasts() {
     // Age ended: 10 per creature again, the top one having lost 4 of the 5.
     let serfs = s.at(StackId(1));
     assert_eq!((serfs.max_hp, serfs.top_hp), (10, 6));
+}
+
+// covers: BAT-MAG-044, BAT-MAG-010, BAT-MAG-035
+#[test]
+fn a_stack_that_dies_aged_comes_back_with_its_full_hit_points() {
+    let r = ruleset();
+    let mut s = arena(
+        &r,
+        [None, None],
+        &[("ancient", 5, 7, 5), ("seraph", 20, 9, 5)],
+        &[("serf", 10, 8, 5), ("fixed", 1, 14, 2)],
+        1,
+    );
+    activate(&mut s, 0);
+    hit(&mut s, &r, 2, (7, 5));
+    assert_eq!(s.at(StackId(2)).max_hp, 5);
+    activate(&mut s, 1);
+    hit(&mut s, &r, 2, (9, 5));
+    // Its death ended Age (the original's 0x444120 ends every spell): 10 per creature again,
+    // so 20 hit points raise two serfs, not four.
+    let serfs = s.at(StackId(2));
+    assert_eq!((serfs.is_alive(), serfs.max_hp), (false, 10));
+    crate::raise::raise(&mut s, &r, (StackId(2), 20), false, &mut Vec::new());
+    assert_eq!(s.at(StackId(2)).count, 2);
 }
 
 /// The `Poisoned` events of `events`, as `(stack, hit points)`.
@@ -697,6 +763,91 @@ fn a_bound_berserk_stack_attacks_only_next_to_it() {
     let mut events = Vec::new();
     crate::turn::berserk_now(&mut s, &r, &mut events);
     assert_eq!(strikes(&events), vec![(0, 1), (1, 0)]);
+}
+
+// covers: BAT-ATK-004, BAT-MAG-045, BAT-MAG-024
+#[test]
+fn a_harpy_bound_or_blinded_by_the_retaliation_stays_where_it_struck() {
+    let r = ruleset();
+    let duel = |defender| {
+        let mut s = arena(
+            &r,
+            [None, None],
+            &[("harpy", 5, 3, 5)],
+            &[(defender, 10, 8, 5), ("fixed", 1, 14, 2)],
+            1,
+        );
+        activate(&mut s, 0);
+        hit(&mut s, &r, 1, (7, 5));
+        s
+    };
+    assert_eq!(duel("fixed").at(StackId(0)).hex, at(&r, 3, 5));
+    assert_eq!(duel("blinder").at(StackId(0)).hex, at(&r, 7, 5));
+    // Survey S-14 fixed: a bound harpy stays next to its binder, which frees it by walking away.
+    let mut s = duel("binder");
+    assert_eq!(s.at(StackId(0)).hex, at(&r, 7, 5));
+    assert!(crate::binds::is_bound(&s, StackId(0)));
+    activate(&mut s, 1);
+    let events = act(&mut s, &r, Command::Move { to: at(&r, 10, 5) }).unwrap();
+    assert!(unbound(&r, &events, 0));
+    activate(&mut s, 0);
+    act(&mut s, &r, Command::Move { to: at(&r, 3, 5) }).unwrap();
+}
+
+// covers: BAT-MAG-045
+#[test]
+fn a_bound_shooter_still_shoots() {
+    let r = ruleset();
+    let mut s = arena(
+        &r,
+        [None, None],
+        &[("archer", 5, 2, 5)],
+        &[("fixed", 5, 12, 5)],
+        1,
+    );
+    give(&mut s, &r, (0, "tether"), 0);
+    assert!(crate::binds::is_bound(&s, StackId(0)));
+    activate(&mut s, 0);
+    let shoot = Command::Shoot {
+        target: StackId(1),
+        at: s.at(StackId(1)).hex,
+    };
+    act(&mut s, &r, shoot).unwrap();
+}
+
+// covers: BAT-MAG-045, BAT-MAG-038
+#[test]
+fn a_binding_clone_that_vanishes_with_its_original_frees_the_stack_it_binds() {
+    let r = ruleset();
+    let mut copier = super::spells::mage(&r, &["copy"]);
+    copier.magic.schools[0] = 1;
+    copier.magic.mana = 100;
+    let mut s = arena(
+        &r,
+        [Some(copier), None],
+        &[("binder", 5, 2, 2)],
+        &[("fixed", 10, 8, 5), ("fixed", 1, 14, 2)],
+        1,
+    );
+    activate(&mut s, 0);
+    act(
+        &mut s,
+        &r,
+        super::spells::cast(&r, "copy", super::spells::stack(0)),
+    )
+    .unwrap();
+    let clone = StackId(3);
+    assert!(s.at(clone).is_created());
+    // The clone binds the Defender's stack (as its strike would).
+    assert!(crate::binds::join(&mut s, clone, StackId(1)));
+    give(&mut s, &r, (1, "tether"), 0);
+    assert!(crate::binds::is_bound(&s, StackId(1)));
+    // Its original dies and takes it along: the bound stack is free.
+    let mut events = Vec::new();
+    crate::damage::apply_damage(s.at_mut(StackId(0)), 1000);
+    crate::effects::damaged(&mut s, &r, StackId(0), &mut events);
+    assert!(!s.at(clone).is_alive());
+    assert!(unbound(&r, &events, 1));
 }
 
 /// The extra damage `events` report, as `(striker, target, damage, kills)`.

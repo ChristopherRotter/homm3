@@ -497,7 +497,7 @@ id       = "BAT-ATK-004"
 title    = "Strike and return"
 context  = "battle"
 status   = "implemented"
-summary  = "A creature with strike_and_return that moved to attack returns to the hex it started its turn on after the whole melee attack (after the retaliation and a second attack), if it is still alive; the return is a move event and costs nothing. It does not return if it did not move or died. The start hex is always free again (nothing else moves during an attack)."
+summary  = "A creature with strike_and_return that moved to attack returns to the hex it started its turn on after the whole melee attack (after the retaliation and a second attack), if it is still alive and does not lose its turns (Blind, Stone Gaze or Paralyze from the retaliation, BAT-MAG-024, BAT-MAG-043) and is not bound (BAT-MAG-045); the return is a move event and costs nothing. It does not return if it did not move or died. A bound stack staying is the fix of the original's bug (survey S-14, in every profile, the user 2026-10-08): the original flies a bound Harpy back, which empties its binder lists without ending its Bind, so it stays bound for 255 rounds whatever its binders do. The start hex is always free again (nothing else moves during an attack)."
 numeric  = "integer"
 
   [[rule.source]]
@@ -509,9 +509,21 @@ numeric  = "integer"
 
   [[rule.source]]
   kind       = "vcmi"
-  ref        = "server/battles/BattleActionProcessor.cpp doAttackAction: RETURN_AFTER_STRIKE moves back to the starting position after the attack loop if the stack moved and is alive"
+  ref        = "server/battles/BattleActionProcessor.cpp doAttackAction: RETURN_AFTER_STRIKE moves back to the starting position after the attack loop if the stack moved and is alive, not NOT_ACTIVE and without BIND_EFFECT (rechecked 2026-10-08)"
   url        = "https://github.com/vcmi/vcmi/blob/1.7.5/server/battles/BattleActionProcessor.cpp"
   retrieved  = "2026-10-01"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (docs/formats/installation.md §7.20): the action handler returns creatures 72 and 73 (Harpy, Harpy Hag) at 0x4789F8 if they moved, are not dead and their Blind (+0x290), Stone Gaze (+0x2B0) and Paralyze (+0x2C0) durations are 0; Bind (+0x2B8) is not tested, and the move's 0x43EE10 empties the returning stack's binder lists without ending its Bind (S-14)"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "wiki"
+  ref        = "Harpy and Harpy Hag - Heroes 3 wiki: 'After the retaliation, Harpies return to their original hex as usual, and are bound after the return ... causing the Harpies to be bound down forever if not attacked or Dispelled (fixed in Horn of the Abyss)'; Dendroid Guard and Dendroid Soldier: bugged 'in Shadow of Death (and until version 1.3.3 of Horn of the Abyss)'"
+  url        = "https://heroes.thelazy.net/index.php/Harpy_and_Harpy_Hag"
+  retrieved  = "2026-10-08"
   confidence = "high"
 
 [[rule]]
@@ -2752,7 +2764,7 @@ id       = "BAT-MAG-044"
 title    = "Poison and Age"
 context  = "battle"
 status   = "implemented"
-summary  = "A stack's hit points per creature follow its start value H, the tenths Poison took (0 to 5) and Age: floor(H x (10 - tenths) / 10 x (1/2 while aged) + 0.95), with exact decimals or, with quirk Q-0005, as the original's x87 code computes it from f32 values (a factor falling by f32(0.1) and stored as an f32 each time, H as an f32, + f32(0.95)); the top creature keeps the hit points it lost, at least 1 left, and no creature dies. A timed poison change (TimedChange::Poison: Poison, a creature ability of level 0 on living creatures only, the Wyvern Monarchs' 30 %, BAT-MAG-040; Gargoyles are immune) takes a tenth when it starts (not when a cast finds it active) and at every round start while it lasts, after the effects count down (a Poisoned event reports the hit points); the tenths stay after it ends, until a spell with restores_health (Cure) gives them back before its dispel. A timed age change (TimedChange::Age: Age, level 5, the Ghost Dragons' 20 % on living creatures) halves them while it lasts. A clone starts from its original's start value, without its Poison and Age; a stack created in a dead created stack's slot starts afresh."
+summary  = "A stack's hit points per creature follow its start value H, the tenths Poison took (0 to 5) and Age: floor(H x (10 - tenths) / 10 x (1/2 while aged) + 0.95), with exact decimals or, with quirk Q-0005, as the original's x87 code computes it from f32 values (a factor falling by f32(0.1) and stored as an f32 each time, H as an f32, + f32(0.95)); the top creature keeps the hit points it lost, at least 1 left, and no creature dies. A timed poison change (TimedChange::Poison: Poison, a creature ability of level 0 on living creatures only, the Wyvern Monarchs' 30 %, BAT-MAG-040; Gargoyles are immune) takes a tenth when it starts (not when a cast finds it active) and at every round start while it lasts, after the effects count down (a Poisoned event reports the hit points); the tenths stay after it ends, until a spell with restores_health (Cure) gives them back before its dispel. A timed age change (TimedChange::Age: Age, level 5, the Ghost Dragons' 20 % on living creatures) halves them while it lasts; a stack that dies loses it with its other effects (BAT-MAG-010; the original's death routine 0x444120 ends every spell), so a raise counts its full hit points per creature, with Poison's tenths. A clone starts from its original's start value, without its Poison and Age; a stack created in a dead created stack's slot starts afresh."
 numeric  = "integer"
 quirks   = ["Q-0005"]
 
@@ -2766,7 +2778,7 @@ id       = "BAT-MAG-045"
 title    = "Bind"
 context  = "battle"
 status   = "implemented"
-summary  = "A timed bind change (TimedChange::Bind: Bind, a creature ability of level 0 lasting a fixed 255 rounds, cast after every melee strike of the Dendroids, BAT-MAG-040) makes the stack unable to move while it lasts: no movement range, so it attacks only from where it stands (a berserk one only stacks next to it, BAT-MAG-025), and it still shoots, casts, waits and defends. It ignores immunity and is cast without any test, also on a war machine; the striker becomes one of the target's binders, and a striker that already is one does nothing. Its Bind ends (reported) when its last binder moves (walk, flight, teleporting move), dies (also a clone that vanishes) or is teleported by Teleport, when the stack itself is teleported, by Dispel (not by Cure) or after its rounds; an ended Bind leaves the stack without binders. A dead stack is not bound."
+summary  = "A timed bind change (TimedChange::Bind: Bind, a creature ability of level 0 lasting a fixed 255 rounds, cast after every melee strike of the Dendroids, BAT-MAG-040) makes the stack unable to move while it lasts: no movement range, so it attacks only from where it stands (a berserk one only stacks next to it, BAT-MAG-025), and it still shoots, casts, waits and defends; a bound stack that strikes and returns stays where it struck (BAT-ATK-004, survey S-14 fixed). It ignores immunity and is cast without any test, also on a war machine; the striker becomes one of the target's binders, and a striker that already is one does nothing. Its Bind ends (reported) when its last binder moves (walk, flight, teleporting move), dies (also a clone that vanishes) or is teleported by Teleport, when the stack itself is teleported, by Dispel (not by Cure) or after its rounds; an ended Bind leaves the stack without binders. A dead stack is not bound."
 numeric  = "integer"
 
   [[rule.source]]
