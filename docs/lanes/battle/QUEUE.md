@@ -6,19 +6,12 @@ Pre-refined tasks of the battle lane, in order, then the inbox of discovered wor
 
 Increment 6 (the user, 2026-10-08): T7a in two parts; batch 2d is with the user and is folded in at the checkpoint after T7a2.
 
-### T7a1 — The strike's spells (E04b T7a1)
-
-- **Scope:** the epic's T7a1 (`docs/epics/E04b-battle-magic.md`, T7); the code reading `docs/formats/installation.md` §7.20 (0x441CB0, 0x441610, 0x440500, 0x468990, 0x440BC0, 0x5A8640); ADR-0012, ADR-0014 points 1, 3 and 4. Two `Ability` variants (a spell after a strike with chance, living-only, mastery and "unless active"; a damage spell after a strike per creature), Dispel Helpful Spells (78) as a dispel of positive spells with its own test; gap-fill rows for Unicorns, Black and Dread Knights, Mummies, Serpent and Dragon Flies, Thunderbird with an `exe-after-strike` source; the hook in `combat::attack` after the strikes and before life drain; no retaliation after a turn-stopping spell; no second strike for a blind attacker. Rule ids from BAT-MAG-040; pack format v19, ruleset hash.
-- **Acceptance:** the Definition of Done (`docs/05-testing.md`); rule tests per creature and per condition (draw, alive, living, immunity, resistance and aura, no side test, the order before life drain, retaliation and second strike); replays and benchmarks re-recorded deliberately if they change.
-- **Depends on:** nothing.
-- **Status:** ready.
-
 ### T7a2 — The new statuses (E04b T7a2)
 
-- **Scope:** the epic's T7a2; §7.20 and §7.14, §7.10 (stage 3, Cure). Stone Gaze, Paralyze, Poison, Disease, Age, Bind, Acid Breath on T7a1's hook; Cure's reset of the hit points; the observation's statuses.
+- **Scope:** the epic's T7a2; §7.20 and §7.14, §7.10 (stage 3, Cure). Stone Gaze, Paralyze, Poison, Disease, Age, Bind, Acid Breath on T7a1's hook (`spell_after_strike`; Bind and Acid Breath skip the spell's test, Acid Breath's extra damage needs its own ability; the harvester must accept timed entries on ability spells; `Status::BLIND` generalises to "loses its turns" for the retaliation and second-strike tests in `combat::melee`); Cure's reset of the hit points; the observation's statuses.
 - **Acceptance:** the Definition of Done; rule tests per spell (start, round start, end, Cure, Dispel); replays and benchmarks as needed.
-- **Depends on:** T7a1.
-- **Status:** waiting (T7a1).
+- **Depends on:** T7a1 (done 2026-10-08: the hook `h3_battle::after_strike`, BAT-MAG-040 to 042).
+- **Status:** ready.
 
 ## Inbox
 

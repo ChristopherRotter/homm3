@@ -1,6 +1,6 @@
 # E04b — Battle magic
 
-Status: **in progress** (refined 2026-10-05; increment 1 = T1–T2, done 2026-10-06: T1, ADR-0014 accepted, T2a–T2e, batch 2a evaluated; increment 2 = T3 in parts, then T4 (Q46, Q48): T3a, T3b1a, T3b1b, T3b2, T3c1, T3c2, T3c3 (batch 2b compiled), T4a, T4b and T4c done; increment 3 = T5 in three parts (Q54): T5a done, batch 2b folded in and batch 2c compiled (Q56), batch 2c folded in, T5c in two parts (BAT-Q1): T5c1 and T5c2 done; the Q55 survey done (BAT-Q3); T5b done (BAT-Q5), T5 complete; increment 4 = T6 in two parts (the user, 2026-10-08): T6a and T6b done; increment 5 = batch 2d alone (the user, 2026-10-08): compiled; increment 6 = T7a in two parts, batch 2d folded in at its checkpoint (the user, 2026-10-08): T7 cut, T7a1 next) · Follows E04a (closed 2026-10-05) · Part of the former E04 (OPEN-QUESTIONS Q27): E04a heroes in battle, **E04b** battle magic (this one), E04c sieges and special battlefields.
+Status: **in progress** (refined 2026-10-05; increment 1 = T1–T2, done 2026-10-06: T1, ADR-0014 accepted, T2a–T2e, batch 2a evaluated; increment 2 = T3 in parts, then T4 (Q46, Q48): T3a, T3b1a, T3b1b, T3b2, T3c1, T3c2, T3c3 (batch 2b compiled), T4a, T4b and T4c done; increment 3 = T5 in three parts (Q54): T5a done, batch 2b folded in and batch 2c compiled (Q56), batch 2c folded in, T5c in two parts (BAT-Q1): T5c1 and T5c2 done; the Q55 survey done (BAT-Q3); T5b done (BAT-Q5), T5 complete; increment 4 = T6 in two parts (the user, 2026-10-08): T6a and T6b done; increment 5 = batch 2d alone (the user, 2026-10-08): compiled; increment 6 = T7a in two parts, batch 2d folded in at its checkpoint (the user, 2026-10-08): T7a1 done) · Follows E04a (closed 2026-10-05) · Part of the former E04 (OPEN-QUESTIONS Q27): E04a heroes in battle, **E04b** battle magic (this one), E04c sieges and special battlefields.
 
 ## Goal
 
@@ -79,16 +79,7 @@ creature defences, auras and mana; T7b and T7c are refined at the checkpoint aft
 effects are `Ability` variants that name a spell (ADR-0012, ADR-0014 points 1 and 3): automatic,
 no command, so no action encoding changes.
 
-- [ ] **T7a1 The strike's spells** — the hook in every melee strike (attack, retaliation, second
-  strike; not shots): the striker's chance draw, the target alive (and living where the ability
-  says so), the creature test (immunities, resistance, aura; no side test) with its own draw, the
-  cast at mastery 0 for 3 rounds without a hero, before life drain and death stare; a spell that
-  stops the target's turns also stops its retaliation, and a blind attacker loses its second
-  strike. With the spells that exist: Blind (Unicorns), Curse (Black and Dread Knights, Mummies,
-  25 %), Weakness at Advanced unless active (Dragon Fly), Dispel Helpful Spells (Serpent and Dragon
-  Fly: ends positive spells; its own test), Thunderbolt (Thunderbird: Lightning Bolt's tests and
-  damage factors, 10 per creature). Pack format v19 (two `Ability` variants, Dispel Helpful's
-  dispel by polarity), rule ids from BAT-MAG-040.
+- [x] **T7a1 The strike's spells** — done 2026-10-08: read in the executable (`installation.md` §7.20); pack format v19 (`spell_after_strike`, `spell_damage_after_strike`, `dispels_positive`), BAT-MAG-040 to BAT-MAG-042 (`h3_battle::after_strike`, `StrikeSpell`: Unicorns, Black and Dread Knights, Mummies, the flies, the Thunderbird); ruleset hash v28; replays re-recorded, `bench-check` re-baselined (a richer workload). Record: [`E04b-log.md`](E04b-log.md).
 - [ ] **T7a2 The new statuses** — Stone Gaze (no turns, ends on damage, half damage, no
   retaliation), Paralyze (no turns, ends on damage, a quarter retaliation), Poison (a tenth of the
   hit points at the strike and each round start while it lasts, at most half, kept after it ends
