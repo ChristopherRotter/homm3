@@ -593,7 +593,8 @@ pub const CREATURES: &[Creature] = &[
     ),
     // Random casters (BAT-MAG-049), a Faerie Dragon's power per creature at Advanced: a two-hex
     // one that draws among four spells, and one-hex ones that always draw the same spell: `bolt`
-    // (negative, at a stack), `chain` (neutral, at a stack), `nova` (neutral, an area at a hex).
+    // (negative, at a stack), `chain` (neutral, at a stack), `nova` (neutral, an area at a hex),
+    // `haste` (positive, at an own stack).
     (
         "dragonet",
         10,
@@ -656,6 +657,21 @@ pub const CREATURES: &[Creature] = &[
             "casts=2",
             "random_spell_caster=2:5",
             "drawn_spell=nova:1",
+        ],
+    ),
+    (
+        "hasteling",
+        10,
+        10,
+        2,
+        2,
+        100,
+        5,
+        &[
+            "alive",
+            "casts=2",
+            "random_spell_caster=2:5",
+            "drawn_spell=haste:1",
         ],
     ),
     // Survey S-18: a Diamond Golem keeps 5 % of a spell's damage, a Gold Golem 15 %.

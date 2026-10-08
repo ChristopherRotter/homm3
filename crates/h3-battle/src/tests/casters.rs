@@ -400,6 +400,8 @@ fn a_drawn_spell_is_aimed_at_any_stack_but_the_caster_that_it_can_affect() {
         ("boltling", vec![2, 4]),
         // A neutral one (Chain Lightning): own stacks too, never the caster itself.
         ("chainling", vec![1, 2, 4]),
+        // A positive one: only its own side's other stacks.
+        ("hasteling", vec![1]),
     ] {
         let mut s = arena(
             &r,
@@ -433,6 +435,17 @@ fn a_drawn_spell_is_aimed_at_any_stack_but_the_caster_that_it_can_affect() {
         }
         assert_eq!(s, before);
     }
+    // A positive timed spell lasts its power: 5 per creature, two creatures.
+    let mut s = arena(
+        &r,
+        [None, None],
+        &[("hasteling", 2, 3, 5), ("fixed", 3, 3, 7)],
+        &[("fixed", 3, 13, 5)],
+        1,
+    );
+    drawing(&mut s, &r, 0);
+    let events = act(&mut s, &r, at_stack(1)).unwrap();
+    assert_eq!(applied(&events), vec![(1, spell(&r, "haste"), Some(10))]);
 }
 
 // covers: BAT-MAG-049

@@ -947,11 +947,11 @@ pub(crate) fn creature_targets(
     out: &mut CastTargets,
 ) {
     // A caster's spell is one of the ruleset's (the compiler checks its abilities).
-    let Some(s) = ruleset.spell(spell.id) else {
-        return;
-    };
+    let area = ruleset
+        .spell(spell.id)
+        .filter(|s| spell.drawn && target_at(ruleset, s, spell.mastery) == SpellTarget::Hex);
     let field = Field::new(ruleset.battle().field);
-    if spell.drawn && target_at(ruleset, s, spell.mastery) == SpellTarget::Hex {
+    if let Some(s) = area {
         let mut hexes = HexSet::new();
         for t in drawn_stacks(state, ruleset, side, (caster, (spell.id, s))) {
             for h in state.at(t).footprint(field).hexes() {
