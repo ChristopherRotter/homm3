@@ -4,9 +4,10 @@ The server lane's living state; read after the global `docs/HANDOFF.md`. Format 
 
 ## Current state
 
-- **Not started.** The lane owns (`lanes.toml`) the new adapter crates `h3-protocol` and `h3-server` in the engine workspace, `benches/server/` and E16's epic file. Creating the crates touches `Cargo.toml` and `arch.toml`: the crate skeletons are their own `shared/` pull request, merged first.
-- **Timing:** refinement and ADR now; implementation waits until the battle actions are mostly stable (E04b).
-- **Next:** the refinement session with the user (brief below); it fills `QUEUE.md`. Branches: `server/<task>`.
+- **Refinement in progress (2026-10-08, branch `claude/awesome-cori-h0dz9l`): first draft under the user's review, nothing decided.** The draft: `docs/epics/E16-server.md` (goal, concepts, what the server must provide, decisions with options, milestones M0–M5, M1 tasks, the autonomy contract, questions SRV-Q1 to SRV-Q10), `docs/epics/E16-design.md` (messages, flows, manifest, identity, ladders, threats) and the ADR drafts `adr-drafts/protocol.md` and `adr-drafts/identity-and-ladders.md`. The user's two additions are in it: same content for everyone (the manifest; clients run no rules) and anyone hosts, with lobbies, ranked ladders, matchmaking and rating.
+- The lane owns (`lanes.toml`) the new adapter crates `h3-protocol` and `h3-server` in the engine workspace, `benches/server/` and E16's epic file. Creating the crates touches `Cargo.toml` and `arch.toml`: the crate skeletons are their own `shared/` pull request, merged first (M0).
+- **Timing:** refinement and ADRs now; implementation waits until the battle actions are mostly stable (E04b), or starts earlier if the user decides SRV-Q7 so.
+- **Next:** the user's answers to SRV-Q1 to SRV-Q10; then the drafts are corrected, `QUEUE.md` gets M0 and M1's tasks, and the ADR drafts wait for acceptance. Branches: `server/<task>`.
 - **Checkpoints** per milestone, under the autonomy contract below; a fresh reviewer agent checks each milestone before the user does.
 - **Ids:** questions `SRV-Q<n>`, quirks `SRV-QUIRK-<n>`, stubs `SRV-STUB-<n>`. ADR drafts go to `docs/lanes/server/adr-drafts/` and get a number when the user accepts them.
 
@@ -33,4 +34,6 @@ Prepare each point with options and a recommendation; the user decides.
 
 ## Recent sessions
 
-(None yet.)
+### 2026-10-08 — refinement session, first draft
+
+Read the repo's decisions (ADR-0003/0004/0005/0008/0011, `06-security.md`, the battle's `observe`/`project`/events, `h3-sim`'s replay and encodings, E08's decisions) and wrote the first draft of E16 with no code: two ADR drafts (protocol and hosting; identity, lobbies and ladders), the epic file and a design note. Direction proposed: a sans-I/O `h3-protocol` as a logic crate (published language plus session core), `h3-server` as the shell; WebSocket, std threads, JSON; the protocol's own wire types with a mapping and an "other" fallback; seat tokens, per-viewer projection and sequence numbers; a 64-bit OS seed with separate obstacle seed; replay (post-game) against record (per viewer); one ruleset per game identified by a manifest; keypair identity; ladders with Glicko-2 and file-based persistence. The user asked for readable context and added the two ideas above. Open: SRV-Q1 to SRV-Q10 (`docs/OPEN-QUESTIONS.md`).
