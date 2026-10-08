@@ -1,6 +1,6 @@
 # E04b — Battle magic
 
-Status: **in progress** (refined 2026-10-05; increment 1 = T1–T2, done 2026-10-06: T1, ADR-0014 accepted, T2a–T2e, batch 2a evaluated; increment 2 = T3 in parts, then T4 (Q46, Q48): T3a, T3b1a, T3b1b, T3b2, T3c1, T3c2, T3c3 (batch 2b compiled), T4a, T4b and T4c done; increment 3 = T5 in three parts (Q54): T5a done, batch 2b folded in and batch 2c compiled (Q56), batch 2c folded in, T5c in two parts (BAT-Q1): T5c1 and T5c2 done; the Q55 survey done (BAT-Q3); T5b done (BAT-Q5), T5 complete) · Follows E04a (closed 2026-10-05) · Part of the former E04 (OPEN-QUESTIONS Q27): E04a heroes in battle, **E04b** battle magic (this one), E04c sieges and special battlefields.
+Status: **in progress** (refined 2026-10-05; increment 1 = T1–T2, done 2026-10-06: T1, ADR-0014 accepted, T2a–T2e, batch 2a evaluated; increment 2 = T3 in parts, then T4 (Q46, Q48): T3a, T3b1a, T3b1b, T3b2, T3c1, T3c2, T3c3 (batch 2b compiled), T4a, T4b and T4c done; increment 3 = T5 in three parts (Q54): T5a done, batch 2b folded in and batch 2c compiled (Q56), batch 2c folded in, T5c in two parts (BAT-Q1): T5c1 and T5c2 done; the Q55 survey done (BAT-Q3); T5b done (BAT-Q5), T5 complete; increment 4 = T6 in two parts (the user, 2026-10-08): T6a done) · Follows E04a (closed 2026-10-05) · Part of the former E04 (OPEN-QUESTIONS Q27): E04a heroes in battle, **E04b** battle magic (this one), E04c sieges and special battlefields.
 
 ## Goal
 
@@ -35,7 +35,7 @@ Earthquake, sieges and the moat (E04c). The special battlefields' magic (Magic P
 - [ ] **T3 Timed effects on stacks** (refined below): buffs and debuffs, Mass versions at Expert, durations and the artifacts that change them, Dispel, Cure (S-16, S-17, S-19).
 - [x] **T4 Control spells and spell defences** — done 2026-10-07 (Q52, Q53): Berserk, Hypnotize, Forgetfulness, Blind; Anti-Magic, Magic Mirror (S-09, S-10, S-13 settled, S-11 unconfirmed). In three parts: T4a, T4b, T4c (below).
 - [x] **T5 Battlefield spells** — done 2026-10-07 (Q54): Force Field, Fire Wall, Teleport (T5a), Remove Obstacle with the natural obstacles as pieces (T5b), Quicksand and Land Mine (hidden, owner-side visibility; T5c). In three parts (below).
-- [ ] T6 Life and summons: Resurrection, Animate Dead, Sacrifice, Clone, the four Elementals; stacks created in battle (`StackOrigin`), temporary resurrection in the outcome (S-15, S-20, S-21).
+- [ ] **T6 Life and summons** (refined 2026-10-08): Resurrection, Animate Dead, Sacrifice, Clone, the four Elementals; temporary resurrection in the outcome (S-15, S-20, S-21). In two parts (below).
 - [ ] T7 Creature magic: spell-like attack effects (curse, blind, petrify, bind, dispel, weakness, age, poison, …), spellcasting creatures, creature effects on mana and costs (S-12, S-14; batch 2a R6: a dead Pegasus' surcharge or the Mages' discount, read the cost code first; survey §13).
 - [ ] T8 Hero-side long tail: the remaining magic artifacts (opening spells, spell-level limits, the Tomes, spell scrolls as instances, "known spells need a worn spell book"), Eagle Eye's outcome inputs, profile-level overrides for data quirks (Q-0006, S-05).
 - [ ] T9 Workload and measurements: casting heroes with the full spell range in the `full` scenario, golden replays, `bench-check`, state size and clone cost, observation completeness.
@@ -70,6 +70,13 @@ The 13 direct-damage spells: Magic Arrow, Ice Bolt, Lightning Bolt, Titan's Ligh
 **Checkpoint after T4a** (2026-10-07, Q53): the user chose T4b + T4c in one session and, after the reading, the quirk classes: S-09 the rule, S-10 fix-optional (Q-0011), S-11 unconfirmed (the engine's pathfinding), S-13 fix-optional.
 
 **Checkpoint after T3c2** (2026-10-07, Q52): the user chose batch 2b now (T3c3, played while T4 proceeds), T4 in three parts by mechanism with T4a this session (a checkpoint after), and kept `Rate`'s f32 bit pattern.
+
+### T6 — Life and summons (refined 2026-10-08, the user)
+
+- [x] **T6a Raising** — done 2026-10-08: read in the executable (`installation.md` §7.18); pack format v17 (`raise`, `sacrifice`, `temporary_below`, `tests_as`), BAT-MAG-035 (Resurrection, Animate Dead: corpses by hex, the hit-point test, temporary creatures left out of the outcome), BAT-MAG-036 (Sacrifice); quirks BAT-QUIRK-5 (Sacrifice tested as Resurrection, fix-optional; S-15) and BAT-QUIRK-6 (S-20, the orchestrator's fix); a cast that kills the active stack ends its turn; ADR-0014 points 6 and 10 amended (no `StackOrigin` variants, PR #7); ruleset hash v26, state hash v29; replays and `bench-check` re-baselined. Record: [`E04b-log.md`](E04b-log.md).
+- [ ] **T6b Created stacks**: Clone and the four Summon Elemental spells; the creation limit of 20 and one elemental type per side; a clone vanishes when damaged or when its original dies (S-21); only summoned stacks left: both lose (`Draw`); read whether the original's end of battle counts created stacks for experience.
+
+**Checkpoint before T6** (2026-10-08): the user chose T6 before T7, T6a and T6b for the session, and no seam change for created stacks (ADR-0014 amended); BAT-QUIRK-5 fix-optional, BAT-QUIRK-6's fix with the orchestrator.
 
 ### T5 — Battlefield spells (refined 2026-10-07, Q54)
 

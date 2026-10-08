@@ -1732,7 +1732,7 @@ id       = "BAT-END-003"
 title    = "The outcome of a battle"
 context  = "battle"
 status   = "implemented"
-summary  = "Once the battle is over, BattleState::outcome reports facts for the orchestrator (ADR-0013 point 5): the result (victory, draw, retreat, surrender; BAT-END-001/002, BAT-FLE-001/002); per side every stack in stack order, dead ones included, as StackRecord { origin: army slot or war machine, creature, start: the count at the start, end: the count alive at the end, whatever the result }; the survivors (army stacks with end > 0, by slot) and surviving war machines derived from those records; the surrender's cost (the price paid, BAT-FLE-002) or none; per side the hero's mana left and the distinct spells it cast, by spell handle (E04b T2b; Eagle Eye's input); the last round started (0 if the battle ended in the tactics phase). The battle applies no consequence: casualties, a retreating side's lost army, the payment, captured artifacts, experience (killed war machines give none; Learning multiplies the whole sum including the +500, batch 1b R5) and Necromancy (rounded down per killed stack, R6) are applied by the orchestrator with the epics that own hero progression (E08-E10)."
+summary  = "Once the battle is over, BattleState::outcome reports facts for the orchestrator (ADR-0013 point 5): the result (victory, draw, retreat, surrender; BAT-END-001/002, BAT-FLE-001/002); per side every stack in stack order, dead ones included, as StackRecord { origin: army slot or war machine, creature, start: the count at the start, end: the count alive at the end, whatever the result, without the creatures raised for the battle only (Basic Resurrection, BAT-MAG-035; E04b T6a) }; the survivors (army stacks with end > 0, by slot) and surviving war machines derived from those records; the surrender's cost (the price paid, BAT-FLE-002) or none; per side the hero's mana left and the distinct spells it cast, by spell handle (E04b T2b; Eagle Eye's input); the last round started (0 if the battle ended in the tactics phase). The battle applies no consequence: casualties, a retreating side's lost army, the payment, captured artifacts, experience (killed war machines give none; Learning multiplies the whole sum including the +500, batch 1b R5) and Necromancy (rounded down per killed stack, R6) are applied by the orchestrator with the epics that own hero progression (E08-E10)."
 numeric  = "integer"
 
   [[rule.source]]
@@ -1758,7 +1758,7 @@ id       = "BAT-MAG-001"
 title    = "When a hero casts"
 context  = "battle"
 status   = "implemented"
-summary  = "A side's hero may cast a spell (Command::Cast) while one of its side's stacks awaits a command outside the tactics phase (BAT-TAC-001), also during the turn of a war machine it commands (BAT-WAR-006/007; VCMI, observed in batch 2a R6, while the wiki says 'one of their creatures'). It needs the spell in its spell book (HER-BAT-011), a combat spell, fewer casts this round than the battle parameter hero_casts_per_round (1; the count is reset when a round starts, BAT-TRN-003), the mana for the cost (BAT-MAG-002) and a valid target (BAT-MAG-003). Casting is never required, and the active stack keeps its turn afterwards. A cast is public: a SpellCast event with side, spell and target, and the casts this round in HeroView (ADR-0014 point 8). Only spells whose effects the battle implements can be cast (CommandError::NotCastable otherwise): the damage spells since E04b T2d (one stack, chain, area and every stack; BAT-MAG-004 to BAT-MAG-008), other effects with their tasks. Casts are not in legal_commands; castable_spells and cast_targets list exactly what apply accepts (the factorized action, ADR-0014 point 9)."
+summary  = "A side's hero may cast a spell (Command::Cast) while one of its side's stacks awaits a command outside the tactics phase (BAT-TAC-001), also during the turn of a war machine it commands (BAT-WAR-006/007; VCMI, observed in batch 2a R6, while the wiki says 'one of their creatures'). It needs the spell in its spell book (HER-BAT-011), a combat spell, fewer casts this round than the battle parameter hero_casts_per_round (1; the count is reset when a round starts, BAT-TRN-003), the mana for the cost (BAT-MAG-002) and a valid target (BAT-MAG-003). Casting is never required, and the active stack keeps its turn afterwards, unless the cast killed it (its own hero's area or battle-wide damage, a sacrifice, BAT-MAG-036): then its turn ends and the next stack's starts (E04b T6a; a dead stack cannot act). A cast is public: a SpellCast event with side, spell and target, and the casts this round in HeroView (ADR-0014 point 8). Only spells whose effects the battle implements can be cast (CommandError::NotCastable otherwise): the damage spells since E04b T2d (one stack, chain, area and every stack; BAT-MAG-004 to BAT-MAG-008), other effects with their tasks. Casts are not in legal_commands; castable_spells and cast_targets list exactly what apply accepts (the factorized action, ADR-0014 point 9)."
 numeric  = "integer"
 
   [[rule.source]]
@@ -2569,4 +2569,52 @@ quirks   = ["BAT-QUIRK-3"]
   ref        = "Remove Obstacle page (raw text through WebFetch, 2026-10-07; OPEN-QUESTIONS Q55): an expert Remove Obstacle locates Land Mines and Quicksand by hovering the cursor over hexes without spending mana (the leak fixed under Q-0002; HotA 1.7.0 fixed it for Quicksand); Quicksand and Land Mine pages as the E04b survey records them: Quicksand is removed only by Expert Remove Obstacle or Expert Dispel"
   url        = "https://heroes.thelazy.net/index.php/Remove_Obstacle"
   retrieved  = "2026-10-07"
+  confidence = "medium"
+
+[[rule]]
+id       = "BAT-MAG-035"
+title    = "Resurrection and Animate Dead"
+context  = "battle"
+status   = "implemented"
+summary  = "A spell with a raise effect (SpellEffect::Raise, target stack: Resurrection, a positive earth spell of level 4 for living creatures (flag alive); Animate Dead, earth, level 3, for undead ones; neither on war machines) is aimed at a stack of the caster's side (its own, whoever controls it), living or dead, with fewer creatures than at the battle's start, that the spell can affect (its conditions and spell-level immunities, BAT-MAG-005; Anti-Magic on a living stack, BAT-MAG-021) and whose creature's health the cast's hit points reach: power x power factor + effect[mastery] plus the caster's specialist bonus for the stack (BAT-MAG-020). So a full stack that is only wounded is no target, nor a stack of creatures with more health than the cast raises. A dead stack lies on its hexes as a corpse, the last to die on top (Stack.corpse, marked after the command that killed it); it is a target only if no living stack stands on its hexes, none of them is blocked (a natural obstacle, Force Field) and, on one of its hexes, no corpse above it is also a target. The cast adds the hit points to the stack's total health (the top creature first) up to its count at the start (SpellRaised): a dead stack comes back on its hexes with no effects (they ended at its death, BAT-MAG-010) and keeps its round's flags (if it had acted this round it stays done). Below the spell's temporary_below mastery (Resurrection: Advanced) the creatures gained count for the battle only (Stack.temporary, at most the start count, never lowered): the outcome leaves them out (BAT-END-003). A side whose creatures are all such keeps fighting and may win; it is then left without an army (survey S-20, an exploit the orchestrator fixes: a winner without creatures leaves, as VCMI does; user, 2026-10-08)."
+numeric  = "integer"
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (docs/formats/installation.md §7.18): 0x5A1907 raises power x factor + effect[mastery] + the specialty bonus 0x4E5FF0 on the stack 0x5A3CC0 (Resurrection) or 0x5A3F50 (Animate Dead) finds on the target hex: a living stack there (caster's side by +0xF4, flag 0x10 or 0x40000, fewer creatures than +0x60, 0x5A8090 > 0), else the corpses of a free hex from the last added (the other hex of a two-hex one free too); 0x5A8090 case 0x5A8467 wants the hit points to reach the health +0xC0; the raise 0x5A7560 caps the count at +0x60 and, temporary below Advanced, adds the creatures gained to +0x54; the death 0x444120 ends every spell"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "wiki"
+  ref        = "Resurrection page (survey E04b-magic §5): temporary at Basic, permanent at Advanced and Expert; never above the stack's starting count"
+  url        = "https://heroes.thelazy.net/index.php/Resurrection"
+  retrieved  = "2026-10-05"
+  confidence = "medium"
+
+  [[rule.source]]
+  kind       = "vcmi"
+  ref        = "VCMI 1.7.5 server/battles/BattleResultProcessor.cpp: CasualtiesAfterBattle takes the resurrected creatures away (CStackState::takeResurrected) before the casualties; a winner without stacks leaves the map (battleFinalize, onHeroEscaped)"
+  url        = "https://github.com/vcmi/vcmi/blob/1.7.5/server/battles/BattleResultProcessor.cpp"
+  retrieved  = "2026-10-08"
+  confidence = "medium"
+
+[[rule]]
+id       = "BAT-MAG-036"
+title    = "Sacrifice"
+context  = "battle"
+status   = "implemented"
+summary  = "A spell with a sacrifice effect (SpellEffect::Sacrifice: Sacrifice, a positive fire spell of level 5, not on war machines) takes two targets: the stack it raises (the target), then a victim (the second target, a stack: Command::Cast.second; the sim's second head). With quirk BAT-QUIRK-5 (faithful) the target is tested as the tests_as spell's would be (Resurrection's, BAT-MAG-035: its conditions, its level 4 against immunities and Anti-Magic, so Gold Dragons are never a target (survey S-15), and its hit points at the caster's mastery in it, which must reach one creature's health); without it by Sacrifice's own conditions and level, with no hit-point minimum. The victim is a living stack of the caster's side that the side controls (not hypnotized), other than the target, that the spell can affect (flag alive, not undead; immunities; Anti-Magic). The cast kills every creature of the victim (Sacrificed); it leaves no corpse (Stack.corpse NO_CORPSE: never raised); then it raises the target for good by (the victim's creature's base hit points + power x power factor + effect[mastery]) x the victim's creatures (BAT-MAG-035's raise, no specialist bonus): a raise smaller than one creature's health still brings back one, wounded. A victim that was the active stack loses its turn (BAT-MAG-001). Engine choice: the original's code does not compare the victim with the target (its second cursor was not read); the engine refuses the target as its own victim, which would restore a stack for nothing."
+numeric  = "integer"
+quirks   = ["BAT-QUIRK-5"]
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (docs/formats/installation.md §7.18): 0x5A199C kills the living stack on the second hex (0x444090 with its whole health), flags it sacrificed (0x10000000: no corpse, 0x444120) and raises (the creature table's health + effect[mastery] + power) x its creatures permanently (0x5A7560); 0x5A3950 finds the raised stack through 0x5A3CC0, which tests spell 38 (Resurrection); 0x5A8090 case 0x5A8523 wants the victim living (0x10), not summoned (0x400000), not undead, with creatures, of the caster's side by controller and real side"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "wiki"
+  ref        = "Gold Dragon page, trivia (survey S-15): Gold Dragons are susceptible to the sacrificing part of Sacrifice but not to the resurrection"
+  url        = "https://heroes.thelazy.net/index.php/Gold_Dragon"
+  retrieved  = "2026-10-03"
   confidence = "medium"

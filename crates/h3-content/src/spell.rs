@@ -268,6 +268,15 @@ pub enum SpellEffect {
     /// obstacle of a kind from its mastery in [`SpellMagic::removes_from`] (BAT-MAG-034, E04b T5b,
     /// v16).
     RemoveObstacle,
+    /// Raises the creatures of the target stack, a living or dead one of the caster's side, by
+    /// the value in hit points up to its count at the battle's start; below
+    /// [`SpellMagic::temporary_below`] for this battle only (Resurrection, Animate Dead;
+    /// BAT-MAG-035, E04b T6a, v17).
+    Raise,
+    /// Kills the cast's second target, a living stack of the caster's side, and raises the
+    /// target stack permanently by `(the victim's creature's hit points + the value) × its
+    /// creatures` (BAT-MAG-036, E04b T6a, v17).
+    Sacrifice,
 }
 
 impl SpellEffect {
@@ -281,6 +290,8 @@ impl SpellEffect {
             Self::Obstacle(_) => "obstacle",
             Self::Teleport => "teleport",
             Self::RemoveObstacle => "remove_obstacle",
+            Self::Raise => "raise",
+            Self::Sacrifice => "sacrifice",
         }
     }
 
@@ -293,7 +304,9 @@ impl SpellEffect {
             | Self::Heal
             | Self::Obstacle(_)
             | Self::Teleport
-            | Self::RemoveObstacle => None,
+            | Self::RemoveObstacle
+            | Self::Raise
+            | Self::Sacrifice => None,
         }
     }
 
@@ -306,6 +319,12 @@ impl SpellEffect {
         )
     }
 
+    /// Whether the kind raises creatures (Raise, Sacrifice): it reaches dead stacks too, and is
+    /// the spell's only effect.
+    pub const fn is_raise(self) -> bool {
+        matches!(self, Self::Raise | Self::Sacrifice)
+    }
+
     /// Canonical code (hash): the kind, then the change or the obstacle kind.
     fn code(self) -> [u8; 2] {
         match self {
@@ -316,6 +335,8 @@ impl SpellEffect {
             Self::Obstacle(k) => [4, k as u8],
             Self::Teleport => [5, 0],
             Self::RemoveObstacle => [6, 0],
+            Self::Raise => [7, 0],
+            Self::Sacrifice => [8, 0],
         }
     }
 }
@@ -682,6 +703,10 @@ pub struct SpellMagic {
     /// kind, indexed by [`ObstacleKind`] (`None`: never; Remove Obstacle: fire from Advanced, the
     /// others at Expert; BAT-MAG-034, v16).
     pub removes_from: [Option<u8>; ObstacleKind::COUNT],
+    /// A raise effect: the mastery (1..=3) from which the creatures it raises stay after the
+    /// battle; below it they are raised for the battle only (Resurrection: Advanced;
+    /// BAT-MAG-035, v17).
+    pub temporary_below: Option<u8>,
 }
 
 impl SpellMagic {
@@ -743,6 +768,21 @@ impl SpellMagic {
     /// Whether a cast at `mastery` removes a spell obstacle of kind `kind` (BAT-MAG-034).
     pub fn removes_at(&self, kind: ObstacleKind, mastery: u8) -> bool {
         self.removes_from[kind as usize].is_some_and(|m| mastery >= m)
+    }
+
+    /// Whether it raises the creatures of its target stack (Resurrection, Animate Dead).
+    pub fn raises(&self) -> bool {
+        self.effects.contains(&SpellEffect::Raise)
+    }
+
+    /// Whether it sacrifices its second target to raise its target (Sacrifice).
+    pub fn sacrifices(&self) -> bool {
+        self.effects.contains(&SpellEffect::Sacrifice)
+    }
+
+    /// Whether a raise at `mastery` lasts only for the battle (BAT-MAG-035).
+    pub fn temporary_at(&self, mastery: u8) -> bool {
+        self.temporary_below.is_some_and(|m| mastery < m)
     }
 }
 
@@ -852,6 +892,28 @@ impl SpellMagic {
         {
             Some("clears_obstacles needs a dispel effect and a mastery 1..=3")
         } else {
+            self.raise_error()
+        }
+    }
+
+    /// Why the raise effects (Raise, Sacrifice; v17) are invalid, if they are.
+    fn raise_error(&self) -> Option<&'static str> {
+        let raise = self.effects.iter().any(|e| e.is_raise());
+        if raise && self.effects.len() > 1 {
+            Some("a raise or sacrifice effect is the spell's only effect")
+        } else if raise
+            && (self.target != SpellTarget::Stack
+                || self.chain.is_some()
+                || self.mass_from.is_some())
+        {
+            // An area needs target hex already.
+            Some("a raise or sacrifice effect needs target stack, without chain or mass")
+        } else if self
+            .temporary_below
+            .is_some_and(|m| !self.raises() || !(1..=MAX_MASTERY).contains(&m))
+        {
+            Some("temporary_below needs a raise effect and a mastery 1..=3")
+        } else {
             None
         }
     }
@@ -864,7 +926,8 @@ impl CanonicalHash for SpellMagic {
     /// specialist bonus (presence, then the bonus; v20); what ends it, the fixed mass version
     /// (0: none; v21); a fixed duration's rounds, the health limit, the refused changes (count,
     /// codes; v22); the obstacle shape (presence, then the shape) and the mastery that clears
-    /// obstacles (0: none; v23); the masteries that remove each obstacle kind (0: never; v25).
+    /// obstacles (0: none; v23); the masteries that remove each obstacle kind (0: never; v25);
+    /// the mastery from which a raise lasts (0: always; v26).
     fn hash_into(&self, h: &mut StateHasher) {
         h.write_u8(self.target as u8);
         h.write_bool(self.area.is_some());
@@ -912,6 +975,7 @@ impl CanonicalHash for SpellMagic {
         for m in self.removes_from {
             h.write_u8(m.unwrap_or(0));
         }
+        h.write_u8(self.temporary_below.unwrap_or(0));
     }
 }
 
@@ -1489,6 +1553,18 @@ mod tests {
                 specialist: Some(SpecialistBonus::Total(2)),
                 ..base.clone()
             },
+            SpellMagic {
+                temporary_below: Some(2),
+                ..base.clone()
+            },
+            SpellMagic {
+                effects: vec![SpellEffect::Raise],
+                ..base.clone()
+            },
+            SpellMagic {
+                effects: vec![SpellEffect::Sacrifice],
+                ..base.clone()
+            },
         ];
         let timed = |c| SpellMagic {
             effects: vec![SpellEffect::Timed(c)],
@@ -1660,6 +1736,31 @@ mod tests {
         );
         assert!(remove.removes_at(ObstacleKind::Mine, 3));
         assert!(!fire.removes_at(ObstacleKind::Fire, 3));
+        // Raising (v17): Resurrection, temporary below Advanced, and Sacrifice.
+        let raise = SpellMagic {
+            target: SpellTarget::Stack,
+            effects: vec![SpellEffect::Raise],
+            temporary_below: Some(2),
+            ..SpellMagic::default()
+        };
+        let sacrifice = SpellMagic {
+            effects: vec![SpellEffect::Sacrifice],
+            temporary_below: None,
+            ..raise.clone()
+        };
+        assert_eq!((raise.error(true), sacrifice.error(true)), (None, None));
+        assert_eq!(
+            (SpellEffect::Raise.name(), SpellEffect::Sacrifice.name()),
+            ("raise", "sacrifice")
+        );
+        assert_eq!(
+            (SpellEffect::Raise.timed(), SpellEffect::Sacrifice.timed()),
+            (None, None)
+        );
+        assert!(SpellEffect::Raise.is_raise() && SpellEffect::Sacrifice.is_raise());
+        assert!(!SpellEffect::Raise.is_field() && !SpellEffect::Heal.is_raise());
+        assert!(raise.raises() && !raise.sacrifices() && sacrifice.sacrifices());
+        assert!(raise.temporary_at(1) && !raise.temporary_at(2) && !sacrifice.temporary_at(0));
         let bad = [
             (
                 SpellMagic {
@@ -1848,6 +1949,59 @@ mod tests {
                     ..teleport.clone()
                 },
                 "clears_obstacles",
+            ),
+            (
+                SpellMagic {
+                    effects: vec![SpellEffect::Raise, SpellEffect::Heal],
+                    ..raise.clone()
+                },
+                "only effect",
+            ),
+            (
+                SpellMagic {
+                    target: SpellTarget::Hex,
+                    temporary_below: None,
+                    ..raise.clone()
+                },
+                "raise or sacrifice effect needs target stack",
+            ),
+            (
+                SpellMagic {
+                    chain: Some(SpellChain {
+                        targets: [2; 4],
+                        factor_bp: 5000,
+                    }),
+                    ..sacrifice.clone()
+                },
+                "raise or sacrifice effect needs target stack",
+            ),
+            (
+                SpellMagic {
+                    mass_from: Some(3),
+                    ..raise.clone()
+                },
+                "raise or sacrifice effect needs target stack",
+            ),
+            (
+                SpellMagic {
+                    temporary_below: Some(2),
+                    ..sacrifice.clone()
+                },
+                "temporary_below",
+            ),
+            (
+                SpellMagic {
+                    temporary_below: Some(4),
+                    ..raise.clone()
+                },
+                "temporary_below",
+            ),
+            (
+                SpellMagic {
+                    temporary_below: Some(0),
+                    ..raise.clone()
+                },
+                "temporary_below",
             ),
         ];
         for (m, want) in bad {

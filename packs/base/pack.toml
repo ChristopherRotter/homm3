@@ -3455,6 +3455,12 @@ cost = [20, 16, 16, 16]
 power = 50
 effect = [40, 40, 80, 160]
 polarity = "positive"
+target = "stack"
+side = "own"
+requires = ["alive"]
+excludes = ["war_machine"]
+temporary_below = "advanced"
+effects = [{ kind = "raise" }]
 
 [[spell]]
 id = "animate_dead"  # original id 39
@@ -3466,6 +3472,11 @@ cost = [15, 12, 12, 12]
 power = 50
 effect = [30, 30, 60, 160]
 polarity = "positive"
+target = "stack"
+side = "own"
+requires = ["undead"]
+excludes = ["war_machine"]
+effects = [{ kind = "raise" }]
 
 [[spell]]
 id = "sacrifice"  # original id 40
@@ -3477,6 +3488,12 @@ cost = [25, 20, 20, 20]
 power = 1
 effect = [3, 3, 6, 10]
 polarity = "positive"
+target = "stack"
+side = "own"
+requires = ["alive"]
+excludes = ["undead", "war_machine"]
+tests_as = "resurrection"
+effects = [{ kind = "sacrifice" }]
 
 [[spell]]
 id = "bless"  # original id 41
@@ -6933,8 +6950,8 @@ backpack = 64
 
 [[profile]]
 id = "faithful"        # default: preserve/fix-optional quirks on
-quirks = { "quirk.battle.no_luck_without_hero" = true, "quirk.battle.single_precision_rates" = true, "quirk.battle.unlimited_ballista_shots" = true, "quirk.battle.first_protection" = true, "quirk.battle.counterstrike_extra_round" = true, "quirk.battle.frenzy_reduced_defense" = true, "quirk.battle.fire_shield_first_stage" = true, "quirk.battle.early_mass_version" = true, "quirk.battle.mass_cure_skips_hypnotized" = true, "quirk.battle.natives_sight_at_start" = true, "quirk.battle.attack_from_seen_pit" = true, "quirk.battle.obstacle_anchors" = true, "quirk.battle.draws_avoid_hidden" = true }    # Q-0003, Q-0005, Q-0004, Q-0007, Q-0008, Q-0009, Q-0010, Q-0011, Q-0012, BAT-QUIRK-1 to BAT-QUIRK-4
+quirks = { "quirk.battle.no_luck_without_hero" = true, "quirk.battle.single_precision_rates" = true, "quirk.battle.unlimited_ballista_shots" = true, "quirk.battle.first_protection" = true, "quirk.battle.counterstrike_extra_round" = true, "quirk.battle.frenzy_reduced_defense" = true, "quirk.battle.fire_shield_first_stage" = true, "quirk.battle.early_mass_version" = true, "quirk.battle.mass_cure_skips_hypnotized" = true, "quirk.battle.natives_sight_at_start" = true, "quirk.battle.attack_from_seen_pit" = true, "quirk.battle.obstacle_anchors" = true, "quirk.battle.draws_avoid_hidden" = true, "quirk.battle.sacrifice_tests_as_resurrection" = true }    # Q-0003, Q-0005, Q-0004, Q-0007, Q-0008, Q-0009, Q-0010, Q-0011, Q-0012, BAT-QUIRK-1 to BAT-QUIRK-5
 
 [[profile]]
 id = "strict-fixed"    # all quirks fixed
-quirks = { "quirk.battle.no_luck_without_hero" = false, "quirk.battle.single_precision_rates" = false, "quirk.battle.unlimited_ballista_shots" = false, "quirk.battle.first_protection" = false, "quirk.battle.counterstrike_extra_round" = false, "quirk.battle.frenzy_reduced_defense" = false, "quirk.battle.fire_shield_first_stage" = false, "quirk.battle.early_mass_version" = false, "quirk.battle.mass_cure_skips_hypnotized" = false, "quirk.battle.natives_sight_at_start" = false, "quirk.battle.attack_from_seen_pit" = false, "quirk.battle.obstacle_anchors" = false, "quirk.battle.draws_avoid_hidden" = false }   # Q-0003, Q-0005, Q-0004, Q-0007, Q-0008, Q-0009, Q-0010, Q-0011, Q-0012, BAT-QUIRK-1 to BAT-QUIRK-4
+quirks = { "quirk.battle.no_luck_without_hero" = false, "quirk.battle.single_precision_rates" = false, "quirk.battle.unlimited_ballista_shots" = false, "quirk.battle.first_protection" = false, "quirk.battle.counterstrike_extra_round" = false, "quirk.battle.frenzy_reduced_defense" = false, "quirk.battle.fire_shield_first_stage" = false, "quirk.battle.early_mass_version" = false, "quirk.battle.mass_cure_skips_hypnotized" = false, "quirk.battle.natives_sight_at_start" = false, "quirk.battle.attack_from_seen_pit" = false, "quirk.battle.obstacle_anchors" = false, "quirk.battle.draws_avoid_hidden" = false, "quirk.battle.sacrifice_tests_as_resurrection" = false }   # Q-0003, Q-0005, Q-0004, Q-0007, Q-0008, Q-0009, Q-0010, Q-0011, Q-0012, BAT-QUIRK-1 to BAT-QUIRK-5

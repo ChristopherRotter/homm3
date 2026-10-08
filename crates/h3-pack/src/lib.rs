@@ -474,6 +474,12 @@ struct SpellDto {
     /// removes a spell obstacle of each kind (pack format v16, E04b T5b).
     #[serde(default)]
     removes: BTreeMap<String, String>,
+    /// `temporary_below = "advanced"`: a raise effect below this mastery lasts for the battle
+    /// only (pack format v17, E04b T6a).
+    temporary_below: Option<String>,
+    /// `tests_as = "resurrection"`: the spell whose target test a sacrifice effect's target
+    /// takes under quirk BAT-QUIRK-5 (pack format v17, E04b T6a).
+    tests_as: Option<String>,
 }
 
 /// `obstacle = { steps = ["top_right", "top_left"], hexes = [2, 2, 3, 3], mirrored = true,
@@ -601,6 +607,8 @@ enum SpellEffectDto {
     Obstacle { obstacle: String },
     Teleport {},
     RemoveObstacle {},
+    Raise {},
+    Sacrifice {},
 }
 
 impl SpellDto {
@@ -647,6 +655,8 @@ impl SpellDto {
                     SpellEffectDto::Heal {} => Ok(SpellEffect::Heal),
                     SpellEffectDto::Teleport {} => Ok(SpellEffect::Teleport),
                     SpellEffectDto::RemoveObstacle {} => Ok(SpellEffect::RemoveObstacle),
+                    SpellEffectDto::Raise {} => Ok(SpellEffect::Raise),
+                    SpellEffectDto::Sacrifice {} => Ok(SpellEffect::Sacrifice),
                     SpellEffectDto::Obstacle { obstacle } => ObstacleKind::from_name(obstacle)
                         .map(SpellEffect::Obstacle)
                         .ok_or_else(|| {
@@ -707,6 +717,11 @@ impl SpellDto {
                 .map(mastery_named)
                 .transpose()?,
             removes_from: self.removes_from()?,
+            temporary_below: self
+                .temporary_below
+                .as_deref()
+                .map(mastery_named)
+                .transpose()?,
         })
     }
 
@@ -1394,6 +1409,11 @@ pub fn parse_pack(text: &str) -> Result<ContentPack, PackError> {
                 counters: references(&pack_id, &s.counters)?,
                 dispels: references(&pack_id, &s.dispels)?,
                 spares: references(&pack_id, &s.spares)?,
+                tests_as: s
+                    .tests_as
+                    .as_deref()
+                    .map(|k| reference(&pack_id, k))
+                    .transpose()?,
                 polarity: match s.polarity {
                     SpellPolarityDto::Positive => SpellPolarity::Positive,
                     SpellPolarityDto::Neutral => SpellPolarity::Neutral,
@@ -2601,7 +2621,8 @@ mod tests {
              \"quirk.battle.natives_sight_at_start\" = true, \
              \"quirk.battle.attack_from_seen_pit\" = true, \
              \"quirk.battle.obstacle_anchors\" = true, \
-             \"quirk.battle.draws_avoid_hidden\" = true }",
+             \"quirk.battle.draws_avoid_hidden\" = true, \
+             \"quirk.battle.sacrifice_tests_as_resurrection\" = true }",
             "quirks = { \"quirk.x\" = true }",
         );
         let pack = parse_pack(&quirky).unwrap();
@@ -2738,12 +2759,13 @@ mod tests {
         expected.magic.mana = 40;
         expected.magic.max_mana = 40;
         // The four damage spells, Ward, five timed spells, Mend, Blaze, Glass, Haze, Charm,
-        // Scorch and Blink with Basic Storm magic (E04b T2c, T3a, T3b1, T3b1b, T3b2, T4a, T4b,
-        // T4c, T5a, T5c2).
+        // Scorch, Blink, Snare, Revive and Offer with Basic Storm magic (E04b T2c, T3a, T3b1,
+        // T3b1b, T3b2, T4a, T4b, T4c, T5a, T5c2, T6a).
         expected.magic.spell_book = Some(
             [
                 "spark", "cinders", "arc", "blight", "ward", "hasten", "drag", "fury", "smiting",
                 "riposte", "mend", "blaze", "glass", "haze", "charm", "scorch", "blink", "snare",
+                "revive", "offer",
             ]
             .map(|k| ruleset.spell_by_key(&format!("synthetic:{k}")).unwrap())
             .to_vec(),
@@ -4092,7 +4114,7 @@ mod tests {
         use h3_content::SpellCategory;
         let r = compile(&[SYNTHETIC_PACK, SYNTHETIC_EXT_PACK], "synthetic:faithful").unwrap();
         assert_eq!(r.spell_schools().len(), 2);
-        assert_eq!(r.spells().len(), 35);
+        assert_eq!(r.spells().len(), 37);
         // Pack format v6: the storm school's protection rank; stone's defaults to 0.
         let ranks: Vec<u8> = r
             .spell_schools()
@@ -4343,6 +4365,27 @@ mod tests {
                 [Some(3), Some(2), Some(3), Some(3)]
             )
         );
+        // Format v17: a raise effect, temporary below Advanced, and a sacrifice effect tested as
+        // the raise spell under quirk BAT-QUIRK-5 (BAT-MAG-035, BAT-MAG-036).
+        let revive = magic("synthetic:revive");
+        assert_eq!(
+            (
+                revive.target,
+                revive.effects.clone(),
+                revive.temporary_below
+            ),
+            (SpellTarget::Stack, vec![SpellEffect::Raise], Some(2))
+        );
+        assert!(revive.raises() && revive.temporary_at(1) && !revive.temporary_at(2));
+        let offer = r.spell(r.spell_by_key("synthetic:offer").unwrap()).unwrap();
+        assert_eq!(
+            (offer.magic.effects.clone(), offer.tests_as),
+            (
+                vec![SpellEffect::Sacrifice],
+                r.spell_by_key("synthetic:revive")
+            )
+        );
+        assert!(offer.magic.sacrifices() && !offer.magic.raises());
         for (from, to) in [
             ("fixed_rounds = 255\n", ""),
             (
@@ -4367,6 +4410,14 @@ mod tests {
             (
                 "removes = { fire = \"advanced\"",
                 "removes = { fire = \"master\"",
+            ),
+            (
+                "temporary_below = \"advanced\"",
+                "temporary_below = \"master\"",
+            ),
+            (
+                "effects = [{ kind = \"sacrifice\" }]",
+                "effects = [{ kind = \"sacrifice\", value = 1 }]",
             ),
         ] {
             assert!(SYNTHETIC_PACK.contains(from), "{from}");

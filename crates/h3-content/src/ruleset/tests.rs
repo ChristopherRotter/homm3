@@ -271,7 +271,7 @@ fn hash_is_stable_and_sensitive() {
     );
 }
 
-const GOLDEN_BASE_HASH: u64 = 0x2f6e_cb14_12e1_b427;
+const GOLDEN_BASE_HASH: u64 = 0xa6fc_89e3_cca8_fada;
 
 fn expect(packs: &[ContentPack], profile: &str) -> CompileError {
     Ruleset::compile(packs, profile).unwrap_err()

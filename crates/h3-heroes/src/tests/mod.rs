@@ -107,6 +107,7 @@ fn spell(k: &str, category: SpellCategory) -> SpellDef {
         counters: vec![],
         dispels: vec![],
         spares: vec![],
+        tests_as: None,
     }
 }
 

@@ -120,6 +120,7 @@ Outside the E04 scope, listed so they are not lost (no classification needed now
 ### S-15 — Gold Dragons are affected by hero Dispel and by Sacrifice (E04b)
 - Original: wiki Trivia: "Gold Dragons are susceptible to Dispel cast by heroes, the Sacrificing part of Sacrifice (but not the Resurrection)", although they are immune to spells of levels 1–4.
 - Suggested **fix-optional**.
+- **Settled by code reading** (E04b T3b1b, T6a; `installation.md` §7.10, §7.18): Dispel tests no immunity at all (the rule, T3b1b); Sacrifice's victim takes Sacrifice's level 5, which no spell-level immunity reaches, and its raised stack Resurrection's level 4, which the Gold Dragons' immunity does: ledger **BAT-QUIRK-5** (fix-optional, the user, 2026-10-08).
 
 ### S-16 — Frenzy counts Behemoth defense reduction (E04b)
 - Original: HotA changelog: "when calculating the bonus attack from the Frenzy spell, defense penalties from enemy creatures (such as Behemoths and Ancient Behemoths) were accounted for".
@@ -145,6 +146,7 @@ Outside the E04 scope, listed so they are not lost (no classification needed now
 ### S-20 — A defender wins and is left without an army (E04b)
 - Original: HotA changelog: "a defending hero could be left without an army after winning a combat if all his stacks had been resurrected with a Basic-level Resurrection spell" (Basic Resurrection is temporary).
 - Suggested **exploit-fix** (a hero without an army breaks an invariant).
+- E04b T6a: ledger **BAT-QUIRK-6**: the battle reports the facts (end counts without the temporary creatures, BAT-END-003); the orchestrator removes such a winner (the user, 2026-10-08).
 
 ### S-21 — Killing a multiply-cloned stack removes only one clone (E04b)
 - Original: HotA changelog: "upon death of a stack that had been cloned several times, only one clone would disappear". May be a HotA regression rather than an original bug.

@@ -230,3 +230,28 @@ Classes: `exploit-fix` (always fixed, never toggleable) · `preserve` (accepted,
 - Defaults: faithful = on, strict-fixed = off
 - Regression test: `crates/h3-battle/src/tests/remove.rs`, `random_draws_avoid_hidden_obstacles_only_with_bat_quirk_4`; the property test `hidden_obstacles_do_not_show` covers casts without it
 - Decided by / date: user, 2026-10-07 (E04b T5c2 checkpoint, BAT-Q4)
+
+### BAT-QUIRK-5 — Sacrifice tests the stack it raises as Resurrection would
+- Class: fix-optional (user, 2026-10-08)
+- Context / rules affected: battle, BAT-MAG-036 (with BAT-MAG-035)
+- Original behavior: Sacrifice finds and tests the stack it raises through Resurrection's routine (0x5A3950 calls 0x5A3CC0, which asks 0x5A8090 about spell 38): Resurrection's conditions, its level 4 against spell-level immunities and Anti-Magic (Gold Dragons, immune to levels 1–4, are never raised by Sacrifice; survey S-15), and Resurrection's hit points at the caster's Earth mastery, which must reach one creature's health, although Sacrifice raises its own amount.
+- Intended/expected behavior: the target is tested with Sacrifice's own conditions and level 5, without a hit-point minimum (strict-fixed).
+- Impact: gameplay-altering (small)
+- Community status: the wiki's Gold Dragon trivia notes the Gold Dragons' half (S-15); the hit-point test is undocumented
+- Sources: original-data, `docs/formats/installation.md` §7.18; wiki, Gold Dragon page (https://heroes.thelazy.net/index.php/Gold_Dragon, retrieved 2026-10-03)
+- Flag: `quirk.battle.sacrifice_tests_as_resurrection` (E04b T6a)
+- Defaults: faithful = on, strict-fixed = off
+- Regression test: `crates/h3-battle/src/tests/raise.rs`, `with_bat_quirk_5_sacrifice_tests_its_target_as_resurrection`
+- Decided by / date: user, 2026-10-08 (E04b T6a)
+
+### BAT-QUIRK-6 — A winner left without an army (survey S-20)
+- Class: exploit-fix
+- Context / rules affected: battle and adventure, BAT-MAG-035, BAT-END-003
+- Original behavior: creatures raised by Basic Resurrection fight on and may win the battle, then vanish; a hero whose stacks were all raised so is left without an army (HotA changelog: "a defending hero could be left without an army after winning a combat if all his stacks had been resurrected with a Basic-level Resurrection spell").
+- Intended/expected behavior: the battle reports the facts: the victory, and end counts without the temporary creatures (BAT-END-003). The orchestrator removes a winning hero left without creatures, as after a retreat (VCMI: `battleFinalize`, `onHeroEscaped`; the user, 2026-10-08).
+- Impact: exploit (a hero without an army breaks an invariant)
+- Community status: fixed in Horn of the Abyss
+- Sources: HotA changelog (survey `docs/rules/surveys/E04-quirks.md` S-20); vcmi, `server/battles/BattleResultProcessor.cpp` (1.7.5)
+- Flag: none
+- Regression test: the battle's part, `crates/h3-battle/src/tests/raise.rs`, `resurrection_raises_a_wounded_stack_for_the_battle_below_advanced`, and the property `outcomes_account_for_every_stack`; the orchestrator's part with the adventure lane (battle queue inbox, 2026-10-08)
+- Decided by / date: user, 2026-10-08 (E04b T6a)

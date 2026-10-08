@@ -68,6 +68,7 @@ pub const REGISTRY: QuirkRegistry = QuirkRegistry::new(&[
     "quirk.battle.attack_from_seen_pit",
     "quirk.battle.obstacle_anchors",
     "quirk.battle.draws_avoid_hidden",
+    "quirk.battle.sacrifice_tests_as_resurrection",
 ]);
 
 /// Q-0003: creatures of a side without a hero never get lucky strikes (BAT-LCK-002).
@@ -125,6 +126,13 @@ pub const OBSTACLE_ANCHORS: QuirkFlag = QuirkFlag(11);
 /// only the obstacles the caster's side sees, and may land on a hidden one of the other side.
 pub const DRAWS_AVOID_HIDDEN: QuirkFlag = QuirkFlag(12);
 
+/// BAT-QUIRK-5: Sacrifice's target (the stack it raises) is tested as Resurrection's would be:
+/// with Resurrection's level against immunities and Anti-Magic, its conditions, and its hit
+/// points at the caster's mastery, which must raise at least one creature (BAT-MAG-036;
+/// `installation.md` §7.18). Off: the target is tested with Sacrifice's own level and
+/// conditions, without a hit-point minimum.
+pub const SACRIFICE_TESTS_AS_RESURRECTION: QuirkFlag = QuirkFlag(13);
+
 /// The set of enabled quirk flags of a ruleset.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub struct Quirks {
@@ -163,7 +171,7 @@ mod tests {
 
     #[test]
     fn registry_lookup_and_bitset() {
-        assert_eq!(REGISTRY.len(), 13);
+        assert_eq!(REGISTRY.len(), 14);
         assert_eq!(
             REGISTRY.lookup("quirk.battle.no_luck_without_hero"),
             Some(NO_LUCK_WITHOUT_HERO)
@@ -215,6 +223,10 @@ mod tests {
         assert_eq!(
             REGISTRY.lookup("quirk.battle.draws_avoid_hidden"),
             Some(DRAWS_AVOID_HIDDEN)
+        );
+        assert_eq!(
+            REGISTRY.lookup("quirk.battle.sacrifice_tests_as_resurrection"),
+            Some(SACRIFICE_TESTS_AS_RESURRECTION)
         );
         // `new` is a const fn; call it at run time too so coverage sees it.
         let runtime = QuirkRegistry::new(&["quirk.battle.a"]);

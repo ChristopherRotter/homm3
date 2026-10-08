@@ -426,11 +426,26 @@ fn other_spell(
     spells: &BTreeMap<String, (String, &'static str)>,
 ) -> Result<(), String> {
     stack_spell(text, what, (flags, polarity), t.side.as_deref())?;
+    if !t.requires.is_empty() {
+        let names: Vec<String> = t.requires.iter().map(|f| quote(f)).collect();
+        let _ = writeln!(text, "requires = [{}]", names.join(", "));
+    }
+    let mut excludes: Vec<String> = t.excludes.iter().map(|f| quote(f)).collect();
     if flags & SPELL_NO_WAR_MACHINES != 0 {
-        let _ = writeln!(text, "excludes = [\"war_machine\"]");
+        excludes.push(quote("war_machine"));
+    }
+    if !excludes.is_empty() {
+        let _ = writeln!(text, "excludes = [{}]", excludes.join(", "));
     }
     if let Some(m) = &t.any_side {
         let _ = writeln!(text, "any_side = {}", quote(m));
+    }
+    if let Some(m) = &t.temporary_below {
+        let _ = writeln!(text, "temporary_below = {}", quote(m));
+    }
+    if let Some(name) = &t.tests_as {
+        let keys = spell_refs(core::slice::from_ref(name), (what, pack), spells)?;
+        let _ = writeln!(text, "tests_as = {}", keys.join(", "));
     }
     if let Some(m) = &t.clears_obstacles {
         let _ = writeln!(text, "clears_obstacles = {}", quote(m));
