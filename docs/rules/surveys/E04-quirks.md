@@ -146,7 +146,7 @@ Outside the E04 scope, listed so they are not lost (no classification needed now
 ### S-20 — A defender wins and is left without an army (E04b)
 - Original: HotA changelog: "a defending hero could be left without an army after winning a combat if all his stacks had been resurrected with a Basic-level Resurrection spell" (Basic Resurrection is temporary).
 - Suggested **exploit-fix** (a hero without an army breaks an invariant).
-- E04b T6a: ledger **BAT-QUIRK-6**: the battle reports the facts (end counts without the temporary creatures, BAT-END-003); the orchestrator removes such a winner (the user, 2026-10-08).
+- **Confirmed by code reading** (E04b T6a, `installation.md` §7.18): the end of the battle keeps one creature when none is left, but counts war machines and summoned stacks. Ledger **BAT-QUIRK-6**: the engine counts only army stacks (the user, 2026-10-08).
 
 ### S-21 — Killing a multiply-cloned stack removes only one clone (E04b)
 - Original: HotA changelog: "upon death of a stack that had been cloned several times, only one clone would disappear". May be a HotA regression rather than an original bug.

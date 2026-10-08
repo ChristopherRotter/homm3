@@ -726,9 +726,16 @@ proptest! {
                 // Creatures raised for the battle only are left out (BAT-MAG-035).
                 let temporary = state.temporary(StackId(id));
                 prop_assert!(temporary <= s.base_count);
-                prop_assert_eq!((record.creature, record.start, record.end), (s.creature, s.base_count, s.count.saturating_sub(temporary)));
+                prop_assert_eq!((record.creature, record.start), (s.creature, s.base_count));
+                // Creatures raised for the battle only are left out, but an army whose living
+                // creatures are all such keeps one in its last living stack (BAT-MAG-035).
+                let kept = record.end == 1 && s.count.saturating_sub(temporary) == 0 && s.is_alive();
+                prop_assert!(record.end == s.count.saturating_sub(temporary) || kept);
                 prop_assert!(record.end <= record.start);
             }
+            let army = |rec: &&h3_contracts::StackRecord| rec.origin != h3_contracts::StackOrigin::WarMachine;
+            let any_army_alive = stacks.iter().any(|(_, s)| s.is_alive() && !s.has(crate::StackTraits::WAR_MACHINE));
+            prop_assert_eq!(records.iter().filter(army).any(|rec| rec.end > 0), any_army_alive);
             let alive = |machine: bool| records.iter().filter(move |rec| rec.end > 0 && (rec.origin == h3_contracts::StackOrigin::WarMachine) == machine);
             prop_assert_eq!(o.survivors[side.index()].stacks.len(), alive(false).count());
             prop_assert_eq!(o.war_machines[side.index()].len(), alive(true).count());

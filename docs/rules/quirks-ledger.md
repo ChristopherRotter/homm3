@@ -246,12 +246,12 @@ Classes: `exploit-fix` (always fixed, never toggleable) · `preserve` (accepted,
 
 ### BAT-QUIRK-6 — A winner left without an army (survey S-20)
 - Class: exploit-fix
-- Context / rules affected: battle and adventure, BAT-MAG-035, BAT-END-003
-- Original behavior: creatures raised by Basic Resurrection fight on and may win the battle, then vanish; a hero whose stacks were all raised so is left without an army (HotA changelog: "a defending hero could be left without an army after winning a combat if all his stacks had been resurrected with a Basic-level Resurrection spell").
-- Intended/expected behavior: the battle reports the facts: the victory, and end counts without the temporary creatures (BAT-END-003). The orchestrator removes a winning hero left without creatures, as after a retreat (VCMI: `battleFinalize`, `onHeroEscaped`; the user, 2026-10-08).
+- Context / rules affected: battle, BAT-MAG-035, BAT-END-003
+- Original behavior: creatures raised by Basic Resurrection fight on and may win the battle, then vanish. The end of the battle (0x4774E2, `docs/formats/installation.md` §7.18) keeps one creature in the last stack that had any when no creatures are left, but its total counts war machines and summoned stacks or clones, which the army does not keep: a hero with a Ballista (or a living elemental) whose stacks were all raised so is left without an army (HotA changelog: "a defending hero could be left without an army after winning a combat if all his stacks had been resurrected with a Basic-level Resurrection spell").
+- Intended/expected behavior: the total counts only army stacks: an army whose living creatures are all temporary keeps one in its last living stack whatever else survives (BAT-END-003, BAT-MAG-035; the user, 2026-10-08).
 - Impact: exploit (a hero without an army breaks an invariant)
 - Community status: fixed in Horn of the Abyss
-- Sources: HotA changelog (survey `docs/rules/surveys/E04-quirks.md` S-20); vcmi, `server/battles/BattleResultProcessor.cpp` (1.7.5)
+- Sources: original-data, `docs/formats/installation.md` §7.18; HotA changelog (survey `docs/rules/surveys/E04-quirks.md` S-20)
 - Flag: none
-- Regression test: the battle's part, `crates/h3-battle/src/tests/raise.rs`, `resurrection_raises_a_wounded_stack_for_the_battle_below_advanced`, and the property `outcomes_account_for_every_stack`; the orchestrator's part with the adventure lane (battle queue inbox, 2026-10-08)
+- Regression test: `crates/h3-battle/src/tests/raise.rs`, `a_side_left_with_creatures_raised_for_the_battle_only_keeps_one`; the property `outcomes_account_for_every_stack`
 - Decided by / date: user, 2026-10-08 (E04b T6a)

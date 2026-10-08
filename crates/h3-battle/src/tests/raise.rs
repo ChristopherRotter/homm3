@@ -417,3 +417,193 @@ fn a_cast_that_kills_the_active_stack_ends_its_turn() {
             .any(|e| e.kind == EventKind::TurnStarted { stack: StackId(2) })
     );
 }
+
+// covers: BAT-MAG-035, BAT-MAG-036, BAT-MAG-021
+#[test]
+fn anti_magic_keeps_a_raise_off_a_living_stack_and_a_victim_off_a_sacrifice() {
+    let r = ruleset();
+    let mut s = arena(
+        &r,
+        [Some(raiser(&r, 1, 1)), None],
+        &[("fixed", 1, 2, 1), ("serf", 5, 2, 5), ("serf", 5, 2, 7)],
+        &[("serf", 1, 14, 5)],
+        1,
+    );
+    s.stacks.as_mut_slice()[1].count = 3;
+    s.stacks.as_mut_slice()[2].count = 3;
+    assert_eq!(targets(&s, &r, "rise"), vec![1, 2]);
+    assert_eq!(victims(&s, &r, 1), vec![2]);
+    // Anti-Magic above the spells' levels (4, 5) on stack 2: no raise, no sacrifice.
+    s.stacks.as_mut_slice()[2].spells.spell_immunity = 6;
+    assert_eq!(targets(&s, &r, "rise"), vec![1]);
+    assert_eq!(victims(&s, &r, 1), Vec::<u8>::new());
+}
+
+// covers: BAT-MAG-035
+#[test]
+fn a_corpse_under_a_wall_or_below_corpses_that_do_not_count() {
+    let r = ruleset();
+    let mut s = arena(
+        &r,
+        [Some(raiser(&r, 3, 0)), None],
+        &[("fixed", 1, 2, 1), ("serf", 2, 5, 5), ("ogre", 2, 9, 5)],
+        &[("serf", 1, 14, 1), ("serf", 1, 13, 9)],
+        1,
+    );
+    // The own serfs die on (5, 5); an enemy serf dies there later: it does not hide them.
+    kill(&mut s, 1);
+    place(&mut s, &r, 3, 5, 5);
+    kill(&mut s, 3);
+    assert_eq!(targets(&s, &r, "rise"), vec![1]);
+    // A two-hex corpse above them whose other hex is held does not hide them either.
+    place(&mut s, &r, 2, 5, 5);
+    kill(&mut s, 2);
+    let ogre = s.stacks()[2];
+    let tail = ogre
+        .footprint(field(&r))
+        .hexes()
+        .find(|&h| h != ogre.hex)
+        .unwrap();
+    assert_eq!(targets(&s, &r, "rise"), vec![2]);
+    s.stacks.as_mut_slice()[4].hex = tail;
+    assert_eq!(targets(&s, &r, "rise"), vec![1]);
+    // A wall over the hex (Force Field) keeps every corpse there.
+    let wall = spell(&r, "wall");
+    let shape = r.spell(wall).unwrap().magic.obstacle.clone().unwrap();
+    let hexes = [at(&r, 5, 5)];
+    crate::obstacles::place(
+        &mut s,
+        (wall, h3_content::ObstacleKind::Wall, &shape),
+        BattleSide::Defender,
+        (&hexes, 0),
+        &mut Vec::<Event>::new(),
+    );
+    assert_eq!(targets(&s, &r, "rise"), Vec::<u8>::new());
+}
+
+// covers: BAT-MAG-035, BAT-MAG-020
+#[test]
+fn a_specialist_raises_more_and_reaches_more_health() {
+    let r = ruleset();
+    let mut hero = raiser(&r, 1, 0);
+    // A level-6 specialist in Resurrection: 3 % of the hit points per level step.
+    hero.effects
+        .push(h3_contracts::BattleEffect::SpellSpecialty {
+            spell: spell(&r, "rise"),
+            bp_per_level: 300,
+            level: 6,
+        });
+    let mut s = arena(
+        &r,
+        [Some(hero), None],
+        &[("seraph", 3, 2, 5)],
+        &[("serf", 1, 14, 5)],
+        1,
+    );
+    s.stacks.as_mut_slice()[0].count = 1;
+    // 190 hit points plus ⌈190 × 3 % × 6⌉ = 35: 225 reach a seraph's 200.
+    assert_eq!(targets(&s, &r, "rise"), vec![0]);
+    let events = cast(&mut s, &r, "rise", (stack(0), CastTarget::None)).unwrap();
+    assert_eq!(raised(&events), vec![(0, 225, 2, true)]);
+}
+
+// covers: BAT-MAG-036
+#[test]
+fn with_bat_quirk_5_a_dead_target_takes_resurrections_test_too() {
+    let r = ruleset_with("t:sacrifice", |_| {});
+    let mut s = arena(
+        &r,
+        [Some(raiser(&r, 0, 1)), None],
+        &[("fixed", 1, 2, 1), ("seraph", 1, 5, 5), ("serf", 5, 9, 5)],
+        &[("serf", 1, 14, 5)],
+        1,
+    );
+    kill(&mut s, 1);
+    // 190 hit points of Resurrection do not reach a seraph's 200: no target, dead or alive.
+    assert_eq!(targets(&s, &r, "offering"), Vec::<u8>::new());
+    s.heroes[0].as_mut().unwrap().magic.schools[0] = 2;
+    assert_eq!(targets(&s, &r, "offering"), vec![1]);
+}
+
+// covers: BAT-MAG-035
+#[test]
+fn a_raised_stack_that_had_not_acted_gets_its_turn() {
+    let r = ruleset();
+    let mut s = arena(
+        &r,
+        [Some(raiser(&r, 3, 0)), None],
+        &[("fixed", 1, 2, 1), ("serf", 4, 5, 5)],
+        &[("tank", 1, 14, 5)],
+        1,
+    );
+    kill(&mut s, 1);
+    cast(&mut s, &r, "rise", (stack(1), CastTarget::None)).unwrap();
+    let order = order(&mut s, &r, 3);
+    assert!(order.contains(&1), "{order:?}");
+}
+
+// covers: BAT-MAG-035
+#[test]
+fn stacks_killed_in_automatic_turns_of_one_command_lie_in_their_order() {
+    let r = ruleset();
+    let mut s = arena(
+        &r,
+        [Some(raiser(&r, 3, 0)), None],
+        &[("fixed", 1, 2, 1), ("serf", 2, 5, 5), ("serf", 2, 7, 5)],
+        &[("serf", 1, 14, 5)],
+        1,
+    );
+    // Stack 2 dies, then stack 1 on the same hex, each marked before the next activation.
+    place(&mut s, &r, 2, 5, 5);
+    s.stacks.as_mut_slice()[2].count = 0;
+    s.stacks.as_mut_slice()[2].top_hp = 0;
+    crate::turn::activate_next(&mut s, &r, &mut Vec::<Event>::new());
+    s.stacks.as_mut_slice()[1].count = 0;
+    s.stacks.as_mut_slice()[1].top_hp = 0;
+    crate::turn::activate_next(&mut s, &r, &mut Vec::<Event>::new());
+    assert_eq!((s.corpse(StackId(2)), s.corpse(StackId(1))), (1, 2));
+    assert_eq!(targets(&s, &r, "rise"), vec![1]);
+}
+
+// covers: BAT-MAG-035, BAT-END-003
+#[test]
+fn a_side_left_with_creatures_raised_for_the_battle_only_keeps_one() {
+    let r = ruleset();
+    let mut setup = setup(&r, &[(0, "serf", 6), (1, "serf", 4)], &[(0, "serf", 1)]);
+    setup.heroes[0] = Some(raiser(&r, 1, 0));
+    // A Ballista on the side: the original counts it and keeps nothing (S-20); the engine
+    // counts only army stacks (BAT-QUIRK-6).
+    setup.war_machines[0].push(r.creature_by_key("t:ballista").unwrap());
+    let mut s = BattleState::new(&r, &setup, 1).unwrap();
+    place(&mut s, &r, 0, 2, 1);
+    place(&mut s, &r, 1, 2, 5);
+    activate(&mut s, 0);
+    // Both serf stacks die; Basic Resurrection raises them for the battle only.
+    kill(&mut s, 0);
+    kill(&mut s, 1);
+    for id in [0, 1] {
+        s.heroes[0].as_mut().unwrap().view.casts = 0;
+        cast(&mut s, &r, "rise", (stack(id), CastTarget::None)).unwrap();
+    }
+    assert_eq!((s.temporary(StackId(0)), s.temporary(StackId(1))), (6, 4));
+    let defender = s
+        .stacks()
+        .iter()
+        .position(|st| st.side == BattleSide::Defender)
+        .unwrap();
+    kill(&mut s, u8::try_from(defender).unwrap());
+    crate::combat::check_end(&mut s, &mut Vec::<Event>::new());
+    let outcome = s.outcome().unwrap();
+    assert_eq!(outcome.result, BattleResult::Victory(BattleSide::Attacker));
+    // The last living army stack keeps one creature; the Ballista survives as it is.
+    let ends: Vec<u32> = outcome.stacks[0].iter().map(|rec| rec.end).collect();
+    assert_eq!(ends, vec![0, 1, 1]);
+    assert_eq!(outcome.survivors[0].stacks.len(), 1);
+    assert_eq!(
+        (
+            outcome.survivors[0].stacks[0].slot,
+            outcome.survivors[0].stacks[0].count
+        ),
+        (1, 1)
+    );
+}

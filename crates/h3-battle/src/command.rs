@@ -70,8 +70,8 @@ pub enum Command {
         spell: SpellId,
         /// What it is aimed at.
         target: CastTarget,
-        /// Its second target: Teleport's destination hex (BAT-MAG-029); none for every other
-        /// spell.
+        /// Its second target: Teleport's destination hex (BAT-MAG-029), Sacrifice's victim stack
+        /// (BAT-MAG-036); none for every other spell.
         second: CastTarget,
     },
 }

@@ -304,7 +304,7 @@ impl CanonicalHash for HeroMagic {
 }
 
 /// What a cast is aimed at (ADR-0014 point 3): its target, and its second target where the spell
-/// takes one (Teleport's destination hex, BAT-MAG-029; Sacrifice's victim joins with T6).
+/// takes one (Teleport's destination hex, BAT-MAG-029; Sacrifice's victim stack, BAT-MAG-036).
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Default)]
 pub enum CastTarget {
     /// Nothing (Armageddon).
@@ -349,7 +349,7 @@ pub(crate) struct Cast<'r> {
     cost: u16,
     mastery: u8,
     target: CastTarget,
-    /// The second target (Teleport's destination).
+    /// The second target (Teleport's destination, Sacrifice's victim).
     second: CastTarget,
     /// `power × power factor + effect[mastery]` (BAT-MAG-004).
     value: u64,
@@ -864,8 +864,9 @@ pub fn cast_targets(
 }
 
 /// Fills `out` with every second target [`crate::apply`] accepts for `actor`'s hero casting
-/// `spell` at `target` now (BAT-MAG-029): Teleport's destination hexes, or only none for a spell
-/// without a second target. Empty if `target` is no target of the cast now.
+/// `spell` at `target` now (BAT-MAG-029): Teleport's destination hexes, Sacrifice's victims
+/// (BAT-MAG-036), or only none for a spell without a second target. Empty if `target` is no
+/// target of the cast now.
 pub fn second_targets(
     state: &BattleState,
     ruleset: &Ruleset,
@@ -1398,7 +1399,6 @@ pub(crate) fn apply_cast<S: Sink>(
         target: cast.target,
         second: cast.second,
     }));
-    let spell = (cast.id, cast.spell);
     let magic = &cast.spell.magic;
     if magic.removes_obstacles() {
         // rule: BAT-MAG-034
@@ -1453,10 +1453,35 @@ pub(crate) fn apply_cast<S: Sink>(
             )
         };
         raise::raise(state, ruleset, (s, hit_points), temporary, sink);
-        return;
+    } else {
+        reach_stacks(state, ruleset, &cast, sink);
     }
+    if cast
+        .spell
+        .magic
+        .clears_obstacles_from
+        .is_some_and(|m| cast.mastery >= m)
+    {
+        obstacles::clear(state, sink);
+    }
+    check_end(state, sink);
+    if state.result.is_some() {
+        state.active = None;
+    }
+}
+
+/// The stacks a cast that does not raise creatures reaches, and its effects on them (BAT-MAG-004
+/// to BAT-MAG-009, BAT-MAG-022, BAT-MAG-029): its target stack, mirrored and rolling first, its
+/// chain, Teleport's move, or the stacks of its area or of the battle.
+fn reach_stacks<S: Sink>(
+    state: &mut BattleState,
+    ruleset: &Ruleset,
+    cast: &Cast<'_>,
+    sink: &mut S,
+) {
+    let spell = (cast.id, cast.spell);
     let target = match cast.target {
-        CastTarget::Stack(s) => CastTarget::Stack(mirror(state, &cast, s, sink)),
+        CastTarget::Stack(s) => CastTarget::Stack(mirror(state, cast, s, sink)),
         other => other,
     };
     // The stack a stack spell is aimed at rolls first: if it resists, the whole spell does
@@ -1477,7 +1502,7 @@ pub(crate) fn apply_cast<S: Sink>(
                 let mut value = cast.value;
                 let mut current = first;
                 for _ in 0..chain.targets[usize::from(cast.mastery)] {
-                    affect(state, ruleset, &cast, (current, value), sink);
+                    affect(state, ruleset, cast, (current, value), sink);
                     struck[current.index()] = true;
                     let Some(next) = next_in_chain(state, ruleset, spell, current, &struck) else {
                         break;
@@ -1491,7 +1516,7 @@ pub(crate) fn apply_cast<S: Sink>(
                 let to = cast.second.hex().unwrap_or(state.at(s).hex);
                 teleport(state, s, to, sink);
             }
-            (CastTarget::Stack(s), None) => affect(state, ruleset, &cast, (s, cast.value), sink),
+            (CastTarget::Stack(s), None) => affect(state, ruleset, cast, (s, cast.value), sink),
             (target, _) => {
                 // rule: BAT-MAG-007
                 let mut hits = [false; STACK_CAPACITY];
@@ -1508,23 +1533,11 @@ pub(crate) fn apply_cast<S: Sink>(
                     if resists(state, ruleset, cast.spell, s) {
                         resisted(s, sink);
                     } else {
-                        affect(state, ruleset, &cast, (s, cast.value), sink);
+                        affect(state, ruleset, cast, (s, cast.value), sink);
                     }
                 }
             }
         }
-    }
-    if cast
-        .spell
-        .magic
-        .clears_obstacles_from
-        .is_some_and(|m| cast.mastery >= m)
-    {
-        obstacles::clear(state, sink);
-    }
-    check_end(state, sink);
-    if state.result.is_some() {
-        state.active = None;
     }
 }
 

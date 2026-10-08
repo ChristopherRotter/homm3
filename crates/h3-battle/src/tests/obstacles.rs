@@ -571,6 +571,11 @@ fn steps_and_targets_convert() {
     assert_eq!(CastTarget::Hex(Hex(5)).hex(), Some(Hex(5)));
     assert_eq!(CastTarget::None.hex(), None);
     assert_eq!(stack(1).hex(), None);
+    assert_eq!(stack(1).stack(), Some(StackId(1)));
+    assert_eq!(
+        (CastTarget::None.stack(), CastTarget::Hex(Hex(5)).stack()),
+        (None, None)
+    );
 }
 
 // covers: BAT-MAG-029

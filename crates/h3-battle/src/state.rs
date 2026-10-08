@@ -1002,12 +1002,18 @@ impl BattleState {
     pub fn outcome(&self) -> Option<BattleOutcome> {
         let result = self.result?;
         let stacks = BattleSide::BOTH.map(|side| {
-            self.stacks
-                .iter()
-                .zip(self.raised.temporary)
-                .filter(|(s, _)| s.side == side)
-                .map(|(s, temporary)| StackRecord {
-                    origin: if s.has(StackTraits::WAR_MACHINE) {
+            let mut records = Vec::new();
+            let mut last_alive = None;
+            for (s, temporary) in self.stacks.iter().zip(self.raised.temporary) {
+                if s.side != side {
+                    continue;
+                }
+                let machine = s.has(StackTraits::WAR_MACHINE);
+                if !machine && s.is_alive() {
+                    last_alive = Some(records.len());
+                }
+                records.push(StackRecord {
+                    origin: if machine {
                         StackOrigin::WarMachine
                     } else {
                         StackOrigin::Army(s.slot)
@@ -1016,8 +1022,19 @@ impl BattleState {
                     start: s.base_count,
                     // rule: BAT-MAG-035
                     end: s.count.saturating_sub(temporary),
-                })
-                .collect::<Vec<_>>()
+                });
+            }
+            // A side whose army has creatures alive only for the battle keeps one in its last
+            // living army stack (the original's end of battle, 0x4774E2, counting only army
+            // stacks: quirk BAT-QUIRK-6, S-20).
+            // rule: BAT-MAG-035
+            let none_left = records
+                .iter()
+                .all(|r| r.origin == StackOrigin::WarMachine || r.end == 0);
+            if let Some(i) = last_alive.filter(|_| none_left) {
+                records[i].end = 1;
+            }
+            records
         });
         let survivors = stacks.each_ref().map(|records| Army {
             stacks: records

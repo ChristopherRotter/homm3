@@ -73,10 +73,10 @@ The 13 direct-damage spells: Magic Arrow, Ice Bolt, Lightning Bolt, Titan's Ligh
 
 ### T6 — Life and summons (refined 2026-10-08, the user)
 
-- [x] **T6a Raising** — done 2026-10-08: read in the executable (`installation.md` §7.18); pack format v17 (`raise`, `sacrifice`, `temporary_below`, `tests_as`), BAT-MAG-035 (Resurrection, Animate Dead: corpses by hex, the hit-point test, temporary creatures left out of the outcome), BAT-MAG-036 (Sacrifice); quirks BAT-QUIRK-5 (Sacrifice tested as Resurrection, fix-optional; S-15) and BAT-QUIRK-6 (S-20, the orchestrator's fix); a cast that kills the active stack ends its turn; ADR-0014 points 6 and 10 amended (no `StackOrigin` variants, PR #7); ruleset hash v26, state hash v29; replays and `bench-check` re-baselined. Record: [`E04b-log.md`](E04b-log.md).
+- [x] **T6a Raising** — done 2026-10-08: read in the executable (`installation.md` §7.18); pack format v17 (`raise`, `sacrifice`, `temporary_below`, `tests_as`), BAT-MAG-035 (Resurrection, Animate Dead: corpses by hex, the hit-point test, temporary creatures left out of the outcome), BAT-MAG-036 (Sacrifice); quirks BAT-QUIRK-5 (Sacrifice tested as Resurrection, fix-optional; S-15) and BAT-QUIRK-6 (S-20: the last living army stack keeps one creature, counting only army stacks); a cast that kills the active stack ends its turn; ADR-0014 points 6 and 10 amended (no `StackOrigin` variants, PR #7); ruleset hash v26, state hash v29; replays and `bench-check` re-baselined. Record: [`E04b-log.md`](E04b-log.md).
 - [ ] **T6b Created stacks**: Clone and the four Summon Elemental spells; the creation limit of 20 and one elemental type per side; a clone vanishes when damaged or when its original dies (S-21); only summoned stacks left: both lose (`Draw`); read whether the original's end of battle counts created stacks for experience.
 
-**Checkpoint before T6** (2026-10-08): the user chose T6 before T7, T6a and T6b for the session, and no seam change for created stacks (ADR-0014 amended); BAT-QUIRK-5 fix-optional, BAT-QUIRK-6's fix with the orchestrator.
+**Checkpoint before T6** (2026-10-08): the user chose T6 before T7, T6a and T6b for the session, and no seam change for created stacks (ADR-0014 amended); BAT-QUIRK-5 fix-optional, BAT-QUIRK-6's fix in the battle (after the end-of-battle reading).
 
 ### T5 — Battlefield spells (refined 2026-10-07, Q54)
 
