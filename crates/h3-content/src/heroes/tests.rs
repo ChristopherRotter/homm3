@@ -443,12 +443,8 @@ fn a_casters_spell_takes_a_target_stack_at_its_mastery() {
     charm.magic.health_limit = true;
     let mut wall = timed("t:wall");
     wall.magic.target = SpellTarget::Hex;
-    p.spells.extend([
-        haste,
-        charm,
-        wall,
-        raising("t:rise", SpellEffect::Raise),
-    ]);
+    p.spells
+        .extend([haste, charm, wall, raising("t:rise", SpellEffect::Raise)]);
     let caster = |spell: &str, mastery| AbilityDef::SpellCaster {
         spell: key(spell),
         mastery,

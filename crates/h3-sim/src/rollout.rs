@@ -2,7 +2,7 @@
 
 use h3_battle::{
     BattleState, CastTargets, Command, LegalCommands, cast_targets, castable_spells,
-    creature_cast_targets, legal_commands, second_targets,
+    creature_cast_spell, creature_cast_targets, legal_commands, second_targets,
 };
 use h3_content::Ruleset;
 use h3_contracts::{BattleResult, BattleSide};
@@ -73,17 +73,22 @@ pub fn choose(
 ) -> Command {
     let staying = legal.iter().take_while(|c| !c.leaves_battle()).count();
     let spells = castable_spells(state, ruleset, side);
-    let mut creature = CastTargets::new();
-    creature_cast_targets(state, ruleset, side, &mut creature);
+    // The targets of the active stack's cast, only if it may cast (most stacks may not).
+    let creature = creature_cast_spell(state, ruleset, side).map(|_| {
+        let mut targets = CastTargets::new();
+        creature_cast_targets(state, ruleset, side, &mut targets);
+        targets
+    });
+    let creature = creature.filter(|t| !t.is_empty());
     let hero = usize::from(!spells.is_empty());
-    let entries = staying + hero + usize::from(!creature.is_empty());
+    let entries = staying + hero + usize::from(creature.is_some());
     let i = rng.below(u32::try_from(entries).unwrap_or(u32::MAX)) as usize;
     if i < staying {
         return legal.get(i).copied().unwrap_or(Command::Defend);
     }
-    if i >= staying + hero {
-        let n = u32::try_from(creature.len()).unwrap_or(u32::MAX);
-        let target = creature
+    if let Some(targets) = creature.filter(|_| i >= staying + hero) {
+        let n = u32::try_from(targets.len()).unwrap_or(u32::MAX);
+        let target = targets
             .get(rng.below(n) as usize)
             .copied()
             .unwrap_or_default();

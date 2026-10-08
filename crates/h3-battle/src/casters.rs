@@ -84,8 +84,10 @@ fn ready(
     ruleset: &Ruleset,
     actor: BattleSide,
 ) -> Option<(StackId, CreatureSpell)> {
-    let (id, stack) = state.active_stack()?;
-    if state.tactics.is_some() || stack.controller() != actor || state.casts.left[id.index()] == 0 {
+    // Most stacks have no casts: test that first (the random agent asks at every step).
+    let id = state.active.filter(|id| state.casts.left[id.index()] > 0)?;
+    let stack = state.at(id);
+    if state.tactics.is_some() || stack.controller() != actor {
         return None;
     }
     creature_spell(ruleset, stack.creature).map(|spell| (id, spell))

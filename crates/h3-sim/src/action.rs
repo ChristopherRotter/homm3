@@ -321,9 +321,12 @@ pub fn legal_mask(
 
 /// Whether the active stack of `actor` may cast at some target now (BAT-MAG-048).
 fn creature_cast_possible(state: &BattleState, ruleset: &Ruleset, actor: BattleSide) -> bool {
-    let mut targets = CastTargets::new();
-    creature_cast_targets(state, ruleset, actor, &mut targets);
-    !targets.is_empty()
+    // Most stacks may not cast: skip the targets' buffer for them.
+    creature_cast_spell(state, ruleset, actor).is_some_and(|_| {
+        let mut targets = CastTargets::new();
+        creature_cast_targets(state, ruleset, actor, &mut targets);
+        !targets.is_empty()
+    })
 }
 
 /// Whether `entry` is a legal non-cast entry of `actor`.
