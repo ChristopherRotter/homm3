@@ -28,7 +28,7 @@ use h3_kernel::arith::{
 };
 use h3_kernel::{CanonicalHash, FixedVec, StateHasher};
 
-use crate::casters::CreatureSpell;
+use crate::casters::{self, CastSpell, CreatureSpell};
 use crate::combat::check_end;
 use crate::created;
 use crate::damage::apply_damage;
@@ -364,6 +364,9 @@ pub(crate) struct Cast<'r> {
     power: u16,
     /// The stack that casts as its action (BAT-MAG-048); none for the side's hero.
     by: Option<StackId>,
+    /// Whether the casting stack draws the spell at the cast among those useful for the target
+    /// (BAT-MAG-050): `id` is then the first of them until the draw.
+    draws: bool,
 }
 
 /// Whether the battle implements the effects of `spell`: every effect kind is implemented
@@ -846,14 +849,16 @@ pub(crate) fn plan_cast<'r>(
             .max(1),
         power: u16::from(hero.view.power),
         by: None,
+        draws: false,
     })
 }
 
 /// Whether `target` is a target of stack `caster`'s cast of `spell` for `side`, its controller
 /// (BAT-MAG-048): a stack other than the caster that the spell may be aimed at ([`first_target`]
 /// at the caster's mastery: a living stack the spell may reach and affect); for a drawn spell
-/// one of [`drawn_target`] (BAT-MAG-049). The original's test 0x4476C0 and its cursor (0x4766EA,
-/// which never offers the caster itself), `installation.md` §7.21.
+/// one of [`drawn_target`] (BAT-MAG-049); for a draw at the cast one of [`helpful_target`]
+/// (BAT-MAG-050). The original's test 0x4476C0 and its cursor (0x4766EA, which never offers the
+/// caster itself), `installation.md` §7.21.
 // rule: BAT-MAG-048
 pub(crate) fn creature_target(
     state: &BattleState,
@@ -862,14 +867,39 @@ pub(crate) fn creature_target(
     (caster, spell): (StackId, CreatureSpell),
     target: CastTarget,
 ) -> bool {
-    // A caster's spell is one of the ruleset's (the compiler checks its abilities).
-    ruleset.spell(spell.id).is_some_and(|s| {
-        let cast = ((spell.id, s), spell.mastery);
-        if spell.drawn {
-            drawn_target(state, ruleset, side, (caster, cast), target)
-        } else {
-            target != CastTarget::Stack(caster) && first_target(state, ruleset, side, cast, target)
-        }
+    match spell.spell {
+        // A caster's spell is one of the ruleset's (the compiler checks its abilities).
+        CastSpell::Named(id) => ruleset.spell(id).is_some_and(|s| {
+            let cast = ((id, s), spell.mastery);
+            if spell.drawn {
+                drawn_target(state, ruleset, side, (caster, cast), target)
+            } else {
+                target != CastTarget::Stack(caster)
+                    && first_target(state, ruleset, side, cast, target)
+            }
+        }),
+        CastSpell::AtResolution => helpful_target(state, ruleset, side, caster, target),
+    }
+}
+
+/// Whether `target` is a target of the helpful caster `caster`'s cast for `side`, its controller
+/// (BAT-MAG-050; the original's 0x4476C0 case 1 and its cursor 0x4766EA, `installation.md`
+/// §7.21): another stack of `side`'s own for which one of its drawn spells is useful
+/// ([`casters::useful`]).
+// rule: BAT-MAG-050
+fn helpful_target(
+    state: &BattleState,
+    ruleset: &Ruleset,
+    side: BattleSide,
+    caster: StackId,
+    target: CastTarget,
+) -> bool {
+    target.stack().is_some_and(|t| {
+        t != caster
+            && state.stack(t).is_some_and(|stack| stack.side == side)
+            && casters::useful_spells(state, ruleset, side, (caster, t))
+                .next()
+                .is_some()
     })
 }
 
@@ -879,7 +909,7 @@ pub(crate) fn creature_target(
 /// BAT-MAG-021), an enemy for a negative spell, an own stack for a positive one, either for a
 /// neutral one (Chain Lightning and the area spells), whose share left after resistance and
 /// auras is above zero unless the spell is positive (BAT-MAG-008).
-fn affectable(
+pub(crate) fn affectable(
     state: &BattleState,
     ruleset: &Ruleset,
     side: BattleSide,
@@ -947,13 +977,17 @@ pub(crate) fn creature_targets(
     out: &mut CastTargets,
 ) {
     // A caster's spell is one of the ruleset's (the compiler checks its abilities).
-    let area = ruleset
-        .spell(spell.id)
-        .filter(|s| spell.drawn && target_at(ruleset, s, spell.mastery) == SpellTarget::Hex);
+    let area = match spell.spell {
+        CastSpell::Named(id) => ruleset
+            .spell(id)
+            .filter(|s| spell.drawn && target_at(ruleset, s, spell.mastery) == SpellTarget::Hex)
+            .map(|s| (id, s)),
+        CastSpell::AtResolution => None,
+    };
     let field = Field::new(ruleset.battle().field);
-    if let Some(s) = area {
+    if let Some(drawn) = area {
         let mut hexes = HexSet::new();
-        for t in drawn_stacks(state, ruleset, side, (caster, (spell.id, s))) {
+        for t in drawn_stacks(state, ruleset, side, (caster, drawn)) {
             for h in state.at(t).footprint(field).hexes() {
                 hexes.insert(h);
             }
@@ -983,14 +1017,23 @@ pub(crate) fn plan_creature_cast<'r>(
     (caster, spell): (StackId, CreatureSpell),
     target: CastTarget,
 ) -> Result<Cast<'r>, CommandError> {
-    let s = ruleset
-        .spell(spell.id)
+    // A draw at the cast first takes the first spell useful for the stack (BAT-MAG-050).
+    let named = match spell.spell {
+        CastSpell::Named(id) => Some(id),
+        CastSpell::AtResolution => target
+            .stack()
+            .filter(|&t| state.stack(t).is_some())
+            .and_then(|t| casters::useful_spells(state, ruleset, side, (caster, t)).next())
+            .map(|(id, _)| id),
+    };
+    let (id, s) = named
         .filter(|_| creature_target(state, ruleset, side, (caster, spell), target))
+        .and_then(|id| ruleset.spell(id).map(|s| (id, s)))
         .ok_or(CommandError::InvalidSpellTarget)?;
     let power = u16::try_from(spell.power).unwrap_or(u16::MAX);
     Ok(Cast {
         side,
-        id: spell.id,
+        id,
         spell: s,
         cost: 0,
         mastery: spell.mastery,
@@ -1003,7 +1046,41 @@ pub(crate) fn plan_creature_cast<'r>(
         rounds: power,
         power,
         by: Some(caster),
+        draws: spell.spell == CastSpell::AtResolution,
     })
+}
+
+/// The cast of a helpful caster (BAT-MAG-050; the original's 0x447EE0, `installation.md` §7.21):
+/// the spell drawn among its creature's drawn spells useful for the target stack
+/// ([`casters::useful`]), each with the chance of its weight (the Master Genie's are all 1: the
+/// original's `random(1, n)` over them in spell order), at the caster's mastery and power.
+// rule: BAT-MAG-050
+fn draw_useful<'r>(state: &mut BattleState, ruleset: &'r Ruleset, cast: Cast<'r>) -> Cast<'r> {
+    // Validated: a stack's cast at a stack with a useful spell.
+    let pair = (
+        cast.by.unwrap_or_default(),
+        cast.target.stack().unwrap_or_default(),
+    );
+    let total: u32 = casters::useful_spells(state, ruleset, cast.side, pair)
+        .map(|(_, w)| w)
+        .sum();
+    let mut r = state.rng.below(total);
+    let id = casters::useful_spells(state, ruleset, cast.side, pair)
+        .find(|&(_, w)| {
+            let hit = r < w;
+            r = r.saturating_sub(w);
+            hit
+        })
+        .map_or(cast.id, |(id, _)| id);
+    let spell = ruleset.spell(id).unwrap_or(cast.spell);
+    Cast {
+        id,
+        spell,
+        // rule: BAT-MAG-004
+        value: u64::from(cast.power) * u64::from(spell.power)
+            + u64::from(spell.effect[usize::from(cast.mastery)]),
+        ..cast
+    }
 }
 
 /// Whether a stack of `actor` awaits a command outside the tactics phase (when a hero may cast).
@@ -1601,9 +1678,14 @@ pub(crate) fn apply_cast<S: Sink>(
     cast: Cast<'_>,
     sink: &mut S,
 ) {
+    let cast = if cast.draws {
+        draw_useful(state, ruleset, cast)
+    } else {
+        cast
+    };
     if let Some(stack) = cast.by {
         // rule: BAT-MAG-048
-        crate::casters::spend(state, stack);
+        casters::spend(state, stack);
         sink.emit(Event::public(EventKind::StackCast {
             stack,
             spell: cast.id,

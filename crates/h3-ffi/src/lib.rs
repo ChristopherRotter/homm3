@@ -41,8 +41,11 @@ use h3_sim::{
 /// spell, its second target head 0) and observation encoding v8 (casts left;
 /// `h3_observation_len` grows). v13 (E04b T7b2a): observation encoding v9 (a global: the spell
 /// the active stack drew, for its controller; `h3_observation_len` grows); the stack's cast's
-/// target head may carry hexes (a Faerie Dragon's area spells); no function changes.
-pub const H3_ABI_VERSION: u32 = 13;
+/// target head may carry hexes (a Faerie Dragon's area spells); no function changes. v14 (E04b
+/// T7b2b): observation encoding v10 (the hero's spell book flag, each stack's count of the spells a
+/// helpful caster's draw could pick; `h3_observation_len` grows); the stack's cast's spell head
+/// holds 0 for the Master Genie, whose spell is drawn at the cast; no function changes.
+pub const H3_ABI_VERSION: u32 = 14;
 
 /// `H3StepResult.result`: the battle is not decided (still running, or truncated).
 pub const H3_RESULT_NONE: i32 = -1;
@@ -538,7 +541,7 @@ mod tests {
 
     #[test]
     fn abi_smoke_create_step_destroy() {
-        assert_eq!(h3_abi_version(), 13);
+        assert_eq!(h3_abi_version(), 14);
         assert_eq!(h3_action_count() as usize, ACTION_COUNT);
         assert_eq!(h3_spell_count() as usize, SPELL_COUNT);
         assert_eq!(h3_target_count() as usize, TARGET_COUNT);

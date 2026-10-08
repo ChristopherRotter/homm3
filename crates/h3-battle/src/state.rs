@@ -52,7 +52,7 @@ const _: () = assert!(MAX_SIDE_STACKS <= SIDE_STACK_SLOTS);
 pub const CREATED_SLOT: u8 = u8::MAX;
 
 /// Version of the battle-state hash encoding ([`BattleState::state_hash`]). Bump on any change.
-pub const BATTLE_STATE_HASH_VERSION: u32 = 34;
+pub const BATTLE_STATE_HASH_VERSION: u32 = 35;
 
 /// Index of a stack in its battle (attacker stacks first, in slot order, then defender stacks, then
 /// the stacks created in the battle in the order they appear, BAT-MAG-037).

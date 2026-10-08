@@ -9,8 +9,8 @@
 //! T6a; the layout is unchanged), 0 for every other spell. A stack's cast (BAT-MAG-048) is the
 //! entry [`CREATURE_CAST`]: its command names only the target (ADR-0014 point 3), so the spell
 //! head allows only the active stack's spell ([`h3_battle::stack_spell`]: a random caster's drawn
-//! spell, BAT-MAG-049, whose area spells take a hex in the target head) and the second target
-//! head only 0. The heads' masks
+//! spell, BAT-MAG-049, whose area spells take a hex in the target head; only 0 for a spell drawn
+//! at the cast, the Master Genie's, BAT-MAG-050) and the second target head only 0. The heads' masks
 //! are conditioned on the earlier choices ([`legal_mask`], [`spell_mask`], [`target_mask`],
 //! [`second_mask`]); after a legal non-cast entry each head allows exactly 0.
 //!
@@ -28,7 +28,7 @@
 //! | 1392 | Retreat (BAT-FLE-001) |
 //! | 1393 | Surrender (BAT-FLE-002) |
 //! | 1394 | The hero casts (heads: spell, target, second target; BAT-MAG-001) |
-//! | 1395 | The active stack casts (heads: its spell, the target, 0; BAT-MAG-048, BAT-MAG-049) |
+//! | 1395 | The active stack casts (heads: its spell or 0, the target, 0; BAT-MAG-048 to BAT-MAG-050) |
 //!
 //! In the tactics phase `Move` entries place the active stack and Wait (0) passes to the next
 //! stack (BAT-TAC-002).
@@ -43,8 +43,8 @@
 //! Version 11 (E04b T7b1) makes the stack's cast legal.
 
 use h3_battle::{
-    ATTACK_SLOTS, BattleState, CastTarget, CastTargets, Command, Field, Hex, LegalCommands,
-    STACK_CAPACITY, StackId, cast_targets, castable_spells, creature_cast_spell,
+    ATTACK_SLOTS, BattleState, CastSpell, CastTarget, CastTargets, Command, Field, Hex,
+    LegalCommands, STACK_CAPACITY, StackId, cast_targets, castable_spells, creature_cast_spell,
     creature_cast_targets, second_targets, stack_spell,
 };
 use h3_content::{MAX_FIELD_HEXES, MAX_SPELLS, Ruleset, SpellId};
@@ -200,11 +200,21 @@ fn encode_entry(state: &BattleState, ruleset: &Ruleset, command: Command) -> Opt
     }
 }
 
-/// The spell of the active stack's cast: its creature's spell (BAT-MAG-048).
-fn active_spell(state: &BattleState, ruleset: &Ruleset) -> Option<SpellId> {
+/// The spell head of a stack's cast: the spell's handle, or 0 for a spell drawn at the cast (the
+/// Master Genie, BAT-MAG-050; ADR-0014 point 9).
+fn spell_head(spell: CastSpell) -> u16 {
+    match spell {
+        CastSpell::Named(id) => id.raw(),
+        CastSpell::AtResolution => 0,
+    }
+}
+
+/// The spell head of the active stack's cast: its creature's spell (BAT-MAG-048 to BAT-MAG-050).
+fn active_spell(state: &BattleState, ruleset: &Ruleset) -> Option<u16> {
     state
         .active()
         .and_then(|id| stack_spell(state, ruleset, id))
+        .map(spell_head)
 }
 
 /// Encodes a command. Attacks are encoded relative to the target's position and the active
@@ -228,7 +238,7 @@ pub fn encode(state: &BattleState, ruleset: &Ruleset, command: Command) -> Optio
     if let Command::CreatureCast { target } = command {
         return Some(Action {
             entry: CREATURE_CAST_ENTRY,
-            spell: active_spell(state, ruleset)?.raw(),
+            spell: active_spell(state, ruleset)?,
             target: target_index(target)?,
             second: 0,
         });
@@ -287,7 +297,7 @@ pub fn decode(state: &BattleState, ruleset: &Ruleset, action: Action) -> Option<
     }
     if entry == CREATURE_CAST {
         let spell = active_spell(state, ruleset)?;
-        return (action.spell == spell.raw() && action.second == 0)
+        return (action.spell == spell && action.second == 0)
             .then(|| target_at(action.target))
             .flatten()
             .map(|target| Command::CreatureCast { target });
@@ -364,7 +374,7 @@ pub fn spell_mask(
         if let Some(spell) = creature_cast_spell(state, ruleset, actor)
             .filter(|_| creature_cast_possible(state, ruleset, actor))
         {
-            mask[spell.index()] = true;
+            mask[usize::from(spell_head(spell))] = true;
         }
     } else if legal_entry(state, ruleset, actor, entry, legal) {
         mask[0] = true;
@@ -402,7 +412,7 @@ pub fn target_mask(
         }
     } else if entry == CREATURE_CAST {
         let mut targets = CastTargets::new();
-        if creature_cast_spell(state, ruleset, actor).is_some_and(|s| s.raw() == spell) {
+        if creature_cast_spell(state, ruleset, actor).is_some_and(|s| spell_head(s) == spell) {
             creature_cast_targets(state, ruleset, actor, &mut targets);
         }
         for t in targets.iter() {
@@ -889,6 +899,51 @@ mod tests {
         }
         assert_eq!(encode(&plain, &r, command), None);
         assert_eq!(decode(&plain, &r, action), None);
+    }
+
+    #[test]
+    fn a_draw_at_the_cast_names_no_spell() {
+        // The skirmish's Wisps as helpful casters (BAT-MAG-050): their spell head allows only 0.
+        let pack = h3_pack::SYNTHETIC_PACK.replace(
+            "abilities = [{ kind = \"spell_caster\", spell = \"hasten\", mastery = 2, power = 6 }]",
+            "abilities = [{ kind = \"helpful_spell_caster\", mastery = 2, power = 6 }, \
+             { kind = \"drawn_spell\", spell = \"hasten\", weight = 1 }]",
+        );
+        let scenario = h3_pack::parse_scenario(h3_pack::SYNTHETIC_SKIRMISH).unwrap();
+        let r = h3_pack::compile(&[&pack], &scenario.profile).unwrap();
+        let mut s = BattleState::new(&r, &scenario.resolve(&r).unwrap(), 1).unwrap();
+        let mut legal = LegalCommands::new();
+        let side = loop {
+            let side = s.side_to_act().unwrap();
+            if creature_cast_possible(&s, &r, side) {
+                break side;
+            }
+            h3_battle::apply(&mut s, &r, side, Command::Defend, &mut NoopSink).unwrap();
+        };
+        let mut spells = [false; SPELL_COUNT];
+        spell_mask(&s, &r, side, CREATURE_CAST, &mut legal, &mut spells);
+        assert_eq!(spells.iter().position(|m| *m), Some(0));
+        assert_eq!(spells.iter().filter(|m| **m).count(), 1);
+        let mut listed = CastTargets::new();
+        creature_cast_targets(&s, &r, side, &mut listed);
+        let mut targets = [false; TARGET_COUNT];
+        target_mask(&s, &r, side, (CREATURE_CAST, 0), &mut legal, &mut targets);
+        assert_eq!(targets.iter().filter(|m| **m).count(), listed.len());
+        let hasten = r.spell_by_key("synthetic:hasten").unwrap().raw();
+        let mut none = [false; TARGET_COUNT];
+        target_mask(&s, &r, side, (CREATURE_CAST, hasten), &mut legal, &mut none);
+        assert!(none.iter().all(|m| !m));
+        let command = Command::CreatureCast {
+            target: listed.as_slice()[0],
+        };
+        let action = encode(&s, &r, command).unwrap();
+        assert_eq!(action.spell, 0);
+        assert_eq!(decode(&s, &r, action), Some(command));
+        let named = Action {
+            spell: hasten,
+            ..action
+        };
+        assert_eq!(decode(&s, &r, named), None);
     }
 
     #[test]

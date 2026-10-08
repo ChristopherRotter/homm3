@@ -11,7 +11,7 @@ use h3_content::{
     HeroTypeDef, HexStep, ObstacleDef, ObstacleKind, ObstacleShape, PackManifest, ProfileDef,
     ResourceDef, Ruleset, SpecialistBonus, SpellArea, SpellCategory, SpellChain, SpellDef,
     SpellEffect, SpellMagic, SpellPolarity, SpellSchoolDef, SpellTarget, StartingStackDef,
-    SurrenderDef, TargetConditions, TargetSide, TerrainDef, TimedChange,
+    SurrenderDef, TargetConditions, TargetSide, TerrainDef, TimedChange, Usefulness,
 };
 pub use h3_contracts::Rate;
 use h3_contracts::{Army, ArmyStack, BattleHero, BattleSetup, BattleSide};
@@ -674,6 +674,32 @@ pub const CREATURES: &[Creature] = &[
             "drawn_spell=haste:1",
         ],
     ),
+    // A helpful caster (BAT-MAG-050), a Master Genie at Advanced with power 6, with a spell of
+    // each usefulness.
+    (
+        "jinn",
+        10,
+        10,
+        2,
+        2,
+        40,
+        5,
+        &[
+            "alive",
+            "flying",
+            "casts=3",
+            "helpful_spell_caster=2:6",
+            "drawn_spell=shield:1",
+            "drawn_spell=airshield:1",
+            "drawn_spell=airward:1",
+            "drawn_spell=cure:1",
+            "drawn_spell=bless:1",
+            "drawn_spell=lust:1",
+            "drawn_spell=aim:1",
+            "drawn_spell=prayer:1",
+            "drawn_spell=slayer:1",
+        ],
+    ),
     // Survey S-18: a Diamond Golem keeps 5 % of a spell's damage, a Gold Golem 15 %.
     (
         "diamond",
@@ -872,6 +898,13 @@ fn parse_traits(traits: &[&str]) -> CreatureInfoDef {
                 AbilityDef::RandomSpellCaster {
                     mastery: mastery.parse().unwrap(),
                     power_per_creature: per_creature.parse().unwrap(),
+                }
+            }
+            "helpful_spell_caster" => {
+                let (mastery, power) = value.split_once(':').unwrap();
+                AbilityDef::HelpfulSpellCaster {
+                    mastery: mastery.parse().unwrap(),
+                    power: power.parse().unwrap(),
                 }
             }
             "drawn_spell" => {
@@ -1620,6 +1653,17 @@ fn timed_def(
                 "fortune" => Some(SpecialistBonus::Total(3)),
                 _ => None,
             },
+            // When a helpful caster finds it useful (BAT-MAG-050), as the original's spells.
+            useful: match name {
+                "shield" | "fireshield" => Usefulness::EnemyMelee,
+                "airshield" => Usefulness::EnemyShooter,
+                "airward" | "fireward" | "antimagic" | "mirror" => Usefulness::EnemySpellBook,
+                "lust" => Usefulness::Melee,
+                "aim" => Usefulness::Shooting,
+                "prayer" => Usefulness::NotActed,
+                "slayer" => Usefulness::EnemyKing,
+                _ => Usefulness::Always,
+            },
             ..SpellMagic::default()
         },
         counters: counter
@@ -1687,6 +1731,7 @@ pub fn other_defs() -> [SpellDef; 3] {
                     mass_from: Some(3),
                     effects: vec![SpellEffect::Dispel, SpellEffect::Heal],
                     restores_health: true,
+                    useful: Usefulness::Wounded,
                     ..SpellMagic::default()
                 },
             )
