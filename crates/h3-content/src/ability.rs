@@ -216,6 +216,17 @@ pub enum Ability<C, S, L> {
         /// The share of the roll per creature, percent (1..=100).
         percent: u8,
     },
+    /// Casts `spell`, aimed at a stack, as its stack's action, as many times a battle as its
+    /// creature's `casts`: a creature's cast at `mastery` with `power` (the Ogre Mage's Bloodlust,
+    /// the AB elementals' Protections at Advanced with power 6; BAT-MAG-048, v22).
+    SpellCaster {
+        /// The spell (it must take a target stack at `mastery`).
+        spell: S,
+        /// The mastery it is cast at (0..=3).
+        mastery: u8,
+        /// The caster's power: the rounds of its timed effects and its value's power (≥ 1).
+        power: u8,
+    },
 }
 
 /// An ability as written in a pack (references are keys).
@@ -226,7 +237,7 @@ pub type CompiledAbility = Ability<CreatureTypeId, SpellId, SchoolId>;
 
 impl<C, S, L> Ability<C, S, L> {
     /// Every ability name, in code order (the order of [`Ability::code`]).
-    pub const NAMES: [&'static str; 32] = [
+    pub const NAMES: [&'static str; 33] = [
         "hate",
         "jousting",
         "charge_immunity",
@@ -259,6 +270,7 @@ impl<C, S, L> Ability<C, S, L> {
         "spell_after_strike",
         "spell_damage_after_strike",
         "damage_after_strike",
+        "spell_caster",
     ];
 
     /// Stable numeric code of the ability kind (canonical hashing, duplicate checks).
@@ -296,6 +308,7 @@ impl<C, S, L> Ability<C, S, L> {
             Self::SpellAfterStrike { .. } => 29,
             Self::SpellDamageAfterStrike { .. } => 30,
             Self::DamageAfterStrike { .. } => 31,
+            Self::SpellCaster { .. } => 32,
         }
     }
 
@@ -418,6 +431,15 @@ impl<C, S, L> Ability<C, S, L> {
                 chance_percent: *chance_percent,
                 percent: *percent,
             },
+            Self::SpellCaster {
+                spell: x,
+                mastery,
+                power,
+            } => Ability::SpellCaster {
+                spell: spell(x)?,
+                mastery: *mastery,
+                power: *power,
+            },
         })
     }
 
@@ -458,6 +480,10 @@ impl<C, S, L> Ability<C, S, L> {
             Self::SpellAfterStrike { rounds: 0, .. } => {
                 Some("spell_after_strike rounds must be at least 1")
             }
+            Self::SpellCaster { mastery, .. } if *mastery > 3 => {
+                Some("spell_caster mastery must be 0..=3")
+            }
+            Self::SpellCaster { power: 0, .. } => Some("spell_caster power must be at least 1"),
             Self::SpellDamageAfterStrike {
                 per_creature: 0, ..
             } => Some("spell_damage_after_strike per_creature must be at least 1"),
@@ -558,6 +584,14 @@ impl CanonicalHash for CompiledAbility {
                 chance_percent,
                 percent,
             } => h.write_bytes(&[chance_percent, percent]),
+            Self::SpellCaster {
+                spell,
+                mastery,
+                power,
+            } => {
+                spell.hash_into(h);
+                h.write_bytes(&[mastery, power]);
+            }
             Self::ChargeImmunity
             | Self::Regeneration
             | Self::UnlimitedRetaliations
@@ -620,7 +654,7 @@ mod tests {
 
     type A = Ability<u8, u8, u8>;
 
-    fn all() -> [A; 32] {
+    fn all() -> [A; 33] {
         [
             A::Hate {
                 target: 3,
@@ -685,6 +719,11 @@ mod tests {
             A::DamageAfterStrike {
                 chance_percent: 20,
                 percent: 50,
+            },
+            A::SpellCaster {
+                spell: 8,
+                mastery: 2,
+                power: 6,
             },
         ]
     }
@@ -866,6 +905,16 @@ mod tests {
             A::DamageAfterStrike {
                 chance_percent: 20,
                 percent: 101,
+            },
+            A::SpellCaster {
+                spell: 0,
+                mastery: 4,
+                power: 6,
+            },
+            A::SpellCaster {
+                spell: 0,
+                mastery: 2,
+                power: 0,
             },
         ];
         for a in bad {

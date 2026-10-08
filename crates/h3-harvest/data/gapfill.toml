@@ -1269,6 +1269,42 @@ abilities = [
 ]
 sources = ["exe-bind-acid"]
 
+# The creature's cast (E04b T7b1, pack format v22; installation.md 7.21): the action dispatcher's
+# case 10 (0x448260) lowers the stack's casts left and casts by creature through 0x59FE30 as a
+# creature (caster kind 1) at mastery 2 with power 6; the casts per battle are the creature
+# table's.
+[[source]]
+id = "exe-creature-cast"
+kind = "original-data"
+ref = "Heroes3.exe code reading (docs/formats/installation.md 7.21): the action dispatcher's case 10 (0x47936E) calls 0x448260, which lowers the casts left (+0xDC) and switches on the creature (0x448768/0x448740): Ogre Mage Bloodlust (43), Storm Elemental Protection from Air (30), Ice Elemental Protection from Water (32), Energy Elemental Protection from Fire (31), Magma Elemental Protection from Earth (33), each through 0x59FE30(spell, hex, 1, -1, 2, 6); 0x4476C0 accepts a living stack on the hex that 0x5A3C80 lets the spell affect, and the cursor (0x4766EA) only another stack of the acting side"
+url = "docs/formats/installation.md"
+retrieved = "2026-10-08"
+
+[[creature_abilities]]
+creature = "Ogre Mage"
+abilities = [{ kind = "spell_caster", spell = "base:bloodlust", mastery = 2, power = 6 }]
+sources = ["exe-creature-cast"]
+
+[[creature_abilities]]
+creature = "Storm Elemental"
+abilities = [{ kind = "spell_caster", spell = "base:protection_from_air", mastery = 2, power = 6 }]
+sources = ["exe-creature-cast"]
+
+[[creature_abilities]]
+creature = "Ice Elemental"
+abilities = [{ kind = "spell_caster", spell = "base:prot_from_water", mastery = 2, power = 6 }]
+sources = ["exe-creature-cast"]
+
+[[creature_abilities]]
+creature = "Energy Elemental"
+abilities = [{ kind = "spell_caster", spell = "base:protection_from_fire", mastery = 2, power = 6 }]
+sources = ["exe-creature-cast"]
+
+[[creature_abilities]]
+creature = "Magma Elemental"
+abilities = [{ kind = "spell_caster", spell = "base:prot_from_earth", mastery = 2, power = 6 }]
+sources = ["exe-creature-cast"]
+
 # ---------------------------------------------------------------------------------------------
 # Hero content (E04a T3): what the executable's hero tables and the text tables do not hold.
 # ---------------------------------------------------------------------------------------------

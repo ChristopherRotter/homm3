@@ -161,13 +161,15 @@ damage = [1, 2]
 hit_points = 4
 speed = 9
 shots = 8
-casts = 1
+casts = 2
 cost = { coin = 40 }
 growth = 10
 fight_value = 60
 ai_value = 65
 adventure_count = [15, 30]
 flags = ["flying", "shooter", "no_morale"]
+# Format v22: casts Hasten as its action, twice a battle, at Advanced with power 6 (BAT-MAG-048).
+abilities = [{ kind = "spell_caster", spell = "hasten", mastery = 2, power = 6 }]
 
 # War machines (E03 T8/T9, BAT-WAR-001..004): one of each kind, controlled by the engine.
 [[creature]]

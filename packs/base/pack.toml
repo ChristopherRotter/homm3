@@ -2144,6 +2144,7 @@ fight_value = 672
 ai_value = 672
 adventure_count = [10, 16]
 flags = ["alive"]
+abilities = [{ kind = "spell_caster", mastery = 2, power = 6, spell = "base:bloodlust" }]
 
 [[creature]]
 id = "roc"  # original id 92
