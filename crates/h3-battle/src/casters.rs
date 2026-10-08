@@ -431,7 +431,7 @@ pub(crate) fn plan<'r>(
 /// ([`raise::raisable`]: of `side`, living or a corpse on top, having lost creatures, whose
 /// health the hit points reach); for a corpse raiser a corpse of `side` it may raise
 /// ([`raise::corpse_raisable`]) into at least one creature ([`corpse_count`]), while `side` has a
-/// slot for the new stack ([`created::has_slot`]).
+/// slot for the new stack ([`created::has_slot`]: its template, and a dead created stack's slot or room).
 // rule: BAT-MAG-051, BAT-MAG-052
 pub(crate) fn raise_target(
     state: &BattleState,
@@ -459,7 +459,7 @@ pub(crate) fn raise_target(
         } => {
             raise::corpse_raisable(state, ruleset, side, t)
                 && corpse_count(state, ruleset, (caster, t), (creature, per_creature)) > 0
-                && created::has_slot(state, ruleset, side)
+                && created::has_slot(state, ruleset, (side, creature))
         }
     })
 }

@@ -83,15 +83,23 @@ fn has_room(state: &BattleState, ruleset: &Ruleset, side: BattleSide) -> bool {
     stacks < usize::from(ruleset.battle().side_stack_limit)
 }
 
-/// Whether a stack may rise for `side` from a corpse now (BAT-MAG-052): a dead created stack of
-/// the side leaves its slot, else the side has room for a stack. (The original's 0x47A100 finds
-/// no record then, and the raise 0x5A7390 crashes; the engine refuses the raise.)
-pub(crate) fn has_slot(state: &BattleState, ruleset: &Ruleset, side: BattleSide) -> bool {
-    has_room(state, ruleset, side)
-        || state
-            .stacks
-            .iter()
-            .any(|s| s.side == side && s.is_created() && !s.is_alive())
+/// Whether a stack of `creature` may rise for `side` from a corpse now (BAT-MAG-052): the side
+/// has its template ([`Created::templates`]), and a dead created stack of the side leaves its
+/// slot, else the side has room for a stack. (The original's 0x47A100 finds no record without a
+/// slot, and the raise 0x5A7390 crashes; the engine refuses the raise, BAT-QUIRK-12.)
+pub(crate) fn has_slot(
+    state: &BattleState,
+    ruleset: &Ruleset,
+    (side, creature): (BattleSide, CreatureTypeId),
+) -> bool {
+    state.created.templates[side.index()]
+        .iter()
+        .any(|t| t.creature == creature)
+        && (has_room(state, ruleset, side)
+            || state
+                .stacks
+                .iter()
+                .any(|s| s.side == side && s.is_created() && !s.is_alive()))
 }
 
 /// A stack of `count` creatures of `creature` rises for `side` from the corpse of stack `corpse`

@@ -1176,8 +1176,10 @@ impl BattleState {
                     _ => None,
                 })
                 .collect();
-            // A raised stack's slot is a dead army stack's (BAT-MAG-052): one stack per slot.
-            stacks.sort_unstable_by_key(|s| s.slot);
+            // A raised stack's slot is a dead army stack's (BAT-MAG-052): one stack per slot, so the
+            // slot is a unique key.
+            let sorted = h3_kernel::order::sort_by_unique_key(&mut stacks, |s| s.slot);
+            debug_assert!(sorted.is_ok(), "two survivors in one army slot");
             Army { stacks }
         });
         let war_machines = stacks.each_ref().map(|records| {

@@ -731,7 +731,13 @@ pub const CREATURES: &[Creature] = &[
         2,
         50,
         9,
-        &["two_hex", "alive", "casts=1", "stack_raiser=rise:100"],
+        &[
+            "two_hex",
+            "alive",
+            "casts=1",
+            "morale_aura=1:allies",
+            "stack_raiser=rise:100",
+        ],
     ),
     (
         "fiend",
