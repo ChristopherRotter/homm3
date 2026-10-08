@@ -83,13 +83,16 @@ which a spell meets a stack, how stacks appear in a battle, how hidden objects s
    (quirk BAT-QUIRK-4, fix-optional: the fix draws among the hexes the caster's side sees free).
 8. **Visibility** (extends ADR-0013 point 9): mana, casts used this round, each cast with its spell,
    targets and results, and the effects on every stack are public, as in the original; the spell book
-   and the hero's spell bonuses stay private to its side.
+   and the hero's spell bonuses stay private to its side, and so does a Faerie Dragon's drawn spell
+   until it is cast (the original's message at its activation tells only its controller; BAT-Q11).
 9. **A factorized casting action.** The sim keeps its dense list of other actions and adds two cast
    entries (hero, creature); choosing one opens a spell head (by spell id, sized by a content limit)
    and two target heads (none, a hex or a stack slot), each with a mask conditioned on the earlier
    choices. The creature entry's spell head allows only the spell the active stack is going to cast,
-   where one is known before its resolution (point 3; the Master Genie, the Archangel and the Pit Lord
-   are settled with their tasks), and its second target head only none. The C ABI takes an action as
+   where one is known before its resolution (point 3: the casters of one spell, a Faerie Dragon's
+   drawn spell); for the Master Genie, which draws at the resolution, it allows only 0, and the
+   observation shows per stack how many spells the draw could pick for it (BAT-Q11); the Archangel
+   and the Pit Lord are settled with their task. Its second target head allows only none. The C ABI takes an action as
    a small struct and serves a mask per head; sizes do not depend on the ruleset (ADR-0011). Each
    task bumps the encodings it changes.
 10. **Seam changes are additions only** (reviewed with this ADR): `BattleEffect` variants for the
@@ -156,3 +159,6 @@ which a spell meets a stack, how stacks appear in a battle, how hidden objects s
   its target, as the original's action (the dispatcher's case 10, `installation.md` §7.21); the
   stack decides the spell. The sim's creature entry keeps its spell head, which shows the spell the
   stack will cast.
+- 2026-10-08: points 8 and 9 amended (E04b T7b2; the user, BAT-Q11): a Faerie Dragon's drawn spell
+  is private to its controller's side until it is cast; the Master Genie's spell head allows only 0
+  and the observation counts, per stack, the spells its draw could pick.
