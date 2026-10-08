@@ -133,12 +133,17 @@ fight_value = 220
 ai_value = 250
 adventure_count = [10, 25]
 flags = ["alive", "two_hex", "king_1"]     # king_1: Smiting counts against it (BAT-MAG-014)
-# Format v19: spells after a melee strike (BAT-MAG-040 to BAT-MAG-042).
+# Format v19: spells after a melee strike (BAT-MAG-040 to BAT-MAG-042); v20: the statuses.
 abilities = [
     { kind = "spell_after_strike", spell = "glare", chance_percent = 100, mastery = 0, rounds = 3 },
     { kind = "spell_after_strike", spell = "dazzle", chance_percent = 20, mastery = 0, rounds = 3, unless_active = true },
     { kind = "spell_after_strike", spell = "bane", chance_percent = 25, mastery = 0, rounds = 3, living = true },
     { kind = "spell_damage_after_strike", spell = "spark", chance_percent = 20, per_creature = 2 },
+    { kind = "spell_after_strike", spell = "freeze", chance_percent = 10, mastery = 0, rounds = 3 },
+    { kind = "spell_after_strike", spell = "numb", chance_percent = 10, mastery = 0, rounds = 3 },
+    { kind = "spell_after_strike", spell = "rot", chance_percent = 10, mastery = 0, rounds = 3, living = true },
+    { kind = "spell_after_strike", spell = "wane", chance_percent = 10, mastery = 0, rounds = 3, living = true },
+    { kind = "spell_after_strike", spell = "taint", chance_percent = 30, mastery = 0, rounds = 3, living = true },
 ]
 
 [[creature]]
@@ -555,6 +560,7 @@ target = "stack"
 side = "own"
 mass = "expert"
 dispels = ["drag", "bane", "gloom"] # it ends only these
+restores_health = true              # format v20: gives back what Taint took first (BAT-MAG-044)
 effects = [{ kind = "dispel" }, { kind = "heal" }]
 
 [[spell]]                           # format v8 (E04b T3b2): a Fire Shield
@@ -823,6 +829,75 @@ effect = [2, 2, 3, 4]
 polarity = "neutral"
 summons = "shade"
 effects = [{ kind = "summon" }]
+
+# Format v20: the strike's statuses (BAT-MAG-043, BAT-MAG-044), cast by the Brutes' strikes.
+[[spell]]
+id = "freeze"                       # a Stone Gaze: no turns, half damage, ends when struck
+name = "Freeze"
+category = "ability"
+level = 3
+cost = [0, 0, 0, 0]
+effect = [0, 0, 0, 0]
+polarity = "negative"
+target = "stack"
+side = "enemy"
+excludes = ["war_machine"]
+ends = "damaged"
+effects = [{ kind = "timed", change = "petrify" }]
+
+[[spell]]
+id = "numb"                         # a Paralyze: no turns, retaliates at 25 %, ends when struck
+name = "Numb"
+category = "ability"
+level = 4
+cost = [0, 0, 0, 0]
+effect = [25, 25, 25, 25]
+polarity = "negative"
+target = "stack"
+side = "enemy"
+excludes = ["war_machine"]
+ends = "damaged"
+effects = [{ kind = "timed", change = "paralyze" }]
+
+[[spell]]
+id = "rot"                          # a Disease: −2 attack and defense
+name = "Rot"
+category = "ability"
+level = 2
+cost = [0, 0, 0, 0]
+effect = [2, 2, 2, 2]
+polarity = "negative"
+target = "stack"
+side = "enemy"
+excludes = ["war_machine"]
+effects = [{ kind = "timed", change = "attack_loss" }, { kind = "timed", change = "defense_loss" }]
+
+[[spell]]
+id = "wane"                         # an Age: half the hit points per creature
+name = "Wane"
+category = "ability"
+level = 5
+cost = [0, 0, 0, 0]
+effect = [0, 0, 0, 0]
+polarity = "negative"
+target = "stack"
+side = "enemy"
+excludes = ["war_machine"]
+effects = [{ kind = "timed", change = "age" }]
+
+[[spell]]
+id = "taint"                        # a Poison: a tenth of the hit points per creature each round
+name = "Taint"
+category = "ability"
+level = 0
+cost = [0, 0, 0, 0]
+effect = [0, 0, 0, 0]
+polarity = "negative"
+target = "stack"
+side = "enemy"
+requires = ["alive"]
+excludes = ["war_machine"]
+effects = [{ kind = "timed", change = "poison" }]
 
 [[secondary_skill]]
 id = "marksmanship"

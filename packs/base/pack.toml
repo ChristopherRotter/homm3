@@ -796,6 +796,7 @@ fight_value = 150
 ai_value = 165
 adventure_count = [16, 30]
 flags = ["flying"]
+abilities = [{ kind = "spell_immunity", spell = "base:poison" }]
 upgrades = ["obsidian_gargoyle"]
 
 [[creature]]
@@ -818,6 +819,7 @@ fight_value = 155
 ai_value = 201
 adventure_count = [16, 25]
 flags = ["flying"]
+abilities = [{ kind = "spell_immunity", spell = "base:poison" }]
 
 [[creature]]
 id = "stone_golem"  # original id 32
@@ -1431,6 +1433,7 @@ fight_value = 160
 ai_value = 128
 adventure_count = [16, 25]
 flags = ["mind_immune", "no_morale", "undead"]
+abilities = [{ kind = "spell_after_strike", chance_percent = 20, living = true, mastery = 0, rounds = 3, spell = "base:disease" }]
 
 [[creature]]
 id = "wight"  # original id 60
@@ -1654,7 +1657,7 @@ fight_value = 3228
 ai_value = 4696
 adventure_count = [3, 8]
 flags = ["two_hex", "flying", "king_1", "mind_immune", "no_morale", "undead", "dragon"]
-abilities = [{ kind = "morale_aura", affects = "enemies", amount = -1 }]
+abilities = [{ kind = "morale_aura", affects = "enemies", amount = -1 }, { kind = "spell_after_strike", chance_percent = 20, living = true, mastery = 0, rounds = 3, spell = "base:age" }]
 
 [[creature]]
 id = "troglodyte"  # original id 70
@@ -1676,7 +1679,7 @@ fight_value = 73
 ai_value = 59
 adventure_count = [20, 50]
 flags = ["alive"]
-abilities = [{ kind = "spell_immunity", spell = "base:blind" }]
+abilities = [{ kind = "spell_immunity", spell = "base:blind" }, { kind = "spell_immunity", spell = "base:stone_gaze" }]
 upgrades = ["infernal_troglodyte"]
 
 [[creature]]
@@ -1699,7 +1702,7 @@ fight_value = 84
 ai_value = 84
 adventure_count = [20, 30]
 flags = ["alive"]
-abilities = [{ kind = "spell_immunity", spell = "base:blind" }]
+abilities = [{ kind = "spell_immunity", spell = "base:blind" }, { kind = "spell_immunity", spell = "base:stone_gaze" }]
 
 [[creature]]
 id = "harpy"  # original id 72
@@ -1809,6 +1812,7 @@ fight_value = 379
 ai_value = 517
 adventure_count = [10, 20]
 flags = ["two_hex", "shooter", "alive", "no_melee_penalty"]
+abilities = [{ kind = "spell_after_strike", chance_percent = 20, mastery = 0, rounds = 3, spell = "base:stone_gaze" }]
 upgrades = ["medusa_queen"]
 
 [[creature]]
@@ -1831,6 +1835,7 @@ fight_value = 423
 ai_value = 577
 adventure_count = [10, 16]
 flags = ["two_hex", "shooter", "alive", "no_melee_penalty"]
+abilities = [{ kind = "spell_after_strike", chance_percent = 20, mastery = 0, rounds = 3, spell = "base:stone_gaze" }]
 
 [[creature]]
 id = "minotaur"  # original id 78
@@ -1919,6 +1924,7 @@ fight_value = 1248
 ai_value = 1589
 adventure_count = [5, 10]
 flags = ["two_hex", "flying", "alive"]
+abilities = [{ kind = "spell_after_strike", chance_percent = 20, mastery = 0, rounds = 3, spell = "base:paralyze" }]
 
 [[creature]]
 id = "red_dragon"  # original id 82
@@ -2464,6 +2470,7 @@ fight_value = 506
 ai_value = 552
 adventure_count = [8, 16]
 flags = ["two_hex", "alive"]
+abilities = [{ kind = "spell_after_strike", chance_percent = 20, mastery = 0, rounds = 3, spell = "base:stone_gaze" }]
 upgrades = ["greater_basilisk"]
 
 [[creature]]
@@ -2486,6 +2493,7 @@ fight_value = 561
 ai_value = 714
 adventure_count = [8, 12]
 flags = ["two_hex", "alive"]
+abilities = [{ kind = "spell_after_strike", chance_percent = 20, mastery = 0, rounds = 3, spell = "base:stone_gaze" }]
 
 [[creature]]
 id = "wyvern"  # original id 108
@@ -2529,6 +2537,7 @@ fight_value = 1181
 ai_value = 1518
 adventure_count = [5, 10]
 flags = ["two_hex", "flying", "alive"]
+abilities = [{ kind = "spell_after_strike", chance_percent = 30, living = true, mastery = 0, rounds = 3, spell = "base:poison" }]
 
 [[creature]]
 id = "hydra"  # original id 110
@@ -3446,6 +3455,7 @@ polarity = "positive"
 target = "stack"
 side = "own"
 mass = "expert"
+restores_health = true
 dispels = ["curse", "weakness", "sorrow", "misfortune", "slow", "berserk", "hypnotize", "forgetfulness", "blind", "stone_gaze", "poison", "disease", "paralyze", "age"]
 effects = [{ kind = "dispel" }, { kind = "heal" }]
 
@@ -3954,6 +3964,11 @@ cost = [0, 0, 0, 0]
 power = 0
 effect = [0, 0, 0, 0]
 polarity = "negative"
+target = "stack"
+side = "enemy"
+excludes = ["war_machine"]
+ends = "damaged"
+effects = [{ kind = "timed", change = "petrify" }]
 
 [[spell]]
 id = "poison"  # original id 71
@@ -3964,6 +3979,11 @@ cost = [0, 0, 0, 0]
 power = 0
 effect = [0, 0, 0, 0]
 polarity = "negative"
+target = "stack"
+side = "enemy"
+requires = ["alive"]
+excludes = ["war_machine"]
+effects = [{ kind = "timed", change = "poison" }]
 
 [[spell]]
 id = "bind"  # original id 72
@@ -3982,8 +4002,12 @@ category = "ability"
 level = 2
 cost = [0, 0, 0, 0]
 power = 0
-effect = [0, 0, 0, 0]
+effect = [2, 2, 2, 2]
 polarity = "negative"
+target = "stack"
+side = "enemy"
+excludes = ["war_machine"]
+effects = [{ kind = "timed", change = "attack_loss" }, { kind = "timed", change = "defense_loss" }]
 
 [[spell]]
 id = "paralyze"  # original id 74
@@ -3992,8 +4016,13 @@ category = "ability"
 level = 4
 cost = [0, 0, 0, 0]
 power = 0
-effect = [0, 0, 0, 0]
+effect = [25, 25, 25, 25]
 polarity = "negative"
+target = "stack"
+side = "enemy"
+excludes = ["war_machine"]
+ends = "damaged"
+effects = [{ kind = "timed", change = "paralyze" }]
 
 [[spell]]
 id = "age"  # original id 75
@@ -4004,6 +4033,10 @@ cost = [0, 0, 0, 0]
 power = 0
 effect = [0, 0, 0, 0]
 polarity = "negative"
+target = "stack"
+side = "enemy"
+excludes = ["war_machine"]
+effects = [{ kind = "timed", change = "age" }]
 
 [[spell]]
 id = "death_cloud"  # original id 76

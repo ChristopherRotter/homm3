@@ -572,6 +572,10 @@ struct SpellDto {
     /// format v19, E04b T7a1; Dispel Helpful Spells).
     #[serde(default)]
     dispels_positive: bool,
+    /// `restores_health = true`: a cast first gives back Poison's lost hit points (pack format
+    /// v20, E04b T7a2; Cure).
+    #[serde(default)]
+    restores_health: bool,
 }
 
 /// `obstacle = { steps = ["top_right", "top_left"], hexes = [2, 2, 3, 3], mirrored = true,
@@ -798,6 +802,7 @@ impl SpellDto {
             needs_effect: self.needs_effect,
             ignores_immunity: self.ignores_immunity,
             dispels_positive: self.dispels_positive,
+            restores_health: self.restores_health,
             specialist: self.specialist.as_ref().map(|b| match *b {
                 SpecialistDto::CreatureLevel { values } => SpecialistBonus::CreatureLevel(values),
                 SpecialistDto::Fixed { amount } => SpecialistBonus::Fixed(amount),
@@ -4217,7 +4222,7 @@ mod tests {
         use h3_content::SpellCategory;
         let r = compile(&[SYNTHETIC_PACK, SYNTHETIC_EXT_PACK], "synthetic:faithful").unwrap();
         assert_eq!(r.spell_schools().len(), 2);
-        assert_eq!(r.spells().len(), 39);
+        assert_eq!(r.spells().len(), 44);
         // Pack format v6: the storm school's protection rank; stone's defaults to 0.
         let ranks: Vec<u8> = r
             .spell_schools()

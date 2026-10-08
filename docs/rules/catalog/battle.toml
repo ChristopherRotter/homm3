@@ -2733,3 +2733,30 @@ numeric  = "integer"
   kind       = "original-data"
   ref        = "Heroes3.exe code reading (docs/formats/installation.md §7.10, §7.20): 0x5A177E ends every active spell 10-69 of positive type (0x444510); 0x5A8090's case for spell 78 returns 0 for the Sphere of Permanence, else 1 if the stack has an active positive spell, before the immunity, Anti-Magic, resistance and aura tests"
   confidence = "high"
+
+[[rule]]
+id       = "BAT-MAG-043"
+title    = "Stone Gaze and Paralyze"
+context  = "battle"
+status   = "implemented"
+summary  = "A timed petrify change (TimedChange::Petrify: Stone Gaze, a creature ability of level 3 cast after the strikes of Medusas and Basilisks, 20 %, BAT-MAG-040; Troglodytes are immune) makes the stack lose its turns like Blind (BAT-MAG-024), halves the damage of strikes on it (damage stage 3, after Shield or Air Shield and before the Armorer; exact with decimal rates) and keeps it from retaliating while it lasts. A timed paralyze change (TimedChange::Paralyze: Paralyze, level 4, the Scorpicores' 20 %) makes it lose its turns; struck in melee it retaliates with the spell's value in percent (25: the original reads Blind's Advanced effect), the smaller of that and Blind's if both. Both end with any damage (EffectEnd::Damaged): a strike on a petrified stack is halved and ends the petrification before the retaliation test, so it retaliates; an attacker that a retaliation's spell petrified or paralysed makes no second strike, and a strike's spell that does either stops the struck stack's retaliation (BAT-MAG-040)."
+numeric  = "integer"
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (docs/formats/installation.md §7.10, §7.14, §7.20): the battle loop 0x465080 passes over blind, petrified and paralysed stacks; 0x444090 ends spells 62, 70 and 74 at every damage; stage 3 of 0x443F40 halves the damage of a petrified target; 0x441CB0 lets a petrified target not retaliate and marks a paralysed one, whose retaliation stage 2 multiplies by Blind's Advanced effect / 100 (the smaller with Blind's own factor); 0x44A4D0 spares Troglodytes from Stone Gaze"
+  confidence = "high"
+
+[[rule]]
+id       = "BAT-MAG-044"
+title    = "Poison and Age"
+context  = "battle"
+status   = "implemented"
+summary  = "A stack's hit points per creature follow its start value H, the tenths Poison took (0 to 5) and Age: floor(H x (10 - tenths) / 10 x (1/2 while aged) + 0.95), with exact decimals or, with quirk Q-0005, as the original's x87 code computes it from f32 values (a factor falling by f32(0.1) and stored as an f32 each time, H as an f32, + f32(0.95)); the top creature keeps the hit points it lost, at least 1 left, and no creature dies. A timed poison change (TimedChange::Poison: Poison, a creature ability of level 0 on living creatures only, the Wyvern Monarchs' 30 %, BAT-MAG-040; Gargoyles are immune) takes a tenth when it starts (not when a cast finds it active) and at every round start while it lasts, after the effects count down (a Poisoned event reports the hit points); the tenths stay after it ends, until a spell with restores_health (Cure) gives them back before its dispel. A timed age change (TimedChange::Age: Age, level 5, the Ghost Dragons' 20 % on living creatures) halves them while it lasts. A clone starts from its original's start value, without its Poison and Age; a stack created in a dead created stack's slot starts afresh."
+numeric  = "integer"
+quirks   = ["Q-0005"]
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (docs/formats/installation.md §7.20): 0x4448F0 (Poison: factor +0x4A4 = f32(max(factor - f32(0.1), 0.5)), +0xC0 = trunc(f32(H) x factor (x 0.5 if aged) + f32(0.95)), the lost hit points +0x58 at most +0xC0 - 1; Age the same with 0.5), 0x447120 (another tenth at each round start while Poison lasts, after the durations), 0x444510 (Age's end recomputes, Poison's gives nothing back), 0x446500 (Cure resets the factor to 1 first), 0x43D89D (the factor 1.0 at a stack's setup), 0x44A4D0 (Poison spares non-living creatures and Gargoyles)"
+  confidence = "high"

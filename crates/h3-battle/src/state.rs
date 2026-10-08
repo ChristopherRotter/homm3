@@ -24,6 +24,7 @@ use crate::morale::{self, Modifiers};
 use crate::natural::{NaturalObstacles, RemovableObstacle};
 use crate::obstacles::{SpellObstacle, SpellObstacles};
 use crate::tactics::{self, TacticsPhase};
+use crate::vitality::Vitality;
 use crate::{flee, terrain, turn};
 
 /// Most war machines per side, one of each kind (BAT-WAR-001).
@@ -49,7 +50,7 @@ const _: () = assert!(MAX_SIDE_STACKS <= SIDE_STACK_SLOTS);
 pub const CREATED_SLOT: u8 = u8::MAX;
 
 /// Version of the battle-state hash encoding ([`BattleState::state_hash`]). Bump on any change.
-pub const BATTLE_STATE_HASH_VERSION: u32 = 30;
+pub const BATTLE_STATE_HASH_VERSION: u32 = 31;
 
 /// Index of a stack in its battle (attacker stacks first, in slot order, then defender stacks, then
 /// the stacks created in the battle in the order they appear, BAT-MAG-037).
@@ -744,6 +745,8 @@ pub struct BattleState {
     pub(crate) raised: Raised,
     /// What the battle keeps about the stacks it creates (BAT-MAG-037 to BAT-MAG-039).
     pub(crate) created: Created,
+    /// What Poison and Age keep per stack (BAT-MAG-044).
+    pub(crate) vitality: Vitality,
     pub(crate) rng: Rng,
 }
 
@@ -876,6 +879,7 @@ impl BattleState {
                 created: Created::new(BattleSide::BOTH.map(|side| {
                     summon_templates(ruleset, setup, side, heroes[side.index()].as_ref())
                 })),
+                vitality: Vitality::default(),
                 rng: Rng::for_stream(seed, StreamId::BATTLE),
             };
         morale::setup(&mut state, ruleset, &setup.heroes);
@@ -1215,6 +1219,7 @@ impl CanonicalHash for BattleState {
         self.spell_obstacles.hash_into(h);
         self.raised.hash_into(h);
         self.created.hash_into(h);
+        self.vitality.hash_into(h);
         self.rng.hash_into(h);
     }
 }

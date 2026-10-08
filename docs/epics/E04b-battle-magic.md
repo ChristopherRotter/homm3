@@ -1,6 +1,6 @@
 # E04b — Battle magic
 
-Status: **in progress** (refined 2026-10-05; increment 1 = T1–T2, done 2026-10-06: T1, ADR-0014 accepted, T2a–T2e, batch 2a evaluated; increment 2 = T3 in parts, then T4 (Q46, Q48): T3a, T3b1a, T3b1b, T3b2, T3c1, T3c2, T3c3 (batch 2b compiled), T4a, T4b and T4c done; increment 3 = T5 in three parts (Q54): T5a done, batch 2b folded in and batch 2c compiled (Q56), batch 2c folded in, T5c in two parts (BAT-Q1): T5c1 and T5c2 done; the Q55 survey done (BAT-Q3); T5b done (BAT-Q5), T5 complete; increment 4 = T6 in two parts (the user, 2026-10-08): T6a and T6b done; increment 5 = batch 2d alone (the user, 2026-10-08): compiled; increment 6 = T7a in two parts, batch 2d folded in at its checkpoint (the user, 2026-10-08): T7a1 done) · Follows E04a (closed 2026-10-05) · Part of the former E04 (OPEN-QUESTIONS Q27): E04a heroes in battle, **E04b** battle magic (this one), E04c sieges and special battlefields.
+Status: **in progress** (refined 2026-10-05; increment 1 = T1–T2, done 2026-10-06: T1, ADR-0014 accepted, T2a–T2e, batch 2a evaluated; increment 2 = T3 in parts, then T4 (Q46, Q48): T3a, T3b1a, T3b1b, T3b2, T3c1, T3c2, T3c3 (batch 2b compiled), T4a, T4b and T4c done; increment 3 = T5 in three parts (Q54): T5a done, batch 2b folded in and batch 2c compiled (Q56), batch 2c folded in, T5c in two parts (BAT-Q1): T5c1 and T5c2 done; the Q55 survey done (BAT-Q3); T5b done (BAT-Q5), T5 complete; increment 4 = T6 in two parts (the user, 2026-10-08): T6a and T6b done; increment 5 = batch 2d alone (the user, 2026-10-08): compiled; increment 6 = T7a in three parts, batch 2d folded in at its checkpoint (the user, 2026-10-08): T7a1 and T7a2 done) · Follows E04a (closed 2026-10-05) · Part of the former E04 (OPEN-QUESTIONS Q27): E04a heroes in battle, **E04b** battle magic (this one), E04c sieges and special battlefields.
 
 ## Goal
 
@@ -71,7 +71,7 @@ The 13 direct-damage spells: Magic Arrow, Ice Bolt, Lightning Bolt, Titan's Ligh
 
 **Checkpoint after T3c2** (2026-10-07, Q52): the user chose batch 2b now (T3c3, played while T4 proceeds), T4 in three parts by mechanism with T4a this session (a checkpoint after), and kept `Rate`'s f32 bit pattern.
 
-### T7 — Creature magic (refined 2026-10-08, the user: T7a first, in two parts)
+### T7 — Creature magic (refined 2026-10-08, the user: T7a first, in parts)
 
 Cut after the code reading of the strike's creature magic (`installation.md` §7.20), which confirmed
 three parts: **T7a** the effects of a melee strike (increment 6), **T7b** casting creatures, **T7c**
@@ -80,13 +80,8 @@ effects are `Ability` variants that name a spell (ADR-0012, ADR-0014 points 1 an
 no command, so no action encoding changes.
 
 - [x] **T7a1 The strike's spells** — done 2026-10-08: read in the executable (`installation.md` §7.20); pack format v19 (`spell_after_strike`, `spell_damage_after_strike`, `dispels_positive`), BAT-MAG-040 to BAT-MAG-042 (`h3_battle::after_strike`, `StrikeSpell`: Unicorns, Black and Dread Knights, Mummies, the flies, the Thunderbird); ruleset hash v28; replays re-recorded, `bench-check` re-baselined (a richer workload). Record: [`E04b-log.md`](E04b-log.md).
-- [ ] **T7a2 The new statuses** — Stone Gaze (no turns, ends on damage, half damage, no
-  retaliation), Paralyze (no turns, ends on damage, a quarter retaliation), Poison (a tenth of the
-  hit points at the strike and each round start while it lasts, at most half, kept after it ends
-  until Cure), Disease (−2 attack and defense), Age (half the hit points while it lasts), Bind
-  (Dendroids: no movement while a binder stays; released when a binder moves, dies or is
-  teleported), Acid Breath (−3 defense for good; 20 % extra damage of half a roll per dragon);
-  Cure's reset of the hit points; the observation's new statuses. May split again if it grows.
+- [x] **T7a2 The strike's statuses** — done 2026-10-08 (split proposed to the user the same day: Bind and Acid Breath in T7a3): pack format v20 (timed changes `petrify`, `paralyze`, `poison`, `age`; `restores_health`; gap-fill effect values for ability spells), BAT-MAG-043 (Stone Gaze, Paralyze), BAT-MAG-044 (Poison, Age; `h3_battle::vitality`, Q-0005 extended), Disease on BAT-MAG-009; state hash v31; replays re-recorded, `bench-check` re-baselined. Record: [`E04b-log.md`](E04b-log.md).
+- [ ] **T7a3 Bind and Acid Breath** — Bind (Dendroids: no movement while a binder stays; released when a binder moves, dies or is teleported; no test), Acid Breath (−3 defense for good on every strike; no test) and the Rust Dragon's 20 % extra damage of half a roll per dragon; the harvester's timed entries for them.
 
 ### T6 — Life and summons (refined 2026-10-08, the user)
 

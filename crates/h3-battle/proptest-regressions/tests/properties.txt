@@ -1,0 +1,7 @@
+# Seeds for failure cases proptest has generated in the past. It is
+# automatically read and these particular cases re-run before any
+# novel cases are generated.
+#
+# It is recommended to check this file in to source control so that
+# everyone who runs the test benefits from these saved cases.
+cc d630c9a05d22dbdfdad27b6ed7281a6bd559a4244da9ef8a200f5b03eec04a1d # shrinks to (att, def, obstacles, seed, steps) = ([(0, 79, 10)], [(0, 39, 7)], [115, 141, 148], 8345553429294778642, [Legal(30385), Legal(2305), Legal(58729), Legal(39180), Cast(14180), Legal(21874), Cast(38519), Legal(33916), Legal(63408), Arbitrary { command: Wait, wrong_actor: false }, Legal(37174), Cast(11845), Legal(23753), Legal(63565), Legal(31794), Cast(34044), Cast(17548), Cast(59407), Legal(4981), Legal(46103), Cast(15231), Cast(11052), Legal(47146), Legal(60401), Legal(35928), Legal(21284), Cast(44854), Legal(14232), Legal(12507), Legal(49515), Legal(47989), Legal(17748), Legal(2270), Legal(64212)])

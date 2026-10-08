@@ -258,7 +258,7 @@ fn a_blind_stack_passes_its_turns_until_damage_ends_it() {
     events = act(&mut s, &r, shoot).unwrap();
     assert!(ended(&r, &events, 2, "blind"));
     assert_eq!(strikes(&events).len(), 1);
-    assert!(!s.stacks()[2].spells.status.contains(Status::BLIND));
+    assert!(!s.stacks()[2].spells.status.contains(Status::NO_TURNS));
     assert_eq!(s.active(), Some(StackId(2)));
     // Its turn already started: its turn-start rules do not run again.
     assert!(
@@ -331,11 +331,11 @@ fn blind_ends_with_spell_damage_spares_the_undead_and_targets_enemies() {
     cast_targets(&s, &r, BattleSide::Attacker, spell(&r, "blind"), &mut out);
     assert_eq!(out.as_slice(), [stack(1)]);
     act(&mut s, &r, cast(&r, "blind", stack(1))).unwrap();
-    assert!(s.stacks()[1].spells.status.contains(Status::BLIND));
+    assert!(s.stacks()[1].spells.status.contains(Status::NO_TURNS));
     // Next round the hero's damage spell ends it.
     crate::turn::start_round(&mut s, &r, &mut Vec::<Event>::new());
     activate(&mut s, 0);
     let events = act(&mut s, &r, cast(&r, "bolt", stack(1))).unwrap();
     assert!(ended(&r, &events, 1, "blind"));
-    assert!(!s.stacks()[1].spells.status.contains(Status::BLIND));
+    assert!(!s.stacks()[1].spells.status.contains(Status::NO_TURNS));
 }

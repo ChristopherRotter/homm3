@@ -18,13 +18,14 @@ use crate::geometry::Field;
 use crate::state::{BattleState, Stack, StackFlags, StackId, StackTraits};
 use crate::{control, effects, morale, obstacles, war};
 
-/// Whether stack `s` is a blind stack whose turn has passed this round (BAT-MAG-024): it is passed
-/// over until its blindness ends.
+/// Whether stack `s` loses its turns (blind, petrified, paralysed) and its turn has passed this
+/// round (BAT-MAG-024, BAT-MAG-043): it is passed over until the effect ends.
 fn passed_blind(s: &Stack) -> bool {
-    s.spells.status.contains(Status::BLIND) && s.flags.contains(StackFlags::STARTED)
+    s.spells.status.contains(Status::NO_TURNS) && s.flags.contains(StackFlags::STARTED)
 }
 
-/// The next stack to act this round, or `None` if every living stack has acted or passed blind.
+/// The next stack to act this round, or `None` if every living stack has acted or passed its turn
+/// losing it.
 // rule: BAT-TRN-001, BAT-TRN-002
 pub(crate) fn next_active(state: &BattleState) -> Option<StackId> {
     let preferred = state
@@ -165,8 +166,8 @@ pub(crate) fn activate_next<S: Sink>(state: &mut BattleState, ruleset: &Ruleset,
             regenerate(state, id, sink);
             effects::own_turn(state, ruleset, id, sink);
         }
-        // rule: BAT-MAG-024
-        if state.at(id).spells.status.contains(Status::BLIND) {
+        // rule: BAT-MAG-024, BAT-MAG-043
+        if state.at(id).spells.status.contains(Status::NO_TURNS) {
             sink.emit(Event::public(EventKind::TurnPassed { stack: id }));
             next = pick(state, ruleset, sink);
             continue;

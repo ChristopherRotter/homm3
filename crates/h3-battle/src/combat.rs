@@ -270,6 +270,8 @@ fn strike_inputs(
     } else {
         victim.spells.melee_protection
     });
+    // rule: BAT-MAG-043
+    inputs.petrified = victim.spells.status.contains(Status::PETRIFIED);
     // rule: BAT-HER-004, BAT-MAG-026
     let own = hero::damage(heroes, striker.controller());
     inputs.hero_bonus = if ranged { own.ranged } else { own.melee };
@@ -702,12 +704,13 @@ pub(crate) fn melee<S: Sink>(
     };
     // Whether the target is blind as the attack begins (the original's mark, `installation.md`
     // §7.14): the strike ends the blindness, the retaliation keeps its factor.
-    let blind = effects::blind_share(state, ruleset, target);
+    let blind = effects::retaliation_share(state, ruleset, target);
     for i in 0..times {
         let me = state.at(attacker);
         // A second strike needs an attacker that does not lose its turns (a retaliating
-        // Unicorn may have blinded it; the original's 0x441E91, `installation.md` §7.20).
-        let lost = i > 0 && me.spells.status.contains(Status::BLIND);
+        // Unicorn may have blinded it, a Basilisk petrified it; the original's 0x441E91,
+        // `installation.md` §7.20).
+        let lost = i > 0 && me.spells.status.contains(Status::NO_TURNS);
         if !me.is_alive() || !state.at(target).is_alive() || lost {
             break;
         }
@@ -743,11 +746,12 @@ pub(crate) fn melee<S: Sink>(
 }
 
 /// The retaliation of `retaliator` on `attacker` (BAT-RET-001): if both live, the attacker's
-/// strikes allow retaliation (BAT-RET-002) and the retaliator has a retaliation left this round
-/// (BAT-RET-003), it attacks back with its full attack pattern. A retaliator that was blind when
-/// attacked (`blind`: Blind's share) deals that share of its damage, and none at 0, keeping its
-/// retaliation (BAT-MAG-024).
-// rule: BAT-RET-001, BAT-RET-002, BAT-RET-003, BAT-MAG-024
+/// strikes allow retaliation (BAT-RET-002), the retaliator is not petrified (BAT-MAG-043) and
+/// has a retaliation left this round (BAT-RET-003), it attacks back with its full attack
+/// pattern. A retaliator that was blind or paralysed when attacked (`blind`: Blind's or
+/// Paralyze's share) deals that share of its damage, and none at 0, keeping its retaliation
+/// (BAT-MAG-024, BAT-MAG-043).
+// rule: BAT-RET-001, BAT-RET-002, BAT-RET-003, BAT-MAG-024, BAT-MAG-043
 fn retaliate<S: Sink>(
     state: &mut BattleState,
     ruleset: &Ruleset,
@@ -757,11 +761,12 @@ fn retaliate<S: Sink>(
 ) {
     let r = state.at(retaliator);
     let a = state.at(attacker);
-    // War machines never retaliate (BAT-WAR-001).
+    // War machines never retaliate (BAT-WAR-001), nor do petrified stacks (BAT-MAG-043).
     if !r.is_alive()
         || !a.is_alive()
         || a.has(StackTraits::NO_ENEMY_RETALIATION)
         || r.has(StackTraits::WAR_MACHINE)
+        || r.spells.status.contains(Status::PETRIFIED)
         || r.retaliations_left == 0
         || blind == Some(0)
     {

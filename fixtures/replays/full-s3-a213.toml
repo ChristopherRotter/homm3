@@ -1,0 +1,743 @@
+commands = [
+    "A move 88",
+    "A move 55",
+    "A move 124",
+    "A wait",
+    "A move 22",
+    "A move 35",
+    "A move 72",
+    "A move 87",
+    "A move 70",
+    "A move 3",
+    "A move 156",
+    "A move 20",
+    "A move 106",
+    "A move 89",
+    "A move 157",
+    "A move 173",
+    "A move 158",
+    "A move 54",
+    "A move 123",
+    "A move 70",
+    "A move 3",
+    "A move 155",
+    "A move 137",
+    "A move 120",
+    "A move 38",
+    "A move 73",
+    "A move 4",
+    "A move 140",
+    "A move 157",
+    "A move 87",
+    "A move 175",
+    "A move 56",
+    "A move 106",
+    "A move 158",
+    "A move 53",
+    "A move 36",
+    "A move 71",
+    "A move 172",
+    "A move 174",
+    "A move 90",
+    "A move 1",
+    "A move 38",
+    "A move 21",
+    "A move 39",
+    "A move 55",
+    "A move 73",
+    "A move 122",
+    "A move 171",
+    "A move 155",
+    "A move 105",
+    "A move 87",
+    "A move 22",
+    "A move 138",
+    "A move 175",
+    "A move 71",
+    "A move 171",
+    "A move 69",
+    "A move 20",
+    "A move 18",
+    "A move 3",
+    "A move 173",
+    "A move 174",
+    "A move 4",
+    "A move 139",
+    "A move 105",
+    "A move 86",
+    "A move 36",
+    "A move 54",
+    "A move 141",
+    "A move 122",
+    "A move 21",
+    "A move 158",
+    "A move 90",
+    "A move 71",
+    "A move 173",
+    "A move 124",
+    "A move 137",
+    "A move 156",
+    "A move 155",
+    "A end-tactics",
+    "D move 146",
+    "D move 43",
+    "A move 145",
+    "A move 112",
+    "D move 44",
+    "A move 36",
+    "D move 115",
+    "A move 106",
+    "D move 149",
+    "A move 175",
+    "D defend",
+    "A move 155",
+    "D move 83",
+    "A move 120",
+    "D wait",
+    "A shoot 9 44",
+    "D shoot 4 106",
+    "D move 41",
+    "D shoot 3 155",
+    "A move 10",
+    "A move 98",
+    "D attack 2 11",
+    "A move 56",
+    "D move 130",
+    "A attack 11 58",
+    "D move 181",
+    "A move 126",
+    "D move 30",
+    "A move 105",
+    "A move 70",
+    "D move 64",
+    "A move 106",
+    "D shoot 6 106",
+    "A shoot 17 32",
+    "A heal 4",
+    "D move 155",
+    "D move 54",
+    "A attack 12 112",
+    "A move 10",
+    "D move 62",
+    "A move 108",
+    "D move 95",
+    "A move 74",
+    "D move 99",
+    "A attack 12 111",
+    "D move 61",
+    "A move 104",
+    "D attack 5 11",
+    "A move 91",
+    "D shoot 5 10",
+    "A shoot 14 54",
+    "A cast 9 stack 7",
+    "A defend",
+    "D shoot 0 111",
+    "D move 130",
+    "A move 79",
+    "D move 26",
+    "A move 123",
+    "D defend",
+    "A move 56",
+    "D move 46",
+    "A move 94",
+    "D move 30",
+    "A move 138",
+    "D move 63",
+    "A move 74",
+    "D defend",
+    "A shoot 16 66",
+    "A defend",
+    "D move 163",
+    "D move 25",
+    "A move 178",
+    "D move 92",
+    "A move 122",
+    "D move 164",
+    "A move 73",
+    "D move 64",
+    "A attack 12 147",
+    "D move 46",
+    "A move 88",
+    "D attack 2 113",
+    "A attack 9 75",
+    "D defend",
+    "A shoot 11 163",
+    "A heal 5",
+    "D move 5",
+    "D move 129",
+    "A move 146",
+    "D attack 1 123",
+    "A move 72",
+    "D move 160",
+    "D move 132",
+    "A move 182",
+    "D move 12",
+    "A cast 33 none",
+    "A move 57",
+    "D move 163",
+    "A move 59",
+    "D wait",
+    "A shoot 9 123",
+    "A defend",
+    "D defend",
+    "D move 88",
+    "D move 69",
+    "A move 48",
+    "D defend",
+    "A move 5",
+    "D move 174",
+    "D move 61",
+    "A attack 13 164",
+    "D move 45",
+    "A move 42",
+    "A move 41",
+    "D attack 0 147",
+    "A move 94",
+    "D shoot 0 164",
+    "A shoot 9 123",
+    "A heal 1",
+    "D move 97",
+    "D move 24",
+    "A move 49",
+    "D move 91",
+    "A attack 15 60",
+    "D move 159",
+    "D attack 4 77",
+    "A move 163",
+    "D move 43",
+    "A attack 9 73",
+    "D attack 0 162",
+    "A move 164",
+    "D shoot 8 154",
+    "A cast 31 stack 1 hex 72",
+    "A shoot 11 97",
+    "A heal 0",
+    "D move 113",
+    "D move 165",
+    "A attack 14 181",
+    "D attack 1 87",
+    "A move 22",
+    "D move 173",
+    "D move 130",
+    "A attack 14 147",
+    "D move 6",
+    "A move 167",
+    "D attack 0 164",
+    "A shoot 11 113",
+    "D shoot 1 72",
+    "A defend",
+    "A heal 6",
+    "D move 76",
+    "D move 163",
+    "A wait",
+    "D move 125",
+    "A move 26",
+    "D attack 1 87",
+    "D move 63",
+    "A move 133",
+    "D move 40",
+    "A move 98",
+    "D move 183",
+    "A shoot 12 87",
+    "D shoot 1 72",
+    "A heal 3",
+    "A move 24",
+    "D move 173",
+    "D move 176",
+    "A move 20",
+    "D move 146",
+    "A move 24",
+    "D attack 1 36",
+    "D move 64",
+    "A attack 15 80",
+    "D defend",
+    "A move 123",
+    "D move 114",
+    "A move 117",
+    "D shoot 1 20",
+    "A cast 9 stack 3",
+    "A shoot 16 66",
+    "A heal 0",
+    "D move 158",
+    "D move 121",
+    "A attack 10 58",
+    "D attack 6 115",
+    "A move 76",
+    "D move 72",
+    "D attack 4 77",
+    "A attack 15 60",
+    "A move 63",
+    "D move 36",
+    "A move 55",
+    "D move 147",
+    "A move 184",
+    "D wait",
+    "A shoot 10 36",
+    "A defend",
+    "D defend",
+    "D move 142",
+    "D move 38",
+    "A move 59",
+    "D move 182",
+    "D attack 7 53",
+    "D move 45",
+    "A attack 16 82",
+    "D move 39",
+    "A move 105",
+    "D move 110",
+    "A move 115",
+    "D defend",
+    "A shoot 10 39",
+    "A wait",
+    "A defend",
+    "D move 162",
+    "D move 140",
+    "A attack 12 71",
+    "D move 149",
+    "D move 97",
+    "A move 46",
+    "D move 106",
+    "A move 39",
+    "D move 107",
+    "A attack 9 166",
+    "D defend",
+    "A shoot 10 106",
+    "A wait",
+    "A heal 6",
+    "D move 56",
+    "D move 9",
+    "A move 88",
+    "D move 181",
+    "D move 164",
+    "A attack 16 65",
+    "D attack 8 137",
+    "A attack 14 26",
+    "D attack 4 103",
+    "A move 147",
+    "D shoot 4 88",
+    "A shoot 14 9",
+    "D move 104",
+    "D move 39",
+    "D move 149",
+    "D move 130",
+    "A move 114",
+    "D move 172",
+    "A move 58",
+    "A move 96",
+    "D cast 32 none",
+    "D shoot 6 96",
+    "A defend",
+    "D move 146",
+    "D move 156",
+    "D attack 6 79",
+    "D attack 3 73",
+    "D defend",
+    "A move 132",
+    "D move 155",
+    "A move 39",
+    "A attack 9 81",
+    "D shoot 7 52",
+    "A shoot 13 103",
+    "D move 72",
+    "D move 77",
+    "D move 157",
+    "D move 19",
+    "D move 164",
+    "A move 130",
+    "D move 122",
+    "A attack 12 2",
+    "D move 40",
+    "A attack 16 65",
+    "D cast 35 stack 15",
+    "D wait",
+    "A wait",
+    "D shoot 3 2",
+    "A shoot 16 66",
+    "D move 7",
+    "D move 183",
+    "D move 5",
+    "D attack 0 147",
+    "A move 21",
+    "D move 73",
+    "A attack 15 131",
+    "D attack 3 3",
+    "A defend",
+    "D wait",
+    "D cast 34 hex 73",
+    "D shoot 0 130",
+    "D move 157",
+    "D move 140",
+    "D move 58",
+    "D move 82",
+    "A attack 10 57",
+    "D move 56",
+    "A move 113",
+    "D attack 7 53",
+    "A shoot 12 58",
+    "D shoot 3 57",
+    "D move 72",
+    "D shoot 7 52",
+    "D move 106",
+    "D cast 16 stack 14",
+    "D move 96",
+    "A wait",
+    "D move 69",
+    "A move 128",
+    "D move 55",
+    "A wait",
+    "D defend",
+    "A shoot 11 72",
+    "A attack 12 91",
+    "D move 104",
+    "D move 98",
+    "D move 156",
+    "D attack 3 74",
+    "A move 76",
+    "D move 122",
+    "A move 113",
+    "D move 70",
+    "A shoot 16 66",
+    "D shoot 7 52",
+    "D move 19",
+    "D move 71",
+    "D move 157",
+    "D move 104",
+    "A move 96",
+    "D move 91",
+    "A move 97",
+    "D move 122",
+    "A shoot 15 104",
+    "D shoot 6 97",
+    "D move 156",
+    "D move 19",
+    "D move 92",
+    "D cast 12 none",
+    "D move 138",
+    "A move 128",
+    "D attack 3 144",
+    "A attack 16 83",
+    "D move 124",
+    "A wait",
+    "D shoot 6 83",
+    "A shoot 11 156",
+    "D move 173",
+    "D move 78",
+    "D move 73",
+    "A move 114",
+    "D move 126",
+    "D move 89",
+    "A defend",
+    "D wait",
+    "D shoot 6 114",
+    "D move 104",
+    "D attack 6 132",
+]
+checkpoints = [
+    "0x0e901e03029f18f9",
+    "0x25807eb833e028fc",
+    "0xb52601e314ae3cf0",
+    "0x31228574bd4df6d1",
+    "0x6f57f9df956aa8ec",
+    "0xac5913377c5a42d4",
+    "0xf458fe82e40ff4f5",
+    "0x110cad06c79ca4b7",
+    "0x5aa03cf0118aa2b6",
+    "0x072a6fa5c37e6ca1",
+    "0xc3526da08db8792a",
+    "0xbddc1161cb6222bc",
+    "0x8c8ccaf95cc3f8da",
+    "0xbe95332f38edf522",
+    "0xd1af98da2ac12fa3",
+    "0xfcba29c0af6a4aaa",
+    "0x4f8d4ad6a701f9da",
+]
+
+[replay]
+format = 18
+engine = "0.1.0"
+scenario = "full"
+seed = "3"
+packs = [[
+    "synthetic",
+    "0.1.0",
+]]
+profile = "synthetic:faithful"
+ruleset_hash = "0xc62b2ea89b7c8257"
+rng = "xoshiro256starstar+splitmix64"
+rng_version = 1
+hash = "fnv1a64-le"
+hash_version = 1
+battle_state_hash_version = 31
+checkpoint_every = 25
+
+[setup]
+attacker_war_machines = [
+    "synthetic:bolt_thrower",
+    "synthetic:aid_tent",
+]
+defender_war_machines = [
+    "synthetic:bolt_thrower",
+    "synthetic:supply_wagon",
+]
+attacker_funds = 10000
+defender_funds = 10000
+
+[setup.attacker_hero]
+hero_type = "synthetic:brea"
+attack = 2
+defense = 2
+power = 2
+knowledge = 1
+tactics = 2
+mana = 40
+max_mana = 40
+ranged_bp = 1000
+melee_bp = 1000
+reduction_bp = 500
+spell_book = [
+    "synthetic:spark",
+    "synthetic:cinders",
+    "synthetic:arc",
+    "synthetic:blight",
+    "synthetic:ward",
+    "synthetic:hasten",
+    "synthetic:drag",
+    "synthetic:fury",
+    "synthetic:smiting",
+    "synthetic:riposte",
+    "synthetic:mend",
+    "synthetic:blaze",
+    "synthetic:glass",
+    "synthetic:haze",
+    "synthetic:charm",
+    "synthetic:scorch",
+    "synthetic:blink",
+    "synthetic:snare",
+    "synthetic:revive",
+    "synthetic:offer",
+    "synthetic:copy",
+]
+
+[setup.attacker_hero.ballista]
+shots = 1
+double_damage_chance_bp = 5000
+
+[setup.attacker_hero.tent]
+heal_bonus_bp = 10000
+
+[setup.attacker_hero.schools]
+"synthetic:storm" = 1
+
+[[setup.attacker_hero.effects]]
+kind = "morale"
+amount = 1
+affects = "own"
+
+[[setup.attacker_hero.effects]]
+kind = "luck"
+amount = 1
+affects = "own"
+
+[[setup.attacker_hero.effects]]
+kind = "spell_specialty"
+spell = "synthetic:hasten"
+bp_per_level = 300
+level = 6
+
+[setup.defender_hero]
+hero_type = "synthetic:corwin"
+attack = 1
+defense = 3
+power = 3
+knowledge = 1
+tactics = 0
+mana = 40
+max_mana = 40
+surrender_discount_bp = 1000
+spell_book = [
+    "synthetic:spark",
+    "synthetic:arc",
+    "synthetic:blight",
+    "synthetic:zeal",
+    "synthetic:gloom",
+    "synthetic:boon",
+    "synthetic:bane",
+    "synthetic:corrode",
+    "synthetic:aegis",
+    "synthetic:hallow",
+    "synthetic:purge",
+    "synthetic:rage",
+    "synthetic:veil",
+    "synthetic:dazzle",
+    "synthetic:rampage",
+    "synthetic:bulwark",
+    "synthetic:mire",
+    "synthetic:uproot",
+    "synthetic:revive",
+    "synthetic:conjure",
+]
+
+[setup.defender_hero.ballista]
+shots = 1
+double_damage_chance_bp = 5000
+
+[setup.defender_hero.schools]
+"synthetic:stone" = 3
+
+[[setup.defender_hero.effects]]
+kind = "stack_stat"
+stat = "attack"
+op = "add"
+amount = 2
+
+[setup.defender_hero.effects.creatures]
+creature = "synthetic:wisp"
+
+[[setup.defender_hero.effects]]
+kind = "stack_stat"
+stat = "min_damage"
+op = "add"
+amount = 1
+
+[setup.defender_hero.effects.creatures]
+creature = "synthetic:wisp"
+
+[[setup.defender_hero.effects]]
+kind = "stack_stat"
+stat = "max_damage"
+op = "add"
+amount = 1
+
+[setup.defender_hero.effects.creatures]
+creature = "synthetic:wisp"
+
+[[setup.defender_hero.effects]]
+kind = "stack_stat"
+stat = "defense"
+op = "add"
+amount = 1
+
+[setup.defender_hero.effects.creatures]
+flag = "flying"
+
+[[setup.defender_hero.effects]]
+kind = "no_range_penalty"
+
+[setup.defender_hero.effects.creatures]
+flag = "shooter"
+
+[[setup.defender_hero.effects]]
+kind = "stack_stat"
+stat = "speed"
+op = "add"
+amount = 1
+
+[setup.defender_hero.effects.creatures]
+flag = "flying"
+
+[[setup.defender_hero.effects]]
+kind = "stack_stat"
+stat = "hit_points"
+op = "percent_bp"
+amount = 2500
+
+[setup.defender_hero.effects.creatures]
+flag = "alive"
+
+[[setup.defender_hero.effects]]
+kind = "regeneration"
+hit_points = 10
+
+[setup.defender_hero.effects.creatures]
+flag = "alive"
+
+[[setup.defender_hero.effects]]
+kind = "shoot_when_adjacent"
+
+[setup.defender_hero.effects.creatures]
+flag = "shooter"
+
+[[setup.defender_hero.effects]]
+kind = "spell_duration"
+rounds = 2
+
+[[setup.defender_hero.effects]]
+kind = "spell_specialty"
+spell = "synthetic:boon"
+bp_per_level = 300
+level = 1
+
+[[attacker]]
+slot = 0
+creature = "synthetic:spearman"
+count = 40
+
+[[attacker]]
+slot = 1
+creature = "synthetic:brute"
+count = 12
+
+[[attacker]]
+slot = 2
+creature = "synthetic:wisp"
+count = 30
+
+[[attacker]]
+slot = 3
+creature = "synthetic:spearman"
+count = 25
+
+[[attacker]]
+slot = 4
+creature = "synthetic:brute"
+count = 9
+
+[[attacker]]
+slot = 5
+creature = "synthetic:wisp"
+count = 18
+
+[[attacker]]
+slot = 6
+creature = "synthetic:spearman"
+count = 33
+
+[[defender]]
+slot = 0
+creature = "synthetic:brute"
+count = 14
+
+[[defender]]
+slot = 1
+creature = "synthetic:spearman"
+count = 35
+
+[[defender]]
+slot = 2
+creature = "synthetic:wisp"
+count = 22
+
+[[defender]]
+slot = 3
+creature = "synthetic:brute"
+count = 10
+
+[[defender]]
+slot = 4
+creature = "synthetic:spearman"
+count = 28
+
+[[defender]]
+slot = 5
+creature = "synthetic:wisp"
+count = 26
+
+[[defender]]
+slot = 6
+creature = "synthetic:brute"
+count = 11
+
+[result]
+winner = "defender"
+final_hash = "0x5e2900965c060fab"

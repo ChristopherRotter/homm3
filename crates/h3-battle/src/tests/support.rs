@@ -472,6 +472,56 @@ pub const CREATURES: &[Creature] = &[
         &["alive", "spell_damage_after_strike=bolt:100:10"],
     ),
     (
+        "gazer",
+        10,
+        10,
+        2,
+        2,
+        10,
+        5,
+        &["alive", "spell_after_strike=petrify:100:0:3"],
+    ),
+    (
+        "stinger",
+        10,
+        10,
+        2,
+        2,
+        10,
+        5,
+        &["alive", "spell_after_strike=paralysis:100:0:3"],
+    ),
+    (
+        "rotter",
+        10,
+        10,
+        2,
+        2,
+        10,
+        5,
+        &["alive", "spell_after_strike=plague:100:0:3:living"],
+    ),
+    (
+        "ancient",
+        10,
+        10,
+        2,
+        2,
+        10,
+        5,
+        &["alive", "spell_after_strike=wither:100:0:3:living"],
+    ),
+    (
+        "wyvern",
+        10,
+        10,
+        2,
+        2,
+        10,
+        5,
+        &["alive", "spell_after_strike=venom:100:0:3:living"],
+    ),
+    (
         "twinblinder",
         10,
         10,
@@ -895,6 +945,7 @@ pub fn ruleset_with(profile: &str, edit: impl FnOnce(&mut BattleParamsDef)) -> R
             .chain(field_defs())
             .chain(raise_defs())
             .chain(create_defs())
+            .chain(strike_defs())
             .collect(),
         hero_classes: vec![HeroClassDef {
             key: ContentKey::new("t", "knight").unwrap(),
@@ -1430,6 +1481,7 @@ pub fn other_defs() -> [SpellDef; 3] {
                     side: TargetSide::Own,
                     mass_from: Some(3),
                     effects: vec![SpellEffect::Dispel, SpellEffect::Heal],
+                    restores_health: true,
                     ..SpellMagic::default()
                 },
             )
@@ -1452,6 +1504,84 @@ pub fn other_defs() -> [SpellDef; 3] {
                 },
             )
         },
+    ]
+}
+
+/// The strike's statuses (BAT-MAG-043, BAT-MAG-044), creature abilities sparing war machines:
+/// `t:petrify` (Stone Gaze: level 3, ended by any damage), `t:paralysis` (Paralyze: level 4, a
+/// 25 % retaliation, ended by any damage), `t:plague` (Disease: level 2, −2 attack and defense),
+/// `t:wither` (Age: level 5) and `t:venom` (Poison: level 0, living creatures only).
+pub fn strike_defs() -> Vec<SpellDef> {
+    let key = |k: &str| ContentKey::new("t", k).unwrap();
+    let def = |name: &str, level, effect, changes: &[TimedChange], ends, requires| SpellDef {
+        key: key(name),
+        name: String::from(name),
+        category: SpellCategory::Ability,
+        level,
+        schools: vec![],
+        cost: [0; 4],
+        power: 0,
+        effect,
+        polarity: SpellPolarity::Negative,
+        magic: SpellMagic {
+            target: SpellTarget::Stack,
+            side: TargetSide::Enemy,
+            conditions: TargetConditions {
+                requires,
+                excludes: CreatureFlags::default().with(CreatureFlag::WarMachine),
+            },
+            effects: changes.iter().map(|&c| SpellEffect::Timed(c)).collect(),
+            ends,
+            ..SpellMagic::default()
+        },
+        counters: vec![],
+        dispels: vec![],
+        spares: vec![],
+        tests_as: None,
+        summons: None,
+    };
+    let none = CreatureFlags::default();
+    vec![
+        def(
+            "petrify",
+            3,
+            [0; 4],
+            &[TimedChange::Petrify],
+            EffectEnd::Damaged,
+            none,
+        ),
+        def(
+            "paralysis",
+            4,
+            [25; 4],
+            &[TimedChange::Paralyze],
+            EffectEnd::Damaged,
+            none,
+        ),
+        def(
+            "plague",
+            2,
+            [2; 4],
+            &[TimedChange::AttackLoss, TimedChange::DefenseLoss],
+            EffectEnd::Never,
+            none,
+        ),
+        def(
+            "wither",
+            5,
+            [0; 4],
+            &[TimedChange::Age],
+            EffectEnd::Never,
+            none,
+        ),
+        def(
+            "venom",
+            0,
+            [0; 4],
+            &[TimedChange::Poison],
+            EffectEnd::Never,
+            none.with(CreatureFlag::Alive),
+        ),
     ]
 }
 

@@ -46,6 +46,7 @@ mod state;
 mod tactics;
 mod terrain;
 mod turn;
+mod vitality;
 mod war;
 
 pub use command::{Command, apply, validate};

@@ -1132,3 +1132,32 @@ records how and why the tasks went.
   agent seeds showing T5–T6's features and the strike spells: a385, a1059, a124, a300, a301.
 - **Versions:** pack format v19, ruleset hash v28; state hash v30, observation encoding v7, C ABI
   v11, replay format and action encoding unchanged.
+
+### T7a2 — the strike's statuses (2026-10-08)
+
+- **Split** (proposed to the user with T7a1's PR): Stone Gaze, Paralyze, Disease, Age and Poison
+  here; Bind and Acid Breath (new mechanics: binder lists, a permanent defense loss and the Rust
+  Dragon's extra damage) in T7a3. The code reading is §7.20's (T7a1).
+- **Content:** timed changes `petrify`, `paralyze`, `poison`, `age`; `restores_health` (Cure);
+  the gap-fill's timed entries may name ability spells and give their effect values (Disease 2,
+  Paralyze 25: Blind's Advanced share, which the original reads); Stone Gaze ends with damage,
+  Poison needs a living creature; Troglodytes immune to Stone Gaze, Gargoyles to Poison; strike
+  abilities for Zombies (Disease 20 %), Ghost Dragons (Age 20 %), Wyvern Monarchs (Poison 30 %),
+  Medusas and Basilisks (Stone Gaze 20 %), Scorpicores (Paralyze 20 %), source
+  `exe-strike-statuses` (pack format v20). The synthetic Brute strikes with five more spells and
+  Mend restores health; the new synthetic spells come last (no handle moves).
+- **Battle:** `Status::BLIND` became `NO_TURNS` (Blind, Stone Gaze, Paralyze) and `PETRIFIED` took
+  the status byte's last bit; `retaliation_share` (Blind's or Paralyze's, the smaller);
+  `stops_turns`; a petrified target halves stage 3 (`Strike::petrified`, exact: a seventh factor)
+  and does not retaliate while petrified (the strike ends it first, as 0x444090 does);
+  `h3_battle::vitality` (per stack the start hit points and Poison's tenths, beside the stacks:
+  the hit points per creature materialised in `effects::recompute`, Poison's tenth at a new
+  effect and at each round start where it lasts, `Poisoned` event, Cure's restore, a clone from
+  the start value, a reused slot afresh); Q-0005 covers the x87 formula (9 hit points poisoned and
+  aged: 4, exact 5).
+- **Measurements:** the new binary on T7a1's workload +0.09 % Ir; the new workload has 20.7 %
+  fewer steps (stacks lose turns, battles end sooner) and 11.8 % fewer instructions,
+  re-baselined. Replays re-recorded with new agent seeds: a213, a804, a196, a61, a514.
+- **Versions:** pack format v20, ruleset hash v29 (`restores_health`, the new timed changes),
+  state hash v31 (the vitality table), observation encoding v7 (the effects list and the hit
+  points already show it), C ABI v11, replay format v18.

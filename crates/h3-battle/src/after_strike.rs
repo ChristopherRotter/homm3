@@ -10,7 +10,7 @@
 //! without the test that keeps a negative spell off the caster's own side (a hypnotized or
 //! berserk striker's own stacks may be struck) and without Magic Mirror.
 
-use h3_content::{Ability, Ruleset, Spell, SpellEffect, SpellId, TimedChange};
+use h3_content::{Ability, Ruleset, Spell, SpellId};
 
 use crate::damage::apply_damage;
 use crate::effects::{self, TimedCast};
@@ -20,7 +20,7 @@ use crate::state::{BattleState, StackId, StackTraits};
 
 /// Casts the spells of `striker`'s abilities on `target`, which it struck in melee, in ability
 /// order (BAT-MAG-040, BAT-MAG-041). Returns whether one of them stops the target's turns
-/// (Blind): the target then does not retaliate (the original's strike answers "no
+/// (Blind, Stone Gaze, Paralyze): the target then does not retaliate (the original's strike answers "no
 /// retaliation", `installation.md` §7.20).
 pub(crate) fn cast<S: Sink>(
     state: &mut BattleState,
@@ -137,7 +137,8 @@ fn apply<S: Sink>(
     spell
         .magic
         .effects
-        .contains(&SpellEffect::Timed(TimedChange::Blind))
+        .iter()
+        .any(|e| e.timed().is_some_and(effects::stops_turns))
 }
 
 /// Whether a damage spell after a strike lands on `target` (BAT-MAG-041, the Thunderbird): the

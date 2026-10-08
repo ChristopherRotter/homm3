@@ -280,7 +280,7 @@ fn state_hash_is_pinned() {
     let s = BattleState::new(&r, &setup, 7).unwrap();
     assert!(s.tactics().is_some());
     assert_eq!(s.state_hash(), GOLDEN, "got {:#018x}", s.state_hash());
-    assert_eq!(crate::BATTLE_STATE_HASH_VERSION, 30);
+    assert_eq!(crate::BATTLE_STATE_HASH_VERSION, 31);
 }
 
-const GOLDEN: u64 = 0xfd86_6e80_a326_fbf8;
+const GOLDEN: u64 = 0xb1e2_34e8_e13e_e2bf;

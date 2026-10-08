@@ -116,7 +116,8 @@ pub enum TimedChange {
     AttackLoss,
     /// Defense + v (Stone Skin, Prayer).
     Defense,
-    /// Defense − v, at most down to 0, never given back (Disrupting Ray).
+    /// Defense − v, at most down to 0, given back at the end (Disrupting Ray never ends;
+    /// Disease).
     DefenseLoss,
     /// Attack + v on melee attacks (Bloodlust).
     MeleeAttack,
@@ -172,11 +173,23 @@ pub enum TimedChange {
     /// The other side controls the stack: it commands its turns, and the stack fights for it
     /// (Hypnotize; BAT-MAG-026, v12).
     Hypnotize,
+    /// The stack loses its turns, takes half the damage of strikes (damage stage 3) and does
+    /// not retaliate (Stone Gaze; BAT-MAG-043, v20).
+    Petrify,
+    /// The stack loses its turns; struck in melee it retaliates with v % of the damage (damage
+    /// stage 2; with Blind the smaller share) (Paralyze; BAT-MAG-043, v20).
+    Paralyze,
+    /// The stack's hit points per creature fall by a tenth of their start value at the cast and
+    /// at every round start while it lasts, to half at most, and stay down after it ends (Poison;
+    /// BAT-MAG-044, v20).
+    Poison,
+    /// The stack's hit points per creature are halved while it lasts (Age; BAT-MAG-044, v20).
+    Age,
 }
 
 impl TimedChange {
     /// All values, in code order.
-    pub const ALL: [Self; 27] = [
+    pub const ALL: [Self; 31] = [
         Self::Speed,
         Self::SpeedPercent,
         Self::Attack,
@@ -204,6 +217,10 @@ impl TimedChange {
         Self::Blind,
         Self::Berserk,
         Self::Hypnotize,
+        Self::Petrify,
+        Self::Paralyze,
+        Self::Poison,
+        Self::Age,
     ];
 
     /// Pack name.
@@ -236,6 +253,10 @@ impl TimedChange {
             Self::Blind => "blind",
             Self::Berserk => "berserk",
             Self::Hypnotize => "hypnotize",
+            Self::Petrify => "petrify",
+            Self::Paralyze => "paralyze",
+            Self::Poison => "poison",
+            Self::Age => "age",
         }
     }
 
@@ -727,6 +748,9 @@ pub struct SpellMagic {
     /// Its dispel effect ends only the effects of positive spells, and a strike casts it only on
     /// a stack with one (Dispel Helpful Spells, `installation.md` §7.20; BAT-MAG-042, v19).
     pub dispels_positive: bool,
+    /// A cast first gives back the hit points Poison took for good and recomputes those Age
+    /// takes, before its dispel (Cure, `installation.md` §7.10; BAT-MAG-044, v20).
+    pub restores_health: bool,
 }
 
 impl SpellMagic {
@@ -882,6 +906,8 @@ impl SpellMagic {
             Some("needs_effect needs target stack")
         } else if self.dispels_positive && !self.dispels() {
             Some("dispels_positive needs a dispel effect")
+        } else if self.restores_health && !self.effects.contains(&SpellEffect::Heal) {
+            Some("restores_health needs a heal effect")
         } else {
             self.field_error()
         }
@@ -1031,6 +1057,7 @@ impl CanonicalHash for SpellMagic {
         }
         h.write_u8(self.temporary_below.unwrap_or(0));
         h.write_bool(self.dispels_positive);
+        h.write_bool(self.restores_health);
     }
 }
 
@@ -1360,6 +1387,14 @@ mod tests {
                 },
                 true,
                 "dispels_positive needs",
+            ),
+            (
+                SpellMagic {
+                    restores_health: true,
+                    ..timed(TimedChange::Speed)
+                },
+                true,
+                "restores_health needs",
             ),
             (
                 SpellMagic {

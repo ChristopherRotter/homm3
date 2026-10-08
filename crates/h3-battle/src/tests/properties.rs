@@ -500,7 +500,9 @@ proptest! {
                             let explained = mentioned(i, |k, i| matches!(k,
                                 EventKind::Struck { target, .. } | EventKind::DeathStared { target, .. } | EventKind::SpellDamage { target, .. } if target.index() == i))
                                 || mentioned(i, |k, i| matches!(k, EventKind::Regenerated { stack, .. } | EventKind::Vanished { stack, .. } if stack.index() == i))
-                                || mentioned(i, |k, i| matches!(k, EventKind::Healed { target, .. } if target.index() == i));
+                                || mentioned(i, |k, i| matches!(k, EventKind::Healed { target, .. } if target.index() == i))
+                                // Poison and Age change the hit points per creature (BAT-MAG-044).
+                                || mentioned(i, |k, i| matches!(k, EventKind::Poisoned { stack, .. } | EventKind::EffectEnded { target: stack, .. } if stack.index() == i));
                             if !explained {
                                 prop_assert_eq!((a.count, a.top_hp), (b.count, b.top_hp));
                             }
