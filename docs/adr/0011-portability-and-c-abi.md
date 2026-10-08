@@ -53,6 +53,11 @@ Language-specific bindings only (locks out other ecosystems); a network protocol
   grows). No function changes.
 - **ABI v10** (E04b T5a): action encoding v10 (the second target head carries Teleport's
   destination hex). No function changes.
+- **ABI v11** (E04b T6b): observation encoding v7 (created stacks and clones; the length grows).
+  No function changes.
+- **ABI v12** (E04b T7b1): action encoding v11 (the stack's cast, entry 1395, becomes legal: its
+  spell head allows the stack's spell, its second target head 0) and observation encoding v8
+  (casts left; the length grows). No function changes.
 
 ## Revision history
 
