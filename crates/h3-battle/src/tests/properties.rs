@@ -13,7 +13,7 @@ use h3_content::{
 };
 use h3_contracts::{
     Army, ArmyStack, BallistaControl, BattleEffect, BattleHero, BattleSetup, BattleSide,
-    DamageBonuses, StatOp, TentControl,
+    DamageBonuses, StackOrigin, StackRecord, StatOp, TentControl,
 };
 use h3_kernel::Rng;
 use proptest::collection::{btree_map, vec};
@@ -808,28 +808,38 @@ proptest! {
         prop_assert_eq!(Some(o.result), state.result());
         prop_assert_eq!(o.rounds, state.round());
         for side in BattleSide::BOTH {
-            // Stacks created in battle are left out (BAT-MAG-037).
-            let stacks: Vec<_> = (0u8..).zip(state.stacks()).filter(|(_, s)| s.side == side && !s.is_created()).collect();
+            // Every stack is reported in stack order, by origin (BAT-MAG-037, BAT-Q13).
+            let stacks: Vec<_> = (0u8..).zip(state.stacks()).filter(|(_, s)| s.side == side).collect();
             let records = &o.stacks[side.index()];
             prop_assert_eq!(records.len(), stacks.len());
             for (record, &(id, s)) in records.iter().zip(&stacks) {
-                // Creatures raised for the battle only are left out (BAT-MAG-035).
                 let temporary = state.temporary(StackId(id));
                 prop_assert!(temporary <= s.base_count);
                 prop_assert_eq!((record.creature, record.start), (s.creature, s.base_count));
+                let origin = if s.is_created() {
+                    StackOrigin::Created
+                } else if s.has(crate::StackTraits::WAR_MACHINE) {
+                    StackOrigin::WarMachine
+                } else {
+                    StackOrigin::Army(s.slot)
+                };
+                prop_assert_eq!(record.origin, origin);
+                // A created stack that vanished keeps the creatures it vanished with (BAT-Q13).
+                let count = s.count.max(state.created.vanished[usize::from(id)]);
                 // Creatures raised for the battle only are left out, but an army whose living
                 // creatures are all such keeps one in its last living stack (BAT-MAG-035).
-                let kept = record.end == 1 && s.count.saturating_sub(temporary) == 0 && s.is_alive();
-                prop_assert!(record.end == s.count.saturating_sub(temporary) || kept);
+                let kept = record.end == 1 && count.saturating_sub(temporary) == 0 && s.is_alive() && matches!(origin, StackOrigin::Army(_));
+                prop_assert!(record.end == count.saturating_sub(temporary) || kept);
                 prop_assert!(record.end <= record.start);
             }
-            let army = |rec: &&h3_contracts::StackRecord| rec.origin != h3_contracts::StackOrigin::WarMachine;
-            let any_army_alive = stacks.iter().any(|(_, s)| s.is_alive() && !s.has(crate::StackTraits::WAR_MACHINE));
+            let army = |rec: &&StackRecord| matches!(rec.origin, StackOrigin::Army(_));
+            let any_army_alive = stacks.iter().any(|(_, s)| s.is_alive() && !s.has(crate::StackTraits::WAR_MACHINE) && !s.is_created());
             prop_assert_eq!(records.iter().filter(army).any(|rec| rec.end > 0), any_army_alive);
-            let alive = |machine: bool| records.iter().filter(move |rec| rec.end > 0 && (rec.origin == h3_contracts::StackOrigin::WarMachine) == machine);
-            prop_assert_eq!(o.survivors[side.index()].stacks.len(), alive(false).count());
-            prop_assert_eq!(o.war_machines[side.index()].len(), alive(true).count());
-            prop_assert_eq!(o.survivors[side.index()].stacks.iter().map(|s| s.count).sum::<u32>(), alive(false).map(|rec| rec.end).sum::<u32>());
+            let in_army = |rec: &&StackRecord| rec.end > 0 && matches!(rec.origin, StackOrigin::Army(_));
+            let machine = |rec: &&StackRecord| rec.end > 0 && rec.origin == StackOrigin::WarMachine;
+            prop_assert_eq!(o.survivors[side.index()].stacks.len(), records.iter().filter(in_army).count());
+            prop_assert_eq!(o.war_machines[side.index()].len(), records.iter().filter(machine).count());
+            prop_assert_eq!(o.survivors[side.index()].stacks.iter().map(|s| s.count).sum::<u32>(), records.iter().filter(in_army).map(|rec| rec.end).sum::<u32>());
         }
     }
 }

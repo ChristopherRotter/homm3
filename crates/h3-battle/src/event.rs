@@ -366,6 +366,15 @@ pub enum EventKind {
         /// The stack it copies, for a clone.
         original: Option<StackId>,
     },
+    /// Clone's place was its original's own hex (quirk BAT-QUIRK-7, BAT-MAG-038): no clone was
+    /// made, and the original became a summoned stack that vanishes after `rounds` rounds and is
+    /// no longer of its side's army.
+    TurnedSummoned {
+        /// The original.
+        stack: StackId,
+        /// Its rounds left.
+        rounds: u16,
+    },
     /// A clone vanished: its rounds ran out or its original died (BAT-MAG-038).
     Vanished {
         /// The clone.

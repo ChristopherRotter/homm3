@@ -6,7 +6,7 @@ use std::vec;
 use std::vec::Vec;
 
 use h3_content::Ruleset;
-use h3_contracts::{BattleHero, BattleResult, BattleSide};
+use h3_contracts::{BattleHero, BattleResult, BattleSide, StackOrigin, StackRecord};
 
 use super::spells::{arena, mage, spell, stack};
 use super::support::*;
@@ -137,12 +137,26 @@ fn clone_copies_an_own_stack_of_a_level_its_mastery_allows() {
     );
     // Neither a cloned stack nor a clone is a target.
     assert_eq!(targets(&s, &r, BattleSide::Attacker, "copy"), vec![1]);
-    // The outcome leaves the clone out.
+    // The outcome reports the clone as created, after the army, and leaves it out of the
+    // survivors.
     hurt(&mut s, &r, 3, 1000);
     crate::combat::check_end(&mut s, &mut Vec::<Event>::new());
     let outcome = s.outcome().unwrap();
     assert_eq!(outcome.result, BattleResult::Victory(BattleSide::Attacker));
-    assert_eq!(outcome.stacks[0].len(), 3);
+    let origins: Vec<_> = outcome.stacks[0].iter().map(|r| r.origin).collect();
+    assert_eq!(
+        origins,
+        [0, 1, 2]
+            .map(StackOrigin::Army)
+            .into_iter()
+            .chain([StackOrigin::Created])
+            .collect::<Vec<_>>()
+    );
+    assert_eq!(
+        (outcome.stacks[0][3].start, outcome.stacks[0][3].end),
+        (10, 10)
+    );
+    assert_eq!(outcome.survivors[0].stacks.len(), 3);
 }
 
 // covers: BAT-MAG-038
@@ -182,32 +196,66 @@ fn a_clone_goes_to_the_first_free_hex_along_the_rays() {
     assert_eq!(created(&events), vec![(2, 5, at(&r, 9, 4).0, Some(1))]);
 }
 
-// covers: BAT-MAG-038
-#[test]
-fn a_crowded_two_hex_stack_is_never_covered_by_its_clone() {
-    // Quirk BAT-QUIRK-7 (fixed): rows 3 to 7 blocked from column 9 on but for the ogres (tail
-    // 13, head 14) and the hex in front of them. The original would take the ogres' head as the
-    // clone's position in ring 2; the engine goes on to ring 3, top right.
-    let r = ruleset();
+/// An arena with `ogres` (tail 13, head 14, row 5) of the attacker's under a Clone caster, the
+/// serfs of the defender at (1, 0), every standable hex but the ogres', `free` and the serfs'
+/// blocked when `free` is given, else rows 3 to 7 from column 9 on but the ogres' hexes and the
+/// hex in front of them.
+fn walled(r: &Ruleset, ogres: u32, free: Option<&[(i32, i32)]>) -> BattleState {
     let mut s = arena(
-        &r,
-        [Some(creator(&r, 1, 0)), None],
-        &[("ogre", 2, 14, 5)],
+        r,
+        [Some(creator(r, 1, 0)), None],
+        &[("ogre", ogres, 14, 5)],
         &[("serf", 1, 1, 0)],
         1,
     );
-    let free = [at(&r, 13, 5), at(&r, 14, 5), at(&r, 15, 5)];
-    let walls: Vec<u8> = (9..16)
-        .flat_map(|x| (3..8).map(move |y| (x, y)))
-        .map(|(x, y)| at(&r, x, y))
-        .filter(|h| !free.contains(h))
-        .map(|h| h.0)
-        .collect();
     let field = Field::new(r.battle().field);
+    let keep: Vec<_> = [(13, 5), (14, 5), (1, 0)]
+        .iter()
+        .chain(free.unwrap_or(&[(15, 5)]))
+        .map(|&(x, y)| at(r, x, y))
+        .collect();
+    let walls: Vec<u8> = match free {
+        Some(_) => (0..field.hex_count())
+            .map(|h| crate::geometry::Hex(u8::try_from(h).unwrap()))
+            .filter(|&h| field.is_standable(h))
+            .collect::<Vec<_>>(),
+        None => (9..16)
+            .flat_map(|x| (3..8).map(move |y| (x, y)))
+            .map(|(x, y)| at(r, x, y))
+            .collect(),
+    }
+    .into_iter()
+    .filter(|h| !keep.contains(h))
+    .map(|h| h.0)
+    .collect();
     s.natural = NaturalObstacles::new(field, &blocked(walls), false).unwrap();
+    s
+}
+
+/// The originals Clone turned into clones as `(stack, rounds)`.
+fn turned(events: &[Event]) -> Vec<(u8, u16)> {
+    events
+        .iter()
+        .filter_map(|e| match e.kind {
+            EventKind::TurnedSummoned { stack, rounds } => Some((stack.0, rounds)),
+            _ => None,
+        })
+        .collect()
+}
+
+// covers: BAT-MAG-038
+#[test]
+fn a_crowded_two_hex_stack_is_never_covered_by_its_clone() {
+    // Quirk BAT-QUIRK-7 fixed: rows 3 to 7 blocked from column 9 on but for the ogres and the hex
+    // in front of them. The original would take the ogres' head as the clone's position in ring
+    // 2; the engine goes on to ring 3, top right.
+    let r = ruleset();
+    let mut s = walled(&r, 2, None);
     let events = cast(&mut s, &r, "copy", stack(0)).unwrap();
     assert_eq!(created(&events), vec![(2, 2, at(&r, 15, 2).0, Some(0))]);
+    assert_eq!(turned(&events), vec![]);
     // Fully walled in: no place, the mana is spent all the same.
+    let field = Field::new(r.battle().field);
     let mut s = arena(
         &r,
         [Some(creator(&r, 1, 0)), None],
@@ -225,6 +273,66 @@ fn a_crowded_two_hex_stack_is_never_covered_by_its_clone() {
     let events = cast(&mut s, &r, "copy", stack(0)).unwrap();
     assert_eq!((created(&events), s.stacks().len()), (vec![], 2));
     assert!(s.hero(BattleSide::Attacker).unwrap().mana < mana);
+}
+
+// covers: BAT-MAG-038, BAT-MAG-037, BAT-END-003
+#[test]
+fn with_quirk_bat_quirk_7_a_crowded_original_becomes_its_own_clone() {
+    // The clone's place in ring 2 is the ogres' head: no clone, the ogres are summoned for the
+    // clone's three rounds and no longer of the army; damage does not take all of them.
+    let r = ruleset_with("t:clone_on_original", |_| {});
+    let mut s = walled(&r, 3, None);
+    let events = cast(&mut s, &r, "copy", stack(0)).unwrap();
+    assert_eq!((created(&events), turned(&events)), (vec![], vec![(0, 3)]));
+    let ogres = s.stacks()[0];
+    assert!(ogres.is_created() && !ogres.has(StackTraits::CLONE));
+    assert_eq!((s.stacks().len(), s.clone_rounds(StackId(0))), (2, 3));
+    // Not clonable again.
+    assert_eq!(targets(&s, &r, BattleSide::Attacker, "copy"), vec![]);
+    let health = u64::from(ogres.max_hp);
+    hurt(&mut s, &r, 0, health);
+    assert_eq!(s.stacks()[0].count, 2);
+    // Its rounds run out: it vanishes with its two creatures, without a corpse, and the battle
+    // ends with the attacker's army gone; the outcome reports it as created, with the creature
+    // it lost and the two it vanished with.
+    let mut events = Vec::new();
+    for _ in 0..3 {
+        crate::turn::start_round(&mut s, &r, &mut events);
+    }
+    assert_eq!(vanished(&events), vec![(0, 2)]);
+    assert_eq!((s.stacks()[0].count, s.corpse(StackId(0))), (0, NO_CORPSE));
+    crate::combat::check_end(&mut s, &mut events);
+    let outcome = s.outcome().unwrap();
+    assert_eq!(outcome.result, BattleResult::Victory(BattleSide::Defender));
+    let ogre = r.creature_by_key("t:ogre").unwrap();
+    assert_eq!(
+        outcome.stacks[0],
+        vec![StackRecord {
+            origin: StackOrigin::Created,
+            creature: ogre,
+            start: 3,
+            end: 2,
+        }]
+    );
+    assert!(outcome.survivors[0].stacks.is_empty());
+}
+
+// covers: BAT-MAG-038
+#[test]
+fn a_clone_never_shares_a_hex_with_its_original() {
+    // Quirk BAT-QUIRK-8, in every profile: only the ogres' hexes and the two hexes behind them
+    // are free. With BAT-QUIRK-7 the first place that fits in ring 2 has its front hex on the
+    // ogres' tail; it is skipped, and the clone stands right behind them.
+    for profile in ["t:faithful", "t:clone_on_original"] {
+        let r = ruleset_with(profile, |_| {});
+        let mut s = walled(&r, 2, Some(&[(12, 5), (11, 5)]));
+        let events = cast(&mut s, &r, "copy", stack(0)).unwrap();
+        assert_eq!(
+            created(&events),
+            vec![(2, 2, at(&r, 12, 5).0, Some(0))],
+            "{profile}"
+        );
+    }
 }
 
 // covers: BAT-MAG-038
@@ -329,6 +437,53 @@ fn summon_elemental_places_effect_times_power_creatures_in_the_first_free_column
     assert_eq!(serfs.flags, StackFlags::default());
 }
 
+// covers: BAT-END-003, BAT-MAG-037, BAT-MAG-038
+#[test]
+fn the_outcome_reports_each_created_stack_with_its_losses() {
+    // BAT-Q7, BAT-Q13 (batch 2d NE: Necromancy counts the Pikemen, their clone and the Earth
+    // Elementals, per stack): the summoned sprites die and a second summon takes their slot,
+    // which then reports only the second stack, as the original's records; the clone dies with
+    // its original and has lost all its creatures.
+    let r = ruleset();
+    let mut s = arena(
+        &r,
+        [Some(creator(&r, 1, 1)), None],
+        &[("serf", 10, 5, 5)],
+        &[("serf", 1, 14, 5)],
+        1,
+    );
+    let first = created(&cast(&mut s, &r, "sprites", CastTarget::None).unwrap());
+    hurt(&mut s, &r, first[0].0, 1000);
+    let second = created(&cast(&mut s, &r, "sprites", CastTarget::None).unwrap());
+    assert_eq!(second[0].0, first[0].0);
+    let clone = created(&cast(&mut s, &r, "copy", stack(0)).unwrap());
+    assert_eq!(clone[0].0, 3);
+    hurt(&mut s, &r, 0, 1000);
+    hurt(&mut s, &r, 1, 1000);
+    crate::combat::check_end(&mut s, &mut Vec::<Event>::new());
+    let outcome = s.outcome().unwrap();
+    assert_eq!(outcome.result, BattleResult::Draw);
+    let (serf, sprite) = (
+        r.creature_by_key("t:serf").unwrap(),
+        s.stacks()[usize::from(first[0].0)].creature,
+    );
+    let record = |origin, creature, start, end| StackRecord {
+        origin,
+        creature,
+        start,
+        end,
+    };
+    assert_eq!(
+        outcome.stacks[0],
+        vec![
+            record(StackOrigin::Army(0), serf, 10, 0),
+            record(StackOrigin::Created, sprite, second[0].1, second[0].1),
+            record(StackOrigin::Created, serf, 10, 0),
+        ]
+    );
+    assert!(outcome.survivors[0].stacks.is_empty());
+}
+
 // covers: BAT-MAG-037, BAT-MAG-044
 #[test]
 fn a_side_creates_stacks_below_the_limit_and_reuses_dead_created_ones() {
@@ -403,8 +558,9 @@ fn a_side_left_with_only_created_stacks_does_not_win() {
     let outcome = s.outcome().unwrap();
     assert_eq!(
         (outcome.stacks[0].len(), outcome.survivors[0].stacks.len()),
-        (1, 0)
+        (2, 0)
     );
+    assert_eq!(outcome.stacks[0][1].origin, StackOrigin::Created);
 }
 
 // covers: BAT-FLE-002, BAT-MAG-037

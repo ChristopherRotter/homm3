@@ -52,7 +52,7 @@ const _: () = assert!(MAX_SIDE_STACKS <= SIDE_STACK_SLOTS);
 pub const CREATED_SLOT: u8 = u8::MAX;
 
 /// Version of the battle-state hash encoding ([`BattleState::state_hash`]). Bump on any change.
-pub const BATTLE_STATE_HASH_VERSION: u32 = 35;
+pub const BATTLE_STATE_HASH_VERSION: u32 = 36;
 
 /// Index of a stack in its battle (attacker stacks first, in slot order, then defender stacks, then
 /// the stacks created in the battle in the order they appear, BAT-MAG-037).
@@ -1084,33 +1084,37 @@ impl BattleState {
     }
 
     /// The outcome for the orchestrator, once the battle is over (BAT-END-003): the result,
-    /// every stack's start and end counts, the survivors derived from them, the surrender's cost,
-    /// the heroes' mana and spells, the rounds.
+    /// every stack's start and end counts by origin (the stacks the battle created too: BAT-Q7,
+    /// BAT-Q13), the survivors derived from them, the surrender's cost, the heroes' mana and
+    /// spells, the rounds.
     // rule: BAT-END-003
     pub fn outcome(&self) -> Option<BattleOutcome> {
         let result = self.result?;
         let stacks = BattleSide::BOTH.map(|side| {
             let mut records = Vec::new();
             let mut last_alive = None;
-            for (s, temporary) in self.stacks.iter().zip(self.raised.temporary) {
-                // rule: BAT-MAG-037
-                if s.side != side || s.is_created() {
+            let others = self.stacks.iter().zip(self.raised.temporary);
+            for ((s, temporary), vanished) in others.zip(self.created.vanished) {
+                if s.side != side {
                     continue;
                 }
-                let machine = s.has(StackTraits::WAR_MACHINE);
-                if !machine && s.is_alive() {
+                let origin = if s.is_created() {
+                    // rule: BAT-MAG-037
+                    StackOrigin::Created
+                } else if s.has(StackTraits::WAR_MACHINE) {
+                    StackOrigin::WarMachine
+                } else {
+                    StackOrigin::Army(s.slot)
+                };
+                if matches!(origin, StackOrigin::Army(_)) && s.is_alive() {
                     last_alive = Some(records.len());
                 }
                 records.push(StackRecord {
-                    origin: if machine {
-                        StackOrigin::WarMachine
-                    } else {
-                        StackOrigin::Army(s.slot)
-                    },
+                    origin,
                     creature: s.creature,
                     start: s.base_count,
-                    // rule: BAT-MAG-035
-                    end: s.count.saturating_sub(temporary),
+                    // rule: BAT-MAG-035, BAT-MAG-038
+                    end: s.count.max(vanished).saturating_sub(temporary),
                 });
             }
             // A side whose army has creatures alive only for the battle keeps one in its last
@@ -1119,7 +1123,7 @@ impl BattleState {
             // rule: BAT-MAG-035
             let none_left = records
                 .iter()
-                .all(|r| r.origin == StackOrigin::WarMachine || r.end == 0);
+                .all(|r| !matches!(r.origin, StackOrigin::Army(_)) || r.end == 0);
             if let Some(i) = last_alive.filter(|_| none_left) {
                 records[i].end = 1;
             }
@@ -1179,7 +1183,8 @@ impl BattleState {
     /// list before the RNG. v25 (E04b T4b): the stack flag `STARTED` and the spell values'
     /// status bits. v26 (E04b T5a): the spell obstacles after the effect list. v28 (E04b T5b):
     /// the obstacles as the blocked hexes, the removable obstacles (count; each anchor, count,
-    /// hexes) and whether anchors belong to them.
+    /// hexes) and whether anchors belong to them. v36 (E04b T6c): per stack the creatures it
+    /// vanished with, after the clones' rounds.
     pub fn state_hash(&self) -> u64 {
         h3_kernel::hash::hash_of(self)
     }

@@ -1156,6 +1156,10 @@ pub fn ruleset_with(profile: &str, edit: impl FnOnce(&mut BattleParamsDef)) -> R
                 quirks: vec![(String::from("quirk.battle.creature_mirror_untested"), true)],
             },
             ProfileDef {
+                key: ContentKey::new("t", "clone_on_original").unwrap(),
+                quirks: vec![(String::from("quirk.battle.clone_on_its_original"), true)],
+            },
+            ProfileDef {
                 key: ContentKey::new("t", "original").unwrap(),
                 quirks: vec![
                     (String::from("quirk.battle.first_protection"), true),
