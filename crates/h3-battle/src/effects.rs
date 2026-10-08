@@ -567,6 +567,8 @@ pub(crate) fn damaged<S: Sink>(
     s: StackId,
     sink: &mut S,
 ) {
+    // rule: BAT-MAG-038
+    crate::created::died(state, s, sink);
     if !state.at(s).spells.status.contains(Status::DAMAGE_ENDS) {
         return;
     }

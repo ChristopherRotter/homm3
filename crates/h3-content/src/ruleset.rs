@@ -24,11 +24,16 @@ use crate::quirks::{QuirkRegistry, Quirks, REGISTRY};
 /// context sizes its fixed-capacity state from this.
 pub const MAX_ARMY_SLOTS: usize = 16;
 
+/// Engine limit for the stacks of one side in a battle, those created in it included (the
+/// original keeps 21 records per side, `docs/formats/installation.md` §7.7). The battle sizes its
+/// fixed-capacity state from this; `BattleParams::side_stack_limit` stays below it.
+pub const MAX_SIDE_STACKS: usize = 21;
+
 /// Engine limit for battlefield size: hexes are addressed by `u8`.
 pub const MAX_FIELD_HEXES: usize = 255;
 
 /// Version of the ruleset hash encoding. Bump when the encoding below changes.
-pub const RULESET_HASH_VERSION: u32 = 26;
+pub const RULESET_HASH_VERSION: u32 = 27;
 
 /// A compiled creature type.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -147,6 +152,9 @@ pub struct BattleParams {
     pub surrender: Option<SurrenderParams>,
     /// How many spells a hero may cast per round (BAT-MAG-001).
     pub hero_casts_per_round: u8,
+    /// A side may create a stack (Clone, Summon Elemental) only while it has fewer stacks, dead
+    /// ones included (BAT-MAG-037; 20 in the original), at most [`MAX_SIDE_STACKS`].
+    pub side_stack_limit: u8,
 }
 
 /// The price of a surrender (BAT-FLE-002): `cost_percent` of the summed cost in `resource` of the
@@ -1234,6 +1242,10 @@ fn compile_battle(
         );
     }
     tactics_zone_columns.copy_from_slice(&def.tactics_zone_columns);
+    // rule: BAT-MAG-037
+    if usize::from(def.side_stack_limit) > MAX_SIDE_STACKS {
+        return invalid("side_stack_limit must be at most 21");
+    }
     Ok(BattleParams {
         field: FieldParams {
             width: def.field_width,
@@ -1261,6 +1273,7 @@ fn compile_battle(
         tactics_zone_columns,
         surrender,
         hero_casts_per_round: def.hero_casts_per_round,
+        side_stack_limit: def.side_stack_limit,
     })
 }
 
@@ -1317,7 +1330,9 @@ impl CanonicalHash for Ruleset {
     /// mind, mass, duration and cumulative; each spell ends with its counters; hero effects have
     /// `spell_duration`. v24 (E04b T5c1): an obstacle shape has `random`, an obstacle kind
     /// `pit`. v25 (E04b T5b): the battle magic ends with the masteries that remove each
-    /// obstacle kind; effect kind `remove_obstacle`.
+    /// obstacle kind; effect kind `remove_obstacle`. v27 (E04b T6b): the battle parameters end
+    /// with the side stack limit; each spell ends with the creature it summons; effect kinds
+    /// `clone` and `summon`.
     fn hash_into(&self, h: &mut StateHasher) {
         h.write_u32(RULESET_HASH_VERSION);
         h.write_len(self.packs.len());
@@ -1436,6 +1451,7 @@ impl CanonicalHash for Ruleset {
             h.write_u16(s.cost_percent);
         }
         h.write_u8(b.hero_casts_per_round);
+        h.write_u8(b.side_stack_limit);
         self.hero.hash_into(h);
     }
 }

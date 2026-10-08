@@ -56,6 +56,7 @@ pub(crate) fn battle_def() -> BattleParamsDef {
         tactics_zone_columns: vec![3, 5, 7],
         surrender: None,
         hero_casts_per_round: 1,
+        side_stack_limit: 20,
     }
 }
 
@@ -271,7 +272,7 @@ fn hash_is_stable_and_sensitive() {
     );
 }
 
-const GOLDEN_BASE_HASH: u64 = 0xa6fc_89e3_cca8_fada;
+const GOLDEN_BASE_HASH: u64 = 0x3edd_83a3_6796_68d7;
 
 fn expect(packs: &[ContentPack], profile: &str) -> CompileError {
     Ruleset::compile(packs, profile).unwrap_err()
@@ -489,6 +490,10 @@ fn battle_param_errors() {
         (
             |b| b.tactics_zone_columns.truncate(2),
             "tactics_zone_columns needs one width per skill level, each between 1 and the standable columns",
+        ),
+        (
+            |b| b.side_stack_limit = 22,
+            "side_stack_limit must be at most 21",
         ),
         (
             |b| b.tactics_zone_columns[0] = 0,

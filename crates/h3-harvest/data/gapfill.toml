@@ -251,6 +251,8 @@ surrender = { resource = "gold", cost_percent = 50 }   # BAT-FLE-002 (batch 1b R
 surrender_sources = ["wiki-combat-surrender"]
 hero_casts_per_round = 1                         # BAT-MAG-001
 magic_sources = ["wiki-combat-casting", "vcmi-casting"]
+side_stack_limit = 20                            # BAT-MAG-037 (installation.md 7.7)
+stack_limit_sources = ["exe-stack-limit"]
 
 # ---------------------------------------------------------------------------------------------
 # Creature abilities (E03 T2, ADR-0012): behaviour the original hard-codes per creature, beyond
@@ -1529,6 +1531,20 @@ url = "docs/formats/installation.md"
 retrieved = "2026-10-08"
 
 [[source]]
+id = "exe-stack-limit"
+kind = "original-data"
+ref = "Heroes3.exe code reading (docs/formats/installation.md 7.7, 7.19): 21 stack records per side (stride 0x6EE8 = 21 x 0x548); the spell dispatcher refuses Clone (65) and Summon Elemental (66-69) while the caster's side has 20 or more records in use (+0x54BC), dead ones included; a new stack takes the first of records 0-19 that is empty or holds a dead summoned stack (0x47A100)"
+url = "docs/formats/installation.md"
+retrieved = "2026-10-08"
+
+[[source]]
+id = "exe-clone-summon"
+kind = "original-data"
+ref = "Heroes3.exe code reading (docs/formats/installation.md 7.19): Clone (0x5A6C70) copies a stack of the caster's side that is no clone, has none and whose creature level is at most effect[mastery] (0x5A8090 case 0x5A841A), with its count, for power + the duration bonus rounds, on the first hex that fits along rays around it; Summon Elemental (0x5A7080) summons effect[mastery] x power creatures 114, 113, 115, 112 (spells 66-69) on a random fitting row of the caster's first column, else the next column inward"
+url = "docs/formats/installation.md"
+retrieved = "2026-10-08"
+
+[[source]]
 id = "exe-berserk-hypnotize"
 kind = "original-data"
 ref = "Heroes3.exe code reading (docs/formats/installation.md 7.14): Berserk (59) reaches the stacks within the radius 0, 0, 1, 2 (table 0x642264) of its hex (0x5A1D80, 0x5A4810), and 0x5A8090's polarity test excepts it, so the caster's stacks too; 0x4448F0 fixes its duration at 255 and ends Hypnotize; its turn is automatic (0x4745DF, 0x4456D0) and it ends after the stack's own attack (0x441F55, 0x4402F7); Hypnotize (60) qualifies a stack whose full hit points (+0xC0 x +0x4C) are at most power x 25 + effect + the specialist bonus and which has no Magic Mirror (0x5A8363), ends Berserk, and gives the stack to the other side's control (0x442690)"
@@ -2270,6 +2286,34 @@ requires = ["alive"]
 excludes = ["undead"]
 tests_as = "Resurrection"
 sources = ["exe-raise"]
+
+# Clone and the Summon Elemental spells (E04b T6b, pack format v18; installation.md 7.19): Clone's
+# target stack, own side and war-machine exclusion come from the flag word, its rules from the
+# code; the summoned creature of spells 66-69 (Fire, Earth, Water, Air) from the cast routine.
+[[spells.other]]
+spell = "Clone"
+effects = ["clone"]
+sources = ["exe-clone-summon"]
+
+[[spells.summon]]
+spell = "Fire Elemental"
+creature = 114
+sources = ["exe-clone-summon"]
+
+[[spells.summon]]
+spell = "Earth Elemental"
+creature = 113
+sources = ["exe-clone-summon"]
+
+[[spells.summon]]
+spell = "Water Elemental"
+creature = 115
+sources = ["exe-clone-summon"]
+
+[[spells.summon]]
+spell = "Air Elemental"
+creature = 112
+sources = ["exe-clone-summon"]
 
 # Remove Obstacle (E04b T5b, pack format v16; installation.md 7.15): the target hex comes from the
 # flag word (0x100); a removable natural obstacle at every mastery, the spell obstacles by the

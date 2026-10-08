@@ -277,6 +277,12 @@ pub enum SpellEffect {
     /// target stack permanently by `(the victim's creature's hit points + the value) × its
     /// creatures` (BAT-MAG-036, E04b T6a, v17).
     Sacrifice,
+    /// Creates a copy of the target stack, a living one of the caster's side, for some rounds
+    /// (Clone; BAT-MAG-038, E04b T6b, v18).
+    Clone,
+    /// Creates a stack of the spell's [`crate::Spell::summons`] creature on the caster's side
+    /// (Summon Elemental; BAT-MAG-039, E04b T6b, v18).
+    Summon,
 }
 
 impl SpellEffect {
@@ -292,6 +298,8 @@ impl SpellEffect {
             Self::RemoveObstacle => "remove_obstacle",
             Self::Raise => "raise",
             Self::Sacrifice => "sacrifice",
+            Self::Clone => "clone",
+            Self::Summon => "summon",
         }
     }
 
@@ -306,7 +314,9 @@ impl SpellEffect {
             | Self::Teleport
             | Self::RemoveObstacle
             | Self::Raise
-            | Self::Sacrifice => None,
+            | Self::Sacrifice
+            | Self::Clone
+            | Self::Summon => None,
         }
     }
 
@@ -325,6 +335,11 @@ impl SpellEffect {
         matches!(self, Self::Raise | Self::Sacrifice)
     }
 
+    /// Whether the kind creates a stack (Clone, Summon): it is the spell's only effect.
+    pub const fn creates(self) -> bool {
+        matches!(self, Self::Clone | Self::Summon)
+    }
+
     /// Canonical code (hash): the kind, then the change or the obstacle kind.
     fn code(self) -> [u8; 2] {
         match self {
@@ -337,6 +352,8 @@ impl SpellEffect {
             Self::RemoveObstacle => [6, 0],
             Self::Raise => [7, 0],
             Self::Sacrifice => [8, 0],
+            Self::Clone => [9, 0],
+            Self::Summon => [10, 0],
         }
     }
 }
@@ -780,6 +797,16 @@ impl SpellMagic {
         self.effects.contains(&SpellEffect::Sacrifice)
     }
 
+    /// Whether it copies its target stack (Clone).
+    pub fn clones(&self) -> bool {
+        self.effects.contains(&SpellEffect::Clone)
+    }
+
+    /// Whether it summons a stack (Summon Elemental).
+    pub fn summons(&self) -> bool {
+        self.effects.contains(&SpellEffect::Summon)
+    }
+
     /// Whether a raise at `mastery` lasts only for the battle (BAT-MAG-035).
     pub fn temporary_at(&self, mastery: u8) -> bool {
         self.temporary_below.is_some_and(|m| mastery < m)
@@ -913,6 +940,25 @@ impl SpellMagic {
             .is_some_and(|m| !self.raises() || !(1..=MAX_MASTERY).contains(&m))
         {
             Some("temporary_below needs a raise effect and a mastery 1..=3")
+        } else {
+            self.create_error()
+        }
+    }
+
+    /// Why the effects that create stacks (Clone, Summon; v18) are invalid, if they are.
+    fn create_error(&self) -> Option<&'static str> {
+        let creates = self.effects.iter().any(|e| e.creates());
+        if creates && self.effects.len() > 1 {
+            Some("a clone or summon effect is the spell's only effect")
+        } else if self.clones()
+            && (self.target != SpellTarget::Stack
+                || self.chain.is_some()
+                || self.mass_from.is_some())
+        {
+            Some("a clone effect needs target stack, without chain or mass")
+        } else if self.summons() && self.target != SpellTarget::None {
+            // Without a target there is no area, chain or mass version.
+            Some("a summon effect needs target none")
         } else {
             None
         }
@@ -1565,6 +1611,14 @@ mod tests {
                 effects: vec![SpellEffect::Sacrifice],
                 ..base.clone()
             },
+            SpellMagic {
+                effects: vec![SpellEffect::Clone],
+                ..base.clone()
+            },
+            SpellMagic {
+                effects: vec![SpellEffect::Summon],
+                ..base.clone()
+            },
         ];
         let timed = |c| SpellMagic {
             effects: vec![SpellEffect::Timed(c)],
@@ -2002,6 +2056,76 @@ mod tests {
                     ..raise.clone()
                 },
                 "temporary_below",
+            ),
+        ];
+        for (m, want) in bad {
+            let got = m.error(true);
+            assert!(got.is_some_and(|e| e.contains(want)), "{m:?}: {got:?}");
+        }
+    }
+
+    #[test]
+    fn clone_and_summon_effects_create_stacks() {
+        // Clone takes a stack, Summon Elemental nothing (v18).
+        let clone = SpellMagic {
+            target: SpellTarget::Stack,
+            effects: vec![SpellEffect::Clone],
+            ..SpellMagic::default()
+        };
+        let summon = SpellMagic {
+            effects: vec![SpellEffect::Summon],
+            ..SpellMagic::default()
+        };
+        assert_eq!((clone.error(true), summon.error(true)), (None, None));
+        assert_eq!(
+            (SpellEffect::Clone.name(), SpellEffect::Summon.name()),
+            ("clone", "summon")
+        );
+        assert_eq!(
+            (SpellEffect::Clone.timed(), SpellEffect::Summon.timed()),
+            (None, None)
+        );
+        assert!(SpellEffect::Clone.creates() && SpellEffect::Summon.creates());
+        assert!(!SpellEffect::Raise.creates() && !SpellEffect::Clone.is_raise());
+        assert!(clone.clones() && !clone.summons() && summon.summons() && !summon.clones());
+        let bad = [
+            (
+                SpellMagic {
+                    effects: vec![SpellEffect::Summon, SpellEffect::Heal],
+                    ..summon.clone()
+                },
+                "clone or summon effect is the spell's only effect",
+            ),
+            (
+                SpellMagic {
+                    target: SpellTarget::None,
+                    ..clone.clone()
+                },
+                "clone effect needs target stack",
+            ),
+            (
+                SpellMagic {
+                    chain: Some(SpellChain {
+                        targets: [2; 4],
+                        factor_bp: 5000,
+                    }),
+                    ..clone.clone()
+                },
+                "clone effect needs target stack",
+            ),
+            (
+                SpellMagic {
+                    mass_from: Some(3),
+                    ..clone.clone()
+                },
+                "clone effect needs target stack",
+            ),
+            (
+                SpellMagic {
+                    target: SpellTarget::Stack,
+                    ..summon.clone()
+                },
+                "summon effect needs target none",
             ),
         ];
         for (m, want) in bad {

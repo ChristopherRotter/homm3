@@ -19,7 +19,7 @@ use crate::state::{BattleState, NO_CORPSE, StackId};
 /// Marks the corpses of the stacks that died since the last mark, by stack id, each above every
 /// earlier one (BAT-MAG-035): after every command, before every activation and after every
 /// automatic berserk action, so the stacks marked together died in one action and lie on no
-/// common hex.
+/// common hex. A stack the battle created leaves none (BAT-MAG-037).
 pub(crate) fn mark_corpses(state: &mut BattleState) {
     let corpses = &mut state.raised.corpse;
     let fresh = |s: &crate::state::Stack, c: u16| !s.is_alive() && c == 0;
@@ -38,7 +38,10 @@ pub(crate) fn mark_corpses(state: &mut BattleState) {
         .max()
         .unwrap_or(0);
     for (s, c) in state.stacks.iter().zip(corpses.iter_mut()) {
-        if fresh(s, *c) {
+        if fresh(s, *c) && s.is_created() {
+            // rule: BAT-MAG-037
+            *c = NO_CORPSE;
+        } else if fresh(s, *c) {
             top = top.saturating_add(1).min(NO_CORPSE - 1);
             *c = top;
         }
@@ -158,7 +161,8 @@ fn covers(field: Field, state: &BattleState, t: StackId, set: HexSet) -> bool {
 
 /// Whether stack `v` may be the victim of `side`'s cast of the sacrifice `spell` (BAT-MAG-036;
 /// the original's 0x5A8090, case 0x5A8523): a living stack of the side that the side controls
-/// (not hypnotized), which the spell can affect (its conditions, immunities and Anti-Magic).
+/// (not hypnotized), not created in the battle (BAT-MAG-037), which the spell can affect (its
+/// conditions, immunities and Anti-Magic).
 pub(crate) fn victim(
     state: &BattleState,
     ruleset: &Ruleset,
@@ -170,6 +174,7 @@ pub(crate) fn victim(
         stack.is_alive()
             && stack.side == side
             && stack.controller() == side
+            && !stack.is_created()
             && affects(ruleset, spell, stack.creature)
             && !kept_off(stack, spell.1)
     })
@@ -239,5 +244,7 @@ pub(crate) fn sacrifice<S: Sink>(
         victim: v,
         creatures,
     }));
+    // rule: BAT-MAG-038
+    crate::created::died(state, v, sink);
     (u64::from(health) + value).saturating_mul(u64::from(creatures))
 }

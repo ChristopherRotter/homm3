@@ -26,6 +26,9 @@ pub const MAX_SPELL_LEVEL: u8 = 5;
 pub const MAX_SPELLS: usize = 128;
 /// Most spell schools (the battle hero keeps one mastery per school, `BattleMagic.schools`).
 pub const MAX_SPELL_SCHOOLS: usize = 4;
+/// Most spells with a summon effect in a ruleset (the battle keeps a side's stack of each
+/// creature its hero can summon from the battle's start, E04b T6b; four in the original).
+pub const MAX_SUMMON_SPELLS: usize = 4;
 /// Most secondary skills a hero can have.
 pub const MAX_HERO_SKILLS: usize = 8;
 
@@ -138,6 +141,9 @@ pub struct Spell {
     /// The raise spell whose target test a sacrifice effect's target takes under quirk
     /// BAT-QUIRK-5 (pack format v17; Sacrifice: Resurrection, `installation.md` §7.18).
     pub tests_as: Option<SpellId>,
+    /// The creature a summon effect summons (pack format v18; the Summon Elemental spells, their
+    /// elementals, `installation.md` §7.19).
+    pub summons: Option<CreatureTypeId>,
 }
 
 /// Handle of a spell in a [`crate::Ruleset`].
@@ -446,6 +452,11 @@ impl HeroContent {
                 dispels: Vec::new(),
                 spares: Vec::new(),
                 tests_as: None,
+                summons: def
+                    .summons
+                    .as_ref()
+                    .map(|c| refs.resolve(c, refs.creatures, "creature"))
+                    .transpose()?,
             });
         }
         // Counters and dispel lists may name a later spell of the same pack, so all are
@@ -607,6 +618,23 @@ impl HeroContent {
                     "a sacrifice effect needs tests_as, a spell with a raise effect",
                 ));
             }
+            if s.summons.is_some() != s.magic.summons() {
+                return Err(invalid(
+                    "spell",
+                    &s.key,
+                    "a summon effect and the creature it summons go together",
+                ));
+            }
+        }
+        if self
+            .spells
+            .items
+            .iter()
+            .filter(|s| s.summons.is_some())
+            .count()
+            > MAX_SUMMON_SPELLS
+        {
+            return Err(CompileError::TooManyEntries("summon spell"));
         }
         for skill in &self.skills.items {
             if let Some(reason) = skill
@@ -673,7 +701,7 @@ impl HeroContent {
 
 impl CanonicalHash for HeroContent {
     /// Schools (key, name, protection rank (v18)); spells (key, name, category, level, schools, cost, power, effect,
-    /// polarity, magic (v14), counters (v17), dispels and spares (v19), tests as (v26)); skills (key, name, the three effect lists); classes (key, name, faction,
+    /// polarity, magic (v14), counters (v17), dispels and spares (v19), tests as (v26), summons (v27)); skills (key, name, the three effect lists); classes (key, name, faction,
     /// primary, gains, weights); hero types (key, name, class, skills, spell book, spells,
     /// army, war machines, specialty); then the artifact content (`hash_artifacts`); then the
     /// hero parameters as presence flag + fields (v11).
@@ -700,6 +728,7 @@ impl CanonicalHash for HeroContent {
             s.dispels.hash_into(h);
             s.spares.hash_into(h);
             s.tests_as.hash_into(h);
+            s.summons.hash_into(h);
         }
         h.write_len(self.skills.items.len());
         for s in &self.skills.items {

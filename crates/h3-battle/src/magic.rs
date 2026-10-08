@@ -29,6 +29,7 @@ use h3_kernel::arith::{
 use h3_kernel::{CanonicalHash, FixedVec, StateHasher};
 
 use crate::combat::check_end;
+use crate::created;
 use crate::damage::apply_damage;
 use crate::effects::{self, Status, TimedCast};
 use crate::error::{CommandError, HeroError};
@@ -356,8 +357,10 @@ pub(crate) struct Cast<'r> {
     /// The caster's bonuses (BAT-MAG-004).
     bonuses: SpellBonuses,
     /// The duration of its timed effects: power plus the duration bonus, at least 1
-    /// (BAT-MAG-010).
+    /// (BAT-MAG-010); a clone's rounds (BAT-MAG-038).
     rounds: u16,
+    /// The caster's power (a summon's count, BAT-MAG-039).
+    power: u16,
 }
 
 /// Whether the battle implements the effects of `spell`: every effect kind is implemented
@@ -639,8 +642,9 @@ fn raise_test<'r>(
 }
 
 /// Whether `side`'s cast of the stack spell `spell` at `mastery`, whose [`raise_test`] is `raise`,
-/// may be aimed at stack `s`: one of [`aimable`], or for a spell that raises creatures one of
-/// [`raise::raisable`] (BAT-MAG-035, BAT-MAG-036), dead stacks included.
+/// may be aimed at stack `s`: one of [`aimable`], for Clone also [`created::clonable`]
+/// (BAT-MAG-038), or for a spell that raises creatures one of [`raise::raisable`] (BAT-MAG-035,
+/// BAT-MAG-036), dead stacks included.
 fn stack_target(
     state: &BattleState,
     ruleset: &Ruleset,
@@ -651,7 +655,12 @@ fn stack_target(
     match raise {
         // rule: BAT-MAG-035
         Some(test) => test.is_some_and(|test| raise::raisable(state, ruleset, side, test, s)),
-        None => aimable(state, ruleset, side, (spell, mastery), s),
+        None => {
+            aimable(state, ruleset, side, (spell, mastery), s)
+                // rule: BAT-MAG-038
+                && (!spell.1.magic.clones()
+                    || created::clonable(state, ruleset, side, (spell.1, mastery), s))
+        }
     }
 }
 
@@ -693,13 +702,7 @@ fn first_target(
                 None => field.is_standable(h),
             }
         }
-        (SpellTarget::None, CastTarget::None) => {
-            // rule: BAT-MAG-032
-            spell.1.magic.obstacle_kind().map_or_else(
-                || stack_ids(state).any(|s| reachable(state, ruleset, side, (spell, mastery), s)),
-                |kind| obstacles::may_place(state, side, kind),
-            )
-        }
+        (SpellTarget::None, CastTarget::None) => no_target(state, ruleset, side, (spell, mastery)),
         _ => false,
     }
 }
@@ -824,6 +827,7 @@ pub(crate) fn plan_cast<'r>(
         rounds: u16::from(hero.view.power)
             .saturating_add(hero.magic.duration_bonus)
             .max(1),
+        power: u16::from(hero.view.power),
     })
 }
 
@@ -926,11 +930,29 @@ fn has_target(
                     && has_second(state, ruleset, actor, spell, CastTarget::Stack(s))
             })
         }
-        SpellTarget::None => spell.1.magic.obstacle_kind().map_or_else(
-            || stack_ids(state).any(|s| reachable(state, ruleset, actor, (spell, mastery), s)),
-            |kind| obstacles::may_place(state, actor, kind),
-        ),
+        SpellTarget::None => no_target(state, ruleset, actor, (spell, mastery)),
     }
+}
+
+/// Whether `side` may cast `spell` at `mastery` without a target now (BAT-MAG-003): a summon
+/// while the side may summon its creature (BAT-MAG-039), an obstacle spell of a random shape
+/// whether or not a hex is free (BAT-MAG-032) but mines not while the other side's natives would
+/// see them (BAT-MAG-033), any other spell if it reaches a stack.
+fn no_target(
+    state: &BattleState,
+    ruleset: &Ruleset,
+    side: BattleSide,
+    (spell, mastery): (SpellRef<'_>, u8),
+) -> bool {
+    if spell.1.magic.summons() {
+        // rule: BAT-MAG-039
+        return created::may_summon(state, ruleset, side, spell.1);
+    }
+    // rule: BAT-MAG-032
+    spell.1.magic.obstacle_kind().map_or_else(
+        || stack_ids(state).any(|s| reachable(state, ruleset, side, (spell, mastery), s)),
+        |kind| obstacles::may_place(state, side, kind),
+    )
 }
 
 /// The spells `actor`'s hero may cast now: those with at least one target in
@@ -1453,6 +1475,16 @@ pub(crate) fn apply_cast<S: Sink>(
             )
         };
         raise::raise(state, ruleset, (s, hit_points), temporary, sink);
+    } else if magic.clones() {
+        // rule: BAT-MAG-038
+        // Validated: the target is a stack.
+        let s = cast.target.stack().unwrap_or_default();
+        created::clone(state, ruleset, (s, cast.rounds), sink);
+    } else if magic.summons() {
+        // rule: BAT-MAG-039
+        let effect = cast.spell.effect[usize::from(cast.mastery)];
+        let count = u32::from(effect) * u32::from(cast.power);
+        created::summon(state, ruleset, (cast.side, cast.spell), count, sink);
     } else {
         reach_stacks(state, ruleset, &cast, sink);
     }

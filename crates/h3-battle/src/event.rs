@@ -4,7 +4,7 @@
 
 use alloc::vec::Vec;
 
-use h3_content::SpellId;
+use h3_content::{CreatureTypeId, SpellId};
 use h3_contracts::{BattleResult, BattleSide};
 
 use crate::geometry::{Hex, HexSet};
@@ -303,6 +303,27 @@ pub enum EventKind {
     Sacrificed {
         /// The stack.
         victim: StackId,
+        /// Its creatures.
+        creatures: u32,
+    },
+    /// A spell created a stack (BAT-MAG-037): a clone of `original` (Clone, BAT-MAG-038) or a
+    /// summoned one (Summon Elemental, BAT-MAG-039).
+    StackCreated {
+        /// The new stack (a dead created stack's id may be reused).
+        stack: StackId,
+        /// Its creature.
+        creature: CreatureTypeId,
+        /// Its creatures.
+        count: u32,
+        /// Its position.
+        hex: Hex,
+        /// The stack it copies, for a clone.
+        original: Option<StackId>,
+    },
+    /// A clone vanished: its rounds ran out or its original died (BAT-MAG-038).
+    Vanished {
+        /// The clone.
+        stack: StackId,
         /// Its creatures.
         creatures: u32,
     },

@@ -25,6 +25,7 @@ extern crate std;
 mod combat;
 mod command;
 mod control;
+mod created;
 mod damage;
 mod effects;
 mod error;
@@ -63,8 +64,8 @@ pub use natural::{MAX_REMOVABLE_HEXES, MAX_REMOVABLE_OBSTACLES, RemovableObstacl
 pub use observe::{Observation, observe, project};
 pub use obstacles::{OBSTACLE_CAPACITY, SpellObstacle};
 pub use state::{
-    BATTLE_STATE_HASH_VERSION, BattleState, NO_CORPSE, SIDE_STACK_SLOTS, STACK_CAPACITY, Stack,
-    StackFlags, StackId, StackTraits, UNLIMITED_RETALIATIONS,
+    BATTLE_STATE_HASH_VERSION, BattleState, CREATED_SLOT, NO_CORPSE, SIDE_STACK_SLOTS,
+    STACK_CAPACITY, Stack, StackFlags, StackId, StackTraits, UNLIMITED_RETALIATIONS,
 };
 pub use tactics::TacticsPhase;
 pub use terrain::generate_obstacles;

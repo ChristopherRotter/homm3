@@ -1022,3 +1022,74 @@ and summoned stacks or clones included, which the rebuild 0x4641F0 then leaves o
 army slot 0–6): a hero whose army was raised at Basic but who keeps a Ballista or an elemental is
 left without an army (survey S-20). VCMI instead lowers its counter as creatures die
 (`CHealth::damage`); the original never lowers +0x54 during the battle.
+
+### 7.19 Code reading: Clone, Summon Elemental and the stacks a battle creates (E04b T6b, 2026-10-08)
+
+Read for T6b (Q29: insight only, nothing copied). The cast routine's switch (§7.8) sends Clone (65)
+to 0x5A1D1B, which calls 0x5A6C70 with the target hex, and the four Summon Elemental spells (66,
+67, 68, 69) to 0x5A7080 with the creature (114 Fire, 113 Earth, 115 Water, 112 Air Elemental),
+the caster's power and mastery. The spell book refuses both while the caster's side has 20 or more
+records in use (§7.7).
+
+**Creating a stack** (0x47A100: side, creature, count, hex, flags, animation): the first of the
+side's records 0–19 that is empty (creature −1) or holds a dead (`0x200000`) summoned
+(`0x400000`) stack with no creatures; none: nothing is created. The hex must hold no living stack,
+else nothing is created either (and the caller is not told). The record is set up like any stack
+at the battle's start (0x43D8B0, 0x43D730: the creature's table entry, so its flags and none of
+the round's, then the side's hero's bonuses through 0x4E6120, the native-terrain bonus, morale and
+luck), the given flags are added, and the side's count of records in use (+0x54BC) grows unless a
+record was reused. So a new stack acts in the round it appears, and a dead clone's or summoned
+stack's record (and so its place in the turn order's tie-break) goes to the next stack the side
+creates. 0x43D730 also clears the town of creatures 112–115 unless a game setting
+(`[0x6994E8]+0x1F698`, not read) is set, which takes their native-terrain bonus away; this
+applies to army stacks too and is left for BAT-TER-001 (experiment list).
+
+**Clone** (0x5A6C70). The target test (0x5A8090, case 0x5A841A) wants a stack that is not a clone
+(`0x800000`), has no clone (+0x28 = −1) and whose creature level (+0x78, 0-based) + 1 is at most
+Clone's effect[mastery] (5, 5, 6, 7), besides the usual tests of a positive spell (own side,
+immunities, Anti-Magic; flag `0x1000` spares war machines). An elemental (summoned, not a clone)
+qualifies. The clone's position is searched in rings 1 to 10 around the original: per ring, from
+the original's position (+0x38) and, for a two-hex one, also from its other hex (position ± 1 by
+the facing +0x44), in the directions 0 to 5 for a stack facing right (the attacker's) and 5 to 0
+for one facing left (directions: 0 top right, 1 right, 2 bottom right, 3 bottom left, 4 left,
+5 top left), the hexes at distances 1 to the ring's number along that direction, outside the side
+columns; the first where the original's creature fits (0x446C40: the hex and, for a two-hex
+creature, the hex in front of it by the facing are on the field, outside the side columns, not
+blocked, and hold no living stack *or the original itself*) takes the clone. Skipped: right and
+left at distance 1 from the position in ring 1, and from the other hex towards the position in
+rings 1 and 2 (left for the attacker, right for the defender). No hex: a message, nothing else
+(the mana is spent). The clone is created (0x47A100) with the original's creature and count and
+flag `0x800000`, then gets `0x400000`, rounds left (+0x2C) = the caster's power + its duration
+bonus (0x4E4DB0, as timed spells, §7.9) and the links original +0x28 = clone, clone +0x24 =
+original.
+
+Because 0x446C40 counts the original's own hexes as free, a crowded two-hex original can get a
+clone on its own hexes: if the clone's position is the original's hex, 0x47A100 creates nothing
+and the cast then flags *the original* as summoned with the clone's rounds (it vanishes when they
+run out and its army slot is lost after the battle); if only the clone's front hex is the
+original's, the two stacks share a hex. Only reachable when every place in ring 1 fails (quirk
+ledger BAT-QUIRK-7).
+
+**A clone's end.** At the start of each round (0x447120, per living stack after its spell
+durations) rounds left above 0 lose one, and a stack whose rounds left are 0 dies (0x444120).
+The damage routine (0x444090) kills every creature of a clone (flag `0x800000`) whatever the
+damage. A stack's death (0x444120) resets its original's link if it is a clone and kills its clone
+if it has one; a clone, as any summoned stack, leaves no corpse (§7.18).
+
+**Summon Elemental** (0x5A7080). Count: effect[mastery] (2, 2, 3, 4) × the caster's power. Place:
+the attacker tries columns 1, 2, …, 15, the defender 15, 14, …, 1; in each column a sampler
+(0x50C6E0 with rows 0–10, 0x50C740) draws rows without repetition until one fits a stack of the
+creature (0x446C40 for a stack of the side that is no stack on the field), so the row is uniform
+among the fitting rows of the first column with one. The side's summoned creature (+0x132A8) is
+set to the creature (even if no hex is found), and the stack is created (0x47A100) with flag
+`0x400000`. Several casts of one elemental make several stacks.
+
+**The battle's end.** The battle is over (0x465830) when a side has retreated or surrendered
+(+0x132B0, +0x132B2) or has no living stack in records 0–19 apart from war machines (`0x40`); a
+summoned stack or clone counts as living. The winner (0x4762F0 with 0x4658B0 for each side) is a
+side that has a living stack that is neither summoned nor a war machine and whose opponent
+retreated, surrendered or has no living stack apart from war machines; if neither side qualifies
+nobody wins: a side left with only summoned stacks and clones loses as well (the wiki's "both
+sides lose"), also when the other side retreated or surrendered. The experience of the battle
+(0x46A350) counts no killed summoned stack, clone or war machine; Necromancy (0x4775E1) counts the
+killed creatures of every record, summoned stacks and clones included.

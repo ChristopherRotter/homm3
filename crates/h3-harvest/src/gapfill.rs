@@ -63,6 +63,9 @@ pub struct Spells {
     /// Spells that remove the obstacle on a hex (E04b T5b), per spell.
     #[serde(default)]
     pub remove: Vec<SpellRemove>,
+    /// Spells that summon a creature (E04b T6b), per spell.
+    #[serde(default)]
+    pub summon: Vec<SpellSummon>,
     /// What specialists in some spells add by a rule of the spell's own (E04b T3c).
     #[serde(default)]
     pub specialist: Vec<SpellSpecialist>,
@@ -187,6 +190,20 @@ pub struct SpellObstacle {
     pub obstacle: String,
     /// `{ steps, hexes, random, mirrored, separate, rounds }`, copied verbatim.
     pub shape: toml::Value,
+    /// Source ids.
+    pub sources: Vec<String>,
+}
+
+/// A spell that summons a stack of a creature on the caster's side (pack format v18,
+/// `packs/README.md`; the original's code, `docs/formats/installation.md` §7.19). It has no
+/// target, which the flag word must confirm.
+#[derive(Debug, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct SpellSummon {
+    /// Spell name (as in `SPTRAITS.TXT`).
+    pub spell: String,
+    /// The original id of the creature it summons.
+    pub creature: i32,
     /// Source ids.
     pub sources: Vec<String>,
 }
@@ -610,6 +627,9 @@ pub struct Battle {
     pub surrender_sources: Vec<String>,
     pub hero_casts_per_round: u8,
     pub magic_sources: Vec<String>,
+    /// A side creates stacks only while it has fewer (BAT-MAG-037; the original's 20).
+    pub side_stack_limit: u8,
+    pub stack_limit_sources: Vec<String>,
 }
 
 /// The surrender price parameters of `base` (BAT-FLE-002).
@@ -656,6 +676,7 @@ impl GapFill {
                 .chain(&g.battle.tactics_sources)
                 .chain(&g.battle.surrender_sources)
                 .chain(&g.battle.magic_sources)
+                .chain(&g.battle.stack_limit_sources)
                 .chain(g.creature_abilities.iter().flat_map(|a| &a.sources))
                 .chain(g.native_terrain.iter().flat_map(|n| &n.sources))
                 .chain(&g.obstacles.sources)
@@ -677,6 +698,7 @@ impl GapFill {
                 .chain(g.spells.other.iter().flat_map(|t| &t.sources))
                 .chain(g.spells.obstacle.iter().flat_map(|t| &t.sources))
                 .chain(g.spells.remove.iter().flat_map(|t| &t.sources))
+                .chain(g.spells.summon.iter().flat_map(|t| &t.sources))
                 .chain(g.spells.specialist.iter().flat_map(|t| &t.sources))
                 .chain(&g.spells.protection_sources);
         for r in refs {

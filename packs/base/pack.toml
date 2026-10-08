@@ -3884,6 +3884,10 @@ cost = [24, 20, 20, 20]
 power = 0
 effect = [5, 5, 6, 7]
 polarity = "positive"
+target = "stack"
+side = "own"
+excludes = ["war_machine"]
+effects = [{ kind = "clone" }]
 
 [[spell]]
 id = "fire_elemental"  # original id 66
@@ -3895,6 +3899,8 @@ cost = [25, 20, 20, 20]
 power = 0
 effect = [2, 2, 3, 4]
 polarity = "neutral"
+summons = "fire_elemental"
+effects = [{ kind = "summon" }]
 
 [[spell]]
 id = "earth_elemental"  # original id 67
@@ -3906,6 +3912,8 @@ cost = [25, 20, 20, 20]
 power = 0
 effect = [2, 2, 3, 4]
 polarity = "neutral"
+summons = "earth_elemental"
+effects = [{ kind = "summon" }]
 
 [[spell]]
 id = "water_elemental"  # original id 68
@@ -3917,6 +3925,8 @@ cost = [25, 20, 20, 20]
 power = 0
 effect = [2, 2, 3, 4]
 polarity = "neutral"
+summons = "water_elemental"
+effects = [{ kind = "summon" }]
 
 [[spell]]
 id = "air_elemental"  # original id 69
@@ -3928,6 +3938,8 @@ cost = [25, 20, 20, 20]
 power = 0
 effect = [2, 2, 3, 4]
 polarity = "neutral"
+summons = "air_elemental"
+effects = [{ kind = "summon" }]
 
 [[spell]]
 id = "stone_gaze"  # original id 70
@@ -6940,6 +6952,7 @@ tight_formation = [[5], [4, 6], [4, 5, 6], [2, 4, 6, 8], [2, 4, 5, 6, 8], [0, 2,
 tactics_zone_columns = [3, 5, 7]
 surrender = { resource = "gold", cost_percent = 50 }
 hero_casts_per_round = 1
+side_stack_limit = 20
 
 # Hero parameters (Tier 2): rule ids in docs/rules/catalog/heroes.toml (sources in the
 # gap-fill file).

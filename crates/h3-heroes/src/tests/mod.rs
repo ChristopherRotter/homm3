@@ -62,6 +62,7 @@ fn battle() -> BattleParamsDef {
         tactics_zone_columns: vec![3, 5, 7],
         surrender: None,
         hero_casts_per_round: 1,
+        side_stack_limit: 20,
     }
 }
 
@@ -108,6 +109,7 @@ fn spell(k: &str, category: SpellCategory) -> SpellDef {
         dispels: vec![],
         spares: vec![],
         tests_as: None,
+        summons: None,
     }
 }
 

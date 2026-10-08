@@ -3,9 +3,9 @@
 
 use alloc::vec::Vec;
 use h3_content::{
-    Ability, AreaShot, CreatureFlag, CreatureType, CreatureTypeId, MAX_ARMY_SLOTS,
-    NATIVES_SIGHT_AT_START, OBSTACLE_ANCHORS, Ruleset, TerrainId, UNLIMITED_BALLISTA_SHOTS,
-    WAR_MACHINE_KINDS,
+    Ability, AreaShot, CreatureFlag, CreatureType, CreatureTypeId, MAX_ARMY_SLOTS, MAX_SIDE_STACKS,
+    MAX_SUMMON_SPELLS, NATIVES_SIGHT_AT_START, OBSTACLE_ANCHORS, Ruleset, TerrainId,
+    UNLIMITED_BALLISTA_SHOTS, WAR_MACHINE_KINDS,
 };
 
 use h3_contracts::{
@@ -14,6 +14,7 @@ use h3_contracts::{
 };
 use h3_kernel::{CanonicalHash, FixedVec, Rng, StateHasher, StreamId};
 
+use crate::created::Created;
 use crate::effects::{ActiveEffect, Effects, SpellValues, Status};
 use crate::error::SetupError;
 use crate::event::{NoopSink, Sink};
@@ -39,9 +40,16 @@ pub const STACK_CAPACITY: usize = 2 * SIDE_STACK_SLOTS;
 // A side's army slots and war machines fit its stack slots for every ruleset (the content
 // allows at most `MAX_ARMY_SLOTS` army slots).
 const _: () = assert!(MAX_ARMY_SLOTS + MAX_WAR_MACHINES <= SIDE_STACK_SLOTS);
+// A side never has more stacks than its slots: it creates stacks only below the side stack
+// limit, which the content keeps at most `MAX_SIDE_STACKS` (BAT-MAG-037).
+const _: () = assert!(MAX_SIDE_STACKS <= SIDE_STACK_SLOTS);
+
+/// [`Stack::slot`] of a stack created in battle (a clone or a summoned stack, BAT-MAG-037): after
+/// the army slots and the war machines in the turn order's tie-break (BAT-TRN-001).
+pub const CREATED_SLOT: u8 = u8::MAX;
 
 /// Version of the battle-state hash encoding ([`BattleState::state_hash`]). Bump on any change.
-pub const BATTLE_STATE_HASH_VERSION: u32 = 29;
+pub const BATTLE_STATE_HASH_VERSION: u32 = 30;
 
 /// Index of a stack in its battle (attacker stacks first, in slot order, then defender stacks).
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Default)]
@@ -156,6 +164,13 @@ impl StackTraits {
     /// Fights on its native terrain (BAT-TER-001): its side may see the other side's hidden
     /// obstacles (BAT-MAG-031).
     pub const NATIVE: Self = Self(1 << 22);
+    /// Created in battle, a summoned stack or a clone (BAT-MAG-037; the original's flag
+    /// `0x400000`): no corpse, no victim of a sacrifice, left out of the outcome, and a side left
+    /// with only such stacks does not win.
+    pub const SUMMONED: Self = Self(1 << 23);
+    /// A clone (BAT-MAG-038; the original's flag `0x800000`): any damage kills all its creatures,
+    /// and it vanishes when its rounds run out or its original dies.
+    pub const CLONE: Self = Self(1 << 24);
 
     /// Whether all traits of `other` are set.
     pub const fn contains(self, other: Self) -> bool {
@@ -310,6 +325,43 @@ fn war_machines(
     Ok(out)
 }
 
+/// The stacks `side` would have of each creature its hero's spells summon, as at the battle's
+/// start (the side's hero's bonuses, the native terrain; the original's 0x43D8B0 at the cast,
+/// `docs/formats/installation.md` §7.19), one creature each, for Summon Elemental (BAT-MAG-039).
+fn summon_templates(
+    ruleset: &Ruleset,
+    setup: &BattleSetup,
+    side: BattleSide,
+    hero: Option<&HeroRecord>,
+) -> FixedVec<Stack, MAX_SUMMON_SPELLS> {
+    let mut out = FixedVec::new();
+    let book = hero.map(|h| h.magic.book).unwrap_or_default();
+    for spell in book.iter().filter_map(|id| ruleset.spell(id)) {
+        let Some((id, creature)) = spell
+            .summons
+            .and_then(|id| ruleset.creature(id).map(|c| (id, c)))
+        else {
+            continue;
+        };
+        if out.iter().any(|t: &Stack| t.creature == id) {
+            continue;
+        }
+        let mut stack = Stack::new(
+            ruleset,
+            setup,
+            (id, creature),
+            side,
+            CREATED_SLOT,
+            Hex(0),
+            1,
+        );
+        stack.traits = stack.traits.with(StackTraits::SUMMONED, true);
+        // The content has at most `MAX_SUMMON_SPELLS` summon spells.
+        let _ = out.push(stack);
+    }
+    out
+}
+
 /// `Stack::retaliations` value for unlimited retaliations (BAT-RET-003).
 pub const UNLIMITED_RETALIATIONS: u8 = u8::MAX;
 
@@ -334,7 +386,8 @@ pub struct Stack {
     pub creature: CreatureTypeId,
     /// Owning side.
     pub side: BattleSide,
-    /// Army slot it came from.
+    /// Army slot it came from (war machines: `MAX_ARMY_SLOTS` + kind; created stacks:
+    /// [`CREATED_SLOT`]).
     pub slot: u8,
     /// Position.
     pub hex: Hex,
@@ -557,6 +610,11 @@ impl Stack {
         self.count > 0
     }
 
+    /// Whether the battle created the stack (a clone or a summoned stack, BAT-MAG-037).
+    pub const fn is_created(&self) -> bool {
+        self.traits.contains(StackTraits::SUMMONED)
+    }
+
     /// Whether the stack has trait `t`.
     pub const fn has(&self, t: StackTraits) -> bool {
         self.traits.contains(t)
@@ -685,6 +743,8 @@ pub struct BattleState {
     pub(crate) spell_obstacles: SpellObstacles,
     /// What the raising spells keep per stack (BAT-MAG-035, BAT-MAG-036).
     pub(crate) raised: Raised,
+    /// What the battle keeps about the stacks it creates (BAT-MAG-037 to BAT-MAG-039).
+    pub(crate) created: Created,
     pub(crate) rng: Rng,
 }
 
@@ -798,23 +858,27 @@ impl BattleState {
                 len += 1;
             }
         }
-        let mut state = Self {
-            stacks: FixedVec::from_array_prefix(placed, len),
-            natural,
-            round: 1,
-            tactics: None,
-            active: None,
-            last_side_acted: None,
-            result: None,
-            surrender_cost: None,
-            modifiers: Modifiers::new(),
-            heroes,
-            terrain: setup.terrain,
-            effects: Effects::new(),
-            spell_obstacles: SpellObstacles::new(),
-            raised: Raised::default(),
-            rng: Rng::for_stream(seed, StreamId::BATTLE),
-        };
+        let mut state =
+            Self {
+                stacks: FixedVec::from_array_prefix(placed, len),
+                natural,
+                round: 1,
+                tactics: None,
+                active: None,
+                last_side_acted: None,
+                result: None,
+                surrender_cost: None,
+                modifiers: Modifiers::new(),
+                heroes,
+                terrain: setup.terrain,
+                effects: Effects::new(),
+                spell_obstacles: SpellObstacles::new(),
+                raised: Raised::default(),
+                created: Created::new(BattleSide::BOTH.map(|side| {
+                    summon_templates(ruleset, setup, side, heroes[side.index()].as_ref())
+                })),
+                rng: Rng::for_stream(seed, StreamId::BATTLE),
+            };
         morale::setup(&mut state, ruleset, &setup.heroes);
         // rule: BAT-MAG-031
         let natives = BattleSide::BOTH.map(|side| {
@@ -937,6 +1001,12 @@ impl BattleState {
         self.raised.corpse.get(id.index()).copied().unwrap_or(0)
     }
 
+    /// The rounds left of stack `id` if it is a clone (BAT-MAG-038): it vanishes at the start of
+    /// the round its last one ends; 0 for any other stack.
+    pub fn clone_rounds(&self, id: StackId) -> u16 {
+        self.created.rounds.get(id.index()).copied().unwrap_or(0)
+    }
+
     /// The active stack and its id, if the battle is not over.
     pub(crate) fn active_stack(&self) -> Option<(StackId, Stack)> {
         self.active.and_then(|id| self.stack(id).map(|s| (id, *s)))
@@ -1005,7 +1075,8 @@ impl BattleState {
             let mut records = Vec::new();
             let mut last_alive = None;
             for (s, temporary) in self.stacks.iter().zip(self.raised.temporary) {
-                if s.side != side {
+                // rule: BAT-MAG-037
+                if s.side != side || s.is_created() {
                     continue;
                 }
                 let machine = s.has(StackTraits::WAR_MACHINE);
@@ -1143,6 +1214,7 @@ impl CanonicalHash for BattleState {
         self.effects.hash_into(h);
         self.spell_obstacles.hash_into(h);
         self.raised.hash_into(h);
+        self.created.hash_into(h);
         self.rng.hash_into(h);
     }
 }

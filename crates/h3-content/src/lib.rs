@@ -45,8 +45,8 @@ pub use error::CompileError;
 pub use flags::{CreatureFlag, CreatureFlags};
 pub use heroes::{
     HeroClass, HeroClassId, HeroParams, HeroType, HeroTypeId, MAX_HERO_SKILLS, MAX_SPELL_LEVEL,
-    MAX_SPELL_SCHOOLS, MAX_SPELLS, SchoolId, SecondarySkill, SkillId, Spell, SpellCategory,
-    SpellId, SpellPolarity, SpellSchool, StartingStack,
+    MAX_SPELL_SCHOOLS, MAX_SPELLS, MAX_SUMMON_SPELLS, SchoolId, SecondarySkill, SkillId, Spell,
+    SpellCategory, SpellId, SpellPolarity, SpellSchool, StartingStack,
 };
 pub use key::{ContentKey, KeyError};
 pub use pack::{
@@ -64,8 +64,8 @@ pub use quirks::{
 };
 pub use ruleset::{
     BattleParams, CreatureInfo, CreatureType, CreatureTypeId, FactionId, FactionInfo, FieldParams,
-    Formation, MAX_ARMY_SLOTS, MAX_AURA_VALUES, MAX_FIELD_HEXES, MAX_ROLL_LEVELS, MAX_UPGRADES,
-    ObstacleType, RULESET_HASH_VERSION, ResourceId, ResourceInfo, RollTable, Ruleset,
+    Formation, MAX_ARMY_SLOTS, MAX_AURA_VALUES, MAX_FIELD_HEXES, MAX_ROLL_LEVELS, MAX_SIDE_STACKS,
+    MAX_UPGRADES, ObstacleType, RULESET_HASH_VERSION, ResourceId, ResourceInfo, RollTable, Ruleset,
     SurrenderParams, TerrainId, TerrainInfo, WAR_MACHINE_KINDS,
 };
 pub use spell::{

@@ -382,6 +382,8 @@ surrender = { resource = "gold", cost_percent = 50 }
 surrender_sources = ["s"]
 hero_casts_per_round = 1
 magic_sources = ["s"]
+side_stack_limit = 20
+stack_limit_sources = ["s"]
 
 [[creature_abilities]]
 creature = "Unit 1"

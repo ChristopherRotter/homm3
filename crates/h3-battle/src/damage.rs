@@ -16,7 +16,7 @@ use h3_kernel::arith::{
 };
 
 use crate::magic::{Specialist, hero_rate};
-use crate::state::{Stack, StackFlags};
+use crate::state::{Stack, StackFlags, StackTraits};
 
 /// Base damage of a stack of `count` creatures with damage range `[min, max]`: for up to
 /// `samples` creatures every creature rolls and the rolls are summed; for more, `samples` rolls
@@ -339,12 +339,13 @@ pub(crate) fn resurrect(stack: &mut Stack, hp: u64) -> (u64, u32) {
 }
 
 /// Deals `damage` to `stack`: the top creature takes damage first; returns the number of
-/// creatures killed.
+/// creatures killed. Any damage kills every creature of a clone (BAT-MAG-038).
 // rule: BAT-DMG-003
 pub(crate) fn apply_damage(stack: &mut Stack, damage: u64) -> u32 {
     let total = stack.total_hp();
     let before = stack.count;
-    if damage >= total {
+    // rule: BAT-MAG-038
+    if damage >= total || stack.has(StackTraits::CLONE) {
         stack.count = 0;
         stack.top_hp = 0;
         return before;
