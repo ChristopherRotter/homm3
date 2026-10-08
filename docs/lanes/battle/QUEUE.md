@@ -4,13 +4,27 @@ Pre-refined tasks of the battle lane, in order, then the inbox of discovered wor
 
 ## Tasks
 
-Increment 6 (the user, 2026-10-08): T7a in parts, all done (T7a1, T7a2, T7a3); its checkpoint is next.
+Increment 6 (the user, 2026-10-08): T7a in parts, all done; its checkpoint done except batch 2d (2026-10-08). The T7b/T7c cut is proposed (`docs/epics/E04b-battle-magic.md`, T7; `docs/formats/installation.md` §7.21) and waits for the user.
 
-### T7a checkpoint (E04b increment 6)
+### Batch 2d fold-in (E04b increment 6, left over)
 
-- **Scope:** with the user: fold in batch 2d once its results are committed (BAT-QUIRK-7, BAT-Q7, the clone's shots); confirm Q-0005's extension to Poison and Age (T7a2) and BAT-Q8 (T7a3); cut T7b/T7c (the creature casters, `docs/epics/E04b-battle-magic.md` T7); an independent review of T7a; the global HANDOFF's battle row (a `shared/` PR).
-- **Depends on:** PRs #13 (T7a2) and the T7a3 PR merged; the user's batch 2d results.
+- **Scope:** record the user's results of `experiments/specs/E04b-batch-2d.toml` (`experiments/results/E04b-batch-2d.md`), settle BAT-QUIRK-7, BAT-Q7 and the clone's shots with the user, fix what they refute.
+- **Depends on:** the user's committed results.
 - **Status:** waiting for the user.
+
+### T7b1 — The creature's cast and the casters of one spell (E04b increment 7, proposed)
+
+- **Scope:** the epic's T7b1; `installation.md` §7.21 (0x448260, 0x59FE30's mastery and power), §7.8 (a creature's cast: no hero bonuses, no aimed roll), §7.13 (Magic Mirror on creature casts). Casts left per stack (beside the stacks); the creature-cast command (shape decided with the user first) and the sim's `CREATURE_CAST` entry made legal (spell head: the stack's spell; target heads); legality; resolution through the shared cast path at the creature's mastery and power; event, observation (casts left), encodings. Ogre Mage (Bloodlust), Storm, Ice, Energy, Magma Elementals (Protections): Advanced, power 6.
+- **Acceptance:** the Definition of Done; rule tests per caster and for legality (no casts left, not its turn, a refused target); random rollouts and golden replays exercise the cast; encodings bumped as changed.
+- **Depends on:** the user's go for the cut.
+- **Status:** proposed.
+
+### T7b2 — The random casters (E04b increment 7, proposed)
+
+- **Scope:** the epic's T7b2; §7.21 (0x447510's table, 0x447EE0, 0x447A80 read in full). Faerie Dragon (a spell drawn at its activation while it has casts, Advanced, power 5 × creatures; the drawn spell's visibility; S-18; Magic Mirror on its casts) and Master Genie (a random useful beneficial spell for the target).
+- **Acceptance:** the Definition of Done; rule tests (the draw's weights, a cast per drawn spell, the Genie's usefulness cases).
+- **Depends on:** T7b1.
+- **Status:** proposed.
 
 ## Inbox
 
@@ -42,3 +56,4 @@ Increment 6 (the user, 2026-10-08): T7a in parts, all done (T7a1, T7a2, T7a3); i
 - 2026-10-08 (E04b T6b): loose ends of the created stacks (`installation.md` §7.19): BAT-Q7 (Necromancy counts killed created stacks, a retreat or surrender against only created stacks names no winner, the surrender price); creature casters that create stacks (T7: Pit Lords' demons); the native terrain of Fire, Earth, Water and Air Elementals in an army (0x43D730 clears their town unless a game setting is on; BAT-TER-001, read the setting); the original's message when no hex is free. Experiment candidates: `docs/experiments/README.md` (from T6b).
 - 2026-10-08 (E04b T6 checkpoint, the user): an experiment batch before deciding BAT-QUIRK-7 (a clone on its own crowded two-hex original), BAT-Q7 (Necromancy from killed elementals and clones, a retreat or surrender against only summons, the surrender price) and the clone's shots (a shooter's clone after it fired); with T6's other candidates (`docs/experiments/README.md`). *(Batch 2d compiled 2026-10-08: `experiments/specs/E04b-batch-2d.toml`; the fold-in follows the user's results.)*
 - 2026-10-08 (E04b T7a): loose ends of the strike's creature magic (`installation.md` §7.20): the ability spells' levels against Cursed Ground (none above 1) and Recanter's Cloak (none above 2) (E04c, T8), the Orb of Vulnerability lifting the normal immunities and the Sphere of Permanence refusing the flies' Dispel Helpful Spells (T8), a creature's cast at Expert on Magic Plains (E04c); BAT-Q8 decided (the user, 2026-10-08: not reproduced); Q-0005's extension to Poison and Age confirmed (the user, 2026-10-08). The QUEUE's inbox was lost in T7a2's docs commit (5751e65) and restored at the T7a checkpoint.
+- 2026-10-08 (E04b T7a review): the observation shows Bind's effect but not who binds whom (`binds.by`), which decides when a Bind ends and is public in the game; Poison's lost tenths are hidden too (the hit points show them, ambiguous while aged). Add per-stack binder masks (as `clone_rounds`) with T9's observation completeness (observation encoding bump). Also untested so far: a release by a flying or teleporting binder's move (the same `obstacles::travel` path as a walk).
