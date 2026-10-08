@@ -1093,3 +1093,116 @@ nobody wins: a side left with only summoned stacks and clones loses as well (the
 sides lose"), also when the other side retreated or surrendered. The experience of the battle
 (0x46A350) counts no killed summoned stack, clone or war machine; Necromancy (0x4775E1) counts the
 killed creatures of every record, summoned stacks and clones included.
+
+### 7.20 Code reading: creature magic after a strike (E04b T7a, 2026-10-08)
+
+Read for T7a (Q29: insight only, nothing copied). Offsets as in §7.9; creature ids as in §5 (22,
+23 Dendroids, 24, 25 Unicorns, 59 Zombie, 66, 67 Black and Dread Knight, 69 Ghost Dragon, 76, 77
+Medusas, 81 Scorpicore, 93 Thunderbird, 104, 105 Serpent and Dragon Fly, 106, 107 Basilisks, 109
+Wyvern Monarch, 135 Rust Dragon, 141 Mummy).
+
+**The melee attack** (0x441CB0, attacker A on target T): T is marked if blind or paralysed
+(§7.14), A strikes (0x441610), then T retaliates if it lives, A's creature allows retaliation
+(flag `0x10000` not set), T is **not petrified** (Stone Gaze's duration +0x2B0 is 0), T has a
+retaliation left and the strike did not answer "no retaliation"; the marks are cleared. Then a
+creature that strikes twice (`0x8000`) and is no shooter (`0x4`) strikes again, without a
+retaliation, if A lives and is **not blind, petrified or paralysed** and T lives. Everything below
+runs inside the strike, so for the first and second strike and for the retaliation alike, and only
+in melee: the shot routine (0x43F900) has none of it.
+
+**A strike** (0x441610, striker S on target T; a breath's second stack only takes damage): the
+damage (0x443F40) and the hit points taken (0x444090, which ends Blind, Stone Gaze and Paralyze,
+§7.14), then in this order:
+
+1. *The strike's spell* (0x440500, a switch on S's creature) is put in T's pending spell (+0xEC,
+   −1 none) by the table below.
+2. *The pending spells are cast* at the end of the strike's animation (0x468990, also when combat
+   is not animated): for every living stack of both sides with a pending spell, the spell is cast
+   on that stack's hex as a creature's cast (0x59FE30, caster kind 1, §7.8) **at mastery 0 with
+   power 3**, and the pending spell is cleared. So the spell takes effect before the retaliation.
+3. *The striker's own effects* (0x440BC0, a switch on S's creature, on T only): Vampire Lords' life
+   drain (63) and Mighty Gorgons' death stare (103) (E03), and the Thunderbird, flies and Rust
+   Dragon below.
+4. Fire Shield's reflection (0x4409C0, §7.11).
+
+The strike answers "no retaliation" if T was marked blind with Blind's stored factor 0 (§7.14) or
+if step 1 put Blind, Stone Gaze or Paralyze in T's pending spell.
+
+| Striker | Spell put in T's pending spell | Draw | Also needs |
+|---|---|---|---|
+| Unicorn, War Unicorn | Blind (62) | 20 % | T alive, the test |
+| Black Knight, Dread Knight, Mummy | Curse (42) | **25 %** | T alive, the test |
+| Zombie | Disease (73) | 20 % | T's creature living (`0x10`) first, T alive, the test |
+| Ghost Dragon | Age (75) | 20 % | as Disease |
+| Wyvern Monarch | Poison (71) | 30 % | as Disease |
+| Medusa, Medusa Queen, Basilisk, Greater Basilisk | Stone Gaze (70) | 20 % | T alive, the test |
+| Scorpicore | Paralyze (74) | 20 % | T alive, the test |
+| Dendroid Guard, Dendroid Soldier | Bind (72) | none | S not yet among T's binders; no test, T may be dead |
+| Rust Dragon | Acid Breath (80) | none | T alive, T's defense above 0; no test |
+
+The draw is `random(1, 100) ≤ chance`. *The test* (0x5A8640: spell, S's controller, T) is the
+chance `f` of 0x5A8090 (§7.8) with its **side test skipped** (its fourth argument: a negative
+spell may land on a stack of S's own side, a hypnotized or berserk striker's) and a second draw
+`random(1, 100) ≤ trunc(f × 100)`. So the creature immunities (0x44A4D0), the magic resistance of
+creatures (Dwarves, Crystal Dragons) and of T's controller's hero and the Unicorn aura apply as
+to a hero's spell. The ability spells' levels (`SPTRAITS.TXT`: Stone Gaze 3, Disease 2, Paralyze
+4, Age 5, the others 0) count for the dragons' level immunity (Green, Red and Azure Dragons ≤ 3,
+Gold ≤ 4), for Cursed Ground (none above 1) and Recanter's Cloak on either hero (none above 2)
+(E04c, T8); the Orb of Vulnerability on either hero lifts the normal immunities (T8). 0x44A4D0's
+absolute cases for them: Stone Gaze spares the Troglodytes (70, 71); Poison spares creatures that
+are not living (`0x10`) and the Gargoyles (30, 31); Blind as §7.14, and as a mind spell it spares
+mind-immune creatures. Bind's binder lists: T keeps the stacks that bind it (+0x504), S the stacks
+it binds (+0x4F4); a strike on a T that S already binds does nothing.
+
+**Applying them** (the cast routine's handlers, §7.8; 0x4448F0, §7.9). A creature's cast has no
+hero: no specialty bonus, no duration bonus; its duration is the power, 3, unless fixed (Bind:
+255); its mastery is 0 (Expert on battlefield type 1, Magic Plains, E04c); the stack on the hex is
+the target, with no further draw (§7.8). As for every spell, a spell already active only takes the
+longer duration and the higher mastery. Per spell:
+
+- Blind, Curse, Disease, Paralyze (the timed handler 0x5A107F), Bind and Age (0x5A15C7, the same
+  code), Stone Gaze (0x5A10F1, plus its animation), Poison (0x5A1590). Curse at mastery 0 has
+  `v` = 0 (the minimum damage, §7.9); Blind `v` = 50 (a blind stack retaliates at half, §7.14);
+  Stone Gaze, Paralyze and Bind store no value.
+- *Disease* takes `min(2, attack)` and `min(2, defense)` and stores both (+0x4D4, +0x4D0).
+- *Poison*: the stack's poison factor (+0x4A4, 1.0 at the battle's start) becomes `f32(max(factor
+  − f32(0.1), 0.5))`; then the hit points per creature (+0xC0) become `trunc(f32(H × factor) +
+  f32(0.95))`, times 0.5 inside while aged, with `H` the stack's hit points per creature at the
+  battle's start (+0x6C), and the top creature's lost hit points (+0x58) become at most the new
+  value − 1 (no creature dies).
+- *Age*: the hit points per creature become `trunc(H × factor × 0.5 + 0.95)` (single precision),
+  with the same cap.
+- *Acid Breath* (0x5A1E70): defense − 3, at least 0, for the rest of the battle (no duration, no
+  entry in the active spells; each Rust Dragon strike lowers it again).
+- *Dispel Helpful Spells* (0x5A177E): ends every active spell 10–69 whose table type is positive
+  (0x444510).
+
+**While active and ending.** Stone Gaze and Paralyze stop the stack's turns and end on any damage
+as Blind does (§7.14); a petrified stack takes half damage (stage 3, §7.10) and does not
+retaliate; a paralysed one retaliates with Blind's Advanced share (25 %, §7.14). A stack under
+Bind cannot move (the pathfinder, 0x4B2DE0 and 0x4B350B, gives it no movement) but still attacks
+next to it. At every round start (0x447120), after the durations count down, a stack still
+poisoned loses another tenth (the factor and the hit points as above; a message when they fell),
+so a poison of 3 rounds leaves 90 % at the strike, then 80 % and 70 %, and ends at the third round
+start. The end routine (0x444510) gives Disease's points back, recomputes Age's hit points with the
+poison factor and the same cap, and for Bind removes the stack from each binder's list and empties
+its own; it gives nothing back for Poison, so **the poison factor and its lost hit points stay for
+the battle** after Poison ends, until a Cure (0x446500 resets the factor to 1.0 and the hit points
+before it ends the spells, §7.10). Bind is also released (0x43EE10) when a binder moves (0x4420A3,
+the walk), dies (0x4441C7) or is teleported (0x5A1B88, 0x4B4E90): the binder leaves the bound-by
+list of each stack it binds, and a stack whose list becomes empty has its Bind ended. Bind is ended
+by Dispel, not by Cure (§7.10).
+
+**The striker's effects** (0x440BC0):
+- *Thunderbird*: a 20 % draw, then the test for **Lightning Bolt** (17) as above (so Earth and
+  Magma Elementals are immune, the dragons' level immunity counts level 2); the damage is
+  0x5A78E0 (§7.8) of `10 × S's creatures` for spell 17 without a hero: the target creature's
+  factors (Air and Storm Elementals double, the golems) and Protection from Air; then the hit
+  points are taken (0x444090) and the kills reported.
+- *Serpent Fly, Dragon Fly*: if the test for Dispel Helpful Spells (78) passes (0x5A8090's own case:
+  no if T's controller's hero wears the Sphere of Permanence, T8; yes if T has an active spell of
+  positive type; no immunity, resistance or aura), it is cast at once (creature cast, mastery 0,
+  power 3). Then a Dragon Fly, if T is not under Weakness (+0x24C) and passes the test for Weakness
+  (45), casts Weakness at once **at mastery 2** (Advanced: `v` = 6) with power 3.
+- *Rust Dragon*: a 20 % draw, then `random(min, max damage) × S's creatures / 2` (truncated) as
+  damage, with no test (after Acid Breath, step 2).
