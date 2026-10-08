@@ -23,6 +23,7 @@ Working project name: **h3** (provisional; see OPEN-QUESTIONS Q2). Last structur
 | [pull_request_template.md](pull_request_template.md) | Definition-of-Done checklist for changes |
 | [rules/](rules/) | Rule catalog (machine-checked), quirks ledger, [source surveys](rules/surveys/) per epic |
 | [formats/](formats/) | Observed layouts of the original installation's files (catalogue), the map format we write |
+| [exe/](exe/) | The address map of `Heroes3.exe` for code reading: our readings, record layouts, H3API's names (guesses); the tool `scripts/exe.py` |
 | [experiments/](experiments/) | Staged battles in the original game: flow, maps, results |
 
 ## Planning philosophy
