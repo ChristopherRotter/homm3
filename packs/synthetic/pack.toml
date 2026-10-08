@@ -286,6 +286,49 @@ abilities = [
     { kind = "drawn_spell", spell = "mend", weight = 1 },
 ]
 
+[[creature]]
+id = "seraph"               # neutral (no faction)
+name = "Seraph"
+plural = "Seraphs"
+level = 7
+attack = 20
+defense = 20
+damage = [20, 25]
+hit_points = 120
+speed = 9
+casts = 1
+cost = { coin = 3000 }
+growth = 1
+fight_value = 4000
+ai_value = 4500
+adventure_count = [1, 3]
+flags = ["alive", "two_hex", "flying"]
+# Format v25: once a battle raises another stack of its side, living or dead, for good by 100 hit
+# points per creature under Revive's test (an Archangel's raise, BAT-MAG-051).
+abilities = [{ kind = "stack_raiser", spell = "revive", hit_points_per_creature = 100 }]
+
+[[creature]]
+id = "fiend"                # neutral (no faction)
+name = "Fiend"
+plural = "Fiends"
+level = 5
+attack = 13
+defense = 13
+damage = [13, 17]
+hit_points = 45
+speed = 7
+casts = 1
+cost = { coin = 700 }
+growth = 3
+fight_value = 1000
+ai_value = 1200
+adventure_count = [3, 6]
+flags = ["alive"]           # living, so its corpse can raise Spearmen too
+# Format v25: once a battle raises Spearmen from a corpse of a living creature's stack of its
+# side, with 50 hit points per creature, into that stack's army slot (a Pit Lord's Demons,
+# BAT-MAG-052).
+abilities = [{ kind = "corpse_raiser", creature = "spearman", hit_points_per_creature = 50 }]
+
 # ---- Hero content (pack format v3, E04a T3): invented schools, spells, skills, classes and heroes.
 # Every hero-effect kind appears at least once. Spells carry their battle magic since format v4
 # (E04b T2a): every target kind, an area, a chain and target conditions appear at least once.
