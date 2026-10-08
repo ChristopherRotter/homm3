@@ -82,9 +82,11 @@ which a spell meets a stack, how stacks appear in a battle, how hidden objects s
    As the original, Quicksand's and Land Mine's random hexes avoid the other side's hidden objects
    (quirk BAT-QUIRK-4, fix-optional: the fix draws among the hexes the caster's side sees free).
 8. **Visibility** (extends ADR-0013 point 9): mana, casts used this round, each cast with its spell,
-   targets and results, and the effects on every stack are public, as in the original; the spell book
-   and the hero's spell bonuses stay private to its side, and so does a Faerie Dragon's drawn spell
-   until it is cast (the original's message at its activation tells only its controller; BAT-Q11).
+   targets and results, and the effects on every stack are public, as in the original; the spells in
+   the spell book and the hero's spell bonuses stay private to its side, and so does a Faerie
+   Dragon's drawn spell until it is cast (the original's message at its activation tells only its
+   controller; BAT-Q11). Whether a hero carries a spell book is public (the Master Genie's test
+   reads it; BAT-Q12).
 9. **A factorized casting action.** The sim keeps its dense list of other actions and adds two cast
    entries (hero, creature); choosing one opens a spell head (by spell id, sized by a content limit)
    and two target heads (none, a hex or a stack slot), each with a mask conditioned on the earlier
@@ -161,4 +163,5 @@ which a spell meets a stack, how stacks appear in a battle, how hidden objects s
   stack will cast.
 - 2026-10-08: points 8 and 9 amended (E04b T7b2; the user, BAT-Q11): a Faerie Dragon's drawn spell
   is private to its controller's side until it is cast; the Master Genie's spell head allows only 0
-  and the observation counts, per stack, the spells its draw could pick.
+  and the observation counts, per stack, the spells its draw could pick. Point 8 again (the user,
+  BAT-Q12): whether a hero carries a spell book is public, as the Genie's counts reveal it.

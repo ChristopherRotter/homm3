@@ -61,6 +61,9 @@ Language-specific bindings only (locks out other ecosystems); a network protocol
 - **ABI v13** (E04b T7b2a): observation encoding v9 (a global: the spell the active stack drew,
   shown only to its controller; the length grows); the stack's cast's target head may carry hexes
   (a Faerie Dragon's area spells). No function changes.
+- **ABI v14** (E04b T7b2b): observation encoding v10 (the hero's public spell book flag; per
+  stack, how many spells a helpful caster's draw could pick, for its controller; the length
+  grows); the stack's cast's spell head holds 0 for the Master Genie. No function changes.
 
 ## Revision history
 
