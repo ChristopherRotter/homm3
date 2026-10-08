@@ -591,6 +591,94 @@ pub const CREATURES: &[Creature] = &[
         5,
         &["alive", "casts=1", "spell_caster=weaken:0:4"],
     ),
+    // Random casters (BAT-MAG-049), a Faerie Dragon's power per creature at Advanced: a two-hex
+    // one that draws among four spells, and one-hex ones that always draw the same spell: `bolt`
+    // (negative, at a stack), `chain` (neutral, at a stack), `nova` (neutral, an area at a hex).
+    (
+        "dragonet",
+        10,
+        10,
+        2,
+        2,
+        100,
+        5,
+        &[
+            "two_hex",
+            "alive",
+            "casts=3",
+            "random_spell_caster=2:5",
+            "drawn_spell=bolt:22",
+            "drawn_spell=nova:21",
+            "drawn_spell=ring:10",
+            "drawn_spell=chain:5",
+        ],
+    ),
+    (
+        "boltling",
+        10,
+        10,
+        2,
+        2,
+        100,
+        5,
+        &[
+            "alive",
+            "casts=2",
+            "random_spell_caster=2:5",
+            "drawn_spell=bolt:1",
+        ],
+    ),
+    (
+        "chainling",
+        10,
+        10,
+        2,
+        2,
+        100,
+        5,
+        &[
+            "alive",
+            "casts=2",
+            "random_spell_caster=2:5",
+            "drawn_spell=chain:1",
+        ],
+    ),
+    (
+        "novaling",
+        10,
+        10,
+        2,
+        2,
+        100,
+        5,
+        &[
+            "alive",
+            "casts=2",
+            "random_spell_caster=2:5",
+            "drawn_spell=nova:1",
+        ],
+    ),
+    // Survey S-18: a Diamond Golem keeps 5 % of a spell's damage, a Gold Golem 15 %.
+    (
+        "diamond",
+        10,
+        10,
+        2,
+        2,
+        60,
+        5,
+        &["spell_damage_reduction=95"],
+    ),
+    (
+        "goldgolem",
+        10,
+        10,
+        2,
+        2,
+        50,
+        5,
+        &["spell_damage_reduction=85"],
+    ),
 ];
 
 /// The traits of a test creature as creature info: flags, abilities, shots and faction.
@@ -761,6 +849,20 @@ fn parse_traits(traits: &[&str]) -> CreatureInfoDef {
                     spell: ContentKey::new("t", next()).unwrap(),
                     mastery: next().parse().unwrap(),
                     power: next().parse().unwrap(),
+                }
+            }
+            "random_spell_caster" => {
+                let (mastery, per_creature) = value.split_once(':').unwrap();
+                AbilityDef::RandomSpellCaster {
+                    mastery: mastery.parse().unwrap(),
+                    power_per_creature: per_creature.parse().unwrap(),
+                }
+            }
+            "drawn_spell" => {
+                let (spell, weight) = value.split_once(':').unwrap();
+                AbilityDef::DrawnSpell {
+                    spell: ContentKey::new("t", spell).unwrap(),
+                    weight: weight.parse().unwrap(),
                 }
             }
             flag => {
@@ -999,6 +1101,10 @@ pub fn ruleset_with(profile: &str, edit: impl FnOnce(&mut BattleParamsDef)) -> R
                     String::from("quirk.battle.sacrifice_tests_as_resurrection"),
                     true,
                 )],
+            },
+            ProfileDef {
+                key: ContentKey::new("t", "mirrored").unwrap(),
+                quirks: vec![(String::from("quirk.battle.creature_mirror_untested"), true)],
             },
             ProfileDef {
                 key: ContentKey::new("t", "original").unwrap(),
@@ -2079,7 +2185,8 @@ fn spell_def((name, category, schools, target, side): SpellSpec) -> SpellDef {
         effect: [10, 10, 20, 30],
         polarity: match name {
             "rally" => SpellPolarity::Positive,
-            "chain" | "storm" => SpellPolarity::Neutral,
+            // Chain Lightning and the area spells are neutral, as the original's (§7.8).
+            "chain" | "storm" | "nova" | "ring" => SpellPolarity::Neutral,
             _ => SpellPolarity::Negative,
         },
         magic: SpellMagic {

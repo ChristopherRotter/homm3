@@ -592,7 +592,8 @@ proptest! {
 
     /// Observation hygiene (ADR-0013 point 9): hidden information does not show. The RNG shows
     /// to neither side; the private part of a side's hero (Tactics level, damage bonuses, how
-    /// its war machines work, surrender discount, funds) only to that side.
+    /// its war machines work, surrender discount, funds) only to that side, and so does the spell
+    /// its random caster drew (ADR-0014 point 8, BAT-MAG-049).
     #[test]
     fn observations_do_not_depend_on_hidden_state(
         (att, def, obstacles, seed, steps) in arb_game(),
@@ -626,6 +627,11 @@ proptest! {
                 hero.magic.schools = [3; 4];
                 hero.magic.bonuses.all = Rate::bp(discount.into());
             }
+            // covers: BAT-MAG-049
+            twin.casts.drawn = twin.casts.drawn.map(|(s, spell)| {
+                let other = SpellId::from_raw(spell.raw() ^ 1);
+                (s, if twin.at(s).controller() == side { other } else { spell })
+            });
             let viewer = side.opponent();
             prop_assert_eq!(observe(&state, &r, viewer), observe(&twin, &r, viewer));
         }

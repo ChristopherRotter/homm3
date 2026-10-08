@@ -3,8 +3,9 @@
 //! The battlefield is fully visible to both sides, so the observation is the state minus what
 //! the viewer may not know: the RNG state (it would predict rolls) and the private part of the
 //! other side's hero (ADR-0013 point 9: its skill values, surrender discount, funds and price)
-//! and the other side's hidden spell obstacles the viewer does not see (ADR-0014 point 7,
-//! BAT-MAG-031). The viewer's own hero's private part is shown to the viewer ([`OwnHeroView`]):
+//! the other side's hidden spell obstacles the viewer does not see (ADR-0014 point 7,
+//! BAT-MAG-031) and the spell a random caster the viewer does not control drew (ADR-0014 point 8,
+//! BAT-MAG-049). The viewer's own hero's private part is shown to the viewer ([`OwnHeroView`]):
 //! its spell book, masteries and spell bonuses among them (ADR-0014 point 8). Timed effects on
 //! stacks are public.
 
@@ -49,6 +50,9 @@ pub struct Observation {
     pub clone_rounds: [u16; STACK_CAPACITY],
     /// The casts each stack has left, by stack id (public: every cast is; BAT-MAG-048).
     pub casts_left: [u8; STACK_CAPACITY],
+    /// The spell the active stack drew at its activation, if it is a random caster the viewer
+    /// controls (private to its controller until it casts, ADR-0014 point 8; BAT-MAG-049).
+    pub drawn: Option<h3_content::SpellId>,
     /// Hexes blocked by natural obstacles (public).
     pub obstacles: HexSet,
     /// The natural obstacles a spell can remove, with their anchors (public; BAT-MAG-034).
@@ -84,6 +88,12 @@ pub fn observe(state: &BattleState, ruleset: &Ruleset, viewer: BattleSide) -> Ob
         stacks: state.stacks,
         clone_rounds: state.created.rounds,
         casts_left: state.casts.left,
+        // rule: BAT-MAG-049
+        drawn: state
+            .casts
+            .drawn
+            .filter(|&(s, _)| state.active == Some(s) && state.at(s).controller() == viewer)
+            .map(|(_, spell)| spell),
         obstacles: state.obstacles(),
         removable_obstacles: state.natural.removable_list(),
         obstacle_anchors: state.natural.anchors(),

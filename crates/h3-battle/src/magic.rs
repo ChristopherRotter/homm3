@@ -17,10 +17,10 @@
 use core::num::NonZeroU32;
 
 use h3_content::{
-    Ability, CreatureFlag, CreatureTypeId, EARLY_MASS_VERSION, FIRST_PROTECTION, FULL_BP,
-    MASS_CURE_SKIPS_HYPNOTIZED, MAX_FIELD_HEXES, MAX_SPELL_SCHOOLS, MAX_SPELLS, Ruleset,
-    SINGLE_PRECISION_RATES, SpecialistBonus, Spell, SpellCategory, SpellEffect, SpellId,
-    SpellPolarity, SpellScope, SpellTarget, TargetSide, TimedChange,
+    Ability, CREATURE_MIRROR_UNTESTED, CreatureFlag, CreatureTypeId, EARLY_MASS_VERSION,
+    FIRST_PROTECTION, FULL_BP, MASS_CURE_SKIPS_HYPNOTIZED, MAX_FIELD_HEXES, MAX_SPELL_SCHOOLS,
+    MAX_SPELLS, Ruleset, SINGLE_PRECISION_RATES, SpecialistBonus, Spell, SpellCategory,
+    SpellEffect, SpellId, SpellPolarity, SpellScope, SpellTarget, TargetSide, TimedChange,
 };
 use h3_contracts::{BattleEffect, BattleHero, BattleSide, Rate};
 use h3_kernel::arith::{
@@ -35,7 +35,7 @@ use crate::damage::apply_damage;
 use crate::effects::{self, Status, TimedCast};
 use crate::error::{CommandError, HeroError};
 use crate::event::{Event, EventKind, Sink};
-use crate::geometry::{Field, Footprint, Hex};
+use crate::geometry::{Field, Footprint, Hex, HexSet};
 use crate::hero::{HeroRecord, hash_rate};
 use crate::movement;
 use crate::obstacles::{self, SpellObstacle};
@@ -851,9 +851,9 @@ pub(crate) fn plan_cast<'r>(
 
 /// Whether `target` is a target of stack `caster`'s cast of `spell` for `side`, its controller
 /// (BAT-MAG-048): a stack other than the caster that the spell may be aimed at ([`first_target`]
-/// at the caster's mastery: a living stack the spell may reach and affect). The original's test
-/// 0x4476C0 and its cursor (0x4766EA, which never offers the caster itself),
-/// `installation.md` §7.21.
+/// at the caster's mastery: a living stack the spell may reach and affect); for a drawn spell
+/// one of [`drawn_target`] (BAT-MAG-049). The original's test 0x4476C0 and its cursor (0x4766EA,
+/// which never offers the caster itself), `installation.md` §7.21.
 // rule: BAT-MAG-048
 pub(crate) fn creature_target(
     state: &BattleState,
@@ -864,14 +864,118 @@ pub(crate) fn creature_target(
 ) -> bool {
     // A caster's spell is one of the ruleset's (the compiler checks its abilities).
     ruleset.spell(spell.id).is_some_and(|s| {
-        target != CastTarget::Stack(caster)
-            && first_target(state, ruleset, side, ((spell.id, s), spell.mastery), target)
+        let cast = ((spell.id, s), spell.mastery);
+        if spell.drawn {
+            drawn_target(state, ruleset, side, (caster, cast), target)
+        } else {
+            target != CastTarget::Stack(caster) && first_target(state, ruleset, side, cast, target)
+        }
     })
 }
 
+/// Whether a cast of `spell` for `side` can affect stack `s` with a chance above zero, by the
+/// spell's polarity (BAT-MAG-049; the original's 0x5A3C80 → 0x5A8090 above 0,
+/// `installation.md` §7.8, §7.21): a living stack the spell can affect (BAT-MAG-005,
+/// BAT-MAG-021), an enemy for a negative spell, an own stack for a positive one, either for a
+/// neutral one (Chain Lightning and the area spells), whose share left after resistance and
+/// auras is above zero unless the spell is positive (BAT-MAG-008).
+fn affectable(
+    state: &BattleState,
+    ruleset: &Ruleset,
+    side: BattleSide,
+    spell: SpellRef<'_>,
+    s: StackId,
+) -> bool {
+    let stack = state.at(s);
+    let side_ok = match spell.1.polarity {
+        SpellPolarity::Positive => stack.side == side,
+        SpellPolarity::Negative => stack.side != side,
+        SpellPolarity::Neutral => true,
+    };
+    side_ok
+        && affects_stack(state, ruleset, spell, s)
+        && (spell.1.polarity == SpellPolarity::Positive
+            || (share(state, ruleset, s).0 > 0 && aura(state, ruleset, s) != Some(100)))
+}
+
+/// The stacks other than `caster` that a drawn spell for `side` may be aimed at
+/// ([`affectable`]), by id (BAT-MAG-049).
+fn drawn_stacks<'a>(
+    state: &'a BattleState,
+    ruleset: &'a Ruleset,
+    side: BattleSide,
+    (caster, spell): (StackId, SpellRef<'a>),
+) -> impl Iterator<Item = StackId> + 'a {
+    stack_ids(state).filter(move |&s| s != caster && affectable(state, ruleset, side, spell, s))
+}
+
+/// Whether `target` is a target of stack `caster`'s cast of the spell it drew, at `mastery`, for
+/// `side`, its controller (BAT-MAG-049; the original's 0x4476C0 for the Faerie Dragon and its
+/// cursor 0x4766FC, `installation.md` §7.21): a stack other than the caster, of either side, that
+/// the spell can affect ([`affectable`]); a spell that takes a hex is aimed at a hex of that
+/// stack (never at an empty hex).
+// rule: BAT-MAG-049
+fn drawn_target(
+    state: &BattleState,
+    ruleset: &Ruleset,
+    side: BattleSide,
+    (caster, (spell, mastery)): (StackId, (SpellRef<'_>, u8)),
+    target: CastTarget,
+) -> bool {
+    let field = Field::new(ruleset.battle().field);
+    match (target_at(ruleset, spell.1, mastery), target) {
+        (SpellTarget::Stack, CastTarget::Stack(t)) => {
+            state.stack(t).is_some()
+                && drawn_stacks(state, ruleset, side, (caster, spell)).any(|s| s == t)
+        }
+        (SpellTarget::Hex, CastTarget::Hex(h)) => {
+            drawn_stacks(state, ruleset, side, (caster, spell))
+                .any(|s| state.at(s).footprint(field).hexes().any(|x| x == h))
+        }
+        _ => false,
+    }
+}
+
+/// Fills `out` with the targets of stack `caster`'s cast of `spell` for `side` (BAT-MAG-048,
+/// BAT-MAG-049): stacks by id, or for a drawn spell that takes a hex the hexes of its stacks by
+/// index.
+pub(crate) fn creature_targets(
+    state: &BattleState,
+    ruleset: &Ruleset,
+    side: BattleSide,
+    (caster, spell): (StackId, CreatureSpell),
+    out: &mut CastTargets,
+) {
+    // A caster's spell is one of the ruleset's (the compiler checks its abilities).
+    let Some(s) = ruleset.spell(spell.id) else {
+        return;
+    };
+    let field = Field::new(ruleset.battle().field);
+    if spell.drawn && target_at(ruleset, s, spell.mastery) == SpellTarget::Hex {
+        let mut hexes = HexSet::new();
+        for t in drawn_stacks(state, ruleset, side, (caster, (spell.id, s))) {
+            for h in state.at(t).footprint(field).hexes() {
+                hexes.insert(h);
+            }
+        }
+        for h in hexes.iter() {
+            // At most `MAX_FIELD_HEXES` targets.
+            let _ = out.push(CastTarget::Hex(h));
+        }
+        return;
+    }
+    for target in stack_ids(state).map(CastTarget::Stack) {
+        if creature_target(state, ruleset, side, (caster, spell), target) {
+            // At most `STACK_CAPACITY` targets.
+            let _ = out.push(target);
+        }
+    }
+}
+
 /// Validates stack `caster`'s cast of its `spell` at `target` for `side`, its controller
-/// (BAT-MAG-048; the caller has checked that it may cast now): a creature's cast at its ability's
-/// mastery and power, without a hero's bonuses or cost; its timed effects last `power` rounds.
+/// (BAT-MAG-048, BAT-MAG-049; the caller has checked that it may cast now): a creature's cast at
+/// its ability's mastery and power (a random caster's: per creature, BAT-MAG-049), without a
+/// hero's bonuses or cost; its timed effects last `power` rounds.
 pub(crate) fn plan_creature_cast<'r>(
     state: &BattleState,
     ruleset: &'r Ruleset,
@@ -883,7 +987,7 @@ pub(crate) fn plan_creature_cast<'r>(
         .spell(spell.id)
         .filter(|_| creature_target(state, ruleset, side, (caster, spell), target))
         .ok_or(CommandError::InvalidSpellTarget)?;
-    let power = u16::from(spell.power);
+    let power = u16::try_from(spell.power).unwrap_or(u16::MAX);
     Ok(Cast {
         side,
         id: spell.id,
@@ -893,7 +997,7 @@ pub(crate) fn plan_creature_cast<'r>(
         target,
         second: CastTarget::None,
         // rule: BAT-MAG-004
-        value: u64::from(power) * u64::from(s.power)
+        value: u64::from(spell.power) * u64::from(s.power)
             + u64::from(s.effect[usize::from(spell.mastery)]),
         bonuses: SpellBonuses::default(),
         rounds: power,
@@ -1460,11 +1564,17 @@ fn next_in_chain(
 
 /// Where `cast`, aimed at stack `s`, goes (BAT-MAG-022): with Magic Mirror active on an enemy
 /// stack, a draw below its chance sends the spell to a living stack of the caster's side drawn
-/// with equal chances, and a `SpellRedirected` event reports it; otherwise to `s`. A spell that
-/// ignores immunity (Dispel) is never sent away. (The original draws its chance for every cast at
-/// an enemy stack and leaves out arrow towers, E04c; `installation.md` §7.13.)
+/// with equal chances, and a `SpellRedirected` event reports it; otherwise it stays (`None`). A
+/// spell that ignores immunity (Dispel) is never sent away. A creature's cast is sent away alike
+/// (BAT-MAG-049). (The original draws its chance for every cast at an enemy stack and leaves out
+/// arrow towers, E04c; `installation.md` §7.13.)
 // rule: BAT-MAG-022
-fn mirror<S: Sink>(state: &mut BattleState, cast: &Cast<'_>, s: StackId, sink: &mut S) -> StackId {
+fn mirror<S: Sink>(
+    state: &mut BattleState,
+    cast: &Cast<'_>,
+    s: StackId,
+    sink: &mut S,
+) -> Option<StackId> {
     let stack = state.at(s);
     let chance = u32::from(stack.spells.mirror);
     if stack.side == cast.side
@@ -1472,14 +1582,14 @@ fn mirror<S: Sink>(state: &mut BattleState, cast: &Cast<'_>, s: StackId, sink: &
         || cast.spell.magic.ignores_immunity
         || state.rng.below(100) >= chance
     {
-        return s;
+        return None;
     }
     // The caster's side has a living stack while the battle goes on.
     let count = u32::try_from(living(state, cast.side).count()).unwrap_or(u32::MAX);
     let k = usize::try_from(state.rng.below(count)).unwrap_or(0);
     let to = living(state, cast.side).nth(k).unwrap_or(s);
     sink.emit(Event::public(EventKind::SpellRedirected { from: s, to }));
-    to
+    Some(to)
 }
 
 /// Applies a validated cast: the hero pays the cost and counts the cast, or the casting stack uses
@@ -1606,19 +1716,29 @@ fn reach_stacks<S: Sink>(
     sink: &mut S,
 ) {
     let spell = (cast.id, cast.spell);
-    let target = match cast.target {
-        CastTarget::Stack(s) => CastTarget::Stack(mirror(state, cast, s, sink)),
-        other => other,
+    let (target, mirrored) = match cast.target {
+        CastTarget::Stack(s) => {
+            let to = mirror(state, cast, s, sink);
+            (CastTarget::Stack(to.unwrap_or(s)), to.is_some())
+        }
+        other => (other, false),
     };
     // The stack a hero's stack spell is aimed at rolls first: if it resists, the whole spell does
     // (BAT-MAG-006, BAT-MAG-008); a creature's cast has no such roll (BAT-MAG-048, the original's
     // 0x5A02EA); a stack a Magic Mirror sent the spell to that it cannot affect resists
-    // (BAT-MAG-022). An area spell has no such roll: every stack in its area rolls once
+    // (BAT-MAG-022). A creature's spell sent away is tested and rolls alike, but with quirk
+    // BAT-QUIRK-9 it is not tested at all (the original tests no stack of a creature's cast,
+    // BAT-MAG-049). An area spell has no such roll: every stack in its area rolls once
     // (BAT-MAG-007; batch 2a R3).
+    // rule: BAT-MAG-049
+    let untested =
+        mirrored && cast.by.is_some() && ruleset.quirks().is_enabled(CREATURE_MIRROR_UNTESTED);
+    let rolls = cast.by.is_none() || mirrored;
     if let CastTarget::Stack(s) = target
+        && !untested
         && (!affects_stack(state, ruleset, spell, s)
             || !admits(state, ruleset, cast.side, (spell, cast.mastery), s)
-            || (cast.by.is_none() && resists(state, ruleset, cast.spell, s)))
+            || (rolls && resists(state, ruleset, cast.spell, s)))
     {
         resisted(s, sink);
     } else {
