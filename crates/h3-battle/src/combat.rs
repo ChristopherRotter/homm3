@@ -474,6 +474,8 @@ fn attack<S: Sink>(
             reflected = reflected.saturating_add(r);
         }
     }
+    // A clone that killed its own original is gone: nothing to drain into (BAT-MAG-038).
+    let heal = heal * u64::from(state.at(attacker).is_alive());
     life_drain(state, attacker, heal, sink);
     if stare > 0 {
         death_stare(state, pair, stare, sink);
@@ -505,8 +507,6 @@ fn reflect<S: Sink>(
 /// Heals and resurrects `stack` by `hp` hit points drained from its targets (BAT-DMG-008).
 // rule: BAT-DMG-008
 fn life_drain<S: Sink>(state: &mut BattleState, stack: StackId, hp: u64, sink: &mut S) {
-    // A clone that killed its own original is gone (BAT-MAG-038).
-    let hp = if state.at(stack).is_alive() { hp } else { 0 };
     let (hit_points, resurrected) = resurrect(state.at_mut(stack), hp);
     if hit_points > 0 {
         sink.emit(Event::public(EventKind::LifeDrained {

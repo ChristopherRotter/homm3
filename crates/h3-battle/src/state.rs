@@ -328,7 +328,8 @@ fn war_machines(
 
 /// The stacks `side` would have of each creature its hero's spells summon, as at the battle's
 /// start (the side's hero's bonuses, the native terrain; the original's 0x43D8B0 at the cast,
-/// `docs/formats/installation.md` §7.19), one creature each, for Summon Elemental (BAT-MAG-039).
+/// `docs/formats/installation.md` §7.19), one per summon spell of its hero's book, for Summon
+/// Elemental (BAT-MAG-039).
 fn summon_templates(
     ruleset: &Ruleset,
     setup: &BattleSetup,
@@ -342,20 +343,19 @@ fn summon_templates(
         .filter_map(|id| ruleset.spell(id).and_then(|s| s.summons))
         .filter_map(|id| ruleset.creature(id).map(|c| (id, c)));
     for (id, creature) in creatures {
-        if !out.iter().any(|t: &Stack| t.creature == id) {
-            let mut stack = Stack::new(
-                ruleset,
-                setup,
-                (id, creature),
-                side,
-                CREATED_SLOT,
-                Hex(0),
-                1,
-            );
-            stack.traits = stack.traits.with(StackTraits::SUMMONED, true);
-            // The content has at most `MAX_SUMMON_SPELLS` summon spells.
-            let _ = out.push(stack);
-        }
+        let mut stack = Stack::new(
+            ruleset,
+            setup,
+            (id, creature),
+            side,
+            CREATED_SLOT,
+            Hex(0),
+            1,
+        );
+        stack.traits = stack.traits.with(StackTraits::SUMMONED, true);
+        // One per summon spell of the book, at most `MAX_SUMMON_SPELLS` (two spells of one
+        // creature give two equal stacks; the first is used).
+        let _ = out.push(stack);
     }
     out
 }
