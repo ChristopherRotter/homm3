@@ -407,6 +407,25 @@ fn a_side_left_with_only_created_stacks_does_not_win() {
     );
 }
 
+// covers: BAT-FLE-002, BAT-MAG-037
+#[test]
+fn the_surrender_price_leaves_created_stacks_out() {
+    // Batch 2d CL1: 800 before and after a clone of the 10 Archers (SU: 910 before and after a
+    // summon); war machines still count (batch 1b R4). Ten `fixed` at 60: 300.
+    let r = ruleset();
+    let mut s = arena(
+        &r,
+        [Some(creator(&r, 1, 0)), Some(mage(&r, &[]))],
+        &[("fixed", 10, 5, 5)],
+        &[("serf", 1, 14, 5)],
+        1,
+    );
+    assert_eq!(s.surrender_price(&r, BattleSide::Attacker), Some(300));
+    let events = cast(&mut s, &r, "copy", stack(0)).unwrap();
+    assert_eq!(created(&events).len(), 1);
+    assert_eq!(s.surrender_price(&r, BattleSide::Attacker), Some(300));
+}
+
 // covers: BAT-MAG-036, BAT-MAG-037, BAT-MAG-038
 #[test]
 fn created_stacks_are_no_victims_and_a_sacrificed_original_takes_its_clone() {

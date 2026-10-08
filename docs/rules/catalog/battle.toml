@@ -314,6 +314,12 @@ numeric  = "integer"
   ref        = "TERRNAME.txt (terrain types, harvested); native terrains are gap-filled (crates/h3-harvest/data/gapfill.toml)"
   confidence = "high"
 
+  [[rule.source]]
+  kind       = "observation"
+  ref        = "experiments/results/E04b-batch-2d.md NE, SU (SoD 4.0 Complete, plain HD, 2026-10-08): on grass, Archangels 31/31/19 and Pixies 3/3/8 in the army; Air Elementals in the army 10/10/8, summoned Air Elementals 10/10/8 and Earth Elementals 11/11/5: the four elementals are Conflux natives on grass, as the engine has them (the code reading of 0x43D730, installation.md §7.19, predicted 9/9/7 and speed 4: the game setting it tests is on in this setup, or the reading is wrong)"
+  retrieved  = "2026-10-08"
+  confidence = "high"
+
 [[rule]]
 id       = "BAT-MOV-001"
 title    = "Walking movement"
@@ -1177,7 +1183,7 @@ id       = "BAT-END-001"
 title    = "End of battle"
 context  = "battle"
 status   = "implemented"
-summary  = "After every action (a whole melee sequence with retaliation and second attack, or a whole shot sequence; as VCMI checks after each action), if one side has no living stacks the battle ends and the other side wins (BattleResult::Victory); no stack is active afterwards and every command is rejected. War machines do not count as living stacks (BAT-WAR-001). The outcome lists the result, the surviving army stacks per side and, separately, the surviving war machines. If neither side has living stacks left the battle is a draw (BAT-END-002). Stacks created in battle (summoned stacks, clones) count as living, but a side whose living stacks are all created ones does not win: the battle is then a draw, both sides lose (BAT-MAG-037; the original's 0x4658B0, installation.md §7.19). Retreat and surrender: BAT-FLE-001/002."
+summary  = "After every action (a whole melee sequence with retaliation and second attack, or a whole shot sequence; as VCMI checks after each action), if one side has no living stacks the battle ends and the other side wins (BattleResult::Victory); no stack is active afterwards and every command is rejected. War machines do not count as living stacks (BAT-WAR-001). The outcome lists the result, the surviving army stacks per side and, separately, the surviving war machines. If neither side has living stacks left the battle is a draw (BAT-END-002). Stacks created in battle (summoned stacks, clones) count as living, but a side whose living stacks are all created ones does not win: the battle is then a draw, both sides lose (BAT-MAG-037; the original's 0x4658B0, installation.md §7.19). Retreat and surrender: BAT-FLE-001/002; against a side left with only created stacks the original names no winner either (batch 2d SU): the result still names the side that left, and that side's opponent, with no army survivors in the outcome (BAT-END-003), has lost as well (BAT-Q7, the user 2026-10-08: no contract change)."
 numeric  = "integer"
 
   [[rule.source]]
@@ -1192,6 +1198,12 @@ numeric  = "integer"
   ref        = "lib/battle/CBattleInfoCallback.cpp battleIsFinished"
   url        = "https://github.com/vcmi/vcmi/blob/1.7.5/lib/battle/CBattleInfoCallback.cpp"
   retrieved  = "2026-09-30"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "observation"
+  ref        = "experiments/results/E04b-batch-2d.md SU (SoD 4.0 Complete, plain HD, 2026-10-08): Red's side left with only summoned Air Elementals (and an Ammo Cart and a First Aid Tent): (a) its elementals kill Blue's last Skeleton: 'Your forces suffer a bitter defeat, and SUb abandons your cause.', both heroes gone from the map; (b) Blue retreats: 'The cowardly SUb flees from battle.', Red's hero gone too; (c) Blue surrenders (300 gold, Red's player 30000 -> 30300, Blue's 30000 -> 29700): 'SUb surrenders to the enemy, and departs in shame.', Red's hero gone: a side with only created stacks never wins (0x4658B0)"
+  retrieved  = "2026-10-08"
   confidence = "high"
 
 [[rule]]
@@ -1710,7 +1722,7 @@ id       = "BAT-FLE-002"
 title    = "Surrender and its price"
 context  = "battle"
 status   = "verified"
-summary  = "A side may surrender (Command::Surrender) when it may retreat (BAT-FLE-001: a hero, no NoRetreat effect in the battle; on its turn or in its tactics phase), the enemy is led by a hero and the ruleset prices surrenders (BattleParams.surrender), else CommandError::CannotSurrender; and only if its funds (BattleSetup.funds, private) cover the price, else CannotAffordSurrender. Price: cost_percent (50 in base) of the summed cost, in the surrender resource (gold), of the side's living stacks with their current counts, war machines included (batch 1b R4, user decision Q32: a rule), times (1 - the hero's surrender discount, BattleHero.surrender_discount_bp, HER-BAT-007), rounded down once, computed exactly; with quirk Q-0005 the discount enters as its single-precision value (R4: 179 for 300 at 40 %, exactly 180). A surrender ends the battle at once with BattleResult::Surrender(side) (no consent step, ADR-0013 point 7 as amended, Q32); the enemy wins. The orchestrator applies the consequences (the side pays and keeps its army). Surrender comes last among the legal commands (after Retreat); Whether a side may surrender at all is public (BattleState::surrender_possible, Observation.surrender_possible); its price and whether it can pay serve the side itself (BattleState::surrender_price, may_surrender, Observation.own_hero; the price depends on its private discount). Sieges (no surrender for a besieged defender) are E04c."
+summary  = "A side may surrender (Command::Surrender) when it may retreat (BAT-FLE-001: a hero, no NoRetreat effect in the battle; on its turn or in its tactics phase), the enemy is led by a hero and the ruleset prices surrenders (BattleParams.surrender), else CommandError::CannotSurrender; and only if its funds (BattleSetup.funds, private) cover the price, else CannotAffordSurrender. Price: cost_percent (50 in base) of the summed cost, in the surrender resource (gold), of the side's living stacks with their current counts, war machines included (batch 1b R4, user decision Q32: a rule) but not the stacks created in the battle (clones and summoned stacks, BAT-MAG-037; batch 2d CL1, SU; BAT-Q7, the user 2026-10-08), times (1 - the hero's surrender discount, BattleHero.surrender_discount_bp, HER-BAT-007), rounded down once, computed exactly; with quirk Q-0005 the discount enters as its single-precision value (R4: 179 for 300 at 40 %, exactly 180). A surrender ends the battle at once with BattleResult::Surrender(side) (no consent step, ADR-0013 point 7 as amended, Q32); the enemy wins. The orchestrator applies the consequences (the side pays and keeps its army). Surrender comes last among the legal commands (after Retreat); Whether a side may surrender at all is public (BattleState::surrender_possible, Observation.surrender_possible); its price and whether it can pay serve the side itself (BattleState::surrender_price, may_surrender, Observation.own_hero; the price depends on its private discount). Sieges (no surrender for a besieged defender) are E04c."
 quirks   = ["Q-0005"]
 numeric  = "integer"
 
@@ -1739,12 +1751,18 @@ numeric  = "integer"
   ref        = "ADR-0013 point 8: the battle prices a surrender; funds come in through the setup. The factor and the resource are ruleset data (ADR-0006 tier 2)"
   confidence = "high"
 
+  [[rule.source]]
+  kind       = "observation"
+  ref        = "experiments/results/E04b-batch-2d.md CL1, SU (SoD 4.0 Complete, plain HD, 2026-10-08): 10 Archers and 10 Pikemen: 800 before and after a clone of the 10 Archers (the engine counted it: 1 300); 7 Peasants, an Ammo Cart and a First Aid Tent: 910 before and after a summon of 2 Air Elementals (the engine: 1 160): created stacks are left out, war machines count; a surrender against a side left with only created stacks is still paid to it (SU c: 300)"
+  retrieved  = "2026-10-08"
+  confidence = "high"
+
 [[rule]]
 id       = "BAT-END-003"
 title    = "The outcome of a battle"
 context  = "battle"
 status   = "implemented"
-summary  = "Once the battle is over, BattleState::outcome reports facts for the orchestrator (ADR-0013 point 5): the result (victory, draw, retreat, surrender; BAT-END-001/002, BAT-FLE-001/002); per side every stack in stack order, dead ones included, but none created in the battle (summoned stacks and clones, BAT-MAG-037; E04b T6b), as StackRecord { origin: army slot or war machine, creature, start: the count at the start, end: the count alive at the end, whatever the result, without the creatures raised for the battle only (Basic Resurrection, BAT-MAG-035; E04b T6a), but a side whose living army creatures are all such keeps one in its last living army stack (BAT-QUIRK-6) }; the survivors (army stacks with end > 0, by slot) and surviving war machines derived from those records; the surrender's cost (the price paid, BAT-FLE-002) or none; per side the hero's mana left and the distinct spells it cast, by spell handle (E04b T2b; Eagle Eye's input); the last round started (0 if the battle ended in the tactics phase). The battle applies no consequence: casualties, a retreating side's lost army, the payment, captured artifacts, experience (killed war machines give none; Learning multiplies the whole sum including the +500, batch 1b R5) and Necromancy (rounded down per killed stack, R6) are applied by the orchestrator with the epics that own hero progression (E08-E10)."
+summary  = "Once the battle is over, BattleState::outcome reports facts for the orchestrator (ADR-0013 point 5): the result (victory, draw, retreat, surrender; BAT-END-001/002, BAT-FLE-001/002); per side every stack in stack order, dead ones included, but none created in the battle (summoned stacks and clones, BAT-MAG-037; E04b T6b), as StackRecord { origin: army slot or war machine, creature, start: the count at the start, end: the count alive at the end, whatever the result, without the creatures raised for the battle only (Basic Resurrection, BAT-MAG-035; E04b T6a), but a side whose living army creatures are all such keeps one in its last living army stack (BAT-QUIRK-6) }; the survivors (army stacks with end > 0, by slot) and surviving war machines derived from those records; the surrender's cost (the price paid, BAT-FLE-002) or none; per side the hero's mana left and the distinct spells it cast, by spell handle (E04b T2b; Eagle Eye's input); the last round started (0 if the battle ended in the tactics phase). The battle applies no consequence: casualties, a retreating side's lost army, the payment, captured artifacts, experience (killed war machines give none; Learning multiplies the whole sum including the +500, batch 1b R5) and Necromancy (rounded down per killed stack, R6) are applied by the orchestrator with the epics that own hero progression (E08-E10). A side whose opponent retreated or surrendered but which has no army survivors has lost as well (the original names no winner, BAT-END-001), and still receives a surrender's price. Not yet: the killed creatures of the stacks created in the battle, which the original's Necromancy counts and its experience does not (batch 2d NE; BAT-Q7 (b), the user 2026-10-08: a seam addition, QUEUE)."
 numeric  = "integer"
 
   [[rule.source]]
@@ -1764,6 +1782,12 @@ numeric  = "integer"
   url        = "https://github.com/vcmi/vcmi/blob/1.7.5/server/battles/BattleResultProcessor.cpp"
   retrieved  = "2026-10-04"
   confidence = "medium"
+
+  [[rule.source]]
+  kind       = "observation"
+  ref        = "experiments/results/E04b-batch-2d.md NE (SoD 4.0 Complete, plain HD, 2026-10-08): Expert Necromancy after killing 10 Pikemen, a clone of 10 Pikemen and 6 summoned Earth Elementals: 7 Skeletons raised (3 + 3 + 1: the original counts the created stacks' killed creatures, 0x4775E1; BAT-Q7 (b)); experience 600 (10 x 10 + 500: created stacks left out, 0x46A350). SU a: the casualty window lists 2 Air Elementals although at least 4 died (E1 in round 3, whose record E3 reused, and the stack imploded at the limit): a reused record seems to lose its losses"
+  retrieved  = "2026-10-08"
+  confidence = "high"
 
 [[rule]]
 id       = "BAT-MAG-001"
@@ -2611,6 +2635,12 @@ quirks   = ["BAT-QUIRK-6"]
   retrieved  = "2026-10-08"
   confidence = "medium"
 
+  [[rule.source]]
+  kind       = "observation"
+  ref        = "experiments/results/E04b-batch-2d.md RA1, RA4, RA2, RA3 (SoD 4.0 Complete, plain HD, 2026-10-08): power 5, mastery none (290): refused on 10 Swordsmen with the top wounded, on dead Titans (300) and on dead Gold Dragons (both hexes), allowed on 9 Pikemen; the later of two corpses on a hex is raised (1 Swordsman, not the Pikemen); a two-hex corpse is refused while a living stack holds its other hex and allowed once it left. Basic: 10 Swordsmen -> 5 (top 25) -> 8 -> 2 -> the army keeps 1; with a Ballista none (S-20: the hero stays on the map without creatures and loses its next battle at once; BAT-QUIRK-6 fixes it)"
+  retrieved  = "2026-10-08"
+  confidence = "high"
+
 [[rule]]
 id       = "BAT-MAG-036"
 title    = "Sacrifice"
@@ -2632,6 +2662,12 @@ quirks   = ["BAT-QUIRK-5"]
   retrieved  = "2026-10-03"
   confidence = "medium"
 
+  [[rule.source]]
+  kind       = "observation"
+  ref        = "experiments/results/E04b-batch-2d.md RA1 (SoD 4.0 Complete, plain HD, 2026-10-08): Sacrifice's first cursor refused on the dead Titans and Gold Dragons, allowed on the Pikemen (BAT-QUIRK-5, faithful); its second cursor with the Pikemen chosen refuses the Pikemen themselves and takes the Swordsmen (the engine's choice confirmed)"
+  retrieved  = "2026-10-08"
+  confidence = "high"
+
 [[rule]]
 id       = "BAT-MAG-037"
 title    = "Stacks created in battle"
@@ -2652,14 +2688,20 @@ numeric  = "integer"
   retrieved  = "2026-10-05"
   confidence = "high"
 
+  [[rule.source]]
+  kind       = "observation"
+  ref        = "experiments/results/E04b-batch-2d.md CL1, SU (SoD 4.0 Complete, plain HD, 2026-10-08): both clones and every summoned stack act in the round they appear; SU's E3 took E1's dead record and acted before E2 in round 4 (equal speed); 12 Air Elemental casts with 9 records (7 Peasants and two war machines) until the limit, the 13th refused ('Because SU has already summoned Air Elementals, no other elementals will come to her aid.') and still refused after another elemental stack died"
+  retrieved  = "2026-10-08"
+  confidence = "high"
+
 [[rule]]
 id       = "BAT-MAG-038"
 title    = "Clone"
 context  = "battle"
 status   = "implemented"
-summary  = "A spell with a clone effect (SpellEffect::Clone: Clone, a positive water spell of level 4, not on war machines) is aimed at a living stack of the caster's side (its own, whoever controls it) that the spell can affect (immunities, Anti-Magic), that is no clone and has no living clone, and whose creature's level is at most the spell's effect[mastery] (5, 5, 6, 7 in the original), while the side may create a stack (BAT-MAG-037). An elemental (summoned, no clone) qualifies. The clone is a fresh stack (BAT-MAG-037) of the target's creature with its statistics, count (its start count too) and side, with traits SUMMONED and CLONE, that lasts the caster's power + its duration bonus rounds (at least 1, as timed spells, BAT-MAG-010): each round's start (after the timed effects) takes one, and the start that leaves none removes it (Vanished; BattleState::clone_rounds). Any damage kills all its creatures, and it vanishes when its original dies (also sacrificed); its death frees the original for another clone. Its place: in rings 1 to 10 around the target, from the target's position (its tail, or its only hex) and, for a two-hex target, from its head, along the six directions (from top right clockwise for the attacker, from top left anticlockwise for the defender), the hexes 1 to the ring's number away, the first where the clone fits (standable, unblocked, no living stack); skipped: right and left of the position in ring 1, and from the head towards the tail in rings 1 and 2. No place: nothing happens. Quirk BAT-QUIRK-7 (fixed): the original counts the target's own hexes as free."
+summary  = "A spell with a clone effect (SpellEffect::Clone: Clone, a positive water spell of level 4, not on war machines) is aimed at a living stack of the caster's side (its own, whoever controls it) that the spell can affect (immunities, Anti-Magic), that is no clone and has no living clone, and whose creature's level is at most the spell's effect[mastery] (5, 5, 6, 7 in the original), while the side may create a stack (BAT-MAG-037). An elemental (summoned, no clone) qualifies. The clone is a fresh stack (BAT-MAG-037) of the target's creature with its statistics, count (its start count too) and side, with traits SUMMONED and CLONE, that lasts the caster's power + its duration bonus rounds (at least 1, as timed spells, BAT-MAG-010): each round's start (after the timed effects) takes one, and the start that leaves none removes it (Vanished; BattleState::clone_rounds). Any damage kills all its creatures, and it vanishes when its original dies (also sacrificed); its death frees the original for another clone. Its place: in rings 1 to 10 around the target, from the target's position (its tail, or its only hex) and, for a two-hex target, from its head, along the six directions (from top right clockwise for the attacker, from top left anticlockwise for the defender), the hexes 1 to the ring's number away, the first where the clone fits (standable, unblocked, no living stack); skipped: right and left of the position in ring 1, and from the head towards the tail in rings 1 and 2. No place: nothing happens. The original counts the target's own hexes as free: a clone placed on the target's head makes the target itself vanish when the clone's rounds run out (quirk BAT-QUIRK-7, fix-optional; not flagged yet: fixed in every profile), one whose front hex is the target's shares a hex with it (BAT-QUIRK-8, fixed)."
 numeric  = "integer"
-quirks   = ["BAT-QUIRK-7"]
+quirks   = ["BAT-QUIRK-7", "BAT-QUIRK-8"]
 
   [[rule.source]]
   kind       = "original-data"
@@ -2679,6 +2721,12 @@ quirks   = ["BAT-QUIRK-7"]
   url        = "https://github.com/vcmi/vcmi/blob/1.7.5/lib/spells/effects/Clone.cpp"
   retrieved  = "2026-10-05"
   confidence = "medium"
+
+  [[rule.source]]
+  kind       = "observation"
+  ref        = "experiments/results/E04b-batch-2d.md CL1, CL2 (SoD 4.0 Complete, plain HD, 2026-10-08): the attacker's clone at the up-right neighbour of its original, the defender's at the up-left one; the clone of 10 Archers that had fired shows 12 shots, 11 after its shot; Magic Arrow (30) kills all 10 of it; a power-2 clone is gone at the start of round 3, without a corpse. CL2: Clone on crowded two-hex Griffins and Wolf Riders: no clone, no new spell on the originals, both originals gone at the start of round 3 (no corpse) and the Griffins lost from Red's army after the battle (BAT-QUIRK-7 as read)"
+  retrieved  = "2026-10-08"
+  confidence = "high"
 
 [[rule]]
 id       = "BAT-MAG-039"
@@ -2706,6 +2754,12 @@ numeric  = "integer"
   url        = "https://github.com/vcmi/vcmi/blob/1.7.5/lib/spells/effects/Summon.cpp"
   retrieved  = "2026-10-05"
   confidence = "medium"
+
+  [[rule.source]]
+  kind       = "observation"
+  ref        = "experiments/results/E04b-batch-2d.md SU (SoD 4.0 Complete, plain HD, 2026-10-08): Air Elemental with power 1 (2 elementals) at random free rows of the attacker's column 1 (rows 7, 3, 2, 0, 6, 8, 7, 5, 10, 4 counted from 0, between the war machines in rows 1 and 9), then column 2 (rows 3, 8)"
+  retrieved  = "2026-10-08"
+  confidence = "high"
 
 [[rule]]
 id       = "BAT-MAG-040"
