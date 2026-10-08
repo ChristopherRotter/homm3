@@ -666,6 +666,7 @@ fn parse_traits(traits: &[&str]) -> CreatureInfoDef {
                     rounds: rounds.parse().unwrap(),
                     living: rest.contains(&"living"),
                     unless_active: rest.contains(&"unless"),
+                    defended: rest.contains(&"defended"),
                 }
             }
             "spell_damage_after_strike" => {

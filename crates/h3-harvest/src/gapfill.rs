@@ -130,6 +130,10 @@ pub struct SpellTimed {
     /// table row holds none (Disease: 2; Paralyze: Blind's Advanced 25; pack format v20).
     #[serde(default)]
     pub effect: Option<[u16; 4]>,
+    /// No immunity, resistance or aura applies; after a strike, no test at all (Bind, Acid
+    /// Breath; pack format v21).
+    #[serde(default)]
+    pub ignores_immunity: bool,
     /// Source ids.
     pub sources: Vec<String>,
 }

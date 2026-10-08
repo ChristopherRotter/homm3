@@ -38,6 +38,7 @@ pub(crate) fn cast<S: Sink>(
                 rounds,
                 living,
                 unless_active,
+                defended: _,
             } => {
                 // A compiled ability names a spell of the ruleset.
                 let landed = ruleset.spell(spell).filter(|data| {

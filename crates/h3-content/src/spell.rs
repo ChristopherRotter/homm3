@@ -185,11 +185,14 @@ pub enum TimedChange {
     Poison,
     /// The stack's hit points per creature are halved while it lasts (Age; BAT-MAG-044, v20).
     Age,
+    /// The stack cannot move (it still attacks next to it) while the stacks that struck it with
+    /// the spell stay (Bind; BAT-MAG-045, v21).
+    Bind,
 }
 
 impl TimedChange {
     /// All values, in code order.
-    pub const ALL: [Self; 31] = [
+    pub const ALL: [Self; 32] = [
         Self::Speed,
         Self::SpeedPercent,
         Self::Attack,
@@ -221,6 +224,7 @@ impl TimedChange {
         Self::Paralyze,
         Self::Poison,
         Self::Age,
+        Self::Bind,
     ];
 
     /// Pack name.
@@ -257,6 +261,7 @@ impl TimedChange {
             Self::Paralyze => "paralyze",
             Self::Poison => "poison",
             Self::Age => "age",
+            Self::Bind => "bind",
         }
     }
 

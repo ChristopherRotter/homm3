@@ -34,7 +34,7 @@ pub const MAX_SIDE_STACKS: usize = 21;
 pub const MAX_FIELD_HEXES: usize = 255;
 
 /// Version of the ruleset hash encoding. Bump when the encoding below changes.
-pub const RULESET_HASH_VERSION: u32 = 29;
+pub const RULESET_HASH_VERSION: u32 = 30;
 
 /// A compiled creature type.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -1111,8 +1111,8 @@ fn validate_creature(
 }
 
 /// Checks that the spells a creature's strike abilities name do what the abilities need: a
-/// spell after a strike has a timed or dispel effect and nothing else (BAT-MAG-040), a damage
-/// spell after a strike has a damage effect (BAT-MAG-041).
+/// spell after a strike has a timed or dispel effect and nothing else (BAT-MAG-040, BAT-MAG-045,
+/// BAT-MAG-046), a damage spell after a strike has a damage effect (BAT-MAG-041).
 fn validate_strike_spells(
     key: &ContentKey,
     abils: &[CompiledAbility],
@@ -1378,7 +1378,8 @@ impl CanonicalHash for Ruleset {
     /// `clone` and `summon`. v28 (E04b T7a1): the battle magic ends with `dispels_positive`;
     /// abilities `spell_after_strike` (29) and `spell_damage_after_strike` (30). v29 (E04b T7a2): the
     /// battle magic ends with `restores_health`; timed changes `petrify`, `paralyze`, `poison`,
-    /// `age` (27 to 30).
+    /// `age` (27 to 30). v30 (E04b T7a3): `spell_after_strike` ends with `defended`; ability
+    /// `damage_after_strike` (31); timed change `bind` (31).
     fn hash_into(&self, h: &mut StateHasher) {
         h.write_u32(RULESET_HASH_VERSION);
         h.write_len(self.packs.len());

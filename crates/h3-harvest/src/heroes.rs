@@ -386,6 +386,9 @@ fn timed_spell(
     if t.cumulative {
         let _ = writeln!(text, "cumulative = true");
     }
+    if t.ignores_immunity {
+        let _ = writeln!(text, "ignores_immunity = true");
+    }
     match t.ends.as_deref() {
         None => {}
         Some(e @ ("damaged" | "own_attack")) => {

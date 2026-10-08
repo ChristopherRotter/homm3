@@ -145,8 +145,9 @@ errors:
 | `spell_damage_reduction` | `percent` (1..=100) | damage from spells × (100 − `percent`) / 100, rounded down (Golems; BAT-MAG-004) |
 | `magic_resistance` | `percent` (1..=100) | the creature lets `100 − percent` % of hostile spells through (Dwarves, Crystal Dragon; BAT-MAG-008) |
 | `magic_resistance_aura` | `percent` (1..=100) | adjacent allied stacks' chance to be affected by a hostile spell × (100 − `percent`) %, the strongest aura once (Unicorns; BAT-MAG-008) |
-| `spell_after_strike` | `spell`, `chance_percent` (1..=100), `mastery` (0..=3), `rounds` (≥ 1), `living`, `unless_active` (default false) | since v19: after each melee strike casts `spell` (timed or dispel effects only) on the struck stack: the chance drawn (none at 100), the stack alive, of a living creature if `living`, not under the spell if `unless_active`, then the spell's test without the side test; at `mastery`, lasting `rounds`, without a hero (one entry per spell; Unicorns, Black Knights, the flies; BAT-MAG-040) |
+| `spell_after_strike` | `spell`, `chance_percent` (1..=100), `mastery` (0..=3), `rounds` (≥ 1), `living`, `unless_active`, `defended` (v21) (default false) | since v19: after each melee strike casts `spell` (timed or dispel effects only) on the struck stack: the chance drawn (none at 100), the stack alive, of a living creature if `living`, not under the spell if `unless_active`, with a defense above 0 if `defended`, then the spell's test without the side test (none for a spell that `ignores_immunity`; a `bind` spell only once per striker); at `mastery`, lasting `rounds`, without a hero (one entry per spell; Unicorns, Black Knights, the flies, BAT-MAG-040; Dendroids, Rust Dragons, BAT-MAG-045, BAT-MAG-046) |
 | `spell_damage_after_strike` | `spell`, `chance_percent` (1..=100), `per_creature` (≥ 1) | since v19: after each melee strike deals `per_creature` × its creatures damage as `spell` (a damage spell) to the struck stack, after the chance and the spell's test (the Thunderbird; BAT-MAG-041) |
+| `damage_after_strike` | `chance_percent` (1..=100), `percent` (1..=100) | since v21: after each melee strike, on a living struck stack and after the chance, deals `percent` % of one roll of its damage range × its creatures (truncated; nothing if 0), without a test (the Rust Dragon; BAT-MAG-047) |
 
 `creature` references follow the reference rules above (own pack, or `pack:name` in the
 dependency closure) and may name creatures defined later in the same pack. At most one entry of
@@ -161,7 +162,7 @@ override, replacing the list) names the creature types it upgrades into: at most
 none twice; references follow the reference rules and may name later creatures of the pack.
 Hero effects that select "a creature" apply to it and its direct upgrades.
 
-## Hero content (format v3, E04a T3; battle magic format v4, E04b T2a; v5 T3a; v6 T3b1; v7 T3b1b; v8 T3b2; v9 T3c; v10 T4a; v11 T4b; v12 T4c; v13 T5a; v14 T5c1; v15 T5c2; v16 T5b; v17 T6a; v18 T6b; v19 T7a1; v20 T7a2)
+## Hero content (format v3, E04a T3; battle magic format v4, E04b T2a; v5 T3a; v6 T3b1; v7 T3b1b; v8 T3b2; v9 T3c; v10 T4a; v11 T4b; v12 T4c; v13 T5a; v14 T5c1; v15 T5c2; v16 T5b; v17 T6a; v18 T6b; v19 T7a1; v20 T7a2; v21 T7a3)
 
 Spell schools, spells, secondary skills, hero classes and hero types (ADR-0013). References follow
 the reference rules above; every kind may refer to content of its dependency closure.
@@ -238,7 +239,8 @@ side = "own"
 any_side = "advanced"              # v7: from this mastery it reaches either side
 needs_effect = true                # v7: a stack it is aimed at needs an active timed effect
 ignores_immunity = true            # v7: no immunity, magic resistance or aura applies; v10: nor
-                                   # Anti-Magic, and a Magic Mirror never sends it away
+                                   # Anti-Magic, and a Magic Mirror never sends it away; v21:
+                                   # cast after a strike, no test at all (Bind, Acid Breath)
 mass = "expert"
 spares = ["poison"]                # v7: its dispel effect ends every effect but these (or
                                    # `dispels = [...]`: only these; not both)
@@ -433,7 +435,9 @@ BAT-MAG-025), `hypnotize` (the other side controls it, BAT-MAG-026); since v20, 
 `paralyze` (it loses its turns; struck in melee it retaliates with v %, the smaller with Blind's;
 both BAT-MAG-043), `poison` (its hit points per creature fall by a tenth of their start value at
 the cast and at each round start while it lasts, to half, and stay down after it ends) and `age`
-(halved while it lasts; both BAT-MAG-044)); since v13, E04b T5a: `obstacle` (with `obstacle = "wall"` or `"fire"` and the
+(halved while it lasts; both BAT-MAG-044); since v21, E04b T7a3: `bind` (the stack cannot move,
+it attacks only next to it; it ends when its last binder, a striker whose `spell_after_strike`
+cast it, moves, dies or is teleported, or when the stack is teleported, BAT-MAG-045)); since v13, E04b T5a: `obstacle` (with `obstacle = "wall"` or `"fire"` and the
 spell's `obstacle` shape: places obstacles on the target hex's shape for its rounds; a wall blocks
 its hexes, BAT-MAG-027; fire burns a stack that enters a hex or acts on one with the value as the
 spell's damage, BAT-MAG-028; since v14, E04b T5c1, `"pit"`: hidden from the other side until revealed,
