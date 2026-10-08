@@ -1188,10 +1188,18 @@ start. The end routine (0x444510) gives Disease's points back, recomputes Age's 
 poison factor and the same cap, and for Bind removes the stack from each binder's list and empties
 its own; it gives nothing back for Poison, so **the poison factor and its lost hit points stay for
 the battle** after Poison ends, until a Cure (0x446500 resets the factor to 1.0 and the hit points
-before it ends the spells, §7.10). Bind is also released (0x43EE10) when a binder moves (0x4420A3,
-the walk), dies (0x4441C7) or is teleported (0x5A1B88, 0x4B4E90): the binder leaves the bound-by
-list of each stack it binds, and a stack whose list becomes empty has its Bind ended. Bind is ended
-by Dispel, not by Cure (§7.10).
+before it ends the spells, §7.10). Bind is also released (0x43EE10) when a binder moves (the move
+handler 0x445990: the walk 0x441FA0 at 0x4420A3, the flight 0x4B49C0 at 0x4B49E1, a Devil's
+teleporting move 0x4B4E90 at 0x4B4EB1), dies (the death routine 0x444120 at 0x4441C7) or is
+teleported by Teleport (0x5A1B88): the binder leaves the bound-by list of each stack it binds
+(from its own list's end), a stack whose list becomes empty has its Bind ended (0x444510(72)),
+and the binder's own list is emptied. Teleport then ends the teleported stack's own Bind as well
+(0x5A1B91, `push 0x48; call 0x444510`). The pathfinder's test reads Bind's duration (+0x2B8), not
+the lists. Bind is ended by Dispel, not by Cure (§7.10). Bind and Acid Breath skip the test, so
+the flag word's war-machine bit (`0x1000`, set on Bind) does not keep them off a war machine.
+*Not reproduced (BAT-Q8):* 0x440500 lists the striker among the binders of a T its strike killed
+(no cast follows); the entry stays until the striker moves or dies, so a T raised meanwhile would
+not be bound by that striker's next strike. The engine binds only a living T.
 
 **The striker's effects** (0x440BC0):
 - *Thunderbird*: a 20 % draw, then the test for **Lightning Bolt** (17) as above (so Earth and
@@ -1204,5 +1212,7 @@ by Dispel, not by Cure (§7.10).
   positive type; no immunity, resistance or aura), it is cast at once (creature cast, mastery 0,
   power 3). Then a Dragon Fly, if T is not under Weakness (+0x24C) and passes the test for Weakness
   (45), casts Weakness at once **at mastery 2** (Advanced: `v` = 6) with power 3.
-- *Rust Dragon*: a 20 % draw, then `random(min, max damage) × S's creatures / 2` (truncated) as
-  damage, with no test (after Acid Breath, step 2).
+- *Rust Dragon* (0x44149F): if T lives, a 20 % draw, then `random(min, max damage) × S's creatures
+  / 2` (truncated; S's +0xD0, +0xD4) taken through 0x444090 if above 0, with no test and no
+  reduction (after Acid Breath, step 2); a message, then the pending spells are cast again
+  (0x468990).
