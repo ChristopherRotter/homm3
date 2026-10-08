@@ -63,8 +63,8 @@ pub(crate) fn next_active(state: &BattleState) -> Option<StackId> {
 /// Starts a new round: resets retaliation (with Counterstrike's extra ones, BAT-MAG-015), wait,
 /// morale, started and acted flags (the Defend bonus lasts until the stack's next activation,
 /// BAT-TRN-004) and the heroes' casts (BAT-MAG-001); then the timed effects lose a round or end
-/// (BAT-MAG-010), the clones lose a round or vanish, which may end the battle (BAT-MAG-038),
-/// then the spell obstacles (BAT-MAG-027).
+/// (BAT-MAG-010), the clones lose a round or vanish (BAT-MAG-038; never their side's last
+/// stack: a clone's original lives), then the spell obstacles (BAT-MAG-027).
 // rule: BAT-TRN-003, BAT-MAG-001
 pub(crate) fn start_round<S: Sink>(state: &mut BattleState, ruleset: &Ruleset, sink: &mut S) {
     state.round = state.round.saturating_add(1);
@@ -85,10 +85,7 @@ pub(crate) fn start_round<S: Sink>(state: &mut BattleState, ruleset: &Ruleset, s
     }));
     effects::count_down(state, ruleset, sink);
     // rule: BAT-MAG-038
-    if state.stacks.iter().any(|s| s.has(StackTraits::CLONE)) {
-        crate::created::count_down(state, sink);
-        crate::combat::check_end(state, sink);
-    }
+    crate::created::count_down(state, sink);
     obstacles::count_down(state, sink);
 }
 
@@ -139,8 +136,7 @@ pub(crate) fn end_turn<S: Sink>(
 fn pick<S: Sink>(state: &mut BattleState, ruleset: &Ruleset, sink: &mut S) -> Option<StackId> {
     next_active(state).or_else(|| {
         start_round(state, ruleset, sink);
-        // A clone that vanished can end the battle (BAT-MAG-038).
-        state.result.is_none().then(|| next_active(state)).flatten()
+        next_active(state)
     })
 }
 

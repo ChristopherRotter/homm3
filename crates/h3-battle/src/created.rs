@@ -346,16 +346,17 @@ fn vanish<S: Sink>(state: &mut BattleState, c: StackId, sink: &mut S) {
 }
 
 /// At a round's start, after the timed effects (BAT-MAG-038; the original's 0x447120): every
-/// living clone loses a round, and one left with none vanishes, freeing its original.
+/// living clone (one with rounds left) loses a round, and one left with none vanishes, freeing its
+/// original.
 pub(crate) fn count_down<S: Sink>(state: &mut BattleState, sink: &mut S) {
     for i in 0..state.stacks.len() {
-        let c = StackId(u8::try_from(i).unwrap_or(u8::MAX));
-        if !state.at(c).has(StackTraits::CLONE) || !state.at(c).is_alive() {
+        let rounds = &mut state.created.rounds[i];
+        if *rounds == 0 {
             continue;
         }
-        let rounds = &mut state.created.rounds[i];
-        *rounds = rounds.saturating_sub(1);
+        *rounds -= 1;
         if *rounds == 0 {
+            let c = StackId(u8::try_from(i).unwrap_or(u8::MAX));
             vanish(state, c, sink);
             died(state, c, sink);
         }
