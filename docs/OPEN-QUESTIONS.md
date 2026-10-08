@@ -48,7 +48,7 @@ The original picks Chain Lightning's next target by screen distance; the y posit
 
 **Options.** (a) Keep the seam as is: Necromancy without created stacks (a small difference from the original; HotA's choice is not known), the orchestrator treats a winner whose survivors are empty as having lost (the adventure rule that a hero needs an army), and the surrender price as it is until an experiment says otherwise. (b) Report the created stacks' killed creatures per side in `BattleOutcome` (a seam addition, ADR-0014 point 10), and say "no winner" for a retreat/surrender against only created stacks (a contract change of `BattleResult`). **Recommendation: (a)** now, with an experiment for the Necromancy count (`docs/experiments/README.md`, T6b); (b) only if E08–E10 need the exact count. Blocks nothing in E04b.
 
-**User (2026-10-08, T6 checkpoint): experiment first, then decide.** The engine keeps today's behaviour until the batch is evaluated.
+**User (2026-10-08, T6 checkpoint): experiment first, then decide.** The engine keeps today's behaviour until the batch is evaluated. Staged in batch 2d (2026-10-08): Necromancy and experience (NE), the end against only elementals by elimination, retreat and surrender (SU), the surrender price with a clone and with elementals (CL1, SU).
 
 ### Adventure lane (`ADV-Q<n>`)
 

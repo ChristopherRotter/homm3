@@ -56,6 +56,7 @@ written into the spec.
 | 2a (`E04b-batch-2a`) | Chain Lightning by screen or hex distance and its tie order (Q44, X-6), aiming Fireball and Implosion and the aimed stack's resistance roll (BAT-MAG-003/007/008, X-5), a spell specialist's rounding with Sorcery against creature levels, Golems and elementals and the Gold Dragon's immunity (X-1, X-2), the Orb with Sorcery (X-1), costs with Mages, Pegasi and Familiars and casting in the Ballista's turn (X-3, X-4), the tactics hand-over (Q40) | **evaluated** (2026-10-06): `docs/rules/surveys/E04b-magic.md` §13, `docs/epics/E04b-log.md` (T2e); Q40 answered; the costs (R6) open for T7 |
 | 2b (`E04b-batch-2b`) | the x87 precision of the damage stages, 53 or 64 bits (Q50), Counterstrike's extra round (Q-0008), Fire Shield's reflection base (Q-0010), Shield with Basic Armorer in one product and Armorer alone (BAT-DMG-002, Q-0005), a counter pair: Bloodlust and Weakness add up, Haste and Slow cancel (Q47), an Armorer specialist at level 10 (Q45 (b)) | **evaluated** (2026-10-07): every encounter as the engine's faithful prediction (53 bits; Q-0008, Q-0010, Q47, Q45 (b) observed); `docs/epics/E04b-log.md` (batch 2b folded in) |
 | 2c (`E04b-batch-2c`) | the anchor hexes of natural obstacles (Q55: Remove Obstacle, Fire Wall and a flyer on the free hex beside an obstacle, three battlefields), Fire Wall burning on entering, Wait and Defend, the defender's Force Field and Fire Wall shapes (BAT-MAG-027/028), a walker's path among equally short ones past a Fire Wall (BAT-MOV-003), Berserk between two equally near stacks (BAT-MAG-025), Hypnotize against a wounded stack, Expert and Basic Cure on a hypnotized stack (BAT-MAG-026, Q-0012) | **evaluated** (2026-10-07): every encounter as the engine's faithful prediction (H1's round 3 after the user's correction, BAT-Q2); A2 confirms Q55's anchors; `docs/epics/E04b-log.md` (batch 2c folded in) |
+| 2d (`E04b-batch-2d`) | where a clone appears, its turn, shots, rounds and death by any damage, and the surrender price with a clone (CL1; BAT-MAG-038, BAT-FLE-002); a clone on its own crowded two-hex original (CL2, BAT-QUIRK-7); Resurrection's and Sacrifice's targets (RA1, BAT-QUIRK-5, S-15) and corpses (RA4); Basic Resurrection's temporary creatures at the battle's end, with a Ballista too (RA2, RA3; BAT-QUIRK-6, S-20); Necromancy and experience from created stacks, the elementals' native terrain (NE; BAT-Q7, BAT-TER-001); Summon Elemental's place, a dead elemental's slot, the limit of 20 stacks, a side left with only elementals against an elimination, a retreat and a surrender (SU; BAT-MAG-037/039, BAT-Q7) | **compiled** (2026-10-08, the T6 checkpoint); grass; SU last, with a save for its variants |
 
 **How the user plays** (2026-10-03): the Complete edition's `Heroes3.exe` started through a HotA
 installation's HD Mod launcher (HD Mod 5.6 R9). The HD Mod's always-on changes are crash fixes; its
@@ -99,28 +100,11 @@ stack crossing a mine that stays. From T5b (Remove Obstacle, `installation.md` �
 Obstacle at Basic refused on a Fire Wall and at Advanced on a Force Field; a usual obstacle's anchor
 hex that a second usual obstacle covers (Remove Obstacle there takes the covering one, after which
 the hex leads to no obstacle: 0x466B30 clears it); the original's random obstacles placed on
-another obstacle's free anchor hex (the generator's anchor test was not read). From T6a
-(Resurrection, Animate Dead, Sacrifice, `installation.md` §7.18): Resurrection refused on a full
-stack that is only wounded, and on Angels while it raises fewer than 200 hit points; Sacrifice
-refused on a target whose creatures have more health than Resurrection would raise at the hero's
-Earth mastery, and on Gold Dragons (BAT-QUIRK-5); whether the second cursor accepts the target
-itself as the victim (the engine refuses it); two corpses on one hex (the later one is raised
-first); a dead two-hex stack whose second hex a living stack holds (no target); the army after a
-won battle with creatures raised at Basic (one creature stays in the last stack, none with a
-Ballista: BAT-QUIRK-6, S-20); a stack that loses creatures after a Basic raise (the original never
-lowers the temporary count: the losses come out of the permanent creatures). From T6b (Clone,
-Summon Elemental, `installation.md` §7.19; the user asked for BAT-QUIRK-7, BAT-Q7 and the clone's
-shots to be played before they are decided, T6 checkpoint 2026-10-08): a clone's place around a one-hex stack (top right first
-for the attacker, never right or left in ring 1) and around a crowded two-hex one (BAT-QUIRK-7: the
-original stack becomes the clone); a clone that acts in the round it appears; a clone killed by a
-0-damage spell (Magic Arrow on Gold Golems); a clone of a shooter that has fired: its shots (the engine gives the
-creature's full shots); twenty stacks of a side with one dead elemental (the
-spell book refuses Clone and Summon Elemental); the slot a dead elemental frees (the next summon's
-place in the turn order); the summoned row's distribution in the first column; a battle won by
-elementals alone (both lose) and a retreat against a side with only elementals left (the original
-names no winner); whether Necromancy raises from killed elementals and clones (the original's loop
-counts them); whether the surrender price counts summoned stacks and clones; the native-terrain bonus of Fire, Earth, Water and Air Elementals in an army (0x43D730
-clears their town unless a game setting is on; BAT-TER-001).
+another obstacle's free anchor hex (the generator's anchor test was not read). Batch 2d staged T6a's and T6b's
+candidates (the user, T6 checkpoint 2026-10-08: BAT-QUIRK-7, BAT-Q7 and the clone's shots before
+they are decided) but two: a clone killed by 0 damage (the original kills a clone whatever the
+damage, VCMI 1.7.5 not by 0; no hero spell deals 0 in SoD) and the game setting that keeps the
+elementals' native terrain (0x43D730, not read).
 
 The smoke map is generated by `cargo run -p h3-formats --example smoke_map --
 original-data/extracted/H3bitmap/Objects.txt experiments/out/E04a-smoke.h3m`.
