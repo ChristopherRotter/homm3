@@ -3,20 +3,24 @@
 //! the action names only its target; the stack's `spell_caster` ability gives the spell, the
 //! mastery and the power, a random caster (the Faerie Dragon) draws its spell at each activation
 //! from its `drawn_spell` entries, and a helpful caster (the Master Genie, E04b T7b2b) draws at the
-//! cast among those useful for its target (BAT-MAG-050); each cast uses one of the casts its
-//! creature has per battle. The casts left and the active stack's drawn spell are kept beside the
-//! stacks (the hot paths never read them).
+//! cast among those useful for its target (BAT-MAG-050); the raisers raise without a spell, the
+//! Archangel another stack of its side (BAT-MAG-051), the Pit Lord Demons from a corpse
+//! (BAT-MAG-052, E04b T7b3); each cast uses one of the casts its creature has per battle. The
+//! casts left and the active stack's drawn spell are kept beside the stacks (the hot paths never
+//! read them).
 
-use h3_content::{Ability, CreatureFlag, Ruleset, Spell, SpellId, Usefulness};
+use h3_content::{Ability, CreatureFlag, CreatureTypeId, Ruleset, Spell, SpellId, Usefulness};
 use h3_contracts::BattleSide;
 use h3_kernel::{CanonicalHash, StateHasher};
 
 use crate::combat;
+use crate::created;
 use crate::effects::Status;
 use crate::error::CommandError;
 use crate::event::{Event, EventKind, Sink, Visibility};
 use crate::geometry::Field;
 use crate::magic::{self, Cast, CastTarget, CastTargets};
+use crate::raise;
 use crate::state::{BattleState, STACK_CAPACITY, Stack, StackFlags, StackId, StackTraits};
 
 /// The spell a stack's cast names before its resolution (ADR-0014 points 3 and 9; BAT-MAG-048 to
@@ -28,6 +32,50 @@ pub enum CastSpell {
     /// None yet: the stack draws it at the cast among the spells useful for its target (the
     /// Master Genie, BAT-MAG-050).
     AtResolution,
+    /// None: the stack raises without a spell (the Archangel, the Pit Lord; BAT-MAG-051,
+    /// BAT-MAG-052).
+    Raise,
+}
+
+/// What a raiser raises as its stack's action (BAT-MAG-051, BAT-MAG-052).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) enum Raiser {
+    /// Another stack of its side, living or dead, under the raise spell `test`'s test, by
+    /// `per_creature` hit points per creature of the raiser (the Archangel).
+    Stack {
+        /// The raise spell whose test applies.
+        test: SpellId,
+        /// Hit points per creature of the raiser.
+        per_creature: u16,
+    },
+    /// A stack of `creature` from a corpse of its side (the Pit Lord's Demons).
+    Corpse {
+        /// The creature it raises.
+        creature: CreatureTypeId,
+        /// Hit points per creature of the raiser.
+        per_creature: u16,
+    },
+}
+
+/// What a stack of `creature` raises as its action, if its creature is a raiser.
+pub(crate) fn raiser(ruleset: &Ruleset, creature: CreatureTypeId) -> Option<Raiser> {
+    ruleset.abilities(creature).iter().find_map(|a| match *a {
+        Ability::StackRaiser {
+            spell,
+            hit_points_per_creature,
+        } => Some(Raiser::Stack {
+            test: spell,
+            per_creature: hit_points_per_creature,
+        }),
+        Ability::CorpseRaiser {
+            creature,
+            hit_points_per_creature,
+        } => Some(Raiser::Corpse {
+            creature,
+            per_creature: hit_points_per_creature,
+        }),
+        _ => None,
+    })
 }
 
 /// What a creature casts as its action: its `spell_caster` ability's spell, mastery and power, a
@@ -74,6 +122,12 @@ pub(crate) fn stack_cast(
                 spell: CastSpell::AtResolution,
                 mastery,
                 power: u32::from(power),
+                drawn: false,
+            }),
+            Ability::StackRaiser { .. } | Ability::CorpseRaiser { .. } => Some(CreatureSpell {
+                spell: CastSpell::Raise,
+                mastery: 0,
+                power: 0,
                 drawn: false,
             }),
             Ability::RandomSpellCaster {
@@ -134,7 +188,7 @@ impl CanonicalHash for Casts {
 }
 
 /// The casts per battle of `creature` (its pack's `casts`).
-pub(crate) fn per_battle(ruleset: &Ruleset, creature: h3_content::CreatureTypeId) -> u8 {
+pub(crate) fn per_battle(ruleset: &Ruleset, creature: CreatureTypeId) -> u8 {
     ruleset.creature_info(creature).map_or(0, |i| i.casts)
 }
 
@@ -341,17 +395,131 @@ pub fn creature_cast_targets(
     magic::creature_targets(state, ruleset, actor, (caster, spell), out);
 }
 
+/// A creature's cast as its action, validated ([`plan`]).
+pub(crate) enum CreatureAction<'r> {
+    /// A spell cast (BAT-MAG-048 to BAT-MAG-050).
+    Cast(Cast<'r>),
+    /// A raise of the stack or corpse `1` by the raiser `0` (BAT-MAG-051, BAT-MAG-052).
+    Raise(StackId, StackId),
+}
+
 /// Validates `actor`'s creature cast at `target` (BAT-MAG-048): the active stack, which `actor`
 /// commands outside the tactics phase, is a caster with a cast left, and `target` is a target of
-/// its spell.
+/// its spell or its raise.
 pub(crate) fn plan<'r>(
     state: &BattleState,
     ruleset: &'r Ruleset,
     actor: BattleSide,
     target: CastTarget,
-) -> Result<Cast<'r>, CommandError> {
+) -> Result<CreatureAction<'r>, CommandError> {
     let (caster, spell) = ready(state, ruleset, actor).ok_or(CommandError::CannotCast)?;
+    if spell.spell == CastSpell::Raise {
+        return target
+            .stack()
+            .filter(|_| raise_target(state, ruleset, actor, caster, target))
+            .map(|t| CreatureAction::Raise(caster, t))
+            .ok_or(CommandError::InvalidSpellTarget);
+    }
     magic::plan_creature_cast(state, ruleset, actor, (caster, spell), target)
+        .map(CreatureAction::Cast)
+}
+
+/// Whether `target` is a target of the raiser `caster`'s raise for `side`, its controller
+/// (BAT-MAG-051, BAT-MAG-052; the original's 0x4476C0 and 0x4473D0, case 0, whose cursor never
+/// offers the caster, `installation.md` §7.21): another stack; for a stack raiser one that its
+/// test's raise spell with `per_creature` × the raiser's creatures hit points may raise
+/// ([`raise::raisable`]: of `side`, living or a corpse on top, having lost creatures, whose
+/// health the hit points reach); for a corpse raiser a corpse of `side` it may raise
+/// ([`raise::corpse_raisable`]) into at least one creature ([`corpse_count`]), while `side` has a
+/// slot for the new stack ([`created::has_slot`]).
+// rule: BAT-MAG-051, BAT-MAG-052
+pub(crate) fn raise_target(
+    state: &BattleState,
+    ruleset: &Ruleset,
+    side: BattleSide,
+    caster: StackId,
+    target: CastTarget,
+) -> bool {
+    let raiser_stack = state.at(caster);
+    let Some(t) = target
+        .stack()
+        .filter(|&t| t != caster && state.stack(t).is_some())
+    else {
+        return false;
+    };
+    raiser(ruleset, raiser_stack.creature).is_some_and(|r| match r {
+        Raiser::Stack { test, per_creature } => ruleset.spell(test).is_some_and(|spell| {
+            let hit_points = u64::from(per_creature) * u64::from(raiser_stack.count);
+            let test = raise::creature_test((test, spell), hit_points);
+            raise::raisable(state, ruleset, side, test, t)
+        }),
+        Raiser::Corpse {
+            creature,
+            per_creature,
+        } => {
+            raise::corpse_raisable(state, ruleset, side, t)
+                && corpse_count(state, ruleset, (caster, t), (creature, per_creature)) > 0
+                && created::has_slot(state, ruleset, side)
+        }
+    })
+}
+
+/// How many creatures of `creature` the corpse raiser `caster` raises from the corpse of stack
+/// `corpse` (BAT-MAG-052; the original's 0x447330): `min(start, min(per_creature × the raiser's
+/// creatures, start × health) div the creature's health)`, with the corpse's start count and its
+/// creatures' health and the raised creature's base health.
+pub(crate) fn corpse_count(
+    state: &BattleState,
+    ruleset: &Ruleset,
+    (caster, corpse): (StackId, StackId),
+    (creature, per_creature): (CreatureTypeId, u16),
+) -> u32 {
+    let dead = state.at(corpse);
+    let start = u64::from(dead.base_count);
+    let budget = u64::from(per_creature) * u64::from(state.at(caster).count);
+    let health = ruleset
+        .creature(creature)
+        .map_or(1, |c| c.hit_points)
+        .max(1);
+    let raised = budget.min(start * u64::from(dead.max_hp)) / u64::from(health);
+    u32::try_from(raised.min(start)).unwrap_or(u32::MAX)
+}
+
+/// The raiser `caster` raises stack or corpse `target` as its action (BAT-MAG-051,
+/// BAT-MAG-052): one of its casts is used (`CreatureRaise`); a stack raiser raises the stack by
+/// its hit points for good (the original's 0x5A7560 with temporary 0), a corpse raiser raises a
+/// stack of its creature for its controller ([`created::raise_corpse`]).
+// rule: BAT-MAG-051, BAT-MAG-052
+pub(crate) fn raise<S: Sink>(
+    state: &mut BattleState,
+    ruleset: &Ruleset,
+    (caster, target): (StackId, StackId),
+    sink: &mut S,
+) {
+    spend(state, caster);
+    sink.emit(Event::public(EventKind::CreatureRaise {
+        stack: caster,
+        target,
+    }));
+    let stack = *state.at(caster);
+    // Validated: the caster is a raiser.
+    raiser(ruleset, stack.creature)
+        .into_iter()
+        .for_each(|r| match r {
+            Raiser::Stack { per_creature, .. } => {
+                let hit_points = u64::from(per_creature) * u64::from(stack.count);
+                raise::raise(state, ruleset, (target, hit_points), false, sink);
+            }
+            Raiser::Corpse {
+                creature,
+                per_creature,
+            } => {
+                let count =
+                    corpse_count(state, ruleset, (caster, target), (creature, per_creature));
+                let side = stack.controller();
+                created::raise_corpse(state, ruleset, (side, target), (creature, count), sink);
+            }
+        });
 }
 
 /// Uses one of stack `s`'s casts (the original lowers them first, 0x448260).

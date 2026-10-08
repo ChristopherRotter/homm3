@@ -144,6 +144,11 @@ enum Plan<'r> {
         mover: StackId,
         cast: Box<Cast<'r>>,
     },
+    /// A stack's raise of `target` as its action (BAT-MAG-051, BAT-MAG-052).
+    CreatureRaise {
+        mover: StackId,
+        target: StackId,
+    },
 }
 
 /// Checks `command` for `actor` without changing anything. Shared by `apply` and
@@ -200,9 +205,14 @@ fn plan<'r>(
         } => magic::plan_cast(state, ruleset, actor, spell, (target, second))
             .map(|c| Plan::Cast(Box::new(c))),
         Command::CreatureCast { target } => {
-            casters::plan(state, ruleset, actor, target).map(|c| Plan::CreatureCast {
-                mover: id,
-                cast: Box::new(c),
+            casters::plan(state, ruleset, actor, target).map(|action| match action {
+                casters::CreatureAction::Cast(c) => Plan::CreatureCast {
+                    mover: id,
+                    cast: Box::new(c),
+                },
+                casters::CreatureAction::Raise(mover, target) => {
+                    Plan::CreatureRaise { mover, target }
+                }
             })
         }
         Command::Wait => {
@@ -456,6 +466,11 @@ pub fn apply<S: Sink>(
             // The turn ends as after a move, an attack or a shot (good morale may follow, the
             // original's 0x464920), without entering its hexes again (no 0x441F70).
             magic::apply_cast(state, ruleset, *cast, sink);
+            end_turn(state, ruleset, mover, TurnEnd::Acted, sink);
+        }
+        Plan::CreatureRaise { mover, target } => {
+            // rule: BAT-MAG-051, BAT-MAG-052
+            casters::raise(state, ruleset, (mover, target), sink);
             end_turn(state, ruleset, mover, TurnEnd::Acted, sink);
         }
     }

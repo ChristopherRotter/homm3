@@ -510,9 +510,11 @@ proptest! {
                     }
                     let mentioned = |i: usize, f: fn(&EventKind, usize) -> bool| events.iter().any(|e| f(&e.kind, i));
                     for (i, (b, a)) in before.stacks().iter().zip(state.stacks()).enumerate() {
-                        // A created stack may take a dead created stack's slot (BAT-MAG-037).
-                        if mentioned(i, |k, i| matches!(k, EventKind::StackCreated { stack, .. } if stack.index() == i)) {
-                            prop_assert!(!b.is_alive() && b.is_created() && a.is_created() && a.side == b.side);
+                        // A created stack, or a stack raised from a corpse, may take a dead
+                        // created stack's slot (BAT-MAG-037, BAT-MAG-052).
+                        if mentioned(i, |k, i| matches!(k, EventKind::StackCreated { stack, .. } | EventKind::RoseFromCorpse { stack, .. } if stack.index() == i)) {
+                            prop_assert!(!b.is_alive() && b.is_created() && a.side == b.side);
+                            prop_assert!(a.is_created() != a.has(crate::StackTraits::RAISED));
                             continue;
                         }
                         // Conservation: creatures only ever die, except that life drain and the
@@ -820,26 +822,32 @@ proptest! {
                     StackOrigin::Created
                 } else if s.has(crate::StackTraits::WAR_MACHINE) {
                     StackOrigin::WarMachine
+                } else if s.has(crate::StackTraits::RAISED) {
+                    StackOrigin::Raised(s.slot)
                 } else {
                     StackOrigin::Army(s.slot)
                 };
                 prop_assert_eq!(record.origin, origin);
+                let army = matches!(origin, StackOrigin::Army(_) | StackOrigin::Raised(_));
                 // A created stack that vanished keeps the creatures it vanished with (BAT-Q13).
                 let count = s.count.max(state.created.vanished[usize::from(id)]);
                 // Creatures raised for the battle only are left out, but an army whose living
                 // creatures are all such keeps one in its last living stack (BAT-MAG-035).
-                let kept = record.end == 1 && count.saturating_sub(temporary) == 0 && s.is_alive() && matches!(origin, StackOrigin::Army(_));
+                let kept = record.end == 1 && count.saturating_sub(temporary) == 0 && s.is_alive() && army;
                 prop_assert!(record.end == count.saturating_sub(temporary) || kept);
                 prop_assert!(record.end <= record.start);
             }
-            let army = |rec: &&StackRecord| matches!(rec.origin, StackOrigin::Army(_));
+            let army = |rec: &&StackRecord| matches!(rec.origin, StackOrigin::Army(_) | StackOrigin::Raised(_));
             let any_army_alive = stacks.iter().any(|(_, s)| s.is_alive() && !s.has(crate::StackTraits::WAR_MACHINE) && !s.is_created());
             prop_assert_eq!(records.iter().filter(army).any(|rec| rec.end > 0), any_army_alive);
-            let in_army = |rec: &&StackRecord| rec.end > 0 && matches!(rec.origin, StackOrigin::Army(_));
+            let in_army = |rec: &&StackRecord| rec.end > 0 && army(rec);
             let machine = |rec: &&StackRecord| rec.end > 0 && rec.origin == StackOrigin::WarMachine;
             prop_assert_eq!(o.survivors[side.index()].stacks.len(), records.iter().filter(in_army).count());
             prop_assert_eq!(o.war_machines[side.index()].len(), records.iter().filter(machine).count());
             prop_assert_eq!(o.survivors[side.index()].stacks.iter().map(|s| s.count).sum::<u32>(), records.iter().filter(in_army).map(|rec| rec.end).sum::<u32>());
+            // One survivor per army slot, in slot order (a raised stack takes a dead stack's
+            // slot, BAT-MAG-052).
+            prop_assert!(o.survivors[side.index()].stacks.windows(2).all(|w| w[0].slot < w[1].slot));
         }
     }
 }

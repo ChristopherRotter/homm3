@@ -14,7 +14,7 @@ use crate::hero::HeroRecord;
 use crate::magic::{
     SpellBonus, SpellRef, affects, base_value, kept_off, mastery, specialist_bonus,
 };
-use crate::state::{BattleState, NO_CORPSE, StackId};
+use crate::state::{BattleState, NO_CORPSE, StackId, StackTraits};
 
 /// Marks the corpses of the stacks that died since the last mark, by stack id, each above every
 /// earlier one (BAT-MAG-035): after every command, before every activation and after every
@@ -56,6 +56,24 @@ pub(crate) fn mark_corpses(state: &mut BattleState) {
 pub(crate) struct RaiseTest<'r> {
     spell: SpellRef<'r>,
     hit_points: Option<(u64, SpellBonus)>,
+}
+
+/// The test of a stack raiser's raise (BAT-MAG-051; the original's 0x5A3CC0 with its third
+/// argument 1, `installation.md` §7.21): the raise spell `spell`'s, with the `hit_points` the
+/// raiser raises and no caster's bonuses.
+pub(crate) const fn creature_test(spell: SpellRef<'_>, hit_points: u64) -> RaiseTest<'_> {
+    RaiseTest {
+        spell,
+        hit_points: Some((
+            hit_points,
+            SpellBonus {
+                spell: spell.0,
+                damage_bp: 0,
+                per_level_bp: 0,
+                level: 0,
+            },
+        )),
+    }
 }
 
 /// The test of `hero`'s cast of `spell` at `mastery` for the stack it raises: the spell's own with
@@ -123,13 +141,27 @@ pub(crate) fn raisable(
     test: RaiseTest<'_>,
     s: StackId,
 ) -> bool {
-    let stack = state.at(s);
-    if stack.is_alive() {
+    if state.at(s).is_alive() {
         return eligible(state, ruleset, side, test, s);
     }
+    on_top(state, ruleset, s, |t| {
+        eligible(state, ruleset, side, test, t)
+    })
+}
+
+/// Whether the dead stack `s` is a corpse that `qualifies`, whose hexes hold no living stack and
+/// are not blocked (an obstacle, Force Field), and which on one of its hexes lies above every
+/// other such corpse that qualifies (BAT-MAG-035, BAT-MAG-052; the original's searches from the
+/// last corpse of a hex, 0x5A3CC0, 0x5A3F50, 0x5A3E40).
+fn on_top(
+    state: &BattleState,
+    ruleset: &Ruleset,
+    s: StackId,
+    qualifies: impl Fn(StackId) -> bool,
+) -> bool {
     // The cheap tests first: most dead stacks are the other side's or out of the test.
     let corpse = state.corpse(s);
-    if corpse == 0 || corpse == NO_CORPSE || !eligible(state, ruleset, side, test, s) {
+    if corpse == 0 || corpse == NO_CORPSE || !qualifies(s) {
         return false;
     }
     let field = Field::new(ruleset.battle().field);
@@ -137,17 +169,34 @@ pub(crate) fn raisable(
     if covers(field, state, s, occupied) {
         return false;
     }
-    stack.footprint(field).hexes().any(|h| {
+    state.at(s).footprint(field).hexes().any(|h| {
         !(0u8..).take(state.stacks.len()).map(StackId).any(|t| {
             let (other, above) = (state.at(t), state.corpse(t));
             !other.is_alive()
                 && above > corpse
                 && above != NO_CORPSE
                 && other.footprint(field).hexes().any(|x| x == h)
-                && eligible(state, ruleset, side, test, t)
+                && qualifies(t)
                 && !covers(field, state, t, occupied)
         })
     })
+}
+
+/// Whether the dead stack `s` is a corpse a corpse raiser of `side` may raise (BAT-MAG-052; the
+/// original's 0x5A3E40, `installation.md` §7.21): a stack of `side` whose creature is alive,
+/// whose hexes hold no living stack and are not blocked, on top of the corpses of such stacks on
+/// one of its hexes; there is no spell test.
+pub(crate) fn corpse_raisable(
+    state: &BattleState,
+    ruleset: &Ruleset,
+    side: BattleSide,
+    s: StackId,
+) -> bool {
+    let qualifies = |t: StackId| {
+        let stack = state.at(t);
+        stack.side == side && stack.has(StackTraits::ALIVE)
+    };
+    !state.at(s).is_alive() && on_top(state, ruleset, s, qualifies)
 }
 
 /// Whether one of stack `t`'s hexes is in `set`.

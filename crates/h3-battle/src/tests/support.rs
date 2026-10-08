@@ -721,6 +721,28 @@ pub const CREATURES: &[Creature] = &[
         5,
         &["spell_damage_reduction=85"],
     ),
+    // The raisers (BAT-MAG-051, BAT-MAG-052): an Archangel's 100 hit points per creature under
+    // `rise`'s test, a Pit Lord's 50 per creature raising imps (health 10) from corpses.
+    (
+        "herald",
+        10,
+        10,
+        2,
+        2,
+        50,
+        9,
+        &["two_hex", "alive", "casts=1", "stack_raiser=rise:100"],
+    ),
+    (
+        "fiend",
+        10,
+        10,
+        2,
+        2,
+        45,
+        5,
+        &["alive", "casts=1", "corpse_raiser=imp:50"],
+    ),
 ];
 
 /// The traits of a test creature as creature info: flags, abilities, shots and faction.
@@ -905,6 +927,20 @@ fn parse_traits(traits: &[&str]) -> CreatureInfoDef {
                 AbilityDef::HelpfulSpellCaster {
                     mastery: mastery.parse().unwrap(),
                     power: power.parse().unwrap(),
+                }
+            }
+            "stack_raiser" => {
+                let (spell, hit_points) = value.split_once(':').unwrap();
+                AbilityDef::StackRaiser {
+                    spell: ContentKey::new("t", spell).unwrap(),
+                    hit_points_per_creature: hit_points.parse().unwrap(),
+                }
+            }
+            "corpse_raiser" => {
+                let (creature, hit_points) = value.split_once(':').unwrap();
+                AbilityDef::CorpseRaiser {
+                    creature: ContentKey::new("t", creature).unwrap(),
+                    hit_points_per_creature: hit_points.parse().unwrap(),
                 }
             }
             "drawn_spell" => {

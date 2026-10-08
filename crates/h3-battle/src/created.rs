@@ -4,7 +4,8 @@
 //! the side or a new one, while the side has fewer stacks than the limit (BAT-MAG-037).
 
 use h3_content::{
-    CLONE_ON_ITS_ORIGINAL, CreatureTypeId, MAX_FIELD_HEXES, MAX_SUMMON_SPELLS, Ruleset, Spell,
+    CLONE_ON_ITS_ORIGINAL, CreatureTypeId, MAX_FIELD_HEXES, MAX_RAISED_CREATURES,
+    MAX_SUMMON_SPELLS, Ruleset, Spell,
 };
 use h3_contracts::BattleSide;
 use h3_kernel::{CanonicalHash, FixedVec, StateHasher};
@@ -19,6 +20,9 @@ use crate::state::{
 
 /// [`Created::link`] of a stack without one.
 const NO_LINK: u8 = u8::MAX;
+
+/// Most stacks of a side's [`Created`] templates: one per summon spell and per raised creature.
+pub(crate) const TEMPLATES: usize = MAX_SUMMON_SPELLS + MAX_RAISED_CREATURES;
 
 /// Rings around the original that Clone searches for a place (the original's 0x5A6C70).
 const CLONE_RINGS: u32 = 10;
@@ -38,13 +42,14 @@ pub(crate) struct Created {
     /// Per side: the creature its Summon Elemental casts are bound to, once it cast one (the
     /// original's +0x132A8).
     summoned: [Option<CreatureTypeId>; 2],
-    /// Per side: a stack of each creature its hero's spells summon, as at the battle's start.
-    templates: [FixedVec<Stack, MAX_SUMMON_SPELLS>; 2],
+    /// Per side: a stack of each creature its hero's spells summon and of each creature the
+    /// corpse raisers raise, as at the battle's start.
+    templates: [FixedVec<Stack, TEMPLATES>; 2],
 }
 
 impl Created {
     /// Nothing created yet; the sides' summon `templates`.
-    pub(crate) const fn new(templates: [FixedVec<Stack, MAX_SUMMON_SPELLS>; 2]) -> Self {
+    pub(crate) const fn new(templates: [FixedVec<Stack, TEMPLATES>; 2]) -> Self {
         Self {
             link: [NO_LINK; STACK_CAPACITY],
             rounds: [0; STACK_CAPACITY],
@@ -76,6 +81,59 @@ impl CanonicalHash for Created {
 fn has_room(state: &BattleState, ruleset: &Ruleset, side: BattleSide) -> bool {
     let stacks = state.stacks.iter().filter(|s| s.side == side).count();
     stacks < usize::from(ruleset.battle().side_stack_limit)
+}
+
+/// Whether a stack may rise for `side` from a corpse now (BAT-MAG-052): a dead created stack of
+/// the side leaves its slot, else the side has room for a stack. (The original's 0x47A100 finds
+/// no record then, and the raise 0x5A7390 crashes; the engine refuses the raise.)
+pub(crate) fn has_slot(state: &BattleState, ruleset: &Ruleset, side: BattleSide) -> bool {
+    has_room(state, ruleset, side)
+        || state
+            .stacks
+            .iter()
+            .any(|s| s.side == side && s.is_created() && !s.is_alive())
+}
+
+/// A stack of `count` creatures of `creature` rises for `side` from the corpse of stack `corpse`
+/// (BAT-MAG-052; the original's 0x5A7390, `installation.md` §7.21): the corpse is gone, and the
+/// new stack, as `side` would have it at the battle's start, takes a dead created stack's slot or
+/// a new one (BAT-MAG-037) and the corpse's army slot, on the corpse's position (its tail, or its
+/// only hex). It is an army stack of that slot ([`StackTraits::RAISED`]), no created one. The
+/// side has a slot for it ([`has_slot`]), and its template ([`Created::templates`]: a corpse
+/// raiser of either army raises the creature).
+pub(crate) fn raise_corpse<S: Sink>(
+    state: &mut BattleState,
+    ruleset: &Ruleset,
+    (side, corpse): (BattleSide, StackId),
+    (creature, count): (CreatureTypeId, u32),
+    sink: &mut S,
+) {
+    let field = Field::new(ruleset.battle().field);
+    let dead = *state.at(corpse);
+    let fp = dead.footprint(field);
+    let hex = fp.tail.unwrap_or(fp.head);
+    state.raised.corpse[corpse.index()] = NO_CORPSE;
+    let template = state.created.templates[side.index()]
+        .iter()
+        .find(|t| t.creature == creature)
+        .copied()
+        .unwrap_or_default();
+    let stack = Stack {
+        hex,
+        slot: dead.slot,
+        count,
+        base_count: count,
+        traits: template.traits.with(StackTraits::RAISED, true),
+        ..template
+    };
+    let id = add(state, ruleset, stack);
+    sink.emit(Event::public(EventKind::RoseFromCorpse {
+        stack: id,
+        corpse,
+        creature,
+        count,
+        hex,
+    }));
 }
 
 /// Whether `side`'s cast of the Clone `spell` at `mastery` may copy stack `s`, which the cast may
@@ -155,7 +213,8 @@ pub(crate) fn clone<S: Sink>(
         traits: original
             .traits
             .with(StackTraits::SUMMONED, true)
-            .with(StackTraits::CLONE, true),
+            .with(StackTraits::CLONE, true)
+            .with(StackTraits::RAISED, false),
         flags: StackFlags::default(),
         spells: SpellValues::new(original.speed),
         ..original
@@ -314,6 +373,7 @@ pub(crate) fn summon<S: Sink>(
             hex: heads.as_slice()[pick],
             count,
             base_count: count,
+            traits: template.traits.with(StackTraits::SUMMONED, true),
             ..template
         };
         let id = add(state, ruleset, stack);
