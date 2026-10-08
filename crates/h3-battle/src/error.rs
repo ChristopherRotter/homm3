@@ -227,8 +227,10 @@ pub enum CommandError {
     NotCastable,
     /// The hero's mana does not cover the spell's cost (BAT-MAG-002).
     NotEnoughMana,
-    /// The target is not one the spell may be cast at (BAT-MAG-003).
+    /// The target is not one the spell may be cast at (BAT-MAG-003, BAT-MAG-048).
     InvalidSpellTarget,
+    /// The active stack casts no spell as its action, or has no casts left (BAT-MAG-048).
+    CannotCast,
 }
 
 impl fmt::Display for CommandError {
@@ -260,6 +262,7 @@ impl fmt::Display for CommandError {
             Self::NotCastable => "the spell cannot be cast in battle yet",
             Self::NotEnoughMana => "not enough mana",
             Self::InvalidSpellTarget => "not a target of that spell",
+            Self::CannotCast => "the stack cannot cast",
         })
     }
 }

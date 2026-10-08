@@ -248,9 +248,15 @@ fn side_letter(side: BattleSide) -> &'static str {
 /// `"<A|D> surrender"` (format 10), `"<A|D> cast <spell> none"`, `"<A|D> cast <spell> stack
 /// <stack>"` and `"<A|D> cast <spell> hex <hex>"` with the spell's handle (format 14), and a
 /// second target after the first, `"<A|D> cast <spell> stack <stack> hex <hex>"` (Teleport,
-/// format 17).
+/// format 17), and a stack's cast, `"<A|D> creature-cast stack <stack>"` (or `none`, `hex <hex>`;
+/// format 19).
 pub fn format_command(side: BattleSide, command: Command) -> String {
     let s = side_letter(side);
+    let text = |t| match t {
+        CastTarget::None => "none".to_owned(),
+        CastTarget::Stack(id) => format!("stack {}", id.0),
+        CastTarget::Hex(h) => format!("hex {}", h.0),
+    };
     match command {
         Command::Move { to } => format!("{s} move {}", to.0),
         Command::Attack { target, from } => format!("{s} attack {} {}", target.0, from.0),
@@ -266,17 +272,13 @@ pub fn format_command(side: BattleSide, command: Command) -> String {
             target,
             second,
         } => {
-            let text = |t| match t {
-                CastTarget::None => "none".to_owned(),
-                CastTarget::Stack(id) => format!("stack {}", id.0),
-                CastTarget::Hex(h) => format!("hex {}", h.0),
-            };
             let second = match second {
                 CastTarget::None => String::new(),
                 other => format!(" {}", text(other)),
             };
             format!("{s} cast {} {}{second}", spell.raw(), text(target))
         }
+        Command::CreatureCast { target } => format!("{s} creature-cast {}", text(target)),
     }
 }
 
@@ -294,6 +296,11 @@ pub fn parse_command(text: &str) -> Result<(BattleSide, Command), CliError> {
             .get(i)
             .and_then(|p| p.parse::<u8>().ok())
             .ok_or_else(bad)
+    };
+    let target = |i: usize| match parts.get(i).copied() {
+        Some("stack") => Ok(CastTarget::Stack(StackId(num(i + 1)?))),
+        Some("hex") => Ok(CastTarget::Hex(Hex(num(i + 1)?))),
+        _ => Err(bad()),
     };
     let command = match (parts.get(1).copied(), parts.len()) {
         (Some("move"), 3) => Command::Move { to: Hex(num(2)?) },
@@ -319,11 +326,6 @@ pub fn parse_command(text: &str) -> Result<(BattleSide, Command), CliError> {
                 .and_then(|p| p.parse::<u16>().ok())
                 .map(SpellId::from_raw)
                 .ok_or_else(bad)?;
-            let target = |i: usize| match parts.get(i).copied() {
-                Some("stack") => Ok(CastTarget::Stack(StackId(num(i + 1)?))),
-                Some("hex") => Ok(CastTarget::Hex(Hex(num(i + 1)?))),
-                _ => Err(bad()),
-            };
             let (target, second) = match (parts.get(3).copied(), parts.len()) {
                 (Some("none"), 4) => (CastTarget::None, CastTarget::None),
                 (_, 5) => (target(3)?, CastTarget::None),
@@ -335,6 +337,10 @@ pub fn parse_command(text: &str) -> Result<(BattleSide, Command), CliError> {
                 second,
             }
         }
+        (Some("creature-cast"), 3) if parts.get(2) == Some(&"none") => Command::CreatureCast {
+            target: CastTarget::None,
+        },
+        (Some("creature-cast"), 4) => Command::CreatureCast { target: target(2)? },
         _ => return Err(bad()),
     };
     Ok((side, command))
@@ -726,6 +732,27 @@ mod tests {
                 },
                 "A cast 26 none",
             ),
+            (
+                BattleSide::Defender,
+                Command::CreatureCast {
+                    target: CastTarget::Stack(StackId(4)),
+                },
+                "D creature-cast stack 4",
+            ),
+            (
+                BattleSide::Attacker,
+                Command::CreatureCast {
+                    target: CastTarget::Hex(Hex(60)),
+                },
+                "A creature-cast hex 60",
+            ),
+            (
+                BattleSide::Attacker,
+                Command::CreatureCast {
+                    target: CastTarget::None,
+                },
+                "A creature-cast none",
+            ),
         ];
         for (side, cmd, text) in cases {
             assert_eq!(format_command(side, cmd), text);
@@ -755,6 +782,11 @@ mod tests {
             "A cast 1 stack 2 obstacle 3",
             "A cast 1 none 2 3 4",
             "A cast 70000 none",
+            "A creature-cast",
+            "A creature-cast stack",
+            "A creature-cast stack 300",
+            "A creature-cast all",
+            "A creature-cast stack 2 3",
         ] {
             assert!(parse_command(bad).is_err(), "{bad}");
         }

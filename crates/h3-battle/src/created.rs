@@ -297,6 +297,8 @@ fn add(state: &mut BattleState, ruleset: &Ruleset, stack: Stack) -> StackId {
     state.created.link[id.index()] = NO_LINK;
     state.created.rounds[id.index()] = 0;
     crate::vitality::reset(state, id);
+    // rule: BAT-MAG-048
+    state.casts.left[id.index()] = crate::casters::per_battle(ruleset, state.at(id).creature);
     morale::materialize(state, ruleset);
     id
 }

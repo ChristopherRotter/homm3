@@ -2,7 +2,7 @@
 
 use h3_battle::{
     BattleState, CastTargets, Command, LegalCommands, cast_targets, castable_spells,
-    legal_commands, second_targets,
+    creature_cast_targets, legal_commands, second_targets,
 };
 use h3_content::Ruleset;
 use h3_contracts::{BattleResult, BattleSide};
@@ -58,11 +58,12 @@ pub fn pick(
 
 /// The baseline agent's choice for `side` from its legal commands `legal`: uniform among the
 /// entries of the action encoding that do not leave the battle (the commands before Retreat and
-/// Surrender, which come last in `legal_commands`, and the hero's cast if a spell is castable
-/// now; user decision 2026-10-04: the agent fights every battle out, so benchmarks and golden
-/// replays play whole battles). A cast then takes a uniform castable spell and a uniform target
-/// of it, as an agent samples the factorized action head by head (ADR-0014 point 9). Shared by
-/// [`pick`] and [`crate::Replay::record_random`].
+/// Surrender, which come last in `legal_commands`, the hero's cast if a spell is castable now and
+/// the active stack's cast if it has a target; user decision 2026-10-04: the agent fights every
+/// battle out, so benchmarks and golden replays play whole battles). A hero's cast then takes a
+/// uniform castable spell and a uniform target of it, a stack's cast a uniform target, as an
+/// agent samples the factorized action head by head (ADR-0014 point 9). Shared by [`pick`] and
+/// [`crate::Replay::record_random`].
 pub fn choose(
     state: &BattleState,
     ruleset: &Ruleset,
@@ -72,10 +73,21 @@ pub fn choose(
 ) -> Command {
     let staying = legal.iter().take_while(|c| !c.leaves_battle()).count();
     let spells = castable_spells(state, ruleset, side);
-    let entries = staying + usize::from(!spells.is_empty());
+    let mut creature = CastTargets::new();
+    creature_cast_targets(state, ruleset, side, &mut creature);
+    let hero = usize::from(!spells.is_empty());
+    let entries = staying + hero + usize::from(!creature.is_empty());
     let i = rng.below(u32::try_from(entries).unwrap_or(u32::MAX)) as usize;
     if i < staying {
         return legal.get(i).copied().unwrap_or(Command::Defend);
+    }
+    if i >= staying + hero {
+        let n = u32::try_from(creature.len()).unwrap_or(u32::MAX);
+        let target = creature
+            .get(rng.below(n) as usize)
+            .copied()
+            .unwrap_or_default();
+        return Command::CreatureCast { target };
     }
     let count = u32::try_from(spells.iter().count()).unwrap_or(u32::MAX);
     let nth = rng.below(count) as usize;

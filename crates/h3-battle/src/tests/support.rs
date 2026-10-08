@@ -569,6 +569,28 @@ pub const CREATURES: &[Creature] = &[
     ),
     // Attack and defense below Disease's 2 (BAT-MAG-009, T7a review).
     ("peasant", 1, 1, 1, 1, 10, 3, &["alive"]),
+    // Casters (BAT-MAG-048): Haste at Advanced with power 6, twice a battle (an Ogre Mage's
+    // Bloodlust); Weaken at Basic with power 4, once (a negative spell at enemies).
+    (
+        "conjurer",
+        10,
+        10,
+        2,
+        2,
+        10,
+        5,
+        &["alive", "casts=2", "spell_caster=haste:2:6"],
+    ),
+    (
+        "warlock",
+        10,
+        10,
+        2,
+        2,
+        10,
+        5,
+        &["alive", "casts=1", "spell_caster=weaken:0:4"],
+    ),
 ];
 
 /// The traits of a test creature as creature info: flags, abilities, shots and faction.
@@ -580,6 +602,7 @@ fn parse_traits(traits: &[&str]) -> CreatureInfoDef {
     let mut ai = 0;
     let mut upgrades = Vec::new();
     let mut level = 1;
+    let mut casts = 0;
     for t in traits {
         let (name, value) = t.split_once('=').unwrap_or((t, "0"));
         let n = || value.parse::<u16>().unwrap();
@@ -727,6 +750,19 @@ fn parse_traits(traits: &[&str]) -> CreatureInfoDef {
                 shots = n();
                 continue;
             }
+            "casts" => {
+                casts = value.parse().unwrap();
+                continue;
+            }
+            "spell_caster" => {
+                let mut parts = value.split(':');
+                let mut next = || parts.next().unwrap();
+                AbilityDef::SpellCaster {
+                    spell: ContentKey::new("t", next()).unwrap(),
+                    mastery: next().parse().unwrap(),
+                    power: next().parse().unwrap(),
+                }
+            }
             flag => {
                 flags.push(String::from(flag));
                 continue;
@@ -742,6 +778,7 @@ fn parse_traits(traits: &[&str]) -> CreatureInfoDef {
         ai_value: ai,
         upgrades,
         level,
+        casts,
         ..CreatureInfoDef::default()
     }
 }

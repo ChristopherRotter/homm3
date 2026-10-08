@@ -28,6 +28,7 @@ use h3_kernel::arith::{
 };
 use h3_kernel::{CanonicalHash, FixedVec, StateHasher};
 
+use crate::casters::CreatureSpell;
 use crate::combat::check_end;
 use crate::created;
 use crate::damage::apply_damage;
@@ -361,6 +362,8 @@ pub(crate) struct Cast<'r> {
     rounds: u16,
     /// The caster's power (a summon's count, BAT-MAG-039).
     power: u16,
+    /// The stack that casts as its action (BAT-MAG-048); none for the side's hero.
+    by: Option<StackId>,
 }
 
 /// Whether the battle implements the effects of `spell`: every effect kind is implemented
@@ -842,6 +845,60 @@ pub(crate) fn plan_cast<'r>(
             .saturating_add(hero.magic.duration_bonus)
             .max(1),
         power: u16::from(hero.view.power),
+        by: None,
+    })
+}
+
+/// Whether `target` is a target of stack `caster`'s cast of `spell` for `side`, its controller
+/// (BAT-MAG-048): a stack other than the caster that the spell may be aimed at ([`first_target`]
+/// at the caster's mastery: a living stack the spell may reach and affect). The original's test
+/// 0x4476C0 and its cursor (0x4766EA, which never offers the caster itself),
+/// `installation.md` §7.21.
+// rule: BAT-MAG-048
+pub(crate) fn creature_target(
+    state: &BattleState,
+    ruleset: &Ruleset,
+    side: BattleSide,
+    (caster, spell): (StackId, CreatureSpell),
+    target: CastTarget,
+) -> bool {
+    // A caster's spell is one of the ruleset's (the compiler checks its abilities).
+    ruleset.spell(spell.id).is_some_and(|s| {
+        target != CastTarget::Stack(caster)
+            && first_target(state, ruleset, side, ((spell.id, s), spell.mastery), target)
+    })
+}
+
+/// Validates stack `caster`'s cast of its `spell` at `target` for `side`, its controller
+/// (BAT-MAG-048; the caller has checked that it may cast now): a creature's cast at its ability's
+/// mastery and power, without a hero's bonuses or cost; its timed effects last `power` rounds.
+pub(crate) fn plan_creature_cast<'r>(
+    state: &BattleState,
+    ruleset: &'r Ruleset,
+    side: BattleSide,
+    (caster, spell): (StackId, CreatureSpell),
+    target: CastTarget,
+) -> Result<Cast<'r>, CommandError> {
+    let s = ruleset
+        .spell(spell.id)
+        .filter(|_| creature_target(state, ruleset, side, (caster, spell), target))
+        .ok_or(CommandError::InvalidSpellTarget)?;
+    let power = u16::from(spell.power);
+    Ok(Cast {
+        side,
+        id: spell.id,
+        spell: s,
+        cost: 0,
+        mastery: spell.mastery,
+        target,
+        second: CastTarget::None,
+        // rule: BAT-MAG-004
+        value: u64::from(power) * u64::from(s.power)
+            + u64::from(s.effect[usize::from(spell.mastery)]),
+        bonuses: SpellBonuses::default(),
+        rounds: power,
+        power,
+        by: Some(caster),
     })
 }
 
@@ -1425,26 +1482,37 @@ fn mirror<S: Sink>(state: &mut BattleState, cast: &Cast<'_>, s: StackId, sink: &
     to
 }
 
-/// Applies a validated cast: the hero pays the cost and counts the cast, then the spell takes
-/// effect (BAT-MAG-004 to BAT-MAG-008); the battle may end. The active stack keeps its turn.
+/// Applies a validated cast: the hero pays the cost and counts the cast, or the casting stack uses
+/// one of its casts (BAT-MAG-048), then the spell takes effect (BAT-MAG-004 to BAT-MAG-008); the
+/// battle may end. The active stack keeps its turn after its hero's cast.
 pub(crate) fn apply_cast<S: Sink>(
     state: &mut BattleState,
     ruleset: &Ruleset,
     cast: Cast<'_>,
     sink: &mut S,
 ) {
-    // Validated: the side has a hero with the mana.
-    for hero in state.heroes[cast.side.index()].iter_mut() {
-        hero.view.mana -= cast.cost;
-        hero.view.casts += 1;
-        hero.magic.cast.insert(cast.id);
+    if let Some(stack) = cast.by {
+        // rule: BAT-MAG-048
+        crate::casters::spend(state, stack);
+        sink.emit(Event::public(EventKind::StackCast {
+            stack,
+            spell: cast.id,
+            target: cast.target,
+        }));
+    } else {
+        // Validated: the side has a hero with the mana.
+        for hero in state.heroes[cast.side.index()].iter_mut() {
+            hero.view.mana -= cast.cost;
+            hero.view.casts += 1;
+            hero.magic.cast.insert(cast.id);
+        }
+        sink.emit(Event::public(EventKind::SpellCast {
+            side: cast.side,
+            spell: cast.id,
+            target: cast.target,
+            second: cast.second,
+        }));
     }
-    sink.emit(Event::public(EventKind::SpellCast {
-        side: cast.side,
-        spell: cast.id,
-        target: cast.target,
-        second: cast.second,
-    }));
     let magic = &cast.spell.magic;
     if magic.removes_obstacles() {
         // rule: BAT-MAG-034
@@ -1542,14 +1610,15 @@ fn reach_stacks<S: Sink>(
         CastTarget::Stack(s) => CastTarget::Stack(mirror(state, cast, s, sink)),
         other => other,
     };
-    // The stack a stack spell is aimed at rolls first: if it resists, the whole spell does
-    // (BAT-MAG-006, BAT-MAG-008); a stack a Magic Mirror sent the spell to that it cannot
-    // affect resists (BAT-MAG-022). An area spell has no such roll: every stack in its area
-    // rolls once (BAT-MAG-007; batch 2a R3).
+    // The stack a hero's stack spell is aimed at rolls first: if it resists, the whole spell does
+    // (BAT-MAG-006, BAT-MAG-008); a creature's cast has no such roll (BAT-MAG-048, the original's
+    // 0x5A02EA); a stack a Magic Mirror sent the spell to that it cannot affect resists
+    // (BAT-MAG-022). An area spell has no such roll: every stack in its area rolls once
+    // (BAT-MAG-007; batch 2a R3).
     if let CastTarget::Stack(s) = target
         && (!affects_stack(state, ruleset, spell, s)
             || !admits(state, ruleset, cast.side, (spell, cast.mastery), s)
-            || resists(state, ruleset, cast.spell, s))
+            || (cast.by.is_none() && resists(state, ruleset, cast.spell, s)))
     {
         resisted(s, sink);
     } else {

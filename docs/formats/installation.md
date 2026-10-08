@@ -1259,6 +1259,24 @@ target hex; the action names no spell): it turns the stack towards the hex (anim
 Every other creature does nothing there. With mastery 2 the timed spells take their Advanced
 value and last 6 rounds (the power, §7.9).
 
+**Who may cast, and at what** (re-read for T7b1, BAT-MAG-048). 0x4476C0(hex), the test behind the
+cursor (0x47670B, 0x476736) and the AI's loop (0x420E15): the casts left are not 0; magic is
+allowed for the caster's side, the controller's (+0x288 flips the side of a hypnotized stack):
+0x41F890(side, 0) refuses on battlefield type 2 (Cursed Ground; a hero's cast, flag 1, passes it
+there and needs a spell book instead, artifact 0), at an anti-magic garrison (+0x53C4, set at the
+battle's start for object 33 with subtype 1, 0x4645B1) and while either hero wears the Orb of
+Inhibition (126); then the hex is on the field and, by creature (table 0x447A00), the Ogre Mage
+and the four elementals need a stack on the hex (0x4E7170) that 0x5A3C80(spell, side, stack, 1,
+1) accepts (0x5A8090 above 0: immunities, Anti-Magic, the spell's side test). The cursor
+(0x4766EA) offers the cast only over a living stack that is not the caster itself (cursor 5)
+and, but for a Faerie Dragon, of the acting side (+0x132C0): **no caster casts at itself**. The
+dispatcher (0x47936E) calls 0x448260, sets the stack's bit `0x4000000`, rolls good morale
+(0x464920, as after a walk, an attack or a shot; not after Wait or Defend) and does not re-enter
+the stack's hexes (no 0x441F70, which Wait, Defend and a shot or attack from where it stands
+call), so a caster standing in a Fire Wall does not burn for casting. A stack created in battle
+is set up from its creature's table entry (0x47A100, §7.19), so a clone of a caster has its
+creature's full casts.
+
 **At a stack's activation** (0x465330, after the hero's opening spells, T8): a Faerie Dragon with
 casts left draws its spell (0x447510) from the weighted table 0x63B850, Ice Bolt 22, Lightning
 Bolt 22, Fireball 21, Magic Arrow 10, Frost Ring 10, Chain Lightning 5, Meteor Shower 5, Inferno 5
