@@ -23,7 +23,7 @@ use h3_kernel::{CanonicalHash, StateHasher};
 use crate::event::{Event, EventKind, Sink};
 use crate::magic::{SpellBonus, specialist_bonus};
 use crate::state::{BattleState, Stack, StackFlags, StackId, StackTraits, UNLIMITED_RETALIATIONS};
-use crate::vitality;
+use crate::{binds, vitality};
 
 /// Entries reserved at the battle's start and on every fork (ADR-0014 point 5; measured in T3a).
 pub const EFFECT_CAPACITY: usize = 32;
@@ -545,6 +545,22 @@ pub(crate) fn dispel_ends(ruleset: &Ruleset, spell: &Spell, e: &ActiveEffect) ->
         }
 }
 
+/// Ends the effects on stack `s` of the spells `ends` selects, reporting each; the stack's values
+/// are recomputed if any ended.
+pub(crate) fn end_spells<S: Sink>(
+    state: &mut BattleState,
+    ruleset: &Ruleset,
+    s: StackId,
+    sink: &mut S,
+    ends: impl Fn(&Spell) -> bool,
+) {
+    if end_where(state, s, sink, |e| {
+        ruleset.spell(e.spell).is_some_and(&ends)
+    }) {
+        recompute(state, ruleset, s);
+    }
+}
+
 /// Ends the effects on stack `s` that `ends` selects, reporting each, and says whether any
 /// ended. The caller recomputes the stack's values.
 fn end_where<S: Sink>(
@@ -581,7 +597,7 @@ pub(crate) fn damaged<S: Sink>(
     sink: &mut S,
 ) {
     // rule: BAT-MAG-038
-    crate::created::died(state, s, sink);
+    crate::created::died(state, ruleset, s, sink);
     if !state.at(s).spells.status.contains(Status::DAMAGE_ENDS) {
         return;
     }
@@ -655,15 +671,15 @@ pub(crate) const fn stops_turns(change: TimedChange) -> bool {
 /// original checks it first) or Curse; the strongest slowing; then the speed: the stack's speed
 /// with what was added, at least 0, and while slowed `max(1, ⌊speed × share⌋)` with the share
 /// exact or, under quirk Q-0005, single precision as the original stores it; its hit points per
-/// creature under Poison and Age (BAT-MAG-044). Then every stack's morale and luck are
-/// materialised again.
+/// creature under Poison and Age (BAT-MAG-044); whether it is bound (BAT-MAG-045). Then every
+/// stack's morale and luck are materialised again.
 pub(crate) fn recompute(state: &mut BattleState, ruleset: &Ruleset, s: StackId) {
     let single = ruleset.quirks().is_enabled(SINGLE_PRECISION_RATES);
     let mut values = SpellValues::default();
     let (mut attack, mut defense, mut speed) = (0i32, 0i32, 0i32);
     let (mut maximum, mut minimum) = (None::<u16>, None::<u16>);
     let (mut morale, mut luck) = (0i32, 0i32);
-    let mut aged = false;
+    let (mut aged, mut bound) = (false, false);
     for e in state.effects.of(s) {
         attack += i32::from(e.attack);
         defense += i32::from(e.defense);
@@ -745,6 +761,8 @@ pub(crate) fn recompute(state: &mut BattleState, ruleset: &Ruleset, s: StackId) 
                 }
                 // rule: BAT-MAG-044
                 TimedChange::Age => aged = true,
+                // rule: BAT-MAG-045
+                TimedChange::Bind => bound = true,
                 // rule: BAT-MAG-025
                 TimedChange::Berserk => values.status = values.status.with(Status::BERSERK, true),
                 // rule: BAT-MAG-026
@@ -773,6 +791,7 @@ pub(crate) fn recompute(state: &mut BattleState, ruleset: &Ruleset, s: StackId) 
     stack.spells = values;
     // rule: BAT-MAG-044
     vitality::materialize(state, ruleset, s, aged);
+    binds::materialize(state, s, bound);
     crate::morale::materialize(state, ruleset);
 }
 

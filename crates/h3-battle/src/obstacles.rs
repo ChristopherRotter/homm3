@@ -669,8 +669,9 @@ fn explode<S: Sink>(
 /// mine, BAT-MAG-033): a walker enters the hexes of each position of its path in turn, stops at
 /// the first position where it enters a pit (revealing a pit its controller did not see) and
 /// stops where it dies, but walks on after a mine; a flyer (and a teleporting creature) enters
-/// only those it lands on and no pit stops it. Returns whether the stack arrived at `to` alive
-/// (an attack ordered with the move happens only then).
+/// only those it lands on and no pit stops it. Before it moves, the stacks it binds are released
+/// (BAT-MAG-045). Returns whether the stack arrived at `to` alive (an attack ordered with the move
+/// happens only then).
 #[inline]
 pub(crate) fn travel<S: Sink>(
     state: &mut BattleState,
@@ -679,6 +680,8 @@ pub(crate) fn travel<S: Sink>(
     (from, to): (Hex, Hex),
     sink: &mut S,
 ) -> bool {
+    // rule: BAT-MAG-045
+    crate::binds::release(state, ruleset, mover, sink);
     let o = &state.spell_obstacles;
     if o.fire().is_empty() && !o.has_hidden() {
         moved(state, mover, (from, to), sink);

@@ -1572,7 +1572,7 @@ fn reach_stacks<S: Sink>(
             (CastTarget::Stack(s), None) if cast.spell.magic.teleports() => {
                 // Validated: the second target is a hex.
                 let to = cast.second.hex().unwrap_or(state.at(s).hex);
-                teleport(state, s, to, sink);
+                teleport(state, ruleset, s, to, sink);
             }
             (CastTarget::Stack(s), None) => affect(state, ruleset, cast, (s, cast.value), sink),
             (target, _) => {
@@ -1604,9 +1604,19 @@ fn reach_stacks<S: Sink>(
 }
 
 /// Moves stack `s` to the hex `to` of its validated second target (Teleport, BAT-MAG-029): no
-/// hex it lands on acts on it (`installation.md` §7.15).
+/// hex it lands on acts on it (`installation.md` §7.15). First the stacks it binds are released
+/// and its own Bind ends (BAT-MAG-045; the original's 0x5A1B88 and 0x5A1B91).
 // rule: BAT-MAG-029
-fn teleport<S: Sink>(state: &mut BattleState, s: StackId, to: Hex, sink: &mut S) {
+fn teleport<S: Sink>(
+    state: &mut BattleState,
+    ruleset: &Ruleset,
+    s: StackId,
+    to: Hex,
+    sink: &mut S,
+) {
+    // rule: BAT-MAG-045
+    crate::binds::release(state, ruleset, s, sink);
+    crate::binds::end(state, ruleset, s, sink);
     let from = core::mem::replace(&mut state.at_mut(s).hex, to);
     sink.emit(Event::public(EventKind::Teleported { stack: s, from, to }));
 }

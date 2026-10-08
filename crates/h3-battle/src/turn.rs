@@ -87,7 +87,7 @@ pub(crate) fn start_round<S: Sink>(state: &mut BattleState, ruleset: &Ruleset, s
     }));
     effects::count_down(state, ruleset, sink);
     // rule: BAT-MAG-038
-    crate::created::count_down(state, sink);
+    crate::created::count_down(state, ruleset, sink);
     obstacles::count_down(state, sink);
 }
 
