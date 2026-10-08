@@ -41,7 +41,7 @@ pub const STACK_CAPACITY: usize = 2 * SIDE_STACK_SLOTS;
 const _: () = assert!(MAX_ARMY_SLOTS + MAX_WAR_MACHINES <= SIDE_STACK_SLOTS);
 
 /// Version of the battle-state hash encoding ([`BattleState::state_hash`]). Bump on any change.
-pub const BATTLE_STATE_HASH_VERSION: u32 = 28;
+pub const BATTLE_STATE_HASH_VERSION: u32 = 29;
 
 /// Index of a stack in its battle (attacker stacks first, in slot order, then defender stacks).
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Default)]
@@ -377,6 +377,42 @@ pub struct Stack {
     pub spells: SpellValues,
 }
 
+/// [`BattleState::corpse`] of a stack that left no corpse: it can never be raised (BAT-MAG-036).
+pub const NO_CORPSE: u16 = u16::MAX;
+
+/// What the raising spells keep per stack, by stack id (E04b T6a; kept beside the stacks so that
+/// the stacks the hot paths walk stay small).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) struct Raised {
+    /// Creatures raised for this battle only, at most the stack's start count: left out of its
+    /// end count (Basic Resurrection, BAT-MAG-035; the original's counter +0x54,
+    /// `installation.md` §7.18).
+    pub(crate) temporary: [u32; STACK_CAPACITY],
+    /// Its corpse (BAT-MAG-035): 0 while it lives or until its death is marked after the command
+    /// that killed it, then the order of its death among the battle's corpses (a later corpse
+    /// lies above an earlier one on a shared hex), [`NO_CORPSE`] if it left none (sacrificed,
+    /// BAT-MAG-036).
+    pub(crate) corpse: [u16; STACK_CAPACITY],
+}
+
+impl Default for Raised {
+    fn default() -> Self {
+        Self {
+            temporary: [0; STACK_CAPACITY],
+            corpse: [0; STACK_CAPACITY],
+        }
+    }
+}
+
+impl CanonicalHash for Raised {
+    fn hash_into(&self, h: &mut StateHasher) {
+        for (&t, &c) in self.temporary.iter().zip(&self.corpse) {
+            h.write_u32(t);
+            h.write_u16(c);
+        }
+    }
+}
+
 impl Stack {
     /// A new stack of `count` creatures with the creature's stats, the native-terrain bonus
     /// (BAT-TER-001), the attack and defense of its side's hero (BAT-HER-002), for war machines
@@ -647,6 +683,8 @@ pub struct BattleState {
     pub(crate) effects: Effects,
     /// The spell obstacles (ADR-0014 points 5 and 7).
     pub(crate) spell_obstacles: SpellObstacles,
+    /// What the raising spells keep per stack (BAT-MAG-035, BAT-MAG-036).
+    pub(crate) raised: Raised,
     pub(crate) rng: Rng,
 }
 
@@ -774,6 +812,7 @@ impl BattleState {
             terrain: setup.terrain,
             effects: Effects::new(),
             spell_obstacles: SpellObstacles::new(),
+            raised: Raised::default(),
             rng: Rng::for_stream(seed, StreamId::BATTLE),
         };
         morale::setup(&mut state, ruleset, &setup.heroes);
@@ -887,6 +926,17 @@ impl BattleState {
         self.stacks.get(id.index())
     }
 
+    /// The creatures of stack `id` raised for this battle only (BAT-MAG-035; 0 for no stack).
+    pub fn temporary(&self, id: StackId) -> u32 {
+        self.raised.temporary.get(id.index()).copied().unwrap_or(0)
+    }
+
+    /// The corpse of stack `id` (BAT-MAG-035): 0 while it lives, else the order of its death
+    /// among the battle's corpses, [`NO_CORPSE`] if it left none (0 for no stack).
+    pub fn corpse(&self, id: StackId) -> u16 {
+        self.raised.corpse.get(id.index()).copied().unwrap_or(0)
+    }
+
     /// The active stack and its id, if the battle is not over.
     pub(crate) fn active_stack(&self) -> Option<(StackId, Stack)> {
         self.active.and_then(|id| self.stack(id).map(|s| (id, *s)))
@@ -954,8 +1004,9 @@ impl BattleState {
         let stacks = BattleSide::BOTH.map(|side| {
             self.stacks
                 .iter()
-                .filter(|s| s.side == side)
-                .map(|s| StackRecord {
+                .zip(self.raised.temporary)
+                .filter(|(s, _)| s.side == side)
+                .map(|(s, temporary)| StackRecord {
                     origin: if s.has(StackTraits::WAR_MACHINE) {
                         StackOrigin::WarMachine
                     } else {
@@ -963,7 +1014,8 @@ impl BattleState {
                     },
                     creature: s.creature,
                     start: s.base_count,
-                    end: s.count,
+                    // rule: BAT-MAG-035
+                    end: s.count.saturating_sub(temporary),
                 })
                 .collect::<Vec<_>>()
         });
@@ -1073,6 +1125,7 @@ impl CanonicalHash for BattleState {
         self.terrain.hash_into(h);
         self.effects.hash_into(h);
         self.spell_obstacles.hash_into(h);
+        self.raised.hash_into(h);
         self.rng.hash_into(h);
     }
 }

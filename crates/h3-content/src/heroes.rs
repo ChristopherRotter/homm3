@@ -135,6 +135,9 @@ pub struct Spell {
     /// Spells whose effects its dispel effect spares when `dispels` is empty (pack format v7;
     /// Dispel spares Poison).
     pub spares: Vec<SpellId>,
+    /// The raise spell whose target test a sacrifice effect's target takes under quirk
+    /// BAT-QUIRK-5 (pack format v17; Sacrifice: Resurrection, `installation.md` §7.18).
+    pub tests_as: Option<SpellId>,
 }
 
 /// Handle of a spell in a [`crate::Ruleset`].
@@ -442,6 +445,7 @@ impl HeroContent {
                 counters: Vec::new(),
                 dispels: Vec::new(),
                 spares: Vec::new(),
+                tests_as: None,
             });
         }
         // Counters and dispel lists may name a later spell of the same pack, so all are
@@ -452,18 +456,19 @@ impl HeroContent {
             .map(|def| {
                 let list = |keys| distinct(refs, keys, &self.spells.index, "spell");
                 Ok((
-                    list(&def.counters)?,
-                    list(&def.dispels)?,
-                    list(&def.spares)?,
+                    (list(&def.counters)?, list(&def.dispels)?),
+                    (list(&def.spares)?, list(def.tests_as.as_slice())?),
                 ))
             })
             .collect::<Result<Vec<_>, CompileError>>()?;
         let first = self.spells.items.len() - pack.spells.len();
-        for (s, (counters, dispels, spares)) in self.spells.items.iter_mut().skip(first).zip(lists)
+        for (s, ((counters, dispels), (spares, tests_as))) in
+            self.spells.items.iter_mut().skip(first).zip(lists)
         {
             s.counters = counters;
             s.dispels = dispels;
             s.spares = spares;
+            s.tests_as = tests_as.first().copied();
         }
         // Skills may refer to each other (from T3b on), so all are registered first.
         for def in &pack.skills {
@@ -591,6 +596,17 @@ impl HeroContent {
                     "dispels or spares (not both) need a dispel effect",
                 ));
             }
+            let raise_test = s
+                .tests_as
+                .and_then(|t| self.spells.items.get(t.index()))
+                .is_none_or(|t| t.magic.raises());
+            if s.tests_as.is_some() != s.magic.sacrifices() || !raise_test {
+                return Err(invalid(
+                    "spell",
+                    &s.key,
+                    "a sacrifice effect needs tests_as, a spell with a raise effect",
+                ));
+            }
         }
         for skill in &self.skills.items {
             if let Some(reason) = skill
@@ -657,7 +673,7 @@ impl HeroContent {
 
 impl CanonicalHash for HeroContent {
     /// Schools (key, name, protection rank (v18)); spells (key, name, category, level, schools, cost, power, effect,
-    /// polarity, magic (v14), counters (v17), dispels and spares (v19)); skills (key, name, the three effect lists); classes (key, name, faction,
+    /// polarity, magic (v14), counters (v17), dispels and spares (v19), tests as (v26)); skills (key, name, the three effect lists); classes (key, name, faction,
     /// primary, gains, weights); hero types (key, name, class, skills, spell book, spells,
     /// army, war machines, specialty); then the artifact content (`hash_artifacts`); then the
     /// hero parameters as presence flag + fields (v11).
@@ -683,6 +699,7 @@ impl CanonicalHash for HeroContent {
             s.counters.hash_into(h);
             s.dispels.hash_into(h);
             s.spares.hash_into(h);
+            s.tests_as.hash_into(h);
         }
         h.write_len(self.skills.items.len());
         for s in &self.skills.items {

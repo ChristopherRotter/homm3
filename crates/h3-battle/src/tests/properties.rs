@@ -235,6 +235,9 @@ fn make_setup(
         "quicksand",
         "landmine",
         "remove",
+        "rise",
+        "animate",
+        "offering",
     ]
     .iter()
     .map(|k| r.spell_by_key(&std::format!("t:{k}")).unwrap())
@@ -421,7 +424,7 @@ proptest! {
                 Ok(()) => {
                     prop_assert!(cmd_listed, "illegal {cmd:?} accepted");
                     // Mana is spent only by casts, by the spell's cost, at most once per round
-                    // and side (BAT-MAG-001, BAT-MAG-002); a cast keeps the turn.
+                    // and side (BAT-MAG-001, BAT-MAG-002); a cast keeps the turn ...
                     let per_round = r.battle().hero_casts_per_round;
                     for side in BattleSide::BOTH {
                         let (b, a) = (before.hero(side), state.hero(side));
@@ -431,8 +434,11 @@ proptest! {
                             prop_assert!(cast_by || a.mana == b.mana);
                         }
                     }
+                    // ... unless it killed the active stack, whose turn then ends (BAT-MAG-004,
+                    // BAT-MAG-036).
                     if let Command::Cast { .. } = cmd {
-                        prop_assert!(state.is_over() || state.active() == before.active());
+                        let killed = before.active().is_some_and(|a| !state.stacks()[a.index()].is_alive());
+                        prop_assert!(state.is_over() || state.active() == before.active() || killed);
                     }
                     let mover = before.active().unwrap();
                     let target = match cmd {
@@ -462,10 +468,13 @@ proptest! {
                     }
                     let mentioned = |i: usize, f: fn(&EventKind, usize) -> bool| events.iter().any(|e| f(&e.kind, i));
                     for (i, (b, a)) in before.stacks().iter().zip(state.stacks()).enumerate() {
-                        // Conservation: creatures only ever die, except that life drain brings
-                        // back up to the starting count (BAT-DMG-008).
-                        let drained = mentioned(i, |k, i| matches!(k, EventKind::LifeDrained { stack, .. } if stack.index() == i));
+                        // Conservation: creatures only ever die, except that life drain and the
+                        // raising spells bring back up to the starting count (BAT-DMG-008,
+                        // BAT-MAG-035); the creatures raised for the battle only are among them.
+                        let drained = mentioned(i, |k, i| matches!(k, EventKind::LifeDrained { stack, .. } | EventKind::SpellRaised { target: stack, .. } if stack.index() == i));
                         prop_assert!(a.count <= b.count || (drained && a.count <= a.base_count));
+                        let id = StackId(u8::try_from(i).unwrap());
+                        prop_assert!(state.temporary(id) <= a.base_count && (state.temporary(id) == before.temporary(id) || drained));
                         prop_assert!(a.is_alive() || a.top_hp == 0);
                         prop_assert!(!a.is_alive() || (1..=a.max_hp).contains(&a.top_hp));
                         // Morale and luck are materialised and change only with the stack's timed
@@ -710,11 +719,14 @@ proptest! {
         prop_assert_eq!(Some(o.result), state.result());
         prop_assert_eq!(o.rounds, state.round());
         for side in BattleSide::BOTH {
-            let stacks: Vec<_> = state.stacks().iter().filter(|s| s.side == side).collect();
+            let stacks: Vec<_> = (0u8..).zip(state.stacks()).filter(|(_, s)| s.side == side).collect();
             let records = &o.stacks[side.index()];
             prop_assert_eq!(records.len(), stacks.len());
-            for (record, s) in records.iter().zip(&stacks) {
-                prop_assert_eq!((record.creature, record.start, record.end), (s.creature, s.base_count, s.count));
+            for (record, &(id, s)) in records.iter().zip(&stacks) {
+                // Creatures raised for the battle only are left out (BAT-MAG-035).
+                let temporary = state.temporary(StackId(id));
+                prop_assert!(temporary <= s.base_count);
+                prop_assert_eq!((record.creature, record.start, record.end), (s.creature, s.base_count, s.count.saturating_sub(temporary)));
                 prop_assert!(record.end <= record.start);
             }
             let alive = |machine: bool| records.iter().filter(move |rec| rec.end > 0 && (rec.origin == h3_contracts::StackOrigin::WarMachine) == machine);

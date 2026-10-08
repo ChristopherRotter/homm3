@@ -19,5 +19,5 @@ args = [
     "1",
 ]
 collect = "*random_rollout*"
-instructions = 580603174
+instructions = 599203393
 threshold_percent = 2

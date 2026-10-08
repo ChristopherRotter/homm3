@@ -254,6 +254,9 @@ pub struct SpellDef {
     pub dispels: Vec<ContentKey>,
     /// Spells whose effects its dispel effect spares, without `dispels` (pack format v7).
     pub spares: Vec<ContentKey>,
+    /// The raise spell whose target test a sacrifice effect's target takes under quirk
+    /// BAT-QUIRK-5 (pack format v17; Sacrifice: Resurrection).
+    pub tests_as: Option<ContentKey>,
 }
 
 /// A secondary skill with the effects of its three levels (E04a T3).

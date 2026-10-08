@@ -158,6 +158,19 @@ pub struct SpellOther {
     /// The mastery from which a cast also removes every spell obstacle (Dispel: `expert`).
     #[serde(default)]
     pub clears_obstacles: Option<String>,
+    /// Creature flag names a stack it reaches needs (Resurrection: `alive`; pack format v17).
+    #[serde(default)]
+    pub requires: Vec<String>,
+    /// Creature flag names a stack it reaches may not have (Sacrifice: `undead`; v17).
+    #[serde(default)]
+    pub excludes: Vec<String>,
+    /// The mastery from which its raise lasts after the battle (Resurrection: `advanced`; v17).
+    #[serde(default)]
+    pub temporary_below: Option<String>,
+    /// The raise spell (by name) whose target test its sacrifice effect's target takes under
+    /// quirk BAT-QUIRK-5 (Sacrifice: `Resurrection`; v17).
+    #[serde(default)]
+    pub tests_as: Option<String>,
     /// Source ids.
     pub sources: Vec<String>,
 }

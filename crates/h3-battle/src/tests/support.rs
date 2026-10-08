@@ -397,6 +397,21 @@ pub const CREATURES: &[Creature] = &[
     // Spell specialists (BAT-MAG-020): creature levels 3 and 5.
     ("tier3", 10, 10, 2, 2, 10, 5, &["level=3"]),
     ("tier5", 10, 10, 2, 2, 10, 5, &["level=5"]),
+    // Raising (BAT-MAG-035/036): a living two-hex creature, a living one immune to spells up to
+    // level 4 (the Gold Dragons), an undead one, a living one with much health.
+    ("ogre", 8, 8, 3, 5, 40, 5, &["two_hex", "alive"]),
+    (
+        "gilded",
+        10,
+        10,
+        2,
+        2,
+        50,
+        5,
+        &["alive", "spell_level_immunity=4"],
+    ),
+    ("ghoul", 10, 10, 2, 2, 10, 5, &["undead"]),
+    ("seraph", 20, 20, 2, 2, 200, 5, &["alive"]),
 ];
 
 /// The traits of a test creature as creature info: flags, abilities, shots and faction.
@@ -750,6 +765,13 @@ pub fn ruleset_with(profile: &str, edit: impl FnOnce(&mut BattleParamsDef)) -> R
                 quirks: vec![(String::from("quirk.battle.draws_avoid_hidden"), true)],
             },
             ProfileDef {
+                key: ContentKey::new("t", "sacrifice").unwrap(),
+                quirks: vec![(
+                    String::from("quirk.battle.sacrifice_tests_as_resurrection"),
+                    true,
+                )],
+            },
+            ProfileDef {
                 key: ContentKey::new("t", "original").unwrap(),
                 quirks: vec![
                     (String::from("quirk.battle.first_protection"), true),
@@ -775,6 +797,7 @@ pub fn ruleset_with(profile: &str, edit: impl FnOnce(&mut BattleParamsDef)) -> R
             .chain(other_defs())
             .chain(control_defs())
             .chain(field_defs())
+            .chain(raise_defs())
             .collect(),
         hero_classes: vec![HeroClassDef {
             key: ContentKey::new("t", "knight").unwrap(),
@@ -1251,6 +1274,7 @@ fn timed_def(
             .unwrap_or_default(),
         dispels: vec![],
         spares: vec![],
+        tests_as: None,
     }
 }
 
@@ -1273,6 +1297,7 @@ pub fn other_defs() -> [SpellDef; 2] {
         counters: vec![],
         dispels: vec![],
         spares: vec![],
+        tests_as: None,
     };
     [
         SpellDef {
@@ -1339,6 +1364,7 @@ pub fn control_defs() -> Vec<SpellDef> {
         counters: vec![],
         dispels: vec![],
         spares: vec![],
+        tests_as: None,
     };
     let machines = TargetConditions {
         requires: CreatureFlags::default(),
@@ -1444,6 +1470,7 @@ pub fn field_defs() -> Vec<SpellDef> {
         counters: vec![],
         dispels: vec![],
         spares: vec![],
+        tests_as: None,
     };
     let shape = |mirrored, separate| ObstacleShape {
         steps: vec![HexStep::TopRight, HexStep::TopLeft],
@@ -1543,6 +1570,72 @@ pub fn field_defs() -> Vec<SpellDef> {
     ]
 }
 
+/// The raising spells (BAT-MAG-035, BAT-MAG-036): `rise` (Resurrection: an air spell of level 4,
+/// 50 per power, temporary below Advanced), `animate` (Animate Dead: undead only, permanent) and
+/// `offering` (Sacrifice: fire, level 5, tested as `rise` under quirk BAT-QUIRK-5).
+pub fn raise_defs() -> Vec<SpellDef> {
+    let key = |k: &str| ContentKey::new("t", k).unwrap();
+    let flags = |names: &[CreatureFlag]| {
+        names
+            .iter()
+            .fold(CreatureFlags::default(), |set, &f| set.with(f))
+    };
+    let def = |name: &str, (level, school), (power, effect), magic| SpellDef {
+        key: key(name),
+        name: String::from(name),
+        category: SpellCategory::Combat,
+        level,
+        schools: vec![key(school)],
+        cost: [5, 4, 4, 4],
+        power,
+        effect,
+        polarity: SpellPolarity::Positive,
+        magic,
+        counters: vec![],
+        dispels: vec![],
+        spares: vec![],
+        tests_as: None,
+    };
+    let magic = |requires, excludes, effect| SpellMagic {
+        target: SpellTarget::Stack,
+        side: TargetSide::Own,
+        conditions: TargetConditions { requires, excludes },
+        effects: vec![effect],
+        ..SpellMagic::default()
+    };
+    let machine = flags(&[CreatureFlag::WarMachine]);
+    vec![
+        def(
+            "rise",
+            (4, "air"),
+            (50, [40, 40, 80, 160]),
+            SpellMagic {
+                temporary_below: Some(2),
+                ..magic(flags(&[CreatureFlag::Alive]), machine, SpellEffect::Raise)
+            },
+        ),
+        def(
+            "animate",
+            (3, "air"),
+            (50, [30, 30, 60, 160]),
+            magic(flags(&[CreatureFlag::Undead]), machine, SpellEffect::Raise),
+        ),
+        SpellDef {
+            tests_as: Some(key("rise")),
+            ..def(
+                "offering",
+                (5, "fire"),
+                (1, [3, 3, 6, 10]),
+                magic(
+                    flags(&[CreatureFlag::Alive]),
+                    flags(&[CreatureFlag::Undead, CreatureFlag::WarMachine]),
+                    SpellEffect::Sacrifice,
+                ),
+            )
+        },
+    ]
+}
+
 /// The definition of a test spell.
 fn spell_def((name, category, schools, target, side): SpellSpec) -> SpellDef {
     let castable = !matches!(name, "gaze" | "ward" | "portal");
@@ -1593,6 +1686,7 @@ fn spell_def((name, category, schools, target, side): SpellSpec) -> SpellDef {
         counters: vec![],
         dispels: vec![],
         spares: vec![],
+        tests_as: None,
     }
 }
 

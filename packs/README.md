@@ -159,7 +159,7 @@ override, replacing the list) names the creature types it upgrades into: at most
 none twice; references follow the reference rules and may name later creatures of the pack.
 Hero effects that select "a creature" apply to it and its direct upgrades.
 
-## Hero content (format v3, E04a T3; battle magic format v4, E04b T2a; v5 T3a; v6 T3b1; v7 T3b1b; v8 T3b2; v9 T3c; v10 T4a; v11 T4b; v12 T4c; v13 T5a; v14 T5c1; v15 T5c2; v16 T5b)
+## Hero content (format v3, E04a T3; battle magic format v4, E04b T2a; v5 T3a; v6 T3b1; v7 T3b1b; v8 T3b2; v9 T3c; v10 T4a; v11 T4b; v12 T4c; v13 T5a; v14 T5c1; v15 T5c2; v16 T5b; v17 T6a)
 
 Spell schools, spells, secondary skills, hero classes and hero types (ADR-0013). References follow
 the reference rules above; every kind may refer to content of its dependency closure.
@@ -308,6 +308,40 @@ removes = { fire = "advanced", wall = "expert", pit = "expert", mine = "expert" 
                                    # obstacle of a kind from the mastery named (default: never)
 effects = [{ kind = "remove_obstacle" }]
 
+[[spell]]                          # a raise effect (pack format v17, E04b T6a): a Resurrection
+id = "revive"                      # (BAT-MAG-035)
+category = "combat"
+level = 4
+schools = ["stone"]
+cost = [20, 16, 16, 16]
+power = 50
+effect = [40, 40, 80, 160]
+polarity = "positive"
+target = "stack"                   # an own stack, living or dead
+side = "own"
+requires = ["alive"]
+excludes = ["war_machine"]
+temporary_below = "advanced"       # v17: below this mastery the creatures raised stay for the
+                                   # battle only (default: always for good)
+effects = [{ kind = "raise" }]
+
+[[spell]]                          # a sacrifice effect (v17): a Sacrifice (BAT-MAG-036)
+id = "offer"
+category = "combat"
+level = 5
+schools = ["storm"]
+cost = [25, 20, 20, 20]
+power = 1
+effect = [3, 3, 6, 10]
+polarity = "positive"
+target = "stack"                   # the stack it raises; the cast's second target is the victim
+side = "own"
+requires = ["alive"]
+excludes = ["undead", "war_machine"]
+tests_as = "revive"                # v17: a raise spell; under quirk BAT-QUIRK-5 the target is
+                                   # tested as that spell's (required with a sacrifice effect)
+effects = [{ kind = "sacrifice" }]
+
 [[secondary_skill]]
 id = "marksmanship"
 name = "Marksmanship"
@@ -368,7 +402,12 @@ spell's damage, BAT-MAG-028; since v14, E04b T5c1, `"pit"`: hidden from the othe
 it stops a walker that enters it, BAT-MAG-031/032) and `teleport` (moves the target stack to the cast's second target,
 a free hex, BAT-MAG-029); since v16, E04b T5b: `remove_obstacle` (target `hex`: takes away the
 removable natural obstacle there, or the spell obstacles there of the kinds in `removes` from the
-mastery named, as the caster sees them; BAT-MAG-034), each the spell's only effect, without area, chain or mass version; since
+mastery named, as the caster sees them; BAT-MAG-034); since v17, E04b T6a: `raise` (target `stack`: an
+own stack, living or dead, with fewer creatures than at the start, gains the value in hit points up to
+that count; below `temporary_below` for the battle only; BAT-MAG-035) and `sacrifice` (target `stack`,
+second target a victim of the side: kills it and raises the target by `(its creature's hit points + the
+value) × its creatures`; `tests_as` names the raise spell whose test the target takes under quirk
+BAT-QUIRK-5; BAT-MAG-036), each the spell's only effect, without area, chain or mass version; since
 v7, E04b T3b1b: `dispel` (ends the stack's
 timed effects: those of the spells in `dispels`, or without that list every one but those in
 `spares`; never a permanent one; BAT-MAG-016) and `heal` (heals the top creature by the value,

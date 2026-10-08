@@ -912,3 +912,62 @@ records how and why the tasks went.
   (`placement` now asks `is_standable`); a random shape that is not separate (rejected); the
   public cast target (documented); the observation's allocation (now by value); the per-kind
   table sized by `ObstacleKind::COUNT`. All fixed.
+
+### T6a — Resurrection, Animate Dead and Sacrifice (2026-10-08)
+
+- **Seam (the user, 2026-10-08):** T6 in two parts this session, T6a raising then T6b created
+  stacks, one pull request each. The user questioned ADR-0014's new `StackOrigin` variants:
+  nothing created in battle needs to cross the seam (only army stacks and war machines enter a
+  battle; the orchestrator needs records only to update the army). ADR-0014 points 6 and 10
+  amended in `shared/adr-0014-created-stacks` (PR #7): summoned stacks and clones are left out of
+  the outcome; Pit Lords' demons are T7's question.
+- **Code reading** (`installation.md` §7.18): the corpse lists of the hex records (at most 14,
+  last added on top), the finders 0x5A3CC0/0x5A3F50 (a living stack on the hex, else the first
+  qualifying corpse from the top of a free hex), 0x5A8090's cases for 38–40 (fewer creatures than
+  at the start, the hit points reach one creature's health; the victim living, not undead, not
+  summoned, own by controller and real side), the raise 0x5A7560 (capped at the start count;
+  temporary below Advanced into the counter +0x54; the dead bit cleared, no other flag), the
+  death 0x444120 (every spell ended; sacrificed and summoned stacks leave no corpse), Sacrifice
+  0x5A199C (`(the table's health + effect[mastery] + power) × creatures`). Not found: where the
+  counter +0x54 is subtracted at the end (VCMI subtracts; S-20 presupposes it).
+- **Quirks (the user):** BAT-QUIRK-5 fix-optional: Sacrifice tests its target through
+  Resurrection's routine (its level 4, conditions and hit points at the hero's Earth mastery);
+  S-15 is explained by it (the Dispel half was settled in T3b1b). BAT-QUIRK-6 (S-20) exploit-fix:
+  the battle reports the facts, the orchestrator removes a winner without creatures (VCMI's fix;
+  adventure lane).
+- **Battle:** `h3_battle::raise`: `BattleState.raised` (per stack: temporary creatures, the
+  corpse's order, `NO_CORPSE`; beside the stacks, so the stacks the hot paths walk stay small),
+  marked after every command (`mark_corpses`); raise targets by `raise_test`/`raisable` (a living
+  stack, or a dead one with free unblocked hexes that lies on top among the qualifying corpses on
+  one of its hexes), the victim (`victim`, a stack as the second target); `SpellRaised`,
+  `Sacrificed` events; the outcome's end counts without the temporary creatures. A cast that
+  kills the active stack now ends its turn (also the hero's own area and battle-wide damage,
+  which left a dead stack active before: BAT-MAG-001).
+- **Content:** effect kinds `raise` and `sacrifice`, `temporary_below`, `tests_as` (pack format
+  v17); gap-fill `[[spells.other]]` with `requires`, `excludes`, `temporary_below`, `tests_as`;
+  the base pack's Resurrection, Animate Dead and Sacrifice; synthetic Revive (Brea without Stone
+  magic: temporary; Corwin at Expert) and Offer (Brea); profiles with
+  `quirk.battle.sacrifice_tests_as_resurrection`.
+- **Versions:** pack format v17, ruleset hash v26, state hash v29; replay format, action and
+  observation encodings, C ABI unchanged. `BattleState` 4 560 bytes (+256).
+- **Performance:** the old workload on the new code: 586.63 M Ir against 580.60 M (+1.04 %, the
+  same 10 867 steps): about half a codegen swing in the geometry hot path (`reachable_within`
+  +6.1 M, the footprint iterator −3.5 M; the same functions), the rest the raise checks in
+  `castable_spells` (+2.0 M) and the corpse marking. A first version kept the two new fields in
+  `Stack` (+1.61 %) and tested the raise kind per stack. The new workload (Revive and Offer in
+  the books): 10 913 steps, 599.20 M Ir (+3.20 %); `bench-check` re-baselined.
+- **Replays:** all re-recorded; `full-s3-a199` (Blink, Scorch, Snare's mines going off) replaces
+  `full-s3-a362`, `full-s3-a325` (Uproot takes away Scorch, mines, Mire's stops) replaces
+  `full-s3-a246` and `full-s3-a138`; new `full-s3-a52` (Offer; Corwin raises a dead stack) and
+  `full-s3-a149` (Brea's temporary raise, an attacker victory).
+- **Agent decisions (change freely):** the target may not be its own victim (the original's
+  code does not compare them; the second cursor was not read); the 14-corpse limit of a hex is
+  not modelled (a stack dying on a hex with 14 corpses leaves none there); the corpses of one
+  command are ordered by stack id (they cannot share a hex); a raised stack keeps its round flags,
+  shots and retaliations (the original clears only its dead bit).
+- **Tests:** `tests/raise.rs` (temporary and permanent raises and the outcome; the health test;
+  a dead stack back without effects and with its flags; corpses: the top one, a living stack on
+  the hex, a two-hex corpse; Animate Dead; Sacrifice: the victims, no corpse, the active stack;
+  BAT-QUIRK-5 with the hit points and the Gold Dragons' immunity; a battle-wide cast killing the
+  active stack); the property games cast the three spells, conservation and the outcome allow
+  for raises; pack, content, harvester and sim tests.

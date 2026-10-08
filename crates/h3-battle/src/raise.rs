@@ -1,0 +1,242 @@
+//! Raising spells (E04b T6a; the original's code, `docs/formats/installation.md` §7.18):
+//! Resurrection and Animate Dead raise the creatures of a living or dead stack of the caster's
+//! side (BAT-MAG-035), Sacrifice kills one of the side's stacks to raise another (BAT-MAG-036).
+//! A dead stack lies on its hexes as a corpse, the last to die on top
+//! ([`BattleState::corpse`]).
+
+use h3_content::{Ruleset, SACRIFICE_TESTS_AS_RESURRECTION, Spell};
+use h3_contracts::BattleSide;
+
+use crate::damage::resurrect;
+use crate::event::{Event, EventKind, Sink};
+use crate::geometry::{Field, HexSet};
+use crate::hero::HeroRecord;
+use crate::magic::{
+    SpellBonus, SpellRef, affects, base_value, kept_off, mastery, specialist_bonus,
+};
+use crate::state::{BattleState, NO_CORPSE, StackId};
+
+/// Marks the corpses of the stacks that died since the last mark, by stack id, each above every
+/// earlier one (BAT-MAG-035; after every command, so stacks killed by one command lie on no
+/// common hex).
+pub(crate) fn mark_corpses(state: &mut BattleState) {
+    let corpses = &mut state.raised.corpse;
+    let fresh = |s: &crate::state::Stack, c: u16| !s.is_alive() && c == 0;
+    if !state
+        .stacks
+        .iter()
+        .zip(corpses.iter())
+        .any(|(s, &c)| fresh(s, c))
+    {
+        return;
+    }
+    let mut top = corpses
+        .iter()
+        .copied()
+        .filter(|&c| c != NO_CORPSE)
+        .max()
+        .unwrap_or(0);
+    for (s, c) in state.stacks.iter().zip(corpses.iter_mut()) {
+        if fresh(s, *c) {
+            top = top.saturating_add(1).min(NO_CORPSE - 1);
+            *c = top;
+        }
+    }
+}
+
+/// How a cast tests the stack it raises (the original's 0x5A8090 for Resurrection and Animate
+/// Dead, case 0x5A8467): the spell whose conditions, level and immunities apply and, unless the
+/// test has none, the hit points the cast raises, with the caster's bonuses for that spell, which
+/// must reach one creature's health.
+#[derive(Clone, Copy)]
+pub(crate) struct RaiseTest<'r> {
+    spell: SpellRef<'r>,
+    hit_points: Option<(u64, SpellBonus)>,
+}
+
+/// The test of `hero`'s cast of `spell` at `mastery` for the stack it raises: the spell's own with
+/// its hit points (BAT-MAG-035); for a sacrifice, with quirk BAT-QUIRK-5 that of the spell it tests
+/// as (Resurrection's, at the hero's mastery in it), else its own without hit points
+/// (BAT-MAG-036).
+pub(crate) fn test_for<'r>(
+    hero: &HeroRecord,
+    ruleset: &'r Ruleset,
+    ((id, spell), at): (SpellRef<'r>, u8),
+) -> RaiseTest<'r> {
+    let as_spell = spell
+        .tests_as
+        .filter(|_| ruleset.quirks().is_enabled(SACRIFICE_TESTS_AS_RESURRECTION))
+        .and_then(|t| ruleset.spell(t).map(|s| (t, s)));
+    match (spell.magic.sacrifices(), as_spell) {
+        (true, None) => RaiseTest {
+            spell: (id, spell),
+            hit_points: None,
+        },
+        (true, Some((t, s))) => RaiseTest {
+            spell: (t, s),
+            hit_points: Some((
+                base_value(hero, s, mastery(hero, s)),
+                hero.magic.bonuses.spell(t),
+            )),
+        },
+        (false, _) => RaiseTest {
+            spell: (id, spell),
+            hit_points: Some((base_value(hero, spell, at), hero.magic.bonuses.spell(id))),
+        },
+    }
+}
+
+/// Whether stack `s` passes `side`'s raise `test` wherever it lies (BAT-MAG-035): a stack of the
+/// side (its own, whoever controls it) with fewer creatures than at the battle's start, which the
+/// test's spell can affect (its conditions and immunities; Anti-Magic on a living stack: a dead
+/// one's effects ended at its death), and whose creature's health the raised hit points reach.
+fn eligible(
+    state: &BattleState,
+    ruleset: &Ruleset,
+    side: BattleSide,
+    test: RaiseTest<'_>,
+    s: StackId,
+) -> bool {
+    let stack = state.at(s);
+    stack.side == side
+        && stack.count < stack.base_count
+        && affects(ruleset, test.spell, stack.creature)
+        && !(stack.is_alive() && kept_off(stack, test.spell.1))
+        && test.hit_points.is_none_or(|(value, own)| {
+            let bonus = specialist_bonus(ruleset, test.spell.1, own, stack.creature, value);
+            u64::from(stack.max_hp) <= value.saturating_add_signed(bonus)
+        })
+}
+
+/// Whether stack `s` is a target of `side`'s raise `test` (BAT-MAG-035; the original finds the
+/// stack by hex, 0x5A3CC0 and 0x5A3F50): a living stack that passes the test; a dead one that
+/// passes it, whose hexes hold no living stack and are not blocked (an obstacle, Force Field), and
+/// which on one of its hexes lies above every other such corpse that passes the test.
+pub(crate) fn raisable(
+    state: &BattleState,
+    ruleset: &Ruleset,
+    side: BattleSide,
+    test: RaiseTest<'_>,
+    s: StackId,
+) -> bool {
+    let stack = state.at(s);
+    if stack.is_alive() {
+        return eligible(state, ruleset, side, test, s);
+    }
+    // The cheap tests first: most dead stacks are the other side's or out of the test.
+    let corpse = state.corpse(s);
+    if corpse == 0 || corpse == NO_CORPSE || !eligible(state, ruleset, side, test, s) {
+        return false;
+    }
+    let field = Field::new(ruleset.battle().field);
+    let occupied = state.blocked_for(field, s);
+    if covers(field, state, s, occupied) {
+        return false;
+    }
+    stack.footprint(field).hexes().any(|h| {
+        !(0u8..).take(state.stacks.len()).map(StackId).any(|t| {
+            let (other, above) = (state.at(t), state.corpse(t));
+            !other.is_alive()
+                && above > corpse
+                && above != NO_CORPSE
+                && other.footprint(field).hexes().any(|x| x == h)
+                && eligible(state, ruleset, side, test, t)
+                && !covers(field, state, t, occupied)
+        })
+    })
+}
+
+/// Whether one of stack `t`'s hexes is in `set`.
+fn covers(field: Field, state: &BattleState, t: StackId, set: HexSet) -> bool {
+    state
+        .at(t)
+        .footprint(field)
+        .hexes()
+        .any(|h| set.contains(h))
+}
+
+/// Whether stack `v` may be the victim of `side`'s cast of the sacrifice `spell` (BAT-MAG-036;
+/// the original's 0x5A8090, case 0x5A8523): a living stack of the side that the side controls
+/// (not hypnotized), which the spell can affect (its conditions, immunities and Anti-Magic).
+pub(crate) fn victim(
+    state: &BattleState,
+    ruleset: &Ruleset,
+    side: BattleSide,
+    spell: SpellRef<'_>,
+    v: StackId,
+) -> bool {
+    state.stack(v).is_some_and(|stack| {
+        stack.is_alive()
+            && stack.side == side
+            && stack.controller() == side
+            && affects(ruleset, spell, stack.creature)
+            && !kept_off(stack, spell.1)
+    })
+}
+
+/// Raises stack `s` by `hit_points` (BAT-MAG-035): its total health grows up to its count at the
+/// battle's start (the top creature first); `temporary` creatures count for this battle only. A
+/// dead stack comes back on its hexes with no effects (they ended at its death) and keeps its
+/// flags for the round (the original's raise 0x5A7560 clears only its dead bit).
+pub(crate) fn raise<S: Sink>(
+    state: &mut BattleState,
+    ruleset: &Ruleset,
+    (s, hit_points): (StackId, u64),
+    temporary: bool,
+    sink: &mut S,
+) {
+    let was_dead = !state.at(s).is_alive();
+    let stack = state.at_mut(s);
+    let (healed, creatures) = resurrect(stack, hit_points);
+    let (base, alive) = (stack.base_count, stack.is_alive());
+    if temporary {
+        let t = &mut state.raised.temporary[s.index()];
+        *t = t.saturating_add(creatures).min(base);
+    }
+    if was_dead && alive {
+        state.raised.corpse[s.index()] = 0;
+        crate::effects::recompute(state, ruleset, s);
+    }
+    sink.emit(Event::public(EventKind::SpellRaised {
+        target: s,
+        hit_points: healed,
+        creatures,
+        temporary,
+    }));
+}
+
+/// The hit points `hero`'s cast of a raise spell `(id, spell)` at `value` raises on stack `s`:
+/// the value plus the caster's specialist bonus for the stack (BAT-MAG-020, BAT-MAG-035).
+pub(crate) fn raise_value(
+    state: &BattleState,
+    ruleset: &Ruleset,
+    (spell, own): (&Spell, SpellBonus),
+    value: u64,
+    s: StackId,
+) -> u64 {
+    let creature = state.at(s).creature;
+    value.saturating_add_signed(specialist_bonus(ruleset, spell, own, creature, value))
+}
+
+/// Sacrifices stack `v` (BAT-MAG-036): all its creatures die and it leaves no corpse; returns the
+/// hit points it gives at the cast's `value`: `(its creature's hit points + value) × its
+/// creatures`, the creature's base hit points, not the stack's.
+pub(crate) fn sacrifice<S: Sink>(
+    state: &mut BattleState,
+    ruleset: &Ruleset,
+    v: StackId,
+    value: u64,
+    sink: &mut S,
+) -> u64 {
+    let stack = state.at_mut(v);
+    let creatures = stack.count;
+    let health = ruleset.creature(stack.creature).map_or(0, |c| c.hit_points);
+    stack.count = 0;
+    stack.top_hp = 0;
+    state.raised.corpse[v.index()] = NO_CORPSE;
+    sink.emit(Event::public(EventKind::Sacrificed {
+        victim: v,
+        creatures,
+    }));
+    (u64::from(health) + value).saturating_mul(u64::from(creatures))
+}

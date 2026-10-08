@@ -287,6 +287,25 @@ pub enum EventKind {
         /// The hex.
         hex: Hex,
     },
+    /// A spell raised creatures of a stack, a dead one brought back with its hexes (Resurrection,
+    /// Animate Dead, BAT-MAG-035; Sacrifice, BAT-MAG-036).
+    SpellRaised {
+        /// The stack.
+        target: StackId,
+        /// Hit points regained.
+        hit_points: u64,
+        /// Creatures brought back.
+        creatures: u32,
+        /// Whether they stay for this battle only (BAT-MAG-035).
+        temporary: bool,
+    },
+    /// A stack was sacrificed: all its creatures died and it leaves no corpse (BAT-MAG-036).
+    Sacrificed {
+        /// The stack.
+        victim: StackId,
+        /// Its creatures.
+        creatures: u32,
+    },
     /// A spell moved a stack (Teleport, BAT-MAG-029).
     Teleported {
         /// The stack.

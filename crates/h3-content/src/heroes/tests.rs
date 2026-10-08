@@ -40,6 +40,7 @@ fn spell(k: &str, schools: &[&str]) -> SpellDef {
         counters: vec![],
         dispels: vec![],
         spares: vec![],
+        tests_as: None,
     }
 }
 
@@ -324,6 +325,52 @@ fn dispel_lists_resolve_and_are_checked() {
     let mut bad = p;
     bad.spells[3].dispels = vec![key("t:nope")];
     assert_eq!(fails(bad), unknown);
+}
+
+/// A stack spell of `effect` (v17: raise, sacrifice).
+fn raising(k: &str, effect: SpellEffect) -> SpellDef {
+    let mut s = spell(k, &["t:air"]);
+    s.magic.target = SpellTarget::Stack;
+    s.magic.effects = vec![effect];
+    s
+}
+
+#[test]
+fn a_sacrifice_names_the_raise_spell_it_is_tested_as() {
+    let mut p = pack();
+    // `t:offer` names `t:rise`, which comes after it.
+    let mut offer = raising("t:offer", SpellEffect::Sacrifice);
+    offer.tests_as = Some(key("t:rise"));
+    p.spells
+        .extend([offer, raising("t:rise", SpellEffect::Raise)]);
+    let r = compile(&[p.clone()]).unwrap();
+    let id = |k: &str| r.spell_by_key(k).unwrap();
+    assert_eq!(r.spell(id("t:offer")).unwrap().tests_as, Some(id("t:rise")));
+    assert_eq!(r.spell(id("t:rise")).unwrap().tests_as, None);
+    let reason = "a sacrifice effect needs tests_as, a spell with a raise effect";
+    let first = p.spells.len() - 2;
+    let mut missing = p.clone();
+    missing.spells[first].tests_as = None;
+    assert_eq!(fails(missing), invalid("spell", "t:offer", reason));
+    let mut not_a_raise = p.clone();
+    not_a_raise.spells[first].tests_as = Some(key("t:offer"));
+    assert_eq!(fails(not_a_raise), invalid("spell", "t:offer", reason));
+    let mut no_sacrifice = p.clone();
+    no_sacrifice.spells[first + 1].tests_as = Some(key("t:rise"));
+    assert_eq!(fails(no_sacrifice), invalid("spell", "t:rise", reason));
+    let mut unknown = p.clone();
+    unknown.spells[first].tests_as = Some(key("t:nope"));
+    assert_eq!(
+        fails(unknown),
+        CompileError::UnknownReference {
+            kind: "spell",
+            key: "t:nope".into(),
+        }
+    );
+    let mut other = p;
+    other.spells[first].tests_as = None;
+    other.spells[first].magic.effects = vec![SpellEffect::Raise];
+    assert_ne!(compile(&[other]).unwrap().content_hash(), r.content_hash());
 }
 
 #[test]

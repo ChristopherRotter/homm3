@@ -18,6 +18,7 @@ use crate::geometry::{Field, Hex};
 use crate::magic::{self, Cast, CastTarget};
 use crate::movement::reachable;
 use crate::obstacles;
+use crate::raise;
 use crate::state::{BattleState, Stack, StackFlags, StackId, StackTraits};
 use crate::tactics::{self, TacticsPhase};
 use crate::turn::{self, TurnEnd, end_turn};
@@ -423,12 +424,19 @@ pub fn apply<S: Sink>(
         }
         Plan::Cast(cast) => {
             magic::apply_cast(state, ruleset, *cast, sink);
+            // A cast that killed the active stack ends its turn (BAT-MAG-004: its hero's area or
+            // battle-wide spell, BAT-MAG-036: a sacrifice).
+            if let Some(id) = state.active.filter(|&id| !state.at(id).is_alive()) {
+                end_turn(state, ruleset, id, TurnEnd::Acted, sink);
+            }
             // A stack the cast made berserk on its own turn acts at once (BAT-MAG-025).
             turn::berserk_now(state, ruleset, sink);
         }
     }
     // rule: BAT-MAG-010
     effects::remove_dead(state);
+    // rule: BAT-MAG-035
+    raise::mark_corpses(state);
     Ok(())
 }
 

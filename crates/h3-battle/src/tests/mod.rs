@@ -18,6 +18,7 @@ mod pits;
 mod properties;
 mod protect;
 mod rage;
+mod raise;
 mod ranged;
 mod remove;
 mod rules;

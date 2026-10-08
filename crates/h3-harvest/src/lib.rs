@@ -855,7 +855,8 @@ pub fn harvest(inputs: &Inputs, gap: &GapFill) -> Result<Harvest, String> {
          \"quirk.battle.natives_sight_at_start\" = true, \
          \"quirk.battle.attack_from_seen_pit\" = true, \
          \"quirk.battle.obstacle_anchors\" = true, \
-         \"quirk.battle.draws_avoid_hidden\" = true }    # Q-0003, Q-0005, Q-0004, Q-0007, Q-0008, Q-0009, Q-0010, Q-0011, Q-0012, BAT-QUIRK-1 to BAT-QUIRK-4\n",
+         \"quirk.battle.draws_avoid_hidden\" = true, \
+         \"quirk.battle.sacrifice_tests_as_resurrection\" = true }    # Q-0003, Q-0005, Q-0004, Q-0007, Q-0008, Q-0009, Q-0010, Q-0011, Q-0012, BAT-QUIRK-1 to BAT-QUIRK-5\n",
     );
     base.push_str(
         "\n[[profile]]\nid = \"strict-fixed\"    # all quirks fixed\n\
@@ -871,7 +872,8 @@ pub fn harvest(inputs: &Inputs, gap: &GapFill) -> Result<Harvest, String> {
          \"quirk.battle.natives_sight_at_start\" = false, \
          \"quirk.battle.attack_from_seen_pit\" = false, \
          \"quirk.battle.obstacle_anchors\" = false, \
-         \"quirk.battle.draws_avoid_hidden\" = false }   # Q-0003, Q-0005, Q-0004, Q-0007, Q-0008, Q-0009, Q-0010, Q-0011, Q-0012, BAT-QUIRK-1 to BAT-QUIRK-4\n",
+         \"quirk.battle.draws_avoid_hidden\" = false, \
+         \"quirk.battle.sacrifice_tests_as_resurrection\" = false }   # Q-0003, Q-0005, Q-0004, Q-0007, Q-0008, Q-0009, Q-0010, Q-0011, Q-0012, BAT-QUIRK-1 to BAT-QUIRK-5\n",
     );
 
     // ab

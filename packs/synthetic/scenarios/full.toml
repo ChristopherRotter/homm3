@@ -27,7 +27,9 @@ defender_funds = 10000
 # then fights for her; since T5a she raises a two-hex wall of fire (Scorch, a Fire Wall: 30 damage
 # to a stack that enters it or acts on it) and moves her own stacks anywhere (Blink, a Teleport);
 # since T5c2 she hides four mines (Snare, a Land Mine at Basic: 45 damage to a Corwin stack that
-# steps on one unseen; Corwin has no natives, as the battlefield has no terrain).
+# steps on one unseen; Corwin has no natives, as the battlefield has no terrain); since T6a she
+# raises her stacks for the battle (Revive, a Resurrection without Stone magic: 140 hit points)
+# and sacrifices one stack to raise another (Offer, a Sacrifice at Basic).
 [scenario.attacker_hero]
 hero_type = "synthetic:brea"
 attack = 2
@@ -42,7 +44,7 @@ spell_book = [
     "synthetic:hasten", "synthetic:drag", "synthetic:fury", "synthetic:smiting",
     "synthetic:riposte", "synthetic:mend", "synthetic:blaze", "synthetic:glass",
     "synthetic:haze", "synthetic:charm", "synthetic:scorch", "synthetic:blink",
-    "synthetic:snare",
+    "synthetic:snare", "synthetic:revive", "synthetic:offer",
 ]
 schools = { "synthetic:storm" = 1 }
 ranged_bp = 1000
@@ -78,7 +80,7 @@ effects = [
 # since T5c1 he hides eight pits (Mire, a Quicksand at Expert), which stop Brea's walkers; since
 # T5b he takes away any spell obstacle he sees (Uproot, a Remove Obstacle at Expert: Brea's fire,
 # his own walls and pits, her mines once they showed themselves; the battlefield has no natural
-# obstacles).
+# obstacles); since T6a he raises his stacks for good (Revive at Expert: 310 hit points).
 [scenario.defender_hero]
 hero_type = "synthetic:corwin"
 attack = 1
@@ -92,7 +94,7 @@ spell_book = [
     "synthetic:boon", "synthetic:bane", "synthetic:corrode", "synthetic:aegis",
     "synthetic:hallow", "synthetic:purge", "synthetic:rage", "synthetic:veil",
     "synthetic:dazzle", "synthetic:rampage", "synthetic:bulwark", "synthetic:mire",
-    "synthetic:uproot",
+    "synthetic:uproot", "synthetic:revive",
 ]
 schools = { "synthetic:stone" = 3 }
 surrender_discount_bp = 1000
