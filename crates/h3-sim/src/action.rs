@@ -8,7 +8,8 @@
 //! layout: Teleport's destination hex (BAT-MAG-029), Sacrifice's victim stack (BAT-MAG-036, E04b
 //! T6a; the layout is unchanged), 0 for every other spell. A stack's cast (BAT-MAG-048) is the
 //! entry [`CREATURE_CAST`]: its command names only the target (ADR-0014 point 3), so the spell
-//! head allows only the active stack's spell ([`h3_battle::stack_spell`]) and the second target
+//! head allows only the active stack's spell ([`h3_battle::stack_spell`]: a random caster's drawn
+//! spell, BAT-MAG-049, whose area spells take a hex in the target head) and the second target
 //! head only 0. The heads' masks
 //! are conditioned on the earlier choices ([`legal_mask`], [`spell_mask`], [`target_mask`],
 //! [`second_mask`]); after a legal non-cast entry each head allows exactly 0.
@@ -27,7 +28,7 @@
 //! | 1392 | Retreat (BAT-FLE-001) |
 //! | 1393 | Surrender (BAT-FLE-002) |
 //! | 1394 | The hero casts (heads: spell, target, second target; BAT-MAG-001) |
-//! | 1395 | The active stack casts (heads: its spell, the target, 0; BAT-MAG-048) |
+//! | 1395 | The active stack casts (heads: its spell, the target, 0; BAT-MAG-048, BAT-MAG-049) |
 //!
 //! In the tactics phase `Move` entries place the active stack and Wait (0) passes to the next
 //! stack (BAT-TAC-002).

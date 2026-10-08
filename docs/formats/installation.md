@@ -1312,3 +1312,36 @@ own army holds Mages or Arch Mages**, at least 1. Both tests read the armies (0x
 battle's stacks, so a dead Pegasus stack still counts (batch 2a R6 round 3: 5, VCMI 3) and a
 summoned or cloned one does not. After a hero's cast of cost 5 or more, the other side's living
 Familiars channel `cost div 5` (0x5A2170, T7c; batch 2a R6).
+
+**The Faerie Dragon, re-read for T7b2a** (BAT-MAG-049, 2026-10-08). *The draw* (0x447510, called
+from the activation 0x465330 for creature 134): only while the casts left are not 0; the weights
+of 0x63B850 (pairs of spell and weight, ended by a negative spell) are summed, `rand() mod sum` is
+walked down the pairs in table order (Ice Bolt, Lightning Bolt, Fireball, Magic Arrow, Frost
+Ring, Chain Lightning, Meteor Shower, Inferno) and the first pair whose weight takes it below 0 is
+stored at +0x4E0. Unless 0x46A4A0 answers (not read), a combat-log line names the creature and
+the spell, but only if the controller's side (+0xF4, flipped by +0x288) is a local human
+(+0x54A4[side]). The activation returns at once in the tactics phase (+0x13D68), and the battle
+loop calls it again for a waited stack and after good morale (0x464920 clears the done bit
+`0x4000000` and sets `0x1000000`), so the dragon draws anew each time. +0x4E0 is read only for the
+active stack: its cast (0x448260), the creature caster's button (0x475CD8 → 0x59EC50(spell, 1)),
+0x468954 and the status line 0x492FD3; nothing shows another stack's drawn spell. *The target*
+(0x4476C0, case 7 of the table 0x447A00 indexed by creature − 13: 13 Archangel and 51 Pit Lord
+case 0, 37 Master Genie 1, 91 Ogre Mage 2, 123, 125, 127, 129 the elementals 3 to 6, 134 the
+Faerie Dragon 7): a stack on the hex (0x4E7170) that 0x5A3C80(drawn spell, the controller's side,
+stack, 1, 1) accepts, which is 0x5A8090(…, reflected 0, …) above 0: its polarity test refuses an
+own stack for a negative spell only, so Chain Lightning and the area spells (neutral) may be aimed
+at the dragon's own stacks, unlike a hero's Chain Lightning (0x59F7BF). The cursor (0x4766EA)
+refuses the caster's own hexes and, for creature 134 only, calls 0x4476C0 over a stack of either
+side (0x4766FC); over an empty hex it goes to 0x47684B, whose cast test 0x4473D0 answers only for
+the Archangel and the Pit Lord: **the dragon never casts at an empty hex**, its area spells too,
+and a Frost Ring must be centred on a stack it can affect, which the ring then spares. *The cast*
+(0x448260, case 134): 0x59FE30(+0x4E0, hex, 1, −1, 2, 5 × creatures). *Magic Mirror*: the
+button enters the cast through 0x59EC50 with action 10 (+0x3C = 10 for its second argument 1),
+which decides the redirect as for a hero's cast (§7.13); 0x59FE30 then skips the test and roll at
+0x5A02CB for caster kind 1, the redirected stack included, and the damage handlers (Magic Arrow
+0x5A098A) damage that stack without an immunity test: an own Black Dragon or Earth Elemental
+takes the dragon's mirrored Magic Arrow or Lightning Bolt (quirk BAT-QUIRK-9). *Survey S-18*: a
+Magic Arrow from one dragon is 5 × 10 + 20 = 70 before the target's factors (§7.8), a hero's at
+least 20 (power ≥ 1, HER-DET-001), so neither falls below Gold Golems' 7 or Diamond Golems' 20;
+in SoD only a protection on a Diamond Golem cuts a power-1 Magic Arrow's 1 to 0, the truncation
+every spell takes (the user: not reproducible, no flag, BAT-Q11).

@@ -170,5 +170,5 @@ creature = "synthetic:wisp"
 count = 26
 [[defender]]
 slot = 6
-creature = "synthetic:brute"
-count = 11
+creature = "synthetic:drake"
+count = 4

@@ -39,8 +39,10 @@ use h3_sim::{
 /// encoding v7 (created stacks and clones; `h3_observation_len` grows). v12 (E04b T7b1): action
 /// encoding v11 (the stack's cast, entry 1395, becomes legal; its spell head allows the stack's
 /// spell, its second target head 0) and observation encoding v8 (casts left;
-/// `h3_observation_len` grows).
-pub const H3_ABI_VERSION: u32 = 12;
+/// `h3_observation_len` grows). v13 (E04b T7b2a): observation encoding v9 (a global: the spell
+/// the active stack drew, for its controller; `h3_observation_len` grows); the stack's cast's
+/// target head may carry hexes (a Faerie Dragon's area spells); no function changes.
+pub const H3_ABI_VERSION: u32 = 13;
 
 /// `H3StepResult.result`: the battle is not decided (still running, or truncated).
 pub const H3_RESULT_NONE: i32 = -1;
@@ -536,7 +538,7 @@ mod tests {
 
     #[test]
     fn abi_smoke_create_step_destroy() {
-        assert_eq!(h3_abi_version(), 12);
+        assert_eq!(h3_abi_version(), 13);
         assert_eq!(h3_action_count() as usize, ACTION_COUNT);
         assert_eq!(h3_spell_count() as usize, SPELL_COUNT);
         assert_eq!(h3_target_count() as usize, TARGET_COUNT);

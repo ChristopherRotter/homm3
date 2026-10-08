@@ -194,6 +194,14 @@ pub enum EventKind {
         /// What it was aimed at.
         target: CastTarget,
     },
+    /// A random caster drew the spell it may cast as its action at this activation (BAT-MAG-049;
+    /// private to its controller, ADR-0014 point 8): the cast reveals it.
+    SpellDrawn {
+        /// The drawing stack.
+        stack: StackId,
+        /// The spell.
+        spell: SpellId,
+    },
     /// A stack resisted a spell (BAT-MAG-008); if it was the stack the spell was aimed at, the
     /// whole spell is resisted (BAT-MAG-007).
     SpellResisted {

@@ -1305,6 +1305,31 @@ creature = "Magma Elemental"
 abilities = [{ kind = "spell_caster", spell = "base:prot_from_earth", mastery = 2, power = 6 }]
 sources = ["exe-creature-cast"]
 
+# The Faerie Dragon draws its spell at each activation while it has casts left (E04b T7b2a,
+# BAT-MAG-049): the weighted table of the executable, cast as a creature at mastery 2 with power
+# 5 per creature.
+[[source]]
+id = "exe-faerie-dragon"
+kind = "original-data"
+ref = "Heroes3.exe code reading (docs/formats/installation.md 7.21): at a stack's activation (0x465330) a Faerie Dragon (134) with casts left (+0xDC) draws its spell (0x447510): rand() mod the sum of the weights of the table 0x63B850 (spell, weight pairs ending with a negative spell: Ice Bolt 22, Lightning Bolt 22, Fireball 21, Magic Arrow 10, Frost Ring 10, Chain Lightning 5, Meteor Shower 5, Inferno 5), stored at +0x4E0; its cast (0x448260, the dispatcher's case 10) passes 0x59FE30(the drawn spell, hex, 1, -1, 2, 5 x creatures)"
+url = "docs/formats/installation.md"
+retrieved = "2026-10-08"
+
+[[creature_abilities]]
+creature = "Faerie Dragon"
+abilities = [
+    { kind = "random_spell_caster", mastery = 2, power_per_creature = 5 },
+    { kind = "drawn_spell", spell = "base:ice_bolt", weight = 22 },
+    { kind = "drawn_spell", spell = "base:lightning_bolt", weight = 22 },
+    { kind = "drawn_spell", spell = "base:fireball", weight = 21 },
+    { kind = "drawn_spell", spell = "base:magic_arrow", weight = 10 },
+    { kind = "drawn_spell", spell = "base:frost_ring", weight = 10 },
+    { kind = "drawn_spell", spell = "base:chain_lightning", weight = 5 },
+    { kind = "drawn_spell", spell = "base:meteor_shower", weight = 5 },
+    { kind = "drawn_spell", spell = "base:inferno", weight = 5 },
+]
+sources = ["exe-faerie-dragon"]
+
 # ---------------------------------------------------------------------------------------------
 # Hero content (E04a T3): what the executable's hero tables and the text tables do not hold.
 # ---------------------------------------------------------------------------------------------

@@ -482,6 +482,68 @@ fn a_casters_spell_takes_a_target_stack_at_its_mastery() {
     }
 }
 
+#[test]
+fn a_random_casters_drawn_spells_take_a_stack_or_a_hex_at_its_mastery() {
+    use crate::ability::{Ability, AbilityDef};
+    let mut p = pack();
+    let mut haste = timed("t:haste");
+    haste.magic.mass_from = Some(3);
+    let mut charm = timed("t:charm");
+    charm.magic.health_limit = true;
+    let mut wall = timed("t:wall");
+    wall.magic.target = SpellTarget::Hex;
+    p.spells
+        .extend([haste, charm, wall, raising("t:rise", SpellEffect::Raise)]);
+    let random = |mastery| AbilityDef::RandomSpellCaster {
+        mastery,
+        power_per_creature: 5,
+    };
+    let drawn = |spell: &str| AbilityDef::DrawnSpell {
+        spell: key(spell),
+        weight: 10,
+    };
+    // A stack spell, a hex spell and one whose mass version starts above the caster's mastery,
+    // listed before or after their caster (BAT-MAG-049).
+    for ok in [
+        vec![
+            random(2),
+            drawn("t:bolt"),
+            drawn("t:wall"),
+            drawn("t:haste"),
+        ],
+        vec![drawn("t:haste"), random(2)],
+    ] {
+        let mut good = p.clone();
+        good.creatures[0].info.abilities = ok;
+        let r = compile(&[good]).unwrap();
+        let peasant = r.creature_by_key("t:peasant").unwrap();
+        assert!(
+            r.abilities(peasant)
+                .iter()
+                .any(|a| matches!(a, Ability::DrawnSpell { weight: 10, .. }))
+        );
+    }
+    let reason = "drawn_spell needs a spell with damage, timed, dispel or heal effects and no \
+                  health limit or obstacle that takes a target stack or hex at its caster's \
+                  mastery";
+    for bad_abilities in [
+        vec![random(2), drawn("t:gaze")],
+        vec![random(2), drawn("t:charm")],
+        vec![random(2), drawn("t:rise")],
+        vec![random(3), drawn("t:haste")],
+    ] {
+        let mut bad = p.clone();
+        bad.creatures[0].info.abilities = bad_abilities;
+        assert_eq!(
+            fails(bad),
+            CompileError::InvalidCreature {
+                key: "t:peasant".into(),
+                reason,
+            }
+        );
+    }
+}
+
 fn invalid_spell(k: &str, reason: &'static str) -> CompileError {
     invalid("spell", k, reason)
 }

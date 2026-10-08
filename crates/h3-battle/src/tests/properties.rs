@@ -592,7 +592,8 @@ proptest! {
 
     /// Observation hygiene (ADR-0013 point 9): hidden information does not show. The RNG shows
     /// to neither side; the private part of a side's hero (Tactics level, damage bonuses, how
-    /// its war machines work, surrender discount, funds) only to that side.
+    /// its war machines work, surrender discount, funds) only to that side, and so does the spell
+    /// its random caster drew (ADR-0014 point 8, BAT-MAG-049).
     #[test]
     fn observations_do_not_depend_on_hidden_state(
         (att, def, obstacles, seed, steps) in arb_game(),
@@ -626,6 +627,11 @@ proptest! {
                 hero.magic.schools = [3; 4];
                 hero.magic.bonuses.all = Rate::bp(discount.into());
             }
+            // covers: BAT-MAG-049
+            twin.casts.drawn = twin.casts.drawn.map(|(s, spell)| {
+                let other = SpellId::from_raw(spell.raw() ^ 1);
+                (s, if twin.at(s).controller() == side { other } else { spell })
+            });
             let viewer = side.opponent();
             prop_assert_eq!(observe(&state, &r, viewer), observe(&twin, &r, viewer));
         }
@@ -635,7 +641,8 @@ proptest! {
     /// does not see changes neither its observation nor what it may do (its legal commands,
     /// castable spells and their targets), with the natives' sight of either profile; nor what
     /// its commands report to it while no hidden obstacle shows itself (a pit it runs into, a
-    /// mine that goes off: BAT-MAG-032, BAT-MAG-033), casts included: without quirk BAT-QUIRK-4
+    /// mine that goes off: BAT-MAG-032, BAT-MAG-033; a native it raises gives its side sight
+    /// without quirk BAT-QUIRK-1, BAT-MAG-031), casts included: without quirk BAT-QUIRK-4
     /// a random obstacle spell draws among the hexes its side sees free (BAT-MAG-032), and Remove
     /// Obstacle finds only what the caster sees (BAT-MAG-034). Anchors (BAT-QUIRK-3) in half the
     /// games.
@@ -707,6 +714,18 @@ proptest! {
                 let told = |events: &[Event]| -> Vec<Event> {
                     events.iter().filter_map(|e| project(e, viewer)).collect()
                 };
+                // A native the command raises gives its side sight again (BAT-MAG-031 without
+                // BAT-QUIRK-1): the hidden obstacles it now sees show themselves.
+                let unseen: Vec<_> = state
+                    .spell_obstacles()
+                    .iter()
+                    .filter(|o| !seen.contains(o))
+                    .map(|o| (o.side, o.hexes))
+                    .collect();
+                let sight = crate::obstacles::seen_by(&x, viewer);
+                if sight.iter().any(|o| unseen.contains(&(o.side, o.hexes))) {
+                    continue;
+                }
                 prop_assert_eq!(told(&ex), told(&ey));
                 prop_assert_eq!(observe(&x, &r, viewer), observe(&y, &r, viewer));
             }

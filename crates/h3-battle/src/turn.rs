@@ -103,8 +103,9 @@ pub(crate) enum TurnEnd {
 }
 
 /// Ends `mover`'s turn. After moving, attacking, shooting or casting, good morale may give it another turn
-/// right away (BAT-MOR-003); otherwise it is marked as waited or acted and the next stack is
-/// activated, starting a new round if needed. Once the battle is over no stack is active.
+/// right away (BAT-MOR-003; a random caster draws its spell again, BAT-MAG-049); otherwise it is
+/// marked as waited or acted and the next stack is activated, starting a new round if needed.
+/// Once the battle is over no stack is active.
 pub(crate) fn end_turn<S: Sink>(
     state: &mut BattleState,
     ruleset: &Ruleset,
@@ -119,6 +120,8 @@ pub(crate) fn end_turn<S: Sink>(
         state.at_mut(mover).flags.set(StackFlags::HAD_MORALE, true);
         sink.emit(Event::public(EventKind::GoodMorale { stack: mover }));
         sink.emit(Event::public(EventKind::TurnStarted { stack: mover }));
+        // rule: BAT-MAG-049
+        crate::casters::activated(state, ruleset, mover, sink);
         return;
     }
     let flag = if how == TurnEnd::Waited {
@@ -149,7 +152,8 @@ fn pick<S: Sink>(state: &mut BattleState, ruleset: &Ruleset, sink: &mut S) -> Op
 /// activated, as after a war machine that acts on its own (BAT-WAR-002/003; a commanded one
 /// waits for its side's command, BAT-WAR-006) and after a berserk stack's automatic turn
 /// (BAT-MAG-025; unless good morale gives it, no longer berserk, another turn). While the battle
-/// is not over some stack is alive, so a stack is always found.
+/// is not over some stack is alive, so a stack is always found. The stack that awaits its side's
+/// command draws its spell if it is a random caster (BAT-MAG-049).
 pub(crate) fn activate_next<S: Sink>(state: &mut BattleState, ruleset: &Ruleset, sink: &mut S) {
     let mut next = pick(state, ruleset, sink);
     while let Some(id) = next {
@@ -197,6 +201,10 @@ pub(crate) fn activate_next<S: Sink>(state: &mut BattleState, ruleset: &Ruleset,
         };
     }
     state.active = next;
+    // rule: BAT-MAG-049
+    if let Some(id) = next {
+        crate::casters::activated(state, ruleset, id, sink);
+    }
 }
 
 /// The automatic turns of the berserk stack `id` (BAT-MAG-025): it acts ([`control::berserk`]);
@@ -237,6 +245,8 @@ pub(crate) fn berserk_now<S: Sink>(state: &mut BattleState, ruleset: &Ruleset, s
         return;
     };
     if berserk_turn(state, ruleset, id, sink) {
+        // rule: BAT-MAG-049
+        crate::casters::activated(state, ruleset, id, sink);
         return;
     }
     state.at_mut(id).flags.set(StackFlags::ACTED, true);
