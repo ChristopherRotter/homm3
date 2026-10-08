@@ -139,7 +139,9 @@ impl BattleSetup {
 pub enum BattleResult {
     /// The side that still has living stacks after the other side has none.
     Victory(BattleSide),
-    /// Neither side has living stacks left: both were wiped out by the same action (Q24).
+    /// Neither side won: both were wiped out by the same action (Q24), or the side still standing
+    /// has only stacks created in the battle (summoned stacks, clones: both lose, as in the
+    /// original; ADR-0014 point 6).
     Draw,
     /// The side retreated (BAT-FLE-001); the other side wins. The consequences (a retreating
     /// side loses its army) are the orchestrator's (ADR-0013 point 5).
