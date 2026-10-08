@@ -96,6 +96,9 @@ const STEPS: &[Step] = &[
     step("check-docs", false, InScope::Whole, |_| {
         passed(crate::docs::run(&[]))
     }),
+    step("check-exe-map", false, InScope::Whole, |_| {
+        passed(crate::exemap::run(&[]))
+    }),
     step("check-lane", false, InScope::ScopedOnly, |s| {
         passed(crate::lanes::check(s.map(|s| s.lane.as_str()), None, false))
     }),

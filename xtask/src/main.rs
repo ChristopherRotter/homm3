@@ -13,6 +13,7 @@ mod coverage;
 mod determinism;
 mod docs;
 mod drift;
+mod exemap;
 mod lanes;
 mod rules;
 mod scan;
@@ -30,6 +31,8 @@ commands:
   check-rules                           rule catalog + rule:/covers: traceability
   check-stubs                           stub registry vs todo!/#[ignore]/TODO markers
   check-docs                            HANDOFF size budgets (global and per lane), lane files
+  check-exe-map                         the Heroes3.exe address map is well formed and covers every
+                                        address the docs and code cite (docs/exe/README.md)
   check-lane [--lane <lane>] [--base <ref>] [--cross-lane]
                                         the branch changes only its lane's paths (lanes.toml)
   coverage                              100% line+region coverage on logic crates
@@ -78,6 +81,7 @@ fn main() -> ExitCode {
         "check-rules" => rules::run(rest),
         "check-stubs" => stubs::run(rest),
         "check-docs" => docs::run(rest),
+        "check-exe-map" => exemap::run(rest),
         "check-lane" => lanes::run(rest),
         "coverage" => coverage::run(rest),
         "determinism" => determinism::run(rest),
