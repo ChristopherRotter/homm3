@@ -24,13 +24,13 @@ Map file: `E04b-batch-2d.h3m`. Fill in the blanks below and keep this file; an a
 
 **Record**
 
-- surrender price before Red's Clone; after it: 
-- Blue's clone: where, seen from Blue's Pikemen: 
-- Red's clone: where, seen from the Archers: 
-- round 1: the clones get a turn (Blue's yes/no, Red's yes/no); the Archer clone's shots before and after its shot; the Archers' shots: 
-- round 2: Magic Arrow at the Archer clone: damage, Archers killed, anything left: 
-- start of round 3: Blue's clone still there (yes/no); a corpse where it stood (yes/no): 
-- anything odd: 
+- surrender price before Red's Clone; after it: 800; 800
+- Blue's clone: where, seen from Blue's Pikemen: up-left neighbour
+- Red's clone: where, seen from the Archers: up-right neighbor
+- round 1: the clones get a turn (Blue's yes/no, Red's yes/no); the Archer clone's shots before and after its shot; the Archers' shots: clone turns: (yes, yes); 12 shots after clone, 11 after shooting once
+- round 2: Magic Arrow at the Archer clone: damage, Archers killed, anything left: 30, 10, no
+- start of round 3: Blue's clone still there (yes/no); a corpse where it stood (yes/no): no; no
+- anything odd:
 
 ## CL2 — Clone on a crowded two-hex stack: the original becomes the clone (BAT-QUIRK-7, BAT-MAG-038)
 
@@ -44,12 +44,12 @@ Map file: `E04b-batch-2d.h3m`. Fill in the blanks below and keep this file; an a
 
 **Record**
 
-- setup: every stack where it should be (yes/no); obstacles in the way (where): 
-- Red's Clone on the Griffins: a clone appears (yes/no; where); the Griffins' spells afterwards: 
-- Blue's Clone on the Wolf Riders: a clone appears (yes/no; where); the Wolf Riders' spells afterwards: 
-- start of round 3: Griffins still there (yes/no; corpse?); Wolf Riders still there (yes/no; corpse?); any clone still there: 
-- Red's army after the battle: 
-- anything odd: 
+- setup: every stack where it should be (yes/no); obstacles in the way (where): yes; n/a
+- Red's Clone on the Griffins: a clone appears (yes/no; where); the Griffins' spells afterwards: no; n/a; none
+- Blue's Clone on the Wolf Riders: a clone appears (yes/no; where); the Wolf Riders' spells afterwards: no; n/a; none
+- start of round 3: Griffins still there (yes/no; corpse?); Wolf Riders still there (yes/no; corpse?); any clone still there: no and no corpse for either
+- Red's army after the battle: no griffins, everything else remains
+- anything odd:
 
 ## RA1 — Resurrection's and Sacrifice's targets: a wounded full stack, the hit-point test, Gold Dragons, the victim (BAT-MAG-035, BAT-MAG-036, BAT-QUIRK-5, S-15)
 
@@ -64,11 +64,11 @@ Map file: `E04b-batch-2d.h3m`. Fill in the blanks below and keep this file; an a
 
 **Record**
 
-- after the shots: Swordsmen number and top health; Pikemen number: 
-- Resurrection (allowed/refused): on the Swordsmen; the Titans' corpse; the Gold Dragons' corpse (each hex); the Pikemen: 
-- Sacrifice's first cursor (allowed/refused): the Titans' corpse; the Gold Dragons' corpse; the Pikemen: 
-- Sacrifice's victim with the Pikemen chosen (allowed/refused): the Pikemen themselves; the Swordsmen: 
-- anything odd: 
+- after the shots: Swordsmen number and top health; Pikemen number: Swordsmen: 10, 26; Pikemen: 9, 8
+- Resurrection (allowed/refused): on the Swordsmen; the Titans' corpse; the Gold Dragons' corpse (each hex); the Pikemen: refused; refused; refused; allowed
+- Sacrifice's first cursor (allowed/refused): the Titans' corpse; the Gold Dragons' corpse; the Pikemen: refused; refused; allowed
+- Sacrifice's victim with the Pikemen chosen (allowed/refused): the Pikemen themselves; the Swordsmen: refused; allowed
+- anything odd:
 
 ## RA4 — Corpses: two stacks dead on one hex, a two-hex corpse with a living stack on its other hex (BAT-MAG-035)
 
@@ -85,10 +85,10 @@ Map file: `E04b-batch-2d.h3m`. Fill in the blanks below and keep this file; an a
 
 **Record**
 
-- round 5: Resurrection on the Wolf Riders' left hex; on the Archers' hex (allowed/refused): 
-- round 5: Resurrection on P raises (Pikemen/Swordsman), how many: 
-- round 6: Resurrection on the Wolf Riders' left hex (allowed/refused): 
-- anything odd: 
+- round 5: Resurrection on the Wolf Riders' left hex; on the Archers' hex (allowed/refused): both refused
+- round 5: Resurrection on P raises (Pikemen/Swordsman), how many: 1 Swordsman
+- round 6: Resurrection on the Wolf Riders' left hex (allowed/refused): allowed
+- anything odd:
 
 ## RA2 — Basic Resurrection: losses after the raise and the army after a won battle (BAT-MAG-035, BAT-QUIRK-6, S-20)
 
@@ -102,9 +102,9 @@ Map file: `E04b-batch-2d.h3m`. Fill in the blanks below and keep this file; an a
 
 **Record**
 
-- Swordsmen after the first Lightning Bolt (number, top health); after Resurrection (number); after the second Lightning Bolt (number): 
-- Red's army after the battle: 
-- anything odd: 
+- Swordsmen after the first Lightning Bolt (number, top health); after Resurrection (number); after the second Lightning Bolt (number): (5, 25); 8; 2
+- Red's army after the battle: 1 Swordsman
+- anything odd:
 
 ## RA3 — The same with a Ballista: a hero left without an army (BAT-MAG-035, BAT-QUIRK-6, S-20)
 
@@ -116,9 +116,9 @@ Map file: `E04b-batch-2d.h3m`. Fill in the blanks below and keep this file; an a
 
 **Record**
 
-- Swordsmen after the first Lightning Bolt (number, top health); after Resurrection (number); after the second Lightning Bolt (number): 
-- Red's army and war machines after the battle; the hero moves on the map (yes/no; anything odd): 
-- anything odd: 
+- Swordsmen after the first Lightning Bolt (number, top health); after Resurrection (number); after the second Lightning Bolt (number): (5, 25); 8; 2
+- Red's army and war machines after the battle; the hero moves on the map (yes/no; anything odd): no army, except Ballista; yes; I tried to attack a blue hero from a previous experiment, and it let me. The battle opened, but Red lost instantly
+- anything odd:
 
 ## NE — Necromancy and experience after killing summoned elementals and a clone; the elementals' native terrain (BAT-Q7, BAT-TER-001, BAT-MAG-039)
 
@@ -134,19 +134,19 @@ Map file: `E04b-batch-2d.h3m`. Fill in the blanks below and keep this file; an a
 
 **Record**
 
-- Red's experience before the battle: 
+- Red's experience before the battle: 0
 
 | stack (Red's Archangels, Air Elementals, Pixies; Blue's Earth Elementals) | attack | defense | speed |
 |---|---|---|---|
-|   |   |   |   |
-|   |   |   |   |
-|   |   |   |   |
-|   |   |   |   |
+|Archangels|31|31|19|
+|Air Elementals|10|10|8|
+|Pixies|3|3|8|
+|Earth Elementals|11|11|5|
 
-- Earth Elementals: number, place (column, row): 
-- Necromancy message: Skeletons raised; Skeletons in Red's army: 
-- Red's experience after the battle: 
-- anything odd: 
+- Earth Elementals: number, place (column, row): second-last row, all the way to the right (Blue's side)
+- Necromancy message: Skeletons raised; Skeletons in Red's army: 7 Skeletons raised; 7 in army
+- Red's experience after the battle: 600
+- anything odd:
 
 ## SU — Summon Elemental: column and row, a dead elemental's slot, the limit of 20 stacks; a side left with only elementals (BAT-MAG-037, BAT-MAG-039, BAT-Q7, BAT-END-001, BAT-FLE-002, BAT-TER-001)
 
@@ -165,29 +165,29 @@ Map file: `E04b-batch-2d.h3m`. Fill in the blanks below and keep this file; an a
 
 **Record**
 
-- a, round 1: surrender price before the summon; after it: 
-- a, E1: place (column, row); gets a turn in round 1 (yes/no); attack, defense, speed: 
+- a, round 1: surrender price before the summon; after it: 910; 910
+- a, E1: place (column, row); gets a turn in round 1 (yes/no); attack, defense, speed: (1, 8); yes; 10, 10, 8
 
 | summon | round | column | row |
 |---|---|---|---|
-|   |   |   |   |
-|   |   |   |   |
-|   |   |   |   |
-|   |   |   |   |
-|   |   |   |   |
-|   |   |   |   |
-|   |   |   |   |
-|   |   |   |   |
-|   |   |   |   |
-|   |   |   |   |
-|   |   |   |   |
-|   |   |   |   |
+|E1|1|1|8|
+|E2|2|1|4|
+|E3|3|1|3|
+|E4|4|1|1|
+|E5|5|1|7|
+|E6|6|1|9|
+|E7|7|1|8|
+|E8|8|1|6|
+|E9|9|1|11|
+|E10|10|1|5|
+|E11|11|2|4|
+|E12|12|2|9|
 |   |   |   |   |
 |   |   |   |   |
 
-- a, round 4: the first of E2 and E3 to act: 
-- a, the limit: round reached; successful casts in all; what happens at the refused cast; after Blue's Implosion: allowed (yes/no): 
-- a, end: result window(s); Red's hero on the map afterwards (yes/no); Blue's hero (yes/no): 
-- b, Blue retreats: result window(s); Red's hero on the map afterwards (yes/no); Blue's hero: 
-- c, Blue surrenders: price; Red's and Blue's gold before and after; result window(s); Red's hero on the map afterwards (yes/no): 
-- anything odd: 
+- a, round 4: the first of E2 and E3 to act: E3
+- a, the limit: round reached; successful casts in all; what happens at the refused cast; after Blue's Implosion: allowed (yes/no): 13; 12; message: "Because SU has already summoned Air Elementals, no other elementals will come to her aid."; no
+- a, end: result window(s); Red's hero on the map afterwards (yes/no); Blue's hero (yes/no): result message: "Your forces suffer a bitter defeat, and SUb abandons your cause.", casualties: 7 Peasants 2 Air Elemental (Red), 10 Skeletons (Blue); both heroes gone
+- b, Blue retreats: result window(s); Red's hero on the map afterwards (yes/no); Blue's hero: result message: "The cowardly SUb flees from battle.", casualties: 7 Peasants (Red), none (Blue)
+- c, Blue surrenders: price; Red's and Blue's gold before and after; result window(s); Red's hero on the map afterwards (yes/no): 300; Red gold: 30000 -> 30300, Blue gold: 30000 -> 29700; result message: "SUb surrenders to the enemy, and departs in shame.", casualties: 7 Peasants (Red), none (Blue); no
+- anything odd:
