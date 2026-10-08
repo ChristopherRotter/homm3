@@ -459,7 +459,12 @@ pub(crate) fn kept_off(stack: &Stack, spell: &Spell) -> bool {
 /// Whether `spell` can affect the living stack `s` at all, wherever its caster stands
 /// (BAT-MAG-005, BAT-MAG-021): its creature meets the spell's conditions and immunities, and
 /// Anti-Magic does not keep the spell off it.
-fn affects_stack(state: &BattleState, ruleset: &Ruleset, spell: SpellRef<'_>, s: StackId) -> bool {
+pub(crate) fn affects_stack(
+    state: &BattleState,
+    ruleset: &Ruleset,
+    spell: SpellRef<'_>,
+    s: StackId,
+) -> bool {
     let stack = state.at(s);
     stack.is_alive() && affects(ruleset, spell, stack.creature) && !kept_off(stack, spell.1)
 }
@@ -553,7 +558,7 @@ fn skips_hypnotized(
             ruleset
                 .spell(e.spell)
                 .is_some_and(|sp| sp.magic.effects.contains(&hypnosis))
-                && effects::dispel_ends(spell, e)
+                && effects::dispel_ends(ruleset, spell, e)
         });
     ruleset.quirks().is_enabled(MASS_CURE_SKIPS_HYPNOTIZED) || !ends_it
 }
@@ -998,7 +1003,7 @@ fn grow(value: u64, bp: u64) -> u64 {
 /// spell's extra damage, rounded down; the spell damage reduction, rounded down; one protection,
 /// [`protected`]). The rates are exact, or single precision with quirk Q-0005.
 // rule: BAT-MAG-004
-fn spell_damage(
+pub(crate) fn spell_damage(
     ruleset: &Ruleset,
     ((id, spell), b): (SpellRef<'_>, &SpellBonuses),
     value: u64,
@@ -1259,7 +1264,12 @@ pub(crate) fn affect_chance(
 
 /// Rolls whether stack `s` resists `spell` (BAT-MAG-008): one draw from 1 to 100 when the chance
 /// to be affected is neither 0 nor 100.
-fn resists(state: &mut BattleState, ruleset: &Ruleset, spell: &Spell, s: StackId) -> bool {
+pub(crate) fn resists(
+    state: &mut BattleState,
+    ruleset: &Ruleset,
+    spell: &Spell,
+    s: StackId,
+) -> bool {
     let chance = affect_chance(state, ruleset, spell, s);
     match chance {
         0 => true,

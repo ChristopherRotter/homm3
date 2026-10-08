@@ -25,6 +25,7 @@ mod remove;
 mod rules;
 mod specialist;
 mod spells;
+mod strike;
 mod support;
 mod tactics;
 mod terrain;

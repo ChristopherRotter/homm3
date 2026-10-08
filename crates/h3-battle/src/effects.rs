@@ -517,15 +517,20 @@ pub(crate) fn dispel<S: Sink>(
     s: StackId,
     sink: &mut S,
 ) {
-    if end_where(state, s, sink, |e| dispel_ends(spell, e)) {
+    if end_where(state, s, sink, |e| dispel_ends(ruleset, spell, e)) {
         recompute(state, ruleset, s);
     }
 }
 
 /// Whether `spell`'s dispel effect ends the active effect `e` (BAT-MAG-016): a timed one of its
-/// `dispels`, or, without that list, any timed one but those of its `spares`.
-pub(crate) fn dispel_ends(spell: &Spell, e: &ActiveEffect) -> bool {
+/// `dispels`, or, without that list, any timed one but those of its `spares`; for a dispel of
+/// positive spells only one of a positive spell (Dispel Helpful Spells, BAT-MAG-042).
+pub(crate) fn dispel_ends(ruleset: &Ruleset, spell: &Spell, e: &ActiveEffect) -> bool {
     e.rounds.is_some()
+        && (!spell.magic.dispels_positive
+            || ruleset
+                .spell(e.spell)
+                .is_some_and(|sp| sp.polarity == SpellPolarity::Positive))
         && if spell.dispels.is_empty() {
             !spell.spares.contains(&e.spell)
         } else {

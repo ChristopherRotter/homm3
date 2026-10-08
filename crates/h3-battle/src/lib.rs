@@ -22,6 +22,7 @@ extern crate alloc;
 #[cfg(test)]
 extern crate std;
 
+mod after_strike;
 mod combat;
 mod command;
 mod control;
