@@ -266,4 +266,4 @@ Classes: `exploit-fix` (always fixed, never toggleable) · `preserve` (accepted,
 - Sources: original-data, `docs/formats/installation.md` §7.19
 - Flag: none
 - Regression test: `crates/h3-battle/src/tests/created.rs`, `a_crowded_two_hex_stack_is_never_covered_by_its_clone`; the property invariant that living stacks never share a hex (`tests/properties.rs`)
-- Decided by / date: agent, 2026-10-08 (E04b T6b; state-corrupting bugs are always fixed, AGENTS.md), to confirm at the T6 checkpoint
+- Decided by / date: agent, 2026-10-08 (E04b T6b; state-corrupting bugs are always fixed, AGENTS.md), provisionally; the user wants the original's behaviour confirmed by experiment first (2026-10-08, T6 checkpoint). The engine keeps the fix until then.

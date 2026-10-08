@@ -109,10 +109,12 @@ first); a dead two-hex stack whose second hex a living stack holds (no target); 
 won battle with creatures raised at Basic (one creature stays in the last stack, none with a
 Ballista: BAT-QUIRK-6, S-20); a stack that loses creatures after a Basic raise (the original never
 lowers the temporary count: the losses come out of the permanent creatures). From T6b (Clone,
-Summon Elemental, `installation.md` §7.19): a clone's place around a one-hex stack (top right first
+Summon Elemental, `installation.md` §7.19; the user asked for BAT-QUIRK-7, BAT-Q7 and the clone's
+shots to be played before they are decided, T6 checkpoint 2026-10-08): a clone's place around a one-hex stack (top right first
 for the attacker, never right or left in ring 1) and around a crowded two-hex one (BAT-QUIRK-7: the
 original stack becomes the clone); a clone that acts in the round it appears; a clone killed by a
-0-damage spell (Magic Arrow on Gold Golems); twenty stacks of a side with one dead elemental (the
+0-damage spell (Magic Arrow on Gold Golems); a clone of a shooter that has fired: its shots (the engine gives the
+creature's full shots); twenty stacks of a side with one dead elemental (the
 spell book refuses Clone and Summon Elemental); the slot a dead elemental frees (the next summon's
 place in the turn order); the summoned row's distribution in the first column; a battle won by
 elementals alone (both lose) and a retreat against a side with only elementals left (the original
