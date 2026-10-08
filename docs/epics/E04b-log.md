@@ -1225,3 +1225,40 @@ records how and why the tasks went.
   and weighted table (S-12 confirmed: the first stack decides), the hero's spell cost with
   Pegasi and Mages read from the armies (batch 2a R6 round 3 explained) and the Familiars'
   channel. Proposed cut in the epic (T7b1–T7b4, T7c), to confirm.
+
+### Batch 2d folded in (2026-10-08)
+
+- **Seam:** the user committed the results on a new branch while the T7a checkpoint ran
+  (`battle/e04b-batch-2d-results`), rebased onto `master` after that checkpoint merged; the
+  fold-in on the same branch.
+- **Results** (`experiments/results/E04b-batch-2d.md`, SoD 4.0 Complete, plain HD; SU's rows
+  counted from 1, confirmed by the user): as the code reading (`installation.md` §7.19) in every
+  encounter but the elementals' native terrain. CL1: the clones up-right (attacker) and up-left
+  (defender), both act in round 1, the Archer clone 12 shots then 11, Magic Arrow 30 kills all 10,
+  the defender's clone gone at round 3 without a corpse. CL2: no clone, the Griffins and Wolf
+  Riders themselves gone at round 3, the Griffins lost from the army (BAT-QUIRK-7 as read).
+  RA1: every cursor as predicted (BAT-QUIRK-5 faithful; Sacrifice refuses the target as its own
+  victim). RA4: the later corpse raised (1 Swordsman), the two-hex corpse refused until the
+  Archers left. RA2: 5 (top 25), 8, 2, the army keeps 1. RA3: only the Ballista (S-20); the
+  hero still moves and loses its next battle at once. NE: 7 Skeletons (created stacks counted),
+  experience 600; Archangels 31/31/19, Pixies 3/3/8, **Air Elementals 10/10/8 and Earth
+  Elementals 11/11/5: natives**, as the engine (the reading of 0x43D730 predicted 9/9/7). SU:
+  E1 in row 7, then random free rows of column 1, then column 2; E3 in E1's record acts first; 12
+  casts to the limit (refused with the "already summoned" message), still refused after a death;
+  a, b and c all leave Red's hero gone, c pays Red's player 300. **Surrender prices 800 → 800
+  (CL1) and 910 → 910 (SU): created stacks left out**, war machines counted; the engine had 1 300
+  and 1 160. SU a's casualty window lists 2 Air Elementals of at least 4 killed (a reused
+  record's losses seem lost; an experiment candidate).
+- **Community search (the user's condition for BAT-QUIRK-7):** heroes3wog.net "Did you know?
+  #136" (2022) and pikabu.ru "Знаете ли Вы всё о… «Клоне»" (2018) describe the vanishing
+  original, the latter also the clone overlapping its original (invisible, untargetable) and
+  Necromancy from clones as a bug HotA fixed; HD+ lists a Clone fix.
+- **Decisions (the user):** the surrender price follows the original; BAT-Q7 (b) for Necromancy
+  (the outcome reports created stacks' kills: a seam addition, T6c) and (a) for a retreat or
+  surrender against only created stacks (documented, no contract change); BAT-QUIRK-7
+  fix-optional (known); the agent split off BAT-QUIRK-8 (the overlap, exploit-fix).
+- **Battle:** `flee::surrender_price` leaves created stacks out (BAT-FLE-002); test
+  `the_surrender_price_leaves_created_stacks_out`. Replays and versions unchanged.
+- **Recorded:** observation sources on BAT-TER-001, BAT-END-001, BAT-FLE-002, BAT-END-003 and
+  BAT-MAG-035 to 039; the ledger's BAT-QUIRK-5/6 (observed), BAT-QUIRK-7 (fix-optional, the flag
+  queued) and BAT-QUIRK-8; BAT-Q7 answered; `installation.md` §7.19's notes; T6c queued.

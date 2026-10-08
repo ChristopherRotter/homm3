@@ -1042,7 +1042,7 @@ record was reused. So a new stack acts in the round it appears, and a dead clone
 stack's record (and so its place in the turn order's tie-break) goes to the next stack the side
 creates. 0x43D730 also clears the town of creatures 112–115 unless a game setting
 (`[0x6994E8]+0x1F698`, not read) is set, which takes their native-terrain bonus away; this
-applies to army stacks too and is left for BAT-TER-001 (experiment list).
+applies to army stacks too and is left for BAT-TER-001 (experiment list). Batch 2d (NE, SU; SoD 4.0 Complete, plain HD) showed Air Elementals in an army and summoned Air and Earth Elementals with the native bonus on grass: in that setup the setting is on, or this reading is wrong; the engine keeps them natives.
 
 **Clone** (0x5A6C70). The target test (0x5A8090, case 0x5A841A) wants a stack that is not a clone
 (`0x800000`), has no clone (+0x28 = −1) and whose creature level (+0x78, 0-based) + 1 is at most
@@ -1090,7 +1090,7 @@ summoned stack or clone counts as living. The winner (0x4762F0 with 0x4658B0 for
 side that has a living stack that is neither summoned nor a war machine and whose opponent
 retreated, surrendered or has no living stack apart from war machines; if neither side qualifies
 nobody wins: a side left with only summoned stacks and clones loses as well (the wiki's "both
-sides lose"), also when the other side retreated or surrendered. The experience of the battle
+sides lose"), also when the other side retreated or surrendered. Batch 2d confirmed the clone's place (up-right for the attacker, up-left for the defender), its full shots, its end by any damage and by its rounds, a clone on its own crowded original (CL2: the original vanishes), the summons' rows, the reused record and the limit, the end against only summoned stacks by elimination, retreat and surrender (the surrender's gold is still paid), and Necromancy counting created stacks (NE: 7); the surrender price (not read) leaves created stacks out. The experience of the battle
 (0x46A350) counts no killed summoned stack, clone or war machine; Necromancy (0x4775E1) counts the
 killed creatures of every record, summoned stacks and clones included.
 

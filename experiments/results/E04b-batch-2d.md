@@ -188,6 +188,7 @@ Map file: `E04b-batch-2d.h3m`. Fill in the blanks below and keep this file; an a
 - a, round 4: the first of E2 and E3 to act: E3
 - a, the limit: round reached; successful casts in all; what happens at the refused cast; after Blue's Implosion: allowed (yes/no): 13; 12; message: "Because SU has already summoned Air Elementals, no other elementals will come to her aid."; no
 - a, end: result window(s); Red's hero on the map afterwards (yes/no); Blue's hero (yes/no): result message: "Your forces suffer a bitter defeat, and SUb abandons your cause.", casualties: 7 Peasants 2 Air Elemental (Red), 10 Skeletons (Blue); both heroes gone
-- b, Blue retreats: result window(s); Red's hero on the map afterwards (yes/no); Blue's hero: result message: "The cowardly SUb flees from battle.", casualties: 7 Peasants (Red), none (Blue)
+- b, Blue retreats: result window(s); Red's hero on the map afterwards (yes/no); Blue's hero: result message: "The cowardly SUb flees from battle.", casualties: 7 Peasants (Red), none (Blue); Red's hero gone (the user, 2026-10-08)
 - c, Blue surrenders: price; Red's and Blue's gold before and after; result window(s); Red's hero on the map afterwards (yes/no): 300; Red gold: 30000 -> 30300, Blue gold: 30000 -> 29700; result message: "SUb surrenders to the enemy, and departs in shame.", casualties: 7 Peasants (Red), none (Blue); no
 - anything odd:
+- note (the user, 2026-10-08, asked by the agent): the rows of E1's place and of the summon table are counted from 1 (top row = 1), not from 0 as step 6 of the instructions says; subtract 1 for the template's rows (E1 in row 7, E9 in row 10).

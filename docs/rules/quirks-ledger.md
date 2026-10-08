@@ -238,7 +238,7 @@ Classes: `exploit-fix` (always fixed, never toggleable) · `preserve` (accepted,
 - Intended/expected behavior: the target is tested with Sacrifice's own conditions and level 5, without a hit-point minimum (strict-fixed).
 - Impact: gameplay-altering (small)
 - Community status: the wiki's Gold Dragon trivia notes the Gold Dragons' half (S-15); the hit-point test is undocumented
-- Sources: original-data, `docs/formats/installation.md` §7.18; wiki, Gold Dragon page (https://heroes.thelazy.net/index.php/Gold_Dragon, retrieved 2026-10-03)
+- Sources: original-data, `docs/formats/installation.md` §7.18; wiki, Gold Dragon page (https://heroes.thelazy.net/index.php/Gold_Dragon, retrieved 2026-10-03); observation `experiments/results/E04b-batch-2d.md` RA1 (SoD 4.0 Complete, plain HD, 2026-10-08: Sacrifice refused on dead Titans, whose 300 hit points Resurrection's 290 do not reach, and on dead Gold Dragons)
 - Flag: `quirk.battle.sacrifice_tests_as_resurrection` (E04b T6a)
 - Defaults: faithful = on, strict-fixed = off
 - Regression test: `crates/h3-battle/src/tests/raise.rs`, `with_bat_quirk_5_sacrifice_tests_its_target_as_resurrection`
@@ -251,19 +251,32 @@ Classes: `exploit-fix` (always fixed, never toggleable) · `preserve` (accepted,
 - Intended/expected behavior: the total counts only army stacks: an army whose living creatures are all temporary keeps one in its last living stack whatever else survives (BAT-END-003, BAT-MAG-035; the user, 2026-10-08).
 - Impact: exploit (a hero without an army breaks an invariant)
 - Community status: fixed in Horn of the Abyss
-- Sources: original-data, `docs/formats/installation.md` §7.18; HotA changelog (survey `docs/rules/surveys/E04-quirks.md` S-20)
+- Sources: original-data, `docs/formats/installation.md` §7.18; HotA changelog (survey `docs/rules/surveys/E04-quirks.md` S-20); observation `experiments/results/E04b-batch-2d.md` RA2, RA3 (SoD 4.0 Complete, plain HD, 2026-10-08: without a Ballista the army keeps 1 Swordsman, with one none; the hero without creatures still moves on the map and loses its next battle at once)
 - Flag: none
 - Regression test: `crates/h3-battle/src/tests/raise.rs`, `a_side_left_with_creatures_raised_for_the_battle_only_keeps_one`; the property `outcomes_account_for_every_stack`
 - Decided by / date: user, 2026-10-08 (E04b T6a)
 
-### BAT-QUIRK-7 — A clone placed on its own original (E04b T6b)
+### BAT-QUIRK-7 — A clone placed on its own original makes the original vanish (E04b T6b)
+- Class: fix-optional (user, 2026-10-08)
+- Context / rules affected: battle, BAT-MAG-038
+- Original behavior: Clone's place search (0x5A6C70, `docs/formats/installation.md` §7.19) tests each hex with 0x446C40, which counts the original's own hexes as free. Around a crowded two-hex original (every place in ring 1 taken), ring 2 can pick the original's head as the clone's position: the stack creation (0x47A100) refuses the occupied hex and creates nothing, and the cast goes on to flag *the original* as summoned with the clone's rounds and as its own clone: no clone appears, the original vanishes without a corpse when the rounds run out, and its army slot is lost after the battle (observed, batch 2d CL2). The other outcome of the same search, a clone sharing a hex with its original, is BAT-QUIRK-8.
+- Intended/expected behavior: the original's hexes are taken like any living stack's; the search goes on (BAT-MAG-038; HotA).
+- Impact: gameplay-altering (the caster loses its own stack; Clone takes only stacks of the caster's real side, `installation.md` §7.14, so it cannot be turned against the enemy)
+- Community status: known and treated as a bug: "Did you know? #136" (a clone cast on a completely surrounded stack does not appear and the original is removed; "fixed in Horn of the Abyss"); "Знаете ли Вы всё о… «Клоне»" (a wide creature's clone placed on the original's hex: no clone, the original disappears when the spell runs out or after the battle); HD+ lists "Fixed a bug with Clone spell"
+- Sources: original-data, `docs/formats/installation.md` §7.19; observation `experiments/results/E04b-batch-2d.md` CL2 (SoD 4.0 Complete, plain HD, 2026-10-08: Clone on crowded two-hex Griffins and Wolf Riders, no clone, both gone at the start of round 3, the Griffins lost from Red's army); heroes3wog.net (https://heroes3wog.net/disappearing-clones-did-you-know-heroes-3-complete/, 2022, retrieved 2026-10-08); pikabu.ru (https://pikabu.ru/story/znaete_li_vyi_vsyo_o_klone_5870302, 2018, retrieved 2026-10-08); HD Mod (https://www.sites.google.com/site/heroes3hd/eng/original-game-bug-fixing, retrieved 2026-10-08)
+- Flag: `quirk.battle.clone_on_its_original` (not built yet, `docs/lanes/battle/QUEUE.md`; until then the engine fixes it in every profile)
+- Defaults: faithful = on, strict-fixed = off
+- Regression test: today the fix, `crates/h3-battle/src/tests/created.rs`, `a_crowded_two_hex_stack_is_never_covered_by_its_clone`; the flag's own test comes with it
+- Decided by / date: user, 2026-10-08 (batch 2d fold-in: a community search first; known, so fix-optional, as it would be always fixed if unknown). The agent had classified it exploit-fix in T6b.
+
+### BAT-QUIRK-8 — A clone sharing a hex with its original (E04b batch 2d)
 - Class: exploit-fix
 - Context / rules affected: battle, BAT-MAG-038
-- Original behavior: Clone's place search (0x5A6C70, `docs/formats/installation.md` §7.19) tests each hex with 0x446C40, which counts the original's own hexes as free. Around a crowded two-hex original (every place in ring 1 taken), ring 2 can then pick the original's head as the clone's position: the stack creation (0x47A100) refuses the occupied hex and creates nothing, and the cast goes on to flag *the original* as summoned with the clone's rounds and as its own clone, so it vanishes when the rounds run out and its army slot is lost after the battle; or it picks a position whose front hex is the original's, and the two stacks share a hex.
-- Intended/expected behavior: the original's hexes are taken like any living stack's; the search goes on (BAT-MAG-038).
-- Impact: game-breaking (a stack lost from the army, two stacks on one hex)
-- Community status: not documented (found by code reading)
-- Sources: original-data, `docs/formats/installation.md` §7.19
+- Original behavior: the same search as BAT-QUIRK-7 (0x446C40 counts the original's hexes as free) can place a two-hex clone whose front hex is one of the original's: two living stacks share a hex. The community describes the original as invisible and impossible to target while it stays there and does not act.
+- Intended/expected behavior: the original's hexes are taken like any living stack's; the search goes on (BAT-MAG-038; HotA: a wide creature's clone never overlaps the cloned stack).
+- Impact: game-breaking (two stacks on one hex; a stack nobody can target)
+- Community status: known ("Знаете ли Вы всё о… «Клоне»", 2018); fixed in HotA
+- Sources: original-data, `docs/formats/installation.md` §7.19; pikabu.ru (https://pikabu.ru/story/znaete_li_vyi_vsyo_o_klone_5870302, retrieved 2026-10-08). Not observed (batch 2d CL2 staged BAT-QUIRK-7's case)
 - Flag: none
-- Regression test: `crates/h3-battle/src/tests/created.rs`, `a_crowded_two_hex_stack_is_never_covered_by_its_clone`; the property invariant that living stacks never share a hex (`tests/properties.rs`)
-- Decided by / date: agent, 2026-10-08 (E04b T6b; state-corrupting bugs are always fixed, AGENTS.md), provisionally; the user wants the original's behaviour confirmed by experiment first (2026-10-08, T6 checkpoint; staged in batch 2d, CL2). The engine keeps the fix until then.
+- Regression test: the property invariant that living stacks never share a hex (`crates/h3-battle/src/tests/properties.rs`); `crates/h3-battle/src/tests/created.rs`, `a_crowded_two_hex_stack_is_never_covered_by_its_clone`
+- Decided by / date: agent, 2026-10-08 (state-corrupting bugs are always fixed, AGENTS.md); split from BAT-QUIRK-7 at the batch 2d fold-in, which the user reclassified
