@@ -46,7 +46,51 @@ The original picks Chain Lightning's next target by screen distance; the y posit
 
 ### Server lane (`SRV-Q<n>`)
 
-(no open questions)
+Context, options and recommendations for all of these: `docs/epics/E16-server.md`, "Questions for the user" (the E16 refinement's first draft, 2026-10-08). Blocked until answered: the correction of the drafts and the server `QUEUE.md`.
+
+#### SRV-Q1 — Where the server runs first
+
+Loopback, LAN or internet. Recommendation: loopback and LAN until identity (M3) exists; the internet also needs a reverse proxy for TLS.
+
+#### SRV-Q2 — Authentication now or later
+
+Recommendation: seat tokens only in M1–M2, the keypair identity in M3.
+
+#### SRV-Q3 — Which client connects first
+
+The headless test client, then the client lane's viewer; proposal that the viewer consumes `h3-protocol` messages live or from a record file with the same code.
+
+#### SRV-Q4 — Spectators
+
+Public events only, or a `Viewer::Spectator` in the battle's `observe` (a battle-lane API change) before M2.
+
+#### SRV-Q5 — Runtime and wire format
+
+Std threads and JSON as recommended, or `tokio` and/or a binary format from the start.
+
+#### SRV-Q6 — What `h3-game` must expose for the whole game (M5)
+
+A player actor for `apply`, `observe` for a player and a spectator, pending decisions as state, a trusted system actor for timeouts and disconnects. May the server lane file this as an adventure-lane request (input to E08 T1a, ADR draft 3)?
+
+#### SRV-Q7 — Timing
+
+Start M0 now (the mapping's "other" fallback protects the build from E04b/E04c additions) or wait for E04b's close.
+
+#### SRV-Q8 — Account model
+
+Password-derived keypair (recommended: name and password become a signing key on the device, no secret is sent or stored, any device with the password has the account; two crypto crates, `ed25519-dalek` and `argon2`) or classic password accounts hashed on each server (one crate; the password travels, so every login needs TLS). A keypair per device was dropped: a new device would need the key file (the user, 2026-10-08).
+
+#### SRV-Q9 — Persistence
+
+Journals and JSON-lines logs in a data directory, synced per write and rebuilt at start (recommended), or an embedded store from the start. The write-ahead journal, which restores open games after a crash or a pause by re-running them, is the same under both.
+
+#### SRV-Q10 — Milestone order
+
+Ranked battles (M4) before the whole game (M5), as proposed.
+
+#### SRV-Q11 — Server discovery
+
+A web of trust between servers (recommended: every server has a keypair and signs a card describing itself; operators vouch for peers in the configuration; clients browse the cards relayed by servers they know and see the vouching chain; signed community lists as files; mDNS on the LAN), with resolution by key through a DHT deferred; or a DHT from the start; or no discovery in the core (community lists on a web page). Draft: `docs/lanes/server/adr-drafts/discovery.md`.
 
 ### Client lane (`CLT-Q<n>`)
 
