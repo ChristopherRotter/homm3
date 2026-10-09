@@ -6,8 +6,8 @@ BAT-MAG-001 to BAT-MAG-008, `h3_sim::action`); so is T3's effect list (T3a: `h3_
 BAT-MAG-009 to 011, HER-BAT-014), T5's battlefield objects (`h3_battle::obstacles`,
 `h3_battle::natural`, BAT-MAG-027 to 034), T6a's raising (`h3_battle::raise`, BAT-MAG-035/036),
 T6b's created stacks (`h3_battle::created`, BAT-MAG-037 to 039) and T7's creature casters
-(`h3_battle::casters`, BAT-MAG-048 to 052; the Pit Lord's Demons as `StackOrigin::Raised`, ADR-0014
-point 6). No section is open.
+(`h3_battle::casters`, BAT-MAG-048 to 053; the Pit Lord's Demons as `StackOrigin::Raised`, ADR-0014
+point 6; the Enchanter's own cast at its activation, ADR-0014 point 3). No section is open.
 Each task
 settles its section and **deletes it** when the code documentation, the rule catalog and the pack
 docs hold the detail; the file is deleted when E04b closes (ADR index rule). Names are provisional.
