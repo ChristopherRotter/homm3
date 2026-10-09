@@ -29,7 +29,7 @@ Shared (own pull request, merged first): `h3-kernel`, `h3-contracts`, workspace 
 **Sources**
 - The wiki is reachable only through WebFetch (summarised) and needs the user's approval per session: ask for verbatim quotes, use `index.php?title=<Page>&action=raw` and `index.php?search=<term>&fulltext=1`; ask for the `swh` template's SoD argument, the summariser otherwise reports HotA.
 - VCMI 1.7.5: `git clone --depth 1 --branch 1.7.5 https://github.com/vcmi/vcmi.git` works through the proxy.
-- Code reading (Q29, Q57: preferred to a new experiment when reliable): stage `Heroes3.exe`, `pip install capstone pefile`, then `scripts/exe.py lookup|fn|callers|refs|grep` with the address map (`docs/exe/README.md`); every address cited in docs or code needs a map entry (`check-exe-map`; `scripts/exe.py cited`). The tool prints each float constant's width; the x87 runs at 53 bits (`installation.md` §7.10).
+- Code reading (Q29, Q57: preferred to a new experiment when reliable): stage `Heroes3.exe`, `pip install capstone pefile`, then `scripts/exe.py lookup|fn|switch|callers|refs|grep` with the address map (`docs/exe/README.md`); every address cited in docs or code needs a map entry (`check-exe-map`; `scripts/exe.py cited`). `fn` prints a long function only sliced (`--around`, `--from/--to`): never read `map.toml` or `h3api.toml` whole. The tool prints each float constant's width; the x87 runs at 53 bits (`installation.md` §7.10).
 
 **Coverage, lints, formatting**
 - LLVM counts the implicit `else` of `if let`, the error arm of `?` and rarely reached closures: no defensive dead branches; use infallible accessors and combinators, saturate instead of returning `Option`, make property tests deterministic in what they cover.
