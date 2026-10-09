@@ -64,6 +64,8 @@ Language-specific bindings only (locks out other ecosystems); a network protocol
 - **ABI v14** (E04b T7b2b): observation encoding v10 (the hero's public spell book flag; per
   stack, how many spells a helpful caster's draw could pick, for its controller; the length
   grows); the stack's cast's spell head holds 0 for the Master Genie. No function changes.
+- **ABI v15** (E04b T7b4): observation encoding v11 (two globals: the round starts since each
+  side's periodic casters, the Enchanters, last cast; the length grows). No function changes.
 
 ## Revision history
 
