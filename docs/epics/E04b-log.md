@@ -1539,3 +1539,10 @@ records how and why the tasks went.
   least 0, no hero, a hypnotized Wraith, good morale, lost turns); `h3-pack`'s
   `harvested_mana.rs` replays batch 2a R6 on the harvested packs (20 → 21 → 16 → 11, Blue
   10 → 2); the property test explains mana by casts, channels and drains.
+- **Review** (independent, no defect in the logic): tests made stronger (two enemy Pegasi
+  count once; Familiars killed by the cast while the battle goes on; the channel after an
+  obstacle spell; a blind, a bad-morale, a berserk Wraith and the tactics phase through
+  commands), the test Wraith's ability after another (the drain's search), the channel's event
+  reports the mana actually gained, `turn`'s docs. A created Pegasus cannot be tested: a clone's
+  original is in its army and no summon makes Pegasi (the change is computed from the armies
+  at the start).

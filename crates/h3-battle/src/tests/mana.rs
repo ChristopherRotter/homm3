@@ -88,23 +88,24 @@ fn drained(events: &[Event]) -> Vec<(u8, BattleSide, u16)> {
         .collect()
 }
 
-/// Puts stack `id` under the other side's control (Hypnotize, BAT-MAG-026).
-fn hypnotize(s: &mut BattleState, r: &Ruleset, id: u8) {
-    let hypnotize = spell(r, "hypnotize");
+/// Puts the test spell `name`'s effect on stack `id` for 5 rounds, as a cast at no mastery would.
+fn put(s: &mut BattleState, r: &Ruleset, name: &str, id: u8) {
+    let id_spell = spell(r, name);
     let cast = crate::effects::TimedCast {
-        id: hypnotize,
-        spell: r.spell(hypnotize).unwrap(),
+        id: id_spell,
+        spell: r.spell(id_spell).unwrap(),
         mastery: 0,
         rounds: 5,
         own: crate::magic::SpellBonus::default(),
     };
     crate::effects::apply(s, r, cast, StackId(id), &mut Vec::<Event>::new());
-    assert!(
-        s.stacks()[usize::from(id)]
-            .spells
-            .status
-            .contains(Status::HYPNOTIZED)
-    );
+}
+
+/// Puts stack `id` under the other side's control (Hypnotize, BAT-MAG-026).
+fn hypnotize(s: &mut BattleState, r: &Ruleset, id: u8) {
+    put(s, r, "hypnotize", id);
+    let status = s.stacks()[usize::from(id)].spells.status;
+    assert!(status.contains(Status::HYPNOTIZED));
 }
 
 /// Good morale that always triggers (and bad morale that nearly always does).
@@ -139,6 +140,14 @@ fn the_armies_change_the_spell_cost() {
     );
     assert_eq!(cost(&s, &r, 2), 5);
     assert_eq!(s.heroes[1].unwrap().magic.cost_change, 0);
+    let (s, _) = led(
+        &r,
+        heroes(),
+        &[(0, "fixed", 5)],
+        &[(0, "pegasus", 1), (1, "pegasus", 1)],
+    );
+    assert_eq!(s.heroes[0].unwrap().magic.cost_change, 2);
+    assert_eq!(cost(&s, &r, 1), 7);
     // The largest reduction counts, and a cost stays at least 1: Basic's 4 − 5.
     let mut basic = mage(&r);
     basic.magic.schools = [1, 0, 0, 0];
@@ -243,10 +252,15 @@ fn familiars_channel_a_share_of_the_other_heros_cost() {
     );
     // Familiars killed by the cast channel nothing (the channel follows the effect); nor do the
     // caster's own Familiars, nor Familiars without a hero.
-    let (mut s, _) = led(&r, heroes(), &[(0, "fixed", 5)], &[(0, "familiar", 3)]);
+    let (mut s, _) = led(
+        &r,
+        heroes(),
+        &[(0, "fixed", 5)],
+        &[(0, "familiar", 3), (1, "fixed", 10)],
+    );
     let events = bolt(&mut s, &r, 1).unwrap();
     assert!(channeled(&events).is_empty());
-    assert!(!s.stacks()[1].is_alive());
+    assert!(!s.stacks()[1].is_alive() && !s.is_over());
     let (mut s, _) = led(&r, heroes(), &[(0, "familiar", 3)], &[(0, "fixed", 10)]);
     assert!(channeled(&bolt(&mut s, &r, 1).unwrap()).is_empty());
     assert_eq!(mana(&s, BattleSide::Attacker), 10);
@@ -409,4 +423,117 @@ fn a_wraith_that_lost_its_turns_drains_nothing() {
     crate::turn::activation(&mut s, &r, StackId(0), &mut events);
     assert!(drained(&events).is_empty());
     assert_eq!(mana(&s, BattleSide::Defender), 13);
+}
+
+// covers: BAT-MAG-055
+#[test]
+fn familiars_channel_after_an_obstacle_spell_too() {
+    // The cast's common tail follows every spell kind (the original's 0x5A2058).
+    let r = ruleset();
+    let mut h = mage(&r);
+    h.magic.spell_book = Some(std::vec![spell(&r, "quicksand")]);
+    let (mut s, _) = led(
+        &r,
+        [Some(h), Some(mage(&r))],
+        &[(0, "fixed", 5)],
+        &[(0, "familiar", 3)],
+    );
+    activate(&mut s, 0);
+    let events = act(
+        &mut s,
+        &r,
+        Command::Cast {
+            spell: spell(&r, "quicksand"),
+            target: CastTarget::None,
+            second: CastTarget::None,
+        },
+    )
+    .unwrap();
+    assert!(
+        events
+            .iter()
+            .any(|e| matches!(e.kind, EventKind::ObstaclePlaced { .. }))
+    );
+    assert_eq!(channeled(&events), [(BattleSide::Defender, 1)]);
+}
+
+// covers: BAT-MAG-056
+#[test]
+fn a_wraith_the_battle_does_not_activate_drains_nothing() {
+    let r = ruleset();
+    let heroes = || [None, Some(mage(&r))];
+    // Blind: its turn passes.
+    let (mut s, _) = led(&r, heroes(), &[(0, "wraith", 5)], &[(0, "slow", 4)]);
+    put(&mut s, &r, "blind", 0);
+    act(&mut s, &r, Command::Defend).unwrap();
+    let events = act(&mut s, &r, Command::Defend).unwrap();
+    assert_eq!(s.round(), 2);
+    assert!(
+        events
+            .iter()
+            .any(|e| matches!(e.kind, EventKind::TurnPassed { .. }))
+    );
+    assert!(drained(&events).is_empty());
+    // Frozen by bad morale (its hero's morale −3, bad morale at 254/255).
+    let r = ruleset_with("t:faithful", always);
+    let mut gloomy = hero(&r);
+    gloomy.effects.push(h3_contracts::BattleEffect::Morale {
+        amount: -3,
+        affects: h3_content::Affects::Own,
+    });
+    let (_, events) = led(
+        &r,
+        [Some(gloomy), Some(mage(&r))],
+        &[(0, "wraith", 5)],
+        &[(0, "slow", 4)],
+    );
+    assert!(
+        events
+            .iter()
+            .any(|e| matches!(e.kind, EventKind::BadMorale { stack } if stack.0 == 0))
+    );
+    assert!(drained(&events).is_empty());
+    // In the tactics phase: nothing until round 1.
+    let r = ruleset();
+    let mut tactician = mage(&r);
+    tactician.tactics = 2;
+    let (mut s, events) = led(
+        &r,
+        [None, Some(tactician)],
+        &[(0, "wraith", 5)],
+        &[(0, "slow", 4)],
+    );
+    assert!(s.tactics().is_some());
+    assert!(drained(&events).is_empty());
+    let events = act(&mut s, &r, Command::EndTactics).unwrap();
+    assert_eq!(drained(&events), [(0, BattleSide::Defender, 2)]);
+}
+
+// covers: BAT-MAG-056, BAT-MAG-025
+#[test]
+fn a_berserk_wraith_drains_before_its_automatic_turn() {
+    let r = ruleset();
+    let (mut s, _) = led(
+        &r,
+        [None, Some(mage(&r))],
+        &[(0, "wraith", 5)],
+        &[(0, "slow", 4)],
+    );
+    put(&mut s, &r, "berserk", 0);
+    assert!(s.stacks()[0].spells.status.contains(Status::BERSERK));
+    act(&mut s, &r, Command::Defend).unwrap();
+    let events = act(&mut s, &r, Command::Defend).unwrap();
+    let drain = events
+        .iter()
+        .position(|e| matches!(e.kind, EventKind::ManaDrained { .. }))
+        .unwrap();
+    let action = events
+        .iter()
+        .position(|e| {
+            matches!(e.kind, EventKind::Moved { stack, .. } if stack.0 == 0)
+                || matches!(e.kind, EventKind::Struck { attacker, .. } if attacker.0 == 0)
+        })
+        .unwrap();
+    assert!(drain < action);
+    assert_eq!(mana(&s, BattleSide::Defender), 11);
 }

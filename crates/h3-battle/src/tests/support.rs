@@ -795,7 +795,7 @@ pub const CREATURES: &[Creature] = &[
     // The mana creatures (BAT-MAG-054 to BAT-MAG-056): a Pegasus (+2 for the enemy hero's
     // spells), Mages (−2 for their own hero's) and a stronger reduction, Familiars (20 % of the
     // other hero's cost) and a stronger channel, a Wraith (2 mana at its activations; a castle
-    // creature for good morale).
+    // creature for good morale; its ability after another, as the base pack's).
     (
         "pegasus",
         10,
@@ -854,7 +854,7 @@ pub const CREATURES: &[Creature] = &[
         2,
         30,
         7,
-        &["faction=castle", "alive", "mana_drain=2"],
+        &["faction=castle", "alive", "regeneration", "mana_drain=2"],
     ),
 ];
 

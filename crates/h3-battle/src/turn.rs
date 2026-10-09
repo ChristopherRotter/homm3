@@ -62,13 +62,12 @@ pub(crate) fn next_active(state: &BattleState) -> Option<StackId> {
         .map(|(id, _)| StackId(id))
 }
 
-/// Starts a new round, not in its wait phase: each side's rounds since its periodic cast rise
-/// (BAT-MAG-053); resets
-/// retaliation (with Counterstrike's extra ones, BAT-MAG-015), wait, morale, started and acted
-/// flags (the Defend bonus lasts until the stack's next activation, BAT-TRN-004) and the heroes'
-/// casts (BAT-MAG-001); then the timed effects lose a round or end
-/// (BAT-MAG-010), the clones lose a round or vanish (BAT-MAG-038; never their side's last
-/// stack: a clone's original lives), then the spell obstacles (BAT-MAG-027).
+/// Starts a new round, not in its wait phase (BAT-MAG-056): each side's rounds since its periodic
+/// cast rise (BAT-MAG-053); resets retaliation (with Counterstrike's extra ones, BAT-MAG-015),
+/// wait, morale, started and acted flags (the Defend bonus lasts until the stack's next
+/// activation, BAT-TRN-004) and the heroes' casts (BAT-MAG-001); then the timed effects lose a
+/// round or end (BAT-MAG-010), the clones lose a round or vanish (BAT-MAG-038; never their side's
+/// last stack: a clone's original lives), then the spell obstacles (BAT-MAG-027).
 // rule: BAT-TRN-003, BAT-MAG-001
 pub(crate) fn start_round<S: Sink>(state: &mut BattleState, ruleset: &Ruleset, sink: &mut S) {
     state.round = state.round.saturating_add(1);
@@ -159,7 +158,8 @@ fn pick<S: Sink>(state: &mut BattleState, ruleset: &Ruleset, sink: &mut S) -> Op
 /// waits for its side's command, BAT-WAR-006) and after a berserk stack's automatic turn
 /// (BAT-MAG-025; unless good morale gives it, no longer berserk, another turn). While the battle
 /// is not over some stack is alive, so a stack is always found. The stack that awaits its side's
-/// command draws its spell if it is a random caster (BAT-MAG-049).
+/// command draws its spell if it is a random caster (BAT-MAG-049). Once a waited stack is
+/// activated, the round's wait phase has begun (BAT-MAG-056).
 pub(crate) fn activate_next<S: Sink>(state: &mut BattleState, ruleset: &Ruleset, sink: &mut S) {
     let mut next = pick(state, ruleset, sink);
     while let Some(id) = next {
@@ -228,8 +228,9 @@ pub(crate) fn activation<S: Sink>(
     crate::casters::periodic(state, ruleset, id, sink);
 }
 
-/// The turn of stack `id`, activated without bad morale: a periodic caster casts first, as the
-/// original's activation does for any stack it activates (BAT-MAG-053); then a war machine that
+/// The turn of stack `id`, activated without bad morale: a draining stack drains and a periodic
+/// caster casts first, as the original's activation does for any stack it activates
+/// (BAT-MAG-056, BAT-MAG-053); then a war machine that
 /// acts on its own acts (BAT-WAR-002/003) and a berserk stack takes its automatic turn
 /// (BAT-MAG-025). Returns whether the stack awaits its side's command. (A periodic cast kills
 /// nothing: its spells have no damage, so the battle goes on.)

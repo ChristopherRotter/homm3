@@ -78,8 +78,12 @@ pub(crate) fn channel<S: Sink>(
     let Some(hero) = state.heroes[side.index()].as_mut().filter(|_| mana > 0) else {
         return;
     };
-    hero.view.mana = hero.view.mana.saturating_add(mana);
-    sink.emit(Event::public(EventKind::ManaChanneled { side, mana }));
+    let before = hero.view.mana;
+    hero.view.mana = before.saturating_add(mana);
+    sink.emit(Event::public(EventKind::ManaChanneled {
+        side,
+        mana: hero.view.mana - before,
+    }));
 }
 
 /// At an activation of stack `id` for a turn (BAT-MAG-056; the original's 0x465548): unless the
