@@ -4,14 +4,13 @@ Pre-refined tasks of the battle lane, in order, then the inbox of discovered wor
 
 ## Tasks
 
-Increment 7 (the user, 2026-10-08, BAT-Q10): T7b1 alone, done; the T7b/T7c cut confirmed (`docs/epics/E04b-battle-magic.md`, T7; `docs/formats/installation.md` §7.21). Increment 8 (the user, BAT-Q11): T7b2 in two parts with one checkpoint after both: T7b2a (Faerie Dragon) and T7b2b (Master Genie) done; the user's checkpoint next. Then T6c with T7b3 (increment 9, one `shared/` change to `BattleOutcome`); T7b4; T7c.
+Increment 7 (the user, 2026-10-08, BAT-Q10): T7b1 alone, done; the T7b/T7c cut confirmed (`docs/epics/E04b-battle-magic.md`, T7; `docs/formats/installation.md` §7.21). Increment 8 (the user, BAT-Q11): T7b2a (Faerie Dragon) and T7b2b (Master Genie), done. Increment 9 (the user, BAT-Q13): T6c (done) with T7b3, one checkpoint after both; shared PR #26 for `BattleOutcome`. Then T7b4; T7c.
 
-### T6c — Created stacks' follow-ups from batch 2d (E04b increment 9, with T7b3)
+### T7b3 — The raisers (E04b increment 9, with T6c)
 
-- **Scope:** the epic's T6c. (1) BAT-QUIRK-7's flag `quirk.battle.clone_on_its_original` (fix-optional, faithful on; ledger): with it the place search counts the original's hexes as free (`installation.md` §7.19); a place on the original's head creates no clone and turns the original into one (summoned, the clone's rounds, linked to itself: it vanishes without a corpse when they run out, and the outcome reports its slot lost); a place whose front hex is the original's is skipped in every profile (BAT-QUIRK-8). (2) BAT-Q7 (b): a `shared/` PR first (ADR-0014 point 10 amended; `BattleOutcome` gains per side the killed creatures of created stacks, by creature; `BattleResult`'s doc: a side with no army survivors whose opponent retreated or surrendered has lost too and still receives the price, BAT-Q7 (a)), then the battle fills it after the original's per-record count (0x4775E1; whether a reused record drops its losses, as SU a suggests, is an experiment candidate); sim and C ABI where the outcome crosses them.
-- **Acceptance:** the Definition of Done; rule tests for the flag in both profiles (batch 2d CL2) and for the reported kills (batch 2d NE: 10 Pikemen, a clone of 10 and 6 Earth Elementals); the outcome property extended.
-- **Depends on:** increment 9 with T7b3 (the user, BAT-Q10, BAT-Q11): one `shared/` PR for both outcome changes (created stacks' kills, the Pit Lord's Demons), merged before the battle part.
-- **Status:** queued (increment 9).
+- **Scope:** the epic's T7b3 (`installation.md` §7.21, "The raisers and the end of the battle"): the Archangel's raise (0x5A3CC0 with Resurrection's test, then 0x5A7560 by creatures × 100 hit points, permanent; 0x447330 above 0) and the Pit Lord's Demons (0x5A3E40: the topmost living corpse of the controller's side on an unblocked hex without a living stack, no spell test; 0x447330's count; a new stack, not summoned, in the corpse's army slot: `StackOrigin::Raised(slot)`, BAT-Q13), both through `CreatureCast { target }` with spell head 0 (ADR-0014 point 9); the raise refused when the side has no free slot (the original crashes: ledger, exploit-fix).
+- **Acceptance:** the Definition of Done; rule tests for both raisers (targets, counts, the Demons' slot, victory, corpse, experience-relevant records, a second raise from Demons), the outcome property with `Raised`, replays and `bench-check`.
+- **Status:** in progress (increment 9).
 
 ## Inbox
 

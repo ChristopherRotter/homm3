@@ -18,7 +18,7 @@ cross-platform determinism check (ADR-0003 §11, E01 exit criterion 2).
 | `full-s3-a1535.toml` | full | 3 | 1535 (E04b T7b2b, replacing T7b2a's `full-s3-a804`: Corwin casts Mire, whose pits go off, and conjures Shades (Summon Elemental); he wins with Shades alive; a Wisp casts Hasten, Drakes Arc and Cinders, a Djinn Boon) |
 | `full-s3-a1886.toml` | full | 3 | 1886 (E04b T7b2b, replacing T7b2a's `full-s3-a1522`: a stack is sacrificed to raise another (Offer); a stack is raised for good; a Wisp casts Hasten, a Drake Spark, a Djinn Hallow) |
 | `full-s3-a463.toml` | full | 3 | 463 (E04b T7b2b, replacing T7b2a's `full-s3-a1432`: Brea's Revive raises creatures for the battle only, her mines go off, and she wins; a Djinn casts Aegis) |
-| `full-s3-a1825.toml` | full | 3 | 1825 (E04b T7b2b, replacing T7b2a's `full-s3-a155`: a stack is copied (Clone), and the clone vanishes; Corwin conjures Shades and wins with them alive, which the outcome leaves out; Drakes cast Spark, a Djinn Aegis) |
+| `full-s3-a1825.toml` | full | 3 | 1825 (E04b T7b2b, replacing T7b2a's `full-s3-a155`: a stack is copied (Clone), and the clone vanishes; Corwin conjures Shades and wins with them alive, which the outcome reports as created; Drakes cast Spark, a Djinn Aegis) |
 
 Regenerate (only when a change *intentionally* alters game behavior, the synthetic pack, or an
 algorithm/encoding version — say so in the commit message):

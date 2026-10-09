@@ -70,6 +70,7 @@ pub const REGISTRY: QuirkRegistry = QuirkRegistry::new(&[
     "quirk.battle.draws_avoid_hidden",
     "quirk.battle.sacrifice_tests_as_resurrection",
     "quirk.battle.creature_mirror_untested",
+    "quirk.battle.clone_on_its_original",
 ]);
 
 /// Q-0003: creatures of a side without a hero never get lucky strikes (BAT-LCK-002).
@@ -140,6 +141,14 @@ pub const SACRIFICE_TESTS_AS_RESURRECTION: QuirkFlag = QuirkFlag(13);
 /// that stack is tested and rolls as the new target of a hero's cast does (BAT-MAG-022).
 pub const CREATURE_MIRROR_UNTESTED: QuirkFlag = QuirkFlag(14);
 
+/// BAT-QUIRK-7: Clone's place search counts the original's own hexes as free, so a crowded
+/// two-hex original can get its clone's place on itself: then no clone is made and the original
+/// itself becomes a summoned stack with the clone's rounds, which vanishes when they run out and
+/// is lost from its army after the battle (BAT-MAG-038; `installation.md` §7.19). Off: the
+/// original's hexes are taken. A place whose other hex is the original's is skipped either way
+/// (BAT-QUIRK-8).
+pub const CLONE_ON_ITS_ORIGINAL: QuirkFlag = QuirkFlag(15);
+
 /// The set of enabled quirk flags of a ruleset.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub struct Quirks {
@@ -178,7 +187,11 @@ mod tests {
 
     #[test]
     fn registry_lookup_and_bitset() {
-        assert_eq!(REGISTRY.len(), 15);
+        assert_eq!(REGISTRY.len(), 16);
+        assert_eq!(
+            REGISTRY.lookup("quirk.battle.clone_on_its_original"),
+            Some(CLONE_ON_ITS_ORIGINAL)
+        );
         assert_eq!(
             REGISTRY.lookup("quirk.battle.creature_mirror_untested"),
             Some(CREATURE_MIRROR_UNTESTED)
