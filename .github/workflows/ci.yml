@@ -51,9 +51,11 @@ permissions:
 
 # One run per pull request or branch; a newer run cancels the older one (a merge or close cancels
 # the pull request's run). The weekly run and label events other than `cross-lane` get a group of
-# their own, so that they cancel nothing.
+# their own, so that they cancel nothing. Pull requests are keyed by number: a `closed` event's
+# `github.ref` is the base branch, so a ref key put the merge's skipped run into `master`'s group,
+# where it cancelled `master`'s run of the merge (T7b4, T7c1 and T7c2a, 2026-10-09).
 concurrency:
-  group: ${{ github.workflow }}-${{ github.event_name == 'schedule' && 'schedule' || github.ref }}${{ contains(fromJSON('["labeled", "unlabeled"]'), github.event.action) && github.event.label.name != 'cross-lane' && format('-{0}', github.run_id) || '' }}
+  group: ${{ github.workflow }}-${{ github.event_name == 'schedule' && 'schedule' || github.event_name == 'pull_request' && format('pr-{0}', github.event.pull_request.number) || github.ref }}${{ contains(fromJSON('["labeled", "unlabeled"]'), github.event.action) && github.event.label.name != 'cross-lane' && format('-{0}', github.run_id) || '' }}
   cancel-in-progress: true
 
 env:
