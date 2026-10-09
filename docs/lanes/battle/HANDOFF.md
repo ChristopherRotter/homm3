@@ -4,13 +4,13 @@ The battle lane's living state; read after the global `docs/HANDOFF.md`. Format 
 
 ## Current state
 
-- **Branch:** `battle/e04b-t7b4` (one PR) after the shared PR #35 (`shared/adr-0011-abi-v15`: ADR-0011's ABI v15 line, the global HANDOFF's battle row): merge #35 first. Work on `battle/<task>` branches from `master`, one per task or increment, merged at its checkpoint; HANDOFF content goes here, not into `docs/HANDOFF.md`.
-- **E04b increment 10 (the user, 2026-10-09, BAT-Q14): T7b4 alone; done.** Sandbox: `docs/08-work-process.md`, "Cloud sandbox".
-- **Done:** survey `docs/rules/surveys/E04b-magic.md` (§12–§15), ADR-0014 accepted (point 5 amended, Q47), design note `docs/epics/E04b-design.md`. Castable by heroes: the 13 damage spells, the 14 value spells, Shield, Air Shield, the Protections (Q-0007), Slayer, Counterstrike (Q-0008), Dispel, Cure, Fire Shield (Q-0010) and Frenzy (Q-0009) (BAT-MAG-001 to 019), the spell specialists (BAT-MAG-020), Anti-Magic and Magic Mirror (BAT-MAG-021/022), Forgetfulness and Blind (BAT-MAG-023/024), Berserk and Hypnotize (BAT-MAG-025/026; a stack's `controller()` commands it), Force Field, Fire Wall, Teleport and Expert Dispel's clearing (BAT-MAG-027 to 030; `h3_battle::obstacles`), hidden obstacles, Quicksand and Land Mine (BAT-MAG-031 to 033; BAT-QUIRK-1/2/4), Remove Obstacle and the natural obstacles as pieces with anchors (BAT-MAG-034, BAT-GEO-003; `h3_battle::natural`, BAT-QUIRK-3), Resurrection, Animate Dead and Sacrifice (BAT-MAG-035/036; `h3_battle::raise`, BAT-QUIRK-5/6), Clone and Summon Elemental (BAT-MAG-037 to 039; `h3_battle::created`, BAT-QUIRK-7), the creature magic after a melee strike (BAT-MAG-040 to 047; `h3_battle::after_strike`, `vitality`, `binds`), the creature's cast (BAT-MAG-048; `h3_battle::casters`: Ogre Mage, the four AB elementals), the Faerie Dragon's drawn spell (BAT-MAG-049, private to its controller; BAT-QUIRK-9), the Master Genie's draw among useful spells (BAT-MAG-050, BAT-QUIRK-10), Clone on its original as a flag (BAT-QUIRK-7), the outcome's created stacks (`StackOrigin::Created`, BAT-QUIRK-11), the Archangel's and the Pit Lord's raises (BAT-MAG-051/052; Demons as `StackOrigin::Raised`, BAT-QUIRK-12), the Enchanter's own cast at its activation (BAT-MAG-053; BAT-QUIRK-13 for S-12, BAT-QUIRK-14: every battle starts ready), all after the executable's code (`installation.md` §7.8–§7.21). **Physical damage follows the executable's three truncated stages** under Q-0005 (Q50, BAT-DMG-002, `h3_kernel::arith::X87` at 53 bits).
+- **Branch:** `battle/e04b-t7c1` (one PR; no shared change but the global HANDOFF's battle row, #37 `shared/handoff-battle-t7c1`: merge it first). Work on `battle/<task>` branches from `master`, one per task or increment, merged at its checkpoint; HANDOFF content goes here, not into `docs/HANDOFF.md`.
+- **E04b increment 11 (the user, 2026-10-09, BAT-Q15): T7c1 alone; done.** Sandbox: `docs/08-work-process.md`, "Cloud sandbox".
+- **Done:** survey `docs/rules/surveys/E04b-magic.md` (§12–§15), ADR-0014 accepted (point 5 amended, Q47), design note `docs/epics/E04b-design.md`. T1–T7b4 and T7c1 (the epic file lists each with its rules): the hero's spells but the T8 long tail (BAT-MAG-001 to 039; Q-0007 to Q-0012, BAT-QUIRK-1 to 8), the strike's creature magic (BAT-MAG-040 to 047), the casting creatures (BAT-MAG-048 to 053; BAT-QUIRK-9 to 14), the mana creatures (BAT-MAG-054 to 056: costs from the armies, the Familiars' channel, the Wraiths' drain; BAT-QUIRK-15, 16), all after the executable's code (`installation.md` §7.8–§7.21). **Physical damage follows the executable's three truncated stages** under Q-0005 (Q50, BAT-DMG-002, `h3_kernel::arith::X87` at 53 bits).
 - **Hero rates** cross the seam as `h3_contracts::Rate` (basis points plus, under Q-0005, the original's single-precision value as an f32 bit pattern where it differs; Q45 (b), T3c2).
-- **Next:** the user's checkpoint for increment 10; then T7c (mana and creature defences), cut at the checkpoint.
-- **Open for later tasks:** batch 2a R6's costs (T7); Q43 (sprite offset, keep the approximation); creature casters' re-casts (T7); the damage stages' creature factors; Dispel's and Fire Shield's loose ends (Sphere T8, obstacles T5, the Sultans' shield T7); T4a's and T4c's loose ends (all in `QUEUE.md`, "Inbox").
-- **Versions (battle owns them):** state hash v37, ruleset hash v35, replay format v19, action encoding v11, C ABI v15, observation encoding v11; pack format v26. New ids: `BAT-Q<n>`, `BAT-QUIRK-<n>`, `BAT-STUB-<n>` (old ids stay).
+- **Next:** the user's checkpoint for increment 11; then T7c2 (the Faerie Dragons' mirror, the Efreet Sultans' shield, the Phoenix's rebirth, the elementals' damage factors).
+- **Open for later tasks:** Q43 (sprite offset, keep the approximation); creature casters' re-casts (T7); the damage stages' creature factors; Dispel's and Fire Shield's loose ends (Sphere T8, obstacles T5, the Sultans' shield T7); T4a's and T4c's loose ends (all in `QUEUE.md`, "Inbox").
+- **Versions (battle owns them):** state hash v38, ruleset hash v36, replay format v19, action encoding v11, C ABI v15, observation encoding v11; pack format v27. New ids: `BAT-Q<n>`, `BAT-QUIRK-<n>`, `BAT-STUB-<n>` (old ids stay).
 - **Ownership:** `h3-content` and `h3-pack` stay with battle until further notice (user, 2026-10-07); `h3-kernel` and `h3-contracts` are shared, so a seam change is its own `shared/` pull request, merged before the battle change that uses it.
 - Working agreement: increments of a couple of tasks with a user checkpoint (Q41); the user confirms seams and ADRs; token efficiency beats speed (AGENTS.md); the user plays experiment maps in SoD with plain HD and commits the results.
 
@@ -18,6 +18,8 @@ The battle lane's living state; read after the global `docs/HANDOFF.md`. Format 
 
 **Content and packs**
 - `packs/base|ab|sod` are generated: change `crates/h3-harvest` or its gap-fill file and re-run the harvester (`cargo run -p h3-harvest -- --install original-data/install --out packs`); never edit them by hand. Harvested keys may coincide across kinds (`base:ballista` is a creature and an artifact).
+
+- Tests patch the synthetic pack by text (`SYNTHETIC_PACK.replace`): a patch that no longer matches does nothing, silently (T7c1); assert that the text changed. To pick replay seeds, count events per agent seed with a throwaway test in `crates/h3-cli/tests` (`run_random`, then re-apply the commands with an event sink).
 
 **Code reading**
 - Edit docs with targeted replacements, never by rewriting a file from memory: T7a2's rewrite of `QUEUE.md` dropped its whole inbox (restored at the T7a checkpoint).
@@ -48,9 +50,9 @@ The battle lane's living state; read after the global `docs/HANDOFF.md`. Format 
 
 ## Recent sessions
 
-### 2026-10-09 (forty-first) — E04b increment 11: T7c1, the mana creatures (in progress)
+### 2026-10-09 (forty-first) — E04b increment 11: T7c1, the mana creatures
 
-The user (BAT-Q15): T7c1 alone; the cost reads the armies (BAT-QUIRK-15, the rule); the Familiars' loop bound always fixed (BAT-QUIRK-16). Done: the re-reading (`installation.md` §7.21, "The mana creatures, re-read for T7c1"), map entries, ledger. Next: content (pack v27), BAT-MAG-054 to 056, workload, replays, bench, review, PR. Branch `battle/e04b-t7c1`.
+Master green. The user (BAT-Q15): T7c1 alone; the cost reads the armies (BAT-QUIRK-15, the rule); the Familiars' loop bound always fixed (BAT-QUIRK-16). Pack v27 (`spell_cost`, `mana_channel`, `mana_drain`), BAT-MAG-054 to 056 (`h3_battle::mana`; `BattleState.wait_phase`), ruleset hash v36, state hash v38; batch 2a R6 replayed on the harvested packs; replays and bench re-baselined. Detail: `docs/epics/E04b-log.md`.
 
 ### 2026-10-09 (fortieth) — E04b increment 10: T7b4, the Enchanter
 

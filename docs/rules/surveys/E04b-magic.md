@@ -188,6 +188,8 @@ predictions (`experiments/specs/E04b-batch-2a.toml`):
   enemy's Pegasus alive: VCMI 5 − 2 + 2) and 5 again in round 3 after the Pegasus died (VCMI: 3);
   Blue's Ice Bolt cost 8. Either the Pegasus' surcharge outlives it (fixed at the start of the
   battle?) or the Mages' discount does not apply; T7 reads the cost code before implementing it.
+  *(Settled in T7c1: the cost reads the armies, so the dead Pegasus still counts, BAT-MAG-054,
+  BAT-QUIRK-15; the Familiars' 1 of 8 is BAT-MAG-055.)*
 - **Noted for later:** the combat log names the caster's extra damage and the Golems' reduction
   (R5, the user): `SpellDamage` now carries the value, the caster's damage and the damage dealt.
   The Sorcery specialist's growth in single precision generalises to every skill specialty
