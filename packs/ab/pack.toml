@@ -233,7 +233,7 @@ fight_value = 4929
 ai_value = 6721
 adventure_count = [4, 10]
 flags = ["two_hex", "flying", "breath_attack", "alive", "king_1", "fire_immune"]
-abilities = [{ kind = "school_immunity", school = "base:fire" }]
+abilities = [{ kind = "school_immunity", school = "base:fire" }, { kind = "rebirth", divisor = 5 }]
 
 [[creature]]
 id = "azure_dragon"  # original id 132

@@ -415,6 +415,9 @@ enum AbilityDto {
         flag: String,
         percent: u8,
     },
+    Rebirth {
+        divisor: u8,
+    },
 }
 
 #[derive(Deserialize)]
@@ -585,6 +588,7 @@ impl AbilityDto {
                 flag: CreatureFlag::from_name(&flag).ok_or(CompileError::UnknownFlag(flag))?,
                 percent,
             },
+            Self::Rebirth { divisor } => AbilityDef::Rebirth { divisor },
         })
     }
 }

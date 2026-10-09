@@ -345,6 +345,15 @@ pub enum Ability<C, S, L> {
         /// The reduction, percent (1..=100).
         percent: u8,
     },
+    /// After the action that killed its stack (a strike, a cast, a mine or Fire Wall), if the
+    /// stack has a cast left, is not a clone and left a corpse, one cast is used and the stack
+    /// comes back for good with its count at the battle's start div `divisor` creatures, plus one
+    /// for each of the count mod `divisor` others with a 1-in-`divisor` chance, having acted
+    /// this round: the Phoenix's fifth (BAT-MAG-059, v29).
+    Rebirth {
+        /// The divisor, at least 1.
+        divisor: u8,
+    },
 }
 
 /// Most creatures `corpse_raiser` abilities raise in a ruleset (the battle keeps a stack of each
@@ -359,7 +368,7 @@ pub type CompiledAbility = Ability<CreatureTypeId, SpellId, SchoolId>;
 
 impl<C, S, L> Ability<C, S, L> {
     /// Every ability name, in code order (the order of [`Ability::code`]).
-    pub const NAMES: [&'static str; 45] = [
+    pub const NAMES: [&'static str; 46] = [
         "hate",
         "jousting",
         "charge_immunity",
@@ -405,6 +414,7 @@ impl<C, S, L> Ability<C, S, L> {
         "innate_spell",
         "damage_penalty",
         "damage_penalty_by_flag",
+        "rebirth",
     ];
 
     /// Stable numeric code of the ability kind (canonical hashing, duplicate checks).
@@ -455,6 +465,7 @@ impl<C, S, L> Ability<C, S, L> {
             Self::InnateSpell { .. } => 42,
             Self::DamagePenalty { .. } => 43,
             Self::DamagePenaltyByFlag { .. } => 44,
+            Self::Rebirth { .. } => 45,
         }
     }
 
@@ -642,6 +653,7 @@ impl<C, S, L> Ability<C, S, L> {
                 flag: *flag,
                 percent: *percent,
             },
+            Self::Rebirth { divisor } => Ability::Rebirth { divisor: *divisor },
         })
     }
 
@@ -678,6 +690,7 @@ impl<C, S, L> Ability<C, S, L> {
                 Some("mana_channel percent must be 1..=100")
             }
             Self::ManaDrain { amount: 0 } => Some("mana_drain amount must be at least 1"),
+            Self::Rebirth { divisor: 0 } => Some("rebirth divisor must be at least 1"),
             Self::InnateSpell { value, .. } if !(1..=100).contains(value) => {
                 Some("innate_spell value must be 1..=100")
             }
@@ -806,7 +819,7 @@ impl CanonicalHash for CompiledAbility {
             | Self::MagicResistance { percent }
             | Self::MagicResistanceAura { percent }
             | Self::ManaChannel { percent } => h.write_u8(percent),
-            Self::ManaDrain { amount } => h.write_u8(amount),
+            Self::ManaDrain { amount } | Self::Rebirth { divisor: amount } => h.write_u8(amount),
             Self::SpellAfterStrike {
                 spell,
                 chance_percent,
@@ -971,7 +984,7 @@ mod tests {
 
     type A = Ability<u8, u8, u8>;
 
-    fn all() -> [A; 45] {
+    fn all() -> [A; 46] {
         [
             A::Hate {
                 target: 3,
@@ -1085,6 +1098,7 @@ mod tests {
                 flag: CreatureFlag::MindImmune,
                 percent: 50,
             },
+            A::Rebirth { divisor: 5 },
         ]
     }
 
@@ -1347,6 +1361,7 @@ mod tests {
                 flag: CreatureFlag::Undead,
                 percent: 101,
             },
+            A::Rebirth { divisor: 0 },
         ];
         for a in bad {
             assert!(a.parameter_error().is_some(), "{a:?}");

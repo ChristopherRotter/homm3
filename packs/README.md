@@ -161,6 +161,7 @@ errors:
 | `innate_spell` | `spell` (a spell with a timed `fire_shield` or `magic_mirror` change), `value` (1..=100) | since v28: its stack counts as having the spell's effect at `value` whenever the spell is not active on it with a larger value (the spell itself is not on it: Dispel cannot end it, and Hypnotize's refusal of a mirrored stack does not see it): the Efreet Sultan's 20 % Fire Shield (BAT-MAG-058), the Faerie Dragon's 20 % Magic Mirror (BAT-MAG-057). Several for different spells; the rules read only these two changes |
 | `damage_penalty` | `creature`, `percent` (1..=100) | since v28: its strikes deal `percent` % less damage to `creature` (the original's damage stage 2, beside the defense factor; the largest penalty that applies): the Magic Elemental's half against Magic Elementals and Black Dragons (BAT-DMG-010). Several for different creatures |
 | `damage_penalty_by_flag` | `flag` (a creature flag), `percent` (1..=100) | since v28: as `damage_penalty`, against creatures with flag `flag`: the Psychic Elemental's half against mind-immune creatures (BAT-DMG-010). Several for different flags |
+| `rebirth` | `divisor` (≥ 1) | since v29: after the action that killed its stack (a strike, a cast, a mine's or Fire Wall's damage), if the stack has a cast left (its creature's `casts`), is not a clone and left a corpse (not a sacrificed one, BAT-QUIRK-17), one cast is used and the stack comes back for good on its hexes with its count at the battle's start div `divisor` creatures, plus one for each of the count mod `divisor` others with a 1-in-`divisor` chance; it counts as having acted this round, and no creature comes back if none is drawn (the cast is used either way): the Phoenix's fifth (BAT-MAG-059) |
 
 `creature` references follow the reference rules above (own pack, or `pack:name` in the
 dependency closure) and may name creatures defined later in the same pack. At most one entry of
@@ -175,7 +176,7 @@ override, replacing the list) names the creature types it upgrades into: at most
 none twice; references follow the reference rules and may name later creatures of the pack.
 Hero effects that select "a creature" apply to it and its direct upgrades.
 
-## Hero content (format v3, E04a T3; battle magic format v4, E04b T2a; v5 T3a; v6 T3b1; v7 T3b1b; v8 T3b2; v9 T3c; v10 T4a; v11 T4b; v12 T4c; v13 T5a; v14 T5c1; v15 T5c2; v16 T5b; v17 T6a; v18 T6b; v19 T7a1; v20 T7a2; v21 T7a3; v22 T7b1; v23 T7b2a; v24 T7b2b; v25 T7b3; v26 T7b4; v27 T7c1; v28 T7c2a)
+## Hero content (format v3, E04a T3; battle magic format v4, E04b T2a; v5 T3a; v6 T3b1; v7 T3b1b; v8 T3b2; v9 T3c; v10 T4a; v11 T4b; v12 T4c; v13 T5a; v14 T5c1; v15 T5c2; v16 T5b; v17 T6a; v18 T6b; v19 T7a1; v20 T7a2; v21 T7a3; v22 T7b1; v23 T7b2a; v24 T7b2b; v25 T7b3; v26 T7b4; v27 T7c1; v28 T7c2a; v29 T7c2b)
 
 Spell schools, spells, secondary skills, hero classes and hero types (ADR-0013). References follow
 the reference rules above; every kind may refer to content of its dependency closure.
