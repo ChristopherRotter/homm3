@@ -279,6 +279,19 @@ pub enum Ability<C, S, L> {
         /// The hit points per creature of its stack (≥ 1).
         hit_points_per_creature: u16,
     },
+    /// No action: at its stack's activation, when its controller's side has cast no such spell
+    /// for `rounds` round starts (every battle starts ready), casts on its own a spell drawn by
+    /// weight among its creature's `drawn_spell` entries that are useful on a stack of the side
+    /// each aims at (its own; the enemy's for a negative spell), at `mastery` with `power` and no
+    /// target: the Enchanter, once in three rounds at Expert with power 3 (BAT-MAG-053, v26).
+    PeriodicSpellCaster {
+        /// The round starts between two casts of its side (≥ 1).
+        rounds: u8,
+        /// The mastery it casts at (0..=3).
+        mastery: u8,
+        /// The caster's power (≥ 1).
+        power: u8,
+    },
 }
 
 /// Most creatures `corpse_raiser` abilities raise in a ruleset (the battle keeps a stack of each
@@ -293,7 +306,7 @@ pub type CompiledAbility = Ability<CreatureTypeId, SpellId, SchoolId>;
 
 impl<C, S, L> Ability<C, S, L> {
     /// Every ability name, in code order (the order of [`Ability::code`]).
-    pub const NAMES: [&'static str; 38] = [
+    pub const NAMES: [&'static str; 39] = [
         "hate",
         "jousting",
         "charge_immunity",
@@ -332,6 +345,7 @@ impl<C, S, L> Ability<C, S, L> {
         "helpful_spell_caster",
         "stack_raiser",
         "corpse_raiser",
+        "periodic_spell_caster",
     ];
 
     /// Stable numeric code of the ability kind (canonical hashing, duplicate checks).
@@ -375,6 +389,7 @@ impl<C, S, L> Ability<C, S, L> {
             Self::HelpfulSpellCaster { .. } => 35,
             Self::StackRaiser { .. } => 36,
             Self::CorpseRaiser { .. } => 37,
+            Self::PeriodicSpellCaster { .. } => 38,
         }
     }
 
@@ -535,6 +550,15 @@ impl<C, S, L> Ability<C, S, L> {
                 creature: creature(x)?,
                 hit_points_per_creature: *hit_points_per_creature,
             },
+            Self::PeriodicSpellCaster {
+                rounds,
+                mastery,
+                power,
+            } => Ability::PeriodicSpellCaster {
+                rounds: *rounds,
+                mastery: *mastery,
+                power: *power,
+            },
         })
     }
 
@@ -592,6 +616,15 @@ impl<C, S, L> Ability<C, S, L> {
             }
             Self::HelpfulSpellCaster { power: 0, .. } => {
                 Some("helpful_spell_caster power must be at least 1")
+            }
+            Self::PeriodicSpellCaster { rounds: 0, .. } => {
+                Some("periodic_spell_caster rounds must be at least 1")
+            }
+            Self::PeriodicSpellCaster { mastery, .. } if *mastery > 3 => {
+                Some("periodic_spell_caster mastery must be 0..=3")
+            }
+            Self::PeriodicSpellCaster { power: 0, .. } => {
+                Some("periodic_spell_caster power must be at least 1")
             }
             Self::StackRaiser {
                 hit_points_per_creature: 0,
@@ -718,6 +751,11 @@ impl CanonicalHash for CompiledAbility {
                 h.write_u8(weight);
             }
             Self::HelpfulSpellCaster { mastery, power } => h.write_bytes(&[mastery, power]),
+            Self::PeriodicSpellCaster {
+                rounds,
+                mastery,
+                power,
+            } => h.write_bytes(&[rounds, mastery, power]),
             Self::StackRaiser {
                 spell,
                 hit_points_per_creature,
@@ -788,16 +826,16 @@ pub(crate) fn list_error<C: PartialEq, S: PartialEq, L: PartialEq>(
     if has(11) && has(12) {
         return Some("attacks_all_adjacent and three_headed_attack exclude each other");
     }
-    if [32, 33, 35, 36, 37].iter().filter(|&&c| has(c)).count() > 1 {
+    if [32, 33, 35, 36, 37, 38].iter().filter(|&&c| has(c)).count() > 1 {
         return Some(
-            "spell_caster, random_spell_caster, helpful_spell_caster, stack_raiser and \
-             corpse_raiser exclude each other",
+            "spell_caster, random_spell_caster, helpful_spell_caster, stack_raiser, \
+             corpse_raiser and periodic_spell_caster exclude each other",
         );
     }
-    if (has(33) || has(35)) != has(34) {
+    if (has(33) || has(35) || has(38)) != has(34) {
         return Some(
-            "random_spell_caster and helpful_spell_caster need drawn_spell entries, and \
-             drawn_spell such a caster",
+            "random_spell_caster, helpful_spell_caster and periodic_spell_caster need \
+             drawn_spell entries, and drawn_spell such a caster",
         );
     }
     None
@@ -809,7 +847,7 @@ mod tests {
 
     type A = Ability<u8, u8, u8>;
 
-    fn all() -> [A; 38] {
+    fn all() -> [A; 39] {
         [
             A::Hate {
                 target: 3,
@@ -899,6 +937,11 @@ mod tests {
             A::CorpseRaiser {
                 creature: 5,
                 hit_points_per_creature: 50,
+            },
+            A::PeriodicSpellCaster {
+                rounds: 3,
+                mastery: 3,
+                power: 3,
             },
         ]
     }
@@ -1125,6 +1168,21 @@ mod tests {
                 creature: 1,
                 hit_points_per_creature: 0,
             },
+            A::PeriodicSpellCaster {
+                rounds: 0,
+                mastery: 3,
+                power: 3,
+            },
+            A::PeriodicSpellCaster {
+                rounds: 3,
+                mastery: 4,
+                power: 3,
+            },
+            A::PeriodicSpellCaster {
+                rounds: 3,
+                mastery: 3,
+                power: 0,
+            },
         ];
         for a in bad {
             assert!(a.parameter_error().is_some(), "{a:?}");
@@ -1230,6 +1288,15 @@ mod tests {
         assert_eq!(list_error(&[raisers.0]), None);
         assert!(
             list_error(&[raisers.0, raisers.1])
+                .unwrap()
+                .contains("exclude")
+        );
+        // A periodic caster (BAT-MAG-053) draws among its drawn spells and casts nothing else.
+        let periodic = all()[38];
+        assert_eq!(list_error(&[periodic, drawn(1), drawn(2)]), None);
+        assert!(list_error(&[periodic]).unwrap().contains("drawn_spell"));
+        assert!(
+            list_error(&[helpful, periodic, drawn(1)])
                 .unwrap()
                 .contains("exclude")
         );

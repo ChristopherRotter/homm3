@@ -367,6 +367,9 @@ pub(crate) struct Cast<'r> {
     /// Whether the casting stack draws the spell at the cast among those useful for the target
     /// (BAT-MAG-050): `id` is then the first of them until the draw.
     draws: bool,
+    /// Whether the stack casts on its own at its activation (a periodic caster, BAT-MAG-053): no
+    /// cast is used.
+    automatic: bool,
 }
 
 /// Whether the battle implements the effects of `spell`: every effect kind is implemented
@@ -849,6 +852,7 @@ pub(crate) fn plan_cast<'r>(
             .max(1),
         power: u16::from(hero.view.power),
         by: None,
+        automatic: false,
         draws: false,
     })
 }
@@ -1050,7 +1054,37 @@ pub(crate) fn plan_creature_cast<'r>(
         power,
         by: Some(caster),
         draws: spell.spell == CastSpell::AtResolution,
+        automatic: false,
     })
+}
+
+/// The cast of the periodic caster `caster` for `side`, its controller (BAT-MAG-053; the
+/// original's 0x59FE30 as caster kind 1 with no hex, `installation.md` §7.21): `spell` at
+/// `mastery` with `power` and no target (at Expert the mass version), without hero bonuses, its
+/// timed effects lasting `power` rounds; no cast is used.
+pub(crate) fn periodic_cast<'r>(
+    side: BattleSide,
+    (caster, (id, spell)): (StackId, SpellRef<'r>),
+    (mastery, power): (u8, u8),
+) -> Cast<'r> {
+    Cast {
+        side,
+        id,
+        spell,
+        cost: 0,
+        mastery,
+        target: CastTarget::None,
+        second: CastTarget::None,
+        // rule: BAT-MAG-004
+        value: u64::from(power) * u64::from(spell.power)
+            + u64::from(spell.effect[usize::from(mastery)]),
+        bonuses: SpellBonuses::default(),
+        rounds: u16::from(power),
+        power: u16::from(power),
+        by: Some(caster),
+        draws: false,
+        automatic: true,
+    }
 }
 
 /// The cast of a helpful caster (BAT-MAG-050; the original's 0x447EE0, `installation.md` §7.21):
@@ -1686,27 +1720,35 @@ pub(crate) fn apply_cast<S: Sink>(
     } else {
         cast
     };
-    if let Some(stack) = cast.by {
-        // rule: BAT-MAG-048
-        casters::spend(state, stack);
-        sink.emit(Event::public(EventKind::StackCast {
+    match cast.by {
+        // rule: BAT-MAG-053
+        Some(stack) if cast.automatic => sink.emit(Event::public(EventKind::PeriodicCast {
             stack,
             spell: cast.id,
-            target: cast.target,
-        }));
-    } else {
-        // Validated: the side has a hero with the mana.
-        for hero in state.heroes[cast.side.index()].iter_mut() {
-            hero.view.mana -= cast.cost;
-            hero.view.casts += 1;
-            hero.magic.cast.insert(cast.id);
+        })),
+        Some(stack) => {
+            // rule: BAT-MAG-048
+            casters::spend(state, stack);
+            sink.emit(Event::public(EventKind::StackCast {
+                stack,
+                spell: cast.id,
+                target: cast.target,
+            }));
         }
-        sink.emit(Event::public(EventKind::SpellCast {
-            side: cast.side,
-            spell: cast.id,
-            target: cast.target,
-            second: cast.second,
-        }));
+        None => {
+            // Validated: the side has a hero with the mana.
+            for hero in state.heroes[cast.side.index()].iter_mut() {
+                hero.view.mana -= cast.cost;
+                hero.view.casts += 1;
+                hero.magic.cast.insert(cast.id);
+            }
+            sink.emit(Event::public(EventKind::SpellCast {
+                side: cast.side,
+                spell: cast.id,
+                target: cast.target,
+                second: cast.second,
+            }));
+        }
     }
     let magic = &cast.spell.magic;
     if magic.removes_obstacles() {

@@ -99,7 +99,7 @@ fields = [
   { offset = 0x54BC, name = "stack_count", type = "i32[2]", summary = "records in use per side", confidence = "read", refs = ["installation.md §7.7", "installation.md §7.19"] },
   { offset = 0x54CC, name = "stacks", type = "battle_stack[2][21]", summary = "stack records, side stride 0x6EE8", confidence = "read", refs = ["installation.md §7.7"] },
   { offset = 0x1329C, name = "natives", type = "u8[2]", summary = "per side: any stack native at the battle's start", confidence = "read", refs = ["installation.md §7.16", "installation.md §7.17"] },
-  { offset = 0x132A0, name = "enchanter_counter", type = "i32[2]", summary = "rounds since the side's Enchanters cast", confidence = "read", refs = ["installation.md §7.21"] },
+  { offset = 0x132A0, name = "enchanter_counter", type = "i32[2]", summary = "rounds since the side's Enchanters cast; +1 at each round start, 0 after a cast, never reset when a battle starts (BAT-QUIRK-14)", confidence = "read", refs = ["installation.md §7.21"] },
   { offset = 0x132A8, name = "summoned_elemental", type = "i32[2]", summary = "the side's summoned elemental creature, -1 none", confidence = "read", refs = ["installation.md §7.7", "installation.md §7.19"] },
   { offset = 0x132B0, name = "retreated", type = "u8[2]", summary = "the side retreated", confidence = "read", refs = ["installation.md §7.19"] },
   { offset = 0x132B2, name = "surrendered", type = "u8[2]", summary = "the side surrendered", confidence = "read", refs = ["installation.md §7.19"] },

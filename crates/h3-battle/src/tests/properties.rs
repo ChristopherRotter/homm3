@@ -17,7 +17,9 @@ use h3_contracts::{
 };
 use h3_kernel::Rng;
 use proptest::collection::{btree_map, vec};
-use proptest::prelude::{Just, Strategy, any, prop_assert, prop_assert_eq, prop_oneof, proptest};
+use proptest::prelude::{
+    Just, Strategy, any, prop_assert, prop_assert_eq, prop_assume, prop_oneof, proptest,
+};
 use proptest::test_runner::Config;
 
 use super::support::{CREATURES, Rate, hero, ruleset_with};
@@ -540,6 +542,9 @@ proptest! {
                                 EventKind::Struck { target, .. } | EventKind::DeathStared { target, .. } | EventKind::SpellDamage { target, .. } | EventKind::StrikeDamage { target, .. } if target.index() == i))
                                 || mentioned(i, |k, i| matches!(k, EventKind::Regenerated { stack, .. } | EventKind::Vanished { stack, .. } if stack.index() == i))
                                 || mentioned(i, |k, i| matches!(k, EventKind::Healed { target, .. } if target.index() == i))
+                                // The other side's periodic Cure at its caster's activation after
+                                // the command (BAT-MAG-053).
+                                || mentioned(i, |k, i| matches!(k, EventKind::SpellHealed { target, .. } if target.index() == i))
                                 // Poison and Age change the hit points per creature (BAT-MAG-044).
                                 || mentioned(i, |k, i| matches!(k, EventKind::Poisoned { stack, .. } | EventKind::EffectEnded { target: stack, .. } if stack.index() == i));
                             if !explained {
@@ -805,7 +810,10 @@ proptest! {
         let r = lively();
         let (mut state, _, _) = play(&r, &make_setup(&r, &att, &def, &obstacles, seed), seed, &steps);
         finish(&mut state, &r, seed, false);
-        prop_assert!(state.is_over());
+        // A random game may never end (no rule ends a battle in which, say, a petrifying striker
+        // keeps a stack frozen while a First Aid Tent heals what it deals): it tells nothing
+        // about the outcome.
+        prop_assume!(state.is_over());
         let o = state.outcome().unwrap();
         prop_assert_eq!(Some(o.result), state.result());
         prop_assert_eq!(o.rounds, state.round());

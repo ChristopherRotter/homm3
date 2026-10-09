@@ -15,7 +15,7 @@ Sources: `wiki` = https://heroes.thelazy.net (retrieved 2026-10-03; pages named 
 | confirmed by original data | S-05 (the exe's creature table holds the bugged levels) |
 | exploit-fix, no confirmation needed (never implemented) | S-08, S-14, S-20 |
 | batch 1a (E04a), evaluated 2026-10-03 | confirmed: S-01 (ledger Q-0004), S-02 with Q23 (Q-0005, all damage rates), S-03 for Roland only (Q-0006); not reproduced in SoD: S-04 (dropped) |
-| to confirm in an E04b or E04c batch | S-06, S-07, S-11 (code reading incomplete, Q53), S-12, S-15, S-17 (Berserk's 255 rounds read, the data in every profile) (confirmed by code reading: S-19 as Q-0007, S-16 as Q-0009, S-10 as Q-0011, S-13 as Q-0012; S-09 the rule in every profile, Q53) |
+| to confirm in an E04b or E04c batch | S-06, S-07, S-11 (code reading incomplete, Q53), S-15, S-17 (Berserk's 255 rounds read, the data in every profile) (confirmed by code reading: S-19 as Q-0007, S-16 as Q-0009, S-10 as Q-0011, S-13 as Q-0012, S-12 as BAT-QUIRK-13; S-09 the rule in every profile, Q53) |
 | not reproducible in SoD by code reading | S-18 (E04b T7b2a, BAT-Q11: no caster's Magic Arrow is low enough) |
 | to confirm when the battle setup is derived from the map (E04c or E08) | S-22 |
 
@@ -108,6 +108,7 @@ Outside the E04 scope, listed so they are not lost (no classification needed now
 ### S-12 — Enchanters choose spells by the first stack's stats only (E04b)
 - Original: wiki Enchanter: "the spell relevance is calculated based on stats of the first stack only (fixed in HotA)".
 - Suggested **fix-optional**.
+- **Confirmed by code reading** (E04b T7b4, `installation.md` §7.21): 0x447FE0 tests the first record of the side each spell aims at, once per record, and never advances; a dead first record accepts nothing. Ledger **BAT-QUIRK-13**, fix-optional (user, 2026-10-09, BAT-Q14).
 
 ### S-13 — Expert Cure cannot remove Hypnotize (E04b)
 - Original: wiki Cure: Basic and Advanced Cure remove Hypnotize, Expert Cure cannot ("This may/may not be a bug").

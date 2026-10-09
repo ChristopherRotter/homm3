@@ -492,8 +492,16 @@ fn a_random_casters_drawn_spells_take_a_stack_or_a_hex_at_its_mastery() {
     charm.magic.health_limit = true;
     let mut wall = timed("t:wall");
     wall.magic.target = SpellTarget::Hex;
-    p.spells
-        .extend([haste, charm, wall, raising("t:rise", SpellEffect::Raise)]);
+    // An Armageddon: damage without a target.
+    let mut doom = spell("t:doom", &["t:air"]);
+    doom.magic.target = SpellTarget::None;
+    p.spells.extend([
+        haste,
+        charm,
+        wall,
+        raising("t:rise", SpellEffect::Raise),
+        doom,
+    ]);
     let random = |mastery| AbilityDef::RandomSpellCaster {
         mastery,
         power_per_creature: 5,
@@ -525,7 +533,8 @@ fn a_random_casters_drawn_spells_take_a_stack_or_a_hex_at_its_mastery() {
     }
     let reason = "drawn_spell needs a spell with damage, timed, dispel or heal effects and no \
                   health limit or obstacle that takes a target stack or hex (for a helpful \
-                  caster a stack) at its caster's mastery";
+                  caster a stack; for a periodic caster no target, and no damage) at its \
+                  caster's mastery";
     let helpful = AbilityDef::HelpfulSpellCaster {
         mastery: 2,
         power: 6,
@@ -533,12 +542,29 @@ fn a_random_casters_drawn_spells_take_a_stack_or_a_hex_at_its_mastery() {
     let mut good = p.clone();
     good.creatures[0].info.abilities = vec![drawn("t:haste"), helpful.clone()];
     assert!(compile(&[good]).is_ok());
+    // A periodic caster's spells take no target at its mastery: a mass version (BAT-MAG-053).
+    let periodic = |mastery| AbilityDef::PeriodicSpellCaster {
+        rounds: 3,
+        mastery,
+        power: 3,
+    };
+    let mut good = p.clone();
+    good.creatures[0].info.abilities = vec![periodic(3), drawn("t:haste")];
+    let r = compile(&[good]).unwrap();
+    let peasant = r.creature_by_key("t:peasant").unwrap();
+    assert!(matches!(
+        r.abilities(peasant),
+        [Ability::PeriodicSpellCaster { rounds: 3, .. }, ..]
+    ));
     for bad_abilities in [
         vec![random(2), drawn("t:gaze")],
         vec![random(2), drawn("t:charm")],
         vec![random(2), drawn("t:rise")],
         vec![random(3), drawn("t:haste")],
         vec![helpful, drawn("t:wall")],
+        vec![periodic(2), drawn("t:haste")],
+        vec![periodic(3), drawn("t:bolt")],
+        vec![periodic(3), drawn("t:doom")],
     ] {
         let mut bad = p.clone();
         bad.creatures[0].info.abilities = bad_abilities;

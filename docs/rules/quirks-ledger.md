@@ -330,3 +330,28 @@ Classes: `exploit-fix` (always fixed, never toggleable) · `preserve` (accepted,
 - Flag: none
 - Regression test: `crates/h3-battle/src/tests/raisers.rs`, `a_pit_lord_needs_a_slot_for_the_new_stack`
 - Decided by / date: agent, 2026-10-08 (state-corrupting bugs are always fixed, AGENTS.md; the fix's shape, a refused raise, as Clone's and Summon Elemental's limit; BAT-Q13 noted it)
+
+### BAT-QUIRK-13 — Enchanters judge a spell by the first stack of its side only (E04b T7b4; survey S-12)
+- Class: fix-optional (user, 2026-10-09, BAT-Q14)
+- Context / rules affected: battle, BAT-MAG-053 (with BAT-MAG-050's usefulness)
+- Original behavior: before its cast an Enchanter counts each spell of its table that the Master Genie's usefulness test (0x447A80) accepts on a stack of the side the spell aims at (its own, the enemy's for Slow and Weakness); the loop calls the test once per record of that side but never advances past the first record (0x447FE0, `docs/formats/installation.md` §7.21), so only the side's first stack decides. A shooter there rules out Bloodlust, a full-health one Cure, and a dead one every spell aimed at that side: once the first stack dies its side's Enchanters cast nothing more on it.
+- Intended/expected behavior: a spell counts if it is useful on any stack of that side (strict-fixed; HotA fixed it, wiki).
+- Impact: gameplay-altering (small to moderate: whether and what Enchanters cast)
+- Community status: known (wiki Enchanter: "the spell relevance is calculated based on stats of the first stack only", fixed in HotA)
+- Sources: original-data, `docs/formats/installation.md` §7.21 ("The Enchanter, re-read for T7b4"); wiki https://heroes.thelazy.net/index.php/Enchanter
+- Flag: `quirk.battle.periodic_first_stack` (E04b T7b4)
+- Defaults: faithful = on, strict-fixed = off
+- Regression test: `crates/h3-battle/src/tests/enchanters.rs`, `only_the_first_stack_decides_with_quirk_bat_quirk_13`
+- Decided by / date: user, 2026-10-09 (E04b T7b4, BAT-Q14)
+
+### BAT-QUIRK-14 — The Enchanters' counters carry over from battle to battle (E04b T7b4)
+- Class: exploit-fix
+- Context / rules affected: battle, BAT-MAG-053
+- Original behavior: each side's counter (+0x132A0) rises by 1 at every round start and returns to 0 after its Enchanters' cast, which needs it above 2; nothing sets it when a battle starts, because the battle manager is made once per session (0x4EDCF5, 0x462760; `docs/formats/installation.md` §7.21). A battle's first Enchanter cast therefore depends on earlier battles: in round 1 after battles in which that side's Enchanters did not cast, later (up to round 4, when the round-start increments are the only ones) after one in which they did.
+- Intended/expected behavior: a battle depends only on its own setup; every battle starts with both counters ready, so a side's Enchanters cast at their first activation (as after any battles without their cast, and as VCMI does), then once in three rounds.
+- Impact: gameplay-altering (when Enchanters first cast); state leaking from one battle into the next
+- Community status: unknown (not searched)
+- Sources: original-data, `docs/formats/installation.md` §7.21 ("The Enchanter, re-read for T7b4"); VCMI 1.7.5 `server/battles/BattleFlowProcessor.cpp` (the counter starts at 0 and casts when it is 0)
+- Flag: none
+- Regression test: `crates/h3-battle/src/tests/enchanters.rs`, `every_battle_starts_with_the_enchanters_ready`
+- Decided by / date: user, 2026-10-09 (E04b T7b4, BAT-Q14: ready at every battle's start)

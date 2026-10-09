@@ -2888,7 +2888,7 @@ id       = "BAT-MAG-048"
 title    = "A creature's cast"
 context  = "battle"
 status   = "implemented"
-summary  = "A stack whose creature has spell_caster (spell, mastery, power) may, as its action on its own turn outside the tactics phase and while it has casts left (its creature's casts per battle, set when the stack enters the battle, a created stack too), cast the spell at a target its controller names (CreatureCast; the command names no spell): another living stack, never itself, that the spell may be aimed at by its controller's side (BAT-MAG-003, BAT-MAG-005, BAT-MAG-021; a positive spell: its controller's own stacks). The cast uses one of its casts first, then resolves as a creature's cast through the shared path: at mastery, value power x power factor + effect[mastery], timed effects lasting power rounds, no hero bonuses, cost or cast count, and the stack it is aimed at never rolls for resistance (an area spell's stacks would). A StackCast event reports it. Its turn then ends as after an action: good morale may follow (BAT-MOR-003), and it does not enter its hexes again (no Fire Wall or mine there acts on it). A hypnotized caster casts for its controller. Casters: the Ogre Mage (Bloodlust), the Storm, Ice, Energy and Magma Elementals (Protection from Air, Water, Fire, Earth), at Advanced with power 6. Not yet: Cursed Ground, the anti-magic garrison and the Orb of Inhibition forbid it (E04c, T8); Magic Plains raise its mastery to Expert (E04c); the Enchanter (T7b4). The Faerie Dragon: BAT-MAG-049; the Master Genie: BAT-MAG-050; the raisers, which cast no spell: BAT-MAG-051 (Archangel), BAT-MAG-052 (Pit Lord)."
+summary  = "A stack whose creature has spell_caster (spell, mastery, power) may, as its action on its own turn outside the tactics phase and while it has casts left (its creature's casts per battle, set when the stack enters the battle, a created stack too), cast the spell at a target its controller names (CreatureCast; the command names no spell): another living stack, never itself, that the spell may be aimed at by its controller's side (BAT-MAG-003, BAT-MAG-005, BAT-MAG-021; a positive spell: its controller's own stacks). The cast uses one of its casts first, then resolves as a creature's cast through the shared path: at mastery, value power x power factor + effect[mastery], timed effects lasting power rounds, no hero bonuses, cost or cast count, and the stack it is aimed at never rolls for resistance (an area spell's stacks would). A StackCast event reports it. Its turn then ends as after an action: good morale may follow (BAT-MOR-003), and it does not enter its hexes again (no Fire Wall or mine there acts on it). A hypnotized caster casts for its controller. Casters: the Ogre Mage (Bloodlust), the Storm, Ice, Energy and Magma Elementals (Protection from Air, Water, Fire, Earth), at Advanced with power 6. Not yet: Cursed Ground, the anti-magic garrison and the Orb of Inhibition forbid it (E04c, T8); Magic Plains raise its mastery to Expert (E04c). The Enchanter casts on its own, no action: BAT-MAG-053. The Faerie Dragon: BAT-MAG-049; the Master Genie: BAT-MAG-050; the raisers, which cast no spell: BAT-MAG-051 (Archangel), BAT-MAG-052 (Pit Lord)."
 numeric  = "integer"
 
   [[rule.source]]
@@ -2982,4 +2982,32 @@ quirks   = ["BAT-QUIRK-12"]
   ref        = "VCMI 1.7.5 config/creatures/inferno.json: Pit Lords raise Demons from a dead allied stack by its hit points (survey docs/rules/surveys/E04b-magic.md §5)"
   url        = "https://github.com/vcmi/vcmi/blob/1.7.5/config/creatures/inferno.json"
   retrieved  = "2026-10-05"
+  confidence = "medium"
+
+[[rule]]
+id       = "BAT-MAG-053"
+title    = "A periodic caster's own cast (Enchanter)"
+context  = "battle"
+status   = "implemented"
+summary  = "A stack whose creature has periodic_spell_caster (rounds, mastery, power) takes no action to cast. Each side keeps the round starts since its periodic casters last cast (at most 255; it rises by 1 for both sides at every round start, and every battle starts with 255, ready: BAT-QUIRK-14). At each activation of such a stack for its turn (its first turn of the round, its return after Wait, a good-morale turn; a berserk stack before its automatic turn; not a blind, petrified or paralysed stack, nor one bad morale freezes; never in the tactics phase), if its controller's side has had at least `rounds` round starts, it casts on its own a spell drawn among its creature's drawn_spell entries that count, each with the chance of its weight among theirs: a spell counts if it is useful (BAT-MAG-050's test for the controller's side: not active on the stack, able to affect it, its usefulness) on a stack of the side it aims at (the controller's; the other side for a negative spell); with quirk BAT-QUIRK-13 only that side's first stack, its lowest stack id, decides (a dead one accepts nothing; survey S-12). The cast (PeriodicCast, public) has no target: at mastery (Expert: the mass version over the side the spell aims at, each stack able to be affected rolling for resistance as in an area spell), value power x power factor + effect[mastery], timed effects lasting power rounds, no hero bonuses; it uses no cast, and the controller's side's count returns to 0. Its turn goes on as usual. If no spell counts, nothing is cast and the count stays, so the side's next such activation tries again. A hypnotized caster casts for its controller with its controller's count. A periodic caster's spells take no target at its mastery and do no damage (the compiler checks), so its cast ends no battle. The Enchanter: every 3 round starts at Expert with power 3, Haste 15, Air Shield 10, Slow 10, Stone Skin 15, Bloodlust 5, Bless 15, Cure 10, Weakness 4 (the draw is the battle's random generator, the original's the C library's). Not yet: Cursed Ground, the anti-magic garrison and the Orb of Inhibition forbid it (E04c, T8)."
+numeric  = "integer"
+quirks   = ["BAT-QUIRK-13", "BAT-QUIRK-14"]
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (docs/formats/installation.md §7.21, the Enchanter re-read for T7b4): the activation 0x465330 (acting side = controller; nothing in the tactics phase; the pick 0x465080 activates no blind, petrified or paralysed stack and none that bad morale stops, 0x465283) calls 0x447FE0 for creature 136 when the acting side's counter +0x132A0 is above 2 and sets it to 0 when it cast (0x465503); round start 0x475ED0 adds 1 to both counters (0x4760F8), which no battle start sets (0x4EDCF5, 0x462760); 0x447FE0 needs 0x41F890(side, 0), tests each pair of 0x6608B8 with 0x447A80 on record 0 of the side it aims at (0x448042, 0x44807C), draws rand() mod the counted weights (0x4480B8) and casts 0x59FE30(spell, -1, 1, -1, 3, 3) (0x448250); 0x5A8090 refuses a dead stack"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "wiki"
+  ref        = "Enchanter: the spells are cast at the expert level every three rounds, lasting three rounds; Air Shield only against enemy shooters, Cure only for a wounded stack; the relevance is calculated from the first stack only (a bug, fixed in HotA); no cast on Cursed Ground"
+  url        = "https://heroes.thelazy.net/index.php/Enchanter"
+  retrieved  = "2026-10-09"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "vcmi"
+  ref        = "VCMI 1.7.5 server/battles/BattleFlowProcessor.cpp (ENCHANTER bonus: at the unit's activation, a side counter that starts at 0 and is set to the cooldown 3 after a cast, decreased each round), config/creatures/neutral.json (the eight spells at level 3)"
+  url        = "https://github.com/vcmi/vcmi/blob/1.7.5/server/battles/BattleFlowProcessor.cpp"
+  retrieved  = "2026-10-09"
   confidence = "medium"

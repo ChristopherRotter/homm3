@@ -57,6 +57,9 @@ pub struct Observation {
     /// a helpful caster the viewer commands and may cast now (0 otherwise and for a stack that is
     /// no target; ADR-0014 point 9, BAT-MAG-050).
     pub cast_candidates: [u8; STACK_CAPACITY],
+    /// Per side, by [`BattleSide::index`], the round starts since its periodic casters cast, at
+    /// most 255, which every battle starts with (public: every cast is; BAT-MAG-053).
+    pub periodic_rounds: [u8; 2],
     /// Hexes blocked by natural obstacles (public).
     pub obstacles: HexSet,
     /// The natural obstacles a spell can remove, with their anchors (public; BAT-MAG-034).
@@ -100,6 +103,7 @@ pub fn observe(state: &BattleState, ruleset: &Ruleset, viewer: BattleSide) -> Ob
             .map(|(_, spell)| spell),
         // rule: BAT-MAG-050
         cast_candidates: crate::casters::candidates(state, ruleset, viewer),
+        periodic_rounds: state.casts.periodic,
         obstacles: state.obstacles(),
         removable_obstacles: state.natural.removable_list(),
         obstacle_anchors: state.natural.anchors(),

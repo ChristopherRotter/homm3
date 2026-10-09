@@ -9,6 +9,7 @@ mod control;
 mod created;
 mod defences;
 mod dispel;
+mod enchanters;
 mod flee;
 mod geometry;
 mod heroes;

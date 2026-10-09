@@ -5,11 +5,16 @@
 //! from its `drawn_spell` entries, and a helpful caster (the Master Genie, E04b T7b2b) draws at the
 //! cast among those useful for its target (BAT-MAG-050); the raisers raise without a spell, the
 //! Archangel another stack of its side (BAT-MAG-051), the Pit Lord Demons from a corpse
-//! (BAT-MAG-052, E04b T7b3); each cast uses one of the casts its creature has per battle. The
-//! casts left and the active stack's drawn spell are kept beside the stacks (the hot paths never
-//! read them).
+//! (BAT-MAG-052, E04b T7b3); each cast uses one of the casts its creature has per battle. A
+//! periodic caster (the Enchanter, BAT-MAG-053, E04b T7b4) takes no action for it: it casts on
+//! its own at its activation, once in so many rounds of its side. The casts left, the active
+//! stack's drawn spell and each side's rounds since its periodic cast are kept beside the stacks
+//! (the hot paths never read them).
 
-use h3_content::{Ability, CreatureFlag, CreatureTypeId, Ruleset, Spell, SpellId, Usefulness};
+use h3_content::{
+    Ability, CreatureFlag, CreatureTypeId, PERIODIC_FIRST_STACK, Ruleset, Spell, SpellId,
+    SpellPolarity, Usefulness,
+};
 use h3_contracts::BattleSide;
 use h3_kernel::{CanonicalHash, StateHasher};
 
@@ -147,8 +152,8 @@ pub(crate) fn stack_cast(
         })
 }
 
-/// The casts left per stack, by stack id (the original's stack field +0xDC), and the active
-/// stack's drawn spell (+0x4E0).
+/// The casts left per stack, by stack id (the original's stack field +0xDC), the active stack's
+/// drawn spell (+0x4E0) and each side's rounds since its periodic cast (the battle's +0x132A0).
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(crate) struct Casts {
     /// The casts each stack has left this battle.
@@ -156,6 +161,10 @@ pub(crate) struct Casts {
     /// The spell a random caster drew at its activation, with the stack (BAT-MAG-049); none after
     /// the activation of any other stack.
     pub(crate) drawn: Option<(StackId, SpellId)>,
+    /// Per side, the round starts since its periodic casters cast, at most 255 (BAT-MAG-053):
+    /// every battle starts with 255, ready (BAT-QUIRK-14: the original keeps the count of the
+    /// battle before).
+    pub(crate) periodic: [u8; 2],
 }
 
 impl Default for Casts {
@@ -163,6 +172,7 @@ impl Default for Casts {
         Self {
             left: [0; STACK_CAPACITY],
             drawn: None,
+            periodic: [u8::MAX; 2],
         }
     }
 }
@@ -179,11 +189,13 @@ impl Casts {
 }
 
 impl CanonicalHash for Casts {
-    /// Per stack, the casts left (v33); the drawn spell, if any: its stack and spell (v34).
+    /// Per stack, the casts left (v33); the drawn spell, if any: its stack and spell (v34); per
+    /// side, the rounds since its periodic cast (v37).
     fn hash_into(&self, h: &mut StateHasher) {
         h.write_bytes(&self.left);
         self.drawn.map(|(s, _)| s.0).hash_into(h);
         self.drawn.map(|(_, spell)| spell.raw()).hash_into(h);
+        h.write_bytes(&self.periodic);
     }
 }
 
@@ -244,6 +256,123 @@ pub(crate) fn activated<S: Sink>(
             },
         });
     });
+}
+
+/// At a round start (BAT-MAG-053; the original's 0x4760F8): each side's rounds since its periodic
+/// cast rise by 1, up to 255.
+// rule: BAT-MAG-053
+pub(crate) fn round_started(state: &mut BattleState) {
+    for rounds in &mut state.casts.periodic {
+        *rounds = rounds.saturating_add(1);
+    }
+}
+
+/// At the activation of stack `id` for its turn (BAT-MAG-053; the original's 0x465330 and
+/// 0x447FE0, `installation.md` §7.21): a periodic caster whose controller's side has had its
+/// creature's `rounds` round starts since its last periodic cast casts on its own a spell drawn
+/// by weight among its creature's `drawn_spell` entries that count ([`counts`]), at its mastery
+/// with its power and no target ([`magic::periodic_cast`]: the mass version, no cast used), and
+/// that side's count returns to 0. If none counts, nothing is cast and the count stays. The
+/// stack's turn goes on. A stack that lost its turns (blind, petrified, paralysed) during its own
+/// action casts nothing at a good-morale turn (the original's pick activates no such stack).
+// rule: BAT-MAG-053
+pub(crate) fn periodic<S: Sink>(
+    state: &mut BattleState,
+    ruleset: &Ruleset,
+    id: StackId,
+    sink: &mut S,
+) {
+    let stack = *state.at(id);
+    // Most stacks are no periodic casters: test that first.
+    if !stack.has(StackTraits::PERIODIC_CASTER) || stack.spells.status.contains(Status::NO_TURNS) {
+        return;
+    }
+    let side = stack.controller();
+    let abilities = ruleset.abilities(stack.creature);
+    // A periodic caster has its ability (the trait comes from it).
+    let (rounds, mastery, power) = abilities
+        .iter()
+        .find_map(|a| match *a {
+            Ability::PeriodicSpellCaster {
+                rounds,
+                mastery,
+                power,
+            } => Some((rounds, mastery, power)),
+            _ => None,
+        })
+        .unwrap_or((u8::MAX, 0, 0));
+    if state.casts.periodic[side.index()] < rounds {
+        return;
+    }
+    let first_only = ruleset.quirks().is_enabled(PERIODIC_FIRST_STACK);
+    // The original counts the weights, then walks its table again with the same test.
+    let total = periodic_spells(state, ruleset, (id, side), first_only)
+        .map(|(_, w)| w)
+        .sum::<u32>();
+    if total == 0 {
+        return;
+    }
+    let mut r = state.rng.below(total);
+    let drawn = periodic_spells(state, ruleset, (id, side), first_only).find(|&(_, w)| {
+        let hit = r < w;
+        r = r.saturating_sub(w);
+        hit
+    });
+    drawn.into_iter().for_each(|(spell, _)| {
+        state.casts.periodic[side.index()] = 0;
+        let cast = magic::periodic_cast(side, (id, spell), (mastery, power));
+        magic::apply_cast(state, ruleset, cast, sink);
+    });
+}
+
+/// The drawn spells of the periodic caster `caster`'s creature that count for `side`
+/// ([`counts`]), with their weights, in their creature's order (BAT-MAG-053).
+fn periodic_spells<'s, 'r: 's>(
+    state: &'s BattleState,
+    ruleset: &'r Ruleset,
+    (caster, side): (StackId, BattleSide),
+    first_only: bool,
+) -> impl Iterator<Item = ((SpellId, &'r Spell), u32)> + 's {
+    ruleset
+        .abilities(state.at(caster).creature)
+        .iter()
+        .filter_map(move |a| match *a {
+            Ability::DrawnSpell { spell, weight } => ruleset
+                .spell(spell)
+                .filter(|sp| counts(state, ruleset, (side, first_only), (spell, sp)))
+                .map(|sp| ((spell, sp), u32::from(weight))),
+            _ => None,
+        })
+}
+
+/// Whether `spell` counts for a periodic caster of `side` (BAT-MAG-053; the original's 0x447FE0):
+/// it is useful ([`useful`], for `side`) on a stack of the side it aims at, `side` or, for a
+/// negative spell, the other side; with quirk BAT-QUIRK-13 (`first_only`) on that side's first
+/// stack, its lowest id, alive or not (the original tests its record 0, survey S-12).
+// rule: BAT-MAG-053
+fn counts(
+    state: &BattleState,
+    ruleset: &Ruleset,
+    (side, first_only): (BattleSide, bool),
+    spell: (SpellId, &Spell),
+) -> bool {
+    let aimed = if spell.1.polarity == SpellPolarity::Negative {
+        side.opponent()
+    } else {
+        side
+    };
+    let mut stacks = (0u8..)
+        .take(state.stacks.len())
+        .map(StackId)
+        .filter(|&s| state.at(s).side == aimed);
+    if first_only {
+        // Quirk BAT-QUIRK-13 (survey S-12).
+        stacks
+            .next()
+            .is_some_and(|s| useful(state, ruleset, side, spell, s))
+    } else {
+        stacks.any(|s| useful(state, ruleset, side, spell, s))
+    }
 }
 
 /// The active stack and its spell, if `actor` commands it outside the tactics phase and it may

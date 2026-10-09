@@ -1455,3 +1455,47 @@ records how and why the tasks went.
   corpse; the Pit Lord's corpse search, count, slot, outcome, a hypnotized raiser, Demons from
   Demons, the missing slot); the content's raiser checks; the properties: a reused slot taken by a
   raised stack, the outcome's `Raised` records, one survivor per slot.
+
+### T7b4: the Enchanter (2026-10-09)
+
+- **Decisions** (the user, BAT-Q14): increment 10 is T7b4 alone; survey S-12 fix-optional (ledger
+  BAT-QUIRK-13, `quirk.battle.periodic_first_stack`, faithful on); every battle starts with the
+  counters ready (BAT-QUIRK-14, exploit-fix: the original's counters carry over between battles).
+  Agent decisions: the draw uses the battle's random generator (the original's `rand()`, as the
+  Faerie Dragon's); a periodic caster's drawn spells take no target and do no damage (the compiler
+  checks), so a cast at an activation ends no battle; the activation casts before a berserk
+  stack's automatic turn and at every re-activation (Wait, good morale), as the original's
+  0x465330; the observation shows each side's count (public: every cast is).
+- **Code reading** (`installation.md` §7.21, "The Enchanter, re-read for T7b4"): 0x465330's
+  creature switch (0x465503), 0x465080's skipped activations (0x465283), round start 0x475ED0 and
+  its callers (no call before a battle's first round), the battle manager made once per session
+  (0x4EDCF5, constructor 0x462760, which leaves +0x132A0 alone), 0x447FE0's two loops (the aimed
+  side 0x448042, the first record 0x44807C, `rand()` 0x4480B8, the cast 0x448250), 0x5A8090's
+  dead-stack refusal. Eight address-map entries.
+- **Content:** ability `periodic_spell_caster` (rounds, mastery, power) with `drawn_spell`
+  entries, excluding the other caster kinds; pack format v26, ruleset hash v35; quirk flag 16;
+  the gap-fill's `exe-enchanter` (Haste 15, Air Shield 10, Slow 10, Stone Skin 15, Bloodlust 5,
+  Bless 15, Cure 10, Weakness 4; every 3 rounds at Expert with power 3). The synthetic Chanters
+  (five, the defender's slot 5, replacing his second Wisps) in `full.toml`.
+- **Battle:** `Casts.periodic` (per side, 255 at the start, +1 at every round start,
+  `casters::round_started`), `casters::periodic` (at the activation in `turn::begins`, after good
+  morale and in a berserk stack's good-morale loop), `counts`, `periodic_spells`;
+  `magic::periodic_cast` (`Cast.automatic`: no cast used); event `PeriodicCast`;
+  `StackTraits::PERIODIC_CASTER`; `BattleState::periodic_rounds`; `Observation.periodic_rounds`.
+  State hash v37, observation encoding v11 (two globals), C ABI v15.
+- **Measurements:** the code on the old workload +0.31 % Ir with unchanged steps (8 152), nearly
+  all a codegen swing in `movement::reachable_within` (untouched), the activation's test about
+  45 k Ir; the new workload (Chanters): 7 494 steps (−8.1 %), +4.57 % Ir (mass Haste and Slow change
+  the walkers' reach; the morale recomputations after mass spells), re-baselined. `BattleState`
+  stays 6 200 bytes. Replays re-recorded with new agent seeds showing the Chanters' casts with
+  T5–T7b3's features: a753, a38, a402, a1732, a1006.
+- **Tests:** `tests/enchanters.rs` (ready at the start, the mass version for three rounds, once in
+  three round starts per side, nothing counted, the quirk on and off, a dead first stack, a
+  hypnotized and a berserk Enchanter); the content's periodic-caster checks; the observation's
+  globals; the property test explains an enemy stack healed by the other side's periodic Cure.
+- **Review** (independent, no defect in the rule's logic): a coverage gap (a periodic caster
+  whose ability comes first never reached `periodic`'s other abilities: the test `luster` lists it
+  last), a stack that lost its turns during its own action no longer casts at a good-morale turn
+  (`Status::NO_TURNS`; the good-morale grant itself is in the QUEUE's inbox), the berserk and the
+  hypnotized tests made stronger; the property test that wants every random game to end now
+  assumes it (a petrifying striker and a First Aid Tent can keep a battle going for ever).

@@ -166,10 +166,12 @@ count = 10
 slot = 4
 creature = "synthetic:fiend"
 count = 6
+# Since E04b T7b4 five Chanters cast on their own once in three rounds (an Enchanter's periodic
+# cast at Expert, judged by Corwin's first stack under BAT-QUIRK-13).
 [[defender]]
 slot = 5
-creature = "synthetic:wisp"
-count = 26
+creature = "synthetic:chanter"
+count = 5
 [[defender]]
 slot = 6
 creature = "synthetic:drake"

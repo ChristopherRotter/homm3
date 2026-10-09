@@ -62,14 +62,17 @@ pub(crate) fn next_active(state: &BattleState) -> Option<StackId> {
         .map(|(id, _)| StackId(id))
 }
 
-/// Starts a new round: resets retaliation (with Counterstrike's extra ones, BAT-MAG-015), wait,
-/// morale, started and acted flags (the Defend bonus lasts until the stack's next activation,
-/// BAT-TRN-004) and the heroes' casts (BAT-MAG-001); then the timed effects lose a round or end
+/// Starts a new round: each side's rounds since its periodic cast rise (BAT-MAG-053); resets
+/// retaliation (with Counterstrike's extra ones, BAT-MAG-015), wait, morale, started and acted
+/// flags (the Defend bonus lasts until the stack's next activation, BAT-TRN-004) and the heroes'
+/// casts (BAT-MAG-001); then the timed effects lose a round or end
 /// (BAT-MAG-010), the clones lose a round or vanish (BAT-MAG-038; never their side's last
 /// stack: a clone's original lives), then the spell obstacles (BAT-MAG-027).
 // rule: BAT-TRN-003, BAT-MAG-001
 pub(crate) fn start_round<S: Sink>(state: &mut BattleState, ruleset: &Ruleset, sink: &mut S) {
     state.round = state.round.saturating_add(1);
+    // rule: BAT-MAG-053
+    crate::casters::round_started(state);
     for hero in state.heroes.iter_mut().flatten() {
         hero.view.casts = 0;
     }
@@ -120,6 +123,8 @@ pub(crate) fn end_turn<S: Sink>(
         state.at_mut(mover).flags.set(StackFlags::HAD_MORALE, true);
         sink.emit(Event::public(EventKind::GoodMorale { stack: mover }));
         sink.emit(Event::public(EventKind::TurnStarted { stack: mover }));
+        // rule: BAT-MAG-053
+        crate::casters::periodic(state, ruleset, mover, sink);
         // rule: BAT-MAG-049
         crate::casters::activated(state, ruleset, mover, sink);
         return;
@@ -179,14 +184,7 @@ pub(crate) fn activate_next<S: Sink>(state: &mut BattleState, ruleset: &Ruleset,
         // rule: BAT-MOR-004
         if morale::bad_morale(state, ruleset, id) {
             sink.emit(Event::public(EventKind::BadMorale { stack: id }));
-        } else if state.at(id).has(StackTraits::WAR_MACHINE)
-            && !war::is_commanded(state, Field::new(ruleset.battle().field), id)
-        {
-            // rule: BAT-WAR-002, BAT-WAR-003
-            war::act(state, ruleset, id, sink);
-        } else if !state.at(id).spells.status.contains(Status::BERSERK)
-            || berserk_turn(state, ruleset, id, sink)
-        {
+        } else if begins(state, ruleset, id, sink) {
             break;
         }
         let done = state.at_mut(id);
@@ -204,6 +202,26 @@ pub(crate) fn activate_next<S: Sink>(state: &mut BattleState, ruleset: &Ruleset,
     // rule: BAT-MAG-049
     if let Some(id) = next {
         crate::casters::activated(state, ruleset, id, sink);
+    }
+}
+
+/// The turn of stack `id`, activated without bad morale: a periodic caster casts first, as the
+/// original's activation does for any stack it activates (BAT-MAG-053); then a war machine that
+/// acts on its own acts (BAT-WAR-002/003) and a berserk stack takes its automatic turn
+/// (BAT-MAG-025). Returns whether the stack awaits its side's command. (A periodic cast kills
+/// nothing: its spells have no damage, so the battle goes on.)
+fn begins<S: Sink>(state: &mut BattleState, ruleset: &Ruleset, id: StackId, sink: &mut S) -> bool {
+    // rule: BAT-MAG-053
+    crate::casters::periodic(state, ruleset, id, sink);
+    if state.at(id).has(StackTraits::WAR_MACHINE)
+        && !war::is_commanded(state, Field::new(ruleset.battle().field), id)
+    {
+        // rule: BAT-WAR-002, BAT-WAR-003
+        war::act(state, ruleset, id, sink);
+        false
+    } else {
+        !state.at(id).spells.status.contains(Status::BERSERK)
+            || berserk_turn(state, ruleset, id, sink)
     }
 }
 
@@ -228,6 +246,8 @@ pub(crate) fn berserk_turn<S: Sink>(
         state.at_mut(id).flags.set(StackFlags::HAD_MORALE, true);
         sink.emit(Event::public(EventKind::GoodMorale { stack: id }));
         sink.emit(Event::public(EventKind::TurnStarted { stack: id }));
+        // rule: BAT-MAG-053
+        crate::casters::periodic(state, ruleset, id, sink);
         if !state.at(id).spells.status.contains(Status::BERSERK) {
             return true;
         }

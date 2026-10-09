@@ -388,6 +388,11 @@ enum AbilityDto {
         creature: String,
         hit_points_per_creature: u16,
     },
+    PeriodicSpellCaster {
+        rounds: u8,
+        mastery: u8,
+        power: u8,
+    },
 }
 
 #[derive(Deserialize)]
@@ -530,6 +535,15 @@ impl AbilityDto {
             } => AbilityDef::CorpseRaiser {
                 creature: reference(pack, &creature)?,
                 hit_points_per_creature,
+            },
+            Self::PeriodicSpellCaster {
+                rounds,
+                mastery,
+                power,
+            } => AbilityDef::PeriodicSpellCaster {
+                rounds,
+                mastery,
+                power,
             },
         })
     }
@@ -2749,7 +2763,7 @@ mod tests {
     fn synthetic_pack_and_scenarios_load() {
         for text in [SYNTHETIC_SKIRMISH, SYNTHETIC_DUEL, SYNTHETIC_FULL] {
             let (ruleset, setup) = synthetic(text).unwrap();
-            assert_eq!(ruleset.creature_count(), 11);
+            assert_eq!(ruleset.creature_count(), 12);
             assert!(!setup.attacker.stacks.is_empty());
             assert!(!setup.defender.stacks.is_empty());
         }
@@ -2821,7 +2835,8 @@ mod tests {
              \"quirk.battle.draws_avoid_hidden\" = true, \
              \"quirk.battle.sacrifice_tests_as_resurrection\" = true, \
              \"quirk.battle.creature_mirror_untested\" = true, \
-             \"quirk.battle.clone_on_its_original\" = true }",
+             \"quirk.battle.clone_on_its_original\" = true, \
+             \"quirk.battle.periodic_first_stack\" = true }",
             "quirks = { \"quirk.x\" = true }",
         );
         let pack = parse_pack(&quirky).unwrap();
@@ -3411,7 +3426,7 @@ mod tests {
         let both = compile(&[SYNTHETIC_EXT_PACK, SYNTHETIC_PACK], "synthetic:faithful").unwrap();
         let ids: Vec<&str> = both.packs().iter().map(|(id, _)| id.as_str()).collect();
         assert_eq!(ids, ["synthetic", "synthetic-ext"]);
-        assert_eq!(both.creature_count(), 12);
+        assert_eq!(both.creature_count(), 13);
         let wisp_info = both.creature_info(wisp).unwrap();
         let marsh = wisp_info.faction.unwrap();
         assert_eq!(

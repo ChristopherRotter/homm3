@@ -1375,6 +1375,31 @@ abilities = [
 ]
 sources = ["exe-faerie-dragon"]
 
+# The Enchanter (E04b T7b4, BAT-MAG-053): no action; at its activation, once in three round starts
+# per side, an Expert mass cast with power 3 of a spell drawn by weight among those useful on the
+# first stack of the side it aims at (BAT-QUIRK-13 off: on any stack of that side).
+[[source]]
+id = "exe-enchanter"
+kind = "original-data"
+ref = "Heroes3.exe code reading (docs/formats/installation.md 7.21, the Enchanter re-read for T7b4): the activation 0x465330 calls 0x447FE0 for creature 136 when the acting side's counter +0x132A0 is above 2 and sets it to 0 when it cast (0x465503); the counters rise by 1 at every round start (0x4760F8). 0x447FE0 counts the pairs of the table 0x6608B8 (Haste 15, Air Shield 10, Slow 10, Stone Skin 15, Bloodlust 5, Bless 15, Cure 10, Weakness 4, ended by -1) that 0x447A80 accepts on the first record of the side each aims at (the enemy's for a spell whose record field +0 is below 0), draws rand() mod their sum in table order and casts 0x59FE30(spell, -1, 1, -1, 3, 3)"
+url = "docs/formats/installation.md"
+retrieved = "2026-10-09"
+
+[[creature_abilities]]
+creature = "Enchanter"
+abilities = [
+    { kind = "periodic_spell_caster", rounds = 3, mastery = 3, power = 3 },
+    { kind = "drawn_spell", spell = "base:haste", weight = 15 },
+    { kind = "drawn_spell", spell = "base:air_shield", weight = 10 },
+    { kind = "drawn_spell", spell = "base:slow", weight = 10 },
+    { kind = "drawn_spell", spell = "base:stone_skin", weight = 15 },
+    { kind = "drawn_spell", spell = "base:bloodlust", weight = 5 },
+    { kind = "drawn_spell", spell = "base:bless", weight = 15 },
+    { kind = "drawn_spell", spell = "base:cure", weight = 10 },
+    { kind = "drawn_spell", spell = "base:weakness", weight = 4 },
+]
+sources = ["exe-enchanter"]
+
 # ---------------------------------------------------------------------------------------------
 # Hero content (E04a T3): what the executable's hero tables and the text tables do not hold.
 # ---------------------------------------------------------------------------------------------
