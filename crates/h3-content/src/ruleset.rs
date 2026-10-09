@@ -34,7 +34,7 @@ pub const MAX_SIDE_STACKS: usize = 21;
 pub const MAX_FIELD_HEXES: usize = 255;
 
 /// Version of the ruleset hash encoding. Bump when the encoding below changes.
-pub const RULESET_HASH_VERSION: u32 = 34;
+pub const RULESET_HASH_VERSION: u32 = 35;
 
 /// A compiled creature type.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -1172,15 +1172,24 @@ fn validate_strike_spells(
                 .is_none_or(|s| !s.magic.raises())
                 .then_some("stack_raiser needs a spell with a raise effect"),
             Ability::DrawnSpell { spell: id, .. } => {
-                // A drawn spell needs its caster (`ability::list_error`).
-                let (mastery, stack_only) = abils
+                // A drawn spell needs its caster (`ability::list_error`): the targets it takes at
+                // its caster's mastery, a random caster's a stack or a hex, a helpful caster's a
+                // stack, a periodic caster's none (BAT-MAG-049, BAT-MAG-050, BAT-MAG-053).
+                let (mastery, targets): (u8, &[SpellTarget]) = abils
                     .iter()
                     .find_map(|a| match *a {
-                        Ability::RandomSpellCaster { mastery, .. } => Some((mastery, false)),
-                        Ability::HelpfulSpellCaster { mastery, .. } => Some((mastery, true)),
+                        Ability::RandomSpellCaster { mastery, .. } => {
+                            Some((mastery, &[SpellTarget::Stack, SpellTarget::Hex][..]))
+                        }
+                        Ability::HelpfulSpellCaster { mastery, .. } => {
+                            Some((mastery, &[SpellTarget::Stack][..]))
+                        }
+                        Ability::PeriodicSpellCaster { mastery, .. } => {
+                            Some((mastery, &[SpellTarget::None][..]))
+                        }
                         _ => None,
                     })
-                    .unwrap_or((0, false));
+                    .unwrap_or((0, &[]));
                 let effects = spell(id);
                 let kinds = !effects.is_empty()
                     && effects.iter().all(|e| {
@@ -1195,16 +1204,14 @@ fn validate_strike_spells(
                 let aimed = spells.get(id.index()).is_some_and(|s| {
                     !s.magic.health_limit
                         && s.magic.obstacle.is_none()
-                        && [false, true].iter().all(|&early| {
-                            let target = s.magic.target_at(mastery, early);
-                            target == SpellTarget::Stack
-                                || (!stack_only && target == SpellTarget::Hex)
-                        })
+                        && [false, true]
+                            .iter()
+                            .all(|&early| targets.contains(&s.magic.target_at(mastery, early)))
                 });
                 (!(kinds && aimed)).then_some(
                     "drawn_spell needs a spell with damage, timed, dispel or heal effects and no \
                      health limit or obstacle that takes a target stack or hex (for a helpful \
-                     caster a stack) at its caster's mastery",
+                     caster a stack, for a periodic caster no target) at its caster's mastery",
                 )
             }
             _ => None,

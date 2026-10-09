@@ -338,6 +338,7 @@ fight_value = 805
 ai_value = 1210
 adventure_count = [5, 12]
 flags = ["shooter", "alive", "no_melee_penalty"]
+abilities = [{ kind = "periodic_spell_caster", mastery = 3, power = 3, rounds = 3 }, { kind = "drawn_spell", spell = "base:haste", weight = 15 }, { kind = "drawn_spell", spell = "base:air_shield", weight = 10 }, { kind = "drawn_spell", spell = "base:slow", weight = 10 }, { kind = "drawn_spell", spell = "base:stone_skin", weight = 15 }, { kind = "drawn_spell", spell = "base:bloodlust", weight = 5 }, { kind = "drawn_spell", spell = "base:bless", weight = 15 }, { kind = "drawn_spell", spell = "base:cure", weight = 10 }, { kind = "drawn_spell", spell = "base:weakness", weight = 4 }]
 
 [[creature]]
 id = "sharpshooter"  # original id 137

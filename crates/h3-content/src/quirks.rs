@@ -71,6 +71,7 @@ pub const REGISTRY: QuirkRegistry = QuirkRegistry::new(&[
     "quirk.battle.sacrifice_tests_as_resurrection",
     "quirk.battle.creature_mirror_untested",
     "quirk.battle.clone_on_its_original",
+    "quirk.battle.periodic_first_stack",
 ]);
 
 /// Q-0003: creatures of a side without a hero never get lucky strikes (BAT-LCK-002).
@@ -149,6 +150,12 @@ pub const CREATURE_MIRROR_UNTESTED: QuirkFlag = QuirkFlag(14);
 /// (BAT-QUIRK-8).
 pub const CLONE_ON_ITS_ORIGINAL: QuirkFlag = QuirkFlag(15);
 
+/// BAT-QUIRK-13 (survey S-12): a periodic caster (the Enchanter) counts a spell when it is useful
+/// on the first stack of the side it aims at, the side's lowest stack id (the original tests that
+/// record once per record; BAT-MAG-053, `installation.md` §7.21), so a dead first stack rules out
+/// every spell aimed at its side. Off: a spell counts when it is useful on any stack of that side.
+pub const PERIODIC_FIRST_STACK: QuirkFlag = QuirkFlag(16);
+
 /// The set of enabled quirk flags of a ruleset.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub struct Quirks {
@@ -187,7 +194,11 @@ mod tests {
 
     #[test]
     fn registry_lookup_and_bitset() {
-        assert_eq!(REGISTRY.len(), 16);
+        assert_eq!(REGISTRY.len(), 17);
+        assert_eq!(
+            REGISTRY.lookup("quirk.battle.periodic_first_stack"),
+            Some(PERIODIC_FIRST_STACK)
+        );
         assert_eq!(
             REGISTRY.lookup("quirk.battle.clone_on_its_original"),
             Some(CLONE_ON_ITS_ORIGINAL)

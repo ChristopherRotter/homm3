@@ -388,6 +388,11 @@ enum AbilityDto {
         creature: String,
         hit_points_per_creature: u16,
     },
+    PeriodicSpellCaster {
+        rounds: u8,
+        mastery: u8,
+        power: u8,
+    },
 }
 
 #[derive(Deserialize)]
@@ -530,6 +535,15 @@ impl AbilityDto {
             } => AbilityDef::CorpseRaiser {
                 creature: reference(pack, &creature)?,
                 hit_points_per_creature,
+            },
+            Self::PeriodicSpellCaster {
+                rounds,
+                mastery,
+                power,
+            } => AbilityDef::PeriodicSpellCaster {
+                rounds,
+                mastery,
+                power,
             },
         })
     }
@@ -2821,7 +2835,8 @@ mod tests {
              \"quirk.battle.draws_avoid_hidden\" = true, \
              \"quirk.battle.sacrifice_tests_as_resurrection\" = true, \
              \"quirk.battle.creature_mirror_untested\" = true, \
-             \"quirk.battle.clone_on_its_original\" = true }",
+             \"quirk.battle.clone_on_its_original\" = true, \
+             \"quirk.battle.periodic_first_stack\" = true }",
             "quirks = { \"quirk.x\" = true }",
         );
         let pack = parse_pack(&quirky).unwrap();
