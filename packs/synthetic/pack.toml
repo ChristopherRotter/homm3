@@ -329,6 +329,37 @@ flags = ["alive"]           # living, so its corpse can raise Spearmen too
 # BAT-MAG-052).
 abilities = [{ kind = "corpse_raiser", creature = "spearman", hit_points_per_creature = 50 }]
 
+[[creature]]
+id = "chanter"              # neutral (no faction)
+name = "Chanter"
+plural = "Chanters"
+level = 6
+attack = 17
+defense = 12
+damage = [14, 14]
+hit_points = 30
+speed = 9
+shots = 32
+casts = 0
+cost = { coin = 750 }
+growth = 2
+fight_value = 1200
+ai_value = 1400
+adventure_count = [2, 4]
+flags = ["alive", "shooter"]
+# Format v26: no action; at its activation, once in three round starts of its side, casts at
+# Expert with power 3 a spell drawn by weight among those useful on its side's first stack (on the
+# enemy's first one for Drag and Gloom): an Enchanter's cast, BAT-MAG-053.
+abilities = [
+    { kind = "periodic_spell_caster", rounds = 3, mastery = 3, power = 3 },
+    { kind = "drawn_spell", spell = "hasten", weight = 15 },
+    { kind = "drawn_spell", spell = "aegis", weight = 10 },
+    { kind = "drawn_spell", spell = "drag", weight = 10 },
+    { kind = "drawn_spell", spell = "fury", weight = 5 },
+    { kind = "drawn_spell", spell = "mend", weight = 10 },
+    { kind = "drawn_spell", spell = "gloom", weight = 4 },
+]
+
 # ---- Hero content (pack format v3, E04a T3): invented schools, spells, skills, classes and heroes.
 # Every hero-effect kind appears at least once. Spells carry their battle magic since format v4
 # (E04b T2a): every target kind, an area, a chain and target conditions appear at least once.
