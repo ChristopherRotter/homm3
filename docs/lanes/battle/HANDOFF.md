@@ -4,11 +4,11 @@ The battle lane's living state; read after the global `docs/HANDOFF.md`. Format 
 
 ## Current state
 
-- **Branch:** `battle/e04b-t7c2a` (one PR; no shared change but the global HANDOFF's battle row, #39 `shared/handoff-battle-t7c2a`: merge it first). Work on `battle/<task>` branches from `master`, one per task or increment, merged at its checkpoint; HANDOFF content goes here, not into `docs/HANDOFF.md`.
-- **E04b increment 12 (the user, 2026-10-09, BAT-Q16): T7c2a; done.** Sandbox: `docs/08-work-process.md`, "Cloud sandbox".
+- **Branch:** `battle/e04b-t7c2b-t7c3` (one PR at the increment's end; shared: #41 `shared/ci-pr-concurrency`, the CI fix, merge it first; the global HANDOFF's battle row at the end). Work on `battle/<task>` branches from `master`, one per task or increment, merged at its checkpoint; HANDOFF content goes here, not into `docs/HANDOFF.md`.
+- **E04b increment 13 (the user, 2026-10-09, BAT-Q17): T7c2b (the Phoenix's rebirth), then T7c3 (the Azure Dragon's Fear, T7's loose ends); in progress: the cut recorded, T7c2b's code reading next.** Sandbox: `docs/08-work-process.md`, "Cloud sandbox".
 - **Done:** survey `docs/rules/surveys/E04b-magic.md` (§12–§15), ADR-0014 accepted (point 5 amended, Q47), design note `docs/epics/E04b-design.md`. T1–T7b4, T7c1 and T7c2a (the epic file lists each with its rules): the hero's spells but the T8 long tail (BAT-MAG-001 to 039; Q-0007 to Q-0012, BAT-QUIRK-1 to 8), the strike's creature magic (BAT-MAG-040 to 047), the casting creatures (BAT-MAG-048 to 053; BAT-QUIRK-9 to 14), the mana creatures (BAT-MAG-054 to 056: costs from the armies, the Familiars' channel, the Wraiths' drain; BAT-QUIRK-15, 16), the creature defences (BAT-MAG-057, 058, BAT-DMG-010: the dragons' mirror, the Sultans' shield, the elementals' halves), all after the executable's code (`installation.md` §7.8–§7.21). **Physical damage follows the executable's three truncated stages** under Q-0005 (Q50, BAT-DMG-002, `h3_kernel::arith::X87` at 53 bits).
 - **Hero rates** cross the seam as `h3_contracts::Rate` (basis points plus, under Q-0005, the original's single-precision value as an f32 bit pattern where it differs; Q45 (b), T3c2).
-- **Next:** the user's checkpoint for increment 12; then T7c2b (the Phoenix's rebirth: first look in `installation.md` §7.21; read 0x445A60, the raise's last argument and the outcome first).
+- **Next:** T7c2b (first look in `installation.md` §7.21; read 0x445A60, the raise's last argument and the outcome first), then T7c3; the user's checkpoint closes T7.
 - **Open for later tasks:** Q43 (sprite offset, keep the approximation); creature casters' re-casts (T7); the Phoenix's rebirth after a mine's or Fire Wall's damage (T7c2b); Dispel's loose ends (Sphere T8); T4a's and T4c's loose ends (all in `QUEUE.md`, "Inbox").
 - **Versions (battle owns them):** state hash v38, ruleset hash v37, replay format v19, action encoding v11, C ABI v15, observation encoding v11; pack format v28. New ids: `BAT-Q<n>`, `BAT-QUIRK-<n>`, `BAT-STUB-<n>` (old ids stay).
 - **Ownership:** `h3-content` and `h3-pack` stay with battle until further notice (user, 2026-10-07); `h3-kernel` and `h3-contracts` are shared, so a seam change is its own `shared/` pull request, merged before the battle change that uses it.
@@ -42,7 +42,7 @@ The battle lane's living state; read after the global `docs/HANDOFF.md`. Format 
 - Before re-baselining, compare `h3 bench --games 20` step counts (a shorter workload looks like a speed-up; build the old commit in a `git worktree` with its own target dir; `git stash` keeps untracked files). The geometry hot path moves with unrelated codegen: compare per-function callgrind profiles (`--toggle-collect='*random_rollout*'`, read the out file's `summary:` line; run `h3 bench` where `packs/` resolves).
 
 **Pull requests**
-- The user rebase-merges: once a stacked PR's base is merged, rebase the next branch with `git rebase --onto origin/master <old base head>` and push with a lease (#13 conflicted, 2026-10-08).
+- The user merges with merge commits (#36 to #40); after a rebase-merge, rebase a stacked branch with `git rebase --onto origin/master <old base head>` and push with a lease (#13 conflicted, 2026-10-08).
 
 **Experiments in the original game**
 - The installation is read-only: maps go to the gitignored `experiments/out/`, the user copies them. Results hold for SoD; observation sources name the setup.
