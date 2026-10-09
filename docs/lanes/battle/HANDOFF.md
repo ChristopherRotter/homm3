@@ -4,13 +4,13 @@ The battle lane's living state; read after the global `docs/HANDOFF.md`. Format 
 
 ## Current state
 
-- **Branch:** `battle/e04b-t7c2b-t7c3` (one PR at the increment's end; shared: #41 `shared/ci-pr-concurrency`, the CI fix, merge it first; the global HANDOFF's battle row at the end). Work on `battle/<task>` branches from `master`, one per task or increment, merged at its checkpoint; HANDOFF content goes here, not into `docs/HANDOFF.md`.
-- **E04b increment 13 (the user, 2026-10-09, BAT-Q17): T7c2b (the Phoenix's rebirth), then T7c3 (the Azure Dragon's Fear, T7's loose ends); in progress: T7c2b's code and tests committed (BAT-MAG-059, BAT-QUIRK-17; replays, bench and the epic's records wait for the increment's end, as the golden replays fail on the ruleset hash v38 until then); T7c3 next.** Sandbox: `docs/08-work-process.md`, "Cloud sandbox".
-- **Done:** survey `docs/rules/surveys/E04b-magic.md` (§12–§15), ADR-0014 accepted (point 5 amended, Q47), design note `docs/epics/E04b-design.md`. T1–T7b4, T7c1 and T7c2a (the epic file lists each with its rules): the hero's spells but the T8 long tail (BAT-MAG-001 to 039; Q-0007 to Q-0012, BAT-QUIRK-1 to 8), the strike's creature magic (BAT-MAG-040 to 047), the casting creatures (BAT-MAG-048 to 053; BAT-QUIRK-9 to 14), the mana creatures (BAT-MAG-054 to 056: costs from the armies, the Familiars' channel, the Wraiths' drain; BAT-QUIRK-15, 16), the creature defences (BAT-MAG-057, 058, BAT-DMG-010: the dragons' mirror, the Sultans' shield, the elementals' halves), all after the executable's code (`installation.md` §7.8–§7.21). **Physical damage follows the executable's three truncated stages** under Q-0005 (Q50, BAT-DMG-002, `h3_kernel::arith::X87` at 53 bits).
+- **Branch:** `battle/e04b-t7c2b-t7c3` (one PR; shared #41 `shared/ci-pr-concurrency`: the CI fix and the global HANDOFF's battle row, merge it first). Work on `battle/<task>` branches from `master`, one per task or increment, merged at its checkpoint; HANDOFF content goes here, not into `docs/HANDOFF.md`.
+- **E04b increment 13 (the user, 2026-10-09, BAT-Q17, BAT-Q18): T7c2b and T7c3; done, T7 complete.** Sandbox: `docs/08-work-process.md`, "Cloud sandbox".
+- **Done:** survey `docs/rules/surveys/E04b-magic.md` (§12–§15), ADR-0014 accepted (point 5 amended, Q47), design note `docs/epics/E04b-design.md`. T1–T7 (the epic file lists each with its rules): the hero's spells but the T8 long tail (BAT-MAG-001 to 039; Q-0007 to Q-0012, BAT-QUIRK-1 to 8), the strike's creature magic (BAT-MAG-040 to 047), the casting creatures (BAT-MAG-048 to 053; BAT-QUIRK-9 to 14), the mana creatures (BAT-MAG-054 to 056; BAT-QUIRK-15, 16), the creature defences (BAT-MAG-057, 058, BAT-DMG-010), the Phoenix's rebirth (BAT-MAG-059; BAT-QUIRK-17) and Fear (BAT-MAG-060; BAT-QUIRK-18), all after the executable's code (`installation.md` §7.8–§7.21). **Physical damage follows the executable's three truncated stages** under Q-0005 (Q50, BAT-DMG-002, `h3_kernel::arith::X87` at 53 bits).
 - **Hero rates** cross the seam as `h3_contracts::Rate` (basis points plus, under Q-0005, the original's single-precision value as an f32 bit pattern where it differs; Q45 (b), T3c2).
-- **Next:** T7c2b (first look in `installation.md` §7.21; read 0x445A60, the raise's last argument and the outcome first), then T7c3; the user's checkpoint closes T7.
-- **Open for later tasks:** Q43 (sprite offset, keep the approximation); creature casters' re-casts (T7); the Phoenix's rebirth after a mine's or Fire Wall's damage (T7c2b); Dispel's loose ends (Sphere T8); T4a's and T4c's loose ends (all in `QUEUE.md`, "Inbox").
-- **Versions (battle owns them):** state hash v38, ruleset hash v37, replay format v19, action encoding v11, C ABI v15, observation encoding v11; pack format v28. New ids: `BAT-Q<n>`, `BAT-QUIRK-<n>`, `BAT-STUB-<n>` (old ids stay).
+- **Next:** the user's checkpoint for increment 13; then the T8 cut (the hero-side long tail: magic artifacts, spell scrolls and the worn spell book, Eagle Eye, profile overrides; read the artifacts' code first), then T9–T11.
+- **Open for later tasks:** Q43 (sprite offset, keep the approximation); Dispel's loose ends (Sphere T8); BAT-QUIRK-17's later variant (rebirth right after a sacrifice, BAT-Q18); bad morale's `WAITED` gate (T7c3 review); T4a's and T4c's loose ends (all in `QUEUE.md`, "Inbox").
+- **Versions (battle owns them):** state hash v38, ruleset hash v38, replay format v19, action encoding v11, C ABI v15, observation encoding v11; pack format v29. New ids: `BAT-Q<n>`, `BAT-QUIRK-<n>`, `BAT-STUB-<n>` (old ids stay).
 - **Ownership:** `h3-content` and `h3-pack` stay with battle until further notice (user, 2026-10-07); `h3-kernel` and `h3-contracts` are shared, so a seam change is its own `shared/` pull request, merged before the battle change that uses it.
 - Working agreement: increments of a couple of tasks with a user checkpoint (Q41); the user confirms seams and ADRs; token efficiency beats speed (AGENTS.md); the user plays experiment maps in SoD with plain HD and commits the results.
 
@@ -31,6 +31,7 @@ The battle lane's living state; read after the global `docs/HANDOFF.md`. Format 
 - Defend raises defense and spoils exact damage expectations: skip turns with `activate`. `BattleState::new` drops the first activation's events (use `start` where events matter). A test ruleset may not make bad morale certain (254/255).
 - Hidden obstacles leak through public events too: a hidden obstacle that does nothing must not change them (a mine that does not go off must not split a `Moved`). `hidden_obstacles_do_not_show` checks the acting side's commands and casts (its profiles leave BAT-QUIRK-4 off). `legal_commands` lists no casts: a property over legal commands must add `cast_targets` × `second_targets` itself.
 - Natural obstacles follow the original's hex records (`h3_battle::natural`): the piece listed last wins a shared hex, and a removal clears its hexes and anchor for every piece (0x466B30).
+- A dead stack's effects stay until the command's end (`effects::remove_dead`): code that brings a stack back within a command removes them first (the rebirth, T7c2b review). The battle's first activation runs without the freezing checks (`turn::activate_first`); good morale goes through `turn::morale_turn`.
 - Rule code reads abilities via `ruleset.abilities(creature)`; per-attack booleans are `StackTraits` bits set at setup. `Stack.spells` holds the spells' values only: a creature's `innate_spell` is read where the original reads the creature (`magic::mirror_chance`, `magic::reflection`), not by Hypnotize, Dispel or usefulness tests. Two `skill_specialty` effects in one specialty are rejected.
 
 **Fixtures and benchmarks**
@@ -50,6 +51,10 @@ The battle lane's living state; read after the global `docs/HANDOFF.md`. Format 
 
 ## Recent sessions
 
+### 2026-10-09 (forty-third) — E04b increment 13: T7c2b and T7c3, T7 closed
+
+Master green with original data; CI's cancelled `master` runs fixed (shared #41). The user (BAT-Q17, BAT-Q18): T7c2b and T7c3; a sacrificed Phoenix never reborn (BAT-QUIRK-17); Fear's dragons by real side (BAT-QUIRK-18). Pack v29 (`rebirth`, `fear`), BAT-MAG-059, 060, BAT-MOR-003/004 corrected, ruleset hash v38; review fixes; replays and bench re-baselined. Detail: `docs/epics/E04b-log.md`.
+
 ### 2026-10-09 (forty-second) — E04b increment 12: T7c2a, the creature defences
 
 Master green with original data. The user (BAT-Q16): T7c2 in two parts, T7c2a first; T7c1's own calls confirmed. Pack v28 (`innate_spell`, `damage_penalty`, `damage_penalty_by_flag`), BAT-MAG-057, 058, BAT-DMG-010, ruleset hash v37 (state hash unchanged); a first look at the Phoenix's rebirth for T7c2b; replays and bench re-baselined. Detail: `docs/epics/E04b-log.md`.
@@ -57,7 +62,3 @@ Master green with original data. The user (BAT-Q16): T7c2 in two parts, T7c2a fi
 ### 2026-10-09 (forty-first) — E04b increment 11: T7c1, the mana creatures
 
 Master green. The user (BAT-Q15): T7c1 alone; the cost reads the armies (BAT-QUIRK-15, the rule); the Familiars' loop bound always fixed (BAT-QUIRK-16). Pack v27 (`spell_cost`, `mana_channel`, `mana_drain`), BAT-MAG-054 to 056 (`h3_battle::mana`; `BattleState.wait_phase`), ruleset hash v36, state hash v38; batch 2a R6 replayed on the harvested packs; replays and bench re-baselined. Detail: `docs/epics/E04b-log.md`.
-
-### 2026-10-09 (fortieth) — E04b increment 10: T7b4, the Enchanter
-
-Master green with original data. The user (BAT-Q14): T7b4 alone; S-12 fix-optional (BAT-QUIRK-13); every battle starts ready (BAT-QUIRK-14: the original's counters carry over between battles, found in the re-reading). Pack v26 (`periodic_spell_caster`), quirk flag 16, BAT-MAG-053, state hash v37, observation v11, C ABI v15 (shared PR for ADR-0011's list); the synthetic Chanters; replays and bench re-baselined. Detail: `docs/epics/E04b-log.md`.
