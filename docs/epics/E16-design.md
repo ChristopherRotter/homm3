@@ -48,16 +48,19 @@ Server to client: `Welcome`, `Goodbye`, `Joined`, `Snapshot`, `YourTurn`, `Accep
 `LoggedIn { player }`. M4: `Queued`, `MatchFound { game, seat, deadline }`,
 `LeaderboardPage`, `Rating`.
 
-Every message is a struct variant of one internally tagged enum per direction
-(`#[serde(tag = "type")]`, `deny_unknown_fields`); unit variants are avoided (the serde trap in
-`docs/HANDOFF.md`).
+Every message is a struct variant of one enum per direction in serde's default, externally
+tagged form (`{"Command":{"seq":7,"command":{...}}}`, `deny_unknown_fields`); no `tag`,
+`untagged` or `flatten`, so the types also encode in `postcard` should a binary codec be
+negotiated later (SRV-Q5; a round-trip test in both formats keeps that true). Unit variants are
+avoided. Integers only; 64-bit values (the ruleset hash) travel as strings; bulk data as packed
+arrays.
 
 ## 3. The manifest
 
 ```
 Manifest {
   protocol: u32, engine: String,
-  packs: [(id, version)], profile: String, ruleset_hash: u64,
+  packs: [(id, version)], profile: String, ruleset_hash: String (hex),
   rng: (algorithm, version), hash: (algorithm, version), battle_state_hash_version: u32,
   keys: { creatures: [key by handle], spells, hero_types, terrains, artifacts, factions, skills }
 }
@@ -211,7 +214,7 @@ contains seeds, tokens, nonces or signatures.
   games_open, anonymous, operator, issued, expires, peers: [(key, address)] }` with a
   signature over the canonical JSON; expiry a day by default; `Describe` returns it.
 - **Peers.** `[[peer]] key = "…" address = "…"` in the configuration. Every hour (and at
-  start) the server connects to each peer as a client (`tungstenite`'s client side), sends
+  start) the server connects to each peer as a client (`tokio-tungstenite`'s client side), sends
   `Hello` and `Describe`, checks that the signature verifies and that the key is the configured
   one, caches the card until it expires, and also takes the peer's own cached cards up to a
   configured depth (default 2 hops) and count (default 200). `ListPeers` returns the cache,
