@@ -393,6 +393,16 @@ enum AbilityDto {
         mastery: u8,
         power: u8,
     },
+    SpellCost {
+        amount: i8,
+        affects: AuraDto,
+    },
+    ManaChannel {
+        percent: u8,
+    },
+    ManaDrain {
+        amount: u8,
+    },
 }
 
 #[derive(Deserialize)]
@@ -545,6 +555,12 @@ impl AbilityDto {
                 mastery,
                 power,
             },
+            Self::SpellCost { amount, affects } => AbilityDef::SpellCost {
+                amount,
+                affects: aura(affects),
+            },
+            Self::ManaChannel { percent } => AbilityDef::ManaChannel { percent },
+            Self::ManaDrain { amount } => AbilityDef::ManaDrain { amount },
         })
     }
 }

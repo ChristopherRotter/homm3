@@ -292,6 +292,31 @@ pub enum Ability<C, S, L> {
         /// The caster's power (≥ 1).
         power: u8,
     },
+    /// While its creature is in a side's army (whether its stack lives or not; stacks created in
+    /// the battle never count), changes the spell cost of the hero of the side `affects` names by
+    /// `amount`: a hero's cost changes by the largest increase and the largest reduction among
+    /// such abilities, once each (the Pegasi +2 for the enemy hero, the Mages −2 for their own;
+    /// BAT-MAG-054, v27).
+    SpellCost {
+        /// The change of each spell's cost (not 0).
+        amount: i8,
+        /// Whose hero's costs change.
+        affects: AuraTarget,
+    },
+    /// After a hero's cast against its controller's side, while its stack lives, gives the hero of
+    /// that side `percent` % of the cast's cost (rounded down; once per cast, the largest percent
+    /// among the side's stacks; no cap at the maximum): the Familiars' 20 % (BAT-MAG-055, v27).
+    ManaChannel {
+        /// The share of the cost, 1..=100.
+        percent: u8,
+    },
+    /// At each activation of its stack in a round's normal phase (not after the stack waited),
+    /// the hero of the side opposite its controller loses `amount` mana, at least 0: the
+    /// Wraith's 2 (BAT-MAG-056, v27).
+    ManaDrain {
+        /// The mana lost (≥ 1).
+        amount: u8,
+    },
 }
 
 /// Most creatures `corpse_raiser` abilities raise in a ruleset (the battle keeps a stack of each
@@ -306,7 +331,7 @@ pub type CompiledAbility = Ability<CreatureTypeId, SpellId, SchoolId>;
 
 impl<C, S, L> Ability<C, S, L> {
     /// Every ability name, in code order (the order of [`Ability::code`]).
-    pub const NAMES: [&'static str; 39] = [
+    pub const NAMES: [&'static str; 42] = [
         "hate",
         "jousting",
         "charge_immunity",
@@ -346,6 +371,9 @@ impl<C, S, L> Ability<C, S, L> {
         "stack_raiser",
         "corpse_raiser",
         "periodic_spell_caster",
+        "spell_cost",
+        "mana_channel",
+        "mana_drain",
     ];
 
     /// Stable numeric code of the ability kind (canonical hashing, duplicate checks).
@@ -390,6 +418,9 @@ impl<C, S, L> Ability<C, S, L> {
             Self::StackRaiser { .. } => 36,
             Self::CorpseRaiser { .. } => 37,
             Self::PeriodicSpellCaster { .. } => 38,
+            Self::SpellCost { .. } => 39,
+            Self::ManaChannel { .. } => 40,
+            Self::ManaDrain { .. } => 41,
         }
     }
 
@@ -559,6 +590,12 @@ impl<C, S, L> Ability<C, S, L> {
                 mastery: *mastery,
                 power: *power,
             },
+            Self::SpellCost { amount, affects } => Ability::SpellCost {
+                amount: *amount,
+                affects: *affects,
+            },
+            Self::ManaChannel { percent } => Ability::ManaChannel { percent: *percent },
+            Self::ManaDrain { amount } => Ability::ManaDrain { amount: *amount },
         })
     }
 
@@ -590,6 +627,11 @@ impl<C, S, L> Ability<C, S, L> {
             Self::MoraleAura { amount: 0, .. } | Self::LuckAura { amount: 0, .. } => {
                 Some("aura amount must not be 0")
             }
+            Self::SpellCost { amount: 0, .. } => Some("spell_cost amount must not be 0"),
+            Self::ManaChannel { percent } if !(1..=100).contains(percent) => {
+                Some("mana_channel percent must be 1..=100")
+            }
+            Self::ManaDrain { amount: 0 } => Some("mana_drain amount must be at least 1"),
             Self::FirstAid { min_hp, max_hp } if *min_hp == 0 || max_hp < min_hp => {
                 Some("first_aid needs 1 <= min_hp <= max_hp")
             }
@@ -678,7 +720,9 @@ impl CanonicalHash for CompiledAbility {
             }
             Self::LifeDrain { percent } => h.write_u16(percent),
             Self::ExtraRetaliations { count } => h.write_u8(count),
-            Self::MoraleAura { amount, affects } | Self::LuckAura { amount, affects } => {
+            Self::MoraleAura { amount, affects }
+            | Self::LuckAura { amount, affects }
+            | Self::SpellCost { amount, affects } => {
                 h.write_u8(signed(amount));
                 h.write_u8(match affects {
                     AuraTarget::Allies => 0,
@@ -705,7 +749,9 @@ impl CanonicalHash for CompiledAbility {
             }
             Self::SpellDamageReduction { percent }
             | Self::MagicResistance { percent }
-            | Self::MagicResistanceAura { percent } => h.write_u8(percent),
+            | Self::MagicResistanceAura { percent }
+            | Self::ManaChannel { percent } => h.write_u8(percent),
+            Self::ManaDrain { amount } => h.write_u8(amount),
             Self::SpellAfterStrike {
                 spell,
                 chance_percent,
@@ -847,7 +893,7 @@ mod tests {
 
     type A = Ability<u8, u8, u8>;
 
-    fn all() -> [A; 39] {
+    fn all() -> [A; 42] {
         [
             A::Hate {
                 target: 3,
@@ -943,6 +989,12 @@ mod tests {
                 mastery: 3,
                 power: 3,
             },
+            A::SpellCost {
+                amount: 2,
+                affects: AuraTarget::Enemies,
+            },
+            A::ManaChannel { percent: 20 },
+            A::ManaDrain { amount: 2 },
         ]
     }
 
@@ -1183,6 +1235,13 @@ mod tests {
                 mastery: 3,
                 power: 0,
             },
+            A::SpellCost {
+                amount: 0,
+                affects: AuraTarget::Allies,
+            },
+            A::ManaChannel { percent: 0 },
+            A::ManaChannel { percent: 101 },
+            A::ManaDrain { amount: 0 },
         ];
         for a in bad {
             assert!(a.parameter_error().is_some(), "{a:?}");
