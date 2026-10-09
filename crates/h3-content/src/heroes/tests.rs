@@ -673,13 +673,23 @@ fn an_innate_spell_is_a_fire_shield_or_a_magic_mirror() {
     good.creatures[0].info.abilities = vec![innate("t:shield"), innate("t:mirror")];
     let r = compile(&[good]).unwrap();
     let peasant = r.creature_by_key("t:peasant").unwrap();
-    assert!(matches!(
+    let (shield, mirror) = (
+        r.spell_by_key("t:shield").unwrap(),
+        r.spell_by_key("t:mirror").unwrap(),
+    );
+    assert_eq!(
         r.abilities(peasant),
         [
-            Ability::InnateSpell { value: 20, .. },
-            Ability::InnateSpell { value: 20, .. }
+            Ability::InnateSpell {
+                spell: shield,
+                value: 20
+            },
+            Ability::InnateSpell {
+                spell: mirror,
+                value: 20
+            }
         ]
-    ));
+    );
     for spell in ["t:haste", "t:bolt"] {
         let mut bad = p.clone();
         bad.creatures[0].info.abilities = vec![innate(spell)];

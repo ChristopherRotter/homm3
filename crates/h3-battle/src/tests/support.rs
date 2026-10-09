@@ -909,6 +909,19 @@ pub const CREATURES: &[Creature] = &[
         5,
         &["damage_penalty=magical:50", "damage_penalty=tank:50"],
     ),
+    (
+        "psionic",
+        10,
+        10,
+        2,
+        2,
+        10,
+        5,
+        &[
+            "damage_penalty=statue:30",
+            "damage_penalty_by_flag=mind_immune:50",
+        ],
+    ),
 ];
 
 /// The traits of a test creature as creature info: flags, abilities, shots and faction.

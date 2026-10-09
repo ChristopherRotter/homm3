@@ -27,12 +27,20 @@ fn give(s: &mut BattleState, r: &Ruleset, (id, name): (u8, &str), mastery: u8) {
     crate::effects::apply(s, r, cast, StackId(id), &mut Vec::<Event>::new());
 }
 
-/// A mage with `spells`, the air mastery `mastery` and enough mana.
+/// A mage with `spells`, every school's mastery `mastery` and enough mana.
 fn adept(r: &Ruleset, spells: &[&str], mastery: u8) -> BattleHero {
     let mut h = mage(r, spells);
-    h.magic.schools[0] = mastery;
+    for m in h.magic.schools.iter_mut().take(r.spell_schools().len()) {
+        *m = mastery;
+    }
     h.magic.mana = 200;
     h
+}
+
+/// Whether a helpful caster of `side` may cast `name` on stack `target` (BAT-MAG-050).
+fn useful(s: &BattleState, r: &Ruleset, side: BattleSide, name: &str, target: u8) -> bool {
+    let id = spell(r, name);
+    crate::casters::useful(s, r, side, (id, r.spell(id).unwrap()), StackId(target))
 }
 
 /// The redirections `(from, to)` in `events`.
@@ -108,7 +116,7 @@ fn an_innate_mirror_gives_its_chance_unless_the_spell_gives_more() {
     let r = ruleset();
     let mut s = arena(
         &r,
-        [Some(adept(&r, &["hypnotize"], 3)), None],
+        [Some(adept(&r, &["hypnotize", "dispel"], 2)), None],
         &[("fixed", 5, 3, 5)],
         &[
             ("fairy", 5, 13, 5),
@@ -131,9 +139,13 @@ fn an_innate_mirror_gives_its_chance_unless_the_spell_gives_more() {
         &mut out,
     );
     assert!(out.as_slice().contains(&stack(1)));
+    // A helpful caster of the dragons' side (a Master Genie) may still give them the spell: it
+    // is not active on them (0x447A80).
+    assert!(useful(&s, &r, BattleSide::Defender, "mirror", 1));
     // The spell at no mastery: 50 % beats the dragon's 20 %, and Hypnotize refuses it now.
     give(&mut s, &r, (1, "mirror"), 0);
     assert_eq!(chance(&s, 1), 50);
+    assert!(!useful(&s, &r, BattleSide::Defender, "mirror", 1));
     let mut out = CastTargets::new();
     cast_targets(
         &s,
@@ -146,6 +158,9 @@ fn an_innate_mirror_gives_its_chance_unless_the_spell_gives_more() {
     // A smaller spell value leaves the larger creature's own.
     give(&mut s, &r, (3, "mirror"), 0);
     assert_eq!(chance(&s, 3), 100);
+    // Dispel at Advanced ends the spell, not the dragons' own mirror (Dispel is never sent away).
+    act(&mut s, &r, cast(&r, "dispel", stack(1))).unwrap();
+    assert_eq!((s.stacks()[1].spells.mirror, chance(&s, 1)), (0, 20));
 }
 
 // covers: BAT-MAG-057, BAT-MAG-022
@@ -220,13 +235,13 @@ fn a_creatures_spell_at_a_dragon_is_sent_away_untested_with_quirk_bat_quirk_9() 
     }
 }
 
-/// The reflection of 100 Fixed (stage 1: 200, dealt: 150) striking a lone Sultan (100 hit
-/// points, its own shield 25 %) with the spell cast on it at `mastery` (none: not).
-fn sultan_reflects(r: &Ruleset, mastery: Option<u8>) -> Vec<(u8, u64, u32)> {
+/// The reflection of 100 Fixed (stage 1: 200, dealt: 150) striking `count` Sultans (100 hit
+/// points each, their own shield 25 %) with the spell cast on them at `mastery` (none: not).
+fn sultans_reflect(r: &Ruleset, count: u32, mastery: Option<u8>) -> Vec<(u8, u64, u32)> {
     let mut s = field_of(
         r,
         &[(0, "fixed", 100)],
-        &[(0, "sultan", 1)],
+        &[(0, "sultan", count)],
         &[(7, 5), (8, 5)],
     );
     if let Some(m) = mastery {
@@ -240,17 +255,26 @@ fn sultan_reflects(r: &Ruleset, mastery: Option<u8>) -> Vec<(u8, u64, u32)> {
 fn an_efreet_sultans_shield_reflects_unless_the_spell_reflects_more() {
     let r = ruleset();
     // 25 % of the 100 hit points: 25, two Fixed and 5 hit points.
-    assert_eq!(sultan_reflects(&r, None), [(0, 25, 2)]);
+    assert_eq!(sultans_reflect(&r, 1, None), [(0, 25, 2)]);
     // The spell at Basic (20 %) reflects less: the Sultan's own 25 %.
-    assert_eq!(sultan_reflects(&r, Some(1)), [(0, 25, 2)]);
+    assert_eq!(sultans_reflect(&r, 1, Some(1)), [(0, 25, 2)]);
     // At Expert (30 %) the spell's.
-    assert_eq!(sultan_reflects(&r, Some(3)), [(0, 30, 3)]);
-    // With quirk Q-0010 the first stage, capped at the Sultan's hit points: the same here; in the
+    assert_eq!(sultans_reflect(&r, 1, Some(3)), [(0, 30, 3)]);
+    // Two Sultans lose 150: 37 of them. With quirk Q-0010 the first stage, 200: 50; in the
     // original's single precision too.
+    assert_eq!(sultans_reflect(&r, 2, None), [(0, 37, 3)]);
     for profile in ["t:fireshield", "t:original"] {
         let r = ruleset_with(profile, |_| {});
-        assert_eq!(sultan_reflects(&r, None), [(0, 25, 2)], "{profile}");
+        assert_eq!(sultans_reflect(&r, 2, None), [(0, 50, 5)], "{profile}");
     }
+    // A helpful caster of the Sultan's side may still give it the spell (0x447A80).
+    let s = field_of(
+        &r,
+        &[(0, "fixed", 1)],
+        &[(0, "sultan", 1)],
+        &[(7, 5), (8, 5)],
+    );
+    assert!(useful(&s, &r, BattleSide::Defender, "fireshield", 1));
     // Shots and fire-immune strikers are not burnt.
     let mut s = field_of(
         &r,
@@ -307,8 +331,9 @@ fn the_sultans_shield_is_the_shields_spell_damage_with_its_heros_bonus() {
     assert_eq!(reflected(&hit(&mut s, &r, 1, (7, 5))), [(0, 4, 0)]);
 }
 
-/// The damage of 10 `striker` (attack 10, damage 2) on a lone `target`, in `profile`.
-fn strike(profile: &str, striker: &'static str, target: &'static str) -> u64 {
+/// The damage of 10 `striker` (attack 10, damage 2) on a lone `target`, in `profile`, the target
+/// shielded (Shield at Basic: 85 % through) if `shielded`.
+fn strike_on(profile: &str, striker: &'static str, target: &'static str, shielded: bool) -> u64 {
     let r = ruleset_with(profile, |_| {});
     let mut s = field_of(
         &r,
@@ -316,7 +341,34 @@ fn strike(profile: &str, striker: &'static str, target: &'static str) -> u64 {
         &[(0, target, 1)],
         &[(7, 5), (8, 5)],
     );
+    if shielded {
+        give(&mut s, &r, (1, "shield"), 1);
+    }
     first_strike(&hit(&mut s, &r, 1, (7, 5)))
+}
+
+/// See [`strike_on`], unshielded.
+fn strike(profile: &str, striker: &'static str, target: &'static str) -> u64 {
+    strike_on(profile, striker, target, false)
+}
+
+/// The damage of every strike when 10 `striker` attack 10 `target`: the attack, then the
+/// retaliation of the creatures left.
+fn exchange(striker: &'static str, target: &'static str) -> Vec<u64> {
+    let r = ruleset();
+    let mut s = field_of(
+        &r,
+        &[(0, striker, 10)],
+        &[(0, target, 10)],
+        &[(7, 5), (8, 5)],
+    );
+    hit(&mut s, &r, 1, (7, 5))
+        .iter()
+        .filter_map(|e| match e.kind {
+            EventKind::Struck { damage, .. } => Some(damage),
+            _ => None,
+        })
+        .collect()
 }
 
 // covers: BAT-DMG-010
@@ -336,5 +388,17 @@ fn the_elementals_deal_half_damage_to_their_targets() {
         assert_eq!(strike(profile, "fixed", "tank"), 15, "{profile}");
         // The striker's penalty only: others strike them in full.
         assert_eq!(strike(profile, "fixed", "psychic"), 20, "{profile}");
+        // The largest of two penalties that apply (30 % against the statue, 50 % against
+        // mind-immune creatures), not their sum nor the first.
+        assert_eq!(strike(profile, "psionic", "statue"), 10, "{profile}");
+        assert_eq!(strike(profile, "psionic", "psychic"), 10, "{profile}");
+        assert_eq!(strike(profile, "psionic", "fixed"), 20, "{profile}");
     }
+    // The half joins the defense factor in the original's stage 2, before the protection's stage
+    // 3: 7 there, × 0.85 = 5; in stage 3 it would be 15 × 0.5 × 0.85 = 6, as the exact product.
+    assert_eq!(strike_on("t:original", "magical", "tank", true), 5);
+    assert_eq!(strike_on("t:faithful", "magical", "tank", true), 6);
+    // Retaliations too: the 8 psychics left strike back at half, the 9 statues left in full.
+    assert_eq!(exchange("statue", "psychic"), [20, 8]);
+    assert_eq!(exchange("psychic", "statue"), [10, 18]);
 }
