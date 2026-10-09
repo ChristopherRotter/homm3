@@ -150,8 +150,9 @@ fn strike<S: Sink>(
     let staged = staged(ruleset);
     let damage = inputs.damage(base, params, staged);
     let lost = damage.min(victim.total_hp());
-    // rule: BAT-MAG-018
-    let reflected = if victim.spells.fire_shield > 0 && !flags.contains(StrikeFlags::RANGED) {
+    // rule: BAT-MAG-018, BAT-MAG-058
+    let shielded = victim.spells.fire_shield > 0 || victim.has(StackTraits::INNATE_SPELL);
+    let reflected = if shielded && !flags.contains(StrikeFlags::RANGED) {
         // Quirk Q-0010: the original reflects a share of the first damage stage; of a clone's, one
         // hit point (0x422440, BAT-MAG-038).
         let from = if victim.has(StackTraits::CLONE) {
@@ -205,6 +206,7 @@ fn strike_inputs(
         effective_defense(victim, params)
     };
     let mut hate_percent = 0;
+    let mut creature_penalty = 0;
     let mut jousting = (0, 0);
     for ability in ruleset.abilities(striker.creature) {
         match *ability {
@@ -222,6 +224,17 @@ fn strike_inputs(
             // rule: BAT-DMG-006
             Ability::DefenseReduction { percent } => {
                 defense = reduced_defense(defense, percent, staged);
+            }
+            // rule: BAT-DMG-010
+            Ability::DamagePenalty { target, percent } if target == victim.creature => {
+                creature_penalty = creature_penalty.max(percent);
+            }
+            Ability::DamagePenaltyByFlag { flag, percent }
+                if ruleset
+                    .creature(victim.creature)
+                    .is_some_and(|c| c.flags.contains(flag)) =>
+            {
+                creature_penalty = creature_penalty.max(percent);
             }
             _ => {}
         }
@@ -244,6 +257,7 @@ fn strike_inputs(
     let mut inputs = Strike::new(attack, defense);
     inputs.blessing = blessing;
     inputs.hate_percent = hate_percent;
+    inputs.creature_penalty_percent = creature_penalty;
     inputs.jousting = jousting;
     let mut flags = flags;
     // rule: BAT-LCK-002

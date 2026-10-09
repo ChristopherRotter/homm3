@@ -185,6 +185,9 @@ impl StackTraits {
     /// Takes mana from the enemy hero at its activations (ability `mana_drain`, the Wraith;
     /// BAT-MAG-056): the activation's cheap test.
     pub const MANA_DRAIN: Self = Self(1 << 27);
+    /// Has a spell of its own (ability `innate_spell`: the Efreet Sultan's Fire Shield, the Faerie
+    /// Dragon's Magic Mirror; BAT-MAG-057, BAT-MAG-058): the strike's cheap test for a reflection.
+    pub const INNATE_SPELL: Self = Self(1 << 28);
 
     /// Whether all traits of `other` are set.
     pub const fn contains(self, other: Self) -> bool {
@@ -278,6 +281,10 @@ impl StackTraits {
             .with(
                 Self::MANA_DRAIN,
                 ability(|a| matches!(a, Ability::ManaDrain { .. })),
+            )
+            .with(
+                Self::INNATE_SPELL,
+                ability(|a| matches!(a, Ability::InnateSpell { .. })),
             )
     }
 }

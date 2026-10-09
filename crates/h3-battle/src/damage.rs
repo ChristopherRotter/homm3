@@ -71,6 +71,9 @@ pub(crate) struct Strike {
     pub double_damage: bool,
     /// The range or melee penalty, percent (BAT-RNG-002/003); 0 = none.
     pub penalty_percent: u16,
+    /// The striker's penalty against the target's creature, percent (BAT-DMG-010: the Psychic
+    /// and Magic Elementals' half; the original's stage 2); 0 = none.
+    pub creature_penalty_percent: u8,
     /// The share of its damage a retaliation of a stack that was blind when attacked deals,
     /// percent (BAT-MAG-024; the original's stage 2); 100 = none.
     pub retaliation_percent: u16,
@@ -97,6 +100,7 @@ impl Strike {
             death_blow: false,
             double_damage: false,
             penalty_percent: 0,
+            creature_penalty_percent: 0,
             retaliation_percent: 100,
             protection_percent: 100,
             hero_reduction: Rate::bp(0),
@@ -160,7 +164,7 @@ impl Strike {
     fn exact(&self, base: u64, p: &BattleParams) -> u64 {
         let diff = u64::from(self.attack.abs_diff(self.defense));
         let bonus = self.exact_bonus(p);
-        let mut reductions = [0u64; 6];
+        let mut reductions = [0u64; 7];
         if self.attack <= self.defense {
             let per_point = u64::from(p.defense_reduction_per_point_permille) * 10;
             reductions[0] =
@@ -171,8 +175,9 @@ impl Strike {
         reductions[3] = u64::from(self.hero_reduction.bp);
         reductions[4] = u64::from(100u16.saturating_sub(self.retaliation_percent)) * 100;
         reductions[5] = u64::from(self.petrified) * BP / 2;
-        // One rounding: the seven factors' product (at most 2^78 · (2^14)^6, so the wide
-        // product never saturates) divided by BP^7 at the end. The specialist's bonus is a
+        reductions[6] = u64::from(self.creature_penalty_percent) * 100;
+        // One rounding: the eight factors' product (at most 2^78 · (2^14)^7, so the wide
+        // product never saturates) divided by BP^8 at the end. The specialist's bonus is a
         // whole amount (at least −base), so the first stage is `(base + extra) · BP + base ·
         // bonus` over BP.
         let extra = self.blessed(base);
@@ -202,6 +207,11 @@ impl Strike {
             f = X87::ONE
                 .minus(diff.times(double(p.defense_reduction_per_point_permille, 1000)))
                 .max(double(1000 - cap, 1000));
+        }
+        // The elementals' half right after the defense factor (`installation.md` §7.21).
+        if self.creature_penalty_percent > 0 {
+            let kept = 100u16.saturating_sub(self.creature_penalty_percent.into());
+            f = f.times(double(kept, 100));
         }
         if self.penalty_percent > 0 {
             f = f.times(double(100u16.saturating_sub(self.penalty_percent), 100));

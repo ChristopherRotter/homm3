@@ -1179,7 +1179,9 @@ fn validate_strike_spells(
                     Some(TimedChange::FireShield | TimedChange::MagicMirror)
                 )
             }))
-            .then_some("innate_spell needs a spell with a timed fire_shield or magic_mirror change"),
+            .then_some(
+                "innate_spell needs a spell with a timed fire_shield or magic_mirror change",
+            ),
             Ability::DrawnSpell { spell: id, .. } => {
                 // A drawn spell needs its caster (`ability::list_error`): the targets it takes at
                 // its caster's mastery, a random caster's a stack or a hex, a helpful caster's a

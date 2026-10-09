@@ -929,9 +929,10 @@ pub(crate) fn list_error<C: PartialEq, S: PartialEq, L: PartialEq>(
             | (Ability::InnateSpell { spell: x, .. }, Ability::InnateSpell { spell: y, .. }) => {
                 x == y
             }
-            (Ability::DamagePenalty { target: x, .. }, Ability::DamagePenalty { target: y, .. }) => {
-                x == y
-            }
+            (
+                Ability::DamagePenalty { target: x, .. },
+                Ability::DamagePenalty { target: y, .. },
+            ) => x == y,
             (
                 Ability::DamagePenaltyByFlag { flag: x, .. },
                 Ability::DamagePenaltyByFlag { flag: y, .. },
@@ -1072,7 +1073,10 @@ mod tests {
             },
             A::ManaChannel { percent: 20 },
             A::ManaDrain { amount: 2 },
-            A::InnateSpell { spell: 2, value: 20 },
+            A::InnateSpell {
+                spell: 2,
+                value: 20,
+            },
             A::DamagePenalty {
                 target: 3,
                 percent: 50,

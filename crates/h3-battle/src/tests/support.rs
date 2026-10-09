@@ -856,6 +856,59 @@ pub const CREATURES: &[Creature] = &[
         7,
         &["faction=castle", "alive", "regeneration", "mana_drain=2"],
     ),
+    // The creature defences (BAT-MAG-057, BAT-MAG-058, BAT-DMG-010): a Tank with its own Fire
+    // Shield of 25 % (between the spell's 20 and 30), Magic Mirrors of 20 % and 100 %, and the
+    // elementals' halves against mind-immune creatures and against itself and the Tank.
+    (
+        "sultan",
+        0,
+        20,
+        1,
+        1,
+        100,
+        4,
+        &["alive", "innate_spell=fireshield:25"],
+    ),
+    (
+        "fairy",
+        10,
+        10,
+        2,
+        2,
+        10,
+        5,
+        &["alive", "innate_spell=mirror:20"],
+    ),
+    (
+        "pixie",
+        0,
+        20,
+        1,
+        1,
+        100,
+        4,
+        &["alive", "innate_spell=mirror:100"],
+    ),
+    (
+        "psychic",
+        10,
+        10,
+        2,
+        2,
+        10,
+        5,
+        &["mind_immune", "damage_penalty_by_flag=mind_immune:50"],
+    ),
+    (
+        "magical",
+        10,
+        10,
+        2,
+        2,
+        10,
+        5,
+        &["damage_penalty=magical:50", "damage_penalty=tank:50"],
+    ),
 ];
 
 /// The traits of a test creature as creature info: flags, abilities, shots and faction.
@@ -1075,6 +1128,27 @@ fn parse_traits(traits: &[&str]) -> CreatureInfoDef {
             "mana_drain" => AbilityDef::ManaDrain {
                 amount: value.parse().unwrap(),
             },
+            "innate_spell" => {
+                let (spell, value) = value.split_once(':').unwrap();
+                AbilityDef::InnateSpell {
+                    spell: ContentKey::new("t", spell).unwrap(),
+                    value: value.parse().unwrap(),
+                }
+            }
+            "damage_penalty" => {
+                let (target, percent) = value.split_once(':').unwrap();
+                AbilityDef::DamagePenalty {
+                    target: ContentKey::new("t", target).unwrap(),
+                    percent: percent.parse().unwrap(),
+                }
+            }
+            "damage_penalty_by_flag" => {
+                let (flag, percent) = value.split_once(':').unwrap();
+                AbilityDef::DamagePenaltyByFlag {
+                    flag: CreatureFlag::from_name(flag).unwrap(),
+                    percent: percent.parse().unwrap(),
+                }
+            }
             "drawn_spell" => {
                 let (spell, weight) = value.split_once(':').unwrap();
                 AbilityDef::DrawnSpell {
