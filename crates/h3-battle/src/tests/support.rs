@@ -792,6 +792,70 @@ pub const CREATURES: &[Creature] = &[
             "periodic_spell_caster=3:3:3",
         ],
     ),
+    // The mana creatures (BAT-MAG-054 to BAT-MAG-056): a Pegasus (+2 for the enemy hero's
+    // spells), Mages (−2 for their own hero's) and a stronger reduction, Familiars (20 % of the
+    // other hero's cost) and a stronger channel, a Wraith (2 mana at its activations; a castle
+    // creature for good morale).
+    (
+        "pegasus",
+        10,
+        10,
+        2,
+        2,
+        30,
+        8,
+        &["alive", "flying", "spell_cost=2:enemies"],
+    ),
+    (
+        "magus",
+        10,
+        10,
+        2,
+        2,
+        30,
+        5,
+        &["alive", "spell_cost=-2:allies"],
+    ),
+    (
+        "sage",
+        10,
+        10,
+        2,
+        2,
+        30,
+        5,
+        &["alive", "spell_cost=-5:allies"],
+    ),
+    (
+        "familiar",
+        10,
+        10,
+        2,
+        2,
+        10,
+        7,
+        &["alive", "mana_channel=20"],
+    ),
+    (
+        "acolyte",
+        10,
+        10,
+        2,
+        2,
+        10,
+        4,
+        &["alive", "mana_channel=50"],
+    ),
+    (
+        "wraith",
+        10,
+        10,
+        2,
+        2,
+        30,
+        7,
+        &["faction=castle", "alive", "mana_drain=2"],
+    ),
 ];
 
 /// The traits of a test creature as creature info: flags, abilities, shots and faction.
@@ -1001,6 +1065,16 @@ fn parse_traits(traits: &[&str]) -> CreatureInfoDef {
                     hit_points_per_creature: hit_points.parse().unwrap(),
                 }
             }
+            "spell_cost" => {
+                let (amount, affects) = aura();
+                AbilityDef::SpellCost { amount, affects }
+            }
+            "mana_channel" => AbilityDef::ManaChannel {
+                percent: value.parse().unwrap(),
+            },
+            "mana_drain" => AbilityDef::ManaDrain {
+                amount: value.parse().unwrap(),
+            },
             "drawn_spell" => {
                 let (spell, weight) = value.split_once(':').unwrap();
                 AbilityDef::DrawnSpell {

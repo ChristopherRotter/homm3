@@ -38,6 +38,7 @@ mod geometry;
 mod hero;
 mod legal;
 mod magic;
+mod mana;
 mod morale;
 mod movement;
 mod natural;

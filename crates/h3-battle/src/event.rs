@@ -202,6 +202,24 @@ pub enum EventKind {
         /// The spell.
         spell: SpellId,
     },
+    /// The hero of `side` gained `mana` from its side's channellers after the other hero's cast
+    /// (the Familiars; BAT-MAG-055; public).
+    ManaChanneled {
+        /// The side whose hero gained the mana.
+        side: BattleSide,
+        /// The mana gained.
+        mana: u16,
+    },
+    /// Stack `stack` took `mana` from the hero of `side` at its activation (the Wraith;
+    /// BAT-MAG-056; public).
+    ManaDrained {
+        /// The draining stack.
+        stack: StackId,
+        /// The side whose hero lost the mana.
+        side: BattleSide,
+        /// The mana lost.
+        mana: u16,
+    },
     /// A stack raised another or a corpse as its action (the Archangel, the Pit Lord;
     /// BAT-MAG-051, BAT-MAG-052; public): one of its casts is used. `SpellRaised` or
     /// `RoseFromCorpse` follows.

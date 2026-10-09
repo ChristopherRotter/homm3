@@ -1840,7 +1840,7 @@ id       = "BAT-MAG-002"
 title    = "Mastery and cost of a hero's spell"
 context  = "battle"
 status   = "implemented"
-summary  = "A hero casts a spell at the best mastery among the spell's schools (BattleMagic.schools: 0 none, 1 Basic, 2 Advanced, 3 Expert; HER-BAT-011). The mastery selects the cost and the effect value from the spell's row (cost[mastery], effect[mastery]). A cast takes the cost from the hero's mana; a hero with less mana than the cost cannot cast the spell, so mana never goes below 0. The creatures' changes to costs (Mages, Pegasi, a Familiar's channelling, Wraiths' drain) come with their abilities (E04b T7)."
+summary  = "A hero casts a spell at the best mastery among the spell's schools (BattleMagic.schools: 0 none, 1 Basic, 2 Advanced, 3 Expert; HER-BAT-011). The mastery selects the cost and the effect value from the spell's row (cost[mastery], effect[mastery]). A cast takes the cost from the hero's mana; a hero with less mana than the cost cannot cast the spell, so mana never goes below 0. The creatures in the armies change the cost (BAT-MAG-054); a side's Familiars gain from the other hero's cast (BAT-MAG-055) and Wraiths drain the enemy hero (BAT-MAG-056)."
 numeric  = "integer"
 
   [[rule.source]]
@@ -3009,5 +3009,79 @@ quirks   = ["BAT-QUIRK-13", "BAT-QUIRK-14"]
   kind       = "vcmi"
   ref        = "VCMI 1.7.5 server/battles/BattleFlowProcessor.cpp (ENCHANTER bonus: at the unit's activation, a side counter that starts at 0 and is set to the cooldown 3 after a cast, decreased each round), config/creatures/neutral.json (the eight spells at level 3)"
   url        = "https://github.com/vcmi/vcmi/blob/1.7.5/server/battles/BattleFlowProcessor.cpp"
+  retrieved  = "2026-10-09"
+  confidence = "medium"
+
+[[rule]]
+id       = "BAT-MAG-054"
+title    = "The armies change a hero's spell costs (Pegasi, Mages)"
+context  = "battle"
+status   = "implemented"
+summary  = "A hero pays for a spell its cost at its mastery (BAT-MAG-002) changed by the creatures in the battle's two armies (BattleSetup's armies, set at the battle's start): of the spell_cost abilities (amount, affects) of the creatures in its own army with affects allies and in the other army with affects enemies, the largest increase and the largest reduction count, once each, however many stacks; the cost is at least 1, and a spell whose cost is 0 (Titan's Lightning Bolt) stays free. The armies keep their creatures until the battle's end, so a stack that died still counts and a stack created in the battle never does (BAT-QUIRK-15, the rule: the original reads the armies; VCMI the living stacks). The changed cost decides whether the hero may cast (BAT-MAG-001) and is what it pays. The Pegasi and Silver Pegasi: +2 for the enemy hero; the Mages and Arch Mages: -2 for their own hero. Not yet: Armageddon at Expert with Armageddon's Blade (T8)."
+numeric  = "integer"
+quirks   = ["BAT-QUIRK-15"]
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (docs/formats/installation.md §7.21, the mana creatures re-read for T7c1): 0x4E5240(hero, spell, enemy army, battlefield) returns 0 for spell 57, otherwise the spell record's cost at the hero's mastery, +2 if the enemy army (a cast passes +0x54C4 of the side opposite the acting one, 0x59FFCF) holds creature 20 or 21, -2 if the hero's army (+0x91) holds 34 or 35, at least 1; 0x44AB80 compares the seven slots' creature types only; the armies are rebuilt only at the battle's end (0x4641F0)"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "observation"
+  ref        = "experiments/results/E04b-batch-2a.md R6 (SoD 4.0 Complete, plain HD, 2026-10-06): Calid with 10 Familiars and 10 Mages against a Pegasus: Magic Arrow 20 to 15, 16 to 11, and 11 to 6 after the Pegasus died (VCMI predicted 3); Blue's Ice Bolt 10 to 2"
+  retrieved  = "2026-10-06"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "vcmi"
+  ref        = "VCMI 1.7.5 lib/battle/CBattleInfoCallback.cpp (battleGetSpellCost: the largest CHANGES_SPELL_COST_FOR_ALLY reduction among the living units the caster's player owns, the largest CHANGES_SPELL_COST_FOR_ENEMY increase among the others, at least 0)"
+  url        = "https://github.com/vcmi/vcmi/blob/1.7.5/lib/battle/CBattleInfoCallback.cpp"
+  retrieved  = "2026-10-09"
+  confidence = "medium"
+
+[[rule]]
+id       = "BAT-MAG-055"
+title    = "Channelled mana (Familiars)"
+context  = "battle"
+status   = "implemented"
+summary  = "After a hero's cast (not a creature's or a periodic cast), once its effect is done, if the other side has a hero and controls a living stack whose creature has mana_channel (percent), that hero gains the largest such percent of the cost the caster paid, rounded down, once, with no cap at its maximum mana (a ManaChanneled event, public); nothing if that is 0. A hypnotized stack channels for its controller; every such stack counts, wherever its record lies (BAT-QUIRK-16: the original's loop misses some, always fixed); a stack the cast killed channels nothing. The Familiars: 20 % (cost div 5, nothing below 5)."
+numeric  = "integer"
+quirks   = ["BAT-QUIRK-16"]
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (docs/formats/installation.md §7.21, the mana creatures re-read for T7c1): after the spell's handler (the common tail 0x5A2058), 0x5A2170 acts for caster kind 0 when the hero opposite the acting side exists (+0x53CC) and the paid cost is 5 or more: it sums the creatures (+0x4C) of the records of creature 43 whose controller (+0xF4, +0x288) is not the acting side, and if the sum is above 0 adds cost div 5 to that hero's spell points (+0x18), uncapped; the loop bound is the other side's record count for both sides (0x5A21B2)"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "observation"
+  ref        = "experiments/results/E04b-batch-2a.md R6 (SoD 4.0 Complete, plain HD, 2026-10-06): Blue's Ice Bolt (cost 8) at Red's Familiars took Red's hero from 15 to 16 spell points"
+  retrieved  = "2026-10-06"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "vcmi"
+  ref        = "VCMI 1.7.5 lib/spells/BattleSpellMechanics.cpp (after a hero's cast, the largest MANA_CHANNELING share among the living stacks the other hero's player owns, times the cost, div 100)"
+  url        = "https://github.com/vcmi/vcmi/blob/1.7.5/lib/spells/BattleSpellMechanics.cpp"
+  retrieved  = "2026-10-09"
+  confidence = "medium"
+
+[[rule]]
+id       = "BAT-MAG-056"
+title    = "Mana drain at a stack's activation (Wraiths)"
+context  = "battle"
+status   = "implemented"
+summary  = "At each activation of a stack whose creature has mana_drain (amount) for a turn (its first turn of the round, a good-morale turn, a berserk stack before its automatic turn; not a blind, petrified or paralysed stack, nor one bad morale freezes, nor in the tactics phase), unless the round's wait phase has begun (no stack is left to act but those that waited: then neither a waited stack's turn nor any later activation of that round drains), the hero of the side opposite its controller, if there is one and it has mana, loses the amount, at least 0 (a ManaDrained event, public). Each stack drains, whatever its count. A hypnotized stack drains its owner's hero. The Wraiths: 2."
+numeric  = "integer"
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (docs/formats/installation.md §7.21, the mana creatures re-read for T7c1): the activation 0x465330's case for creature 61 (0x465548) returns while the wait phase flag +0x13DE4 is set (set by the pick 0x465080 when no stack is left to act, 0x4652A7; cleared at the round start 0x4760AB), takes the hero opposite the Wraith's controller (+0x53CC, +0xF4 flipped by +0x288) and, if its spell points (+0x18) are above 0, lowers them by 2, at least 0; the activation returns in the tactics phase and is not called for blind, petrified, paralysed or bad-morale stacks (0x465222, 0x465283)"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "vcmi"
+  ref        = "VCMI 1.7.5 config/creatures/necropolis.json (wraith: MANA_DRAIN 2) and server/battles/BattleFlowProcessor.cpp (at the unit's turn start, once per round: the opposing hero loses the value, at most its mana; the original drains again at a good-morale turn of the normal phase)"
+  url        = "https://github.com/vcmi/vcmi/blob/1.7.5/config/creatures/necropolis.json"
   retrieved  = "2026-10-09"
   confidence = "medium"

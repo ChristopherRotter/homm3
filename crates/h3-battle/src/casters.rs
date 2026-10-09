@@ -273,8 +273,8 @@ pub(crate) fn round_started(state: &mut BattleState) {
 /// by weight among its creature's `drawn_spell` entries that count ([`counts`]), at its mastery
 /// with its power and no target ([`magic::periodic_cast`]: the mass version, no cast used), and
 /// that side's count returns to 0. If none counts, nothing is cast and the count stays. The
-/// stack's turn goes on. A stack that lost its turns (blind, petrified, paralysed) during its own
-/// action casts nothing at a good-morale turn (the original's pick activates no such stack).
+/// stack's turn goes on (called for the activations of `turn`, which skip a stack that lost its
+/// turns during its own action).
 // rule: BAT-MAG-053
 pub(crate) fn periodic<S: Sink>(
     state: &mut BattleState,
@@ -284,7 +284,7 @@ pub(crate) fn periodic<S: Sink>(
 ) {
     let stack = *state.at(id);
     // Most stacks are no periodic casters: test that first.
-    if !stack.has(StackTraits::PERIODIC_CASTER) || stack.spells.status.contains(Status::NO_TURNS) {
+    if !stack.has(StackTraits::PERIODIC_CASTER) {
         return;
     }
     let side = stack.controller();

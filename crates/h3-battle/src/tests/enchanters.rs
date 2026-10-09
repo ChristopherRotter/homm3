@@ -339,7 +339,7 @@ fn an_enchanter_that_lost_its_turns_casts_nothing() {
     crate::effects::apply(&mut s, &r, cast, StackId(0), &mut Vec::<Event>::new());
     s.casts.periodic = [u8::MAX; 2];
     let mut events = Vec::new();
-    crate::casters::periodic(&mut s, &r, StackId(0), &mut events);
+    crate::turn::activation(&mut s, &r, StackId(0), &mut events);
     assert!(periodic(&events).is_empty());
     assert_eq!(s.periodic_rounds(BattleSide::Attacker), u8::MAX);
 }
