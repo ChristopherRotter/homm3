@@ -1432,3 +1432,40 @@ mastery 3, power 3) casts it (0x448250): the Expert mass version over the side t
 every stack rolling for resistance as in an area spell, the timed spells for 3 rounds. No cast is
 used (+0xDC untouched) and the stack's turn goes on as usual. If nothing counts, nothing is cast
 and the counter stays, so the next activation of an Enchanter of that side tries again.
+
+**The mana creatures, re-read for T7c1** (BAT-MAG-054 to BAT-MAG-056, BAT-Q15, 2026-10-09).
+*The cost* (0x4E5240: hero, spell, enemy army, battlefield). Titan's Lightning Bolt (57) costs 0
+and nothing else applies. Otherwise the cost is the spell record's at the hero's mastery (0x4E5100;
+Armageddon at Expert while the hero wears Armageddon's Blade, T8); then, only if an enemy army is
+given (0x4E52DA; a cast always gives one, +0x54C4 of the side opposite the acting one, 0x59FFCF),
+**+2** if that army holds creature 20 or 21 (Pegasi, Silver Pegasi) and **−2** if the hero's own
+army (hero +0x91) holds 34 or 35 (Mages, Arch Mages), once each; **at least 1**. 0x44AB80 compares
+the seven slots' creature types only, and the armies stay as they were until the battle's end
+(the rebuild 0x4641F0), so a stack that died still counts and a stack created in the battle never
+does (batch 2a R6 round 3: 5 with the Pegasus dead; BAT-Q15: the rule, ledger BAT-QUIRK-15). The
+AI (0x43C996) and 24 other call sites (the spell book's among them, not read) ask the same
+routine; the cast pays it (0x59FFDF, then 0x4D92D0: spell points less the cost, at least 0) after
+magic was allowed for the acting side (0x59FEEF).
+*The channel* (0x5A2170). The 35 spell handlers end in a common tail (0x5A2058: every record's
+cast animation, a hero's casting animation) that reaches it; it acts only for a hero's cast
+(caster kind 0) when the side opposite the acting one has a hero (+0x53CC) and the paid cost
+(0 for every other cast) is 5 or more. It sums the creatures (+0x4C; a dead stack has none) of
+the records of creature 43 (Familiar) whose controller (+0xF4, flipped by +0x288) is not the
+acting side; if the sum is above 0, that hero's spell points (+0x18, a word) rise by `cost div 5`,
+once whatever the number of Familiars and with no cap at its maximum, and a combat-log line
+follows. The loop walks both sides' records, but each only up to the record count of the side
+opposite the acting one (+0x54BC read once, 0x5A21B2; 0x5A21CC): a Familiar of the caster's side
+that the enemy hypnotized is missed when its record lies beyond that count, and when the caster's
+side has fewer records, records past its count are read (BAT-Q15: always fixed, ledger
+BAT-QUIRK-16). A clone of a Familiar counts (a record of its own).
+*The drain* (0x465548, the activation's case for creature 61, Wraith). Nothing in the tactics
+phase (the activation returns before, 0x4653B6) or in the round's wait phase (+0x13DE4, H3API's
+`waitPhase`: the pick 0x465080 sets it when no stack is left to act, clearing every record's
+waited bit `0x2000000` so the waited stacks can act, 0x4652A7; the round start clears it,
+0x4760AB). Otherwise the hero of the side opposite the Wraith's controller, if there is one and
+its spell points are above 0, loses 2, at least 0, and a log line follows: once per activation of
+a Wraith stack, whatever its count. So a Wraith drains at its first activation of a round, at a
+good-morale turn of the normal phase and, berserk, before its automatic action, but not when it
+acts after waiting nor at any later activation of that round; a blind, petrified or paralysed
+Wraith, or one bad morale stops, is not activated (0x465222, 0x465283). A hypnotized Wraith drains
+its owner's hero.

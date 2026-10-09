@@ -48,6 +48,10 @@ The battle lane's living state; read after the global `docs/HANDOFF.md`. Format 
 
 ## Recent sessions
 
+### 2026-10-09 (forty-first) — E04b increment 11: T7c1, the mana creatures (in progress)
+
+The user (BAT-Q15): T7c1 alone; the cost reads the armies (BAT-QUIRK-15, the rule); the Familiars' loop bound always fixed (BAT-QUIRK-16). Done: the re-reading (`installation.md` §7.21, "The mana creatures, re-read for T7c1"), map entries, ledger. Next: content (pack v27), BAT-MAG-054 to 056, workload, replays, bench, review, PR. Branch `battle/e04b-t7c1`.
+
 ### 2026-10-09 (fortieth) — E04b increment 10: T7b4, the Enchanter
 
 Master green with original data. The user (BAT-Q14): T7b4 alone; S-12 fix-optional (BAT-QUIRK-13); every battle starts ready (BAT-QUIRK-14: the original's counters carry over between battles, found in the re-reading). Pack v26 (`periodic_spell_caster`), quirk flag 16, BAT-MAG-053, state hash v37, observation v11, C ABI v15 (shared PR for ADR-0011's list); the synthetic Chanters; replays and bench re-baselined. Detail: `docs/epics/E04b-log.md`.
@@ -55,7 +59,3 @@ Master green with original data. The user (BAT-Q14): T7b4 alone; S-12 fix-option
 ### 2026-10-08 (thirty-ninth) — E04b increment 9: BAT-Q13, the outcome PR, T6c
 
 The user: BAT-Q13 (Demons `Raised(slot)`, created stacks as `Created` records, BAT-QUIRK-11 the rule). Shared PR #26; T6c (#27): BAT-QUIRK-7's flag, created stacks in the outcome; T7b3 (#31): the raisers (pack v25, BAT-QUIRK-12), the synthetic Seraph and Fiends. Detail: `docs/epics/E04b-log.md`.
-
-### 2026-10-08 (thirty-eighth) — E04b T7b2a and T7b2b: the Faerie Dragon, the Master Genie
-
-The user (BAT-Q11, BAT-Q12): the drawn spell private; Genie head 0 plus counts; a spell book's presence public; BAT-QUIRK-9 fix-optional, BAT-QUIRK-10 the rule. The synthetic Drake and Djinn. Detail: `docs/epics/E04b-log.md`.
