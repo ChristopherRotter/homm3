@@ -75,6 +75,9 @@ Order in `vcmi` (`BattleSpellMechanics.cpp` L339–L541, `CSpellHandler.cpp` L37
 - **After an attack** (spell rows 70–80 and hero spells): Stone Gaze (Medusas, Basilisks), Paralyze (Scorpicore), Poison (Wyvern Monarch), Disease (Zombie), Age (Ghost Dragon), Curse (Black and Dread Knights, Mummy), Blind (Unicorns), Weakness and Dispel Helpful (Dragon Flies; Serpent Fly only Dispel), Bind (Dendroids), Thunderbolt (Thunderbird), Acid Breath (Rust Dragon). Death Cloud and Death Stare are already E03 abilities.
 - **Casters:** Faerie Dragon (damage spells at random weights), Archangel (Resurrection), Pit Lord (demons), Ogre Mage (Bloodlust), Storm/Ice/Energy/Magma Elementals (protections), Master Genie (a random beneficial spell), Enchanter (casts a mass spell on its own; VCMI keeps a per-side cooldown, `BattleInfo.cpp` L656); `casts` per battle is in the packs.
 - **Defences and auras:** resistances and immunities (§4), Magic Mirror 20 % (Faerie Dragon), the Unicorn aura, Golem reductions; **mana:** Mage, Pegasus, Familiar, Wraith (§2). Not magic but missing in our `Ability` set: Phoenix rebirth, Azure Dragon fear.
+  *(T7c2a: the Faerie Dragon's mirror and the Efreet Sultan's 20 % Fire Shield as `innate_spell`,
+  the Psychic and Magic Elementals' half damage as `damage_penalty`, BAT-MAG-057, 058, BAT-DMG-010;
+  the Phoenix's rebirth is T7c2b.)*
 
 ## 8. Quirks by task
 

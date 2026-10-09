@@ -1546,3 +1546,47 @@ records how and why the tasks went.
   reports the mana actually gained, `turn`'s docs. A created Pegasus cannot be tested: a clone's
   original is in its army and no summon makes Pegasi (the change is computed from the armies
   at the start).
+
+### T7c2a: the creature defences (2026-10-09)
+
+- **Decisions** (the user, BAT-Q16): T7c2 in two parts, T7c2a (the Faerie Dragons' mirror, the
+  Efreet Sultans' shield, the elementals' damage factors) in increment 12, the Phoenix's rebirth
+  (T7c2b) next; T7c1's own calls confirmed. Agent decisions: the two creature spells as one
+  ability, `innate_spell` (a spell with a timed `fire_shield` or `magic_mirror` change, and a
+  value), read only where the original's getters read the creature (the mirror's chance, the
+  shield's factor), so Hypnotize, Dispel and the Master Genie's usefulness see the spell only, as
+  in the original; "the larger of the spell's value and the creature's" for both (the original
+  takes the larger for the dragon and the spell's while active for the Sultan; no pack value of
+  either spell is below 20, so they never differ); the halves as `damage_penalty` (a creature)
+  and `damage_penalty_by_flag` (a flag: mind-immune targets), the largest applying, in stage 2
+  right after the defense factor (exact: one more factor). No new state, event or encoding.
+- **Code reading** (`installation.md` §7.21, "The creature defences, re-read for T7c2a"):
+  0x4487F0 (creature 134: the larger of the spell's value and spell 36's table value 20; only the
+  cast's entry and the AI ask it; Hypnotize reads the duration, 0x5A83A6), 0x443130 and 0x422440
+  (creature 53: 0.2 as an `f32` while the spell's duration is 0; the same reflection path with
+  the Sultan's hero's spell bonuses), 0x443B90 (creature 120 against flag `0x400`, 121 against
+  121 and 83, × 0.5 as a double right after the defense factor). A first look at the Phoenix's
+  rebirth 0x469440 for T7c2b (its callers, the count: start div 5 plus a 1-in-5 draw per creature
+  left over). One map entry (0x445A60). VCMI 1.7.5: `MAGIC_MIRROR` 20, `FIRE_SHIELD` 20, no halves.
+- **Content:** abilities `innate_spell` (spell, value), `damage_penalty` (creature, percent),
+  `damage_penalty_by_flag` (flag, percent); pack format v28, ruleset hash v37; the gap-fill's
+  `exe-creature-defences` (Faerie Dragon Magic Mirror 20, Efreet Sultan Fire Shield 20, Psychic
+  Elemental half against `mind_immune`, Magic Elemental half against Magic Elementals and Black
+  Dragons); packs re-harvested.
+- **Battle:** `magic::innate`, `magic::mirror_chance` (BAT-MAG-057), `magic::reflection` with an
+  innate shield (BAT-MAG-058), `StackTraits::INNATE_SPELL` (the strike's cheap test), the strike's
+  `creature_penalty_percent` (BAT-DMG-010); catalog BAT-MAG-018, BAT-MAG-022 and BAT-DMG-002
+  updated. State hash unchanged (v38).
+- **Measurements:** the code on the old workload +0.01 % Ir, steps unchanged (7 943); the new
+  workload (the synthetic Drakes mirror, the Fiends reflect, the Djinns halve against two-hex
+  stacks, the Chanters against Djinns) 7 558 steps (−4.8 %), −5.62 % Ir (−0.8 % per step);
+  re-baselined. `BattleState` stays 6 200 bytes. Replays re-recorded with new agent seeds: a676,
+  a1386, a1473, a471, a673 (a Drake's redirect in four of them).
+- **Tests:** `tests/creature_defences.rs` (the chance and the max rule, Hypnotize and Dispel, the
+  Genie's usefulness; the dragon's 20 % over 300 casts; a creature's cast sent away untested with
+  BAT-QUIRK-9; the Sultan's shield against the spell's values, Q-0010 with two Sultans, shots,
+  fire-immune strikers, the hero's bonus; the halves in both profiles, the largest of two, the
+  stage against a shielded target, retaliations); the ability's compile checks and pack syntax.
+- **Review** (independent, no defect in the logic): tests made stronger (the stage shown by a
+  shielded target, the largest of two penalties, retaliations, Q-0010 with two Sultans, Dispel
+  and the Genie's usefulness, the resolved spell handles), the innate trait's doc.
