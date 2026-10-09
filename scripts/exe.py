@@ -14,10 +14,14 @@ go into the map and the docs in our own words and numbers (OPEN-QUESTIONS Q29, Q
 
 Commands (ADDR is hexadecimal, `0x5A8090` or `5a8090`; NAME is a map or H3API name):
 
-  fn ADDR|NAME               the function containing ADDR, annotated
+  fn ADDR|NAME [--around N | --from A --to B | --all]
+                             the function containing ADDR, annotated; a long one only sliced
   callers ADDR|NAME          call sites of a function, grouped by the calling function
   callees ADDR|NAME          the calls a function makes, in order
-  refs ADDR|NAME             every instruction referring to an address (or into a table's range)
+  refs ADDR|NAME [--limit N] [--group]
+                             every instruction referring to an address (or into a table's range)
+  switch ADDR|NAME           a switch's cases: value -> handler (a jump table, its index table,
+                             or any address in the function)
   grep REGEX [--fn X]        instructions matching REGEX (lower case text), with their function
   lookup ADDR|NAME|TEXT      what the map knows about an address, or entries matching a text
   data ADDR [--type T] [--count N] [--stride S]
@@ -38,9 +42,18 @@ import re
 import signal
 import struct
 import sys
-import tomllib
 from collections import defaultdict
 from pathlib import Path
+
+# Exit codes: 1 a problem (the map disagrees, a bad address); 3 the setup is missing (the
+# executable, Python 3.11 or the modules), which `cargo xtask verify --with-original-data` skips.
+EXIT_SETUP = 3
+
+if sys.version_info < (3, 11):
+    print("exe.py: needs Python 3.11 or later (tomllib)", file=sys.stderr)
+    sys.exit(EXIT_SETUP)
+
+import tomllib  # noqa: E402
 
 ROOT = Path(__file__).resolve().parent.parent
 EXE = ROOT / "original-data/install/Heroes3.exe"
@@ -54,6 +67,9 @@ OUT = ROOT / "original-data/exe"
 KINDS = ("function", "site", "table", "global")
 CONFIDENCES = ("read", "inferred", "guess")
 PAD = (0x90, 0xCC)
+# `fn` prints a longer function only sliced (--around, --from/--to) or with --all: a listing
+# costs an agent about 34 bytes per instruction, so 600 instructions are about 20 KB.
+FN_LIMIT = 600
 HEX_RE = re.compile(r"0x[0-9a-f]+")
 CITE_RE = re.compile(r"(?<![0-9A-Za-z_])0x([0-9A-Fa-f]{6})(?![0-9A-Za-z_])")
 JMP_TABLE_RE = re.compile(r"dword ptr \[(e[a-z]{2})\*4 \+ (0x[0-9a-f]+)\]")
@@ -62,9 +78,9 @@ CMP_RE = re.compile(r"(e[a-z]{2}|[a-z]{2}), (0x[0-9a-f]+|\d+)$")
 FLOAT_MNEMS = re.compile(r"^(f[a-z]+|(add|sub|mul|div|mov|comi|ucomi|cvt[a-z0-9]*)s[sd])$")
 
 
-def die(message: str) -> None:
+def die(message: str, code: int = 1) -> None:
     print(f"exe.py: {message}", file=sys.stderr)
-    sys.exit(1)
+    sys.exit(code)
 
 
 def parse_va(text: str) -> int | None:
@@ -89,9 +105,10 @@ class Image:
         try:
             import pefile
         except ImportError:
-            die("needs `pip install capstone pefile`")
+            die("needs `pip install capstone pefile`", EXIT_SETUP)
         if not path.is_file():
-            die(f"{path.relative_to(ROOT)} is missing: stage Heroes3.exe (docs/exe/README.md)")
+            die(f"{path.relative_to(ROOT)} is missing: stage Heroes3.exe (docs/exe/README.md)",
+                EXIT_SETUP)
         data = path.read_bytes()
         digest = hashlib.sha256(data).hexdigest()
         if digest != SHA256:
@@ -146,6 +163,10 @@ class Image:
         raw = self.read(va, limit + 1) or self.read(va, 8)
         if not raw:
             return None
+        # A pointer into the image (a vtable or type-info entry) is not a string, even when its
+        # low bytes happen to be printable.
+        if len(raw) >= 4 and self.text_start <= struct.unpack_from("<I", raw)[0] < self.end:
+            return None
         end = raw.find(b"\0")
         text = raw if end < 0 else raw[:end]
         if len(text) < 3 or not all(32 <= b < 127 or b in (9, 10, 13) for b in text):
@@ -165,7 +186,7 @@ class Code:
         try:
             import capstone
         except ImportError:
-            die("needs `pip install capstone pefile`")
+            die("needs `pip install capstone pefile`", EXIT_SETUP)
         self.img = img
         md = capstone.Cs(capstone.CS_ARCH_X86, capstone.CS_MODE_32)
         md.skipdata = True
@@ -239,9 +260,44 @@ class Code:
                     return int(m.group(2), 0) + 1
         return None
 
+    @staticmethod
+    def _switch_base(window: list[tuple[int, int, str, str]]) -> tuple[int | None, str | None]:
+        """The offset the switch subtracts from its value before the range check, and where the
+        value comes from: `lea eax, [edx - 0xa]` / `add eax, -0x16` / `sub eax, 0x16` before the
+        `cmp` (MSVC); the value's register is the one loaded just before that."""
+        cmp_at = None
+        for j in range(len(window) - 1, -1, -1):
+            if window[j][2] == "cmp" and CMP_RE.search(window[j][3]):
+                cmp_at = j
+                break
+        if cmp_at is None:
+            return None, None
+        reg = CMP_RE.search(window[cmp_at][3]).group(1)
+        for j in range(cmp_at - 1, -1, -1):
+            _, _, mnem, op = window[j]
+            m = re.fullmatch(rf"{reg}, \[(e[a-z]{{2}}) ([-+]) (0x[0-9a-f]+|\d+)\]", op)
+            if mnem == "lea" and m:
+                base = int(m.group(3), 0) * (1 if m.group(2) == "-" else -1)
+                return base, Code._value_source(window[:j], m.group(1))
+            m = re.fullmatch(rf"{reg}, (-?0x[0-9a-f]+|-?\d+)", op)
+            if mnem in ("add", "sub") and m:
+                imm = int(m.group(1), 0)
+                return (-imm if mnem == "add" else imm), Code._value_source(window[:j], reg)
+            if mnem == "mov" and op.startswith(f"{reg}, "):
+                return 0, op.split(", ", 1)[1]
+        return None, None
+
+    @staticmethod
+    def _value_source(window: list[tuple[int, int, str, str]], reg: str) -> str | None:
+        for _, _, mnem, op in reversed(window):
+            if mnem in ("mov", "movzx", "movsx") and op.startswith(f"{reg}, "):
+                return op.split(", ", 1)[1]
+        return None
+
     def _find_tables(self, ins: list[tuple[int, int, str, str]]) -> dict[int, tuple[str, int]]:
         img = self.img
         tables: dict[int, tuple[str, int]] = {}
+        self.switches: dict[int, dict] = {}  # jump table va -> how the switch indexes it
         for i, (va, _, mnem, op) in enumerate(ins):
             if mnem != "jmp":
                 continue
@@ -253,6 +309,7 @@ class Code:
                 continue
             window = ins[max(0, i - 12) : i]
             count = None
+            index = None  # (byte table, its length)
             for j in range(len(window) - 1, -1, -1):
                 bm = BYTE_TABLE_RE.search(window[j][3])
                 dest = bm and ("e" + bm.group(1)[0] + "x" if bm.group(1).endswith("l") else bm.group(1))
@@ -262,6 +319,7 @@ class Code:
                     if n and img.is_code(btable) and n <= 1024:
                         values = img.read(btable, n) or b""
                         tables[btable] = ("db", n)
+                        index = (btable, n)
                         count = max(values) + 1 if values else None
                     break
             if count is None:
@@ -275,6 +333,16 @@ class Code:
                     count += 1
             if count:
                 tables[table] = ("dd", count)
+                base, source = self._switch_base(window)
+                default = None
+                for k in range(len(window) - 1, -1, -1):
+                    if window[k][2] in ("ja", "jae", "jb", "jbe") and window[k][3].startswith("0x"):
+                        default = int(window[k][3], 16)
+                        break
+                self.switches[table] = {
+                    "jmp": va, "cases": count, "index": index, "base": base,
+                    "source": source, "default": default,
+                }
         return tables
 
     def _sweep(self, md, start: int, end: int) -> None:
@@ -499,7 +567,34 @@ def cmd_fn(args) -> None:
         die(f"{hx(va)} is not in .text (try `lookup` or `data`)")
     end = code.function_end(start)
     print("\n".join(ann.header(start, end)))
-    for ins in code.instructions(start, end):
+    total = sum(1 for _ in code.instructions(start, end))
+    lo, hi = start, end
+    if args.around is not None:
+        i = code.index(va)
+        first = bisect.bisect_left(code.addrs, start)
+        last = bisect.bisect_left(code.addrs, end)  # one past the function's last instruction
+        lo = code.addrs[max(first, i - args.around)]
+        j = min(last, i + args.around + 1)
+        hi = code.addrs[j] if j < len(code.addrs) else end
+    if args.from_:
+        lo = max(lo, names.resolve(args.from_))
+    if args.to:
+        hi = min(hi, names.resolve(args.to))
+    sliced = (lo, hi) != (start, end)
+    if sliced:
+        shown = sum(1 for _ in code.instructions(lo, hi))
+        print(f"; showing {hx(lo)}..{hx(hi)}: {shown} of the function's {total} instructions")
+    elif total > FN_LIMIT and not args.all:
+        print(f"; {total} instructions (about {total * 34 // 1024} KB of listing): too much for "
+              f"one read. Narrow it: --around ADDR N (N instructions each side of ADDR), "
+              f"--from ADDR --to ADDR, `callees`, `switch`, `grep --fn`; or --all.")
+        sites = [e for e in names.entries if e["kind"] == "site" and start <= e["va"] < end]
+        if sites:
+            print(f"; sites inside ({len(sites)}):")
+            for e in sites:
+                print(f";   {hx(e['va'])} {e['name']}: {e['summary']}")
+        return
+    for ins in code.instructions(lo, hi):
         print(ann.line(ins))
 
 
@@ -541,13 +636,86 @@ def cmd_refs(args) -> None:
     va = names.resolve(args.target)
     e = names.by_va.get(va)
     end = va + (e.get("size", 1) if e is not None and e["kind"] != "site" else 1)
-    print(f"; references to {hx(va)}..{hx(end)} {ann.name_of(va) or ''}")
-    for target in sorted(t for t in code.refs if va <= t < end):
-        for site in code.refs[target]:
-            i = code.index(site)
-            fn = code.function_start(site)
-            where = ann.name_of(fn) if fn is not None else ""
-            print(f"{ann.line(code.ins[i])}   [in {where}]")
+    sites = sorted(s for t in code.refs if va <= t < end for s in code.refs[t])
+    groups: dict[int, list[int]] = defaultdict(list)
+    for site in sites:
+        groups[code.function_start(site) or 0].append(site)
+    print(f"; references to {hx(va)}..{hx(end)} {ann.name_of(va) or ''}: {len(sites)} site(s) "
+          f"in {len(groups)} function(s)")
+    shown = 0
+    if args.group:
+        for start in sorted(groups):
+            print(f"{hx(start)} {ann.name_of(start) or ''}: {', '.join(hx(s) for s in groups[start])}")
+            shown += 1
+            if shown >= args.limit:
+                print(f"; stopped at --limit {args.limit}")
+                break
+        return
+    for site in sites:
+        fn = code.function_start(site)
+        where = ann.name_of(fn) if fn is not None else ""
+        print(f"{ann.line(code.ins[code.index(site)])}   [in {where}]")
+        shown += 1
+        if shown >= args.limit:
+            print(f"; stopped at --limit {args.limit} (--group: one line per function)")
+            break
+
+
+def ranges(values: list[int]) -> str:
+    """Sorted integers as `1, 3-5, 9`."""
+    out, i = [], 0
+    while i < len(values):
+        j = i
+        while j + 1 < len(values) and values[j + 1] == values[j] + 1:
+            j += 1
+        out.append(str(values[i]) if i == j else f"{values[i]}-{values[j]}")
+        i = j + 1
+    return ", ".join(out)
+
+
+def cmd_switch(args) -> None:
+    img, code, names, ann = setup()
+    va = names.resolve(args.target)
+    if va in code.switches:
+        found = [va]
+    else:
+        found = [t for t, s in code.switches.items() if s["index"] and s["index"][0] == va]
+    if not found:
+        start = code.function_start(va)
+        if start is None:
+            die(f"{hx(va)} is neither a jump table nor in .text")
+        end = code.function_end(start)
+        found = sorted(t for t, s in code.switches.items() if start <= s["jmp"] < end)
+        if not found:
+            die(f"no switch in {ann.name_of(start)} ({hx(start)}..{hx(end)})")
+    for n, table in enumerate(found):
+        if n:
+            print()
+        s = code.switches[table]
+        fn = code.function_start(s["jmp"])
+        print(f"; switch at {hx(s['jmp'])} in {ann.name_of(fn)}: jump table {hx(table)} "
+              f"{ann.name_of(table) or ''} ({s['cases']} cases)")
+        base, source = s["base"], s["source"]
+        value = f"; value = {source}" if source else ""
+        if base is None:
+            print(f";   index = value - ? (no offset found: `fn {hx(s['jmp'])} --around 12`)")
+        else:
+            print(f";   index = value{f' - {base}' if base > 0 else f' + {-base}' if base else ''}{value}")
+        if s["default"] is not None:
+            print(f";   out of range: {hx(s['default'])} {ann.name_of(s['default']) or ''}")
+        by_case: dict[tuple[int, int], list[int]] = defaultdict(list)
+        if s["index"]:
+            btable, count = s["index"]
+            print(f";   index table {hx(btable)} {ann.name_of(btable) or ''}: {count} entries -> case")
+            for i, k in enumerate(img.read(btable, count) or b""):
+                by_case[(k, img.unpack("<I", table + 4 * k) or 0)].append(i + (base or 0))
+        else:
+            for k in range(s["cases"]):
+                by_case[(k, img.unpack("<I", table + 4 * k) or 0)].append(k + (base or 0))
+        label = "values" if base is not None else "indexes"
+        for (k, target), values in sorted(by_case.items()):
+            name = ann.name_of(target) or ""
+            print(f"case {k:3d} -> {hx(target)} {name:<36} {label} {ranges(values)}")
 
 
 def cmd_grep(args) -> None:
@@ -702,13 +870,22 @@ def cmd_check(args) -> None:
                 fixes[va] = size
         if kind in ("table", "global") and img.section_of(va) is None:
             problems.append(f"{hx(va)} {e['name']}: outside the image")
+        guess = names.h3api.get(va) or names.h3api_data.get(va)
+        if guess is not None and "h3api" not in e and "h3api" not in e["summary"].lower():
+            problems.append(f"{hx(va)} {e['name']}: H3API names it {guess['name']}; add "
+                            f"h3api = \"...\" if that agrees, else say in the summary that it does "
+                            f"not (as cargo xtask check-exe-map requires)")
     for va, size in sorted(fixes.items()):
         e = names.by_va[va]
         problems.append(f"{hx(va)} {e['name']}: size {e.get('size')} should be 0x{size:X}")
     if args.fix_sizes and fixes:
         fix_sizes(fixes)
         print(f"fixed {len(fixes)} size(s) in {MAP.relative_to(ROOT)}")
-    print("\n".join(problems) if problems else "check: the map agrees with the executable")
+        problems = [p for p in problems if " should be 0x" not in p]
+    if problems:
+        print("\n".join(problems))
+        sys.exit(1)
+    print("check: the map agrees with the executable")
 
 
 def fix_sizes(fixes: dict[int, int]) -> None:
@@ -757,11 +934,24 @@ def main() -> None:
         signal.signal(signal.SIGPIPE, signal.SIG_DFL)  # quiet when piped into `head`
     p = argparse.ArgumentParser(prog="scripts/exe.py", description=__doc__.split("\n\n")[0])
     sub = p.add_subparsers(dest="command", required=True)
-    for name, fn in (("fn", cmd_fn), ("callers", cmd_callers), ("callees", cmd_callees),
-                     ("refs", cmd_refs)):
+    s = sub.add_parser("fn")
+    s.add_argument("target")
+    s.add_argument("--around", type=int, metavar="N",
+                   help="N instructions before and after the target address")
+    s.add_argument("--from", dest="from_", metavar="ADDR")
+    s.add_argument("--to", metavar="ADDR")
+    s.add_argument("--all", action="store_true",
+                   help=f"print a function of more than {FN_LIMIT} instructions whole")
+    s.set_defaults(run=cmd_fn)
+    for name, fn in (("callers", cmd_callers), ("callees", cmd_callees), ("switch", cmd_switch)):
         s = sub.add_parser(name)
         s.add_argument("target")
         s.set_defaults(run=fn)
+    s = sub.add_parser("refs")
+    s.add_argument("target")
+    s.add_argument("--limit", type=int, default=200)
+    s.add_argument("--group", action="store_true", help="one line per referring function")
+    s.set_defaults(run=cmd_refs)
     s = sub.add_parser("grep")
     s.add_argument("regex")
     s.add_argument("--fn")
