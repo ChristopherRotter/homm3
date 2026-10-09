@@ -1391,8 +1391,10 @@ pub(crate) fn specialist_bonus(
 /// fire-immune striker; else `first × v %` rounded down (with quirk Q-0005 in the
 /// original's single precision), then the shield's spell damage with the bonuses of the struck
 /// stack's hero as the caster's and the striker's reductions and protection
-/// ([`spell_damage`]; `installation.md` §7.11). No immunity or resistance applies.
-// rule: BAT-MAG-018
+/// ([`spell_damage`]; `installation.md` §7.11). No immunity or resistance applies. Without the
+/// spell, or with a smaller value, a creature's own shield reflects alike (the Efreet Sultan's
+/// 20 %, BAT-MAG-058; the original's 0x443130 and 0x422440).
+// rule: BAT-MAG-018, BAT-MAG-058
 pub(crate) fn reflection(
     state: &BattleState,
     ruleset: &Ruleset,
@@ -1403,12 +1405,18 @@ pub(crate) fn reflection(
     let fire_immune = ruleset
         .creature(striker.creature)
         .is_some_and(|c| c.flags.contains(CreatureFlag::FireImmune));
-    let found = state.effects.of(target).iter().find_map(|e| {
+    let active = state.effects.of(target).iter().find_map(|e| {
         ruleset
             .spell(e.spell)
             .filter(|spell| spell.magic.effects.contains(&shield))
             .map(|spell| (e.spell, spell, e.value))
     });
+    let innate = innate(ruleset, state.at(target).creature, TimedChange::FireShield)
+        .map(|(id, spell, value)| (id, spell, u16::from(value)));
+    let found = match (active, innate) {
+        (Some(a), Some(i)) => Some(if i.2 > a.2 { i } else { a }),
+        (a, i) => a.or(i),
+    };
     let Some((id, spell, percent)) = found.filter(|_| !fire_immune) else {
         return 0;
     };
@@ -1683,21 +1691,46 @@ fn next_in_chain(
     best.map(|(_, s)| s)
 }
 
+/// The innate spell of `creature` with the timed change `change` (ability `innate_spell`): the
+/// spell and its value, the first such ability's (BAT-MAG-057, BAT-MAG-058).
+pub(crate) fn innate(
+    ruleset: &Ruleset,
+    creature: CreatureTypeId,
+    change: TimedChange,
+) -> Option<(SpellId, &Spell, u8)> {
+    ruleset.abilities(creature).iter().find_map(|a| match *a {
+        Ability::InnateSpell { spell, value } => ruleset
+            .spell(spell)
+            .filter(|s| s.magic.effects.contains(&SpellEffect::Timed(change)))
+            .map(|s| (spell, s, value)),
+        _ => None,
+    })
+}
+
+/// Magic Mirror's chance on `stack`, percent: the spell's while it is active (BAT-MAG-022), at
+/// least an innate mirror's (the Faerie Dragon's 20 %, BAT-MAG-057; the original's 0x4487F0).
+// rule: BAT-MAG-057
+pub(crate) fn mirror_chance(ruleset: &Ruleset, stack: &Stack) -> u8 {
+    let innate = innate(ruleset, stack.creature, TimedChange::MagicMirror).map_or(0, |i| i.2);
+    stack.spells.mirror.max(innate)
+}
+
 /// Where `cast`, aimed at stack `s`, goes (BAT-MAG-022): with Magic Mirror active on an enemy
-/// stack, a draw below its chance sends the spell to a living stack of the caster's side drawn
-/// with equal chances, and a `SpellRedirected` event reports it; otherwise it stays (`None`). A
-/// spell that ignores immunity (Dispel) is never sent away. A creature's cast is sent away alike
-/// (BAT-MAG-049). (The original draws its chance for every cast at an enemy stack and leaves out
-/// arrow towers, E04c; `installation.md` §7.13.)
+/// stack, or its creature's own (BAT-MAG-057), a draw below its chance sends the spell to a
+/// living stack of the caster's side drawn with equal chances, and a `SpellRedirected` event
+/// reports it; otherwise it stays (`None`). A spell that ignores immunity (Dispel) is never sent
+/// away. A creature's cast is sent away alike (BAT-MAG-049). (The original draws its chance for
+/// every cast at an enemy stack and leaves out arrow towers, E04c; `installation.md` §7.13.)
 // rule: BAT-MAG-022
 fn mirror<S: Sink>(
     state: &mut BattleState,
+    ruleset: &Ruleset,
     cast: &Cast<'_>,
     s: StackId,
     sink: &mut S,
 ) -> Option<StackId> {
     let stack = state.at(s);
-    let chance = u32::from(stack.spells.mirror);
+    let chance = u32::from(mirror_chance(ruleset, stack));
     if stack.side == cast.side
         || chance == 0
         || cast.spell.magic.ignores_immunity
@@ -1864,7 +1897,7 @@ fn reach_stacks<S: Sink>(
     let spell = (cast.id, cast.spell);
     let (target, mirrored) = match cast.target {
         CastTarget::Stack(s) => {
-            let to = mirror(state, cast, s, sink);
+            let to = mirror(state, ruleset, cast, s, sink);
             (CastTarget::Stack(to.unwrap_or(s)), to.is_some())
         }
         other => (other, false),

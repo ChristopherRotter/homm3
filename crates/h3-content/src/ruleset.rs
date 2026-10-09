@@ -19,7 +19,7 @@ use crate::heroes::{
 use crate::key::{ContentKey, is_valid_part};
 use crate::pack::{BattleParamsDef, ContentPack, CreaturePatch};
 use crate::quirks::{QuirkRegistry, Quirks, REGISTRY};
-use crate::spell::{SpellEffect, SpellTarget};
+use crate::spell::{SpellEffect, SpellTarget, TimedChange};
 
 /// Engine limit for army slots per side (the original uses 7, a ruleset parameter). The battle
 /// context sizes its fixed-capacity state from this.
@@ -34,7 +34,7 @@ pub const MAX_SIDE_STACKS: usize = 21;
 pub const MAX_FIELD_HEXES: usize = 255;
 
 /// Version of the ruleset hash encoding. Bump when the encoding below changes.
-pub const RULESET_HASH_VERSION: u32 = 36;
+pub const RULESET_HASH_VERSION: u32 = 37;
 
 /// A compiled creature type.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -1117,7 +1117,8 @@ fn validate_creature(
 /// has damage, timed, dispel or heal effects only and takes a target stack at the caster's
 /// mastery in every profile, without a health limit (the original's casters cast none; a health
 /// limit reads the hero, BAT-MAG-048); a random caster's drawn spell likewise, aimed at a stack
-/// or a hex and placing no obstacle (BAT-MAG-049).
+/// or a hex and placing no obstacle (BAT-MAG-049); an innate spell has a Fire Shield or Magic
+/// Mirror change (BAT-MAG-057, BAT-MAG-058).
 fn validate_strike_spells(
     key: &ContentKey,
     abils: &[CompiledAbility],
@@ -1171,6 +1172,16 @@ fn validate_strike_spells(
                 .get(id.index())
                 .is_none_or(|s| !s.magic.raises())
                 .then_some("stack_raiser needs a spell with a raise effect"),
+            // The rules read an innate Fire Shield or Magic Mirror only (BAT-MAG-057, BAT-MAG-058).
+            Ability::InnateSpell { spell: id, .. } => (!spell(id).iter().any(|e| {
+                matches!(
+                    e.timed(),
+                    Some(TimedChange::FireShield | TimedChange::MagicMirror)
+                )
+            }))
+            .then_some(
+                "innate_spell needs a spell with a timed fire_shield or magic_mirror change",
+            ),
             Ability::DrawnSpell { spell: id, .. } => {
                 // A drawn spell needs its caster (`ability::list_error`): the targets it takes at
                 // its caster's mastery, a random caster's a stack or a hex, a helpful caster's a

@@ -403,6 +403,18 @@ enum AbilityDto {
     ManaDrain {
         amount: u8,
     },
+    InnateSpell {
+        spell: String,
+        value: u8,
+    },
+    DamagePenalty {
+        creature: String,
+        percent: u8,
+    },
+    DamagePenaltyByFlag {
+        flag: String,
+        percent: u8,
+    },
 }
 
 #[derive(Deserialize)]
@@ -420,7 +432,7 @@ enum AreaShotDto {
 }
 
 impl AbilityDto {
-    fn into_def(self, pack: &str) -> Result<AbilityDef, KeyError> {
+    fn into_def(self, pack: &str) -> Result<AbilityDef, PackError> {
         let aura = |a: AuraDto| match a {
             AuraDto::Allies => AuraTarget::Allies,
             AuraDto::Enemies => AuraTarget::Enemies,
@@ -561,11 +573,23 @@ impl AbilityDto {
             },
             Self::ManaChannel { percent } => AbilityDef::ManaChannel { percent },
             Self::ManaDrain { amount } => AbilityDef::ManaDrain { amount },
+            Self::InnateSpell { spell, value } => AbilityDef::InnateSpell {
+                spell: reference(pack, &spell)?,
+                value,
+            },
+            Self::DamagePenalty { creature, percent } => AbilityDef::DamagePenalty {
+                target: reference(pack, &creature)?,
+                percent,
+            },
+            Self::DamagePenaltyByFlag { flag, percent } => AbilityDef::DamagePenaltyByFlag {
+                flag: CreatureFlag::from_name(&flag).ok_or(CompileError::UnknownFlag(flag))?,
+                percent,
+            },
         })
     }
 }
 
-fn abilities(pack: &str, list: Vec<AbilityDto>) -> Result<Vec<AbilityDef>, KeyError> {
+fn abilities(pack: &str, list: Vec<AbilityDto>) -> Result<Vec<AbilityDef>, PackError> {
     list.into_iter().map(|a| a.into_def(pack)).collect()
 }
 
@@ -3781,6 +3805,28 @@ mod tests {
              abilities = [{{ kind = \"hate\", creature = \"A:b\", percent = 1 }}]\n"
         );
         assert!(matches!(parse_pack(&bad_override), Err(PackError::Key(_))));
+        // A damage penalty names a known flag (BAT-DMG-010); an innate spell's reference follows
+        // the rules (BAT-MAG-057, BAT-MAG-058).
+        let with = |abilities: &str| {
+            let text = SYNTHETIC_PACK.replace(
+                "flags = [\"alive\"]\n",
+                &std::format!("flags = [\"alive\"]\nabilities = [{abilities}]\n"),
+            );
+            assert_ne!(text, SYNTHETIC_PACK);
+            parse_pack(&text)
+        };
+        assert!(matches!(
+            with("{ kind = \"damage_penalty_by_flag\", flag = \"slimy\", percent = 50 }"),
+            Err(PackError::Compile(CompileError::UnknownFlag(f))) if f == "slimy"
+        ));
+        assert!(matches!(
+            with("{ kind = \"innate_spell\", spell = \"A:b\", value = 20 }"),
+            Err(PackError::Key(_))
+        ));
+        assert!(matches!(
+            with("{ kind = \"damage_penalty\", creature = \"A:b\", percent = 50 }"),
+            Err(PackError::Key(_))
+        ));
     }
 
     // covers: HER-BAT-011, HER-BAT-012

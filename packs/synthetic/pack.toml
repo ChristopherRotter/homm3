@@ -256,11 +256,14 @@ flags = ["alive", "two_hex", "flying"]
 # Format v23: at each activation while it has casts left it draws Spark, Cinders or Arc by weight
 # and may cast it at Advanced with power 2 per creature, at any stack but itself the spell can
 # affect (a Faerie Dragon's random spell, BAT-MAG-049).
+# Format v28: its own Magic Mirror (Glass) of 20 % while the spell is not on it with more (a
+# Faerie Dragon's mirror, BAT-MAG-057).
 abilities = [
     { kind = "random_spell_caster", mastery = 2, power_per_creature = 2 },
     { kind = "drawn_spell", spell = "spark", weight = 5 },
     { kind = "drawn_spell", spell = "cinders", weight = 3 },
     { kind = "drawn_spell", spell = "arc", weight = 2 },
+    { kind = "innate_spell", spell = "glass", value = 20 },
 ]
 
 [[creature]]
@@ -283,8 +286,10 @@ flags = ["alive", "flying"]
 # Format v24: casts at another own stack a spell drawn at the cast among those useful for it, at
 # Advanced with power 6, three times a battle (a Master Genie's draw, BAT-MAG-050).
 # Format v27: in an army, the enemy hero's spells cost 2 more (the Pegasi, BAT-MAG-054).
+# Format v28: half damage to two-hex creatures (a Psychic Elemental's half by flag, BAT-DMG-010).
 abilities = [
     { kind = "spell_cost", amount = 2, affects = "enemies" },
+    { kind = "damage_penalty_by_flag", flag = "two_hex", percent = 50 },
     { kind = "helpful_spell_caster", mastery = 2, power = 6 },
     { kind = "drawn_spell", spell = "hasten", weight = 1 },
     { kind = "drawn_spell", spell = "fury", weight = 1 },
@@ -338,9 +343,12 @@ flags = ["alive"]           # living, so its corpse can raise Spearmen too
 # BAT-MAG-052).
 # Format v27: at its activations of a round's normal phase, the enemy hero loses 2 mana (a
 # Wraith's drain, BAT-MAG-056).
+# Format v28: its own Fire Shield (Blaze) of 20 % while the spell is not on it with more (an
+# Efreet Sultan's shield, BAT-MAG-058).
 abilities = [
     { kind = "corpse_raiser", creature = "spearman", hit_points_per_creature = 50 },
     { kind = "mana_drain", amount = 2 },
+    { kind = "innate_spell", spell = "blaze", value = 20 },
 ]
 
 [[creature]]
@@ -364,8 +372,10 @@ flags = ["alive", "shooter"]
 # Format v26: no action; at its activation, once in three round starts of its side, casts at
 # Expert with power 3 a spell drawn by weight among those useful on its side's first stack (on the
 # enemy's first one for Drag and Gloom): an Enchanter's cast, BAT-MAG-053.
+# Format v28: half damage to Djinns (a Magic Elemental's half, BAT-DMG-010).
 abilities = [
     { kind = "periodic_spell_caster", rounds = 3, mastery = 3, power = 3 },
+    { kind = "damage_penalty", creature = "djinn", percent = 50 },
     { kind = "drawn_spell", spell = "hasten", weight = 15 },
     { kind = "drawn_spell", spell = "aegis", weight = 10 },
     { kind = "drawn_spell", spell = "drag", weight = 10 },

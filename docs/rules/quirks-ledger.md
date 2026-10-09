@@ -286,7 +286,7 @@ Classes: `exploit-fix` (always fixed, never toggleable) · `preserve` (accepted,
 - Context / rules affected: battle, BAT-MAG-049 (with BAT-MAG-022)
 - Original behavior: a Faerie Dragon's cast enters through the same routine as a hero's (0x59EC50, action 10), which decides Magic Mirror's redirect to a random living stack of the caster's side (`docs/formats/installation.md` §7.13, §7.21); the cast routine 0x59FE30 then skips the immunity, Anti-Magic and resistance test of caster kind 1 (0x5A02CB) for the redirected stack too, and the damage handlers do not test immunity: the dragon's own Black Dragons, Gold Dragons, Earth Elementals or Anti-Magic stacks take its mirrored Magic Arrow, Ice Bolt, Lightning Bolt or Chain Lightning, and resistance never helps. A hero's mirrored spell is tested and rolls (BAT-MAG-022).
 - Intended/expected behavior: the redirected stack is tested and rolls as the new target of a hero's cast (strict-fixed).
-- Impact: gameplay-altering (small: an enemy Magic Mirror, or the Faerie Dragons' own 20 % mirror once T7c brings it, against a Faerie Dragon's single-target spells)
+- Impact: gameplay-altering (small: an enemy Magic Mirror, or the Faerie Dragons' own 20 % mirror since T7c2a (BAT-MAG-057), against a Faerie Dragon's single-target spells)
 - Community status: unknown (no report found; not searched)
 - Sources: original-data, `docs/formats/installation.md` §7.21 ("The Faerie Dragon, re-read for T7b2a")
 - Flag: `quirk.battle.creature_mirror_untested` (E04b T7b2a)

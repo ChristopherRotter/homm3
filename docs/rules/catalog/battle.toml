@@ -682,7 +682,7 @@ id       = "BAT-DMG-002"
 title    = "Attack/defense modifier and final rounding"
 context  = "battle"
 status   = "verified"
-summary  = "Damage from base damage b (BAT-DMG-001). Attack A against defense D: if A > D, a bonus of min(0.05 * (A - D), 3.00) (+300 % cap at 60 points, user decision Q11); if D > A, the factor max(1 - 0.025 * (D - A), 0.30) (-70 % cap at 28 points). Other bonuses: jousting, luck, hate, the hero's Offense or Archery, death blow, the Ballista's double damage; other factors: the range and melee penalties (BAT-RNG-002/003), a blind stack's retaliation share (BAT-MAG-024), Shield and Air Shield (BAT-MAG-012), the target's hero's Armorer (BAT-HER-004). Rates and caps are ruleset parameters. With quirk Q-0005 (faithful) the executable's three stages, each truncated (docs/formats/installation.md §7.10), in its x87 arithmetic (h3_kernel::arith::X87, 53 bits): (1) the bonuses as an integer, each fractional one truncated as it is added in the code's order: jousting trunc(b * hexes * 0.05), luck + b, the attack bonus trunc(b * r + B) with r = min(0.05 * (A - D), 3.0) as a double, hate + b * percent / 100 (integer), Offense or Archery trunc(rate * b + B) with the single-precision rate, death blow + b, double damage + b; (2) times the defense factor (a double), the penalties and a blind stack's retaliation share (its stored single-precision factor), truncated; (3) times Shield's or Air Shield's single-precision factor and 1 - Armorer (single precision), truncated, at least 1. The code's 0.05 and 0.025 are doubles slightly above the decimals; only skill rates and the spells' stored factors are single precision (user decision Q50, 2026-10-06). Without the quirk (strict-fixed): exact decimal rates, base * (1 + sum of bonuses) * product of (1 - reduction), computed exactly in integers (h3_kernel::arith::WideUint) and rounded down once, at least 1."
+summary  = "Damage from base damage b (BAT-DMG-001). Attack A against defense D: if A > D, a bonus of min(0.05 * (A - D), 3.00) (+300 % cap at 60 points, user decision Q11); if D > A, the factor max(1 - 0.025 * (D - A), 0.30) (-70 % cap at 28 points). Other bonuses: jousting, luck, hate, the hero's Offense or Archery, death blow, the Ballista's double damage; other factors: the range and melee penalties (BAT-RNG-002/003), the elementals' half (BAT-DMG-010), a blind stack's retaliation share (BAT-MAG-024), Shield and Air Shield (BAT-MAG-012), the target's hero's Armorer (BAT-HER-004). Rates and caps are ruleset parameters. With quirk Q-0005 (faithful) the executable's three stages, each truncated (docs/formats/installation.md §7.10), in its x87 arithmetic (h3_kernel::arith::X87, 53 bits): (1) the bonuses as an integer, each fractional one truncated as it is added in the code's order: jousting trunc(b * hexes * 0.05), luck + b, the attack bonus trunc(b * r + B) with r = min(0.05 * (A - D), 3.0) as a double, hate + b * percent / 100 (integer), Offense or Archery trunc(rate * b + B) with the single-precision rate, death blow + b, double damage + b; (2) times the defense factor (a double), the elementals' half (BAT-DMG-010), the penalties and a blind stack's retaliation share (its stored single-precision factor), truncated; (3) times Shield's or Air Shield's single-precision factor and 1 - Armorer (single precision), truncated, at least 1. The code's 0.05 and 0.025 are doubles slightly above the decimals; only skill rates and the spells' stored factors are single precision (user decision Q50, 2026-10-06). Without the quirk (strict-fixed): exact decimal rates, base * (1 + sum of bonuses) * product of (1 - reduction), computed exactly in integers (h3_kernel::arith::WideUint) and rounded down once, at least 1."
 quirks   = ["Q-0005"]
 numeric  = "integer"
 
@@ -903,6 +903,27 @@ numeric  = "integer"
   url        = "https://github.com/vcmi/vcmi/blob/1.7.5/server/battles/BattleActionProcessor.cpp"
   retrieved  = "2026-10-01"
   confidence = "high"
+
+[[rule]]
+id       = "BAT-DMG-010"
+title    = "The Psychic and Magic Elementals' half damage"
+context  = "battle"
+status   = "implemented"
+summary  = "A striker whose creature has damage_penalty against the target's creature, or damage_penalty_by_flag for a flag the target's creature has, deals percent % less damage with every strike (attack, retaliation, shot): a reduction in BAT-DMG-002's product, with quirk Q-0005 in the original's stage 2 right after the defense factor (a double; 0.5 is exact), before the range and melee penalties; when several apply, the largest. The Psychic Elemental: half against creatures with flag mind_immune (Psychic Elementals among them); the Magic Elemental: half against Magic Elementals and Black Dragons (data: crates/h3-harvest/data/gapfill.toml). Only the striker's penalty counts: the targets strike back in full."
+numeric  = "integer"
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (docs/formats/installation.md §7.21, the creature defences re-read for T7c2a): the damage's stage 2 (0x443B90, this = the striker, the argument the target) multiplies the defense factor by 0.5 (a double) when the striker is creature 120 and the target stack has flag 0x400 (0x443C0B), and when the striker is creature 121 and the target is creature 121 or 83 (0x443C2D), before the wall, distance and melee penalties"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "vcmi"
+  ref        = "VCMI 1.7.5 config/creatures/conflux.json (psychicElemental, magicElemental): no such halves (attacks all adjacent, mind immunity, no retaliation only)"
+  url        = "https://github.com/vcmi/vcmi/blob/1.7.5/config/creatures/conflux.json"
+  retrieved  = "2026-10-09"
+  confidence = "medium"
+  note       = "VCMI leaves the halves out; the executable's code is the source."
 
 [[rule]]
 id       = "BAT-RET-001"
@@ -2255,7 +2276,7 @@ id       = "BAT-MAG-018"
 title    = "Fire Shield"
 context  = "battle"
 status   = "verified"
-summary  = "While Fire Shield is active on a stack (v = 20, 20, 25, 30 %), every melee strike on it (an attack, a retaliation or a second strike; never a shot) reflects damage onto the striker unless the striker is fire-immune (creature flag fire_immune): x = with quirk Q-0010 (faithful), as the original, the strike's first damage stage (BAT-DMG-002: the base with its bonuses, before the target's defense, the penalties, Shield and Armorer), capped at the target's hit points before the strike (a clone's: 1, in either profile; the original's 0x422440, E04b T6b); without it (strict-fixed) the hit points the strike took (the spell's text: a share of the damage dealt; VCMI); r = x × v % rounded down (single precision under quirk Q-0005); then r is the shield spell's damage (BAT-MAG-004) with the bonuses of the struck stack's hero as the caster's (Sorcery, the Orb of Fire, a specialty) and the striker's reductions and fire protection (BAT-MAG-013); no immunity or magic resistance applies. Only the attacked stack reflects: a breath's second stack never does, in every profile (the user, 2026-10-07: considered as a quirk and kept as the rule, no flag); a multi-headed striker (attacks all adjacent, three-headed) takes back the sum of every stack it struck. The damage comes after the attack's life drain and death stare and before the retaliation (Reflected); the striker may die of it. A timed own-stack spell without a mass version. Not yet: the Efreet Sultans' own 20 % shield (E04b T7), a hypnotized stack's controller as the caster (E04b T4)."
+summary  = "While Fire Shield is active on a stack (v = 20, 20, 25, 30 %), every melee strike on it (an attack, a retaliation or a second strike; never a shot) reflects damage onto the striker unless the striker is fire-immune (creature flag fire_immune): x = with quirk Q-0010 (faithful), as the original, the strike's first damage stage (BAT-DMG-002: the base with its bonuses, before the target's defense, the penalties, Shield and Armorer), capped at the target's hit points before the strike (a clone's: 1, in either profile; the original's 0x422440, E04b T6b); without it (strict-fixed) the hit points the strike took (the spell's text: a share of the damage dealt; VCMI); r = x × v % rounded down (single precision under quirk Q-0005); then r is the shield spell's damage (BAT-MAG-004) with the bonuses of the struck stack's hero as the caster's (Sorcery, the Orb of Fire, a specialty) and the striker's reductions and fire protection (BAT-MAG-013); no immunity or magic resistance applies. Only the attacked stack reflects: a breath's second stack never does, in every profile (the user, 2026-10-07: considered as a quirk and kept as the rule, no flag); a multi-headed striker (attacks all adjacent, three-headed) takes back the sum of every stack it struck. The damage comes after the attack's life drain and death stare and before the retaliation (Reflected); the striker may die of it. A timed own-stack spell without a mass version. A creature's own shield reflects alike (the Efreet Sultans' 20 %, BAT-MAG-058); a hypnotized stack's controller's hero counts as the caster (E04b T4)."
 numeric  = "integer"
 
   [[rule.source]]
@@ -2342,7 +2363,7 @@ id       = "BAT-MAG-022"
 title    = "Magic Mirror"
 context  = "battle"
 status   = "implemented"
-summary  = "Magic Mirror on an own stack (v = 20, 20, 30, 40 %): a spell aimed at the stack by the other side's hero or by its random caster (BAT-MAG-049; a stack spell, not a mass version, an area or a battle-wide spell; Dispel and any spell that ignores immunity never) goes, if a draw from 0 to 99 is below v, to a living stack of the caster's side drawn with equal chances (war machines included; SpellRedirected). That stack then takes the spell as if it had been aimed at it, whatever the spell's polarity: if the spell cannot affect it (its conditions, immunities, Anti-Magic) it resists, else it rolls for magic resistance with its own side's hero and aura (BAT-MAG-008); the stack first aimed at never rolls. A creature's spell sent away is tested alike, but not at all with quirk BAT-QUIRK-9 (BAT-MAG-049). The value and the caster's bonuses are unchanged; Chain Lightning jumps on from the new stack. A timed own-stack spell without a mass version. Not yet: the Faerie Dragons' own 20 % (E04b T7), arrow towers left out of the draw (E04c). A mirrored stack cannot be hypnotized (BAT-MAG-026). The original's computer player's spells are never redirected (its AI enters casts without the redirect, installation.md §7.13); every cast here is a player's command and follows the player's path."
+summary  = "Magic Mirror on an own stack (v = 20, 20, 30, 40 %): a spell aimed at the stack by the other side's hero or by its random caster (BAT-MAG-049; a stack spell, not a mass version, an area or a battle-wide spell; Dispel and any spell that ignores immunity never) goes, if a draw from 0 to 99 is below v, to a living stack of the caster's side drawn with equal chances (war machines included; SpellRedirected). That stack then takes the spell as if it had been aimed at it, whatever the spell's polarity: if the spell cannot affect it (its conditions, immunities, Anti-Magic) it resists, else it rolls for magic resistance with its own side's hero and aura (BAT-MAG-008); the stack first aimed at never rolls. A creature's spell sent away is tested alike, but not at all with quirk BAT-QUIRK-9 (BAT-MAG-049). The value and the caster's bonuses are unchanged; Chain Lightning jumps on from the new stack. A timed own-stack spell without a mass version. A creature's own mirror sends spells away alike (the Faerie Dragons' 20 %, BAT-MAG-057). Not yet: arrow towers left out of the draw (E04c). A stack with the spell cannot be hypnotized (BAT-MAG-026). The original's computer player's spells are never redirected (its AI enters casts without the redirect, installation.md §7.13); every cast here is a player's command and follows the player's path."
 numeric  = "integer"
 
   [[rule.source]]
@@ -3083,5 +3104,45 @@ numeric  = "integer"
   kind       = "vcmi"
   ref        = "VCMI 1.7.5 config/creatures/necropolis.json (wraith: MANA_DRAIN 2) and server/battles/BattleFlowProcessor.cpp (at the unit's turn start, once per round: the opposing hero loses the value, at most its mana; the original drains again at a good-morale turn of the normal phase)"
   url        = "https://github.com/vcmi/vcmi/blob/1.7.5/config/creatures/necropolis.json"
+  retrieved  = "2026-10-09"
+  confidence = "medium"
+
+[[rule]]
+id       = "BAT-MAG-057"
+title    = "The Faerie Dragons' Magic Mirror"
+context  = "battle"
+status   = "implemented"
+summary  = "A stack whose creature has innate_spell with a spell that has a timed magic_mirror change has Magic Mirror's chance at its value whenever the spell is not active on it with a larger value (the chance is the larger of the two): the Faerie Dragons' 20 %. A hero's or a creature's single-target spell aimed at it by the other side is sent away as by the spell (BAT-MAG-022; a creature's spell sent away untested with quirk BAT-QUIRK-9, BAT-MAG-049). It is not the spell: the stack's spell value stays, Dispel cannot end it, and Hypnotize, which refuses a stack with the spell (BAT-MAG-026), still takes it. Every pack value of Magic Mirror is at least 20, so the larger of the two is the original's choice too."
+numeric  = "integer"
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (docs/formats/installation.md §7.21, the creature defences re-read for T7c2a): Magic Mirror's chance 0x4487F0 returns the spell's stored value (+0x4E4) while its duration (+0x228) is above 0, else 0, and for creature 134 the larger of that and spell 36's table value at no mastery (20); only the cast's entry 0x59EC50 and the AI's evaluation 0x43A670 ask it; Hypnotize's refusal (0x5A8090, case 60, 0x5A83A6) reads the spell's duration"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "vcmi"
+  ref        = "VCMI 1.7.5 config/creatures/neutral.json (fairieDragon: MAGIC_MIRROR 20)"
+  url        = "https://github.com/vcmi/vcmi/blob/1.7.5/config/creatures/neutral.json"
+  retrieved  = "2026-10-09"
+  confidence = "medium"
+
+[[rule]]
+id       = "BAT-MAG-058"
+title    = "The Efreet Sultans' Fire Shield"
+context  = "battle"
+status   = "implemented"
+summary  = "A stack whose creature has innate_spell with a spell that has a timed fire_shield change reflects melee strikes as Fire Shield does (BAT-MAG-018) with its value whenever the spell is not active on it with a larger value (the larger of the two, with that spell's damage bonuses): the Efreet Sultans' 20 %. Shots and fire-immune strikers are not burnt; the reflection is the spell's damage with the bonuses of the Sultans' hero (Sorcery, the Orb of Fire, a Fire Shield specialty), so a hero raises a Sultan's own shield too. It is not the spell: Dispel cannot end it. Every pack value of Fire Shield is at least 20, so the larger of the two is the original's choice too (the spell's value while active)."
+numeric  = "integer"
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (docs/formats/installation.md §7.21, the creature defences re-read for T7c2a): Fire Shield's factor 0x443130 returns the spell's stored f32 (+0x4A0) while its duration (+0x20C) is not 0, else 0.2 (f32) for creature 53, else 0; the reflection 0x422440 tests the duration or creature 53 (0x42244C) and passes the reflected damage through 0x5A78E0 for spell 29 with the Sultan's controlling hero as the caster (§7.11)"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "vcmi"
+  ref        = "VCMI 1.7.5 config/creatures/inferno.json (efreetSultan: FIRE_SHIELD 20)"
+  url        = "https://github.com/vcmi/vcmi/blob/1.7.5/config/creatures/inferno.json"
   retrieved  = "2026-10-09"
   confidence = "medium"

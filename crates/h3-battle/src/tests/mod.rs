@@ -7,6 +7,7 @@ mod casters;
 mod commands;
 mod control;
 mod created;
+mod creature_defences;
 mod defences;
 mod dispel;
 mod enchanters;

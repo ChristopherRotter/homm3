@@ -1469,3 +1469,35 @@ good-morale turn of the normal phase and, berserk, before its automatic action, 
 acts after waiting nor at any later activation of that round; a blind, petrified or paralysed
 Wraith, or one bad morale stops, is not activated (0x465222, 0x465283). A hypnotized Wraith drains
 its owner's hero.
+
+**The creature defences, re-read for T7c2a** (BAT-MAG-057, BAT-MAG-058, BAT-DMG-010, BAT-Q16,
+2026-10-09). *The Faerie Dragon's mirror* (0x4487F0, Magic Mirror's chance): the spell's stored
+`v` (+0x4E4) while its duration (+0x228) is above 0, else 0; for creature 134 the larger of that
+and spell 36's table value at no mastery (spell table +0x1354: 20). Only the cast's entry
+(0x59EC50, §7.13) and the AI's spell evaluation (0x43A670) ask it; Hypnotize's refusal (0x5A8090,
+case 60, 0x5A83A6) reads the spell's duration, so a Faerie Dragon can be hypnotized. The dragon's
+own mirror thus sends a hero's or a creature's single-target cast at it to a random living stack
+of the caster's side as the spell does (a creature's cast untested, BAT-QUIRK-9). *The Efreet
+Sultan's shield* (0x443130, Fire Shield's factor): the stored `f32` (+0x4A0) while the spell's
+duration (+0x20C) is not 0, else 0.2 (an `f32`) for creature 53, else 0. The reflection 0x422440
+tests the same (the duration, else creature 53, 0x42244C) and runs as for the spell (§7.11): melee
+only, no fire-immune striker, `trunc(f32(min(stage 1, hit points)) × factor)`, then spell 29's
+damage modifiers with the Sultan's controlling hero as the caster, so that hero's Orb of Fire,
+Sorcery or Fire Shield specialty raise the Sultan's own shield too. No pack value of the spell is
+below 20 % (20, 20, 25, 30), so "the spell's value while active" and "the larger of the two" never
+differ. *The elementals' factors* (stage 2, 0x443B90; `this` the striker, the argument the
+target): right after the defense factor, × 0.5 (a double, exact) when the striker is creature 120
+(Psychic Elemental) and the target stack has flag `0x400` (mind immunity, 0x443C0B), and × 0.5
+when the striker is creature 121 (Magic Elemental) and the target is creature 121 or 83 (Black
+Dragon, 0x443C2D); then the wall, distance and melee penalties (§7.10). One striker meets at most
+one of the two.
+
+**The Phoenix's rebirth, a first look** (for T7c2b, BAT-Q16, 2026-10-09). 0x469440 runs after a
+strike action (0x445A60, called by the attack 0x478900 and the dispatcher), after the cast
+routine's damage paths (six sites), the area and mass handlers, Land Mine, Fire Wall and the moat.
+For every record of creature 131 of both sides with the dead bit `0x200000`, casts left (+0xDC)
+above 0 and not a clone (`0x800000`): one cast less, count (+0x4C) and lost hit points (+0x58)
+set to 0, `n = start (+0x60) div 5` plus one for each of `start mod 5` draws with `rand() mod 5 =
+0` (the C library's), and if `n > 0` the acted bit `0x4000000`, then the raise 0x5A7560 with `n ×
+health (+0xC0)` hit points (its last argument 0). Not read yet: 0x445A60, the raise's last
+argument, what the outcome counts.

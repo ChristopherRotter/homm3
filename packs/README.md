@@ -158,6 +158,9 @@ errors:
 | `spell_cost` | `amount` (−128..=127, not 0), `affects` (`allies` or `enemies`) | since v27: while its creature is in a side's army, alive or not (a stack created in the battle never counts), the hero of the side `affects` names pays `amount` more mana for each spell (at least 1; a spell costing 0 stays 0): a hero's cost changes by the largest increase and the largest reduction among such abilities, once each (the Pegasi +2 for the enemy hero, the Mages −2 for their own; BAT-MAG-054) |
 | `mana_channel` | `percent` (1..=100) | since v27: after a hero's cast against its controller's side, while its stack lives, the hero of that side gains `percent` % of the cast's cost, rounded down, once per cast (the largest percent among that side's stacks; no cap at the maximum): the Familiars' 20 % (BAT-MAG-055) |
 | `mana_drain` | `amount` (≥ 1) | since v27: at each activation of its stack in a round's normal phase (not once the waited stacks act), the hero of the side opposite its controller loses `amount` mana, at least 0: the Wraith's 2 (BAT-MAG-056) |
+| `innate_spell` | `spell` (a spell with a timed `fire_shield` or `magic_mirror` change), `value` (1..=100) | since v28: its stack counts as having the spell's effect at `value` whenever the spell is not active on it with a larger value (the spell itself is not on it: Dispel cannot end it, and Hypnotize's refusal of a mirrored stack does not see it): the Efreet Sultan's 20 % Fire Shield (BAT-MAG-058), the Faerie Dragon's 20 % Magic Mirror (BAT-MAG-057). Several for different spells; the rules read only these two changes |
+| `damage_penalty` | `creature`, `percent` (1..=100) | since v28: its strikes deal `percent` % less damage to `creature` (the original's damage stage 2, beside the defense factor; the largest penalty that applies): the Magic Elemental's half against Magic Elementals and Black Dragons (BAT-DMG-010). Several for different creatures |
+| `damage_penalty_by_flag` | `flag` (a creature flag), `percent` (1..=100) | since v28: as `damage_penalty`, against creatures with flag `flag`: the Psychic Elemental's half against mind-immune creatures (BAT-DMG-010). Several for different flags |
 
 `creature` references follow the reference rules above (own pack, or `pack:name` in the
 dependency closure) and may name creatures defined later in the same pack. At most one entry of
@@ -172,7 +175,7 @@ override, replacing the list) names the creature types it upgrades into: at most
 none twice; references follow the reference rules and may name later creatures of the pack.
 Hero effects that select "a creature" apply to it and its direct upgrades.
 
-## Hero content (format v3, E04a T3; battle magic format v4, E04b T2a; v5 T3a; v6 T3b1; v7 T3b1b; v8 T3b2; v9 T3c; v10 T4a; v11 T4b; v12 T4c; v13 T5a; v14 T5c1; v15 T5c2; v16 T5b; v17 T6a; v18 T6b; v19 T7a1; v20 T7a2; v21 T7a3; v22 T7b1; v23 T7b2a; v24 T7b2b; v25 T7b3; v26 T7b4; v27 T7c1)
+## Hero content (format v3, E04a T3; battle magic format v4, E04b T2a; v5 T3a; v6 T3b1; v7 T3b1b; v8 T3b2; v9 T3c; v10 T4a; v11 T4b; v12 T4c; v13 T5a; v14 T5c1; v15 T5c2; v16 T5b; v17 T6a; v18 T6b; v19 T7a1; v20 T7a2; v21 T7a3; v22 T7b1; v23 T7b2a; v24 T7b2b; v25 T7b3; v26 T7b4; v27 T7c1; v28 T7c2a)
 
 Spell schools, spells, secondary skills, hero classes and hero types (ADR-0013). References follow
 the reference rules above; every kind may refer to content of its dependency closure.
