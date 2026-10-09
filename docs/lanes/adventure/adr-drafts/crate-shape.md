@@ -5,7 +5,8 @@
 - Deciders: user + adventure lane (refinement 2026-10-07/08, decisions 2–4 of the epic)
 
 <!-- Decisions only. The reasoning is in docs/epics/E08-adventure-map.md (decisions 2-4 and the
-     review's corrections). Open points: ADV-Q1, ADV-Q2 (docs/OPEN-QUESTIONS.md). -->
+     review's corrections). Open points: ADV-Q1, ADV-Q2 (docs/OPEN-QUESTIONS.md). Longer than
+     80 lines because it covers decisions 2-4 at once (T1a: three drafts for decisions 2-9). -->
 
 ## Context
 
@@ -35,43 +36,47 @@ input that must not build a state no sequence of commands could build (`docs/06-
    (context data hangs off the core entity). Pack folders get one file per context
    (`core.toml`, `battle.toml`, `adventure.toml`); increment 1 adds `adventure.toml` beside
    today's `pack.toml`, hand-written source the harvester never touches (E08 decision 10).
-   Replay headers and the server's manifest record every part's hash.
+   `h3-game`'s `GameRuleset` bundles the core ruleset and the parts; replay headers and the
+   server's manifest record every part's hash.
 3. **The content split waits for E04b.** Until it closes, adventure crates use only the core
    items of `h3-content` (keys, packs, resources, factions, terrain ids, creature identity, cost
-   and speed, hero types, artifact and spell identity). The split into `h3-content` (core) and
-   `h3-content-battle`, the matching split of `h3-pack`, and the writer's move from
-   `h3-formats` into `h3-map` are one `shared/` + `cross-lane` refactor with the battle lane
-   paused. No `h3-content-adventure`: the adventure definitions stay in `h3-adventure` until a
-   consumer outside it needs them.
+   and speed, hero types, artifact and spell identity, quirks and profiles). The split into
+   `h3-content` (core) and `h3-content-battle`, the matching split of `h3-pack`, and the
+   writer's move from `h3-formats` into `h3-map` are one `shared/` + `cross-lane` refactor with
+   the battle lane paused. No `h3-content-adventure`: the adventure definitions stay in
+   `h3-adventure` until a consumer outside it needs them.
 4. **The import boundary has three stages, each with one job.**
    - *Parse* (`h3-map`): bytes → raw model, faithful to the file's version (RoE, AB, SoD),
-     without ruleset handles; input bounds on map size, counts and string lengths; typed
-     errors, no panics; fuzzed.
+     without ruleset handles; typed errors, no panics; fuzzed. Input bounds are configured
+     limits: by default the largest map the supported versions allow (144×144, two levels,
+     eight players), with caps on counts and string lengths that T3 sets from the shipped maps.
    - *Import* (`h3-map`): raw model + rules → `h3_game::GameSetup`. Maps the format's codes to
      content keys and handles; draws nothing (random placeholders stay placeholders, resolved
      by `h3-game` from a setup stream, ADR draft "game orchestration"); rejects what the
-     current increment cannot represent with a typed `Unsupported` error. Checks no game
-     invariant.
+     current increment cannot represent with a typed `Unsupported` error (in increment 1: a
+     random hero, a hero generated at a main town). Checks no game invariant.
    - *Validate* (logic): `h3-game` builds the state from the setup, checks its own part
      (players, schedule) and hands each context its setup type (`h3_adventure::AdventureSetup`),
-     which the context validates as `h3-battle` validates `BattleSetup`. A setup is accepted only
-     if commands could have built it; setup and commands share one check per invariant.
+     which the context validates as `h3-battle` validates `BattleSetup`. A setup must satisfy
+     every invariant that commands maintain (a hero never on a blocked tile, but possibly on a
+     visitable one); setup and commands share one check per invariant.
    Setup types are plain owned data, owned by the crate that validates them; no context
    exchanges them, so they are not seams. Tests build setups in code.
 5. **Cross-context identities are contract types:** `PlayerId` and `HeroId` in `h3-contracts`
    (ADR-0013 point 1 foresaw `HeroId`). Context-internal handles stay in their crates.
 6. **Sizes come from data** (ADR-0006 guardrails): map dimensions, levels and player counts come
-   from the map, bounded by ruleset parameters; the parser's bounds are the format's limits.
+   from the map, bounded by ruleset parameters, never by constants in logic.
 
 ## Consequences
 
 - T2's `shared/` pull request creates the four skeletons, the `arch.toml` edges, the lane
-  paths, the two ids in `h3-contracts` (a seam addition no battle code reads) and the versions
-  rows. On acceptance this ADR amends ADR-0005 (the crates, the first application crate as a
-  logic crate) and ADR-0006 (ruleset parts, one pack file per context), and `docs/02` §3 and
-  `docs/03` follow.
-- One validator per invariant: a map can only start states that play could reach. The fuzz
-  target runs parse, import and validation together.
+  paths, the two ids in `h3-contracts` (a seam addition no battle code reads), the kernel's
+  per-player stream ids (ADR draft "game orchestration", point 4) and the versions rows. On
+  acceptance this ADR amends ADR-0005 (the crates, the first application crate as a logic
+  crate) and ADR-0006 (ruleset parts, one pack file per context); `docs/02` §3 and `docs/03`
+  follow.
+- One validator per invariant: a map cannot start a state that breaks one. The fuzz target runs
+  parse, import and validation together.
 - After the writer's move, `h3-experiment` (battle) depends on `h3-map` (adventure): an
   adventure change can break the battle lane's build; CI's full verify catches it.
 - How a replay names its map (embedded setup, or the file by hash with an import version) is

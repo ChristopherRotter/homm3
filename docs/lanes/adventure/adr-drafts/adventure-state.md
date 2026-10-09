@@ -4,9 +4,11 @@
 - Date: 2026-10-09
 - Deciders: user + adventure lane (refinement 2026-10-07/08, decisions 1, 6 and 7 of the epic)
 
-<!-- Decisions only. The reasoning is in docs/epics/E08-adventure-map.md. Point 3's per-object
-     table and point 2's check-arch tokens are new at T1a: they apply decision 6 to object
-     state and enforce it. -->
+<!-- Decisions only. The reasoning is in docs/epics/E08-adventure-map.md. New at T1a: the
+     per-object table (points 1 and 4) and the check-arch tokens (point 2) apply decision 6 to
+     object state and enforce it; point 4 corrects decision 1's visiting (two modes) and says
+     that heroes block in increment 1; point 6 resolves visibility at emission. Longer than 80
+     lines because it covers decisions 1, 6 and 7 at once. -->
 
 ## Context
 
@@ -50,23 +52,29 @@ left open whether objects are a closed enum or data-driven primitives. No logic 
 4. **Map objects are closed behaviour kinds with data parameters** (as abilities, ADR-0012;
    answers the `docs/03` question). An object is its static part (position, template masks of
    blocked and visitable tiles, object type), a kind from a closed enum in `h3-adventure` with
-   typed parameters (type-level from the adventure ruleset part, instance-level from the map,
-   validated at setup) and per-kind state in the persistent object table. A rule with a rule id
-   reads the kind; a new behaviour is a new variant plus its rule. No scripting, and no code
-   keyed by object names or class numbers outside the import's mapping. A blocked tile cannot
-   be entered; entering a visitable tile visits its object and ends the move (from increment
-   2). **Increment 1 has one kind, `Blocker`:** every object blocks its blocked *and* its
-   visitable tiles; a hero's own tile is always leavable.
+   typed parameters, and per-kind state in the persistent object table. The import maps the
+   original's class and subclass numbers to object-type keys; a type's kind and type-level
+   parameters come from the adventure ruleset part (data), instance-level ones from the map,
+   validated at setup. A rule with a rule id reads the kind; a new behaviour is a new variant
+   plus its rule. No scripting, and no code keyed by object names or class numbers outside the
+   import's mapping. A blocked tile cannot be entered. A visitable tile is visited by kind
+   either by entering it, which ends the move, or from a neighbouring tile without entering
+   (in VCMI, for example, resources, artifacts and monsters); T1b's survey lists the modes
+   (from increment 2). **Increment 1 has one kind, `Blocker`, and no object types:** every
+   object blocks its blocked *and* its visitable tiles, a tile holding a hero blocks too
+   (meetings and battles come later), and a hero's own tile is always leavable.
 5. **Fog of war.** Each player has an explored layer (a bitset grid). An explored tile stays
    visible with its current content until a rule clears it (Cover of Darkness): the original
-   keeps no line-of-sight memory (T1b's survey confirms). Reveals set disk-shaped areas;
+   keeps no line-of-sight memory (to be confirmed by T1b). Reveals set disk-shaped areas;
    clearing is supported. The **fringe** is the hidden tiles touching an explored tile (exact
    shape from T1b). A viewer sees on explored tiles the public part of their content; on the
    fringe terrain, roads and rivers, plus object appearance under the `faithful` profile once
    `ADV-QUIRK-1` is confirmed (Q30's rule: until then the clean behaviour only); nothing else of
    a hidden tile. Shared vision of allies comes with teams (E10).
-6. **Information hiding.** `observe` and `project` take the viewer (ADR-0004 point 6). Events
-   carry a visibility scope by tile, so a viewer learns of a move only where it can see it.
+6. **Information hiding.** `observe` and `project` take the viewer (ADR-0004 point 6). An
+   event's visibility is resolved when it is emitted, with the state at hand: it carries the
+   players who may see it (a move per step, since the fog changes during it), so `project`
+   needs no state and a viewer learns of a move only where it can see it.
    Object contents beyond their appearance, other players' private state and all RNG state stay
    hidden. The observation is materialised per viewer as flat planes; the env's encoding (T9)
    reads those, never the grids. T8 writes the viewer knowledge list into `docs/06-security.md`

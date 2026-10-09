@@ -5,7 +5,11 @@
 - Deciders: user + adventure lane (refinement 2026-10-07/08, decisions 4, 8 and 9 of the epic)
 
 <!-- Decisions only. The reasoning is in docs/epics/E08-adventure-map.md. Point 2 answers the
-     server lane's SRV-Q6 (what h3-game exposes for the whole game, E16 M5). Open: ADV-Q2. -->
+     server lane's SRV-Q6 (what h3-game exposes for the whole game, E16 M5). New at T1a: the
+     system actor and spectator shapes, the setup stream, the contact inventory (point 7); point
+     6 widens decision 8 (a battle with another player's hero has two owners, who may answer
+     outside their turn). Open: ADV-Q2. Longer than 80 lines because it covers decisions 4, 8
+     and 9 and the env at once. -->
 
 ## Context
 
@@ -32,30 +36,38 @@ pending decisions as state and a trusted system actor (SRV-Q6). RL needs an `Adv
    commands (end a player's turn, answer a pending decision with its default, remove a player)
    that no player can issue. `Viewer::Player(PlayerId)` and `Viewer::Spectator`, which sees
    public facts only. Increment 1 builds the player variants; the system actor and the spectator
-   come with the server's M5 as additive variants.
+   come with the server's M5 as additive variants. Contexts never see these types: a context's
+   `apply` takes the `PlayerId`, its `observe` and `project` a viewer of its own (a player, or
+   public facts only), and `h3-game` maps onto them.
 3. **Turn groups.** A day is a schedule: an ordered list of turn groups, each a set of players
    who act together. A group's turn starts with each context's start-of-turn step for its
    players and ends when each of them has ended its turn or left the game. After the last group
    the day advances: the calendar, then each context's start-of-day step, in a fixed order of
-   contexts and players. Which rule runs at which hook is a rule question (T1b). Sequential play
-   is one player per group in player order, the only schedule of increment 1. Commands
-   interleave in one authoritative order, the server's log, which is the replay; logic stays
-   single-threaded per game (ADR-0003).
+   contexts and players. Building the state ends with day 1's start-of-day step and the first
+   group's start-of-turn step, so the first day starts as every later one. Which rule runs at
+   which hook is a rule question (T1b). Sequential play is one player per group in player
+   order, the only schedule of increment 1. Commands interleave in one authoritative order, the
+   server's log, which is the replay; logic stays single-threaded per game (ADR-0003).
 4. **An RNG stream per player** (kernel streams, ADR-0003 point 7). Randomness caused by a
    player's command draws only from that player's stream; the day advance draws from a game
    stream, and the random placeholders of a setup are resolved from a setup stream when the
-   state is built. A battle (increment 3) draws its setup randomness (obstacles) and its own seed
-   from the stream of the player whose command started it. The kernel's stream ids gain the per-player form (a shared change).
+   state is built (none in increment 1). Agents' and bots' own choices stay outside the game
+   state (the kernel's `AGENT` stream, in the env). The kernel's stream ids gain the per-player
+   form (a shared change in T2). Where a battle's seed and obstacles come from is decided with
+   the battle seam (increment 3), with the server lane, whose draft draws a hosted battle's
+   obstacles from a throwaway seed.
 5. **Seeds are server-only** (E08 decision 9). The master seed and the stream positions are
    authoritative state: in the state hash (which never reaches a client either), never in an
-   observation or event, never seeded from client data; the observation-hygiene and ownership-isolation tests cover them. A replay
-   holds the seed and is released only after the game.
+   observation or event, never seeded from client data; the observation-hygiene and
+   ownership-isolation tests cover them. A replay holds the seed and is released only after
+   the game.
 6. **No blocking prompts: pending decisions.** What needs a player's answer (a level-up, an
    object's question, monsters offering to join, a battle) is a pending decision in the state,
-   owned by the players it involves (a battle: both). While a player has one, its only legal
-   commands are the decision's answers (in a battle, the battle's commands) and it cannot end
-   its turn; other players are not affected. The engine never waits and never calls back. The
-   first kind comes with increment 2 (treasure chests).
+   owned by the players it involves (a battle against another player's hero: both). Its owners
+   may answer outside their turn; while a player has one, its only legal commands are the
+   decision's answers (in a battle, the battle's commands) and it cannot end its turn; it
+   blocks no one else. The engine never waits and never calls back. The first kind comes with
+   increment 2 (treasure chests).
 7. **Simultaneous play is designed for, not built.** Built now: turn groups, streams per player,
    pending decisions. **Not decided** (deferred to the increment that builds it): the target
    that commands of the players of one group commute (any interleaving, the same state hash; a
