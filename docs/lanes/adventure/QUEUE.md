@@ -11,7 +11,7 @@ Epic: `docs/epics/E08-adventure-map.md` (refined 2026-10-08, reviewed with the u
 - **Scope:** E08 T1a. Three ADR drafts in `docs/lanes/adventure/adr-drafts/`, decisions only (about 80 lines each, `docs/adr/README.md`), written from the epic's decisions 2–9 as they stand: (1) crate shape (the four crates `h3-map`, `h3-pack-adventure`, `h3-adventure`, `h3-game`; the `application` layer; the ADR-0005 amendment; the later content split; the setup types and the import boundary, decision 4); (2) adventure state (the persistent grid with what sees through its `Arc`s, decision 6; map objects as closed behaviour kinds with data parameters, ADR-0012 style, increment 1 uses only "blocker"; the fog projection, decision 7); (3) game orchestration (turn groups, per-player RNG streams, pending decisions, decisions 8–9; where `AdventureEnv` lives: adventure-owned sub-paths of `h3-sim` and `h3-cli`).
 - **Acceptance:** the user reviewed the three drafts; open points are `ADV-Q<n>` entries.
 - **Depends on:** nothing.
-- **Status:** waiting (the user's review of the drafts, branch `adventure/t1a-adr-drafts`; open points `ADV-Q1`, `ADV-Q2`).
+- **Status:** waiting (the user's review of the drafts, PR #32; open points `ADV-Q1`, `ADV-Q2`).
 
 ### E08 T1b — Survey and quirks
 
