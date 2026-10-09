@@ -394,3 +394,16 @@ Classes: `exploit-fix` (always fixed, never toggleable) · `preserve` (accepted,
 - Defaults: n/a
 - Regression test: `crates/h3-battle/src/tests/rebirth.rs`, `a_sacrificed_phoenix_stays_dead_after_the_next_strike`, `clones_and_sacrificed_phoenixes_are_never_reborn`
 - Decided by / date: user, 2026-10-09 (E04b T7c2b, BAT-Q18)
+
+### BAT-QUIRK-18 — A hypnotized Azure Dragon frightens the side that controls it (E04b T7c3)
+- Class: preserve, no flag: the rule in every profile (user, 2026-10-09, BAT-Q18)
+- Context / rules affected: battle, BAT-MAG-060
+- Original behavior: Fear (0x464D40) takes the frightened stack's side from its controller (+0xF4, flipped while hypnotized) but counts the Azure Dragons in the other side's records by real side: an Azure Dragon the enemy hypnotized still frightens the enemy's stacks, which now fight beside it, and a stack hypnotized by the enemy can be frightened by its own side's dragons (`docs/formats/installation.md` §7.21).
+- Intended/expected behavior: none decided; arguably the dragons' controller should count.
+- Impact: gameplay-altering (tiny)
+- Community status: unknown
+- Sources: original-data, `docs/formats/installation.md` §7.21 ("Fear, read for T7c3")
+- Flag: none
+- Defaults: n/a
+- Regression test: `crates/h3-battle/src/tests/fear.rs`, `a_hypnotized_azure_frightens_the_side_that_controls_it`
+- Decided by / date: user, 2026-10-09 (E04b T7c3, BAT-Q18)

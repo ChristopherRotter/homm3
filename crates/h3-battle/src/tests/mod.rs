@@ -11,6 +11,7 @@ mod creature_defences;
 mod defences;
 mod dispel;
 mod enchanters;
+mod fear;
 mod flee;
 mod geometry;
 mod heroes;

@@ -442,21 +442,15 @@ fn good_morale_happens_with_its_chance() {
 #[test]
 fn bad_morale_freezes_a_stack_at_its_activation() {
     let r = ruleset_with("t:faithful", always);
-    // Attacker: three alignments (−1). Its first stack freezes already at the start of the
-    // battle; then the defender (the side that did not act last) is active.
+    // Attacker: three alignments (−1). Its first stack is the battle's first: the original's
+    // battle start picks it without the freezing checks (0x462A20).
     let mut s = battle(
         &r,
         &[(0, "pikeman_c", 1), (1, "imp", 1), (2, "serf", 1)],
         &[(0, "fixed", 1)],
         1,
     );
-    assert_eq!(s.active(), Some(StackId(3)));
-    let acted: Vec<bool> = s.stacks()[..3]
-        .iter()
-        .map(|s| s.flags.contains(StackFlags::ACTED))
-        .collect();
-    assert_eq!(acted, vec![true, false, false]);
-    // `start` reports that first freeze.
+    assert_eq!(s.active(), Some(StackId(0)));
     let mut start = Vec::new();
     let setup = setup(
         &r,
@@ -466,21 +460,71 @@ fn bad_morale_freezes_a_stack_at_its_activation() {
     let same = BattleState::start(&r, &setup, 1, &mut start).unwrap();
     assert_eq!(same, s);
     let kinds: Vec<EventKind> = start.iter().map(|e| e.kind).collect();
-    assert_eq!(
-        kinds,
-        vec![
-            EventKind::TurnStarted { stack: StackId(0) },
-            EventKind::BadMorale { stack: StackId(0) },
-            EventKind::TurnStarted { stack: StackId(3) },
-        ]
-    );
-    // After the defender's turn the other two freeze, each with an event, and a new round starts.
+    assert_eq!(kinds, vec![EventKind::TurnStarted { stack: StackId(0) }]);
+    // Then the defender (the side that did not act last); after its turn the other two freeze,
+    // each with an event, and a new round starts.
+    let events = act(&mut s, &r, Command::Defend).unwrap();
+    assert_eq!((count(&events, bad), s.active()), (0, Some(StackId(3))));
     let events = act(&mut s, &r, Command::Defend).unwrap();
     assert_eq!(count(&events, bad), 2);
     assert_eq!((s.round(), s.active()), (2, Some(StackId(3))));
+    // From round 2 the first stack freezes too.
     let events = act(&mut s, &r, Command::Defend).unwrap();
     assert_eq!(count(&events, bad), 3);
     assert_eq!(s.round(), 3);
+}
+
+// covers: BAT-MOR-003, BAT-MAG-024
+#[test]
+fn a_stack_its_action_blinded_passes_its_good_morale_turn_until_the_blindness_ends() {
+    let r = ruleset_with("t:faithful", always);
+    // Castle pikemen (+1) strike a blinder, whose retaliation blinds them; the defender's two
+    // alignments give it no morale.
+    let mut s = battle(
+        &r,
+        &[(0, "pikeman_c", 5)],
+        &[(0, "blinder", 5), (1, "imp", 5)],
+        1,
+    );
+    place(&mut s, &r, 0, 4, 5);
+    place(&mut s, &r, 1, 5, 5);
+    place(&mut s, &r, 2, 3, 5);
+    activate(&mut s, 0);
+    let from = at(&r, 4, 5);
+    let events = act(
+        &mut s,
+        &r,
+        Command::Attack {
+            target: StackId(1),
+            from,
+        },
+    )
+    .unwrap();
+    // Good morale, but no turn: the original's roll clears the done bit and its pick passes a
+    // blind stack over (0x465222).
+    assert_eq!(count(&events, good), 1);
+    assert!(
+        !events
+            .iter()
+            .any(|e| e.kind == EventKind::TurnStarted { stack: StackId(0) })
+    );
+    let flags = s.stacks()[0].flags;
+    assert!(!flags.contains(StackFlags::ACTED) && flags.contains(StackFlags::HAD_MORALE));
+    assert_eq!(s.active(), Some(StackId(1)));
+    // Struck, the pikemen see again and act in the same round.
+    act(&mut s, &r, Command::Defend).unwrap();
+    assert_eq!(s.active(), Some(StackId(2)));
+    let from = at(&r, 3, 5);
+    act(
+        &mut s,
+        &r,
+        Command::Attack {
+            target: StackId(0),
+            from,
+        },
+    )
+    .unwrap();
+    assert_eq!((s.round(), s.active()), (1, Some(StackId(0))));
 }
 
 // covers: BAT-MOR-004

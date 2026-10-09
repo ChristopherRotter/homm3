@@ -159,13 +159,19 @@ pub enum EventKind {
         /// Hit points regained.
         hit_points: u32,
     },
-    /// Good morale: the stack that just acted gets another turn (BAT-MOR-003).
+    /// Good morale: the stack that just acted gets another turn (BAT-MOR-003), or, if its action
+    /// left it blind, petrified or paralysed, may act again in the round once that ends.
     GoodMorale {
         /// The stack.
         stack: StackId,
     },
     /// Bad morale: the stack freezes and loses its turn (BAT-MOR-004).
     BadMorale {
+        /// The stack.
+        stack: StackId,
+    },
+    /// Fear: the stack freezes and loses its turn (BAT-MAG-060).
+    Frightened {
         /// The stack.
         stack: StackId,
     },

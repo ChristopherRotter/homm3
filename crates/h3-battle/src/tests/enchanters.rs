@@ -320,26 +320,36 @@ fn a_berserk_enchanter_casts_before_its_automatic_turn() {
     assert_ne!(s.active(), Some(StackId(1)));
 }
 
-// covers: BAT-MAG-053
+// covers: BAT-MAG-053, BAT-MOR-003
 #[test]
 fn an_enchanter_that_lost_its_turns_casts_nothing() {
-    // Blinded during its own action, it gets no activation at a good-morale turn either (the
-    // original's pick passes it over).
-    let r = ruleset();
-    let setup = setup(&r, &[(0, "chanter", 5)], &[(0, "fixed", 4)]);
+    // Blinded by the retaliation in its own action, it gets no activation at its good-morale
+    // turn either (the original's pick passes it over).
+    let r = ruleset_with("t:faithful", |b| {
+        b.morale_dice = 255;
+        b.good_morale_chances = std::vec![255, 255, 255];
+    });
+    let setup = setup(&r, &[(0, "chanter", 5)], &[(0, "blinder", 4)]);
     let mut s = BattleState::new(&r, &setup, 1).unwrap();
-    let blind = spell(&r, "blind");
-    let cast = crate::effects::TimedCast {
-        id: blind,
-        spell: r.spell(blind).unwrap(),
-        mastery: 0,
-        rounds: 5,
-        own: crate::magic::SpellBonus::default(),
-    };
-    crate::effects::apply(&mut s, &r, cast, StackId(0), &mut Vec::<Event>::new());
+    place(&mut s, &r, 0, 4, 5);
+    place(&mut s, &r, 1, 5, 5);
+    activate(&mut s, 0);
     s.casts.periodic = [u8::MAX; 2];
-    let mut events = Vec::new();
-    crate::turn::activation(&mut s, &r, StackId(0), &mut events);
+    let from = at(&r, 4, 5);
+    let events = act(
+        &mut s,
+        &r,
+        Command::Attack {
+            target: StackId(1),
+            from,
+        },
+    )
+    .unwrap();
+    assert!(
+        events
+            .iter()
+            .any(|e| e.kind == EventKind::GoodMorale { stack: StackId(0) })
+    );
     assert!(periodic(&events).is_empty());
     assert_eq!(s.periodic_rounds(BattleSide::Attacker), u8::MAX);
 }

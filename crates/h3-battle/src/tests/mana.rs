@@ -399,30 +399,40 @@ fn a_wraith_drains_again_at_a_good_morale_turn_of_the_normal_phase_only() {
     assert_eq!(mana(&s, BattleSide::Defender), 9);
 }
 
-// covers: BAT-MAG-056
+// covers: BAT-MAG-056, BAT-MOR-003
 #[test]
 fn a_wraith_that_lost_its_turns_drains_nothing() {
-    // Blinded during its own action, it gets no activation at a good-morale turn either.
-    let r = ruleset();
+    // Blinded by the retaliation in its own action, it gets no activation at its good-morale
+    // turn: the pick passes it over while it is blind.
+    let r = ruleset_with("t:faithful", always);
     let (mut s, _) = led(
         &r,
         [None, Some(mage(&r))],
         &[(0, "wraith", 5)],
-        &[(0, "slow", 4)],
+        &[(0, "blinder", 4)],
     );
-    let blind = spell(&r, "blind");
-    let cast = crate::effects::TimedCast {
-        id: blind,
-        spell: r.spell(blind).unwrap(),
-        mastery: 0,
-        rounds: 5,
-        own: crate::magic::SpellBonus::default(),
-    };
-    crate::effects::apply(&mut s, &r, cast, StackId(0), &mut Vec::<Event>::new());
-    let mut events = Vec::new();
-    crate::turn::activation(&mut s, &r, StackId(0), &mut events);
+    place(&mut s, &r, 0, 4, 5);
+    place(&mut s, &r, 1, 5, 5);
+    activate(&mut s, 0);
+    let before = mana(&s, BattleSide::Defender);
+    let from = at(&r, 4, 5);
+    let events = act(
+        &mut s,
+        &r,
+        Command::Attack {
+            target: StackId(1),
+            from,
+        },
+    )
+    .unwrap();
+    assert!(
+        events
+            .iter()
+            .any(|e| e.kind == EventKind::GoodMorale { stack: StackId(0) })
+    );
     assert!(drained(&events).is_empty());
-    assert_eq!(mana(&s, BattleSide::Defender), 13);
+    assert_eq!(mana(&s, BattleSide::Defender), before);
+    assert_eq!(s.active(), Some(StackId(1)));
 }
 
 // covers: BAT-MAG-055
@@ -481,12 +491,15 @@ fn a_wraith_the_battle_does_not_activate_drains_nothing() {
         amount: -3,
         affects: h3_content::Affects::Own,
     });
-    let (_, events) = led(
+    let (mut s, _) = led(
         &r,
         [Some(gloomy), Some(mage(&r))],
         &[(0, "wraith", 5)],
         &[(0, "slow", 4)],
     );
+    // The battle's first activation has no freezing checks (BAT-MOR-004); in round 2 it freezes.
+    act(&mut s, &r, Command::Defend).unwrap();
+    let events = act(&mut s, &r, Command::Defend).unwrap();
     assert!(
         events
             .iter()

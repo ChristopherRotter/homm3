@@ -1517,3 +1517,23 @@ with its casts left and no corpse, so the next check, at any damaging action of 
 brings a sacrificed Phoenix back onto its old hexes (BAT-QUIRK-17, fixed: never reborn). Every
 other death of a Phoenix is followed by a check in the same action (clones are excluded), so
 outside Sacrifice a dead Phoenix with a cast left died in the action just checked.
+
+**Fear, read for T7c3** (BAT-MAG-060, BAT-Q18, 2026-10-09). The battle loop's pick 0x465080
+(§7.14) runs, for the stack it picked and outside the tactics phase (+0x13D68) and the round's
+wait phase (+0x13DE4), and only when called with argument 1, bad morale 0x464B40 and then Fear
+0x464D40 (the site 0x465283); either answering skips the stack and picks again. Fear spares a
+stack with creature flag `0x20000` (no morale: the undead, the elementals, the golems, the war
+machines) or of creature 132 (the Azure Dragon), sums the counts (+0x4C) of the records of creature
+132 of the side opposite the stack's controller (+0xF4, flipped by +0x288; the records by real
+side, so a hypnotized Azure Dragon frightens the side that controls it, BAT-QUIRK-18) and, when
+the sum is above 0, freezes the stack if `rand() mod 10 = 0` (the C library's): the acted bit
+`0x4000000`, `Fear.wav`, a combat-log line and an animation. The callers with argument 1 are the
+dispatcher after an action (0x479C73, 0x479C87) and the round start after a tactics phase
+(0x474562, 0x475268); the battle start 0x462A20 picks the first stack with argument 0, so neither
+bad morale nor Fear can freeze the battle's first stack when no tactics phase runs (BAT-MOR-004
+had it checked until T7c3). *Good morale* (0x464920) clears the stack's done bit and sets
+`0x1000000`; the dispatcher's next pick then finds the stack among those not done: its checks run
+again (bad morale cannot hit a stack with good morale; Fear can, outside the wait phase), and a
+stack its own action left blind, petrified or paralysed is passed over (0x465222, its turn having
+started) until that ends, when it may act later in the round (BAT-MOR-003, the T7b4 review's
+finding).

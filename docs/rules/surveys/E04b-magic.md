@@ -77,7 +77,8 @@ Order in `vcmi` (`BattleSpellMechanics.cpp` L339–L541, `CSpellHandler.cpp` L37
 - **Defences and auras:** resistances and immunities (§4), Magic Mirror 20 % (Faerie Dragon), the Unicorn aura, Golem reductions; **mana:** Mage, Pegasus, Familiar, Wraith (§2). Not magic but missing in our `Ability` set: Phoenix rebirth, Azure Dragon fear.
   *(T7c2a: the Faerie Dragon's mirror and the Efreet Sultan's 20 % Fire Shield as `innate_spell`,
   the Psychic and Magic Elementals' half damage as `damage_penalty`, BAT-MAG-057, 058, BAT-DMG-010;
-  the Phoenix's rebirth is T7c2b.)*
+  the Phoenix's rebirth is T7c2b.)* *(T7c2b, T7c3: the Phoenix's rebirth as `rebirth`, BAT-MAG-059;
+  the Azure Dragon's Fear as `fear`, BAT-MAG-060.)*
 
 ## 8. Quirks by task
 

@@ -16,7 +16,8 @@ use alloc::collections::BTreeSet;
 use alloc::vec::Vec;
 
 use h3_content::{
-    Ability, Affects, AuraTarget, CreatureFlag, MAX_AURA_VALUES, NO_LUCK_WITHOUT_HERO, Ruleset,
+    Ability, Affects, AuraTarget, CreatureFlag, CreatureTypeId, MAX_AURA_VALUES,
+    NO_LUCK_WITHOUT_HERO, Ruleset,
 };
 use h3_contracts::{BattleEffect, BattleHero, BattleSide};
 use h3_kernel::modifier::evaluate;
@@ -359,6 +360,40 @@ pub(crate) fn bad_morale(state: &mut BattleState, ruleset: &Ruleset, id: StackId
     let params = ruleset.battle();
     let chance = params.bad_morale.chance(s.morale.unsigned_abs());
     roll(state, params.morale_dice, chance)
+}
+
+/// Whether stack `id`, picked to act outside the round's wait phase, freezes from Fear
+/// (BAT-MAG-060; the original's 0x464D40): unless its creature has no morale or frightens itself,
+/// the living stacks with `fear` on the side opposite its controller, by their real side (a
+/// hypnotized Azure Dragon frightens its controller's stacks: BAT-QUIRK-18, the rule), give one
+/// roll at their largest chance.
+// rule: BAT-MAG-060
+pub(crate) fn frightened(state: &mut BattleState, ruleset: &Ruleset, id: StackId) -> bool {
+    let s = state.at(id);
+    if state.wait_phase || s.has(StackTraits::NO_MORALE) || s.has(StackTraits::FEAR) {
+        return false;
+    }
+    let enemy = s.controller().opponent();
+    let percent = state
+        .stacks
+        .iter()
+        .filter(|t| t.side == enemy && t.is_alive() && t.has(StackTraits::FEAR))
+        .map(|t| fear(ruleset, t.creature))
+        .max()
+        .unwrap_or(0);
+    percent > 0 && state.rng.below(100) < u32::from(percent)
+}
+
+/// The chance of `creature`'s `fear` ability, 0 without one.
+fn fear(ruleset: &Ruleset, creature: CreatureTypeId) -> u8 {
+    ruleset
+        .abilities(creature)
+        .iter()
+        .find_map(|a| match a {
+            Ability::Fear { percent } => Some(*percent),
+            _ => None,
+        })
+        .unwrap_or(0)
 }
 
 /// Whether the attack of stack `id` is a lucky strike: positive luck, the side may have luck

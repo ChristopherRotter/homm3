@@ -48,6 +48,36 @@ fn applied(events: &[Event]) -> Vec<(u8, h3_content::SpellId, Option<u16>)> {
         .collect()
 }
 
+// covers: BAT-MAG-048, BAT-MAG-009
+#[test]
+fn a_creatures_re_cast_keeps_the_first_value_as_a_heros_does() {
+    // The creature's cast goes through the same effect routine (the original's 0x4448F0): a
+    // re-cast keeps the value and takes the longer duration (Q47; the E04b T3a loose end).
+    let r = ruleset();
+    let mut s = arena(
+        &r,
+        [None, None],
+        &[("conjurer", 5, 2, 3), ("fixed", 3, 2, 7)],
+        &[("fixed", 3, 13, 5)],
+        1,
+    );
+    let haste = spell(&r, "haste");
+    let basic = crate::effects::TimedCast {
+        id: haste,
+        spell: r.spell(haste).unwrap(),
+        mastery: 1,
+        rounds: 1,
+        own: crate::magic::SpellBonus::default(),
+    };
+    let speed = s.stacks()[1].speed_now();
+    crate::effects::apply(&mut s, &r, basic, StackId(1), &mut Vec::<Event>::new());
+    assert_eq!(s.stacks()[1].speed_now(), speed + 3);
+    // The conjurer's Advanced Haste (+5, six rounds) lengthens the duration only.
+    let events = act(&mut s, &r, at_stack(1)).unwrap();
+    assert_eq!(applied(&events), vec![(1, haste, Some(6))]);
+    assert_eq!(s.stacks()[1].speed_now(), speed + 3);
+}
+
 // covers: BAT-MAG-048
 #[test]
 fn a_caster_casts_its_spell_at_another_stack_of_its_side_and_ends_its_turn() {
