@@ -194,6 +194,14 @@ pub enum EventKind {
         /// What it was aimed at.
         target: CastTarget,
     },
+    /// A stack cast a spell on its own at its activation, with no target (a periodic caster,
+    /// the Enchanter; BAT-MAG-053; public): no cast is used, and its turn goes on.
+    PeriodicCast {
+        /// The casting stack.
+        stack: StackId,
+        /// The spell.
+        spell: SpellId,
+    },
     /// A stack raised another or a corpse as its action (the Archangel, the Pit Lord;
     /// BAT-MAG-051, BAT-MAG-052; public): one of its casts is used. `SpellRaised` or
     /// `RoseFromCorpse` follows.

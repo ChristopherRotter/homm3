@@ -1,4 +1,4 @@
-//! Flat observation encoding (version 10) of a per-viewer [`Observation`].
+//! Flat observation encoding (version 11) of a per-viewer [`Observation`].
 //!
 //! Layout: [`GLOBALS`] global features, then two hero blocks of [`HERO_FEATURES`] features (the
 //! viewer's, then the opponent's), then [`STACK_FEATURES`] features for each of the
@@ -12,7 +12,9 @@
 //! viewer places in a tactics phase, opponent places in a tactics phase, the phase's zone in
 //! columns, viewer may retreat, opponent may retreat, viewer may surrender at all, opponent may
 //! surrender at all, the spell the active stack drew as handle + 1 if the viewer controls it (0:
-//! none or hidden)]` (BAT-TAC-001, BAT-FLE-001, BAT-FLE-002, BAT-MAG-049).
+//! none or hidden), the round starts since the viewer's periodic casters cast, the round starts
+//! since the opponent's (both at most 255, which every battle starts with)]` (BAT-TAC-001,
+//! BAT-FLE-001, BAT-FLE-002, BAT-MAG-049, BAT-MAG-053).
 //! Hero block, zeros for a side without a hero (which gets no lucky strikes in profiles with
 //! quirk Q-0003): the [`HERO_PUBLIC_FEATURES`] public features `[led by a hero, hero type handle,
 //! attack, defense, power, knowledge, mana, max mana, commands its Ballista, commands its First
@@ -44,7 +46,8 @@
 //! school masteries and spell book; 42 stack slots. v6 (E04b T3a): attack, defense and speed
 //! with the timed effects, and the per-stack effect features. v7 (E04b T6b): created in battle,
 //! clone and the clone's rounds left. v8 (E04b T7b1): casts left. v9 (E04b T7b2a): the drawn
-//! spell global. v10 (E04b T7b2b): the hero's spell book and the stack's draw candidates.
+//! spell global. v10 (E04b T7b2b): the hero's spell book and the stack's draw candidates. v11
+//! (E04b T7b4): the two periodic-cast globals.
 
 use h3_battle::{
     DamageRoll, HeroView, Observation, OwnHeroView, STACK_CAPACITY, StackFlags, StackTraits,
@@ -54,10 +57,10 @@ use h3_contracts::BattleSide;
 
 /// Version of this encoding; bump on any change of the layout above (and bump the C ABI
 /// version with it, ADR-0011).
-pub const OBSERVATION_ENCODING_VERSION: u32 = 10;
+pub const OBSERVATION_ENCODING_VERSION: u32 = 11;
 
 /// Global features.
-pub const GLOBALS: usize = 12;
+pub const GLOBALS: usize = 14;
 /// The public features at the start of a hero block; the rest are private to the hero's side.
 pub const HERO_PUBLIC_FEATURES: usize = 12;
 /// The private features before the school masteries.
@@ -160,6 +163,8 @@ pub fn encode(obs: &Observation, field_width: u8, out: &mut [f32]) -> Result<(),
         flag(obs.surrender_possible[own]),
         flag(obs.surrender_possible[other]),
         obs.drawn.map_or(0.0, |spell| f32::from(spell.raw()) + 1.0),
+        f32::from(obs.periodic_rounds[own]),
+        f32::from(obs.periodic_rounds[other]),
     ]);
     let (viewer, opponent) = out[HEROES..STACKS].split_at_mut(HERO_FEATURES);
     encode_hero(obs.heroes[own], obs.own_hero, viewer);
@@ -256,10 +261,12 @@ mod tests {
         let mut out = vec![9.0; OBSERVATION_LEN + 3];
         encode(&obs, r.battle().field.width, &mut out).unwrap();
         // Round 1, the defender's view, the attacker to act; no tactics phase, no heroes, so no
-        // retreat or surrender.
+        // retreat or surrender; no periodic cast yet on either side (BAT-MAG-053).
         assert_eq!(
             out[..GLOBALS],
-            [1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
+            [
+                1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 255.0, 255.0
+            ]
         );
         assert!(out[HEROES..STACKS].iter().all(|v| *v == 0.0));
         // Stack 0: the attacker's two-hex brute ×8, head at (2, 5) (tail in column 1), active.
@@ -288,7 +295,7 @@ mod tests {
         assert_eq!(out[OBSERVATION_LEN], 9.0);
         let mut short = vec![0.0; 3];
         assert_eq!(encode(&obs, 17, &mut short), Err(OBSERVATION_LEN));
-        assert_eq!(OBSERVATION_LEN, 12 + 2 * (12 + 10 + 4 + 128) + 59 * 42);
+        assert_eq!(OBSERVATION_LEN, 14 + 2 * (12 + 10 + 4 + 128) + 59 * 42);
         assert_eq!(coords(20, 0), (0.0, 20.0));
         // A clone with three rounds left (BAT-MAG-038).
         let mut obs = obs;
@@ -303,9 +310,11 @@ mod tests {
         obs.drawn = Some(h3_content::SpellId::from_raw(4));
         // The spells a helpful caster's draw could pick for it (BAT-MAG-050).
         obs.cast_candidates[1] = 5;
+        // The round starts since each side's periodic cast, the viewer's first (BAT-MAG-053).
+        obs.periodic_rounds = [2, 0];
         encode(&obs, r.battle().field.width, &mut out).unwrap();
         assert_eq!(stack(&out, 1)[31..36], [1.0, 1.0, 3.0, 2.0, 5.0]);
-        assert_eq!(out[GLOBALS - 1], 5.0);
+        assert_eq!(out[GLOBALS - 3..GLOBALS], [5.0, 0.0, 2.0]);
     }
 
     #[test]
@@ -387,7 +396,9 @@ mod tests {
         for (viewer, globals, own, other, private, schools, book) in [
             (
                 Attacker,
-                [0.0, 1.0, 1.0, 0.0, 1.0, 0.0, 5.0, 1.0, 1.0, 1.0, 1.0, 0.0],
+                [
+                    0.0, 1.0, 1.0, 0.0, 1.0, 0.0, 5.0, 1.0, 1.0, 1.0, 1.0, 0.0, 255.0, 255.0,
+                ],
                 brea,
                 corwin,
                 brea_private,
@@ -396,7 +407,9 @@ mod tests {
             ),
             (
                 Defender,
-                [0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 5.0, 1.0, 1.0, 1.0, 1.0, 0.0],
+                [
+                    0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 5.0, 1.0, 1.0, 1.0, 1.0, 0.0, 255.0, 255.0,
+                ],
                 corwin,
                 brea,
                 corwin_private,
@@ -430,7 +443,7 @@ mod tests {
         own.surrender_price = None;
         own.ballista = None;
         encode(&obs, 17, &mut out).unwrap();
-        assert_eq!(out[7..GLOBALS], [1.0, 0.0, 0.0, 0.0, 0.0]);
+        assert_eq!(out[7..GLOBALS], [1.0, 0.0, 0.0, 0.0, 0.0, 255.0, 255.0]);
         assert!(hero(&out, 1).iter().all(|v| *v == 0.0));
         assert_eq!(hero(&out, 0)[16..18], [0.0, 0.0]);
         assert_eq!(hero(&out, 0)[HERO_SCHOOLS - 1], 0.0);

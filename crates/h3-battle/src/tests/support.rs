@@ -749,6 +749,48 @@ pub const CREATURES: &[Creature] = &[
         5,
         &["alive", "casts=1", "corpse_raiser=imp:50"],
     ),
+    // A periodic caster (BAT-MAG-053), an Enchanter: on its own once in three round starts of
+    // its side, at Expert with power 3, the original's table on the test spells (Haste, Air
+    // Shield, Slow, Stone Skin, Bloodlust, Bless, Cure, Weakness).
+    (
+        "chanter",
+        10,
+        10,
+        2,
+        2,
+        30,
+        9,
+        &[
+            "alive",
+            "shooter",
+            "shots=32",
+            "periodic_spell_caster=3:3:3",
+            "drawn_spell=haste:15",
+            "drawn_spell=airshield:10",
+            "drawn_spell=sloth:10",
+            "drawn_spell=skin:15",
+            "drawn_spell=lust:5",
+            "drawn_spell=bless:15",
+            "drawn_spell=cure:10",
+            "drawn_spell=weaken:4",
+        ],
+    ),
+    // A periodic caster of Bloodlust and Cure only, which count on a melee and on a wounded stack.
+    (
+        "luster",
+        10,
+        10,
+        2,
+        2,
+        30,
+        9,
+        &[
+            "alive",
+            "periodic_spell_caster=3:3:3",
+            "drawn_spell=lust:5",
+            "drawn_spell=cure:10",
+        ],
+    ),
 ];
 
 /// The traits of a test creature as creature info: flags, abilities, shots and faction.
@@ -940,6 +982,15 @@ fn parse_traits(traits: &[&str]) -> CreatureInfoDef {
                 AbilityDef::StackRaiser {
                     spell: ContentKey::new("t", spell).unwrap(),
                     hit_points_per_creature: hit_points.parse().unwrap(),
+                }
+            }
+            "periodic_spell_caster" => {
+                let mut parts = value.split(':').map(|p| p.parse().unwrap());
+                let mut next = || parts.next().unwrap();
+                AbilityDef::PeriodicSpellCaster {
+                    rounds: next(),
+                    mastery: next(),
+                    power: next(),
                 }
             }
             "corpse_raiser" => {
@@ -1200,6 +1251,10 @@ pub fn ruleset_with(profile: &str, edit: impl FnOnce(&mut BattleParamsDef)) -> R
             ProfileDef {
                 key: ContentKey::new("t", "clone_on_original").unwrap(),
                 quirks: vec![(String::from("quirk.battle.clone_on_its_original"), true)],
+            },
+            ProfileDef {
+                key: ContentKey::new("t", "first_stack").unwrap(),
+                quirks: vec![(String::from("quirk.battle.periodic_first_stack"), true)],
             },
             ProfileDef {
                 key: ContentKey::new("t", "original").unwrap(),

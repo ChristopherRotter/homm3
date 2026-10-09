@@ -540,6 +540,9 @@ proptest! {
                                 EventKind::Struck { target, .. } | EventKind::DeathStared { target, .. } | EventKind::SpellDamage { target, .. } | EventKind::StrikeDamage { target, .. } if target.index() == i))
                                 || mentioned(i, |k, i| matches!(k, EventKind::Regenerated { stack, .. } | EventKind::Vanished { stack, .. } if stack.index() == i))
                                 || mentioned(i, |k, i| matches!(k, EventKind::Healed { target, .. } if target.index() == i))
+                                // The other side's periodic Cure at its caster's activation after
+                                // the command (BAT-MAG-053).
+                                || mentioned(i, |k, i| matches!(k, EventKind::SpellHealed { target, .. } if target.index() == i))
                                 // Poison and Age change the hit points per creature (BAT-MAG-044).
                                 || mentioned(i, |k, i| matches!(k, EventKind::Poisoned { stack, .. } | EventKind::EffectEnded { target: stack, .. } if stack.index() == i));
                             if !explained {

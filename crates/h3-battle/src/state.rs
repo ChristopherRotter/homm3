@@ -52,7 +52,7 @@ const _: () = assert!(MAX_SIDE_STACKS <= SIDE_STACK_SLOTS);
 pub const CREATED_SLOT: u8 = u8::MAX;
 
 /// Version of the battle-state hash encoding ([`BattleState::state_hash`]). Bump on any change.
-pub const BATTLE_STATE_HASH_VERSION: u32 = 36;
+pub const BATTLE_STATE_HASH_VERSION: u32 = 37;
 
 /// Index of a stack in its battle (attacker stacks first, in slot order, then defender stacks, then
 /// the stacks created in the battle in the order they appear, BAT-MAG-037).
@@ -179,6 +179,9 @@ impl StackTraits {
     /// of the dead stack's army slot ([`Stack::slot`]), but after the army slots and the war
     /// machines in the turn order's tie-break, as a created stack (the original's new record).
     pub const RAISED: Self = Self(1 << 25);
+    /// Casts on its own at its activation (ability `periodic_spell_caster`, the Enchanter;
+    /// BAT-MAG-053): the activation's cheap test.
+    pub const PERIODIC_CASTER: Self = Self(1 << 26);
 
     /// Whether all traits of `other` are set.
     pub const fn contains(self, other: Self) -> bool {
@@ -264,6 +267,10 @@ impl StackTraits {
             .with(
                 Self::FIRST_AID,
                 ability(|a| matches!(a, Ability::FirstAid { .. })),
+            )
+            .with(
+                Self::PERIODIC_CASTER,
+                ability(|a| matches!(a, Ability::PeriodicSpellCaster { .. })),
             )
     }
 }
@@ -1052,6 +1059,12 @@ impl BattleState {
     /// less those it used; 0 for no stack.
     pub fn casts_left(&self, id: StackId) -> u8 {
         self.casts.left.get(id.index()).copied().unwrap_or(0)
+    }
+
+    /// The round starts since `side`'s periodic casters last cast (BAT-MAG-053), at most 255:
+    /// 255 until they first cast (every battle starts ready, BAT-QUIRK-14).
+    pub fn periodic_rounds(&self, side: BattleSide) -> u8 {
+        self.casts.periodic[side.index()]
     }
 
     /// The active stack and its id, if the battle is not over.
