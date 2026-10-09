@@ -1500,7 +1500,7 @@ impl CanonicalHash for Ruleset {
     /// battle magic ends with `restores_health`; timed changes `petrify`, `paralyze`, `poison`,
     /// `age` (27 to 30). v30 (E04b T7a3): `spell_after_strike` ends with `defended`; ability
     /// `damage_after_strike` (31); timed change `bind` (31). v31 (E04b T7b1): ability
-    /// `spell_caster` (32). v38 (E04b T7c2b): ability `rebirth` (45).
+    /// `spell_caster` (32). v38 (E04b T7c2b, T7c3): abilities `rebirth` (45) and `fear` (46).
     fn hash_into(&self, h: &mut StateHasher) {
         h.write_u32(RULESET_HASH_VERSION);
         h.write_len(self.packs.len());

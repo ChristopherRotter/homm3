@@ -354,6 +354,15 @@ pub enum Ability<C, S, L> {
         /// The divisor, at least 1.
         divisor: u8,
     },
+    /// While its stack lives, a stack of the other side (by the frightened stack's controller; the
+    /// frightening stacks by their real side) is frozen with `percent` % chance when it is picked
+    /// to act outside the round's wait phase, after the bad-morale check, unless its creature has
+    /// no morale or `fear` itself (one roll, the largest chance among the side's stacks): the
+    /// Azure Dragon's 10 % (BAT-MAG-060, v29).
+    Fear {
+        /// The chance, 1..=100.
+        percent: u8,
+    },
 }
 
 /// Most creatures `corpse_raiser` abilities raise in a ruleset (the battle keeps a stack of each
@@ -368,7 +377,7 @@ pub type CompiledAbility = Ability<CreatureTypeId, SpellId, SchoolId>;
 
 impl<C, S, L> Ability<C, S, L> {
     /// Every ability name, in code order (the order of [`Ability::code`]).
-    pub const NAMES: [&'static str; 46] = [
+    pub const NAMES: [&'static str; 47] = [
         "hate",
         "jousting",
         "charge_immunity",
@@ -415,6 +424,7 @@ impl<C, S, L> Ability<C, S, L> {
         "damage_penalty",
         "damage_penalty_by_flag",
         "rebirth",
+        "fear",
     ];
 
     /// Stable numeric code of the ability kind (canonical hashing, duplicate checks).
@@ -466,6 +476,7 @@ impl<C, S, L> Ability<C, S, L> {
             Self::DamagePenalty { .. } => 43,
             Self::DamagePenaltyByFlag { .. } => 44,
             Self::Rebirth { .. } => 45,
+            Self::Fear { .. } => 46,
         }
     }
 
@@ -654,6 +665,7 @@ impl<C, S, L> Ability<C, S, L> {
                 percent: *percent,
             },
             Self::Rebirth { divisor } => Ability::Rebirth { divisor: *divisor },
+            Self::Fear { percent } => Ability::Fear { percent: *percent },
         })
     }
 
@@ -688,6 +700,9 @@ impl<C, S, L> Ability<C, S, L> {
             Self::SpellCost { amount: 0, .. } => Some("spell_cost amount must not be 0"),
             Self::ManaChannel { percent } if !(1..=100).contains(percent) => {
                 Some("mana_channel percent must be 1..=100")
+            }
+            Self::Fear { percent } if !(1..=100).contains(percent) => {
+                Some("fear percent must be 1..=100")
             }
             Self::ManaDrain { amount: 0 } => Some("mana_drain amount must be at least 1"),
             Self::Rebirth { divisor: 0 } => Some("rebirth divisor must be at least 1"),
@@ -818,7 +833,8 @@ impl CanonicalHash for CompiledAbility {
             Self::SpellDamageReduction { percent }
             | Self::MagicResistance { percent }
             | Self::MagicResistanceAura { percent }
-            | Self::ManaChannel { percent } => h.write_u8(percent),
+            | Self::ManaChannel { percent }
+            | Self::Fear { percent } => h.write_u8(percent),
             Self::ManaDrain { amount } | Self::Rebirth { divisor: amount } => h.write_u8(amount),
             Self::SpellAfterStrike {
                 spell,
@@ -984,7 +1000,7 @@ mod tests {
 
     type A = Ability<u8, u8, u8>;
 
-    fn all() -> [A; 46] {
+    fn all() -> [A; 47] {
         [
             A::Hate {
                 target: 3,
@@ -1099,6 +1115,7 @@ mod tests {
                 percent: 50,
             },
             A::Rebirth { divisor: 5 },
+            A::Fear { percent: 10 },
         ]
     }
 
@@ -1362,6 +1379,8 @@ mod tests {
                 percent: 101,
             },
             A::Rebirth { divisor: 0 },
+            A::Fear { percent: 0 },
+            A::Fear { percent: 101 },
         ];
         for a in bad {
             assert!(a.parameter_error().is_some(), "{a:?}");

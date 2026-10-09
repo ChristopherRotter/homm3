@@ -418,6 +418,9 @@ enum AbilityDto {
     Rebirth {
         divisor: u8,
     },
+    Fear {
+        percent: u8,
+    },
 }
 
 #[derive(Deserialize)]
@@ -589,6 +592,7 @@ impl AbilityDto {
                 percent,
             },
             Self::Rebirth { divisor } => AbilityDef::Rebirth { divisor },
+            Self::Fear { percent } => AbilityDef::Fear { percent },
         })
     }
 }
