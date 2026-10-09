@@ -281,9 +281,9 @@ fn revive(state: &mut BattleState, ruleset: &Ruleset, s: StackId, hit_points: u6
 pub(crate) fn rebirths<S: Sink>(state: &mut BattleState, ruleset: &Ruleset, sink: &mut S) {
     for s in (0u8..).take(state.stacks.len()).map(StackId) {
         let stack = state.at(s);
-        // The cheap tests first: most stacks are alive or cannot come back.
-        if stack.is_alive()
-            || !stack.has(StackTraits::REBIRTH)
+        // The cheap tests first: most stacks cannot come back or are alive.
+        if !stack.has(StackTraits::REBIRTH)
+            || stack.is_alive()
             || stack.has(StackTraits::CLONE)
             || state.casts.left[s.index()] == 0
             // A sacrificed stack (BAT-QUIRK-17).

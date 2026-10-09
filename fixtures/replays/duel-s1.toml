@@ -372,20 +372,20 @@ commands = [
     "A attack 1 24",
 ]
 checkpoints = [
-    "0x9d0bb6134abba55d",
-    "0xeebdf98ad2c83f09",
-    "0x611d52c9c733cdfa",
-    "0x83b7dfb80bd545f9",
-    "0xf0fb9f49a02747bb",
-    "0x49413a03bcf2c7ab",
-    "0x01b4c1773b5af5f2",
-    "0xa0ba96a5af5f7393",
-    "0x0cf2606dd2413ca1",
-    "0xa25c63a5a970ae80",
-    "0x6dd9b316b09a983e",
-    "0x51a3f7a53e3f3d46",
-    "0x0a0d9349f7032e57",
-    "0x03fb8a614d4f8d9e",
+    "0x9fff5a845d14bc7c",
+    "0xe2bdf2226626d668",
+    "0x4dc8d31c7924329b",
+    "0xc0f7b6b378512114",
+    "0x03783e15dd389552",
+    "0x23c47f6348caf25e",
+    "0x0d3d7aaaf36181bb",
+    "0x7bd9c146995ee12a",
+    "0x710e2fcdd023c860",
+    "0xe156f86f30ab1809",
+    "0x605475e871aebc57",
+    "0x5a85932a5441b5af",
+    "0x34af9e5fe3e48a66",
+    "0x2a8ca5497fc02a53",
 ]
 
 [replay]
@@ -398,7 +398,7 @@ packs = [[
     "0.1.0",
 ]]
 profile = "synthetic:faithful"
-ruleset_hash = "0xef08c78e061ed3b3"
+ruleset_hash = "0xfedb0a5cc675d7c7"
 rng = "xoshiro256starstar+splitmix64"
 rng_version = 1
 hash = "fnv1a64-le"
@@ -444,4 +444,4 @@ count = 20
 
 [result]
 winner = "attacker"
-final_hash = "0xf64281032be2d422"
+final_hash = "0xdc2aa232a3b1a47b"

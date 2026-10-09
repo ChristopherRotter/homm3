@@ -377,7 +377,7 @@ pub(crate) fn frightened(state: &mut BattleState, ruleset: &Ruleset, id: StackId
     let percent = state
         .stacks
         .iter()
-        .filter(|t| t.side == enemy && t.is_alive() && t.has(StackTraits::FEAR))
+        .filter(|t| t.has(StackTraits::FEAR) && t.side == enemy && t.is_alive())
         .map(|t| fear(ruleset, t.creature))
         .max()
         .unwrap_or(0);
