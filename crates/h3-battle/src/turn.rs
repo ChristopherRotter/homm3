@@ -121,7 +121,11 @@ pub(crate) fn end_turn<S: Sink>(
     // rule: BAT-MOR-003
     if state.result.is_none() && how == TurnEnd::Acted && morale::good_morale(state, ruleset, mover)
     {
-        state.at_mut(mover).flags.set(StackFlags::HAD_MORALE, true);
+        // The original's roll clears the done bit (0x464920), which its rebirth sets
+        // (BAT-MAG-059): a Phoenix reborn in its own action keeps its good-morale turn.
+        let flags = &mut state.at_mut(mover).flags;
+        flags.set(StackFlags::ACTED, false);
+        flags.set(StackFlags::HAD_MORALE, true);
         sink.emit(Event::public(EventKind::GoodMorale { stack: mover }));
         sink.emit(Event::public(EventKind::TurnStarted { stack: mover }));
         activation(state, ruleset, mover, sink);
@@ -266,7 +270,10 @@ pub(crate) fn berserk_turn<S: Sink>(
         if state.result.is_some() || !acted || !morale::good_morale(state, ruleset, id) {
             return false;
         }
-        state.at_mut(id).flags.set(StackFlags::HAD_MORALE, true);
+        // As after a commanded action (`end_turn`): a reborn stack keeps the turn.
+        let flags = &mut state.at_mut(id).flags;
+        flags.set(StackFlags::ACTED, false);
+        flags.set(StackFlags::HAD_MORALE, true);
         sink.emit(Event::public(EventKind::GoodMorale { stack: id }));
         sink.emit(Event::public(EventKind::TurnStarted { stack: id }));
         activation(state, ruleset, id, sink);

@@ -492,13 +492,17 @@ proptest! {
                         prop_assert!(state.is_over() || state.active() == before.active() || killed);
                     }
                     let mover = before.active().unwrap();
-                    // A stack's cast uses one of its casts and nothing else does (BAT-MAG-048).
+                    // A stack's cast uses one of its casts and nothing else does (BAT-MAG-048)
+                    // but a rebirth, which leaves the stack dead or reborn (BAT-MAG-059).
                     let used = usize::from(matches!(cmd, Command::CreatureCast { .. }));
-                    for (i, _) in before.stacks().iter().enumerate() {
+                    for (i, a) in state.stacks().iter().enumerate() {
                         let id = StackId(u8::try_from(i).unwrap());
                         let spent = usize::from(id == mover) * used;
                         let reused = events.iter().any(|e| matches!(e.kind, EventKind::StackCreated { stack, .. } if stack == id));
-                        prop_assert!(reused || usize::from(before.casts_left(id)) == usize::from(state.casts_left(id)) + spent);
+                        let reborn = events.iter().any(|e| matches!(e.kind, EventKind::Reborn { stack, .. } if stack == id));
+                        let rebirth = a.has(crate::StackTraits::REBIRTH) && (reborn || !a.is_alive());
+                        let (was, is) = (usize::from(before.casts_left(id)), usize::from(state.casts_left(id)));
+                        prop_assert!(reused || was == is + spent || (rebirth && was == is + 1));
                     }
                     let target = match cmd {
                         Command::Attack { target, .. } | Command::Shoot { target, .. } => Some(target),
@@ -537,7 +541,7 @@ proptest! {
                         // Conservation: creatures only ever die, except that life drain and the
                         // raising spells bring back up to the starting count (BAT-DMG-008,
                         // BAT-MAG-035); the creatures raised for the battle only are among them.
-                        let drained = mentioned(i, |k, i| matches!(k, EventKind::LifeDrained { stack, .. } | EventKind::SpellRaised { target: stack, .. } if stack.index() == i));
+                        let drained = mentioned(i, |k, i| matches!(k, EventKind::LifeDrained { stack, .. } | EventKind::SpellRaised { target: stack, .. } | EventKind::Reborn { stack, .. } if stack.index() == i));
                         prop_assert!(a.count <= b.count || (drained && a.count <= a.base_count));
                         let id = StackId(u8::try_from(i).unwrap());
                         prop_assert!(state.temporary(id) <= a.base_count && (state.temporary(id) == before.temporary(id) || drained));

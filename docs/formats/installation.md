@@ -1492,12 +1492,28 @@ when the striker is creature 121 (Magic Elemental) and the target is creature 12
 Dragon, 0x443C2D); then the wall, distance and melee penalties (§7.10). One striker meets at most
 one of the two.
 
-**The Phoenix's rebirth, a first look** (for T7c2b, BAT-Q16, 2026-10-09). 0x469440 runs after a
-strike action (0x445A60, called by the attack 0x478900 and the dispatcher), after the cast
-routine's damage paths (six sites), the area and mass handlers, Land Mine, Fire Wall and the moat.
-For every record of creature 131 of both sides with the dead bit `0x200000`, casts left (+0xDC)
-above 0 and not a clone (`0x800000`): one cast less, count (+0x4C) and lost hit points (+0x58)
-set to 0, `n = start (+0x60) div 5` plus one for each of `start mod 5` draws with `rand() mod 5 =
-0` (the C library's), and if `n > 0` the acted bit `0x4000000`, then the raise 0x5A7560 with `n ×
-health (+0xC0)` hit points (its last argument 0). Not read yet: 0x445A60, the raise's last
-argument, what the outcome counts.
+**The Phoenix's rebirth, read for T7c2b** (BAT-MAG-059, BAT-Q18, 2026-10-09). *The check*
+0x469440 walks the records of side 0, then side 1. For every record of creature 131 with the dead
+bit `0x200000`, casts left (+0xDC) above 0 and not a clone (`0x800000`): one cast less, count
+(+0x4C) and lost hit points (+0x58) set to 0, `n = start (+0x60) div 5` plus one for each of
+`start mod 5` draws with `rand() mod 5 = 0` (the C library's). Only if `n > 0`: the acted bit
+`0x4000000`, a sound, and the raise 0x5A7560 with `n × health (+0xC0)` hit points and its last
+argument 0, the *temporary* flag (§7.18): a permanent raise, so the creatures count as the
+stack's own at the battle's end (no `+0x54`). The raise revives the dead stack (0x43EA70), places
+it on its hex +0x38 (0x4687C0 writes the hex records' stack fields, whatever stack they named) and
+removes its corpse from its hexes. A stack whose draws give 0 stays dead with its cast used.
+*Where it runs.* At the end of the strike action 0x445A60 (it shoots, for the Ballista (146), an
+arrow tower (149) or a shooter that may shoot, through 0x440160, else picks the side to strike
+from and calls the melee 0x441CB0 with its retaliation and second strike; then it sets +0x132C8
+and calls the check), which the attack 0x478900 and the dispatcher (0x47927A) call; then the
+dispatcher sets the active stack's acted bit, tests the end (0x4762F0) and rolls good morale
+(0x464920, which clears the acted bit: a Phoenix killed by the retaliation and reborn may get its
+morale turn). In the cast routine 0x59FE30 after the damage of Magic Arrow, Ice Bolt, Lightning
+Bolt and Titan's Lightning Bolt, Implosion, Chain Lightning and Death Ripple (0x5A0A26 to
+0x5A0E74), in the area handler 0x5A4970 and the mass handlers 0x5A4BC0 and 0x5A67C0; after Land
+Mine's (0x59FB40) and Fire Wall's (0x59FCD0) damage on a hex a stack enters (0x46A570), and after
+the moat's (0x469E50, E04c). **Not after Sacrifice** (0x5A199C): its victim dies through 0x468990
+with its casts left and no corpse, so the next check, at any damaging action of either side,
+brings a sacrificed Phoenix back onto its old hexes (BAT-QUIRK-17, fixed: never reborn). Every
+other death of a Phoenix is followed by a check in the same action (clones are excluded), so
+outside Sacrifice a dead Phoenix with a cast left died in the action just checked.

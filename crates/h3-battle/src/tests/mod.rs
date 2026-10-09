@@ -26,6 +26,7 @@ mod rage;
 mod raise;
 mod raisers;
 mod ranged;
+mod rebirth;
 mod remove;
 mod rules;
 mod specialist;

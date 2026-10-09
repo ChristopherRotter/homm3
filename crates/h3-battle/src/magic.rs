@@ -1747,9 +1747,10 @@ fn mirror<S: Sink>(
 }
 
 /// Applies a validated cast: the hero pays the cost and counts the cast, or the casting stack uses
-/// one of its casts (BAT-MAG-048), then the spell takes effect (BAT-MAG-004 to BAT-MAG-008) and,
-/// after a hero's cast, the other side's channellers give their hero a share of the cost
-/// (BAT-MAG-055); the battle may end. The active stack keeps its turn after its hero's cast.
+/// one of its casts (BAT-MAG-048), then the spell takes effect (BAT-MAG-004 to BAT-MAG-008), the
+/// stacks it killed may be reborn (BAT-MAG-059) and, after a hero's cast, the other side's
+/// channellers give their hero a share of the cost (BAT-MAG-055); the battle may end. The active
+/// stack keeps its turn after its hero's cast.
 pub(crate) fn apply_cast<S: Sink>(
     state: &mut BattleState,
     ruleset: &Ruleset,
@@ -1792,6 +1793,8 @@ pub(crate) fn apply_cast<S: Sink>(
         }
     }
     take_effect(state, ruleset, &cast, sink);
+    // rule: BAT-MAG-059
+    raise::rebirths(state, ruleset, sink);
     if cast.by.is_none() {
         // rule: BAT-MAG-055
         crate::mana::channel(state, ruleset, (cast.side, cast.cost), sink);

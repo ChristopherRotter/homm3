@@ -401,6 +401,14 @@ pub enum EventKind {
         /// Its creatures.
         creatures: u32,
     },
+    /// A dead stack came back after the action that killed it, having acted this round (the
+    /// Phoenix's rebirth, BAT-MAG-059).
+    Reborn {
+        /// The stack.
+        stack: StackId,
+        /// Creatures brought back.
+        creatures: u32,
+    },
     /// A spell created a stack (BAT-MAG-037): a clone of `original` (Clone, BAT-MAG-038) or a
     /// summoned one (Summon Elemental, BAT-MAG-039).
     StackCreated {

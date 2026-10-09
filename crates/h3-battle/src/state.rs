@@ -190,6 +190,9 @@ impl StackTraits {
     /// for an innate Fire Shield (a stack with only an innate mirror passes it and reflects
     /// nothing).
     pub const INNATE_SPELL: Self = Self(1 << 28);
+    /// Comes back after the action that killed it (ability `rebirth`, the Phoenix; BAT-MAG-059):
+    /// the rebirth's cheap test.
+    pub const REBIRTH: Self = Self(1 << 29);
 
     /// Whether all traits of `other` are set.
     pub const fn contains(self, other: Self) -> bool {
@@ -287,6 +290,10 @@ impl StackTraits {
             .with(
                 Self::INNATE_SPELL,
                 ability(|a| matches!(a, Ability::InnateSpell { .. })),
+            )
+            .with(
+                Self::REBIRTH,
+                ability(|a| matches!(a, Ability::Rebirth { .. })),
             )
     }
 }

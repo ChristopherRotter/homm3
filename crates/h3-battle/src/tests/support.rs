@@ -922,6 +922,28 @@ pub const CREATURES: &[Creature] = &[
             "damage_penalty_by_flag=mind_immune:50",
         ],
     ),
+    // The Phoenix's rebirth (BAT-MAG-059): a fifth with its one cast; a firebird with two casts
+    // comes back with a third, twice.
+    (
+        "phoenix",
+        10,
+        10,
+        2,
+        2,
+        10,
+        6,
+        &["alive", "flying", "charge_immunity", "rebirth=5", "casts=1"],
+    ),
+    (
+        "firebird",
+        10,
+        10,
+        2,
+        2,
+        10,
+        6,
+        &["alive", "rebirth=3", "casts=2"],
+    ),
 ];
 
 /// The traits of a test creature as creature info: flags, abilities, shots and faction.
@@ -1137,6 +1159,9 @@ fn parse_traits(traits: &[&str]) -> CreatureInfoDef {
             }
             "mana_channel" => AbilityDef::ManaChannel {
                 percent: value.parse().unwrap(),
+            },
+            "rebirth" => AbilityDef::Rebirth {
+                divisor: value.parse().unwrap(),
             },
             "mana_drain" => AbilityDef::ManaDrain {
                 amount: value.parse().unwrap(),

@@ -700,7 +700,8 @@ fn pattern_hexes(field: Field, me: &Stack, fp: Footprint, victim: Footprint) -> 
 /// BAT-MAG-040), for creatures that strike twice a second attack unless the attacker now loses
 /// its turns (BAT-ATK-002), the return to `start` of creatures that strike and return unless the
 /// attacker now loses its turns or is bound (BAT-ATK-004, BAT-MAG-045), the end of the attacker's
-/// Berserk (BAT-MAG-025), then the end-of-battle check (BAT-END-001).
+/// Berserk (BAT-MAG-025), the rebirths (BAT-MAG-059), then the end-of-battle check
+/// (BAT-END-001).
 pub(crate) fn melee<S: Sink>(
     state: &mut BattleState,
     ruleset: &Ruleset,
@@ -767,6 +768,8 @@ pub(crate) fn melee<S: Sink>(
         }));
     }
     effects::attacked(state, ruleset, attacker, sink);
+    // rule: BAT-MAG-059
+    crate::raise::rebirths(state, ruleset, sink);
     check_end(state, sink);
 }
 
@@ -821,7 +824,7 @@ fn retaliate<S: Sink>(
 /// target lives and shots are left), each using a shot (none below 0, quirk Q-0004; the
 /// controller's Ammo Cart supplies them); area shots also strike every other living stack around
 /// `at` that the area does not spare (BAT-RNG-004). Shots are not retaliated. Then the end of the
-/// shooter's Berserk (BAT-MAG-025) and the end-of-battle check.
+/// shooter's Berserk (BAT-MAG-025), the rebirths (BAT-MAG-059) and the end-of-battle check.
 // rule: BAT-RNG-001
 pub(crate) fn shoot<S: Sink>(
     state: &mut BattleState,
@@ -851,6 +854,8 @@ pub(crate) fn shoot<S: Sink>(
         attack(state, ruleset, pair, &others, how, sink);
     }
     effects::attacked(state, ruleset, shooter, sink);
+    // rule: BAT-MAG-059
+    crate::raise::rebirths(state, ruleset, sink);
     check_end(state, sink);
 }
 
