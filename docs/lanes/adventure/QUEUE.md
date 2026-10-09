@@ -18,7 +18,7 @@ Epic: `docs/epics/E08-adventure-map.md` (refined 2026-10-08, reviewed with the u
 - **Scope:** E08 T1b. Sources and quirks for movement (movement points by army speed, terrain and road costs, diagonal cost, the last step of a day, leftover points), fog of war (scouting radius, the fringe, decision 7: confirmed per Q30 before it becomes `ADV-QUIRK-1`, by the user looking at a map) and the day advance; HD's and HotA's contact rules for simultaneous turns (decision 8, captured for a later decision). Output: `docs/rules/surveys/E08-adventure-core.md`, `docs/rules/quirks-adventure.md`, rule ids `ADV-*`/`GAME-*` proposed in the survey. The wiki needs the user's approval per session (`docs/HANDOFF.md`, "Sources").
 - **Acceptance:** the user classified the quirks; disputed rules are `ADV-Q<n>` entries.
 - **Depends on:** nothing (runs beside T2; gates T4, T7 and T8).
-- **Status:** waiting (the user's classification of A-1 to A-3 and the look at a map for A-1; branch `adventure/t1b-survey`). Disputes `ADV-Q3`–`ADV-Q5` are settled by code readings at the start of T7 and T8.
+- **Status:** waiting (the user's classification of A-1 to A-3 and the look at a map for A-1; PR #33). Disputes `ADV-Q3`–`ADV-Q5` are settled by code readings at the start of T7 and T8.
 
 ### E08 T2 — Shared skeleton
 
