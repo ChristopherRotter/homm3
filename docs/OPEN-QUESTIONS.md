@@ -46,7 +46,51 @@ The original picks Chain Lightning's next target by screen distance; the y posit
 
 ### Server lane (`SRV-Q<n>`)
 
-(no open questions)
+Context, options and recommendations for all of these: `docs/epics/E16-server.md`, "Questions for the user" (the E16 refinement's first draft, 2026-10-08). Blocked until answered: the correction of the drafts and the server `QUEUE.md`.
+
+#### SRV-Q1 — Where the server runs first
+
+Loopback, LAN or internet. Recommendation: loopback and LAN until identity (M3) exists; the internet also needs a reverse proxy for TLS.
+
+#### SRV-Q2 — Authentication now or later
+
+Recommendation: seat tokens only in M1–M2, the keypair identity in M3.
+
+#### SRV-Q3 — Which client connects first
+
+The headless test client, then the client lane's viewer; proposal that the viewer consumes `h3-protocol` messages live or from a record file with the same code.
+
+#### SRV-Q4 — Spectators
+
+Public events only, or a `Viewer::Spectator` in the battle's `observe` (a battle-lane API change) before M2.
+
+#### SRV-Q5 — Runtime and wire format
+
+Std threads and JSON as recommended, or `tokio` and/or a binary format from the start.
+
+#### SRV-Q6 — What `h3-game` must expose for the whole game (M5)
+
+A player actor for `apply`, `observe` for a player and a spectator, pending decisions as state, a trusted system actor for timeouts and disconnects. May the server lane file this as an adventure-lane request (input to E08 T1a, ADR draft 3)?
+
+#### SRV-Q7 — Timing
+
+Start M0 now (the mapping's "other" fallback protects the build from E04b/E04c additions) or wait for E04b's close.
+
+#### SRV-Q8 — Account model
+
+Password-derived keypair (recommended: name and password become a signing key on the device, no secret is sent or stored, any device with the password has the account; two crypto crates, `ed25519-dalek` and `argon2`) or classic password accounts hashed on each server (one crate; the password travels, so every login needs TLS). A keypair per device was dropped: a new device would need the key file (the user, 2026-10-08).
+
+#### SRV-Q9 — Persistence
+
+Journals and JSON-lines logs in a data directory, synced per write and rebuilt at start (recommended), or an embedded store from the start. The write-ahead journal, which restores open games after a crash or a pause by re-running them, is the same under both.
+
+#### SRV-Q10 — Milestone order
+
+Ranked battles (M4) before the whole game (M5), as proposed.
+
+#### SRV-Q11 — Server discovery
+
+A web of trust between servers (recommended: every server has a keypair and signs a card describing itself; operators vouch for peers in the configuration; clients browse the cards relayed by servers they know and see the vouching chain; signed community lists as files; mDNS on the LAN), with resolution by key through a DHT deferred; or a DHT from the start; or no discovery in the core (community lists on a web page). Draft: `docs/lanes/server/adr-drafts/discovery.md`.
 
 ### Client lane (`CLT-Q<n>`)
 
@@ -55,6 +99,7 @@ The original picks Chain Lightning's next target by screen distance; the y posit
 ## Answered
 
 - *(2026-10-08, Q57, `shared/exe-map`)* **Mapping the executable; code reading's place; H3API.** The user asked how agents read `Heroes3.exe` and whether they should map it. The agent found that every session disassembled `.text` afresh and grepped a flat listing without function bounds, names or callers, while about 260 addresses lay in `installation.md` §7's prose by task (one function described in up to ten subsections; 0x469E50 once misnamed), and that H3API (MIT, the 3.2 build) names about 340 functions whose addresses map onto the user's build by per-region shifts. **User:** (1) build the map: `docs/exe/` (address map and record layouts, any lane adds to them; README), `scripts/exe.py` (the reading tool), `cargo xtask check-exe-map` (every cited address covered); (2) H3API is fine as a source of guesses (`docs/exe/h3api.toml`, ADR-0009 amendment 3); (3) manual experiments are slow and cumbersome, so code reading, if it can be made reliable enough, may be preferable to them: Q29's "last resort" is lifted (`docs/04-rules-and-sources.md` §2: preferred to a new experiment when a reliable reading settles the rule; experiments for what a reading leaves open). *(2026-10-09, review of PR #30, user:)* a reading of behaviour ranks with an experiment, which wins a conflict (the reading is re-read); readings at risk (against VCMI or the wiki, float boundaries, run-time `.TXT` values) get a confirmation experiment queued; a quirk flag confirmed by a reading alone needs a second look (a fresh re-read or VCMI's agreement); a reading names the caller path it followed (the human player's action; not the computer player's routines, a version, tutorial, hidden-battle or network branch); `check-exe-map` requires every map entry at an address H3API names to carry `h3api = "…"` or to dispute it. A kind of its own for readings in the catalog (`code-reading`) was left for a later lane task, since the battle catalog's 63 citations would move with it.
+- *(2026-10-08, BAT-Q13, E04b increment 9)* **How the outcome reports a Pit Lord's Demons and the created stacks' kills.** The code reading (`installation.md` §7.21, "re-read for T7b3") found the Demons an ordinary army stack: created without flags (0x5A7390 → 0x47A100) in the army slot of the corpse they rise from (+0x5C), rebuilt into that slot after the battle (0x4641F0), counting for victory, experience (0x46A350) and Necromancy (0x4775E1). Both of these count per record, `start − count`, Necromancy truncating per record, so a sum by creature (BAT-Q7 (b) as written) can be one off; a reused record (a dead created stack's) starts afresh and loses the earlier stack's kills (batch 2d SU a), and a clone whose rounds run out keeps its count (those creatures are not killed). (1) Demons: a new origin `StackOrigin::Raised(slot)` (recommended) or a plain `Army(slot)` record with the start it rose with. **User: `Raised(slot)`.** (2) The created stacks' kills: as records in `BattleOutcome.stacks` with a new origin `Created` (recommended; exact per record, the experience leaves them out by origin), a separate list per created stack, or summed by creature. **User: records with origin `Created`.** (3) A reused record's lost kills: the rule, no flag (recommended; E08–E10 classify Necromancy from created stacks as a whole), fix-optional, or always fixed. **User: the rule, no flag.** ADR-0014 points 6, 9 and 10 amended (`shared/battle-outcome-raised`). Found too: with 20 records in use and no dead created one, the original's raise crashes (a null record): always fixed, the raise is refused then.
 - *(2026-10-08, BAT-Q10, E04b T7b cut)* **The T7b/T7c cut, the creature's cast command and T6c's place.** The T7a checkpoint proposed T7b1 (the creature's cast, the casters of one spell), T7b2 (Faerie Dragon, Master Genie), T7b3 (Archangel, Pit Lord), T7b4 (Enchanter), T7c (mana and defences), with increment 7 = T7b1 + T7b2; the command's shape and T6c's place were open. Options for the command: (a) a new `CreatureCast { target }` naming no spell, as the original's action 10 (ADR-0014 point 3 amended); (b) `Cast` with a caster kind, the named spell checked against the stack's (the Genie draws its spell at resolution; the Archangel and the Pit Lord cast none). **User: the cut confirmed; increment 7 = T7b1 alone; (a); T6c with T7b3 in increment 8** (both change `BattleOutcome`: one `shared/` PR). ADR-0014 points 3 and 9 amended (PR #18).
 - *(2026-10-08, BAT-Q11, E04b T7b2 start)* **The T7b2 seam, the random casters' visibility and heads, S-18, BAT-QUIRK-9.** (1) Seam: T7b2 in two parts with one checkpoint, T7b2a Faerie Dragon then T7b2b Master Genie (recommended), T7b2a alone, or one PR. **User: two parts, one checkpoint after both** (increment 8; T6c with T7b3 becomes increment 9). (2) The Master Genie draws its spell at the resolution: its spell head allows only 0 and the target head the stacks with a useful spell (recommended), a reserved "random" spell value (C ABI change), or only 0 plus per-stack counts of the spells the draw could pick in the observation. **User: only 0, plus the observation's counts.** (3) The Faerie Dragon's drawn spell before it casts: its controller only, as the original's message (recommended), or both sides. **User: its controller only.** (4) S-18 (Magic Arrow 0 damage to Gold and Diamond Golems): no caster in SoD gets a value low enough (a hero ≥ 20, a Faerie Dragon ≥ 70; only a protection on a Diamond Golem truncates a 1 to 0): not reproducible, no flag (recommended), or fix-optional "at least 1". **User: not reproducible.** (5) Found in T7b2a's reading: the original tests no stack of a creature's cast, so a Faerie Dragon's spell that Magic Mirror sends to its own side ignores that stack's immunities, Anti-Magic and resistance (0x5A02CB). Fix-optional (recommended), preserve, or always fixed. **User: fix-optional** (BAT-QUIRK-9, `quirk.battle.creature_mirror_untested`). ADR-0014 points 8 and 9 amended (PR #22).
 - *(2026-10-08, BAT-Q12, E04b T7b2b)* **The Master Genie's usefulness test.** (1) The test (the original's 0x447A80) counts the Protections, Anti-Magic and Magic Mirror as useful only if the enemy hero carries a spell book, which the engine kept private; the per-stack draw counts (BAT-Q11) would reveal it. Options: make the presence of a spell book public (recommended; the spells stay private), or keep it private and leave those spells out of the counts for that case (the counts could then differ from the draw). **User: public** (ADR-0014 point 8 amended, PR #24). (2) Its Slayer case counts dead enemy stacks and only king level 1: reproduce it as the rule, no flag (recommended), or fix-optional. **User: the rule, no flag** (ledger BAT-QUIRK-10).
@@ -120,7 +165,7 @@ The original picks Chain Lightning's next target by screen distance; the y posit
 - *(2026-09-30, Q11)* Attack-bonus cap: **+300 %** (damage at most 4× base, reached at 60 points of attack over defense), as the wiki states; VCMI's 400 % is not followed. The base pack (E02) must set `attack_bonus_cap_percent = 300`; the synthetic pack already does. Recorded in BAT-DMG-002.
 - *(2026-09-30, Q12)* Damage roll of large stacks: **follow the wiki** — with 10 or more creatures, roll 10 integers in the damage range, sum them, multiply by N/10 and round down (for exactly 10 creatures this equals summing ten individual rolls, which is what E01 implements). Recorded in BAT-DMG-001; VCMI's averaging is not followed.
 - *(2026-09-30, Q1)* License: **GPL-2.0-or-later** (user's choice, option (a)). VCMI code may be consulted and ported with attribution; dependencies must be GPLv2-compatible. Recorded in ADR-0009 (Accepted), `LICENSE`, `deny.toml`.
-- *(2026-09-30, Q3)* CI host: **no CI configuration yet**; `cargo xtask verify` is run locally. Work happens on short-lived feature branches (E01: `e01-walking-skeleton`) that the user fast-forwards into `master`. The Windows half of the determinism check therefore has to be run by hand until CI exists (see HANDOFF). **Update 2026-10-06:** the repo is on GitHub (`ChristopherRotter/homm3`, private) and CI runs on GitHub Actions: `.github/workflows/ci.yml` runs `cargo xtask verify` on Linux for every pull request, every push to `master` and weekly (`docs/05-testing.md`, "CI"); the Windows job is disabled for its run time (user, 2026-10-06), so the Windows verify stays a local run. Changes reach `master` through pull requests by convention (branch rules cannot be enforced on this plan). **Update 2026-10-07 (Phase 0):** pull requests replace every other way of syncing; work runs in lanes on `<lane>/<task>` branches, merged at their checkpoints, and `.github/workflows/lanes.yml` checks lane ownership (`docs/08-work-process.md`, "Lanes", "Branches, pull requests and syncing").
+- *(2026-09-30, Q3)* CI host: **no CI configuration yet**; `cargo xtask verify` is run locally. Work happens on short-lived feature branches (E01: `e01-walking-skeleton`) that the user fast-forwards into `master`. The Windows half of the determinism check therefore has to be run by hand until CI exists (see HANDOFF). **Update 2026-10-06:** the repo is on GitHub (`ChristopherRotter/homm3`, private) and CI runs on GitHub Actions: `.github/workflows/ci.yml` runs `cargo xtask verify` on Linux for every pull request, every push to `master` and weekly (`docs/05-testing.md`, "CI"); the Windows job is disabled for its run time (user, 2026-10-06), so the Windows verify stays a local run. Changes reach `master` through pull requests by convention (branch rules cannot be enforced on this plan). **Update 2026-10-07 (Phase 0):** pull requests replace every other way of syncing; work runs in lanes on `<lane>/<task>` branches, merged at their checkpoints, and `.github/workflows/lanes.yml` checks lane ownership (`docs/08-work-process.md`, "Lanes", "Branches, pull requests and syncing"). **Update 2026-10-08:** Actions minutes ran short with parallel lanes (user): CI verifies each code state once (code fingerprint), docs-only pushes to `master` run nothing, the lane check moved into `ci.yml`, the weekly run checks advisories only, and pull requests are opened only when ready for merging (`docs/05-testing.md`, "CI").
 - *(2026-09-30)* Configurability scope: tiers 1–3; architecture wins when in conflict.
 - *(2026-09-30)* Fidelity definition: logic equivalence, not replay equivalence; profiles welcome.
 - *(2026-09-30)* Save files: low priority, future scope.

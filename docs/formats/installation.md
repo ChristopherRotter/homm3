@@ -329,7 +329,7 @@ dispatcher (VA 0x59ECC4) maps spell ids 10–69 to handlers through a byte table
 - No other comparison of the count with 20 or 21 was found. Resurrection, Animate Dead and
   Sacrifice bring back a dead stack in its own record, so they never need a new one.
 
-Not read: where Pit Lords' demons go, and why the 21st record stays free. A dead clone's or summoned
+Not read: why the 21st record stays free (Pit Lords' Demons: §7.21, "The raisers"). A dead clone's or summoned
 stack's record goes to the next stack the side creates (§7.19).
 
 ### 7.8 Code reading: damage spells, immunities and magic resistance (E04b T2d, 2026-10-06)
@@ -1369,3 +1369,38 @@ the tower never qualify); Precision: it can. Prayer: the stack's bit `0x4000000`
 is clear. Slayer: a record of the opposite side with creature flag `0x80` (king 1), whether dead
 or alive: dead stacks count and king 2 or 3 alone does not (the user: the rule in every profile,
 BAT-Q12; ledger BAT-QUIRK-10). The Enchanter (0x447FE0, T7b4) uses the same test.
+
+**The raisers and the end of the battle, re-read for T6c and T7b3** (BAT-Q13, 2026-10-08).
+*The Pit Lord* (0x448260's case → 0x5A3E40, 0x5A7390). The side is the caster's controller (+0x288
+flips it); the cursor (0x4477BF) and the cast both call 0x5A3E40(side, hex): the hex must be
+unblocked (hex byte +0x10 bit `0x2`) and hold no living stack (+0x18 below 0); its corpses from the
+last added to the first: the first of that side whose creature is living (flag `0x10`) and, for a
+two-hex corpse, whose other hex is unblocked with no living stack. There is no spell test (no
+immunity, Anti-Magic or resistance). The cursor then needs 0x447330 above 0. *0x447330(caster,
+target)*: for an Archangel (13) `min(start − count, 100 × Archangels div health)` of the target
+(+0x60, +0x4C, +0xC0), the creatures its raise brings back; otherwise (the Pit Lord) `min(start,
+min(50 × Pit Lords, start × health) div 35)` with the corpse's start count and
+health (35: the Demon's health, creature 48 of the creature table). *0x5A7390(caster, corpse)*: removes the corpse from
+its hexes' lists (0x5A7320, both hexes), then 0x47A100(controller's side, 48, the count, the
+corpse's hex, flags **0**, animation 1) and sets the new record's +0x5C (army slot) to the
+corpse's. The Demons are no summoned stack: they count for the winner (0x4658B0), leave a corpse,
+give experience and count for Necromancy, and the army rebuild puts them into that slot. With 20
+records in use and no dead summoned one, 0x47A100 returns 0 and 0x5A7390 writes through it: the
+game crashes (the engine refuses the raise then). *The Archangel*: the cursor's case 0 calls
+0x5A3CC0(side, hex, 1) (Resurrection's search and test, §7.18) and needs 0x447330 above 0.
+*Clone on its original* (BAT-QUIRK-7): 0x5A6C70 calls 0x47A100 at the clone's position, then takes
+the stack on that hex (0x4E7170) as the clone, whether 0x47A100 created it or not: if the
+position was the original's, the original gets `0x400000` (not `0x800000`), the clone's rounds
+(+0x2C) and itself as both links (+0x24, +0x28).
+*The end of the battle.* 0x47A100 sets a created record up through 0x43D8B0 with army slot −1
+(+0x5C) and 0x43D730 (count +0x4C, temporary +0x54 = 0, start +0x60 = the count), so a reused
+record starts afresh. The rebuild 0x4641F0(side) empties the army's seven slots, then for each
+record in use: creatures above 0, not dead, not summoned (only while the side has a hero,
++0x54A8 not −1), not a clone, not a war machine, army slot 0–6: that slot gets its creature and
+count (a later record wins a shared slot). Necromancy (0x4775E1, the winner's hero) sums over the
+loser's records 0–19 with a creature: `killed = start − count`, and if above 0, `min(killed,
+trunc(f32(min(health, raised health) × killed) × rate / f32(raised health)))`, at least 1 in all
+if any record had kills; summoned stacks, clones and war machines count. The experience
+(0x46A350) sums `killed × health` over the opposite side's records that are neither summoned nor
+war machines (then hero and game-setting terms, not read here). The death 0x444120 does not touch the dying stack's count
+(a clone whose rounds ran out keeps it), but sets an original's clone to 0 before killing it.

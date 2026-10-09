@@ -552,6 +552,79 @@ fn a_random_casters_drawn_spells_take_a_stack_or_a_hex_at_its_mastery() {
     }
 }
 
+#[test]
+fn a_corpse_raiser_raises_one_one_hex_creature() {
+    use crate::ability::{Ability, AbilityDef};
+    let raiser = |creature: &str| AbilityDef::CorpseRaiser {
+        creature: key(creature),
+        hit_points_per_creature: 50,
+    };
+    let mut p = pack();
+    p.creatures[0].info.abilities = vec![raiser("t:farmer")];
+    p.creatures[1].info.abilities = vec![raiser("t:farmer")];
+    let r = compile(&[p.clone()]).unwrap();
+    let peasant = r.creature_by_key("t:peasant").unwrap();
+    assert!(matches!(
+        r.abilities(peasant),
+        [Ability::CorpseRaiser {
+            hit_points_per_creature: 50,
+            ..
+        }]
+    ));
+    // At most one creature raised from corpses in a ruleset (BAT-MAG-052).
+    let mut two = p.clone();
+    two.creatures[1].info.abilities = vec![raiser("t:peasant")];
+    assert_eq!(
+        fails(two),
+        CompileError::TooManyEntries("corpse_raiser creature")
+    );
+    let mut wide = p;
+    wide.creatures[1].info.flags.push("two_hex".into());
+    assert_eq!(
+        fails(wide),
+        CompileError::InvalidCreature {
+            key: "t:peasant".into(),
+            reason: "corpse_raiser needs a one-hex creature",
+        }
+    );
+}
+
+#[test]
+fn a_stack_raiser_needs_a_raise_spell() {
+    use crate::ability::{Ability, AbilityDef};
+    let mut p = pack();
+    let mut offer = raising("t:offer", SpellEffect::Sacrifice);
+    offer.tests_as = Some(key("t:rise"));
+    p.spells
+        .extend([raising("t:rise", SpellEffect::Raise), offer]);
+    let raiser = |spell: &str| AbilityDef::StackRaiser {
+        spell: key(spell),
+        hit_points_per_creature: 100,
+    };
+    let mut good = p.clone();
+    good.creatures[0].info.abilities = vec![raiser("t:rise")];
+    let r = compile(&[good]).unwrap();
+    let peasant = r.creature_by_key("t:peasant").unwrap();
+    assert!(matches!(
+        r.abilities(peasant),
+        [Ability::StackRaiser {
+            hit_points_per_creature: 100,
+            ..
+        }]
+    ));
+    for spell in ["t:offer", "t:bolt"] {
+        let mut bad = p.clone();
+        bad.creatures[0].info.abilities = vec![raiser(spell)];
+        assert_eq!(
+            fails(bad),
+            CompileError::InvalidCreature {
+                key: "t:peasant".into(),
+                reason: "stack_raiser needs a spell with a raise effect",
+            }
+        );
+    }
+}
+
 fn invalid_spell(k: &str, reason: &'static str) -> CompileError {
     invalid("spell", k, reason)
 }

@@ -3,7 +3,7 @@
 # One agent at a time works in a lane, on a branch `<lane>/<task>`, and a lane's pull request
 # changes only its own paths and the common ones. Shared paths change only through small, separate
 # pull requests (branch `shared/<topic>`) that merge first. `cargo xtask check-lane` enforces this
-# on every pull request (CI, `.github/workflows/lanes.yml`); a deliberate cross-lane change carries
+# on every pull request (CI, `.github/workflows/ci.yml`); a deliberate cross-lane change carries
 # the PR label `cross-lane` (locally: `--cross-lane`).
 #
 # Patterns: `dir/` matches everything below `dir`; `prefix*` matches every path starting with

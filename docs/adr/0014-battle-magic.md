@@ -63,12 +63,16 @@ which a spell meets a stack, how stacks appear in a battle, how hidden objects s
    original (`installation.md` §7.7). Clone and Summon Elemental are legal only while the caster's
    side has fewer than 20 stacks (a battle parameter), Summon Elemental only for the side's first
    elemental type. Raising (Resurrection, Animate Dead, Sacrifice) revives a dead stack in its own
-   slot and is not limited; Pit Lords' demons take the slot of the dead stack they rise from. Dead
-   stacks keep their slots and stay addressable. Stacks created in battle cross no seam: summoned
-   stacks and clones end with the battle and the outcome leaves them out (no `StackOrigin`
-   variant), and a side left with only such stacks does not win (`BattleResult::Draw`, as the
-   original); temporarily raised creatures (Basic Resurrection) do not count in the outcome's end
-   counts; permanent ones do. Pit Lords' demons, which stay, are decided with T7.
+   slot and is not limited. A Pit Lord's Demons are a new stack in a dead created stack's slot or
+   a new one (refused without either: the original crashes), which takes the army slot of the
+   dead stack they rise from. Dead stacks keep their slots and stay addressable. Summoned stacks
+   and clones end with the battle, and a side left with only such stacks does not win
+   (`BattleResult::Draw`, as the original). The outcome reports every stack in the side's slots
+   at the end by origin (BAT-Q7, BAT-Q13): army stacks, war machines, created stacks
+   (`StackOrigin::Created`, whose kills Necromancy counts) and Demons (`StackOrigin::Raised`, in
+   their army slot after the battle); a slot a later stack took over reports only that one, as
+   the original's records. Temporarily raised creatures (Basic Resurrection) do not count in the
+   outcome's end counts; permanent ones do.
 7. **Hidden battlefield objects have an owner side.** A viewer sees a spell obstacle if it is the
    owner, the obstacle is revealed or of a visible kind (Force Field, Fire Wall), or the viewer's side
    has natives: as the original by default, a side that had a stack on its native terrain at the
@@ -94,7 +98,8 @@ which a spell meets a stack, how stacks appear in a battle, how hidden objects s
    where one is known before its resolution (point 3: the casters of one spell, a Faerie Dragon's
    drawn spell); for the Master Genie, which draws at the resolution, it allows only 0, and the
    observation shows per stack how many spells the draw could pick for it (BAT-Q11); the Archangel
-   and the Pit Lord are settled with their task. Its second target head allows only none. The C ABI takes an action as
+   and the Pit Lord, which raise without a spell, allow only 0 too. Its second target head allows
+   only none. The C ABI takes an action as
    a small struct and serves a mask per head; sizes do not depend on the ruleset (ADR-0011). Each
    task bumps the encodings it changes.
 10. **Seam changes are additions only** (reviewed with this ADR): `BattleEffect` variants for the
@@ -103,7 +108,8 @@ which a spell meets a stack, how stacks appear in a battle, how hidden objects s
     `BattleMagic` and `HeroOutcome` fields. Battle magic rules use the new area `BAT-MAG`; the
     hero's derivation continues `HER-BAT`. One exception (user, Q55): `BattleSetup.obstacles`
     becomes a list of natural obstacles, each with its blocked hexes and an optional anchor hex
-    (removable by Remove Obstacle; the anchor's own effects are quirk BAT-QUIRK-3).
+    (removable by Remove Obstacle; the anchor's own effects are quirk BAT-QUIRK-3). `StackOrigin`
+    gains `Created` and `Raised` for the stacks a battle creates or raises (point 6).
 
 ## Consequences
 
@@ -165,3 +171,8 @@ which a spell meets a stack, how stacks appear in a battle, how hidden objects s
   is private to its controller's side until it is cast; the Master Genie's spell head allows only 0
   and the observation counts, per stack, the spells its draw could pick. Point 8 again (the user,
   BAT-Q12): whether a hero carries a spell book is public, as the Genie's counts reveal it.
+- 2026-10-08: points 6, 9 and 10 amended (E04b T6c and T7b3; the user, BAT-Q7, BAT-Q13): the
+  outcome reports the stacks a battle creates (`StackOrigin::Created`; Necromancy counts their
+  kills, per stack as the original's records) and a Pit Lord's Demons (`StackOrigin::Raised`, an
+  army stack in the dead stack's army slot, `installation.md` §7.21); this takes back the T6a
+  amendment's "no `StackOrigin` variant". The Archangel and the Pit Lord raise without a spell.

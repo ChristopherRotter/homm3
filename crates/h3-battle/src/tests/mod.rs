@@ -21,6 +21,7 @@ mod properties;
 mod protect;
 mod rage;
 mod raise;
+mod raisers;
 mod ranged;
 mod remove;
 mod rules;

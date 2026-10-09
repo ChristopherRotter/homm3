@@ -6,14 +6,14 @@ Every session reads this file first, then its lane's `docs/lanes/<lane>/HANDOFF.
 
 | Lane | Owns (`lanes.toml`) | State | Files |
 |---|---|---|---|
-| battle | `h3-battle`, `h3-heroes`, `h3-content`, `h3-pack`, `h3-sim`, `h3-ffi`, `h3-cli`, the formats/tools crates, packs, fixtures, experiments | active: E04b, increment 8 = T7b2 in two parts (T7b2a Faerie Dragon, T7b2b Master Genie; the user, BAT-Q11); then T6c with T7b3 (increment 9) | [HANDOFF](lanes/battle/HANDOFF.md), [QUEUE](lanes/battle/QUEUE.md) |
+| battle | `h3-battle`, `h3-heroes`, `h3-content`, `h3-pack`, `h3-sim`, `h3-ffi`, `h3-cli`, the formats/tools crates, packs, fixtures, experiments | active: E04b, increment 9 = T6c with T7b3 (created stacks' follow-ups; the Archangel, the Pit Lord; the user, BAT-Q13); then T7b4, T7c | [HANDOFF](lanes/battle/HANDOFF.md), [QUEUE](lanes/battle/QUEUE.md) |
 | adventure | `h3-adventure` (new) | refinement session next (E07/E08) | [HANDOFF](lanes/adventure/HANDOFF.md), [QUEUE](lanes/adventure/QUEUE.md) |
 | server | `h3-protocol`, `h3-server` (new) | refinement session next (E16) | [HANDOFF](lanes/server/HANDOFF.md), [QUEUE](lanes/server/QUEUE.md) |
 | client | `clients/` (own Cargo workspace) | waits for the user's asset notes | [HANDOFF](lanes/client/HANDOFF.md), [QUEUE](lanes/client/QUEUE.md) |
 
 Shared (own pull request, merged first): `h3-kernel`, `h3-contracts`, workspace and gate files (`Cargo.toml`, `arch.toml`, `lanes.toml`, `xtask`, CI), ADRs, process docs, `BACKLOG.md`, this file. Common (any lane): `OPEN-QUESTIONS.md` and `docs/stubs.toml` (one block per lane), `Cargo.lock`, `docs/exe/map.toml` and `structs.toml` (one line per entry).
 
-- **GitHub and CI:** `ChristopherRotter/homm3` (private). `.github/workflows/ci.yml` runs the full `cargo xtask verify` on Linux for pull requests, `master` and weekly; `lanes.yml` runs `cargo xtask check-lane` on pull requests. Changes reach `master` by pull request only.
+- **GitHub and CI:** `ChristopherRotter/homm3` (private, free plan: Actions minutes are scarce). `.github/workflows/ci.yml` runs `check-lane` and the full `cargo xtask verify` on Linux for pull requests and `master`, but never twice for the same code (code fingerprint, `05-testing.md` "CI"), and weekly `cargo deny check advisories`. Changes reach `master` by pull request only; **open a pull request only when its branch is ready for merging**.
 - **Phase 0** (2026-10-07, `shared/lanes-phase-0`): lanes, `check-lane`, `verify --scope`/`--summary`, per-workload baselines, lane docs; every lane works on it (the battle lane since increment 4).
 
 ## Traps for every lane

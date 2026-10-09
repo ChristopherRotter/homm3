@@ -1395,3 +1395,63 @@ records how and why the tasks went.
   controller only, no target without a useful spell, every usefulness case, the enemy's shooters,
   war machines, spell book and kings); the content's list and compile rules; the sim's spell head
   0; the pack's unknown usefulness; the hero view's book flag.
+
+### Increment 9 start and T6c: the created stacks' follow-ups (2026-10-08)
+
+- **Seam** (the user): increment 9 = T6c with T7b3 as planned, one checkpoint after both; one
+  shared PR for the outcome (#26, `shared/battle-outcome-raised`), then T6c and T7b3 as stacked
+  battle PRs.
+- **Code reading** (`installation.md` §7.21, "The raisers and the end of the battle"): the Pit
+  Lord's Demons are an ordinary army stack in the corpse's army slot; Necromancy (0x4775E1) and
+  the experience (0x46A350) count per record, `start − count`; a reused record starts afresh; the
+  death 0x444120 keeps the dying stack's count but zeroes an original's clone; Clone on its
+  original flags the stack on the position's hex (0x4E7170) `0x400000`, not `0x800000`.
+- **Decisions** (the user, BAT-Q13): the Demons as `StackOrigin::Raised(slot)`; created stacks as
+  records with `StackOrigin::Created` (exact per-record Necromancy; the experience leaves them out
+  by origin), instead of BAT-Q7 (b)'s sum by creature; a reused record's lost losses the rule, no
+  flag (ledger BAT-QUIRK-11). ADR-0014 points 6, 9 and 10 amended in #26.
+- **Content:** quirk flag 15 `quirk.battle.clone_on_its_original` (BAT-QUIRK-7; faithful on,
+  strict-fixed off); packs regenerated (the base and synthetic profiles).
+- **Battle:** `created::clone_place` returns a `ClonePlace`; with the flag the original's hexes are
+  free and a place on them turns the original (`created::turn`: `SUMMONED` without `CLONE`, the
+  clone's rounds, linked to itself; event `TurnedSummoned`); a place whose front hex is the
+  original's is skipped in every profile (BAT-QUIRK-8). `Created.vanished` keeps the creatures a
+  stack vanished with when its rounds ran out (state hash v36); `BattleState::outcome` reports
+  every stack by origin, `end` with the vanished creatures, BAT-QUIRK-6's keep-one over army
+  stacks only.
+- **Tests:** `tests/created.rs` (BAT-QUIRK-7 both ways, BAT-QUIRK-8 under the flag, the outcome
+  per created stack with a reused slot and a clone gone with its original, the vanished count);
+  the property `outcomes_account_for_every_stack` covers every stack by origin. Golden replays:
+  hashes re-recorded (same commands and results).
+
+### T7b3: the raisers (2026-10-08)
+
+- **Decisions** (the user, BAT-Q13, at the increment's start): the Demons as
+  `StackOrigin::Raised(slot)` (shared PR #26). Agent decisions: the Archangel and the Pit Lord keep
+  the sim's spell head at 0 (ADR-0014 point 9, in #26); the raise without a free record, which
+  crashes the original, is refused (ledger BAT-QUIRK-12, exploit-fix); a raised stack takes the
+  turn order's tie-break of a created stack (`Stack::turn_slot`), as the original's new record.
+- **Code reading** (`installation.md` §7.21, "The raisers and the end of the battle"): 0x4473D0
+  and 0x4476C0's case 0 (no test of the side's records; the cursor never offers the caster),
+  0x5A3CC0 with its third argument 1, 0x447330's two counts, 0x5A3E40's corpse search, 0x5A7390.
+- **Content:** abilities `stack_raiser` (spell, hit points per creature) and `corpse_raiser`
+  (creature, hit points per creature; one-hex, at most `MAX_RAISED_CREATURES` = 1 in a ruleset),
+  pack format v25, ruleset hash v34; the gap-fill's `exe-raisers` (Archangel: Resurrection, 100;
+  Pit Lord: Demons, 50). The synthetic Seraph (two Seraphs, the attacker's slot 4) and Fiends (six,
+  the defender's slot 4, raising Spearmen) in `full.toml`.
+- **Battle:** `CastSpell::Raise`; `casters::Raiser`, `raiser`, `raise_target`, `corpse_count`,
+  `raise`, `CreatureAction` (`plan`), `Plan::CreatureRaise`; `raise::creature_test`,
+  `corpse_raisable` and the shared `on_top`; `created::has_slot`, `raise_corpse`; the side's
+  templates (`TEMPLATES` = 5) hold the raised creature when either army has a corpse raiser;
+  `StackTraits::RAISED`, `Stack::turn_slot`; events `CreatureRaise`, `RoseFromCorpse`; the outcome's
+  `StackOrigin::Raised`, its survivors sorted by slot. The summon templates no longer carry
+  `SUMMONED` (Summon Elemental sets it), and a clone of a raised stack is no raised stack.
+- **Measurements:** `BattleState` 5 888 → 6 200 bytes (two template stacks of 72 bytes per side
+  and T6c's 168 bytes of vanished counts). T6c's and T7b3's code on the old workload +0.17 % Ir
+  (8 838 steps, unchanged). The new workload (a Seraph and Fiends): 8 152 steps (−7.8 %), +2.54 %
+  Ir (the raises themselves about 1 %; the rest the armies), re-baselined. Replays re-recorded
+  with new agent seeds showing the raises with T5–T7b2's features: a755, a1253, a709, a631, a373.
+- **Tests:** `tests/raisers.rs` (the Archangel's targets, health test and permanent raise, a
+  corpse; the Pit Lord's corpse search, count, slot, outcome, a hypnotized raiser, Demons from
+  Demons, the missing slot); the content's raiser checks; the properties: a reused slot taken by a
+  raised stack, the outcome's `Raised` records, one survivor per slot.

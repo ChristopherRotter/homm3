@@ -57,7 +57,7 @@ pub(crate) fn next_active(state: &BattleState) -> Option<StackId> {
                 s.speed_now()
             };
             // The trailing id makes the key unique, so the order is total (ADR-0003 §9).
-            (phase, speed, s.side != preferred, s.slot, *id)
+            (phase, speed, s.side != preferred, s.turn_slot(), *id)
         })
         .map(|(id, _)| StackId(id))
 }

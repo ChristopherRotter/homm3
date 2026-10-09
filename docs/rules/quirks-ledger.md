@@ -259,14 +259,14 @@ Classes: `exploit-fix` (always fixed, never toggleable) · `preserve` (accepted,
 ### BAT-QUIRK-7 — A clone placed on its own original makes the original vanish (E04b T6b)
 - Class: fix-optional (user, 2026-10-08)
 - Context / rules affected: battle, BAT-MAG-038
-- Original behavior: Clone's place search (0x5A6C70, `docs/formats/installation.md` §7.19) tests each hex with 0x446C40, which counts the original's own hexes as free. Around a crowded two-hex original (every place in ring 1 taken), ring 2 can pick the original's head as the clone's position: the stack creation (0x47A100) refuses the occupied hex and creates nothing, and the cast goes on to flag *the original* as summoned with the clone's rounds and as its own clone: no clone appears, the original vanishes without a corpse when the rounds run out, and its army slot is lost after the battle (observed, batch 2d CL2). The other outcome of the same search, a clone sharing a hex with its original, is BAT-QUIRK-8.
+- Original behavior: Clone's place search (0x5A6C70, `docs/formats/installation.md` §7.19) tests each hex with 0x446C40, which counts the original's own hexes as free. Around a crowded two-hex original (every place in ring 1 taken), ring 2 can pick the original's head as the clone's position: the stack creation (0x47A100) refuses the occupied hex and creates nothing, and the cast goes on to flag *the original* (the stack on that hex, 0x4E7170) as summoned (`0x400000`, not the clone bit `0x800000`) with the clone's rounds and as its own clone (+0x24 and +0x28 both itself): no clone appears, the original vanishes without a corpse when the rounds run out, and its army slot is lost after the battle (observed, batch 2d CL2). The other outcome of the same search, a clone sharing a hex with its original, is BAT-QUIRK-8.
 - Intended/expected behavior: the original's hexes are taken like any living stack's; the search goes on (BAT-MAG-038; HotA).
 - Impact: gameplay-altering (the caster loses its own stack; Clone takes only stacks of the caster's real side, `installation.md` §7.14, so it cannot be turned against the enemy)
 - Community status: known and treated as a bug: "Did you know? #136" (a clone cast on a completely surrounded stack does not appear and the original is removed; "fixed in Horn of the Abyss"); "Знаете ли Вы всё о… «Клоне»" (a wide creature's clone placed on the original's hex: no clone, the original disappears when the spell runs out or after the battle); HD+ lists "Fixed a bug with Clone spell"
 - Sources: original-data, `docs/formats/installation.md` §7.19; observation `experiments/results/E04b-batch-2d.md` CL2 (SoD 4.0 Complete, plain HD, 2026-10-08: Clone on crowded two-hex Griffins and Wolf Riders, no clone, both gone at the start of round 3, the Griffins lost from Red's army); heroes3wog.net (https://heroes3wog.net/disappearing-clones-did-you-know-heroes-3-complete/, 2022, retrieved 2026-10-08); pikabu.ru (https://pikabu.ru/story/znaete_li_vyi_vsyo_o_klone_5870302, 2018, retrieved 2026-10-08); HD Mod (https://www.sites.google.com/site/heroes3hd/eng/original-game-bug-fixing, retrieved 2026-10-08)
-- Flag: `quirk.battle.clone_on_its_original` (not built yet, `docs/lanes/battle/QUEUE.md`; until then the engine fixes it in every profile)
+- Flag: `quirk.battle.clone_on_its_original` (E04b T6c)
 - Defaults: faithful = on, strict-fixed = off
-- Regression test: today the fix, `crates/h3-battle/src/tests/created.rs`, `a_crowded_two_hex_stack_is_never_covered_by_its_clone`; the flag's own test comes with it
+- Regression test: `crates/h3-battle/src/tests/created.rs`, `with_quirk_bat_quirk_7_a_crowded_original_becomes_its_own_clone` (on) and `a_crowded_two_hex_stack_is_never_covered_by_its_clone` (off)
 - Decided by / date: user, 2026-10-08 (batch 2d fold-in: a community search first; known, so fix-optional, as it would be always fixed if unknown). The agent had classified it exploit-fix in T6b.
 
 ### BAT-QUIRK-8 — A clone sharing a hex with its original (E04b batch 2d)
@@ -278,7 +278,7 @@ Classes: `exploit-fix` (always fixed, never toggleable) · `preserve` (accepted,
 - Community status: known ("Знаете ли Вы всё о… «Клоне»", 2018); fixed in HotA
 - Sources: original-data, `docs/formats/installation.md` §7.19; pikabu.ru (https://pikabu.ru/story/znaete_li_vyi_vsyo_o_klone_5870302, retrieved 2026-10-08). Not observed (batch 2d CL2 staged BAT-QUIRK-7's case)
 - Flag: none
-- Regression test: the property invariant that living stacks never share a hex (`crates/h3-battle/src/tests/properties.rs`); `crates/h3-battle/src/tests/created.rs`, `a_crowded_two_hex_stack_is_never_covered_by_its_clone`
+- Regression test: the property invariant that living stacks never share a hex (`crates/h3-battle/src/tests/properties.rs`); `crates/h3-battle/src/tests/created.rs`, `a_crowded_two_hex_stack_is_never_covered_by_its_clone` and, with BAT-QUIRK-7's flag on, `a_clone_never_shares_a_hex_with_its_original`
 - Decided by / date: agent, 2026-10-08 (state-corrupting bugs are always fixed, AGENTS.md); split from BAT-QUIRK-7 at the batch 2d fold-in, which the user reclassified
 
 ### BAT-QUIRK-9 — A creature's spell that Magic Mirror sends away is not tested (E04b T7b2a)
@@ -306,3 +306,27 @@ Classes: `exploit-fix` (always fixed, never toggleable) · `preserve` (accepted,
 - Defaults: n/a
 - Regression test: `crates/h3-battle/src/tests/casters.rs`, `the_enemy_decides_the_shields_protections_and_slayer`
 - Decided by / date: user, 2026-10-08 (E04b T7b2b, BAT-Q12)
+
+### BAT-QUIRK-11 — A reused record loses its earlier created stack's losses (E04b T6c)
+- Class: preserve, no flag: the rule in every profile (user, 2026-10-08, BAT-Q13)
+- Context / rules affected: battle, BAT-END-003 (with BAT-MAG-037)
+- Original behavior: a new created stack takes the record of the side's first dead summoned stack (0x47A100) and is set up afresh there (0x43D730: count, start count, temporary creatures), so the dead stack's start count and losses are gone: Necromancy (0x4775E1) and the casualty window count only the later stack (batch 2d SU a: 2 Air Elementals of at least 4 killed); the experience never counts created stacks (`docs/formats/installation.md` §7.19, §7.21).
+- Intended/expected behavior: every created stack's losses count for Necromancy, if they count at all (HotA treats Necromancy from clones as a bug; E08–E10 classify Necromancy from created stacks as a whole).
+- Impact: gameplay-altering (small: fewer Skeletons after a battle against reused summons)
+- Community status: unknown (no report found; not searched)
+- Sources: original-data, `docs/formats/installation.md` §7.19; observation `experiments/results/E04b-batch-2d.md` SU a (SoD 4.0 Complete, plain HD, 2026-10-08)
+- Flag: none (the outcome reports the stacks the battle's slots hold at its end, as the original's records)
+- Regression test: `crates/h3-battle/src/tests/created.rs`, `the_outcome_reports_each_created_stack_with_its_losses`
+- Decided by / date: user, 2026-10-08 (E04b increment 9, BAT-Q13)
+
+### BAT-QUIRK-12 — A Pit Lord's raise with no free stack record crashes (E04b T7b3)
+- Class: exploit-fix
+- Context / rules affected: battle, BAT-MAG-052 (with BAT-MAG-037)
+- Original behavior: the raise 0x5A7390 creates the Demons through 0x47A100, which takes the first of the side's records 0–19 that is empty or holds a dead summoned stack; with 20 records in use and none of them a dead summoned stack (summoned stacks and clones alive, the army and war machines), it creates nothing and returns 0, and 0x5A7390 then writes the army slot through that null pointer: the game crashes. The cursor (0x4473D0, 0x4476C0) does not test the side's records (`docs/formats/installation.md` §7.21).
+- Intended/expected behavior: no raise without a record for the new stack; the engine refuses the raise then (its target test).
+- Impact: game-breaking (a crash; reachable with many summoned stacks of one side)
+- Community status: unknown (not searched)
+- Sources: original-data, `docs/formats/installation.md` §7.21 ("The raisers and the end of the battle")
+- Flag: none
+- Regression test: `crates/h3-battle/src/tests/raisers.rs`, `a_pit_lord_needs_a_slot_for_the_new_stack`
+- Decided by / date: agent, 2026-10-08 (state-corrupting bugs are always fixed, AGENTS.md; the fix's shape, a refused raise, as Clone's and Summon Elemental's limit; BAT-Q13 noted it)

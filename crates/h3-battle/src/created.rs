@@ -3,7 +3,10 @@
 //! summons a stack of the spell's creature (BAT-MAG-039). Both take a dead created stack's slot of
 //! the side or a new one, while the side has fewer stacks than the limit (BAT-MAG-037).
 
-use h3_content::{CreatureTypeId, MAX_FIELD_HEXES, MAX_SUMMON_SPELLS, Ruleset, Spell};
+use h3_content::{
+    CLONE_ON_ITS_ORIGINAL, CreatureTypeId, MAX_FIELD_HEXES, MAX_RAISED_CREATURES,
+    MAX_SUMMON_SPELLS, Ruleset, Spell,
+};
 use h3_contracts::BattleSide;
 use h3_kernel::{CanonicalHash, FixedVec, StateHasher};
 
@@ -18,6 +21,9 @@ use crate::state::{
 /// [`Created::link`] of a stack without one.
 const NO_LINK: u8 = u8::MAX;
 
+/// Most stacks of a side's [`Created`] templates: one per summon spell and per raised creature.
+pub(crate) const TEMPLATES: usize = MAX_SUMMON_SPELLS + MAX_RAISED_CREATURES;
+
 /// Rings around the original that Clone searches for a place (the original's 0x5A6C70).
 const CLONE_RINGS: u32 = 10;
 
@@ -30,19 +36,24 @@ pub(crate) struct Created {
     /// Per clone: the rounds left, of which each round's start takes one; it vanishes at the
     /// start that leaves none (the original's +0x2C).
     pub(crate) rounds: [u16; STACK_CAPACITY],
+    /// Per stack that vanished when its rounds ran out: the creatures it vanished with, which
+    /// were not killed (the original's death keeps its count, 0x444120; BAT-Q13); 0 otherwise.
+    pub(crate) vanished: [u32; STACK_CAPACITY],
     /// Per side: the creature its Summon Elemental casts are bound to, once it cast one (the
     /// original's +0x132A8).
     summoned: [Option<CreatureTypeId>; 2],
-    /// Per side: a stack of each creature its hero's spells summon, as at the battle's start.
-    templates: [FixedVec<Stack, MAX_SUMMON_SPELLS>; 2],
+    /// Per side: a stack of each creature its hero's spells summon and of each creature the
+    /// corpse raisers raise, as at the battle's start.
+    templates: [FixedVec<Stack, TEMPLATES>; 2],
 }
 
 impl Created {
     /// Nothing created yet; the sides' summon `templates`.
-    pub(crate) const fn new(templates: [FixedVec<Stack, MAX_SUMMON_SPELLS>; 2]) -> Self {
+    pub(crate) const fn new(templates: [FixedVec<Stack, TEMPLATES>; 2]) -> Self {
         Self {
             link: [NO_LINK; STACK_CAPACITY],
             rounds: [0; STACK_CAPACITY],
+            vanished: [0; STACK_CAPACITY],
             summoned: [None; 2],
             templates,
         }
@@ -54,6 +65,9 @@ impl CanonicalHash for Created {
         h.write_bytes(&self.link);
         for &r in &self.rounds {
             h.write_u16(r);
+        }
+        for &v in &self.vanished {
+            h.write_u32(v);
         }
         self.summoned.hash_into(h);
         for t in &self.templates {
@@ -67,6 +81,67 @@ impl CanonicalHash for Created {
 fn has_room(state: &BattleState, ruleset: &Ruleset, side: BattleSide) -> bool {
     let stacks = state.stacks.iter().filter(|s| s.side == side).count();
     stacks < usize::from(ruleset.battle().side_stack_limit)
+}
+
+/// Whether a stack of `creature` may rise for `side` from a corpse now (BAT-MAG-052): the side
+/// has its template ([`Created::templates`]), and a dead created stack of the side leaves its
+/// slot, else the side has room for a stack. (The original's 0x47A100 finds no record without a
+/// slot, and the raise 0x5A7390 crashes; the engine refuses the raise, BAT-QUIRK-12.)
+pub(crate) fn has_slot(
+    state: &BattleState,
+    ruleset: &Ruleset,
+    (side, creature): (BattleSide, CreatureTypeId),
+) -> bool {
+    state.created.templates[side.index()]
+        .iter()
+        .any(|t| t.creature == creature)
+        && (has_room(state, ruleset, side)
+            || state
+                .stacks
+                .iter()
+                .any(|s| s.side == side && s.is_created() && !s.is_alive()))
+}
+
+/// A stack of `count` creatures of `creature` rises for `side` from the corpse of stack `corpse`
+/// (BAT-MAG-052; the original's 0x5A7390, `installation.md` §7.21): the corpse is gone, and the
+/// new stack, as `side` would have it at the battle's start, takes a dead created stack's slot or
+/// a new one (BAT-MAG-037) and the corpse's army slot, on the corpse's position (its tail, or its
+/// only hex). It is an army stack of that slot ([`StackTraits::RAISED`]), no created one. The
+/// side has a slot for it ([`has_slot`]), and its template ([`Created::templates`]: a corpse
+/// raiser of either army raises the creature).
+pub(crate) fn raise_corpse<S: Sink>(
+    state: &mut BattleState,
+    ruleset: &Ruleset,
+    (side, corpse): (BattleSide, StackId),
+    (creature, count): (CreatureTypeId, u32),
+    sink: &mut S,
+) {
+    let field = Field::new(ruleset.battle().field);
+    let dead = *state.at(corpse);
+    let fp = dead.footprint(field);
+    let hex = fp.tail.unwrap_or(fp.head);
+    state.raised.corpse[corpse.index()] = NO_CORPSE;
+    let template = state.created.templates[side.index()]
+        .iter()
+        .find(|t| t.creature == creature)
+        .copied()
+        .unwrap_or_default();
+    let stack = Stack {
+        hex,
+        slot: dead.slot,
+        count,
+        base_count: count,
+        traits: template.traits.with(StackTraits::RAISED, true),
+        ..template
+    };
+    let id = add(state, ruleset, stack);
+    sink.emit(Event::public(EventKind::RoseFromCorpse {
+        stack: id,
+        corpse,
+        creature,
+        count,
+        hex,
+    }));
 }
 
 /// Whether `side`'s cast of the Clone `spell` at `mastery` may copy stack `s`, which the cast may
@@ -104,9 +179,19 @@ pub(crate) fn may_summon(
     })
 }
 
+/// Where Clone puts the clone of a stack ([`clone_place`]).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum ClonePlace {
+    /// A place for the clone, by its head.
+    At(Hex),
+    /// The original's own hexes (quirk BAT-QUIRK-7): the original becomes the clone.
+    Original,
+}
+
 /// Clones stack `s` for `rounds` rounds (BAT-MAG-038; the original's 0x5A6C70): a fresh stack of
 /// its side, creature and statistics with its count, placed by [`clone_place`]; without a place
-/// nothing happens.
+/// nothing happens. With quirk BAT-QUIRK-7 a place on the original's own hexes makes no clone and
+/// turns the original into one ([`turn`]).
 pub(crate) fn clone<S: Sink>(
     state: &mut BattleState,
     ruleset: &Ruleset,
@@ -114,8 +199,12 @@ pub(crate) fn clone<S: Sink>(
     sink: &mut S,
 ) {
     let field = Field::new(ruleset.battle().field);
-    let Some(head) = clone_place(state, field, s) else {
-        return;
+    let on_original = ruleset.quirks().is_enabled(CLONE_ON_ITS_ORIGINAL);
+    let head = match clone_place(state, field, s, on_original) {
+        Some(ClonePlace::At(head)) => head,
+        // rule: BAT-MAG-038
+        Some(ClonePlace::Original) => return turn(state, (s, rounds), sink),
+        None => return,
     };
     let original = *state.at(s);
     let shots = ruleset.creature(original.creature).map_or(0, |c| c.shots);
@@ -132,7 +221,8 @@ pub(crate) fn clone<S: Sink>(
         traits: original
             .traits
             .with(StackTraits::SUMMONED, true)
-            .with(StackTraits::CLONE, true),
+            .with(StackTraits::CLONE, true)
+            .with(StackTraits::RAISED, false),
         flags: StackFlags::default(),
         spells: SpellValues::new(original.speed),
         ..original
@@ -144,20 +234,44 @@ pub(crate) fn clone<S: Sink>(
     created(state, id, Some(s), sink);
 }
 
+/// Stack `s` becomes its own clone for `rounds` rounds (quirk BAT-QUIRK-7; the original's
+/// 0x5A6C70 when the clone's place is the original's hex, where 0x47A100 creates nothing and the
+/// cast flags the stack on it): a summoned stack, linked to itself, that vanishes when its rounds
+/// run out and is no longer of its side's army (BAT-MAG-038). It is no clone: damage does not
+/// kill all its creatures.
+fn turn<S: Sink>(state: &mut BattleState, (s, rounds): (StackId, u16), sink: &mut S) {
+    let stack = state.at_mut(s);
+    stack.traits = stack.traits.with(StackTraits::SUMMONED, true);
+    state.created.link[s.index()] = s.0;
+    state.created.rounds[s.index()] = rounds;
+    sink.emit(Event::public(EventKind::TurnedSummoned {
+        stack: s,
+        rounds,
+    }));
+}
+
 /// Where the clone of stack `s` goes (BAT-MAG-038; the original's 0x5A6C70, §7.19): in rings 1
 /// to 10, from the stack's position (its tail, or its only hex) and, for a two-hex stack, from its
 /// head, along the six directions (from top right clockwise for the attacker, from top left
 /// anticlockwise for the defender), the hexes up to the ring's number away; the first where the
 /// clone fits. Skipped: right and left of the position in ring 1, and from the head towards the
-/// tail in rings 1 and 2. The original also counts the stack's own hexes as free, which can put the
-/// clone on them (quirk BAT-QUIRK-7, fixed: they are taken). Returns the clone's head.
-fn clone_place(state: &BattleState, field: Field, s: StackId) -> Option<Hex> {
+/// tail in rings 1 and 2. With quirk BAT-QUIRK-7 (`on_original`) the stack's own hexes count as
+/// free, as in the original: a place whose position is one of them is [`ClonePlace::Original`];
+/// without it they are taken. A place whose other hex is one of them, where the original would
+/// put both stacks on one hex, is skipped either way (BAT-QUIRK-8).
+fn clone_place(
+    state: &BattleState,
+    field: Field,
+    s: StackId,
+    on_original: bool,
+) -> Option<ClonePlace> {
     use Direction::{BottomLeft, BottomRight, Left, Right, TopLeft, TopRight};
     let stack = state.at(s);
     let two_hex = stack.has(StackTraits::TWO_HEX);
     let fp = stack.footprint(field);
     let starts = [fp.tail.unwrap_or(fp.head), fp.head];
-    let taken = state.blocked_for(field, StackId(u8::MAX));
+    let taken = state.blocked_for(field, if on_original { s } else { StackId(u8::MAX) });
+    let own = |h: Hex| fp.hexes().any(|o| o == h);
     let (order, toward_tail) = match stack.side {
         BattleSide::Attacker => (
             [TopRight, Right, BottomRight, BottomLeft, Left, TopLeft],
@@ -185,8 +299,11 @@ fn clone_place(state: &BattleState, field: Field, s: StackId) -> Option<Hex> {
                         break;
                     };
                     hex = next;
-                    if let Some(head) = fits(field, taken, (hex, two_hex), stack.side) {
-                        return Some(head);
+                    match fits(field, taken, (hex, two_hex), stack.side) {
+                        // rule: BAT-MAG-038
+                        Some(_) if own(hex) => return Some(ClonePlace::Original),
+                        Some(head) if !own(head) => return Some(ClonePlace::At(head)),
+                        _ => {}
                     }
                 }
             }
@@ -264,6 +381,7 @@ pub(crate) fn summon<S: Sink>(
             hex: heads.as_slice()[pick],
             count,
             base_count: count,
+            traits: template.traits.with(StackTraits::SUMMONED, true),
             ..template
         };
         let id = add(state, ruleset, stack);
@@ -296,6 +414,7 @@ fn add(state: &mut BattleState, ruleset: &Ruleset, stack: Stack) -> StackId {
     state.raised.corpse[id.index()] = 0;
     state.created.link[id.index()] = NO_LINK;
     state.created.rounds[id.index()] = 0;
+    state.created.vanished[id.index()] = 0;
     crate::vitality::reset(state, id);
     // rule: BAT-MAG-048
     state.casts.left[id.index()] = crate::casters::per_battle(ruleset, state.at(id).creature);
@@ -330,7 +449,7 @@ pub(crate) fn died<S: Sink>(state: &mut BattleState, ruleset: &Ruleset, s: Stack
     }
     state.created.link[s.index()] = NO_LINK;
     state.created.link[usize::from(link)] = NO_LINK;
-    if state.at(s).has(StackTraits::CLONE) {
+    if state.at(s).has(StackTraits::CLONE) || link == s.0 {
         state.created.rounds[s.index()] = 0;
     } else {
         vanish(state, ruleset, StackId(link), sink);
@@ -355,7 +474,7 @@ fn vanish<S: Sink>(state: &mut BattleState, ruleset: &Ruleset, c: StackId, sink:
 
 /// At a round's start, after the timed effects (BAT-MAG-038; the original's 0x447120): every
 /// living clone (one with rounds left) loses a round, and one left with none vanishes, freeing its
-/// original.
+/// original; it keeps the creatures it vanished with as not killed (BAT-Q13).
 pub(crate) fn count_down<S: Sink>(state: &mut BattleState, ruleset: &Ruleset, sink: &mut S) {
     for i in 0..state.stacks.len() {
         let rounds = &mut state.created.rounds[i];
@@ -365,6 +484,7 @@ pub(crate) fn count_down<S: Sink>(state: &mut BattleState, ruleset: &Ruleset, si
         *rounds -= 1;
         if *rounds == 0 {
             let c = StackId(u8::try_from(i).unwrap_or(u8::MAX));
+            state.created.vanished[i] = state.at(c).count;
             vanish(state, ruleset, c, sink);
             died(state, ruleset, c, sink);
         }

@@ -32,7 +32,9 @@ mod quirks;
 mod ruleset;
 mod spell;
 
-pub use ability::{Ability, AbilityDef, AreaShot, AuraTarget, CompiledAbility};
+pub use ability::{
+    Ability, AbilityDef, AreaShot, AuraTarget, CompiledAbility, MAX_RAISED_CREATURES,
+};
 pub use artifacts::{
     ArtifactClass, ArtifactSlot, ArtifactSlotId, ArtifactType, ArtifactTypeId, MAX_PARTS,
     MAX_SLOT_COUNT, MAX_SLOT_POSITIONS,
@@ -56,11 +58,11 @@ pub use pack::{
     SpellSchoolDef, StartingStackDef, SurrenderDef, TerrainDef,
 };
 pub use quirks::{
-    ATTACK_FROM_SEEN_PIT, COUNTERSTRIKE_EXTRA_ROUND, CREATURE_MIRROR_UNTESTED, DRAWS_AVOID_HIDDEN,
-    EARLY_MASS_VERSION, FIRE_SHIELD_FIRST_STAGE, FIRST_PROTECTION, FRENZY_REDUCED_DEFENSE,
-    MASS_CURE_SKIPS_HYPNOTIZED, NATIVES_SIGHT_AT_START, NO_LUCK_WITHOUT_HERO, OBSTACLE_ANCHORS,
-    QuirkFlag, QuirkRegistry, Quirks, REGISTRY, SACRIFICE_TESTS_AS_RESURRECTION,
-    SINGLE_PRECISION_RATES, UNLIMITED_BALLISTA_SHOTS,
+    ATTACK_FROM_SEEN_PIT, CLONE_ON_ITS_ORIGINAL, COUNTERSTRIKE_EXTRA_ROUND,
+    CREATURE_MIRROR_UNTESTED, DRAWS_AVOID_HIDDEN, EARLY_MASS_VERSION, FIRE_SHIELD_FIRST_STAGE,
+    FIRST_PROTECTION, FRENZY_REDUCED_DEFENSE, MASS_CURE_SKIPS_HYPNOTIZED, NATIVES_SIGHT_AT_START,
+    NO_LUCK_WITHOUT_HERO, OBSTACLE_ANCHORS, QuirkFlag, QuirkRegistry, Quirks, REGISTRY,
+    SACRIFICE_TESTS_AS_RESURRECTION, SINGLE_PRECISION_RATES, UNLIMITED_BALLISTA_SHOTS,
 };
 pub use ruleset::{
     BattleParams, CreatureInfo, CreatureType, CreatureTypeId, FactionId, FactionInfo, FieldParams,

@@ -34,7 +34,7 @@ pub const MAX_SIDE_STACKS: usize = 21;
 pub const MAX_FIELD_HEXES: usize = 255;
 
 /// Version of the ruleset hash encoding. Bump when the encoding below changes.
-pub const RULESET_HASH_VERSION: u32 = 33;
+pub const RULESET_HASH_VERSION: u32 = 34;
 
 /// A compiled creature type.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -642,6 +642,7 @@ impl Ruleset {
         for (abils, key) in creature_abilities.iter().zip(&creature_keys) {
             validate_strike_spells(key, abils, &hero.spells.items)?;
         }
+        validate_raised(&creatures, &creature_abilities, &creature_keys)?;
         for o in &obstacles {
             validate_obstacle(o, &battle)?;
         }
@@ -1166,6 +1167,10 @@ fn validate_strike_spells(
                      health limit that takes a target stack at its mastery",
                 )
             }
+            Ability::StackRaiser { spell: id, .. } => spells
+                .get(id.index())
+                .is_none_or(|s| !s.magic.raises())
+                .then_some("stack_raiser needs a spell with a raise effect"),
             Ability::DrawnSpell { spell: id, .. } => {
                 // A drawn spell needs its caster (`ability::list_error`).
                 let (mastery, stack_only) = abils
@@ -1217,6 +1222,37 @@ fn validate_strike_spells(
 /// Checks an obstacle type against the battlefield: at least one terrain and one blocked hex;
 /// usual obstacles need a width and height of at least 1 and blocked hexes no lower than the
 /// anchor (`dy <= 0`); absolute obstacles block standable hexes of the field.
+/// The creatures `corpse_raiser` abilities raise (BAT-MAG-052): one-hex creatures, at most
+/// [`ability::MAX_RAISED_CREATURES`] of them.
+fn validate_raised(
+    creatures: &[CreatureType],
+    abilities: &[Vec<CompiledAbility>],
+    keys: &[ContentKey],
+) -> Result<(), CompileError> {
+    let mut raised = BTreeSet::new();
+    for (abils, key) in abilities.iter().zip(keys) {
+        for a in abils {
+            let Ability::CorpseRaiser { creature, .. } = *a else {
+                continue;
+            };
+            if creatures
+                .get(creature.index())
+                .is_none_or(|c| c.flags.contains(CreatureFlag::TwoHex))
+            {
+                return Err(CompileError::InvalidCreature {
+                    key: String::from(key.as_str()),
+                    reason: "corpse_raiser needs a one-hex creature",
+                });
+            }
+            raised.insert(creature.index());
+        }
+    }
+    if raised.len() > ability::MAX_RAISED_CREATURES {
+        return Err(CompileError::TooManyEntries("corpse_raiser creature"));
+    }
+    Ok(())
+}
+
 fn validate_obstacle(o: &ObstacleType, battle: &BattleParams) -> Result<(), CompileError> {
     let invalid = |reason| {
         Err(CompileError::InvalidObstacle {

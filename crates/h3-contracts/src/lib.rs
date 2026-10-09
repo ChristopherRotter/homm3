@@ -141,13 +141,17 @@ pub enum BattleResult {
     Victory(BattleSide),
     /// Neither side won: both were wiped out by the same action (Q24), or the side still standing
     /// has only stacks created in the battle (summoned stacks, clones: both lose, as in the
-    /// original; ADR-0014 point 6).
+    /// original; ADR-0014 point 6). A Pit Lord's Demons are no created stack: they win.
     Draw,
     /// The side retreated (BAT-FLE-001); the other side wins. The consequences (a retreating
-    /// side loses its army) are the orchestrator's (ADR-0013 point 5).
+    /// side loses its army) are the orchestrator's (ADR-0013 point 5). An opponent left with only
+    /// stacks created in the battle (no army survivors, [`BattleOutcome::survivors`]) has lost
+    /// too, as in the original (BAT-Q7).
     Retreat(BattleSide),
     /// The side surrendered (BAT-FLE-002); the other side wins. The consequences (a
-    /// surrendering side pays and keeps its army) are the orchestrator's.
+    /// surrendering side pays and keeps its army) are the orchestrator's. An opponent left with
+    /// only stacks created in the battle (no army survivors) has lost too and still receives the
+    /// price, as in the original (BAT-Q7).
     Surrender(BattleSide),
 }
 
@@ -163,26 +167,37 @@ impl BattleResult {
     }
 }
 
-/// Where a battle stack came from ([`StackRecord::origin`]). Stacks created in battle (summoned
-/// stacks, clones) are not reported (ADR-0014 point 6).
+/// Where a battle stack came from ([`StackRecord::origin`]; ADR-0014 point 6).
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum StackOrigin {
     /// A stack of the side's army, by army slot.
     Army(u8),
     /// One of the side's war machines.
     WarMachine,
+    /// A stack the battle created for the side (a summoned stack or a clone, or an army stack a
+    /// Clone turned into one under quirk BAT-QUIRK-7): it ends with the battle and gives no
+    /// experience; Necromancy counts its killed creatures (BAT-Q7).
+    Created,
+    /// A Pit Lord's Demons, raised from a dead stack of the side's army slot (or from Demons
+    /// raised there before): a stack of that army slot from then on, which stays after the battle
+    /// (BAT-Q13).
+    Raised(u8),
 }
 
-/// What became of one battle stack (BAT-END-003).
+/// What became of one battle stack (BAT-END-003). The creatures it lost are `start - end`, the
+/// original's count for the battle's experience and Necromancy (per stack).
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct StackRecord {
     /// Where it came from.
     pub origin: StackOrigin,
     /// Creature type.
     pub creature: CreatureTypeId,
-    /// Creatures when the battle started.
+    /// Creatures when it entered the battle: at the battle's start, or when the battle created or
+    /// raised it.
     pub start: u32,
-    /// Creatures alive when the battle ended, whatever the result.
+    /// Creatures it had when the battle ended, whatever the result, without those raised only for
+    /// the battle; a created stack that vanished (a clone whose rounds ran out) keeps those it
+    /// vanished with, which were not killed.
     pub end: u32,
 }
 
@@ -202,14 +217,18 @@ pub struct HeroOutcome {
 pub struct BattleOutcome {
     /// How the battle ended: a victory of one side, a draw, a retreat or a surrender.
     pub result: BattleResult,
-    /// Surviving stacks per side (indexed by [`BattleSide::index`]), in slot order: the army
-    /// stacks of [`BattleOutcome::stacks`] with creatures left.
+    /// Surviving stacks per side (indexed by [`BattleSide::index`]), in slot order: the army and
+    /// raised stacks of [`BattleOutcome::stacks`] with creatures left (a raised stack in the army
+    /// slot of the dead stack it rose from).
     pub survivors: [Army; 2],
     /// Surviving war machines per side (indexed by [`BattleSide::index`]): the war machines of
     /// [`BattleOutcome::stacks`] with creatures left.
     pub war_machines: [Vec<CreatureTypeId>; 2],
     /// Every stack of each side (indexed by [`BattleSide::index`]) in stack order, dead ones
-    /// included: army stacks in slot order, then war machines.
+    /// included: army stacks in slot order (one a Clone turned into a created stack keeps its
+    /// place, BAT-QUIRK-7), war machines, then the stacks the battle created or raised, in the
+    /// order of the battle's stack slots. A slot a later created or raised stack took over
+    /// reports only that one, as the original's records (ADR-0014 point 6).
     pub stacks: [Vec<StackRecord>; 2],
     /// What the side that surrendered pays (BAT-FLE-002); `None` for any other result.
     pub surrender_cost: Option<u32>,

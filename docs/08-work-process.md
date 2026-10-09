@@ -89,7 +89,7 @@ time per lane**. A lane owns paths; everything else it may not change in its own
 
 **Branches and pull requests.** A lane works on a branch `<lane>/<task>` per task or increment and
 merges it at its checkpoint; a shared change goes on `shared/<topic>`. `cargo xtask check-lane`
-(CI: `.github/workflows/lanes.yml`, on every pull request) fails when the diff touches paths of
+(CI: `.github/workflows/ci.yml`, on every pull request) fails when the diff touches paths of
 another lane, or a lane's and shared paths together. It takes the lane from `--lane`, the branch
 name, or infers it from the diff. A deliberate cross-lane change (rare; the user agrees) carries
 the label `cross-lane`. When a lane needs a shared change, it opens the `shared/` pull request
@@ -140,7 +140,8 @@ reading lists, the full verify left to CI.
 crates, runs the lane's own gates (golden replays, the C ABI smoke test, its benchmark workloads)
 and `check-lane`; it never counts as green (exit 2 with no failing step is its normal result). On
 a `shared/` or cross-lane branch its `check-lane` step fails by design: run the full verify there.
-CI runs the full verify on every pull request. Each benchmark workload has its own baseline file,
+CI runs the full verify on every pull request whose code it has not verified yet (`05-testing.md`,
+"CI"). Each benchmark workload has its own baseline file,
 `benches/<lane>/<workload>.toml`, so each lane's +2 % gate is its own (`benches/README.md`).
 
 **Checkpoints.** The domain lanes (battle, adventure) close increments at a checkpoint with the
@@ -154,9 +155,12 @@ touching another lane). A fresh reviewer agent checks each milestone before the 
 GitHub (`ChristopherRotter/homm3`) holds the durable copy, and **pull requests are how work
 reaches `master`** (Q3, Q49): no bundles or file copies between machines. A lane branch per task
 or increment (`<lane>/<task>`, "Lanes"), pushed after every commit (`AGENTS.md`, "Interruptions
-and resuming") and merged at its checkpoint once CI is green. The user's local clone catches up
-with a fetch; if the user pushed to the branch in between, their commits win: rebase onto them
-first.
+and resuming") and merged at its checkpoint once CI is green. **A pull request is opened only when
+its branch is ready for merging** (the task or increment done, the scoped verify without a failing
+step, the lane docs updated; user, 2026-10-08): pushing a branch runs no CI, while every push to an
+open pull request does, and Actions minutes are scarce (`05-testing.md`, "CI"). An open pull
+request takes only review fixes and the user's changes. The user's local clone catches up with a
+fetch; if the user pushed to the branch in between, their commits win: rebase onto them first.
 
 ## Cloud sandbox
 
@@ -213,7 +217,7 @@ Use `docs/adr/0000-template.md`. One decision per ADR. Statuses: Proposed, Accep
 
 ## Branching and commits
 
-Trunk-based: short-lived branches, small commits, `master` always green. Since 2026-10-06 the repo is on GitHub (`ChristopherRotter/homm3`); changes reach `master` through pull requests, and CI (`.github/workflows/ci.yml` and `lanes.yml`, `05-testing.md`, "CI") must be green on them. Branch names carry the lane (`battle/e04b-t5c`, `shared/<topic>`; "Lanes"). The PR body follows `docs/pull_request_template.md`. Conventional-style prefixes are welcome (`feat(battle): …`, `fix(game): …`, `docs: …`). Attribution trailers follow the session's configured instructions.
+Trunk-based: short-lived branches, small commits, `master` always green. Since 2026-10-06 the repo is on GitHub (`ChristopherRotter/homm3`); changes reach `master` through pull requests, and CI (`.github/workflows/ci.yml`, `05-testing.md`, "CI") must be green on them; a pull request is opened only when its branch is ready for merging ("Branches, pull requests and syncing"). Branch names carry the lane (`battle/e04b-t5c`, `shared/<topic>`; "Lanes"). The PR body follows `docs/pull_request_template.md`. Conventional-style prefixes are welcome (`feat(battle): …`, `fix(game): …`, `docs: …`). Attribution trailers follow the session's configured instructions.
 
 ## Definition of Done
 
