@@ -205,7 +205,7 @@ fn encode_entry(state: &BattleState, ruleset: &Ruleset, command: Command) -> Opt
 fn spell_head(spell: CastSpell) -> u16 {
     match spell {
         CastSpell::Named(id) => id.raw(),
-        CastSpell::AtResolution => 0,
+        CastSpell::AtResolution | CastSpell::Raise => 0,
     }
 }
 

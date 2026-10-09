@@ -4,8 +4,8 @@
 use alloc::vec::Vec;
 use h3_content::{
     Ability, AreaShot, CreatureFlag, CreatureType, CreatureTypeId, MAX_ARMY_SLOTS, MAX_SIDE_STACKS,
-    MAX_SUMMON_SPELLS, NATIVES_SIGHT_AT_START, OBSTACLE_ANCHORS, Ruleset, TerrainId,
-    UNLIMITED_BALLISTA_SHOTS, WAR_MACHINE_KINDS,
+    NATIVES_SIGHT_AT_START, OBSTACLE_ANCHORS, Ruleset, TerrainId, UNLIMITED_BALLISTA_SHOTS,
+    WAR_MACHINE_KINDS,
 };
 
 use h3_contracts::{
@@ -16,7 +16,7 @@ use h3_kernel::{CanonicalHash, FixedVec, Rng, StateHasher, StreamId};
 
 use crate::binds::Binds;
 use crate::casters::Casts;
-use crate::created::Created;
+use crate::created::{Created, TEMPLATES};
 use crate::effects::{ActiveEffect, Effects, SpellValues, Status};
 use crate::error::SetupError;
 use crate::event::{NoopSink, Sink};
@@ -169,12 +169,16 @@ impl StackTraits {
     /// obstacles (BAT-MAG-031).
     pub const NATIVE: Self = Self(1 << 22);
     /// Created in battle, a summoned stack or a clone (BAT-MAG-037; the original's flag
-    /// `0x400000`): no corpse, no victim of a sacrifice, left out of the outcome, and a side left
-    /// with only such stacks does not win.
+    /// `0x400000`): no corpse, no victim of a sacrifice, reported as created in the outcome, and
+    /// a side left with only such stacks does not win.
     pub const SUMMONED: Self = Self(1 << 23);
     /// A clone (BAT-MAG-038; the original's flag `0x800000`): any damage kills all its creatures,
     /// and it vanishes when its rounds run out or its original dies.
     pub const CLONE: Self = Self(1 << 24);
+    /// Raised from a corpse by a corpse raiser (a Pit Lord's Demons, BAT-MAG-052): an army stack
+    /// of the dead stack's army slot ([`Stack::slot`]), but after the army slots and the war
+    /// machines in the turn order's tie-break, as a created stack (the original's new record).
+    pub const RAISED: Self = Self(1 << 25);
 
     /// Whether all traits of `other` are set.
     pub const fn contains(self, other: Self) -> bool {
@@ -329,24 +333,39 @@ fn war_machines(
     Ok(out)
 }
 
-/// The stacks `side` would have of each creature its hero's spells summon, as at the battle's
-/// start (the side's hero's bonuses, the native terrain; the original's 0x43D8B0 at the cast,
-/// `docs/formats/installation.md` §7.19), one per summon spell of its hero's book, for Summon
-/// Elemental (BAT-MAG-039).
-fn summon_templates(
+/// The stacks `side` would have of each creature the battle may create for it, as at the
+/// battle's start (the side's hero's bonuses, the native terrain; the original's 0x43D8B0 at the
+/// cast, `docs/formats/installation.md` §7.19, §7.21): one per summon spell of its hero's book,
+/// for Summon Elemental (BAT-MAG-039), then one of each creature the corpse raisers of either
+/// army raise (BAT-MAG-052: a hypnotized raiser raises for the other side).
+fn templates(
     ruleset: &Ruleset,
     setup: &BattleSetup,
     side: BattleSide,
     hero: Option<&HeroRecord>,
-) -> FixedVec<Stack, MAX_SUMMON_SPELLS> {
+) -> FixedVec<Stack, TEMPLATES> {
     let mut out = FixedVec::new();
     let book = hero.map(|h| h.magic.book).unwrap_or_default();
-    let creatures = book
+    let summoned = book
         .iter()
-        .filter_map(|id| ruleset.spell(id).and_then(|s| s.summons))
-        .filter_map(|id| ruleset.creature(id).map(|c| (id, c)));
-    for (id, creature) in creatures {
-        let mut stack = Stack::new(
+        .filter_map(|id| ruleset.spell(id).and_then(|s| s.summons));
+    let armies = [&setup.attacker, &setup.defender];
+    let raised = armies
+        .into_iter()
+        .flat_map(|army| &army.stacks)
+        .flat_map(|s| ruleset.abilities(s.creature))
+        .filter_map(|a| match *a {
+            Ability::CorpseRaiser { creature, .. } => Some(creature),
+            _ => None,
+        });
+    for (id, creature) in summoned
+        .chain(raised)
+        .filter_map(|id| ruleset.creature(id).map(|c| (id, c)))
+    {
+        if out.iter().any(|t: &Stack| t.creature == id) {
+            continue;
+        }
+        let stack = Stack::new(
             ruleset,
             setup,
             (id, creature),
@@ -355,9 +374,8 @@ fn summon_templates(
             Hex(0),
             1,
         );
-        stack.traits = stack.traits.with(StackTraits::SUMMONED, true);
-        // One per summon spell of the book, at most `MAX_SUMMON_SPELLS` (two spells of one
-        // creature give two equal stacks; the first is used).
+        // At most `MAX_SUMMON_SPELLS` summon spells and `MAX_RAISED_CREATURES` raised
+        // creatures in a ruleset.
         let _ = out.push(stack);
     }
     out
@@ -617,6 +635,17 @@ impl Stack {
         self.traits.contains(StackTraits::SUMMONED)
     }
 
+    /// Its place in the turn order's tie-break (BAT-TRN-001): its army slot, but
+    /// [`CREATED_SLOT`] for a raised stack, which the original keeps in a new record
+    /// (BAT-MAG-052).
+    pub const fn turn_slot(&self) -> u8 {
+        if self.traits.contains(StackTraits::RAISED) {
+            CREATED_SLOT
+        } else {
+            self.slot
+        }
+    }
+
     /// Whether the stack has trait `t`.
     pub const fn has(&self, t: StackTraits) -> bool {
         self.traits.contains(t)
@@ -866,30 +895,30 @@ impl BattleState {
                 len += 1;
             }
         }
-        let mut state =
-            Self {
-                stacks: FixedVec::from_array_prefix(placed, len),
-                natural,
-                round: 1,
-                tactics: None,
-                active: None,
-                last_side_acted: None,
-                result: None,
-                surrender_cost: None,
-                modifiers: Modifiers::new(),
-                heroes,
-                terrain: setup.terrain,
-                effects: Effects::new(),
-                spell_obstacles: SpellObstacles::new(),
-                raised: Raised::default(),
-                created: Created::new(BattleSide::BOTH.map(|side| {
-                    summon_templates(ruleset, setup, side, heroes[side.index()].as_ref())
-                })),
-                vitality: Vitality::default(),
-                binds: Binds::default(),
-                casts: Casts::at_start(ruleset, &placed[..len]),
-                rng: Rng::for_stream(seed, StreamId::BATTLE),
-            };
+        let mut state = Self {
+            stacks: FixedVec::from_array_prefix(placed, len),
+            natural,
+            round: 1,
+            tactics: None,
+            active: None,
+            last_side_acted: None,
+            result: None,
+            surrender_cost: None,
+            modifiers: Modifiers::new(),
+            heroes,
+            terrain: setup.terrain,
+            effects: Effects::new(),
+            spell_obstacles: SpellObstacles::new(),
+            raised: Raised::default(),
+            created: Created::new(
+                BattleSide::BOTH
+                    .map(|side| templates(ruleset, setup, side, heroes[side.index()].as_ref())),
+            ),
+            vitality: Vitality::default(),
+            binds: Binds::default(),
+            casts: Casts::at_start(ruleset, &placed[..len]),
+            rng: Rng::for_stream(seed, StreamId::BATTLE),
+        };
         morale::setup(&mut state, ruleset, &setup.heroes);
         // rule: BAT-MAG-031
         let natives = BattleSide::BOTH.map(|side| {
@@ -1103,10 +1132,14 @@ impl BattleState {
                     StackOrigin::Created
                 } else if s.has(StackTraits::WAR_MACHINE) {
                     StackOrigin::WarMachine
+                } else if s.has(StackTraits::RAISED) {
+                    // rule: BAT-MAG-052
+                    StackOrigin::Raised(s.slot)
                 } else {
                     StackOrigin::Army(s.slot)
                 };
-                if matches!(origin, StackOrigin::Army(_)) && s.is_alive() {
+                let army = matches!(origin, StackOrigin::Army(_) | StackOrigin::Raised(_));
+                if army && s.is_alive() {
                     last_alive = Some(records.len());
                 }
                 records.push(StackRecord {
@@ -1121,26 +1154,33 @@ impl BattleState {
             // living army stack (the original's end of battle, 0x4774E2, counting only army
             // stacks: quirk BAT-QUIRK-6, S-20).
             // rule: BAT-MAG-035
-            let none_left = records
-                .iter()
-                .all(|r| !matches!(r.origin, StackOrigin::Army(_)) || r.end == 0);
+            let none_left = records.iter().all(|r| {
+                !matches!(r.origin, StackOrigin::Army(_) | StackOrigin::Raised(_)) || r.end == 0
+            });
             if let Some(i) = last_alive.filter(|_| none_left) {
                 records[i].end = 1;
             }
             records
         });
-        let survivors = stacks.each_ref().map(|records| Army {
-            stacks: records
+        let survivors = stacks.each_ref().map(|records| {
+            let mut stacks: Vec<_> = records
                 .iter()
                 .filter_map(|r| match r.origin {
-                    StackOrigin::Army(slot) if r.end > 0 => Some(ArmyStack {
-                        slot,
-                        creature: r.creature,
-                        count: r.end,
-                    }),
+                    StackOrigin::Army(slot) | StackOrigin::Raised(slot) if r.end > 0 => {
+                        Some(ArmyStack {
+                            slot,
+                            creature: r.creature,
+                            count: r.end,
+                        })
+                    }
                     _ => None,
                 })
-                .collect(),
+                .collect();
+            // A raised stack's slot is a dead army stack's (BAT-MAG-052): one stack per slot, so the
+            // slot is a unique key.
+            let sorted = h3_kernel::order::sort_by_unique_key(&mut stacks, |s| s.slot);
+            debug_assert!(sorted.is_ok(), "two survivors in one army slot");
+            Army { stacks }
         });
         let war_machines = stacks.each_ref().map(|records| {
             records

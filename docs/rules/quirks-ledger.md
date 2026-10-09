@@ -318,3 +318,15 @@ Classes: `exploit-fix` (always fixed, never toggleable) · `preserve` (accepted,
 - Flag: none (the outcome reports the stacks the battle's slots hold at its end, as the original's records)
 - Regression test: `crates/h3-battle/src/tests/created.rs`, `the_outcome_reports_each_created_stack_with_its_losses`
 - Decided by / date: user, 2026-10-08 (E04b increment 9, BAT-Q13)
+
+### BAT-QUIRK-12 — A Pit Lord's raise with no free stack record crashes (E04b T7b3)
+- Class: exploit-fix
+- Context / rules affected: battle, BAT-MAG-052 (with BAT-MAG-037)
+- Original behavior: the raise 0x5A7390 creates the Demons through 0x47A100, which takes the first of the side's records 0–19 that is empty or holds a dead summoned stack; with 20 records in use and none of them a dead summoned stack (summoned stacks and clones alive, the army and war machines), it creates nothing and returns 0, and 0x5A7390 then writes the army slot through that null pointer: the game crashes. The cursor (0x4473D0, 0x4476C0) does not test the side's records (`docs/formats/installation.md` §7.21).
+- Intended/expected behavior: no raise without a record for the new stack; the engine refuses the raise then (its target test).
+- Impact: game-breaking (a crash; reachable with many summoned stacks of one side)
+- Community status: unknown (not searched)
+- Sources: original-data, `docs/formats/installation.md` §7.21 ("The raisers and the end of the battle")
+- Flag: none
+- Regression test: `crates/h3-battle/src/tests/raisers.rs`, `a_pit_lord_needs_a_slot_for_the_new_stack`
+- Decided by / date: agent, 2026-10-08 (state-corrupting bugs are always fixed, AGENTS.md; the fix's shape, a refused raise, as Clone's and Summon Elemental's limit; BAT-Q13 noted it)

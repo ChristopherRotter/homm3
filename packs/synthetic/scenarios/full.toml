@@ -131,10 +131,12 @@ count = 30
 slot = 3
 creature = "synthetic:spearman"
 count = 25
+# Since E04b T7b3 two Seraphs raise a stack of Brea's for good (an Archangel's raise) and six
+# Fiends raise Spearmen from a corpse of Corwin's (a Pit Lord's Demons).
 [[attacker]]
 slot = 4
-creature = "synthetic:brute"
-count = 9
+creature = "synthetic:seraph"
+count = 2
 [[attacker]]
 slot = 5
 creature = "synthetic:wisp"
@@ -162,8 +164,8 @@ creature = "synthetic:brute"
 count = 10
 [[defender]]
 slot = 4
-creature = "synthetic:spearman"
-count = 28
+creature = "synthetic:fiend"
+count = 6
 [[defender]]
 slot = 5
 creature = "synthetic:wisp"

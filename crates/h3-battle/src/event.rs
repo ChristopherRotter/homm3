@@ -194,6 +194,29 @@ pub enum EventKind {
         /// What it was aimed at.
         target: CastTarget,
     },
+    /// A stack raised another or a corpse as its action (the Archangel, the Pit Lord;
+    /// BAT-MAG-051, BAT-MAG-052; public): one of its casts is used. `SpellRaised` or
+    /// `RoseFromCorpse` follows.
+    CreatureRaise {
+        /// The raising stack.
+        stack: StackId,
+        /// The stack or corpse it raises.
+        target: StackId,
+    },
+    /// A stack rose from a corpse (a Pit Lord's Demons, BAT-MAG-052): a new stack of the corpse's
+    /// side and army slot (a dead created stack's id may be reused); the corpse is gone.
+    RoseFromCorpse {
+        /// The new stack.
+        stack: StackId,
+        /// The corpse it rose from.
+        corpse: StackId,
+        /// Its creature.
+        creature: CreatureTypeId,
+        /// Its creatures.
+        count: u32,
+        /// Its position.
+        hex: Hex,
+    },
     /// A random caster drew the spell it may cast as its action at this activation (BAT-MAG-049;
     /// private to its controller, ADR-0014 point 8): the cast reveals it.
     SpellDrawn {
@@ -334,7 +357,7 @@ pub enum EventKind {
         hex: Hex,
     },
     /// A spell raised creatures of a stack, a dead one brought back with its hexes (Resurrection,
-    /// Animate Dead, BAT-MAG-035; Sacrifice, BAT-MAG-036).
+    /// Animate Dead, BAT-MAG-035; Sacrifice, BAT-MAG-036; an Archangel's raise, BAT-MAG-051).
     SpellRaised {
         /// The stack.
         target: StackId,

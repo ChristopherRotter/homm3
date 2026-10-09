@@ -879,6 +879,8 @@ pub(crate) fn creature_target(
             }
         }),
         CastSpell::AtResolution => helpful_target(state, ruleset, side, caster, target),
+        // rule: BAT-MAG-051, BAT-MAG-052
+        CastSpell::Raise => casters::raise_target(state, ruleset, side, caster, target),
     }
 }
 
@@ -982,7 +984,7 @@ pub(crate) fn creature_targets(
             .spell(id)
             .filter(|s| spell.drawn && target_at(ruleset, s, spell.mastery) == SpellTarget::Hex)
             .map(|s| (id, s)),
-        CastSpell::AtResolution => None,
+        CastSpell::AtResolution | CastSpell::Raise => None,
     };
     let field = Field::new(ruleset.battle().field);
     if let Some(drawn) = area {
@@ -1020,7 +1022,8 @@ pub(crate) fn plan_creature_cast<'r>(
     // A draw at the cast first takes the first spell useful for the stack (BAT-MAG-050).
     let named = match spell.spell {
         CastSpell::Named(id) => Some(id),
-        CastSpell::AtResolution => target
+        // A raise is planned by `casters::plan`.
+        CastSpell::AtResolution | CastSpell::Raise => target
             .stack()
             .filter(|&t| state.stack(t).is_some())
             .and_then(|t| casters::useful_spells(state, ruleset, side, (caster, t)).next())

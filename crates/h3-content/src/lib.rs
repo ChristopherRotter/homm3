@@ -32,7 +32,9 @@ mod quirks;
 mod ruleset;
 mod spell;
 
-pub use ability::{Ability, AbilityDef, AreaShot, AuraTarget, CompiledAbility};
+pub use ability::{
+    Ability, AbilityDef, AreaShot, AuraTarget, CompiledAbility, MAX_RAISED_CREATURES,
+};
 pub use artifacts::{
     ArtifactClass, ArtifactSlot, ArtifactSlotId, ArtifactType, ArtifactTypeId, MAX_PARTS,
     MAX_SLOT_COUNT, MAX_SLOT_POSITIONS,

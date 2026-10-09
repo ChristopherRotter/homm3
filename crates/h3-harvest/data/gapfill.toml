@@ -2686,3 +2686,24 @@ sources = ["exe-clone-summon"]
 spell = "Remove Obstacle"
 removes = { fire = "advanced", wall = "expert", pit = "expert", mine = "expert" }
 sources = ["exe-remove-obstacle"]
+
+# The raisers (E04b T7b3, BAT-MAG-051, BAT-MAG-052): the Archangel raises another stack of its
+# side for good under Resurrection's test, the Pit Lord raises Demons from a living creature's
+# corpse of its side, each as the creature's cast (the casts per battle are the creature
+# table's).
+[[source]]
+id = "exe-raisers"
+kind = "original-data"
+ref = "Heroes3.exe code reading (docs/formats/installation.md 7.21, the raisers): the cast's case 0 (0x448260) for the Archangel (13) finds the stack with 0x5A3CC0(side, hex, 1), Resurrection's search and test (0x5A8090 with spell 38 and the Archangels' 100 x creatures hit points), and raises it by 100 x creatures hit points for good (0x5A7560(stack, hp, 0)); for the Pit Lord (51) 0x5A3E40(side, hex) finds the topmost corpse of the side whose creature is alive (flag 0x10) on an unblocked hex without a living stack, with no spell test, and 0x5A7390 creates Demons (48) there in its army slot: min(start, min(50 x Pit Lords, start x health) div the Demon's health) (0x447330); the cursor (0x4473D0, 0x4476C0) needs that count above 0"
+url = "docs/formats/installation.md"
+retrieved = "2026-10-08"
+
+[[creature_abilities]]
+creature = "Archangel"
+abilities = [{ kind = "stack_raiser", spell = "base:resurrection", hit_points_per_creature = 100 }]
+sources = ["exe-raisers"]
+
+[[creature_abilities]]
+creature = "Pit Lord"
+abilities = [{ kind = "corpse_raiser", creature = "Demon", hit_points_per_creature = 50 }]
+sources = ["exe-raisers"]

@@ -380,6 +380,14 @@ enum AbilityDto {
         mastery: u8,
         power: u8,
     },
+    StackRaiser {
+        spell: String,
+        hit_points_per_creature: u16,
+    },
+    CorpseRaiser {
+        creature: String,
+        hit_points_per_creature: u16,
+    },
 }
 
 #[derive(Deserialize)]
@@ -509,6 +517,20 @@ impl AbilityDto {
             Self::HelpfulSpellCaster { mastery, power } => {
                 AbilityDef::HelpfulSpellCaster { mastery, power }
             }
+            Self::StackRaiser {
+                spell,
+                hit_points_per_creature,
+            } => AbilityDef::StackRaiser {
+                spell: reference(pack, &spell)?,
+                hit_points_per_creature,
+            },
+            Self::CorpseRaiser {
+                creature,
+                hit_points_per_creature,
+            } => AbilityDef::CorpseRaiser {
+                creature: reference(pack, &creature)?,
+                hit_points_per_creature,
+            },
         })
     }
 }
@@ -2727,7 +2749,7 @@ mod tests {
     fn synthetic_pack_and_scenarios_load() {
         for text in [SYNTHETIC_SKIRMISH, SYNTHETIC_DUEL, SYNTHETIC_FULL] {
             let (ruleset, setup) = synthetic(text).unwrap();
-            assert_eq!(ruleset.creature_count(), 9);
+            assert_eq!(ruleset.creature_count(), 11);
             assert!(!setup.attacker.stacks.is_empty());
             assert!(!setup.defender.stacks.is_empty());
         }
@@ -3389,7 +3411,7 @@ mod tests {
         let both = compile(&[SYNTHETIC_EXT_PACK, SYNTHETIC_PACK], "synthetic:faithful").unwrap();
         let ids: Vec<&str> = both.packs().iter().map(|(id, _)| id.as_str()).collect();
         assert_eq!(ids, ["synthetic", "synthetic-ext"]);
-        assert_eq!(both.creature_count(), 10);
+        assert_eq!(both.creature_count(), 12);
         let wisp_info = both.creature_info(wisp).unwrap();
         let marsh = wisp_info.faction.unwrap();
         assert_eq!(

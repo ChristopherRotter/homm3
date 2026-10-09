@@ -424,7 +424,7 @@ fight_value = 6033
 ai_value = 8776
 adventure_count = [3, 8]
 flags = ["two_hex", "flying", "alive", "king_2"]
-abilities = [{ kind = "morale_aura", affects = "allies", amount = 1 }, { kind = "hate", creature = "devil", percent = 50 }, { kind = "hate", creature = "arch_devil", percent = 50 }]
+abilities = [{ kind = "morale_aura", affects = "allies", amount = 1 }, { kind = "hate", creature = "devil", percent = 50 }, { kind = "hate", creature = "arch_devil", percent = 50 }, { kind = "stack_raiser", hit_points_per_creature = 100, spell = "base:resurrection" }]
 
 [[creature]]
 id = "centaur"  # original id 14
@@ -1259,6 +1259,7 @@ fight_value = 1071
 ai_value = 1224
 adventure_count = [8, 12]
 flags = ["alive"]
+abilities = [{ kind = "corpse_raiser", creature = "demon", hit_points_per_creature = 50 }]
 
 [[creature]]
 id = "efreeti"  # original id 52
