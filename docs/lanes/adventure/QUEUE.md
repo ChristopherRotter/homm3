@@ -11,7 +11,7 @@ Epic: `docs/epics/E08-adventure-map.md` (refined 2026-10-08, reviewed with the u
 - **Scope:** E08 T1a. Three ADR drafts in `docs/lanes/adventure/adr-drafts/`, decisions only (about 80 lines each, `docs/adr/README.md`), written from the epic's decisions 2–9 as they stand: (1) crate shape (the four crates `h3-map`, `h3-pack-adventure`, `h3-adventure`, `h3-game`; the `application` layer; the ADR-0005 amendment; the later content split; the setup types and the import boundary, decision 4); (2) adventure state (the persistent grid with what sees through its `Arc`s, decision 6; map objects as closed behaviour kinds with data parameters, ADR-0012 style, increment 1 uses only "blocker"; the fog projection, decision 7); (3) game orchestration (turn groups, per-player RNG streams, pending decisions, decisions 8–9; where `AdventureEnv` lives: adventure-owned sub-paths of `h3-sim` and `h3-cli`).
 - **Acceptance:** the user reviewed the three drafts; open points are `ADV-Q<n>` entries.
 - **Depends on:** nothing.
-- **Status:** ready (ends at a checkpoint with the user).
+- **Status:** waiting (the user's review of the drafts, branch `adventure/t1a-adr-drafts`; open points `ADV-Q1`, `ADV-Q2`).
 
 ### E08 T1b — Survey and quirks
 
@@ -24,7 +24,7 @@ Epic: `docs/epics/E08-adventure-map.md` (refined 2026-10-08, reviewed with the u
 
 - **Scope:** a `shared/adventure-skeleton` pull request: crate skeletons `h3-map` (adapter), `h3-pack-adventure` (adapter), `h3-adventure` (domain), `h3-game` (application) with the logic headers; `arch.toml` edges; `lanes.toml` (the new crates, `packs/*/adventure.toml`, `docs/rules/catalog/game.toml`, `docs/formats/h3m.md` to adventure with the user's consent, the adventure sub-paths `crates/h3-sim/src/adventure/`, `crates/h3-cli/src/adventure/`, `fixtures/replays/adventure/` by the longest-match rule); `xtask` (the determinism step for adventure replays under `--scope adventure`; the fuzz harness, `cargo-fuzz` with its nightly toolchain question, here or as a separate shared task before T3); the versions table in `docs/08-work-process.md` (adventure state hash, game state hash, adventure replay format and encodings); `BACKLOG.md` (E07 folded into E08, E08 in progress, E09 and E10 restated, a row for the crate split after E04b); the global HANDOFF's lane row.
 - **Acceptance:** full `cargo xtask verify` green in CI; merged before T3.
-- **Depends on:** T1a accepted.
+- **Depends on:** T1a accepted; `ADV-Q1` (the ids in `h3-contracts`).
 - **Status:** waiting (T1a).
 
 ### E08 T3 — Map reader
@@ -36,11 +36,12 @@ Epic: `docs/epics/E08-adventure-map.md` (refined 2026-10-08, reviewed with the u
 
 ### E08 T4–T10
 
-- **Scope:** as in the epic file: T4 adventure content, T5 state and the persistent grid (with the two copy-on-write properties), T6 `h3-game` thin, T7 movement, T8 fog and projection (with the viewer knowledge list), T9 env/CLI/gates, T10 closure. Refined into queue entries after T1a's drafts are accepted.
+- **Scope:** as in the epic file: T4 adventure content, T5 state and the persistent grid (with the two copy-on-write properties), T6 `h3-game` thin, T7 movement, T8 fog and projection (with the viewer knowledge list), T9 env/CLI/gates (needs `ADV-Q2`: how a replay names its map), T10 closure. Refined into queue entries after T1a's drafts are accepted.
 - **Status:** waiting (T1a).
 
 ## Inbox
 
+- 2026-10-09 (T1a): when the user accepts the drafts, a `shared/` change numbers them (`docs/adr/README.md`), amends ADR-0005 (the four crates, `h3-game` the first application crate and a logic crate) and ADR-0006 (ruleset parts, one pack file per context), updates `docs/02-architecture.md` §3 and `docs/03-domain.md` (the Game row, the answered object question, the terms: turn group, pending decision, static map, explored, fringe, object kind, blocked and visitable tile). It can ride on T2's pull request.
 - 2026-10-08 (refinement): the crate split after E04b (E08 decisions 2–3) is a `shared/` + `cross-lane` task run with the battle lane paused; T2 adds it to `BACKLOG.md`.
 - 2026-10-01 (E02): ~~tight formations~~ (done in E03 T9) / tactics (E04), creature-bank layouts (with creature banks), and other harvested tables (spells, artifacts, heroes, buildings) when their epics come; RoE/AB patch differences outside creatures need the same gap-fill treatment (Q15).
 - 2026-10-01 (E04 refinement): the `.h3m` writer built for the experiment pipeline (E04a T2) overlaps with E07 (map reader) and E14 (map generator). ~~Keep it in the formats adapter so both can extend it~~: E08 decision 2 moves it into `h3-map` after E04b closes, beside the reader (2026-10-08).
