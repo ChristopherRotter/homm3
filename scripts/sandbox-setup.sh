@@ -8,7 +8,8 @@
 #
 # 1. Links the image's `stable` toolchain as the pinned one (static.rust-lang.org is blocked).
 # 2. Copies the staged original-data files into this clone's gitignored original-data/.
-# 3. In the background: installs llvm-20 (coverage), cargo-deny and cargo-llvm-cov, then runs
+# 3. In the background: installs llvm-20 (coverage), cargo-deny and cargo-llvm-cov, capstone and
+#    pefile (scripts/exe.py, docs/exe/README.md), then runs
 #    scripts/sandbox-verify.sh --with-original-data. Logs in target/sandbox/.
 # Prints one line per step; the full output stays in the logs.
 set -euo pipefail
@@ -58,6 +59,7 @@ nohup bash -c "
     for tool in cargo-deny cargo-llvm-cov; do
         command -v \$tool > /dev/null || cargo install --locked \$tool
     done > '$logs/cargo-install.log' 2>&1
+    pip install --break-system-packages -q capstone pefile > '$logs/pip.log' 2>&1
     wait \$apt
     '$root/scripts/sandbox-verify.sh' ${verify_args[*]}
 " > "$logs/setup.log" 2>&1 &

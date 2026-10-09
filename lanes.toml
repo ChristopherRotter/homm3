@@ -57,17 +57,23 @@ paths = [
     "docs/adr/",
     "docs/rules/catalog/README.md",
     "docs/rules/catalog/kernel.toml",
+    # The Heroes3.exe address map's README and the generated H3API port (docs/exe/README.md).
+    "docs/exe/",
 ]
 
 # Any lane may change these: the two registries (lane-prefixed ids and one block per lane keep
 # concurrent additions apart) and the lockfile (generated; a lane may add a dependency to its own
 # crate, the full verify's `deny` gate checks it, and a heavy dependency stops the line anyway;
-# user, 2026-10-07).
+# user, 2026-10-07). The executable's address map and record layouts are common too: a lane
+# records what it reads in the same pull request (one line per entry, sorted by address, keeps
+# concurrent additions apart; docs/exe/README.md).
 [common]
 paths = [
     "docs/OPEN-QUESTIONS.md",
     "docs/stubs.toml",
     "Cargo.lock",
+    "docs/exe/map.toml",
+    "docs/exe/structs.toml",
 ]
 
 [[lane]]

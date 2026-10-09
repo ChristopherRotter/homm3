@@ -21,7 +21,7 @@ Binding decisions. One decision per file, numbered, never silently edited once A
 | [0006](0006-configuration-tiers-and-ruleset.md) | Configuration tiers and compiled ruleset | Accepted | adding content types, pack fields or battle parameters |
 | [0007](0007-provenance-quirks-profiles.md) | Rule provenance, quirks ledger, profiles | Accepted | writing rules, quirk flags or profiles |
 | [0008](0008-security-model.md) | Security model | Accepted | command validation, actor identity, hidden information |
-| [0009](0009-license-and-reference-material.md) | License and reference-material policy (GPL-2.0-or-later) | Accepted | using VCMI code, wiki text or original game data |
+| [0009](0009-license-and-reference-material.md) | License and reference-material policy (GPL-2.0-or-later) | Accepted | using VCMI code, wiki text or original game data, reading the executable's code |
 | [0010](0010-testing-gates-and-traceability.md) | Testing gates and rule traceability | Accepted | adding gates, coverage exclusions, rule traceability |
 | [0011](0011-portability-and-c-abi.md) | Portability and C ABI | Accepted | FFI, encodings, platform targets |
 | [0012](0012-modifiers-and-abilities.md) | Modifiers and abilities | Accepted (E03) | modifiers (morale, luck, stats) and creature abilities |

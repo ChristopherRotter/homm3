@@ -44,6 +44,6 @@ Tools for the full gate: `cargo install cargo-deny cargo-llvm-cov --locked`,
 | `xtask` | `cargo xtask verify` and the individual gates, `check-lane` |
 | `lanes.toml` | which paths each work lane owns (`docs/08-work-process.md`, "Lanes") |
 | `clients/` | playable clients: a separate Cargo workspace, outside the core (`clients/README.md`) |
-| `scripts/` | cloud-sandbox setup and background verify for agent sessions (`docs/08-work-process.md`) |
+| `scripts/` | cloud-sandbox setup and background verify for agent sessions (`docs/08-work-process.md`); `exe.py`, the code-reading tool for `Heroes3.exe` (`docs/exe/README.md`) |
 | `packs/`, `fixtures/`, `benches/` | harvested and synthetic content packs, golden replays, benchmark baselines |
 | `docs/` | vision, architecture, ADRs, rule catalog, backlog, handoff; `docs/lanes/` per lane |

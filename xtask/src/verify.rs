@@ -10,7 +10,7 @@
 
 use std::fs::{self, File, OpenOptions};
 use std::io::{Read, Seek, SeekFrom};
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
 use std::time::Instant;
 
@@ -95,6 +95,9 @@ const STEPS: &[Step] = &[
     }),
     step("check-docs", false, InScope::Whole, |_| {
         passed(crate::docs::run(&[]))
+    }),
+    step("check-exe-map", false, InScope::Whole, |_| {
+        passed(crate::exemap::run(&[]))
     }),
     step("check-lane", false, InScope::ScopedOnly, |s| {
         passed(crate::lanes::check(s.map(|s| s.lane.as_str()), None, false))
@@ -210,6 +213,47 @@ fn harvest_check(install: &str) -> Result<(), String> {
     run_cmd(cmd)
 }
 
+/// The executable the code-reading tool reads (docs/exe/README.md).
+const EXE: &str = "original-data/install/Heroes3.exe";
+
+/// `scripts/exe.py check`: the address map's function starts, sizes and H3API tags against the
+/// staged executable, which `check-exe-map` (no executable in CI) cannot check. The tool's exit
+/// code 1 means the map disagrees and fails the gate; without the executable, or where the tool
+/// cannot run (no Python 3.11 with capstone and pefile: exit code 3), the check is skipped with
+/// a note, since `--with-original-data` is also the user's local Windows run.
+fn exe_check(root: &Path) -> Result<(), String> {
+    if !root.join(EXE).is_file() {
+        println!("exe check: skipped ({EXE} is not staged)");
+        return Ok(());
+    }
+    let interpreters: &[&str] = if cfg!(windows) {
+        &["python", "python3"]
+    } else {
+        &["python3", "python"]
+    };
+    for python in interpreters {
+        let status = Command::new(python)
+            .current_dir(root)
+            .args(["-I", "scripts/exe.py", "check"])
+            .status();
+        match status {
+            Err(_) => continue,
+            Ok(s) if s.success() => return Ok(()),
+            Ok(s) if s.code() == Some(1) => {
+                return Err(format!(
+                    "scripts/exe.py check: the map disagrees with {EXE}"
+                ));
+            }
+            Ok(s) => {
+                println!("exe check: skipped ({python} scripts/exe.py check ended with {s})");
+                return Ok(());
+            }
+        }
+    }
+    println!("exe check: skipped (no python3 or python on PATH)");
+    Ok(())
+}
+
 fn parse(args: &[String]) -> Result<Options, String> {
     let mut options = Options::default();
     let mut iter = args.iter();
@@ -315,7 +359,9 @@ fn run_step(
 ) -> Result<Status, String> {
     if name == ORIGINAL_DATA {
         let install = install.unwrap_or(DEFAULT_ORIGINAL_DATA);
-        return harvest_check(install).map(|()| Status::Passed);
+        return harvest_check(install)
+            .and_then(|()| exe_check(&workspace_root()))
+            .map(|()| Status::Passed);
     }
     let step = STEPS
         .iter()
@@ -550,9 +596,17 @@ pub fn run(args: &[String]) -> Result<(), String> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::util::test_support::TempDir;
 
     fn strings(args: &[&str]) -> Vec<String> {
         args.iter().map(|s| (*s).to_owned()).collect()
+    }
+
+    #[test]
+    fn exe_check_is_skipped_without_the_executable() {
+        let dir = TempDir::new("exe-check");
+        dir.write("scripts/exe.py", "import sys\nsys.exit(1)\n");
+        assert_eq!(exe_check(dir.path()), Ok(()));
     }
 
     #[test]

@@ -49,9 +49,15 @@ On 2026-09-30 the user chose option (a): **GPL-2.0-or-later for the whole projec
 - The installation stays read-only by rule.
 - Consequence to watch: the committed packs contain facts and names from a trademarked game. Q2 (project naming) and any public release should keep this in mind; the user owns that decision.
 
+## Amendment 3 — the executable's code and H3API (2026-10-08, user decisions Q29 and Q57)
+
+- **Code reading** of the user's `Heroes3.exe` is allowed for insight (Q29) and, since Q57, preferred to a new experiment when a reliable reading settles a rule (`docs/04-rules-and-sources.md` §2). Nothing of the executable's code is committed: no listings, no decompiled code, no tool output. What is committed: addresses, our names, record layouts and findings in our own words and numbers (`docs/exe/`, `docs/formats/installation.md`).
+- **H3API** (https://github.com/RoseKavalier/H3API, MIT, (c) 2021 RoseKavalier) may be used as a source of names and record layouts for the executable. Its names are ported onto this build as guesses (`docs/exe/h3api.toml`, generated, carrying H3API's copyright and permission notice) and point to where to read; they are not a source for a rule on their own. H3API code is not ported into the engine (doing so would need the MIT notice and an origin comment, as point 2 asks for VCMI).
+
 ## Revision history
 
 - 2026-09-30: Proposed (recommended permissive option (b), interim rule "do not copy or translate VCMI code").
 - 2026-09-30: Accepted with the user's decision for GPL-2.0-or-later (option (a)); interim rule lifted; dependency policy narrowed to GPLv2-compatible licenses.
 - 2026-09-30: Amended: Q9 answered (import-only, gitignored `original-data/`, installation read-only by rule).
 - 2026-09-30: Amended (E02 T1): Q13 revises Q9 — harvested gameplay data and names are committed as packs; original files and flavor text are not.
+- 2026-10-08: Amendment 3 (`shared/exe-map`): code reading and H3API (Q29, Q57).

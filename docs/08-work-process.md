@@ -176,7 +176,8 @@ Agents usually work in a cloud sandbox cloned from GitHub.
    `original-data/extracted/H3bitmap/Objects.txt` (one large LOD per staging call). Without the
    link, the user may upload them; otherwise the session only prepares (Q48).
 3. **Setup:** `scripts/sandbox-setup.sh` links the image's `stable` toolchain as the pinned one,
-   copies the staged files into `original-data/` and starts the tool installs and the baseline
+   copies the staged files into `original-data/` and starts the tool installs (with `capstone` and
+   `pefile` for the code-reading tool `scripts/exe.py`, `docs/exe/README.md`) and the baseline
    verify in the background (about 15 minutes; read the docs meanwhile, then check
    `tail -n 3 target/sandbox/verify.log`). Later runs: `cargo xtask verify --scope <lane>
    --summary` for the lane's loop, or the full
