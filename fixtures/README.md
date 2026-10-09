@@ -18,7 +18,7 @@ cross-platform determinism check (ADR-0003 §11, E01 exit criterion 2).
 | `full-s3-a1788.toml` | full | 3 | 1788 (E04b T7c3, replacing T7c2a's `full-s3-a1386`: a Drake sends a spell away; a stack is sacrificed to raise another; a stack is created; two rebirths, eight freezes; the Chanters' casts) |
 | `full-s3-a116.toml` | full | 3 | 116 (E04b T7c3, replacing T7c2a's `full-s3-a1473`: a Drake sends a spell away; two rebirths, eleven freezes; mines or pits go off often; the Chanters' casts; casters cast) |
 | `full-s3-a762.toml` | full | 3 | 762 (E04b T7c3, replacing T7c2a's `full-s3-a471`: a Drake sends a spell away; seventeen freezes; fifteen Chanter casts; two raises) |
-| `full-s3-a959.toml` | full | 3 | 959 (E04b T7c3, replacing T7c2a's `full-s3-a673`: a Drake sends a spell away; three rebirths; casters cast) |
+| `full-s3-a959.toml` | full | 3 | 959 (E04b T7c3, replacing T7c2a's `full-s3-a673`: a Drake sends a spell away; a rebirth, nine freezes; casters cast) |
 
 Regenerate (only when a change *intentionally* alters game behavior, the synthetic pack, or an
 algorithm/encoding version — say so in the commit message):

@@ -142,3 +142,48 @@ fn fear_can_freeze_a_good_morale_turn_but_not_in_the_wait_phase() {
     let events = act(&mut s, &r, Command::Move { to: at(&r, 3, 5) }).unwrap();
     assert_eq!((frozen(&events), s.active()), (vec![], Some(StackId(0))));
 }
+
+// covers: BAT-MAG-060, BAT-MOR-004
+#[test]
+fn the_first_pick_after_a_tactics_phase_is_checked() {
+    let r = ruleset();
+    // Round 1's first pick follows the tactics phase: the original asks with the checks on.
+    let mut tactician = super::spells::mage(&r, &[]);
+    tactician.tactics = 2;
+    let setup = h3_contracts::BattleSetup {
+        heroes: [Some(tactician), None],
+        ..setup(&r, &[(0, "fast", 1)], &[(0, "azure", 1)])
+    };
+    let mut s = BattleState::new(&r, &setup, 1).unwrap();
+    let events = act(&mut s, &r, Command::EndTactics).unwrap();
+    assert_eq!((frozen(&events), s.active()), (vec![0], Some(StackId(1))));
+}
+
+// covers: BAT-MAG-060, BAT-MAG-025, BAT-MOR-003
+#[test]
+fn fear_can_freeze_a_berserk_stacks_good_morale_turn() {
+    let r = ruleset_with("t:faithful", always);
+    let mut s = battle(&r, &[(0, "slow", 5)], &[(0, "azure", 1)], 1);
+    place(&mut s, &r, 0, 2, 5);
+    place(&mut s, &r, 1, 12, 5);
+    activate(&mut s, 0);
+    let id = spell(&r, "berserk");
+    let cast = crate::effects::TimedCast {
+        id,
+        spell: r.spell(id).unwrap(),
+        mastery: 1,
+        rounds: 5,
+        own: crate::magic::SpellBonus::default(),
+    };
+    crate::effects::apply(&mut s, &r, cast, StackId(0), &mut Vec::<Event>::new());
+    s.stacks.as_mut_slice()[0].morale = 1;
+    let mut events = Vec::new();
+    crate::turn::berserk_now(&mut s, &r, &mut events);
+    assert!(
+        events
+            .iter()
+            .any(|e| e.kind == EventKind::GoodMorale { stack: StackId(0) })
+    );
+    assert_eq!((frozen(&events), s.active()), (vec![0], Some(StackId(1))));
+    assert!(s.stacks()[0].flags.contains(StackFlags::ACTED));
+}

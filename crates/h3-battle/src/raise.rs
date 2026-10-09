@@ -256,7 +256,8 @@ pub(crate) fn raise<S: Sink>(
 
 /// Raises stack `s` by `hit_points` for good (the original's 0x5A7560): a dead stack comes back
 /// on its hexes, leaves the corpses and gets its effects recomputed (none: they ended at its
-/// death). Returns the hit points regained and the creatures brought back.
+/// death, by the end of the command it died in at the latest). Returns the hit points regained
+/// and the creatures brought back.
 fn revive(state: &mut BattleState, ruleset: &Ruleset, s: StackId, hit_points: u64) -> (u64, u32) {
     let was_dead = !state.at(s).is_alive();
     let raised = resurrect(state.at_mut(s), hit_points);
@@ -269,14 +270,16 @@ fn revive(state: &mut BattleState, ruleset: &Ruleset, s: StackId, hit_points: u6
 
 /// The rebirths after an action that may have killed stacks (BAT-MAG-059; the original's 0x469440
 /// at the end of a strike action, after a cast's damage and after Land Mine's and Fire Wall's
-/// damage, `installation.md` §7.21), before the battle's end is checked: every dead stack of
-/// either side, in stack order, with the ability `rebirth` and a cast left that is not a clone
-/// uses one cast and comes back for good with its count at the battle's start div the ability's
-/// divisor, plus one for each of the count mod the divisor others with a 1-in-divisor chance, and
-/// it has acted this round. None comes back if none is drawn. A sacrificed stack left no corpse
-/// and is never reborn (BAT-QUIRK-17: the original, which checks after every damaging action but
-/// not after Sacrifice, brings it back at the next one onto its hexes, whatever stands there).
-/// (Only damage kills but for Sacrifice, so a dead stack with a cast left died in this action.)
+/// damage, `installation.md` §7.21), before the battle's end is checked: every stack of either
+/// side that died in this action (no corpse marked yet), in stack order, with the ability
+/// `rebirth` and a cast left that is not a clone uses one cast and comes back for good, without
+/// the effects it died with, with its count at the battle's start div the ability's divisor, plus
+/// one for each of the count mod the divisor others with a 1-in-divisor chance, and it has acted
+/// this round. None comes back if none is drawn. A sacrificed stack left no corpse and is never
+/// reborn (BAT-QUIRK-17: the original, which checks after every damaging action but not after
+/// Sacrifice, brings it back at the next one onto its hexes, whatever stands there); nor is one
+/// that died earlier (a creature with more casts that drew none: the original would bring it
+/// back at a later check, alike; the Phoenix has one cast).
 // rule: BAT-MAG-059
 pub(crate) fn rebirths<S: Sink>(state: &mut BattleState, ruleset: &Ruleset, sink: &mut S) {
     for s in (0u8..).take(state.stacks.len()).map(StackId) {
@@ -286,8 +289,8 @@ pub(crate) fn rebirths<S: Sink>(state: &mut BattleState, ruleset: &Ruleset, sink
             || stack.is_alive()
             || stack.has(StackTraits::CLONE)
             || state.casts.left[s.index()] == 0
-            // A sacrificed stack (BAT-QUIRK-17).
-            || state.corpse(s) == NO_CORPSE
+            // Sacrificed (no corpse, BAT-QUIRK-17) or dead before this action (a corpse).
+            || state.corpse(s) != 0
         {
             continue;
         }
@@ -309,6 +312,9 @@ pub(crate) fn rebirths<S: Sink>(state: &mut BattleState, ruleset: &Ruleset, sink
             continue;
         }
         state.at_mut(s).flags.set(StackFlags::ACTED, true);
+        // Its effects end at its death (the original's 0x444120); the command's end has not
+        // removed them yet.
+        crate::effects::remove_dead(state, ruleset);
         let (_, creatures) = revive(state, ruleset, s, u64::from(creatures) * health);
         sink.emit(Event::public(EventKind::Reborn {
             stack: s,

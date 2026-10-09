@@ -204,7 +204,7 @@ pub(crate) fn activate_first<S: Sink>(state: &mut BattleState, ruleset: &Ruleset
 }
 
 /// [`activate_next`], with the freezing checks if `checks`.
-fn activate<S: Sink>(state: &mut BattleState, ruleset: &Ruleset, checks: bool, sink: &mut S) {
+fn activate<S: Sink>(state: &mut BattleState, ruleset: &Ruleset, mut checks: bool, sink: &mut S) {
     let mut next = pick(state, ruleset, sink);
     while let Some(id) = next {
         // The stacks the last action killed lie below any killed later (BAT-MAG-035): automatic
@@ -240,6 +240,8 @@ fn activate<S: Sink>(state: &mut BattleState, ruleset: &Ruleset, checks: bool, s
         } else if begins(state, ruleset, id, sink) {
             break;
         }
+        // Later picks follow an action: the original's dispatcher asks with the checks on.
+        checks = true;
         state.last_side_acted = Some(state.at(id).side);
         // A war machine's shot can end the battle.
         next = if state.result.is_some() {
@@ -259,12 +261,7 @@ fn activate<S: Sink>(state: &mut BattleState, ruleset: &Ruleset, checks: bool, s
 /// checks that pass a stack over (blind, petrified, paralysed; bad morale, Fear): a Wraith drains
 /// its enemy hero's mana (BAT-MAG-056), an Enchanter may cast (BAT-MAG-053).
 // rule: BAT-MAG-053, BAT-MAG-056
-pub(crate) fn activation<S: Sink>(
-    state: &mut BattleState,
-    ruleset: &Ruleset,
-    id: StackId,
-    sink: &mut S,
-) {
+fn activation<S: Sink>(state: &mut BattleState, ruleset: &Ruleset, id: StackId, sink: &mut S) {
     crate::mana::drain(state, ruleset, id, sink);
     crate::casters::periodic(state, ruleset, id, sink);
 }

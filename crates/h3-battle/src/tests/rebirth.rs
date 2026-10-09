@@ -213,6 +213,66 @@ fn a_damage_spell_a_shot_and_a_mine_bring_the_rebirth_too() {
     assert_eq!((s.result(), s.stacks()[0].hex), (None, at(&r, 6, 5)));
 }
 
+// covers: BAT-MAG-059, BAT-MAG-010
+#[test]
+fn a_reborn_phoenix_comes_back_without_the_effects_it_died_with() {
+    let r = ruleset();
+    let mut s = battle(&r, &[(0, "fixed", 1)], &[(0, "phoenix", 10)], 1);
+    // A hasted, berserk phoenix dies; the command's end has not removed its effects yet.
+    for name in ["haste", "berserk"] {
+        let id = spell(&r, name);
+        let cast = effects::TimedCast {
+            id,
+            spell: r.spell(id).unwrap(),
+            mastery: 1,
+            rounds: 5,
+            own: crate::magic::SpellBonus::default(),
+        };
+        effects::apply(&mut s, &r, cast, StackId(1), &mut Vec::<Event>::new());
+    }
+    let speed = s.stacks()[1].speed;
+    assert!(s.stacks()[1].speed_now() > speed);
+    kill(&mut s, &r, 1);
+    assert_eq!(s.effects().len(), 2);
+    let mut events = Vec::new();
+    rebirths(&mut s, &r, &mut events);
+    assert_eq!(reborn(&events), vec![(1, 2)]);
+    let phoenix = s.stacks()[1];
+    assert_eq!(phoenix.spells.status, effects::Status::default());
+    assert_eq!(phoenix.speed_now(), speed);
+    assert!(s.effects().is_empty());
+}
+
+// covers: BAT-MAG-059, BAT-MAG-004
+#[test]
+fn an_active_phoenix_its_heros_spell_killed_comes_back_having_acted() {
+    let r = ruleset();
+    // Its own hero's Expert storm (60 on every stack) kills the five active phoenixes: one comes
+    // back and keeps the turn (it is alive), but has acted: after a wait it does not act again.
+    let mut s = arena(
+        &r,
+        [Some(caster(&r, &["storm"], 3)), None],
+        &[("phoenix", 5, 2, 5)],
+        &[("fixed", 60, 14, 5)],
+        1,
+    );
+    let events = act(
+        &mut s,
+        &r,
+        Command::Cast {
+            spell: spell(&r, "storm"),
+            target: CastTarget::None,
+            second: CastTarget::None,
+        },
+    )
+    .unwrap();
+    assert_eq!(reborn(&events), vec![(0, 1)]);
+    assert_eq!(s.active(), Some(StackId(0)));
+    act(&mut s, &r, Command::Wait).unwrap();
+    act(&mut s, &r, Command::Defend).unwrap();
+    assert_eq!(s.round(), 2);
+}
+
 // covers: BAT-MAG-059
 #[test]
 fn clones_and_sacrificed_phoenixes_are_never_reborn() {
@@ -234,12 +294,12 @@ fn clones_and_sacrificed_phoenixes_are_never_reborn() {
     rebirths(&mut s, &r, &mut events);
     assert!(reborn(&events).is_empty());
     assert_eq!((s.casts_left(StackId(0)), s.casts_left(StackId(1))), (1, 1));
-    // A phoenix that died earlier and lies as a corpse is reborn at the next check.
+    // Nor is a stack that died before this action and lies as a corpse.
     s.raised.corpse[0] = 0;
     mark_corpses(&mut s);
     rebirths(&mut s, &r, &mut events);
-    assert_eq!(reborn(&events), vec![(0, 2)]);
-    assert_eq!(s.corpse(StackId(0)), 0);
+    assert!(reborn(&events).is_empty());
+    assert_eq!(s.casts_left(StackId(0)), 1);
 }
 
 // covers: BAT-MAG-059, BAT-MAG-036

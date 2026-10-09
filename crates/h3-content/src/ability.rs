@@ -346,7 +346,7 @@ pub enum Ability<C, S, L> {
         percent: u8,
     },
     /// After the action that killed its stack (a strike, a cast, a mine or Fire Wall), if the
-    /// stack has a cast left, is not a clone and left a corpse, one cast is used and the stack
+    /// stack has a cast left and is not a clone (nor sacrificed), one cast is used and the stack
     /// comes back for good with its count at the battle's start div `divisor` creatures, plus one
     /// for each of the count mod `divisor` others with a 1-in-`divisor` chance, having acted
     /// this round: the Phoenix's fifth (BAT-MAG-059, v29).
