@@ -355,3 +355,29 @@ Classes: `exploit-fix` (always fixed, never toggleable) · `preserve` (accepted,
 - Flag: none
 - Regression test: `crates/h3-battle/src/tests/enchanters.rs`, `every_battle_starts_with_the_enchanters_ready`
 - Decided by / date: user, 2026-10-09 (E04b T7b4, BAT-Q14: ready at every battle's start)
+
+### BAT-QUIRK-15 — The spell cost reads the armies, not the battle's stacks (E04b T7c1)
+- Class: preserve, no flag: the rule in every profile (user, 2026-10-09, BAT-Q15)
+- Context / rules affected: battle, BAT-MAG-054
+- Original behavior: a hero's spell cost rises by 2 if the enemy's army holds Pegasi or Silver Pegasi and falls by 2 if the hero's own army holds Mages or Arch Mages (0x4E5240); the test (0x44AB80) reads the armies' seven slots, which keep their creature types until the battle's end, so a stack that died still counts and a stack created in the battle (a clone) never does (`docs/formats/installation.md` §7.21, "The mana creatures, re-read for T7c1").
+- Intended/expected behavior: none decided; VCMI 1.7.5 counts the living stacks on the field (`CBattleInfoCallback.cpp`).
+- Impact: gameplay-altering (small: a spell's cost by 2 after the stack died)
+- Community status: unknown (not searched)
+- Sources: original-data, `docs/formats/installation.md` §7.21; observation, batch 2a R6 round 3 (`experiments/results/E04b-batch-2a.md`: 5 with the Pegasus dead, VCMI 3)
+- Flag: none
+- Defaults: n/a
+- Regression test: `crates/h3-battle/src/tests/mana.rs`, `a_dead_pegasus_still_raises_the_cost_and_a_clone_does_not`
+- Decided by / date: user, 2026-10-09 (E04b T7c1, BAT-Q15)
+
+### BAT-QUIRK-16 — The Familiars' channel walks both sides' records up to one side's count (E04b T7c1)
+- Class: exploit-fix
+- Context / rules affected: battle, BAT-MAG-055
+- Original behavior: after a hero's cast the channel (0x5A2170) counts the Familiars whose controller is not the caster's side, walking the records of both sides, each up to the record count of the side opposite the caster (+0x54BC read once, 0x5A21B2): a Familiar of the caster's side that the enemy hypnotized is missed when its record lies beyond that count, and when the caster's side has fewer records the loop reads records past its count, which may hold anything an earlier battle left there (`docs/formats/installation.md` §7.21).
+- Intended/expected behavior: every living Familiar the other side controls counts.
+- Impact: gameplay-altering (tiny: a hypnotized Familiar's channel); reads records not in use
+- Community status: unknown (not searched; the user's rule for unknown bugs, BAT-Q15)
+- Sources: original-data, `docs/formats/installation.md` §7.21
+- Flag: none
+- Defaults: n/a
+- Regression test: `crates/h3-battle/src/tests/mana.rs`, `a_hypnotized_familiar_channels_for_its_controller_wherever_its_record`
+- Decided by / date: user, 2026-10-09 (E04b T7c1, BAT-Q15)

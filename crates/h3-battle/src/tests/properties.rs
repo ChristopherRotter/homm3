@@ -460,14 +460,29 @@ proptest! {
                 Ok(()) => {
                     prop_assert!(cmd_listed, "illegal {cmd:?} accepted");
                     // Mana is spent only by casts, by the spell's cost, at most once per round
-                    // and side (BAT-MAG-001, BAT-MAG-002); a cast keeps the turn ...
+                    // and side (BAT-MAG-001, BAT-MAG-002); besides, it comes only from channels
+                    // and goes only to drains, as their events report (BAT-MAG-055,
+                    // BAT-MAG-056); a cast keeps the turn ...
                     let per_round = r.battle().hero_casts_per_round;
                     for side in BattleSide::BOTH {
                         let (b, a) = (before.hero(side), state.hero(side));
                         if let (Some(b), Some(a)) = (b, a) {
-                            prop_assert!(a.mana <= b.mana && a.casts <= per_round);
+                            let (mut gained, mut drained) = (0u32, 0u32);
+                            for e in &events {
+                                match e.kind {
+                                    EventKind::ManaChanneled { side: s, mana } if s == side => {
+                                        gained += u32::from(mana);
+                                    }
+                                    EventKind::ManaDrained { side: s, mana, .. } if s == side => {
+                                        drained += u32::from(mana);
+                                    }
+                                    _ => {}
+                                }
+                            }
+                            let (a_mana, b_mana) = (u32::from(a.mana) + drained, u32::from(b.mana) + gained);
+                            prop_assert!(a_mana <= b_mana && a.casts <= per_round);
                             let cast_by = matches!(cmd, Command::Cast { .. }) && side == actor;
-                            prop_assert!(cast_by || a.mana == b.mana);
+                            prop_assert!(cast_by || a_mana == b_mana);
                         }
                     }
                     // ... unless it killed the active stack, whose turn then ends (BAT-MAG-004,

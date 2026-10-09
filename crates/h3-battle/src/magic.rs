@@ -245,6 +245,9 @@ pub(crate) struct HeroMagic {
     pub(crate) duration_bonus: u16,
     /// The distinct spells cast so far (public through the cast events; the outcome's).
     pub(crate) cast: SpellSet,
+    /// The change of its spell costs from the creatures in the armies (BAT-MAG-054; set at the
+    /// battle's start, public through the armies).
+    pub(crate) cost_change: i8,
 }
 
 impl HeroMagic {
@@ -276,6 +279,7 @@ impl HeroMagic {
             resistance: resistance.min(scale(single)),
             duration_bonus,
             cast: SpellSet::default(),
+            cost_change: 0,
         })
     }
 }
@@ -283,7 +287,8 @@ impl HeroMagic {
 impl CanonicalHash for HeroMagic {
     /// Book bits, schools, the bonuses (every spell, by school (rates since v23), the single
     /// spells as length and spell, damage, growth per level, level), the resistance, the
-    /// duration bonus (v20), the cast spells' bits.
+    /// duration bonus (v20), the cast spells' bits, the cost change (v38, as its two's-complement
+    /// byte).
     fn hash_into(&self, h: &mut StateHasher) {
         for word in self.book.bits().into_iter().chain(self.cast.bits()) {
             h.write_u64(word);
@@ -302,6 +307,7 @@ impl CanonicalHash for HeroMagic {
         }
         h.write_u64(self.resistance);
         h.write_u16(self.duration_bonus);
+        h.write_u8(self.cost_change.to_le_bytes()[0]);
     }
 }
 
@@ -418,7 +424,8 @@ fn check_spell<'s, 'r>(
         return Err(CommandError::NotCastable);
     }
     let mastery = mastery(hero, spell);
-    let cost = spell.cost[usize::from(mastery)];
+    // rule: BAT-MAG-054
+    let cost = crate::mana::cost(spell, mastery, hero.magic.cost_change);
     if hero.view.mana < cost {
         return Err(CommandError::NotEnoughMana);
     }
@@ -1707,8 +1714,9 @@ fn mirror<S: Sink>(
 }
 
 /// Applies a validated cast: the hero pays the cost and counts the cast, or the casting stack uses
-/// one of its casts (BAT-MAG-048), then the spell takes effect (BAT-MAG-004 to BAT-MAG-008); the
-/// battle may end. The active stack keeps its turn after its hero's cast.
+/// one of its casts (BAT-MAG-048), then the spell takes effect (BAT-MAG-004 to BAT-MAG-008) and,
+/// after a hero's cast, the other side's channellers give their hero a share of the cost
+/// (BAT-MAG-055); the battle may end. The active stack keeps its turn after its hero's cast.
 pub(crate) fn apply_cast<S: Sink>(
     state: &mut BattleState,
     ruleset: &Ruleset,
@@ -1750,6 +1758,21 @@ pub(crate) fn apply_cast<S: Sink>(
             }));
         }
     }
+    take_effect(state, ruleset, &cast, sink);
+    if cast.by.is_none() {
+        // rule: BAT-MAG-055
+        crate::mana::channel(state, ruleset, (cast.side, cast.cost), sink);
+    }
+    // The battle was not over before the cast: it ends at most once.
+    check_end(state, sink);
+    if state.result.is_some() {
+        state.active = None;
+    }
+}
+
+/// The effect of the validated `cast` (BAT-MAG-004 to BAT-MAG-039): obstacles placed or removed,
+/// stacks raised, cloned or summoned, or the spell's effects on the stacks it reaches.
+fn take_effect<S: Sink>(state: &mut BattleState, ruleset: &Ruleset, cast: &Cast<'_>, sink: &mut S) {
     let magic = &cast.spell.magic;
     if magic.removes_obstacles() {
         // rule: BAT-MAG-034
@@ -1817,7 +1840,7 @@ pub(crate) fn apply_cast<S: Sink>(
         let count = u32::from(effect) * u32::from(cast.power);
         created::summon(state, ruleset, (cast.side, creature), count, sink);
     } else {
-        reach_stacks(state, ruleset, &cast, sink);
+        reach_stacks(state, ruleset, cast, sink);
     }
     if cast
         .spell
@@ -1826,10 +1849,6 @@ pub(crate) fn apply_cast<S: Sink>(
         .is_some_and(|m| cast.mastery >= m)
     {
         obstacles::clear(state, sink);
-    }
-    check_end(state, sink);
-    if state.result.is_some() {
-        state.active = None;
     }
 }
 

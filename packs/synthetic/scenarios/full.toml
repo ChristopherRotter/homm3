@@ -168,6 +168,9 @@ creature = "synthetic:fiend"
 count = 6
 # Since E04b T7b4 five Chanters cast on their own once in three rounds (an Enchanter's periodic
 # cast at Expert, judged by Corwin's first stack under BAT-QUIRK-13).
+# Since E04b T7c1 (the pack's mana abilities, BAT-MAG-054 to BAT-MAG-056): both heroes' spells
+# cost 2 less for their Brutes, Corwin's 2 more for Brea's Djinns; each side's living Wisps give
+# their hero a fifth of the other hero's cost; Corwin's Fiends drain Brea's mana.
 [[defender]]
 slot = 5
 creature = "synthetic:chanter"

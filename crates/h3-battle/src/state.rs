@@ -52,7 +52,7 @@ const _: () = assert!(MAX_SIDE_STACKS <= SIDE_STACK_SLOTS);
 pub const CREATED_SLOT: u8 = u8::MAX;
 
 /// Version of the battle-state hash encoding ([`BattleState::state_hash`]). Bump on any change.
-pub const BATTLE_STATE_HASH_VERSION: u32 = 37;
+pub const BATTLE_STATE_HASH_VERSION: u32 = 38;
 
 /// Index of a stack in its battle (attacker stacks first, in slot order, then defender stacks, then
 /// the stacks created in the battle in the order they appear, BAT-MAG-037).
@@ -182,6 +182,9 @@ impl StackTraits {
     /// Casts on its own at its activation (ability `periodic_spell_caster`, the Enchanter;
     /// BAT-MAG-053): the activation's cheap test.
     pub const PERIODIC_CASTER: Self = Self(1 << 26);
+    /// Takes mana from the enemy hero at its activations (ability `mana_drain`, the Wraith;
+    /// BAT-MAG-056): the activation's cheap test.
+    pub const MANA_DRAIN: Self = Self(1 << 27);
 
     /// Whether all traits of `other` are set.
     pub const fn contains(self, other: Self) -> bool {
@@ -271,6 +274,10 @@ impl StackTraits {
             .with(
                 Self::PERIODIC_CASTER,
                 ability(|a| matches!(a, Ability::PeriodicSpellCaster { .. })),
+            )
+            .with(
+                Self::MANA_DRAIN,
+                ability(|a| matches!(a, Ability::ManaDrain { .. })),
             )
     }
 }
@@ -767,6 +774,9 @@ pub struct BattleState {
     /// The natural obstacles (BAT-GEO-003; pieces since E04b T5b).
     pub(crate) natural: NaturalObstacles,
     pub(crate) round: u16,
+    /// The round's wait phase has begun: no stack is left to act but those that waited (the
+    /// original's +0x13DE4; no Wraith drains then, BAT-MAG-056).
+    pub(crate) wait_phase: bool,
     pub(crate) tactics: Option<TacticsPhase>,
     pub(crate) active: Option<StackId>,
     pub(crate) last_side_acted: Option<BattleSide>,
@@ -829,8 +839,10 @@ impl BattleState {
         let mut heroes = [None; 2];
         for (side, hero) in BattleSide::BOTH.into_iter().zip(&setup.heroes) {
             if let Some(hero) = hero {
-                heroes[side.index()] =
-                    Some(hero::check(ruleset, side, hero, setup.funds[side.index()])?);
+                let mut record = hero::check(ruleset, side, hero, setup.funds[side.index()])?;
+                // rule: BAT-MAG-054
+                record.magic.cost_change = crate::mana::cost_change(ruleset, setup, side);
+                heroes[side.index()] = Some(record);
             }
         }
         let mut taken = natural.blocked();
@@ -906,6 +918,7 @@ impl BattleState {
             stacks: FixedVec::from_array_prefix(placed, len),
             natural,
             round: 1,
+            wait_phase: false,
             tactics: None,
             active: None,
             last_side_acted: None,
@@ -1277,6 +1290,7 @@ impl CanonicalHash for BattleState {
     fn hash_into(&self, h: &mut StateHasher) {
         h.write_u32(BATTLE_STATE_HASH_VERSION);
         h.write_u16(self.round);
+        h.write_bool(self.wait_phase);
         self.tactics.hash_into(h);
         self.active.map(|s| s.0).hash_into(h);
         self.last_side_acted.map(side_code).hash_into(h);

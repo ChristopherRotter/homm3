@@ -1499,3 +1499,50 @@ records how and why the tasks went.
   (`Status::NO_TURNS`; the good-morale grant itself is in the QUEUE's inbox), the berserk and the
   hypnotized tests made stronger; the property test that wants every random game to end now
   assumes it (a petrifying striker and a First Aid Tent can keep a battle going for ever).
+
+### T7c1: the mana creatures (2026-10-09)
+
+- **Decisions** (the user, BAT-Q15): increment 11 is T7c1 alone (T7c2, the creature defences,
+  next); the spell cost reads the armies, so a dead Pegasus still counts (ledger BAT-QUIRK-15, the
+  rule, no flag); the Familiars' loop that walks both sides' records up to one side's count
+  (BAT-QUIRK-16) always fixed. Agent decisions: the changes as data (`spell_cost` with `affects`:
+  the largest increase and the largest reduction, once each, the original's +2 and −2 as data);
+  a spell with cost 0 stays free (the original names Titan's Lightning Bolt, the only hero spell
+  with cost 0); the channel as a percent (20: `cost div 5`), the largest among the side's living
+  stacks; the cost change computed once at the battle's start from `BattleSetup`'s armies
+  (`HeroMagic.cost_change`), as they never change in a battle; the round's wait phase kept in the
+  state (`BattleState.wait_phase`, the original's +0x13DE4), set when a waited stack is activated,
+  so a stack created later in that phase drains nothing either; the drain and the periodic cast
+  share one activation hook (`turn::activation`, which skips a stack that lost its turns); the
+  events public (mana is). No observation change: mana is shown, and the armies' creatures,
+  dead ones included, are in the stack features.
+- **Code reading** (`installation.md` §7.21, "The mana creatures, re-read for T7c1"): 0x4E5240
+  (no change without an enemy army; a cast passes one, 0x59FFCF), 0x44AB80 (types only), the
+  cast's payment 0x59FFDF and 0x4D92D0; the 35 handlers' common tail 0x5A2058 and the channel
+  0x5A2170 (caster kind 0, the paid cost at least 5, the Familiars' creatures by controller, the
+  loop bound 0x5A21B2, no cap); the activation's Wraith case 0x465548 and the wait phase (0x4652A7
+  sets +0x13DE4 and clears every record's waited bit, 0x4760AB clears it). Ten map entries,
+  five struct fields. VCMI 1.7.5 differs: living stacks for the cost, the drain once per round.
+- **Content:** abilities `spell_cost` (amount, affects), `mana_channel` (percent),
+  `mana_drain` (amount); pack format v27, ruleset hash v36; the gap-fill's `exe-mana-creatures`
+  (Pegasus and Silver Pegasus +2 enemies, Mage and Arch Mage −2 allies, Familiar 20, Wraith 2).
+- **Battle:** `h3_battle::mana` (`cost_change`, `cost`, `channel`, `drain`); `apply_cast` split
+  (`take_effect`), the channel after a hero's cast's effect, before the end check; events
+  `ManaChanneled`, `ManaDrained`; `StackTraits::MANA_DRAIN`; state hash v38.
+- **Measurements:** the code on the old workload +0.18 % Ir, steps unchanged (7 494); the new
+  workload (the synthetic Brutes, Djinns, Wisps and Fiends with the abilities) 7 943 steps
+  (+6.0 %), +4.50 % Ir, −1.4 % per step; re-baselined. `BattleState` stays 6 200 bytes. Replays
+  re-recorded with new agent seeds showing T5 to T7c1's features: a1159, a416, a255, a48, a1023.
+- **Tests:** `tests/mana.rs` (the armies' changes, at least 1, a free spell, the refused cast; a
+  dead Pegasus; the channel: share, threshold, largest, after the effect, own side, no hero; a
+  hypnotized Familiar beyond the other side's count; the drain: activations, the wait phase, at
+  least 0, no hero, a hypnotized Wraith, good morale, lost turns); `h3-pack`'s
+  `harvested_mana.rs` replays batch 2a R6 on the harvested packs (20 → 21 → 16 → 11, Blue
+  10 → 2); the property test explains mana by casts, channels and drains.
+- **Review** (independent, no defect in the logic): tests made stronger (two enemy Pegasi
+  count once; Familiars killed by the cast while the battle goes on; the channel after an
+  obstacle spell; a blind, a bad-morale, a berserk Wraith and the tactics phase through
+  commands), the test Wraith's ability after another (the drain's search), the channel's event
+  reports the mana actually gained, `turn`'s docs. A created Pegasus cannot be tested: a clone's
+  original is in its army and no summon makes Pegasi (the change is computed from the armies
+  at the start).

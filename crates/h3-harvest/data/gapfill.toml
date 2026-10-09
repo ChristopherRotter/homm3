@@ -1400,6 +1400,47 @@ abilities = [
 ]
 sources = ["exe-enchanter"]
 
+# The mana creatures (E04b T7c1, pack format v27; installation.md 7.21, "The mana creatures, re-read
+# for T7c1"): the hero's spell cost reads the armies (Pegasi +2 for the enemy hero, Mages -2 for
+# their own; BAT-MAG-054, BAT-QUIRK-15), the Familiars channel a fifth of the other hero's cost
+# (BAT-MAG-055), a Wraith drains 2 mana at its activations of the normal phase (BAT-MAG-056).
+[[source]]
+id = "exe-mana-creatures"
+kind = "original-data"
+ref = "Heroes3.exe code reading (docs/formats/installation.md 7.21, the mana creatures re-read for T7c1): the spell cost 0x4E5240 adds 2 when the enemy army holds creature 20 or 21 and takes 2 when the hero's army holds 34 or 35 (0x44AB80: the slots' types), at least 1; after a hero's cast of cost 5 or more the channel 0x5A2170 gives the hero opposite the acting side cost div 5 when that side controls a living creature 43; the activation's case for creature 61 (0x465548) takes 2 spell points, at least 0, from the hero opposite the Wraith's controller outside the wait phase"
+url = "docs/formats/installation.md"
+retrieved = "2026-10-09"
+
+[[creature_abilities]]
+creature = "Pegasus"
+abilities = [{ kind = "spell_cost", amount = 2, affects = "enemies" }]
+sources = ["exe-mana-creatures"]
+
+[[creature_abilities]]
+creature = "Silver Pegasus"
+abilities = [{ kind = "spell_cost", amount = 2, affects = "enemies" }]
+sources = ["exe-mana-creatures"]
+
+[[creature_abilities]]
+creature = "Mage"
+abilities = [{ kind = "spell_cost", amount = -2, affects = "allies" }]
+sources = ["exe-mana-creatures"]
+
+[[creature_abilities]]
+creature = "Arch Mage"
+abilities = [{ kind = "spell_cost", amount = -2, affects = "allies" }]
+sources = ["exe-mana-creatures"]
+
+[[creature_abilities]]
+creature = "Familiar"
+abilities = [{ kind = "mana_channel", percent = 20 }]
+sources = ["exe-mana-creatures"]
+
+[[creature_abilities]]
+creature = "Wraith"
+abilities = [{ kind = "mana_drain", amount = 2 }]
+sources = ["exe-mana-creatures"]
+
 # ---------------------------------------------------------------------------------------------
 # Hero content (E04a T3): what the executable's hero tables and the text tables do not hold.
 # ---------------------------------------------------------------------------------------------

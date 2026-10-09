@@ -27,7 +27,7 @@ fields = [
   { offset = 0x70, name = "lucky", type = "i32", summary = "set by the luck roll: a lucky strike", confidence = "read", refs = ["installation.md §7.10"] },
   { offset = 0x74, name = "creature_info", type = "creature_record", summary = "copy of the creature's table entry; +0x74 faction (town) is read for the native terrain", confidence = "read", refs = ["installation.md §5", "installation.md §7.16"] },
   { offset = 0x78, name = "level", type = "i32", summary = "creature level, 0-based (in the copy)", confidence = "read", refs = ["installation.md §7.12", "installation.md §7.19"] },
-  { offset = 0x84, name = "flags", type = "u32", summary = "creature flags (§5) plus run-time bits: 0x200000 dead, 0x400000 summoned, 0x800000 clone, 0x1000000 good morale, 0x4000000 acted, 0x10000000 sacrificed; done bits 21, 25, 26", confidence = "read", refs = ["installation.md §7.14", "installation.md §7.18", "installation.md §7.19", "installation.md §7.21"] },
+  { offset = 0x84, name = "flags", type = "u32", summary = "creature flags (§5) plus run-time bits: 0x200000 dead, 0x400000 summoned, 0x800000 clone, 0x1000000 good morale, 0x2000000 waited, 0x4000000 acted, 0x10000000 sacrificed; done bits 21, 25, 26", confidence = "read", refs = ["installation.md §7.14", "installation.md §7.18", "installation.md §7.19", "installation.md §7.21"] },
   { offset = 0xC0, name = "hit_points", type = "i32", summary = "hit points per creature (Poison and Age lower it)", confidence = "read", refs = ["installation.md §7.18", "installation.md §7.20"] },
   { offset = 0xC4, name = "speed", type = "i32", summary = "speed", confidence = "read", refs = ["installation.md §7.9"] },
   { offset = 0xC8, name = "attack", type = "i32", summary = "attack", confidence = "read", refs = ["installation.md §7.9"] },
@@ -95,8 +95,10 @@ fields = [
   { offset = 0x5394, name = "terrain", type = "i32", summary = "the battlefield's terrain", confidence = "read", refs = ["installation.md §7.16"] },
   { offset = 0x53C0, name = "special_field", type = "i32", summary = "special battlefield type (1 Magic Plains, 2 Cursed Ground)", confidence = "read", refs = ["installation.md §7.16", "installation.md §7.21"] },
   { offset = 0x53C4, name = "anti_magic_garrison", type = "i32", summary = "set at the start for object 33 subtype 1", confidence = "read", refs = ["installation.md §7.21"] },
+  { offset = 0x53CC, name = "heroes", type = "hero*[2]", summary = "each side's hero, null without one", confidence = "read", refs = ["installation.md §7.21"] },
   { offset = 0x54A4, name = "local_human", type = "i32[2]", summary = "whether each side is a local human", confidence = "read", refs = ["installation.md §7.21"] },
   { offset = 0x54BC, name = "stack_count", type = "i32[2]", summary = "records in use per side", confidence = "read", refs = ["installation.md §7.7", "installation.md §7.19"] },
+  { offset = 0x54C4, name = "armies", type = "army*[2]", summary = "each side's army (a hero's, or the monsters'); the spell cost reads it, untouched until the battle's end", confidence = "read", refs = ["installation.md §7.21"] },
   { offset = 0x54CC, name = "stacks", type = "battle_stack[2][21]", summary = "stack records, side stride 0x6EE8", confidence = "read", refs = ["installation.md §7.7"] },
   { offset = 0x1329C, name = "natives", type = "u8[2]", summary = "per side: any stack native at the battle's start", confidence = "read", refs = ["installation.md §7.16", "installation.md §7.17"] },
   { offset = 0x132A0, name = "enchanter_counter", type = "i32[2]", summary = "rounds since the side's Enchanters cast; +1 at each round start, 0 after a cast, never reset when a battle starts (BAT-QUIRK-14)", confidence = "read", refs = ["installation.md §7.21"] },
@@ -106,6 +108,7 @@ fields = [
   { offset = 0x132C0, name = "acting_side", type = "i32", summary = "the side acting now", confidence = "read", refs = ["installation.md §7.21"] },
   { offset = 0x13D58, name = "objects", type = "vector<battle_object>", summary = "battlefield objects (begin +0x13D5C, end +0x13D60)", confidence = "read", refs = ["installation.md §7.15"] },
   { offset = 0x13D68, name = "tactics_phase", type = "i32", summary = "in the tactics phase", confidence = "read", refs = ["installation.md §7.21"] },
+  { offset = 0x13DE4, name = "wait_phase", type = "u8", summary = "the round's wait phase: set when no stack is left to act (0x4652A7), cleared at the round start; no Wraith drain while set", confidence = "read", refs = ["installation.md §7.21"] },
 ]
 
 [[struct]]
@@ -217,5 +220,7 @@ summary = "A hero in the game (H3API's H3Hero, whose size is used here); only wh
 refs = ["installation.md §7.4"]
 h3api = "H3Hero"
 fields = [
+  { offset = 0x18, name = "spell_points", type = "i16", summary = "spell points (mana); a Familiars' channel may raise it above the maximum", confidence = "read", refs = ["installation.md §7.21"] },
+  { offset = 0x91, name = "army", type = "army", summary = "the hero's army (seven creature types, then seven counts)", confidence = "read", refs = ["installation.md §7.21"] },
   { offset = 0xC9, name = "secondary_skill_levels", type = "u8[28]", summary = "level per secondary skill id", confidence = "read", refs = ["installation.md §7.4"] },
 ]
