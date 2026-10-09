@@ -148,6 +148,8 @@ abilities = [
     { kind = "spell_after_strike", spell = "tangle", chance_percent = 25, mastery = 0, rounds = 3 },
     { kind = "spell_after_strike", spell = "etch", chance_percent = 30, mastery = 0, rounds = 3, defended = true },
     { kind = "damage_after_strike", chance_percent = 20, percent = 50 },
+    # Format v27: in an army, its own hero's spells cost 2 less (the Mages, BAT-MAG-054).
+    { kind = "spell_cost", amount = -2, affects = "allies" },
 ]
 
 [[creature]]
@@ -168,8 +170,13 @@ fight_value = 60
 ai_value = 65
 adventure_count = [15, 30]
 flags = ["flying", "shooter", "no_morale"]
-# Format v22: casts Hasten as its action, twice a battle, at Advanced with power 6 (BAT-MAG-048).
-abilities = [{ kind = "spell_caster", spell = "hasten", mastery = 2, power = 6 }]
+# Format v22: casts Hasten as its action, twice a battle, at Advanced with power 6 (BAT-MAG-048);
+# v27: while it lives, its hero gains a fifth of the other hero's cost after each cast (the
+# Familiars' channel, BAT-MAG-055).
+abilities = [
+    { kind = "spell_caster", spell = "hasten", mastery = 2, power = 6 },
+    { kind = "mana_channel", percent = 20 },
+]
 
 # War machines (E03 T8/T9, BAT-WAR-001..004): one of each kind, controlled by the engine.
 [[creature]]
@@ -275,7 +282,9 @@ adventure_count = [4, 8]
 flags = ["alive", "flying"]
 # Format v24: casts at another own stack a spell drawn at the cast among those useful for it, at
 # Advanced with power 6, three times a battle (a Master Genie's draw, BAT-MAG-050).
+# Format v27: in an army, the enemy hero's spells cost 2 more (the Pegasi, BAT-MAG-054).
 abilities = [
+    { kind = "spell_cost", amount = 2, affects = "enemies" },
     { kind = "helpful_spell_caster", mastery = 2, power = 6 },
     { kind = "drawn_spell", spell = "hasten", weight = 1 },
     { kind = "drawn_spell", spell = "fury", weight = 1 },
@@ -327,7 +336,12 @@ flags = ["alive"]           # living, so its corpse can raise Spearmen too
 # Format v25: once a battle raises Spearmen from a corpse of a living creature's stack of its
 # side, with 50 hit points per creature, into that stack's army slot (a Pit Lord's Demons,
 # BAT-MAG-052).
-abilities = [{ kind = "corpse_raiser", creature = "spearman", hit_points_per_creature = 50 }]
+# Format v27: at its activations of a round's normal phase, the enemy hero loses 2 mana (a
+# Wraith's drain, BAT-MAG-056).
+abilities = [
+    { kind = "corpse_raiser", creature = "spearman", hit_points_per_creature = 50 },
+    { kind = "mana_drain", amount = 2 },
+]
 
 [[creature]]
 id = "chanter"              # neutral (no faction)
