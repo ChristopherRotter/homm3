@@ -1441,6 +1441,41 @@ creature = "Wraith"
 abilities = [{ kind = "mana_drain", amount = 2 }]
 sources = ["exe-mana-creatures"]
 
+# The creature defences (E04b T7c2a, pack format v28; installation.md 7.21, "The creature
+# defences, re-read for T7c2a"): the Faerie Dragon's own Magic Mirror (BAT-MAG-057) and the Efreet
+# Sultan's own Fire Shield (BAT-MAG-058), each 20 % while the spell is not active; the Psychic
+# Elemental's half damage to mind-immune creatures, the Magic Elemental's to Magic Elementals and
+# Black Dragons (BAT-DMG-010).
+[[source]]
+id = "exe-creature-defences"
+kind = "original-data"
+ref = "Heroes3.exe code reading (docs/formats/installation.md 7.21, the creature defences re-read for T7c2a): Magic Mirror's chance 0x4487F0 gives creature 134 the larger of the spell's value and spell 36's table value at no mastery (20); Fire Shield's factor 0x443130 and the reflection 0x422440 give creature 53 the factor 0.2 (f32) while the spell is not active; the damage's stage 2 (0x443B90) halves the damage of creature 120 to a target with flag 0x400 and of creature 121 to creatures 121 and 83"
+url = "docs/formats/installation.md"
+retrieved = "2026-10-09"
+
+[[creature_abilities]]
+creature = "Faerie Dragon"
+abilities = [{ kind = "innate_spell", spell = "base:magic_mirror", value = 20 }]
+sources = ["exe-creature-defences"]
+
+[[creature_abilities]]
+creature = "Efreet Sultan"
+abilities = [{ kind = "innate_spell", spell = "base:fire_shield", value = 20 }]
+sources = ["exe-creature-defences"]
+
+[[creature_abilities]]
+creature = "Psychic Elemental"
+abilities = [{ kind = "damage_penalty_by_flag", flag = "mind_immune", percent = 50 }]
+sources = ["exe-creature-defences"]
+
+[[creature_abilities]]
+creature = "Magic Elemental"
+abilities = [
+    { kind = "damage_penalty", creature = "Magic Elemental", percent = 50 },
+    { kind = "damage_penalty", creature = "Black Dragon", percent = 50 },
+]
+sources = ["exe-creature-defences"]
+
 # ---------------------------------------------------------------------------------------------
 # Hero content (E04a T3): what the executable's hero tables and the text tables do not hold.
 # ---------------------------------------------------------------------------------------------

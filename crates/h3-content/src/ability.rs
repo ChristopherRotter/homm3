@@ -14,6 +14,7 @@
 
 use h3_kernel::{CanonicalHash, StateHasher};
 
+use crate::flags::CreatureFlag;
 use crate::heroes::{SchoolId, SpellId};
 use crate::key::ContentKey;
 use crate::ruleset::CreatureTypeId;
@@ -317,6 +318,33 @@ pub enum Ability<C, S, L> {
         /// The mana lost (≥ 1).
         amount: u8,
     },
+    /// Its stack counts as having `spell`'s effect at `value` whenever the spell is not active on
+    /// it with a larger value (the original's fallbacks in the effect's getters, `installation.md`
+    /// §7.21); only a Fire Shield or a Magic Mirror effect is read: the Efreet Sultan's 20 %
+    /// shield (BAT-MAG-058), the Faerie Dragon's 20 % mirror (BAT-MAG-057; v28).
+    InnateSpell {
+        /// The spell (one with a timed `fire_shield` or `magic_mirror` change).
+        spell: S,
+        /// Its value, 1..=100.
+        value: u8,
+    },
+    /// Deals `percent` % less damage to `target` (the original's stage 2, beside the defense
+    /// factor): the Magic Elemental's half against Magic Elementals and Black Dragons
+    /// (BAT-DMG-010, v28).
+    DamagePenalty {
+        /// The creature type.
+        target: C,
+        /// The reduction, percent (1..=100).
+        percent: u8,
+    },
+    /// Deals `percent` % less damage to creatures with flag `flag` (as `DamagePenalty`): the
+    /// Psychic Elemental's half against mind-immune creatures (BAT-DMG-010, v28).
+    DamagePenaltyByFlag {
+        /// The target's flag.
+        flag: CreatureFlag,
+        /// The reduction, percent (1..=100).
+        percent: u8,
+    },
 }
 
 /// Most creatures `corpse_raiser` abilities raise in a ruleset (the battle keeps a stack of each
@@ -331,7 +359,7 @@ pub type CompiledAbility = Ability<CreatureTypeId, SpellId, SchoolId>;
 
 impl<C, S, L> Ability<C, S, L> {
     /// Every ability name, in code order (the order of [`Ability::code`]).
-    pub const NAMES: [&'static str; 42] = [
+    pub const NAMES: [&'static str; 45] = [
         "hate",
         "jousting",
         "charge_immunity",
@@ -374,6 +402,9 @@ impl<C, S, L> Ability<C, S, L> {
         "spell_cost",
         "mana_channel",
         "mana_drain",
+        "innate_spell",
+        "damage_penalty",
+        "damage_penalty_by_flag",
     ];
 
     /// Stable numeric code of the ability kind (canonical hashing, duplicate checks).
@@ -421,6 +452,9 @@ impl<C, S, L> Ability<C, S, L> {
             Self::SpellCost { .. } => 39,
             Self::ManaChannel { .. } => 40,
             Self::ManaDrain { .. } => 41,
+            Self::InnateSpell { .. } => 42,
+            Self::DamagePenalty { .. } => 43,
+            Self::DamagePenaltyByFlag { .. } => 44,
         }
     }
 
@@ -596,6 +630,18 @@ impl<C, S, L> Ability<C, S, L> {
             },
             Self::ManaChannel { percent } => Ability::ManaChannel { percent: *percent },
             Self::ManaDrain { amount } => Ability::ManaDrain { amount: *amount },
+            Self::InnateSpell { spell: s, value } => Ability::InnateSpell {
+                spell: spell(s)?,
+                value: *value,
+            },
+            Self::DamagePenalty { target, percent } => Ability::DamagePenalty {
+                target: creature(target)?,
+                percent: *percent,
+            },
+            Self::DamagePenaltyByFlag { flag, percent } => Ability::DamagePenaltyByFlag {
+                flag: *flag,
+                percent: *percent,
+            },
         })
     }
 
@@ -632,6 +678,14 @@ impl<C, S, L> Ability<C, S, L> {
                 Some("mana_channel percent must be 1..=100")
             }
             Self::ManaDrain { amount: 0 } => Some("mana_drain amount must be at least 1"),
+            Self::InnateSpell { value, .. } if !(1..=100).contains(value) => {
+                Some("innate_spell value must be 1..=100")
+            }
+            Self::DamagePenalty { percent, .. } | Self::DamagePenaltyByFlag { percent, .. }
+                if !(1..=100).contains(percent) =>
+            {
+                Some("damage_penalty percent must be 1..=100")
+            }
             Self::FirstAid { min_hp, max_hp } if *min_hp == 0 || max_hp < min_hp => {
                 Some("first_aid needs 1 <= min_hp <= max_hp")
             }
@@ -705,7 +759,8 @@ const fn signed(v: i8) -> u8 {
 impl CanonicalHash for CompiledAbility {
     /// Encoding: kind code (u8), then the parameters in field order: creature, spell and school
     /// handles as their handle encoding, `u8`/`u16` as such, `i8` as its two's-complement byte, `affects`
-    /// (allies 0, enemies 1) and `effect` (fireball 0, death cloud 1) as one byte.
+    /// (allies 0, enemies 1) and `effect` (fireball 0, death cloud 1) as one byte, a creature flag as
+    /// its bit index.
     fn hash_into(&self, h: &mut StateHasher) {
         h.write_u8(self.code());
         match *self {
@@ -792,9 +847,21 @@ impl CanonicalHash for CompiledAbility {
                 mastery,
                 power_per_creature,
             } => h.write_bytes(&[mastery, power_per_creature]),
-            Self::DrawnSpell { spell, weight } => {
+            Self::DrawnSpell { spell, weight }
+            | Self::InnateSpell {
+                spell,
+                value: weight,
+            } => {
                 spell.hash_into(h);
                 h.write_u8(weight);
+            }
+            Self::DamagePenalty { target, percent } => {
+                target.hash_into(h);
+                h.write_u8(percent);
+            }
+            Self::DamagePenaltyByFlag { flag, percent } => {
+                // The flag's bit index (`CreatureFlag::ALL` order).
+                h.write_bytes(&[flag as u8, percent]);
             }
             Self::HelpfulSpellCaster { mastery, power } => h.write_bytes(&[mastery, power]),
             Self::PeriodicSpellCaster {
@@ -830,8 +897,10 @@ impl CanonicalHash for CompiledAbility {
 }
 
 /// Checks a creature's whole ability list: per-ability parameters, at most one ability of each
-/// kind (several `hate`, `school_immunity`, `spell_immunity`, `spell_vulnerability` and
-/// `spell_after_strike` entries are allowed, for different targets, schools and spells), and
+/// kind (several `hate`, `school_immunity`, `spell_immunity`, `spell_vulnerability`,
+/// `spell_after_strike`, `drawn_spell`, `innate_spell`, `damage_penalty` and
+/// `damage_penalty_by_flag` entries are allowed, for different targets, schools, spells and
+/// flags), and
 /// mutually exclusive kinds.
 /// Returns the reason for the first problem.
 pub(crate) fn list_error<C: PartialEq, S: PartialEq, L: PartialEq>(
@@ -856,9 +925,17 @@ pub(crate) fn list_error<C: PartialEq, S: PartialEq, L: PartialEq>(
                 Ability::SpellAfterStrike { spell: x, .. },
                 Ability::SpellAfterStrike { spell: y, .. },
             )
-            | (Ability::DrawnSpell { spell: x, .. }, Ability::DrawnSpell { spell: y, .. }) => {
+            | (Ability::DrawnSpell { spell: x, .. }, Ability::DrawnSpell { spell: y, .. })
+            | (Ability::InnateSpell { spell: x, .. }, Ability::InnateSpell { spell: y, .. }) => {
                 x == y
             }
+            (Ability::DamagePenalty { target: x, .. }, Ability::DamagePenalty { target: y, .. }) => {
+                x == y
+            }
+            (
+                Ability::DamagePenaltyByFlag { flag: x, .. },
+                Ability::DamagePenaltyByFlag { flag: y, .. },
+            ) => x == y,
             _ => a.code() == b.code(),
         });
         if duplicate {
@@ -893,7 +970,7 @@ mod tests {
 
     type A = Ability<u8, u8, u8>;
 
-    fn all() -> [A; 42] {
+    fn all() -> [A; 45] {
         [
             A::Hate {
                 target: 3,
@@ -995,6 +1072,15 @@ mod tests {
             },
             A::ManaChannel { percent: 20 },
             A::ManaDrain { amount: 2 },
+            A::InnateSpell { spell: 2, value: 20 },
+            A::DamagePenalty {
+                target: 3,
+                percent: 50,
+            },
+            A::DamagePenaltyByFlag {
+                flag: CreatureFlag::MindImmune,
+                percent: 50,
+            },
         ]
     }
 
@@ -1043,6 +1129,8 @@ mod tests {
             assert_eq!(a.try_map(ok, fail, ok), Err("nope"));
         }
         assert_eq!(all()[37].try_map(fail, ok, ok), Err("nope"));
+        assert_eq!(all()[42].try_map(ok, fail, ok), Err("nope"));
+        assert_eq!(all()[43].try_map(fail, ok, ok), Err("nope"));
         assert_eq!(
             A::SchoolImmunity { school: 1 }.try_map(fail, fail, ok),
             Ok(A::SchoolImmunity { school: 1 })
@@ -1242,6 +1330,19 @@ mod tests {
             A::ManaChannel { percent: 0 },
             A::ManaChannel { percent: 101 },
             A::ManaDrain { amount: 0 },
+            A::InnateSpell { spell: 1, value: 0 },
+            A::InnateSpell {
+                spell: 1,
+                value: 101,
+            },
+            A::DamagePenalty {
+                target: 1,
+                percent: 0,
+            },
+            A::DamagePenaltyByFlag {
+                flag: CreatureFlag::Undead,
+                percent: 101,
+            },
         ];
         for a in bad {
             assert!(a.parameter_error().is_some(), "{a:?}");
@@ -1280,11 +1381,34 @@ mod tests {
             defended: false,
         };
         assert_eq!(list_error(&[strike(1), strike(2)]), None);
+        // Innate spells and damage penalties for different spells, targets and flags
+        // (BAT-MAG-057, BAT-MAG-058, BAT-DMG-010).
+        let innate = |spell| A::InnateSpell { spell, value: 20 };
+        let penalty = |target| A::DamagePenalty {
+            target,
+            percent: 50,
+        };
+        let by_flag = |flag| A::DamagePenaltyByFlag { flag, percent: 50 };
+        let (mind, undead) = (CreatureFlag::MindImmune, CreatureFlag::Undead);
+        assert_eq!(
+            list_error(&[
+                innate(1),
+                innate(2),
+                penalty(1),
+                penalty(2),
+                by_flag(mind),
+                by_flag(undead)
+            ]),
+            None
+        );
         for twice in [
             [immune(1), immune(1)],
             [weak(3), weak(3)],
             [school(1), school(1)],
             [strike(4), strike(4)],
+            [innate(1), innate(1)],
+            [penalty(2), penalty(2)],
+            [by_flag(mind), by_flag(mind)],
         ] {
             assert_eq!(list_error(&twice), Some("an ability is listed twice"));
         }

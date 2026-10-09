@@ -1309,7 +1309,7 @@ fight_value = 1584
 ai_value = 1848
 adventure_count = [5, 10]
 flags = ["flying", "alive", "fire_immune"]
-abilities = [{ kind = "hate", creature = "genie", percent = 50 }, { kind = "hate", creature = "master_genie", percent = 50 }, { kind = "school_immunity", school = "base:fire" }]
+abilities = [{ kind = "hate", creature = "genie", percent = 50 }, { kind = "hate", creature = "master_genie", percent = 50 }, { kind = "school_immunity", school = "base:fire" }, { kind = "innate_spell", spell = "base:fire_shield", value = 20 }]
 
 [[creature]]
 id = "devil"  # original id 54

@@ -651,6 +651,49 @@ fn a_stack_raiser_needs_a_raise_spell() {
     }
 }
 
+#[test]
+fn an_innate_spell_is_a_fire_shield_or_a_magic_mirror() {
+    use crate::ability::{Ability, AbilityDef};
+    let mut p = pack();
+    let with = |k: &str, change| {
+        let mut s = timed(k);
+        s.magic.effects = vec![SpellEffect::Timed(change)];
+        s
+    };
+    p.spells.extend([
+        with("t:shield", TimedChange::FireShield),
+        with("t:mirror", TimedChange::MagicMirror),
+        timed("t:haste"),
+    ]);
+    let innate = |spell: &str| AbilityDef::InnateSpell {
+        spell: key(spell),
+        value: 20,
+    };
+    let mut good = p.clone();
+    good.creatures[0].info.abilities = vec![innate("t:shield"), innate("t:mirror")];
+    let r = compile(&[good]).unwrap();
+    let peasant = r.creature_by_key("t:peasant").unwrap();
+    assert!(matches!(
+        r.abilities(peasant),
+        [
+            Ability::InnateSpell { value: 20, .. },
+            Ability::InnateSpell { value: 20, .. }
+        ]
+    ));
+    for spell in ["t:haste", "t:bolt"] {
+        let mut bad = p.clone();
+        bad.creatures[0].info.abilities = vec![innate(spell)];
+        assert_eq!(
+            fails(bad),
+            CompileError::InvalidCreature {
+                key: "t:peasant".into(),
+                reason: "innate_spell needs a spell with a timed fire_shield or magic_mirror \
+                         change",
+            }
+        );
+    }
+}
+
 fn invalid_spell(k: &str, reason: &'static str) -> CompileError {
     invalid("spell", k, reason)
 }
