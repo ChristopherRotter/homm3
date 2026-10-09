@@ -1404,3 +1404,31 @@ if any record had kills; summoned stacks, clones and war machines count. The exp
 (0x46A350) sums `killed × health` over the opposite side's records that are neither summoned nor
 war machines (then hero and game-setting terms, not read here). The death 0x444120 does not touch the dying stack's count
 (a clone whose rounds ran out keeps it), but sets an original's clone to 0 before killing it.
+
+**The Enchanter, re-read for T7b4** (BAT-MAG-053, BAT-Q14, 2026-10-09). *When it casts.* The
+activation 0x465330 sets the acting side to the stack's controller (+0x288 flips +0xF4) and
+returns at once in the tactics phase. The battle loop's pick 0x465080 does not activate a blind,
+petrified or paralysed stack (0x465222), nor one that bad morale or a second test (0x465283, not
+read) stops; a berserk stack is activated (its automatic action comes after), and so is a stack
+that waited or got good morale, again. For creature 136 the activation calls 0x447FE0 when the
+acting side's counter +0x132A0 is above 2, and sets that counter to 0 when it cast (0x465503).
+The counters rise by 1 for both sides at every round start (0x4760F8), which runs when a round
+ends (0x479C7E) and when the tactics phase ends (0x474559, 0x47525F), not before a battle's first
+round. Nothing sets them when a battle starts: the battle manager is made once per session
+(0x4EDCF5; its constructor 0x462760 leaves +0x132A0 alone), so the counters carry over from
+battle to battle, by side (BAT-QUIRK-14; the engine starts every battle ready, BAT-Q14). *What it
+casts* (0x447FE0). Magic must be allowed for the acting side (0x41F890(side, 0): Cursed Ground,
+an anti-magic garrison, the Orb of Inhibition; E04c, T8). For each pair of the table 0x6608B8 the
+side tested is the acting side, or the other one when the spell's record field +0 is below 0
+(Slow, Weakness; 0x448042); the loop calls 0x447A80(spell, the side's record 0) once per record
+in use without advancing the record (0x44807C), so a spell counts when the side's first record
+accepts it (survey S-12, BAT-QUIRK-13). A dead first record accepts nothing: 0x5A8090 refuses a
+dead stack (flag `0x200000`) for every spell but 38 to 40. If the counted weights sum above 0,
+`rand() mod sum` (0x4480B8, the C library's generator) is walked down the table again with the
+same test, each counted weight subtracted until the remainder is below 0. Unless the battle is
+hidden (0x46A4A0), the controller's living Enchanters that are not blind, petrified or paralysed
+then show the cast (0x4481B9; animation only), and 0x59FE30(spell, hex −1, caster kind 1, −1,
+mastery 3, power 3) casts it (0x448250): the Expert mass version over the side the spell aims at,
+every stack rolling for resistance as in an area spell, the timed spells for 3 rounds. No cast is
+used (+0xDC untouched) and the stack's turn goes on as usual. If nothing counts, nothing is cast
+and the counter stays, so the next activation of an Enchanter of that side tries again.
