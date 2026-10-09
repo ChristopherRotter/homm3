@@ -68,6 +68,21 @@ pub struct Entry {
     pub h3api: Option<String>,
 }
 
+/// The generated H3API port: only what the map is checked against (its other keys are free).
+#[derive(Debug, Deserialize)]
+pub struct H3ApiFile {
+    #[serde(default)]
+    pub function: Vec<H3ApiItem>,
+    #[serde(default)]
+    pub data: Vec<H3ApiItem>,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct H3ApiItem {
+    pub va: u32,
+    pub name: String,
+}
+
 #[derive(Debug, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct StructsFile {
@@ -193,6 +208,33 @@ pub fn map_problems(map: &MapFile) -> Vec<String> {
         }
     }
     problems
+}
+
+/// Entries at an address H3API also names must say whether the reading agrees: `h3api = "…"`
+/// when it does, else a summary that mentions H3API and says it does not (docs/exe/README.md,
+/// "Recording a reading"). Without this, a name invented from one site inside a function stood
+/// next to a stronger guess without anyone noticing (0x468860, once `faerie_spell_reader`).
+pub fn h3api_problems(map: &MapFile, h3api: &H3ApiFile) -> Vec<String> {
+    let names: BTreeMap<u32, &str> = h3api
+        .function
+        .iter()
+        .chain(&h3api.data)
+        .map(|i| (i.va, i.name.as_str()))
+        .collect();
+    map.entry
+        .iter()
+        .filter_map(|e| {
+            let guess = names.get(&e.va)?;
+            let says = e.h3api.is_some() || e.summary.to_ascii_lowercase().contains("h3api");
+            (!says).then(|| {
+                format!(
+                    "{MAP}: 0x{:06X} {}: H3API names it {guess}; add h3api = \"...\" if the \
+                     reading agrees, else say in the summary that it does not",
+                    e.va, e.name
+                )
+            })
+        })
+        .collect()
 }
 
 /// What is wrong with the record layouts; empty if nothing.
@@ -321,10 +363,11 @@ fn load<T: for<'de> Deserialize<'de>>(root: &Path, file: &str) -> Result<T, Stri
 pub fn check(root: &Path) -> Result<Vec<String>, String> {
     let map: MapFile = load(root, MAP)?;
     let structs: StructsFile = load(root, STRUCTS)?;
-    // The generated H3API file must parse; its contents are guesses and are not checked further.
-    let _: toml::Value = load(root, H3API)?;
+    // The generated H3API file's names are guesses; only their overlap with the map is checked.
+    let h3api: H3ApiFile = load(root, H3API)?;
     let mut problems = map_problems(&map);
     problems.extend(struct_problems(&structs));
+    problems.extend(h3api_problems(&map, &h3api));
     for (va, files) in uncovered(&map, &citations(root, &map.image)?) {
         let files: Vec<&str> = files.iter().map(String::as_str).collect();
         problems.push(format!(
@@ -447,6 +490,31 @@ mod tests {
         ] {
             assert!(problems.contains(needle), "{needle} missing in {problems}");
         }
+    }
+
+    #[test]
+    fn h3api_overlaps_must_be_tagged_or_disputed() {
+        let m = map(&format!(
+            "{}{}{}{}",
+            entry(
+                "0x401000",
+                "function",
+                "agrees",
+                "size = 0x10\nh3api = \"H3A::X\"\n"
+            ),
+            entry("0x401010", "function", "disputes", "size = 0x10\n")
+                .replace("summary = \"s\"", "summary = \"not what H3API calls it\""),
+            entry("0x401020", "function", "silent", "size = 0x10\n"),
+            entry("0x63B850", "global", "silent_data", ""),
+        ));
+        let h3api: H3ApiFile = toml::from_str(
+            "function = [\n{ va = 0x401000, name = \"H3A::X\", conv = \"thiscall\" },\n{ va = 0x401010, name = \"H3A::Y\" },\n{ va = 0x401020, name = \"H3A::Z\" },\n]\ndata = [ { va = 0x63B850, name = \"H3Table\" } ]\n",
+        )
+        .unwrap();
+        let problems = h3api_problems(&m, &h3api);
+        assert_eq!(problems.len(), 2, "{problems:?}");
+        assert!(problems[0].contains("0x401020 silent: H3API names it H3A::Z"));
+        assert!(problems[1].contains("0x63B850 silent_data: H3API names it H3Table"));
     }
 
     #[test]
