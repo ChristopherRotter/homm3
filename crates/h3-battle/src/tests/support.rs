@@ -775,7 +775,8 @@ pub const CREATURES: &[Creature] = &[
             "drawn_spell=weaken:4",
         ],
     ),
-    // A periodic caster of Bloodlust and Cure only, which count on a melee and on a wounded stack.
+    // A periodic caster of Bloodlust and Cure only, which count on a melee and on a wounded stack
+    // (its ability listed after its spells).
     (
         "luster",
         10,
@@ -786,9 +787,9 @@ pub const CREATURES: &[Creature] = &[
         9,
         &[
             "alive",
-            "periodic_spell_caster=3:3:3",
             "drawn_spell=lust:5",
             "drawn_spell=cure:10",
+            "periodic_spell_caster=3:3:3",
         ],
     ),
 ];

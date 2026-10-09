@@ -258,9 +258,16 @@ fn a_hypnotized_enchanter_casts_for_its_controller() {
     s.casts.periodic = [u8::MAX, 0];
     let mut events = Vec::new();
     crate::casters::periodic(&mut s, &r, StackId(2), &mut events);
-    assert_eq!(periodic(&events).len(), 1);
+    let [(_, cast)] = periodic(&events)[..] else {
+        panic!("one cast: {events:?}");
+    };
     assert_eq!(s.periodic_rounds(BattleSide::Attacker), 0);
     assert_eq!(s.periodic_rounds(BattleSide::Defender), 0);
+    // A positive spell reaches the controller's stack, a negative one its owner's side, itself
+    // included.
+    let negative = cast == spell(&r, "sloth") || cast == spell(&r, "weaken");
+    let targets: Vec<u8> = applied(&events).into_iter().map(|(t, _)| t).collect();
+    assert_eq!(targets, if negative { vec![1, 2] } else { vec![0] });
 }
 
 // covers: BAT-MAG-053
@@ -300,6 +307,39 @@ fn a_berserk_enchanter_casts_before_its_automatic_turn() {
         .rposition(|e| matches!(e.kind, EventKind::TurnStarted { stack } if stack.0 == 1))
         .unwrap();
     assert!(turn < cast);
+    // Its automatic action (a move or a strike) follows the cast.
+    let action = events
+        .iter()
+        .position(|e| {
+            matches!(e.kind, EventKind::Moved { stack, .. } if stack.0 == 1)
+                || matches!(e.kind, EventKind::Struck { attacker, .. } if attacker.0 == 1)
+        })
+        .unwrap();
+    assert!(cast < action);
     assert_eq!(s.round(), 2);
     assert_ne!(s.active(), Some(StackId(1)));
+}
+
+// covers: BAT-MAG-053
+#[test]
+fn an_enchanter_that_lost_its_turns_casts_nothing() {
+    // Blinded during its own action, it gets no activation at a good-morale turn either (the
+    // original's pick passes it over).
+    let r = ruleset();
+    let setup = setup(&r, &[(0, "chanter", 5)], &[(0, "fixed", 4)]);
+    let mut s = BattleState::new(&r, &setup, 1).unwrap();
+    let blind = spell(&r, "blind");
+    let cast = crate::effects::TimedCast {
+        id: blind,
+        spell: r.spell(blind).unwrap(),
+        mastery: 0,
+        rounds: 5,
+        own: crate::magic::SpellBonus::default(),
+    };
+    crate::effects::apply(&mut s, &r, cast, StackId(0), &mut Vec::<Event>::new());
+    s.casts.periodic = [u8::MAX; 2];
+    let mut events = Vec::new();
+    crate::casters::periodic(&mut s, &r, StackId(0), &mut events);
+    assert!(periodic(&events).is_empty());
+    assert_eq!(s.periodic_rounds(BattleSide::Attacker), u8::MAX);
 }

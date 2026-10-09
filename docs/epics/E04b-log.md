@@ -1493,3 +1493,9 @@ records how and why the tasks went.
   three round starts per side, nothing counted, the quirk on and off, a dead first stack, a
   hypnotized and a berserk Enchanter); the content's periodic-caster checks; the observation's
   globals; the property test explains an enemy stack healed by the other side's periodic Cure.
+- **Review** (independent, no defect in the rule's logic): a coverage gap (a periodic caster
+  whose ability comes first never reached `periodic`'s other abilities: the test `luster` lists it
+  last), a stack that lost its turns during its own action no longer casts at a good-morale turn
+  (`Status::NO_TURNS`; the good-morale grant itself is in the QUEUE's inbox), the berserk and the
+  hypnotized tests made stronger; the property test that wants every random game to end now
+  assumes it (a petrifying striker and a First Aid Tent can keep a battle going for ever).
