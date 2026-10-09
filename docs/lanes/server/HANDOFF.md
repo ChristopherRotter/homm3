@@ -4,35 +4,28 @@ The server lane's living state; read after the global `docs/HANDOFF.md`. Format 
 
 ## Current state
 
-- **Refinement in progress (2026-10-08, branch `claude/awesome-cori-h0dz9l`): first draft under the user's review, nothing decided.** The draft: `docs/epics/E16-server.md` (goal, concepts, what the server must provide, decisions with options, milestones M0–M5, M1 tasks, the autonomy contract, questions SRV-Q1 to SRV-Q10), `docs/epics/E16-design.md` (messages, flows, manifest, identity, ladders, threats) and the ADR drafts `adr-drafts/protocol.md` and `adr-drafts/identity-and-ladders.md`. The user's two additions are in it: same content for everyone (the manifest; clients run no rules) and anyone hosts, with lobbies, ranked ladders, matchmaking and rating.
-- The lane owns (`lanes.toml`) the new adapter crates `h3-protocol` and `h3-server` in the engine workspace, `benches/server/` and E16's epic file. Creating the crates touches `Cargo.toml` and `arch.toml`: the crate skeletons are their own `shared/` pull request, merged first (M0).
-- **Timing:** refinement and ADRs now; implementation waits until the battle actions are mostly stable (E04b), or starts earlier if the user decides SRV-Q7 so.
-- **Next:** the user's answers to SRV-Q1 to SRV-Q10; then the drafts are corrected, `QUEUE.md` gets M0 and M1's tasks, and the ADR drafts wait for acceptance. Branches: `server/<task>`.
-- **Checkpoints** per milestone, under the autonomy contract below; a fresh reviewer agent checks each milestone before the user does.
-- **Ids:** questions `SRV-Q<n>`, quirks `SRV-QUIRK-<n>`, stubs `SRV-STUB-<n>`. ADR drafts go to `docs/lanes/server/adr-drafts/` and get a number when the user accepts them.
+- **E16 refined (2026-10-09):** the user answered SRV-Q1 to SRV-Q11 and confirmed the autonomy contract (`docs/OPEN-QUESTIONS.md`, "Answered"). Loopback and LAN until accounts (M3); seat tokens until M3; `tokio` for the connections, an OS thread per game; JSON in serde's default (externally tagged) enum form; a battle spectator viewer before M2; plain files; M4 before M5; the password-derived keypair and the web of trust as direction. The epic file, the design note and the three ADR drafts carry the answers; pull request `server/refinement-decisions` (labelled `cross-lane`: it files requests in the battle and client queues' inboxes).
+- **Next: M0** (`QUEUE.md`): the user reviews and accepts the protocol ADR draft, then the `shared/server-skeleton` pull request. Implementation starts now, while E04b finishes (SRV-Q7); the mapping's "other" fallback absorbs new battle commands and events.
+- The lane owns (`lanes.toml`) `h3-protocol`, `h3-server`, `benches/server/` and E16's files. Creating the crates touches `Cargo.toml` and `arch.toml`, so M0 is a `shared/` pull request merged first; it and the adventure lane's E08 T2 touch the same files (the second to merge rebases).
+- **Checkpoints** per milestone, under the autonomy contract below; a fresh reviewer agent checks each milestone before the user does. The identity and discovery ADR drafts are decided at the M3 refinement.
+- **Ids:** questions `SRV-Q<n>`, quirks `SRV-QUIRK-<n>`, stubs `SRV-STUB-<n>`. ADR drafts go to `docs/lanes/server/adr-drafts/` and get a number when the user accepts them. Branches: `server/<task>`.
 
-## Autonomy contract (draft: confirm in the refinement)
+## Autonomy contract (confirmed by the user, 2026-10-09)
 
 - **Agent decides, marked provisional:** the inner structure of the server crates, names, test layout, error texts, log format; anything a later task can change without touching another crate. Mark it `provisional` (code comment or epic log).
 - **Queue for the milestone review:** choices with a lasting cost that stay inside the lane: a light dependency, a message shape inside an accepted ADR, a configuration format. List them in the milestone's review list (epic file) and go on.
-- **Stop the line:** seams and contracts (`h3-contracts`, the engine API the server calls), heavy dependencies (async runtime, networking, serialization frameworks), licence questions, changes to the security model (ADR-0008), anything touching another lane's paths. Write the question (`SRV-Q<n>`), stop that task and take the next independent one.
-
-## Brief for the refinement session (E16)
-
-Prepare each point with options and a recommendation; the user decides.
-
-1. **Protocol ADR topics** (one ADR draft, decisions only): the transport (WebSocket, plain TCP, QUIC; HTTP for lobbies?); the async runtime and other heavy dependencies (GPLv2 compatibility, `deny.toml`); the wire format (readable JSON or a binary format, versioning, reuse of `h3-sim`'s encodings or not); sessions and seats with tokens (who holds which side, reconnects, spectators); per-viewer observations and events (`docs/06-security.md`: projection per viewer, visibility scopes); per-viewer replay export (a player's replay shows only what they saw).
-2. **What can come before `h3-game` (E10):** a hosted battle: two clients, or a client and a bot, play a `BattleSetup` through the server. Enough to exercise transport, seats, validation against the trusted actor and per-viewer observation on the battle that exists.
-3. **Commands the server does not know:** the protocol mapping rejects an unknown command with a typed "unsupported" error instead of an exhaustive match, so a new battle command (the battle lane adds them) does not break the server build; the same for events.
-4. **Hidden information:** a server needs a secret, uniformly random seed or an independent obstacle seed (`QUEUE.md`, "Inbox"); write it into `docs/06-security.md` with the server.
-5. **The autonomy contract** above: confirm or change its tiers.
-6. **Questions for the user:** where the server runs first (local only?), authentication now or later, which clients connect first (the client lane's viewer, a bot, a test harness).
+- **Stop the line:** seams and contracts (`h3-contracts`, the engine API the server calls), heavy dependencies (beyond the decided `tokio` features and `tokio-tungstenite`: another runtime, an HTTP framework, a TLS stack, the crypto crates, a store), licence questions, changes to the security model (ADR-0008), anything touching another lane's paths. Write the question (`SRV-Q<n>`), stop that task and take the next independent one.
 
 ## Standing traps
 
-(None yet; the global HANDOFF's traps apply.)
+- `postcard` (and any format that is not self-describing) cannot decode `#[serde(tag = ...)]`, `untagged` or `flatten`: keep the wire types in serde's default enum form (SRV-Q5).
+- A 64-bit integer on the wire travels as a string (JavaScript clients lose precision above 2^53).
 
 ## Recent sessions
+
+### 2026-10-09 — refinement session, the answers
+
+Took the user through SRV-Q1 to SRV-Q11 in four batches. On SRV-Q5 the user asked for the trade-offs in detail: scratch crates measured threads + `tungstenite` + `serde_json` at 36 crates, the same with `tokio` + `tokio-tungstenite` at 47, a clean build of the dependencies about 24 s either way; a blocking `tungstenite` socket needs one thread for reads and writes, so a thread per connection must poll; JSON is 8–10 times `postcard`'s size (a 20-stack snapshot 4.5 KB against 0.46 KB), and `postcard` refuses internally tagged enums (tested). The recommendation changed to `tokio` for connections and JSON in the default enum form; the user agreed. Spectators need a battle spectator viewer (no correct late-join snapshot otherwise). Drafts corrected, M0 and M1 queued, requests filed in the battle and client queues' inboxes (SRV-Q6 was already in the adventure lane's T1a draft), project status doc updated.
 
 ### 2026-10-08 — refinement session, first draft
 

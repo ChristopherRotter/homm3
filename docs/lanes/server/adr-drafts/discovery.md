@@ -1,8 +1,9 @@
 # ADR-NNNN: Server identity and decentralized discovery
 
-- Status: Proposed (E16 refinement draft, 2026-10-08; under the user's review; to be decided
-  with the identity ADR at the M3 refinement, built after M4)
-- Date: 2026-10-08
+- Status: Proposed (E16 refinement draft, 2026-10-08; direction confirmed by the user on
+  2026-10-09: the web of trust (SRV-Q11); to be decided with the identity ADR at the M3
+  refinement, built in M6)
+- Date: 2026-10-09
 - Deciders: user + server refinement session
 
 <!-- Decisions only. Reasoning and options: docs/epics/E16-server.md; detail: E16-design.md. -->
