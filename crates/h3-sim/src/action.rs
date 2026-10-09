@@ -905,10 +905,11 @@ mod tests {
     fn a_draw_at_the_cast_names_no_spell() {
         // The skirmish's Wisps as helpful casters (BAT-MAG-050): their spell head allows only 0.
         let pack = h3_pack::SYNTHETIC_PACK.replace(
-            "abilities = [{ kind = \"spell_caster\", spell = \"hasten\", mastery = 2, power = 6 }]",
-            "abilities = [{ kind = \"helpful_spell_caster\", mastery = 2, power = 6 }, \
-             { kind = \"drawn_spell\", spell = \"hasten\", weight = 1 }]",
+            "{ kind = \"spell_caster\", spell = \"hasten\", mastery = 2, power = 6 },",
+            "{ kind = \"helpful_spell_caster\", mastery = 2, power = 6 }, \
+             { kind = \"drawn_spell\", spell = \"hasten\", weight = 1 },",
         );
+        assert_ne!(pack, h3_pack::SYNTHETIC_PACK);
         let scenario = h3_pack::parse_scenario(h3_pack::SYNTHETIC_SKIRMISH).unwrap();
         let r = h3_pack::compile(&[&pack], &scenario.profile).unwrap();
         let mut s = BattleState::new(&r, &scenario.resolve(&r).unwrap(), 1).unwrap();
