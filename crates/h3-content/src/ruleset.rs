@@ -1174,32 +1174,32 @@ fn validate_strike_spells(
             Ability::DrawnSpell { spell: id, .. } => {
                 // A drawn spell needs its caster (`ability::list_error`): the targets it takes at
                 // its caster's mastery, a random caster's a stack or a hex, a helpful caster's a
-                // stack, a periodic caster's none (BAT-MAG-049, BAT-MAG-050, BAT-MAG-053).
-                let (mastery, targets): (u8, &[SpellTarget]) = abils
+                // stack, a periodic caster's none, and a periodic caster's does no damage, so its
+                // cast at a stack's activation ends no battle (BAT-MAG-049, BAT-MAG-050,
+                // BAT-MAG-053).
+                let (mastery, targets, damage): (u8, &[SpellTarget], bool) = abils
                     .iter()
                     .find_map(|a| match *a {
                         Ability::RandomSpellCaster { mastery, .. } => {
-                            Some((mastery, &[SpellTarget::Stack, SpellTarget::Hex][..]))
+                            Some((mastery, &[SpellTarget::Stack, SpellTarget::Hex][..], true))
                         }
                         Ability::HelpfulSpellCaster { mastery, .. } => {
-                            Some((mastery, &[SpellTarget::Stack][..]))
+                            Some((mastery, &[SpellTarget::Stack][..], true))
                         }
                         Ability::PeriodicSpellCaster { mastery, .. } => {
-                            Some((mastery, &[SpellTarget::None][..]))
+                            Some((mastery, &[SpellTarget::None][..], false))
                         }
                         _ => None,
                     })
-                    .unwrap_or((0, &[]));
+                    .unwrap_or((0, &[], true));
                 let effects = spell(id);
                 let kinds = !effects.is_empty()
                     && effects.iter().all(|e| {
-                        matches!(
-                            e,
-                            SpellEffect::Damage
-                                | SpellEffect::Timed(_)
-                                | SpellEffect::Dispel
-                                | SpellEffect::Heal
-                        )
+                        (damage && *e == SpellEffect::Damage)
+                            || matches!(
+                                e,
+                                SpellEffect::Timed(_) | SpellEffect::Dispel | SpellEffect::Heal
+                            )
                     });
                 let aimed = spells.get(id.index()).is_some_and(|s| {
                     !s.magic.health_limit
@@ -1211,7 +1211,8 @@ fn validate_strike_spells(
                 (!(kinds && aimed)).then_some(
                     "drawn_spell needs a spell with damage, timed, dispel or heal effects and no \
                      health limit or obstacle that takes a target stack or hex (for a helpful \
-                     caster a stack, for a periodic caster no target) at its caster's mastery",
+                     caster a stack; for a periodic caster no target, and no damage) at its \
+                     caster's mastery",
                 )
             }
             _ => None,

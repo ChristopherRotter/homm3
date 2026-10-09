@@ -492,8 +492,16 @@ fn a_random_casters_drawn_spells_take_a_stack_or_a_hex_at_its_mastery() {
     charm.magic.health_limit = true;
     let mut wall = timed("t:wall");
     wall.magic.target = SpellTarget::Hex;
-    p.spells
-        .extend([haste, charm, wall, raising("t:rise", SpellEffect::Raise)]);
+    // An Armageddon: damage without a target.
+    let mut doom = spell("t:doom", &["t:air"]);
+    doom.magic.target = SpellTarget::None;
+    p.spells.extend([
+        haste,
+        charm,
+        wall,
+        raising("t:rise", SpellEffect::Raise),
+        doom,
+    ]);
     let random = |mastery| AbilityDef::RandomSpellCaster {
         mastery,
         power_per_creature: 5,
@@ -525,7 +533,8 @@ fn a_random_casters_drawn_spells_take_a_stack_or_a_hex_at_its_mastery() {
     }
     let reason = "drawn_spell needs a spell with damage, timed, dispel or heal effects and no \
                   health limit or obstacle that takes a target stack or hex (for a helpful \
-                  caster a stack, for a periodic caster no target) at its caster's mastery";
+                  caster a stack; for a periodic caster no target, and no damage) at its \
+                  caster's mastery";
     let helpful = AbilityDef::HelpfulSpellCaster {
         mastery: 2,
         power: 6,
@@ -555,6 +564,7 @@ fn a_random_casters_drawn_spells_take_a_stack_or_a_hex_at_its_mastery() {
         vec![helpful, drawn("t:wall")],
         vec![periodic(2), drawn("t:haste")],
         vec![periodic(3), drawn("t:bolt")],
+        vec![periodic(3), drawn("t:doom")],
     ] {
         let mut bad = p.clone();
         bad.creatures[0].info.abilities = bad_abilities;
