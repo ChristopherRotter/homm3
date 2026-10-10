@@ -57,7 +57,9 @@ bytes).
 … 3 cobblestone), road picture, flags. The reader keeps every code raw; the import maps them.
 
 **Template:** name (string), passability and visitability (6 bytes each, bit set = passable or
-visitable; bit `j` of byte `i` is `j` columns left of and `i` rows above the bottom right corner),
+visitable; bit `j` of byte `i` is the tile `7 − j` columns left of and `5 − i` rows above the
+bottom right corner, the object's position: VCMI `ObjectTemplate::readMap`; corrected in E08 T5a,
+the notes had it mirrored, which towns showed: their gate sits on their bottom row),
 two terrain masks (u16 each; our writer reads the second as the editor's menu, VCMI as the allowed
 terrains), class and subclass (u32 each), group and priority (bytes), 16 unused bytes.
 
@@ -119,6 +121,42 @@ every one reads to its padding, and every body kind but the hero placeholder occ
 Versions the reader rejects: Heroes Chronicles (`0x1D`), HotA (`0x20`), WoG (`0x33`) and every
 other code.
 
+## Import (E08 T5a, T6a; `MAP_IMPORT_VERSION` 1)
+
+`h3_map::import` turns a raw map and the game's rules into `h3_game::GameSetup`, which the game
+then validates (ADR-0015 point 4); `import_map` is its static layer. The import maps codes to
+content and draws nothing; it rejects what increment 1 cannot represent with a typed
+`Unsupported` error and checks no game invariant. A replay names its map by content hash, path and
+`MAP_IMPORT_VERSION` (ADV-Q2): any change to what an import yields bumps it.
+
+- **Players:** the colours whose human or computer flag is set, in colour order; a player's
+  `PlayerId` is its index there. Unsupported: a playing colour whose main town generates its hero
+  (RoE always does; towns are E09).
+- **Static map:** the side and levels from the terrain block; terrain codes 0–9 → `base:dirt` …
+  `base:rock`, roads 1–3 → `base:dirt_road`, `base:gravel_road`, `base:cobblestone_road`, rivers
+  1–4 → `base:clear_river` … `base:lava_river` (0 is none). Every object but the heroes becomes a
+  blocker (ADR-0016 point 4, increment 1) with its template's masks: blocked where the
+  passability bit is clear, visitable where the visitability bit is set (ADV-OBJ-001). An anchor
+  may lie past the right or bottom edge: the shipped maps anchor objects up to 5 columns right and
+  2 rows below it; tiles off the map are ignored.
+- **Placed heroes** (class 34): owner colour → player (a colour nobody plays is an error), hero
+  type by original id → its key (the packs' `# original id`), the tile its template marks
+  visitable (the editor's one column left of the position), the army's stacks by slot (creature by
+  original id, the count) or, when the map gives no stack, the hero type's starting army as a
+  placeholder that the game draws when it is built (E08 T6b; VCMI `CGHeroInstance::initHero`).
+  Unsupported: a random hero (class 70), a campaign placeholder (214), a random stack (the 14 codes
+  below the format's "none"), a hero standing on a town's blocked tile (VCMI moves it to its own
+  town's entrance, an "H3M format quirk", `CGameState::placeHeroesInTowns`; towns are E09).
+  Ignored until hero details exist (increment 3, `ADV-STUB-1`): name, portrait, experience,
+  skills, artifacts, spells, primary skills, formation, patrol, biography, sex.
+
+The 164 maps of the user's installation (2026-10-10, `crates/h3-map/examples/original_data.rs`):
+every static layer imports and validates; 10 import and validate whole (`Adventures of Jared
+Haret`, `Faeries`, `Knee Deep in the Dead`, `Myth and Legend`, `Pandora's Box `, `Race for
+Ardintinny`, `Tutorial.tut`, `Unholy Quest` and the user's `Untitled` and `experiment`); 129 are
+unsupported for a hero generated at a main town, 22 for a random hero, 3 for a hero standing in a
+town (the first reason found counts).
+
 ## The subset we write (E04a T2)
 
 ### Order of a SoD map (version `0x1C`), as we write it
@@ -150,8 +188,9 @@ hero type (u8, `0xFF` none; if set: portrait u8 `0xFF` and a name string), one u
 the list of the player's heroes (u32 count, then hero type u8 + name string). A colour nobody plays
 is 15 bytes (two zero bools and 13 bytes the game skips; the editor writes an empty player there).
 
-**Template masks:** `Objects.txt` gives 48 characters per mask (6 rows of 8, top left first); in
-the file, bit `j` of byte `i` is character `47 − (8i + j)`. Hero templates are not in `Objects.txt`:
+**Template masks:** `Objects.txt` gives 48 characters per mask, the anchor first: character
+`8r + c` is the tile `c` columns left of and `r` rows above the bottom right corner (VCMI
+`ObjectTemplate::readTxt`); in the file, bit `j` of byte `i` is character `47 − (8i + j)`. Hero templates are not in `Objects.txt`:
 the editor writes `ahNN_e.def` (NN = class), class 34, subclass = class, group 3, terrains `0xFF`,
 masks blocked/visitable at one tile, which sits one column *left* of the object's position — so a
 hero standing on (x, y) is written at (x + 1, y).

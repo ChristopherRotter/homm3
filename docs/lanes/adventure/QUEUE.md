@@ -4,31 +4,19 @@ Pre-refined tasks of the adventure lane, in order, then the inbox of discovered 
 
 ## Tasks
 
-Epic: `docs/epics/E08-adventure-map.md` (refined 2026-10-08, reviewed with the user the same day; decisions 1–12 there; done tasks in `E08-log.md`). Increment 1 = T1a, T1b, T2–T10, with a checkpoint with the user at T1a (done: ADR-0015–0017), after T3 (done, 2026-10-10) and at T10. T1a, T1b, T2, T3 and T4 are done; the import moved from T3 to T5 and T6 (user, 2026-10-10). Refined into the entries below at the T3 checkpoint (2026-10-10): the user takes one or two tasks per round, each round ends at a checkpoint (the round after T3: T4 alone). Every entry's acceptance includes the Definition of Done (`docs/05-testing.md`).
-
-### E08 T5a — Static map and setup
-
-- **Scope:** `AdventureSetup` (dimensions and levels, per tile terrain, road and river as T4's handles, object footprints with their blocked and visitable masks, heroes on the map with owner, tile and army) and its validation, one check per invariant (ADR-0015 point 4: a hero on a passable tile, not blocked, inside the map; sizes within the ruleset's bounds); `AdventureState` with the static map behind an `Arc` and the heroes in plain arrays; the canonical state hash (`ADVENTURE_STATE_HASH_VERSION`). `h3-map`'s import of terrain, roads, rivers and footprints into `AdventureSetup` (the format's codes → keys only there), run on every shipped map by `examples/original_data.rs`.
-- **Acceptance:** setups built in code cover each validation error; every shipped map imports its static layer; equal content hashes equal.
-- **Depends on:** T4 (done). **Status:** ready (the user picks the next round's tasks at the T4 checkpoint).
+Epic: `docs/epics/E08-adventure-map.md` (refined 2026-10-08, reviewed with the user the same day; decisions 1–12 there; done tasks in `E08-log.md`). Increment 1 = T1a, T1b, T2–T10, with a checkpoint with the user at T1a (done: ADR-0015–0017), after T3 (done, 2026-10-10) and at T10. T1a, T1b, T2, T3, T4, T5a and T6a are done; the import moved from T3 to T5 and T6 (user, 2026-10-10). Refined into the entries below at the T3 checkpoint (2026-10-10): the user takes one or two tasks per round, each round ends at a checkpoint (the round after T3: T4 alone; after T4: T5a and T6a). Every entry's acceptance includes the Definition of Done (`docs/05-testing.md`).
 
 ### E08 T5b — The persistent grid
 
 - **Scope:** `src/persistent.rs` (an `Arc` table of `Arc` leaves, uniform leaves shared through a sentinel held by the grid, set and clear; the only place `ptr_eq`/`as_ptr` may appear), the two copy-on-write properties (ADR-0016 point 2), the leaf-size benchmark against a flat per-player copy, fork benchmarks on 36×36 and 144×144 with their first baseline in `benches/adventure/`.
 - **Acceptance:** both properties pass; the measurements and the chosen leaf size in `docs/02-architecture.md` §8 and the log. A grid that loses on hot reads goes back to the user (ADR-0016).
-- **Depends on:** T5a. **Status:** ready after T5a.
-
-### E08 T6a — Game setup and the rest of the import
-
-- **Scope:** `h3_game::GameSetup` (players, the turn schedule's input, the adventure setup) and its validation; `h3-map`'s import of players and placed heroes with the typed `Unsupported` errors (a random hero, a hero generated at a main town); `MAP_IMPORT_VERSION` documented in `docs/formats/h3m.md`; one property test on arbitrary bytes running parse, import and validation together.
-- **Acceptance:** the shipped maps sort into imported and `Unsupported` with a count per reason in the log; no panic on arbitrary bytes.
-- **Depends on:** T5a. **Status:** ready after T5a.
+- **Depends on:** T5a (done). **Status:** ready (the user picks the next round at the T5a/T6a checkpoint).
 
 ### E08 T6b — Players, turns and the day
 
-- **Scope:** players, turn groups (sequential play only), the calendar, the per-player RNG streams, `EndTurn` and the day advance with the movement points of the day (ADV-Q4: the start of the day; read CR-2's call sites first), command routing across contexts (ADR-0017).
+- **Scope:** `GameState` built from a validated `GameSetup`: the starting army of a hero without stacks of its own drawn from the setup stream (a `GAM-*` rule; VCMI `CGHeroInstance::initArmy` draws a prefix of the hero type's stacks by the stack-count chances, counts within bounds; compare with the wiki, and read the original if they disagree), players, turn groups (sequential play only), the calendar, the per-player RNG streams, `EndTurn` and the day advance with the movement points of the day (ADV-Q4: the start of the day; read CR-2's call sites first), command routing across contexts (ADR-0017).
 - **Acceptance:** rules `GAM-*` implemented with sources; a rejected `EndTurn` leaves the state untouched.
-- **Depends on:** T6a. **Status:** ready after T6a.
+- **Depends on:** T6a (done). **Status:** ready (the user picks the next round at the T5a/T6a checkpoint).
 
 ### E08 T7 — Movement
 
@@ -54,6 +42,10 @@ Epic: `docs/epics/E08-adventure-map.md` (refined 2026-10-08, reviewed with the u
 - **Depends on:** T9. **Status:** waiting (T9).
 
 ## Inbox
+
+- 2026-10-10 (T5a/T6a): for E09 (towns): a hero placed on a town's blocked tile is the town's visiting hero (VCMI `CGameState::placeHeroesInTowns` moves it to its own town's entrance, an "H3M format quirk"; 3 shipped maps), and a hero generated at a main town (129 maps); both are `Unsupported` in the import until towns exist.
+- 2026-10-10 (T5a/T6a): not checked yet, each for the increment that needs it: a hero type placed twice on one map, the most heroes a player may have on the map (8 in the original; with recruiting), a war machine in a hero's custom army (battle content; with the battle seam, increment 3).
+- 2026-10-10 (T5a): `h3_formats::h3m`'s comment on `mask_from_text` says `Objects.txt` masks are "top left first"; they are anchor first (VCMI `readTxt`; `docs/formats/h3m.md` corrected). The writer's code is right; fix the comment when the writer moves into `h3-map` (battle-owned until then).
 
 - 2026-10-10 (T4): check `packs/base/adventure.toml`'s land table against the installation's `movement.txt` under `--with-original-data` (an `examples/original_data.rs` in `h3-pack-adventure` needs `h3-formats` as a dev-dependency to read the LOD: a shared `arch.toml` change), or harvest the table when adventure data is harvested.
 - 2026-10-10 (T3b): fixtures in `fixtures/maps/` once the user's editor maps arrive (one per version: a customised hero, many object kinds, a special condition, a rumor, a timed event, one underground): commit them with a test that reads each and checks a few fields, so CI reads real editor output (the shipped maps stay local).

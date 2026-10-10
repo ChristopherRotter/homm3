@@ -58,8 +58,8 @@ fn mask(offsets: &[(u8, u8)]) -> TileMask {
 /// A 4 × 3 map on two levels, all grass except sea at (3, 0) and rock at (3, 1) of the surface,
 /// with a road at (0, 0) and a river at (1, 0). An object anchored at (1, 1) blocks (1, 1) and
 /// (0, 1) (its third blocked tile is off the map) and is visited from (0, 0); a second one on the
-/// underground blocks and is visited at (2, 2). Two heroes, listed out of id order, one of them
-/// on the first object's visitable tile.
+/// underground blocks (1, 2) and (2, 2) and is visited from (2, 2), like a town's entrance. Two
+/// heroes, listed out of id order, one of them on the first object's visitable tile.
 fn setup() -> AdventureSetup {
     let mut tiles = vec![grass(); 4 * 3 * 2];
     tiles[3].terrain = SEA;
@@ -82,7 +82,7 @@ fn setup() -> AdventureSetup {
                 },
                 ObjectSetup {
                     anchor: Pos::new(2, 2, 1),
-                    blocked: mask(&[(0, 0)]),
+                    blocked: mask(&[(0, 0), (1, 0)]),
                     visitable: mask(&[(0, 0)]),
                     kind: ObjectKind::Blocker,
                 },
@@ -142,7 +142,7 @@ fn builds_the_static_map_with_the_objects_footprints() {
             (1, 1, true, false)
         ]
     );
-    assert_eq!(flags(1), [(2, 2, true, true)]);
+    assert_eq!(flags(1), [(1, 2, true, false), (2, 2, true, true)]);
     assert_eq!(map.tile(Pos::new(4, 0, 0)), None);
     assert_eq!(map.tile(Pos::new(0, 3, 0)), None);
     assert_eq!(map.tile(Pos::new(0, 0, 2)), None);
@@ -152,6 +152,41 @@ fn builds_the_static_map_with_the_objects_footprints() {
     assert_eq!(map.objects()[1].kind, ObjectKind::Blocker);
     assert_eq!(map.objects()[0].blocked, mask(&[(0, 0), (1, 0), (2, 0)]));
     assert_eq!(map.objects()[0].visitable, mask(&[(1, 1)]));
+}
+
+// covers: ADV-OBJ-001
+#[test]
+fn an_object_may_stick_out_past_the_right_and_bottom_edges() {
+    let mut setup = setup();
+    setup.map.objects = vec![
+        // Anchored two columns right of and one row below the surface's corner (3, 2): its
+        // blocked tile three columns left and two rows up is (2, 1), its visitable tile (3, 2).
+        ObjectSetup {
+            anchor: Pos::new(5, 3, 0),
+            blocked: mask(&[(0, 0), (3, 2), (6, 4), (0, 4)]),
+            visitable: mask(&[(2, 1)]),
+            kind: ObjectKind::Blocker,
+        },
+        // Covering no tile of the map at all.
+        ObjectSetup {
+            anchor: Pos::new(u16::MAX, u16::MAX, 1),
+            blocked: mask(&[(0, 0)]),
+            visitable: mask(&[(0, 0)]),
+            kind: ObjectKind::Blocker,
+        },
+    ];
+    let state = build(&setup).unwrap();
+    let map = state.map();
+    let marked: Vec<(usize, bool, bool)> = map
+        .tiles()
+        .iter()
+        .enumerate()
+        .filter(|(_, t)| t.blocked || t.visitable)
+        .map(|(i, t)| (i, t.blocked, t.visitable))
+        .collect();
+    // (2, 1) is blocked, (3, 2) visitable; (5, 3), (-1, -1) and (5, -1) are off the map.
+    assert_eq!(marked, [(6, true, false), (11, false, true)]);
+    assert_eq!(map.objects().len(), 2);
 }
 
 #[test]
@@ -181,7 +216,9 @@ fn a_hero_stands_on_a_free_land_tile_no_object_blocks() {
     assert_eq!(stand(3, 0, 0), Err(StandError::Terrain));
     assert_eq!(stand(3, 1, 0), Err(StandError::Terrain));
     assert_eq!(stand(0, 1, 0), Err(StandError::Blocked));
-    assert_eq!(stand(2, 2, 1), Err(StandError::Blocked));
+    assert_eq!(stand(1, 2, 1), Err(StandError::Blocked));
+    // Blocked and visited from, like a town's entrance.
+    assert_eq!(stand(2, 2, 1), Ok(()));
     assert_eq!(stand(0, 0, 0), Err(StandError::Occupied));
     assert_eq!(stand(2, 2, 0), Err(StandError::Occupied));
 }
@@ -214,12 +251,10 @@ fn each_broken_invariant_is_its_own_error() {
     );
     assert_eq!(error(|s| s.players = 0), SetupError::Players(0));
     assert_eq!(error(|s| s.players = 3), SetupError::Players(3));
-    for anchor in [Pos::new(4, 0, 0), Pos::new(0, 3, 0), Pos::new(0, 0, 2)] {
-        assert_eq!(
-            error(|s| s.map.objects[1].anchor = anchor),
-            SetupError::ObjectOutside(1)
-        );
-    }
+    assert_eq!(
+        error(|s| s.map.objects[1].anchor = Pos::new(0, 0, 2)),
+        SetupError::ObjectLevel(1)
+    );
     assert_eq!(
         error(|s| s.heroes[1].id = HeroId::new(5)),
         SetupError::DuplicateHero(HeroId::new(5))
@@ -292,8 +327,8 @@ fn the_errors_read_well() {
         (SetupError::UnknownRiver(2), "tile 2 has an unknown river"),
         (SetupError::Players(9), "9 players are outside the bounds"),
         (
-            SetupError::ObjectOutside(3),
-            "object 3 is anchored outside the map",
+            SetupError::ObjectLevel(3),
+            "object 3 is anchored on a missing level",
         ),
         (SetupError::DuplicateHero(hero), "hero 4 is placed twice"),
         (
@@ -369,6 +404,7 @@ fn the_hash_sees_content_not_sharing() {
         |s| s.map.tiles[2].river = Some(RiverId::from_raw(0)),
         |s| s.map.objects[1].anchor = Pos::new(1, 2, 1),
         |s| s.map.objects[1].blocked = mask(&[(1, 0)]),
+        |s| s.map.objects[1].blocked = mask(&[(0, 0)]),
         |s| s.map.objects[1].visitable = TileMask::default(),
         |s| s.map.objects.truncate(1),
         |s| {

@@ -291,6 +291,7 @@ fn footprint(object: &Object, template: &Template) -> ObjectSetup {
 }
 
 /// A placed hero: its owner, type, tile and army.
+// stub: ADV-STUB-1
 fn hero(
     version: Version,
     rules: &GameRuleset,

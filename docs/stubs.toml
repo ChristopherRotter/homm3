@@ -15,6 +15,12 @@
 
 # --- adventure (ADV-STUB-<n>) ---
 
+[[stub]]
+id     = "ADV-STUB-1"
+where  = "crates/h3-map/src/import/mod.rs::hero"
+reason = "The import keeps a placed hero's owner, type, tile and army and ignores its customisations (name, portrait, experience, skills, artifacts, spells, primary skills, formation, patrol, biography, sex) until the game keeps hero details (E08 T6a; docs/formats/h3m.md, Import)"
+epic   = "E08"
+
 # --- server (SRV-STUB-<n>) ---
 
 [[stub]]

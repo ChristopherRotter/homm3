@@ -46,7 +46,7 @@ pub struct TileSetup {
 /// A set of tiles relative to an object's anchor, its bottom right tile (ADV-OBJ-001): the bit
 /// `8 × row + column` stands for the tile `column` columns left of and `row` rows above the
 /// anchor, in a block of [`TileMask::COLUMNS`] by [`TileMask::ROWS`] tiles, the original's
-/// object template.
+/// object template (the bit is the mask's character in `Objects.txt`, anchor first).
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub struct TileMask(u64);
 
@@ -92,7 +92,9 @@ pub enum ObjectKind {
     Blocker,
 }
 
-/// An object on the map as the setup places it.
+/// An object on the map as the setup places it. Its anchor may lie past the map's right or bottom
+/// edge (the map editor lets objects stick out); the tiles of its footprint off the map are
+/// ignored (ADV-OBJ-001).
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct ObjectSetup {
     /// The object's bottom right tile, which its masks are relative to.
@@ -151,7 +153,7 @@ pub enum StandError {
     Outside,
     /// The tile's terrain is not walked: water (without a boat) or rock.
     Terrain,
-    /// An object blocks the tile.
+    /// An object blocks the tile and no object is visited from it.
     Blocked,
     /// Another hero stands there.
     Occupied,
@@ -221,8 +223,8 @@ pub enum SetupError {
     UnknownRiver(usize),
     /// No players, or more than the ruleset allows.
     Players(u8),
-    /// The object at this index is anchored outside the map.
-    ObjectOutside(usize),
+    /// The object at this index is anchored on a level the map does not have.
+    ObjectLevel(usize),
     /// Two heroes share this id.
     DuplicateHero(HeroId),
     /// The hero's owner is not a player of the game.
@@ -259,8 +261,8 @@ impl fmt::Display for SetupError {
             Self::UnknownRoad(tile) => write!(f, "tile {tile} has an unknown road"),
             Self::UnknownRiver(tile) => write!(f, "tile {tile} has an unknown river"),
             Self::Players(n) => write!(f, "{n} players are outside the bounds"),
-            Self::ObjectOutside(object) => {
-                write!(f, "object {object} is anchored outside the map")
+            Self::ObjectLevel(object) => {
+                write!(f, "object {object} is anchored on a missing level")
             }
             Self::DuplicateHero(hero) => write!(f, "hero {} is placed twice", hero.raw()),
             Self::UnknownOwner(hero) => {

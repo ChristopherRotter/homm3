@@ -62,7 +62,7 @@ pub struct StaticMap {
 
 impl StaticMap {
     /// Builds the static map from its setup, checking the dimensions, the tiles and the objects'
-    /// anchors.
+    /// levels.
     fn new(core: &Ruleset, part: &AdventureRuleset, setup: &MapSetup) -> Result<Self, SetupError> {
         let params = part.params();
         let in_bounds = |n: u16| (1..=params.max_map_size()).contains(&n);
@@ -110,8 +110,8 @@ impl StaticMap {
             hash: 0,
         };
         for (index, object) in setup.objects.iter().enumerate() {
-            if map.index(object.anchor).is_none() {
-                return Err(SetupError::ObjectOutside(index));
+            if object.anchor.level >= map.levels {
+                return Err(SetupError::ObjectLevel(index));
             }
             map.place(object);
         }
@@ -312,8 +312,9 @@ impl AdventureState {
     }
 
     /// Whether a hero may stand on `pos` (ADV-MAP-001): a tile of the map whose terrain is
-    /// walked on land, which no object blocks and no other hero stands on. An object's
-    /// visitable tile is allowed (a hero may stand on a town's entrance).
+    /// walked on land, which no object blocks unless an object is visited from it, and no other
+    /// hero stands on. A visitable tile is allowed even where a mask also blocks it (a hero may
+    /// stand on a town's entrance, which the town's masks mark both ways).
     ///
     /// # Errors
     ///
@@ -324,7 +325,7 @@ impl AdventureState {
         if !matches!(part.passage(tile.terrain), Some(Passage::Land(_))) {
             return Err(StandError::Terrain);
         }
-        if tile.blocked {
+        if tile.blocked && !tile.visitable {
             return Err(StandError::Blocked);
         }
         if self.heroes.iter().any(|h| h.pos == pos) {
