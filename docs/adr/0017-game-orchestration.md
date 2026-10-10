@@ -111,3 +111,6 @@ pending decisions as state and a trusted system actor (SRV-Q6). RL needs an `Adv
 - 2026-10-10: Accepted (E08 T1a draft).
 - 2026-10-10: point 4: increment 1 has one setup placeholder, a placed hero's starting army,
   drawn in T6b (the user's choice at the E08 T4 checkpoint over an `Unsupported` import).
+- 2026-10-10: point 3: a day's movement points are set at the start of each player's turn
+  (ADV-MOV-002, E08 T6b: the original's code, the user's interim choice in ADV-Q4), so not every
+  rule of increment 1 runs at the start of the day; the hooks themselves are unchanged.
