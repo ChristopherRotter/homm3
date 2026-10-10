@@ -2,6 +2,7 @@
 //! bytes, each typed error and limit, the gzip layer, and the experiment writer's maps.
 
 mod encode;
+mod import;
 mod strategy;
 
 use proptest::prelude::*;

@@ -9,8 +9,8 @@ use super::{Artifacts, Bits, Pos, Text};
 pub struct Template {
     /// Picture file name.
     pub def: Text,
-    /// Passability (bit = passable), 6 rows of 8 tiles; bit `j` of byte `i` is the tile `j`
-    /// columns left of and `i` rows above the bottom right corner (`docs/formats/h3m.md`).
+    /// Passability (bit = passable), 6 rows of 8 tiles; bit `j` of byte `i` is the tile `7 − j`
+    /// columns left of and `5 − i` rows above the bottom right corner (`docs/formats/h3m.md`).
     pub passable: [u8; 6],
     /// Visitability (bit = visitable), same order.
     pub visitable: [u8; 6],
