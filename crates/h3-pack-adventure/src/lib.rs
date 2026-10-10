@@ -12,6 +12,10 @@
 //! land_points = [1300, 1360, 1430] # a day's points on land by the slowest speed, from speed 0;
 //!                                  # faster armies take the last entry (ADV-MOV-001)
 //! scouting_radius = 5              # without bonuses (ADV-FOG-001)
+//! max_map_size = 144               # setup bounds (E08 T5a): the widest and highest map,
+//! max_levels = 2                   # its levels and the players of a game
+//! max_players = 8
+//! army_slots = 7                   # the slots of a hero's army
 //!
 //! [[terrain]]                      # every core terrain needs one entry, from any pack of
 //! terrain = "grass"                # its closure; `name` means `<own pack>:name`
@@ -32,7 +36,7 @@
 //! has one, so the part shares the core's load order and dependency closures.
 
 use std::fmt;
-use std::num::NonZeroU16;
+use std::num::{NonZeroU8, NonZeroU16};
 
 use h3_adventure::{
     AdventureCompileError, AdventurePack, AdventureParamsDef, AdventureRuleset, Passage, RiverDef,
@@ -123,6 +127,10 @@ struct ParamsDto {
     native_cost: NonZeroU16,
     land_points: Vec<u32>,
     scouting_radius: u8,
+    max_map_size: NonZeroU16,
+    max_levels: NonZeroU8,
+    max_players: NonZeroU8,
+    army_slots: NonZeroU8,
 }
 
 #[derive(Deserialize, Default, Clone, Copy)]
@@ -221,6 +229,10 @@ pub fn parse_adventure(
             native_cost: p.native_cost,
             land_points: p.land_points,
             scouting_radius: p.scouting_radius,
+            max_map_size: p.max_map_size,
+            max_levels: p.max_levels,
+            max_players: p.max_players,
+            army_slots: p.army_slots,
         }),
         ..AdventurePack::new(manifest.clone())
     })

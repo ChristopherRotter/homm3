@@ -118,3 +118,45 @@ numeric  = "integer"
   url        = "https://github.com/vcmi/vcmi/blob/1.7.5/config/gameConfig.json"
   retrieved  = "2026-10-10"
   confidence = "high"
+
+[[rule]]
+id       = "ADV-OBJ-001"
+title    = "The tiles an object covers"
+context  = "adventure"
+status   = "implemented"
+summary  = "An object covers tiles relative to its anchor, its bottom right tile, through two masks of 8 columns by 6 rows: its blocked tiles, which no hero enters, and its visitable tiles, from which a hero visits it. The tile `c` columns left of and `r` rows above the anchor belongs to the mask's bit 8r + c; tiles of the footprint off the map are ignored. In increment 1 every object is a blocker: its visitable tiles block entering too (E08 decision 1; movement reads both in T7). E08 T5a: the footprint in the static map and the import from the map's templates."
+numeric  = "integer"
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = ".h3m templates and Objects.txt: 6 bytes of passability (bit clear = blocked) and 6 of visitability; bit j of byte i is the tile j columns left of and i rows above the bottom right corner (docs/formats/h3m.md, 'Template masks'; E08 T3 reading of every shipped map)"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "vcmi"
+  ref        = "lib/mapObjects/ObjectTemplate.cpp ObjectTemplate::readMap (usedTiles[5 - i][7 - j]: BLOCKED where the passability bit is 0, VISITABLE where the visitability bit is 1); lib/mapping/CMap.cpp CMap::showObject (anchor minus the offset; tiles outside the map are skipped)"
+  url        = "https://github.com/vcmi/vcmi/blob/1.7.5/lib/mapping/CMap.cpp"
+  retrieved  = "2026-10-10"
+  confidence = "high"
+
+[[rule]]
+id       = "ADV-MAP-001"
+title    = "Where a hero may stand"
+context  = "adventure"
+status   = "implemented"
+summary  = "A hero stands on a tile of the map whose terrain is walked on land (not water without a boat, never rock), which no object blocks and no other hero stands on. An object's visitable tile that it does not block is allowed (a hero may start on a town's entrance). One check for the setup and for movement (ADR-0015 point 4): a setup that breaks it is rejected; T7's steps add the visitable tiles of increment 1 and the step rules (ADV-MOV-007). E08 T5a."
+numeric  = "integer"
+
+  [[rule.source]]
+  kind       = "vcmi"
+  ref        = "lib/pathfinder/PathfinderUtil.h evaluateAccessibility: a blocked tile that is not visitable is BLOCKED, a visitable one ACCESSIBLE or a visit; config/terrains.json: water is sailed (type WATER), rock never entered (type ROCK)"
+  url        = "https://github.com/vcmi/vcmi/blob/1.7.5/lib/pathfinder/PathfinderUtil.h"
+  retrieved  = "2026-10-10"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "wiki"
+  ref        = "Movement - Heroes 3 wiki: rock is impassable; water is crossed by boat"
+  url        = "https://heroes.thelazy.net/index.php/Movement"
+  retrieved  = "2026-10-09"
+  confidence = "medium"

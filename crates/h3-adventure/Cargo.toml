@@ -10,6 +10,7 @@ publish.workspace = true
 [dependencies]
 h3-kernel.workspace = true
 h3-content.workspace = true
+h3-contracts.workspace = true
 
 [lints]
 workspace = true

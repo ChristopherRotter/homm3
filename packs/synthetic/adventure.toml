@@ -5,6 +5,10 @@
 native_cost = 100
 land_points = [1500, 1600, 1700]
 scouting_radius = 4
+max_map_size = 16
+max_levels = 2
+max_players = 4
+army_slots = 5
 
 [[terrain]]
 terrain = "meadow"
