@@ -54,7 +54,7 @@ The battle lane's living state; read after the global `docs/HANDOFF.md`. Format 
 
 ### 2026-10-10 (forty-fifth) — E04b increment 15: T8b, limits and defences
 
-Master green (CI). The user (BAT-Q20): increment 14's calls confirmed; T8b in two parts, one `cross-lane` PR. **In progress:** T8b1 (Orb of Inhibition, Recanter's Cloak) on `battle/e04b-t8b`; T8b2 next. Readings so far: 0x41F890, the book button 0x59E900, 0x5A8090's level and Sphere tests, 0x44A4D0's Pendants, Dragon Father, Orb, Badge.
+Master green (CI). The user (BAT-Q20): increment 14's calls confirmed; T8b in two parts, one `cross-lane` PR. T8b1 done (BAT-MAG-061, 062, HER-BAT-015; §7.23; pack v31, state and ruleset hash v40; replays re-recorded, commands unchanged); master's `check-exe-map` fixed (adventure survey addresses). **In progress:** T8b2 on `battle/e04b-t8b`; read so far: 0x5A8090's Sphere and Blade cases, 0x44A4D0's Dragon Father, Pendants, Orb, Badge.
 
 ### 2026-10-10 (forty-fourth) — E04b increment 14: T8a, hero spells in the Heroes context
 
