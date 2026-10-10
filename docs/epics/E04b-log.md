@@ -1845,6 +1845,11 @@ records how and why the tasks went.
   tail, `screen_centre`'s even rows and two-hex arms, a thunderbolt by chance); each has a fixed
   test now (a test creature `squall`, 50 %). The battle lane's gated crates are clean; h3-kernel
   (shared) and h3-map (adventure) have property tests too and were not checked.
+- **Review** (independent, read-only): no bug; every target test goes through `affects`. Done:
+  the hash test's `needs_damage` variant, a Chain Lightning case that fails without the tail
+  offset (checked by removing it), the luck stat's encoding tested directly, the Orb test's full
+  target lists. Left: the harvester has no unit test for timed spells (`needs_damage` is checked
+  by the harvest against the original data only).
 - **Measurements:** golden replays re-recorded (the ruleset hash; `full-s3`'s commands unchanged,
   its last checkpoint and final hash moved: an Expert Boon skips the synthetic Aid Tent and Supply
   Wagon); `bench-check` within its baseline (no re-baseline); state hash and its layout unchanged.

@@ -1662,6 +1662,13 @@ mod tests {
                 ..base.clone()
             },
             SpellMagic {
+                conditions: TargetConditions {
+                    needs_damage: true,
+                    ..TargetConditions::default()
+                },
+                ..base.clone()
+            },
+            SpellMagic {
                 effects: vec![],
                 ..base.clone()
             },

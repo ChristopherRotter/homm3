@@ -107,6 +107,27 @@ fn targets(s: &BattleState, r: &Ruleset, spell: &str) -> Vec<String> {
         .collect()
 }
 
+/// The creatures with damage that are not undead: Bless's and Curse's targets on each side.
+const DAMAGING: [&str; 6] = [
+    "pikeman",
+    "archer",
+    "stone_golem",
+    "air_elemental",
+    "giant",
+    "ballista",
+];
+
+/// Every creature with damage: Fortune's, Misfortune's and Slayer's targets.
+const WITH_DAMAGE: [&str; 7] = [
+    "pikeman",
+    "archer",
+    "skeleton",
+    "stone_golem",
+    "air_elemental",
+    "giant",
+    "ballista",
+];
+
 // covers: BAT-MAG-067, BAT-MAG-005
 #[test]
 fn the_per_spell_conditions_keep_the_originals_targets() {
@@ -115,16 +136,8 @@ fn the_per_spell_conditions_keep_the_originals_targets() {
     let all = |keys: &[&str]| keys.iter().map(|k| (*k).to_owned()).collect::<Vec<_>>();
     // Own stacks for the positive spells, the enemy's for the negative ones; the Ballista takes
     // Bless and Curse, the Tent and the Ammo Cart do not, nor do the undead.
-    let damaging = [
-        "pikeman",
-        "archer",
-        "stone_golem",
-        "air_elemental",
-        "giant",
-        "ballista",
-    ];
-    assert_eq!(targets(&s, &r, "base:bless"), all(&damaging));
-    assert_eq!(targets(&s, &r, "base:curse"), all(&damaging));
+    assert_eq!(targets(&s, &r, "base:bless"), all(&DAMAGING));
+    assert_eq!(targets(&s, &r, "base:curse"), all(&DAMAGING));
     // Precision: the shooters.
     assert_eq!(
         targets(&s, &r, "base:precision"),
@@ -134,17 +147,8 @@ fn the_per_spell_conditions_keep_the_originals_targets() {
     assert_eq!(targets(&s, &r, "base:mirth"), all(&["pikeman", "archer"]));
     assert_eq!(targets(&s, &r, "base:sorrow"), all(&["pikeman", "archer"]));
     // Fortune, Misfortune and Slayer: every creature with damage, the undead too.
-    let with_damage = [
-        "pikeman",
-        "archer",
-        "skeleton",
-        "stone_golem",
-        "air_elemental",
-        "giant",
-        "ballista",
-    ];
     for spell in ["base:fortune", "base:misfortune", "base:slayer"] {
-        assert_eq!(targets(&s, &r, spell), all(&with_damage), "{spell}");
+        assert_eq!(targets(&s, &r, spell), all(&WITH_DAMAGE), "{spell}");
     }
 }
 
@@ -164,9 +168,12 @@ fn the_orb_of_vulnerability_lifts_none_of_them() {
         targets(&s, &r, "base:mirth"),
         all(&["pikeman", "archer", "giant"])
     );
-    assert!(!targets(&s, &r, "base:bless").contains(&"skeleton".to_owned()));
-    assert!(!targets(&s, &r, "base:curse").contains(&"first_aid_tent".to_owned()));
-    assert!(!targets(&s, &r, "base:misfortune").contains(&"ammo_cart".to_owned()));
+    // The other conditions hold as without the Orb.
+    assert_eq!(targets(&s, &r, "base:bless"), all(&DAMAGING));
+    assert_eq!(targets(&s, &r, "base:curse"), all(&DAMAGING));
+    for spell in ["base:fortune", "base:misfortune", "base:slayer"] {
+        assert_eq!(targets(&s, &r, spell), all(&WITH_DAMAGE), "{spell}");
+    }
     assert_eq!(
         targets(&s, &r, "base:precision"),
         all(&["archer", "ballista"])

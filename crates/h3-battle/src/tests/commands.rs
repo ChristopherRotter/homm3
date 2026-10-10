@@ -223,22 +223,19 @@ fn applying_with_a_noop_sink_matches_a_recording_sink() {
 
 // covers: BAT-HER-003
 #[test]
-fn the_state_hash_covers_the_luck_modifiers() {
-    // The heroes' luck becomes a battle modifier of the stat luck (BAT-LCK-001).
-    let r = ruleset();
-    let hash = |amount| {
-        let mut led = hero(&r);
-        led.effects = vec![h3_contracts::BattleEffect::Luck {
-            amount,
-            affects: h3_content::Affects::Own,
-        }];
-        let setup = BattleSetup {
-            heroes: [Some(led), None],
-            ..setup(&r, &[(0, "fixed", 3)], &[(0, "slow", 4)])
-        };
-        BattleState::new(&r, &setup, 7).unwrap().state_hash()
+fn the_state_hash_tells_luck_modifiers_from_morale_ones() {
+    // The modifier pool's stat is encoded (0 morale, 1 luck): a modifier of the same amount on
+    // the other stat hashes differently (ADR-0012).
+    use h3_kernel::{CanonicalHash, StateHasher};
+    let encode = |stat: crate::morale::Stat| {
+        let mut h = StateHasher::new();
+        stat.hash_into(&mut h);
+        h.finish()
     };
-    assert_ne!(hash(1), hash(2));
+    assert_ne!(
+        encode(crate::morale::Stat::Morale),
+        encode(crate::morale::Stat::Luck)
+    );
 }
 
 #[test]
