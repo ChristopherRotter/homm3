@@ -5,8 +5,9 @@ The adventure lane's living state; read after the global `docs/HANDOFF.md`. Form
 ## Current state
 
 - **E08 refined** (2026-10-08, with E07's map reader inside it; reviewed with the user the same day, PR #21): `docs/epics/E08-adventure-map.md`, decisions 1–12 with the review's corrections. Increment 1 = T1a, T1b, T2–T10 (`QUEUE.md`); real `.h3m` maps from the start, every object an inert blocker; four new crates `h3-map`, `h3-pack-adventure`, `h3-adventure`, `h3-game` (no domain crate depends on another; `h3-game` holds the whole-game setup, players, turn groups, calendar and RNG streams; the hero crate keeps its translations, ADR-0013 point 2).
-- **T1a drafts written** (2026-10-09, branch `adventure/t1a-adr-drafts`, PR #32): `adr-drafts/crate-shape.md`, `adventure-state.md`, `game-orchestration.md`; open points `ADV-Q1` (`PlayerId`/`HeroId` in `h3-contracts`, blocks T2) and `ADV-Q2` (how a replay names its map, blocks T9). Draft 3 point 2 answers the server lane's SRV-Q6 in shape.
-- **Next:** the user's review of the drafts (the T1a checkpoint); then T2 (shared skeleton), with T1b (survey, quirks; needs the wiki approval) beside it.
+- **T1a drafts merged** (PR #32, 2026-10-10): `adr-drafts/crate-shape.md`, `adventure-state.md`, `game-orchestration.md`; open points `ADV-Q1` (`PlayerId`/`HeroId` in `h3-contracts`, blocks T2) and `ADV-Q2` (how a replay names its map, blocks T9). Draft 3 point 2 answers the server lane's SRV-Q6 in shape.
+- **T1b survey written** (2026-10-09, PR #33): `docs/rules/surveys/E08-adventure-core.md`; the lane's ledger `docs/rules/quirks-adventure.md` (no entries yet); quirk candidates A-1 (the fringe, `ADV-QUIRK-1` once confirmed) to A-3 wait for the user's classification and the user's look at a map; disputes as `ADV-Q3`–`ADV-Q5`, each settled by a code reading in the task that needs it.
+- **Next:** the user's acceptance of the T1a drafts (ADV-Q1, ADV-Q2) and the T1b classification (A-1 to A-3, the look at a map); then T2 (shared skeleton).
 - **Not before E04b closes:** the split of `h3-content`/`h3-pack` and the move of the `.h3m` writer into `h3-map` (decision 3). Until then adventure crates use only the core items of `h3-content` (keys, packs, resources, factions, terrain ids, creature identity/cost/speed, hero types, artifact and spell identity).
 - **Ownership:** the lane owns (`lanes.toml`) `h3-adventure` and its docs now; T2 adds the other new crates and `packs/*/adventure.toml`. `h3-heroes` moves to this lane when hero progression starts (increment 3).
 - **Ids:** questions `ADV-Q<n>`, quirks `ADV-QUIRK-<n>` (the fog fringe is `ADV-QUIRK-1`), stubs `ADV-STUB-<n>`. ADR drafts go to `docs/lanes/adventure/adr-drafts/` and get a number when the user accepts them.
@@ -18,6 +19,10 @@ The adventure lane's living state; read after the global `docs/HANDOFF.md`. Form
 - RNG seeds and stream positions are server-only state (decision 9): never in an observation, never seeded from client data.
 
 ## Recent sessions
+
+### 2026-10-09 — T1b: survey (movement, fog, the day, simultaneous turns)
+
+Sources: VCMI 1.7.5, the wiki's Movement and Scouting pages (the user approved the wiki for this session), the executable's tables already mapped, the HD mod's page. No code reading: the disputes name the function to read (CR-1 step cost, CR-2 day's points, CR-3 reveal), queued as the first step of T7, T6/T7 and T8 (`ADV-Q3`–`ADV-Q5`). Findings that touch the drafts: a path may use explored tiles only (VCMI; question 4 of the user's map check), so the action mask cannot leak; every increment-1 rule runs at the start of the day; increment 1 has no owned objects, so a game opens with only the heroes' surroundings explored (a recorded simplification). VCMI's contact rule for simultaneous turns (reachability at the start of the day) is the recommended model for later.
 
 ### 2026-10-09 — T1a: three ADR drafts
 

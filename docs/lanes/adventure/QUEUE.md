@@ -11,14 +11,14 @@ Epic: `docs/epics/E08-adventure-map.md` (refined 2026-10-08, reviewed with the u
 - **Scope:** E08 T1a. Three ADR drafts in `docs/lanes/adventure/adr-drafts/`, decisions only (about 80 lines each, `docs/adr/README.md`), written from the epic's decisions 2–9 as they stand: (1) crate shape (the four crates `h3-map`, `h3-pack-adventure`, `h3-adventure`, `h3-game`; the `application` layer; the ADR-0005 amendment; the later content split; the setup types and the import boundary, decision 4); (2) adventure state (the persistent grid with what sees through its `Arc`s, decision 6; map objects as closed behaviour kinds with data parameters, ADR-0012 style, increment 1 uses only "blocker"; the fog projection, decision 7); (3) game orchestration (turn groups, per-player RNG streams, pending decisions, decisions 8–9; where `AdventureEnv` lives: adventure-owned sub-paths of `h3-sim` and `h3-cli`).
 - **Acceptance:** the user reviewed the three drafts; open points are `ADV-Q<n>` entries.
 - **Depends on:** nothing.
-- **Status:** waiting (the user's review of the drafts, PR #32; open points `ADV-Q1`, `ADV-Q2`).
+- **Status:** waiting (PR #32 merged 2026-10-10; the user's acceptance of the drafts, open points `ADV-Q1`, `ADV-Q2`).
 
 ### E08 T1b — Survey and quirks
 
 - **Scope:** E08 T1b. Sources and quirks for movement (movement points by army speed, terrain and road costs, diagonal cost, the last step of a day, leftover points), fog of war (scouting radius, the fringe, decision 7: confirmed per Q30 before it becomes `ADV-QUIRK-1`, by the user looking at a map) and the day advance; HD's and HotA's contact rules for simultaneous turns (decision 8, captured for a later decision). Output: `docs/rules/surveys/E08-adventure-core.md`, `docs/rules/quirks-adventure.md`, rule ids `ADV-*`/`GAME-*` proposed in the survey. The wiki needs the user's approval per session (`docs/HANDOFF.md`, "Sources").
 - **Acceptance:** the user classified the quirks; disputed rules are `ADV-Q<n>` entries.
 - **Depends on:** nothing (runs beside T2; gates T4, T7 and T8).
-- **Status:** ready.
+- **Status:** waiting (the user's classification of A-1 to A-3 and the look at a map for A-1; PR #33). Disputes `ADV-Q3`–`ADV-Q5` are settled by code readings at the start of T7 and T8.
 
 ### E08 T2 — Shared skeleton
 
@@ -42,6 +42,7 @@ Epic: `docs/epics/E08-adventure-map.md` (refined 2026-10-08, reviewed with the u
 ## Inbox
 
 - 2026-10-09 (T1a): when the user accepts the drafts, a `shared/` change numbers them (`docs/adr/README.md`), amends ADR-0005 (the four crates, `h3-game` the first application crate and a logic crate) and ADR-0006 (ruleset parts, one pack file per context), updates `docs/02-architecture.md` §3 and `docs/03-domain.md` (the Game row, the answered object question, the terms: turn group, pending decision, static map, explored, fringe, object kind, blocked and visitable tile). It can ride on T2's pull request.
+- 2026-10-09 (T1b): the survey index `docs/rules/surveys/README.md` belongs to the battle lane, so it does not list `E08-adventure-core.md` yet. T2's `lanes.toml` change can make the index a common path (one block per lane, as `OPEN-QUESTIONS.md`) and add the E08 row.
 - 2026-10-08 (refinement): the crate split after E04b (E08 decisions 2–3) is a `shared/` + `cross-lane` task run with the battle lane paused; T2 adds it to `BACKLOG.md`.
 - 2026-10-01 (E02): ~~tight formations~~ (done in E03 T9) / tactics (E04), creature-bank layouts (with creature banks), and other harvested tables (spells, artifacts, heroes, buildings) when their epics come; RoE/AB patch differences outside creatures need the same gap-fill treatment (Q15).
 - 2026-10-01 (E04 refinement): the `.h3m` writer built for the experiment pipeline (E04a T2) overlaps with E07 (map reader) and E14 (map generator). ~~Keep it in the formats adapter so both can extend it~~: E08 decision 2 moves it into `h3-map` after E04b closes, beside the reader (2026-10-08).

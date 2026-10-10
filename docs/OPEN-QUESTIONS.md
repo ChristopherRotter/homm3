@@ -50,6 +50,18 @@ The original picks Chain Lightning's next target by screen distance; the y posit
 
 A battle replay carries its setup. An adventure setup holds every tile (41 472 on a two-level SoD map of 144×144) and every object, so embedding it bloats every replay; naming the map file makes a replay depend on the importer. **Options:** (a) the replay names the map by content hash and path (a committed fixture, or the server's copy next to its journal) plus `h3-map`'s import version; verifying re-imports, and an import change bumps the version as a state-hash change does today; (b) the replay embeds the setup in a compact, versioned encoding; (c) the replay embeds the map file's bytes. **Recommendation:** (a); (b) only if saves need it. Shipped maps never enter git either way (ADR-0009). Blocks T9 (and the server's journal at E16 M5), not T2–T8.
 
+#### ADV-Q3 — The cost of a step: two disputes and two bugs of the diagonal exception (E08 T1b)
+
+Survey `docs/rules/surveys/E08-adventure-core.md` §1.2–1.3. **D-2:** stepping off a road onto plain terrain is priced by the destination's terrain (wiki) or by the terrain under the road (VCMI); from a road on grass onto swamp that is 175 or 100. **D-3:** VCMI makes a step that leaves fewer points than its straight cost take all remaining points; the wiki has no such rule. **A-2, A-3** (quirk candidates): the original's diagonal exception ignores roads in its check and forgets the native army's missing penalty. **Options:** (a) read the step-cost function (CR-1, H3API `H3Hero::GetMovementCost`, 0x4B18C0) before T7 implements, with a second look for the two quirks; (b) an experiment batch; (c) implement VCMI's behaviour and settle later. **Recommendation:** (a), as the first step of T7 (Q57). Blocks T7's rules ADV-MOV-003 and ADV-MOV-006, not T2–T6.
+
+#### ADV-Q4 — When a day's movement points are set (E08 T1b)
+
+Survey §1.1, D-1 and D-4. The wiki ("only at the beginning of each day") and VCMI (once at the change of day, for every player) agree; the original's call site is not read. It decides whether the rule runs at the start of the day or at the start of each player's turn (ADR draft "game orchestration", point 3); the difference shows only when another player changes a hero's army between the two. The executable's table also settles the points for speeds 0–2 (wiki 1300–1430, VCMI 1500; no army creature is that slow). **Recommendation:** implement the start of the day; read CR-2 (H3API `H3Hero::CalcMaxMovement`, 0x4E4D90, and its callers) in T6 or T7. Not blocking.
+
+#### ADV-Q5 — The shape of a revealed area (E08 T1b)
+
+Survey §2, F-1. VCMI reveals the tiles with `round(√(dx² + dy²)) ≤ r` (in integers `dx² + dy² ≤ r² + r`); no other source describes the shape. **Recommendation:** read CR-3 (H3API `H3Hero::GetScoutingRadius`, 0x4E4070, and the reveal it feeds) as the first step of T8; use VCMI's shape if the reading is inconclusive. Blocks ADV-FOG-002 in T8 only.
+
 ### Server lane (`SRV-Q<n>`)
 
 Context, options and recommendations for all of these: `docs/epics/E16-server.md`, "Questions for the user" (the E16 refinement's first draft, 2026-10-08). Blocked until answered: the correction of the drafts and the server `QUEUE.md`.
