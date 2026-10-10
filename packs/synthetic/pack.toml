@@ -1196,6 +1196,13 @@ expert = [{ kind = "magic_resistance", bp = 2000 }]
 id = "wayfinding"                   # no battle effect (an adventure skill)
 name = "Wayfinding"
 
+[[secondary_skill]]
+id = "keen_eye"                     # format v33: picks the enemy hero's spells (HER-SPL-004)
+name = "Keen Eye"
+basic = [{ kind = "eagle_eye", bp = 4000, max_level = 2 }]   # chance, highest spell level
+advanced = [{ kind = "eagle_eye", bp = 5000, max_level = 3 }]
+expert = [{ kind = "eagle_eye", bp = 6000, max_level = 4 }]
+
 [[hero_class]]
 id = "warden"
 name = "Warden"
@@ -1464,6 +1471,26 @@ class = "relic"
 cost = { coin = 25000 }
 slot = "charm"
 effects = [{ kind = "negate_immunities" }]  # spells ignore immunities and resistance
+
+[[artifact]]
+id = "dawn_mantle"
+name = "Dawn Mantle"
+class = "relic"
+cost = { coin = 20000 }
+slot = "charm"
+effects = [                         # format v33: cast at the side's first activation (BAT-MAG-068)
+    { kind = "opening_spell", spell = "boon", mastery = 3, power = 10 },
+    { kind = "opening_spell", spell = "bane", mastery = 3, power = 50 },
+]
+
+[[artifact]]
+id = "hawk_feather"
+name = "Hawk Feather"
+class = "treasure"
+cost = { coin = 1000 }
+slot = "charm"
+needs_skill = "keen_eye"
+effects = [{ kind = "eagle_eye", bp = 500 }]  # format v33: with the skill only (HER-SPL-004)
 
 # Hero parameters (Tier 2, E04a T4a): invented limits, smaller than the original's.
 [hero_params]

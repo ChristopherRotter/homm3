@@ -1,4 +1,4 @@
-//! `derive_battle_hero` (HER-BAT-001 to HER-BAT-016).
+//! `derive_battle_hero` (HER-BAT-001 to HER-BAT-017).
 
 use std::vec;
 
@@ -941,6 +941,7 @@ fn magic_and_spell_bonuses_are_derived() {
             masteries: air(2),
             mana: u16::MAX,
             max_mana: 0,
+            eagle_eye: None,
         }
     );
     // Every spell: Expert Logistics 15 % grown by 5 % x 10 levels (22.5 %) plus the hook's 1 %;
@@ -1216,4 +1217,108 @@ fn with_quirk_q0005_rates_carry_the_originals_single_precision_values() {
             single: core::num::NonZeroU32::new(0x40ce_6667),
         }
     );
+}
+
+/// The test pack with the hero's battle-time magic (E04b T8c, T8d): Luck stands for Eagle Eye
+/// (40/50/60 %, spell levels 2/3/4), grown 5 % per level by the specialty; `t:eye` adds 5 % with
+/// the skill only; `t:helm` (a part of `t:circle`), `t:circle` and `t:hook` have opening spells;
+/// `t:storm` is a level-3 combat spell.
+fn opening_pack() -> ContentPack {
+    let mut p = pack();
+    p.spells.push(SpellDef {
+        level: 3,
+        ..spell("t:storm", SpellCategory::Combat)
+    });
+    for s in &mut p.skills {
+        if s.key.to_string() == "t:luck" {
+            s.levels = [(4000, 2), (5000, 3), (6000, 4)]
+                .map(|(bp, max_level)| vec![HeroEffectDef::EagleEye { bp, max_level }]);
+        }
+    }
+    let opening = |spell: &str, mastery, power| HeroEffectDef::OpeningSpell {
+        spell: key(spell),
+        mastery,
+        power,
+    };
+    for a in &mut p.artifacts {
+        match a.key.to_string().as_str() {
+            "t:eye" => {
+                a.effects = vec![HeroEffectDef::EagleEye {
+                    bp: 500,
+                    max_level: 0,
+                }];
+                a.needs_skill = Some(key("t:luck"));
+            }
+            "t:helm" => a.effects = vec![opening("t:storm", 3, 50)],
+            "t:circle" => a.effects = vec![opening("t:titan", 2, 10)],
+            "t:hook" => {
+                a.effects = vec![opening("t:bolt", 3, 50), opening("t:titan", 3, 50)];
+            }
+            _ => {}
+        }
+    }
+    p.heroes[0].specialty = vec![HeroEffectDef::SkillSpecialty {
+        skill: key("t:luck"),
+        bp_per_level: 500,
+    }];
+    p
+}
+
+// covers: HER-BAT-017, HER-SPL-004
+#[test]
+fn opening_spells_and_eagle_eye_are_derived() {
+    for r in [compile(opening_pack()).unwrap(), original(opening_pack())] {
+        let id = |k| spell_id(&r, k);
+        let mut d = details(&r);
+        d.level = 2;
+        d.skills.push((skill(&r, "t:luck"), 1));
+        let hero = derive_battle_hero(&d, &r).unwrap();
+        // In the order of the artifact types, whatever the order worn: the helm (a part of the
+        // circle), the circle, then the hook's two in their order (HER-BAT-017).
+        let opening = |spell, mastery, power| BattleEffect::OpeningSpell {
+            spell,
+            mastery,
+            power,
+        };
+        let expected = vec![
+            opening(id("t:storm"), 3, 50),
+            opening(id("t:titan"), 2, 10),
+            opening(id("t:bolt"), 3, 50),
+            opening(id("t:titan"), 3, 50),
+        ];
+        assert_eq!(hero.effects, expected);
+        let mut reversed = d.clone();
+        reversed.worn.reverse();
+        assert_eq!(derive_battle_hero(&reversed, &r).unwrap().effects, expected);
+        // Basic Eagle Eye's 40 % grown by 10 %, then the eye's 5 % once; the combat spells of
+        // level 2 at most the hero has not learned (the bolt is learned, the portal an adventure
+        // spell, the gaze an ability, the storm of level 3) (HER-SPL-004). In single precision
+        // 44 % and 49 % are the basis points' own values.
+        let eagle = hero.magic.eagle_eye.unwrap();
+        assert_eq!(eagle.chance, Rate::bp(4900));
+        assert_eq!(eagle.spells, vec![id("t:titan")]);
+        // Expert at level 20: 60 % doubled and the eye's 5 %, at most 100 %; spells to level 4.
+        let mut expert = d.clone();
+        expert.level = 20;
+        expert.skills.retain(|&(s, _)| s != skill(&r, "t:luck"));
+        expert.skills.push((skill(&r, "t:luck"), 3));
+        expert.spells.clear();
+        let eagle = derive_battle_hero(&expert, &r)
+            .unwrap()
+            .magic
+            .eagle_eye
+            .unwrap();
+        assert_eq!(eagle.chance, Rate::bp(10_000));
+        assert_eq!(
+            eagle.spells,
+            vec![id("t:bolt"), id("t:titan"), id("t:storm")]
+        );
+        // Without the skill the eye adds nothing: no Eagle Eye.
+        let mut plain = d.clone();
+        plain.skills.retain(|&(s, _)| s != skill(&r, "t:luck"));
+        assert_eq!(
+            derive_battle_hero(&plain, &r).unwrap().magic.eagle_eye,
+            None
+        );
+    }
 }

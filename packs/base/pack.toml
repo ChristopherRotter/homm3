@@ -2840,6 +2840,9 @@ name = "Ballistics"
 [[secondary_skill]]
 id = "eagle_eye"
 name = "Eagle Eye"
+basic = [{ kind = "eagle_eye", bp = 4000, max_level = 2 }]
+advanced = [{ kind = "eagle_eye", bp = 5000, max_level = 3 }]
+expert = [{ kind = "eagle_eye", bp = 6000, max_level = 4 }]
 
 [[secondary_skill]]
 id = "necromancy"
@@ -6022,25 +6025,31 @@ needs_skill = "archery"
 effects = [{ kind = "ranged_damage", bp = 1500 }]
 
 [[artifact]]
-id = "bird_of_perception"  # original id 63; pending: E04b
+id = "bird_of_perception"  # original id 63
 name = "Bird of Perception"
 class = "treasure"
 cost = { "gold" = 1000 }
 slot = "misc"
+needs_skill = "eagle_eye"
+effects = [{ kind = "eagle_eye", bp = 500 }]
 
 [[artifact]]
-id = "stoic_watchman"  # original id 64; pending: E04b
+id = "stoic_watchman"  # original id 64
 name = "Stoic Watchman"
 class = "treasure"
 cost = { "gold" = 2000 }
 slot = "misc"
+needs_skill = "eagle_eye"
+effects = [{ kind = "eagle_eye", bp = 1000 }]
 
 [[artifact]]
-id = "emblem_of_cognizance"  # original id 65; pending: E04b
+id = "emblem_of_cognizance"  # original id 65
 name = "Emblem of Cognizance"
 class = "minor"
 cost = { "gold" = 3000 }
 slot = "misc"
+needs_skill = "eagle_eye"
+effects = [{ kind = "eagle_eye", bp = 1500 }]
 
 [[artifact]]
 id = "statesmans_medal"  # original id 66
