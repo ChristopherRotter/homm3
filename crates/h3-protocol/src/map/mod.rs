@@ -13,17 +13,21 @@ use alloc::string::String;
 use alloc::vec::Vec;
 
 use h3_battle::{
-    BattleResult, BattleSide, BattleState, CastTarget, CastTargets, HeroView, Hex, HexSet,
-    LegalCommands, OwnHeroView, StackFlags, StackId, StackTraits, StrikeFlags,
+    BATTLE_STATE_HASH_VERSION, BattleResult, BattleSide, BattleState, CastTarget, CastTargets,
+    HeroView, Hex, HexSet, LegalCommands, OwnHeroView, StackFlags, StackId, StackTraits,
+    StrikeFlags,
 };
 use h3_content::{CreatureTypeId, Ruleset, SpellId};
+use h3_kernel::hash::{HASH_ALGORITHM, HASH_VERSION};
+use h3_kernel::rng::{RNG_ALGORITHM, RNG_VERSION};
 
 pub use from_engine::{command, reject, target};
 
+use crate::PROTOCOL_VERSION;
 use crate::wire::{
-    Ballista, BookSpell, Command, Effect, Event, Field, Hero, KeyTables, Observation, Outcome,
-    OwnHero, Query, RemovableObstacle, Side, SideView, SpellObstacle, Stack, Strike, Tactics,
-    Target, WireU64,
+    Algorithm, Ballista, BookSpell, Command, Effect, Event, Field, Hero, KeyTables, Manifest,
+    Observation, Outcome, OwnHero, PackRef, Query, RemovableObstacle, Side, SideView,
+    SpellObstacle, Stack, Strike, Tactics, Target, WireU64,
 };
 
 /// A battle side on the wire.
@@ -191,6 +195,36 @@ pub fn key_tables(ruleset: &Ruleset) -> KeyTables {
         artifacts: texts(&mut ruleset.artifacts().iter().map(|a| &a.key)),
         factions: texts(&mut ruleset.factions().iter().map(|f| &f.key)),
         terrains: texts(&mut ruleset.terrains().iter().map(|t| &t.key)),
+    }
+}
+
+/// What a game on `ruleset` is made of (ADR-0018 point 10): the replay header's fields
+/// (`h3_sim::ReplayHeader`), the field's size and the key tables.
+pub fn manifest(ruleset: &Ruleset) -> Manifest {
+    Manifest {
+        protocol: PROTOCOL_VERSION,
+        engine: String::from(env!("CARGO_PKG_VERSION")),
+        packs: ruleset
+            .packs()
+            .iter()
+            .map(|(id, version)| PackRef {
+                id: id.clone(),
+                version: version.clone(),
+            })
+            .collect(),
+        profile: String::from(ruleset.profile().as_str()),
+        ruleset_hash: wide(ruleset.content_hash()),
+        rng: Algorithm {
+            name: String::from(RNG_ALGORITHM),
+            version: RNG_VERSION,
+        },
+        hash: Algorithm {
+            name: String::from(HASH_ALGORITHM),
+            version: HASH_VERSION,
+        },
+        battle_state_hash_version: BATTLE_STATE_HASH_VERSION,
+        field: field(ruleset),
+        keys: key_tables(ruleset),
     }
 }
 

@@ -28,12 +28,17 @@ M1–M6 task turns its section into code and docs and deletes it here.
    the next `YourTurn`. A bot seat's turn is answered by the host's bot.
 7. A client that drops reconnects with `Join { game, seat, token }` and receives a fresh
    `Snapshot`; it discards its own state. Spectators reconnect without a token.
-8. `GameEnded { n, result }` to every viewer. Participants may send `FetchReplay` and get the
-   full replay; any viewer may send `FetchRecord` and get its own message log. The server
-   finalizes the journal as the replay file (the CLI's TOML).
+8. `GameEnded { n, result }` to every viewer. Participants may send `FetchReplay { seq }` and
+   get the full replay (`Rejected { NotOver }` before the end); any viewer may send
+   `FetchRecord { seq }` and get its own message log, the *record*. The server finalizes the
+   journal as the replay file (the CLI's TOML).
 
 Sequence numbers: `n` counts the messages sent to *this* viewer; `seq` is the client's own
 counter echoed in acknowledgements. Neither reveals anything about other viewers.
+
+Steps 3 to 8 are code since M1 T2 (`crates/h3-protocol/src/connection.rs` and `session.rs`, the
+record's format there and in `wire.rs`); the host's parts (sockets, the OS seed and tokens, the
+replay file) are M1 T3.
 
 ## 2. Message catalogue (M2–M4 additions)
 
@@ -55,12 +60,6 @@ deadline }`, `LeaderboardPage`, `Rating`.
 Compile the manifest's packs and profile locally if the client has them and compare the
 ruleset hash: equal means local previews are safe; different or absent means server queries
 only and a visible note. The server never reads anything from this check.
-
-## 6. The record
-
-A JSON-lines file: the manifest, then every message the viewer received, in order, each with
-its `n`. A viewer client replays a game by feeding the record through the same code path as a
-live connection. Format version `RECORD_FORMAT_VERSION` in `h3-protocol`.
 
 ## 7. Journals: restore, pause, resume, upgrades (M2)
 
