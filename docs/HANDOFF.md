@@ -6,7 +6,7 @@ Every session reads this file first, then its lane's `docs/lanes/<lane>/HANDOFF.
 
 | Lane | Owns (`lanes.toml`) | State | Files |
 |---|---|---|---|
-| battle | `h3-battle`, `h3-heroes`, `h3-content`, `h3-pack`, `h3-sim`, `h3-ffi`, `h3-cli`, the formats/tools crates, packs, fixtures, experiments | active: E04b, increment 15 = T8b (casting limits, the heroes' spell defences; BAT-Q20); then T8c–T8e | [HANDOFF](lanes/battle/HANDOFF.md), [QUEUE](lanes/battle/QUEUE.md) |
+| battle | `h3-battle`, `h3-heroes`, `h3-content`, `h3-pack`, `h3-sim`, `h3-ffi`, `h3-cli`, the formats/tools crates, packs, fixtures, experiments | active: E04b, increment 16 = T8b3, batch 2e staged (BAT-Q22); then T8c–T8e | [HANDOFF](lanes/battle/HANDOFF.md), [QUEUE](lanes/battle/QUEUE.md) |
 | adventure | `h3-adventure`, `h3-game`, `h3-map`, `h3-pack-adventure`; `src/adventure/` in `h3-sim` and `h3-cli`, `fixtures/replays/adventure/`, `docs/formats/h3m.md` | active: E08 increment 1 (ADR-0015–0017; T2 skeleton done, next T3 map reader) | [HANDOFF](lanes/adventure/HANDOFF.md), [QUEUE](lanes/adventure/QUEUE.md) |
 | server | `h3-protocol`, `h3-server` | active: E16 (ADR-0018); M1 T1 next | [HANDOFF](lanes/server/HANDOFF.md), [QUEUE](lanes/server/QUEUE.md) |
 | client | `clients/` (own Cargo workspace) | waits for the user's asset notes | [HANDOFF](lanes/client/HANDOFF.md), [QUEUE](lanes/client/QUEUE.md) |
@@ -31,10 +31,10 @@ Shared (own pull request, merged first): `h3-kernel`, `h3-contracts`, workspace 
 **Sources**
 - The wiki is reachable only through WebFetch (summarised) and needs the user's approval per session: ask for verbatim quotes, use `index.php?title=<Page>&action=raw` and `index.php?search=<term>&fulltext=1`; ask for the `swh` template's SoD argument, the summariser otherwise reports HotA.
 - VCMI 1.7.5: `git clone --depth 1 --branch 1.7.5 https://github.com/vcmi/vcmi.git` works through the proxy.
-- Code reading (Q29, Q57: preferred to a new experiment when reliable): stage `Heroes3.exe`, `pip install capstone pefile`, then `scripts/exe.py lookup|fn|switch|callers|refs|grep` with the address map (`docs/exe/README.md`); every address cited in docs or code needs a map entry (`check-exe-map`; `scripts/exe.py cited`). `fn` prints a long function only sliced (`--around`, `--from/--to`): never read `map.toml` or `h3api.toml` whole. The tool prints each float constant's width; the x87 runs at 53 bits (`installation.md` §7.10).
+- Code reading (Q29, Q57): stage `Heroes3.exe`, `pip install capstone pefile`, then `scripts/exe.py lookup|fn|switch|callers|refs|grep` with the address map (`docs/exe/README.md`); every address cited in docs or code needs a map entry (`check-exe-map`; `scripts/exe.py cited`). `fn` prints a long function only sliced (`--around`, `--from/--to`): never read `map.toml` or `h3api.toml` whole. The tool prints each float constant's width; the x87 runs at 53 bits (`installation.md` §7.10).
 
 **Coverage, lints, formatting**
-- LLVM counts the implicit `else` of `if let`, the error arm of `?` and rarely reached closures: no defensive dead branches; use infallible accessors and combinators, saturate instead of returning `Option`, make property tests deterministic in what they cover.
+- LLVM counts the implicit `else` of `if let`, the error arm of `?` and rarely reached closures: no defensive dead branches; use infallible accessors and combinators, saturate instead of returning `Option`. Lines only proptests reach make the gate flaky: give each a fixed test (`cargo llvm-cov -p <crate> -- --skip <proptest>`).
 - Coverage misses on non-code lines mean stale binaries: `cargo llvm-cov clean --workspace`.
 - clippy: `should_implement_trait` rejects methods named `div`/`shr`/`mul`/`add`/`sub`; `type_complexity` fires on arrays of fn pointers in tests (use a type alias). `cargo fmt` reflows code: match scripted patches against the formatted text.
 - Dev-dependencies obey the layers too (`check-arch`): domain crates build test rulesets in code.
