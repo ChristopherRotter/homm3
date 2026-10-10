@@ -80,6 +80,10 @@ without the label.
 - **`xtask`:** `verify --scope` runs the determinism step for a lane that owns `h3-cli` or a
   non-empty replay folder of its own; `cargo xtask determinism` re-runs every existing replay test
   target of `h3-cli` (`replay_fixtures`, and `adventure_replays` once T9 adds it).
+- **Executable map:** `check-exe-map` had failed on `master` since T1b's PR #33 (docs only, so
+  CI never ran it): the survey cites H3API's `GetMovementCost`, `GetScoutingRadius`,
+  `MaxLandMovement` and `CalcMaxMovement` (0x4B18C0, 0x4E4070, 0x4E4990, 0x4E4D90). Added as
+  `guess` entries with the sizes from `scripts/exe.py check --fix-sizes`; T6–T8 read them.
 - **Fuzzing:** the user chose stable-only for now: parsers of untrusted input are property-tested
   on arbitrary bytes; `cargo-fuzz` needs nightly, which the sandbox cannot download (BACKLOG
   inbox).

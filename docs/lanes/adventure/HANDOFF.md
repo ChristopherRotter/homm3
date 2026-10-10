@@ -24,7 +24,7 @@ The adventure lane's living state; read after the global `docs/HANDOFF.md`. Form
 
 ### 2026-10-10 — T1a checkpoint and T2 shared skeleton
 
-The user accepted the three drafts after a one-screen summary per draft (ADR-0015–0017), answered ADV-Q1 (a) and ADV-Q2 (a), deferred A-2/A-3 to T7's reading, consented to one `cross-lane` pull request for T2 and to moving `docs/formats/h3m.md`, and chose stable-only fuzzing. T2 built as planned, with additions: `arch.toml` already allows the env's and the CLI's edges (T9 needs no shared change); the replay test `adventure_replays.rs` is adventure-owned and the determinism step picks it up. Found: the game's rule prefix is `GAM-`, and T3's import needs setup types that T5/T6 own (decide the order at T3's start). Detail: `E08-log.md`.
+The user accepted the three drafts after a one-screen summary per draft (ADR-0015–0017), answered ADV-Q1 (a) and ADV-Q2 (a), deferred A-2/A-3 to T7's reading, consented to one `cross-lane` pull request for T2 and to moving `docs/formats/h3m.md`, and chose stable-only fuzzing. T2 built as planned, with additions: `arch.toml` already allows the env's and the CLI's edges (T9 needs no shared change); the replay test `adventure_replays.rs` is adventure-owned and the determinism step picks it up. Found: the game's rule prefix is `GAM-`; T3's import needs setup types that T5/T6 own (decide the order at T3's start); `check-exe-map` was red on `master` since #33 (the survey's four H3API addresses had no map entries, and a docs-only PR runs no CI): added as guesses. Trap: a docs PR that cites an address still needs `cargo xtask check-exe-map` locally. Detail: `E08-log.md`.
 
 ### 2026-10-09 — T1b: survey (movement, fog, the day, simultaneous turns)
 
