@@ -33,7 +33,7 @@ database system to install.
 2. **Lobbies.** A server lists its open games. A host creates a game from a *game
    configuration* (packs, profile, scenario or map, seats with people or bots, options such as
    timers); players take seats or spectate; the configuration is visible before joining and
-   fixed when the game starts. The server's own content applies (protocol ADR, point 10).
+   fixed when the game starts. The server's own content applies (ADR-0015, point 10).
 3. **Servers are independent.** A ladder, its ratings and its accounts belong to one server;
    nothing is synchronized, there is no global ladder and none is planned. The same name and
    password give the same key on every server, which is a convenience, not a link: each
@@ -46,11 +46,11 @@ database system to install.
    and random sides; both players accept within a time limit or return to the queue.
 6. **Rating: Glicko-2** with the published defaults, computed in `h3-server` (not game logic:
    floats are allowed in adapters), updated in the order games end. A result counts only after
-   the game's journal re-ran and verified (protocol ADR, point 12) and only when both seats
+   the game's journal re-ran and verified (ADR-0015, point 12) and only when both seats
    were held by their players. A disconnect beyond the grace period is a forfeit; an abandoned
    game is a loss for the absent player.
 7. **Persistence is files, not a database system.** The data directory holds the game
-   journals (protocol ADR, point 12) and append-only JSON-lines logs of players, name changes,
+   journals (ADR-0015, point 12) and append-only JSON-lines logs of players, name changes,
    finished games and results, each line synced when written, rebuilt into memory at start,
    with periodic snapshots to bound the start time. Ladder results are therefore durable,
    crash-consistent (a torn last line is discarded) and readable with any text tool. An
@@ -67,7 +67,7 @@ database system to install.
 10. **Internet hosting.** Session integrity over the internet needs TLS; the login does not (a
     signed challenge is not a secret). The server does not implement TLS: a reverse proxy in
     front of it is the documented setup; native TLS is a later option behind the transport
-    trait (protocol ADR, point 3).
+    trait (ADR-0015, point 3).
 
 ## Consequences
 

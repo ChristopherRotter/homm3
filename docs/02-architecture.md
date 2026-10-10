@@ -67,7 +67,7 @@ Work on the crates is split into lanes (battle, adventure, server, client) that 
 
 Start with the smallest set the walking skeleton needs (kernel, content, battle, sim, cli, xtask, plus minimal game/contracts if required). Split crates when a context actually exists — but the dependency rules apply from day one.
 
-**State after E01:** `h3-kernel`, `h3-content`, `h3-contracts`, `h3-battle` (logic, `no_std` + `alloc`, 100 % coverage gate); `h3-pack`, `h3-sim`, `h3-ffi`, `h3-cli` (adapters); `xtask`. No `h3-game` yet: the sim drives the battle context directly through `BattleSetup`. **E02 adds** `h3-formats` (adapter) and the `h3-harvest` tool; the engine never reads original files at run time — it loads the committed packs (Q13). **E04a adds** `h3-heroes` (domain, logic; T4a: hero details and their validation, never a dependency of `h3-battle`, ADR-0013). The allowed graph is `arch.toml`; ADR-0005's amendment lists what `check-arch` enforces.
+**State after E01:** `h3-kernel`, `h3-content`, `h3-contracts`, `h3-battle` (logic, `no_std` + `alloc`, 100 % coverage gate); `h3-pack`, `h3-sim`, `h3-ffi`, `h3-cli` (adapters); `xtask`. No `h3-game` yet: the sim drives the battle context directly through `BattleSetup`. **E02 adds** `h3-formats` (adapter) and the `h3-harvest` tool; the engine never reads original files at run time — it loads the committed packs (Q13). **E04a adds** `h3-heroes` (domain, logic; T4a: hero details and their validation, never a dependency of `h3-battle`, ADR-0013). **E16 M0 adds** `h3-protocol` (adapter, logic: the wire and the sans-I/O session core) and `h3-server` (adapter, the binary; ADR-0015). The allowed graph is `arch.toml`; ADR-0005's amendment lists what `check-arch` enforces.
 
 ## 4. State, commands, events
 

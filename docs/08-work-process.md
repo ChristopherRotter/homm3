@@ -114,6 +114,9 @@ conflict on rebase and bumps again.
 | replay format, action and observation encodings | `h3-sim` | battle (AI lane from E05) |
 | C ABI | `H3_ABI_VERSION`, `h3-ffi` | battle (AI lane from E05) |
 | kernel RNG and hash | `RNG_VERSION`, `HASH_VERSION`, `h3-kernel` | shared |
+| wire protocol | `PROTOCOL_VERSION`, `h3-protocol` | server |
+| viewer record format | `RECORD_FORMAT_VERSION`, `h3-protocol` (from E16 M1) | server |
+| game journal format | `JOURNAL_FORMAT_VERSION`, `h3-server` (from E16 M2) | server |
 
 **Queues and long runs.** Each lane has a `QUEUE.md`: its pre-refined tasks in order, each about
 half a context of work, then an **Inbox** of discovered work (one line each, until a refinement

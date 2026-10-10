@@ -4,21 +4,14 @@ Pre-refined tasks of the server lane, in order, then the inbox of discovered wor
 
 ## Tasks
 
-Epic: `docs/epics/E16-server.md` (refined; the user answered SRV-Q1 to SRV-Q11 and confirmed the autonomy contract on 2026-10-09). M0 is a shared pull request; M1 = T1–T4 ends at a checkpoint with the user, after a fresh reviewer agent. Work under the autonomy contract (`HANDOFF.md`).
-
-### E16 M0 — Shared skeleton
-
-- **Scope:** first the protocol ADR draft (`adr-drafts/protocol.md`) reviewed and accepted by the user, then numbered and moved to `docs/adr/` with its index row. Then a `shared/server-skeleton` pull request: crate skeletons `h3-protocol` (adapter layer, `logic = true`: `no_std` + `alloc`, the logic header; if `check-arch` rejects a logic adapter, a small tool change in the same PR) and `h3-server` (adapter, a binary); workspace members and dependencies in `Cargo.toml` (`serde`, `serde_json` with `alloc` only for the protocol; `tokio` with `rt-multi-thread`, `net`, `time`, `sync`, `macros`; `tokio-tungstenite`; `getrandom`; `toml`); the edges M1 needs in `arch.toml`; `cargo deny` passes; `benches/server/` (README only, the workload is T4); the versions table gains `PROTOCOL_VERSION` (owned by the server lane); `BACKLOG.md` E16 in progress; the global HANDOFF's server row. Both this and the adventure lane's E08 T2 touch `Cargo.toml` and `arch.toml`: whichever merges second rebases.
-- **Acceptance:** the ADR accepted; full `cargo xtask verify` green in CI; merged before T1 starts.
-- **Depends on:** the refinement pull request (`server/refinement-decisions`) merged.
-- **Status:** ready (starts with the user: the ADR review).
+Epic: `docs/epics/E16-server.md` (in progress; M0 done 2026-10-10, ADR-0015). M1 = T1–T4 ends at a checkpoint with the user, after a fresh reviewer agent. Work under the autonomy contract (`HANDOFF.md`).
 
 ### E16 M1 T1 — Messages and codec
 
 - **Scope:** the epic's M1 T1: the wire types (both directions, struct variants, serde's default enum form, no `tag`/`untagged`/`flatten`, `deny_unknown_fields`, integers only, 64-bit values as strings), the bounded codec (frame size checked before parsing, `serde_json` with `alloc`), the mapping module to and from the battle's commands, legal commands, events and observation (`E16-design.md` §2 and §4), `Unsupported` and `Other { kind }` with the wildcard arms as the lane's one coverage exclusion (queue it for the review), a test listing the mapped kinds; round-trip tests, a round-trip in `postcard` as a dev-dependency (provisional, for the review) so the binary option stays open, and the property that arbitrary bytes never panic.
 - **Acceptance:** `h3-protocol` under the 100 % gate; `cargo xtask verify --scope server --summary` with no failing step; the review list in the epic file updated.
-- **Depends on:** M0.
-- **Status:** waiting (M0).
+- **Depends on:** M0 (the skeleton's pull request merged).
+- **Status:** ready once M0 is merged.
 
 ### E16 M1 T2 — Session core
 
@@ -43,4 +36,4 @@ Epic: `docs/epics/E16-server.md` (refined; the user answered SRV-Q1 to SRV-Q11 a
 
 ## Inbox
 
-- 2026-10-01 (E03 T9 review): information hiding for server mode (E16): the tools derive the public random obstacles and the hidden battle RNG from the same seed (different streams), so a low-entropy seed can be guessed from the layout. Server mode needs a secret, uniformly random seed (or an independent obstacle seed); write it into docs/06-security.md with the server. *Direction in the protocol ADR draft, point 8 (a 64-bit OS seed, obstacles from a separate throwaway seed); the `06-security.md` text is M1 T4 (queued above).*
+- 2026-10-01 (E03 T9 review): information hiding for server mode (E16): the tools derive the public random obstacles and the hidden battle RNG from the same seed (different streams), so a low-entropy seed can be guessed from the layout. Server mode needs a secret, uniformly random seed (or an independent obstacle seed); write it into docs/06-security.md with the server. *Decided in ADR-0015, point 8 (a 64-bit OS seed, obstacles from a separate throwaway seed); the `06-security.md` text is M1 T4 (queued above).*

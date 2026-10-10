@@ -165,6 +165,27 @@ external = ["serde", "toml"]
 dev_deps = []
 dev_external = []
 
+# The server's published language and session core (E16, ADR-0015 point 1): a logic crate in the
+# adapter layer, so the decoder at the trust boundary is under the purity checks and the 100 % gate.
+# `postcard`: a round-trip test of the wire types (provisional, E16 M1 review).
+[crate.h3-protocol]
+layer = "adapter"
+logic = true
+deps = ["h3-kernel", "h3-content", "h3-contracts", "h3-battle"]
+external = ["serde", "serde_json"]
+dev_deps = ["h3-pack", "h3-sim"]
+dev_external = ["proptest", "postcard"]
+
+# The server binary (E16, ADR-0015): the I/O shell around h3-protocol. `h3-cli` for the pack,
+# scenario and replay-file functions (provisional, E16 M1 review; else they move into h3-sim).
+[crate.h3-server]
+layer = "adapter"
+logic = false
+deps = ["h3-kernel", "h3-content", "h3-contracts", "h3-battle", "h3-pack", "h3-sim", "h3-cli", "h3-protocol"]
+external = ["serde", "serde_json", "toml", "tokio", "tokio-tungstenite", "futures-util", "getrandom"]
+dev_deps = []
+dev_external = []
+
 # Readers for the original game's files; used only by the harvesting tool (E02, Q13).
 [crate.h3-formats]
 layer = "adapter"
