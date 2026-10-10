@@ -20,6 +20,14 @@ The skill, artifact and battle surveys were compiled by sub-agents and reviewed 
 |---|---|
 | [E04b-magic.md](E04b-magic.md) | just-in-time survey for ADR-0014 (Q41): the spell table and its decoded flags, casting by a hero (book, once per round, mastery, cost, mana), effect kinds and targeting, durations, the resolution order (immunity, resistance, Magic Mirror, damage modifiers), stacks created in battle, hidden obstacles, creature magic, quirks by task, disputes M-1 to M-6, experiment candidates for batch 2a. Per-spell numbers are left to the tasks. |
 
+## E08 (E08 T1b, 2026-10-09; adventure lane)
+
+| File | Contents |
+|---|---|
+| [E08-adventure-core.md](E08-adventure-core.md) | movement points by army speed, step costs by terrain and road, the diagonal exception and the last step of a day, where a hero may step; fog of war (scouting radius, the reveal, the fringe); the day and its order; quirk candidates A-1 to A-3; simultaneous-turn contact rules (HD, HotA, VCMI) captured for later; disputes D-1 to D-4 and F-1 with the code readings that settle them (`ADV-Q3`–`ADV-Q5`); proposed rule ids |
+
+This index is a common path (`lanes.toml`): each lane adds its epics' sections.
+
 ## Disputes: input for experiment batch 1
 
 *Batch 1a results (2026-10-03): `docs/epics/E04a-log.md`, "The design note at closure"; Q21, Q23, D1, S-01–S-04, OQ-4 (Ballista), H-1 and the Ballista's attack are answered there.*

@@ -5,22 +5,39 @@
 //! (separate target directory so the flag does not invalidate the normal build cache). Without
 //! CI (OPEN-QUESTIONS Q3) the cross-platform half is run by hand on each OS.
 
+use std::path::Path;
+
 use crate::util::{cargo, run_cmd, workspace_root};
 use crate::verify::Status;
 
-const FIXTURE_TEST: [&str; 4] = ["-p", "h3-cli", "--test", "replay_fixtures"];
+/// The `h3-cli` test targets that re-run golden replays: the battle's, and the adventure's
+/// (`tests/adventure_replays.rs`, adventure-owned in lanes.toml) once it exists (E08 T9).
+const REPLAY_TESTS: [&str; 2] = ["replay_fixtures", "adventure_replays"];
+
+/// `-p h3-cli` and `--test <name>` for each replay test target that exists.
+fn fixture_tests(root: &Path) -> Vec<String> {
+    let tests = root.join("crates/h3-cli/tests");
+    let mut args = vec!["-p".to_owned(), "h3-cli".to_owned()];
+    for name in REPLAY_TESTS {
+        if tests.join(format!("{name}.rs")).is_file() {
+            args.extend(["--test".to_owned(), name.to_owned()]);
+        }
+    }
+    args
+}
 
 pub fn run(_args: &[String]) -> Result<(), String> {
+    let fixture_test = fixture_tests(&workspace_root());
     println!("determinism: debug");
     let mut debug = cargo();
-    debug.arg("test").args(FIXTURE_TEST).arg("--quiet");
+    debug.arg("test").args(&fixture_test).arg("--quiet");
     run_cmd(debug)?;
 
     println!("determinism: release");
     let mut release = cargo();
     release
         .args(["test", "--release"])
-        .args(FIXTURE_TEST)
+        .args(&fixture_test)
         .arg("--quiet");
     run_cmd(release)?;
 
@@ -28,7 +45,7 @@ pub fn run(_args: &[String]) -> Result<(), String> {
     let mut native = cargo();
     native
         .args(["test", "--release"])
-        .args(FIXTURE_TEST)
+        .args(&fixture_test)
         .arg("--quiet")
         .arg("--target-dir")
         .arg(crate::util::target_dir()?.join("native"))
@@ -75,4 +92,16 @@ pub fn ffi_smoke_status() -> Result<Status, String> {
         format!("{e} (a C compiler is required; set CC or pass `--skip ffi-smoke`)")
     })?;
     run_cmd(std::process::Command::new(&exe)).map(|()| Status::Passed)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn replay_tests_are_the_existing_targets() {
+        let args = fixture_tests(&workspace_root());
+        assert_eq!(&args[..4], ["-p", "h3-cli", "--test", "replay_fixtures"]);
+        assert_eq!(fixture_tests(Path::new("no-such-root")), ["-p", "h3-cli"]);
+    }
 }

@@ -1,20 +1,17 @@
-# ADR-NNNN: Game orchestration: turn groups, RNG streams per player, pending decisions
+# ADR-0017: Game orchestration: turn groups, RNG streams per player, pending decisions
 
-- Status: Proposed (E08 T1a draft, 2026-10-09; under the user's review)
+- Status: Accepted (2026-10-10)
 - Date: 2026-10-09
 - Deciders: user + adventure lane (refinement 2026-10-07/08, decisions 4, 8 and 9 of the epic)
 
 <!-- Decisions only. The reasoning is in docs/epics/E08-adventure-map.md. Point 2 answers the
-     server lane's SRV-Q6 (what h3-game exposes for the whole game, E16 M5). New at T1a: the
-     system actor and spectator shapes, the setup stream, the contact inventory (point 7); point
-     6 widens decision 8 (a battle with another player's hero has two owners, who may answer
-     outside their turn). Open: ADV-Q2. Longer than 80 lines because it covers decisions 4, 8
-     and 9 and the env at once. -->
+     server lane's SRV-Q6 (what h3-game exposes for the whole game, E16 M5). Longer than 80 lines
+     because it covers decisions 4, 8 and 9 and the env at once. -->
 
 ## Context
 
 `h3-game` holds what no domain context may own: players, turns, the calendar, randomness and
-the wiring between contexts (ADR draft "crate shape"). Simultaneous turns are an HD/HotA
+the wiring between contexts (ADR-0015). Simultaneous turns are an HD/HotA
 feature and a non-goal of the vision, but nothing built now may make them a rewrite (ADR-0006
 guardrail; the user, 2026-10-08). The server lane needs a player actor, per-viewer projections,
 pending decisions as state and a trusted system actor (SRV-Q6). RL needs an `AdventureEnv`
@@ -45,7 +42,8 @@ pending decisions as state and a trusted system actor (SRV-Q6). RL needs an `Adv
    the day advances: the calendar, then each context's start-of-day step, in a fixed order of
    contexts and players. Building the state ends with day 1's start-of-day step and the first
    group's start-of-turn step, so the first day starts as every later one. Which rule runs at
-   which hook is a rule question (T1b). Sequential play is one player per group in player
+   which hook is a rule question (survey `E08-adventure-core.md` §3: in increment 1 every rule
+   runs at the start of the day; ADV-Q4). Sequential play is one player per group in player
    order, the only schedule of increment 1. Commands interleave in one authoritative order, the
    server's log, which is the replay; logic stays single-threaded per game (ADR-0003).
 4. **An RNG stream per player** (kernel streams, ADR-0003 point 7). Randomness caused by a
@@ -106,3 +104,7 @@ pending decisions as state and a trusted system actor (SRV-Q6). RL needs an `Adv
 - An env on `h3-adventure` directly: no turns, no day, and a second path beside the game's.
 - A separate adventure sim crate: a second env stack (batching, replay header) for the AI lane
   to merge at E05.
+
+## Revision history
+
+- 2026-10-10: Accepted (E08 T1a draft).

@@ -33,6 +33,9 @@ pub struct LaneScope {
     pub lane: String,
     /// Workspace packages the lane owns.
     pub packages: Vec<String>,
+    /// Whether the lane owns golden replays of its own under `fixtures/replays/` (a sub-path of
+    /// the replay crate's owner, such as the adventure's `fixtures/replays/adventure/`).
+    pub replays: bool,
 }
 
 /// How a gate behaves under `--scope <lane>`.
@@ -44,6 +47,8 @@ enum InScope {
     Packages,
     /// Runs when the lane owns this package (the gate exercises it).
     Owner(&'static str),
+    /// Runs when the lane owns the replay crate `h3-cli` or golden replays of its own.
+    Replays,
     /// Runs on the lane's benchmark workloads; skipped when it has none.
     Workloads,
     /// Skipped: the gate guards shared paths only.
@@ -106,7 +111,7 @@ const STEPS: &[Step] = &[
     step("coverage", true, InScope::Packages, |s| {
         passed(crate::coverage::gate(s.map(|s| s.packages.as_slice())))
     }),
-    step("determinism", true, InScope::Owner("h3-cli"), |_| {
+    step("determinism", true, InScope::Replays, |_| {
         passed(crate::determinism::run(&[]))
     }),
     step("ffi-smoke", false, InScope::Owner("h3-ffi"), |_| {
@@ -325,10 +330,26 @@ pub fn lane_scope(lane: &str) -> Result<LaneScope, String> {
         .into_iter()
         .map(str::to_owned)
         .collect();
+    let replays = config.lane(lane).is_some_and(|l| {
+        l.paths
+            .iter()
+            .any(|p| p.starts_with(REPLAY_FIXTURES) && has_files(&root.join(p)))
+    });
     Ok(LaneScope {
         lane: lane.to_owned(),
         packages: owned,
+        replays,
     })
+}
+
+/// The crate whose test re-runs the golden replays (`crate::determinism`).
+const REPLAY_CRATE: &str = "h3-cli";
+/// Where golden replays live; a lane may own a folder below it (lanes.toml).
+const REPLAY_FIXTURES: &str = "fixtures/replays/";
+
+/// Whether `dir` is a directory with at least one entry.
+fn has_files(dir: &Path) -> bool {
+    fs::read_dir(dir).is_ok_and(|mut entries| entries.next().is_some())
 }
 
 /// Why a gate does not run under `scope`, if it does not.
@@ -342,6 +363,8 @@ fn out_of_scope(step: &Step, scope: Option<&LaneScope>) -> Option<String> {
         InScope::Packages => None,
         InScope::Owner(package) if s.packages.iter().any(|p| p == package) => None,
         InScope::Owner(package) => Some(format!("`{package}` is not lane `{}`'s", s.lane)),
+        InScope::Replays if s.replays || s.packages.iter().any(|p| p == REPLAY_CRATE) => None,
+        InScope::Replays => Some(format!("lane `{}` has no golden replays yet", s.lane)),
         InScope::Workloads => {
             let has = crate::bench::load(&workspace_root())
                 .is_ok_and(|entries| entries.iter().any(|e| e.lane == s.lane));
@@ -661,16 +684,28 @@ mod tests {
         let battle = LaneScope {
             lane: "battle".to_owned(),
             packages: vec!["h3-cli".to_owned(), "h3-battle".to_owned()],
+            replays: false,
         };
         let client = LaneScope {
             lane: "client".to_owned(),
             packages: Vec::new(),
+            replays: false,
+        };
+        let adventure = |replays| LaneScope {
+            lane: "adventure".to_owned(),
+            packages: vec!["h3-adventure".to_owned()],
+            replays,
         };
         assert_eq!(out_of_scope(step("fmt"), Some(&client)), None);
         assert_eq!(out_of_scope(step("test"), None), None);
         assert_eq!(out_of_scope(step("test"), Some(&battle)), None);
         assert!(out_of_scope(step("test"), Some(&client)).is_some());
         assert_eq!(out_of_scope(step("determinism"), Some(&battle)), None);
+        assert!(out_of_scope(step("determinism"), Some(&adventure(false))).is_some());
+        assert_eq!(
+            out_of_scope(step("determinism"), Some(&adventure(true))),
+            None
+        );
         assert!(out_of_scope(step("ffi-smoke"), Some(&battle)).is_some());
         assert!(out_of_scope(step("deny"), Some(&battle)).is_some());
         assert_eq!(out_of_scope(step("check-lane"), Some(&client)), None);
@@ -694,6 +729,14 @@ mod tests {
                 .any(|p| p == "h3-kernel" || p == "xtask")
         );
         assert!(lane_scope("client").unwrap().packages.is_empty());
+        let adventure = lane_scope("adventure").unwrap();
+        assert!(adventure.packages.iter().any(|p| p == "h3-game"));
+        assert!(!adventure.packages.iter().any(|p| p == "h3-sim"));
+        assert!(!battle.replays);
+        assert!(!has_files(
+            &workspace_root().join("fixtures/no-such-folder")
+        ));
+        assert!(has_files(&workspace_root().join("fixtures/replays")));
         assert!(lane_scope("nope").is_err());
     }
 
