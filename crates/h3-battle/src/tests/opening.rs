@@ -1,0 +1,347 @@
+//! The opening spells (E04b T8c, BAT-MAG-068): at the first activation of a stack a side controls
+//! outside the tactics phase, the side's hero casts its opening spells for free (Angelic
+//! Alliance's Prayer, Armor of the Damned's four), after the original's code
+//! (`docs/formats/installation.md` §7.24).
+
+use std::borrow::ToOwned;
+use std::string::String;
+use std::vec;
+use std::vec::Vec;
+
+use h3_content::Ruleset;
+use h3_contracts::{BattleEffect, BattleHero, BattleSetup, BattleSide};
+
+use super::spells::spell;
+use super::support::*;
+use crate::{
+    BattleState, Command, Event, EventKind, HeroError, SetupError, StackId, Status, castable_spells,
+};
+
+/// The opening spell `name` at Expert with `power`.
+fn opening(r: &Ruleset, name: &str, power: u16) -> BattleEffect {
+    BattleEffect::OpeningSpell {
+        spell: spell(r, name),
+        mastery: 3,
+        power,
+    }
+}
+
+/// The test hero with `effects`, a spell book with the bolt and mana 15.
+fn wearer(r: &Ruleset, effects: Vec<BattleEffect>) -> BattleHero {
+    let mut h = hero(r);
+    h.effects = effects;
+    h.magic.spell_book = Some(vec![spell(r, "bolt")]);
+    h.magic.masteries = masteries(r, [1, 0, 0, 0]);
+    h
+}
+
+/// Angelic Alliance's opening (Prayer, power 10) with a duration bonus of 2 for the attacker,
+/// Armor of the Damned's (Slow and Curse, power 50) for the defender.
+fn heroes(r: &Ruleset) -> [Option<BattleHero>; 2] {
+    [
+        Some(wearer(
+            r,
+            vec![
+                opening(r, "prayer", 10),
+                BattleEffect::SpellDuration { rounds: 2 },
+            ],
+        )),
+        Some(wearer(
+            r,
+            vec![opening(r, "sloth", 50), opening(r, "curse", 50)],
+        )),
+    ]
+}
+
+/// The attacker's fast and slow stacks against the defender's dragon and flyer: the turn order
+/// is the attacker's 0 (speed 9), the defender's 2 (8) and 3 (7), then the attacker's 1 (2, 6
+/// with Expert Prayer).
+fn armies(r: &Ruleset, heroes: [Option<BattleHero>; 2]) -> BattleSetup {
+    BattleSetup {
+        heroes,
+        ..setup(
+            r,
+            &[(0, "fast", 10), (1, "slow", 10)],
+            &[(0, "dragon", 1), (1, "flyer", 10)],
+        )
+    }
+}
+
+fn start(r: &Ruleset, setup: &BattleSetup) -> (BattleState, Vec<Event>) {
+    let mut events = Vec::new();
+    let s = BattleState::start(r, setup, 1, &mut events).unwrap();
+    (s, events)
+}
+
+/// The opening spells and the effects they gave, as `(side or stack, spell name, rounds)`, in
+/// order: `OpeningSpell` as `(side index + 100, spell, 0)`.
+fn openings(r: &Ruleset, events: &[Event]) -> Vec<(u8, String, u16)> {
+    let name = |id| {
+        r.spell(id)
+            .unwrap()
+            .key
+            .as_str()
+            .trim_start_matches("t:")
+            .to_owned()
+    };
+    events
+        .iter()
+        .filter_map(|e| match e.kind {
+            EventKind::OpeningSpell { side, spell } => {
+                Some((100 + u8::try_from(side.index()).unwrap(), name(spell), 0))
+            }
+            EventKind::EffectApplied {
+                target,
+                spell,
+                rounds,
+            } => Some((target.0, name(spell), rounds.unwrap_or(0))),
+            _ => None,
+        })
+        .collect()
+}
+
+fn effect(n: u8, name: &str, rounds: u16) -> (u8, String, u16) {
+    (n, name.to_owned(), rounds)
+}
+
+// covers: BAT-MAG-068
+#[test]
+fn each_side_casts_its_opening_spells_at_its_first_activation() {
+    let r = ruleset();
+    let (mut s, events) = start(&r, &armies(&r, heroes(&r)));
+    // The attacker's fast stack is the battle's first: its hero's Prayer reaches both of its
+    // stacks for 10 rounds (no duration bonus), the defender's spells wait.
+    assert_eq!(
+        openings(&r, &events),
+        [
+            effect(100, "prayer", 0),
+            effect(0, "prayer", 10),
+            effect(1, "prayer", 10)
+        ]
+    );
+    let first = events
+        .iter()
+        .position(|e| e.kind == EventKind::TurnStarted { stack: StackId(0) })
+        .unwrap();
+    assert!(
+        events
+            .iter()
+            .position(|e| matches!(e.kind, EventKind::OpeningSpell { .. }))
+            .unwrap()
+            > first
+    );
+    // Free and not the round's cast: the hero keeps its mana and may still cast.
+    let view = s.hero(BattleSide::Attacker).unwrap();
+    assert_eq!((view.mana, view.casts), (15, 0));
+    assert!(castable_spells(&s, &r, BattleSide::Attacker).contains(spell(&r, "bolt")));
+    // The defender's first stack: Slow, then Curse, each on both attacking stacks for 50 rounds.
+    let events = act(&mut s, &r, Command::Defend).unwrap();
+    assert_eq!(
+        openings(&r, &events),
+        [
+            effect(101, "sloth", 0),
+            effect(0, "sloth", 50),
+            effect(1, "sloth", 50),
+            effect(101, "curse", 0),
+            effect(0, "curse", 50),
+            effect(1, "curse", 50),
+        ]
+    );
+    assert_eq!(s.hero(BattleSide::Defender).unwrap().casts, 0);
+    // Once a battle: no side casts them again, in this round or the next.
+    for _ in 0..6 {
+        let events = act(&mut s, &r, Command::Defend).unwrap();
+        assert!(openings(&r, &events).is_empty());
+    }
+}
+
+// covers: BAT-MAG-068
+#[test]
+fn the_orb_of_inhibition_does_not_stop_the_opening_spells() {
+    let r = ruleset();
+    let mut with_orb = heroes(&r);
+    with_orb[1]
+        .as_mut()
+        .unwrap()
+        .effects
+        .push(BattleEffect::NoCasting);
+    let (mut s, events) = start(&r, &armies(&r, with_orb));
+    assert_eq!(openings(&r, &events).len(), 3);
+    // The heroes may not cast, but the defender's armor still casts its two.
+    assert!(castable_spells(&s, &r, BattleSide::Attacker).is_empty());
+    let events = act(&mut s, &r, Command::Defend).unwrap();
+    assert_eq!(openings(&r, &events).len(), 6);
+}
+
+// covers: BAT-MAG-068
+#[test]
+fn an_opening_spell_without_a_stack_it_affects_is_not_cast() {
+    let r = ruleset();
+    // The attacker's stacks are immune to Slow (a Pendant-like defence of their hero): the
+    // defender casts only Curse.
+    let mut immune = heroes(&r);
+    immune[0]
+        .as_mut()
+        .unwrap()
+        .effects
+        .push(BattleEffect::SpellImmunity {
+            spell: spell(&r, "sloth"),
+        });
+    let (mut s, _) = start(&r, &armies(&r, immune));
+    let events = act(&mut s, &r, Command::Defend).unwrap();
+    assert_eq!(
+        openings(&r, &events),
+        [
+            effect(101, "curse", 0),
+            effect(0, "curse", 50),
+            effect(1, "curse", 50),
+        ]
+    );
+    // A hypnotized stack counts for the test, though the mass cast then passes over it
+    // (0x5A40D0, 0x5A66D0): the defender's Prayer, its own stacks immune to it but the one the
+    // attacker hypnotized (whose hero's defences now guard it), is cast and reaches none.
+    let mut praying = heroes(&r);
+    praying[1] = Some(wearer(
+        &r,
+        vec![
+            opening(&r, "prayer", 10),
+            BattleEffect::SpellImmunity {
+                spell: spell(&r, "prayer"),
+            },
+        ],
+    ));
+    let (mut s, _) = start(&r, &armies(&r, praying.clone()));
+    let st = &mut s.stacks.as_mut_slice()[3];
+    st.spells.status = st.spells.status.with(Status::HYPNOTIZED, true);
+    let events = act(&mut s, &r, Command::Defend).unwrap();
+    assert_eq!(openings(&r, &events), [effect(101, "prayer", 0)]);
+    // Not hypnotized, it is immune too: no cast at all.
+    let (mut s, _) = start(&r, &armies(&r, praying));
+    let events = act(&mut s, &r, Command::Defend).unwrap();
+    assert!(openings(&r, &events).is_empty());
+}
+
+// covers: BAT-MAG-068
+#[test]
+fn a_side_whose_first_stack_is_passed_over_casts_at_its_next_stack() {
+    let r = ruleset();
+    let (mut s, _) = start(&r, &armies(&r, heroes(&r)));
+    // The defender's first stack (2) is blind: its turn passes, the opening waits for stack 3.
+    {
+        let st = &mut s.stacks.as_mut_slice()[2];
+        st.spells.status = st.spells.status.with(Status::NO_TURNS, true);
+    }
+    let events = act(&mut s, &r, Command::Defend).unwrap();
+    let passed = events
+        .iter()
+        .position(|e| e.kind == EventKind::TurnPassed { stack: StackId(2) })
+        .unwrap();
+    let started = events
+        .iter()
+        .position(|e| e.kind == EventKind::TurnStarted { stack: StackId(3) })
+        .unwrap();
+    let cast = events
+        .iter()
+        .position(|e| matches!(e.kind, EventKind::OpeningSpell { .. }))
+        .unwrap();
+    assert!(passed < started && started < cast);
+    assert_eq!(s.active(), Some(StackId(3)));
+}
+
+// covers: BAT-MAG-068
+#[test]
+fn the_opening_spells_wait_for_the_end_of_the_tactics_phase() {
+    let r = ruleset();
+    let mut both = heroes(&r);
+    both[1].as_mut().unwrap().tactics = 1;
+    let (mut s, events) = start(&r, &armies(&r, both));
+    assert!(s.tactics().is_some());
+    assert!(openings(&r, &events).is_empty());
+    let events = act(&mut s, &r, Command::EndTactics).unwrap();
+    // Round 1's first stack is the attacker's: its Prayer, not yet the defender's spells.
+    assert_eq!(
+        openings(&r, &events).first(),
+        Some(&effect(100, "prayer", 0))
+    );
+    assert_eq!(openings(&r, &events).len(), 3);
+}
+
+// covers: BAT-MAG-068
+#[test]
+fn the_casting_heros_specialty_applies_to_its_opening_spells() {
+    let r = ruleset();
+    let prayer = |specialty: bool| {
+        let mut h = heroes(&r);
+        if specialty {
+            h[0].as_mut()
+                .unwrap()
+                .effects
+                .push(BattleEffect::SpellSpecialty {
+                    spell: spell(&r, "prayer"),
+                    bp_per_level: 300,
+                    level: 10,
+                });
+        }
+        let (s, _) = start(&r, &armies(&r, h));
+        s.effects()
+            .iter()
+            .find(|e| e.stack == StackId(0) && e.spell == spell(&r, "prayer"))
+            .unwrap()
+            .value
+    };
+    // Expert Prayer's 4, and 3 more on a level-1 creature for a Prayer specialist (BAT-MAG-020).
+    assert_eq!((prayer(false), prayer(true)), (4, 7));
+}
+
+// covers: BAT-HER-001, BAT-MAG-068
+#[test]
+fn the_battle_casts_only_opening_spells_it_can() {
+    let r = ruleset();
+    let refused = |effect: BattleEffect| {
+        let setup = armies(&r, [Some(wearer(&r, vec![effect])), None]);
+        BattleState::new(&r, &setup, 1).err()
+    };
+    let error = |error| {
+        Some(SetupError::InvalidHero {
+            side: BattleSide::Attacker,
+            error,
+        })
+    };
+    let with = |name, mastery, power| BattleEffect::OpeningSpell {
+        spell: spell(&r, name),
+        mastery,
+        power,
+    };
+    // A mastery above Expert, power 0, a target at its mastery (Prayer below Expert, the bolt),
+    // an unknown spell.
+    assert_eq!(
+        refused(with("prayer", 4, 10)),
+        error(HeroError::OpeningSpell)
+    );
+    assert_eq!(
+        refused(with("prayer", 3, 0)),
+        error(HeroError::OpeningSpell)
+    );
+    assert_eq!(
+        refused(with("prayer", 2, 10)),
+        error(HeroError::OpeningSpell)
+    );
+    assert_eq!(refused(with("bolt", 3, 10)), error(HeroError::OpeningSpell));
+    assert_eq!(
+        refused(BattleEffect::OpeningSpell {
+            spell: h3_content::SpellId::from_raw(999),
+            mastery: 3,
+            power: 1,
+        }),
+        error(HeroError::UnknownSpell)
+    );
+    assert_eq!(refused(with("prayer", 3, 10)), None);
+    // At most `MAX_OPENING_SPELLS`.
+    let mut many = wearer(&r, vec![]);
+    many.effects = vec![with("prayer", 3, 10); crate::MAX_OPENING_SPELLS + 1];
+    let setup = armies(&r, [Some(many), None]);
+    assert_eq!(
+        BattleState::new(&r, &setup, 1).err(),
+        error(HeroError::OpeningSpell)
+    );
+}

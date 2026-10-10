@@ -287,8 +287,19 @@ fn state_hash_is_pinned() {
         h3_contracts::BattleEffect::SpellLevelImmunity { max_level: 4 },
         h3_contracts::BattleEffect::MindImmunity,
         h3_contracts::BattleEffect::NegateImmunities,
+        // An opening spell, still due in the tactics phase (v41).
+        h3_contracts::BattleEffect::OpeningSpell {
+            spell: r.spell_by_key("t:prayer").unwrap(),
+            mastery: 3,
+            power: 10,
+        },
     ];
     led.magic.spell_book = Some(vec![bolt]);
+    // Eagle Eye (v41): 44 %, the bolt.
+    led.magic.eagle_eye = Some(h3_contracts::EagleEye {
+        chance: Rate::bp(4400),
+        spells: vec![bolt],
+    });
     led.magic.masteries = masteries(&r, [2, 1, 0, 0]);
     // One removable obstacle (v28): a stone with its anchor beside it.
     let stone = h3_contracts::Obstacle {
@@ -304,7 +315,7 @@ fn state_hash_is_pinned() {
     let s = BattleState::new(&r, &setup, 7).unwrap();
     assert!(s.tactics().is_some());
     assert_eq!(s.state_hash(), GOLDEN, "got {:#018x}", s.state_hash());
-    assert_eq!(crate::BATTLE_STATE_HASH_VERSION, 40);
+    assert_eq!(crate::BATTLE_STATE_HASH_VERSION, 41);
 }
 
-const GOLDEN: u64 = 0x51b8_02e1_b836_c723;
+const GOLDEN: u64 = 0x7f51_8961_7991_82f4;

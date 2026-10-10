@@ -258,10 +258,12 @@ fn activate<S: Sink>(state: &mut BattleState, ruleset: &Ruleset, mut checks: boo
 }
 
 /// What the original's activation (0x465330) does for a stack it activates for a turn, after the
-/// checks that pass a stack over (blind, petrified, paralysed; bad morale, Fear): a Wraith drains
-/// its enemy hero's mana (BAT-MAG-056), an Enchanter may cast (BAT-MAG-053).
-// rule: BAT-MAG-053, BAT-MAG-056
+/// checks that pass a stack over (blind, petrified, paralysed; bad morale, Fear): at its side's
+/// first activation the hero's opening spells (BAT-MAG-068), then a Wraith drains its enemy
+/// hero's mana (BAT-MAG-056), an Enchanter may cast (BAT-MAG-053).
+// rule: BAT-MAG-053, BAT-MAG-056, BAT-MAG-068
 fn activation<S: Sink>(state: &mut BattleState, ruleset: &Ruleset, id: StackId, sink: &mut S) {
+    crate::magic::opening(state, ruleset, id, sink);
     crate::mana::drain(state, ruleset, id, sink);
     crate::casters::periodic(state, ruleset, id, sink);
 }
