@@ -14,10 +14,10 @@ M1–M6 task turns its section into code and docs and deletes it here.
    is opened with the header, the seed and the setup (M2; in M1 the same data is kept in
    memory and written as the replay at the end).
 3. A client opens a WebSocket and sends `Hello { protocol, client, name }`. A protocol mismatch
-   gets `Goodbye { reason: "protocol" }`. Otherwise `Welcome { protocol, server, manifest }`.
-4. The client sends `Join { game, seat: Attacker | Defender | Spectator }` and gets
-   `Joined { viewer, token }` (no token for a spectator), then `Snapshot { n, observation }`
-   with the projected observation for its viewer.
+   gets `Goodbye { reason: Protocol }`. Otherwise `Welcome { protocol, server }`.
+4. The client sends `Join { game, seat: Attacker | Defender | Spectator, token }` and gets
+   `Joined { game, seat, token, manifest }` (no token for a spectator) or `Refused { reason }`,
+   then `Snapshot { n, observation }` with the projected observation for its viewer.
 5. When both seats are taken (a bot counts), the game starts. The seat to act gets
    `YourTurn { n, legal, castable }` (the legal commands and the castable spells of its hero);
    it may ask `Query { seq, what: CastTargets { spell } | SecondTargets { spell, target } }`.
@@ -35,63 +35,26 @@ M1–M6 task turns its section into code and docs and deletes it here.
 Sequence numbers: `n` counts the messages sent to *this* viewer; `seq` is the client's own
 counter echoed in acknowledgements. Neither reveals anything about other viewers.
 
-## 2. Message catalogue (M1; M2–M4 additions marked)
+## 2. Message catalogue (M2–M4 additions)
 
-Client to server: `Hello`, `Join`, `Command`, `Query`, `FetchReplay`, `FetchRecord`, `Leave`,
-`Ping`. M2: `CreateGame { config }`, `ListGames`, `StartGame`, `Pause`, `Resume`. M3:
-`Login { public_key, signature, name }`, `Rekey { new_public_key, signatures }`. M4:
+The M1 messages, the manifest, the observation and the events are code since M1 T1
+(`crates/h3-protocol/src/wire.rs`, in the same form: struct variants in serde's default
+enum form). Later milestones add:
+
+Client to server: M2: `CreateGame { config }`, `ListGames`, `StartGame`, `Pause`, `Resume`.
+M3: `Login { public_key, signature, name }`, `Rekey { new_public_key, signatures }`. M4:
 `Queue { ladder }`, `Dequeue`, `AcceptMatch`, `Leaderboard { ladder, page }`,
 `MyRating { ladder }`.
 
-Server to client: `Welcome`, `Goodbye`, `Joined`, `Snapshot`, `YourTurn`, `Accepted`,
-`Rejected`, `QueryResult`, `Events`, `GameEnded`, `Replay`, `Record`, `Pong`. M2: `Games`,
-`GameCreated`, `GameStarted`, `Paused`, `Resumed`. M3: `Challenge { nonce }`,
-`LoggedIn { player }`. M4: `Queued`, `MatchFound { game, seat, deadline }`,
-`LeaderboardPage`, `Rating`.
+Server to client: M2: `Games`, `GameCreated`, `GameStarted`, `Paused`, `Resumed`. M3:
+`Challenge { nonce }`, `LoggedIn { player }`. M4: `Queued`, `MatchFound { game, seat,
+deadline }`, `LeaderboardPage`, `Rating`.
 
-Every message is a struct variant of one enum per direction in serde's default, externally
-tagged form (`{"Command":{"seq":7,"command":{...}}}`, `deny_unknown_fields`); no `tag`,
-`untagged` or `flatten`, so the types also encode in `postcard` should a binary codec be
-negotiated later (SRV-Q5; a round-trip test in both formats keeps that true). Unit variants are
-avoided. Integers only; 64-bit values (the ruleset hash) travel as strings; bulk data as packed
-arrays.
+## 3. The client's content check (for the client lane, M2)
 
-## 3. The manifest
-
-```
-Manifest {
-  protocol: u32, engine: String,
-  packs: [(id, version)], profile: String, ruleset_hash: String (hex),
-  rng: (algorithm, version), hash: (algorithm, version), battle_state_hash_version: u32,
-  keys: { creatures: [key by handle], spells, hero_types, terrains, artifacts, factions, skills }
-}
-```
-
-The first block is the replay header's content (`h3_sim::ReplayHeader::current`). The key
-tables come from the ruleset (`h3-content` has `creature_key` and the `*_by_key` lookups; M1
-checks that every kind has the handle-to-key direction, else a small battle-lane ask).
-
-A client's content check: compile the manifest's packs and profile locally if it has them,
-compare the ruleset hash; equal means local previews are safe; different or absent means
-server queries only and a visible note. The server never reads anything from this check.
-
-## 4. The observation on the wire (protocol's own type)
-
-Round, tactics phase, who may retreat or surrender, the active stack, the last side that
-acted, the result; per stack: id, side, origin (army slot, war machine, created, clone),
-creature handle, count, top creature's hit points, effective attack, defense, speed, damage
-range, shots, retaliations left, flags (acted, waited, defending, two-hex, flying, shooter,
-war machine), position, the timed effects (spell handle, rounds left), casts left; natural
-obstacles and removable ones with anchors; the spell obstacles the viewer sees; both heroes'
-public part; the viewer's own hero's private part (Tactics, damage bonuses, war-machine
-control, surrender discount and price, funds, spell book, masteries, spell bonuses). This mirrors
-what the sim's observation encoding exposes, in named fields.
-
-## 5. Events on the wire
-
-One wire variant per engine event kind, same fields, stack ids and hexes as integers, spells
-and creatures as handles; `Other { kind: String }` for an engine kind the mapping lacks.
-Visibility is applied before mapping by the engine's `project`.
+Compile the manifest's packs and profile locally if the client has them and compare the
+ruleset hash: equal means local previews are safe; different or absent means server queries
+only and a visible note. The server never reads anything from this check.
 
 ## 6. The record
 

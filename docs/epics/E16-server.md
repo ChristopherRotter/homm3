@@ -35,9 +35,9 @@ today's `BattleSetup`; the whole game once `h3-game` exists (E08, E10). The serv
   reconnect mechanism, not accounts.
 - **Published language.** The messages on the wire are types of their own, documented in
   `h3-protocol`, with one module that translates them to and from the engine's types. The
-  engine's internals change often (the state hash version is bumped by most increments); the wire should not. When
-  the battle lane adds a command or event the translation does not know yet, the wire shows it
-  as "other" instead of failing to build.
+  engine's internals change often (the state hash version is bumped by most increments); the
+  wire should not. The translation matches the engine's enums exhaustively: when the battle lane
+  adds a command or event, the build fails until the translation knows it (the user, 2026-10-10).
 - **Sans-I/O.** The protocol crate never touches a socket, a clock or a file: it is given
   bytes and a time and returns bytes. That makes it a logic crate under the project's purity
   checks and the 100 % coverage gate, testable with scripted clients, and deterministic.
@@ -111,10 +111,12 @@ today's `BattleSetup`; the whole game once `h3-game` exists (E08, E10). The serv
   data as packed arrays, one protocol version; a binary codec negotiable later on the same
   types; sim encodings only for agent seats later.
 - *Engine types on the wire.* `serde` derives on the engine's types (quick to build, couples
-  the wire to every internal change, no place for "unsupported") against the protocol's own
-  types with one mapping module. **The mapping.** Unknown engine commands and events become
-  `Unsupported` and `Other { kind }` (the brief's point 3); the wildcard arms are the lane's
-  one reviewed coverage exclusion; a test lists the mapped kinds.
+  the wire to every internal change) against the protocol's own
+  types with one mapping module. **The mapping** (user, 2026-10-10; ADR-0018 point 5 amended):
+  exhaustive matches over the engine's enums, so a new engine variant fails the build until it
+  is mapped. The first draft's wildcard arms to `Unsupported` and `Other { kind }` (the brief's
+  point 3) could never run while every variant is mapped and needed a coverage exclusion. A
+  test lists the mapped kinds.
 - *Sessions and seats.* Seat tokens from OS randomness, reconnect by token, bot seats run by
   the server. **User (SRV-Q4): spectators through a spectator viewer the battle lane adds to
   `observe` and `project` before M2**; without it a spectator who joins late or reconnects has
@@ -236,12 +238,8 @@ M0 starts now, while E04b finishes (SRV-Q7).
 
 ## M1 tasks
 
-- **T1 Messages and codec.** The wire types (hello and welcome with the manifest, join and
-  joined, snapshot, events, your turn with the legal list and castable spells, command,
-  accepted, rejected, queries for cast targets, game ended, replay, goodbye, ping and pong),
-  the bounded codec, the mapping module (commands, legal commands, every event kind, the
-  observation with the public stack values, the own hero's private part), `Unsupported` and
-  `Other`, round-trip tests, the "arbitrary bytes never panic" property.
+- **T1 Messages and codec** (done 2026-10-10; `E16-log.md`): `wire`, `codec` and `map` in
+  `h3-protocol`, 100 % covered with no exclusion; ADR-0018 point 5 amended.
 - **T2 Session core.** Seats, tokens as opaque values the host supplies, join and rejoin, the
   authoritative loop (command in, `apply`, `project` for every viewer, acknowledgements), the
   bot hook (the core asks the host for a bot seat's command), the record, the command log with
@@ -261,6 +259,21 @@ M0 starts now, while E04b finishes (SRV-Q7).
   (shared PR); the lane HANDOFF and the epic log; the reviewer agent; the checkpoint and the
   cut of M2.
 
+## Review list for the M1 checkpoint
+
+Choices queued under the autonomy contract (details in `E16-log.md`):
+
+- M0: `futures-util` for the socket's `StreamExt`/`SinkExt`; `h3-server` → `h3-cli` for the
+  pack, scenario and replay-file functions (provisional; the alternative is a battle-lane move
+  into `h3-sim`).
+- T1: the message schema in `wire.rs`, with three additions to the design note: `Refused` for
+  a refused join (the connection stays open), the session's reject codes `NotSeated` and
+  `NotStarted`, and the manifest in `Joined` (ADR-0018 point 10), not in `Welcome`; the
+  observation as the sim encoding's values in named fields (the own hero's spell bonuses are
+  not on the wire yet); hexes as indices, the field's size in the manifest; flag sets as named
+  booleans; `DEFAULT_MAX_CLIENT_FRAME` 4096 bytes; `postcard` as a dev-dependency for the
+  round trips.
+
 ## Exit criteria (M1)
 
 The full `cargo xtask verify` green in CI with `h3-protocol` under
@@ -277,8 +290,7 @@ written by the server verifies with `h3 replay verify`; the lane HANDOFF, the ep
 - **Queue for the milestone review:** the message schema inside the accepted ADR, the record
   and journal formats, the configuration format, a light dependency (`getrandom`, a logging
   facade), a dependency on `h3-cli`'s library for the replay file writer (or a move of the
-  writer into `h3-sim`, a battle-lane ask), the coverage exclusion for the wildcard arms, the
-  Glicko-2 constants, the matchmaking window, the checkpoint interval of the journal, the
+  writer into `h3-sim`, a battle-lane ask), the Glicko-2 constants, the matchmaking window, the checkpoint interval of the journal, the
   default of the shadow-instance option.
 - **Stop the line:** seams and contracts, the engine API the server calls (a spectator viewer,
   `h3-game`'s surface), a second runtime, more `tokio` features or an HTTP framework, a TLS
@@ -298,8 +310,9 @@ trust as direction.
 
 ## Risks
 
-- The mapping drifts behind the engine: mitigated by the "other" fallback, the mapped-kinds
-  test and a HANDOFF line; a new battle command stays unplayable over the wire until mapped.
+- A new engine variant breaks `h3-protocol`'s build (ADR-0018 point 5 as amended): the battle
+  lane adds its arm in the same pull request (label `cross-lane`) or the server lane maps it
+  first; the global HANDOFF names the trap.
 - A logic-gated protocol crate needs `serde_json` in `alloc` mode and no `std` tokens: M0
   checked that `check-arch` accepts a logic adapter and that `serde_json` builds with `alloc`
   only; if the coverage gate fights it, fall back to a plain adapter crate (queue for review).

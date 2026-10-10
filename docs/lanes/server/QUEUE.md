@@ -4,21 +4,14 @@ Pre-refined tasks of the server lane, in order, then the inbox of discovered wor
 
 ## Tasks
 
-Epic: `docs/epics/E16-server.md` (in progress; M0 done 2026-10-10, ADR-0018). M1 = T1–T4 ends at a checkpoint with the user, after a fresh reviewer agent. Work under the autonomy contract (`HANDOFF.md`).
-
-### E16 M1 T1 — Messages and codec
-
-- **Scope:** the epic's M1 T1: the wire types (both directions, struct variants, serde's default enum form, no `tag`/`untagged`/`flatten`, `deny_unknown_fields`, integers only, 64-bit values as strings), the bounded codec (frame size checked before parsing, `serde_json` with `alloc`), the mapping module to and from the battle's commands, legal commands, events and observation (`E16-design.md` §2 and §4), `Unsupported` and `Other { kind }` with the wildcard arms as the lane's one coverage exclusion (queue it for the review), a test listing the mapped kinds; round-trip tests, a round-trip in `postcard` as a dev-dependency (provisional, for the review) so the binary option stays open, and the property that arbitrary bytes never panic.
-- **Acceptance:** `h3-protocol` under the 100 % gate; `cargo xtask verify --scope server --summary` with no failing step; the review list in the epic file updated.
-- **Depends on:** M0 (the skeleton's pull request merged).
-- **Status:** ready once M0 is merged.
+Epic: `docs/epics/E16-server.md` (in progress; M0 and M1 T1 done 2026-10-10, ADR-0018). M1 = T1–T4 ends at a checkpoint with the user, after a fresh reviewer agent. Work under the autonomy contract (`HANDOFF.md`).
 
 ### E16 M1 T2 — Session core
 
 - **Scope:** the epic's M1 T2: seats, tokens as opaque values the host supplies, join and rejoin, the authoritative loop (command, `apply` with the seat's side, `project` per viewer, per-viewer sequence numbers, typed acknowledgements), the bot hook, the record, the command log with periodic hashes kept in memory; scripted two-client tests; the observation-hygiene property over the wire (a hidden Quicksand placed by the opponent leaves the viewer's bytes unchanged); out-of-turn and wrong-seat commands leave state and log unchanged. No spectators yet (SRV-Q4).
 - **Acceptance:** as T1; the security properties hold in tests.
-- **Depends on:** T1.
-- **Status:** waiting (T1).
+- **Depends on:** T1 (done 2026-10-10: `wire`, `codec`, `map`; use `map::observe` and `map::events`, which project for the viewer).
+- **Status:** ready once T1 is merged.
 
 ### E16 M1 T3 — The server binary
 
