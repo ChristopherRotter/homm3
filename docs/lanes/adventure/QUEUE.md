@@ -4,18 +4,18 @@ Pre-refined tasks of the adventure lane, in order, then the inbox of discovered 
 
 ## Tasks
 
-Epic: `docs/epics/E08-adventure-map.md` (refined 2026-10-08, reviewed with the user the same day; decisions 1–12 there; done tasks in `E08-log.md`). Increment 1 = T1a, T1b, T2–T10, a checkpoint with the user at T1a (done: ADR-0015–0017) and at T10. T1a, T1b and T2 are done.
+Epic: `docs/epics/E08-adventure-map.md` (refined 2026-10-08, reviewed with the user the same day; decisions 1–12 there; done tasks in `E08-log.md`). Increment 1 = T1a, T1b, T2–T10, a checkpoint with the user at T1a (done: ADR-0015–0017), after T3b and at T10. T1a, T1b, T2 and T3a are done; the import moved from T3 to T5 and T6 (user, 2026-10-10).
 
-### E08 T3 — Map reader
+### E08 T3b — Map reader: templates, objects, events
 
-- **Scope:** E08 T3 in `h3-map`, probably T3a (header, players, conditions, heroes, terrain) and T3b (templates, every object body of RoE/AB/SoD). Complete raw model with input bounds (map size, counts, string lengths; `docs/06-security.md`), the import of terrain, roads, rivers, footprints and placed heroes into the setup types (ADR-0015 point 4: the setup types are owned by `h3-game` and `h3-adventure`, so T3 adds their first, minimal shape there, or T5/T6 come first: decide at the start); property tests on arbitrary bytes for parse and import (stable; `cargo-fuzz` later, user 2026-10-10); fixtures in `fixtures/maps/` (our writer's maps, the user's editor maps committed, shipped maps in the local `--with-original-data` gate). Reference: VCMI 1.7.5's reader and `docs/formats/h3m.md` (adventure-owned since T2: the reader's notes go into the same file).
-- **Acceptance:** the Definition of Done; every shipped map of the user's installation parses (local gate); the bounds have rejection tests; `MAP_IMPORT_VERSION` documented.
-- **Depends on:** T2 (merged).
-- **Status:** ready once T2's pull request merges.
+- **Scope:** E08 T3b in `h3-map`: the object templates (`docs/formats/h3m.md` has the writer's layout), every object body of RoE/AB/SoD (about 30 body kinds over the classes; VCMI 1.7.5's `CMapLoaderH3M::readObject` and the readers it calls, skipping HotA's branches), the timed events, then reject trailing bytes and remove ADV-STUB-1. Extend the raw model, the test encoder and strategies (`src/tests/`), the arbitrary-bytes properties and the bounds (object and template counts, message lengths: set from the shipped maps with `examples/original_data.rs`'s peaks). Round trip with the experiment writer's whole maps (`h3_formats::h3m`, dev-dependency). Fixtures in `fixtures/maps/`: the user's editor maps when they arrive (one per version, with a customised hero, many object kinds, a special condition, a rumor, a timed event, one with an underground) and small maps of our writer.
+- **Acceptance:** the Definition of Done; `cargo xtask verify --with-original-data` reads every shipped map to its end; the new bounds have rejection tests; `docs/formats/h3m.md` covers the object bodies.
+- **Depends on:** T3a (`adventure/e08-t3a`).
+- **Status:** ready once T3a merges; then the user's checkpoint.
 
 ### E08 T4–T10
 
-- **Scope:** as in the epic file: T4 adventure content, T5 state and the persistent grid (with the two copy-on-write properties; the persistent module is `src/persistent.rs`, the only place `arch.toml` allows `ptr_eq`/`as_ptr`), T6 `h3-game` thin, T7 movement (starts with CR-1, `ADV-Q3`, then the user classifies A-2 and A-3), T8 fog and projection (starts with CR-3, `ADV-Q5`; A-1 needs the user's look at a map), T9 env/CLI/gates (a replay names its map by content hash, path and `MAP_IMPORT_VERSION`, ADV-Q2), T10 closure. To be refined into queue entries (ADR-0015–0017 accepted).
+- **Scope:** as in the epic file: T4 adventure content, T5 state and the persistent grid (with the two copy-on-write properties; the persistent module is `src/persistent.rs`, the only place `arch.toml` allows `ptr_eq`/`as_ptr`; `AdventureSetup` and the import of terrain and footprints), T6 `h3-game` thin (`GameSetup`, the import of players and placed heroes, `Unsupported`, `MAP_IMPORT_VERSION` documented; parse, import and validation property-tested together on arbitrary bytes), T7 movement (starts with CR-1, `ADV-Q3`, then the user classifies A-2 and A-3), T8 fog and projection (starts with CR-3, `ADV-Q5`; A-1 needs the user's look at a map), T9 env/CLI/gates (a replay names its map by content hash, path and `MAP_IMPORT_VERSION`, ADV-Q2), T10 closure. To be refined into queue entries (ADR-0015–0017 accepted).
 - **Status:** waiting (refinement into entries, before T4).
 
 ## Inbox

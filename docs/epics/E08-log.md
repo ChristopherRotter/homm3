@@ -92,3 +92,39 @@ without the label.
   E08, E08 in progress, E09/E10 restated, R01 the content split), the global HANDOFF's adventure
   row, ADR-0005/0006 amendments, `docs/02` §3 and `docs/03` (Game row, terms, the object question
   answered).
+
+### T3a — Map reader up to the terrain (2026-10-10, `adventure/e08-t3a`, after `shared/h3m-reader-gate`)
+
+The seam agreed with the user at the start: T3 builds only the reader (T3a to the terrain, T3b the
+templates, objects and events, then a checkpoint); the import moves to T5 (`AdventureSetup`:
+terrain, roads, rivers, footprints) and T6 (`GameSetup`: players, placed heroes, `Unsupported`,
+`MAP_IMPORT_VERSION` documented, and the arbitrary-bytes property over parse, import and
+validation together), because the setup types are best shaped with the validators that own them.
+
+- **Shared prerequisite** (`shared/h3m-reader-gate`, merged first): `h3-map` may use
+  `miniz_oxide` and, in tests, `h3-formats`; `verify --with-original-data` runs every crate's
+  `examples/original_data.rs` with the installation path (a crate adds one without a shared
+  change); the sandbox setup copies staged maps. The user had the installation's `Maps` copied
+  into `original-data/install/Maps` (164 files, compared byte for byte; the installation itself
+  only read).
+- **API:** `read(file, &Limits)` (bounded gzip, then `parse`), `parse(bytes, &Limits)`,
+  `gunzip`, `crc32`, `Limits` (defaults in `docs/formats/h3m.md`), `ReadError` (file too large,
+  not gzip, map too large, checksum, unsupported version, truncated, limit exceeded, invalid
+  value; field and offset each), `model::RawMap` and its parts. Agent decisions, change freely:
+  codes stay raw numbers (terrain, hero types, artifacts) and only layout-deciding values are
+  checked (condition kinds, the map size); strings stay bytes (`Text`; other language editions
+  use other code pages); bit sets stay bytes (`Bits`); unused bytes are skipped, not kept.
+- **gzip:** RFC 1952 header with its optional fields, `miniz_oxide`'s limited inflate, the
+  trailer's CRC-32 (own table, check value `CBF43926`) and length must match; a multi-member file
+  fails the checksum.
+- **Bounds:** every count is checked against its limit and against the bytes left
+  (`count × smallest record`), so a hostile count is `Truncated` before any allocation.
+- **Tests:** a test-only encoder (the inverse of `parse`) and strategies for every model a version
+  can hold; properties: round trip, every strict prefix is `Truncated`, arbitrary bytes after a
+  version and mutated maps never panic, the gzip layer reads back and fails cleanly; unit tests for
+  each error and limit, the gzip header fields, and a map of the experiment writer read back. The
+  strategies are boxed: unboxed, the value tree overflowed the test thread's stack in debug.
+- **Shipped maps:** all 164 read to the end of the terrain with every tile code in range on the
+  first run (50 RoE, 55 AB, 59 SoD); the peaks set the bounds' table. `Battle of the Sexes
+  Allied` customises 130 hero types and restricts 130.
+- **Stub:** ADV-STUB-1, the reader stops after the terrain (T3b removes it).
