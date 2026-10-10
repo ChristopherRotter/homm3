@@ -42,7 +42,7 @@ numeric  = "integer"
 
   [[rule.source]]
   kind       = "original-data"
-  ref        = "Heroes3.exe code reading (E08 T6b; survey §1.1, CR-2): the End Turn handler 0x409A70 (a human's action) calls the next-player step 0x4C6FE0, which moves the current player 0x69CCA8 on, calls the new day 0x4C7FE0 when the last player has played (it sets no movement within two calls), then for the new current player's heroes (on the map, its two tavern heroes, the heroes in its towns) sets current (+0x49) and maximum (+0x4D) points to 0x4E4D90's value. 0x4F4C00 does the same in the network branch. Placed heroes get them at setup in 0x486590"
+  ref        = "Heroes3.exe code reading (E08 T6b; survey §1.1, CR-2): the End Turn handler 0x409A70 (a human's action) calls the next-player step 0x4C6FE0, which moves the current player 0x69CCA8 on, calls the new day 0x4C7FE0 when the last player has played (it sets no movement within two calls), then for the new current player's heroes (on the map, its two tavern heroes, the heroes in its towns) sets maximum (+0x49) and current (+0x4D) points (H3API maxMovement, movement) to 0x4E4D90's value. 0x4F4C00 does the same in the network branch. Placed heroes get them at setup in 0x486590"
   confidence = "medium"
 
   [[rule.source]]
