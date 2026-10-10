@@ -4,19 +4,13 @@ Pre-refined tasks of the adventure lane, in order, then the inbox of discovered 
 
 ## Tasks
 
-Epic: `docs/epics/E08-adventure-map.md` (refined 2026-10-08, reviewed with the user the same day; decisions 1–12 there; done tasks in `E08-log.md`). Increment 1 = T1a, T1b, T2–T10, with a checkpoint with the user at T1a (done: ADR-0015–0017), after T3 (done, 2026-10-10) and at T10. T1a, T1b, T2 and T3 are done; the import moved from T3 to T5 and T6 (user, 2026-10-10). Refined into the entries below at the T3 checkpoint (2026-10-10): the user takes one or two tasks per round, each round ends at a checkpoint (this round: T4 alone). Every entry's acceptance includes the Definition of Done (`docs/05-testing.md`).
-
-### E08 T4 — Adventure content
-
-- **Scope:** `h3-adventure`'s ruleset part (`AdventureRuleset`, ADR-0015 point 2): per core terrain its passage (land, water, none) and straight step cost, the road and river kinds with the roads' costs, the native-terrain cost, the land movement points by the army's slowest speed (D-4 settled by the original's `movement.txt`, read through CR-2's speed-table part), its compiler on top of the core `Ruleset`, canonical hash and `ADVENTURE_RULESET_HASH_VERSION`. `h3-pack-adventure`: the strict `adventure.toml` format; `packs/base/adventure.toml` and the synthetic packs' files with sources; the generated-vs-source note in `packs/README.md` (battle-owned: label `cross-lane`, decision 10). Rule ids `ADV-MOV-*` for the data rules (the step rules stay T7's).
-- **Acceptance:** the base and synthetic parts compile and hash stably; every core terrain has a movement entry; malformed files and bad references are typed errors; the map entries of the reading (`check-exe-map`).
-- **Depends on:** nothing. **Status:** in progress (`adventure/e08-t4`, 2026-10-10 15:00 UTC).
+Epic: `docs/epics/E08-adventure-map.md` (refined 2026-10-08, reviewed with the user the same day; decisions 1–12 there; done tasks in `E08-log.md`). Increment 1 = T1a, T1b, T2–T10, with a checkpoint with the user at T1a (done: ADR-0015–0017), after T3 (done, 2026-10-10) and at T10. T1a, T1b, T2, T3 and T4 are done; the import moved from T3 to T5 and T6 (user, 2026-10-10). Refined into the entries below at the T3 checkpoint (2026-10-10): the user takes one or two tasks per round, each round ends at a checkpoint (the round after T3: T4 alone). Every entry's acceptance includes the Definition of Done (`docs/05-testing.md`).
 
 ### E08 T5a — Static map and setup
 
 - **Scope:** `AdventureSetup` (dimensions and levels, per tile terrain, road and river as T4's handles, object footprints with their blocked and visitable masks, heroes on the map with owner, tile and army) and its validation, one check per invariant (ADR-0015 point 4: a hero on a passable tile, not blocked, inside the map; sizes within the ruleset's bounds); `AdventureState` with the static map behind an `Arc` and the heroes in plain arrays; the canonical state hash (`ADVENTURE_STATE_HASH_VERSION`). `h3-map`'s import of terrain, roads, rivers and footprints into `AdventureSetup` (the format's codes → keys only there), run on every shipped map by `examples/original_data.rs`.
 - **Acceptance:** setups built in code cover each validation error; every shipped map imports its static layer; equal content hashes equal.
-- **Depends on:** T4. **Status:** ready after T4.
+- **Depends on:** T4 (done). **Status:** ready (the user picks the next round's tasks at the T4 checkpoint).
 
 ### E08 T5b — The persistent grid
 
@@ -61,6 +55,7 @@ Epic: `docs/epics/E08-adventure-map.md` (refined 2026-10-08, reviewed with the u
 
 ## Inbox
 
+- 2026-10-10 (T4): check `packs/base/adventure.toml`'s land table against the installation's `movement.txt` under `--with-original-data` (an `examples/original_data.rs` in `h3-pack-adventure` needs `h3-formats` as a dev-dependency to read the LOD: a shared `arch.toml` change), or harvest the table when adventure data is harvested.
 - 2026-10-10 (T3b): fixtures in `fixtures/maps/` once the user's editor maps arrive (one per version: a customised hero, many object kinds, a special condition, a rumor, a timed event, one underground): commit them with a test that reads each and checks a few fields, so CI reads real editor output (the shipped maps stay local).
 
 - 2026-10-10 (T2): the game context's rule ids use the existing prefix `GAM-` (`check-rules`, catalog file `docs/rules/catalog/game.toml`), not `GAME-` as the T1b survey proposed.
