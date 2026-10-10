@@ -50,3 +50,42 @@ how and why the work went.
   adventure lane had accepted ADR-0015 to ADR-0017 first, so the protocol ADR became ADR-0018
   (only the references this branch added were renumbered); conflicts in the workspace path
   entries, the versions table, `02-architecture.md`, the ADR index and the global HANDOFF's rows.
+
+### M1 T1 — Messages and codec (2026-10-10)
+
+- **What was built** (`crates/h3-protocol`, all *provisional* in names and layout): `wire` (the
+  published language: `ClientMessage` and `ServerMessage`, the battle `Command`, `Event`,
+  `Observation` with `Stack`, `Hero`, `OwnHero` and `SideView`, the `Manifest` with `KeyTables`
+  and `Field`, `RejectCode`, `Refusal`, `GoodbyeReason`, `WireU64` for 64-bit values as decimal
+  strings), `codec` (one JSON document per frame, the size checked before parsing,
+  `DEFAULT_MAX_CLIENT_FRAME` 4096 bytes, decode errors `TooLarge` and `Malformed`) and `map`
+  (wire ↔ engine). `PROTOCOL_VERSION` is 1.
+- **Projection by construction.** `map::observe` and `map::events` take the viewer and call the
+  engine's `observe` and `project`; the raw observation conversion is crate-private, so the
+  session core (T2) cannot send an unprojected observation or event.
+- **The mapping is exhaustive (the user, ADR-0018 point 5 amended).** The first build had the
+  ADR's wildcard arms to `Unsupported`/`Other`; llvm-cov counted each as an uncovered region
+  (measured on a scratch crate and on the real one: 6 arms, 9 regions, 14 lines), so they
+  needed a file exclusion in the shared `coverage-exclusions.toml` (`#[coverage(off)]` is
+  still unstable on 1.97). Asked where the exclusion should land, the user chose no exclusion:
+  exhaustive matches, a new engine variant fails the build until mapped; the `Unsupported` and
+  `Other` wire variants went with the arms. The global HANDOFF names the trap for the battle
+  lane. Engine enums matched: `Command`, `EventKind` (47 kinds), `CommandError` (29),
+  `CastTarget`, `DamageRoll`, `ObstacleKind` (`h3-content`); the contract enums `BattleSide` and
+  `BattleResult` are a seam anyway.
+- **Choices for the review** (the epic's review list): `Refused` for a refused join, the
+  session's codes `NotSeated` and `NotStarted`, the manifest in `Joined` rather than `Welcome`
+  (ADR-0018 point 10 says "at join"), flag sets as named booleans, hexes as indices with the
+  field's size in the manifest, the observation as the sim encoding's values (attack without
+  the melee bonus, as the encoding; the own hero's spell bonuses not yet on the wire), `postcard`
+  as a dev-dependency for the round trips.
+- **Key tables.** Every kind has the handle-to-key direction without a battle-lane ask:
+  creatures through `creature_count` and `creature_key`, the others through their slices'
+  `key` fields in handle order.
+- **Tests** (18): every message round-trips in JSON and `postcard`; the exact JSON forms; 64-bit
+  values as strings and their refusals; unknown fields refused (a command naming a side does
+  not decode); the size limit before parsing; malformed frames, deep nesting; arbitrary bytes
+  and JSON-like text never panic (proptest); every engine variant maps to the wire variant of
+  the same name; commands round-trip; events projected; the observation's every part;
+  the legal list validates in the engine; castable spells and their targets; key tables.
+  `h3-protocol` at 100 % lines and regions; `verify --scope server` with no failing step.
