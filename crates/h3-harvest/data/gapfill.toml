@@ -2003,6 +2003,13 @@ url = "docs/formats/installation.md"
 retrieved = "2026-10-10"
 
 [[source]]
+id = "exe-casting-limits"
+kind = "original-data"
+ref = "Heroes3.exe code reading (docs/formats/installation.md 7.23): magic is refused for both sides while either hero wears the Orb of Inhibition (126): 0x41F890 (the hero's cast in 0x59FE30, the creature casts and raises 0x4476C0, the Enchanters 0x447FE0) and the hero's book button 0x59E900; while either hero wears Recanter's Cloak (83) the book button refuses a spell above level 2 and the effect test 0x5A8090 returns 0 for every spell above level 2, creature abilities included"
+url = "docs/formats/installation.md"
+retrieved = "2026-10-10"
+
+[[source]]
 id = "exe-spell-specialist"
 kind = "original-data"
 ref = "Heroes3.exe code reading (docs/formats/installation.md 7.12): the specialty bonus 0x4E5FF0 switches on the spell (byte table 0x4E60E8, jumps 0x4E60CC): Bloodlust, Precision, Weakness, Stone Skin, Prayer and Haste by the stack's creature level (i32 table 0x63EAA8: 3, 3, 2, 2, 1, 1, 0), Slayer likewise (0x63EAC4: 4, 3, 2, 1, 0, 0, 0), Disrupting Ray 2, Fortune 3 - v; every other spell ceil((hero level div creature level) x t x 0.03)"
@@ -2355,6 +2362,17 @@ artifacts = ["Titan's Thunder"]
 effects = [{ kind = "spells", spell = "titans_lightning_bolt" }]
 sources = ["exe-available-spells"]
 
+# The casting limits (E04b T8b1; pack format v31; HER-BAT-015, BAT-MAG-061, BAT-MAG-062).
+[[artifacts.effects]]
+artifacts = ["Orb of Inhibition"]
+effects = [{ kind = "no_casting" }]
+sources = ["exe-casting-limits"]
+
+[[artifacts.effects]]
+artifacts = ["Recanter's Cloak"]
+effects = [{ kind = "spell_level_limit", level = 2 }]
+sources = ["exe-casting-limits"]
+
 # Effects no epic has modelled yet; the pack marks these artifacts, and every artifact without a
 # modelled effect must be listed here.
 [[artifacts.pending]]
@@ -2363,10 +2381,10 @@ what = "spell immunity and limits, opening spells, Eagle Eye"
 artifacts = [
     "Badge of Courage",
     "Bird of Perception", "Stoic Watchman", "Emblem of Cognizance",
-    "Recanter's Cloak", "Sphere of Permanence", "Orb of Vulnerability",
+    "Sphere of Permanence", "Orb of Vulnerability",
     "Pendant of Dispassion", "Pendant of Second Sight", "Pendant of Holiness", "Pendant of Life",
     "Pendant of Death", "Pendant of Free Will", "Pendant of Negativity", "Pendant of Total Recall",
-    "Orb of Inhibition", "Armageddon's Blade",
+    "Armageddon's Blade",
     "Angelic Alliance", "Armor of the Damned", "Power of the Dragon Father",
 ]
 

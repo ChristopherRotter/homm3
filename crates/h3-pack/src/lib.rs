@@ -1266,6 +1266,11 @@ enum EffectDto {
         level: u8,
     },
     Scroll {},
+    /// Pack format v31 (E04b T8b1).
+    NoCasting {},
+    SpellLevelLimit {
+        level: u8,
+    },
 }
 
 /// Whose stacks a morale or luck effect changes, as files write it (`own` by default, `enemy`,
@@ -1472,6 +1477,8 @@ impl EffectDto {
                 level,
             },
             Self::Scroll {} => HeroEffect::Scroll,
+            Self::NoCasting {} => HeroEffect::NoCasting,
+            Self::SpellLevelLimit { level } => HeroEffect::SpellLevelLimit { level },
         })
     }
 }
@@ -2235,6 +2242,13 @@ pub enum EffectEntry {
         /// Extra rounds.
         rounds: u8,
     },
+    /// [`BattleEffect::NoCasting`] (a struct variant, so that unknown keys are rejected).
+    NoCasting {},
+    /// [`BattleEffect::SpellLevelLimit`].
+    SpellLevelLimit {
+        /// The highest spell level allowed.
+        max_level: u8,
+    },
 }
 
 impl SelectorEntry {
@@ -2373,6 +2387,8 @@ impl EffectEntry {
                 rate: Rate { bp, single },
             },
             Self::SpellDuration { rounds } => BattleEffect::SpellDuration { rounds },
+            Self::NoCasting {} => BattleEffect::NoCasting,
+            Self::SpellLevelLimit { max_level } => BattleEffect::SpellLevelLimit { max_level },
         })
     }
 
@@ -2452,6 +2468,8 @@ impl EffectEntry {
                 single: rate.single,
             },
             BattleEffect::SpellDuration { rounds } => Self::SpellDuration { rounds },
+            BattleEffect::NoCasting => Self::NoCasting {},
+            BattleEffect::SpellLevelLimit { max_level } => Self::SpellLevelLimit { max_level },
             BattleEffect::AlignmentGroup { factions } => Self::AlignmentGroup {
                 factions: factions
                     .factions()
@@ -3261,6 +3279,9 @@ mod tests {
                         single: NonZeroU32::new(0x3e99_999a),
                     },
                 },
+                // E04b T8b1.
+                BattleEffect::NoCasting,
+                BattleEffect::SpellLevelLimit { max_level: 2 },
             ])
             .collect();
         // Single-precision values of their own (E04b T3c, OPEN-QUESTIONS Q45).
@@ -4380,7 +4401,7 @@ mod tests {
             (params.primary_min, params.primary_max, params.backpack),
             ([0, 0, 1, 2], 40, 3)
         );
-        assert_eq!(r.artifacts().len(), 15);
+        assert_eq!(r.artifacts().len(), 17);
         let by_key = |k: &str| r.artifact(r.artifact_by_key(k).unwrap()).unwrap();
         let regalia = by_key("synthetic-ext:storm_regalia");
         assert_eq!(regalia.class, ArtifactClass::Relic);
@@ -4495,10 +4516,29 @@ mod tests {
                 HeroEffect::Scroll,
             ]
         );
+        // The casting limits (pack format v31, E04b T8b1).
+        let limited = SYNTHETIC_PACK.replacen(
+            bell,
+            "{ kind = \"no_casting\" }, { kind = \"spell_level_limit\", level = 2 },",
+            1,
+        );
+        assert!(!limited.contains(bell));
+        let l = compile(&[&limited], "synthetic:faithful").unwrap();
+        assert_eq!(
+            l.artifact(l.artifact_by_key("synthetic:gloom_bell").unwrap())
+                .unwrap()
+                .effects[2..],
+            [
+                HeroEffect::NoCasting,
+                HeroEffect::SpellLevelLimit { level: 2 }
+            ]
+        );
         for to in [
             "{ kind = \"spells\" },",
             "{ kind = \"spells\", school = \"storm\", level = 1 },",
             "{ kind = \"scroll\", spell = \"spark\" },",
+            "{ kind = \"no_casting\", level = 2 },",
+            "{ kind = \"spell_level_limit\" },",
         ] {
             let text = SYNTHETIC_PACK.replacen(bell, to, 1);
             assert!(

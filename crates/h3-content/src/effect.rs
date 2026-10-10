@@ -461,6 +461,15 @@ pub enum HeroEffect<C, K, S, F, L> {
     /// Each copy of the artifact carries a spell of its own, available to the hero while the copy
     /// is worn (the Spell Scroll; E04b T8a, HER-ART-003, HER-SPL-002).
     Scroll,
+    /// Neither side casts in a battle of the hero: no hero's spell, no creature's cast (the Orb
+    /// of Inhibition; E04b T8b1, HER-BAT-015).
+    NoCasting,
+    /// No spell above `level` is cast by a hero or affects a stack in a battle of the hero,
+    /// whoever casts it (Recanter's Cloak: 2; E04b T8b1, HER-BAT-015).
+    SpellLevelLimit {
+        /// The highest spell level allowed (1..=4).
+        level: u8,
+    },
 }
 
 /// An effect as written in a pack (references are keys).
@@ -470,7 +479,7 @@ pub type CompiledHeroEffect = HeroEffect<CreatureTypeId, SkillId, SpellId, Facti
 
 impl<C, K, S, F, L> HeroEffect<C, K, S, F, L> {
     /// Pack names, indexed by [`HeroEffect::code`].
-    pub const NAMES: [&'static str; 30] = [
+    pub const NAMES: [&'static str; 32] = [
         "morale",
         "luck",
         "ranged_damage",
@@ -501,6 +510,8 @@ impl<C, K, S, F, L> HeroEffect<C, K, S, F, L> {
         "spells",
         "spell_mastery",
         "scroll",
+        "no_casting",
+        "spell_level_limit",
     ];
 
     /// Stable code of the variant (canonical hash, duplicate checks).
@@ -536,6 +547,8 @@ impl<C, K, S, F, L> HeroEffect<C, K, S, F, L> {
             Self::Spells { .. } => 27,
             Self::SpellMastery { .. } => 28,
             Self::Scroll => 29,
+            Self::NoCasting => 30,
+            Self::SpellLevelLimit { .. } => 31,
         }
     }
 
@@ -685,6 +698,8 @@ impl<C, K, S, F, L> HeroEffect<C, K, S, F, L> {
                 level: *level,
             },
             Self::Scroll => HeroEffect::Scroll,
+            Self::NoCasting => HeroEffect::NoCasting,
+            Self::SpellLevelLimit { level } => HeroEffect::SpellLevelLimit { level: *level },
         })
     }
 
@@ -753,6 +768,9 @@ impl<C, K, S, F, L> HeroEffect<C, K, S, F, L> {
             } if !(1..=MAX_SPELL_LEVEL).contains(level) => Some("spells level must be 1..=5"),
             Self::SpellMastery { level, .. } if !(1..=MAX_SKILL_LEVEL).contains(level) => {
                 Some("spell_mastery level must be 1..=3")
+            }
+            Self::SpellLevelLimit { level } if !(1..MAX_SPELL_LEVEL).contains(level) => {
+                Some("spell_level_limit level must be 1..=4")
             }
             _ => None,
         }
@@ -954,7 +972,8 @@ impl CanonicalHash for CompiledHeroEffect {
             Self::NoRangePenalty { creatures } | Self::ShootWhenAdjacent { creatures } => {
                 hash_selector(*creatures, h);
             }
-            Self::NoRetreat | Self::SpellBook | Self::Scroll => {}
+            Self::NoRetreat | Self::SpellBook | Self::Scroll | Self::NoCasting => {}
+            Self::SpellLevelLimit { level } => h.write_u8(*level),
             Self::SchoolMastery { school, level } => {
                 school.hash_into(h);
                 h.write_u8(*level);
@@ -1071,6 +1090,8 @@ mod tests {
             },
             E::SpellMastery { spell: 1, level: 3 },
             E::Scroll,
+            E::NoCasting,
+            E::SpellLevelLimit { level: 2 },
         ]
     }
 
@@ -1311,6 +1332,8 @@ mod tests {
             },
             E::SpellMastery { spell: 0, level: 0 },
             E::SpellMastery { spell: 0, level: 4 },
+            E::SpellLevelLimit { level: 0 },
+            E::SpellLevelLimit { level: 5 },
         ];
         for e in bad {
             assert!(e.parameter_error().is_some(), "{e:?}");

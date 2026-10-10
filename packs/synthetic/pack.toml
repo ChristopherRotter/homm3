@@ -1416,6 +1416,23 @@ cost = { coin = 1000 }
 slot = "charm"
 effects = [{ kind = "scroll" }]     # each copy holds a spell of its own, given while worn
 
+# Artifacts that limit casting (pack format v31, E04b T8b1; HER-BAT-015).
+[[artifact]]
+id = "hush_orb"
+name = "Hush Orb"
+class = "relic"
+cost = { coin = 20000 }
+slot = "charm"
+effects = [{ kind = "no_casting" }]  # neither side casts in its wearer's battles
+
+[[artifact]]
+id = "warding_mantle"
+name = "Warding Mantle"
+class = "major"
+cost = { coin = 8000 }
+slot = "charm"
+effects = [{ kind = "spell_level_limit", level = 2 }]  # no spell above level 2 in them
+
 # Hero parameters (Tier 2, E04a T4a): invented limits, smaller than the original's.
 [hero_params]
 primary_min = [0, 0, 1, 2]          # HER-DET-001: lower totals count as these

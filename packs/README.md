@@ -177,7 +177,7 @@ override, replacing the list) names the creature types it upgrades into: at most
 none twice; references follow the reference rules and may name later creatures of the pack.
 Hero effects that select "a creature" apply to it and its direct upgrades.
 
-## Hero content (format v3, E04a T3; battle magic format v4, E04b T2a; v5 T3a; v6 T3b1; v7 T3b1b; v8 T3b2; v9 T3c; v10 T4a; v11 T4b; v12 T4c; v13 T5a; v14 T5c1; v15 T5c2; v16 T5b; v17 T6a; v18 T6b; v19 T7a1; v20 T7a2; v21 T7a3; v22 T7b1; v23 T7b2a; v24 T7b2b; v25 T7b3; v26 T7b4; v27 T7c1; v28 T7c2a; v29 T7c2b; v30 T8a)
+## Hero content (format v3, E04a T3; battle magic format v4, E04b T2a; v5 T3a; v6 T3b1; v7 T3b1b; v8 T3b2; v9 T3c; v10 T4a; v11 T4b; v12 T4c; v13 T5a; v14 T5c1; v15 T5c2; v16 T5b; v17 T6a; v18 T6b; v19 T7a1; v20 T7a2; v21 T7a3; v22 T7b1; v23 T7b2a; v24 T7b2b; v25 T7b3; v26 T7b4; v27 T7c1; v28 T7c2a; v29 T7c2b; v30 T8a; v31 T8b)
 
 Spell schools, spells, secondary skills, hero classes and hero types (ADR-0013). References follow
 the reference rules above; every kind may refer to content of its dependency closure.
@@ -527,6 +527,8 @@ different creatures or statistics.
 | `spells` | exactly one of `school`, `level` (1..=5), `spell` | since v30: while worn, the hero has every spell of the school or of the level (never a creature ability nor a spell with `granted_by_name_only`) or the named spell (the Tomes, Spellbinder's Hat, Titan's Thunder, Armageddon's Blade, the Sea Captain's Hat; HER-SPL-002) |
 | `spell_mastery` | `spell`, `level` (1..=3) | since v30: the hero casts the spell at least at this mastery (Armageddon's Blade: Armageddon at Expert; HER-SPL-003) |
 | `scroll` | — | since v30: each copy of the artifact holds a spell of its own, which the hero has while the copy is worn (the Spell Scroll; HER-ART-003) |
+| `no_casting` | — | since v31: neither side casts in the hero's battles: no hero's spell, no creature's cast or raise, no periodic cast; the strike's creature magic stays (the Orb of Inhibition; HER-BAT-015, BAT-MAG-061) |
+| `spell_level_limit` | `level` (1..=4) | since v31: in the hero's battles no spell above `level` is cast by a hero or affects a stack, whoever casts it; the smallest counts (Recanter's Cloak: 2; HER-BAT-015, BAT-MAG-062) |
 
 The three `*_specialty` kinds are allowed in a hero's `specialty` only.
 

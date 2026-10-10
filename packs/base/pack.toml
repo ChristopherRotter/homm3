@@ -6163,11 +6163,12 @@ slot = "misc"
 effects = [{ kind = "spell_damage", bp = 5000, school = "water" }]
 
 [[artifact]]
-id = "recanters_cloak"  # original id 83; pending: E04b
+id = "recanters_cloak"  # original id 83
 name = "Recanter's Cloak"
 class = "major"
 cost = { "gold" = 8000 }
 slot = "shoulders"
+effects = [{ kind = "spell_level_limit", level = 2 }]
 
 [[artifact]]
 id = "spirit_of_oppression"  # original id 84
@@ -6480,11 +6481,12 @@ slot = "misc"
 effects = [{ kind = "no_retreat" }]
 
 [[artifact]]
-id = "orb_of_inhibition"  # original id 126; pending: E04b
+id = "orb_of_inhibition"  # original id 126
 name = "Orb of Inhibition"
 class = "relic"
 cost = { "gold" = 20000 }
 slot = "misc"
+effects = [{ kind = "no_casting" }]
 
 [[obstacle]]
 id = "obstacle_0"
