@@ -4,7 +4,7 @@ Instruction-count baselines for `cargo xtask bench-check` (`docs/05-testing.md`,
 file per workload: `benches/<lane>/<workload>.toml`. The directory is the owning lane
 (`lanes.toml`), so each lane's +2 % gate is its own and two lanes never re-baseline the same file.
 
-- `cargo xtask bench-check` measures every workload; `--lane <lane>` or `--workload <name>`
+- `cargo xtask bench-check` measures every workload but the lane-only ones (below); `--lane <lane>` or `--workload <name>`
   narrows it; `cargo xtask verify --scope <lane>` measures the lane's workloads only.
 - `cargo xtask bench-check --update --workload <name>` re-baselines one workload; give the reason
   in the commit message (`docs/lanes/battle/HANDOFF.md` has the battle lane's traps about it).
