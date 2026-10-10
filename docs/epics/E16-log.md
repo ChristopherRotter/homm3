@@ -38,11 +38,15 @@ how and why the work went.
   `GetMovementCost`, `CalcMaxMovement`, `MaxLandMovement` and `GetScoutingRadius`, which
   `docs/exe/map.toml` does not cover (the `test` step fails with it: xtask's
   `the_real_map_passes`); the merge was docs-only, so CI never ran on it. A map entry needs the function's size,
-  which needs the executable (not staged in this session). **The user decided the adventure lane
-  fixes it** (a suggested task); until then the M0 pull request's full verify is red on these
-  two steps only. Everything else passed on the M0 commit (coverage, determinism, ffi-smoke,
-  bench-check, deny).
+  which needs the executable (not staged in this session). The user left the fix to the adventure
+  lane, which added the four map entries on `master` (`8eb412c`). Everything else passed on the
+  M0 commit (coverage, determinism, ffi-smoke, bench-check, deny).
 - **Also found.** The baseline's `test` step failed the battle property test
   `every_step_preserves_the_invariants` (a good-morale step without `HAD_MORALE` on the mover). Its
   inputs are random per run, so CI on `master` passed; the shrunk case reproduces in 5 s. Handed to
-  the battle lane as a suggested task with the regression line; not committed here.
+  the battle lane as a suggested task with the regression line; not committed here. The battle
+  lane's `65a7a75` (the invariant allows a round's end after a lost turn) makes that case pass.
+- **The merge with `master`** (E08 T2 and T3, E04b T8b) before the pull request merged: the
+  adventure lane had accepted ADR-0015 to ADR-0017 first, so the protocol ADR became ADR-0018
+  (only the references this branch added were renumbered); conflicts in the workspace path
+  entries, the versions table, `02-architecture.md`, the ADR index and the global HANDOFF's rows.
