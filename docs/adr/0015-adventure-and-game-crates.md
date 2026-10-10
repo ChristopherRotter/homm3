@@ -1,12 +1,12 @@
-# ADR-NNNN: Adventure and game crates, ruleset parts and the import boundary
+# ADR-0015: Adventure and game crates, ruleset parts and the import boundary
 
-- Status: Proposed (E08 T1a draft, 2026-10-09; under the user's review)
+- Status: Accepted (2026-10-10)
 - Date: 2026-10-09
-- Deciders: user + adventure lane (refinement 2026-10-07/08, decisions 2–4 of the epic)
+- Deciders: user + adventure lane (refinement 2026-10-07/08, decisions 2–4 of the epic; ADV-Q1,
+  ADV-Q2)
 
 <!-- Decisions only. The reasoning is in docs/epics/E08-adventure-map.md (decisions 2-4 and the
-     review's corrections). Open points: ADV-Q1, ADV-Q2 (docs/OPEN-QUESTIONS.md). Longer than
-     80 lines because it covers decisions 2-4 at once (T1a: three drafts for decisions 2-9). -->
+     review's corrections). Longer than 80 lines because it covers decisions 2-4 at once. -->
 
 ## Context
 
@@ -47,12 +47,13 @@ input that must not build a state no sequence of commands could build (`docs/06-
    `h3-adventure` until a consumer outside it needs them.
 4. **The import boundary has three stages, each with one job.**
    - *Parse* (`h3-map`): bytes → raw model, faithful to the file's version (RoE, AB, SoD),
-     without ruleset handles; typed errors, no panics; fuzzed. Input bounds are configured
+     without ruleset handles; typed errors, no panics; property-tested on arbitrary bytes
+     (stable; `cargo-fuzz` later, the user 2026-10-10). Input bounds are configured
      limits: by default the largest map the supported versions allow (144×144, two levels,
      eight players), with caps on counts and string lengths that T3 sets from the shipped maps.
    - *Import* (`h3-map`): raw model + rules → `h3_game::GameSetup`. Maps the format's codes to
      content keys and handles; draws nothing (random placeholders stay placeholders, resolved
-     by `h3-game` from a setup stream, ADR draft "game orchestration"); rejects what the
+     by `h3-game` from a setup stream, ADR-0017); rejects what the
      current increment cannot represent with a typed `Unsupported` error (in increment 1: a
      random hero, a hero generated at a main town). Checks no game invariant.
    - *Validate* (logic): `h3-game` builds the state from the setup, checks its own part
@@ -71,16 +72,17 @@ input that must not build a state no sequence of commands could build (`docs/06-
 
 - T2's `shared/` pull request creates the four skeletons, the `arch.toml` edges, the lane
   paths, the two ids in `h3-contracts` (a seam addition no battle code reads), the kernel's
-  per-player stream ids (ADR draft "game orchestration", point 4) and the versions rows. On
+  per-player stream ids (ADR-0017 point 4) and the versions rows. On
   acceptance this ADR amends ADR-0005 (the crates, the first application crate as a logic
   crate) and ADR-0006 (ruleset parts, one pack file per context); `docs/02` §3 and `docs/03`
   follow.
-- One validator per invariant: a map cannot start a state that breaks one. The fuzz target runs
-  parse, import and validation together.
+- One validator per invariant: a map cannot start a state that breaks one. The arbitrary-bytes
+  property test (later the fuzz target) runs parse, import and validation together.
 - After the writer's move, `h3-experiment` (battle) depends on `h3-map` (adventure): an
   adventure change can break the battle lane's build; CI's full verify catches it.
-- How a replay names its map (embedded setup, or the file by hash with an import version) is
-  open: ADV-Q2, needed by T9.
+- A replay names its map by content hash and path (a committed fixture, or the server's copy next
+  to its journal) plus `h3-map`'s import version; verifying re-imports the map, and an import
+  change bumps that version (ADV-Q2). Shipped maps never enter git (ADR-0009).
 
 ## Alternatives considered
 
@@ -94,3 +96,10 @@ input that must not build a state no sequence of commands could build (`docs/06-
   and a map could build what play cannot.
 - Ids local to each context, mapped by `h3-game`: a mapping table in every projection and seam
   for no gain.
+- A replay that embeds the setup or the map file's bytes: every replay carries the whole map (up
+  to 41 472 tiles); an embedded setup returns only if saves need it.
+
+## Revision history
+
+- 2026-10-10: Accepted (E08 T1a draft; ADV-Q1 and ADV-Q2 answered as recommended; parsers
+  property-tested on stable until `cargo-fuzz` is set up).

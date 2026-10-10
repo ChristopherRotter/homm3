@@ -1,14 +1,11 @@
-# ADR-NNNN: Adventure state: persistent grids, object kinds and fog of war
+# ADR-0016: Adventure state: persistent grids, object kinds and fog of war
 
-- Status: Proposed (E08 T1a draft, 2026-10-09; under the user's review)
+- Status: Accepted (2026-10-10)
 - Date: 2026-10-09
 - Deciders: user + adventure lane (refinement 2026-10-07/08, decisions 1, 6 and 7 of the epic)
 
-<!-- Decisions only. The reasoning is in docs/epics/E08-adventure-map.md. New at T1a: the
-     per-object table (points 1 and 4) and the check-arch tokens (point 2) apply decision 6 to
-     object state and enforce it; point 4 corrects decision 1's visiting (two modes) and says
-     that heroes block in increment 1; point 6 resolves visibility at emission. Longer than 80
-     lines because it covers decisions 1, 6 and 7 at once. -->
+<!-- Decisions only. The reasoning is in docs/epics/E08-adventure-map.md. Longer than 80 lines
+     because it covers decisions 1, 6 and 7 at once. -->
 
 ## Context
 
@@ -59,15 +56,15 @@ left open whether objects are a closed enum or data-driven primitives. No logic 
    plus its rule. No scripting, and no code keyed by object names or class numbers outside the
    import's mapping. A blocked tile cannot be entered. A visitable tile is visited by kind
    either by entering it, which ends the move, or from a neighbouring tile without entering
-   (in VCMI, for example, resources, artifacts and monsters); T1b's survey lists the modes
-   (from increment 2). **Increment 1 has one kind, `Blocker`, and no object types:** every
+   (in VCMI, for example, resources, artifacts and monsters); increment 2's survey lists the
+   modes. **Increment 1 has one kind, `Blocker`, and no object types:** every
    object blocks its blocked *and* its visitable tiles, a tile holding a hero blocks too
    (meetings and battles come later), and a hero's own tile is always leavable.
 5. **Fog of war.** Each player has an explored layer (a bitset grid). An explored tile stays
-   visible with its current content until a rule clears it (Cover of Darkness): the original
-   keeps no line-of-sight memory (to be confirmed by T1b). Reveals set disk-shaped areas;
-   clearing is supported. The **fringe** is the hidden tiles touching an explored tile (exact
-   shape from T1b). A viewer sees on explored tiles the public part of their content; on the
+   visible with its current content until a rule clears it (Cover of Darkness): no line-of-sight
+   memory (VCMI, survey `E08-adventure-core.md` §2). Reveals set disk-shaped areas;
+   clearing is supported. The **fringe** is the hidden tiles touching an explored tile (the
+   reveal's shape: ADV-Q5). A viewer sees on explored tiles the public part of their content; on the
    fringe terrain, roads and rivers, plus object appearance under the `faithful` profile once
    `ADV-QUIRK-1` is confirmed (Q30's rule: until then the clean behaviour only); nothing else of
    a hidden tile. Shared vision of allies comes with teams (E10).
@@ -86,8 +83,8 @@ left open whether objects are a closed enum or data-driven primitives. No logic 
 - A fork barely grows with map size; T5 measures it on 36×36 and 144×144 (E08 decision 11).
   Hot reads pay an indirection per leaf; T5 measures that against the flat copy, and a grid
   that loses on hot reads goes back to the user.
-- T2 adds the forbidden tokens to `arch.toml` with the persistent module as their only allowed
-  place. On acceptance `docs/03` gains the terms static map, explored, fringe, object kind,
+- `arch.toml` forbids the pointer-identity tokens in logic crates outside the persistent module
+  `crates/h3-adventure/src/persistent.rs` (E08 T2). On acceptance `docs/03` gains the terms static map, explored, fringe, object kind,
   blocked and visitable tile.
 - Object behaviour grows by variants with rule ids; the import's class mapping is the only place
   that knows the original's class numbers.
@@ -103,3 +100,7 @@ left open whether objects are a closed enum or data-driven primitives. No logic 
   control anyway.
 - Objects as data-driven predicates: Tier 4 by the back door (ADR-0012). Code per original
   class: 200 match arms keyed by numbers.
+
+## Revision history
+
+- 2026-10-10: Accepted (E08 T1a draft; the T1b survey's findings on fog folded into point 5).
