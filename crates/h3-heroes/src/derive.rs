@@ -151,6 +151,7 @@ fn magic(details: &HeroDetails, ruleset: &Ruleset) -> BattleMagic {
 /// spells the hero has not learned (an artifact's spell is not learned) of a level at most the
 /// largest `max_level`. None without a `max_level` (no skill).
 fn eagle_eye(details: &HeroDetails, ruleset: &Ruleset) -> Option<EagleEye> {
+    // rule: HER-SPL-004
     let single = single_precision(ruleset);
     let mut sum = RateSum::default();
     let mut max_level = 0;

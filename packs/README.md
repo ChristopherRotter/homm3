@@ -536,6 +536,8 @@ different creatures or statistics.
 | `spell_level_immunity` | `level` (1..=5) | since v31: the stacks the hero controls are never affected by a spell up to `level`, Dispel excepted; the largest counts (Power of the Dragon Father: 4; BAT-MAG-064) |
 | `mind_immunity` | — | since v31: the stacks the hero controls are immune to mind spells unless negated (Badge of Courage; BAT-MAG-065) |
 | `negate_immunities` | — | since v31: the side's spells, and spells at the stacks the hero controls, ignore the creatures' immunities and all magic resistance (the Orb of Vulnerability; BAT-MAG-066) |
+| `opening_spell` | `spell`, `mastery` (0..=3), `power` (≥ 1) | since v33: the side casts the spell for free at its first stack activation outside the tactics phase, at the mastery, its power the effects' duration, if it affects some stack; in the order of the artifact types (Angelic Alliance: Expert Prayer, 10; Armor of the Damned: Expert Slow, Curse, Weakness, Misfortune, 50; HER-BAT-017, BAT-MAG-068) |
+| `eagle_eye` | `bp` (1..=10 000), `max_level` (0..=5, default 0) | since v33: Eagle Eye's chance to pick a spell at each enemy hero cast grows by `bp` (a specialty grows the skill's), spells up to the largest `max_level` may be picked (the skill: 40/50/60 %, levels 2/3/4; the Bird of Perception, the Stoic Watchman, the Emblem of Cognizance: +5/+10/+15 % with the skill; HER-SPL-004, BAT-MAG-069) |
 
 The three `*_specialty` kinds are allowed in a hero's `specialty` only.
 
@@ -577,11 +579,12 @@ theirs (the derivation, HER-BAT-001). Identical artifacts count once, except `pr
 **What the harvested hero content leaves out** (the harvester's report lists it; sources and
 layouts: `docs/formats/installation.md` §6–§7, `crates/h3-harvest/data/gapfill.toml`):
 
-- Skills without effects yet: Intelligence, Mysticism, Wisdom, Eagle Eye (E04b),
-  Ballistics (E04c), Necromancy and Learning (outcome application, E08–E10), and the adventure
-  skills. Their `[[secondary_skill]]` entries exist without levels. The magic school skills give
-  `school_mastery` (gap-fill), Sorcery `spell_damage` and Resistance `magic_resistance` (the
-  executable's value tables, E04b T2a and T2d).
+- Skills without effects yet: Intelligence, Mysticism, Wisdom, Ballistics (E04c), Necromancy
+  and Learning (outcome application, E08–E10), and the adventure skills. Their
+  `[[secondary_skill]]` entries exist without levels. The magic school skills give
+  `school_mastery` (gap-fill), Sorcery `spell_damage`, Resistance `magic_resistance` and Eagle Eye
+  `eagle_eye` with the level limit the skill's level + 1 (the executable's value tables, E04b T2a,
+  T2d and T8d).
 - Specialties not modelled: 13 resource and 2 creature-upgrade specialties (adventure), Adrienne
   (none). Spell specialties are `spell_specialty` with the SoD growth of 3 % per level (gap-fill
   `[heroes.spell_specialty]`), Ciele's and Luna's a fixed `spell_damage` (+50 % Magic Arrow,
@@ -605,12 +608,10 @@ research notes and disputes in `docs/rules/surveys/E04-artifacts.md`):
 
 - The primary skills come from the executable's table; war machines, combination parts and every
   other effect from the gap-fill file. Effects no epic models yet are **pending** (the pack marks
-  such entries `# pending: <epic>`): spells, spell immunity and resistance, mana, spell duration
-  and damage, Eagle Eye (E04b; 20 artifacts since T8a gave the Spell Scroll, the Tomes,
-  Spellbinder's Hat, Titan's Thunder and Armageddon's Blade their spells and moved the mana
-  artifacts and the spell book that equipping Titan's Thunder adds to E08–E10; among them the
-  opening spells of Angelic Alliance and Armor of the Damned), the Catapult and the siege obstacle
-  penalty (E04c), Necromancy (the three Necromancy artifacts and the Cloak of the Undead King;
+  such entries `# pending: <epic>`): none for E04b since T8d (the opening spells of Angelic
+  Alliance and Armor of the Damned and Eagle Eye's three artifacts were its last; the mana
+  artifacts and the spell book that equipping Titan's Thunder adds went to E08–E10), the Catapult
+  and the siege obstacle penalty (E04c), Necromancy (the three Necromancy artifacts and the Cloak of the Undead King;
   outcome application, E08–E10, together with the Necromancy skill) and the adventure effects
   (movement, vision, resources, growth, the Grail; E08–E10).
 - Not harvested: the descriptions, the three unused SoD rows (Diplomat's Suit, Mired in Neutrality,
