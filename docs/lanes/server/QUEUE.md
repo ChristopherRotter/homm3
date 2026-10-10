@@ -4,13 +4,43 @@ Pre-refined tasks of the server lane, in order, then the inbox of discovered wor
 
 ## Tasks
 
-### Server refinement (E16)
+Epic: `docs/epics/E16-server.md` (refined; the user answered SRV-Q1 to SRV-Q11 and confirmed the autonomy contract on 2026-10-09). M0 is a shared pull request; M1 = T1–T4 ends at a checkpoint with the user, after a fresh reviewer agent. Work under the autonomy contract (`HANDOFF.md`).
 
-- **Scope:** the refinement session with the user; the brief is in `HANDOFF.md` ("Brief for the refinement session"). Output: the protocol ADR draft (`docs/lanes/server/adr-drafts/`), the autonomy contract agreed, questions (`SRV-Q<n>`), the first milestone and its tasks in this queue.
-- **Acceptance:** the user agreed the protocol ADR topics' direction, the autonomy contract and the first milestone; this queue holds pre-refined tasks for it.
-- **Depends on:** Phase 0 merged.
-- **Status:** waiting (the user's answers to SRV-Q1 to SRV-Q11). Drafts done on 2026-10-08: three ADR drafts in `adr-drafts/`, `docs/epics/E16-server.md` (milestones M0–M6, M1's tasks T1–T4, the autonomy contract) and `docs/epics/E16-design.md`. When the answers are in: correct the drafts, move M0 and M1's tasks into this queue as entries, and file SRV-Q6 with the adventure lane if agreed.
+### E16 M0 — Shared skeleton
+
+- **Scope:** first the protocol ADR draft (`adr-drafts/protocol.md`) reviewed and accepted by the user, then numbered and moved to `docs/adr/` with its index row. Then a `shared/server-skeleton` pull request: crate skeletons `h3-protocol` (adapter layer, `logic = true`: `no_std` + `alloc`, the logic header; if `check-arch` rejects a logic adapter, a small tool change in the same PR) and `h3-server` (adapter, a binary); workspace members and dependencies in `Cargo.toml` (`serde`, `serde_json` with `alloc` only for the protocol; `tokio` with `rt-multi-thread`, `net`, `time`, `sync`, `macros`; `tokio-tungstenite`; `getrandom`; `toml`); the edges M1 needs in `arch.toml`; `cargo deny` passes; `benches/server/` (README only, the workload is T4); the versions table gains `PROTOCOL_VERSION` (owned by the server lane); `BACKLOG.md` E16 in progress; the global HANDOFF's server row. Both this and the adventure lane's E08 T2 touch `Cargo.toml` and `arch.toml`: whichever merges second rebases.
+- **Acceptance:** the ADR accepted; full `cargo xtask verify` green in CI; merged before T1 starts.
+- **Depends on:** the refinement pull request (`server/refinement-decisions`) merged.
+- **Status:** ready (starts with the user: the ADR review).
+
+### E16 M1 T1 — Messages and codec
+
+- **Scope:** the epic's M1 T1: the wire types (both directions, struct variants, serde's default enum form, no `tag`/`untagged`/`flatten`, `deny_unknown_fields`, integers only, 64-bit values as strings), the bounded codec (frame size checked before parsing, `serde_json` with `alloc`), the mapping module to and from the battle's commands, legal commands, events and observation (`E16-design.md` §2 and §4), `Unsupported` and `Other { kind }` with the wildcard arms as the lane's one coverage exclusion (queue it for the review), a test listing the mapped kinds; round-trip tests, a round-trip in `postcard` as a dev-dependency (provisional, for the review) so the binary option stays open, and the property that arbitrary bytes never panic.
+- **Acceptance:** `h3-protocol` under the 100 % gate; `cargo xtask verify --scope server --summary` with no failing step; the review list in the epic file updated.
+- **Depends on:** M0.
+- **Status:** waiting (M0).
+
+### E16 M1 T2 — Session core
+
+- **Scope:** the epic's M1 T2: seats, tokens as opaque values the host supplies, join and rejoin, the authoritative loop (command, `apply` with the seat's side, `project` per viewer, per-viewer sequence numbers, typed acknowledgements), the bot hook, the record, the command log with periodic hashes kept in memory; scripted two-client tests; the observation-hygiene property over the wire (a hidden Quicksand placed by the opponent leaves the viewer's bytes unchanged); out-of-turn and wrong-seat commands leave state and log unchanged. No spectators yet (SRV-Q4).
+- **Acceptance:** as T1; the security properties hold in tests.
+- **Depends on:** T1.
+- **Status:** waiting (T1).
+
+### E16 M1 T3 — The server binary
+
+- **Scope:** the epic's M1 T3: `tokio` connection tasks (socket, outbound queue, idle timer), an OS thread per game, bounded channels (a full outbound queue drops the connection), the WebSocket transport behind its trait, a TOML configuration (bind address, loopback by default; packs directory, scenario, profile, bot seats, limits), OS seed and tokens, the random bot from `h3-sim`, the replay written as the CLI's TOML at the end, a headless test client in the crate; end-to-end tests over loopback: two clients, a client against the bot, a reconnect, malformed and oversized input, flooding.
+- **Acceptance:** as T1; the end-to-end tests pass; a server replay verifies with `h3 replay verify`.
+- **Depends on:** T2.
+- **Status:** waiting (T2).
+
+### E16 M1 T4 — Closure
+
+- **Scope:** the epic's M1 T4: the `benches/server/` workload (random play through the session core: decode, validate, project, encode) and its baseline; the `docs/06-security.md` additions (the queue's inbox item: the secret seed and the obstacle seed; a `shared/` pull request); the lane HANDOFF and the epic log; a fresh reviewer agent; the user's checkpoint with the review list; the cut of M2.
+- **Acceptance:** M1's exit criteria (epic file).
+- **Depends on:** T3.
+- **Status:** waiting (T3).
 
 ## Inbox
 
-- 2026-10-01 (E03 T9 review): information hiding for server mode (E16): the tools derive the public random obstacles and the hidden battle RNG from the same seed (different streams), so a low-entropy seed can be guessed from the layout. Server mode needs a secret, uniformly random seed (or an independent obstacle seed); write it into docs/06-security.md with the server. *Direction in the protocol ADR draft, point 8 (a 64-bit OS seed, obstacles from a separate throwaway seed); the `06-security.md` text is M1 T4.*
+- 2026-10-01 (E03 T9 review): information hiding for server mode (E16): the tools derive the public random obstacles and the hidden battle RNG from the same seed (different streams), so a low-entropy seed can be guessed from the layout. Server mode needs a secret, uniformly random seed (or an independent obstacle seed); write it into docs/06-security.md with the server. *Direction in the protocol ADR draft, point 8 (a 64-bit OS seed, obstacles from a separate throwaway seed); the `06-security.md` text is M1 T4 (queued above).*

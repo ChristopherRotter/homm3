@@ -1,7 +1,7 @@
 # E16 — Server: protocol, hosting, lobbies and ladders
 
-Status: **draft** (2026-10-08, refinement session; second draft for the user's review, nothing
-decided, nothing implemented). ADR drafts: `docs/lanes/server/adr-drafts/protocol.md`,
+Status: **refined** (drafts 2026-10-08; the user answered SRV-Q1 to SRV-Q11 and confirmed the
+autonomy contract on 2026-10-09; nothing implemented; M0 next). ADR drafts: `docs/lanes/server/adr-drafts/protocol.md`,
 `identity-and-ladders.md` and `discovery.md`. Working detail (messages, flows, journals, the ladder sketch):
 `docs/epics/E16-design.md`. Lane: server (`docs/lanes/server/HANDOFF.md`).
 
@@ -10,7 +10,8 @@ needs it: the protocol ADR is discussed and decided at the M0 checkpoint (nothin
 before), the identity and ladders ADR at the M3 refinement. Until then they are direction, and
 the parts of M1 and M2 that touch them (the `Authenticator` seam, the journal) are built so that
 either option fits. An accepted ADR can still be amended at a later checkpoint, as the battle
-lane amends ADR-0014.
+lane amends ADR-0014. The user's answers of 2026-10-09 fixed the direction of all three drafts
+(below, marked **user**); the protocol draft carries them and waits for acceptance at M0.
 
 ## Goal
 
@@ -32,7 +33,7 @@ today's `BattleSetup`; the whole game once `h3-game` exists (E08, E10). The serv
   reconnect mechanism, not accounts.
 - **Published language.** The messages on the wire are types of their own, documented in
   `h3-protocol`, with one module that translates them to and from the engine's types. The
-  engine's internals change often (33 state-hash versions so far); the wire should not. When
+  engine's internals change often (the state hash version is bumped by most increments); the wire should not. When
   the battle lane adds a command or event the translation does not know yet, the wire shows it
   as "other" instead of failing to build.
 - **Sans-I/O.** The protocol crate never touches a socket, a clock or a file: it is given
@@ -87,29 +88,35 @@ today's `BattleSetup`; the whole game once `h3-game` exists (E08, E10). The serv
 - **Quality** (goal 11): the sans-I/O core under the 100 % gate, the security properties as
   tests, an instruction-count workload.
 
-## Decisions proposed
+## Decisions (directions confirmed by the user, 2026-10-09)
 
 **A. Protocol and hosting** (protocol ADR, points 1–9, 11, 12; the brief's points 1–4):
 
 - *Transport.* Plain TCP (no browser, own framing), WebSocket (browser-native, framed, one
-  small crate with a blocking API), QUIC (heavy, no browser). HTTP for a lobby would add a web
+  small crate with a `tokio` binding), QUIC (heavy, no browser). HTTP for a lobby would add a web
   framework for nothing: lobby and ladder messages ride the same WebSocket. **WebSocket, no
   HTTP, no TLS in the server.**
-- *Runtime.* `tokio` (the ecosystem default, a large tree, an async session core) against std
-  threads with blocking I/O (no runtime, one thread per connection and per game). The load is
-  people and bots, not thousands of connections. **Threads**, the transport behind a trait.
-- *Wire format.* JSON (already in the workspace, readable, browser-native) against a binary
-  format (`postcard`: compact, opaque, one more dependency) or the sim encodings (for agents,
-  lossy for clients, owned by the battle lane). **JSON** with one protocol version; sim
-  encodings only for agent seats later.
+- *Runtime.* `tokio` against std threads with blocking I/O. Measured on scratch crates (SRV-Q5):
+  `tokio` and `tokio-tungstenite` add 11 crates to the 36 of the threads variant and no build
+  time; a blocking `tungstenite` socket is read and written by one thread only, so a thread
+  per connection must poll. **User: `tokio` for the connections** (one task per connection
+  over socket, outbound queue and idle timer), **every game on its own OS thread**; the
+  session core stays synchronous and runtime-free; no HTTP framework.
+- *Wire format.* JSON (already in the workspace, readable, any language) against a binary
+  format (`postcard`: about 8–10 times smaller, not self-describing) or the sim encodings (for
+  agents, lossy for clients, owned by the battle lane). **User: JSON in serde's default,
+  externally tagged enum form** (`postcard` cannot decode internally tagged enums, tested), bulk
+  data as packed arrays, one protocol version; a binary codec negotiable later on the same
+  types; sim encodings only for agent seats later.
 - *Engine types on the wire.* `serde` derives on the engine's types (quick to build, couples
   the wire to every internal change, no place for "unsupported") against the protocol's own
   types with one mapping module. **The mapping.** Unknown engine commands and events become
   `Unsupported` and `Other { kind }` (the brief's point 3); the wildcard arms are the lane's
   one reviewed coverage exclusion; a test lists the mapped kinds.
 - *Sessions and seats.* Seat tokens from OS randomness, reconnect by token, bot seats run by
-  the server, spectators on public events only (a spectator observation needs a `Viewer` in the
-  battle context, a battle-lane addition, SRV-Q4).
+  the server. **User (SRV-Q4): spectators through a spectator viewer the battle lane adds to
+  `observe` and `project` before M2**; without it a spectator who joins late or reconnects has
+  no correct snapshot.
 - *Per-viewer delivery.* `observe` and `project` for every outbound message; per-viewer
   sequence numbers; typed acknowledgements.
 - *Hidden information* (the brief's point 4, the queue's inbox item). A 64-bit OS seed;
@@ -153,8 +160,8 @@ question):
   server stores name and public key only; any device with the password has the account; no
   secret is ever sent or stored; public keys are not shown to other clients, so a weak
   password is attackable only with a server's data directory, as with server-side hashes).
-  **Password-derived keypair**, behind an `Authenticator` seam; classic hashes are the
-  fallback if the two crypto crates are refused (SRV-Q8).
+  **User (SRV-Q8): the password-derived keypair**, behind an `Authenticator` seam; the identity
+  ADR is still decided at M3.
 - *Independence.* Servers do not synchronize; a ladder and its accounts belong to one server;
   no global ladder is planned. The same name and password give the same key everywhere, a
   convenience and not a link.
@@ -165,7 +172,7 @@ question):
   only after the journal verified and only with bound seats; forfeits on abandonment; pause
   only by agreement and within a limit; bots may be ladder participants under a flagged
   account.
-- *Persistence.* Files, not a database system: journals for games, append-only JSON-lines
+- *Persistence* (**user, SRV-Q9: plain files**). Files, not a database system: journals for games, append-only JSON-lines
   logs for players and results, each line synced when written, rebuilt at start; an embedded
   store only if a server outgrows memory (SRV-Q9).
 - *Internet.* TLS by a reverse proxy; native TLS later behind the transport trait.
@@ -177,9 +184,9 @@ question):
   operator (cheap, but browsing still needs a list), a DHT (real decentralized resolution,
   heavy, NAT trouble), **a web of trust between servers** (each server has a keypair, signs a
   card describing itself, and vouches for peers; clients browse from the servers they know and
-  see the vouching chain), plus signed community lists and mDNS on the LAN. **The web of
-  trust**, reusing the account crypto for server keys; the DHT stays the documented next step
-  if the ecosystem outgrows vouching (SRV-Q11).
+  see the vouching chain), plus signed community lists and mDNS on the LAN. **User
+  (SRV-Q11): the web of trust**, reusing the account crypto for server keys; the DHT stays the
+  documented next step if the ecosystem outgrows vouching.
 - *What it gives.* Cards cannot be forged or replayed; a server is pinned by its key on first
   contact, as SSH does; browsing reveals the player's address to no unknown server, because
   known servers relay the cards; spam is bounded by vouching. What it does not give: a
@@ -188,12 +195,14 @@ question):
 ## Milestones
 
 Each milestone ends with a fresh reviewer agent and the user's checkpoint; tasks are about half
-a context each. The order of M4 and M5 is SRV-Q10.
+a context each. M4 before M5 (the user, SRV-Q10). Where the server runs (SRV-Q1): loopback and
+LAN until M3, the internet afterwards behind a TLS proxy; seat tokens only until M3 (SRV-Q2).
+M0 starts now, while E04b finishes (SRV-Q7).
 
 - **M0 Skeleton** (shared, merged first): the protocol ADR accepted and numbered;
   `h3-protocol` (logic, adapter layer: `check-arch` must accept the combination, else a small
   tool change) and `h3-server` in `Cargo.toml` and `arch.toml` with their dependencies
-  (`serde`, `serde_json` in `alloc` mode; `tungstenite`, `getrandom`, `toml`);
+  (`serde`, `serde_json` in `alloc` mode; `tokio`, `tokio-tungstenite`, `getrandom`, `toml`);
   `benches/server/`; the versions table gains `PROTOCOL_VERSION`, the record and the journal
   formats; `BACKLOG.md` E16 in progress. Sequenced with the adventure lane's T2 shared PR
   (both touch the same files).
@@ -201,8 +210,8 @@ a context each. The order of M4 and M5 is SRV-Q10.
   headless test client; T4 closure (below). The replay is written at the end of the game; the
   write-ahead journal comes in M2.
 - **M2 Lobby, journals and many games:** create, list and join games on one connection; the
-  game configuration shown before joining; spectators (event-only, or the battle `Viewer` if
-  it exists); the write-ahead journal, restore at start, pause and resume, verification of
+  game configuration shown before joining; spectators (the battle's spectator viewer, SRV-Q4);
+  the write-ahead journal, restore at start, pause and resume, verification of
   every finished game against its hashes, the identity check against the engine and content,
   the shadow-instance option; the replay download; per-address limits and rate limiting
   hardened; graceful shutdown and a drain mode; the fuzz harness on the decoder; the
@@ -218,7 +227,7 @@ a context each. The order of M4 and M5 is SRV-Q10.
 - **M5 The whole game** (after E08 increments 1 and 3): players as seats, turn groups, pending
   decisions, the per-player record; the server-side pieces E08 decision 8 lists (trusted
   system commands for disconnects and turn timers, sequence numbers against duplicates,
-  concurrent battles); `h3-game` must expose what SRV-Q6 asks; long journals and the case for
+  concurrent battles); `h3-game`'s surface as the adventure lane's game-orchestration draft gives it (points 1, 2, 6; SRV-Q6); long journals and the case for
   state saves measured.
 - **M6 Discovery:** the server keypair and the signed welcome (can come with M3, same crate),
   the server card and `Describe`, peers in the configuration, the peer crawl with its bounds,
@@ -243,7 +252,8 @@ a context each. The order of M4 and M5 is SRV-Q10.
   the observation-hygiene property over the wire (a hidden Quicksand placed by the opponent
   leaves the viewer's bytes unchanged); out-of-turn and wrong-seat commands leave state and
   log unchanged.
-- **T3 The server binary.** Threads and channels, the WebSocket transport, a TOML
+- **T3 The server binary.** `tokio` connection tasks and an OS thread per game with bounded
+  channels, the WebSocket transport, a TOML
   configuration (bind address, packs directory, scenario, profile, bot seats, limits), OS seed
   and tokens, the clock and idle timeouts, the random bot from `h3-sim`, the replay written as
   the CLI's TOML at the end; a headless test client in the crate; end-to-end tests over
@@ -262,7 +272,7 @@ tests; the workload has a baseline; `docs/06-security.md` carries the server rul
 written by the server verifies with `h3 replay verify`; the lane HANDOFF, the epic log and
 `QUEUE.md` are current.
 
-## Autonomy contract (the HANDOFF's draft, with additions)
+## Autonomy contract (confirmed by the user, 2026-10-09)
 
 - **Agent decides, marked provisional:** crate-internal structure, names, the test layout, log
   format and texts, the thread and channel layout, the headless test client, token encoding,
@@ -274,41 +284,20 @@ written by the server verifies with `h3 replay verify`; the lane HANDOFF, the ep
   Glicko-2 constants, the matchmaking window, the checkpoint interval of the journal, the
   default of the shadow-instance option.
 - **Stop the line:** seams and contracts, the engine API the server calls (a spectator viewer,
-  `h3-game`'s surface), an async runtime, a TLS stack, the crypto crates, a database or
+  `h3-game`'s surface), a second runtime, more `tokio` features or an HTTP framework, a TLS
+  stack, the crypto crates, a database or
   embedded store, licence doubts, changes to ADR-0008's model, anything in another lane's
   paths, logic-crate dependencies beyond `serde` and `serde_json`.
 
-## Questions for the user (filed as `SRV-Q1` to `SRV-Q11` in `docs/OPEN-QUESTIONS.md`)
+## Questions (answered 2026-10-09)
 
-- **SRV-Q1 Where the server runs first.** Loopback on the user's machine, the LAN, or the
-  internet. *Recommendation:* loopback and LAN until M3; the internet needs accounts (M3) and
-  a proxy for TLS.
-- **SRV-Q2 Accounts now or later.** *Recommendation:* seat tokens only in M1–M2, accounts in
-  M3, so M1 stays small and the identity decision gets its own review.
-- **SRV-Q3 Which client connects first.** The headless test client (M1, in the crate), then
-  the client lane's viewer. *Proposal to the client lane:* the viewer consumes `h3-protocol`
-  messages, live or from a record file, with the same code, so the record format is the
-  viewer's file format.
-- **SRV-Q4 Spectators.** Public events only, or a `Viewer::Spectator` in the battle's
-  `observe` (a battle API change) before M2.
-- **SRV-Q5 Runtime and format.** Threads and JSON as recommended, or `tokio` and/or a binary
-  format from the start.
-- **SRV-Q6 What `h3-game` must expose for M5** (input to the adventure lane's T1a ADR 3):
-  `apply` with a player actor, `observe` for a player and a spectator, pending decisions as
-  state, a trusted system actor for timeouts and disconnects. May the server lane file this as
-  an adventure-lane request?
-- **SRV-Q7 Timing.** Start M0 now (the mapping's wildcard protects the build from E04b and
-  E04c additions) or wait for E04b's close as the HANDOFF says.
-- **SRV-Q8 Account model.** Password-derived keypair (recommended; `ed25519-dalek` and
-  `argon2` in server and client) or classic password accounts hashed on each server (one
-  crate, `argon2`; the password travels, TLS for logins).
-- **SRV-Q9 Persistence.** Journals and JSON-lines logs in a data directory (recommended) or an
-  embedded store from the start. The journal is the same under both.
-- **SRV-Q10 Milestone order.** Ranked battles (M4) before the whole game (M5), as proposed,
-  since a battle ladder with mirrored armies is playable long before the adventure map is.
-- **SRV-Q11 Discovery.** The web of trust as proposed (server keys, signed cards, peers,
-  signed lists, mDNS on the LAN), with the DHT deferred; or a DHT from the start; or no
-  discovery in the core at all (community lists on a web page).
+The full record is in `docs/OPEN-QUESTIONS.md`, "Answered". In short: SRV-Q1 loopback and LAN
+until M3; Q2 seat tokens until M3; Q3 the headless test client, then the client lane's viewer
+(the record-file proposal is in the client queue's inbox); Q4 a battle spectator viewer before
+M2 (battle queue's inbox); Q5 `tokio` for connections, a thread per game, JSON in the default
+enum form; Q6 the `h3-game` needs already covered by the adventure lane's game-orchestration draft; Q7 M0 now;
+Q8 the password-derived keypair as direction; Q9 plain files; Q10 M4 before M5; Q11 the web of
+trust as direction.
 
 ## Risks
 
