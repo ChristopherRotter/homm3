@@ -424,6 +424,8 @@ enum AbilityDto {
     Fear {
         percent: u8,
     },
+    /// Pack format v31 (E04b T8b, BAT-Q21).
+    IgnoresMagicBlock {},
 }
 
 #[derive(Deserialize)]
@@ -597,6 +599,7 @@ impl AbilityDto {
             },
             Self::Rebirth { divisor } => AbilityDef::Rebirth { divisor },
             Self::Fear { percent } => AbilityDef::Fear { percent },
+            Self::IgnoresMagicBlock {} => AbilityDef::IgnoresMagicBlock,
         })
     }
 }

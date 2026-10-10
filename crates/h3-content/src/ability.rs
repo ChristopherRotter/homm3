@@ -367,6 +367,10 @@ pub enum Ability<C, S, L> {
         /// The chance, 1..=100.
         percent: u8,
     },
+    /// The creature's casts ignore a hero's `NoCasting` (the Orb of Inhibition; the anti-magic
+    /// garrison with E04c): the Faerie Dragon, after the wiki and VCMI against the code reading
+    /// until an experiment settles it (BAT-MAG-061, BAT-Q21; v31).
+    IgnoresMagicBlock,
 }
 
 /// Most creatures `corpse_raiser` abilities raise in a ruleset (the battle keeps a stack of each
@@ -381,7 +385,7 @@ pub type CompiledAbility = Ability<CreatureTypeId, SpellId, SchoolId>;
 
 impl<C, S, L> Ability<C, S, L> {
     /// Every ability name, in code order (the order of [`Ability::code`]).
-    pub const NAMES: [&'static str; 47] = [
+    pub const NAMES: [&'static str; 48] = [
         "hate",
         "jousting",
         "charge_immunity",
@@ -429,6 +433,7 @@ impl<C, S, L> Ability<C, S, L> {
         "damage_penalty_by_flag",
         "rebirth",
         "fear",
+        "ignores_magic_block",
     ];
 
     /// Stable numeric code of the ability kind (canonical hashing, duplicate checks).
@@ -481,6 +486,7 @@ impl<C, S, L> Ability<C, S, L> {
             Self::DamagePenaltyByFlag { .. } => 44,
             Self::Rebirth { .. } => 45,
             Self::Fear { .. } => 46,
+            Self::IgnoresMagicBlock => 47,
         }
     }
 
@@ -673,6 +679,7 @@ impl<C, S, L> Ability<C, S, L> {
             },
             Self::Rebirth { divisor } => Ability::Rebirth { divisor: *divisor },
             Self::Fear { percent } => Ability::Fear { percent: *percent },
+            Self::IgnoresMagicBlock => Ability::IgnoresMagicBlock,
         })
     }
 
@@ -930,7 +937,8 @@ impl CanonicalHash for CompiledAbility {
             | Self::ThreeHeadedAttack
             | Self::Teleports
             | Self::NoDistancePenalty
-            | Self::AmmoSupply => {}
+            | Self::AmmoSupply
+            | Self::IgnoresMagicBlock => {}
         }
     }
 }
@@ -1010,7 +1018,7 @@ mod tests {
 
     type A = Ability<u8, u8, u8>;
 
-    fn all() -> [A; 47] {
+    fn all() -> [A; 48] {
         [
             A::Hate {
                 target: 3,
@@ -1129,6 +1137,7 @@ mod tests {
             },
             A::Rebirth { divisor: 5 },
             A::Fear { percent: 10 },
+            A::IgnoresMagicBlock,
         ]
     }
 

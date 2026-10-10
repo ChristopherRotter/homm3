@@ -1780,6 +1780,15 @@ records how and why the tasks went.
   the Orb of Inhibition, Recanter's Cloak, the Dragon Father and the Storm Elementals' double
   damage; the Dragon Father test covers a level-0 ability (Poison); a wrong `covers` tag. Left:
   the harvester's `sod` test looks at top-level string parameters only (enough for today's data).
+- **The other sources** (the user, after the PR: the wiki on the Orb of Inhibition; BAT-Q21):
+  the reading was compared with the 15 artifacts' wiki pages, the Faerie Dragon's and VCMI 1.7.5.
+  Most of T8b agrees; five points conflict or rest on the reading alone (the Faerie Dragon under
+  the Orb of Inhibition, the Unicorn aura and the absolute immunities under the Orb of
+  Vulnerability, the Cloak against creatures, the Dragon Father against level-0 abilities). The
+  user: the engine follows the wiki and VCMI where both disagree with the reading (ability
+  `ignores_magic_block` on the Faerie Dragon; the negation lifts the aura), the reading on the
+  rest, until an experiment batch (2e) settles all five; T8b3 compares the 0x44A4D0 finding with
+  them and fixes it next. The process rule ("consensus before trust") went to `shared/` (#47).
 - **Measurements:** behaviour unchanged (every golden replay's command log is the same; the
   hashes moved, re-recorded); `random-rollouts-full` 576.7 M Ir (+1.49 %, the same 7 607 steps;
   the new tests in `check_spell` and `affects`, after a first +3.9 % that `MagicLimits` brought

@@ -270,7 +270,8 @@ fn negated_immunities_lift_the_creatures_immunities_and_all_resistance() {
     assert_eq!(targets(&s, &r, BattleSide::Attacker, "blind"), [1, 4, 5]);
     assert_eq!(chance(&s, 4), 48);
     // Negated by the caster's hero or the stacks' hero: every bolt target, Blind but at the
-    // troglodyte (an absolute immunity), the dwarf's share whole but the unicorn's aura.
+    // troglodyte (an absolute immunity), the dwarf's share whole and the unicorn's aura gone too
+    // (the wiki and VCMI; the code reading keeps the aura, BAT-Q21).
     for (attacker, defender) in [(&orb[..], &ward[..]), (&[][..], &[ward[0], orb[0]][..])] {
         let s = battle(attacker, defender);
         assert_eq!(
@@ -278,7 +279,7 @@ fn negated_immunities_lift_the_creatures_immunities_and_all_resistance() {
             [1, 2, 3, 4, 5]
         );
         assert_eq!(targets(&s, &r, BattleSide::Attacker, "blind"), [1, 2, 4, 5]);
-        assert_eq!(chance(&s, 4), 80);
+        assert_eq!(chance(&s, 4), 100);
         assert_eq!(chance(&s, 5), 100);
     }
 }

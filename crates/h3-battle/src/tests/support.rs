@@ -671,6 +671,24 @@ pub const CREATURES: &[Creature] = &[
             "drawn_spell=nova:1",
         ],
     ),
+    // A random caster that ignores a hero's NoCasting (the Faerie Dragon after the wiki and VCMI,
+    // BAT-MAG-061, BAT-Q21).
+    (
+        "faerie",
+        10,
+        10,
+        2,
+        2,
+        100,
+        5,
+        &[
+            "alive",
+            "casts=2",
+            "random_spell_caster=2:5",
+            "drawn_spell=bolt:1",
+            "ignores_magic_block",
+        ],
+    ),
     (
         "hasteling",
         10,
@@ -1005,6 +1023,7 @@ fn parse_traits(traits: &[&str]) -> CreatureInfoDef {
                 }
             }
             "ammo_supply" => AbilityDef::AmmoSupply,
+            "ignores_magic_block" => AbilityDef::IgnoresMagicBlock,
             "faction" => {
                 faction = Some(ContentKey::new("t", value).unwrap());
                 continue;

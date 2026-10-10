@@ -1655,4 +1655,5 @@ no path around 0x41F890, neither the human player's cursor 0x47670B nor the comp
 Troglodytes' and Gargoyles' immunities under it (VCMI lifts them); the Cloak against the strike's
 abilities and the Archangel (the wiki names the heroes only; VCMI bars creature casts, not
 abilities); the Dragon Father against level-0 abilities (VCMI never bars level 0). Until an
-experiment settles them, these five rest on this reading alone.
+experiment settles them, the engine follows the wiki and VCMI on the first two (the Faerie Dragon's
+`ignores_magic_block`, the aura lifted) and this reading on the other three (the user, BAT-Q21).

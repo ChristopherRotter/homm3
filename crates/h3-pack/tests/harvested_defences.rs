@@ -128,7 +128,7 @@ fn the_orb_lifts_the_air_elementals_blind_immunity_but_not_the_troglodytes() {
     assert_eq!(targets(&s, &r, blind), [2, 3]);
 }
 
-// covers: HER-BAT-016, HER-BAT-015
+// covers: HER-BAT-016, HER-BAT-015, BAT-MAG-061
 #[test]
 fn the_artifacts_give_the_originals_defences() {
     let r = sod();
@@ -186,6 +186,12 @@ fn the_artifacts_give_the_originals_defences() {
     ] {
         assert_eq!(only(pendant)[1..], [immune(spell_key)], "{pendant}");
     }
+    // The Faerie Dragon ignores the Orb of Inhibition (the wiki and VCMI; BAT-Q21).
+    let dragon = r.creature_by_key("ab:faerie_dragon").unwrap();
+    assert!(
+        r.abilities(dragon)
+            .contains(&h3_content::Ability::IgnoresMagicBlock)
+    );
     // The casting limits (HER-BAT-015) and the Dragon Father's levels.
     assert_eq!(
         only("base:orb_of_inhibition")[1..],

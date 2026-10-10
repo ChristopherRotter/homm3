@@ -3188,7 +3188,7 @@ id       = "BAT-MAG-061"
 title    = "No casting (the Orb of Inhibition)"
 context  = "battle"
 status   = "implemented"
-summary  = "While a hero in the battle has a NoCasting effect (either side's; the Orb of Inhibition, HER-BAT-015) neither side casts: a hero's spell is refused (CastingForbidden, after the round's cast check), no creature casts or raises as its action (CannotCast; the Archangel, the Pit Lord), no periodic cast happens (the Enchanters: their side's count stays). A random caster still draws its spell at its activation (BAT-MAG-049; the original's draw does not ask) but may not cast it. The strike's creature magic (BAT-MAG-040 to BAT-MAG-047) is no cast and stays."
+summary  = "While a hero in the battle has a NoCasting effect (either side's; the Orb of Inhibition, HER-BAT-015) neither side casts: a hero's spell is refused (CastingForbidden, after the round's cast check), no creature casts or raises as its action (CannotCast; the Archangel, the Pit Lord), no periodic cast happens (the Enchanters: their side's count stays). A random caster still draws its spell at its activation (BAT-MAG-049; the original's draw does not ask) but may not cast it, unless its creature has `ignores_magic_block`: the Faerie Dragon, after the wiki and VCMI, which the code reading contradicts (the user, BAT-Q21: until an experiment settles it). The strike's creature magic (BAT-MAG-040 to BAT-MAG-047) is no cast and stays."
 numeric  = "integer"
 
   [[rule.source]]
@@ -3309,7 +3309,7 @@ id       = "BAT-MAG-066"
 title    = "Negated immunities (the Orb of Vulnerability)"
 context  = "battle"
 status   = "implemented"
-summary  = "When the caster's side's hero or the hero controlling the stack has a NegateImmunities effect (HER-BAT-016; the Orb of Vulnerability), a spell affects the stack without the creature's mind immunity, the hero's (BAT-MAG-065), the level, school and spell immunities of its abilities (BAT-MAG-005) and with its whole share: no creature or hero magic resistance (BAT-MAG-008). Still apply: the spell level limit (BAT-MAG-062), the heroes' immunities (BAT-MAG-063, BAT-MAG-064), the spell's conditions, the creatures' absolute immunities (Troglodytes against Blind and Stone Gaze, Gargoyles against Poison), Anti-Magic (BAT-MAG-021) and the Unicorns' aura. An enemy's negation does not count for a side's spells at its own stacks."
+summary  = "When the caster's side's hero or the hero controlling the stack has a NegateImmunities effect (HER-BAT-016; the Orb of Vulnerability), a spell affects the stack without the creature's mind immunity, the hero's (BAT-MAG-065), the level, school and spell immunities of its abilities (BAT-MAG-005) and with its whole share: no creature or hero magic resistance (BAT-MAG-008). The Unicorns' aura is lifted too, after the wiki and VCMI, which the code reading contradicts (the user, BAT-Q21: until an experiment settles it). Still apply: the spell level limit (BAT-MAG-062), the heroes' immunities (BAT-MAG-063, BAT-MAG-064), the spell's conditions, the creatures' absolute immunities (Troglodytes against Blind and Stone Gaze, Gargoyles against Poison; the code reading, which VCMI contradicts: BAT-Q21) and Anti-Magic (BAT-MAG-021). An enemy's negation does not count for a side's spells at its own stacks."
 numeric  = "integer"
 
   [[rule.source]]

@@ -799,7 +799,7 @@ fn aimable(
         && (!magic.needs_effect || !state.effects.of(s).is_empty())
         && (spell.1.polarity == SpellPolarity::Positive
             || magic.ignores_immunity
-            || (share(state, ruleset, side, s).0 > 0 && aura(state, ruleset, s) != Some(100)))
+            || may_affect(state, ruleset, side, s))
 }
 
 /// The living stacks of `side`, by id.
@@ -1141,8 +1141,7 @@ pub(crate) fn affectable(
     };
     side_ok
         && affects_stack(state, ruleset, side, spell, s)
-        && (spell.1.polarity == SpellPolarity::Positive
-            || (share(state, ruleset, side, s).0 > 0 && aura(state, ruleset, s) != Some(100)))
+        && (spell.1.polarity == SpellPolarity::Positive || may_affect(state, ruleset, side, s))
 }
 
 /// The stacks other than `caster` that a drawn spell for `side` may be aimed at
@@ -1709,6 +1708,15 @@ fn share(state: &BattleState, ruleset: &Ruleset, caster: BattleSide, s: StackId)
     (if single { round_single(share) } else { share }, one)
 }
 
+/// Whether a hostile spell of `caster`'s side has a chance above zero at stack `s` (BAT-MAG-008):
+/// its [`share`] is above zero and no aura keeps all of it off; always when the immunities are
+/// negated, which lifts the aura too (BAT-MAG-066: the wiki and VCMI against the code reading
+/// until an experiment settles it, BAT-Q21).
+fn may_affect(state: &BattleState, ruleset: &Ruleset, caster: BattleSide, s: StackId) -> bool {
+    Guard::of(state, caster, s).negated
+        || (share(state, ruleset, caster, s).0 > 0 && aura(state, ruleset, s) != Some(100))
+}
+
 /// 1 − `percent` as a rate in the fixed point of [`scale`].
 fn percent_rate(single: bool, percent: u8) -> u64 {
     rate(single, u16::from(100 - percent.min(100)) * 100)
@@ -1741,8 +1749,9 @@ fn aura(state: &BattleState, ruleset: &Ruleset, s: StackId) -> Option<u8> {
         .max()
 }
 
-/// The chance in percent that a cast of `spell` affects stack `s` (BAT-MAG-008): always for a
-/// positive spell and one that ignores immunity (Dispel); otherwise its [`share`] times 1 − the
+/// The chance in percent that a cast of `spell` by `caster`'s side affects stack `s`
+/// (BAT-MAG-008): always for a positive spell, one that ignores immunity (Dispel) and when the
+/// immunities are negated (BAT-MAG-066, the aura too: BAT-Q21); otherwise its [`share`] times 1 − the
 /// strongest [`aura`], as a whole percentage rounded down (with quirk Q-0005, 10 % hero
 /// resistance leaves 89 %).
 // rule: BAT-MAG-008
@@ -1753,7 +1762,11 @@ pub(crate) fn affect_chance(
     spell: &Spell,
     s: StackId,
 ) -> u32 {
-    if spell.polarity == SpellPolarity::Positive || spell.magic.ignores_immunity {
+    // rule: BAT-MAG-066
+    if spell.polarity == SpellPolarity::Positive
+        || spell.magic.ignores_immunity
+        || Guard::of(state, caster, s).negated
+    {
         return 100;
     }
     let single = ruleset.quirks().is_enabled(SINGLE_PRECISION_RATES);

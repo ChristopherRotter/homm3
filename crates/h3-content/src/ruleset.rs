@@ -1505,7 +1505,7 @@ impl CanonicalHash for Ruleset {
     /// `spell_mastery` (28) and `scroll` (29). v40 (E04b T8b): hero effects `no_casting` (30),
     /// `spell_level_limit` (31), `spell_immunity` (32), `spell_level_immunity` (33),
     /// `mind_immunity` (34) and `negate_immunities` (35); ability `spell_immunity` ends with
-    /// `absolute`.
+    /// `absolute`; ability `ignores_magic_block` (47).
     fn hash_into(&self, h: &mut StateHasher) {
         h.write_u32(RULESET_HASH_VERSION);
         h.write_len(self.packs.len());

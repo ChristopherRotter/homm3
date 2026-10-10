@@ -187,7 +187,7 @@ fn a_hero_without_casting_forbids_both_sides_creature_casts_and_raises() {
 
 // covers: BAT-MAG-061, BAT-MAG-049
 #[test]
-fn a_random_caster_still_draws_but_may_not_cast() {
+fn a_random_caster_still_draws_but_may_not_cast_unless_it_ignores_the_block() {
     // The original's draw at the activation (0x447510) does not ask whether magic is allowed;
     // the cast's test (0x4476C0) does.
     let r = ruleset();
@@ -212,6 +212,24 @@ fn a_random_caster_still_draws_but_may_not_cast() {
         Some(Named(spell(&r, "bolt")))
     );
     assert_eq!(creature_cast_spell(&s, &r, BattleSide::Attacker), None);
+    // A creature that ignores the block casts (the Faerie Dragon after the wiki and VCMI; the code
+    // reading refuses it, BAT-Q21).
+    let mut s = arena(
+        &r,
+        [None, wearer(&r, &[ORB])],
+        &[("fixed", 3, 2, 3), ("faerie", 2, 2, 7)],
+        &[("fixed", 4, 13, 5)],
+        1,
+    );
+    while s.active() != Some(StackId(1)) {
+        act(&mut s, &r, Command::Defend).unwrap();
+    }
+    assert_eq!(
+        creature_cast_spell(&s, &r, BattleSide::Attacker),
+        Some(Named(spell(&r, "bolt")))
+    );
+    assert_eq!(targets(&s, &r, BattleSide::Attacker), [2]);
+    act(&mut s, &r, Command::CreatureCast { target: stack(2) }).unwrap();
 }
 
 // covers: BAT-MAG-061, BAT-MAG-053

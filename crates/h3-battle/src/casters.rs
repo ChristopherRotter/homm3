@@ -378,7 +378,7 @@ fn counts(
 
 /// The active stack and its spell, if `actor` commands it outside the tactics phase and it may
 /// cast now (BAT-MAG-048): its creature is a caster, it has a cast left and no hero in the battle
-/// forbids casting (BAT-MAG-061).
+/// forbids casting, unless its creature ignores that (BAT-MAG-061; the Faerie Dragon, BAT-Q21).
 fn ready(
     state: &BattleState,
     ruleset: &Ruleset,
@@ -388,7 +388,13 @@ fn ready(
     let id = state.active.filter(|id| state.casts.left[id.index()] > 0)?;
     let stack = state.at(id);
     // rule: BAT-MAG-061
-    if state.tactics.is_some() || stack.controller() != actor || magic::casting_forbidden(state) {
+    let blocked = || {
+        magic::casting_forbidden(state)
+            && !ruleset
+                .abilities(stack.creature)
+                .contains(&Ability::IgnoresMagicBlock)
+    };
+    if state.tactics.is_some() || stack.controller() != actor || blocked() {
         return None;
     }
     stack_cast(state, ruleset, id).map(|spell| (id, spell))
