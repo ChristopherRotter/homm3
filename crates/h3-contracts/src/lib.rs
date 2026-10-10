@@ -21,6 +21,7 @@
 extern crate alloc;
 
 mod hero;
+mod ids;
 
 use alloc::vec::Vec;
 
@@ -28,6 +29,7 @@ pub use hero::{
     BallistaControl, BattleEffect, BattleHero, BattleMagic, CatapultControl, DamageBonuses,
     FactionGroup, MAX_BATTLE_EFFECTS, MachineControl, Rate, StatOp, TentControl,
 };
+pub use ids::{HeroId, PlayerId};
 
 use h3_content::{CreatureTypeId, Formation, SpellId, TerrainId};
 

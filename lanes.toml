@@ -72,6 +72,8 @@ paths = [
     "docs/OPEN-QUESTIONS.md",
     "docs/stubs.toml",
     "Cargo.lock",
+    # The survey index: each lane adds its epics' sections (E08 T2).
+    "docs/rules/surveys/README.md",
     "docs/exe/map.toml",
     "docs/exe/structs.toml",
 ]
@@ -116,6 +118,26 @@ name = "adventure"
 code = "ADV"
 paths = [
     "crates/h3-adventure/",
+    "crates/h3-game/",
+    "crates/h3-map/",
+    "crates/h3-pack-adventure/",
+    # Adventure-owned sub-paths of the battle lane's crates and folders, by the longest match
+    # (ADR-0017 point 8): AdventureEnv, the CLI's adventure commands and the test that re-runs the
+    # adventure's golden replays (`cargo xtask determinism`), the replays, test maps.
+    "crates/h3-sim/src/adventure/",
+    "crates/h3-cli/src/adventure/",
+    "crates/h3-cli/tests/adventure_replays.rs",
+    "fixtures/replays/adventure/",
+    "fixtures/maps/",
+    # One pack file per context (ADR-0006's E08 amendment); hand-written, never harvested.
+    "packs/base/adventure.toml",
+    "packs/ab/adventure.toml",
+    "packs/sod/adventure.toml",
+    "packs/synthetic/adventure.toml",
+    "packs/synthetic-ext/adventure.toml",
+    # The map format's notes (moved from battle with the user's consent, 2026-10-10).
+    "docs/formats/h3m.md",
+    "docs/rules/catalog/game.toml",
     "benches/adventure/",
     "docs/rules/catalog/adventure.toml",
     "docs/rules/catalog/town.toml",

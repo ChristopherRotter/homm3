@@ -55,6 +55,19 @@ impl StreamId {
     pub const AGENT: Self = Self(2);
     /// Random battlefield obstacles, generated before a battle starts (BAT-GEO-004).
     pub const OBSTACLES: Self = Self(3);
+    /// The game's own randomness, such as the day advance (ADR-0017 point 4).
+    pub const GAME: Self = Self(4);
+    /// Resolving a game setup's random placeholders when the state is built (ADR-0017 point 4).
+    pub const SETUP: Self = Self(5);
+    /// First id of the per-player streams; ids below it are the named streams above.
+    const PLAYER_BASE: u64 = 0x100;
+
+    /// The stream of the player at `index` of a game's player list: randomness caused by that
+    /// player's commands draws only from it (ADR-0017 point 4). Distinct from every named stream
+    /// and from every other player's.
+    pub const fn player(index: u8) -> Self {
+        Self(Self::PLAYER_BASE + index as u64)
+    }
 }
 
 /// The engine's random number generator (xoshiro256\*\*). All randomness in game logic goes
@@ -276,6 +289,26 @@ mod tests {
         );
         assert_eq!(RNG_ALGORITHM, "xoshiro256starstar+splitmix64");
         assert_eq!(RNG_VERSION, 1);
+    }
+
+    // covers: KER-RNG-001
+    #[test]
+    fn player_streams_are_distinct_from_named_streams_and_each_other() {
+        let named = [
+            StreamId::BATTLE,
+            StreamId::AGENT,
+            StreamId::OBSTACLES,
+            StreamId::GAME,
+            StreamId::SETUP,
+        ];
+        let players: Vec<StreamId> = (0..=u8::MAX).map(StreamId::player).collect();
+        assert!(players.iter().all(|p| !named.contains(p)));
+        assert!(players.windows(2).all(|w| w[0] < w[1]));
+        assert_eq!(StreamId::player(0), StreamId(0x100));
+        assert_ne!(
+            Rng::for_stream(7, StreamId::player(0)),
+            Rng::for_stream(7, StreamId::player(1))
+        );
     }
 
     // Computed independently (Python transcription of the reference algorithms) for
