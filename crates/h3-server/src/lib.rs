@@ -54,7 +54,8 @@ pub struct Running {
     /// Where the replay goes at the end of the game.
     pub replay_path: PathBuf,
     /// The players' seat tokens (attacker, defender; `None` for the bot's). The server hands a
-    /// token to the first connection that takes the seat; an operator may give it out instead.
+    /// token to the first connection that takes the seat; a caller of the library may give it out
+    /// instead (the binary shows it to no one: an operator's copy comes with E16 M2's journal).
     pub tokens: [Option<String>; 2],
     /// The accepting task.
     pub listener: tokio::task::JoinHandle<()>,

@@ -243,3 +243,22 @@ how and why the work went.
   next"; the file has 5 bytes of budget left, so the row is short).
 - **Tests** (2 new, 16 in `h3-server`): the workload plays its games to the end,
   deterministically, and holds its command limit; the scripted client's choice.
+- **The reviewer agent** (fresh, read-only; 2 major, 7 minor findings; no leak of state,
+  hashes, seeds or tokens found, no panic from client input, identity and rejection sound).
+  Fixed: (major) the close frame's write had no timeout, so a peer that stopped reading held its
+  task and counted place forever; `close` now bounds it by the linger second too, and an
+  end-to-end test (a client that stops reading; a new connection from its address is welcomed)
+  fails without the fix, after first passing with a queue of 4 frames, which dropped the
+  connection before the socket filled; the limits are range-checked at load (an idle timeout
+  near `u64::MAX` panicked in every connection task, 0 refused every handshake); three doc
+  claims corrected (`bench-check` without flags skips lane-only workloads; `NotYourTurn` only
+  while the battle runs; the binary shows the tokens to no one); new tests: a property over
+  arbitrary `Join`, `Leave`, disconnect, query, fetch and command sequences from four
+  connections (`Joined` only without a seat; numbered frames only to a seat's holder, each its
+  record's line of that number; number 0 only without a seat; checked by a mutation: without
+  the `AlreadyJoined` refusal it fails), a seat's token reaches only its holder, a replaced
+  connection is no actor. Deferred to M2 T5 (`QUEUE.md`; `06-security.md`, "Not covered yet"):
+  (major) memory bounded in messages, not bytes (a seated client grows its record with queries
+  within the rate limit, and each `FetchRecord` queues the whole record); a connection that never
+  joins holds its place until its idle timeout; WebSocket pings outside the rate. To M2 T2: an
+  operator's copy of the tokens (a client that loses its `Joined` loses the seat).

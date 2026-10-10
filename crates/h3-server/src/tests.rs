@@ -285,6 +285,43 @@ async fn connections_beyond_the_limit_are_refused_until_one_closes() {
     }
 }
 
+/// A client that stops reading loses its connection and its place, even while it never reads the
+/// close (the M1 review: the close frame's write waited forever on a full socket).
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn a_client_that_stops_reading_is_dropped_and_its_place_freed() {
+    let limits = Limits {
+        connections_per_address: 1,
+        idle_timeout_ms: 1_000,
+        ..fast()
+    };
+    let running = start(&config("full.toml", vec![], limits)).await.unwrap();
+    let (mut stalled, _) = seated(&running, Seat::Attacker).await;
+    // Records, never read, until the socket is full: the server's write stalls, then its reads,
+    // and the game drops the connection whose queue fills meanwhile.
+    for seq in 1..=20_000 {
+        let fetch = ClientMessage::FetchRecord { seq };
+        let sent = tokio::time::timeout(Duration::from_secs(1), stalled.send(&fetch)).await;
+        if !matches!(sent, Ok(Ok(()))) {
+            break;
+        }
+    }
+    let mut attempts = 0;
+    loop {
+        if let Ok(mut client) = Client::connect(running.address).await
+            && matches!(
+                client.hello("test").await,
+                Ok(Some(ServerMessage::Welcome { .. }))
+            )
+        {
+            break;
+        }
+        attempts += 1;
+        assert!(attempts < 500, "the place is never released");
+        tokio::time::sleep(Duration::from_millis(20)).await;
+    }
+    drop(stalled);
+}
+
 #[test]
 fn the_example_configuration_loads() {
     let path = root().join("crates/h3-server/server.example.toml");
@@ -304,6 +341,21 @@ fn configurations_are_checked() {
     assert_eq!(minimal.data, base.join("data"));
     assert_eq!((minimal.checkpoint_every, minimal.bots.len()), (25, 0));
     assert!(Config::parse("packs = \"p\"\nscenario = \"s\"\nport = 1", &base).is_err());
+    for limit in [
+        "max_frame = 0",
+        "max_frame = 2000000",
+        "messages_per_second = 0",
+        "connections = 0",
+        "connections_per_address = 0",
+        "idle_timeout_ms = 0",
+        "idle_timeout_ms = 9223372036854775807",
+        "outbound_queue = 0",
+        "outbound_queue = 4000000",
+    ] {
+        let text = format!("packs = \"p\"\nscenario = \"s\"\n[limits]\n{limit}");
+        let refused = Config::parse(&text, &base).unwrap_err();
+        assert!(refused.0.contains("outside"), "{limit}: {refused}");
+    }
     assert!(Config::load(&base.join("no-such-file.toml")).is_err());
     let both = config(
         "full.toml",

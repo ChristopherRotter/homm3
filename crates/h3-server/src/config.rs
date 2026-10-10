@@ -98,6 +98,40 @@ impl Default for Limits {
     }
 }
 
+impl Limits {
+    /// Checks every bound against its range: none is 0, a frame holds a hello, and the idle timeout
+    /// and the queue stay where the clock's and the channel's arithmetic hold.
+    fn check(&self) -> Result<(), Error> {
+        let wide = |n: usize| u64::try_from(n).unwrap_or(u64::MAX);
+        let bounds = [
+            ("max_frame", wide(self.max_frame), 256, 1 << 20),
+            (
+                "messages_per_second",
+                u64::from(self.messages_per_second),
+                1,
+                u64::MAX,
+            ),
+            ("connections", wide(self.connections), 1, u64::MAX),
+            (
+                "connections_per_address",
+                wide(self.connections_per_address),
+                1,
+                u64::MAX,
+            ),
+            ("idle_timeout_ms", self.idle_timeout_ms, 100, 86_400_000),
+            ("outbound_queue", wide(self.outbound_queue), 1, 1 << 20),
+        ];
+        for (name, value, min, max) in bounds {
+            if !(min..=max).contains(&value) {
+                return Err(Error(format!(
+                    "limits.{name} = {value}: outside {min}..={max}"
+                )));
+            }
+        }
+        Ok(())
+    }
+}
+
 fn default_bind() -> String {
     String::from("127.0.0.1:7878")
 }
@@ -114,6 +148,7 @@ impl Config {
     /// Parses a configuration; relative paths are taken from `base`.
     pub fn parse(text: &str, base: &Path) -> Result<Self, Error> {
         let mut config: Self = toml::from_str(text).map_err(|e| Error(e.to_string()))?;
+        config.limits.check()?;
         for path in [&mut config.packs, &mut config.scenario, &mut config.data] {
             *path = base.join(&*path);
         }

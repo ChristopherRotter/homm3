@@ -34,7 +34,7 @@ The server lane's living state; read after the global `docs/HANDOFF.md`. Format 
 
 ### 2026-10-10 — M1 T4, closure
 
-T3 had merged; the branch started from `master`. Built the workload (`docs/epics/E16-log.md`, T4); its profile showed the count is 55 % battle engine, so a full-verify gate would fail battle pull requests on a server file: made it lane-only (a shared `xtask` change). `06-security.md`'s "Hosted games" closes the queue's E03 T9 inbox item. The reviewer agent's findings and their handling: the epic log. The M2 cut is proposed in `QUEUE.md`; SRV-Q12 asks the checkpoint.
+T3 had merged; the branch started from `master`. Built the workload (`docs/epics/E16-log.md`, T4); its profile showed the count is 55 % battle engine, so a full-verify gate would fail battle pull requests on a server file: made it lane-only (a shared `xtask` change). `06-security.md`'s "Hosted games" closes the queue's E03 T9 inbox item. The reviewer agent found 2 major and 7 minor issues: the unbounded close (fixed, with an end-to-end test that fails without the fix), the limits' ranges, three doc claims and four missing tests (fixed); memory bounded in bytes and the handshake's hold went to M2 T5 (the epic log). The M2 cut is proposed in `QUEUE.md`; SRV-Q12 asks the checkpoint.
 
 ### 2026-10-10 — M1 T3, the server binary
 
