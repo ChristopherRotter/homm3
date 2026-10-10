@@ -4,12 +4,60 @@ Pre-refined tasks of the adventure lane, in order, then the inbox of discovered 
 
 ## Tasks
 
-Epic: `docs/epics/E08-adventure-map.md` (refined 2026-10-08, reviewed with the user the same day; decisions 1–12 there; done tasks in `E08-log.md`). Increment 1 = T1a, T1b, T2–T10, a checkpoint with the user at T1a (done: ADR-0015–0017), after T3 (next) and at T10. T1a, T1b, T2 and T3 are done; the import moved from T3 to T5 and T6 (user, 2026-10-10).
+Epic: `docs/epics/E08-adventure-map.md` (refined 2026-10-08, reviewed with the user the same day; decisions 1–12 there; done tasks in `E08-log.md`). Increment 1 = T1a, T1b, T2–T10, with a checkpoint with the user at T1a (done: ADR-0015–0017), after T3 (done, 2026-10-10) and at T10. T1a, T1b, T2 and T3 are done; the import moved from T3 to T5 and T6 (user, 2026-10-10). Refined into the entries below at the T3 checkpoint (2026-10-10): the user takes one or two tasks per round, each round ends at a checkpoint (this round: T4 alone). Every entry's acceptance includes the Definition of Done (`docs/05-testing.md`).
 
-### E08 T4–T10
+### E08 T4 — Adventure content
 
-- **Scope:** as in the epic file: T4 adventure content, T5 state and the persistent grid (with the two copy-on-write properties; the persistent module is `src/persistent.rs`, the only place `arch.toml` allows `ptr_eq`/`as_ptr`; `AdventureSetup` and the import of terrain and footprints), T6 `h3-game` thin (`GameSetup`, the import of players and placed heroes, `Unsupported`, `MAP_IMPORT_VERSION` documented; parse, import and validation property-tested together on arbitrary bytes), T7 movement (starts with CR-1, `ADV-Q3`, then the user classifies A-2 and A-3), T8 fog and projection (starts with CR-3, `ADV-Q5`; A-1 needs the user's look at a map), T9 env/CLI/gates (a replay names its map by content hash, path and `MAP_IMPORT_VERSION`, ADV-Q2), T10 closure. To be refined into queue entries (ADR-0015–0017 accepted).
-- **Status:** waiting (the user's checkpoint after T3, then the refinement into entries, before T4).
+- **Scope:** `h3-adventure`'s ruleset part (`AdventureRuleset`, ADR-0015 point 2): per core terrain its passage (land, water, none) and straight step cost, the road and river kinds with the roads' costs, the native-terrain cost, the land movement points by the army's slowest speed (D-4 settled by the original's `movement.txt`, read through CR-2's speed-table part), its compiler on top of the core `Ruleset`, canonical hash and `ADVENTURE_RULESET_HASH_VERSION`. `h3-pack-adventure`: the strict `adventure.toml` format; `packs/base/adventure.toml` and the synthetic packs' files with sources; the generated-vs-source note in `packs/README.md` (battle-owned: label `cross-lane`, decision 10). Rule ids `ADV-MOV-*` for the data rules (the step rules stay T7's).
+- **Acceptance:** the base and synthetic parts compile and hash stably; every core terrain has a movement entry; malformed files and bad references are typed errors; the map entries of the reading (`check-exe-map`).
+- **Depends on:** nothing. **Status:** in progress (`adventure/e08-t4`, 2026-10-10 15:00 UTC).
+
+### E08 T5a — Static map and setup
+
+- **Scope:** `AdventureSetup` (dimensions and levels, per tile terrain, road and river as T4's handles, object footprints with their blocked and visitable masks, heroes on the map with owner, tile and army) and its validation, one check per invariant (ADR-0015 point 4: a hero on a passable tile, not blocked, inside the map; sizes within the ruleset's bounds); `AdventureState` with the static map behind an `Arc` and the heroes in plain arrays; the canonical state hash (`ADVENTURE_STATE_HASH_VERSION`). `h3-map`'s import of terrain, roads, rivers and footprints into `AdventureSetup` (the format's codes → keys only there), run on every shipped map by `examples/original_data.rs`.
+- **Acceptance:** setups built in code cover each validation error; every shipped map imports its static layer; equal content hashes equal.
+- **Depends on:** T4. **Status:** ready after T4.
+
+### E08 T5b — The persistent grid
+
+- **Scope:** `src/persistent.rs` (an `Arc` table of `Arc` leaves, uniform leaves shared through a sentinel held by the grid, set and clear; the only place `ptr_eq`/`as_ptr` may appear), the two copy-on-write properties (ADR-0016 point 2), the leaf-size benchmark against a flat per-player copy, fork benchmarks on 36×36 and 144×144 with their first baseline in `benches/adventure/`.
+- **Acceptance:** both properties pass; the measurements and the chosen leaf size in `docs/02-architecture.md` §8 and the log. A grid that loses on hot reads goes back to the user (ADR-0016).
+- **Depends on:** T5a. **Status:** ready after T5a.
+
+### E08 T6a — Game setup and the rest of the import
+
+- **Scope:** `h3_game::GameSetup` (players, the turn schedule's input, the adventure setup) and its validation; `h3-map`'s import of players and placed heroes with the typed `Unsupported` errors (a random hero, a hero generated at a main town); `MAP_IMPORT_VERSION` documented in `docs/formats/h3m.md`; one property test on arbitrary bytes running parse, import and validation together.
+- **Acceptance:** the shipped maps sort into imported and `Unsupported` with a count per reason in the log; no panic on arbitrary bytes.
+- **Depends on:** T5a. **Status:** ready after T5a.
+
+### E08 T6b — Players, turns and the day
+
+- **Scope:** players, turn groups (sequential play only), the calendar, the per-player RNG streams, `EndTurn` and the day advance with the movement points of the day (ADV-Q4: the start of the day; read CR-2's call sites first), command routing across contexts (ADR-0017).
+- **Acceptance:** rules `GAM-*` implemented with sources; a rejected `EndTurn` leaves the state untouched.
+- **Depends on:** T6a. **Status:** ready after T6a.
+
+### E08 T7 — Movement
+
+- **Scope:** first CR-1 (`ADV-Q3`: D-2, D-3, A-2, A-3), then the user classifies A-2 and A-3; `MoveHero` with a full path validated step by step and rejected whole, the reachable-tiles query (costs and the chosen shortest path), the leavable own tile, rules `ADV-MOV-*`. May split into a reading and a build task once the reading is done.
+- **Acceptance:** each step rule has a test from its source; the query and `MoveHero` agree (a property).
+- **Depends on:** T4, T5a, T6b; the user's classification after CR-1. **Status:** waiting (T6b).
+
+### E08 T8 — Fog of war and projection
+
+- **Scope:** first CR-3 (`ADV-Q5`); reveal by scouting radius on the grid of T5b, the fringe quirk `ADV-QUIRK-1` if confirmed (A-1), events with their visibility, `observe` and `legal_commands`, the viewer knowledge list in `docs/06-security.md`, the property tests (atomicity, legality consistency, ownership isolation, observation hygiene, clone equivalence, determinism).
+- **Acceptance:** the seven property tests pass on imported maps.
+- **Depends on:** T5b, T7; the user's four answers on the fringe (A-1). **Status:** waiting (A-1, T7).
+
+### E08 T9 — Env, CLI, gates
+
+- **Scope:** `AdventureEnv` (reset, step, mask, fork, hash; the action a destination among the reachable tiles), a random agent, the CLI's run, replay verify and bench, golden replays naming their map by content hash, path and `MAP_IMPORT_VERSION` (ADV-Q2), the benchmark workload and its baseline (decision 11).
+- **Acceptance:** the replays pass the determinism matrix; the +2 % gate has a baseline.
+- **Depends on:** T8; the editor maps as committed fixtures (Inbox). **Status:** waiting (T8).
+
+### E08 T10 — Closure
+
+- **Scope:** the movement experiments' spec shape (cross-lane, decision 12) and a batch, the docs, the refinement of increment 2, the checkpoint.
+- **Depends on:** T9. **Status:** waiting (T9).
 
 ## Inbox
 
