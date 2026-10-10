@@ -1,5 +1,6 @@
 //! Tests of the adventure setup and state (E08 T5a): the static map, the footprints of objects,
-//! where heroes may stand, the armies, one test per setup error, and the canonical hash.
+//! where heroes may stand, the armies, one test per setup error, and the canonical hash; the
+//! movement points and the start of a player's turn (T6b).
 
 extern crate std;
 
@@ -201,6 +202,31 @@ fn keeps_the_heroes_by_id_and_their_stacks_by_slot() {
     assert_eq!(five.army, [stack(0, IMP, 12), stack(2, GOG, 3)]);
     assert_eq!(state.hero(HeroId::new(1)).unwrap().pos, Pos::new(0, 0, 0));
     assert_eq!(state.hero(HeroId::new(2)), None);
+}
+
+// covers: ADV-MOV-001, ADV-MOV-002
+#[test]
+fn a_players_turn_gives_only_its_heroes_the_days_points() {
+    let (core, part) = rules();
+    let mut state = build(&setup()).unwrap();
+    // Placed heroes start with the day's points for their armies: imps alone 1500, imps and
+    // gogs 1430.
+    let points =
+        |s: &AdventureState| -> Vec<u32> { s.heroes().iter().map(|h| h.movement).collect() };
+    assert_eq!(points(&state), [1500, 1430]);
+    state.heroes[0].movement = 7;
+    state.heroes[1].movement = 9;
+    // Blue's turn (hero 5): what it had left is lost; red's hero keeps its points.
+    state.start_turn(&core, &part, PlayerId::new(1));
+    assert_eq!(points(&state), [7, 1430]);
+    // A slower army gets fewer points at the next turn.
+    state.heroes[0].army[0].creature = GOG;
+    state.start_turn(&core, &part, PlayerId::new(0));
+    assert_eq!(points(&state), [1430, 1430]);
+    // A player without heroes changes nothing.
+    let before = state.clone();
+    state.start_turn(&core, &part, PlayerId::new(5));
+    assert_eq!(state, before);
 }
 
 // covers: ADV-MAP-001
@@ -437,4 +463,8 @@ fn the_hash_sees_content_not_sharing() {
     let one = build(&more).unwrap();
     more.players = 2;
     assert_ne!(build(&more).unwrap().state_hash(), one.state_hash());
+    // The movement points left are state.
+    let mut moved = base.clone();
+    moved.heroes[1].movement -= 1;
+    assert_ne!(moved.state_hash(), base.state_hash());
 }

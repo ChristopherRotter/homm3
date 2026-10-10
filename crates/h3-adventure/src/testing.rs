@@ -62,7 +62,7 @@ pub(crate) fn battle() -> BattleParamsDef {
     }
 }
 
-fn creature(k: &str) -> CreatureDef {
+fn creature(k: &str, speed: u8) -> CreatureDef {
     CreatureDef {
         key: key(k),
         attack: 1,
@@ -70,14 +70,15 @@ fn creature(k: &str) -> CreatureDef {
         damage_min: 1,
         damage_max: 1,
         hit_points: 1,
-        speed: 5,
+        speed,
         info: CreatureInfoDef::default(),
     }
 }
 
 /// The rules the setup and state tests use: the terrains `t:grass` (land), `t:sea` (water) and
-/// `t:rock` (impassable), in that order; the creatures `t:imp` and `t:gog`; one road and one
-/// river; maps up to 8 × 8 on two levels, two players, armies of three slots.
+/// `t:rock` (impassable), in that order; the creatures `t:imp` (speed 5) and `t:gog` (speed 2);
+/// one road and one river; a land table of 1300, 1360, 1430, 1500 for speeds 0 to 3; maps up to
+/// 8 × 8 on two levels, two players, armies of three slots.
 pub(crate) fn rules() -> (Ruleset, AdventureRuleset) {
     let core = ContentPack {
         terrains: ["t:grass", "t:sea", "t:rock"]
@@ -87,7 +88,7 @@ pub(crate) fn rules() -> (Ruleset, AdventureRuleset) {
                 name: "Terrain".into(),
             })
             .collect(),
-        creatures: vec![creature("t:imp"), creature("t:gog")],
+        creatures: vec![creature("t:imp", 5), creature("t:gog", 2)],
         profiles: vec![ProfileDef {
             key: key("t:faithful"),
             quirks: vec![],
@@ -118,12 +119,13 @@ pub(crate) fn rules() -> (Ruleset, AdventureRuleset) {
         }],
         params: Some(AdventureParamsDef {
             native_cost: cost(100),
-            land_points: vec![1500],
+            land_points: vec![1300, 1360, 1430, 1500],
             scouting_radius: 5,
             max_map_size: cost(8),
             max_levels: NonZeroU8::new(2).unwrap(),
             max_players: NonZeroU8::new(2).unwrap(),
             army_slots: NonZeroU8::new(3).unwrap(),
+            starting_stack_chances: vec![88, 25],
         }),
         ..AdventurePack::new(manifest("t", &[]))
     };

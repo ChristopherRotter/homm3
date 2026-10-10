@@ -29,6 +29,13 @@ max_players = 8
 # A hero's army has seven slots: the .h3m hero body's army is 7 stacks (docs/formats/h3m.md);
 # VCMI 1.7.5 lib/constants/NumericConstants.h ARMY_SIZE = 7; the battle pack's army_slots.
 army_slots = 7
+# GAM-SET-001 (E08 T6b): a hero placed without an army of its own gets its type's first starting
+# stack always, the second slot's with 88 % and the third's with 25 %, each its own roll of 1-100.
+# Code reading: 0x4C9730 (placed heroes: 0x487290 -> 0x486590 when the map gives no stacks) rolls
+# random_between(1, 100) <= 88 for the second slot (a war machine there needs the same roll) and
+# then <= 25 for the third. The wiki's hero template has 88 % and 25 % for SoD; VCMI 1.7.5
+# config/gameConfig.json startingStackChances [100, 88, 25] uses one roll for both (ADV-Q6).
+starting_stack_chances = [88, 25]
 
 # ADV-MOV-003, ADV-MOV-007: the straight cost of a step on each terrain (the .h3m terrain codes 0-9
 # in this order). Wiki (Movement) and VCMI 1.7.5 config/terrains.json agree. Water is sailed by

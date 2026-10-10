@@ -52,7 +52,17 @@ where to read, not facts.
   trick: give a hero fast creatures before the day ends, take the slow ones back after it
   starts. Whether the original computes it at the start of the day or at the start of each
   player's turn shows only when another player's actions change a hero's army in between:
-  dispute **D-1**.
+  dispute **D-1**. **Read in E08 T6b (CR-2's callers):** the original sets them at the start
+  of the owner's *turn*. The End Turn handler `0x409A70` (after its confirmation box) calls the
+  next-player step `0x4C6FE0`; that steps the current player `0x69CCA8` on, calls the new day
+  `0x4C7FE0` when the day's last player has played, and then sets current (+0x49) and maximum
+  (+0x4D) points to `0x4E4D90`'s value for the new current player's heroes on the map, its two
+  tavern heroes and the heroes in its towns. The new day sets no movement itself, nor do the
+  functions it calls or theirs. `0x4F4C00` does the same for the network game's hand-over (a
+  branch the reading policy leaves aside); a placed hero gets its points at setup
+  (`0x486590`). Not read: the computer player's own turn loop beyond the call into `0x4C6FE0`.
+  The wiki and VCMI disagree, so this is a conflict of sources: the user chose the reading until
+  a confirmation experiment settles it (ADV-Q4, ADV-MOV-002).
 - **No carry-over:** unused points "cannot be stored or preserved over to next day" (wiki). VCMI
   sets every hero to its limit at the change of day.
 - On water a hero always has 1500 (wiki, vcmi `movementPointsSea`); water is not in
@@ -151,8 +161,39 @@ where to read, not facts.
   advances and movement points are reset (1.1). Later increments add mana, income, and on a new
   week growth and the week's creature. A week has 7 days and a month 4 weeks (vcmi
   `GENERAL_DAYS_PER_WEEK`, `GENERAL_WEEKS_PER_MONTH`, as parameters).
-- **Hooks (ADR draft "game orchestration", point 3):** in increment 1 every rule runs at the
-  start of the day; no rule needs the start of a turn unless D-1 moves the movement points there.
+- **Hooks (ADR-0017 point 3):** D-1 moved the movement points to the start of each player's
+  turn (E08 T6b, the reading above), so in increment 1 the start of a turn has one rule
+  (ADV-MOV-002) and the start of a day none.
+- **Humans first (read in E08 T6b):** `0x4C6FE0` walks the colours once for the players whose
+  human flag (player +0xE2) is set and once for the others, and calls the new day after the
+  second walk: the original, like VCMI, plays every human before every computer each day. The
+  engine has no human/computer distinction (an inbox item for the turn-group work).
+
+### 3.1 The starting army (GAM-SET-001; read in E08 T6b)
+
+A hero the map gives no stacks gets its type's starting army. `0x4C9730` (called with its
+one-creature flag clear by `0x486590`, which fills a hero from the map's record, when the hero
+has no creatures afterwards) clears the seven slots, then:
+
+1. slot 0: the hero table's first type (`0x679DD0` + 0x24) and a count drawn between the first
+   bounds (+0x44, +0x48, filled from `HOTRAITS.TXT`);
+2. a roll of 1–100; at most 88 gives the second type (+0x28): the Ballista (146) and the First
+   Aid Tent (147) become the artifacts 4 and 6 and take no slot, any other creature takes slot 1
+   with a count from +0x4C, +0x50;
+3. a *new* roll of 1–100; at most 25 gives the third type (+0x2C) in the next free slot (1 when
+   the second gave no stack) with a count from +0x54, +0x58.
+
+With the flag set (callers `0x4C86A0`, `0x4D9EC0`, not read) only one creature of the first
+stack comes. A campaign case swaps hero 45's record for hero 96's. The nine heroes with a war
+machine have it in the second of their three slots (the table; `installation.md` §7.1 says the
+third, a slip). Sources: the wiki's hero template has 88 % and 25 % for SoD and 100 % for the
+war machine of those nine heroes; VCMI (`CGHeroInstance::initArmy`, `startingStackChances
+[100, 88, 25]`) uses *one* roll for every slot, so its third stack never comes without the
+second, and gives the war machine at 88 %. Conflicts of sources (ADV-Q6): the rolls'
+independence (reading against VCMI; the wiki is silent) and the war machine's chance (reading
+and VCMI against the wiki and the user's understanding). The engine draws the stacks as the
+reading has them (the user, 2026-10-10); war machines are not on the map hero before
+increment 3.
 
 ## 4. Quirk candidates: for the user to classify
 
@@ -198,7 +239,7 @@ contact rule, with HD's day limits as parameters.
 
 | Id | Question | Sources | Needed by | Settle by |
 |---|---|---|---|---|
-| D-1 | Movement points: at the start of the day for all players, or at the start of each player's turn | wiki and VCMI say start of day; the original's call site is not read | T6/T7 (which hook) | CR-2 |
+| D-1 | Movement points: at the start of the day for all players, or at the start of each player's turn | wiki and VCMI say start of day; the original's call sites (read in T6b) say start of the owner's turn | T6/T7 (which hook) | read in T6b (§1.1); the user chose the reading until an experiment confirms it (ADV-Q4) |
 | D-2 | Stepping off a road: the destination's terrain or the terrain under the road | wiki vs VCMI | T7 | CR-1 |
 | D-3 | Does a step that leaves fewer points than its straight cost take all the points | VCMI only | T7 | CR-1 |
 | D-4 | Points for speeds 0–2 | wiki vs VCMI; no army creature is that slow | T4 (data only) | settled in T4: `movement.txt` has the wiki's row (§1.1) |

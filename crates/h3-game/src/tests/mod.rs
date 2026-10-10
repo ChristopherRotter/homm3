@@ -1,6 +1,9 @@
-//! Tests of the game's rules bundle and setup (E08 T6a). The rulesets are built in code (an
-//! application crate takes no pack adapter as a dev-dependency); the core still needs battle
-//! parameters until the content split (ADR-0015 point 3).
+//! Tests of the game's rules bundle and setup (E08 T6a); the state, the starting armies' draw
+//! and the turns in `state.rs` (T6b). The rulesets are built in code (an application crate
+//! takes no pack adapter as a dev-dependency); the core still needs battle parameters until the
+//! content split (ADR-0015 point 3).
+
+mod state;
 
 extern crate std;
 
@@ -59,7 +62,7 @@ fn battle() -> BattleParamsDef {
     }
 }
 
-fn creature(k: &str) -> CreatureDef {
+fn creature(k: &str, speed: u8) -> CreatureDef {
     CreatureDef {
         key: key(k),
         attack: 1,
@@ -67,8 +70,18 @@ fn creature(k: &str) -> CreatureDef {
         damage_min: 1,
         damage_max: 1,
         hit_points: 1,
-        speed: 5,
+        speed,
         info: CreatureInfoDef::default(),
+    }
+}
+
+fn war_machine(k: &str) -> CreatureDef {
+    CreatureDef {
+        info: CreatureInfoDef {
+            flags: vec!["war_machine".into()],
+            ..CreatureInfoDef::default()
+        },
+        ..creature(k, 0)
     }
 }
 
@@ -80,7 +93,7 @@ fn manifest() -> PackManifest {
     }
 }
 
-fn hero_type(k: &str, army: &[(&str, [u16; 2])]) -> HeroTypeDef {
+fn hero_type(k: &str, army: &[(&str, [u16; 2])], war_machines: &[&str]) -> HeroTypeDef {
     HeroTypeDef {
         key: key(k),
         name: "Hero".into(),
@@ -95,18 +108,23 @@ fn hero_type(k: &str, army: &[(&str, [u16; 2])]) -> HeroTypeDef {
                 count: *count,
             })
             .collect(),
-        war_machines: vec![],
+        war_machines: war_machines.iter().map(|m| key(m)).collect(),
         specialty: vec![],
     }
 }
 
-/// A core ruleset: the terrains `t:grass` and `t:rock`, the creatures `t:imp` and `t:gog`, and
-/// the hero types `t:orrin` (imp 2-5, gog 1-3), `t:loner` (no army) and `t:crowd` (three
-/// stacks), in that order; `extra` adds a creature.
+/// A core ruleset: the terrains `t:grass` and `t:rock`, the creatures `t:imp` (speed 5),
+/// `t:gog` (speed 2) and the war machine `t:cart`, and the hero types `t:orrin` (imp 2-5, gog
+/// 1-3), `t:loner` (no army), `t:crowd` (three stacks) and `t:gunner` (imp 1-1, the cart, gog
+/// 2-2), in that order; `extra` adds a creature.
 fn core(extra: bool) -> Ruleset {
-    let mut creatures = vec![creature("t:imp"), creature("t:gog")];
+    let mut creatures = vec![
+        creature("t:imp", 5),
+        creature("t:gog", 2),
+        war_machine("t:cart"),
+    ];
     if extra {
-        creatures.push(creature("t:elf"));
+        creatures.push(creature("t:elf", 5));
     }
     let pack = ContentPack {
         terrains: ["t:grass", "t:rock"]
@@ -131,11 +149,17 @@ fn core(extra: bool) -> Ruleset {
             skill_weights: vec![],
         }],
         heroes: vec![
-            hero_type("t:orrin", &[("t:imp", [2, 5]), ("t:gog", [1, 3])]),
-            hero_type("t:loner", &[]),
+            hero_type("t:orrin", &[("t:imp", [2, 5]), ("t:gog", [1, 3])], &[]),
+            hero_type("t:loner", &[], &[]),
             hero_type(
                 "t:crowd",
                 &[("t:imp", [1, 1]), ("t:imp", [1, 1]), ("t:gog", [1, 1])],
+                &[],
+            ),
+            hero_type(
+                "t:gunner",
+                &[("t:imp", [1, 1]), ("t:gog", [2, 2])],
+                &["t:cart"],
             ),
         ],
         profiles: vec![ProfileDef {
@@ -149,8 +173,14 @@ fn core(extra: bool) -> Ruleset {
 }
 
 /// The adventure part for `core`: maps up to 4 × 4 on one level, three players, armies of two
-/// slots.
+/// slots, a land table of 1300, 1360, 1430, 1500 for speeds 0 to 3, the original's starting
+/// stack chances.
 fn part(core: &Ruleset) -> AdventureRuleset {
+    part_with(core, vec![88, 25], 2)
+}
+
+/// [`part`] with other starting stack chances and army slots.
+fn part_with(core: &Ruleset, chances: Vec<u8>, slots: u8) -> AdventureRuleset {
     let cost = NonZeroU16::new(100).unwrap();
     let pack = AdventurePack {
         terrains: vec![
@@ -165,12 +195,13 @@ fn part(core: &Ruleset) -> AdventureRuleset {
         ],
         params: Some(AdventureParamsDef {
             native_cost: cost,
-            land_points: vec![1500],
+            land_points: vec![1300, 1360, 1430, 1500],
             scouting_radius: 5,
             max_map_size: NonZeroU16::new(4).unwrap(),
             max_levels: NonZeroU8::new(1).unwrap(),
             max_players: NonZeroU8::new(3).unwrap(),
-            army_slots: NonZeroU8::new(2).unwrap(),
+            army_slots: NonZeroU8::new(slots).unwrap(),
+            starting_stack_chances: chances,
         }),
         ..AdventurePack::new(manifest())
     };
@@ -178,8 +209,13 @@ fn part(core: &Ruleset) -> AdventureRuleset {
 }
 
 fn rules() -> GameRuleset {
+    rules_with(vec![88, 25], 2)
+}
+
+/// [`rules`] with other starting stack chances and army slots.
+fn rules_with(chances: Vec<u8>, slots: u8) -> GameRuleset {
     let core = core(false);
-    let part = part(&core);
+    let part = part_with(&core, chances, slots);
     GameRuleset::new(Arc::new(core), Arc::new(part)).unwrap()
 }
 
@@ -271,12 +307,12 @@ fn the_game_checks_its_part_before_the_adventure() {
         GameSetupError::Adventure(SetupError::HeroTile { .. })
     ));
     assert_eq!(
-        error(|s| s.heroes[1].hero_type = HeroTypeId::from_raw(3)),
+        error(|s| s.heroes[1].hero_type = HeroTypeId::from_raw(4)),
         GameSetupError::UnknownHeroType(HeroId::new(1))
     );
     assert_eq!(
         error(|s| {
-            s.heroes[0].hero_type = HeroTypeId::from_raw(3);
+            s.heroes[0].hero_type = HeroTypeId::from_raw(4);
             s.heroes[0].army = HeroArmy::Starting;
         }),
         GameSetupError::UnknownHeroType(HeroId::new(0))
@@ -307,11 +343,20 @@ fn the_adventure_checks_the_rest() {
             error: StandError::Terrain,
         })
     );
-    // A starting army is checked whole: three stacks do not fit two slots.
+    // A starting army is checked whole by the game: three stacks do not fit two slots, whatever
+    // the draw; a custom army goes to the adventure's checks.
     assert_eq!(
         error(|s| s.heroes[1].hero_type = HeroTypeId::from_raw(2)),
+        GameSetupError::StartingArmy(HeroId::new(1))
+    );
+    assert_eq!(
+        error(|s| s.heroes[0].army = HeroArmy::Custom(vec![ArmyStack {
+            slot: 2,
+            creature: IMP,
+            count: 1
+        }])),
         GameSetupError::Adventure(SetupError::Army {
-            hero: HeroId::new(1),
+            hero: HeroId::new(0),
             error: ArmyError::SlotOutOfRange(2),
         })
     );
@@ -333,7 +378,7 @@ fn the_parts_must_belong_to_the_core() {
         Err(RulesetMismatch)
     );
     let rules = GameRuleset::new(Arc::new(other), Arc::new(part)).unwrap();
-    assert_eq!(rules.core().creature_count(), 3);
+    assert_eq!(rules.core().creature_count(), 4);
     assert_eq!(rules.adventure().params().max_players(), 3);
 }
 
@@ -353,7 +398,7 @@ fn the_errors_read_well() {
         ),
         (
             GameSetupError::StartingArmy(hero),
-            "hero 2's starting army has no stacks",
+            "hero 2's starting army does not fit an army",
         ),
         (
             GameSetupError::Adventure(SetupError::Players(0)),

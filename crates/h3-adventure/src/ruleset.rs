@@ -100,6 +100,10 @@ pub struct AdventureParamsDef {
     pub max_players: NonZeroU8,
     /// The slots of a hero's army.
     pub army_slots: NonZeroU8,
+    /// The chance in percent that a hero's starting army gets the stack of its second, third, …
+    /// starting slot; the first slot's stack always comes, slots past the list never
+    /// (GAM-SET-001). Each at most 100.
+    pub starting_stack_chances: Vec<u8>,
 }
 
 /// One pack's adventure definitions (its `adventure.toml`), with the manifest of its core pack.
@@ -175,6 +179,7 @@ pub struct AdventureParams {
     max_levels: NonZeroU8,
     max_players: NonZeroU8,
     army_slots: NonZeroU8,
+    starting_stack_chances: Vec<u8>,
 }
 
 impl AdventureParams {
@@ -219,6 +224,11 @@ impl AdventureParams {
     /// The slots of a hero's army.
     pub const fn army_slots(&self) -> u8 {
         self.army_slots.get()
+    }
+
+    /// The chance in percent of each starting slot after the first (GAM-SET-001).
+    pub fn starting_stack_chances(&self) -> &[u8] {
+        &self.starting_stack_chances
     }
 }
 
@@ -433,11 +443,12 @@ impl AdventureRuleset {
 }
 
 impl CanonicalHash for AdventureRuleset {
-    /// Encoding v2 (E08 T5a; v1 was T4's): version; the terrains in the core's order (key,
-    /// passage: 0 land, 1 water with the cost, 2 impassable); the road kinds (key, name, cost);
-    /// the river kinds (key, name); the parameters (native cost, the land table as length +
-    /// entries, scouting radius; since v2 the largest map size, levels, players and the army
-    /// slots). The core's hash is not part of it: replays record both.
+    /// Encoding v3 (E08 T6b; v1 was T4's, v2 T5a's): version; the terrains in the core's order
+    /// (key, passage: 0 land, 1 water with the cost, 2 impassable); the road kinds (key, name,
+    /// cost); the river kinds (key, name); the parameters (native cost, the land table as its
+    /// length and entries, scouting radius; since v2 the largest map size, levels, players and
+    /// the army slots; since v3 the starting stack chances as their length and entries). The
+    /// core's hash is not part of it: replays record both.
     fn hash_into(&self, h: &mut StateHasher) {
         h.write_u32(ADVENTURE_RULESET_HASH_VERSION);
         h.write_len(self.terrains.len());
@@ -463,6 +474,7 @@ impl CanonicalHash for AdventureRuleset {
         h.write_u8(self.params.max_levels.get());
         h.write_u8(self.params.max_players.get());
         h.write_u8(self.params.army_slots.get());
+        self.params.starting_stack_chances.hash_into(h);
     }
 }
 
@@ -575,6 +587,8 @@ fn validate_params(def: AdventureParamsDef) -> Result<AdventureParams, Adventure
         Some("land_points has more entries than speeds")
     } else if def.land_points.contains(&0) {
         Some("a land_points entry is 0")
+    } else if def.starting_stack_chances.iter().any(|&c| c > 100) {
+        Some("a starting_stack_chances entry is above 100")
     } else {
         None
     };
@@ -588,6 +602,7 @@ fn validate_params(def: AdventureParamsDef) -> Result<AdventureParams, Adventure
             max_levels: def.max_levels,
             max_players: def.max_players,
             army_slots: def.army_slots,
+            starting_stack_chances: def.starting_stack_chances,
         }),
     }
 }

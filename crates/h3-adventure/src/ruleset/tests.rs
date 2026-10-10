@@ -56,6 +56,7 @@ fn params() -> AdventureParamsDef {
         max_levels: NonZeroU8::new(2).unwrap(),
         max_players: NonZeroU8::new(8).unwrap(),
         army_slots: NonZeroU8::new(7).unwrap(),
+        starting_stack_chances: vec![88, 25],
     }
 }
 
@@ -339,6 +340,22 @@ fn one_pack_provides_valid_parameters() {
         invalid(vec![1500, 0]),
         AdventureCompileError::InvalidParams("a land_points entry is 0")
     );
+    let chances = |chances: Vec<u8>| {
+        AdventureRuleset::compile(
+            &core(),
+            &edit(|p| pack(p, "t").params.as_mut().unwrap().starting_stack_chances = chances),
+        )
+        .map(|part| part.params().starting_stack_chances().to_vec())
+    };
+    assert_eq!(
+        chances(vec![88, 101]),
+        Err(AdventureCompileError::InvalidParams(
+            "a starting_stack_chances entry is above 100"
+        ))
+    );
+    // Any chance up to 100 compiles, and no chances at all: only the first stack comes.
+    assert_eq!(chances(vec![0, 100]), Ok(vec![0, 100]));
+    assert_eq!(chances(vec![]), Ok(vec![]));
     // A full table compiles.
     let full = edit(|p| {
         pack(p, "t").params.as_mut().unwrap().land_points = vec![1500; MAX_LAND_POINTS];
