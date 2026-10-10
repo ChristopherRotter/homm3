@@ -521,7 +521,7 @@ different creatures or statistics.
 | `no_retreat` | — | neither side may retreat or surrender (Shackles of War) |
 | `school_mastery` | `school`, `level` (1..=3) | the hero casts the school's spells at this mastery; the highest counts (the magic school skills; HER-BAT-011) |
 | `spell_damage` | `bp` (≥ 1), `school` or `spell` (neither: every spell) | more damage from the hero's spells of that scope; sums per scope (Sorcery, the Orbs, Ciele; HER-BAT-012) |
-| `spell_book` | — | the hero can cast the spells it knows (the Spell Book; HER-BAT-011) |
+| `spell_book` | — | the hero can cast its available spells (the Spell Book; HER-SPL-002, HER-BAT-011) |
 | `magic_resistance` | `bp` (1..=10000) | the hero's stacks resist hostile spells: subtracted from their creatures' share; several sources add (Resistance, three artifacts; HER-BAT-013, BAT-MAG-008) |
 | `spell_duration` | `rounds` (≥ 1) | the hero's timed spells last longer; artifact types add once each, a combination's parts too (the Conjuring artifacts, Ring of the Magi; HER-BAT-014, BAT-MAG-010) |
 | `spells` | exactly one of `school`, `level` (1..=5), `spell` | since v30: while worn, the hero has every spell of the school or of the level (never a creature ability nor a spell with `granted_by_name_only`) or the named spell (the Tomes, Spellbinder's Hat, Titan's Thunder, Armageddon's Blade, the Sea Captain's Hat; HER-SPL-002) |

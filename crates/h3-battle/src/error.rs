@@ -123,8 +123,8 @@ impl fmt::Display for HeroError {
             Self::UnknownCreature => "an effect names an unknown creature type",
             Self::UnknownFaction => "an alignment group names an unknown faction",
             Self::MasteryLevel => "spell mastery not 1..=3",
-            Self::UnknownSpell => "unknown spell in the spell book or an effect",
-            Self::UnknownSchool => "a mastery or an effect for an unknown spell school",
+            Self::UnknownSpell => "unknown spell in the spell book, the masteries or an effect",
+            Self::UnknownSchool => "an effect for an unknown spell school",
             Self::TooManySpellBonuses => "too many spells with bonuses of their own",
             Self::DuplicateSpell => "a spell is listed twice in the spell book or the masteries",
             Self::NotAHeroSpell => "a creature ability in the spell book",
@@ -385,11 +385,11 @@ mod tests {
             (HeroError::MasteryLevel, "spell mastery not 1..=3"),
             (
                 HeroError::UnknownSpell,
-                "unknown spell in the spell book or an effect",
+                "unknown spell in the spell book, the masteries or an effect",
             ),
             (
                 HeroError::UnknownSchool,
-                "a mastery or an effect for an unknown spell school",
+                "an effect for an unknown spell school",
             ),
             (
                 HeroError::TooManySpellBonuses,

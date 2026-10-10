@@ -835,6 +835,16 @@ pub(crate) fn list_error<C: PartialEq, K, S: PartialEq, F, L: PartialEq>(
     None
 }
 
+/// Why an effect list of a skill level or a specialty is invalid for its spell effects, if it
+/// is: a `scroll` belongs to an artifact (each copy holds its spell, HER-ART-003).
+pub(crate) fn scroll_error<C, K, S, F, L>(
+    list: &[HeroEffect<C, K, S, F, L>],
+) -> Option<&'static str> {
+    list.iter()
+        .any(|e| matches!(e, HeroEffect::Scroll))
+        .then_some("scroll is allowed on artifacts only")
+}
+
 const fn signed(v: i8) -> u8 {
     v.to_le_bytes()[0]
 }

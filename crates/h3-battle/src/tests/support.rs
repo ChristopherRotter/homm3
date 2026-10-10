@@ -1317,8 +1317,6 @@ pub fn ruleset() -> Ruleset {
     ruleset_with("t:faithful", |_| {})
 }
 
-/// The test ruleset with profile `profile` (`t:faithful` without quirks, `t:quirky` with
-/// Q-0003, `t:single` with Q-0005) and edited battle parameters.
 /// The masteries of a hero with these school levels (by school handle): every spell of `r` above
 /// none at the best of its schools' levels, the Heroes context's rule (HER-SPL-003) that the
 /// seam carries per spell since E04b T8a (BAT-Q19).
@@ -1345,6 +1343,8 @@ pub fn set_masteries(s: &mut BattleState, side: usize, r: &Ruleset, schools: [u8
     }
 }
 
+/// The test ruleset with profile `profile` (`t:faithful` without quirks, `t:quirky` with
+/// Q-0003, `t:single` with Q-0005) and edited battle parameters.
 pub fn ruleset_with(profile: &str, edit: impl FnOnce(&mut BattleParamsDef)) -> Ruleset {
     let creatures = CREATURES
         .iter()

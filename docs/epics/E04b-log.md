@@ -1657,3 +1657,58 @@ records how and why the tasks went.
   hexes (fixed: only this action's dead); the first pick's checks after an action (no reachable
   case: war machines have speed 0); tests added for the berserk morale turn, Tactics, the active
   stack; bad morale's `WAITED` gate against the original's wait phase (pre-existing, inbox).
+
+### Increment 14 start and T8a: available spells and masteries in the Heroes context (2026-10-10)
+
+- **Start:** master green with original data (the sandbox's full verify; CI's run of the #42
+  merge green, #41's fix holding). The user confirmed increment 13's own calls (BAT-Q19 (4)).
+- **The T8 cut** (`installation.md` §7.22; BAT-Q19): a reading of the 224 callers of
+  `hero_wears_artifact` (0x4D91F0) placed every magic artifact; the split T8a to T8e (epic file).
+  Found on the way: Eagle Eye is rolled inside the battle at each enemy hero cast (0x59FF83), the
+  Orb of Vulnerability returns "fully affected" before every resistance step, the opening spells
+  are cast at the side's first stack activation, the mana artifacts have no battle effect (moved
+  to E08–E10).
+- **Decisions** (the user, BAT-Q19): the artifacts' spells exist outside battles (the adventure
+  screen's book), so the hero's available spells are derived once in the Heroes context, not in
+  the battle; the same for a spell's mastery; increment 14 = T8a alone; the seam change in one
+  `cross-lane` pull request. Agent decisions: `masteries` covers every spell above none, beside
+  the unchanged `spell_book` (Sacrifice's test under BAT-QUIRK-5 reads Resurrection's mastery);
+  the book in spell order; `spells` may appear on any effect list (only artifacts have them in
+  the packs), `scroll` on artifacts only; equipping Titan's Thunder adds a Spell Book in the
+  original (0x4E2A64), an equipping rule for E08–E10.
+- **Code reading:** 0x4D95D0 (the available spells from the learned ones, a worn scroll's spell
+  and the sets of the artifacts the loader 0x44CD50 marks from 0x63B998), 0x4D9350 (the sets;
+  0x4D9532 clears Titan's Lightning Bolt from all but Titan's Thunder's), 0x4E5080 and 0x4E5100
+  (the mastery), 0x4E2A00. Map: 0x44CD50, 0x4D91F0, 0x4D9350, 0x4D9532, 0x4D95D0, 0x4E2A00,
+  0x63B98C, 0x63B998; 0x4E5080 and 0x4E5100 re-read.
+- **Content:** pack format v30: hero effects `spells` (a school, a level or a spell),
+  `spell_mastery` and `scroll`, spell attribute `granted_by_name_only` (from the flag 0x2000);
+  the gap-fill's `exe-available-spells` for the Spell Scroll, the Tomes, Spellbinder's Hat, the
+  Sea Captain's Hat, Armageddon's Blade (still pending for T8b) and Titan's Thunder; ruleset hash
+  v39. The synthetic pack has a codex, a wand and a scroll.
+- **Heroes context:** `ArtifactInstance` (type and a scroll's spell) in `HeroDetails`;
+  `available_spells` and `spell_masteries` (HER-SPL-002, HER-SPL-003, HER-ART-003);
+  `derive_battle_hero` uses them (HER-BAT-011).
+- **Seam and battle:** `BattleMagic.masteries` replaces `schools` (ADR-0013 point 2, ADR-0014
+  points 2 and 10 amended); the battle keeps them as two bit planes (`Masteries`) and reads a
+  spell's mastery there (BAT-MAG-002), the quirk's test Resurrection's; state hash v39,
+  observation encoding v12 (the book's features carry 1 + the mastery), C ABI v16, replay format
+  v20 (`masteries` per spell key in a hero entry).
+- **Tests:** h3-heroes (the scroll, tome, crown and wand of the test pack; validation of
+  instances), h3-content (the grants, the hash, the compile errors), h3-pack (the syntax; the
+  harvested Tomes, Hat, Titan's Thunder, Blade, Sea Captain's Hat and scrolls give the original's
+  spells and masteries; random legal heroes with scrolls and learned spells).
+- **Measurements:** behaviour unchanged (every golden replay's command log is the same, only the
+  formats and hashes moved; re-recorded with the same seeds); `random-rollouts-full` 568.3 M Ir
+  (−0.19 %, the same 7 607 steps), re-baselined; `BattleState` 6 264 bytes (+64); release `h3
+  bench` about 112 k steps/s.
+- **Review** (independent): no bug; fixed: `spells` on a skill was ignored while `spell_mastery`
+  counted (both read every effect source now), `scroll` off artifacts and grants naming a
+  creature ability rejected at compile, the scenario writer keeps every mastery, stale docs, a
+  test for the crown alone; BAT-Q19's record reworded to the `masteries` field. Left for T9: the
+  observation shows masteries of book spells only.
+- **A property gap from T7b3** (found by the coverage run's random cases, reproduced on master):
+  `every_step_preserves_the_invariants` took a slot a Pit Lord's Demons take over (a dead created
+  stack's, `RoseFromCorpse`) for a stack whose casts changed; such a slot starts afresh like one
+  a created stack takes (BAT-MAG-052). The property now says so; the case is in the proptest
+  regression file. The engine was right.

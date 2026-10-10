@@ -12,7 +12,9 @@ use alloc::vec::Vec;
 use h3_kernel::{CanonicalHash, Handle, StateHasher};
 
 use crate::artifacts::{ArtifactSlot, ArtifactType};
-use crate::effect::{self, CompiledHeroEffect, HeroEffectDef, MAX_SKILL_LEVEL};
+use crate::effect::{
+    self, CompiledHeroEffect, HeroEffect, HeroEffectDef, MAX_SKILL_LEVEL, SpellGrant,
+};
 use crate::error::CompileError;
 use crate::flags::CreatureFlag;
 use crate::key::ContentKey;
@@ -24,7 +26,7 @@ use crate::spell::SpellMagic;
 pub const MAX_SPELL_LEVEL: u8 = 5;
 /// Most spells in a ruleset (the battle keeps spell books as bitsets, E04b T2b).
 pub const MAX_SPELLS: usize = 128;
-/// Most spell schools (the battle hero keeps one mastery per school, `BattleMagic.schools`).
+/// Most spell schools (a hero keeps one mastery per school, its `school_mastery` effects).
 pub const MAX_SPELL_SCHOOLS: usize = 4;
 /// Most spells with a summon effect in a ruleset (the battle keeps a side's stack of each
 /// creature its hero can summon from the battle's start, E04b T6b; four in the original).
@@ -555,6 +557,25 @@ impl HeroContent {
         Ok(())
     }
 
+    /// Why an effect list's `spells` or `spell_mastery` names a creature ability, if it does: a
+    /// hero has and casts its spells, never an ability (HER-SPL-001 to HER-SPL-003).
+    pub(crate) fn spell_effect_error(&self, list: &[CompiledHeroEffect]) -> Option<&'static str> {
+        let ability = |s: SpellId| {
+            self.spells
+                .get(s)
+                .is_some_and(|spell| spell.category == SpellCategory::Ability)
+        };
+        list.iter()
+            .any(|e| match *e {
+                HeroEffect::Spells {
+                    grant: SpellGrant::Spell(s),
+                }
+                | HeroEffect::SpellMastery { spell: s, .. } => ability(s),
+                _ => false,
+            })
+            .then_some("spells and spell_mastery name hero spells, not creature abilities")
+    }
+
     /// Validates the compiled content once all packs are loaded (creature overrides of later
     /// packs may change what a hero refers to).
     pub(crate) fn validate(
@@ -641,11 +662,11 @@ impl HeroContent {
             return Err(CompileError::TooManyEntries("summon spell"));
         }
         for skill in &self.skills.items {
-            if let Some(reason) = skill
-                .levels
-                .iter()
-                .find_map(|l| effect::list_error(l, false))
-            {
+            if let Some(reason) = skill.levels.iter().find_map(|l| {
+                effect::list_error(l, false)
+                    .or_else(|| effect::scroll_error(l))
+                    .or_else(|| self.spell_effect_error(l))
+            }) {
                 return Err(invalid("secondary skill", &skill.key, reason));
             }
         }
@@ -694,6 +715,8 @@ impl HeroContent {
                 Some("war_machines must have flag war_machine")
             } else {
                 effect::list_error(&h.specialty, true)
+                    .or_else(|| effect::scroll_error(&h.specialty))
+                    .or_else(|| self.spell_effect_error(&h.specialty))
             };
             if let Some(reason) = reason {
                 return Err(invalid("hero type", &h.key, reason));

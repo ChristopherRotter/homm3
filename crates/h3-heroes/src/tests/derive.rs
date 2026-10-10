@@ -910,6 +910,7 @@ fn available_spells_and_masteries_come_from_the_details() {
     // without the spell only a grant naming it gives; the wand names it. Each spell once.
     let both = [id("t:bolt"), id("t:portal")];
     assert_eq!(have(&[art(&r, "t:tome")]), both);
+    assert_eq!(have(&[art(&r, "t:crown")]), both);
     assert_eq!(have(&[art(&r, "t:crown"), art(&r, "t:tome")]), both);
     assert_eq!(have(&[art(&r, "t:wand")]), [id("t:portal"), id("t:titan")]);
     // Masteries: none without a school; the wand raises the bolt to Expert; with Advanced air

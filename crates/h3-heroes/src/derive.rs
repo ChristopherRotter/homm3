@@ -629,7 +629,7 @@ pub(crate) fn effects<'a>(
 /// The effects of the worn artifacts: a combination together with its parts, an artifact that
 /// needs a skill only while the hero has that skill at any level, each artifact once per worn
 /// copy or once per type as `count` says.
-pub(crate) fn artifact_effects<'a>(
+fn artifact_effects<'a>(
     details: &'a HeroDetails,
     ruleset: &'a Ruleset,
     count: Count,

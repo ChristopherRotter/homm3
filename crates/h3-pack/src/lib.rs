@@ -2542,7 +2542,6 @@ impl HeroEntry {
             .magic
             .masteries
             .iter()
-            .filter(|&&(_, level)| level > 0)
             .map(|&(s, level)| Ok((spell_key(ruleset, s)?, level)))
             .collect::<Result<_, PackError>>()?;
         let effects = hero

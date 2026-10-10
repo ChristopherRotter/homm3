@@ -9,14 +9,14 @@ use alloc::vec::Vec;
 
 use h3_content::{HeroEffect, MAX_SKILL_LEVEL, MAX_SPELL_SCHOOLS, Ruleset, SpellId};
 
-use crate::derive::{Count, artifact_effects, effects};
+use crate::derive::{Count, effects};
 use crate::details::{HeroDetails, check};
 use crate::error::DetailsError;
 
 /// The hero's available spells, in spell order (HER-SPL-002): the learned spells, the spell of
-/// every worn scroll and the spells its worn artifacts give (a combination's parts included). A
-/// spell book is needed to cast them (HER-BAT-011), not to have them. The details are validated
-/// first.
+/// every worn scroll and the spells its `spells` effects give (in the original only artifacts
+/// have them; a combination's parts included). A spell book is needed to cast them
+/// (HER-BAT-011), not to have them. The details are validated first.
 ///
 /// # Errors
 /// The [`DetailsError`] of the first rule the details break ([`crate::validate`]).
@@ -50,7 +50,7 @@ pub(crate) fn available(details: &HeroDetails, ruleset: &Ruleset) -> Vec<SpellId
     // rule: HER-SPL-002
     let mut set: BTreeSet<SpellId> = details.spells.iter().copied().collect();
     set.extend(details.worn.iter().filter_map(|item| item.spell));
-    for effect in artifact_effects(details, ruleset, Count::OncePerType) {
+    for effect in effects(details, ruleset, Count::OncePerType) {
         if let HeroEffect::Spells { grant } = *effect {
             set.extend(all_spells(ruleset).filter(|&s| grant.gives(ruleset, s)));
         }

@@ -804,7 +804,7 @@ fn every_effect_kind_resolves_and_the_hash_sees_all_content() {
                     stat: CreatureStat::Attack,
                     amount: 5,
                 },
-                // E04b T8a: spells given, a mastery raise, a scroll.
+                // E04b T8a: spells given and a mastery raise (a scroll belongs to an artifact).
                 HeroEffect::Spells {
                     grant: SpellGrant::School(key("t:air")),
                 },
@@ -818,7 +818,6 @@ fn every_effect_kind_resolves_and_the_hash_sees_all_content() {
                     spell: key("t:bolt"),
                     level: 3,
                 },
-                HeroEffect::Scroll,
             ],
         ],
     ));
@@ -845,7 +844,7 @@ fn every_effect_kind_resolves_and_the_hash_sees_all_content() {
     let base = compile(&[pack()]).unwrap().content_hash();
     let r = compile(&[p.clone()]).unwrap();
     assert_ne!(r.content_hash(), base);
-    assert_eq!(r.skills()[2].effects(3).len(), 7);
+    assert_eq!(r.skills()[2].effects(3).len(), 6);
     assert_eq!(r.hero_types()[0].specialty.len(), 4);
     let fire = r.spell_schools().len() - 1;
     assert_eq!(
@@ -1146,6 +1145,77 @@ fn at_most_four_spell_schools() {
 #[test]
 fn invalid_entries_are_rejected() {
     let cases: Vec<Case> = vec![
+        // The spell effects (E04b T8a): a scroll belongs to an artifact; a grant or a raise
+        // names a hero spell, never a creature ability (on a skill, a specialty, an artifact).
+        (
+            |p| p.skills[0].levels[0] = vec![HeroEffect::Scroll],
+            invalid(
+                "secondary skill",
+                "t:archery",
+                "scroll is allowed on artifacts only",
+            ),
+        ),
+        (
+            |p| p.heroes[0].specialty = vec![HeroEffect::Scroll],
+            invalid(
+                "hero type",
+                "t:orrin",
+                "scroll is allowed on artifacts only",
+            ),
+        ),
+        (
+            |p| {
+                p.skills[0].levels[0] = vec![HeroEffect::SpellMastery {
+                    spell: key("t:gaze"),
+                    level: 1,
+                }];
+            },
+            invalid(
+                "secondary skill",
+                "t:archery",
+                "spells and spell_mastery name hero spells, not creature abilities",
+            ),
+        ),
+        (
+            |p| {
+                p.heroes[0].specialty = vec![HeroEffect::Spells {
+                    grant: SpellGrant::Spell(key("t:gaze")),
+                }];
+            },
+            invalid(
+                "hero type",
+                "t:orrin",
+                "spells and spell_mastery name hero spells, not creature abilities",
+            ),
+        ),
+        (
+            |p| {
+                p.artifact_slots.push(crate::pack::ArtifactSlotDef {
+                    key: key("t:misc"),
+                    name: "Misc".into(),
+                    count: 1,
+                    backpack: true,
+                });
+                p.artifacts.push(crate::pack::ArtifactDef {
+                    key: key("t:wand"),
+                    name: "Wand".into(),
+                    class: crate::ArtifactClass::Treasure,
+                    cost: vec![],
+                    slot: Some(key("t:misc")),
+                    war_machine: None,
+                    needs_skill: None,
+                    effects: vec![HeroEffect::Spells {
+                        grant: SpellGrant::Spell(key("t:gaze")),
+                    }],
+                    parts: vec![],
+                });
+            },
+            invalid(
+                "artifact",
+                "t:wand",
+                "spells and spell_mastery name hero spells, not creature abilities",
+            ),
+        ),
         (
             |p| p.spells[0].level = 6,
             invalid(
