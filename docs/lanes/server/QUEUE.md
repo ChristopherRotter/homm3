@@ -10,8 +10,8 @@ Epic: `docs/epics/E16-server.md` (in progress; M0 done 2026-10-10, ADR-0018). M1
 
 - **Scope:** the epic's M1 T1: the wire types (both directions, struct variants, serde's default enum form, no `tag`/`untagged`/`flatten`, `deny_unknown_fields`, integers only, 64-bit values as strings), the bounded codec (frame size checked before parsing, `serde_json` with `alloc`), the mapping module to and from the battle's commands, legal commands, events and observation (`E16-design.md` §2 and §4), `Unsupported` and `Other { kind }` with the wildcard arms as the lane's one coverage exclusion (queue it for the review), a test listing the mapped kinds; round-trip tests, a round-trip in `postcard` as a dev-dependency (provisional, for the review) so the binary option stays open, and the property that arbitrary bytes never panic.
 - **Acceptance:** `h3-protocol` under the 100 % gate; `cargo xtask verify --scope server --summary` with no failing step; the review list in the epic file updated.
-- **Depends on:** M0 (the skeleton's pull request merged).
-- **Status:** ready once M0 is merged.
+- **Depends on:** M0 (merged 2026-10-10).
+- **Status:** in progress (claude/jolly-cori-sip168, 2026-10-10T15:04Z).
 
 ### E16 M1 T2 — Session core
 
