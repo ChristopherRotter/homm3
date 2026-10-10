@@ -34,7 +34,7 @@ pub const MAX_SIDE_STACKS: usize = 21;
 pub const MAX_FIELD_HEXES: usize = 255;
 
 /// Version of the ruleset hash encoding. Bump when the encoding below changes.
-pub const RULESET_HASH_VERSION: u32 = 40;
+pub const RULESET_HASH_VERSION: u32 = 41;
 
 /// A compiled creature type.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

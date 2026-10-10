@@ -670,6 +670,9 @@ struct SpellDto {
     requires: Vec<String>,
     #[serde(default)]
     excludes: Vec<String>,
+    /// Pack format v32 (E04b T8b3): a stack's creature needs a maximum damage above 0.
+    #[serde(default)]
+    needs_damage: bool,
     #[serde(default)]
     effects: Vec<SpellEffectDto>,
     #[serde(default)]
@@ -896,6 +899,7 @@ impl SpellDto {
             conditions: TargetConditions {
                 requires: flags(&self.requires)?,
                 excludes: flags(&self.excludes)?,
+                needs_damage: self.needs_damage,
             },
             effects: self
                 .effects
@@ -4660,6 +4664,7 @@ mod tests {
                 conditions: TargetConditions {
                     requires: CreatureFlags::default(),
                     excludes: CreatureFlags::default().with(CreatureFlag::WarMachine),
+                    needs_damage: false,
                 },
                 effects: damage.clone(),
                 ..SpellMagic::default()
@@ -4675,6 +4680,10 @@ mod tests {
         let blight = magic("synthetic:blight");
         assert_eq!(blight.target, SpellTarget::None);
         assert!(blight.conditions.requires.contains(CreatureFlag::Alive));
+        // Format v32: a condition on the creature's damage (Boon, as Bless).
+        let boon = magic("synthetic:boon").conditions;
+        assert!(boon.needs_damage && boon.excludes.contains(CreatureFlag::Undead));
+        assert!(!blight.conditions.needs_damage);
         assert_eq!(magic("synthetic:ward"), SpellMagic::default());
         let ward = r.spell(r.spell_by_key("synthetic:ward").unwrap()).unwrap();
         assert_eq!((ward.level, ward.schools.len(), ward.power), (2, 2, 0));
@@ -4693,6 +4702,7 @@ mod tests {
                 conditions: TargetConditions {
                     requires: CreatureFlags::default(),
                     excludes: CreatureFlags::default().with(CreatureFlag::WarMachine),
+                    needs_damage: false,
                 },
                 effects: vec![SpellEffect::Timed(TimedChange::Speed)],
                 mass_from: Some(3),

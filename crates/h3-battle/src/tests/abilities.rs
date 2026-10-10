@@ -343,6 +343,17 @@ fn breath_attacks_also_hit_the_stack_behind_friend_or_foe() {
     arrange(&mut s, &r, &[(7, 1), (7, 0)]);
     let events = hit(&mut s, &r, 1, (7, 1));
     assert_eq!(targets_of(&events, 0), vec![1]);
+    // A drake whose tail (6,5) alone touches the target breathes from its tail: the stack
+    // behind the target, further left, is hit too.
+    let mut s = battle(
+        &r,
+        &[(0, "drake", 10)],
+        &[(0, "fixed", 10), (1, "fixed", 10)],
+        1,
+    );
+    arrange(&mut s, &r, &[(7, 5), (5, 5), (4, 5)]);
+    let events = hit(&mut s, &r, 1, (7, 5));
+    assert_eq!(targets_of(&events, 0), vec![1, 2]);
 }
 
 // ---------------------------------------------------------------- BAT-ATK-004 strike and return

@@ -1,0 +1,579 @@
+//! The adventure context's ruleset part (ADR-0015 point 2, ADR-0006's E08 amendment; E08 T4):
+//! what the adventure map needs beside the core ruleset, compiled from the packs'
+//! `adventure.toml` files on top of a compiled core [`Ruleset`]. Data only: the rules that read
+//! it (the cost of a step, a day's movement points, the reveal) come with movement (T7) and fog
+//! of war (T8), so the rule ids `ADV-MOV-001`, `-003`, `-004`, `-007` and `ADV-FOG-001` stay
+//! `specified` until then (`docs/rules/catalog/adventure.toml`).
+//!
+//! A part references core entities by handle (a terrain by its [`TerrainId`]) and its source by
+//! key. Every enabled core pack has exactly one adventure pack (an empty one when the pack has no
+//! `adventure.toml`), so the load order and the dependency closures are the core's.
+
+use alloc::collections::{BTreeMap, BTreeSet};
+use alloc::format;
+use alloc::string::String;
+use alloc::vec::Vec;
+use core::fmt;
+use core::num::NonZeroU16;
+
+use h3_content::{ContentKey, PackManifest, Ruleset, TerrainId};
+use h3_kernel::hash::hash_of;
+use h3_kernel::{CanonicalHash, Handle, StateHasher};
+
+use crate::ADVENTURE_RULESET_HASH_VERSION;
+
+/// Most entries of the land movement table: one per speed a `u8` can hold.
+pub const MAX_LAND_POINTS: usize = 256;
+
+/// How a hero may cross a terrain (ADV-MOV-007), with the straight cost of a step where it may
+/// (ADV-MOV-003).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Passage {
+    /// Walked on foot; a straight step costs this many movement points.
+    Land(NonZeroU16),
+    /// Sailed by boat (boats come after increment 1); a straight step costs this many points.
+    Water(NonZeroU16),
+    /// Never entered (rock).
+    Impassable,
+}
+
+impl CanonicalHash for Passage {
+    fn hash_into(&self, h: &mut StateHasher) {
+        match self {
+            Self::Land(cost) => {
+                h.write_u8(0);
+                h.write_u16(cost.get());
+            }
+            Self::Water(cost) => {
+                h.write_u8(1);
+                h.write_u16(cost.get());
+            }
+            Self::Impassable => h.write_u8(2),
+        }
+    }
+}
+
+/// A pack's adventure data for one core terrain.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct TerrainMovementDef {
+    /// The core terrain.
+    pub terrain: ContentKey,
+    /// How it is crossed.
+    pub passage: Passage,
+}
+
+/// A road kind in a pack.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct RoadDef {
+    /// Namespaced key.
+    pub key: ContentKey,
+    /// Display name.
+    pub name: String,
+    /// The straight cost of a step along it (ADV-MOV-003).
+    pub cost: NonZeroU16,
+}
+
+/// A river kind in a pack (appearance only: rivers change no cost).
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct RiverDef {
+    /// Namespaced key.
+    pub key: ContentKey,
+    /// Display name.
+    pub name: String,
+}
+
+/// The adventure parameters in a pack; exactly one enabled pack provides them.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct AdventureParamsDef {
+    /// The straight cost of a step on terrain native to the whole army (ADV-MOV-004).
+    pub native_cost: NonZeroU16,
+    /// A day's movement points on land by the army's slowest speed, from speed 0; faster armies
+    /// use the last entry (ADV-MOV-001). One to [`MAX_LAND_POINTS`] entries, none 0.
+    pub land_points: Vec<u32>,
+    /// A hero's scouting radius without bonuses (ADV-FOG-001).
+    pub scouting_radius: u8,
+}
+
+/// One pack's adventure definitions (its `adventure.toml`), with the manifest of its core pack.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct AdventurePack {
+    /// The core pack's manifest (identity and dependencies).
+    pub manifest: PackManifest,
+    /// Movement data of core terrains.
+    pub terrains: Vec<TerrainMovementDef>,
+    /// Road kinds.
+    pub roads: Vec<RoadDef>,
+    /// River kinds.
+    pub rivers: Vec<RiverDef>,
+    /// The adventure parameters, if this pack provides them.
+    pub params: Option<AdventureParamsDef>,
+}
+
+impl AdventurePack {
+    /// An empty adventure pack for the core pack with this manifest.
+    pub fn new(manifest: PackManifest) -> Self {
+        Self {
+            manifest,
+            terrains: Vec::new(),
+            roads: Vec::new(),
+            rivers: Vec::new(),
+            params: None,
+        }
+    }
+}
+
+/// A compiled terrain's adventure data, indexed like the core's terrains.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct TerrainMovement {
+    /// The core terrain's key.
+    pub key: ContentKey,
+    /// How it is crossed.
+    pub passage: Passage,
+}
+
+/// A compiled road kind.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct RoadKind {
+    /// Key.
+    pub key: ContentKey,
+    /// Display name.
+    pub name: String,
+    /// The straight cost of a step along it (ADV-MOV-003).
+    pub cost: NonZeroU16,
+}
+
+/// Handle of a road kind in an [`AdventureRuleset`].
+pub type RoadId = Handle<RoadKind>;
+
+/// A compiled river kind.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct RiverKind {
+    /// Key.
+    pub key: ContentKey,
+    /// Display name.
+    pub name: String,
+}
+
+/// Handle of a river kind in an [`AdventureRuleset`].
+pub type RiverId = Handle<RiverKind>;
+
+/// The compiled adventure parameters.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct AdventureParams {
+    native_cost: NonZeroU16,
+    land_points: Vec<u32>,
+    scouting_radius: u8,
+}
+
+impl AdventureParams {
+    /// The straight cost of a step on terrain native to the whole army (ADV-MOV-004).
+    pub const fn native_cost(&self) -> NonZeroU16 {
+        self.native_cost
+    }
+
+    /// A day's movement points on land for an army whose slowest speed is `slowest_speed`; a
+    /// speed beyond the table takes its last entry (ADV-MOV-001; the original caps the speed at
+    /// 20, where `movement.txt` has long reached its last value).
+    pub fn land_points(&self, slowest_speed: u8) -> u32 {
+        let last = self.land_points.len() - 1;
+        self.land_points[usize::from(slowest_speed).min(last)]
+    }
+
+    /// The table [`Self::land_points`] reads, from speed 0.
+    pub fn land_points_table(&self) -> &[u32] {
+        &self.land_points
+    }
+
+    /// A hero's scouting radius without bonuses (ADV-FOG-001).
+    pub const fn scouting_radius(&self) -> u8 {
+        self.scouting_radius
+    }
+}
+
+/// Why the adventure packs could not be compiled into an [`AdventureRuleset`].
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum AdventureCompileError {
+    /// A core pack has no adventure pack.
+    MissingPack(String),
+    /// An adventure pack's manifest names no pack of the core ruleset (id and version).
+    UnknownPack(String),
+    /// Two adventure packs belong to one core pack.
+    DuplicatePack(String),
+    /// A pack's dependency does not load before it.
+    UnknownDependency {
+        /// The depending pack.
+        pack: String,
+        /// The dependency.
+        dependency: String,
+    },
+    /// A pack defines a road or river outside its own namespace.
+    KeyOutsidePack {
+        /// The offending key.
+        key: String,
+        /// The pack defining it.
+        pack: String,
+    },
+    /// Two road kinds, or two river kinds, share a key.
+    DuplicateKey(String),
+    /// A pack references a key of a pack outside its dependency closure.
+    ReferenceOutsideDependencies {
+        /// The referenced key.
+        key: String,
+        /// The referencing pack.
+        pack: String,
+    },
+    /// A terrain the core ruleset does not define.
+    UnknownTerrain(String),
+    /// Two packs give one terrain its movement data.
+    DuplicateTerrain(String),
+    /// A core terrain has no movement data.
+    MissingTerrain(String),
+    /// No enabled pack provides the adventure parameters.
+    MissingParams,
+    /// A second pack provides the adventure parameters.
+    DuplicateParams(String),
+    /// The adventure parameters are invalid.
+    InvalidParams(&'static str),
+    /// More entries of a kind (`road`, `river`) than handles can address.
+    TooManyEntries(&'static str),
+}
+
+impl fmt::Display for AdventureCompileError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::MissingPack(p) => write!(f, "pack `{p}` has no adventure part"),
+            Self::UnknownPack(p) => write!(f, "adventure part of `{p}`, which the core lacks"),
+            Self::DuplicatePack(p) => write!(f, "pack `{p}` has two adventure parts"),
+            Self::UnknownDependency { pack, dependency } => {
+                write!(
+                    f,
+                    "pack `{pack}` depends on `{dependency}`, which is not loaded"
+                )
+            }
+            Self::KeyOutsidePack { key, pack } => {
+                write!(f, "pack `{pack}` defines `{key}` outside its namespace")
+            }
+            Self::DuplicateKey(k) => write!(f, "duplicate key `{k}`"),
+            Self::ReferenceOutsideDependencies { key, pack } => {
+                write!(
+                    f,
+                    "pack `{pack}` references `{key}` outside its dependencies"
+                )
+            }
+            Self::UnknownTerrain(k) => write!(f, "unknown terrain `{k}`"),
+            Self::DuplicateTerrain(k) => write!(f, "terrain `{k}` has movement data twice"),
+            Self::MissingTerrain(k) => write!(f, "terrain `{k}` has no movement data"),
+            Self::MissingParams => f.write_str("no pack provides the adventure parameters"),
+            Self::DuplicateParams(p) => {
+                write!(
+                    f,
+                    "pack `{p}` provides the adventure parameters a second time"
+                )
+            }
+            Self::InvalidParams(reason) => write!(f, "adventure parameters: {reason}"),
+            Self::TooManyEntries(kind) => write!(f, "too many {kind} entries"),
+        }
+    }
+}
+
+/// The adventure context's immutable compiled ruleset part.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct AdventureRuleset {
+    core_hash: u64,
+    terrains: Vec<TerrainMovement>,
+    roads: Vec<RoadKind>,
+    road_index: BTreeMap<String, RoadId>,
+    rivers: Vec<RiverKind>,
+    river_index: BTreeMap<String, RiverId>,
+    params: AdventureParams,
+    hash: u64,
+}
+
+/// The tables being filled while the packs compile.
+#[derive(Default)]
+struct Tables {
+    terrains: BTreeMap<usize, Passage>,
+    roads: Vec<RoadKind>,
+    road_index: BTreeMap<String, RoadId>,
+    rivers: Vec<RiverKind>,
+    river_index: BTreeMap<String, RiverId>,
+    params: Option<AdventureParamsDef>,
+}
+
+impl AdventureRuleset {
+    /// Compiles one adventure pack per pack of `core`, in the core's load order.
+    pub fn compile(core: &Ruleset, packs: &[AdventurePack]) -> Result<Self, AdventureCompileError> {
+        let order = load_order(core, packs)?;
+        let mut tables = Tables::default();
+        for (pack, closure) in &order {
+            compile_pack(core, pack, closure, &mut tables)?;
+        }
+        let terrains = core
+            .terrains()
+            .iter()
+            .enumerate()
+            .map(|(index, info)| {
+                tables
+                    .terrains
+                    .get(&index)
+                    .map(|&passage| TerrainMovement {
+                        key: info.key.clone(),
+                        passage,
+                    })
+                    .ok_or_else(|| {
+                        AdventureCompileError::MissingTerrain(String::from(info.key.as_str()))
+                    })
+            })
+            .collect::<Result<Vec<_>, _>>()?;
+        let params = tables.params.ok_or(AdventureCompileError::MissingParams)?;
+        let params = validate_params(params)?;
+        let mut part = Self {
+            core_hash: core.content_hash(),
+            terrains,
+            roads: tables.roads,
+            road_index: tables.road_index,
+            rivers: tables.rivers,
+            river_index: tables.river_index,
+            params,
+            hash: 0,
+        };
+        part.hash = hash_of(&part);
+        Ok(part)
+    }
+
+    /// The content hash of the core ruleset this part was compiled on; a game bundles the part
+    /// only with that ruleset.
+    pub const fn core_hash(&self) -> u64 {
+        self.core_hash
+    }
+
+    /// Canonical hash of the compiled part (recorded in replays beside the core's).
+    pub const fn content_hash(&self) -> u64 {
+        self.hash
+    }
+
+    /// Every core terrain's movement data, in the core's terrain order.
+    pub fn terrains(&self) -> &[TerrainMovement] {
+        &self.terrains
+    }
+
+    /// How the terrain `terrain` is crossed.
+    pub fn passage(&self, terrain: TerrainId) -> Option<Passage> {
+        self.terrains
+            .get(usize::from(terrain.raw()))
+            .map(|t| t.passage)
+    }
+
+    /// The road kinds.
+    pub fn roads(&self) -> &[RoadKind] {
+        &self.roads
+    }
+
+    /// A road kind.
+    pub fn road(&self, id: RoadId) -> Option<&RoadKind> {
+        self.roads.get(usize::from(id.raw()))
+    }
+
+    /// The road kind with this key.
+    pub fn road_by_key(&self, key: &str) -> Option<RoadId> {
+        self.road_index.get(key).copied()
+    }
+
+    /// The river kinds.
+    pub fn rivers(&self) -> &[RiverKind] {
+        &self.rivers
+    }
+
+    /// A river kind.
+    pub fn river(&self, id: RiverId) -> Option<&RiverKind> {
+        self.rivers.get(usize::from(id.raw()))
+    }
+
+    /// The river kind with this key.
+    pub fn river_by_key(&self, key: &str) -> Option<RiverId> {
+        self.river_index.get(key).copied()
+    }
+
+    /// The adventure parameters.
+    pub const fn params(&self) -> &AdventureParams {
+        &self.params
+    }
+}
+
+impl CanonicalHash for AdventureRuleset {
+    /// Encoding v1 (E08 T4): version; the terrains in the core's order (key, passage: 0 land,
+    /// 1 water with the cost, 2 impassable); the road kinds (key, name, cost); the river kinds
+    /// (key, name); the parameters (native cost, the land table as length + entries, scouting
+    /// radius). The core's hash is not part of it: replays record both.
+    fn hash_into(&self, h: &mut StateHasher) {
+        h.write_u32(ADVENTURE_RULESET_HASH_VERSION);
+        h.write_len(self.terrains.len());
+        for t in &self.terrains {
+            t.key.as_str().hash_into(h);
+            t.passage.hash_into(h);
+        }
+        h.write_len(self.roads.len());
+        for r in &self.roads {
+            r.key.as_str().hash_into(h);
+            r.name.as_str().hash_into(h);
+            h.write_u16(r.cost.get());
+        }
+        h.write_len(self.rivers.len());
+        for r in &self.rivers {
+            r.key.as_str().hash_into(h);
+            r.name.as_str().hash_into(h);
+        }
+        h.write_u16(self.params.native_cost.get());
+        self.params.land_points.hash_into(h);
+        h.write_u8(self.params.scouting_radius);
+    }
+}
+
+/// Pairs each core pack, in the core's load order, with its adventure pack and dependency
+/// closure (itself included).
+fn load_order<'a>(
+    core: &Ruleset,
+    packs: &'a [AdventurePack],
+) -> Result<Vec<(&'a AdventurePack, BTreeSet<String>)>, AdventureCompileError> {
+    let mut by_id: BTreeMap<&str, &AdventurePack> = BTreeMap::new();
+    for pack in packs {
+        let id = pack.manifest.id.as_str();
+        let known = core
+            .packs()
+            .iter()
+            .any(|(core_id, version)| core_id == id && *version == pack.manifest.version);
+        if !known {
+            return Err(AdventureCompileError::UnknownPack(format!(
+                "{id}@{}",
+                pack.manifest.version
+            )));
+        }
+        if by_id.insert(id, pack).is_some() {
+            return Err(AdventureCompileError::DuplicatePack(String::from(id)));
+        }
+    }
+    let mut closures: BTreeMap<&str, BTreeSet<String>> = BTreeMap::new();
+    let mut order = Vec::new();
+    for (id, _) in core.packs() {
+        let pack = *by_id
+            .get(id.as_str())
+            .ok_or_else(|| AdventureCompileError::MissingPack(id.clone()))?;
+        let mut closure = BTreeSet::from([id.clone()]);
+        for dependency in &pack.manifest.depends {
+            let inner = closures.get(dependency.as_str()).ok_or_else(|| {
+                AdventureCompileError::UnknownDependency {
+                    pack: id.clone(),
+                    dependency: dependency.clone(),
+                }
+            })?;
+            closure.extend(inner.iter().cloned());
+        }
+        closures.insert(id.as_str(), closure.clone());
+        order.push((pack, closure));
+    }
+    Ok(order)
+}
+
+/// Adds one pack's definitions to the tables.
+fn compile_pack(
+    core: &Ruleset,
+    pack: &AdventurePack,
+    closure: &BTreeSet<String>,
+    tables: &mut Tables,
+) -> Result<(), AdventureCompileError> {
+    let id = pack.manifest.id.as_str();
+    for def in &pack.roads {
+        check_namespace(&def.key, id)?;
+        let handle = RoadId::from_index(tables.roads.len())
+            .ok_or(AdventureCompileError::TooManyEntries("road"))?;
+        insert_unique(&mut tables.road_index, &def.key, handle)?;
+        tables.roads.push(RoadKind {
+            key: def.key.clone(),
+            name: def.name.clone(),
+            cost: def.cost,
+        });
+    }
+    for def in &pack.rivers {
+        check_namespace(&def.key, id)?;
+        let handle = RiverId::from_index(tables.rivers.len())
+            .ok_or(AdventureCompileError::TooManyEntries("river"))?;
+        insert_unique(&mut tables.river_index, &def.key, handle)?;
+        tables.rivers.push(RiverKind {
+            key: def.key.clone(),
+            name: def.name.clone(),
+        });
+    }
+    for def in &pack.terrains {
+        let key = def.terrain.as_str();
+        if !closure.contains(def.terrain.pack()) {
+            return Err(AdventureCompileError::ReferenceOutsideDependencies {
+                key: String::from(key),
+                pack: String::from(id),
+            });
+        }
+        let terrain = core
+            .terrain_by_key(key)
+            .ok_or_else(|| AdventureCompileError::UnknownTerrain(String::from(key)))?;
+        if tables
+            .terrains
+            .insert(usize::from(terrain.raw()), def.passage)
+            .is_some()
+        {
+            return Err(AdventureCompileError::DuplicateTerrain(String::from(key)));
+        }
+    }
+    if let Some(params) = &pack.params {
+        if tables.params.is_some() {
+            return Err(AdventureCompileError::DuplicateParams(String::from(id)));
+        }
+        tables.params = Some(params.clone());
+    }
+    Ok(())
+}
+
+fn validate_params(def: AdventureParamsDef) -> Result<AdventureParams, AdventureCompileError> {
+    let reason = if def.land_points.is_empty() {
+        Some("land_points is empty")
+    } else if def.land_points.len() > MAX_LAND_POINTS {
+        Some("land_points has more entries than speeds")
+    } else if def.land_points.contains(&0) {
+        Some("a land_points entry is 0")
+    } else {
+        None
+    };
+    match reason {
+        Some(reason) => Err(AdventureCompileError::InvalidParams(reason)),
+        None => Ok(AdventureParams {
+            native_cost: def.native_cost,
+            land_points: def.land_points,
+            scouting_radius: def.scouting_radius,
+        }),
+    }
+}
+
+fn check_namespace(key: &ContentKey, pack: &str) -> Result<(), AdventureCompileError> {
+    if key.pack() == pack {
+        Ok(())
+    } else {
+        Err(AdventureCompileError::KeyOutsidePack {
+            key: String::from(key.as_str()),
+            pack: String::from(pack),
+        })
+    }
+}
+
+fn insert_unique<T>(
+    index: &mut BTreeMap<String, Handle<T>>,
+    key: &ContentKey,
+    handle: Handle<T>,
+) -> Result<(), AdventureCompileError> {
+    if index.insert(String::from(key.as_str()), handle).is_some() {
+        return Err(AdventureCompileError::DuplicateKey(String::from(
+            key.as_str(),
+        )));
+    }
+    Ok(())
+}
+
+#[cfg(test)]
+mod tests;

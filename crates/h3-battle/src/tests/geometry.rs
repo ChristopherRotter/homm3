@@ -93,24 +93,28 @@ fn attack_positions_cover_every_touching_position_once() {
     // One-hex attacker: the 6 neighbours of a one-hex target, the 8 of a two-hex one.
     assert_eq!(count(false, BattleSide::Attacker, single), 6);
     assert_eq!(count(false, BattleSide::Attacker, double), 8);
-    // Two-hex attacker: also positions where only its tail touches.
-    assert_eq!(count(true, BattleSide::Attacker, single), 8);
-    assert_eq!(count(true, BattleSide::Attacker, double), 10);
-    for (two_hex, target) in [
-        (false, single),
-        (false, double),
-        (true, single),
-        (true, double),
-    ] {
-        let positions = f.attack_positions(two_hex, BattleSide::Attacker, target);
+    // Two-hex attacker: also positions where only its tail touches (either side's tail).
+    for side in BattleSide::BOTH {
+        assert_eq!(count(true, side, single), 8);
+        assert_eq!(count(true, side, double), 10);
+    }
+    for (side, two_hex, target) in BattleSide::BOTH.into_iter().flat_map(|side| {
+        [
+            (side, false, single),
+            (side, false, double),
+            (side, true, single),
+            (side, true, double),
+        ]
+    }) {
+        let positions = f.attack_positions(two_hex, side, target);
         assert_eq!(positions.len(), ATTACK_SLOTS);
         for p in positions.iter().flatten() {
-            let fp = f.footprint(*p, two_hex, BattleSide::Attacker).unwrap();
+            let fp = f.footprint(*p, two_hex, side).unwrap();
             assert!(f.touches(fp, target));
         }
         // Brute force: every touching head appears.
         let all = (0..187u8)
-            .filter_map(|h| f.footprint(Hex(h), two_hex, BattleSide::Attacker))
+            .filter_map(|h| f.footprint(Hex(h), two_hex, side))
             .filter(|fp| f.touches(*fp, target))
             .count();
         assert_eq!(all, positions.iter().flatten().count());

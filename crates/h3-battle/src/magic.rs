@@ -618,12 +618,13 @@ impl Guard {
 /// Whether a cast of `spell` can affect a stack of `creature` under `guard` at all (BAT-MAG-005,
 /// in the original's order, `installation.md` §7.8, §7.23): not if the controlling hero's
 /// defences name the spell (BAT-MAG-063); a spell that ignores immunity (Dispel) needs only the
-/// spell's conditions; otherwise not up to the defences' level (BAT-MAG-064), the conditions and
-/// the creature's absolute immunities hold, and unless the immunities are negated (BAT-MAG-066)
+/// spell's conditions; otherwise not up to the defences' level (BAT-MAG-064), the conditions (by
+/// flags and the creature's damage, BAT-MAG-067) and the creature's absolute immunities hold, and
+/// unless the immunities are negated (BAT-MAG-066)
 /// the creature is not immune to it as a mind spell (flag `mind_immune`, or the controlling
 /// hero's mind immunity, BAT-MAG-065), by the spell's level, one of its schools or the spell
 /// itself.
-// rule: BAT-MAG-005, BAT-MAG-063, BAT-MAG-064, BAT-MAG-065, BAT-MAG-066
+// rule: BAT-MAG-005, BAT-MAG-063, BAT-MAG-064, BAT-MAG-065, BAT-MAG-066, BAT-MAG-067
 pub(crate) fn affects(
     ruleset: &Ruleset,
     (id, spell): SpellRef<'_>,
@@ -633,12 +634,12 @@ pub(crate) fn affects(
     if guard.immune_to(id) {
         return false;
     }
-    let flags = ruleset
+    let (flags, damage_max) = ruleset
         .creature(creature)
-        .map(|c| c.flags)
+        .map(|c| (c.flags, c.damage_max))
         .unwrap_or_default();
     if spell.magic.ignores_immunity {
-        return spell.magic.conditions.admits(flags);
+        return spell.magic.conditions.admits(flags, damage_max);
     }
     if guard.defences.up_to_level.is_some_and(|l| spell.level <= l) {
         return false;
@@ -653,7 +654,7 @@ pub(crate) fn affects(
             _ => false,
         });
     // An immunity yields only to a negation, and an absolute one not even to that.
-    spell.magic.conditions.admits(flags)
+    spell.magic.conditions.admits(flags, damage_max)
         && (!immune
             || (guard.negated
                 && !abilities.iter().any(

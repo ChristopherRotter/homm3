@@ -508,3 +508,37 @@ fn a_mine_seen_through_living_natives_does_not_go_off() {
     let events = act(&mut s, &r, walk(&r, (9, 7))).unwrap();
     assert_eq!(blasts(&events), [(1, at(&r, 9, 7), 40, 4)]);
 }
+
+// covers: BAT-MAG-031, BAT-MAG-033
+#[test]
+fn unseen_mines_change_the_state_hash_but_nothing_the_other_side_is_shown() {
+    // A fixed case of the property `hidden_obstacles_do_not_show` (its random cases alone made
+    // these lines' coverage depend on the seed, QUEUE inbox 2026-10-10).
+    let r = ruleset();
+    let mut s = arena(
+        &r,
+        [
+            Some(caster(&r, &["landmine"], [0, 0])),
+            Some(caster(&r, &["landmine"], [0, 0])),
+        ],
+        &[("fixed", 5, 2, 5)],
+        &[("fixed", 5, 12, 5)],
+        3,
+    );
+    act(&mut s, &r, land_mine(&r)).unwrap();
+    let viewer = BattleSide::Defender;
+    let mut twin = s.clone();
+    let seen = crate::obstacles::seen_by(&s, viewer);
+    twin.spell_obstacles.retain(|o| seen.contains(o));
+    assert!(twin.spell_obstacles().is_empty());
+    assert_eq!(s.spell_obstacles().len(), 4);
+    assert_eq!(observe(&s, &r, viewer), observe(&twin, &r, viewer));
+    // Not the defender's turn: no spell either way.
+    assert!(castable_spells(&s, &r, viewer).is_empty());
+    assert_eq!(
+        castable_spells(&s, &r, viewer),
+        castable_spells(&twin, &r, viewer)
+    );
+    // The hash covers every obstacle, seen or not.
+    assert_ne!(s.state_hash(), twin.state_hash());
+}

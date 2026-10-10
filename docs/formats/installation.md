@@ -1627,10 +1627,13 @@ controlling hero's artifacts decide, in this order (each answer 0 returns at onc
    Berserk 59; Free Will 105: Hypnotize 60; Total Recall 107: Forgetfulness 61, which also needs a
    shooter; Second Sight 101: Blind 62, which also spares the undead and the Troglodytes 70, 71),
    Stone Gaze (70) spares the Troglodytes, Poison (71) non-living creatures and the Gargoyles (30,
-   31). The same switch holds cases the packs do not model yet (found here, not part of T8b):
-   Bless (41) and Curse (42) spare the undead and creatures with maximum damage 0 (+0x60),
-   Precision (44) needs a shooter, Mirth and Sorrow (49, 50) spare creatures without morale
-   (`0x20000`), Fortune, Misfortune and Slayer (51, 52, 55) creatures with maximum damage 0.
+   31). The same switch holds per-spell conditions (re-read for T8b3, BAT-Q22; pack format v32,
+   BAT-MAG-067): Bless (41) and Curse (42) spare the undead and creatures with maximum damage 0,
+   Precision (44) needs a shooter (`0x04`), Mirth and Sorrow (49, 50) spare creatures without
+   morale (`0x20000`), Fortune, Misfortune and Slayer (51, 52, 55) creatures with maximum damage
+   0. The values are the creature type's (the table behind 0x6747B0, 116 bytes per creature: flags
+   +0x10, maximum damage +0x60), so the Ballista (2–3) takes Bless and Curse and the First Aid
+   Tent and the Ammo Cart (0) take none of the five.
 4. 0x44A746: while the **casting side's hero or the controlling hero** wears the **Orb of
    Vulnerability** (93) it returns 1 (a positive spell's 1 too): no mind, fire or per-creature
    immunity (the creature table 0x44A988: the elementals, the dragons' levels, the Black Dragon
@@ -1656,4 +1659,13 @@ Troglodytes' and Gargoyles' immunities under it (VCMI lifts them); the Cloak aga
 abilities and the Archangel (the wiki names the heroes only; VCMI bars creature casts, not
 abilities); the Dragon Father against level-0 abilities (VCMI never bars level 0). Until an
 experiment settles them, the engine follows the wiki and VCMI on the first two (the Faerie Dragon's
-`ignores_magic_block`, the aura lifted) and this reading on the other three (the user, BAT-Q21).
+`ignores_magic_block`, the aura lifted) and this reading on the other three (the user, BAT-Q21). T8b3's
+per-spell conditions (BAT-Q22): the wiki (the spell pages, `War Machine`, the `Spell Immunity Table`
+template) and VCMI (`config/spells/timed.json`) agree on the undead under Bless and Curse, also with
+the Orb, on Precision's shooters, on the Tent and the Ammo Cart under Bless and Curse (VCMI spares
+every war machine) and on Mirth's and Sorrow's creatures without the Orb; VCMI differs on the
+Ballista under Bless and Curse (the wiki: affected), on golems and elementals under the Orb for
+Mirth and Sorrow (VCMI: cast, no effect; the wiki's table: golems keep them) and on Fortune,
+Misfortune and Slayer at the Tent and the Ammo Cart (VCMI: cast, no effect; the wiki ambiguous).
+The engine follows this reading on all three until batch 2e (the user, BAT-Q22). The rendered table
+also lists the Troglodytes' Blind among the immunities the Orb keeps (BAT-Q21 point 3).

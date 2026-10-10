@@ -3,8 +3,8 @@
 //! war; its ruleset part and that part's compiler (ADR-0015 point 2). No domain crate depends on
 //! another: players, turns and the calendar belong to `h3-game`, which drives this context.
 //!
-//! Skeleton (E08 T2): the setup and the state with its persistent grids arrive in T5, movement in
-//! T7, fog of war and the projection in T8. Pointer identity (`ptr_eq`, `as_ptr`) is allowed
+//! So far: the ruleset part ([`AdventureRuleset`], E08 T4). The setup and the state with its
+//! persistent grids arrive in T5, movement in T7, fog of war and the projection in T8. Pointer identity (`ptr_eq`, `as_ptr`) is allowed
 //! only in the persistent module `src/persistent.rs` (`arch.toml`, ADR-0016 point 2).
 //!
 //! Logic crate: pure, deterministic, `no_std` + `alloc` (ADR-0003, ADR-0005). The lint header
@@ -24,6 +24,16 @@
     clippy::exit
 )]
 #![warn(missing_docs)]
+
+extern crate alloc;
+
+mod ruleset;
+
+pub use ruleset::{
+    AdventureCompileError, AdventurePack, AdventureParams, AdventureParamsDef, AdventureRuleset,
+    MAX_LAND_POINTS, Passage, RiverDef, RiverId, RiverKind, RoadDef, RoadId, RoadKind,
+    TerrainMovement, TerrainMovementDef,
+};
 
 /// Version of the adventure state's canonical hash encoding (`docs/08-work-process.md`,
 /// "Versions"; owned by the adventure lane). Bump it with any change to what the hash covers.

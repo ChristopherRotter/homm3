@@ -16,7 +16,9 @@ The harvested packs `base` (RoE), `ab` and `sod` are generated from the user's i
 flavor text). Do not edit them by hand: change the harvester or its gap-fill file and re-run
 `cargo run -p h3-harvest -- --install original-data/install --out packs`;
 `cargo xtask verify --with-original-data` checks that they match the installation. Original files stay in the gitignored `original-data/`; the installation itself is
-never written to.
+never written to. A pack folder's `adventure.toml` is the adventure context's file (ADR-0006, E08
+amendment): hand-written source owned by the adventure lane, which the harvester never writes and
+`--with-original-data` does not check; its format is in `crates/h3-pack-adventure/src/lib.rs`.
 
 ## Enabling packs
 

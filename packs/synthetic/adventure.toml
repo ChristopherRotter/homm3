@@ -1,0 +1,24 @@
+# The synthetic pack's adventure-map data (E08 T4; format: crates/h3-pack-adventure). Invented
+# values for tests, not original game data (docs/05-testing.md, "Test data policy").
+
+[params]
+native_cost = 100
+land_points = [1500, 1600, 1700]
+scouting_radius = 4
+
+[[terrain]]
+terrain = "meadow"
+cost = 100
+
+[[terrain]]
+terrain = "ash"
+cost = 150
+
+[[road]]
+id = "trail"
+name = "Trail"
+cost = 70
+
+[[river]]
+id = "brook"
+name = "Brook"

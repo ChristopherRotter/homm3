@@ -34,8 +34,14 @@ where to read, not facts.
 
 - The two tables differ only below speed 3. No creature that can stand in an army has speed
   below 3 in our packs (only the war machines have speed 0), so the difference never shows in
-  RoE, AB or SoD content. The table is data (`adventure.toml`). Reading the executable's table
-  (CR-2) would decide which row to use.
+  RoE, AB or SoD content. The table is data (`adventure.toml`). **Settled in E08 T4 (D-4):**
+  the original reads the table from `movement.txt` (H3bitmap.lod; H3ab_bmp.lod holds the same
+  file): column 2, speeds 0–20, the wiki's row with 2000 from speed 11. `0x4D7240` fills
+  `0x698A98` from it; `0x4E4990` (land) takes the lowest speed of the seven slots, starting from
+  20, so faster armies get 2000; the creature of a creature specialty and its upgrade count one
+  faster there *(inc. 3)*; Logistics then multiplies the points by 1 + its rate *(inc. 3)*.
+  At sea the points come from the same file's column 4 by Navigation level (1500, 2250, 3000,
+  3750; `0x698AEC`).
 - **Which speed counts:** the slowest creature in the army (wiki, vcmi
   `CGHeroInstance::getLowestCreatureSpeed`). The wiki says artifacts that raise creature speed
   (Necklace of Swiftness) do not count but creature specialties do *(inc. 3)*. VCMI reads each
@@ -195,7 +201,7 @@ contact rule, with HD's day limits as parameters.
 | D-1 | Movement points: at the start of the day for all players, or at the start of each player's turn | wiki and VCMI say start of day; the original's call site is not read | T6/T7 (which hook) | CR-2 |
 | D-2 | Stepping off a road: the destination's terrain or the terrain under the road | wiki vs VCMI | T7 | CR-1 |
 | D-3 | Does a step that leaves fewer points than its straight cost take all the points | VCMI only | T7 | CR-1 |
-| D-4 | Points for speeds 0–2 | wiki vs VCMI; no army creature is that slow | T4 (data only) | CR-2 |
+| D-4 | Points for speeds 0–2 | wiki vs VCMI; no army creature is that slow | T4 (data only) | settled in T4: `movement.txt` has the wiki's row (§1.1) |
 | F-1 | Shape of the revealed area | VCMI only | T8 | CR-3 |
 
 Code readings (Q57: preferred to experiments when a reading can settle the point). Each is

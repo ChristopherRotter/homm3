@@ -602,6 +602,8 @@ target = "stack"
 side = "own"
 mass = "expert"
 counters = ["bane"]
+excludes = ["undead"]
+needs_damage = true                 # format v32: not the Aid Tent or the Supply Wagon (BAT-MAG-067)
 effects = [{ kind = "timed", change = "maximum_damage" }]
 
 [[spell]]
@@ -617,6 +619,8 @@ target = "stack"
 side = "enemy"
 mass = "expert"
 counters = ["boon"]
+excludes = ["undead"]
+needs_damage = true                 # format v32: not the Aid Tent or the Supply Wagon (BAT-MAG-067)
 effects = [{ kind = "timed", change = "minimum_damage" }]
 
 [[spell]]

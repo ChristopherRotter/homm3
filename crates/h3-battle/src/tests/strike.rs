@@ -352,6 +352,14 @@ fn a_thunderbolt_deals_its_damage_per_creature_as_the_spell_without_a_hero() {
     // `wyrm` is immune to the spell's level.
     let mut s = duel(&r, "stormbird", "wyrm", 1);
     assert!(spell_damage(&hit(&mut s, &r, 1, (7, 5))).is_empty());
+    // By chance: the `squall`'s bolt follows half of its strikes, by the battle's generator.
+    let bolts: Vec<bool> = (0..12)
+        .map(|seed| {
+            let mut s = duel(&r, "squall", "fixed", seed);
+            !spell_damage(&hit(&mut s, &r, 1, (7, 5))).is_empty()
+        })
+        .collect();
+    assert!(bolts.contains(&true) && bolts.contains(&false));
 }
 
 // ---------------------------------------------------------------- BAT-MAG-043, BAT-MAG-044
@@ -411,6 +419,11 @@ fn stone_gaze_stops_turns_halves_the_next_strike_and_ends_with_it() {
     let events = hit(&mut s, &r, 2, (9, 5));
     assert_eq!(damages(&events), vec![(1, 2, 5), (2, 1, 18)]);
     assert!(on(&s, &r, 2).is_empty());
+    // The same half in the executable's stages (quirk Q-0005: stage 3, `installation.md` §7.10).
+    let r = ruleset_with("t:single", |_| {});
+    let (mut s, _) = struck(&r, "gazer", "fixed");
+    activate(&mut s, 1);
+    assert_eq!(damages(&hit(&mut s, &r, 2, (9, 5)))[0], (1, 2, 5));
 }
 
 // covers: BAT-MAG-043

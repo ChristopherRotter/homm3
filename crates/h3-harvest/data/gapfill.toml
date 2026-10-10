@@ -2037,6 +2037,27 @@ url = "docs/formats/installation.md"
 retrieved = "2026-10-10"
 
 [[source]]
+id = "exe-spell-conditions"
+kind = "original-data"
+ref = "Heroes3.exe code reading (docs/formats/installation.md 7.23, re-read for E04b T8b3, BAT-Q22): the per-spell switch of 0x44A4D0 (spell - 17, index table 0x44A92C) reads the stack's creature type record (116 bytes, flags +0x10, maximum damage +0x60) before the Orb of Vulnerability's test 0x44A746: Bless (41) returns 0 for undead (0x40000) and for maximum damage 0, Curse (42) likewise before the Pendant of Holiness, Precision (44) for a creature without the shooter flag (0x04), Mirth and Sorrow (49, 50) for a creature without morale (0x20000), Fortune, Misfortune and Slayer (51, 52, 55) for maximum damage 0"
+url = "docs/formats/installation.md"
+retrieved = "2026-10-10"
+
+[[source]]
+id = "vcmi-spell-conditions"
+kind = "vcmi"
+ref = "config/spells/timed.json (1.7.5) targetCondition: bless and curse noneOf SIEGE_WEAPON and UNDEAD (absolute); precision allOf SHOOTER (absolute); mirth and sorrow noneOf UNDEAD and SIEGE_WEAPON (absolute), MIND_IMMUNITY, NON_LIVING and MECHANICAL (normal); fortune, misfortune and slayer none. Differs from the code reading on the Ballista (Bless, Curse), on golems and elementals under the Orb of Vulnerability (Mirth, Sorrow) and on the First Aid Tent and Ammo Cart (Fortune, Misfortune, Slayer); the user kept the reading (BAT-Q22)"
+url = "https://github.com/vcmi/vcmi/blob/1.7.5/config/spells/timed.json"
+retrieved = "2026-10-10"
+
+[[source]]
+id = "wiki-spell-immunities"
+kind = "wiki"
+ref = "Heroes 3 wiki: Bless and Curse pages ('Creatures immune': Undead); Mirth and Sorrow (mind spells; immune: golems, undead, elementals, war machines, Giants and Titans); War Machine (affected by Bless, Curse, Fortune, Misfortune, Slayer, Prayer, Precision, 'damage dealing related buffs are effective for' the Ballista only; immune to mind spells); Template:Spell Immunity Table (with the Orb of Vulnerability golems keep Mirth and Sorrow, undead Bless, Curse, Blind, Mirth and Sorrow, Troglodytes Blind)"
+url = "https://heroes.thelazy.net/index.php/Template:Spell_Immunity_Table"
+retrieved = "2026-10-10"
+
+[[source]]
 id = "exe-casting-limits"
 kind = "original-data"
 ref = "Heroes3.exe code reading (docs/formats/installation.md 7.23): magic is refused for both sides while either hero wears the Orb of Inhibition (126): 0x41F890 (the hero's cast in 0x59FE30, the creature casts and raises 0x4476C0, the Enchanters 0x447FE0) and the hero's book button 0x59E900; while either hero wears Recanter's Cloak (83) the book button refuses a spell above level 2 and the effect test 0x5A8090 returns 0 for every spell above level 2, creature abilities included"
@@ -2589,7 +2610,8 @@ sources = ["exe-timed-spells", "vcmi-spells-timed"]
 [[spells.timed]]
 spell = "Precision"
 changes = ["ranged_attack"]
-sources = ["exe-timed-spells", "vcmi-spells-timed"]
+requires = ["shooter"]
+sources = ["exe-timed-spells", "vcmi-spells-timed", "exe-spell-conditions", "vcmi-spell-conditions", "wiki-spell-immunities"]
 
 [[spells.timed]]
 spell = "Weakness"
@@ -2610,33 +2632,41 @@ sources = ["exe-timed-spells", "vcmi-spells-timed"]
 spell = "Bless"
 changes = ["maximum_damage"]
 counters = ["Curse"]
-sources = ["exe-timed-spells", "vcmi-spells-timed"]
+excludes = ["undead"]
+needs_damage = true
+sources = ["exe-timed-spells", "vcmi-spells-timed", "exe-spell-conditions", "vcmi-spell-conditions", "wiki-spell-immunities"]
 
 [[spells.timed]]
 spell = "Curse"
 changes = ["minimum_damage"]
 counters = ["Bless"]
-sources = ["exe-timed-spells", "vcmi-spells-timed"]
+excludes = ["undead"]
+needs_damage = true
+sources = ["exe-timed-spells", "vcmi-spells-timed", "exe-spell-conditions", "vcmi-spell-conditions", "wiki-spell-immunities"]
 
 [[spells.timed]]
 spell = "Mirth"
 changes = ["morale"]
-sources = ["exe-timed-spells", "vcmi-spells-timed"]
+excludes = ["no_morale"]
+sources = ["exe-timed-spells", "vcmi-spells-timed", "exe-spell-conditions", "vcmi-spell-conditions", "wiki-spell-immunities"]
 
 [[spells.timed]]
 spell = "Sorrow"
 changes = ["morale_loss"]
-sources = ["exe-timed-spells", "vcmi-spells-timed"]
+excludes = ["no_morale"]
+sources = ["exe-timed-spells", "vcmi-spells-timed", "exe-spell-conditions", "vcmi-spell-conditions", "wiki-spell-immunities"]
 
 [[spells.timed]]
 spell = "Fortune"
 changes = ["luck"]
-sources = ["exe-timed-spells", "vcmi-spells-timed"]
+needs_damage = true
+sources = ["exe-timed-spells", "vcmi-spells-timed", "exe-spell-conditions", "vcmi-spell-conditions", "wiki-spell-immunities"]
 
 [[spells.timed]]
 spell = "Misfortune"
 changes = ["luck_loss"]
-sources = ["exe-timed-spells", "vcmi-spells-timed"]
+needs_damage = true
+sources = ["exe-timed-spells", "vcmi-spells-timed", "exe-spell-conditions", "vcmi-spell-conditions", "wiki-spell-immunities"]
 
 [[spells.timed]]
 spell = "Disrupting Ray"
@@ -2681,7 +2711,8 @@ sources = ["exe-protection-spells", "vcmi-spells-timed"]
 [[spells.timed]]
 spell = "Slayer"
 changes = ["slayer"]
-sources = ["exe-protection-spells"]
+needs_damage = true
+sources = ["exe-protection-spells", "exe-spell-conditions", "vcmi-spell-conditions", "wiki-spell-immunities"]
 
 [[spells.timed]]
 spell = "Counterstrike"

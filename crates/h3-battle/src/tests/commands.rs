@@ -221,6 +221,23 @@ fn applying_with_a_noop_sink_matches_a_recording_sink() {
     assert_eq!(Command::default(), Command::Wait);
 }
 
+// covers: BAT-HER-003
+#[test]
+fn the_state_hash_tells_luck_modifiers_from_morale_ones() {
+    // The modifier pool's stat is encoded (0 morale, 1 luck): a modifier of the same amount on
+    // the other stat hashes differently (ADR-0012).
+    use h3_kernel::{CanonicalHash, StateHasher};
+    let encode = |stat: crate::morale::Stat| {
+        let mut h = StateHasher::new();
+        stat.hash_into(&mut h);
+        h.finish()
+    };
+    assert_ne!(
+        encode(crate::morale::Stat::Morale),
+        encode(crate::morale::Stat::Luck)
+    );
+}
+
 #[test]
 fn state_hash_is_pinned() {
     // Golden value: pins the canonical encoding of the initial state (bump

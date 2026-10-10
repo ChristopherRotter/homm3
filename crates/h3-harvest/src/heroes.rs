@@ -376,6 +376,9 @@ fn timed_spell(
     if !excludes.is_empty() {
         let _ = writeln!(text, "excludes = [{}]", excludes.join(", "));
     }
+    if t.needs_damage {
+        let _ = writeln!(text, "needs_damage = true");
+    }
     match (t.duration.as_deref(), t.fixed_rounds) {
         (None, None) => {}
         (Some(d @ ("permanent" | "own_turn")), None) => {

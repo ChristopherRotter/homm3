@@ -1793,3 +1793,63 @@ records how and why the tasks went.
   hashes moved, re-recorded); `random-rollouts-full` 576.7 M Ir (+1.49 %, the same 7 607 steps;
   the new tests in `check_spell` and `affects`, after a first +3.9 % that `MagicLimits` brought
   down), re-baselined; `BattleState` 6 320 bytes (+56); release `h3 bench` about 120 k steps/s.
+
+### Increment 16: T8b3, the per-spell target conditions; batch 2e; the coverage flake (2026-10-10)
+
+- **Start:** #46 (T8b) and #47 merged; CI green on `master` (8fa46be, after the server lane's
+  #44); the local full verify with the original data green on 039e50f. The user's cut (BAT-Q22):
+  T8b3 (compare with the wiki and VCMI, then fix), experiment batch 2e for BAT-Q21's five points
+  and T8b3's, and fixed tests for the coverage lines only the property tests reached.
+- **Code reading** (re-read, `installation.md` §7.23): 0x44A4D0's switch (0x44A598, index table
+  0x44A92C) reads the creature type record (116 bytes: flags +0x10, maximum damage +0x60), before
+  the Orb of Vulnerability's test 0x44A746: Bless 0 for undead and maximum damage 0, Curse the
+  same before the Pendant of Holiness, Precision 0 without the shooter flag, Mirth and Sorrow 0
+  without morale (`0x20000`), Fortune, Misfortune and Slayer 0 for maximum damage 0. Maximum
+  damage 0: the First Aid Tent and the Ammo Cart (the Ballista has 2–3). Also read: the Mighty
+  Gorgons' death stare (0x440BC0, case 103) rolls with only the living-flag test, no effect test,
+  as the engine (E03); BAT-Q21's list of "level-0 abilities" the Dragon Father stops named it
+  loosely (Poison is the one that passes the effect test; the Thunderbirds' bolt tests Lightning
+  Bolt, level 2).
+- **The other sources** (BAT-Q22): VCMI 1.7.5 `config/spells/timed.json` target conditions; the
+  wiki's Bless, Curse, Precision, Mirth, Sorrow, Fortune, Misfortune, Slayer and `War Machine`
+  pages and the `Spell Immunity Table` template, which rendered this time (it had not for
+  BAT-Q21). Agreed: the undead under Bless and Curse (with the Orb too), Precision's shooters, the
+  Tent and the Ammo Cart under Bless and Curse, Mirth's and Sorrow's creatures without the Orb.
+  Conflicts: the Ballista under Bless and Curse (VCMI: immune; the wiki with the code), golems and
+  elementals under the Orb for Mirth and Sorrow (VCMI: cast, no effect; the wiki's table with the
+  code for golems), Fortune, Misfortune and Slayer at the Tent and the Ammo Cart (VCMI: cast, no
+  effect; the wiki ambiguous). **The user:** the code on all three until batch 2e. Also found: the
+  rendered table keeps the Troglodytes' Blind under the Orb (BAT-Q21 point 3: the wiki with the
+  code).
+- **Content:** pack format v32: spell key `needs_damage` (`TargetConditions.needs_damage`, the
+  creature type's maximum damage above 0); `admits` takes the creature's maximum damage; ruleset
+  hash v41. The gap-fill gives Bless and Curse `excludes = ["undead"]` and `needs_damage`,
+  Precision `requires = ["shooter"]`, Mirth and Sorrow `excludes = ["no_morale"]`, Fortune,
+  Misfortune and Slayer `needs_damage` (sources `exe-spell-conditions`, `vcmi-spell-conditions`,
+  `wiki-spell-immunities`); the synthetic Boon and Bane mirror Bless and Curse. The conditions
+  are absolute already (`magic::affects`), so the Orb lifts none, and every caster, the strike's
+  spells and the drawn spells follow them. BAT-MAG-067.
+- **Tests:** h3-content (`admits` by damage), h3-pack (the syntax; `tests/harvested_spell_conditions.rs`
+  on the harvested SoD packs: every spell's targets among Pikemen, Archers, Skeletons, Stone
+  Golems, Air Elementals, Giants and the three war machines, and under the Orb).
+- **Batch 2e** (`experiments/specs/E04b-batch-2e.toml`, staged): OI (Faerie Dragons and Ogre Magi
+  under the Orb of Inhibition), OV (Blind at Troglodytes, Mirth and Sorrow at golems and
+  elementals, Poison at Gargoyles under the Orb of Vulnerability), UA (the Unicorn aura under it:
+  four Expert Slows), RC (Recanter's Cloak against Stone Gaze and the Archangel), DF (Power of the
+  Dragon Father against Poison and the Thunderbirds' bolt, the Death Stare as a control), WM
+  (the six spells at the war machines). The compiler accepted it as written.
+- **The coverage flake** (QUEUE inbox): `cargo llvm-cov -p h3-battle -p h3-heroes` skipping every
+  property test found twelve regions only the random cases reached (the obstacle hashes and
+  `retain`, `castable_spells` off-turn, the drawn spell's and the luck modifiers' hash, the
+  petrified half in Q-0005's stages, the defender's two-hex attack positions, a breath from the
+  tail, `screen_centre`'s even rows and two-hex arms, a thunderbolt by chance); each has a fixed
+  test now (a test creature `squall`, 50 %). The battle lane's gated crates are clean; h3-kernel
+  (shared) and h3-map (adventure) have property tests too and were not checked.
+- **Review** (independent, read-only): no bug; every target test goes through `affects`. Done:
+  the hash test's `needs_damage` variant, a Chain Lightning case that fails without the tail
+  offset (checked by removing it), the luck stat's encoding tested directly, the Orb test's full
+  target lists. Left: the harvester has no unit test for timed spells (`needs_damage` is checked
+  by the harvest against the original data only).
+- **Measurements:** golden replays re-recorded (the ruleset hash; `full-s3`'s commands unchanged,
+  its last checkpoint and final hash moved: an Expert Boon skips the synthetic Aid Tent and Supply
+  Wagon); `bench-check` within its baseline (no re-baseline); state hash and its layout unchanged.

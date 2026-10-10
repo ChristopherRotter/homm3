@@ -1,0 +1,120 @@
+# Adventure rules (context `adventure`, crate `h3-adventure`): the adventure map, heroes on the
+# map, movement, objects and fog of war (ADR-0016; E08). Format: docs/04-rules-and-sources.md §3.
+# Survey: docs/rules/surveys/E08-adventure-core.md. E08 T4 wrote the rules whose data the
+# adventure ruleset part holds (packs/*/adventure.toml); they stay `specified` until movement (T7)
+# and fog of war (T8) implement them.
+
+[[rule]]
+id       = "ADV-MOV-001"
+title    = "Movement points of a day on land"
+context  = "adventure"
+status   = "specified"
+summary  = "A hero's movement points on land for a day come from the lowest speed among the creatures of its army through the land table (data: 1300, 1360, 1430, 1500, 1560, 1630, 1700, 1760, 1830, 1900, 1960, 2000 for speeds 0 to 11; faster armies take the last entry; the original reads its table up to speed 20, all 2000 from 11, and caps the speed at 20). Unused points are not carried over. Bonuses (Logistics, artifacts, Stables, a creature specialty's +1 speed) come with the adventure profile (increment 3). E08 T4: the table; T6/T7: when the points are set (ADV-Q4) and the slowest speed."
+numeric  = "integer"
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "movement.txt (H3bitmap.lod; H3ab_bmp.lod holds the same file), column 2 for speeds 0-20; Heroes3.exe reads it with 0x4D7240 into 0x698A98, and 0x4E4990 indexes it by the slowest speed of the seven slots, starting from 20 (E08 T4 reading; survey §1.1)"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "wiki"
+  ref        = "Movement - Heroes 3 wiki: the table by the slowest creature's speed (1300 at speed 0 to 2000 from speed 11); 'Base movement is calculated only at the beginning of each day'"
+  url        = "https://heroes.thelazy.net/index.php/Movement"
+  retrieved  = "2026-10-09"
+  confidence = "medium"
+
+  [[rule.source]]
+  kind       = "vcmi"
+  ref        = "config/gameConfig.json movementPointsLand [1500, 1500, 1500, 1500, 1560, ..., 2000]; CGHeroInstance::getLowestCreatureSpeed"
+  url        = "https://github.com/vcmi/vcmi/blob/1.7.5/config/gameConfig.json"
+  retrieved  = "2026-10-10"
+  confidence = "medium"
+  note       = "VCMI gives 1500 below speed 3, against the original's movement.txt and the wiki; no creature that can stand in an army is that slow (dispute D-4, settled by the original data)."
+
+[[rule]]
+id       = "ADV-MOV-003"
+title    = "The straight cost of a step"
+context  = "adventure"
+status   = "specified"
+summary  = "A straight step costs the terrain's cost (data: dirt 100, sand 150, grass 100, snow 150, swamp 175, rough 125, subterranean 100, lava 100; water 100 by boat) or, along a road, the road's cost (data: dirt road 75, gravel road 65, cobblestone road 50). Rivers change no cost. Which tile prices a step that leaves or joins a road is dispute D-2 (ADV-Q3), settled by the code reading CR-1 in T7."
+numeric  = "integer"
+
+  [[rule.source]]
+  kind       = "wiki"
+  ref        = "Movement - Heroes 3 wiki: the terrain and road cost tables and the list of which tile prices a step"
+  url        = "https://heroes.thelazy.net/index.php/Movement"
+  retrieved  = "2026-10-09"
+  confidence = "medium"
+  note       = "The survey read the page through the summarising fetch tool; the costs agree with VCMI."
+
+  [[rule.source]]
+  kind       = "vcmi"
+  ref        = "config/terrains.json moveCost (dirt 100, sand 150, grass 100, snow 150, swamp 175, rough 125, subterra 100, lava 100, water 100, rock -1) and config/roads.json moveCost (75, 65, 50); lib/pathfinder/CPathfinder.cpp getTileMovementCost"
+  url        = "https://github.com/vcmi/vcmi/blob/1.7.5/config/terrains.json"
+  retrieved  = "2026-10-10"
+  confidence = "high"
+
+[[rule]]
+id       = "ADV-MOV-004"
+title    = "Native terrain removes the penalty"
+context  = "adventure"
+status   = "specified"
+summary  = "When every creature in the army is native to the terrain (its faction's native terrain; neutral creatures are native nowhere), a step on that terrain costs the native cost (data: 100) instead of the terrain's cost. Nomads' sand ability comes with creature abilities (increment 3)."
+numeric  = "integer"
+
+  [[rule.source]]
+  kind       = "wiki"
+  ref        = "Movement - Heroes 3 wiki: the penalty is removed when 'all the creatures in hero's army are native' to the terrain"
+  url        = "https://heroes.thelazy.net/index.php/Movement"
+  retrieved  = "2026-10-09"
+  confidence = "medium"
+
+  [[rule.source]]
+  kind       = "vcmi"
+  ref        = "CGHeroInstance::getNativeTerrain (one native terrain shared by all stacks, otherwise none); CPathfinderHelper::getMovementCost uses GameConstants::BASE_MOVEMENT_COST (100) on native terrain; config/factions/neutral.json (no native terrain)"
+  url        = "https://github.com/vcmi/vcmi/blob/1.7.5/lib/mapObjects/CGHeroInstance.cpp"
+  retrieved  = "2026-10-09"
+  confidence = "high"
+
+[[rule]]
+id       = "ADV-MOV-007"
+title    = "Where a hero may step"
+context  = "adventure"
+status   = "specified"
+summary  = "A hero steps to one of the eight neighbouring tiles on the same level inside the map. Each terrain has a passage (data): land terrains are walked, water only by boat (not before boats exist), rock never. A blocked tile of an object is never entered. E08 T4: the passages; T7: the rule."
+numeric  = "integer"
+
+  [[rule.source]]
+  kind       = "vcmi"
+  ref        = "config/terrains.json types WATER (water) and ROCK (rock, moveCost -1); lib/pathfinder/PathfinderUtil.h evaluateAccessibility"
+  url        = "https://github.com/vcmi/vcmi/blob/1.7.5/config/terrains.json"
+  retrieved  = "2026-10-10"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "wiki"
+  ref        = "Movement - Heroes 3 wiki: movement to the eight surrounding squares; rock is impassable"
+  url        = "https://heroes.thelazy.net/index.php/Movement"
+  retrieved  = "2026-10-09"
+  confidence = "medium"
+
+[[rule]]
+id       = "ADV-FOG-001"
+title    = "The scouting radius of a hero"
+context  = "adventure"
+status   = "specified"
+summary  = "A hero reveals the tiles within its scouting radius (data: 5 without bonuses). Scouting (6, 7, 8 by level), artifacts and the Scouting specialty come with the adventure profile (increment 3). E08 T4: the base radius; T8: the reveal (ADV-FOG-002)."
+numeric  = "integer"
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe skill_scouting (0x63E9D8): i32 5, 6, 7, 8 for no, Basic, Advanced and Expert Scouting (installation.md §7.4)"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "vcmi"
+  ref        = "config/gameConfig.json baseScoutingRange 5"
+  url        = "https://github.com/vcmi/vcmi/blob/1.7.5/config/gameConfig.json"
+  retrieved  = "2026-10-10"
+  confidence = "high"
