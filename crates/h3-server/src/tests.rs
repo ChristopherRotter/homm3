@@ -11,7 +11,7 @@ use tokio_tungstenite::tungstenite::Message;
 
 use crate::client::Client;
 use crate::config::{BotSeat, Config, Limits};
-use crate::{Running, game, start};
+use crate::{Running, bench, game, start};
 
 fn root() -> PathBuf {
     PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../..")
@@ -80,21 +80,7 @@ async fn play(mut client: Client, seed: u64) -> (Client, Vec<ServerMessage>) {
     let mut seq = 0;
     while let Some(message) = client.recv().await {
         if let ServerMessage::YourTurn { legal, .. } = &message {
-            let strikes: Vec<Command> = legal
-                .iter()
-                .copied()
-                .filter(|c| matches!(c, Command::Attack { .. } | Command::Shoot { .. }))
-                .collect();
-            let choices: Vec<Command> = if strikes.is_empty() {
-                legal
-                    .iter()
-                    .copied()
-                    .filter(|c| !matches!(c, Command::Retreat {} | Command::Surrender {}))
-                    .collect()
-            } else {
-                strikes
-            };
-            let command = choices[rng.below(u32::try_from(choices.len()).unwrap()) as usize];
+            let command = bench::choose(legal, &mut rng).unwrap();
             seq += 1;
             client
                 .send(&ClientMessage::Command { seq, command })
@@ -343,4 +329,41 @@ fn tokens_are_128_bits_of_os_randomness() {
     assert_eq!(a.len(), 32);
     assert!(a.bytes().all(|c| c.is_ascii_hexdigit()));
     assert_ne!(a, b);
+}
+
+#[test]
+fn the_workload_plays_hosted_battles_to_their_end() {
+    let (_, ruleset, setup) = h3_cli::load_scenario(
+        &root().join("packs/synthetic/scenarios/full.toml"),
+        &root().join("packs"),
+        1,
+    )
+    .unwrap();
+    let totals = bench::run(&ruleset, &setup, 1, 2, 5_000).unwrap();
+    assert_eq!((totals.games, totals.ended), (2, 2));
+    // Two hellos and two joins, then one command per turn; every command is answered.
+    assert!(totals.frames_in > 4 && totals.frames_out > totals.frames_in);
+    assert!(totals.bytes_out > totals.frames_out);
+    assert_eq!(
+        bench::run(&ruleset, &setup, 1, 2, 5_000).unwrap(),
+        totals,
+        "deterministic"
+    );
+    let cut = bench::run(&ruleset, &setup, 1, 1, 3).unwrap();
+    assert_eq!(
+        (cut.ended, cut.frames_in),
+        (0, 7),
+        "the command limit holds"
+    );
+}
+
+#[test]
+fn the_scripted_client_strikes_when_it_can() {
+    let mut rng = Rng::from_seed(1);
+    let attack = Command::Attack { target: 3, from: 9 };
+    let legal = [Command::Defend {}, attack, Command::Retreat {}];
+    assert_eq!(bench::choose(&legal, &mut rng), Some(attack));
+    let stay = [Command::Retreat {}, Command::Surrender {}, Command::Wait {}];
+    assert_eq!(bench::choose(&stay, &mut rng), Some(Command::Wait {}));
+    assert_eq!(bench::choose(&[Command::Retreat {}], &mut rng), None);
 }

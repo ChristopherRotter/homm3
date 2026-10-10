@@ -6,7 +6,8 @@
 //! - [`game`]: the game, prepared from the configuration with secrets from the OS, run on its own
 //!   OS thread; the replay written as the CLI's file at the end;
 //! - `net`: the listener and a `tokio` task per connection, behind the transport trait;
-//! - [`client`]: a headless client for tests and tools.
+//! - [`client`]: a headless client for tests and tools;
+//! - [`bench`]: the session core's workload (`benches/server/`).
 //!
 //! Provisional (E16 M1 review): the module layout, the thread and channel layout, the log lines
 //! on standard error.
@@ -19,6 +20,7 @@ use std::sync::Arc;
 use tokio::net::TcpListener;
 use tokio::sync::mpsc;
 
+pub mod bench;
 pub mod client;
 pub mod config;
 pub mod game;
