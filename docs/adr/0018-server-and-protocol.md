@@ -36,9 +36,9 @@ from inputs to outputs, with sockets, clock and files outside.
    change; before 1.0 a server accepts exactly its own. The sim's encodings are not the client
    format (an *agent seat* may request them later).
 5. **The wire types are the protocol's own.** Only `h3-protocol`'s mapping module knows both
-   sides; its matches on engine commands, events and legal commands end in a wildcard arm to
-   `Unsupported` or `Other { kind }`, so a new engine variant builds without the server lane (the
-   lane's one reviewed coverage exclusion). Messages carry dense handles; keys are in the manifest.
+   sides; its matches on the engine's enums are exhaustive, so a new engine variant fails
+   `h3-protocol`'s build until its wire variant and arm exist (amended 2026-10-10). Messages
+   carry dense handles; keys are in the manifest.
 6. **Identity is the seat of the connection**, never a payload field (commands name no side or
    player). A seat is taken, and re-taken after a disconnect, with a server-issued token (128 bits
    of OS randomness); accounts bind seats later (identity ADR); bot seats are the server's.
@@ -68,10 +68,10 @@ from inputs to outputs, with sockets, clock and files outside.
 
 ## Consequences
 
-Clients speak documented JSON, and engine churn never changes the wire by itself; the session core
+Clients speak documented JSON, and engine churn reaches the wire only through the mapping; the session core
 is deterministic, scripted-client testable and gets a workload under `benches/server/`; "same
 content for everyone" holds by construction; a crash costs a re-run, no state serialization exists.
-Costs: a mapping to maintain; an async shell (cancellation, back-pressure); hundreds of games per
+Costs: a mapping to maintain, in step with every new engine variant; an async shell (cancellation, back-pressure); hundreds of games per
 server (a thread each); a sync per command; long journals re-run on restore (state saves later); a
 handle-to-key table for every content kind.
 
@@ -81,5 +81,14 @@ Std threads with blocking I/O (a `tungstenite` socket has one reader-writer thre
 connection polls; `tokio` costs 11 crates and no build time, SRV-Q5). An HTTP framework (heavy,
 not needed). Plain TCP or QUIC (no browsers; QUIC brings TLS). A binary format first (premature).
 Internally tagged JSON (no binary codec can decode it). Serde on the engine's types (the wire
-follows every internal change, no `Unsupported`). Lockstep clients (excluded by ADR-0004; lets
+follows every internal change). Wildcard arms to an `Other` variant (the first point 5): arms no
+test can reach while every variant is mapped, so a coverage exclusion, and clients that must
+handle an unknown kind. Lockstep clients (excluded by ADR-0004; lets
 different content diverge). Serializing live state (a second format, when the journal suffices).
+
+## Revision history
+
+- 2026-10-10: point 5 amended (E16 M1 T1; the user): exhaustive matches instead of wildcard arms
+  to `Unsupported` and `Other`, which could never run while every variant is mapped and needed a
+  coverage exclusion. A new engine variant now fails the build until it is mapped; the
+  consequences and alternatives follow.
