@@ -1537,3 +1537,44 @@ again (bad morale cannot hit a stack with good morale; Fear can, outside the wai
 stack its own action left blind, petrified or paralysed is passed over (0x465222, its turn having
 started) until that ends, when it may act later in the round (BAT-MOR-003, the T7b4 review's
 finding).
+
+### 7.22 Code reading: the hero's available spells and its mastery of a spell (E04b T8a, 2026-10-10)
+
+Read for E04b T8a (BAT-Q19). Both are functions of the hero record, run outside the battle and
+read by every caller: the adventure map's spell book, the battle's book, its cast check and its
+creature code all read the hero's **available spells** (`+0x430`, 70 bytes, one per spell id
+0–69), which only 0x4D95D0 writes; the **learned spells** (`+0x3EA`, the same shape) are what the
+hero keeps without artifacts, read by learning (Mage Guild, scrolls on the map) and by Eagle Eye's
+test in the cast routine (0x59FF6A; T8d).
+
+**Available spells** (0x4D95D0, run when the hero's artifacts change): copy the learned spells,
+then for each of the 19 body positions (`+0x12D`, 8 bytes each: artifact id, then a second word;
+the backpack is never read): a Spell Scroll (artifact 1) adds the spell its second word names; an
+artifact whose setup record has `+0x1D` set (H3API's `newSpell`) adds the spell set 0x4D9350
+returns for it; a combination (`+0x14` not −1) adds the sets of those of its parts that have
+`+0x1D`. The loader 0x44CE61 sets `+0x1D` from the list 0x63B998 (nine ids: 1, 128, 123, 124, 86,
+87, 88, 89, 135) and `+0x1C` ("disabled") from 0x63B98C (141–143, the unused SoD rows). Sets add,
+never remove: an available spell stays available whatever else is worn.
+
+**The artifact spell sets** (0x4D9350, a switch on the artifact id): the four Tomes give every
+spell 0–69 with their school's bit (Fire 86: bit 2, Air 87: bit 1, Water 88: bit 4, Earth 89:
+bit 8; the adventure spells included, the creature abilities 70–80 never); Spellbinder's Hat (124)
+every spell 0–69 of level 5; Armageddon's Blade (128) Armageddon (26); the Sea Captain's Hat (123)
+Summon Boat and Scuttle Boat (0, 1; the Admiral's Hat gives them as its part); Titan's Thunder
+(135) Titan's Lightning Bolt (57). Every set but Titan's Thunder's then **clears spell 57**
+(0x4D9532): Titan's Lightning Bolt is an air spell of level 5, so the Tome of Air and the Hat
+would give it otherwise. The spell table's flag `0x2000` (§7.6, "granted by an artifact") is set
+on spell 57 alone, so the packs carry the exception as a spell attribute harvested from that flag
+(`granted_by_name_only`): a grant by school or level skips such a spell, a grant naming it gives
+it.
+
+**Mastery of a spell** (0x4E5080, H3API's `GetSpellExpertise`; arguments spell and battlefield):
+Armageddon (26) is cast at Expert while the hero wears Armageddon's Blade (its 19 positions, then
+a combination holding it); otherwise 0x4E5100 takes the spell's school bits and the battlefield:
+the battlefield value 1 (Magic Plains, `+0x53C0`) gives Expert to every spell, 6, 7, 8 and 9 to
+the water, fire, earth and air spells (the elemental battlefields; E04c names them); else the best of
+the hero's Air (`+0xD8`), Fire (`+0xD7`), Earth (`+0xDA`) and Water (`+0xD9`) Magic levels among
+the spell's schools, 0 without one. No specialty, artifact or other bonus enters it. The spell's
+cost (0x4E5240) takes its mastery from here. The engine splits the function at its argument: the
+Heroes context derives each available spell's mastery on ordinary ground (HER-SPL-003); the
+battlefield's raise to Expert is the battle's (E04c, which passes it here as the original does).
