@@ -57,11 +57,11 @@ target = "base:misc"
 count = 5
 
 [[artifact]]
-id = "angelic_alliance"  # original id 129; pending: E04b
+id = "angelic_alliance"  # original id 129
 name = "Angelic Alliance"
 class = "relic"
 slot = "base:right_hand"
-effects = [{ kind = "alignment_group", factions = ["base:castle", "base:rampart", "base:tower", "base:fortress", "base:stronghold"] }]
+effects = [{ kind = "alignment_group", factions = ["base:castle", "base:rampart", "base:tower", "base:fortress", "base:stronghold"] }, { kind = "opening_spell", mastery = 3, power = 10, spell = "base:prayer" }]
 parts = ["base:armor_of_wonder", "base:sandals_of_the_saint", "base:celestial_necklace_of_bliss", "base:lions_shield_of_courage", "base:sword_of_judgement", "base:helm_of_heavenly_enlightenment"]
 
 [[artifact]]
@@ -80,10 +80,11 @@ effects = [{ kind = "creature_stat_percent", creatures = { flag = "alive" }, sta
 parts = ["base:ring_of_vitality", "base:ring_of_life", "base:vial_of_lifeblood"]
 
 [[artifact]]
-id = "armor_of_the_damned"  # original id 132; pending: E04b
+id = "armor_of_the_damned"  # original id 132
 name = "Armor of the Damned"
 class = "relic"
 slot = "base:torso"
+effects = [{ kind = "opening_spell", mastery = 3, power = 50, spell = "base:slow" }, { kind = "opening_spell", mastery = 3, power = 50, spell = "base:curse" }, { kind = "opening_spell", mastery = 3, power = 50, spell = "base:weakness" }, { kind = "opening_spell", mastery = 3, power = 50, spell = "base:misfortune" }]
 parts = ["base:blackshard_of_the_dead_knight", "base:shield_of_the_yawning_dead", "base:skull_helmet", "base:rib_cage"]
 
 [[artifact]]

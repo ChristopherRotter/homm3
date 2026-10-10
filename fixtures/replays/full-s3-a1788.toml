@@ -315,22 +315,22 @@ commands = [
     "D attack 1 98",
 ]
 checkpoints = [
-    "0xa0abf62d27ebe93b",
-    "0x58a4cb53c999d912",
-    "0xd196a18305a59539",
-    "0xdbac4693e96b587f",
-    "0xcd9ea73d9f5ebaf6",
-    "0xb8ed4bfc6527e476",
-    "0x36e9651726153cde",
-    "0xf7347c5bdb3cfdfd",
-    "0x16cf1703bb39d0ca",
-    "0xc55fc120a8ee5d1e",
-    "0x3c0c86c6d2fdbbe1",
-    "0x1ea23a12f674e825",
+    "0x351695a2592492b8",
+    "0x655531134268b10d",
+    "0xd3c3a142b77cabca",
+    "0x2371c61a3bbc6234",
+    "0x28a435f5a7e14b75",
+    "0x01d5574c9f32c999",
+    "0xa1f791dfe2a40cc4",
+    "0xb9dcb7d5515d75d7",
+    "0xf871cd37a6c8d15d",
+    "0x2141fba1b8bb3c05",
+    "0xeb43a08b4a0c0a32",
+    "0xe1d6733d8d964c36",
 ]
 
 [replay]
-format = 20
+format = 21
 engine = "0.1.0"
 scenario = "full"
 seed = "3"
@@ -339,12 +339,12 @@ packs = [[
     "0.1.0",
 ]]
 profile = "synthetic:faithful"
-ruleset_hash = "0x7172dbe5ff171b12"
+ruleset_hash = "0xca39e2af5fabd024"
 rng = "xoshiro256starstar+splitmix64"
 rng_version = 1
 hash = "fnv1a64-le"
 hash_version = 1
-battle_state_hash_version = 40
+battle_state_hash_version = 41
 checkpoint_every = 25
 
 [setup]
@@ -650,4 +650,4 @@ count = 4
 
 [result]
 winner = "defender"
-final_hash = "0xce85fd716d0e5e2a"
+final_hash = "0x1c80e570a1b54a19"

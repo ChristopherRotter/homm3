@@ -208,6 +208,15 @@ pub enum EventKind {
         /// The spell.
         spell: SpellId,
     },
+    /// The hero of `side` cast `spell` for free at the side's first activation outside the
+    /// tactics phase (an opening spell: Angelic Alliance, Armor of the Damned; BAT-MAG-068;
+    /// public): no mana, not the round's cast. The spell's effects on the stacks follow.
+    OpeningSpell {
+        /// The casting hero's side.
+        side: BattleSide,
+        /// The spell.
+        spell: SpellId,
+    },
     /// The hero of `side` gained `mana` from its side's channellers after the other hero's cast
     /// (the Familiars; BAT-MAG-055; public).
     ManaChanneled {

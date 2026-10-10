@@ -27,7 +27,7 @@ use alloc::vec::Vec;
 
 pub use hero::{
     BallistaControl, BattleEffect, BattleHero, BattleMagic, CatapultControl, DamageBonuses,
-    FactionGroup, MAX_BATTLE_EFFECTS, MachineControl, Rate, StatOp, TentControl,
+    EagleEye, FactionGroup, MAX_BATTLE_EFFECTS, MachineControl, Rate, StatOp, TentControl,
 };
 pub use ids::{HeroId, PlayerId};
 
@@ -208,8 +208,10 @@ pub struct StackRecord {
 pub struct HeroOutcome {
     /// Spell points left.
     pub mana: u16,
-    /// The distinct spells the hero cast, by spell handle (E04b; Eagle Eye needs them).
-    pub spells_cast: Vec<SpellId>,
+    /// The spells the hero's Eagle Eye picked in the battle (E04b T8d, BAT-MAG-069): those of
+    /// [`EagleEye::spells`] for which one of the enemy hero's casts hit its chance, by spell
+    /// handle, each once. Whether the hero learns them is the orchestrator's (BAT-Q24).
+    pub learned: Vec<SpellId>,
 }
 
 /// The result of a finished battle, applied back by the orchestrator (BAT-END-003). It reports

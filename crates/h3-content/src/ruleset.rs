@@ -34,7 +34,7 @@ pub const MAX_SIDE_STACKS: usize = 21;
 pub const MAX_FIELD_HEXES: usize = 255;
 
 /// Version of the ruleset hash encoding. Bump when the encoding below changes.
-pub const RULESET_HASH_VERSION: u32 = 41;
+pub const RULESET_HASH_VERSION: u32 = 42;
 
 /// A compiled creature type.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -1505,7 +1505,8 @@ impl CanonicalHash for Ruleset {
     /// `spell_mastery` (28) and `scroll` (29). v40 (E04b T8b): hero effects `no_casting` (30),
     /// `spell_level_limit` (31), `spell_immunity` (32), `spell_level_immunity` (33),
     /// `mind_immunity` (34) and `negate_immunities` (35); ability `spell_immunity` ends with
-    /// `absolute`; ability `ignores_magic_block` (47).
+    /// `absolute`; ability `ignores_magic_block` (47). v41 (E04b T8b3): target conditions end with
+    /// `needs_damage`. v42 (E04b T8c, T8d): hero effects `opening_spell` (36) and `eagle_eye` (37).
     fn hash_into(&self, h: &mut StateHasher) {
         h.write_u32(RULESET_HASH_VERSION);
         h.write_len(self.packs.len());
