@@ -6,8 +6,8 @@
 //! import and validation are property-tested together on arbitrary bytes (`cargo-fuzz` later).
 //! Format notes: `docs/formats/h3m.md`. The `.h3m` writer moves here from `h3-formats` after E04b.
 //!
-//! E08 T3a: the reader up to the terrain ([`read`], [`parse`]); the templates, objects and timed
-//! events follow in T3b (ADV-STUB-1), the import with the setup types in T5 and T6.
+//! E08 T3: the reader ([`read`], [`parse`] into [`model::RawMap`]); the import with the setup
+//! types follows in T5 (`AdventureSetup`) and T6 (`GameSetup`).
 #![forbid(unsafe_code)]
 #![warn(missing_docs)]
 

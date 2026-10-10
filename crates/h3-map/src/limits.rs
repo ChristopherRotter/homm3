@@ -26,6 +26,12 @@ pub struct Limits {
     pub max_secondary_skills: u32,
     /// Most artifacts in one hero's backpack.
     pub max_backpack: u32,
+    /// Most object templates.
+    pub max_templates: u32,
+    /// Most objects.
+    pub max_objects: u32,
+    /// Most timed events, of the map or of one town.
+    pub max_events: u32,
 }
 
 impl Default for Limits {
@@ -40,6 +46,9 @@ impl Default for Limits {
             max_rumors: 256,
             max_secondary_skills: 28,
             max_backpack: 256,
+            max_templates: 4096,
+            max_objects: 65_536,
+            max_events: 1024,
         }
     }
 }

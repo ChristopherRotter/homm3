@@ -44,8 +44,13 @@ pub enum ReadError {
         /// Byte offset in the inflated map.
         offset: usize,
     },
-    /// A value that decides the layout of what follows (a condition's kind) has no meaning in
-    /// this format version.
+    /// Bytes follow the map's timed events.
+    TrailingBytes {
+        /// Byte offset of the first one.
+        offset: usize,
+    },
+    /// A value that decides the layout of what follows (a condition's, quest's or reward's kind,
+    /// an object's template) has no meaning in this format version or this map.
     InvalidValue {
         /// The field being read.
         field: &'static str,
@@ -78,6 +83,12 @@ impl fmt::Display for ReadError {
                 f,
                 "{field} = {value} exceeds the limit {max} (offset {offset})"
             ),
+            Self::TrailingBytes { offset } => {
+                write!(
+                    f,
+                    "unexpected bytes after the timed events (offset {offset})"
+                )
+            }
             Self::InvalidValue {
                 field,
                 value,

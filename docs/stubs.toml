@@ -15,12 +15,6 @@
 
 # --- adventure (ADV-STUB-<n>) ---
 
-[[stub]]
-id     = "ADV-STUB-1"
-where  = "crates/h3-map/src/parse.rs::parse"
-reason = "The map reader stops after the terrain: object templates, objects and timed events are read in E08 T3b, which then rejects trailing bytes"
-epic   = "E08"
-
 # --- server (SRV-STUB-<n>) ---
 
 # --- client (CLT-STUB-<n>) ---

@@ -10,8 +10,9 @@ use encode::{Out, encode};
 use strategy::{raw_map, version};
 
 use crate::model::{
-    Artifacts, Bits, CustomHero, Header, Loss, Player, PlayerDetails, PlayerHero, Pos, RawMap,
-    Teams, Terrain, Text, Tile, Version, Victory,
+    Artifacts, Bits, Body, CustomHero, Header, Loss, Mission, Object, Player, PlayerDetails,
+    PlayerHero, Pos, Quest, RawMap, Reward, SeerTask, Teams, Template, Terrain, Text, Tile,
+    TimedEvent, TownBody, TownEvent, Version, Victory,
 };
 use crate::{Limits, ReadError, crc32, gunzip, parse, read};
 
@@ -83,6 +84,9 @@ fn sample(v: Version) -> RawMap {
             levels: 1,
             tiles: vec![Tile::default(); 4],
         },
+        templates: Vec::new(),
+        objects: Vec::new(),
+        events: Vec::new(),
     }
 }
 
@@ -107,12 +111,186 @@ fn samples_of_every_version_round_trip() {
 }
 
 #[test]
-fn trailing_bytes_are_ignored_until_the_objects_are_read() {
-    // stub: ADV-STUB-1 (T3b reads templates, objects and events, then rejects trailing bytes)
+fn zero_padding_is_accepted_and_anything_else_after_the_events_is_not() {
     let m = sample(Version::Sod);
     let mut bytes = encode(&m);
-    bytes.extend_from_slice(&[0; 12]);
+    let end = bytes.len();
+    bytes.extend_from_slice(&[0; 124]);
     assert_eq!(parse(&bytes, &limits()), Ok(m));
+    bytes[end + 7] = 1;
+    assert_eq!(
+        parse(&bytes, &limits()),
+        Err(ReadError::TrailingBytes { offset: end })
+    );
+}
+
+/// `sample(v)` with one template of `class` and one object of it carrying `body`.
+fn with_object(v: Version, class: u32, body: Body) -> RawMap {
+    let mut m = sample(v);
+    m.templates = vec![Template {
+        def: Text(b"obj.def".to_vec()),
+        class,
+        ..Template::default()
+    }];
+    m.objects = vec![Object {
+        pos: Pos { x: 1, y: 1, z: 0 },
+        template: 0,
+        body,
+    }];
+    m
+}
+
+#[test]
+fn objects_must_name_an_existing_template() {
+    let mut m = with_object(Version::Ab, 124, Body::None);
+    assert_eq!(parse(&encode(&m), &limits()), Ok(m.clone()));
+    m.objects[0].template = 1;
+    assert!(matches!(
+        parse(&encode(&m), &limits()),
+        Err(ReadError::InvalidValue {
+            field: "object template",
+            value: 1,
+            ..
+        })
+    ));
+}
+
+#[test]
+fn unknown_quest_and_reward_kinds_are_rejected() {
+    let quest = Quest {
+        mission: Mission::Hero(3),
+        deadline: -1,
+        first_visit: Text::default(),
+        next_visit: Text::default(),
+        completed: Text::default(),
+    };
+    let m = with_object(Version::Sod, 215, Body::QuestGuard(Some(quest.clone())));
+    let mut bytes = encode(&m);
+    // The quest guard's body ends the object: mission code and hero type, the deadline and three
+    // empty strings, then the map's event count.
+    let at = bytes.len() - 4 - (2 + 4 + 12);
+    assert_eq!(bytes[at..at + 2], [8, 3]);
+    bytes[at] = 10;
+    assert!(matches!(
+        parse(&bytes, &limits()),
+        Err(ReadError::InvalidValue {
+            field: "quest mission",
+            value: 10,
+            ..
+        })
+    ));
+    let task = SeerTask {
+        quest,
+        reward: Reward::Spell(7),
+    };
+    let m = with_object(Version::Sod, 83, Body::SeerHut(Some(task)));
+    let mut bytes = encode(&m);
+    // The reward code and its spell come before two unused bytes and the event count.
+    let at = bytes.len() - 4 - 2 - 2;
+    assert_eq!(bytes[at..at + 2], [9, 7]);
+    bytes[at] = 11;
+    assert!(matches!(
+        parse(&bytes, &limits()),
+        Err(ReadError::InvalidValue {
+            field: "seer hut reward",
+            value: 11,
+            ..
+        })
+    ));
+}
+
+#[test]
+fn every_mission_and_reward_round_trips() {
+    use crate::model::Stack;
+    let stack = Stack {
+        creature: 9,
+        count: 4,
+    };
+    let missions = [
+        Mission::Level(10),
+        Mission::PrimarySkills([1, 2, 3, 4]),
+        Mission::KillHero(77),
+        Mission::KillCreature(78),
+        Mission::Artifacts(vec![5, 6]),
+        Mission::Army(vec![stack]),
+        Mission::Resources([1, 2, 3, 4, 5, 6, 7]),
+        Mission::Hero(12),
+        Mission::Player(3),
+    ];
+    let rewards = [
+        Reward::Nothing,
+        Reward::Experience(500),
+        Reward::Mana(10),
+        Reward::Morale(-1),
+        Reward::Luck(2),
+        Reward::Resource {
+            resource: 6,
+            amount: 1000,
+        },
+        Reward::PrimarySkill {
+            skill: 1,
+            amount: 2,
+        },
+        Reward::SecondarySkill { skill: 7, level: 3 },
+        Reward::Artifact(40),
+        Reward::Spell(15),
+        Reward::Creatures(stack),
+    ];
+    for v in [Version::Ab, Version::Sod] {
+        for (mission, reward) in missions.iter().cycle().zip(&rewards) {
+            let quest = Quest {
+                mission: mission.clone(),
+                deadline: 30,
+                first_visit: Text(b"first".to_vec()),
+                next_visit: Text(b"next".to_vec()),
+                completed: Text(b"done".to_vec()),
+            };
+            let task = SeerTask {
+                quest: quest.clone(),
+                reward: *reward,
+            };
+            for m in [
+                with_object(v, 83, Body::SeerHut(Some(task))),
+                with_object(v, 215, Body::QuestGuard(Some(quest))),
+            ] {
+                assert_eq!(parse(&encode(&m), &limits()), Ok(m));
+            }
+        }
+    }
+}
+
+#[test]
+fn object_counts_are_bounded() {
+    let mut m = with_object(Version::RoE, 124, Body::None);
+    m.events = vec![TimedEvent::default(); 2];
+    for e in &mut m.events {
+        e.human = true;
+    }
+    let bytes = encode(&m);
+    assert_eq!(parse(&bytes, &limits()), Ok(m));
+    let tight = |f: fn(&mut Limits)| {
+        let mut l = limits();
+        f(&mut l);
+        l
+    };
+    assert_limit(&bytes, &tight(|l| l.max_templates = 0), "templates");
+    assert_limit(&bytes, &tight(|l| l.max_objects = 0), "objects");
+    assert_limit(&bytes, &tight(|l| l.max_events = 1), "timed events");
+    let town = TownBody {
+        events: vec![TownEvent::default(); 2],
+        banned_spells: Bits(vec![0; 9]),
+        alignment: u8::MAX,
+        ..TownBody::default()
+    };
+    let mut m = with_object(Version::RoE, 98, Body::Town(Box::new(town)));
+    if let Body::Town(t) = &mut m.objects[0].body {
+        for e in &mut t.events {
+            e.event.human = true;
+        }
+    }
+    let bytes = encode(&m);
+    assert_eq!(parse(&bytes, &limits()), Ok(m));
+    assert_limit(&bytes, &tight(|l| l.max_events = 1), "town events");
 }
 
 #[test]
@@ -205,7 +383,8 @@ fn a_count_beyond_the_bytes_left_is_truncation_not_allocation() {
         max_rumors: u32::MAX,
         ..limits()
     };
-    let at = bytes.len() - 4 * 7 - 4;
+    // The rumor count precedes four tiles and the template, object and event counts.
+    let at = bytes.len() - 3 * 4 - 4 * 7 - 4;
     bytes[at..at + 4].copy_from_slice(&(1u32 << 31).to_le_bytes());
     assert_eq!(
         parse(&bytes, &generous),
@@ -265,6 +444,10 @@ fn the_raw_model_answers_its_questions() {
     assert_eq!(m.terrain.tile(Pos { x: 0, y: 0, z: 1 }), None);
     assert_eq!(format!("{:?}", Text(b"Orrin".to_vec())), "\"Orrin\"");
     assert_eq!(Text(b"x".to_vec()).as_bytes(), b"x");
+    assert_eq!(
+        [Version::RoE, Version::Ab, Version::Sod].map(Version::artifacts),
+        [127, 129, 144]
+    );
     let teams = Teams {
         count: 2,
         of_player: [0, 1, 0, 1, 0, 1, 0, 1],
@@ -312,6 +495,10 @@ fn errors_describe_themselves() {
                 offset: 4,
             },
             "rumors = 9 exceeds the limit 8 (offset 4)",
+        ),
+        (
+            ReadError::TrailingBytes { offset: 4 },
+            "unexpected bytes after the timed events (offset 4)",
         ),
         (
             ReadError::InvalidValue {
@@ -449,13 +636,31 @@ fn maps_from_the_experiment_writer_read_back() {
         hero_type: 0,
         class: 0,
         name: None,
-        experience: None,
-        skills: None,
-        army: None,
+        experience: Some(1000),
+        skills: Some(vec![(6, 2)]),
+        army: Some([Some((1, 25)), None, None, None, None, None, None]),
         tight_formation: false,
         artifacts: None,
         spells: None,
-        primary: None,
+        primary: Some([3, 2, 1, 1]),
+    };
+    let monster = w::Monster {
+        tile: (10, 10),
+        template: w::ObjectTemplate {
+            def: "AVWpike.def".to_owned(),
+            passable: [0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0x7F],
+            visitable: [0, 0, 0, 0, 0, 0x80],
+            terrains: 0x1FF,
+            menu: 0x1FF,
+            class: 54,
+            subclass: 12,
+            group: 2,
+            priority: 0,
+        },
+        count: 30,
+        disposition: 4,
+        never_flees: true,
+        fixed_count: false,
     };
     let mut players: [Option<w::Player>; w::PLAYERS] = Default::default();
     players[0] = Some(w::Player {
@@ -474,7 +679,7 @@ fn maps_from_the_experiment_writer_read_back() {
         size: 36,
         terrain: w::Terrain::Grass,
         players,
-        objects: vec![w::MapObject::Hero(hero)],
+        objects: vec![w::MapObject::Hero(hero), w::MapObject::Monster(monster)],
     };
     let m = read(&w::gzip(&w::write(&map).unwrap()), &limits()).unwrap();
     assert_eq!(m.header.version, Version::Sod);
@@ -505,6 +710,36 @@ fn maps_from_the_experiment_writer_read_back() {
             .iter()
             .all(|t| t.terrain == 2 && (49..=56).contains(&t.view))
     );
+    // The hero (written one column right of its tile, docs/formats/h3m.md) and the monster.
+    assert_eq!(m.objects.len(), 2);
+    let hero_template = &m.templates[m.objects[0].template as usize];
+    assert_eq!((hero_template.class, hero_template.subclass), (34, 0));
+    assert_eq!(m.objects[0].pos, Pos { x: 4, y: 4, z: 0 });
+    let Body::Hero(h) = &m.objects[0].body else {
+        panic!("not a hero: {:?}", m.objects[0].body)
+    };
+    assert_eq!((h.owner, h.hero_type, h.experience), (0, 0, Some(1000)));
+    assert_eq!(h.secondary_skills, Some(vec![(6, 2)]));
+    assert_eq!(h.primary_skills, Some([3, 2, 1, 1]));
+    let army = h.army.as_ref().unwrap();
+    assert_eq!(
+        army[0],
+        Some(crate::model::Stack {
+            creature: 1,
+            count: 25
+        })
+    );
+    assert!(army[1..].iter().all(Option::is_none));
+    let monster_template = &m.templates[m.objects[1].template as usize];
+    assert_eq!(
+        (monster_template.class, monster_template.subclass),
+        (54, 12)
+    );
+    let Body::Monster(mon) = &m.objects[1].body else {
+        panic!("not a monster: {:?}", m.objects[1].body)
+    };
+    assert_eq!((mon.count, mon.disposition, mon.never_flees), (30, 4, true));
+    assert!(m.events.is_empty());
 }
 
 // --- properties ---

@@ -2,7 +2,8 @@
 //! version can hold: the round-trip and truncation properties build their inputs with it.
 
 use crate::model::{
-    Artifacts, Bits, CustomHero, Loss, Player, Pos, RawMap, Text, Version, Victory, VictoryGoal,
+    Army, Artifacts, Bits, Body, Buildings, CustomHero, Loss, Message, Mission, Player, Pos, Quest,
+    RawMap, Reward, Rewards, Stack, Template, Text, TimedEvent, Version, Victory, VictoryGoal,
 };
 
 #[derive(Default)]
@@ -135,6 +136,21 @@ pub fn encode(m: &RawMap) -> Vec<u8> {
             t.road_dir,
             t.flags,
         ]);
+    }
+    o.len(m.templates.len());
+    for t in &m.templates {
+        template(&mut o, t);
+    }
+    o.len(m.objects.len());
+    for ob in &m.objects {
+        o.pos(ob.pos);
+        o.u32(ob.template);
+        o.0.extend_from_slice(&[0; 5]);
+        body(&mut o, v, &ob.body);
+    }
+    o.len(m.events.len());
+    for e in &m.events {
+        timed_event(&mut o, v, e);
     }
     o.0
 }
@@ -280,6 +296,397 @@ pub fn artifacts(o: &mut Out, v: Version, a: Option<&Artifacts>) {
         o.u16(u16::try_from(a.backpack.len()).unwrap());
         for &b in &a.backpack {
             o.artifact(v, b);
+        }
+    }
+}
+
+fn template(o: &mut Out, t: &Template) {
+    o.text(&t.def);
+    o.0.extend_from_slice(&t.passable);
+    o.0.extend_from_slice(&t.visitable);
+    o.u16(t.terrains);
+    o.u16(t.editor_terrains);
+    o.u32(t.class);
+    o.u32(t.subclass);
+    o.u8(t.group);
+    o.u8(t.priority);
+    o.0.extend_from_slice(&[0; 16]);
+}
+
+fn army(o: &mut Out, v: Version, a: &Army) {
+    for slot in a {
+        match slot {
+            Some(s) => stack(o, v, *s),
+            None => {
+                o.id(v, if v == Version::RoE { 0xFF } else { 0xFFFF });
+                o.u16(0);
+            }
+        }
+    }
+}
+
+fn stack(o: &mut Out, v: Version, s: Stack) {
+    o.id(v, s.creature);
+    o.u16(s.count);
+}
+
+fn message(o: &mut Out, v: Version, m: Option<&Message>) {
+    o.bool(m.is_some());
+    if let Some(m) = m {
+        o.text(&m.text);
+        o.bool(m.guards.is_some());
+        if let Some(g) = &m.guards {
+            army(o, v, g);
+        }
+        o.0.extend_from_slice(&[0; 4]);
+    }
+}
+
+fn count(o: &mut Out, n: usize) {
+    o.u8(u8::try_from(n).unwrap());
+}
+
+fn rewards(o: &mut Out, v: Version, r: &Rewards) {
+    o.u32(r.experience);
+    o.i32(r.mana);
+    o.0.push(r.morale.to_le_bytes()[0]);
+    o.0.push(r.luck.to_le_bytes()[0]);
+    for &x in &r.resources {
+        o.i32(x);
+    }
+    o.0.extend_from_slice(&r.primary);
+    count(o, r.skills.len());
+    for &(skill, level) in &r.skills {
+        o.0.extend_from_slice(&[skill, level]);
+    }
+    count(o, r.artifacts.len());
+    for &a in &r.artifacts {
+        o.id(v, a);
+    }
+    count(o, r.spells.len());
+    o.0.extend_from_slice(&r.spells);
+    count(o, r.creatures.len());
+    for &c in &r.creatures {
+        stack(o, v, c);
+    }
+    o.0.extend_from_slice(&[0; 8]);
+}
+
+fn quest(o: &mut Out, v: Version, q: Option<&Quest>) {
+    let Some(q) = q else {
+        o.u8(0);
+        return;
+    };
+    match &q.mission {
+        Mission::Level(n) => {
+            o.u8(1);
+            o.u32(*n);
+        }
+        Mission::PrimarySkills(p) => {
+            o.u8(2);
+            o.0.extend_from_slice(p);
+        }
+        Mission::KillHero(n) => {
+            o.u8(3);
+            o.u32(*n);
+        }
+        Mission::KillCreature(n) => {
+            o.u8(4);
+            o.u32(*n);
+        }
+        Mission::Artifacts(a) => {
+            o.u8(5);
+            count(o, a.len());
+            for &a in a {
+                o.id(v, a);
+            }
+        }
+        Mission::Army(a) => {
+            o.u8(6);
+            count(o, a.len());
+            for &s in a {
+                stack(o, v, s);
+            }
+        }
+        Mission::Resources(r) => {
+            o.u8(7);
+            for &x in r {
+                o.u32(x);
+            }
+        }
+        Mission::Hero(h) => o.0.extend_from_slice(&[8, *h]),
+        Mission::Player(p) => o.0.extend_from_slice(&[9, *p]),
+    }
+    o.i32(q.deadline);
+    o.text(&q.first_visit);
+    o.text(&q.next_visit);
+    o.text(&q.completed);
+}
+
+fn reward(o: &mut Out, v: Version, r: Reward) {
+    match r {
+        Reward::Nothing => o.u8(0),
+        Reward::Experience(n) => {
+            o.u8(1);
+            o.u32(n);
+        }
+        Reward::Mana(n) => {
+            o.u8(2);
+            o.u32(n);
+        }
+        Reward::Morale(n) => o.0.extend_from_slice(&[3, n.to_le_bytes()[0]]),
+        Reward::Luck(n) => o.0.extend_from_slice(&[4, n.to_le_bytes()[0]]),
+        Reward::Resource { resource, amount } => {
+            o.0.extend_from_slice(&[5, resource]);
+            o.u32(amount);
+        }
+        Reward::PrimarySkill { skill, amount } => o.0.extend_from_slice(&[6, skill, amount]),
+        Reward::SecondarySkill { skill, level } => o.0.extend_from_slice(&[7, skill, level]),
+        Reward::Artifact(a) => {
+            o.u8(8);
+            o.id(v, a);
+        }
+        Reward::Spell(s) => o.0.extend_from_slice(&[9, s]),
+        Reward::Creatures(s) => {
+            o.u8(10);
+            stack(o, v, s);
+        }
+    }
+}
+
+pub fn timed_event(o: &mut Out, v: Version, e: &TimedEvent) {
+    o.text(&e.name);
+    o.text(&e.message);
+    for &r in &e.resources {
+        o.i32(r);
+    }
+    o.u8(e.players);
+    if v == Version::Sod {
+        o.bool(e.human);
+    }
+    o.bool(e.computer);
+    o.u16(e.first_day);
+    o.u16(e.interval);
+    o.0.extend_from_slice(&[0; 16]);
+}
+
+fn opt_text(o: &mut Out, t: Option<&Text>) {
+    o.bool(t.is_some());
+    if let Some(t) = t {
+        o.text(t);
+    }
+}
+
+fn hero(o: &mut Out, v: Version, h: &crate::model::HeroBody) {
+    if let Some(id) = h.identifier {
+        o.u32(id);
+    }
+    o.u8(h.owner);
+    o.u8(h.hero_type);
+    opt_text(o, h.name.as_ref());
+    if v == Version::Sod {
+        o.bool(h.experience.is_some());
+    }
+    if let Some(x) = h.experience {
+        o.u32(x);
+    }
+    o.bool(h.portrait.is_some());
+    if let Some(p) = h.portrait {
+        o.u8(p);
+    }
+    o.bool(h.secondary_skills.is_some());
+    if let Some(s) = &h.secondary_skills {
+        o.len(s.len());
+        for &(skill, level) in s {
+            o.0.extend_from_slice(&[skill, level]);
+        }
+    }
+    o.bool(h.army.is_some());
+    if let Some(a) = &h.army {
+        army(o, v, a);
+    }
+    o.u8(h.formation);
+    artifacts(o, v, h.artifacts.as_ref());
+    o.u8(h.patrol);
+    if v != Version::RoE {
+        opt_text(o, h.biography.as_ref());
+        o.u8(h.sex);
+    }
+    if let Some(s) = h.spell {
+        o.u8(s);
+    }
+    if v == Version::Sod {
+        o.bool(h.spells.is_some());
+        if let Some(s) = &h.spells {
+            o.bits(s);
+        }
+        o.bool(h.primary_skills.is_some());
+        if let Some(p) = h.primary_skills {
+            o.0.extend_from_slice(&p);
+        }
+    }
+    o.0.extend_from_slice(&[0; 16]);
+}
+
+fn town(o: &mut Out, v: Version, t: &crate::model::TownBody) {
+    if let Some(id) = t.identifier {
+        o.u32(id);
+    }
+    o.u8(t.owner);
+    opt_text(o, t.name.as_ref());
+    o.bool(t.garrison.is_some());
+    if let Some(g) = &t.garrison {
+        army(o, v, g);
+    }
+    o.u8(t.formation);
+    match &t.buildings {
+        Buildings::Custom { built, forbidden } => {
+            o.bool(true);
+            o.0.extend_from_slice(built);
+            o.0.extend_from_slice(forbidden);
+        }
+        Buildings::Standard { fort } => {
+            o.bool(false);
+            o.bool(*fort);
+        }
+    }
+    if let Some(r) = &t.required_spells {
+        o.bits(r);
+    }
+    o.bits(&t.banned_spells);
+    o.len(t.events.len());
+    for e in &t.events {
+        timed_event(o, v, &e.event);
+        o.0.extend_from_slice(&e.buildings);
+        for &n in &e.creatures {
+            o.u16(n);
+        }
+        o.0.extend_from_slice(&[0; 4]);
+    }
+    if v == Version::Sod {
+        o.u8(t.alignment);
+    }
+    o.0.extend_from_slice(&[0; 3]);
+}
+
+fn body(o: &mut Out, v: Version, b: &Body) {
+    match b {
+        Body::None => {}
+        Body::Event(e) => {
+            message(o, v, e.message.as_ref());
+            rewards(o, v, &e.rewards);
+            o.u8(e.players);
+            o.bool(e.computer);
+            o.bool(e.remove_after_visit);
+            o.0.extend_from_slice(&[0; 4]);
+        }
+        Body::Hero(h) => hero(o, v, h),
+        Body::Monster(m) => {
+            if let Some(id) = m.identifier {
+                o.u32(id);
+            }
+            o.u16(m.count);
+            o.u8(m.disposition);
+            o.bool(m.treasure.is_some());
+            if let Some(t) = &m.treasure {
+                o.text(&t.text);
+                for &r in &t.resources {
+                    o.i32(r);
+                }
+                o.artifact(v, t.artifact);
+            }
+            o.bool(m.never_flees);
+            o.bool(m.no_growth);
+            o.0.extend_from_slice(&[0; 2]);
+        }
+        Body::Sign(t) => {
+            o.text(t);
+            o.0.extend_from_slice(&[0; 4]);
+        }
+        Body::SeerHut(task) => {
+            match (task, v) {
+                (Some(t), Version::RoE) => {
+                    let Mission::Artifacts(a) = &t.quest.mission else {
+                        panic!("an RoE seer hut asks for an artifact")
+                    };
+                    o.artifact(v, Some(a[0]));
+                    reward(o, v, t.reward);
+                }
+                (Some(t), _) => {
+                    quest(o, v, Some(&t.quest));
+                    reward(o, v, t.reward);
+                }
+                (None, Version::RoE) => {
+                    o.artifact(v, None);
+                    o.u8(0);
+                }
+                (None, _) => {
+                    quest(o, v, None);
+                    o.u8(0);
+                }
+            }
+            o.0.extend_from_slice(&[0; 2]);
+        }
+        Body::WitchHut(b) | Body::AbandonedMine(b) => o.bits(b),
+        Body::Scholar { kind, code } => {
+            o.0.extend_from_slice(&[kind.to_le_bytes()[0], *code]);
+            o.0.extend_from_slice(&[0; 6]);
+        }
+        Body::Garrison {
+            owner,
+            army: a,
+            removable,
+        } => {
+            o.u32(*owner);
+            army(o, v, a);
+            if v != Version::RoE {
+                o.bool(*removable);
+            }
+            o.0.extend_from_slice(&[0; 8]);
+        }
+        Body::Artifact(m) => message(o, v, m.as_ref()),
+        Body::Scroll { message: m, spell } => {
+            message(o, v, m.as_ref());
+            o.u32(*spell);
+        }
+        Body::Resource { message: m, amount } => {
+            message(o, v, m.as_ref());
+            o.u32(*amount);
+            o.0.extend_from_slice(&[0; 4]);
+        }
+        Body::Town(t) => town(o, v, t),
+        Body::Mine { owner } | Body::Owned { owner } => o.u32(*owner),
+        Body::RandomDwelling(d) => {
+            o.u32(d.owner);
+            if let Some((town, set)) = &d.faction {
+                o.u32(*town);
+                if let Some(set) = set {
+                    o.bits(set);
+                }
+            }
+            if let Some((low, high)) = d.levels {
+                o.0.extend_from_slice(&[low, high]);
+            }
+        }
+        Body::Shrine { spell } => o.u32(*spell),
+        Body::Pandora {
+            message: m,
+            rewards: r,
+        } => {
+            message(o, v, m.as_ref());
+            rewards(o, v, r);
+        }
+        Body::Grail { radius } => o.i32(*radius),
+        Body::QuestGuard(q) => quest(o, v, q.as_ref()),
+        Body::HeroPlaceholder {
+            owner,
+            hero_type,
+            power_rank,
+        } => {
+            o.0.extend_from_slice(&[*owner, *hero_type]);
+            if let Some(r) = power_rank {
+                o.u8(*r);
+            }
         }
     }
 }

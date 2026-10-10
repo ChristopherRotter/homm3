@@ -3,6 +3,8 @@
 //! GPL-2.0-or-later, the order and sizes were ported, no code) and are checked against every map
 //! shipped with the game (`examples/original_data.rs`). Notes: `docs/formats/h3m.md`.
 
+mod objects;
+
 use crate::cursor::Cursor;
 use crate::model::{
     Artifacts, Bits, CustomHero, DisposedHero, Header, Loss, MainHero, MainTown, Player,
@@ -19,13 +21,11 @@ const TILE_BYTES: usize = 7;
 
 /// Parses the inflated bytes of a map file (RoE, AB or SoD) within `limits`.
 ///
-/// E08 T3a reads up to the end of the terrain and ignores what follows (the object templates,
-/// the objects and the timed events, T3b; ADV-STUB-1).
-///
 /// # Errors
 ///
-/// [`ReadError`]: an unsupported version, data that ends early, a count or string beyond its
-/// limit, or a condition kind the version does not have.
+/// [`ReadError`]: an unsupported version, data that ends early or goes on after the timed
+/// events, a count or string beyond its limit, an object whose template does not exist, or a
+/// condition, quest or reward kind the version does not have.
 pub fn parse(bytes: &[u8], limits: &Limits) -> Result<RawMap, ReadError> {
     let mut c = Cursor::new(bytes, limits);
     let header = header(&mut c)?;
@@ -80,7 +80,14 @@ pub fn parse(bytes: &[u8], limits: &Limits) -> Result<RawMap, ReadError> {
         }
     }
     let terrain = terrain(&mut c, &header)?;
-    // stub: ADV-STUB-1: the object templates, the objects and the timed events follow (T3b).
+    let templates = objects::templates(&mut c)?;
+    let objects = objects::objects(&mut c, v, &templates)?;
+    let events = objects::timed_events(&mut c, v)?;
+    // The game's own maps end with zero padding (124 bytes in the shipped maps).
+    let offset = c.offset();
+    if c.take(c.remaining(), "padding")?.iter().any(|&b| b != 0) {
+        return Err(ReadError::TrailingBytes { offset });
+    }
     Ok(RawMap {
         header,
         players,
@@ -96,6 +103,9 @@ pub fn parse(bytes: &[u8], limits: &Limits) -> Result<RawMap, ReadError> {
         rumors,
         custom_heroes,
         terrain,
+        templates,
+        objects,
+        events,
     })
 }
 

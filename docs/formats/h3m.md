@@ -10,7 +10,7 @@ little-endian; a string is a `u32` length plus Windows-1252 bytes; a bool is a b
 true); a position is x, y, level (one byte each); a map file is one gzip member (RFC 1952) of the
 bytes below.
 
-## Reading: the three versions (E08 T3a, up to the terrain)
+## Reading: the three versions (E08 T3)
 
 | Part | RoE `0x0E` | AB `0x15` | SoD `0x1C` |
 |---|---|---|---|
@@ -29,6 +29,10 @@ bytes below.
 | rumors | u32 count; name, text | same | same |
 | customised hero types | — | — | 156 × (bool; if set, the body below) |
 | terrain | 7 bytes per tile, level by level, row by row | same | same |
+| object templates | u32 count; template below | same | same |
+| objects | u32 count; position, u32 template index, 5 unused bytes, the body of the template's class | same | same |
+| timed events | u32 count; timed event below | same | same |
+| padding | 124 zero bytes in every shipped map; the reader accepts zeros only | same | same |
 
 **Player.** Human, computer (bools). Nobody plays the colour: 6 (RoE), 12 (AB) or 13 (SoD) unused
 bytes follow. Otherwise: AI tactic (i8); SoD only, the town-choice byte; allowed towns (u8 in RoE,
@@ -52,22 +56,65 @@ bytes).
 **Tile:** terrain (0 dirt … 9 rock), picture, river (0 none … 4 lava), river picture, road (0 none
 … 3 cobblestone), road picture, flags. The reader keeps every code raw; the import maps them.
 
+**Template:** name (string), passability and visitability (6 bytes each, bit set = passable or
+visitable; bit `j` of byte `i` is `j` columns left of and `i` rows above the bottom right corner),
+two terrain masks (u16 each; our writer reads the second as the editor's menu, VCMI as the allowed
+terrains), class and subclass (u32 each), group and priority (bytes), 16 unused bytes.
+
+**Shared parts of the bodies.** An *id* (artifact or creature code) is one byte in RoE and two
+from AB on; "none" is all bits set. An *army* is 7 × (creature id, u16 count). A *message* is a bool;
+if set, a string, a has-guards bool with an army, and 4 unused bytes. *Rewards* (events, Pandora's
+boxes): u32 experience, i32 mana, i8 morale, i8 luck, 7 × i32 resources, 4 primary-skill bytes,
+then u8-counted lists of (skill, level) bytes, artifact ids, spell bytes and (creature id, u16)
+stacks, 8 unused bytes. A *timed event*: name and message strings, 7 × i32 resources, a players
+byte, SoD's human bool, a computer bool, u16 first day, u16 interval, 16 unused bytes.
+
+**Object bodies by class** (VCMI 1.7.5's `readObject`; HotA's branches left out):
+
+| Class | Body |
+|---|---|
+| 26 event | message, rewards, players byte, computer and remove-after-visit bools, 4 unused |
+| 34 hero, 62 prison, 70 random hero | from AB a u32 identifier; owner, hero type; name (bool + string); experience (SoD: bool + u32; before: u32, 0 = default); portrait (bool + byte); skills (bool + u32 count + pairs); army (bool + army); formation; artifacts (as the customised hero); patrol byte; from AB biography (bool + string) and sex; AB one spell byte, SoD spells (bool + 9 bytes) and primary skills (bool + 4 bytes); 16 unused |
+| 54 monster, 71–75 and 162–164 random monsters | from AB a u32 identifier; u16 count (0 random); disposition; treasure (bool; string, 7 × i32, artifact id); never-flees and no-growth bools; 2 unused |
+| 59 bottle, 91 sign | string, 4 unused |
+| 83 seer hut | RoE: an artifact id (none = no quest); from AB a quest (below); with a quest a reward (code 0–10: nothing, u32 experience, u32 mana, i8 morale, i8 luck, resource byte + u32, primary skill + byte, skill + level, artifact id, spell byte, creature id + u16), without one 1 unused byte; then 2 unused |
+| 215 quest guard | a quest: mission code 0 none (nothing follows), 1 level u32, 2 primary skills 4 bytes, 3 hero identifier u32, 4 monster identifier u32, 5 u8-counted artifact ids, 6 u8-counted stacks, 7 resources 7 × u32, 8 hero type, 9 player; then i32 deadline and three strings (first visit, next visit, completed) |
+| 113 witch hut | from AB the possible skills (4 bytes) |
+| 81 scholar | i8 bonus kind, bonus byte, 6 unused |
+| 33, 219 garrison | u32 owner, army, from AB a removable bool, 8 unused |
+| 5 artifact, 65–69 random artifacts | message |
+| 93 spell scroll | message, u32 spell |
+| 76, 79 resource | message, u32 amount, 4 unused |
+| 77, 98 town | from AB a u32 identifier; owner; name (bool + string); garrison (bool + army); formation; buildings (bool: built and forbidden, 6 bytes each; else a has-fort bool); from AB the required spells (9 bytes); the banned spells (9 bytes, every version); u32-counted town events (timed event, 6 building bytes, 7 × u16 creatures, 4 unused); SoD's alignment byte; 3 unused |
+| 53, 220 mine | subclass below 7: u32 owner; else (abandoned) 4 bytes of possible resources |
+| 17–20 dwellings, 42 lighthouse, 87 shipyard | u32 owner |
+| 216–218 random dwellings | u32 owner; 216 and 217 a u32 town identifier and, when 0, the faction set; 216 and 218 the lowest and highest level bytes |
+| 88–90 shrines | u32 spell |
+| 6 Pandora's box | message, rewards |
+| 36 grail (subclass below 1000) | i32 radius |
+| 214 hero placeholder | owner, hero type; for type `0xFF` a power rank byte |
+| every other class | nothing |
+
 **Input bounds** (`h3_map::Limits`; above one the file is rejected before anything is
 allocated, and every count must also fit the bytes left). Peaks in the 164 maps shipped with the
 user's installation (50 RoE, 55 AB, 59 SoD, `Tutorial.tut` included; 2026-10-10,
-`cargo xtask verify --with-original-data`, which runs `crates/h3-map/examples/original_data.rs`):
+`cargo xtask verify --with-original-data`, which runs `crates/h3-map/examples/original_data.rs`;
+every one reads to its padding, and every body kind but the hero placeholder occurs):
 
 | Limit | Default | Shipped peak |
 |---|---|---|
 | file (compressed) | 4 MiB | 123 343 bytes |
 | map (inflated) | 16 MiB | 525 124 bytes |
 | map side | 144 (two levels) | 144 |
-| string | 65 536 bytes | 300 (T3a's strings only) |
+| string | 65 536 bytes | 1 314 |
 | heroes per player | 64 | 6 |
 | campaign placeholders | 156 | 0 |
 | rumors | 256 | 19 |
-| secondary skills per hero | 28 | 0 (customised hero types) |
-| backpack | 256 | 0 (customised hero types) |
+| secondary skills per hero | 28 | 8 |
+| backpack | 256 | 2 |
+| object templates | 4 096 | 841 |
+| objects | 65 536 | 7 009 |
+| timed events (map or town) | 1 024 | 100 (a town: 37) |
 
 Versions the reader rejects: Heroes Chronicles (`0x1D`), HotA (`0x20`), WoG (`0x33`) and every
 other code.

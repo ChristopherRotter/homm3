@@ -5,6 +5,14 @@
 
 use core::fmt;
 
+mod objects;
+
+pub use objects::{
+    Army, Body, Buildings, EventBody, HeroBody, Message, Mission, MonsterBody, MonsterTreasure,
+    Object, Quest, RandomDwelling, Reward, Rewards, SeerTask, Stack, Template, TimedEvent,
+    TownBody, TownEvent,
+};
+
 /// Format version of a map file.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum Version {
@@ -124,8 +132,7 @@ pub struct Pos {
     pub z: u8,
 }
 
-/// A map file, read up to the end of its terrain (E08 T3a; templates, objects and timed events
-/// follow in T3b, ADV-STUB-1).
+/// A map file.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct RawMap {
     /// The header: version, size, name, difficulty.
@@ -157,6 +164,12 @@ pub struct RawMap {
     pub custom_heroes: Vec<CustomHero>,
     /// The tiles of every level.
     pub terrain: Terrain,
+    /// The object templates the objects refer to.
+    pub templates: Vec<Template>,
+    /// The objects, in file order.
+    pub objects: Vec<Object>,
+    /// The map's timed events.
+    pub events: Vec<TimedEvent>,
 }
 
 /// The map file's header.

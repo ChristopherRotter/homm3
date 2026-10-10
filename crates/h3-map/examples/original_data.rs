@@ -10,12 +10,16 @@ use std::collections::BTreeMap;
 use std::path::Path;
 use std::process::ExitCode;
 
-use h3_map::model::{CustomHero, Player, RawMap, Version};
+use h3_map::model::{Artifacts, Body, Player, RawMap, SeerTask, Text, Version};
 use h3_map::{Limits, gunzip};
 
-/// The largest value of each bounded quantity over all maps, with the map it came from.
+/// The largest value of each bounded quantity over all maps, with the map it came from, and how
+/// many objects of each body kind the maps hold.
 #[derive(Default)]
-struct Peaks(BTreeMap<&'static str, (usize, String)>);
+struct Peaks(
+    BTreeMap<&'static str, (usize, String)>,
+    BTreeMap<&'static str, usize>,
+);
 
 impl Peaks {
     fn note(&mut self, what: &'static str, value: usize, map: &str) {
@@ -70,6 +74,8 @@ fn main() -> ExitCode {
     for (what, (value, map)) in &peaks.0 {
         println!("  largest {what}: {value} ({map})");
     }
+    let kinds: Vec<String> = peaks.1.iter().map(|(k, n)| format!("{k} {n}")).collect();
+    println!("  objects by body: {}", kinds.join(", "));
     if failures == 0 {
         ExitCode::SUCCESS
     } else {
@@ -98,12 +104,9 @@ fn check(path: &Path, limits: &Limits, peaks: &mut Peaks, name: &str) -> Result<
 }
 
 fn note(map: &RawMap, peaks: &mut Peaks, name: &str) {
-    let mut string = |len: usize| peaks.note("string", len, name);
-    string(map.header.name.as_bytes().len());
-    string(map.header.description.as_bytes().len());
+    let mut texts: Vec<&Text> = vec![&map.header.name, &map.header.description];
     for r in &map.rumors {
-        string(r.name.as_bytes().len());
-        string(r.text.as_bytes().len());
+        texts.extend([&r.name, &r.text]);
     }
     for d in map
         .players
@@ -111,35 +114,82 @@ fn note(map: &RawMap, peaks: &mut Peaks, name: &str) {
         .filter_map(|p: &Player| p.details.as_ref())
     {
         peaks.note("player heroes", d.heroes.len(), name);
-        for h in &d.heroes {
-            peaks.note("string", h.name.as_bytes().len(), name);
-        }
+        texts.extend(d.heroes.iter().map(|h| &h.name));
     }
     peaks.note("placeholders", map.placeholders.len(), name);
     peaks.note("disposed heroes", map.disposed_heroes.len(), name);
     peaks.note("rumors", map.rumors.len(), name);
     peaks.note("custom heroes", map.custom_heroes.len(), name);
+    let hero =
+        |peaks: &mut Peaks, skills: Option<&Vec<(u8, u8)>>, artifacts: Option<&Artifacts>| {
+            peaks.note("secondary skills", skills.map_or(0, Vec::len), name);
+            peaks.note("backpack", artifacts.map_or(0, |a| a.backpack.len()), name);
+        };
     for h in &map.custom_heroes {
-        let CustomHero {
-            secondary_skills,
-            artifacts,
-            biography,
-            ..
-        } = h;
-        peaks.note(
-            "secondary skills",
-            secondary_skills.as_ref().map_or(0, Vec::len),
-            name,
-        );
-        peaks.note(
-            "backpack",
-            artifacts.as_ref().map_or(0, |a| a.backpack.len()),
-            name,
-        );
-        peaks.note(
-            "string",
-            biography.as_ref().map_or(0, |b| b.as_bytes().len()),
-            name,
-        );
+        hero(peaks, h.secondary_skills.as_ref(), h.artifacts.as_ref());
+        texts.extend(h.biography.as_ref());
+    }
+    for o in &map.objects {
+        *peaks.1.entry(kind(&o.body)).or_default() += 1;
+        match &o.body {
+            Body::Hero(h) => {
+                hero(peaks, h.secondary_skills.as_ref(), h.artifacts.as_ref());
+                texts.extend(h.name.iter().chain(h.biography.iter()));
+            }
+            Body::Event(e) => texts.extend(e.message.as_ref().map(|m| &m.text)),
+            Body::Pandora { message, .. }
+            | Body::Artifact(message)
+            | Body::Scroll { message, .. }
+            | Body::Resource { message, .. } => texts.extend(message.as_ref().map(|m| &m.text)),
+            Body::Monster(m) => texts.extend(m.treasure.as_ref().map(|t| &t.text)),
+            Body::Sign(t) => texts.push(t),
+            Body::SeerHut(Some(SeerTask { quest, .. })) | Body::QuestGuard(Some(quest)) => {
+                texts.extend([&quest.first_visit, &quest.next_visit, &quest.completed]);
+            }
+            Body::Town(t) => {
+                peaks.note("town events", t.events.len(), name);
+                texts.extend(t.name.iter());
+                for e in &t.events {
+                    texts.extend([&e.event.name, &e.event.message]);
+                }
+            }
+            _ => {}
+        }
+    }
+    for e in &map.events {
+        texts.extend([&e.name, &e.message]);
+    }
+    peaks.note("templates", map.templates.len(), name);
+    peaks.note("objects", map.objects.len(), name);
+    peaks.note("timed events", map.events.len(), name);
+    let longest = texts.iter().map(|t| t.as_bytes().len()).max().unwrap_or(0);
+    peaks.note("string", longest, name);
+}
+
+/// The body's kind, for the summary.
+const fn kind(body: &Body) -> &'static str {
+    match body {
+        Body::None => "none",
+        Body::Event(_) => "event",
+        Body::Hero(_) => "hero",
+        Body::Monster(_) => "monster",
+        Body::Sign(_) => "sign",
+        Body::SeerHut(_) => "seer hut",
+        Body::WitchHut(_) => "witch hut",
+        Body::Scholar { .. } => "scholar",
+        Body::Garrison { .. } => "garrison",
+        Body::Artifact(_) => "artifact",
+        Body::Scroll { .. } => "scroll",
+        Body::Resource { .. } => "resource",
+        Body::Town(_) => "town",
+        Body::Mine { .. } => "mine",
+        Body::AbandonedMine(_) => "abandoned mine",
+        Body::Owned { .. } => "owned",
+        Body::RandomDwelling(_) => "random dwelling",
+        Body::Shrine { .. } => "shrine",
+        Body::Pandora { .. } => "pandora",
+        Body::Grail { .. } => "grail",
+        Body::QuestGuard(_) => "quest guard",
+        Body::HeroPlaceholder { .. } => "hero placeholder",
     }
 }
