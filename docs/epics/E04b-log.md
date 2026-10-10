@@ -1712,3 +1712,70 @@ records how and why the tasks went.
   stack's, `RoseFromCorpse`) for a stack whose casts changed; such a slot starts afresh like one
   a created stack takes (BAT-MAG-052). The property now says so; the case is in the proptest
   regression file. The engine was right.
+
+### Increment 15: T8b, the casting limits and the heroes' spell defences (2026-10-10)
+
+- **Start:** CI green on `master` (the T8a merge); the local baseline verify with the original
+  data showed `check-exe-map` red on `master`: the adventure lane's survey (#33, docs only, so no
+  CI ran) cites four H3API addresses without map entries (0x4B18C0, 0x4E4070, 0x4E4990,
+  0x4E4D90); inferred entries cover them now. The user (BAT-Q20): increment 14's own calls
+  confirmed; T8b in two parts, T8b1 the casting limits, T8b2 the stack defences, in one battle
+  pull request labelled `cross-lane` (the `BattleEffect` additions of ADR-0014 point 10).
+- **Code reading** (`installation.md` §7.23): 0x41F890 (the Orb of Inhibition on either hero) and
+  all its callers (the hero's cast in 0x59FE30, the creature cast and raise test 0x4476C0, the
+  empty-hex test, the Enchanters' 0x447FE0 keeping the side's count, the AI's 0x4396E0); the
+  hero's spell book button 0x59E900 (new map entry: no hero, cast this round, garrison, the Orb,
+  then the book; Cursed Ground's level 1 and Recanter's Cloak's level 2 after the choice);
+  0x5A8090's level test (the Cloak: 0 for every spell above level 2, abilities and positive
+  spells too, before every other test), its Sphere (Dispel, Dispel Helpful Spells) and Blade
+  (Armageddon) cases; 0x44A4D0: Power of the Dragon Father first (levels 1–4, no polarity test,
+  Dispel excepted because its case returns earlier), the per-spell switch with the Pendants
+  (table 0x44A92C), the Orb of Vulnerability on the casting side's or the stack's hero
+  (0x44A746: 1, skipping the mind, fire and per-creature immunities and every resistance; the
+  Unicorn aura still applies in 0x5A8090), then the Badge of Courage with the mind spells.
+  Every artifact test is the controlling hero's (0x442690). The Archangel's raise tests
+  Resurrection through 0x5A8090 (the Cloak stops it), the Pit Lord's search 0x5A3E40 calls no
+  effect test (it does not).
+- **Finding outside T8b** (QUEUE inbox, for the checkpoint): the same switch holds absolute
+  cases the packs do not model: Bless and Curse spare the undead and creatures with maximum
+  damage 0, Precision needs a shooter, Mirth and Sorrow spare creatures without morale,
+  Fortune, Misfortune and Slayer creatures with maximum damage 0.
+- **Content:** pack format v31: hero effects `no_casting`, `spell_level_limit` (T8b1),
+  `spell_immunity`, `spell_level_immunity`, `mind_immunity`, `negate_immunities` (T8b2), ability
+  `spell_immunity` with `absolute` (the Troglodytes' Blind and Stone Gaze, the Gargoyles'
+  Poison); ruleset hash v40. The harvester writes a creature's whole ability list as a `sod`
+  override when an ability names a `sod` spell: Titan's Lightning Bolt joins the Earth and Magma
+  Elementals' immunities and the Air and Storm Elementals' double damage. The gap-fill gives the
+  Orb of Inhibition, Recanter's Cloak, the eight Pendants, the Sphere, the Orb of Vulnerability,
+  Badge of Courage (with its morale), Armageddon's Blade's immunity and Power of the Dragon
+  Father's level immunity (source `exe-casting-limits`, `exe-spell-defences`); the pending list
+  keeps Eagle Eye's three artifacts, the Angelic Alliance and the Armor of the Damned (T8c, T8d).
+  The synthetic pack has an artifact for each new kind.
+- **Heroes context:** HER-BAT-015 (one `NoCasting`, the smallest `SpellLevelLimit`), HER-BAT-016
+  (`SpellImmunity` per spell, the largest `SpellLevelImmunity`, `MindImmunity`,
+  `NegateImmunities`), each artifact type once.
+- **Seam and battle:** six `BattleEffect` variants. `HeroMagic` keeps the limits, the defences
+  and the negation (hashed; state hash v40); `BattleState.limits` (`MagicLimits`: no casting, the
+  level limit, whether any hero guards) is derived at the start for the hot paths, not hashed.
+  BAT-MAG-061 in `check_spell` (`CastingForbidden`), `casters::ready` (creature casts and
+  raises) and the periodic cast; BAT-MAG-062 in `check_spell` (`SpellLevelBarred`),
+  `affects_stack` and the raise tests. T8b2: `affects` takes the heroes' `Guard` (the controlling
+  hero's defences, the negation of the casting side's or that hero), in the original's order;
+  `affects_stack`, `share`, `affect_chance` and `resists` take the casting side (the striker's
+  controller for the strike's spells, the obstacle's side for Fire Wall and mines); the strike's
+  dispel of positive spells asks the Sphere.
+- **Tests:** `tests/limits.rs` (both heroes' and creatures' casts, raises, the random caster's
+  draw, the Enchanters' count, the strike's magic; the level limit for heroes, creatures,
+  abilities, the Archangel and the Pit Lord), `tests/hero_defences.rs` (a hypnotized stack's
+  controller, every Dispel against the Sphere, the Dragon Father's levels and Dispel, the Badge,
+  the negation from either hero and not for the enemy's own-side spells, absolute immunities, the
+  aura), h3-heroes, h3-content, h3-pack (syntax; `tests/harvested_defences.rs` on the harvested
+  packs: the elementals against Titan's Lightning Bolt, the Orb against Troglodytes and Air
+  Elementals, the artifacts' effects).
+- **A property gap from T7c3** (the coverage run's random cases, persisted): good morale for a
+  stack its own action's retaliation blinded may end the round, and the new round clears its
+  good-morale mark; the property now allows it. The engine was right.
+- **Measurements:** behaviour unchanged (every golden replay's command log is the same; the
+  hashes moved, re-recorded); `random-rollouts-full` 576.7 M Ir (+1.49 %, the same 7 607 steps;
+  the new tests in `check_spell` and `affects`, after a first +3.9 % that `MagicLimits` brought
+  down), re-baselined; `BattleState` 6 320 bytes (+56); release `h3 bench` about 120 k steps/s.
