@@ -229,8 +229,14 @@ pub enum CommandError {
     NotEnoughMana,
     /// The target is not one the spell may be cast at (BAT-MAG-003, BAT-MAG-048).
     InvalidSpellTarget,
-    /// The active stack casts no spell as its action, or has no casts left (BAT-MAG-048).
+    /// The active stack casts no spell as its action, has no casts left, or no one may cast in
+    /// the battle (BAT-MAG-048, BAT-MAG-061).
     CannotCast,
+    /// A hero in the battle forbids every cast (BAT-MAG-061: the Orb of Inhibition).
+    CastingForbidden,
+    /// The spell's level is above the battle's spell level limit (BAT-MAG-062: Recanter's
+    /// Cloak).
+    SpellLevelBarred,
 }
 
 impl fmt::Display for CommandError {
@@ -263,6 +269,8 @@ impl fmt::Display for CommandError {
             Self::NotEnoughMana => "not enough mana",
             Self::InvalidSpellTarget => "not a target of that spell",
             Self::CannotCast => "the stack cannot cast",
+            Self::CastingForbidden => "no one may cast in this battle",
+            Self::SpellLevelBarred => "the spell's level is above the battle's limit",
         })
     }
 }
@@ -474,6 +482,14 @@ mod tests {
                 "not a target of that spell",
             ),
             (CommandError::CannotCast, "the stack cannot cast"),
+            (
+                CommandError::CastingForbidden,
+                "no one may cast in this battle",
+            ),
+            (
+                CommandError::SpellLevelBarred,
+                "the spell's level is above the battle's limit",
+            ),
         ];
         for (e, text) in all {
             assert_eq!(e.to_string(), text);

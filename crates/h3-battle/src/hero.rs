@@ -398,7 +398,9 @@ fn creature_of(effect: &BattleEffect) -> Option<CreatureTypeId> {
         | BattleEffect::SpellDamage { .. }
         | BattleEffect::SpellSpecialty { .. }
         | BattleEffect::MagicResistance { .. }
-        | BattleEffect::SpellDuration { .. } => return None,
+        | BattleEffect::SpellDuration { .. }
+        | BattleEffect::NoCasting
+        | BattleEffect::SpellLevelLimit { .. } => return None,
     };
     match selector {
         CreatureSelector::Creature(c) => Some(*c),

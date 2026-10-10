@@ -15,6 +15,7 @@ mod fear;
 mod flee;
 mod geometry;
 mod heroes;
+mod limits;
 mod magic;
 mod mana;
 mod mines;

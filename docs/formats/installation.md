@@ -1580,3 +1580,32 @@ the spell's schools, 0 without one. No specialty, artifact or other bonus enters
 cost (0x4E5240) takes its mastery from here. The engine splits the function at its argument: the
 Heroes context derives each available spell's mastery on ordinary ground (HER-SPL-003); the
 battlefield's raise to Expert is the battle's (E04c, which passes it here as the original does).
+
+### 7.23 Code reading: the casting limits and the artifacts' spell defences (E04b T8b, 2026-10-10)
+
+Read for E04b T8b (BAT-Q20). Every test below asks the hero record with 0x4D91F0, which finds an
+artifact in the 19 body positions or as a part of a worn combination (the backpack never counts).
+
+**Who may cast** (T8b1, BAT-MAG-061). 0x41F890(side, hero cast) answers 0 on Cursed Ground for
+a creature's cast (a hero's needs its spell book there instead; E04c), at an anti-magic garrison
+(+0x53C4; E04c) and **while either hero** (+0x53CC, +0x53D0) **wears the Orb of Inhibition**
+(126). Its callers are every cast there is: the hero's cast in the cast routine (0x59FEEF: a
+message, no cast), the creature cast and raise test 0x4476C0 (twice: before the by-creature switch
+and in the Archangel's and the Pit Lord's case), the empty-hex test 0x4473D0, the Enchanters'
+cast 0x447FE0 (it returns 0 then, so the activation 0x465330 keeps the side's count; nothing is
+drawn) and the computer player's evaluation 0x4396E0. The Faerie Dragon's draw at its activation
+(0x447510) asks nothing: the dragon draws and may not cast. The strike's creature magic (§7.20)
+is no cast and goes on. The hero's spell book button (0x59E900, the human player's path) refuses
+earlier, with the artifact's message, when the side has no hero, has cast this round, at an
+anti-magic garrison or under the Orb on either hero, before it opens the book.
+
+**The spell level limit** (T8b1, BAT-MAG-062). After the book returns a spell, 0x59E900 refuses
+one above level 1 on Cursed Ground (E04c) and one above level 2 **while either hero wears
+Recanter's Cloak** (83), each with a message. The effect test 0x5A8090 (§7.8) answers 0 for a
+spell above level 2 under the Cloak on either hero (0x5A80F6), right after its Cursed Ground test
+and before every other one (Dispel's and the Sphere's, Anti-Magic, the polarity tests, 0x44A4D0):
+positive spells and the creature abilities too. So under the Cloak no creature cast of such a
+spell finds a target (0x5A3C80, §7.21), the Enchanters' table counts no such spell, the strike's
+Stone Gaze (level 3), Paralyze (4) and Age (5) do nothing (0x5A8640, §7.20) and an Archangel
+raises nothing, its search 0x5A3CC0 testing every stack with Resurrection (38, level 4; §7.18).
+The Pit Lord's corpse search 0x5A3E40 calls no effect test: Pit Lords still raise.

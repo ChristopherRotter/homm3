@@ -312,4 +312,13 @@ pub enum BattleEffect {
         /// Extra rounds.
         rounds: u8,
     },
+    /// Neither side casts while this hero is in the battle: no hero's spell, no creature's cast
+    /// or raise, no periodic cast (the Orb of Inhibition; E04b T8b1; HER-BAT-015, BAT-MAG-061).
+    NoCasting,
+    /// While this hero is in the battle no spell above `max_level` is cast by a hero or affects a
+    /// stack, whoever casts it (Recanter's Cloak: 2; E04b T8b1; HER-BAT-015, BAT-MAG-062).
+    SpellLevelLimit {
+        /// The highest spell level allowed.
+        max_level: u8,
+    },
 }

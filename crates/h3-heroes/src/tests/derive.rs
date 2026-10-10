@@ -1,4 +1,4 @@
-//! `derive_battle_hero` (HER-BAT-001 to HER-BAT-012).
+//! `derive_battle_hero` (HER-BAT-001 to HER-BAT-015).
 
 use std::vec;
 
@@ -336,6 +336,55 @@ fn a_worn_no_retreat_artifact_adds_one_no_retreat_effect() {
     assert_eq!(shackles(&hero), 1);
     d.worn.retain(|&a| a != art(&r, "t:eye"));
     assert_eq!(shackles(&derive_battle_hero(&d, &r).unwrap()), 0);
+}
+
+// covers: HER-BAT-015
+#[test]
+fn casting_limits_are_kept_once_with_the_smallest_level() {
+    let mut p = effect_pack();
+    for a in &mut p.artifacts {
+        match a.key.to_string().as_str() {
+            "t:eye" => a.effects.extend([
+                HeroEffectDef::NoCasting,
+                HeroEffectDef::SpellLevelLimit { level: 3 },
+            ]),
+            "t:hook" => a.effects.push(HeroEffectDef::SpellLevelLimit { level: 2 }),
+            _ => {}
+        }
+    }
+    let r = compile(p).unwrap();
+    let limits = |d: &HeroDetails| {
+        derive_battle_hero(d, &r)
+            .unwrap()
+            .effects
+            .into_iter()
+            .filter(|e| {
+                matches!(
+                    e,
+                    BattleEffect::NoCasting | BattleEffect::SpellLevelLimit { .. }
+                )
+            })
+            .collect::<Vec<_>>()
+    };
+    // Two eyes and the hook are worn (an eye is in the backpack): one of each, the smaller level.
+    let mut d = details(&r);
+    assert_eq!(
+        limits(&d),
+        vec![
+            BattleEffect::NoCasting,
+            BattleEffect::SpellLevelLimit { max_level: 2 }
+        ]
+    );
+    d.worn.retain(|&a| a != art(&r, "t:hook"));
+    assert_eq!(
+        limits(&d),
+        vec![
+            BattleEffect::NoCasting,
+            BattleEffect::SpellLevelLimit { max_level: 3 }
+        ]
+    );
+    d.worn.retain(|&a| a != art(&r, "t:eye"));
+    assert_eq!(limits(&d), vec![]);
 }
 
 // covers: HER-BAT-007

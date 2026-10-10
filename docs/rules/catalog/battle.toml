@@ -3182,3 +3182,29 @@ numeric  = "integer"
   kind       = "original-data"
   ref        = "Heroes3.exe code reading (docs/formats/installation.md §7.21, Fear read for T7c3): 0x464D40 spares a stack with flag 0x20000 (no morale) or of creature 132, sums the counts (+0x4C) of the creature-132 records of the side opposite the stack's controller (+0xF4, flipped by +0x288) and, if any, freezes it when rand() mod 10 = 0: the acted bit 0x4000000 and Fear.wav; the pick 0x465080 asks it after bad morale (0x465283)"
   confidence = "high"
+
+[[rule]]
+id       = "BAT-MAG-061"
+title    = "No casting (the Orb of Inhibition)"
+context  = "battle"
+status   = "implemented"
+summary  = "While a hero in the battle has a NoCasting effect (either side's; the Orb of Inhibition, HER-BAT-015) neither side casts: a hero's spell is refused (CastingForbidden, after the round's cast check), no creature casts or raises as its action (CannotCast; the Archangel, the Pit Lord), no periodic cast happens (the Enchanters: their side's count stays). A random caster still draws its spell at its activation (BAT-MAG-049; the original's draw does not ask) but may not cast it. The strike's creature magic (BAT-MAG-040 to BAT-MAG-047) is no cast and stays."
+numeric  = "integer"
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (docs/formats/installation.md §7.23): 0x41F890(side, hero cast) returns 0 while either hero (+0x53CC, +0x53D0) wears artifact 126 (0x4D91F0), after Cursed Ground (creature casts) and the anti-magic garrison (+0x53C4); its callers: the hero's cast in 0x59FE30 (0x59FEEF, a message and no cast), the creature cast and raise test 0x4476C0 (also the Archangel's and the Pit Lord's case), the empty-hex test 0x4473D0 and the Enchanters' cast 0x447FE0, which returns 0 so that 0x465330 keeps the side's count; the spell book button 0x59E900 refuses with the artifact's message before it opens the book; the Faerie Dragon's draw 0x447510 is not gated"
+  confidence = "high"
+
+[[rule]]
+id       = "BAT-MAG-062"
+title    = "The spell level limit (Recanter's Cloak)"
+context  = "battle"
+status   = "implemented"
+summary  = "While a hero in the battle has a SpellLevelLimit effect (either side's; Recanter's Cloak: 2, HER-BAT-015) no spell above the smallest such level takes part: a hero's spell above it is refused (SpellLevelBarred, after the round's cast check and BAT-MAG-061), and it affects no stack whoever casts it (BAT-MAG-005: before every other test, positive spells too): a creature's cast has no target, a periodic cast does not count, the strike's ability spells above it do nothing (Stone Gaze 3, Paralyze 4, Age 5), an Archangel raises nothing (its test is Resurrection's, level 4). The Pit Lord's raise has no spell test and stays."
+numeric  = "integer"
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (docs/formats/installation.md §7.23): the spell book button 0x59E900 refuses the chosen spell above level 2 (spell table +0x18) while either hero wears artifact 83, with the artifact's message; the effect test 0x5A8090 returns 0 for a spell above level 2 while either hero wears it (0x5A80F6, after Cursed Ground, before Dispel's and the other tests), which the creature casts' targets (0x5A3C80), the Enchanters' usefulness test, the strike's test 0x5A8640 and the Archangel's search 0x5A3CC0 (spell 38) read; the Pit Lord's search 0x5A3E40 does not call it"
+  confidence = "high"

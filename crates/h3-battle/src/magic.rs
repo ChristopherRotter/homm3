@@ -292,6 +292,12 @@ pub(crate) struct HeroMagic {
     /// The change of its spell costs from the creatures in the armies (BAT-MAG-054; set at the
     /// battle's start, public through the armies).
     pub(crate) cost_change: i8,
+    /// Whether it forbids every cast in the battle: a `NoCasting` effect (BAT-MAG-061; the Orb of
+    /// Inhibition, private until a cast is refused).
+    pub(crate) no_casting: bool,
+    /// The highest spell level it allows in the battle: the smallest of its `SpellLevelLimit`
+    /// effects, `u8::MAX` without one (BAT-MAG-062; Recanter's Cloak).
+    pub(crate) level_limit: u8,
 }
 
 impl HeroMagic {
@@ -305,6 +311,8 @@ impl HeroMagic {
         let masteries = Masteries::of(&hero.magic.masteries);
         let mut resistance = 0u64;
         let mut duration_bonus = 0u16;
+        let mut no_casting = false;
+        let mut level_limit = u8::MAX;
         for effect in &hero.effects {
             match *effect {
                 BattleEffect::MagicResistance { rate } => {
@@ -313,6 +321,10 @@ impl HeroMagic {
                 }
                 BattleEffect::SpellDuration { rounds } => {
                     duration_bonus = duration_bonus.saturating_add(rounds.into());
+                }
+                BattleEffect::NoCasting => no_casting = true,
+                BattleEffect::SpellLevelLimit { max_level } => {
+                    level_limit = level_limit.min(max_level);
                 }
                 _ => {}
             }
@@ -325,6 +337,8 @@ impl HeroMagic {
             duration_bonus,
             cast: SpellSet::default(),
             cost_change: 0,
+            no_casting,
+            level_limit,
         })
     }
 }
@@ -333,7 +347,8 @@ impl CanonicalHash for HeroMagic {
     /// Book bits, cast spells' bits, the masteries' bit planes (v39, before them the school
     /// masteries), the bonuses (every spell, by school (rates since v23), the single spells as
     /// length and spell, damage, growth per level, level), the resistance, the duration bonus
-    /// (v20), the cost change (v38, as its two's-complement byte).
+    /// (v20), the cost change (v38, as its two's-complement byte), whether it forbids casting and
+    /// its spell level limit (v40).
     fn hash_into(&self, h: &mut StateHasher) {
         for word in self.book.bits().into_iter().chain(self.cast.bits()) {
             h.write_u64(word);
@@ -355,6 +370,8 @@ impl CanonicalHash for HeroMagic {
         h.write_u64(self.resistance);
         h.write_u16(self.duration_bonus);
         h.write_u8(self.cost_change.to_le_bytes()[0]);
+        h.write_bool(self.no_casting);
+        h.write_u8(self.level_limit);
     }
 }
 
@@ -461,6 +478,14 @@ fn check_spell<'s, 'r>(
     if hero.view.casts >= ruleset.battle().hero_casts_per_round {
         return Err(CommandError::AlreadyCast);
     }
+    // rule: BAT-MAG-061
+    if casting_forbidden(state) {
+        return Err(CommandError::CastingForbidden);
+    }
+    // rule: BAT-MAG-062
+    if barred(state, spell) {
+        return Err(CommandError::SpellLevelBarred);
+    }
     if !implemented(spell) {
         return Err(CommandError::NotCastable);
     }
@@ -475,6 +500,28 @@ fn check_spell<'s, 'r>(
 
 /// A spell together with its handle.
 pub(crate) type SpellRef<'r> = (SpellId, &'r Spell);
+
+/// Whether a hero in the battle forbids every cast (BAT-MAG-061; the original's 0x41F890 and the
+/// hero's book button 0x59E900 refuse while either hero wears the Orb of Inhibition (126),
+/// `installation.md` §7.23): no hero's spell, no creature's cast or raise, no periodic cast. The
+/// strike's creature magic is no cast and stays.
+// rule: BAT-MAG-061
+pub(crate) fn casting_forbidden(state: &BattleState) -> bool {
+    state.heroes.iter().flatten().any(|h| h.magic.no_casting)
+}
+
+/// Whether the battle's spell level limit bars `spell` (BAT-MAG-062; the original's book button
+/// 0x59E900 refuses a hero's spell above level 2 and the effect test 0x5A8090 gives 0 for every
+/// spell above level 2, creature abilities included, while either hero wears Recanter's Cloak
+/// (83), `installation.md` §7.23): its level is above a hero's `SpellLevelLimit`.
+// rule: BAT-MAG-062
+pub(crate) fn barred(state: &BattleState, spell: &Spell) -> bool {
+    state
+        .heroes
+        .iter()
+        .flatten()
+        .any(|h| spell.level > h.magic.level_limit)
+}
 
 /// Whether a cast of `spell` can affect a stack of `creature` at all (BAT-MAG-005): the creature
 /// meets the spell's conditions and, unless the spell ignores immunity (Dispel), is not immune
@@ -514,8 +561,9 @@ pub(crate) fn kept_off(stack: &Stack, spell: &Spell) -> bool {
 }
 
 /// Whether `spell` can affect the living stack `s` at all, wherever its caster stands
-/// (BAT-MAG-005, BAT-MAG-021): its creature meets the spell's conditions and immunities, and
-/// Anti-Magic does not keep the spell off it.
+/// (BAT-MAG-005, BAT-MAG-021, BAT-MAG-062): the battle's spell level limit does not bar the
+/// spell, its creature meets the spell's conditions and immunities, and Anti-Magic does not keep
+/// the spell off it.
 pub(crate) fn affects_stack(
     state: &BattleState,
     ruleset: &Ruleset,
@@ -523,7 +571,10 @@ pub(crate) fn affects_stack(
     s: StackId,
 ) -> bool {
     let stack = state.at(s);
-    stack.is_alive() && affects(ruleset, spell, stack.creature) && !kept_off(stack, spell.1)
+    stack.is_alive()
+        && !barred(state, spell.1)
+        && affects(ruleset, spell, stack.creature)
+        && !kept_off(stack, spell.1)
 }
 
 /// Whether `side`'s cast of `spell` at `mastery` may reach stack `s` (BAT-MAG-003,

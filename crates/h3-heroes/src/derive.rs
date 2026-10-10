@@ -1,5 +1,5 @@
 //! The translation from hero details to the battle hero (ADR-0013 point 2; HER-BAT-001 to
-//! HER-BAT-012).
+//! HER-BAT-015).
 
 use alloc::collections::BTreeSet;
 use alloc::vec::Vec;
@@ -98,6 +98,9 @@ pub fn derive_battle_hero(
 
     // rule: HER-BAT-014
     hero.effects.extend(spell_duration(details, ruleset));
+
+    // rule: HER-BAT-015
+    hero.effects.extend(casting_limits(details, ruleset));
     if hero.effects.len() > MAX_BATTLE_EFFECTS {
         return Err(DetailsError::TooManyBattleEffects);
     }
@@ -210,6 +213,23 @@ fn spell_duration(details: &HeroDetails, ruleset: &Ruleset) -> Option<BattleEffe
     (sum > 0).then(|| BattleEffect::SpellDuration {
         rounds: u8::try_from(sum).unwrap_or(u8::MAX),
     })
+}
+
+/// The casting limits (HER-BAT-015): `NoCasting` if one of the effects forbids casting, then one
+/// `SpellLevelLimit` with the smallest `spell_level_limit` level, each artifact type once; none
+/// without any. The battle applies them to both sides (BAT-MAG-061, BAT-MAG-062).
+fn casting_limits(details: &HeroDetails, ruleset: &Ruleset) -> Vec<BattleEffect> {
+    let no_casting = effects(details, ruleset, Count::OncePerType)
+        .any(|effect| matches!(effect, HeroEffect::NoCasting))
+        .then_some(BattleEffect::NoCasting);
+    let limit = effects(details, ruleset, Count::OncePerType)
+        .filter_map(|effect| match *effect {
+            HeroEffect::SpellLevelLimit { level } => Some(level),
+            _ => None,
+        })
+        .min()
+        .map(|max_level| BattleEffect::SpellLevelLimit { max_level });
+    no_casting.into_iter().chain(limit).collect()
 }
 
 /// The surrender discount (HER-BAT-007): the sum of the grown values of the surrender discounts
