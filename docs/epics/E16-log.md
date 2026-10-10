@@ -35,11 +35,13 @@ how and why the work went.
   row, the README's crate table, `02-architecture.md`'s state paragraph, `benches/server/README.md`.
 - **Found on the way.** The baseline verify on `master` failed `check-exe-map`: the adventure
   lane's E08 survey (CR-1 to CR-3) and ADV-Q3 to ADV-Q5 cite the H3API addresses of
-  `GetMovementCost`, `CalcMaxMovement` and `GetScoutingRadius`, which `docs/exe/map.toml` does not
-  cover; the merge was docs-only, so CI never ran on it. A map entry needs the function's size,
+  `GetMovementCost`, `CalcMaxMovement`, `MaxLandMovement` and `GetScoutingRadius`, which
+  `docs/exe/map.toml` does not cover (the `test` step fails with it: xtask's
+  `the_real_map_passes`); the merge was docs-only, so CI never ran on it. A map entry needs the function's size,
   which needs the executable (not staged in this session). **The user decided the adventure lane
-  fixes it** (a suggested task); until then the M0 pull request's full verify is red on this
-  gate only.
+  fixes it** (a suggested task); until then the M0 pull request's full verify is red on these
+  two steps only. Everything else passed on the M0 commit (coverage, determinism, ffi-smoke,
+  bench-check, deny).
 - **Also found.** The baseline's `test` step failed the battle property test
   `every_step_preserves_the_invariants` (a good-morale step without `HAD_MORALE` on the mover). Its
   inputs are random per run, so CI on `master` passed; the shrunk case reproduces in 5 s. Handed to
