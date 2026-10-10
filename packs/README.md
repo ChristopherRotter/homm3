@@ -177,7 +177,7 @@ override, replacing the list) names the creature types it upgrades into: at most
 none twice; references follow the reference rules and may name later creatures of the pack.
 Hero effects that select "a creature" apply to it and its direct upgrades.
 
-## Hero content (format v3, E04a T3; battle magic format v4, E04b T2a; v5 T3a; v6 T3b1; v7 T3b1b; v8 T3b2; v9 T3c; v10 T4a; v11 T4b; v12 T4c; v13 T5a; v14 T5c1; v15 T5c2; v16 T5b; v17 T6a; v18 T6b; v19 T7a1; v20 T7a2; v21 T7a3; v22 T7b1; v23 T7b2a; v24 T7b2b; v25 T7b3; v26 T7b4; v27 T7c1; v28 T7c2a; v29 T7c2b)
+## Hero content (format v3, E04a T3; battle magic format v4, E04b T2a; v5 T3a; v6 T3b1; v7 T3b1b; v8 T3b2; v9 T3c; v10 T4a; v11 T4b; v12 T4c; v13 T5a; v14 T5c1; v15 T5c2; v16 T5b; v17 T6a; v18 T6b; v19 T7a1; v20 T7a2; v21 T7a3; v22 T7b1; v23 T7b2a; v24 T7b2b; v25 T7b3; v26 T7b4; v27 T7c1; v28 T7c2a; v29 T7c2b; v30 T8a)
 
 Spell schools, spells, secondary skills, hero classes and hero types (ADR-0013). References follow
 the reference rules above; every kind may refer to content of its dependency closure.
@@ -395,6 +395,8 @@ effect = [2, 2, 3, 4]              # creatures per point of the caster's power, 
 polarity = "neutral"
 summons = "shade"                  # v18: the creature (required with a summon effect)
 effects = [{ kind = "summon" }]
+# granted_by_name_only = true      # v30: only a `spells` effect naming it gives it, never one by
+                                   # school or level (Titan's Lightning Bolt, the spell flag 0x2000)
 
 [[secondary_skill]]
 id = "marksmanship"
@@ -522,6 +524,9 @@ different creatures or statistics.
 | `spell_book` | — | the hero can cast the spells it knows (the Spell Book; HER-BAT-011) |
 | `magic_resistance` | `bp` (1..=10000) | the hero's stacks resist hostile spells: subtracted from their creatures' share; several sources add (Resistance, three artifacts; HER-BAT-013, BAT-MAG-008) |
 | `spell_duration` | `rounds` (≥ 1) | the hero's timed spells last longer; artifact types add once each, a combination's parts too (the Conjuring artifacts, Ring of the Magi; HER-BAT-014, BAT-MAG-010) |
+| `spells` | exactly one of `school`, `level` (1..=5), `spell` | since v30: while worn, the hero has every spell of the school or of the level (never a creature ability nor a spell with `granted_by_name_only`) or the named spell (the Tomes, Spellbinder's Hat, Titan's Thunder, Armageddon's Blade, the Sea Captain's Hat; HER-SPL-002) |
+| `spell_mastery` | `spell`, `level` (1..=3) | since v30: the hero casts the spell at least at this mastery (Armageddon's Blade: Armageddon at Expert; HER-SPL-003) |
+| `scroll` | — | since v30: each copy of the artifact holds a spell of its own, which the hero has while the copy is worn (the Spell Scroll; HER-ART-003) |
 
 The three `*_specialty` kinds are allowed in a hero's `specialty` only.
 
@@ -592,9 +597,10 @@ research notes and disputes in `docs/rules/surveys/E04-artifacts.md`):
 - The primary skills come from the executable's table; war machines, combination parts and every
   other effect from the gap-fill file. Effects no epic models yet are **pending** (the pack marks
   such entries `# pending: <epic>`): spells, spell immunity and resistance, mana, spell duration
-  and damage, Eagle Eye (E04b; 38 artifacts since T2a gave the Spell Book and the four Orbs their
-  effects, among them the opening spells of Angelic Alliance and
-  Armor of the Damned and Titan's Thunder's spell book), the Catapult and the siege obstacle
+  and damage, Eagle Eye (E04b; 20 artifacts since T8a gave the Spell Scroll, the Tomes,
+  Spellbinder's Hat, Titan's Thunder and Armageddon's Blade their spells and moved the mana
+  artifacts and the spell book that equipping Titan's Thunder adds to E08–E10; among them the
+  opening spells of Angelic Alliance and Armor of the Damned), the Catapult and the siege obstacle
   penalty (E04c), Necromancy (the three Necromancy artifacts and the Cloak of the Undead King;
   outcome application, E08–E10, together with the Necromancy skill) and the adventure effects
   (movement, vision, resources, growth, the Grail; E08–E10).
@@ -688,12 +694,16 @@ reduction_bp = 500               # (at most 10 000); optional `ranged_single`, `
                                  # and the `spell_damage` and `magic_resistance` effects' as
                                  # `single`
 surrender_discount_bp = 4000     # optional: the surrender discount (BAT-FLE-002, at most 10 000)
-spell_book = ["synthetic:spark"] # optional: the spell book by spell key (BAT-MAG-001; E04b T2b)
+spell_book = ["synthetic:spark"] # optional: the spell book by spell key (BAT-MAG-001; E04b T2b;
+                                 # a derived hero's in spell order, HER-SPL-002)
 ballista = { shots = 1, double_damage_chance_bp = 5000 }   # optional: the side commands its
                                  # Ballista (Artillery, BAT-WAR-006)
 tent = { heal_bonus_bp = 10000 } # optional: the side commands its First Aid Tent (First Aid,
                                  # BAT-WAR-007; the bonus of its largest heal)
-schools = { "synthetic:storm" = 2 }  # optional: mastery per spell school, 1..=3 (BAT-MAG-002)
+masteries = { "synthetic:spark" = 2 }  # optional: the mastery per spell by spell key, 1..=3 (none
+                                 # for a spell not listed; BAT-MAG-002); replaces `schools` since
+                                 # replay format v20 (E04b T8a, the masteries are derived per
+                                 # spell, HER-SPL-003)
 effects = [{ kind = "morale", amount = 1 }, { kind = "luck_at_most", value = 0, affects = "enemy" }]
                                  # battle effects as in "Hero effects": so far `morale`, `luck`,
                                  # `morale_at_most`, `luck_at_most` (BAT-HER-003), `no_retreat`
