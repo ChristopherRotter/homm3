@@ -153,3 +153,40 @@ validation together), because the setup types are best shaped with the validator
   quest and reward codes, the new limits, every mission and reward, and the experiment writer's
   map with a hero and a monster read back.
 - **Not done:** `fixtures/maps/` waits for the user's editor maps (QUEUE inbox).
+
+### Checkpoint after T3 (2026-10-10)
+
+- T4–T10 refined into queue entries; T5 and T6 split into T5a/T5b and T6a/T6b. The user takes one
+  or two tasks per round; this round: T4 alone. The branches `adventure/e08-t3a` and `-t3b` were
+  to be deleted (the session's GitHub access cannot delete branches; left to the user).
+
+### T4 — Adventure content (2026-10-10, `adventure/e08-t4`)
+
+- **Ruleset part** (`h3-adventure::AdventureRuleset`): compiled on top of the core `Ruleset` from
+  one `AdventurePack` per core pack, so it shares the core's load order and dependency closures
+  (each pack carries its core manifest; an empty part for a pack without the file). Per core
+  terrain a `Passage` (land or water with the straight cost, impassable), road and river kinds
+  (handles `RoadId`, `RiverId`), and the parameters: native cost, the land table by the slowest
+  speed (faster armies take the last entry), the base scouting radius. Checks: the pack set
+  against the core's (id and version), namespaces, duplicates, the closure, every core terrain
+  covered once, one pack with valid parameters. Canonical hash v1 covers the part's own content
+  (terrain keys, not the core's hash; `core_hash()` keeps the pairing for T6's bundle). Agent
+  decisions, change freely: costs are `NonZeroU16`; the table holds 1 to 256 entries.
+- **Format** (`h3-pack-adventure`): `[params]`, `[[terrain]]` (`terrain`, `passage` default land,
+  `cost`), `[[road]]`, `[[river]]`; a bare name means the own pack; `compile()` takes
+  `(pack.toml, adventure.toml)` pairs; `ORIGINAL_PACKS` for RoE to SoD. The format lives in the
+  crate's doc; `packs/README.md` got one paragraph (cross-lane, decision 10).
+- **Data:** base terrains, roads and rivers in the `.h3m` code order (for T5's import), with
+  sources in the file; AB and SoD files are empty (their parts hash equal to RoE's). Synthetic
+  packs for tests.
+- **D-4 settled by original data:** the original reads the land table from `movement.txt`
+  (column 2, speeds 0–20; RoE's and AB's archives hold the same file) through 0x4D7240 into
+  0x698A98; 0x4E4990 takes the lowest speed of the seven slots from 20 down, so the wiki's row
+  holds (VCMI's 1500 below speed 3 does not). Found for increment 3: the creature of a creature
+  specialty and its upgrade count one faster there; Logistics (0x63EA68, now read) multiplies the
+  points; at sea the points come from column 4 by Navigation level (0x698AEC). 0x4E4D90 passes
+  the hero's at-sea flag; its callers (when the points are set, D-1) stay for T6b.
+- **Rules:** ADV-MOV-001, -003, -004, -007 and ADV-FOG-001 written with sources, `specified`
+  until T7/T8 read the data; the data tests carry their `covers:` markers.
+- **Not done:** a check of `adventure.toml` against `movement.txt` under `--with-original-data`
+  (it needs `h3-formats` as a dev-dependency, a shared change; inbox).

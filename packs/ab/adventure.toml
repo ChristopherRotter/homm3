@@ -1,0 +1,5 @@
+# Armageddon's Blade's adventure-map data (E08 T4; format: crates/h3-pack-adventure). Hand-written
+# source; the harvester never writes this file (E08 decision 10).
+#
+# Empty: AB changes nothing the adventure part holds yet (its archive holds the same movement.txt;
+# it adds no terrain, road or river).
