@@ -359,6 +359,17 @@ fn chain_lightning_jumps_to_the_nearest_stack_on_the_screen() {
         1,
     );
     assert_eq!(chain(&mut s, 1), [(1, 40), (3, 20), (2, 10)]);
+    // Even rows sit half a hex (22 pixels) right; a two-hex stack's centre is half a hex towards
+    // its tail: the defender's (11,4) at x 528, 154 pixels from the target (8,4) at 374; the
+    // attacker's (5,6) at x 220 and two rows down, 175 pixels away.
+    let mut s = arena(
+        &r,
+        [Some(mage(&r, &["chain"])), None],
+        &[("wide", 5, 5, 6)],
+        &[("tank", 5, 8, 4), ("wide", 5, 11, 4)],
+        1,
+    );
+    assert_eq!(chain(&mut s, 1), [(1, 40), (2, 20), (0, 10)]);
     // Equal distances: the defender's stacks come first, then by id; the chain may strike the
     // caster's own stacks. At Advanced it strikes four.
     let mut adept = mage(&r, &["chain"]);

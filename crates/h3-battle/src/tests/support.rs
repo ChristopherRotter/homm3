@@ -986,6 +986,17 @@ pub const CREATURES: &[Creature] = &[
         &["alive", "charge_immunity", "fear=100"],
     ),
     ("spook", 10, 10, 2, 2, 10, 4, &["alive", "fear=1"]),
+    // A thunderbolt by chance (BAT-MAG-041).
+    (
+        "squall",
+        10,
+        10,
+        2,
+        2,
+        10,
+        5,
+        &["alive", "spell_damage_after_strike=bolt:50:10"],
+    ),
 ];
 
 /// The traits of a test creature as creature info: flags, abilities, shots and faction.

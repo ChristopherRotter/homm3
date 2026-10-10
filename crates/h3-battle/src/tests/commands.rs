@@ -221,6 +221,26 @@ fn applying_with_a_noop_sink_matches_a_recording_sink() {
     assert_eq!(Command::default(), Command::Wait);
 }
 
+// covers: BAT-HER-003
+#[test]
+fn the_state_hash_covers_the_luck_modifiers() {
+    // The heroes' luck becomes a battle modifier of the stat luck (BAT-LCK-001).
+    let r = ruleset();
+    let hash = |amount| {
+        let mut led = hero(&r);
+        led.effects = vec![h3_contracts::BattleEffect::Luck {
+            amount,
+            affects: h3_content::Affects::Own,
+        }];
+        let setup = BattleSetup {
+            heroes: [Some(led), None],
+            ..setup(&r, &[(0, "fixed", 3)], &[(0, "slow", 4)])
+        };
+        BattleState::new(&r, &setup, 7).unwrap().state_hash()
+    };
+    assert_ne!(hash(1), hash(2));
+}
+
 #[test]
 fn state_hash_is_pinned() {
     // Golden value: pins the canonical encoding of the initial state (bump
