@@ -22,6 +22,7 @@ use crate::error::SetupError;
 use crate::event::{NoopSink, Sink};
 use crate::geometry::{Field, Footprint, Hex, HexSet};
 use crate::hero::{self, HeroRecord, HeroView};
+use crate::magic::MagicLimits;
 use crate::morale::{self, Modifiers};
 use crate::natural::{NaturalObstacles, RemovableObstacle};
 use crate::obstacles::{SpellObstacle, SpellObstacles};
@@ -819,6 +820,9 @@ pub struct BattleState {
     pub(crate) binds: Binds,
     /// The casts each stack has left (BAT-MAG-048).
     pub(crate) casts: Casts,
+    /// What the heroes do to all of the battle's magic (BAT-MAG-061 to BAT-MAG-066), derived from
+    /// them at the start (not hashed).
+    pub(crate) limits: MagicLimits,
     pub(crate) rng: Rng,
 }
 
@@ -957,6 +961,7 @@ impl BattleState {
             vitality: Vitality::default(),
             binds: Binds::default(),
             casts: Casts::at_start(ruleset, &placed[..len]),
+            limits: MagicLimits::of(&heroes),
             rng: Rng::for_stream(seed, StreamId::BATTLE),
         };
         morale::setup(&mut state, ruleset, &setup.heroes);

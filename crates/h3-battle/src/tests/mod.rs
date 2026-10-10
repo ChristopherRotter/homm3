@@ -14,6 +14,7 @@ mod enchanters;
 mod fear;
 mod flee;
 mod geometry;
+mod hero_defences;
 mod heroes;
 mod limits;
 mod magic;

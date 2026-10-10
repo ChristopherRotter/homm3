@@ -1953,7 +1953,7 @@ id       = "BAT-MAG-005"
 title    = "Stacks a spell cannot affect"
 context  = "battle"
 status   = "implemented"
-summary  = "A spell cannot affect a stack whose creature misses a flag of SpellMagic.conditions.requires or has one of excludes (war machines against Implosion and Death Ripple, the executable's spell flag 0x1000; Death Ripple spares undead, Destroy Undead needs them), or has an immunity ability: spell_level_immunity up to a spell level (Green, Red and Azure Dragons 3, Gold Dragon 4, Black Dragon and Magic Elemental 5), school_immunity (fire: Fire and Energy Elementals, Efreet, Efreet Sultans, Firebirds, Phoenixes; the harvester checks it against the creature flag fire_immune) or spell_immunity (Air and Storm Elementals: Meteor Shower; Earth and Magma Elementals: Lightning Bolt, Chain Lightning, Armageddon; Water and Ice Elementals: Ice Bolt, Frost Ring). Such a stack is never a target (BAT-MAG-003), never struck by an area or battle-wide spell (BAT-MAG-007), never a chain's next stack (BAT-MAG-006) and never rolls for resistance; immunity holds for positive spells too. The original adds Titan's Lightning Bolt to the Earth/Magma immunities and the Air/Storm vulnerabilities (a SoD pack override once it is castable, E04b T8). A mind spell (SpellMagic.mind: the executable's flag 0x400; Mirth, Sorrow and later Berserk, Hypnotize, Forgetfulness, Blind, Frenzy) cannot affect a creature with flag mind_immune (E04b T3a). Power of the Dragon Father, the Pendants and the Orb of Vulnerability join with T8. A spell that ignores immunity (SpellMagic.ignores_immunity: Dispel, whose test in the original returns before the immunity tests, installation.md §7.10) is affected by none of these, only by its conditions; the Sphere of Permanence, which protects its hero's stacks from Dispel, joins with the Pendants in E04b T8."
+summary  = "A spell cannot affect a stack whose creature misses a flag of SpellMagic.conditions.requires or has one of excludes (war machines against Implosion and Death Ripple, the executable's spell flag 0x1000; Death Ripple spares undead, Destroy Undead needs them), or has an immunity ability: spell_level_immunity up to a spell level (Green, Red and Azure Dragons 3, Gold Dragon 4, Black Dragon and Magic Elemental 5), school_immunity (fire: Fire and Energy Elementals, Efreet, Efreet Sultans, Firebirds, Phoenixes; the harvester checks it against the creature flag fire_immune) or spell_immunity (Air and Storm Elementals: Meteor Shower; Earth and Magma Elementals: Lightning Bolt, Chain Lightning, Armageddon and, in SoD, Titan's Lightning Bolt (E04b T8b2); Water and Ice Elementals: Ice Bolt, Frost Ring; an absolute one, which no negation lifts: Troglodytes Blind and Stone Gaze, Gargoyles Poison). The heroes add their part (BAT-MAG-063 to BAT-MAG-066). Such a stack is never a target (BAT-MAG-003), never struck by an area or battle-wide spell (BAT-MAG-007), never a chain's next stack (BAT-MAG-006) and never rolls for resistance; immunity holds for positive spells too. The original adds Titan's Lightning Bolt to the Earth/Magma immunities and the Air/Storm vulnerabilities (a SoD pack override once it is castable, E04b T8). A mind spell (SpellMagic.mind: the executable's flag 0x400; Mirth, Sorrow and later Berserk, Hypnotize, Forgetfulness, Blind, Frenzy) cannot affect a creature with flag mind_immune (E04b T3a). Power of the Dragon Father, the Pendants and the Orb of Vulnerability join with T8. A spell that ignores immunity (SpellMagic.ignores_immunity: Dispel, whose test in the original returns before the immunity tests, installation.md §7.10) is affected by none of these, only by its conditions; the Sphere of Permanence, which protects its hero's stacks from Dispel, joins with the Pendants in E04b T8."
 numeric  = "integer"
 
   [[rule.source]]
@@ -3207,4 +3207,56 @@ numeric  = "integer"
   [[rule.source]]
   kind       = "original-data"
   ref        = "Heroes3.exe code reading (docs/formats/installation.md §7.23): the spell book button 0x59E900 refuses the chosen spell above level 2 (spell table +0x18) while either hero wears artifact 83, with the artifact's message; the effect test 0x5A8090 returns 0 for a spell above level 2 while either hero wears it (0x5A80F6, after Cursed Ground, before Dispel's and the other tests), which the creature casts' targets (0x5A3C80), the Enchanters' usefulness test, the strike's test 0x5A8640 and the Archangel's search 0x5A3CC0 (spell 38) read; the Pit Lord's search 0x5A3E40 does not call it"
+  confidence = "high"
+
+[[rule]]
+id       = "BAT-MAG-063"
+title    = "A hero's spell immunities (the Pendants, the Sphere, Armageddon's Blade)"
+context  = "battle"
+status   = "implemented"
+summary  = "A stack is never affected by a spell its controlling hero's SpellImmunity effects name (HER-BAT-016; a hypnotized stack's controller is the hypnotizing side), whoever casts it, before every other test but the spell level limit (BAT-MAG-062): also Dispel and Dispel Helpful Spells, which skip the immunities otherwise (the Sphere of Permanence; also its own hero's Dispel and a strike's dispel of positive spells), and no negation lifts it (BAT-MAG-066). The Pendants: Dispassion Berserk, Second Sight Blind, Holiness Curse, Life Death Ripple, Death Destroy Undead, Free Will Hypnotize, Negativity Lightning Bolt and Chain Lightning, Total Recall Forgetfulness (the strike's Blind and Curse too); Armageddon's Blade Armageddon."
+numeric  = "integer"
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (docs/formats/installation.md §7.23): 0x5A8090 takes the hero controlling the stack (0x442690) and returns 0 for Dispel (35) and Dispel Helpful Spells (78) while it wears the Sphere of Permanence (92), before their own tests and Anti-Magic, and for Armageddon (26) while it wears Armageddon's Blade (128); 0x44A4D0's per-spell switch returns 0 for the Pendants' spells while it wears them (100 to 107), before the Orb of Vulnerability's test"
+  confidence = "high"
+
+[[rule]]
+id       = "BAT-MAG-064"
+title    = "A hero's spell level immunity (Power of the Dragon Father)"
+context  = "battle"
+status   = "implemented"
+summary  = "A stack whose controlling hero has a SpellLevelImmunity effect (HER-BAT-016; Power of the Dragon Father: 4) is never affected by a spell up to that level, whatever its polarity (its own hero's Bless too) and the strike's ability spells up to it (Disease, Poison, Paralyze), but Dispel and the other spells that skip the immunities (BAT-MAG-016); no negation lifts it (BAT-MAG-066)."
+numeric  = "integer"
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (docs/formats/installation.md §7.23): 0x44A4D0 first returns 0 while the stack's hero wears artifact 134 and the spell's level (+0x18) is at most 4, with no polarity test; Dispel's and Dispel Helpful Spells' cases in 0x5A8090 return before 0x44A4D0 is called"
+  confidence = "high"
+
+[[rule]]
+id       = "BAT-MAG-065"
+title    = "A hero's mind immunity (Badge of Courage)"
+context  = "battle"
+status   = "implemented"
+summary  = "A stack whose controlling hero has a MindImmunity effect (HER-BAT-016; Badge of Courage) is immune to mind spells as a mind-immune creature is (BAT-MAG-005), unless the immunities are negated (BAT-MAG-066)."
+numeric  = "integer"
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (docs/formats/installation.md §7.23): after the Orb of Vulnerability's test 0x44A4D0 returns 0 for a mind spell (spell flag 0x400) when the creature is mind-immune (flag 0x400) or the stack's hero wears artifact 49"
+  confidence = "high"
+
+[[rule]]
+id       = "BAT-MAG-066"
+title    = "Negated immunities (the Orb of Vulnerability)"
+context  = "battle"
+status   = "implemented"
+summary  = "When the caster's side's hero or the hero controlling the stack has a NegateImmunities effect (HER-BAT-016; the Orb of Vulnerability), a spell affects the stack without the creature's mind immunity, the hero's (BAT-MAG-065), the level, school and spell immunities of its abilities (BAT-MAG-005) and with its whole share: no creature or hero magic resistance (BAT-MAG-008). Still apply: the spell level limit (BAT-MAG-062), the heroes' immunities (BAT-MAG-063, BAT-MAG-064), the spell's conditions, the creatures' absolute immunities (Troglodytes against Blind and Stone Gaze, Gargoyles against Poison), Anti-Magic (BAT-MAG-021) and the Unicorns' aura. An enemy's negation does not count for a side's spells at its own stacks."
+numeric  = "integer"
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (docs/formats/installation.md §7.23): 0x44A4D0 is called with the hero of the casting side and the stack's hero; after its absolute cases (Dragon Father, war machines, the arrow tower, the per-spell switch with the Pendants, the undead, the Troglodytes and the Gargoyles) it returns 1 while either wears artifact 93 (0x44A746), skipping the mind, fire and per-creature immunities and the resistances (0x44A7EE to 0x44A80D); 0x5A8090 applies the Unicorn aura (x 0.8) to what it returns"
   confidence = "high"

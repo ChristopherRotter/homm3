@@ -85,7 +85,13 @@ pub(crate) fn cast<S: Sink>(
                 per_creature,
             } => {
                 let landed = ruleset.spell(spell).filter(|data| {
-                    damage_lands(state, ruleset, (spell, data), chance_percent, target)
+                    damage_lands(
+                        state,
+                        ruleset,
+                        (spell, data),
+                        chance_percent,
+                        (striker, target),
+                    )
                 });
                 if let Some(data) = landed {
                     let pair = (striker, target);
@@ -136,21 +142,24 @@ fn spell_after_strike(
     {
         return false;
     }
+    // The original tests a striker's spell for the side that controls it (0x5A8640).
+    let caster = state.at(striker).controller();
     if spell.magic.dispels_positive {
-        // rule: BAT-MAG-042
-        return state
-            .effects
-            .of(target)
-            .iter()
-            .any(|e| effects::dispel_ends(ruleset, spell, e));
+        // rule: BAT-MAG-042, BAT-MAG-063
+        return !magic::Guard::of(state, caster, target).immune_to(id)
+            && state
+                .effects
+                .of(target)
+                .iter()
+                .any(|e| effects::dispel_ends(ruleset, spell, e));
     }
     if spell.magic.ignores_immunity {
         // rule: BAT-MAG-045
         let bind = SpellEffect::Timed(TimedChange::Bind);
         return !spell.magic.effects.contains(&bind) || binds::join(state, striker, target);
     }
-    magic::affects_stack(state, ruleset, (id, spell), target)
-        && !magic::resists(state, ruleset, spell, target)
+    magic::affects_stack(state, ruleset, caster, (id, spell), target)
+        && !magic::resists(state, ruleset, caster, spell, target)
 }
 
 /// Applies a spell after a strike to `target` at `mastery`, its timed effects lasting `rounds`
@@ -194,12 +203,13 @@ fn damage_lands(
     ruleset: &Ruleset,
     (id, spell): (SpellId, &Spell),
     chance: u8,
-    target: StackId,
+    (striker, target): (StackId, StackId),
 ) -> bool {
+    let caster = state.at(striker).controller();
     state.at(target).is_alive()
         && (chance >= 100 || state.rng.below(100) < u32::from(chance))
-        && magic::affects_stack(state, ruleset, (id, spell), target)
-        && !magic::resists(state, ruleset, spell, target)
+        && magic::affects_stack(state, ruleset, caster, (id, spell), target)
+        && !magic::resists(state, ruleset, caster, spell, target)
 }
 
 /// Deals a damage spell after a strike that landed (BAT-MAG-041): `per_creature` per creature of

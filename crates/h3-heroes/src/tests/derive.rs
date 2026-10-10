@@ -1,4 +1,4 @@
-//! `derive_battle_hero` (HER-BAT-001 to HER-BAT-015).
+//! `derive_battle_hero` (HER-BAT-001 to HER-BAT-016).
 
 use std::vec;
 
@@ -385,6 +385,75 @@ fn casting_limits_are_kept_once_with_the_smallest_level() {
     );
     d.worn.retain(|&a| a != art(&r, "t:eye"));
     assert_eq!(limits(&d), vec![]);
+}
+
+// covers: HER-BAT-016
+#[test]
+fn spell_defences_are_kept_once_with_the_largest_level() {
+    let mut p = effect_pack();
+    for a in &mut p.artifacts {
+        match a.key.to_string().as_str() {
+            "t:eye" => a.effects.extend([
+                HeroEffectDef::SpellImmunity {
+                    spell: key("t:bolt"),
+                },
+                HeroEffectDef::SpellLevelImmunity { level: 3 },
+                HeroEffectDef::MindImmunity,
+            ]),
+            "t:hook" => a.effects.extend([
+                HeroEffectDef::SpellImmunity {
+                    spell: key("t:portal"),
+                },
+                HeroEffectDef::SpellImmunity {
+                    spell: key("t:bolt"),
+                },
+                HeroEffectDef::SpellLevelImmunity { level: 4 },
+                HeroEffectDef::NegateImmunities,
+            ]),
+            _ => {}
+        }
+    }
+    let r = compile(p).unwrap();
+    let defences = |d: &HeroDetails| {
+        derive_battle_hero(d, &r)
+            .unwrap()
+            .effects
+            .into_iter()
+            .filter(|e| {
+                matches!(
+                    e,
+                    BattleEffect::SpellImmunity { .. }
+                        | BattleEffect::SpellLevelImmunity { .. }
+                        | BattleEffect::MindImmunity
+                        | BattleEffect::NegateImmunities
+                )
+            })
+            .collect::<Vec<_>>()
+    };
+    let (bolt, portal) = (spell_id(&r, "t:bolt"), spell_id(&r, "t:portal"));
+    // Two eyes and the hook are worn: each spell once, the larger level, one of each flag.
+    let mut d = details(&r);
+    assert_eq!(
+        defences(&d),
+        vec![
+            BattleEffect::SpellImmunity { spell: bolt },
+            BattleEffect::SpellImmunity { spell: portal },
+            BattleEffect::SpellLevelImmunity { max_level: 4 },
+            BattleEffect::MindImmunity,
+            BattleEffect::NegateImmunities,
+        ]
+    );
+    d.worn.retain(|&a| a != art(&r, "t:hook"));
+    assert_eq!(
+        defences(&d),
+        vec![
+            BattleEffect::SpellImmunity { spell: bolt },
+            BattleEffect::SpellLevelImmunity { max_level: 3 },
+            BattleEffect::MindImmunity,
+        ]
+    );
+    d.worn.retain(|&a| a != art(&r, "t:eye"));
+    assert_eq!(defences(&d), vec![]);
 }
 
 // covers: HER-BAT-007

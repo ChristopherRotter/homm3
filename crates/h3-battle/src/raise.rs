@@ -12,7 +12,7 @@ use crate::event::{Event, EventKind, Sink};
 use crate::geometry::{Field, HexSet};
 use crate::hero::HeroRecord;
 use crate::magic::{
-    SpellBonus, SpellRef, affects, barred, base_value, kept_off, mastery, specialist_bonus,
+    Guard, SpellBonus, SpellRef, affects, barred, base_value, kept_off, mastery, specialist_bonus,
 };
 use crate::state::{BattleState, NO_CORPSE, StackFlags, StackId, StackTraits};
 
@@ -124,7 +124,12 @@ fn eligible(
     stack.side == side
         && stack.count < stack.base_count
         && !barred(state, test.spell.1)
-        && affects(ruleset, test.spell, stack.creature)
+        && affects(
+            ruleset,
+            test.spell,
+            stack.creature,
+            Guard::of(state, side, s),
+        )
         && !(stack.is_alive() && kept_off(stack, test.spell.1))
         && test.hit_points.is_none_or(|(value, own)| {
             let bonus = specialist_bonus(ruleset, test.spell.1, own, stack.creature, value);
@@ -227,7 +232,7 @@ pub(crate) fn victim(
             && stack.controller() == side
             && !stack.is_created()
             && !barred(state, spell.1)
-            && affects(ruleset, spell, stack.creature)
+            && affects(ruleset, spell, stack.creature, Guard::of(state, side, v))
             && !kept_off(stack, spell.1)
     })
 }

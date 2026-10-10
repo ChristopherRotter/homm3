@@ -214,7 +214,7 @@ fn resistance_adds_the_heros_to_the_creatures_and_the_aura_multiplies() {
             1,
         );
         let spell = rules.spell(spell(rules, "bolt")).unwrap();
-        affect_chance(&s, rules, spell, StackId(id))
+        affect_chance(&s, rules, BattleSide::Attacker, spell, StackId(id))
     };
     // Ids: 1 fixed, 2 dwarf next to the unicorn (3), 4 dwarf alone.
     assert_eq!(chance(&r, None, 1), 100);
@@ -242,8 +242,14 @@ fn resistance_adds_the_heros_to_the_creatures_and_the_aura_multiplies() {
         &[("fixed", 1, 12, 5)],
         1,
     );
-    assert_eq!(affect_chance(&s, &r, rally, StackId(0)), 100);
-    assert_eq!(affect_chance(&s, &r, bolt, StackId(0)), 80);
+    assert_eq!(
+        affect_chance(&s, &r, BattleSide::Attacker, rally, StackId(0)),
+        100
+    );
+    assert_eq!(
+        affect_chance(&s, &r, BattleSide::Defender, bolt, StackId(0)),
+        80
+    );
 }
 
 /// Casts `name` at `target` in battles with seeds `1..=n` against Dwarves (id 1) beside a stack

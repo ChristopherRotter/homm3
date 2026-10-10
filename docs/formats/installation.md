@@ -1609,3 +1609,37 @@ spell finds a target (0x5A3C80, §7.21), the Enchanters' table counts no such sp
 Stone Gaze (level 3), Paralyze (4) and Age (5) do nothing (0x5A8640, §7.20) and an Archangel
 raises nothing, its search 0x5A3CC0 testing every stack with Resurrection (38, level 4; §7.18).
 The Pit Lord's corpse search 0x5A3E40 calls no effect test: Pit Lords still raise.
+
+**Whose defences** (T8b2). 0x5A8090 takes the hero controlling the stack (0x442690: a hypnotized
+stack's controller) and the hero of the casting side, and passes both to 0x44A4D0. The
+controlling hero's artifacts decide, in this order (each answer 0 returns at once):
+
+1. 0x5A8090, before Anti-Magic: the Sphere of Permanence (92) for Dispel (35, before Dispel's own
+   tests, which then return 1 without 0x44A4D0) and for Dispel Helpful Spells (78); after
+   Anti-Magic and the dead and clone tests, Armageddon's Blade (128) for Armageddon (26), then the
+   polarity tests.
+2. 0x44A4D0, first: **Power of the Dragon Father** (134) for every spell of level 1 to 4 (+0x18 at
+   most 4; level-0 creature abilities too), whatever its polarity; then Dispel's Sphere again; war
+   machines against flag `0x1000`; the arrow tower.
+3. Its per-spell switch (spell − 17, table 0x44A92C): the **Pendants** (Negativity 106: Lightning
+   Bolt 17 and Chain Lightning 19, not Titan's; Life 103: Death Ripple 24, which also spares the
+   undead; Death 104: Destroy Undead 25, only undead; Holiness 102: Curse 42; Dispassion 100:
+   Berserk 59; Free Will 105: Hypnotize 60; Total Recall 107: Forgetfulness 61, which also needs a
+   shooter; Second Sight 101: Blind 62, which also spares the undead and the Troglodytes 70, 71),
+   Stone Gaze (70) spares the Troglodytes, Poison (71) non-living creatures and the Gargoyles (30,
+   31). The same switch holds cases the packs do not model yet (found here, not part of T8b):
+   Bless (41) and Curse (42) spare the undead and creatures with maximum damage 0 (+0x60),
+   Precision (44) needs a shooter, Mirth and Sorrow (49, 50) spare creatures without morale
+   (`0x20000`), Fortune, Misfortune and Slayer (51, 52, 55) creatures with maximum damage 0.
+4. 0x44A746: while the **casting side's hero or the controlling hero** wears the **Orb of
+   Vulnerability** (93) it returns 1 (a positive spell's 1 too): no mind, fire or per-creature
+   immunity (the creature table 0x44A988: the elementals, the dragons' levels, the Black Dragon
+   and Magic Elemental), no Dwarf or Crystal Dragon factor and no hero resistance (0x4E46E0), all
+   tested after it. 0x5A8090 still multiplies the Unicorns' aura (× 0.8) into what it returns.
+5. Otherwise a mind spell (flag `0x400`) returns 0 for a mind-immune creature or while the
+   controlling hero wears **Badge of Courage** (49); then the rest of §7.8.
+
+Titan's Lightning Bolt (57) is among the Earth and Magma Elementals' immunities in the creature
+table (case 6 with 17, 19, 26) and among the Air and Storm Elementals' doubled spells in damage
+stage 2 (0x44B4B0, §7.10): a `sod` override with each one's full ability list (the spell is
+`sod`'s).

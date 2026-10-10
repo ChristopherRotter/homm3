@@ -298,6 +298,50 @@ pub(crate) struct HeroMagic {
     /// The highest spell level it allows in the battle: the smallest of its `SpellLevelLimit`
     /// effects, `u8::MAX` without one (BAT-MAG-062; Recanter's Cloak).
     pub(crate) level_limit: u8,
+    /// What it adds to the immunity of the stacks it controls (BAT-MAG-063 to BAT-MAG-065;
+    /// private until a spell fails).
+    pub(crate) defences: Defences,
+    /// Whether it negates immunities and resistance: a `NegateImmunities` effect (BAT-MAG-066;
+    /// the Orb of Vulnerability, private).
+    pub(crate) negates: bool,
+}
+
+/// What the heroes of a battle do to all of its magic (E04b T8b), derived from them at its
+/// start for the hot paths (not hashed: the heroes are).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) struct MagicLimits {
+    /// A hero forbids every cast (BAT-MAG-061).
+    pub(crate) no_casting: bool,
+    /// The highest spell level allowed: the heroes' smallest limit, `u8::MAX` without one
+    /// (BAT-MAG-062).
+    pub(crate) max_level: u8,
+    /// A hero has spell defences or negates immunities (BAT-MAG-063 to BAT-MAG-066): without one
+    /// no stack's [`Guard`] is looked at.
+    pub(crate) guards: bool,
+}
+
+impl MagicLimits {
+    /// The limits of a battle with `heroes`.
+    pub(crate) fn of(heroes: &[Option<HeroRecord>; 2]) -> Self {
+        let magic = || heroes.iter().flatten().map(|h| &h.magic);
+        Self {
+            no_casting: magic().any(|m| m.no_casting),
+            max_level: magic().map(|m| m.level_limit).min().unwrap_or(u8::MAX),
+            guards: magic().any(|m| m.negates || m.defences != Defences::default()),
+        }
+    }
+}
+
+/// What a hero adds to the immunity of the stacks it controls (E04b T8b2).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub(crate) struct Defences {
+    /// The spells they are never affected by: its `SpellImmunity` effects (BAT-MAG-063).
+    pub(crate) spells: SpellSet,
+    /// The highest level of the spells they are never affected by, Dispel excepted: the largest
+    /// of its `SpellLevelImmunity` effects (BAT-MAG-064).
+    pub(crate) up_to_level: Option<u8>,
+    /// Whether they are immune to mind spells: a `MindImmunity` effect (BAT-MAG-065).
+    pub(crate) mind: bool,
 }
 
 impl HeroMagic {
@@ -313,6 +357,8 @@ impl HeroMagic {
         let mut duration_bonus = 0u16;
         let mut no_casting = false;
         let mut level_limit = u8::MAX;
+        let mut defences = Defences::default();
+        let mut negates = false;
         for effect in &hero.effects {
             match *effect {
                 BattleEffect::MagicResistance { rate } => {
@@ -326,6 +372,12 @@ impl HeroMagic {
                 BattleEffect::SpellLevelLimit { max_level } => {
                     level_limit = level_limit.min(max_level);
                 }
+                BattleEffect::SpellImmunity { spell } => defences.spells.insert(spell),
+                BattleEffect::SpellLevelImmunity { max_level } => {
+                    defences.up_to_level = defences.up_to_level.max(Some(max_level));
+                }
+                BattleEffect::MindImmunity => defences.mind = true,
+                BattleEffect::NegateImmunities => negates = true,
                 _ => {}
             }
         }
@@ -339,6 +391,8 @@ impl HeroMagic {
             cost_change: 0,
             no_casting,
             level_limit,
+            defences,
+            negates,
         })
     }
 }
@@ -347,8 +401,9 @@ impl CanonicalHash for HeroMagic {
     /// Book bits, cast spells' bits, the masteries' bit planes (v39, before them the school
     /// masteries), the bonuses (every spell, by school (rates since v23), the single spells as
     /// length and spell, damage, growth per level, level), the resistance, the duration bonus
-    /// (v20), the cost change (v38, as its two's-complement byte), whether it forbids casting and
-    /// its spell level limit (v40).
+    /// (v20), the cost change (v38, as its two's-complement byte), whether it forbids casting, its
+    /// spell level limit, its defences (the spells' bits, the level, mind) and whether it negates
+    /// immunities (v40).
     fn hash_into(&self, h: &mut StateHasher) {
         for word in self.book.bits().into_iter().chain(self.cast.bits()) {
             h.write_u64(word);
@@ -372,6 +427,12 @@ impl CanonicalHash for HeroMagic {
         h.write_u8(self.cost_change.to_le_bytes()[0]);
         h.write_bool(self.no_casting);
         h.write_u8(self.level_limit);
+        for word in self.defences.spells.bits() {
+            h.write_u64(word);
+        }
+        self.defences.up_to_level.hash_into(h);
+        h.write_bool(self.defences.mind);
+        h.write_bool(self.negates);
     }
 }
 
@@ -507,7 +568,7 @@ pub(crate) type SpellRef<'r> = (SpellId, &'r Spell);
 /// strike's creature magic is no cast and stays.
 // rule: BAT-MAG-061
 pub(crate) fn casting_forbidden(state: &BattleState) -> bool {
-    state.heroes.iter().flatten().any(|h| h.magic.no_casting)
+    state.limits.no_casting
 }
 
 /// Whether the battle's spell level limit bars `spell` (BAT-MAG-062; the original's book button
@@ -516,23 +577,62 @@ pub(crate) fn casting_forbidden(state: &BattleState) -> bool {
 /// (83), `installation.md` §7.23): its level is above a hero's `SpellLevelLimit`.
 // rule: BAT-MAG-062
 pub(crate) fn barred(state: &BattleState, spell: &Spell) -> bool {
-    state
-        .heroes
-        .iter()
-        .flatten()
-        .any(|h| spell.level > h.magic.level_limit)
+    spell.level > state.limits.max_level
 }
 
-/// Whether a cast of `spell` can affect a stack of `creature` at all (BAT-MAG-005): the creature
-/// meets the spell's conditions and, unless the spell ignores immunity (Dispel), is not immune
-/// to it as a mind spell (flag `mind_immune`), by the spell's level, one of its schools or the
-/// spell itself. (The Orb of Vulnerability joins with T8.)
-// rule: BAT-MAG-005
+/// The heroes' part of whether a spell of one side affects a stack (E04b T8b2): the defences of
+/// the hero controlling the stack and whether the caster's hero or that one negates immunities.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub(crate) struct Guard {
+    defences: Defences,
+    negated: bool,
+}
+
+impl Guard {
+    /// Whether the controlling hero's defences name `spell` (BAT-MAG-063).
+    pub(crate) fn immune_to(self, spell: SpellId) -> bool {
+        self.defences.spells.contains(spell)
+    }
+
+    /// For a spell of `caster`'s side at stack `s`: the controller's hero's defences (a hypnotized
+    /// stack's are its controller's, as the original's 0x442690), negated if the caster's or the
+    /// controller's hero negates immunities (BAT-MAG-066; the original asks both, 0x44A746).
+    pub(crate) fn of(state: &BattleState, caster: BattleSide, s: StackId) -> Self {
+        // Most battles have no such hero: then no stack is looked at.
+        if !state.limits.guards {
+            return Self::default();
+        }
+        let controller = state.at(s).controller();
+        let hero = |side: BattleSide| state.heroes[side.index()].as_ref();
+        Self {
+            defences: hero(controller)
+                .map(|h| h.magic.defences)
+                .unwrap_or_default(),
+            negated: [caster, controller]
+                .into_iter()
+                .any(|side| hero(side).is_some_and(|h| h.magic.negates)),
+        }
+    }
+}
+
+/// Whether a cast of `spell` can affect a stack of `creature` under `guard` at all (BAT-MAG-005,
+/// in the original's order, `installation.md` §7.8, §7.23): not if the controlling hero's
+/// defences name the spell (BAT-MAG-063); a spell that ignores immunity (Dispel) needs only the
+/// spell's conditions; otherwise not up to the defences' level (BAT-MAG-064), the conditions and
+/// the creature's absolute immunities hold, and unless the immunities are negated (BAT-MAG-066)
+/// the creature is not immune to it as a mind spell (flag `mind_immune`, or the controlling
+/// hero's mind immunity, BAT-MAG-065), by the spell's level, one of its schools or the spell
+/// itself.
+// rule: BAT-MAG-005, BAT-MAG-063, BAT-MAG-064, BAT-MAG-065, BAT-MAG-066
 pub(crate) fn affects(
     ruleset: &Ruleset,
     (id, spell): SpellRef<'_>,
     creature: CreatureTypeId,
+    guard: Guard,
 ) -> bool {
+    if guard.immune_to(id) {
+        return false;
+    }
     let flags = ruleset
         .creature(creature)
         .map(|c| c.flags)
@@ -540,14 +640,25 @@ pub(crate) fn affects(
     if spell.magic.ignores_immunity {
         return spell.magic.conditions.admits(flags);
     }
-    spell.magic.conditions.admits(flags)
-        && !(spell.magic.mind && flags.contains(CreatureFlag::MindImmune))
-        && !ruleset.abilities(creature).iter().any(|a| match *a {
+    if guard.defences.up_to_level.is_some_and(|l| spell.level <= l) {
+        return false;
+    }
+    let abilities = ruleset.abilities(creature);
+    let immune = (spell.magic.mind
+        && (flags.contains(CreatureFlag::MindImmune) || guard.defences.mind))
+        || abilities.iter().any(|a| match *a {
             Ability::SpellLevelImmunity { max_level } => spell.level <= max_level,
             Ability::SchoolImmunity { school } => spell.schools.contains(&school),
-            Ability::SpellImmunity { spell } => spell == id,
+            Ability::SpellImmunity { spell: s, .. } => s == id,
             _ => false,
-        })
+        });
+    // An immunity yields only to a negation, and an absolute one not even to that.
+    spell.magic.conditions.admits(flags)
+        && (!immune
+            || (guard.negated
+                && !abilities.iter().any(
+                    |a| matches!(*a, Ability::SpellImmunity { spell: s, absolute: true } if s == id),
+                )))
 }
 
 /// Whether Anti-Magic on `stack` keeps `spell` off it (BAT-MAG-021): a spell below the level it
@@ -560,20 +671,21 @@ pub(crate) fn kept_off(stack: &Stack, spell: &Spell) -> bool {
         && !spell.magic.ignores_immunity
 }
 
-/// Whether `spell` can affect the living stack `s` at all, wherever its caster stands
-/// (BAT-MAG-005, BAT-MAG-021, BAT-MAG-062): the battle's spell level limit does not bar the
-/// spell, its creature meets the spell's conditions and immunities, and Anti-Magic does not keep
-/// the spell off it.
+/// Whether a spell of `caster`'s side can affect the living stack `s` at all, wherever the caster
+/// stands (BAT-MAG-005, BAT-MAG-021, BAT-MAG-062): the battle's spell level limit does not bar
+/// the spell, its creature meets the spell's conditions and immunities with the heroes' part
+/// ([`Guard`]), and Anti-Magic does not keep the spell off it.
 pub(crate) fn affects_stack(
     state: &BattleState,
     ruleset: &Ruleset,
+    caster: BattleSide,
     spell: SpellRef<'_>,
     s: StackId,
 ) -> bool {
     let stack = state.at(s);
     stack.is_alive()
         && !barred(state, spell.1)
-        && affects(ruleset, spell, stack.creature)
+        && affects(ruleset, spell, stack.creature, Guard::of(state, caster, s))
         && !kept_off(stack, spell.1)
 }
 
@@ -599,7 +711,7 @@ fn reachable(
     // The spell's own tests and hypnotized stacks are rare: test them only when they apply.
     let own_tests = spell.1.magic.health_limit || !spell.1.magic.refuses.is_empty();
     side_ok
-        && affects_stack(state, ruleset, spell, s)
+        && affects_stack(state, ruleset, side, spell, s)
         && (!own_tests || admits(state, ruleset, side, (spell, mastery), s))
         && !(stack.spells.status.contains(Status::HYPNOTIZED)
             && skips_hypnotized(state, ruleset, (spell, mastery), s))
@@ -687,7 +799,7 @@ fn aimable(
         && (!magic.needs_effect || !state.effects.of(s).is_empty())
         && (spell.1.polarity == SpellPolarity::Positive
             || magic.ignores_immunity
-            || (share(state, ruleset, s).0 > 0 && aura(state, ruleset, s) != Some(100)))
+            || (share(state, ruleset, side, s).0 > 0 && aura(state, ruleset, s) != Some(100)))
 }
 
 /// The living stacks of `side`, by id.
@@ -1028,9 +1140,9 @@ pub(crate) fn affectable(
         SpellPolarity::Neutral => true,
     };
     side_ok
-        && affects_stack(state, ruleset, spell, s)
+        && affects_stack(state, ruleset, side, spell, s)
         && (spell.1.polarity == SpellPolarity::Positive
-            || (share(state, ruleset, s).0 > 0 && aura(state, ruleset, s) != Some(100)))
+            || (share(state, ruleset, side, s).0 > 0 && aura(state, ruleset, s) != Some(100)))
 }
 
 /// The stacks other than `caster` that a drawn spell for `side` may be aimed at
@@ -1568,13 +1680,19 @@ fn protected(
     }
 }
 
-/// The share of a hostile spell that stack `s` lets through (BAT-MAG-008) in the fixed point
-/// `one`, as `(share, one)`: 1 − its creature's magic resistance minus the resistance of its
-/// controller's hero (BAT-MAG-026), at least 0. With quirk Q-0005 the values are single precision and the difference
-/// is rounded to it, as the original's x87 code computes it (`installation.md` §7.8).
-fn share(state: &BattleState, ruleset: &Ruleset, s: StackId) -> (u64, u64) {
+/// The share of a hostile spell of `caster`'s side that stack `s` lets through (BAT-MAG-008) in
+/// the fixed point `one`, as `(share, one)`: 1 − its creature's magic resistance minus the
+/// resistance of its controller's hero (BAT-MAG-026), at least 0; all of it when the immunities
+/// are negated (BAT-MAG-066: the original returns before both). With quirk Q-0005 the values are
+/// single precision and the difference is rounded to it, as the original's x87 code computes it
+/// (`installation.md` §7.8).
+fn share(state: &BattleState, ruleset: &Ruleset, caster: BattleSide, s: StackId) -> (u64, u64) {
     let single = ruleset.quirks().is_enabled(SINGLE_PRECISION_RATES);
     let one = scale(single);
+    // rule: BAT-MAG-066
+    if Guard::of(state, caster, s).negated {
+        return (one, one);
+    }
     let stack = state.at(s);
     let creature = ruleset
         .abilities(stack.creature)
@@ -1631,6 +1749,7 @@ fn aura(state: &BattleState, ruleset: &Ruleset, s: StackId) -> Option<u8> {
 pub(crate) fn affect_chance(
     state: &BattleState,
     ruleset: &Ruleset,
+    caster: BattleSide,
     spell: &Spell,
     s: StackId,
 ) -> u32 {
@@ -1638,7 +1757,7 @@ pub(crate) fn affect_chance(
         return 100;
     }
     let single = ruleset.quirks().is_enabled(SINGLE_PRECISION_RATES);
-    let (share, one) = share(state, ruleset, s);
+    let (share, one) = share(state, ruleset, caster, s);
     let aura = aura(state, ruleset, s).map_or(one, |p| percent_rate(single, p));
     let chance = u128::from(share) * u128::from(aura) * 100 / (u128::from(one) * u128::from(one));
     u32::try_from(chance).unwrap_or(100).min(100)
@@ -1649,10 +1768,11 @@ pub(crate) fn affect_chance(
 pub(crate) fn resists(
     state: &mut BattleState,
     ruleset: &Ruleset,
+    caster: BattleSide,
     spell: &Spell,
     s: StackId,
 ) -> bool {
-    let chance = affect_chance(state, ruleset, spell, s);
+    let chance = affect_chance(state, ruleset, caster, spell, s);
     match chance {
         0 => true,
         100 => false,
@@ -1758,7 +1878,7 @@ fn screen_centre(state: &BattleState, field: Field, s: StackId) -> (i64, i64) {
 fn next_in_chain(
     state: &mut BattleState,
     ruleset: &Ruleset,
-    spell: SpellRef<'_>,
+    (caster, spell): (BattleSide, SpellRef<'_>),
     from: StackId,
     struck: &[bool; STACK_CAPACITY],
 ) -> Option<StackId> {
@@ -1769,8 +1889,8 @@ fn next_in_chain(
         for s in stack_ids(state) {
             let candidate = state.at(s).side == side
                 && !struck[s.index()]
-                && affects_stack(state, ruleset, spell, s);
-            if !candidate || resists(state, ruleset, spell.1, s) {
+                && affects_stack(state, ruleset, caster, spell, s);
+            if !candidate || resists(state, ruleset, caster, spell.1, s) {
                 continue;
             }
             let (cx, cy) = screen_centre(state, field, s);
@@ -2010,9 +2130,9 @@ fn reach_stacks<S: Sink>(
     let rolls = cast.by.is_none() || mirrored;
     if let CastTarget::Stack(s) = target
         && !untested
-        && (!affects_stack(state, ruleset, spell, s)
+        && (!affects_stack(state, ruleset, cast.side, spell, s)
             || !admits(state, ruleset, cast.side, (spell, cast.mastery), s)
-            || (rolls && resists(state, ruleset, cast.spell, s)))
+            || (rolls && resists(state, ruleset, cast.side, cast.spell, s)))
     {
         resisted(s, sink);
     } else {
@@ -2025,7 +2145,9 @@ fn reach_stacks<S: Sink>(
                 for _ in 0..chain.targets[usize::from(cast.mastery)] {
                     affect(state, ruleset, cast, (current, value), sink);
                     struck[current.index()] = true;
-                    let Some(next) = next_in_chain(state, ruleset, spell, current, &struck) else {
+                    let Some(next) =
+                        next_in_chain(state, ruleset, (cast.side, spell), current, &struck)
+                    else {
                         break;
                     };
                     current = next;
@@ -2055,7 +2177,7 @@ fn reach_stacks<S: Sink>(
                         // Its original's death took a clone (BAT-MAG-038).
                         continue;
                     }
-                    if resists(state, ruleset, cast.spell, s) {
+                    if resists(state, ruleset, cast.side, cast.spell, s) {
                         resisted(s, sink);
                     } else {
                         affect(state, ruleset, cast, (s, cast.value), sink);
@@ -2090,7 +2212,8 @@ fn teleport<S: Sink>(
 /// roll.
 pub(crate) fn hurts(state: &BattleState, ruleset: &Ruleset, o: &SpellObstacle, s: StackId) -> bool {
     ruleset.spell(o.spell).is_some_and(|spell| {
-        affects_stack(state, ruleset, (o.spell, spell), s) && share(state, ruleset, s).0 > 0
+        affects_stack(state, ruleset, o.side, (o.spell, spell), s)
+            && share(state, ruleset, o.side, s).0 > 0
     })
 }
 
