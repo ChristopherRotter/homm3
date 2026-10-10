@@ -164,12 +164,14 @@ dev_external = ["proptest"]
 
 # .h3m reader and import into the setup types (ADR-0015 point 4; E08 T3). Map files are untrusted:
 # property-tested on arbitrary bytes.
+# miniz_oxide: a map file is a gzip stream. h3-formats (dev): the round trip with the experiment
+# writer's subset until the writer moves here (after E04b, ADR-0015 point 3).
 [crate.h3-map]
 layer = "adapter"
 logic = false
 deps = ["h3-kernel", "h3-content", "h3-contracts", "h3-adventure", "h3-game"]
-external = []
-dev_deps = ["h3-pack", "h3-pack-adventure"]  # rulesets from the synthetic packs for import tests
+external = ["miniz_oxide"]
+dev_deps = ["h3-pack", "h3-pack-adventure", "h3-formats"]  # rulesets from the synthetic packs for import tests
 dev_external = ["proptest"]
 
 # packs/*/adventure.toml -> the adventure's definitions (ADR-0015 point 2; E08 T4).

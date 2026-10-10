@@ -240,14 +240,21 @@ pub fn gate(packages: Option<&[String]>) -> Result<(), String> {
     // cargo-llvm-cov leaves test files out of the report by default.)
     let reported: BTreeSet<&str> = files.iter().map(|f| f.file.as_str()).collect();
     let mut missing = Vec::new();
+    // Whether any gated file defines a function: logic crates that are still skeletons
+    // (declarations only, as in a lane's first increment) have nothing to cover.
+    let mut has_code = false;
     for p in &logic {
         for (file, is_test) in crate::scan::classify_crate(&p.dir)? {
             let r = rel(&root, &file);
-            if is_test || excluded.contains(&r) || reported.contains(r.as_str()) {
+            if is_test || excluded.contains(&r) {
                 continue;
             }
             let text = fs::read_to_string(&file).map_err(|e| format!("{}: {e}", file.display()))?;
-            if !crate::scan::find_pattern(&crate::scan::scan(&text, false), "fn").is_empty() {
+            if crate::scan::find_pattern(&crate::scan::scan(&text, false), "fn").is_empty() {
+                continue;
+            }
+            has_code = true;
+            if !reported.contains(r.as_str()) {
                 missing.push(format!(
                     "{r}: defines functions but is not in the coverage report"
                 ));
@@ -262,7 +269,7 @@ pub fn gate(packages: Option<&[String]>) -> Result<(), String> {
         "coverage: {gated_files} gated file(s) in {} logic crate(s)",
         gated.len()
     );
-    if gated_files == 0 {
+    if gated_files == 0 && has_code {
         missing.push("no logic-crate file found in the coverage report".to_owned());
     }
     let mut violations = missing;
