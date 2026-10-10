@@ -20,6 +20,8 @@ members = [
     "crates/h3-formats",
     "crates/h3-harvest",
     "crates/h3-experiment",
+    "crates/h3-protocol",
+    "crates/h3-server",
     "xtask",
 ]
 default-members = [
@@ -39,6 +41,8 @@ default-members = [
     "crates/h3-formats",
     "crates/h3-harvest",
     "crates/h3-experiment",
+    "crates/h3-protocol",
+    "crates/h3-server",
 ]
 
 [workspace.package]
@@ -62,6 +66,8 @@ h3-adventure = { path = "crates/h3-adventure" }
 h3-game = { path = "crates/h3-game" }
 h3-map = { path = "crates/h3-map" }
 h3-pack-adventure = { path = "crates/h3-pack-adventure" }
+h3-cli = { path = "crates/h3-cli" }
+h3-protocol = { path = "crates/h3-protocol" }
 
 # External crates. Every entry must be GPL-2.0-or-later compatible (deny.toml) and listed in arch.toml
 # for the crates allowed to use it.
@@ -72,6 +78,17 @@ serde_json = "1"
 miniz_oxide = { version = "0.8", default-features = false, features = ["with-alloc"] }
 proptest = { version = "1", default-features = false, features = ["std"] }
 criterion = { version = "0.5", default-features = false, features = ["cargo_bench_support"] }
+# The server (E16, ADR-0018 point 3): the runtime with only the features the shell needs, WebSocket
+# without TLS, and OS randomness for seeds and tokens. Licenses: MIT (tokio, tokio-tungstenite), MIT
+# OR Apache-2.0 (futures-util, getrandom). `h3-protocol` takes `serde` and `serde_json` without
+# `std` in its own manifest (ADR-0018 point 1): these entries enable it.
+tokio = { version = "1", default-features = false, features = ["rt-multi-thread", "net", "time", "sync", "macros"] }
+tokio-tungstenite = { version = "0.30", default-features = false, features = ["connect"] }
+futures-util = { version = "0.3", default-features = false, features = ["sink", "std"] }
+getrandom = "0.3"
+# Test-only: the wire types round-trip in a format that is not self-describing (ADR-0018 point 4;
+# provisional, E16 M1 review). License: MIT OR Apache-2.0.
+postcard = { version = "1", default-features = false, features = ["alloc"] }
 
 # Lints shared by every crate. Logic crates add a stricter crate-level policy in their lib.rs
 # (enforced by `cargo xtask check-arch`, see docs/05-testing.md).

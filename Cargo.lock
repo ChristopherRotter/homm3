@@ -301,6 +301,17 @@ name = "h3-pack-adventure"
 version = "0.1.0"
 
 [[package]]
+name = "h3-protocol"
+version = "0.1.0"
+
+[[package]]
+name = "h3-server"
+version = "0.1.0"
+dependencies = [
+ "h3-protocol",
+]
+
+[[package]]
 name = "h3-sim"
 version = "0.1.0"
 dependencies = [

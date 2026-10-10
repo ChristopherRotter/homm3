@@ -38,6 +38,8 @@ Tools for the full gate: `cargo install cargo-deny cargo-llvm-cov --locked`,
 | `crates/h3-sim` | RL environment, action/observation encodings, replays (adapter) |
 | `crates/h3-ffi` | C ABI (`include/h3.h`) |
 | `crates/h3-cli` | `h3` command-line tool |
+| `crates/h3-protocol` | the server's wire messages, codec and sans-I/O session core (adapter, logic; E16) |
+| `crates/h3-server` | `h3-server`: hosts games for clients over WebSocket (adapter; E16) |
 | `crates/h3-formats` | readers for the original game's files (LOD, TXT, exe tables), used by the harvester, and the `.h3m` writer for experiment maps (adapter) |
 | `crates/h3-harvest` | harvester: original files → committed packs `base`/`ab`/`sod` (tool) |
 | `crates/h3-experiment` | experiment compiler: spec → `.h3m` map + results template for the user (tool) |

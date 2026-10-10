@@ -4,10 +4,10 @@ The server lane's living state; read after the global `docs/HANDOFF.md`. Format 
 
 ## Current state
 
-- **E16 refined (2026-10-09):** the user answered SRV-Q1 to SRV-Q11 and confirmed the autonomy contract (`docs/OPEN-QUESTIONS.md`, "Answered"). Loopback and LAN until accounts (M3); seat tokens until M3; `tokio` for the connections, an OS thread per game; JSON in serde's default (externally tagged) enum form; a battle spectator viewer before M2; plain files; M4 before M5; the password-derived keypair and the web of trust as direction. The epic file, the design note and the three ADR drafts carry the answers; pull request `server/refinement-decisions` (labelled `cross-lane`: it files requests in the battle and client queues' inboxes).
-- **Next: M0** (`QUEUE.md`): the user reviews and accepts the protocol ADR draft, then the `shared/server-skeleton` pull request. Implementation starts now, while E04b finishes (SRV-Q7); the mapping's "other" fallback absorbs new battle commands and events.
-- The lane owns (`lanes.toml`) `h3-protocol`, `h3-server`, `benches/server/` and E16's files. Creating the crates touches `Cargo.toml` and `arch.toml`, so M0 is a `shared/` pull request merged first; it and the adventure lane's E08 T2 touch the same files (the second to merge rebases).
-- **Checkpoints** per milestone, under the autonomy contract below; a fresh reviewer agent checks each milestone before the user does. The identity and discovery ADR drafts are decided at the M3 refinement.
+- **M0 done (2026-10-10):** the user accepted the protocol ADR as **ADR-0018** (trimmed to its decisions; the detail stays in the epic and the design note) and the cross-lane label for the skeleton's pull request. `h3-protocol` (adapter, `logic = true`) and `h3-server` (adapter, the binary `h3-server`, stub SRV-STUB-1) exist as skeletons. **Next: M1 T1** (`QUEUE.md`) once that pull request is merged.
+- **What M0 prepared for M1.** `arch.toml` already allows every edge M1 needs: `h3-protocol` → kernel, content, contracts, battle, `serde`, `serde_json` (dev: `h3-pack`, `h3-sim`, `proptest`, `postcard`); `h3-server` → those plus `h3-pack`, `h3-sim`, `h3-cli` (provisional, for the pack, scenario and replay-file functions), `tokio`, `tokio-tungstenite`, `futures-util` (`StreamExt`/`SinkExt`), `getrandom`, `toml`. The workspace has their entries; the crates add them when they use them (`Cargo.lock` is common). `cargo deny` passed with all of them in the graph (77 crates under `h3-server`).
+- **Versions** (`docs/08-work-process.md`): `PROTOCOL_VERSION` in `h3-protocol` (0 until T1's first messages, then 1 and bumped on every wire change); `RECORD_FORMAT_VERSION` (T2) and `JOURNAL_FORMAT_VERSION` (`h3-server`, M2).
+- The lane owns (`lanes.toml`) `h3-protocol`, `h3-server`, `benches/server/` and E16's files; the workspace files stay shared. **Checkpoints** per milestone, under the autonomy contract below; a fresh reviewer agent checks each milestone before the user does. The identity and discovery ADR drafts are decided at the M3 refinement.
 - **Ids:** questions `SRV-Q<n>`, quirks `SRV-QUIRK-<n>`, stubs `SRV-STUB-<n>`. ADR drafts go to `docs/lanes/server/adr-drafts/` and get a number when the user accepts them. Branches: `server/<task>`.
 
 ## Autonomy contract (confirmed by the user, 2026-10-09)
@@ -18,10 +18,15 @@ The server lane's living state; read after the global `docs/HANDOFF.md`. Format 
 
 ## Standing traps
 
+- `h3-protocol` is `no_std`: take `serde` (`derive`, `alloc`) and `serde_json` (`alloc`) with `default-features = false` in its own manifest, not `workspace = true` (the workspace entries enable `std`).
 - `postcard` (and any format that is not self-describing) cannot decode `#[serde(tag = ...)]`, `untagged` or `flatten`: keep the wire types in serde's default enum form (SRV-Q5).
 - A 64-bit integer on the wire travels as a string (JavaScript clients lose precision above 2^53).
 
 ## Recent sessions
+
+### 2026-10-10 — M0, the shared skeleton
+
+The user accepted the protocol ADR draft with a trim (136 to 85 lines, the decisions unchanged) and the `cross-lane` label for the M0 pull request. ADR-0018 numbered with its index row, the server lane's reading list in `AGENTS.md`; the crate skeletons, the workspace and `arch.toml` entries (above), `benches/server/` (README), the versions table, `BACKLOG.md` and the global HANDOFF's row. `check-arch` accepted a logic crate in the adapter layer without a tool change. Then merged `master`: the adventure lane's E08 T2 had taken ADR-0015 to ADR-0017, so the protocol ADR became **ADR-0018** (only this branch's references renumbered). The two base failures found at the start (the exe map's gap; a random battle property-test failure) were both fixed on `master` meanwhile (`docs/epics/E16-log.md`, M0).
 
 ### 2026-10-09 — refinement session, the answers
 

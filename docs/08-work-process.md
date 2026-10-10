@@ -122,6 +122,9 @@ conflict on rebase and bumps again.
 | adventure state hash, adventure ruleset-part hash | `ADVENTURE_STATE_HASH_VERSION`, `ADVENTURE_RULESET_HASH_VERSION`, `h3-adventure` | adventure |
 | map import | `MAP_IMPORT_VERSION`, `h3-map` (a replay names its map by content hash, path and this version; ADR-0015) | adventure |
 | adventure replay format, action and observation encodings | `h3-sim/src/adventure/` (from E08 T9) | adventure (AI lane from E05) |
+| wire protocol | `PROTOCOL_VERSION`, `h3-protocol` | server |
+| viewer record format | `RECORD_FORMAT_VERSION`, `h3-protocol` (from E16 M1) | server |
+| game journal format | `JOURNAL_FORMAT_VERSION`, `h3-server` (from E16 M2) | server |
 
 **Queues and long runs.** Each lane has a `QUEUE.md`: its pre-refined tasks in order, each about
 half a context of work, then an **Inbox** of discovered work (one line each, until a refinement

@@ -1,0 +1,18 @@
+[package]
+name = "h3-server"
+description = "Adapter: hosts the engine's games for untrusted clients over WebSocket (E16, ADR-0018)."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish.workspace = true
+
+[[bin]]
+name = "h3-server"
+path = "src/main.rs"
+
+[dependencies]
+h3-protocol.workspace = true
+
+[lints]
+workspace = true
