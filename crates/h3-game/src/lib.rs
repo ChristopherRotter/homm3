@@ -5,7 +5,8 @@
 //! wires (`h3-adventure` from increment 1; `h3-heroes` and `h3-battle` from increment 3); no
 //! domain crate depends on it (ADR-0015 point 1).
 //!
-//! Skeleton (E08 T2): the setup, the players, the schedule and `EndTurn` arrive in T6.
+//! So far (E08 T6a): the game's rules ([`GameRuleset`]) and setup ([`GameSetup`]) with its
+//! validation. The state, the players' turns, the calendar and `EndTurn` arrive in T6b.
 //!
 //! Logic crate: pure, deterministic, `no_std` + `alloc` (ADR-0003, ADR-0005). The lint header
 //! below is required and checked by `cargo xtask check-arch`.
@@ -24,6 +25,17 @@
     clippy::exit
 )]
 #![warn(missing_docs)]
+
+extern crate alloc;
+
+mod ruleset;
+mod setup;
+
+#[cfg(test)]
+mod tests;
+
+pub use ruleset::{GameRuleset, RulesetMismatch};
+pub use setup::{GameHeroSetup, GameSetup, GameSetupError, HeroArmy, PlayerSetup};
 
 /// Version of the game state's canonical hash encoding (`docs/08-work-process.md`, "Versions";
 /// owned by the adventure lane). Bump it with any change to what the hash covers.
