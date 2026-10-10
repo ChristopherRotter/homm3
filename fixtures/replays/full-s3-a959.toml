@@ -281,21 +281,21 @@ commands = [
     "D attack 1 162",
 ]
 checkpoints = [
-    "0x8302d366eb8b7eef",
-    "0x3b9d5a81abb80698",
-    "0x3541c9c7cf36511a",
-    "0x5ad3bc247768eaba",
-    "0x46c772cb14e2404e",
-    "0x63567250919293cb",
-    "0x14d783061b788d87",
-    "0xd8e609219e4222ca",
-    "0x76b2863bfd49b79c",
-    "0x775285d8d6227109",
-    "0xa7de983018f1f8c1",
+    "0x06c8c1898a6fc13f",
+    "0xae7baa7138d5a7ce",
+    "0x783438c5063e33d8",
+    "0x4ffe1c6fb79d85a0",
+    "0x7ac3bc7486a91670",
+    "0x738202fdf371d6d1",
+    "0xe9b2e3aa86dff329",
+    "0x2482a288a5020c68",
+    "0x3433baa1b1c19fe6",
+    "0x52cf7a95b0446e83",
+    "0xd7284708f3aa02df",
 ]
 
 [replay]
-format = 19
+format = 20
 engine = "0.1.0"
 scenario = "full"
 seed = "3"
@@ -304,12 +304,12 @@ packs = [[
     "0.1.0",
 ]]
 profile = "synthetic:faithful"
-ruleset_hash = "0xfedb0a5cc675d7c7"
+ruleset_hash = "0x97d1efb34aed48e1"
 rng = "xoshiro256starstar+splitmix64"
 rng_version = 1
 hash = "fnv1a64-le"
 hash_version = 1
-battle_state_hash_version = 38
+battle_state_hash_version = 39
 checkpoint_every = 25
 
 [setup]
@@ -367,8 +367,26 @@ double_damage_chance_bp = 5000
 [setup.attacker_hero.tent]
 heal_bonus_bp = 10000
 
-[setup.attacker_hero.schools]
-"synthetic:storm" = 1
+[setup.attacker_hero.masteries]
+"synthetic:arc" = 1
+"synthetic:blaze" = 1
+"synthetic:blink" = 1
+"synthetic:charm" = 1
+"synthetic:cinders" = 1
+"synthetic:copy" = 1
+"synthetic:drag" = 1
+"synthetic:fury" = 1
+"synthetic:glass" = 1
+"synthetic:hasten" = 1
+"synthetic:haze" = 1
+"synthetic:mend" = 1
+"synthetic:offer" = 1
+"synthetic:riposte" = 1
+"synthetic:scorch" = 1
+"synthetic:smiting" = 1
+"synthetic:snare" = 1
+"synthetic:spark" = 1
+"synthetic:ward" = 1
 
 [[setup.attacker_hero.effects]]
 kind = "morale"
@@ -423,8 +441,24 @@ spell_book = [
 shots = 1
 double_damage_chance_bp = 5000
 
-[setup.defender_hero.schools]
-"synthetic:stone" = 3
+[setup.defender_hero.masteries]
+"synthetic:aegis" = 3
+"synthetic:bane" = 3
+"synthetic:blight" = 3
+"synthetic:boon" = 3
+"synthetic:bulwark" = 3
+"synthetic:conjure" = 3
+"synthetic:corrode" = 3
+"synthetic:dazzle" = 3
+"synthetic:gloom" = 3
+"synthetic:mire" = 3
+"synthetic:purge" = 3
+"synthetic:rage" = 3
+"synthetic:rampage" = 3
+"synthetic:revive" = 3
+"synthetic:uproot" = 3
+"synthetic:veil" = 3
+"synthetic:zeal" = 3
 
 [[setup.defender_hero.effects]]
 kind = "stack_stat"
@@ -581,4 +615,4 @@ count = 4
 
 [result]
 winner = "defender"
-final_hash = "0x29ffde6e15e1606c"
+final_hash = "0x7cb89e6f5c09c512"

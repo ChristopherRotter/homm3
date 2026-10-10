@@ -30,9 +30,7 @@ fn give(s: &mut BattleState, r: &Ruleset, (id, name): (u8, &str), mastery: u8) {
 /// A mage with `spells`, every school's mastery `mastery` and enough mana.
 fn adept(r: &Ruleset, spells: &[&str], mastery: u8) -> BattleHero {
     let mut h = mage(r, spells);
-    for m in h.magic.schools.iter_mut().take(r.spell_schools().len()) {
-        *m = mastery;
-    }
+    h.magic.masteries = masteries(r, [mastery; 4]);
     h.magic.mana = 200;
     h
 }

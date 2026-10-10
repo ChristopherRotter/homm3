@@ -4,14 +4,15 @@
 //! rules need to run soundly, not whether a real hero could have these values.
 //!
 //! The magic (E04b) is derived since E04b T2a (HER-BAT-011, HER-BAT-012); the battle reads it from
-//! E04b T2b on.
+//! E04b T2b on. Since E04b T8a the masteries come per spell, derived once in the Heroes context
+//! like the available spells themselves (BAT-Q19, ADR-0013 point 2).
 
 use alloc::vec::Vec;
 use core::num::NonZeroU32;
 
 use h3_content::{
     Affects, CreatureSelector, CreatureStat, CreatureTypeId, FactionId, HeroTypeId,
-    MAX_ALIGNMENT_FACTIONS, MAX_SPELL_SCHOOLS, SchoolId, SpellId, SpellScope,
+    MAX_ALIGNMENT_FACTIONS, SchoolId, SpellId, SpellScope,
 };
 
 /// Most entries in [`BattleHero::effects`].
@@ -71,9 +72,9 @@ impl BattleHero {
             effects: Vec::new(),
             magic: BattleMagic {
                 spell_book: None,
+                masteries: Vec::new(),
                 mana: 0,
                 max_mana: 0,
-                schools: [0; 4],
             },
         }
     }
@@ -150,16 +151,20 @@ pub struct CatapultControl {}
 /// A hero's magic in battle (E04b): present and checked from E04a on, used from E04b on.
 #[derive(Debug, Clone, PartialEq, Eq, Default)]
 pub struct BattleMagic {
-    /// The spells the hero can cast, if it has a spell book.
+    /// The spells the hero can cast, if it has a spell book: its available spells
+    /// (`h3_heroes::available_spells`, HER-SPL-002), each once.
     pub spell_book: Option<Vec<SpellId>>,
+    /// The hero's mastery of each spell it casts above none (`h3_heroes::spell_masteries`,
+    /// HER-SPL-003; E04b T8a, BAT-Q19), each spell once, 1 (Basic) to 3 (Expert) on ordinary
+    /// ground; a battlefield's raise is the battle's (E04c). It covers every spell, not only the
+    /// book's: the original's mastery is a function of the hero for any spell (Sacrifice's test
+    /// reads Resurrection's, BAT-QUIRK-5).
+    pub masteries: Vec<(SpellId, u8)>,
     /// Spell points at the start of the battle (may exceed the maximum, e.g. after a Mana
     /// Vortex).
     pub mana: u16,
     /// Maximum spell points (informative).
     pub max_mana: u16,
-    /// Mastery of each spell school, 0 (none) to 3 (Expert), indexed by the school's handle
-    /// (`SchoolId::index`, the ruleset's load order); entries beyond the ruleset's schools are 0.
-    pub schools: [u8; MAX_SPELL_SCHOOLS],
 }
 
 /// How a [`BattleEffect::StackStat`] changes a statistic.

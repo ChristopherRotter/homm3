@@ -188,7 +188,7 @@ fn the_private_part_of_a_hero_shows_only_to_its_side() {
             funds: 5000,
             surrender_price: Some(240),
             spell_book: crate::SpellSet::default(),
-            schools: [0; 4],
+            masteries: crate::Masteries::default(),
             spell_bonuses: crate::SpellBonuses::default(),
         })
     );
@@ -223,7 +223,7 @@ fn values_no_real_hero_could_have_are_accepted() {
     odd.magic.spell_book = Some(vec![r.spell_by_key("t:bolt").unwrap()]);
     odd.magic.mana = u16::MAX;
     odd.magic.max_mana = 0;
-    odd.magic.schools = [3, 0, 0, 0];
+    odd.magic.masteries = masteries(&r, [3, 0, 0, 0]);
     let s = BattleState::new(&r, &with_heroes(&r, [Some(odd.clone()), Some(odd)]), 1).unwrap();
     assert_eq!(s.hero(BattleSide::Defender).unwrap().attack, 255);
 }
@@ -300,8 +300,22 @@ fn unsound_heroes_are_rejected() {
             },
             HeroError::UnknownFaction,
         ),
-        (|_, h| h.magic.schools[2] = 4, HeroError::SchoolLevel),
-        (|_, h| h.magic.schools[2] = 1, HeroError::UnknownSchool),
+        (
+            |r, h| h.magic.masteries = vec![(r.spell_by_key("t:bolt").unwrap(), 4)],
+            HeroError::MasteryLevel,
+        ),
+        (
+            |r, h| h.magic.masteries = vec![(r.spell_by_key("t:bolt").unwrap(), 0)],
+            HeroError::MasteryLevel,
+        ),
+        (
+            |_, h| h.magic.masteries = vec![(SpellId::from_raw(999), 1)],
+            HeroError::UnknownSpell,
+        ),
+        (
+            |r, h| h.magic.masteries = vec![(r.spell_by_key("t:bolt").unwrap(), 1); 2],
+            HeroError::DuplicateSpell,
+        ),
         (
             |_, h| {
                 h.effects = vec![BattleEffect::SpellDamage {

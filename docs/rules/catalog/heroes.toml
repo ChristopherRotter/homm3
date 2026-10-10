@@ -97,16 +97,55 @@ numeric  = "integer"
   confidence = "high"
 
 [[rule]]
+id       = "HER-ART-003"
+title    = "Spell scrolls"
+context  = "heroes"
+status   = "implemented"
+summary  = "Each worn or carried artifact is an instance (h3_heroes::ArtifactInstance): its type and, exactly for a type with the `scroll` effect (the Spell Scroll), the spell this copy holds, a spell of the ruleset that is not a creature ability. A worn scroll gives its spell (HER-SPL-002); one in the backpack does not."
+numeric  = "integer"
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (docs/formats/installation.md 7.22): a body position holds the artifact id and a second word, the spell of a Spell Scroll (artifact 1), which 0x4D95D0 adds to the available spells; the backpack is not read"
+  confidence = "high"
+
+[[rule]]
 id       = "HER-SPL-001"
 title    = "Known spells"
 context  = "heroes"
 status   = "implemented"
-summary  = "A hero's known spells are spells of the ruleset, each listed once, and none of them a creature ability (spell category `ability`, which never stands in a spell book). Whether the spells need a worn spell book is checked from E04b T8 on; the spell book artifact's effect lets the battle hero cast them (HER-BAT-011, E04b T2a)."
+summary  = "A hero's learned spells (HeroDetails.spells; the original's +0x3EA, kept whatever the hero wears) are spells of the ruleset, each listed once, and none of them a creature ability (spell category `ability`, which never stands in a spell book). The spells the hero has add those of its worn artifacts (HER-SPL-002); a worn spell book lets it cast them (HER-BAT-011)."
 numeric  = "integer"
 
   [[rule.source]]
   kind       = "original-data"
   ref        = "SPTRAITS.TXT: adventure spells, combat spells and creature abilities in separate sections; the abilities are cast by creatures only (docs/formats/installation.md §6)"
+  confidence = "high"
+
+[[rule]]
+id       = "HER-SPL-002"
+title    = "Available spells"
+context  = "heroes"
+status   = "implemented"
+summary  = "A hero has, in spell order and each once (h3_heroes::available_spells, the one derivation for the adventure map and the battle, BAT-Q19): its learned spells (HER-SPL-001), the spell of every worn scroll (HER-ART-003) and the spells of its worn artifacts' `spells` effects (a combination with its parts, each artifact type once): `school` every spell of the school, `level` every spell of the level, both without the creature abilities and the spells marked `granted_by_name_only`, and `spell` the named spell. Artifacts in the backpack give nothing. In the packs: the Tomes their school, Spellbinder's Hat level 5, Armageddon's Blade Armageddon, the Sea Captain's Hat Summon Boat and Scuttle Boat, Titan's Thunder Titan's Lightning Bolt, which no grant by school or level gives (spell flag 0x2000). Having a spell is not casting it: that needs a worn spell book (HER-BAT-011)."
+numeric  = "integer"
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (docs/formats/installation.md 7.22): 0x4D95D0 writes the available spells (+0x430) from the learned ones (+0x3EA), a worn Spell Scroll's spell and the sets 0x4D9350 of the worn artifacts of the list 0x63B998 and of such parts of worn combinations (the backpack is not read); every set but Titan's Thunder's clears spell 57 (0x4D9532); the adventure map and the battle read +0x430"
+  confidence = "high"
+
+[[rule]]
+id       = "HER-SPL-003"
+title    = "Mastery of a spell"
+context  = "heroes"
+status   = "implemented"
+summary  = "A hero's mastery of a spell (h3_heroes::spell_masteries, for every spell above none; the one derivation for the adventure map and the battle, BAT-Q19) is the best level of its `school_mastery` effects among the spell's schools (the magic school skills: 1 Basic, 2 Advanced, 3 Expert), raised by a `spell_mastery` effect for the spell (Armageddon's Blade: Armageddon at Expert), at most Expert. It is the mastery on ordinary ground; a battlefield that raises it (Magic Plains, the elemental battlefields) is the battle's (E04c). No specialty or other artifact changes it. The list covers spells the hero does not have too: the original asks the hero for any spell's mastery (Sacrifice's test asks for Resurrection's, BAT-QUIRK-5)."
+numeric  = "integer"
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (docs/formats/installation.md 7.22): 0x4E5080 returns Expert for Armageddon while the hero wears Armageddon's Blade (its positions, then a combination holding it), else 0x4E5100: Expert on battlefield 1 or a matching elemental battlefield, else the best of the Air, Fire, Earth and Water Magic levels among the spell's school bits"
   confidence = "high"
 
 [[rule]]
@@ -400,7 +439,7 @@ id       = "HER-BAT-011"
 title    = "The battle hero's magic"
 context  = "heroes"
 status   = "implemented"
-summary  = "The battle hero's magic (BattleHero.magic) comes from the hero's effect sources (HER-BAT-001): its spell book is the hero's known spells if one of them has a spell_book effect (the Spell Book artifact; each artifact type once), otherwise none; the mastery of each spell school (BattleMagic.schools, indexed by the school's handle; at most four schools, MAX_SPELL_SCHOOLS) is the highest level of the school_mastery effects for it (the four magic school skills give Basic 1, Advanced 2, Expert 3; 0 without one); the mana is the details' as given (it may exceed the maximum). The maximum mana stays 0, informative only (derived with hero progression, E08-E10). Whether known spells need a worn book, the Tomes and scrolls come in E04b T8. The battle reads the magic from E04b T2b on."
+summary  = "The battle hero's magic (BattleHero.magic) comes from the hero's effect sources (HER-BAT-001): its spell book is the hero's available spells (HER-SPL-002, in spell order) if one of them has a spell_book effect (the Spell Book artifact; each artifact type once), otherwise none (the original refuses a hero's cast without a worn book, 0x41F890); its masteries (BattleMagic.masteries) are the hero's spell masteries (HER-SPL-003; since E04b T8a they replace the school masteries, BAT-Q19); the mana is the details' as given (it may exceed the maximum). The maximum mana stays 0, informative only (derived with hero progression, E08-E10). The battle reads the magic from E04b T2b on."
 numeric  = "integer"
 
   [[rule.source]]

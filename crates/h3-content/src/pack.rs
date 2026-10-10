@@ -260,6 +260,8 @@ pub struct SpellDef {
     /// The creature a summon effect summons (pack format v18; Summon Fire Elemental: the Fire
     /// Elemental).
     pub summons: Option<ContentKey>,
+    /// Only a grant naming the spell gives it (pack format v30; Titan's Lightning Bolt).
+    pub granted_by_name_only: bool,
 }
 
 /// A secondary skill with the effects of its three levels (E04a T3).

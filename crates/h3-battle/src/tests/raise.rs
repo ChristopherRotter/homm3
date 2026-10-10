@@ -20,8 +20,7 @@ use crate::{
 /// A mage with the raising spells, air mastery `air`, fire mastery `fire`, power 3, 100 mana.
 fn raiser(r: &Ruleset, air: u8, fire: u8) -> BattleHero {
     let mut h = mage(r, &["rise", "animate", "offering"]);
-    h.magic.schools[0] = air;
-    h.magic.schools[1] = fire;
+    h.magic.masteries = masteries(r, [air, fire, 0, 0]);
     h.magic.mana = 100;
     h
 }
@@ -153,7 +152,7 @@ fn resurrection_from_advanced_raises_for_good_and_needs_one_creatures_health() {
     assert_eq!((s.stacks()[0].count, s.temporary(StackId(0))), (2, 0));
     // Basic: 190 hit points do not: the seraphs are no target.
     s.stacks.as_mut_slice()[0].count = 1;
-    s.heroes[0].as_mut().unwrap().magic.schools[0] = 1;
+    set_masteries(&mut s, 0, &r, [1, 0, 0, 0]);
     s.heroes[0].as_mut().unwrap().view.casts = 0;
     assert_eq!(targets(&s, &r, "rise"), Vec::<u8>::new());
     assert_eq!(
@@ -302,7 +301,7 @@ fn sacrifice_kills_its_victim_without_a_corpse_and_raises_its_target() {
     // The victim left no corpse: nothing raises it.
     assert_eq!(s.corpse(StackId(2)), NO_CORPSE);
     s.heroes[0].as_mut().unwrap().view.casts = 0;
-    s.heroes[0].as_mut().unwrap().magic.schools[0] = 3;
+    set_masteries(&mut s, 0, &r, [3, 1, 0, 0]);
     assert_eq!(targets(&s, &r, "rise"), vec![1]);
 }
 
@@ -385,12 +384,12 @@ fn with_bat_quirk_5_sacrifice_tests_its_target_as_resurrection() {
     // reach a seraph's 200, and Resurrection's level 4 does not reach the gilded (S-15).
     assert_eq!(targets(&s, &r, "offering"), Vec::<u8>::new());
     // At Advanced air (230) the seraphs are a target; the gilded never are.
-    s.heroes[0].as_mut().unwrap().magic.schools[0] = 2;
+    set_masteries(&mut s, 0, &r, [2, 1, 0, 0]);
     assert_eq!(targets(&s, &r, "offering"), vec![1]);
     // Without the quirk both are, by Sacrifice's own level 5.
     let plain = ruleset();
     let mut t = s.clone();
-    t.heroes[0].as_mut().unwrap().magic.schools[0] = 0;
+    set_masteries(&mut t, 0, &r, [0, 1, 0, 0]);
     assert_eq!(targets(&t, &plain, "offering"), vec![1, 2]);
 }
 
@@ -521,7 +520,7 @@ fn with_bat_quirk_5_a_dead_target_takes_resurrections_test_too() {
     kill(&mut s, &r, 1);
     // 190 hit points of Resurrection do not reach a seraph's 200: no target, dead or alive.
     assert_eq!(targets(&s, &r, "offering"), Vec::<u8>::new());
-    s.heroes[0].as_mut().unwrap().magic.schools[0] = 2;
+    set_masteries(&mut s, 0, &r, [2, 1, 0, 0]);
     assert_eq!(targets(&s, &r, "offering"), vec![1]);
 }
 

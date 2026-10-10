@@ -18,7 +18,7 @@ use crate::{
 /// A mage with Dispel, Cure and Haste, the air mastery `mastery` and enough mana.
 fn adept(r: &Ruleset, mastery: u8) -> BattleHero {
     let mut h = mage(r, &["dispel", "cure", "haste"]);
-    h.magic.schools[0] = mastery;
+    h.magic.masteries = masteries(r, [mastery, 0, 0, 0]);
     h.magic.mana = 100;
     h
 }
@@ -150,7 +150,7 @@ fn dispel_reaches_the_enemy_from_advanced_and_every_stack_at_expert_without_immu
             .any(|e| matches!(e.kind, EventKind::SpellResisted { .. }))
     );
     // Expert: every stack of both sides, no target.
-    s.heroes[0].as_mut().unwrap().magic.schools[0] = 3;
+    set_masteries(&mut s, 0, &r, [3, 0, 0, 0]);
     s.heroes[0].as_mut().unwrap().view.casts = 0;
     activate(&mut s, 0);
     give(&mut s, &r, 3, "sloth");
@@ -175,7 +175,7 @@ fn dispel_reaches_the_enemy_from_advanced_and_every_stack_at_expert_without_immu
         castable_spells(&empty, &r, h3_contracts::BattleSide::Attacker)
             .contains(spell(&r, "dispel"))
     );
-    empty.heroes[0].as_mut().unwrap().magic.schools[0] = 2;
+    set_masteries(&mut empty, 0, &r, [2, 0, 0, 0]);
     assert!(
         !castable_spells(&empty, &r, h3_contracts::BattleSide::Attacker)
             .contains(spell(&r, "dispel"))
@@ -226,7 +226,7 @@ fn cure_ends_its_spells_then_heals_the_top_creature_without_raising() {
     let events = act(&mut s, &r, cast(&r, "cure", stack(1))).unwrap();
     assert_eq!(ends_and_heals(&r, &events), (Vec::new(), Vec::new()));
     // Expert: every own stack it can affect, by 3 × 5 + 30; not the enemy.
-    s.heroes[0].as_mut().unwrap().magic.schools[0] = 3;
+    set_masteries(&mut s, 0, &r, [3, 0, 0, 0]);
     s.heroes[0].as_mut().unwrap().view.casts = 0;
     activate(&mut s, 0);
     s.stacks.as_mut_slice()[0].top_hp = 1;

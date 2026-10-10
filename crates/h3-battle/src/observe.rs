@@ -117,7 +117,7 @@ pub fn observe(state: &BattleState, ruleset: &Ruleset, viewer: BattleSide) -> Ob
             funds: h.funds,
             surrender_price: state.surrender_price(ruleset, viewer),
             spell_book: h.magic.book,
-            schools: h.magic.schools,
+            masteries: h.magic.masteries,
             spell_bonuses: h.magic.bonuses,
         }),
         terrain: state.terrain,

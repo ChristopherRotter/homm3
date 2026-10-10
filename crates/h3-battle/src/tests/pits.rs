@@ -17,8 +17,7 @@ use crate::{
 /// A mage with `spells`, the masteries `[air, fire]` and 100 mana.
 fn caster(r: &Ruleset, spells: &[&str], [air, fire]: [u8; 2]) -> BattleHero {
     let mut h = mage(r, spells);
-    h.magic.schools[0] = air;
-    h.magic.schools[1] = fire;
+    h.magic.masteries = masteries(r, [air, fire, 0, 0]);
     h.magic.mana = 100;
     h
 }

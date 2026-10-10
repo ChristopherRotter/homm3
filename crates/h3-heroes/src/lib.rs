@@ -1,6 +1,7 @@
 //! Hero details (ADR-0013, E04a T4): the lasting details of a hero — level, experience, primary
-//! and secondary skills, artifacts, spells, mana — their validation against a ruleset, and the
-//! pure translations to what a battle needs. No commands and no map or battle state: equipping,
+//! and secondary skills, artifacts, spells, mana — their validation against a ruleset, what the
+//! hero has from them in every context (its available spells and their masteries, E04b T8a), and
+//! the pure translations to what a battle needs. No commands and no map or battle state: equipping,
 //! learning and levelling up arrive with the adventure and game epics (E08–E10); the battle never
 //! depends on this crate and reads only the battle hero of the seam (`h3_contracts::BattleHero`).
 //!
@@ -27,10 +28,12 @@ extern crate alloc;
 mod derive;
 mod details;
 mod error;
+mod spells;
 
 pub use derive::derive_battle_hero;
-pub use details::{HeroDetails, PrimarySkill, validate, war_machines};
+pub use details::{ArtifactInstance, HeroDetails, PrimarySkill, validate, war_machines};
 pub use error::DetailsError;
+pub use spells::{available_spells, spell_masteries};
 
 #[cfg(test)]
 mod tests;

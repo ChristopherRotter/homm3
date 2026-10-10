@@ -293,7 +293,7 @@ fn a_pit_lord_needs_a_slot_for_the_new_stack() {
         &[("fixed", 3, 13, 5)],
         1,
     );
-    s.heroes[0].as_mut().unwrap().magic.schools[1] = 1;
+    set_masteries(&mut s, 0, &r, [0, 1, 0, 0]);
     s.heroes[0].as_mut().unwrap().view.mana = 50;
     hurt(&mut s, &r, 1, 1000);
     assert_eq!(targets(&s, &r, BattleSide::Attacker), vec![1]);

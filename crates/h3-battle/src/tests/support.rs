@@ -1319,6 +1319,32 @@ pub fn ruleset() -> Ruleset {
 
 /// The test ruleset with profile `profile` (`t:faithful` without quirks, `t:quirky` with
 /// Q-0003, `t:single` with Q-0005) and edited battle parameters.
+/// The masteries of a hero with these school levels (by school handle): every spell of `r` above
+/// none at the best of its schools' levels, the Heroes context's rule (HER-SPL-003) that the
+/// seam carries per spell since E04b T8a (BAT-Q19).
+pub fn masteries(r: &Ruleset, schools: [u8; 4]) -> Vec<(h3_content::SpellId, u8)> {
+    r.spells()
+        .iter()
+        .enumerate()
+        .filter_map(|(i, spell)| {
+            let best = spell
+                .schools
+                .iter()
+                .map(|l| schools[l.index().min(3)])
+                .max();
+            let mastery = best.unwrap_or(0);
+            (mastery > 0).then(|| (h3_content::SpellId::from_index(i).unwrap(), mastery))
+        })
+        .collect()
+}
+
+/// Sets the masteries of `side`'s hero (by index) in `s` as [`masteries`] gives them.
+pub fn set_masteries(s: &mut BattleState, side: usize, r: &Ruleset, schools: [u8; 4]) {
+    if let Some(h) = s.heroes[side].as_mut() {
+        h.magic.masteries = crate::magic::Masteries::of(&masteries(r, schools));
+    }
+}
+
 pub fn ruleset_with(profile: &str, edit: impl FnOnce(&mut BattleParamsDef)) -> Ruleset {
     let creatures = CREATURES
         .iter()
@@ -1976,6 +2002,7 @@ fn timed_def(
         spares: vec![],
         tests_as: None,
         summons: None,
+        granted_by_name_only: false,
     }
 }
 
@@ -2001,6 +2028,7 @@ pub fn other_defs() -> [SpellDef; 3] {
         spares: vec![],
         tests_as: None,
         summons: None,
+        granted_by_name_only: false,
     };
     [
         SpellDef {
@@ -2094,6 +2122,7 @@ pub fn strike_defs() -> Vec<SpellDef> {
         spares: vec![],
         tests_as: None,
         summons: None,
+        granted_by_name_only: false,
     };
     let none = CreatureFlags::default();
     vec![
@@ -2197,6 +2226,7 @@ pub fn control_defs() -> Vec<SpellDef> {
         spares: vec![],
         tests_as: None,
         summons: None,
+        granted_by_name_only: false,
     };
     let machines = TargetConditions {
         requires: CreatureFlags::default(),
@@ -2304,6 +2334,7 @@ pub fn field_defs() -> Vec<SpellDef> {
         spares: vec![],
         tests_as: None,
         summons: None,
+        granted_by_name_only: false,
     };
     let shape = |mirrored, separate| ObstacleShape {
         steps: vec![HexStep::TopRight, HexStep::TopLeft],
@@ -2429,6 +2460,7 @@ pub fn raise_defs() -> Vec<SpellDef> {
         spares: vec![],
         tests_as: None,
         summons: None,
+        granted_by_name_only: false,
     };
     let magic = |requires, excludes, effect| SpellMagic {
         target: SpellTarget::Stack,
@@ -2457,6 +2489,7 @@ pub fn raise_defs() -> Vec<SpellDef> {
         SpellDef {
             tests_as: Some(key("rise")),
             summons: None,
+            granted_by_name_only: false,
             ..def(
                 "offering",
                 (5, "fire"),
@@ -2492,10 +2525,12 @@ pub fn create_defs() -> Vec<SpellDef> {
         spares: vec![],
         tests_as: None,
         summons: None,
+        granted_by_name_only: false,
     };
     let summon = |name: &str, creature: &str| SpellDef {
         effect: [2, 2, 3, 4],
         summons: Some(key(creature)),
+        granted_by_name_only: false,
         ..def(
             name,
             (5, "fire"),
@@ -2580,6 +2615,7 @@ fn spell_def((name, category, schools, target, side): SpellSpec) -> SpellDef {
         spares: vec![],
         tests_as: None,
         summons: None,
+        granted_by_name_only: false,
     }
 }
 

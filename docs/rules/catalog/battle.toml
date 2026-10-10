@@ -1866,7 +1866,7 @@ id       = "BAT-MAG-002"
 title    = "Mastery and cost of a hero's spell"
 context  = "battle"
 status   = "implemented"
-summary  = "A hero casts a spell at the best mastery among the spell's schools (BattleMagic.schools: 0 none, 1 Basic, 2 Advanced, 3 Expert; HER-BAT-011). The mastery selects the cost and the effect value from the spell's row (cost[mastery], effect[mastery]). A cast takes the cost from the hero's mana; a hero with less mana than the cost cannot cast the spell, so mana never goes below 0. The creatures in the armies change the cost (BAT-MAG-054); a side's Familiars gain from the other hero's cast (BAT-MAG-055) and Wraiths drain the enemy hero (BAT-MAG-056)."
+summary  = "A hero casts a spell at the mastery the seam gives it (BattleMagic.masteries: 1 Basic, 2 Advanced, 3 Expert, 0 none for a spell not listed), derived once in the Heroes context (HER-SPL-003: the best mastery among the spell's schools, raised by an artifact such as Armageddon's Blade; E04b T8a, BAT-Q19); a battlefield's raise comes with E04c. The mastery selects the cost and the effect value from the spell's row (cost[mastery], effect[mastery]). A cast takes the cost from the hero's mana; a hero with less mana than the cost cannot cast the spell, so mana never goes below 0. The creatures in the armies change the cost (BAT-MAG-054); a side's Familiars gain from the other hero's cast (BAT-MAG-055) and Wraiths drain the enemy hero (BAT-MAG-056)."
 numeric  = "integer"
 
   [[rule.source]]
@@ -1879,6 +1879,11 @@ numeric  = "integer"
   ref        = "lib/mapObjects/CGHeroInstance.cpp L792-L813 getSpellSchoolLevel: the best school level of the spell, at most Expert; lib/battle/CBattleInfoCallback.cpp L2111-L2136 getSpellCost: the cost at that level"
   url        = "https://github.com/vcmi/vcmi/blob/1.7.5/lib/mapObjects/CGHeroInstance.cpp#L792-L813"
   retrieved  = "2026-10-05"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (docs/formats/installation.md 7.22): the mastery is a function of the hero (0x4E5080, 0x4E5100: Armageddon at Expert with Armageddon's Blade, else the battlefield's raise or the best school level); the cost (0x4E5240) takes it"
   confidence = "high"
 
 [[rule]]

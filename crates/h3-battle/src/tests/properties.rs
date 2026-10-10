@@ -22,7 +22,7 @@ use proptest::prelude::{
 };
 use proptest::test_runner::Config;
 
-use super::support::{CREATURES, Rate, hero, ruleset_with};
+use super::support::{CREATURES, Rate, hero, masteries, ruleset_with};
 use crate::event::StrikeFlags;
 use crate::{
     BattleState, CastTarget, CastTargets, Command, Event, EventKind, Hex, LegalCommands, SpellSet,
@@ -260,7 +260,7 @@ fn make_setup(
     .collect();
     led.magic.spell_book = Some(book.clone());
     led.magic.mana = u16::try_from(magic & 63).unwrap();
-    led.magic.schools = [u8::try_from((magic >> 12) & 3).unwrap(), 1, 0, 0];
+    led.magic.masteries = masteries(r, [u8::try_from((magic >> 12) & 3).unwrap(), 1, 0, 0]);
     led.power = 2;
     led.effects.extend([
         BattleEffect::SpellDamage {
@@ -654,7 +654,7 @@ proptest! {
                 hero.surrender_discount_bp = discount;
                 hero.funds = funds;
                 hero.magic.book = SpellSet::default();
-                hero.magic.schools = [3; 4];
+                hero.magic.masteries = crate::magic::Masteries::of(&masteries(&r, [3; 4]));
                 hero.magic.bonuses.all = Rate::bp(discount.into());
             }
             // covers: BAT-MAG-049

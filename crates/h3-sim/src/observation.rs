@@ -22,8 +22,8 @@
 //! point 9, ADR-0014 point 8): `[Tactics level, ranged bonus bp, melee bonus bp, damage
 //! reduction bp, the commanded Ballista's shots per turn, its double-damage chance bp, the
 //! commanded tent's heal bonus bp, surrender discount bp, funds, surrender price (0 if the side
-//! may not surrender)]`, the mastery of each of the [`MAX_SPELL_SCHOOLS`] schools by handle,
-//! and the spell book: one feature per spell handle below [`MAX_SPELLS`], 1 if the book has it.
+//! may not surrender)]` and the spell book: one feature per spell handle below [`MAX_SPELLS`], 0
+//! if the book lacks it, else 1 + the hero's mastery of it (1 none to 4 Expert).
 //! Per stack: `[present, alive, own, creature handle, count, top_hp, max_hp, attack, defense,
 //! damage_min, damage_max, speed, x, y, acted, waited, retaliated, defending, active, morale,
 //! luck, shots, retaliations left (255 = unlimited), had good morale this round, two-hex,
@@ -47,28 +47,27 @@
 //! with the timed effects, and the per-stack effect features. v7 (E04b T6b): created in battle,
 //! clone and the clone's rounds left. v8 (E04b T7b1): casts left. v9 (E04b T7b2a): the drawn
 //! spell global. v10 (E04b T7b2b): the hero's spell book and the stack's draw candidates. v11
-//! (E04b T7b4): the two periodic-cast globals.
+//! (E04b T7b4): the two periodic-cast globals. v12 (E04b T8a): the book's features carry each
+//! spell's mastery, the school masteries are gone (masteries are derived per spell, BAT-Q19).
 
 use h3_battle::{
     DamageRoll, HeroView, Observation, OwnHeroView, STACK_CAPACITY, StackFlags, StackTraits,
 };
-use h3_content::{MAX_SPELL_SCHOOLS, MAX_SPELLS};
+use h3_content::MAX_SPELLS;
 use h3_contracts::BattleSide;
 
 /// Version of this encoding; bump on any change of the layout above (and bump the C ABI
 /// version with it, ADR-0011).
-pub const OBSERVATION_ENCODING_VERSION: u32 = 11;
+pub const OBSERVATION_ENCODING_VERSION: u32 = 12;
 
 /// Global features.
 pub const GLOBALS: usize = 14;
 /// The public features at the start of a hero block; the rest are private to the hero's side.
 pub const HERO_PUBLIC_FEATURES: usize = 12;
-/// The private features before the school masteries.
+/// The private features before the spell book.
 const HERO_PRIVATE_VALUES: usize = 10;
-/// Offset of the school masteries in a hero block.
-const HERO_SCHOOLS: usize = HERO_PUBLIC_FEATURES + HERO_PRIVATE_VALUES;
 /// Offset of the spell book in a hero block.
-const HERO_BOOK: usize = HERO_SCHOOLS + MAX_SPELL_SCHOOLS;
+const HERO_BOOK: usize = HERO_PUBLIC_FEATURES + HERO_PRIVATE_VALUES;
 /// Features per hero block.
 pub const HERO_FEATURES: usize = HERO_BOOK + MAX_SPELLS;
 /// Effects per stack the encoding shows.
@@ -116,7 +115,7 @@ fn encode_hero(view: Option<HeroView>, own: Option<OwnHeroView>, out: &mut [f32]
         ]);
     }
     if let Some(h) = own {
-        out[HERO_PUBLIC_FEATURES..HERO_SCHOOLS].copy_from_slice(&[
+        out[HERO_PUBLIC_FEATURES..HERO_BOOK].copy_from_slice(&[
             f32::from(h.tactics),
             h.damage.ranged.bp as f32,
             h.damage.melee.bp as f32,
@@ -129,11 +128,8 @@ fn encode_hero(view: Option<HeroView>, own: Option<OwnHeroView>, out: &mut [f32]
             h.funds as f32,
             h.surrender_price.map_or(0.0, |p| p as f32),
         ]);
-        for (o, level) in out[HERO_SCHOOLS..HERO_BOOK].iter_mut().zip(h.schools) {
-            *o = f32::from(level);
-        }
         for spell in h.spell_book.iter() {
-            out[HERO_BOOK + spell.index()] = 1.0;
+            out[HERO_BOOK + spell.index()] = f32::from(1 + h.masteries.get(spell));
         }
     }
 }
@@ -296,7 +292,7 @@ mod tests {
         assert_eq!(out[OBSERVATION_LEN], 9.0);
         let mut short = vec![0.0; 3];
         assert_eq!(encode(&obs, 17, &mut short), Err(OBSERVATION_LEN));
-        assert_eq!(OBSERVATION_LEN, 14 + 2 * (12 + 10 + 4 + 128) + 59 * 42);
+        assert_eq!(OBSERVATION_LEN, 14 + 2 * (12 + 10 + 128) + 59 * 42);
         assert_eq!(coords(20, 0), (0.0, 20.0));
         // A clone with three rounds left (BAT-MAG-038).
         let mut obs = obs;
@@ -355,17 +351,57 @@ mod tests {
             0.0,
             1.0,
         ];
-        // Masteries by school handle (storm, stone) and the books by spell handle (spark,
-        // cinders, arc, blight, ward, farsight, glare, hasten, drag, fury, zeal, gloom, boon,
-        // bane, corrode, aegis, hallow, smiting, riposte, purge, mend, blaze, rage, veil, glass,
-        // haze, dazzle, rampage, charm, bulwark, scorch, blink, mire, snare, uproot).
-        let schools = [[1.0, 0.0, 0.0, 0.0], [0.0, 3.0, 0.0, 0.0]];
-        let books: [&[usize]; 2] = [
+        // The books by spell handle (spark, cinders, arc, blight, ward, farsight, glare, hasten,
+        // drag, fury, zeal, gloom, boon, bane, corrode, aegis, hallow, smiting, riposte, purge,
+        // mend, blaze, rage, veil, glass, haze, dazzle, rampage, charm, bulwark, scorch, blink,
+        // mire, snare, uproot, revive, offer, copy, conjure), each as 1 + its mastery: Brea's
+        // storm spells at Basic, her stone ones (blight, revive) at none; Corwin's stone spells at
+        // Expert, his storm ones (spark, arc) and hallow at none.
+        let books: [&[(usize, f32)]; 2] = [
             &[
-                0, 1, 2, 3, 4, 7, 8, 9, 17, 18, 20, 21, 24, 25, 28, 30, 31, 33, 35, 36, 37,
+                (0, 2.0),
+                (1, 2.0),
+                (2, 2.0),
+                (3, 1.0),
+                (4, 2.0),
+                (7, 2.0),
+                (8, 2.0),
+                (9, 2.0),
+                (17, 2.0),
+                (18, 2.0),
+                (20, 2.0),
+                (21, 2.0),
+                (24, 2.0),
+                (25, 2.0),
+                (28, 2.0),
+                (30, 2.0),
+                (31, 2.0),
+                (33, 2.0),
+                (35, 1.0),
+                (36, 2.0),
+                (37, 2.0),
             ],
             &[
-                0, 2, 3, 10, 11, 12, 13, 14, 15, 16, 19, 22, 23, 26, 27, 29, 32, 34, 35, 38,
+                (0, 1.0),
+                (2, 1.0),
+                (3, 4.0),
+                (10, 4.0),
+                (11, 4.0),
+                (12, 4.0),
+                (13, 4.0),
+                (14, 4.0),
+                (15, 4.0),
+                (16, 1.0),
+                (19, 4.0),
+                (22, 4.0),
+                (23, 4.0),
+                (26, 4.0),
+                (27, 4.0),
+                (29, 4.0),
+                (32, 4.0),
+                (34, 4.0),
+                (35, 4.0),
+                (38, 4.0),
             ],
         ];
         let price = |side| s.surrender_price(&r, side).unwrap() as f32;
@@ -394,7 +430,7 @@ mod tests {
             10_000.0,
             price(Defender),
         ];
-        for (viewer, globals, own, other, private, schools, book) in [
+        for (viewer, globals, own, other, private, book) in [
             (
                 Attacker,
                 [
@@ -403,7 +439,6 @@ mod tests {
                 brea,
                 corwin,
                 brea_private,
-                schools[0],
                 books[0],
             ),
             (
@@ -414,17 +449,16 @@ mod tests {
                 corwin,
                 brea,
                 corwin_private,
-                schools[1],
                 books[1],
             ),
         ] {
             encode(&observe(&s, &r, viewer), 17, &mut out).unwrap();
             assert_eq!(out[..GLOBALS], globals);
             assert_eq!(hero(&out, 0)[..HERO_PUBLIC_FEATURES], own);
-            assert_eq!(hero(&out, 0)[HERO_PUBLIC_FEATURES..HERO_SCHOOLS], private);
-            assert_eq!(hero(&out, 0)[HERO_SCHOOLS..HERO_BOOK], schools);
-            let known: Vec<usize> = (0..MAX_SPELLS)
-                .filter(|i| hero(&out, 0)[HERO_BOOK + i] == 1.0)
+            assert_eq!(hero(&out, 0)[HERO_PUBLIC_FEATURES..HERO_BOOK], private);
+            let known: Vec<(usize, f32)> = (0..MAX_SPELLS)
+                .map(|i| (i, hero(&out, 0)[HERO_BOOK + i]))
+                .filter(|&(_, v)| v > 0.0)
                 .collect();
             assert_eq!(known, book);
             assert_eq!(hero(&out, 1)[..HERO_PUBLIC_FEATURES], other);
@@ -447,7 +481,7 @@ mod tests {
         assert_eq!(out[7..GLOBALS], [1.0, 0.0, 0.0, 0.0, 0.0, 255.0, 255.0]);
         assert!(hero(&out, 1).iter().all(|v| *v == 0.0));
         assert_eq!(hero(&out, 0)[16..18], [0.0, 0.0]);
-        assert_eq!(hero(&out, 0)[HERO_SCHOOLS - 1], 0.0);
+        assert_eq!(hero(&out, 0)[HERO_BOOK - 1], 0.0);
     }
 
     #[test]

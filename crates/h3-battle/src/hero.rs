@@ -10,8 +10,7 @@ use core::num::NonZeroU32;
 
 use h3_content::{
     CreatureFlag, CreatureSelector, CreatureStat, CreatureType, CreatureTypeId, FULL_BP,
-    HeroTypeId, MAX_SKILL_LEVEL, MAX_SPELL_SCHOOLS, Ruleset, SINGLE_PRECISION_RATES, SpellCategory,
-    SpellScope,
+    HeroTypeId, MAX_SKILL_LEVEL, Ruleset, SINGLE_PRECISION_RATES, SpellCategory, SpellScope,
 };
 use h3_contracts::{
     BallistaControl, BattleEffect, BattleHero, BattleSide, DamageBonuses, MAX_BATTLE_EFFECTS, Rate,
@@ -20,7 +19,7 @@ use h3_contracts::{
 use h3_kernel::{CanonicalHash, StateHasher};
 
 use crate::error::{HeroError, SetupError};
-use crate::magic::{HeroMagic, SpellBonuses, SpellSet};
+use crate::magic::{HeroMagic, Masteries, SpellBonuses, SpellSet};
 use crate::state::StackTraits;
 
 /// What both sides see of a side's hero (ADR-0013 point 9, ADR-0014 point 8): identity, primary
@@ -54,7 +53,7 @@ pub struct HeroView {
 
 /// What only the hero's own side sees of it (ADR-0013 point 9, ADR-0014 point 8;
 /// `Observation::own_hero`): the values of its skills, its surrender discount, its funds and the
-/// price of its surrender, its spell book, school masteries and spell bonuses.
+/// price of its surrender, its spell book, spell masteries and spell bonuses.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct OwnHeroView {
     /// Tactics level, 0..=3 (BAT-TAC-001).
@@ -75,8 +74,8 @@ pub struct OwnHeroView {
     pub surrender_price: Option<u32>,
     /// The spells in its spell book (none without a book; BAT-MAG-001).
     pub spell_book: SpellSet,
-    /// Mastery per spell school, by school handle (BAT-MAG-002).
-    pub schools: [u8; MAX_SPELL_SCHOOLS],
+    /// Its mastery of each spell (BAT-MAG-002).
+    pub masteries: Masteries,
     /// Its spell-damage bonuses (BAT-MAG-004).
     pub spell_bonuses: SpellBonuses,
 }
@@ -310,21 +309,30 @@ pub(crate) fn check(
         return Err(invalid(HeroError::UnknownFaction));
     }
     let magic = &hero.magic;
-    if magic.schools.iter().any(|&level| level > MAX_SKILL_LEVEL) {
-        return Err(invalid(HeroError::SchoolLevel));
-    }
     let school_count = ruleset.spell_schools().len();
-    let unknown_school = magic
-        .schools
-        .iter()
-        .skip(school_count)
-        .any(|&level| level > 0)
-        || hero.effects.iter().any(|e| {
-            matches!(e, BattleEffect::SpellDamage { scope: SpellScope::School(l), .. }
-                if l.index() >= school_count)
-        });
+    let unknown_school = hero.effects.iter().any(|e| {
+        matches!(e, BattleEffect::SpellDamage { scope: SpellScope::School(l), .. }
+            if l.index() >= school_count)
+    });
     if unknown_school {
         return Err(invalid(HeroError::UnknownSchool));
+    }
+    for (i, &(id, level)) in magic.masteries.iter().enumerate() {
+        ruleset
+            .spell(id)
+            .ok_or_else(|| invalid(HeroError::UnknownSpell))?;
+        if magic
+            .masteries
+            .get(..i)
+            .unwrap_or_default()
+            .iter()
+            .any(|&(s, _)| s == id)
+        {
+            return Err(invalid(HeroError::DuplicateSpell));
+        }
+        if !(1..=MAX_SKILL_LEVEL).contains(&level) {
+            return Err(invalid(HeroError::MasteryLevel));
+        }
     }
     if hero.effects.iter().any(|e| match *e {
         BattleEffect::SpellDamage {

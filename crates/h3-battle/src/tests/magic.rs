@@ -126,7 +126,7 @@ fn mastery_is_the_best_school_and_selects_cost_and_effect() {
     let r = ruleset();
     let mut h = mage(&r, &["bolt", "smite"]);
     // Air Basic, fire Expert: bolt (air) at Basic, smite (air and fire) at Expert.
-    h.magic.schools = [1, 3, 0, 0];
+    h.magic.masteries = masteries(&r, [1, 3, 0, 0]);
     let start = || {
         led(
             &r,
@@ -409,7 +409,7 @@ fn the_casters_bonuses_apply_in_the_originals_order() {
     let bolt = spell(&r, "bolt");
     let mut h = mage(&r, &["bolt", "smite"]);
     // Advanced air: bolt 3 × 10 + 20 = 50 for 4 mana.
-    h.magic.schools = [2, 0, 0, 0];
+    h.magic.masteries = masteries(&r, [2, 0, 0, 0]);
     h.effects = vec![
         BattleEffect::SpellDamage {
             scope: SpellScope::All,
@@ -498,7 +498,7 @@ fn the_casters_bonuses_apply_in_the_originals_order() {
             level: 10,
         }]
     );
-    assert_eq!(own.schools, [2, 0, 0, 0]);
+    assert_eq!(own.masteries.get(bolt), 2);
     assert!(own.spell_book.contains(bolt));
     for viewer in BattleSide::BOTH {
         assert_eq!(observe(&s, &r, viewer).heroes[0].unwrap().casts, 1);

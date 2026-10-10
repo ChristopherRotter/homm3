@@ -1566,7 +1566,9 @@ Summon Boat and Scuttle Boat (0, 1; the Admiral's Hat gives them as its part); T
 would give it otherwise. The spell table's flag `0x2000` (§7.6, "granted by an artifact") is set
 on spell 57 alone, so the packs carry the exception as a spell attribute harvested from that flag
 (`granted_by_name_only`): a grant by school or level skips such a spell, a grant naming it gives
-it.
+it. Equipping Titan's Thunder also puts a Spell Book into an empty book position (0x4E2A64 in
+0x4E2A00, H3API's `GiveArtifact`): an equipping rule for the adventure epics (E08–E10); the
+details a battle gets from then on simply hold the book.
 
 **Mastery of a spell** (0x4E5080, H3API's `GetSpellExpertise`; arguments spell and battlefield):
 Armageddon (26) is cast at Expert while the hero wears Armageddon's Blade (its 19 positions, then

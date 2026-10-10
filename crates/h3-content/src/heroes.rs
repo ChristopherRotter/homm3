@@ -144,6 +144,9 @@ pub struct Spell {
     /// The creature a summon effect summons (pack format v18; the Summon Elemental spells, their
     /// elementals, `installation.md` §7.19).
     pub summons: Option<CreatureTypeId>,
+    /// Only a grant naming the spell gives it, never one by school or level (pack format v30;
+    /// Titan's Lightning Bolt, the spell flag `0x2000`, `installation.md` §7.22; HER-SPL-002).
+    pub granted_by_name_only: bool,
 }
 
 /// Handle of a spell in a [`crate::Ruleset`].
@@ -457,6 +460,7 @@ impl HeroContent {
                     .as_ref()
                     .map(|c| refs.resolve(c, refs.creatures, "creature"))
                     .transpose()?,
+                granted_by_name_only: def.granted_by_name_only,
             });
         }
         // Counters and dispel lists may name a later spell of the same pack, so all are
@@ -701,7 +705,7 @@ impl HeroContent {
 
 impl CanonicalHash for HeroContent {
     /// Schools (key, name, protection rank (v18)); spells (key, name, category, level, schools, cost, power, effect,
-    /// polarity, magic (v14), counters (v17), dispels and spares (v19), tests as (v26), summons (v27)); skills (key, name, the three effect lists); classes (key, name, faction,
+    /// polarity, magic (v14), counters (v17), dispels and spares (v19), tests as (v26), summons (v27), granted by name only (v39)); skills (key, name, the three effect lists); classes (key, name, faction,
     /// primary, gains, weights); hero types (key, name, class, skills, spell book, spells,
     /// army, war machines, specialty); then the artifact content (`hash_artifacts`); then the
     /// hero parameters as presence flag + fields (v11).
@@ -729,6 +733,7 @@ impl CanonicalHash for HeroContent {
             s.spares.hash_into(h);
             s.tests_as.hash_into(h);
             s.summons.hash_into(h);
+            h.write_bool(s.granted_by_name_only);
         }
         h.write_len(self.skills.items.len());
         for s in &self.skills.items {

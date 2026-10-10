@@ -5522,11 +5522,12 @@ slot = "spell_book"
 effects = [{ kind = "spell_book" }]
 
 [[artifact]]
-id = "spell_scroll"  # original id 1; pending: E04b
+id = "spell_scroll"  # original id 1
 name = "Spell Scroll"
 class = "special"
 cost = { "gold" = 2500 }
 slot = "misc"
+effects = [{ kind = "scroll" }]
 
 [[artifact]]
 id = "the_grail"  # original id 2; pending: E08-E10
@@ -6085,21 +6086,21 @@ cost = { "gold" = 20000 }
 slot = "shoulders"
 
 [[artifact]]
-id = "charm_of_mana"  # original id 73; pending: E04b
+id = "charm_of_mana"  # original id 73; pending: E08-E10
 name = "Charm of Mana"
 class = "treasure"
 cost = { "gold" = 500 }
 slot = "misc"
 
 [[artifact]]
-id = "talisman_of_mana"  # original id 74; pending: E04b
+id = "talisman_of_mana"  # original id 74; pending: E08-E10
 name = "Talisman of Mana"
 class = "treasure"
 cost = { "gold" = 1000 }
 slot = "misc"
 
 [[artifact]]
-id = "mystic_orb_of_mana"  # original id 75; pending: E04b
+id = "mystic_orb_of_mana"  # original id 75; pending: E08-E10
 name = "Mystic Orb of Mana"
 class = "treasure"
 cost = { "gold" = 1500 }
@@ -6185,32 +6186,36 @@ slot = "misc"
 effects = [{ kind = "luck_at_most", affects = "both", value = 0 }]
 
 [[artifact]]
-id = "tome_of_fire_magic"  # original id 86; pending: E04b
+id = "tome_of_fire_magic"  # original id 86
 name = "Tome of Fire Magic"
 class = "relic"
 cost = { "gold" = 20000 }
 slot = "misc"
+effects = [{ kind = "spells", school = "fire" }]
 
 [[artifact]]
-id = "tome_of_air_magic"  # original id 87; pending: E04b
+id = "tome_of_air_magic"  # original id 87
 name = "Tome of Air Magic"
 class = "relic"
 cost = { "gold" = 20000 }
 slot = "misc"
+effects = [{ kind = "spells", school = "air" }]
 
 [[artifact]]
-id = "tome_of_water_magic"  # original id 88; pending: E04b
+id = "tome_of_water_magic"  # original id 88
 name = "Tome of Water Magic"
 class = "relic"
 cost = { "gold" = 20000 }
 slot = "misc"
+effects = [{ kind = "spells", school = "water" }]
 
 [[artifact]]
-id = "tome_of_earth_magic"  # original id 89; pending: E04b
+id = "tome_of_earth_magic"  # original id 89
 name = "Tome of Earth Magic"
 class = "relic"
 cost = { "gold" = 20000 }
 slot = "misc"
+effects = [{ kind = "spells", school = "earth" }]
 
 [[artifact]]
 id = "boots_of_levitation"  # original id 90; pending: E08-E10
@@ -6456,13 +6461,15 @@ name = "Sea Captain's Hat"
 class = "relic"
 cost = { "gold" = 15000 }
 slot = "head"
+effects = [{ kind = "spells", spell = "summon_boat" }, { kind = "spells", spell = "scuttle_boat" }]
 
 [[artifact]]
-id = "spellbinders_hat"  # original id 124; pending: E04b
+id = "spellbinders_hat"  # original id 124
 name = "Spellbinder's Hat"
 class = "relic"
 cost = { "gold" = 30000 }
 slot = "head"
+effects = [{ kind = "spells", level = 5 }]
 
 [[artifact]]
 id = "shackles_of_war"  # original id 125

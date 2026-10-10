@@ -7,8 +7,7 @@ use core::num::NonZeroU32;
 
 use h3_content::{
     Affects, ArtifactTypeId, CompiledHeroEffect, CreatureSelector, CreatureStat, CreatureTypeId,
-    FULL_BP, HeroEffect, MAX_SPELL_SCHOOLS, Ruleset, SINGLE_PRECISION_RATES, SchoolId, SpellId,
-    SpellScope,
+    FULL_BP, HeroEffect, Ruleset, SINGLE_PRECISION_RATES, SchoolId, SpellId, SpellScope,
 };
 use h3_contracts::{
     BallistaControl, BattleEffect, BattleHero, BattleMagic, DamageBonuses, FactionGroup,
@@ -18,14 +17,15 @@ use h3_kernel::arith::{SINGLE_BITS, X87};
 
 use crate::details::{HeroDetails, PrimarySkill, check};
 use crate::error::DetailsError;
+use crate::spells;
 
 /// Derives what a battle needs to know about the hero (`BattleSetup.heroes`): the hero type, the
 /// effective primary skills (HER-BAT-001), the Tactics level (HER-BAT-002), the morale and luck
 /// effects (HER-BAT-003), the damage bonuses (HER-BAT-004), the war machines it commands
 /// (HER-BAT-005), the `NoRetreat` effect (HER-BAT-006), the surrender discount (HER-BAT-007),
 /// the stack statistic effects (HER-BAT-008), the stack trait effects (HER-BAT-009), the
-/// alignment groups (HER-BAT-010), the magic (HER-BAT-011: spell book, school masteries, the mana
-/// passed through) and the spell bonuses (HER-BAT-012). The details are validated first.
+/// alignment groups (HER-BAT-010), the magic (HER-BAT-011: the spell book, HER-SPL-002, and the
+/// spell masteries, HER-SPL-003; the mana passed through) and the spell bonuses (HER-BAT-012). The details are validated first.
 ///
 /// The maximum mana stays 0 (informative; it is derived with hero progression, E08–E10).
 ///
@@ -116,28 +116,17 @@ pub fn derive_battle_hero(
     Ok(hero)
 }
 
-/// The hero's magic (HER-BAT-011): the known spells as its spell book if one of its effects
-/// gives a spell book (each artifact type once), the highest `school_mastery` level per school,
-/// the mana as given.
+/// The hero's magic (HER-BAT-011): its available spells ([`crate::available_spells`]) as its
+/// spell book if one of its effects gives a spell book (each artifact type once), its spell
+/// masteries ([`crate::spell_masteries`]), the mana as given.
 fn magic(details: &HeroDetails, ruleset: &Ruleset) -> BattleMagic {
-    let mut schools = [0u8; MAX_SPELL_SCHOOLS];
-    let mut book = false;
-    for effect in effects(details, ruleset, Count::OncePerType) {
-        match *effect {
-            HeroEffect::SchoolMastery { school, level } => {
-                // Content has at most `MAX_SPELL_SCHOOLS` schools.
-                let mastery = &mut schools[school.index().min(MAX_SPELL_SCHOOLS - 1)];
-                *mastery = (*mastery).max(level);
-            }
-            HeroEffect::SpellBook => book = true,
-            _ => {}
-        }
-    }
+    let book = effects(details, ruleset, Count::OncePerType)
+        .any(|effect| matches!(effect, HeroEffect::SpellBook));
     BattleMagic {
-        spell_book: book.then(|| details.spells.clone()),
+        spell_book: book.then(|| spells::available(details, ruleset)),
+        masteries: spells::masteries(details, ruleset),
         mana: details.mana,
         max_mana: 0,
-        schools,
     }
 }
 
@@ -357,7 +346,7 @@ fn alignment_groups(details: &HeroDetails, ruleset: &Ruleset) -> Vec<BattleEffec
 
 /// How often a worn artifact's effects count.
 #[derive(Clone, Copy, PartialEq, Eq)]
-enum Count {
+pub(crate) enum Count {
     /// Once per worn copy (and per combination containing it).
     PerCopy,
     /// Once per artifact type, however many copies are worn.
@@ -454,7 +443,8 @@ fn grown_effects<'a>(
             .map(move |effect| (effect, growth))
     });
     let mut types = BTreeSet::new();
-    for &id in &details.worn {
+    for item in &details.worn {
+        let id = item.artifact;
         types.insert(id);
         let parts = ruleset.artifact(id).map(|a| a.parts.as_slice());
         types.extend(parts.unwrap_or_default().iter().copied());
@@ -620,7 +610,7 @@ fn machine_control(details: &HeroDetails, ruleset: &Ruleset) -> MachineControl {
 /// Every effect the hero's details bring into a battle: its secondary skills at their levels,
 /// its worn artifacts ([`artifact_effects`]) and its specialty. References the ruleset does not
 /// know are skipped (the details are validated before).
-fn effects<'a>(
+pub(crate) fn effects<'a>(
     details: &'a HeroDetails,
     ruleset: &'a Ruleset,
     count: Count,
@@ -639,7 +629,7 @@ fn effects<'a>(
 /// The effects of the worn artifacts: a combination together with its parts, an artifact that
 /// needs a skill only while the hero has that skill at any level, each artifact once per worn
 /// copy or once per type as `count` says.
-fn artifact_effects<'a>(
+pub(crate) fn artifact_effects<'a>(
     details: &'a HeroDetails,
     ruleset: &'a Ruleset,
     count: Count,
@@ -648,7 +638,8 @@ fn artifact_effects<'a>(
     details
         .worn
         .iter()
-        .flat_map(|&id| {
+        .flat_map(|item| {
+            let id = item.artifact;
             let parts = ruleset.artifact(id).map(|a| a.parts.as_slice());
             core::iter::once(id).chain(parts.unwrap_or_default().iter().copied())
         })

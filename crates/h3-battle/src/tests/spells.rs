@@ -356,7 +356,7 @@ fn chain_lightning_jumps_to_the_nearest_stack_on_the_screen() {
     // Equal distances: the defender's stacks come first, then by id; the chain may strike the
     // caster's own stacks. At Advanced it strikes four.
     let mut adept = mage(&r, &["chain"]);
-    adept.magic.schools = [2, 0, 0, 0];
+    adept.magic.masteries = masteries(&r, [2, 0, 0, 0]);
     let mut s = arena(
         &r,
         [Some(adept), None],

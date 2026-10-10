@@ -808,14 +808,21 @@ fn magic_and_spell_bonuses_are_derived() {
     d.skills
         .extend([(skill(&r, "t:wisdom"), 2), (skill(&r, "t:logistics"), 3)]);
     let hero = derive_battle_hero(&d, &r).unwrap();
-    // The book gives the known spells; air from Wisdom, fire from the band; mana as given.
+    // The book gives the known spells; air from Wisdom, fire from the band: every air spell at
+    // Advanced (the ability has no school); mana as given.
+    let air = |level| {
+        ["t:bolt", "t:portal", "t:titan"]
+            .map(|k| (spell_id(&r, k), level))
+            .to_vec()
+    };
     assert_eq!(
         hero.magic,
         BattleMagic {
-            spell_book: Some(d.spells.clone()),
+            // In spell order (HER-SPL-002), not in the order learned.
+            spell_book: Some(vec![spell_id(&r, "t:bolt"), spell_id(&r, "t:portal")]),
+            masteries: air(2),
             mana: u16::MAX,
             max_mana: 0,
-            schools: [2, 2, 0, 0],
         }
     );
     // Every spell: Expert Logistics 15 % grown by 5 % x 10 levels (22.5 %) plus the hook's 1 %;
@@ -867,8 +874,80 @@ fn magic_and_spell_bonuses_are_derived() {
     d2.worn.push(art(&r, "t:book"));
     d2.spells.clear();
     let novice = derive_battle_hero(&d2, &r).unwrap();
-    assert_eq!(novice.magic.schools, [1, 2, 0, 0]);
+    assert_eq!(novice.magic.masteries, air(1));
     assert_eq!(novice.magic.spell_book, Some(vec![]));
+}
+
+// covers: HER-SPL-002, HER-SPL-003, HER-ART-003, HER-BAT-011
+#[test]
+fn available_spells_and_masteries_come_from_the_details() {
+    let r = magic_ruleset();
+    let id = |k| spell_id(&r, k);
+    let scroll_of = |k| ArtifactInstance::scroll(art(&r, "t:scroll").artifact, id(k));
+    let bare = HeroDetails {
+        skills: vec![],
+        worn: vec![],
+        backpack: vec![],
+        spells: vec![id("t:portal")],
+        ..details(&r)
+    };
+    let have = |worn: &[ArtifactInstance]| {
+        let d = HeroDetails {
+            worn: worn.to_vec(),
+            ..bare.clone()
+        };
+        available_spells(&d, &r).unwrap()
+    };
+    // The learned spells; a worn scroll adds its spell, one carried does not.
+    assert_eq!(have(&[]), [id("t:portal")]);
+    assert_eq!(have(&[scroll_of("t:bolt")]), [id("t:bolt"), id("t:portal")]);
+    let carried = HeroDetails {
+        backpack: vec![scroll_of("t:bolt")],
+        ..bare.clone()
+    };
+    assert_eq!(available_spells(&carried, &r), Ok(vec![id("t:portal")]));
+    // The tome every air spell, the crown every level-1 spell, both without the ability and
+    // without the spell only a grant naming it gives; the wand names it. Each spell once.
+    let both = [id("t:bolt"), id("t:portal")];
+    assert_eq!(have(&[art(&r, "t:tome")]), both);
+    assert_eq!(have(&[art(&r, "t:crown"), art(&r, "t:tome")]), both);
+    assert_eq!(have(&[art(&r, "t:wand")]), [id("t:portal"), id("t:titan")]);
+    // Masteries: none without a school; the wand raises the bolt to Expert; with Advanced air
+    // (Wisdom) every air spell at Advanced, the bolt still at Expert, whether the hero has the
+    // spell or not.
+    let wand = HeroDetails {
+        worn: vec![art(&r, "t:wand")],
+        ..bare.clone()
+    };
+    assert_eq!(spell_masteries(&bare, &r), Ok(vec![]));
+    assert_eq!(spell_masteries(&wand, &r), Ok(vec![(id("t:bolt"), 3)]));
+    let wise = HeroDetails {
+        skills: vec![(skill(&r, "t:wisdom"), 2)],
+        ..wand.clone()
+    };
+    assert_eq!(
+        spell_masteries(&wise, &r),
+        Ok(vec![
+            (id("t:bolt"), 3),
+            (id("t:portal"), 2),
+            (id("t:titan"), 2)
+        ])
+    );
+    // The battle hero's book holds them with a worn book.
+    let booked = HeroDetails {
+        worn: vec![art(&r, "t:wand"), art(&r, "t:book")],
+        ..wise
+    };
+    let hero = derive_battle_hero(&booked, &r).unwrap();
+    assert_eq!(
+        hero.magic.spell_book,
+        Some(vec![id("t:portal"), id("t:titan")])
+    );
+    assert_eq!(hero.magic.masteries, spell_masteries(&booked, &r).unwrap());
+    // Invalid details are reported.
+    let wrong = HeroDetails { level: 0, ..bare };
+    assert_eq!(available_spells(&wrong, &r), Err(DetailsError::LevelZero));
+    assert_eq!(spell_masteries(&wrong, &r), Err(DetailsError::LevelZero));
 }
 
 // covers: HER-BAT-008
@@ -916,7 +995,7 @@ proptest! {
         let d = HeroDetails {
             primary,
             skills: skills.iter().map(|&(s, l)| (SkillId::from_raw(s), l)).collect(),
-            worn: worn.iter().map(|&a| ArtifactTypeId::from_raw(a)).collect(),
+            worn: worn.iter().map(|&a| ArtifactTypeId::from_raw(a).into()).collect(),
             ..details(&r)
         };
         let derived = derive_battle_hero(&d, &r);

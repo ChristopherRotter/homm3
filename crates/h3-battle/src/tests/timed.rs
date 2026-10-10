@@ -43,7 +43,7 @@ fn timed_events(r: &Ruleset, events: &[Event]) -> Vec<(u8, std::string::String, 
 /// A mage with `spells` and the air mastery `mastery`.
 fn adept(r: &Ruleset, spells: &[&str], mastery: u8) -> BattleHero {
     let mut h = mage(r, spells);
-    h.magic.schools[0] = mastery;
+    h.magic.masteries = masteries(r, [mastery, 0, 0, 0]);
     h.magic.mana = 100;
     h
 }
@@ -198,7 +198,7 @@ fn a_recast_keeps_the_first_value_and_the_longer_duration() {
     new_round(&mut s, &r);
     assert_eq!(entry(&s, &r, 0, "haste").unwrap().rounds, Some(2));
     // Now at Expert: the mass version renews stack 0 with its first value and hastes stack 1.
-    s.heroes[0].as_mut().unwrap().magic.schools[0] = 3;
+    set_masteries(&mut s, 0, &r, [3, 0, 0, 0]);
     activate(&mut s, 0);
     let events = act(&mut s, &r, cast(&r, "haste", CastTarget::None)).unwrap();
     assert_eq!(
@@ -287,7 +287,7 @@ fn mass_versions_reach_their_side_and_spare_the_immune() {
     assert_eq!(timed_events(&r, &events), [(0, "mirth".into(), Some(3))]);
     assert_eq!(s.stacks()[0].morale, morale + 2);
     // A mind spell cannot be aimed at a mind-immune stack.
-    s.heroes[0].as_mut().unwrap().magic.schools[0] = 2;
+    set_masteries(&mut s, 0, &r, [2, 0, 0, 0]);
     new_round(&mut s, &r);
     activate(&mut s, 0);
     assert_eq!(

@@ -1,13 +1,13 @@
-//! `HeroDetails`, their validation (HER-DET-001, HER-SEC-001, HER-ART-001/002, HER-SPL-001) and
-//! the war machines a hero brings to a battle (HER-WAR-001).
+//! `HeroDetails`, their validation (HER-DET-001, HER-SEC-001, HER-ART-001 to 003, HER-SPL-001)
+//! and the war machines a hero brings to a battle (HER-WAR-001).
 
 use alloc::collections::BTreeSet;
 use alloc::vec;
 use alloc::vec::Vec;
 
 use h3_content::{
-    ArtifactSlotId, ArtifactTypeId, CreatureTypeId, HeroParams, HeroTypeId, MAX_HERO_SKILLS,
-    MAX_SKILL_LEVEL, Ruleset, SkillId, SpellCategory, SpellId,
+    ArtifactSlotId, ArtifactTypeId, CreatureTypeId, HeroEffect, HeroParams, HeroTypeId,
+    MAX_HERO_SKILLS, MAX_SKILL_LEVEL, Ruleset, SkillId, SpellCategory, SpellId,
 };
 
 use crate::error::DetailsError;
@@ -45,6 +45,36 @@ impl PrimarySkill {
     }
 }
 
+/// One artifact a hero wears or carries (E04b T8a): its type and, for an artifact whose type
+/// has the `scroll` effect (the Spell Scroll), the spell this copy holds (HER-ART-003).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct ArtifactInstance {
+    /// The artifact type.
+    pub artifact: ArtifactTypeId,
+    /// The spell of a scroll; `None` for every other artifact.
+    pub spell: Option<SpellId>,
+}
+
+impl ArtifactInstance {
+    /// A scroll holding `spell`.
+    pub const fn scroll(artifact: ArtifactTypeId, spell: SpellId) -> Self {
+        Self {
+            artifact,
+            spell: Some(spell),
+        }
+    }
+}
+
+impl From<ArtifactTypeId> for ArtifactInstance {
+    /// An artifact that holds no spell.
+    fn from(artifact: ArtifactTypeId) -> Self {
+        Self {
+            artifact,
+            spell: None,
+        }
+    }
+}
+
 /// The lasting details of a hero (ADR-0013 point 1): what the hero is between battles, apart
 /// from its army. Values are *base* values; what artifacts and the specialty add is derived
 /// ([`crate::derive_battle_hero`]).
@@ -68,11 +98,12 @@ pub struct HeroDetails {
     /// Secondary skills with their levels (1 Basic to 3 Expert), in display order.
     pub skills: Vec<(SkillId, u8)>,
     /// Worn artifacts, in any order; the same type may appear more than once.
-    pub worn: Vec<ArtifactTypeId>,
+    pub worn: Vec<ArtifactInstance>,
     /// Artifacts carried in the backpack, in backpack order.
-    pub backpack: Vec<ArtifactTypeId>,
-    /// Spells the hero knows. Whether they need a worn spell book is checked from E04b on, when
-    /// the spell book gets its effect.
+    pub backpack: Vec<ArtifactInstance>,
+    /// Spells the hero has learned (the original's `+0x3EA`): kept whatever it wears. The spells
+    /// it can cast add those of its worn artifacts ([`crate::available_spells`], HER-SPL-002)
+    /// and need a worn spell book (HER-BAT-011).
     pub spells: Vec<SpellId>,
     /// Spell points (E04b). May exceed the maximum (a Mana Vortex), so it is not bounded here.
     pub mana: u16,
@@ -112,7 +143,8 @@ pub(crate) fn check<'r>(
     if details.backpack.len() > usize::from(params.backpack) {
         return Err(DetailsError::BackpackFull);
     }
-    for &id in &details.backpack {
+    for &item in &details.backpack {
+        let id = item.artifact;
         let artifact = ruleset
             .artifact(id)
             .ok_or(DetailsError::UnknownArtifact(id))?;
@@ -123,6 +155,7 @@ pub(crate) fn check<'r>(
         if fixed {
             return Err(DetailsError::NotForBackpack(id));
         }
+        validate_scroll(item, ruleset)?;
     }
     validate_spells(&details.spells, ruleset)?;
     Ok(params)
@@ -149,15 +182,17 @@ fn validate_skills(skills: &[(SkillId, u8)], ruleset: &Ruleset) -> Result<(), De
 
 /// Every worn artifact has a slot, and the positions they and their locks occupy fit every
 /// slot's count.
-fn validate_worn(worn: &[ArtifactTypeId], ruleset: &Ruleset) -> Result<(), DetailsError> {
+fn validate_worn(worn: &[ArtifactInstance], ruleset: &Ruleset) -> Result<(), DetailsError> {
     // rule: HER-ART-001
     let slots = ruleset.artifact_slots();
     let mut used: Vec<u16> = vec![0; slots.len()];
-    for &id in worn {
+    for &item in worn {
+        let id = item.artifact;
         let artifact = ruleset
             .artifact(id)
             .ok_or(DetailsError::UnknownArtifact(id))?;
         let slot = artifact.slot.ok_or(DetailsError::NotWearable(id))?;
+        validate_scroll(item, ruleset)?;
         // The compiler resolved every slot and lock against the ruleset's slots.
         for s in core::iter::once(slot).chain(artifact.locks.iter().copied()) {
             used.get_mut(s.index())
@@ -176,18 +211,40 @@ fn validate_worn(worn: &[ArtifactTypeId], ruleset: &Ruleset) -> Result<(), Detai
     }
 }
 
+/// An artifact holds a spell exactly when its type has the `scroll` effect, and that spell is a
+/// spell of the ruleset that is not a creature ability. The artifact is known.
+fn validate_scroll(item: ArtifactInstance, ruleset: &Ruleset) -> Result<(), DetailsError> {
+    // rule: HER-ART-003
+    let scroll = ruleset
+        .artifact(item.artifact)
+        .is_some_and(|a| a.effects.iter().any(|e| matches!(e, HeroEffect::Scroll)));
+    match (scroll, item.spell) {
+        (true, None) => Err(DetailsError::ScrollWithoutSpell(item.artifact)),
+        (false, Some(_)) => Err(DetailsError::SpellOnArtifact(item.artifact)),
+        (true, Some(id)) => hero_spell(id, ruleset),
+        (false, None) => Ok(()),
+    }
+}
+
+/// `id` is a spell of the ruleset and not a creature ability.
+fn hero_spell(id: SpellId, ruleset: &Ruleset) -> Result<(), DetailsError> {
+    let spell = ruleset.spell(id).ok_or(DetailsError::UnknownSpell(id))?;
+    if spell.category == SpellCategory::Ability {
+        return Err(DetailsError::NotAHeroSpell(id));
+    }
+    Ok(())
+}
+
 /// Spells of the ruleset, each once, and none of them a creature ability.
 fn validate_spells(spells: &[SpellId], ruleset: &Ruleset) -> Result<(), DetailsError> {
     // rule: HER-SPL-001
     let mut seen = BTreeSet::new();
     for &id in spells {
-        let spell = ruleset.spell(id).ok_or(DetailsError::UnknownSpell(id))?;
+        ruleset.spell(id).ok_or(DetailsError::UnknownSpell(id))?;
         if !seen.insert(id) {
             return Err(DetailsError::DuplicateSpell(id));
         }
-        if spell.category == SpellCategory::Ability {
-            return Err(DetailsError::NotAHeroSpell(id));
-        }
+        hero_spell(id, ruleset)?;
     }
     Ok(())
 }
@@ -200,6 +257,6 @@ pub fn war_machines(details: &HeroDetails, ruleset: &Ruleset) -> Vec<CreatureTyp
     details
         .worn
         .iter()
-        .filter_map(|&id| ruleset.artifact(id).and_then(|a| a.war_machine))
+        .filter_map(|item| ruleset.artifact(item.artifact).and_then(|a| a.war_machine))
         .collect()
 }

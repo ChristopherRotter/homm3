@@ -1996,6 +1996,13 @@ url = "docs/formats/installation.md"
 retrieved = "2026-10-06"
 
 [[source]]
+id = "exe-available-spells"
+kind = "original-data"
+ref = "Heroes3.exe code reading (docs/formats/installation.md 7.22): the hero's available spells (0x4D95D0) are its learned ones plus a worn Spell Scroll's spell and the spell sets (0x4D9350) of the worn artifacts the loader marks from the list 0x63B998 (1, 128, 123, 124, 86-89, 135) and of such parts of worn combinations: the Tomes every spell 0-69 of their school (fire bit 2, air 1, water 4, earth 8), Spellbinder's Hat every spell 0-69 of level 5, Armageddon's Blade Armageddon, the Sea Captain's Hat Summon Boat and Scuttle Boat, Titan's Thunder Titan's Lightning Bolt, which every other set clears (0x4D9532); the hero casts Armageddon at Expert while it wears Armageddon's Blade (0x4E5080)"
+url = "docs/formats/installation.md"
+retrieved = "2026-10-10"
+
+[[source]]
 id = "exe-spell-specialist"
 kind = "original-data"
 ref = "Heroes3.exe code reading (docs/formats/installation.md 7.12): the specialty bonus 0x4E5FF0 switches on the spell (byte table 0x4E60E8, jumps 0x4E60CC): Bloodlust, Precision, Weakness, Stone Skin, Prayer and Haste by the stack's creature level (i32 table 0x63EAA8: 3, 3, 2, 2, 1, 1, 0), Slayer likewise (0x63EAC4: 4, 3, 2, 1, 0, 0, 0), Disrupting Ray 2, Fortune 3 - v; every other spell ceil((hero level div creature level) x t x 0.03)"
@@ -2292,22 +2299,75 @@ artifacts = ["Ring of the Magi"]
 effects = [{ kind = "spell_duration", rounds = 50 }]
 sources = ["exe-timed-spells", "vcmi-conjuring"]
 
+# The spells an artifact gives while worn (E04b T8a; pack format v30; HER-SPL-002): the original's
+# artifact spell sets 0x4D9350 for the ids of the list 0x63B998 (installation.md §7.22). A Tome
+# gives its school's spells, the Hat every spell of level 5, both without the creature abilities
+# and without Titan's Lightning Bolt (`granted_by_name_only`, from the spell flag 0x2000).
+[[artifacts.effects]]
+artifacts = ["Spell Scroll"]
+effects = [{ kind = "scroll" }]
+sources = ["exe-available-spells"]
+
+[[artifacts.effects]]
+artifacts = ["Tome of Fire Magic"]
+effects = [{ kind = "spells", school = "fire" }]
+sources = ["exe-available-spells"]
+
+[[artifacts.effects]]
+artifacts = ["Tome of Air Magic"]
+effects = [{ kind = "spells", school = "air" }]
+sources = ["exe-available-spells"]
+
+[[artifacts.effects]]
+artifacts = ["Tome of Water Magic"]
+effects = [{ kind = "spells", school = "water" }]
+sources = ["exe-available-spells"]
+
+[[artifacts.effects]]
+artifacts = ["Tome of Earth Magic"]
+effects = [{ kind = "spells", school = "earth" }]
+sources = ["exe-available-spells"]
+
+[[artifacts.effects]]
+artifacts = ["Spellbinder's Hat"]
+effects = [{ kind = "spells", level = 5 }]
+sources = ["exe-available-spells"]
+
+[[artifacts.effects]]
+artifacts = ["Sea Captain's Hat"]
+effects = [
+    { kind = "spells", spell = "summon_boat" },
+    { kind = "spells", spell = "scuttle_boat" },
+]
+sources = ["exe-available-spells"]
+
+# Armageddon at Expert while worn (0x4E5080; HER-SPL-003); its immunity to Armageddon is T8b's.
+[[artifacts.effects]]
+artifacts = ["Armageddon's Blade"]
+effects = [
+    { kind = "spells", spell = "base:armageddon" },
+    { kind = "spell_mastery", spell = "base:armageddon", level = 3 },
+]
+sources = ["exe-available-spells"]
+
+[[artifacts.effects]]
+artifacts = ["Titan's Thunder"]
+effects = [{ kind = "spells", spell = "titans_lightning_bolt" }]
+sources = ["exe-available-spells"]
+
 # Effects no epic has modelled yet; the pack marks these artifacts, and every artifact without a
 # modelled effect must be listed here.
 [[artifacts.pending]]
 epic = "E04b"
-what = "spell book, spells, spell immunity and resistance, spell damage, mana, Eagle Eye"
+what = "spell immunity and limits, opening spells, Eagle Eye"
 artifacts = [
-    "Spell Scroll", "Badge of Courage",
+    "Badge of Courage",
     "Bird of Perception", "Stoic Watchman", "Emblem of Cognizance",
-    "Charm of Mana", "Talisman of Mana", "Mystic Orb of Mana",
-    "Recanter's Cloak", "Tome of Fire Magic", "Tome of Air Magic", "Tome of Water Magic",
-    "Tome of Earth Magic", "Sphere of Permanence", "Orb of Vulnerability",
+    "Recanter's Cloak", "Sphere of Permanence", "Orb of Vulnerability",
     "Pendant of Dispassion", "Pendant of Second Sight", "Pendant of Holiness", "Pendant of Life",
     "Pendant of Death", "Pendant of Free Will", "Pendant of Negativity", "Pendant of Total Recall",
-    "Spellbinder's Hat", "Orb of Inhibition", "Armageddon's Blade",
-    "Angelic Alliance", "Armor of the Damned", "Power of the Dragon Father", "Titan's Thunder",
-    "Wizard's Well",
+    "Orb of Inhibition", "Armageddon's Blade",
+    "Angelic Alliance", "Armor of the Damned", "Power of the Dragon Father",
 ]
 
 [[artifacts.pending]]
@@ -2319,6 +2379,16 @@ artifacts = ["Catapult", "Golden Bow", "Bow of the Sharpshooter"]
 epic = "E08-E10"
 what = "Necromancy (outcome application)"
 artifacts = ["Amulet of the Undertaker", "Vampire's Cowl", "Dead Man's Boots", "Cloak of the Undead King"]
+
+# Mana is derived before the battle (E04b's non-goals): the daily spell points and Titan's
+# Thunder's spell book when equipped (installation.md §7.22) come with the hero's progression and
+# equipment.
+[[artifacts.pending]]
+epic = "E08-E10"
+what = "spell points per day, the spell book that equipping Titan's Thunder adds"
+artifacts = [
+    "Charm of Mana", "Talisman of Mana", "Mystic Orb of Mana", "Wizard's Well", "Titan's Thunder",
+]
 
 [[artifacts.pending]]
 epic = "E08-E10"

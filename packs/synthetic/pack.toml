@@ -1387,6 +1387,35 @@ id = "relic_stone"                  # no slot: carried in the backpack only
 name = "Relic Stone"
 class = "special"
 
+# Artifacts that give spells (pack format v30, E04b T8a; HER-SPL-002, HER-SPL-003, HER-ART-003).
+[[artifact]]
+id = "storm_codex"
+name = "Storm Codex"
+class = "relic"
+cost = { coin = 9000 }
+slot = "charm"
+effects = [{ kind = "spells", school = "storm" }]  # every storm spell while worn
+
+[[artifact]]
+id = "spark_wand"
+name = "Spark Wand"
+class = "major"
+cost = { coin = 4000 }
+slot = "hand"
+effects = [
+    { kind = "spells", level = 1 },                         # every level-1 spell
+    { kind = "spells", spell = "spark" },                   # this spell
+    { kind = "spell_mastery", spell = "spark", level = 3 }, # cast at Expert at least
+]
+
+[[artifact]]
+id = "scroll"
+name = "Scroll"
+class = "special"
+cost = { coin = 1000 }
+slot = "charm"
+effects = [{ kind = "scroll" }]     # each copy holds a spell of its own, given while worn
+
 # Hero parameters (Tier 2, E04a T4a): invented limits, smaller than the original's.
 [hero_params]
 primary_min = [0, 0, 1, 2]          # HER-DET-001: lower totals count as these

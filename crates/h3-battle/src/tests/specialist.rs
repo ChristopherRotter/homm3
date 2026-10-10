@@ -24,7 +24,7 @@ fn specialty(r: &Ruleset, name: &str, level: u8) -> BattleEffect {
 /// A mage with `spells`, Basic or better air (`mastery`), plenty of mana and `specialties`.
 fn specialist(r: &Ruleset, spells: &[&str], mastery: u8, specialties: &[(&str, u8)]) -> BattleHero {
     let mut h = mage(r, spells);
-    h.magic.schools[0] = mastery;
+    h.magic.masteries = masteries(r, [mastery, 0, 0, 0]);
     h.magic.mana = 100;
     h.effects = specialties
         .iter()
