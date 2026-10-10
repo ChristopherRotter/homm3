@@ -210,14 +210,14 @@ commands = [
     "A shoot 11 125",
 ]
 checkpoints = [
-    "0x7a8b508e04b3d041",
-    "0xcde450138a93bd8f",
-    "0xb28f7b0ab35ad169",
-    "0x58441948d8858434",
-    "0x3844bb078c23dac0",
-    "0x8c5fc1ea107af684",
-    "0x63be7a889be0c626",
-    "0x9d978ddbb6c59f41",
+    "0x992d6ce5295fe0e5",
+    "0x2fa27bf87a35905b",
+    "0x6a886a7205835fa7",
+    "0x1469772c07884ea6",
+    "0xf6146e75edfb686e",
+    "0xdeff9230646faaec",
+    "0xc4ff7cca2fe7bfee",
+    "0x2e830a5000b5b611",
 ]
 
 [replay]
@@ -230,7 +230,7 @@ packs = [[
     "0.1.0",
 ]]
 profile = "synthetic:faithful"
-ruleset_hash = "0x9222f941473b3fa7"
+ruleset_hash = "0x2660cbe139e7f1e7"
 rng = "xoshiro256starstar+splitmix64"
 rng_version = 1
 hash = "fnv1a64-le"
@@ -541,4 +541,4 @@ count = 4
 
 [result]
 winner = "attacker"
-final_hash = "0x7038b30d800ce8de"
+final_hash = "0x0f18b8b49ac6b6f6"
