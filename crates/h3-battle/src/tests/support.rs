@@ -1997,6 +1997,7 @@ fn timed_def(
                 } else {
                     CreatureFlags::default()
                 },
+                needs_damage: false,
             },
             effects: changes.iter().map(|&c| SpellEffect::Timed(c)).collect(),
             mind,
@@ -2149,6 +2150,7 @@ pub fn strike_defs() -> Vec<SpellDef> {
             conditions: TargetConditions {
                 requires,
                 excludes: CreatureFlags::default().with(CreatureFlag::WarMachine),
+                needs_damage: false,
             },
             effects: changes.iter().map(|&c| SpellEffect::Timed(c)).collect(),
             ends,
@@ -2268,6 +2270,7 @@ pub fn control_defs() -> Vec<SpellDef> {
     let machines = TargetConditions {
         requires: CreatureFlags::default(),
         excludes: flags(&[CreatureFlag::WarMachine]),
+        needs_damage: false,
     };
     let enemy = |change, conditions| SpellMagic {
         target: SpellTarget::Stack,
@@ -2290,6 +2293,7 @@ pub fn control_defs() -> Vec<SpellDef> {
                     TargetConditions {
                         requires: flags(&[CreatureFlag::Shooter]),
                         excludes: flags(&[CreatureFlag::WarMachine]),
+                        needs_damage: false,
                     },
                 )
             },
@@ -2305,6 +2309,7 @@ pub fn control_defs() -> Vec<SpellDef> {
                     TargetConditions {
                         requires: CreatureFlags::default(),
                         excludes: flags(&[CreatureFlag::Undead, CreatureFlag::WarMachine]),
+                        needs_damage: false,
                     },
                 )
             },
@@ -2414,6 +2419,7 @@ pub fn field_defs() -> Vec<SpellDef> {
                 conditions: TargetConditions {
                     requires: CreatureFlags::default(),
                     excludes: CreatureFlags::default().with(CreatureFlag::WarMachine),
+                    needs_damage: false,
                 },
                 effects: vec![SpellEffect::Teleport],
                 ..SpellMagic::default()
@@ -2502,7 +2508,11 @@ pub fn raise_defs() -> Vec<SpellDef> {
     let magic = |requires, excludes, effect| SpellMagic {
         target: SpellTarget::Stack,
         side: TargetSide::Own,
-        conditions: TargetConditions { requires, excludes },
+        conditions: TargetConditions {
+            requires,
+            excludes,
+            needs_damage: false,
+        },
         effects: vec![effect],
         ..SpellMagic::default()
     };
@@ -2589,6 +2599,7 @@ pub fn create_defs() -> Vec<SpellDef> {
                 conditions: TargetConditions {
                     requires: CreatureFlags::default(),
                     excludes: CreatureFlags::default().with(CreatureFlag::WarMachine),
+                    needs_damage: false,
                 },
                 effects: vec![SpellEffect::Clone],
                 ..SpellMagic::default()
@@ -2639,6 +2650,7 @@ fn spell_def((name, category, schools, target, side): SpellSpec) -> SpellDef {
             conditions: TargetConditions {
                 requires: CreatureFlags::default(),
                 excludes,
+                needs_damage: false,
             },
             effects: if castable {
                 vec![SpellEffect::Damage]

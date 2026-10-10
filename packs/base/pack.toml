@@ -3541,6 +3541,8 @@ polarity = "positive"
 target = "stack"
 side = "own"
 mass = "expert"
+excludes = ["undead"]
+needs_damage = true
 counters = ["curse"]
 effects = [{ kind = "timed", change = "maximum_damage" }]
 
@@ -3557,6 +3559,8 @@ polarity = "negative"
 target = "stack"
 side = "enemy"
 mass = "expert"
+excludes = ["undead"]
+needs_damage = true
 counters = ["bless"]
 effects = [{ kind = "timed", change = "minimum_damage" }]
 
@@ -3591,6 +3595,7 @@ polarity = "positive"
 target = "stack"
 side = "own"
 mass = "expert"
+requires = ["shooter"]
 effects = [{ kind = "timed", change = "ranged_attack" }]
 specialist = { kind = "creature_level", values = [3, 3, 2, 2, 1, 1, 0] }
 useful = "shooting"
@@ -3675,6 +3680,7 @@ target = "stack"
 side = "own"
 mass = "expert"
 mind = true
+excludes = ["no_morale"]
 effects = [{ kind = "timed", change = "morale" }]
 
 [[spell]]
@@ -3691,6 +3697,7 @@ target = "stack"
 side = "enemy"
 mass = "expert"
 mind = true
+excludes = ["no_morale"]
 effects = [{ kind = "timed", change = "morale_loss" }]
 
 [[spell]]
@@ -3706,6 +3713,7 @@ polarity = "positive"
 target = "stack"
 side = "own"
 mass = "expert"
+needs_damage = true
 effects = [{ kind = "timed", change = "luck" }]
 specialist = { kind = "total", value = 3 }
 
@@ -3722,6 +3730,7 @@ polarity = "negative"
 target = "stack"
 side = "enemy"
 mass = "expert"
+needs_damage = true
 effects = [{ kind = "timed", change = "luck_loss" }]
 
 [[spell]]
@@ -3771,6 +3780,7 @@ effect = [8, 8, 8, 8]
 polarity = "positive"
 target = "stack"
 side = "own"
+needs_damage = true
 effects = [{ kind = "timed", change = "slayer" }]
 specialist = { kind = "creature_level", values = [4, 3, 2, 1, 0, 0, 0] }
 useful = "enemy_king"

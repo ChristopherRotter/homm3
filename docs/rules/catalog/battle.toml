@@ -3331,3 +3331,30 @@ numeric  = "integer"
   retrieved  = "2026-10-10"
   confidence = "medium"
 
+
+[[rule]]
+id       = "BAT-MAG-067"
+title    = "The per-spell target conditions of the creature test (Bless, Curse, Precision, Mirth, Sorrow, Fortune, Misfortune, Slayer)"
+context  = "battle"
+status   = "implemented"
+summary  = "Bless and Curse never affect an undead stack or one whose creature's maximum damage is 0 (the First Aid Tent, the Ammo Cart; the Ballista is affected); Precision affects only a creature with flag shooter; Mirth and Sorrow never affect a creature with flag no_morale (undead, golems, elementals, war machines); Fortune, Misfortune and Slayer never affect a creature whose maximum damage is 0. These are spell conditions (SpellMagic.conditions: excludes, requires, needs_damage on the creature type's maximum damage), absolute: no negation lifts them (BAT-MAG-066), as the original tests them before the Orb of Vulnerability. They hold for every caster, the strike's spells (the Black Knights' Curse) and the drawn spells of the casting creatures too. Where VCMI differs (the Ballista under Bless and Curse, golems and elementals under the Orb for Mirth and Sorrow, the Tent and the Ammo Cart for Fortune, Misfortune and Slayer) the engine follows the reading (BAT-Q22), each an experiment candidate of batch 2e."
+numeric  = "integer"
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (docs/formats/installation.md §7.23, re-read 2026-10-10): 0x44A4D0's per-spell switch reads the creature type record (flags +0x10, maximum damage +0x60) before the Orb of Vulnerability's test 0x44A746: Bless 0 for undead (0x40000) and maximum damage 0, Curse likewise, Precision 0 without the shooter flag (0x04), Mirth and Sorrow 0 without morale (0x20000), Fortune, Misfortune and Slayer 0 for maximum damage 0"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "wiki"
+  ref        = "Bless, Curse (immune: Undead), Precision ('friendly ranged unit'), Mirth, Sorrow (mind spells; immune: golems, undead, elementals, war machines, Giants and Titans), War Machine (affected by Bless, Curse, Fortune, Misfortune, Slayer, Precision; 'damage dealing related buffs are effective for' the Ballista only) and Template:Spell Immunity Table (with the Orb of Vulnerability golems keep Mirth and Sorrow, undead Bless, Curse, Mirth and Sorrow) - Heroes 3 wiki"
+  url        = "https://heroes.thelazy.net/index.php/Template:Spell_Immunity_Table"
+  retrieved  = "2026-10-10"
+  confidence = "medium"
+
+  [[rule.source]]
+  kind       = "vcmi"
+  ref        = "config/spells/timed.json targetCondition: bless, curse noneOf SIEGE_WEAPON, UNDEAD (absolute); precision allOf SHOOTER (absolute); mirth, sorrow noneOf UNDEAD, SIEGE_WEAPON (absolute), MIND_IMMUNITY, NON_LIVING, MECHANICAL (normal); fortune, misfortune, slayer none (agrees but for the three points of BAT-Q22)"
+  url        = "https://github.com/vcmi/vcmi/blob/1.7.5/config/spells/timed.json"
+  retrieved  = "2026-10-10"
+  confidence = "medium"
