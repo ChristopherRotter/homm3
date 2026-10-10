@@ -387,6 +387,11 @@ fn a_random_caster_draws_its_spell_by_weight_and_only_its_controller_is_told() {
         );
         assert_eq!(observe(&s, &r, BattleSide::Attacker).drawn, Some(expected));
         assert_eq!(observe(&s, &r, BattleSide::Defender).drawn, None);
+        // The draw is in the state hash (v34): another spell drawn hashes differently.
+        let mut other = s.clone();
+        let another = order.iter().map(|o| o.1).find(|&o| o != expected).unwrap();
+        other.casts.drawn = Some((StackId(0), another));
+        assert_ne!(other.state_hash(), s.state_hash());
         seen.insert(expected);
     }
     assert_eq!(seen.len(), 4);

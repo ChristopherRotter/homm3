@@ -737,20 +737,25 @@ pub const MAX_MASTERY: u8 = 3;
 pub const MASTERY_NAMES: [&str; 3] = ["basic", "advanced", "expert"];
 
 /// Which stacks a spell may affect, by creature flags (Destroy Undead: only `undead`; Death
-/// Ripple: no `undead`, no `war_machine`).
+/// Ripple: no `undead`, no `war_machine`) and by the creature's damage (Bless: above 0).
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub struct TargetConditions {
     /// A stack needs every one of these flags.
     pub requires: CreatureFlags,
     /// A stack may have none of these flags.
     pub excludes: CreatureFlags,
+    /// A stack's creature needs a maximum damage above 0 (pack format v32: Bless, Curse,
+    /// Fortune, Misfortune and Slayer spare the First Aid Tent and the Ammo Cart; the original
+    /// reads the creature table's value, `installation.md` §7.23).
+    pub needs_damage: bool,
 }
 
 impl TargetConditions {
-    /// Whether a creature with `flags` meets the conditions.
-    pub const fn admits(self, flags: CreatureFlags) -> bool {
+    /// Whether a creature with `flags` and maximum damage `damage_max` meets the conditions.
+    pub const fn admits(self, flags: CreatureFlags, damage_max: u16) -> bool {
         flags.bits() & self.requires.bits() == self.requires.bits()
             && flags.bits() & self.excludes.bits() == 0
+            && (!self.needs_damage || damage_max > 0)
     }
 }
 
@@ -1096,6 +1101,7 @@ impl CanonicalHash for SpellMagic {
         h.write_u8(self.side as u8);
         h.write_u32(self.conditions.requires.bits());
         h.write_u32(self.conditions.excludes.bits());
+        h.write_bool(self.conditions.needs_damage);
         h.write_len(self.effects.len());
         for e in &self.effects {
             h.write_bytes(&e.code());
@@ -1234,17 +1240,28 @@ mod tests {
         let machine = CreatureFlags::default().with(CreatureFlag::WarMachine);
         let only_undead = TargetConditions {
             requires: undead,
-            excludes: CreatureFlags::default(),
+            ..TargetConditions::default()
         };
         let no_undead = TargetConditions {
-            requires: CreatureFlags::default(),
             excludes: undead.with(CreatureFlag::WarMachine),
+            ..TargetConditions::default()
         };
-        assert!(only_undead.admits(undead.with(CreatureFlag::Flying)));
-        assert!(!only_undead.admits(machine));
-        assert!(no_undead.admits(CreatureFlags::default()));
-        assert!(!no_undead.admits(undead) && !no_undead.admits(machine));
-        assert!(TargetConditions::default().admits(undead));
+        assert!(only_undead.admits(undead.with(CreatureFlag::Flying), 1));
+        assert!(!only_undead.admits(machine, 1));
+        assert!(no_undead.admits(CreatureFlags::default(), 1));
+        assert!(!no_undead.admits(undead, 1) && !no_undead.admits(machine, 1));
+        assert!(TargetConditions::default().admits(undead, 0));
+    }
+
+    #[test]
+    fn conditions_admit_by_damage() {
+        let damaging = TargetConditions {
+            needs_damage: true,
+            ..TargetConditions::default()
+        };
+        let machine = CreatureFlags::default().with(CreatureFlag::WarMachine);
+        assert!(damaging.admits(machine, 3));
+        assert!(!damaging.admits(machine, 0));
     }
 
     #[test]
@@ -1381,6 +1398,7 @@ mod tests {
                     conditions: TargetConditions {
                         requires: undead,
                         excludes: undead,
+                        needs_damage: false,
                     },
                     ..damage(SpellTarget::None)
                 },
@@ -1631,6 +1649,7 @@ mod tests {
                 conditions: TargetConditions {
                     requires: undead,
                     excludes: CreatureFlags::default(),
+                    needs_damage: false,
                 },
                 ..base.clone()
             },
@@ -1638,6 +1657,14 @@ mod tests {
                 conditions: TargetConditions {
                     requires: CreatureFlags::default(),
                     excludes: undead,
+                    needs_damage: false,
+                },
+                ..base.clone()
+            },
+            SpellMagic {
+                conditions: TargetConditions {
+                    needs_damage: true,
+                    ..TargetConditions::default()
                 },
                 ..base.clone()
             },

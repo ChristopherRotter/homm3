@@ -113,6 +113,10 @@ pub struct SpellTimed {
     /// Creature flags a stack may not have, besides `war_machine` from the flag word.
     #[serde(default)]
     pub excludes: Vec<String>,
+    /// A stack's creature needs a maximum damage above 0 (Bless, Curse, Fortune, Misfortune,
+    /// Slayer; pack format v32).
+    #[serde(default)]
+    pub needs_damage: bool,
     /// The rounds of `duration = "fixed"` (Berserk: 255).
     #[serde(default)]
     pub fixed_rounds: Option<u16>,

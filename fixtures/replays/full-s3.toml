@@ -448,7 +448,7 @@ checkpoints = [
     "0x1163f76820b18117",
     "0xe6e992c71d0d0972",
     "0xbeda0497f4c40c0e",
-    "0xbf9ded9fe9dbea17",
+    "0x634a29563d03eaae",
 ]
 
 [replay]
@@ -461,7 +461,7 @@ packs = [[
     "0.1.0",
 ]]
 profile = "synthetic:faithful"
-ruleset_hash = "0x2660cbe139e7f1e7"
+ruleset_hash = "0x7172dbe5ff171b12"
 rng = "xoshiro256starstar+splitmix64"
 rng_version = 1
 hash = "fnv1a64-le"
@@ -772,4 +772,4 @@ count = 4
 
 [result]
 winner = "defender"
-final_hash = "0xa883818767cd546b"
+final_hash = "0x5254d00cd822598a"
