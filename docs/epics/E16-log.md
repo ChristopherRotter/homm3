@@ -144,3 +144,66 @@ how and why the work went.
   battle's hash and the journal unchanged and nothing sent to the other seat, and the seat not to
   act always gets `NotYourTurn`. The connection: hello, version, out-of-place messages, ping,
   malformed and oversized frames. `h3-protocol` at 100 % lines and regions with no exclusion.
+
+### M1 T3 — The server binary (2026-10-10)
+
+- **What was built** (`crates/h3-server`, now a library and the binary; all *provisional* in
+  names and layout): `config` (the TOML file, below), `game` (`Prepared::new` loads the
+  scenario and draws the secrets from the OS; the game's OS thread runs the session core),
+  `net` (the listener, a `tokio` task per connection, the `Transport` trait and its WebSocket
+  implementation), `client` (the headless client), `start` and `Running` in `lib.rs`, `main.rs`
+  (`h3-server <config.toml>`), `server.example.toml`. SRV-STUB-1 retired.
+- **The configuration** (*queued for the M1 review*): a flat TOML file for M1's one game,
+  relative paths from the file's directory: `bind` (default `127.0.0.1:7878`), `packs`,
+  `scenario`, `profile` (overrides the scenario's), `bots` (seats the server's bot plays; both is
+  refused, a hosted game needs a player), `data` (replays go to `<data>/replays/`),
+  `checkpoint_every` (25), `[limits]`: `max_frame` 4096, `messages_per_second` 20, `connections`
+  64, `connections_per_address` 8, `idle_timeout_ms` 300 000, `outbound_queue` 256.
+- **Secrets** (ADR-0018 point 8): the battle's seed, the obstacle seed (used once for a scenario
+  with `random_obstacles`, then forgotten; the obstacles travel in the setup as pieces), the
+  player seats' tokens (128 bits as 32 hex digits) and the bot's seed come from `getrandom`.
+  `Running.tokens` lets an operator hand the tokens out; otherwise the first joiner of a seat
+  gets it in `Joined`.
+- **Threads and channels** (*provisional*): the game's inbox holds 1 024 messages (a connection
+  task waits when it is full); each connection has an outbound queue of `outbound_queue` frames
+  that the game fills with `try_send`, and a full queue makes the game forget the connection
+  (`Session::disconnected`), whose task, finding the queue closed, says `Goodbye { TooSlow }`.
+  A write that stalls for the idle timeout closes the connection, and so does the WebSocket
+  handshake.
+- **Bounds** (*provisional*): idle means no message *from* the client within the timeout (the
+  server's own frames do not count; a passive client pings); the rate is counted in one-second
+  windows, beyond it `Goodbye { RateLimited }`; a binary message is `Malformed`; the WebSocket's
+  own cap is 16 times the frame limit (at least 64 KiB), so a frame just over the limit gets
+  `TooLarge` and anything larger is dropped unread; a connection beyond the total or
+  per-address count is closed before its handshake (a counted place, released when its task
+  ends).
+- **Found by the flooding test: the lingering close.** A connection closed while the client's
+  later messages lay unread in the socket was reset by the kernel, and the reset made the client
+  drop the `Goodbye` it had not read yet (the test failed in most runs). The transport now reads
+  on after its close frame, for at most a second, until the peer's close.
+- **The replay** is written when the battle ends, before it is published to the seats:
+  `<data>/replays/<scenario>-game1-<random>.toml`, the CLI's format through `h3_cli::replay_to_toml`;
+  a failure to write is logged and the game goes on. Log lines go to standard error (start,
+  the replay's path). No graceful shutdown yet (M2: `tokio`'s `signal` feature is not among the
+  decided ones).
+- **Dependencies.** `tokio` 1.53, `tokio-tungstenite` 0.30 (`tungstenite` 0.30), `futures-util`,
+  `getrandom` 0.3 (the workspace's); `tungstenite`'s `rand` 0.10 brings `getrandom` 0.4 as well, a
+  duplicate that `cargo deny` only warns about (`multiple-versions = "warn"`); `cargo deny
+  check`: advisories, bans, licences and sources ok. 125 crates under `h3-server`.
+- **Tests** (14; `h3-server` is an adapter, outside the coverage gate): over loopback, two
+  clients play the `full` battle to the end, the replay they fetch equals the file, and the file
+  verifies; a client plays the bot on the `duel` field of random obstacles, and its replay
+  verifies; a dropped client re-takes its seat with its token (without it: `SeatTaken`); a
+  message before the hello, another version, text that is no message, a binary message and a
+  frame over the limit each get their goodbye, a frame far over it is dropped, and the game is
+  unharmed; flooding and idling are cut off; the per-address limit refuses a second connection
+  until the first closes. Units: the rate, the counted places, a dropped queue says `TooSlow`
+  (a fake transport), a full queue frees the seat for its token; the configuration's defaults,
+  paths and refusals; tokens; the example configuration loads and prepares. Ten runs of the
+  suite in a row passed. `h3 verify` (the CLI) accepted the replays the tests wrote (82 and 16
+  commands, the duel's with its obstacles).
+- **For later.** Automated players answer every turn at once and exceed 20 messages per second
+  (the end-to-end tests raise the limit): an agent seat (later) needs its own limit.
+  A connection task reads a closed queue as `TooSlow`; the game's thread closes the queues
+  otherwise only if it panics (it runs while the listener holds its inbox), so a dead game is
+  reported as `TooSlow` until M2's shutdown and restore give it a reason of its own.

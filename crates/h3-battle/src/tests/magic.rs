@@ -391,15 +391,9 @@ fn a_spell_can_end_the_battle_and_the_outcome_lists_the_spells() {
     assert!(s.is_over() && s.active().is_none());
     let outcome = s.outcome().unwrap();
     let [attacker, defender] = outcome.heroes.map(Option::unwrap);
-    assert_eq!(attacker.mana, 5);
-    assert_eq!(
-        attacker.spells_cast,
-        [spell(&r, "bolt"), spell(&r, "smite")]
-    );
-    assert_eq!(
-        (defender.mana, defender.spells_cast),
-        (10, vec![spell(&r, "bolt")])
-    );
+    // Without Eagle Eye no hero picks a spell (BAT-MAG-069).
+    assert_eq!((attacker.mana, attacker.learned), (5, vec![]));
+    assert_eq!((defender.mana, defender.learned), (10, vec![]));
 }
 
 // covers: BAT-MAG-004

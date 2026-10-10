@@ -62,8 +62,8 @@ pub use h3_contracts::{BattleOutcome, BattleResult, BattleSetup, BattleSide};
 pub use hero::{HeroView, OwnHeroView};
 pub use legal::{LegalCommands, MAX_LEGAL_COMMANDS, legal_commands};
 pub use magic::{
-    CastTarget, CastTargets, MAX_CAST_TARGETS, MAX_SPELL_BONUSES, Masteries, SpellBonus,
-    SpellBonuses, SpellSet, cast_targets, castable_spells, second_targets,
+    CastTarget, CastTargets, MAX_CAST_TARGETS, MAX_OPENING_SPELLS, MAX_SPELL_BONUSES, Masteries,
+    SpellBonus, SpellBonuses, SpellSet, cast_targets, castable_spells, second_targets,
 };
 pub use morale::{Bearer, Expiry, MODIFIER_CAPACITY, Modifiers, Stat};
 pub use natural::{MAX_REMOVABLE_HEXES, MAX_REMOVABLE_OBSTACLES, RemovableObstacle};

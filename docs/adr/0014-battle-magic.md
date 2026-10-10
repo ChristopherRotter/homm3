@@ -31,7 +31,8 @@ which a spell meets a stack, how stacks appear in a battle, how hidden objects s
    most Expert; ADR-0013 point 2) and carried per spell by the seam; a battlefield's raise is the
    battle's (E04c). It selects cost, value, area and the mass version. The
    cost includes the creature modifiers (Mages, Pegasi), never below 0. The battle keeps each hero's
-   mana and casts this round and fills the reserved `HeroOutcome` fields (mana left, spells cast).
+   mana and casts this round and fills the reserved `HeroOutcome` fields (mana left; the spells
+   its Eagle Eye picked at the enemy hero's casts, BAT-Q23).
 3. **A creature's cast is its stack's action** (Faerie Dragon, Archangel, Pit Lord, Ogre Mage, the AB
    elementals, Master Genie), limited by its casts per battle. Automatic magic (after-attack spells,
    the Enchanter, opening spells, triggered obstacles, Fire Shield) is applied by rules. A hero's cast
@@ -108,7 +109,9 @@ which a spell meets a stack, how stacks appear in a battle, how hidden objects s
     hero's magic (spell-damage bonuses, duration bonus, magic resistance, magic blocks and level
     limits, immunity negation, opening spells) and the use of the reserved
     `BattleMagic` and `HeroOutcome` fields. One change (the user, BAT-Q19): `BattleMagic.schools`
-    gave way to `masteries`, a mastery per spell (point 2). Battle magic rules use the new area `BAT-MAG`; the
+    gave way to `masteries`, a mastery per spell (point 2); another (BAT-Q23): `HeroOutcome`'s
+    spells cast gave way to the spells Eagle Eye picked (`learned`), the battle rolling it at each
+    enemy hero cast as the original, with `BattleMagic.eagle_eye` in. Battle magic rules use the new area `BAT-MAG`; the
     hero's derivation continues `HER-BAT`. One exception (user, Q55): `BattleSetup.obstacles`
     becomes a list of natural obstacles, each with its blocked hexes and an optional anchor hex
     (removable by Remove Obstacle; the anchor's own effects are quirk BAT-QUIRK-3). `StackOrigin`

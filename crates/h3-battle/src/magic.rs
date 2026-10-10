@@ -287,8 +287,18 @@ pub(crate) struct HeroMagic {
     /// Rounds added to the duration of its timed spells: its `SpellDuration` effects summed
     /// (HER-BAT-014, BAT-MAG-010; private).
     pub(crate) duration_bonus: u16,
-    /// The distinct spells cast so far (public through the cast events; the outcome's).
-    pub(crate) cast: SpellSet,
+    /// Its opening spells, in their order (BAT-MAG-068; private until cast).
+    pub(crate) opening: FixedVec<Opening, MAX_OPENING_SPELLS>,
+    /// Whether its side's first activation outside the tactics phase, when it casts them, is
+    /// still to come (the original's +0x54B0; BAT-MAG-068): set at the start if it has some.
+    pub(crate) opening_due: bool,
+    /// Its Eagle Eye's chance to pick a spell at a cast of the enemy hero, in percent: `trunc(p ×
+    /// 100)` of the seam's rate at the [`scale`] (BAT-MAG-069; 0 without the skill; private).
+    pub(crate) eagle_chance: u8,
+    /// The spells its Eagle Eye may pick (BAT-MAG-069; private).
+    pub(crate) eagle_spells: SpellSet,
+    /// The spells its Eagle Eye picked so far (BAT-MAG-069; private; the outcome's `learned`).
+    pub(crate) learned: SpellSet,
     /// The change of its spell costs from the creatures in the armies (BAT-MAG-054; set at the
     /// battle's start, public through the armies).
     pub(crate) cost_change: i8,
@@ -304,6 +314,29 @@ pub(crate) struct HeroMagic {
     /// Whether it negates immunities and resistance: a `NegateImmunities` effect (BAT-MAG-066;
     /// the Orb of Vulnerability, private).
     pub(crate) negates: bool,
+}
+
+/// Most opening spells of one hero (BAT-MAG-068): Armor of the Damned has four.
+pub const MAX_OPENING_SPELLS: usize = 8;
+
+/// One opening spell of a hero (BAT-MAG-068).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub(crate) struct Opening {
+    /// The spell.
+    pub(crate) spell: SpellId,
+    /// Its mastery.
+    pub(crate) mastery: u8,
+    /// Its power, the duration of its effects.
+    pub(crate) power: u16,
+}
+
+impl CanonicalHash for Opening {
+    /// Spell, mastery, power.
+    fn hash_into(&self, h: &mut StateHasher) {
+        self.spell.hash_into(h);
+        h.write_u8(self.mastery);
+        h.write_u16(self.power);
+    }
 }
 
 /// What the heroes of a battle do to all of its magic (E04b T8b), derived from them at its
@@ -359,6 +392,7 @@ impl HeroMagic {
         let mut level_limit = u8::MAX;
         let mut defences = Defences::default();
         let mut negates = false;
+        let mut opening = FixedVec::default();
         for effect in &hero.effects {
             match *effect {
                 BattleEffect::MagicResistance { rate } => {
@@ -378,8 +412,30 @@ impl HeroMagic {
                 }
                 BattleEffect::MindImmunity => defences.mind = true,
                 BattleEffect::NegateImmunities => negates = true,
+                BattleEffect::OpeningSpell {
+                    spell,
+                    mastery,
+                    power,
+                } => opening
+                    .push(Opening {
+                        spell,
+                        mastery,
+                        power,
+                    })
+                    .map_err(|_| HeroError::OpeningSpell)?,
                 _ => {}
             }
+        }
+        let mut eagle_spells = SpellSet::default();
+        let mut eagle_chance = 0;
+        if let Some(eagle) = &hero.magic.eagle_eye {
+            for &spell in &eagle.spells {
+                eagle_spells.insert(spell);
+            }
+            // rule: BAT-MAG-069
+            // The seam's rate is at most 1 (checked by `hero::check`).
+            let percent = hero_rate(single, eagle.chance) * 100 / scale(single);
+            eagle_chance = u8::try_from(percent.min(100)).unwrap_or(100);
         }
         Ok(Self {
             book,
@@ -387,7 +443,11 @@ impl HeroMagic {
             bonuses: SpellBonuses::of(hero).ok_or(HeroError::TooManySpellBonuses)?,
             resistance: resistance.min(scale(single)),
             duration_bonus,
-            cast: SpellSet::default(),
+            opening_due: !opening.is_empty(),
+            opening,
+            eagle_chance,
+            eagle_spells,
+            learned: SpellSet::default(),
             cost_change: 0,
             no_casting,
             level_limit,
@@ -398,14 +458,15 @@ impl HeroMagic {
 }
 
 impl CanonicalHash for HeroMagic {
-    /// Book bits, cast spells' bits, the masteries' bit planes (v39, before them the school
-    /// masteries), the bonuses (every spell, by school (rates since v23), the single spells as
-    /// length and spell, damage, growth per level, level), the resistance, the duration bonus
-    /// (v20), the cost change (v38, as its two's-complement byte), whether it forbids casting, its
-    /// spell level limit, its defences (the spells' bits, the level, mind) and whether it negates
-    /// immunities (v40).
+    /// Book bits, Eagle Eye's picked spells' bits (v41, before them the cast spells'), the
+    /// masteries' bit planes (v39, before them the school masteries), the bonuses (every spell,
+    /// by school (rates since v23), the single spells as length and spell, damage, growth per
+    /// level, level), the resistance, the duration bonus (v20), the cost change (v38, as its
+    /// two's-complement byte), whether it forbids casting, its spell level limit, its defences
+    /// (the spells' bits, the level, mind) and whether it negates immunities (v40), the opening
+    /// spells, whether they are due, Eagle Eye's chance and spells' bits (v41).
     fn hash_into(&self, h: &mut StateHasher) {
-        for word in self.book.bits().into_iter().chain(self.cast.bits()) {
+        for word in self.book.bits().into_iter().chain(self.learned.bits()) {
             h.write_u64(word);
         }
         for word in self.masteries.bits() {
@@ -433,6 +494,12 @@ impl CanonicalHash for HeroMagic {
         self.defences.up_to_level.hash_into(h);
         h.write_bool(self.defences.mind);
         h.write_bool(self.negates);
+        self.opening.hash_into(h);
+        h.write_bool(self.opening_due);
+        h.write_u8(self.eagle_chance);
+        for word in self.eagle_spells.bits() {
+            h.write_u64(word);
+        }
     }
 }
 
@@ -703,19 +770,32 @@ fn reachable(
     (spell, mastery): (SpellRef<'_>, u8),
     s: StackId,
 ) -> bool {
+    // Hypnotized stacks are rare: test them only when they apply.
+    in_reach(state, ruleset, side, (spell, mastery), s)
+        && !(state.at(s).spells.status.contains(Status::HYPNOTIZED)
+            && skips_hypnotized(state, ruleset, (spell, mastery), s))
+}
+
+/// [`reachable`], counting the hypnotized stacks a mass version passes over.
+#[inline(always)]
+fn in_reach(
+    state: &BattleState,
+    ruleset: &Ruleset,
+    side: BattleSide,
+    (spell, mastery): (SpellRef<'_>, u8),
+    s: StackId,
+) -> bool {
     let stack = state.at(s);
     let side_ok = match spell.1.magic.side_at(mastery) {
         TargetSide::Any => true,
         TargetSide::Enemy => stack.side != side,
         TargetSide::Own => stack.side == side,
     };
-    // The spell's own tests and hypnotized stacks are rare: test them only when they apply.
+    // The spell's own tests are rare: test them only when they apply.
     let own_tests = spell.1.magic.health_limit || !spell.1.magic.refuses.is_empty();
     side_ok
         && affects_stack(state, ruleset, side, spell, s)
         && (!own_tests || admits(state, ruleset, side, (spell, mastery), s))
-        && !(stack.spells.status.contains(Status::HYPNOTIZED)
-            && skips_hypnotized(state, ruleset, (spell, mastery), s))
 }
 
 /// Whether `side`'s cast of `spell` at `mastery` admits stack `s` by the spell's own tests
@@ -795,12 +875,127 @@ fn aimable(
     (spell, mastery): (SpellRef<'_>, u8),
     s: StackId,
 ) -> bool {
+    reachable(state, ruleset, side, (spell, mastery), s) && accepts(state, ruleset, side, spell, s)
+}
+
+/// The part of the original's target test beyond a stack's reach (BAT-MAG-003): an active timed
+/// effect if `spell` needs one (Dispel), and a share left after resistance above zero for a
+/// spell that is not positive and does not ignore immunity.
+fn accepts(
+    state: &BattleState,
+    ruleset: &Ruleset,
+    side: BattleSide,
+    spell: SpellRef<'_>,
+    s: StackId,
+) -> bool {
     let magic = &spell.1.magic;
-    reachable(state, ruleset, side, (spell, mastery), s)
-        && (!magic.needs_effect || !state.effects.of(s).is_empty())
+    (!magic.needs_effect || !state.effects.of(s).is_empty())
         && (spell.1.polarity == SpellPolarity::Positive
             || magic.ignores_immunity
             || may_affect(state, ruleset, side, s))
+}
+
+/// Whether the battle can cast `spell` at `mastery` as an opening spell (BAT-MAG-068, checked
+/// with the hero, BAT-HER-001): a hero's spell without a target at that mastery (a mass version
+/// or a battle-wide spell) whose effects only change, dispel or heal stacks.
+pub(crate) fn opens_with(ruleset: &Ruleset, spell: &Spell, mastery: u8) -> bool {
+    spell.category != SpellCategory::Ability
+        && implemented(spell)
+        && target_at(ruleset, spell, mastery) == SpellTarget::None
+        && spell.magic.effects.iter().all(|e| {
+            matches!(
+                e,
+                SpellEffect::Timed(_) | SpellEffect::Dispel | SpellEffect::Heal
+            )
+        })
+}
+
+/// The opening spells of the side controlling stack `id` at its activation (BAT-MAG-068; the
+/// original's 0x4653A8, `installation.md` §7.24): at the side's first activation outside the
+/// tactics phase (the battle's activations; the tactics phase has its own), its hero casts each
+/// of its opening spells in their order if it affects some stack (0x5A40D0: some living stack
+/// the target test accepts, hypnotized ones counted), as a mass cast of the hero at the spell's
+/// mastery and power (caster kind 2): no mana, not the round's cast, no Eagle Eye, the power its
+/// effects' duration without the duration bonus, the hero's specialty applied; each stack is
+/// tested and rolls as for any of the hero's mass casts.
+// rule: BAT-MAG-068
+pub(crate) fn opening<S: Sink>(
+    state: &mut BattleState,
+    ruleset: &Ruleset,
+    id: StackId,
+    sink: &mut S,
+) {
+    let side = state.at(id).controller();
+    let Some(hero) = state.heroes[side.index()]
+        .as_mut()
+        .filter(|h| h.magic.opening_due)
+    else {
+        return;
+    };
+    hero.magic.opening_due = false;
+    let (openings, bonuses) = (hero.magic.opening, hero.magic.bonuses);
+    // Validated with the hero (BAT-HER-001): every spell is the ruleset's.
+    for (o, spell) in openings
+        .iter()
+        .filter_map(|o| ruleset.spell(o.spell).map(|s| (o, s)))
+    {
+        let pair = (o.spell, spell);
+        let affects_some = stack_ids(state).any(|s| {
+            in_reach(state, ruleset, side, (pair, o.mastery), s)
+                && accepts(state, ruleset, side, pair, s)
+        });
+        if !affects_some {
+            continue;
+        }
+        sink.emit(Event::public(EventKind::OpeningSpell {
+            side,
+            spell: o.spell,
+        }));
+        let cast = Cast {
+            side,
+            id: o.spell,
+            spell,
+            cost: 0,
+            mastery: o.mastery,
+            target: CastTarget::None,
+            second: CastTarget::None,
+            // rule: BAT-MAG-004
+            value: u64::from(o.power) * u64::from(spell.power)
+                + u64::from(spell.effect[usize::from(o.mastery)]),
+            bonuses,
+            rounds: o.power,
+            power: o.power,
+            by: None,
+            draws: false,
+            automatic: false,
+        };
+        take_effect(state, ruleset, &cast, sink);
+    }
+}
+
+/// Eagle Eye at a cast of `spell` by the hero of `caster` (BAT-MAG-069; the original's 0x59FF52,
+/// `installation.md` §7.24): the other side's hero picks the spell if its Eagle Eye may (the
+/// spell not learned, of a level its Eagle Eye allows: [`HeroMagic::eagle_spells`]) and a draw
+/// from 1 to 100 is at most its chance, before the cast's own draws; a spell is kept once, while
+/// each cast draws again. Nothing shows in the battle (the outcome reports the picks).
+// rule: BAT-MAG-069
+fn eagle_eye(state: &mut BattleState, caster: BattleSide, spell: SpellId) {
+    let learner = caster.opponent().index();
+    let Some(chance) = state.heroes[learner]
+        .as_ref()
+        .filter(|h| h.magic.eagle_spells.contains(spell))
+        .map(|h| u32::from(h.magic.eagle_chance))
+    else {
+        return;
+    };
+    let picked = match chance {
+        0 => false,
+        100.. => true,
+        _ => state.rng.below(100) < chance,
+    };
+    if picked && let Some(hero) = state.heroes[learner].as_mut() {
+        hero.magic.learned.insert(spell);
+    }
 }
 
 /// The living stacks of `side`, by id.
@@ -2008,7 +2203,6 @@ pub(crate) fn apply_cast<S: Sink>(
             for hero in state.heroes[cast.side.index()].iter_mut() {
                 hero.view.mana -= cast.cost;
                 hero.view.casts += 1;
-                hero.magic.cast.insert(cast.id);
             }
             sink.emit(Event::public(EventKind::SpellCast {
                 side: cast.side,
@@ -2016,6 +2210,7 @@ pub(crate) fn apply_cast<S: Sink>(
                 target: cast.target,
                 second: cast.second,
             }));
+            eagle_eye(state, cast.side, cast.id);
         }
     }
     take_effect(state, ruleset, &cast, sink);

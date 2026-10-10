@@ -258,17 +258,20 @@ fn activate<S: Sink>(state: &mut BattleState, ruleset: &Ruleset, mut checks: boo
 }
 
 /// What the original's activation (0x465330) does for a stack it activates for a turn, after the
-/// checks that pass a stack over (blind, petrified, paralysed; bad morale, Fear): a Wraith drains
-/// its enemy hero's mana (BAT-MAG-056), an Enchanter may cast (BAT-MAG-053).
-// rule: BAT-MAG-053, BAT-MAG-056
+/// checks that pass a stack over (blind, petrified, paralysed; bad morale, Fear): at its side's
+/// first activation the hero's opening spells (BAT-MAG-068), then a Wraith drains its enemy
+/// hero's mana (BAT-MAG-056), an Enchanter may cast (BAT-MAG-053).
+// rule: BAT-MAG-053, BAT-MAG-056, BAT-MAG-068
 fn activation<S: Sink>(state: &mut BattleState, ruleset: &Ruleset, id: StackId, sink: &mut S) {
+    crate::magic::opening(state, ruleset, id, sink);
     crate::mana::drain(state, ruleset, id, sink);
     crate::casters::periodic(state, ruleset, id, sink);
 }
 
-/// The turn of stack `id`, activated without bad morale: a draining stack drains and a periodic
-/// caster casts first, as the original's activation does for any stack it activates
-/// (BAT-MAG-056, BAT-MAG-053); then a war machine that
+/// The turn of stack `id`, activated without bad morale: at its side's first activation the
+/// opening spells are cast (BAT-MAG-068), a draining stack drains and a periodic caster casts
+/// first, as the original's activation does for any stack it activates (BAT-MAG-056,
+/// BAT-MAG-053); then a war machine that
 /// acts on its own acts (BAT-WAR-002/003) and a berserk stack takes its automatic turn
 /// (BAT-MAG-025), each marked as having acted when its turn is over. Returns whether the stack
 /// awaits its side's command. (A periodic cast kills nothing: its spells have no damage, so the

@@ -107,6 +107,13 @@ pub enum HeroError {
     DuplicateSpell,
     /// A spell in the spell book is a creature ability.
     NotAHeroSpell,
+    /// An opening spell the battle cannot cast: a creature ability, a mastery above Expert (3),
+    /// power 0, a target at its mastery or effects other than timed changes, dispels and heals,
+    /// or more than `MAX_OPENING_SPELLS` (BAT-MAG-068).
+    OpeningSpell,
+    /// Eagle Eye's chance is above 1 (10 000 basis points, or a single-precision value above 1.0)
+    /// or one of its spells a creature ability (BAT-MAG-069).
+    EagleEye,
 }
 
 impl fmt::Display for HeroError {
@@ -128,6 +135,8 @@ impl fmt::Display for HeroError {
             Self::TooManySpellBonuses => "too many spells with bonuses of their own",
             Self::DuplicateSpell => "a spell is listed twice in the spell book or the masteries",
             Self::NotAHeroSpell => "a creature ability in the spell book",
+            Self::OpeningSpell => "an opening spell the battle cannot cast",
+            Self::EagleEye => "Eagle Eye's chance above 1 or an ability among its spells",
         })
     }
 }
@@ -410,6 +419,14 @@ mod tests {
             (
                 HeroError::NotAHeroSpell,
                 "a creature ability in the spell book",
+            ),
+            (
+                HeroError::OpeningSpell,
+                "an opening spell the battle cannot cast",
+            ),
+            (
+                HeroError::EagleEye,
+                "Eagle Eye's chance above 1 or an ability among its spells",
             ),
         ];
         for (error, text) in heroes {

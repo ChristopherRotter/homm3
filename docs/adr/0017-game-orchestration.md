@@ -49,7 +49,8 @@ pending decisions as state and a trusted system actor (SRV-Q6). RL needs an `Adv
 4. **An RNG stream per player** (kernel streams, ADR-0003 point 7). Randomness caused by a
    player's command draws only from that player's stream; the day advance draws from a game
    stream, and the random placeholders of a setup are resolved from a setup stream when the
-   state is built (none in increment 1). Agents' and bots' own choices stay outside the game
+   state is built (in increment 1 one: the starting army of a placed hero without stacks of its
+   own, E08 T6a). Agents' and bots' own choices stay outside the game
    state (the kernel's `AGENT` stream, in the env). The kernel's stream ids gain the per-player
    form (a shared change in T2). Where a battle's seed and obstacles come from is decided with
    the battle seam (increment 3), with the server lane, whose draft draws a hosted battle's
@@ -108,3 +109,5 @@ pending decisions as state and a trusted system actor (SRV-Q6). RL needs an `Adv
 ## Revision history
 
 - 2026-10-10: Accepted (E08 T1a draft).
+- 2026-10-10: point 4: increment 1 has one setup placeholder, a placed hero's starting army,
+  drawn in T6b (the user's choice at the E08 T4 checkpoint over an `Unsupported` import).

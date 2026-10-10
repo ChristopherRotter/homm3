@@ -36,9 +36,9 @@ M1–M6 task turns its section into code and docs and deletes it here.
 Sequence numbers: `n` counts the messages sent to *this* viewer; `seq` is the client's own
 counter echoed in acknowledgements. Neither reveals anything about other viewers.
 
-Steps 3 to 8 are code since M1 T2 (`crates/h3-protocol/src/connection.rs` and `session.rs`, the
-record's format there and in `wire.rs`); the host's parts (sockets, the OS seed and tokens, the
-replay file) are M1 T3.
+All eight steps are code since M1 T3: steps 3 to 8 in `h3-protocol` (`connection.rs`,
+`session.rs`; the record's format there and in `wire.rs`), the host's parts (sockets, the OS
+seeds and tokens, the replay file) in `h3-server` (`game.rs`, `net.rs`).
 
 ## 2. Message catalogue (M2–M4 additions)
 
@@ -110,6 +110,11 @@ only and a visible note. The server never reads anything from this check.
   server cannot catch that case itself.
 
 ## 9. Server configuration and data directory (sketch)
+
+M1's configuration is code since T3 (`crates/h3-server/src/config.rs`, the example
+`server.example.toml`): flat, for its one game (`bind`, `packs`, `scenario`, `profile`, `bots`,
+`data`, `checkpoint_every`, `[limits]`); the replay goes to
+`<data>/replays/<scenario>-game<id>-<random>.toml`. M2 turns it into the sections below.
 
 ```
 [server]      bind = "127.0.0.1:7777"   data_dir = "server-data"   anonymous = true

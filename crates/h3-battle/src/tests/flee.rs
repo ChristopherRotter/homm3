@@ -325,7 +325,7 @@ fn the_outcome_reports_every_stack_and_the_heroes() {
     assert_eq!(o.war_machines, [vec![id("t:ballista")], vec![]]);
     let hero = HeroOutcome {
         mana: 15,
-        spells_cast: vec![],
+        learned: vec![],
     };
     assert_eq!(o.heroes, [Some(hero.clone()), Some(hero)]);
     assert_eq!(

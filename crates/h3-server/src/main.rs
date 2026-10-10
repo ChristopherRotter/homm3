@@ -1,18 +1,55 @@
-//! `h3-server`: hosts the engine's games for untrusted clients over WebSocket (E16, ADR-0018). The
-//! I/O shell around `h3-protocol`'s sans-I/O session core: sockets, clock, OS randomness, files,
-//! configuration and the bot seats.
-//!
-//! Skeleton (E16 M0): the binary names its versions and exits; hosting arrives with M1 T3
-//! (`docs/lanes/server/QUEUE.md`).
+//! `h3-server <config.toml>`: hosts the configured battle for untrusted clients over WebSocket
+//! (E16, ADR-0018); the configuration's format is in `h3_server::config`. Runs until it is
+//! stopped; the replay is written when the battle ends.
 
+use std::path::PathBuf;
 use std::process::ExitCode;
 
+use h3_server::{Config, start};
+
 fn main() -> ExitCode {
-    // stub: SRV-STUB-1
-    eprintln!(
-        "h3-server {} (protocol {}): hosting is not implemented yet (E16 M1)",
-        env!("CARGO_PKG_VERSION"),
-        h3_protocol::PROTOCOL_VERSION
-    );
-    ExitCode::FAILURE
+    let mut args = std::env::args_os().skip(1);
+    let (Some(path), None) = (args.next(), args.next()) else {
+        eprintln!(
+            "usage: h3-server <config.toml>\n{} (protocol {})",
+            h3_server::server_name(),
+            h3_protocol::PROTOCOL_VERSION
+        );
+        return ExitCode::from(2);
+    };
+    let config = match Config::load(&PathBuf::from(path)) {
+        Ok(config) => config,
+        Err(e) => {
+            eprintln!("h3-server: {e}");
+            return ExitCode::FAILURE;
+        }
+    };
+    let runtime = match tokio::runtime::Builder::new_multi_thread()
+        .enable_all()
+        .build()
+    {
+        Ok(runtime) => runtime,
+        Err(e) => {
+            eprintln!("h3-server: runtime: {e}");
+            return ExitCode::FAILURE;
+        }
+    };
+    runtime.block_on(async {
+        match start(&config).await {
+            Ok(running) => {
+                eprintln!(
+                    "h3-server: {} (protocol {}) listening on ws://{}",
+                    h3_server::server_name(),
+                    h3_protocol::PROTOCOL_VERSION,
+                    running.address
+                );
+                let _ = running.listener.await;
+                ExitCode::SUCCESS
+            }
+            Err(e) => {
+                eprintln!("h3-server: {e}");
+                ExitCode::FAILURE
+            }
+        }
+    })
 }

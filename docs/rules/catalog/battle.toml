@@ -1793,7 +1793,7 @@ id       = "BAT-END-003"
 title    = "The outcome of a battle"
 context  = "battle"
 status   = "implemented"
-summary  = "Once the battle is over, BattleState::outcome reports facts for the orchestrator (ADR-0013 point 5): the result (victory, draw, retreat, surrender; BAT-END-001/002, BAT-FLE-001/002); per side every stack in stack order (army stacks, war machines, then the stacks created in the battle, in their slots' order), dead ones included, as StackRecord { origin: army slot, war machine or created (summoned stacks and clones, BAT-MAG-037, and an army stack Clone turned into one, BAT-QUIRK-7; E04b T6c, BAT-Q7, BAT-Q13), creature, start: the count when it entered the battle (at the start, or when created), end: the count at the end, whatever the result, without the creatures raised for the battle only (Basic Resurrection, BAT-MAG-035; E04b T6a), but a side whose living army creatures are all such keeps one in its last living army stack (BAT-QUIRK-6); a created stack that vanished when its rounds ran out keeps the creatures it vanished with, which were not killed (0x444120 keeps its count), while a clone killed by damage or with its original has lost them all }; a slot a later created stack reused reports only that one, as the original's records (its earlier stack's losses are gone, BAT-QUIRK-11); the survivors (army stacks and stacks raised from corpses with end > 0, by slot; a Pit Lord's Demons are reported as StackOrigin::Raised(slot) in the slot of the dead stack they rose from, BAT-MAG-052) and surviving war machines derived from those records; the surrender's cost (the price paid, BAT-FLE-002) or none; per side the hero's mana left and the distinct spells it cast, by spell handle (E04b T2b; Eagle Eye's input); the last round started (0 if the battle ended in the tactics phase). The battle applies no consequence: casualties, a retreating side's lost army, the payment, captured artifacts, experience (killed war machines give none; Learning multiplies the whole sum including the +500, batch 1b R5) and Necromancy (rounded down per killed stack, R6; per record, start - end, created stacks included, which the experience leaves out: 0x4775E1, 0x46A350, batch 2d NE) are applied by the orchestrator with the epics that own hero progression (E08-E10). A side whose opponent retreated or surrendered but which has no army survivors has lost as well (the original names no winner, BAT-END-001), and still receives a surrender's price."
+summary  = "Once the battle is over, BattleState::outcome reports facts for the orchestrator (ADR-0013 point 5): the result (victory, draw, retreat, surrender; BAT-END-001/002, BAT-FLE-001/002); per side every stack in stack order (army stacks, war machines, then the stacks created in the battle, in their slots' order), dead ones included, as StackRecord { origin: army slot, war machine or created (summoned stacks and clones, BAT-MAG-037, and an army stack Clone turned into one, BAT-QUIRK-7; E04b T6c, BAT-Q7, BAT-Q13), creature, start: the count when it entered the battle (at the start, or when created), end: the count at the end, whatever the result, without the creatures raised for the battle only (Basic Resurrection, BAT-MAG-035; E04b T6a), but a side whose living army creatures are all such keeps one in its last living army stack (BAT-QUIRK-6); a created stack that vanished when its rounds ran out keeps the creatures it vanished with, which were not killed (0x444120 keeps its count), while a clone killed by damage or with its original has lost them all }; a slot a later created stack reused reports only that one, as the original's records (its earlier stack's losses are gone, BAT-QUIRK-11); the survivors (army stacks and stacks raised from corpses with end > 0, by slot; a Pit Lord's Demons are reported as StackOrigin::Raised(slot) in the slot of the dead stack they rose from, BAT-MAG-052) and surviving war machines derived from those records; the surrender's cost (the price paid, BAT-FLE-002) or none; per side the hero's mana left (E04b T2b) and the spells its Eagle Eye picked, by spell handle, each once (BAT-MAG-069; E04b T8d, which replaced the distinct spells cast); the last round started (0 if the battle ended in the tactics phase). The battle applies no consequence: casualties, a retreating side's lost army, the payment, captured artifacts, experience (killed war machines give none; Learning multiplies the whole sum including the +500, batch 1b R5) and Necromancy (rounded down per killed stack, R6; per record, start - end, created stacks included, which the experience leaves out: 0x4775E1, 0x46A350, batch 2d NE) are applied by the orchestrator with the epics that own hero progression (E08-E10). A side whose opponent retreated or surrendered but which has no army survivors has lost as well (the original names no winner, BAT-END-001), and still receives a surrender's price."
 numeric  = "integer"
 quirks   = ["BAT-QUIRK-6", "BAT-QUIRK-11"]
 
@@ -3356,5 +3356,59 @@ numeric  = "integer"
   kind       = "vcmi"
   ref        = "config/spells/timed.json targetCondition: bless, curse noneOf SIEGE_WEAPON, UNDEAD (absolute); precision allOf SHOOTER (absolute); mirth, sorrow noneOf UNDEAD, SIEGE_WEAPON (absolute), MIND_IMMUNITY, NON_LIVING, MECHANICAL (normal); fortune, misfortune, slayer none (agrees but for the three points of BAT-Q22)"
   url        = "https://github.com/vcmi/vcmi/blob/1.7.5/config/spells/timed.json"
+  retrieved  = "2026-10-10"
+  confidence = "medium"
+
+[[rule]]
+id       = "BAT-MAG-068"
+title    = "The opening spells: a side's hero casts them at the side's first activation"
+context  = "battle"
+status   = "implemented"
+summary  = "Each side's hero casts its OpeningSpell effects (Angelic Alliance: Expert Prayer, power 10; Armor of the Damned: Expert Slow, Curse, Weakness, Misfortune, power 50; HER-BAT-017) at the first activation of a stack the side controls outside the tactics phase: an activation that goes on after the blind, petrified or paralysed stacks, bad morale and Fear passed it over (so a side whose first stack loses its turn casts at its next one's), before the stack's other activation effects (the Wraith's drain, the Enchanters' cast, the Faerie Dragon's draw); once a battle. Each spell, in order, is cast only if some living stack would be affected by it (the target test, hypnotized stacks counted), as a mass cast of the hero at the spell's mastery: the side's own or enemy stacks as the spell reaches, each tested and rolling for resistance as for any of the hero's mass casts (immunities, the defences of BAT-MAG-063 to 066, the spell level limits of BAT-MAG-062 apply per stack; the mass cast passes over hypnotized stacks), the hero's specialty applied (BAT-MAG-020); its power is the duration of its effects, without the duration bonus (BAT-MAG-010). It costs no mana, is not the round's cast, draws no Eagle Eye and is not stopped by the Orb of Inhibition (BAT-MAG-061). An OpeningSpell event (public) precedes the effects. The battle accepts an opening spell without a target at its mastery whose effects are timed changes, dispels or heals (HeroError::OpeningSpell). VCMI casts both sides' at the end of the tactics phase, before round 1; the engine follows the code and the wiki until an experiment confirms it (BAT-Q23)."
+numeric  = "integer"
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (docs/formats/installation.md §7.24): 0x465330 skips everything in the tactics phase (0x4653A8), then, while the acting side's flag +0x54B0 (set at the setup, 0x463B05) is set, casts Prayer for Angelic Alliance (129) and Slow, Curse, Weakness, Misfortune for Armor of the Damned (132) through 0x59FE30 with caster kind 2, mastery 3, power 10 or 50, each if 0x5A40D0 finds a hex the target test 0x5A39C0 accepts, and clears the flag; caster kind 2 skips the Orb test, Eagle Eye, the cost and the cast mark (0x59FEE4) and the duration bonus (0x5A0098), the mass handler 0x5A66D0 tests and rolls each stack and applies 0x4448F0 with the hero"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "wiki"
+  ref        = "Armor of the Damned: 'Casts Expert Slow, Curse, Weakness, and Misfortune for 50 rounds at the start of combat', 'only casts its opening combat spells once an allied creature is able to take its turn' (later after a creature misses its turn to low morale), mitigated by immunity, Cursed Ground or anti-magic artifacts, 'works normally in Anti-Magic Garrisons', the Weakness specialists improve it; Angelic Alliance: 'Casts Expert Prayer for 10 rounds at the start of combat', Loynis' specialty improves it - Heroes 3 wiki"
+  url        = "https://heroes.thelazy.net/index.php/Armor_of_the_Damned"
+  retrieved  = "2026-10-10"
+  confidence = "medium"
+
+  [[rule.source]]
+  kind       = "vcmi"
+  ref        = "server/battles/BattleFlowProcessor.cpp castOpeningSpells: after the tactics phase, before round 1, attacker then defender, each OPENING_BATTLE_SPELL bonus cast in passive mode (no magic block test) at Expert with the bonus' value as duration, massive, if it can be cast; config/artifacts.json: angelicAlliance prayer 10, armorOfTheDamned slow, curse, weakness, misfortune 50 (agrees but for the timing)"
+  url        = "https://github.com/vcmi/vcmi/blob/1.7.5/server/battles/BattleFlowProcessor.cpp"
+  retrieved  = "2026-10-10"
+  confidence = "medium"
+
+[[rule]]
+id       = "BAT-MAG-069"
+title    = "Eagle Eye picks the enemy hero's spells at its casts"
+context  = "battle"
+status   = "implemented"
+summary  = "At each cast of a hero (not a creature's, not an opening spell), before the cast's own draws, the hero of the other side picks the spell if its Eagle Eye (BattleMagic.eagle_eye, HER-SPL-004) lists it (a combat spell it has not learned, of a level at most its Eagle Eye level + 1) and one draw of random(1, 100) is at most its chance in whole percent: trunc(chance x 100), with quirk Q-0005 of the original's single-precision value (a Basic Eagle Eye specialist at level 2 has 43 %, not 44 %); no draw at 0 or 100 %. A picked spell is kept once; each later cast of it draws again. Nothing shows in the battle; the outcome reports each hero's picks (HeroOutcome.learned, BAT-END-003). Who learns them after the battle (the winner, a spell book, Wisdom) is the orchestrator's, open in BAT-Q24."
+numeric  = "integer"
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (docs/formats/installation.md §7.24): 0x59FF52, for caster kind 0 only after the Orb test, tests the opposite side's hero: Eagle Eye (+0xD4) above 0, the spell not learned (+0x3EA), its level (+0x18) at most Eagle Eye + 1; then random(1, 100) (0x50B230) <= ftol(p x 100.0f) with p from 0x4E4420 puts the spell into that side's set +0x545C (0x5A9450, unique)"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "wiki"
+  ref        = "Eagle Eye (SoD text): 'a 40% chance to learn any 1st or 2nd level spell used in combat', 50 % up to the 3rd, 60 % up to the 4th level; learned 'after the fight is won' - Heroes 3 wiki"
+  url        = "https://heroes.thelazy.net/index.php/Eagle_Eye"
+  retrieved  = "2026-10-10"
+  confidence = "medium"
+
+  [[rule.source]]
+  kind       = "vcmi"
+  ref        = "server/battles/BattleResultProcessor.cpp: after the battle, for the winner's hero, one roll of LEARN_BATTLE_SPELL_CHANCE per HERO_SPELL action of the other side (usedSpellsHistory) for a spell of level at most LEARN_BATTLE_SPELL_LEVEL_LIMIT not in its spell book (the same odds as a roll at each cast); config/skills.json eagleEye 40/50/60, levels 2/3/4"
+  url        = "https://github.com/vcmi/vcmi/blob/1.7.5/server/battles/BattleResultProcessor.cpp"
   retrieved  = "2026-10-10"
   confidence = "medium"

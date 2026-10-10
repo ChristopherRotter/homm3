@@ -15,12 +15,12 @@
 
 # --- adventure (ADV-STUB-<n>) ---
 
-# --- server (SRV-STUB-<n>) ---
-
 [[stub]]
-id     = "SRV-STUB-1"
-where  = "crates/h3-server/src/main.rs::main"
-reason = "Skeleton (E16 M0): the binary names its versions and exits; hosting arrives with M1 T3"
-epic   = "E16"
+id     = "ADV-STUB-1"
+where  = "crates/h3-map/src/import/mod.rs::hero"
+reason = "The import keeps a placed hero's owner, type, tile and army and ignores its customisations (name, portrait, experience, skills, artifacts, spells, primary skills, formation, patrol, biography, sex) until the game keeps hero details (E08 T6a; docs/formats/h3m.md, Import)"
+epic   = "E08"
+
+# --- server (SRV-STUB-<n>) ---
 
 # --- client (CLT-STUB-<n>) ---
