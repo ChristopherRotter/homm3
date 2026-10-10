@@ -1433,6 +1433,34 @@ cost = { coin = 8000 }
 slot = "charm"
 effects = [{ kind = "spell_level_limit", level = 2 }]  # no spell above level 2 in them
 
+# Artifacts that defend against spells (pack format v31, E04b T8b2; HER-BAT-016).
+[[artifact]]
+id = "spark_ward"
+name = "Spark Ward"
+class = "treasure"
+cost = { coin = 1000 }
+slot = "charm"
+effects = [
+    { kind = "spell_immunity", spell = "spark" },   # its wearer's stacks never take the spark
+    { kind = "mind_immunity" },                     # nor mind spells
+]
+
+[[artifact]]
+id = "elder_scale"
+name = "Elder Scale"
+class = "relic"
+cost = { coin = 30000 }
+slot = "charm"
+effects = [{ kind = "spell_level_immunity", level = 4 }]  # nor spells up to level 4
+
+[[artifact]]
+id = "breaking_lens"
+name = "Breaking Lens"
+class = "relic"
+cost = { coin = 25000 }
+slot = "charm"
+effects = [{ kind = "negate_immunities" }]  # spells ignore immunities and resistance
+
 # Hero parameters (Tier 2, E04a T4a): invented limits, smaller than the original's.
 [hero_params]
 primary_min = [0, 0, 1, 2]          # HER-DET-001: lower totals count as these

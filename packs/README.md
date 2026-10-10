@@ -140,7 +140,7 @@ errors:
 | `ammo_supply` | — | war machine only (requires flag `war_machine`; Ammo Cart): while it lives its side's shots use no ammunition; it never acts (BAT-WAR-004) |
 | `spell_level_immunity` | `max_level` (1..=5) | spells of this level and below cannot affect it (dragons, Magic Elemental; BAT-MAG-005) |
 | `school_immunity` | `school` | the school's spells cannot affect it (one entry per school; fire immunity; BAT-MAG-005) |
-| `spell_immunity` | `spell` | the spell cannot affect it (one entry per spell; elementals; BAT-MAG-005) |
+| `spell_immunity` | `spell`, `absolute` (default false; since v31) | the spell cannot affect it (one entry per spell; elementals; BAT-MAG-005); an `absolute` one also not when the immunities are negated (Troglodytes against Blind and Stone Gaze, Gargoyles against Poison; BAT-MAG-066) |
 | `spell_vulnerability` | `spell`, `percent` (1..=1000) | +`percent` % damage from the spell (one entry per spell; elementals; BAT-MAG-004) |
 | `spell_damage_reduction` | `percent` (1..=100) | damage from spells × (100 − `percent`) / 100, rounded down (Golems; BAT-MAG-004) |
 | `magic_resistance` | `percent` (1..=100) | the creature lets `100 − percent` % of hostile spells through (Dwarves, Crystal Dragon; BAT-MAG-008) |
@@ -529,6 +529,10 @@ different creatures or statistics.
 | `scroll` | — | since v30: each copy of the artifact holds a spell of its own, which the hero has while the copy is worn (the Spell Scroll; HER-ART-003) |
 | `no_casting` | — | since v31: neither side casts in the hero's battles: no hero's spell, no creature's cast or raise, no periodic cast; the strike's creature magic stays (the Orb of Inhibition; HER-BAT-015, BAT-MAG-061) |
 | `spell_level_limit` | `level` (1..=4) | since v31: in the hero's battles no spell above `level` is cast by a hero or affects a stack, whoever casts it; the smallest counts (Recanter's Cloak: 2; HER-BAT-015, BAT-MAG-062) |
+| `spell_immunity` | `spell` | since v31: the stacks the hero controls are never affected by the spell, whoever casts it (the Pendants, the Sphere of Permanence, Armageddon's Blade; HER-BAT-016, BAT-MAG-063) |
+| `spell_level_immunity` | `level` (1..=5) | since v31: the stacks the hero controls are never affected by a spell up to `level`, Dispel excepted; the largest counts (Power of the Dragon Father: 4; BAT-MAG-064) |
+| `mind_immunity` | — | since v31: the stacks the hero controls are immune to mind spells unless negated (Badge of Courage; BAT-MAG-065) |
+| `negate_immunities` | — | since v31: the side's spells, and spells at the stacks the hero controls, ignore the creatures' immunities and all magic resistance (the Orb of Vulnerability; BAT-MAG-066) |
 
 The three `*_specialty` kinds are allowed in a hero's `specialty` only.
 

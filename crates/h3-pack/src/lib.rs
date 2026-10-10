@@ -328,6 +328,9 @@ enum AbilityDto {
     },
     SpellImmunity {
         spell: String,
+        /// Pack format v31 (E04b T8b2): no immunity negation lifts it.
+        #[serde(default)]
+        absolute: bool,
     },
     SpellVulnerability {
         spell: String,
@@ -484,8 +487,9 @@ impl AbilityDto {
             Self::SchoolImmunity { school } => AbilityDef::SchoolImmunity {
                 school: reference(pack, &school)?,
             },
-            Self::SpellImmunity { spell } => AbilityDef::SpellImmunity {
+            Self::SpellImmunity { spell, absolute } => AbilityDef::SpellImmunity {
                 spell: reference(pack, &spell)?,
+                absolute,
             },
             Self::SpellVulnerability { spell, percent } => AbilityDef::SpellVulnerability {
                 spell: reference(pack, &spell)?,
@@ -1266,11 +1270,19 @@ enum EffectDto {
         level: u8,
     },
     Scroll {},
-    /// Pack format v31 (E04b T8b1).
+    /// Pack format v31 (E04b T8b).
     NoCasting {},
     SpellLevelLimit {
         level: u8,
     },
+    SpellImmunity {
+        spell: String,
+    },
+    SpellLevelImmunity {
+        level: u8,
+    },
+    MindImmunity {},
+    NegateImmunities {},
 }
 
 /// Whose stacks a morale or luck effect changes, as files write it (`own` by default, `enemy`,
@@ -1479,6 +1491,12 @@ impl EffectDto {
             Self::Scroll {} => HeroEffect::Scroll,
             Self::NoCasting {} => HeroEffect::NoCasting,
             Self::SpellLevelLimit { level } => HeroEffect::SpellLevelLimit { level },
+            Self::SpellImmunity { spell } => HeroEffect::SpellImmunity {
+                spell: reference(pack, &spell)?,
+            },
+            Self::SpellLevelImmunity { level } => HeroEffect::SpellLevelImmunity { level },
+            Self::MindImmunity {} => HeroEffect::MindImmunity,
+            Self::NegateImmunities {} => HeroEffect::NegateImmunities,
         })
     }
 }
@@ -2249,6 +2267,20 @@ pub enum EffectEntry {
         /// The highest spell level allowed.
         max_level: u8,
     },
+    /// [`BattleEffect::SpellImmunity`].
+    SpellImmunity {
+        /// The spell by key.
+        spell: String,
+    },
+    /// [`BattleEffect::SpellLevelImmunity`].
+    SpellLevelImmunity {
+        /// The highest level.
+        max_level: u8,
+    },
+    /// [`BattleEffect::MindImmunity`] (a struct variant, so that unknown keys are rejected).
+    MindImmunity {},
+    /// [`BattleEffect::NegateImmunities`] (a struct variant, so that unknown keys are rejected).
+    NegateImmunities {},
 }
 
 impl SelectorEntry {
@@ -2389,6 +2421,14 @@ impl EffectEntry {
             Self::SpellDuration { rounds } => BattleEffect::SpellDuration { rounds },
             Self::NoCasting {} => BattleEffect::NoCasting,
             Self::SpellLevelLimit { max_level } => BattleEffect::SpellLevelLimit { max_level },
+            Self::SpellImmunity { spell } => BattleEffect::SpellImmunity {
+                spell: spell_id(ruleset, spell)?,
+            },
+            Self::SpellLevelImmunity { max_level } => {
+                BattleEffect::SpellLevelImmunity { max_level }
+            }
+            Self::MindImmunity {} => BattleEffect::MindImmunity,
+            Self::NegateImmunities {} => BattleEffect::NegateImmunities,
         })
     }
 
@@ -2470,6 +2510,14 @@ impl EffectEntry {
             BattleEffect::SpellDuration { rounds } => Self::SpellDuration { rounds },
             BattleEffect::NoCasting => Self::NoCasting {},
             BattleEffect::SpellLevelLimit { max_level } => Self::SpellLevelLimit { max_level },
+            BattleEffect::SpellImmunity { spell } => Self::SpellImmunity {
+                spell: spell_key(ruleset, spell)?,
+            },
+            BattleEffect::SpellLevelImmunity { max_level } => {
+                Self::SpellLevelImmunity { max_level }
+            }
+            BattleEffect::MindImmunity => Self::MindImmunity {},
+            BattleEffect::NegateImmunities => Self::NegateImmunities {},
             BattleEffect::AlignmentGroup { factions } => Self::AlignmentGroup {
                 factions: factions
                     .factions()
@@ -3279,9 +3327,13 @@ mod tests {
                         single: NonZeroU32::new(0x3e99_999a),
                     },
                 },
-                // E04b T8b1.
+                // E04b T8b.
                 BattleEffect::NoCasting,
                 BattleEffect::SpellLevelLimit { max_level: 2 },
+                BattleEffect::SpellImmunity { spell: spark },
+                BattleEffect::SpellLevelImmunity { max_level: 4 },
+                BattleEffect::MindImmunity,
+                BattleEffect::NegateImmunities,
             ])
             .collect();
         // Single-precision values of their own (E04b T3c, OPEN-QUESTIONS Q45).
@@ -4134,7 +4186,7 @@ mod tests {
         );
         // Expert Leadership (+3), Pendant of Courage (+3 each), Badge of Courage and two Clovers
         // (+1 each, once); Spirit of Oppression caps both sides' morale at 0 (the battle clamps
-        // the sums to +3).
+        // the sums to +3); the Badge's mind immunity (E04b T8b2).
         let mut leader = details(
             &sod,
             &[
@@ -4161,6 +4213,7 @@ mod tests {
                     value: 0,
                     affects: Affects::Both
                 },
+                BattleEffect::MindImmunity,
             ]
         );
         let mut tactician = d.clone();
@@ -4401,7 +4454,7 @@ mod tests {
             (params.primary_min, params.primary_max, params.backpack),
             ([0, 0, 1, 2], 40, 3)
         );
-        assert_eq!(r.artifacts().len(), 17);
+        assert_eq!(r.artifacts().len(), 20);
         let by_key = |k: &str| r.artifact(r.artifact_by_key(k).unwrap()).unwrap();
         let regalia = by_key("synthetic-ext:storm_regalia");
         assert_eq!(regalia.class, ArtifactClass::Relic);
@@ -4516,10 +4569,13 @@ mod tests {
                 HeroEffect::Scroll,
             ]
         );
-        // The casting limits (pack format v31, E04b T8b1).
+        // The casting limits and the spell defences (pack format v31, E04b T8b).
         let limited = SYNTHETIC_PACK.replacen(
             bell,
-            "{ kind = \"no_casting\" }, { kind = \"spell_level_limit\", level = 2 },",
+            "{ kind = \"no_casting\" }, { kind = \"spell_level_limit\", level = 2 }, \
+             { kind = \"spell_immunity\", spell = \"spark\" }, \
+             { kind = \"spell_level_immunity\", level = 4 }, { kind = \"mind_immunity\" }, \
+             { kind = \"negate_immunities\" },",
             1,
         );
         assert!(!limited.contains(bell));
@@ -4530,7 +4586,13 @@ mod tests {
                 .effects[2..],
             [
                 HeroEffect::NoCasting,
-                HeroEffect::SpellLevelLimit { level: 2 }
+                HeroEffect::SpellLevelLimit { level: 2 },
+                HeroEffect::SpellImmunity {
+                    spell: l.spell_by_key("synthetic:spark").unwrap()
+                },
+                HeroEffect::SpellLevelImmunity { level: 4 },
+                HeroEffect::MindImmunity,
+                HeroEffect::NegateImmunities,
             ]
         );
         for to in [
@@ -4539,6 +4601,8 @@ mod tests {
             "{ kind = \"scroll\", spell = \"spark\" },",
             "{ kind = \"no_casting\", level = 2 },",
             "{ kind = \"spell_level_limit\" },",
+            "{ kind = \"mind_immunity\", spell = \"spark\" },",
+            "{ kind = \"negate_immunities\", level = 1 },",
         ] {
             let text = SYNTHETIC_PACK.replacen(bell, to, 1);
             assert!(
@@ -4550,6 +4614,7 @@ mod tests {
             "{ kind = \"spells\", school = \"S:x\" },",
             "{ kind = \"spells\", spell = \"S:x\" },",
             "{ kind = \"spell_mastery\", spell = \"S:x\", level = 3 },",
+            "{ kind = \"spell_immunity\", spell = \"S:x\" },",
         ] {
             let text = SYNTHETIC_PACK.replacen(bell, to, 1);
             assert!(matches!(parse_pack(&text), Err(PackError::Key(_))), "{to}");

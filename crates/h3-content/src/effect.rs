@@ -470,6 +470,25 @@ pub enum HeroEffect<C, K, S, F, L> {
         /// The highest spell level allowed (1..=4).
         level: u8,
     },
+    /// The stacks the hero controls are never affected by `spell`, whoever casts it (a Pendant,
+    /// the Sphere of Permanence, Armageddon's Blade; E04b T8b2, HER-BAT-016).
+    SpellImmunity {
+        /// The spell.
+        spell: S,
+    },
+    /// The stacks the hero controls are never affected by a spell up to `level` but Dispel
+    /// (Power of the Dragon Father: 4; E04b T8b2, HER-BAT-016).
+    SpellLevelImmunity {
+        /// The highest level (1..=5).
+        level: u8,
+    },
+    /// The stacks the hero controls are immune to mind spells, unless the immunities are negated
+    /// (Badge of Courage; E04b T8b2, HER-BAT-016).
+    MindImmunity,
+    /// The side's spells, and spells at the stacks the hero controls, ignore the creatures'
+    /// immunities and resistance and the heroes' resistance (the Orb of Vulnerability; E04b T8b2,
+    /// HER-BAT-016).
+    NegateImmunities,
 }
 
 /// An effect as written in a pack (references are keys).
@@ -479,7 +498,7 @@ pub type CompiledHeroEffect = HeroEffect<CreatureTypeId, SkillId, SpellId, Facti
 
 impl<C, K, S, F, L> HeroEffect<C, K, S, F, L> {
     /// Pack names, indexed by [`HeroEffect::code`].
-    pub const NAMES: [&'static str; 32] = [
+    pub const NAMES: [&'static str; 36] = [
         "morale",
         "luck",
         "ranged_damage",
@@ -512,6 +531,10 @@ impl<C, K, S, F, L> HeroEffect<C, K, S, F, L> {
         "scroll",
         "no_casting",
         "spell_level_limit",
+        "spell_immunity",
+        "spell_level_immunity",
+        "mind_immunity",
+        "negate_immunities",
     ];
 
     /// Stable code of the variant (canonical hash, duplicate checks).
@@ -549,6 +572,10 @@ impl<C, K, S, F, L> HeroEffect<C, K, S, F, L> {
             Self::Scroll => 29,
             Self::NoCasting => 30,
             Self::SpellLevelLimit { .. } => 31,
+            Self::SpellImmunity { .. } => 32,
+            Self::SpellLevelImmunity { .. } => 33,
+            Self::MindImmunity => 34,
+            Self::NegateImmunities => 35,
         }
     }
 
@@ -700,6 +727,10 @@ impl<C, K, S, F, L> HeroEffect<C, K, S, F, L> {
             Self::Scroll => HeroEffect::Scroll,
             Self::NoCasting => HeroEffect::NoCasting,
             Self::SpellLevelLimit { level } => HeroEffect::SpellLevelLimit { level: *level },
+            Self::SpellImmunity { spell: s } => HeroEffect::SpellImmunity { spell: spell(s)? },
+            Self::SpellLevelImmunity { level } => HeroEffect::SpellLevelImmunity { level: *level },
+            Self::MindImmunity => HeroEffect::MindImmunity,
+            Self::NegateImmunities => HeroEffect::NegateImmunities,
         })
     }
 
@@ -772,6 +803,9 @@ impl<C, K, S, F, L> HeroEffect<C, K, S, F, L> {
             Self::SpellLevelLimit { level } if !(1..MAX_SPELL_LEVEL).contains(level) => {
                 Some("spell_level_limit level must be 1..=4")
             }
+            Self::SpellLevelImmunity { level } if !(1..=MAX_SPELL_LEVEL).contains(level) => {
+                Some("spell_level_immunity level must be 1..=5")
+            }
             _ => None,
         }
     }
@@ -780,8 +814,9 @@ impl<C, K, S, F, L> HeroEffect<C, K, S, F, L> {
 impl<C: PartialEq, K, S: PartialEq, F, L: PartialEq> HeroEffect<C, K, S, F, L> {
     /// Whether two effects may not both appear in one list: the same variant, except morale or
     /// luck (and their caps) for different sides, creature-selecting kinds for different
-    /// creatures (or statistics), school masteries for different schools and spell-damage
-    /// bonuses for different scopes.
+    /// creatures (or statistics), school masteries for different schools, spell-damage
+    /// bonuses for different scopes and spell grants, masteries and immunities for different
+    /// spells.
     fn collides(&self, other: &Self) -> bool {
         match (self, other) {
             (Self::Morale { affects: a, .. }, Self::Morale { affects: b, .. })
@@ -823,7 +858,8 @@ impl<C: PartialEq, K, S: PartialEq, F, L: PartialEq> HeroEffect<C, K, S, F, L> {
             }
             (Self::SpellDamage { scope: a, .. }, Self::SpellDamage { scope: b, .. }) => a == b,
             (Self::Spells { grant: a }, Self::Spells { grant: b }) => a == b,
-            (Self::SpellMastery { spell: a, .. }, Self::SpellMastery { spell: b, .. }) => a == b,
+            (Self::SpellMastery { spell: a, .. }, Self::SpellMastery { spell: b, .. })
+            | (Self::SpellImmunity { spell: a }, Self::SpellImmunity { spell: b }) => a == b,
             _ => self.code() == other.code(),
         }
     }
@@ -972,8 +1008,16 @@ impl CanonicalHash for CompiledHeroEffect {
             Self::NoRangePenalty { creatures } | Self::ShootWhenAdjacent { creatures } => {
                 hash_selector(*creatures, h);
             }
-            Self::NoRetreat | Self::SpellBook | Self::Scroll | Self::NoCasting => {}
-            Self::SpellLevelLimit { level } => h.write_u8(*level),
+            Self::NoRetreat
+            | Self::SpellBook
+            | Self::Scroll
+            | Self::NoCasting
+            | Self::MindImmunity
+            | Self::NegateImmunities => {}
+            Self::SpellLevelLimit { level } | Self::SpellLevelImmunity { level } => {
+                h.write_u8(*level);
+            }
+            Self::SpellImmunity { spell } => spell.hash_into(h),
             Self::SchoolMastery { school, level } => {
                 school.hash_into(h);
                 h.write_u8(*level);
@@ -1092,6 +1136,10 @@ mod tests {
             E::Scroll,
             E::NoCasting,
             E::SpellLevelLimit { level: 2 },
+            E::SpellImmunity { spell: 3 },
+            E::SpellLevelImmunity { level: 4 },
+            E::MindImmunity,
+            E::NegateImmunities,
         ]
     }
 
@@ -1334,6 +1382,8 @@ mod tests {
             E::SpellMastery { spell: 0, level: 4 },
             E::SpellLevelLimit { level: 0 },
             E::SpellLevelLimit { level: 5 },
+            E::SpellLevelImmunity { level: 0 },
+            E::SpellLevelImmunity { level: 6 },
         ];
         for e in bad {
             assert!(e.parameter_error().is_some(), "{e:?}");
@@ -1478,6 +1528,10 @@ mod tests {
         );
         assert_eq!(
             E::SpellMastery { spell: 1, level: 3 }.try_map(plus, plus, fail, plus, plus),
+            Err(())
+        );
+        assert_eq!(
+            E::SpellImmunity { spell: 1 }.try_map(plus, plus, fail, plus, plus),
             Err(())
         );
     }
