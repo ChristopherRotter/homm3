@@ -320,6 +320,10 @@ pub enum Event {
         stack: u8,
         spell: u16,
     },
+    OpeningSpell {
+        side: Side,
+        spell: u16,
+    },
     ManaChanneled {
         side: Side,
         mana: u16,

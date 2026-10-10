@@ -8,7 +8,7 @@ The server lane's living state; read after the global `docs/HANDOFF.md`. Format 
 - **ADR-0018 point 5 as amended:** the mapping's matches over the engine's enums are exhaustive; a new battle variant fails `h3-protocol`'s build until mapped (global HANDOFF trap).
 - **The global HANDOFF's server row** still says "T2 next": a shared file, refreshed with T4's `shared/` pull request (`QUEUE.md`).
 - **Prepared by M0:** `arch.toml` allows every edge M1 needs (`h3-server` → `h3-cli`, `tokio`, `tokio-tungstenite`, `futures-util`, `getrandom`, `toml`, `serde_json`; `cargo deny` checked them); the crates declare a dependency when they use it. Review list for the M1 checkpoint: the epic file.
-- **Versions** (`docs/08-work-process.md`): `PROTOCOL_VERSION` (`h3-protocol`, 2, bumped on every wire change), `RECORD_FORMAT_VERSION` (`h3-protocol`, 1), `JOURNAL_FORMAT_VERSION` (`h3-server`, M2).
+- **Versions** (`docs/08-work-process.md`): `PROTOCOL_VERSION` (`h3-protocol`, 3 since the battle lane's `OpeningSpell` event, BAT-MAG-068; bumped on every wire change), `RECORD_FORMAT_VERSION` (`h3-protocol`, 1), `JOURNAL_FORMAT_VERSION` (`h3-server`, M2).
 - The lane owns (`lanes.toml`) `h3-protocol`, `h3-server`, `benches/server/` and E16's files; the workspace files stay shared. **Checkpoints** per milestone, under the autonomy contract below; a fresh reviewer agent checks each milestone before the user does. The identity and discovery ADR drafts are decided at the M3 refinement.
 - **Ids:** questions `SRV-Q<n>`, quirks `SRV-QUIRK-<n>`, stubs `SRV-STUB-<n>`. ADR drafts go to `docs/lanes/server/adr-drafts/` and get a number when the user accepts them. Branches: `server/<task>`.
 
