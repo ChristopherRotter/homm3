@@ -776,7 +776,7 @@ fn reachable(
             && skips_hypnotized(state, ruleset, (spell, mastery), s))
 }
 
-/// [`reachable`] without the hypnotized stacks a mass version passes over.
+/// [`reachable`], counting the hypnotized stacks a mass version passes over.
 #[inline(always)]
 fn in_reach(
     state: &BattleState,
@@ -896,10 +896,11 @@ fn accepts(
 }
 
 /// Whether the battle can cast `spell` at `mastery` as an opening spell (BAT-MAG-068, checked
-/// with the hero, BAT-HER-001): a spell without a target at that mastery (a mass version or a
-/// battle-wide spell) whose effects only change, dispel or heal stacks.
+/// with the hero, BAT-HER-001): a hero's spell without a target at that mastery (a mass version
+/// or a battle-wide spell) whose effects only change, dispel or heal stacks.
 pub(crate) fn opens_with(ruleset: &Ruleset, spell: &Spell, mastery: u8) -> bool {
-    implemented(spell)
+    spell.category != SpellCategory::Ability
+        && implemented(spell)
         && target_at(ruleset, spell, mastery) == SpellTarget::None
         && spell.magic.effects.iter().all(|e| {
             matches!(
@@ -933,11 +934,11 @@ pub(crate) fn opening<S: Sink>(
     };
     hero.magic.opening_due = false;
     let (openings, bonuses) = (hero.magic.opening, hero.magic.bonuses);
-    for o in &openings {
-        // Validated with the hero (BAT-HER-001).
-        let Some(spell) = ruleset.spell(o.spell) else {
-            continue;
-        };
+    // Validated with the hero (BAT-HER-001): every spell is the ruleset's.
+    for (o, spell) in openings
+        .iter()
+        .filter_map(|o| ruleset.spell(o.spell).map(|s| (o, s)))
+    {
         let pair = (o.spell, spell);
         let affects_some = stack_ids(state).any(|s| {
             in_reach(state, ruleset, side, (pair, o.mastery), s)

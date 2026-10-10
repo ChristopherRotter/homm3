@@ -458,7 +458,7 @@ checkpoints = [
 ]
 
 [replay]
-format = 20
+format = 21
 engine = "0.1.0"
 scenario = "full"
 seed = "3"
@@ -467,7 +467,7 @@ packs = [[
     "0.1.0",
 ]]
 profile = "synthetic:faithful"
-ruleset_hash = "0xce8820625e1a8deb"
+ruleset_hash = "0xca39e2af5fabd024"
 rng = "xoshiro256starstar+splitmix64"
 rng_version = 1
 hash = "fnv1a64-le"

@@ -194,3 +194,37 @@ fn the_battle_checks_eagle_eye() {
     let gaze = spell(&r, "gaze");
     assert_eq!(refused(&|e| e.spells.push(gaze)), Some(HeroError::EagleEye));
 }
+
+// covers: BAT-MAG-069
+#[test]
+fn creature_casts_give_eagle_eye_nothing() {
+    // The attacker's Enchanter casts at its first activation (BAT-MAG-053): the defender's Eagle
+    // Eye, certain for every spell it may cast, picks none.
+    let r = ruleset();
+    let spells = [
+        "haste",
+        "sloth",
+        "skin",
+        "bless",
+        "weaken",
+        "lust",
+        "airshield",
+        "cure",
+    ];
+    let setup = h3_contracts::BattleSetup {
+        heroes: [None, Some(watcher(&r, 10_000, &spells))],
+        ..setup(
+            &r,
+            &[(0, "chanter", 5), (1, "fixed", 3)],
+            &[(0, "fixed", 4)],
+        )
+    };
+    let mut events = Vec::new();
+    let s = BattleState::start(&r, &setup, 3, &mut events).unwrap();
+    assert!(
+        events
+            .iter()
+            .any(|e| matches!(e.kind, crate::EventKind::PeriodicCast { .. }))
+    );
+    assert!(picked(&s, BattleSide::Defender).is_empty());
+}

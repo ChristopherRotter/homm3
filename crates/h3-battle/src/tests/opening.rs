@@ -327,6 +327,12 @@ fn the_battle_casts_only_opening_spells_it_can() {
         error(HeroError::OpeningSpell)
     );
     assert_eq!(refused(with("bolt", 3, 10)), error(HeroError::OpeningSpell));
+    // Without a target but damaging (the storm strikes every stack), or a creature ability.
+    assert_eq!(
+        refused(with("storm", 3, 10)),
+        error(HeroError::OpeningSpell)
+    );
+    assert_eq!(refused(with("gaze", 3, 10)), error(HeroError::OpeningSpell));
     assert_eq!(
         refused(BattleEffect::OpeningSpell {
             spell: h3_content::SpellId::from_raw(999),
@@ -343,5 +349,63 @@ fn the_battle_casts_only_opening_spells_it_can() {
     assert_eq!(
         BattleState::new(&r, &setup, 1).err(),
         error(HeroError::OpeningSpell)
+    );
+}
+
+// covers: BAT-MAG-068
+#[test]
+fn each_stack_rolls_against_an_opening_spell() {
+    // The defender's Slow at the attacker's Dwarves (20 % resistance): resisted with some seeds,
+    // not with others, one roll each (as any of the hero's mass casts, BAT-MAG-008).
+    let r = ruleset();
+    let mut outcomes = [0; 2];
+    for seed in 0..40 {
+        let setup = BattleSetup {
+            heroes: [None, Some(wearer(&r, vec![opening(&r, "sloth", 50)]))],
+            ..setup(&r, &[(0, "dwarf", 10)], &[(0, "slow", 10)])
+        };
+        let mut events = Vec::new();
+        let mut s = BattleState::start(&r, &setup, seed, &mut events).unwrap();
+        let events = act(&mut s, &r, Command::Defend).unwrap();
+        let resisted = events
+            .iter()
+            .any(|e| e.kind == EventKind::SpellResisted { target: StackId(0) });
+        assert_eq!(
+            openings(&r, &events),
+            if resisted {
+                vec![effect(101, "sloth", 0)]
+            } else {
+                vec![effect(101, "sloth", 0), effect(0, "sloth", 50)]
+            }
+        );
+        outcomes[usize::from(resisted)] += 1;
+    }
+    assert!(outcomes[0] > 0 && outcomes[1] > 0, "{outcomes:?}");
+}
+
+// covers: BAT-MAG-068
+#[test]
+fn a_hypnotized_stacks_activation_is_its_controllers() {
+    // The defender's dragon is the battle's first stack; its flyer, hypnotized by the attacker,
+    // activates next: the attacker's first activation, so the attacker's Prayer goes then, at
+    // the attacker's own stack (the flyer is the defender's).
+    let r = ruleset();
+    let setup = BattleSetup {
+        heroes: [Some(wearer(&r, vec![opening(&r, "prayer", 10)])), None],
+        ..setup(
+            &r,
+            &[(0, "slow", 10)],
+            &[(0, "dragon", 1), (1, "flyer", 10)],
+        )
+    };
+    let (mut s, events) = start(&r, &setup);
+    assert!(openings(&r, &events).is_empty());
+    let st = &mut s.stacks.as_mut_slice()[2];
+    st.spells.status = st.spells.status.with(Status::HYPNOTIZED, true);
+    let events = act(&mut s, &r, Command::Defend).unwrap();
+    assert_eq!(s.active(), Some(StackId(2)));
+    assert_eq!(
+        openings(&r, &events),
+        [effect(100, "prayer", 0), effect(0, "prayer", 10)]
     );
 }

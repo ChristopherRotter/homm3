@@ -1546,6 +1546,15 @@ mod tests {
             level: 2,
         };
         assert_eq!(in_school.try_map(plus, plus, plus, plus, fail), Err(()));
+        assert_eq!(
+            E::OpeningSpell {
+                spell: 1,
+                mastery: 3,
+                power: 10
+            }
+            .try_map(plus, plus, fail, plus, plus),
+            Err(())
+        );
         for scope in [SpellScope::School(1), SpellScope::Spell(1)] {
             let e = E::SpellDamage { scope, bp: 1 };
             assert_eq!(e.try_map(plus, plus, fail, plus, fail), Err(()), "{e:?}");

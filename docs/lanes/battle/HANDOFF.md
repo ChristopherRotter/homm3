@@ -10,7 +10,7 @@ The battle lane's living state; read after the global `docs/HANDOFF.md`. Format 
 - **Hero rates** cross the seam as `h3_contracts::Rate` (basis points plus, under Q-0005, the original's single-precision value as an f32 bit pattern where it differs; Q45 (b), T3c2).
 - **Next:** the user plays batch 2e (BAT-Q21's five points, BAT-Q22's three; `experiments/results/E04b-batch-2e.md`), then its evaluation; T8e (profile overrides, an ADR-0007 amendment); then T9–T11. BAT-Q24 (who learns Eagle Eye's picks) waits for the adventure lane.
 - **Open for later tasks:** Q43 (sprite offset, keep the approximation); BAT-QUIRK-17's later variant (rebirth right after a sacrifice, BAT-Q18); bad morale's `WAITED` gate (T7c3 review); T4a's and T4c's loose ends (all in `QUEUE.md`, "Inbox").
-- **Versions (battle owns them):** state hash v41, ruleset hash v41, replay format v20, action encoding v11, C ABI v16, observation encoding v12; pack format v33. New ids: `BAT-Q<n>`, `BAT-QUIRK-<n>`, `BAT-STUB-<n>` (old ids stay).
+- **Versions (battle owns them):** state hash v41, ruleset hash v42, replay format v21, action encoding v11, C ABI v16, observation encoding v12; pack format v33. New ids: `BAT-Q<n>`, `BAT-QUIRK-<n>`, `BAT-STUB-<n>` (old ids stay).
 - **Ownership:** `h3-content` and `h3-pack` stay with battle until further notice (user, 2026-10-07); `h3-kernel` and `h3-contracts` are shared, so a seam change is its own `shared/` pull request, merged before the battle change that uses it.
 - Working agreement: increments of a couple of tasks with a user checkpoint (Q41); the user confirms seams and ADRs; token efficiency beats speed (AGENTS.md); the user plays experiment maps in SoD with plain HD and commits the results.
 
@@ -54,7 +54,7 @@ The battle lane's living state; read after the global `docs/HANDOFF.md`. Format 
 
 ### 2026-10-10 (forty-seventh) — E04b increment 17: T8c and T8d
 
-The user (BAT-Q23): T8c with T8d, one `cross-lane` PR; the code and the wiki on the opening's timing (VCMI: before round 1); BAT-Q24 (the learning after the battle) left to the adventure lane. §7.24; pack v33, state hash v41, `HeroOutcome.learned` replaces `spells_cast`. Detail: `docs/epics/E04b-log.md`.
+The user (BAT-Q23): T8c with T8d, one `cross-lane` PR; the code and the wiki on the opening's timing (VCMI: before round 1); BAT-Q24 (the learning after the battle) left to the adventure lane. §7.24; pack v33, state hash v41, ruleset hash v42, replay format v21, `HeroOutcome.learned` replaces `spells_cast`. Detail: `docs/epics/E04b-log.md`.
 
 ### 2026-10-10 (forty-sixth) — E04b increment 16: T8b3, batch 2e, the coverage flake
 
