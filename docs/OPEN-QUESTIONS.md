@@ -42,7 +42,13 @@ The original picks Chain Lightning's next target by screen distance; the y posit
 
 ### Adventure lane (`ADV-Q<n>`)
 
-(no open questions)
+#### ADV-Q1 — Cross-context ids `PlayerId` and `HeroId` in `h3-contracts` (E08 T1a)
+
+`h3-adventure` (a hero's owner, fog per player, the actor of its commands), `h3-game` (the players) and later `h3-heroes` (the hero store, ADR-0013 point 1) must name the same player and the same hero, and domain crates cannot import each other. **Options:** (a) both ids in `h3-contracts`, added by T2's `shared/` pull request (a seam addition that no battle code reads); (b) each context keeps its own handles and `h3-game` maps between them in every projection and seam. **Recommendation:** (a) (ADR draft "crate shape", point 5). Blocks T2.
+
+#### ADV-Q2 — How an adventure replay names its map (E08 T1a)
+
+A battle replay carries its setup. An adventure setup holds every tile (41 472 on a two-level SoD map of 144×144) and every object, so embedding it bloats every replay; naming the map file makes a replay depend on the importer. **Options:** (a) the replay names the map by content hash and path (a committed fixture, or the server's copy next to its journal) plus `h3-map`'s import version; verifying re-imports, and an import change bumps the version as a state-hash change does today; (b) the replay embeds the setup in a compact, versioned encoding; (c) the replay embeds the map file's bytes. **Recommendation:** (a); (b) only if saves need it. Shipped maps never enter git either way (ADR-0009). Blocks T9 (and the server's journal at E16 M5), not T2–T8.
 
 ### Server lane (`SRV-Q<n>`)
 
