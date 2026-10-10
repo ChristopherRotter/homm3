@@ -47,7 +47,6 @@ spell_book = [
     "synthetic:haze", "synthetic:charm", "synthetic:scorch", "synthetic:blink",
     "synthetic:snare", "synthetic:revive", "synthetic:offer", "synthetic:copy",
 ]
-schools = { "synthetic:storm" = 1 }
 ranged_bp = 1000
 melee_bp = 1000
 reduction_bp = 500
@@ -58,6 +57,26 @@ effects = [
     { kind = "luck", amount = 1 },
     { kind = "spell_specialty", spell = "synthetic:hasten", bp_per_level = 300, level = 6 },
 ]
+[scenario.attacker_hero.masteries]  # Basic Storm magic: her storm spells at Basic (per spell since E04b T8a)
+"synthetic:spark" = 1
+"synthetic:cinders" = 1
+"synthetic:arc" = 1
+"synthetic:ward" = 1
+"synthetic:hasten" = 1
+"synthetic:drag" = 1
+"synthetic:fury" = 1
+"synthetic:smiting" = 1
+"synthetic:riposte" = 1
+"synthetic:mend" = 1
+"synthetic:blaze" = 1
+"synthetic:glass" = 1
+"synthetic:haze" = 1
+"synthetic:charm" = 1
+"synthetic:scorch" = 1
+"synthetic:blink" = 1
+"synthetic:snare" = 1
+"synthetic:offer" = 1
+"synthetic:copy" = 1
 
 # The defender is led by a hero too (E04a T11c), so both sides may retreat and surrender (the
 # owners can pay) and the workload runs the heroes' stack effects (BAT-HER-005/006). Corwin at
@@ -98,7 +117,6 @@ spell_book = [
     "synthetic:dazzle", "synthetic:rampage", "synthetic:bulwark", "synthetic:mire",
     "synthetic:uproot", "synthetic:revive", "synthetic:conjure",
 ]
-schools = { "synthetic:stone" = 3 }
 surrender_discount_bp = 1000
 ballista = { shots = 1, double_damage_chance_bp = 5000 }
 effects = [
@@ -114,6 +132,24 @@ effects = [
     { kind = "spell_duration", rounds = 2 },
     { kind = "spell_specialty", spell = "synthetic:boon", bp_per_level = 300, level = 1 },
 ]
+[scenario.defender_hero.masteries]  # Expert Stone magic: his stone spells at Expert (per spell since E04b T8a)
+"synthetic:blight" = 3
+"synthetic:zeal" = 3
+"synthetic:gloom" = 3
+"synthetic:boon" = 3
+"synthetic:bane" = 3
+"synthetic:corrode" = 3
+"synthetic:aegis" = 3
+"synthetic:purge" = 3
+"synthetic:rage" = 3
+"synthetic:veil" = 3
+"synthetic:dazzle" = 3
+"synthetic:rampage" = 3
+"synthetic:bulwark" = 3
+"synthetic:mire" = 3
+"synthetic:uproot" = 3
+"synthetic:revive" = 3
+"synthetic:conjure" = 3
 
 [[attacker]]
 slot = 0

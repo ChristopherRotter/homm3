@@ -95,11 +95,11 @@ pub enum HeroError {
     UnknownCreature,
     /// An alignment group names a faction that is not part of the ruleset.
     UnknownFaction,
-    /// A school mastery is above Expert (3).
-    SchoolLevel,
-    /// A spell in the spell book or a spell effect is not part of the ruleset.
+    /// A spell mastery is not Basic (1) to Expert (3).
+    MasteryLevel,
+    /// A spell in the spell book, a mastery or a spell effect is not part of the ruleset.
     UnknownSpell,
-    /// A school mastery or a spell-damage effect names a spell school the ruleset lacks.
+    /// A spell-damage effect names a spell school the ruleset lacks.
     UnknownSchool,
     /// More than `MAX_SPELL_BONUSES` spells have spell-damage or specialty effects of their own.
     TooManySpellBonuses,
@@ -122,11 +122,11 @@ impl fmt::Display for HeroError {
             Self::TooManyEffects => "too many effects",
             Self::UnknownCreature => "an effect names an unknown creature type",
             Self::UnknownFaction => "an alignment group names an unknown faction",
-            Self::SchoolLevel => "school mastery above 3",
-            Self::UnknownSpell => "unknown spell in the spell book or an effect",
-            Self::UnknownSchool => "a mastery or an effect for an unknown spell school",
+            Self::MasteryLevel => "spell mastery not 1..=3",
+            Self::UnknownSpell => "unknown spell in the spell book, the masteries or an effect",
+            Self::UnknownSchool => "an effect for an unknown spell school",
             Self::TooManySpellBonuses => "too many spells with bonuses of their own",
-            Self::DuplicateSpell => "a spell is in the spell book twice",
+            Self::DuplicateSpell => "a spell is listed twice in the spell book or the masteries",
             Self::NotAHeroSpell => "a creature ability in the spell book",
         })
     }
@@ -382,14 +382,14 @@ mod tests {
                 HeroError::UnknownFaction,
                 "an alignment group names an unknown faction",
             ),
-            (HeroError::SchoolLevel, "school mastery above 3"),
+            (HeroError::MasteryLevel, "spell mastery not 1..=3"),
             (
                 HeroError::UnknownSpell,
-                "unknown spell in the spell book or an effect",
+                "unknown spell in the spell book, the masteries or an effect",
             ),
             (
                 HeroError::UnknownSchool,
-                "a mastery or an effect for an unknown spell school",
+                "an effect for an unknown spell school",
             ),
             (
                 HeroError::TooManySpellBonuses,
@@ -397,7 +397,7 @@ mod tests {
             ),
             (
                 HeroError::DuplicateSpell,
-                "a spell is in the spell book twice",
+                "a spell is listed twice in the spell book or the masteries",
             ),
             (
                 HeroError::NotAHeroSpell,

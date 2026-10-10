@@ -150,7 +150,7 @@ fn the_armies_change_the_spell_cost() {
     assert_eq!(cost(&s, &r, 1), 7);
     // The largest reduction counts, and a cost stays at least 1: Basic's 4 − 5.
     let mut basic = mage(&r);
-    basic.magic.schools = [1, 0, 0, 0];
+    basic.magic.masteries = masteries(&r, [1, 0, 0, 0]);
     let (s, _) = led(
         &r,
         [Some(basic), None],
@@ -230,7 +230,7 @@ fn familiars_channel_a_share_of_the_other_heros_cost() {
     assert_eq!(mana(&s, BattleSide::Attacker), 10);
     // A cost below 5 channels nothing (Basic: 4).
     let mut basic = mage(&r);
-    basic.magic.schools = [1, 0, 0, 0];
+    basic.magic.masteries = masteries(&r, [1, 0, 0, 0]);
     let (mut s, _) = led(
         &r,
         [Some(basic), Some(mage(&r))],

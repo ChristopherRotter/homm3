@@ -286,6 +286,8 @@ impl HeroContent {
                 .collect();
             let reason = if let Some(reason) = effect::list_error(&a.effects, false) {
                 Some(reason)
+            } else if let Some(reason) = self.spell_effect_error(&a.effects) {
+                Some(reason)
             } else if a.war_machine.is_some_and(|m| !machine(m)) {
                 Some("war_machine must have flag war_machine")
             } else if a.war_machine.is_some() && (a.slot.is_none() || a.is_combination()) {

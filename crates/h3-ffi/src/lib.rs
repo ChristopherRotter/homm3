@@ -46,8 +46,10 @@ use h3_sim::{
 /// helpful caster's draw could pick; `h3_observation_len` grows); the stack's cast's spell head
 /// holds 0 for the Master Genie, whose spell is drawn at the cast; no function changes. v15 (E04b
 /// T7b4): observation encoding v11 (two globals: the round starts since each side's periodic
-/// casters cast; `h3_observation_len` grows); no function changes.
-pub const H3_ABI_VERSION: u32 = 15;
+/// casters cast; `h3_observation_len` grows); no function changes. v16 (E04b T8a): observation
+/// encoding v12 (the spell book's features carry the masteries, the school masteries are gone;
+/// `h3_observation_len` shrinks); no function changes.
+pub const H3_ABI_VERSION: u32 = 16;
 
 /// `H3StepResult.result`: the battle is not decided (still running, or truncated).
 pub const H3_RESULT_NONE: i32 = -1;
@@ -543,7 +545,7 @@ mod tests {
 
     #[test]
     fn abi_smoke_create_step_destroy() {
-        assert_eq!(h3_abi_version(), 15);
+        assert_eq!(h3_abi_version(), 16);
         assert_eq!(h3_action_count() as usize, ACTION_COUNT);
         assert_eq!(h3_spell_count() as usize, SPELL_COUNT);
         assert_eq!(h3_target_count() as usize, TARGET_COUNT);

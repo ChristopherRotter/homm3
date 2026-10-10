@@ -7,9 +7,9 @@ use std::vec::Vec;
 use h3_content::{
     ArtifactClass, ArtifactDef, ArtifactSlotDef, ArtifactSlotId, ArtifactTypeId, BattleParamsDef,
     CompileError, ContentKey, ContentPack, CreatureDef, CreatureInfoDef, FactionDef, HeroClassDef,
-    HeroParamsDef, HeroTypeDef, HeroTypeId, PackManifest, ProfileDef, ResourceDef, Ruleset,
-    SecondarySkillDef, SkillId, SpellCategory, SpellDef, SpellId, SpellMagic, SpellPolarity,
-    SpellSchoolDef, StartingStackDef,
+    HeroEffect, HeroParamsDef, HeroTypeDef, HeroTypeId, PackManifest, ProfileDef, ResourceDef,
+    Ruleset, SecondarySkillDef, SkillId, SpellCategory, SpellDef, SpellGrant, SpellId, SpellMagic,
+    SpellPolarity, SpellSchoolDef, StartingStackDef,
 };
 use proptest::prelude::*;
 
@@ -110,6 +110,7 @@ fn spell(k: &str, category: SpellCategory) -> SpellDef {
         spares: vec![],
         tests_as: None,
         summons: None,
+        granted_by_name_only: false,
     }
 }
 
@@ -135,6 +136,28 @@ fn pack() -> ContentPack {
     kit.war_machine = Some(key("t:ballista"));
     let mut circle = artifact("t:circle", Some("t:ring"));
     circle.parts = vec![key("t:band"), key("t:loop"), key("t:helm")];
+    // The spell artifacts (E04b T8a): a scroll, an air tome, a crown of every level-1 spell and a
+    // wand that names the portal and raises the bolt to Expert.
+    let mut scroll = artifact("t:scroll", Some("t:misc"));
+    scroll.effects = vec![HeroEffect::Scroll];
+    let mut tome = artifact("t:tome", Some("t:misc"));
+    tome.effects = vec![HeroEffect::Spells {
+        grant: SpellGrant::School(key("t:air")),
+    }];
+    let mut crown = artifact("t:crown", Some("t:misc"));
+    crown.effects = vec![HeroEffect::Spells {
+        grant: SpellGrant::Level(1),
+    }];
+    let mut wand = artifact("t:wand", Some("t:misc"));
+    wand.effects = vec![
+        HeroEffect::Spells {
+            grant: SpellGrant::Spell(key("t:titan")),
+        },
+        HeroEffect::SpellMastery {
+            spell: key("t:bolt"),
+            level: 3,
+        },
+    ];
     ContentPack {
         resources: vec![ResourceDef {
             key: key("t:gold"),
@@ -158,6 +181,11 @@ fn pack() -> ContentPack {
             spell("t:bolt", SpellCategory::Combat),
             spell("t:portal", SpellCategory::Adventure),
             spell("t:gaze", SpellCategory::Ability),
+            // Only a grant naming it gives it (Titan's Lightning Bolt, HER-SPL-002).
+            SpellDef {
+                granted_by_name_only: true,
+                ..spell("t:titan", SpellCategory::Combat)
+            },
         ],
         skills: SKILLS
             .iter()
@@ -207,6 +235,10 @@ fn pack() -> ContentPack {
             artifact("t:hook", Some("t:engine")),
             artifact("t:book", Some("t:book")),
             artifact("t:grail", None),
+            scroll,
+            tome,
+            crown,
+            wand,
         ],
         profiles: vec![
             ProfileDef {
@@ -241,8 +273,8 @@ fn ruleset() -> Ruleset {
     compile(pack()).unwrap()
 }
 
-fn art(r: &Ruleset, k: &str) -> ArtifactTypeId {
-    r.artifact_by_key(k).unwrap()
+fn art(r: &Ruleset, k: &str) -> ArtifactInstance {
+    r.artifact_by_key(k).unwrap().into()
 }
 
 fn skill(r: &Ruleset, k: &str) -> SkillId {
@@ -305,7 +337,7 @@ fn valid_details_pass() {
 /// A change to the valid details and the error it causes.
 type Case = (fn(&Ruleset, &mut HeroDetails), DetailsError);
 
-// covers: HER-DET-001, HER-SEC-001, HER-ART-001, HER-ART-002, HER-SPL-001
+// covers: HER-DET-001, HER-SEC-001, HER-ART-001, HER-ART-002, HER-ART-003, HER-SPL-001
 #[test]
 fn invalid_details_are_rejected() {
     let r = ruleset();
@@ -343,7 +375,7 @@ fn invalid_details_are_rejected() {
             DetailsError::SkillLevel(SkillId::from_raw(2)),
         ),
         (
-            |_, d| d.worn.push(ArtifactTypeId::from_raw(99)),
+            |_, d| d.worn.push(ArtifactTypeId::from_raw(99).into()),
             DetailsError::UnknownArtifact(unknown_art),
         ),
         (
@@ -372,7 +404,7 @@ fn invalid_details_are_rejected() {
             DetailsError::BackpackFull,
         ),
         (
-            |_, d| d.backpack[0] = ArtifactTypeId::from_raw(99),
+            |_, d| d.backpack[0] = ArtifactTypeId::from_raw(99).into(),
             DetailsError::UnknownArtifact(unknown_art),
         ),
         (
@@ -399,6 +431,34 @@ fn invalid_details_are_rejected() {
             |r, d| d.spells.push(spell_id(r, "t:gaze")),
             DetailsError::NotAHeroSpell(SpellId::from_raw(2)),
         ),
+        // A scroll holds a spell of the ruleset that is not an ability; nothing else holds one
+        // (HER-ART-003), worn or carried.
+        (
+            |r, d| d.worn[1] = art(r, "t:scroll"),
+            DetailsError::ScrollWithoutSpell(ArtifactTypeId::from_raw(9)),
+        ),
+        (
+            |r, d| d.worn[1].spell = Some(spell_id(r, "t:bolt")),
+            DetailsError::SpellOnArtifact(ArtifactTypeId::from_raw(4)),
+        ),
+        (
+            |r, d| {
+                d.worn[1] =
+                    ArtifactInstance::scroll(art(r, "t:scroll").artifact, SpellId::from_raw(99));
+            },
+            DetailsError::UnknownSpell(unknown_spell),
+        ),
+        (
+            |r, d| {
+                d.worn[1] =
+                    ArtifactInstance::scroll(art(r, "t:scroll").artifact, spell_id(r, "t:gaze"));
+            },
+            DetailsError::NotAHeroSpell(SpellId::from_raw(2)),
+        ),
+        (
+            |r, d| d.backpack[0] = art(r, "t:scroll"),
+            DetailsError::ScrollWithoutSpell(ArtifactTypeId::from_raw(9)),
+        ),
     ];
     for (change, error) in cases {
         let mut d = details(&r);
@@ -407,7 +467,7 @@ fn invalid_details_are_rejected() {
     }
     // The handles the cases name are the ones of the test pack.
     assert_eq!(slot_id(&r, "t:machine"), ArtifactSlotId::from_raw(3));
-    assert_eq!(art(&r, "t:grail"), ArtifactTypeId::from_raw(8));
+    assert_eq!(art(&r, "t:grail").artifact, ArtifactTypeId::from_raw(8));
     assert_eq!(spell_id(&r, "t:gaze"), SpellId::from_raw(2));
     // A ruleset without hero parameters cannot validate.
     let mut p = pack();
@@ -428,7 +488,7 @@ fn war_machines_come_from_the_worn_artifacts() {
     assert_eq!(war_machines(&d, &r), [ballista]);
     // The machine slot's artifact in the backpack (invalid anyway) or an unknown artifact
     // brings nothing; an artifact without a war machine (the Catapult's kind) neither.
-    d.worn = vec![ArtifactTypeId::from_raw(99), art(&r, "t:hook")];
+    d.worn = vec![ArtifactTypeId::from_raw(99).into(), art(&r, "t:hook")];
     d.backpack = vec![art(&r, "t:kit")];
     assert!(war_machines(&d, &r).is_empty());
 }
@@ -494,6 +554,14 @@ fn primary_skills_and_errors_have_names() {
             DetailsError::NotAHeroSpell(spell),
             "spell 4 is a creature ability",
         ),
+        (
+            DetailsError::ScrollWithoutSpell(art),
+            "scroll 7 holds no spell",
+        ),
+        (
+            DetailsError::SpellOnArtifact(art),
+            "artifact 7 is no scroll and holds no spell",
+        ),
     ];
     for (error, text) in cases {
         assert_eq!(error.to_string(), text);
@@ -501,13 +569,13 @@ fn primary_skills_and_errors_have_names() {
 }
 
 /// Positions per slot that `worn` needs, counted independently of `validate`.
-fn positions(r: &Ruleset, worn: &[ArtifactTypeId]) -> Vec<usize> {
+fn positions(r: &Ruleset, worn: &[ArtifactInstance]) -> Vec<usize> {
     r.artifact_slots()
         .iter()
         .enumerate()
         .map(|(i, _)| {
             worn.iter()
-                .filter_map(|&a| r.artifact(a))
+                .filter_map(|a| r.artifact(a.artifact))
                 .map(|a| {
                     usize::from(a.slot.is_some_and(|s| s.index() == i))
                         + a.locks.iter().filter(|s| s.index() == i).count()
@@ -536,8 +604,8 @@ proptest! {
             experience: 0,
             primary,
             skills: skills.iter().map(|&(s, l)| (SkillId::from_raw(s), l)).collect(),
-            worn: worn.iter().map(|&a| ArtifactTypeId::from_raw(a)).collect(),
-            backpack: backpack.iter().map(|&a| ArtifactTypeId::from_raw(a)).collect(),
+            worn: worn.iter().map(|&a| ArtifactTypeId::from_raw(a).into()).collect(),
+            backpack: backpack.iter().map(|&a| ArtifactTypeId::from_raw(a).into()).collect(),
             spells: spells.iter().map(|&s| SpellId::from_raw(s)).collect(),
             mana: 0,
         };

@@ -36,6 +36,10 @@ pub enum DetailsError {
     /// An artifact in the backpack belongs to a slot whose artifacts never go there (war
     /// machines, the spell book).
     NotForBackpack(ArtifactTypeId),
+    /// A scroll (an artifact with the `scroll` effect) holds no spell (HER-ART-003).
+    ScrollWithoutSpell(ArtifactTypeId),
+    /// An artifact that is not a scroll holds a spell (HER-ART-003).
+    SpellOnArtifact(ArtifactTypeId),
     /// A spell is not in the ruleset.
     UnknownSpell(SpellId),
     /// A spell is listed twice.
@@ -66,6 +70,10 @@ impl fmt::Display for DetailsError {
             Self::BackpackFull => f.write_str("too many artifacts in the backpack"),
             Self::NotForBackpack(id) => {
                 write!(f, "artifact {} cannot be carried in the backpack", id.raw())
+            }
+            Self::ScrollWithoutSpell(id) => write!(f, "scroll {} holds no spell", id.raw()),
+            Self::SpellOnArtifact(id) => {
+                write!(f, "artifact {} is no scroll and holds no spell", id.raw())
             }
             Self::UnknownSpell(id) => write!(f, "unknown spell {}", id.raw()),
             Self::DuplicateSpell(id) => write!(f, "spell {} listed twice", id.raw()),

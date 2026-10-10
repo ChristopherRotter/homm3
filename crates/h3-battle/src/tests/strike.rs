@@ -820,7 +820,7 @@ fn a_bound_shooter_still_shoots() {
 fn a_binding_clone_that_vanishes_with_its_original_frees_the_stack_it_binds() {
     let r = ruleset();
     let mut copier = super::spells::mage(&r, &["copy"]);
-    copier.magic.schools[0] = 1;
+    copier.magic.masteries = masteries(&r, [1, 0, 0, 0]);
     copier.magic.mana = 100;
     let mut s = arena(
         &r,

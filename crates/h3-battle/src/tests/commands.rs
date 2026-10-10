@@ -265,7 +265,7 @@ fn state_hash_is_pinned() {
         h3_contracts::BattleEffect::SpellDuration { rounds: 2 },
     ];
     led.magic.spell_book = Some(vec![bolt]);
-    led.magic.schools = [2, 1, 0, 0];
+    led.magic.masteries = masteries(&r, [2, 1, 0, 0]);
     // One removable obstacle (v28): a stone with its anchor beside it.
     let stone = h3_contracts::Obstacle {
         hexes: vec![at(&r, 7, 4).0, at(&r, 8, 4).0],
@@ -280,7 +280,7 @@ fn state_hash_is_pinned() {
     let s = BattleState::new(&r, &setup, 7).unwrap();
     assert!(s.tactics().is_some());
     assert_eq!(s.state_hash(), GOLDEN, "got {:#018x}", s.state_hash());
-    assert_eq!(crate::BATTLE_STATE_HASH_VERSION, 38);
+    assert_eq!(crate::BATTLE_STATE_HASH_VERSION, 39);
 }
 
-const GOLDEN: u64 = 0xf0c0_7cd6_d981_bd45;
+const GOLDEN: u64 = 0xb4fc_c5a2_f420_cc7e;

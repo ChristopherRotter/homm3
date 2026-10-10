@@ -13,8 +13,7 @@ use crate::{BattleState, Command, Event, EventKind, StackFlags, StackId};
 /// A mage with `spells`, the air and fire masteries `air` and `fire` and enough mana.
 fn adept(r: &Ruleset, spells: &[&str], (air, fire): (u8, u8)) -> BattleHero {
     let mut h = mage(r, spells);
-    h.magic.schools[0] = air;
-    h.magic.schools[1] = fire;
+    h.magic.masteries = masteries(r, [air, fire, 0, 0]);
     h.magic.mana = 100;
     h
 }

@@ -46,9 +46,7 @@ fn kill(s: &mut BattleState, r: &Ruleset, id: u8) {
 /// A mage with `spells`, every school at `mastery`, power 3 and 100 mana.
 fn caster(r: &Ruleset, spells: &[&str], mastery: u8) -> BattleHero {
     let mut h = mage(r, spells);
-    for m in h.magic.schools.iter_mut().take(r.spell_schools().len()) {
-        *m = mastery;
-    }
+    h.magic.masteries = masteries(r, [mastery; 4]);
     h.magic.mana = 100;
     h
 }
@@ -307,7 +305,7 @@ fn clones_and_sacrificed_phoenixes_are_never_reborn() {
 fn a_sacrificed_phoenix_stays_dead_after_the_next_strike() {
     let r = ruleset();
     let mut hero = mage(&r, &["offering"]);
-    hero.magic.schools[1] = 1;
+    hero.magic.masteries = masteries(&r, [0, 1, 0, 0]);
     hero.magic.mana = 100;
     let mut s = arena(
         &r,

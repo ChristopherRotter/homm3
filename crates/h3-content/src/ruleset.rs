@@ -34,7 +34,7 @@ pub const MAX_SIDE_STACKS: usize = 21;
 pub const MAX_FIELD_HEXES: usize = 255;
 
 /// Version of the ruleset hash encoding. Bump when the encoding below changes.
-pub const RULESET_HASH_VERSION: u32 = 38;
+pub const RULESET_HASH_VERSION: u32 = 39;
 
 /// A compiled creature type.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -1501,6 +1501,8 @@ impl CanonicalHash for Ruleset {
     /// `age` (27 to 30). v30 (E04b T7a3): `spell_after_strike` ends with `defended`; ability
     /// `damage_after_strike` (31); timed change `bind` (31). v31 (E04b T7b1): ability
     /// `spell_caster` (32). v38 (E04b T7c2b, T7c3): abilities `rebirth` (45) and `fear` (46).
+    /// v39 (E04b T8a): each spell ends with `granted_by_name_only`; hero effects `spells` (27),
+    /// `spell_mastery` (28) and `scroll` (29).
     fn hash_into(&self, h: &mut StateHasher) {
         h.write_u32(RULESET_HASH_VERSION);
         h.write_len(self.packs.len());

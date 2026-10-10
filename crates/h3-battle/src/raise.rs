@@ -97,7 +97,7 @@ pub(crate) fn test_for<'r>(
         (true, Some((t, s))) => RaiseTest {
             spell: (t, s),
             hit_points: Some((
-                base_value(hero, s, mastery(hero, s)),
+                base_value(hero, s, mastery(hero, t)),
                 hero.magic.bonuses.spell(t),
             )),
         },

@@ -17,8 +17,8 @@ use h3_content::{
     Formation, HeroClassDef, HeroEffect, HeroEffectDef, HeroParamsDef, HeroTypeDef, HexStep,
     KeyError, MASTERY_NAMES, MAX_ALIGNMENT_FACTIONS, ObstacleDef, ObstacleKind, ObstacleShape,
     PackManifest, ProfileDef, ResourceDef, Ruleset, SPECIALIST_LEVELS, SchoolId, SecondarySkillDef,
-    SpecialistBonus, SpellArea, SpellCategory, SpellChain, SpellDef, SpellEffect, SpellId,
-    SpellMagic, SpellPolarity, SpellSchoolDef, SpellScope, SpellTarget, StartingStackDef,
+    SpecialistBonus, SpellArea, SpellCategory, SpellChain, SpellDef, SpellEffect, SpellGrant,
+    SpellId, SpellMagic, SpellPolarity, SpellSchoolDef, SpellScope, SpellTarget, StartingStackDef,
     SurrenderDef, TargetConditions, TargetSide, TerrainDef, TimedChange, Usefulness,
 };
 use h3_contracts::{
@@ -718,6 +718,10 @@ struct SpellDto {
     /// `useful = "<when>"`: when the spell is useful on a stack for a helpful caster (pack
     /// format v24, E04b T7b2b; `Usefulness` names; default `always`).
     useful: Option<String>,
+    /// `granted_by_name_only = true`: only a `spells` effect naming the spell gives it (pack
+    /// format v30, E04b T8a; Titan's Lightning Bolt).
+    #[serde(default)]
+    granted_by_name_only: bool,
 }
 
 /// `obstacle = { steps = ["top_right", "top_left"], hexes = [2, 2, 3, 3], mirrored = true,
@@ -1251,6 +1255,17 @@ enum EffectDto {
     SpellDuration {
         rounds: u8,
     },
+    /// Exactly one of `school`, `level` and `spell` (pack format v30, E04b T8a).
+    Spells {
+        school: Option<String>,
+        level: Option<u8>,
+        spell: Option<String>,
+    },
+    SpellMastery {
+        spell: String,
+        level: u8,
+    },
+    Scroll {},
 }
 
 /// Whose stacks a morale or luck effect changes, as files write it (`own` by default, `enemy`,
@@ -1436,6 +1451,27 @@ impl EffectDto {
             Self::SpellBook {} => HeroEffect::SpellBook,
             Self::MagicResistance { bp } => HeroEffect::MagicResistance { bp },
             Self::SpellDuration { rounds } => HeroEffect::SpellDuration { rounds },
+            Self::Spells {
+                school,
+                level,
+                spell,
+            } => HeroEffect::Spells {
+                grant: match (school, level, spell) {
+                    (Some(l), None, None) => SpellGrant::School(reference(pack, &l)?),
+                    (None, Some(level), None) => SpellGrant::Level(level),
+                    (None, None, Some(s)) => SpellGrant::Spell(reference(pack, &s)?),
+                    _ => {
+                        return Err(PackError::Syntax(
+                            "spells takes exactly one of `school`, `level` and `spell`".into(),
+                        ));
+                    }
+                },
+            },
+            Self::SpellMastery { spell, level } => HeroEffect::SpellMastery {
+                spell: reference(pack, &spell)?,
+                level,
+            },
+            Self::Scroll {} => HeroEffect::Scroll,
         })
     }
 }
@@ -1672,6 +1708,7 @@ pub fn parse_pack(text: &str) -> Result<ContentPack, PackError> {
                     .as_deref()
                     .map(|k| reference(&pack_id, k))
                     .transpose()?,
+                granted_by_name_only: s.granted_by_name_only,
                 polarity: match s.polarity {
                     SpellPolarityDto::Positive => SpellPolarity::Positive,
                     SpellPolarityDto::Neutral => SpellPolarity::Neutral,
@@ -1986,9 +2023,11 @@ pub struct HeroEntry {
     /// when set).
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub tent: Option<TentEntry>,
-    /// Mastery per spell school by school key, 1 to 3 (default none; written only when set).
+    /// The hero's mastery per spell by spell key, 1 to 3 ([`h3_contracts::BattleMagic::masteries`];
+    /// default none, written only when set; replaces the school masteries since replay format
+    /// v20, E04b T8a).
     #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
-    pub schools: BTreeMap<String, u8>,
+    pub masteries: BTreeMap<String, u8>,
     /// Battle effects (default none; written only when there are some, after the values).
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub effects: Vec<EffectEntry>,
@@ -2473,13 +2512,13 @@ impl HeroEntry {
                     .collect::<Result<_, _>>()
             })
             .transpose()?;
-        for (key, &level) in &self.schools {
-            let school = school_id(ruleset, key.clone())?;
-            // A school handle indexes the masteries (at most `MAX_SPELL_SCHOOLS` schools).
-            if let Some(mastery) = hero.magic.schools.get_mut(school.index()) {
-                *mastery = level;
-            }
-        }
+        hero.magic.masteries = self
+            .masteries
+            .iter()
+            .map(|(k, &level)| Ok((spell_id(ruleset, k.clone())?, level)))
+            .collect::<Result<_, PackError>>()?;
+        // Spell order, as the Heroes context derives them (keys sort differently).
+        hero.magic.masteries.sort_unstable_by_key(|&(s, _)| s);
         Ok(hero)
     }
 
@@ -2499,12 +2538,12 @@ impl HeroEntry {
                     .collect::<Result<_, _>>()
             })
             .transpose()?;
-        let mut schools = BTreeMap::new();
-        for (i, &level) in (0u16..).zip(&hero.magic.schools) {
-            if level > 0 {
-                schools.insert(school_key(ruleset, SchoolId::from_raw(i))?, level);
-            }
-        }
+        let masteries = hero
+            .magic
+            .masteries
+            .iter()
+            .map(|&(s, level)| Ok((spell_key(ruleset, s)?, level)))
+            .collect::<Result<_, PackError>>()?;
         let effects = hero
             .effects
             .iter()
@@ -2536,7 +2575,7 @@ impl HeroEntry {
                 single: t.heal_bonus.single,
             }),
             spell_book,
-            schools,
+            masteries,
             effects,
         })
     }
@@ -3034,7 +3073,19 @@ mod tests {
             .map(|k| ruleset.spell_by_key(&format!("synthetic:{k}")).unwrap())
             .to_vec(),
         );
-        expected.magic.schools[0] = 1;
+        // Basic Storm magic: every book spell but the stone ones (blight, revive) at Basic.
+        expected.magic.masteries = expected
+            .magic
+            .spell_book
+            .iter()
+            .flatten()
+            .filter(|&&s| {
+                let key = ruleset.spell(s).unwrap().key.as_str();
+                key != "synthetic:blight" && key != "synthetic:revive"
+            })
+            .map(|&s| (s, 1))
+            .collect();
+        expected.magic.masteries.sort_unstable_by_key(|&(s, _)| s);
         expected.damage = DamageBonuses {
             ranged: Rate::bp(1000),
             melee: Rate::bp(1000),
@@ -3221,7 +3272,7 @@ mod tests {
         }
         every.surrender_discount_bp = 4000;
         every.magic.spell_book = Some(vec![spark]);
-        every.magic.schools = [0, 2, 0, 0];
+        every.magic.masteries = vec![(spark, 2)];
         let entry = HeroEntry::of(&every, &ruleset).unwrap();
         assert_eq!(entry.resolve(&ruleset), Ok(every));
         let written = toml::to_string(&entry).unwrap();
@@ -3265,7 +3316,7 @@ mod tests {
             "{written}"
         );
         assert!(
-            written.contains("[schools]\n\"synthetic:stone\" = 2\n"),
+            written.contains("[masteries]\n\"synthetic:spark\" = 2\n"),
             "{written}"
         );
         assert!(
@@ -3354,8 +3405,8 @@ mod tests {
                 unknown_spell(),
             ),
             (
-                |h| h.magic.schools[3] = 1,
-                PackError::UnknownSchool("#3".to_owned()),
+                |h| h.magic.masteries = vec![(SpellId::from_raw(99), 1)],
+                unknown_spell(),
             ),
             (
                 |h| {
@@ -3394,8 +3445,8 @@ mod tests {
                 PackError::UnknownSpell("synthetic:nova".to_owned()),
             ),
             (
-                "schools = { \"synthetic:sky\" = 1 }",
-                PackError::UnknownSchool("synthetic:sky".to_owned()),
+                "masteries = { \"synthetic:nova\" = 1 }",
+                PackError::UnknownSpell("synthetic:nova".to_owned()),
             ),
             (
                 "effects = [{ kind = \"spell_damage\", bp = 1, school = \"synthetic:storm\", spell = \"synthetic:spark\" }]",
@@ -3854,7 +3905,7 @@ mod tests {
                 .collect(),
             worn: worn
                 .iter()
-                .map(|k| sod.artifact_by_key(k).unwrap())
+                .map(|k| sod.artifact_by_key(k).unwrap().into())
                 .collect(),
             backpack: vec![],
             spells: vec![spell("base:magic_arrow"), spell("base:chain_lightning")],
@@ -3874,8 +3925,15 @@ mod tests {
         );
         let hero = derive_battle_hero(&solmyr, &sod).unwrap();
         assert_eq!(hero.magic.spell_book, Some(solmyr.spells.clone()));
-        assert_eq!(hero.magic.schools[school("base:air").index()], 3);
-        assert_eq!(hero.magic.schools.iter().sum::<u8>(), 3);
+        // Expert Air: every air spell at Expert, nothing else (HER-SPL-003).
+        assert!(
+            hero.magic
+                .masteries
+                .contains(&(spell("base:chain_lightning"), 3))
+        );
+        assert!(hero.magic.masteries.iter().all(|&(s, m)| {
+            m == 3 && sod.spell(s).unwrap().schools.contains(&school("base:air"))
+        }));
         assert_eq!(
             hero.effects,
             [
@@ -3938,8 +3996,8 @@ mod tests {
                 experience: 20_000,
                 primary: [5, 4, 2, 2],
                 skills: vec![(r.skill_by_key("base:archery").unwrap(), 3)],
-                worn: worn.iter().map(art).collect(),
-                backpack: backpack.iter().map(art).collect(),
+                worn: worn.iter().map(art).map(Into::into).collect(),
+                backpack: backpack.iter().map(art).map(Into::into).collect(),
                 spells: vec![r.spell_by_key("base:magic_arrow").unwrap()],
                 mana: 20,
             }
@@ -4165,7 +4223,7 @@ mod tests {
                 skills: vec![],
                 worn: worn
                     .iter()
-                    .map(|k| sod.artifact_by_key(k).unwrap())
+                    .map(|k| sod.artifact_by_key(k).unwrap().into())
                     .collect(),
                 backpack: vec![],
                 spells: vec![],
@@ -4322,7 +4380,7 @@ mod tests {
             (params.primary_min, params.primary_max, params.backpack),
             ([0, 0, 1, 2], 40, 3)
         );
-        assert_eq!(r.artifacts().len(), 12);
+        assert_eq!(r.artifacts().len(), 15);
         let by_key = |k: &str| r.artifact(r.artifact_by_key(k).unwrap()).unwrap();
         let regalia = by_key("synthetic-ext:storm_regalia");
         assert_eq!(regalia.class, ArtifactClass::Relic);
@@ -4391,6 +4449,69 @@ mod tests {
         for (from, to) in ext_refs {
             assert!(SYNTHETIC_EXT_PACK.contains(from), "{from}");
             let text = SYNTHETIC_EXT_PACK.replacen(from, to, 1);
+            assert!(matches!(parse_pack(&text), Err(PackError::Key(_))), "{to}");
+        }
+
+        // The spell effects and the named-grant flag (pack format v30, E04b T8a).
+        let bell = "{ kind = \"no_retreat\" },";
+        let given = SYNTHETIC_PACK
+            .replacen(
+                bell,
+                "{ kind = \"spells\", school = \"storm\" }, { kind = \"spells\", level = 1 }, \
+                 { kind = \"spells\", spell = \"spark\" }, \
+                 { kind = \"spell_mastery\", spell = \"spark\", level = 3 }, { kind = \"scroll\" },",
+                1,
+            )
+            .replacen(
+                "effects = [{ kind = \"damage\" }]     # none: not castable yet",
+                "effects = [{ kind = \"damage\" }]\ngranted_by_name_only = true",
+                1,
+            );
+        assert!(!given.contains(bell) && given.contains("granted_by_name_only"));
+        let g = compile(&[&given], "synthetic:faithful").unwrap();
+        let spark = g.spell_by_key("synthetic:spark").unwrap();
+        let storm = SchoolId::from_raw(0);
+        assert!(g.spell(spark).unwrap().granted_by_name_only);
+        let bell_effects = &g
+            .artifact(g.artifact_by_key("synthetic:gloom_bell").unwrap())
+            .unwrap()
+            .effects;
+        assert_eq!(
+            bell_effects[2..],
+            [
+                HeroEffect::Spells {
+                    grant: SpellGrant::School(storm)
+                },
+                HeroEffect::Spells {
+                    grant: SpellGrant::Level(1)
+                },
+                HeroEffect::Spells {
+                    grant: SpellGrant::Spell(spark)
+                },
+                HeroEffect::SpellMastery {
+                    spell: spark,
+                    level: 3
+                },
+                HeroEffect::Scroll,
+            ]
+        );
+        for to in [
+            "{ kind = \"spells\" },",
+            "{ kind = \"spells\", school = \"storm\", level = 1 },",
+            "{ kind = \"scroll\", spell = \"spark\" },",
+        ] {
+            let text = SYNTHETIC_PACK.replacen(bell, to, 1);
+            assert!(
+                matches!(parse_pack(&text), Err(PackError::Syntax(_))),
+                "{to}"
+            );
+        }
+        for to in [
+            "{ kind = \"spells\", school = \"S:x\" },",
+            "{ kind = \"spells\", spell = \"S:x\" },",
+            "{ kind = \"spell_mastery\", spell = \"S:x\", level = 3 },",
+        ] {
+            let text = SYNTHETIC_PACK.replacen(bell, to, 1);
             assert!(matches!(parse_pack(&text), Err(PackError::Key(_))), "{to}");
         }
     }

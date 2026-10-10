@@ -24,8 +24,7 @@ use crate::{
 /// `fire`, power 3, 100 mana.
 fn creator(r: &Ruleset, air: u8, fire: u8) -> BattleHero {
     let mut h = mage(r, &["copy", "sprites", "serfs", "offering"]);
-    h.magic.schools[0] = air;
-    h.magic.schools[1] = fire;
+    h.magic.masteries = masteries(r, [air, fire, 0, 0]);
     h.magic.mana = 100;
     h
 }
@@ -114,7 +113,7 @@ fn clone_copies_an_own_stack_of_a_level_its_mastery_allows() {
     // Basic: creatures up to level 1; the gilded ones are immune to level 4, the enemy is no
     // target. Expert: up to level 3.
     assert_eq!(targets(&s, &r, BattleSide::Attacker, "copy"), vec![0]);
-    s.heroes[0].as_mut().unwrap().magic.schools[0] = 3;
+    set_masteries(&mut s, 0, &r, [3, 0, 0, 0]);
     assert_eq!(targets(&s, &r, BattleSide::Attacker, "copy"), vec![0, 1]);
     let events = cast(&mut s, &r, "copy", stack(0)).unwrap();
     // The first place: top right of the serfs (an attacker's stack).

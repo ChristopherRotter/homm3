@@ -807,4 +807,4 @@ name = "Armageddon's Blade"
 class = "relic"
 cost = { "base:gold" = 50000 }
 slot = "base:right_hand"
-effects = [{ kind = "primary_skills", attack = 3, defense = 3, power = 3, knowledge = 6 }]
+effects = [{ kind = "primary_skills", attack = 3, defense = 3, power = 3, knowledge = 6 }, { kind = "spells", spell = "base:armageddon" }, { kind = "spell_mastery", level = 3, spell = "base:armageddon" }]

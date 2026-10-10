@@ -265,7 +265,7 @@ fn good_morale_may_follow_a_cast() {
 fn a_created_stack_has_its_creatures_casts() {
     let r = ruleset();
     let mut hero = mage(&r, &["copy"]);
-    hero.magic.schools[0] = 1;
+    hero.magic.masteries = masteries(&r, [1, 0, 0, 0]);
     hero.magic.mana = 100;
     let mut s = arena(
         &r,

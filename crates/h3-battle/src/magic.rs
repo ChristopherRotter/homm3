@@ -83,6 +83,50 @@ impl SpellSet {
     }
 }
 
+/// A hero's mastery of each spell (E04b T8a, BAT-MAG-002): 0 (none) to 3 (Expert) as two bit
+/// planes over [`SpellSet`]'s positions, so that the hero record grows by 28 bytes, not by one
+/// byte per spell.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub struct Masteries {
+    /// Bit 0 of each mastery.
+    low: SpellSet,
+    /// Bit 1 of each mastery.
+    high: SpellSet,
+}
+
+impl Masteries {
+    /// The mastery of `spell` (0 for a spell not set).
+    pub fn get(self, spell: SpellId) -> u8 {
+        u8::from(self.low.contains(spell)) | (u8::from(self.high.contains(spell)) << 1)
+    }
+
+    /// The masteries of a `(spell, mastery)` list (checked: each spell once, at most 3).
+    pub(crate) fn of(list: &[(SpellId, u8)]) -> Self {
+        let mut out = Self::default();
+        for &(spell, mastery) in list {
+            out.set(spell, mastery);
+        }
+        out
+    }
+
+    /// Sets the mastery of `spell` from 0 (checked: at most 3).
+    fn set(&mut self, spell: SpellId, mastery: u8) {
+        if mastery & 1 != 0 {
+            self.low.insert(spell);
+        }
+        if mastery & 2 != 0 {
+            self.high.insert(spell);
+        }
+    }
+
+    /// The raw bits of both planes (low, then high).
+    pub const fn bits(self) -> [u64; 4] {
+        let [a, b] = self.low.bits();
+        let [c, d] = self.high.bits();
+        [a, b, c, d]
+    }
+}
+
 /// Most spells with a bonus of their own a battle hero may have (BAT-HER-001).
 pub const MAX_SPELL_BONUSES: usize = 4;
 
@@ -231,8 +275,8 @@ fn rate(single: bool, bp: u16) -> u64 {
 pub(crate) struct HeroMagic {
     /// The spells in its spell book (none without a book; private).
     pub(crate) book: SpellSet,
-    /// Mastery per school, by school handle (private).
-    pub(crate) schools: [u8; MAX_SPELL_SCHOOLS],
+    /// Its mastery of each spell, as the seam gives it (BAT-MAG-002; private).
+    pub(crate) masteries: Masteries,
     /// Spell-damage bonuses (private).
     pub(crate) bonuses: SpellBonuses,
     /// The resistance of the side's stacks to hostile spells (BAT-MAG-008; private): its
@@ -258,6 +302,7 @@ impl HeroMagic {
         for &spell in hero.magic.spell_book.as_deref().unwrap_or_default() {
             book.insert(spell);
         }
+        let masteries = Masteries::of(&hero.magic.masteries);
         let mut resistance = 0u64;
         let mut duration_bonus = 0u16;
         for effect in &hero.effects {
@@ -274,7 +319,7 @@ impl HeroMagic {
         }
         Ok(Self {
             book,
-            schools: hero.magic.schools,
+            masteries,
             bonuses: SpellBonuses::of(hero).ok_or(HeroError::TooManySpellBonuses)?,
             resistance: resistance.min(scale(single)),
             duration_bonus,
@@ -285,15 +330,17 @@ impl HeroMagic {
 }
 
 impl CanonicalHash for HeroMagic {
-    /// Book bits, schools, the bonuses (every spell, by school (rates since v23), the single
-    /// spells as length and spell, damage, growth per level, level), the resistance, the
-    /// duration bonus (v20), the cast spells' bits, the cost change (v38, as its two's-complement
-    /// byte).
+    /// Book bits, cast spells' bits, the masteries' bit planes (v39, before them the school
+    /// masteries), the bonuses (every spell, by school (rates since v23), the single spells as
+    /// length and spell, damage, growth per level, level), the resistance, the duration bonus
+    /// (v20), the cost change (v38, as its two's-complement byte).
     fn hash_into(&self, h: &mut StateHasher) {
         for word in self.book.bits().into_iter().chain(self.cast.bits()) {
             h.write_u64(word);
         }
-        h.write_bytes(&self.schools);
+        for word in self.masteries.bits() {
+            h.write_u64(word);
+        }
         let b = &self.bonuses;
         for r in core::iter::once(b.all).chain(b.school) {
             hash_rate(h, r);
@@ -385,17 +432,11 @@ fn implemented(spell: &Spell) -> bool {
     !spell.magic.effects.is_empty()
 }
 
-/// The mastery at which `hero` casts `spell`: the best of its schools' masteries, at most
-/// Expert (BAT-MAG-002).
+/// The mastery at which `hero` casts `spell`: the one the seam gives it (derived in the Heroes
+/// context, HER-SPL-003; BAT-MAG-002). Battlefields that raise it come with E04c.
 // rule: BAT-MAG-002
-pub(crate) fn mastery(hero: &HeroRecord, spell: &Spell) -> u8 {
-    spell
-        .schools
-        .iter()
-        .map(|l| hero.magic.schools[l.index().min(MAX_SPELL_SCHOOLS - 1)])
-        .max()
-        .unwrap_or(0)
-        .min(3)
+pub(crate) fn mastery(hero: &HeroRecord, spell: SpellId) -> u8 {
+    hero.magic.masteries.get(spell)
 }
 
 /// Checks that `side`'s hero may cast `id` now apart from its target (BAT-MAG-001, BAT-MAG-002)
@@ -423,7 +464,7 @@ fn check_spell<'s, 'r>(
     if !implemented(spell) {
         return Err(CommandError::NotCastable);
     }
-    let mastery = mastery(hero, spell);
+    let mastery = mastery(hero, id);
     // rule: BAT-MAG-054
     let cost = crate::mana::cost(spell, mastery, hero.magic.cost_change);
     if hero.view.mana < cost {

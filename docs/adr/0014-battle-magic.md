@@ -26,8 +26,10 @@ which a spell meets a stack, how stacks appear in a battle, how hidden objects s
 2. **A hero's cast is optional and at most once per round.** While one of its side's stacks awaits a
    command (not in tactics, not on an automatic turn), the hero may cast if permitted, never must,
    and the stack still acts afterwards. Permitted: a spell book with the spell, no magic block or
-   level limit against it, a valid target, mana for the cost. Mastery is the spell's best school
-   level, raised by bonuses, at most Expert; it selects cost, value, area and the mass version. The
+   level limit against it, a valid target, mana for the cost. Mastery is the hero's mastery of the
+   spell, derived once in the Heroes context (the best school level, raised by an artifact, at
+   most Expert; ADR-0013 point 2) and carried per spell by the seam; a battlefield's raise is the
+   battle's (E04c). It selects cost, value, area and the mass version. The
    cost includes the creature modifiers (Mages, Pegasi), never below 0. The battle keeps each hero's
    mana and casts this round and fills the reserved `HeroOutcome` fields (mana left, spells cast).
 3. **A creature's cast is its stack's action** (Faerie Dragon, Archangel, Pit Lord, Ogre Mage, the AB
@@ -105,7 +107,8 @@ which a spell meets a stack, how stacks appear in a battle, how hidden objects s
 10. **Seam changes are additions only** (reviewed with this ADR): `BattleEffect` variants for the
     hero's magic (spell-damage bonuses, duration bonus, magic resistance, magic blocks and level
     limits, immunity negation, opening spells) and the use of the reserved
-    `BattleMagic` and `HeroOutcome` fields. Battle magic rules use the new area `BAT-MAG`; the
+    `BattleMagic` and `HeroOutcome` fields. One change (the user, BAT-Q19): `BattleMagic.schools`
+    gave way to `masteries`, a mastery per spell (point 2). Battle magic rules use the new area `BAT-MAG`; the
     hero's derivation continues `HER-BAT`. One exception (user, Q55): `BattleSetup.obstacles`
     becomes a list of natural obstacles, each with its blocked hexes and an optional anchor hex
     (removable by Remove Obstacle; the anchor's own effects are quirk BAT-QUIRK-3). `StackOrigin`
@@ -176,3 +179,8 @@ which a spell meets a stack, how stacks appear in a battle, how hidden objects s
   kills, per stack as the original's records) and a Pit Lord's Demons (`StackOrigin::Raised`, an
   army stack in the dead stack's army slot, `installation.md` §7.21); this takes back the T6a
   amendment's "no `StackOrigin` variant". The Archangel and the Pit Lord raise without a spell.
+- 2026-10-10: points 2 and 10 amended (E04b T8a; the user, BAT-Q19): a spell's mastery is the
+  hero's, derived once in the Heroes context like its available spells, and crosses the seam per
+  spell (`BattleMagic.masteries` replaces `schools`); the battle keeps only a battlefield's raise
+  (E04c). It covers every spell, as the original's mastery is a function of the hero for any
+  spell (Sacrifice's test reads Resurrection's, BAT-QUIRK-5; `installation.md` §7.22).

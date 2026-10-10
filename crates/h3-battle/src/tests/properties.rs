@@ -22,7 +22,7 @@ use proptest::prelude::{
 };
 use proptest::test_runner::Config;
 
-use super::support::{CREATURES, Rate, hero, ruleset_with};
+use super::support::{CREATURES, Rate, hero, masteries, ruleset_with};
 use crate::event::StrikeFlags;
 use crate::{
     BattleState, CastTarget, CastTargets, Command, Event, EventKind, Hex, LegalCommands, SpellSet,
@@ -260,7 +260,7 @@ fn make_setup(
     .collect();
     led.magic.spell_book = Some(book.clone());
     led.magic.mana = u16::try_from(magic & 63).unwrap();
-    led.magic.schools = [u8::try_from((magic >> 12) & 3).unwrap(), 1, 0, 0];
+    led.magic.masteries = masteries(r, [u8::try_from((magic >> 12) & 3).unwrap(), 1, 0, 0]);
     led.power = 2;
     led.effects.extend([
         BattleEffect::SpellDamage {
@@ -493,12 +493,14 @@ proptest! {
                     }
                     let mover = before.active().unwrap();
                     // A stack's cast uses one of its casts and nothing else does (BAT-MAG-048)
-                    // but a rebirth, which leaves the stack dead or reborn (BAT-MAG-059).
+                    // but a rebirth, which leaves the stack dead or reborn (BAT-MAG-059); a slot
+                    // a created stack or a Pit Lord's Demons take over starts afresh (BAT-MAG-037,
+                    // BAT-MAG-052).
                     let used = usize::from(matches!(cmd, Command::CreatureCast { .. }));
                     for (i, a) in state.stacks().iter().enumerate() {
                         let id = StackId(u8::try_from(i).unwrap());
                         let spent = usize::from(id == mover) * used;
-                        let reused = events.iter().any(|e| matches!(e.kind, EventKind::StackCreated { stack, .. } if stack == id));
+                        let reused = events.iter().any(|e| matches!(e.kind, EventKind::StackCreated { stack, .. } | EventKind::RoseFromCorpse { stack, .. } if stack == id));
                         let reborn = events.iter().any(|e| matches!(e.kind, EventKind::Reborn { stack, .. } if stack == id));
                         let rebirth = a.has(crate::StackTraits::REBIRTH) && (reborn || !a.is_alive());
                         let (was, is) = (usize::from(before.casts_left(id)), usize::from(state.casts_left(id)));
@@ -654,7 +656,7 @@ proptest! {
                 hero.surrender_discount_bp = discount;
                 hero.funds = funds;
                 hero.magic.book = SpellSet::default();
-                hero.magic.schools = [3; 4];
+                hero.magic.masteries = crate::magic::Masteries::of(&masteries(&r, [3; 4]));
                 hero.magic.bonuses.all = Rate::bp(discount.into());
             }
             // covers: BAT-MAG-049

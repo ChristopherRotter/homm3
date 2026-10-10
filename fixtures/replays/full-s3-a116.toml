@@ -438,27 +438,27 @@ commands = [
     "D attack 1 89",
 ]
 checkpoints = [
-    "0x9421e9d64b4fa8d1",
-    "0x2079742bca86d1cd",
-    "0x212ccf9dee9cfcce",
-    "0x665c466d0480bdf8",
-    "0x4496e6014d02b6ac",
-    "0x4cbe826aabee1e6e",
-    "0x9fa45e0e5674f50c",
-    "0x4f0360fba3cced3c",
-    "0x209dad025ec3e165",
-    "0x9364762c7b8fb0d8",
-    "0x3112d968c93b2157",
-    "0x4c1657e58374125d",
-    "0xa02ba5ec1f04b808",
-    "0x108e9c72a8e2b71c",
-    "0x93f2b246a991d239",
-    "0x02248479b70af3bb",
-    "0x5bcd956d0f7d2e20",
+    "0x35b003824a52748b",
+    "0x3faf8b0eba88b7ef",
+    "0x14c27c5032bb8d30",
+    "0xd5659b34f856f20a",
+    "0x0a7f2ff67c9be7ea",
+    "0xefca8e271f7f7748",
+    "0x36150173dd18e9f2",
+    "0xb8ac2df219e2b182",
+    "0x599bca4fc0975463",
+    "0x2a8a86dabd3de02a",
+    "0x6ae50dee85e3e2cd",
+    "0xdcecd9b1e99feb33",
+    "0x35ef06f46d36c742",
+    "0x963587298b662ae6",
+    "0x19744c1e84d7e1a3",
+    "0x5bdc5bb6f221d71d",
+    "0x7b619a56401ef016",
 ]
 
 [replay]
-format = 19
+format = 20
 engine = "0.1.0"
 scenario = "full"
 seed = "3"
@@ -467,12 +467,12 @@ packs = [[
     "0.1.0",
 ]]
 profile = "synthetic:faithful"
-ruleset_hash = "0xfedb0a5cc675d7c7"
+ruleset_hash = "0x97d1efb34aed48e1"
 rng = "xoshiro256starstar+splitmix64"
 rng_version = 1
 hash = "fnv1a64-le"
 hash_version = 1
-battle_state_hash_version = 38
+battle_state_hash_version = 39
 checkpoint_every = 25
 
 [setup]
@@ -530,8 +530,26 @@ double_damage_chance_bp = 5000
 [setup.attacker_hero.tent]
 heal_bonus_bp = 10000
 
-[setup.attacker_hero.schools]
-"synthetic:storm" = 1
+[setup.attacker_hero.masteries]
+"synthetic:arc" = 1
+"synthetic:blaze" = 1
+"synthetic:blink" = 1
+"synthetic:charm" = 1
+"synthetic:cinders" = 1
+"synthetic:copy" = 1
+"synthetic:drag" = 1
+"synthetic:fury" = 1
+"synthetic:glass" = 1
+"synthetic:hasten" = 1
+"synthetic:haze" = 1
+"synthetic:mend" = 1
+"synthetic:offer" = 1
+"synthetic:riposte" = 1
+"synthetic:scorch" = 1
+"synthetic:smiting" = 1
+"synthetic:snare" = 1
+"synthetic:spark" = 1
+"synthetic:ward" = 1
 
 [[setup.attacker_hero.effects]]
 kind = "morale"
@@ -586,8 +604,24 @@ spell_book = [
 shots = 1
 double_damage_chance_bp = 5000
 
-[setup.defender_hero.schools]
-"synthetic:stone" = 3
+[setup.defender_hero.masteries]
+"synthetic:aegis" = 3
+"synthetic:bane" = 3
+"synthetic:blight" = 3
+"synthetic:boon" = 3
+"synthetic:bulwark" = 3
+"synthetic:conjure" = 3
+"synthetic:corrode" = 3
+"synthetic:dazzle" = 3
+"synthetic:gloom" = 3
+"synthetic:mire" = 3
+"synthetic:purge" = 3
+"synthetic:rage" = 3
+"synthetic:rampage" = 3
+"synthetic:revive" = 3
+"synthetic:uproot" = 3
+"synthetic:veil" = 3
+"synthetic:zeal" = 3
 
 [[setup.defender_hero.effects]]
 kind = "stack_stat"
@@ -744,4 +778,4 @@ count = 4
 
 [result]
 winner = "defender"
-final_hash = "0x168ded66e6c59b8f"
+final_hash = "0xe4936ec183e8d921"

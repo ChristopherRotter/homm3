@@ -19,7 +19,7 @@ use alloc::vec::Vec;
 use h3_kernel::{CanonicalHash, StateHasher};
 
 use crate::flags::CreatureFlag;
-use crate::heroes::{SchoolId, SkillId, SpellId};
+use crate::heroes::{MAX_SPELL_LEVEL, SchoolId, SkillId, SpellCategory, SpellId};
 use crate::key::ContentKey;
 use crate::ruleset::{CreatureTypeId, FactionId, Ruleset};
 
@@ -182,6 +182,71 @@ impl<L: CanonicalHash, S: CanonicalHash> CanonicalHash for SpellScope<L, S> {
             Self::School(l) => {
                 h.write_u8(1);
                 l.hash_into(h);
+            }
+            Self::Spell(s) => {
+                h.write_u8(2);
+                s.hash_into(h);
+            }
+        }
+    }
+}
+
+/// Which spells a `spells` effect gives the hero (E04b T8a; HER-SPL-002): the original's artifact
+/// spell sets (`installation.md` §7.22).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum SpellGrant<L, S> {
+    /// Every spell of this school that is not a creature ability and not
+    /// [`granted_by_name_only`](crate::Spell::granted_by_name_only) (the Tomes).
+    School(L),
+    /// Every spell of this level that is not a creature ability and not granted by name only
+    /// (Spellbinder's Hat).
+    Level(u8),
+    /// This spell (Titan's Thunder, Armageddon's Blade, the Sea Captain's Hat).
+    Spell(S),
+}
+
+impl<L, S> SpellGrant<L, S> {
+    /// Maps the references.
+    pub fn try_map<L2, S2, E>(
+        &self,
+        school: impl FnOnce(&L) -> Result<L2, E>,
+        spell: impl FnOnce(&S) -> Result<S2, E>,
+    ) -> Result<SpellGrant<L2, S2>, E> {
+        Ok(match self {
+            Self::School(l) => SpellGrant::School(school(l)?),
+            Self::Level(level) => SpellGrant::Level(*level),
+            Self::Spell(s) => SpellGrant::Spell(spell(s)?),
+        })
+    }
+}
+
+impl SpellGrant<SchoolId, SpellId> {
+    /// Whether the grant gives `spell` of `ruleset` (a spell the ruleset lacks: never): a named
+    /// spell always; by school or level only a spell that is not a creature ability and not
+    /// granted by name only.
+    pub fn gives(self, ruleset: &Ruleset, spell: SpellId) -> bool {
+        ruleset.spell(spell).is_some_and(|s| {
+            let by_scope = s.category != SpellCategory::Ability && !s.granted_by_name_only;
+            match self {
+                Self::School(school) => by_scope && s.schools.contains(&school),
+                Self::Level(level) => by_scope && s.level == level,
+                Self::Spell(named) => named == spell,
+            }
+        })
+    }
+}
+
+impl<L: CanonicalHash, S: CanonicalHash> CanonicalHash for SpellGrant<L, S> {
+    /// Tag (0 school, 1 level, 2 spell), then the reference or the level.
+    fn hash_into(&self, h: &mut StateHasher) {
+        match self {
+            Self::School(l) => {
+                h.write_u8(0);
+                l.hash_into(h);
+            }
+            Self::Level(level) => {
+                h.write_u8(1);
+                h.write_u8(*level);
             }
             Self::Spell(s) => {
                 h.write_u8(2);
@@ -379,6 +444,23 @@ pub enum HeroEffect<C, K, S, F, L> {
         /// Extra rounds (≥ 1).
         rounds: u8,
     },
+    /// The hero has these spells available while it wears the artifact (the Tomes, Spellbinder's
+    /// Hat, Titan's Thunder, Armageddon's Blade, the Sea Captain's Hat; E04b T8a, HER-SPL-002).
+    Spells {
+        /// Which spells.
+        grant: SpellGrant<L, S>,
+    },
+    /// The hero casts `spell` at least at this mastery (Armageddon's Blade: Armageddon at
+    /// Expert; E04b T8a, HER-SPL-003).
+    SpellMastery {
+        /// The spell.
+        spell: S,
+        /// Mastery, 1 (Basic) to 3 (Expert).
+        level: u8,
+    },
+    /// Each copy of the artifact carries a spell of its own, available to the hero while the copy
+    /// is worn (the Spell Scroll; E04b T8a, HER-ART-003, HER-SPL-002).
+    Scroll,
 }
 
 /// An effect as written in a pack (references are keys).
@@ -388,7 +470,7 @@ pub type CompiledHeroEffect = HeroEffect<CreatureTypeId, SkillId, SpellId, Facti
 
 impl<C, K, S, F, L> HeroEffect<C, K, S, F, L> {
     /// Pack names, indexed by [`HeroEffect::code`].
-    pub const NAMES: [&'static str; 27] = [
+    pub const NAMES: [&'static str; 30] = [
         "morale",
         "luck",
         "ranged_damage",
@@ -416,6 +498,9 @@ impl<C, K, S, F, L> HeroEffect<C, K, S, F, L> {
         "spell_book",
         "magic_resistance",
         "spell_duration",
+        "spells",
+        "spell_mastery",
+        "scroll",
     ];
 
     /// Stable code of the variant (canonical hash, duplicate checks).
@@ -448,6 +533,9 @@ impl<C, K, S, F, L> HeroEffect<C, K, S, F, L> {
             Self::SpellBook => 24,
             Self::MagicResistance { .. } => 25,
             Self::SpellDuration { .. } => 26,
+            Self::Spells { .. } => 27,
+            Self::SpellMastery { .. } => 28,
+            Self::Scroll => 29,
         }
     }
 
@@ -589,6 +677,14 @@ impl<C, K, S, F, L> HeroEffect<C, K, S, F, L> {
             Self::SpellBook => HeroEffect::SpellBook,
             Self::MagicResistance { bp } => HeroEffect::MagicResistance { bp: *bp },
             Self::SpellDuration { rounds } => HeroEffect::SpellDuration { rounds: *rounds },
+            Self::Spells { grant } => HeroEffect::Spells {
+                grant: grant.try_map(school, spell)?,
+            },
+            Self::SpellMastery { spell: s, level } => HeroEffect::SpellMastery {
+                spell: spell(s)?,
+                level: *level,
+            },
+            Self::Scroll => HeroEffect::Scroll,
         })
     }
 
@@ -652,6 +748,12 @@ impl<C, K, S, F, L> HeroEffect<C, K, S, F, L> {
                 Some("magic_resistance bp must be 1..=10000")
             }
             Self::SpellDuration { rounds: 0 } => Some("spell_duration rounds must be at least 1"),
+            Self::Spells {
+                grant: SpellGrant::Level(level),
+            } if !(1..=MAX_SPELL_LEVEL).contains(level) => Some("spells level must be 1..=5"),
+            Self::SpellMastery { level, .. } if !(1..=MAX_SKILL_LEVEL).contains(level) => {
+                Some("spell_mastery level must be 1..=3")
+            }
             _ => None,
         }
     }
@@ -702,6 +804,8 @@ impl<C: PartialEq, K, S: PartialEq, F, L: PartialEq> HeroEffect<C, K, S, F, L> {
                 a == b
             }
             (Self::SpellDamage { scope: a, .. }, Self::SpellDamage { scope: b, .. }) => a == b,
+            (Self::Spells { grant: a }, Self::Spells { grant: b }) => a == b,
+            (Self::SpellMastery { spell: a, .. }, Self::SpellMastery { spell: b, .. }) => a == b,
             _ => self.code() == other.code(),
         }
     }
@@ -729,6 +833,16 @@ pub(crate) fn list_error<C: PartialEq, K, S: PartialEq, F, L: PartialEq>(
         }
     }
     None
+}
+
+/// Why an effect list of a skill level or a specialty is invalid for its spell effects, if it
+/// is: a `scroll` belongs to an artifact (each copy holds its spell, HER-ART-003).
+pub(crate) fn scroll_error<C, K, S, F, L>(
+    list: &[HeroEffect<C, K, S, F, L>],
+) -> Option<&'static str> {
+    list.iter()
+        .any(|e| matches!(e, HeroEffect::Scroll))
+        .then_some("scroll is allowed on artifacts only")
 }
 
 const fn signed(v: i8) -> u8 {
@@ -840,7 +954,7 @@ impl CanonicalHash for CompiledHeroEffect {
             Self::NoRangePenalty { creatures } | Self::ShootWhenAdjacent { creatures } => {
                 hash_selector(*creatures, h);
             }
-            Self::NoRetreat | Self::SpellBook => {}
+            Self::NoRetreat | Self::SpellBook | Self::Scroll => {}
             Self::SchoolMastery { school, level } => {
                 school.hash_into(h);
                 h.write_u8(*level);
@@ -851,6 +965,11 @@ impl CanonicalHash for CompiledHeroEffect {
             }
             Self::MagicResistance { bp } => h.write_u16(*bp),
             Self::SpellDuration { rounds } => h.write_u8(*rounds),
+            Self::Spells { grant } => grant.hash_into(h),
+            Self::SpellMastery { spell, level } => {
+                spell.hash_into(h);
+                h.write_u8(*level);
+            }
         }
     }
 }
@@ -947,6 +1066,11 @@ mod tests {
             E::SpellBook,
             E::MagicResistance { bp: 500 },
             E::SpellDuration { rounds: 2 },
+            E::Spells {
+                grant: SpellGrant::School(1),
+            },
+            E::SpellMastery { spell: 1, level: 3 },
+            E::Scroll,
         ]
     }
 
@@ -961,7 +1085,9 @@ mod tests {
         }
         let (old, new) = all.split_at(13);
         assert_eq!(list_error(old, true), None);
+        let (new, newest) = new.split_at(MAX_EFFECTS);
         assert_eq!(list_error(new, false), None);
+        assert_eq!(list_error(newest, false), None);
         assert_eq!(
             list_error(old, false),
             Some("specialty effects are allowed in a hero's specialty only")
@@ -1063,6 +1189,33 @@ mod tests {
         );
         let books = [E::SpellBook, E::SpellBook];
         assert_eq!(list_error(&books, false), Some("an effect is listed twice"));
+        // Spell grants collide only for the same grant, mastery raises for the same spell.
+        let grant = |grant| E::Spells { grant };
+        let mut grants = std::vec![
+            grant(SpellGrant::School(1)),
+            grant(SpellGrant::Level(1)),
+            grant(SpellGrant::Spell(1)),
+            grant(SpellGrant::Spell(2)),
+        ];
+        assert_eq!(list_error(&grants, false), None);
+        grants.push(grant(SpellGrant::Level(1)));
+        assert_eq!(
+            list_error(&grants, false),
+            Some("an effect is listed twice")
+        );
+        let raise = |spell| E::SpellMastery { spell, level: 3 };
+        let mut raises = std::vec![raise(1), raise(2)];
+        assert_eq!(list_error(&raises, false), None);
+        raises.push(raise(1));
+        assert_eq!(
+            list_error(&raises, false),
+            Some("an effect is listed twice")
+        );
+        let scrolls = [E::Scroll, E::Scroll];
+        assert_eq!(
+            list_error(&scrolls, false),
+            Some("an effect is listed twice")
+        );
         let long = std::vec![E::Tactics { level: 1 }; MAX_EFFECTS + 1];
         assert_eq!(list_error(&long, false), Some("more than 16 effects"));
         assert_eq!(
@@ -1150,6 +1303,14 @@ mod tests {
             E::MagicResistance { bp: 0 },
             E::MagicResistance { bp: 10_001 },
             E::SpellDuration { rounds: 0 },
+            E::Spells {
+                grant: SpellGrant::Level(0),
+            },
+            E::Spells {
+                grant: SpellGrant::Level(6),
+            },
+            E::SpellMastery { spell: 0, level: 0 },
+            E::SpellMastery { spell: 0, level: 4 },
         ];
         for e in bad {
             assert!(e.parameter_error().is_some(), "{e:?}");
@@ -1266,6 +1427,35 @@ mod tests {
         assert_eq!(
             CreatureSelector::<u8>::Flag(CreatureFlag::Dragon).try_map(fail),
             Ok(CreatureSelector::Flag(CreatureFlag::Dragon))
+        );
+        // Spell grants map their school or spell and keep a level; a mastery raise its spell.
+        for (grant, mapped) in [
+            (SpellGrant::School(1), SpellGrant::School(101)),
+            (SpellGrant::Level(5), SpellGrant::Level(5)),
+            (SpellGrant::Spell(2), SpellGrant::Spell(102)),
+        ] {
+            assert_eq!(
+                E::Spells { grant }.try_map(plus, plus, plus, plus, plus),
+                Ok(HeroEffect::Spells { grant: mapped })
+            );
+        }
+        assert_eq!(
+            E::Spells {
+                grant: SpellGrant::School(1)
+            }
+            .try_map(plus, plus, plus, plus, fail),
+            Err(())
+        );
+        assert_eq!(
+            E::Spells {
+                grant: SpellGrant::Spell(1)
+            }
+            .try_map(plus, plus, fail, plus, plus),
+            Err(())
+        );
+        assert_eq!(
+            E::SpellMastery { spell: 1, level: 3 }.try_map(plus, plus, fail, plus, plus),
+            Err(())
         );
     }
 }

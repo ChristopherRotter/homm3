@@ -59,7 +59,7 @@ fn ended(r: &Ruleset, events: &[Event], id: u8, name: &str) -> bool {
 /// A mage with `spells`, the air mastery `mastery` and enough mana.
 fn adept(r: &Ruleset, spells: &[&str], mastery: u8) -> BattleHero {
     let mut h = mage(r, spells);
-    h.magic.schools[0] = mastery;
+    h.magic.masteries = masteries(r, [mastery, 0, 0, 0]);
     h.magic.mana = 200;
     h
 }

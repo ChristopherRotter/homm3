@@ -52,6 +52,9 @@ const SPELL_OBSTACLE: u32 = 0x100;
 const SPELL_DAMAGE: u32 = 0x200;
 const SPELL_MIND: u32 = 0x400;
 const SPELL_NO_WAR_MACHINES: u32 = 0x1000;
+/// Only Titan's Lightning Bolt: the spell that every artifact spell set but Titan's Thunder's
+/// clears (installation.md §7.22, 0x4D9532).
+const SPELL_NAMED_GRANT: u32 = 0x2000;
 
 /// The pack ranks: content may refer to its own pack and those below it.
 const PACKS: [&str; 3] = ["base", "ab", "sod"];
@@ -907,6 +910,10 @@ pub fn harvest_heroes(
             return Err(format!(
                 "{what}: flag word {flags:#x} does not match category {category}"
             ));
+        }
+        // Pack format v30 (E04b T8a): a grant by school or level never gives it (HER-SPL-002).
+        if flags & SPELL_NAMED_GRANT != 0 {
+            let _ = writeln!(text, "granted_by_name_only = true");
         }
         let extra = targeting.remove(name);
         let with_effects = damage_spells + timed_spells + other_spells;

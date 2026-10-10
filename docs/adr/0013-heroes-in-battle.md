@@ -20,7 +20,11 @@ are computed before the seam (03-domain). The seam must change once for E04a and
    store of heroes (E08/E10). The army is not part of `HeroDetails`.
 2. **Crates.** `h3-heroes` is a domain logic crate (kernel, content, contracts only) with
    `HeroDetails`, its validation, `derive_battle_hero` and `war_machines`; no commands, no map or
-   battle state. `h3-battle` never depends on it.
+   battle state. `h3-battle` never depends on it. **What a hero has from its details in every
+   context is derived here once** (BAT-Q19): its available spells (learned, worn scrolls, the
+   spell-giving artifacts) and its mastery of a spell are `h3_heroes::available_spells` and
+   `spell_masteries`, used by the battle's derivation now and by the adventure map later; no
+   context keeps its own copy.
 3. **Effects are data.** Artifacts, skill levels and specialties carry a closed `HeroEffect` enum in
    content (Tier 3, like `Ability`, ADR-0012); the translation resolves them into a closed
    `BattleEffect` enum in contracts. Percentages are **basis points** in content and seam.
@@ -89,3 +93,7 @@ are computed before the seam (03-domain). The seam must change once for E04a and
   that stays out of the ADR: `FactionGroup` (Q36) and `StatOp` in the crate docs.
 - 2026-10-05 (E04a closure): no decision changed; the header points to the code documentation and
   the epic's log, because the design note was deleted.
+- 2026-10-10 (E04b T8a; the user, BAT-Q19): point 2 — hero-level magic (available spells, the
+  mastery of a spell) is derived once in `h3-heroes` for every context, as the original keeps it
+  in the hero record (`installation.md` §7.22); the battle's own best-school code went, and the
+  seam carries a mastery per spell (ADR-0014 point 2).
