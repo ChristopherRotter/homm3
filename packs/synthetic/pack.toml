@@ -133,6 +133,7 @@ fight_value = 220
 ai_value = 250
 adventure_count = [10, 25]
 flags = ["alive", "two_hex", "king_1"]     # king_1: Smiting counts against it (BAT-MAG-014)
+casts = 1                   # format v29: its rebirth's (BAT-MAG-059)
 # Format v19: spells after a melee strike (BAT-MAG-040 to BAT-MAG-042); v20: the statuses; v21:
 # Bind, Acid Breath and the extra damage (BAT-MAG-045 to BAT-MAG-047).
 abilities = [
@@ -150,6 +151,9 @@ abilities = [
     { kind = "damage_after_strike", chance_percent = 20, percent = 50 },
     # Format v27: in an army, its own hero's spells cost 2 less (the Mages, BAT-MAG-054).
     { kind = "spell_cost", amount = -2, affects = "allies" },
+    # Format v29: once a battle, after the action that killed it, a fifth comes back (the
+    # Phoenix's rebirth, BAT-MAG-059).
+    { kind = "rebirth", divisor = 5 },
 ]
 
 [[creature]]
@@ -258,12 +262,15 @@ flags = ["alive", "two_hex", "flying"]
 # affect (a Faerie Dragon's random spell, BAT-MAG-049).
 # Format v28: its own Magic Mirror (Glass) of 20 % while the spell is not on it with more (a
 # Faerie Dragon's mirror, BAT-MAG-057).
+# Format v29: the enemy's stacks freeze with 10 % chance when picked to act (an Azure Dragon's
+# Fear, BAT-MAG-060).
 abilities = [
     { kind = "random_spell_caster", mastery = 2, power_per_creature = 2 },
     { kind = "drawn_spell", spell = "spark", weight = 5 },
     { kind = "drawn_spell", spell = "cinders", weight = 3 },
     { kind = "drawn_spell", spell = "arc", weight = 2 },
     { kind = "innate_spell", spell = "glass", value = 20 },
+    { kind = "fear", percent = 10 },
 ]
 
 [[creature]]

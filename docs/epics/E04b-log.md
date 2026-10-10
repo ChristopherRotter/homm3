@@ -1590,3 +1590,70 @@ records how and why the tasks went.
 - **Review** (independent, no defect in the logic): tests made stronger (the stage shown by a
   shielded target, the largest of two penalties, retaliations, Q-0010 with two Sultans, Dispel
   and the Genie's usefulness, the resolved spell handles), the innate trait's doc.
+
+### T7c2b: the Phoenix's rebirth (2026-10-09)
+
+- **Decisions** (the user, BAT-Q17, BAT-Q18): increment 13 = T7c2b and T7c3, closing T7; the CI
+  fix as shared #41. A sacrificed Phoenix is never reborn (BAT-QUIRK-17, exploit-fix for now; a
+  later variant may rebirth it right after the sacrifice). Agent decisions: one ability `rebirth`
+  with a divisor, using the creature's casts per battle; only a stack that died in the action just
+  checked qualifies (no corpse marked yet), which also excludes a multi-cast creature's earlier
+  death (data only); the draws on the battle's generator; an active stack its own hero's spell
+  killed keeps the turn it is in, having acted (the original's dispatcher re-picks only a dead
+  one, as the engine does); event `Reborn`.
+- **Code reading** (`installation.md` §7.21, "The Phoenix's rebirth, read for T7c2b"): 0x469440
+  (both sides' records; dead, casts left, not a clone; casts lowered first; start div 5 plus
+  `rand() mod 5 = 0` per leftover; the acted bit; 0x5A7560 with last argument 0, permanent),
+  0x445A60 (the strike action, read: shot or melee, then the check), the dispatcher's order after
+  it (acted bit, the end test 0x4762F0, good morale 0x464920 clearing the acted bit), the cast
+  routine's damage cases, the area and mass handlers, Land Mine and Fire Wall; not Sacrifice,
+  whose victim keeps its casts (BAT-QUIRK-17); 0x4687C0 overwrites the hex records. Map: 0x445A60
+  read, 0x5A4BC0, 0x5A67C0.
+- **Content:** ability `rebirth` (divisor); pack format v29, ruleset hash v38; the gap-fill's
+  `exe-phoenix-rebirth` (Phoenix, divisor 5).
+- **Battle:** `raise::rebirths` before the end check of melee, shot, cast, Fire Wall and mine
+  (BAT-MAG-059; `StackTraits::REBIRTH`, `raise::revive` shared with the spells' raise); good
+  morale lifts the acted mark (BAT-MOR-003). State hash unchanged (v38).
+- **Tests:** `tests/rebirth.rs` (a fifth, acted, before the end check, one cast; the draws over
+  200 seeds; the retaliation and the good-morale turn; a spell, a shot, a mine; clones,
+  sacrificed and earlier deaths; the effects it died with; the active stack its hero's spell
+  killed); the property test counts the rebirth's cast and creatures.
+
+### T7c3: Fear and T7's loose ends (2026-10-09)
+
+- **Decisions** (the user, BAT-Q17, BAT-Q18): Fear as the code reads, the frightening stacks by
+  real side (BAT-QUIRK-18, the rule). Agent decisions: ability `fear` (percent); the largest
+  chance among the living frighteners, one roll; immune: no morale (war machines included) and
+  `fear` itself; event `Frightened`; two corrections found in the reading, as the original: the
+  battle's first activation without Tactics has no bad-morale or Fear check (BAT-MOR-004 had it),
+  and good morale after an action that left the stack blind, petrified or paralysed gives no turn
+  now but lets it act later in the round once that ends (the T7b4 review's finding).
+- **Code reading** (`installation.md` §7.21, "Fear, read for T7c3"): 0x464D40 (no morale flag
+  `0x20000` or creature 132 spared; the other side's creature-132 counts by real side;
+  `rand() mod 10 = 0`; the acted bit), the pick 0x465080 (bad morale, then Fear, outside the
+  tactics and wait phases, only with argument 1), its callers (the dispatcher and the tactics end
+  with 1, the battle start 0x462A20 with 0). Map: 0x462A20, 0x464B40, 0x464D40.
+- **Content:** ability `fear` (percent); pack format v29 (with `rebirth`); the gap-fill's
+  `exe-fear` (Azure Dragon, 10).
+- **Battle:** `morale::frightened` at the pick after bad morale and at the good-morale turn
+  (`turn::morale_turn`, shared by the commanded and berserk turns), `turn::activate_first`
+  (BAT-MAG-060, BAT-MOR-003, BAT-MOR-004; `StackTraits::FEAR`). The stale "creature casters'
+  re-casts" item: the creature's cast goes through the same effect routine; tested (a re-cast
+  keeps the first value and the longer duration, BAT-MAG-009).
+- **Tests:** `tests/fear.rs` (the first activation, immunity, round 2's freeze; the largest
+  chance and the wait phase; the hypnotized Azure; the good-morale turn of a commanded and of a
+  berserk stack; the first pick after Tactics); `tests/morale.rs` (the first activation; a stack
+  blinded by its own action passes its morale turn and acts once struck); the Wraith's and the
+  Enchanter's no-activation tests now go through the morale turn.
+- **Measurements** (both tasks): on the old workload the code takes +0.66 % Ir with 7 568 steps
+  instead of 7 558 (the first activation's and the morale turn's corrections change the battles;
+  `raise::rebirths` 0.65 M and `morale::frightened` 0.74 M Ir of it); the new workload (the
+  synthetic Brutes reborn at a fifth, Corwin's Drakes frightening at 10 %) 7 607 steps, 569.4 M
+  Ir (+0.19 % per step against master's), re-baselined; `BattleState` stays 6 200 bytes; release
+  `h3 bench` about 116 k steps/s. Replays re-recorded with new agent seeds a1798 (Brea wins),
+  a1788, a116, a762, a959.
+- **Review** (independent): a reborn stack kept the effects it died with until the command's end
+  (fixed: removed before the raise, tested); a multi-cast creature's later rebirth onto taken
+  hexes (fixed: only this action's dead); the first pick's checks after an action (no reachable
+  case: war machines have speed 0); tests added for the berserk morale turn, Tactics, the active
+  stack; bad morale's `WAITED` gate against the original's wait phase (pre-existing, inbox).

@@ -600,7 +600,8 @@ fn acts_on(state: &BattleState, ruleset: &Ruleset, s: StackId, hex: Hex) -> bool
 
 /// Stack `s` enters each of `hexes` in turn, while it lives: on each a Fire Wall burns it
 /// (BAT-MAG-028), then a mine may go off under it (BAT-MAG-033), as the original's 0x46A570
-/// (`installation.md` §7.15, §7.17); the battle may end. Returns whether it still lives.
+/// (`installation.md` §7.15, §7.17); a stack either kills may be reborn (BAT-MAG-059), and the
+/// battle may end. Returns whether it still lives.
 fn enter<S: Sink>(
     state: &mut BattleState,
     ruleset: &Ruleset,
@@ -619,6 +620,8 @@ fn enter<S: Sink>(
                 hex,
             }));
             magic::burn(state, ruleset, &fire, s, sink);
+            // rule: BAT-MAG-059
+            crate::raise::rebirths(state, ruleset, sink);
             // Only this stack takes damage: the battle was not over before this burn.
             check_end(state, sink);
         }
@@ -659,6 +662,8 @@ fn explode<S: Sink>(
         spell: mine.spell,
         hexes: mine.hexes,
     }));
+    // rule: BAT-MAG-059
+    crate::raise::rebirths(state, ruleset, sink);
     // Only this stack takes damage: the battle was not over before.
     check_end(state, sink);
 }

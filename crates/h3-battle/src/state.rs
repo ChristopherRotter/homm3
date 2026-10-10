@@ -190,6 +190,12 @@ impl StackTraits {
     /// for an innate Fire Shield (a stack with only an innate mirror passes it and reflects
     /// nothing).
     pub const INNATE_SPELL: Self = Self(1 << 28);
+    /// Comes back after the action that killed it (ability `rebirth`, the Phoenix; BAT-MAG-059):
+    /// the rebirth's cheap test.
+    pub const REBIRTH: Self = Self(1 << 29);
+    /// Frightens the other side's stacks (ability `fear`, the Azure Dragon; BAT-MAG-060): the
+    /// pick's cheap test, and its own immunity.
+    pub const FEAR: Self = Self(1 << 30);
 
     /// Whether all traits of `other` are set.
     pub const fn contains(self, other: Self) -> bool {
@@ -288,6 +294,11 @@ impl StackTraits {
                 Self::INNATE_SPELL,
                 ability(|a| matches!(a, Ability::InnateSpell { .. })),
             )
+            .with(
+                Self::REBIRTH,
+                ability(|a| matches!(a, Ability::Rebirth { .. })),
+            )
+            .with(Self::FEAR, ability(|a| matches!(a, Ability::Fear { .. })))
     }
 }
 
@@ -963,9 +974,9 @@ impl BattleState {
             // Round 0: the tactics phase; `EndTactics` starts round 1 (BAT-TAC-002).
             tactics::begin(&mut state, phase, sink);
         } else {
-            // The first activation runs the usual checks (bad morale, BAT-MOR-004); round 1
-            // starts without a `RoundStarted` event.
-            turn::activate_next(&mut state, ruleset, sink);
+            // The first activation runs without the freezing checks (BAT-MOR-004, BAT-MAG-060);
+            // round 1 starts without a `RoundStarted` event.
+            turn::activate_first(&mut state, ruleset, sink);
         }
         Ok(state)
     }

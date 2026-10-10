@@ -2,9 +2,9 @@
 //! Resurrection and Animate Dead raise the creatures of a living or dead stack of the caster's
 //! side (BAT-MAG-035), Sacrifice kills one of the side's stacks to raise another (BAT-MAG-036).
 //! A dead stack lies on its hexes as a corpse, the last to die on top
-//! ([`BattleState::corpse`]).
+//! ([`BattleState::corpse`]). The Phoenix's rebirth raises it the same way (BAT-MAG-059).
 
-use h3_content::{Ruleset, SACRIFICE_TESTS_AS_RESURRECTION, Spell};
+use h3_content::{Ability, Ruleset, SACRIFICE_TESTS_AS_RESURRECTION, Spell};
 use h3_contracts::BattleSide;
 
 use crate::damage::resurrect;
@@ -14,7 +14,7 @@ use crate::hero::HeroRecord;
 use crate::magic::{
     SpellBonus, SpellRef, affects, base_value, kept_off, mastery, specialist_bonus,
 };
-use crate::state::{BattleState, NO_CORPSE, StackId, StackTraits};
+use crate::state::{BattleState, NO_CORPSE, StackFlags, StackId, StackTraits};
 
 /// Marks the corpses of the stacks that died since the last mark, by stack id, each above every
 /// earlier one (BAT-MAG-035): after every command, before every activation and after every
@@ -240,17 +240,11 @@ pub(crate) fn raise<S: Sink>(
     temporary: bool,
     sink: &mut S,
 ) {
-    let was_dead = !state.at(s).is_alive();
-    let stack = state.at_mut(s);
-    let (healed, creatures) = resurrect(stack, hit_points);
-    let (base, alive) = (stack.base_count, stack.is_alive());
+    let (healed, creatures) = revive(state, ruleset, s, hit_points);
     if temporary {
+        let base = state.at(s).base_count;
         let t = &mut state.raised.temporary[s.index()];
         *t = t.saturating_add(creatures).min(base);
-    }
-    if was_dead && alive {
-        state.raised.corpse[s.index()] = 0;
-        crate::effects::recompute(state, ruleset, s);
     }
     sink.emit(Event::public(EventKind::SpellRaised {
         target: s,
@@ -258,6 +252,75 @@ pub(crate) fn raise<S: Sink>(
         creatures,
         temporary,
     }));
+}
+
+/// Raises stack `s` by `hit_points` for good (the original's 0x5A7560): a dead stack comes back
+/// on its hexes, leaves the corpses and gets its effects recomputed (none: they ended at its
+/// death, by the end of the command it died in at the latest). Returns the hit points regained
+/// and the creatures brought back.
+fn revive(state: &mut BattleState, ruleset: &Ruleset, s: StackId, hit_points: u64) -> (u64, u32) {
+    let was_dead = !state.at(s).is_alive();
+    let raised = resurrect(state.at_mut(s), hit_points);
+    if was_dead && state.at(s).is_alive() {
+        state.raised.corpse[s.index()] = 0;
+        crate::effects::recompute(state, ruleset, s);
+    }
+    raised
+}
+
+/// The rebirths after an action that may have killed stacks (BAT-MAG-059; the original's 0x469440
+/// at the end of a strike action, after a cast's damage and after Land Mine's and Fire Wall's
+/// damage, `installation.md` §7.21), before the battle's end is checked: every stack of either
+/// side that died in this action (no corpse marked yet), in stack order, with the ability
+/// `rebirth` and a cast left that is not a clone uses one cast and comes back for good, without
+/// the effects it died with, with its count at the battle's start div the ability's divisor, plus
+/// one for each of the count mod the divisor others with a 1-in-divisor chance, and it has acted
+/// this round. None comes back if none is drawn. A sacrificed stack left no corpse and is never
+/// reborn (BAT-QUIRK-17: the original, which checks after every damaging action but not after
+/// Sacrifice, brings it back at the next one onto its hexes, whatever stands there); nor is one
+/// that died earlier (a creature with more casts that drew none: the original would bring it
+/// back at a later check, alike; the Phoenix has one cast).
+// rule: BAT-MAG-059
+pub(crate) fn rebirths<S: Sink>(state: &mut BattleState, ruleset: &Ruleset, sink: &mut S) {
+    for s in (0u8..).take(state.stacks.len()).map(StackId) {
+        let stack = state.at(s);
+        // The cheap tests first: most stacks cannot come back or are alive.
+        if !stack.has(StackTraits::REBIRTH)
+            || stack.is_alive()
+            || stack.has(StackTraits::CLONE)
+            || state.casts.left[s.index()] == 0
+            // Sacrificed (no corpse, BAT-QUIRK-17) or dead before this action (a corpse).
+            || state.corpse(s) != 0
+        {
+            continue;
+        }
+        let divisor = ruleset
+            .abilities(stack.creature)
+            .iter()
+            .find_map(|a| match a {
+                Ability::Rebirth { divisor } => Some(u32::from(*divisor)),
+                _ => None,
+            })
+            .unwrap_or(1);
+        let (start, health) = (stack.base_count, u64::from(stack.max_hp));
+        crate::casters::spend(state, s);
+        let drawn = (0..start % divisor)
+            .filter(|_| state.rng.below(divisor) == 0)
+            .count();
+        let creatures = start / divisor + u32::try_from(drawn).unwrap_or(0);
+        if creatures == 0 {
+            continue;
+        }
+        state.at_mut(s).flags.set(StackFlags::ACTED, true);
+        // Its effects end at its death (the original's 0x444120); the command's end has not
+        // removed them yet.
+        crate::effects::remove_dead(state, ruleset);
+        let (_, creatures) = revive(state, ruleset, s, u64::from(creatures) * health);
+        sink.emit(Event::public(EventKind::Reborn {
+            stack: s,
+            creatures,
+        }));
+    }
 }
 
 /// The hit points `hero`'s cast of a raise spell `(id, spell)` at `value` raises on stack `s`:

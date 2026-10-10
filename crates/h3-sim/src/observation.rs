@@ -282,8 +282,9 @@ mod tests {
             [1.0, 0.0, 0.0, 1.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
         );
         // No timed effects: no bonuses, not slowed, no entries.
-        // Not created in battle, no clone (BAT-MAG-037, BAT-MAG-038), no casts (BAT-MAG-048).
-        assert_eq!(s0[31..36], [0.0, 0.0, 0.0, 0.0, 0.0]);
+        // Not created in battle, no clone (BAT-MAG-037, BAT-MAG-038), one cast: its rebirth's
+        // (BAT-MAG-048, BAT-MAG-059).
+        assert_eq!(s0[31..36], [0.0, 0.0, 0.0, 1.0, 0.0]);
         assert_eq!(s0[36..43], [0.0, 0.0, 0.0, 0.0, 0.0, 100.0, 0.0]);
         assert!(s0[43..].iter().all(|v| *v == 0.0));
         // Unused slots are zero; the tail beyond OBSERVATION_LEN is untouched.

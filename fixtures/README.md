@@ -14,19 +14,19 @@ cross-platform determinism check (ADR-0003 §11, E01 exit criterion 2).
 | `duel-s1.toml` | duel | 1 | 1 |
 | `skirmish-s7.toml` | skirmish | 7 | 8 |
 | `full-s3.toml` | full | 3 | 4 |
-| `full-s3-a676.toml` | full | 3 | 676 (E04b T7c2a, replacing T7c1's `full-s3-a1159`; the scenario has creature defences since T7c2a: Corwin's Drakes mirror spells (20 %), his Fiends reflect melee strikes (20 %), Brea's Djinns deal half damage to two-hex stacks and Corwin's Chanters to Djinns, and the mana creatures of T7c1, in every full replay: here a Drake sends a spell away; the Seraph's and the Fiends' raises; the Chanters' casts; casters cast) |
-| `full-s3-a1386.toml` | full | 3 | 1386 (E04b T7c2a, replacing T7c1's `full-s3-a416`: Brea wins; mines or pits go off; the Chanters' casts; casters cast) |
-| `full-s3-a1473.toml` | full | 3 | 1473 (E04b T7c2a, replacing T7c1's `full-s3-a255`: a Drake sends a spell away; a stack is sacrificed to raise another (Offer); mines or pits go off; the Chanters' casts; casters cast) |
-| `full-s3-a471.toml` | full | 3 | 471 (E04b T7c2a, replacing T7c1's `full-s3-a48`: a Drake sends a spell away; a stack is copied and its clone vanishes; mines or pits go off; the Chanters' casts) |
-| `full-s3-a673.toml` | full | 3 | 673 (E04b T7c2a, replacing T7c1's `full-s3-a1023`: a Drake sends a spell away; Corwin conjures Shades; ten Chanter casts) |
+| `full-s3-a1798.toml` | full | 3 | 1798 (E04b T7c3, replacing T7c2a's `full-s3-a676`; the scenario has the rebirth and Fear since T7c3: Brutes of both sides come back at a fifth once a battle, Corwin's Drakes frighten Brea's stacks (10 %), with the creature defences of T7c2a and the mana creatures of T7c1, in every full replay: here Brea wins; three rebirths; mines or pits go off; a stack is created; casters cast) |
+| `full-s3-a1788.toml` | full | 3 | 1788 (E04b T7c3, replacing T7c2a's `full-s3-a1386`: a Drake sends a spell away; a stack is sacrificed to raise another; a stack is created; two rebirths, eight freezes; the Chanters' casts) |
+| `full-s3-a116.toml` | full | 3 | 116 (E04b T7c3, replacing T7c2a's `full-s3-a1473`: a Drake sends a spell away; two rebirths, eleven freezes; mines or pits go off often; the Chanters' casts; casters cast) |
+| `full-s3-a762.toml` | full | 3 | 762 (E04b T7c3, replacing T7c2a's `full-s3-a471`: a Drake sends a spell away; seventeen freezes; fifteen Chanter casts; two raises) |
+| `full-s3-a959.toml` | full | 3 | 959 (E04b T7c3, replacing T7c2a's `full-s3-a673`: a Drake sends a spell away; a rebirth, nine freezes; casters cast) |
 
 Regenerate (only when a change *intentionally* alters game behavior, the synthetic pack, or an
 algorithm/encoding version — say so in the commit message):
 
 ```sh
 cargo build -p h3-cli
-for spec in "duel 1 1 duel-s1" "skirmish 7 8 skirmish-s7" "full 3 4 full-s3" "full 3 676 full-s3-a676" \
-    "full 3 1386 full-s3-a1386" "full 3 1473 full-s3-a1473" "full 3 471 full-s3-a471" "full 3 673 full-s3-a673"; do
+for spec in "duel 1 1 duel-s1" "skirmish 7 8 skirmish-s7" "full 3 4 full-s3" "full 3 1798 full-s3-a1798" \
+    "full 3 1788 full-s3-a1788" "full 3 116 full-s3-a116" "full 3 762 full-s3-a762" "full 3 959 full-s3-a959"; do
   set -- $spec
   ./target/debug/h3 run --scenario packs/synthetic/scenarios/$1.toml --seed $2 --agent-seed $3 \
     --max-steps 2000 --checkpoint-every 25 --record fixtures/replays/$4.toml

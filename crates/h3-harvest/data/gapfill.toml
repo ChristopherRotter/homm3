@@ -1476,6 +1476,35 @@ abilities = [
 ]
 sources = ["exe-creature-defences"]
 
+# The Phoenix's rebirth (E04b T7c2b, pack format v29; installation.md 7.21, "The Phoenix's
+# rebirth, read for T7c2b"): after the action that killed it, with its cast per battle, the
+# count at the battle's start div 5 plus a 1-in-5 chance for each of the others (BAT-MAG-059).
+[[source]]
+id = "exe-phoenix-rebirth"
+kind = "original-data"
+ref = "Heroes3.exe code reading (docs/formats/installation.md 7.21, the Phoenix's rebirth read for T7c2b): 0x469440, called at the end of every strike action (0x445A60), in the cast routine's damage cases and the area and mass handlers, after Land Mine's and Fire Wall's damage (not after Sacrifice), takes every dead record of creature 131 with casts left that is not a clone: one cast less, count +0x60 div 5 plus one per rand() mod 5 = 0 among the +0x60 mod 5 others, and if any, the acted bit and the permanent raise 0x5A7560 (last argument 0) by that many times the stack's health"
+url = "docs/formats/installation.md"
+retrieved = "2026-10-09"
+
+[[creature_abilities]]
+creature = "Phoenix"
+abilities = [{ kind = "rebirth", divisor = 5 }]
+sources = ["exe-phoenix-rebirth"]
+
+# The Azure Dragon's Fear (E04b T7c3, pack format v29; installation.md 7.21, "Fear, read for
+# T7c3"): 10 % at a pick outside the wait phase, after bad morale (BAT-MAG-060).
+[[source]]
+id = "exe-fear"
+kind = "original-data"
+ref = "Heroes3.exe code reading (docs/formats/installation.md 7.21, Fear read for T7c3): the battle loop's pick 0x465080, outside the tactics and wait phases and when called with argument 1, asks bad morale 0x464B40 and then 0x464D40, which spares a stack with flag 0x20000 (no morale) or of creature 132, sums the counts of the creature-132 records of the side opposite the stack's controller and, if any, freezes the stack (the acted bit) when rand() mod 10 = 0"
+url = "docs/formats/installation.md"
+retrieved = "2026-10-09"
+
+[[creature_abilities]]
+creature = "Azure Dragon"
+abilities = [{ kind = "fear", percent = 10 }]
+sources = ["exe-fear"]
+
 # ---------------------------------------------------------------------------------------------
 # Hero content (E04a T3): what the executable's hero tables and the text tables do not hold.
 # ---------------------------------------------------------------------------------------------

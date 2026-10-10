@@ -10,7 +10,9 @@ T6b's created stacks (`h3_battle::created`, BAT-MAG-037 to 039) and T7's creatur
 point 6; the Enchanter's own cast at its activation, ADR-0014 point 3), T7c1's mana creatures
 (`h3_battle::mana`, BAT-MAG-054 to 056) and T7c2a's creature defences (`innate_spell` read where
 the original's getters read the creature, `magic::mirror_chance` and the reflection; the
-elementals' halves in the strike, BAT-MAG-057, 058, BAT-DMG-010). No section is open.
+elementals' halves in the strike, BAT-MAG-057, 058, BAT-DMG-010), T7c2b's rebirth
+(`raise::rebirths` before every end check of an action that may kill, BAT-MAG-059) and T7c3's
+Fear (`morale::frightened` at the pick and the good-morale turn, BAT-MAG-060). No section is open.
 Each task
 settles its section and **deletes it** when the code documentation, the rule catalog and the pack
 docs hold the detail; the file is deleted when E04b closes (ADR index rule). Names are provisional.

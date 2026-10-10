@@ -381,3 +381,29 @@ Classes: `exploit-fix` (always fixed, never toggleable) · `preserve` (accepted,
 - Defaults: n/a
 - Regression test: `crates/h3-battle/src/tests/mana.rs`, `a_hypnotized_familiar_channels_for_its_controller_wherever_its_record`
 - Decided by / date: user, 2026-10-09 (E04b T7c1, BAT-Q15)
+
+### BAT-QUIRK-17 — A sacrificed Phoenix comes back at the next damaging action (E04b T7c2b)
+- Class: exploit-fix (for now; the user, BAT-Q18: a later fix may rebirth the Phoenix right after the sacrifice)
+- Context / rules affected: battle, BAT-MAG-059, BAT-MAG-036
+- Original behavior: the rebirth check 0x469440 runs after every damaging action (strikes, damage spells, Land Mine, Fire Wall) and walks every record, but Sacrifice (0x5A199C) kills its victim without calling it and leaves its casts: a sacrificed Phoenix (dead, a cast left, no corpse) comes back at the next damaging action of either side, at a fifth of its count at the battle's start, placed by 0x4687C0 on its old hexes, which overwrites whatever stack stands there by now (`docs/formats/installation.md` §7.21).
+- Intended/expected behavior: a sacrificed stack is consumed (Sacrifice's victim leaves no corpse and is not raised by anything else).
+- Impact: exploit (the hit points of the sacrifice and a fifth of the Phoenixes back); state corruption (two stacks on one hex)
+- Community status: unknown (not searched)
+- Sources: original-data, `docs/formats/installation.md` §7.21 ("The Phoenix's rebirth, read for T7c2b")
+- Flag: none (always fixed: a stack without a corpse is never reborn)
+- Defaults: n/a
+- Regression test: `crates/h3-battle/src/tests/rebirth.rs`, `a_sacrificed_phoenix_stays_dead_after_the_next_strike`, `clones_and_sacrificed_phoenixes_are_never_reborn`
+- Decided by / date: user, 2026-10-09 (E04b T7c2b, BAT-Q18)
+
+### BAT-QUIRK-18 — A hypnotized Azure Dragon frightens the side that controls it (E04b T7c3)
+- Class: preserve, no flag: the rule in every profile (user, 2026-10-09, BAT-Q18)
+- Context / rules affected: battle, BAT-MAG-060
+- Original behavior: Fear (0x464D40) takes the frightened stack's side from its controller (+0xF4, flipped while hypnotized) but counts the Azure Dragons in the other side's records by real side: an Azure Dragon the enemy hypnotized still frightens the enemy's stacks, which now fight beside it, and a stack hypnotized by the enemy can be frightened by its own side's dragons (`docs/formats/installation.md` §7.21).
+- Intended/expected behavior: none decided; arguably the dragons' controller should count.
+- Impact: gameplay-altering (tiny)
+- Community status: unknown
+- Sources: original-data, `docs/formats/installation.md` §7.21 ("Fear, read for T7c3")
+- Flag: none
+- Defaults: n/a
+- Regression test: `crates/h3-battle/src/tests/fear.rs`, `a_hypnotized_azure_frightens_the_side_that_controls_it`
+- Decided by / date: user, 2026-10-09 (E04b T7c3, BAT-Q18)
