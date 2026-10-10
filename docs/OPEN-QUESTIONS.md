@@ -38,7 +38,17 @@ The original picks Chain Lightning's next target by screen distance; the y posit
 
 ### Battle lane (`BAT-Q<n>`)
 
-(no open questions)
+#### BAT-Q21 — T8b: the code reading against the wiki and VCMI (E04b increment 15)
+
+**Context.** T8b (#46) was built from a code reading alone (`installation.md` §7.23). The user (2026-10-10): the wiki says the Orb of Inhibition "prevents either hero from casting any spells"; a code reading can lose nuances, so a rule needs a consensus of the code with the other sources before it is trusted. Compared since (wiki pages of the 15 artifacts and of the Faerie Dragon; VCMI 1.7.5 `config/artifacts.json`, `CBattleInfoCallback::battleCanCastSpell`, `BattleSpellMechanics`, `TargetCondition`): **agreed by all**: the Pendants, the Sphere, Armageddon's Blade's immunity, Badge of Courage, the Dragon Father's levels 1–4 with the hero's own spells, the Orb of Vulnerability's sides (the owner's spells at every stack, the enemy's at the owner's stacks), the creatures' immunities and all resistance it lifts and the artifacts' immunities, spell conditions and the Golems' reduction it keeps; both heroes under the Orb of Inhibition and under Recanter's Cloak. **In conflict** (gameplay impact):
+
+1. *Faerie Dragons under the Orb of Inhibition* (and the Anti-Magic Garrison, E04c): the code refuses them (0x4476C0 asks 0x41F890 before its per-creature cases, in the cursor 0x47670B and the computer player's 0x421280 alike); the wiki: "Faerie Dragons are unaffected by the Orb of Inhibition and Anti-Magic Garrisons" (also: they cast on Cursed Ground, for no damage); VCMI blocks no creature cast at all. The other casters (the Archangel's Resurrection named) are refused by the code and the wiki.
+2. *The Unicorn aura under the Orb of Vulnerability*: the code still applies it (0x5A8090 multiplies by 0.8 after 0x44A4D0's 1); the wiki and VCMI negate it.
+3. *Absolute creature immunities*: the code keeps the Troglodytes' Blind and Stone Gaze and the Gargoyles' Poison under the Orb of Vulnerability (0x44A4D0's per-spell cases come before its test); VCMI lifts them; the wiki's table of kept immunities did not render.
+4. *Recanter's Cloak against creatures*: the code bars every spell above level 2 from affecting a stack, the strike's Stone Gaze, Paralyze and Age and the Archangel's Resurrection test included; the wiki names only the heroes; VCMI bars creature casts above level 2 but not the strike's abilities (a TODO).
+5. *Power of the Dragon Father against level-0 creature abilities* (Poison, Death Stare, Thunderbolt, Dispel Helpful excepted): the code's test (level ≤ 4) includes them; VCMI's level immunity never covers level 0; the wiki is silent.
+
+**Options.** (a) Keep the code's version in #46 and decide each point by an experiment batch in SoD (2e: a Faerie Dragon and an Ogre Mage under the Orb; Troglodytes blinded under the Orb of Vulnerability; an Archangel and Medusas under the Cloak; Wyvern Monarchs against a Dragon Father army; Orb casts at Dwarves beside Unicorns); (b) switch to the version two sources share now (1: dragons unaffected; 2: no aura), the rest by experiment; (c) hold #46 until the experiments. **Recommendation:** (b) for 1 and 2 behind nothing (both are small changes in `ready` and `affect_chance`), the experiment batch for all five, #46 merged with the outcome recorded; the process change goes to a `shared/` pull request (`docs/04-rules-and-sources.md`, `docs/exe/README.md`). **Blocked:** nothing structural; the five rules' behaviour.
 
 ### Adventure lane (`ADV-Q<n>`)
 

@@ -1643,3 +1643,16 @@ Titan's Lightning Bolt (57) is among the Earth and Magma Elementals' immunities 
 table (case 6 with 17, 19, 26) and among the Air and Storm Elementals' doubled spells in damage
 stage 2 (0x44B4B0, §7.10): a `sod` override with each one's full ability list (the spell is
 `sod`'s).
+
+**The other sources** (compared 2026-10-10 after the user's remark; BAT-Q21). The wiki's artifact
+pages and VCMI 1.7.5 agree with this reading on the Pendants, the Sphere, the Blade, the Badge,
+the Dragon Father's levels 1–4 (the hero's own spells included), the Orb of Vulnerability's sides
+and what it lifts and keeps, and on both heroes under the Orb of Inhibition and Recanter's Cloak.
+They disagree on five points, open in BAT-Q21: Faerie Dragons under the Orb of Inhibition (the
+wiki: unaffected, as by the anti-magic garrison; VCMI blocks no creature cast; this reading found
+no path around 0x41F890, neither the human player's cursor 0x47670B nor the computer player's
+0x421280); the Unicorn aura under the Orb of Vulnerability (the wiki and VCMI negate it); the
+Troglodytes' and Gargoyles' immunities under it (VCMI lifts them); the Cloak against the strike's
+abilities and the Archangel (the wiki names the heroes only; VCMI bars creature casts, not
+abilities); the Dragon Father against level-0 abilities (VCMI never bars level 0). Until an
+experiment settles them, these five rest on this reading alone.

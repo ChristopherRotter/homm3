@@ -3196,6 +3196,20 @@ numeric  = "integer"
   ref        = "Heroes3.exe code reading (docs/formats/installation.md §7.23): 0x41F890(side, hero cast) returns 0 while either hero (+0x53CC, +0x53D0) wears artifact 126 (0x4D91F0), after Cursed Ground (creature casts) and the anti-magic garrison (+0x53C4); its callers: the hero's cast in 0x59FE30 (0x59FEEF, a message and no cast), the creature cast and raise test 0x4476C0 (also the Archangel's and the Pit Lord's case), the empty-hex test 0x4473D0 and the Enchanters' cast 0x447FE0, which returns 0 so that 0x465330 keeps the side's count; the spell book button 0x59E900 refuses with the artifact's message before it opens the book; the Faerie Dragon's draw 0x447510 is not gated"
   confidence = "high"
 
+  [[rule.source]]
+  kind       = "wiki"
+  ref        = "Orb of Inhibition - Heroes 3 wiki: prevents either hero from casting spells; also almost all creature spell casting (the Archangels' Resurrection), not artifact spells nor the Faerie Dragons; Faerie Dragon: 'unaffected by the Orb of Inhibition and Anti-Magic Garrisons' (disagrees with the code reading on the Faerie Dragon: BAT-Q21)"
+  url        = "https://heroes.thelazy.net/index.php/Orb_of_Inhibition"
+  retrieved  = "2026-10-10"
+  confidence = "medium"
+
+  [[rule.source]]
+  kind       = "vcmi"
+  ref        = "config/artifacts.json orbOfInhibition: BLOCK_ALL_MAGIC, battle-wide; lib/battle/CBattleInfoCallback.cpp battleCanCastSpell tests it for a hero's cast only (disagrees on creature casts: BAT-Q21)"
+  url        = "https://github.com/vcmi/vcmi/blob/1.7.5/lib/battle/CBattleInfoCallback.cpp"
+  retrieved  = "2026-10-10"
+  confidence = "medium"
+
 [[rule]]
 id       = "BAT-MAG-062"
 title    = "The spell level limit (Recanter's Cloak)"
@@ -3209,6 +3223,20 @@ numeric  = "integer"
   ref        = "Heroes3.exe code reading (docs/formats/installation.md §7.23): the spell book button 0x59E900 refuses the chosen spell above level 2 (spell table +0x18) while either hero wears artifact 83, with the artifact's message; the effect test 0x5A8090 returns 0 for a spell above level 2 while either hero wears it (0x5A80F6, after Cursed Ground, before Dispel's and the other tests), which the creature casts' targets (0x5A3C80), the Enchanters' usefulness test, the strike's test 0x5A8640 and the Archangel's search 0x5A3CC0 (spell 38) read; the Pit Lord's search 0x5A3E40 does not call it"
   confidence = "high"
 
+  [[rule.source]]
+  kind       = "wiki"
+  ref        = "Recanter's Cloak - Heroes 3 wiki: 'Prevents either hero from casting level 3, 4, or 5 spells during combat' (silent on creatures and their abilities: BAT-Q21)"
+  url        = "https://heroes.thelazy.net/index.php/Recanter%27s_Cloak"
+  retrieved  = "2026-10-10"
+  confidence = "medium"
+
+  [[rule.source]]
+  kind       = "vcmi"
+  ref        = "config/artifacts.json recantersCloak: BLOCK_MAGIC_ABOVE 2, battle-wide; lib/spells/BattleSpellMechanics.cpp: every caster's spell above it is refused ('blocks also passive casting'), creature abilities not checked (a TODO; BAT-Q21)"
+  url        = "https://github.com/vcmi/vcmi/blob/1.7.5/lib/spells/BattleSpellMechanics.cpp"
+  retrieved  = "2026-10-10"
+  confidence = "medium"
+
 [[rule]]
 id       = "BAT-MAG-063"
 title    = "A hero's spell immunities (the Pendants, the Sphere, Armageddon's Blade)"
@@ -3220,6 +3248,13 @@ numeric  = "integer"
   [[rule.source]]
   kind       = "original-data"
   ref        = "Heroes3.exe code reading (docs/formats/installation.md §7.23): 0x5A8090 takes the hero controlling the stack (0x442690) and returns 0 for Dispel (35) and Dispel Helpful Spells (78) while it wears the Sphere of Permanence (92), before their own tests and Anti-Magic, and for Armageddon (26) while it wears Armageddon's Blade (128); 0x44A4D0's per-spell switch returns 0 for the Pendants' spells while it wears them (100 to 107), before the Orb of Vulnerability's test"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "vcmi"
+  ref        = "config/artifacts.json: the Pendants' SPELL_IMMUNITY (Negativity: Lightning Bolt and Chain Lightning), the Sphere's absolute immunity to Dispel and Dispel Helpful Spells, Armageddon's Blade's to Armageddon (agrees)"
+  url        = "https://github.com/vcmi/vcmi/blob/1.7.5/config/artifacts.json"
+  retrieved  = "2026-10-10"
   confidence = "high"
 
 [[rule]]
@@ -3235,6 +3270,20 @@ numeric  = "integer"
   ref        = "Heroes3.exe code reading (docs/formats/installation.md §7.23): 0x44A4D0 first returns 0 while the stack's hero wears artifact 134 and the spell's level (+0x18) is at most 4, with no polarity test; Dispel's and Dispel Helpful Spells' cases in 0x5A8090 return before 0x44A4D0 is called"
   confidence = "high"
 
+  [[rule.source]]
+  kind       = "wiki"
+  ref        = "Power of the Dragon Father - Heroes 3 wiki: 'Allied troops are immune to level 1-4 spells'; it also keeps the hero's own beneficial spells off them (agrees; silent on level-0 abilities: BAT-Q21)"
+  url        = "https://heroes.thelazy.net/index.php/Power_of_the_Dragon_Father"
+  retrieved  = "2026-10-10"
+  confidence = "medium"
+
+  [[rule.source]]
+  kind       = "vcmi"
+  ref        = "config/artifacts.json powerOfTheDragonFather: LEVEL_SPELL_IMMUNITY 4; lib/spells/TargetCondition.cpp: a level immunity never covers spells of level 0 (disagrees on the creature abilities: BAT-Q21)"
+  url        = "https://github.com/vcmi/vcmi/blob/1.7.5/lib/spells/TargetCondition.cpp"
+  retrieved  = "2026-10-10"
+  confidence = "medium"
+
 [[rule]]
 id       = "BAT-MAG-065"
 title    = "A hero's mind immunity (Badge of Courage)"
@@ -3246,6 +3295,13 @@ numeric  = "integer"
   [[rule.source]]
   kind       = "original-data"
   ref        = "Heroes3.exe code reading (docs/formats/installation.md §7.23): after the Orb of Vulnerability's test 0x44A4D0 returns 0 for a mind spell (spell flag 0x400) when the creature is mind-immune (flag 0x400) or the stack's hero wears artifact 49"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "wiki"
+  ref        = "Badge of Courage - Heroes 3 wiki: +1 morale and immunity to mind spells (removed in HotA) (agrees); VCMI config/artifacts.json badgeOfCourage: MORALE +1, MIND_IMMUNITY (agrees)"
+  url        = "https://heroes.thelazy.net/index.php/Badge_of_Courage"
+  retrieved  = "2026-10-10"
   confidence = "high"
 
 [[rule]]
@@ -3260,3 +3316,18 @@ numeric  = "integer"
   kind       = "original-data"
   ref        = "Heroes3.exe code reading (docs/formats/installation.md §7.23): 0x44A4D0 is called with the hero of the casting side and the stack's hero; after its absolute cases (Dragon Father, war machines, the arrow tower, the per-spell switch with the Pendants, the undead, the Troglodytes and the Gargoyles) it returns 1 while either wears artifact 93 (0x44A746), skipping the mind, fire and per-creature immunities and the resistances (0x44A7EE to 0x44A80D); 0x5A8090 applies the Unicorn aura (x 0.8) to what it returns"
   confidence = "high"
+
+  [[rule.source]]
+  kind       = "wiki"
+  ref        = "Orb of Vulnerability - Heroes 3 wiki: negates the creatures' natural magic resistance and immunities and the heroes' Resistance and resistance artifacts, not the spells' limitations, artifact immunities or the Golems' reduction; the owner's spells at every stack, the opponent's at the owner's stacks (agrees); also the Unicorns' aura (disagrees: BAT-Q21)"
+  url        = "https://heroes.thelazy.net/index.php/Orb_of_Vulnerability"
+  retrieved  = "2026-10-10"
+  confidence = "medium"
+
+  [[rule.source]]
+  kind       = "vcmi"
+  ref        = "config/artifacts.json orbOfVulnerability: NEGATE_ALL_NATURAL_IMMUNITIES (battle-wide for the owner's spells, every spell at the owner's stacks), MAGIC_RESISTANCE 0 and SPELL_RESISTANCE_AURA 0 battle-wide; lib/spells/TargetCondition.cpp ImmunityNegationCondition (agrees on the sides; disagrees on the aura and on the Troglodytes' and Gargoyles' immunities, plain SPELL_IMMUNITY there: BAT-Q21)"
+  url        = "https://github.com/vcmi/vcmi/blob/1.7.5/lib/spells/TargetCondition.cpp"
+  retrieved  = "2026-10-10"
+  confidence = "medium"
+
