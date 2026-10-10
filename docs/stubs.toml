@@ -17,10 +17,4 @@
 
 # --- server (SRV-STUB-<n>) ---
 
-[[stub]]
-id     = "SRV-STUB-1"
-where  = "crates/h3-server/src/main.rs::main"
-reason = "Skeleton (E16 M0): the binary names its versions and exits; hosting arrives with M1 T3"
-epic   = "E16"
-
 # --- client (CLT-STUB-<n>) ---
