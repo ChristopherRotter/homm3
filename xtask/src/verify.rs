@@ -218,6 +218,48 @@ fn harvest_check(install: &str) -> Result<(), String> {
     run_cmd(cmd)
 }
 
+/// Name of the example a crate provides to check itself against the original data.
+const ORIGINAL_DATA_EXAMPLE: &str = "original_data";
+
+/// Crates (by directory name, sorted) that carry `examples/original_data.rs`: their checks against
+/// the original data, such as `h3-map` reading every shipped map (E08 T3).
+fn original_data_examples(root: &Path) -> Vec<String> {
+    let mut crates: Vec<String> = fs::read_dir(root.join("crates"))
+        .into_iter()
+        .flatten()
+        .flatten()
+        .filter(|e| {
+            e.path()
+                .join("examples")
+                .join(format!("{ORIGINAL_DATA_EXAMPLE}.rs"))
+                .is_file()
+        })
+        .filter_map(|e| e.file_name().into_string().ok())
+        .collect();
+    crates.sort();
+    crates
+}
+
+/// Runs each crate's `original_data` example with the installation copy as its one argument
+/// (read-only on `install`); a crate's example fails the gate with a non-zero exit.
+fn crate_checks(root: &Path, install: &str) -> Result<(), String> {
+    for name in original_data_examples(root) {
+        let mut cmd = cargo();
+        cmd.args([
+            "run",
+            "--quiet",
+            "-p",
+            &name,
+            "--example",
+            ORIGINAL_DATA_EXAMPLE,
+            "--",
+            install,
+        ]);
+        run_cmd(cmd)?;
+    }
+    Ok(())
+}
+
 /// The executable the code-reading tool reads (docs/exe/README.md).
 const EXE: &str = "original-data/install/Heroes3.exe";
 
@@ -384,6 +426,7 @@ fn run_step(
         let install = install.unwrap_or(DEFAULT_ORIGINAL_DATA);
         return harvest_check(install)
             .and_then(|()| exe_check(&workspace_root()))
+            .and_then(|()| crate_checks(&workspace_root(), install))
             .map(|()| Status::Passed);
     }
     let step = STEPS
@@ -623,6 +666,19 @@ mod tests {
 
     fn strings(args: &[&str]) -> Vec<String> {
         args.iter().map(|s| (*s).to_owned()).collect()
+    }
+
+    #[test]
+    fn finds_the_crates_with_an_original_data_example() {
+        let dir = TempDir::new("original-data-examples");
+        dir.write("crates/h3-b/examples/original_data.rs", "fn main() {}\n");
+        dir.write("crates/h3-a/examples/original_data.rs", "fn main() {}\n");
+        dir.write("crates/h3-c/examples/other.rs", "fn main() {}\n");
+        dir.write("crates/h3-d/src/lib.rs", "");
+        assert_eq!(original_data_examples(dir.path()), ["h3-a", "h3-b"]);
+        let empty = TempDir::new("original-data-examples-none");
+        assert!(original_data_examples(empty.path()).is_empty());
+        assert_eq!(crate_checks(empty.path(), "original-data/install"), Ok(()));
     }
 
     #[test]

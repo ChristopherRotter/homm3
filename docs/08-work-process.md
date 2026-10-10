@@ -181,8 +181,10 @@ Agents usually work in a cloud sandbox cloned from GitHub.
    when the session is linked to the user's computer, get read access to the user's repo folder
    (`D:\Users\Christopher\Source\Repos\homm3`) and stage `original-data/install/Heroes3.exe`,
    `original-data/install/Data/H3bitmap.lod`, `original-data/install/Data/H3ab_bmp.lod` and
-   `original-data/extracted/H3bitmap/Objects.txt` (one large LOD per staging call). Without the
-   link, the user may upload them; otherwise the session only prepares (Q48).
+   `original-data/extracted/H3bitmap/Objects.txt` (one large LOD per staging call); for the
+   map reader also `original-data/install/Maps/*` (164 files, at most 50 per staging call; the
+   user's copy of the installation's `Maps`, 2026-10-10). Without the link, the user may upload
+   them; otherwise the session only prepares (Q48).
 3. **Setup:** `scripts/sandbox-setup.sh` links the image's `stable` toolchain as the pinned one,
    copies the staged files into `original-data/` and starts the tool installs (with `capstone` and
    `pefile` for the code-reading tool `scripts/exe.py`, `docs/exe/README.md`) and the baseline
