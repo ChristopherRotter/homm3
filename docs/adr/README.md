@@ -27,3 +27,6 @@ Binding decisions. One decision per file, numbered, never silently edited once A
 | [0012](0012-modifiers-and-abilities.md) | Modifiers and abilities | Accepted (E03) | modifiers (morale, luck, stats) and creature abilities |
 | [0013](0013-heroes-in-battle.md) | Heroes in battle: entities, the `BattleHero` seam, the hero's battle rules | Accepted | hero content, `h3-heroes`, the `BattleHero` seam (E04a–E04c) |
 | [0014](0014-battle-magic.md) | Battle magic: spells as data, casting, timed effects, created stacks, hidden objects | Accepted | spells, casting, spell effects on stacks, stacks created in battle, hidden obstacles, the casting encoding (E04b, E04c) |
+| [0015](0015-adventure-and-game-crates.md) | Adventure and game crates, ruleset parts, the import boundary | Accepted (E08) | adding an adventure or game crate or a ruleset part, reading or importing maps, cross-context ids (`PlayerId`, `HeroId`) |
+| [0016](0016-adventure-state.md) | Adventure state: persistent grids, object kinds, fog of war | Accepted (E08) | adventure state, forks of map-sized data, map objects, fog of war and what a player sees |
+| [0017](0017-game-orchestration.md) | Game orchestration: turn groups, RNG streams per player, pending decisions | Accepted (E08) | `h3-game`, turns and the calendar, randomness outside a battle, actors and viewers, pending decisions, `AdventureEnv` |

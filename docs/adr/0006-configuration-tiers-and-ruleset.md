@@ -66,9 +66,21 @@ Runtime scripting for all rules (flexible, slow, hard to test/secure); hard-code
   ruleset, read by handle at the decision point.
 - Ruleset hash encoding **v3**.
 
+## Amendment — E08 ruleset parts (2026-10-10, ADR-0015 point 2)
+
+- **A game's rules are the core ruleset plus one compiled part per context** (the adventure's
+  first, in `h3-adventure`): each part is immutable, `Arc`-shared, with its own canonical hash
+  and version, references core entities by handle and its source by key. `h3-game`'s
+  `GameRuleset` bundles them; replay headers and the server's manifest record every part's hash.
+- **One pack file per context:** `adventure.toml` beside the pack's existing file, hand-written
+  source the harvester never touches (E08 decision 10), parsed by `h3-pack-adventure`. The split
+  of `h3-content` into a core and a battle part, with `core.toml` and `battle.toml`, waits for
+  E04b to close (ADR-0015 point 3).
+
 ## Revision history
 
 - 2026-09-30: Accepted.
 - 2026-09-30: Amended by E01 (pack format, compiler rules, quirk registry, stats copied into battle state).
 - 2026-09-30: Amended by E02 T1 (TOML confirmed, expansion dependency graph, overrides, harvested packs).
 - 2026-10-01: Amended by E03 T2 (abilities in packs, flags/shots on the hot-path creature type, hash v3).
+- 2026-10-10: Amended by E08 (ruleset parts per context, one pack file per context; ADR-0015).

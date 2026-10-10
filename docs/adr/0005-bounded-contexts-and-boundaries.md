@@ -40,8 +40,21 @@ Single crate with modules (boundaries erode, no compile-time enforcement); fine-
 - **`h3-formats`** (adapter, no workspace dependencies; external `miniz_oxide` for zlib): bounded readers for the original installation's files (LOD archives, text tables, the executable's static tables). It replaces the planned `h3-import` crate: with Q13 the original data is harvested once into committed packs, so there is no run-time import.
 - **`h3-harvest`** (tool layer, like `xtask`): the harvester binary that writes `packs/{base,ab,sod}`; nothing may depend on it.
 
+## Amendment — E08 adventure and game crates (2026-10-10, ADR-0015)
+
+- **Crates created (E08 T2):** `h3-adventure` (domain, logic), `h3-game` (application, logic:
+  `no_std`, the purity scan and the 100 % coverage gate like a domain crate), `h3-map` and
+  `h3-pack-adventure` (adapters). `h3-game` is the first application crate: it depends on the
+  domain contexts it wires (`h3-adventure` now; `h3-heroes` and `h3-battle` from E08 increment
+  3); no domain crate depends on it. ADR-0015 holds the crate shape, ADR-0016 and ADR-0017 what
+  the two logic crates decide.
+- **Cross-context ids** `PlayerId` and `HeroId` are contract types (`h3-contracts`).
+- **Pointer identity** (`ptr_eq`, `as_ptr`) is a forbidden token in logic crates outside the
+  adventure's persistent module (ADR-0016 point 2).
+
 ## Revision history
 
 - 2026-09-30: Accepted.
 - 2026-09-30: Amended by E01 (crates created, `no_std` logic crates, what `check-arch` enforces).
 - 2026-10-01: Amended by E02 (`h3-formats` adapter, `h3-harvest` tool).
+- 2026-10-10: Amended by E08 (adventure and game crates, the first application crate, ids in the contracts; ADR-0015).

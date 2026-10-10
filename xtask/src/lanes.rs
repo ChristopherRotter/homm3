@@ -646,5 +646,27 @@ paths = ["crates/h3-adventure/", "crates/h3-battle/src/seam/"]
             c.owner("clients/README.md"),
             Owner::Lane("client".to_owned())
         );
+        // Adventure-owned sub-paths of battle's crates and folders (longest match, E08 T2).
+        let adventure = Owner::Lane("adventure".to_owned());
+        let battle = Owner::Lane("battle".to_owned());
+        for path in [
+            "crates/h3-game/src/lib.rs",
+            "crates/h3-sim/src/adventure/env.rs",
+            "fixtures/replays/adventure/walk-s1.toml",
+            "crates/h3-cli/tests/adventure_replays.rs",
+            "packs/sod/adventure.toml",
+            "docs/formats/h3m.md",
+        ] {
+            assert_eq!(c.owner(path), adventure, "{path}");
+        }
+        for path in [
+            "crates/h3-sim/src/env.rs",
+            "fixtures/replays/duel-s1.toml",
+            "packs/sod/pack.toml",
+            "docs/formats/installation.md",
+        ] {
+            assert_eq!(c.owner(path), battle, "{path}");
+        }
+        assert_eq!(c.owner("docs/rules/surveys/README.md"), Owner::Common);
     }
 }
