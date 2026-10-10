@@ -32,7 +32,7 @@ Stop, write the question in `docs/OPEN-QUESTIONS.md` (context, options, your rec
 
 - a change to an ADR-level decision, a seam/contract type, or a public crate boundary,
 - license, legal or IP doubts,
-- conflicting sources for a rule with real gameplay impact,
+- conflicting sources for a rule with real gameplay impact (a code reading counts as one source: compare it with the wiki and VCMI before a rule rests on it, `docs/04-rules-and-sources.md` §2),
 - an ambiguous quirk classification (is this bug harmless-and-accepted, or must it be fixed?),
 - a dependency that is heavy, not GPLv2-compatible (see `deny.toml`), or unmaintained,
 - anything irreversible or that would invalidate a lot of prior work,
