@@ -1,0 +1,18 @@
+[package]
+name = "h3-map"
+description = "Adapter: reads .h3m maps into a raw model and imports them into the game's setup types (ADR-0015)."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish.workspace = true
+
+[dependencies]
+miniz_oxide.workspace = true
+
+[dev-dependencies]
+h3-formats.workspace = true
+proptest.workspace = true
+
+[lints]
+workspace = true

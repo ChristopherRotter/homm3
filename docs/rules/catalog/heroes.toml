@@ -529,3 +529,29 @@ numeric  = "integer"
   url        = "https://github.com/vcmi/vcmi/blob/1.7.5/lib/mapObjects/CGHeroInstance.cpp#L855-L862"
   retrieved  = "2026-10-06"
   confidence = "high"
+
+[[rule]]
+id       = "HER-BAT-015"
+title    = "The battle hero's casting limits"
+context  = "heroes"
+status   = "implemented"
+summary  = "The battle hero has a NoCasting effect if one of its effect sources (HER-BAT-001) has a no_casting effect (the Orb of Inhibition), and one SpellLevelLimit effect with the smallest level of their spell_level_limit effects (Recanter's Cloak: 2), each artifact type once; none without any. The battle applies them to both sides (BAT-MAG-061, BAT-MAG-062)."
+numeric  = "integer"
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (docs/formats/installation.md §7.23): 0x41F890 and the book button 0x59E900 test either hero for artifact 126 (the Orb of Inhibition); the book button and the effect test 0x5A8090 test either hero for artifact 83 (Recanter's Cloak) on spells above level 2; both with 0x4D91F0, which finds an artifact in the body positions or as a part of a worn combination"
+  confidence = "high"
+
+[[rule]]
+id       = "HER-BAT-016"
+title    = "The battle hero's spell defences"
+context  = "heroes"
+status   = "implemented"
+summary  = "The battle hero has one SpellImmunity effect per spell its effect sources' spell_immunity effects name (HER-BAT-001; the Pendants, the Sphere of Permanence, Armageddon's Blade), in the order of their first appearance, then one SpellLevelImmunity with the largest spell_level_immunity level (Power of the Dragon Father: 4), then MindImmunity (Badge of Courage) and NegateImmunities (the Orb of Vulnerability) once if a source has them; each artifact type once, none without any (BAT-MAG-063 to BAT-MAG-066)."
+numeric  = "integer"
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (docs/formats/installation.md §7.23): 0x5A8090 and 0x44A4D0 test the stack's hero for artifacts 92, 128, 134, 100 to 107 and 49, and the casting and the stack's heroes for artifact 93, with 0x4D91F0 (body positions and worn combinations)"
+  confidence = "high"

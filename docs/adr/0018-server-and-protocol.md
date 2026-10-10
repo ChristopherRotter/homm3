@@ -1,4 +1,4 @@
-# ADR-0015: Server and protocol — hosted games over a sans-I/O protocol core
+# ADR-0018: Server and protocol — hosted games over a sans-I/O protocol core
 
 - Status: Accepted (user, 2026-10-10, the E16 M0 checkpoint; directions from SRV-Q1 to SRV-Q11)
 - Date: 2026-10-10

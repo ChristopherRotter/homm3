@@ -1,6 +1,6 @@
 [package]
 name = "h3-protocol"
-description = "The server's published language and sans-I/O session core (E16, ADR-0015)."
+description = "The server's published language and sans-I/O session core (E16, ADR-0018)."
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true

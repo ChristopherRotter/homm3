@@ -1,18 +1,18 @@
 # E16 — Server: protocol, hosting, lobbies and ladders
 
-Status: **in progress** (refined 2026-10-08/09; M0 done 2026-10-10: ADR-0015 accepted, the
-crate skeletons; M1 next). Decisions: [ADR-0015](../adr/0015-server-and-protocol.md) (protocol
+Status: **in progress** (refined 2026-10-08/09; M0 done 2026-10-10: ADR-0018 accepted, the
+crate skeletons; M1 next). Decisions: [ADR-0018](../adr/0018-server-and-protocol.md) (protocol
 and hosting); ADR drafts `docs/lanes/server/adr-drafts/identity-and-ladders.md` and
 `discovery.md`. Working detail (messages, flows, journals, the ladder sketch):
 `docs/epics/E16-design.md`. Done tasks in full: `docs/epics/E16-log.md`. Lane: server (`docs/lanes/server/HANDOFF.md`).
 
 **How the drafts become decisions.** Each ADR draft stays "Proposed" until the milestone that
-needs it: the protocol ADR was decided at the M0 checkpoint (ADR-0015; nothing could be built
+needs it: the protocol ADR was decided at the M0 checkpoint (ADR-0018; nothing could be built
 before), the identity and ladders ADR at the M3 refinement. Until then they are direction, and
 the parts of M1 and M2 that touch them (the `Authenticator` seam, the journal) are built so that
 either option fits. An accepted ADR can still be amended at a later checkpoint, as the battle
 lane amends ADR-0014. The user's answers of 2026-10-09 fixed the direction of all three drafts
-(below, marked **user**); the protocol draft carried them and was accepted at M0 as ADR-0015,
+(below, marked **user**); the protocol draft carried them and was accepted at M0 as ADR-0018,
 trimmed to its decisions (the detail is here and in the design note).
 
 ## Goal
@@ -92,7 +92,7 @@ today's `BattleSetup`; the whole game once `h3-game` exists (E08, E10). The serv
 
 ## Decisions (directions confirmed by the user, 2026-10-09)
 
-**A. Protocol and hosting** (ADR-0015, points 1–9, 11, 12; the brief's points 1–4):
+**A. Protocol and hosting** (ADR-0018, points 1–9, 11, 12; the brief's points 1–4):
 
 - *Transport.* Plain TCP (no browser, own framing), WebSocket (browser-native, framed, one
   small crate with a `tokio` binding), QUIC (heavy, no browser). HTTP for a lobby would add a web
@@ -136,7 +136,7 @@ today's `BattleSetup`; the whole game once `h3-game` exists (E08, E10). The serv
   is recomputed from memory at game end to catch it), and hardware faults are the operator's
   to prevent (ECC memory).
 
-**B. Same content for everyone** (ADR-0015, point 10; the user's first idea):
+**B. Same content for everyone** (ADR-0018, point 10; the user's first idea):
 
 - The question "what if players have different client versions or settings" has a structural
   answer in this architecture: a client never runs rules in a hosted game (lockstep, where
@@ -201,7 +201,7 @@ a context each. M4 before M5 (the user, SRV-Q10). Where the server runs (SRV-Q1)
 LAN until M3, the internet afterwards behind a TLS proxy; seat tokens only until M3 (SRV-Q2).
 M0 starts now, while E04b finishes (SRV-Q7).
 
-- **M0 Skeleton** (done 2026-10-10; `E16-log.md`): ADR-0015; `h3-protocol` and `h3-server`
+- **M0 Skeleton** (done 2026-10-10; `E16-log.md`): ADR-0018; `h3-protocol` and `h3-server`
   declared with the edges and dependencies M1 needs; `PROTOCOL_VERSION`.
 - **M1 A hosted battle:** T1 messages and codec; T2 session core; T3 the server binary with a
   headless test client; T4 closure (below). The replay is written at the end of the game; the

@@ -3,7 +3,7 @@
 The full record of E16's finished milestones and tasks (what was built, agent decisions marked
 provisional, measurements, the review lists). **Not start-of-session reading:** the epic file keeps
 one line per done milestone; read the matching section here when a task builds on an earlier one
-or a decision is questioned. Decisions live in ADR-0015 and the ADR drafts; this log only records
+or a decision is questioned. Decisions live in ADR-0018 and the ADR drafts; this log only records
 how and why the work went.
 
 ## Done
@@ -13,7 +13,7 @@ how and why the work went.
 - **The ADR.** The user accepted the protocol ADR draft at the checkpoint, asking for a trim
   first: 136 lines became 85, the twelve decisions unchanged; the cut text was already in the
   epic file (the measurements, the options) or the design note (§3 the manifest, §7 journals,
-  §8 integrity). Numbered ADR-0015, moved to `docs/adr/` with its index row; the server lane's
+  §8 integrity). Numbered ADR-0018, moved to `docs/adr/` with its index row; the server lane's
   reading list in `AGENTS.md` gained it.
 - **The crates.** `h3-protocol`: adapter layer, `logic = true`, the logic header, only
   `PROTOCOL_VERSION` (0 until M1 T1's first messages). `check-arch` accepted a logic crate in the

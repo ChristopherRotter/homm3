@@ -312,4 +312,35 @@ pub enum BattleEffect {
         /// Extra rounds.
         rounds: u8,
     },
+    /// Neither side casts while this hero is in the battle: no hero's spell, no creature's cast
+    /// or raise, no periodic cast (the Orb of Inhibition; E04b T8b1; HER-BAT-015, BAT-MAG-061).
+    NoCasting,
+    /// While this hero is in the battle no spell above `max_level` is cast by a hero or affects a
+    /// stack, whoever casts it (Recanter's Cloak: 2; E04b T8b1; HER-BAT-015, BAT-MAG-062).
+    SpellLevelLimit {
+        /// The highest spell level allowed.
+        max_level: u8,
+    },
+    /// The stacks the hero controls are never affected by `spell`, whoever casts it, before
+    /// every other test but the spell level limit (a Pendant, the Sphere of Permanence for Dispel
+    /// and Dispel Helpful Spells, Armageddon's Blade for Armageddon; E04b T8b2; HER-BAT-016,
+    /// BAT-MAG-063).
+    SpellImmunity {
+        /// The spell.
+        spell: SpellId,
+    },
+    /// The stacks the hero controls are never affected by a spell up to `max_level`, whoever
+    /// casts it and whatever its polarity, Dispel excepted (Power of the Dragon Father: 4; E04b
+    /// T8b2; HER-BAT-016, BAT-MAG-064).
+    SpellLevelImmunity {
+        /// The highest level.
+        max_level: u8,
+    },
+    /// The stacks the hero controls are immune to mind spells unless the immunities are negated
+    /// (Badge of Courage; E04b T8b2; HER-BAT-016, BAT-MAG-065).
+    MindImmunity,
+    /// Spells cast by the hero's side, and spells at the stacks it controls, ignore the
+    /// creatures' immunities and magic resistance and the heroes' resistance (the Orb of
+    /// Vulnerability; E04b T8b2; HER-BAT-016, BAT-MAG-066).
+    NegateImmunities,
 }

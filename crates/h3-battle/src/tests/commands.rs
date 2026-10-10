@@ -263,6 +263,13 @@ fn state_hash_is_pinned() {
             rate: Rate::bp(500),
         },
         h3_contracts::BattleEffect::SpellDuration { rounds: 2 },
+        // The casting limits and the spell defences (v40).
+        h3_contracts::BattleEffect::NoCasting,
+        h3_contracts::BattleEffect::SpellLevelLimit { max_level: 3 },
+        h3_contracts::BattleEffect::SpellImmunity { spell: bolt },
+        h3_contracts::BattleEffect::SpellLevelImmunity { max_level: 4 },
+        h3_contracts::BattleEffect::MindImmunity,
+        h3_contracts::BattleEffect::NegateImmunities,
     ];
     led.magic.spell_book = Some(vec![bolt]);
     led.magic.masteries = masteries(&r, [2, 1, 0, 0]);
@@ -280,7 +287,7 @@ fn state_hash_is_pinned() {
     let s = BattleState::new(&r, &setup, 7).unwrap();
     assert!(s.tactics().is_some());
     assert_eq!(s.state_hash(), GOLDEN, "got {:#018x}", s.state_hash());
-    assert_eq!(crate::BATTLE_STATE_HASH_VERSION, 39);
+    assert_eq!(crate::BATTLE_STATE_HASH_VERSION, 40);
 }
 
-const GOLDEN: u64 = 0xb4fc_c5a2_f420_cc7e;
+const GOLDEN: u64 = 0x51b8_02e1_b836_c723;

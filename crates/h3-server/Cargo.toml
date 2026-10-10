@@ -1,6 +1,6 @@
 [package]
 name = "h3-server"
-description = "Adapter: hosts the engine's games for untrusted clients over WebSocket (E16, ADR-0015)."
+description = "Adapter: hosts the engine's games for untrusted clients over WebSocket (E16, ADR-0018)."
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true

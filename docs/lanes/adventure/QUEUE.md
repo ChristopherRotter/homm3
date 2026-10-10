@@ -4,46 +4,19 @@ Pre-refined tasks of the adventure lane, in order, then the inbox of discovered 
 
 ## Tasks
 
-Epic: `docs/epics/E08-adventure-map.md` (refined 2026-10-08, reviewed with the user the same day; decisions 1–12 there). Increment 1 = T1a, T1b, T2–T10, a checkpoint with the user at T1a (ADR review) and at T10.
-
-### E08 T1a — ADR drafts
-
-- **Scope:** E08 T1a. Three ADR drafts in `docs/lanes/adventure/adr-drafts/`, decisions only (about 80 lines each, `docs/adr/README.md`), written from the epic's decisions 2–9 as they stand: (1) crate shape (the four crates `h3-map`, `h3-pack-adventure`, `h3-adventure`, `h3-game`; the `application` layer; the ADR-0005 amendment; the later content split; the setup types and the import boundary, decision 4); (2) adventure state (the persistent grid with what sees through its `Arc`s, decision 6; map objects as closed behaviour kinds with data parameters, ADR-0012 style, increment 1 uses only "blocker"; the fog projection, decision 7); (3) game orchestration (turn groups, per-player RNG streams, pending decisions, decisions 8–9; where `AdventureEnv` lives: adventure-owned sub-paths of `h3-sim` and `h3-cli`).
-- **Acceptance:** the user reviewed the three drafts; open points are `ADV-Q<n>` entries.
-- **Depends on:** nothing.
-- **Status:** waiting (PR #32 merged 2026-10-10; the user's acceptance of the drafts, open points `ADV-Q1`, `ADV-Q2`).
-
-### E08 T1b — Survey and quirks
-
-- **Scope:** E08 T1b. Sources and quirks for movement (movement points by army speed, terrain and road costs, diagonal cost, the last step of a day, leftover points), fog of war (scouting radius, the fringe, decision 7: confirmed per Q30 before it becomes `ADV-QUIRK-1`, by the user looking at a map) and the day advance; HD's and HotA's contact rules for simultaneous turns (decision 8, captured for a later decision). Output: `docs/rules/surveys/E08-adventure-core.md`, `docs/rules/quirks-adventure.md`, rule ids `ADV-*`/`GAME-*` proposed in the survey. The wiki needs the user's approval per session (`docs/HANDOFF.md`, "Sources").
-- **Acceptance:** the user classified the quirks; disputed rules are `ADV-Q<n>` entries.
-- **Depends on:** nothing (runs beside T2; gates T4, T7 and T8).
-- **Status:** waiting (the user's classification of A-1 to A-3 and the look at a map for A-1; PR #33). Disputes `ADV-Q3`–`ADV-Q5` are settled by code readings at the start of T7 and T8.
-
-### E08 T2 — Shared skeleton
-
-- **Scope:** a `shared/adventure-skeleton` pull request: crate skeletons `h3-map` (adapter), `h3-pack-adventure` (adapter), `h3-adventure` (domain), `h3-game` (application) with the logic headers; `arch.toml` edges; `lanes.toml` (the new crates, `packs/*/adventure.toml`, `docs/rules/catalog/game.toml`, `docs/formats/h3m.md` to adventure with the user's consent, the adventure sub-paths `crates/h3-sim/src/adventure/`, `crates/h3-cli/src/adventure/`, `fixtures/replays/adventure/` by the longest-match rule); `xtask` (the determinism step for adventure replays under `--scope adventure`; the fuzz harness, `cargo-fuzz` with its nightly toolchain question, here or as a separate shared task before T3); the versions table in `docs/08-work-process.md` (adventure state hash, game state hash, adventure replay format and encodings); `BACKLOG.md` (E07 folded into E08, E08 in progress, E09 and E10 restated, a row for the crate split after E04b); the global HANDOFF's lane row.
-- **Acceptance:** full `cargo xtask verify` green in CI; merged before T3.
-- **Depends on:** T1a accepted; `ADV-Q1` (the ids in `h3-contracts`).
-- **Status:** waiting (T1a).
-
-### E08 T3 — Map reader
-
-- **Scope:** E08 T3 in `h3-map`, probably T3a (header, players, conditions, heroes, terrain) and T3b (templates, every object body of RoE/AB/SoD). Complete raw model with input bounds (map size, counts, string lengths; `docs/06-security.md`), the import of terrain, roads, rivers, footprints and placed heroes into the setup types; fuzzing; fixtures (our writer's maps, the user's editor maps committed, shipped maps in the local `--with-original-data` gate). Reference: VCMI 1.7.5's reader and `docs/formats/h3m.md` (adventure-owned after T2: the reader's notes go into the same file).
-- **Acceptance:** the Definition of Done; every shipped map of the user's installation parses (local gate); the bounds have rejection tests.
-- **Depends on:** T2 (and the fuzz harness).
-- **Status:** waiting (T2).
+Epic: `docs/epics/E08-adventure-map.md` (refined 2026-10-08, reviewed with the user the same day; decisions 1–12 there; done tasks in `E08-log.md`). Increment 1 = T1a, T1b, T2–T10, a checkpoint with the user at T1a (done: ADR-0015–0017), after T3 (next) and at T10. T1a, T1b, T2 and T3 are done; the import moved from T3 to T5 and T6 (user, 2026-10-10).
 
 ### E08 T4–T10
 
-- **Scope:** as in the epic file: T4 adventure content, T5 state and the persistent grid (with the two copy-on-write properties), T6 `h3-game` thin, T7 movement, T8 fog and projection (with the viewer knowledge list), T9 env/CLI/gates (needs `ADV-Q2`: how a replay names its map), T10 closure. Refined into queue entries after T1a's drafts are accepted.
-- **Status:** waiting (T1a).
+- **Scope:** as in the epic file: T4 adventure content, T5 state and the persistent grid (with the two copy-on-write properties; the persistent module is `src/persistent.rs`, the only place `arch.toml` allows `ptr_eq`/`as_ptr`; `AdventureSetup` and the import of terrain and footprints), T6 `h3-game` thin (`GameSetup`, the import of players and placed heroes, `Unsupported`, `MAP_IMPORT_VERSION` documented; parse, import and validation property-tested together on arbitrary bytes), T7 movement (starts with CR-1, `ADV-Q3`, then the user classifies A-2 and A-3), T8 fog and projection (starts with CR-3, `ADV-Q5`; A-1 needs the user's look at a map), T9 env/CLI/gates (a replay names its map by content hash, path and `MAP_IMPORT_VERSION`, ADV-Q2), T10 closure. To be refined into queue entries (ADR-0015–0017 accepted).
+- **Status:** waiting (the user's checkpoint after T3, then the refinement into entries, before T4).
 
 ## Inbox
 
-- 2026-10-09 (T1a): when the user accepts the drafts, a `shared/` change numbers them (`docs/adr/README.md`), amends ADR-0005 (the four crates, `h3-game` the first application crate and a logic crate) and ADR-0006 (ruleset parts, one pack file per context), updates `docs/02-architecture.md` §3 and `docs/03-domain.md` (the Game row, the answered object question, the terms: turn group, pending decision, static map, explored, fringe, object kind, blocked and visitable tile). It can ride on T2's pull request.
-- 2026-10-09 (T1b): the survey index `docs/rules/surveys/README.md` belongs to the battle lane, so it does not list `E08-adventure-core.md` yet. T2's `lanes.toml` change can make the index a common path (one block per lane, as `OPEN-QUESTIONS.md`) and add the E08 row.
-- 2026-10-08 (refinement): the crate split after E04b (E08 decisions 2–3) is a `shared/` + `cross-lane` task run with the battle lane paused; T2 adds it to `BACKLOG.md`.
+- 2026-10-10 (T3b): fixtures in `fixtures/maps/` once the user's editor maps arrive (one per version: a customised hero, many object kinds, a special condition, a rumor, a timed event, one underground): commit them with a test that reads each and checks a few fields, so CI reads real editor output (the shipped maps stay local).
+
+- 2026-10-10 (T2): the game context's rule ids use the existing prefix `GAM-` (`check-rules`, catalog file `docs/rules/catalog/game.toml`), not `GAME-` as the T1b survey proposed.
+- 2026-10-10 (T2): already allowed by `arch.toml`, so T5–T9 need no shared change: `h3-sim` → `h3-adventure`, `h3-game` (dev: `h3-map`, `h3-pack-adventure`); `h3-cli` → the four crates; `h3-map` dev → `h3-pack`, `h3-pack-adventure`. Golden replays go to `fixtures/replays/adventure/` with the test `crates/h3-cli/tests/adventure_replays.rs` (both adventure-owned): `cargo xtask determinism` runs it once it exists, and `verify --scope adventure` runs the determinism step once the folder has files (T9).
 - 2026-10-01 (E02): ~~tight formations~~ (done in E03 T9) / tactics (E04), creature-bank layouts (with creature banks), and other harvested tables (spells, artifacts, heroes, buildings) when their epics come; RoE/AB patch differences outside creatures need the same gap-fill treatment (Q15).
 - 2026-10-01 (E04 refinement): the `.h3m` writer built for the experiment pipeline (E04a T2) overlaps with E07 (map reader) and E14 (map generator). ~~Keep it in the formats adapter so both can extend it~~: E08 decision 2 moves it into `h3-map` after E04b closes, beside the reader (2026-10-08).
 - 2026-10-03 (E04a T3a): not harvested yet, each for the epic that reads it: spell town chances and hero-class tavern weights and aggression (E09 towns and taverns; RoE lacks the Conflux column, so the `ab` pack needs an override kind or a per-faction table), spell AI values (E05/E06 if wanted), the spell flags and target attributes (E04b T1/T2a, decode the executable's flag bits, installation.md §7.6), hero availability (campaign heroes from the executable's flag byte 2 and VCMI's `special`; Lord Haart the Knight retired by the expansions, flag byte 1; Sir Mullich: VCMI special, executable not campaign; E08–E10, check in the SoD map editor and taverns), specialty names (presentation).

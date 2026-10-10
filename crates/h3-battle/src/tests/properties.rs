@@ -527,13 +527,15 @@ proptest! {
                         }
                     }
                     // Good morale keeps the mover active for another turn (BAT-MOR-003), unless its
-                    // action left it unable to act or Fear froze the new turn (BAT-MAG-060).
+                    // action left it unable to act or Fear froze the new turn (BAT-MAG-060); a lost
+                    // turn may end the round, and the new round clears the mark (BAT-TRN-002).
                     if events.iter().any(|e| matches!(e.kind, EventKind::GoodMorale { .. })) {
                         let m = state.stacks()[mover.index()];
                         let lost = m.spells.status.contains(crate::Status::NO_TURNS)
                             || events.iter().any(|e| e.kind == EventKind::Frightened { stack: mover });
+                        let new_round = events.iter().any(|e| matches!(e.kind, EventKind::RoundStarted { .. }));
                         prop_assert!(lost || state.active() == Some(mover));
-                        prop_assert!(m.flags.contains(crate::StackFlags::HAD_MORALE));
+                        prop_assert!(m.flags.contains(crate::StackFlags::HAD_MORALE) || (lost && new_round));
                     }
                     let mentioned = |i: usize, f: fn(&EventKind, usize) -> bool| events.iter().any(|e| f(&e.kind, i));
                     for (i, (b, a)) in before.stacks().iter().zip(state.stacks()).enumerate() {

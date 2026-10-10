@@ -1,5 +1,5 @@
 //! The translation from hero details to the battle hero (ADR-0013 point 2; HER-BAT-001 to
-//! HER-BAT-012).
+//! HER-BAT-016).
 
 use alloc::collections::BTreeSet;
 use alloc::vec::Vec;
@@ -98,6 +98,12 @@ pub fn derive_battle_hero(
 
     // rule: HER-BAT-014
     hero.effects.extend(spell_duration(details, ruleset));
+
+    // rule: HER-BAT-015
+    hero.effects.extend(casting_limits(details, ruleset));
+
+    // rule: HER-BAT-016
+    hero.effects.extend(spell_defences(details, ruleset));
     if hero.effects.len() > MAX_BATTLE_EFFECTS {
         return Err(DetailsError::TooManyBattleEffects);
     }
@@ -210,6 +216,52 @@ fn spell_duration(details: &HeroDetails, ruleset: &Ruleset) -> Option<BattleEffe
     (sum > 0).then(|| BattleEffect::SpellDuration {
         rounds: u8::try_from(sum).unwrap_or(u8::MAX),
     })
+}
+
+/// The casting limits (HER-BAT-015): `NoCasting` if one of the effects forbids casting, then one
+/// `SpellLevelLimit` with the smallest `spell_level_limit` level, each artifact type once; none
+/// without any. The battle applies them to both sides (BAT-MAG-061, BAT-MAG-062).
+fn casting_limits(details: &HeroDetails, ruleset: &Ruleset) -> Vec<BattleEffect> {
+    let no_casting = effects(details, ruleset, Count::OncePerType)
+        .any(|effect| matches!(effect, HeroEffect::NoCasting))
+        .then_some(BattleEffect::NoCasting);
+    let limit = effects(details, ruleset, Count::OncePerType)
+        .filter_map(|effect| match *effect {
+            HeroEffect::SpellLevelLimit { level } => Some(level),
+            _ => None,
+        })
+        .min()
+        .map(|max_level| BattleEffect::SpellLevelLimit { max_level });
+    no_casting.into_iter().chain(limit).collect()
+}
+
+/// The spell defences (HER-BAT-016): one `SpellImmunity` per spell its effects name, in the order
+/// of their first appearance; one `SpellLevelImmunity` with the largest `spell_level_immunity`
+/// level; `MindImmunity` and `NegateImmunities` once if an effect gives them; each artifact type
+/// once, none without any. The battle applies them to the stacks the hero controls and, for the
+/// negation, to its side's spells (BAT-MAG-063 to BAT-MAG-066).
+fn spell_defences(details: &HeroDetails, ruleset: &Ruleset) -> Vec<BattleEffect> {
+    let mut out: Vec<BattleEffect> = Vec::new();
+    let mut level: Option<u8> = None;
+    let (mut mind, mut negates) = (false, false);
+    for effect in effects(details, ruleset, Count::OncePerType) {
+        match *effect {
+            HeroEffect::SpellImmunity { spell } => {
+                let immunity = BattleEffect::SpellImmunity { spell };
+                if !out.contains(&immunity) {
+                    out.push(immunity);
+                }
+            }
+            HeroEffect::SpellLevelImmunity { level: l } => level = level.max(Some(l)),
+            HeroEffect::MindImmunity => mind = true,
+            HeroEffect::NegateImmunities => negates = true,
+            _ => {}
+        }
+    }
+    out.extend(level.map(|max_level| BattleEffect::SpellLevelImmunity { max_level }));
+    out.extend(mind.then_some(BattleEffect::MindImmunity));
+    out.extend(negates.then_some(BattleEffect::NegateImmunities));
+    out
 }
 
 /// The surrender discount (HER-BAT-007): the sum of the grown values of the surrender discounts

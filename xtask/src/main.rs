@@ -56,7 +56,9 @@ full output to `<target>/verify/verify.log`.
 
 `verify --with-original-data [path]` adds a local-only step: re-harvest the packs from the
 installation copy (default `original-data/install`, read-only) and require `packs/{base,ab,sod}`
-to match byte for byte (E02).";
+to match byte for byte (E02), check the executable's address map against `Heroes3.exe`, and run
+every crate's `examples/original_data.rs` with the installation path (E08: `h3-map` reads every
+shipped map in `Maps/`).";
 
 fn main() -> ExitCode {
     let args: Vec<String> = std::env::args().skip(1).collect();

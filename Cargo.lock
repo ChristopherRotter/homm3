@@ -170,6 +170,10 @@ dependencies = [
 ]
 
 [[package]]
+name = "h3-adventure"
+version = "0.1.0"
+
+[[package]]
 name = "h3-battle"
 version = "0.1.0"
 dependencies = [
@@ -239,6 +243,10 @@ dependencies = [
 ]
 
 [[package]]
+name = "h3-game"
+version = "0.1.0"
+
+[[package]]
 name = "h3-harvest"
 version = "0.1.0"
 dependencies = [
@@ -267,6 +275,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "h3-map"
+version = "0.1.0"
+dependencies = [
+ "h3-formats",
+ "miniz_oxide",
+ "proptest",
+]
+
+[[package]]
 name = "h3-pack"
 version = "0.1.0"
 dependencies = [
@@ -278,6 +295,10 @@ dependencies = [
  "serde",
  "toml",
 ]
+
+[[package]]
+name = "h3-pack-adventure"
+version = "0.1.0"
 
 [[package]]
 name = "h3-protocol"

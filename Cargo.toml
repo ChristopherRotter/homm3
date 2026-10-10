@@ -9,6 +9,10 @@ members = [
     "crates/h3-contracts",
     "crates/h3-battle",
     "crates/h3-heroes",
+    "crates/h3-adventure",
+    "crates/h3-game",
+    "crates/h3-map",
+    "crates/h3-pack-adventure",
     "crates/h3-pack",
     "crates/h3-sim",
     "crates/h3-ffi",
@@ -26,6 +30,10 @@ default-members = [
     "crates/h3-contracts",
     "crates/h3-battle",
     "crates/h3-heroes",
+    "crates/h3-adventure",
+    "crates/h3-game",
+    "crates/h3-map",
+    "crates/h3-pack-adventure",
     "crates/h3-pack",
     "crates/h3-sim",
     "crates/h3-ffi",
@@ -54,6 +62,10 @@ h3-heroes = { path = "crates/h3-heroes" }
 h3-pack = { path = "crates/h3-pack" }
 h3-sim = { path = "crates/h3-sim" }
 h3-formats = { path = "crates/h3-formats" }
+h3-adventure = { path = "crates/h3-adventure" }
+h3-game = { path = "crates/h3-game" }
+h3-map = { path = "crates/h3-map" }
+h3-pack-adventure = { path = "crates/h3-pack-adventure" }
 h3-cli = { path = "crates/h3-cli" }
 h3-protocol = { path = "crates/h3-protocol" }
 
@@ -66,15 +78,15 @@ serde_json = "1"
 miniz_oxide = { version = "0.8", default-features = false, features = ["with-alloc"] }
 proptest = { version = "1", default-features = false, features = ["std"] }
 criterion = { version = "0.5", default-features = false, features = ["cargo_bench_support"] }
-# The server (E16, ADR-0015 point 3): the runtime with only the features the shell needs, WebSocket
+# The server (E16, ADR-0018 point 3): the runtime with only the features the shell needs, WebSocket
 # without TLS, and OS randomness for seeds and tokens. Licenses: MIT (tokio, tokio-tungstenite), MIT
 # OR Apache-2.0 (futures-util, getrandom). `h3-protocol` takes `serde` and `serde_json` without
-# `std` in its own manifest (ADR-0015 point 1): these entries enable it.
+# `std` in its own manifest (ADR-0018 point 1): these entries enable it.
 tokio = { version = "1", default-features = false, features = ["rt-multi-thread", "net", "time", "sync", "macros"] }
 tokio-tungstenite = { version = "0.30", default-features = false, features = ["connect"] }
 futures-util = { version = "0.3", default-features = false, features = ["sink", "std"] }
 getrandom = "0.3"
-# Test-only: the wire types round-trip in a format that is not self-describing (ADR-0015 point 4;
+# Test-only: the wire types round-trip in a format that is not self-describing (ADR-0018 point 4;
 # provisional, E16 M1 review). License: MIT OR Apache-2.0.
 postcard = { version = "1", default-features = false, features = ["alloc"] }
 

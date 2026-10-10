@@ -1,0 +1,11 @@
+[package]
+name = "h3-adventure"
+description = "The adventure context: the adventure map, heroes on the map and their armies, movement, map objects and fog of war (ADR-0016)."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish.workspace = true
+
+[lints]
+workspace = true

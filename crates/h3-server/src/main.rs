@@ -1,4 +1,4 @@
-//! `h3-server`: hosts the engine's games for untrusted clients over WebSocket (E16, ADR-0015). The
+//! `h3-server`: hosts the engine's games for untrusted clients over WebSocket (E16, ADR-0018). The
 //! I/O shell around `h3-protocol`'s sans-I/O session core: sockets, clock, OS randomness, files,
 //! configuration and the bot seats.
 //!

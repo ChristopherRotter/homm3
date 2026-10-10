@@ -1,6 +1,6 @@
 # E16 — Design note (working detail; not binding; pruned by the tasks that implement it)
 
-Companion to `docs/epics/E16-server.md`, ADR-0015 (protocol and hosting; this note holds the
+Companion to `docs/epics/E16-server.md`, ADR-0018 (protocol and hosting; this note holds the
 detail its trim left out) and the ADR drafts in `docs/lanes/server/adr-drafts/`. A sketch: each
 M1–M6 task turns its section into code and docs and deletes it here.
 

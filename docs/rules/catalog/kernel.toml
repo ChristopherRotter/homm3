@@ -6,7 +6,7 @@ id       = "KER-RNG-001"
 title    = "Pseudo-random generator, seeding and named streams"
 context  = "kernel"
 status   = "implemented"
-summary  = "Randomness uses xoshiro256** seeded by expanding a 64-bit seed with SplitMix64 into four words. The generator for named stream S of master seed M is from_seed(M xor splitmix64_first_output(S)). next_u32 is the high half of next_u64. Algorithm id and version are recorded in replays. The original game's RNG is intentionally not reproduced (01-vision: fidelity is logic equivalence, not replay equivalence)."
+summary  = "Randomness uses xoshiro256** seeded by expanding a 64-bit seed with SplitMix64 into four words. The generator for named stream S of master seed M is from_seed(M xor splitmix64_first_output(S)). next_u32 is the high half of next_u64. Stream ids are a closed list: BATTLE 1, AGENT 2, OBSTACLES 3, GAME 4, SETUP 5, and player i's stream 0x100 + i (ADR-0017 point 4). Algorithm id and version are recorded in replays. The original game's RNG is intentionally not reproduced (01-vision: fidelity is logic equivalence, not replay equivalence)."
 numeric  = "integer"
 
   [[rule.source]]

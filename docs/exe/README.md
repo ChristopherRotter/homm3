@@ -127,7 +127,9 @@ point to the doc sections (and rule ids) that hold the detail. **Structs** (`str
 - `guess`: a name from elsewhere, not checked (all of `h3api.toml`).
 
 A rule may rest on a reading (`original-data`, §2 of `04-rules-and-sources.md`) only where the
-reading is `read` and complete for that rule. What made readings fail before: reading one path of
+reading is `read` and complete for that rule, and only after a comparison with the wiki and VCMI
+("Consensus before trust" there: one of them agrees, or both are silent; a contradiction is a
+conflict of sources for the user, never settled by the reading alone, BAT-Q21). What made readings fail before: reading one path of
 several (§7.8's first reading, refuted by batch 2a and re-read), a float constant of the wrong
 width, an unread callee assumed. So: read every case and caller that decides the rule
 (`callers`, `switch`), let the tool show constant widths, and write down what was not read (as
@@ -137,7 +139,8 @@ for a re-read (user, 2026-10-09, Q57).
 
 Experiments stay in the loop for the readings most likely to be wrong, even when a reading
 "settles" the rule: queue a confirmation experiment (the lane's `docs/experiments/`) when a
-reading contradicts VCMI or the wiki, when the result rests on a float boundary or truncation
+reading contradicts VCMI or the wiki (and ask the user meanwhile, above), when it stands alone
+because both are silent, when the result rests on a float boundary or truncation
 (the Q-0005 class), or when it depends on values the executable loads at run time from the
 `.TXT` tables. A quirk flag confirmed by a reading alone needs a second look first: a fresh
 agent's re-read of the deciding paths, or VCMI's agreement (`04-rules-and-sources.md`, "Confirm

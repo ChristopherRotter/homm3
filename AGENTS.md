@@ -32,7 +32,7 @@ Stop, write the question in `docs/OPEN-QUESTIONS.md` (context, options, your rec
 
 - a change to an ADR-level decision, a seam/contract type, or a public crate boundary,
 - license, legal or IP doubts,
-- conflicting sources for a rule with real gameplay impact,
+- conflicting sources for a rule with real gameplay impact (a code reading counts as one source: compare it with the wiki and VCMI before a rule rests on it, `docs/04-rules-and-sources.md` §2),
 - an ambiguous quirk classification (is this bug harmless-and-accepted, or must it be fixed?),
 - a dependency that is heavy, not GPLv2-compatible (see `deny.toml`), or unmaintained,
 - anything irreversible or that would invalidate a lot of prior work,
@@ -50,7 +50,7 @@ Several agents work in parallel, **one agent at a time per lane** (`docs/08-work
 |---|---|---|
 | battle | the current epic file (`docs/epics/E04b-battle-magic.md`), ADR-0014 | ADR-0003 (numbers), ADR-0012/0013, `docs/04-rules-and-sources.md`, the quirks ledger, `docs/exe/README.md` and `docs/formats/installation.md` §7 (code reading), `docs/experiments/README.md` |
 | adventure | `docs/03-domain.md`, the adventure epic file once refined | `docs/02-architecture.md`, ADR-0003/0004/0005/0006, `docs/04-rules-and-sources.md`, `docs/formats/h3m.md`, `docs/exe/README.md` (code reading) |
-| server | `docs/06-security.md`, ADR-0004, ADR-0008, ADR-0015 | ADR-0011 (encodings), `docs/02-architecture.md`, `h3-sim`'s action and observation encodings |
+| server | `docs/06-security.md`, ADR-0004, ADR-0008, ADR-0018 | ADR-0011 (encodings), `docs/02-architecture.md`, `h3-sim`'s action and observation encodings |
 | client | `clients/README.md`, ADR-0009, the asset notes in the lane HANDOFF | `docs/formats/installation.md` (archives), `docs/02-architecture.md` |
 | shared | `docs/02-architecture.md`, `docs/05-testing.md`, `lanes.toml` | the ADRs the change touches |
 

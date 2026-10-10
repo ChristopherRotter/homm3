@@ -91,6 +91,15 @@ token = "sort_by_cached_key"
 reason = "sorting must use kernel::order with a unique tie-breaker (ADR-0003 §9)"
 allowed_in = ["crates/h3-kernel/src/order.rs"]
 
+[[policy.forbidden]]
+token = "ptr_eq"
+reason = "pointer identity never enters logic or the hash; only the persistent structures may use it as a shortcut (ADR-0016 point 2)"
+allowed_in = ["crates/h3-adventure/src/persistent.rs"]
+[[policy.forbidden]]
+token = "as_ptr"
+reason = "pointer identity never enters logic or the hash; only the persistent structures may use it as a shortcut (ADR-0016 point 2)"
+allowed_in = ["crates/h3-adventure/src/persistent.rs"]
+
 [crate.h3-kernel]
 layer = "shared"
 logic = true
@@ -133,6 +142,47 @@ external = []
 dev_deps = []
 dev_external = ["proptest"]
 
+# The adventure context (ADR-0015, ADR-0016; E08). A domain context: it never depends on another
+# context or on h3-game.
+[crate.h3-adventure]
+layer = "domain"
+logic = true
+deps = ["h3-kernel", "h3-content", "h3-contracts"]
+external = []
+dev_deps = []
+dev_external = ["proptest"]
+
+# The whole game (ADR-0015 point 1, ADR-0017; E08): the first application crate, and a logic
+# crate. It gains a domain edge when an increment needs it (h3-heroes, h3-battle at increment 3).
+[crate.h3-game]
+layer = "application"
+logic = true
+deps = ["h3-kernel", "h3-content", "h3-contracts", "h3-adventure"]
+external = []
+dev_deps = []
+dev_external = ["proptest"]
+
+# .h3m reader and import into the setup types (ADR-0015 point 4; E08 T3). Map files are untrusted:
+# property-tested on arbitrary bytes.
+# miniz_oxide: a map file is a gzip stream. h3-formats (dev): the round trip with the experiment
+# writer's subset until the writer moves here (after E04b, ADR-0015 point 3).
+[crate.h3-map]
+layer = "adapter"
+logic = false
+deps = ["h3-kernel", "h3-content", "h3-contracts", "h3-adventure", "h3-game"]
+external = ["miniz_oxide"]
+dev_deps = ["h3-pack", "h3-pack-adventure", "h3-formats"]  # rulesets from the synthetic packs for import tests
+dev_external = ["proptest"]
+
+# packs/*/adventure.toml -> the adventure's definitions (ADR-0015 point 2; E08 T4).
+[crate.h3-pack-adventure]
+layer = "adapter"
+logic = false
+deps = ["h3-kernel", "h3-content", "h3-adventure", "h3-pack"]
+external = ["serde", "toml"]
+dev_deps = []
+dev_external = []
+
 [crate.h3-pack]
 layer = "adapter"
 logic = false
@@ -144,9 +194,10 @@ dev_external = []
 [crate.h3-sim]
 layer = "adapter"
 logic = false
-deps = ["h3-kernel", "h3-content", "h3-contracts", "h3-battle"]
+# h3-game and h3-adventure: AdventureEnv in the adventure-owned src/adventure/ (ADR-0017 point 8).
+deps = ["h3-kernel", "h3-content", "h3-contracts", "h3-battle", "h3-adventure", "h3-game"]
 external = []
-dev_deps = ["h3-pack"]
+dev_deps = ["h3-pack", "h3-map", "h3-pack-adventure"]
 dev_external = ["proptest", "criterion"]
 
 [crate.h3-ffi]
@@ -160,12 +211,13 @@ dev_external = []
 [crate.h3-cli]
 layer = "adapter"
 logic = false
-deps = ["h3-kernel", "h3-content", "h3-contracts", "h3-battle", "h3-pack", "h3-sim"]
+# The adventure crates: the adventure commands in the adventure-owned src/adventure/ (ADR-0017 point 8).
+deps = ["h3-kernel", "h3-content", "h3-contracts", "h3-battle", "h3-pack", "h3-sim", "h3-adventure", "h3-game", "h3-map", "h3-pack-adventure"]
 external = ["serde", "toml"]
 dev_deps = []
 dev_external = []
 
-# The server's published language and session core (E16, ADR-0015 point 1): a logic crate in the
+# The server's published language and session core (E16, ADR-0018 point 1): a logic crate in the
 # adapter layer, so the decoder at the trust boundary is under the purity checks and the 100 % gate.
 # `postcard`: a round-trip test of the wire types (provisional, E16 M1 review).
 [crate.h3-protocol]
@@ -176,7 +228,7 @@ external = ["serde", "serde_json"]
 dev_deps = ["h3-pack", "h3-sim"]
 dev_external = ["proptest", "postcard"]
 
-# The server binary (E16, ADR-0015): the I/O shell around h3-protocol. `h3-cli` for the pack,
+# The server binary (E16, ADR-0018): the I/O shell around h3-protocol. `h3-cli` for the pack,
 # scenario and replay-file functions (provisional, E16 M1 review; else they move into h3-sim).
 [crate.h3-server]
 layer = "adapter"

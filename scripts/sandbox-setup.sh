@@ -44,6 +44,11 @@ for f in install/Heroes3.exe install/Data/H3bitmap.lod install/Data/H3ab_bmp.lod
         missing+=("$f")
     fi
 done
+# The shipped maps, for the map reader's check (E08 T3; optional: the adventure lane stages them).
+if [ -d "$staged/original-data/install/Maps" ]; then
+    mkdir -p "$root/original-data/install/Maps"
+    cp "$staged/original-data/install/Maps/"* "$root/original-data/install/Maps/"
+fi
 if [ ${#missing[@]} -eq 0 ]; then
     echo "original-data: copied"
 else

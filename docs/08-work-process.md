@@ -70,7 +70,10 @@ time per lane**. A lane owns paths; everything else it may not change in its own
   lane opens), packs, fixtures, experiments, `benches/battle/`, the BAT and HER rules, the quirks
   ledger, the surveys, the epics E01–E06. `h3-heroes` moves to adventure with a handover
   checkpoint when hero progression starts (E08–E10).
-- **adventure:** the new `h3-adventure` (later the town), the ADV and town rules, its own quirks
+- **adventure:** `h3-adventure`, `h3-game`, `h3-map` and `h3-pack-adventure` (E08; later the
+  town), adventure-owned sub-paths of the battle lane's crates and folders (`h3-sim`'s and
+  `h3-cli`'s `src/adventure/`, `fixtures/replays/adventure/`, the packs' `adventure.toml`; the
+  longest match decides), `docs/formats/h3m.md`, the ADV, GAM and town rules, its own quirks
   ledger `docs/rules/quirks-adventure.md`, `benches/adventure/`, the epics E07–E10 and E12–E14.
 - **server:** the new adapter crates `h3-protocol` and `h3-server`, `benches/server/`, E16.
 - **client:** `clients/`, a separate Cargo workspace with its own lockfile and CI job
@@ -85,7 +88,8 @@ time per lane**. A lane owns paths; everything else it may not change in its own
   per lane keep concurrent additions apart: add to your lane's block, not at the end), and
   `Cargo.lock` (generated: a lane may add a dependency to its own crate; the full verify's `deny`
   gate checks it on the pull request, and a heavy dependency stops the line under the autonomy
-  contract; user, 2026-10-07).
+  contract; user, 2026-10-07), and the survey index `docs/rules/surveys/README.md` (one section
+  per epic).
 
 **Branches and pull requests.** A lane works on a branch `<lane>/<task>` per task or increment and
 merges it at its checkpoint; a shared change goes on `shared/<topic>`. `cargo xtask check-lane`
@@ -114,6 +118,10 @@ conflict on rebase and bumps again.
 | replay format, action and observation encodings | `h3-sim` | battle (AI lane from E05) |
 | C ABI | `H3_ABI_VERSION`, `h3-ffi` | battle (AI lane from E05) |
 | kernel RNG and hash | `RNG_VERSION`, `HASH_VERSION`, `h3-kernel` | shared |
+| game state hash | `GAME_STATE_HASH_VERSION`, `h3-game` | adventure |
+| adventure state hash, adventure ruleset-part hash | `ADVENTURE_STATE_HASH_VERSION`, `ADVENTURE_RULESET_HASH_VERSION`, `h3-adventure` | adventure |
+| map import | `MAP_IMPORT_VERSION`, `h3-map` (a replay names its map by content hash, path and this version; ADR-0015) | adventure |
+| adventure replay format, action and observation encodings | `h3-sim/src/adventure/` (from E08 T9) | adventure (AI lane from E05) |
 | wire protocol | `PROTOCOL_VERSION`, `h3-protocol` | server |
 | viewer record format | `RECORD_FORMAT_VERSION`, `h3-protocol` (from E16 M1) | server |
 | game journal format | `JOURNAL_FORMAT_VERSION`, `h3-server` (from E16 M2) | server |
@@ -140,8 +148,8 @@ older one resumes from that branch. Less context per task: `verify --summary`, t
 reading lists, the full verify left to CI.
 
 **Local loop and gates.** `cargo xtask verify --scope <lane>` lints, tests and covers the lane's
-crates, runs the lane's own gates (golden replays, the C ABI smoke test, its benchmark workloads)
-and `check-lane`; it never counts as green (exit 2 with no failing step is its normal result). On
+crates, runs the lane's own gates (golden replays when it owns `h3-cli` or replays of its own
+under `fixtures/replays/`, the C ABI smoke test, its benchmark workloads) and `check-lane`; it never counts as green (exit 2 with no failing step is its normal result). On
 a `shared/` or cross-lane branch its `check-lane` step fails by design: run the full verify there.
 CI runs the full verify on every pull request whose code it has not verified yet (`05-testing.md`,
 "CI"). Each benchmark workload has its own baseline file,
@@ -176,8 +184,10 @@ Agents usually work in a cloud sandbox cloned from GitHub.
    when the session is linked to the user's computer, get read access to the user's repo folder
    (`D:\Users\Christopher\Source\Repos\homm3`) and stage `original-data/install/Heroes3.exe`,
    `original-data/install/Data/H3bitmap.lod`, `original-data/install/Data/H3ab_bmp.lod` and
-   `original-data/extracted/H3bitmap/Objects.txt` (one large LOD per staging call). Without the
-   link, the user may upload them; otherwise the session only prepares (Q48).
+   `original-data/extracted/H3bitmap/Objects.txt` (one large LOD per staging call); for the
+   map reader also `original-data/install/Maps/*` (164 files, at most 50 per staging call; the
+   user's copy of the installation's `Maps`, 2026-10-10). Without the link, the user may upload
+   them; otherwise the session only prepares (Q48).
 3. **Setup:** `scripts/sandbox-setup.sh` links the image's `stable` toolchain as the pinned one,
    copies the staged files into `original-data/` and starts the tool installs (with `capstone` and
    `pefile` for the code-reading tool `scripts/exe.py`, `docs/exe/README.md`) and the baseline
