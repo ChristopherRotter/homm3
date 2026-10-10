@@ -2,14 +2,17 @@
 //! `cargo xtask bench-check [--update] [--lane <lane>] [--workload <name>]` (deterministic
 //! instruction-count regression gate).
 //!
-//! The gate runs fixed workloads of the release `h3` binary under valgrind/callgrind, counting
-//! instructions (`Ir`) only inside the hot function selected by `collect`, and compares them
-//! with their baselines. Each workload has its own file, `benches/<lane>/<workload>.toml`, so each
-//! lane's threshold is its own and two lanes never re-baseline the same file (lanes.toml). Counts
-//! are deterministic for a given toolchain, target and source, so a baseline records the
-//! toolchain and target and is only compared when both match (a mismatch fails: re-baseline
-//! deliberately). Changes beyond the threshold fail in both directions. valgrind exists on Linux
-//! only; elsewhere the gate is not applicable.
+//! The gate runs fixed workloads of a release binary (`h3-cli`'s `h3` unless the workload names
+//! another) under valgrind/callgrind, counting instructions (`Ir`) only inside the hot function
+//! selected by `collect`, and compares them with their baselines. Each workload has its own file,
+//! `benches/<lane>/<workload>.toml`, so each lane's threshold is its own and two lanes never
+//! re-baseline the same file (lanes.toml). A workload whose count depends on another lane's code
+//! is `lane_only`: measured when its lane or the workload is selected (`--lane`, `--workload`,
+//! `verify --scope <lane>`), never by the full verify, so that the other lane's changes cannot
+//! fail it there. Counts are deterministic for a given toolchain, target and source, so a baseline
+//! records the toolchain and target and is only compared when both match (a mismatch fails:
+//! re-baseline deliberately). Changes beyond the threshold fail in both directions. valgrind
+//! exists on Linux only; elsewhere the gate is not applicable.
 
 use std::fs;
 use std::path::{Path, PathBuf};
@@ -37,6 +40,32 @@ pub struct Workload {
     pub collect: String,
     pub instructions: u64,
     pub threshold_percent: u64,
+    /// The package of the binary that runs the workload (default [`DEFAULT_PACKAGE`]).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub package: Option<String>,
+    /// The binary (default [`DEFAULT_BIN`]).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub bin: Option<String>,
+    /// Measured only when its lane or the workload itself is selected, never by the full verify:
+    /// for a count that depends on another lane's code (the server's session core runs the
+    /// battle engine), which that lane's changes must not fail.
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    pub lane_only: bool,
+}
+
+/// The package of the binary a workload runs unless it names another.
+pub const DEFAULT_PACKAGE: &str = "h3-cli";
+/// The binary a workload runs unless it names another.
+pub const DEFAULT_BIN: &str = "h3";
+
+impl Workload {
+    /// The package and the binary that run the workload.
+    pub fn binary(&self) -> (&str, &str) {
+        (
+            self.package.as_deref().unwrap_or(DEFAULT_PACKAGE),
+            self.bin.as_deref().unwrap_or(DEFAULT_BIN),
+        )
+    }
 }
 
 /// A baseline with where it lives.
@@ -61,7 +90,7 @@ pub enum Selection<'a> {
 impl Selection<'_> {
     fn selects(&self, e: &Entry) -> bool {
         match self {
-            Selection::All => true,
+            Selection::All => !e.baseline.workload.lane_only,
             Selection::Lane(lane) => e.lane == *lane,
             Selection::Workload(name) => e.name == *name,
         }
@@ -129,7 +158,7 @@ fn measure(root: &Path, name: &str, w: &Workload) -> Result<u64, String> {
         .arg("--tool=callgrind")
         .arg(format!("--callgrind-out-file={}", out_file.display()))
         .arg(format!("--toggle-collect={}", w.collect))
-        .arg(target.join("release/h3"))
+        .arg(target.join("release").join(w.binary().1))
         .args(&w.args)
         .stdout(std::process::Stdio::null())
         .stderr(std::process::Stdio::null());
@@ -211,24 +240,31 @@ pub fn check(update: bool, selection: Selection<'_>) -> Result<Status, String> {
             }
         }
     }
-    // The binary is linked without RELRO, a single writable segment: valgrind 3.22 reads no
+    // The binaries are linked without RELRO, a single writable segment: valgrind 3.22 reads no
     // symbols from an lld-linked executable whose two writable segments the kernel maps as
     // one (the RELRO end falling on a page boundary), and the gate would then measure nothing
     // (E04b T3b2). Only the final link differs; the code measured is the same.
-    let mut build = cargo();
-    build.args([
-        "rustc",
-        "--release",
-        "--quiet",
-        "-p",
-        "h3-cli",
-        "--bin",
-        "h3",
-        "--",
-        "-C",
-        "link-arg=-Wl,-z,norelro",
-    ]);
-    run_cmd(build)?;
+    let mut binaries: Vec<(&str, &str)> = entries
+        .iter()
+        .map(|e| e.baseline.workload.binary())
+        .collect();
+    binaries.sort_unstable();
+    binaries.dedup();
+    for (package, bin) in binaries {
+        let mut build = cargo();
+        build.args([
+            "rustc",
+            "--release",
+            "--quiet",
+            "-p",
+            package,
+            "--bin",
+            bin,
+            "--",
+        ]);
+        build.args(["-C", "link-arg=-Wl,-z,norelro"]);
+        run_cmd(build)?;
+    }
     let mut failures = Vec::new();
     for e in &mut entries {
         let w = &mut e.baseline.workload;
@@ -361,5 +397,43 @@ mod tests {
         assert!(Selection::Lane(&first.lane).selects(first));
         assert!(Selection::Workload(&first.name).selects(first));
         assert!(!Selection::Lane("no-such-lane").selects(first));
+    }
+
+    fn workload(extra: &str) -> Baseline {
+        toml::from_str(&format!(
+            "toolchain = \"t\"\ntarget = \"x\"\n[workload]\ndescription = \"d\"\nargs = []\n\
+             collect = \"*f*\"\ninstructions = 1\nthreshold_percent = 2\n{extra}"
+        ))
+        .unwrap()
+    }
+
+    #[test]
+    fn a_workload_runs_h3_unless_it_names_a_binary() {
+        let plain = workload("");
+        assert_eq!(plain.workload.binary(), (DEFAULT_PACKAGE, DEFAULT_BIN));
+        assert!(!plain.workload.lane_only);
+        // The defaults are not written back, so an update leaves a plain baseline as it was.
+        let text = toml::to_string_pretty(&plain).unwrap();
+        assert!(!text.contains("package") && !text.contains("bin") && !text.contains("lane_only"));
+        let named = workload("package = \"p\"\nbin = \"b\"\nlane_only = true\n");
+        assert_eq!(named.workload.binary(), ("p", "b"));
+        assert_eq!(
+            toml::from_str::<Baseline>(&toml::to_string_pretty(&named).unwrap()).unwrap(),
+            named
+        );
+    }
+
+    #[test]
+    fn a_lane_only_workload_is_measured_only_for_its_lane() {
+        let entry = |lane_only| Entry {
+            lane: "server".to_owned(),
+            name: "w".to_owned(),
+            path: PathBuf::new(),
+            baseline: workload(if lane_only { "lane_only = true\n" } else { "" }),
+        };
+        assert!(Selection::All.selects(&entry(false)));
+        assert!(!Selection::All.selects(&entry(true)));
+        assert!(Selection::Lane("server").selects(&entry(true)));
+        assert!(Selection::Workload("w").selects(&entry(true)));
     }
 }
