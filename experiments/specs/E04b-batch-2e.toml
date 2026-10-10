@@ -1,0 +1,316 @@
+# Experiment batch 2e (E04b, after T8b3): the casting limits and the spell defences where the code
+# reading of the executable (docs/formats/installation.md §7.23) and the wiki or VCMI 1.7.5
+# disagree. BAT-Q21's five points: the Faerie Dragons under the Orb of Inhibition (OI; the engine
+# follows the wiki and VCMI), the Unicorn aura under the Orb of Vulnerability (UA; the engine
+# follows the wiki and VCMI), the Troglodytes' and Gargoyles' immunities under the Orb of
+# Vulnerability (OV; the engine follows the code), Recanter's Cloak against the strike's abilities
+# and the Archangel (RC; the code), Power of the Dragon Father against the creature abilities of
+# level 0 (DF; the code; the Death Stare, listed there, asks no effect test in the code and is a
+# control). BAT-Q22's three points (BAT-MAG-067; the engine follows the code): Bless
+# and Curse on the Ballista, Fortune, Misfortune and Slayer on the Ammo Cart and the First Aid Tent
+# (WM), Mirth and Sorrow on golems and elementals under the Orb of Vulnerability (OV).
+# Build: see docs/experiments/README.md. Predictions are for the agent who evaluates the results;
+# the template never shows them. "The engine" is the battle at 81a2e3f (faithful profile, the
+# harvested SoD packs; the cursor predictions are the targets `cast_targets` lists, checked in
+# crates/h3-pack/tests/harvested_spell_conditions.rs and harvested_defences.rs); "the code" is the
+# reading in installation.md §7.23 where the engine follows the other sources.
+#
+# Played with plain HD (HD+ off). Heroes at level 1 with resource specialties; casters get a Spell
+# Book and only the listed spells; no Wisdom; no skills except where listed; every caster starts
+# with full mana, 10 x knowledge. Terrain grass; a battlefield's obstacles come from the map tile
+# (the game's choice): walk around them. To try a spell's cursor without casting, choose the spell
+# in the book, move the cursor over the stack and cancel (right-click or Esc): the normal spell
+# cursor means the spell may be cast there, the crossed-out cursor that it may not.
+# The probability lines assume the chances of the wiki and the code: Wyvern Monarchs poison with
+# 30 %, Medusa Queens petrify with 20 % in melee, a Mighty Gorgon kills one creature with 10 %,
+# Thunderbirds strike a bolt with 20 %, the Unicorn aura resists with 20 %.
+
+[map]
+name = "E04b batch 2e"
+description = "Engine-generated experiment map (E04b, batch 2e). Play it in hot seat with Red and Blue as human players and follow the results template."
+size = 36
+terrain = "grass"
+instructions = [
+    "Copy `E04b-batch-2e.h3m` into `D:\\Heroes3\\HoMM 3 Complete\\Maps`.",
+    "Use the HD launcher with plain HD (HD+ off).",
+    "Start the map in hot seat: *New Game → Multiplayer → Hot Seat*, two players, Red and Blue both human. In every battle you control both sides. Save right away.",
+    "On day 1, play Red's encounters in any order: each Red hero attacks the Blue hero next to it. Some encounters ask you to save inside the battle and load that save again: give each save its own name.",
+    "In battle, switch on the hex grid in the combat options (the button at the bottom left). The combat log at the bottom shows each strike's and each spell's damage, kills and special effects (scroll it with its arrow); right-click a stack to see its numbers and its active spells. Unless an encounter says otherwise, a stack that is not needed Defends, and a stack that gets an extra turn from good morale Defends.",
+    "To try a spell's cursor without casting: choose the spell in the book, move the cursor over the stack and cancel (right-click or Esc). The normal spell cursor means allowed, the crossed-out cursor refused.",
+    "Fill in this file (anything unexpected goes into the last line of an encounter) and keep it in the repo.",
+]
+
+# --- The Orb of Inhibition (BAT-MAG-061, BAT-Q21 point 1) -----------------------------------------
+
+[[encounter]]
+id = "OI"
+title = "Orb of Inhibition: the hero's book, the Ogre Magi and the Faerie Dragons"
+questions = ["BAT-MAG-061", "BAT-Q21"]
+procedure = [
+    "Attack the Blue hero. Round 1, the Faerie Dragons' turn (Red's first): click the spell book button: does the book open, or does a message come (what does it say)?",
+    "Still the Faerie Dragons' turn: move the cursor over Blue's Peasants. Does a spell cursor show (the dragons' spell), or only the walk and attack cursors? If a spell cursor shows, cast it at the Peasants: which spell, what happened (the log)? Otherwise Defend.",
+    "The Ogre Magi's turn: move the cursor over Red's Pikemen. Does the Bloodlust cursor show? If yes, cast it and right-click the Pikemen (Bloodlust?). Otherwise Defend. The Pikemen Defend; Blue's Peasants Defend.",
+    "Round 2, the Faerie Dragons' turn: as in step 2 (the dragons draw a new spell each turn). Finish the battle as you like.",
+]
+predictions = """
+- The book: refused with the Orb's message (the code, the wiki, VCMI and the engine; BAT-MAG-061).
+- Ogre Magi: no Bloodlust cursor (the code: 0x4476C0 asks 0x41F890 for every creature cast; the
+  wiki: the Orb stops creature casters, the Archangel named; the engine). VCMI blocks no creature
+  cast: Bloodlust allowed.
+- Faerie Dragons, both rounds: **the spell cursor shows and the cast works** (the engine, after the
+  wiki: "Faerie Dragons are unaffected by the Orb of Inhibition", and VCMI; BAT-Q21). The code: no
+  cast (0x4476C0 asks 0x41F890 before its per-creature cases; the human player's cursor 0x47670B
+  and the computer player's 0x421280 alike); the dragon still draws a spell at its turn.
+"""
+[encounter.hero]
+type = "Aine"
+specialty = "resource gold"
+primary = [0, 0, 1, 2]
+army = [["Faerie Dragon", 1], ["Ogre Mage", 5], ["Pikeman", 10]]
+artifacts = { "spell book" = "Spell Book", "misc 1" = "Orb of Inhibition" }
+spells = ["Bless"]
+[encounter.opponent.hero]
+name = "OIb"
+type = "Damacon"
+specialty = "resource gold"
+primary = [0, 0, 1, 1]
+army = [["Peasant", 50]]
+[[encounter.record]]
+field = "the spell book: opens / message (its text)"
+[[encounter.record]]
+field = "round 1, Faerie Dragons: spell cursor over the Peasants (yes/no); if cast: the spell and what happened"
+[[encounter.record]]
+field = "Ogre Magi: Bloodlust cursor over the Pikemen (yes/no); if cast: Bloodlust on the Pikemen (yes/no)"
+[[encounter.record]]
+field = "round 2, Faerie Dragons: spell cursor (yes/no); if cast: the spell and what happened"
+[[encounter.record]]
+field = "anything odd"
+
+# --- The Orb of Vulnerability: absolute immunities and conditions (BAT-MAG-066, BAT-MAG-067) ------
+
+[[encounter]]
+id = "OV"
+title = "Orb of Vulnerability: Blind at Troglodytes, Mirth and Sorrow at golems and elementals, Poison at Gargoyles"
+questions = ["BAT-MAG-066", "BAT-MAG-067", "BAT-Q21", "BAT-Q22"]
+procedure = [
+    "Attack the Blue hero. Round 1, Red's first turn (the Wyvern Monarchs): open the spell book and try these cursors, cancelling each (allowed or refused): Blind on Blue's Troglodytes, Air Elementals and Gnolls; Sorrow on Blue's Stone Golems, Air Elementals, Giants and Gnolls; Mirth on Red's Iron Golems and Pikemen. Close the book without casting.",
+    "Still round 1: the Wyvern Monarchs fly as far as they can towards Blue's Stone Gargoyles without attacking; every other Red stack Defends. Blue's Gargoyles fly next to the Monarchs without attacking; every other Blue stack Defends (all of them, the whole battle).",
+    "Round 2: save the game. On each of their turns the Monarchs attack the Gargoyles (the Gargoyles retaliate and otherwise Defend); after each attack, did the log mention poison, and does a right-click on the Gargoyles show Poison? Six attacks (rounds 2 to 7), fewer if a side runs out.",
+    "If none of the six attacks poisoned the Gargoyles, load the round 2 save and play the six attacks once more. Finish the battle as you like.",
+]
+predictions = """
+Red wears the Orb of Vulnerability: it lifts the creatures' immunities for Red's spells (and at
+Red's stacks) but not the absolute cases of 0x44A4D0 (installation.md §7.23).
+- Blind: Troglodytes **refused** (the code; the wiki's Spell Immunity Table keeps Blind for them
+  under the Orb; the engine. VCMI lifts it: allowed); Air Elementals allowed (their Blind and mind
+  immunity lifted; all sources); Gnolls allowed.
+- Sorrow: Stone Golems **refused** and Air Elementals **refused** (no morale, an absolute case: the
+  code, the wiki's table for golems, the engine; BAT-Q22. VCMI: allowed, the cast changing no
+  morale); Giants allowed (mind immunity lifted; all sources); Gnolls allowed.
+- Mirth: Iron Golems **refused** (the same), Pikemen allowed.
+- Poison: the Gargoyles are **never** poisoned (0x44A4D0 spares them before the Orb's test; the
+  engine; the wiki's table is silent). VCMI lifts the immunity: about 3 of 10 attacks poison (none
+  in 12 attacks: 1.4 %).
+"""
+[encounter.hero]
+type = "Caitlin"
+specialty = "resource gold"
+primary = [0, 20, 1, 10]
+army = [["Wyvern Monarch", 15], ["Iron Golem", 5], ["Pikeman", 10]]
+artifacts = { "spell book" = "Spell Book", "misc 1" = "Orb of Vulnerability" }
+spells = ["Blind", "Sorrow", "Mirth"]
+[encounter.opponent.hero]
+name = "OVb"
+type = "Octavia"
+specialty = "resource gold"
+primary = [0, 0, 1, 1]
+army = [["Troglodyte", 10], ["Stone Gargoyle", 200], ["Air Elemental", 5], ["Stone Golem", 5], ["Giant", 2], ["Gnoll", 10]]
+[[encounter.record]]
+field = "Blind: Troglodytes / Air Elementals / Gnolls (allowed or refused each)"
+[[encounter.record]]
+field = "Sorrow: Stone Golems / Air Elementals / Giants / Gnolls (allowed or refused each)"
+[[encounter.record]]
+field = "Mirth: Iron Golems / Pikemen (allowed or refused each)"
+[[encounter.record]]
+table = ["attack", "Gargoyles poisoned (yes/no)", "log text"]
+rows = 12
+[[encounter.record]]
+field = "anything odd"
+
+# --- The Unicorn aura under the Orb of Vulnerability (BAT-MAG-066, BAT-MAG-008, BAT-Q21 point 2) ---
+
+[[encounter]]
+id = "UA"
+title = "Orb of Vulnerability: does the Unicorns' aura still make stacks resist?"
+questions = ["BAT-MAG-066", "BAT-MAG-008", "BAT-Q21"]
+procedure = [
+    "Attack the Blue hero. Round 1: Red's Pikemen Defend. Blue's Unicorns Defend where they stand; each of Blue's other five stacks walks to a hex next to the Unicorns (touching either of their two hexes) and Defends there. Note any stack that cannot get there.",
+    "Round 2, Red's first turn: save the game. Cast Slow (at Expert it reaches all of Blue's stacks). For each Blue stack: slowed, or resisted (the log names the stacks that resist; a right-click shows Slow)?",
+    "Load the save and cast again; four casts in all. Finish the battle as you like.",
+]
+predictions = """
+Red wears the Orb of Vulnerability; Blue's hero has no Resistance and no artifacts; no creature
+here resists magic by itself (the Unicorns give the aura to the stacks next to them).
+- The engine (the wiki and VCMI: the Orb negates the aura; BAT-Q21): **every stack slowed in every
+  cast** (20 rolls, no resistance).
+- The code (0x5A8090 multiplies the aura's 0.8 into the 1 that 0x44A4D0 returns under the Orb):
+  each stack next to the Unicorns resists with 20 %: about 4 of the 20 rolls resist (none: 1.2 %).
+  The Unicorns themselves are not next to another Unicorn stack and never resist (the engine; the
+  code's aura list was not read for a Unicorn's own stack).
+"""
+[encounter.hero]
+type = "Jenova"
+specialty = "resource gold"
+primary = [0, 0, 1, 10]
+skills = [["Earth Magic", 3]]
+army = [["Pikeman", 10]]
+artifacts = { "spell book" = "Spell Book", "misc 1" = "Orb of Vulnerability" }
+spells = ["Slow"]
+[encounter.opponent.hero]
+name = "UAb"
+type = "Saurug"
+specialty = "resource gems"
+primary = [0, 0, 1, 1]
+army = [["Unicorn", 2], ["Centaur", 5], ["Gnoll", 5], ["Pikeman", 5], ["Peasant", 20], ["Goblin", 5]]
+[[encounter.record]]
+field = "round 1: stacks that could not get next to the Unicorns"
+[[encounter.record]]
+table = ["cast", "Centaurs", "Gnolls", "Pikemen", "Peasants", "Goblins", "Unicorns"]
+rows = 4
+[[encounter.record]]
+field = "anything odd (write 'S' for slowed, 'R' for resisted in the table)"
+
+# --- Recanter's Cloak against creature abilities (BAT-MAG-062, BAT-Q21 point 4) ------------------
+
+[[encounter]]
+id = "RC"
+title = "Recanter's Cloak: the Medusa Queens' Stone Gaze and the Archangel's Resurrection"
+questions = ["BAT-MAG-062", "BAT-Q21"]
+procedure = [
+    "Attack the Blue hero. Round 1: the Archangel Defends; the Medusa Queens walk as far as they can straight towards Blue's Pikemen (no shot); Red's Peasants Defend. Blue's Archers shoot Red's Peasants; Blue's Pikemen walk towards the Medusa Queens.",
+    "Round 2, the Archangel's turn: if Red's Peasants are all dead, move the cursor over their corpse (otherwise over the Peasants): does the resurrection cursor show? If yes, raise them (how many?). Otherwise Defend. Blue's Archers shoot the Peasants if any are left, and Defend afterwards.",
+    "As soon as the Medusa Queens can reach the Pikemen: save the game. On each of their turns the Medusa Queens attack the Pikemen in melee (the Pikemen retaliate and otherwise Defend); after each attack, did any Pikemen turn to stone (the log; a right-click shows Stone Gaze)? Six attacks, fewer if a side runs out.",
+    "If no attack petrified, load the save and play the six attacks again, twice more if needed (18 attacks at most). Finish the battle as you like.",
+]
+predictions = """
+Blue wears Recanter's Cloak: no spell above level 2 affects any stack (the code: 0x5A80F6, before
+every other test).
+- Archangel: **no resurrection cursor** (Resurrection is level 4: the code, 0x5A3CC0 testing with
+  0x5A8090; VCMI bars creature casts above level 2; the engine). The wiki names the heroes only.
+- Stone Gaze (level 3): **never** petrifies (the code; the engine). VCMI bars no creature ability
+  under the Cloak: about 1 in 5 attacks petrifies (none in 18: 1.8 %).
+"""
+[encounter.hero]
+type = "Gelare"
+specialty = "resource gold"
+primary = [0, 25, 1, 1]
+army = [["Medusa Queen", 20], ["Archangel", 1], ["Peasant", 10]]
+[encounter.opponent.hero]
+name = "RCb"
+type = "Rissa"
+specialty = "resource mercury"
+primary = [0, 0, 1, 1]
+army = [["Pikeman", 100], ["Archer", 20]]
+artifacts = { "shoulders" = "Recanter's Cloak" }
+[[encounter.record]]
+field = "Archangel: resurrection cursor (yes/no); if raised: how many"
+[[encounter.record]]
+table = ["attack", "Pikemen petrified (yes/no)", "log text"]
+rows = 18
+[[encounter.record]]
+field = "anything odd"
+
+# --- Power of the Dragon Father against level-0 abilities (BAT-MAG-064, BAT-Q21 point 5) ---------
+
+[[encounter]]
+id = "DF"
+title = "Power of the Dragon Father: Poison, the Thunderbirds' bolt and (a control) the Death Stare at its stacks"
+questions = ["BAT-MAG-064", "BAT-Q21"]
+procedure = [
+    "Attack the Blue hero. Rounds 1 and 2: bring each of Red's three stacks next to a Blue stack without attacking (Blue's stacks may walk towards them and otherwise Defend). Save once all three can attack.",
+    "From then on, four rounds: on each Red turn the stack attacks a Blue stack next to it (Blue's stacks retaliate and otherwise Defend). After each attack note from the log: creatures killed by the Death Stare (Mighty Gorgons), a lightning bolt (Thunderbirds), Poison on the target (Wyvern Monarchs; right-click).",
+    "Finish the battle as you like.",
+]
+predictions = """
+Blue wears Power of the Dragon Father: no spell of level 1 to 4 affects Blue's stacks, and the
+code's test (level at most 4) takes the creature abilities of level 0 that pass the effect test
+too (installation.md §7.23).
+- Poison (level 0, cast through the effect test 0x5A8640): **never** (the code; the engine). VCMI
+  (its level immunity never covers level 0): about 3 in 10 attacks.
+- The Thunderbirds' bolt: **never** (the code tests it as Lightning Bolt, level 2, installation.md
+  §7.20; the engine). VCMI's Thunderbolt is a level-0 ability: about 1 in 5 attacks.
+- The Death Stare (a control): kills as usual, at least one in about 65 % of the attacks of 10
+  Gorgons (the code's 0x440BC0 rolls with only the living-creature test, no effect test; the
+  engine; VCMI). A Dragon Father army safe from it would mean a test this reading missed.
+"""
+[encounter.hero]
+type = "Grindan"
+specialty = "resource gold"
+primary = [0, 25, 1, 1]
+army = [["Mighty Gorgon", 10], ["Thunderbird", 5], ["Wyvern Monarch", 5]]
+[encounter.opponent.hero]
+name = "DFb"
+type = "Calid"
+specialty = "resource sulfur"
+primary = [0, 0, 1, 1]
+army = [["Pikeman", 150], ["Gnoll", 100], ["Centaur", 60]]
+artifacts = { "torso" = "Power of the Dragon Father" }
+[[encounter.record]]
+table = ["round", "Gorgons: Death Stare kills", "Thunderbirds: bolt (yes/no)", "Monarchs: Poison (yes/no)"]
+rows = 4
+[[encounter.record]]
+field = "anything odd"
+
+# --- War machines under Bless and the luck spells (BAT-MAG-067, BAT-Q22 points 1 and 3) ----------
+
+[[encounter]]
+id = "WM"
+title = "Bless, Curse, Precision, Fortune, Misfortune and Slayer at the Ballista, the Ammo Cart and the First Aid Tent"
+questions = ["BAT-MAG-067", "BAT-Q22"]
+procedure = [
+    "Attack the Blue hero. On Red's first turn, open the spell book and try these cursors, cancelling each (allowed or refused): Bless on Red's Ballista, Ammo Cart, First Aid Tent, Skeletons and Pikemen; Precision on Red's Ballista and Pikemen; Fortune on Red's Ballista, Ammo Cart and First Aid Tent; Slayer on the same three; Curse on Blue's Ballista, Ammo Cart and First Aid Tent; Misfortune on the same three.",
+    "If Bless was allowed on Red's Ballista, cast it there and right-click the Ballista: is Bless among its spells? Finish the battle as you like.",
+]
+predictions = """
+The engine follows the code (BAT-Q22): Bless and Curse spare the undead and creatures with maximum
+damage 0 (the Ammo Cart, the First Aid Tent; the Ballista has 2-3), Precision needs a shooter,
+Fortune, Misfortune and Slayer spare maximum damage 0 (installation.md §7.23).
+- Bless: Ballista **allowed** (the wiki's War Machine page agrees; VCMI refuses every war machine),
+  Ammo Cart refused, First Aid Tent refused, Skeletons refused, Pikemen allowed.
+- Precision: Ballista allowed, Pikemen refused (all sources).
+- Fortune and Slayer: Ballista allowed; Ammo Cart and First Aid Tent **refused** (VCMI: allowed,
+  without effect; the wiki: war machines are "affected", "effective" for the Ballista only).
+- Curse: Blue's Ballista **allowed** (VCMI: refused), Ammo Cart and First Aid Tent refused.
+- Misfortune: Ballista allowed, Ammo Cart and First Aid Tent **refused** (VCMI: allowed).
+- The cast: Bless on the Ballista.
+"""
+[encounter.hero]
+type = "Clavius"
+specialty = "resource gold"
+primary = [0, 0, 1, 10]
+army = [["Skeleton", 10], ["Pikeman", 10]]
+artifacts = { "spell book" = "Spell Book", "war machine 1" = "Ballista", "war machine 2" = "Ammo Cart", "war machine 3" = "First Aid Tent" }
+spells = ["Bless", "Curse", "Precision", "Fortune", "Misfortune", "Slayer"]
+[encounter.opponent.hero]
+name = "WMb"
+type = "Sephinroth"
+specialty = "resource crystal"
+primary = [0, 0, 1, 1]
+army = [["Peasant", 50]]
+artifacts = { "war machine 1" = "Ballista", "war machine 2" = "Ammo Cart", "war machine 3" = "First Aid Tent" }
+[[encounter.record]]
+field = "Bless: Ballista / Ammo Cart / First Aid Tent / Skeletons / Pikemen (allowed or refused each)"
+[[encounter.record]]
+field = "Precision: Ballista / Pikemen"
+[[encounter.record]]
+field = "Fortune: Ballista / Ammo Cart / First Aid Tent"
+[[encounter.record]]
+field = "Slayer: Ballista / Ammo Cart / First Aid Tent"
+[[encounter.record]]
+field = "Curse at Blue's: Ballista / Ammo Cart / First Aid Tent"
+[[encounter.record]]
+field = "Misfortune at Blue's: Ballista / Ammo Cart / First Aid Tent"
+[[encounter.record]]
+field = "Bless cast on the Ballista: shown among its spells (yes/no)"
+[[encounter.record]]
+field = "anything odd"
