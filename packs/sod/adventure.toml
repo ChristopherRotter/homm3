@@ -1,0 +1,4 @@
+# The Shadow of Death's adventure-map data (E08 T4; format: crates/h3-pack-adventure). Hand-written
+# source; the harvester never writes this file (E08 decision 10).
+#
+# Empty: SoD changes nothing the adventure part holds yet (no terrain, road or river of its own).

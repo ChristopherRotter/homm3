@@ -48,7 +48,7 @@ Survey `docs/rules/surveys/E08-adventure-core.md` §1.2–1.3. **D-2:** stepping
 
 #### ADV-Q4 — When a day's movement points are set (E08 T1b)
 
-Survey §1.1, D-1 and D-4. The wiki ("only at the beginning of each day") and VCMI (once at the change of day, for every player) agree; the original's call site is not read. It decides whether the rule runs at the start of the day or at the start of each player's turn (ADR draft "game orchestration", point 3); the difference shows only when another player changes a hero's army between the two. The executable's table also settles the points for speeds 0–2 (wiki 1300–1430, VCMI 1500; no army creature is that slow). **Recommendation:** implement the start of the day; read CR-2 (H3API `H3Hero::CalcMaxMovement`, 0x4E4D90, and its callers) in T6 or T7. Not blocking.
+Survey §1.1, D-1 and D-4. The wiki ("only at the beginning of each day") and VCMI (once at the change of day, for every player) agree; the original's call site is not read. It decides whether the rule runs at the start of the day or at the start of each player's turn (ADR draft "game orchestration", point 3); the difference shows only when another player changes a hero's army between the two. D-4 is settled (E08 T4): the original's `movement.txt` gives the wiki's 1300–1430 for speeds 0–2, and 0x4E4D90 only calls 0x4E4990 with the hero's at-sea flag. **Recommendation:** implement the start of the day; read the callers of 0x4E4D90 (CR-2's rest) in T6b. Not blocking.
 
 #### ADV-Q5 — The shape of a revealed area (E08 T1b)
 

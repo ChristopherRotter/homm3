@@ -1,0 +1,11 @@
+# The synthetic expansion's adventure-map data (E08 T4; format: crates/h3-pack-adventure).
+# Invented values for tests: a road and a river of its own beside the synthetic pack's.
+
+[[road]]
+id = "causeway"
+name = "Causeway"
+cost = 55
+
+[[river]]
+id = "creek"
+name = "Creek"
