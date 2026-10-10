@@ -4,7 +4,7 @@ Pre-refined tasks of the server lane, in order, then the inbox of discovered wor
 
 ## Tasks
 
-Epic: `docs/epics/E16-server.md` (in progress; M0 and M1 done 2026-10-10, ADR-0018). The M1 checkpoint with the user comes first (SRV-Q12: the review list, this cut of M2, two stop-the-line items). The tasks below are the **proposed** cut of M2, each about half a context; the checkpoint confirms or changes them. Work under the autonomy contract (`HANDOFF.md`).
+Epic: `docs/epics/E16-server.md` (in progress; M0 and M1 done 2026-10-10, ADR-0018). The M1 checkpoint with the user comes first (SRV-Q12: the user reviews the list and this cut of M2; its two stop-the-line items are answered: `signal` is added, the journal keeps the token itself). The tasks below are the **proposed** cut of M2, each about half a context; the checkpoint confirms or changes them. Work under the autonomy contract (`HANDOFF.md`).
 
 ### E16 M2 T1 — Many games on one server
 
@@ -15,9 +15,9 @@ Epic: `docs/epics/E16-server.md` (in progress; M0 and M1 done 2026-10-10, ADR-00
 
 ### E16 M2 T2 — The write-ahead journal and restore
 
-- **Scope:** `JOURNAL_FORMAT_VERSION` 1 and the journal file per game (`E16-design.md` §7): header, seed, setup, seats, one line per accepted command, the checkpoint hashes; each command line synced before its `Accepted` leaves (the session core hands the host the new journal lines with the frames, the host writes before it sends); restore at start (the header checked against the engine and content, the commands re-run, the games reopened with their seats empty); the seats' tokens across a restart (SRV-Q12 (d)), and an operator's copy of them, so that a seat whose `Joined` was lost can be re-taken (the M1 review); the replay as the finished journal.
+- **Scope:** `JOURNAL_FORMAT_VERSION` 1 and the journal file per game (`E16-design.md` §7): header, seed, setup, seats, one line per accepted command, the checkpoint hashes; each command line synced before its `Accepted` leaves (the session core hands the host the new journal lines with the frames, the host writes before it sends); restore at start (the header checked against the engine and content, the commands re-run, the games reopened with their seats empty); the seats' tokens across a restart (the token itself in the journal, the data directory's permissions documented; SRV-Q12 (d), the user), and an operator's copy of them, so that a seat whose `Joined` was lost can be re-taken (the M1 review); the replay as the finished journal.
 - **Acceptance:** an end-to-end test stops the server mid-battle and restarts it; the game resumes with the same state hash and the replay verifies; a journal of another engine or content identity ends its game void.
-- **Depends on:** T1, SRV-Q12 (d).
+- **Depends on:** T1.
 - **Status:** waiting (the user's M1 checkpoint).
 
 ### E16 M2 T3 — Verification, pause and resume
@@ -35,9 +35,9 @@ Epic: `docs/epics/E16-server.md` (in progress; M0 and M1 done 2026-10-10, ADR-00
 
 ### E16 M2 T5 — Shutdown, drain, hardening; closure
 
-- **Scope:** graceful shutdown (SRV-Q12 (c)) and a drain mode that refuses new games; the rate limits hardened (per address across its connections; a separate limit for automated seats, T3's note); from the M1 review: memory bounded in bytes (a viewer's record, which `FetchRecord` sends whole and which grows with every query and rejection; the outbound queue; one `FetchRecord` in flight), a short deadline for the hello and the join (a connection that never joins holds its place until its idle timeout), WebSocket pings counted in the rate; the fuzz harness on the decoder (`cargo-fuzz`, `05-testing.md`); the replay download of finished games; the client's content check (`E16-design.md` §3) handed to the client lane (an inbox line in its `QUEUE.md`); the workload updated if the session core changed; the reviewer agent; the user's M2 checkpoint.
+- **Scope:** graceful shutdown on a signal (`tokio`'s `signal` feature, SRV-Q12 (c), the user: ADR-0018 point 3 amended in a `shared/` change first) and a drain mode that refuses new games; the rate limits hardened (per address across its connections; a separate limit for automated seats, T3's note); from the M1 review: memory bounded in bytes (a viewer's record, which `FetchRecord` sends whole and which grows with every query and rejection; the outbound queue; one `FetchRecord` in flight), a short deadline for the hello and the join (a connection that never joins holds its place until its idle timeout), WebSocket pings counted in the rate; the fuzz harness on the decoder (`cargo-fuzz`, `05-testing.md`); the replay download of finished games; the client's content check (`E16-design.md` §3) handed to the client lane (an inbox line in its `QUEUE.md`); the workload updated if the session core changed; the reviewer agent; the user's M2 checkpoint.
 - **Acceptance:** M2's exit (epic file, to be written at the checkpoint).
-- **Depends on:** T1–T4, SRV-Q12 (c).
+- **Depends on:** T1–T4.
 - **Status:** waiting (the user's M1 checkpoint).
 
 ## Inbox

@@ -279,9 +279,8 @@ Choices queued under the autonomy contract (details in `E16-log.md`):
 - T4: the workload's shape (`serve_frame` counted, scripted clients that strike when they can,
   20 games of `full`); **lane-only workloads** (a shared `xtask` change: the server's count is
   55 % battle engine and follows the battle lane's packs, so the full verify does not measure
-  it; the server lane re-baselines a drift at its sessions' start); the shared changes rode
-  this branch with the label `cross-lane` or went first as `shared/` (the session could push
-  one branch only; the pull request says which).
+  it; the server lane re-baselines a drift at its sessions' start); the shared changes ride
+  this branch's pull request with the label `cross-lane` (the user, 2026-10-10).
 
 ## Exit criteria (M1)
 
