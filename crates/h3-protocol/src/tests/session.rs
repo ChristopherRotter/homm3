@@ -1,0 +1,876 @@
+//! The session core (E16 M1 T2): scripted clients play hosted battles through it. Identity is the
+//! seat, a rejected command changes nothing, a viewer's bytes do not depend on what it may not
+//! see, and the journal is the replay.
+
+use std::boxed::Box;
+use std::string::{String, ToString};
+use std::vec;
+use std::vec::Vec;
+
+use h3_battle::{BattleSide, BattleState, LegalCommands};
+use h3_content::{Ruleset, SpellId};
+use h3_kernel::{Rng, StreamId};
+use proptest::prelude::*;
+
+use super::full;
+use crate::RECORD_FORMAT_VERSION;
+use crate::codec::decode_server;
+use crate::map;
+use crate::session::{Bot, ConnId, GameConfig, Outbound, SeatKind, Session};
+use crate::wire::{
+    ClientMessage, Command, GoodbyeReason, Outcome, Query, RecordHeader, Refusal, RejectCode, Seat,
+    ServerMessage, Target,
+};
+
+const A: ConnId = ConnId(1);
+const B: ConnId = ConnId(2);
+const TOKENS: [&str; 2] = ["attacker-secret", "defender-secret"];
+
+/// The sim's random agent as the host's bot.
+#[derive(Debug)]
+struct RandomBot(Rng);
+
+impl Bot for RandomBot {
+    fn command(
+        &mut self,
+        state: &BattleState,
+        ruleset: &Ruleset,
+        side: BattleSide,
+        legal: &LegalCommands,
+    ) -> h3_battle::Command {
+        h3_sim::rollout::choose(state, ruleset, side, legal, &mut self.0)
+    }
+}
+
+/// A bot whose every choice the engine rejects.
+#[derive(Debug)]
+struct WrongBot;
+
+impl Bot for WrongBot {
+    fn command(
+        &mut self,
+        _: &BattleState,
+        _: &Ruleset,
+        _: BattleSide,
+        _: &LegalCommands,
+    ) -> h3_battle::Command {
+        h3_battle::Command::Heal {
+            target: h3_battle::StackId(200),
+        }
+    }
+}
+
+fn players() -> [SeatKind; 2] {
+    TOKENS.map(|token| SeatKind::Player {
+        token: token.to_string(),
+    })
+}
+
+fn random_bot(seed: u64) -> SeatKind {
+    SeatKind::Bot(Box::new(RandomBot(Rng::for_stream(seed, StreamId::AGENT))))
+}
+
+/// A session of the `full` scenario with `seed`.
+fn host<'r>(r: &'r Ruleset, seed: u64, seats: [SeatKind; 2]) -> Session<'r> {
+    let (_, setup) = full();
+    let config = GameConfig {
+        game: 1,
+        setup,
+        seed,
+        checkpoint_every: 10,
+    };
+    Session::new(r, config, seats).unwrap()
+}
+
+fn ruleset() -> Ruleset {
+    full().0
+}
+
+/// What `conn` sends, and the frames that come out.
+fn send(s: &mut Session<'_>, conn: ConnId, message: ClientMessage) -> Vec<Outbound> {
+    let mut out = Vec::new();
+    s.handle(conn, message, &mut out);
+    out
+}
+
+fn join(s: &mut Session<'_>, conn: ConnId, seat: Seat, token: Option<&str>) -> Vec<Outbound> {
+    let token = token.map(str::to_string);
+    send(
+        s,
+        conn,
+        ClientMessage::Join {
+            game: 1,
+            seat,
+            token,
+        },
+    )
+}
+
+fn decode(frame: &str) -> ServerMessage {
+    decode_server(frame.as_bytes(), usize::MAX).unwrap()
+}
+
+/// The messages for `conn`, in order.
+fn to(out: &[Outbound], conn: ConnId) -> Vec<ServerMessage> {
+    out.iter()
+        .filter(|o| o.to == conn)
+        .map(|o| decode(&o.frame))
+        .collect()
+}
+
+/// The frames for `conn`, in order.
+fn frames(out: &[Outbound], conn: ConnId) -> Vec<String> {
+    out.iter()
+        .filter(|o| o.to == conn)
+        .map(|o| o.frame.clone())
+        .collect()
+}
+
+/// A message's number, if it has one that counts.
+fn number(message: &ServerMessage) -> Option<u32> {
+    match message {
+        ServerMessage::Snapshot { n, .. }
+        | ServerMessage::YourTurn { n, .. }
+        | ServerMessage::Accepted { n, .. }
+        | ServerMessage::Rejected { n, .. }
+        | ServerMessage::QueryResult { n, .. }
+        | ServerMessage::Events { n, .. }
+        | ServerMessage::GameEnded { n, .. } => Some(*n),
+        _ => None,
+    }
+}
+
+/// The connection told to act in `out`, with its legal commands.
+fn turn(out: &[Outbound]) -> Option<(ConnId, Vec<Command>)> {
+    out.iter().rev().find_map(|o| match decode(&o.frame) {
+        ServerMessage::YourTurn { legal, .. } => Some((o.to, legal)),
+        _ => None,
+    })
+}
+
+/// Answers every `YourTurn` with a legal command that stays in the battle, chosen by `rng` among
+/// the strikes if there are any (so that battles end), until no one is told to act or `limit`
+/// commands were sent; every frame, `first` included.
+fn play(s: &mut Session<'_>, first: Vec<Outbound>, rng: &mut Rng, limit: u32) -> Vec<Outbound> {
+    let mut all = first;
+    let mut pending = all.clone();
+    for seq in 1..=limit {
+        let Some((conn, legal)) = turn(&pending) else {
+            break;
+        };
+        let strikes: Vec<Command> = legal
+            .iter()
+            .copied()
+            .filter(|c| matches!(c, Command::Attack { .. } | Command::Shoot { .. }))
+            .collect();
+        let staying: Vec<Command> = if strikes.is_empty() {
+            legal
+                .into_iter()
+                .filter(|c| !matches!(c, Command::Retreat {} | Command::Surrender {}))
+                .collect()
+        } else {
+            strikes
+        };
+        let command = staying[rng.below(u32::try_from(staying.len()).unwrap()) as usize];
+        pending = send(s, conn, ClientMessage::Command { seq, command });
+        all.extend(pending.iter().cloned());
+    }
+    all
+}
+
+/// Both players joined; every frame so far.
+fn started(s: &mut Session<'_>) -> Vec<Outbound> {
+    let mut out = join(s, A, Seat::Attacker, None);
+    out.extend(join(s, B, Seat::Defender, None));
+    out
+}
+
+/// The session's journal as the sim's replay.
+fn replay(r: &Ruleset, s: &Session<'_>) -> h3_sim::Replay {
+    let journal = s.journal().clone();
+    h3_sim::Replay {
+        header: h3_sim::ReplayHeader::current(r),
+        seed: journal.seed,
+        setup: journal.setup,
+        commands: journal.commands,
+        checkpoint_every: journal.checkpoint_every,
+        checkpoints: journal.checkpoints,
+        final_hash: s.state_hash(),
+        result: s.result(),
+    }
+}
+
+#[test]
+fn two_players_join_and_play_a_hosted_battle_to_its_end() {
+    let r = ruleset();
+    let mut s = host(&r, 5, players());
+    let first = join(&mut s, A, Seat::Attacker, None);
+    let manifest = map::manifest(&r);
+    match &to(&first, A)[..] {
+        [
+            ServerMessage::Joined {
+                game: 1,
+                seat: Seat::Attacker,
+                token: Some(token),
+                manifest: sent,
+            },
+            ServerMessage::Snapshot { n: 1, observation },
+        ] => {
+            assert_eq!(token, TOKENS[0]);
+            assert_eq!(*sent, manifest);
+            assert_eq!(observation.viewer, crate::wire::Side::Attacker);
+        }
+        other => panic!("{other:?}"),
+    }
+    assert!(!s.started(), "a seat is still empty");
+    let second = join(&mut s, B, Seat::Defender, None);
+    assert!(s.started());
+    assert!(matches!(
+        &to(&second, B)[..2],
+        [ServerMessage::Joined { token: Some(t), .. }, ServerMessage::Snapshot { n: 1, .. }]
+            if t == TOKENS[1]
+    ));
+    let (actor, _) = turn(&second).unwrap();
+    let mut all = first;
+    all.extend(play(&mut s, second, &mut Rng::from_seed(9), 5000));
+    let result = s.result().expect("the battle is over");
+    assert!(actor == A || actor == B);
+    for conn in [A, B] {
+        let messages = to(&all, conn);
+        // The numbers count the viewer's messages without a gap.
+        let numbers: Vec<u32> = messages.iter().filter_map(number).collect();
+        assert_eq!(
+            numbers,
+            (1..=u32::try_from(numbers.len()).unwrap()).collect::<Vec<_>>()
+        );
+        assert!(matches!(
+            messages.last(),
+            Some(ServerMessage::GameEnded { result: r, .. }) if *r == map::outcome(result)
+        ));
+    }
+    // Every accepted command was acknowledged to its seat, and journaled.
+    let accepted = all
+        .iter()
+        .filter(|o| matches!(decode(&o.frame), ServerMessage::Accepted { .. }))
+        .count();
+    assert_eq!(accepted, s.journal().commands.len());
+    // The journal is the replay: it re-runs to the same hashes and result.
+    let replay = replay(&r, &s);
+    assert_eq!(replay.checkpoints.len(), replay.commands.len() / 10);
+    assert_eq!(replay.verify(&r), Ok(()));
+}
+
+#[test]
+fn an_accepted_command_is_acknowledged_then_told_to_every_viewer() {
+    let r = ruleset();
+    let mut s = host(&r, 5, players());
+    let out = started(&mut s);
+    let (actor, legal) = turn(&out).unwrap();
+    let other = if actor == A { B } else { A };
+    let command = legal[0];
+    let out = send(&mut s, actor, ClientMessage::Command { seq: 41, command });
+    let mine = to(&out, actor);
+    assert!(matches!(
+        mine[0],
+        ServerMessage::Accepted { seq: 41, command: c, .. } if c == command
+    ));
+    assert!(matches!(mine[1], ServerMessage::Events { .. }));
+    assert!(matches!(to(&out, other)[0], ServerMessage::Events { .. }));
+    assert_eq!(s.journal().commands.len(), 1);
+}
+
+#[test]
+fn a_connection_without_a_seat_is_no_actor() {
+    let r = ruleset();
+    let mut s = host(&r, 5, players());
+    let messages = [
+        ClientMessage::Command {
+            seq: 1,
+            command: Command::Defend {},
+        },
+        ClientMessage::Query {
+            seq: 2,
+            query: Query::CastTargets { spell: 0 },
+        },
+        ClientMessage::FetchReplay { seq: 3 },
+        ClientMessage::FetchRecord { seq: 4 },
+    ];
+    for (message, seq) in messages.into_iter().zip(1..) {
+        let out = send(&mut s, A, message);
+        assert_eq!(
+            to(&out, A),
+            [ServerMessage::Rejected {
+                n: 0,
+                seq,
+                code: RejectCode::NotSeated
+            }]
+        );
+    }
+    // A seat before the start may not act.
+    join(&mut s, A, Seat::Attacker, None);
+    let hash = s.state_hash();
+    let out = send(
+        &mut s,
+        A,
+        ClientMessage::Command {
+            seq: 5,
+            command: Command::EndTactics {},
+        },
+    );
+    assert_eq!(
+        to(&out, A),
+        [ServerMessage::Rejected {
+            n: 2,
+            seq: 5,
+            code: RejectCode::NotStarted
+        }]
+    );
+    assert_eq!(s.state_hash(), hash);
+    assert!(s.journal().commands.is_empty());
+    // The hello and the ping are the connection's, not the game's.
+    for message in [
+        ClientMessage::Hello {
+            protocol: 2,
+            client: String::new(),
+            name: String::new(),
+        },
+        ClientMessage::Ping { nonce: 1 },
+    ] {
+        assert!(send(&mut s, A, message).is_empty());
+    }
+}
+
+#[test]
+fn joins_are_refused_with_their_reason() {
+    let r = ruleset();
+    let mut s = host(
+        &r,
+        5,
+        [random_bot(1), players().into_iter().nth(1).unwrap()],
+    );
+    let refused = |out: Vec<Outbound>, conn| match &to(&out, conn)[..] {
+        [ServerMessage::Refused { reason }] => *reason,
+        other => panic!("{other:?}"),
+    };
+    let wrong_game = send(
+        &mut s,
+        A,
+        ClientMessage::Join {
+            game: 2,
+            seat: Seat::Defender,
+            token: None,
+        },
+    );
+    assert_eq!(refused(wrong_game, A), Refusal::NoSuchGame);
+    assert_eq!(
+        refused(join(&mut s, A, Seat::Spectator, None), A),
+        Refusal::NoSpectators
+    );
+    assert_eq!(
+        refused(join(&mut s, A, Seat::Attacker, None), A),
+        Refusal::SeatTaken,
+        "the bot's seat"
+    );
+    // A wrong token, of another length or of the same: refused.
+    for token in ["", "defender-secreT", "defender-secret-"] {
+        assert_eq!(
+            refused(join(&mut s, A, Seat::Defender, Some(token)), A),
+            Refusal::BadToken
+        );
+    }
+    join(&mut s, A, Seat::Defender, None);
+    assert_eq!(
+        refused(join(&mut s, A, Seat::Defender, None), A),
+        Refusal::AlreadyJoined
+    );
+    assert_eq!(
+        refused(join(&mut s, B, Seat::Defender, None), B),
+        Refusal::SeatTaken
+    );
+    // Without a token, a seat once taken stays taken while its holder is away.
+    s.disconnected(A);
+    assert_eq!(
+        refused(join(&mut s, B, Seat::Defender, None), B),
+        Refusal::SeatTaken
+    );
+}
+
+#[test]
+fn a_seat_is_retaken_with_its_token_and_the_record_spans_the_gap() {
+    let r = ruleset();
+    let mut s = host(&r, 5, players());
+    let out = started(&mut s);
+    let (actor, legal) = turn(&out).unwrap();
+    let (other, other_seat, other_token) = if actor == A {
+        (B, Seat::Defender, TOKENS[1])
+    } else {
+        (A, Seat::Attacker, TOKENS[0])
+    };
+    // The other seat drops; the actor's command is still told to it, in its record only.
+    s.disconnected(other);
+    let out = send(
+        &mut s,
+        actor,
+        ClientMessage::Command {
+            seq: 1,
+            command: legal[0],
+        },
+    );
+    assert!(to(&out, other).is_empty());
+    // It comes back on a new connection with its token: a fresh snapshot, numbers going on.
+    let back = ConnId(3);
+    let out = join(&mut s, back, other_seat, Some(other_token));
+    let messages = to(&out, back);
+    assert!(matches!(messages[0], ServerMessage::Joined { .. }));
+    let ServerMessage::Snapshot { n, .. } = messages[1] else {
+        panic!("{messages:?}")
+    };
+    assert_eq!(n, 3, "Snapshot 1, then Events 2 while away");
+    let ServerMessage::Record {
+        record,
+        n: last,
+        seq: 7,
+    } = to(
+        &send(&mut s, back, ClientMessage::FetchRecord { seq: 7 }),
+        back,
+    )
+    .remove(0)
+    else {
+        panic!()
+    };
+    assert_eq!(record.lines().count(), 1 + last as usize);
+    // A connection that re-takes a held seat replaces its holder.
+    let again = ConnId(4);
+    let out = join(&mut s, again, other_seat, Some(other_token));
+    assert_eq!(
+        to(&out, back),
+        [ServerMessage::Goodbye {
+            reason: GoodbyeReason::Replaced
+        }]
+    );
+    assert!(out.iter().any(|o| o.to == back && o.close));
+    assert!(matches!(to(&out, again)[0], ServerMessage::Joined { .. }));
+    // Leaving frees the seat for its token.
+    let out = send(&mut s, again, ClientMessage::Leave {});
+    assert_eq!(
+        out,
+        [Outbound {
+            to: again,
+            frame: r#"{"Goodbye":{"reason":"Left"}}"#.to_string(),
+            close: true
+        }]
+    );
+    let out = join(&mut s, ConnId(5), other_seat, Some(other_token));
+    assert!(matches!(
+        to(&out, ConnId(5))[0],
+        ServerMessage::Joined { .. }
+    ));
+}
+
+#[test]
+fn a_seat_retaken_on_its_turn_is_told_to_act() {
+    let r = ruleset();
+    let mut s = host(&r, 5, players());
+    let out = started(&mut s);
+    let (actor, _) = turn(&out).unwrap();
+    let seat = if actor == A {
+        Seat::Attacker
+    } else {
+        Seat::Defender
+    };
+    let token = TOKENS[usize::from(actor == B)];
+    s.disconnected(actor);
+    let out = join(&mut s, ConnId(9), seat, Some(token));
+    assert!(matches!(
+        to(&out, ConnId(9))[..],
+        [
+            ServerMessage::Joined { .. },
+            ServerMessage::Snapshot { .. },
+            ServerMessage::YourTurn { .. }
+        ]
+    ));
+}
+
+#[test]
+fn a_bot_plays_its_seat_and_the_journal_verifies() {
+    let r = ruleset();
+    for bot in [random_bot(3), SeatKind::Bot(Box::new(WrongBot))] {
+        let mut s = host(&r, 8, [players().into_iter().next().unwrap(), bot]);
+        let out = join(&mut s, A, Seat::Attacker, None);
+        assert!(s.started(), "the bot's seat is held");
+        let all = play(&mut s, out, &mut Rng::from_seed(4), 5000);
+        assert!(s.result().is_some());
+        let commands = &s.journal().commands;
+        assert!(
+            commands
+                .iter()
+                .any(|(side, _)| *side == BattleSide::Defender)
+        );
+        let accepted = to(&all, A)
+            .iter()
+            .filter(|m| matches!(m, ServerMessage::Accepted { .. }))
+            .count();
+        let attacker = commands
+            .iter()
+            .filter(|(side, _)| *side == BattleSide::Attacker)
+            .count();
+        assert_eq!(
+            accepted, attacker,
+            "the bot's commands are told as events only"
+        );
+        assert_eq!(replay(&r, &s).verify(&r), Ok(()));
+    }
+}
+
+#[test]
+fn a_game_of_two_bots_never_starts() {
+    let r = ruleset();
+    let mut s = host(&r, 8, [random_bot(1), random_bot(2)]);
+    let out = join(&mut s, A, Seat::Attacker, None);
+    assert_eq!(
+        to(&out, A),
+        [ServerMessage::Refused {
+            reason: Refusal::SeatTaken
+        }]
+    );
+    assert!(!s.started());
+}
+
+#[test]
+fn the_record_is_the_viewers_numbered_messages() {
+    let r = ruleset();
+    let mut s = host(&r, 5, players());
+    let first = started(&mut s);
+    let all = play(&mut s, first, &mut Rng::from_seed(2), 30);
+    for (conn, seat) in [(A, Seat::Attacker), (B, Seat::Defender)] {
+        let fetched = send(&mut s, conn, ClientMessage::FetchRecord { seq: 3 });
+        let [ServerMessage::Record { n, seq: 3, record }] = &to(&fetched, conn)[..] else {
+            panic!()
+        };
+        let mut lines = record.lines();
+        let header: RecordHeader = serde_json::from_str(lines.next().unwrap()).unwrap();
+        assert_eq!(header.format, RECORD_FORMAT_VERSION);
+        assert_eq!((header.game, header.seat), (1, seat));
+        assert_eq!(header.manifest, map::manifest(&r));
+        let numbered: Vec<String> = frames(&all, conn)
+            .into_iter()
+            .filter(|f| number(&decode(f)).is_some())
+            .collect();
+        assert_eq!(lines.map(str::to_string).collect::<Vec<_>>(), numbered);
+        assert_eq!(*n, u32::try_from(numbered.len()).unwrap());
+        // The answer is not recorded itself.
+        let again = send(&mut s, conn, ClientMessage::FetchRecord { seq: 4 });
+        assert!(
+            matches!(&to(&again, conn)[..], [ServerMessage::Record { record: same, .. }] if same == record)
+        );
+    }
+}
+
+#[test]
+fn the_replay_reaches_the_seats_only_after_the_game() {
+    let r = ruleset();
+    let mut s = host(&r, 5, players());
+    let out = started(&mut s);
+    s.publish_replay("early".to_string());
+    let fetch = send(&mut s, A, ClientMessage::FetchReplay { seq: 6 });
+    assert!(matches!(
+        to(&fetch, A)[..],
+        [ServerMessage::Rejected {
+            seq: 6,
+            code: RejectCode::NotOver,
+            ..
+        }]
+    ));
+    play(&mut s, out, &mut Rng::from_seed(1), 5000);
+    assert!(s.result().is_some());
+    s.publish_replay("[header]".to_string());
+    let fetch = send(&mut s, B, ClientMessage::FetchReplay { seq: 7 });
+    assert!(matches!(
+        &to(&fetch, B)[..],
+        [ServerMessage::Replay { seq: 7, replay, .. }] if replay == "[header]"
+    ));
+}
+
+#[test]
+fn queries_are_answered_by_the_servers_rules() {
+    let r = ruleset();
+    let mut s = host(&r, 5, players());
+    started(&mut s);
+    let spell = r.spell_by_key("synthetic:spark").unwrap().raw();
+    let query = Query::CastTargets { spell };
+    let out = send(&mut s, A, ClientMessage::Query { seq: 2, query });
+    let [
+        ServerMessage::QueryResult {
+            seq: 2, targets, ..
+        },
+    ] = &to(&out, A)[..]
+    else {
+        panic!()
+    };
+    let (_, setup) = full();
+    let state = BattleState::new(&r, &setup, 5).unwrap();
+    assert_eq!(
+        *targets,
+        map::query(&state, &r, BattleSide::Attacker, query)
+    );
+}
+
+#[test]
+fn the_manifest_names_what_the_replay_header_names() {
+    let r = ruleset();
+    let m = map::manifest(&r);
+    let h = h3_sim::ReplayHeader::current(&r);
+    assert_eq!(m.protocol, crate::PROTOCOL_VERSION);
+    assert_eq!(m.engine, h.engine_version);
+    let packs: Vec<(String, String)> = m
+        .packs
+        .iter()
+        .map(|p| (p.id.clone(), p.version.clone()))
+        .collect();
+    assert_eq!(packs, h.packs);
+    assert_eq!((m.profile, m.ruleset_hash.0), (h.profile, h.ruleset_hash));
+    assert_eq!(
+        (m.rng.name, m.rng.version),
+        (h.rng_algorithm, h.rng_version)
+    );
+    assert_eq!(
+        (m.hash.name, m.hash.version),
+        (h.hash_algorithm, h.hash_version)
+    );
+    assert_eq!(m.battle_state_hash_version, h.battle_state_hash_version);
+    assert_eq!(m.field, map::field(&r));
+    assert_eq!(m.keys, map::key_tables(&r));
+}
+
+#[test]
+fn journals_without_checkpoints_verify() {
+    let r = ruleset();
+    let (_, setup) = full();
+    let config = GameConfig {
+        game: 1,
+        setup,
+        seed: 3,
+        checkpoint_every: 0,
+    };
+    let mut s = Session::new(&r, config, players()).unwrap();
+    let out = started(&mut s);
+    play(&mut s, out, &mut Rng::from_seed(3), 40);
+    assert!(s.journal().checkpoints.is_empty());
+    assert_eq!(replay(&r, &s).verify(&r), Ok(()));
+}
+
+#[test]
+fn a_setup_the_engine_refuses_hosts_no_game() {
+    let r = ruleset();
+    let (_, mut setup) = full();
+    setup.attacker.stacks.clear();
+    let config = GameConfig {
+        game: 1,
+        setup,
+        seed: 3,
+        checkpoint_every: 0,
+    };
+    assert!(Session::new(&r, config, players()).is_err());
+}
+
+/// The hidden obstacles' spell of the defender's hero (a Quicksand) and of the attacker's (a Land
+/// Mine), by side.
+fn hidden_spell(r: &Ruleset, side: BattleSide) -> u16 {
+    let key = match side {
+        BattleSide::Attacker => "synthetic:snare",
+        BattleSide::Defender => "synthetic:mire",
+    };
+    r.spell_by_key(key).map(SpellId::raw).unwrap()
+}
+
+/// Both players join a game with `seed`; the tactics phase ends; the side to act then places its
+/// hero's hidden obstacles; the other side's connection drops and comes back. Every frame of the
+/// caster and of the other side, and the caster.
+fn hidden_cast(r: &Ruleset, seed: u64) -> (Vec<String>, Vec<String>, BattleSide) {
+    let mut s = host(r, seed, players());
+    let mut all = started(&mut s);
+    let (conn, legal) = turn(&all).unwrap();
+    if legal.contains(&Command::EndTactics {}) {
+        all.extend(send(
+            &mut s,
+            conn,
+            ClientMessage::Command {
+                seq: 1,
+                command: Command::EndTactics {},
+            },
+        ));
+    }
+    let (caster, _) = turn(&all).unwrap();
+    let side = if caster == A {
+        BattleSide::Attacker
+    } else {
+        BattleSide::Defender
+    };
+    let cast = Command::Cast {
+        spell: hidden_spell(r, side),
+        target: Target::None {},
+        second: Target::None {},
+    };
+    let out = send(
+        &mut s,
+        caster,
+        ClientMessage::Command {
+            seq: 2,
+            command: cast,
+        },
+    );
+    assert!(
+        matches!(to(&out, caster)[0], ServerMessage::Accepted { .. }),
+        "{:?}",
+        to(&out, caster)
+    );
+    all.extend(out);
+    let viewer = if caster == A { B } else { A };
+    let (seat, token) = if viewer == A {
+        (Seat::Attacker, TOKENS[0])
+    } else {
+        (Seat::Defender, TOKENS[1])
+    };
+    s.disconnected(viewer);
+    let back = join(&mut s, ConnId(7), seat, Some(token));
+    let mut seen = frames(&all, viewer);
+    seen.extend(frames(&back, ConnId(7)));
+    (frames(&all, caster), seen, side)
+}
+
+#[test]
+fn a_hidden_quicksand_leaves_the_other_viewers_bytes_unchanged() {
+    let r = ruleset();
+    let (caster_a, viewer_a, side) = hidden_cast(&r, 11);
+    let (caster_b, viewer_b, _) = hidden_cast(&r, 12);
+    assert_eq!(
+        side,
+        BattleSide::Defender,
+        "the defender places a Quicksand"
+    );
+    assert_ne!(
+        caster_a, caster_b,
+        "the pits lie elsewhere, as the caster sees"
+    );
+    assert_eq!(viewer_a, viewer_b);
+}
+
+proptest! {
+    #![proptest_config(ProptestConfig::with_cases(64))]
+
+    /// Observation hygiene over the wire (ADR-0018 point 7): wherever the opponent's hidden
+    /// obstacles lie, the other viewer receives the same bytes.
+    #[test]
+    fn hidden_obstacles_never_reach_the_other_viewers_bytes(seeds: [u64; 2]) {
+        let r = ruleset();
+        let (_, first, _) = hidden_cast(&r, seeds[0]);
+        let (_, second, _) = hidden_cast(&r, seeds[1]);
+        prop_assert_eq!(first, second);
+    }
+
+    /// A command from either seat at any point either is accepted and journaled, or is rejected
+    /// and changes neither the battle nor the journal, and the other seat hears nothing of it;
+    /// the seat not to act is always told it is not its turn.
+    #[test]
+    fn a_rejected_command_changes_nothing(
+        steps in 0u32..30,
+        play_seed: u64,
+        command in arb_command(),
+        wrong_seat: bool,
+    ) {
+        let r = ruleset();
+        let mut s = host(&r, 5, players());
+        let out = started(&mut s);
+        let out = play(&mut s, out, &mut Rng::from_seed(play_seed), steps);
+        let Some((actor, _)) = turn(&out) else {
+            return Ok(());
+        };
+        let other = if actor == A { B } else { A };
+        let conn = if wrong_seat { other } else { actor };
+        let (hash, journal) = (s.state_hash(), s.journal().clone());
+        let out = send(&mut s, conn, ClientMessage::Command { seq: 99, command });
+        match to(&out, conn).remove(0) {
+            ServerMessage::Accepted { seq: 99, .. } => {
+                prop_assert!(!wrong_seat);
+                prop_assert_eq!(s.journal().commands.len(), journal.commands.len() + 1);
+            }
+            ServerMessage::Rejected { seq: 99, code, .. } => {
+                if wrong_seat {
+                    prop_assert_eq!(code, RejectCode::NotYourTurn);
+                }
+                prop_assert_eq!(s.state_hash(), hash);
+                prop_assert_eq!(s.journal(), &journal);
+                prop_assert_eq!(out.len(), 1, "only the sender hears of it");
+            }
+            other => prop_assert!(false, "{:?}", other),
+        }
+    }
+}
+
+/// Any wire command, with values that are often in range.
+fn arb_command() -> impl Strategy<Value = Command> {
+    let target = prop_oneof![
+        Just(Target::None {}),
+        (0u8..24).prop_map(|stack| Target::Stack { stack }),
+        (0u8..190).prop_map(|hex| Target::Hex { hex }),
+    ];
+    prop_oneof![
+        (0u8..190).prop_map(|to| Command::Move { to }),
+        (0u8..24, 0u8..190).prop_map(|(target, from)| Command::Attack { target, from }),
+        (0u8..24, 0u8..190).prop_map(|(target, at)| Command::Shoot { target, at }),
+        Just(Command::Wait {}),
+        Just(Command::Defend {}),
+        (0u8..24).prop_map(|target| Command::Heal { target }),
+        Just(Command::EndTactics {}),
+        Just(Command::Retreat {}),
+        Just(Command::Surrender {}),
+        (0u16..60, target.clone(), target.clone()).prop_map(|(spell, target, second)| {
+            Command::Cast {
+                spell,
+                target,
+                second,
+            }
+        }),
+        target.prop_map(|target| Command::CreatureCast { target }),
+    ]
+}
+
+#[test]
+fn outcomes_reach_every_viewer() {
+    // A surrender or retreat ends the game for both viewers too.
+    let r = ruleset();
+    let mut s = host(&r, 5, players());
+    let out = started(&mut s);
+    let (actor, legal) = turn(&out).unwrap();
+    let mut out = out;
+    if legal.contains(&Command::EndTactics {}) {
+        out = send(
+            &mut s,
+            actor,
+            ClientMessage::Command {
+                seq: 1,
+                command: Command::EndTactics {},
+            },
+        );
+    }
+    let (actor, _) = turn(&out).unwrap();
+    let out = send(
+        &mut s,
+        actor,
+        ClientMessage::Command {
+            seq: 2,
+            command: Command::Retreat {},
+        },
+    );
+    let result = s.result().map(map::outcome);
+    assert!(
+        matches!(result, Some(Outcome::Retreat { .. })),
+        "{result:?}"
+    );
+    for conn in [A, B] {
+        assert!(matches!(
+            to(&out, conn).last(),
+            Some(ServerMessage::GameEnded { result: r, .. }) if Some(*r) == result
+        ));
+    }
+}

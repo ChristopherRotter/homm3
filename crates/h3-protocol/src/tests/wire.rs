@@ -74,8 +74,8 @@ fn client_messages() -> Vec<ClientMessage> {
                 target: Target::Stack { stack: 1 },
             },
         },
-        ClientMessage::FetchReplay {},
-        ClientMessage::FetchRecord {},
+        ClientMessage::FetchReplay { seq: 10 },
+        ClientMessage::FetchRecord { seq: 11 },
         ClientMessage::Leave {},
         ClientMessage::Ping { nonce: 5 },
     ];
@@ -175,10 +175,12 @@ fn server_messages() -> Vec<ServerMessage> {
         },
         ServerMessage::Replay {
             n: 9,
+            seq: 10,
             replay: "[header]".to_string(),
         },
         ServerMessage::Record {
-            n: 10,
+            n: 9,
+            seq: 11,
             record: "{}".to_string(),
         },
         ServerMessage::Pong { nonce: 5 },

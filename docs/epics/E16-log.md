@@ -89,3 +89,58 @@ how and why the work went.
   the same name; commands round-trip; events projected; the observation's every part;
   the legal list validates in the engine; castable spells and their targets; key tables.
   `h3-protocol` at 100 % lines and regions; `verify --scope server` with no failing step.
+
+### M1 T2 — Session core (2026-10-10)
+
+- **What was built** (`crates/h3-protocol`, all *provisional* in names and layout):
+  `connection` (one per socket: the hello gate, `Welcome` or `Goodbye { Protocol }` for another
+  version or anything before the hello or a second hello; `Pong`; a frame that does not decode
+  closes with `Malformed` or `TooLarge`); `session` (`Session` over one battle, `SeatKind`
+  player-with-token or bot, the `Bot` hook, `GameConfig`, `Journal`, `ConnId`, `Outbound`);
+  `map::manifest` (the replay header's fields, the field, the key tables); `codec::encode_text`;
+  `RECORD_FORMAT_VERSION` 1 and `wire::RecordHeader`.
+- **The wire amended, `PROTOCOL_VERSION` 2** (*queued for the M1 review*): `FetchReplay` and
+  `FetchRecord` carry the client's `seq`, `Replay` and `Record` echo it; `RejectCode::NotOver`.
+  Without them the session could neither refuse a replay before the end nor answer a fetch from a
+  connection without a seat in a way the client can pair. `Replay` and `Record` carry the
+  viewer's last number and take none (so the record never contains itself).
+- **Agent decisions (provisional):** frames leave as text, encoded once (the bytes sent are the
+  record's lines); both sides are viewers, numbered and recorded also while no connection holds
+  the seat (a bot's seat too), so a re-taken seat's numbers go on; an `Events` message for every
+  accepted command, even an empty one, so the shape of a viewer's stream does not depend on what
+  it may not see; a connection without a seat gets `Rejected { n: 0, NotSeated }`; a command
+  before the start gets `NotStarted` (queries are answered any time); the game starts when every
+  seat is held at once and stays started, so two bot seats never start; a seat is taken without a
+  token only the first time (the token comes in `Joined`), afterwards only with it, and a re-take
+  replaces a holder (`Goodbye { Replaced }`); `Leave` frees the seat for its token; tokens are
+  compared in time independent of where they differ; the bot hook is a trait object the session
+  owns (`Box<dyn Bot + Send>`), asked with the state, its side and its legal list (it must use
+  only per-side functions), a rejected choice replaced by the first legal command the engine
+  accepts; the replay text is the host's (`publish_replay`) and goes out only once the battle is
+  over, even if published earlier; the start events of `BattleState::new` are not sent (the
+  snapshot shows their result).
+- **Bounds.** One command in flight per seat holds by construction (one message at a time on the
+  game's thread). A record grows with its seat's numbered messages, so with the host's rate limit
+  (T3); a `FetchRecord` rebuilds the text.
+- **For T3.** The host keeps a `Connection` per socket, passes `Received::Game` to the session
+  with the socket's `ConnId`, calls `disconnected` when a socket closes, sends each `Outbound`
+  and closes after one with `close`; once `result()` is set it builds the replay from
+  `journal()`, `ReplayHeader::current` and `state_hash()`, writes it as the CLI's TOML and calls
+  `publish_replay`.
+- **Tests** (21 new, 39 in the crate): two players join and play to the end (numbers without a
+  gap, `GameEnded` to both, every `Accepted` journaled, the journal verifies as an `h3_sim::Replay`
+  with its checkpoints); the acknowledgement order; a connection without a seat and a seat before
+  the start (state and journal unchanged); every refusal; re-take with the token, the record
+  spanning the gap, replacement, leave; a seat re-taken on its turn gets `YourTurn`; the sim's
+  random agent and a bot whose every choice is rejected play a seat to the end and the journal
+  verifies; two bots never start; the record (header, the numbered frames, not recorded itself);
+  the replay only after the end; queries; the manifest against the replay header; journals
+  without checkpoints; a refused setup. Properties: **observation hygiene over the wire**: the
+  hidden obstacles the side to act casts at the first turn after the tactics phase (in the `full`
+  scenario the defender's Quicksand, the synthetic `mire`) leave the other viewer's bytes (and a
+  fresh snapshot after a re-take) equal for any two seeds, while the caster's differ (checked by a mutation: projecting every
+  viewer's events as the defender's fails both tests); **a rejected command changes nothing**:
+  any command from either seat at any point is accepted and journaled, or rejected with the
+  battle's hash and the journal unchanged and nothing sent to the other seat, and the seat not to
+  act always gets `NotYourTurn`. The connection: hello, version, out-of-place messages, ping,
+  malformed and oversized frames. `h3-protocol` at 100 % lines and regions with no exclusion.

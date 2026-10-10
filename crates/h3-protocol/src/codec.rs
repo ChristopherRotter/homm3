@@ -2,6 +2,7 @@
 //! checked before it is parsed; decoding never panics (the crate's lint header and a property
 //! test on arbitrary bytes); `serde_json` bounds the nesting depth.
 
+use alloc::string::String;
 use alloc::vec::Vec;
 
 use serde::Serialize;
@@ -52,4 +53,9 @@ pub fn decode_server(frame: &[u8], max: usize) -> Result<ServerMessage, DecodeEr
 /// serializer, so encoding cannot fail.
 pub fn encode<T: Serialize>(message: &T) -> Vec<u8> {
     serde_json::to_vec(message).unwrap_or_default()
+}
+
+/// Encodes one message as the text of a frame (a WebSocket text frame, a record's line).
+pub fn encode_text<T: Serialize>(message: &T) -> String {
+    serde_json::to_string(message).unwrap_or_default()
 }

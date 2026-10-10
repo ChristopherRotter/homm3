@@ -1,7 +1,7 @@
 # E16 — Server: protocol, hosting, lobbies and ladders
 
 Status: **in progress** (refined 2026-10-08/09; M0 done 2026-10-10: ADR-0018 accepted, the
-crate skeletons; M1 next). Decisions: [ADR-0018](../adr/0018-server-and-protocol.md) (protocol
+crate skeletons; M1 T1 and T2 done 2026-10-10, T3 next). Decisions: [ADR-0018](../adr/0018-server-and-protocol.md) (protocol
 and hosting); ADR drafts `docs/lanes/server/adr-drafts/identity-and-ladders.md` and
 `discovery.md`. Working detail (messages, flows, journals, the ladder sketch):
 `docs/epics/E16-design.md`. Done tasks in full: `docs/epics/E16-log.md`. Lane: server (`docs/lanes/server/HANDOFF.md`).
@@ -240,13 +240,9 @@ M0 starts now, while E04b finishes (SRV-Q7).
 
 - **T1 Messages and codec** (done 2026-10-10; `E16-log.md`): `wire`, `codec` and `map` in
   `h3-protocol`, 100 % covered with no exclusion; ADR-0018 point 5 amended.
-- **T2 Session core.** Seats, tokens as opaque values the host supplies, join and rejoin, the
-  authoritative loop (command in, `apply`, `project` for every viewer, acknowledgements), the
-  bot hook (the core asks the host for a bot seat's command), the record, the command log with
-  periodic hashes (the journal's content, kept in memory in M1); scripted two-client tests;
-  the observation-hygiene property over the wire (a hidden Quicksand placed by the opponent
-  leaves the viewer's bytes unchanged); out-of-turn and wrong-seat commands leave state and
-  log unchanged.
+- **T2 Session core** (done 2026-10-10; `E16-log.md`): `connection` (the hello gate) and
+  `session` (seats, tokens, the loop, the bot hook, records, the journal) in `h3-protocol`, the
+  hygiene and rejection properties over the wire; `PROTOCOL_VERSION` 2.
 - **T3 The server binary.** `tokio` connection tasks and an OS thread per game with bounded
   channels, the WebSocket transport, a TOML
   configuration (bind address, packs directory, scenario, profile, bot seats, limits), OS seed
@@ -273,6 +269,12 @@ Choices queued under the autonomy contract (details in `E16-log.md`):
   not on the wire yet); hexes as indices, the field's size in the manifest; flag sets as named
   booleans; `DEFAULT_MAX_CLIENT_FRAME` 4096 bytes; `postcard` as a dev-dependency for the
   round trips.
+- T2: the wire amended (`PROTOCOL_VERSION` 2): `seq` in `FetchReplay`, `FetchRecord`, `Replay`
+  and `Record`, the reject code `NotOver`; the record's format (a `RecordHeader` line, then the
+  viewer's numbered frames; `Replay` and `Record` take no number); the start rule (every seat held
+  at once; two bot seats never start); a seat taken without a token only the first time; an
+  `Events` message for every accepted command, even an empty one; the bot hook as a trait object
+  given the state, a rejected choice replaced by the first legal command.
 
 ## Exit criteria (M1)
 

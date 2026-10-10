@@ -198,6 +198,8 @@ pub enum RejectCode {
     NotSeated,
     /// The game has not started (a seat is still empty).
     NotStarted,
+    /// The game is not over (the replay comes after it).
+    NotOver,
 }
 
 /// The flags of a strike.
@@ -861,9 +863,15 @@ pub enum ClientMessage {
         query: Query,
     },
     /// Ask for the replay (participants, after the game).
-    FetchReplay {},
+    FetchReplay {
+        /// The client's sequence number.
+        seq: u32,
+    },
     /// Ask for this viewer's record.
-    FetchRecord {},
+    FetchRecord {
+        /// The client's sequence number.
+        seq: u32,
+    },
     /// Leave the game and close the connection.
     Leave {},
     /// Keep the connection alive.
@@ -969,9 +977,9 @@ pub enum ServerMessage {
         /// The command applied.
         command: Command,
     },
-    /// The command was rejected; nothing changed.
+    /// The command (or the request) was rejected; nothing changed.
     Rejected {
-        /// The viewer's message number.
+        /// The viewer's message number (0 for a connection that holds no seat: it is no viewer).
         n: u32,
         /// The client's sequence number.
         seq: u32,
@@ -1003,15 +1011,21 @@ pub enum ServerMessage {
     },
     /// The replay: the CLI's replay file (participants, after the game; ADR-0018 point 8).
     Replay {
-        /// The viewer's message number.
+        /// The number of the viewer's last numbered message (this one takes none).
         n: u32,
+        /// The client's sequence number.
+        seq: u32,
         /// The replay file's text.
         replay: String,
     },
-    /// The viewer's record: its own message log, not re-runnable.
+    /// The viewer's record: its own message log, not re-runnable. Its first line is a
+    /// [`RecordHeader`], then one line per numbered message the viewer was sent, in order, up to
+    /// message `n`.
     Record {
-        /// The viewer's message number.
+        /// The number of the viewer's last numbered message (this one takes none).
         n: u32,
+        /// The client's sequence number.
+        seq: u32,
         /// The record's text.
         record: String,
     },
@@ -1020,4 +1034,19 @@ pub enum ServerMessage {
         /// The ping's nonce.
         nonce: u32,
     },
+}
+
+/// The first line of a record (the `Record` message; `docs/epics/E16-design.md` §6): what the
+/// game is made of and whose record it is. Every further line is one numbered server message.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct RecordHeader {
+    /// [`crate::RECORD_FORMAT_VERSION`].
+    pub format: u32,
+    /// The game.
+    pub game: u32,
+    /// The seat whose messages these are.
+    pub seat: Seat,
+    /// What the game is made of.
+    pub manifest: Manifest,
 }
