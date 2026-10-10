@@ -118,3 +118,45 @@ numeric  = "integer"
   url        = "https://github.com/vcmi/vcmi/blob/1.7.5/config/gameConfig.json"
   retrieved  = "2026-10-10"
   confidence = "high"
+
+[[rule]]
+id       = "ADV-OBJ-001"
+title    = "The tiles an object covers"
+context  = "adventure"
+status   = "implemented"
+summary  = "An object covers tiles relative to its anchor, its bottom right tile, through two masks of 8 columns by 6 rows: its blocked tiles, which no hero enters, and its visitable tiles, from which a hero visits it (a mask may mark a tile both ways: a town's gate). The anchor may lie past the map's right or bottom edge (the editor lets objects stick out; shipped maps anchor up to 5 columns right and 2 rows below it); tiles of the footprint off the map are ignored. In increment 1 every object is a blocker: its visitable tiles block entering too (E08 decision 1; movement reads both in T7). E08 T5a: the footprint in the static map and the import from the map's templates."
+numeric  = "integer"
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = ".h3m templates: 6 bytes of passability (bit clear = blocked) and 6 of visitability; bit j of byte i is the tile 7 - j columns left of and 5 - i rows above the anchor, Objects.txt's character 47 - (8i + j), anchor first (docs/formats/h3m.md; E08 T5a: every shipped map's towns have their gate on their bottom row, heroes stand one column left of their position)"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "vcmi"
+  ref        = "lib/mapObjects/ObjectTemplate.cpp ObjectTemplate::readMap (byte i bit j to usedTiles[5 - i][7 - j]: BLOCKED where the passability bit is 0, VISITABLE where the visitability bit is 1) and readTxt (character 8i + j to usedTiles[i][j]); usedTiles[y][x] is x columns left of and y rows above the anchor (CGObjectInstance::blockingAt); lib/mapping/CMap.cpp CMap::showObject (tiles outside the map are skipped)"
+  url        = "https://github.com/vcmi/vcmi/blob/1.7.5/lib/mapping/CMap.cpp"
+  retrieved  = "2026-10-10"
+  confidence = "high"
+
+[[rule]]
+id       = "ADV-MAP-001"
+title    = "Where a hero may stand"
+context  = "adventure"
+status   = "implemented"
+summary  = "A hero stands on a tile of the map whose terrain is walked on land (not water without a boat, never rock), which no object blocks unless an object is visited from it, and no other hero stands on. A visitable tile is allowed even where a mask also blocks it (a hero may start on a town's gate, which the town's masks mark both ways; VCMI asks for visitable first). One check for the setup and for movement (ADR-0015 point 4): a setup that breaks it is rejected; T7's steps add the visitable tiles of increment 1 and the step rules (ADV-MOV-007). E08 T5a."
+numeric  = "integer"
+
+  [[rule.source]]
+  kind       = "vcmi"
+  ref        = "lib/pathfinder/PathfinderUtil.h evaluateAccessibility: a visitable tile is a visit (or accessible) before blocking is asked, a blocked tile that is not visitable is BLOCKED; config/terrains.json: water is sailed (type WATER), rock never entered (type ROCK)"
+  url        = "https://github.com/vcmi/vcmi/blob/1.7.5/lib/pathfinder/PathfinderUtil.h"
+  retrieved  = "2026-10-10"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "wiki"
+  ref        = "Movement - Heroes 3 wiki: rock is impassable; water is crossed by boat"
+  url        = "https://heroes.thelazy.net/index.php/Movement"
+  retrieved  = "2026-10-09"
+  confidence = "medium"

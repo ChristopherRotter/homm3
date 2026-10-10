@@ -120,6 +120,10 @@ fn parses_every_field() {
         native_cost = 90
         land_points = [1000, 1100]
         scouting_radius = 3
+        max_map_size = 72
+        max_levels = 1
+        max_players = 4
+        army_slots = 5
 
         [[terrain]]
         terrain = "plain"
@@ -172,6 +176,10 @@ fn parses_every_field() {
             native_cost: cost(90),
             land_points: vec![1000, 1100],
             scouting_radius: 3,
+            max_map_size: cost(72),
+            max_levels: NonZeroU8::new(1).unwrap(),
+            max_players: NonZeroU8::new(4).unwrap(),
+            army_slots: NonZeroU8::new(5).unwrap(),
         })
     );
     assert_eq!(parse("").unwrap(), AdventurePack::new(manifest("p")));
@@ -186,6 +194,13 @@ fn rejects_malformed_files() {
     assert!(syntax(
         "[params]\nnative_cost = 100\nland_points = [1]\nscouting_radius = 300"
     ));
+    let bounds = "native_cost = 100\nland_points = [1]\nscouting_radius = 1\nmax_map_size = 1";
+    assert!(syntax(&format!(
+        "[params]\n{bounds}\nmax_levels = 1\nmax_players = 1\narmy_slots = 0"
+    )));
+    assert!(syntax(&format!(
+        "[params]\n{bounds}\nmax_levels = 1\nmax_players = 1"
+    )));
     assert!(syntax("[unknown]"));
     let cost_error = |text: &str| parse(text).unwrap_err();
     for text in [

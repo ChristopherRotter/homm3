@@ -17,6 +17,18 @@ land_points = [1300, 1360, 1430, 1500, 1560, 1630, 1700, 1760, 1830, 1900, 1960,
 # skill_scouting (0x63E9D8) holds 5, 6, 7, 8 for no, Basic, Advanced and Expert Scouting; VCMI
 # baseScoutingRange 5.
 scouting_radius = 5
+# Setup bounds (E08 T5a; ADR-0015 point 6: sizes come from the map, bounded by the ruleset). The
+# map editor's largest map is extra large, 144 x 144 (VCMI 1.7.5 lib/mapping/CMapHeader.h
+# MAP_SIZE_XLARGE; larger sizes are HotA's), on two levels, the surface and the underground (the
+# .h3m header's two-levels flag), for eight players, one per colour (VCMI PlayerColor::
+# PLAYER_LIMIT_I = 8; the .h3m header's eight player records). docs/formats/h3m.md, "Input
+# bounds", gives the same limits for the reader.
+max_map_size = 144
+max_levels = 2
+max_players = 8
+# A hero's army has seven slots: the .h3m hero body's army is 7 stacks (docs/formats/h3m.md);
+# VCMI 1.7.5 lib/constants/NumericConstants.h ARMY_SIZE = 7; the battle pack's army_slots.
+army_slots = 7
 
 # ADV-MOV-003, ADV-MOV-007: the straight cost of a step on each terrain (the .h3m terrain codes 0-9
 # in this order). Wiki (Movement) and VCMI 1.7.5 config/terrains.json agree. Water is sailed by

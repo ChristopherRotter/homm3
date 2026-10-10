@@ -1,6 +1,5 @@
-//! Tests of the adventure ruleset part's compiler (E08 T4). The core rulesets are built in code
-//! (domain crates take no pack adapter as a dev-dependency); the core still needs battle
-//! parameters until the content split (ADR-0015 point 3).
+//! Tests of the adventure ruleset part's compiler (E08 T4), on core rulesets built in code
+//! (`crate::testing`).
 
 extern crate std;
 
@@ -9,60 +8,16 @@ use std::string::ToString;
 use std::vec;
 use std::vec::Vec;
 
-use core::num::NonZeroU16;
+use core::num::{NonZeroU8, NonZeroU16};
 
-use h3_content::{
-    BattleParamsDef, ContentKey, ContentPack, PackManifest, ProfileDef, Ruleset, TerrainDef,
-};
+use h3_content::{ContentPack, ProfileDef, Ruleset, TerrainDef};
 use h3_kernel::hash::hash_of;
 
 use super::*;
-
-fn key(text: &str) -> ContentKey {
-    ContentKey::parse(text).unwrap()
-}
+use crate::testing::{battle, key, manifest};
 
 fn cost(value: u16) -> NonZeroU16 {
     NonZeroU16::new(value).unwrap()
-}
-
-fn manifest(id: &str, depends: &[&str]) -> PackManifest {
-    PackManifest {
-        id: id.into(),
-        version: "1".into(),
-        depends: depends.iter().map(|d| (*d).to_string()).collect(),
-    }
-}
-
-fn battle() -> BattleParamsDef {
-    BattleParamsDef {
-        field_width: 17,
-        field_height: 11,
-        side_columns: 1,
-        army_slots: 3,
-        damage_roll_samples: 10,
-        attack_bonus_per_point_percent: 5,
-        attack_bonus_cap_percent: 300,
-        defense_reduction_per_point_permille: 25,
-        defense_reduction_cap_permille: 700,
-        defend_bonus_percent: 20,
-        defend_bonus_min: 1,
-        ranged_full_damage_distance: 10,
-        ranged_penalty_percent: 50,
-        melee_penalty_percent: 50,
-        morale_dice: 24,
-        good_morale_chances: vec![1, 2, 3],
-        bad_morale_chances: vec![2, 4, 6],
-        luck_dice: 24,
-        good_luck_chances: vec![1, 2, 3],
-        war_machine_positions: vec![[1, 3], [1, 1], [1, 9]],
-        loose_formation: vec![vec![5], vec![3, 7], vec![2, 5, 8]],
-        tight_formation: vec![vec![5], vec![4, 6], vec![4, 5, 6]],
-        tactics_zone_columns: vec![3, 5, 7],
-        surrender: None,
-        hero_casts_per_round: 1,
-        side_stack_limit: 20,
-    }
 }
 
 fn terrain(k: &str) -> TerrainDef {
@@ -97,6 +52,10 @@ fn params() -> AdventureParamsDef {
         native_cost: cost(100),
         land_points: vec![1300, 1360, 1430, 1500],
         scouting_radius: 5,
+        max_map_size: NonZeroU16::new(144).unwrap(),
+        max_levels: NonZeroU8::new(2).unwrap(),
+        max_players: NonZeroU8::new(8).unwrap(),
+        army_slots: NonZeroU8::new(7).unwrap(),
     }
 }
 
@@ -196,6 +155,15 @@ fn compiles_terrains_roads_rivers_and_parameters() {
     let params = part.params();
     assert_eq!(params.native_cost(), cost(100));
     assert_eq!(params.scouting_radius(), 5);
+    assert_eq!(
+        (
+            params.max_map_size(),
+            params.max_levels(),
+            params.max_players(),
+            params.army_slots()
+        ),
+        (144, 2, 8, 7)
+    );
     assert_eq!(params.land_points_table(), [1300, 1360, 1430, 1500]);
     assert_eq!(params.land_points(0), 1300);
     assert_eq!(params.land_points(3), 1500);
@@ -223,6 +191,10 @@ fn the_hash_is_stable_and_sees_every_part() {
         edit(|p| pack(p, "t").params.as_mut().unwrap().native_cost = cost(99)),
         edit(|p| pack(p, "t").params.as_mut().unwrap().land_points.push(1560)),
         edit(|p| pack(p, "t").params.as_mut().unwrap().scouting_radius = 6),
+        edit(|p| pack(p, "t").params.as_mut().unwrap().max_map_size = cost(108)),
+        edit(|p| pack(p, "t").params.as_mut().unwrap().max_levels = NonZeroU8::MIN),
+        edit(|p| pack(p, "t").params.as_mut().unwrap().max_players = NonZeroU8::MIN),
+        edit(|p| pack(p, "t").params.as_mut().unwrap().army_slots = NonZeroU8::MIN),
     ];
     for (i, packs) in changes.iter().enumerate() {
         let other = compile(packs).unwrap();
