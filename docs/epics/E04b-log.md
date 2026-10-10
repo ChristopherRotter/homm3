@@ -1775,6 +1775,11 @@ records how and why the tasks went.
 - **A property gap from T7c3** (the coverage run's random cases, persisted): good morale for a
   stack its own action's retaliation blinded may end the round, and the new round clears its
   good-morale mark; the property now allows it. The engine was right.
+- **Review** (independent): no bug; done: BAT-MAG-063 says that the strike's untested spells
+  (Bind, Acid Breath) ask no hero, as the original; the harvested-pack test checks every Pendant,
+  the Orb of Inhibition, Recanter's Cloak, the Dragon Father and the Storm Elementals' double
+  damage; the Dragon Father test covers a level-0 ability (Poison); a wrong `covers` tag. Left:
+  the harvester's `sod` test looks at top-level string parameters only (enough for today's data).
 - **Measurements:** behaviour unchanged (every golden replay's command log is the same; the
   hashes moved, re-recorded); `random-rollouts-full` 576.7 M Ir (+1.49 %, the same 7 607 steps;
   the new tests in `check_spell` and `affects`, after a first +3.9 % that `MagicLimits` brought

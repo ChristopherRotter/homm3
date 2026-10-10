@@ -198,6 +198,8 @@ fn a_heros_level_immunity_spares_its_stacks_from_every_spell_up_to_it_but_dispel
     };
     assert!(struck("rotter").is_empty());
     assert_eq!(struck("ancient"), [spell(&r, "wither")]);
+    // Poison (level 0) is a spell up to the level too.
+    assert!(struck("wyvern").is_empty());
 }
 
 // ---------------------------------------------------------------- BAT-MAG-065

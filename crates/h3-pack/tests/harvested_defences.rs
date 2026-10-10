@@ -92,7 +92,7 @@ fn titans_lightning_bolt_spares_earth_and_doubles_against_air_elementals() {
         "ab:storm_elemental",
         "base:gnoll",
     ];
-    let mut s = battle(&r, caster(&r, &[bolt], vec![]), &defender);
+    let s = battle(&r, caster(&r, &[bolt], vec![]), &defender);
     // Stacks: 0 the Pikeman, then the defender's in order.
     assert_eq!(targets(&s, &r, bolt), [3, 4, 5]);
     let damage = |events: &[Event]| {
@@ -106,16 +106,16 @@ fn titans_lightning_bolt_spares_earth_and_doubles_against_air_elementals() {
         target: CastTarget::Stack(StackId(target)),
         second: CastTarget::None,
     };
-    let mut events = Vec::new();
-    apply(&mut s, &r, BattleSide::Attacker, cast(3), &mut events).unwrap();
-    assert_eq!(damage(&events), Some(1200));
-    let mut s = battle(&r, caster(&r, &[bolt], vec![]), &defender);
-    let mut events = Vec::new();
-    apply(&mut s, &r, BattleSide::Attacker, cast(5), &mut events).unwrap();
-    assert_eq!(damage(&events), Some(600));
+    // 10 power × 0 + 600, doubled against both air elementals, not against the Gnoll.
+    for (target, expected) in [(3, 1200), (4, 1200), (5, 600)] {
+        let mut s = battle(&r, caster(&r, &[bolt], vec![]), &defender);
+        let mut events = Vec::new();
+        apply(&mut s, &r, BattleSide::Attacker, cast(target), &mut events).unwrap();
+        assert_eq!(damage(&events), Some(expected), "{target}");
+    }
 }
 
-// covers: BAT-MAG-066, BAT-MAG-065
+// covers: BAT-MAG-066, BAT-MAG-005
 #[test]
 fn the_orb_lifts_the_air_elementals_blind_immunity_but_not_the_troglodytes() {
     let r = sod();
@@ -128,7 +128,7 @@ fn the_orb_lifts_the_air_elementals_blind_immunity_but_not_the_troglodytes() {
     assert_eq!(targets(&s, &r, blind), [2, 3]);
 }
 
-// covers: HER-BAT-016
+// covers: HER-BAT-016, HER-BAT-015
 #[test]
 fn the_artifacts_give_the_originals_defences() {
     let r = sod();
@@ -172,8 +172,31 @@ fn the_artifacts_give_the_originals_defences() {
             BattleEffect::NegateImmunities,
         ]
     );
-    let blade = derive_battle_hero(&worn(&["ab:armageddons_blade"]), &r)
-        .unwrap()
-        .effects;
-    assert!(blade.contains(&immune("base:armageddon")));
+    let only = |key: &str| derive_battle_hero(&worn(&[key]), &r).unwrap().effects;
+    assert!(only("ab:armageddons_blade").contains(&immune("base:armageddon")));
+    // Every Pendant its spell (Negativity above).
+    for (pendant, spell_key) in [
+        ("base:pendant_of_dispassion", "base:berserk"),
+        ("base:pendant_of_second_sight", "base:blind"),
+        ("base:pendant_of_holiness", "base:curse"),
+        ("base:pendant_of_life", "base:death_ripple"),
+        ("base:pendant_of_death", "base:destroy_undead"),
+        ("base:pendant_of_free_will", "base:hypnotize"),
+        ("base:pendant_of_total_recall", "base:forgetfulness"),
+    ] {
+        assert_eq!(only(pendant)[1..], [immune(spell_key)], "{pendant}");
+    }
+    // The casting limits (HER-BAT-015) and the Dragon Father's levels.
+    assert_eq!(
+        only("base:orb_of_inhibition")[1..],
+        [BattleEffect::NoCasting]
+    );
+    assert_eq!(
+        only("base:recanters_cloak")[1..],
+        [BattleEffect::SpellLevelLimit { max_level: 2 }]
+    );
+    assert!(
+        only("sod:power_of_the_dragon_father")
+            .contains(&BattleEffect::SpellLevelImmunity { max_level: 4 })
+    );
 }
