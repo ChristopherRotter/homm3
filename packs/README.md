@@ -140,7 +140,7 @@ errors:
 | `ammo_supply` | — | war machine only (requires flag `war_machine`; Ammo Cart): while it lives its side's shots use no ammunition; it never acts (BAT-WAR-004) |
 | `spell_level_immunity` | `max_level` (1..=5) | spells of this level and below cannot affect it (dragons, Magic Elemental; BAT-MAG-005) |
 | `school_immunity` | `school` | the school's spells cannot affect it (one entry per school; fire immunity; BAT-MAG-005) |
-| `spell_immunity` | `spell` | the spell cannot affect it (one entry per spell; elementals; BAT-MAG-005) |
+| `spell_immunity` | `spell`, `absolute` (default false; since v31) | the spell cannot affect it (one entry per spell; elementals; BAT-MAG-005); an `absolute` one also not when the immunities are negated (Troglodytes against Blind and Stone Gaze, Gargoyles against Poison; BAT-MAG-066) |
 | `spell_vulnerability` | `spell`, `percent` (1..=1000) | +`percent` % damage from the spell (one entry per spell; elementals; BAT-MAG-004) |
 | `spell_damage_reduction` | `percent` (1..=100) | damage from spells × (100 − `percent`) / 100, rounded down (Golems; BAT-MAG-004) |
 | `magic_resistance` | `percent` (1..=100) | the creature lets `100 − percent` % of hostile spells through (Dwarves, Crystal Dragon; BAT-MAG-008) |
@@ -163,6 +163,7 @@ errors:
 | `damage_penalty_by_flag` | `flag` (a creature flag), `percent` (1..=100) | since v28: as `damage_penalty`, against creatures with flag `flag`: the Psychic Elemental's half against mind-immune creatures (BAT-DMG-010). Several for different flags |
 | `rebirth` | `divisor` (≥ 1) | since v29: after the action that killed its stack (a strike, a cast, a mine's or Fire Wall's damage), if the stack has a cast left (its creature's `casts`) and is not a clone (nor a sacrificed one, BAT-QUIRK-17), one cast is used and the stack comes back for good on its hexes, without the effects it died with, with its count at the battle's start div `divisor` creatures, plus one for each of the count mod `divisor` others with a 1-in-`divisor` chance; it counts as having acted this round, and no creature comes back if none is drawn (the cast is used either way): the Phoenix's fifth (BAT-MAG-059) |
 | `fear` | `percent` (1..=100) | since v29: while its stack lives, a stack of the other side (taken from the frightened stack's controller; the frightening stacks count by their real side, BAT-QUIRK-18) that is picked to act outside the round's wait phase, after the bad-morale check and not at the battle's first activation without a tactics phase, is frozen with `percent` % chance (one roll, the largest chance among the side's living stacks with `fear`): it loses its turn and counts as having acted. Creatures without morale and those with `fear` are never frozen: the Azure Dragon's 10 % (BAT-MAG-060) |
+| `ignores_magic_block` | — | since v31: the creature's casts ignore a hero's `no_casting` (the Orb of Inhibition): the Faerie Dragon after the wiki and VCMI, which the code reading contradicts, until an experiment settles it (BAT-MAG-061, BAT-Q21) |
 
 `creature` references follow the reference rules above (own pack, or `pack:name` in the
 dependency closure) and may name creatures defined later in the same pack. At most one entry of
@@ -177,7 +178,7 @@ override, replacing the list) names the creature types it upgrades into: at most
 none twice; references follow the reference rules and may name later creatures of the pack.
 Hero effects that select "a creature" apply to it and its direct upgrades.
 
-## Hero content (format v3, E04a T3; battle magic format v4, E04b T2a; v5 T3a; v6 T3b1; v7 T3b1b; v8 T3b2; v9 T3c; v10 T4a; v11 T4b; v12 T4c; v13 T5a; v14 T5c1; v15 T5c2; v16 T5b; v17 T6a; v18 T6b; v19 T7a1; v20 T7a2; v21 T7a3; v22 T7b1; v23 T7b2a; v24 T7b2b; v25 T7b3; v26 T7b4; v27 T7c1; v28 T7c2a; v29 T7c2b; v30 T8a)
+## Hero content (format v3, E04a T3; battle magic format v4, E04b T2a; v5 T3a; v6 T3b1; v7 T3b1b; v8 T3b2; v9 T3c; v10 T4a; v11 T4b; v12 T4c; v13 T5a; v14 T5c1; v15 T5c2; v16 T5b; v17 T6a; v18 T6b; v19 T7a1; v20 T7a2; v21 T7a3; v22 T7b1; v23 T7b2a; v24 T7b2b; v25 T7b3; v26 T7b4; v27 T7c1; v28 T7c2a; v29 T7c2b; v30 T8a; v31 T8b)
 
 Spell schools, spells, secondary skills, hero classes and hero types (ADR-0013). References follow
 the reference rules above; every kind may refer to content of its dependency closure.
@@ -527,6 +528,12 @@ different creatures or statistics.
 | `spells` | exactly one of `school`, `level` (1..=5), `spell` | since v30: while worn, the hero has every spell of the school or of the level (never a creature ability nor a spell with `granted_by_name_only`) or the named spell (the Tomes, Spellbinder's Hat, Titan's Thunder, Armageddon's Blade, the Sea Captain's Hat; HER-SPL-002) |
 | `spell_mastery` | `spell`, `level` (1..=3) | since v30: the hero casts the spell at least at this mastery (Armageddon's Blade: Armageddon at Expert; HER-SPL-003) |
 | `scroll` | — | since v30: each copy of the artifact holds a spell of its own, which the hero has while the copy is worn (the Spell Scroll; HER-ART-003) |
+| `no_casting` | — | since v31: neither side casts in the hero's battles: no hero's spell, no creature's cast or raise, no periodic cast; the strike's creature magic stays (the Orb of Inhibition; HER-BAT-015, BAT-MAG-061) |
+| `spell_level_limit` | `level` (1..=4) | since v31: in the hero's battles no spell above `level` is cast by a hero or affects a stack, whoever casts it; the smallest counts (Recanter's Cloak: 2; HER-BAT-015, BAT-MAG-062) |
+| `spell_immunity` | `spell` | since v31: the stacks the hero controls are never affected by the spell, whoever casts it (the Pendants, the Sphere of Permanence, Armageddon's Blade; HER-BAT-016, BAT-MAG-063) |
+| `spell_level_immunity` | `level` (1..=5) | since v31: the stacks the hero controls are never affected by a spell up to `level`, Dispel excepted; the largest counts (Power of the Dragon Father: 4; BAT-MAG-064) |
+| `mind_immunity` | — | since v31: the stacks the hero controls are immune to mind spells unless negated (Badge of Courage; BAT-MAG-065) |
+| `negate_immunities` | — | since v31: the side's spells, and spells at the stacks the hero controls, ignore the creatures' immunities and all magic resistance (the Orb of Vulnerability; BAT-MAG-066) |
 
 The three `*_specialty` kinds are allowed in a hero's `specialty` only.
 

@@ -5,7 +5,7 @@
 use std::vec::Vec;
 
 use h3_content::{ObstacleKind, Ruleset};
-use h3_contracts::{BattleHero, BattleResult, BattleSetup, BattleSide};
+use h3_contracts::{BattleEffect, BattleHero, BattleResult, BattleSetup, BattleSide};
 
 use super::spells::{arena, mage, spell};
 use super::support::*;
@@ -316,6 +316,33 @@ fn a_stack_that_survives_a_mine_still_attacks() {
             .iter()
             .any(|e| matches!(e.kind, EventKind::Struck { .. }))
     );
+}
+
+// covers: BAT-MAG-066, BAT-MAG-033, BAT-MAG-026
+#[test]
+fn a_negation_by_the_mines_side_sets_them_off_under_a_wholly_resistant_walker() {
+    let r = ruleset();
+    // The walker's hero resists all magic: its share is 0 and the mine spares it, unless the
+    // mines' side negates the resistance (the share is whole, BAT-MAG-066).
+    let mut ward = hero(&r);
+    ward.effects = std::vec![BattleEffect::MagicResistance {
+        rate: Rate::bp(10_000)
+    }];
+    let mut orb = hero(&r);
+    orb.effects = std::vec![BattleEffect::NegateImmunities];
+    for (defender, boom) in [(None, false), (Some(orb), true)] {
+        let mut s = arena(
+            &r,
+            [Some(ward.clone()), defender],
+            &[("fixed", 10, 4, 5)],
+            &[("fixed", 5, 14, 9)],
+            1,
+        );
+        mines(&mut s, &r, BattleSide::Defender, &[(6, 5)]);
+        let events = act(&mut s, &r, walk(&r, (8, 5))).unwrap();
+        assert_eq!(!blasts(&events).is_empty(), boom);
+        assert_eq!(all(&s).is_empty(), boom);
+    }
 }
 
 // covers: BAT-MAG-033

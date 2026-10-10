@@ -149,6 +149,10 @@ pub enum Ability<C, S, L> {
     SpellImmunity {
         /// The spell.
         spell: S,
+        /// Whether no immunity negation lifts it (the original's per-spell cases before the Orb of
+        /// Vulnerability: Blind and Stone Gaze spare the Troglodytes, Poison the Gargoyles;
+        /// BAT-MAG-066; pack format v31).
+        absolute: bool,
     },
     /// Takes `percent` % more damage from one spell (one entry per spell; elementals;
     /// BAT-MAG-004).
@@ -363,6 +367,10 @@ pub enum Ability<C, S, L> {
         /// The chance, 1..=100.
         percent: u8,
     },
+    /// The creature's casts ignore a hero's `NoCasting` (the Orb of Inhibition; the anti-magic
+    /// garrison with E04c): the Faerie Dragon, after the wiki and VCMI against the code reading
+    /// until an experiment settles it (BAT-MAG-061, BAT-Q21; v31).
+    IgnoresMagicBlock,
 }
 
 /// Most creatures `corpse_raiser` abilities raise in a ruleset (the battle keeps a stack of each
@@ -377,7 +385,7 @@ pub type CompiledAbility = Ability<CreatureTypeId, SpellId, SchoolId>;
 
 impl<C, S, L> Ability<C, S, L> {
     /// Every ability name, in code order (the order of [`Ability::code`]).
-    pub const NAMES: [&'static str; 47] = [
+    pub const NAMES: [&'static str; 48] = [
         "hate",
         "jousting",
         "charge_immunity",
@@ -425,6 +433,7 @@ impl<C, S, L> Ability<C, S, L> {
         "damage_penalty_by_flag",
         "rebirth",
         "fear",
+        "ignores_magic_block",
     ];
 
     /// Stable numeric code of the ability kind (canonical hashing, duplicate checks).
@@ -477,6 +486,7 @@ impl<C, S, L> Ability<C, S, L> {
             Self::DamagePenaltyByFlag { .. } => 44,
             Self::Rebirth { .. } => 45,
             Self::Fear { .. } => 46,
+            Self::IgnoresMagicBlock => 47,
         }
     }
 
@@ -554,7 +564,10 @@ impl<C, S, L> Ability<C, S, L> {
                 max_level: *max_level,
             },
             Self::SchoolImmunity { school: l } => Ability::SchoolImmunity { school: school(l)? },
-            Self::SpellImmunity { spell: x } => Ability::SpellImmunity { spell: spell(x)? },
+            Self::SpellImmunity { spell: x, absolute } => Ability::SpellImmunity {
+                spell: spell(x)?,
+                absolute: *absolute,
+            },
             Self::SpellVulnerability { spell: x, percent } => Ability::SpellVulnerability {
                 spell: spell(x)?,
                 percent: *percent,
@@ -666,6 +679,7 @@ impl<C, S, L> Ability<C, S, L> {
             },
             Self::Rebirth { divisor } => Ability::Rebirth { divisor: *divisor },
             Self::Fear { percent } => Ability::Fear { percent: *percent },
+            Self::IgnoresMagicBlock => Ability::IgnoresMagicBlock,
         })
     }
 
@@ -825,7 +839,10 @@ impl CanonicalHash for CompiledAbility {
             }
             Self::SpellLevelImmunity { max_level } => h.write_u8(max_level),
             Self::SchoolImmunity { school } => school.hash_into(h),
-            Self::SpellImmunity { spell } => spell.hash_into(h),
+            Self::SpellImmunity { spell, absolute } => {
+                spell.hash_into(h);
+                h.write_bool(absolute);
+            }
             Self::SpellVulnerability { spell, percent } => {
                 spell.hash_into(h);
                 h.write_u16(percent);
@@ -920,7 +937,8 @@ impl CanonicalHash for CompiledAbility {
             | Self::ThreeHeadedAttack
             | Self::Teleports
             | Self::NoDistancePenalty
-            | Self::AmmoSupply => {}
+            | Self::AmmoSupply
+            | Self::IgnoresMagicBlock => {}
         }
     }
 }
@@ -945,7 +963,7 @@ pub(crate) fn list_error<C: PartialEq, S: PartialEq, L: PartialEq>(
             (Ability::SchoolImmunity { school: x }, Ability::SchoolImmunity { school: y }) => {
                 x == y
             }
-            (Ability::SpellImmunity { spell: x }, Ability::SpellImmunity { spell: y })
+            (Ability::SpellImmunity { spell: x, .. }, Ability::SpellImmunity { spell: y, .. })
             | (
                 Ability::SpellVulnerability { spell: x, .. },
                 Ability::SpellVulnerability { spell: y, .. },
@@ -1000,7 +1018,7 @@ mod tests {
 
     type A = Ability<u8, u8, u8>;
 
-    fn all() -> [A; 47] {
+    fn all() -> [A; 48] {
         [
             A::Hate {
                 target: 3,
@@ -1040,7 +1058,10 @@ mod tests {
             A::AmmoSupply,
             A::SpellLevelImmunity { max_level: 3 },
             A::SchoolImmunity { school: 2 },
-            A::SpellImmunity { spell: 4 },
+            A::SpellImmunity {
+                spell: 4,
+                absolute: true,
+            },
             A::SpellVulnerability {
                 spell: 5,
                 percent: 100,
@@ -1116,6 +1137,7 @@ mod tests {
             },
             A::Rebirth { divisor: 5 },
             A::Fear { percent: 10 },
+            A::IgnoresMagicBlock,
         ]
     }
 
@@ -1140,7 +1162,11 @@ mod tests {
         let ok = |t: &u8| Ok::<u8, &str>(*t);
         assert_eq!(hate.try_map(fail, ok, ok), Err("nope"));
         assert_eq!(
-            A::SpellImmunity { spell: 1 }.try_map(ok, fail, ok),
+            A::SpellImmunity {
+                spell: 1,
+                absolute: false
+            }
+            .try_map(ok, fail, ok),
             Err("nope")
         );
         assert_eq!(
@@ -1398,7 +1424,10 @@ mod tests {
         };
         assert_eq!(list_error(&[hate(1), hate(2)]), None);
         // Immunities and vulnerabilities to different spells and schools may stack.
-        let immune = |spell| A::SpellImmunity { spell };
+        let immune = |spell| A::SpellImmunity {
+            spell,
+            absolute: false,
+        };
         let weak = |spell| A::SpellVulnerability {
             spell,
             percent: 100,

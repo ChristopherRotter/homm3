@@ -672,10 +672,27 @@ pub fn harvest(inputs: &Inputs, gap: &GapFill) -> Result<Harvest, String> {
             .collect::<Result<Vec<_>, _>>()?;
         Ok(format!("abilities = [{}]", items.join(", ")))
     };
+    // An ability naming a `sod` spell (Titan's Lightning Bolt) cannot be written before `sod`:
+    // the earlier packs get the list without it, `sod` the full list as an override.
+    let refers_to_sod = |spec: &AbilitySpec| {
+        spec.params
+            .values()
+            .any(|v| v.as_str().is_some_and(|s| s.starts_with("sod:")))
+    };
     let mut base_abilities: BTreeMap<usize, String> = BTreeMap::new();
     let mut ab_abilities: BTreeMap<usize, String> = BTreeMap::new();
     let mut ab_ability_overrides: BTreeMap<usize, String> = BTreeMap::new();
-    for (&id, specs) in &ability_specs {
+    let mut sod_ability_overrides: BTreeMap<usize, String> = BTreeMap::new();
+    for (&id, all) in &ability_specs {
+        let earlier: Vec<AbilitySpec> = all
+            .iter()
+            .filter(|a| !refers_to_sod(a))
+            .map(AbilitySpec::clone)
+            .collect();
+        if earlier.len() < all.len() {
+            sod_ability_overrides.insert(id, ability_line(all, "sod")?);
+        }
+        let specs = &earlier;
         if ab_ids.contains(&id) {
             ab_abilities.insert(id, ability_line(specs, "ab")?);
         } else if specs.iter().any(&refers_to_ab) {
@@ -926,18 +943,21 @@ pub fn harvest(inputs: &Inputs, gap: &GapFill) -> Result<Harvest, String> {
 
     // sod
     let mut sod = header("sod", &["ab"], "The Shadow of Death: changes on top of AB.");
-    for c in creatures
-        .iter()
-        .filter(|c| changes.get(&c.id) == Some(&Since::Sod))
-    {
+    for c in creatures.iter().filter(|c| {
+        changes.get(&c.id) == Some(&Since::Sod) || sod_ability_overrides.contains_key(&c.id)
+    }) {
         let owner = if ab_ids.contains(&c.id) { "ab" } else { "base" };
-        let (old, new) = (&ab_rows[c.id], c.row);
         let _ = write!(
             sod,
             "\n[[creature_override]]\ntarget = \"{owner}:{}\"\n",
             c.key
         );
-        write_row_diff(&mut sod, old, new, &resources);
+        if changes.get(&c.id) == Some(&Since::Sod) {
+            write_row_diff(&mut sod, &ab_rows[c.id], c.row, &resources);
+        }
+        if let Some(line) = sod_ability_overrides.get(&c.id) {
+            let _ = writeln!(sod, "{line}");
+        }
     }
     sod.push_str(&hero_packs.sod);
     sod.push_str(&artifact_packs.sod);

@@ -390,6 +390,18 @@ pub const CREATURES: &[Creature] = &[
     ),
     // Timed spells (BAT-MAG-009 to 011): immune to mind spells.
     ("statue", 10, 10, 2, 2, 10, 5, &["mind_immune"]),
+    // Immune to Blind absolutely and to the bolt as a normal immunity (BAT-MAG-066: a Troglodyte's
+    // Blind, an elemental's bolt).
+    (
+        "troglo",
+        10,
+        10,
+        2,
+        2,
+        10,
+        5,
+        &["alive", "absolute_immunity=blind", "spell_immunity=bolt"],
+    ),
     // Slayer (BAT-MAG-014): the three king levels.
     ("lord", 10, 10, 2, 2, 50, 4, &["king_1"]),
     ("duke", 10, 10, 2, 2, 50, 4, &["king_2"]),
@@ -657,6 +669,24 @@ pub const CREATURES: &[Creature] = &[
             "casts=2",
             "random_spell_caster=2:5",
             "drawn_spell=nova:1",
+        ],
+    ),
+    // A random caster that ignores a hero's NoCasting (the Faerie Dragon after the wiki and VCMI,
+    // BAT-MAG-061, BAT-Q21).
+    (
+        "faerie",
+        10,
+        10,
+        2,
+        2,
+        100,
+        5,
+        &[
+            "alive",
+            "casts=2",
+            "random_spell_caster=2:5",
+            "drawn_spell=bolt:1",
+            "ignores_magic_block",
         ],
     ),
     (
@@ -993,6 +1023,7 @@ fn parse_traits(traits: &[&str]) -> CreatureInfoDef {
                 }
             }
             "ammo_supply" => AbilityDef::AmmoSupply,
+            "ignores_magic_block" => AbilityDef::IgnoresMagicBlock,
             "faction" => {
                 faction = Some(ContentKey::new("t", value).unwrap());
                 continue;
@@ -1069,6 +1100,12 @@ fn parse_traits(traits: &[&str]) -> CreatureInfoDef {
             },
             "spell_immunity" => AbilityDef::SpellImmunity {
                 spell: ContentKey::new("t", value).unwrap(),
+                absolute: false,
+            },
+            // An immunity no negation lifts (BAT-MAG-066).
+            "absolute_immunity" => AbilityDef::SpellImmunity {
+                spell: ContentKey::new("t", value).unwrap(),
+                absolute: true,
             },
             "spell_vulnerability" => {
                 let (spell, percent) = value.split_once(':').unwrap();

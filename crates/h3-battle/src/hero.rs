@@ -339,7 +339,8 @@ pub(crate) fn check(
             scope: SpellScope::Spell(id),
             ..
         }
-        | BattleEffect::SpellSpecialty { spell: id, .. } => ruleset.spell(id).is_none(),
+        | BattleEffect::SpellSpecialty { spell: id, .. }
+        | BattleEffect::SpellImmunity { spell: id } => ruleset.spell(id).is_none(),
         _ => false,
     }) {
         return Err(invalid(HeroError::UnknownSpell));
@@ -398,7 +399,13 @@ fn creature_of(effect: &BattleEffect) -> Option<CreatureTypeId> {
         | BattleEffect::SpellDamage { .. }
         | BattleEffect::SpellSpecialty { .. }
         | BattleEffect::MagicResistance { .. }
-        | BattleEffect::SpellDuration { .. } => return None,
+        | BattleEffect::SpellDuration { .. }
+        | BattleEffect::NoCasting
+        | BattleEffect::SpellLevelLimit { .. }
+        | BattleEffect::SpellImmunity { .. }
+        | BattleEffect::SpellLevelImmunity { .. }
+        | BattleEffect::MindImmunity
+        | BattleEffect::NegateImmunities => return None,
     };
     match selector {
         CreatureSelector::Creature(c) => Some(*c),

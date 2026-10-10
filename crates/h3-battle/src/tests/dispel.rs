@@ -4,7 +4,7 @@
 use std::vec::Vec;
 
 use h3_content::Ruleset;
-use h3_contracts::BattleHero;
+use h3_contracts::{BattleHero, BattleSide};
 
 use super::spells::{arena, cast, mage, spell, stack};
 use super::support::*;
@@ -67,13 +67,7 @@ fn ends_and_heals(r: &Ruleset, events: &[Event]) -> EndsAndHeals {
 /// The stack targets of `name` for the attacker now.
 fn targets(s: &BattleState, r: &Ruleset, name: &str) -> Vec<CastTarget> {
     let mut out = CastTargets::new();
-    cast_targets(
-        s,
-        r,
-        h3_contracts::BattleSide::Attacker,
-        spell(r, name),
-        &mut out,
-    );
+    cast_targets(s, r, BattleSide::Attacker, spell(r, name), &mut out);
     out.as_slice().to_vec()
 }
 
@@ -89,9 +83,7 @@ fn dispel_ends_every_effect_but_the_spared_and_permanent_ones() {
         1,
     );
     // Below Expert only a stack with an effect is a target, and below Advanced only an own one.
-    assert!(
-        !castable_spells(&s, &r, h3_contracts::BattleSide::Attacker).contains(spell(&r, "dispel"))
-    );
+    assert!(!castable_spells(&s, &r, BattleSide::Attacker).contains(spell(&r, "dispel")));
     for name in ["skin", "sloth", "ray", "bless"] {
         give(&mut s, &r, 0, name);
     }
@@ -141,7 +133,10 @@ fn dispel_reaches_the_enemy_from_advanced_and_every_stack_at_expert_without_immu
     // resistance) next to a unicorn (aura) is always affected.
     assert_eq!(targets(&s, &r, "dispel"), [stack(1), stack(2), stack(4)]);
     let dispel = r.spell(spell(&r, "dispel")).unwrap();
-    assert_eq!(affect_chance(&s, &r, dispel, StackId(2)), 100);
+    assert_eq!(
+        affect_chance(&s, &r, BattleSide::Attacker, dispel, StackId(2)),
+        100
+    );
     let events = act(&mut s, &r, cast(&r, "dispel", stack(2))).unwrap();
     assert_eq!(ends_and_heals(&r, &events).0, [(2, "bless".into())]);
     assert!(
@@ -171,15 +166,9 @@ fn dispel_reaches_the_enemy_from_advanced_and_every_stack_at_expert_without_immu
         &[("fixed", 1, 13, 5)],
         1,
     );
-    assert!(
-        castable_spells(&empty, &r, h3_contracts::BattleSide::Attacker)
-            .contains(spell(&r, "dispel"))
-    );
+    assert!(castable_spells(&empty, &r, BattleSide::Attacker).contains(spell(&r, "dispel")));
     set_masteries(&mut empty, 0, &r, [2, 0, 0, 0]);
-    assert!(
-        !castable_spells(&empty, &r, h3_contracts::BattleSide::Attacker)
-            .contains(spell(&r, "dispel"))
-    );
+    assert!(!castable_spells(&empty, &r, BattleSide::Attacker).contains(spell(&r, "dispel")));
 }
 
 // covers: BAT-MAG-016, BAT-MAG-017

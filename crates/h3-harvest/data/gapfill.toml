@@ -927,7 +927,8 @@ sources = ["wiki-ammo-cart"]
 
 # Battle magic (E04b T2d): immunities, spell damage and magic resistance, the executable's
 # values (docs/formats/installation.md §7.8). Titan's Lightning Bolt (SoD) joins the Earth/Magma
-# immunities and the Air/Storm double damage when the spell becomes castable (E04b T8, BACKLOG).
+# immunities and the Air/Storm double damage (E04b T8b2): an ability naming a `sod` spell moves the
+# creature's whole list into a `sod` override.
 [[creature_abilities]]
 creature = "Dwarf"
 abilities = [{ kind = "magic_resistance", percent = 20 }]
@@ -1011,8 +1012,9 @@ abilities = [
     { kind = "spell_vulnerability", spell = "base:lightning_bolt", percent = 100 },
     { kind = "spell_vulnerability", spell = "base:chain_lightning", percent = 100 },
     { kind = "spell_vulnerability", spell = "base:armageddon", percent = 100 },
+    { kind = "spell_vulnerability", spell = "sod:titans_lightning_bolt", percent = 100 },
 ]
-sources = ["vcmi-magic-creatures", "exe-forgetfulness-blind"]
+sources = ["vcmi-magic-creatures", "exe-forgetfulness-blind", "exe-spell-defences"]
 
 [[creature_abilities]]
 creature = "Storm Elemental"
@@ -1022,19 +1024,20 @@ abilities = [
     { kind = "spell_vulnerability", spell = "base:lightning_bolt", percent = 100 },
     { kind = "spell_vulnerability", spell = "base:chain_lightning", percent = 100 },
     { kind = "spell_vulnerability", spell = "base:armageddon", percent = 100 },
+    { kind = "spell_vulnerability", spell = "sod:titans_lightning_bolt", percent = 100 },
 ]
-sources = ["vcmi-magic-creatures", "exe-forgetfulness-blind"]
+sources = ["vcmi-magic-creatures", "exe-forgetfulness-blind", "exe-spell-defences"]
 
-# Blind spares Troglodytes absolutely (0x44A4D0, before the Orb of Vulnerability; the Orb's
-# absolute cases join with T8).
+# Blind spares Troglodytes absolutely (0x44A4D0, before the Orb of Vulnerability: `absolute`,
+# pack format v31, E04b T8b2).
 [[creature_abilities]]
 creature = "Troglodyte"
-abilities = [{ kind = "spell_immunity", spell = "base:blind" }]
+abilities = [{ kind = "spell_immunity", spell = "base:blind", absolute = true }]
 sources = ["exe-forgetfulness-blind"]
 
 [[creature_abilities]]
 creature = "Infernal Troglodyte"
-abilities = [{ kind = "spell_immunity", spell = "base:blind" }]
+abilities = [{ kind = "spell_immunity", spell = "base:blind", absolute = true }]
 sources = ["exe-forgetfulness-blind"]
 
 [[creature_abilities]]
@@ -1044,8 +1047,9 @@ abilities = [
     { kind = "spell_immunity", spell = "base:chain_lightning" },
     { kind = "spell_immunity", spell = "base:armageddon" },
     { kind = "spell_vulnerability", spell = "base:meteor_shower", percent = 100 },
+    { kind = "spell_immunity", spell = "sod:titans_lightning_bolt" },
 ]
-sources = ["vcmi-magic-creatures", "wiki-earth-magma-elementals"]
+sources = ["vcmi-magic-creatures", "wiki-earth-magma-elementals", "exe-spell-defences"]
 
 [[creature_abilities]]
 creature = "Magma Elemental"
@@ -1054,8 +1058,9 @@ abilities = [
     { kind = "spell_immunity", spell = "base:chain_lightning" },
     { kind = "spell_immunity", spell = "base:armageddon" },
     { kind = "spell_vulnerability", spell = "base:meteor_shower", percent = 100 },
+    { kind = "spell_immunity", spell = "sod:titans_lightning_bolt" },
 ]
-sources = ["vcmi-magic-creatures", "wiki-earth-magma-elementals"]
+sources = ["vcmi-magic-creatures", "wiki-earth-magma-elementals", "exe-spell-defences"]
 
 [[creature_abilities]]
 creature = "Water Elemental"
@@ -1173,7 +1178,7 @@ sources = ["exe-after-strike"]
 # The strike's statuses (E04b T7a2, pack format v20; installation.md 7.20): 0x440500 puts them
 # in the struck stack's pending spell; Zombies, Ghost Dragons and Wyvern Monarchs only on living
 # creatures (flag 0x10). Stone Gaze spares the Troglodytes and Poison the Gargoyles absolutely
-# (0x44A4D0, before the Orb of Vulnerability; T8 makes these absolute).
+# (0x44A4D0, before the Orb of Vulnerability: `absolute`, E04b T8b2).
 [[source]]
 id = "exe-strike-statuses"
 kind = "original-data"
@@ -1223,22 +1228,22 @@ sources = ["exe-strike-statuses"]
 
 [[creature_abilities]]
 creature = "Troglodyte"
-abilities = [{ kind = "spell_immunity", spell = "base:stone_gaze" }]
+abilities = [{ kind = "spell_immunity", spell = "base:stone_gaze", absolute = true }]
 sources = ["exe-strike-statuses"]
 
 [[creature_abilities]]
 creature = "Infernal Troglodyte"
-abilities = [{ kind = "spell_immunity", spell = "base:stone_gaze" }]
+abilities = [{ kind = "spell_immunity", spell = "base:stone_gaze", absolute = true }]
 sources = ["exe-strike-statuses"]
 
 [[creature_abilities]]
 creature = "Stone Gargoyle"
-abilities = [{ kind = "spell_immunity", spell = "base:poison" }]
+abilities = [{ kind = "spell_immunity", spell = "base:poison", absolute = true }]
 sources = ["exe-strike-statuses"]
 
 [[creature_abilities]]
 creature = "Obsidian Gargoyle"
-abilities = [{ kind = "spell_immunity", spell = "base:poison" }]
+abilities = [{ kind = "spell_immunity", spell = "base:poison", absolute = true }]
 sources = ["exe-strike-statuses"]
 
 # Bind and Acid Breath (E04b T7a3, pack format v21; installation.md 7.20): 0x440500 puts them in
@@ -1458,6 +1463,14 @@ creature = "Faerie Dragon"
 abilities = [{ kind = "innate_spell", spell = "base:magic_mirror", value = 20 }]
 sources = ["exe-creature-defences"]
 
+# The Faerie Dragon's casts ignore the Orb of Inhibition (and the anti-magic garrison, E04c) after
+# the wiki and VCMI; the code reading refuses them (0x4476C0, 0x421280). Until an experiment settles
+# it (the user, BAT-Q21; pack format v31).
+[[creature_abilities]]
+creature = "Faerie Dragon"
+abilities = [{ kind = "ignores_magic_block" }]
+sources = ["wiki-faerie-dragon", "vcmi-cast-block"]
+
 [[creature_abilities]]
 creature = "Efreet Sultan"
 abilities = [{ kind = "innate_spell", spell = "base:fire_shield", value = 20 }]
@@ -1672,6 +1685,20 @@ kind = "vcmi"
 ref = "lib/mapping/MapFeaturesH3M.cpp: 127 artifacts in RoE, +2 in AB (Armageddon's Blade, Vial of Dragon Blood), +15 in SoD (combinations and three unfinished ones); 18 slots before SoD, 19 with it"
 url = "https://github.com/vcmi/vcmi/blob/1.7.5/lib/mapping/MapFeaturesH3M.cpp#L55-L107"
 retrieved = "2026-10-03"
+
+[[source]]
+id = "wiki-faerie-dragon"
+kind = "wiki"
+ref = "Faerie Dragon - Heroes 3 wiki, spellcaster notes: 'Faerie Dragons are unaffected by the Orb of Inhibition and Anti-Magic Garrisons'; on Cursed Ground they cast every spell, for no damage"
+url = "https://heroes.thelazy.net/index.php/Faerie_Dragon"
+retrieved = "2026-10-10"
+
+[[source]]
+id = "vcmi-cast-block"
+kind = "vcmi"
+ref = "lib/battle/CBattleInfoCallback.cpp (1.7.5) battleCanCastSpell: BLOCK_ALL_MAGIC (the Orb of Inhibition, battle-wide) is tested for a hero's cast only; creature casts are never blocked by it"
+url = "https://github.com/vcmi/vcmi/blob/1.7.5/lib/battle/CBattleInfoCallback.cpp"
+retrieved = "2026-10-10"
 
 [[source]]
 id = "wiki-artifact-list"
@@ -2003,6 +2030,20 @@ url = "docs/formats/installation.md"
 retrieved = "2026-10-10"
 
 [[source]]
+id = "exe-spell-defences"
+kind = "original-data"
+ref = "Heroes3.exe code reading (docs/formats/installation.md 7.23, 7.8): the effect test 0x5A8090 and its creature part 0x44A4D0 ask the hero controlling the stack (0x442690): the Sphere of Permanence (92) refuses Dispel and Dispel Helpful Spells, Armageddon's Blade (128) Armageddon, Power of the Dragon Father (134) every spell of level 1 to 4 but Dispel, the Pendants their spells (Dispassion 100 Berserk, Second Sight 101 Blind, Holiness 102 Curse, Life 103 Death Ripple, Death 104 Destroy Undead, Free Will 105 Hypnotize, Negativity 106 Lightning Bolt and Chain Lightning, Total Recall 107 Forgetfulness), all before the Orb of Vulnerability (93) on the caster's or that hero, which makes the stack fully affected, before Badge of Courage (49), which refuses the mind spells; the creature table 0x44A988 adds Titan's Lightning Bolt to the Earth and Magma Elementals' immunities, the damage stage 0x44B4B0 to the Air and Storm Elementals' double damage"
+url = "docs/formats/installation.md"
+retrieved = "2026-10-10"
+
+[[source]]
+id = "exe-casting-limits"
+kind = "original-data"
+ref = "Heroes3.exe code reading (docs/formats/installation.md 7.23): magic is refused for both sides while either hero wears the Orb of Inhibition (126): 0x41F890 (the hero's cast in 0x59FE30, the creature casts and raises 0x4476C0, the Enchanters 0x447FE0) and the hero's book button 0x59E900; while either hero wears Recanter's Cloak (83) the book button refuses a spell above level 2 and the effect test 0x5A8090 returns 0 for every spell above level 2, creature abilities included"
+url = "docs/formats/installation.md"
+retrieved = "2026-10-10"
+
+[[source]]
 id = "exe-spell-specialist"
 kind = "original-data"
 ref = "Heroes3.exe code reading (docs/formats/installation.md 7.12): the specialty bonus 0x4E5FF0 switches on the spell (byte table 0x4E60E8, jumps 0x4E60CC): Bloodlust, Precision, Weakness, Stone Skin, Prayer and Haste by the stack's creature level (i32 table 0x63EAA8: 3, 3, 2, 2, 1, 1, 0), Slayer likewise (0x63EAC4: 4, 3, 2, 1, 0, 0, 0), Disrupting Ray 2, Fortune 3 - v; every other spell ceil((hero level div creature level) x t x 0.03)"
@@ -2136,9 +2177,15 @@ effects = [{ kind = "luck", amount = 1 }]
 sources = ["wiki-artifact-list", "vcmi-artifacts"]
 
 [[artifacts.effects]]
-artifacts = ["Badge of Courage", "Crest of Valor", "Glyph of Gallantry"]
+artifacts = ["Crest of Valor", "Glyph of Gallantry"]
 effects = [{ kind = "morale", amount = 1 }]
 sources = ["wiki-artifact-list", "vcmi-artifacts"]
+
+# Badge of Courage also makes its hero's stacks immune to mind spells (E04b T8b2; HER-BAT-016).
+[[artifacts.effects]]
+artifacts = ["Badge of Courage"]
+effects = [{ kind = "morale", amount = 1 }, { kind = "mind_immunity" }]
+sources = ["wiki-artifact-list", "vcmi-artifacts", "exe-spell-defences"]
 
 [[artifacts.effects]]
 artifacts = ["Pendant of Courage"]
@@ -2341,33 +2388,102 @@ effects = [
 ]
 sources = ["exe-available-spells"]
 
-# Armageddon at Expert while worn (0x4E5080; HER-SPL-003); its immunity to Armageddon is T8b's.
+# Armageddon at Expert while worn (0x4E5080; HER-SPL-003); its stacks immune to it (T8b2).
 [[artifacts.effects]]
 artifacts = ["Armageddon's Blade"]
 effects = [
     { kind = "spells", spell = "base:armageddon" },
     { kind = "spell_mastery", spell = "base:armageddon", level = 3 },
+    { kind = "spell_immunity", spell = "base:armageddon" },
 ]
-sources = ["exe-available-spells"]
+sources = ["exe-available-spells", "exe-spell-defences"]
 
 [[artifacts.effects]]
 artifacts = ["Titan's Thunder"]
 effects = [{ kind = "spells", spell = "titans_lightning_bolt" }]
 sources = ["exe-available-spells"]
 
+# The casting limits (E04b T8b1; pack format v31; HER-BAT-015, BAT-MAG-061, BAT-MAG-062).
+[[artifacts.effects]]
+artifacts = ["Orb of Inhibition"]
+effects = [{ kind = "no_casting" }]
+sources = ["exe-casting-limits"]
+
+[[artifacts.effects]]
+artifacts = ["Recanter's Cloak"]
+effects = [{ kind = "spell_level_limit", level = 2 }]
+sources = ["exe-casting-limits"]
+
+# The spell defences (E04b T8b2; pack format v31; HER-BAT-016, BAT-MAG-063 to BAT-MAG-066).
+[[artifacts.effects]]
+artifacts = ["Pendant of Dispassion"]
+effects = [{ kind = "spell_immunity", spell = "berserk" }]
+sources = ["exe-spell-defences"]
+
+[[artifacts.effects]]
+artifacts = ["Pendant of Second Sight"]
+effects = [{ kind = "spell_immunity", spell = "blind" }]
+sources = ["exe-spell-defences"]
+
+[[artifacts.effects]]
+artifacts = ["Pendant of Holiness"]
+effects = [{ kind = "spell_immunity", spell = "curse" }]
+sources = ["exe-spell-defences"]
+
+[[artifacts.effects]]
+artifacts = ["Pendant of Life"]
+effects = [{ kind = "spell_immunity", spell = "death_ripple" }]
+sources = ["exe-spell-defences"]
+
+[[artifacts.effects]]
+artifacts = ["Pendant of Death"]
+effects = [{ kind = "spell_immunity", spell = "destroy_undead" }]
+sources = ["exe-spell-defences"]
+
+[[artifacts.effects]]
+artifacts = ["Pendant of Free Will"]
+effects = [{ kind = "spell_immunity", spell = "hypnotize" }]
+sources = ["exe-spell-defences"]
+
+[[artifacts.effects]]
+artifacts = ["Pendant of Negativity"]
+effects = [
+    { kind = "spell_immunity", spell = "lightning_bolt" },
+    { kind = "spell_immunity", spell = "chain_lightning" },
+]
+sources = ["exe-spell-defences"]
+
+[[artifacts.effects]]
+artifacts = ["Pendant of Total Recall"]
+effects = [{ kind = "spell_immunity", spell = "forgetfulness" }]
+sources = ["exe-spell-defences"]
+
+[[artifacts.effects]]
+artifacts = ["Sphere of Permanence"]
+effects = [
+    { kind = "spell_immunity", spell = "dispel" },
+    { kind = "spell_immunity", spell = "dispel_helpful_spells" },
+]
+sources = ["exe-spell-defences"]
+
+[[artifacts.effects]]
+artifacts = ["Orb of Vulnerability"]
+effects = [{ kind = "negate_immunities" }]
+sources = ["exe-spell-defences"]
+
+[[artifacts.effects]]
+artifacts = ["Power of the Dragon Father"]
+effects = [{ kind = "spell_level_immunity", level = 4 }]
+sources = ["exe-spell-defences"]
+
 # Effects no epic has modelled yet; the pack marks these artifacts, and every artifact without a
 # modelled effect must be listed here.
 [[artifacts.pending]]
 epic = "E04b"
-what = "spell immunity and limits, opening spells, Eagle Eye"
+what = "opening spells, Eagle Eye"
 artifacts = [
-    "Badge of Courage",
     "Bird of Perception", "Stoic Watchman", "Emblem of Cognizance",
-    "Recanter's Cloak", "Sphere of Permanence", "Orb of Vulnerability",
-    "Pendant of Dispassion", "Pendant of Second Sight", "Pendant of Holiness", "Pendant of Life",
-    "Pendant of Death", "Pendant of Free Will", "Pendant of Negativity", "Pendant of Total Recall",
-    "Orb of Inhibition", "Armageddon's Blade",
-    "Angelic Alliance", "Armor of the Damned", "Power of the Dragon Father",
+    "Angelic Alliance", "Armor of the Damned",
 ]
 
 [[artifacts.pending]]

@@ -301,7 +301,8 @@ pub(crate) fn periodic<S: Sink>(
             _ => None,
         })
         .unwrap_or((u8::MAX, 0, 0));
-    if state.casts.periodic[side.index()] < rounds {
+    // rule: BAT-MAG-061
+    if state.casts.periodic[side.index()] < rounds || magic::casting_forbidden(state) {
         return;
     }
     let first_only = ruleset.quirks().is_enabled(PERIODIC_FIRST_STACK);
@@ -376,7 +377,8 @@ fn counts(
 }
 
 /// The active stack and its spell, if `actor` commands it outside the tactics phase and it may
-/// cast now (BAT-MAG-048): its creature is a caster and it has a cast left.
+/// cast now (BAT-MAG-048): its creature is a caster, it has a cast left and no hero in the battle
+/// forbids casting, unless its creature ignores that (BAT-MAG-061; the Faerie Dragon, BAT-Q21).
 fn ready(
     state: &BattleState,
     ruleset: &Ruleset,
@@ -385,7 +387,14 @@ fn ready(
     // Most stacks have no casts: test that first (the random agent asks at every step).
     let id = state.active.filter(|id| state.casts.left[id.index()] > 0)?;
     let stack = state.at(id);
-    if state.tactics.is_some() || stack.controller() != actor {
+    // rule: BAT-MAG-061
+    let blocked = || {
+        magic::casting_forbidden(state)
+            && !ruleset
+                .abilities(stack.creature)
+                .contains(&Ability::IgnoresMagicBlock)
+    };
+    if state.tactics.is_some() || stack.controller() != actor || blocked() {
         return None;
     }
     stack_cast(state, ruleset, id).map(|spell| (id, spell))

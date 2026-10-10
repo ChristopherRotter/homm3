@@ -12,7 +12,7 @@ use crate::event::{Event, EventKind, Sink};
 use crate::geometry::{Field, HexSet};
 use crate::hero::HeroRecord;
 use crate::magic::{
-    SpellBonus, SpellRef, affects, base_value, kept_off, mastery, specialist_bonus,
+    Guard, SpellBonus, SpellRef, affects, barred, base_value, kept_off, mastery, specialist_bonus,
 };
 use crate::state::{BattleState, NO_CORPSE, StackFlags, StackId, StackTraits};
 
@@ -110,7 +110,8 @@ pub(crate) fn test_for<'r>(
 
 /// Whether stack `s` passes `side`'s raise `test` wherever it lies (BAT-MAG-035): a stack of the
 /// side (its own, whoever controls it) with fewer creatures than at the battle's start, which the
-/// test's spell can affect (its conditions and immunities; Anti-Magic on a living stack: a dead
+/// test's spell can affect (the battle's spell level limit, BAT-MAG-062: an Archangel's
+/// Resurrection test too; its conditions and immunities; Anti-Magic on a living stack: a dead
 /// one's effects ended at its death), and whose creature's health the raised hit points reach.
 fn eligible(
     state: &BattleState,
@@ -122,7 +123,13 @@ fn eligible(
     let stack = state.at(s);
     stack.side == side
         && stack.count < stack.base_count
-        && affects(ruleset, test.spell, stack.creature)
+        && !barred(state, test.spell.1)
+        && affects(
+            ruleset,
+            test.spell,
+            stack.creature,
+            Guard::of(state, side, s),
+        )
         && !(stack.is_alive() && kept_off(stack, test.spell.1))
         && test.hit_points.is_none_or(|(value, own)| {
             let bonus = specialist_bonus(ruleset, test.spell.1, own, stack.creature, value);
@@ -210,8 +217,8 @@ fn covers(field: Field, state: &BattleState, t: StackId, set: HexSet) -> bool {
 
 /// Whether stack `v` may be the victim of `side`'s cast of the sacrifice `spell` (BAT-MAG-036;
 /// the original's 0x5A8090, case 0x5A8523): a living stack of the side that the side controls
-/// (not hypnotized), not created in the battle (BAT-MAG-037), which the spell can affect (its
-/// conditions, immunities and Anti-Magic).
+/// (not hypnotized), not created in the battle (BAT-MAG-037), which the spell can affect (the
+/// spell level limit, its conditions, immunities and Anti-Magic).
 pub(crate) fn victim(
     state: &BattleState,
     ruleset: &Ruleset,
@@ -224,7 +231,8 @@ pub(crate) fn victim(
             && stack.side == side
             && stack.controller() == side
             && !stack.is_created()
-            && affects(ruleset, spell, stack.creature)
+            && !barred(state, spell.1)
+            && affects(ruleset, spell, stack.creature, Guard::of(state, side, v))
             && !kept_off(stack, spell.1)
     })
 }

@@ -800,7 +800,7 @@ fight_value = 150
 ai_value = 165
 adventure_count = [16, 30]
 flags = ["flying"]
-abilities = [{ kind = "spell_immunity", spell = "base:poison" }]
+abilities = [{ kind = "spell_immunity", absolute = true, spell = "base:poison" }]
 upgrades = ["obsidian_gargoyle"]
 
 [[creature]]
@@ -823,7 +823,7 @@ fight_value = 155
 ai_value = 201
 adventure_count = [16, 25]
 flags = ["flying"]
-abilities = [{ kind = "spell_immunity", spell = "base:poison" }]
+abilities = [{ kind = "spell_immunity", absolute = true, spell = "base:poison" }]
 
 [[creature]]
 id = "stone_golem"  # original id 32
@@ -1687,7 +1687,7 @@ fight_value = 73
 ai_value = 59
 adventure_count = [20, 50]
 flags = ["alive"]
-abilities = [{ kind = "spell_immunity", spell = "base:blind" }, { kind = "spell_immunity", spell = "base:stone_gaze" }]
+abilities = [{ kind = "spell_immunity", absolute = true, spell = "base:blind" }, { kind = "spell_immunity", absolute = true, spell = "base:stone_gaze" }]
 upgrades = ["infernal_troglodyte"]
 
 [[creature]]
@@ -1710,7 +1710,7 @@ fight_value = 84
 ai_value = 84
 adventure_count = [20, 30]
 flags = ["alive"]
-abilities = [{ kind = "spell_immunity", spell = "base:blind" }, { kind = "spell_immunity", spell = "base:stone_gaze" }]
+abilities = [{ kind = "spell_immunity", absolute = true, spell = "base:blind" }, { kind = "spell_immunity", absolute = true, spell = "base:stone_gaze" }]
 
 [[creature]]
 id = "harpy"  # original id 72
@@ -5902,12 +5902,12 @@ slot = "misc"
 effects = [{ kind = "luck", amount = 1 }]
 
 [[artifact]]
-id = "badge_of_courage"  # original id 49; pending: E04b
+id = "badge_of_courage"  # original id 49
 name = "Badge of Courage"
 class = "treasure"
 cost = { "gold" = 1000 }
 slot = "misc"
-effects = [{ kind = "morale", amount = 1 }]
+effects = [{ kind = "morale", amount = 1 }, { kind = "mind_immunity" }]
 
 [[artifact]]
 id = "crest_of_valor"  # original id 50
@@ -6163,11 +6163,12 @@ slot = "misc"
 effects = [{ kind = "spell_damage", bp = 5000, school = "water" }]
 
 [[artifact]]
-id = "recanters_cloak"  # original id 83; pending: E04b
+id = "recanters_cloak"  # original id 83
 name = "Recanter's Cloak"
 class = "major"
 cost = { "gold" = 8000 }
 slot = "shoulders"
+effects = [{ kind = "spell_level_limit", level = 2 }]
 
 [[artifact]]
 id = "spirit_of_oppression"  # original id 84
@@ -6233,18 +6234,20 @@ slot = "misc"
 effects = [{ kind = "no_range_penalty", creatures = { flag = "shooter" } }]
 
 [[artifact]]
-id = "sphere_of_permanence"  # original id 92; pending: E04b
+id = "sphere_of_permanence"  # original id 92
 name = "Sphere of Permanence"
 class = "major"
 cost = { "gold" = 7500 }
 slot = "misc"
+effects = [{ kind = "spell_immunity", spell = "dispel" }, { kind = "spell_immunity", spell = "dispel_helpful_spells" }]
 
 [[artifact]]
-id = "orb_of_vulnerability"  # original id 93; pending: E04b
+id = "orb_of_vulnerability"  # original id 93
 name = "Orb of Vulnerability"
 class = "relic"
 cost = { "gold" = 25000 }
 slot = "misc"
+effects = [{ kind = "negate_immunities" }]
 
 [[artifact]]
 id = "ring_of_vitality"  # original id 94
@@ -6294,60 +6297,68 @@ slot = "shoulders"
 effects = [{ kind = "creature_stat", stat = "speed", amount = 2 }]
 
 [[artifact]]
-id = "pendant_of_dispassion"  # original id 100; pending: E04b
+id = "pendant_of_dispassion"  # original id 100
 name = "Pendant of Dispassion"
 class = "treasure"
 cost = { "gold" = 1000 }
 slot = "neck"
+effects = [{ kind = "spell_immunity", spell = "berserk" }]
 
 [[artifact]]
-id = "pendant_of_second_sight"  # original id 101; pending: E04b
+id = "pendant_of_second_sight"  # original id 101
 name = "Pendant of Second Sight"
 class = "major"
 cost = { "gold" = 5000 }
 slot = "neck"
+effects = [{ kind = "spell_immunity", spell = "blind" }]
 
 [[artifact]]
-id = "pendant_of_holiness"  # original id 102; pending: E04b
+id = "pendant_of_holiness"  # original id 102
 name = "Pendant of Holiness"
 class = "treasure"
 cost = { "gold" = 1000 }
 slot = "neck"
+effects = [{ kind = "spell_immunity", spell = "curse" }]
 
 [[artifact]]
-id = "pendant_of_life"  # original id 103; pending: E04b
+id = "pendant_of_life"  # original id 103
 name = "Pendant of Life"
 class = "treasure"
 cost = { "gold" = 2500 }
 slot = "neck"
+effects = [{ kind = "spell_immunity", spell = "death_ripple" }]
 
 [[artifact]]
-id = "pendant_of_death"  # original id 104; pending: E04b
+id = "pendant_of_death"  # original id 104
 name = "Pendant of Death"
 class = "treasure"
 cost = { "gold" = 2500 }
 slot = "neck"
+effects = [{ kind = "spell_immunity", spell = "destroy_undead" }]
 
 [[artifact]]
-id = "pendant_of_free_will"  # original id 105; pending: E04b
+id = "pendant_of_free_will"  # original id 105
 name = "Pendant of Free Will"
 class = "treasure"
 cost = { "gold" = 1000 }
 slot = "neck"
+effects = [{ kind = "spell_immunity", spell = "hypnotize" }]
 
 [[artifact]]
-id = "pendant_of_negativity"  # original id 106; pending: E04b
+id = "pendant_of_negativity"  # original id 106
 name = "Pendant of Negativity"
 class = "major"
 cost = { "gold" = 5000 }
 slot = "neck"
+effects = [{ kind = "spell_immunity", spell = "lightning_bolt" }, { kind = "spell_immunity", spell = "chain_lightning" }]
 
 [[artifact]]
-id = "pendant_of_total_recall"  # original id 107; pending: E04b
+id = "pendant_of_total_recall"  # original id 107
 name = "Pendant of Total Recall"
 class = "treasure"
 cost = { "gold" = 3000 }
 slot = "neck"
+effects = [{ kind = "spell_immunity", spell = "forgetfulness" }]
 
 [[artifact]]
 id = "pendant_of_courage"  # original id 108
@@ -6480,11 +6491,12 @@ slot = "misc"
 effects = [{ kind = "no_retreat" }]
 
 [[artifact]]
-id = "orb_of_inhibition"  # original id 126; pending: E04b
+id = "orb_of_inhibition"  # original id 126
 name = "Orb of Inhibition"
 class = "relic"
 cost = { "gold" = 20000 }
 slot = "misc"
+effects = [{ kind = "no_casting" }]
 
 [[obstacle]]
 id = "obstacle_0"
