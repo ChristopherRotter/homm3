@@ -772,3 +772,37 @@ how and why the work went.
   do not count; the player log's reading (a torn line, five bad logs, a failed write); Ed25519's
   strictness; the configuration's new fields. The workload as at T1 (296 420 974 Ir, +0.14 %
   against its baseline; no login in it).
+
+### M3 T2b — Re-keys, renames, the listing preference, the operator's rebind (2026-10-11)
+
+- **The start.** #101 (M3 T2a) had merged; the branch restarted from `master` (the same tree
+  #101's CI verified).
+- **`players`** (*provisional*): the lines are typed events (`Event`: `Registered`, `Rekeyed`,
+  `Rebound`, `Renamed`, `Listed`), a key through `Hex` (hex in the log, bytes in memory). One
+  check against the accounts as they stand serves reading and writing: names by their rules, a
+  login name registered once, a display name free or the account's own (ignoring case), the other
+  events about a known account. `record` checks, appends and syncs, then updates the tables.
+- **`accounts`**: `Rekey`: the new key's signature first, then under the log's lock the account's
+  key's (both over the gate's `rekey_message`), else `BadLogin`; a re-key to the key it has
+  answers without a line; connections logged in already stay so; a failed re-key does not count
+  as a failed login (the connection holds the account already). `Rename`: `NameTaken` when another
+  account holds the name; one's own in another case is free. `SetListed`. Each answered `Account
+  { seq, display, listed }`; SRV-STUB-2 removed. `Authenticator::accepts`: whether a key can sign
+  at all (a point that is not weak).
+- **The lock**: `<data>/lock`, `File::try_lock` (Rust 1.89+), taken first by `start` and held by
+  `Running` until `shutdown` returns (not by the connections' tasks, which may linger), and by the
+  operator's command; a second server on the same data directory refuses to start ("in use").
+- **The rebind**: `h3_server::rebind(config, login, key)`: the key checked first (64 hex digits,
+  an Ed25519 key that is not weak), then the lock, then the account; a `Rebound` line; the
+  account's display name. `h3-server rebind <config.toml> <login> <public-key>` (*provisional*),
+  exit 1 with the reason, 2 with the usage.
+- **The client**: `Client::rekey` (signs the welcome's id and challenge), `rename`, `set_listed`.
+- **Tests** (h3-server 56, +4): a re-key before the login, by a key not the account's, signed for
+  another challenge refused; after it only the new key logs in, also after a restart, and a
+  re-key to the same key writes no line; renames unique ignoring case, one's own in another case,
+  a freed name taken by another, a bad name refused by the gate, the preference, both after a
+  restart, the log's six lines; the rebind refused while the server runs (and a second server
+  refused), for an unknown account, a short key and the identity point, then the new key alone
+  logs in after the start; the player log's events read back, a taken name and an unknown
+  account refused unwritten, two more bad logs. The command smoke-tested by hand (usage, a bad
+  key, an unknown account).
