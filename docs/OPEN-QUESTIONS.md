@@ -54,7 +54,31 @@ Survey §3.1, GAM-SET-001. **The code reading** (0x4C9730): the second starting 
 
 ### Server lane (`SRV-Q<n>`)
 
-(no open questions)
+#### SRV-Q13 — Ranked games: one at a time, a pause only by agreement, and the paused game's deadline (for M4; asked 2026-10-11)
+
+**Context.** The user, after M2 T5a: a player with a paused ranked game must not start another ranked game, and a ranked game must not be paused without the other player's consent; for the paused game's deadline, perhaps 36 hours, or a timeout the players negotiate within bounds: weigh the options. No code changes yet: ladders are M4, and until M3's accounts a player is known only by a seat token per game. M2's unranked games stay as built: the host pauses alone; a running game whose seats are all empty for `empty_game_ms` (30 min) pauses; a paused game nobody resumes within `paused_game_ms` (72 h) is void; `games_per_address` counts paused games, so a creator at the limit creates no more. The ladder ADR draft (`adr-drafts/identity-and-ladders.md`, point 8) already allowed a ranked pause only by agreement and within the ladder's limit.
+
+**The user's two rules, recorded; the agent's reading to confirm:** (1) a player whose ranked game on this server is not over (running or paused) can neither queue for nor accept another ranked game on any of the server's ladders. Another server cannot know (servers do not synchronize), unranked games are not affected, and the server's bot accounts are exempt (one bot plays many games). (2) A ranked game has no host: a player's `Pause` is a proposal, and the game pauses only when the other player accepts. If the other player declines, or does not answer within a short time, the game goes on. Rule (1) has a consequence: a paused game keeps **both** players off the ladder until it ends, so the honest player also pays for the deadline.
+
+**The question: what ends a paused ranked game, and when.**
+
+*What happens at the deadline* matters more than how long it is:
+- (i) **Void, no result** (the game is dropped). This is a cheap escape. A losing player asks for a pause with a plausible reason, the opponent agrees in good faith, and the loser never comes back. The loser loses no rating, and under (1) the opponent sits out the ladder for the whole deadline.
+- (ii) **The absent player forfeits.** At the deadline the game is due and the ordinary disconnect grace runs; a player who is not back when it ends loses. If both are absent, the game is void with no rating change, and each gets a no-show (a leaderboard column, perhaps a queue cooldown).
+- (iii) **Adjudication by the position.** It needs an evaluation of a HoMM3 battle or game that players would dispute: rejected.
+- (iv) **A draw.** It still pays the losing no-show half a point.
+
+Under any of these, the server's own downtime never counts against a player: a game that fell due while the server was down is due at its restart, plus the grace.
+
+*How long the deadline is:*
+- (a) **Fixed per ladder** (the user's 36 h, or whatever the operator sets). One setting, nothing to negotiate, and the client shows a countdown. But the due time is wherever the pause began plus 36 h, perhaps at night for one of the two players. And under (ii), a no-show makes the honest player wait the full 36 h for the win, locked out of the ladder by (1).
+- (b) **Negotiated within the ladder's bounds.** The proposal names its length and the other player accepts or declines; a counter-offer is a decline and a new proposal. The ladder sets the longest pause and how many each player may ask for per game; one proposal is open at a time, with a cooldown after a decline. Pros: both players agree to the lock-out and choose a due time that suits both time zones. A short break has a short deadline, so a no-show costs the other player minutes, not a day and a half. The same rule covers a five-minute break in a battle and an overnight adjournment of a whole game (M5). Cons: a field in `Pause`, an accept/decline exchange, and a duration picker plus countdown in the client. A player may feel pressed to accept a long pause, but declining costs nothing: the game simply goes on.
+- (c) **A pause budget per player per game** (total time and number of pauses, as in a chess clock). It bounds the total delay across several pauses, but on its own it still needs (ii)'s due time and a rule for whose budget a mutual pause uses. It fits best as the "within reason" bound of (b), not as an alternative.
+- (d) **No long pause on battle ladders.** M4's ranked battles last minutes; a short break and the disconnect grace are enough, and the long adjournment comes with the whole-game ladders (M5). Simplest, and almost no lock-out; a player called away for longer loses.
+
+Also: T5a's `empty_game_ms` does not apply to a ranked game. When both seats are empty, the disconnect grace runs for both players, and if both stay absent the outcome is (ii)'s void.
+
+**Agent's recommendation:** (ii) at the deadline, with (b) for its length. The proposer names the length within bounds the ladder sets: the longest pause and the pauses per player and game, where 0 means no pause. A battle ladder then allows minutes (the effect of (d)), and a whole-game ladder up to the user's 36 h. The agreed due time is journaled with the pause, so a restart keeps it. To be decided at M4's refinement; built in M4, after M3's accounts.
 
 ### Client lane (`CLT-Q<n>`)
 

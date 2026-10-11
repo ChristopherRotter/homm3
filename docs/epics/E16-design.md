@@ -156,7 +156,8 @@ contains seeds, tokens, nonces or signatures.
   decliner leaves the queue and the other stays at the front.
 - The game: a scenario from the pool, sides assigned at random, both seats bound to the
   players' accounts; a disconnect gives a grace period (configured), after which the absent
-  player forfeits.
+  player forfeits. A pause only by both players' agreement; one ranked game per player at a
+  time, a paused one included (the user, 2026-10-11); the paused game's deadline: SRV-Q13.
 - Rating: Glicko-2 with the published defaults (rating 1500, deviation 350, volatility 0.06,
   system constant 0.5), one rating period per game end, applied in the order games end; a draw
   is a half point. Only a game whose journal verified (§8) and whose seats were held by their
