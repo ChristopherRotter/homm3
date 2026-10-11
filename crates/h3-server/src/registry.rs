@@ -5,11 +5,12 @@
 //! connection never binds to a game that has left.
 //!
 //! At start, before the server listens, the games whose journals the data directory holds are
-//! restored and listed again (E16 M2 T2).
+//! restored and listed again (E16 M2 T2). A paused game has no thread: the registry keeps its
+//! seats' tokens, and a join with one restores it from its journal (E16 M2 T3).
 //!
-//! Provisional (E16 M2 T1, T2): the lock, the origin (the client's address), a creation that fails
+//! Provisional (E16 M2 T1–T3): the lock, the origin (the client's address), a creation that fails
 //! after the lobby's checks refused as `TooManyGames` (only OS randomness and the journal's file
-//! can fail there).
+//! can fail there), the token checked before a paused game is restored.
 
 use std::collections::BTreeMap;
 use std::net::IpAddr;
@@ -17,9 +18,9 @@ use std::path::PathBuf;
 use std::sync::{Arc, Mutex, MutexGuard, PoisonError};
 use std::{fs, io};
 
-use h3_protocol::codec;
 use h3_protocol::lobby::{self, Lobby};
 use h3_protocol::wire::{GameInfo, Phase, Refusal, Seat};
+use h3_protocol::{codec, session};
 use tokio::sync::{mpsc, oneshot};
 
 use crate::game::{Offer, Prepared, ToGame};
@@ -36,11 +37,16 @@ pub(crate) fn lock(shared: &Shared) -> MutexGuard<'_, Registry> {
     shared.lock().unwrap_or_else(PoisonError::into_inner)
 }
 
-/// A hosted game: its inbox and how many connections are bound to it.
+/// A hosted game.
 #[derive(Debug)]
-struct Hosted {
-    to: mpsc::Sender<ToGame>,
-    bound: usize,
+pub(crate) enum Hosted {
+    /// Its thread runs: its inbox, and how many connections are bound to it.
+    Live {
+        to: mpsc::Sender<ToGame>,
+        bound: usize,
+    },
+    /// Paused (E16 M2 T3): its journal, and the seats' tokens that resume it (none for the bot's).
+    Paused { tokens: [Option<String>; 2] },
 }
 
 /// The lobby and the hosted games.
@@ -73,17 +79,13 @@ impl Registry {
         codec::encode_text(&self.lobby.list(seq))
     }
 
-    /// Binds a connection to game `game`: the game's inbox, if it is hosted.
-    pub(crate) fn bind(&mut self, game: u32) -> Option<mpsc::Sender<ToGame>> {
-        let hosted = self.games.get_mut(&game)?;
-        hosted.bound += 1;
-        Some(hosted.to.clone())
-    }
-
-    /// A connection bound to game `game` leaves it.
-    pub(crate) fn unbind(&mut self, game: u32) {
-        if let Some(hosted) = self.games.get_mut(&game) {
-            hosted.bound = hosted.bound.saturating_sub(1);
+    /// A connection bound to game `game` through the inbox `to` leaves it (a connection bound to
+    /// the game before it paused does not count for the game a resume restored).
+    pub(crate) fn unbind(&mut self, game: u32, to: &mpsc::Sender<ToGame>) {
+        if let Some(Hosted::Live { to: inbox, bound }) = self.games.get_mut(&game)
+            && inbox.same_channel(to)
+        {
+            *bound = bound.saturating_sub(1);
         }
     }
 
@@ -95,25 +97,30 @@ impl Registry {
     /// Whether game `game`, in `phase`, leaves now: when it is not running and no connection is
     /// bound to it. Then it is gone from the lobby, and its thread ends.
     pub(crate) fn close_if_idle(&mut self, game: u32, phase: Phase) -> bool {
-        let idle = self.games.get(&game).is_none_or(|hosted| hosted.bound == 0);
+        let idle = !matches!(self.games.get(&game), Some(Hosted::Live { bound, .. }) if *bound > 0);
         if idle && phase != Phase::Running {
             self.leave(game);
         }
         idle && phase != Phase::Running
     }
 
-    /// Lists a game a restart restored, as `origin` created it, and hosts it with the inbox `to`
-    /// (E16 M2 T2).
-    pub(crate) fn reopen(&mut self, origin: IpAddr, info: GameInfo, to: mpsc::Sender<ToGame>) {
+    /// Lists a game a restart restored, as `origin` created it, and hosts it (E16 M2 T2, T3).
+    pub(crate) fn reopen(&mut self, origin: IpAddr, info: GameInfo, hosted: Hosted) {
         let game = info.game;
         self.lobby.reopen(origin, info);
-        self.games.insert(game, Hosted { to, bound: 0 });
+        self.games.insert(game, hosted);
+    }
+
+    /// Game `game` paused (E16 M2 T3): its thread ends, `tokens` resume it.
+    pub(crate) fn pause(&mut self, game: u32, tokens: [Option<String>; 2]) {
+        self.lobby.update(game, Phase::Paused, Vec::new());
+        self.games.insert(game, Hosted::Paused { tokens });
     }
 
     /// Hosts a game whose inbox is `to`, outside the lobby (tests of the connection task).
     #[cfg(test)]
     pub(crate) fn host(&mut self, game: u32, to: mpsc::Sender<ToGame>) {
-        self.games.insert(game, Hosted { to, bound: 0 });
+        self.games.insert(game, Hosted::Live { to, bound: 0 });
     }
 
     /// Game `game` is gone.
@@ -144,12 +151,74 @@ pub(crate) fn create(
     }
     registry.games.insert(
         game,
-        Hosted {
+        Hosted::Live {
             to: to.clone(),
             bound: 1,
         },
     );
     Ok((game, to))
+}
+
+/// Binds a connection that joins `seat` of game `game` with `token`: the game's inbox, or why not.
+/// A paused game is restored first (E16 M2 T3), only for a seat's token: a spectator, the bot's
+/// seat, a missing or another token are refused as a running game refuses them. A paused journal
+/// that no longer restores is void, and the game gone.
+pub(crate) fn bind(
+    shared: &Shared,
+    game: u32,
+    seat: Seat,
+    token: Option<&str>,
+) -> Result<mpsc::Sender<ToGame>, Refusal> {
+    let mut registry = lock(shared);
+    let tokens = match registry.games.get_mut(&game) {
+        None => return Err(Refusal::NoSuchGame),
+        Some(Hosted::Live { to, bound }) => {
+            *bound += 1;
+            return Ok(to.clone());
+        }
+        Some(Hosted::Paused { tokens }) => tokens,
+    };
+    let expected = match seat {
+        Seat::Attacker => &tokens[0],
+        Seat::Defender => &tokens[1],
+        Seat::Spectator => return Err(Refusal::NoSpectators),
+    };
+    match (expected, token) {
+        (Some(expected), Some(given)) if session::same_token(expected, given) => {}
+        (Some(_), Some(_)) => return Err(Refusal::BadToken),
+        (None, _) | (_, None) => return Err(Refusal::SeatTaken),
+    }
+    let path = journal::dir(&registry.server.data).join(format!("{game}.journal"));
+    let (to, inbox) = mpsc::channel(GAME_INBOX);
+    let prepared = journal::read(&path).and_then(|read| {
+        let offer = registry
+            .offers
+            .iter()
+            .find(|o| o.id == read.start.offer)
+            .cloned()
+            .ok_or_else(|| format!("the server offers no `{}` now", read.start.offer))?;
+        Prepared::restored(offer, &path, read, &registry.server, None)
+    });
+    let prepared = match prepared {
+        Ok(prepared) => prepared,
+        Err(why) => {
+            journal::void(&registry.server.data, &path, &game.to_string(), &why);
+            registry.leave(game);
+            return Err(Refusal::NoSuchGame);
+        }
+    };
+    if let Err(e) = prepared.spawn(inbox, Arc::clone(shared)) {
+        eprintln!("h3-server: game {game} not resumed: {e}");
+        return Err(Refusal::NoSuchGame);
+    }
+    registry.games.insert(
+        game,
+        Hosted::Live {
+            to: to.clone(),
+            bound: 1,
+        },
+    );
+    Ok(to)
 }
 
 /// Restores the games whose journals the data directory holds (E16 M2 T2; call before the server
@@ -186,7 +255,7 @@ pub(crate) async fn restore(shared: &Shared) -> Result<(), Error> {
                 .find(|o| o.id == read.start.offer)
                 .cloned()
                 .ok_or_else(|| format!("the server offers no `{}` now", read.start.offer))?;
-            Prepared::restored(offer, &path, read, &registry.server, (to, done))
+            Prepared::restored(offer, &path, read, &registry.server, Some((to, done)))
         });
         match prepared {
             Ok(prepared) => {

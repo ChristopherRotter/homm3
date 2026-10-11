@@ -42,6 +42,7 @@ fn config(limits: Limits) -> Config {
             bind: String::from("127.0.0.1:0"),
             data: std::env::temp_dir().join(format!("h3-server-{:016x}", game::os_u64().unwrap())),
             checkpoint_every: 10,
+            shadow_instance: false,
         },
         content: Content {
             packs: root().join("packs"),
@@ -598,6 +599,167 @@ async fn journals_that_do_not_restore_their_game_are_void_or_gone() {
     // Ids go on after the restored game's.
     let (_, next, _) = created(&again, "pvp", Seat::Attacker).await;
     assert_eq!(next, first + 1);
+}
+
+/// A change of a journal's line: the line it becomes, or `None` to keep it.
+type Change = dyn Fn(&str) -> Option<String>;
+
+/// Rewrites the first line of game `game`'s journal that `change` changes, in place and at the same
+/// length, as a fault on the disk would while the server appends to it.
+fn flip(data: &Path, game: u32, change: &Change) {
+    use std::io::{Seek, SeekFrom, Write};
+    let path = journal_file(data, game);
+    let text = std::fs::read_to_string(&path).unwrap();
+    let mut offset = 0;
+    for line in text.split_inclusive('\n') {
+        if let Some(changed) = change(line) {
+            assert_eq!(changed.len(), line.len());
+            let mut file = std::fs::OpenOptions::new().write(true).open(&path).unwrap();
+            file.seek(SeekFrom::Start(offset)).unwrap();
+            file.write_all(changed.as_bytes()).unwrap();
+            return;
+        }
+        offset += line.len() as u64;
+    }
+    panic!("nothing to change in {text}");
+}
+
+/// Answers the `YourTurn` that `seen` ends with, then plays the seat to the end of the game.
+async fn play_on(mut client: Client, seen: &[ServerMessage], seed: u64) -> Client {
+    let Some(ServerMessage::YourTurn { legal, .. }) = seen.last() else {
+        panic!("{seen:?}")
+    };
+    let command = bench::choose(legal, &mut Rng::from_seed(seed)).unwrap();
+    client
+        .send(&ClientMessage::Command { seq: 100, command })
+        .await
+        .unwrap();
+    let (client, seen) = tokio::time::timeout(GAME_TIME, play(client, seed))
+        .await
+        .unwrap();
+    assert!(matches!(seen.last(), Some(ServerMessage::GameEnded { .. })));
+    client
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn a_game_whose_journal_changed_is_void_and_its_replay_withheld() {
+    let mut config = config(fast());
+    config.server.checkpoint_every = 2;
+    let running = start(&config).await.unwrap();
+    let data = &config.server.data;
+    // A flipped hash, and a command given to the other side.
+    let checkpoint = |line: &str| {
+        let at = line.find("\"hash\":\"0x")? + 10;
+        let digit = if &line[at..=at] == "0" { "1" } else { "0" };
+        Some(format!("{}{digit}{}", &line[..at], &line[at + 1..]))
+    };
+    let command = |line: &str| {
+        let side = line.find("{\"Command\":{\"command\":\"")? + 23;
+        let other = if &line[side..=side] == "A" { "D" } else { "A" };
+        Some(format!("{}{other}{}", &line[..side], &line[side + 1..]))
+    };
+    let flips: [(&Change, &str); 2] = [
+        (&checkpoint, "# void: state hash after 2 commands: expected"),
+        (&command, "# void: command 0 rejected"),
+    ];
+    for (change, diagnosis) in flips {
+        let (mut a, game, _) = created(&running, "bot", Seat::Attacker).await;
+        let seen = play_turns(&mut a, 5, 2).await;
+        flip(data, game, change);
+        let mut a = play_on(a, &seen, 7).await;
+        a.send(&ClientMessage::FetchReplay { seq: 900 })
+            .await
+            .unwrap();
+        assert!(matches!(
+            a.recv().await,
+            Some(ServerMessage::Rejected {
+                seq: 900,
+                code: RejectCode::Unverified,
+                ..
+            })
+        ));
+        // No replay; the journal and the replay as played are in the void directory.
+        let marker = format!("-game{game}-");
+        let named = |dir: &str| -> Vec<PathBuf> {
+            std::fs::read_dir(data.join(dir))
+                .into_iter()
+                .flatten()
+                .map(|entry| entry.unwrap().path())
+                .filter(|path| {
+                    let name = path.file_name().unwrap().to_string_lossy();
+                    name.contains(&marker) || name.starts_with(&format!("{game}-"))
+                })
+                .collect()
+        };
+        assert_eq!(named("replays"), Vec::<PathBuf>::new());
+        assert!(!journal_file(data, game).exists());
+        let void = named("void");
+        assert_eq!(void.len(), 2, "{void:?}");
+        let played = void
+            .iter()
+            .find(|p| p.extension().unwrap() == "toml")
+            .unwrap();
+        let text = std::fs::read_to_string(played).unwrap();
+        assert!(text.starts_with(diagnosis), "{}", &text[..80]);
+    }
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn a_paused_game_resumes_with_a_seats_token_also_after_a_restart() {
+    let config = config(fast());
+    let running = start(&config).await.unwrap();
+    let (mut a, game, token) = created(&running, "bot", Seat::Attacker).await;
+    let seen = play_turns(&mut a, 5, 2).await;
+    assert!(matches!(seen.last(), Some(ServerMessage::YourTurn { .. })));
+    let (mut host, before) = retaken(&running, game, Seat::Attacker, &token).await;
+    assert_eq!(goodbye(&mut a).await, GoodbyeReason::Replaced);
+    // The host pauses: its connection closes, the game is listed as paused, its journal stays.
+    host.send(&ClientMessage::Pause { seq: 1 }).await.unwrap();
+    assert_eq!(goodbye(&mut host).await, GoodbyeReason::Paused);
+    let paused = GameInfo {
+        game,
+        offer: String::from("bot"),
+        phase: Phase::Paused,
+        open: vec![],
+    };
+    let mut attempts = 0;
+    while listed(&running).await != [paused.clone()] {
+        attempts += 1;
+        assert!(attempts < 250, "the game never pauses");
+        tokio::time::sleep(Duration::from_millis(20)).await;
+    }
+    let journal = std::fs::read_to_string(journal_file(&config.server.data, game)).unwrap();
+    assert!(journal.ends_with("{\"Paused\":{}}\n"));
+    // Only a seat's token resumes it.
+    let mut c = greeted(&running).await;
+    for (seat, token, reason) in [
+        (Seat::Attacker, None, Refusal::SeatTaken),
+        (Seat::Attacker, Some("0f"), Refusal::BadToken),
+        (Seat::Defender, Some(token.as_str()), Refusal::SeatTaken),
+        (Seat::Spectator, None, Refusal::NoSpectators),
+    ] {
+        c.join(game, seat, token.map(String::from)).await.unwrap();
+        assert_eq!(c.recv().await, Some(ServerMessage::Refused { reason }));
+    }
+    assert_eq!(listed(&running).await, std::slice::from_ref(&paused));
+    // Another server starts on what the data directory holds: the game is still paused there.
+    let restarted = Config {
+        server: Server {
+            data: crashed(&config.server.data),
+            ..config.server.clone()
+        },
+        ..config.clone()
+    };
+    let again = start(&restarted).await.unwrap();
+    assert_eq!(listed(&again).await, [paused]);
+    // On both, the seat's token resumes it where it paused.
+    let (_, here) = retaken(&running, game, Seat::Attacker, &token).await;
+    assert_eq!(here, before);
+    let (back, after) = retaken(&again, game, Seat::Attacker, &token).await;
+    assert_eq!(after, before);
+    assert_eq!(listed(&again).await[0].phase, Phase::Running);
+    let mut back = play_on(back, &after, 7).await;
+    fetched_replay(&mut back, &restarted, game).await;
 }
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]

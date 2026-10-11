@@ -366,3 +366,60 @@ how and why the work went.
   to its end, and its replay (commands from both servers) verifies; a start with a torn journal
   (restored), one of another ruleset and one of a missing offer (void), one of a waiting game
   (gone), new ids after the restored one; finished and waiting games leave no journal.
+
+### M2 T3 — Verification, pause and resume (2026-10-11)
+
+- **The start.** #71 (T2) was merged; the branch started from `master`. The scoped verify had no
+  failing step.
+- **The wire, version 5** (*queued for the M2 review*): `Pause { seq }`; `PauseAsked { n, seat }`
+  to every viewer; `Phase::Paused` in the lobby's list; `GoodbyeReason::Paused`;
+  `RejectCode::Unverified` for the replay of a game that did not verify. No `Resume`, `Paused` or
+  `Resumed` (the design note's): a seat's `Join` with its token resumes, the goodbye says it paused.
+- **The session core** (`h3-protocol`, logic, 100 %): the *host* is the seat taken first (from the
+  first `Taken`, also in a restore); its `Pause` in a running game makes the entry `Paused`, closes
+  every holder with `Goodbye { Paused }` and leaves the session `paused` (`Phase::Paused`); another
+  seat's is told to every viewer. Refused: `NotSeated`, `NotStarted` (waiting), `BattleOver`. A
+  join that takes a seat in a paused session resumes it with the entry `Resumed` (so a restart
+  after a resume restores a running game, as its players were told); a restore whose journal ends
+  paused is paused. `withhold_replay` makes `FetchReplay` after the end `Unverified`. The *shadow
+  instance* (`GameConfig::shadow`): a second battle and the battle as it began; every command is
+  applied to both, and when they differ in their hashes or in accepting it, both are rebuilt from
+  the journal's commands and the command is applied again to the truth before anything is sent;
+  the steps are drained by the host (`drain_mismatches`) for a log line. `same_token` is public
+  for the host.
+- **Verification** (`h3-server`, `game.rs`): when a game ends, its journal is read back from disk,
+  its first line's replay and its commands and checkpoints make the replay, with the live game's
+  final hash and result; `Replay::verify` re-runs it in a fresh battle (the header, every
+  checkpoint, the final hash, the result), and the ruleset's content hash is recomputed from memory
+  (`h3_kernel::hash::hash_of`) and compared with the one compiled at start. Verified: the replay
+  rendered from what was re-run is written and published as before. Not: the game is void, the
+  replay withheld, the journal moved to `<data>/void/`, the replay as played written beside it with
+  the diagnosis as its first line (`# void: …`, hashes allowed: an operator's file), the log line
+  without hashes or the journal's replay text (it holds the seed). `GameEnded` still goes out before
+  the check (*provisional*); a restored game that is over goes through the same check.
+- **Pause and resume** (`h3-server`): after a call that paused, the game's thread delivers the
+  frames, closes its other connections with the same goodbye, hands the registry the seats' tokens
+  (`Hosted::Paused`) and ends; the lobby lists it as paused, the journal stays and ends with
+  `Paused`. A `Join` for a paused game is checked by the registry against the tokens (`BadToken`,
+  `SeatTaken` for none or the bot's seat, `NoSpectators`), then the journal is read and its game
+  restored on a new thread (the join waits in its inbox) and goes on. At start a paused journal is
+  re-run as any other and listed as paused, its thread ending. A resume that does not re-run voids
+  the journal and turns away the connections that came (`Goodbye { Shutdown }`); a connection
+  bound before a pause no longer counts for the game a resume restores (`unbind` compares the
+  inbox).
+- **The journal**, format 2: the lines `Paused {}` and `Resumed {}`. **The configuration**:
+  `[server] shadow_instance = false`.
+- **Known, for later tasks** (`QUEUE.md`): a paused game counts against the game limits until a
+  deadline exists (T5, `pause_hours`, with the running game nobody returns to); `GameEnded` before
+  the verification.
+- **Tests** (h3-protocol 52, h3-server 26; the scoped verify with no failing step, the workload
+  −0.05 %): the wire's new messages round-trip, their JSON forms;
+  the host's pause, another seat's ask, the refusals, a restore that ends paused, a refused join
+  that resumes nothing, the resume and its entry; the withheld replay; the shadow instance plays
+  as without, a rejected command, a fault in the live battle and one in the shadow found and
+  rebuilt with the viewers' frames unchanged, a restore through both battles; the property over any
+  messages with pauses. Over loopback: a journal changed on disk mid-game (a checkpoint's hash, a
+  command given to the other side) is caught at the end (`Unverified`, no replay, the journal and
+  the diagnosis in the void directory); a game paused by its host is listed paused, refuses joins
+  without its token, is still paused on a second server started on a copy of the data directory,
+  and resumes where it paused on both, its replay verifying at the end.

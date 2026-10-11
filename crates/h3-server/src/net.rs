@@ -246,13 +246,14 @@ impl Link {
                     }
                 }
             }
-            ClientMessage::Join { game, .. }
-                if self.bound.as_ref().is_none_or(|bound| bound.game != game) =>
-            {
-                let found = lock(&self.registry).bind(game);
-                match found {
-                    None => Routed::Reply(refused(Refusal::NoSuchGame)),
-                    Some(to_game) => self.switch(game, to_game, message, None).await,
+            ClientMessage::Join {
+                game,
+                seat,
+                ref token,
+            } if self.bound.as_ref().is_none_or(|bound| bound.game != game) => {
+                match registry::bind(&self.registry, game, seat, token.as_deref()) {
+                    Err(reason) => Routed::Reply(refused(reason)),
+                    Ok(to_game) => self.switch(game, to_game, message, None).await,
                 }
             }
             message => match &self.bound {
@@ -291,7 +292,7 @@ impl Link {
                 .await
                 .is_ok();
         if !opened {
-            lock(&self.registry).unbind(game);
+            lock(&self.registry).unbind(game, &to_game);
             return Routed::Reply(refused(Refusal::NoSuchGame));
         }
         self.bound = Some(Bound {
@@ -311,7 +312,7 @@ impl Link {
     /// Leaves the bound game, if any: the game hears the connection closed.
     async fn unbind(&mut self) {
         if let Some(bound) = self.bound.take() {
-            lock(&self.registry).unbind(bound.game);
+            lock(&self.registry).unbind(bound.game, &bound.to_game);
             let conn = self.conn;
             let _ = bound.to_game.send(ToGame::Closed { conn }).await;
         }
@@ -335,6 +336,7 @@ fn unbound(message: &ClientMessage) -> Frame {
         | ClientMessage::Query { seq, .. }
         | ClientMessage::FetchReplay { seq }
         | ClientMessage::FetchRecord { seq }
+        | ClientMessage::Pause { seq }
         | ClientMessage::ListGames { seq }
         | ClientMessage::CreateGame { seq, .. } => *seq,
         ClientMessage::Hello { .. } | ClientMessage::Ping { .. } | ClientMessage::Join { .. } => 0,

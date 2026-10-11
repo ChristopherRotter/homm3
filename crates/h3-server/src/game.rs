@@ -1,9 +1,17 @@
-//! The hosted games (ADR-0018 points 3, 6, 8 and 12; E16 M2 T1, T2): the offers, compiled once at
+//! The hosted games (ADR-0018 points 3, 6, 8 and 12; E16 M2 T1–T3): the offers, compiled once at
 //! start; a game prepared from an offer with secrets from the OS, or restored from its journal
-//! after a restart, and run on its own OS thread. The thread owns the session core and the game's
-//! journal ([`crate::journal`]): it makes each call's entries durable before it sends that call's
-//! frames. The connection tasks talk to it over bounded channels, and it tells the lobby where it
-//! is through the registry ([`crate::registry`]).
+//! after a restart or to resume it, and run on its own OS thread. The thread owns the session core
+//! and the game's journal ([`crate::journal`]): it makes each call's entries durable before it
+//! sends that call's frames. The connection tasks talk to it over bounded channels, and it tells
+//! the lobby where it is through the registry ([`crate::registry`]).
+//!
+//! - **Verification** (E16 M2 T3, `E16-design.md` §8). A finished game's journal is read back and
+//!   re-run in a fresh battle before its replay is published: every checkpoint, the live game's
+//!   final hash and result must match, and the ruleset in memory must still hash to its content
+//!   hash. A game that does not verify is void: its replay is withheld from the players, the
+//!   journal moves to `<data>/void/` and the replay as played goes beside it with the diagnosis.
+//! - **Pause** (E16 M2 T3). A game its host paused closes its connections and ends its thread; the
+//!   registry keeps it listed as paused, and a seat's join with its token restores it.
 
 use std::collections::BTreeMap;
 use std::fs;
@@ -16,16 +24,16 @@ use h3_battle::{BattleSide, BattleState, LegalCommands};
 use h3_content::Ruleset;
 use h3_contracts::BattleSetup;
 use h3_kernel::{Rng, StreamId};
-use h3_protocol::session::{Bot, ConnId, GameConfig, Journal, Outbound, SeatKind, Session};
+use h3_protocol::session::{Bot, ConnId, Entry, GameConfig, Journal, Outbound, SeatKind, Session};
 use h3_protocol::wire::{self, ClientMessage, GameInfo, GoodbyeReason, Phase, Seat, ServerMessage};
 use h3_protocol::{codec, map};
-use h3_sim::{Replay, ReplayHeader};
+use h3_sim::{Replay, ReplayError, ReplayHeader};
 use tokio::sync::{mpsc, oneshot};
 
 use crate::Error;
 use crate::config::{self, BotSeat};
 use crate::journal::{self, JOURNAL_FORMAT_VERSION, Start, Writer};
-use crate::registry::{Shared, lock};
+use crate::registry::{Hosted, Shared, lock};
 
 /// A frame for a connection task.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -177,10 +185,10 @@ struct Restored {
     path: PathBuf,
     /// What it holds.
     read: journal::Read,
-    /// The game's inbox, for the registry once the game is listed again.
-    to: mpsc::Sender<ToGame>,
-    /// Dropped when the re-run is done, however it went: the server listens after every one.
-    done: oneshot::Sender<()>,
+    /// At start: the game's inbox, for the registry once the game is listed again, and what is
+    /// dropped when the re-run is done, however it went (the server listens after every one).
+    /// `None` for a paused game a join resumes: the registry hosts it already (E16 M2 T3).
+    listing: Option<(mpsc::Sender<ToGame>, oneshot::Sender<()>)>,
 }
 
 /// Where game `game`'s replay goes in the data directory `data`: a random part keeps the name of a
@@ -225,6 +233,7 @@ impl Prepared {
             setup,
             seed,
             checkpoint_every: server.checkpoint_every,
+            shadow: server.shadow_instance,
         };
         let (bot_seed, replay_path) = (os_u64()?, replay_path(&server.data, &offer.id, game)?);
         let begun = Journal {
@@ -259,14 +268,14 @@ impl Prepared {
     /// The game a journal holds, to restore (E16 M2 T2): the offer `offer` its first line names,
     /// read from `path`. Why the journal is void otherwise: its replay header does not match the
     /// offer's engine and content (`ReplayHeader::check`), or its replay does not read on them.
-    /// The thread drops `done` when its re-run is done, and lists the game with the inbox `to` if
-    /// it goes on.
+    /// At start (`listing`), the thread drops `done` when its re-run is done, and lists the game
+    /// with the inbox `to` if it goes on; without, it resumes a paused game (E16 M2 T3).
     pub(crate) fn restored(
         offer: Arc<Offer>,
         path: &Path,
         read: journal::Read,
         server: &config::Server,
-        (to, done): (mpsc::Sender<ToGame>, oneshot::Sender<()>),
+        listing: Option<(mpsc::Sender<ToGame>, oneshot::Sender<()>)>,
     ) -> Result<Self, String> {
         let doc = h3_cli::ReplayDoc::parse(&read.start.replay).map_err(|e| e.to_string())?;
         let scenario = doc.scenario().to_owned();
@@ -281,6 +290,7 @@ impl Prepared {
             setup: replay.setup,
             seed: replay.seed,
             checkpoint_every: replay.checkpoint_every,
+            shadow: server.shadow_instance,
         };
         let secrets =
             os_u64().and_then(|seed| Ok((seed, replay_path(&server.data, &offer.id, game)?)));
@@ -296,8 +306,7 @@ impl Prepared {
             begin: Begin::Restored(Restored {
                 path: path.to_path_buf(),
                 read,
-                to,
-                done,
+                listing,
             }),
         })
     }
@@ -320,7 +329,8 @@ impl Prepared {
     /// durable before its frames are sent (a journal that does not write stops the game: its
     /// players are told the server shuts down, the next start restores it). After each, the lobby
     /// hears where the game is; a game that is not running and that no connection is bound to
-    /// leaves the lobby and ends (E16 M2 T1); one that never started leaves no journal.
+    /// leaves the lobby and ends (E16 M2 T1); one that never started leaves no journal. A game that
+    /// paused closes its connections and ends, listed as paused (E16 M2 T3).
     fn run(self, mut inbox: mpsc::Receiver<ToGame>, registry: &Shared) {
         let Self {
             offer,
@@ -334,7 +344,7 @@ impl Prepared {
         } = self;
         let game = config.game;
         let mut bots: u64 = 0;
-        let seats = tokens.map(|token| match token {
+        let seats = tokens.clone().map(|token| match token {
             Some(token) => SeatKind::Player { token },
             None => {
                 bots += 1;
@@ -346,7 +356,7 @@ impl Prepared {
         });
         let over = |session: &Session<'_>, journal: Writer| {
             finish(
-                (&offer.ruleset, &scenario, &replay_path),
+                (&offer.ruleset, &scenario, &replay_path, &data),
                 game,
                 session,
                 journal,
@@ -362,9 +372,10 @@ impl Prepared {
                 }
             },
             Begin::Restored(restored) => {
-                let Some(resumed) = resume(&offer, config, seats, restored, &data, registry, over)
-                else {
-                    return;
+                let host = (data.as_path(), registry);
+                let resumed = resume(&offer, (config, seats, &tokens), restored, host, over);
+                let Some(resumed) = resumed else {
+                    return turn_away(&mut inbox, GoodbyeReason::Shutdown);
                 };
                 resumed
             }
@@ -375,8 +386,10 @@ impl Prepared {
         let mut reported = (session.phase(), session.open_seats());
         while let Some(event) = inbox.blocking_recv() {
             match event {
+                // Nothing changes for the session until the connection's join.
                 ToGame::Open { conn, to } => {
                     conns.insert(conn, to);
+                    continue;
                 }
                 ToGame::Message { conn, message } => session.handle(conn, message, &mut out),
                 ToGame::Closed { conn } => {
@@ -390,14 +403,29 @@ impl Prepared {
                 eprintln!("h3-server: game {game}: the journal does not write ({e}): it stops");
                 return stop(&conns, registry, game);
             }
+            for step in session.drain_mismatches() {
+                eprintln!(
+                    "h3-server: game {game}: the shadow instance disagreed at command {step}; \
+                     both battles were rebuilt from the journal"
+                );
+            }
+            let closed: Vec<ConnId> = out.iter().filter(|o| o.close).map(|o| o.to).collect();
             for outbound in out.drain(..) {
                 deliver(&mut conns, &mut session, outbound);
+            }
+            if session.paused() {
+                close_all(&conns, &closed, GoodbyeReason::Paused);
+                lock(registry).pause(game, tokens);
+                turn_away(&mut inbox, GoodbyeReason::Paused);
+                return eprintln!("h3-server: game {game} paused");
             }
             if session.result().is_some()
                 && let Some(journal) = journal.take()
             {
-                let text = over(&session, journal);
-                session.publish_replay(text);
+                match over(&session, journal) {
+                    Some(text) => session.publish_replay(text),
+                    None => session.withhold_replay(),
+                }
             }
             let now = (session.phase(), session.open_seats());
             let mut registry = lock(registry);
@@ -418,27 +446,28 @@ impl Prepared {
 
 /// Re-runs a restored game's journal (E16 M2 T2) and appends what it lacks. A journal that does
 /// not re-run is void; a game that never started leaves, its journal with it; one that is over
-/// leaves once `over` wrote its replay; a running one is listed again, its seats empty.
+/// leaves once `over` wrote its replay. At start, a running one is listed again, its seats empty,
+/// and a paused one is listed as paused, its thread ending; a paused one a join resumes goes on
+/// (E16 M2 T3).
 fn resume<'r>(
     offer: &'r Offer,
-    config: GameConfig,
-    seats: [SeatKind; 2],
+    (config, seats, tokens): (GameConfig, [SeatKind; 2], &[Option<String>; 2]),
     restored: Restored,
-    data: &Path,
-    registry: &Shared,
-    over: impl FnOnce(&Session<'r>, Writer) -> String,
+    (data, registry): (&Path, &Shared),
+    over: impl FnOnce(&Session<'r>, Writer) -> Option<String>,
 ) -> Option<(Session<'r>, Writer)> {
     let Restored {
         path,
         read,
-        to,
-        done,
+        listing,
     } = restored;
     let game = config.game;
+    let gone = || lock(registry).leave(game);
     let mut session = match Session::restore(&offer.ruleset, config, seats, &read.entries) {
         Ok(session) => session,
         Err(e) => {
             journal::void(data, &path, &game.to_string(), &format!("{e:?}"));
+            gone();
             return None;
         }
     };
@@ -447,42 +476,85 @@ fn resume<'r>(
         Ok(journal) => journal,
         Err(e) => {
             eprintln!("h3-server: game {game}: the journal does not write ({e}): not restored");
+            gone();
             return None;
         }
     };
     if session.result().is_some() {
         over(&session, journal);
+        gone();
         return None;
     }
     if !session.started() {
         journal.remove();
+        gone();
         return None;
     }
+    let Some((to, done)) = listing else {
+        eprintln!("h3-server: game {game} resumed");
+        return Some((session, journal));
+    };
     let info = GameInfo {
         game,
         offer: offer.id.clone(),
         phase: session.phase(),
         open: session.open_seats(),
     };
-    lock(registry).reopen(read.start.origin, info, to);
-    eprintln!("h3-server: game {game} restored");
+    let paused = session.paused();
+    let hosted = if paused {
+        Hosted::Paused {
+            tokens: tokens.clone(),
+        }
+    } else {
+        Hosted::Live { to, bound: 0 }
+    };
+    lock(registry).reopen(read.start.origin, info, hosted);
     drop(done);
+    if paused {
+        eprintln!("h3-server: game {game} restored, paused");
+        return None;
+    }
+    eprintln!("h3-server: game {game} restored");
     Some((session, journal))
+}
+
+/// Every connection in `conns` but those in `closed` hears `reason`, its last frame from the game.
+fn close_all(
+    conns: &BTreeMap<ConnId, mpsc::Sender<Frame>>,
+    closed: &[ConnId],
+    reason: GoodbyeReason,
+) {
+    let text = codec::encode_text(&ServerMessage::Goodbye { reason });
+    for (conn, to) in conns {
+        if !closed.contains(conn) {
+            let _ = to.try_send(Frame {
+                text: text.clone(),
+                close: true,
+            });
+        }
+    }
 }
 
 /// The journal stopped: every connection hears the server shuts down (for this game), and the game
 /// leaves the lobby; its journal stays for the next start.
 fn stop(conns: &BTreeMap<ConnId, mpsc::Sender<Frame>>, registry: &Shared, game: u32) {
-    let text = codec::encode_text(&ServerMessage::Goodbye {
-        reason: GoodbyeReason::Shutdown,
-    });
-    for to in conns.values() {
-        let _ = to.try_send(Frame {
-            text: text.clone(),
-            close: true,
-        });
-    }
+    close_all(conns, &[], GoodbyeReason::Shutdown);
     lock(registry).leave(game);
+}
+
+/// The game's thread ends (E16 M2 T3): no connection may come any more, and those already on the
+/// way hear `reason` (the game paused, or it did not resume: the server shuts down for it).
+fn turn_away(inbox: &mut mpsc::Receiver<ToGame>, reason: GoodbyeReason) {
+    inbox.close();
+    let text = codec::encode_text(&ServerMessage::Goodbye { reason });
+    while let Ok(event) = inbox.try_recv() {
+        if let ToGame::Open { to, .. } = event {
+            let _ = to.try_send(Frame {
+                text: text.clone(),
+                close: true,
+            });
+        }
+    }
 }
 
 /// Queues a frame for its connection. A full queue drops the connection: the game forgets it,
@@ -528,32 +600,108 @@ fn replay_text(
         .map_err(|e| Error(format!("the replay does not render: {e}")))
 }
 
-/// Game `game` is over: its replay is written as the CLI's file, then its journal goes (the replay
-/// is the finished journal). A replay that does not write keeps the journal, which the next start
-/// re-runs to write it again. The replay's text, for the participants.
+/// Game `game` is over (E16 M2 T3): it is verified first ([`verify`]). The replay of a game that
+/// verifies is written as the CLI's file, then its journal goes (the replay is the finished
+/// journal); a replay that does not write keeps the journal, which the next start re-runs to write
+/// it again. A game that does not verify is void: its journal moves to `<data>/void/`, and the
+/// replay of the game as it was played goes beside it, the diagnosis in its first line. The
+/// replay's text for the participants, or `None`: withheld.
 fn finish(
-    (ruleset, scenario, path): (&Ruleset, &str, &Path),
+    (ruleset, scenario, path, data): (&Ruleset, &str, &Path, &Path),
     game: u32,
     session: &Session<'_>,
     journal: Writer,
-) -> String {
-    let end = (session.state_hash(), session.result());
-    let text = replay_text(ruleset, scenario, session.journal(), end).unwrap_or_else(|e| {
-        eprintln!("h3-server: game {game}: {e}");
-        String::new()
-    });
-    let written = path
-        .parent()
-        .map_or(Ok(()), fs::create_dir_all)
-        .and_then(|()| fs::write(path, &text));
-    match written {
-        Ok(()) => {
-            eprintln!("h3-server: game {game} over, replay {}", path.display());
-            journal.remove();
+) -> Option<String> {
+    let journal_path = journal.path().to_path_buf();
+    let (diagnosis, why) = match verify(ruleset, &journal_path, session) {
+        Ok(text) => {
+            let written = path
+                .parent()
+                .map_or(Ok(()), fs::create_dir_all)
+                .and_then(|()| fs::write(path, &text));
+            match written {
+                Ok(()) => {
+                    eprintln!("h3-server: game {game} over, replay {}", path.display());
+                    journal.remove();
+                }
+                Err(e) => eprintln!("h3-server: replay {}: {e}", path.display()),
+            }
+            return Some(text);
         }
-        Err(e) => eprintln!("h3-server: replay {}: {e}", path.display()),
+        Err(corrupt) => corrupt,
+    };
+    drop(journal);
+    let void = data.join("void");
+    let beside = void.join(path.file_name().unwrap_or_default());
+    let end = (session.state_hash(), session.result());
+    let written = replay_text(ruleset, scenario, session.journal(), end).and_then(|text| {
+        journal::create_dir(&void)
+            .and_then(|()| fs::write(&beside, format!("# void: {diagnosis}\n{text}")))
+            .map_err(|e| Error(e.to_string()))
+    });
+    journal::void(data, &journal_path, &game.to_string(), &why);
+    match written {
+        Ok(()) => eprintln!(
+            "h3-server: game {game}: the replay as played is {}",
+            beside.display()
+        ),
+        Err(e) => eprintln!("h3-server: game {game}: the replay as played: {}", e.0),
     }
-    text
+    None
+}
+
+/// Verifies a finished game before its replay is published (E16 M2 T3, `E16-design.md` §8): the
+/// ruleset in memory still hashes to the content hash it was compiled with, and the journal on
+/// disk, re-run in a fresh battle, matches each of its checkpoints and ends in the live game's
+/// state hash and result. The replay as the CLI's file; else the diagnosis, which may name hashes
+/// (for the void directory, never a log line), and why without them (for the log).
+fn verify(
+    ruleset: &Ruleset,
+    journal: &Path,
+    session: &Session<'_>,
+) -> Result<String, (String, String)> {
+    let alike = |why: String| (why.clone(), why);
+    if h3_kernel::hash::hash_of(ruleset) != ruleset.content_hash() {
+        return Err(alike(String::from(
+            "the ruleset in memory changed since it was compiled",
+        )));
+    }
+    let read =
+        journal::read(journal).map_err(|e| alike(format!("the journal does not read: {e}")))?;
+    // The first line's replay holds the seed: its errors stay out of the log.
+    let unread = |e: h3_cli::CliError| {
+        (
+            format!("the journal's replay does not read: {e}"),
+            String::from("the journal's replay does not read"),
+        )
+    };
+    let doc = h3_cli::ReplayDoc::parse(&read.start.replay).map_err(unread)?;
+    let scenario = doc.scenario().to_owned();
+    let mut replay = doc.into_replay(ruleset).map_err(unread)?;
+    for entry in read.entries {
+        match entry {
+            Entry::Command(side, command) => replay.commands.push((side, command)),
+            Entry::Checkpoint(hash) => replay.checkpoints.push(hash),
+            Entry::Taken(_) | Entry::Started | Entry::Paused | Entry::Resumed => {}
+        }
+    }
+    replay.final_hash = session.state_hash();
+    replay.result = session.result();
+    replay
+        .verify(ruleset)
+        .map_err(|e| (e.to_string(), unhashed(&e)))?;
+    h3_cli::replay_to_toml(&replay, &scenario, ruleset)
+        .map_err(|e| alike(format!("the replay does not render: {e}")))
+}
+
+/// Why a game does not verify, without the hashes (ADR-0018 point 8: no hash in a log line).
+fn unhashed(error: &ReplayError) -> String {
+    match error {
+        ReplayError::HashMismatch { step, .. } => {
+            format!("the state hash after {step} commands differs")
+        }
+        other => other.to_string(),
+    }
 }
 
 #[cfg(test)]
@@ -571,6 +719,7 @@ mod tests {
             setup,
             seed: 1,
             checkpoint_every: 0,
+            shadow: false,
         };
         let mut session = Session::new(&r, config, players).unwrap();
         let (to, mut queue) = mpsc::channel(1);
