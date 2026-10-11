@@ -29,7 +29,7 @@ use tokio_tungstenite::tungstenite::protocol::WebSocketConfig;
 
 use crate::config::Limits;
 use crate::game::{self, Frame, FromGame, ToGame};
-use crate::registry::{self, Shared, lock};
+use crate::registry::{self, Opening, Shared, lock};
 
 /// What a transport received.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -172,9 +172,10 @@ async fn from_game(bound: &mut Option<Bound>) -> Option<Frame> {
 /// passes the game's to the game it is bound to, writes the game's frames out, until either side
 /// closes. A message within the idle timeout keeps it open; more messages per second than the
 /// limits (the connection's and its address's in `place`; WebSocket pings count), a frame that does
-/// not decode, no hello within its timeout or no game within the lobby's timeout after it (or
-/// after a refused join), a full outbound queue (the game drops the queue), a write that stalls
-/// for the idle timeout or the server's stop (`stop`) close it.
+/// not decode, no hello within its timeout or no game within the lobby's timeout after it or after
+/// leaving a game it was in (a refused join does not restart it), a full outbound queue (the game
+/// drops the queue), a write that stalls for the idle timeout or the server's stop (`stop`) close
+/// it.
 pub(crate) async fn serve<T: Transport>(
     mut transport: T,
     conn: ConnId,
@@ -199,16 +200,17 @@ pub(crate) async fn serve<T: Transport>(
         bound: None,
     };
     loop {
-        unjoined = match (&link.bound, unjoined) {
-            (Some(_), _) => None,
-            (None, None) => Some(Instant::now() + lobby),
-            (None, kept) => kept,
-        };
+        // The lobby's deadline waits while the connection is bound to a game, and starts afresh
+        // only once it leaves a game it was in: a refused join does not restart it (E16 M2 T5e).
+        if link.bound.is_none() && unjoined.is_none() {
+            unjoined = Some(Instant::now() + lobby);
+        }
+        let lobby_due = if link.bound.is_some() { None } else { unjoined };
         let wake = tokio::select! {
             incoming = transport.recv() => Wake::Client(incoming),
             frame = from_game(&mut link.bound) => Wake::Game(frame),
             () = sleep_until(deadline) => Wake::Idle,
-            () = until(unjoined) => Wake::Idle,
+            () = until(lobby_due) => Wake::Idle,
             () = stopped(&mut stop) => Wake::Stop,
         };
         let now = Instant::now();
@@ -236,10 +238,14 @@ pub(crate) async fn serve<T: Transport>(
                         text: frame,
                         close,
                         left: None,
+                        held: false,
                     },
                 }
             }
             Wake::Game(Some(frame)) => {
+                if frame.held {
+                    unjoined = None;
+                }
                 if frame.left.is_some() && frame.left == link.bound.as_ref().map(|b| b.passed) {
                     link.unbind().await;
                 }
@@ -288,11 +294,13 @@ impl Link {
                 text: lock(&self.registry).list(seq),
                 close: false,
                 left: None,
+                held: false,
             }),
             ClientMessage::ListReplays { seq, from } => Routed::Reply(Frame {
                 text: lock(&self.registry).replays(seq, from),
                 close: false,
                 left: None,
+                held: false,
             }),
             ClientMessage::FetchArchived { seq, replay } => {
                 Routed::Reply(archived(&self.registry, seq, &replay).await)
@@ -304,16 +312,14 @@ impl Link {
                 spectators,
             } => {
                 let watchable = spectators.unwrap_or(true);
-                match registry::create(&self.registry, self.origin, &offer, seat, watchable) {
+                let (to, from_game) = game::outbox(self.queue.0, self.queue.1);
+                let asked = (offer.as_str(), seat, watchable);
+                match registry::create(&self.registry, self.origin, asked, (self.conn, to)) {
                     Err(reason) => Routed::Reply(refused(reason)),
                     Ok((game, to_game)) => {
-                        let join = ClientMessage::Join {
-                            game,
-                            seat,
-                            token: None,
-                        };
                         let created = ServerMessage::GameCreated { seq, game };
-                        self.switch(game, to_game, join, Some(created)).await
+                        self.switch(game, (to_game, from_game), None, Some(created))
+                            .await
                     }
                 }
             }
@@ -322,9 +328,19 @@ impl Link {
                 seat,
                 ref token,
             } if self.bound.as_ref().is_none_or(|bound| bound.game != game) => {
-                match registry::bind(&self.registry, game, seat, token.as_deref()) {
+                let token = token.clone();
+                let (to, from_game) = game::outbox(self.queue.0, self.queue.1);
+                let opening = Opening {
+                    conn: self.conn,
+                    to,
+                    join: message,
+                };
+                let asked = (game, seat, token.as_deref());
+                match registry::bind(&self.registry, asked, opening) {
                     Err(reason) => Routed::Reply(refused(reason)),
-                    Ok(to_game) => self.switch(game, to_game, message, None).await,
+                    Ok((to_game, opening)) => {
+                        self.switch(game, (to_game, from_game), opening, None).await
+                    }
                 }
             }
             message => match &mut self.bound {
@@ -343,29 +359,31 @@ impl Link {
         }
     }
 
-    /// Leaves the bound game for `game` (whose binding the registry counted already), passes it
-    /// `join`, and answers `first` if there is one; a game that is gone meanwhile refuses.
+    /// Leaves the bound game for `game` (whose binding the registry counted already, its inbox
+    /// `to_game`), passes it `opening` unless the registry queued it already (a new or a resumed
+    /// game, E16 M2 T5e), and answers `first` if there is one; a game that is gone meanwhile
+    /// refuses.
     async fn switch(
         &mut self,
         game: u32,
-        to_game: mpsc::Sender<ToGame>,
-        join: ClientMessage,
+        (to_game, from_game): (mpsc::Sender<ToGame>, FromGame),
+        opening: Option<Opening>,
         first: Option<ServerMessage>,
     ) -> Routed {
         self.unbind().await;
-        let conn = self.conn;
-        let (to, from_game) = game::outbox(self.queue.0, self.queue.1);
-        let opened = to_game.send(ToGame::Open { conn, to }).await.is_ok()
-            && to_game
-                .send(ToGame::Message {
-                    conn,
-                    message: join,
-                })
-                .await
-                .is_ok();
-        if !opened {
-            lock(&self.registry).unbind(game, &to_game);
-            return Routed::Reply(refused(Refusal::NoSuchGame));
+        if let Some(Opening { conn, to, join }) = opening {
+            let opened = to_game.send(ToGame::Open { conn, to }).await.is_ok()
+                && to_game
+                    .send(ToGame::Message {
+                        conn,
+                        message: join,
+                    })
+                    .await
+                    .is_ok();
+            if !opened {
+                lock(&self.registry).unbind(game, &to_game);
+                return Routed::Reply(refused(Refusal::NoSuchGame));
+            }
         }
         self.bound = Some(Bound {
             game,
@@ -378,6 +396,7 @@ impl Link {
                 text: codec::encode_text(&message),
                 close: false,
                 left: None,
+                held: false,
             }),
             None => Routed::Passed,
         }
@@ -406,6 +425,7 @@ async fn archived(registry: &Shared, seq: u32, id: &str) -> Frame {
             text: codec::encode_text(&ServerMessage::Replay { n: 0, seq, replay }),
             close: false,
             left: None,
+            held: false,
         },
         _ => refused(Refusal::NoSuchReplay),
     }
@@ -417,6 +437,7 @@ fn refused(reason: Refusal) -> Frame {
         text: codec::encode_text(&ServerMessage::Refused { reason }),
         close: false,
         left: None,
+        held: false,
     }
 }
 
@@ -445,6 +466,7 @@ fn unbound(message: &ClientMessage) -> Frame {
         }),
         close: false,
         left: None,
+        held: false,
     }
 }
 
@@ -454,6 +476,7 @@ fn goodbye(reason: GoodbyeReason) -> Frame {
         text: codec::encode_text(&ServerMessage::Goodbye { reason }),
         close: true,
         left: None,
+        held: false,
     }
 }
 
@@ -696,12 +719,14 @@ mod tests {
         }
     }
 
-    /// A frame from the game, `left` after the connection's `k`-th message if `Some(k)`.
+    /// A frame from the game, `left` after the connection's `k`-th message if `Some(k)`, else to
+    /// a connection in the game.
     fn frame(text: &str, left: Option<u64>) -> Frame {
         Frame {
             text: String::from(text),
             close: false,
             left,
+            held: left.is_none(),
         }
     }
 

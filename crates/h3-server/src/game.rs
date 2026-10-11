@@ -56,6 +56,10 @@ pub(crate) struct Frame {
     /// connection, after it, holds no seat and does not watch (a refused join, E16 M2 T5b): its
     /// task then leaves the game, unless it passed it another message since.
     pub left: Option<u64>,
+    /// Whether the connection held a seat or watched when the game queued the frame (E16 M2 T5e):
+    /// it was in the game, so the lobby's deadline starts afresh once it leaves; a refused join
+    /// does not restart it.
+    pub held: bool,
 }
 
 /// A connection's queue of frames from a game (ADR-0018 point 3; E16 M2 T5c): bounded in frames
@@ -383,9 +387,14 @@ impl Prepared {
         (server, limits): (&config::Server, &config::Limits),
         listing: Option<(mpsc::Sender<ToGame>, oneshot::Sender<()>)>,
     ) -> Result<Self, String> {
-        let doc = h3_cli::ReplayDoc::parse(&read.start.replay).map_err(|e| e.to_string())?;
+        // The first line's replay holds the seed: its parsers' errors, which may quote it, stay
+        // out of the log (E16 M2 T5e: the reviewer's finding); the header's names a field only.
+        let doc = h3_cli::ReplayDoc::parse(&read.start.replay)
+            .map_err(|_| String::from("the journal's replay does not read"))?;
         let scenario = doc.scenario().to_owned();
-        let replay = doc.into_replay(&offer.ruleset).map_err(|e| e.to_string())?;
+        let replay = doc.into_replay(&offer.ruleset).map_err(|_| {
+            String::from("the journal's replay does not read on the offer's content")
+        })?;
         replay
             .header
             .check(&offer.ruleset)
@@ -429,12 +438,7 @@ impl Prepared {
         inbox: mpsc::Receiver<ToGame>,
         registry: Shared,
     ) -> Result<(), Error> {
-        let game = self.config.game;
-        thread::Builder::new()
-            .name(format!("game-{game}"))
-            .spawn(move || self.run(inbox, &registry))
-            .map(|_| ())
-            .map_err(|e| Error(format!("game thread: {e}")))
+        launch(self.config.game, move || Some(self), inbox, registry)
     }
 
     /// The game's loop: one message at a time through the session core, each call's entries made
@@ -580,12 +584,16 @@ impl Prepared {
                 }
             }
             let now = status(&session);
-            let mut registry = lock(registry);
-            if now != reported {
-                registry.report(game, now.clone());
-                reported = now;
-            }
-            if registry.close_if_idle(game, reported.0) {
+            let closed = {
+                let mut registry = lock(registry);
+                if now != reported {
+                    registry.report(game, now.clone());
+                    reported = now;
+                }
+                registry.close_if_idle(game, reported.0)
+            };
+            if closed {
+                // Outside the registry's lock (E16 M2 T5e): a removal is file I/O.
                 if let (Phase::Waiting, Some(journal)) = (reported.0, journal) {
                     journal.remove();
                 }
@@ -680,6 +688,49 @@ fn resume<'r>(
     Some((session, journal))
 }
 
+/// Runs game `game` on its own OS thread until it leaves the lobby (E16 M2 T5e): `prepare` makes it
+/// there, so the files a game begins with (a new game's journal, created and synced; a paused
+/// one's, read back) are never written or read under the registry's lock or on a connection's
+/// task. A game `prepare` does not make (it says why in the log) leaves the lobby, and the
+/// connections that came hear `Goodbye { Shutdown }`. A game whose thread panics leaves the lobby
+/// too ([`Panicked`]), its journal kept for the next start.
+pub(crate) fn launch(
+    game: u32,
+    prepare: impl FnOnce() -> Option<Prepared> + Send + 'static,
+    mut inbox: mpsc::Receiver<ToGame>,
+    registry: Shared,
+) -> Result<(), Error> {
+    let run = move || {
+        let _panicked = Panicked(game, &registry);
+        match prepare() {
+            Some(prepared) => prepared.run(inbox, &registry),
+            None => {
+                lock(&registry).leave(game);
+                turn_away(&mut inbox, GoodbyeReason::Shutdown);
+            }
+        }
+    };
+    thread::Builder::new()
+        .name(format!("game-{game}"))
+        .spawn(run)
+        .map(|_| ())
+        .map_err(|e| Error(format!("game thread: {e}")))
+}
+
+/// Takes its game out of the registry if the game's thread panics (E16 M2 T5e: the reviewer's
+/// finding): otherwise the lobby would list it, and count it against the limits, until the server
+/// stops. Its connections find their queues closed (`TooSlow`).
+struct Panicked<'a>(u32, &'a Shared);
+
+impl Drop for Panicked<'_> {
+    fn drop(&mut self) {
+        if thread::panicking() {
+            eprintln!("h3-server: game {}: its thread panicked", self.0);
+            lock(self.1).leave(self.0);
+        }
+    }
+}
+
 /// Every connection in `conns` but those in `closed` hears `reason`, its last frame from the game.
 fn close_all(conns: &BTreeMap<ConnId, Outbox>, closed: &[ConnId], reason: GoodbyeReason) {
     let text = codec::encode_text(&ServerMessage::Goodbye { reason });
@@ -689,6 +740,7 @@ fn close_all(conns: &BTreeMap<ConnId, Outbox>, closed: &[ConnId], reason: Goodby
                 text: text.clone(),
                 close: true,
                 left: None,
+                held: false,
             });
         }
     }
@@ -712,6 +764,7 @@ fn turn_away(inbox: &mut mpsc::Receiver<ToGame>, reason: GoodbyeReason) {
                 text: text.clone(),
                 close: true,
                 left: None,
+                held: false,
             });
         }
     }
@@ -733,6 +786,7 @@ pub(crate) fn deliver(
         text: outbound.frame,
         close: outbound.close,
         left,
+        held: session.holds(outbound.to),
     };
     if !to.offer(frame) {
         conns.remove(&outbound.to);
@@ -764,9 +818,9 @@ fn replay_text(
 }
 
 /// Game `game` is over (E16 M2 T3): it is verified first ([`verify`]). The replay of a game that
-/// verifies is written as the CLI's file, then its journal goes (the replay is the finished
-/// journal); a replay that does not write keeps the journal, which the next start re-runs to write
-/// it again. A game that does not verify is void: its journal moves to `<data>/void/`, and the
+/// verifies is written as the CLI's file, whole or not at all ([`archive::write`]), then its journal
+/// goes (the replay is the finished journal); a replay that does not write keeps the journal, which
+/// the next start re-runs to write it again. A game that does not verify is void: its journal moves to `<data>/void/`, and the
 /// replay of the game as it was played goes beside it, the diagnosis in its first line. The
 /// replay's text for the participants, or `None`: withheld.
 fn finish(
@@ -782,8 +836,7 @@ fn finish(
             let listed = session.watchable();
             let dir = archive::dir(data, listed);
             let path = dir.join(path.file_name().unwrap_or_default());
-            let written = fs::create_dir_all(&dir).and_then(|()| fs::write(&path, &text));
-            match written {
+            match archive::write(&path, &text) {
                 Ok(()) => {
                     eprintln!("h3-server: game {game} over, replay {}", path.display());
                     journal.remove();
@@ -948,6 +1001,7 @@ mod tests {
             text: String::from(text),
             close: false,
             left: None,
+            held: false,
         };
         let (to, mut from) = outbox(8, 10);
         assert!(to.offer(frame("abcdef")) && to.queued() == 6);

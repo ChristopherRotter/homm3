@@ -640,3 +640,55 @@ how and why the work went.
   (one closed), the two newest open ones listed newest first, the oldest file gone, the closed
   one kept apart; a later page and one past the end; a client in no game downloads the newest,
   which is the file and verifies; ids not listed refused; a restart lists the same; the new bound.
+
+### M2 T5e — M2's closure (2026-10-11)
+
+- **The start.** #93 (T5d) was merged; the branch started from `master` (its CI green). The scoped
+  verify had no failing step, the workload +0.06 % (no re-baseline).
+- **Closure.** M2's exit criteria written in the epic file; the client lane's inbox has the content
+  check (`E16-design.md` §3) and what a restart does to a viewer's numbers and record (a line in
+  `docs/lanes/client/QUEUE.md`, cross-lane with the user's consent); the inbox's M2 items placed
+  (`QUEUE.md`: ids unique for a server's life and the verification before `GameEnded` to M4, the
+  automated seats' rate with the bot accounts, the commands-per-game limit to M3 before the
+  internet; the viewer's record across a restart documented instead of kept). The M3 refinement
+  queued, waiting for the checkpoint (SRV-Q16).
+- **The reviewer agent** (fresh, read-only, over everything M2 changed in the two crates; 1 major,
+  8 minor findings; identity, rejection, projection and secrets to clients, panics from client
+  input sound). Fixed (*provisional* in their shape):
+  - (major) **No file I/O under the registry's lock.** A creation held the lock while it created
+    and synced the journal and spawned the thread; a resume read the journal under it; a waiting
+    game removed its journal under it. One address creating games in a loop could stall every
+    game and connection task behind the fsyncs. Now `game::launch` runs a game's preparation on
+    its own thread (a new game's secrets and journal, a paused one's journal read back and
+    voided there if it does not restore), and a waiting game's journal goes after the lock. A game
+    is listed before its journal exists; it sends nothing before it is synced, so a crash loses
+    only a game nobody holds a token of. A creation whose secrets or journal fail now ends with
+    `Goodbye { Shutdown }` after its `GameCreated`, and a resume whose journal no longer reads too
+    (it was `Refused { NoSuchGame }`).
+  - **The creator's or resumer's join first.** The registry handed a new or resumed game's inbox
+    out before the binding connection's opening was queued, so a stranger's join could take a new
+    game's creator's seat (ids are sequential), or a message could reach a resuming game before
+    its resumer and pause it again. `registry::Opening::first` queues the opening in the fresh
+    inbox under the lock.
+  - **A refused join no longer restarts the lobby's deadline** (a connection sending a refused
+    join every 50 s kept its place for ever, against `06-security.md`). `Frame::held` marks a frame
+    to a connection that holds a seat or watches; the deadline restarts only after leaving a game
+    the connection was in, and waits while it is bound.
+  - **A paused game's deadline survives restarts.** `Writer::reopen` truncated every journal to
+    its own length, which refreshes its last write on Linux, so a server restarted within 72 hours
+    never voided a paused game; it truncates only a torn line now.
+  - **No journal text in the log.** A void journal's reason quoted the replay parsers' errors,
+    which may quote the seed; fixed text now (the header's names only a field).
+  - **The replay written whole or not at all** (`archive::write`: a `.part` file, synced,
+    renamed, the directory synced, then the journal goes); a `.part` a crash left is removed at
+    the next start, and the journal writes the replay again.
+  - **A game thread that panics** leaves the lobby (`game::Panicked`), its journal kept.
+  Placed in the inbox (`QUEUE.md`, the user decides at the checkpoint): a spectator keeps a waiting
+  game whose creator left (no deadline for waiting games); an archived replay goes out beside the
+  outbound queue's byte bound; a non-host seat repeating `Pause` fills the viewers' records; the
+  per-address limits behind a reverse proxy; `Drain`, `Stop` and `Tick` lost when a game's inbox
+  is full. For the user: a replay's publicity is its host's setting alone.
+- **Tests** (h3-server 43; the scoped verify with no failing step): a journal reopened whole keeps
+  its last write; refused joins do not keep a connection in the lobby (fails if a refused join
+  restarts the deadline, checked); a created game's creator joins before a stranger who asks for
+  its seat at once. Three runs of the server's suite in a row passed.
