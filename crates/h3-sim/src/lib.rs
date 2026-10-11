@@ -6,6 +6,8 @@
 //!   the sim layer, not the domain).
 //! * [`observation`]: the flat, versioned observation encoding of a per-viewer [`Observation`].
 //! * [`replay`]: recording and verifying replays (seed + commands + state hashes).
+//! * [`adventure`]: [`adventure::AdventureEnv`] for a game on an adventure map, with its own action
+//!   encoding (the adventure lane's, ADR-0017 point 8).
 //!
 //! The sim layer is where rewards, episode truncation and encodings live; the domain knows
 //! nothing about them. Floats appear only in encodings and rewards and never feed back into game
@@ -14,6 +16,7 @@
 //! [`Observation`]: h3_battle::Observation
 
 pub mod action;
+pub mod adventure;
 pub mod env;
 pub mod observation;
 pub mod replay;

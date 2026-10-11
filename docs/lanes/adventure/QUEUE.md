@@ -4,26 +4,26 @@ Pre-refined tasks of the adventure lane, in order, then the inbox of discovered 
 
 ## Tasks
 
-Epic: `docs/epics/E08-adventure-map.md` (refined 2026-10-08, reviewed with the user the same day; decisions 1–12 there; done tasks in `E08-log.md`). Increment 1 = T1a, T1b, T2–T10, with a checkpoint with the user at T1a (done: ADR-0015–0017), after T3 (done, 2026-10-10) and at T10. T1a, T1b, T2, T3, T4, T5a, T5b, T6a, T6b, T7a, T7b, T8a, T8b1 and T8b2a are done; the import moved from T3 to T5 and T6 (user, 2026-10-10). Refined into the entries below at the T3 checkpoint (2026-10-10): the user takes one or two tasks per round, each round ends at a checkpoint (the round after T3: T4 alone; after T4: T5a and T6a; after T5a/T6a: T6b and T7a; after T6b/T7a: T7b and T5b; after T7b/T5b: T8a alone, T8 split into T8a and T8b; after T8a: T8b1 alone, T8b split into T8b1 and T8b2; after T8b1: T8b2a alone, T8b2 split into T8b2a, what a command may do, and T8b2b, what a viewer may learn). Every entry's acceptance includes the Definition of Done (`docs/05-testing.md`).
+Epic: `docs/epics/E08-adventure-map.md` (refined 2026-10-08, reviewed with the user the same day; decisions 1–12 there; done tasks in `E08-log.md`). Increment 1 = T1a, T1b, T2–T10, with a checkpoint with the user at T1a (done: ADR-0015–0017), after T3 (done, 2026-10-10) and at T10. T1a, T1b, T2, T3, T4, T5a, T5b, T6a, T6b, T7a, T7b, T8a, T8b1, T8b2a, T8b2b and T9a are done; the import moved from T3 to T5 and T6 (user, 2026-10-10). Refined into the entries below at the T3 checkpoint (2026-10-10): the user takes one or two tasks per round, each round ends at a checkpoint (the round after T3: T4 alone; after T4: T5a and T6a; after T5a/T6a: T6b and T7a; after T6b/T7a: T7b and T5b; after T7b/T5b: T8a alone, T8 split into T8a and T8b; after T8a: T8b1 alone, T8b split into T8b1 and T8b2; after T8b1: T8b2a alone, T8b2 split into T8b2a, what a command may do, and T8b2b, what a viewer may learn; after T8b2a: T8b2b and T9a, T9 split into T9a, the env, and T9b, the CLI and the gates). Every entry's acceptance includes the Definition of Done (`docs/05-testing.md`).
 
-### E08 T8b2b — The observation's property tests
+### E08 T9b — CLI, replays, gates
 
-- **Scope:** on T8b2a's playable maps and driver (`crates/h3-map/src/tests/play.rs`: `Plan`, `lay_out`, `start`, `Step`, `resolve`), the properties of what a viewer may learn: observation hygiene (a viewer's observation and projected events do not depend on what it cannot see: the seed, other players' armies and points, hidden tiles; two states differing only there, for example the same plan with another seed, another hidden tile or another army of a hero the viewer does not own), the observation's consistency with the events (a viewer's hero list moves as the projected steps say). Players explore a third to all of a generated map within a case: draw the hidden variations where the viewer has not explored.
-- **Acceptance:** the property tests pass on imported maps.
-- **Depends on:** T8b2a (done). **Status:** ready.
-
-### E08 T9 — Env, CLI, gates
-
-- **Scope:** `AdventureEnv` (reset, step, mask, fork, hash; the action a destination among the reachable tiles), a random agent, the CLI's run, replay verify and bench, golden replays naming their map by content hash, path and `MAP_IMPORT_VERSION` (ADV-Q2), the benchmark workloads and their baselines (decision 11: random play, pathfinding, and the fork cost moved here from T5b), the CLI wiring in battle-owned `crates/h3-cli` files (`Cargo.toml`, the dispatch: a `cross-lane` change with the user's consent).
+- **Scope:** the CLI's adventure commands in `crates/h3-cli/src/adventure/` (run, replay verify, bench) with their wiring in battle-owned `crates/h3-cli` files (`Cargo.toml`, the dispatch: a `cross-lane` change with the user's consent); the adventure replay format in `h3-sim/src/adventure/` (seed, the map by content hash, path and `MAP_IMPORT_VERSION` (ADV-Q2), the commands or actions, state hashes); golden replays of T9a's random agent on `fixtures/maps/e08-duel-36.h3m` in `fixtures/replays/adventure/`, re-run by `crates/h3-cli/tests/adventure_replays.rs`; the benchmark workloads and baselines in `benches/adventure/` (decision 11: random play on the duel map for 28 days; pathfinding on a 144 × 144 two-level map, generated and committed as the duel is; the fork cost on both, moved here from T5b); the targets in `docs/02-architecture.md` §8 (a `shared/` pull request).
 - **Acceptance:** the replays pass the determinism matrix; the +2 % gate has a baseline.
-- **Depends on:** T8b2b. The replays play a generated map (T8b2a's `lay_out`, written once by a test and committed): the user dropped the editor maps (2026-10-11). **Status:** waiting (T8b2b).
+- **Depends on:** T9a (done). **Status:** ready.
 
 ### E08 T10 — Closure
 
 - **Scope:** the movement experiments' spec shape (cross-lane, decision 12) and a batch (ADV-Q3's D-2/D-3 candidates, ADV-Q4's turn-start experiment, ADV-Q6's starting-army map), the docs, the refinement of increment 2, the checkpoint.
-- **Depends on:** T9. **Status:** waiting (T9).
+- **Depends on:** T9b. **Status:** waiting (T9b).
 
 ## Inbox
+
+- 2026-10-11 (T9a review): `benches/battle/random-rollouts-full.toml` collects `*random_rollout*`, which now also names `h3_sim::adventure::random_rollout`: T9b's workload collects a qualified pattern (`*adventure*random_rollout*`), and the battle lane may tighten its own (tell it).
+- 2026-10-11 (T9a): the env's `legal_mask` and `tile_mask` each run the hero's reachable-tiles query, so an agent asking both pays two searches per hero and step (the random agent one): T9b's benchmark decides whether the env keeps the queries of the current state.
+- 2026-10-11 (T9a): a player's hero slots are its heroes by id, the first eight; they shift when a hero of a lower id joins or leaves (recruiting, defeat: increments 3 and later). Stable slots (a slot table in the game, as the original's hero list) when an agent needs them (E13), with an encoding version bump.
+- 2026-10-11 (T9a, the user): the env's observation is `h3_game`'s view; a flat, versioned encoding comes with E13's macro-actions (or E05's batch API). Episodes end only by the day limit and carry no reward until victory and defeat exist (E10).
+- 2026-10-11 (T8b2b): the hygiene test compares two games while the other players' commands have the same outcome in both (about four steps in five over 200 cases); it varies the streams only through the seed (no command draws yet, see the T8b2a note below).
 
 - 2026-10-11 (T8b2a): moves are not listed one by one (the user): `h3_game::legal_moves` gives a hero's `Reach`. T9's env builds its mask from it (a bit per tile and hero; ADR-0017 point 8) and the path only for the action taken.
 - 2026-10-11 (T8b2a, the user): clients compute their own paths and `apply` validates them. For the client and server lanes: the pathfinder on a player's observation instead of the state (moves go to explored tiles only, where the observation shows all the query reads: terrain, roads, objects, visible heroes, the own hero's army and points), or a server query for the reach of the player's own hero.
