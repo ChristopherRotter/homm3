@@ -46,12 +46,16 @@ The M1 messages, the manifest, the observation and the events are code since M1 
 (`crates/h3-protocol/src/wire.rs`, in the same form: struct variants in serde's default
 enum form). Later milestones add:
 
-Client to server: M2: `CreateGame { config }`, `ListGames`, `StartGame`, `Pause`, `Resume`.
+Client to server: M2: `ListGames { seq }` and `CreateGame { seq, offer, seat }` (code since M2
+T1: a game is created from one of the server's offers and its creator takes `seat` in it at
+once), `Pause`, `Resume`.
 M3: `Login { public_key, signature, name }`, `Rekey { new_public_key, signatures }`. M4:
 `Queue { ladder }`, `Dequeue`, `AcceptMatch`, `Leaderboard { ladder, page }`,
 `MyRating { ladder }`.
 
-Server to client: M2: `Games`, `GameCreated`, `GameStarted`, `Paused`, `Resumed`. M3:
+Server to client: M2: `Games { seq, offers, games }` and `GameCreated { seq, game }` (code since
+M2 T1; the refusals `NoSuchOffer` and `TooManyGames`), `Paused`, `Resumed`. No `StartGame`: a
+game starts when every seat is held at once (M1 T2's rule). M3:
 `Challenge { nonce }`, `LoggedIn { player }`. M4: `Queued`, `MatchFound { game, seat,
 deadline }`, `LeaderboardPage`, `Rating`.
 
@@ -111,18 +115,15 @@ only and a visible note. The server never reads anything from this check.
 
 ## 9. Server configuration and data directory (sketch)
 
-M1's configuration is code since T3 (`crates/h3-server/src/config.rs`, the example
-`server.example.toml`): flat, for its one game (`bind`, `packs`, `scenario`, `profile`, `bots`,
-`data`, `checkpoint_every`, `[limits]`); the replay goes to
-`<data>/replays/<scenario>-game<id>-<random>.toml`. M2 turns it into the sections below.
+The configuration is code since M2 T1 (`crates/h3-server/src/config.rs`, the example
+`server.example.toml`): `[server]` (`bind`, `data`, `checkpoint_every`), `[content]` (`packs`, the
+packs directory: a scenario names its packs and profile), `[limits]` (M1's six and `games`,
+`games_per_address`), one `[[offer]]` per game configuration (`id`, `scenario`, `profile`,
+`bots`); the replay goes to `<data>/replays/<offer>-game<id>-<random>.toml`. Still to come:
 
 ```
-[server]      bind = "127.0.0.1:7777"   data_dir = "server-data"   anonymous = true
-              shadow_instance = false   checkpoint_every = 25
-[limits]      frame_bytes = 65536   messages_per_second = 20   connections = 256
-              connections_per_address = 8   idle_seconds = 120   pause_hours = 72
-[content]     packs_dir = "packs"   packs = ["base", "ab", "sod"]   profile = "faithful"
-[[game]]      scenario = "fixtures/scenarios/skirmish.toml"   bots = ["defender"]   # M1 only
+[server]      anonymous = true   shadow_instance = false            # M3, M2 T3
+[limits]      pause_hours = 72                                       # M2 T3
 [[ladder]]    id = "battle-arena"  scenario_pool = ["…"]  season = 1  pause = false  # M4
 ```
 

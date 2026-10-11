@@ -812,6 +812,50 @@ pub struct Manifest {
     pub keys: KeyTables,
 }
 
+/// A game configuration the server offers (E16 M2 T1): what a game created from it is made of,
+/// shown before anyone joins. The scenario is the server's; a client names the offer by `id`.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct Offer {
+    /// The offer's id, as `CreateGame` names it.
+    pub id: String,
+    /// The scenario's id.
+    pub scenario: String,
+    /// The packs, in load order.
+    pub packs: Vec<PackRef>,
+    /// The profile's key.
+    pub profile: String,
+    /// The compiled ruleset's content hash (the manifest's).
+    pub ruleset_hash: WireU64,
+    /// The seats the server's bot plays.
+    pub bots: Vec<Seat>,
+}
+
+/// Where a game is.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub enum Phase {
+    /// Not every seat was held at once yet.
+    Waiting,
+    /// Started and not over.
+    Running,
+    /// Over.
+    Over,
+}
+
+/// One hosted game in the lobby's list.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct GameInfo {
+    /// The game's id, as `Join` names it.
+    pub game: u32,
+    /// The offer it was created from.
+    pub offer: String,
+    /// Where it is.
+    pub phase: Phase,
+    /// The seats a newcomer may take without a token.
+    pub open: Vec<Seat>,
+}
+
 /// A question about the battle that only the server's rules answer (ADR-0018 point 10).
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
@@ -842,6 +886,21 @@ pub enum ClientMessage {
         client: String,
         /// The player's display name.
         name: String,
+    },
+    /// The server's offers and games (E16 M2 T1).
+    ListGames {
+        /// The client's sequence number.
+        seq: u32,
+    },
+    /// Create a game of one of the server's offers and take `seat` in it (E16 M2 T1); the
+    /// answer is `GameCreated`, then the game's `Joined`, or `Refused`.
+    CreateGame {
+        /// The client's sequence number.
+        seq: u32,
+        /// The offer's id.
+        offer: String,
+        /// The seat the creator takes.
+        seat: Seat,
     },
     /// Take a seat in a game, or re-take it with its token after a disconnect.
     Join {
@@ -885,7 +944,7 @@ pub enum ClientMessage {
     },
 }
 
-/// Why a join was refused; the connection stays open.
+/// Why a join or a game's creation was refused; the connection stays open.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub enum Refusal {
     /// No game has this id.
@@ -898,6 +957,10 @@ pub enum Refusal {
     AlreadyJoined,
     /// The server does not take spectators yet.
     NoSpectators,
+    /// The server offers nothing under this id.
+    NoSuchOffer,
+    /// The server, or the client's address, has as many open games as it allows.
+    TooManyGames,
 }
 
 /// Why the server closes the connection.
@@ -1037,6 +1100,22 @@ pub enum ServerMessage {
     Pong {
         /// The ping's nonce.
         nonce: u32,
+    },
+    /// The server's offers and its games (E16 M2 T1).
+    Games {
+        /// The client's sequence number.
+        seq: u32,
+        /// What a game may be created from.
+        offers: Vec<Offer>,
+        /// The hosted games, by id.
+        games: Vec<GameInfo>,
+    },
+    /// A game was created; the game's `Joined` follows.
+    GameCreated {
+        /// The client's sequence number.
+        seq: u32,
+        /// The new game's id.
+        game: u32,
     },
 }
 

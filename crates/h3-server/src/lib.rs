@@ -1,10 +1,11 @@
 //! `h3-server`: hosts the engine's games for untrusted clients over WebSocket (E16, ADR-0018). The
 //! I/O shell around `h3-protocol`'s sans-I/O core: sockets, clock, OS randomness, files,
-//! configuration and the bot seats. M1: one hosted battle per server.
+//! configuration and the bot seats. M2: the games clients create from the server's offers.
 //!
-//! - [`config`]: the TOML configuration (bind address, packs, scenario, profile, bots, limits);
-//! - [`game`]: the game, prepared from the configuration with secrets from the OS, run on its own
-//!   OS thread; the replay written as the CLI's file at the end;
+//! - [`config`]: the TOML configuration (server, content, limits, the offers);
+//! - [`game`]: the offers, compiled at start; a game prepared from an offer with secrets from the
+//!   OS, run on its own OS thread; the replay written as the CLI's file at the end;
+//! - `registry`: the lobby and the games' inboxes, shared by the tasks and the games' threads;
 //! - `net`: the listener and a `tokio` task per connection, behind the transport trait;
 //! - [`client`]: a headless client for tests and tools;
 //! - [`bench`]: the session core's workload (`benches/server/`).
@@ -14,25 +15,23 @@
 
 use std::fmt;
 use std::net::SocketAddr;
-use std::path::PathBuf;
-use std::sync::Arc;
+use std::sync::{Arc, Mutex};
 
+use h3_protocol::lobby;
 use tokio::net::TcpListener;
-use tokio::sync::mpsc;
 
 pub mod bench;
 pub mod client;
 pub mod config;
 pub mod game;
 mod net;
+mod registry;
 
 #[cfg(test)]
 mod tests;
 
 pub use config::{BotSeat, Config, Limits};
-
-/// The game's inbox: messages waiting for the game's thread.
-const GAME_INBOX: usize = 1024;
+use registry::Registry;
 
 /// Why the server does not start.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -51,12 +50,6 @@ impl std::error::Error for Error {}
 pub struct Running {
     /// The address it listens on.
     pub address: SocketAddr,
-    /// Where the replay goes at the end of the game.
-    pub replay_path: PathBuf,
-    /// The players' seat tokens (attacker, defender; `None` for the bot's). The server hands a
-    /// token to the first connection that takes the seat; a caller of the library may give it out
-    /// instead (the binary shows it to no one: an operator's copy comes with E16 M2's journal).
-    pub tokens: [Option<String>; 2],
     /// The accepting task.
     pub listener: tokio::task::JoinHandle<()>,
 }
@@ -66,25 +59,27 @@ pub fn server_name() -> String {
     format!("h3-server {}", env!("CARGO_PKG_VERSION"))
 }
 
-/// Prepares the game, starts its thread and listens: call from a `tokio` runtime.
+/// Compiles the offers and listens: call from a `tokio` runtime. Games are created by clients
+/// (`CreateGame`), each on its own thread.
 pub async fn start(config: &Config) -> Result<Running, Error> {
-    let prepared = game::Prepared::new(config)?;
-    let replay_path = prepared.replay_path.clone();
-    let tokens = prepared.tokens.clone();
-    let listener = TcpListener::bind(&config.bind)
+    let offers = config
+        .offers
+        .iter()
+        .map(|offer| game::Offer::load(offer, &config.content.packs).map(Arc::new))
+        .collect::<Result<Vec<_>, _>>()?;
+    let limits = lobby::Limits {
+        games: config.limits.games,
+        games_per_origin: config.limits.games_per_address,
+    };
+    let registry = Registry::new(offers, limits, config.server.clone());
+    let listener = TcpListener::bind(&config.server.bind)
         .await
-        .map_err(|e| Error(format!("bind {}: {e}", config.bind)))?;
+        .map_err(|e| Error(format!("bind {}: {e}", config.server.bind)))?;
     let address = listener
         .local_addr()
-        .map_err(|e| Error(format!("bind {}: {e}", config.bind)))?;
-    let (to_game, inbox) = mpsc::channel(GAME_INBOX);
-    prepared.spawn(inbox)?;
+        .map_err(|e| Error(format!("bind {}: {e}", config.server.bind)))?;
     let server: Arc<str> = Arc::from(server_name());
-    let listener = tokio::spawn(net::listen(listener, to_game, config.limits, server));
-    Ok(Running {
-        address,
-        replay_path,
-        tokens,
-        listener,
-    })
+    let registry = Arc::new(Mutex::new(registry));
+    let listener = tokio::spawn(net::listen(listener, registry, config.limits, server));
+    Ok(Running { address, listener })
 }
