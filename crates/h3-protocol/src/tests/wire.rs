@@ -84,6 +84,7 @@ fn client_messages() -> Vec<ClientMessage> {
             offer: "duel".to_string(),
             seat: Seat::Defender,
         },
+        ClientMessage::Pause { seq: 14 },
     ];
     out.extend(
         commands()
@@ -193,14 +194,31 @@ fn server_messages() -> Vec<ServerMessage> {
         ServerMessage::Games {
             seq: 12,
             offers: vec![map::offer("duel", "duel", &ruleset, vec![Seat::Defender])],
-            games: vec![GameInfo {
-                game: 3,
-                offer: "duel".to_string(),
-                phase: Phase::Waiting,
-                open: vec![Seat::Attacker],
-            }],
+            games: vec![
+                GameInfo {
+                    game: 3,
+                    offer: "duel".to_string(),
+                    phase: Phase::Waiting,
+                    open: vec![Seat::Attacker],
+                },
+                GameInfo {
+                    game: 4,
+                    offer: "duel".to_string(),
+                    phase: Phase::Paused,
+                    open: vec![],
+                },
+            ],
         },
         ServerMessage::GameCreated { seq: 13, game: 3 },
+        ServerMessage::PauseAsked {
+            n: 10,
+            seat: Seat::Defender,
+        },
+        ServerMessage::Rejected {
+            n: 11,
+            seq: 10,
+            code: RejectCode::Unverified,
+        },
     ];
     out.extend(
         [
@@ -225,6 +243,7 @@ fn server_messages() -> Vec<ServerMessage> {
             GoodbyeReason::Left,
             GoodbyeReason::Replaced,
             GoodbyeReason::Shutdown,
+            GoodbyeReason::Paused,
         ]
         .map(|reason| ServerMessage::Goodbye { reason }),
     );
@@ -267,6 +286,10 @@ fn the_json_is_serdes_default_enum_form() {
         r#"{"Join":{"game":1,"seat":"Defender","token":null}}"#
     );
     assert_eq!(text(&ClientMessage::Leave {}), r#"{"Leave":{}}"#);
+    assert_eq!(
+        text(&ClientMessage::Pause { seq: 4 }),
+        r#"{"Pause":{"seq":4}}"#
+    );
     assert_eq!(
         text(&ClientMessage::CreateGame {
             seq: 2,

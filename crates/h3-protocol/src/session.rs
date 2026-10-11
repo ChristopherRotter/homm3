@@ -26,16 +26,29 @@
 //!   durable before it sends that call's frames, so nothing a client was told is lost.
 //!   [`Session::restore`] re-runs them after a restart: the same battle, the same seats taken, no
 //!   seat held. A viewer's numbers and record start afresh there (they are not journaled).
+//! - **Pause** (E16 M2 T3). In a running game the *host*, the seat taken first (a created game's
+//!   creator), pauses it with `Pause`; another seat's ask is told to every viewer (`PauseAsked`),
+//!   for the host to decide. A pause is an entry; every holder gets `Goodbye { Paused }`, and the
+//!   host may then drop the session: a paused game is its journal. A seat's join with its token
+//!   resumes a restored one ([`Session::paused`]), an entry too.
+//! - **Integrity** (E16 M2 T3, `E16-design.md` §8). The host verifies a finished game before it
+//!   publishes the replay, and withholds it if the game does not verify
+//!   ([`Session::withhold_replay`]). With the *shadow instance* on ([`GameConfig::shadow`]), every
+//!   command is applied to a second battle too and the two hashes compared; on a difference both
+//!   are rebuilt from the journal, which is the truth, and the command applied again
+//!   ([`Session::drain_mismatches`]).
 //!
-//! Provisional (E16 M1 T2, M2 T2): the names, the connection numbering, frames as text, the
-//! record's layout, the entries (the epic's review list).
+//! Provisional (E16 M1 T2, M2 T2, T3): the names, the connection numbering, frames as text, the
+//! record's layout, the entries, who pauses (the epic's review list).
 
 use alloc::boxed::Box;
 use alloc::string::String;
 use alloc::vec::Vec;
 use core::fmt;
 
-use h3_battle::{BattleSetup, BattleSide, BattleState, CommandError, LegalCommands, SetupError};
+use h3_battle::{
+    BattleSetup, BattleSide, BattleState, CommandError, LegalCommands, NoopSink, SetupError,
+};
 use h3_content::Ruleset;
 
 use crate::RECORD_FORMAT_VERSION;
@@ -100,6 +113,8 @@ pub struct GameConfig {
     pub seed: u64,
     /// A state hash goes into the journal after every this many commands (0: none).
     pub checkpoint_every: u32,
+    /// Whether a shadow instance checks the live battle after every command (E16 M2 T3).
+    pub shadow: bool,
 }
 
 /// The journal: everything the replay needs except its header (ADR-0018 point 12). Private to the
@@ -151,6 +166,10 @@ pub enum Entry {
     Command(BattleSide, h3_battle::Command),
     /// The state's hash after the commands so far, every `checkpoint_every` commands.
     Checkpoint(u64),
+    /// The host paused the game (E16 M2 T3).
+    Paused,
+    /// A seat was taken in the paused game: it runs again (E16 M2 T3).
+    Resumed,
 }
 
 /// Why a journal does not restore its game.
@@ -202,6 +221,25 @@ impl SeatState {
     }
 }
 
+/// The shadow instance (E16 M2 T3): a second battle the commands are applied to in step with the
+/// live one, and the battle as it began, to rebuild both from the journal.
+#[derive(Debug)]
+struct Shadow {
+    state: BattleState,
+    initial: BattleState,
+}
+
+/// What became of the replay once the game is over.
+#[derive(Debug, Clone, PartialEq, Eq)]
+enum Published {
+    /// Not yet anything.
+    Not,
+    /// The replay file's text.
+    Replay(String),
+    /// Withheld: the game did not verify (E16 M2 T3).
+    Withheld,
+}
+
 /// One hosted battle and its seats.
 #[derive(Debug)]
 pub struct Session<'r> {
@@ -221,8 +259,16 @@ pub struct Session<'r> {
     journal: Journal,
     /// The entries the host has not drained yet.
     entries: Vec<Entry>,
-    /// The replay file's text, once the host published it.
-    replay: Option<String>,
+    /// The replay, once the host published or withheld it.
+    replay: Published,
+    /// The side whose seat was taken first: the host, who pauses the game (E16 M2 T3).
+    host: Option<BattleSide>,
+    /// Whether the game paused and no seat was taken since.
+    paused: bool,
+    /// The shadow instance, if the game has one.
+    shadow: Option<Box<Shadow>>,
+    /// The steps at which the shadow instance disagreed, not drained yet.
+    mismatches: Vec<usize>,
 }
 
 impl<'r> Session<'r> {
@@ -240,6 +286,12 @@ impl<'r> Session<'r> {
             holder: None,
             viewer: Viewer::default(),
         });
+        let shadow = config.shadow.then(|| {
+            Box::new(Shadow {
+                state: state.clone(),
+                initial: state.clone(),
+            })
+        });
         Ok(Self {
             ruleset,
             game: config.game,
@@ -255,7 +307,11 @@ impl<'r> Session<'r> {
                 checkpoints: Vec::new(),
             },
             entries: Vec::new(),
-            replay: None,
+            replay: Published::Not,
+            host: None,
+            paused: false,
+            shadow,
+            mismatches: Vec::new(),
         })
     }
 
@@ -266,7 +322,8 @@ impl<'r> Session<'r> {
     /// divergence. No seat is held after it; a taken one is re-taken with its
     /// token. The first drained entries then are what the journal lacks: the checkpoint after its
     /// last command if a crash cut the journal between the two, and the bots' commands if a started
-    /// game is theirs to act (a crash between a player's command and the bots' answers).
+    /// game is theirs to act (a crash between a player's command and the bots' answers). A journal
+    /// that ends with a pause restores a paused session ([`Session::paused`]).
     pub fn restore(
         ruleset: &'r Ruleset,
         config: GameConfig,
@@ -278,10 +335,15 @@ impl<'r> Session<'r> {
             match entry {
                 Entry::Taken(side) => {
                     session.seats[side.index()].issued = true;
+                    session.host.get_or_insert(side);
                     session.entries.push(entry);
                 }
                 Entry::Started => {
                     session.started = true;
+                    session.entries.push(entry);
+                }
+                Entry::Paused | Entry::Resumed => {
+                    session.paused = entry == Entry::Paused;
                     session.entries.push(entry);
                 }
                 Entry::Command(side, command) => {
@@ -317,6 +379,7 @@ impl<'r> Session<'r> {
             ClientMessage::Query { seq, query } => self.query(conn, seq, query, out),
             ClientMessage::FetchReplay { seq } => self.fetch_replay(conn, seq, out),
             ClientMessage::FetchRecord { seq } => self.fetch_record(conn, seq, out),
+            ClientMessage::Pause { seq } => self.pause(conn, seq, out),
             ClientMessage::Leave {} => {
                 self.disconnected(conn);
                 out.push(goodbye(conn, GoodbyeReason::Left));
@@ -367,6 +430,8 @@ impl<'r> Session<'r> {
     pub fn phase(&self) -> Phase {
         if self.state.is_over() {
             Phase::Over
+        } else if self.paused {
+            Phase::Paused
         } else if self.started {
             Phase::Running
         } else {
@@ -390,7 +455,38 @@ impl<'r> Session<'r> {
     /// The replay file's text, for the participants once the game is over (ADR-0018 point 8): a
     /// `FetchReplay` before the end is refused even if the text is there.
     pub fn publish_replay(&mut self, replay: String) {
-        self.replay = Some(replay);
+        self.replay = Published::Replay(replay);
+    }
+
+    /// The game did not verify (E16 M2 T3): its replay is withheld, and a `FetchReplay` after the
+    /// end is rejected as `Unverified`.
+    pub fn withhold_replay(&mut self) {
+        self.replay = Published::Withheld;
+    }
+
+    /// Whether the game paused (E16 M2 T3), or a restored journal ended with its pause, and no
+    /// seat was taken since: the host may drop the session, the journal is the game.
+    pub const fn paused(&self) -> bool {
+        self.paused
+    }
+
+    /// The steps at which the shadow instance disagreed with the live battle since the last call
+    /// (E16 M2 T3), each the number of the command that found it: the host logs them.
+    pub fn drain_mismatches(&mut self) -> alloc::vec::Drain<'_, usize> {
+        self.mismatches.drain(..)
+    }
+
+    /// Replaces the live battle, as a fault in memory would (tests of the shadow instance).
+    #[cfg(test)]
+    pub(crate) fn corrupt(&mut self, state: BattleState) {
+        self.state = state;
+    }
+
+    /// Replaces the shadow instance's battle, as a fault in memory would.
+    #[cfg(test)]
+    pub(crate) fn corrupt_shadow(&mut self, state: &BattleState) {
+        let shadows = self.shadow.iter_mut();
+        shadows.for_each(|shadow| shadow.state = state.clone());
     }
 
     /// `Join`: takes or re-takes a seat.
@@ -430,7 +526,11 @@ impl<'r> Session<'r> {
             out.push(goodbye(old, GoodbyeReason::Replaced));
         }
         if taken {
+            self.host.get_or_insert(side);
             self.entries.push(Entry::Taken(side));
+        }
+        if core::mem::take(&mut self.paused) {
+            self.entries.push(Entry::Resumed);
         }
         out.push(reply(
             conn,
@@ -498,13 +598,50 @@ impl<'r> Session<'r> {
         let Some(side) = self.seat_of(conn) else {
             return out.push(unseated(conn, seq));
         };
-        let over = self.state.is_over();
-        match self.replay.as_ref().filter(|_| over).cloned() {
-            Some(replay) => {
+        let published = if self.state.is_over() {
+            &self.replay
+        } else {
+            &Published::Not
+        };
+        match published.clone() {
+            Published::Replay(replay) => {
                 let n = self.seats[side.index()].viewer.n;
                 out.push(reply(conn, &ServerMessage::Replay { n, seq, replay }));
             }
-            None => self.reject(side, seq, RejectCode::NotOver, out),
+            Published::Withheld => self.reject(side, seq, RejectCode::Unverified, out),
+            Published::Not => self.reject(side, seq, RejectCode::NotOver, out),
+        }
+    }
+
+    /// `Pause`: the host's ask pauses a running game; another seat's is told to every viewer.
+    fn pause(&mut self, conn: ConnId, seq: u32, out: &mut Vec<Outbound>) {
+        let Some(side) = self.seat_of(conn) else {
+            return out.push(unseated(conn, seq));
+        };
+        let code = match self.phase() {
+            Phase::Running => None,
+            Phase::Over => Some(RejectCode::BattleOver),
+            // A game whose seats are held is not paused.
+            Phase::Waiting | Phase::Paused => Some(RejectCode::NotStarted),
+        };
+        if let Some(code) = code {
+            return self.reject(side, seq, code, out);
+        }
+        // The host or every seat may pause (`E16-design.md` §7); the host holds one of the two
+        // seats, so its ask decides, and another seat's is for the host to hear.
+        if self.host != Some(side) {
+            for viewer in BattleSide::BOTH {
+                let seat = seat(side);
+                self.send(viewer, |n| ServerMessage::PauseAsked { n, seat }, out);
+            }
+            return;
+        }
+        self.paused = true;
+        self.entries.push(Entry::Paused);
+        for held in &mut self.seats {
+            if let Some(holder) = held.holder.take() {
+                out.push(goodbye(holder, GoodbyeReason::Paused));
+            }
         }
     }
 
@@ -529,14 +666,37 @@ impl<'r> Session<'r> {
         out.push(reply(conn, &ServerMessage::Record { n, seq, record }));
     }
 
-    /// Applies `command` for `side` and journals it; the events, if the engine accepted it.
+    /// Applies `command` for `side` and journals it; the events, if the engine accepted it. With a
+    /// shadow instance, the command is applied there too; if the two battles then differ (in their
+    /// hashes, or in whether they accepted it), both are rebuilt from the journal, the truth, and
+    /// the command is applied again (E16 M2 T3).
     fn apply(
         &mut self,
         side: BattleSide,
         command: h3_battle::Command,
     ) -> Result<Vec<h3_battle::Event>, CommandError> {
+        let ruleset = self.ruleset;
         let mut events = Vec::new();
-        h3_battle::apply(&mut self.state, self.ruleset, side, command, &mut events)?;
+        let mut applied = h3_battle::apply(&mut self.state, ruleset, side, command, &mut events);
+        if let Some(shadow) = &mut self.shadow {
+            let again = h3_battle::apply(&mut shadow.state, ruleset, side, command, &mut NoopSink);
+            if again.is_ok() != applied.is_ok()
+                || shadow.state.state_hash() != self.state.state_hash()
+            {
+                let mut state = shadow.initial.clone();
+                for &(side, command) in &self.journal.commands {
+                    // Accepted once by both battles, so accepted again.
+                    let _ = h3_battle::apply(&mut state, ruleset, side, command, &mut NoopSink);
+                }
+                shadow.state = state.clone();
+                let _ = h3_battle::apply(&mut shadow.state, ruleset, side, command, &mut NoopSink);
+                events.clear();
+                applied = h3_battle::apply(&mut state, ruleset, side, command, &mut events);
+                self.state = state;
+                self.mismatches.push(self.journal.commands.len() + 1);
+            }
+        }
+        applied?;
         self.journal
             .append(side, command, &self.state, &mut self.entries);
         Ok(events)
@@ -642,8 +802,9 @@ const fn seat(side: BattleSide) -> Seat {
     }
 }
 
-/// Whether `given` is the seat's token; the time does not depend on where they differ.
-fn same_token(expected: &str, given: &str) -> bool {
+/// Whether `given` is the seat's token `expected`; the time does not depend on where they differ
+/// (the host checks a paused game's tokens with it, E16 M2 T3).
+pub fn same_token(expected: &str, given: &str) -> bool {
     expected.len() == given.len()
         && expected
             .bytes()

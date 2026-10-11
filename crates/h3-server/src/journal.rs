@@ -4,7 +4,7 @@
 //! tokens and the game's replay before its first command (the CLI's replay file: the replay
 //! header, the seed, the setup, the checkpoint interval). Every further line is one of the session
 //! core's entries ([`Entry`]): a seat taken, the start, an accepted command (in the replay's text
-//! form), a state hash.
+//! form), a state hash, a pause and a resume (format 2, E16 M2 T3).
 //!
 //! - **Write-ahead.** The game's thread appends the entries of each call and syncs them before it
 //!   sends that call's frames ([`Writer::append`]); a new journal is synced with its directory
@@ -29,7 +29,7 @@ use h3_protocol::session::Entry;
 use serde::{Deserialize, Serialize};
 
 /// The version of the journal's format: bumped when its lines change.
-pub const JOURNAL_FORMAT_VERSION: u32 = 1;
+pub const JOURNAL_FORMAT_VERSION: u32 = 2;
 
 /// The journal's first line: the game as it started.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -68,6 +68,10 @@ enum Line {
     Command { command: String },
     /// [`Entry::Checkpoint`] as 16 hex digits.
     Checkpoint { hash: String },
+    /// [`Entry::Paused`] (E16 M2 T3).
+    Paused {},
+    /// [`Entry::Resumed`] (E16 M2 T3).
+    Resumed {},
 }
 
 impl Line {
@@ -86,6 +90,8 @@ impl Line {
             Entry::Checkpoint(hash) => Self::Checkpoint {
                 hash: format!("{hash:#018x}"),
             },
+            Entry::Paused => Self::Paused {},
+            Entry::Resumed => Self::Resumed {},
         }
     }
 
@@ -107,6 +113,8 @@ impl Line {
                 .and_then(|hex| u64::from_str_radix(hex, 16).ok())
                 .map(Entry::Checkpoint)
                 .ok_or_else(|| String::from("bad checkpoint"))?,
+            Self::Paused {} => Entry::Paused,
+            Self::Resumed {} => Entry::Resumed,
         })
     }
 }
@@ -184,7 +192,6 @@ impl Writer {
     }
 
     /// The journal's file.
-    #[cfg(test)]
     pub(crate) fn path(&self) -> &Path {
         &self.path
     }
@@ -305,6 +312,8 @@ mod tests {
             Entry::Command(BattleSide::Attacker, Command::Move { to: Hex(40) }),
             Entry::Command(BattleSide::Defender, Command::Wait),
             Entry::Checkpoint(0x0123_4567_89ab_cdef),
+            Entry::Paused,
+            Entry::Resumed,
         ];
         writer.append(entries.into_iter()).unwrap();
         writer.append(std::iter::empty()).unwrap();
@@ -319,6 +328,10 @@ mod tests {
             "{text}"
         );
         assert!(text.contains(r#"{"Checkpoint":{"hash":"0x0123456789abcdef"}}"#));
+        assert!(
+            text.ends_with("{\"Paused\":{}}\n{\"Resumed\":{}}\n"),
+            "{text}"
+        );
         #[cfg(unix)]
         {
             use std::os::unix::fs::PermissionsExt;
@@ -362,7 +375,10 @@ mod tests {
             (String::new(), "no first line"),
             (String::from("{}\n"), "first line"),
             (
-                first.replace("\"format\":1", "\"format\":9") + "\n",
+                first.replace(
+                    &format!("\"format\":{JOURNAL_FORMAT_VERSION}"),
+                    "\"format\":9",
+                ) + "\n",
                 "journal format 9",
             ),
             (
