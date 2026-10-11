@@ -339,6 +339,71 @@ fn the_ballista_prefers_creatures_threats_and_value() {
     );
 }
 
+/// E04b T11b review (F-robust-1, F-sec-1 part b): whether a candidate "could attack next turn"
+/// is answered from the pits both sides see. The shot is public, so a Quicksand pit hidden from
+/// one side (BAT-MAG-031) must not change the target; `hidden_obstacles_do_not_show` found such
+/// games now and then.
+// covers: BAT-WAR-002, BAT-MAG-031
+#[test]
+fn the_automatic_ballista_does_not_show_hidden_pits() {
+    use h3_content::ObstacleKind;
+    let r = ruleset();
+    // Ids: 0, 1 fixed (attacker); 2, 3 tank, 4 ballista (defender).
+    let mut setup = with_machines(
+        &r,
+        &[(0, "fixed", 10), (1, "fixed", 10)],
+        &[(0, "tank", 10), (1, "tank", 10)],
+        [&[], &["ballista"]],
+    );
+    // A corridor along row 5 from the first attacker stack to the first defender stack.
+    setup.obstacles = blocked(
+        (4..=8)
+            .flat_map(|x| [at(&r, x, 4).0, at(&r, x, 6).0])
+            .collect(),
+    );
+    let mut clear = start(&r, &setup, 1);
+    // The attacker's stacks are five steps (their speed) from an attack position on a defender
+    // stack each: the first only through the corridor.
+    place(&mut clear, &r, 0, 3, 5);
+    place(&mut clear, &r, 1, 3, 9);
+    place(&mut clear, &r, 2, 9, 5);
+    place(&mut clear, &r, 3, 9, 9);
+    // The same battle with `side`'s Quicksand pit in the corridor, hidden from the other side.
+    let quicksand = r.spell_by_key("t:quicksand").unwrap();
+    let shape = r.spell(quicksand).unwrap().magic.obstacle.clone().unwrap();
+    let with_pit = |side: BattleSide| {
+        let mut s = clear.clone();
+        crate::obstacles::place(
+            &mut s,
+            (quicksand, ObstacleKind::Pit, &shape),
+            side,
+            (&[at(&r, 6, 5)], 0),
+            &mut Vec::new(),
+        );
+        assert!(crate::obstacles::seen_by(&s, side.opponent()).is_empty());
+        // The side that does not see the pit observes the battle without it.
+        assert_eq!(
+            crate::observe(&s, &r, side.opponent()),
+            crate::observe(&clear, &r, side.opponent())
+        );
+        s
+    };
+    // Every stack defends; the Ballista then shoots on its own.
+    let shot = |mut s: BattleState| shots_by(&defend_round(&mut s, &r), 4)[0].0;
+    // Without a pit both stacks could attack next turn: equal value, the lower id.
+    assert_eq!(shot(clear.clone()), 0);
+    // The attacker's hidden pit cuts its first stack off, which the defender must not learn from
+    // its Ballista's shot; nor does the attacker learn of the defender's hidden pit.
+    assert_eq!(shot(with_pit(BattleSide::Attacker)), 0);
+    assert_eq!(shot(with_pit(BattleSide::Defender)), 0);
+    // A pit both sides see counts: the first stack could not attack, the second is shot.
+    for side in [BattleSide::Attacker, BattleSide::Defender] {
+        let mut s = with_pit(side);
+        s.spell_obstacles.reveal_for_tests(at(&r, 6, 5));
+        assert_eq!(shot(s), 1, "{side:?}");
+    }
+}
+
 // covers: BAT-WAR-002
 #[test]
 fn the_ballista_can_win_the_battle_and_stops_without_shots() {

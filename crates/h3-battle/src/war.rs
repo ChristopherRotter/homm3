@@ -20,7 +20,7 @@ use crate::event::{Event, EventKind, Sink};
 use crate::geometry::Field;
 use crate::hero;
 use crate::magic::hero_rate;
-use crate::movement::reachable;
+use crate::movement::reachable_in_public;
 use crate::state::{BattleState, STACK_CAPACITY, StackId, StackTraits};
 
 /// How the side of stack `id` commands it, if `id` is a shooting war machine (the Ballista) and
@@ -96,13 +96,15 @@ pub(crate) fn act<S: Sink>(state: &mut BattleState, ruleset: &Ruleset, id: Stack
 }
 
 /// Whether stack `id` could attack next turn: it can shoot, or some enemy (BAT-MAG-025/026) has
-/// an attack position it can reach (VCMI `getCanAttackNextTurn`).
+/// an attack position it can reach (VCMI `getCanAttackNextTurn`). Its reach is the one both
+/// sides can tell (BAT-MAG-031): the answer picks the automatic Ballista's target, which both
+/// sides are told, so a pit hidden from either side does not count (E04b T11b review).
 pub(crate) fn can_attack_next_turn(state: &BattleState, field: Field, id: StackId) -> bool {
     if can_shoot(state, field, id) {
         return true;
     }
     let me = state.at(id);
-    let reach = reachable(state, field, id, me);
+    let reach = reachable_in_public(state, field, id, me);
     (0u8..)
         .zip(state.stacks.iter())
         .filter(|&(i, t)| i != id.0 && t.is_alive() && me.is_hostile_to(t))

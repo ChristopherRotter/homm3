@@ -303,6 +303,18 @@ pub(crate) fn seen_pits(state: &BattleState, viewer: BattleSide) -> HexSet {
         .fold(HexSet::new(), |set, o| set.union(o.hexes))
 }
 
+/// The hexes of the pits both sides see (BAT-MAG-031): all that a choice the rules make and
+/// report to both sides may read (the automatic Ballista's target, BAT-WAR-002).
+// rule: BAT-MAG-031
+pub(crate) fn public_pits(state: &BattleState) -> HexSet {
+    state
+        .spell_obstacles
+        .list
+        .iter()
+        .filter(|o| o.kind == ObstacleKind::Pit && sees(state, o.side.opponent(), o))
+        .fold(HexSet::new(), |set, o| set.union(o.hexes))
+}
+
 /// The hexes of `shape` cast by `side`'s hero at `mastery` on `target`, in order: the target hex,
 /// then each step's neighbour, mirrored for the defender if the shape says so (BAT-MAG-027);
 /// `None` if one leaves the field.
