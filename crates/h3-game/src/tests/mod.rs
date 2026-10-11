@@ -1,9 +1,11 @@
 //! Tests of the game's rules bundle and setup (E08 T6a); the state, the starting armies' draw
-//! and the turns in `state.rs` (T6b). The rulesets are built in code (an application crate
-//! takes no pack adapter as a dev-dependency); the core still needs battle parameters until the
-//! content split (ADR-0015 point 3).
+//! and the turns in `state.rs` (T6b); the observation and the projection in `observe.rs`
+//! (T8b1). The rulesets are built in code (an application crate takes no pack adapter as a
+//! dev-dependency); the core still needs battle parameters until the content split (ADR-0015
+//! point 3).
 
 mod moves;
+mod observe;
 mod state;
 
 extern crate std;

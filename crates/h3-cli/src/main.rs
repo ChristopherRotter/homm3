@@ -4,24 +4,28 @@
 //! h3 run --scenario <file> [--packs-dir packs] [--seed N] [--agent-seed N] [--max-steps N]
 //!        [--checkpoint-every N] [--record <out.toml>]
 //! h3 verify [--packs-dir packs] <replay.toml>...
-//! h3 bench [--scenario <file>] [--packs-dir packs] [--games N] [--seed N]
+//! h3 bench [--scenario <file>] [--packs-dir packs] [--games N] [--seed N] [--observe 0|1]
 //! ```
 // The CLI is an adapter: it may use the clock (bench timing) and the environment.
 #![allow(clippy::disallowed_types, clippy::disallowed_methods)]
 
+use std::hint::black_box;
 use std::path::PathBuf;
 use std::process::ExitCode;
 use std::sync::Arc;
 use std::time::Instant;
 
+use h3_battle::LegalCommands;
 use h3_cli::{CliError, RunOptions, load_scenario, run_random, verify_file};
-use h3_sim::{BattleEnv, random_rollout};
+use h3_kernel::{Rng, StreamId};
+use h3_sim::rollout::{pick, step_command};
+use h3_sim::{BattleEnv, OBSERVATION_LEN, random_rollout};
 
 const USAGE: &str = "usage:
   h3 run --scenario <file> [--packs-dir packs] [--seed N] [--agent-seed N] [--max-steps N]
          [--checkpoint-every N] [--record <out.toml>]
   h3 verify [--packs-dir packs] <replay.toml>...
-  h3 bench [--scenario <file>] [--packs-dir packs] [--games N] [--seed N]";
+  h3 bench [--scenario <file>] [--packs-dir packs] [--games N] [--seed N] [--observe 0|1]";
 
 struct Args {
     positional: Vec<String>,
@@ -136,7 +140,7 @@ fn verify(args: &Args) -> Result<(), String> {
 }
 
 fn bench(args: &Args) -> Result<(), String> {
-    args.check_known(&["scenario", "packs-dir", "games", "seed"])?;
+    args.check_known(&["scenario", "packs-dir", "games", "seed", "observe"])?;
     let packs_dir = PathBuf::from(args.get("packs-dir").unwrap_or("packs"));
     let scenario = PathBuf::from(
         args.get("scenario")
@@ -144,15 +148,21 @@ fn bench(args: &Args) -> Result<(), String> {
     );
     let games: u64 = args.num("games", 2000)?;
     let seed: u64 = args.num("seed", 1)?;
+    let observe = args.num("observe", 0u8)? != 0;
     let (_, ruleset, setup) =
         load_scenario(&scenario, &packs_dir, seed).map_err(|e: CliError| e.to_string())?;
     let mut env =
         BattleEnv::new(Arc::new(ruleset), Arc::new(setup), seed, 0).map_err(|e| e.to_string())?;
+    let mut out = vec![0.0f32; OBSERVATION_LEN];
     let start = Instant::now();
     let mut steps: u64 = 0;
     for g in 0..games {
         env.reset(seed.wrapping_add(g)).map_err(|e| e.to_string())?;
-        steps += u64::from(random_rollout(&mut env, g, 5_000).steps);
+        steps += u64::from(if observe {
+            observed_rollout(&mut env, g, 5_000, &mut out)
+        } else {
+            random_rollout(&mut env, g, 5_000).steps
+        });
     }
     let secs = start.elapsed().as_secs_f64();
     println!("games: {games}, steps: {steps}, time: {secs:.3}s");
@@ -162,10 +172,35 @@ fn bench(args: &Args) -> Result<(), String> {
         size_of::<BattleEnv>()
     );
     println!(
-        "steps/s (random legal agent incl. legal-command generation): {:.0}",
+        "steps/s (random legal agent incl. legal-command generation{}): {:.0}",
+        if observe {
+            ", observation encoded before each step"
+        } else {
+            ""
+        },
         steps as f64 / secs
     );
     Ok(())
+}
+
+/// [`random_rollout`] with the flat observation of the side to act encoded before each step, as
+/// an agent reads it (E04b T9b, the encoding's cost): the same agent stream, so the same steps.
+fn observed_rollout(env: &mut BattleEnv, agent_seed: u64, max_steps: u32, out: &mut [f32]) -> u32 {
+    let mut rng = Rng::for_stream(agent_seed, StreamId::AGENT);
+    let mut legal = LegalCommands::new();
+    let mut steps = 0;
+    while let Some(side) = env.to_move() {
+        if max_steps != 0 && steps >= max_steps {
+            break;
+        }
+        // The buffer has the encoding's length.
+        let _ = env.encode_observation(side, out);
+        black_box(&*out);
+        let command = pick(env, side, &mut rng, &mut legal);
+        let _ = step_command(env, side, command);
+        steps += 1;
+    }
+    steps
 }
 
 fn main() -> ExitCode {

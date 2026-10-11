@@ -615,12 +615,13 @@ mod tests {
         // drag, fury, zeal, gloom, boon, bane, corrode, aegis, hallow, smiting, riposte, purge,
         // mend, blaze, rage, veil, glass, haze, dazzle, rampage, charm, bulwark, scorch, blink,
         // mire, snare, uproot, revive, offer, copy, conjure), each as 1 + its mastery: Brea's
-        // storm spells at Basic, her stone ones (blight, revive) at none; Corwin's stone spells at
+        // storm spells at Basic (six at Advanced since E04b T9b: spark, cinders, haze, charm,
+        // scorch, snare), her stone ones (blight, revive) at none; Corwin's stone spells at
         // Expert, his storm ones (spark, arc) and hallow at none.
         let books: [&[(usize, f32)]; 2] = [
             &[
-                (0, 2.0),
-                (1, 2.0),
+                (0, 3.0),
+                (1, 3.0),
                 (2, 2.0),
                 (3, 1.0),
                 (4, 2.0),
@@ -632,11 +633,11 @@ mod tests {
                 (20, 2.0),
                 (21, 2.0),
                 (24, 2.0),
-                (25, 2.0),
-                (28, 2.0),
-                (30, 2.0),
+                (25, 3.0),
+                (28, 3.0),
+                (30, 3.0),
                 (31, 2.0),
-                (33, 2.0),
+                (33, 3.0),
                 (35, 1.0),
                 (36, 2.0),
                 (37, 2.0),
@@ -692,7 +693,22 @@ mod tests {
         ];
         let handle = |key| f32::from(r.spell_by_key(key).unwrap().raw()) + 1.0;
         let (hasten, boon) = (handle("synthetic:hasten"), handle("synthetic:boon"));
-        for (viewer, globals, mine, other, private, book, (rounds, specialty)) in [
+        let (drag, bane) = (handle("synthetic:drag"), handle("synthetic:bane"));
+        // The casting workload's hidden magic (E04b T9b): resistance, Eagle Eye's chance, the
+        // opening spells and the Pendant's spell.
+        let brea_magic = (
+            0.0,
+            40.0,
+            [hasten, 3.0, 3.0, 0.0, 0.0, 0.0],
+            "synthetic:spark",
+        );
+        let corwin_magic = (
+            1000.0,
+            50.0,
+            [drag, 3.0, 2.0, bane, 3.0, 2.0],
+            "synthetic:cinders",
+        );
+        for (viewer, globals, mine, other, private, book, (rounds, specialty), magic) in [
             (
                 Attacker,
                 [
@@ -704,6 +720,7 @@ mod tests {
                 brea_private,
                 books[0],
                 (0.0, [hasten, 0.0, 300.0, 6.0]),
+                brea_magic,
             ),
             (
                 Defender,
@@ -716,6 +733,7 @@ mod tests {
                 corwin_private,
                 books[1],
                 (2.0, [boon, 0.0, 300.0, 1.0]),
+                corwin_magic,
             ),
         ] {
             let obs = observe(&s, &r, viewer);
@@ -740,16 +758,39 @@ mod tests {
             }
             // The spell bonuses and the hidden magic: Brea's specialty in hasten (3 % a level at
             // level 6); Corwin's in boon (level 1) and his two extra rounds for timed spells
-            // (HER-BAT-014). The opponent's never shows.
+            // (HER-BAT-014); since E04b T9b the resistance, the opening spells (due), Eagle Eye
+            // and the Pendant. The opponent's never shows.
+            let (resistance, eagle, openings, immune) = magic;
             let mut hidden = [0.0; OWN_HERO_VALUES - 10];
+            hidden[15 - 10] = resistance;
             hidden[16 - 10] = rounds;
+            hidden[22 - 10] = 1.0;
+            hidden[23 - 10] = eagle;
             hidden[OWN_HERO_SCALARS - 10..OWN_HERO_SCALARS - 6].copy_from_slice(&specialty);
+            let opening = OWN_HERO_SCALARS + 4 * MAX_SPELL_BONUSES - 10;
+            hidden[opening..opening + 6].copy_from_slice(&openings);
             assert_eq!(own(&out)[10..SPELLS], hidden);
+            let immunities = &own(&out)[SPELLS + 2 * MAX_SPELLS..SPELLS + 3 * MAX_SPELLS];
+            let pendant = r.spell_by_key(immune).unwrap().index();
             assert!(
-                own(&out)[SPELLS + 2 * MAX_SPELLS..]
+                immunities
                     .iter()
-                    .all(|v| *v == 0.0)
+                    .enumerate()
+                    .all(|(i, v)| *v == f32::from(i == pendant))
             );
+            // The spells Eagle Eye may learn, as the setup lists them; none learned yet.
+            let learnable = &own(&out)[SPELLS + 3 * MAX_SPELLS..];
+            let listed = &setup.heroes[viewer.index()]
+                .as_ref()
+                .unwrap()
+                .magic
+                .eagle_eye;
+            let listed = &listed.as_ref().unwrap().spells;
+            assert_eq!(learnable.len(), MAX_SPELLS);
+            for (i, v) in learnable.iter().enumerate() {
+                let spell = h3_content::SpellId::from_raw(i as u16);
+                assert_eq!(*v, f32::from(listed.contains(&spell)));
+            }
         }
         // Without an enemy hero: no surrender, a zero block; without a Ballista, zero control.
         let mut obs = observe(&s, &r, Attacker);
@@ -949,6 +990,11 @@ mod tests {
         let mut obs = observe(&s, &r, BattleSide::Defender);
         let spell = |k: &str| r.spell_by_key(k).unwrap();
         let mut h = obs.own_hero.unwrap();
+        // From no hidden magic of the scenario's (Corwin has some since E04b T9b).
+        h.opening.clear();
+        h.defences = h3_battle::Defences::default();
+        h.eagle_spells = Default::default();
+        h.learned = Default::default();
         h.spell_bonuses.all = h3_contracts::Rate::bp(500);
         h.spell_bonuses.school[3] = h3_contracts::Rate::bp(700);
         h.spell_bonuses.spells.clear();

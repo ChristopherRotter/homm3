@@ -7,17 +7,17 @@ A candidate becomes an entry here only once it is confirmed for SoD (by an exper
 ## Entries
 
 ### ADV-QUIRK-1 — The fog's fringe shows what is drawn on hidden tiles
-- Class: fix-optional (the survey's class, E08 decision 7; Q30's rule: confirmed 2026-10-11, the user may object at the T8a checkpoint)
-- Context / rules affected: adventure, ADV-FOG-005 (the projection, E08 T8b)
+- Class: fix-optional (the survey's class, E08 decision 7; Q30's rule: confirmed 2026-10-11, not objected to at the T8a checkpoint)
+- Context / rules affected: adventure, ADV-FOG-005 (the observation and the steps' viewers, E08 T8b1)
 - Original behavior: the hidden tiles next to explored ones (the fringe, drawn half dark) show their terrain and the objects and creatures standing on them, though the player has not explored them; no path goes onto them (ADV-MOV-008).
 - Intended/expected behavior: a hidden tile shows nothing of its content; the fringe's half-dark edge shows terrain, roads and rivers only (E08 decision 7).
-- Impact: information: a player learns of objects and monsters (and presumably heroes, not asked) one tile beyond its explored area.
+- Impact: information: a player learns of objects, monsters and heroes one tile beyond its explored area, and sees a hero's step there.
 - Community status: known; VCMI's pathfinder notes that objects are usually visible on the fog's border.
-- Sources: the user's look in SoD (2026-10-11, survey `E08-adventure-core.md` §4: terrain, objects and creatures visible, no path onto a dark tile).
-- Flag: with E08 T8b (the projection), in `h3_content`'s registry (a `cross-lane` change)
-- Defaults: faithful = on (terrain, roads, rivers and object appearance on the fringe), strict-fixed = off (terrain, roads and rivers only)
-- Regression test: with E08 T8b
-- Decided by / date: confirmed by the user 2026-10-11 (E08 T8a checkpoint answers); class as suggested
+- Sources: the user's look in SoD (2026-10-11, survey `E08-adventure-core.md` §4: terrain, objects and creatures visible, no path onto a dark tile); heroes on the fringe show as creatures do (the user's choice for E08 T8b1, 2026-10-11, not looked at).
+- Flag: `quirk.adventure.fringe_shows_objects`
+- Defaults: faithful = on (terrain, roads, rivers, what objects cover there and the heroes standing there), strict-fixed = off (terrain, roads and rivers only)
+- Regression test: `crates/h3-adventure/src/observe/tests.rs` (E08 T8b1)
+- Decided by / date: confirmed by the user 2026-10-11 (E08 T8a checkpoint answers); class as suggested; the flag with E08 T8b1
 
 ### ADV-QUIRK-2 — The diagonal exception ignores roads in its check but not in its cost
 - Class: fix-optional (the user, 2026-10-11, ADV-Q3)

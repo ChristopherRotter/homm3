@@ -4,19 +4,19 @@ Pre-refined tasks of the adventure lane, in order, then the inbox of discovered 
 
 ## Tasks
 
-Epic: `docs/epics/E08-adventure-map.md` (refined 2026-10-08, reviewed with the user the same day; decisions 1–12 there; done tasks in `E08-log.md`). Increment 1 = T1a, T1b, T2–T10, with a checkpoint with the user at T1a (done: ADR-0015–0017), after T3 (done, 2026-10-10) and at T10. T1a, T1b, T2, T3, T4, T5a, T5b, T6a, T6b, T7a, T7b and T8a are done; the import moved from T3 to T5 and T6 (user, 2026-10-10). Refined into the entries below at the T3 checkpoint (2026-10-10): the user takes one or two tasks per round, each round ends at a checkpoint (the round after T3: T4 alone; after T4: T5a and T6a; after T5a/T6a: T6b and T7a; after T6b/T7a: T7b and T5b; after T7b/T5b: T8a alone, T8 split into T8a and T8b). Every entry's acceptance includes the Definition of Done (`docs/05-testing.md`).
+Epic: `docs/epics/E08-adventure-map.md` (refined 2026-10-08, reviewed with the user the same day; decisions 1–12 there; done tasks in `E08-log.md`). Increment 1 = T1a, T1b, T2–T10, with a checkpoint with the user at T1a (done: ADR-0015–0017), after T3 (done, 2026-10-10) and at T10. T1a, T1b, T2, T3, T4, T5a, T5b, T6a, T6b, T7a, T7b, T8a and T8b1 are done; the import moved from T3 to T5 and T6 (user, 2026-10-10). Refined into the entries below at the T3 checkpoint (2026-10-10): the user takes one or two tasks per round, each round ends at a checkpoint (the round after T3: T4 alone; after T4: T5a and T6a; after T5a/T6a: T6b and T7a; after T6b/T7a: T7b and T5b; after T7b/T5b: T8a alone, T8 split into T8a and T8b; after T8a: T8b1 alone, T8b split into T8b1 and T8b2). Every entry's acceptance includes the Definition of Done (`docs/05-testing.md`).
 
-### E08 T8b — The projection
+### E08 T8b2 — Legal commands and the property tests
 
-- **Scope:** the fringe (the hidden tiles touching an explored tile) under `ADV-QUIRK-1`: its flag in `h3_content`'s registry and the base pack's profiles (a `cross-lane` change, as T7b's flags; on in `faithful`: terrain, roads, rivers and object appearance on the fringe; off in `strict-fixed`: terrain, roads and rivers only), ADV-FOG-005, the steps' viewers extended to the fringe under the flag; `observe` per viewer (planes built word by word from the grids, not tile by tile) and `project` for events, `legal_commands` (the game's, with `MoveHero` to the reachable tiles), the viewer knowledge list in `docs/06-security.md` (a small `shared/` pull request; the fringe case of a public appearance with hidden contents), the property tests (atomicity, legality consistency, ownership isolation, observation hygiene, clone equivalence, determinism) with `MoveHero` among the commands.
-- **Acceptance:** the seven property tests pass on imported maps.
-- **Depends on:** T8a (done). Ask the user whether a hero on a fringe tile shows (not asked with A-1). **Status:** ready.
+- **Scope:** `legal_commands` in `h3-game` (the game's: `EndTurn` while the player acts, and `MoveHero` for each of its heroes to each tile of the reachable-tiles query, the path from `Reach`; nothing for a player whose turn is not running), sharing the turn check with `apply` (ADR-0017's consequence); the property tests with `MoveHero` and `EndTurn` among the commands, on imported maps (in `h3-map`'s tests, which generate maps with T6a's strategy, import them and play `h3-game`; `h3-map` depends on `h3-game`): atomicity (a rejected command changes nothing and emits nothing), legality consistency (every legal command applies, a sample of illegal ones is rejected), ownership isolation (no command of one player moves another's hero or changes another's explored tiles), observation hygiene (a viewer's observation and projected events do not depend on what it cannot see: the seed, other players' armies, hidden tiles), clone equivalence (a fork and its parent evolve identically), determinism (the same commands give the same states, events and hashes); the observation's consistency with the events (a viewer's hero list moves as the projected steps say).
+- **Acceptance:** the property tests pass on imported maps; `legal_commands` is property-tested against `apply`.
+- **Depends on:** T8b1 (done). **Status:** ready.
 
 ### E08 T9 — Env, CLI, gates
 
 - **Scope:** `AdventureEnv` (reset, step, mask, fork, hash; the action a destination among the reachable tiles), a random agent, the CLI's run, replay verify and bench, golden replays naming their map by content hash, path and `MAP_IMPORT_VERSION` (ADV-Q2), the benchmark workloads and their baselines (decision 11: random play, pathfinding, and the fork cost moved here from T5b), the CLI wiring in battle-owned `crates/h3-cli` files (`Cargo.toml`, the dispatch: a `cross-lane` change with the user's consent).
 - **Acceptance:** the replays pass the determinism matrix; the +2 % gate has a baseline.
-- **Depends on:** T8b; the editor maps as committed fixtures (Inbox). **Status:** waiting (T8b).
+- **Depends on:** T8b2; the editor maps as committed fixtures (Inbox). **Status:** waiting (T8b2).
 
 ### E08 T10 — Closure
 
@@ -25,6 +25,10 @@ Epic: `docs/epics/E08-adventure-map.md` (refined 2026-10-08, reviewed with the u
 
 ## Inbox
 
+- 2026-10-11 (T8b1): the fringe is the eight tiles around an explored one (ADR-0016's "touching"); how the original draws its half-dark border (which hidden tiles get an edge sprite) was not read: a code reading or a look in SoD with a single explored diagonal, with T10's batch.
+- 2026-10-11 (T8b1): VCMI shows an object whole once one of its covered tiles is visible (`CGameState::isVisibleFor`); the observation shows what objects cover tile by tile (increment 1's objects have no type). Decide with increment 2's object types what of a partly seen object shows.
+- 2026-10-11 (T8b1): `observe` builds one `TileView` per tile on every call (41 472 on 144 × 144 with an underground): T9's benchmark measures it; a cached static part or planes per layer if it matters.
+- 2026-10-11 (T8b1): of another player's hero the observation shows tile, owner and identity (ADV-FOG-006, the user): survey what the original's right-click view shows (army, approximate counts) with the battle seam (increment 3). The spectator viewer for the adventure when the server lane hosts adventure games.
 - 2026-10-11 (T8a): a step's reveal writes one `set_run` per row (about 2 400 instructions at radius 5, T5b's measurement), and every step of a move reveals: T9's benchmark decides whether a per-leaf batch on `BitGrid` (one copy-on-write check per leaf) is worth its API.
 - 2026-10-11 (T8a): the Scouting specialty multiplies the radius by 1 + 0.05 × level (0x4E4070, truncated), not "+1 every six levels" (survey §2): compare with the wiki and VCMI with the adventure profile (increment 3).
 - 2026-10-11 (T8a): the original's reveal sets the bits of every player of the revealer's team (allies share the map; VCMI too): with teams (E10). The new day reveals again around everything a player owns (0x4C7C50): with the first rule that hides tiles (Cover of Darkness, towns).

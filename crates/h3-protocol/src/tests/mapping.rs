@@ -553,6 +553,9 @@ fn every_part_of_an_observation_is_mapped() {
         mind: true,
     };
     own.negates = true;
+    // Brea has an opening spell of her own since the battle lane's E04b T9b (the full scenario's
+    // casting workload): only this one.
+    own.opening.clear();
     own.opening
         .push(Opening {
             spell,

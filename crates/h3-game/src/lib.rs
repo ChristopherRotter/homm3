@@ -8,7 +8,8 @@
 //! So far: the game's rules ([`GameRuleset`]) and setup ([`GameSetup`]) with its validation
 //! (E08 T6a); the state ([`GameState`]) with the starting armies' draw, the players' streams,
 //! sequential turns, the calendar, and [`apply`] with `EndTurn` (T6b); the adventure's commands
-//! (`MoveHero`, T7b). `legal_commands`, `observe` and `project` come with T8.
+//! (`MoveHero`, T7b); [`observe`] and [`project`] for a player [`Viewer`] (T8b1).
+//! `legal_commands` comes with T8b2.
 //!
 //! Logic crate: pure, deterministic, `no_std` + `alloc` (ADR-0003, ADR-0005). The lint header
 //! below is required and checked by `cargo xtask check-arch`.
@@ -31,6 +32,7 @@
 extern crate alloc;
 
 mod command;
+mod observe;
 mod ruleset;
 mod setup;
 mod state;
@@ -39,6 +41,7 @@ mod state;
 mod tests;
 
 pub use command::{Actor, GameCommand, GameCommandError, GameEvent, NoopSink, Sink, apply};
+pub use observe::{GameObservation, PlayerView, Viewer, observe, project};
 pub use ruleset::{GameRuleset, RulesetMismatch};
 pub use setup::{GameHeroSetup, GameSetup, GameSetupError, HeroArmy, PlayerSetup};
 pub use state::GameState;
