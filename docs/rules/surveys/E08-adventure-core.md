@@ -285,7 +285,7 @@ clean behaviour.
 
 | Id | Title | Impact | Suggested class | Confidence it exists in SoD | Confirmation |
 |---|---|---|---|---|---|
-| A-1 | The fog's fringe shows hidden tiles' terrain and the object sprites drawn into them | information (what a player sees) | fix-optional (faithful shows, strict-fixed shows terrain, roads and rivers only; E08 decision 7) | **confirmed** (the user in SoD, 2026-10-11: terrain, objects and creatures show on the half-dark border; no path onto a dark tile; `ADV-QUIRK-1`) | done; the flag with E08 T8b |
+| A-1 | The fog's fringe shows hidden tiles' terrain and the object sprites drawn into them | information (what a player sees) | fix-optional (faithful shows, strict-fixed shows terrain, roads and rivers only; E08 decision 7) | **confirmed** (the user in SoD, 2026-10-11: terrain, objects and creatures show on the half-dark border; no path onto a dark tile; `ADV-QUIRK-1`) | done; the flag `quirk.adventure.fringe_shows_objects` (E08 T8b1) |
 | A-2 | The diagonal exception ignores roads in its check but not in the cost | gameplay-altering (small): an extra cheap road step at the end of a day | fix-optional (the user, 2026-10-11) | **confirmed** (E08 T7a: CR-1 and a second reading; `ADV-QUIRK-2`) | done |
 | A-3 | The diagonal exception "forgets" that a native army has no terrain penalty: it compares with the penalised straight cost | gameplay-altering (small): native swamp and snow armies lose the last diagonal | fix-optional (the user, 2026-10-11) | **confirmed** (E08 T7a: CR-1 and a second reading; `ADV-QUIRK-3`) | done |
 | A-4 | Neutral stacks before the first faction stack keep the army's native terrain | gameplay-altering (small): slot order decides the native bonus | fix-optional (the user, 2026-10-11) | **confirmed** (E08 T7b: 0x44C590 and a second reading; `ADV-QUIRK-4`) | done |
@@ -305,7 +305,8 @@ A screenshot is not needed; the four answers are enough. Q30's rule then makes t
 (3) creatures are visible; (4) no path is offered onto a dark tile, even an empty one. The
 candidate is confirmed as `ADV-QUIRK-1` with the suggested class (Q30's rule: the user may
 object at the checkpoint); (4) is ADV-MOV-008, also read in the code (§1.4). Not asked: a hero
-standing on a fringe tile (an object like the others, presumably; T8b).
+standing on a fringe tile. The user's choice for E08 T8b1 (2026-10-11): it shows there as
+creatures do, under the flag (ADV-FOG-005).
 
 ## 5. Simultaneous turns (captured for a later decision, E08 decision 8)
 
@@ -361,7 +362,8 @@ Ids are proposals; the implementing task writes the entries.
 | ADV-FOG-002 | The shape of a revealed area | T8 | F-1 |
 | ADV-FOG-003 | Tiles are revealed at the start of a game and after each step of a move | T8 | — |
 | ADV-FOG-004 | Explored tiles stay explored and show their current content | T8 | — |
-| ADV-FOG-005 | What a player sees on the fringe | T8 | A-1 |
+| ADV-FOG-005 | What a player sees on the fringe | T8b1 | — |
+| ADV-FOG-006 | What a player sees of the heroes (another player's: tile, owner, identity) | T8b1 | — |
 | GAME-TRN-001 | Players act one at a time in colour order | T6 | — |
 | GAME-TRN-002 | The day advances after the last player's turn; start-of-day steps run once for everyone | T6 | D-1 |
 | GAME-CAL-001 | The calendar: days, weeks of 7 days, months of 4 weeks (parameters) | T6 | — |
