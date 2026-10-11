@@ -497,3 +497,52 @@ its army and movement points stay private until the original's right-click view 
 - **Not done here:** `legal_commands` and the property tests (T8b2). Open: the fringe's eight
   neighbours are ADR-0016's "touching", not a reading of how the original draws the border
   (inbox).
+
+### Checkpoint after T8b1 and T8b2a (2026-10-11, `adventure/e08-t8b2a`)
+
+The user merged T8b1 (#81, #82) and asked for smaller rounds as the work grows. T8b2 was split
+at the agent's proposal: **T8b2a** (`legal_commands` and the properties of what a command may do)
+this round, **T8b2b** (the properties of what a viewer may learn: observation hygiene, the
+observation against the events) the next. The user asked why an agent cannot make the three
+editor maps T9 waits for: the agent explained (they are worth having because the original editor
+wrote their bytes; a map our writer makes only tests the reader against itself; driving the
+editor through screenshots costs many tokens and runs from the installation that must stay
+untouched) and offered a generated map for T9's replays, the editor maps then only reader
+fixtures for CI; the user decides at the checkpoint.
+
+- **`legal_commands`** (`h3-game`, `legal.rs`; `h3_game::legal_commands(state, rules, actor)`):
+  `EndTurn`, then for each of the actor's heroes by id a `MoveHero` to each tile of the
+  reachable-tiles query, row by row, along the query's path; nothing for a player whose turn is
+  not running or who is not in the game, through `apply`'s own turn check (`check_acting`).
+  `MoveHero` is listed once per tile: `apply` also accepts every other payable path (one back to
+  the hero's tile, or one the query does not keep, `Reach`'s doc), so for moves the legal set is
+  one path per destination, not every accepted command. Unit tests on the 4 × 4 map: the order,
+  the query's paths and points, nothing outside the turn.
+- **Playable maps** (`h3-map`'s `tests/play.rs`): a `Plan` (version, side 5–16, one or two
+  levels, mostly land with a twentieth each water and rock, roads and rivers, two to four colours,
+  two to six heroes with distinct types and custom or starting armies of base creatures, up to
+  eight blockers of three shapes, one visited from a tile outside its blocked ones) laid out as a
+  raw map (heroes on distinct land tiles, owners round the players, blockers covering a hero's
+  tile left out), written by the test encoder, read back and imported, so every case plays an
+  imported file. At the end of a case players have explored a third to all of their map.
+- **The driver:** steps resolved against the state: the acting player's `n`-th legal command, an
+  `EndTurn`, a legal move edited (last step dropped, one more step, one more step onto a hidden
+  tile, a step turned, another hero, another player), or a free command (`EndTurn` or a move by
+  the acting player, a player of the game or one past them; walks in given directions with a
+  jump anywhere, or a straight line to a tile across explored and hidden tiles; the hero the
+  actor's own or any id up to one past the heroes). Over 48 cases of up to 40 steps about three
+  in four commands apply (a quarter of them `EndTurn`; a day passes about once per case) and
+  every rejection kind occurs.
+- **The properties** (48 cases each, both profiles in the first): at every step only the acting
+  player has legal commands, `EndTurn` first; every listed move applies and leaves the hero on
+  its last tile with the query's points, one event per step (legality consistency); a rejected
+  command changes neither the state nor its hash and emits nothing, and was not listed
+  (atomicity); an accepted command was the acting player's, an unlisted accepted one is a move of
+  its own hero, and an unlisted one-step move goes to a listed tile with at most the query's
+  points; a command moves no other player's hero, changes no other player's army or explored
+  tiles, and changes another player's heroes' points only when its turn starts (ownership
+  isolation); a fork playing other commands leaves its parent's hash and content as a fresh replay
+  of the prefix has them, and a fork and its parent evolve identically (clone equivalence); two
+  plays of the same file, seed and steps give the same states, events and hashes, and the laid
+  out map survives the encoder and reader unchanged (determinism).
+- **Not done here:** observation hygiene and the observation against the events (T8b2b).
