@@ -534,8 +534,9 @@ fixtures for CI; the user decides at the checkpoint.
   in four commands apply (a quarter of them `EndTurn`; a day passes about once per case) and
   every rejection kind occurs.
 - **The properties** (48 cases each, both profiles in the first): at every step only the acting
-  player has legal commands, `EndTurn` first; every listed move applies and leaves the hero on
-  its last tile with the query's points, one event per step (legality consistency); a rejected
+  player has legal commands, `EndTurn` first, then a move to each tile the query gives its heroes,
+  by hero and row by row; every listed move applies and leaves the hero on its last tile with the
+  query's points, one event per step (legality consistency); a rejected
   command changes neither the state nor its hash and emits nothing, and was not listed
   (atomicity); an accepted command was the acting player's, an unlisted accepted one is a move of
   its own hero, and an unlisted one-step move goes to a listed tile with at most the query's
@@ -545,4 +546,11 @@ fixtures for CI; the user decides at the checkpoint.
   of the prefix has them, and a fork and its parent evolve identically (clone equivalence); two
   plays of the same file, seed and steps give the same states, events and hashes, and the laid
   out map survives the encoder and reader unchanged (determinism).
+- **Review** (an independent agent): no bug; taken: the fork test drew an empty suffix in about
+  half its cases (the split is now an index into at least one step), the listed moves are
+  compared with the query's tiles and an unlisted one-step move's tile looked up among them, the
+  isolation check compares the hero counts before zipping, the edit onto a hidden tile tries all
+  eight directions, the determinism test plays the second run on rules compiled again. Deferred:
+  decision 9 says ownership isolation covers the players' streams; no command draws yet and the
+  streams have no accessor (inbox).
 - **Not done here:** observation hygiene and the observation against the events (T8b2b).

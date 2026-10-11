@@ -33,6 +33,8 @@ fn rules(profile: &str) -> GameRuleset {
 
 static FAITHFUL: LazyLock<GameRuleset> = LazyLock::new(|| rules("base:faithful"));
 static STRICT: LazyLock<GameRuleset> = LazyLock::new(|| rules("base:strict-fixed"));
+/// The faithful rules compiled a second time, for the determinism test.
+static FAITHFUL_AGAIN: LazyLock<GameRuleset> = LazyLock::new(|| rules("base:faithful"));
 
 /// The largest map side the strategy makes: small maps keep a case fast, and with the scouting
 /// radius of 5 a player still starts with part of one hidden (at the end of a case, players have
@@ -407,8 +409,8 @@ fn resolve(state: &GameState, legal: &[GameCommand], step: &Step) -> (PlayerId, 
                 Edit::Beyond(direction) => {
                     let last = *path.last().unwrap();
                     let adventure = state.adventure();
-                    let hidden = (*direction..direction.wrapping_add(8))
-                        .map(|d| toward(last, d))
+                    let hidden = (0..8)
+                        .map(|i| toward(last, direction.wrapping_add(i)))
                         .find(|&pos| {
                             adventure.map().tile(pos).is_some()
                                 && !adventure.is_explored(actor, pos)
@@ -539,6 +541,18 @@ fn check_legal(
         prop_assert_eq!(listed.is_empty(), player != actor);
     }
     prop_assert_eq!(legal.first(), Some(&GameCommand::EndTurn));
+    // The moves are the acting player's heroes' reachable tiles, by hero and row by row.
+    let listed: Vec<(HeroId, TilePos)> = legal[1..]
+        .iter()
+        .filter_map(as_move)
+        .map(|(hero, path)| (hero, *path.last().unwrap()))
+        .collect();
+    let reachable: Vec<(HeroId, TilePos)> = reaches
+        .iter()
+        .filter(|(hero, _)| state.adventure().hero(*hero).map(|h| h.owner) == Some(actor))
+        .flat_map(|(hero, reach)| reach.tiles().map(|(pos, _)| (*hero, pos)))
+        .collect();
+    prop_assert_eq!(listed, reachable);
     for command in &legal[1..] {
         let (hero, path) = as_move(command).ok_or_else(|| fail(format!("{command:?}")))?;
         prop_assert_eq!(state.adventure().hero(hero).map(|h| h.owner), Some(actor));
@@ -565,16 +579,23 @@ fn check_legal(
 /// actor's own hero along another path the hero can pay. A one-step move's tile is listed, with at
 /// least the points the move left (every tile one step away is listed).
 fn check_unlisted(
-    before: &GameState,
-    after: &GameState,
+    (before, after): (&GameState, &GameState),
     actor: PlayerId,
     command: &GameCommand,
+    legal: &[GameCommand],
     reaches: &[(HeroId, Reach)],
 ) -> Result<(), TestCaseError> {
     let (hero, path) =
         as_move(command).ok_or_else(|| fail(format!("unlisted {command:?} accepted")))?;
     prop_assert_eq!(before.adventure().hero(hero).map(|h| h.owner), Some(actor));
     if let [to] = path {
+        let goes_to =
+            |c: &GameCommand| as_move(c).is_some_and(|(h, p)| h == hero && p.last() == Some(to));
+        prop_assert!(
+            legal.iter().any(goes_to),
+            "{:?}'s tile is not listed",
+            command
+        );
         let left = after.adventure().hero(hero).unwrap().movement;
         let best = reach_of(reaches, hero).points_left(*to);
         prop_assert!(
@@ -597,11 +618,9 @@ fn check_isolation(
     actor: PlayerId,
     events: &[GameEvent],
 ) -> Result<(), TestCaseError> {
-    let heroes = before
-        .adventure()
-        .heroes()
-        .iter()
-        .zip(after.adventure().heroes());
+    let (b, a) = (before.adventure().heroes(), after.adventure().heroes());
+    prop_assert_eq!(b.len(), a.len());
+    let heroes = b.iter().zip(a);
     for (b, a) in heroes {
         prop_assert_eq!((b.id, b.owner), (a.id, a.owner));
         if b.owner == actor {
@@ -654,7 +673,7 @@ proptest! {
             }
             prop_assert_eq!(actor, acting(&before));
             if !listed {
-                check_unlisted(&before, &state, actor, &command, &reaches)?;
+                check_unlisted((&before, &state), actor, &command, &legal, &reaches)?;
             }
             if let Some((hero, path)) = as_move(&command) {
                 prop_assert_eq!(events.len(), path.len());
@@ -670,11 +689,11 @@ proptest! {
     fn forks_evolve_as_their_parent(
         plan in plan(),
         seed in any::<u64>(),
-        steps in vec(step(), 0..40),
-        split in 0usize..40,
+        steps in vec(step(), 1..40),
+        split in any::<proptest::sample::Index>(),
     ) {
         let rules = &*FAITHFUL;
-        let (prefix, rest) = steps.split_at(split.min(steps.len()));
+        let (prefix, rest) = steps.split_at(split.index(steps.len()));
         let (mut state, _, _) = play(&plan, rules, seed, prefix);
         let hash = state.state_hash();
         let mut wild = state.clone();
@@ -695,7 +714,8 @@ proptest! {
         }
     }
 
-    /// Determinism: the same map file, seed and commands give the same states, events and hashes.
+    /// Determinism: the same map file, seed and commands give the same states, events and hashes,
+    /// also with the rules compiled again.
     #[test]
     fn replays_are_deterministic(
         plan in plan(),
@@ -704,7 +724,7 @@ proptest! {
     ) {
         let m = lay_out(&plan);
         prop_assert_eq!(parse(&encode(&m), &Limits::default()), Ok(m));
-        let rules = &*FAITHFUL;
-        prop_assert_eq!(play(&plan, rules, seed, &steps), play(&plan, rules, seed, &steps));
+        let again = play(&plan, &FAITHFUL_AGAIN, seed, &steps);
+        prop_assert_eq!(play(&plan, &FAITHFUL, seed, &steps), again);
     }
 }
