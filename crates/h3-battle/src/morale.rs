@@ -349,12 +349,14 @@ pub(crate) fn good_morale(state: &mut BattleState, ruleset: &Ruleset, id: StackI
     roll(state, params.morale_dice, chance)
 }
 
-/// Whether stack `id`, activated in the normal phase, freezes from bad morale: negative morale
-/// and the roll succeeds (BAT-MOR-004).
+/// Whether stack `id`, picked to act outside the round's wait phase, freezes from bad morale:
+/// negative morale and the roll succeeds (BAT-MOR-004). In the wait phase nobody freezes, not
+/// even a stack that never waited (one whose blindness ended there): the original's pick skips
+/// the check for the whole phase (+0x13DE4, the site 0x465283), as it skips Fear.
 // rule: BAT-MOR-004
 pub(crate) fn bad_morale(state: &mut BattleState, ruleset: &Ruleset, id: StackId) -> bool {
     let s = state.at(id);
-    if s.morale >= 0 || s.flags.contains(StackFlags::WAITED) {
+    if s.morale >= 0 || state.wait_phase {
         return false;
     }
     let params = ruleset.battle();

@@ -1536,7 +1536,8 @@ had it checked until T7c3). *Good morale* (0x464920) clears the stack's done bit
 again (bad morale cannot hit a stack with good morale; Fear can, outside the wait phase), and a
 stack its own action left blind, petrified or paralysed is passed over (0x465222, its turn having
 started) until that ends, when it may act later in the round (BAT-MOR-003, the T7b4 review's
-finding).
+finding). Such a stack picked in the wait phase is not checked for bad morale either, though it
+never waited: BAT-MOR-004 tested the stack's own waited bit (VCMI's test) until E04b T11a.
 
 ### 7.22 Code reading: the hero's available spells and its mastery of a spell (E04b T8a, 2026-10-10)
 
@@ -1739,7 +1740,7 @@ the **Bird of Perception** (63), `+ 0.10f` the **Stoic Watchman** (64), `+ 0.15f
 Cognizance** (65) (each a body position or a worn combination holding it; each sum stored as
 `f32`); at most 1.0.
 
-**After the battle** (the orchestrator's, BAT-Q24 open). The battle's end 0x477470 does this for
+**After the battle** (the orchestrator's; BAT-Q24 answered as this code, confirmed by batch 2f). The battle's end 0x477470 does this for
 the winning side only (0x47772F; none in a draw): 0x469FE0 has the winner's hero learn each spell
 of that side's set (0x4D9330: learned and available) if it wears a Spell Book (artifact 0) and the
 spell's level is at most its Wisdom (+0xD0) + 2. The side's experience (0x4E33B0) comes before
@@ -1758,7 +1759,7 @@ rolls and the Orb (its passive mode skips the magic block), but casts both sides
 the end of the tactics phase, before round 1 (attacker first); it rolls Eagle Eye after the battle
 over the loser's recorded hero casts (one roll per cast: the same odds), for a winner with units
 left, without a book or Wisdom test. The engine follows the code and the wiki on the timing until
-an experiment confirms it (BAT-Q23); the learning after the battle is open (BAT-Q24).
+an experiment confirms it (BAT-Q23); the learning after the battle is the code's (BAT-Q24, batch 2f).
 
 **Batch 2f** (the user, 2026-10-11, SoD with plain HD; `experiments/results/E04b-batch-2f.md`)
 observed this reading: Armor of the Damned cast its four spells at the defender's first stack that

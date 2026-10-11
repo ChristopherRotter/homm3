@@ -544,6 +544,57 @@ fn stacks_activated_from_waiting_do_not_freeze() {
     assert!(s.stacks()[0].flags.contains(StackFlags::WAITED));
 }
 
+// covers: BAT-MOR-004, BAT-MAG-024
+#[test]
+fn a_stack_that_sees_again_in_the_wait_phase_does_not_freeze() {
+    let r = ruleset_with("t:faithful", always);
+    // Three alignments: the attacker's morale is −1. Its pikemen are blinded by the blinder's
+    // strike before their turn and passed over; the defender's imps wait and, in the wait phase,
+    // strike them: they see again and act in that phase without the bad-morale check (the
+    // original's pick skips it for the whole phase, +0x13DE4), although they never waited. Their
+    // own Wait flag decided it until E04b T11a.
+    let mut s = battle(
+        &r,
+        &[(0, "pikeman_c", 5), (1, "imp", 1), (2, "serf", 1)],
+        &[(0, "blinder", 5), (1, "imp", 5)],
+        1,
+    );
+    place(&mut s, &r, 0, 4, 5);
+    place(&mut s, &r, 3, 5, 5);
+    place(&mut s, &r, 4, 3, 5);
+    assert_eq!(s.stacks()[0].morale, -1);
+    activate(&mut s, 3);
+    let from = at(&r, 5, 5);
+    act(
+        &mut s,
+        &r,
+        Command::Attack {
+            target: StackId(0),
+            from,
+        },
+    )
+    .unwrap();
+    // The other attackers freeze or defend; the blind pikemen are passed over.
+    advance_to(&mut s, &r, 4);
+    assert!(!s.stacks()[0].flags.contains(StackFlags::ACTED));
+    act(&mut s, &r, Command::Wait).unwrap();
+    assert_eq!(s.active(), Some(StackId(4)));
+    assert!(s.wait_phase);
+    let from = at(&r, 3, 5);
+    let events = act(
+        &mut s,
+        &r,
+        Command::Attack {
+            target: StackId(0),
+            from,
+        },
+    )
+    .unwrap();
+    assert_eq!(count(&events, bad), 0);
+    assert_eq!((s.round(), s.active()), (1, Some(StackId(0))));
+    assert!(!s.stacks()[0].flags.contains(StackFlags::WAITED));
+}
+
 // covers: BAT-MOR-004
 #[test]
 fn bad_morale_happens_with_its_chance() {

@@ -366,7 +366,7 @@ Classes: `exploit-fix` (always fixed, never toggleable) · `preserve` (accepted,
 - Sources: original-data, `docs/formats/installation.md` §7.21; observation, batch 2a R6 round 3 (`experiments/results/E04b-batch-2a.md`: 5 with the Pegasus dead, VCMI 3)
 - Flag: none
 - Defaults: n/a
-- Regression test: `crates/h3-battle/src/tests/mana.rs`, `a_dead_pegasus_still_raises_the_cost_and_a_clone_does_not`
+- Regression test: `crates/h3-battle/src/tests/mana.rs`, `a_dead_pegasus_still_raises_the_cost` (a created stack never counts: `mana::cost_change` reads `BattleSetup`'s armies only; the name was corrected at E04b T11a)
 - Decided by / date: user, 2026-10-09 (E04b T7c1, BAT-Q15)
 
 ### BAT-QUIRK-16 — The Familiars' channel walks both sides' records up to one side's count (E04b T7c1)
