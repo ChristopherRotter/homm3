@@ -649,7 +649,7 @@ E13's macro-actions).
 
 ### Checkpoint after T8b2b/T9a and T9b1 + T9b2 (2026-10-11, `adventure/e08-t9b`)
 
-The user merged T8b2b and T9a (#97, #98) and took **T9b in two tasks with one checkpoint**: T9b1
+The user merged T8b2b and T9a (#97, #98) and took (ADV-Q7) **T9b in two tasks with one checkpoint**: T9b1
 the replays, T9b2 the benchmarks (T10 next round). Asked with the cut: the CLI's wiring in
 battle-owned `h3-cli` files (`Cargo.toml`, `lib.rs`, `main.rs`): **user: `cross-lane`**; what a
 replay records, the game commands (the acting player and `EndTurn` or `MoveHero { hero, path }`)
