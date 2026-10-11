@@ -307,6 +307,7 @@ dependencies = [
  "h3-content",
  "h3-contracts",
  "h3-kernel",
+ "proptest",
 ]
 
 [[package]]

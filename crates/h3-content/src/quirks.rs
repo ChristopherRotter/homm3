@@ -72,6 +72,9 @@ pub const REGISTRY: QuirkRegistry = QuirkRegistry::new(&[
     "quirk.battle.creature_mirror_untested",
     "quirk.battle.clone_on_its_original",
     "quirk.battle.periodic_first_stack",
+    "quirk.adventure.diagonal_check_ignores_roads",
+    "quirk.adventure.diagonal_check_ignores_native",
+    "quirk.adventure.native_skips_leading_neutrals",
 ]);
 
 /// Q-0003: creatures of a side without a hero never get lucky strikes (BAT-LCK-002).
@@ -156,6 +159,20 @@ pub const CLONE_ON_ITS_ORIGINAL: QuirkFlag = QuirkFlag(15);
 /// every spell aimed at its side. Off: a spell counts when it is useful on any stack of that side.
 pub const PERIODIC_FIRST_STACK: QuirkFlag = QuirkFlag(16);
 
+/// ADV-QUIRK-2: the diagonal exception compares the hero's points left with the source tile's
+/// terrain cost even on a road, though the step it prices then costs the road's (ADV-MOV-006;
+/// code 0x4B1740). Off: with the road's cost when both tiles have a road.
+pub const DIAGONAL_CHECK_IGNORES_ROADS: QuirkFlag = QuirkFlag(17);
+
+/// ADV-QUIRK-3: the diagonal exception compares the hero's points left with the terrain's
+/// penalised cost even for an army native to it (ADV-MOV-006; code 0x4B1740). Off: with the
+/// native cost.
+pub const DIAGONAL_CHECK_IGNORES_NATIVE: QuirkFlag = QuirkFlag(18);
+
+/// ADV-QUIRK-4: an army's native terrain skips neutral stacks in slots before its first faction
+/// stack (ADV-MOV-004; code 0x44C590). Off: a neutral stack anywhere leaves the army without one.
+pub const NATIVE_SKIPS_LEADING_NEUTRALS: QuirkFlag = QuirkFlag(19);
+
 /// The set of enabled quirk flags of a ruleset.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub struct Quirks {
@@ -194,7 +211,19 @@ mod tests {
 
     #[test]
     fn registry_lookup_and_bitset() {
-        assert_eq!(REGISTRY.len(), 17);
+        assert_eq!(REGISTRY.len(), 20);
+        assert_eq!(
+            REGISTRY.lookup("quirk.adventure.diagonal_check_ignores_roads"),
+            Some(DIAGONAL_CHECK_IGNORES_ROADS)
+        );
+        assert_eq!(
+            REGISTRY.lookup("quirk.adventure.diagonal_check_ignores_native"),
+            Some(DIAGONAL_CHECK_IGNORES_NATIVE)
+        );
+        assert_eq!(
+            REGISTRY.lookup("quirk.adventure.native_skips_leading_neutrals"),
+            Some(NATIVE_SKIPS_LEADING_NEUTRALS)
+        );
         assert_eq!(
             REGISTRY.lookup("quirk.battle.periodic_first_stack"),
             Some(PERIODIC_FIRST_STACK)

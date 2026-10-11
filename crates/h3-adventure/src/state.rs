@@ -14,7 +14,8 @@ use h3_kernel::hash::hash_of;
 use h3_kernel::{CanonicalHash, StateHasher};
 
 use crate::ADVENTURE_STATE_HASH_VERSION;
-use crate::movement::day_points;
+use crate::command::{AdventureCommand, AdventureCommandError, AdventureEvent, Sink};
+use crate::movement::{Pricing, day_points, direction};
 use crate::ruleset::{AdventureRuleset, Passage, RiverId, RoadId};
 use crate::setup::{
     AdventureSetup, ArmyError, HeroSetup, MapSetup, ObjectKind, ObjectSetup, Pos, SetupError,
@@ -34,6 +35,17 @@ pub struct StaticTile {
     pub blocked: bool,
     /// An object's visitable tile (ADV-OBJ-001).
     pub visitable: bool,
+}
+
+impl StaticTile {
+    /// What [`StaticMap::at`] gives for a tile off the map: no terrain the rules know, blocked.
+    const OUTSIDE: Self = Self {
+        terrain: TerrainId::from_raw(u16::MAX),
+        road: None,
+        river: None,
+        blocked: true,
+        visitable: false,
+    };
 }
 
 /// An object of the static map: its position, footprint and kind (ADR-0016 point 4).
@@ -182,6 +194,12 @@ impl StaticMap {
     /// The tile at `pos`, if it is on the map.
     pub fn tile(&self, pos: Pos) -> Option<&StaticTile> {
         self.index(pos).map(|index| &self.tiles[index])
+    }
+
+    /// The tile at `pos`, or a blocked tile of no known terrain off the map (for positions the
+    /// state already checked).
+    pub(crate) fn at(&self, pos: Pos) -> StaticTile {
+        self.tile(pos).copied().unwrap_or(StaticTile::OUTSIDE)
     }
 
     /// The objects, in the setup's order.
@@ -337,17 +355,118 @@ impl AdventureState {
     /// Why it may not, checked in the order of [`StandError`].
     // rule: ADV-MAP-001
     pub fn check_stand(&self, part: &AdventureRuleset, pos: Pos) -> Result<(), StandError> {
-        let tile = self.map.tile(pos).ok_or(StandError::Outside)?;
-        if !matches!(part.passage(tile.terrain), Some(Passage::Land(_))) {
+        self.check_tile(part, pos, None).map(|_| ())
+    }
+
+    /// [`Self::check_stand`] for `mover`, which may stand where it already stands; the tile.
+    fn check_tile(
+        &self,
+        part: &AdventureRuleset,
+        pos: Pos,
+        mover: Option<HeroId>,
+    ) -> Result<StaticTile, StandError> {
+        let tile = *self.map.tile(pos).ok_or(StandError::Outside)?;
+        if !enterable_terrain(part, &tile) {
             return Err(StandError::Terrain);
         }
         if tile.blocked && !tile.visitable {
             return Err(StandError::Blocked);
         }
-        if self.heroes.iter().any(|h| h.pos == pos) {
+        if self
+            .heroes
+            .iter()
+            .any(|h| h.pos == pos && Some(h.id) != mover)
+        {
             return Err(StandError::Occupied);
         }
+        Ok(tile)
+    }
+
+    /// Applies a command of `player` (ADR-0017 point 1: the game has checked that the player's
+    /// turn is running): validated against the state, then applied; the events go to `sink`.
+    ///
+    /// # Errors
+    ///
+    /// An [`AdventureCommandError`]; the state is then unchanged and no event was emitted.
+    pub fn apply<S: Sink>(
+        &mut self,
+        core: &Ruleset,
+        part: &AdventureRuleset,
+        player: PlayerId,
+        command: &AdventureCommand,
+        sink: &mut S,
+    ) -> Result<(), AdventureCommandError> {
+        match command {
+            AdventureCommand::MoveHero { hero, path } => {
+                self.move_hero(core, part, player, *hero, path, sink)
+            }
+        }
+    }
+
+    /// `MoveHero`: the whole path is checked and priced first (ADV-MOV-003 to ADV-MOV-007), then
+    /// the hero stands on its last tile with the points left, and one event per step is emitted.
+    // rule: ADV-MOV-006, ADV-MOV-007
+    fn move_hero<S: Sink>(
+        &mut self,
+        core: &Ruleset,
+        part: &AdventureRuleset,
+        player: PlayerId,
+        id: HeroId,
+        path: &[Pos],
+        sink: &mut S,
+    ) -> Result<(), AdventureCommandError> {
+        let index = self
+            .heroes
+            .binary_search_by_key(&id, |h| h.id)
+            .ok()
+            .filter(|&index| self.heroes[index].owner == player)
+            .ok_or(AdventureCommandError::NotYourHero(id))?;
+        if path.is_empty() {
+            return Err(AdventureCommandError::EmptyPath);
+        }
+        let hero = &self.heroes[index];
+        let pricing = Pricing::new(core, part, &hero.army);
+        let start = hero.pos;
+        let (mut at, mut from, mut points) = (start, self.map.at(start), hero.movement);
+        for (step, &next) in path.iter().enumerate() {
+            let diagonal =
+                direction(at, next).ok_or(AdventureCommandError::NotNeighbour { step })? % 2 == 1;
+            let to = self.check_step(part, id, next, step)?;
+            let cost = pricing.step(&from, &to, diagonal, points);
+            let left = points
+                .checked_sub(cost)
+                .ok_or(AdventureCommandError::TooFewPoints { step, cost, points })?;
+            points = pricing.left_after(&to, left);
+            (at, from) = (next, to);
+        }
+        let hero = &mut self.heroes[index];
+        hero.pos = at;
+        hero.movement = points;
+        let mut from = start;
+        for &to in path {
+            sink.emit(AdventureEvent::HeroStepped { hero: id, from, to });
+            from = to;
+        }
         Ok(())
+    }
+
+    /// Whether `mover` may step onto `pos` (ADV-MOV-007): a tile it may stand on, which in
+    /// increment 1 no object is visited from (ADR-0016 point 4); the tile.
+    // rule: ADV-MOV-007
+    fn check_step(
+        &self,
+        part: &AdventureRuleset,
+        mover: HeroId,
+        pos: Pos,
+        step: usize,
+    ) -> Result<StaticTile, AdventureCommandError> {
+        let tile = self
+            .check_tile(part, pos, Some(mover))
+            .map_err(|error| AdventureCommandError::Blocked { step, error })?;
+        if tile.visitable {
+            return Err(AdventureCommandError::Visit { step });
+        }
+        Ok(tile)
     }
 
     /// The static map.
@@ -431,6 +550,12 @@ fn check_army(
         *slot = Some(*stack);
     }
     Ok(slots.into_iter().flatten().collect())
+}
+
+/// Whether a hero walks onto a tile's terrain: land (ADV-MAP-001, ADV-MOV-007; water needs a boat,
+/// rock is never entered).
+pub(crate) fn enterable_terrain(part: &AdventureRuleset, tile: &StaticTile) -> bool {
+    matches!(part.passage(tile.terrain), Some(Passage::Land(_)))
 }
 
 #[cfg(test)]
