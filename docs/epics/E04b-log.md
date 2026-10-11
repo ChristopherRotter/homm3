@@ -2096,3 +2096,26 @@ records how and why the tasks went.
   the Archers. A first design for HP (the owner's Blind at its hypnotized stack) could not tell
   the readings apart: the engine never offers a hero's negative spell at its own hypnotized stack.
 - **Tooling:** the spec's hero gains `backpack` (artifacts carried, not worn; EB's Spell Book).
+
+### Batch 2f folded in (2026-10-11, increment 20)
+
+- **Results** (the user, SoD with plain HD; `experiments/results/E04b-batch-2f.md`), every point
+  as the engine predicted and as the code reads:
+  - **AD:** no spell on the attacker's stacks before the defender's Pikemen took their turn (the
+    blinded Royal Griffins passed over), then Armor of the Damned's four (BAT-Q23: the code and
+    the wiki, not VCMI's before round 1).
+  - **AO:** cast under the Orb of Inhibition, whose message refused the book.
+  - **EL, EB, EW (BAT-Q24):** the code against VCMI. A winner with the Spell Book in the
+    backpack learned nothing; one without Wisdom learned Bless but not Air Shield; one with Basic
+    Wisdom learned Air Shield. The message after the battle names every pick, the unlearned ones
+    too. BAT-Q24 stays the adventure lane's to apply (recorded in its entry).
+  - **DF:** the Dragon Father's own Bless and the enemy's Slow cannot be chosen ("That spell will
+    affect no one!"), Magic Mirror can.
+  - **PS:** 41 Unicorn attacks, never a Blind under the Pendant of Second Sight.
+  - **HP:** Death Ripple hit the hypnotized Pikemen (35, 3 died) and the Swordsmen (35, 1), not the
+    Archers: the controller's defences.
+- **Catalog:** observation sources on BAT-MAG-063, 064, 068 (now `verified`) and 069 (the chance
+  not measured); `installation.md` §7.24; BAT-Q23's and BAT-Q24's entries.
+- **Notes from the user:** a stack moves or Defends in a turn, not both (PS's procedure asked for
+  both; a trap in `docs/experiments/README.md` now); the game offered PSb's level-up in Red's turn
+  (hot seat, nothing for the engine). T10 complete.

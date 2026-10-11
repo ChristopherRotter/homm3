@@ -3255,7 +3255,7 @@ numeric  = "integer"
 id       = "BAT-MAG-063"
 title    = "A hero's spell immunities (the Pendants, the Sphere, Armageddon's Blade)"
 context  = "battle"
-status   = "implemented"
+status   = "verified"
 summary  = "A stack is never affected by a spell its controlling hero's SpellImmunity effects name (HER-BAT-016; a hypnotized stack's controller is the hypnotizing side), whoever casts it, before every other test but the spell level limit (BAT-MAG-062): also Dispel and Dispel Helpful Spells, which skip the immunities otherwise (the Sphere of Permanence; also its own hero's Dispel and a strike's dispel of positive spells), and no negation lifts it (BAT-MAG-066); spells the strike puts on a stack without a test (Bind, Acid Breath; BAT-MAG-045, BAT-MAG-046) ask nothing, as in the original. The Pendants: Dispassion Berserk, Second Sight Blind, Holiness Curse, Life Death Ripple, Death Destroy Undead, Free Will Hypnotize, Negativity Lightning Bolt and Chain Lightning, Total Recall Forgetfulness (the strike's Blind and Curse too); Armageddon's Blade Armageddon."
 numeric  = "integer"
 
@@ -3271,11 +3271,17 @@ numeric  = "integer"
   retrieved  = "2026-10-10"
   confidence = "high"
 
+  [[rule.source]]
+  kind       = "observation"
+  ref        = "experiments/results/E04b-batch-2f.md PS and HP (SoD 4.0 Complete, plain HD, 2026-10-11): 41 Unicorn attacks never blinded Pikemen whose hero wore the Pendant of Second Sight (the strike's Blind barred too); Death Ripple hit the Pikemen a Red hero had hypnotized (35 damage, 3 died) and Red's Swordsmen, and spared only Blue's Archers, though Blue's hero wore the Pendant of Life (the controller's defences, not the owner's)"
+  retrieved  = "2026-10-11"
+  confidence = "high"
+
 [[rule]]
 id       = "BAT-MAG-064"
 title    = "A hero's spell level immunity (Power of the Dragon Father)"
 context  = "battle"
-status   = "implemented"
+status   = "verified"
 summary  = "A stack whose controlling hero has a SpellLevelImmunity effect (HER-BAT-016; Power of the Dragon Father: 4) is never affected by a spell up to that level, whatever its polarity (its own hero's Bless too) and the strike's ability spells up to it (Disease, Poison, Paralyze), but Dispel and the other spells that skip the immunities (BAT-MAG-016); no negation lifts it (BAT-MAG-066)."
 numeric  = "integer"
 
@@ -3303,6 +3309,12 @@ numeric  = "integer"
   ref        = "experiments/results/E04b-batch-2e.md DF (SoD 4.0 Complete, plain HD, 2026-10-11): against Power of the Dragon Father the Mighty Gorgons' Death Stare kills (the control), while 3 Thunderbird attacks give no bolt and 4 Wyvern Monarch attacks no Poison (weak: 12 % to see neither without the immunity)"
   retrieved  = "2026-10-11"
   confidence = "medium"
+
+  [[rule.source]]
+  kind       = "observation"
+  ref        = "experiments/results/E04b-batch-2f.md DF (SoD 4.0 Complete, plain HD, 2026-10-11): under Power of the Dragon Father the hero's own Bless and the enemy hero's Slow cannot even be chosen ('That spell will affect no one!'), while Magic Mirror (level 5) is offered"
+  retrieved  = "2026-10-11"
+  confidence = "high"
 
 [[rule]]
 id       = "BAT-MAG-065"
@@ -3394,8 +3406,8 @@ numeric  = "integer"
 id       = "BAT-MAG-068"
 title    = "The opening spells: a side's hero casts them at the side's first activation"
 context  = "battle"
-status   = "implemented"
-summary  = "Each side's hero casts its OpeningSpell effects (Angelic Alliance: Expert Prayer, power 10; Armor of the Damned: Expert Slow, Curse, Weakness, Misfortune, power 50; HER-BAT-017) at the first activation of a stack the side controls outside the tactics phase: an activation that goes on after the blind, petrified or paralysed stacks, bad morale and Fear passed it over (so a side whose first stack loses its turn casts at its next one's), before the stack's other activation effects (the Wraith's drain, the Enchanters' cast, the Faerie Dragon's draw); once a battle. Each spell, in order, is cast only if some living stack would be affected by it (the target test, hypnotized stacks counted), as a mass cast of the hero at the spell's mastery: the side's own or enemy stacks as the spell reaches, each tested and rolling for resistance as for any of the hero's mass casts (immunities, the defences of BAT-MAG-063 to 066, the spell level limits of BAT-MAG-062 apply per stack; the mass cast passes over hypnotized stacks), the hero's specialty applied (BAT-MAG-020); its power is the duration of its effects, without the duration bonus (BAT-MAG-010). It costs no mana, is not the round's cast, draws no Eagle Eye and is not stopped by the Orb of Inhibition (BAT-MAG-061). An OpeningSpell event (public) precedes the effects. The battle accepts an opening spell without a target at its mastery whose effects are timed changes, dispels or heals (HeroError::OpeningSpell). VCMI casts both sides' at the end of the tactics phase, before round 1; the engine follows the code and the wiki until an experiment confirms it (BAT-Q23)."
+status   = "verified"
+summary  = "Each side's hero casts its OpeningSpell effects (Angelic Alliance: Expert Prayer, power 10; Armor of the Damned: Expert Slow, Curse, Weakness, Misfortune, power 50; HER-BAT-017) at the first activation of a stack the side controls outside the tactics phase: an activation that goes on after the blind, petrified or paralysed stacks, bad morale and Fear passed it over (so a side whose first stack loses its turn casts at its next one's), before the stack's other activation effects (the Wraith's drain, the Enchanters' cast, the Faerie Dragon's draw); once a battle. Each spell, in order, is cast only if some living stack would be affected by it (the target test, hypnotized stacks counted), as a mass cast of the hero at the spell's mastery: the side's own or enemy stacks as the spell reaches, each tested and rolling for resistance as for any of the hero's mass casts (immunities, the defences of BAT-MAG-063 to 066, the spell level limits of BAT-MAG-062 apply per stack; the mass cast passes over hypnotized stacks), the hero's specialty applied (BAT-MAG-020); its power is the duration of its effects, without the duration bonus (BAT-MAG-010). It costs no mana, is not the round's cast, draws no Eagle Eye and is not stopped by the Orb of Inhibition (BAT-MAG-061). An OpeningSpell event (public) precedes the effects. The battle accepts an opening spell without a target at its mastery whose effects are timed changes, dispels or heals (HeroError::OpeningSpell). VCMI casts both sides' at the end of the tactics phase, before round 1; batch 2f confirmed the code and the wiki (BAT-Q23)."
 numeric  = "integer"
 
   [[rule.source]]
@@ -3416,6 +3428,12 @@ numeric  = "integer"
   url        = "https://github.com/vcmi/vcmi/blob/1.7.5/server/battles/BattleFlowProcessor.cpp"
   retrieved  = "2026-10-10"
   confidence = "medium"
+
+  [[rule.source]]
+  kind       = "observation"
+  ref        = "experiments/results/E04b-batch-2f.md AD and AO (SoD 4.0 Complete, plain HD, 2026-10-11): the defender's Armor of the Damned cast Slow, Curse, Weakness and Misfortune at its Pikemen's first turn, after its blinded Royal Griffins were passed over: the attacker's Pegasi and Wolf Raiders showed no spell before (the log empty), both all four after (BAT-Q23: the code and the wiki, not VCMI's before round 1); under the attacker's Orb of Inhibition (the book refused with the Orb's message) the four were cast all the same"
+  retrieved  = "2026-10-11"
+  confidence = "high"
 
 [[rule]]
 id       = "BAT-MAG-069"
@@ -3442,4 +3460,10 @@ numeric  = "integer"
   ref        = "server/battles/BattleResultProcessor.cpp: after the battle, for the winner's hero, one roll of LEARN_BATTLE_SPELL_CHANCE per HERO_SPELL action of the other side (usedSpellsHistory) for a spell of level at most LEARN_BATTLE_SPELL_LEVEL_LIMIT not in its spell book (the same odds as a roll at each cast); config/skills.json eagleEye 40/50/60, levels 2/3/4"
   url        = "https://github.com/vcmi/vcmi/blob/1.7.5/server/battles/BattleResultProcessor.cpp"
   retrieved  = "2026-10-10"
+  confidence = "medium"
+
+  [[rule.source]]
+  kind       = "observation"
+  ref        = "experiments/results/E04b-batch-2f.md EL, EB, EW (SoD 4.0 Complete, plain HD, 2026-10-11): an Advanced Eagle Eye picked a level-3 spell (Air Shield) and a level-1 one (Bless) from the enemy hero's casts; the message after the won battle names every pick ('Through eagle-eyed observation, EL is able to learn Air Shield and Bless.'), even those the hero then does not learn (BAT-Q24); the chance was not measured"
+  retrieved  = "2026-10-11"
   confidence = "medium"
