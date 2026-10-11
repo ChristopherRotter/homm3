@@ -4,9 +4,9 @@ The server lane's living state; read after the global `docs/HANDOFF.md`. Format 
 
 ## Current state
 
-- **M1 closed (2026-10-11, SRV-Q12). M2 T1–T5c merged (#67, #71, #72, #76, #78, #79, #83, #86, #88); M2 T5d done (2026-10-11)** on `claude/server-hardening-fuzz-kxo4z4`: the decoder's mutation tests (SRV-Q14), the public archive of finished games (`ListReplays`, `FetchArchived`, `[limits] replays_kept`; SRV-Q15, ADR-0018 points 8 and 9 amended); wire 11. **Next: M2 T5e** (`QUEUE.md`): M2's closure, the reviewer agent, the user's checkpoint. Review list for the M2 checkpoint: the epic file.
+- **M1 closed (2026-10-11, SRV-Q12). M2 done (2026-10-11):** T1–T5d merged (#67 … #93); T5e (M2's closure: exit criteria, the client lane's note, the inbox placed, the reviewer agent and its fixes) on `claude/epic-bell-ot2nsa`. **Next: the user's M2 checkpoint (SRV-Q16)**, then M3's refinement (`QUEUE.md`); wire 11.
 - **For M4** (SRV-Q13, answered): ranked games one at a time per player, a pause only by agreement, its length negotiated within the ladder's bounds, the absent player forfeits at the due time; the reading of "one at a time" is confirmed at M4's refinement.
-- **Shared changes on this branch** (ADR-0018 points 8 and 9, `05-testing.md`'s fuzzing, `06-security.md`, the global HANDOFF's server row; a commit of their own): the pull request carries the label `cross-lane` (the user, 2026-10-11).
+- **Cross-lane on this branch** (the user, 2026-10-11): the client lane's inbox line; `06-security.md` and the global HANDOFF's server row in a commit of their own. The pull request carries the label `cross-lane`.
 - **ADR-0018 point 5 as amended:** the mapping's matches over the engine's enums are exhaustive, and since T4b its patterns over the observation's structs too; a new battle variant or observation field fails `h3-protocol`'s build until mapped (global HANDOFF trap).
 - **The 100 % gate** covers `h3-protocol` (logic); `h3-server` is an adapter outside it, tested end to end.
 - **Versions** (`docs/08-work-process.md`): `PROTOCOL_VERSION` (`h3-protocol`, 11 since M2 T5d's archive; 10 was M2 T5c's `RecordHeader::first`; bumped on every wire change), `RECORD_FORMAT_VERSION` (`h3-protocol`, 2 since M2 T5c), `JOURNAL_FORMAT_VERSION` (`h3-server`, 3 since M2 T4c's spectator setting; 2 was M2 T3's pause lines; a journal of another format is void at start).
@@ -32,6 +32,7 @@ The server lane's living state; read after the global `docs/HANDOFF.md`. Format 
 - A game leaves the lobby only under the registry's lock, after its bound connections are counted down (`registry.rs`): deciding by the game's own connection list races a join that is already queued.
 - A socket closed over unread data is reset, and the reset makes the peer drop what it has not read yet (a `Goodbye`): the transport's close reads on for the peer's close (`net.rs`, `LINGER`). The flooding test catches a regression only in most runs, not all.
 - A journal's line holds tokens: errors from reading one name the line and column, never its text (serde_json's messages quote values); a log line never carries a hash either (`journal.rs`).
+- No file I/O under the registry's lock (T5e): a game creates or reads its journal on its own thread (`game::launch`), and a new or resumed game's own opening is queued under the lock (`registry::Opening::first`) before anything else reaches it.
 - A finished game's replay is written by `game::finish` into the archive's directory its spectator setting names (`archive::dir`) and must then join the registry's archive (`Registry::archived`): a replay written elsewhere is neither listed nor trimmed.
 - `PROPTEST_CASES` applies to every proptest of a crate (the session's are slow): name the test (`cargo test -p h3-protocol mutat`) for a longer mutation run.
 - A game's frames go through `game::Outbox` (`offer`, or `last` for a goodbye), never a bare channel: the connection's task subtracts every frame's bytes as it takes it out, so a frame queued around the count wraps it, and the queue then refuses every frame.
@@ -43,6 +44,10 @@ The server lane's living state; read after the global `docs/HANDOFF.md`. Format 
 - **The workload is lane-only and follows `master`:** 55 % of its count is the battle engine, so battle changes move it and the full verify (CI) does not measure it. At each session's start `verify --scope server` measures it; a drift there came from `master`: re-baseline (`cargo xtask bench-check --update --workload session-random-play-full`) and name the range in the commit. Measure only with the file's arguments (they shift the heap `malloc` walks).
 
 ## Recent sessions
+
+### 2026-10-11 — M2 T5e, M2's closure
+
+#93 had merged; the branch restarted from `master`. Exit criteria written, the client lane's note filed (cross-lane, the user), the inbox placed (M3, M4). The reviewer agent: 1 major (file I/O under the registry's lock) and 5 minors fixed, 4 minors in the inbox (`E16-log.md`, M2 T5e). Checkpoint: SRV-Q16.
 
 ### 2026-10-11 — M2 T5d, mutation tests and the public archive
 
