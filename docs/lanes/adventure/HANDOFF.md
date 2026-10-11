@@ -16,7 +16,7 @@ The adventure lane's living state; read after the global `docs/HANDOFF.md`. Form
 - **Fuzzing is stable-only for now** (user, 2026-10-10): property tests on arbitrary bytes; `cargo-fuzz` later.
 - **Not before E04b closes:** the content split and the writer's move into `h3-map` (BACKLOG R01). Until then adventure crates use only the core items of `h3-content`.
 - **Ownership:** the four crates, `src/adventure/` in `h3-sim` and `h3-cli`, `crates/h3-cli/tests/adventure_replays.rs`, `fixtures/replays/adventure/`, `fixtures/maps/`, each pack's `adventure.toml`, `docs/formats/h3m.md`, `docs/rules/catalog/{adventure,game,town}.toml`. `h3-heroes` moves to this lane when hero progression starts (increment 3).
-- **Ids:** questions `ADV-Q<n>`, quirks `ADV-QUIRK-<n>` (1 reserved for the fog fringe; 2, 3 the diagonal exception; 4 leading neutral stacks; flags 17–19 in `h3_content`'s registry), stubs `ADV-STUB-<n>`, rules `ADV-*` and `GAM-*`. Versions owned: game state hash, adventure state and ruleset-part hashes, map import, adventure replay format.
+- **Ids:** questions `ADV-Q<n>`, quirks `ADV-QUIRK-<n>` (1 reserved for the fog fringe; 2, 3 the diagonal exception; 4 leading neutral stacks; flags 19–21 in `h3_content`'s registry), stubs `ADV-STUB-<n>`, rules `ADV-*` and `GAM-*`. Versions owned: game state hash, adventure state and ruleset-part hashes, map import, adventure replay format.
 - **Working agreement:** increments of a couple of tasks with a user checkpoint; the user confirms seams and ADRs; token efficiency beats speed (AGENTS.md).
 
 ## Standing traps

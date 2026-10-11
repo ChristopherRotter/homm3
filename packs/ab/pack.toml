@@ -296,7 +296,7 @@ fight_value = 16317
 ai_value = 19580
 adventure_count = [1, 3]
 flags = ["two_hex", "flying", "alive", "king_1", "dragon"]
-abilities = [{ kind = "random_spell_caster", mastery = 2, power_per_creature = 5 }, { kind = "drawn_spell", spell = "base:ice_bolt", weight = 22 }, { kind = "drawn_spell", spell = "base:lightning_bolt", weight = 22 }, { kind = "drawn_spell", spell = "base:fireball", weight = 21 }, { kind = "drawn_spell", spell = "base:magic_arrow", weight = 10 }, { kind = "drawn_spell", spell = "base:frost_ring", weight = 10 }, { kind = "drawn_spell", spell = "base:chain_lightning", weight = 5 }, { kind = "drawn_spell", spell = "base:meteor_shower", weight = 5 }, { kind = "drawn_spell", spell = "base:inferno", weight = 5 }, { kind = "innate_spell", spell = "base:magic_mirror", value = 20 }, { kind = "ignores_magic_block" }]
+abilities = [{ kind = "random_spell_caster", mastery = 2, power_per_creature = 5 }, { kind = "drawn_spell", spell = "base:ice_bolt", weight = 22 }, { kind = "drawn_spell", spell = "base:lightning_bolt", weight = 22 }, { kind = "drawn_spell", spell = "base:fireball", weight = 21 }, { kind = "drawn_spell", spell = "base:magic_arrow", weight = 10 }, { kind = "drawn_spell", spell = "base:frost_ring", weight = 10 }, { kind = "drawn_spell", spell = "base:chain_lightning", weight = 5 }, { kind = "drawn_spell", spell = "base:meteor_shower", weight = 5 }, { kind = "drawn_spell", spell = "base:inferno", weight = 5 }, { kind = "innate_spell", spell = "base:magic_mirror", value = 20 }]
 
 [[creature]]
 id = "rust_dragon"  # original id 135
@@ -532,6 +532,21 @@ level = 3
 abilities = [{ kind = "hate", creature = "base:fire_elemental", percent = 100 }, { kind = "hate", creature = "energy_elemental", percent = 100 }, { kind = "spell_immunity", spell = "base:ice_bolt" }, { kind = "spell_immunity", spell = "base:frost_ring" }, { kind = "spell_vulnerability", percent = 100, spell = "base:fireball" }, { kind = "spell_vulnerability", percent = 100, spell = "base:inferno" }, { kind = "spell_vulnerability", percent = 100, spell = "base:armageddon" }]
 upgrades = ["ice_elemental"]
 
+[[creature_override]]
+target = "ab:ice_elemental"  # Ice Elemental, BAT-QUIRK-19
+fixes = "quirk.content.elemental_levels"
+level = 3
+
+[[creature_override]]
+target = "ab:magma_elemental"  # Magma Elemental, BAT-QUIRK-19
+fixes = "quirk.content.elemental_levels"
+level = 5
+
+[[creature_override]]
+target = "ab:energy_elemental"  # Energy Elemental, BAT-QUIRK-19
+fixes = "quirk.content.elemental_levels"
+level = 4
+
 [[hero_class]]
 id = "planeswalker"
 name = "Planeswalker"
@@ -766,6 +781,11 @@ class = "base:knight"
 skills = [{ skill = "base:leadership", level = 1 }, { skill = "base:armorer", level = 1 }]
 army = [{ creature = "base:pikeman", count = [10, 20] }, { creature = "base:archer", count = [4, 7] }, { creature = "base:griffin", count = [2, 3] }]
 specialty = [{ kind = "creature_specialty", creature = "base:crusader", bp_per_step = 500, speed = 1 }]
+
+[[hero_override]]
+target = "ab:roland"  # Q-0006
+fixes = "quirk.content.roland_crusader_specialty"
+specialty = [{ kind = "creature_specialty", creature = "base:swordsman", bp_per_step = 500, speed = 1 }]
 
 [[hero]]
 id = "mutare_drake"  # original id 153

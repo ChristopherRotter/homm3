@@ -102,6 +102,28 @@ resource may appear once.
 **Overrides** are applied in load order after the target was defined; list fields (`cost`,
 `flags`) are replaced as a whole. The patched creature is validated like a definition.
 
+**Data quirks** (format v34, E04b T8e; ADR-0007, amendment E04b T8e): an override with
+`fixes = "quirk.content.<name>"` fixes a quirk in the data. The entity keeps the original's
+value; the override's target and references are resolved in every profile, and it is applied
+(then validated with its entity) only in profiles that turn the flag off (`strict-fixed`; the
+harvester compiles its packs in both profiles). The flag must be a registered `quirk.content` flag
+(`CompileError::NotADataQuirk`). `[[hero_override]]` changes a hero type of the closure, the
+pack's own included: `target` (a full key), optional `fixes`, and `specialty` (replaces the whole
+list). The harvested `ab` pack fixes Roland's specialty (Q-0006) and the Ice, Magma and Energy
+Elementals' levels (BAT-QUIRK-19) so:
+
+```toml
+[[creature_override]]
+target = "ab:ice_elemental"
+fixes = "quirk.content.elemental_levels"
+level = 3
+
+[[hero_override]]
+target = "ab:roland"
+fixes = "quirk.content.roland_crusader_specialty"
+specialty = [{ kind = "creature_specialty", creature = "base:swordsman", bp_per_step = 500, speed = 1 }]
+```
+
 **Creature flags** (`h3_content::CreatureFlag`, mirroring the executable's flag bits,
 `docs/formats/installation.md` §5): `two_hex`, `flying`, `shooter`, `breath_attack`, `alive`,
 `catapult`, `war_machine`, `king_1`, `king_2`, `king_3`, `mind_immune`, `no_melee_penalty`,
@@ -165,7 +187,7 @@ errors:
 | `damage_penalty_by_flag` | `flag` (a creature flag), `percent` (1..=100) | since v28: as `damage_penalty`, against creatures with flag `flag`: the Psychic Elemental's half against mind-immune creatures (BAT-DMG-010). Several for different flags |
 | `rebirth` | `divisor` (≥ 1) | since v29: after the action that killed its stack (a strike, a cast, a mine's or Fire Wall's damage), if the stack has a cast left (its creature's `casts`) and is not a clone (nor a sacrificed one, BAT-QUIRK-17), one cast is used and the stack comes back for good on its hexes, without the effects it died with, with its count at the battle's start div `divisor` creatures, plus one for each of the count mod `divisor` others with a 1-in-`divisor` chance; it counts as having acted this round, and no creature comes back if none is drawn (the cast is used either way): the Phoenix's fifth (BAT-MAG-059) |
 | `fear` | `percent` (1..=100) | since v29: while its stack lives, a stack of the other side (taken from the frightened stack's controller; the frightening stacks count by their real side, BAT-QUIRK-18) that is picked to act outside the round's wait phase, after the bad-morale check and not at the battle's first activation without a tactics phase, is frozen with `percent` % chance (one roll, the largest chance among the side's living stacks with `fear`): it loses its turn and counts as having acted. Creatures without morale and those with `fear` are never frozen: the Azure Dragon's 10 % (BAT-MAG-060) |
-| `ignores_magic_block` | — | since v31: the creature's casts ignore a hero's `no_casting` (the Orb of Inhibition): the Faerie Dragon after the wiki and VCMI, which the code reading contradicts, until an experiment settles it (BAT-MAG-061, BAT-Q21) |
+| `ignores_magic_block` | — | since v31: the creature's casts ignore a hero's `no_casting` (the Orb of Inhibition): no harvested creature has it: batch 2e observed the code reading, under which the Orb stops the Faerie Dragon too, against the wiki and VCMI (BAT-MAG-061, BAT-Q21) |
 
 `creature` references follow the reference rules above (own pack, or `pack:name` in the
 dependency closure) and may name creatures defined later in the same pack. At most one entry of
@@ -659,7 +681,8 @@ gap-fill file (`[heroes.params]`: 0/0/1/1, 99, 64).
 **Profiles** (`[[profile]]` with `quirks = { "quirk.<context>.<name>" = true | false }`; unlisted
 flags are off): the registered flags are in `h3_content::REGISTRY` and the quirks ledger
 (`docs/rules/quirks-ledger.md`); the packs' `faithful` profiles turn Q-0003 and Q-0005 on,
-`strict-fixed` off. Profile-level Tier-2 overrides are not implemented yet (backlog).
+`strict-fixed` off (since E04b T8e also the data quirks' `quirk.content` flags, which only gated
+overrides read). Profile-level Tier-2 parameters are not implemented yet (backlog).
 
 The compiled ruleset's canonical hash (encoding v15, `RULESET_HASH_VERSION`) covers packs,
 profile, quirks, resources, terrains, factions, obstacles, all creature fields including abilities

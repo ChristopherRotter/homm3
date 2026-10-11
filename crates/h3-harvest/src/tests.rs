@@ -1390,3 +1390,92 @@ fn helpers() {
     assert_eq!(flags(0x8000_0003).unwrap(), ["two_hex", "flying", "dragon"]);
     assert!(flags(0x4000_0000).is_err());
 }
+
+/// E04b T8e (ADR-0007, amendment E04b T8e): the packs keep the executable's value and an
+/// override gated by the quirk's flag carries the fix (BAT-QUIRK-19's levels, Q-0006's creature).
+const DATA_QUIRKS: &str = r#"
+[[data_quirks.base_level]]
+flag = "quirk.content.elemental_levels"
+creatures = ["Unit 30"]
+sources = ["s"]
+
+[[data_quirks.specialty_creature]]
+flag = "quirk.content.roland_crusader_specialty"
+hero = "Hero 1"
+creature = "Unit 2"
+sources = ["s"]
+"#;
+
+#[test]
+fn harvests_data_quirk_fixes() {
+    let g = GapFill::parse(&format!("{GAP}{DATA_QUIRKS}")).unwrap();
+    let mut i = inputs();
+    i.exe[30].level = 3;
+    let h = harvest(&i, &g).unwrap();
+    let texts = [pack(&h, "base"), pack(&h, "ab"), pack(&h, "sod")];
+    assert!(texts[1].contains("fixes = \"quirk.content.elemental_levels\""));
+    assert!(texts[0].contains("[[hero_override]]\ntarget = \"base:hero_1\""));
+    let faithful = h3_pack::compile(&texts, "base:faithful").unwrap();
+    let fixed = h3_pack::compile(&texts, "base:strict-fixed").unwrap();
+    let level = |r: &h3_content::Ruleset, k: &str| {
+        r.creature_info(r.creature_by_key(k).unwrap())
+            .unwrap()
+            .level
+    };
+    // The upgrade keeps the executable's level in `faithful` and gets its base's in
+    // `strict-fixed`.
+    assert_ne!(
+        level(&faithful, "ab:unit_30"),
+        level(&faithful, "base:unit_26")
+    );
+    assert_eq!(level(&fixed, "ab:unit_30"), level(&fixed, "base:unit_26"));
+    // The specialist names the executable's creature in `faithful`, the fixed one otherwise.
+    let named = |r: &h3_content::Ruleset| {
+        let hero = r
+            .hero_type(r.hero_type_by_key("base:hero_1").unwrap())
+            .unwrap();
+        std::format!("{:?}", hero.specialty)
+    };
+    let id = |r: &h3_content::Ruleset, k: &str| std::format!("{:?}", r.creature_by_key(k).unwrap());
+    assert!(named(&faithful).contains(&id(&faithful, "base:unit_148")));
+    assert!(named(&fixed).contains(&id(&fixed, "base:unit_2")));
+}
+
+#[test]
+fn data_quirk_fixes_are_checked() {
+    let fails = |from: &str, to: &str, change: &dyn Fn(&mut Inputs), error: &str| {
+        let text = format!("{GAP}{DATA_QUIRKS}");
+        let changed = text.replace(from, to);
+        assert!(from == to || changed != text, "{from}");
+        let mut i = inputs();
+        i.exe[30].level = 3;
+        change(&mut i);
+        let e = harvest(&i, &GapFill::parse(&changed).unwrap()).unwrap_err();
+        assert!(e.contains(error), "{error}: {e}");
+    };
+    let none = |_: &mut Inputs| {};
+    fails(
+        "creatures = [\"Unit 30\"]",
+        "creatures = [\"Unit 31\"]",
+        &none,
+        "`Unit 31` is no upgrade",
+    );
+    fails(
+        "creatures = [\"Unit 30\"]",
+        "creatures = [\"Unit 30\"]",
+        &|i| i.exe[30].level = 1,
+        "`Unit 30` has its base's level",
+    );
+    fails(
+        "creature = \"Unit 2\"",
+        "creature = \"Unit 148\"",
+        &none,
+        "hero `Hero 1` with creature `Unit 148`",
+    );
+    fails(
+        "hero = \"Hero 1\"",
+        "hero = \"Hero 2\"",
+        &none,
+        "a data quirk's specialty fix must meet exactly one creature specialist",
+    );
+}

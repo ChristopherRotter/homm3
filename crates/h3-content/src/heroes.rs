@@ -557,6 +557,33 @@ impl HeroContent {
         Ok(())
     }
 
+    /// Applies the pack's hero overrides to hero types of its closure (E04b T8e). A gated one's
+    /// target and references are resolved in every profile; it is applied (and then validated
+    /// with the hero) only where `applies` says so (ADR-0007, amendment E04b T8e).
+    pub(crate) fn add_overrides(
+        &mut self,
+        pack: &ContentPack,
+        refs: &Refs<'_>,
+        applies: impl Fn(Option<&str>) -> Result<bool, CompileError>,
+    ) -> Result<(), CompileError> {
+        for o in &pack.hero_overrides {
+            let id = refs.resolve(&o.target, &self.heroes.index, "hero type")?;
+            let apply = applies(o.fixes.as_deref())?;
+            let specialty = o
+                .patch
+                .specialty
+                .as_ref()
+                .map(|list| self.effects(refs, list))
+                .transpose()?;
+            if let (true, Some(hero), Some(list)) =
+                (apply, self.heroes.items.get_mut(id.index()), specialty)
+            {
+                hero.specialty = list;
+            }
+        }
+        Ok(())
+    }
+
     /// Why an effect list's `spells` or `spell_mastery` names a creature ability, if it does: a
     /// hero has and casts its spells, never an ability (HER-SPL-001 to HER-SPL-003).
     pub(crate) fn spell_effect_error(&self, list: &[CompiledHeroEffect]) -> Option<&'static str> {

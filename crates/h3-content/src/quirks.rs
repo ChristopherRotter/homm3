@@ -72,6 +72,8 @@ pub const REGISTRY: QuirkRegistry = QuirkRegistry::new(&[
     "quirk.battle.creature_mirror_untested",
     "quirk.battle.clone_on_its_original",
     "quirk.battle.periodic_first_stack",
+    "quirk.content.roland_crusader_specialty",
+    "quirk.content.elemental_levels",
     "quirk.adventure.diagonal_check_ignores_roads",
     "quirk.adventure.diagonal_check_ignores_native",
     "quirk.adventure.native_skips_leading_neutrals",
@@ -159,19 +161,33 @@ pub const CLONE_ON_ITS_ORIGINAL: QuirkFlag = QuirkFlag(15);
 /// every spell aimed at its side. Off: a spell counts when it is useful on any stack of that side.
 pub const PERIODIC_FIRST_STACK: QuirkFlag = QuirkFlag(16);
 
+/// Q-0006 (data): Roland's specialty names the Crusader, so it raises only Crusaders (the
+/// executable's specialty table). Off: a gated override names the Swordsman, which raises both.
+/// Read by the compiler only, as every `quirk.content` flag (ADR-0007, amendment E04b T8e).
+pub const ROLAND_CRUSADER_SPECIALTY: QuirkFlag = QuirkFlag(17);
+
+/// BAT-QUIRK-19 (data, survey S-05): the Ice, Magma and Energy Elementals have the executable's
+/// levels 4, 3 and 5. Off: a gated override gives each its base creature's level, 3, 5 and 4.
+/// Read by the compiler only.
+pub const ELEMENTAL_LEVELS: QuirkFlag = QuirkFlag(18);
+
 /// ADV-QUIRK-2: the diagonal exception compares the hero's points left with the source tile's
 /// terrain cost even on a road, though the step it prices then costs the road's (ADV-MOV-006;
 /// code 0x4B1740). Off: with the road's cost when both tiles have a road.
-pub const DIAGONAL_CHECK_IGNORES_ROADS: QuirkFlag = QuirkFlag(17);
+pub const DIAGONAL_CHECK_IGNORES_ROADS: QuirkFlag = QuirkFlag(19);
 
 /// ADV-QUIRK-3: the diagonal exception compares the hero's points left with the terrain's
 /// penalised cost even for an army native to it (ADV-MOV-006; code 0x4B1740). Off: with the
 /// native cost.
-pub const DIAGONAL_CHECK_IGNORES_NATIVE: QuirkFlag = QuirkFlag(18);
+pub const DIAGONAL_CHECK_IGNORES_NATIVE: QuirkFlag = QuirkFlag(20);
 
 /// ADV-QUIRK-4: an army's native terrain skips neutral stacks in slots before its first faction
 /// stack (ADV-MOV-004; code 0x44C590). Off: a neutral stack anywhere leaves the army without one.
-pub const NATIVE_SKIPS_LEADING_NEUTRALS: QuirkFlag = QuirkFlag(19);
+pub const NATIVE_SKIPS_LEADING_NEUTRALS: QuirkFlag = QuirkFlag(21);
+
+/// The prefix of the flags of data quirks: a gated override names one of them (`fixes`), and
+/// rule code never reads them (ADR-0007, amendment E04b T8e).
+pub const DATA_QUIRK_PREFIX: &str = "quirk.content.";
 
 /// The set of enabled quirk flags of a ruleset.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
@@ -211,7 +227,7 @@ mod tests {
 
     #[test]
     fn registry_lookup_and_bitset() {
-        assert_eq!(REGISTRY.len(), 20);
+        assert_eq!(REGISTRY.len(), 22);
         assert_eq!(
             REGISTRY.lookup("quirk.adventure.diagonal_check_ignores_roads"),
             Some(DIAGONAL_CHECK_IGNORES_ROADS)
@@ -223,6 +239,14 @@ mod tests {
         assert_eq!(
             REGISTRY.lookup("quirk.adventure.native_skips_leading_neutrals"),
             Some(NATIVE_SKIPS_LEADING_NEUTRALS)
+        );
+        assert_eq!(
+            REGISTRY.lookup("quirk.content.roland_crusader_specialty"),
+            Some(ROLAND_CRUSADER_SPECIALTY)
+        );
+        assert_eq!(
+            REGISTRY.lookup("quirk.content.elemental_levels"),
+            Some(ELEMENTAL_LEVELS)
         );
         assert_eq!(
             REGISTRY.lookup("quirk.battle.periodic_first_stack"),

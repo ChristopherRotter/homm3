@@ -319,11 +319,10 @@ fix-optional) and, during T7b, classified a new quirk and allowed the quirk flag
   neutral stack: none) differ; a fresh agent's independent re-read agreed exactly: `ADV-QUIRK-4`,
   fix-optional (the user). The four elementals count as neutral there while a game flag is clear
   (RoE content); the packs already have them neutral in `base`, Conflux in `ab`.
-- **T7b build.** `h3_content`: flags 17–19 `quirk.adventure.diagonal_check_ignores_roads`,
+- **T7b build.** `h3_content`: flags 19–21 `quirk.adventure.diagonal_check_ignores_roads`,
   `diagonal_check_ignores_native`, `native_skips_leading_neutrals` (on in `faithful`, off in
-  `strict-fixed`; the battle lane's T8e branch appends two flags too: whichever merges second
-  renumbers). `h3-adventure`: `native_terrain` (ADV-MOV-004), `diagonal_cost` (ADV-MOV-005,
-  `isqrt`), `Pricing` (the step's price from the source tile alone, the exception's check under
+  `strict-fixed`; after the battle lane's T8e, which took 17 and 18 and merged first).
+  `h3-adventure`: `native_terrain` (ADV-MOV-004), `diagonal_cost` (ADV-MOV-005, `isqrt`), `Pricing` (the step's price from the source tile alone, the exception's check under
   the two flags, the points left zeroed below the cheapest straight step from the new tile:
   ADV-MOV-003, -006), `AdventureCommand::MoveHero` (`AdventureState::apply`: the hero must be the
   player's, one error for unknown or foreign heroes; each step to a neighbour on the level, onto a

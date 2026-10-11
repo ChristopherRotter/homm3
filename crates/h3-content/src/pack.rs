@@ -160,6 +160,9 @@ pub struct CreatureDef {
 pub struct CreatureOverride {
     /// Key of the creature to change (`pack:name`).
     pub target: ContentKey,
+    /// The data quirk this override fixes (a `quirk.content` flag), if it is gated: then it is
+    /// applied only when the active profile turns the flag off (ADR-0007, amendment E04b T8e).
+    pub fixes: Option<String>,
     /// The fields to change.
     pub patch: CreaturePatch,
 }
@@ -302,6 +305,26 @@ pub struct StartingStackDef {
     pub creature: ContentKey,
     /// Size range `[low, high]`.
     pub count: [u16; 2],
+}
+
+/// A partial change to a hero type of the overriding pack's dependency closure, the pack itself
+/// included (E04b T8e: Roland's specialty, quirk Q-0006).
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct HeroOverride {
+    /// Key of the hero type to change (`pack:name`).
+    pub target: ContentKey,
+    /// The data quirk this override fixes, if it is gated (as [`CreatureOverride::fixes`]).
+    pub fixes: Option<String>,
+    /// The fields to change.
+    pub patch: HeroPatch,
+}
+
+/// The changed fields of a [`HeroOverride`]. `None` fields stay as they are; list fields replace
+/// the whole list.
+#[derive(Debug, Clone, PartialEq, Eq, Default)]
+pub struct HeroPatch {
+    /// New specialty (replaces the whole list).
+    pub specialty: Option<Vec<HeroEffectDef>>,
 }
 
 /// A hero type (E04a T3): who a hero is when it enters the game. Level, experience, artifacts and
@@ -496,6 +519,8 @@ pub struct ContentPack {
     pub hero_classes: Vec<HeroClassDef>,
     /// Hero types.
     pub heroes: Vec<HeroTypeDef>,
+    /// Changes to hero types of the closure (E04b T8e).
+    pub hero_overrides: Vec<HeroOverride>,
     /// Artifact slots (E04a T3b).
     pub artifact_slots: Vec<ArtifactSlotDef>,
     /// Changes to artifact slots of the closure.
@@ -526,6 +551,7 @@ impl ContentPack {
             skills: Vec::new(),
             hero_classes: Vec::new(),
             heroes: Vec::new(),
+            hero_overrides: Vec::new(),
             artifact_slots: Vec::new(),
             artifact_slot_overrides: Vec::new(),
             artifacts: Vec::new(),
