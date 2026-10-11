@@ -663,6 +663,33 @@ fn poison_takes_a_tenth_at_the_strike_and_each_round_and_stays_until_a_cure() {
     assert_eq!(s.at(StackId(3)).max_hp, 10);
 }
 
+// covers: BAT-MAG-044
+#[test]
+fn poison_is_reported_when_age_ends_at_the_same_round_start() {
+    let r = ruleset();
+    let mut s = duel(&r, "fixed", "serf", 1);
+    // Poison for three rounds (10 × 0.9 + 0.95 → 9) and Age in its last round (4.5 + 0.95 → 5).
+    for (name, rounds) in [("venom", 3), ("wither", 1)] {
+        let id = spell(&r, name);
+        let cast = TimedCast {
+            id,
+            spell: r.spell(id).unwrap(),
+            mastery: 0,
+            rounds,
+            own: SpellBonus::default(),
+        };
+        crate::effects::apply(&mut s, &r, cast, StackId(1), &mut Vec::<Event>::new());
+    }
+    assert_eq!(s.at(StackId(1)).max_hp, 5);
+    // The round start ends Age (9 again), then Poison takes its tenth (8): the fall is
+    // reported, as the original compares with the hit points after Age's end (review r4b F-8b;
+    // compared with the aged 5, the 8 looked like a gain and nothing was reported).
+    let events = new_round(&mut s, &r);
+    assert_eq!(poisoned(&events), vec![(1, 8)]);
+    assert_eq!(s.at(StackId(1)).max_hp, 8);
+    assert_eq!(on(&s, &r, 1), vec![(String::from("venom"), Some(2), 0)]);
+}
+
 // ---------------------------------------------------------------- BAT-MAG-045 to 047
 
 /// Whether `events` report the end of `t:tether` (Bind) on stack `id`.

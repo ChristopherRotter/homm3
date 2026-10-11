@@ -824,7 +824,8 @@ fn on_own_turn(ruleset: &Ruleset, spell: SpellId) -> bool {
 /// either ends (its last round has passed) or loses a round; permanent effects stay, and those
 /// counted at the stack's own turn wait for it ([`own_turn`]). Then Poison, where it still
 /// lasts, takes another tenth (BAT-MAG-044; the original's 0x447120), reported when the hit
-/// points fell.
+/// points fell below what they were once the ended effects were given back (an Age that ends
+/// at the same round start ends first, as in the original's countdown).
 // rule: BAT-MAG-010
 pub(crate) fn count_down<S: Sink>(state: &mut BattleState, ruleset: &Ruleset, sink: &mut S) {
     if state.effects.0.is_empty() {
@@ -869,6 +870,11 @@ pub(crate) fn count_down<S: Sink>(state: &mut BattleState, ruleset: &Ruleset, si
     }
     for (index, (&c, &p)) in changed.iter().zip(&poisoned).enumerate() {
         let id = StackId(u8::try_from(index).unwrap_or(u8::MAX));
+        // What ended is given back before Poison's tenth is compared (the original recomputes
+        // the hit points at Age's end, in the countdown, and compares with that value).
+        if c {
+            recompute(state, ruleset, id);
+        }
         if p {
             let before = state.at(id).max_hp;
             vitality::poison(state, id);
@@ -880,8 +886,6 @@ pub(crate) fn count_down<S: Sink>(state: &mut BattleState, ruleset: &Ruleset, si
                     hit_points,
                 }));
             }
-        } else if c {
-            recompute(state, ruleset, id);
         }
     }
 }
