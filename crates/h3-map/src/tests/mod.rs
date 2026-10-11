@@ -4,6 +4,7 @@
 //! what a viewer may learn there in `view.rs` (E08 T8b2b).
 
 mod encode;
+mod fixtures;
 mod import;
 mod play;
 mod strategy;
