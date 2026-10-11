@@ -186,7 +186,7 @@ errors:
 | `damage_penalty` | `creature`, `percent` (1..=100) | since v28: its strikes deal `percent` % less damage to `creature` (the original's damage stage 2, beside the defense factor; the largest penalty that applies): the Magic Elemental's half against Magic Elementals and Black Dragons (BAT-DMG-010). Several for different creatures |
 | `damage_penalty_by_flag` | `flag` (a creature flag), `percent` (1..=100) | since v28: as `damage_penalty`, against creatures with flag `flag`: the Psychic Elemental's half against mind-immune creatures (BAT-DMG-010). Several for different flags |
 | `rebirth` | `divisor` (≥ 1) | since v29: after the action that killed its stack (a strike, a cast, a mine's or Fire Wall's damage), if the stack has a cast left (its creature's `casts`) and is not a clone (nor a sacrificed one, BAT-QUIRK-17), one cast is used and the stack comes back for good on its hexes, without the effects it died with, with its count at the battle's start div `divisor` creatures, plus one for each of the count mod `divisor` others with a 1-in-`divisor` chance; it counts as having acted this round, and no creature comes back if none is drawn (the cast is used either way): the Phoenix's fifth (BAT-MAG-059) |
-| `fear` | `percent` (1..=100) | since v29: while its stack lives, a stack of the other side (taken from the frightened stack's controller; the frightening stacks count by their real side, BAT-QUIRK-18) that is picked to act outside the round's wait phase, after the bad-morale check and not at the battle's first activation without a tactics phase, is frozen with `percent` % chance (one roll, the largest chance among the side's living stacks with `fear`): it loses its turn and counts as having acted. Creatures without morale and those with `fear` are never frozen: the Azure Dragon's 10 % (BAT-MAG-060) |
+| `fear` | `percent` (1..=99: never certain, so that the frightened side gets to act) | since v29: while its stack lives, a stack of the other side (taken from the frightened stack's controller; the frightening stacks count by their real side, BAT-QUIRK-18) that is picked to act outside the round's wait phase, after the bad-morale check and not at the battle's first activation without a tactics phase, is frozen with `percent` % chance (one roll, the largest chance among the side's living stacks with `fear`): it loses its turn and counts as having acted. Creatures without morale and those with `fear` are never frozen: the Azure Dragon's 10 % (BAT-MAG-060) |
 | `ignores_magic_block` | — | since v31: the creature's casts ignore a hero's `no_casting` (the Orb of Inhibition): no harvested creature has it: batch 2e observed the code reading, under which the Orb stops the Faerie Dragon too, against the wiki and VCMI (BAT-MAG-061, BAT-Q21) |
 
 `creature` references follow the reference rules above (own pack, or `pack:name` in the
@@ -245,7 +245,9 @@ mass = "expert"                    # v5: from this mastery no target, every stac
                                    # mastery without quirk Q-0011, as Forgetfulness's)
 mind = false                       # v5: a mind spell (creatures with flag mind_immune are immune)
 excludes = ["war_machine"]
-duration = "rounds"                # v5: rounds (default: power + duration bonuses) | permanent;
+duration = "rounds"                # v5: rounds (default: power + duration bonuses) | permanent
+                                   # (not with a blind, petrify or paralyze change: a stack must
+                                   # get its turns back);
                                    # v8: own_turn (1 turn on the active stack, else 2, counted at
                                    # the stack's own turn start: Frenzy); v12: fixed, with
                                    # `fixed_rounds = 255` (whatever the power: Berserk)

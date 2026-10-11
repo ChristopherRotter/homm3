@@ -658,12 +658,10 @@ pub(crate) fn retaliation_share(state: &BattleState, ruleset: &Ruleset, s: Stack
 }
 
 /// Whether a timed `change` makes the stack lose its turns (BAT-MAG-024, BAT-MAG-043): a spell
-/// after a strike with one stops the struck stack's retaliation (BAT-MAG-040).
+/// after a strike with one stops the struck stack's retaliation (BAT-MAG-040). The content's
+/// list, which the compiler keeps from lasting the whole battle.
 pub(crate) const fn stops_turns(change: TimedChange) -> bool {
-    matches!(
-        change,
-        TimedChange::Blind | TimedChange::Petrify | TimedChange::Paralyze
-    )
+    change.takes_turns()
 }
 
 /// Recomputes the [`SpellValues`] of stack `s` from its entries (BAT-MAG-011): the sums of what

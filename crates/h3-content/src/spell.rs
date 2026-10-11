@@ -269,6 +269,13 @@ impl TimedChange {
     pub fn from_name(name: &str) -> Option<Self> {
         Self::ALL.into_iter().find(|c| c.name() == name)
     }
+
+    /// Whether the change makes the stack lose its turns while it lasts (Blind, Stone Gaze,
+    /// Paralyze; BAT-MAG-024, BAT-MAG-043). Such an effect never lasts the whole battle: the
+    /// compiler refuses it with a permanent duration.
+    pub const fn takes_turns(self) -> bool {
+        matches!(self, Self::Blind | Self::Petrify | Self::Paralyze)
+    }
 }
 
 /// One effect of a spell on each stack it reaches. The value of a cast is
@@ -969,6 +976,15 @@ impl SpellMagic {
             Some("duration, ends, cumulative, health_limit and refuses need a timed effect")
         } else if self.duration == EffectDuration::Fixed(0) {
             Some("a fixed duration needs at least 1 round")
+        } else if self.duration == EffectDuration::Permanent
+            && self
+                .effects
+                .iter()
+                .any(|e| e.timed().is_some_and(TimedChange::takes_turns))
+        {
+            // No stack would ever act again once every stack has such an effect: the battle
+            // would go on round after round within one command (E04b T11b review).
+            Some("an effect that takes a stack's turns away cannot be permanent")
         } else if self
             .fixed_mass_from
             .is_some_and(|f| self.mass_from.is_none_or(|m| f <= m) || f > MAX_MASTERY)
@@ -1556,6 +1572,35 @@ mod tests {
                 },
                 true,
                 "at least 1 round",
+            ),
+            // E04b T11b review (F-robust-4): a stack that never gets a turn again.
+            (
+                SpellMagic {
+                    duration: EffectDuration::Permanent,
+                    ..timed(TimedChange::Blind)
+                },
+                true,
+                "cannot be permanent",
+            ),
+            (
+                SpellMagic {
+                    duration: EffectDuration::Permanent,
+                    ..timed(TimedChange::Petrify)
+                },
+                true,
+                "cannot be permanent",
+            ),
+            (
+                SpellMagic {
+                    duration: EffectDuration::Permanent,
+                    effects: vec![
+                        SpellEffect::Timed(TimedChange::DefenseLoss),
+                        SpellEffect::Timed(TimedChange::Paralyze),
+                    ],
+                    ..timed(TimedChange::Paralyze)
+                },
+                true,
+                "cannot be permanent",
             ),
             (
                 SpellMagic {

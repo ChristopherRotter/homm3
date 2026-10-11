@@ -364,7 +364,7 @@ pub enum Ability<C, S, L> {
     /// no morale or `fear` itself (one roll, the largest chance among the side's stacks): the
     /// Azure Dragon's 10 % (BAT-MAG-060, v29).
     Fear {
-        /// The chance, 1..=100.
+        /// The chance, 1..=99 (never certain: the frightened side must get to act).
         percent: u8,
     },
     /// The creature's casts ignore a hero's `NoCasting` (the Orb of Inhibition; the anti-magic
@@ -715,8 +715,10 @@ impl<C, S, L> Ability<C, S, L> {
             Self::ManaChannel { percent } if !(1..=100).contains(percent) => {
                 Some("mana_channel percent must be 1..=100")
             }
-            Self::Fear { percent } if !(1..=100).contains(percent) => {
-                Some("fear percent must be 1..=100")
+            // A certain fear would let no stack of the other side ever act again, as a certain
+            // bad-morale freeze (BAT-MOR-004; E04b T11b review).
+            Self::Fear { percent } if !(1..=99).contains(percent) => {
+                Some("fear percent must be 1..=99")
             }
             Self::ManaDrain { amount: 0 } => Some("mana_drain amount must be at least 1"),
             Self::Rebirth { divisor: 0 } => Some("rebirth divisor must be at least 1"),
@@ -1406,12 +1408,16 @@ mod tests {
             },
             A::Rebirth { divisor: 0 },
             A::Fear { percent: 0 },
+            // E04b T11b review (F-robust-4): a certain fear lets no stack of the other side act.
+            A::Fear { percent: 100 },
             A::Fear { percent: 101 },
         ];
         for a in bad {
             assert!(a.parameter_error().is_some(), "{a:?}");
             assert!(list_error(&[a]).is_some());
         }
+        // The largest fear leaves a chance to act.
+        assert_eq!(A::Fear { percent: 99 }.parameter_error(), None);
     }
 
     #[test]
