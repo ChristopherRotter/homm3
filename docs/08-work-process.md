@@ -125,7 +125,7 @@ conflict on rebase and bumps again.
 | game state hash | `GAME_STATE_HASH_VERSION`, `h3-game` | adventure |
 | adventure state hash, adventure ruleset-part hash | `ADVENTURE_STATE_HASH_VERSION`, `ADVENTURE_RULESET_HASH_VERSION`, `h3-adventure` | adventure |
 | map import | `MAP_IMPORT_VERSION`, `h3-map` (a replay names its map by content hash, path and this version; ADR-0015) | adventure |
-| adventure replay format, action and observation encodings | `h3-sim/src/adventure/`: `adventure::ACTION_ENCODING_VERSION` (E08 T9a); the replay format from T9b; no observation encoding before E13 | adventure (AI lane from E05) |
+| adventure replay format, action and observation encodings | `h3-sim/src/adventure/`: `adventure::ACTION_ENCODING_VERSION` (E08 T9a), `adventure::replay::REPLAY_FORMAT_VERSION` (E08 T9b; the file format in `h3-cli`'s `src/adventure/`); no observation encoding before E13 | adventure (AI lane from E05) |
 | wire protocol | `PROTOCOL_VERSION`, `h3-protocol` | server |
 | viewer record format | `RECORD_FORMAT_VERSION`, `h3-protocol` (from E16 M1) | server |
 | game journal format | `JOURNAL_FORMAT_VERSION`, `h3-server` (from E16 M2) | server |

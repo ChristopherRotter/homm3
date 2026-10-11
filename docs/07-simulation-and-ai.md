@@ -10,7 +10,7 @@ A thin, allocation-conscious wrapper over the game logic:
 - `step(actions) -> (Observation, reward, done, info)` for each environment in a batch
 - `legal_actions(env) -> mask` (from `legal_commands`; the action encoding is defined by the sim layer, not the domain): dense entries for every command but a cast, and a factorized cast whose spell and target heads have masks conditioned on the earlier choices (ADR-0014 point 9; `h3_sim::action`)
 - `fork(env) -> env` (cheap clone for search/rollouts) and `state_hash(env)`
-- Two environment families: **BattleEnv** (from a `BattleSetup`; first) and **AdventureEnv** (E08 T9a: a game on a map through `h3-game`, `h3-sim`'s `src/adventure/`)
+- Two environment families: **BattleEnv** (from a `BattleSetup`; first) and **AdventureEnv** (E08 T9a: a game on a map through `h3-game`, `h3-sim`'s `src/adventure/`; its replays record the game commands, not the env's actions, and `h3 adventure run/verify/bench` drives it, T9b)
 - Vectorized/batched stepping in Rust, parallel across instances; single-threaded per instance
 - Observations are **per-player projections** (same function as the security layer), so agents never see hidden information
 - Reward is computed in the sim layer from events/state; the domain knows nothing about rewards

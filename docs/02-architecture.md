@@ -126,7 +126,19 @@ An *extension* (AB, SoD, later WoG/HotA) is a **content pack** (Tier 1–3 data)
   | reveal of radius 5, row by row | 1 165 | 1 814 | 1 194 | 2 443 |
   | read every tile | 41 772 | 52 469 | 1 329 426 | 1 500 214 |
 
-  Chosen: 32 × 32 leaves (the user): a fork costs the same on every map, a write copies the table and one 128-byte leaf; per-tile reads lose 13–25 %, so observation planes are built word by word (T8). The gated fork workload comes with E08 T9.
+  Chosen: 32 × 32 leaves (the user): a fork costs the same on every map, a write copies the table and one 128-byte leaf; per-tile reads lose 13–25 %, so observation planes are built word by word (T8). The gated fork workload came with E08 T9b (below).
+- **Adventure env (measured in E08 T9b, 2026-10-11)** — same hardware and profile; the generated maps `fixtures/maps/e08-duel-36.h3m` (36 × 36 × 2, two heroes per player) and `e08-xl-144.h3m` (144 × 144 × 2, four per player), the env's random agent (`h3 adventure bench`):
+
+  | Measure | Duel | XL | Target / threshold |
+  |---|---|---|---|
+  | Random legal play, one step: agent + reachable-tiles queries + `apply` (`--workload play`) | ≈ 14.1 k steps/s (≈ 71 µs, ≈ 745 k Ir) | ≈ 5.5 k steps/s (≈ 183 µs, ≈ 1.6 M Ir) | ≥ 10 k steps/s/core on the duel (met); **gate +2 %**: `random-play-duel-36`, 510 319 658 Ir for 685 steps |
+  | + the acting player's observation before each step (`--observe 1`) | +15 µs | +99 µs | — (cached static planes with E13's encoding) |
+  | + the entry and tile masks before each step (`--masks 1`) | +70 µs (×2.0) | +131 µs (×1.7) | — (the env keeps the current state's queries with E05's batch API) |
+  | One reachable-tiles query (`--workload reach`) | ≈ 27 µs (≈ 263 k Ir) | ≈ 33 µs (≈ 342 k Ir) | < 50 µs on XL (met); **gate +2 %**: `reach-xl-144`, 657 378 985 Ir for 1 920 queries |
+  | `AdventureEnv::fork` (`--workload fork`) | ≈ 0.22 µs (≈ 2 200 Ir, 4 heroes) | ≈ 0.37 µs (≈ 3 400 Ir, 8 heroes) | < 1 µs on every map, growing with the heroes, not the tiles (met: each hero's army is a `Vec`); **gate +2 %**: `fork-xl-144`, 343 600 056 Ir for 100 000 forks |
+  | `GameState` / `AdventureEnv` size | 168 / 200 bytes | same | — |
+
+  The reachable-tiles query is 96 % of a random step (`Reach::search` itself, the step price, the heap, zeroed map-sized arrays): the first lever when the adventure needs speed. The reveal is 0.8 %.
 - Benchmarks: `criterion` for local wall time (`cargo xtask bench`), plus instruction counts under valgrind/callgrind for the deterministic regression gate (`cargo xtask bench-check`, Linux only; counts are compared only for the toolchain and target recorded in the baseline). Chosen over `iai-callgrind` to avoid a runner binary that must match the library version; see ADR-0002.
 
 ## 9. Portability
