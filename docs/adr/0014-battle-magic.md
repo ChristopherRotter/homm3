@@ -93,7 +93,10 @@ which a spell meets a stack, how stacks appear in a battle, how hidden objects s
    the spell book and the hero's spell bonuses stay private to its side, and so does a Faerie
    Dragon's drawn spell until it is cast (the original's message at its activation tells only its
    controller; BAT-Q11). Whether a hero carries a spell book is public (the Master Genie's test
-   reads it; BAT-Q12).
+   reads it; BAT-Q12). A hero's hidden magic (its casting limits, its stacks' spell defences and
+   resistance, the negation of immunities, its opening spells, its Eagle Eye) is private to its
+   side; the other side infers it from the casts it may not make (BAT-Q26). A spectator sees
+   what is public to both sides (SRV-Q4).
 9. **A factorized casting action.** The sim keeps its dense list of other actions and adds two cast
    entries (hero, creature); choosing one opens a spell head (by spell id, sized by a content limit)
    and two target heads (none, a hex or a stack slot), each with a mask conditioned on the earlier
@@ -187,3 +190,5 @@ which a spell meets a stack, how stacks appear in a battle, how hidden objects s
   spell (`BattleMagic.masteries` replaces `schools`); the battle keeps only a battlefield's raise
   (E04c). It covers every spell, as the original's mastery is a function of the hero for any
   spell (Sacrifice's test reads Resurrection's, BAT-QUIRK-5; `installation.md` §7.22).
+- 2026-10-11: point 8 amended (E04b T9a; the user, BAT-Q26): a hero's hidden magic is private to
+  its side; a spectator sees what is public to both sides (SRV-Q4).
