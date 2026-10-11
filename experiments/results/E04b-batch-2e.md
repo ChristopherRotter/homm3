@@ -22,11 +22,11 @@ Map file: `E04b-batch-2e.h3m`. Fill in the blanks below and keep this file; an a
 
 **Record**
 
-- the spell book: opens / message (its text): 
-- round 1, Faerie Dragons: spell cursor over the Peasants (yes/no); if cast: the spell and what happened: 
-- Ogre Magi: Bloodlust cursor over the Pikemen (yes/no); if cast: Bloodlust on the Pikemen (yes/no): 
-- round 2, Faerie Dragons: spell cursor (yes/no); if cast: the spell and what happened: 
-- anything odd: 
+- the spell book: opens / message (its text): no / "OI wields the Orb of Inhibition, an ancient artifact which creates a pocket dead to all magic."
+- round 1, Faerie Dragons: spell cursor over the Peasants (yes/no); if cast: the spell and what happened: no; n/a
+- Ogre Magi: Bloodlust cursor over the Pikemen (yes/no); if cast: Bloodlust on the Pikemen (yes/no): no; n/a
+- round 2, Faerie Dragons: spell cursor (yes/no); if cast: the spell and what happened: no; n/a
+- anything odd:
 
 ## OV — Orb of Vulnerability: Blind at Troglodytes, Mirth and Sorrow at golems and elementals, Poison at Gargoyles (BAT-MAG-066, BAT-MAG-067, BAT-Q21, BAT-Q22)
 
@@ -40,26 +40,26 @@ Map file: `E04b-batch-2e.h3m`. Fill in the blanks below and keep this file; an a
 
 **Record**
 
-- Blind: Troglodytes / Air Elementals / Gnolls (allowed or refused each): 
-- Sorrow: Stone Golems / Air Elementals / Giants / Gnolls (allowed or refused each): 
-- Mirth: Iron Golems / Pikemen (allowed or refused each): 
+- Blind: Troglodytes / Air Elementals / Gnolls (allowed or refused each): refused / allowed / allowed
+- Sorrow: Stone Golems / Air Elementals / Giants / Gnolls (allowed or refused each): refused / refused / allowed
+- Mirth: Iron Golems / Pikemen (allowed or refused each): refused / allowed
 
 | attack | Gargoyles poisoned (yes/no) | log text |
 |---|---|---|
-|   |   |   |
-|   |   |   |
-|   |   |   |
-|   |   |   |
-|   |   |   |
-|   |   |   |
-|   |   |   |
-|   |   |   |
-|   |   |   |
-|   |   |   |
-|   |   |   |
-|   |   |   |
+|1|no|   |
+|2|no|   |
+|3|no|   |
+|4|no|   |
+|5|no|   |
+|6|no|   |
+|7|no|   |
+|8|no|   |
+|9|no|   |
+|10|no|   |
+|11|no|   |
+|12|no|   |
 
-- anything odd: 
+- anything odd: game cannot be saved mid-battle
 
 ## UA — Orb of Vulnerability: does the Unicorns' aura still make stacks resist? (BAT-MAG-066, BAT-MAG-008, BAT-Q21)
 
@@ -72,16 +72,16 @@ Map file: `E04b-batch-2e.h3m`. Fill in the blanks below and keep this file; an a
 
 **Record**
 
-- round 1: stacks that could not get next to the Unicorns: 
+- round 1: stacks that could not get next to the Unicorns: Goblins, Peasants
 
 | cast | Centaurs | Gnolls | Pikemen | Peasants | Goblins | Unicorns |
 |---|---|---|---|---|---|---|
-|   |   |   |   |   |   |   |
-|   |   |   |   |   |   |   |
-|   |   |   |   |   |   |   |
-|   |   |   |   |   |   |   |
+|1|S|S|S|S|S|S|
+|2|S|S|S|S|S|S|
+|3|S|S|S|S|S|S|
+|4|S|S|S|S|S|S|
 
-- anything odd (write 'S' for slowed, 'R' for resisted in the table): 
+- anything odd (write 'S' for slowed, 'R' for resisted in the table): game cannot be saved mid-battle
 
 ## RC — Recanter's Cloak: the Medusa Queens' Stone Gaze and the Archangel's Resurrection (BAT-MAG-062, BAT-Q21)
 
@@ -95,18 +95,18 @@ Map file: `E04b-batch-2e.h3m`. Fill in the blanks below and keep this file; an a
 
 **Record**
 
-- Archangel: resurrection cursor (yes/no); if raised: how many: 
+- Archangel: resurrection cursor (yes/no); if raised: how many: no; n/a
 
 | attack | Pikemen petrified (yes/no) | log text |
 |---|---|---|
-|   |   |   |
-|   |   |   |
-|   |   |   |
-|   |   |   |
-|   |   |   |
-|   |   |   |
-|   |   |   |
-|   |   |   |
+|1|no|   |
+|2|no|   |
+|3|no|   |
+|4|no|   |
+|5|no|   |
+|6|no|   |
+|7|no|   |
+|8|no|   |
 |   |   |   |
 |   |   |   |
 |   |   |   |
@@ -118,7 +118,7 @@ Map file: `E04b-batch-2e.h3m`. Fill in the blanks below and keep this file; an a
 |   |   |   |
 |   |   |   |
 
-- anything odd: 
+- anything odd: game cannot be saved mid-battle
 
 ## DF — Power of the Dragon Father: Poison, the Thunderbirds' bolt and (a control) the Death Stare at its stacks (BAT-MAG-064, BAT-Q21)
 
@@ -133,12 +133,12 @@ Map file: `E04b-batch-2e.h3m`. Fill in the blanks below and keep this file; an a
 
 | round | Gorgons: Death Stare kills | Thunderbirds: bolt (yes/no) | Monarchs: Poison (yes/no) |
 |---|---|---|---|
-|   |   |   |   |
-|   |   |   |   |
-|   |   |   |   |
-|   |   |   |   |
+|2|1|no|no|
+|3|1|no|no|
+|4|1|no|no|
+|5|0|n/a (died from retaliation)|no|
 
-- anything odd: 
+- anything odd: game cannot be saved mid-battle
 
 ## WM — Bless, Curse, Precision, Fortune, Misfortune and Slayer at the Ballista, the Ammo Cart and the First Aid Tent (BAT-MAG-067, BAT-Q22)
 
@@ -150,11 +150,11 @@ Map file: `E04b-batch-2e.h3m`. Fill in the blanks below and keep this file; an a
 
 **Record**
 
-- Bless: Ballista / Ammo Cart / First Aid Tent / Skeletons / Pikemen (allowed or refused each): 
-- Precision: Ballista / Pikemen: 
-- Fortune: Ballista / Ammo Cart / First Aid Tent: 
-- Slayer: Ballista / Ammo Cart / First Aid Tent: 
-- Curse at Blue's: Ballista / Ammo Cart / First Aid Tent: 
-- Misfortune at Blue's: Ballista / Ammo Cart / First Aid Tent: 
-- Bless cast on the Ballista: shown among its spells (yes/no): 
+- Bless: Ballista / Ammo Cart / First Aid Tent / Skeletons / Pikemen (allowed or refused each): allowed / refused / refused / refused / allowed
+- Precision: Ballista / Pikemen: allowed / refused
+- Fortune: Ballista / Ammo Cart / First Aid Tent: allowed / refused / refused
+- Slayer: Ballista / Ammo Cart / First Aid Tent: allowed / refused / refused
+- Curse at Blue's: Ballista / Ammo Cart / First Aid Tent: allowed / refused / refused
+- Misfortune at Blue's: Ballista / Ammo Cart / First Aid Tent: allowed / refused / refused
+- Bless cast on the Ballista: shown among its spells (yes/no): yes
 - anything odd: 
