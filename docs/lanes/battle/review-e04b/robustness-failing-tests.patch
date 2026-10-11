@@ -1,0 +1,616 @@
+diff --git a/crates/h3-battle/src/tests/mod.rs b/crates/h3-battle/src/tests/mod.rs
+index 31a50d9..2ea6aae 100644
+--- a/crates/h3-battle/src/tests/mod.rs
++++ b/crates/h3-battle/src/tests/mod.rs
+@@ -34,6 +34,7 @@ mod raisers;
+ mod ranged;
+ mod rebirth;
+ mod remove;
++mod review_repro;
+ mod rules;
+ mod specialist;
+ mod spells;
+diff --git a/crates/h3-battle/src/tests/review_repro.rs b/crates/h3-battle/src/tests/review_repro.rs
+new file mode 100644
+index 0000000..fe1a059
+--- /dev/null
++++ b/crates/h3-battle/src/tests/review_repro.rs
+@@ -0,0 +1,403 @@
++//! Failing tests of the E04b robustness review (T11b): each reproduces one finding. Kept as patch
++//! files in the review's scratch folder, not committed.
++
++use std::vec;
++use std::vec::Vec;
++
++use h3_content::{ContentKey, EffectDuration, ObstacleDef, SchoolId, SpellScope};
++use h3_contracts::{BattleEffect, BattleSide, Obstacle};
++
++use super::support::{Rate, act, at, hero, ruleset_from, ruleset_with, setup};
++use crate::{
++    BattleState, CastTarget, CastTargets, Command, Hex, NoopSink, StackId, apply, cast_targets,
++    castable_spells,
++};
++
++/// A battle of ten `fixed` each, the attacker's hero with the bolt (10 per power + 10), power 255
++/// and the two rates as its Sorcery (every spell) and its Orb of the bolt's school.
++fn bolt_caster(
++    profile: &str,
++    all: Rate,
++    school: Rate,
++) -> (h3_content::Ruleset, BattleState, Command) {
++    let air = SchoolId::from_index(0).unwrap();
++    let r = ruleset_with(profile, |_| {});
++    let bolt = r.spell_by_key("t:bolt").unwrap();
++    let mut s = setup(&r, &[(0, "fixed", 10)], &[(0, "fixed", 10)]);
++    let mut h = hero(&r);
++    h.power = 255;
++    h.magic.mana = 100;
++    h.magic.spell_book = Some(vec![bolt]);
++    h.effects = vec![
++        BattleEffect::SpellDamage {
++            scope: SpellScope::All,
++            rate: all,
++        },
++        BattleEffect::SpellDamage {
++            scope: SpellScope::School(air),
++            rate: school,
++        },
++    ];
++    s.heroes[0] = Some(h);
++    // The setup is sound for the battle (BAT-HER-001).
++    let state = BattleState::new(&r, &s, 1).unwrap();
++    let cast = Command::Cast {
++        spell: bolt,
++        target: CastTarget::Stack(StackId(1)),
++        second: CastTarget::None,
++    };
++    let mut targets = CastTargets::new();
++    cast_targets(&state, &r, BattleSide::Attacker, bolt, &mut targets);
++    assert!(targets.iter().any(|t| *t == CastTarget::Stack(StackId(1))));
++    (r, state, cast)
++}
++
++/// F-robust-3: a hero the soundness check accepts (BAT-HER-001) whose `SpellDamage` rates are
++/// huge makes the damage of its spell overflow `u128` under quirk Q-0005 (single-precision
++/// rates): `magic::spell_damage` multiplies the value by `(1 + school) × (1 + all)` over
++/// `2^40 × 2^40`. Here both rates are the largest basis points the seam carries.
++#[test]
++fn huge_spell_damage_rates_do_not_overflow_the_spell_damage() {
++    let (r, mut state, cast) = bolt_caster("t:single", Rate::bp(u32::MAX), Rate::bp(u32::MAX));
++    // The listed cast is applied without a panic and kills the ten creatures.
++    act(&mut state, &r, cast).unwrap();
++    assert!(!state.stacks()[1].is_alive());
++}
++
++/// F-robust-3, the control: with exact rates (no quirk Q-0005) the same hero casts. Passes.
++#[test]
++fn huge_spell_damage_rates_cast_with_exact_rates() {
++    let (r, mut state, cast) = bolt_caster("t:faithful", Rate::bp(u32::MAX), Rate::bp(u32::MAX));
++    act(&mut state, &r, cast).unwrap();
++    assert!(!state.stacks()[1].is_alive());
++}
++
++/// F-robust-3, the smallest rates: with the largest value of a hero's cast in the test ruleset
++/// (bolt at power 255: 2 560), two rates of 33 160 000 % each are enough:
++/// (1 + 331 600)² × 2 560 > 2^48.
++#[test]
++fn spell_damage_rates_of_millions_of_percent_do_not_overflow() {
++    let rate = Rate::bp(3_316_000_000);
++    let (r, mut state, cast) = bolt_caster("t:single", rate, rate);
++    act(&mut state, &r, cast).unwrap();
++}
++
++/// F-robust-3, the other site: two single-precision values of their own that saturate the fixed
++/// point (any `f32` of 2^24 or more) overflow the product of the two factors already.
++#[test]
++fn saturated_single_precision_rates_do_not_overflow_the_factor() {
++    // 2^100 as an `f32`.
++    let huge = Rate {
++        bp: 0,
++        single: core::num::NonZeroU32::new(0x7100_0000),
++    };
++    let (r, mut state, cast) = bolt_caster("t:single", huge, huge);
++    act(&mut state, &r, cast).unwrap();
++}
++
++/// F-robust-3 without any spell damage bonus: the value itself reaches 2^48 when a Fire Shield
++/// reflects the damage of a huge strike on a huge stack (`magic::reflection` passes
++/// `first × v %` to `spell_damage`): `u32::MAX` creatures whose heroes raise their damage and
++/// their hit points with sound `StackStat` effects.
++#[test]
++fn a_fire_shield_reflects_a_huge_strike_without_overflow() {
++    use h3_content::{CreatureSelector, CreatureStat};
++    use h3_contracts::StatOp;
++    let r = ruleset_with("t:single", |_| {});
++    // `sultan`: an innate Fire Shield of 25 %, 100 hit points.
++    let mut s = setup(&r, &[(0, "flyer", u32::MAX)], &[(0, "sultan", u32::MAX)]);
++    let stat = |stat, amount| BattleEffect::StackStat {
++        creatures: CreatureSelector::All,
++        stat,
++        op: StatOp::Add,
++        amount,
++    };
++    let mut striker = hero(&r);
++    striker.attack = 255;
++    striker.damage.melee = Rate::bp(10_000);
++    striker.effects = vec![
++        stat(CreatureStat::Speed, 30),
++        stat(CreatureStat::MinDamage, i16::MAX),
++        stat(CreatureStat::MinDamage, i16::MAX),
++        stat(CreatureStat::MaxDamage, i16::MAX),
++        stat(CreatureStat::MaxDamage, i16::MAX),
++    ];
++    let mut shielded = hero(&r);
++    shielded.effects = vec![stat(CreatureStat::HitPoints, i16::MAX); 40];
++    s.heroes = [Some(striker), Some(shielded)];
++    let mut state = BattleState::new(&r, &s, 1).unwrap();
++    assert_eq!(state.side_to_act(), Some(BattleSide::Attacker));
++    let mut legal = crate::LegalCommands::new();
++    crate::legal_commands(&state, &r, BattleSide::Attacker, &mut legal);
++    let attack = legal
++        .iter()
++        .copied()
++        .find(|c| matches!(c, Command::Attack { .. }))
++        .unwrap();
++    // The listed attack is applied without a panic.
++    act(&mut state, &r, attack).unwrap();
++}
++
++/// F-robust-2: with quirk BAT-QUIRK-3 (an anchor hex belongs to its obstacle) the removal of an
++/// obstacle clears its anchor hex; where that hex is the only hex of another removable obstacle,
++/// no hex leads to that one any more, but `castable_spells` still lists Remove Obstacle
++/// (`natural::any_removable` counts the obstacle's blocked hex) while `cast_targets` is empty.
++#[test]
++fn a_castable_remove_obstacle_has_a_target() {
++    let r = ruleset_with("t:anchors", |_| {});
++    let remove = r.spell_by_key("t:remove").unwrap();
++    let mut s = setup(&r, &[(0, "fixed", 10)], &[(0, "fixed", 10)]);
++    let h = at(&r, 7, 5).0;
++    // The first blocks `h` and is anchored on it; the second blocks its right neighbour and is
++    // anchored on `h` too (its bottom-left hex, which it does not block).
++    s.obstacles = vec![
++        Obstacle {
++            hexes: vec![h],
++            anchor: Some(h),
++        },
++        Obstacle {
++            hexes: vec![h + 1],
++            anchor: Some(h),
++        },
++    ];
++    let mut led = hero(&r);
++    led.magic.mana = 100;
++    led.magic.spell_book = Some(vec![remove]);
++    s.heroes[0] = Some(led);
++    let mut state = BattleState::new(&r, &s, 1).unwrap();
++    let side = BattleSide::Attacker;
++    let mut targets = CastTargets::new();
++    let listed = |state: &BattleState, targets: &mut CastTargets| -> Vec<CastTarget> {
++        cast_targets(state, &r, side, remove, targets);
++        targets.iter().copied().collect()
++    };
++    assert_eq!(
++        listed(&state, &mut targets),
++        [CastTarget::Hex(Hex(h)), CastTarget::Hex(Hex(h + 1))]
++    );
++    // Both hexes lead to the obstacle placed last; its removal clears its hex and its anchor.
++    let cast = Command::Cast {
++        spell: remove,
++        target: CastTarget::Hex(Hex(h + 1)),
++        second: CastTarget::None,
++    };
++    act(&mut state, &r, cast).unwrap();
++    assert_eq!(state.removable_obstacles().len(), 1);
++    // The next round the hero may cast again.
++    act(&mut state, &r, Command::Defend).unwrap();
++    act(&mut state, &r, Command::Defend).unwrap();
++    assert_eq!((state.round(), state.side_to_act()), (2, Some(side)));
++    let castable = castable_spells(&state, &r, side).contains(remove);
++    let targets = listed(&state, &mut targets);
++    assert_eq!(
++        castable,
++        !targets.is_empty(),
++        "castable {castable}, targets {targets:?}"
++    );
++}
++
++/// F-robust-4: a pack whose Blind is permanent compiles (`duration = "permanent"` is accepted
++/// for the changes that lose turns), and then one command never returns: the only stack of the
++/// defender is blind for ever and frightens the attacker's stack at every pick (fear 100, which
++/// the compiler accepts too), so `turn::activate` starts round after round without finding a
++/// stack that awaits a command.
++#[test]
++fn a_command_returns_when_no_stack_can_ever_act() {
++    let r = ruleset_from(
++        "t:faithful",
++        |_| {},
++        |pack| {
++            let blind = ContentKey::new("t", "blind").unwrap();
++            let def = pack.spells.iter_mut().find(|s| s.key == blind).unwrap();
++            def.magic.duration = EffectDuration::Permanent;
++        },
++    );
++    let blind = r.spell_by_key("t:blind").unwrap();
++    // `azure` has `fear=100`.
++    let mut s = setup(&r, &[(0, "fast", 10)], &[(0, "azure", 1000)]);
++    let mut h = hero(&r);
++    h.magic.mana = 100;
++    h.magic.spell_book = Some(vec![blind]);
++    s.heroes[0] = Some(h);
++    let mut state = BattleState::new(&r, &s, 3).unwrap();
++    assert_eq!(state.side_to_act(), Some(BattleSide::Attacker));
++    let cast = Command::Cast {
++        spell: blind,
++        target: CastTarget::Stack(StackId(1)),
++        second: CastTarget::None,
++    };
++    act(&mut state, &r, cast).unwrap();
++    assert_eq!(state.effects().first().map(|e| e.rounds), Some(None));
++    // The attacker's stack ends its turn: a legal command.
++    let (done, wait) = std::sync::mpsc::channel();
++    std::thread::spawn(move || {
++        let result = apply(
++            &mut state,
++            &r,
++            BattleSide::Attacker,
++            Command::Defend,
++            &mut NoopSink,
++        );
++        let _ = done.send((result, state.round()));
++    });
++    let answer = wait.recv_timeout(std::time::Duration::from_secs(10));
++    assert!(
++        answer.is_ok(),
++        "the command did not return within 10 seconds"
++    );
++}
++
++/// F-robust-6: the specialist's bonus to Slayer is clamped to `i32::MAX` and then added to the
++/// spell's value and the attack in `i32` (`combat.rs`, `strike_inputs`). It takes a pack whose
++/// Slayer has a large value and no specialist rule of its own, and a hero with the largest
++/// specialty the seam can carry.
++#[test]
++fn a_huge_slayer_specialty_does_not_overflow_the_attack() {
++    let r = ruleset_from(
++        "t:faithful",
++        |_| {},
++        |pack| {
++            let slayer = ContentKey::new("t", "slayer").unwrap();
++            let def = pack.spells.iter_mut().find(|s| s.key == slayer).unwrap();
++            def.effect = [30_000; 4];
++            def.magic.specialist = None;
++        },
++    );
++    let slayer = r.spell_by_key("t:slayer").unwrap();
++    let mut s = setup(&r, &[(0, "archer", 10)], &[(0, "lord", 10)]);
++    let mut h = hero(&r);
++    h.magic.mana = 100;
++    h.magic.spell_book = Some(vec![slayer]);
++    h.effects = vec![
++        BattleEffect::SpellSpecialty {
++            spell: slayer,
++            bp_per_level: u16::MAX,
++            level: 255,
++        };
++        64
++    ];
++    s.heroes[0] = Some(h);
++    let mut state = BattleState::new(&r, &s, 1).unwrap();
++    assert_eq!(state.side_to_act(), Some(BattleSide::Attacker));
++    let cast = Command::Cast {
++        spell: slayer,
++        target: CastTarget::Stack(StackId(0)),
++        second: CastTarget::None,
++    };
++    act(&mut state, &r, cast).unwrap();
++    let at = state.stacks()[1].hex;
++    let shot = Command::Shoot {
++        target: StackId(1),
++        at,
++    };
++    act(&mut state, &r, shot).unwrap();
++    assert!(!state.stacks()[1].is_alive());
++}
++
++/// F-robust-5: the compiler accepts a usual obstacle type that blocks more than eight hexes, the
++/// generator places it with its anchor (BAT-GEO-004), and the battle refuses the generated
++/// battlefield: a removable obstacle holds at most `MAX_REMOVABLE_HEXES` hexes.
++#[test]
++fn the_battle_accepts_every_generated_battlefield() {
++    let r = ruleset_from(
++        "t:faithful",
++        |_| {},
++        |pack| {
++            pack.obstacles.push(ObstacleDef {
++                key: ContentKey::new("t", "ridge").unwrap(),
++                terrains: vec![ContentKey::new("t", "void").unwrap()],
++                width: 9,
++                height: 1,
++                blocked: (0..9).map(|dx| (dx, 0)).collect(),
++                absolute: false,
++            });
++        },
++    );
++    let void = r.terrain_by_key("t:void").unwrap();
++    let mut rng = h3_kernel::Rng::from_seed(1);
++    let obstacles = crate::generate_obstacles(&r, void, &mut rng);
++    assert!(obstacles.iter().any(|o| o.hexes.len() == 9));
++    let mut s = setup(&r, &[(0, "fixed", 10)], &[(0, "fixed", 10)]);
++    s.terrain = Some(void);
++    s.obstacles = obstacles;
++    let built = BattleState::new(&r, &s, 1).map(|_| ());
++    assert_eq!(built, Ok(()));
++}
++
++/// F-robust-1: the automatic Ballista prefers a target that "could attack next turn"
++/// (BAT-WAR-002), which `war::can_attack_next_turn` answers with the candidate's reach as the
++/// candidate's own controller sees the pits (`movement::reachable` reads
++/// `obstacles::seen_pits(state, mover.controller())`). A Quicksand pit that only the attacker
++/// sees (BAT-MAG-031) therefore changes the target of the defender's Ballista: the public shot
++/// tells the defender something about a pit it must not know of. The existing property
++/// `hidden_obstacles_do_not_show` finds such games now and then (its saved case is the other
++/// patch file).
++#[test]
++fn the_automatic_ballista_does_not_show_hidden_pits() {
++    use super::support::{blocked, place};
++    use crate::{EventKind, StackTraits};
++    use h3_content::ObstacleKind;
++    let r = ruleset_with("t:faithful", |_| {});
++    let mut s = setup(
++        &r,
++        &[(0, "fixed", 10), (1, "fixed", 10)],
++        &[(0, "tank", 10), (1, "tank", 10)],
++    );
++    s.war_machines[1] = vec![r.creature_by_key("t:ballista").unwrap()];
++    // A corridor along row 5 from the first attacker stack to the first defender stack.
++    s.obstacles = blocked(
++        (4..=8)
++            .flat_map(|x| [at(&r, x, 4).0, at(&r, x, 6).0])
++            .collect(),
++    );
++    let mut state = BattleState::new(&r, &s, 1).unwrap();
++    // The attacker's stacks are five steps (their speed) from an attack position on a defender
++    // stack each: the first only through the corridor.
++    place(&mut state, &r, 0, 3, 5);
++    place(&mut state, &r, 1, 3, 9);
++    place(&mut state, &r, 2, 9, 5);
++    place(&mut state, &r, 3, 9, 9);
++    let ballista = state
++        .stacks()
++        .iter()
++        .position(|s| s.has(StackTraits::WAR_MACHINE))
++        .unwrap();
++    // The attacker's Quicksand pit in the corridor: hidden from the defender.
++    let quicksand = r.spell_by_key("t:quicksand").unwrap();
++    let shape = r.spell(quicksand).unwrap().magic.obstacle.clone().unwrap();
++    crate::obstacles::place(
++        &mut state,
++        (quicksand, ObstacleKind::Pit, &shape),
++        BattleSide::Attacker,
++        (&[at(&r, 6, 5)], 0),
++        &mut Vec::new(),
++    );
++    assert!(crate::obstacles::seen_by(&state, BattleSide::Defender).is_empty());
++    // The same battle without what the defender does not see.
++    let mut twin = state.clone();
++    twin.spell_obstacles.retain(|_| false);
++    assert_eq!(
++        crate::observe(&state, &r, BattleSide::Defender),
++        crate::observe(&twin, &r, BattleSide::Defender)
++    );
++    // Every stack defends; the Ballista then shoots on its own.
++    let shot = |state: &mut BattleState| -> Option<StackId> {
++        for _ in 0..8 {
++            let events = act(state, &r, Command::Defend).unwrap();
++            let target = events.iter().find_map(|e| match e.kind {
++                EventKind::Struck {
++                    attacker, target, ..
++                } if attacker.index() == ballista => Some(target),
++                _ => None,
++            });
++            if target.is_some() {
++                return target;
++            }
++        }
++        None
++    };
++    let (seen, hidden) = (shot(&mut twin), shot(&mut state));
++    assert!(seen.is_some());
++    // The defender is told the same shot in both battles.
++    assert_eq!(hidden, seen);
++}
+diff --git a/crates/h3-battle/src/tests/support.rs b/crates/h3-battle/src/tests/support.rs
+index c31af23..3b2a008 100644
+--- a/crates/h3-battle/src/tests/support.rs
++++ b/crates/h3-battle/src/tests/support.rs
+@@ -1394,6 +1394,24 @@ pub fn set_masteries(s: &mut BattleState, side: usize, r: &Ruleset, schools: [u8
+ /// The test ruleset with profile `profile` (`t:faithful` without quirks, `t:quirky` with
+ /// Q-0003, `t:single` with Q-0005) and edited battle parameters.
+ pub fn ruleset_with(profile: &str, edit: impl FnOnce(&mut BattleParamsDef)) -> Ruleset {
++    ruleset_from(profile, edit, |_| {})
++}
++
++/// [`ruleset_with`], with the pack patched before it is compiled (review repros only).
++pub fn ruleset_from(
++    profile: &str,
++    edit: impl FnOnce(&mut BattleParamsDef),
++    patch: impl FnOnce(&mut ContentPack),
++) -> Ruleset {
++    try_ruleset_from(profile, edit, patch).unwrap()
++}
++
++/// [`ruleset_from`], or the compiler's refusal.
++pub fn try_ruleset_from(
++    profile: &str,
++    edit: impl FnOnce(&mut BattleParamsDef),
++    patch: impl FnOnce(&mut ContentPack),
++) -> Result<Ruleset, h3_content::CompileError> {
+     let creatures = CREATURES
+         .iter()
+         .map(
+@@ -1420,7 +1438,7 @@ pub fn ruleset_with(profile: &str, edit: impl FnOnce(&mut BattleParamsDef)) -> R
+         .collect();
+     let mut battle = battle_params();
+     edit(&mut battle);
+-    let pack = ContentPack {
++    let mut pack = ContentPack {
+         creatures,
+         factions: [
+             ("castle", Some("plain")),
+@@ -1594,7 +1612,8 @@ pub fn ruleset_with(profile: &str, edit: impl FnOnce(&mut BattleParamsDef)) -> R
+             depends: vec![],
+         })
+     };
+-    Ruleset::compile(&[pack], profile).unwrap()
++    patch(&mut pack);
++    Ruleset::compile(&[pack], profile)
+ }
+ 
+ /// A test spell: name, category, schools, target and side.
+diff --git a/crates/h3-pack/tests/review_repro.rs b/crates/h3-pack/tests/review_repro.rs
+new file mode 100644
+index 0000000..6fc2c33
+--- /dev/null
++++ b/crates/h3-pack/tests/review_repro.rs
+@@ -0,0 +1,141 @@
++//! Failing tests of the E04b robustness review (T11b) on the harvested packs: the findings
++//! F-robust-3 and F-robust-2 with the real spells, creatures and battlefields. Kept as a patch
++//! file in the review's scratch folder, not committed.
++
++use h3_battle::{
++    BattleState, CastTarget, CastTargets, Command, Hex, NoopSink, apply, cast_targets,
++    castable_spells, generate_obstacles,
++};
++use h3_content::{Formation, HeroTypeId, Ruleset, SchoolId, SpellScope};
++use h3_contracts::{
++    Army, ArmyStack, BattleEffect, BattleHero, BattleSetup, BattleSide, Obstacle, Rate,
++};
++use h3_kernel::{Rng, StreamId};
++
++fn faithful() -> Ruleset {
++    h3_pack::compile(
++        &[h3_pack::SOD_PACK, h3_pack::AB_PACK, h3_pack::BASE_PACK],
++        "base:faithful",
++    )
++    .unwrap()
++}
++
++/// Ten Pikemen each, the attacker led by `hero`.
++fn setup(r: &Ruleset, hero: BattleHero, obstacles: Vec<Obstacle>) -> BattleSetup {
++    let army = || Army {
++        stacks: vec![ArmyStack {
++            slot: 0,
++            creature: r.creature_by_key("base:pikeman").unwrap(),
++            count: 10,
++        }],
++    };
++    BattleSetup {
++        attacker: army(),
++        defender: army(),
++        obstacles,
++        heroes: [Some(hero), None],
++        terrain: r.terrain_by_key("base:grass"),
++        war_machines: [vec![], vec![]],
++        formations: [Formation::Loose; 2],
++        funds: [0; 2],
++    }
++}
++
++/// F-robust-3 with the original's spells and the default profile (quirk Q-0005 on): a hero of
++/// power 20 casts Implosion (75 per power + 100) with the largest spell damage rates the seam
++/// carries for every spell and for Earth spells. The battle accepts the hero (BAT-HER-001) and
++/// lists the cast; applying it overflows in `magic::spell_damage`.
++#[test]
++fn implosion_with_huge_spell_damage_rates_does_not_overflow() {
++    let r = faithful();
++    let implosion = r.spell_by_key("base:implosion").unwrap();
++    let earth = r
++        .spell_schools()
++        .iter()
++        .position(|s| s.key.as_str() == "base:earth")
++        .and_then(SchoolId::from_index)
++        .unwrap();
++    let mut hero = BattleHero::new(HeroTypeId::from_index(0).unwrap());
++    hero.power = 20;
++    hero.magic.mana = 100;
++    hero.magic.spell_book = Some(vec![implosion]);
++    hero.effects = vec![
++        BattleEffect::SpellDamage {
++            scope: SpellScope::All,
++            rate: Rate::bp(u32::MAX),
++        },
++        BattleEffect::SpellDamage {
++            scope: SpellScope::School(earth),
++            rate: Rate::bp(u32::MAX),
++        },
++    ];
++    let mut state = BattleState::new(&r, &setup(&r, hero, vec![]), 1).unwrap();
++    let side = BattleSide::Attacker;
++    assert!(castable_spells(&state, &r, side).contains(implosion));
++    let mut targets = CastTargets::new();
++    cast_targets(&state, &r, side, implosion, &mut targets);
++    let target = targets.as_slice()[0];
++    let cast = Command::Cast {
++        spell: implosion,
++        target,
++        second: CastTarget::None,
++    };
++    apply(&mut state, &r, side, cast, &mut NoopSink).unwrap();
++}
++
++/// F-robust-2 on a battlefield the engine generates (grass, obstacle stream of seed 888): its
++/// fourth obstacle blocks hexes 109 and 110 from its anchor 108, which it does not block; the
++/// fifth is a one-hex obstacle placed on 108. With the default profile (quirk BAT-QUIRK-3 on) the
++/// removal of the fourth clears hex 108 too, so no hex leads to the fifth any more, and once the
++/// others are removed Remove Obstacle stays castable without a target.
++#[test]
++fn remove_obstacle_keeps_a_target_while_it_is_castable() {
++    let r = faithful();
++    let remove = r.spell_by_key("base:remove_obstacle").unwrap();
++    let grass = r.terrain_by_key("base:grass").unwrap();
++    let mut rng = Rng::for_stream(888, StreamId::OBSTACLES);
++    let obstacles = generate_obstacles(&r, grass, &mut rng);
++    let piece = |hexes: &[u8], anchor| Obstacle {
++        hexes: hexes.to_vec(),
++        anchor: Some(anchor),
++    };
++    assert_eq!(
++        obstacles[3..],
++        [piece(&[109, 110], 108), piece(&[108], 108)]
++    );
++    let mut hero = BattleHero::new(HeroTypeId::from_index(0).unwrap());
++    hero.magic.mana = 999;
++    hero.magic.spell_book = Some(vec![remove]);
++    let mut state = BattleState::new(&r, &setup(&r, hero, obstacles), 1).unwrap();
++    let side = BattleSide::Attacker;
++    let mut targets = CastTargets::new();
++    // A hex of the fourth obstacle first, then one of each other obstacle that is left.
++    for hex in [109, 122, 73, 80] {
++        assert_eq!(state.side_to_act(), Some(side));
++        let cast = Command::Cast {
++            spell: remove,
++            target: CastTarget::Hex(Hex(hex)),
++            second: CastTarget::None,
++        };
++        apply(&mut state, &r, side, cast, &mut NoopSink).unwrap();
++        // Both stacks defend: the next round, the hero may cast again.
++        apply(&mut state, &r, side, Command::Defend, &mut NoopSink).unwrap();
++        apply(
++            &mut state,
++            &r,
++            side.opponent(),
++            Command::Defend,
++            &mut NoopSink,
++        )
++        .unwrap();
++    }
++    let castable = castable_spells(&state, &r, side).contains(remove);
++    cast_targets(&state, &r, side, remove, &mut targets);
++    assert_eq!(
++        castable,
++        !targets.is_empty(),
++        "castable {castable}, targets {:?}, obstacles left {:?}",
++        targets.as_slice(),
++        state.removable_obstacles()
++    );
++}

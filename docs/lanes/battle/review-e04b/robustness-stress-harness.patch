@@ -1,0 +1,4183 @@
+diff --git a/crates/h3-battle/src/tests/mod.rs b/crates/h3-battle/src/tests/mod.rs
+index 2ea6aae..02755bf 100644
+--- a/crates/h3-battle/src/tests/mod.rs
++++ b/crates/h3-battle/src/tests/mod.rs
+@@ -38,6 +38,7 @@ mod review_repro;
+ mod rules;
+ mod specialist;
+ mod spells;
++mod stress;
+ mod strike;
+ mod support;
+ mod tactics;
+diff --git a/crates/h3-battle/src/tests/stress.rs b/crates/h3-battle/src/tests/stress.rs
+new file mode 100644
+index 0000000..2c479dd
+--- /dev/null
++++ b/crates/h3-battle/src/tests/stress.rs
+@@ -0,0 +1,2057 @@
++//! THROWAWAY stress harness of the E04b robustness review (T11b). Not committed.
++//!
++//! Random battles on the synthetic ruleset with casting heroes of three tiers:
++//! 0 "derivable" (what a derived hero could have), 1 "extreme" (the full ranges of the seam's
++//! types, no single-precision patterns), 2 "hostile" (arbitrary `Rate::single` bit patterns).
++//! Every step: the chosen legal command (hero casts and creature casts included) must be accepted
++//! and the state's invariants must hold; at sampled steps every listed command is applied to a
++//! clone. Panics are caught per battle and reported with their seed.
++
++use std::collections::BTreeMap;
++use std::format;
++use std::num::NonZeroU32;
++use std::panic::{AssertUnwindSafe, catch_unwind};
++use std::println;
++use std::string::{String, ToString};
++use std::sync::Mutex;
++use std::time::Instant;
++use std::vec;
++use std::vec::Vec;
++
++use h3_content::{
++    Affects, CLONE_ON_ITS_ORIGINAL, CreatureFlag, CreatureSelector, CreatureStat, CreatureTypeId,
++    Formation, ObstacleKind, Ruleset, SchoolId, SpellCategory, SpellId, SpellScope,
++};
++use h3_contracts::{
++    Army, ArmyStack, BallistaControl, BattleEffect, BattleHero, BattleSetup, BattleSide,
++    DamageBonuses, EagleEye, FactionGroup, Obstacle, StatOp, TentControl,
++};
++use h3_kernel::Rng;
++
++use super::support::{CREATURES, Rate, hero, ruleset_with, try_ruleset_from};
++use crate::{
++    BattleState, CastTarget, CastTargets, Command, Event, Field, Hex, HexSet, LegalCommands,
++    NO_CORPSE, StackId, StackTraits, Viewer, apply, cast_targets, castable_spells,
++    creature_cast_targets, legal_commands, observe, observe_as, second_targets,
++};
++
++static LAST_PANIC: Mutex<Option<String>> = Mutex::new(None);
++
++fn env(name: &str, default: u64) -> u64 {
++    std::env::var(name)
++        .ok()
++        .and_then(|v| v.parse().ok())
++        .unwrap_or(default)
++}
++
++fn pick<T: Copy>(rng: &mut Rng, items: &[T]) -> T {
++    items[rng.below(items.len() as u32) as usize]
++}
++
++fn chance(rng: &mut Rng, percent: u32) -> bool {
++    rng.below(100) < percent
++}
++
++/// The profiles of the synthetic pack.
++pub(super) const PROFILES: &[&str] = &[
++    "t:faithful",
++    "t:quirky",
++    "t:single",
++    "t:original",
++    "t:unlimited",
++    "t:first",
++    "t:frenzy",
++    "t:counterstrike",
++    "t:fireshield",
++    "t:early",
++    "t:hypnosis",
++    "t:sight",
++    "t:pits",
++    "t:anchors",
++    "t:draws",
++    "t:sacrifice",
++    "t:mirrored",
++    "t:clone_on_original",
++    "t:first_stack",
++];
++
++/// The test ruleset with `profile`; `lively`: frequent morale and luck; the side stack limit.
++pub(super) fn stress_ruleset(profile: &str, lively: bool, limit: u8) -> Ruleset {
++    ruleset_with(profile, |b| {
++        if lively {
++            b.morale_dice = 4;
++            b.good_morale_chances = vec![1, 2, 3];
++            b.bad_morale_chances = vec![1, 2, 3];
++            b.luck_dice = 4;
++            b.good_luck_chances = vec![1, 2, 3];
++        }
++        b.side_stack_limit = limit;
++    })
++}
++
++fn bp(rng: &mut Rng, tier: u8) -> u32 {
++    if tier == 0 {
++        pick(rng, &[0, 500, 1000, 1500, 2500, 5000, 10_000, 20_000])
++    } else {
++        match rng.below(9) {
++            0 => 0,
++            1 => 1,
++            2 => 500,
++            3 => 10_000,
++            4 => 65_535,
++            5 => 1_000_000,
++            6 => u32::MAX,
++            7 => rng.next_u32(),
++            _ => rng.below(100_000),
++        }
++    }
++}
++
++fn single(rng: &mut Rng, tier: u8) -> Option<NonZeroU32> {
++    if tier < 2 {
++        return None;
++    }
++    let bits = match rng.below(7) {
++        0 | 1 => return None,
++        2 => rng.next_u32(),
++        3 => pick(
++            rng,
++            &[
++                0x7f80_0000,
++                0x7fc0_0000,
++                0xff80_0000,
++                0x8000_0001,
++                0x0000_0001,
++                0x5f7f_ffff,
++                0x6280_0000,
++                0x4b80_0000,
++                0x3f80_0000,
++                0x3d4c_cccd,
++                0x7f7f_ffff,
++                0x0080_0000,
++                0x4580_0000,
++            ],
++        ),
++        4 => rng.next_u32() & 0x7fff_ffff,
++        // Moderate values: 2^-8 .. 2^17.
++        _ => 0x3b80_0000 + rng.below(0x0c80_0000),
++    };
++    NonZeroU32::new(bits)
++}
++
++fn rate(rng: &mut Rng, tier: u8) -> Rate {
++    Rate {
++        bp: bp(rng, tier),
++        single: single(rng, tier),
++    }
++}
++
++/// A `SpellDamage` rate of the scopes that multiply (every spell, a school): with `STRESS_SAFE`
++/// small, so that the known overflow of `magic::spell_damage` (F-robust-3) does not end the
++/// battles early.
++fn damage_rate(rng: &mut Rng, tier: u8) -> Rate {
++    if env("STRESS_SAFE", 0) != 0 {
++        Rate::bp(pick(rng, &[0, 500, 5000, 20_000, 65_535]))
++    } else {
++        rate(rng, tier)
++    }
++}
++
++/// A rate of at most 1 (the damage reduction, Eagle Eye's chance).
++fn unit_rate(rng: &mut Rng, tier: u8) -> Rate {
++    let single = if tier < 2 || chance(rng, 60) {
++        None
++    } else {
++        // Positive patterns up to 1.0.
++        NonZeroU32::new(rng.below(0x3f80_0001))
++    };
++    Rate {
++        bp: pick(rng, &[0, 1, 500, 2500, 5000, 9999, 10_000]),
++        single,
++    }
++}
++
++fn all_spells(r: &Ruleset) -> Vec<SpellId> {
++    (0..r.spells().len())
++        .filter_map(SpellId::from_index)
++        .collect()
++}
++
++fn creature_pool(r: &Ruleset) -> Vec<CreatureTypeId> {
++    CREATURES
++        .iter()
++        .filter(|c| !c.7.contains(&"war_machine"))
++        .map(|c| r.creature_by_key(&format!("t:{}", c.0)).unwrap())
++        .collect()
++}
++
++fn selector(
++    r: &Ruleset,
++    rng: &mut Rng,
++    pool: &[CreatureTypeId],
++) -> CreatureSelector<CreatureTypeId> {
++    let _ = r;
++    match rng.below(3) {
++        0 => CreatureSelector::All,
++        1 => CreatureSelector::Flag(pick(
++            rng,
++            &[
++                CreatureFlag::Alive,
++                CreatureFlag::Shooter,
++                CreatureFlag::Undead,
++                CreatureFlag::Flying,
++            ],
++        )),
++        _ => CreatureSelector::Creature(pick(rng, pool)),
++    }
++}
++
++/// The valid opening spells of `r`: `(spell, mastery)` pairs the battle opens with.
++fn openings(r: &Ruleset) -> Vec<(SpellId, u8)> {
++    let mut out = Vec::new();
++    for id in all_spells(r) {
++        let spell = r.spell(id).unwrap();
++        for mastery in 0..=3 {
++            if crate::magic::opens_with(r, spell, mastery) {
++                out.push((id, mastery));
++            }
++        }
++    }
++    out
++}
++
++fn effects(r: &Ruleset, rng: &mut Rng, tier: u8, pool: &[CreatureTypeId]) -> Vec<BattleEffect> {
++    let spells = all_spells(r);
++    let opening = openings(r);
++    let n = rng.below(if tier == 0 { 10 } else { 44 });
++    let mut out = Vec::new();
++    let mut own: Vec<SpellId> = Vec::new();
++    let mut opened = 0;
++    let mut durations = 0;
++    for _ in 0..n {
++        let mut own_spell = |rng: &mut Rng| {
++            if own.len() < crate::MAX_SPELL_BONUSES {
++                let s = pick(rng, &spells);
++                if !own.contains(&s) {
++                    own.push(s);
++                }
++                s
++            } else {
++                pick(rng, &own)
++            }
++        };
++        let level = |rng: &mut Rng| -> u8 {
++            if tier == 0 {
++                u8::try_from(rng.below(6)).unwrap()
++            } else {
++                pick(rng, &[0, 1, 2, 3, 4, 5, 6, 100, 255])
++            }
++        };
++        let e = match rng.below(22) {
++            0 | 1 => BattleEffect::SpellDamage {
++                scope: SpellScope::All,
++                rate: damage_rate(rng, tier),
++            },
++            2 | 3 => BattleEffect::SpellDamage {
++                scope: SpellScope::School(
++                    SchoolId::from_index(rng.below(r.spell_schools().len() as u32) as usize)
++                        .unwrap(),
++                ),
++                rate: damage_rate(rng, tier),
++            },
++            4 => BattleEffect::SpellDamage {
++                scope: SpellScope::Spell(own_spell(rng)),
++                rate: rate(rng, tier),
++            },
++            5 | 6 => BattleEffect::SpellSpecialty {
++                spell: own_spell(rng),
++                bp_per_level: if tier == 0 {
++                    pick(rng, &[300, 500])
++                } else {
++                    pick(rng, &[0, 1, 300, 500, 10_000, u16::MAX])
++                },
++                level: if tier == 0 {
++                    u8::try_from(1 + rng.below(40)).unwrap()
++                } else {
++                    pick(rng, &[0, 1, 5, 30, 74, 255])
++                },
++            },
++            7 | 8 => BattleEffect::MagicResistance {
++                rate: if tier == 0 {
++                    Rate::bp(pick(rng, &[500, 1000, 2000, 3000]))
++                } else {
++                    rate(rng, tier)
++                },
++            },
++            9 => {
++                // A derived hero has one such effect.
++                if tier == 0 && durations > 0 {
++                    continue;
++                }
++                durations += 1;
++                BattleEffect::SpellDuration {
++                    rounds: if tier == 0 {
++                        u8::try_from(1 + rng.below(6)).unwrap()
++                    } else {
++                        pick(rng, &[0, 1, 3, 56, 255])
++                    },
++                }
++            }
++            10 => {
++                if !chance(rng, 4) {
++                    continue;
++                }
++                BattleEffect::NoCasting
++            }
++            11 => {
++                if !chance(rng, 25) {
++                    continue;
++                }
++                BattleEffect::SpellLevelLimit {
++                    max_level: if tier == 0 { 2 } else { level(rng) },
++                }
++            }
++            12 => BattleEffect::SpellImmunity {
++                spell: pick(rng, &spells),
++            },
++            13 => {
++                if !chance(rng, 30) {
++                    continue;
++                }
++                BattleEffect::SpellLevelImmunity {
++                    max_level: if tier == 0 { 4 } else { level(rng) },
++                }
++            }
++            14 => BattleEffect::MindImmunity,
++            15 => BattleEffect::NegateImmunities,
++            16 | 17 => {
++                if opened >= crate::MAX_OPENING_SPELLS || opening.is_empty() {
++                    continue;
++                }
++                opened += 1;
++                let (spell, mastery) = pick(rng, &opening);
++                BattleEffect::OpeningSpell {
++                    spell,
++                    mastery,
++                    power: if tier == 0 {
++                        u16::try_from(1 + rng.below(20)).unwrap()
++                    } else {
++                        pick(rng, &[1, 2, 8, 255, 256, 30_000, u16::MAX])
++                    },
++                }
++            }
++            18 => BattleEffect::StackStat {
++                creatures: selector(r, rng, pool),
++                stat: pick(rng, &CreatureStat::ALL),
++                op: pick(
++                    rng,
++                    &[StatOp::Add, StatOp::PercentBp, StatOp::PercentBpDown],
++                ),
++                amount: if tier == 0 {
++                    i16::try_from(rng.below(7)).unwrap() - 2
++                } else {
++                    pick(rng, &[i16::MIN, -100, -1, 0, 1, 10, 1000, i16::MAX])
++                },
++            },
++            19 => match rng.below(3) {
++                0 => BattleEffect::Regeneration {
++                    creatures: selector(r, rng, pool),
++                    hit_points: pick(rng, &[1, 50, u16::MAX]),
++                },
++                1 => BattleEffect::NoRangePenalty {
++                    creatures: selector(r, rng, pool),
++                },
++                _ => BattleEffect::ShootWhenAdjacent {
++                    creatures: selector(r, rng, pool),
++                },
++            },
++            20 => {
++                let amount = if tier == 0 {
++                    i8::try_from(rng.below(5)).unwrap() - 2
++                } else {
++                    pick(rng, &[i8::MIN, -3, -1, 1, 3, i8::MAX])
++                };
++                let affects = pick(rng, &Affects::ALL);
++                match rng.below(4) {
++                    0 => BattleEffect::Morale { amount, affects },
++                    1 => BattleEffect::Luck { amount, affects },
++                    2 => BattleEffect::MoraleAtMost {
++                        value: amount,
++                        affects,
++                    },
++                    _ => BattleEffect::LuckAtMost {
++                        value: amount,
++                        affects,
++                    },
++                }
++            }
++            _ => {
++                if chance(rng, 80) {
++                    let n = r.factions().len() as u32;
++                    let ids: Vec<_> = (0..n)
++                        .filter(|_| chance(rng, 50))
++                        .filter_map(|i| h3_content::FactionId::from_index(i as usize))
++                        .collect();
++                    match FactionGroup::new(&ids) {
++                        Some(factions) => BattleEffect::AlignmentGroup { factions },
++                        None => continue,
++                    }
++                } else if chance(rng, 20) {
++                    BattleEffect::NoRetreat
++                } else {
++                    continue;
++                }
++            }
++        };
++        out.push(e);
++    }
++    out
++}
++
++/// A casting hero of `tier`.
++fn caster(r: &Ruleset, rng: &mut Rng, tier: u8, pool: &[CreatureTypeId]) -> BattleHero {
++    let mut h = hero(r);
++    let primary = |rng: &mut Rng| -> u8 {
++        if tier == 0 {
++            u8::try_from(rng.below(31)).unwrap()
++        } else {
++            pick(rng, &[0, 1, 2, 7, 30, 99, 150, 255])
++        }
++    };
++    h.attack = primary(rng);
++    h.defense = primary(rng);
++    h.power = primary(rng);
++    h.knowledge = primary(rng);
++    h.tactics = if chance(rng, 12) {
++        u8::try_from(rng.below(4)).unwrap()
++    } else {
++        0
++    };
++    h.damage = DamageBonuses {
++        ranged: rate(rng, tier),
++        melee: rate(rng, tier),
++        reduction: unit_rate(rng, tier),
++    };
++    if chance(rng, 40) {
++        h.war_machines.ballista = Some(BallistaControl {
++            shots: if tier == 0 {
++                u8::try_from(1 + rng.below(2)).unwrap()
++            } else {
++                pick(rng, &[1, 2, 3, 255])
++            },
++            double_damage_chance_bp: pick(rng, &[0, 5000, 10_000]),
++        });
++    }
++    if chance(rng, 40) {
++        h.war_machines.tent = Some(TentControl {
++            heal_bonus: rate(rng, tier),
++        });
++    }
++    h.surrender_discount_bp = pick(rng, &[0, 2000, 10_000]);
++    let spells = all_spells(r);
++    let hero_spells: Vec<SpellId> = spells
++        .iter()
++        .copied()
++        .filter(|&s| r.spell(s).unwrap().category != SpellCategory::Ability)
++        .collect();
++    // The book: usually every hero spell (adventure spells and spells without effects too).
++    if chance(rng, 96) {
++        let keep = if chance(rng, 80) { 100 } else { 60 };
++        h.magic.spell_book = Some(
++            hero_spells
++                .iter()
++                .copied()
++                .filter(|_| chance(rng, keep))
++                .collect(),
++        );
++    }
++    // Masteries of any spell (abilities too: the seam's list covers every spell).
++    let style = rng.below(6);
++    h.magic.masteries = spells
++        .iter()
++        .filter_map(|&s| {
++            let m = match style {
++                0 => 0,
++                1 => 1,
++                2 => 2,
++                3 => 3,
++                _ => u8::try_from(rng.below(4)).unwrap(),
++            };
++            (m > 0).then_some((s, m))
++        })
++        .collect();
++    h.magic.mana = if tier == 0 {
++        pick(rng, &[0, 4, 12, 40, 150, 500, 999])
++    } else {
++        pick(rng, &[0, 3, 20, 200, 5000, u16::MAX])
++    };
++    h.magic.max_mana = pick(rng, &[0, 10, 500, u16::MAX]);
++    if chance(rng, 30) {
++        h.magic.eagle_eye = Some(EagleEye {
++            chance: unit_rate(rng, tier),
++            spells: hero_spells
++                .iter()
++                .copied()
++                .filter(|_| chance(rng, 50))
++                .collect(),
++        });
++    }
++    h.effects = effects(r, rng, tier, pool);
++    h
++}
++
++fn count(rng: &mut Rng, tier: u8) -> u32 {
++    if tier == 0 {
++        match rng.below(10) {
++            0..=4 => 1 + rng.below(30),
++            5..=7 => 1 + rng.below(500),
++            _ => 1 + rng.below(20_000),
++        }
++    } else {
++        match rng.below(10) {
++            0..=3 => 1 + rng.below(100),
++            4..=5 => 60_000 + rng.below(140_000),
++            6..=7 => 1 + rng.below(u32::MAX),
++            8 => u32::MAX,
++            _ => 1 + rng.below(3),
++        }
++    }
++}
++
++fn army(
++    rng: &mut Rng,
++    tier: u8,
++    pool: &[CreatureTypeId],
++    focus: &[CreatureTypeId],
++    army_slots: u8,
++) -> Army {
++    let n = 1 + rng.below(u32::from(army_slots));
++    let mut slots: Vec<u8> = (0..army_slots).collect();
++    let mut stacks = Vec::new();
++    for _ in 0..n {
++        let slot = slots.remove(rng.below(slots.len() as u32) as usize);
++        let creature = if !focus.is_empty() && chance(rng, 45) {
++            pick(rng, focus)
++        } else {
++            pick(rng, pool)
++        };
++        stacks.push(ArmyStack {
++            slot,
++            creature,
++            count: count(rng, tier),
++        });
++    }
++    Army { stacks }
++}
++
++/// The creatures with magic of their own (casters, raisers, the mana creatures, the defences,
++/// rebirth, fear, the strike's spells).
++fn magic_creatures(r: &Ruleset) -> Vec<CreatureTypeId> {
++    CREATURES
++        .iter()
++        .filter(|c| !c.7.contains(&"war_machine"))
++        .filter(|c| {
++            c.7.iter().any(|t| {
++                [
++                    "spell_caster",
++                    "random_spell_caster",
++                    "helpful_spell_caster",
++                    "periodic_spell_caster",
++                    "stack_raiser",
++                    "corpse_raiser",
++                    "spell_after_strike",
++                    "spell_damage_after_strike",
++                    "damage_after_strike",
++                    "innate_spell",
++                    "rebirth",
++                    "fear",
++                    "mana_",
++                    "spell_cost",
++                    "magic_resistance",
++                    "spell_level_immunity",
++                    "spell_damage_reduction",
++                    "school_immunity",
++                    "spell_immunity",
++                    "absolute_immunity",
++                    "mind_immune",
++                    "life_drain",
++                    "regeneration",
++                ]
++                .iter()
++                .any(|p| t.starts_with(p))
++            })
++        })
++        .map(|c| r.creature_by_key(&format!("t:{}", c.0)).unwrap())
++        .collect()
++}
++
++pub(super) fn setup(r: &Ruleset, rng: &mut Rng, tier: u8) -> BattleSetup {
++    let pool = creature_pool(r);
++    let focus = magic_creatures(r);
++    let machines = |rng: &mut Rng| -> Vec<CreatureTypeId> {
++        let mut out = Vec::new();
++        if chance(rng, 35) {
++            let key = if chance(rng, 80) {
++                "t:ballista"
++            } else {
++                "t:firebomb"
++            };
++            out.push(r.creature_by_key(key).unwrap());
++        }
++        if chance(rng, 30) {
++            out.push(r.creature_by_key("t:cart").unwrap());
++        }
++        if chance(rng, 30) {
++            out.push(r.creature_by_key("t:tent").unwrap());
++        }
++        out
++    };
++    let mut obstacles = Vec::new();
++    let mut used = HexSet::new();
++    let mut wanted: Vec<u8> = Vec::new();
++    // Sometimes a pair: an obstacle anchored on itself and its right neighbour anchored on it.
++    // The standard field (17 x 11, one side column) draws what the first version of this harness
++    // drew, so that its seeds reproduce.
++    let f = r.battle().field;
++    let (w, rows, side) = (
++        u32::from(f.width),
++        u32::from(f.height),
++        u32::from(f.side_columns),
++    );
++    let hexes = w * rows;
++    if chance(rng, 35) {
++        let h = side + 1 + rng.below(w.saturating_sub(5)) + w * rng.below(rows);
++        let h = h - h % 3 + 1;
++        wanted.extend([h, h + 1].map(|h| u8::try_from(h.min(254)).unwrap()));
++    }
++    for _ in 0..rng.below(7) {
++        let h = side + 1 + rng.below(w.saturating_sub(4)) + w * rng.below(rows);
++        wanted.push(u8::try_from(h.min(254)).unwrap());
++    }
++    for h in wanted {
++        let x = u32::from(h) % w;
++        if used.contains(Hex(h))
++            || u32::from(h) >= hexes
++            || !(side + 1..=w.saturating_sub(2 + side)).contains(&x)
++        {
++            continue;
++        }
++        used.insert(Hex(h));
++        obstacles.push(Obstacle {
++            hexes: vec![h],
++            anchor: [None, Some(h), Some(h - 1)][usize::from(h % 3)],
++        });
++    }
++    let heroes = [
++        chance(rng, 92).then(|| caster(r, rng, tier, &pool)),
++        chance(rng, 85).then(|| caster(r, rng, tier, &pool)),
++    ];
++    BattleSetup {
++        attacker: army(rng, tier, &pool, &focus, r.battle().army_slots),
++        defender: army(rng, tier, &pool, &focus, r.battle().army_slots),
++        obstacles,
++        heroes,
++        terrain: match rng.below(5) {
++            0 => r.terrain_by_key("t:plain"),
++            1 => r.terrain_by_key("t:lava"),
++            _ => None,
++        },
++        war_machines: [machines(rng), machines(rng)],
++        formations: [
++            pick(rng, &[Formation::Loose, Formation::Tight]),
++            pick(rng, &[Formation::Loose, Formation::Tight]),
++        ],
++        funds: [rng.next_u32(), pick(rng, &[0, 1000, u32::MAX])],
++    }
++}
++
++macro_rules! ensure {
++    ($cond:expr, $($arg:tt)*) => {
++        if !$cond {
++            return Err(format!($($arg)*));
++        }
++    };
++}
++
++/// The state's invariants (those of `every_step_preserves_the_invariants` and some more).
++pub(super) fn check_state(
++    state: &BattleState,
++    r: &Ruleset,
++    initial: [usize; 2],
++    deep: bool,
++) -> Result<(), String> {
++    let field = Field::new(r.battle().field);
++    let stacks = state.stacks();
++    let effects = state.effects();
++    for w in effects.windows(2) {
++        ensure!(
++            (w[0].stack, w[0].spell) < (w[1].stack, w[1].spell),
++            "effects not sorted or not unique: {:?} {:?}",
++            w[0],
++            w[1]
++        );
++    }
++    for e in effects {
++        ensure!(e.stack.index() < stacks.len(), "effect on no stack: {e:?}");
++        ensure!(
++            stacks[e.stack.index()].is_alive(),
++            "effect on a dead stack: {e:?}"
++        );
++        ensure!(e.rounds != Some(0), "effect with 0 rounds: {e:?}");
++        ensure!(
++            r.spell(e.spell).is_some_and(|s| s.magic.is_timed()),
++            "effect of a spell that is not timed: {e:?}"
++        );
++    }
++    ensure!(
++        state.is_over() == state.active().is_none(),
++        "over {} but active {:?}",
++        state.is_over(),
++        state.active()
++    );
++    if let Some(a) = state.active() {
++        ensure!(
++            stacks.get(a.index()).is_some_and(|s| s.is_alive()),
++            "the active stack {a:?} is dead or missing"
++        );
++    }
++    let walls = state
++        .spell_obstacles()
++        .iter()
++        .filter(|o| o.kind == ObstacleKind::Wall)
++        .fold(HexSet::new(), |set, o| set.union(o.hexes));
++    let mut taken = HexSet::new();
++    let turned = r.quirks().is_enabled(CLONE_ON_ITS_ORIGINAL);
++    let good = i8::try_from(r.battle().good_morale.levels()).unwrap();
++    let bad = i8::try_from(r.battle().bad_morale.levels()).unwrap();
++    let lucky = i8::try_from(r.battle().good_luck.levels()).unwrap();
++    for (i, s) in stacks.iter().enumerate() {
++        let id = StackId(u8::try_from(i).unwrap());
++        ensure!(
++            s.max_hp >= 1,
++            "stack {i} has no hit points per creature: {s:?}"
++        );
++        ensure!(r.creature(s.creature).is_some(), "stack {i}: no creature");
++        ensure!(
++            s.count <= s.base_count,
++            "stack {i}: count {} above its base {}",
++            s.count,
++            s.base_count
++        );
++        ensure!(
++            state.temporary(id) <= s.base_count,
++            "stack {i}: temporary {} above its base {}",
++            state.temporary(id),
++            s.base_count
++        );
++        if s.is_alive() {
++            ensure!(
++                (1..=s.max_hp).contains(&s.top_hp),
++                "stack {i}: top hp {} of {}",
++                s.top_hp,
++                s.max_hp
++            );
++            let Some(fp) = field.footprint(s.hex, s.is_two_hex(), s.side) else {
++                return Err(format!("stack {i} is off the field: {s:?}"));
++            };
++            for h in fp.hexes() {
++                ensure!(!taken.contains(h), "two living stacks on {h:?} (stack {i})");
++                taken.insert(h);
++                ensure!(
++                    !state.obstacles().contains(h),
++                    "stack {i} stands on a natural obstacle at {h:?}"
++                );
++                ensure!(!walls.contains(h), "stack {i} stands in a wall at {h:?}");
++                ensure!(
++                    field.is_standable(h) || s.has(StackTraits::WAR_MACHINE),
++                    "stack {i} stands on the side column hex {h:?}"
++                );
++            }
++            ensure!(
++                state.corpse(id) == 0,
++                "the living stack {i} has corpse {}",
++                state.corpse(id)
++            );
++        } else {
++            ensure!(s.top_hp == 0, "the dead stack {i} has top hp {}", s.top_hp);
++            ensure!(
++                !s.is_created() || state.corpse(id) == NO_CORPSE,
++                "the dead created stack {i} left a corpse"
++            );
++            ensure!(
++                state.is_over() || state.corpse(id) != 0,
++                "the dead stack {i} has no corpse mark after the command"
++            );
++        }
++        let clone = s.is_alive() && s.has(StackTraits::CLONE);
++        if turned {
++            ensure!(
++                !clone || state.clone_rounds(id) > 0,
++                "clone {i} without rounds"
++            );
++        } else {
++            ensure!(
++                clone == (state.clone_rounds(id) > 0),
++                "stack {i}: clone {clone} but rounds {}",
++                state.clone_rounds(id)
++            );
++        }
++        ensure!(
++            (-bad..=good).contains(&s.morale) && (0..=lucky).contains(&s.luck),
++            "stack {i}: morale {} luck {}",
++            s.morale,
++            s.luck
++        );
++        ensure!(
++            s.retaliations_left <= s.retaliations.max(s.retaliations_left),
++            "retaliations"
++        );
++    }
++    for side in BattleSide::BOTH {
++        let n = stacks.iter().filter(|s| s.side == side).count();
++        let limit = usize::from(r.battle().side_stack_limit).max(initial[side.index()]);
++        ensure!(n <= limit, "{side:?} has {n} stacks, limit {limit}");
++    }
++    // The observations build, for both sides and a spectator; their links are consistent.
++    let obs = observe(state, r, BattleSide::Attacker);
++    let _ = observe(state, r, BattleSide::Defender);
++    let _ = observe_as(state, r, Viewer::Spectator);
++    for (i, link) in obs.clone_links.iter().enumerate() {
++        if let Some(l) = link {
++            ensure!(
++                l.index() < stacks.len(),
++                "stack {i}: link to no stack {l:?}"
++            );
++            ensure!(
++                obs.clone_links[l.index()] == Some(StackId(u8::try_from(i).unwrap())),
++                "stack {i}: its link {l:?} does not link back"
++            );
++        }
++    }
++    for (i, &binders) in obs.binders.iter().enumerate() {
++        if binders == 0 {
++            continue;
++        }
++        ensure!(
++            i < stacks.len() && stacks[i].is_alive(),
++            "binders on the dead or missing stack {i}"
++        );
++        for b in 0..64 {
++            if binders & (1 << b) != 0 {
++                ensure!(
++                    stacks.get(b).is_some_and(|s| s.is_alive()),
++                    "stack {i} is bound by the dead or missing stack {b}"
++                );
++            }
++        }
++    }
++    if deep {
++        for i in 0..stacks.len() {
++            if !stacks[i].is_alive() {
++                continue;
++            }
++            let mut fresh = state.clone();
++            crate::effects::recompute(&mut fresh, r, StackId(u8::try_from(i).unwrap()));
++            ensure!(
++                fresh.stacks()[i] == stacks[i],
++                "stack {i} is not what its effects make of it:\n  is     {:?}\n  should {:?}",
++                stacks[i],
++                fresh.stacks()[i]
++            );
++        }
++    }
++    Ok(())
++}
++
++/// Every command `side` may issue now: the legal commands, the hero's casts and the active
++/// stack's casts.
++pub(super) fn listed(
++    state: &BattleState,
++    r: &Ruleset,
++    side: BattleSide,
++) -> Result<Vec<Command>, String> {
++    let mut legal = LegalCommands::new();
++    legal_commands(state, r, side, &mut legal);
++    let mut out: Vec<Command> = legal.iter().copied().collect();
++    let mut targets = CastTargets::new();
++    let mut seconds = CastTargets::new();
++    for spell in castable_spells(state, r, side).iter() {
++        cast_targets(state, r, side, spell, &mut targets);
++        ensure!(!targets.is_empty(), "castable {spell:?} without a target");
++        for &target in targets.iter() {
++            second_targets(state, r, side, (spell, target), &mut seconds);
++            ensure!(
++                !seconds.is_empty(),
++                "{spell:?} at {target:?} without a second target"
++            );
++            for &second in seconds.iter() {
++                out.push(Command::Cast {
++                    spell,
++                    target,
++                    second,
++                });
++            }
++        }
++    }
++    creature_cast_targets(state, r, side, &mut targets);
++    for &target in targets.iter() {
++        out.push(Command::CreatureCast { target });
++    }
++    Ok(out)
++}
++
++#[derive(Debug, Default, Clone)]
++pub(super) struct Stats {
++    pub battles: u64,
++    pub steps: u64,
++    pub finished: u64,
++    pub unfinished: u64,
++    pub stuck: u64,
++    pub refused: u64,
++    pub hero_casts: u64,
++    pub creature_casts: u64,
++    pub exhaustive: u64,
++    pub probed: u64,
++    pub arbitrary: u64,
++    pub max_events: usize,
++    pub max_events_at: (u64, u64),
++    pub max_micros: u128,
++    pub max_micros_at: (u64, u64),
++    pub max_round: u16,
++    pub max_rounds_step: u16,
++    pub max_rounds_step_at: (u64, u64),
++    pub max_effects: usize,
++    pub max_obstacles: usize,
++    pub events: BTreeMap<String, u64>,
++    pub casts: BTreeMap<String, u64>,
++}
++
++#[derive(Debug, Clone, Copy)]
++pub(super) struct Opts {
++    pub steps: u64,
++    pub hero_cast: u32,
++    pub creature_cast: u32,
++    pub exhaustive_every: u32,
++    pub deep_every: u32,
++    pub count_events: bool,
++    pub trace: bool,
++}
++
++fn event_name(e: &Event) -> String {
++    let s = format!("{:?}", e.kind);
++    s.split(|c: char| !c.is_alphanumeric())
++        .next()
++        .unwrap_or("")
++        .to_string()
++}
++
++/// An arbitrary (usually invalid) command.
++fn arbitrary(rng: &mut Rng, r: &Ruleset) -> Command {
++    let target = |rng: &mut Rng| match rng.below(3) {
++        0 => CastTarget::None,
++        1 => CastTarget::Stack(StackId(u8::try_from(rng.below(48)).unwrap())),
++        _ => CastTarget::Hex(Hex(u8::try_from(rng.below(256)).unwrap())),
++    };
++    match rng.below(9) {
++        0 => Command::Wait,
++        1 => Command::EndTactics,
++        2 => Command::Move {
++            to: Hex(u8::try_from(rng.below(256)).unwrap()),
++        },
++        3 => Command::Attack {
++            target: StackId(u8::try_from(rng.below(48)).unwrap()),
++            from: Hex(u8::try_from(rng.below(256)).unwrap()),
++        },
++        4 => Command::Shoot {
++            target: StackId(u8::try_from(rng.below(48)).unwrap()),
++            at: Hex(u8::try_from(rng.below(256)).unwrap()),
++        },
++        5 => Command::Heal {
++            target: StackId(u8::try_from(rng.below(48)).unwrap()),
++        },
++        6 | 7 => Command::Cast {
++            spell: SpellId::from_raw(
++                u16::try_from(rng.below(r.spells().len() as u32 + 3)).unwrap(),
++            ),
++            target: target(rng),
++            second: target(rng),
++        },
++        _ => Command::CreatureCast {
++            target: target(rng),
++        },
++    }
++}
++
++/// Plays one battle; `Err` describes the first failure that is not a panic.
++pub(super) fn play_one(
++    r: &Ruleset,
++    setup: &BattleSetup,
++    seed: u64,
++    opts: &Opts,
++    stats: &mut Stats,
++) -> Result<(), String> {
++    let mut state = match BattleState::new(r, setup, seed) {
++        Ok(s) => s,
++        Err(e) => {
++            stats.refused += 1;
++            return Err(format!("setup refused: {e:?}"));
++        }
++    };
++    let initial =
++        BattleSide::BOTH.map(|side| state.stacks().iter().filter(|s| s.side == side).count());
++    check_state(&state, r, initial, true).map_err(|e| format!("at the start: {e}"))?;
++    let mut agent = Rng::for_stream(seed, h3_kernel::StreamId::AGENT);
++    let mut legal = LegalCommands::new();
++    let mut targets = CastTargets::new();
++    let mut seconds = CastTargets::new();
++    let mut events: Vec<Event> = Vec::new();
++    let mut step = 0u64;
++    let total = opts.steps + env("STRESS_CLOSING", opts.steps / 2);
++    while let Some(side) = state.side_to_act() {
++        if step >= total {
++            break;
++        }
++        // After the bound the agents only fight, so that a battle that can end does.
++        let closing = step >= opts.steps;
++        step += 1;
++        let round = state.round();
++        let ctx = |what: &str| format!("step {step} (round {round}): {what}");
++        // The other side has nothing to do.
++        let other = side.opponent();
++        legal_commands(&state, r, other, &mut legal);
++        ensure!(
++            legal.is_empty(),
++            "{}",
++            ctx("the other side has legal commands")
++        );
++        ensure!(
++            castable_spells(&state, r, other).is_empty(),
++            "{}",
++            ctx("the other side may cast")
++        );
++        creature_cast_targets(&state, r, other, &mut targets);
++        ensure!(
++            targets.is_empty(),
++            "{}",
++            ctx("the other side's stack may cast")
++        );
++
++        if opts.exhaustive_every > 0 && agent.below(opts.exhaustive_every) == 0 {
++            stats.exhaustive += 1;
++            let all = listed(&state, r, side).map_err(|e| ctx(&e))?;
++            for c in &all {
++                let mut probe = state.clone();
++                let res = catch_unwind(AssertUnwindSafe(|| {
++                    apply(&mut probe, r, side, *c, &mut crate::NoopSink)
++                }));
++                match res {
++                    Err(_) => {
++                        let msg = LAST_PANIC.lock().unwrap().take().unwrap_or_default();
++                        return Err(ctx(&format!("PANIC in the probe of {c:?}: {msg}")));
++                    }
++                    Ok(Err(e)) => {
++                        return Err(ctx(&format!("listed {c:?} rejected: {e:?}")));
++                    }
++                    Ok(Ok(())) => {}
++                }
++                stats.probed += 1;
++                check_state(&probe, r, initial, false)
++                    .map_err(|e| ctx(&format!("after the probe of {c:?}: {e}")))?;
++            }
++            // Arbitrary commands: a rejection changes nothing; an accepted one was listed.
++            for _ in 0..12 {
++                let c = arbitrary(&mut agent, r);
++                let actor = if agent.below(8) == 0 { other } else { side };
++                let mut probe = state.clone();
++                stats.arbitrary += 1;
++                match apply(&mut probe, r, actor, c, &mut crate::NoopSink) {
++                    Err(_) => ensure!(
++                        probe == state && probe.state_hash() == state.state_hash(),
++                        "{}",
++                        ctx(&format!("the rejected {c:?} changed the state"))
++                    ),
++                    Ok(()) => ensure!(
++                        actor == side && all.contains(&c),
++                        "{}",
++                        ctx(&format!("the unlisted {c:?} was accepted for {actor:?}"))
++                    ),
++                }
++            }
++        }
++
++        legal_commands(&state, r, side, &mut legal);
++        ensure!(!legal.is_empty(), "{}", ctx("no legal command"));
++        let spells: Vec<SpellId> = castable_spells(&state, r, side).iter().collect();
++        creature_cast_targets(&state, r, side, &mut targets);
++        let roll = agent.below(100);
++        let cmd = if !closing && !spells.is_empty() && roll < opts.hero_cast {
++            let spell = pick(&mut agent, &spells);
++            cast_targets(&state, r, side, spell, &mut targets);
++            ensure!(
++                !targets.is_empty(),
++                "{}",
++                ctx(&format!("castable {spell:?} without a target"))
++            );
++            let target = targets.as_slice()[agent.below(targets.len() as u32) as usize];
++            second_targets(&state, r, side, (spell, target), &mut seconds);
++            ensure!(
++                !seconds.is_empty(),
++                "{}",
++                ctx(&format!("{spell:?} at {target:?} without a second target"))
++            );
++            let second = seconds.as_slice()[agent.below(seconds.len() as u32) as usize];
++            stats.hero_casts += 1;
++            if opts.count_events {
++                let key = r.spell(spell).unwrap().key.as_str().to_string();
++                *stats.casts.entry(key).or_default() += 1;
++            }
++            Command::Cast {
++                spell,
++                target,
++                second,
++            }
++        } else if !closing && !targets.is_empty() && roll < opts.hero_cast + opts.creature_cast {
++            stats.creature_casts += 1;
++            Command::CreatureCast {
++                target: targets.as_slice()[agent.below(targets.len() as u32) as usize],
++            }
++        } else {
++            let staying: Vec<Command> = legal
++                .iter()
++                .copied()
++                .filter(|c| !c.leaves_battle())
++                .collect();
++            let strikes: Vec<Command> = staying
++                .iter()
++                .copied()
++                .filter(|c| matches!(c, Command::Attack { .. } | Command::Shoot { .. }))
++                .collect();
++            if !closing && agent.below(1000) < 2 {
++                legal.as_slice()[agent.below(legal.len() as u32) as usize]
++            } else if !strikes.is_empty() && (closing || agent.below(100) < 45) {
++                pick(&mut agent, &strikes)
++            } else {
++                pick(&mut agent, &staying)
++            }
++        };
++        if opts.trace {
++            println!("    step {step} round {} {side:?}: {cmd:?}", state.round());
++        }
++        events.clear();
++        let t0 = Instant::now();
++        let res = apply(&mut state, r, side, cmd, &mut events);
++        let micros = t0.elapsed().as_micros();
++        if let Err(e) = res {
++            return Err(ctx(&format!("legal {cmd:?} rejected: {e:?}")));
++        }
++        stats.steps += 1;
++        if micros > stats.max_micros {
++            stats.max_micros = micros;
++            stats.max_micros_at = (seed, step);
++        }
++        if events.len() > stats.max_events {
++            stats.max_events = events.len();
++            stats.max_events_at = (seed, step);
++        }
++        stats.max_round = stats.max_round.max(state.round());
++        let advanced = state.round().saturating_sub(round);
++        if advanced > stats.max_rounds_step {
++            stats.max_rounds_step = advanced;
++            stats.max_rounds_step_at = (seed, step);
++        }
++        stats.max_effects = stats.max_effects.max(state.effects().len());
++        stats.max_obstacles = stats.max_obstacles.max(state.spell_obstacles().len());
++        if opts.count_events {
++            for e in &events {
++                *stats.events.entry(event_name(e)).or_default() += 1;
++            }
++        }
++        if opts.trace {
++            for e in &events {
++                println!("        {:?}", e.kind);
++            }
++        }
++        let deep = opts.deep_every > 0 && agent.below(opts.deep_every) == 0;
++        check_state(&state, r, initial, deep)
++            .map_err(|e| format!("step {step}: after {cmd:?}: {e}"))?;
++    }
++    if state.is_over() {
++        stats.finished += 1;
++        let o = state.outcome().ok_or("over without an outcome")?;
++        for side in BattleSide::BOTH {
++            let n = state.stacks().iter().filter(|s| s.side == side).count();
++            ensure!(
++                o.stacks[side.index()].len() == n,
++                "the outcome lists {} of {n} stacks",
++                o.stacks[side.index()].len()
++            );
++            for rec in &o.stacks[side.index()] {
++                ensure!(
++                    rec.end <= rec.start,
++                    "the outcome ends above its start: {rec:?}"
++                );
++            }
++            // One survivor per army slot, in slot order (the outcome's debug assertion).
++            let survivors = &o.survivors[side.index()].stacks;
++            ensure!(
++                survivors.windows(2).all(|w| w[0].slot < w[1].slot),
++                "survivors not one per slot in slot order: {survivors:?}"
++            );
++            ensure!(
++                survivors.iter().all(|s| s.count > 0),
++                "a survivor without creatures: {survivors:?}"
++            );
++        }
++    } else {
++        ensure!(state.outcome().is_none(), "an outcome before the end");
++        stats.unfinished += 1;
++        if step >= total {
++            stats.stuck += 1;
++            if stats.stuck <= env("STRESS_STUCK", 0) {
++                println!(
++                    "  not over after {step} steps, seed {seed}, round {}:",
++                    state.round()
++                );
++                for (i, s) in state.stacks().iter().enumerate() {
++                    if s.is_alive() {
++                        let key = r.creature_key(s.creature).map_or("?", |k| k.as_str());
++                        println!(
++                            "    {i} {:?} {key} x{} (of {}) hp {}/{} speed {} at {:?} status {:#b} flags {:#b} casts {} effects {}",
++                            s.side,
++                            s.count,
++                            s.base_count,
++                            s.top_hp,
++                            s.max_hp,
++                            s.speed_now(),
++                            s.hex,
++                            s.spells.status.bits(),
++                            s.flags.bits(),
++                            state.casts_left(StackId(u8::try_from(i).unwrap())),
++                            state
++                                .effects()
++                                .iter()
++                                .filter(|e| e.stack.index() == i)
++                                .count(),
++                        );
++                    }
++                }
++                println!(
++                    "    heroes {:?}; obstacles {}",
++                    BattleSide::BOTH.map(|side| state.hero(side).map(|h| (h.power, h.mana))),
++                    state.spell_obstacles().len()
++                );
++            }
++        }
++    }
++    Ok(())
++}
++
++/// Runs `games` battles of `tier` from seed `first` on the rulesets of `profiles`, catching
++/// panics. Returns the failures as `(key, description)`.
++pub(super) fn run(
++    profiles: &[&str],
++    tier: u8,
++    first: u64,
++    games: u64,
++    opts: &Opts,
++) -> (Stats, Vec<(u64, String)>) {
++    std::panic::set_hook(std::boxed::Box::new(|info| {
++        *LAST_PANIC.lock().unwrap() = Some(format!("{info}"));
++    }));
++    let mut rulesets = Vec::new();
++    for p in profiles {
++        for (lively, limit) in [(true, 12), (false, 20), (true, 21)] {
++            rulesets.push((
++                p.to_string(),
++                lively,
++                limit,
++                stress_ruleset(p, lively, limit),
++            ));
++        }
++    }
++    let mut stats = Stats::default();
++    let mut failures: Vec<(u64, String)> = Vec::new();
++    let started = Instant::now();
++    for seed in first..first + games {
++        let (profile, lively, limit, r) = &rulesets[(seed % rulesets.len() as u64) as usize];
++        let mut rng = Rng::from_seed(seed ^ 0x5eed_0000_0000_0000 ^ (u64::from(tier) << 40));
++        let setup = setup(r, &mut rng, tier);
++        stats.battles += 1;
++        let mut local = stats.clone();
++        let res = catch_unwind(AssertUnwindSafe(|| {
++            play_one(r, &setup, seed, opts, &mut local)
++        }));
++        let label =
++            format!("tier {tier} seed {seed} profile {profile} lively {lively} limit {limit}");
++        match res {
++            Ok(Ok(())) => stats = local,
++            Ok(Err(e)) => {
++                stats = local;
++                if !e.starts_with("setup refused") || failures.len() < 50 {
++                    failures.push((seed, format!("{label}: {e}")));
++                }
++            }
++            Err(_) => {
++                let msg = LAST_PANIC.lock().unwrap().take().unwrap_or_default();
++                failures.push((seed, format!("{label}: PANIC {msg}")));
++            }
++        }
++        if (seed - first + 1) % 500 == 0 {
++            println!(
++                "[{:>7.1}s] {} battles, {} steps, {} failures, finished {}, hero casts {}, creature casts {}",
++                started.elapsed().as_secs_f64(),
++                stats.battles,
++                stats.steps,
++                failures.len(),
++                stats.finished,
++                stats.hero_casts,
++                stats.creature_casts
++            );
++        }
++    }
++    let _ = std::panic::take_hook();
++    (stats, failures)
++}
++
++fn report(stats: &Stats, failures: &[(u64, String)]) {
++    println!(
++        "battles {} steps {} finished {} unfinished {} (at the bound {}) refused {}",
++        stats.battles, stats.steps, stats.finished, stats.unfinished, stats.stuck, stats.refused
++    );
++    println!(
++        "hero casts {} creature casts {} exhaustive steps {} probes {} arbitrary {}",
++        stats.hero_casts, stats.creature_casts, stats.exhaustive, stats.probed, stats.arbitrary
++    );
++    println!(
++        "max events per command {} at {:?}; slowest apply {} us at {:?}; max round {}; most rounds in one command {} at {:?}; max effects {}; max spell obstacles {}",
++        stats.max_events,
++        stats.max_events_at,
++        stats.max_micros,
++        stats.max_micros_at,
++        stats.max_round,
++        stats.max_rounds_step,
++        stats.max_rounds_step_at,
++        stats.max_effects,
++        stats.max_obstacles
++    );
++    if !stats.events.is_empty() {
++        println!("events: {:?}", stats.events);
++        println!("casts: {:?}", stats.casts);
++    }
++    // Group the failures by their message without the numbers.
++    let mut groups: BTreeMap<String, (u64, String)> = BTreeMap::new();
++    for (_, f) in failures {
++        let tail = f.split_once(": ").map_or(f.as_str(), |x| x.1);
++        let key: String = tail
++            .chars()
++            .filter(|c| !c.is_ascii_digit())
++            .take(160)
++            .collect();
++        let entry = groups.entry(key).or_insert((0, f.clone()));
++        entry.0 += 1;
++    }
++    println!("{} failures in {} groups", failures.len(), groups.len());
++    for (n, first) in groups.values() {
++        println!("  x{n}: {first}");
++    }
++}
++
++/// `STRESS_GAMES`, `STRESS_SEED`, `STRESS_TIER`, `STRESS_STEPS`, `STRESS_PROFILE` (index or
++/// absent for all), `STRESS_EXHAUSTIVE` (one step in so many, 0 never), `STRESS_DEEP`,
++/// `STRESS_EVENTS`, `STRESS_TRACE`.
++#[test]
++#[ignore = "throwaway stress run"]
++fn stress_synthetic() {
++    let games = env("STRESS_GAMES", 200);
++    let first = env("STRESS_SEED", 1);
++    let tier = u8::try_from(env("STRESS_TIER", 1)).unwrap();
++    let opts = Opts {
++        steps: env("STRESS_STEPS", 300),
++        hero_cast: u32::try_from(env("STRESS_HERO", 40)).unwrap(),
++        creature_cast: u32::try_from(env("STRESS_CREATURE", 35)).unwrap(),
++        exhaustive_every: u32::try_from(env("STRESS_EXHAUSTIVE", 25)).unwrap(),
++        deep_every: u32::try_from(env("STRESS_DEEP", 4)).unwrap(),
++        count_events: env("STRESS_EVENTS", 0) != 0,
++        trace: env("STRESS_TRACE", 0) != 0,
++    };
++    let profiles: Vec<&str> = match std::env::var("STRESS_PROFILE") {
++        Ok(p) => vec![PROFILES[p.parse::<usize>().unwrap()]],
++        Err(_) => PROFILES.to_vec(),
++    };
++    println!(
++        "profiles {profiles:?} tier {tier} seeds {first}..{} opts {opts:?}",
++        first + games
++    );
++    let (stats, failures) = run(&profiles, tier, first, games, &opts);
++    report(&stats, &failures);
++    assert!(failures.is_empty(), "{} failures", failures.len());
++}
++
++// ---------------------------------------------------------------------------------------------
++// Directed runs.
++
++/// One random corruption of a setup: something `BattleState::new` should refuse (or, by chance,
++/// accept).
++fn corrupt(s: &mut BattleSetup, rng: &mut Rng, r: &Ruleset) {
++    let any_spell = |rng: &mut Rng| SpellId::from_raw(u16::try_from(rng.below(300)).unwrap());
++    let any_creature =
++        |rng: &mut Rng| CreatureTypeId::from_raw(u16::try_from(rng.below(400)).unwrap());
++    let side = rng.below(2) as usize;
++    let kind = rng.below(34);
++    if (kind <= 3 || kind == 5)
++        && (if side == 0 { &s.attacker } else { &s.defender })
++            .stacks
++            .is_empty()
++    {
++        return;
++    }
++    match kind {
++        0 => {
++            let army = if side == 0 {
++                &mut s.attacker
++            } else {
++                &mut s.defender
++            };
++            army.stacks[0].slot = u8::try_from(rng.below(256)).unwrap();
++        }
++        1 => {
++            let army = if side == 0 {
++                &mut s.attacker
++            } else {
++                &mut s.defender
++            };
++            army.stacks[0].count = 0;
++        }
++        2 => {
++            let army = if side == 0 {
++                &mut s.attacker
++            } else {
++                &mut s.defender
++            };
++            army.stacks[0].creature = any_creature(rng);
++        }
++        3 => {
++            let army = if side == 0 {
++                &mut s.attacker
++            } else {
++                &mut s.defender
++            };
++            let first = army.stacks[0];
++            army.stacks.push(first);
++        }
++        4 => {
++            let army = if side == 0 {
++                &mut s.attacker
++            } else {
++                &mut s.defender
++            };
++            army.stacks.clear();
++        }
++        5 => {
++            let army = if side == 0 {
++                &mut s.attacker
++            } else {
++                &mut s.defender
++            };
++            let first = army.stacks[0];
++            army.stacks = (0..40).map(|i| ArmyStack { slot: i, ..first }).collect();
++        }
++        6 => s.war_machines[side].push(any_creature(rng)),
++        7 => {
++            let m = s.war_machines[side].clone();
++            s.war_machines[side].extend(m);
++            s.war_machines[side].push(r.creature_by_key("t:gadget").unwrap());
++        }
++        8 => s.obstacles.push(Obstacle {
++            hexes: vec![u8::try_from(rng.below(256)).unwrap()],
++            anchor: Some(u8::try_from(rng.below(256)).unwrap()),
++        }),
++        9 => {
++            let h = u8::try_from(40 + rng.below(8)).unwrap();
++            s.obstacles.push(Obstacle {
++                hexes: vec![h, h],
++                anchor: None,
++            });
++        }
++        10 => {
++            for i in 0..40u8 {
++                s.obstacles.push(Obstacle {
++                    hexes: vec![],
++                    anchor: Some(36 + i % 10),
++                });
++            }
++        }
++        11 => s.obstacles.push(Obstacle {
++            hexes: (36..36 + 12).collect(),
++            anchor: Some(36),
++        }),
++        12 => {
++            s.terrain = Some(h3_content::TerrainId::from_raw(
++                u16::try_from(rng.below(60)).unwrap(),
++            ))
++        }
++        _ => {
++            let Some(h) = s.heroes[side].as_mut() else {
++                return;
++            };
++            match rng.below(24) {
++                0 => {
++                    h.hero_type =
++                        h3_content::HeroTypeId::from_raw(u16::try_from(rng.below(9)).unwrap())
++                }
++                1 => h.tactics = u8::try_from(4 + rng.below(252)).unwrap(),
++                2 => h.damage.reduction = Rate::bp(10_001 + rng.below(1_000_000)),
++                3 => {
++                    h.damage.reduction.single =
++                        NonZeroU32::new(0x3f80_0001 + rng.below(0x4000_0000))
++                }
++                4 => {
++                    h.war_machines.ballista = Some(BallistaControl {
++                        shots: u8::try_from(rng.below(2)).unwrap(),
++                        double_damage_chance_bp: u16::try_from(rng.below(65_536)).unwrap(),
++                    });
++                }
++                5 => h.surrender_discount_bp = u16::try_from(10_001 + rng.below(55_535)).unwrap(),
++                6 => {
++                    let e = BattleEffect::MindImmunity;
++                    h.effects.extend(core::iter::repeat_n(e, 70));
++                }
++                7 => h.effects.push(BattleEffect::NoRangePenalty {
++                    creatures: CreatureSelector::Creature(any_creature(rng)),
++                }),
++                8 => {
++                    let ids: Vec<_> = (0..3)
++                        .map(|_| {
++                            h3_content::FactionId::from_raw(u16::try_from(rng.below(9)).unwrap())
++                        })
++                        .collect();
++                    if let Some(factions) = FactionGroup::new(&ids) {
++                        h.effects.push(BattleEffect::AlignmentGroup { factions });
++                    }
++                }
++                9 => h.effects.push(BattleEffect::SpellDamage {
++                    scope: SpellScope::School(SchoolId::from_raw(
++                        u16::try_from(rng.below(9)).unwrap(),
++                    )),
++                    rate: Rate::bp(100),
++                }),
++                10 => h.effects.push(BattleEffect::SpellDamage {
++                    scope: SpellScope::Spell(any_spell(rng)),
++                    rate: Rate::bp(100),
++                }),
++                11 => h.effects.push(BattleEffect::SpellSpecialty {
++                    spell: any_spell(rng),
++                    bp_per_level: 300,
++                    level: 3,
++                }),
++                12 => h.effects.push(BattleEffect::SpellImmunity {
++                    spell: any_spell(rng),
++                }),
++                13 => h.effects.push(BattleEffect::OpeningSpell {
++                    spell: any_spell(rng),
++                    mastery: u8::try_from(rng.below(6)).unwrap(),
++                    power: u16::try_from(rng.below(3)).unwrap(),
++                }),
++                14 => {
++                    // More opening spells than the battle keeps.
++                    if let Some(&(spell, mastery)) = openings(r).first() {
++                        let e = BattleEffect::OpeningSpell {
++                            spell,
++                            mastery,
++                            power: 1,
++                        };
++                        h.effects.extend(core::iter::repeat_n(e, 9));
++                    }
++                }
++                15 => {
++                    // More spells with bonuses of their own than the battle keeps.
++                    for i in 0..6u16 {
++                        h.effects.push(BattleEffect::SpellSpecialty {
++                            spell: SpellId::from_raw(i),
++                            bp_per_level: 300,
++                            level: 3,
++                        });
++                    }
++                }
++                16 => h
++                    .magic
++                    .masteries
++                    .push((any_spell(rng), u8::try_from(rng.below(6)).unwrap())),
++                17 => {
++                    if let Some(&m) = h.magic.masteries.first() {
++                        h.magic.masteries.push(m);
++                    }
++                }
++                18 => {
++                    let book = h.magic.spell_book.get_or_insert_with(Vec::new);
++                    book.push(any_spell(rng));
++                }
++                19 => {
++                    let book = h.magic.spell_book.get_or_insert_with(Vec::new);
++                    if let Some(&first) = book.first() {
++                        book.push(first);
++                    }
++                }
++                20 => {
++                    h.magic.eagle_eye = Some(EagleEye {
++                        chance: Rate::bp(10_001 + rng.below(100_000)),
++                        spells: vec![],
++                    });
++                }
++                21 => {
++                    h.magic.eagle_eye = Some(EagleEye {
++                        chance: Rate {
++                            bp: 5000,
++                            single: NonZeroU32::new(rng.next_u32()),
++                        },
++                        spells: vec![any_spell(rng), any_spell(rng)],
++                    });
++                }
++                22 => h.effects.push(BattleEffect::StackStat {
++                    creatures: CreatureSelector::Creature(any_creature(rng)),
++                    stat: CreatureStat::Speed,
++                    op: StatOp::Add,
++                    amount: 1,
++                }),
++                _ => h.effects.push(BattleEffect::Regeneration {
++                    creatures: CreatureSelector::Creature(any_creature(rng)),
++                    hit_points: 5,
++                }),
++            }
++        }
++    }
++}
++
++/// Random setups, most of them unsound: `BattleState::new` answers, never panics; an accepted
++/// one plays a short battle.
++#[test]
++#[ignore = "throwaway stress run"]
++fn stress_setups() {
++    let games = env("STRESS_GAMES", 2000);
++    let first = env("STRESS_SEED", 1);
++    let opts = Opts {
++        steps: 40,
++        hero_cast: 40,
++        creature_cast: 35,
++        exhaustive_every: 0,
++        deep_every: 4,
++        count_events: false,
++        trace: false,
++    };
++    std::panic::set_hook(std::boxed::Box::new(|info| {
++        std::eprintln!("panic: {info}");
++        *LAST_PANIC.lock().unwrap() = Some(format!("{info}"));
++    }));
++    let rulesets: Vec<Ruleset> = ["t:faithful", "t:single", "t:anchors"]
++        .iter()
++        .map(|p| stress_ruleset(p, true, 20))
++        .collect();
++    let mut stats = Stats::default();
++    let mut errors: BTreeMap<String, u64> = BTreeMap::new();
++    let mut failures: Vec<(u64, String)> = Vec::new();
++    let (mut accepted, mut refused) = (0u64, 0u64);
++    for seed in first..first + games {
++        let r = &rulesets[(seed % 3) as usize];
++        let mut rng = Rng::from_seed(seed ^ 0xbad5_e700_0000_0000);
++        let tier = u8::try_from(1 + seed % 2).unwrap();
++        let mut s = setup(r, &mut rng, tier);
++        for _ in 0..1 + rng.below(3) {
++            corrupt(&mut s, &mut rng, r);
++        }
++        let built = catch_unwind(AssertUnwindSafe(|| {
++            BattleState::new(r, &s, seed).map(|_| ())
++        }));
++        match built {
++            Err(_) => {
++                let msg = LAST_PANIC.lock().unwrap().take().unwrap_or_default();
++                failures.push((
++                    seed,
++                    format!("seed {seed}: PANIC in BattleState::new: {msg}"),
++                ));
++            }
++            Ok(Err(e)) => {
++                refused += 1;
++                let name = format!("{e:?}");
++                let name: String = name.chars().filter(|c| !c.is_ascii_digit()).collect();
++                *errors.entry(name).or_default() += 1;
++            }
++            Ok(Ok(())) => {
++                accepted += 1;
++                let mut local = stats.clone();
++                let res = catch_unwind(AssertUnwindSafe(|| {
++                    play_one(r, &s, seed, &opts, &mut local)
++                }));
++                match res {
++                    Ok(Ok(())) => stats = local,
++                    Ok(Err(e)) => failures.push((seed, format!("seed {seed}: {e}"))),
++                    Err(_) => {
++                        let msg = LAST_PANIC.lock().unwrap().take().unwrap_or_default();
++                        failures.push((seed, format!("seed {seed}: PANIC {msg}")));
++                    }
++                }
++            }
++        }
++    }
++    let _ = std::panic::take_hook();
++    println!("setups {games}: accepted {accepted}, refused {refused}");
++    println!("refusals: {errors:?}");
++    report(&stats, &failures);
++    assert!(failures.is_empty());
++}
++
++/// The battle at its stack capacity: both sides summon until neither may (21 stacks each with the
++/// largest side stack limit), then play on with every listed command probed.
++#[test]
++#[ignore = "throwaway stress run"]
++fn stress_capacity() {
++    let games = env("STRESS_GAMES", 50);
++    let first = env("STRESS_SEED", 1);
++    let mut reached = 0;
++    let mut most = 0;
++    for seed in first..first + games {
++        let profile = PROFILES[(seed % PROFILES.len() as u64) as usize];
++        let r = stress_ruleset(profile, seed % 2 == 0, 21);
++        let mut rng = Rng::from_seed(seed);
++        let pool = creature_pool(&r);
++        let focus = magic_creatures(&r);
++        let spells = all_spells(&r);
++        let summons: Vec<SpellId> = spells
++            .iter()
++            .copied()
++            .filter(|&s| r.spell(s).unwrap().magic.summons())
++            .collect();
++        let creating: Vec<SpellId> = spells
++            .iter()
++            .copied()
++            .filter(|&s| {
++                let m = &r.spell(s).unwrap().magic;
++                m.summons() || m.clones() || m.raises()
++            })
++            .collect();
++        let mut s = setup(&r, &mut rng, 0);
++        // Full armies of many creatures, so that stacks live on, with raisers among them.
++        for (army, n) in [(&mut s.attacker, 7), (&mut s.defender, 7)] {
++            army.stacks = (0..n)
++                .map(|slot| ArmyStack {
++                    slot,
++                    creature: if slot == 6 {
++                        r.creature_by_key("t:fiend").unwrap()
++                    } else if chance(&mut rng, 40) {
++                        pick(&mut rng, &focus)
++                    } else {
++                        pick(&mut rng, &pool)
++                    },
++                    count: 200 + rng.below(2000),
++                })
++                .collect();
++        }
++        s.war_machines = [0, 1].map(|_| {
++            ["t:ballista", "t:cart", "t:tent"]
++                .iter()
++                .map(|k| r.creature_by_key(k).unwrap())
++                .collect()
++        });
++        s.obstacles.clear();
++        for side in 0..2 {
++            let mut h = hero(&r);
++            h.power = 1;
++            h.magic.mana = u16::MAX;
++            h.magic.spell_book = Some(
++                spells
++                    .iter()
++                    .copied()
++                    .filter(|&x| r.spell(x).unwrap().category != SpellCategory::Ability)
++                    .collect(),
++            );
++            h.magic.masteries = spells.iter().map(|&x| (x, 3)).collect();
++            s.heroes[side] = Some(h);
++        }
++        let mut state = BattleState::new(&r, &s, seed).unwrap();
++        let initial = [10, 10];
++        let mut targets = CastTargets::new();
++        let mut seconds = CastTargets::new();
++        let mut agent = Rng::from_seed(seed ^ 77);
++        for step in 0..900u32 {
++            let Some(side) = state.side_to_act() else {
++                break;
++            };
++            let castable = castable_spells(&state, &r, side);
++            // First the summons, then anything that creates a stack, then a random listed command.
++            let wanted: Vec<SpellId> = summons
++                .iter()
++                .chain(&creating)
++                .copied()
++                .filter(|&x| castable.contains(x))
++                .collect();
++            let cmd = if let Some(&spell) = wanted
++                .first()
++                .filter(|_| step < 400 || chance(&mut agent, 50))
++            {
++                cast_targets(&state, &r, side, spell, &mut targets);
++                let target = targets.as_slice()[agent.below(targets.len() as u32) as usize];
++                second_targets(&state, &r, side, (spell, target), &mut seconds);
++                let second = seconds.as_slice()[agent.below(seconds.len() as u32) as usize];
++                Command::Cast {
++                    spell,
++                    target,
++                    second,
++                }
++            } else {
++                let all = listed(&state, &r, side).unwrap();
++                if step % 16 == 0 {
++                    for c in &all {
++                        let mut probe = state.clone();
++                        apply(&mut probe, &r, side, *c, &mut crate::NoopSink)
++                            .unwrap_or_else(|e| panic!("seed {seed} step {step}: {c:?}: {e:?}"));
++                        check_state(&probe, &r, initial, false)
++                            .unwrap_or_else(|e| panic!("seed {seed} step {step}: {c:?}: {e}"));
++                    }
++                }
++                let staying: Vec<Command> =
++                    all.into_iter().filter(|c| !c.leaves_battle()).collect();
++                // Mostly defend while the sides fill up, then fight.
++                if step < 400 && chance(&mut agent, 85) {
++                    Command::Defend
++                } else {
++                    pick(&mut agent, &staying)
++                }
++            };
++            apply(&mut state, &r, side, cmd, &mut crate::NoopSink)
++                .unwrap_or_else(|e| panic!("seed {seed} step {step}: {cmd:?}: {e:?}"));
++            check_state(&state, &r, initial, true)
++                .unwrap_or_else(|e| panic!("seed {seed} step {step}: after {cmd:?}: {e}"));
++            most = most.max(state.stacks().len());
++        }
++        reached += u32::from(state.stacks().len() == crate::STACK_CAPACITY);
++    }
++    println!(
++        "capacity runs {games}: {reached} reached {} stacks, most {most}",
++        crate::STACK_CAPACITY
++    );
++    assert!(reached > 0);
++}
++
++/// How far one command fast-forwards: the attacker blinds the only stack of the defender, which
++/// frightens every attacker stack at each pick (fear 100 in the test ruleset): no stack acts until
++/// the Blind ends, power + duration bonus rounds later.
++#[test]
++#[ignore = "throwaway measurement"]
++fn one_command_runs_the_rounds_of_a_blind() {
++    for (durations, power) in [(0usize, 10u8), (0, 255), (10, 255), (60, 255)] {
++        let r = stress_ruleset("t:faithful", false, 20);
++        let blind = r.spell_by_key("t:blind").unwrap();
++        let mut s = super::support::setup(&r, &[(0, "fast", 10)], &[(0, "azure", 1000)]);
++        let mut h = hero(&r);
++        h.power = power;
++        h.magic.mana = 100;
++        h.magic.spell_book = Some(vec![blind]);
++        h.effects = vec![BattleEffect::SpellDuration { rounds: 255 }; durations];
++        s.heroes[0] = Some(h);
++        let mut state = BattleState::new(&r, &s, 3).unwrap();
++        assert_eq!(state.side_to_act(), Some(BattleSide::Attacker));
++        let mut events: Vec<Event> = Vec::new();
++        let cast = Command::Cast {
++            spell: blind,
++            target: CastTarget::Stack(StackId(1)),
++            second: CastTarget::None,
++        };
++        apply(&mut state, &r, BattleSide::Attacker, cast, &mut events).unwrap();
++        let rounds = state.effects().first().and_then(|e| e.rounds);
++        events.clear();
++        let t0 = Instant::now();
++        apply(
++            &mut state,
++            &r,
++            BattleSide::Attacker,
++            Command::Defend,
++            &mut events,
++        )
++        .unwrap();
++        println!(
++            "power {power}, {durations} duration effects: Blind for {rounds:?} rounds; Defend ran to round {} in {:?} with {} events; to act: {:?}",
++            state.round(),
++            t0.elapsed(),
++            events.len(),
++            state.side_to_act()
++        );
++    }
++}
++
++/// Field shapes of the synthetic ruleset: width, height, side columns, army slots.
++const SHAPES: &[(u8, u8, u8, u8)] = &[
++    (17, 15, 1, 7),
++    (15, 17, 1, 7),
++    (23, 11, 1, 7),
++    (51, 5, 1, 5),
++    (85, 3, 1, 3),
++    (255, 1, 1, 1),
++    (127, 2, 1, 2),
++    (4, 11, 1, 7),
++    (5, 11, 1, 7),
++    (6, 11, 1, 7),
++    (7, 11, 1, 7),
++    (2, 11, 0, 7),
++    (3, 11, 0, 7),
++    (4, 11, 0, 7),
++    (8, 16, 0, 16),
++    (15, 16, 1, 16),
++    (9, 11, 3, 7),
++    (12, 1, 0, 1),
++    (13, 2, 1, 2),
++    (17, 11, 1, 7),
++];
++
++/// The test ruleset with another field shape (formations, machine places and the tactics zones
++/// fitted to it), or the compiler's refusal.
++fn shaped_ruleset(
++    profile: &str,
++    lively: bool,
++    limit: u8,
++    (w, h, side, slots): (u8, u8, u8, u8),
++) -> Result<Ruleset, String> {
++    try_ruleset_from(
++        profile,
++        |b| {
++            if lively {
++                b.morale_dice = 4;
++                b.good_morale_chances = vec![1, 2, 3];
++                b.bad_morale_chances = vec![1, 2, 3];
++                b.luck_dice = 4;
++                b.good_luck_chances = vec![1, 2, 3];
++            }
++            b.side_stack_limit = limit;
++            b.field_width = w;
++            b.field_height = h;
++            b.side_columns = side;
++            b.army_slots = slots;
++            let x = side.max(1);
++            b.war_machine_positions = if h >= 3 {
++                vec![[x, h / 2], [x, 0], [x, h - 1]]
++            } else {
++                vec![[x, 0], [x + 2, 0], [x + 4, 0]]
++            };
++            b.loose_formation = (1..=slots)
++                .map(|n| {
++                    (0..n)
++                        .map(|i| u8::try_from(u32::from(i) * u32::from(h) / u32::from(n)).unwrap())
++                        .collect()
++                })
++                .collect();
++            b.tight_formation = (1..=slots)
++                .map(|n| (0..n).map(|i| (h - n) / 2 + i).collect())
++                .collect();
++            let standable = w - 2 * side;
++            b.tactics_zone_columns = vec![3.min(standable), 5.min(standable), 7.min(standable)];
++        },
++        |pack| {
++            // The pack's absolute obstacle blocks (5..=8, 4).
++            if u32::from(w) < 9 + u32::from(side) || h < 5 {
++                pack.obstacles.retain(|o| !o.absolute);
++            }
++        },
++    )
++    .map_err(|e| format!("{e:?}"))
++}
++
++/// Battles on other field shapes (`STRESS_GAMES` per shape, `STRESS_TIER`, `STRESS_SEED`;
++/// with tier 1 or 2 use `STRESS_SAFE=1`).
++#[test]
++#[ignore = "throwaway stress run"]
++fn stress_fields() {
++    let games = env("STRESS_GAMES", 200);
++    let first = env("STRESS_SEED", 1);
++    let tier = u8::try_from(env("STRESS_TIER", 0)).unwrap();
++    let opts = Opts {
++        steps: env("STRESS_STEPS", 200),
++        hero_cast: 40,
++        creature_cast: 35,
++        exhaustive_every: u32::try_from(env("STRESS_EXHAUSTIVE", 12)).unwrap(),
++        deep_every: 4,
++        count_events: false,
++        trace: env("STRESS_TRACE", 0) != 0,
++    };
++    std::panic::set_hook(std::boxed::Box::new(|info| {
++        *LAST_PANIC.lock().unwrap() = Some(format!("{info}"));
++    }));
++    let profiles = [
++        "t:faithful",
++        "t:original",
++        "t:anchors",
++        "t:quirky",
++        "t:pits",
++        "t:mirrored",
++    ];
++    let mut all_failures: Vec<(u64, String)> = Vec::new();
++    for &shape in SHAPES {
++        if let Ok(only) = std::env::var("STRESS_SHAPE") {
++            if format!("{}x{}", shape.0, shape.1) != only {
++                continue;
++            }
++        }
++        let mut rulesets = Vec::new();
++        let mut refused_rulesets = BTreeMap::<String, u64>::new();
++        for p in profiles {
++            for (lively, limit) in [(true, 12), (false, 21)] {
++                match catch_unwind(|| shaped_ruleset(p, lively, limit, shape)) {
++                    Ok(Ok(r)) => rulesets.push((p, r)),
++                    Ok(Err(e)) => *refused_rulesets.entry(e).or_default() += 1,
++                    Err(_) => {
++                        let msg = LAST_PANIC.lock().unwrap().take().unwrap_or_default();
++                        all_failures
++                            .push((0, format!("shape {shape:?}: PANIC in the compiler: {msg}")));
++                    }
++                }
++            }
++        }
++        if rulesets.is_empty() {
++            println!("shape {shape:?}: no ruleset: {refused_rulesets:?}");
++            continue;
++        }
++        let mut stats = Stats::default();
++        let mut failures: Vec<(u64, String)> = Vec::new();
++        let mut refusals = BTreeMap::<String, u64>::new();
++        for seed in first..first + games {
++            let (profile, r) = &rulesets[(seed % rulesets.len() as u64) as usize];
++            let mut rng = Rng::from_seed(seed ^ 0xf1e1_d000_0000_0000 ^ (u64::from(tier) << 40));
++            let made = catch_unwind(AssertUnwindSafe(|| setup(r, &mut rng, tier)));
++            let Ok(s) = made else {
++                let msg = LAST_PANIC.lock().unwrap().take().unwrap_or_default();
++                failures.push((
++                    seed,
++                    format!("shape {shape:?} seed {seed}: HARNESS PANIC in setup: {msg}"),
++                ));
++                continue;
++            };
++            stats.battles += 1;
++            let mut local = stats.clone();
++            let res = catch_unwind(AssertUnwindSafe(|| {
++                play_one(r, &s, seed, &opts, &mut local)
++            }));
++            let label = format!("shape {shape:?} tier {tier} seed {seed} profile {profile}");
++            match res {
++                Ok(Ok(())) => stats = local,
++                Ok(Err(e)) => {
++                    stats = local;
++                    if e.starts_with("setup refused") {
++                        let name: String = e.chars().filter(|c| !c.is_ascii_digit()).collect();
++                        *refusals.entry(name).or_default() += 1;
++                    } else {
++                        failures.push((seed, format!("{label}: {e}")));
++                    }
++                }
++                Err(_) => {
++                    let msg = LAST_PANIC.lock().unwrap().take().unwrap_or_default();
++                    failures.push((seed, format!("{label}: PANIC {msg}")));
++                }
++            }
++        }
++        println!(
++            "== shape {shape:?}: {} rulesets (refused: {refused_rulesets:?}); setups refused: {refusals:?}",
++            rulesets.len()
++        );
++        report(&stats, &failures);
++        all_failures.extend(failures);
++    }
++    let _ = std::panic::take_hook();
++    assert!(all_failures.is_empty(), "{} failures", all_failures.len());
++}
+diff --git a/crates/h3-ffi/tests/fuzz.rs b/crates/h3-ffi/tests/fuzz.rs
+new file mode 100644
+index 0000000..363c6e3
+--- /dev/null
++++ b/crates/h3-ffi/tests/fuzz.rs
+@@ -0,0 +1,319 @@
++//! THROWAWAY fuzz of the C ABI for the E04b robustness review (T11b). Not committed.
++//!
++//! Every function with wrong sizes, sides and indices on the three synthetic scenarios; the
++//! legal actions chosen head by head from the masks. No call may answer `H3_ERR_PANIC`, write
++//! beyond the length the ABI promises, or change the state when it refuses.
++#![allow(unsafe_code)]
++
++use h3_ffi::*;
++use h3_kernel::Rng;
++
++fn env_var(name: &str, default: u64) -> u64 {
++    std::env::var(name)
++        .ok()
++        .and_then(|v| v.parse().ok())
++        .unwrap_or(default)
++}
++
++const CANARY: u8 = 0xA5;
++
++fn bits(mask: &[u8], n: usize) -> Vec<usize> {
++    assert!(mask[..n].iter().all(|b| *b <= 1), "a mask byte is not 0/1");
++    assert!(
++        mask[n..].iter().all(|b| *b == CANARY),
++        "a mask wrote beyond its length"
++    );
++    (0..n).filter(|&i| mask[i] == 1).collect()
++}
++
++#[test]
++#[ignore = "throwaway fuzz"]
++fn ffi_fuzz() {
++    let games = env_var("FUZZ_GAMES", 30);
++    let first = env_var("FUZZ_SEED", 1);
++    let steps = env_var("FUZZ_STEPS", 400);
++    let actions = h3_action_count() as usize;
++    let spells_n = h3_spell_count() as usize;
++    let targets_n = h3_target_count() as usize;
++    let obs_n = h3_observation_len() as usize;
++    let (mut calls, mut legal_steps, mut casts, mut refused, mut finished) =
++        (0u64, 0u64, 0u64, 0u64, 0u64);
++    let mut codes = std::collections::BTreeMap::<i32, u64>::new();
++    for seed in first..first + games {
++        let mut rng = Rng::from_seed(seed);
++        let scenario = (seed % 3) as u32;
++        let max_steps = if seed % 5 == 0 { 50 } else { 0 };
++        let env = h3_env_create_synthetic(scenario, seed, max_steps);
++        assert!(!env.is_null());
++        assert!(h3_env_create_synthetic(3 + rng.below(1000), seed, 0).is_null());
++        let mut mask = vec![CANARY; actions + 9];
++        let mut spells = vec![CANARY; spells_n + 9];
++        let mut targets = vec![CANARY; targets_n + 9];
++        let mut seconds = vec![CANARY; targets_n + 9];
++        let mut obs = vec![f32::NAN; obs_n + 5];
++        unsafe {
++            for _ in 0..steps {
++                let side = h3_env_to_move(env);
++                if side < 0 {
++                    finished += 1;
++                    // Everything refuses after the end, the masks are empty.
++                    let hash = h3_env_state_hash(env);
++                    let a = H3Action {
++                        entry: rng.below(actions as u32),
++                        spell: 0,
++                        target: 0,
++                        second: 0,
++                    };
++                    assert_eq!(
++                        h3_env_step(env, 0, a, std::ptr::null_mut()),
++                        H3_ERR_EPISODE_OVER
++                    );
++                    mask.fill(CANARY);
++                    assert_eq!(h3_env_legal_mask(env, 0, mask.as_mut_ptr(), actions), H3_OK);
++                    assert!(bits(&mask, actions).is_empty());
++                    assert_eq!(h3_env_state_hash(env), hash);
++                    assert_eq!(h3_env_reset(env, rng.next_u64()), H3_OK);
++                    continue;
++                }
++                let hash = h3_env_state_hash(env);
++                // Wrong sides and sizes.
++                for bad in [2, -1, i32::MIN, i32::MAX, 7] {
++                    calls += 5;
++                    assert_eq!(
++                        h3_env_legal_mask(env, bad, mask.as_mut_ptr(), actions),
++                        H3_ERR_ARGUMENT
++                    );
++                    assert_eq!(
++                        h3_env_spell_mask(env, bad, 0, spells.as_mut_ptr(), spells_n),
++                        H3_ERR_ARGUMENT
++                    );
++                    assert_eq!(
++                        h3_env_target_mask(env, bad, 0, 0, targets.as_mut_ptr(), targets_n),
++                        H3_ERR_ARGUMENT
++                    );
++                    assert_eq!(
++                        h3_env_second_mask(env, bad, 0, 0, 0, seconds.as_mut_ptr(), targets_n),
++                        H3_ERR_ARGUMENT
++                    );
++                    assert_eq!(
++                        h3_env_observe(env, bad, obs.as_mut_ptr(), obs_n),
++                        H3_ERR_ARGUMENT
++                    );
++                    assert_eq!(
++                        h3_env_step(env, bad, H3Action::default(), std::ptr::null_mut()),
++                        H3_ERR_ARGUMENT
++                    );
++                }
++                for short in [0, 1, actions - 1] {
++                    assert_eq!(
++                        h3_env_legal_mask(env, side, mask.as_mut_ptr(), short),
++                        H3_ERR_ARGUMENT
++                    );
++                }
++                assert_eq!(
++                    h3_env_spell_mask(env, side, 0, spells.as_mut_ptr(), spells_n - 1),
++                    H3_ERR_ARGUMENT
++                );
++                assert_eq!(
++                    h3_env_target_mask(env, side, 0, 0, targets.as_mut_ptr(), targets_n - 1),
++                    H3_ERR_ARGUMENT
++                );
++                assert_eq!(
++                    h3_env_second_mask(env, side, 0, 0, 0, seconds.as_mut_ptr(), targets_n - 1),
++                    H3_ERR_ARGUMENT
++                );
++                assert_eq!(
++                    h3_env_observe(env, side, obs.as_mut_ptr(), obs_n - 1),
++                    H3_ERR_ARGUMENT
++                );
++                assert!(mask.iter().all(|b| *b == CANARY || *b <= 1));
++                // The observation, with a longer buffer: only its length is written.
++                obs.fill(f32::NAN);
++                assert_eq!(
++                    h3_env_observe(env, side, obs.as_mut_ptr(), obs_n + 5),
++                    H3_OK
++                );
++                assert!(obs[..obs_n].iter().all(|v| v.is_finite()));
++                assert!(obs[obs_n..].iter().all(|v| v.is_nan()));
++                assert_eq!(
++                    h3_env_observe(env, 1 - side, obs.as_mut_ptr(), obs_n),
++                    H3_OK
++                );
++                // Arbitrary prefixes for the head masks and arbitrary actions.
++                for _ in 0..40 {
++                    let entry = match rng.below(4) {
++                        0 => rng.below(actions as u32 + 8),
++                        1 => actions as u32 - 2 + rng.below(2),
++                        2 => rng.next_u32(),
++                        _ => u32::MAX - rng.below(3),
++                    };
++                    let spell = match rng.below(3) {
++                        0 => 0,
++                        1 => rng.below(spells_n as u32 + 8) as u16,
++                        _ => rng.below(65_536) as u16,
++                    };
++                    let target = match rng.below(3) {
++                        0 => 0,
++                        1 => rng.below(targets_n as u32 + 8) as u16,
++                        _ => rng.below(65_536) as u16,
++                    };
++                    let second = match rng.below(3) {
++                        0 => 0,
++                        1 => rng.below(targets_n as u32 + 8) as u16,
++                        _ => rng.below(65_536) as u16,
++                    };
++                    let actor = if rng.below(6) == 0 { 1 - side } else { side };
++                    spells.fill(CANARY);
++                    targets.fill(CANARY);
++                    seconds.fill(CANARY);
++                    calls += 4;
++                    assert_eq!(
++                        h3_env_spell_mask(env, actor, entry, spells.as_mut_ptr(), spells_n + 3),
++                        H3_OK
++                    );
++                    let s = bits(&spells, spells_n);
++                    assert_eq!(
++                        h3_env_target_mask(
++                            env,
++                            actor,
++                            entry,
++                            spell,
++                            targets.as_mut_ptr(),
++                            targets_n
++                        ),
++                        H3_OK
++                    );
++                    let t = bits(&targets, targets_n);
++                    assert_eq!(
++                        h3_env_second_mask(
++                            env,
++                            actor,
++                            entry,
++                            spell,
++                            target,
++                            seconds.as_mut_ptr(),
++                            targets_n
++                        ),
++                        H3_OK
++                    );
++                    let s2 = bits(&seconds, targets_n);
++                    let listed = actor == side
++                        && s.contains(&usize::from(spell))
++                        && t.contains(&usize::from(target))
++                        && s2.contains(&usize::from(second));
++                    // On a fork, so that an accepted arbitrary action does not steer the game.
++                    let fork = h3_env_fork(env);
++                    assert!(!fork.is_null());
++                    let a = H3Action {
++                        entry,
++                        spell,
++                        target,
++                        second,
++                    };
++                    let mut result = H3StepResult::default();
++                    let code = h3_env_step(fork, actor, a, &mut result);
++                    *codes.entry(code).or_default() += 1;
++                    assert_ne!(code, H3_ERR_PANIC, "{a:?} panicked (seed {seed})");
++                    assert!(
++                        [H3_OK, H3_ERR_INVALID_ACTION, H3_ERR_REJECTED].contains(&code),
++                        "{a:?}: code {code}"
++                    );
++                    assert_eq!(
++                        code == H3_OK,
++                        listed,
++                        "{a:?} for {actor} (to move {side}): code {code}, listed {listed} (seed {seed})"
++                    );
++                    if code != H3_OK {
++                        refused += 1;
++                        assert_eq!(
++                            h3_env_state_hash(fork),
++                            hash,
++                            "a refused step changed the state"
++                        );
++                    }
++                    h3_env_destroy(fork);
++                }
++                // A legal action, head by head.
++                mask.fill(CANARY);
++                assert_eq!(
++                    h3_env_legal_mask(env, side, mask.as_mut_ptr(), actions + 9),
++                    H3_OK
++                );
++                let entries = bits(&mask, actions);
++                assert!(!entries.is_empty());
++                // Casts when they are possible, else no leaving.
++                let hero = actions - 2;
++                let creature = actions - 1;
++                let entry = if mask[hero] == 1 && rng.below(100) < 50 {
++                    hero
++                } else if mask[creature] == 1 && rng.below(100) < 60 {
++                    creature
++                } else {
++                    let staying: Vec<usize> = entries
++                        .iter()
++                        .copied()
++                        .filter(|&e| e < actions - 4)
++                        .collect();
++                    if staying.is_empty() {
++                        entries[rng.below(entries.len() as u32) as usize]
++                    } else {
++                        staying[rng.below(staying.len() as u32) as usize]
++                    }
++                } as u32;
++                spells.fill(CANARY);
++                targets.fill(CANARY);
++                seconds.fill(CANARY);
++                assert_eq!(
++                    h3_env_spell_mask(env, side, entry, spells.as_mut_ptr(), spells_n),
++                    H3_OK
++                );
++                let s = bits(&spells, spells_n);
++                assert!(!s.is_empty(), "entry {entry}: no spell");
++                let spell = s[rng.below(s.len() as u32) as usize] as u16;
++                assert_eq!(
++                    h3_env_target_mask(env, side, entry, spell, targets.as_mut_ptr(), targets_n),
++                    H3_OK
++                );
++                let t = bits(&targets, targets_n);
++                assert!(!t.is_empty(), "entry {entry} spell {spell}: no target");
++                let target = t[rng.below(t.len() as u32) as usize] as u16;
++                assert_eq!(
++                    h3_env_second_mask(
++                        env,
++                        side,
++                        entry,
++                        spell,
++                        target,
++                        seconds.as_mut_ptr(),
++                        targets_n
++                    ),
++                    H3_OK
++                );
++                let s2 = bits(&seconds, targets_n);
++                assert!(
++                    !s2.is_empty(),
++                    "entry {entry} spell {spell} target {target}: no second"
++                );
++                let second = s2[rng.below(s2.len() as u32) as usize] as u16;
++                let a = H3Action {
++                    entry,
++                    spell,
++                    target,
++                    second,
++                };
++                assert_eq!(h3_env_state_hash(env), hash);
++                let mut result = H3StepResult::default();
++                let code = h3_env_step(env, side, a, &mut result);
++                assert_eq!(code, H3_OK, "the listed {a:?} was refused (seed {seed})");
++                legal_steps += 1;
++                casts += u64::from(entry as usize >= hero);
++                assert!(result.done <= 1 && result.truncated <= 1);
++                assert!((-1..=6).contains(&result.result));
++            }
++            h3_env_destroy(env);
++        }
++    }
++    println!(
++        "games {games}, legal steps {legal_steps} ({casts} casts), finished episodes {finished}, arbitrary steps refused {refused}, mask calls {calls}, codes {codes:?}"
++    );
++}
+diff --git a/crates/h3-pack/tests/fuzz_pack.rs b/crates/h3-pack/tests/fuzz_pack.rs
+new file mode 100644
+index 0000000..d08fad6
+--- /dev/null
++++ b/crates/h3-pack/tests/fuzz_pack.rs
+@@ -0,0 +1,524 @@
++//! THROWAWAY mutation fuzz of the harvested base pack for the E04b robustness review (T11b).
++//! Not committed.
++//!
++//! Each trial mutates one to three values of a spell, a creature, an obstacle type or the battle
++//! parameters in the pack's text (numbers to extremes, flags flipped, a string to another value
++//! of the same key, a line dropped or borrowed from another table) and compiles the three packs.
++//! A refusal is the right answer for an invalid pack; a pack the compiler accepts must play:
++//! battles that use what was mutated, with casts, every listed command accepted, no panic, no
++//! command that runs for ever (a watchdog thread).
++
++use std::collections::BTreeMap;
++use std::panic::{AssertUnwindSafe, catch_unwind};
++use std::sync::{Arc, Mutex, mpsc};
++use std::time::Duration;
++
++use h3_battle::{
++    BattleState, CastTargets, Command, LegalCommands, NoopSink, apply, cast_targets,
++    castable_spells, creature_cast_targets, generate_obstacles, legal_commands, observe,
++    second_targets,
++};
++use h3_content::{
++    CreatureFlag, CreatureTypeId, Formation, HeroTypeId, Ruleset, SpellCategory, SpellId, TerrainId,
++};
++use h3_contracts::{Army, ArmyStack, BattleHero, BattleSetup, BattleSide};
++use h3_kernel::{Rng, StreamId};
++
++static LAST_PANIC: Mutex<Option<String>> = Mutex::new(None);
++
++fn env_var(name: &str, default: u64) -> u64 {
++    std::env::var(name)
++        .ok()
++        .and_then(|v| v.parse().ok())
++        .unwrap_or(default)
++}
++
++fn pick(rng: &mut Rng, n: usize) -> usize {
++    rng.below(u32::try_from(n).unwrap()) as usize
++}
++
++const KINDS: &[&str] = &["spell", "creature", "obstacle", "battle", "spell_school"];
++const NUMBERS: &[&str] = &[
++    "0",
++    "1",
++    "2",
++    "3",
++    "4",
++    "7",
++    "16",
++    "17",
++    "100",
++    "101",
++    "254",
++    "255",
++    "256",
++    "1000",
++    "10000",
++    "10001",
++    "32767",
++    "65535",
++    "65536",
++    "4294967295",
++    "4294967296",
++    "-1",
++];
++
++/// One line of a table the fuzz may mutate.
++#[derive(Clone)]
++struct Line {
++    index: usize,
++    kind: &'static str,
++    id: String,
++    key: String,
++}
++
++struct Source {
++    lines: Vec<String>,
++    candidates: Vec<Line>,
++    /// The values seen per `kind.key`.
++    values: BTreeMap<String, Vec<String>>,
++}
++
++fn scan(text: &str) -> Source {
++    let lines: Vec<String> = text.lines().map(str::to_owned).collect();
++    let mut candidates = Vec::new();
++    let mut values: BTreeMap<String, Vec<String>> = BTreeMap::new();
++    let mut kind: Option<&'static str> = None;
++    let mut id = String::new();
++    for (index, line) in lines.iter().enumerate() {
++        let t = line.trim();
++        if t.starts_with('[') {
++            let name = t.trim_matches(|c| c == '[' || c == ']');
++            kind = KINDS.iter().copied().find(|k| *k == name);
++            id = String::new();
++            continue;
++        }
++        let Some(kind) = kind else { continue };
++        let Some((key, value)) = t.split_once(" = ") else {
++            continue;
++        };
++        if key == "id" {
++            id = value.split('"').nth(1).unwrap_or("").to_owned();
++            continue;
++        }
++        if key == "name" || key == "plural" {
++            continue;
++        }
++        let known = values.entry(format!("{kind}.{key}")).or_default();
++        if !known.iter().any(|v| v == value) {
++            known.push(value.to_owned());
++        }
++        candidates.push(Line {
++            index,
++            kind,
++            id: id.clone(),
++            key: key.to_owned(),
++        });
++    }
++    Source {
++        lines,
++        candidates,
++        values,
++    }
++}
++
++/// What a trial changed: the description and the spells and creatures it touched.
++struct Mutation {
++    text: String,
++    what: Vec<String>,
++    spells: Vec<String>,
++    creatures: Vec<String>,
++}
++
++fn mutate(src: &Source, rng: &mut Rng) -> Mutation {
++    let mut lines = src.lines.clone();
++    let mut what = Vec::new();
++    let (mut spells, mut creatures) = (Vec::new(), Vec::new());
++    for _ in 0..1 + rng.below(3) {
++        // Spells and creatures more often than the rest.
++        let line = loop {
++            let l = &src.candidates[pick(rng, src.candidates.len())];
++            if matches!(l.kind, "spell" | "creature") || rng.below(4) == 0 {
++                break l.clone();
++            }
++        };
++        let old = lines[line.index].clone();
++        let (key, value) = old.split_once(" = ").map_or(("", ""), |(k, v)| (k, v));
++        let new = match rng.below(10) {
++            // A number to an extreme.
++            0..=5 => {
++                let spans: Vec<(usize, usize)> = {
++                    let b = value.as_bytes();
++                    let mut out = Vec::new();
++                    let mut i = 0;
++                    let mut quoted = false;
++                    while i < b.len() {
++                        if b[i] == b'"' {
++                            quoted = !quoted;
++                        }
++                        if !quoted
++                            && b[i].is_ascii_digit()
++                            && (i == 0 || !b[i - 1].is_ascii_alphanumeric() && b[i - 1] != b'_')
++                        {
++                            let start = if i > 0 && b[i - 1] == b'-' { i - 1 } else { i };
++                            let mut j = i;
++                            while j < b.len() && b[j].is_ascii_digit() {
++                                j += 1;
++                            }
++                            out.push((start, j));
++                            i = j;
++                        } else {
++                            i += 1;
++                        }
++                    }
++                    out
++                };
++                if spans.is_empty() {
++                    continue;
++                }
++                let (a, b) = spans[pick(rng, spans.len())];
++                let n = NUMBERS[pick(rng, NUMBERS.len())];
++                format!("{key} = {}{n}{}", &value[..a], &value[b..])
++            }
++            // A flag flipped.
++            6 if value.contains("true") || value.contains("false") => {
++                let v = if value.contains("true") {
++                    value.replacen("true", "false", 1)
++                } else {
++                    value.replacen("false", "true", 1)
++                };
++                format!("{key} = {v}")
++            }
++            // Another value of the same key.
++            6 | 7 => {
++                let known = &src.values[&format!("{}.{}", line.kind, line.key)];
++                format!("{key} = {}", known[pick(rng, known.len())])
++            }
++            // The line dropped.
++            8 => String::new(),
++            // A line of another table of the kind added.
++            _ => {
++                let others: Vec<&Line> = src
++                    .candidates
++                    .iter()
++                    .filter(|l| l.kind == line.kind && l.key != line.key)
++                    .collect();
++                if others.is_empty() {
++                    continue;
++                }
++                let other = others[pick(rng, others.len())];
++                format!("{old}\n{}", src.lines[other.index])
++            }
++        };
++        if new == old {
++            continue;
++        }
++        what.push(format!(
++            "{} {:?}: `{}` -> `{}`",
++            line.kind,
++            line.id,
++            old.trim(),
++            new.replace('\n', " + ")
++        ));
++        lines[line.index] = new;
++        match line.kind {
++            "spell" => spells.push(format!("base:{}", line.id)),
++            "creature" => creatures.push(format!("base:{}", line.id)),
++            _ => {}
++        }
++    }
++    Mutation {
++        text: lines.join("\n"),
++        what,
++        spells,
++        creatures,
++    }
++}
++
++/// Plays battles on `r` that use the mutated spells and creatures; `Err` names the first failure.
++fn play(r: &Ruleset, m: &Mutation, seed: u64) -> Result<(u32, u32), String> {
++    let mut rng = Rng::from_seed(seed ^ 0xf00d);
++    let pool: Vec<CreatureTypeId> = (0..r.creature_count())
++        .filter_map(CreatureTypeId::from_index)
++        .filter(|&c| {
++            r.creature(c)
++                .is_some_and(|t| !t.flags.contains(CreatureFlag::WarMachine))
++        })
++        .collect();
++    if pool.is_empty() || r.hero_types().is_empty() {
++        return Ok((0, 0));
++    }
++    let mutated_spells: Vec<SpellId> = m.spells.iter().filter_map(|k| r.spell_by_key(k)).collect();
++    let mutated: Vec<CreatureTypeId> = m
++        .creatures
++        .iter()
++        .filter_map(|k| r.creature_by_key(k))
++        .collect();
++    let hero_spells: Vec<SpellId> = (0..r.spells().len())
++        .filter_map(SpellId::from_index)
++        .filter(|&s| {
++            r.spell(s)
++                .is_some_and(|t| t.category != SpellCategory::Ability)
++        })
++        .collect();
++    let slots = r.battle().army_slots.min(7);
++    let mut casts = (0, 0);
++    for game in 0..3u64 {
++        let mut hero = |rng: &mut Rng| {
++            let mut h = BattleHero::new(HeroTypeId::from_index(0).unwrap());
++            h.power = [1, 5, 20, 60][pick(rng, 4)];
++            h.magic.mana = 999;
++            h.magic.spell_book = Some(hero_spells.clone());
++            h.magic.masteries = (0..r.spells().len())
++                .filter_map(SpellId::from_index)
++                .filter_map(|s| {
++                    let level = u8::try_from(rng.below(4)).unwrap();
++                    (level > 0).then_some((s, level))
++                })
++                .collect();
++            h
++        };
++        let mut army = |rng: &mut Rng| -> (Army, Vec<CreatureTypeId>) {
++            let mut machines = Vec::new();
++            let mut stacks = Vec::new();
++            for slot in 0..=rng.below(u32::from(slots)) {
++                let creature = if !mutated.is_empty() && rng.below(2) == 0 {
++                    mutated[pick(rng, mutated.len())]
++                } else {
++                    pool[pick(rng, pool.len())]
++                };
++                if r.creature(creature)
++                    .is_some_and(|t| t.flags.contains(CreatureFlag::WarMachine))
++                {
++                    if !machines.contains(&creature) {
++                        machines.push(creature);
++                    }
++                    continue;
++                }
++                stacks.push(ArmyStack {
++                    slot: u8::try_from(slot).unwrap(),
++                    creature,
++                    count: [1, 7, 60, 2000, 100_000][pick(rng, 5)],
++                });
++            }
++            if stacks.is_empty() {
++                stacks.push(ArmyStack {
++                    slot: 0,
++                    creature: pool[pick(rng, pool.len())],
++                    count: 10,
++                });
++            }
++            (Army { stacks }, machines)
++        };
++        let (attacker, am) = army(&mut rng);
++        let (defender, dm) = army(&mut rng);
++        let terrain = (rng.below(3) != 0 && !r.terrains().is_empty())
++            .then(|| TerrainId::from_index(pick(&mut rng, r.terrains().len())))
++            .flatten();
++        let obstacles = terrain.map_or_else(Vec::new, |t| {
++            generate_obstacles(r, t, &mut Rng::for_stream(seed ^ game, StreamId::OBSTACLES))
++        });
++        let setup = BattleSetup {
++            attacker,
++            defender,
++            obstacles,
++            heroes: [
++                Some(hero(&mut rng)),
++                (rng.below(4) != 0).then(|| hero(&mut rng)),
++            ],
++            terrain,
++            war_machines: [am, dm],
++            formations: [Formation::Loose, Formation::Tight],
++            funds: [10_000, 0],
++        };
++        // A refused setup is an answer (no room on a mutated field, a generated battlefield the
++        // battle refuses: F-robust-5).
++        let Ok(mut state) = BattleState::new(r, &setup, seed ^ game) else {
++            continue;
++        };
++        let mut legal = LegalCommands::new();
++        let mut targets = CastTargets::new();
++        let mut seconds = CastTargets::new();
++        for step in 0..150 {
++            let Some(side) = state.side_to_act() else {
++                break;
++            };
++            let spells: Vec<SpellId> = castable_spells(&state, r, side).iter().collect();
++            creature_cast_targets(&state, r, side, &mut targets);
++            let roll = rng.below(100);
++            let cmd = if !spells.is_empty() && roll < 55 {
++                let wanted: Vec<SpellId> = spells
++                    .iter()
++                    .copied()
++                    .filter(|s| mutated_spells.contains(s))
++                    .collect();
++                let spell = if !wanted.is_empty() && rng.below(4) != 0 {
++                    wanted[pick(&mut rng, wanted.len())]
++                } else {
++                    spells[pick(&mut rng, spells.len())]
++                };
++                cast_targets(&state, r, side, spell, &mut targets);
++                if targets.is_empty() {
++                    // F-robust-2 on a generated battlefield: known.
++                    let key = r.spell(spell).map_or("?", |s| s.key.as_str());
++                    if key == "base:remove_obstacle" {
++                        break;
++                    }
++                    return Err(format!("step {step}: castable {key} without a target"));
++                }
++                let target = targets.as_slice()[pick(&mut rng, targets.len())];
++                second_targets(&state, r, side, (spell, target), &mut seconds);
++                if seconds.is_empty() {
++                    return Err(format!(
++                        "step {step}: {spell:?} at {target:?} without a second target"
++                    ));
++                }
++                casts.0 += 1;
++                Command::Cast {
++                    spell,
++                    target,
++                    second: seconds.as_slice()[pick(&mut rng, seconds.len())],
++                }
++            } else if !targets.is_empty() && roll < 85 {
++                casts.1 += 1;
++                Command::CreatureCast {
++                    target: targets.as_slice()[pick(&mut rng, targets.len())],
++                }
++            } else {
++                legal_commands(&state, r, side, &mut legal);
++                let staying: Vec<Command> = legal
++                    .iter()
++                    .copied()
++                    .filter(|c| !c.leaves_battle())
++                    .collect();
++                if staying.is_empty() {
++                    return Err(format!("step {step}: no legal command"));
++                }
++                let strikes: Vec<Command> = staying
++                    .iter()
++                    .copied()
++                    .filter(|c| matches!(c, Command::Attack { .. } | Command::Shoot { .. }))
++                    .collect();
++                if !strikes.is_empty() && rng.below(2) == 0 {
++                    strikes[pick(&mut rng, strikes.len())]
++                } else {
++                    staying[pick(&mut rng, staying.len())]
++                }
++            };
++            apply(&mut state, r, side, cmd, &mut NoopSink)
++                .map_err(|e| format!("step {step}: the listed {cmd:?} is rejected: {e:?}"))?;
++        }
++        for side in BattleSide::BOTH {
++            let _ = observe(&state, r, side);
++        }
++        if state.is_over() != state.outcome().is_some() {
++            return Err("over without an outcome".into());
++        }
++    }
++    Ok(casts)
++}
++
++/// `FUZZ_TRIALS`, `FUZZ_SEED`. Exits with code 3 at the first trial that does not return within
++/// 20 seconds (its mutation is printed first).
++#[test]
++#[ignore = "throwaway fuzz"]
++fn fuzz_pack() {
++    let trials = env_var("FUZZ_TRIALS", 300);
++    let first = env_var("FUZZ_SEED", 1);
++    let src = Arc::new(scan(h3_pack::BASE_PACK));
++    println!(
++        "{} lines, {} candidates",
++        src.lines.len(),
++        src.candidates.len()
++    );
++    std::panic::set_hook(Box::new(|info| {
++        *LAST_PANIC.lock().unwrap() = Some(format!("{info}"));
++    }));
++    let (mut compiled, mut refused, mut battles_ok) = (0u64, 0u64, 0u64);
++    let mut casts = (0u64, 0u64);
++    let mut refusals: BTreeMap<String, u64> = BTreeMap::new();
++    let mut failures: BTreeMap<String, (u64, String)> = BTreeMap::new();
++    for seed in first..first + trials {
++        let (done, wait) = mpsc::channel();
++        let src2 = src.clone();
++        std::thread::spawn(move || {
++            let mut rng = Rng::from_seed(seed);
++            let m = mutate(&src2, &mut rng);
++            let what = m.what.join("; ");
++            let _ = done.send((what.clone(), None));
++            let profile = if seed % 2 == 0 {
++                "base:faithful"
++            } else {
++                "base:strict-fixed"
++            };
++            let outcome = catch_unwind(AssertUnwindSafe(|| {
++                match h3_pack::compile(&[h3_pack::SOD_PACK, h3_pack::AB_PACK, &m.text], profile) {
++                    Err(e) => Err(format!("{e:?}")),
++                    Ok(r) => Ok(play(&r, &m, seed)),
++                }
++            }));
++            let result = match outcome {
++                Err(_) => {
++                    let msg = LAST_PANIC.lock().unwrap().take().unwrap_or_default();
++                    Some(Err(format!("PANIC {msg}")))
++                }
++                Ok(Err(e)) => Some(Ok(Err(e))),
++                Ok(Ok(Err(e))) => Some(Err(e)),
++                Ok(Ok(Ok(c))) => Some(Ok(Ok(c))),
++            };
++            let _ = done.send((what, result));
++        });
++        let Ok((what, _)) = wait.recv() else {
++            let msg = LAST_PANIC.lock().unwrap().take().unwrap_or_default();
++            let entry = failures
++                .entry(format!("HARNESS {msg}"))
++                .or_insert((0, format!("seed {seed}: the harness panicked: {msg}")));
++            entry.0 += 1;
++            continue;
++        };
++        match wait.recv_timeout(Duration::from_secs(20)) {
++            Err(_) => {
++                println!("HANG seed {seed}: {what}");
++                std::process::exit(3);
++            }
++            Ok((_, Some(Ok(Err(e))))) => {
++                refused += 1;
++                let name: String = e.chars().filter(|c| !c.is_ascii_digit()).take(70).collect();
++                *refusals.entry(name).or_default() += 1;
++            }
++            Ok((_, Some(Ok(Ok(c))))) => {
++                compiled += 1;
++                battles_ok += 1;
++                casts = (casts.0 + u64::from(c.0), casts.1 + u64::from(c.1));
++            }
++            Ok((what, Some(Err(e)))) => {
++                compiled += 1;
++                let key: String = e
++                    .chars()
++                    .filter(|c| !c.is_ascii_digit())
++                    .take(110)
++                    .collect();
++                let entry = failures
++                    .entry(key)
++                    .or_insert((0, format!("seed {seed}: {e}\n      mutation: {what}")));
++                entry.0 += 1;
++            }
++            Ok((_, None)) => unreachable!(),
++        }
++    }
++    let _ = std::panic::take_hook();
++    println!(
++        "trials {trials}: refused {refused}, compiled {compiled} (played without a failure {battles_ok}); casts {casts:?}"
++    );
++    let mut top: Vec<_> = refusals.iter().collect();
++    top.sort_by(|a, b| b.1.cmp(a.1).then(a.0.cmp(b.0)));
++    println!(
++        "refusals ({} kinds), the most frequent: {:?}",
++        top.len(),
++        &top[..top.len().min(12)]
++    );
++    println!("{} failure groups", failures.len());
++    for (n, first) in failures.values() {
++        println!("  x{n}: {first}");
++    }
++}
+diff --git a/crates/h3-sim/tests/stress_harvested.rs b/crates/h3-sim/tests/stress_harvested.rs
+new file mode 100644
+index 0000000..e9ecc48
+--- /dev/null
++++ b/crates/h3-sim/tests/stress_harvested.rs
+@@ -0,0 +1,1247 @@
++//! THROWAWAY stress harness of the E04b robustness review (T11b). Not committed.
++//!
++//! Random battles on the harvested packs (`base`, `ab`, `sod`) in both quirk profiles, played
++//! through the sim's action encoding: the legal mask and the head masks choose every action,
++//! which must decode, encode back, validate and step; the flat observation must encode; the
++//! state's invariants must hold. At sampled steps every entry of the encoding (and some beyond)
++//! and every cast of the head masks is tried on a fork.
++
++use std::collections::BTreeMap;
++use std::num::NonZeroU32;
++use std::panic::{AssertUnwindSafe, catch_unwind};
++use std::sync::{Arc, Mutex};
++use std::time::Instant;
++
++use h3_battle::{
++    BattleState, Field, HexSet, LegalCommands, NO_CORPSE, StackId, StackTraits, Viewer, observe_as,
++    validate,
++};
++use h3_content::{
++    Ability, CLONE_ON_ITS_ORIGINAL, CreatureFlag, CreatureTypeId, EARLY_MASS_VERSION, Formation,
++    HeroTypeId, ObstacleKind, Ruleset, SchoolId, SpellCategory, SpellEffect, SpellId, SpellScope,
++    SpellTarget,
++};
++use h3_contracts::{
++    Army, ArmyStack, BallistaControl, BattleEffect, BattleHero, BattleSetup, BattleSide,
++    DamageBonuses, EagleEye, Rate, TentControl,
++};
++use h3_kernel::{Rng, StreamId};
++use h3_sim::action::{self, CREATURE_CAST, HERO_CAST, RETREAT, SURRENDER};
++use h3_sim::{ACTION_COUNT, Action, BattleEnv, OBSERVATION_LEN, SPELL_COUNT, TARGET_COUNT};
++
++static LAST_PANIC: Mutex<Option<String>> = Mutex::new(None);
++
++fn env_var(name: &str, default: u64) -> u64 {
++    std::env::var(name)
++        .ok()
++        .and_then(|v| v.parse().ok())
++        .unwrap_or(default)
++}
++
++fn pick<T: Copy>(rng: &mut Rng, items: &[T]) -> T {
++    items[rng.below(items.len() as u32) as usize]
++}
++
++fn chance(rng: &mut Rng, percent: u32) -> bool {
++    rng.below(100) < percent
++}
++
++fn all_spells(r: &Ruleset) -> Vec<SpellId> {
++    (0..r.spells().len())
++        .filter_map(SpellId::from_index)
++        .collect()
++}
++
++fn army_pool(r: &Ruleset) -> Vec<CreatureTypeId> {
++    (0..r.creature_count())
++        .filter_map(CreatureTypeId::from_index)
++        .filter(|&c| {
++            r.creature(c)
++                .is_some_and(|t| !t.flags.contains(CreatureFlag::WarMachine))
++        })
++        .collect()
++}
++
++/// The creatures with magic of their own.
++fn magic_pool(r: &Ruleset) -> Vec<CreatureTypeId> {
++    army_pool(r)
++        .into_iter()
++        .filter(|&c| {
++            r.abilities(c).iter().any(|a| {
++                matches!(
++                    a,
++                    Ability::SpellCaster { .. }
++                        | Ability::RandomSpellCaster { .. }
++                        | Ability::HelpfulSpellCaster { .. }
++                        | Ability::PeriodicSpellCaster { .. }
++                        | Ability::StackRaiser { .. }
++                        | Ability::CorpseRaiser { .. }
++                        | Ability::SpellAfterStrike { .. }
++                        | Ability::SpellDamageAfterStrike { .. }
++                        | Ability::DamageAfterStrike { .. }
++                        | Ability::InnateSpell { .. }
++                        | Ability::Rebirth { .. }
++                        | Ability::Fear { .. }
++                        | Ability::ManaDrain { .. }
++                        | Ability::ManaChannel { .. }
++                        | Ability::SpellCost { .. }
++                        | Ability::MagicResistance { .. }
++                        | Ability::MagicResistanceAura { .. }
++                        | Ability::SpellLevelImmunity { .. }
++                        | Ability::SpellDamageReduction { .. }
++                        | Ability::SchoolImmunity { .. }
++                        | Ability::SpellImmunity { .. }
++                        | Ability::SpellVulnerability { .. }
++                        | Ability::LifeDrain { .. }
++                        | Ability::DeathStare { .. }
++                )
++            })
++        })
++        .collect()
++}
++
++/// The war machines by kind: shooters, ammunition supplies, first aid.
++fn machines(r: &Ruleset) -> [Vec<CreatureTypeId>; 3] {
++    let mut out = [Vec::new(), Vec::new(), Vec::new()];
++    for c in (0..r.creature_count()).filter_map(CreatureTypeId::from_index) {
++        let t = r.creature(c).unwrap();
++        if !t.flags.contains(CreatureFlag::WarMachine) {
++            continue;
++        }
++        let a = r.abilities(c);
++        if t.flags.contains(CreatureFlag::Shooter) {
++            out[0].push(c);
++        } else if a.iter().any(|a| matches!(a, Ability::AmmoSupply)) {
++            out[1].push(c);
++        } else if a.iter().any(|a| matches!(a, Ability::FirstAid { .. })) {
++            out[2].push(c);
++        }
++    }
++    out
++}
++
++fn bp(rng: &mut Rng, tier: u8) -> u32 {
++    if tier == 0 {
++        pick(rng, &[0, 500, 1000, 1500, 2500, 5000, 10_000, 20_000])
++    } else {
++        match rng.below(9) {
++            0 => 0,
++            1 => 1,
++            2 => 500,
++            3 => 10_000,
++            4 => 65_535,
++            5 => 1_000_000,
++            6 => u32::MAX,
++            7 => rng.next_u32(),
++            _ => rng.below(100_000),
++        }
++    }
++}
++
++fn rate(rng: &mut Rng, tier: u8) -> Rate {
++    let single = if tier < 2 || chance(rng, 40) {
++        None
++    } else {
++        NonZeroU32::new(match rng.below(3) {
++            0 => rng.next_u32(),
++            1 => rng.next_u32() & 0x7fff_ffff,
++            _ => 0x3b80_0000 + rng.below(0x0c80_0000),
++        })
++    };
++    Rate {
++        bp: bp(rng, tier),
++        single,
++    }
++}
++
++/// A `SpellDamage` rate of the scopes that multiply: small with `STRESS_SAFE`, so that the known
++/// overflow of the spell damage (F-robust-3) does not end the battles early.
++fn damage_rate(rng: &mut Rng, tier: u8) -> Rate {
++    if env_var("STRESS_SAFE", 0) != 0 {
++        Rate::bp(pick(rng, &[0, 500, 5000, 20_000, 65_535]))
++    } else {
++        rate(rng, tier)
++    }
++}
++
++/// The `(spell, mastery)` pairs a hero may open with (as `h3_battle`'s check has them).
++fn openings(r: &Ruleset) -> Vec<(SpellId, u8)> {
++    let early = r.quirks().is_enabled(EARLY_MASS_VERSION);
++    let mut out = Vec::new();
++    for id in all_spells(r) {
++        let s = r.spell(id).unwrap();
++        for mastery in 0..=3u8 {
++            let kinds = !s.magic.effects.is_empty()
++                && s.magic.effects.iter().all(|e| {
++                    matches!(
++                        e,
++                        SpellEffect::Timed(_) | SpellEffect::Dispel | SpellEffect::Heal
++                    )
++                });
++            if s.category != SpellCategory::Ability
++                && kinds
++                && s.magic.target_at(mastery, early) == SpellTarget::None
++            {
++                out.push((id, mastery));
++            }
++        }
++    }
++    out
++}
++
++fn effects(r: &Ruleset, rng: &mut Rng, tier: u8) -> Vec<BattleEffect> {
++    let spells = all_spells(r);
++    let opening = openings(r);
++    let n = rng.below(if tier == 0 { 8 } else { 40 });
++    let mut out = Vec::new();
++    let mut own: Vec<SpellId> = Vec::new();
++    let mut opened = 0;
++    let mut durations = 0;
++    for _ in 0..n {
++        let mut own_spell = |rng: &mut Rng| {
++            if own.len() < h3_battle::MAX_SPELL_BONUSES {
++                let s = pick(rng, &spells);
++                if !own.contains(&s) {
++                    own.push(s);
++                }
++                s
++            } else {
++                pick(rng, &own)
++            }
++        };
++        let level = |rng: &mut Rng| -> u8 {
++            if tier == 0 {
++                u8::try_from(rng.below(6)).unwrap()
++            } else {
++                pick(rng, &[0, 1, 2, 3, 4, 5, 6, 100, 255])
++            }
++        };
++        let e = match rng.below(18) {
++            0 | 1 => BattleEffect::SpellDamage {
++                scope: SpellScope::All,
++                rate: damage_rate(rng, tier),
++            },
++            2 | 3 => BattleEffect::SpellDamage {
++                scope: SpellScope::School(
++                    SchoolId::from_index(rng.below(r.spell_schools().len() as u32) as usize)
++                        .unwrap(),
++                ),
++                rate: damage_rate(rng, tier),
++            },
++            4 => BattleEffect::SpellDamage {
++                scope: SpellScope::Spell(own_spell(rng)),
++                rate: rate(rng, tier),
++            },
++            5 | 6 => BattleEffect::SpellSpecialty {
++                spell: own_spell(rng),
++                bp_per_level: if tier == 0 {
++                    300
++                } else {
++                    pick(rng, &[0, 1, 300, 500, 10_000, u16::MAX])
++                },
++                level: if tier == 0 {
++                    u8::try_from(1 + rng.below(40)).unwrap()
++                } else {
++                    pick(rng, &[0, 1, 5, 30, 74, 255])
++                },
++            },
++            7 | 8 => BattleEffect::MagicResistance {
++                rate: if tier == 0 {
++                    Rate::bp(pick(rng, &[500, 1000, 2000, 3000]))
++                } else {
++                    rate(rng, tier)
++                },
++            },
++            9 => {
++                if tier == 0 && durations > 0 {
++                    continue;
++                }
++                durations += 1;
++                BattleEffect::SpellDuration {
++                    rounds: if tier == 0 {
++                        u8::try_from(1 + rng.below(6)).unwrap()
++                    } else {
++                        pick(rng, &[0, 1, 3, 56, 255])
++                    },
++                }
++            }
++            10 => {
++                if !chance(rng, 4) {
++                    continue;
++                }
++                BattleEffect::NoCasting
++            }
++            11 => {
++                if !chance(rng, 25) {
++                    continue;
++                }
++                BattleEffect::SpellLevelLimit {
++                    max_level: if tier == 0 { 2 } else { level(rng) },
++                }
++            }
++            12 => BattleEffect::SpellImmunity {
++                spell: pick(rng, &spells),
++            },
++            13 => {
++                if !chance(rng, 30) {
++                    continue;
++                }
++                BattleEffect::SpellLevelImmunity {
++                    max_level: if tier == 0 { 4 } else { level(rng) },
++                }
++            }
++            14 => BattleEffect::MindImmunity,
++            15 => BattleEffect::NegateImmunities,
++            _ => {
++                if opened >= h3_battle::MAX_OPENING_SPELLS || opening.is_empty() {
++                    continue;
++                }
++                opened += 1;
++                let (spell, mastery) = pick(rng, &opening);
++                BattleEffect::OpeningSpell {
++                    spell,
++                    mastery,
++                    power: if tier == 0 {
++                        u16::try_from(1 + rng.below(20)).unwrap()
++                    } else {
++                        pick(rng, &[1, 2, 8, 255, 256, 30_000, u16::MAX])
++                    },
++                }
++            }
++        };
++        out.push(e);
++    }
++    out
++}
++
++fn caster(r: &Ruleset, rng: &mut Rng, tier: u8) -> BattleHero {
++    let mut h = BattleHero::new(
++        HeroTypeId::from_index(rng.below(r.hero_types().len() as u32) as usize).unwrap(),
++    );
++    let primary = |rng: &mut Rng| -> u8 {
++        if tier == 0 {
++            u8::try_from(rng.below(31)).unwrap()
++        } else {
++            pick(rng, &[0, 1, 2, 7, 30, 99, 150, 255])
++        }
++    };
++    h.attack = primary(rng);
++    h.defense = primary(rng);
++    h.power = primary(rng);
++    h.knowledge = primary(rng);
++    h.tactics = if chance(rng, 10) {
++        u8::try_from(rng.below(4)).unwrap()
++    } else {
++        0
++    };
++    h.damage = DamageBonuses {
++        ranged: rate(rng, tier),
++        melee: rate(rng, tier),
++        reduction: Rate::bp(pick(rng, &[0, 500, 1500, 10_000])),
++    };
++    if chance(rng, 40) {
++        h.war_machines.ballista = Some(BallistaControl {
++            shots: u8::try_from(1 + rng.below(2)).unwrap(),
++            double_damage_chance_bp: pick(rng, &[0, 5000, 10_000]),
++        });
++    }
++    if chance(rng, 40) {
++        h.war_machines.tent = Some(TentControl {
++            heal_bonus: rate(rng, tier),
++        });
++    }
++    h.surrender_discount_bp = pick(rng, &[0, 2000, 10_000]);
++    let spells = all_spells(r);
++    let hero_spells: Vec<SpellId> = spells
++        .iter()
++        .copied()
++        .filter(|&s| r.spell(s).unwrap().category != SpellCategory::Ability)
++        .collect();
++    if chance(rng, 96) {
++        let keep = if chance(rng, 80) { 100 } else { 60 };
++        h.magic.spell_book = Some(
++            hero_spells
++                .iter()
++                .copied()
++                .filter(|_| chance(rng, keep))
++                .collect(),
++        );
++    }
++    let style = rng.below(6);
++    h.magic.masteries = spells
++        .iter()
++        .filter_map(|&s| {
++            let m = match style {
++                0 => 0,
++                1 => 1,
++                2 => 2,
++                3 => 3,
++                _ => u8::try_from(rng.below(4)).unwrap(),
++            };
++            (m > 0).then_some((s, m))
++        })
++        .collect();
++    h.magic.mana = if tier == 0 {
++        pick(rng, &[0, 10, 40, 150, 500, 999])
++    } else {
++        pick(rng, &[0, 3, 20, 200, 5000, u16::MAX])
++    };
++    h.magic.max_mana = pick(rng, &[0, 10, 500, u16::MAX]);
++    if chance(rng, 30) {
++        h.magic.eagle_eye = Some(EagleEye {
++            chance: Rate::bp(pick(rng, &[0, 4000, 10_000])),
++            spells: hero_spells
++                .iter()
++                .copied()
++                .filter(|_| chance(rng, 50))
++                .collect(),
++        });
++    }
++    h.effects = effects(r, rng, tier);
++    h
++}
++
++fn count(rng: &mut Rng, tier: u8) -> u32 {
++    if tier == 0 {
++        match rng.below(10) {
++            0..=4 => 1 + rng.below(30),
++            5..=7 => 1 + rng.below(500),
++            _ => 1 + rng.below(20_000),
++        }
++    } else {
++        match rng.below(10) {
++            0..=3 => 1 + rng.below(100),
++            4..=5 => 60_000 + rng.below(140_000),
++            6..=7 => 1 + rng.below(u32::MAX),
++            8 => u32::MAX,
++            _ => 1 + rng.below(3),
++        }
++    }
++}
++
++struct Pools {
++    army: Vec<CreatureTypeId>,
++    magic: Vec<CreatureTypeId>,
++    machines: [Vec<CreatureTypeId>; 3],
++}
++
++fn army(rng: &mut Rng, tier: u8, p: &Pools) -> Army {
++    let n = 1 + rng.below(7);
++    let mut slots: Vec<u8> = (0..7).collect();
++    let mut stacks = Vec::new();
++    for _ in 0..n {
++        let slot = slots.remove(rng.below(slots.len() as u32) as usize);
++        let creature = if chance(rng, 50) {
++            pick(rng, &p.magic)
++        } else {
++            pick(rng, &p.army)
++        };
++        stacks.push(ArmyStack {
++            slot,
++            creature,
++            count: count(rng, tier),
++        });
++    }
++    Army { stacks }
++}
++
++fn setup(r: &Ruleset, rng: &mut Rng, tier: u8, p: &Pools) -> BattleSetup {
++    let war = |rng: &mut Rng| -> Vec<CreatureTypeId> {
++        p.machines
++            .iter()
++            .filter(|kind| !kind.is_empty())
++            .filter_map(|kind| chance(rng, 35).then(|| pick(rng, kind)))
++            .collect()
++    };
++    let terrains = r.terrains().len() as u32;
++    BattleSetup {
++        attacker: army(rng, tier, p),
++        defender: army(rng, tier, p),
++        obstacles: vec![],
++        heroes: [
++            chance(rng, 92).then(|| caster(r, rng, tier)),
++            chance(rng, 85).then(|| caster(r, rng, tier)),
++        ],
++        terrain: chance(rng, 70)
++            .then(|| h3_content::TerrainId::from_index(rng.below(terrains) as usize))
++            .flatten(),
++        war_machines: [war(rng), war(rng)],
++        formations: [
++            pick(rng, &[Formation::Loose, Formation::Tight]),
++            pick(rng, &[Formation::Loose, Formation::Tight]),
++        ],
++        funds: [rng.next_u32(), pick(rng, &[0, 1000, u32::MAX])],
++    }
++}
++
++macro_rules! ensure {
++    ($cond:expr, $($arg:tt)*) => {
++        if !$cond {
++            return Err(format!($($arg)*));
++        }
++    };
++}
++
++fn check_state(state: &BattleState, r: &Ruleset, initial: [usize; 2]) -> Result<(), String> {
++    let field = Field::new(r.battle().field);
++    let stacks = state.stacks();
++    let effects = state.effects();
++    for w in effects.windows(2) {
++        ensure!(
++            (w[0].stack, w[0].spell) < (w[1].stack, w[1].spell),
++            "effects not sorted or not unique: {:?} {:?}",
++            w[0],
++            w[1]
++        );
++    }
++    for e in effects {
++        ensure!(e.stack.index() < stacks.len(), "effect on no stack: {e:?}");
++        ensure!(
++            stacks[e.stack.index()].is_alive(),
++            "effect on a dead stack: {e:?}"
++        );
++        ensure!(e.rounds != Some(0), "effect with 0 rounds: {e:?}");
++        ensure!(
++            r.spell(e.spell).is_some_and(|s| s.magic.is_timed()),
++            "effect of a spell that is not timed: {e:?}"
++        );
++    }
++    ensure!(
++        state.is_over() == state.active().is_none(),
++        "over {} but active {:?}",
++        state.is_over(),
++        state.active()
++    );
++    if let Some(a) = state.active() {
++        ensure!(
++            stacks.get(a.index()).is_some_and(|s| s.is_alive()),
++            "the active stack {a:?} is dead or missing"
++        );
++    }
++    let walls = state
++        .spell_obstacles()
++        .iter()
++        .filter(|o| o.kind == ObstacleKind::Wall)
++        .fold(HexSet::new(), |set, o| set.union(o.hexes));
++    let mut taken = HexSet::new();
++    let turned = r.quirks().is_enabled(CLONE_ON_ITS_ORIGINAL);
++    let good = i8::try_from(r.battle().good_morale.levels()).unwrap();
++    let bad = i8::try_from(r.battle().bad_morale.levels()).unwrap();
++    let lucky = i8::try_from(r.battle().good_luck.levels()).unwrap();
++    for (i, s) in stacks.iter().enumerate() {
++        let id = StackId(u8::try_from(i).unwrap());
++        ensure!(
++            s.max_hp >= 1,
++            "stack {i} has no hit points per creature: {s:?}"
++        );
++        ensure!(
++            s.count <= s.base_count,
++            "stack {i}: count {} above its base {}",
++            s.count,
++            s.base_count
++        );
++        ensure!(
++            state.temporary(id) <= s.base_count,
++            "stack {i}: temporary above its base"
++        );
++        if s.is_alive() {
++            ensure!(
++                (1..=s.max_hp).contains(&s.top_hp),
++                "stack {i}: top hp {} of {}",
++                s.top_hp,
++                s.max_hp
++            );
++            let Some(fp) = field.footprint(s.hex, s.is_two_hex(), s.side) else {
++                return Err(format!("stack {i} is off the field: {s:?}"));
++            };
++            for h in fp.hexes() {
++                ensure!(!taken.contains(h), "two living stacks on {h:?} (stack {i})");
++                taken.insert(h);
++                ensure!(
++                    !state.obstacles().contains(h),
++                    "stack {i} stands on a natural obstacle at {h:?}"
++                );
++                ensure!(!walls.contains(h), "stack {i} stands in a wall at {h:?}");
++                ensure!(
++                    field.is_standable(h) || s.has(StackTraits::WAR_MACHINE),
++                    "stack {i} stands on the side column hex {h:?}"
++                );
++            }
++            ensure!(state.corpse(id) == 0, "the living stack {i} has a corpse");
++        } else {
++            ensure!(s.top_hp == 0, "the dead stack {i} has top hp {}", s.top_hp);
++            ensure!(
++                !s.is_created() || state.corpse(id) == NO_CORPSE,
++                "the dead created stack {i} left a corpse"
++            );
++            ensure!(
++                state.is_over() || state.corpse(id) != 0,
++                "the dead stack {i} has no corpse mark after the command"
++            );
++        }
++        let clone = s.is_alive() && s.has(StackTraits::CLONE);
++        if turned {
++            ensure!(
++                !clone || state.clone_rounds(id) > 0,
++                "clone {i} without rounds"
++            );
++        } else {
++            ensure!(
++                clone == (state.clone_rounds(id) > 0),
++                "stack {i}: clone {clone} but rounds {}",
++                state.clone_rounds(id)
++            );
++        }
++        ensure!(
++            (-bad..=good).contains(&s.morale) && (0..=lucky).contains(&s.luck),
++            "stack {i}: morale {} luck {}",
++            s.morale,
++            s.luck
++        );
++    }
++    for side in BattleSide::BOTH {
++        let n = stacks.iter().filter(|s| s.side == side).count();
++        let limit = usize::from(r.battle().side_stack_limit).max(initial[side.index()]);
++        ensure!(n <= limit, "{side:?} has {n} stacks, limit {limit}");
++    }
++    let obs = observe_as(state, r, Viewer::Spectator);
++    for (i, link) in obs.clone_links.iter().enumerate() {
++        if let Some(l) = link {
++            ensure!(
++                obs.clone_links.get(l.index()).copied().flatten()
++                    == Some(StackId(u8::try_from(i).unwrap())),
++                "stack {i}: its link {l:?} does not link back"
++            );
++        }
++    }
++    for (i, &binders) in obs.binders.iter().enumerate() {
++        if binders == 0 {
++            continue;
++        }
++        ensure!(
++            i < stacks.len() && stacks[i].is_alive(),
++            "binders on the dead or missing stack {i}"
++        );
++        for b in 0..64usize {
++            if binders & (1 << b) != 0 {
++                ensure!(
++                    stacks.get(b).is_some_and(|s| s.is_alive()),
++                    "stack {i} is bound by the dead or missing stack {b}"
++                );
++            }
++        }
++    }
++    Ok(())
++}
++
++#[derive(Debug, Default, Clone)]
++struct Stats {
++    battles: u64,
++    steps: u64,
++    finished: u64,
++    unfinished: u64,
++    refused: u64,
++    hero_casts: u64,
++    creature_casts: u64,
++    exhaustive: u64,
++    probed: u64,
++    max_micros: u128,
++    max_micros_at: (u64, u64),
++    max_round: u16,
++    max_effects: usize,
++    max_obstacles: usize,
++    casts: BTreeMap<String, u64>,
++    creature_spells: BTreeMap<String, u64>,
++}
++
++#[derive(Debug, Clone, Copy)]
++struct Opts {
++    steps: u64,
++    hero_cast: u32,
++    creature_cast: u32,
++    exhaustive_every: u32,
++    trace: bool,
++}
++
++fn set_bits(mask: &[bool]) -> Vec<usize> {
++    mask.iter()
++        .enumerate()
++        .filter(|(_, m)| **m)
++        .map(|(i, _)| i)
++        .collect()
++}
++
++/// Every action the masks allow now, the non-cast entries and the casts head by head.
++fn listed(env: &BattleEnv, side: BattleSide) -> Result<Vec<Action>, String> {
++    let mut legal = LegalCommands::new();
++    let mut mask = [false; ACTION_COUNT];
++    let mut spells = [false; SPELL_COUNT];
++    let mut targets = [false; TARGET_COUNT];
++    let mut seconds = [false; TARGET_COUNT];
++    env.legal_mask(side, &mut legal, &mut mask);
++    let mut out = Vec::new();
++    for entry in set_bits(&mask) {
++        env.spell_mask(side, entry, &mut legal, &mut spells);
++        let s = set_bits(&spells);
++        ensure!(!s.is_empty(), "entry {entry}: no spell head");
++        for spell in s {
++            let spell = u16::try_from(spell).unwrap();
++            env.target_mask(side, (entry, spell), &mut legal, &mut targets);
++            let t = set_bits(&targets);
++            ensure!(!t.is_empty(), "entry {entry} spell {spell}: no target head");
++            for target in t {
++                let target = u16::try_from(target).unwrap();
++                env.second_mask(side, (entry, spell, target), &mut legal, &mut seconds);
++                let s2 = set_bits(&seconds);
++                ensure!(
++                    !s2.is_empty(),
++                    "entry {entry} spell {spell} target {target}: no second head"
++                );
++                for second in s2 {
++                    out.push(Action {
++                        entry: u32::try_from(entry).unwrap(),
++                        spell,
++                        target,
++                        second: u16::try_from(second).unwrap(),
++                    });
++                }
++            }
++        }
++    }
++    Ok(out)
++}
++
++fn play_one(
++    r: &Arc<Ruleset>,
++    setup: &Arc<BattleSetup>,
++    seed: u64,
++    opts: &Opts,
++    stats: &mut Stats,
++) -> Result<(), String> {
++    // Half the battles on a terrain get its random obstacles (BAT-GEO-004).
++    let built = if seed % 2 == 0 {
++        BattleEnv::with_random_obstacles(r.clone(), setup.clone(), seed, 0)
++    } else {
++        BattleEnv::new(r.clone(), setup.clone(), seed, 0)
++    };
++    let mut env = match built {
++        Ok(e) => e,
++        Err(e) => {
++            stats.refused += 1;
++            return Err(format!("setup refused: {e:?}"));
++        }
++    };
++    let initial = BattleSide::BOTH.map(|side| {
++        env.state()
++            .stacks()
++            .iter()
++            .filter(|s| s.side == side)
++            .count()
++    });
++    check_state(env.state(), r, initial).map_err(|e| format!("at the start: {e}"))?;
++    let mut agent = Rng::for_stream(seed, StreamId::AGENT);
++    let mut legal = LegalCommands::new();
++    let mut mask = [false; ACTION_COUNT];
++    let mut spells = [false; SPELL_COUNT];
++    let mut targets = [false; TARGET_COUNT];
++    let mut seconds = [false; TARGET_COUNT];
++    let mut obs = vec![0f32; OBSERVATION_LEN];
++    let mut step = 0u64;
++    let total = opts.steps + opts.steps / 2;
++    while let Some(side) = env.to_move() {
++        if step >= total {
++            break;
++        }
++        let closing = step >= opts.steps;
++        step += 1;
++        let round = env.state().round();
++        let ctx = |what: &str| format!("step {step} (round {round}): {what}");
++
++        // The other side's masks are empty.
++        env.legal_mask(side.opponent(), &mut legal, &mut mask);
++        ensure!(
++            mask.iter().all(|m| !m),
++            "{}",
++            ctx("the other side has legal entries")
++        );
++
++        if opts.exhaustive_every > 0 && agent.below(opts.exhaustive_every) == 0 {
++            stats.exhaustive += 1;
++            let all = listed(&env, side).map_err(|e| ctx(&e))?;
++            for a in &all {
++                let mut fork = env.fork();
++                let res = catch_unwind(AssertUnwindSafe(|| fork.step(side, *a)));
++                match res {
++                    Err(_) => {
++                        let msg = LAST_PANIC.lock().unwrap().take().unwrap_or_default();
++                        return Err(ctx(&format!("PANIC in the probe of {a:?}: {msg}")));
++                    }
++                    Ok(Err(e)) => return Err(ctx(&format!("listed {a:?} refused: {e:?}"))),
++                    Ok(Ok(_)) => {}
++                }
++                stats.probed += 1;
++                check_state(fork.state(), r, initial)
++                    .map_err(|e| ctx(&format!("after the probe of {a:?}: {e}")))?;
++            }
++            // Every entry of the encoding and some beyond it, with heads 0: accepted exactly
++            // when listed; a refusal changes nothing.
++            let hash = env.state_hash();
++            for entry in 0..ACTION_COUNT + 6 {
++                let a = Action::entry(entry);
++                let mut fork = env.fork();
++                let ok = fork.step(side, a).is_ok();
++                ensure!(
++                    ok == all.contains(&a),
++                    "{}",
++                    ctx(&format!("entry {entry}: stepped {ok}, listed {}", !ok))
++                );
++                ensure!(
++                    ok || fork.state_hash() == hash,
++                    "{}",
++                    ctx(&format!("the refused entry {entry} changed the state"))
++                );
++            }
++            // Random heads, in and out of range.
++            for _ in 0..200 {
++                let a = Action {
++                    entry: match agent.below(4) {
++                        0 => HERO_CAST as u32,
++                        1 => CREATURE_CAST as u32,
++                        2 => agent.below(ACTION_COUNT as u32 + 10),
++                        _ => agent.next_u32(),
++                    },
++                    spell: match agent.below(3) {
++                        0 => 0,
++                        1 => u16::try_from(agent.below(SPELL_COUNT as u32 + 4)).unwrap(),
++                        _ => u16::try_from(agent.below(65_536)).unwrap(),
++                    },
++                    target: match agent.below(3) {
++                        0 => 0,
++                        1 => u16::try_from(agent.below(TARGET_COUNT as u32 + 4)).unwrap(),
++                        _ => u16::try_from(agent.below(65_536)).unwrap(),
++                    },
++                    second: match agent.below(3) {
++                        0 | 1 => 0,
++                        _ => u16::try_from(agent.below(TARGET_COUNT as u32 + 4)).unwrap(),
++                    },
++                };
++                let mut fork = env.fork();
++                let ok = fork.step(side, a).is_ok();
++                ensure!(
++                    ok == all.contains(&a),
++                    "{}",
++                    ctx(&format!("{a:?}: stepped {ok}, listed {}", !ok))
++                );
++                ensure!(
++                    ok || fork.state_hash() == hash,
++                    "{}",
++                    ctx(&format!("the refused {a:?} changed the state"))
++                );
++                // The head masks answer any prefix without failing.
++                env.spell_mask(side, a.entry as usize, &mut legal, &mut spells);
++                env.target_mask(side, (a.entry as usize, a.spell), &mut legal, &mut targets);
++                env.second_mask(
++                    side,
++                    (a.entry as usize, a.spell, a.target),
++                    &mut legal,
++                    &mut seconds,
++                );
++            }
++        }
++
++        env.legal_mask(side, &mut legal, &mut mask);
++        let entries = set_bits(&mask);
++        ensure!(!entries.is_empty(), "{}", ctx("no legal entry"));
++        let roll = agent.below(100);
++        let entry = if !closing && mask[HERO_CAST] && roll < opts.hero_cast {
++            HERO_CAST
++        } else if !closing && mask[CREATURE_CAST] && roll < opts.hero_cast + opts.creature_cast {
++            CREATURE_CAST
++        } else {
++            let staying: Vec<usize> = entries
++                .iter()
++                .copied()
++                .filter(|&e| e != RETREAT && e != SURRENDER && e != HERO_CAST && e != CREATURE_CAST)
++                .collect();
++            let strikes: Vec<usize> = staying
++                .iter()
++                .copied()
++                .filter(|&e| (257..action::END_TACTICS - 42).contains(&e))
++                .collect();
++            if !closing && agent.below(1000) < 2 {
++                pick(&mut agent, &entries)
++            } else if !strikes.is_empty() && (closing || agent.below(100) < 45) {
++                pick(&mut agent, &strikes)
++            } else {
++                pick(&mut agent, &staying)
++            }
++        };
++        env.spell_mask(side, entry, &mut legal, &mut spells);
++        let s = set_bits(&spells);
++        ensure!(
++            !s.is_empty(),
++            "{}",
++            ctx(&format!("entry {entry}: no spell head"))
++        );
++        let spell = u16::try_from(pick(&mut agent, &s)).unwrap();
++        env.target_mask(side, (entry, spell), &mut legal, &mut targets);
++        let t = set_bits(&targets);
++        ensure!(
++            !t.is_empty(),
++            "{}",
++            ctx(&format!("entry {entry} spell {spell}: no target head"))
++        );
++        let target = u16::try_from(pick(&mut agent, &t)).unwrap();
++        env.second_mask(side, (entry, spell, target), &mut legal, &mut seconds);
++        let s2 = set_bits(&seconds);
++        ensure!(
++            !s2.is_empty(),
++            "{}",
++            ctx(&format!(
++                "entry {entry} spell {spell} target {target}: no second head"
++            ))
++        );
++        let second = u16::try_from(pick(&mut agent, &s2)).unwrap();
++        let a = Action {
++            entry: u32::try_from(entry).unwrap(),
++            spell,
++            target,
++            second,
++        };
++        // The action decodes, encodes back and validates.
++        let Some(cmd) = action::decode(env.state(), r, a) else {
++            return Err(ctx(&format!("the listed {a:?} does not decode")));
++        };
++        ensure!(
++            action::encode(env.state(), r, cmd) == Some(a),
++            "{}",
++            ctx(&format!(
++                "{a:?} decodes to {cmd:?}, which encodes to {:?}",
++                action::encode(env.state(), r, cmd)
++            ))
++        );
++        ensure!(
++            validate(env.state(), r, side, cmd).is_ok(),
++            "{}",
++            ctx(&format!("the listed {cmd:?} does not validate"))
++        );
++        if entry == HERO_CAST {
++            stats.hero_casts += 1;
++            let key = r
++                .spell(SpellId::from_raw(spell))
++                .map_or("?", |s| s.key.as_str());
++            *stats.casts.entry(key.to_owned()).or_default() += 1;
++        } else if entry == CREATURE_CAST {
++            stats.creature_casts += 1;
++            let key = r
++                .spell(SpellId::from_raw(spell))
++                .filter(|_| spell != 0)
++                .map_or("(drawn at the cast or a raise)", |s| s.key.as_str());
++            *stats.creature_spells.entry(key.to_owned()).or_default() += 1;
++        }
++        if opts.trace {
++            println!("    step {step} round {round} {side:?}: {cmd:?}");
++        }
++        let t0 = Instant::now();
++        let res = env.step(side, a);
++        let micros = t0.elapsed().as_micros();
++        if let Err(e) = res {
++            return Err(ctx(&format!("the listed {cmd:?} was refused: {e:?}")));
++        }
++        stats.steps += 1;
++        if micros > stats.max_micros {
++            stats.max_micros = micros;
++            stats.max_micros_at = (seed, step);
++        }
++        stats.max_round = stats.max_round.max(env.state().round());
++        stats.max_effects = stats.max_effects.max(env.state().effects().len());
++        stats.max_obstacles = stats.max_obstacles.max(env.state().spell_obstacles().len());
++        check_state(env.state(), r, initial)
++            .map_err(|e| format!("step {step}: after {cmd:?}: {e}"))?;
++        for viewer in BattleSide::BOTH {
++            ensure!(
++                env.encode_observation(viewer, &mut obs).is_ok(),
++                "{}",
++                ctx("the observation does not encode")
++            );
++            ensure!(
++                obs.iter().all(|v| v.is_finite()),
++                "{}",
++                ctx("the observation has a value that is not finite")
++            );
++        }
++    }
++    if env.state().is_over() {
++        stats.finished += 1;
++        ensure!(env.state().outcome().is_some(), "over without an outcome");
++        let o = env.state().outcome().unwrap();
++        for side in BattleSide::BOTH {
++            // One survivor per army slot, in slot order (the outcome's debug assertion).
++            let survivors = &o.survivors[side.index()].stacks;
++            ensure!(
++                survivors.windows(2).all(|w| w[0].slot < w[1].slot),
++                "survivors not one per slot in slot order: {survivors:?}"
++            );
++            ensure!(
++                survivors.iter().all(|s| s.count > 0),
++                "a survivor without creatures: {survivors:?}"
++            );
++        }
++    } else {
++        stats.unfinished += 1;
++    }
++    Ok(())
++}
++
++fn run(profile: &str, tier: u8, first: u64, games: u64, opts: &Opts) -> (Stats, Vec<String>) {
++    std::panic::set_hook(Box::new(|info| {
++        *LAST_PANIC.lock().unwrap() = Some(format!("{info}"));
++    }));
++    let r = Arc::new(
++        h3_pack::compile(
++            &[h3_pack::SOD_PACK, h3_pack::AB_PACK, h3_pack::BASE_PACK],
++            profile,
++        )
++        .unwrap(),
++    );
++    let pools = Pools {
++        army: army_pool(&r),
++        magic: magic_pool(&r),
++        machines: machines(&r),
++    };
++    println!(
++        "{} creatures ({} with magic), machines {:?}, {} spells, {} openings",
++        pools.army.len(),
++        pools.magic.len(),
++        pools.machines.iter().map(Vec::len).collect::<Vec<_>>(),
++        r.spells().len(),
++        openings(&r).len()
++    );
++    let mut stats = Stats::default();
++    let mut failures = Vec::new();
++    let started = Instant::now();
++    for seed in first..first + games {
++        let mut rng = Rng::from_seed(seed ^ 0x4a52_0000_0000_0000 ^ (u64::from(tier) << 40));
++        let setup = Arc::new(setup(&r, &mut rng, tier, &pools));
++        stats.battles += 1;
++        let mut local = stats.clone();
++        let res = catch_unwind(AssertUnwindSafe(|| {
++            play_one(&r, &setup, seed, opts, &mut local)
++        }));
++        let label = format!("{profile} tier {tier} seed {seed}");
++        match res {
++            Ok(Ok(())) => stats = local,
++            Ok(Err(e)) => {
++                stats = local;
++                failures.push(format!("{label}: {e}"));
++            }
++            Err(_) => {
++                let msg = LAST_PANIC.lock().unwrap().take().unwrap_or_default();
++                failures.push(format!("{label}: PANIC {msg}"));
++            }
++        }
++        if (seed - first + 1) % 250 == 0 {
++            println!(
++                "[{:>7.1}s] {} battles, {} steps, {} failures, finished {}, hero casts {}, creature casts {}",
++                started.elapsed().as_secs_f64(),
++                stats.battles,
++                stats.steps,
++                failures.len(),
++                stats.finished,
++                stats.hero_casts,
++                stats.creature_casts
++            );
++        }
++    }
++    let _ = std::panic::take_hook();
++    (stats, failures)
++}
++
++fn report(stats: &Stats, failures: &[String]) {
++    println!(
++        "battles {} steps {} finished {} unfinished {} refused {}",
++        stats.battles, stats.steps, stats.finished, stats.unfinished, stats.refused
++    );
++    println!(
++        "hero casts {} creature casts {} exhaustive steps {} probes {}",
++        stats.hero_casts, stats.creature_casts, stats.exhaustive, stats.probed
++    );
++    println!(
++        "slowest step {} us at {:?}; max round {}; max effects {}; max spell obstacles {}",
++        stats.max_micros,
++        stats.max_micros_at,
++        stats.max_round,
++        stats.max_effects,
++        stats.max_obstacles
++    );
++    println!(
++        "hero spells cast ({}): {:?}",
++        stats.casts.len(),
++        stats.casts
++    );
++    println!("creature casts: {:?}", stats.creature_spells);
++    let mut groups: BTreeMap<String, (u64, String)> = BTreeMap::new();
++    for f in failures {
++        let tail = f.split_once(": ").map_or(f.as_str(), |x| x.1);
++        let key: String = tail
++            .chars()
++            .filter(|c| !c.is_ascii_digit())
++            .take(160)
++            .collect();
++        let entry = groups.entry(key).or_insert((0, f.clone()));
++        entry.0 += 1;
++    }
++    println!("{} failures in {} groups", failures.len(), groups.len());
++    for (n, first) in groups.values() {
++        println!("  x{n}: {first}");
++    }
++}
++
++/// `STRESS_GAMES`, `STRESS_SEED`, `STRESS_TIER`, `STRESS_STEPS`, `STRESS_STRICT` (1: the
++/// `strict-fixed` profile), `STRESS_EXHAUSTIVE`, `STRESS_TRACE`.
++#[test]
++#[ignore = "throwaway stress run"]
++fn stress_harvested() {
++    let games = env_var("STRESS_GAMES", 100);
++    let first = env_var("STRESS_SEED", 1);
++    let tier = u8::try_from(env_var("STRESS_TIER", 0)).unwrap();
++    let profile = if env_var("STRESS_STRICT", 0) != 0 {
++        "base:strict-fixed"
++    } else {
++        "base:faithful"
++    };
++    let opts = Opts {
++        steps: env_var("STRESS_STEPS", 300),
++        hero_cast: u32::try_from(env_var("STRESS_HERO", 40)).unwrap(),
++        creature_cast: u32::try_from(env_var("STRESS_CREATURE", 40)).unwrap(),
++        exhaustive_every: u32::try_from(env_var("STRESS_EXHAUSTIVE", 40)).unwrap(),
++        trace: env_var("STRESS_TRACE", 0) != 0,
++    };
++    println!(
++        "{profile} tier {tier} seeds {first}..{} {opts:?}",
++        first + games
++    );
++    let (stats, failures) = run(profile, tier, first, games, &opts);
++    report(&stats, &failures);
++    assert!(failures.is_empty(), "{} failures", failures.len());
++}
++
++/// How often a battlefield generated from the harvested packs leads a hero's Remove Obstacle
++/// into F-robust-2 (castable without a target): on each generated battlefield a hero removes
++/// obstacles at random listed hexes, one per round, while the spell is castable.
++/// `STRESS_GAMES` battlefields per terrain, `STRESS_STRICT`.
++#[test]
++#[ignore = "throwaway measurement"]
++fn remove_obstacle_on_generated_battlefields() {
++    use h3_battle::{
++        CastTarget, CastTargets, Command, NoopSink, apply, cast_targets, castable_spells,
++    };
++    let profile = if env_var("STRESS_STRICT", 0) != 0 {
++        "base:strict-fixed"
++    } else {
++        "base:faithful"
++    };
++    let r = h3_pack::compile(
++        &[h3_pack::SOD_PACK, h3_pack::AB_PACK, h3_pack::BASE_PACK],
++        profile,
++    )
++    .unwrap();
++    let n = env_var("STRESS_GAMES", 20_000);
++    let remove = r.spell_by_key("base:remove_obstacle").unwrap();
++    let pikeman = r.creature_by_key("base:pikeman").unwrap();
++    let army = || Army {
++        stacks: vec![ArmyStack {
++            slot: 0,
++            creature: pikeman,
++            count: 1,
++        }],
++    };
++    let mut hero = BattleHero::new(HeroTypeId::from_index(0).unwrap());
++    hero.magic.mana = 9999;
++    hero.magic.spell_book = Some(vec![remove]);
++    let (mut fields, mut with_pair, mut stuck, mut casts) = (0u64, 0u64, 0u64, 0u64);
++    let mut first: Vec<String> = Vec::new();
++    let mut per_terrain = BTreeMap::<String, (u64, u64, u64)>::new();
++    for (t, info) in r.terrains().iter().enumerate() {
++        let terrain = h3_content::TerrainId::from_index(t).unwrap();
++        for seed in 0..n {
++            let mut rng = Rng::for_stream(seed, StreamId::OBSTACLES);
++            let obstacles = h3_battle::generate_obstacles(&r, terrain, &mut rng);
++            fields += 1;
++            // A later obstacle whose hexes and anchor all lie on one earlier obstacle's hexes or
++            // anchor.
++            let pair = obstacles.iter().enumerate().any(|(j, x)| {
++                x.anchor.is_some_and(|xa| {
++                    obstacles[..j].iter().any(|y| {
++                        y.anchor.is_some_and(|ya| {
++                            x.hexes
++                                .iter()
++                                .chain([&xa])
++                                .all(|h| *h == ya || y.hexes.contains(h))
++                        })
++                    })
++                })
++            });
++            let entry = per_terrain
++                .entry(format!("{}", info.key.as_str()))
++                .or_default();
++            entry.0 += 1;
++            if pair {
++                with_pair += 1;
++                entry.1 += 1;
++            }
++            let setup = BattleSetup {
++                attacker: army(),
++                defender: army(),
++                obstacles: obstacles.clone(),
++                heroes: [Some(hero.clone()), None],
++                terrain: Some(terrain),
++                war_machines: [vec![], vec![]],
++                formations: [Formation::Loose; 2],
++                funds: [0; 2],
++            };
++            let mut state = BattleState::new(&r, &setup, seed).unwrap();
++            let mut agent = Rng::for_stream(seed, StreamId::AGENT);
++            let mut targets = CastTargets::new();
++            for _ in 0..40 {
++                let Some(side) = state.side_to_act() else {
++                    break;
++                };
++                if side == BattleSide::Attacker
++                    && castable_spells(&state, &r, side).contains(remove)
++                {
++                    cast_targets(&state, &r, side, remove, &mut targets);
++                    if targets.is_empty() {
++                        stuck += 1;
++                        entry.2 += 1;
++                        if first.len() < 5 {
++                            first.push(format!(
++                                "terrain {} seed {seed}: obstacles {obstacles:?}; left {:?}",
++                                info.key.as_str(),
++                                state.removable_obstacles()
++                            ));
++                        }
++                        break;
++                    }
++                    let target: CastTarget =
++                        targets.as_slice()[agent.below(targets.len() as u32) as usize];
++                    let cast = Command::Cast {
++                        spell: remove,
++                        target,
++                        second: CastTarget::None,
++                    };
++                    apply(&mut state, &r, side, cast, &mut NoopSink).unwrap();
++                    casts += 1;
++                }
++                apply(&mut state, &r, side, Command::Defend, &mut NoopSink).unwrap();
++            }
++        }
++    }
++    println!(
++        "{profile}: {fields} generated battlefields, {with_pair} with the pair, {casts} casts, {stuck} ended castable without a target"
++    );
++    println!("per terrain (fields, with the pair, stuck): {per_terrain:?}");
++    for f in &first {
++        println!("  {f}");
++    }
++}
