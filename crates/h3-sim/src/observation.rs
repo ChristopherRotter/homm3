@@ -695,20 +695,18 @@ mod tests {
         let (hasten, boon) = (handle("synthetic:hasten"), handle("synthetic:boon"));
         let (drag, bane) = (handle("synthetic:drag"), handle("synthetic:bane"));
         // The casting workload's hidden magic (E04b T9b): resistance, Eagle Eye's chance, the
-        // opening spells, the Pendant's spell and the number of spells Eagle Eye may learn.
+        // opening spells and the Pendant's spell.
         let brea_magic = (
             0.0,
             40.0,
             [hasten, 3.0, 3.0, 0.0, 0.0, 0.0],
             "synthetic:spark",
-            11,
         );
         let corwin_magic = (
             1000.0,
             50.0,
             [drag, 3.0, 2.0, bane, 3.0, 2.0],
             "synthetic:cinders",
-            14,
         );
         for (viewer, globals, mine, other, private, book, (rounds, specialty), magic) in [
             (
@@ -762,7 +760,7 @@ mod tests {
             // level 6); Corwin's in boon (level 1) and his two extra rounds for timed spells
             // (HER-BAT-014); since E04b T9b the resistance, the opening spells (due), Eagle Eye
             // and the Pendant. The opponent's never shows.
-            let (resistance, eagle, openings, immune, eagle_spells) = magic;
+            let (resistance, eagle, openings, immune) = magic;
             let mut hidden = [0.0; OWN_HERO_VALUES - 10];
             hidden[15 - 10] = resistance;
             hidden[16 - 10] = rounds;
@@ -780,9 +778,19 @@ mod tests {
                     .enumerate()
                     .all(|(i, v)| *v == f32::from(i == pendant))
             );
+            // The spells Eagle Eye may learn, as the setup lists them; none learned yet.
             let learnable = &own(&out)[SPELLS + 3 * MAX_SPELLS..];
-            assert!(learnable.iter().all(|v| *v == 0.0 || *v == 1.0));
-            assert_eq!(learnable.iter().sum::<f32>(), eagle_spells as f32);
+            let listed = &setup.heroes[viewer.index()]
+                .as_ref()
+                .unwrap()
+                .magic
+                .eagle_eye;
+            let listed = &listed.as_ref().unwrap().spells;
+            assert_eq!(learnable.len(), MAX_SPELLS);
+            for (i, v) in learnable.iter().enumerate() {
+                let spell = h3_content::SpellId::from_raw(i as u16);
+                assert_eq!(*v, f32::from(listed.contains(&spell)));
+            }
         }
         // Without an enemy hero: no surrender, a zero block; without a Ballista, zero control.
         let mut obs = observe(&s, &r, Attacker);

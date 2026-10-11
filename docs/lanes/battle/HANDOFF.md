@@ -37,7 +37,7 @@ The battle lane's living state; read after the global `docs/HANDOFF.md`. Format 
 - Rule code reads abilities via `ruleset.abilities(creature)`; per-attack booleans are `StackTraits` bits set at setup. `Stack.spells` holds the spells' values only: a creature's `innate_spell` is read where the original reads the creature (`magic::mirror_chance`, `magic::reflection`), not by Hypnotize, Dispel or usefulness tests. Two `skill_specialty` effects in one specialty are rejected.
 
 - The observation is complete since T9a: a new state field a rule reads goes into `observe_as` (public, own part or neither: ADR-0014 point 8), the flat encoding (version and ABI bump) and the hygiene property.
-- `h3-protocol`'s hygiene tests compare a viewer's frames across seeds on the `full` scenario up to the first hidden cast: no public random draw may come before it (resistance on Brea's stacks did, T9b).
+- `h3-protocol`'s hygiene tests compare a viewer's frames across seeds on the `full` scenario up to the first hidden cast: no draw the viewer sees may come before it, public or its own (T9b: resistance on Brea's stacks, Eagle Eye listing Mire or Snare).
 
 **Fixtures and benchmarks**
 - Golden replays and the `benches/battle/` baselines change with behavior, the synthetic pack, an encoding or the toolchain: regenerate deliberately (`fixtures/README.md`, `cargo xtask bench-check --update --workload random-rollouts-full`) and give the reason in the commit.
@@ -58,7 +58,7 @@ The battle lane's living state; read after the global `docs/HANDOFF.md`. Format 
 
 ### 2026-10-11 (fiftieth) — E04b increment 20: T9b
 
-The user (BAT-Q27): T9b, then batch 2f; batch 2e's weak results decisive. The `full` heroes gained opening spells, Eagle Eye, resistance, Pendants and Advanced spells; replays re-seeded, `bench-check` re-baselined; ≈ 105 k steps/s, ≈ 70 k with `--observe 1`. Detail: `docs/epics/E04b-log.md`.
+The user (BAT-Q27): T9b, then batch 2f; 2e's weak results decisive. The `full` heroes got T8's magic; replays re-seeded, `bench-check` re-baselined; ≈ 104 k steps/s, ≈ 69 k with `--observe 1`. Detail: `docs/epics/E04b-log.md`.
 
 ### 2026-10-11 (forty-ninth) — E04b increment 19: T9a and the spectator viewer
 

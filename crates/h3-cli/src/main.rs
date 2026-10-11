@@ -190,7 +190,7 @@ fn observed_rollout(env: &mut BattleEnv, agent_seed: u64, max_steps: u32, out: &
     let mut legal = LegalCommands::new();
     let mut steps = 0;
     while let Some(side) = env.to_move() {
-        if steps >= max_steps {
+        if max_steps != 0 && steps >= max_steps {
             break;
         }
         // The buffer has the encoding's length.

@@ -283,17 +283,17 @@ commands = [
     "D attack 1 73",
 ]
 checkpoints = [
-    "0xac2b3fc057287c76",
-    "0x75d527f5c689cb24",
-    "0x9eda3a8611ca2170",
-    "0x818359ae36dceb2c",
-    "0x98ae771b5bdfde41",
-    "0x57003a0cf57d1612",
-    "0x4e7bf7aa8b975c60",
-    "0x6c689573fdad6729",
-    "0xc05c3b27324b5581",
-    "0xb2ada585d300a1d1",
-    "0x41454f163e6489d9",
+    "0xe97a27752ce21979",
+    "0xae27f09e6d9d5243",
+    "0xffd0be24d07608c3",
+    "0x55fb1149806272c3",
+    "0x489a2664be337116",
+    "0x162d05544062aad1",
+    "0x6bbd35389ce25fd3",
+    "0xb4e91324537b0144",
+    "0xce48a6b52a464416",
+    "0xb930b48af86154a6",
+    "0x732597d97225dcfe",
 ]
 
 [replay]
@@ -381,7 +381,6 @@ spells = [
     "synthetic:aegis",
     "synthetic:rage",
     "synthetic:dazzle",
-    "synthetic:mire",
     "synthetic:uproot",
 ]
 
@@ -485,7 +484,6 @@ spells = [
     "synthetic:haze",
     "synthetic:charm",
     "synthetic:blink",
-    "synthetic:snare",
 ]
 
 [setup.defender_hero.masteries]
@@ -682,4 +680,4 @@ count = 4
 
 [result]
 winner = "defender"
-final_hash = "0x4d896340dd7aa8e1"
+final_hash = "0xffadcfd936004262"

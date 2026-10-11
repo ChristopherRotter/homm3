@@ -31,11 +31,14 @@ defender_funds = 10000
 # raises her stacks for the battle (Revive, a Resurrection without Stone magic: 140 hit points)
 # and sacrifices one stack to raise another (Offer, a Sacrifice at Basic); since T6b she copies a
 # stack of level 1 for two rounds (Copy, a Clone at Basic). Since E04b T9b (the casting workload)
-# six of her spells are at Advanced (Spark and Cinders hit harder, Haze makes every enemy shooter
-# forget, Snare hides more mines, Scorch burns hotter, Charm takes a larger stack); her army
-# starts hasted (an opening Hasten at Expert, as Angelic Alliance's Prayer); her stacks never
-# take Corwin's Spark (a Pendant); and her Basic Eagle Eye (40 %) may learn his spells up to
-# level 2 that she does not know.
+# six of her spells are at Advanced, so the values above are Basic's for Spark, Cinders, Haze,
+# Charm, Scorch and Snare (they hit harder, Haze makes every enemy shooter forget, Charm takes a
+# larger stack, Scorch burns hotter, Snare's mines hurt more); her army starts hasted (an opening
+# Hasten at Expert, as Angelic Alliance's Prayer); her stacks never take Corwin's Spark (a
+# Pendant); and her Basic Eagle Eye (40 %) may learn his spells up to level 2 that she does not
+# know but Mire. (Neither Eagle Eye lists the other side's hidden spell, Mire or Snare: its draw
+# would come before the obstacles' own and show in the learner's private part, which the
+# server's hygiene tests compare across seeds; see the battle HANDOFF's trap.)
 [scenario.attacker_hero]
 hero_type = "synthetic:brea"
 attack = 2
@@ -68,8 +71,7 @@ effects = [
 chance_bp = 4000
 spells = [
     "synthetic:boon", "synthetic:bane", "synthetic:hallow", "synthetic:purge", "synthetic:gloom",
-    "synthetic:corrode", "synthetic:aegis", "synthetic:rage", "synthetic:dazzle", "synthetic:mire",
-    "synthetic:uproot",
+    "synthetic:corrode", "synthetic:aegis", "synthetic:rage", "synthetic:dazzle", "synthetic:uproot",
 ]
 [scenario.attacker_hero.masteries]  # Storm magic: Basic, six spells at Advanced (per spell since E04b T8a)
 "synthetic:spark" = 2
@@ -119,9 +121,9 @@ spells = [
 # Since E04b T9b (the casting workload) Brea's army starts slowed and cursed (opening Drag and
 # Bane at Expert, as Armor of the Damned's), his stacks resist 10 % of her hostile spells and
 # never take her Cinders (a Pendant), and his Advanced Eagle Eye (50 %) may learn her spells up
-# to level 3 that he does not know. (Resistance stays off Brea's side: it would draw on Corwin's
-# opening spells, a public roll before the first cast, which the server's hygiene tests keep
-# out of the frames they compare across seeds.)
+# to level 3 that he does not know but Snare. (Resistance stays off Brea's side: it would draw on
+# Corwin's opening spells, a public roll before the first cast, which the server's hygiene tests
+# keep out of the frames they compare across seeds.)
 [scenario.defender_hero]
 hero_type = "synthetic:corwin"
 attack = 1
@@ -161,7 +163,7 @@ chance_bp = 5000
 spells = [
     "synthetic:hasten", "synthetic:drag", "synthetic:mend", "synthetic:ward", "synthetic:fury",
     "synthetic:smiting", "synthetic:riposte", "synthetic:blaze", "synthetic:scorch",
-    "synthetic:cinders", "synthetic:haze", "synthetic:charm", "synthetic:blink", "synthetic:snare",
+    "synthetic:cinders", "synthetic:haze", "synthetic:charm", "synthetic:blink",
 ]
 [scenario.defender_hero.masteries]  # Expert Stone magic: his stone spells at Expert (per spell since E04b T8a)
 "synthetic:blight" = 3

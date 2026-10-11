@@ -3338,7 +3338,7 @@ mod tests {
             chance: Rate::bp(4000),
             spells: [
                 "boon", "bane", "hallow", "purge", "gloom", "corrode", "aegis", "rage", "dazzle",
-                "mire", "uproot",
+                "uproot",
             ]
             .map(|k| ruleset.spell_by_key(&format!("synthetic:{k}")).unwrap())
             .to_vec(),
@@ -3357,30 +3357,37 @@ mod tests {
             (1000, 15)
         );
         assert_eq!(corwin.effects[9], BattleEffect::SpellDuration { rounds: 2 });
-        assert!(matches!(
+        // The casting workload (E04b T9b): resistance, a Pendant, two opening spells, Eagle Eye.
+        let spell = |k: &str| ruleset.spell_by_key(&format!("synthetic:{k}")).unwrap();
+        let opening = |k| BattleEffect::OpeningSpell {
+            spell: spell(k),
+            mastery: 3,
+            power: 2,
+        };
+        assert_eq!(
             corwin.effects[11..],
             [
-                BattleEffect::MagicResistance { .. },
-                BattleEffect::SpellImmunity { .. },
-                BattleEffect::OpeningSpell {
-                    mastery: 3,
-                    power: 2,
-                    ..
+                BattleEffect::MagicResistance {
+                    rate: Rate::bp(1000),
                 },
-                BattleEffect::OpeningSpell {
-                    mastery: 3,
-                    power: 2,
-                    ..
+                BattleEffect::SpellImmunity {
+                    spell: spell("cinders"),
                 },
+                opening("drag"),
+                opening("bane"),
             ]
-        ));
+        );
         assert_eq!(
-            corwin
-                .magic
-                .eagle_eye
-                .as_ref()
-                .map(|e| (e.chance, e.spells.len())),
-            Some((Rate::bp(5000), 14))
+            corwin.magic.eagle_eye,
+            Some(EagleEye {
+                chance: Rate::bp(5000),
+                spells: [
+                    "hasten", "drag", "mend", "ward", "fury", "smiting", "riposte", "blaze",
+                    "scorch", "cinders", "haze", "charm", "blink",
+                ]
+                .map(spell)
+                .to_vec(),
+            })
         );
         assert_eq!(corwin.war_machines.ballista, expected.war_machines.ballista);
         assert_eq!(

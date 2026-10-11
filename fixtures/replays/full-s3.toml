@@ -520,26 +520,26 @@ commands = [
     "A attack 9 105",
 ]
 checkpoints = [
-    "0x8353f1af5f9e0b3a",
-    "0xdf7160da67f0f2c3",
-    "0x6e3e435150cc4db1",
-    "0x91b298ca10ff8976",
-    "0x91e536de75b98004",
-    "0x4c3c21344b7e07b7",
-    "0x788369456deef36b",
-    "0x06a956997f3695e5",
-    "0xfb051db9bb77a3de",
-    "0xf783a568677024e8",
-    "0x91cf359070bfa365",
-    "0x2da63574c8590c22",
-    "0x463ebe329a1bd8bc",
-    "0x82b37a7ce98c35ce",
-    "0xc038c0abfcd9520a",
-    "0x937fa6554b6de346",
-    "0x8fddbad9bd53df25",
-    "0x84dd6918f7cfd37b",
-    "0xbb8ea96a4766a6d5",
-    "0xed2d018af7195b6d",
+    "0xee6b957a47b5e151",
+    "0x2ed66e12cdaf326c",
+    "0xcc754edf4a9dea5a",
+    "0xb57b8e6f8dd07fd9",
+    "0x14e97a196506e117",
+    "0xf1c9dec510adc75c",
+    "0x2b55f35fa8cd6c88",
+    "0x459dcad8e8efb31a",
+    "0x5fa9954ea5c8c1a5",
+    "0xe5b05db754f8782f",
+    "0xd48aeacf7e9bf634",
+    "0xd8440fcc2e9cafe9",
+    "0xc9ffbce81a1ef7e7",
+    "0x9918b8af95f24901",
+    "0x4519111a18b9efb5",
+    "0xe0fabfff375f1e31",
+    "0xb210b80f57de4ca6",
+    "0xc6ed05a595c52018",
+    "0xe4720bdbdbfc247a",
+    "0x8f75c3b8f24bff7e",
 ]
 
 [replay]
@@ -627,7 +627,6 @@ spells = [
     "synthetic:aegis",
     "synthetic:rage",
     "synthetic:dazzle",
-    "synthetic:mire",
     "synthetic:uproot",
 ]
 
@@ -731,7 +730,6 @@ spells = [
     "synthetic:haze",
     "synthetic:charm",
     "synthetic:blink",
-    "synthetic:snare",
 ]
 
 [setup.defender_hero.masteries]
@@ -928,4 +926,4 @@ count = 4
 
 [result]
 winner = "defender"
-final_hash = "0xb7968586a8ec0440"
+final_hash = "0x3842ce55335d6727"
