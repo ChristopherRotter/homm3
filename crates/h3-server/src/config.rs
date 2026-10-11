@@ -6,6 +6,8 @@
 //! bind = "127.0.0.1:7878"            # loopback by default; the internet only behind a TLS proxy
 //! data = "data"                      # journals, replays (below); the server's user only
 //! checkpoint_every = 25              # a state hash in the journal every this many commands
+//! public_url = "wss://example.org"   # the server's id, which logins sign: what clients dial
+//! anonymous = true                   # whether a game may be joined or created without a login
 //!
 //! [content]
 //! packs = "../packs"                 # the packs directory
@@ -25,6 +27,7 @@
 //! replays_kept = 10000               # finished games' replays kept, listed and closed each
 //! games = 16                         # games not over, in total
 //! games_per_address = 2              # games not over, created from one address
+//! failed_logins_per_address = 10     # a minute; beyond, the address's logins close
 //!
 //! [[offer]]                          # what a client may create a game from; at least one
 //! id = "duel"                        # as `CreateGame` names it
@@ -35,9 +38,9 @@
 //!
 //! The data directory holds `games/<game>.journal` for every game that is not over (its seed and
 //! its seats' tokens: the operator's copy of them; E16 M2 T2), `replays/` for the finished games
-//! and `void/` for the journals a start could not restore. It must be readable by the server's
-//! user only: on Unix the server creates `games/` and `void/` owner-only and the journals
-//! owner-read-write.
+//! and `void/` for the journals a start could not restore, and `players.log`, the accounts (E16 M3
+//! T2a). It must be readable by the server's user only: on Unix the server creates the directories
+//! owner-only and the journals and the player log owner-read-write.
 //!
 //! Provisional (E16 M1 and M2 reviews): the format and the defaults.
 
@@ -89,6 +92,12 @@ pub struct Server {
     /// Whether every game runs a shadow instance that checks its battle after every command
     /// (E16 M2 T3, `E16-design.md` §8).
     pub shadow_instance: bool,
+    /// The server's id (E16 M3 T2a; ADR-0019 point 1): the address its clients dial (`ws://` or
+    /// `wss://`), which a login signs; without one, `ws://` and the address it listens on.
+    pub public_url: Option<String>,
+    /// Whether a connection may join or create a game without logging in (E16 M3 T2a), with seat
+    /// tokens as in M2.
+    pub anonymous: bool,
 }
 
 impl Default for Server {
@@ -98,6 +107,8 @@ impl Default for Server {
             data: PathBuf::from("data"),
             checkpoint_every: 25,
             shadow_instance: false,
+            public_url: None,
+            anonymous: true,
         }
     }
 }
@@ -171,6 +182,9 @@ pub struct Limits {
     pub empty_game_ms: u64,
     /// A paused game nobody resumes within this many milliseconds is void (E16 M2 T5a; 0: never).
     pub paused_game_ms: u64,
+    /// Failed logins a minute from one address (E16 M3 T2a): a login beyond them, and any login
+    /// from the address until the minute is over, closes its connection.
+    pub failed_logins_per_address: u32,
 }
 
 impl Default for Limits {
@@ -193,6 +207,7 @@ impl Default for Limits {
             spectators_per_game: 8,
             empty_game_ms: 1_800_000,
             paused_game_ms: 259_200_000,
+            failed_logins_per_address: 10,
         }
     }
 }
@@ -247,6 +262,12 @@ impl Limits {
             ),
             ("empty_game_ms", self.empty_game_ms, 0, YEAR_MS),
             ("paused_game_ms", self.paused_game_ms, 0, YEAR_MS),
+            (
+                "failed_logins_per_address",
+                u64::from(self.failed_logins_per_address),
+                1,
+                u64::MAX,
+            ),
         ];
         for (name, value, min, max) in bounds {
             if !(min..=max).contains(&value) {
@@ -271,6 +292,7 @@ impl Config {
     pub fn parse(text: &str, base: &Path) -> Result<Self, Error> {
         let mut config: Self = toml::from_str(text).map_err(|e| Error(e.to_string()))?;
         config.limits.check()?;
+        config.check_server()?;
         config.check_offers()?;
         config.server.data = base.join(&config.server.data);
         config.content.packs = base.join(&config.content.packs);
@@ -278,6 +300,24 @@ impl Config {
             offer.scenario = base.join(&offer.scenario);
         }
         Ok(config)
+    }
+
+    /// A public URL is a WebSocket address: `ws://` or `wss://`, then at most 200 visible ASCII
+    /// characters.
+    fn check_server(&self) -> Result<(), Error> {
+        let Some(url) = &self.server.public_url else {
+            return Ok(());
+        };
+        let rest = url
+            .strip_prefix("ws://")
+            .or_else(|| url.strip_prefix("wss://"))
+            .unwrap_or_default();
+        if rest.is_empty() || rest.len() > 200 || !rest.bytes().all(|b| b.is_ascii_graphic()) {
+            return Err(Error(format!(
+                "server.public_url = {url:?}: not a ws:// or wss:// address"
+            )));
+        }
+        Ok(())
     }
 
     /// At least one offer; ids present and distinct; a player's seat in each.

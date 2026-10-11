@@ -18,6 +18,8 @@ use crate::client::Client;
 use crate::config::{BotSeat, Config, Content, Limits, Offer, Server};
 use crate::{Running, bench, game, registry, start};
 
+mod accounts;
+
 fn root() -> PathBuf {
     PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../..")
 }
@@ -46,6 +48,8 @@ fn config(limits: Limits) -> Config {
             data: std::env::temp_dir().join(format!("h3-server-{:016x}", game::os_u64().unwrap())),
             checkpoint_every: 10,
             shadow_instance: false,
+            public_url: None,
+            anonymous: true,
         },
         content: Content {
             packs: root().join("packs"),
@@ -1613,6 +1617,7 @@ fn configurations_are_checked() {
         "spectators_per_game = 1025",
         "empty_game_ms = 31536000001",
         "paused_game_ms = 31536000001",
+        "failed_logins_per_address = 0",
     ] {
         let text = format!("{offer}[limits]\n{limit}");
         let error = refused(&text).unwrap_err();
@@ -1626,6 +1631,29 @@ fn configurations_are_checked() {
     );
     let doubled = refused(&format!("{offer}[limits]\nrecord_bytes = 1048576")).unwrap_err();
     assert!(doubled.0.contains("fit twice"), "{doubled}");
+    // The server's id is a WebSocket address (E16 M3 T2a).
+    for url in [
+        "",
+        "ws://",
+        "http://h3.example",
+        "wss://h3 example",
+        "h3.example",
+    ] {
+        let error = refused(&format!("{offer}[server]\npublic_url = \"{url}\"")).unwrap_err();
+        assert!(error.0.contains("public_url"), "{url}: {error}");
+    }
+    let public = refused(&format!(
+        "{offer}[server]\npublic_url = \"wss://h3.example:443/x\"\nanonymous = false"
+    ))
+    .unwrap();
+    assert_eq!(
+        (public.server.public_url.as_deref(), public.server.anonymous),
+        (Some("wss://h3.example:443/x"), false)
+    );
+    assert_eq!(
+        (minimal.server.public_url, minimal.server.anonymous),
+        (None, true)
+    );
     let watched = refused(&format!("{offer}[limits]\nspectators_per_game = 0")).unwrap();
     assert_eq!(watched.limits.spectators_per_game, 0, "no spectators");
     assert!(Config::load(&base.join("no-such-file.toml")).is_err());

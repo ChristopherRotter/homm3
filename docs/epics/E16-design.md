@@ -116,17 +116,18 @@ packs directory: a scenario names its packs and profile), `[limits]` (M1's six a
 `bots`); the replay goes to `<data>/replays/<offer>-game<id>-<random>.toml`; `shadow_instance`
 in `[server]` since M2 T3, `spectators_per_game` in `[limits]` since M2 T4, `empty_game_ms` and
 `paused_game_ms` since M2 T5a, `messages_per_address`, `hello_timeout_ms` and `lobby_timeout_ms`
-since M2 T5b, `outbound_bytes` and `record_bytes` since M2 T5c, `replays_kept` since M2 T5d. Still to come:
+since M2 T5b, `outbound_bytes` and `record_bytes` since M2 T5c, `replays_kept` since M2 T5d,
+`public_url` and `anonymous` in `[server]` and `failed_logins_per_address` in `[limits]` since M3
+T2a. Still to come:
 
 ```
-[server]      anonymous = true                                       # M3
 [[ladder]]    id = "battle-arena"  scenario_pool = ["…"]  season = 1  pause = false  # M4
 ```
 
 The journals (`<data>/games/<game>.journal`, open games), the replays (`<data>/replays/`,
-finished) and `<data>/void/` are code since M2 T2. Still to come:
-`server-data/records/<game>/<viewer>.jsonl`, `server-data/players.jsonl`,
-`server-data/ladders/<id>/results.jsonl` (M3, M4), snapshots beside the logs. The log never
+finished) and `<data>/void/` are code since M2 T2, `<data>/players.log` since M3 T2a. Still to
+come: `server-data/records/<game>/<viewer>.jsonl`, `server-data/ladders/<id>/results.jsonl`
+(M4), snapshots beside the logs. The log never
 contains seeds, tokens, nonces or signatures.
 
 ## 10. Accounts (M3)
@@ -141,18 +142,29 @@ contains seeds, tokens, nonces or signatures.
   memory 64 MiB, 3 passes, 1 lane, 32 bytes)`, `keypair = ed25519_from_seed(seed)` (the salt is
   at least 17 bytes, Argon2 wants 8). The same login name and password give the same key on
   every device and every server. The client caches the key locally so the derivation runs once
-  per device; the password is never stored. A test vector fixes the derivation for every client.
+  per device; the password is never stored. A test vector fixes the derivation for every client
+  (M3 T2a; Argon2 version 0x13, the password and the salt as UTF-8, the seed as Ed25519's secret
+  key): login `alice`, password `correct horse battery staple`, seed
+  `a6d07dbd0bc53fa424145cbb87da7a85b49b8905044250b913940d4871c2ba69`, public key
+  `b17dbb2796b53c1c636e9a5981d6424ac5ee096b89b47223567831f435a8af14` (computed with Python's
+  `argon2-cffi` and PyNaCl; `h3-server`'s `client::Key::derive` matches it).
 - **Login** (the wire and the hello gate built in M3 T1: `h3_protocol::account`,
-  `connection`). `Welcome` carries the server's id (`[server] public_url`, what its clients dial;
-  until M3 T2a the address it listens on) and a challenge (32 random bytes from the host, one per
+  `connection`; checked since M3 T2a: `h3-server`'s `accounts`). `Welcome` carries the server's
+  id (`[server] public_url`, what its clients dial, `ws://` or `wss://`; without one `ws://` and
+  the address it listens on) and a challenge (32 random bytes from the host, one per
   connection). `Login { seq, login, key, signature, display }` (hex; `display` only to register)
   signs `account::login_message`: its purpose, the id, the challenge, the login name and the
   display name. Every account request is answered `Account { seq, display, listed }` or
   `Refused`. A client signs only if the id is the address it dialed, and the server checks the
   id it signed is its own, so a hostile server cannot relay a login. A new key with a free login
   name registers (its display name free); a known pair logs in; a known login name with another
-  key is refused as a bad signature is (`BadLogin`). Failed logins count against the address's
-  rate. Without a login a connection plays anonymously where `[server] anonymous` (default true)
+  key is refused as a bad signature is (`BadLogin`), and so is an unknown one without a display
+  name; a known pair that names a display name logs in, the name ignored (*provisional*). The
+  `Authenticator` checks the signature, Ed25519 in strict mode (a small-order key or a
+  non-canonical signature never holds). Failed logins count per address, beyond its connections'
+  lifetimes: beyond `[limits] failed_logins_per_address` a minute (10), a login closes its
+  connection `RateLimited`, as does any login from the address until the minute is over. Without
+  a login a connection plays anonymously where `[server] anonymous` (default true)
   allows, with seat tokens as in M2; otherwise `Join` and `CreateGame` wait for the login.
 - **Re-keying.** After a password change the client keeps the old key until each server it
   knows has accepted `Rekey { new_public_key, signature_by_old, signature_by_new }` at the
@@ -163,9 +175,12 @@ contains seeds, tokens, nonces or signatures.
 - **A replay's listing (the user, SRV-Q17).** An account's preference (`listed`, default true);
   a finished game is listed only if its host left it open to spectators and no seated account
   opted out, else archived unlisted.
-- **The player log.** `<data>/players.log`, JSON lines (registered, re-keyed, renamed, a
-  preference changed), each synced when written, read back at start; snapshots once a start
-  takes too long.
+- **The player log** (M3 T2a). `<data>/players.log`, JSON lines (`Registered { login, key,
+  display }`; M3 T2b: re-keyed, renamed, a preference changed), owner-read-write, each synced
+  before its answer, read back at start: a torn last line is dropped and cut, any other line that
+  does not read or contradicts the lines before it stops the start (the error names the line,
+  never its text). After a failed write nothing more is written and registrations are refused;
+  known accounts still log in. Snapshots once a start takes too long.
 
 ## 11. Ladders and matchmaking (M4)
 

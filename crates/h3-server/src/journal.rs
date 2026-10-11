@@ -258,7 +258,7 @@ pub(crate) fn read(path: &Path) -> Result<Read, String> {
 
 /// Why a line does not read, without its text: a line may hold the seats' tokens, which never
 /// reach a log line (ADR-0018 point 8).
-fn json(e: &serde_json::Error) -> String {
+pub(crate) fn json(e: &serde_json::Error) -> String {
     format!("{:?} error at column {}", e.classify(), e.column())
 }
 

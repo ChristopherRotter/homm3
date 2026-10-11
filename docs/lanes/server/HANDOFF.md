@@ -4,9 +4,9 @@ The server lane's living state; read after the global `docs/HANDOFF.md`. Format 
 
 ## Current state
 
-- **M1 closed (2026-10-11, SRV-Q12). M2 closed (2026-10-11, SRV-Q16):** T1–T5e merged (#67 … #96). **M3 refined (2026-10-11, SRV-Q17):** ADR-0019 accepted (a permanent login name that salts the key, a changeable display name, `ed25519-dalek` and `argon2`, anonymous play by configuration, any seated account opts out of its replay's listing; points 4–9 direction for M4); M3 cut into T1–T5 (`QUEUE.md`). **M3 T1 done** (the login on the wire, sans-I/O; the server refuses every login until T2a, SRV-STUB-1). **Next: M3 T2a**; wire 12.
+- **M1 closed (2026-10-11, SRV-Q12). M2 closed (2026-10-11, SRV-Q16):** T1–T5e merged (#67 … #96). **M3 refined (2026-10-11, SRV-Q17):** ADR-0019 accepted (a permanent login name that salts the key, a changeable display name, `ed25519-dalek` and `argon2`, anonymous play by configuration, any seated account opts out of its replay's listing; points 4–9 direction for M4); M3 cut into T1–T5 (`QUEUE.md`). **M3 T1 done** (the login on the wire, sans-I/O). **M3 T2a done** (logins checked: the `Authenticator`, Ed25519; `<data>/players.log`; `public_url`, `anonymous`, failed logins per address; re-keys, renames and the preference refused until T2b, SRV-STUB-2). **Next: M3 T2b** (or T4a, independent); wire 12.
 - **For M4** (SRV-Q13, answered): ranked games one at a time per player, a pause only by agreement, its length negotiated within the ladder's bounds, the absent player forfeits at the due time; the reading of "one at a time" is confirmed at M4's refinement.
-- **Shared on this branch** (the user, 2026-10-11): ADR-0019 moved from the drafts with its index row, and the global HANDOFF's server row, in a commit of their own; the pull request carries `cross-lane`.
+- **Shared on this branch** (T2a): the two crates' lines in `Cargo.toml` and `arch.toml`, in a commit of their own; the pull request needs the user's `cross-lane` (asked at its opening).
 - **ADR-0018 point 5 as amended:** the mapping's matches over the engine's enums are exhaustive, and since T4b its patterns over the observation's structs too; a new battle variant or observation field fails `h3-protocol`'s build until mapped (global HANDOFF trap).
 - **The 100 % gate** covers `h3-protocol` (logic); `h3-server` is an adapter outside it, tested end to end.
 - **Versions** (`docs/08-work-process.md`): `PROTOCOL_VERSION` (`h3-protocol`, 12 since M3 T1's login; 11 was M2 T5d's archive; bumped on every wire change), `RECORD_FORMAT_VERSION` (`h3-protocol`, 2 since M2 T5c), `JOURNAL_FORMAT_VERSION` (`h3-server`, 3 since M2 T4c's spectator setting; 2 was M2 T3's pause lines; a journal of another format is void at start).
@@ -41,14 +41,20 @@ The server lane's living state; read after the global `docs/HANDOFF.md`. Format 
 - The workspace's clippy bans `std::time::Instant` and `SystemTime` in every crate: the server uses `tokio::time::Instant`, and a file's age is `fs::metadata(p)?.modified()?.elapsed()` (a `Duration`, no type named).
 - A `watch::Receiver` whose sender is gone makes `wait_for` fail at once, again and again: a select arm on it must then never resolve (`net::stopped`), or a dropped `Running` would stop every connection.
 - A paused game has no thread: the registry's `Hosted::Paused` holds its tokens, and `registry::bind` restores it for a join. A game's thread ignores `ToGame::Open` (nothing changed until the join), or a resuming game, still paused, would pause again before its join.
+- An account's request is answered through `spawn_blocking`, the player log under its own lock (`accounts.rs`): never take the registry's lock there, and keep the signature check before the lock.
+- `Key::derive` costs 64 MiB and about a second in a debug build: tests use `Key::from_seed`, the test vector alone derives.
 - **The workload is lane-only and follows `master`:** 55 % of its count is the battle engine, so battle changes move it and the full verify (CI) does not measure it. At each session's start `verify --scope server` measures it; a drift there came from `master`: re-baseline (`cargo xtask bench-check --update --workload session-random-play-full`) and name the range in the commit. Measure only with the file's arguments (they shift the heap `malloc` walks).
 
 ## Recent sessions
 
+### 2026-10-11 — M3 T2a, the Authenticator and the player log
+
+#99 and #100 had merged; the branch started from `master` (scoped verify green, no workload drift). Built T2a (`E16-log.md`, M3 T2a): `accounts.rs`, `players.rs`, the configuration's three fields, `client::Key` with the test vector (checked against Python's `argon2-cffi` and PyNaCl). The crates need shared lines (`Cargo.toml`, `arch.toml`), so the pull request is cross-lane. `cargo deny check` passes.
+
 ### 2026-10-11 — M2 T5e, M2's checkpoint, M3's refinement, M3 T1
 
-#93 had merged; the branch restarted from `master`. Exit criteria written, the client lane's note filed (cross-lane, the user), the inbox placed (M3, M4). The reviewer agent: 1 major (file I/O under the registry's lock) and 5 minors fixed, 4 minors in the inbox (`E16-log.md`, M2 T5e). #96 merged; the user passed M2's checkpoint (SRV-Q16) and refined M3 in the same session (SRV-Q17): ADR-0019 accepted, M3 cut (`QUEUE.md`). Found while refining: the draft salted the key with a renamable name, hence the two names. Then M3 T1 (`E16-log.md`).
+M2's closure (#96; the reviewer agent's major fixed, `E16-log.md`, M2 T5e); the user passed M2's checkpoint (SRV-Q16) and refined M3 (SRV-Q17): ADR-0019 accepted, M3 cut. The draft salted the key with a renamable name, hence the two names. Then M3 T1 (#99).
 
 ### 2026-10-11 — M2 T5d, mutation tests and the public archive
 
-#88 had merged; the branch restarted from `master`. The user answered SRV-Q14 (mutation tests now) and SRV-Q15 (finished replays public). Built T5d (`docs/epics/E16-log.md`, M2 T5d): `tests/mutation.rs`; `archive.rs` with `ListReplays` and `FetchArchived` (wire 11), a game closed to spectators archived unlisted, `replays_kept`. T5d split again: T5e is M2's closure. Review list in the epic file.
+The user answered SRV-Q14 (mutation tests now) and SRV-Q15 (finished replays public). Built T5d (#93; `E16-log.md`, M2 T5d): `tests/mutation.rs`; `archive.rs` (wire 11).

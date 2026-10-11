@@ -86,6 +86,11 @@ tokio = { version = "1", default-features = false, features = ["rt-multi-thread"
 tokio-tungstenite = { version = "0.30", default-features = false, features = ["connect"] }
 futures-util = { version = "0.3", default-features = false, features = ["sink", "std"] }
 getrandom = "0.3"
+# Accounts (E16 M3, ADR-0019 point 1; the user, SRV-Q17): the server checks Ed25519 signatures;
+# the key's derivation (Argon2id) is a client's, and the server's test client's. Licenses:
+# BSD-3-Clause (ed25519-dalek), MIT OR Apache-2.0 (argon2).
+ed25519-dalek = "3"
+argon2 = { version = "0.6", default-features = false, features = ["alloc", "zeroize"] }
 # Test-only: the wire types round-trip in a format that is not self-describing (ADR-0018 point 4;
 # provisional, E16 M1 review). License: MIT OR Apache-2.0.
 postcard = { version = "1", default-features = false, features = ["alloc"] }

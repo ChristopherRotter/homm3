@@ -319,9 +319,10 @@ out of its replay's listing.
   rules, hex, the signed bytes), `Login`, `Rekey`, `Rename`, `SetListed` answered `Account`, the
   welcome's id and challenge, the hello gate's login step; wire version 12; the server refuses
   every login until T2a (SRV-STUB-1).
-- **T2a The Authenticator and the player log** (`h3-server`): signatures checked, registration
-  and login, `<data>/players.log`, the derivation in the test client, `[server] public_url` and
-  `anonymous`.
+- **T2a The Authenticator and the player log** (done 2026-10-11; `E16-log.md`): signatures
+  checked (Ed25519, strict), registration and login, `<data>/players.log`, the derivation and its
+  test vector in the test client, `[server] public_url` and `anonymous`, failed logins limited
+  per address; re-keys, renames and the preference refused until T2b (SRV-STUB-2).
 - **T2b Re-keying, renames, the listing preference, the operator's rebind.**
 - **T3 Seats bound to accounts**: a seat taken and re-taken by account, the journal's account,
   the lobby's display names, the replay's listing by the seated accounts.
@@ -394,6 +395,17 @@ Choices queued under the autonomy contract (details in `E16-log.md`):
   digits, `_ - .` and single inner spaces (no lookalike letters on leaderboards); without
   anonymous play only `Join` and `CreateGame` wait for the login (the lists, the archive and
   queries do not); the server's id the address it listens on until T2a's `public_url`.
+- T2a: the `Authenticator` as the signature check alone (`verify(key, message, signature)`),
+  the rules in `accounts`; Ed25519's strict check; the player log's line (`Registered { login,
+  key, display }`) and its reading (a torn last line cut, any other bad line stops the start;
+  after a failed write registrations are refused); a display name sent with a known account's
+  login ignored; an unknown login name without a display name `BadLogin`; `[server] public_url`
+  (`ws://` or `wss://`, at most 200 visible characters after it) and `anonymous`; `[limits]
+  failed_logins_per_address` (10 a minute, kept beyond the address's connections; beyond it a
+  login closes its connection `RateLimited`, the address's other requests pass); a login answered
+  off the connection's task (`spawn_blocking`, the player log under its own lock); `argon2` a
+  normal dependency of `h3-server` for its `client` module (tools may log in); the shared lines
+  for the two crates (`Cargo.toml`, `arch.toml`) in a commit of their own on the lane's branch.
 
 ## Review list for the M2 checkpoint (passed 2026-10-11, SRV-Q16)
 
