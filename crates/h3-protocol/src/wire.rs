@@ -1239,8 +1239,9 @@ pub enum ServerMessage {
         replay: String,
     },
     /// The viewer's record: its own message log, not re-runnable. Its first line is a
-    /// [`RecordHeader`], then one line per numbered message the viewer was sent, in order, up to
-    /// message `n`.
+    /// [`RecordHeader`], then one line per numbered message the viewer was sent, in order, from
+    /// message [`RecordHeader::first`] to message `n`: the record keeps a viewer's latest messages
+    /// within a bound in bytes (E16 M2 T5c), its oldest go first.
     Record {
         /// The number of the viewer's last numbered message (this one takes none).
         n: u32,
@@ -1301,4 +1302,8 @@ pub struct RecordHeader {
     pub seat: Seat,
     /// What the game is made of.
     pub manifest: Manifest,
+    /// The number of the record's first message (E16 M2 T5c, format 2): 1 while the record holds
+    /// every message, higher once its bound let the oldest go; one more than the last number when
+    /// it holds none.
+    pub first: u32,
 }

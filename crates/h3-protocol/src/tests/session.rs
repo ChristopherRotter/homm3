@@ -82,6 +82,7 @@ fn config(seed: u64) -> GameConfig {
         shadow: false,
         spectators: 2,
         watchable: true,
+        record_bytes: 1 << 20,
     }
 }
 
@@ -600,6 +601,7 @@ fn the_record_is_the_viewers_numbered_messages() {
         assert_eq!(header.format, RECORD_FORMAT_VERSION);
         assert_eq!((header.game, header.seat), (1, seat));
         assert_eq!(header.manifest, map::manifest(&r));
+        assert_eq!(header.first, 1, "every message, within the bound");
         let numbered: Vec<String> = frames(&all, conn)
             .into_iter()
             .filter(|f| number(&decode(f)).is_some())
@@ -748,6 +750,7 @@ fn journals_without_checkpoints_verify() {
         shadow: false,
         spectators: 2,
         watchable: true,
+        record_bytes: 1 << 20,
     };
     let mut s = Session::new(&r, config, players()).unwrap();
     let out = started(&mut s);
@@ -769,6 +772,7 @@ fn a_setup_the_engine_refuses_hosts_no_game() {
         shadow: false,
         spectators: 2,
         watchable: true,
+        record_bytes: 1 << 20,
     };
     assert!(Session::new(&r, config.clone(), players()).is_err());
     assert!(matches!(
@@ -1371,6 +1375,63 @@ fn a_connection_holds_its_seat_or_its_watch_and_nothing_after_a_refused_join() {
     assert!(!s.holds(c) && !s.holds(A));
 }
 
+/// The record `conn` fetches: its header, its lines and its last number.
+fn fetched_record(s: &mut Session<'_>, conn: ConnId) -> (RecordHeader, Vec<String>, u32) {
+    let fetched = send(s, conn, ClientMessage::FetchRecord { seq: 99 });
+    let [ServerMessage::Record { n, record, .. }] = &to(&fetched, conn)[..] else {
+        panic!("{fetched:?}")
+    };
+    let mut lines = record.lines().map(str::to_string);
+    let header = serde_json::from_str(&lines.next().unwrap()).unwrap();
+    (header, lines.collect(), *n)
+}
+
+/// E16 M2 T5c: a viewer's record keeps its latest messages within its bound in bytes, the oldest
+/// gone first, numbered on without a gap; a message larger than the bound is kept alone.
+#[test]
+fn a_record_keeps_the_latest_messages_within_its_bound() {
+    let r = ruleset();
+    let bound = 4096;
+    let small = GameConfig {
+        record_bytes: bound,
+        ..config(5)
+    };
+    let mut s = Session::new(&r, small.clone(), players()).unwrap();
+    started(&mut s);
+    // Queries without end: every answer is numbered and recorded.
+    for seq in 1..200 {
+        let query = Query::CastTargets { spell: 0 };
+        send(&mut s, A, ClientMessage::Query { seq, query });
+    }
+    let (header, lines, n) = fetched_record(&mut s, A);
+    assert!(header.first > 1, "the oldest went");
+    assert_eq!(header.first as usize + lines.len() - 1, n as usize);
+    for (k, line) in (header.first..).zip(&lines) {
+        assert_eq!(number(&decode(line)), Some(k));
+    }
+    let held: usize = lines.iter().map(|l| l.len() + 1).sum();
+    assert!(held <= bound, "{held}");
+    assert!(
+        held + lines[0].len() + 1 > bound,
+        "no more went than had to"
+    );
+    // The other seat's record is its own.
+    assert_eq!(fetched_record(&mut s, B).0.first, 1);
+    // A bound below one message: the newest alone.
+    let tiny = GameConfig {
+        record_bytes: 1,
+        ..small
+    };
+    let mut s = Session::new(&r, tiny, players()).unwrap();
+    started(&mut s);
+    let (header, lines, n) = fetched_record(&mut s, A);
+    assert_eq!((header.first, lines.len()), (n, 1));
+    // A spectator's record has the game's bound too.
+    join(&mut s, ConnId(5), Seat::Spectator, None);
+    let (header, lines, n) = fetched_record(&mut s, ConnId(5));
+    assert_eq!((header.first, lines.len(), n), (1, 1, 1));
+}
+
 /// Game 1 of the `full` scenario with `seed` and a shadow instance.
 fn shadowed(seed: u64) -> GameConfig {
     GameConfig {
@@ -1696,6 +1757,7 @@ proptest! {
             let header: RecordHeader = serde_json::from_str(lines.next().unwrap_or_default())
                 .map_err(|e| TestCaseError::fail(format!("{e}")))?;
             prop_assert_eq!(header.seat, seat);
+            prop_assert_eq!(header.first, 1);
             let lines: Vec<&str> = lines.collect();
             prop_assert_eq!(lines.len(), *n as usize);
             for (k, line) in lines.iter().enumerate() {

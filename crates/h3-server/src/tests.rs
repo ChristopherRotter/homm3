@@ -7,8 +7,8 @@ use std::time::Duration;
 
 use h3_kernel::Rng;
 use h3_protocol::wire::{
-    ClientMessage, Command, GameInfo, GoodbyeReason, Phase, Refusal, RejectCode, Seat,
-    ServerMessage,
+    ClientMessage, Command, GameInfo, GoodbyeReason, Phase, Query, RecordHeader, Refusal,
+    RejectCode, Seat, ServerMessage,
 };
 use tokio_tungstenite::tungstenite::Message;
 
@@ -1280,6 +1280,48 @@ async fn a_refused_join_leaves_the_game() {
     drop(creator);
 }
 
+/// E16 M2 T5c: a seated client's record, fetched from the server, keeps its latest messages within
+/// `[limits] record_bytes`, however much the client asks.
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn a_record_stays_within_its_bound() {
+    let bound = 4096;
+    let limits = Limits {
+        record_bytes: bound,
+        ..fast()
+    };
+    let running = start(&config(limits)).await.unwrap();
+    let (mut client, _, _) = created(&running, "pvp", Seat::Attacker).await;
+    for seq in 1..=100 {
+        let query = Query::CastTargets { spell: 0 };
+        client
+            .send(&ClientMessage::Query { seq, query })
+            .await
+            .unwrap();
+    }
+    client
+        .send(&ClientMessage::FetchRecord { seq: 101 })
+        .await
+        .unwrap();
+    let (n, record) = loop {
+        match client.recv().await {
+            Some(ServerMessage::QueryResult { .. }) => {}
+            Some(ServerMessage::Record { n, record, .. }) => break (n, record),
+            other => panic!("{other:?}"),
+        }
+    };
+    let mut lines = record.lines();
+    let header: RecordHeader = serde_json::from_str(lines.next().unwrap()).unwrap();
+    let lines: Vec<&str> = lines.collect();
+    assert!(
+        n > 100 && header.first > 1,
+        "the oldest went: {n}, {}",
+        header.first
+    );
+    assert_eq!(header.first as usize + lines.len() - 1, n as usize);
+    let held: usize = lines.iter().map(|l| l.len() + 1).sum();
+    assert!(held <= bound, "{held}");
+}
+
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn connections_beyond_the_limit_are_refused_until_one_closes() {
     let limits = Limits {
@@ -1393,6 +1435,8 @@ fn configurations_are_checked() {
         "lobby_timeout_ms = 86400001",
         "outbound_queue = 0",
         "outbound_queue = 4000000",
+        "outbound_bytes = 0",
+        "record_bytes = 0",
         "games = 0",
         "games = 5000",
         "games_per_address = 0",
@@ -1404,6 +1448,8 @@ fn configurations_are_checked() {
         let error = refused(&text).unwrap_err();
         assert!(error.0.contains("outside"), "{limit}: {error}");
     }
+    let doubled = refused(&format!("{offer}[limits]\nrecord_bytes = 1048576")).unwrap_err();
+    assert!(doubled.0.contains("fit twice"), "{doubled}");
     let watched = refused(&format!("{offer}[limits]\nspectators_per_game = 0")).unwrap();
     assert_eq!(watched.limits.spectators_per_game, 0, "no spectators");
     assert!(Config::load(&base.join("no-such-file.toml")).is_err());

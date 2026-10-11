@@ -28,7 +28,7 @@ use tokio_tungstenite::tungstenite::Message;
 use tokio_tungstenite::tungstenite::protocol::WebSocketConfig;
 
 use crate::config::Limits;
-use crate::game::{Frame, ToGame};
+use crate::game::{self, Frame, FromGame, ToGame};
 use crate::registry::{self, Shared, lock};
 
 /// What a transport received.
@@ -129,7 +129,7 @@ impl Rate {
 struct Bound {
     game: u32,
     to_game: mpsc::Sender<ToGame>,
-    from_game: mpsc::Receiver<Frame>,
+    from_game: FromGame,
     passed: u64,
 }
 
@@ -195,7 +195,7 @@ pub(crate) async fn serve<T: Transport>(
         conn,
         origin: place.address,
         registry,
-        queue: limits.outbound_queue.max(1),
+        queue: (limits.outbound_queue.max(1), limits.outbound_bytes),
         bound: None,
     };
     loop {
@@ -273,8 +273,8 @@ struct Link {
     conn: ConnId,
     origin: IpAddr,
     registry: Shared,
-    /// The capacity of the connection's queue for a game.
-    queue: usize,
+    /// The capacity of the connection's queue for a game, in frames and in bytes (E16 M2 T5c).
+    queue: (usize, usize),
     bound: Option<Bound>,
 }
 
@@ -346,7 +346,7 @@ impl Link {
     ) -> Routed {
         self.unbind().await;
         let conn = self.conn;
-        let (to, from_game) = mpsc::channel(self.queue);
+        let (to, from_game) = game::outbox(self.queue.0, self.queue.1);
         let opened = to_game.send(ToGame::Open { conn, to }).await.is_ok()
             && to_game
                 .send(ToGame::Message {
@@ -636,7 +636,7 @@ mod tests {
         }
 
         /// The client's hello and its join of game 7's `seat`: the game's queue to the client.
-        async fn joined(&mut self, seat: Seat) -> mpsc::Sender<Frame> {
+        async fn joined(&mut self, seat: Seat) -> game::Outbox {
             self.says(&ClientMessage::Hello {
                 protocol: h3_protocol::PROTOCOL_VERSION,
                 client: String::new(),
@@ -681,7 +681,7 @@ mod tests {
     async fn a_connection_whose_queue_the_game_dropped_is_too_slow() {
         let mut rig = Rig::new();
         let to = rig.joined(Seat::Attacker).await;
-        to.send(frame("first", None)).await.unwrap();
+        assert!(to.offer(frame("first", None)));
         drop(to);
         assert_eq!(rig.next().await.as_deref(), Some("first"));
         let too_slow = goodbye(GoodbyeReason::TooSlow).text;
@@ -705,17 +705,22 @@ mod tests {
         // A second join, passed before the game's answer to the first.
         rig.says(&join(Seat::Defender));
         assert!(matches!(rig.told().await, Some(ToGame::Message { .. })));
-        to.send(frame("refused", Some(1))).await.unwrap();
-        to.send(frame("joined", None)).await.unwrap();
+        assert!(to.offer(frame("refused", Some(1))));
+        assert!(to.offer(frame("joined", None)));
         assert_eq!(rig.next().await.as_deref(), Some("refused"));
         assert_eq!(
             rig.next().await.as_deref(),
             Some("joined"),
             "still in the game"
         );
+        assert_eq!(
+            to.queued(),
+            0,
+            "the task took off what it took out (E16 M2 T5c)"
+        );
         rig.says(&join(Seat::Attacker));
         assert!(matches!(rig.told().await, Some(ToGame::Message { .. })));
-        to.send(frame("refused", Some(3))).await.unwrap();
+        assert!(to.offer(frame("refused", Some(3))));
         assert_eq!(rig.next().await.as_deref(), Some("refused"));
         assert!(matches!(
             rig.told().await,

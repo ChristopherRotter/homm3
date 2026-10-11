@@ -583,3 +583,32 @@ how and why the work went.
   once take the second seat and keep it; the configuration's new bounds. Mutations that skip the
   address's rate, that let pings pass the rate or that never leave after a refusal each fail a
   test.
+
+### M2 T5c — Memory bounded in bytes (2026-10-11)
+
+- **The start.** #86 (T5b) was merged; the branch restarted from `master` (the scoped verify had
+  no failing step; the workload +0.00 %).
+- **The wire, version 10; the record's format 2** (*queued for the M2 review*):
+  `RecordHeader::first`, the number of the record's first message. A viewer's record is the
+  window of its latest messages within `GameConfig::record_bytes` (the bytes of its lines, each
+  with its line break): after each numbered message the oldest go while the record holds more,
+  the newest always stays, the numbers go on; `Record`'s lines run from `first` to `n`.
+- **The session core** (`h3-protocol`, logic, 100 %): `Viewer` with a `VecDeque` of frames, its
+  bytes and its bound; `GameConfig::record_bytes`.
+- **The server** (*provisional*): `[limits] record_bytes` (512 KiB) and `outbound_bytes` (2 MiB; a
+  record must fit twice, since its frame escapes its text once more); `game::Outbox` and
+  `FromGame`, a connection's queue counted in bytes on both ends (the game adds before it queues,
+  the task takes off what it takes out, an atomic count with relaxed order, a single producer); a
+  frame that would pass the bytes or the frames drops the connection (`TooSlow`), a goodbye is
+  queued whatever the bytes. The workload's sessions take the server's default bound.
+- **Not built** (*queued for the M2 review*): one `FetchRecord` in flight as a rule of its own, which
+  the queue's bound in bytes makes unnecessary for memory. Found: a battle has no round limit, so
+  an endless game grows its journal (inbox).
+- **Tests** (h3-protocol 58, h3-server 38): the record's window (200 queries against a 4 KiB
+  bound: the oldest gone, numbered on without a gap, no more gone than had to; the other seat's
+  record its own; a bound below one message keeps the newest alone, a spectator's too); the queue
+  counts its bytes (a frame beyond them refused, a goodbye queued anyway, a closed queue counts
+  nothing); a queue full in bytes drops its connection like one full in frames; the task takes
+  off what it takes out; end to end, a client's record through the server stays within its
+  bound; the configuration's new bounds and the record-fits-twice rule. A mutation that never
+  trims the record fails the session's and the end-to-end test.

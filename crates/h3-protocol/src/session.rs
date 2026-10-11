@@ -54,6 +54,7 @@
 //! list).
 
 use alloc::boxed::Box;
+use alloc::collections::VecDeque;
 use alloc::string::String;
 use alloc::vec::Vec;
 use core::fmt;
@@ -133,6 +134,9 @@ pub struct GameConfig {
     /// change until the game starts. A restored game that started takes its journal's
     /// ([`Entry::Spectators`]).
     pub watchable: bool,
+    /// The most a viewer's record holds, in bytes of its lines (E16 M2 T5c): beyond it the oldest
+    /// messages go; the newest is always kept.
+    pub record_bytes: usize,
 }
 
 /// The journal: everything the replay needs except its header (ADR-0018 point 12). Private to the
@@ -214,15 +218,30 @@ pub enum RestoreError {
 }
 
 /// One viewer: its message numbers and its record.
-#[derive(Debug, Clone, Default, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 struct Viewer {
     /// The number of the last message sent.
     n: u32,
-    /// Every numbered message sent, as its frame.
-    record: Vec<String>,
+    /// The latest numbered messages sent, as their frames, the newest last: those numbered from
+    /// `n - record.len() + 1` to `n`.
+    record: VecDeque<String>,
+    /// The bytes of the record's lines, each with its line break (E16 M2 T5c).
+    bytes: usize,
+    /// The most `bytes` may be; the oldest lines go first, the newest stays (E16 M2 T5c).
+    limit: usize,
 }
 
 impl Viewer {
+    /// A viewer with no message yet, whose record holds at most `limit` bytes.
+    const fn new(limit: usize) -> Self {
+        Self {
+            n: 0,
+            record: VecDeque::new(),
+            bytes: 0,
+            limit,
+        }
+    }
+
     /// Sends the viewer its next numbered message and records it; the frame goes out only if a
     /// connection `to` is there.
     fn post(
@@ -240,10 +259,21 @@ impl Viewer {
                 close: false,
             });
         }
-        self.record.push(frame);
+        self.bytes = self.bytes.saturating_add(frame.len() + 1);
+        self.record.push_back(frame);
+        while self.bytes > self.limit && self.record.len() > 1 {
+            let oldest = self.record.pop_front().unwrap_or_default();
+            self.bytes = self.bytes.saturating_sub(oldest.len() + 1);
+        }
     }
 
-    /// Its record: the header line, then one line per numbered message.
+    /// The number of the record's first line (one more than `n` while it holds none).
+    fn first(&self) -> u32 {
+        let held = u32::try_from(self.record.len()).unwrap_or(u32::MAX);
+        self.n.saturating_sub(held).saturating_add(1)
+    }
+
+    /// Its record: the header line, then one line per numbered message it holds.
     fn record(&self, header: &RecordHeader) -> String {
         let mut record = codec::encode_text(header);
         for line in &self.record {
@@ -335,6 +365,8 @@ pub struct Session<'r> {
     watchers_limit: usize,
     /// Whether the game takes spectators: the host's setting (E16 M2 T4c).
     watchable: bool,
+    /// The most a viewer's record holds, in bytes (E16 M2 T5c).
+    record_bytes: usize,
 }
 
 impl<'r> Session<'r> {
@@ -350,7 +382,7 @@ impl<'r> Session<'r> {
             kind,
             issued: false,
             holder: None,
-            viewer: Viewer::default(),
+            viewer: Viewer::new(config.record_bytes),
         });
         let shadow = config.shadow.then(|| {
             Box::new(Shadow {
@@ -381,6 +413,7 @@ impl<'r> Session<'r> {
             watchers: Vec::new(),
             watchers_limit: config.spectators,
             watchable: config.watchable,
+            record_bytes: config.record_bytes,
         })
     }
 
@@ -674,7 +707,7 @@ impl<'r> Session<'r> {
             },
         ));
         let observation = map::observe(&self.state, self.ruleset, h3_battle::Viewer::Spectator);
-        let mut viewer = Viewer::default();
+        let mut viewer = Viewer::new(self.record_bytes);
         viewer.post(
             Some(conn),
             |n| ServerMessage::Snapshot { n, observation },
@@ -822,6 +855,7 @@ impl<'r> Session<'r> {
             game: self.game,
             seat,
             manifest: self.manifest.clone(),
+            first: viewer.first(),
         };
         let (n, record) = (viewer.n, viewer.record(&header));
         out.push(reply(conn, &ServerMessage::Record { n, seq, record }));

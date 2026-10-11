@@ -20,6 +20,8 @@
 //! hello_timeout_ms = 10000           # no hello within it closes the connection
 //! lobby_timeout_ms = 60000           # in no game for this long closes the connection
 //! outbound_queue = 256               # frames waiting for a slow client; full drops it
+//! outbound_bytes = 2097152           # bytes waiting for a slow client; full drops it
+//! record_bytes = 524288              # a viewer's record: its latest messages within this
 //! games = 16                         # games not over, in total
 //! games_per_address = 2              # games not over, created from one address
 //!
@@ -150,6 +152,10 @@ pub struct Limits {
     pub lobby_timeout_ms: u64,
     /// Frames waiting for a connection; a full queue drops it.
     pub outbound_queue: usize,
+    /// Bytes waiting for a connection (E16 M2 T5c); a queue that would hold more drops it.
+    pub outbound_bytes: usize,
+    /// The most a viewer's record holds, in bytes (E16 M2 T5c): its oldest messages go first.
+    pub record_bytes: usize,
     /// Games not over, in total.
     pub games: usize,
     /// Games not over, created from one address.
@@ -175,6 +181,8 @@ impl Default for Limits {
             hello_timeout_ms: 10_000,
             lobby_timeout_ms: 60_000,
             outbound_queue: 256,
+            outbound_bytes: 2 << 20,
+            record_bytes: 512 << 10,
             games: 16,
             games_per_address: 2,
             spectators_per_game: 8,
@@ -187,7 +195,8 @@ impl Default for Limits {
 impl Limits {
     /// Checks every bound against its range: none is 0 but the spectators and the deadlines of
     /// abandoned games (0: none), a frame holds a hello, and the timeouts, the deadlines and the
-    /// queue stay where the clock's and the channel's arithmetic hold; a game is a thread.
+    /// queue stay where the clock's and the channel's arithmetic hold; a game is a thread; a
+    /// fetched record fits in the outbound queue.
     fn check(&self) -> Result<(), Error> {
         let wide = |n: usize| u64::try_from(n).unwrap_or(u64::MAX);
         let bounds = [
@@ -215,6 +224,13 @@ impl Limits {
             ("hello_timeout_ms", self.hello_timeout_ms, 100, 86_400_000),
             ("lobby_timeout_ms", self.lobby_timeout_ms, 100, 86_400_000),
             ("outbound_queue", wide(self.outbound_queue), 1, 1 << 20),
+            (
+                "outbound_bytes",
+                wide(self.outbound_bytes),
+                64 << 10,
+                1 << 30,
+            ),
+            ("record_bytes", wide(self.record_bytes), 4 << 10, 256 << 20),
             ("games", wide(self.games), 1, 4096),
             ("games_per_address", wide(self.games_per_address), 1, 4096),
             (
@@ -232,6 +248,13 @@ impl Limits {
                     "limits.{name} = {value}: outside {min}..={max}"
                 )));
             }
+        }
+        // A fetched record's frame escapes its text once more, at most doubling it.
+        if self.record_bytes.saturating_mul(2) >= self.outbound_bytes {
+            return Err(Error(format!(
+                "limits.record_bytes = {}: a record must fit twice in outbound_bytes = {}",
+                self.record_bytes, self.outbound_bytes
+            )));
         }
         Ok(())
     }

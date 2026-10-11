@@ -30,8 +30,9 @@ M1–M6 task turns its section into code and docs and deletes it here.
    `Snapshot`; it discards its own state. Spectators reconnect without a token.
 8. `GameEnded { n, result }` to every viewer. Participants may send `FetchReplay { seq }` and
    get the full replay (`Rejected { NotOver }` before the end); any viewer may send
-   `FetchRecord { seq }` and get its own message log, the *record*. The server finalizes the
-   journal as the replay file (the CLI's TOML).
+   `FetchRecord { seq }` and get its own message log, the *record* (since M2 T5c its latest
+   messages within `[limits] record_bytes`, the header naming the first one kept). The server
+   finalizes the journal as the replay file (the CLI's TOML).
 
 Sequence numbers: `n` counts the messages sent to *this* viewer; `seq` is the client's own
 counter echoed in acknowledgements. Neither reveals anything about other viewers.
@@ -113,7 +114,7 @@ packs directory: a scenario names its packs and profile), `[limits]` (M1's six a
 `bots`); the replay goes to `<data>/replays/<offer>-game<id>-<random>.toml`; `shadow_instance`
 in `[server]` since M2 T3, `spectators_per_game` in `[limits]` since M2 T4, `empty_game_ms` and
 `paused_game_ms` since M2 T5a, `messages_per_address`, `hello_timeout_ms` and `lobby_timeout_ms`
-since M2 T5b. Still to come:
+since M2 T5b, `outbound_bytes` and `record_bytes` since M2 T5c. Still to come:
 
 ```
 [server]      anonymous = true                                       # M3

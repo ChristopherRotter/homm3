@@ -112,6 +112,7 @@ pub fn play_game(
         shadow: false,
         spectators: 0,
         watchable: true,
+        record_bytes: crate::config::Limits::default().record_bytes,
     };
     let seats = ["bench-attacker", "bench-defender"].map(|token| SeatKind::Player {
         token: token.to_owned(),
