@@ -19,11 +19,16 @@
 //!   `Replay` and `Record` answers carry the last number and are not recorded. Everything a viewer
 //!   gets is projected for it by construction ([`crate::map`]).
 //! - **The journal.** The seed, the setup, the accepted commands with their sides and a state
-//!   hash every `checkpoint_every` commands: the replay in progress (ADR-0018 point 12; kept in
-//!   memory in M1). The host renders it as the replay file at the end ([`Session::publish_replay`]).
+//!   hash every `checkpoint_every` commands: the replay in progress (ADR-0018 point 12). The host
+//!   renders it as the replay file at the end ([`Session::publish_replay`]).
+//! - **Write-ahead** (E16 M2 T2). What the session did that a restart must redo comes out as
+//!   [`Entry`]s, which the host drains after every call ([`Session::drain_entries`]) and makes
+//!   durable before it sends that call's frames, so nothing a client was told is lost.
+//!   [`Session::restore`] re-runs them after a restart: the same battle, the same seats taken, no
+//!   seat held. A viewer's numbers and record start afresh there (they are not journaled).
 //!
-//! Provisional (E16 M1 T2): the names, the connection numbering, frames as text, the record's
-//! layout (the epic's review list).
+//! Provisional (E16 M1 T2, M2 T2): the names, the connection numbering, frames as text, the
+//! record's layout, the entries (the epic's review list).
 
 use alloc::boxed::Box;
 use alloc::string::String;
@@ -114,14 +119,58 @@ pub struct Journal {
 }
 
 impl Journal {
-    /// Appends an accepted command and, when one is due, the state's hash after it.
-    fn append(&mut self, side: BattleSide, command: h3_battle::Command, state: &BattleState) {
+    /// Appends an accepted command and, when one is due, the state's hash after it; both as
+    /// entries to `entries` too.
+    fn append(
+        &mut self,
+        side: BattleSide,
+        command: h3_battle::Command,
+        state: &BattleState,
+        entries: &mut Vec<Entry>,
+    ) {
         self.commands.push((side, command));
+        entries.push(Entry::Command(side, command));
         let every = usize::try_from(self.checkpoint_every).unwrap_or(usize::MAX);
         if self.commands.len().checked_rem(every) == Some(0) {
-            self.checkpoints.push(state.state_hash());
+            let hash = state.state_hash();
+            self.checkpoints.push(hash);
+            entries.push(Entry::Checkpoint(hash));
         }
     }
+}
+
+/// One entry of the journal the host keeps on disk (E16 M2 T2), in the order the session made
+/// them: what a restart redoes ([`Session::restore`]). Private to the server, as the journal is.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Entry {
+    /// The seat of the side was taken: its token was handed out, so it is re-taken only with it.
+    Taken(BattleSide),
+    /// Every seat was held at once: the game started.
+    Started,
+    /// The engine accepted the command from the side.
+    Command(BattleSide, h3_battle::Command),
+    /// The state's hash after the commands so far, every `checkpoint_every` commands.
+    Checkpoint(u64),
+}
+
+/// Why a journal does not restore its game.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum RestoreError {
+    /// The setup does not start a battle.
+    Setup(SetupError),
+    /// The engine rejected the command of entry `at`.
+    Rejected {
+        /// The entry's index.
+        at: usize,
+        /// Why.
+        error: CommandError,
+    },
+    /// From entry `at` on, the journal is not what its re-run makes: a checkpoint's hash differs,
+    /// or a checkpoint is extra, out of place, or missing before the journal's end.
+    Diverged {
+        /// The entry's index.
+        at: usize,
+    },
 }
 
 /// One viewer: its message numbers and its record.
@@ -170,6 +219,8 @@ pub struct Session<'r> {
     started: bool,
     /// The replay in progress.
     journal: Journal,
+    /// The entries the host has not drained yet.
+    entries: Vec<Entry>,
     /// The replay file's text, once the host published it.
     replay: Option<String>,
 }
@@ -203,8 +254,57 @@ impl<'r> Session<'r> {
                 checkpoint_every: config.checkpoint_every,
                 checkpoints: Vec::new(),
             },
+            entries: Vec::new(),
             replay: None,
         })
+    }
+
+    /// Restores a game from its journal's `entries` after a restart (E16 M2 T2): hosts the battle
+    /// of `config` with `seats` as [`Session::new`] does, then re-runs the entries in order (the
+    /// seats taken, the start, the commands through the engine). The re-run makes its own entries,
+    /// which the journal must begin: a checkpoint whose hash differs, or one out of place, is a
+    /// divergence. No seat is held after it; a taken one is re-taken with its
+    /// token. The first drained entries then are what the journal lacks: the checkpoint after its
+    /// last command if a crash cut the journal between the two, and the bots' commands if a started
+    /// game is theirs to act (a crash between a player's command and the bots' answers).
+    pub fn restore(
+        ruleset: &'r Ruleset,
+        config: GameConfig,
+        seats: [SeatKind; 2],
+        entries: &[Entry],
+    ) -> Result<Self, RestoreError> {
+        let mut session = Self::new(ruleset, config, seats).map_err(RestoreError::Setup)?;
+        for (at, &entry) in entries.iter().enumerate() {
+            match entry {
+                Entry::Taken(side) => {
+                    session.seats[side.index()].issued = true;
+                    session.entries.push(entry);
+                }
+                Entry::Started => {
+                    session.started = true;
+                    session.entries.push(entry);
+                }
+                Entry::Command(side, command) => {
+                    session
+                        .apply(side, command)
+                        .map_err(|error| RestoreError::Rejected { at, error })?;
+                }
+                // The re-run's own follows its command; the two are compared below.
+                Entry::Checkpoint(_) => {}
+            }
+        }
+        if !session.entries.starts_with(entries) {
+            let same = entries.iter().zip(&session.entries);
+            let at = same
+                .take_while(|(recorded, rerun)| recorded == rerun)
+                .count();
+            return Err(RestoreError::Diverged { at });
+        }
+        session.entries.drain(..entries.len());
+        if session.started {
+            session.run_bots(&mut Vec::new());
+        }
+        Ok(session)
     }
 
     /// Handles what connection `conn` sent after its hello; the frames to send go to `out`. The
@@ -245,6 +345,12 @@ impl<'r> Session<'r> {
     /// The replay in progress.
     pub const fn journal(&self) -> &Journal {
         &self.journal
+    }
+
+    /// The entries made since the last call, in order (E16 M2 T2): the host makes them durable
+    /// before it sends the frames of the call that made them (write-ahead, ADR-0018 point 12).
+    pub fn drain_entries(&mut self) -> alloc::vec::Drain<'_, Entry> {
+        self.entries.drain(..)
     }
 
     /// The live battle's state hash (the replay's final hash once the game is over).
@@ -319,9 +425,12 @@ impl<'r> Session<'r> {
             return out.push(refused(conn, reason));
         }
         let token = Some(expected.clone());
-        held.issued = true;
+        let taken = !core::mem::replace(&mut held.issued, true);
         if let Some(old) = held.holder.replace(conn) {
             out.push(goodbye(old, GoodbyeReason::Replaced));
+        }
+        if taken {
+            self.entries.push(Entry::Taken(side));
         }
         out.push(reply(
             conn,
@@ -336,6 +445,7 @@ impl<'r> Session<'r> {
         self.send(side, |n| ServerMessage::Snapshot { n, observation }, out);
         if !self.started && self.seats.iter().all(SeatState::held) {
             self.started = true;
+            self.entries.push(Entry::Started);
             self.advance(out);
         } else if self.started && self.state.side_to_act() == Some(side) {
             self.your_turn(side, out);
@@ -427,7 +537,8 @@ impl<'r> Session<'r> {
     ) -> Result<Vec<h3_battle::Event>, CommandError> {
         let mut events = Vec::new();
         h3_battle::apply(&mut self.state, self.ruleset, side, command, &mut events)?;
-        self.journal.append(side, command, &self.state);
+        self.journal
+            .append(side, command, &self.state, &mut self.entries);
         Ok(events)
     }
 

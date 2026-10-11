@@ -4,11 +4,11 @@ The server lane's living state; read after the global `docs/HANDOFF.md`. Format 
 
 ## Current state
 
-- **M1 closed (2026-10-11, SRV-Q12; #61 merged). M2 T1 done (2026-10-11)** on `claude/upbeat-babbage-8bcd7n`, pull request next: many games on one server (wire protocol 4: `ListGames`/`Games`, `CreateGame`/`GameCreated`; the sans-I/O `lobby` in `h3-protocol`; the sectioned configuration with `[[offer]]`s, the `registry` and a thread per game in `h3-server`). **Next: M2 T2** (`QUEUE.md`), the journal and restore. Review list for the M2 checkpoint: the epic file.
-- **Shared changes on this branch** (the global HANDOFF's server row, `06-security.md`'s game limits): a separate commit; the pull request carries the label `cross-lane` (the user, 2026-10-11).
+- **M1 closed (2026-10-11, SRV-Q12). M2 T1 merged (#67); M2 T2 done (2026-10-11)** on `claude/upbeat-wright-df9owq`, pull request next: the write-ahead journal and restore (the session core's `Entry`s and `Session::restore` in `h3-protocol`; `journal.rs` and the restore at start in `h3-server`; `<data>/games/`, `<data>/void/`). **Next: M2 T3** (`QUEUE.md`), verification, pause and resume. Review list for the M2 checkpoint: the epic file.
+- **Shared changes on this branch** (the global HANDOFF's server row, `06-security.md`'s journal and data directory): a separate commit; the pull request carries the label `cross-lane` (the user, 2026-10-11).
 - **ADR-0018 point 5 as amended:** the mapping's matches over the engine's enums are exhaustive; a new battle variant fails `h3-protocol`'s build until mapped (global HANDOFF trap).
 - **The 100 % gate** covers `h3-protocol` (logic); `h3-server` is an adapter outside it, tested end to end.
-- **Versions** (`docs/08-work-process.md`): `PROTOCOL_VERSION` (`h3-protocol`, 4 since M2 T1's lobby; 3 was the battle lane's `OpeningSpell` event; bumped on every wire change), `RECORD_FORMAT_VERSION` (`h3-protocol`, 1), `JOURNAL_FORMAT_VERSION` (`h3-server`, M2).
+- **Versions** (`docs/08-work-process.md`): `PROTOCOL_VERSION` (`h3-protocol`, 4 since M2 T1's lobby; 3 was the battle lane's `OpeningSpell` event; bumped on every wire change), `RECORD_FORMAT_VERSION` (`h3-protocol`, 1), `JOURNAL_FORMAT_VERSION` (`h3-server`, 1 since M2 T2; bumped when the journal's lines change).
 - The lane owns (`lanes.toml`) `h3-protocol`, `h3-server`, `benches/server/` and E16's files; the workspace files stay shared. **Checkpoints** per milestone, under the autonomy contract below; a fresh reviewer agent checks each milestone before the user does. The identity and discovery ADR drafts are decided at the M3 refinement.
 - **Ids:** questions `SRV-Q<n>`, quirks `SRV-QUIRK-<n>`, stubs `SRV-STUB-<n>`. ADR drafts go to `docs/lanes/server/adr-drafts/` and get a number when the user accepts them. Branches: `server/<task>`.
 
@@ -29,9 +29,15 @@ The server lane's living state; read after the global `docs/HANDOFF.md`. Format 
 - Automated clients answer every turn at once and exceed the default 20 messages per second: end-to-end tests that play raise the limit (`tests.rs`, `fast()`).
 - A game leaves the lobby only under the registry's lock, after its bound connections are counted down (`registry.rs`): deciding by the game's own connection list races a join that is already queued.
 - A socket closed over unread data is reset, and the reset makes the peer drop what it has not read yet (a `Goodbye`): the transport's close reads on for the peer's close (`net.rs`, `LINGER`). The flooding test catches a regression only in most runs, not all.
+- A journal's line holds tokens: errors from reading one name the line and column, never its text (serde_json's messages quote values); a log line never carries a hash either (`journal.rs`).
+- Write-ahead order in a game's thread: drain the session's entries and sync them before `deliver`; anything new that changes what a restart must redo needs an `Entry`, or the restore diverges from what clients were told.
 - **The workload is lane-only and follows `master`:** 55 % of its count is the battle engine, so battle changes move it and the full verify (CI) does not measure it. At each session's start `verify --scope server` measures it; a drift there came from `master`: re-baseline (`cargo xtask bench-check --update --workload session-random-play-full`) and name the range in the commit. Measure only with the file's arguments (they shift the heap `malloc` walks).
 
 ## Recent sessions
+
+### 2026-10-11 — M2 T2, the journal
+
+#67 had merged; the branch started from `master` (the workload −0.10 %). Built T2 (`docs/epics/E16-log.md`, M2 T2): the session core hands the host `Entry`s, which the game's thread syncs before it sends a call's frames; `Session::restore` re-runs them (the re-run's entries must extend the journal's; a cut journal is completed); a JSON-lines journal per game with the tokens and the replay's TOML in its first line; restore at start before listening, void journals moved aside. An end-to-end test copies the data directory mid-battle and resumes on a second server. Review list in the epic file.
 
 ### 2026-10-11 — M2 T1, many games
 
@@ -40,7 +46,3 @@ The user merged #61 and asked for the next increment: SRV-Q12 answered, the bran
 ### 2026-10-10 — M1 T4, closure
 
 T3 had merged; the branch started from `master`. Built the workload (`docs/epics/E16-log.md`, T4); its profile showed the count is 55 % battle engine, so a full-verify gate would fail battle pull requests on a server file: made it lane-only (a shared `xtask` change). `06-security.md`'s "Hosted games" closes the queue's E03 T9 inbox item. The reviewer agent found 2 major and 7 minor issues: the unbounded close (fixed, with an end-to-end test that fails without the fix), the limits' ranges, three doc claims and four missing tests (fixed); memory bounded in bytes and the handshake's hold went to M2 T5 (the epic log). The M2 cut is proposed in `QUEUE.md`; SRV-Q12 asks the checkpoint.
-
-### 2026-10-10 — M1 T3, the server binary
-
-T2 had merged; the branch restarted from `master` (CI green on T2's pull request). Built T3 (`docs/epics/E16-log.md`, T3): configuration, game thread, connection tasks, WebSocket transport, headless client, 14 tests. The flooding test found the reset that lost the `Goodbye` (fixed by a lingering close); the first two-client test found that automated clients exceed the default rate. The replays the tests wrote verify with `h3 verify`. Review list in the epic file; `verify --scope server` with no failing step.

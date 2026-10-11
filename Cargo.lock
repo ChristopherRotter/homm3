@@ -487,6 +487,7 @@ dependencies = [
  "h3-protocol",
  "h3-sim",
  "serde",
+ "serde_json",
  "tokio",
  "tokio-tungstenite",
  "toml",

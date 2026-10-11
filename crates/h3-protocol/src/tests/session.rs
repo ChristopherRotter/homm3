@@ -17,7 +17,7 @@ use super::full;
 use crate::RECORD_FORMAT_VERSION;
 use crate::codec::decode_server;
 use crate::map;
-use crate::session::{Bot, ConnId, GameConfig, Outbound, SeatKind, Session};
+use crate::session::{Bot, ConnId, Entry, GameConfig, Outbound, RestoreError, SeatKind, Session};
 use crate::wire::{
     ClientMessage, Command, GoodbyeReason, Outcome, Phase, Query, RecordHeader, Refusal,
     RejectCode, Seat, ServerMessage, Target,
@@ -71,16 +71,24 @@ fn random_bot(seed: u64) -> SeatKind {
     SeatKind::Bot(Box::new(RandomBot(Rng::for_stream(seed, StreamId::AGENT))))
 }
 
-/// A session of the `full` scenario with `seed`.
-fn host<'r>(r: &'r Ruleset, seed: u64, seats: [SeatKind; 2]) -> Session<'r> {
-    let (_, setup) = full();
-    let config = GameConfig {
+/// Game 1: the `full` scenario with `seed`, a checkpoint every 10 commands.
+fn config(seed: u64) -> GameConfig {
+    GameConfig {
         game: 1,
-        setup,
+        setup: full().1,
         seed,
         checkpoint_every: 10,
-    };
-    Session::new(r, config, seats).unwrap()
+    }
+}
+
+/// A session of the `full` scenario with `seed`.
+fn host<'r>(r: &'r Ruleset, seed: u64, seats: [SeatKind; 2]) -> Session<'r> {
+    Session::new(r, config(seed), seats).unwrap()
+}
+
+/// The entries the session made since they were last drained.
+fn drained(s: &mut Session<'_>) -> Vec<Entry> {
+    s.drain_entries().collect()
 }
 
 fn ruleset() -> Ruleset {
@@ -729,7 +737,194 @@ fn a_setup_the_engine_refuses_hosts_no_game() {
         seed: 3,
         checkpoint_every: 0,
     };
-    assert!(Session::new(&r, config, players()).is_err());
+    assert!(Session::new(&r, config.clone(), players()).is_err());
+    assert!(matches!(
+        Session::restore(&r, config, players(), &[]),
+        Err(RestoreError::Setup(_))
+    ));
+}
+
+/// Two players took their seats and sent `commands` commands; every entry, drained as it came.
+fn journaled(r: &Ruleset, commands: u32) -> (Session<'_>, Vec<Entry>) {
+    let mut s = host(r, 5, players());
+    let first = join(&mut s, A, Seat::Attacker, None);
+    let mut entries = drained(&mut s);
+    assert_eq!(entries, [Entry::Taken(BattleSide::Attacker)]);
+    let mut out = first;
+    out.extend(join(&mut s, B, Seat::Defender, None));
+    assert_eq!(
+        drained(&mut s),
+        [Entry::Taken(BattleSide::Defender), Entry::Started]
+    );
+    entries.extend([Entry::Taken(BattleSide::Defender), Entry::Started]);
+    play(&mut s, out, &mut Rng::from_seed(9), commands);
+    entries.extend(drained(&mut s));
+    (s, entries)
+}
+
+#[test]
+fn the_entries_are_the_journal_and_restore_the_game() {
+    let r = ruleset();
+    let (mut live, entries) = journaled(&r, 25);
+    // The commands in order, each tenth followed by the state's hash.
+    let journal = live.journal().clone();
+    let mut expected = vec![
+        Entry::Taken(BattleSide::Attacker),
+        Entry::Taken(BattleSide::Defender),
+        Entry::Started,
+    ];
+    let mut checkpoints = journal.checkpoints.iter();
+    for (i, &(side, command)) in journal.commands.iter().enumerate() {
+        expected.push(Entry::Command(side, command));
+        if (i + 1) % 10 == 0 {
+            expected.push(Entry::Checkpoint(*checkpoints.next().unwrap()));
+        }
+    }
+    assert_eq!(entries, expected);
+    assert_eq!((journal.commands.len(), journal.checkpoints.len()), (25, 2));
+    // The restored game is the live one, its seats taken and empty.
+    let mut restored = Session::restore(&r, config(5), players(), &entries).unwrap();
+    assert_eq!(drained(&mut restored), [], "the journal lacks nothing");
+    assert_eq!(restored.state_hash(), live.state_hash());
+    assert_eq!(restored.journal(), &journal);
+    assert_eq!(restored.phase(), Phase::Running);
+    assert_eq!(restored.open_seats(), []);
+    let command = ClientMessage::Command {
+        seq: 7,
+        command: Command::Wait {},
+    };
+    assert_eq!(
+        to(&send(&mut restored, A, command), A),
+        [ServerMessage::Rejected {
+            n: 0,
+            seq: 7,
+            code: RejectCode::NotSeated
+        }],
+        "no seat is held"
+    );
+    assert_eq!(
+        to(&join(&mut restored, A, Seat::Attacker, None), A),
+        [ServerMessage::Refused {
+            reason: Refusal::SeatTaken
+        }]
+    );
+    // Re-taken with the tokens: what the live game gives, but numbered afresh.
+    let unnumbered = |messages: Vec<ServerMessage>| -> Vec<ServerMessage> {
+        let mut messages = messages;
+        for m in &mut messages {
+            if let ServerMessage::Snapshot { n, .. } | ServerMessage::YourTurn { n, .. } = m {
+                *n = 0;
+            }
+        }
+        messages
+    };
+    for (seat, token) in [(Seat::Attacker, TOKENS[0]), (Seat::Defender, TOKENS[1])] {
+        let back = to(&join(&mut restored, A, seat, Some(token)), A);
+        let again = to(&join(&mut live, ConnId(9), seat, Some(token)), ConnId(9));
+        assert!(matches!(back[1], ServerMessage::Snapshot { n: 1, .. }));
+        assert_eq!(unnumbered(back), unnumbered(again));
+        send(&mut restored, A, ClientMessage::Leave {});
+        live.disconnected(ConnId(9));
+    }
+    assert_eq!(drained(&mut restored), [], "a re-take journals nothing");
+}
+
+#[test]
+fn a_journal_that_is_not_its_rerun_restores_nothing() {
+    let r = ruleset();
+    let (_, entries) = journaled(&r, 25);
+    let restore = |entries: &[Entry]| Session::restore(&r, config(5), players(), entries).err();
+    let checkpoint = entries
+        .iter()
+        .position(|e| matches!(e, Entry::Checkpoint(_)))
+        .unwrap();
+    // A flipped hash.
+    let mut flipped = entries.clone();
+    flipped[checkpoint] = Entry::Checkpoint(1);
+    assert_eq!(
+        restore(&flipped),
+        Some(RestoreError::Diverged { at: checkpoint })
+    );
+    // A checkpoint out of place, or one where none is due.
+    let mut early = entries.clone();
+    early.swap(checkpoint - 1, checkpoint);
+    assert_eq!(
+        restore(&early),
+        Some(RestoreError::Diverged { at: checkpoint - 1 })
+    );
+    let mut extra = entries.clone();
+    extra.push(Entry::Checkpoint(0));
+    assert_eq!(
+        restore(&extra),
+        Some(RestoreError::Diverged { at: entries.len() })
+    );
+    // A command the engine refuses.
+    let mut wrong = entries.clone();
+    wrong[3] = Entry::Command(
+        BattleSide::Defender,
+        h3_battle::Command::Heal {
+            target: h3_battle::StackId(200),
+        },
+    );
+    assert!(matches!(
+        restore(&wrong),
+        Some(RestoreError::Rejected { at: 3, .. })
+    ));
+}
+
+#[test]
+fn a_journal_cut_short_is_completed() {
+    let r = ruleset();
+    // Cut between a command and its checkpoint: the checkpoint is the first entry drained.
+    let (_, entries) = journaled(&r, 10);
+    let (last, cut) = entries.split_last().unwrap();
+    assert!(matches!(last, Entry::Checkpoint(_)));
+    let mut restored = Session::restore(&r, config(5), players(), cut).unwrap();
+    assert_eq!(drained(&mut restored), [*last]);
+    // Cut before the bot's answer: the restore lets the bot act.
+    let bot = || [players().into_iter().next().unwrap(), random_bot(3)];
+    let mut s = host(&r, 8, bot());
+    let out = join(&mut s, A, Seat::Attacker, None);
+    play(&mut s, out, &mut Rng::from_seed(4), 12);
+    let entries = drained(&mut s);
+    let answer = entries
+        .iter()
+        .rposition(|e| matches!(e, Entry::Command(BattleSide::Defender, _)))
+        .unwrap();
+    let mut restored = Session::restore(&r, config(8), bot(), &entries[..answer]).unwrap();
+    assert!(matches!(
+        drained(&mut restored).first(),
+        Some(Entry::Command(BattleSide::Defender, _))
+    ));
+    let back = to(&join(&mut restored, A, Seat::Attacker, Some(TOKENS[0])), A);
+    assert!(
+        restored.result().is_some() || matches!(back.last(), Some(ServerMessage::YourTurn { .. })),
+        "the player's turn, or the end: {back:?}"
+    );
+}
+
+#[test]
+fn a_waiting_game_restores_its_taken_seats() {
+    let r = ruleset();
+    let taken = [Entry::Taken(BattleSide::Attacker)];
+    let mut s = Session::restore(&r, config(5), players(), &taken).unwrap();
+    assert_eq!(
+        (s.phase(), s.open_seats()),
+        (Phase::Waiting, vec![Seat::Defender])
+    );
+    assert!(matches!(
+        to(&join(&mut s, A, Seat::Attacker, None), A)[..],
+        [ServerMessage::Refused {
+            reason: Refusal::SeatTaken
+        }]
+    ));
+    join(&mut s, A, Seat::Attacker, Some(TOKENS[0]));
+    join(&mut s, B, Seat::Defender, None);
+    assert!(s.started());
+    assert_eq!(
+        drained(&mut s),
+        [Entry::Taken(BattleSide::Defender), Entry::Started]
+    );
 }
 
 /// The hidden obstacles' spell of the defender's hero (a Quicksand) and of the attacker's (a Land
@@ -842,6 +1037,7 @@ proptest! {
         let mut holders: [Option<ConnId>; 2] = [None, None];
         let mut legal: [Vec<Command>; 2] = [Vec::new(), Vec::new()];
         let mut numbered: Vec<(usize, u32, String)> = Vec::new();
+        let mut entries = Vec::new();
         for (seq, (conn, act)) in (1u32..).zip(acts) {
             let conn = ConnId(conn);
             let held = holders.iter().position(|&h| h == Some(conn));
@@ -895,7 +1091,16 @@ proptest! {
                     (_, None) => {}
                 }
             }
+            entries.extend(s.drain_entries());
         }
+        // The entries restore the game as it is (E16 M2 T2).
+        let mut restored = Session::restore(&r, config(5), players(), &entries)
+            .map_err(|e| TestCaseError::fail(format!("{e:?}")))?;
+        prop_assert_eq!(restored.drain_entries().count(), 0);
+        prop_assert_eq!(restored.state_hash(), s.state_hash());
+        prop_assert_eq!(restored.journal(), s.journal());
+        prop_assert_eq!(restored.phase(), s.phase());
+        prop_assert_eq!(restored.open_seats(), s.open_seats());
         for (i, seat) in [Seat::Attacker, Seat::Defender].into_iter().enumerate() {
             let conn = ConnId(10 + i as u64);
             join(&mut s, conn, seat, Some(TOKENS[i]));
@@ -915,8 +1120,8 @@ proptest! {
     }
 
     /// A command from either seat at any point either is accepted and journaled, or is rejected
-    /// and changes neither the battle nor the journal, and the other seat hears nothing of it;
-    /// the seat not to act is always told it is not its turn.
+    /// and changes neither the battle nor the journal (no entry either), and the other seat hears
+    /// nothing of it; the seat not to act is always told it is not its turn.
     #[test]
     fn a_rejected_command_changes_nothing(
         steps in 0u32..30,
@@ -934,11 +1139,13 @@ proptest! {
         let other = if actor == A { B } else { A };
         let conn = if wrong_seat { other } else { actor };
         let (hash, journal) = (s.state_hash(), s.journal().clone());
+        s.drain_entries();
         let out = send(&mut s, conn, ClientMessage::Command { seq: 99, command });
         match to(&out, conn).remove(0) {
             ServerMessage::Accepted { seq: 99, .. } => {
                 prop_assert!(!wrong_seat);
                 prop_assert_eq!(s.journal().commands.len(), journal.commands.len() + 1);
+                prop_assert!(matches!(s.drain_entries().next(), Some(Entry::Command(..))), "journaled");
             }
             ServerMessage::Rejected { seq: 99, code, .. } => {
                 if wrong_seat {
@@ -946,6 +1153,7 @@ proptest! {
                 }
                 prop_assert_eq!(s.state_hash(), hash);
                 prop_assert_eq!(s.journal(), &journal);
+                prop_assert_eq!(s.drain_entries().count(), 0);
                 prop_assert_eq!(out.len(), 1, "only the sender hears of it");
             }
             other => prop_assert!(false, "{:?}", other),

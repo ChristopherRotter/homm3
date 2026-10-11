@@ -303,3 +303,66 @@ how and why the work went.
   game leaves with its creator and frees its address's place; the earlier tests through the
   lobby; the configuration's sections and checks; the `TooSlow` unit test binds through a
   registry. Five runs of the server's suite in a row passed.
+
+### M2 T2 — The write-ahead journal and restore (2026-10-11)
+
+- **The start.** #67 (T1) was merged; the branch started from `master`. The scoped verify had no
+  failing step, the workload −0.10 % (no re-baseline).
+- **The session core** (`h3-protocol`, logic, 100 %; *queued for the M2 review*): `Entry` (a
+  seat taken, the start, an accepted command with its side, a checkpoint), made in the
+  session's order and drained by the host after every call (`drain_entries`); a rejected
+  command makes none. `Session::restore` re-runs a journal's entries in a fresh session: the
+  seats taken (`issued`), the start, the commands through the engine; the re-run makes its own
+  entries, which the journal must begin, so a checkpoint whose hash differs or that is out of
+  place is `Diverged { at }`, a command the engine refuses `Rejected { at, error }`, a setup that
+  does not start `Setup`. A journal cut short is completed: the checkpoint after its last command
+  and, in a started game whose bot is to act (a crash between a player's command and the bot's
+  answers), the bot's commands are the first entries drained after it. No seat is held after a
+  restore; a viewer's numbers and record start afresh (they are not journaled). `Lobby::reopen`
+  lists a restored game again without the limits' check, ids continuing after it.
+- **The journal** (`h3-server`, `journal.rs`; *queued for the M2 review*:
+  `JOURNAL_FORMAT_VERSION` 1, the layout): `<data>/games/<game>.journal`, JSON lines. The first
+  line is `Start { format, game, offer, origin, tokens, replay }`: the creator's address (the
+  per-address limit after a restart), the seats' tokens (SRV-Q12 (d): the token itself; this
+  line is the operator's copy, for a player who lost its `Joined`) and the game's replay before
+  its first command as the CLI's TOML (header, seed, setup with the obstacles, checkpoint
+  interval), so the replay format is not duplicated. Then one line per entry: `Taken { side }`,
+  `Started {}`, `Command { command }` in the replay's text form, `Checkpoint { hash }` as hex.
+  Created with `create_new` and synced with its directory before the game is listed; on Unix
+  the directories the server creates are 0700 and the journals 0600 (*provisional*). A last line
+  without its newline is a write a crash cut short: dropped on reading, truncated before the
+  next append. The reader's errors name the line and column, never its text (a line may hold
+  tokens).
+- **Write-ahead.** The game's thread appends a call's entries and syncs them (`sync_data`)
+  before it delivers that call's frames, so an `Accepted`, a `Joined` with its token or a
+  `YourTurn` never leaves before what it depends on is durable. A journal that does not write
+  stops the game: its connections get `Goodbye { Shutdown }`, it leaves the lobby, the next start
+  restores it from its last synced line (*provisional*; no new wire reason).
+- **The end.** A finished game's replay is written as before, then its journal is removed (the
+  replay is the finished journal); a replay that does not write keeps the journal, which the next
+  start re-runs to write it. A game that leaves without having started removes its journal.
+- **Restore at start** (`registry::restore`, before the server listens): each journal is read,
+  its offer looked up by id, its replay read on the offer's ruleset and its header checked
+  (`ReplayHeader::check`); then the game's own thread re-runs it and appends what it lacked. A
+  running game is listed again (`Phase::Running`, seats empty, re-taken with the tokens); one
+  that is over writes its replay and goes; one that never started goes. A journal that does not
+  read, names an offer the server no longer has, whose replay does not read on the offer's
+  content or whose engine or content identity differs, or that does not re-run, is void: moved to
+  `<data>/void/<game>-<random>.journal` with a log line naming why (no hashes or tokens). The
+  restored seats come from the journal (a token or the bot), not from the offer's current
+  `bots`; the bot gets a new seed. `start` waits for every re-run before it binds.
+- **Known, for later tasks** (`QUEUE.md` inbox): a viewer's numbers and record restart after a
+  restore; ids of games that ended or went void may be handed out again after a restart (the
+  replay and void files carry a random part); a restored game nobody returns to stays (T3, T5).
+- **Tests** (h3-protocol 49, h3-server 24; the scoped verify with no failing step, the workload −0.06 %): the entries
+  of a played game are its journal and restore it (the same state hash, journal, phase, no seat
+  held, `NotSeated`, `SeatTaken` without the token, the same snapshot and turn after a re-take);
+  flipped and misplaced checkpoints, an extra one, a refused command and a bad setup; a journal
+  cut before its checkpoint or before the bot's answer is completed; a waiting game's taken
+  seats; the property over any messages restores to the live game, and a rejected command
+  journals nothing. The journal's lines, permissions, a torn line, the reader's refusals, the
+  void directory. Over loopback: a game stopped mid-battle (the data directory copied at that
+  moment, as a crash leaves it) resumes on a second server with the same snapshot and turn, plays
+  to its end, and its replay (commands from both servers) verifies; a start with a torn journal
+  (restored), one of another ruleset and one of a missing offer (void), one of a waiting game
+  (gone), new ids after the restored one; finished and waiting games leave no journal.
