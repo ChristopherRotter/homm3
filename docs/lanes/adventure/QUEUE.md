@@ -4,25 +4,13 @@ Pre-refined tasks of the adventure lane, in order, then the inbox of discovered 
 
 ## Tasks
 
-Epic: `docs/epics/E08-adventure-map.md` (refined 2026-10-08, reviewed with the user the same day; decisions 1–12 there; done tasks in `E08-log.md`). Increment 1 = T1a, T1b, T2–T10, with a checkpoint with the user at T1a (done: ADR-0015–0017), after T3 (done, 2026-10-10) and at T10. T1a, T1b, T2, T3, T4, T5a, T6a, T6b and T7a are done; the import moved from T3 to T5 and T6 (user, 2026-10-10). Refined into the entries below at the T3 checkpoint (2026-10-10): the user takes one or two tasks per round, each round ends at a checkpoint (the round after T3: T4 alone; after T4: T5a and T6a; after T5a/T6a: T6b and T7a). Every entry's acceptance includes the Definition of Done (`docs/05-testing.md`).
-
-### E08 T5b — The persistent grid
-
-- **Scope:** `src/persistent.rs` (an `Arc` table of `Arc` leaves, uniform leaves shared through a sentinel held by the grid, set and clear; the only place `ptr_eq`/`as_ptr` may appear), the two copy-on-write properties (ADR-0016 point 2), the leaf-size measurement against a flat per-player copy and the fork cost on 36×36 and 144×144, measured with callgrind on an adventure-owned example (`crates/h3-adventure/examples/`; the user, 2026-10-10: the gated workload in `benches/adventure/` comes with T9, whose CLI commands run it, since `crates/h3-cli`'s dispatch and `Cargo.toml` are battle-owned).
-- **Acceptance:** both properties pass; the measurements and the chosen leaf size in `docs/02-architecture.md` §8 and the log. A grid that loses on hot reads goes back to the user (ADR-0016).
-- **Depends on:** T5a (done). **Status:** ready; needed by T8.
-
-### E08 T7b — Movement
-
-- **Scope:** `MoveHero` (a game command routed to the adventure, ADR-0017 point 1) with a full path validated step by step and rejected whole; the step's price as read in T7a (survey §1.2–1.3: the source tile alone, road when both tiles have one, native 100 unless Cursed Ground, the diagonal by `isqrt(2·cost²)`, the diagonal exception with `ADV-QUIRK-2`/`-3` behind their flags), the points left dropping to 0 below the cheapest step from the new tile (D-3, as the user decides), the reachable-tiles query (costs and the chosen shortest path), the leavable own tile, rules ADV-MOV-003 to ADV-MOV-007 (ADV-MOV-008, explored tiles only, with T8's fog); MoveHero accepts only paths payable today (a step the hero cannot pay is a rejection, not the original's stop-and-zero, survey §1.3). Pathfinding, Nomads, water and flying stay out (increment 3+).
-- **Acceptance:** each step rule has a test from its source; the query and `MoveHero` agree (a property); a rejected `MoveHero` leaves the state untouched.
-- **Depends on:** T4, T5a, T6b (done); the user's decisions on ADV-Q3 (D-2, D-3) and on the class of `ADV-QUIRK-2`/`-3` at the T6b/T7a checkpoint. **Status:** waiting (the checkpoint).
+Epic: `docs/epics/E08-adventure-map.md` (refined 2026-10-08, reviewed with the user the same day; decisions 1–12 there; done tasks in `E08-log.md`). Increment 1 = T1a, T1b, T2–T10, with a checkpoint with the user at T1a (done: ADR-0015–0017), after T3 (done, 2026-10-10) and at T10. T1a, T1b, T2, T3, T4, T5a, T5b, T6a, T6b, T7a and T7b are done; the import moved from T3 to T5 and T6 (user, 2026-10-10). Refined into the entries below at the T3 checkpoint (2026-10-10): the user takes one or two tasks per round, each round ends at a checkpoint (the round after T3: T4 alone; after T4: T5a and T6a; after T5a/T6a: T6b and T7a; after T6b/T7a: T7b and T5b). Every entry's acceptance includes the Definition of Done (`docs/05-testing.md`).
 
 ### E08 T8 — Fog of war and projection
 
-- **Scope:** first CR-3 (`ADV-Q5`); reveal by scouting radius on the grid of T5b, the fringe quirk `ADV-QUIRK-1` if confirmed (A-1), events with their visibility, `observe` and `legal_commands`, the viewer knowledge list in `docs/06-security.md`, the property tests (atomicity, legality consistency, ownership isolation, observation hygiene, clone equivalence, determinism).
+- **Scope:** first CR-3 (`ADV-Q5`); reveal by scouting radius on `BitGrid` (one explored layer per player in `AdventureState`, a state hash version bump; reveal a disk row by row with `set_run`, batched per leaf), the fringe quirk `ADV-QUIRK-1` if confirmed (A-1), ADV-MOV-008 (`MoveHero` and `Reach` on explored tiles only), events with their visibility (`HeroStepped` per step), `observe` (planes built word by word from the grid, not tile by tile) and `legal_commands`, the viewer knowledge list in `docs/06-security.md`, the property tests (atomicity, legality consistency, ownership isolation, observation hygiene, clone equivalence, determinism) with `MoveHero` among the commands.
 - **Acceptance:** the seven property tests pass on imported maps.
-- **Depends on:** T5b, T7b; the user's four answers on the fringe (A-1). **Status:** waiting (A-1, T5b, T7b).
+- **Depends on:** T5b, T7b (done); the user's four answers on the fringe (A-1). **Status:** waiting (A-1).
 
 ### E08 T9 — Env, CLI, gates
 
@@ -37,6 +25,9 @@ Epic: `docs/epics/E08-adventure-map.md` (refined 2026-10-08, reviewed with the u
 
 ## Inbox
 
+- 2026-10-11 (T7b): `Reach` keeps one path per tile (Dijkstra by points left); within the last ~250 points of a day a path through a tile with fewer points can end better or reach a tile the search misses (the diagonal exception, the D-3 zeroing). If the env or the AI needs the exact reach, a search over (tile, points) for the low-points band only (log, T7b).
+- 2026-10-11 (T7b): the step's price leaves out Pathfinding, Nomads, flying, water walking, Favorable Winds and Cursed Ground (0x4B1740 has them): increment 3 with the adventure profile, Cursed Ground with objects.
+- 2026-10-11 (T5b): `examples/grid_bench.rs` is the fork-cost measurement; T9's gated workload in `benches/adventure/` can run it (or the env's fork) under `bench-check`.
 - 2026-10-10 (T6b review): building a game emits no events (the first `TurnStarted` goes to a `NoopSink`): T8/T9 decide whether a replay or a client's event stream needs a start event, or reads the start from `observe`. `GameState` keeps no hero types yet: the game's store of heroes (hero details) comes with `h3-heroes` in increment 3.
 - 2026-10-10 (T6b): the original plays every human player before every computer player each day (0x4C6FE0; VCMI `TurnOrderProcessor` too). The engine has no human/computer distinction; decide with the server lane's seats or the turn-group work whether a schedule should order players so (GAM-TRN-001's note).
 - 2026-10-10 (T6b): weeks of seven days and months of four (wiki Time; VCMI parameters) come with the first rule that reads them (week events, increment 4); GAM-CAL-001 counts days only.
