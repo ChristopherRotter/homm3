@@ -1,10 +1,16 @@
-//! Flat observation encoding (version 11) of a per-viewer [`Observation`].
+//! Flat observation encoding (version 13) of a per-viewer [`Observation`].
 //!
-//! Layout: [`GLOBALS`] global features, then two hero blocks of [`HERO_FEATURES`] features (the
-//! viewer's, then the opponent's), then [`STACK_FEATURES`] features for each of the
-//! [`STACK_CAPACITY`] stack slots (zeros for unused slots). Values are raw game quantities as
-//! `f32` (normalisation is the trainer's business). Stacks and sides are described relative to
-//! the viewer ("own" flag, "viewer"/"opponent"), so one policy can play both sides.
+//! Layout, in this order: [`GLOBALS`] global features; the public part of the two heroes,
+//! [`HERO_PUBLIC_FEATURES`] each (the viewer's, then the opponent's); the private part of the
+//! viewer's own hero, [`OWN_HERO_FEATURES`]; the battlefield, [`HEX_PLANES`] planes of
+//! [`MAX_FIELD_HEXES`] features (one per hex index, as the action encoding's hex targets; plane
+//! after plane); then [`STACK_FEATURES`] features for each of the [`STACK_CAPACITY`] stack slots
+//! (zeros for unused slots). Values are raw game quantities as `f32` (normalisation is the
+//! trainer's business). Stacks, sides and obstacles are described relative to the viewer ("own"
+//! flag, "viewer"/"opponent"), so one policy can play both sides; a spectator's observation
+//! (SRV-Q4) is seen from the attacker's seat and has no private part. The encoding is complete
+//! (E04b T9a): it holds everything of the [`Observation`] a rule reads, directly or through the
+//! ruleset's data.
 //!
 //! Globals: `[round (0 in the tactics phase), viewer is attacker, viewer to act (the viewer
 //! controls the active stack: a hypnotized stack's controller is the other side, BAT-MAG-026;
@@ -13,31 +19,62 @@
 //! columns, viewer may retreat, opponent may retreat, viewer may surrender at all, opponent may
 //! surrender at all, the spell the active stack drew as handle + 1 if the viewer controls it (0:
 //! none or hidden), the round starts since the viewer's periodic casters cast, the round starts
-//! since the opponent's (both at most 255, which every battle starts with)]` (BAT-TAC-001,
-//! BAT-FLE-001, BAT-FLE-002, BAT-MAG-049, BAT-MAG-053).
-//! Hero block, zeros for a side without a hero (which gets no lucky strikes in profiles with
-//! quirk Q-0003): the [`HERO_PUBLIC_FEATURES`] public features `[led by a hero, hero type handle,
-//! attack, defense, power, knowledge, mana, max mana, commands its Ballista, commands its First
-//! Aid Tent, casts this round, carries a spell book]`, then the private ones, zeros in the opponent's block (ADR-0013
-//! point 9, ADR-0014 point 8): `[Tactics level, ranged bonus bp, melee bonus bp, damage
-//! reduction bp, the commanded Ballista's shots per turn, its double-damage chance bp, the
-//! commanded tent's heal bonus bp, surrender discount bp, funds, surrender price (0 if the side
-//! may not surrender)]` and the spell book: one feature per spell handle below [`MAX_SPELLS`], 0
-//! if the book lacks it, else 1 + the hero's mastery of it (1 none to 4 Expert).
+//! since the opponent's (both at most 255, which every battle starts with), the round's wait
+//! phase has begun, the side that took the last turn (1 viewer, 2 opponent, 0 none yet), the
+//! terrain's handle + 1 (0 none), the creature the viewer's Summon Elemental casts are bound to
+//! as handle + 1 (0 none yet), the opponent's, a spectator's observation]` (BAT-TAC-001,
+//! BAT-FLE-001, BAT-FLE-002, BAT-MAG-049, BAT-MAG-053, BAT-MAG-039).
+//! Public hero part, zeros for a side without a hero (which gets no lucky strikes in profiles
+//! with quirk Q-0003): `[led by a hero, hero type handle, attack, defense, power, knowledge,
+//! mana, max mana, commands its Ballista, commands its First Aid Tent, casts this round,
+//! carries a spell book, the change of its spell costs from the armies]` (BAT-MAG-054).
+//! Private part of the viewer's hero (ADR-0013 point 9, ADR-0014 point 8, BAT-Q26), zeros
+//! without one: [`OWN_HERO_VALUES`] values `[Tactics level, ranged bonus bp, melee bonus bp,
+//! damage reduction bp, the commanded Ballista's shots per turn, its double-damage chance bp,
+//! the commanded tent's heal bonus bp, surrender discount bp, funds, surrender price (0 if the
+//! side may not surrender), the spell-damage bonus of every spell bp, the bonus of each spell
+//! school bp (by school handle), its stacks' magic resistance bp, rounds added to its timed
+//! spells, it forbids every cast, the highest spell level it allows + 1 (0: no limit), the
+//! highest spell level its stacks are immune to (0: none), its stacks are immune to mind spells,
+//! it negates immunities, its opening spells are still due, its Eagle Eye's chance in percent]`
+//! (BAT-MAG-004, BAT-MAG-008, HER-BAT-014, BAT-MAG-061 to BAT-MAG-066, BAT-MAG-068, BAT-MAG-069),
+//! [`MAX_SPELL_BONUSES`] spell bonuses `[spell handle + 1, damage bp, growth per level bp, the
+//! level]`, [`MAX_OPENING_SPELLS`] opening spells `[spell handle + 1, mastery, power]`; then
+//! four vectors of one feature per spell handle below [`MAX_SPELLS`]: in its spell book, its
+//! mastery (0 none to 3 Expert, of every spell: Sacrifice reads Resurrection's under
+//! BAT-QUIRK-5), its stacks are immune to it, its Eagle Eye may pick it (1) or picked it (2).
+//! Battlefield planes: `[blocked by a natural obstacle, an anchor hex that belongs to its
+//! obstacle (BAT-QUIRK-3), the natural obstacle Remove Obstacle finds here as index + 1
+//! (BAT-MAG-034)]`, then for the viewer's spell obstacles and for the opponent's it sees
+//! (BAT-MAG-031; a side has at most one on a hex) `[Force Field, Fire Wall, Quicksand, Land
+//! Mine]` as the rounds left (−1: for the rest of the battle; 0: none) and their value (Fire
+//! Wall's or a mine's damage value, BAT-MAG-028, BAT-MAG-033), then the viewer's spell obstacle
+//! here is seen by the opponent.
 //! Per stack: `[present, alive, own, creature handle, count, top_hp, max_hp, attack, defense,
 //! damage_min, damage_max, speed, x, y, acted, waited, retaliated, defending, active, morale,
 //! luck, shots, retaliations left (255 = unlimited), had good morale this round, two-hex,
 //! flies, shooter, war machine, no distance penalty, shoots when adjacent, the hero's
 //! regeneration in hit points, created in battle, clone, the clone's rounds left, casts left, the
-//! spells the active stack's cast could draw for it]` (no distance penalty, shoots when adjacent
-//! and regeneration can come from the side's hero, BAT-HER-006; created stacks and clones:
-//! BAT-MAG-037, BAT-MAG-038; casts: BAT-MAG-048; the draw: BAT-MAG-050, for the viewer that
-//! commands a helpful caster, else 0),
-//! then its timed effects (BAT-MAG-009 to 011): `[melee attack bonus, ranged attack bonus,
+//! spells the active stack's cast could draw for it, creatures at the start (the resurrection
+//! limit), its turn has started this round, raised from a corpse, native, creatures raised for
+//! this battle only, its corpse (0 none yet, −1 none left, else the order of its death), the
+//! stack linked to it as id + 1 (a clone's original, its living clone; 0 none), its binders as
+//! bits of stack ids 0–20 and 21–41, the tenths Poison took, its hit points per creature at the
+//! start if Poison or Age changed them (0 otherwise)]` (no distance penalty, shoots when
+//! adjacent and regeneration can come from the side's hero, BAT-HER-006; created stacks and
+//! clones: BAT-MAG-037, BAT-MAG-038; casts: BAT-MAG-048; the draw: BAT-MAG-050, for the viewer
+//! that commands a helpful caster, else 0; BAT-DMG-008, BAT-TRN-001, BAT-MAG-052, BAT-TER-001,
+//! BAT-MAG-035, BAT-MAG-036, BAT-MAG-045, BAT-MAG-044),
+//! then its timed effects (BAT-MAG-009 to 026): `[melee attack bonus, ranged attack bonus,
 //! blessed, cursed, the blessing's or curse's value, speed share in percent (100: not slowed),
-//! number of effects]` and [`EFFECT_SLOTS`] pairs `[spell handle + 1 (0: empty), rounds left
-//! (−1: for the rest of the battle)]`, the stack's first effects by spell handle. Attack,
-//! defense and speed are the values now, with the effects (attack without the melee or ranged
+//! number of effects, melee damage let through in percent, ranged damage let through, spell
+//! damage let through per school handle, Slayer's attack bonus, Slayer's mastery, Fire Shield's
+//! share in percent, Frenzy's share of the defense in percent, Anti-Magic's level, Magic
+//! Mirror's chance in percent, forgetful, cannot shoot, loses its turns, an effect ends by
+//! damage, berserk, hypnotized, an effect ends by its attack, petrified]` and
+//! [`EFFECT_SLOTS`] triples `[spell handle + 1 (0: empty), rounds left (−1: for the rest of the
+//! battle), the mastery]`, the stack's first effects by spell handle. Attack, defense, speed,
+//! morale and luck are the values now, with the effects (attack without the melee or ranged
 //! bonus; attack and defense may be below 0).
 //!
 //! v3 (E03 T9): the two hero globals and the per-stack features from `morale` on. v4 (E04a
@@ -49,41 +86,69 @@
 //! spell global. v10 (E04b T7b2b): the hero's spell book and the stack's draw candidates. v11
 //! (E04b T7b4): the two periodic-cast globals. v12 (E04b T8a): the book's features carry each
 //! spell's mastery, the school masteries are gone (masteries are derived per spell, BAT-Q19).
+//! v13 (E04b T9a): complete; the battlefield planes; the private part once, with the spell
+//! bonuses and the hidden magic; the globals from the wait phase on, the cost change, the
+//! per-stack features from the start count on, the materialised effects and each effect's
+//! mastery.
 
 use h3_battle::{
-    DamageRoll, HeroView, Observation, OwnHeroView, STACK_CAPACITY, StackFlags, StackTraits,
+    DamageRoll, HeroView, MAX_OPENING_SPELLS, MAX_SPELL_BONUSES, Observation, OwnHeroView,
+    STACK_CAPACITY, SpellObstacle, StackFlags, StackTraits, Status,
 };
-use h3_content::MAX_SPELLS;
+use h3_content::{MAX_FIELD_HEXES, MAX_SPELL_SCHOOLS, MAX_SPELLS, ObstacleKind};
 use h3_contracts::BattleSide;
 
 /// Version of this encoding; bump on any change of the layout above (and bump the C ABI
 /// version with it, ADR-0011).
-pub const OBSERVATION_ENCODING_VERSION: u32 = 12;
+pub const OBSERVATION_ENCODING_VERSION: u32 = 13;
 
 /// Global features.
-pub const GLOBALS: usize = 14;
-/// The public features at the start of a hero block; the rest are private to the hero's side.
-pub const HERO_PUBLIC_FEATURES: usize = 12;
-/// The private features before the spell book.
-const HERO_PRIVATE_VALUES: usize = 10;
-/// Offset of the spell book in a hero block.
-const HERO_BOOK: usize = HERO_PUBLIC_FEATURES + HERO_PRIVATE_VALUES;
-/// Features per hero block.
-pub const HERO_FEATURES: usize = HERO_BOOK + MAX_SPELLS;
+pub const GLOBALS: usize = 20;
+/// The public features of a hero.
+pub const HERO_PUBLIC_FEATURES: usize = 13;
+/// The values of the viewer's hero's private part before its spell bonuses.
+const OWN_HERO_SCALARS: usize = 11 + MAX_SPELL_SCHOOLS + 9;
+/// The values of the viewer's hero's private part before its per-spell vectors.
+pub const OWN_HERO_VALUES: usize =
+    OWN_HERO_SCALARS + 4 * MAX_SPELL_BONUSES + 3 * MAX_OPENING_SPELLS;
+/// Features of the viewer's hero's private part.
+pub const OWN_HERO_FEATURES: usize = OWN_HERO_VALUES + 4 * MAX_SPELLS;
+/// Planes of the battlefield.
+pub const HEX_PLANES: usize = 3 + 2 * OWNER_PLANES + 1;
+/// The planes of one side's spell obstacles: one per kind, then the value.
+const OWNER_PLANES: usize = ObstacleKind::COUNT + 1;
 /// Effects per stack the encoding shows.
 pub const EFFECT_SLOTS: usize = 8;
 /// The per-stack features before the effect features.
-const STACK_VALUES: usize = 36;
+const STACK_VALUES: usize = 47;
 /// The effect values before the effect slots.
-const EFFECT_VALUES: usize = 7;
+const EFFECT_VALUES: usize = 9 + MAX_SPELL_SCHOOLS + 6 + STATUSES.len();
+/// Features per effect slot.
+const SLOT_FEATURES: usize = 3;
 /// Features per stack slot.
-pub const STACK_FEATURES: usize = STACK_VALUES + EFFECT_VALUES + 2 * EFFECT_SLOTS;
-/// Offset of the viewer's hero block; the opponent's follows it.
+pub const STACK_FEATURES: usize = STACK_VALUES + EFFECT_VALUES + SLOT_FEATURES * EFFECT_SLOTS;
+/// Offset of the viewer's public hero part; the opponent's follows it.
 pub const HEROES: usize = GLOBALS;
+/// Offset of the viewer's hero's private part.
+pub const OWN_HERO: usize = HEROES + 2 * HERO_PUBLIC_FEATURES;
+/// Offset of the battlefield planes.
+pub const FIELD: usize = OWN_HERO + OWN_HERO_FEATURES;
 /// Offset of the first stack slot.
-pub const STACKS: usize = HEROES + 2 * HERO_FEATURES;
+pub const STACKS: usize = FIELD + HEX_PLANES * MAX_FIELD_HEXES;
 /// Length of the encoded observation.
 pub const OBSERVATION_LEN: usize = STACKS + STACK_FEATURES * STACK_CAPACITY;
+
+/// The statuses of a stack's effects, in their encoded order.
+const STATUSES: [Status; 8] = [
+    Status::FORGETFUL,
+    Status::NO_SHOOTING,
+    Status::NO_TURNS,
+    Status::DAMAGE_ENDS,
+    Status::BERSERK,
+    Status::HYPNOTIZED,
+    Status::ATTACK_ENDS,
+    Status::PETRIFIED,
+];
 
 /// Hex columns of the encoded field, used to derive `x`/`y` from the hex index.
 fn coords(hex: u8, width: u8) -> (f32, f32) {
@@ -95,11 +160,20 @@ fn flag(on: bool) -> f32 {
     if on { 1.0 } else { 0.0 }
 }
 
-/// Writes a hero block into `out`: the public part `view` and, for the viewer's own hero only,
-/// the private part `own`.
-fn encode_hero(view: Option<HeroView>, own: Option<OwnHeroView>, out: &mut [f32]) {
+/// A handle or id + 1, 0 for none.
+fn handle(raw: Option<u16>) -> f32 {
+    raw.map_or(0.0, |h| f32::from(h) + 1.0)
+}
+
+/// Rounds left: −1 for the rest of the battle.
+fn rounds(left: Option<u16>) -> f32 {
+    left.map_or(-1.0, f32::from)
+}
+
+/// Writes the public part `view` of a hero into `out`, with its side's `cost_change`.
+fn encode_hero(view: Option<HeroView>, cost_change: i8, out: &mut [f32]) {
     if let Some(h) = view {
-        out[..HERO_PUBLIC_FEATURES].copy_from_slice(&[
+        out.copy_from_slice(&[
             1.0,
             f32::from(h.hero_type.raw()),
             f32::from(h.attack),
@@ -112,24 +186,115 @@ fn encode_hero(view: Option<HeroView>, own: Option<OwnHeroView>, out: &mut [f32]
             flag(h.commands_tent),
             f32::from(h.casts),
             flag(h.spell_book),
+            f32::from(cost_change),
         ]);
     }
-    if let Some(h) = own {
-        out[HERO_PUBLIC_FEATURES..HERO_BOOK].copy_from_slice(&[
-            f32::from(h.tactics),
-            h.damage.ranged.bp as f32,
-            h.damage.melee.bp as f32,
-            h.damage.reduction.bp as f32,
-            h.ballista.map_or(0.0, |b| f32::from(b.shots)),
-            h.ballista
-                .map_or(0.0, |b| f32::from(b.double_damage_chance_bp)),
-            h.tent.map_or(0.0, |t| t.heal_bonus.bp as f32),
-            f32::from(h.surrender_discount_bp),
-            h.funds as f32,
-            h.surrender_price.map_or(0.0, |p| p as f32),
+}
+
+/// Writes the private part `h` of the viewer's hero into `out`.
+fn encode_own_hero(h: &OwnHeroView, out: &mut [f32]) {
+    let b = &h.spell_bonuses;
+    let d = &h.defences;
+    let (scalars, rest) = out.split_at_mut(OWN_HERO_SCALARS);
+    let mut values = [
+        f32::from(h.tactics),
+        h.damage.ranged.bp as f32,
+        h.damage.melee.bp as f32,
+        h.damage.reduction.bp as f32,
+        h.ballista.map_or(0.0, |b| f32::from(b.shots)),
+        h.ballista
+            .map_or(0.0, |b| f32::from(b.double_damage_chance_bp)),
+        h.tent.map_or(0.0, |t| t.heal_bonus.bp as f32),
+        f32::from(h.surrender_discount_bp),
+        h.funds as f32,
+        h.surrender_price.map_or(0.0, |p| p as f32),
+        b.all.bp as f32,
+    ]
+    .into_iter()
+    .chain(b.school.iter().map(|r| r.bp as f32))
+    .chain([
+        h.magic_resistance_bp as f32,
+        f32::from(h.duration_bonus),
+        flag(h.no_casting),
+        h.level_limit.map_or(0.0, |l| f32::from(l) + 1.0),
+        d.up_to_level.map_or(0.0, f32::from),
+        flag(d.mind),
+        flag(h.negates),
+        flag(h.opening_due),
+        f32::from(h.eagle_chance),
+    ]);
+    scalars.fill_with(|| values.next().unwrap_or_default());
+    let (bonuses, rest) = rest.split_at_mut(4 * MAX_SPELL_BONUSES);
+    for (slot, s) in bonuses.chunks_exact_mut(4).zip(b.spells.iter()) {
+        slot.copy_from_slice(&[
+            f32::from(s.spell.raw()) + 1.0,
+            s.damage_bp as f32,
+            s.per_level_bp as f32,
+            f32::from(s.level),
         ]);
-        for spell in h.spell_book.iter() {
-            out[HERO_BOOK + spell.index()] = f32::from(1 + h.masteries.get(spell));
+    }
+    let (opening, spells) = rest.split_at_mut(3 * MAX_OPENING_SPELLS);
+    for (slot, o) in opening.chunks_exact_mut(3).zip(h.opening.iter()) {
+        slot.copy_from_slice(&[
+            f32::from(o.spell.raw()) + 1.0,
+            f32::from(o.mastery),
+            f32::from(o.power),
+        ]);
+    }
+    let (book, rest) = spells.split_at_mut(MAX_SPELLS);
+    let (mastery, rest) = rest.split_at_mut(MAX_SPELLS);
+    let (immune, eagle) = rest.split_at_mut(MAX_SPELLS);
+    for (i, spell) in (0..MAX_SPELLS).map(|i| (i, h3_content::SpellId::from_raw(i as u16))) {
+        book[i] = flag(h.spell_book.contains(spell));
+        mastery[i] = f32::from(h.masteries.get(spell));
+        immune[i] = flag(d.spells.contains(spell));
+        eagle[i] = if h.learned.contains(spell) {
+            2.0
+        } else {
+            flag(h.eagle_spells.contains(spell))
+        };
+    }
+}
+
+/// Writes the battlefield planes of `obs` into `out`.
+fn encode_field(obs: &Observation, out: &mut [f32]) {
+    let mut plane = |p: usize, hex: h3_battle::Hex, value: f32| {
+        out[p * MAX_FIELD_HEXES..(p + 1) * MAX_FIELD_HEXES]
+            .get_mut(hex.index())
+            .into_iter()
+            .for_each(|v| *v = value);
+    };
+    for hex in obs.obstacles.iter() {
+        plane(0, hex, 1.0);
+    }
+    for hex in obs.obstacle_anchors.iter() {
+        plane(1, hex, 1.0);
+    }
+    // rule: BAT-MAG-034
+    let removable = obs.removable_obstacles.iter();
+    for hex in removable.flat_map(|o| o.hexes().iter().copied().chain([o.anchor()])) {
+        plane(2, hex, handle(obs.removable_at(hex).map(|i| i as u16)));
+    }
+    for o in &obs.spell_obstacles {
+        encode_obstacle(obs.viewer, o, &mut plane);
+    }
+}
+
+/// Writes spell obstacle `o` as `viewer` sees it with `plane`.
+fn encode_obstacle(
+    viewer: BattleSide,
+    o: &SpellObstacle,
+    plane: &mut impl FnMut(usize, h3_battle::Hex, f32),
+) {
+    let own = o.side == viewer;
+    let base = 3 + if own { 0 } else { OWNER_PLANES };
+    let kind = o.kind as usize;
+    let left = rounds((o.rounds != 0).then_some(u16::from(o.rounds)));
+    for hex in o.hexes.iter() {
+        plane(base + kind, hex, left);
+        plane(base + ObstacleKind::COUNT, hex, o.value as f32);
+        if own {
+            plane(HEX_PLANES - 1, hex, flag(o.revealed));
         }
     }
 }
@@ -146,6 +311,9 @@ pub fn encode(obs: &Observation, field_width: u8, out: &mut [f32]) -> Result<(),
         .map(|s| s.controller());
     let (own, other) = (obs.viewer.index(), obs.viewer.opponent().index());
     let phase = obs.tactics;
+    let last = obs
+        .last_side_acted
+        .map_or(0.0, |s| if s == obs.viewer { 1.0 } else { 2.0 });
     out[..GLOBALS].copy_from_slice(&[
         f32::from(obs.round),
         flag(obs.viewer == BattleSide::Attacker),
@@ -158,16 +326,31 @@ pub fn encode(obs: &Observation, field_width: u8, out: &mut [f32]) -> Result<(),
         flag(obs.may_retreat[other]),
         flag(obs.surrender_possible[own]),
         flag(obs.surrender_possible[other]),
-        obs.drawn.map_or(0.0, |spell| f32::from(spell.raw()) + 1.0),
+        handle(obs.drawn.map(|spell| spell.raw())),
         f32::from(obs.periodic_rounds[own]),
         f32::from(obs.periodic_rounds[other]),
+        flag(obs.wait_phase),
+        last,
+        handle(obs.terrain.map(|t| t.raw())),
+        handle(obs.summoned[own].map(|c| c.raw())),
+        handle(obs.summoned[other].map(|c| c.raw())),
+        flag(obs.spectator),
     ]);
-    let (viewer, opponent) = out[HEROES..STACKS].split_at_mut(HERO_FEATURES);
-    encode_hero(obs.heroes[own], obs.own_hero, viewer);
-    encode_hero(obs.heroes[other], None, opponent);
+    let (viewer, opponent) = out[HEROES..OWN_HERO].split_at_mut(HERO_PUBLIC_FEATURES);
+    encode_hero(obs.heroes[own], obs.cost_change[own], viewer);
+    encode_hero(obs.heroes[other], obs.cost_change[other], opponent);
+    if let Some(h) = &obs.own_hero {
+        encode_own_hero(h, &mut out[OWN_HERO..FIELD]);
+    }
+    encode_field(obs, &mut out[FIELD..STACKS]);
     for (i, s) in obs.stacks.iter().enumerate() {
         let f = &mut out[STACKS + i * STACK_FEATURES..STACKS + (i + 1) * STACK_FEATURES];
         let (x, y) = coords(s.hex.0, field_width);
+        let corpse = match obs.corpses[i] {
+            h3_battle::NO_CORPSE => -1.0,
+            order => f32::from(order),
+        };
+        let binders = obs.binders[i];
         let values = [
             1.0,
             flag(s.is_alive()),
@@ -205,6 +388,17 @@ pub fn encode(obs: &Observation, field_width: u8, out: &mut [f32]) -> Result<(),
             f32::from(obs.clone_rounds[i]),
             f32::from(obs.casts_left[i]),
             f32::from(obs.cast_candidates[i]),
+            s.base_count as f32,
+            flag(s.flags.contains(StackFlags::STARTED)),
+            flag(s.has(StackTraits::RAISED)),
+            flag(s.has(StackTraits::NATIVE)),
+            obs.temporary[i] as f32,
+            corpse,
+            handle(obs.clone_links[i].map(|l| u16::from(l.0))),
+            (binders & 0x1F_FFFF) as f32,
+            (binders >> 21) as f32,
+            f32::from(obs.poison[i]),
+            obs.start_hp[i] as f32,
         ];
         f[..STACK_VALUES].copy_from_slice(&values);
         let sp = s.spells;
@@ -214,7 +408,7 @@ pub fn encode(obs: &Observation, field_width: u8, out: &mut [f32]) -> Result<(),
             DamageRoll::Minimum(v) => (0.0, 1.0, v),
         };
         let effects = obs.effects.iter().filter(|e| e.stack.index() == i);
-        f[STACK_VALUES..STACK_VALUES + EFFECT_VALUES].copy_from_slice(&[
+        let mut values = [
             f32::from(sp.melee_attack),
             f32::from(sp.ranged_attack),
             blessed,
@@ -222,12 +416,28 @@ pub fn encode(obs: &Observation, field_width: u8, out: &mut [f32]) -> Result<(),
             f32::from(change),
             f32::from(sp.speed_percent),
             effects.clone().count() as f32,
-        ]);
-        let slots = f[STACK_VALUES + EFFECT_VALUES..].chunks_exact_mut(2);
+            f32::from(sp.melee_protection),
+            f32::from(sp.ranged_protection),
+        ]
+        .into_iter()
+        .chain(sp.school_protection.map(f32::from))
+        .chain([
+            f32::from(sp.slayer.0),
+            f32::from(sp.slayer.1),
+            f32::from(sp.fire_shield),
+            f32::from(sp.frenzy),
+            f32::from(sp.spell_immunity),
+            f32::from(sp.mirror),
+        ])
+        .chain(STATUSES.map(|st| flag(sp.status.contains(st))));
+        f[STACK_VALUES..STACK_VALUES + EFFECT_VALUES]
+            .fill_with(|| values.next().unwrap_or_default());
+        let slots = f[STACK_VALUES + EFFECT_VALUES..].chunks_exact_mut(SLOT_FEATURES);
         for (slot, e) in slots.zip(effects) {
             slot.copy_from_slice(&[
                 f32::from(e.spell.raw()) + 1.0,
-                e.rounds.map_or(-1.0, f32::from),
+                rounds(e.rounds),
+                f32::from(e.mastery),
             ]);
         }
     }
@@ -244,10 +454,25 @@ mod tests {
         &out[STACKS + i * STACK_FEATURES..STACKS + (i + 1) * STACK_FEATURES]
     }
 
-    /// The viewer's (0) or the opponent's (1) hero block.
+    /// The viewer's (0) or the opponent's (1) public hero part.
     fn hero(out: &[f32], block: usize) -> &[f32] {
-        &out[HEROES + block * HERO_FEATURES..HEROES + (block + 1) * HERO_FEATURES]
+        &out[HEROES + block * HERO_PUBLIC_FEATURES..HEROES + (block + 1) * HERO_PUBLIC_FEATURES]
     }
+
+    /// The private part of the viewer's hero.
+    fn own(out: &[f32]) -> &[f32] {
+        &out[OWN_HERO..FIELD]
+    }
+
+    /// Battlefield plane `p`.
+    fn plane(out: &[f32], p: usize) -> &[f32] {
+        &out[FIELD + p * MAX_FIELD_HEXES..FIELD + (p + 1) * MAX_FIELD_HEXES]
+    }
+
+    /// The offset of a stack's effect slots.
+    const SLOTS: usize = STACK_VALUES + EFFECT_VALUES;
+    /// The offset of the private part's per-spell vectors.
+    const SPELLS: usize = OWN_HERO_VALUES;
 
     #[test]
     fn encodes_globals_and_stacks() {
@@ -258,13 +483,31 @@ mod tests {
         encode(&obs, r.battle().field.width, &mut out).unwrap();
         // Round 1, the defender's view, the attacker to act; no tactics phase, no heroes, so no
         // retreat or surrender; no periodic cast yet on either side (BAT-MAG-053).
+        // Not in the wait phase, no turn taken yet, the meadow, no summons, a side's view.
+        let meadow = f32::from(r.terrain_by_key("synthetic:meadow").unwrap().raw()) + 1.0;
         assert_eq!(
             out[..GLOBALS],
             [
-                1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 255.0, 255.0
+                1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 255.0, 255.0, 0.0, 0.0,
+                meadow, 0.0, 0.0, 0.0
             ]
         );
-        assert!(out[HEROES..STACKS].iter().all(|v| *v == 0.0));
+        assert!(out[HEROES..FIELD].iter().all(|v| *v == 0.0));
+        // The random natural obstacles (BAT-GEO-004), none removed, no spell obstacle.
+        let blocked: Vec<usize> = (0..MAX_FIELD_HEXES)
+            .filter(|&h| plane(&out, 0)[h] == 1.0)
+            .collect();
+        let expected: Vec<usize> = obs.obstacles.iter().map(|h| h.index()).collect();
+        assert_eq!(blocked, expected);
+        for h in 0..MAX_FIELD_HEXES {
+            let at = obs.removable_at(h3_battle::Hex(h as u8));
+            assert_eq!(plane(&out, 2)[h], at.map_or(0.0, |i| i as f32 + 1.0));
+        }
+        assert!(
+            out[FIELD + 3 * MAX_FIELD_HEXES..STACKS]
+                .iter()
+                .all(|v| *v == 0.0)
+        );
         // Stack 0: the attacker's two-hex brute ×8, head at (2, 5) (tail in column 1), active.
         let s0 = stack(&out, 0);
         assert_eq!(s0[0..3], [1.0, 1.0, 0.0]);
@@ -277,12 +520,23 @@ mod tests {
             s0[19..31],
             [1.0, 0.0, 0.0, 1.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
         );
-        // No timed effects: no bonuses, not slowed, no entries.
         // Not created in battle, no clone (BAT-MAG-037, BAT-MAG-038), one cast: its rebirth's
         // (BAT-MAG-048, BAT-MAG-059).
         assert_eq!(s0[31..36], [0.0, 0.0, 0.0, 1.0, 0.0]);
-        assert_eq!(s0[36..43], [0.0, 0.0, 0.0, 0.0, 0.0, 100.0, 0.0]);
-        assert!(s0[43..].iter().all(|v| *v == 0.0));
+        // 8 at the start, its turn started (the active stack), not raised, native to the
+        // meadow (BAT-TER-001); no raise, corpse, link, binder or poison.
+        assert_eq!(
+            s0[36..STACK_VALUES],
+            [8.0, 1.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
+        );
+        // No timed effects: no bonuses, not slowed, no entries, all damage let through.
+        assert_eq!(
+            s0[STACK_VALUES..STACK_VALUES + 13],
+            [
+                0.0, 0.0, 0.0, 0.0, 0.0, 100.0, 0.0, 100.0, 100.0, 100.0, 100.0, 100.0, 100.0
+            ]
+        );
+        assert!(s0[STACK_VALUES + 13..].iter().all(|v| *v == 0.0));
         // Unused slots are zero; the tail beyond OBSERVATION_LEN is untouched.
         assert!(
             out[STACKS + 2 * STACK_FEATURES..OBSERVATION_LEN]
@@ -292,7 +546,10 @@ mod tests {
         assert_eq!(out[OBSERVATION_LEN], 9.0);
         let mut short = vec![0.0; 3];
         assert_eq!(encode(&obs, 17, &mut short), Err(OBSERVATION_LEN));
-        assert_eq!(OBSERVATION_LEN, 14 + 2 * (12 + 10 + 128) + 59 * 42);
+        assert_eq!(
+            OBSERVATION_LEN,
+            20 + 2 * 13 + (64 + 4 * 128) + 14 * 255 + (47 + 27 + 3 * 8) * 42
+        );
         assert_eq!(coords(20, 0), (0.0, 20.0));
         // A clone with three rounds left (BAT-MAG-038).
         let mut obs = obs;
@@ -311,7 +568,7 @@ mod tests {
         obs.periodic_rounds = [2, 0];
         encode(&obs, r.battle().field.width, &mut out).unwrap();
         assert_eq!(stack(&out, 1)[31..36], [1.0, 1.0, 3.0, 2.0, 5.0]);
-        assert_eq!(out[GLOBALS - 3..GLOBALS], [5.0, 0.0, 2.0]);
+        assert_eq!(out[11..14], [5.0, 0.0, 2.0]);
     }
 
     #[test]
@@ -336,6 +593,7 @@ mod tests {
             1.0,
             0.0,
             1.0,
+            -2.0,
         ];
         let corwin = [
             1.0,
@@ -350,6 +608,7 @@ mod tests {
             0.0,
             0.0,
             1.0,
+            0.0,
         ];
         // The books by spell handle (spark, cinders, arc, blight, ward, farsight, glare, hasten,
         // drag, fury, zeal, gloom, boon, bane, corrode, aegis, hallow, smiting, riposte, purge,
@@ -430,41 +689,63 @@ mod tests {
             10_000.0,
             price(Defender),
         ];
-        for (viewer, globals, own, other, private, book) in [
+        let handle = |key| f32::from(r.spell_by_key(key).unwrap().raw()) + 1.0;
+        let (hasten, boon) = (handle("synthetic:hasten"), handle("synthetic:boon"));
+        for (viewer, globals, mine, other, private, book, (rounds, specialty)) in [
             (
                 Attacker,
                 [
-                    0.0, 1.0, 1.0, 0.0, 1.0, 0.0, 5.0, 1.0, 1.0, 1.0, 1.0, 0.0, 255.0, 255.0,
+                    0.0, 1.0, 1.0, 0.0, 1.0, 0.0, 5.0, 1.0, 1.0, 1.0, 1.0, 0.0, 255.0, 255.0, 0.0,
+                    0.0, 0.0, 0.0, 0.0, 0.0,
                 ],
                 brea,
                 corwin,
                 brea_private,
                 books[0],
+                (0.0, [hasten, 0.0, 300.0, 6.0]),
             ),
             (
                 Defender,
                 [
-                    0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 5.0, 1.0, 1.0, 1.0, 1.0, 0.0, 255.0, 255.0,
+                    0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 5.0, 1.0, 1.0, 1.0, 1.0, 0.0, 255.0, 255.0, 0.0,
+                    0.0, 0.0, 0.0, 0.0, 0.0,
                 ],
                 corwin,
                 brea,
                 corwin_private,
                 books[1],
+                (2.0, [boon, 0.0, 300.0, 1.0]),
             ),
         ] {
-            encode(&observe(&s, &r, viewer), 17, &mut out).unwrap();
+            let obs = observe(&s, &r, viewer);
+            encode(&obs, 17, &mut out).unwrap();
             assert_eq!(out[..GLOBALS], globals);
-            assert_eq!(hero(&out, 0)[..HERO_PUBLIC_FEATURES], own);
-            assert_eq!(hero(&out, 0)[HERO_PUBLIC_FEATURES..HERO_BOOK], private);
-            let known: Vec<(usize, f32)> = (0..MAX_SPELLS)
-                .map(|i| (i, hero(&out, 0)[HERO_BOOK + i]))
-                .filter(|&(_, v)| v > 0.0)
+            assert_eq!(hero(&out, 0), mine);
+            assert_eq!(hero(&out, 1), other);
+            assert_eq!(own(&out)[..10], private);
+            // The book as flags, each spell's mastery (of every spell: BAT-QUIRK-5).
+            let in_book: Vec<(usize, f32)> = (0..MAX_SPELLS)
+                .filter(|&i| own(&out)[SPELLS + i] == 1.0)
+                .map(|i| (i, own(&out)[SPELLS + MAX_SPELLS + i] + 1.0))
                 .collect();
-            assert_eq!(known, book);
-            assert_eq!(hero(&out, 1)[..HERO_PUBLIC_FEATURES], other);
-            // The opponent's private part never shows.
+            assert_eq!(in_book, book);
+            let masteries = obs.own_hero.unwrap().masteries;
+            for i in 0..MAX_SPELLS {
+                let spell = h3_content::SpellId::from_raw(i as u16);
+                assert_eq!(
+                    own(&out)[SPELLS + MAX_SPELLS + i],
+                    f32::from(masteries.get(spell))
+                );
+            }
+            // The spell bonuses and the hidden magic: Brea's specialty in hasten (3 % a level at
+            // level 6); Corwin's in boon (level 1) and his two extra rounds for timed spells
+            // (HER-BAT-014). The opponent's never shows.
+            let mut hidden = [0.0; OWN_HERO_VALUES - 10];
+            hidden[16 - 10] = rounds;
+            hidden[OWN_HERO_SCALARS - 10..OWN_HERO_SCALARS - 6].copy_from_slice(&specialty);
+            assert_eq!(own(&out)[10..SPELLS], hidden);
             assert!(
-                hero(&out, 1)[HERO_PUBLIC_FEATURES..]
+                own(&out)[SPELLS + 2 * MAX_SPELLS..]
                     .iter()
                     .all(|v| *v == 0.0)
             );
@@ -474,14 +755,21 @@ mod tests {
         obs.heroes[1] = None;
         obs.may_retreat[1] = false;
         obs.surrender_possible = [false, false];
-        let own = obs.own_hero.as_mut().unwrap();
-        own.surrender_price = None;
-        own.ballista = None;
+        let mut hero_part = obs.own_hero.unwrap();
+        hero_part.surrender_price = None;
+        hero_part.ballista = None;
+        obs.own_hero = Some(hero_part);
         encode(&obs, 17, &mut out).unwrap();
-        assert_eq!(out[7..GLOBALS], [1.0, 0.0, 0.0, 0.0, 0.0, 255.0, 255.0]);
+        assert_eq!(out[7..14], [1.0, 0.0, 0.0, 0.0, 0.0, 255.0, 255.0]);
         assert!(hero(&out, 1).iter().all(|v| *v == 0.0));
-        assert_eq!(hero(&out, 0)[16..18], [0.0, 0.0]);
-        assert_eq!(hero(&out, 0)[HERO_BOOK - 1], 0.0);
+        assert_eq!(own(&out)[4..6], [0.0, 0.0]);
+        assert_eq!(own(&out)[9], 0.0);
+        // A spectator: the flag, and no private part (SRV-Q4).
+        let spectator = h3_battle::observe_as(&s, &r, h3_battle::Viewer::Spectator);
+        encode(&spectator, 17, &mut out).unwrap();
+        assert_eq!((out[1], out[GLOBALS - 1]), (1.0, 1.0));
+        assert_eq!(hero(&out, 0), brea);
+        assert!(own(&out).iter().all(|v| *v == 0.0));
     }
 
     #[test]
@@ -538,7 +826,10 @@ mod tests {
         };
         obs.effects = std::vec![
             entry(0, spell("synthetic:hasten"), Some(3)),
-            entry(0, spell("synthetic:corrode"), None),
+            ActiveEffect {
+                mastery: 2,
+                ..entry(0, spell("synthetic:corrode"), None)
+            },
         ];
         let st = &mut obs.stacks.as_mut_slice()[0];
         st.spells.attack = -2;
@@ -553,14 +844,227 @@ mod tests {
         encode(&obs, 17, &mut out).unwrap();
         let f = stack(&out, 0);
         assert_eq!([f[7], f[8], f[11]], [attack, defense, 1.0]);
-        assert_eq!(f[36..43], [3.0, 4.0, 0.0, 1.0, 2.0, 50.0, 2.0]);
+        let e = STACK_VALUES;
+        assert_eq!(f[e..e + 7], [3.0, 4.0, 0.0, 1.0, 2.0, 50.0, 2.0]);
         let hasten = f32::from(spell("synthetic:hasten").raw()) + 1.0;
         let corrode = f32::from(spell("synthetic:corrode").raw()) + 1.0;
-        assert_eq!(f[43..47], [hasten, 3.0, corrode, -1.0]);
-        assert!(f[47..].iter().all(|v| *v == 0.0));
+        assert_eq!(f[SLOTS..SLOTS + 6], [hasten, 3.0, 0.0, corrode, -1.0, 2.0]);
+        assert!(f[SLOTS + 6..].iter().all(|v| *v == 0.0));
         obs.stacks.as_mut_slice()[0].spells.damage = DamageRoll::Maximum(1);
         encode(&obs, 17, &mut out).unwrap();
-        assert_eq!(stack(&out, 0)[38..41], [1.0, 0.0, 1.0]);
-        assert!(stack(&out, 1)[43..].iter().all(|v| *v == 0.0));
+        assert_eq!(stack(&out, 0)[e + 2..e + 5], [1.0, 0.0, 1.0]);
+        assert!(stack(&out, 1)[SLOTS..].iter().all(|v| *v == 0.0));
+    }
+
+    #[test]
+    fn encodes_the_battlefield() {
+        use h3_battle::{Hex, HexSet, SpellObstacle};
+        use h3_content::ObstacleKind::{Fire, Mine, Pit, Wall};
+        let (r, mut setup) = h3_pack::synthetic(h3_pack::SYNTHETIC_DUEL).unwrap();
+        // A removable obstacle on hexes 40 and 41 with its anchor 57, a fixed one on 60.
+        setup.obstacles = std::vec![
+            h3_contracts::Obstacle {
+                hexes: std::vec![40, 41],
+                anchor: Some(57),
+            },
+            h3_contracts::Obstacle {
+                hexes: std::vec![60],
+                anchor: None,
+            },
+        ];
+        let s = BattleState::new(&r, &setup, 1).unwrap();
+        use BattleSide::{Attacker, Defender};
+        let mut obs = observe(&s, &r, Defender);
+        let spell = r.spell_by_key("synthetic:mire").unwrap();
+        let obstacle = |kind, side, hex, rounds, value, revealed| {
+            let mut hexes = HexSet::new();
+            hexes.insert(Hex(hex));
+            SpellObstacle {
+                spell,
+                kind,
+                side,
+                hexes,
+                rounds,
+                value,
+                revealed,
+            }
+        };
+        obs.spell_obstacles = std::vec![
+            obstacle(Wall, Defender, 70, 2, 0, true),
+            obstacle(Fire, Attacker, 71, 1, 25, true),
+            obstacle(Pit, Defender, 72, 0, 0, false),
+            obstacle(Pit, Defender, 73, 0, 0, true),
+            obstacle(Mine, Attacker, 74, 0, 40, true),
+            obstacle(Fire, Defender, 74, 2, 30, true),
+        ];
+        let mut out = vec![0.0; OBSERVATION_LEN];
+        encode(&obs, 17, &mut out).unwrap();
+        let on = |p: usize| -> Vec<(usize, f32)> {
+            (0..MAX_FIELD_HEXES)
+                .filter(|&h| plane(&out, p)[h] != 0.0)
+                .map(|h| (h, plane(&out, p)[h]))
+                .collect()
+        };
+        assert_eq!(on(0), [(40, 1.0), (41, 1.0), (60, 1.0)]);
+        let anchors: Vec<(usize, f32)> = obs
+            .obstacle_anchors
+            .iter()
+            .map(|h| (h.index(), 1.0))
+            .collect();
+        assert_eq!(on(1), anchors);
+        // Remove Obstacle finds the first obstacle on its hexes, and on its anchor with
+        // BAT-QUIRK-3 (BAT-MAG-034).
+        let anchored: &[(usize, f32)] = if anchors.is_empty() {
+            &[]
+        } else {
+            &[(57, 1.0)]
+        };
+        let mut removable = std::vec![(40, 1.0), (41, 1.0)];
+        removable.extend_from_slice(anchored);
+        removable.sort_by_key(|&(h, _)| h);
+        assert_eq!(on(2), removable);
+        // The viewer's (the defender's) obstacles, then the attacker's: rounds by kind, −1 for
+        // the whole battle, and the value.
+        let (own, theirs) = (3, 3 + OWNER_PLANES);
+        assert_eq!(on(own), [(70, 2.0)]);
+        assert_eq!(on(own + 1), [(74, 2.0)]);
+        assert_eq!(on(own + 2), [(72, -1.0), (73, -1.0)]);
+        assert!(on(own + 3).is_empty());
+        assert_eq!(on(own + 4), [(74, 30.0)]);
+        assert!(on(theirs).is_empty());
+        assert_eq!(on(theirs + 1), [(71, 1.0)]);
+        assert!(on(theirs + 2).is_empty());
+        assert_eq!(on(theirs + 3), [(74, -1.0)]);
+        assert_eq!(on(theirs + 4), [(71, 25.0), (74, 40.0)]);
+        // Which of the viewer's the attacker sees: all but the hidden pit.
+        assert_eq!(on(HEX_PLANES - 1), [(70, 1.0), (73, 1.0), (74, 1.0)]);
+    }
+
+    #[test]
+    fn encodes_the_hidden_magic_and_what_the_battle_keeps_per_stack() {
+        use h3_battle::{Opening, SpellBonus, StackId, Status};
+        let (r, setup) = h3_pack::synthetic(h3_pack::SYNTHETIC_FULL).unwrap();
+        let s = BattleState::new(&r, &setup, 1).unwrap();
+        let mut obs = observe(&s, &r, BattleSide::Defender);
+        let spell = |k: &str| r.spell_by_key(k).unwrap();
+        let mut h = obs.own_hero.unwrap();
+        h.spell_bonuses.all = h3_contracts::Rate::bp(500);
+        h.spell_bonuses.school[3] = h3_contracts::Rate::bp(700);
+        h.spell_bonuses.spells.clear();
+        h.spell_bonuses
+            .spells
+            .push(SpellBonus {
+                spell: spell("synthetic:spark"),
+                damage_bp: 5000,
+                per_level_bp: 0,
+                level: 0,
+            })
+            .unwrap();
+        h.magic_resistance_bp = 2000;
+        h.duration_bonus = 0;
+        h.no_casting = true;
+        h.level_limit = Some(2);
+        h.defences.up_to_level = Some(3);
+        h.defences.mind = true;
+        h.defences.spells.insert(spell("synthetic:glare"));
+        h.negates = true;
+        h.opening_due = true;
+        h.opening
+            .push(Opening {
+                spell: spell("synthetic:boon"),
+                mastery: 3,
+                power: 10,
+            })
+            .unwrap();
+        h.eagle_chance = 40;
+        h.eagle_spells.insert(spell("synthetic:spark"));
+        h.eagle_spells.insert(spell("synthetic:arc"));
+        h.learned.insert(spell("synthetic:arc"));
+        obs.own_hero = Some(h);
+        let mut out = vec![0.0; OBSERVATION_LEN];
+        encode(&obs, 17, &mut out).unwrap();
+        let handle = |k: &str| f32::from(spell(k).raw()) + 1.0;
+        assert_eq!(own(&out)[10..15], [500.0, 0.0, 0.0, 0.0, 700.0]);
+        assert_eq!(
+            own(&out)[15..OWN_HERO_SCALARS],
+            [2000.0, 0.0, 1.0, 3.0, 3.0, 1.0, 1.0, 1.0, 40.0]
+        );
+        let bonus = OWN_HERO_SCALARS;
+        assert_eq!(
+            own(&out)[bonus..bonus + 8],
+            [
+                handle("synthetic:spark"),
+                5000.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0,
+                0.0
+            ]
+        );
+        let opening = bonus + 4 * MAX_SPELL_BONUSES;
+        assert_eq!(
+            own(&out)[opening..opening + 4],
+            [handle("synthetic:boon"), 3.0, 10.0, 0.0]
+        );
+        let immune = SPELLS + 2 * MAX_SPELLS;
+        let glare = spell("synthetic:glare").index();
+        assert_eq!(own(&out)[immune + glare], 1.0);
+        assert_eq!(
+            own(&out)[immune..immune + MAX_SPELLS].iter().sum::<f32>(),
+            1.0
+        );
+        let eagle = &own(&out)[SPELLS + 3 * MAX_SPELLS..];
+        let picks: Vec<(usize, f32)> = (0..MAX_SPELLS)
+            .filter(|&i| eagle[i] != 0.0)
+            .map(|i| (i, eagle[i]))
+            .collect();
+        let mut expected = std::vec![
+            (spell("synthetic:spark").index(), 1.0),
+            (spell("synthetic:arc").index(), 2.0)
+        ];
+        expected.sort_by_key(|&(i, _)| i);
+        assert_eq!(picks, expected);
+        // Per stack: what the battle keeps (public).
+        obs.temporary[0] = 4;
+        obs.corpses[0] = 3;
+        obs.corpses[1] = h3_battle::NO_CORPSE;
+        obs.clone_links[0] = Some(StackId(5));
+        obs.binders[0] = (1 << 41) | (1 << 20) | 1;
+        obs.poison[0] = 2;
+        obs.start_hp[0] = 30;
+        obs.summoned = [Some(r.creature_by_key("synthetic:wisp").unwrap()), None];
+        obs.wait_phase = true;
+        obs.last_side_acted = Some(BattleSide::Attacker);
+        let st = &mut obs.stacks.as_mut_slice()[0];
+        st.spells.melee_protection = 70;
+        st.spells.ranged_protection = 75;
+        st.spells.school_protection = [50, 100, 100, 70];
+        st.spells.slayer = (8, 3);
+        st.spells.fire_shield = 20;
+        st.spells.frenzy = 150;
+        st.spells.spell_immunity = 4;
+        st.spells.mirror = 40;
+        st.spells.status = Status::default()
+            .with(Status::HYPNOTIZED, true)
+            .with(Status::PETRIFIED, true);
+        encode(&obs, 17, &mut out).unwrap();
+        let wisp = f32::from(r.creature_by_key("synthetic:wisp").unwrap().raw()) + 1.0;
+        assert_eq!(out[14..19], [1.0, 2.0, 0.0, 0.0, wisp]);
+        let f = stack(&out, 0);
+        assert_eq!(
+            f[40..STACK_VALUES],
+            [4.0, 3.0, 6.0, 1_048_577.0, 1_048_576.0, 2.0, 30.0]
+        );
+        assert_eq!(stack(&out, 1)[41], -1.0);
+        let e = STACK_VALUES + 7;
+        assert_eq!(
+            f[e..SLOTS],
+            [
+                70.0, 75.0, 50.0, 100.0, 100.0, 70.0, 8.0, 3.0, 20.0, 150.0, 4.0, 40.0, 0.0, 0.0,
+                0.0, 0.0, 0.0, 1.0, 0.0, 1.0
+            ]
+        );
     }
 }
