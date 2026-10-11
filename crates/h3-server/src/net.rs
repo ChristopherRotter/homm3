@@ -1,7 +1,8 @@
 //! The network shell (ADR-0018 points 2, 3 and 9): a listener whose connections are counted, and a
 //! task per connection over socket, outbound queue and idle timer. The protocol's hello gate
 //! (`h3_protocol::connection`) and the lobby's messages are the task's; a game's messages go to
-//! the thread of the game the connection is bound to (E16 M2 T1).
+//! the thread of the game the connection is bound to (E16 M2 T1). When the server stops (E16 M2
+//! T5a), the listener accepts no more and every connection hears `Goodbye { Shutdown }`.
 
 use std::collections::BTreeMap;
 use std::future::Future;
@@ -15,7 +16,7 @@ use h3_protocol::connection::{Connection, Received};
 use h3_protocol::session::ConnId;
 use h3_protocol::wire::{ClientMessage, GoodbyeReason, Refusal, RejectCode, ServerMessage};
 use tokio::net::{TcpListener, TcpStream};
-use tokio::sync::mpsc;
+use tokio::sync::{mpsc, watch};
 use tokio::time::{Instant, sleep_until, timeout};
 use tokio_tungstenite::WebSocketStream;
 use tokio_tungstenite::tungstenite::Message;
@@ -131,6 +132,15 @@ enum Wake {
     Game(Option<Frame>),
     /// The idle timeout passed.
     Idle,
+    /// The server stops (E16 M2 T5a).
+    Stop,
+}
+
+/// Resolves once the server stops (E16 M2 T5a); never if the signal's sender is gone unset.
+pub(crate) async fn stopped(stop: &mut watch::Receiver<bool>) {
+    if stop.wait_for(|&stopping| stopping).await.is_err() {
+        std::future::pending::<()>().await;
+    }
 }
 
 /// The next frame of the bound game; never, while the connection is in no game.
@@ -144,8 +154,8 @@ async fn from_game(bound: &mut Option<Bound>) -> Option<Frame> {
 /// One connection's task: reads frames through the hello gate, answers the lobby's messages and
 /// passes the game's to the game it is bound to, writes the game's frames out, until either side
 /// closes. A message within the idle timeout keeps it open; more messages per second than the
-/// limit, a frame that does not decode, a full outbound queue (the game drops the queue) or a
-/// write that stalls for the idle timeout close it.
+/// limit, a frame that does not decode, a full outbound queue (the game drops the queue), a
+/// write that stalls for the idle timeout or the server's stop (`stop`) close it.
 pub(crate) async fn serve<T: Transport>(
     mut transport: T,
     conn: ConnId,
@@ -153,6 +163,7 @@ pub(crate) async fn serve<T: Transport>(
     registry: Shared,
     limits: Limits,
     server: Arc<str>,
+    mut stop: watch::Receiver<bool>,
 ) {
     let idle = Duration::from_millis(limits.idle_timeout_ms);
     let mut deadline = Instant::now() + idle;
@@ -170,6 +181,7 @@ pub(crate) async fn serve<T: Transport>(
             incoming = transport.recv() => Wake::Client(incoming),
             frame = from_game(&mut link.bound) => Wake::Game(frame),
             () = sleep_until(deadline) => Wake::Idle,
+            () = stopped(&mut stop) => Wake::Stop,
         };
         let frame = match wake {
             Wake::Client(None) => break,
@@ -192,6 +204,7 @@ pub(crate) async fn serve<T: Transport>(
             }
             Wake::Game(frame) => frame.unwrap_or_else(|| goodbye(GoodbyeReason::TooSlow)),
             Wake::Idle => goodbye(GoodbyeReason::IdleTimeout),
+            Wake::Stop => goodbye(GoodbyeReason::Shutdown),
         };
         let sent = timeout(idle, transport.send(frame.text)).await;
         if frame.close || !matches!(sent, Ok(true)) {
@@ -410,18 +423,24 @@ impl Drop for Place {
     }
 }
 
-/// Accepts connections forever: a connection beyond the limits is closed at once, every other
-/// one gets its WebSocket handshake and its task.
+/// Accepts connections until the server stops (`stop`, E16 M2 T5a): a connection beyond the
+/// limits is closed at once, every other one gets its WebSocket handshake and its task. Once
+/// stopped, it waits for the open connections to close, for a grace.
 pub(crate) async fn listen(
     listener: TcpListener,
     registry: Shared,
     limits: Limits,
     server: Arc<str>,
+    mut stop: watch::Receiver<bool>,
 ) {
     let counts = Arc::new(Mutex::new(Counts::default()));
     let mut next = 0u64;
     loop {
-        let Ok((stream, peer)) = listener.accept().await else {
+        let accepted = tokio::select! {
+            accepted = listener.accept() => accepted,
+            () = stopped(&mut stop) => break,
+        };
+        let Ok((stream, peer)) = accepted else {
             continue;
         };
         let Some(place) = Place::take(&counts, peer.ip(), &limits) else {
@@ -430,18 +449,29 @@ pub(crate) async fn listen(
         };
         next += 1;
         let conn = ConnId(next);
-        let (registry, server) = (Arc::clone(&registry), Arc::clone(&server));
+        let (registry, server, stop) = (Arc::clone(&registry), Arc::clone(&server), stop.clone());
         tokio::spawn(async move {
             let config = websocket_config(&limits);
             let handshake = tokio_tungstenite::accept_async_with_config(stream, Some(config));
             let idle = Duration::from_millis(limits.idle_timeout_ms);
             if let Ok(Ok(socket)) = timeout(idle, handshake).await {
-                serve(socket, conn, peer.ip(), registry, limits, server).await;
+                serve(socket, conn, peer.ip(), registry, limits, server, stop).await;
             }
             drop(place);
         });
     }
+    // Stopped: no new connection; the open ones close, each after its goodbye, within a grace.
+    drop(listener);
+    let grace = Instant::now() + SHUTDOWN_GRACE;
+    let open = || counts.lock().unwrap_or_else(PoisonError::into_inner).total;
+    while open() > 0 && Instant::now() < grace {
+        tokio::time::sleep(Duration::from_millis(10)).await;
+    }
 }
+
+/// How long a stopping server waits for its connections to close: each one's goodbye and close
+/// take at most two `LINGER`s.
+const SHUTDOWN_GRACE: Duration = Duration::from_secs(3);
 
 #[cfg(test)]
 mod tests {
@@ -489,6 +519,7 @@ mod tests {
             Arc::clone(&registry),
             Limits::default(),
             "s".into(),
+            watch::channel(false).1,
         ));
         for message in [
             ClientMessage::Hello {

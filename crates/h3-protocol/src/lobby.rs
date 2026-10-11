@@ -37,6 +37,8 @@ pub struct Lobby<O> {
     games: BTreeMap<u32, Entry<O>>,
     /// The last id handed out.
     last: u32,
+    /// Whether the server drains (E16 M2 T5a): no new game.
+    draining: bool,
 }
 
 impl<O: Ord> Lobby<O> {
@@ -47,7 +49,21 @@ impl<O: Ord> Lobby<O> {
             limits,
             games: BTreeMap::new(),
             last: 0,
+            draining: false,
         }
+    }
+
+    /// The server drains (E16 M2 T5a): every creation from now on is refused (`Draining`); the
+    /// listed games go on.
+    pub const fn drain(&mut self) {
+        self.draining = true;
+    }
+
+    /// How many listed games wait or run (E16 M2 T5a): a draining server stops at none. A paused
+    /// game and one that is over do not count.
+    pub fn in_play(&self) -> usize {
+        let playing = |e: &&Entry<O>| matches!(e.info.phase, Phase::Waiting | Phase::Running);
+        self.games.values().filter(playing).count()
     }
 
     /// The answer to `ListGames`: the offers and the games, by id.
@@ -61,8 +77,8 @@ impl<O: Ord> Lobby<O> {
 
     /// Creates a game of the offer `offer` for `origin`, whose creator takes `seat`, listed as
     /// taking spectators or not (`spectators`, E16 M2 T4c): the game's id and the offer's index,
-    /// or why not. A spectator creates nothing; an offer the server does not have, a seat its bot
-    /// plays, or a full server or origin, is refused.
+    /// or why not. A spectator creates nothing; a draining server, an offer it does not have, a
+    /// seat its bot plays, or a full server or origin, is refused.
     pub fn create(
         &mut self,
         origin: O,
@@ -72,6 +88,9 @@ impl<O: Ord> Lobby<O> {
     ) -> Result<(u32, usize), Refusal> {
         if seat == Seat::Spectator {
             return Err(Refusal::NoSpectators);
+        }
+        if self.draining {
+            return Err(Refusal::Draining);
         }
         let (index, found) = self
             .offers

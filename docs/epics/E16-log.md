@@ -514,3 +514,36 @@ how and why the work went.
   (`JOURNAL_FORMAT_VERSION` 3: a format-2 journal is void after the upgrade); a restored game
   takes its setting from that line; the game's thread reports the setting with its phase and
   seats. Not built: an offer's own setting (M4's ladders, whose games have no host).
+
+### M2 T5a — Shutdown, drain, the deadlines of abandoned games (2026-10-11)
+
+- **The start.** #79 (T4c) was merged; the branch restarted from `master`. T5 as cut at M1's
+  checkpoint held six tasks' worth; split into T5a (this), T5b (hardening) and T5c (the fuzz
+  harness, the replay download, M2's closure) in `QUEUE.md`.
+- **Shared** (its own commit, the pull request `cross-lane`): `tokio`'s `signal` feature in the
+  workspace, ADR-0018 point 3 amended (SRV-Q12 (c)); it brings `signal-hook-registry` and `errno`
+  (Apache-2.0 OR MIT; `cargo deny` licenses, bans and sources pass).
+- **The wire, version 9** (*queued for the M2 review*): `Refusal::Draining`.
+- **The session core and the lobby** (`h3-protocol`, logic, 100 %): `Session::seated` (a
+  connection holds a seat) and `Session::suspend` (the host pauses a running game none of whose
+  seats is held, as the host's `Pause` would: the entry, the spectators' `Goodbye { Paused }`);
+  `Lobby::drain` (every creation refused `Draining`) and `Lobby::in_play` (the games that wait or
+  run).
+- **The server** (*provisional*): `Running::drain`, `in_play`, `drained` and `shutdown`; `main`
+  drains at the first SIGINT or SIGTERM, stops once drained or at a second signal. The stop is a
+  `watch` the listener and every connection select on (`Goodbye { Shutdown }`; the listener then
+  waits up to 3 s for the connections to close) and a `ToGame::Stop` to every game's thread (its
+  connections hear it, it leaves; a waiting game's journal goes, the others stay). A drain's
+  `ToGame::Drain` ends only waiting games. `[limits] empty_game_ms` (30 minutes) and
+  `paused_game_ms` (72 hours), 0 for none: a sweep task ticks every game's thread
+  (`ToGame::Tick`), which pauses a running game whose seats stayed empty that long, and voids a
+  paused game (`<data>/void/`, the reason "abandoned") whose pause is older; after a restart the
+  pause's age is the journal's (its last write). Clocks: `tokio::time::Instant` (the workspace's
+  clippy bans `std::time`'s; a file's age is `metadata().modified()?.elapsed()`, a `Duration`).
+- **Tests** (h3-protocol 56, h3-server 31): the session's suspend (held seats, an empty running
+  game, paused, resumed by a token); the lobby's drain and its count; end to end: a drain ends a
+  waiting game (its journal gone), refuses a creation, waits for the running game's end, and the
+  stop closes the connections and the listener; a stopped server's game restores at its next
+  start and plays to its end; an abandoned game pauses (its spectator told) and goes void at its
+  deadlines; the configuration's new bounds. The binary, run by hand: SIGTERM drains, stops,
+  exits 0.

@@ -1,6 +1,10 @@
-//! `h3-server <config.toml>`: hosts the configured battle for untrusted clients over WebSocket
-//! (E16, ADR-0018); the configuration's format is in `h3_server::config`. Runs until it is
-//! stopped; the replay is written when the battle ends.
+//! `h3-server <config.toml>`: hosts the configured battles for untrusted clients over WebSocket
+//! (E16, ADR-0018); the configuration's format is in `h3_server::config`.
+//!
+//! Stopping (E16 M2 T5a): the first SIGINT (Ctrl-C) or SIGTERM drains the server: no new game,
+//! the waiting ones end, the running ones play on; once none runs, it stops. A second signal
+//! stops it at once. Stopped, every connection hears `Goodbye { Shutdown }` and the journals
+//! stay: the running and the paused games restore at the next start. Provisional: the signals.
 
 use std::path::PathBuf;
 use std::process::ExitCode;
@@ -43,7 +47,18 @@ fn main() -> ExitCode {
                     h3_protocol::PROTOCOL_VERSION,
                     running.address
                 );
-                let _ = running.listener.await;
+                signalled().await;
+                running.drain();
+                eprintln!(
+                    "h3-server: draining: no new game; {} in play; a second signal stops now",
+                    running.in_play()
+                );
+                tokio::select! {
+                    () = running.drained() => eprintln!("h3-server: drained"),
+                    () = signalled() => eprintln!("h3-server: stopping now"),
+                }
+                running.shutdown().await;
+                eprintln!("h3-server: stopped");
                 ExitCode::SUCCESS
             }
             Err(e) => {
@@ -52,4 +67,28 @@ fn main() -> ExitCode {
             }
         }
     })
+}
+
+/// Resolves at a SIGINT (Ctrl-C) or, on Unix, a SIGTERM; never if neither can be listened for.
+async fn signalled() {
+    #[cfg(unix)]
+    let terminate = async {
+        use tokio::signal::unix::{SignalKind, signal};
+        match signal(SignalKind::terminate()) {
+            Ok(mut term) => {
+                term.recv().await;
+            }
+            Err(_) => std::future::pending().await,
+        }
+    };
+    #[cfg(not(unix))]
+    let terminate = std::future::pending::<()>();
+    tokio::select! {
+        interrupted = tokio::signal::ctrl_c() => {
+            if interrupted.is_err() {
+                std::future::pending::<()>().await;
+            }
+        }
+        () = terminate => {}
+    }
 }

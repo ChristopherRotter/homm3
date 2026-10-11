@@ -8,6 +8,10 @@
 //! restored and listed again (E16 M2 T2). A paused game has no thread: the registry keeps its
 //! seats' tokens, and a join with one restores it from its journal (E16 M2 T3).
 //!
+//! The server's life (E16 M2 T5a): a sweep ticks every game's thread, which pauses a running game
+//! whose seats stayed empty, and voids a paused game nobody resumed in time; a drain refuses new
+//! games and ends the waiting ones; a stop ends every game's thread, their journals kept.
+//!
 //! Provisional (E16 M2 T1–T3): the lock, the origin (the client's address), a creation that fails
 //! after the lobby's checks refused as `TooManyGames` (only OS randomness and the journal's file
 //! can fail there), the token checked before a paused game is restored.
@@ -16,12 +20,14 @@ use std::collections::BTreeMap;
 use std::net::IpAddr;
 use std::path::PathBuf;
 use std::sync::{Arc, Mutex, MutexGuard, PoisonError};
+use std::time::Duration;
 use std::{fs, io};
 
 use h3_protocol::lobby::{self, Lobby};
 use h3_protocol::wire::{GameInfo, Phase, Refusal, Seat};
 use h3_protocol::{codec, session};
 use tokio::sync::{mpsc, oneshot};
+use tokio::time::Instant;
 
 use crate::game::{Offer, Prepared, ToGame};
 use crate::{Error, config, journal};
@@ -45,8 +51,12 @@ pub(crate) enum Hosted {
         to: mpsc::Sender<ToGame>,
         bound: usize,
     },
-    /// Paused (E16 M2 T3): its journal, and the seats' tokens that resume it (none for the bot's).
-    Paused { tokens: [Option<String>; 2] },
+    /// Paused (E16 M2 T3): its journal, the seats' tokens that resume it (none for the bot's), and
+    /// since when (E16 M2 T5a: its deadline).
+    Paused {
+        tokens: [Option<String>; 2],
+        since: Instant,
+    },
 }
 
 /// The lobby and the hosted games.
@@ -56,8 +66,9 @@ pub(crate) struct Registry {
     offers: Vec<Arc<Offer>>,
     games: BTreeMap<u32, Hosted>,
     server: config::Server,
-    /// How many spectators each game takes (E16 M2 T4).
-    spectators: usize,
+    /// The server's bounds: how many spectators each game takes (E16 M2 T4), the deadlines of
+    /// abandoned games (E16 M2 T5a).
+    limits: config::Limits,
 }
 
 impl Registry {
@@ -77,7 +88,66 @@ impl Registry {
             offers,
             games: BTreeMap::new(),
             server,
-            spectators: limits.spectators_per_game,
+            limits: *limits,
+        }
+    }
+
+    /// The server drains (E16 M2 T5a): the lobby refuses new games, and every game's thread hears
+    /// it (a waiting one ends; a running one plays on).
+    pub(crate) fn drain(&mut self) {
+        self.lobby.drain();
+        self.tell_all(|| ToGame::Drain);
+    }
+
+    /// How many games wait or run (E16 M2 T5a): a draining server stops at none.
+    pub(crate) fn in_play(&self) -> usize {
+        self.lobby.in_play()
+    }
+
+    /// How many games have a thread (E16 M2 T5a): a stopping server waits for none.
+    pub(crate) fn live(&self) -> usize {
+        let live = |hosted: &&Hosted| matches!(hosted, Hosted::Live { .. });
+        self.games.values().filter(live).count()
+    }
+
+    /// Every game's thread ends, their journals kept for the next start (E16 M2 T5a).
+    pub(crate) fn stop_all(&mut self) {
+        self.tell_all(|| ToGame::Stop);
+    }
+
+    /// The deadlines of abandoned games at `now` (E16 M2 T5a): every game's thread is ticked (it
+    /// pauses a running game whose seats stayed empty), and a paused game nobody resumed within
+    /// `paused_game_ms` is void.
+    pub(crate) fn sweep(&mut self, now: Instant) {
+        self.tell_all(|| ToGame::Tick);
+        let Some(limit) = (self.limits.paused_game_ms > 0)
+            .then(|| Duration::from_millis(self.limits.paused_game_ms))
+        else {
+            return;
+        };
+        let expired: Vec<u32> = self
+            .games
+            .iter()
+            .filter(|(_, hosted)| {
+                matches!(hosted, Hosted::Paused { since, .. }
+                    if now.saturating_duration_since(*since) >= limit)
+            })
+            .map(|(&game, _)| game)
+            .collect();
+        for game in expired {
+            let path = journal::dir(&self.server.data).join(format!("{game}.journal"));
+            let why = format!("abandoned: paused for {} ms", self.limits.paused_game_ms);
+            journal::void(&self.server.data, &path, &game.to_string(), &why);
+            self.leave(game);
+        }
+    }
+
+    /// Every live game's thread gets `message` (one that is too busy to take it misses it).
+    fn tell_all(&self, message: impl Fn() -> ToGame) {
+        for hosted in self.games.values() {
+            if let Hosted::Live { to, .. } = hosted {
+                let _ = to.try_send(message());
+            }
         }
     }
 
@@ -121,7 +191,8 @@ impl Registry {
     /// Game `game` paused (E16 M2 T3): its thread ends, `tokens` resume it.
     pub(crate) fn pause(&mut self, game: u32, tokens: [Option<String>; 2]) {
         self.lobby.update(game, (Phase::Paused, Vec::new(), false));
-        self.games.insert(game, Hosted::Paused { tokens });
+        let since = Instant::now();
+        self.games.insert(game, Hosted::Paused { tokens, since });
     }
 
     /// Hosts a game whose inbox is `to`, outside the lobby (tests of the connection task).
@@ -148,11 +219,11 @@ pub(crate) fn create(
     watchable: bool,
 ) -> Result<(u32, mpsc::Sender<ToGame>), Refusal> {
     let mut registry = lock(shared);
-    let listed = watchable && registry.spectators > 0;
+    let listed = watchable && registry.limits.spectators_per_game > 0;
     let (game, index) = registry.lobby.create(origin, offer, seat, listed)?;
     let offer = Arc::clone(&registry.offers[index]);
     let (to, inbox) = mpsc::channel(GAME_INBOX);
-    let host = (&registry.server, registry.spectators);
+    let host = (&registry.server, &registry.limits);
     let started = Prepared::new(offer, game, origin, host, watchable)
         .and_then(|prepared| prepared.spawn(inbox, Arc::clone(shared)));
     if let Err(e) = started {
@@ -187,7 +258,7 @@ pub(crate) fn bind(
             *bound += 1;
             return Ok(to.clone());
         }
-        Some(Hosted::Paused { tokens }) => tokens,
+        Some(Hosted::Paused { tokens, .. }) => tokens,
     };
     let expected = match seat {
         Seat::Attacker => &tokens[0],
@@ -208,7 +279,7 @@ pub(crate) fn bind(
             .find(|o| o.id == read.start.offer)
             .cloned()
             .ok_or_else(|| format!("the server offers no `{}` now", read.start.offer))?;
-        let host = (&registry.server, registry.spectators);
+        let host = (&registry.server, &registry.limits);
         Prepared::restored(offer, &path, read, host, None)
     });
     let prepared = match prepared {
@@ -267,7 +338,7 @@ pub(crate) async fn restore(shared: &Shared) -> Result<(), Error> {
                 .find(|o| o.id == read.start.offer)
                 .cloned()
                 .ok_or_else(|| format!("the server offers no `{}` now", read.start.offer))?;
-            let host = (&registry.server, registry.spectators);
+            let host = (&registry.server, &registry.limits);
             Prepared::restored(offer, &path, read, host, Some((to, done)))
         });
         match prepared {
@@ -282,4 +353,21 @@ pub(crate) async fn restore(shared: &Shared) -> Result<(), Error> {
         let _ = finished.await;
     }
     Ok(())
+}
+
+/// Sweeps the registry for abandoned games (E16 M2 T5a), every quarter of its shortest deadline,
+/// at least every minute and at most every 10 ms.
+pub(crate) async fn sweep_every(shared: Shared, limits: config::Limits) {
+    let shortest = [limits.empty_game_ms, limits.paused_game_ms]
+        .into_iter()
+        .filter(|&ms| ms > 0)
+        .min()
+        .unwrap_or(u64::MAX);
+    let period = Duration::from_millis((shortest / 4).clamp(10, 60_000));
+    let mut tick = tokio::time::interval(period);
+    tick.set_missed_tick_behavior(tokio::time::MissedTickBehavior::Delay);
+    loop {
+        tick.tick().await;
+        lock(&shared).sweep(Instant::now());
+    }
 }
