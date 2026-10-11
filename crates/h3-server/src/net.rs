@@ -17,7 +17,7 @@ use std::time::Duration;
 
 use futures_util::{SinkExt, StreamExt};
 use h3_protocol::codec;
-use h3_protocol::connection::{Connection, Received};
+use h3_protocol::connection::{Connection, Host, Received};
 use h3_protocol::session::ConnId;
 use h3_protocol::wire::{ClientMessage, GoodbyeReason, Refusal, RejectCode, ServerMessage};
 use tokio::net::{TcpListener, TcpStream};
@@ -168,6 +168,16 @@ async fn from_game(bound: &mut Option<Bound>) -> Option<Frame> {
     }
 }
 
+/// The server as its welcome names it (E16 M3 T1): the program and the server's id, the address
+/// its clients dial.
+#[derive(Debug)]
+pub(crate) struct Identity {
+    /// The program's name and version.
+    pub program: String,
+    /// The server's id.
+    pub id: String,
+}
+
 /// One connection's task: reads frames through the hello gate, answers the lobby's messages and
 /// passes the game's to the game it is bound to, writes the game's frames out, until either side
 /// closes. A message within the idle timeout keeps it open; more messages per second than the
@@ -182,15 +192,24 @@ pub(crate) async fn serve<T: Transport>(
     place: Place,
     registry: Shared,
     limits: Limits,
-    server: Arc<str>,
+    server: Arc<Identity>,
     mut stop: watch::Receiver<bool>,
 ) {
+    // The login's challenge (E16 M3 T1): OS randomness, or no connection.
+    let Ok(challenge) = game::challenge() else {
+        transport.close().await;
+        return;
+    };
+    let host = Host {
+        program: &server.program,
+        id: &server.id,
+    };
     let idle = Duration::from_millis(limits.idle_timeout_ms);
     let lobby = Duration::from_millis(limits.lobby_timeout_ms);
     let mut deadline = Instant::now() + idle;
     // The deadline to be in a game: the hello's first, then the lobby's (E16 M2 T5b).
     let mut unjoined = Some(Instant::now() + Duration::from_millis(limits.hello_timeout_ms));
-    let mut gate = Connection::new(limits.max_frame);
+    let mut gate = Connection::new(limits.max_frame, challenge, true);
     let mut rate = Rate::new(limits.messages_per_second);
     let mut link = Link {
         conn,
@@ -224,7 +243,7 @@ pub(crate) async fn serve<T: Transport>(
             Wake::Client(Some(Incoming::Text(text))) => {
                 deadline = now + idle;
                 let greeted = gate.greeted();
-                let received = gate.receive(text.as_bytes(), &server);
+                let received = gate.receive(text.as_bytes(), &host);
                 if !greeted && gate.greeted() {
                     unjoined = Some(now + lobby);
                 }
@@ -240,6 +259,8 @@ pub(crate) async fn serve<T: Transport>(
                         left: None,
                         held: false,
                     },
+                    // stub: SRV-STUB-1 (logins are checked from E16 M3 T2a; until then none holds).
+                    Received::Account(_) => refused(Refusal::BadLogin),
                 }
             }
             Wake::Game(Some(frame)) => {
@@ -455,7 +476,11 @@ fn unbound(message: &ClientMessage) -> Frame {
         | ClientMessage::ListGames { seq }
         | ClientMessage::CreateGame { seq, .. }
         | ClientMessage::ListReplays { seq, .. }
-        | ClientMessage::FetchArchived { seq, .. } => *seq,
+        | ClientMessage::FetchArchived { seq, .. }
+        | ClientMessage::Login { seq, .. }
+        | ClientMessage::Rekey { seq, .. }
+        | ClientMessage::Rename { seq, .. }
+        | ClientMessage::SetListed { seq, .. } => *seq,
         ClientMessage::Hello { .. } | ClientMessage::Ping { .. } | ClientMessage::Join { .. } => 0,
     };
     Frame {
@@ -553,7 +578,7 @@ pub(crate) async fn listen(
     listener: TcpListener,
     registry: Shared,
     limits: Limits,
-    server: Arc<str>,
+    server: Arc<Identity>,
     mut stop: watch::Receiver<bool>,
 ) {
     let counts = Arc::new(Mutex::new(Counts::default()));
@@ -654,7 +679,10 @@ mod tests {
                 place,
                 Arc::clone(&registry),
                 limits,
-                "s".into(),
+                Arc::new(Identity {
+                    program: String::from("s"),
+                    id: String::from("ws://s"),
+                }),
                 watch::channel(false).1,
             ));
             Self {

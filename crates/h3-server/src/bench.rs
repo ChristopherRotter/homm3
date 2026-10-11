@@ -13,7 +13,7 @@ use h3_content::Ruleset;
 use h3_kernel::{Rng, StreamId};
 use h3_protocol::PROTOCOL_VERSION;
 use h3_protocol::codec::{self, DEFAULT_MAX_CLIENT_FRAME};
-use h3_protocol::connection::{Connection, Received};
+use h3_protocol::connection::{Connection, Host, Received};
 use h3_protocol::session::{ConnId, GameConfig, Outbound, SeatKind, Session};
 use h3_protocol::wire::{ClientMessage, Command, Seat, ServerMessage};
 
@@ -53,13 +53,19 @@ pub fn serve_frame(
     frame: &[u8],
     out: &mut Vec<Outbound>,
 ) {
-    match connection.receive(frame, "h3-server bench") {
+    let host = Host {
+        program: "h3-server bench",
+        id: "ws://bench",
+    };
+    match connection.receive(frame, &host) {
         Received::Game(message) => session.handle(conn, message, out),
         Received::Reply { frame, close } => out.push(Outbound {
             to: conn,
             frame,
             close,
         }),
+        // The scripted clients never log in.
+        Received::Account(_) => {}
     }
 }
 
@@ -119,7 +125,7 @@ pub fn play_game(
     });
     let mut session =
         Session::new(ruleset, config, seats).map_err(|e| Error(format!("setup: {e}")))?;
-    let mut connections = [const { Connection::new(DEFAULT_MAX_CLIENT_FRAME) }; 2];
+    let mut connections = [const { Connection::new(DEFAULT_MAX_CLIENT_FRAME, [0; 32], true) }; 2];
     let mut rng = Rng::for_stream(seed, StreamId::AGENT);
     let mut out = Vec::new();
     let mut send = |session: &mut Session<'_>, seat: usize, message: &ClientMessage| {

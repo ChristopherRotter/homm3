@@ -131,21 +131,41 @@ contains seeds, tokens, nonces or signatures.
 
 ## 10. Accounts (M3)
 
-- **Derivation (client side).** `seed = argon2id(password, salt = "h3:" + name_lowercase,
-  memory 64 MiB, 3 passes)`, `keypair = ed25519_from_seed(seed)`. The same name and password
-  give the same key on every device and every server. The client caches the key locally so the
-  derivation runs once per device; the password is never stored.
-- **Login.** `Hello` then `Challenge { nonce }` (32 random bytes, valid for a minute, one at a
-  time per connection) then `Login { public_key, signature over (server id, nonce), name }`
-  then `LoggedIn { player }`. A new public key with a free name registers; a known key logs
-  in; a free name with a known key renames; a taken name with another key is refused.
+- **Names (the user, SRV-Q17).** The *login name* is permanent: 3–20 of `a–z 0–9 _ -`, typed in
+  any case and lowercased by the client (the server takes no other case); it salts the
+  derivation and is shown to its owner and the operator only. The *display name* is what other
+  clients see: unique on its server (ignoring case), changeable (`Rename`), chosen at
+  registration; 3–24 ASCII letters, digits, `_ - .` and single inner spaces (built in M3 T1,
+  `h3_protocol::account`).
+- **Derivation (client side).** `seed = argon2id(password, salt = "h3-account-v1:" + login,
+  memory 64 MiB, 3 passes, 1 lane, 32 bytes)`, `keypair = ed25519_from_seed(seed)` (the salt is
+  at least 17 bytes, Argon2 wants 8). The same login name and password give the same key on
+  every device and every server. The client caches the key locally so the derivation runs once
+  per device; the password is never stored. A test vector fixes the derivation for every client.
+- **Login** (the wire and the hello gate built in M3 T1: `h3_protocol::account`,
+  `connection`). `Welcome` carries the server's id (`[server] public_url`, what its clients dial;
+  until M3 T2a the address it listens on) and a challenge (32 random bytes from the host, one per
+  connection). `Login { seq, login, key, signature, display }` (hex; `display` only to register)
+  signs `account::login_message`: its purpose, the id, the challenge, the login name and the
+  display name. Every account request is answered `Account { seq, display, listed }` or
+  `Refused`. A client signs only if the id is the address it dialed, and the server checks the
+  id it signed is its own, so a hostile server cannot relay a login. A new key with a free login
+  name registers (its display name free); a known pair logs in; a known login name with another
+  key is refused as a bad signature is (`BadLogin`). Failed logins count against the address's
+  rate. Without a login a connection plays anonymously where `[server] anonymous` (default true)
+  allows, with seat tokens as in M2; otherwise `Join` and `CreateGame` wait for the login.
 - **Re-keying.** After a password change the client keeps the old key until each server it
   knows has accepted `Rekey { new_public_key, signature_by_old, signature_by_new }` at the
   next login; the server rebinds the account. A forgotten password is a lost account; the
-  operator's admin command can rebind a name to a new key by hand.
-- **Privacy.** A public key is shown to its owner only (a fingerprint in the client); other
-  clients see names. Anonymous connections skip `Login` when the configuration allows and may
-  never queue for a ladder.
+  operator's admin command can rebind a login name to a new key by hand.
+- **Privacy.** A public key and a login name are shown to their owner only (a fingerprint in the
+  client); other clients see display names. Anonymous connections may never queue for a ladder.
+- **A replay's listing (the user, SRV-Q17).** An account's preference (`listed`, default true);
+  a finished game is listed only if its host left it open to spectators and no seated account
+  opted out, else archived unlisted.
+- **The player log.** `<data>/players.log`, JSON lines (registered, re-keyed, renamed, a
+  preference changed), each synced when written, read back at start; snapshots once a start
+  takes too long.
 
 ## 11. Ladders and matchmaking (M4)
 

@@ -1104,9 +1104,54 @@ pub enum ClientMessage {
         /// The replay's id, as `Replays` lists it.
         replay: String,
     },
+    /// Log in to an account, or register one with a display name (E16 M3 T1; ADR-0019 point 1):
+    /// the account's public key and its signature over [`crate::account::login_message`] (this
+    /// server's id and this connection's challenge from the welcome). Answered `Account`, or
+    /// `Refused`.
+    Login {
+        /// The client's sequence number.
+        seq: u32,
+        /// The login name ([`crate::account::is_login_name`]): it salted the key's derivation.
+        login: String,
+        /// The public key, 32 bytes as lowercase hex.
+        key: String,
+        /// The signature, 64 bytes as lowercase hex.
+        signature: String,
+        /// The display name to register the account with; `None` to log in to it.
+        display: Option<String>,
+    },
+    /// Re-key the logged-in account after a password change (E16 M3 T1): the new public key,
+    /// and the signatures of the old key and of the new over
+    /// [`crate::account::rekey_message`]. Answered `Account`, or `Refused`.
+    Rekey {
+        /// The client's sequence number.
+        seq: u32,
+        /// The new public key, 32 bytes as lowercase hex.
+        key: String,
+        /// The signature by the account's key so far, 64 bytes as lowercase hex.
+        by_old: String,
+        /// The signature by the new key, 64 bytes as lowercase hex.
+        by_new: String,
+    },
+    /// Change the logged-in account's display name on this server (E16 M3 T1). Answered
+    /// `Account`, or `Refused`.
+    Rename {
+        /// The client's sequence number.
+        seq: u32,
+        /// The new display name ([`crate::account::is_display_name`]).
+        display: String,
+    },
+    /// Whether the replays of the logged-in account's finished games may be listed in the
+    /// archive (E16 M3 T1; ADR-0019 point 2). Answered `Account`.
+    SetListed {
+        /// The client's sequence number.
+        seq: u32,
+        /// Whether they may.
+        listed: bool,
+    },
 }
 
-/// Why a join or a game's creation was refused; the connection stays open.
+/// Why a join, a game's creation or an account's request was refused; the connection stays open.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub enum Refusal {
     /// No game has this id.
@@ -1128,6 +1173,18 @@ pub enum Refusal {
     Draining,
     /// The archive holds no replay under this id (E16 M2 T5d), or no more.
     NoSuchReplay,
+    /// The login does not hold (E16 M3 T1): a key or a signature that does not read or verify,
+    /// or a login name that belongs to another key; all alike.
+    BadLogin,
+    /// A login name or a display name breaks its rules (E16 M3 T1).
+    BadName,
+    /// Another account has the display name on this server (E16 M3 T1).
+    NameTaken,
+    /// The request needs a logged-in account (E16 M3 T1), and so does joining or creating a game
+    /// on a server that takes no anonymous players.
+    NotLoggedIn,
+    /// The connection is logged in already (E16 M3 T1).
+    AlreadyLoggedIn,
 }
 
 /// Why the server closes the connection.
@@ -1168,6 +1225,11 @@ pub enum ServerMessage {
         protocol: u32,
         /// The server program's name and version (informational).
         server: String,
+        /// The server's id (E16 M3 T1): the address its clients dial. A client signs a login
+        /// only if it is the address it dialed.
+        id: String,
+        /// This connection's challenge for a login (E16 M3 T1), 32 bytes as lowercase hex.
+        challenge: String,
     },
     /// The connection closes.
     Goodbye {
@@ -1313,6 +1375,16 @@ pub enum ServerMessage {
         total: u32,
         /// The page.
         replays: Vec<ReplayInfo>,
+    },
+    /// The logged-in account as it stands (E16 M3 T1): the answer to `Login`, `Rekey`, `Rename`
+    /// and `SetListed`. The login name and the key are the client's own already.
+    Account {
+        /// The request's sequence number.
+        seq: u32,
+        /// Its display name on this server.
+        display: String,
+        /// Whether its finished games' replays may be listed.
+        listed: bool,
     },
 }
 
