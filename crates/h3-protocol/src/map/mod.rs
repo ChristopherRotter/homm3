@@ -26,7 +26,7 @@ pub use from_engine::{command, reject, target};
 use crate::PROTOCOL_VERSION;
 use crate::wire::{
     Algorithm, Ballista, BookSpell, Command, Effect, Event, Field, Hero, KeyTables, Manifest,
-    Observation, Outcome, OwnHero, PackRef, Query, RemovableObstacle, Side, SideView,
+    Observation, Offer, Outcome, OwnHero, PackRef, Query, RemovableObstacle, Seat, Side, SideView,
     SpellObstacle, Stack, Strike, Tactics, Target, WireU64,
 };
 
@@ -225,6 +225,25 @@ pub fn manifest(ruleset: &Ruleset) -> Manifest {
         battle_state_hash_version: BATTLE_STATE_HASH_VERSION,
         field: field(ruleset),
         keys: key_tables(ruleset),
+    }
+}
+
+/// An offer of the server (E16 M2 T1): the game configuration `id`, the scenario `scenario` on
+/// `ruleset`, with the server's bot in `bots`; what the manifest names, before anyone joins.
+pub fn offer(id: &str, scenario: &str, ruleset: &Ruleset, bots: Vec<Seat>) -> Offer {
+    let Manifest {
+        packs,
+        profile,
+        ruleset_hash,
+        ..
+    } = manifest(ruleset);
+    Offer {
+        id: String::from(id),
+        scenario: String::from(scenario),
+        packs,
+        profile,
+        ruleset_hash,
+        bots,
     }
 }
 

@@ -37,7 +37,7 @@ use crate::RECORD_FORMAT_VERSION;
 use crate::codec;
 use crate::map;
 use crate::wire::{
-    ClientMessage, Command, GoodbyeReason, Manifest, Outcome, Query, RecordHeader, Refusal,
+    ClientMessage, Command, GoodbyeReason, Manifest, Outcome, Phase, Query, RecordHeader, Refusal,
     RejectCode, Seat, ServerMessage,
 };
 
@@ -208,7 +208,8 @@ impl<'r> Session<'r> {
     }
 
     /// Handles what connection `conn` sent after its hello; the frames to send go to `out`. The
-    /// hello and the ping are the connection's ([`crate::connection`]) and ignored here.
+    /// hello and the ping are the connection's ([`crate::connection`]), the lobby's messages the
+    /// host's ([`crate::lobby`]); they are ignored here.
     pub fn handle(&mut self, conn: ConnId, message: ClientMessage, out: &mut Vec<Outbound>) {
         match message {
             ClientMessage::Join { game, seat, token } => self.join(conn, (game, seat), token, out),
@@ -220,7 +221,11 @@ impl<'r> Session<'r> {
                 self.disconnected(conn);
                 out.push(goodbye(conn, GoodbyeReason::Left));
             }
-            ClientMessage::Hello { .. } | ClientMessage::Ping { .. } => {}
+            // The connection's and the lobby's (`crate::lobby`), not the game's.
+            ClientMessage::Hello { .. }
+            | ClientMessage::Ping { .. }
+            | ClientMessage::ListGames { .. }
+            | ClientMessage::CreateGame { .. } => {}
         }
     }
 
@@ -250,6 +255,30 @@ impl<'r> Session<'r> {
     /// Whether the game started (every seat was held at once).
     pub const fn started(&self) -> bool {
         self.started
+    }
+
+    /// Where the game is, for the lobby's list (E16 M2 T1).
+    pub fn phase(&self) -> Phase {
+        if self.state.is_over() {
+            Phase::Over
+        } else if self.started {
+            Phase::Running
+        } else {
+            Phase::Waiting
+        }
+    }
+
+    /// The seats a newcomer may take without a token: a player's seat whose token was not handed
+    /// out yet (E16 M2 T1).
+    pub fn open_seats(&self) -> Vec<Seat> {
+        BattleSide::BOTH
+            .into_iter()
+            .filter(|side| {
+                let held = &self.seats[side.index()];
+                matches!(held.kind, SeatKind::Player { .. }) && !held.issued
+            })
+            .map(seat)
+            .collect()
     }
 
     /// The replay file's text, for the participants once the game is over (ADR-0018 point 8): a

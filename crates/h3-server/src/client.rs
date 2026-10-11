@@ -12,7 +12,6 @@ use tokio_tungstenite::tungstenite::Message;
 use tokio_tungstenite::{MaybeTlsStream, WebSocketStream};
 
 use crate::Error;
-use crate::game::GAME_ID;
 
 /// One client connection.
 #[derive(Debug)]
@@ -67,12 +66,22 @@ impl Client {
         Ok(self.recv().await)
     }
 
-    /// Asks for `seat` in the hosted game, with its token to re-take it.
-    pub async fn join(&mut self, seat: Seat, token: Option<String>) -> Result<(), Error> {
-        self.send(&ClientMessage::Join {
-            game: GAME_ID,
+    /// Asks for `seat` in game `game`, with its token to re-take it.
+    pub async fn join(
+        &mut self,
+        game: u32,
+        seat: Seat,
+        token: Option<String>,
+    ) -> Result<(), Error> {
+        self.send(&ClientMessage::Join { game, seat, token }).await
+    }
+
+    /// Creates a game of the server's offer `offer` and takes `seat` in it.
+    pub async fn create(&mut self, offer: &str, seat: Seat) -> Result<(), Error> {
+        self.send(&ClientMessage::CreateGame {
+            seq: 0,
+            offer: offer.to_owned(),
             seat,
-            token,
         })
         .await
     }

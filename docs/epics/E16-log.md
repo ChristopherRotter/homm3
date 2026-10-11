@@ -262,3 +262,44 @@ how and why the work went.
   within the rate limit, and each `FetchRecord` queues the whole record); a connection that never
   joins holds its place until its idle timeout; WebSocket pings outside the rate. To M2 T2: an
   operator's copy of the tokens (a client that loses its `Joined` loses the seat).
+
+### M2 T1 — Many games on one server (2026-10-11)
+
+- **The checkpoint.** The user merged the M1 closure (#61) and asked for the next increment:
+  SRV-Q12 answered (the review list stands, M2 as cut; `signal` for T5, the token itself in
+  T2's journal). The branch restarted from `master`; the lane-only workload measured −0.12 %
+  after the battle lane's T8c (no re-baseline), the scoped verify had no failing step.
+- **The wire, version 4** (*queued for the M2 review*): `ListGames { seq }` → `Games { seq,
+  offers, games }` (an `Offer` names what the manifest names: id, scenario, packs, profile,
+  ruleset hash, the bot's seats; a `GameInfo` its id, offer, `Phase` and the seats open
+  without a token); `CreateGame { seq, offer, seat }` → `GameCreated { seq, game }`, then the
+  game's own `Joined` and `Snapshot`, so a created game never waits without a connection; the
+  refusals `NoSuchOffer` and `TooManyGames`. No `StartGame` (the design note's): a game starts
+  when every seat is held at once, as in M1.
+- **The lobby** (`h3-protocol`, logic, 100 %): `Lobby<O>` over an origin type the host picks
+  (the server: the client's address); ids from 1, never reused; the games not over limited in
+  total and per origin; a spectator, an unknown offer and the bot's seat refused; updates from
+  the games; removal. `Session::phase` and `open_seats` give the lobby its view.
+- **The server** (*provisional*): `config` in sections (`[server]`, `[content]`, `[limits]`
+  with `games` 16 and `games_per_address` 2, `[[offer]]`); `game::Offer` compiled once at start
+  (one `Arc<Ruleset>` per offer, shared by its games); `Prepared` per creation (the M1 secrets);
+  `registry` (the lobby and each game's inbox behind one `std` mutex, the bound connections
+  counted); the connection task answers the lobby, binds to a game for `Join` or `CreateGame`
+  (a fresh outbound queue per binding; joining or creating another game leaves the first as a
+  disconnect would), passes the game's messages to the bound game and answers them `NotSeated`
+  without one. A game's thread reports its phase and open seats after every message and leaves
+  when it is not running and no connection is bound; the check and every binding share the
+  lock, so a connection never binds to a game that left (the race a check of the game's own
+  connection list would have: a join queued while the game decides to close). A creation the OS
+  randomness fails after the lobby's checks is logged and refused as `TooManyGames`.
+- **Known, for later tasks:** a running game nobody returns to stays (T3's pause and T5's
+  hardening); a connection whose join a game refused stays bound to it, keeping a waiting game
+  listed until it leaves or idles out. `06-security.md`'s bounds and the global HANDOFF's server
+  row are updated in a separate commit; the pull request carries `cross-lane` (the user).
+- **Tests** (h3-protocol 44, h3-server 19; the scoped verify with no failing step, the workload −0.10 %): the new messages round-trip, their JSON forms; the
+  lobby's creation, limits, refusals, updates and removal; the session's phase and open seats;
+  over loopback, two games played at once with both replays verifying, then gone once their
+  players leave; the lobby's refusals over the wire and `NotSeated` without a game; a waiting
+  game leaves with its creator and frees its address's place; the earlier tests through the
+  lobby; the configuration's sections and checks; the `TooSlow` unit test binds through a
+  registry. Five runs of the server's suite in a row passed.

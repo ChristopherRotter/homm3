@@ -1,6 +1,7 @@
 //! The network shell (ADR-0018 points 2, 3 and 9): a listener whose connections are counted, and a
 //! task per connection over socket, outbound queue and idle timer. The protocol's hello gate
-//! (`h3_protocol::connection`) runs in the task; everything else goes to the game's thread.
+//! (`h3_protocol::connection`) and the lobby's messages are the task's; a game's messages go to
+//! the thread of the game the connection is bound to (E16 M2 T1).
 
 use std::collections::BTreeMap;
 use std::future::Future;
@@ -12,7 +13,7 @@ use futures_util::{SinkExt, StreamExt};
 use h3_protocol::codec;
 use h3_protocol::connection::{Connection, Received};
 use h3_protocol::session::ConnId;
-use h3_protocol::wire::{GoodbyeReason, ServerMessage};
+use h3_protocol::wire::{ClientMessage, GoodbyeReason, Refusal, RejectCode, ServerMessage};
 use tokio::net::{TcpListener, TcpStream};
 use tokio::sync::mpsc;
 use tokio::time::{Instant, sleep_until, timeout};
@@ -22,6 +23,7 @@ use tokio_tungstenite::tungstenite::protocol::WebSocketConfig;
 
 use crate::config::Limits;
 use crate::game::{Frame, ToGame};
+use crate::registry::{self, Shared, lock};
 
 /// What a transport received.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -113,56 +115,238 @@ impl Rate {
     }
 }
 
-/// One connection's task: reads frames through the hello gate into the game, writes the game's
-/// frames out, until either side closes. A message within the idle timeout keeps it open; more
-/// messages per second than the limit, a frame that does not decode, a full outbound queue (the
-/// game drops the queue) or a write that stalls for the idle timeout close it.
+/// The game a connection is bound to (E16 M2 T1): its inbox and the connection's queue for it.
+#[derive(Debug)]
+struct Bound {
+    game: u32,
+    to_game: mpsc::Sender<ToGame>,
+    from_game: mpsc::Receiver<Frame>,
+}
+
+/// What the connection's task waits for.
+enum Wake {
+    /// The client sent something, or closed (`None`).
+    Client(Option<Incoming>),
+    /// The bound game sent a frame, or dropped the queue (`None`: too slow).
+    Game(Option<Frame>),
+    /// The idle timeout passed.
+    Idle,
+}
+
+/// The next frame of the bound game; never, while the connection is in no game.
+async fn from_game(bound: &mut Option<Bound>) -> Option<Frame> {
+    match bound {
+        Some(bound) => bound.from_game.recv().await,
+        None => std::future::pending().await,
+    }
+}
+
+/// One connection's task: reads frames through the hello gate, answers the lobby's messages and
+/// passes the game's to the game it is bound to, writes the game's frames out, until either side
+/// closes. A message within the idle timeout keeps it open; more messages per second than the
+/// limit, a frame that does not decode, a full outbound queue (the game drops the queue) or a
+/// write that stalls for the idle timeout close it.
 pub(crate) async fn serve<T: Transport>(
     mut transport: T,
     conn: ConnId,
-    game: mpsc::Sender<ToGame>,
+    origin: IpAddr,
+    registry: Shared,
     limits: Limits,
     server: Arc<str>,
 ) {
-    let (to, mut from_game) = mpsc::channel(limits.outbound_queue.max(1));
-    if game.send(ToGame::Open { conn, to }).await.is_err() {
-        return transport.close().await;
-    }
     let idle = Duration::from_millis(limits.idle_timeout_ms);
     let mut deadline = Instant::now() + idle;
     let mut gate = Connection::new(limits.max_frame);
     let mut rate = Rate::new(limits.messages_per_second);
+    let mut link = Link {
+        conn,
+        origin,
+        registry,
+        queue: limits.outbound_queue.max(1),
+        bound: None,
+    };
     loop {
-        let frame = tokio::select! {
-            incoming = transport.recv() => {
+        let wake = tokio::select! {
+            incoming = transport.recv() => Wake::Client(incoming),
+            frame = from_game(&mut link.bound) => Wake::Game(frame),
+            () = sleep_until(deadline) => Wake::Idle,
+        };
+        let frame = match wake {
+            Wake::Client(None) => break,
+            Wake::Client(Some(incoming)) => {
                 deadline = Instant::now() + idle;
                 match incoming {
-                    None => break,
-                    Some(Incoming::Binary) => goodbye(GoodbyeReason::Malformed),
-                    Some(Incoming::Text(_)) if !rate.admit(Instant::now()) => {
+                    Incoming::Binary => goodbye(GoodbyeReason::Malformed),
+                    Incoming::Text(_) if !rate.admit(Instant::now()) => {
                         goodbye(GoodbyeReason::RateLimited)
                     }
-                    Some(Incoming::Text(text)) => match gate.receive(text.as_bytes(), &server) {
-                        Received::Game(message) => {
-                            if game.send(ToGame::Message { conn, message }).await.is_err() {
-                                break;
-                            }
-                            continue;
-                        }
+                    Incoming::Text(text) => match gate.receive(text.as_bytes(), &server) {
+                        Received::Game(message) => match link.route(message).await {
+                            Routed::Reply(frame) => frame,
+                            Routed::Passed => continue,
+                            Routed::GameGone => break,
+                        },
                         Received::Reply { frame, close } => Frame { text: frame, close },
                     },
                 }
             }
-            frame = from_game.recv() => frame.unwrap_or_else(|| goodbye(GoodbyeReason::TooSlow)),
-            () = sleep_until(deadline) => goodbye(GoodbyeReason::IdleTimeout),
+            Wake::Game(frame) => frame.unwrap_or_else(|| goodbye(GoodbyeReason::TooSlow)),
+            Wake::Idle => goodbye(GoodbyeReason::IdleTimeout),
         };
         let sent = timeout(idle, transport.send(frame.text)).await;
         if frame.close || !matches!(sent, Ok(true)) {
             break;
         }
     }
-    let _ = game.send(ToGame::Closed { conn }).await;
+    link.unbind().await;
     transport.close().await;
+}
+
+/// What became of a message for the lobby or a game.
+enum Routed {
+    /// An answer to send.
+    Reply(Frame),
+    /// Passed to the bound game, which answers.
+    Passed,
+    /// The bound game is gone: the connection closes.
+    GameGone,
+}
+
+/// A connection's link to the lobby and to the game it is bound to (E16 M2 T1).
+struct Link {
+    conn: ConnId,
+    origin: IpAddr,
+    registry: Shared,
+    /// The capacity of the connection's queue for a game.
+    queue: usize,
+    bound: Option<Bound>,
+}
+
+impl Link {
+    /// Answers a lobby message, or passes a game message to the game it names or is bound to. A
+    /// connection is in at most one game: joining or creating another leaves the first, as a
+    /// disconnect would (its seat waits for its token).
+    async fn route(&mut self, message: ClientMessage) -> Routed {
+        match message {
+            ClientMessage::ListGames { seq } => Routed::Reply(Frame {
+                text: lock(&self.registry).list(seq),
+                close: false,
+            }),
+            ClientMessage::CreateGame { seq, offer, seat } => {
+                match registry::create(&self.registry, self.origin, &offer, seat) {
+                    Err(reason) => Routed::Reply(refused(reason)),
+                    Ok((game, to_game)) => {
+                        let join = ClientMessage::Join {
+                            game,
+                            seat,
+                            token: None,
+                        };
+                        let created = ServerMessage::GameCreated { seq, game };
+                        self.switch(game, to_game, join, Some(created)).await
+                    }
+                }
+            }
+            ClientMessage::Join { game, .. }
+                if self.bound.as_ref().is_none_or(|bound| bound.game != game) =>
+            {
+                let found = lock(&self.registry).bind(game);
+                match found {
+                    None => Routed::Reply(refused(Refusal::NoSuchGame)),
+                    Some(to_game) => self.switch(game, to_game, message, None).await,
+                }
+            }
+            message => match &self.bound {
+                Some(bound) => {
+                    let conn = self.conn;
+                    let passed = bound.to_game.send(ToGame::Message { conn, message }).await;
+                    if passed.is_ok() {
+                        Routed::Passed
+                    } else {
+                        Routed::GameGone
+                    }
+                }
+                None => Routed::Reply(unbound(&message)),
+            },
+        }
+    }
+
+    /// Leaves the bound game for `game` (whose binding the registry counted already), passes it
+    /// `join`, and answers `first` if there is one; a game that is gone meanwhile refuses.
+    async fn switch(
+        &mut self,
+        game: u32,
+        to_game: mpsc::Sender<ToGame>,
+        join: ClientMessage,
+        first: Option<ServerMessage>,
+    ) -> Routed {
+        self.unbind().await;
+        let conn = self.conn;
+        let (to, from_game) = mpsc::channel(self.queue);
+        let opened = to_game.send(ToGame::Open { conn, to }).await.is_ok()
+            && to_game
+                .send(ToGame::Message {
+                    conn,
+                    message: join,
+                })
+                .await
+                .is_ok();
+        if !opened {
+            lock(&self.registry).unbind(game);
+            return Routed::Reply(refused(Refusal::NoSuchGame));
+        }
+        self.bound = Some(Bound {
+            game,
+            to_game,
+            from_game,
+        });
+        match first {
+            Some(message) => Routed::Reply(Frame {
+                text: codec::encode_text(&message),
+                close: false,
+            }),
+            None => Routed::Passed,
+        }
+    }
+
+    /// Leaves the bound game, if any: the game hears the connection closed.
+    async fn unbind(&mut self) {
+        if let Some(bound) = self.bound.take() {
+            lock(&self.registry).unbind(bound.game);
+            let conn = self.conn;
+            let _ = bound.to_game.send(ToGame::Closed { conn }).await;
+        }
+    }
+}
+
+/// `Refused` for a lobby's or a join's refusal; the connection stays open.
+fn refused(reason: Refusal) -> Frame {
+    Frame {
+        text: codec::encode_text(&ServerMessage::Refused { reason }),
+        close: false,
+    }
+}
+
+/// The answer to a game's message from a connection that is in no game: as a game answers a
+/// connection without a seat (`NotSeated`; `Leave` closes).
+fn unbound(message: &ClientMessage) -> Frame {
+    let seq = match message {
+        ClientMessage::Leave {} => return goodbye(GoodbyeReason::Left),
+        ClientMessage::Command { seq, .. }
+        | ClientMessage::Query { seq, .. }
+        | ClientMessage::FetchReplay { seq }
+        | ClientMessage::FetchRecord { seq }
+        | ClientMessage::ListGames { seq }
+        | ClientMessage::CreateGame { seq, .. } => *seq,
+        ClientMessage::Hello { .. } | ClientMessage::Ping { .. } | ClientMessage::Join { .. } => 0,
+    };
+    Frame {
+        text: codec::encode_text(&ServerMessage::Rejected {
+            n: 0,
+            seq,
+            code: RejectCode::NotSeated,
+        }),
+        close: false,
+    }
 }
 
 /// The last frame on a connection.
@@ -221,7 +405,7 @@ impl Drop for Place {
 /// one gets its WebSocket handshake and its task.
 pub(crate) async fn listen(
     listener: TcpListener,
-    game: mpsc::Sender<ToGame>,
+    registry: Shared,
     limits: Limits,
     server: Arc<str>,
 ) {
@@ -237,13 +421,13 @@ pub(crate) async fn listen(
         };
         next += 1;
         let conn = ConnId(next);
-        let (game, server) = (game.clone(), Arc::clone(&server));
+        let (registry, server) = (Arc::clone(&registry), Arc::clone(&server));
         tokio::spawn(async move {
             let config = websocket_config(&limits);
             let handshake = tokio_tungstenite::accept_async_with_config(stream, Some(config));
             let idle = Duration::from_millis(limits.idle_timeout_ms);
             if let Ok(Ok(socket)) = timeout(idle, handshake).await {
-                serve(socket, conn, game, limits, server).await;
+                serve(socket, conn, peer.ip(), registry, limits, server).await;
             }
             drop(place);
         });
@@ -253,6 +437,7 @@ pub(crate) async fn listen(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::registry::Registry;
 
     /// A transport over channels.
     #[derive(Debug)]
@@ -275,15 +460,54 @@ mod tests {
 
     #[tokio::test]
     async fn a_connection_whose_queue_the_game_dropped_is_too_slow() {
-        let (_client, inbound) = mpsc::unbounded_channel();
+        let (client, inbound) = mpsc::unbounded_channel();
         let (outbound, mut sent) = mpsc::unbounded_channel();
         let (game, mut inbox) = mpsc::channel(8);
+        let limits = h3_protocol::lobby::Limits {
+            games: 1,
+            games_per_origin: 1,
+        };
+        let mut registry = Registry::new(vec![], limits, crate::config::Server::default());
+        registry.host(7, game);
+        let registry = Arc::new(Mutex::new(registry));
         let fake = Fake { inbound, outbound };
-        let task = tokio::spawn(serve(fake, ConnId(4), game, Limits::default(), "s".into()));
+        let origin = IpAddr::from([127, 0, 0, 1]);
+        let task = tokio::spawn(serve(
+            fake,
+            ConnId(4),
+            origin,
+            Arc::clone(&registry),
+            Limits::default(),
+            "s".into(),
+        ));
+        for message in [
+            ClientMessage::Hello {
+                protocol: h3_protocol::PROTOCOL_VERSION,
+                client: String::new(),
+                name: String::new(),
+            },
+            ClientMessage::Join {
+                game: 7,
+                seat: h3_protocol::wire::Seat::Attacker,
+                token: None,
+            },
+        ] {
+            client
+                .send(Incoming::Text(codec::encode_text(&message)))
+                .unwrap();
+        }
+        assert!(sent.recv().await.unwrap().contains("Welcome"));
         let Some(ToGame::Open { conn, to }) = inbox.recv().await else {
             panic!("no open")
         };
         assert_eq!(conn, ConnId(4));
+        assert!(matches!(
+            inbox.recv().await,
+            Some(ToGame::Message {
+                message: ClientMessage::Join { game: 7, .. },
+                ..
+            })
+        ));
         to.send(Frame {
             text: String::from("first"),
             close: false,
@@ -299,6 +523,8 @@ mod tests {
             Some(ToGame::Closed { conn: ConnId(4) })
         ));
         task.await.unwrap();
+        // The connection left the game it was bound to.
+        assert!(lock(&registry).close_if_idle(7, h3_protocol::wire::Phase::Waiting));
     }
 
     #[test]
