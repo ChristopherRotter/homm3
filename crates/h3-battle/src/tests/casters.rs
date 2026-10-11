@@ -749,6 +749,11 @@ fn a_helpful_caster_casts_a_spell_drawn_among_those_useful_for_its_target() {
             observe(&s, &r, BattleSide::Defender).cast_candidates,
             [0; crate::STACK_CAPACITY]
         );
+        // Nor does a spectator see them (SRV-Q4).
+        assert_eq!(
+            crate::observe_as(&s, &r, crate::Viewer::Spectator).cast_candidates,
+            [0; crate::STACK_CAPACITY]
+        );
         let expected = useful[s.rng.clone().below(4) as usize];
         let events = act(&mut s, &r, at_stack(1)).unwrap();
         assert_eq!(

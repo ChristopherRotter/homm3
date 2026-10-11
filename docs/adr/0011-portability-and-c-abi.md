@@ -66,6 +66,12 @@ Language-specific bindings only (locks out other ecosystems); a network protocol
   grows); the stack's cast's spell head holds 0 for the Master Genie. No function changes.
 - **ABI v15** (E04b T7b4): observation encoding v11 (two globals: the round starts since each
   side's periodic casters, the Enchanters, last cast; the length grows). No function changes.
+- **ABI v16** (E04b T8a): observation encoding v12 (the spell book's features carry each spell's
+  mastery, the school masteries are gone; the length shrinks). No function changes.
+- **ABI v17** (E04b T9a): observation encoding v13, complete (BAT-Q26): battlefield planes of
+  one value per hex index (as the action encoding's hex targets), the viewer's private hero part
+  once with its hidden magic, the per-stack bookkeeping and the materialised effects; the length
+  grows to 8308. No function changes.
 
 ## Revision history
 
@@ -74,3 +80,4 @@ Language-specific bindings only (locks out other ecosystems); a network protocol
 - 2026-10-01: Amended by E03 T9 (ABI v2: battle result with draws; encodings tied to the ABI version).
 - 2026-10-06: Amended by E04b T2c (ABI v8: the factorized action).
 - 2026-10-06: Amended by E04b T3a (ABI v9: observation encoding v6).
+- 2026-10-11: Amended by E04b T9a (ABI v16 recorded, ABI v17: observation encoding v13).

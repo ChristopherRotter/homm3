@@ -62,12 +62,13 @@ pub use h3_contracts::{BattleOutcome, BattleResult, BattleSetup, BattleSide};
 pub use hero::{HeroView, OwnHeroView};
 pub use legal::{LegalCommands, MAX_LEGAL_COMMANDS, legal_commands};
 pub use magic::{
-    CastTarget, CastTargets, MAX_CAST_TARGETS, MAX_OPENING_SPELLS, MAX_SPELL_BONUSES, Masteries,
-    SpellBonus, SpellBonuses, SpellSet, cast_targets, castable_spells, second_targets,
+    CastTarget, CastTargets, Defences, MAX_CAST_TARGETS, MAX_OPENING_SPELLS, MAX_SPELL_BONUSES,
+    Masteries, Opening, SpellBonus, SpellBonuses, SpellSet, cast_targets, castable_spells,
+    second_targets,
 };
 pub use morale::{Bearer, Expiry, MODIFIER_CAPACITY, Modifiers, Stat};
 pub use natural::{MAX_REMOVABLE_HEXES, MAX_REMOVABLE_OBSTACLES, RemovableObstacle};
-pub use observe::{Observation, observe, project};
+pub use observe::{Observation, Viewer, observe, observe_as, project, project_as};
 pub use obstacles::{OBSTACLE_CAPACITY, SpellObstacle};
 pub use state::{
     BATTLE_STATE_HASH_VERSION, BattleState, CREATED_SLOT, NO_CORPSE, SIDE_STACK_SLOTS,

@@ -48,6 +48,17 @@ pub(crate) struct Created {
 }
 
 impl Created {
+    /// Per stack, by stack id, the stack linked to it: a clone's original, a stack's living clone
+    /// (observations, BAT-MAG-038).
+    pub(crate) fn links(&self) -> [Option<StackId>; STACK_CAPACITY] {
+        self.link.map(|l| (l != NO_LINK).then_some(StackId(l)))
+    }
+
+    /// Per side, the creature its Summon Elemental casts are bound to (observations, BAT-MAG-039).
+    pub(crate) const fn summoned(&self) -> [Option<CreatureTypeId>; 2] {
+        self.summoned
+    }
+
     /// Nothing created yet; the sides' summon `templates`.
     pub(crate) const fn new(templates: [FixedVec<Stack, TEMPLATES>; 2]) -> Self {
         Self {

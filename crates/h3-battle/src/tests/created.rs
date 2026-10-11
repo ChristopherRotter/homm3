@@ -129,6 +129,12 @@ fn clone_copies_an_own_stack_of_a_level_its_mastery_allows() {
     );
     assert!(clone.has(StackTraits::CLONE) && clone.is_created() && !serfs.is_created());
     assert_eq!(clone.flags, StackFlags::default());
+    // Observations link the clone and its original (public, E04b T9a).
+    let links = crate::observe(&s, &r, BattleSide::Defender).clone_links;
+    assert_eq!(
+        (links[0], links[4], links[1]),
+        (Some(StackId(4)), Some(StackId(0)), None)
+    );
     // Power 3, no duration bonus: three rounds.
     assert_eq!(
         (s.clone_rounds(StackId(4)), s.clone_rounds(StackId(0))),
@@ -412,6 +418,9 @@ fn summon_elemental_places_effect_times_power_creatures_in_the_first_free_column
         (6 + 3, 6 + 2, CREATED_SLOT, 6)
     );
     assert!(sprite.is_created() && !sprite.has(StackTraits::CLONE));
+    // Observations show which creature each side's summons are bound to (E04b T9a).
+    let summoned = crate::observe(&s, &r, BattleSide::Defender).summoned;
+    assert_eq!(summoned, [Some(sprite.creature), None]);
     // The side's summons are bound to the sprites: no serfs, but more sprites in a new stack.
     let castable = castable_spells(&s, &r, BattleSide::Attacker);
     assert!(castable.contains(spell(&r, "sprites")) && !castable.contains(spell(&r, "serfs")));
