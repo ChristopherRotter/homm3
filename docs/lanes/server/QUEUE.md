@@ -4,21 +4,14 @@ Pre-refined tasks of the server lane, in order, then the inbox of discovered wor
 
 ## Tasks
 
-Epic: `docs/epics/E16-server.md` (in progress; M0 and M1 done 2026-10-10, ADR-0018; M2 done 2026-10-11, its checkpoint passed, SRV-Q16). M3 refined 2026-10-11 (SRV-Q17): ADR-0019, accepted at the refinement (points 1 and 2 for M3; the design note §10), cut below, each task about half a context. Work under the autonomy contract (`HANDOFF.md`). Each wire change bumps `PROTOCOL_VERSION`.
-
-### E16 M3 T1 — The login on the wire, sans-I/O
-
-- **Scope:** `h3-protocol`: `Welcome` gains the server's id and the connection's challenge (given by the host); `Login { login, public_key, signature, display }` answered `LoggedIn { display }` or a refusal; `Rekey`, `Rename`, the account's listing preference (their handling comes in T2b); keys, signatures and challenges as hex strings. The hello gate's login step, sans-I/O: the gate hands the host the login to check (the `Authenticator` seam is `h3-server`'s, T2a) and is told the outcome; a login before the hello, a second login, a malformed key or signature refused. The rules of a login name (3–20 of `a–z 0–9 _ -`, lowercase) and of a display name (provisional), as pure functions. `E16-design.md` §10 is the reference.
-- **Acceptance:** the Definition of Done; `h3-protocol` 100 % covered; the round trips and JSON forms of the new messages; properties: a connection is logged in only after the host's yes, a refused login changes nothing; `PROTOCOL_VERSION` bumped.
-- **Depends on:** the M3 refinement (SRV-Q17).
-- **Status:** in progress (`claude/epic-bell-ot2nsa`, 2026-10-11 20:00 UTC).
+Epic: `docs/epics/E16-server.md` (in progress; M0 and M1 done 2026-10-10, ADR-0018; M2 done 2026-10-11, its checkpoint passed, SRV-Q16). M3 refined 2026-10-11 (SRV-Q17): ADR-0019, accepted at the refinement (points 1 and 2 for M3; the design note §10), cut below, each task about half a context; T1 done 2026-10-11 (the login on the wire, wire 12). Work under the autonomy contract (`HANDOFF.md`). Each wire change bumps `PROTOCOL_VERSION`.
 
 ### E16 M3 T2a — The Authenticator and the player log
 
 - **Scope:** `h3-server`: `ed25519-dalek` (3) behind an `Authenticator` trait: the signature checked over `"h3-login-v1"`, `[server] public_url` and the connection's challenge (32 bytes of OS randomness); a new key with a free login name and a free display name registers, a known pair logs in, anything else is refused alike; failed logins count against the address's rate. `<data>/players.log` (JSON lines, owner-only, synced before the answer, read back at start, a torn line dropped). `[server] anonymous` (default true): without it, a connection must log in before it joins or creates a game. The test client derives its key with `argon2` (0.6; `E16-design.md` §10) and a test vector fixes the derivation. `deny.toml` passes with the new crates.
 - **Acceptance:** the Definition of Done; end to end: registration, login, a restart keeps the account, a login signed for another `public_url`, with another connection's challenge or by another key refused, anonymous play on and off.
-- **Depends on:** T1.
-- **Status:** ready once T1 is done.
+- **Depends on:** T1 (done 2026-10-11): the gate hands the host `Received::Account`; `net::serve` refuses it today (SRV-STUB-1, to remove).
+- **Status:** ready.
 
 ### E16 M3 T2b — Re-keying, renames, the listing preference, the operator's rebind
 
@@ -38,8 +31,8 @@ Epic: `docs/epics/E16-server.md` (in progress; M0 and M1 done 2026-10-10, ADR-00
 
 - **Scope:** the commands-per-game limit (`[limits]`; the game void beyond it, a goodbye reason), sized so a replay fits `outbound_bytes`; a waiting game whose seats are all empty leaves, its spectators told (the M2 review: a spectator kept such a game listed). The M2 inbox's two items.
 - **Acceptance:** the Definition of Done; end to end: a game past its limit is void; a waiting game left by its creator leaves with a spectator bound.
-- **Depends on:** T1 (the wire version).
-- **Status:** ready once T1 is done.
+- **Depends on:** T1 (done 2026-10-11).
+- **Status:** ready.
 
 ### E16 M3 T4b — Behind a reverse proxy
 

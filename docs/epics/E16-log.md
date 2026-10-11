@@ -692,3 +692,37 @@ how and why the work went.
   its last write; refused joins do not keep a connection in the lobby (fails if a refused join
   restarts the deadline, checked); a created game's creator joins before a stranger who asks for
   its seat at once. Three runs of the server's suite in a row passed.
+
+### M3 T1 — The login on the wire, sans-I/O (2026-10-11)
+
+- **The start.** The same session as M2's closure: #96 merged, the user passed M2's checkpoint
+  (SRV-Q16) and refined M3 (SRV-Q17, ADR-0019 accepted); the branch restarted from `master`.
+- **`account`** (`h3-protocol`, logic, 100 %): `is_login_name` (3–20 of `a–z 0–9 _ -`; the
+  client lowercases, the derivation is salted with exactly this text), `is_display_name` (3–24
+  ASCII letters, digits, `_ - .`, single inner spaces; *provisional*), `display_key` (ignoring
+  case), `to_hex`/`from_hex` (lowercase only), `login_message` and `rekey_message`: a purpose
+  with its version (`h3-login-v1`, `h3-rekey-v1`), then the server's id, the challenge, the login
+  name and the display name (a re-key: the new key), each text after its length as 4 bytes
+  big-endian, so no two lists of texts sign alike (*provisional*). No cryptography here.
+- **The wire, version 12** (*queued for the M3 review*): `Welcome` gains `id` and `challenge`;
+  `Login`, `Rekey`, `Rename`, `SetListed`, each with a `seq`, answered `Account { seq, display,
+  listed }` or `Refused` (`BadLogin`, `BadName`, `NameTaken`, `NotLoggedIn`,
+  `AlreadyLoggedIn`; the connection stays open).
+- **The hello gate** (`connection`): built with the connection's challenge (the host draws it)
+  and whether anonymous play is allowed; the welcome names the host (`Host { program, id }`). An
+  account's request of the right form, in the right state, goes to the host as
+  `Received::Account(AccountRequest)` with the bytes its signatures are over; a wrong form is
+  refused there (`BadName`, `BadLogin`), a request before the login `NotLoggedIn`, a second login
+  `AlreadyLoggedIn`; only `Connection::logged_in`, the host's yes, logs in. Without anonymous play
+  `Join` and `CreateGame` wait for the login. The session ignores the account's messages.
+- **The server** (*provisional*, until T2a): a challenge of 32 bytes of OS randomness per
+  connection (none, no connection); the id `ws://<the address it listens on>`; every account's
+  request refused `BadLogin` (SRV-STUB-1); anonymous play on. The workload's gate takes a fixed
+  challenge.
+- **Tests** (h3-protocol 68): the welcome's form; a login handed over with its signed bytes,
+  logged in only on the host's yes, then no second; logins of the wrong form refused, changing
+  nothing; the re-key, rename and preference only after a login; without anonymous play joins and
+  creations wait for it; a property: whatever a client sends, it never logs itself in nor
+  reaches the host with another account's request; the names' and hex rules; the signed bytes'
+  layout; the new messages in the wire samples (round trips, the mutation tests), `Login`'s
+  JSON; a third of the mutated frames reach a logged-in gate.

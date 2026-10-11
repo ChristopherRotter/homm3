@@ -3,7 +3,7 @@
 Status: **in progress** (refined 2026-10-08/09; M0 done 2026-10-10: ADR-0018 accepted, the
 crate skeletons; M1 done 2026-10-10, its checkpoint passed 2026-10-11 (SRV-Q12); M2 done
 2026-10-11 (T1 to T5e), its checkpoint passed the same day (SRV-Q16); M3 refined 2026-10-11
-(SRV-Q17), T1 next). Decisions: [ADR-0018](../adr/0018-server-and-protocol.md) (protocol
+(SRV-Q17); M3 T1 done, T2a next). Decisions: [ADR-0018](../adr/0018-server-and-protocol.md) (protocol
 and hosting); [ADR-0019](../adr/0019-identity-and-ladders.md) (identity and ladders, accepted at the M3
 refinement); ADR draft `discovery.md`. Working detail (messages, flows, journals, the ladder sketch):
 `docs/epics/E16-design.md`. Done tasks in full: `docs/epics/E16-log.md`. Lane: server (`docs/lanes/server/HANDOFF.md`).
@@ -315,8 +315,10 @@ login name that salts the key and a changeable display name, the server's id in 
 login, `ed25519-dalek` and `argon2`, anonymous play by configuration, any seated account opting
 out of its replay's listing.
 
-- **T1 The login on the wire, sans-I/O** (`h3-protocol`): the messages, the hello gate's login
-  step (the host gives the challenge and checks the signature), the names' rules.
+- **T1 The login on the wire, sans-I/O** (done 2026-10-11; `E16-log.md`): `account` (the names'
+  rules, hex, the signed bytes), `Login`, `Rekey`, `Rename`, `SetListed` answered `Account`, the
+  welcome's id and challenge, the hello gate's login step; wire version 12; the server refuses
+  every login until T2a (SRV-STUB-1).
 - **T2a The Authenticator and the player log** (`h3-server`): signatures checked, registration
   and login, `<data>/players.log`, the derivation in the test client, `[server] public_url` and
   `anonymous`.
@@ -377,6 +379,21 @@ workload has a current baseline; the client lane's inbox has the content check a
 restart does to a viewer's numbers and record; the inbox's M2 items are decided; a fresh reviewer
 agent's major findings are fixed or recorded with the user's decision; the lane HANDOFF, the epic
 log and `QUEUE.md` are current.
+
+## Review list for the M3 checkpoint
+
+Choices queued under the autonomy contract (details in `E16-log.md`):
+
+- T1: the messages (`Login { seq, login, key, signature, display }`, a registration by its
+  `display`; `Rekey { seq, key, by_old, by_new }`; `Rename`; `SetListed`; one answer `Account
+  { seq, display, listed }`; `Refused` with `BadLogin`, `BadName`, `NameTaken`, `NotLoggedIn`,
+  `AlreadyLoggedIn`, the connection kept open); the welcome's `id` and `challenge`; keys and
+  signatures as lowercase hex; the signed bytes (a purpose with its version, then the id, the
+  challenge, the login name and the display name, texts after their 4-byte length; a re-key's
+  over the new key); a login name only in lowercase; display names of 3–24 ASCII letters,
+  digits, `_ - .` and single inner spaces (no lookalike letters on leaderboards); without
+  anonymous play only `Join` and `CreateGame` wait for the login (the lists, the archive and
+  queries do not); the server's id the address it listens on until T2a's `public_url`.
 
 ## Review list for the M2 checkpoint (passed 2026-10-11, SRV-Q16)
 

@@ -132,24 +132,28 @@ contains seeds, tokens, nonces or signatures.
 ## 10. Accounts (M3)
 
 - **Names (the user, SRV-Q17).** The *login name* is permanent: 3–20 of `a–z 0–9 _ -`, typed in
-  any case and lowercased by the client; it salts the derivation and is shown to its owner and
-  the operator only. The *display name* is what other clients see: unique on its server
-  (ignoring case), changeable (`Rename`), chosen at registration. Rules for display names
-  (length, characters) are provisional, set in M3 T1.
+  any case and lowercased by the client (the server takes no other case); it salts the
+  derivation and is shown to its owner and the operator only. The *display name* is what other
+  clients see: unique on its server (ignoring case), changeable (`Rename`), chosen at
+  registration; 3–24 ASCII letters, digits, `_ - .` and single inner spaces (built in M3 T1,
+  `h3_protocol::account`).
 - **Derivation (client side).** `seed = argon2id(password, salt = "h3-account-v1:" + login,
   memory 64 MiB, 3 passes, 1 lane, 32 bytes)`, `keypair = ed25519_from_seed(seed)` (the salt is
   at least 17 bytes, Argon2 wants 8). The same login name and password give the same key on
   every device and every server. The client caches the key locally so the derivation runs once
   per device; the password is never stored. A test vector fixes the derivation for every client.
-- **Login.** `Welcome` carries the server's id (`[server] public_url`, what its clients dial)
-  and a challenge (32 random bytes from the host, one per connection); `Login { login,
-  public_key, signature, display }`, the signature over `"h3-login-v1"`, the server's id and the
-  challenge; `LoggedIn { display }`. A client signs only if the id is the address it dialed, and
-  the server checks the id it signed is its own, so a hostile server cannot relay a login. A new
-  key with a free login name registers (its display name required and free); a known pair logs
-  in; a known login name with another key is refused as a bad signature is. Failed logins count
-  against the address's rate. Without a login a connection plays anonymously where
-  `[server] anonymous` (default true) allows, with seat tokens as in M2.
+- **Login** (the wire and the hello gate built in M3 T1: `h3_protocol::account`,
+  `connection`). `Welcome` carries the server's id (`[server] public_url`, what its clients dial;
+  until M3 T2a the address it listens on) and a challenge (32 random bytes from the host, one per
+  connection). `Login { seq, login, key, signature, display }` (hex; `display` only to register)
+  signs `account::login_message`: its purpose, the id, the challenge, the login name and the
+  display name. Every account request is answered `Account { seq, display, listed }` or
+  `Refused`. A client signs only if the id is the address it dialed, and the server checks the
+  id it signed is its own, so a hostile server cannot relay a login. A new key with a free login
+  name registers (its display name free); a known pair logs in; a known login name with another
+  key is refused as a bad signature is (`BadLogin`). Failed logins count against the address's
+  rate. Without a login a connection plays anonymously where `[server] anonymous` (default true)
+  allows, with seat tokens as in M2; otherwise `Join` and `CreateGame` wait for the login.
 - **Re-keying.** After a password change the client keeps the old key until each server it
   knows has accepted `Rekey { new_public_key, signature_by_old, signature_by_new }` at the
   next login; the server rebinds the account. A forgotten password is a lost account; the

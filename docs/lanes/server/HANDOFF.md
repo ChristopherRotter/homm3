@@ -4,12 +4,12 @@ The server lane's living state; read after the global `docs/HANDOFF.md`. Format 
 
 ## Current state
 
-- **M1 closed (2026-10-11, SRV-Q12). M2 closed (2026-10-11, SRV-Q16):** T1–T5e merged (#67 … #96). **M3 refined (2026-10-11, SRV-Q17):** ADR-0019 accepted (a permanent login name that salts the key, a changeable display name, `ed25519-dalek` and `argon2`, anonymous play by configuration, any seated account opts out of its replay's listing; points 4–9 direction for M4); M3 cut into T1–T5 (`QUEUE.md`). **Next: M3 T1**; wire 11.
+- **M1 closed (2026-10-11, SRV-Q12). M2 closed (2026-10-11, SRV-Q16):** T1–T5e merged (#67 … #96). **M3 refined (2026-10-11, SRV-Q17):** ADR-0019 accepted (a permanent login name that salts the key, a changeable display name, `ed25519-dalek` and `argon2`, anonymous play by configuration, any seated account opts out of its replay's listing; points 4–9 direction for M4); M3 cut into T1–T5 (`QUEUE.md`). **M3 T1 done** (the login on the wire, sans-I/O; the server refuses every login until T2a, SRV-STUB-1). **Next: M3 T2a**; wire 12.
 - **For M4** (SRV-Q13, answered): ranked games one at a time per player, a pause only by agreement, its length negotiated within the ladder's bounds, the absent player forfeits at the due time; the reading of "one at a time" is confirmed at M4's refinement.
 - **Shared on this branch** (the user, 2026-10-11): ADR-0019 moved from the drafts with its index row, and the global HANDOFF's server row, in a commit of their own; the pull request carries `cross-lane`.
 - **ADR-0018 point 5 as amended:** the mapping's matches over the engine's enums are exhaustive, and since T4b its patterns over the observation's structs too; a new battle variant or observation field fails `h3-protocol`'s build until mapped (global HANDOFF trap).
 - **The 100 % gate** covers `h3-protocol` (logic); `h3-server` is an adapter outside it, tested end to end.
-- **Versions** (`docs/08-work-process.md`): `PROTOCOL_VERSION` (`h3-protocol`, 11 since M2 T5d's archive; 10 was M2 T5c's `RecordHeader::first`; bumped on every wire change), `RECORD_FORMAT_VERSION` (`h3-protocol`, 2 since M2 T5c), `JOURNAL_FORMAT_VERSION` (`h3-server`, 3 since M2 T4c's spectator setting; 2 was M2 T3's pause lines; a journal of another format is void at start).
+- **Versions** (`docs/08-work-process.md`): `PROTOCOL_VERSION` (`h3-protocol`, 12 since M3 T1's login; 11 was M2 T5d's archive; bumped on every wire change), `RECORD_FORMAT_VERSION` (`h3-protocol`, 2 since M2 T5c), `JOURNAL_FORMAT_VERSION` (`h3-server`, 3 since M2 T4c's spectator setting; 2 was M2 T3's pause lines; a journal of another format is void at start).
 - The lane owns (`lanes.toml`) `h3-protocol`, `h3-server`, `benches/server/` and E16's files; the workspace files stay shared. **Checkpoints** per milestone, under the autonomy contract below; a fresh reviewer agent checks each milestone before the user does. ADR-0019 (identity) was accepted at the M3 refinement; the discovery draft is decided at M6's.
 - **Ids:** questions `SRV-Q<n>`, quirks `SRV-QUIRK-<n>`, stubs `SRV-STUB-<n>`. ADR drafts go to `docs/lanes/server/adr-drafts/` and get a number when the user accepts them. Branches: `server/<task>`.
 
@@ -45,9 +45,9 @@ The server lane's living state; read after the global `docs/HANDOFF.md`. Format 
 
 ## Recent sessions
 
-### 2026-10-11 — M2 T5e, M2's checkpoint, M3's refinement
+### 2026-10-11 — M2 T5e, M2's checkpoint, M3's refinement, M3 T1
 
-#93 had merged; the branch restarted from `master`. Exit criteria written, the client lane's note filed (cross-lane, the user), the inbox placed (M3, M4). The reviewer agent: 1 major (file I/O under the registry's lock) and 5 minors fixed, 4 minors in the inbox (`E16-log.md`, M2 T5e). #96 merged; the user passed M2's checkpoint (SRV-Q16) and refined M3 in the same session (SRV-Q17): ADR-0019 accepted, M3 cut (`QUEUE.md`). Found while refining: the draft salted the key with a renamable name, hence the two names.
+#93 had merged; the branch restarted from `master`. Exit criteria written, the client lane's note filed (cross-lane, the user), the inbox placed (M3, M4). The reviewer agent: 1 major (file I/O under the registry's lock) and 5 minors fixed, 4 minors in the inbox (`E16-log.md`, M2 T5e). #96 merged; the user passed M2's checkpoint (SRV-Q16) and refined M3 in the same session (SRV-Q17): ADR-0019 accepted, M3 cut (`QUEUE.md`). Found while refining: the draft salted the key with a renamable name, hence the two names. Then M3 T1 (`E16-log.md`).
 
 ### 2026-10-11 — M2 T5d, mutation tests and the public archive
 
