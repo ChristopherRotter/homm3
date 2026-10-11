@@ -120,6 +120,9 @@ pub struct Offer {
     pub bots: Vec<BotSeat>,
 }
 
+/// A year in milliseconds: the longest deadline of an abandoned game.
+const YEAR_MS: u64 = 365 * 24 * 3_600_000;
+
 /// The bounds of the server (ADR-0018 point 9).
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize)]
 #[serde(deny_unknown_fields, default)]
@@ -142,6 +145,11 @@ pub struct Limits {
     pub games_per_address: usize,
     /// Spectators watching one game at once (E16 M2 T4; 0: none).
     pub spectators_per_game: usize,
+    /// A running game none of whose seats is held for this many milliseconds pauses (E16 M2 T5a;
+    /// 0: never).
+    pub empty_game_ms: u64,
+    /// A paused game nobody resumes within this many milliseconds is void (E16 M2 T5a; 0: never).
+    pub paused_game_ms: u64,
 }
 
 impl Default for Limits {
@@ -156,14 +164,16 @@ impl Default for Limits {
             games: 16,
             games_per_address: 2,
             spectators_per_game: 8,
+            empty_game_ms: 1_800_000,
+            paused_game_ms: 259_200_000,
         }
     }
 }
 
 impl Limits {
-    /// Checks every bound against its range: none is 0 but the spectators, a frame holds a hello,
-    /// and the idle timeout and the queue stay where the clock's and the channel's arithmetic
-    /// hold; a game is a thread.
+    /// Checks every bound against its range: none is 0 but the spectators and the deadlines of
+    /// abandoned games (0: none), a frame holds a hello, and the idle timeout, the deadlines and
+    /// the queue stay where the clock's and the channel's arithmetic hold; a game is a thread.
     fn check(&self) -> Result<(), Error> {
         let wide = |n: usize| u64::try_from(n).unwrap_or(u64::MAX);
         let bounds = [
@@ -191,6 +201,8 @@ impl Limits {
                 0,
                 1024,
             ),
+            ("empty_game_ms", self.empty_game_ms, 0, YEAR_MS),
+            ("paused_game_ms", self.paused_game_ms, 0, YEAR_MS),
         ];
         for (name, value, min, max) in bounds {
             if !(min..=max).contains(&value) {

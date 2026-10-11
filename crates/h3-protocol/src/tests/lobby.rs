@@ -155,3 +155,31 @@ fn restored_games_are_listed_again_and_counted() {
     // Ids continue after the highest restored one.
     assert_eq!(lobby.create(3, "pvp", Seat::Attacker, true), Ok((8, 0)));
 }
+
+#[test]
+fn a_draining_lobby_refuses_every_creation_and_counts_the_games_in_play() {
+    let mut lobby = lobby(8, 8);
+    assert_eq!(lobby.create(1, "pvp", Seat::Attacker, true), Ok((1, 0)));
+    assert_eq!(lobby.create(1, "pvp", Seat::Attacker, true), Ok((2, 0)));
+    assert_eq!(lobby.create(2, "bot", Seat::Attacker, true), Ok((3, 1)));
+    lobby.update(2, (Phase::Running, vec![], true));
+    lobby.update(3, (Phase::Paused, vec![], false));
+    assert_eq!(
+        lobby.in_play(),
+        2,
+        "a waiting and a running game; not a paused one"
+    );
+    lobby.drain();
+    assert_eq!(
+        lobby.create(3, "pvp", Seat::Attacker, true),
+        Err(Refusal::Draining)
+    );
+    assert_eq!(
+        lobby.create(3, "pvp", Seat::Spectator, true),
+        Err(Refusal::NoSpectators)
+    );
+    lobby.update(2, (Phase::Over, vec![], true));
+    lobby.remove(1);
+    assert_eq!(lobby.in_play(), 0, "over and gone");
+    assert_eq!(games(&lobby).len(), 2);
+}

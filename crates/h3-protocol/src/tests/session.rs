@@ -1318,6 +1318,36 @@ fn the_host_opens_and_closes_its_game_to_spectators_until_it_starts() {
     assert!(s.paused() && !s.takes_spectators());
 }
 
+#[test]
+fn the_host_suspends_a_running_game_whose_seats_are_empty() {
+    let r = ruleset();
+    let c = ConnId(5);
+    let mut s = host(&r, 5, players());
+    let mut out = Vec::new();
+    // Waiting, then running with its seats held: nothing to suspend.
+    join(&mut s, A, Seat::Attacker, None);
+    assert!(s.seated() && !s.suspend(&mut out));
+    started(&mut s);
+    join(&mut s, c, Seat::Spectator, None);
+    s.disconnected(A);
+    assert!(s.seated() && !s.suspend(&mut out));
+    // Its seats empty: suspended as a pause, the spectator told; then it runs no more.
+    s.disconnected(B);
+    drained(&mut s);
+    assert!(!s.seated() && s.suspend(&mut out));
+    assert_eq!(
+        to(&out, c),
+        [ServerMessage::Goodbye {
+            reason: GoodbyeReason::Paused
+        }]
+    );
+    assert_eq!(drained(&mut s), [Entry::Paused]);
+    assert!(s.paused() && !s.suspend(&mut out));
+    // A seat's join with its token resumes it.
+    join(&mut s, A, Seat::Attacker, Some(TOKENS[0]));
+    assert_eq!(s.phase(), Phase::Running);
+}
+
 /// Game 1 of the `full` scenario with `seed` and a shadow instance.
 fn shadowed(seed: u64) -> GameConfig {
     GameConfig {
