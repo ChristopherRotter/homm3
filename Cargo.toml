@@ -82,7 +82,7 @@ criterion = { version = "0.5", default-features = false, features = ["cargo_benc
 # without TLS, and OS randomness for seeds and tokens. Licenses: MIT (tokio, tokio-tungstenite), MIT
 # OR Apache-2.0 (futures-util, getrandom). `h3-protocol` takes `serde` and `serde_json` without
 # `std` in its own manifest (ADR-0018 point 1): these entries enable it.
-tokio = { version = "1", default-features = false, features = ["rt-multi-thread", "net", "time", "sync", "macros"] }
+tokio = { version = "1", default-features = false, features = ["rt-multi-thread", "net", "time", "sync", "macros", "signal"] }
 tokio-tungstenite = { version = "0.30", default-features = false, features = ["connect"] }
 futures-util = { version = "0.3", default-features = false, features = ["sink", "std"] }
 getrandom = "0.3"

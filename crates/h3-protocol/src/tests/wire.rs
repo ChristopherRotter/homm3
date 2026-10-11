@@ -254,6 +254,7 @@ fn server_messages() -> Vec<ServerMessage> {
             Refusal::NoSpectators,
             Refusal::NoSuchOffer,
             Refusal::TooManyGames,
+            Refusal::Draining,
         ]
         .map(|reason| ServerMessage::Refused { reason }),
     );

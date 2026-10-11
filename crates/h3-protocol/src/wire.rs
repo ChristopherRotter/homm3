@@ -1108,6 +1108,8 @@ pub enum Refusal {
     NoSuchOffer,
     /// The server, or the client's address, has as many open games as it allows.
     TooManyGames,
+    /// The server is draining (E16 M2 T5a): it takes no new game while the open ones finish.
+    Draining,
 }
 
 /// Why the server closes the connection.

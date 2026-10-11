@@ -4,14 +4,23 @@ Pre-refined tasks of the server lane, in order, then the inbox of discovered wor
 
 ## Tasks
 
-Epic: `docs/epics/E16-server.md` (in progress; M0 and M1 done 2026-10-10, ADR-0018). M1's checkpoint passed (SRV-Q12, 2026-10-11): M2 as cut below, each task about half a context (T1–T4c done 2026-10-11); `signal` is added for T5, the journal keeps the token itself (T2). Work under the autonomy contract (`HANDOFF.md`).
+Epic: `docs/epics/E16-server.md` (in progress; M0 and M1 done 2026-10-10, ADR-0018). M1's checkpoint passed (SRV-Q12, 2026-10-11): M2 as cut below, each task about half a context (T1–T5a done 2026-10-11); `signal` is added for T5, the journal keeps the token itself (T2). Work under the autonomy contract (`HANDOFF.md`).
 
-### E16 M2 T5 — Shutdown, drain, hardening; closure
+T5 as cut at M1's checkpoint was more than one task; split on 2026-10-11 (the agent, under the autonomy contract) into T5a–T5c, in this order.
 
-- **Scope:** graceful shutdown on a signal (`tokio`'s `signal` feature, SRV-Q12 (c), the user: ADR-0018 point 3 amended in a `shared/` change first) and a drain mode that refuses new games (it may pause the running ones, T3); a deadline for a game nobody plays: a paused game after `[limits] pause_hours` and a running one whose seats stay empty, both still counted against the game limits (T3: `E16-log.md`); the rate limits hardened (per address across its connections; a separate limit for automated seats, T3's note); from the M1 review: memory bounded in bytes (a viewer's record, which `FetchRecord` sends whole and which grows with every query and rejection; the outbound queue; one `FetchRecord` in flight), a short deadline for the hello and the join (a connection that never joins holds its place until its idle timeout), WebSocket pings counted in the rate; the fuzz harness on the decoder (`cargo-fuzz`, `05-testing.md`); the replay download of finished games; the client's content check (`E16-design.md` §3) handed to the client lane (an inbox line in its `QUEUE.md`); the workload updated if the session core changed; the reviewer agent; the user's M2 checkpoint.
-- **Acceptance:** M2's exit (epic file, to be written at the checkpoint).
-- **Depends on:** T1–T4c (done).
+### E16 M2 T5b — Hardening
+
+- **Scope:** the rate limits hardened (per address across its connections; a separate limit for automated seats, T3's note); from the M1 review: memory bounded in bytes (a viewer's record, which `FetchRecord` sends whole and which grows with every query and rejection; the outbound queue; one `FetchRecord` in flight), a short deadline for the hello and the join (a connection that never joins holds its place until its idle timeout), WebSocket pings counted in the rate; the inbox's unbind on a refused join; the workload updated if the session core changed.
+- **Acceptance:** each bound tested end to end or in the session core; the hygiene properties unchanged.
+- **Depends on:** T5a (done 2026-10-11).
 - **Status:** ready.
+
+### E16 M2 T5c — The fuzz harness, the replay download; M2's closure
+
+- **Scope:** the fuzz harness on the decoder (`cargo-fuzz`, `05-testing.md`); the replay download of finished games; the client's content check (`E16-design.md` §3) handed to the client lane (an inbox line in its `QUEUE.md`); the inbox's open M2 items decided (kept for later or built); M2's exit criteria written; the reviewer agent; the user's M2 checkpoint.
+- **Acceptance:** M2's exit (epic file, written in this task).
+- **Depends on:** T5b.
+- **Status:** ready once T5b is done.
 
 ## Inbox
 
