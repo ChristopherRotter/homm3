@@ -171,7 +171,8 @@ impl<const WORDS: usize> BitGrid<WORDS> {
     /// Writes the row `y` of level `level` into `out`, the tile of column `x` as bit `x % 64` of
     /// word `x / 64` (the observation's planes, E08 T8b1): one masked word per leaf the row
     /// crosses, whatever the leaf size. The row must be on the grid and `out` hold at least
-    /// `width.div_ceil(64)` words; its words past the row's are left as they are.
+    /// `width.div_ceil(64)` words; its words past the row's are left as they are. Bits past the
+    /// width come out clear: nothing sets a tile off the grid, so no leaf at the edge is full.
     pub(crate) fn read_row(&self, level: u8, y: u16, out: &mut [u64]) {
         let side = Self::SIDE;
         let row = (usize::from(level) * usize::from(self.down) + usize::from(y / side))

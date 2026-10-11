@@ -87,24 +87,41 @@ fn the_games_events_are_public_and_a_step_shows_to_its_viewers() {
     for event in public {
         assert_eq!(project(&event, Viewer::Player(BLUE)), Some(event));
     }
+    // Red sees the hero on both tiles, blue on the tile it left only.
+    let red = Viewers::NONE.with(RED);
+    let both = red.with(BLUE);
     let step = AdventureEvent {
         kind: AdventureEventKind::HeroStepped {
             hero: HeroId::new(0),
-            from: Pos::new(0, 0, 0),
-            to: Pos::new(1, 0, 0),
+            from: Some(Pos::new(0, 0, 0)),
+            to: Some(Pos::new(1, 0, 0)),
+            seen_from: both,
+            seen_to: red,
         },
-        seen_by: Viewers::NONE.with(RED).with(BLUE),
+        seen_by: both,
     };
     assert_eq!(
         project(&GameEvent::Adventure(step), Viewer::Player(BLUE)),
         Some(GameEvent::Adventure(AdventureEvent {
-            kind: step.kind,
+            kind: AdventureEventKind::HeroStepped {
+                hero: HeroId::new(0),
+                from: Some(Pos::new(0, 0, 0)),
+                to: None,
+                seen_from: Viewers::NONE.with(BLUE),
+                seen_to: Viewers::NONE,
+            },
             seen_by: Viewers::NONE.with(BLUE),
         }))
     );
     let red_only = AdventureEvent {
-        seen_by: Viewers::NONE.with(RED),
-        ..step
+        kind: AdventureEventKind::HeroStepped {
+            hero: HeroId::new(0),
+            from: Some(Pos::new(0, 0, 0)),
+            to: Some(Pos::new(1, 0, 0)),
+            seen_from: red,
+            seen_to: red,
+        },
+        seen_by: red,
     };
     assert_eq!(
         project(&GameEvent::Adventure(red_only), Viewer::Player(BLUE)),

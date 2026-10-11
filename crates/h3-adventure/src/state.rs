@@ -476,29 +476,37 @@ impl AdventureState {
         let mut from = start;
         for &to in path {
             reveal(&mut self.explored[usize::from(player.raw())], to, radius);
+            let (seen_from, seen_to) = (
+                self.viewers(core, player, from),
+                self.viewers(core, player, to),
+            );
             sink.emit(AdventureEvent {
-                kind: AdventureEventKind::HeroStepped { hero: id, from, to },
-                seen_by: self.viewers(core, player, &[from, to]),
+                kind: AdventureEventKind::HeroStepped {
+                    hero: id,
+                    from: Some(from),
+                    to: Some(to),
+                    seen_from,
+                    seen_to,
+                },
+                seen_by: seen_from.union(seen_to),
             });
             from = to;
         }
         Ok(())
     }
 
-    /// Who sees a hero do something on `tiles`, tiles of the map (ADV-FOG-004, ADV-FOG-005):
-    /// `owner`, every player that has explored one of the tiles and, under `ADV-QUIRK-1`, every
-    /// player with one of them on its fringe, where it sees heroes too (the user, 2026-10-11).
+    /// Who sees a hero of `owner` on `pos`, a tile of the map (ADV-FOG-004, ADV-FOG-005, as the
+    /// observation, ADV-FOG-006): `owner`, every player that has explored the tile and, under
+    /// `ADV-QUIRK-1`, every player with it on its fringe (heroes show there, the user,
+    /// 2026-10-11).
     // rule: ADV-FOG-004, ADV-FOG-005
-    fn viewers(&self, core: &Ruleset, owner: PlayerId, tiles: &[Pos]) -> Viewers {
+    fn viewers(&self, core: &Ruleset, owner: PlayerId, pos: Pos) -> Viewers {
         let fringe = core.quirks().is_enabled(FRINGE_SHOWS_OBJECTS);
         self.explored
             .iter()
             .zip((0..self.players).map(PlayerId::new))
             .filter(|(grid, player)| {
-                *player == owner
-                    || tiles
-                        .iter()
-                        .any(|&pos| grid.get(pos) || (fringe && on_fringe(grid, pos)))
+                *player == owner || grid.get(pos) || (fringe && on_fringe(grid, pos))
             })
             .fold(Viewers::NONE, |viewers, (_, player)| viewers.with(player))
     }

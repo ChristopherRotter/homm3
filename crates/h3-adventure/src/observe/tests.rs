@@ -17,7 +17,9 @@ use crate::command::{AdventureCommand, AdventureEventKind};
 use crate::fog::{Sight, on_fringe};
 use crate::ruleset::AdventureRuleset;
 use crate::setup::HeroSetup;
-use crate::testing::{GNOLL, PEASANT, PIKEMAN, hero_at, movement_rules, world_state};
+use crate::testing::{
+    GNOLL, PEASANT, PIKEMAN, hero_at, movement_rules, movement_rules_up_to, world_state,
+};
 
 const RED: PlayerId = PlayerId::new(0);
 const BLUE: PlayerId = PlayerId::new(1);
@@ -64,24 +66,27 @@ fn four_heroes() -> Vec<HeroSetup> {
 /// under the flag and their ground without it, nothing else.
 fn expected_tiles(state: &AdventureState, viewer: PlayerId, faithful: bool) -> Vec<TileView> {
     let map = state.map();
+    let explored = state.explored(viewer).unwrap();
     let mut tiles = Vec::new();
-    for y in 0..map.height() {
-        for x in 0..map.width() {
-            let tile = *map.tile(p(x, y)).unwrap();
-            let explored = state.explored(viewer).unwrap();
-            tiles.push(
-                if explored.get(p(x, y)) || (faithful && on_fringe(explored, p(x, y))) {
-                    TileView::Seen(tile)
-                } else if on_fringe(explored, p(x, y)) {
-                    TileView::Ground {
-                        terrain: tile.terrain,
-                        road: tile.road,
-                        river: tile.river,
-                    }
-                } else {
-                    TileView::Hidden
-                },
-            );
+    for level in 0..map.levels() {
+        for y in 0..map.height() {
+            for x in 0..map.width() {
+                let pos = Pos::new(x, y, level);
+                let tile = *map.tile(pos).unwrap();
+                tiles.push(
+                    if explored.get(pos) || (faithful && on_fringe(explored, pos)) {
+                        TileView::Seen(tile)
+                    } else if on_fringe(explored, pos) {
+                        TileView::Ground {
+                            terrain: tile.terrain,
+                            road: tile.road,
+                            river: tile.river,
+                        }
+                    } else {
+                        TileView::Hidden
+                    },
+                );
+            }
         }
     }
     tiles
@@ -140,6 +145,54 @@ fn a_player_sees_its_explored_tiles_and_the_fringe() {
         }
         assert_eq!(seen.tile(p(12, 12)), Some(&TileView::Hidden));
         assert!(!seen.is_explored(p(12, 12)) && !seen.is_fringe(p(12, 12)));
+    }
+}
+
+// covers: ADV-FOG-004, ADV-FOG-005
+#[test]
+fn the_planes_and_the_tiles_line_up_on_a_wide_map_with_two_levels() {
+    // 70 columns (two words a row), 9 rows, two levels: red's heroes reveal across the first
+    // word's edge on the surface and at the far right underground; a road and objects on either
+    // side of the edge. The tile views must follow each tile's own bit, level by level.
+    let mut rows: Vec<Vec<char>> = vec![vec!['g'; 70]; 18];
+    for (x, y, c) in [
+        (62, 4, 'B'),
+        (64, 4, 'G'),
+        (66, 5, 'T'),
+        (69, 13, 'V'),
+        (60, 17, 's'),
+    ] {
+        rows[y][x] = c;
+    }
+    let rows: Vec<String> = rows
+        .into_iter()
+        .map(|row| row.into_iter().collect())
+        .collect();
+    let rows: Vec<&str> = rows.iter().map(String::as_str).collect();
+    let heroes = vec![
+        hero_at(1, 0, p(63, 4), &[PEASANT]),
+        hero_at(2, 0, Pos::new(66, 5, 1), &[PEASANT]),
+        hero_at(3, 1, p(5, 4), &[PEASANT]),
+    ];
+    for faithful in [false, true] {
+        let rules = movement_rules_up_to(faithful, 70);
+        let setup = crate::testing::world(&rows, 2, heroes.clone());
+        let state = AdventureState::new(&rules.0, &rules.1, &setup).unwrap();
+        let seen = state.observe(&rules.0, RED);
+        assert_eq!(
+            (seen.width, seen.height, seen.levels, seen.stride),
+            (70, 9, 2, 2)
+        );
+        let sight = Sight::of(state.explored(RED).unwrap());
+        assert_eq!(
+            (&seen.explored, &seen.fringe),
+            (&sight.explored, &sight.fringe)
+        );
+        assert_eq!(seen.tiles.len(), 70 * 9 * 2);
+        assert_eq!(seen.tiles, expected_tiles(&state, RED, faithful));
+        assert!(seen.is_explored(p(64, 4)) && seen.is_explored(Pos::new(69, 4, 1)));
+        assert!(!seen.is_explored(Pos::new(58, 4, 1)) && !seen.is_explored(p(5, 4)));
+        assert_eq!(hero_ids(&seen), [1, 2]);
     }
 }
 
@@ -264,38 +317,90 @@ fn a_step_on_the_fringe_is_seen_under_the_quirk() {
         state
             .apply(&rules.0, &rules.1, RED, &command, &mut events)
             .unwrap();
+        // Then back from (5, 0) to (3, 0): out of blue's explored tiles onto its fringe, then off
+        // the fringe onto a hidden tile.
+        let back = AdventureCommand::MoveHero {
+            hero: HeroId::new(1),
+            path: vec![p(4, 0), p(3, 0)],
+        };
+        state
+            .apply(&rules.0, &rules.1, RED, &back, &mut events)
+            .unwrap();
+        // The step onto (4, 0) enters blue's fringe, the one onto (5, 0) its explored tiles; back,
+        // the step onto (4, 0) leaves them, the one onto (3, 0) leaves the fringe.
         let seen: Vec<bool> = events.iter().map(|e| e.seen_by.contains(BLUE)).collect();
-        // The step onto (4, 0) enters blue's fringe, the one onto (5, 0) its explored tiles.
         let expected = if faithful {
-            [false, false, false, true, true]
+            [false, false, false, true, true, true, true]
         } else {
-            [false, false, false, false, true]
+            [false, false, false, false, true, true, false]
         };
         assert_eq!(seen, expected);
-        assert!(events.iter().all(|e| e.seen_by.contains(RED)));
+        // What blue is told: only the tiles it sees the hero on.
+        let told: Vec<Option<(Option<Pos>, Option<Pos>)>> = events
+            .iter()
+            .map(|e| {
+                e.project(BLUE).map(|e| match e.kind {
+                    AdventureEventKind::HeroStepped { from, to, .. } => (from, to),
+                })
+            })
+            .collect();
+        let (s4, s5) = (Some(p(4, 0)), Some(p(5, 0)));
+        let expected = if faithful {
+            [
+                None,
+                None,
+                None,
+                Some((None, s4)),
+                Some((s4, s5)),
+                Some((s5, s4)),
+                Some((s4, None)),
+            ]
+        } else {
+            [
+                None,
+                None,
+                None,
+                None,
+                Some((None, s5)),
+                Some((s5, None)),
+                None,
+            ]
+        };
+        assert_eq!(told, expected);
+        // Red, the owner, is told every step whole.
+        for event in &events {
+            let AdventureEventKind::HeroStepped { from, to, .. } = event.project(RED).unwrap().kind;
+            assert!(from.is_some() && to.is_some());
+        }
     }
 }
 
 #[test]
 fn an_event_shows_to_its_viewers_naming_only_the_viewer() {
-    let event = AdventureEvent {
+    // Red sees the hero on both tiles, blue on the tile it entered only.
+    let red = Viewers::NONE.with(RED);
+    let blue = Viewers::NONE.with(BLUE);
+    let both = red.union(blue);
+    let step = |from, to, seen_from, seen_to, seen_by| AdventureEvent {
         kind: AdventureEventKind::HeroStepped {
             hero: HeroId::new(1),
-            from: p(0, 0),
-            to: p(1, 0),
+            from,
+            to,
+            seen_from,
+            seen_to,
         },
-        seen_by: Viewers::NONE.with(RED).with(BLUE),
+        seen_by,
     };
+    let (a, b) = (Some(p(0, 0)), Some(p(1, 0)));
+    let event = step(a, b, red, both, both);
     assert_eq!(
         event.project(BLUE),
-        Some(AdventureEvent {
-            kind: event.kind,
-            seen_by: Viewers::NONE.with(BLUE),
-        })
+        Some(step(None, b, Viewers::NONE, blue, blue))
     );
-    assert_eq!(
-        event.project(RED).map(|e| e.seen_by),
-        Some(Viewers::NONE.with(RED))
-    );
+    assert_eq!(event.project(RED), Some(step(a, b, red, red, red)));
     assert_eq!(event.project(PlayerId::new(2)), None);
+    // The sets' algebra.
+    assert_eq!(both.bits(), 0b11);
+    assert_eq!(both.intersection(blue), blue);
+    assert_eq!(red.intersection(blue), Viewers::NONE);
 }

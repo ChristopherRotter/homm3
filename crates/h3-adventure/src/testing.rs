@@ -171,6 +171,11 @@ fn faction_creature(k: &str, speed: u8, faction: Option<&str>) -> CreatureDef {
 /// 100; the creatures above (speeds 4, 4, 3, 6); the land table 1000, 1100, 1200, 1300, 1500 for
 /// speeds 0 to 4; maps up to 16 × 16 on two levels, two players, armies of seven slots.
 pub(crate) fn movement_rules(faithful: bool) -> (Ruleset, AdventureRuleset) {
+    movement_rules_up_to(faithful, 16)
+}
+
+/// [`movement_rules`] with maps up to `size` × `size`.
+pub(crate) fn movement_rules_up_to(faithful: bool, size: u16) -> (Ruleset, AdventureRuleset) {
     let adventure_quirks = [
         "quirk.adventure.diagonal_check_ignores_roads",
         "quirk.adventure.diagonal_check_ignores_native",
@@ -248,7 +253,7 @@ pub(crate) fn movement_rules(faithful: bool) -> (Ruleset, AdventureRuleset) {
             native_cost: cost(100),
             land_points: vec![1000, 1100, 1200, 1300, 1500],
             scouting_radius: 5,
-            max_map_size: cost(16),
+            max_map_size: cost(size),
             max_levels: NonZeroU8::new(2).unwrap(),
             max_players: NonZeroU8::new(2).unwrap(),
             army_slots: NonZeroU8::new(7).unwrap(),

@@ -8,14 +8,15 @@
 //! standing there (ADV-FOG-005); nothing of any other tile. Of a hero it sees its tile, owner and
 //! identity; its army and movement points only if the hero is its own (ADV-FOG-006). Other players'
 //! explored tiles, the seed and the streams never show: an event's projection names the viewer
-//! alone among the players who see it.
+//! alone among the players who see it, and a step tells only the tiles the viewer sees the hero
+//! on.
 
 use alloc::vec::Vec;
 
 use h3_content::{FRINGE_SHOWS_OBJECTS, Ruleset, TerrainId};
 use h3_contracts::{ArmyStack, HeroId, PlayerId};
 
-use crate::command::{AdventureEvent, Viewers};
+use crate::command::{AdventureEvent, AdventureEventKind, Viewers};
 use crate::fog::Sight;
 use crate::ruleset::{RiverId, RoadId};
 use crate::setup::Pos;
@@ -201,12 +202,28 @@ impl AdventureState {
 
 impl AdventureEvent {
     /// The event as `viewer` may see it, or `None` if it is not among the players who see it
-    /// (ADR-0016 point 6). The projection's viewers are the viewer alone: who else sees an event
-    /// tells which tiles other players have explored.
+    /// (ADR-0016 point 6): a step's tile where the viewer does not see the hero is left out. The
+    /// projection's viewers are the viewer alone: who else sees an event tells which tiles other
+    /// players have explored.
     pub fn project(&self, viewer: PlayerId) -> Option<Self> {
+        let alone = Viewers::NONE.with(viewer);
         self.seen_by.contains(viewer).then(|| Self {
-            kind: self.kind,
-            seen_by: Viewers::NONE.with(viewer),
+            kind: match self.kind {
+                AdventureEventKind::HeroStepped {
+                    hero,
+                    from,
+                    to,
+                    seen_from,
+                    seen_to,
+                } => AdventureEventKind::HeroStepped {
+                    hero,
+                    from: from.filter(|_| seen_from.contains(viewer)),
+                    to: to.filter(|_| seen_to.contains(viewer)),
+                    seen_from: seen_from.intersection(alone),
+                    seen_to: seen_to.intersection(alone),
+                },
+            },
+            seen_by: alone,
         })
     }
 }

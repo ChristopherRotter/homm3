@@ -294,7 +294,7 @@ id       = "ADV-FOG-004"
 title    = "Explored tiles stay explored and show what happens on them"
 context  = "adventure"
 status   = "implemented"
-summary  = "A tile once explored stays explored (no rule clears one in increment 1) and shows its current content to the player, with no memory of what was there before: its terrain, road and river, what objects cover there, and the heroes standing there (ADV-FOG-006). A hero's step is seen by its owner and by every player that has explored the tile it leaves or the tile it enters (each step's event carries those players, ADR-0016 point 6; the fringe adds its share under ADV-QUIRK-1, ADV-FOG-005). E08 T8a: the explored layers and the steps' viewers; T8b1: the observation."
+summary  = "A tile once explored stays explored (no rule clears one in increment 1) and shows its current content to the player, with no memory of what was there before: its terrain, road and river, what objects cover there, and the heroes standing there (ADV-FOG-006). A hero's step is seen by its owner and by every player that has explored the tile it leaves or the tile it enters (each step's event carries those players for each of the two tiles, ADR-0016 point 6; the fringe adds its share under ADV-QUIRK-1, ADV-FOG-005); a player that sees the hero on one of the two tiles only is told that tile only (the hero comes into sight or goes out of it). E08 T8a: the explored layers and the steps' viewers; T8b1: the observation."
 numeric  = "integer"
 
   [[rule.source]]

@@ -473,19 +473,27 @@ its army and movement points stay private until the original's right-click view 
   read); T9's benchmark measures `observe`.
 - **The projection:** `AdventureEvent::project(viewer)` gives the event to the players who see it
   with the viewers reduced to the viewer alone (the full set would tell which tiles other players
-  explored). `h3-game`: `Viewer::Player`, `observe` (the day, each player's colour and whether it
+  explored). `HeroStepped` now carries `from` and `to` as options with the players that see the
+  hero on each (`seen_from`, `seen_to`; `seen_by` their union): a player that sees the hero on
+  one tile only is told that one, the other `None` (the review found that T8a's event gave a
+  player told of a step both tiles, a hidden one included). `h3-game`: `Viewer::Player`, `observe` (the day, each player's colour and whether it
   acts, the turn group, the adventure observation) and `project` (the game's own events public).
   The spectator viewer comes when the server needs it (additive, as the battle's).
-- **Tests:** the planes and tile views against the model under both profiles, the heroes a player
+- **Tests:** the planes and tile views against the model under both profiles (also on a map of
+  70 columns and two levels), the heroes a player
   sees (fringe under the flag only, another player's without army or points), a viewer that is
   not a player, hidden state that never changes red's observation (a hidden tile's terrain, road
   or object, a hidden hero and so another explored layer, a seen hero's army), a fringe object
-  that changes it under the flag only, a step onto the fringe seen under the flag only, the
-  projection; in `h3-game` the public facts, an observation equal for 40 seeds where the seed draws
+  that changes it under the flag only, steps onto and off the fringe seen under the flag only
+  and what each is told, the projection; in `h3-game` the public facts, an observation equal for 40 seeds where the seed draws
   only what the viewer cannot see, the events' projection.
 - **Docs:** ADV-FOG-005 and -006 in the catalog (ADV-FOG-004 updated), `ADV-QUIRK-1`'s flag and
   regression test, the survey's A-1 row; the viewer knowledge list in `docs/06-security.md` (a
   `shared/` pull request).
+- **Review** (an independent agent): no bit or carry error; the one-ended step (fixed above), two
+  test gaps (a map past one word with two levels, a step off the fringe; added). Not taken:
+  `#[non_exhaustive]` on `Viewer` (a downstream wildcard arm would be dead code under the
+  coverage gate; the spectator variant is added with its users, as ADR-0017 says).
 - **Not done here:** `legal_commands` and the property tests (T8b2). Open: the fringe's eight
   neighbours are ADR-0016's "touching", not a reading of how the original draws the border
   (inbox).
