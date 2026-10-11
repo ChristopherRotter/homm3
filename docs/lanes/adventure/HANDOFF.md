@@ -26,6 +26,10 @@ The adventure lane's living state; read after the global `docs/HANDOFF.md`. Form
 
 ## Recent sessions
 
+### 2026-10-11 — T6b/T7a checkpoint and T7b + T5b (in progress)
+
+The user answered ADV-Q3 (D-2 the source tile, D-3 the original's rule, ADV-QUIRK-2/-3 fix-optional), classified the new ADV-QUIRK-4 (0x44C590: leading neutral stacks keep the native terrain) fix-optional and allowed the quirk flags as a `cross-lane` change in this round's pull request. **T7b done** (branch `adventure/e08-t7b-t5b`, commit pushed): `Pricing`, `MoveHero`, `Reach`, rules ADV-MOV-003 to -007. **Next: T5b**, then the docs (epic, log, QUEUE), a review, the full verify and the pull request (label `cross-lane`).
+
 ### 2026-10-10 — T5a/T6a checkpoint and T6b + T7a: the game state, the readings
 
 The user took T6b with T7's reading and moved T5b's gated benchmark to T9 (T5b measures on its own example; `h3-cli` is battle-owned). Readings: the original sets a day's movement points at the start of the owner's turn (0x4C6FE0), against the wiki and VCMI (the user chose the reading, ADV-Q4); the starting army rolls the second and third slots apart, the war machine with the second (the user expected it guaranteed; ADV-Q6 for increment 3); the step cost 0x4B1740 (D-2 VCMI's way, D-3 differs from VCMI, A-2 and A-3 confirmed by an independent re-read: `ADV-QUIRK-2`/`-3`). Built: `GameState`, `apply`/`EndTurn`, the draw, movement points per turn. Trap: H3API's hero +0x49 is the maximum, +0x4D the current points. Detail: `E08-log.md`.
@@ -33,7 +37,3 @@ The user took T6b with T7's reading and moved T5b's gated benchmark to T9 (T5b m
 ### 2026-10-10 — T4 checkpoint and T5a + T6a: the setups and the import
 
 At the checkpoint the user took T5a and T6a as one round and chose a starting-army placeholder for placed heroes without stacks (58 of 116), drawn in T6b. Built: `AdventureSetup`/`AdventureState` (static map behind an `Arc`, ADV-OBJ-001, ADV-MAP-001, state hash v1), the setup bounds in the ruleset part (v2), `GameRuleset`/`GameSetup` with validation, `h3_map::import`/`import_map` with typed `Unsupported` errors and code tables by the packs' original ids. Found: the masks' geometry was mirrored in `h3m.md` since T3 (VCMI `readMap`/`readTxt`; towns' gates showed it); anchors may lie past the right and bottom edges; towns' gates are blocked and visitable (visitable wins). Shipped maps: 10 import whole, 154 unsupported. Trap: the VM restarted during the baseline verify (rerun the scoped verify with `LLVM_COV`/`LLVM_PROFDATA` set as `scripts/sandbox-verify.sh` does). Detail: `E08-log.md`.
-
-### 2026-10-10 — T3 checkpoint and T4: the adventure content
-
-At the checkpoint the user chose T4 alone for this round; T4–T10 went into queue entries first (T5a/T5b, T6a/T6b). T4: the ruleset part compiled on the core ruleset from one adventure pack per core pack (the core's order and closures), the strict `adventure.toml` format, base values with sources (wiki and VCMI agree on the costs; VCMI's config files fetched raw from GitHub). D-4 settled by original data: the original reads the land table from `movement.txt` (0x4D7240 → 0x698A98; 0x4E4990 takes the slowest of the seven slots from 20), the wiki's row; increment-3 findings (specialty +1 speed, Logistics, sea by Navigation) in the log and the map. Cross-lane: one paragraph in `packs/README.md`. Trap: `git push --delete` and the REST ref delete are refused through this session's proxy. Detail: `E08-log.md`.
