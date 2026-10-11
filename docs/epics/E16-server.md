@@ -1,8 +1,8 @@
 # E16 — Server: protocol, hosting, lobbies and ladders
 
 Status: **in progress** (refined 2026-10-08/09; M0 done 2026-10-10: ADR-0018 accepted, the
-crate skeletons; M1 done 2026-10-10, its checkpoint passed 2026-10-11 (SRV-Q12); M2 T1 done
-2026-10-11, T2 next). Decisions: [ADR-0018](../adr/0018-server-and-protocol.md) (protocol
+crate skeletons; M1 done 2026-10-10, its checkpoint passed 2026-10-11 (SRV-Q12); M2 T1 and T2
+done 2026-10-11, T3 next). Decisions: [ADR-0018](../adr/0018-server-and-protocol.md) (protocol
 and hosting); ADR drafts `docs/lanes/server/adr-drafts/identity-and-ladders.md` and
 `discovery.md`. Working detail (messages, flows, journals, the ladder sketch):
 `docs/epics/E16-design.md`. Done tasks in full: `docs/epics/E16-log.md`. Lane: server (`docs/lanes/server/HANDOFF.md`).
@@ -260,9 +260,12 @@ Cut at the M1 checkpoint (SRV-Q12); the tasks in full: `docs/lanes/server/QUEUE.
 - **T1 Many games on one server** (done 2026-10-11; `E16-log.md`): the lobby (`ListGames`,
   `CreateGame` from the server's offers; wire version 4), a sans-I/O `lobby` in `h3-protocol`,
   the sectioned configuration with `[[offer]]`s, a registry and a thread per game in `h3-server`.
-- **T2** the write-ahead journal and restore; **T3** verification, pause and resume; **T4**
-  spectators (waits for the battle's spectator viewer); **T5** shutdown, drain, hardening and
-  closure.
+- **T2 The write-ahead journal and restore** (done 2026-10-11; `E16-log.md`): the session
+  core's journal entries and `Session::restore`; a journal per game in `<data>/games/`, synced
+  before the frames that depend on it; restore at start, void journals moved aside; the replay
+  as the finished journal.
+- **T3** verification, pause and resume; **T4** spectators (waits for the battle's spectator
+  viewer); **T5** shutdown, drain, hardening and closure.
 
 ## Review list for the M2 checkpoint
 
@@ -277,6 +280,14 @@ Choices queued under the autonomy contract (details in `E16-log.md`):
   waiting for its token); a game leaves when it is not running and no connection is bound to
   it (a waiting game whose creator leaves is gone, a running one waits for its players); the
   replay file named by the offer.
+- T2: the entries (`Taken`, `Started`, `Command`, `Checkpoint`) and the restore's rules (the
+  journal must begin the re-run's entries; a journal cut short is completed, the bot acting if it
+  is its turn; a viewer's numbers and record start afresh); `JOURNAL_FORMAT_VERSION` 1 and the
+  file's layout (JSON lines; the first line with the creator's address, the tokens and the
+  replay before its first command as the CLI's TOML); `serde_json` in `h3-server` (already in the
+  workspace); a journal that does not write stops its game with `Goodbye { Shutdown }`; the void
+  directory; owner-only directories and journals on Unix; ids of ended games reusable after a
+  restart.
 
 ## Review list for the M1 checkpoint (passed 2026-10-11)
 

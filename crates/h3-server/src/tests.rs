@@ -181,6 +181,10 @@ async fn fetched_replay(client: &mut Client, config: &Config, game: u32) {
     assert_eq!(replay, std::fs::read_to_string(&path).unwrap());
     let verified = h3_cli::verify_file(&path, &config.content.packs).unwrap();
     assert!(verified.commands > 0);
+    assert!(
+        !journal_file(&config.server.data, game).exists(),
+        "the replay is the finished journal"
+    );
 }
 
 /// Game `game`'s replay file.
@@ -296,8 +300,10 @@ async fn the_lobby_refuses_with_its_reason_and_frees_a_waiting_game() {
         games_per_address: 1,
         ..Limits::default()
     };
-    let running = start(&config(limits)).await.unwrap();
+    let config = config(limits);
+    let running = start(&config).await.unwrap();
     let (creator, game, _) = created(&running, "pvp", Seat::Attacker).await;
+    assert!(journal_file(&config.server.data, game).exists());
     assert_eq!(
         listed(&running).await,
         [GameInfo {
@@ -356,6 +362,10 @@ async fn the_lobby_refuses_with_its_reason_and_frees_a_waiting_game() {
         assert!(attempts < 250, "the game never leaves");
         tokio::time::sleep(Duration::from_millis(20)).await;
     }
+    assert!(
+        !journal_file(&config.server.data, game).exists(),
+        "a game that never started leaves no journal"
+    );
     let (_, next, _) = created(&running, "pvp", Seat::Defender).await;
     assert!(next > game, "ids are not reused");
 }
@@ -386,6 +396,208 @@ async fn a_dropped_client_retakes_its_seat_with_its_token() {
         back.recv().await,
         Some(ServerMessage::Snapshot { n, .. }) if n > 1
     ));
+}
+
+/// Answers `turns` of the seat's turns as `play` does, then returns at the next `YourTurn`, which
+/// it leaves unanswered: every message.
+async fn play_turns(client: &mut Client, seed: u64, turns: usize) -> Vec<ServerMessage> {
+    let mut rng = Rng::from_seed(seed);
+    let mut seen = Vec::new();
+    while let Some(message) = client.recv().await {
+        let ended = matches!(message, ServerMessage::GameEnded { .. });
+        if let ServerMessage::YourTurn { legal, .. } = &message {
+            let answered = seen
+                .iter()
+                .filter(|m| matches!(m, ServerMessage::YourTurn { .. }))
+                .count();
+            if answered == turns {
+                seen.push(message);
+                break;
+            }
+            let command = bench::choose(legal, &mut rng).unwrap();
+            let seq = u32::try_from(answered).unwrap() + 1;
+            client
+                .send(&ClientMessage::Command { seq, command })
+                .await
+                .unwrap();
+        }
+        seen.push(message);
+        if ended {
+            break;
+        }
+    }
+    seen
+}
+
+/// A connection that re-took `seat` of game `game` with `token`: what it was sent after `Joined`
+/// (the snapshot, and the turn if it is the seat's), the numbers set to 0.
+async fn retaken(
+    running: &Running,
+    game: u32,
+    seat: Seat,
+    token: &str,
+) -> (Client, Vec<ServerMessage>) {
+    let mut client = greeted(running).await;
+    client
+        .join(game, seat, Some(token.to_owned()))
+        .await
+        .unwrap();
+    assert!(matches!(
+        client.recv().await,
+        Some(ServerMessage::Joined { .. })
+    ));
+    let mut sent = Vec::new();
+    while let Ok(Some(mut message)) =
+        tokio::time::timeout(Duration::from_millis(300), client.recv()).await
+    {
+        if let ServerMessage::Snapshot { n, .. } | ServerMessage::YourTurn { n, .. } = &mut message
+        {
+            *n = 0;
+        }
+        sent.push(message);
+    }
+    (client, sent)
+}
+
+/// A crash at this moment: a new data directory with a copy of the journals `data` holds now (the
+/// server syncs every line before it sends what depends on it).
+fn crashed(data: &Path) -> PathBuf {
+    let copy = data.with_extension("restarted");
+    std::fs::create_dir_all(copy.join("games")).unwrap();
+    for entry in std::fs::read_dir(data.join("games")).unwrap() {
+        let path = entry.unwrap().path();
+        std::fs::copy(&path, copy.join("games").join(path.file_name().unwrap())).unwrap();
+    }
+    copy
+}
+
+/// Game `game`'s journal in the data directory `data`.
+fn journal_file(data: &Path, game: u32) -> PathBuf {
+    data.join("games").join(format!("{game}.journal"))
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn a_game_stopped_mid_battle_resumes_after_a_restart_and_its_replay_verifies() {
+    let config = config(fast());
+    let running = start(&config).await.unwrap();
+    let (mut a, game, token) = created(&running, "bot", Seat::Attacker).await;
+    let seen = play_turns(&mut a, 5, 2).await;
+    assert!(
+        matches!(seen.last(), Some(ServerMessage::YourTurn { .. })),
+        "mid-battle: {seen:?}"
+    );
+    let (_, before) = retaken(&running, game, Seat::Attacker, &token).await;
+    // The server stops here; another starts on what its data directory holds.
+    let restarted = Config {
+        server: Server {
+            data: crashed(&config.server.data),
+            ..config.server.clone()
+        },
+        ..config.clone()
+    };
+    let again = start(&restarted).await.unwrap();
+    assert_eq!(
+        listed(&again).await,
+        [GameInfo {
+            game,
+            offer: String::from("bot"),
+            phase: Phase::Running,
+            open: vec![],
+        }],
+        "the game is back, its seats taken"
+    );
+    let mut thief = greeted(&again).await;
+    thief.join(game, Seat::Attacker, None).await.unwrap();
+    assert_eq!(
+        thief.recv().await,
+        Some(ServerMessage::Refused {
+            reason: Refusal::SeatTaken
+        })
+    );
+    // The same battle, the same turn: the player goes on with its token.
+    let (mut back, after) = retaken(&again, game, Seat::Attacker, &token).await;
+    assert_eq!(after, before);
+    let Some(ServerMessage::YourTurn { legal, .. }) = after.last() else {
+        panic!("{after:?}")
+    };
+    let command = bench::choose(legal, &mut Rng::from_seed(6)).unwrap();
+    back.send(&ClientMessage::Command { seq: 1, command })
+        .await
+        .unwrap();
+    let (mut back, seen) = tokio::time::timeout(GAME_TIME, play(back, 7))
+        .await
+        .unwrap();
+    assert!(matches!(seen.last(), Some(ServerMessage::GameEnded { .. })));
+    // The replay holds the commands from before the restart and after; the journal is gone.
+    fetched_replay(&mut back, &restarted, game).await;
+    assert!(!journal_file(&restarted.server.data, game).exists());
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn journals_that_do_not_restore_their_game_are_void_or_gone() {
+    let limits = Limits {
+        games_per_address: 8,
+        ..fast()
+    };
+    let config = config(limits);
+    let running = start(&config).await.unwrap();
+    // Game 1 runs, game 2 waits for its second player, game 3 runs.
+    let (mut one, first, _) = created(&running, "bot", Seat::Attacker).await;
+    play_turns(&mut one, 1, 1).await;
+    let (_two, waiting, _) = created(&running, "pvp", Seat::Attacker).await;
+    let (mut three, third, _) = created(&running, "bot", Seat::Attacker).await;
+    play_turns(&mut three, 3, 1).await;
+    let data = crashed(&config.server.data);
+    let rewrite = |game: u32, change: &dyn Fn(&mut crate::journal::Start), to: u32| {
+        let text = std::fs::read_to_string(journal_file(&data, game)).unwrap();
+        let (first, rest) = text.split_once('\n').unwrap();
+        let mut start: crate::journal::Start = serde_json::from_str(first).unwrap();
+        change(&mut start);
+        start.game = to;
+        let line = serde_json::to_string(&start).unwrap();
+        std::fs::write(journal_file(&data, to), format!("{line}\n{rest}")).unwrap();
+    };
+    // Game 3's content changed under it: another ruleset.
+    rewrite(
+        third,
+        &|start| {
+            let hash = start
+                .replay
+                .lines()
+                .find(|l| l.starts_with("ruleset_hash"))
+                .unwrap();
+            start.replay = start
+                .replay
+                .replace(hash, "ruleset_hash = \"0x0000000000000001\"");
+        },
+        third,
+    );
+    // Game 9's offer is gone.
+    rewrite(first, &|start| start.offer = String::from("gone"), 9);
+    // Game 1's last line was cut short by the crash.
+    let mut file = std::fs::OpenOptions::new()
+        .append(true)
+        .open(journal_file(&data, first))
+        .unwrap();
+    std::io::Write::write_all(&mut file, b"{\"Command\":{\"comm").unwrap();
+    let restarted = Config {
+        server: Server {
+            data: data.clone(),
+            ..config.server.clone()
+        },
+        ..config.clone()
+    };
+    let again = start(&restarted).await.unwrap();
+    let games: Vec<u32> = listed(&again).await.iter().map(|g| g.game).collect();
+    assert_eq!(games, [first], "only the game that re-ran");
+    let journals: Vec<_> = std::fs::read_dir(data.join("games")).unwrap().collect();
+    assert_eq!(journals.len(), 1, "the waiting game's is gone");
+    assert!(!journal_file(&data, waiting).exists());
+    let void: Vec<_> = std::fs::read_dir(data.join("void")).unwrap().collect();
+    assert_eq!(void.len(), 2, "game 3's and game 9's");
+    // Ids go on after the restored game's.
+    let (_, next, _) = created(&again, "pvp", Seat::Attacker).await;
+    assert_eq!(next, first + 1);
 }
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
