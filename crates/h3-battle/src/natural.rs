@@ -21,8 +21,9 @@ use crate::geometry::{Field, Hex, HexSet};
 pub const MAX_REMOVABLE_OBSTACLES: usize = 16;
 
 /// Most hexes a removable natural obstacle blocks (the original's usual obstacles block up to
-/// eight).
-pub const MAX_REMOVABLE_HEXES: usize = 8;
+/// eight): the most a usual obstacle type of a pack may block, so that the battle accepts every
+/// generated battlefield (BAT-GEO-004).
+pub const MAX_REMOVABLE_HEXES: usize = h3_content::MAX_USUAL_OBSTACLE_HEXES;
 
 /// A removable natural obstacle: its anchor hex and the hexes it blocks (Q55).
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]

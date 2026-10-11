@@ -64,7 +64,9 @@ id = "crag"
 terrains = ["meadow"]            # at least one
 width = 3                        # usual obstacles: free hexes to the right of the anchor
 height = 2                       # usual obstacles: rows needed above the anchor
-blocked = [[0, 0], [1, 0], [1, -1]]  # [dx, dy] from the anchor (bottom-left hex, dy <= 0)
+blocked = [[0, 0], [1, 0], [1, -1]]  # [dx, dy] from the anchor (bottom-left hex, dy <= 0); a
+                                 # usual obstacle blocks at most 8 hexes (the battle's
+                                 # removable piece, BAT-GEO-003)
 # absolute = true                # fixed position: `blocked` lists [x, y] hexes of the field
 
 [[creature]]

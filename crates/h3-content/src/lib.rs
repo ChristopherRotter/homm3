@@ -70,8 +70,8 @@ pub use quirks::{
 pub use ruleset::{
     BattleParams, CreatureInfo, CreatureType, CreatureTypeId, FactionId, FactionInfo, FieldParams,
     Formation, MAX_ARMY_SLOTS, MAX_AURA_VALUES, MAX_FIELD_HEXES, MAX_ROLL_LEVELS, MAX_SIDE_STACKS,
-    MAX_UPGRADES, ObstacleType, RULESET_HASH_VERSION, ResourceId, ResourceInfo, RollTable, Ruleset,
-    SurrenderParams, TerrainId, TerrainInfo, WAR_MACHINE_KINDS,
+    MAX_UPGRADES, MAX_USUAL_OBSTACLE_HEXES, ObstacleType, RULESET_HASH_VERSION, ResourceId,
+    ResourceInfo, RollTable, Ruleset, SurrenderParams, TerrainId, TerrainInfo, WAR_MACHINE_KINDS,
 };
 pub use spell::{
     EffectDuration, EffectEnd, HexStep, MASTERY_NAMES, MAX_AREA_RADIUS, MAX_CHAIN_TARGETS,

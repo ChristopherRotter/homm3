@@ -265,6 +265,11 @@ pub struct ObstacleType {
     pub absolute: bool,
 }
 
+/// Most hexes a usual (not absolute) obstacle type blocks (BAT-GEO-004): the battle keeps a
+/// placed usual obstacle as a removable piece of at most so many hexes (BAT-GEO-003, BAT-MAG-034;
+/// the original's usual obstacles block up to eight).
+pub const MAX_USUAL_OBSTACLE_HEXES: usize = 8;
+
 /// Most direct upgrades of one creature type.
 pub const MAX_UPGRADES: usize = 3;
 
@@ -1266,9 +1271,6 @@ fn validate_strike_spells(
     Ok(())
 }
 
-/// Checks an obstacle type against the battlefield: at least one terrain and one blocked hex;
-/// usual obstacles need a width and height of at least 1 and blocked hexes no lower than the
-/// anchor (`dy <= 0`); absolute obstacles block standable hexes of the field.
 /// The creatures `corpse_raiser` abilities raise (BAT-MAG-052): one-hex creatures, at most
 /// [`ability::MAX_RAISED_CREATURES`] of them.
 fn validate_raised(
@@ -1300,6 +1302,10 @@ fn validate_raised(
     Ok(())
 }
 
+/// Checks an obstacle type against the battlefield: at least one terrain and one blocked hex;
+/// usual obstacles need a width and height of at least 1, blocked hexes no lower than the
+/// anchor (`dy <= 0`) and at most [`MAX_USUAL_OBSTACLE_HEXES`] of them; absolute obstacles block
+/// standable hexes of the field.
 fn validate_obstacle(o: &ObstacleType, battle: &BattleParams) -> Result<(), CompileError> {
     let invalid = |reason| {
         Err(CompileError::InvalidObstacle {
@@ -1323,6 +1329,9 @@ fn validate_obstacle(o: &ObstacleType, battle: &BattleParams) -> Result<(), Comp
         }
     } else if o.width == 0 || o.height == 0 || o.blocked.iter().any(|&(_, dy)| dy > 0) {
         return invalid("usual obstacles need width and height >= 1 and blocked dy <= 0");
+    } else if o.blocked.len() > MAX_USUAL_OBSTACLE_HEXES {
+        // The battle would refuse the battlefields generated with it (E04b T11b review).
+        return invalid("usual obstacles block at most 8 hexes");
     }
     Ok(())
 }
