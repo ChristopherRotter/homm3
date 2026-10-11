@@ -9,9 +9,12 @@
 //! * [`action`]: the factorized action (an entry and a destination tile) and its masks, built from
 //!   the reachable-tiles query (provisional until E13's macro-actions).
 //! * [`rollout`]: the uniformly random legal agent.
+//! * [`replay`]: the adventure replay model (T9b): the rules' identity, the map by content hash,
+//!   the seed, the game commands and state hashes.
 
 pub mod action;
 pub mod env;
+pub mod replay;
 pub mod rollout;
 
 pub use action::{

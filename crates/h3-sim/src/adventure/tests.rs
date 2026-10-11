@@ -300,3 +300,205 @@ fn rollouts_are_deterministic_and_end_at_the_day_limit() {
     let mut c = env(7, 4);
     assert_eq!(random_rollout(&mut c, 11, 5).steps, 5);
 }
+
+fn duel_map() -> replay::MapRef {
+    replay::MapRef {
+        path: "fixtures/maps/e08-duel-36.h3m".to_owned(),
+        content_hash: replay::map_content_hash(DUEL),
+        import_version: h3_map::MAP_IMPORT_VERSION,
+    }
+}
+
+fn record(seed: u64, agent_seed: u64, max_days: u32) -> replay::Replay {
+    let options = replay::RecordOptions {
+        seed,
+        agent_seed,
+        max_days,
+        max_steps: 0,
+        checkpoint_every: 10,
+    };
+    replay::Replay::record_random(&FAITHFUL, Arc::clone(&DUEL_SETUP), duel_map(), options).unwrap()
+}
+
+/// A replay records the commands the random rollout plays and verifies against the game.
+#[test]
+fn a_recorded_game_is_the_rollout_and_verifies() {
+    let r = record(3, 5, 3);
+    let mut e = env(3, 3);
+    let played = random_rollout(&mut e, 5, 0);
+    assert_eq!(r.commands.len(), played.steps as usize);
+    assert_eq!((r.final_hash, r.final_day), (e.state_hash(), 4));
+    assert_eq!(r.checkpoints.len(), r.commands.len() / 10);
+    assert!(
+        r.commands
+            .iter()
+            .any(|(_, c)| matches!(c, GameCommand::Adventure(_)))
+    );
+    assert_eq!(r.verify(&FAITHFUL, &duel_map(), &DUEL_SETUP), Ok(()));
+    // A step limit stops the record early; no checkpoints without an interval.
+    let short = replay::Replay::record_random(
+        &FAITHFUL,
+        Arc::clone(&DUEL_SETUP),
+        duel_map(),
+        replay::RecordOptions {
+            seed: 3,
+            agent_seed: 5,
+            max_days: 0,
+            max_steps: 4,
+            checkpoint_every: 0,
+        },
+    )
+    .unwrap();
+    assert_eq!((short.commands.len(), short.checkpoints.len()), (4, 0));
+    assert_eq!(short.verify(&FAITHFUL, &duel_map(), &DUEL_SETUP), Ok(()));
+}
+
+/// Every way a replay can go wrong is reported, the first one found.
+#[test]
+fn a_tampered_replay_is_refused_with_its_reason() {
+    use replay::ReplayError as E;
+    let good = record(2, 9, 2);
+    let verify = |r: &replay::Replay| r.verify(&FAITHFUL, &duel_map(), &DUEL_SETUP);
+    let mut r = good.clone();
+    r.header.profile = "base:strict-fixed".to_owned();
+    assert_eq!(verify(&r), Err(E::Incompatible("profile")));
+    // The strict rules are other rules: the header says so before any command runs.
+    assert_eq!(
+        good.verify(&STRICT, &duel_map(), &DUEL_SETUP),
+        Err(E::Incompatible("profile"))
+    );
+    for (field, edit) in [
+        (
+            "format_version",
+            (|r| r.header.format_version += 1) as fn(&mut replay::Replay),
+        ),
+        ("packs", |r| r.header.packs.pop().map_or((), drop)),
+        ("ruleset_hash", |r| r.header.ruleset_hash ^= 1),
+        ("adventure_ruleset_hash", |r| {
+            r.header.adventure_ruleset_hash ^= 1
+        }),
+        ("rng", |r| r.header.rng_version += 1),
+        ("hash", |r| r.header.hash_algorithm.push('x')),
+        ("state_hash_versions", |r| {
+            r.header.adventure_state_hash_version += 1
+        }),
+        ("map.hash", |r| r.map.content_hash ^= 1),
+        ("map.import_version", |r| r.map.import_version += 1),
+    ] {
+        let mut r = good.clone();
+        edit(&mut r);
+        assert_eq!(verify(&r), Err(E::Incompatible(field)), "{field}");
+    }
+    // The engine version is informational, the path too (the hash names the file).
+    let mut r = good.clone();
+    r.header.engine_version.push('x');
+    r.map.path.push('x');
+    assert_eq!(verify(&r), Ok(()));
+    let mut r = good.clone();
+    r.checkpoints.pop();
+    assert_eq!(verify(&r), Err(E::CheckpointCount));
+    let mut r = good.clone();
+    r.checkpoints[0] ^= 1;
+    assert!(matches!(verify(&r), Err(E::HashMismatch { step: 10, .. })));
+    let mut r = good.clone();
+    r.final_hash ^= 1;
+    let n = r.commands.len();
+    assert!(matches!(verify(&r), Err(E::HashMismatch { step, .. }) if step == n));
+    let mut r = good.clone();
+    r.final_day += 1;
+    assert_eq!(
+        verify(&r),
+        Err(E::DayMismatch {
+            expected: good.final_day + 1,
+            actual: good.final_day
+        })
+    );
+    // A command of the player not acting, then the game's own seed changed.
+    let mut r = good.clone();
+    let (player, _) = r.commands[0];
+    r.commands[0].0 = PlayerId::new(1 - player.raw());
+    assert!(matches!(
+        verify(&r),
+        Err(E::Rejected {
+            step: 0,
+            error: GameCommandError::NotYourTurn(_)
+        })
+    ));
+    let mut r = good.clone();
+    r.seed ^= 1;
+    assert!(matches!(verify(&r), Err(E::HashMismatch { .. })));
+    // Each error explains itself.
+    for e in [
+        E::Incompatible("profile"),
+        E::Setup(h3_game::GameSetupError::Players(9)),
+        E::Rejected {
+            step: 0,
+            error: GameCommandError::NotYourTurn(PlayerId::new(1)),
+        },
+        E::HashMismatch {
+            step: 1,
+            expected: 1,
+            actual: 2,
+        },
+        E::CheckpointCount,
+        E::DayMismatch {
+            expected: 2,
+            actual: 3,
+        },
+    ] {
+        assert!(!e.to_string().is_empty());
+    }
+}
+
+/// A command whose path the env's action could not name (a client's own path) steps the env and
+/// replays: the replay holds commands, not actions (the user, T9b).
+#[test]
+fn a_path_of_the_players_own_choice_steps_and_replays() {
+    let mut e = env(1, 0);
+    let player = acting(&e);
+    let hero = hero_in_slot(e.state(), player, 0).unwrap();
+    let reach = legal_moves(e.state(), e.rules(), Actor::Player(player), hero).unwrap();
+    // A reachable tile two steps away, reached through a neighbour other than the query's.
+    let (target, detour) = reach
+        .tiles()
+        .filter_map(|(pos, _)| {
+            let path = reach.path(pos)?;
+            let [first, second] = path.as_slice() else {
+                return None;
+            };
+            let other = reach.tiles().map(|(p, _)| p).find(|&p| {
+                p != *first
+                    && neighbours(p, *second)
+                    && neighbours(p, e.state().adventure().hero(hero).unwrap().pos)
+            })?;
+            Some((*second, vec![other, *second]))
+        })
+        .next()
+        .expect("the duel has a tile with two two-step paths");
+    let canonical = action::decode(
+        e.state(),
+        e.rules(),
+        player,
+        Action::move_to(0, tile_index(e.state(), target).unwrap()),
+    )
+    .unwrap();
+    let own = GameCommand::Adventure(AdventureCommand::MoveHero { hero, path: detour });
+    assert_ne!(own, canonical);
+    e.step_command(player, own.clone(), &mut h3_game::NoopSink)
+        .unwrap();
+    let replay = replay::Replay {
+        header: replay::ReplayHeader::current(&FAITHFUL),
+        map: duel_map(),
+        seed: 1,
+        commands: vec![(player, own)],
+        checkpoint_every: 0,
+        checkpoints: Vec::new(),
+        final_day: 1,
+        final_hash: e.state_hash(),
+    };
+    assert_eq!(replay.verify(&FAITHFUL, &duel_map(), &DUEL_SETUP), Ok(()));
+}
+
+fn neighbours(a: h3_adventure::Pos, b: h3_adventure::Pos) -> bool {
+    a.level == b.level && a != b && a.x.abs_diff(b.x) <= 1 && a.y.abs_diff(b.y) <= 1
+}
