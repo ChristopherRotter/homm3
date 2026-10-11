@@ -14,6 +14,9 @@
 #   the target branch skips the full verify and runs only the gates that read the left-out paths
 #   (check-rules, check-stubs, check-docs). A gate or test that starts reading a left-out path must
 #   take it out of BOTH exclusion lists below (`paths-ignore` and the "Plan" step).
+# - A pull request whose merge with its base changes only left-out paths brings no code of its own:
+#   it runs only those gates even when no run has verified the base's code yet (the base branch's
+#   own run does that; user, 2026-10-11), and records no fingerprint, since it verified none.
 # - Pushes to `master` that change only left-out paths start no run.
 # - Pull requests: check-lane, then the verify. The label `cross-lane` passes `--cross-lane`;
 #   adding or removing it re-runs the job, which skips a verify that already passed. Other labels
@@ -120,12 +123,27 @@ jobs:
                        and .description == \"code $fp\") | .id") || ids=
             if [ -n "$ids" ]; then found=$c; break; fi
           done
-          if [ "$FORCE" = true ] || [ -z "$found" ]; then
+          # A pull request's checkout is the merge of its head into the base: its code is the
+          # base's when the merge changes only left-out paths.
+          docs_only=false
+          if [ "$EVENT" = pull_request ] && [ "$(git rev-parse -q --verify 'HEAD^2')" = "$HEAD" ] \
+            && git diff --quiet 'HEAD^1' HEAD -- . ':!docs/' ':!experiments/' ':!clients/' ':!*.md'
+          then
+            docs_only=true
+          fi
+          record=true
+          if [ "$FORCE" = true ]; then
             full=true; why="full verify"
-          else
+          elif [ -n "$found" ]; then
             full=false; why="verified on $found: only check-rules, check-stubs, check-docs"
+          elif [ "$docs_only" = true ]; then
+            full=false; record=false
+            why="no code against the base (the base branch's runs verify it): only check-rules, check-stubs, check-docs"
+          else
+            full=true; why="full verify"
           fi
           echo "full=$full" >> "$GITHUB_OUTPUT"
+          echo "record=$record" >> "$GITHUB_OUTPUT"
           echo "Code fingerprint \`$fp\`: $why." | tee -a "$GITHUB_STEP_SUMMARY"
 
       # rustup reads the pinned toolchain from rust-toolchain.toml.
@@ -181,8 +199,10 @@ jobs:
           cargo xtask check-stubs
           cargo xtask check-docs
 
-      # Also after the cheap gates, so that the fingerprint follows the commits that carry it.
+      # Also after the cheap gates, so that the fingerprint follows the commits that carry it; not
+      # after a pull request without code of its own whose fingerprint no run has verified.
       - name: Record the verified code
+        if: steps.plan.outputs.record == 'true'
         env:
           GH_TOKEN: ${{ github.token }}
           SHA: ${{ github.event.pull_request.head.sha || github.sha }}

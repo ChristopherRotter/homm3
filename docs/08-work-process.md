@@ -170,7 +170,9 @@ and resuming") and merged at its checkpoint once CI is green. **A pull request i
 its branch is ready for merging** (the task or increment done, the scoped verify without a failing
 step, the lane docs updated; user, 2026-10-08): pushing a branch runs no CI, while every push to an
 open pull request does, and Actions minutes are scarce (`05-testing.md`, "CI"). An open pull
-request takes only review fixes and the user's changes. The user's local clone catches up with a
+request takes only review fixes and the user's changes. A merge of `master` into an open pull
+request (a conflict) waits until `master`'s latest run has finished: until then no run has
+verified that code, and the pull request's run cannot skip it (user, 2026-10-11). The user's local clone catches up with a
 fetch; if the user pushed to the branch in between, their commits win: rebase onto them first.
 
 ## Cloud sandbox
