@@ -4,10 +4,11 @@ The server lane's living state; read after the global `docs/HANDOFF.md`. Format 
 
 ## Current state
 
-- **M1 closed (2026-10-11, SRV-Q12; #61 merged). M2 T1 in progress** on `claude/upbeat-babbage-8bcd7n`: many games on one server (wire protocol 4: `ListGames`/`Games`, `CreateGame`/`GameCreated`; a sans-I/O `lobby` in `h3-protocol`; offers in a sectioned configuration, a registry and a thread per game in `h3-server`). Done: nothing yet. Next: the wire and the lobby, then the server.
+- **M1 closed (2026-10-11, SRV-Q12; #61 merged). M2 T1 done (2026-10-11)** on `claude/upbeat-babbage-8bcd7n`, pull request next: many games on one server (wire protocol 4: `ListGames`/`Games`, `CreateGame`/`GameCreated`; the sans-I/O `lobby` in `h3-protocol`; the sectioned configuration with `[[offer]]`s, the `registry` and a thread per game in `h3-server`). **Next: M2 T2** (`QUEUE.md`), the journal and restore. Review list for the M2 checkpoint: the epic file.
+- **Shared, still saying M1:** the global HANDOFF's server row and `06-security.md`'s bounds (no `games` limits); for a `shared/` change or this branch's PR with `cross-lane`, as the user decides.
 - **ADR-0018 point 5 as amended:** the mapping's matches over the engine's enums are exhaustive; a new battle variant fails `h3-protocol`'s build until mapped (global HANDOFF trap).
 - **The 100 % gate** covers `h3-protocol` (logic); `h3-server` is an adapter outside it, tested end to end.
-- **Versions** (`docs/08-work-process.md`): `PROTOCOL_VERSION` (`h3-protocol`, 3 since the battle lane's `OpeningSpell` event, BAT-MAG-068; bumped on every wire change), `RECORD_FORMAT_VERSION` (`h3-protocol`, 1), `JOURNAL_FORMAT_VERSION` (`h3-server`, M2).
+- **Versions** (`docs/08-work-process.md`): `PROTOCOL_VERSION` (`h3-protocol`, 4 since M2 T1's lobby; 3 was the battle lane's `OpeningSpell` event; bumped on every wire change), `RECORD_FORMAT_VERSION` (`h3-protocol`, 1), `JOURNAL_FORMAT_VERSION` (`h3-server`, M2).
 - The lane owns (`lanes.toml`) `h3-protocol`, `h3-server`, `benches/server/` and E16's files; the workspace files stay shared. **Checkpoints** per milestone, under the autonomy contract below; a fresh reviewer agent checks each milestone before the user does. The identity and discovery ADR drafts are decided at the M3 refinement.
 - **Ids:** questions `SRV-Q<n>`, quirks `SRV-QUIRK-<n>`, stubs `SRV-STUB-<n>`. ADR drafts go to `docs/lanes/server/adr-drafts/` and get a number when the user accepts them. Branches: `server/<task>`.
 
@@ -26,10 +27,15 @@ The server lane's living state; read after the global `docs/HANDOFF.md`. Format 
 - `prop_assert!(matches!(x, P { .. }))` without a message fails to compile: the macro formats the condition's text and reads `{ .. }` as a format argument; pass a message.
 - A test client that picks uniformly among the legal commands rarely ends a battle of the `full` scenario (mostly moves; the defender's stacks regenerate): pick among the strikes when there are any (`tests/session.rs`, `play`).
 - Automated clients answer every turn at once and exceed the default 20 messages per second: end-to-end tests that play raise the limit (`tests.rs`, `fast()`).
+- A game leaves the lobby only under the registry's lock, after its bound connections are counted down (`registry.rs`): deciding by the game's own connection list races a join that is already queued.
 - A socket closed over unread data is reset, and the reset makes the peer drop what it has not read yet (a `Goodbye`): the transport's close reads on for the peer's close (`net.rs`, `LINGER`). The flooding test catches a regression only in most runs, not all.
 - **The workload is lane-only and follows `master`:** 55 % of its count is the battle engine, so battle changes move it and the full verify (CI) does not measure it. At each session's start `verify --scope server` measures it; a drift there came from `master`: re-baseline (`cargo xtask bench-check --update --workload session-random-play-full`) and name the range in the commit. Measure only with the file's arguments (they shift the heap `malloc` walks).
 
 ## Recent sessions
+
+### 2026-10-11 — M2 T1, many games
+
+The user merged #61 and asked for the next increment: SRV-Q12 answered, the branch restarted from `master` (the workload −0.12 % after the battle lane's T8c, no re-baseline). Built T1 (`docs/epics/E16-log.md`, M2 T1): the lobby's messages (wire 4), the sans-I/O lobby, offers, the registry and a thread per game. A game's leaving is decided under the registry's lock with the bindings, not by its own connection list (that would race a join). Review list in the epic file.
 
 ### 2026-10-10 — M1 T4, closure
 
@@ -38,7 +44,3 @@ T3 had merged; the branch started from `master`. Built the workload (`docs/epics
 ### 2026-10-10 — M1 T3, the server binary
 
 T2 had merged; the branch restarted from `master` (CI green on T2's pull request). Built T3 (`docs/epics/E16-log.md`, T3): configuration, game thread, connection tasks, WebSocket transport, headless client, 14 tests. The flooding test found the reset that lost the `Goodbye` (fixed by a lingering close); the first two-client test found that automated clients exceed the default rate. The replays the tests wrote verify with `h3 verify`. Review list in the epic file; `verify --scope server` with no failing step.
-
-### 2026-10-10 — M1 T2, the session core
-
-#54 (T1) had merged; the branch started from `master`, whose baseline verify was green. Built T2 (`docs/epics/E16-log.md`, T2). The session needed to refuse a replay before the end and to answer a fetch from a connection without a seat, so the fetches got `seq` and the reject codes `NotOver` (wire version 2, queued for the review with the record format, the start rule and the bot fallback). The hygiene property over the wire is checked by a mutation (events projected for the wrong viewer fail it). 21 new tests; `verify --scope server` with no failing step.
