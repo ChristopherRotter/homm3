@@ -83,8 +83,19 @@ fn client_messages() -> Vec<ClientMessage> {
             seq: 13,
             offer: "duel".to_string(),
             seat: Seat::Defender,
+            spectators: None,
+        },
+        ClientMessage::CreateGame {
+            seq: 13,
+            offer: "duel".to_string(),
+            seat: Seat::Attacker,
+            spectators: Some(false),
         },
         ClientMessage::Pause { seq: 14 },
+        ClientMessage::SetSpectators {
+            seq: 15,
+            open: true,
+        },
     ];
     out.extend(
         commands()
@@ -200,12 +211,14 @@ fn server_messages() -> Vec<ServerMessage> {
                     offer: "duel".to_string(),
                     phase: Phase::Waiting,
                     open: vec![Seat::Attacker],
+                    spectators: true,
                 },
                 GameInfo {
                     game: 4,
                     offer: "duel".to_string(),
                     phase: Phase::Paused,
                     open: vec![],
+                    spectators: false,
                 },
             ],
         },
@@ -219,7 +232,19 @@ fn server_messages() -> Vec<ServerMessage> {
             seq: 10,
             code: RejectCode::Unverified,
         },
+        ServerMessage::SpectatorsSet {
+            n: 12,
+            seq: 15,
+            open: false,
+        },
     ];
+    out.extend(
+        [RejectCode::NotHost, RejectCode::AlreadyStarted].map(|code| ServerMessage::Rejected {
+            n: 13,
+            seq: 15,
+            code,
+        }),
+    );
     out.extend(
         [
             Refusal::NoSuchGame,
@@ -244,6 +269,7 @@ fn server_messages() -> Vec<ServerMessage> {
             GoodbyeReason::Replaced,
             GoodbyeReason::Shutdown,
             GoodbyeReason::Paused,
+            GoodbyeReason::SpectatorsClosed,
         ]
         .map(|reason| ServerMessage::Goodbye { reason }),
     );
@@ -294,19 +320,41 @@ fn the_json_is_serdes_default_enum_form() {
         text(&ClientMessage::CreateGame {
             seq: 2,
             offer: "duel".to_string(),
-            seat: Seat::Attacker
+            seat: Seat::Attacker,
+            spectators: Some(false),
         }),
-        r#"{"CreateGame":{"seq":2,"offer":"duel","seat":"Attacker"}}"#
+        r#"{"CreateGame":{"seq":2,"offer":"duel","seat":"Attacker","spectators":false}}"#
+    );
+    // A creation that does not say takes spectators (E16 M2 T4c).
+    assert_eq!(
+        serde_json::from_str::<ClientMessage>(
+            r#"{"CreateGame":{"seq":2,"offer":"duel","seat":"Attacker"}}"#
+        )
+        .unwrap(),
+        ClientMessage::CreateGame {
+            seq: 2,
+            offer: "duel".to_string(),
+            seat: Seat::Attacker,
+            spectators: None,
+        }
+    );
+    assert_eq!(
+        text(&ClientMessage::SetSpectators {
+            seq: 3,
+            open: false
+        }),
+        r#"{"SetSpectators":{"seq":3,"open":false}}"#
     );
     let info = GameInfo {
         game: 3,
         offer: "duel".to_string(),
         phase: Phase::Running,
         open: vec![],
+        spectators: true,
     };
     assert_eq!(
         serde_json::to_string(&info).unwrap(),
-        r#"{"game":3,"offer":"duel","phase":"Running","open":[]}"#
+        r#"{"game":3,"offer":"duel","phase":"Running","open":[],"spectators":true}"#
     );
 }
 

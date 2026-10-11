@@ -4,7 +4,8 @@
 //! tokens and the game's replay before its first command (the CLI's replay file: the replay
 //! header, the seed, the setup, the checkpoint interval). Every further line is one of the session
 //! core's entries ([`Entry`]): a seat taken, the start, an accepted command (in the replay's text
-//! form), a state hash, a pause and a resume (format 2, E16 M2 T3).
+//! form), a state hash, a pause and a resume (format 2, E16 M2 T3), whether the game takes
+//! spectators as it started (format 3, E16 M2 T4c).
 //!
 //! - **Write-ahead.** The game's thread appends the entries of each call and syncs them before it
 //!   sends that call's frames ([`Writer::append`]); a new journal is synced with its directory
@@ -29,7 +30,7 @@ use h3_protocol::session::Entry;
 use serde::{Deserialize, Serialize};
 
 /// The version of the journal's format: bumped when its lines change.
-pub const JOURNAL_FORMAT_VERSION: u32 = 2;
+pub const JOURNAL_FORMAT_VERSION: u32 = 3;
 
 /// The journal's first line: the game as it started.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -72,6 +73,8 @@ enum Line {
     Paused {},
     /// [`Entry::Resumed`] (E16 M2 T3).
     Resumed {},
+    /// [`Entry::Spectators`] (E16 M2 T4c).
+    Spectators { open: bool },
 }
 
 impl Line {
@@ -92,6 +95,7 @@ impl Line {
             },
             Entry::Paused => Self::Paused {},
             Entry::Resumed => Self::Resumed {},
+            Entry::Spectators(open) => Self::Spectators { open },
         }
     }
 
@@ -115,6 +119,7 @@ impl Line {
                 .ok_or_else(|| String::from("bad checkpoint"))?,
             Self::Paused {} => Entry::Paused,
             Self::Resumed {} => Entry::Resumed,
+            Self::Spectators { open } => Entry::Spectators(open),
         })
     }
 }
@@ -314,6 +319,7 @@ mod tests {
             Entry::Checkpoint(0x0123_4567_89ab_cdef),
             Entry::Paused,
             Entry::Resumed,
+            Entry::Spectators(false),
         ];
         writer.append(entries.into_iter()).unwrap();
         writer.append(std::iter::empty()).unwrap();
@@ -329,7 +335,9 @@ mod tests {
         );
         assert!(text.contains(r#"{"Checkpoint":{"hash":"0x0123456789abcdef"}}"#));
         assert!(
-            text.ends_with("{\"Paused\":{}}\n{\"Resumed\":{}}\n"),
+            text.ends_with(
+                "{\"Paused\":{}}\n{\"Resumed\":{}}\n{\"Spectators\":{\"open\":false}}\n"
+            ),
             "{text}"
         );
         #[cfg(unix)]

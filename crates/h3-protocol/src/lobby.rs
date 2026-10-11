@@ -1,7 +1,7 @@
 //! The lobby (E16 M2 T1): the server's offers and its hosted games, sans I/O. The host keeps one
 //! per server: it answers `ListGames`, creates a game for `CreateGame` within the limits, and
-//! hears from each game's session where the game is ([`crate::session::Session::phase`] and
-//! `open_seats`). The games themselves run in their own sessions.
+//! hears from each game's session where the game is ([`crate::session::Session::phase`],
+//! `open_seats` and `takes_spectators`). The games themselves run in their own sessions.
 //!
 //! Provisional (E16 M2 T1): game ids counted from 1 and never reused; the limits count the games
 //! that are not over, in total and per origin (the host's notion of where a request came from: a
@@ -59,10 +59,17 @@ impl<O: Ord> Lobby<O> {
         }
     }
 
-    /// Creates a game of the offer `offer` for `origin`, whose creator takes `seat`: the game's id
-    /// and the offer's index, or why not. A spectator creates nothing; an offer the server does
-    /// not have, a seat its bot plays, or a full server or origin, is refused.
-    pub fn create(&mut self, origin: O, offer: &str, seat: Seat) -> Result<(u32, usize), Refusal> {
+    /// Creates a game of the offer `offer` for `origin`, whose creator takes `seat`, listed as
+    /// taking spectators or not (`spectators`, E16 M2 T4c): the game's id and the offer's index,
+    /// or why not. A spectator creates nothing; an offer the server does not have, a seat its bot
+    /// plays, or a full server or origin, is refused.
+    pub fn create(
+        &mut self,
+        origin: O,
+        offer: &str,
+        seat: Seat,
+        spectators: bool,
+    ) -> Result<(u32, usize), Refusal> {
         if seat == Seat::Spectator {
             return Err(Refusal::NoSpectators);
         }
@@ -93,16 +100,19 @@ impl<O: Ord> Lobby<O> {
                 .into_iter()
                 .filter(|s| !found.bots.contains(s))
                 .collect(),
+            spectators,
         };
         self.games.insert(game, Entry { origin, info });
         Ok((game, index))
     }
 
-    /// Where game `game` is now, as its session reports it.
-    pub fn update(&mut self, game: u32, phase: Phase, open: Vec<Seat>) {
+    /// Where game `game` is now, as its session reports it: its phase, its open seats and whether
+    /// it takes spectators.
+    pub fn update(&mut self, game: u32, (phase, open, spectators): (Phase, Vec<Seat>, bool)) {
         if let Some(entry) = self.games.get_mut(&game) {
             entry.info.phase = phase;
             entry.info.open = open;
+            entry.info.spectators = spectators;
         }
     }
 

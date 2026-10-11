@@ -24,6 +24,11 @@
 //!   it gets every viewer's messages (`Events`, `GameEnded`, `PauseAsked`), never a turn, a
 //!   token or the replay, and whatever it sends for a seat is rejected `NotSeated`. Nothing of
 //!   it is journaled: after a disconnect or a restart it joins again, numbered afresh.
+//! - **The host's spectator setting** (E16 M2 T4c). Whether the game takes spectators at all is
+//!   its host's ([`GameConfig::watchable`]): the host changes it with `SetSpectators` until the
+//!   game starts, when the configuration is fixed; closing it ends every spectator's watch
+//!   (`Goodbye { SpectatorsClosed }`). The setting is an entry at the start, not at each change:
+//!   a game that never started is not restored, so only the setting it started with must last.
 //! - **The journal.** The seed, the setup, the accepted commands with their sides and a state
 //!   hash every `checkpoint_every` commands: the replay in progress (ADR-0018 point 12). The host
 //!   renders it as the replay file at the end ([`Session::publish_replay`]).
@@ -124,6 +129,10 @@ pub struct GameConfig {
     pub shadow: bool,
     /// How many spectators may watch at once (E16 M2 T4; 0: none).
     pub spectators: usize,
+    /// Whether the game takes spectators: its creator's choice (E16 M2 T4c), which the host may
+    /// change until the game starts. A restored game that started takes its journal's
+    /// ([`Entry::Spectators`]).
+    pub watchable: bool,
 }
 
 /// The journal: everything the replay needs except its header (ADR-0018 point 12). Private to the
@@ -179,6 +188,9 @@ pub enum Entry {
     Paused,
     /// A seat was taken in the paused game: it runs again (E16 M2 T3).
     Resumed,
+    /// Whether the game takes spectators, as it started (E16 M2 T4c): made just before
+    /// [`Entry::Started`], since its host may change it until then.
+    Spectators(bool),
 }
 
 /// Why a journal does not restore its game.
@@ -321,6 +333,8 @@ pub struct Session<'r> {
     watchers: Vec<Watcher>,
     /// How many may watch at once.
     watchers_limit: usize,
+    /// Whether the game takes spectators: the host's setting (E16 M2 T4c).
+    watchable: bool,
 }
 
 impl<'r> Session<'r> {
@@ -366,6 +380,7 @@ impl<'r> Session<'r> {
             mismatches: Vec::new(),
             watchers: Vec::new(),
             watchers_limit: config.spectators,
+            watchable: config.watchable,
         })
     }
 
@@ -398,6 +413,10 @@ impl<'r> Session<'r> {
                 }
                 Entry::Paused | Entry::Resumed => {
                     session.paused = entry == Entry::Paused;
+                    session.entries.push(entry);
+                }
+                Entry::Spectators(open) => {
+                    session.watchable = open;
                     session.entries.push(entry);
                 }
                 Entry::Command(side, command) => {
@@ -434,6 +453,7 @@ impl<'r> Session<'r> {
             ClientMessage::FetchReplay { seq } => self.fetch_replay(conn, seq, out),
             ClientMessage::FetchRecord { seq } => self.fetch_record(conn, seq, out),
             ClientMessage::Pause { seq } => self.pause(conn, seq, out),
+            ClientMessage::SetSpectators { seq, open } => self.set_spectators(conn, seq, open, out),
             ClientMessage::Leave {} => {
                 self.disconnected(conn);
                 out.push(goodbye(conn, GoodbyeReason::Left));
@@ -506,6 +526,12 @@ impl<'r> Session<'r> {
             })
             .map(seat)
             .collect()
+    }
+
+    /// Whether the game takes spectators now, for the lobby's list (E16 M2 T4c): its host's
+    /// setting, a limit above 0, and not paused (a paused game takes none).
+    pub const fn takes_spectators(&self) -> bool {
+        self.watchable && self.watchers_limit > 0 && !self.paused
     }
 
     /// The replay file's text, for the participants once the game is over (ADR-0018 point 8): a
@@ -601,6 +627,7 @@ impl<'r> Session<'r> {
         self.send(side, |n| ServerMessage::Snapshot { n, observation }, out);
         if !self.started && self.seats.iter().all(SeatState::held) {
             self.started = true;
+            self.entries.push(Entry::Spectators(self.watchable));
             self.entries.push(Entry::Started);
             self.advance(out);
         } else if self.started && self.state.side_to_act() == Some(side) {
@@ -608,9 +635,10 @@ impl<'r> Session<'r> {
         }
     }
 
-    /// `Join` as a spectator (E16 M2 T4): within the game's limit, the spectator's snapshot.
+    /// `Join` as a spectator (E16 M2 T4): in a game that takes spectators (T4c), within its
+    /// limit, the spectator's snapshot.
     fn watch(&mut self, conn: ConnId, out: &mut Vec<Outbound>) {
-        if self.watchers.len() >= self.watchers_limit {
+        if !self.watchable || self.watchers.len() >= self.watchers_limit {
             return out.push(refused(conn, Refusal::NoSpectators));
         }
         out.push(reply(
@@ -726,6 +754,31 @@ impl<'r> Session<'r> {
         for watcher in self.watchers.drain(..) {
             out.push(goodbye(watcher.conn, GoodbyeReason::Paused));
         }
+    }
+
+    /// `SetSpectators` (E16 M2 T4c): the host opens the game to spectators or closes it, until the
+    /// game starts; closing it ends every spectator's watch. The host gets `SpectatorsSet`.
+    fn set_spectators(&mut self, conn: ConnId, seq: u32, open: bool, out: &mut Vec<Outbound>) {
+        let Some(side) = self.seat_of(conn) else {
+            return self.not_seated(conn, seq, out);
+        };
+        let code = if self.started {
+            Some(RejectCode::AlreadyStarted)
+        } else if self.host != Some(side) {
+            Some(RejectCode::NotHost)
+        } else {
+            None
+        };
+        if let Some(code) = code {
+            return self.reject(side, seq, code, out);
+        }
+        self.watchable = open;
+        if !open {
+            for watcher in self.watchers.drain(..) {
+                out.push(goodbye(watcher.conn, GoodbyeReason::SpectatorsClosed));
+            }
+        }
+        self.send(side, |n| ServerMessage::SpectatorsSet { n, seq, open }, out);
     }
 
     /// `FetchRecord`: the viewer's record, its header line and then one line per numbered message;

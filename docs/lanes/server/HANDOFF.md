@@ -4,11 +4,11 @@ The server lane's living state; read after the global `docs/HANDOFF.md`. Format 
 
 ## Current state
 
-- **M1 closed (2026-10-11, SRV-Q12). M2 T1–T4 merged (#67, #71, #72, #76); M2 T4b done (2026-10-11)** on `claude/modest-turing-ttgjo8`: the observation's fields E04b T9a added on the wire, every engine field mapped or left out by name (wire 7). **Next: M2 T4c** (`QUEUE.md`): the host's spectator setting (the user asked for it and answered its two questions: before the start only, open by default); then T5. Review list for the M2 checkpoint: the epic file.
-- **Shared changes on this branch** (the global HANDOFF's server row and its trap on the engine's fields): a separate commit; the pull request carries the label `cross-lane` (the user, 2026-10-11, as for T2–T4).
+- **M1 closed (2026-10-11, SRV-Q12). M2 T1–T4b merged (#67, #71, #72, #76, #78); M2 T4c done (2026-10-11)** on `claude/modest-turing-ttgjo8`: the host's spectator setting (`CreateGame`'s `spectators`, `SetSpectators` until the start, the lobby shows it; wire 8, journal format 3). **Next: M2 T5** (`QUEUE.md`): shutdown, drain, hardening, the M2 closure and checkpoint. Review list for the M2 checkpoint: the epic file.
+- **Shared changes on this branch** (the global HANDOFF's server row and its trap on the engine's fields): a separate commit; the pull request needs the label `cross-lane` (asked of the user for T4c, as given for T2–T4b).
 - **ADR-0018 point 5 as amended:** the mapping's matches over the engine's enums are exhaustive, and since T4b its patterns over the observation's structs too; a new battle variant or observation field fails `h3-protocol`'s build until mapped (global HANDOFF trap).
 - **The 100 % gate** covers `h3-protocol` (logic); `h3-server` is an adapter outside it, tested end to end.
-- **Versions** (`docs/08-work-process.md`): `PROTOCOL_VERSION` (`h3-protocol`, 7 since M2 T4b's observation fields; 6 was M2 T4's spectators; bumped on every wire change), `RECORD_FORMAT_VERSION` (`h3-protocol`, 1), `JOURNAL_FORMAT_VERSION` (`h3-server`, 2 since M2 T3's pause lines; a journal of another format is void at start).
+- **Versions** (`docs/08-work-process.md`): `PROTOCOL_VERSION` (`h3-protocol`, 8 since M2 T4c's spectator setting; 7 was M2 T4b's observation fields; bumped on every wire change), `RECORD_FORMAT_VERSION` (`h3-protocol`, 1), `JOURNAL_FORMAT_VERSION` (`h3-server`, 3 since M2 T4c's spectator setting; 2 was M2 T3's pause lines; a journal of another format is void at start).
 - The lane owns (`lanes.toml`) `h3-protocol`, `h3-server`, `benches/server/` and E16's files; the workspace files stay shared. **Checkpoints** per milestone, under the autonomy contract below; a fresh reviewer agent checks each milestone before the user does. The identity and discovery ADR drafts are decided at the M3 refinement.
 - **Ids:** questions `SRV-Q<n>`, quirks `SRV-QUIRK-<n>`, stubs `SRV-STUB-<n>`. ADR drafts go to `docs/lanes/server/adr-drafts/` and get a number when the user accepts them. Branches: `server/<task>`.
 
@@ -37,6 +37,10 @@ The server lane's living state; read after the global `docs/HANDOFF.md`. Format 
 
 ## Recent sessions
 
+### 2026-10-11 — M2 T4c, the host's spectator setting
+
+#78 had merged; the branch restarted from `master`. The user asked for T4c and answered its questions (before the start only; open by default). Built T4c (`docs/epics/E16-log.md`, M2 T4c): the creator's choice at `CreateGame`, the host's `SetSpectators` until the start, the lobby's `spectators`, the setting journaled once, as the game started (a host's toggles before it write nothing). Review list in the epic file.
+
 ### 2026-10-11 — M2 T4b, the observation's completeness
 
 #76 had merged; the branch restarted from `master` (the scoped verify had no failing step but coverage, whose LLVM paths were not set; the workload −0.39 %). The user asked whether a host can turn spectators off: no, only the operator for every game; queued as T4c. Built T4b (`docs/epics/E16-log.md`, M2 T4b): the new fields per stack, per side and on the own hero; the effects' values; patterns over every engine struct of the observation. Review list in the epic file.
@@ -44,7 +48,3 @@ The server lane's living state; read after the global `docs/HANDOFF.md`. Format 
 ### 2026-10-11 — M2 T4, spectators
 
 #72 had merged, and the battle lane's spectator viewer (#74) with it; the branch restarted from `master`. Built T4 (`docs/epics/E16-log.md`, M2 T4): a spectator per connection as its own viewer, the spectator's snapshot and public events, numbered `NotSeated` rejections, its record, the limit; the hygiene properties over spectators' bytes. The battle lane's note on the observation's new fields became T4b. Review list in the epic file.
-
-### 2026-10-11 — M2 T3, verification, pause and resume
-
-#71 had merged; the branch started from `master` (the scoped verify had no failing step). Built T3 (`docs/epics/E16-log.md`, M2 T3): the end-of-game verification reads the journal back from disk, so a journal changed on disk is caught too; the shadow instance in the session core; pause by the host, a paused game kept by the registry with its tokens, a join with a token restoring it; the resume journaled (`Resumed`, found by the property test). Review list in the epic file.

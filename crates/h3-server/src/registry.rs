@@ -96,9 +96,9 @@ impl Registry {
         }
     }
 
-    /// Where game `game` is now.
-    pub(crate) fn report(&mut self, game: u32, phase: Phase, open: Vec<Seat>) {
-        self.lobby.update(game, phase, open);
+    /// Where game `game` is now: its phase, its open seats and whether it takes spectators.
+    pub(crate) fn report(&mut self, game: u32, status: (Phase, Vec<Seat>, bool)) {
+        self.lobby.update(game, status);
     }
 
     /// Whether game `game`, in `phase`, leaves now: when it is not running and no connection is
@@ -120,7 +120,7 @@ impl Registry {
 
     /// Game `game` paused (E16 M2 T3): its thread ends, `tokens` resume it.
     pub(crate) fn pause(&mut self, game: u32, tokens: [Option<String>; 2]) {
-        self.lobby.update(game, Phase::Paused, Vec::new());
+        self.lobby.update(game, (Phase::Paused, Vec::new(), false));
         self.games.insert(game, Hosted::Paused { tokens });
     }
 
@@ -137,19 +137,23 @@ impl Registry {
     }
 }
 
-/// Creates a game of `offer` for a client at `origin`, whose creator takes `seat`, and binds the
-/// creator to it: the game's id and inbox, or why not.
+/// Creates a game of `offer` for a client at `origin`, whose creator takes `seat` and chose
+/// whether it takes spectators (`watchable`, E16 M2 T4c), and binds the creator to it: the game's
+/// id and inbox, or why not.
 pub(crate) fn create(
     shared: &Shared,
     origin: IpAddr,
     offer: &str,
     seat: Seat,
+    watchable: bool,
 ) -> Result<(u32, mpsc::Sender<ToGame>), Refusal> {
     let mut registry = lock(shared);
-    let (game, index) = registry.lobby.create(origin, offer, seat)?;
+    let listed = watchable && registry.spectators > 0;
+    let (game, index) = registry.lobby.create(origin, offer, seat, listed)?;
     let offer = Arc::clone(&registry.offers[index]);
     let (to, inbox) = mpsc::channel(GAME_INBOX);
-    let started = Prepared::new(offer, game, origin, (&registry.server, registry.spectators))
+    let host = (&registry.server, registry.spectators);
+    let started = Prepared::new(offer, game, origin, host, watchable)
         .and_then(|prepared| prepared.spawn(inbox, Arc::clone(shared)));
     if let Err(e) = started {
         eprintln!("h3-server: game {game} not created: {e}");
