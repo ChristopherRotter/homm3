@@ -77,6 +77,12 @@ Runtime scripting for all rules (flexible, slow, hard to test/secure); hard-code
   of `h3-content` into a core and a battle part, with `core.toml` and `battle.toml`, waits for
   E04b to close (ADR-0015 point 3).
 
+## Amendment — E04b T8e: data quirks (2026-10-11, ADR-0007)
+
+- The deferral of profile-level overrides is lifted for **data quirks** only: a fix of a wrong
+  value in content data is an override gated by its quirk flag, applied in the core compile
+  (ADR-0007, amendment E04b T8e). Profile-level Tier-2 parameters stay deferred.
+
 ## Revision history
 
 - 2026-09-30: Accepted.
@@ -84,3 +90,4 @@ Runtime scripting for all rules (flexible, slow, hard to test/secure); hard-code
 - 2026-09-30: Amended by E02 T1 (TOML confirmed, expansion dependency graph, overrides, harvested packs).
 - 2026-10-01: Amended by E03 T2 (abilities in packs, flags/shots on the hot-path creature type, hash v3).
 - 2026-10-10: Amended by E08 (ruleset parts per context, one pack file per context; ADR-0015).
+- 2026-10-11: Amended by E04b T8e (data quirks through gated overrides; ADR-0007).
