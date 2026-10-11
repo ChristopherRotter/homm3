@@ -5,7 +5,7 @@ The server lane's living state; read after the global `docs/HANDOFF.md`. Format 
 ## Current state
 
 - **M1 closed (2026-10-11, SRV-Q12). M2 T1 (#67) and T2 (#71) merged; M2 T3 done (2026-10-11)** on `claude/gifted-goodall-kjo7yi`: every finished game verified from its journal on disk before its replay is published (void otherwise), the ruleset hash recomputed, the shadow-instance option, `Pause` by the host and resume by a seat's join with its token (wire 5, journal format 2). **Next:** T4 waits for the battle lane's spectator viewer, so **M2 T5** (`QUEUE.md`), then T4 when it can. Review list for the M2 checkpoint: the epic file.
-- **Shared changes on this branch** (the global HANDOFF's server row, `06-security.md`'s hosted games): a separate commit; the pull request needs the label `cross-lane` and the user's consent, or the commit moves to a `shared/` pull request.
+- **Shared changes on this branch** (the global HANDOFF's server row, `06-security.md`'s hosted games): a separate commit; the pull request carries the label `cross-lane` (the user, 2026-10-11, again for T3).
 - **ADR-0018 point 5 as amended:** the mapping's matches over the engine's enums are exhaustive; a new battle variant fails `h3-protocol`'s build until mapped (global HANDOFF trap).
 - **The 100 % gate** covers `h3-protocol` (logic); `h3-server` is an adapter outside it, tested end to end.
 - **Versions** (`docs/08-work-process.md`): `PROTOCOL_VERSION` (`h3-protocol`, 5 since M2 T3's pause; 4 was M2 T1's lobby; bumped on every wire change), `RECORD_FORMAT_VERSION` (`h3-protocol`, 1), `JOURNAL_FORMAT_VERSION` (`h3-server`, 2 since M2 T3's pause lines; a journal of another format is void at start).
