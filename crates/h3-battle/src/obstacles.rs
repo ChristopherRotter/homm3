@@ -551,8 +551,8 @@ pub(crate) fn removable(
 }
 
 /// Whether [`removable`] holds for some hex (BAT-MAG-034), without testing every hex: a
-/// removable natural obstacle that blocks a hex or, with quirk BAT-QUIRK-3, has its anchor; or a
-/// spell obstacle that `side` sees and `magic` removes at `mastery`.
+/// removable natural obstacle that blocks a hex no removal cleared or, with quirk BAT-QUIRK-3,
+/// still has its anchor; or a spell obstacle that `side` sees and `magic` removes at `mastery`.
 pub(crate) fn any_removable(
     state: &BattleState,
     side: BattleSide,

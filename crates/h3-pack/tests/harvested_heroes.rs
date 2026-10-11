@@ -6,15 +6,17 @@
 //! the original's (HER-SPL-002, HER-SPL-003).
 
 use h3_battle::{
-    BattleState, CastTargets, Command, LegalCommands, NoopSink, apply, cast_targets,
-    castable_spells, creature_cast_targets, generate_obstacles, legal_commands, observe,
-    second_targets,
+    BattleState, CastTarget, CastTargets, Command, Hex, LegalCommands, NoopSink, apply,
+    cast_targets, castable_spells, creature_cast_targets, generate_obstacles, legal_commands,
+    observe, second_targets,
 };
 use h3_content::{
     Ability, ArtifactTypeId, CreatureFlag, CreatureTypeId, Formation, HeroEffect, HeroTypeId,
     Ruleset, SkillId, SpellCategory, SpellId, TerrainId,
 };
-use h3_contracts::{Army, ArmyStack, BattleSetup, BattleSide, MAX_BATTLE_EFFECTS, Obstacle};
+use h3_contracts::{
+    Army, ArmyStack, BattleHero, BattleSetup, BattleSide, MAX_BATTLE_EFFECTS, Obstacle,
+};
 use h3_heroes::{
     ArtifactInstance, HeroDetails, available_spells, derive_battle_hero, spell_masteries, validate,
     war_machines,
@@ -180,24 +182,83 @@ fn casting_details(r: &Ruleset, rng: &mut Rng) -> HeroDetails {
     d
 }
 
-/// The generated `obstacles` that share no hex with another: one whose blocked hexes or anchor
-/// lie on an earlier one's blocked hexes or anchor is dropped. (With quirk BAT-QUIRK-3 the
-/// removal of an obstacle clears its anchor hex, which may be the only hex of another: then
-/// Remove Obstacle stays castable without a target, finding F-robust-2 of the E04b T11b review.
-/// Pass every generated obstacle once that is fixed.)
-fn apart(obstacles: Vec<Obstacle>) -> Vec<Obstacle> {
-    let mut kept: Vec<Obstacle> = Vec::new();
-    for o in obstacles {
-        let hexes = |o: &Obstacle| -> Vec<u8> { o.hexes.iter().copied().chain(o.anchor).collect() };
-        let mine = hexes(&o);
-        if kept
-            .iter()
-            .all(|k| hexes(k).iter().all(|h| !mine.contains(h)))
-        {
-            kept.push(o);
-        }
+// covers: BAT-MAG-034, BAT-GEO-003, BAT-GEO-004
+/// E04b T11b review (F-robust-2) on a battlefield the engine generates (grass, the obstacle
+/// stream of seed 888): its fourth obstacle blocks hexes 109 and 110 from its anchor 108, which
+/// it does not block; the fifth is a one-hex obstacle placed on 108. In the default profile
+/// (quirk BAT-QUIRK-3 on) the removal of the fourth clears hex 108 too, so no hex leads to the
+/// fifth any more: once the others are removed, Remove Obstacle has no target and is not
+/// castable (it was, without a target).
+#[test]
+fn remove_obstacle_keeps_a_target_while_it_is_castable() {
+    let r = h3_pack::compile(
+        &[h3_pack::SOD_PACK, h3_pack::AB_PACK, h3_pack::BASE_PACK],
+        "base:faithful",
+    )
+    .unwrap();
+    let remove = r.spell_by_key("base:remove_obstacle").unwrap();
+    let grass = r.terrain_by_key("base:grass").unwrap();
+    let mut stream = Rng::for_stream(888, StreamId::OBSTACLES);
+    let obstacles = generate_obstacles(&r, grass, &mut stream);
+    let piece = |hexes: &[u8], anchor| Obstacle {
+        hexes: hexes.to_vec(),
+        anchor: Some(anchor),
+    };
+    assert_eq!(
+        obstacles[3..],
+        [piece(&[109, 110], 108), piece(&[108], 108)]
+    );
+    // Ten Pikemen each; the attacker's hero knows Remove Obstacle and has mana for every cast.
+    let army = || Army {
+        stacks: vec![ArmyStack {
+            slot: 0,
+            creature: r.creature_by_key("base:pikeman").unwrap(),
+            count: 10,
+        }],
+    };
+    let mut hero = BattleHero::new(HeroTypeId::from_index(0).unwrap());
+    hero.magic.mana = 999;
+    hero.magic.spell_book = Some(vec![remove]);
+    let setup = BattleSetup {
+        attacker: army(),
+        defender: army(),
+        obstacles,
+        heroes: [Some(hero), None],
+        terrain: Some(grass),
+        war_machines: [vec![], vec![]],
+        formations: [Formation::Loose; 2],
+        funds: [0; 2],
+    };
+    let mut state = BattleState::new(&r, &setup, 1).unwrap();
+    let side = BattleSide::Attacker;
+    let mut targets = CastTargets::new();
+    // A hex of the fourth obstacle first, then one of each other obstacle that can be reached,
+    // a cast a round.
+    for hex in [109, 122, 73, 80] {
+        assert_eq!(state.side_to_act(), Some(side));
+        let cast = Command::Cast {
+            spell: remove,
+            target: CastTarget::Hex(Hex(hex)),
+            second: CastTarget::None,
+        };
+        apply(&mut state, &r, side, cast, &mut NoopSink).unwrap();
+        // Both stacks defend: the next round, the hero may cast again.
+        apply(&mut state, &r, side, Command::Defend, &mut NoopSink).unwrap();
+        apply(
+            &mut state,
+            &r,
+            side.opponent(),
+            Command::Defend,
+            &mut NoopSink,
+        )
+        .unwrap();
     }
-    kept
+    // The fifth obstacle is left, blocking hex 108, and no hex leads to it.
+    assert_eq!(state.removable_obstacles().len(), 1);
+    assert_eq!(state.removable_obstacles()[0].hexes(), [Hex(108)]);
+    cast_targets(&state, &r, side, remove, &mut targets);
+    assert!(targets.is_empty(), "{:?}", targets.as_slice());
+    assert!(!castable_spells(&state, &r, side).contains(remove));
 }
 
 // covers: HER-BAT-011, BAT-HER-001, BAT-MAG-001, BAT-MAG-003, BAT-MAG-048, BAT-GEO-004
@@ -257,7 +318,7 @@ fn random_legal_sod_heroes_cast_and_play() {
                 .flatten();
             let obstacles = terrain.map_or_else(Vec::new, |t| {
                 let mut stream = Rng::for_stream(game, StreamId::OBSTACLES);
-                apart(generate_obstacles(&sod, t, &mut stream))
+                generate_obstacles(&sod, t, &mut stream)
             });
             // Each army's first stack is a caster in half the battles.
             let mut armies = [army(&mut rng, &pool), army(&mut rng, &pool)];
