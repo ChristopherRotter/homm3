@@ -243,7 +243,10 @@ fn strike_inputs(
     let mut attack = striker.attack_now(ranged);
     // rule: BAT-MAG-014
     if slays(ruleset, striker.spells.slayer.1, victim) {
-        attack += i32::from(striker.spells.slayer.0) + slayer_bonus;
+        // The specialist's bonus may fill the `i32` range (E04b T11b review): saturate.
+        attack = attack
+            .saturating_add(striker.spells.slayer.0.into())
+            .saturating_add(slayer_bonus);
     }
     // rule: BAT-MAG-019
     if striker.spells.frenzy > 0 {

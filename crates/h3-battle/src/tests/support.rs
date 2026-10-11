@@ -1394,6 +1394,24 @@ pub fn set_masteries(s: &mut BattleState, side: usize, r: &Ruleset, schools: [u8
 /// The test ruleset with profile `profile` (`t:faithful` without quirks, `t:quirky` with
 /// Q-0003, `t:single` with Q-0005) and edited battle parameters.
 pub fn ruleset_with(profile: &str, edit: impl FnOnce(&mut BattleParamsDef)) -> Ruleset {
+    ruleset_from(profile, edit, |_| {})
+}
+
+/// [`ruleset_with`], with the pack patched before it is compiled (review repros only).
+pub fn ruleset_from(
+    profile: &str,
+    edit: impl FnOnce(&mut BattleParamsDef),
+    patch: impl FnOnce(&mut ContentPack),
+) -> Ruleset {
+    try_ruleset_from(profile, edit, patch).unwrap()
+}
+
+/// [`ruleset_from`], or the compiler's refusal.
+pub fn try_ruleset_from(
+    profile: &str,
+    edit: impl FnOnce(&mut BattleParamsDef),
+    patch: impl FnOnce(&mut ContentPack),
+) -> Result<Ruleset, h3_content::CompileError> {
     let creatures = CREATURES
         .iter()
         .map(
@@ -1420,7 +1438,7 @@ pub fn ruleset_with(profile: &str, edit: impl FnOnce(&mut BattleParamsDef)) -> R
         .collect();
     let mut battle = battle_params();
     edit(&mut battle);
-    let pack = ContentPack {
+    let mut pack = ContentPack {
         creatures,
         factions: [
             ("castle", Some("plain")),
@@ -1594,7 +1612,8 @@ pub fn ruleset_with(profile: &str, edit: impl FnOnce(&mut BattleParamsDef)) -> R
             depends: vec![],
         })
     };
-    Ruleset::compile(&[pack], profile).unwrap()
+    patch(&mut pack);
+    Ruleset::compile(&[pack], profile)
 }
 
 /// A test spell: name, category, schools, target and side.
