@@ -2,15 +2,18 @@
 //! other and against the bot, re-take a seat, and send what a hostile client sends; the replay the
 //! server writes verifies as `h3 replay verify` does.
 
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::time::Duration;
 
 use h3_kernel::Rng;
-use h3_protocol::wire::{ClientMessage, Command, GoodbyeReason, Refusal, Seat, ServerMessage};
+use h3_protocol::wire::{
+    ClientMessage, Command, GameInfo, GoodbyeReason, Phase, Refusal, RejectCode, Seat,
+    ServerMessage,
+};
 use tokio_tungstenite::tungstenite::Message;
 
 use crate::client::Client;
-use crate::config::{BotSeat, Config, Limits};
+use crate::config::{BotSeat, Config, Content, Limits, Offer, Server};
 use crate::{Running, bench, game, start};
 
 fn root() -> PathBuf {
@@ -29,17 +32,35 @@ fn fast() -> Limits {
 /// A game played by test clients ends well within this.
 const GAME_TIME: Duration = Duration::from_secs(60);
 
-/// The synthetic `scenario` on a free loopback port, its data in a fresh directory.
-fn config(scenario: &str, bots: Vec<BotSeat>, limits: Limits) -> Config {
+/// Two offers of the synthetic scenarios: `pvp` (the `full` battle between players) and `bot` (the
+/// `duel` on a field of random obstacles, the server's bot defending); a free loopback port, the
+/// data in a fresh directory.
+fn config(limits: Limits) -> Config {
+    let scenarios = root().join("packs/synthetic/scenarios");
     Config {
-        bind: String::from("127.0.0.1:0"),
-        packs: root().join("packs"),
-        scenario: root().join("packs/synthetic/scenarios").join(scenario),
-        profile: None,
-        bots,
-        data: std::env::temp_dir().join(format!("h3-server-{:016x}", game::os_u64().unwrap())),
-        checkpoint_every: 10,
+        server: Server {
+            bind: String::from("127.0.0.1:0"),
+            data: std::env::temp_dir().join(format!("h3-server-{:016x}", game::os_u64().unwrap())),
+            checkpoint_every: 10,
+        },
+        content: Content {
+            packs: root().join("packs"),
+        },
         limits,
+        offers: vec![
+            Offer {
+                id: String::from("pvp"),
+                scenario: scenarios.join("full.toml"),
+                profile: None,
+                bots: vec![],
+            },
+            Offer {
+                id: String::from("bot"),
+                scenario: scenarios.join("duel.toml"),
+                profile: None,
+                bots: vec![BotSeat::Defender],
+            },
+        ],
     }
 }
 
@@ -54,10 +75,8 @@ async fn greeted(running: &Running) -> Client {
     client
 }
 
-/// A client that took `seat`, with the seat's token and its snapshot.
-async fn seated(running: &Running, seat: Seat) -> (Client, String) {
-    let mut client = greeted(running).await;
-    client.join(seat, None).await.unwrap();
+/// The `Joined` and `Snapshot` after a join: the seat's token.
+async fn joined(client: &mut Client) -> String {
     let joined = client.recv().await;
     let Some(ServerMessage::Joined {
         token: Some(token), ..
@@ -69,7 +88,47 @@ async fn seated(running: &Running, seat: Seat) -> (Client, String) {
         client.recv().await,
         Some(ServerMessage::Snapshot { .. })
     ));
+    token
+}
+
+/// A client that created a game of `offer` and took `seat` in it: the game and the seat's token.
+async fn created(running: &Running, offer: &str, seat: Seat) -> (Client, u32, String) {
+    let mut client = greeted(running).await;
+    client.create(offer, seat).await.unwrap();
+    let created = client.recv().await;
+    let Some(ServerMessage::GameCreated { game, .. }) = created else {
+        panic!("{created:?}")
+    };
+    let token = joined(&mut client).await;
+    (client, game, token)
+}
+
+/// A client that took `seat` in game `game`, with the seat's token.
+async fn seated(running: &Running, game: u32, seat: Seat) -> (Client, String) {
+    let mut client = greeted(running).await;
+    client.join(game, seat, None).await.unwrap();
+    let token = joined(&mut client).await;
     (client, token)
+}
+
+/// The games the server lists.
+async fn listed(running: &Running) -> Vec<GameInfo> {
+    let mut client = greeted(running).await;
+    client
+        .send(&ClientMessage::ListGames { seq: 3 })
+        .await
+        .unwrap();
+    let Some(ServerMessage::Games {
+        seq: 3,
+        offers,
+        games,
+    }) = client.recv().await
+    else {
+        panic!("no list")
+    };
+    assert_eq!(offers.len(), 2);
+    client.close().await;
+    games
 }
 
 /// Plays a seat to the end of the game: every `YourTurn` is answered with a strike if there is
@@ -105,8 +164,9 @@ async fn goodbye(client: &mut Client) -> GoodbyeReason {
     reason
 }
 
-/// The replay a seat fetches after the game: the file the server wrote, which verifies.
-async fn fetched_replay(client: &mut Client, running: &Running, packs: &std::path::Path) {
+/// The replay a seat of game `game` fetches after the game: the file the server wrote, which
+/// verifies.
+async fn fetched_replay(client: &mut Client, config: &Config, game: u32) {
     client
         .send(&ClientMessage::FetchReplay { seq: 900 })
         .await
@@ -117,59 +177,197 @@ async fn fetched_replay(client: &mut Client, running: &Running, packs: &std::pat
     else {
         panic!("no replay")
     };
-    let file = std::fs::read_to_string(&running.replay_path).unwrap();
-    assert_eq!(replay, file);
-    let verified = h3_cli::verify_file(&running.replay_path, packs).unwrap();
+    let path = replay_file(&config.server.data, game);
+    assert_eq!(replay, std::fs::read_to_string(&path).unwrap());
+    let verified = h3_cli::verify_file(&path, &config.content.packs).unwrap();
     assert!(verified.commands > 0);
+}
+
+/// Game `game`'s replay file.
+fn replay_file(data: &Path, game: u32) -> PathBuf {
+    let marker = format!("-game{game}-");
+    let mut found = std::fs::read_dir(data.join("replays"))
+        .unwrap()
+        .map(|entry| entry.unwrap().path())
+        .filter(|path| path.to_string_lossy().contains(&marker));
+    let path = found.next().unwrap();
+    assert!(found.next().is_none());
+    path
+}
+
+/// The last message seen: the game's end.
+fn end(seen: &[ServerMessage]) -> h3_protocol::wire::Outcome {
+    match seen.last() {
+        Some(ServerMessage::GameEnded { result, .. }) => *result,
+        other => panic!("{other:?}"),
+    }
 }
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn two_clients_play_a_hosted_battle_and_its_replay_verifies() {
-    let config = config("full.toml", vec![], fast());
+    let config = config(fast());
     let running = start(&config).await.unwrap();
-    let (a, a_token) = seated(&running, Seat::Attacker).await;
-    let (b, b_token) = seated(&running, Seat::Defender).await;
-    assert_eq!(running.tokens, [Some(a_token), Some(b_token)]);
+    let (a, game, _) = created(&running, "pvp", Seat::Attacker).await;
+    let (b, _) = seated(&running, game, Seat::Defender).await;
     let (a, b) = (tokio::spawn(play(a, 1)), tokio::spawn(play(b, 2)));
     let (mut a, a_seen) = tokio::time::timeout(GAME_TIME, a).await.unwrap().unwrap();
     let (_, b_seen) = tokio::time::timeout(GAME_TIME, b).await.unwrap().unwrap();
-    let end = |seen: &[ServerMessage]| match seen.last() {
-        Some(ServerMessage::GameEnded { result, .. }) => *result,
-        other => panic!("{other:?}"),
-    };
     assert_eq!(end(&a_seen), end(&b_seen));
-    fetched_replay(&mut a, &running, &config.packs).await;
+    fetched_replay(&mut a, &config, game).await;
 }
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn a_client_plays_the_bot_on_a_field_of_random_obstacles() {
-    let config = config("duel.toml", vec![BotSeat::Defender], fast());
+    let config = config(fast());
     let running = start(&config).await.unwrap();
-    assert!(running.tokens[1].is_none(), "the bot's seat has no token");
     let mut c = greeted(&running).await;
-    c.join(Seat::Defender, None).await.unwrap();
+    c.create("bot", Seat::Defender).await.unwrap();
     assert_eq!(
         c.recv().await,
         Some(ServerMessage::Refused {
             reason: Refusal::SeatTaken
-        })
+        }),
+        "the bot's seat"
     );
-    let (a, _) = seated(&running, Seat::Attacker).await;
+    let (a, game, _) = created(&running, "bot", Seat::Attacker).await;
     let (mut a, seen) = tokio::time::timeout(GAME_TIME, play(a, 3)).await.unwrap();
     assert!(matches!(seen.last(), Some(ServerMessage::GameEnded { .. })));
     // The obstacles came from their own seed and travel in the replay's setup.
-    fetched_replay(&mut a, &running, &config.packs).await;
+    fetched_replay(&mut a, &config, game).await;
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn two_games_are_played_at_once() {
+    let config = config(fast());
+    let running = start(&config).await.unwrap();
+    let (a1, g1, _) = created(&running, "pvp", Seat::Attacker).await;
+    let (b2, g2, _) = created(&running, "pvp", Seat::Defender).await;
+    assert_ne!(g1, g2);
+    let (b1, _) = seated(&running, g1, Seat::Defender).await;
+    let (a2, _) = seated(&running, g2, Seat::Attacker).await;
+    let running_games: Vec<(u32, Phase, usize)> = listed(&running)
+        .await
+        .into_iter()
+        .map(|g| (g.game, g.phase, g.open.len()))
+        .collect();
+    assert_eq!(
+        running_games,
+        [(g1, Phase::Running, 0), (g2, Phase::Running, 0)]
+    );
+    let players = [(a1, 1), (b1, 2), (a2, 3), (b2, 4)].map(|(c, seed)| tokio::spawn(play(c, seed)));
+    let mut ends = Vec::new();
+    let mut clients = Vec::new();
+    for player in players {
+        let (client, seen) = tokio::time::timeout(GAME_TIME, player)
+            .await
+            .unwrap()
+            .unwrap();
+        ends.push(end(&seen));
+        clients.push(client);
+    }
+    assert_eq!(
+        (ends[0], ends[2]),
+        (ends[1], ends[3]),
+        "each game's two views agree"
+    );
+    fetched_replay(&mut clients[0], &config, g1).await;
+    fetched_replay(&mut clients[2], &config, g2).await;
+    // Over, the games are listed until their players leave; then they are gone.
+    assert!(
+        listed(&running)
+            .await
+            .iter()
+            .all(|g| g.phase == Phase::Over)
+    );
+    for client in clients {
+        client.close().await;
+    }
+    let mut attempts = 0;
+    while !listed(&running).await.is_empty() {
+        attempts += 1;
+        assert!(attempts < 250, "the games never leave");
+        tokio::time::sleep(Duration::from_millis(20)).await;
+    }
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn the_lobby_refuses_with_its_reason_and_frees_a_waiting_game() {
+    let limits = Limits {
+        games_per_address: 1,
+        ..Limits::default()
+    };
+    let running = start(&config(limits)).await.unwrap();
+    let (creator, game, _) = created(&running, "pvp", Seat::Attacker).await;
+    assert_eq!(
+        listed(&running).await,
+        [GameInfo {
+            game,
+            offer: String::from("pvp"),
+            phase: Phase::Waiting,
+            open: vec![Seat::Defender],
+        }]
+    );
+    let mut c = greeted(&running).await;
+    let mut refusal = async |message: ClientMessage| {
+        c.send(&message).await.unwrap();
+        c.recv().await
+    };
+    let create = |offer: &str, seat| ClientMessage::CreateGame {
+        seq: 1,
+        offer: offer.to_owned(),
+        seat,
+    };
+    for (message, reason) in [
+        (create("pvp", Seat::Attacker), Refusal::TooManyGames),
+        (create("nothing", Seat::Attacker), Refusal::NoSuchOffer),
+        (create("pvp", Seat::Spectator), Refusal::NoSpectators),
+        (
+            ClientMessage::Join {
+                game: 99,
+                seat: Seat::Attacker,
+                token: None,
+            },
+            Refusal::NoSuchGame,
+        ),
+    ] {
+        assert_eq!(
+            refusal(message).await,
+            Some(ServerMessage::Refused { reason })
+        );
+    }
+    // A game's message from a connection in no game.
+    let wait = ClientMessage::Command {
+        seq: 5,
+        command: Command::Wait {},
+    };
+    assert_eq!(
+        refusal(wait).await,
+        Some(ServerMessage::Rejected {
+            n: 0,
+            seq: 5,
+            code: RejectCode::NotSeated
+        })
+    );
+    // The waiting game goes when its creator does, and frees the address's place.
+    creator.close().await;
+    let mut attempts = 0;
+    while !listed(&running).await.is_empty() {
+        attempts += 1;
+        assert!(attempts < 250, "the game never leaves");
+        tokio::time::sleep(Duration::from_millis(20)).await;
+    }
+    let (_, next, _) = created(&running, "pvp", Seat::Defender).await;
+    assert!(next > game, "ids are not reused");
 }
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn a_dropped_client_retakes_its_seat_with_its_token() {
-    let config = config("full.toml", vec![], Limits::default());
-    let running = start(&config).await.unwrap();
-    let (a, a_token) = seated(&running, Seat::Attacker).await;
-    let (_b, _) = seated(&running, Seat::Defender).await;
+    let running = start(&config(Limits::default())).await.unwrap();
+    let (a, game, a_token) = created(&running, "pvp", Seat::Attacker).await;
+    let (_b, _) = seated(&running, game, Seat::Defender).await;
     a.close().await;
     let mut thief = greeted(&running).await;
-    thief.join(Seat::Attacker, None).await.unwrap();
+    thief.join(game, Seat::Attacker, None).await.unwrap();
     assert_eq!(
         thief.recv().await,
         Some(ServerMessage::Refused {
@@ -177,7 +375,7 @@ async fn a_dropped_client_retakes_its_seat_with_its_token() {
         })
     );
     let mut back = greeted(&running).await;
-    back.join(Seat::Attacker, Some(a_token.clone()))
+    back.join(game, Seat::Attacker, Some(a_token.clone()))
         .await
         .unwrap();
     assert!(matches!(
@@ -192,8 +390,7 @@ async fn a_dropped_client_retakes_its_seat_with_its_token() {
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn malformed_oversized_and_out_of_place_frames_close_the_connection() {
-    let config = config("full.toml", vec![], Limits::default());
-    let running = start(&config).await.unwrap();
+    let running = start(&config(Limits::default())).await.unwrap();
     // Before the hello, only the hello.
     let mut c = Client::connect(running.address).await.unwrap();
     c.send(&ClientMessage::Ping { nonce: 1 }).await.unwrap();
@@ -222,8 +419,8 @@ async fn malformed_oversized_and_out_of_place_frames_close_the_connection() {
     let mut c = greeted(&running).await;
     let _ = c.send_raw(Message::text("x".repeat(1 << 17))).await;
     assert_eq!(c.recv().await, None);
-    // The game is unharmed: a client still takes a seat.
-    seated(&running, Seat::Attacker).await;
+    // The server is unharmed: a client still creates a game.
+    created(&running, "pvp", Seat::Attacker).await;
 }
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
@@ -232,8 +429,7 @@ async fn a_flooding_client_is_cut_off() {
         messages_per_second: 5,
         ..Limits::default()
     };
-    let config = config("full.toml", vec![], limits);
-    let running = start(&config).await.unwrap();
+    let running = start(&config(limits)).await.unwrap();
     let mut c = greeted(&running).await;
     for nonce in 0..20 {
         if c.send(&ClientMessage::Ping { nonce }).await.is_err() {
@@ -260,8 +456,7 @@ async fn an_idle_client_is_cut_off() {
         idle_timeout_ms: 200,
         ..Limits::default()
     };
-    let config = config("full.toml", vec![], limits);
-    let running = start(&config).await.unwrap();
+    let running = start(&config(limits)).await.unwrap();
     let mut c = greeted(&running).await;
     assert_eq!(goodbye(&mut c).await, GoodbyeReason::IdleTimeout);
 }
@@ -272,8 +467,7 @@ async fn connections_beyond_the_limit_are_refused_until_one_closes() {
         connections_per_address: 1,
         ..Limits::default()
     };
-    let config = config("full.toml", vec![], limits);
-    let running = start(&config).await.unwrap();
+    let running = start(&config(limits)).await.unwrap();
     let first = greeted(&running).await;
     assert!(Client::connect(running.address).await.is_err());
     first.close().await;
@@ -294,8 +488,8 @@ async fn a_client_that_stops_reading_is_dropped_and_its_place_freed() {
         idle_timeout_ms: 1_000,
         ..fast()
     };
-    let running = start(&config("full.toml", vec![], limits)).await.unwrap();
-    let (mut stalled, _) = seated(&running, Seat::Attacker).await;
+    let running = start(&config(limits)).await.unwrap();
+    let (mut stalled, _, _) = created(&running, "pvp", Seat::Attacker).await;
     // Records, never read, until the socket is full: the server's write stalls, then its reads,
     // and the game drops the connection whose queue fills meanwhile.
     for seq in 1..=20_000 {
@@ -326,21 +520,47 @@ async fn a_client_that_stops_reading_is_dropped_and_its_place_freed() {
 fn the_example_configuration_loads() {
     let path = root().join("crates/h3-server/server.example.toml");
     let config = Config::load(&path).unwrap();
-    assert_eq!(config.bind, "127.0.0.1:7878");
-    assert_eq!(config.bots, [BotSeat::Defender]);
+    assert_eq!(config.server.bind, "127.0.0.1:7878");
     assert_eq!(config.limits, Limits::default());
-    assert!(config.scenario.is_file(), "relative to the file");
-    assert!(game::Prepared::new(&config).is_ok());
+    let ids: Vec<&str> = config.offers.iter().map(|o| o.id.as_str()).collect();
+    assert_eq!(ids, ["full", "duel-bot"]);
+    assert_eq!(config.offers[1].bots, [BotSeat::Defender]);
+    for offer in &config.offers {
+        assert!(offer.scenario.is_file(), "relative to the file");
+        assert!(game::Offer::load(offer, &config.content.packs).is_ok());
+    }
 }
 
 #[test]
 fn configurations_are_checked() {
     let base = root();
-    let minimal = Config::parse("packs = \"p\"\nscenario = \"s.toml\"", &base).unwrap();
-    assert_eq!(minimal.packs, base.join("p"));
-    assert_eq!(minimal.data, base.join("data"));
-    assert_eq!((minimal.checkpoint_every, minimal.bots.len()), (25, 0));
-    assert!(Config::parse("packs = \"p\"\nscenario = \"s\"\nport = 1", &base).is_err());
+    let offer = "[[offer]]\nid = \"a\"\nscenario = \"s.toml\"\n";
+    let minimal = Config::parse(&format!("[content]\npacks = \"p\"\n{offer}"), &base).unwrap();
+    assert_eq!(minimal.content.packs, base.join("p"));
+    assert_eq!(minimal.server.data, base.join("data"));
+    assert_eq!(minimal.offers[0].scenario, base.join("s.toml"));
+    assert_eq!(
+        (
+            minimal.server.checkpoint_every,
+            minimal.offers[0].bots.len()
+        ),
+        (25, 0)
+    );
+    let refused = |text: &str| Config::parse(&format!("[content]\npacks = \"p\"\n{text}"), &base);
+    assert!(
+        refused(&format!("{offer}[server]\nport = 1")).is_err(),
+        "an unknown key"
+    );
+    assert!(refused("").is_err(), "no offer");
+    assert!(refused(&format!("{offer}{offer}")).is_err(), "a taken id");
+    assert!(
+        refused("[[offer]]\nid = \"\"\nscenario = \"s\"").is_err(),
+        "an empty id"
+    );
+    assert!(
+        refused(&format!("{offer}bots = [\"attacker\", \"defender\"]")).is_err(),
+        "a hosted game needs a player"
+    );
     for limit in [
         "max_frame = 0",
         "max_frame = 2000000",
@@ -351,28 +571,30 @@ fn configurations_are_checked() {
         "idle_timeout_ms = 9223372036854775807",
         "outbound_queue = 0",
         "outbound_queue = 4000000",
+        "games = 0",
+        "games = 5000",
+        "games_per_address = 0",
     ] {
-        let text = format!("packs = \"p\"\nscenario = \"s\"\n[limits]\n{limit}");
-        let refused = Config::parse(&text, &base).unwrap_err();
-        assert!(refused.0.contains("outside"), "{limit}: {refused}");
+        let text = format!("{offer}[limits]\n{limit}");
+        let error = refused(&text).unwrap_err();
+        assert!(error.0.contains("outside"), "{limit}: {error}");
     }
     assert!(Config::load(&base.join("no-such-file.toml")).is_err());
-    let both = config(
-        "full.toml",
-        vec![BotSeat::Attacker, BotSeat::Defender],
-        Limits::default(),
-    );
-    assert!(
-        game::Prepared::new(&both).is_err(),
-        "a hosted game needs a player"
-    );
-    let missing = config("no-such-scenario.toml", vec![], Limits::default());
-    assert!(game::Prepared::new(&missing).is_err());
-    let profile = Config {
-        profile: Some(String::from("synthetic:no-such-profile")),
-        ..config("full.toml", vec![], Limits::default())
+    // An offer whose scenario or profile does not load stops the start.
+    let scenarios = base.join("packs/synthetic/scenarios");
+    let packs = base.join("packs");
+    let load = |scenario: &str, profile: Option<&str>| {
+        let offer = Offer {
+            id: String::from("x"),
+            scenario: scenarios.join(scenario),
+            profile: profile.map(String::from),
+            bots: vec![],
+        };
+        game::Offer::load(&offer, &packs)
     };
-    assert!(game::Prepared::new(&profile).is_err());
+    assert!(load("full.toml", None).is_ok());
+    assert!(load("no-such-scenario.toml", None).is_err());
+    assert!(load("full.toml", Some("synthetic:no-such-profile")).is_err());
 }
 
 #[test]

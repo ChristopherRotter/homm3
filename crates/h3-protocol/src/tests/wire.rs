@@ -78,6 +78,12 @@ fn client_messages() -> Vec<ClientMessage> {
         ClientMessage::FetchRecord { seq: 11 },
         ClientMessage::Leave {},
         ClientMessage::Ping { nonce: 5 },
+        ClientMessage::ListGames { seq: 12 },
+        ClientMessage::CreateGame {
+            seq: 13,
+            offer: "duel".to_string(),
+            seat: Seat::Defender,
+        },
     ];
     out.extend(
         commands()
@@ -184,6 +190,17 @@ fn server_messages() -> Vec<ServerMessage> {
             record: "{}".to_string(),
         },
         ServerMessage::Pong { nonce: 5 },
+        ServerMessage::Games {
+            seq: 12,
+            offers: vec![map::offer("duel", "duel", &ruleset, vec![Seat::Defender])],
+            games: vec![GameInfo {
+                game: 3,
+                offer: "duel".to_string(),
+                phase: Phase::Waiting,
+                open: vec![Seat::Attacker],
+            }],
+        },
+        ServerMessage::GameCreated { seq: 13, game: 3 },
     ];
     out.extend(
         [
@@ -192,6 +209,8 @@ fn server_messages() -> Vec<ServerMessage> {
             Refusal::BadToken,
             Refusal::AlreadyJoined,
             Refusal::NoSpectators,
+            Refusal::NoSuchOffer,
+            Refusal::TooManyGames,
         ]
         .map(|reason| ServerMessage::Refused { reason }),
     );
@@ -248,6 +267,24 @@ fn the_json_is_serdes_default_enum_form() {
         r#"{"Join":{"game":1,"seat":"Defender","token":null}}"#
     );
     assert_eq!(text(&ClientMessage::Leave {}), r#"{"Leave":{}}"#);
+    assert_eq!(
+        text(&ClientMessage::CreateGame {
+            seq: 2,
+            offer: "duel".to_string(),
+            seat: Seat::Attacker
+        }),
+        r#"{"CreateGame":{"seq":2,"offer":"duel","seat":"Attacker"}}"#
+    );
+    let info = GameInfo {
+        game: 3,
+        offer: "duel".to_string(),
+        phase: Phase::Running,
+        open: vec![],
+    };
+    assert_eq!(
+        serde_json::to_string(&info).unwrap(),
+        r#"{"game":3,"offer":"duel","phase":"Running","open":[]}"#
+    );
 }
 
 #[test]

@@ -1,8 +1,9 @@
 //! Tests of the wire types, the codec and the mapping (E16 M1 T1), the connection and the session
-//! core (M1 T2).
+//! core (M1 T2), the lobby (M2 T1).
 
 mod codec;
 mod connection;
+mod lobby;
 mod mapping;
 mod session;
 mod wire;

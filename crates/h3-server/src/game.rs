@@ -1,26 +1,27 @@
-//! The hosted game: preparing it from the configuration and running it on its own OS thread
-//! (ADR-0018 points 3, 6, 8 and 12). The thread owns the ruleset and the session core; the
-//! connection tasks talk to it over bounded channels.
+//! The hosted games (ADR-0018 points 3, 6, 8 and 12; E16 M2 T1): the offers, compiled once at
+//! start; a game prepared from an offer with secrets from the OS and run on its own OS thread. The
+//! thread owns the session core; the connection tasks talk to it over bounded channels, and it
+//! tells the lobby where it is through the registry ([`crate::registry`]).
 
 use std::collections::BTreeMap;
 use std::fs;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
+use std::sync::Arc;
 use std::thread;
 
 use h3_battle::{BattleSide, BattleState, LegalCommands};
 use h3_content::Ruleset;
 use h3_contracts::BattleSetup;
 use h3_kernel::{Rng, StreamId};
+use h3_protocol::map;
 use h3_protocol::session::{Bot, ConnId, GameConfig, Outbound, SeatKind, Session};
-use h3_protocol::wire::ClientMessage;
+use h3_protocol::wire::{self, ClientMessage, Seat};
 use h3_sim::{Replay, ReplayHeader};
 use tokio::sync::mpsc;
 
 use crate::Error;
-use crate::config::{BotSeat, Config};
-
-/// The id clients name the hosted game by (one game per server in M1).
-pub const GAME_ID: u32 = 1;
+use crate::config::{self, BotSeat};
+use crate::registry::{Shared, lock};
 
 /// A frame for a connection task.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -31,14 +32,14 @@ pub(crate) struct Frame {
     pub close: bool,
 }
 
-/// What a connection task tells the game.
+/// What a connection task tells a game.
 #[derive(Debug)]
 pub(crate) enum ToGame {
-    /// A connection opened; its frames go to `to`.
+    /// A connection joins the game; its frames go to `to`.
     Open {
         /// The connection.
         conn: ConnId,
-        /// Its outbound queue.
+        /// Its outbound queue for this game.
         to: mpsc::Sender<Frame>,
     },
     /// A message the connection's hello gate let through.
@@ -48,7 +49,7 @@ pub(crate) enum ToGame {
         /// The message.
         message: ClientMessage,
     },
-    /// The connection closed.
+    /// The connection closed, or left for another game.
     Closed {
         /// The connection.
         conn: ConnId,
@@ -83,91 +84,143 @@ impl Bot for RandomBot {
     }
 }
 
-/// A game ready to run: its ruleset, its battle and its secrets.
+/// A game configuration the server offers, compiled at start.
 #[derive(Debug)]
-pub struct Prepared {
-    /// The server's ruleset.
-    pub ruleset: Ruleset,
+pub struct Offer {
+    /// The offer's id.
+    pub id: String,
     /// The scenario's id (the replay file names it).
     pub scenario: String,
-    /// The battle, its obstacles placed.
+    /// The ruleset its games share.
+    pub ruleset: Arc<Ruleset>,
+    /// The battle, its obstacles not yet placed.
     pub setup: BattleSetup,
-    /// The battle's seed.
-    pub seed: u64,
-    /// The seats: a token per player, `None` for the bot's.
-    pub tokens: [Option<String>; 2],
-    /// The seed of the bot's choices.
-    pub bot_seed: u64,
-    /// Where the replay goes at the end.
-    pub replay_path: PathBuf,
-    /// A state hash in the journal after every this many commands.
-    pub checkpoint_every: u32,
+    /// Whether each game draws its own obstacles.
+    pub random_obstacles: bool,
+    /// The seats the server's bot plays.
+    pub bots: Vec<BotSeat>,
+    /// What the lobby shows of it.
+    pub info: wire::Offer,
 }
 
-impl Prepared {
-    /// Loads the scenario and draws the secrets from the OS (ADR-0018 point 8): the battle's
-    /// seed; the obstacles from a separate seed that is then forgotten, so that the layout every
-    /// viewer sees tells nothing about the battle's seed; a token per player seat; the bot's
-    /// seed. Checks that the battle starts.
-    pub fn new(config: &Config) -> Result<Self, Error> {
-        let at = |e: &dyn std::fmt::Display| Error(format!("{}: {e}", config.scenario.display()));
+impl Offer {
+    /// Loads the offer's scenario on the packs in `packs` and checks that its battle starts.
+    pub fn load(config: &config::Offer, packs: &Path) -> Result<Self, Error> {
+        let at = |e: &dyn std::fmt::Display| {
+            Error(format!(
+                "offer `{}`: {}: {e}",
+                config.id,
+                config.scenario.display()
+            ))
+        };
         let text = fs::read_to_string(&config.scenario).map_err(|e| at(&e))?;
         let def = h3_pack::parse_scenario(&text).map_err(|e| at(&e))?;
         let profile = config.profile.as_deref().unwrap_or(&def.profile);
-        let ruleset =
-            h3_cli::load_ruleset(&config.packs, &def.packs, profile).map_err(|e| at(&e))?;
-        let mut setup = def.resolve(&ruleset).map_err(|e| at(&e))?;
-        if let (true, Some(terrain)) = (def.random_obstacles, setup.terrain) {
+        let ruleset = h3_cli::load_ruleset(packs, &def.packs, profile).map_err(|e| at(&e))?;
+        let setup = def.resolve(&ruleset).map_err(|e| at(&e))?;
+        BattleState::new(&ruleset, &setup, 0).map_err(|e| at(&e))?;
+        let seats = config.bots.iter().map(|bot| match bot {
+            BotSeat::Attacker => Seat::Attacker,
+            BotSeat::Defender => Seat::Defender,
+        });
+        let info = map::offer(&config.id, &def.id, &ruleset, seats.collect());
+        Ok(Self {
+            id: config.id.clone(),
+            scenario: def.id,
+            random_obstacles: def.random_obstacles && setup.terrain.is_some(),
+            ruleset: Arc::new(ruleset),
+            setup,
+            bots: config.bots.clone(),
+            info,
+        })
+    }
+}
+
+/// A game ready to run: its offer, its battle and its secrets.
+#[derive(Debug)]
+pub(crate) struct Prepared {
+    /// The game's id.
+    game: u32,
+    /// What it is made of.
+    offer: Arc<Offer>,
+    /// The battle, its obstacles placed.
+    setup: BattleSetup,
+    /// The battle's seed.
+    seed: u64,
+    /// The seats: a token per player, `None` for the bot's.
+    tokens: [Option<String>; 2],
+    /// The seed of the bot's choices.
+    bot_seed: u64,
+    /// Where the replay goes at the end.
+    replay_path: PathBuf,
+    /// A state hash in the journal after every this many commands.
+    checkpoint_every: u32,
+}
+
+impl Prepared {
+    /// Draws game `game`'s secrets from the OS (ADR-0018 point 8): the battle's seed; the
+    /// obstacles from a separate seed that is then forgotten, so that the layout every viewer sees
+    /// tells nothing about the battle's seed; a token per player seat; the bot's seed. Checks that
+    /// the battle starts.
+    pub(crate) fn new(
+        offer: Arc<Offer>,
+        game: u32,
+        server: &config::Server,
+    ) -> Result<Self, Error> {
+        let mut setup = offer.setup.clone();
+        if let (true, Some(terrain)) = (offer.random_obstacles, setup.terrain) {
             let mut rng = Rng::for_stream(os_u64()?, StreamId::OBSTACLES);
-            setup.obstacles = h3_battle::generate_obstacles(&ruleset, terrain, &mut rng);
-        }
-        if config.bots.contains(&BotSeat::Attacker) && config.bots.contains(&BotSeat::Defender) {
-            return Err(Error(String::from(
-                "bots play both seats: a hosted game needs a player",
-            )));
+            setup.obstacles = h3_battle::generate_obstacles(&offer.ruleset, terrain, &mut rng);
         }
         let seed = os_u64()?;
-        BattleState::new(&ruleset, &setup, seed).map_err(|e| at(&e))?;
+        BattleState::new(&offer.ruleset, &setup, seed)
+            .map_err(|e| Error(format!("offer `{}`, game {game}: {e}", offer.id)))?;
         let mut tokens = [None, None];
-        for (side, token_slot) in [BotSeat::Attacker, BotSeat::Defender]
+        for (side, slot) in [BotSeat::Attacker, BotSeat::Defender]
             .into_iter()
             .zip(&mut tokens)
         {
-            if !config.bots.contains(&side) {
-                *token_slot = Some(token()?);
+            if !offer.bots.contains(&side) {
+                *slot = Some(token()?);
             }
         }
-        let replay_path = config.data.join("replays").join(format!(
-            "{}-game{GAME_ID}-{:016x}.toml",
-            def.id,
+        let replay_path = server.data.join("replays").join(format!(
+            "{}-game{game}-{:016x}.toml",
+            offer.id,
             os_u64()?
         ));
         Ok(Self {
-            ruleset,
-            scenario: def.id,
+            game,
+            offer,
             setup,
             seed,
             tokens,
             bot_seed: os_u64()?,
             replay_path,
-            checkpoint_every: config.checkpoint_every,
+            checkpoint_every: server.checkpoint_every,
         })
     }
 
-    /// Runs the game on its own OS thread until every sender of `inbox` is gone.
-    pub(crate) fn spawn(self, inbox: mpsc::Receiver<ToGame>) -> Result<(), Error> {
+    /// Runs the game on its own OS thread until it leaves the lobby.
+    pub(crate) fn spawn(
+        self,
+        inbox: mpsc::Receiver<ToGame>,
+        registry: Shared,
+    ) -> Result<(), Error> {
         thread::Builder::new()
-            .name(format!("game-{GAME_ID}"))
-            .spawn(move || self.run(inbox))
+            .name(format!("game-{}", self.game))
+            .spawn(move || self.run(inbox, &registry))
             .map(|_| ())
             .map_err(|e| Error(format!("game thread: {e}")))
     }
 
-    /// The game's loop: one message at a time through the session core.
-    fn run(self, mut inbox: mpsc::Receiver<ToGame>) {
+    /// The game's loop: one message at a time through the session core. After each, the lobby
+    /// hears where the game is; a game that is not running and that no connection is bound to
+    /// leaves the lobby and ends (E16 M2 T1).
+    fn run(self, mut inbox: mpsc::Receiver<ToGame>, registry: &Shared) {
         let Self {
-            ruleset,
-            scenario,
+            game,
+            offer,
             setup,
             seed,
             tokens,
@@ -187,18 +240,19 @@ impl Prepared {
             }
         });
         let config = GameConfig {
-            game: GAME_ID,
+            game,
             setup,
             seed,
             checkpoint_every,
         };
         // `Prepared::new` started this battle already.
-        let Ok(mut session) = Session::new(&ruleset, config, seats) else {
-            return;
+        let Ok(mut session) = Session::new(&offer.ruleset, config, seats) else {
+            return lock(registry).leave(game);
         };
         let mut conns = BTreeMap::new();
         let mut out = Vec::new();
         let mut published = false;
+        let mut reported = (session.phase(), session.open_seats());
         while let Some(event) = inbox.blocking_recv() {
             match event {
                 ToGame::Open { conn, to } => {
@@ -215,11 +269,21 @@ impl Prepared {
             }
             if !published && session.result().is_some() {
                 published = true;
-                let text = replay_text(&ruleset, &scenario, &session);
-                write_replay(&replay_path, &text);
+                let text = replay_text(&offer.ruleset, &offer.scenario, &session);
+                write_replay(game, &replay_path, &text);
                 session.publish_replay(text);
             }
+            let now = (session.phase(), session.open_seats());
+            let mut registry = lock(registry);
+            if now != reported {
+                registry.report(game, now.0, now.1.clone());
+                reported = now;
+            }
+            if registry.close_if_idle(game, reported.0) {
+                return;
+            }
         }
+        lock(registry).leave(game);
     }
 }
 
@@ -262,14 +326,14 @@ fn replay_text(ruleset: &Ruleset, scenario: &str, session: &Session<'_>) -> Stri
     })
 }
 
-/// Writes the replay file; a failure is logged, the game goes on.
-fn write_replay(path: &std::path::Path, text: &str) {
+/// Writes game `game`'s replay file; a failure is logged, the game goes on.
+fn write_replay(game: u32, path: &Path, text: &str) {
     let written = path
         .parent()
         .map_or(Ok(()), fs::create_dir_all)
         .and_then(|()| fs::write(path, text));
     match written {
-        Ok(()) => eprintln!("h3-server: game {GAME_ID} over, replay {}", path.display()),
+        Ok(()) => eprintln!("h3-server: game {game} over, replay {}", path.display()),
         Err(e) => eprintln!("h3-server: replay {}: {e}", path.display()),
     }
 }
@@ -277,7 +341,7 @@ fn write_replay(path: &std::path::Path, text: &str) {
 #[cfg(test)]
 mod tests {
     use h3_protocol::codec;
-    use h3_protocol::wire::{Seat, ServerMessage};
+    use h3_protocol::wire::ServerMessage;
 
     use super::*;
 
@@ -288,7 +352,7 @@ mod tests {
             token: String::from(t),
         });
         let config = GameConfig {
-            game: GAME_ID,
+            game: 1,
             setup,
             seed: 1,
             checkpoint_every: 0,
@@ -297,7 +361,7 @@ mod tests {
         let (to, mut queue) = mpsc::channel(1);
         let mut conns = BTreeMap::from([(ConnId(1), to)]);
         let join = |token: Option<&str>| ClientMessage::Join {
-            game: GAME_ID,
+            game: 1,
             seat: Seat::Attacker,
             token: token.map(String::from),
         };
