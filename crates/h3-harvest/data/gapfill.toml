@@ -2030,6 +2030,34 @@ url = "docs/formats/installation.md"
 retrieved = "2026-10-10"
 
 [[source]]
+id = "exe-opening-spells"
+kind = "original-data"
+ref = "Heroes3.exe code reading (docs/formats/installation.md 7.24): at the first activation of a stack a side controls outside the tactics phase (0x465330, flag +0x54B0 set at the setup 0x463B05), the side's hero wearing Angelic Alliance (129) casts Prayer (48) and one wearing Armor of the Damned (132) Slow (54), Curse (42), Weakness (45) and Misfortune (52), each if some stack would be affected (0x5A40D0), through the cast routine 0x59FE30 with caster kind 2, mastery 3 and power 10 (Prayer) or 50: no mana, no round's cast, no Orb of Inhibition test, no duration bonus; the mass handler 0x5A66D0 tests and rolls each stack and applies the hero's specialty"
+url = "docs/formats/installation.md"
+retrieved = "2026-10-10"
+
+[[source]]
+id = "exe-eagle-eye"
+kind = "original-data"
+ref = "Heroes3.exe code reading (docs/formats/installation.md 7.24): Eagle Eye's chance 0x4E4420 is the skill's table value (0x63EA28: 0.40, 0.50, 0.60), grown for a specialist, plus 0.05 for the Bird of Perception (63), 0.10 for the Stoic Watchman (64), 0.15 for the Emblem of Cognizance (65), 0 without the skill, at most 1; the cast routine (0x59FF52) lets it learn a spell of level at most the skill's level + 1"
+url = "docs/formats/installation.md"
+retrieved = "2026-10-10"
+
+[[source]]
+id = "wiki-opening-spells"
+kind = "wiki"
+ref = "Angelic Alliance: 'Casts Expert Prayer for 10 rounds at the start of combat'; Armor of the Damned: 'Casts Expert Slow, Curse, Weakness, and Misfortune for 50 rounds at the start of combat', 'only casts its opening combat spells once an allied creature is able to take its turn'; both 'can be mitigated by' immunity, Cursed Ground or anti-magic artifacts and work 'normally in Anti-Magic Garrisons'"
+url = "https://heroes.thelazy.net/index.php/Armor_of_the_Damned"
+retrieved = "2026-10-10"
+
+[[source]]
+id = "wiki-eagle-eye"
+kind = "wiki"
+ref = "Eagle Eye (SoD text): 'a 40% chance to learn any 1st or 2nd level spell used in combat', 50% up to 3rd, 60% up to 4th level; 'Bird of Perception: +5%', 'Stoic Watchman: +10%', 'Emblem of Cognizance: +15%'; a specialist's '5% bonus per level to the skill'"
+url = "https://heroes.thelazy.net/index.php/Eagle_Eye"
+retrieved = "2026-10-10"
+
+[[source]]
 id = "exe-spell-defences"
 kind = "original-data"
 ref = "Heroes3.exe code reading (docs/formats/installation.md 7.23, 7.8): the effect test 0x5A8090 and its creature part 0x44A4D0 ask the hero controlling the stack (0x442690): the Sphere of Permanence (92) refuses Dispel and Dispel Helpful Spells, Armageddon's Blade (128) Armageddon, Power of the Dragon Father (134) every spell of level 1 to 4 but Dispel, the Pendants their spells (Dispassion 100 Berserk, Second Sight 101 Blind, Holiness 102 Curse, Life 103 Death Ripple, Death 104 Destroy Undead, Free Will 105 Hypnotize, Negativity 106 Lightning Bolt and Chain Lightning, Total Recall 107 Forgetfulness), all before the Orb of Vulnerability (93) on the caster's or that hero, which makes the stack fully affected, before Badge of Courage (49), which refuses the mind spells; the creature table 0x44A988 adds Titan's Lightning Bolt to the Earth and Magma Elementals' immunities, the damage stage 0x44B4B0 to the Air and Storm Elementals' double damage"
@@ -2285,11 +2313,15 @@ effects = [
 sources = ["wiki-vial-of-dragon-blood", "vcmi-artifacts"]
 
 # Dispute D1: the SoD text and the wiki name these five towns; VCMI lets every non-evil faction
-# (Conflux and neutral creatures included) mix. Batch 1b candidate.
+# (Conflux and neutral creatures included) mix. Batch 1b candidate. Its opening spell (E04b T8c;
+# pack format v33; HER-BAT-017, BAT-MAG-068).
 [[artifacts.effects]]
 artifacts = ["Angelic Alliance"]
-effects = [{ kind = "alignment_group", factions = ["Castle", "Rampart", "Tower", "Fortress", "Stronghold"] }]
-sources = ["wiki-angelic-alliance", "vcmi-artifacts"]
+effects = [
+    { kind = "alignment_group", factions = ["Castle", "Rampart", "Tower", "Fortress", "Stronghold"] },
+    { kind = "opening_spell", spell = "base:prayer", mastery = 3, power = 10 },
+]
+sources = ["wiki-angelic-alliance", "vcmi-artifacts", "exe-opening-spells", "wiki-opening-spells"]
 
 [[artifacts.effects]]
 artifacts = ["Elixir of Life"]
@@ -2497,16 +2529,40 @@ artifacts = ["Power of the Dragon Father"]
 effects = [{ kind = "spell_level_immunity", level = 4 }]
 sources = ["exe-spell-defences"]
 
+# The opening spells (E04b T8c; pack format v33; HER-BAT-017, BAT-MAG-068), in the original's
+# order (0x465330).
+# Angelic Alliance's Prayer: with its alignment group above.
+[[artifacts.effects]]
+artifacts = ["Armor of the Damned"]
+effects = [
+    { kind = "opening_spell", spell = "base:slow", mastery = 3, power = 50 },
+    { kind = "opening_spell", spell = "base:curse", mastery = 3, power = 50 },
+    { kind = "opening_spell", spell = "base:weakness", mastery = 3, power = 50 },
+    { kind = "opening_spell", spell = "base:misfortune", mastery = 3, power = 50 },
+]
+sources = ["exe-opening-spells", "wiki-opening-spells", "vcmi-artifacts"]
+
+# Eagle Eye's artifacts (E04b T8d; pack format v33; HER-SPL-004): nothing without the skill.
+[[artifacts.effects]]
+artifacts = ["Bird of Perception"]
+effects = [{ kind = "eagle_eye", bp = 500 }]
+needs_skill = "Eagle Eye"
+sources = ["exe-eagle-eye", "wiki-eagle-eye", "vcmi-artifacts"]
+
+[[artifacts.effects]]
+artifacts = ["Stoic Watchman"]
+effects = [{ kind = "eagle_eye", bp = 1000 }]
+needs_skill = "Eagle Eye"
+sources = ["exe-eagle-eye", "wiki-eagle-eye", "vcmi-artifacts"]
+
+[[artifacts.effects]]
+artifacts = ["Emblem of Cognizance"]
+effects = [{ kind = "eagle_eye", bp = 1500 }]
+needs_skill = "Eagle Eye"
+sources = ["exe-eagle-eye", "wiki-eagle-eye", "vcmi-artifacts"]
+
 # Effects no epic has modelled yet; the pack marks these artifacts, and every artifact without a
 # modelled effect must be listed here.
-[[artifacts.pending]]
-epic = "E04b"
-what = "opening spells, Eagle Eye"
-artifacts = [
-    "Bird of Perception", "Stoic Watchman", "Emblem of Cognizance",
-    "Angelic Alliance", "Armor of the Damned",
-]
-
 [[artifacts.pending]]
 epic = "E04c"
 what = "the Catapult, no obstacle penalty in sieges"

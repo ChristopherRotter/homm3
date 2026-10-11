@@ -204,6 +204,10 @@ pub fn event(kind: &EventKind) -> Event {
             stack: stack.0,
             spell: spell.raw(),
         },
+        K::OpeningSpell { side: s, spell } => Event::OpeningSpell {
+            side: side(s),
+            spell: spell.raw(),
+        },
         K::ManaChanneled { side: s, mana } => Event::ManaChanneled {
             side: side(s),
             mana,

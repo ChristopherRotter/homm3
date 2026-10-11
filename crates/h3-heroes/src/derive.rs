@@ -1,5 +1,5 @@
 //! The translation from hero details to the battle hero (ADR-0013 point 2; HER-BAT-001 to
-//! HER-BAT-016).
+//! HER-BAT-017).
 
 use alloc::collections::BTreeSet;
 use alloc::vec::Vec;
@@ -7,10 +7,11 @@ use core::num::NonZeroU32;
 
 use h3_content::{
     Affects, ArtifactTypeId, CompiledHeroEffect, CreatureSelector, CreatureStat, CreatureTypeId,
-    FULL_BP, HeroEffect, Ruleset, SINGLE_PRECISION_RATES, SchoolId, SpellId, SpellScope,
+    FULL_BP, HeroEffect, Ruleset, SINGLE_PRECISION_RATES, SchoolId, SpellCategory, SpellId,
+    SpellScope,
 };
 use h3_contracts::{
-    BallistaControl, BattleEffect, BattleHero, BattleMagic, DamageBonuses, FactionGroup,
+    BallistaControl, BattleEffect, BattleHero, BattleMagic, DamageBonuses, EagleEye, FactionGroup,
     MAX_BATTLE_EFFECTS, MachineControl, Rate, StatOp, TentControl,
 };
 use h3_kernel::arith::{SINGLE_BITS, X87};
@@ -24,8 +25,11 @@ use crate::spells;
 /// effects (HER-BAT-003), the damage bonuses (HER-BAT-004), the war machines it commands
 /// (HER-BAT-005), the `NoRetreat` effect (HER-BAT-006), the surrender discount (HER-BAT-007),
 /// the stack statistic effects (HER-BAT-008), the stack trait effects (HER-BAT-009), the
-/// alignment groups (HER-BAT-010), the magic (HER-BAT-011: the spell book, HER-SPL-002, and the
-/// spell masteries, HER-SPL-003; the mana passed through) and the spell bonuses (HER-BAT-012). The details are validated first.
+/// alignment groups (HER-BAT-010), the magic (HER-BAT-011: the spell book, HER-SPL-002, the
+/// spell masteries, HER-SPL-003, and Eagle Eye, HER-SPL-004; the mana passed through), the spell
+/// bonuses (HER-BAT-012), the magic resistance (HER-BAT-013), the spell duration bonus
+/// (HER-BAT-014), the casting limits (HER-BAT-015), the spell defences (HER-BAT-016) and the
+/// opening spells (HER-BAT-017). The details are validated first.
 ///
 /// The maximum mana stays 0 (informative; it is derived with hero progression, E08–E10).
 ///
@@ -104,6 +108,9 @@ pub fn derive_battle_hero(
 
     // rule: HER-BAT-016
     hero.effects.extend(spell_defences(details, ruleset));
+
+    // rule: HER-BAT-017
+    hero.effects.extend(opening_spells(details, ruleset));
     if hero.effects.len() > MAX_BATTLE_EFFECTS {
         return Err(DetailsError::TooManyBattleEffects);
     }
@@ -124,7 +131,7 @@ pub fn derive_battle_hero(
 
 /// The hero's magic (HER-BAT-011): its available spells ([`crate::available_spells`]) as its
 /// spell book if one of its effects gives a spell book (each artifact type once), its spell
-/// masteries ([`crate::spell_masteries`]), the mana as given.
+/// masteries ([`crate::spell_masteries`]), its Eagle Eye ([`eagle_eye`]), the mana as given.
 fn magic(details: &HeroDetails, ruleset: &Ruleset) -> BattleMagic {
     let book = effects(details, ruleset, Count::OncePerType)
         .any(|effect| matches!(effect, HeroEffect::SpellBook));
@@ -133,7 +140,63 @@ fn magic(details: &HeroDetails, ruleset: &Ruleset) -> BattleMagic {
         masteries: spells::masteries(details, ruleset),
         mana: details.mana,
         max_mana: 0,
+        eagle_eye: eagle_eye(details, ruleset),
     }
+}
+
+/// The hero's Eagle Eye (HER-SPL-004; the original's 0x4E4420 and the cast routine's test,
+/// `docs/formats/installation.md` §7.24): the [`RateSum`] of the `eagle_eye` values of
+/// [`grown_effects`] (the skill's grown by an Eagle Eye specialty, then each artifact type once,
+/// which need the skill), at most 10 000 basis points; the spells it may learn are the combat
+/// spells the hero has not learned (an artifact's spell is not learned) of a level at most the
+/// largest `max_level`. None without a `max_level` (no skill).
+fn eagle_eye(details: &HeroDetails, ruleset: &Ruleset) -> Option<EagleEye> {
+    // rule: HER-SPL-004
+    let single = single_precision(ruleset);
+    let mut sum = RateSum::default();
+    let mut max_level = 0;
+    for (effect, growth) in grown_effects(details, ruleset) {
+        if let HeroEffect::EagleEye { bp, max_level: l } = *effect {
+            sum.add(bp.into(), growth, single);
+            max_level = max_level.max(l);
+        }
+    }
+    (max_level > 0).then(|| EagleEye {
+        chance: sum.rate(FULL_BP.into()),
+        spells: (0..ruleset.spells().len())
+            .filter_map(SpellId::from_index)
+            .zip(ruleset.spells())
+            .filter(|&(id, spell)| {
+                spell.category == SpellCategory::Combat
+                    && spell.level <= max_level
+                    && !details.spells.contains(&id)
+            })
+            .map(|(id, _)| id)
+            .collect(),
+    })
+}
+
+/// The opening spells (HER-BAT-017): one `OpeningSpell` per `opening_spell` effect of
+/// [`grown_effects`] (each artifact type once, in the order of the types, whatever the order
+/// worn), within one source in the order of its effects: the original casts Angelic Alliance's
+/// (129) Prayer, then Armor of the Damned's (132) four (0x465330). The battle casts them at the
+/// side's first activation (BAT-MAG-068).
+fn opening_spells<'a>(
+    details: &'a HeroDetails,
+    ruleset: &'a Ruleset,
+) -> impl Iterator<Item = BattleEffect> + 'a {
+    grown_effects(details, ruleset).filter_map(|(effect, _)| match *effect {
+        HeroEffect::OpeningSpell {
+            spell,
+            mastery,
+            power,
+        } => Some(BattleEffect::OpeningSpell {
+            spell,
+            mastery,
+            power,
+        }),
+        _ => None,
+    })
 }
 
 /// The spell bonuses (HER-BAT-012): per scope (every spell, a school, a spell) the [`RateSum`] of

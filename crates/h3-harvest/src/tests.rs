@@ -244,6 +244,7 @@ fn hero_data() -> HeroData {
             (4, float([0.0, 0.2, 0.4, 0.6])),
             (25, float([0.0, 0.05, 0.1, 0.15])),
             (26, float([0.0, 0.05, 0.1, 0.2])),
+            (11, float([0.0, 0.4, 0.5, 0.6])),
             (27, float([0.0, 1.0, 2.0, 3.0])),
         ],
         specialty_growth: 0.05,
@@ -826,6 +827,9 @@ fn harvests_hero_content() {
     assert_eq!(zap.magic.effects, [h3_content::SpellEffect::Damage]);
     assert!(base.contains("expert = [{ kind = \"spell_damage\", bp = 1500 }]"));
     assert!(base.contains("expert = [{ kind = \"magic_resistance\", bp = 2000 }]"));
+    // Eagle Eye: the table's chance and the skill's level + 1 (installation.md §7.24).
+    assert!(base.contains("basic = [{ kind = \"eagle_eye\", bp = 4000, max_level = 2 }]"));
+    assert!(base.contains("expert = [{ kind = \"eagle_eye\", bp = 6000, max_level = 4 }]"));
     assert!(
         h.report
             .iter()

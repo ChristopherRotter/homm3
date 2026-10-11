@@ -27,17 +27,20 @@ const SPTRAITS_FIELDS: usize = 34;
 const SCHOOL_COLUMNS: std::ops::Range<usize> = 3..7;
 
 /// Skills whose battle effect the executable's value table gives (installation.md §7.4): skill
-/// id, effect kind and parameter name, and whether the values are fractions (to basis points).
-const TABLE_SKILLS: [(u8, &str, &str, bool); 9] = [
-    (9, "luck", "amount", false),
-    (6, "morale", "amount", false),
-    (1, "ranged_damage", "bp", true),
-    (22, "melee_damage", "bp", true),
-    (23, "damage_reduction", "bp", true),
-    (4, "surrender_discount", "bp", true),
-    (27, "first_aid", "heal_bp", true),
-    (25, "spell_damage", "bp", true),
-    (26, "magic_resistance", "bp", true),
+/// id, effect kind and parameter name, whether the values are fractions (to basis points), and a
+/// parameter the skill's level plus 1 gives, if any (Eagle Eye's highest spell level, the cast
+/// routine's test at 0x59FF7A, installation.md §7.24).
+const TABLE_SKILLS: [(u8, &str, &str, bool, Option<&str>); 10] = [
+    (9, "luck", "amount", false, None),
+    (6, "morale", "amount", false, None),
+    (1, "ranged_damage", "bp", true, None),
+    (22, "melee_damage", "bp", true, None),
+    (23, "damage_reduction", "bp", true, None),
+    (4, "surrender_discount", "bp", true, None),
+    (27, "first_aid", "heal_bp", true, None),
+    (25, "spell_damage", "bp", true, None),
+    (26, "magic_resistance", "bp", true, None),
+    (11, "eagle_eye", "bp", true, Some("max_level")),
 ];
 
 /// Bits of the executable's spell flag word the harvester reads (installation.md §7.6).
@@ -587,7 +590,7 @@ pub fn harvest_heroes(
             .ok_or_else(|| format!("{what}: skill id {id} out of range"))
     };
     let mut skill_levels: BTreeMap<usize, [String; 3]> = BTreeMap::new();
-    for (skill, kind, param, fraction) in TABLE_SKILLS {
+    for (skill, kind, param, fraction, by_level) in TABLE_SKILLS {
         let (_, values) = exe
             .skill_values
             .iter()
@@ -616,7 +619,9 @@ pub fn harvest_heroes(
                 }
                 continue;
             }
-            levels[level - 1] = effect_list(&[inline(kind, &[(param, rendered)])]);
+            let mut params = vec![(param, rendered)];
+            params.extend(by_level.map(|p| (p, (level + 1).to_string())));
+            levels[level - 1] = effect_list(&[inline(kind, &params)]);
         }
         skill_levels.insert(usize::from(skill), levels);
     }

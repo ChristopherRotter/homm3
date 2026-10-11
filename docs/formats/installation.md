@@ -418,8 +418,8 @@ for a spell that takes a target stack (flags `0x20070`), a living stack on the h
 (so a stack that would always resist is no target); Remove Obstacle, Fire Wall and Force Field
 have their own hex tests (T5); every other hex is accepted, so an area spell may be aimed at an
 empty hex, an obstacle or an immune stack's hex (batch 2a R3b, R3c). For Chain Lightning (spell
-19) the cursor, the book's "any target" check and the creature casters' (0x5A40D0) also refuse a
-stack of the caster's side (0x59F7BF; batch 2a R1). The single-target spells and the battle-wide
+19) the cursor, the book's "any target" check and the opening spells' (0x5A40D0, §7.24) also
+refuse a stack of the caster's side (0x59F7BF; batch 2a R1). The single-target spells and the battle-wide
 ones (24–26) need at least one stack the target test accepts before the cursor opens; the area
 spells do not. 0x5A8090 also returns 0 for spells above level 1 on battlefield type 2 (Cursed
 Ground, E04c) and checks a worn artifact 0x53 (Recanter's Cloak, T8) for spells above level 2.
@@ -1669,3 +1669,83 @@ Mirth and Sorrow (VCMI: cast, no effect; the wiki's table: golems keep them) and
 Misfortune and Slayer at the Tent and the Ammo Cart (VCMI: cast, no effect; the wiki ambiguous).
 The engine follows this reading on all three until batch 2e (the user, BAT-Q22). The rendered table
 also lists the Troglodytes' Blind among the immunities the Orb keeps (BAT-Q21 point 3).
+
+### 7.24 Code reading: the opening spells and Eagle Eye (E04b T8c, T8d, 2026-10-10)
+
+Read for E04b increment 17 (BAT-Q23). Both are casts the hero does not choose: the opening spells
+are cast for the hero by its artifacts, and Eagle Eye watches the enemy hero's casts.
+
+**The opening spells** (T8c, BAT-MAG-068). The battle setup (0x463B05, in the loop over both
+sides) sets a flag per side (+0x54B0 + side). A stack's activation (0x465330) first sets the
+acting side (+0x132C0) to the stack's controller (a hypnotized stack's is the other side) and then
+(0x4653A8) does nothing more in the tactics phase (+0x13D68): neither the opening spells nor the
+Faerie Dragon's draw, the Wraith's drain or the Enchanters' cast (§7.21). Otherwise, while the
+acting side's flag is set, it takes that side's hero (+0x53CC + 4 × side) and, if the hero wears
+**Angelic Alliance** (129; 0x4D91F0, §7.23), casts **Prayer** (48), then, if it wears **Armor of
+the Damned** (132), **Slow** (54), **Curse** (42), **Weakness** (45) and **Misfortune** (52), in
+this order, and clears the flag (0x4654E5; also without a hero). The activation runs only for a
+stack the pick 0x465080 lets act (after the blind, petrified and paralysed stacks, bad morale and
+Fear, 0x465283), so a side whose first stack loses its turn casts at its next stack's. Each spell
+goes through 0x5A40D0 first (its five calls are its only callers; the address map had named it
+the creature casters' target check): it asks the target test 0x5A39C0 (§7.8) at every hex outside
+the two side columns, at mastery 3 for the acting side, and casts only if one passes, so only if
+some living stack would be affected (`f > 0`; a hypnotized stack counts there, though the mass
+handler then passes over it). The cast is the cast routine 0x59FE30 with target hex −1, **caster
+kind 2**, mastery 3 (Expert) and power 10 (Prayer) or 50 (the Armor's four).
+
+**Caster kind 2 in the cast routine.** The casting hero is the acting side's (as for kind 0;
+kind 1 has none). The mastery is the argument (Expert on Magic Plains too, 0x59FEBC); the hero's
+own mastery is not asked. Only kind 0 takes the path at 0x59FEE4: the Orb of Inhibition, an
+anti-magic garrison and Cursed Ground's ban (0x41F890, §7.23), Eagle Eye's roll (below), the cost
+and its payment, the side's "cast this round" mark (+0x54B4). The power stays the argument and
+is also the duration: the duration bonus of the Conjuring artifacts (0x4E4DB0, §7.9) is added
+for kind 0 only (0x5A0098). The hero's casting animation plays as for kind 0. Target hex −1 has
+no aimed stack (no roll at 0x5A02EA, no Magic Mirror); the five spells take the timed spells'
+case (0x5A10AB), which with no target stack calls the mass handler 0x5A66D0 (§7.9) with the
+casting hero and kind 2: each stack of both sides, attacker's first, skipping hypnotized ones,
+is tested by 0x5A8090 (kind 2 changes nothing there; it matters only for the raising spells' kind
+1) and rolls, and 0x4448F0 applies the spell with the hero, so the hero's specialty bonus counts
+(Prayer and Weakness are among its spells, §7.12). The cost is 0, so no Familiar channel
+(0x5A2170). So the opening spells are the hero's Expert mass casts without mana, cast mark,
+duration bonus, Orb or garrison test, and per-stack tests and rolls as usual: the level limits
+(Recanter's Cloak, Cursed Ground's level 1) and the defences of §7.23 apply per stack.
+
+**Eagle Eye** (T8d, BAT-MAG-069). In the cast routine, for caster kind 0 only and after the Orb
+test passed (0x59FF52): if the hero of the side opposite the acting one exists, has Eagle Eye
+(+0xD4, the secondary skill 11, above 0), has not learned the spell (+0x3EA, the learned spells,
+§7.22: a spell only an artifact gives does not count as learned) and the spell's level (+0x18 of
+its record) is at most its Eagle Eye level + 1, it draws `random(1, 100)` from the battle's
+generator (0x50B230) and, if the draw is at most `trunc(p × 100.0f)` (0x6179D4 truncates), puts
+the spell into that side's set (+0x545C + 16 × side; 0x5A9450 is the C++ library's unique set
+insert, so a spell is kept once, while each cast of it draws again). The draw comes before the
+cost and before any roll of the cast itself (a Magic Mirror's redirection too); creature casts and
+the opening spells draw nothing.
+
+**The chance** `p` (0x4E4420, H3API's `GetEagleEyePower`): 0 without the skill (returned at
+once); otherwise the table 0x63EA28 by level (`f32` 0.40, 0.50, 0.60), multiplied for a hero
+whose specialty is the skill (specialty type 0, subtype 11) by `f32(level) × 0.05f + 1` (the
+x87's 53 bits, stored as `f32`, as the other skill getters, §7.4); then `+ 0.05f` while it wears
+the **Bird of Perception** (63), `+ 0.10f` the **Stoic Watchman** (64), `+ 0.15f` the **Emblem of
+Cognizance** (65) (each a body position or a worn combination holding it; each sum stored as
+`f32`); at most 1.0.
+
+**After the battle** (the orchestrator's, BAT-Q24 open). The battle's end 0x477470 does this for
+the winning side only (0x47772F; none in a draw): 0x469FE0 has the winner's hero learn each spell
+of that side's set (0x4D9330: learned and available) if it wears a Spell Book (artifact 0) and the
+spell's level is at most its Wisdom (+0xD0) + 2. The side's experience (0x4E33B0) comes before
+that unless the side's flag +0x54A6 is set (set at the setup, not read); then it comes after
+it, in the results dialog's branch (0x477948), which also shows the "learned" message (0x476FE0,
+with a pick-up sound drawn by `random(1, 7)`, sound only). The loser's set is dropped.
+
+**The other sources** (2026-10-10, BAT-Q23). The wiki (the artifact pages; Eagle Eye's SoD text,
+the second argument of its `swh` template) agrees with every point of the opening spells (cast
+"once an allied creature is able to take its turn", later after a bad-morale turn; immunities,
+Cursed Ground and "anti-magic artifacts" mitigate; it works in an anti-magic garrison; Loynis's
+and the Weakness specialists' specialties improve it) and with Eagle Eye's chances, levels,
+artifacts and specialty, the win and the Wisdom. VCMI 1.7.5 (`BattleFlowProcessor::castOpeningSpells`,
+`BattleResultProcessor`) agrees on the spells, Expert, the durations, the specialty, the resistance
+rolls and the Orb (its passive mode skips the magic block), but casts both sides' opening spells at
+the end of the tactics phase, before round 1 (attacker first); it rolls Eagle Eye after the battle
+over the loser's recorded hero casts (one roll per cast: the same odds), for a winner with units
+left, without a book or Wisdom test. The engine follows the code and the wiki on the timing until
+an experiment confirms it (BAT-Q23); the learning after the battle is open (BAT-Q24).

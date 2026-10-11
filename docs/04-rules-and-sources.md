@@ -80,7 +80,7 @@ A **profile** is a named set of quirk flags plus Tier-2 parameters. Initial prof
 - `faithful` (default): all `preserve` and `fix-optional` quirks on; `exploit-fix` quirks always fixed.
 - `strict-fixed`: all quirks fixed.
 
-Profiles are data (ADR-0006). The active profile is part of the `Ruleset` and of the replay header.
+Profiles are data (ADR-0006). The active profile is part of the `Ruleset` and of the replay header. A **data quirk** (a wrong value in the content data, such as a creature's level) has a `quirk.content.<name>` flag like any other; the pack keeps the original's value and an override gated by the flag (`fixes = "<flag>"`) carries the fix, applied in the core compile when the profile turns the flag off (ADR-0007, amendment E04b T8e).
 
 ### Ledger entry template
 

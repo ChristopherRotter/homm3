@@ -190,3 +190,111 @@ validation together), because the setup types are best shaped with the validator
   until T7/T8 read the data; the data tests carry their `covers:` markers.
 - **Not done:** a check of `adventure.toml` against `movement.txt` under `--with-original-data`
   (it needs `h3-formats` as a dev-dependency, a shared change; inbox).
+
+### T5a, T6a — Static map, setups and the import (2026-10-10, `adventure/e08-t5a-t6a`)
+
+The user took T5a and T6a as one round (one import, written once into `GameSetup`) and chose,
+for placed heroes without stacks of their own (58 of 116 in the shipped maps), a starting-army
+placeholder that T6b draws, over an `Unsupported` error.
+
+- **Adventure setup and state** (`h3-adventure`): `AdventureSetup` (players, the static map, the
+  heroes), `MapSetup` (width, height, levels; tiles with T4's handles; objects with an anchor,
+  `TileMask`s for blocked and visitable tiles, kind `Blocker`), `HeroSetup` (id, owner, tile,
+  army as `h3_contracts::ArmyStack`s). `AdventureState::new` validates in order (size bounds,
+  tile count and handles, players, each object's level, each hero's id, owner, tile, army) and
+  builds the static map behind an `Arc` with per-tile `blocked`/`visitable` flags, the heroes in
+  a plain array by id (inserted by binary search: logic crates may not sort), stacks by slot (a
+  slot table). `check_stand` (ADV-MAP-001) is the one check T7 reuses. State hash v1: version,
+  the static map's hash (computed once at build), players, heroes. Agent decisions, change
+  freely: `Pos` uses `u16` columns and rows; `TileMask` is a `u64` of 48 bits whose bit
+  `8 × row + column` equals the `Objects.txt` character.
+- **Ruleset part v2:** the setup bounds as data (ADR-0015 point 6): `max_map_size` 144,
+  `max_levels` 2, `max_players` 8, `army_slots` 7, with sources in `packs/base/adventure.toml`
+  (VCMI's constants and the format). `max_players` sits in the adventure part because the
+  adventure keeps a layer per player; the game reads it there until a game part exists.
+- **Game rules and setup** (`h3-game`): `GameRuleset` (core + adventure part, paired by content
+  hash); `GameSetup` (players in colour order, the map, heroes with `HeroArmy::Custom` or
+  `Starting`); `PlayerId` and `HeroId` are indices into its lists. `validate` checks the game's
+  part (player and hero counts, colours strictly increasing below `max_players`, known hero
+  types, starting armies with stacks; the core already checks each stack's counts), then builds
+  the adventure setup and lets the adventure validate it. A starting army stands in as its hero
+  type's whole army at the lowest counts in slots 0..: every draw takes stacks from the front at
+  counts within their bounds (VCMI `CGHeroInstance::initArmy`), so it validates exactly when every
+  draw does. ADR-0017 point 4 said "none in increment 1" for setup placeholders: noted in its
+  revision history (shared PR).
+- **Import** (`h3-map`, `MAP_IMPORT_VERSION` 1, `docs/formats/h3m.md` "Import"): `import` and
+  `import_map` (the static layer). Codes to keys only there: terrain, road and river tables, and
+  creatures and hero types by the packs' `# original id` (a test parses `packs/*/pack.toml` and
+  compares). `Unsupported`: a hero generated at a main town, a random hero, a campaign
+  placeholder, a random stack (the 14 codes below "none", VCMI `readCreature32`), a hero standing
+  on a town's blocked tile (VCMI `placeHeroesInTowns` moves it into its own town). Other typed
+  errors: map size, unknown code, content the ruleset lacks, a missing template, a hero of a colour
+  nobody plays, a hero template without one visitable tile on the map. A hero's customisations
+  are ignored (`ADV-STUB-1`).
+- **Found: the masks' geometry was mirrored** in `h3m.md` and the reader's docs since T3: bit
+  `j` of byte `i` is the tile `7 − j` columns left of and `5 − i` rows above the anchor (VCMI
+  `readMap`; `readTxt` reads `Objects.txt` anchor first). Shown by the data: in the old reading
+  every town's gate sat on its template's top row and every hero five rows above its position.
+  The reader never interpreted the masks, so nothing else changes; `h3_formats::h3m`'s writer
+  copies text to bytes by the right relation, only its comment says "top left first" (battle
+  lane; inbox for the writer's move).
+- **Found: anchors past the edge** are common (decorations, heroes on the last column): up to 5
+  columns right and 2 rows below in the shipped maps; VCMI skips off-map tiles. So only an
+  object's level is checked (`SetupError::ObjectLevel`). **And a gate is blocked:** towns' masks
+  mark their gate blocked and visitable; VCMI's `evaluateAccessibility` asks for visitable first,
+  so ADV-MAP-001 lets a hero stand on a tile that is blocked only where it is also visitable.
+- **Shipped maps** (`examples/original_data.rs`, run by `verify --with-original-data`): all 164
+  static layers import and validate; 10 maps import and validate whole, 129 are unsupported for a
+  hero at a main town, 22 for a random hero, 3 for a hero in a town (first reason found).
+- **Rules:** ADV-OBJ-001 (the tiles an object covers) and ADV-MAP-001 (where a hero may stand),
+  `implemented`.
+- **Tests:** every setup and import error, the footprint off the edges, the stand rule, the hash
+  (content, not sharing; the order of heroes and stacks in a setup does not matter), the code
+  tables against the packs, and parse, import and validation together on arbitrary bytes and on
+  the reader's model strategy with damaged encodings.
+
+### Checkpoint after T5a/T6a and T6b + T7a (2026-10-10, `adventure/e08-t6b-t7a`)
+
+At the checkpoint the user took T6b with T7's code reading (T7a) as this round, so the round ends
+at the classification of A-2 and A-3, and moved T5b's gated fork benchmark to T9: T5b measures
+with callgrind on an adventure-owned example, because the `h3` binary's dispatch and its
+`Cargo.toml` are battle-owned (T9 wires the CLI's adventure commands anyway).
+
+- **T6b readings** (survey §1.1, §3.1; map entries). *When the points are set (CR-2's callers,
+  ADV-Q4):* the End Turn handler 0x409A70 calls the next-player step 0x4C6FE0, which calls the
+  new day 0x4C7FE0 after the day's last player and then sets the new current player's heroes'
+  maximum and current points (+0x49, +0x4D; on the map, in its tavern, in its towns); the new day
+  sets none within two calls. The wiki and VCMI say the day's start: a conflict of sources; the
+  user chose the reading until a confirmation experiment (ADV-Q4, kept open). *The starting
+  army (0x4C9730, GAM-SET-001):* the first stack always, a roll of 1–100 at most 88 for the
+  second slot (a war machine there becomes its artifact), a new roll at most 25 for the third;
+  the wiki has the same chances per slot and 100 % for the nine war machines; VCMI one roll for
+  all slots. The user expected the war machine to be guaranteed; it is not on the map hero
+  before increment 3, so the round builds the stacks as read (the user, interim) and leaves the
+  war machine's chance open (ADV-Q6). *Turn order:* the original plays human players before
+  computer players each day (VCMI too); inbox.
+- **T6b build.** `h3_game::GameState::new(rules, setup, seed)`: the starting armies drawn from the
+  setup stream in hero order (the slots read as the first stack, the war machines, the other
+  stacks; the chances `starting_stack_chances = [88, 25]` in the adventure part, ruleset hash
+  v3); the game's own check that a hero type's stacks fit the army's slots (so validity never
+  depends on the draw; `GameSetup::validate` builds with seed 0); a stream per player and the
+  game's stream; sequential turn groups; day 1; the first group's turn started. `apply(state,
+  rules, Actor::Player(p), GameCommand::EndTurn, sink)`: `NotYourTurn`/`UnknownPlayer` leave the
+  state untouched; a group ends when every player in it has ended its turn; after the last group
+  the day advances. Events `TurnEnded`, `DayStarted`, `TurnStarted` (public facts). Game state
+  hash v1. `h3-adventure`: `HeroOnMap.movement`, `day_points` (ADV-MOV-001), `start_turn`
+  (ADV-MOV-002), state hash v2. Rules GAM-SET-001, GAM-TRN-001, GAM-TRN-002, GAM-CAL-001 (new
+  catalog `game.toml`), ADV-MOV-001/002 implemented. Tests: the draw's chances and slot layout,
+  4000 seeds against the read rates (the third stack without the second about 3 %), the turns
+  and a group of two (a test-only schedule), the rejections, the hash, a property test of
+  `EndTurn` atomicity and determinism; the shipped packs keep the draw's slot layout (nine war
+  machines, all second of three). Weeks and months wait for the first rule that reads them.
+- **T7a reading (CR-1, ADV-Q3; survey §1.2–1.3).** 0x4B18C0 → 0x4B1740: only the source tile
+  prices a step (its road's cost when both tiles have one, else 100 when native, else its terrain's
+  by Pathfinding); D-2 goes VCMI's way, against the wiki. The diagonal compares the points left
+  with the plain terrain cost T: below T unaffordable, from T to below T·√2 the straight cost,
+  above trunc(cost·√2); A-2 and A-3 exist as the wiki says, confirmed by an independent re-read by
+  a fresh agent (ledger `ADV-QUIRK-2`, `-3`, fix-optional pending the user). After each step the
+  points drop to 0 when fewer than the cheapest straight step from the new tile remain (0x4B1880;
+  D-3: not VCMI's rule). The f32 √2 truncated equals `isqrt(2·cost²)` for every cost below 5741.
+  Decisions for the user in ADV-Q3; T7b builds on them.

@@ -5,7 +5,10 @@
 //! wires (`h3-adventure` from increment 1; `h3-heroes` and `h3-battle` from increment 3); no
 //! domain crate depends on it (ADR-0015 point 1).
 //!
-//! Skeleton (E08 T2): the setup, the players, the schedule and `EndTurn` arrive in T6.
+//! So far: the game's rules ([`GameRuleset`]) and setup ([`GameSetup`]) with its validation
+//! (E08 T6a); the state ([`GameState`]) with the starting armies' draw, the players' streams,
+//! sequential turns, the calendar, and [`apply`] with `EndTurn` (T6b). The adventure's commands
+//! come with T7, `legal_commands`, `observe` and `project` with T8.
 //!
 //! Logic crate: pure, deterministic, `no_std` + `alloc` (ADR-0003, ADR-0005). The lint header
 //! below is required and checked by `cargo xtask check-arch`.
@@ -25,6 +28,22 @@
 )]
 #![warn(missing_docs)]
 
+extern crate alloc;
+
+mod command;
+mod ruleset;
+mod setup;
+mod state;
+
+#[cfg(test)]
+mod tests;
+
+pub use command::{Actor, GameCommand, GameCommandError, GameEvent, NoopSink, Sink, apply};
+pub use ruleset::{GameRuleset, RulesetMismatch};
+pub use setup::{GameHeroSetup, GameSetup, GameSetupError, HeroArmy, PlayerSetup};
+pub use state::GameState;
+
 /// Version of the game state's canonical hash encoding (`docs/08-work-process.md`, "Versions";
-/// owned by the adventure lane). Bump it with any change to what the hash covers.
+/// owned by the adventure lane). Bump it with any change to what the hash covers. v1 (E08 T6b):
+/// the first encoding ([`GameState`]'s `CanonicalHash`).
 pub const GAME_STATE_HASH_VERSION: u32 = 1;

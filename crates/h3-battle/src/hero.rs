@@ -340,10 +340,48 @@ pub(crate) fn check(
             ..
         }
         | BattleEffect::SpellSpecialty { spell: id, .. }
-        | BattleEffect::SpellImmunity { spell: id } => ruleset.spell(id).is_none(),
+        | BattleEffect::SpellImmunity { spell: id }
+        | BattleEffect::OpeningSpell { spell: id, .. } => ruleset.spell(id).is_none(),
         _ => false,
     }) {
         return Err(invalid(HeroError::UnknownSpell));
+    }
+    // rule: BAT-MAG-068
+    let bad_opening = hero.effects.iter().any(|e| match *e {
+        BattleEffect::OpeningSpell {
+            spell,
+            mastery,
+            power,
+        } => {
+            mastery > MAX_SKILL_LEVEL
+                || power == 0
+                || ruleset
+                    .spell(spell)
+                    .is_none_or(|s| !crate::magic::opens_with(ruleset, s, mastery))
+        }
+        _ => false,
+    });
+    if bad_opening {
+        return Err(invalid(HeroError::OpeningSpell));
+    }
+    // rule: BAT-MAG-069
+    if let Some(eagle) = &hero.magic.eagle_eye {
+        if eagle.chance.bp > u32::from(FULL_BP)
+            || eagle.chance.single.is_some_and(|b| b.get() > 0x3f80_0000)
+        {
+            return Err(invalid(HeroError::EagleEye));
+        }
+        for (i, &id) in eagle.spells.iter().enumerate() {
+            let spell = ruleset
+                .spell(id)
+                .ok_or_else(|| invalid(HeroError::UnknownSpell))?;
+            if eagle.spells.get(..i).unwrap_or_default().contains(&id) {
+                return Err(invalid(HeroError::DuplicateSpell));
+            }
+            if spell.category == SpellCategory::Ability {
+                return Err(invalid(HeroError::EagleEye));
+            }
+        }
     }
     let book = magic.spell_book.as_deref().unwrap_or_default();
     for (i, &id) in book.iter().enumerate() {
@@ -405,7 +443,8 @@ fn creature_of(effect: &BattleEffect) -> Option<CreatureTypeId> {
         | BattleEffect::SpellImmunity { .. }
         | BattleEffect::SpellLevelImmunity { .. }
         | BattleEffect::MindImmunity
-        | BattleEffect::NegateImmunities => return None,
+        | BattleEffect::NegateImmunities
+        | BattleEffect::OpeningSpell { .. } => return None,
     };
     match selector {
         CreatureSelector::Creature(c) => Some(*c),

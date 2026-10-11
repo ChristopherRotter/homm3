@@ -8,8 +8,8 @@
 id       = "ADV-MOV-001"
 title    = "Movement points of a day on land"
 context  = "adventure"
-status   = "specified"
-summary  = "A hero's movement points on land for a day come from the lowest speed among the creatures of its army through the land table (data: 1300, 1360, 1430, 1500, 1560, 1630, 1700, 1760, 1830, 1900, 1960, 2000 for speeds 0 to 11; faster armies take the last entry; the original reads its table up to speed 20, all 2000 from 11, and caps the speed at 20). Unused points are not carried over. Bonuses (Logistics, artifacts, Stables, a creature specialty's +1 speed) come with the adventure profile (increment 3). E08 T4: the table; T6/T7: when the points are set (ADV-Q4) and the slowest speed."
+status   = "implemented"
+summary  = "A hero's movement points on land for a day come from the lowest speed among the creatures of its army through the land table (data: 1300, 1360, 1430, 1500, 1560, 1630, 1700, 1760, 1830, 1900, 1960, 2000 for speeds 0 to 11; faster armies take the last entry; the original reads its table up to speed 20, all 2000 from 11, and caps the speed at 20). When they are set: ADV-MOV-002. Bonuses (Logistics, artifacts, Stables, a creature specialty's +1 speed) come with the adventure profile (increment 3); at sea (Navigation) with boats. E08 T4: the table; T6b: `h3_adventure::day_points`."
 numeric  = "integer"
 
   [[rule.source]]
@@ -31,6 +31,35 @@ numeric  = "integer"
   retrieved  = "2026-10-10"
   confidence = "medium"
   note       = "VCMI gives 1500 below speed 3, against the original's movement.txt and the wiki; no creature that can stand in an army is that slow (dispute D-4, settled by the original data)."
+
+[[rule]]
+id       = "ADV-MOV-002"
+title    = "When a day's movement points are set"
+context  = "adventure"
+status   = "implemented"
+summary  = "At the start of its owner's turn every hero of that player gets the day's movement points for its army (ADV-MOV-001); points left from the day before are lost. A placed hero gets them when the game is built too. The original sets them at the start of the turn, not at the change of day for everyone as the wiki and VCMI have it; the difference shows only when another player changes the army between the two, which nothing in increment 1 can. The user chose the code reading until the confirmation experiment settles it (ADV-Q4, 2026-10-10). E08 T6b: `AdventureState::start_turn`, run by `h3-game` at each turn group's start (ADR-0017 point 3)."
+numeric  = "integer"
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (E08 T6b; survey §1.1, CR-2): the End Turn handler 0x409A70 (a human's action) calls the next-player step 0x4C6FE0, which moves the current player 0x69CCA8 on, calls the new day 0x4C7FE0 when the last player has played (it sets no movement within two calls), then for the new current player's heroes (on the map, its two tavern heroes, the heroes in its towns) sets maximum (+0x49) and current (+0x4D) points (H3API maxMovement, movement) to 0x4E4D90's value. 0x4F4C00 does the same in the network branch. Placed heroes get them at setup in 0x486590"
+  confidence = "medium"
+
+  [[rule.source]]
+  kind       = "wiki"
+  ref        = "Movement - Heroes 3 wiki: 'Base movement is calculated only at the beginning of each day'"
+  url        = "https://heroes.thelazy.net/index.php/Movement"
+  retrieved  = "2026-10-09"
+  confidence = "medium"
+  note       = "Disagrees with the code reading on the hook (ADV-Q4); in sequential play each player's turn starts its day for it, so the sentence may mean either."
+
+  [[rule.source]]
+  kind       = "vcmi"
+  ref        = "server/processors/NewTurnProcessor.cpp: at the change of day every hero's movement becomes movementPointsLimitCached for its tile"
+  url        = "https://github.com/vcmi/vcmi/blob/1.7.5/server/processors/NewTurnProcessor.cpp"
+  retrieved  = "2026-10-10"
+  confidence = "medium"
+  note       = "Disagrees with the code reading (ADV-Q4): VCMI resets every player's heroes at the day change."
 
 [[rule]]
 id       = "ADV-MOV-003"
@@ -118,3 +147,45 @@ numeric  = "integer"
   url        = "https://github.com/vcmi/vcmi/blob/1.7.5/config/gameConfig.json"
   retrieved  = "2026-10-10"
   confidence = "high"
+
+[[rule]]
+id       = "ADV-OBJ-001"
+title    = "The tiles an object covers"
+context  = "adventure"
+status   = "implemented"
+summary  = "An object covers tiles relative to its anchor, its bottom right tile, through two masks of 8 columns by 6 rows: its blocked tiles, which no hero enters, and its visitable tiles, from which a hero visits it (a mask may mark a tile both ways: a town's gate). The anchor may lie past the map's right or bottom edge (the editor lets objects stick out; shipped maps anchor up to 5 columns right and 2 rows below it); tiles of the footprint off the map are ignored. In increment 1 every object is a blocker: its visitable tiles block entering too (E08 decision 1; movement reads both in T7). E08 T5a: the footprint in the static map and the import from the map's templates."
+numeric  = "integer"
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = ".h3m templates: 6 bytes of passability (bit clear = blocked) and 6 of visitability; bit j of byte i is the tile 7 - j columns left of and 5 - i rows above the anchor, Objects.txt's character 47 - (8i + j), anchor first (docs/formats/h3m.md; E08 T5a: every shipped map's towns have their gate on their bottom row, heroes stand one column left of their position)"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "vcmi"
+  ref        = "lib/mapObjects/ObjectTemplate.cpp ObjectTemplate::readMap (byte i bit j to usedTiles[5 - i][7 - j]: BLOCKED where the passability bit is 0, VISITABLE where the visitability bit is 1) and readTxt (character 8i + j to usedTiles[i][j]); usedTiles[y][x] is x columns left of and y rows above the anchor (CGObjectInstance::blockingAt); lib/mapping/CMap.cpp CMap::showObject (tiles outside the map are skipped)"
+  url        = "https://github.com/vcmi/vcmi/blob/1.7.5/lib/mapping/CMap.cpp"
+  retrieved  = "2026-10-10"
+  confidence = "high"
+
+[[rule]]
+id       = "ADV-MAP-001"
+title    = "Where a hero may stand"
+context  = "adventure"
+status   = "implemented"
+summary  = "A hero stands on a tile of the map whose terrain is walked on land (not water without a boat, never rock), which no object blocks unless an object is visited from it, and no other hero stands on. A visitable tile is allowed even where a mask also blocks it (a hero may start on a town's gate, which the town's masks mark both ways; VCMI asks for visitable first). One check for the setup and for movement (ADR-0015 point 4): a setup that breaks it is rejected; T7's steps add the visitable tiles of increment 1 and the step rules (ADV-MOV-007). E08 T5a."
+numeric  = "integer"
+
+  [[rule.source]]
+  kind       = "vcmi"
+  ref        = "lib/pathfinder/PathfinderUtil.h evaluateAccessibility: a visitable tile is a visit (or accessible) before blocking is asked, a blocked tile that is not visitable is BLOCKED; config/terrains.json: water is sailed (type WATER), rock never entered (type ROCK)"
+  url        = "https://github.com/vcmi/vcmi/blob/1.7.5/lib/pathfinder/PathfinderUtil.h"
+  retrieved  = "2026-10-10"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "wiki"
+  ref        = "Movement - Heroes 3 wiki: rock is impassable; water is crossed by boat"
+  url        = "https://heroes.thelazy.net/index.php/Movement"
+  retrieved  = "2026-10-09"
+  confidence = "medium"

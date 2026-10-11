@@ -23,7 +23,7 @@ use h3_content::{
 };
 use h3_contracts::{
     Army, ArmyStack, BallistaControl, BattleEffect, BattleHero, BattleSetup, BattleSide,
-    DamageBonuses, FactionGroup, Obstacle, Rate, StatOp, TentControl,
+    DamageBonuses, EagleEye, FactionGroup, Obstacle, Rate, StatOp, TentControl,
 };
 use serde::{Deserialize, Serialize};
 
@@ -1290,6 +1290,17 @@ enum EffectDto {
     },
     MindImmunity {},
     NegateImmunities {},
+    /// Pack format v33 (E04b T8c, T8d).
+    OpeningSpell {
+        spell: String,
+        mastery: u8,
+        power: u16,
+    },
+    EagleEye {
+        bp: u16,
+        #[serde(default)]
+        max_level: u8,
+    },
 }
 
 /// Whose stacks a morale or luck effect changes, as files write it (`own` by default, `enemy`,
@@ -1504,6 +1515,16 @@ impl EffectDto {
             Self::SpellLevelImmunity { level } => HeroEffect::SpellLevelImmunity { level },
             Self::MindImmunity {} => HeroEffect::MindImmunity,
             Self::NegateImmunities {} => HeroEffect::NegateImmunities,
+            Self::OpeningSpell {
+                spell,
+                mastery,
+                power,
+            } => HeroEffect::OpeningSpell {
+                spell: reference(pack, &spell)?,
+                mastery,
+                power,
+            },
+            Self::EagleEye { bp, max_level } => HeroEffect::EagleEye { bp, max_level },
         })
     }
 }
@@ -2055,6 +2076,10 @@ pub struct HeroEntry {
     /// when set).
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub tent: Option<TentEntry>,
+    /// The hero's Eagle Eye ([`h3_contracts::BattleMagic::eagle_eye`]; default none, written only
+    /// when set; replay format v21, E04b T8d).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub eagle_eye: Option<EagleEyeEntry>,
     /// The hero's mastery per spell by spell key, 1 to 3 ([`h3_contracts::BattleMagic::masteries`];
     /// default none, written only when set; replaces the school masteries since replay format
     /// v20, E04b T8a).
@@ -2102,6 +2127,19 @@ pub struct TentEntry {
     /// Its single-precision value, an `f32` bit pattern (written only when set, E04b T3c).
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub single: Option<NonZeroU32>,
+}
+
+/// A hero's Eagle Eye ([`EagleEye`]) in scenario and replay files.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct EagleEyeEntry {
+    /// The chance to learn a spell at one cast, basis points.
+    pub chance_bp: u32,
+    /// Its single-precision value, an `f32` bit pattern (written only when set).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub single: Option<NonZeroU32>,
+    /// The spells it may learn, by spell key.
+    pub spells: Vec<String>,
 }
 
 /// Whether a value is 0 (serde's `skip_serializing_if`).
@@ -2288,6 +2326,15 @@ pub enum EffectEntry {
     MindImmunity {},
     /// [`BattleEffect::NegateImmunities`] (a struct variant, so that unknown keys are rejected).
     NegateImmunities {},
+    /// [`BattleEffect::OpeningSpell`].
+    OpeningSpell {
+        /// The spell by key.
+        spell: String,
+        /// Its mastery.
+        mastery: u8,
+        /// Its power.
+        power: u16,
+    },
 }
 
 impl SelectorEntry {
@@ -2436,6 +2483,15 @@ impl EffectEntry {
             }
             Self::MindImmunity {} => BattleEffect::MindImmunity,
             Self::NegateImmunities {} => BattleEffect::NegateImmunities,
+            Self::OpeningSpell {
+                spell,
+                mastery,
+                power,
+            } => BattleEffect::OpeningSpell {
+                spell: spell_id(ruleset, spell)?,
+                mastery,
+                power,
+            },
         })
     }
 
@@ -2525,6 +2581,15 @@ impl EffectEntry {
             }
             BattleEffect::MindImmunity => Self::MindImmunity {},
             BattleEffect::NegateImmunities => Self::NegateImmunities {},
+            BattleEffect::OpeningSpell {
+                spell,
+                mastery,
+                power,
+            } => Self::OpeningSpell {
+                spell: spell_key(ruleset, spell)?,
+                mastery,
+                power,
+            },
             BattleEffect::AlignmentGroup { factions } => Self::AlignmentGroup {
                 factions: factions
                     .factions()
@@ -2592,6 +2657,20 @@ impl HeroEntry {
             .collect::<Result<_, PackError>>()?;
         // Spell order, as the Heroes context derives them (keys sort differently).
         hero.magic.masteries.sort_unstable_by_key(|&(s, _)| s);
+        hero.magic.eagle_eye = self
+            .eagle_eye
+            .as_ref()
+            .map(|e| {
+                Ok::<_, PackError>(EagleEye {
+                    chance: rate(e.chance_bp, e.single),
+                    spells: e
+                        .spells
+                        .iter()
+                        .map(|k| spell_id(ruleset, k.clone()))
+                        .collect::<Result<_, _>>()?,
+                })
+            })
+            .transpose()?;
         Ok(hero)
     }
 
@@ -2622,6 +2701,22 @@ impl HeroEntry {
             .iter()
             .map(|e| EffectEntry::of(e, ruleset))
             .collect::<Result<_, _>>()?;
+        let eagle_eye = hero
+            .magic
+            .eagle_eye
+            .as_ref()
+            .map(|e| {
+                Ok::<_, PackError>(EagleEyeEntry {
+                    chance_bp: e.chance.bp,
+                    single: e.chance.single,
+                    spells: e
+                        .spells
+                        .iter()
+                        .map(|&s| spell_key(ruleset, s))
+                        .collect::<Result<_, _>>()?,
+                })
+            })
+            .transpose()?;
         let key = ruleset
             .hero_type(hero.hero_type)
             .map(|t| t.key.as_str().to_owned())
@@ -2648,6 +2743,7 @@ impl HeroEntry {
                 single: t.heal_bonus.single,
             }),
             spell_book,
+            eagle_eye,
             masteries,
             effects,
         })
@@ -3341,6 +3437,12 @@ mod tests {
                 BattleEffect::SpellLevelImmunity { max_level: 4 },
                 BattleEffect::MindImmunity,
                 BattleEffect::NegateImmunities,
+                // E04b T8c.
+                BattleEffect::OpeningSpell {
+                    spell: spark,
+                    mastery: 3,
+                    power: 50,
+                },
             ])
             .collect();
         // Single-precision values of their own (E04b T3c, OPEN-QUESTIONS Q45).
@@ -3353,6 +3455,14 @@ mod tests {
         every.surrender_discount_bp = 4000;
         every.magic.spell_book = Some(vec![spark]);
         every.magic.masteries = vec![(spark, 2)];
+        // E04b T8d: Eagle Eye's chance with a single-precision value of its own, its spells.
+        every.magic.eagle_eye = Some(EagleEye {
+            chance: Rate {
+                bp: 4400,
+                single: NonZeroU32::new(0x3ee1_47af),
+            },
+            spells: vec![spark],
+        });
         let entry = HeroEntry::of(&every, &ruleset).unwrap();
         assert_eq!(entry.resolve(&ruleset), Ok(every));
         let written = toml::to_string(&entry).unwrap();
@@ -3382,6 +3492,18 @@ mod tests {
             "{written}"
         );
         assert!(written.contains("heal_bonus_bp = 10000\nsingle = 1087268455\n"));
+        assert!(
+            written.contains(
+                "[eagle_eye]\nchance_bp = 4400\nsingle = 1054951343\nspells = [\"synthetic:spark\"]\n"
+            ),
+            "{written}"
+        );
+        assert!(
+            written.contains(
+                "[[effects]]\nkind = \"opening_spell\"\nspell = \"synthetic:spark\"\nmastery = 3\npower = 50\n"
+            ),
+            "{written}"
+        );
         assert!(
             written.contains("[ballista]\nshots = 1\ndouble_damage_chance_bp = 5000\n"),
             "{written}"
@@ -3479,9 +3601,28 @@ mod tests {
         // Spells and schools outside the ruleset.
         type Change = (fn(&mut BattleHero), PackError);
         let unknown_spell = || PackError::UnknownSpell("#99".to_owned());
-        let changes: [Change; 4] = [
+        let changes: [Change; 6] = [
             (
                 |h| h.magic.spell_book = Some(vec![SpellId::from_raw(99)]),
+                unknown_spell(),
+            ),
+            (
+                |h| {
+                    h.magic.eagle_eye = Some(EagleEye {
+                        chance: Rate::bp(4000),
+                        spells: vec![SpellId::from_raw(99)],
+                    });
+                },
+                unknown_spell(),
+            ),
+            (
+                |h| {
+                    h.effects = vec![BattleEffect::OpeningSpell {
+                        spell: SpellId::from_raw(99),
+                        mastery: 3,
+                        power: 1,
+                    }];
+                },
                 unknown_spell(),
             ),
             (
@@ -3526,6 +3667,14 @@ mod tests {
             ),
             (
                 "masteries = { \"synthetic:nova\" = 1 }",
+                PackError::UnknownSpell("synthetic:nova".to_owned()),
+            ),
+            (
+                "[scenario.defender_hero.eagle_eye]\nchance_bp = 4000\nspells = [\"synthetic:nova\"]",
+                PackError::UnknownSpell("synthetic:nova".to_owned()),
+            ),
+            (
+                "effects = [{ kind = \"opening_spell\", spell = \"synthetic:nova\", mastery = 3, power = 1 }]",
                 PackError::UnknownSpell("synthetic:nova".to_owned()),
             ),
             (
@@ -4175,7 +4324,8 @@ mod tests {
             })
         );
         // Five Clovers of Fortune give luck +1: identical artifacts do not stack (wiki Artifact).
-        // Angelic Alliance lets the five SoD towns mix (HER-BAT-010).
+        // Angelic Alliance lets the five SoD towns mix (HER-BAT-010) and casts Expert Prayer
+        // with power 10 at the side's first activation (HER-BAT-017).
         let luck = |amount| BattleEffect::Luck {
             amount,
             affects: Affects::Own,
@@ -4188,6 +4338,11 @@ mod tests {
                 luck(1),
                 BattleEffect::AlignmentGroup {
                     factions: FactionGroup::new(&towns).unwrap()
+                },
+                BattleEffect::OpeningSpell {
+                    spell: sod.spell_by_key("base:prayer").unwrap(),
+                    mastery: 3,
+                    power: 10,
                 }
             ]
         );
@@ -4461,7 +4616,7 @@ mod tests {
             (params.primary_min, params.primary_max, params.backpack),
             ([0, 0, 1, 2], 40, 3)
         );
-        assert_eq!(r.artifacts().len(), 20);
+        assert_eq!(r.artifacts().len(), 22);
         let by_key = |k: &str| r.artifact(r.artifact_by_key(k).unwrap()).unwrap();
         let regalia = by_key("synthetic-ext:storm_regalia");
         assert_eq!(regalia.class, ArtifactClass::Relic);
@@ -4622,6 +4777,7 @@ mod tests {
             "{ kind = \"spells\", spell = \"S:x\" },",
             "{ kind = \"spell_mastery\", spell = \"S:x\", level = 3 },",
             "{ kind = \"spell_immunity\", spell = \"S:x\" },",
+            "{ kind = \"opening_spell\", spell = \"S:x\", mastery = 3, power = 1 },",
         ] {
             let text = SYNTHETIC_PACK.replacen(bell, to, 1);
             assert!(matches!(parse_pack(&text), Err(PackError::Key(_))), "{to}");
@@ -5008,7 +5164,7 @@ mod tests {
             parse_pack(&text).map(|_| ()),
             Err(PackError::Syntax("unknown mastery `all`".into()))
         );
-        assert_eq!(r.skills().len(), 13);
+        assert_eq!(r.skills().len(), 14);
         let omens = r.skill(r.skill_by_key("synthetic:omens").unwrap()).unwrap();
         assert_eq!(
             omens.effects(3)[1],

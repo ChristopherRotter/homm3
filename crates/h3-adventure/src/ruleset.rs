@@ -14,7 +14,7 @@ use alloc::format;
 use alloc::string::String;
 use alloc::vec::Vec;
 use core::fmt;
-use core::num::NonZeroU16;
+use core::num::{NonZeroU8, NonZeroU16};
 
 use h3_content::{ContentKey, PackManifest, Ruleset, TerrainId};
 use h3_kernel::hash::hash_of;
@@ -92,6 +92,18 @@ pub struct AdventureParamsDef {
     pub land_points: Vec<u32>,
     /// A hero's scouting radius without bonuses (ADV-FOG-001).
     pub scouting_radius: u8,
+    /// The widest and highest map in tiles (a setup bound, ADR-0015 point 6).
+    pub max_map_size: NonZeroU16,
+    /// The most levels of a map (surface and underground).
+    pub max_levels: NonZeroU8,
+    /// The most players of a game; the adventure keeps a layer per player (fog of war).
+    pub max_players: NonZeroU8,
+    /// The slots of a hero's army.
+    pub army_slots: NonZeroU8,
+    /// The chance in percent that a hero's starting army gets the stack of its second, third, …
+    /// starting slot; the first slot's stack always comes, slots past the list never
+    /// (GAM-SET-001). Each at most 100.
+    pub starting_stack_chances: Vec<u8>,
 }
 
 /// One pack's adventure definitions (its `adventure.toml`), with the manifest of its core pack.
@@ -163,6 +175,11 @@ pub struct AdventureParams {
     native_cost: NonZeroU16,
     land_points: Vec<u32>,
     scouting_radius: u8,
+    max_map_size: NonZeroU16,
+    max_levels: NonZeroU8,
+    max_players: NonZeroU8,
+    army_slots: NonZeroU8,
+    starting_stack_chances: Vec<u8>,
 }
 
 impl AdventureParams {
@@ -187,6 +204,31 @@ impl AdventureParams {
     /// A hero's scouting radius without bonuses (ADV-FOG-001).
     pub const fn scouting_radius(&self) -> u8 {
         self.scouting_radius
+    }
+
+    /// The widest and highest map in tiles.
+    pub const fn max_map_size(&self) -> u16 {
+        self.max_map_size.get()
+    }
+
+    /// The most levels of a map.
+    pub const fn max_levels(&self) -> u8 {
+        self.max_levels.get()
+    }
+
+    /// The most players of a game.
+    pub const fn max_players(&self) -> u8 {
+        self.max_players.get()
+    }
+
+    /// The slots of a hero's army.
+    pub const fn army_slots(&self) -> u8 {
+        self.army_slots.get()
+    }
+
+    /// The chance in percent of each starting slot after the first (GAM-SET-001).
+    pub fn starting_stack_chances(&self) -> &[u8] {
+        &self.starting_stack_chances
     }
 }
 
@@ -401,10 +443,12 @@ impl AdventureRuleset {
 }
 
 impl CanonicalHash for AdventureRuleset {
-    /// Encoding v1 (E08 T4): version; the terrains in the core's order (key, passage: 0 land,
-    /// 1 water with the cost, 2 impassable); the road kinds (key, name, cost); the river kinds
-    /// (key, name); the parameters (native cost, the land table as length + entries, scouting
-    /// radius). The core's hash is not part of it: replays record both.
+    /// Encoding v3 (E08 T6b; v1 was T4's, v2 T5a's): version; the terrains in the core's order
+    /// (key, passage: 0 land, 1 water with the cost, 2 impassable); the road kinds (key, name,
+    /// cost); the river kinds (key, name); the parameters (native cost, the land table as its
+    /// length and entries, scouting radius; since v2 the largest map size, levels, players and
+    /// the army slots; since v3 the starting stack chances as their length and entries). The
+    /// core's hash is not part of it: replays record both.
     fn hash_into(&self, h: &mut StateHasher) {
         h.write_u32(ADVENTURE_RULESET_HASH_VERSION);
         h.write_len(self.terrains.len());
@@ -426,6 +470,11 @@ impl CanonicalHash for AdventureRuleset {
         h.write_u16(self.params.native_cost.get());
         self.params.land_points.hash_into(h);
         h.write_u8(self.params.scouting_radius);
+        h.write_u16(self.params.max_map_size.get());
+        h.write_u8(self.params.max_levels.get());
+        h.write_u8(self.params.max_players.get());
+        h.write_u8(self.params.army_slots.get());
+        self.params.starting_stack_chances.hash_into(h);
     }
 }
 
@@ -538,6 +587,8 @@ fn validate_params(def: AdventureParamsDef) -> Result<AdventureParams, Adventure
         Some("land_points has more entries than speeds")
     } else if def.land_points.contains(&0) {
         Some("a land_points entry is 0")
+    } else if def.starting_stack_chances.iter().any(|&c| c > 100) {
+        Some("a starting_stack_chances entry is above 100")
     } else {
         None
     };
@@ -547,6 +598,11 @@ fn validate_params(def: AdventureParamsDef) -> Result<AdventureParams, Adventure
             native_cost: def.native_cost,
             land_points: def.land_points,
             scouting_radius: def.scouting_radius,
+            max_map_size: def.max_map_size,
+            max_levels: def.max_levels,
+            max_players: def.max_players,
+            army_slots: def.army_slots,
+            starting_stack_chances: def.starting_stack_chances,
         }),
     }
 }

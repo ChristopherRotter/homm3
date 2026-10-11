@@ -6,14 +6,15 @@
 //! import and validation are property-tested together on arbitrary bytes (`cargo-fuzz` later).
 //! Format notes: `docs/formats/h3m.md`. The `.h3m` writer moves here from `h3-formats` after E04b.
 //!
-//! E08 T3: the reader ([`read`], [`parse`] into [`model::RawMap`]); the import with the setup
-//! types follows in T5 (`AdventureSetup`) and T6 (`GameSetup`).
+//! E08 T3: the reader ([`read`], [`parse`] into [`model::RawMap`]); T5a and T6a: the [`import`]
+//! into `h3_game::GameSetup`.
 #![forbid(unsafe_code)]
 #![warn(missing_docs)]
 
 mod cursor;
 mod error;
 mod gzip;
+mod import;
 mod limits;
 pub mod model;
 mod parse;
@@ -23,6 +24,7 @@ mod tests;
 
 pub use error::ReadError;
 pub use gzip::{crc32, gunzip};
+pub use import::{ImportError, Unsupported, import, import_map};
 pub use limits::Limits;
 pub use model::RawMap;
 pub use parse::parse;

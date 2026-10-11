@@ -1853,3 +1853,58 @@ records how and why the tasks went.
 - **Measurements:** golden replays re-recorded (the ruleset hash; `full-s3`'s commands unchanged,
   its last checkpoint and final hash moved: an Expert Boon skips the synthetic Aid Tent and Supply
   Wagon); `bench-check` within its baseline (no re-baseline); state hash and its layout unchanged.
+
+### Increment 17: T8c, the opening spells, and T8d, Eagle Eye in battle (2026-10-10)
+
+- **Start:** #52 and #53 (increment 16) merged, CI green on `master` (c1288a9; the adventure
+  lane's #50 after it); the sandbox's full verify with the original data green on f5b396c. Batch
+  2e not played yet (its template on `master` blank). The user's cut (BAT-Q23): T8c and T8d, one
+  `cross-lane` pull request; T8e next.
+- **Code reading** (`installation.md` §7.24): the setup sets a flag per side (0x463B05); the
+  activation 0x465330 does nothing more in the tactics phase, else, while the acting side's
+  (the controller's) flag is set, casts Angelic Alliance's Prayer (power 10) and Armor of the
+  Damned's Slow, Curse, Weakness, Misfortune (power 50) at mastery 3, each if 0x5A40D0 finds a
+  hex the target test accepts, and clears the flag. 0x5A40D0's only callers are these five: the
+  address map had named it the creature casters' target check (renamed). The cast routine's
+  caster kind 2 takes the side's hero but skips the Orb test, Eagle Eye, the cost, the cast mark
+  (0x59FEE4) and the duration bonus (0x5A0098); the mass handler tests and rolls each stack and
+  applies the spell with the hero (its specialty). Eagle Eye: 0x59FF52 (kind 0 only) draws
+  `random(1, 100) ≤ trunc(p × 100)` for the opposite hero if it has the skill, has not learned
+  the spell and its level is at most the skill's + 1, into a unique set per side (0x5A9450);
+  p (0x4E4420) is the table value grown for a specialist, plus 0.05/0.10/0.15 for the three
+  artifacts, 0 without the skill, at most 1. After the battle (0x469FE0) only the winner's hero
+  learns, with a worn Spell Book, spells up to Wisdom + 2.
+- **The other sources** (BAT-Q23): the wiki agrees on every opening point (cast "once an allied
+  creature is able to take its turn", later after a bad-morale turn; it works in an anti-magic
+  garrison; the specialists improve it) and on Eagle Eye's chances, levels, artifacts, specialty,
+  the win and Wisdom (its SoD text is the `swh` template's second argument; the summariser
+  first reported HotA's). VCMI 1.7.5 casts both sides' opening spells at the end of the tactics
+  phase, before round 1, and rolls Eagle Eye after the battle, once per recorded hero cast (the
+  same odds), without a book or Wisdom test. **The user:** the code and the wiki on the timing
+  until an experiment; the seam as proposed; the learning after the battle left open (BAT-Q24).
+- **Seam** (`cross-lane`): `BattleEffect::OpeningSpell { spell, mastery, power }`,
+  `BattleMagic.eagle_eye: Option<EagleEye { chance: Rate, spells }>`, `HeroOutcome.learned`
+  replacing `spells_cast` (nothing read it); ADR-0014 points 2 and 10 amended.
+- **Content:** pack format v33: hero effects `opening_spell` (36) and `eagle_eye` (37); ruleset
+  hash v42. The harvester reads Eagle Eye's value table (0x63EA28) with `max_level` the skill's
+  level + 1; the gap-fill gives Angelic Alliance and Armor of the Damned their opening spells and
+  the three Eagle Eye artifacts `eagle_eye` with `needs_skill` (the last E04b `pending` entries).
+  `h3-heroes`: HER-BAT-017 (in the order of the artifact types via `grown_effects`), HER-SPL-004
+  (a `RateSum`, so Q-0005's single-precision value; the combat spells not learned up to the
+  largest `max_level`). The synthetic pack has `keen_eye`, `dawn_mantle` and `hawk_feather`.
+- **Battle:** `magic::opening` at the start of `turn::activation` (after the checks that pass a
+  stack over; never in the tactics phase, which has its own activations): a free mass cast of the
+  controller's hero per opening spell that passes the target test (hypnotized stacks counted,
+  then passed over by the mass cast), an `OpeningSpell` event; `magic::eagle_eye` in the hero
+  branch of `apply_cast`, before the cast's draws; the percent `trunc(rate × 100)` at the setup
+  (a Basic Eagle Eye specialist at level 2: 43 % with Q-0005). The setup refuses an opening
+  spell with a target at its mastery, damage or another non-timed effect, an ability, a mastery
+  above 3, power 0 or more than eight, and an Eagle Eye above 1 or listing an ability. State hash
+  v41 (`HeroMagic`: the opening spells, their due flag, Eagle Eye's percent, spells and picks; the
+  cast spells gone); replay format v21. BAT-MAG-068, BAT-MAG-069; BAT-END-003 reports the picks.
+- **Review** (independent, read-only): no bug. Done: the version bumps (ruleset hash v42, replay
+  format v21), abilities refused as opening spells, tests for a resisted opening Slow, a
+  hypnotized stack's activation, an Enchanter's casts against Eagle Eye, a damaging opening
+  spell. Left: the scenarios' heroes have no opening spells or Eagle Eye yet (T9's workload).
+- **Measurements:** golden replays re-recorded (state hash v41, ruleset hash v42, replay format
+  v21; their commands unchanged); `bench-check` within its baseline (no re-baseline).

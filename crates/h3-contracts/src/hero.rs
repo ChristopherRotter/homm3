@@ -75,6 +75,7 @@ impl BattleHero {
                 masteries: Vec::new(),
                 mana: 0,
                 max_mana: 0,
+                eagle_eye: None,
             },
         }
     }
@@ -165,6 +166,21 @@ pub struct BattleMagic {
     pub mana: u16,
     /// Maximum spell points (informative).
     pub max_mana: u16,
+    /// The hero's Eagle Eye, if it has the skill (`h3_heroes`, HER-SPL-004; E04b T8d,
+    /// BAT-MAG-069).
+    pub eagle_eye: Option<EagleEye>,
+}
+
+/// What the battle needs of a hero's Eagle Eye (E04b T8d, BAT-Q23): at each cast of the enemy
+/// hero of one of `spells`, the battle rolls `chance` and reports the spells it hit
+/// ([`crate::HeroOutcome::learned`]); who learns them is the orchestrator's (BAT-Q24).
+#[derive(Debug, Clone, PartialEq, Eq, Default)]
+pub struct EagleEye {
+    /// The chance to learn a spell at one cast, at most 1 (HER-SPL-004).
+    pub chance: Rate,
+    /// The spells it may learn: those the hero has not learned, of a level at most its Eagle Eye
+    /// level + 1, by spell handle, each once.
+    pub spells: Vec<SpellId>,
 }
 
 /// How a [`BattleEffect::StackStat`] changes a statistic.
@@ -343,4 +359,17 @@ pub enum BattleEffect {
     /// creatures' immunities and magic resistance and the heroes' resistance (the Orb of
     /// Vulnerability; E04b T8b2; HER-BAT-016, BAT-MAG-066).
     NegateImmunities,
+    /// At the first activation of a stack its side controls outside the tactics phase, the side
+    /// casts `spell` at `mastery` with `power` (its duration) as its hero's cast that costs
+    /// nothing and is not the round's cast, if it affects some stack (Angelic Alliance's Prayer,
+    /// Armor of the Damned's four; E04b T8c; HER-BAT-017, BAT-MAG-068). The effects of a hero
+    /// cast in their order.
+    OpeningSpell {
+        /// The spell.
+        spell: SpellId,
+        /// Its mastery, 0 (none) to 3 (Expert).
+        mastery: u8,
+        /// Its power: its effects' duration in rounds.
+        power: u16,
+    },
 }

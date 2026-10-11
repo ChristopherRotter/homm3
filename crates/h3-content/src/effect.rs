@@ -489,6 +489,28 @@ pub enum HeroEffect<C, K, S, F, L> {
     /// immunities and resistance and the heroes' resistance (the Orb of Vulnerability; E04b T8b2,
     /// HER-BAT-016).
     NegateImmunities,
+    /// At the first activation of a stack its side controls outside the tactics phase, the side
+    /// casts `spell` at `mastery` with `power` (its duration) for free, if it affects some stack
+    /// (Angelic Alliance's Prayer, Armor of the Damned's Slow, Curse, Weakness, Misfortune; E04b
+    /// T8c, HER-BAT-017). In list order.
+    OpeningSpell {
+        /// The spell.
+        spell: S,
+        /// Mastery, 0 (none) to 3 (Expert).
+        mastery: u8,
+        /// Power, the effects' duration in rounds (≥ 1).
+        power: u16,
+    },
+    /// Eagle Eye (E04b T8d, HER-SPL-004): the chance to learn a spell at each cast of the enemy
+    /// hero grows by `bp`, and spells up to `max_level` may be learned (the skill: 40 %, 50 %,
+    /// 60 % and levels 2, 3, 4; the Bird of Perception, the Stoic Watchman and the Emblem of
+    /// Cognizance +5 %, +10 %, +15 % and no level, which need the skill).
+    EagleEye {
+        /// Chance in basis points (1..=10 000).
+        bp: u16,
+        /// The highest spell level it lets the hero learn (0 adds none, at most 5).
+        max_level: u8,
+    },
 }
 
 /// An effect as written in a pack (references are keys).
@@ -498,7 +520,7 @@ pub type CompiledHeroEffect = HeroEffect<CreatureTypeId, SkillId, SpellId, Facti
 
 impl<C, K, S, F, L> HeroEffect<C, K, S, F, L> {
     /// Pack names, indexed by [`HeroEffect::code`].
-    pub const NAMES: [&'static str; 36] = [
+    pub const NAMES: [&'static str; 38] = [
         "morale",
         "luck",
         "ranged_damage",
@@ -535,6 +557,8 @@ impl<C, K, S, F, L> HeroEffect<C, K, S, F, L> {
         "spell_level_immunity",
         "mind_immunity",
         "negate_immunities",
+        "opening_spell",
+        "eagle_eye",
     ];
 
     /// Stable code of the variant (canonical hash, duplicate checks).
@@ -576,6 +600,8 @@ impl<C, K, S, F, L> HeroEffect<C, K, S, F, L> {
             Self::SpellLevelImmunity { .. } => 33,
             Self::MindImmunity => 34,
             Self::NegateImmunities => 35,
+            Self::OpeningSpell { .. } => 36,
+            Self::EagleEye { .. } => 37,
         }
     }
 
@@ -731,6 +757,19 @@ impl<C, K, S, F, L> HeroEffect<C, K, S, F, L> {
             Self::SpellLevelImmunity { level } => HeroEffect::SpellLevelImmunity { level: *level },
             Self::MindImmunity => HeroEffect::MindImmunity,
             Self::NegateImmunities => HeroEffect::NegateImmunities,
+            Self::OpeningSpell {
+                spell: s,
+                mastery,
+                power,
+            } => HeroEffect::OpeningSpell {
+                spell: spell(s)?,
+                mastery: *mastery,
+                power: *power,
+            },
+            Self::EagleEye { bp, max_level } => HeroEffect::EagleEye {
+                bp: *bp,
+                max_level: *max_level,
+            },
         })
     }
 
@@ -806,6 +845,16 @@ impl<C, K, S, F, L> HeroEffect<C, K, S, F, L> {
             Self::SpellLevelImmunity { level } if !(1..=MAX_SPELL_LEVEL).contains(level) => {
                 Some("spell_level_immunity level must be 1..=5")
             }
+            Self::OpeningSpell { mastery, .. } if *mastery > MAX_SKILL_LEVEL => {
+                Some("opening_spell mastery must be 0..=3")
+            }
+            Self::OpeningSpell { power: 0, .. } => Some("opening_spell power must be at least 1"),
+            Self::EagleEye { bp, .. } if !(1..=FULL_BP).contains(bp) => {
+                Some("eagle_eye bp must be 1..=10000")
+            }
+            Self::EagleEye { max_level, .. } if *max_level > MAX_SPELL_LEVEL => {
+                Some("eagle_eye max_level must be 0..=5")
+            }
             _ => None,
         }
     }
@@ -815,8 +864,8 @@ impl<C: PartialEq, K, S: PartialEq, F, L: PartialEq> HeroEffect<C, K, S, F, L> {
     /// Whether two effects may not both appear in one list: the same variant, except morale or
     /// luck (and their caps) for different sides, creature-selecting kinds for different
     /// creatures (or statistics), school masteries for different schools, spell-damage
-    /// bonuses for different scopes and spell grants, masteries and immunities for different
-    /// spells.
+    /// bonuses for different scopes and spell grants, masteries, immunities and opening spells
+    /// for different spells.
     fn collides(&self, other: &Self) -> bool {
         match (self, other) {
             (Self::Morale { affects: a, .. }, Self::Morale { affects: b, .. })
@@ -859,7 +908,8 @@ impl<C: PartialEq, K, S: PartialEq, F, L: PartialEq> HeroEffect<C, K, S, F, L> {
             (Self::SpellDamage { scope: a, .. }, Self::SpellDamage { scope: b, .. }) => a == b,
             (Self::Spells { grant: a }, Self::Spells { grant: b }) => a == b,
             (Self::SpellMastery { spell: a, .. }, Self::SpellMastery { spell: b, .. })
-            | (Self::SpellImmunity { spell: a }, Self::SpellImmunity { spell: b }) => a == b,
+            | (Self::SpellImmunity { spell: a }, Self::SpellImmunity { spell: b })
+            | (Self::OpeningSpell { spell: a, .. }, Self::OpeningSpell { spell: b, .. }) => a == b,
             _ => self.code() == other.code(),
         }
     }
@@ -1033,6 +1083,19 @@ impl CanonicalHash for CompiledHeroEffect {
                 spell.hash_into(h);
                 h.write_u8(*level);
             }
+            Self::OpeningSpell {
+                spell,
+                mastery,
+                power,
+            } => {
+                spell.hash_into(h);
+                h.write_u8(*mastery);
+                h.write_u16(*power);
+            }
+            Self::EagleEye { bp, max_level } => {
+                h.write_u16(*bp);
+                h.write_u8(*max_level);
+            }
         }
     }
 }
@@ -1140,6 +1203,15 @@ mod tests {
             E::SpellLevelImmunity { level: 4 },
             E::MindImmunity,
             E::NegateImmunities,
+            E::OpeningSpell {
+                spell: 4,
+                mastery: 3,
+                power: 50,
+            },
+            E::EagleEye {
+                bp: 4000,
+                max_level: 2,
+            },
         ]
     }
 
@@ -1258,6 +1330,19 @@ mod tests {
         );
         let books = [E::SpellBook, E::SpellBook];
         assert_eq!(list_error(&books, false), Some("an effect is listed twice"));
+        // Opening spells collide only for the same spell.
+        let opening = |spell| E::OpeningSpell {
+            spell,
+            mastery: 3,
+            power: 50,
+        };
+        let mut openings = std::vec![opening(1), opening(2)];
+        assert_eq!(list_error(&openings, false), None);
+        openings.push(opening(2));
+        assert_eq!(
+            list_error(&openings, false),
+            Some("an effect is listed twice")
+        );
         // Spell grants collide only for the same grant, mastery raises for the same spell.
         let grant = |grant| E::Spells { grant };
         let mut grants = std::vec![
@@ -1384,6 +1469,28 @@ mod tests {
             E::SpellLevelLimit { level: 5 },
             E::SpellLevelImmunity { level: 0 },
             E::SpellLevelImmunity { level: 6 },
+            E::OpeningSpell {
+                spell: 0,
+                mastery: 4,
+                power: 1,
+            },
+            E::OpeningSpell {
+                spell: 0,
+                mastery: 3,
+                power: 0,
+            },
+            E::EagleEye {
+                bp: 0,
+                max_level: 2,
+            },
+            E::EagleEye {
+                bp: 10_001,
+                max_level: 2,
+            },
+            E::EagleEye {
+                bp: 500,
+                max_level: 6,
+            },
         ];
         for e in bad {
             assert!(e.parameter_error().is_some(), "{e:?}");
@@ -1439,6 +1546,15 @@ mod tests {
             level: 2,
         };
         assert_eq!(in_school.try_map(plus, plus, plus, plus, fail), Err(()));
+        assert_eq!(
+            E::OpeningSpell {
+                spell: 1,
+                mastery: 3,
+                power: 10
+            }
+            .try_map(plus, plus, fail, plus, plus),
+            Err(())
+        );
         for scope in [SpellScope::School(1), SpellScope::Spell(1)] {
             let e = E::SpellDamage { scope, bp: 1 };
             assert_eq!(e.try_map(plus, plus, fail, plus, fail), Err(()), "{e:?}");

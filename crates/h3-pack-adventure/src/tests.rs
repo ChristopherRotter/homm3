@@ -22,6 +22,30 @@ fn cost(value: u16) -> NonZeroU16 {
     NonZeroU16::new(value).unwrap()
 }
 
+// covers: GAM-SET-001
+#[test]
+fn the_original_starting_armies_fit_the_draw() {
+    let (core, part) = compile(&ORIGINAL_PACKS, PROFILE).unwrap();
+    assert_eq!(part.params().starting_stack_chances(), [88, 25]);
+    // The draw reads a hero type's starting slots as its first stack, its war machines, then the
+    // other stacks: the original's hero table has three slots and every war machine in the
+    // second (Heroes3.exe 0x679DD0 + 0x24; E08 T6b). The packs keep that shape.
+    let mut machines = 0;
+    for hero in core.hero_types() {
+        let slots = (hero.army.len(), hero.war_machines.len());
+        assert!(
+            slots.0 >= 1 && slots.0 + slots.1 <= 3,
+            "{}: {slots:?}",
+            hero.key.as_str()
+        );
+        if slots.1 > 0 {
+            machines += 1;
+            assert_eq!(slots, (2, 1), "{}", hero.key.as_str());
+        }
+    }
+    assert_eq!(machines, 9);
+}
+
 // covers: ADV-MOV-001, ADV-MOV-003, ADV-MOV-004, ADV-MOV-007, ADV-FOG-001
 #[test]
 fn the_base_pack_holds_the_sourced_values() {
@@ -120,6 +144,11 @@ fn parses_every_field() {
         native_cost = 90
         land_points = [1000, 1100]
         scouting_radius = 3
+        max_map_size = 72
+        max_levels = 1
+        max_players = 4
+        army_slots = 5
+        starting_stack_chances = [80, 20]
 
         [[terrain]]
         terrain = "plain"
@@ -172,6 +201,11 @@ fn parses_every_field() {
             native_cost: cost(90),
             land_points: vec![1000, 1100],
             scouting_radius: 3,
+            max_map_size: cost(72),
+            max_levels: NonZeroU8::new(1).unwrap(),
+            max_players: NonZeroU8::new(4).unwrap(),
+            army_slots: NonZeroU8::new(5).unwrap(),
+            starting_stack_chances: vec![80, 20],
         })
     );
     assert_eq!(parse("").unwrap(), AdventurePack::new(manifest("p")));
@@ -186,6 +220,18 @@ fn rejects_malformed_files() {
     assert!(syntax(
         "[params]\nnative_cost = 100\nland_points = [1]\nscouting_radius = 300"
     ));
+    let bounds = "native_cost = 100\nland_points = [1]\nscouting_radius = 1\nmax_map_size = 1";
+    let slots = "max_levels = 1\nmax_players = 1\narmy_slots";
+    assert!(syntax(&format!(
+        "[params]\n{bounds}\n{slots} = 0\nstarting_stack_chances = []"
+    )));
+    assert!(syntax(&format!(
+        "[params]\n{bounds}\n{slots} = 1\nstarting_stack_chances = [256]"
+    )));
+    assert!(syntax(&format!("[params]\n{bounds}\n{slots} = 1")));
+    assert!(syntax(&format!(
+        "[params]\n{bounds}\nmax_levels = 1\nmax_players = 1"
+    )));
     assert!(syntax("[unknown]"));
     let cost_error = |text: &str| parse(text).unwrap_err();
     for text in [

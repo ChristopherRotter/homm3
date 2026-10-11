@@ -1,6 +1,9 @@
 //! `h3-map`'s check against the original data (`cargo xtask verify --with-original-data`): reads
-//! every map in `<install>/Maps` and fails on the first one the reader rejects. Prints what the
-//! input bounds were set from (`docs/formats/h3m.md`, "Input bounds").
+//! every map in `<install>/Maps`, imports it with the original packs (RoE to SoD) and validates
+//! the setup. Fails when the reader rejects a map, when a map's static layer does not import and
+//! validate, or when a map that imports fails validation; a map the current increment cannot
+//! represent is counted by its reason (`Unsupported`). Prints what the input bounds were set from
+//! (`docs/formats/h3m.md`, "Input bounds") and the import's counts ("Import").
 //!
 //! `cargo run -p h3-map --example original_data -- original-data/install`
 //!
@@ -10,8 +13,13 @@ use std::collections::BTreeMap;
 use std::path::Path;
 use std::process::ExitCode;
 
+use std::sync::Arc;
+
+use h3_adventure::{AdventureSetup, AdventureState};
+use h3_game::GameRuleset;
 use h3_map::model::{Artifacts, Body, Player, RawMap, SeerTask, Text, Version};
-use h3_map::{Limits, gunzip};
+use h3_map::{ImportError, Limits, gunzip, import, import_map};
+use h3_pack_adventure::{ORIGINAL_PACKS, compile};
 
 /// The largest value of each bounded quantity over all maps, with the map it came from, and how
 /// many objects of each body kind the maps hold.
@@ -50,6 +58,18 @@ fn main() -> ExitCode {
         })
         .collect();
     files.sort();
+    let (core, part) = match compile(&ORIGINAL_PACKS, "base:faithful") {
+        Ok(rules) => rules,
+        Err(e) => {
+            eprintln!("h3-map: the original packs do not compile: {e:?}");
+            return ExitCode::FAILURE;
+        }
+    };
+    let Ok(rules) = GameRuleset::new(Arc::new(core), Arc::new(part)) else {
+        eprintln!("h3-map: the adventure part belongs to another core");
+        return ExitCode::FAILURE;
+    };
+    let mut imports = BTreeMap::<String, Vec<String>>::new();
     let limits = Limits::default();
     let mut versions = BTreeMap::<Version, usize>::new();
     let mut peaks = Peaks::default();
@@ -58,8 +78,11 @@ fn main() -> ExitCode {
         let name = path
             .file_name()
             .map_or_else(String::new, |n| n.to_string_lossy().into_owned());
-        match check(path, &limits, &mut peaks, &name) {
-            Ok(version) => *versions.entry(version).or_default() += 1,
+        match check(path, &limits, &mut peaks, &name, &rules) {
+            Ok((version, outcome)) => {
+                *versions.entry(version).or_default() += 1;
+                imports.entry(outcome).or_default().push(name);
+            }
             Err(e) => {
                 println!("h3-map: {name}: {e}");
                 failures += 1;
@@ -76,6 +99,13 @@ fn main() -> ExitCode {
     }
     let kinds: Vec<String> = peaks.1.iter().map(|(k, n)| format!("{k} {n}")).collect();
     println!("  objects by body: {}", kinds.join(", "));
+    println!("h3-map: every static layer imports and validates; the import by outcome:");
+    for (outcome, maps) in &imports {
+        println!("  {outcome}: {}", maps.len());
+        if outcome == IMPORTED {
+            println!("    {}", maps.join(", "));
+        }
+    }
     if failures == 0 {
         ExitCode::SUCCESS
     } else {
@@ -83,8 +113,19 @@ fn main() -> ExitCode {
     }
 }
 
-/// Reads one map and checks that its terrain codes are in range (a misaligned read shows there).
-fn check(path: &Path, limits: &Limits, peaks: &mut Peaks, name: &str) -> Result<Version, String> {
+/// The outcome of a map that imports and validates.
+const IMPORTED: &str = "imported and valid";
+
+/// Reads one map and checks that its terrain codes are in range (a misaligned read shows there),
+/// then imports it: its static layer must import and validate; the whole map imports and
+/// validates, or the import reports what is not supported yet (the outcome).
+fn check(
+    path: &Path,
+    limits: &Limits,
+    peaks: &mut Peaks,
+    name: &str,
+    rules: &GameRuleset,
+) -> Result<(Version, String), String> {
     let file = std::fs::read(path).map_err(|e| e.to_string())?;
     peaks.note("file", file.len(), name);
     let inflated = gunzip(&file, limits.max_map_bytes).map_err(|e| e.to_string())?;
@@ -100,7 +141,25 @@ fn check(path: &Path, limits: &Limits, peaks: &mut Peaks, name: &str) -> Result<
         return Err(format!("tile {i} has codes out of range: {t:?}"));
     }
     note(&map, peaks, name);
-    Ok(map.header.version)
+    let static_map = import_map(&map, rules).map_err(|e| format!("static layer: {e}"))?;
+    let setup = AdventureSetup {
+        players: 1,
+        map: static_map,
+        heroes: Vec::new(),
+    };
+    AdventureState::new(rules.core(), rules.adventure(), &setup)
+        .map_err(|e| format!("static layer: {e}"))?;
+    let outcome = match import(&map, rules) {
+        Ok(setup) => {
+            setup
+                .validate(rules)
+                .map_err(|e| format!("imported, but invalid: {e}"))?;
+            IMPORTED.to_owned()
+        }
+        Err(ImportError::Unsupported(what)) => format!("not supported: {}", what.reason()),
+        Err(e) => return Err(format!("import: {e}")),
+    };
+    Ok((map.header.version, outcome))
 }
 
 fn note(map: &RawMap, peaks: &mut Peaks, name: &str) {

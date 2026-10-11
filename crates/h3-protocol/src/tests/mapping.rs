@@ -134,6 +134,10 @@ fn engine_events() -> Vec<K> {
             target: CastTarget::Hex(Hex(5)),
         },
         K::PeriodicCast { stack: s, spell },
+        K::OpeningSpell {
+            side: BattleSide::Defender,
+            spell,
+        },
         K::ManaChanneled {
             side: BattleSide::Attacker,
             mana: 3,
@@ -287,7 +291,7 @@ const ENGINE_ERRORS: [CommandError; 29] = {
 #[test]
 fn every_engine_kind_has_its_wire_kind_of_the_same_name() {
     let events = engine_events();
-    assert_eq!(events.len(), 47, "the mapped event kinds");
+    assert_eq!(events.len(), 48, "the mapped event kinds");
     for kind in &events {
         let wire = map::events(&[EngineEvent::public(*kind)], BattleSide::Attacker);
         assert_eq!(kind_name(&wire[0]), kind_name(kind));
