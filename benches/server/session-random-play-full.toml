@@ -18,7 +18,7 @@ args = [
     "1",
 ]
 collect = "*serve_frame*"
-instructions = 275849212
+instructions = 296003778
 threshold_percent = 2
 package = "h3-server"
 bin = "h3-server-bench"

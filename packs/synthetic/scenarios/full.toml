@@ -30,7 +30,15 @@ defender_funds = 10000
 # steps on one unseen; Corwin has no natives, as the battlefield has no terrain); since T6a she
 # raises her stacks for the battle (Revive, a Resurrection without Stone magic: 140 hit points)
 # and sacrifices one stack to raise another (Offer, a Sacrifice at Basic); since T6b she copies a
-# stack of level 1 for two rounds (Copy, a Clone at Basic).
+# stack of level 1 for two rounds (Copy, a Clone at Basic). Since E04b T9b (the casting workload)
+# six of her spells are at Advanced, so the values above are Basic's for Spark, Cinders, Haze,
+# Charm, Scorch and Snare (they hit harder, Haze makes every enemy shooter forget, Charm takes a
+# larger stack, Scorch burns hotter, Snare's mines hurt more); her army starts hasted (an opening
+# Hasten at Expert, as Angelic Alliance's Prayer); her stacks never take Corwin's Spark (a
+# Pendant); and her Basic Eagle Eye (40 %) may learn his spells up to level 2 that she does not
+# know but Mire. (Neither Eagle Eye lists the other side's hidden spell, Mire or Snare: its draw
+# would come before the obstacles' own and show in the learner's private part, which the
+# server's hygiene tests compare across seeds; see the battle HANDOFF's trap.)
 [scenario.attacker_hero]
 hero_type = "synthetic:brea"
 attack = 2
@@ -56,10 +64,18 @@ effects = [
     { kind = "morale", amount = 1 },
     { kind = "luck", amount = 1 },
     { kind = "spell_specialty", spell = "synthetic:hasten", bp_per_level = 300, level = 6 },
+    { kind = "spell_immunity", spell = "synthetic:spark" },
+    { kind = "opening_spell", spell = "synthetic:hasten", mastery = 3, power = 3 },
 ]
-[scenario.attacker_hero.masteries]  # Basic Storm magic: her storm spells at Basic (per spell since E04b T8a)
-"synthetic:spark" = 1
-"synthetic:cinders" = 1
+[scenario.attacker_hero.eagle_eye]
+chance_bp = 4000
+spells = [
+    "synthetic:boon", "synthetic:bane", "synthetic:hallow", "synthetic:purge", "synthetic:gloom",
+    "synthetic:corrode", "synthetic:aegis", "synthetic:rage", "synthetic:dazzle", "synthetic:uproot",
+]
+[scenario.attacker_hero.masteries]  # Storm magic: Basic, six spells at Advanced (per spell since E04b T8a)
+"synthetic:spark" = 2
+"synthetic:cinders" = 2
 "synthetic:arc" = 1
 "synthetic:ward" = 1
 "synthetic:hasten" = 1
@@ -70,11 +86,11 @@ effects = [
 "synthetic:mend" = 1
 "synthetic:blaze" = 1
 "synthetic:glass" = 1
-"synthetic:haze" = 1
-"synthetic:charm" = 1
-"synthetic:scorch" = 1
+"synthetic:haze" = 2
+"synthetic:charm" = 2
+"synthetic:scorch" = 2
 "synthetic:blink" = 1
-"synthetic:snare" = 1
+"synthetic:snare" = 2
 "synthetic:offer" = 1
 "synthetic:copy" = 1
 
@@ -102,6 +118,12 @@ effects = [
 # his own walls and pits, her mines once they showed themselves; the battlefield has no natural
 # obstacles); since T6a he raises his stacks for good (Revive at Expert: 310 hit points); since
 # T6b he summons twelve Shades at a time (Conjure, a Summon Elemental at Expert: 4 per power).
+# Since E04b T9b (the casting workload) Brea's army starts slowed and cursed (opening Drag and
+# Bane at Expert, as Armor of the Damned's), his stacks resist 10 % of her hostile spells and
+# never take her Cinders (a Pendant), and his Advanced Eagle Eye (50 %) may learn her spells up
+# to level 3 that he does not know but Snare. (Resistance stays off Brea's side: it would draw on
+# Corwin's opening spells, a public roll before the first cast, which the server's hygiene tests
+# keep out of the frames they compare across seeds.)
 [scenario.defender_hero]
 hero_type = "synthetic:corwin"
 attack = 1
@@ -131,6 +153,17 @@ effects = [
     { kind = "shoot_when_adjacent", creatures = { flag = "shooter" } },
     { kind = "spell_duration", rounds = 2 },
     { kind = "spell_specialty", spell = "synthetic:boon", bp_per_level = 300, level = 1 },
+    { kind = "magic_resistance", bp = 1000 },
+    { kind = "spell_immunity", spell = "synthetic:cinders" },
+    { kind = "opening_spell", spell = "synthetic:drag", mastery = 3, power = 2 },
+    { kind = "opening_spell", spell = "synthetic:bane", mastery = 3, power = 2 },
+]
+[scenario.defender_hero.eagle_eye]
+chance_bp = 5000
+spells = [
+    "synthetic:hasten", "synthetic:drag", "synthetic:mend", "synthetic:ward", "synthetic:fury",
+    "synthetic:smiting", "synthetic:riposte", "synthetic:blaze", "synthetic:scorch",
+    "synthetic:cinders", "synthetic:haze", "synthetic:charm", "synthetic:blink",
 ]
 [scenario.defender_hero.masteries]  # Expert Stone magic: his stone spells at Expert (per spell since E04b T8a)
 "synthetic:blight" = 3
