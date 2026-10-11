@@ -6,6 +6,8 @@ use std::path::{Path, PathBuf};
 use std::time::Duration;
 
 use h3_kernel::Rng;
+use h3_protocol::codec;
+use h3_protocol::session::ConnId;
 use h3_protocol::wire::{
     ClientMessage, Command, GameInfo, GoodbyeReason, Phase, Query, RecordHeader, Refusal,
     RejectCode, ReplayInfo, Seat, ServerMessage,
@@ -14,7 +16,7 @@ use tokio_tungstenite::tungstenite::Message;
 
 use crate::client::Client;
 use crate::config::{BotSeat, Config, Content, Limits, Offer, Server};
-use crate::{Running, bench, game, start};
+use crate::{Running, bench, game, registry, start};
 
 fn root() -> PathBuf {
     PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../..")
@@ -1393,6 +1395,59 @@ async fn a_refused_join_leaves_the_game() {
     };
     assert_eq!(after, 4, "in its game past the lobby's deadline");
     drop(creator);
+}
+
+/// E16 M2 T5e (the reviewer's finding): joins a game refuses do not restart the lobby's deadline,
+/// so a connection that only ever asks for a taken seat holds its place no longer than one that
+/// says nothing.
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn refused_joins_do_not_keep_a_connection_in_the_lobby() {
+    let limits = Limits {
+        lobby_timeout_ms: 500,
+        ..fast()
+    };
+    let running = start(&config(limits)).await.unwrap();
+    let (_creator, game, _) = created(&running, "pvp", Seat::Attacker).await;
+    let mut late = greeted(&running).await;
+    let mut refusals = 0;
+    let reason = loop {
+        late.join(game, Seat::Attacker, None).await.unwrap();
+        match late.recv().await {
+            Some(ServerMessage::Refused {
+                reason: Refusal::SeatTaken,
+            }) => refusals += 1,
+            Some(ServerMessage::Goodbye { reason }) => break reason,
+            other => panic!("{other:?}"),
+        }
+        assert!(refusals < 30, "never cut off");
+        tokio::time::sleep(Duration::from_millis(100)).await;
+    };
+    assert_eq!(reason, GoodbyeReason::IdleTimeout);
+}
+
+/// E16 M2 T5e (the reviewer's finding): a created game's first message is its creator's join,
+/// queued as the registry creates it, so a stranger's join that reaches the new game at once does
+/// not take the creator's seat.
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn a_created_games_creator_joins_before_anyone_else() {
+    let running = start(&config(fast())).await.unwrap();
+    // The creator's side of a creation, as its task does it, but nobody reads its queue yet.
+    let (to, mut from_game) = game::outbox(16, 1 << 20);
+    let asked = ("pvp", Seat::Attacker, true);
+    let creator = (ConnId(u64::MAX), to);
+    let local = [127, 0, 0, 1].into();
+    let (game, _) = registry::create(&running.registry, local, asked, creator).unwrap();
+    let mut stranger = greeted(&running).await;
+    stranger.join(game, Seat::Attacker, None).await.unwrap();
+    assert_eq!(
+        stranger.recv().await,
+        Some(ServerMessage::Refused {
+            reason: Refusal::SeatTaken
+        })
+    );
+    let first = from_game.recv().await.unwrap();
+    let first = codec::decode_server(first.text.as_bytes(), usize::MAX).unwrap();
+    assert!(matches!(first, ServerMessage::Joined { .. }), "{first:?}");
 }
 
 /// E16 M2 T5c: a seated client's record, fetched from the server, keeps its latest messages within

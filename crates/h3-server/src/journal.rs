@@ -167,11 +167,15 @@ impl Writer {
     }
 
     /// Opens a journal that [`read`] read, to append to it: a last line a crash cut short goes
-    /// first (it was never synced, so nothing that depends on it was sent).
+    /// first (it was never synced, so nothing that depends on it was sent). A journal without one
+    /// is left as it is: a truncation refreshes the file's last write even to its own length, and a
+    /// paused game's deadline counts from it (E16 M2 T5e: the reviewer's finding).
     pub(crate) fn reopen(path: &Path, complete: u64) -> io::Result<Self> {
         let file = OpenOptions::new().write(true).open(path)?;
-        file.set_len(complete)?;
-        file.sync_all()?;
+        if file.metadata()?.len() != complete {
+            file.set_len(complete)?;
+            file.sync_all()?;
+        }
         let mut writer = Self {
             file,
             path: path.to_path_buf(),
@@ -370,6 +374,29 @@ mod tests {
             super::read(&path).unwrap().entries,
             [Entry::Started, Entry::Taken(BattleSide::Defender)]
         );
+        fs::remove_dir_all(&data).unwrap();
+    }
+
+    /// E16 M2 T5e (the reviewer's finding): a whole journal reopened keeps its last write, from
+    /// which a paused game's deadline counts after a restart.
+    #[test]
+    fn a_whole_journal_reopened_keeps_its_last_write() {
+        let data = data();
+        let mut writer = Writer::create(&data, &start(3)).unwrap();
+        writer.append([Entry::Paused].into_iter()).unwrap();
+        let path = writer.path().to_path_buf();
+        drop(writer);
+        let long_ago = std::time::UNIX_EPOCH + std::time::Duration::from_secs(1_000_000_000);
+        File::options()
+            .write(true)
+            .open(&path)
+            .unwrap()
+            .set_modified(long_ago)
+            .unwrap();
+        let read = read(&path).unwrap();
+        let mut writer = Writer::reopen(&path, read.complete).unwrap();
+        writer.append(std::iter::empty()).unwrap();
+        assert_eq!(fs::metadata(&path).unwrap().modified().unwrap(), long_ago);
         fs::remove_dir_all(&data).unwrap();
     }
 
