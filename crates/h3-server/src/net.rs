@@ -12,7 +12,10 @@
 //! The login (E16 M3 T2a): an account's request is answered off the task ([`Accounts`]: the
 //! signatures, the player log's sync). Failed logins count per address, also across its
 //! connections' lifetimes: beyond `failed_logins_per_address` a minute, a login closes its
-//! connection `RateLimited`, as does any login from the address until the minute is over.
+//! connection `RateLimited`, as does any login from the address until the minute is over. The
+//! requests that may write the player log (a registration, a re-key, a rename, a preference) count
+//! per address too: beyond `account_changes_per_address` an hour, one closes its connection
+//! `RateLimited` (E16 M3's review: each is a synced line, and the logins wait on the log's lock).
 //!
 //! Behind a reverse proxy (E16 M3 T4b): a connection from one of `[server] trusted_proxies`
 //! counts, after its handshake, as the client the last entry of its `X-Forwarded-For` header
@@ -21,9 +24,10 @@
 //! an IPv6 address by its /64 prefix, the block one host usually has ([`counted`]).
 //!
 //! Accounts in games (E16 M3 T3): a connection opens a game with the account it is logged in as.
-//! The server knows each account's logged-in connections: once one re-keyed the account, the
-//! others, logged in with the key it had, close (`Goodbye { Rekeyed }`), so a session opened with
-//! a leaked password does not outlive the re-key.
+//! The server knows each account's logged-in connections and their keys: once one re-keyed the
+//! account, the others logged in with another key close (`Goodbye { Rekeyed }`), before anything
+//! else they sent is handled, so a session opened with a leaked password does not outlive the
+//! re-key.
 
 use std::collections::BTreeMap;
 use std::future::Future;
@@ -31,7 +35,8 @@ use std::net::{IpAddr, Ipv6Addr};
 use std::sync::{Arc, Mutex, PoisonError};
 use std::time::Duration;
 
-use futures_util::{SinkExt, StreamExt};
+use futures_util::{FutureExt, SinkExt, StreamExt};
+use h3_protocol::account::KEY_BYTES;
 use h3_protocol::codec;
 use h3_protocol::connection::{AccountRequest, Connection, Host, Received};
 use h3_protocol::session::ConnId;
@@ -165,6 +170,9 @@ impl Rate {
 /// The window of an address's failed logins (E16 M3 T2a).
 const FAILED_LOGINS_WINDOW: Duration = Duration::from_secs(60);
 
+/// The window of an address's requests that may write the player log (E16 M3's review).
+const ACCOUNT_CHANGES_WINDOW: Duration = Duration::from_secs(3600);
+
 /// The game a connection is bound to (E16 M2 T1): its inbox and the connection's queue for it, and
 /// how many messages the connection passed it (E16 M2 T5b: a refused join's frame names its
 /// number).
@@ -225,30 +233,42 @@ pub(crate) struct Service {
     pub anonymous: bool,
     /// The accounts (E16 M3 T2a).
     pub accounts: Arc<Accounts>,
-    /// The logged-in connections by account, each with what closes it when another connection
-    /// re-keys the account (E16 M3 T3).
-    pub sessions: Mutex<BTreeMap<(String, ConnId), Arc<Notify>>>,
+    /// The logged-in connections by account, each with the key it logged in with and what closes
+    /// it when another connection re-keys the account (E16 M3 T3).
+    pub sessions: Mutex<Sessions>,
     /// The reverse proxies whose forwarded header names the client (E16 M3 T4b).
     pub proxies: Vec<IpAddr>,
 }
 
+/// The logged-in connections by account (E16 M3 T3): the key each logged in with, and what closes
+/// it when the account re-keys elsewhere.
+pub(crate) type Sessions = BTreeMap<(String, ConnId), ([u8; KEY_BYTES], Arc<Notify>)>;
+
 impl Service {
     /// The account's logged-in connections, locked.
-    fn sessions(&self) -> std::sync::MutexGuard<'_, BTreeMap<(String, ConnId), Arc<Notify>>> {
+    fn sessions(&self) -> std::sync::MutexGuard<'_, Sessions> {
         self.sessions.lock().unwrap_or_else(PoisonError::into_inner)
     }
 
-    /// Every connection logged in as `login` but `conn` closes (E16 M3 T3): the account re-keyed.
-    fn rekeyed(&self, login: &str, conn: ConnId) {
-        let sessions = self.sessions();
+    /// The account `login` re-keyed to `key` on `conn` (E16 M3 T3): every other connection logged
+    /// in as it with another key closes.
+    fn rekeyed(&self, login: &str, conn: ConnId, key: [u8; KEY_BYTES]) {
+        let mut sessions = self.sessions();
         let from = (login.to_owned(), ConnId(0));
         let to = (login.to_owned(), ConnId(u64::MAX));
-        for ((_, other), rekeyed) in sessions.range(from..=to) {
-            if *other != conn {
+        for ((_, other), (with, rekeyed)) in sessions.range_mut(from..=to) {
+            if *other == conn {
+                *with = key;
+            } else if *with != key {
                 rekeyed.notify_one();
             }
         }
     }
+}
+
+/// Whether the connection's account re-keyed on another connection (E16 M3 T3): takes the signal.
+fn kicked(rekeyed: &Notify) -> bool {
+    rekeyed.notified().now_or_never().is_some()
 }
 
 /// One connection's task: reads frames through the hello gate, answers the lobby's messages and
@@ -314,6 +334,8 @@ pub(crate) async fn serve<T: Transport>(
             Wake::Client(Some(_)) if !(rate.admit(now) && place.admit(now)) => {
                 goodbye(GoodbyeReason::RateLimited)
             }
+            // A re-key elsewhere closes the connection before it acts again (E16 M3's review).
+            Wake::Client(Some(_)) if kicked(&rekeyed) => goodbye(GoodbyeReason::Rekeyed),
             Wake::Client(Some(Incoming::Control)) => continue,
             Wake::Client(Some(Incoming::Binary)) => goodbye(GoodbyeReason::Malformed),
             Wake::Client(Some(Incoming::Text(text))) => {
@@ -377,22 +399,33 @@ async fn account(
     (place, conn, rekeyed): (&Place, ConnId, &Arc<Notify>),
     request: AccountRequest,
 ) -> Frame {
-    let (seq, login) = match &request {
-        AccountRequest::Login { seq, login, .. } => (*seq, Some(login.clone())),
+    // The login name and key of a login; whether the request may write the player log.
+    let (seq, login, changing) = match &request {
+        AccountRequest::Login {
+            seq,
+            login,
+            key,
+            display,
+            ..
+        } => (*seq, Some((login.clone(), *key)), display.is_some()),
         AccountRequest::Rekey { seq, .. }
         | AccountRequest::Rename { seq, .. }
-        | AccountRequest::SetListed { seq, .. } => (*seq, None),
+        | AccountRequest::SetListed { seq, .. } => (*seq, None, true),
     };
-    if login.is_some() && place.barred(Instant::now()) {
+    let now = Instant::now();
+    if (login.is_some() && place.barred(now)) || (changing && !place.changing(now)) {
         return goodbye(GoodbyeReason::RateLimited);
     }
+    let rekey = match &request {
+        AccountRequest::Rekey { key, .. } => Some(*key),
+        _ => None,
+    };
     // Known by its account before its key is checked: a re-key committed after the check reaches
     // it (one committed before refuses the key).
-    let session = login.clone().map(|login| (login, conn));
-    if let Some(session) = &session {
-        server
-            .sessions()
-            .insert(session.clone(), Arc::clone(rekeyed));
+    let session = login.as_ref().map(|(login, _)| (login.clone(), conn));
+    if let (Some(session), Some((_, key))) = (&session, &login) {
+        let entry = (*key, Arc::clone(rekeyed));
+        server.sessions().insert(session.clone(), entry);
     }
     let shared = Arc::clone(server);
     let answer = tokio::task::spawn_blocking(move || shared.accounts.answer(request))
@@ -400,13 +433,15 @@ async fn account(
         .unwrap_or(Err(Refusal::BadLogin));
     if let (Err(_), Some(session)) = (&answer, &session) {
         server.sessions().remove(session);
+        // A re-key meanwhile signalled this attempt, not the account it may log in as later.
+        kicked(rekeyed);
     }
     match answer {
         Ok((account, changed)) => {
-            if let Some(login) = login {
+            if let Some((login, _)) = login {
                 gate.logged_in(login);
-            } else if let (true, Some(login)) = (changed, gate.account()) {
-                server.rekeyed(login, conn);
+            } else if let (true, Some(login), Some(key)) = (changed, gate.account(), rekey) {
+                server.rekeyed(login, conn, key);
             }
             Frame {
                 text: codec::encode_text(&ServerMessage::Account {
@@ -670,6 +705,9 @@ struct Counts {
     total: usize,
     by_address: BTreeMap<IpAddr, Address>,
     failures: BTreeMap<IpAddr, Rate>,
+    /// The addresses' requests that may write the player log, kept beyond their connections for
+    /// the window (E16 M3's review).
+    changes: BTreeMap<IpAddr, Rate>,
 }
 
 /// The address a connection counts as in the limits per address (E16 M3 T4b): an IPv4 address
@@ -721,6 +759,8 @@ pub(crate) struct Place {
     per_address: bool,
     /// The address's failed logins a minute.
     failed_logins: u32,
+    /// The address's requests that may write the player log, an hour.
+    account_changes: u32,
 }
 
 impl Place {
@@ -746,6 +786,7 @@ impl Place {
             address,
             per_address: true,
             failed_logins: limits.failed_logins_per_address,
+            account_changes: limits.account_changes_per_address,
         })
     }
 
@@ -762,6 +803,7 @@ impl Place {
             address: proxy,
             per_address: false,
             failed_logins: limits.failed_logins_per_address,
+            account_changes: limits.account_changes_per_address,
         })
     }
 
@@ -780,6 +822,18 @@ impl Place {
         c.failures
             .entry(self.address)
             .or_insert_with(|| Rate::per(limit, FAILED_LOGINS_WINDOW))
+            .admit(now)
+    }
+
+    /// Counts a request of the address that may write the player log at `now`; `false` beyond its
+    /// limit (E16 M3's review). The addresses whose hour is over are forgotten.
+    fn changing(&self, now: Instant) -> bool {
+        let mut c = self.counts.lock().unwrap_or_else(PoisonError::into_inner);
+        c.changes.retain(|_, rate| !rate.over(now));
+        let limit = self.account_changes;
+        c.changes
+            .entry(self.address)
+            .or_insert_with(|| Rate::per(limit, ACCOUNT_CHANGES_WINDOW))
             .admit(now)
     }
 

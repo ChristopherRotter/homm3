@@ -210,6 +210,38 @@ async fn failed_logins_close_an_addresss_connections_beyond_their_limit() {
     running.shutdown().await;
 }
 
+/// E16 M3's review: the requests that may write the player log count per address an hour; the
+/// one beyond closes its connection, and a plain login still passes.
+#[tokio::test(flavor = "multi_thread")]
+async fn account_changes_close_an_addresss_connection_beyond_their_limit() {
+    let config = config(Limits {
+        account_changes_per_address: 3,
+        ..fast()
+    });
+    let running = start(&config).await.unwrap();
+    let mut client = greeted(&running).await;
+    let registered = client.login(1, "alice", &key(1), Some("Alice")).await;
+    assert_eq!(registered.unwrap(), account(1, "Alice"));
+    let renamed = client.rename(2, "Alicia").await.unwrap();
+    assert_eq!(renamed, account(2, "Alicia"));
+    let preference = client.set_listed(3, false).await.unwrap();
+    assert_eq!(preference, unlisted(3, "Alicia"));
+    let rate_limited = Some(ServerMessage::Goodbye {
+        reason: GoodbyeReason::RateLimited,
+    });
+    assert_eq!(client.rename(4, "Alice").await.unwrap(), rate_limited);
+    assert_eq!(client.recv().await, None);
+    // The address's next registration is refused alike; a login without a change passes.
+    let mut other = greeted(&running).await;
+    let bob = other.login(1, "bob", &key(2), Some("Bob")).await.unwrap();
+    assert_eq!(bob, rate_limited);
+    let mut again = greeted(&running).await;
+    let login = again.login(1, "alice", &key(1), None).await.unwrap();
+    assert_eq!(login, unlisted(1, "Alicia"));
+    again.close().await;
+    running.shutdown().await;
+}
+
 /// The answer to a request about an account that opted out of the listing.
 fn unlisted(seq: u32, display: &str) -> Option<ServerMessage> {
     Some(ServerMessage::Account {

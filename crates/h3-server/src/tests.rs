@@ -1629,6 +1629,7 @@ fn configurations_are_checked() {
         "empty_game_ms = 31536000001",
         "paused_game_ms = 31536000001",
         "failed_logins_per_address = 0",
+        "account_changes_per_address = 0",
         "commands_per_game = 0",
         "commands_per_game = 1000001",
     ] {

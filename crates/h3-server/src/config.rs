@@ -29,6 +29,7 @@
 //! games = 16                         # games not over, in total
 //! games_per_address = 2              # games not over, created from one address
 //! failed_logins_per_address = 10     # a minute; beyond, the address's logins close
+//! account_changes_per_address = 20   # an hour: registrations, re-keys, renames, preferences
 //! commands_per_game = 10000          # a game that reaches it without an end is void
 //!
 //! [[offer]]                          # what a client may create a game from; at least one
@@ -201,6 +202,10 @@ pub struct Limits {
     /// Failed logins a minute from one address (E16 M3 T2a): a login beyond them, and any login
     /// from the address until the minute is over, closes its connection.
     pub failed_logins_per_address: u32,
+    /// Requests from one address an hour that may write the player log (E16 M3's review): a
+    /// registration, a re-key, a rename, a listing preference; the one beyond closes its
+    /// connection.
+    pub account_changes_per_address: u32,
     /// Commands one game may hold (E16 M3 T4a): a game that reaches them without an end is void.
     /// It bounds a game's journal, its memory and its replay, which must fit `outbound_bytes`.
     pub commands_per_game: u32,
@@ -227,6 +232,7 @@ impl Default for Limits {
             empty_game_ms: 1_800_000,
             paused_game_ms: 259_200_000,
             failed_logins_per_address: 10,
+            account_changes_per_address: 20,
             commands_per_game: 10_000,
         }
     }
@@ -286,6 +292,12 @@ impl Limits {
             (
                 "failed_logins_per_address",
                 u64::from(self.failed_logins_per_address),
+                1,
+                u64::MAX,
+            ),
+            (
+                "account_changes_per_address",
+                u64::from(self.account_changes_per_address),
                 1,
                 u64::MAX,
             ),

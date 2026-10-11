@@ -629,10 +629,9 @@ impl Prepared {
                 return too_long(game, (&conns, &closed), journal, host, &mut inbox);
             }
             if session.phase() == Phase::Waiting && !session.seated() {
-                // Its spectators hear it; a connection whose join it refused leaves on its own.
-                let mut skip = closed;
-                skip.extend(conns.keys().copied().filter(|&conn| !session.holds(conn)));
-                close_all(&conns, &skip, GoodbyeReason::Abandoned);
+                // Its spectators hear it, and a joiner whose join is still on its way; a connection
+                // whose join it refused leaves at its refusal and never reads the goodbye.
+                close_all(&conns, &closed, GoodbyeReason::Abandoned);
                 lock(registry).leave(game);
                 // Outside the registry's lock (E16 M2 T5e): a removal is file I/O.
                 journal.into_iter().for_each(Writer::remove);

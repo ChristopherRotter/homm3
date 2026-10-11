@@ -154,6 +154,14 @@ pub async fn start(config: &Config) -> Result<Running, Error> {
         .local_addr()
         .map_err(|e| Error(format!("bind {}: {e}", config.server.bind)))?;
     // The server's id: its public URL, else the address it listens on (E16 M3 T2a).
+    if config.server.public_url.is_none()
+        && (address.ip().is_unspecified() || !config.server.trusted_proxies.is_empty())
+    {
+        eprintln!(
+            "h3-server: no [server] public_url: logins sign ws://{address}, which clients that \
+             dial another address refuse to sign (E16 M3's review)"
+        );
+    }
     let server = Arc::new(net::Service {
         program: server_name(),
         id: config
