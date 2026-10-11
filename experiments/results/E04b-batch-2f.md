@@ -22,11 +22,11 @@ Map file: `E04b-batch-2f.h3m`. Fill in the blanks below and keep this file; an a
 
 **Record**
 
-- step 1: spells on the Pegasi / the Wolf Raiders before round 1; the log: 
-- step 2: who acted first in round 1: 
-- step 3: spells on the Wolf Raiders at their turn; did the log show Armor of the Damned's spells before it (when)?: 
-- step 4: the log at the Pikemen's turn; spells on the Wolf Raiders and the Pegasi afterwards: 
-- anything odd: 
+- step 1: spells on the Pegasi / the Wolf Raiders before round 1; the log: none; log is empty
+- step 2: who acted first in round 1: Silver Pegasi
+- step 3: spells on the Wolf Raiders at their turn; did the log show Armor of the Damned's spells before it (when)?: none; no
+- step 4: the log at the Pikemen's turn; spells on the Wolf Raiders and the Pegasi afterwards: Log names AotD casting Slow, Curse, Weakness, Misfortune; the UI shows the last three spells on both creatures (UI is limited to three spells, but all are active under the hood)
+- anything odd:
 
 ## AO — Armor of the Damned under the Orb of Inhibition (BAT-MAG-068, BAT-MAG-061, BAT-Q23)
 
@@ -38,9 +38,9 @@ Map file: `E04b-batch-2f.h3m`. Fill in the blanks below and keep this file; an a
 
 **Record**
 
-- the spell book: opens / message (its text): 
-- the Pikemen's turn: the log; spells on the Swordsmen afterwards: 
-- anything odd: 
+- the spell book: opens / message (its text): no / message names the Orb and that AO wields it
+- the Pikemen's turn: the log; spells on the Swordsmen afterwards: Same as previous experiment, all spells were cast
+- anything odd:
 
 ## EL — Eagle Eye: a won battle without Wisdom (a level-1 and a level-3 spell) (BAT-Q24, BAT-MAG-069, HER-SPL-004)
 
@@ -53,10 +53,10 @@ Map file: `E04b-batch-2f.h3m`. Fill in the blanks below and keep this file; an a
 
 **Record**
 
-- Blue's casts: how many Bless, how many Air Shield: 
-- the message after the battle (its text, or none): 
-- Calid's spell book afterwards: 
-- anything odd: 
+- Blue's casts: how many Bless, how many Air Shield: 5 each
+- the message after the battle (its text, or none): "Through eagle-eyed observation, EL is able to learn Air Shield and Bless."
+- Calid's spell book afterwards: Bless only
+- anything odd:
 
 ## EB — Eagle Eye: a won battle with the spell book in the backpack (BAT-Q24, BAT-MAG-069)
 
@@ -70,11 +70,11 @@ Map file: `E04b-batch-2f.h3m`. Fill in the blanks below and keep this file; an a
 
 **Record**
 
-- before the battle: the Spell Book in the backpack (yes/no): 
-- Blue's Bless casts (how many): 
-- the message after the battle (its text, or none): 
-- the spell book once worn: its spells: 
-- anything odd: 
+- before the battle: the Spell Book in the backpack (yes/no): yes
+- Blue's Bless casts (how many): 6
+- the message after the battle (its text, or none): Same as previous experiment, but just for Bless
+- the spell book once worn: its spells: none
+- anything odd:
 
 ## EW — Eagle Eye: a won battle with Basic Wisdom (a level-3 spell) (BAT-Q24, BAT-MAG-069)
 
@@ -87,10 +87,10 @@ Map file: `E04b-batch-2f.h3m`. Fill in the blanks below and keep this file; an a
 
 **Record**
 
-- Blue's Air Shield casts (how many): 
-- the message after the battle (its text, or none): 
-- Sephinroth's spell book afterwards: 
-- anything odd: 
+- Blue's Air Shield casts (how many): 5
+- the message after the battle (its text, or none): Same as previous experiment, just for Air Shield
+- Sephinroth's spell book afterwards: Has Air Shield
+- anything odd:
 
 ## DF — Power of the Dragon Father: the hero's own spells and the enemy's (BAT-MAG-064)
 
@@ -104,13 +104,13 @@ Map file: `E04b-batch-2f.h3m`. Fill in the blanks below and keep this file; an a
 
 | cursor | allowed or refused |
 |---|---|
-|   |   |
+|Magic Mirror|allowed|
 |   |   |
 |   |   |
 |   |   |
 |   |   |
 
-- anything odd: 
+- anything odd: Bless and Slow cannot be selected ("That spell will affect no one!")
 
 ## PS — Pendant of Second Sight against the Unicorns' Blind (BAT-MAG-063)
 
@@ -122,9 +122,9 @@ Map file: `E04b-batch-2f.h3m`. Fill in the blanks below and keep this file; an a
 
 **Record**
 
-- Unicorn attacks on the Pikemen (how many): 
-- the Pikemen blinded (how often; the log line): 
-- anything odd: 
+- Unicorn attacks on the Pikemen (how many): 41 (played until Red lost)
+- the Pikemen blinded (how often; the log line): never
+- anything odd: Creature can either move or defend in the same turn, not both; Hero level-up for PSb is offered in Red's turn
 
 ## HP — A hypnotized stack and its owner's Pendant of Life (BAT-MAG-063)
 
@@ -136,12 +136,12 @@ Map file: `E04b-batch-2f.h3m`. Fill in the blanks below and keep this file; an a
 
 **Record**
 
-- Hypnotize on the Pikemen (yes/no): 
+- Hypnotize on the Pikemen (yes/no): yes
 
 | stack | Death Ripple damage | died |
 |---|---|---|
-|   |   |   |
-|   |   |   |
-|   |   |   |
+|Swordsmen|35|1|
+|Pikemen|35|3|
+|Archers|0|0|
 
-- anything odd: 
+- anything odd:
