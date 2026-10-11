@@ -297,6 +297,9 @@ fn frenzy_against_a_behemoth_counts_its_reduction_with_quirk_q0009() {
     // Q-0009 the Behemoth's reduction lowers the defense added: 10 + 6 = 16 (+30 %: 26).
     assert_eq!(frenzied_strike("t:faithful", Some(1), "behemoth"), 30);
     assert_eq!(frenzied_strike("t:frenzy", Some(1), "behemoth"), 26);
+    // With quirk Q-0005 too the reduction is the executable's (10 − 4.00000006 = 5.99 → 5;
+    // review r2b F-1): 10 + 5 = 15 (+25 %: 25).
+    assert_eq!(frenzied_strike("t:frenzy_single", Some(1), "behemoth"), 25);
     // Other abilities change nothing: 20 against 10.
     assert_eq!(frenzied_strike("t:frenzy", Some(1), "pikeman"), 30);
 }

@@ -468,23 +468,45 @@ fn defense_reduction_ignores_a_share_of_the_defense_rounded_down() {
     assert_eq!(reduced_defense(-3, 40, false), -1);
     assert_eq!(reduced_defense(0, 40, false), 0);
     assert_eq!(reduced_defense(5, 100, false), 0);
-    // With it the share taken does, in single precision, as the executable has it
-    // (installation.md §7.11): 17 − trunc(6.8) = 11, 7 − trunc(2.8) = 5, 7 − trunc(5.6) = 2,
-    // 10 − trunc(4.00000006) = 6, −3 − trunc(−1.2) = −2.
-    assert_eq!(reduced_defense(17, 40, true), 11);
-    assert_eq!(reduced_defense(17, 80, true), 4);
-    assert_eq!(reduced_defense(7, 40, true), 5);
-    assert_eq!(reduced_defense(7, 80, true), 2);
-    assert_eq!(reduced_defense(10, 40, true), 6);
-    assert_eq!(reduced_defense(-3, 40, true), -2);
+    // With it the defense left is the executable's, computed from single-precision values and
+    // then rounded toward 0 (0x4425C8 to 0x4425F5): 17 − 17 × 0.40000001 = 10.19 → 10,
+    // 17 − 17 × 0.80000001 = 3.39 → 3, 7 → 4.19 → 4 and 1.39 → 1, 10 − 4.00000006 = 5.99 → 5,
+    // 5 − 4.00000006 = 0.99 → 0, 1 → 0.59 → 0, −3 → −1.79 → −1. (This pinned the share taken
+    // rounded on its own, one point more each: 11, 4, 5, 2, 6, −2; review r2b F-1.)
+    assert_eq!(reduced_defense(17, 40, true), 10);
+    assert_eq!(reduced_defense(17, 80, true), 3);
+    assert_eq!(reduced_defense(7, 40, true), 4);
+    assert_eq!(reduced_defense(7, 80, true), 1);
+    assert_eq!(reduced_defense(10, 40, true), 5);
+    assert_eq!(reduced_defense(5, 80, true), 0);
+    assert_eq!(reduced_defense(1, 40, true), 0);
+    assert_eq!(reduced_defense(-3, 40, true), -1);
     assert_eq!(reduced_defense(0, 40, true), 0);
     assert_eq!(reduced_defense(5, 100, true), 0);
+    // An independent source for every defense up to 300 (exact rational arithmetic on the two
+    // single-precision constants gives the same): VCMI ignores `floor(defense × percent / 100)
+    // + 1` points, at most the defense (lib/battle/DamageCalculator.cpp).
+    for defense in 1..=300 {
+        for percent in [40u8, 80] {
+            let ignored = (defense * i32::from(percent) / 100 + 1).min(defense);
+            let left = defense - ignored;
+            assert_eq!(reduced_defense(defense, percent, true), left);
+            assert_eq!(reduced_defense(-defense, percent, true), -left);
+        }
+    }
     let r = ruleset();
     // Tank defense 20 → 12: 10 − 12 = −2 points, −5 %: 20 → 19.
     let mut s = battle(&r, &[(0, "behemoth", 10)], &[(0, "tank", 1)], 1);
     arrange(&mut s, &r, &[(7, 5), (8, 5)]);
     assert_eq!(strikes(&hit(&mut s, &r, 1, (7, 5)))[0].2, 19);
     // Defending (20 + 4 = 24) is reduced as a whole: 24 → 14, −10 %: 18.
+    let mut s = battle(&r, &[(0, "behemoth", 10)], &[(0, "tank", 1)], 1);
+    arrange(&mut s, &r, &[(7, 5), (8, 5)]);
+    stack(&mut s, 1).flags.set(StackFlags::DEFENDING, true);
+    assert_eq!(strikes(&hit(&mut s, &r, 1, (7, 5)))[0].2, 18);
+    // With quirk Q-0005 the strike reads the executable's value: the defending Tank's 24 leave
+    // 14 (24 − 9.6000001 = 14.39), −10 %: 18 (the share rounded on its own left 15: 17).
+    let r = ruleset_with("t:single", |_| {});
     let mut s = battle(&r, &[(0, "behemoth", 10)], &[(0, "tank", 1)], 1);
     arrange(&mut s, &r, &[(7, 5), (8, 5)]);
     stack(&mut s, 1).flags.set(StackFlags::DEFENDING, true);

@@ -1498,6 +1498,13 @@ pub fn try_ruleset_from(
                 quirks: vec![(String::from("quirk.battle.frenzy_reduced_defense"), true)],
             },
             ProfileDef {
+                key: ContentKey::new("t", "frenzy_single").unwrap(),
+                quirks: vec![
+                    (String::from("quirk.battle.frenzy_reduced_defense"), true),
+                    (String::from("quirk.battle.single_precision_rates"), true),
+                ],
+            },
+            ProfileDef {
                 key: ContentKey::new("t", "counterstrike").unwrap(),
                 quirks: vec![(String::from("quirk.battle.counterstrike_extra_round"), true)],
             },
