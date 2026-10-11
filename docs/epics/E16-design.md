@@ -48,13 +48,14 @@ enum form). Later milestones add:
 
 Client to server: M2: `ListGames { seq }` and `CreateGame { seq, offer, seat }` (code since M2
 T1: a game is created from one of the server's offers and its creator takes `seat` in it at
-once), `Pause`, `Resume`.
+once), `Pause { seq }` (code since M2 T3; no `Resume`: a seat's `Join` with its token resumes).
 M3: `Login { public_key, signature, name }`, `Rekey { new_public_key, signatures }`. M4:
 `Queue { ladder }`, `Dequeue`, `AcceptMatch`, `Leaderboard { ladder, page }`,
 `MyRating { ladder }`.
 
 Server to client: M2: `Games { seq, offers, games }` and `GameCreated { seq, game }` (code since
-M2 T1; the refusals `NoSuchOffer` and `TooManyGames`), `Paused`, `Resumed`. No `StartGame`: a
+M2 T1; the refusals `NoSuchOffer` and `TooManyGames`), `PauseAsked { n, seat }` and
+`Goodbye { Paused }` (code since M2 T3, instead of `Paused` and `Resumed`). No `StartGame`: a
 game starts when every seat is held at once (M1 T2's rule). M3:
 `Challenge { nonce }`, `LoggedIn { player }`. M4: `Queued`, `MatchFound { game, seat,
 deadline }`, `LeaderboardPage`, `Rating`.
@@ -71,9 +72,10 @@ only and a visible note. The server never reads anything from this check.
   `registry::restore`; `Session::restore` in `h3-protocol`; the record in `E16-log.md`): a journal
   per game in `<data>/games/`, its entries synced before the frames that depend on them, re-run
   at start, a journal that does not match or re-run moved to `<data>/void/`.
-- **Pause and resume.** A paused game is a journal without a running engine; `Resume` by its
-  participants restores it as above. Unranked: the host or all seats may pause; ranked: both
-  players agree, within the ladder's limit.
+- **Pause and resume** are code since M2 T3 (the record in `E16-log.md`): unranked, the host's
+  `Pause` pauses, a paused game is its journal, a seat's join with its token restores it. Still
+  to come: ranked, both players agree, within the ladder's limit (M4); a paused game's deadline
+  (`pause_hours`, M2 T5).
 - **Upgrades.** A drain mode refuses new games and lets open ones finish; the operator then
   upgrades. Games left open across an upgrade whose engine or content identity changed are
   void. When state saves exist (ADR-0004 point 9, an adventure-lane topic for long games), a
@@ -81,27 +83,15 @@ only and a visible note. The server never reads anything from this check.
 
 ## 8. Integrity: how a corrupted game is caught
 
-- **Checkpoints.** The live state's canonical hash (ADR-0003 point 11) goes into the journal
-  every N commands (the replay's `checkpoint_every`) and at the end.
-- **Verification before use.** When a game ends, and before any rating or leaderboard change,
-  the server re-runs the journal in a fresh engine instance and compares every checkpoint and
-  the final hash, as `Replay::verify` does. A single flipped bit in the live state after any
-  checkpoint changes the hashes that follow it; a flipped bit in a command before it was
-  journaled makes the re-run diverge from the live state at the next checkpoint; a flip that
-  turns a command illegal makes the re-run reject it. Any mismatch marks the game *corrupt*:
-  void for ladders, the replay kept with the diagnosis (step, expected, actual), a log line.
-- **The ruleset.** The live game and the re-run share the compiled ruleset in memory, so a
-  corruption there would affect both alike; at game end the server recomputes the ruleset's
-  content hash from memory and compares it with the manifest's. Hardware faults remain the
-  operator's to prevent (ECC memory); the checks above make them visible, not impossible.
-- **Shadow instance (option).** A second engine instance applies every command in step with
-  the live one; the hashes are compared after each command. A mismatch stops the game at once;
-  the server restores the correct state from the journal (the journal, not either instance,
-  is the truth), tells the players, and continues. Costs one more engine step per command
-  (microseconds in battle). Off by default; a ladder may require it.
-- **What the client sees.** `Accepted` echoes the applied command, and the events describe
-  what happened, so a player whose intent was altered before the journal would notice; the
-  server cannot catch that case itself.
+Code since M2 T3 (`h3-server/src/game.rs`, `Session`'s shadow instance; the record in
+`E16-log.md`): checkpoints in the journal; every finished game's journal read back and re-run
+before its replay is published, a mismatch voiding it (the replay withheld, the journal and the
+diagnosis kept); the ruleset hash recomputed from memory at the end; the shadow-instance option
+(off by default), whose mismatch rebuilds both battles from the journal and goes on. Still to come:
+results count only after the verification (M4), and a ladder may require the shadow instance.
+Hardware faults remain the operator's to prevent (ECC memory); the checks make them visible, not
+impossible. A player whose intent was altered before the journal would notice from `Accepted`'s
+echo and the events; the server cannot catch that case itself.
 
 ## 9. Server configuration and data directory (sketch)
 
@@ -109,11 +99,12 @@ The configuration is code since M2 T1 (`crates/h3-server/src/config.rs`, the exa
 `server.example.toml`): `[server]` (`bind`, `data`, `checkpoint_every`), `[content]` (`packs`, the
 packs directory: a scenario names its packs and profile), `[limits]` (M1's six and `games`,
 `games_per_address`), one `[[offer]]` per game configuration (`id`, `scenario`, `profile`,
-`bots`); the replay goes to `<data>/replays/<offer>-game<id>-<random>.toml`. Still to come:
+`bots`); the replay goes to `<data>/replays/<offer>-game<id>-<random>.toml`; `shadow_instance`
+in `[server]` since M2 T3. Still to come:
 
 ```
-[server]      anonymous = true   shadow_instance = false            # M3, M2 T3
-[limits]      pause_hours = 72                                       # M2 T3
+[server]      anonymous = true                                       # M3
+[limits]      pause_hours = 72                                       # M2 T5
 [[ladder]]    id = "battle-arena"  scenario_pool = ["…"]  season = 1  pause = false  # M4
 ```
 

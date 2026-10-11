@@ -264,8 +264,12 @@ Cut at the M1 checkpoint (SRV-Q12); the tasks in full: `docs/lanes/server/QUEUE.
   core's journal entries and `Session::restore`; a journal per game in `<data>/games/`, synced
   before the frames that depend on it; restore at start, void journals moved aside; the replay
   as the finished journal.
-- **T3** verification, pause and resume; **T4** spectators (waits for the battle's spectator
-  viewer); **T5** shutdown, drain, hardening and closure.
+- **T3 Verification, pause and resume** (done 2026-10-11; `E16-log.md`): a finished game's journal
+  read back and re-run before its replay is published (void otherwise, `Unverified`), the ruleset
+  hash recomputed from memory; the shadow-instance option; `Pause` by the host, a paused game as
+  its journal, resumed by a seat's join with its token (wire version 5, journal format 2).
+- **T4** spectators (waits for the battle's spectator viewer); **T5** shutdown, drain, hardening
+  and closure.
 
 ## Review list for the M2 checkpoint
 
@@ -288,6 +292,21 @@ Choices queued under the autonomy contract (details in `E16-log.md`):
   workspace); a journal that does not write stops its game with `Goodbye { Shutdown }`; the void
   directory; owner-only directories and journals on Unix; ids of ended games reusable after a
   restart.
+- T3: the verification reads the journal back from disk (not the session's copy) and publishes
+  the replay it re-ran; a game that does not verify is void: `Rejected { Unverified }` for
+  `FetchReplay`, the journal in `<data>/void/` and the replay as played beside it, the diagnosis
+  (with hashes) as its first line, the log line without hashes; `GameEnded` is still sent before
+  the check. Who pauses: the host (the seat taken first, a created game's creator) alone; another
+  seat's ask goes to every viewer as `PauseAsked` (the design note's "or all seats" adds nothing in
+  a two-seat battle, the host being one of them). No `Resume` message: a seat's `Join` with its
+  token resumes (the registry checks the token before it restores the journal); no `Paused` or
+  `Resumed` message: `Goodbye { Paused }` closes every connection of the game. The wire's
+  additions (version 5: `Pause`, `PauseAsked`, `Phase::Paused`, `GoodbyeReason::Paused`,
+  `RejectCode::Unverified`) and the journal's lines `Paused`, `Resumed` (format 2; a format-1
+  journal is void after the upgrade). A paused game counts against the limits like a running one;
+  its deadline (`pause_hours`) moves to T5 with the deadline of a game nobody returns to. The
+  shadow instance's repair is silent for the players (the command is re-applied to the rebuilt
+  battle before anything is sent), a log line names the step.
 
 ## Review list for the M1 checkpoint (passed 2026-10-11)
 
