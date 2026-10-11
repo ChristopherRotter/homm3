@@ -25,6 +25,7 @@ use std::fs;
 use std::net::IpAddr;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
+use std::sync::atomic::{AtomicUsize, Ordering};
 use std::thread;
 use std::time::Duration;
 
@@ -57,6 +58,78 @@ pub(crate) struct Frame {
     pub left: Option<u64>,
 }
 
+/// A connection's queue of frames from a game (ADR-0018 point 3; E16 M2 T5c): bounded in frames
+/// by its channel and in bytes by a count both ends keep, the game adding what it queues and the
+/// connection's task taking off what it takes out. Provisional.
+#[derive(Debug)]
+pub(crate) struct Outbox {
+    to: mpsc::Sender<Frame>,
+    bytes: Arc<AtomicUsize>,
+    limit: usize,
+}
+
+/// The connection task's end of its [`Outbox`].
+#[derive(Debug)]
+pub(crate) struct FromGame {
+    from: mpsc::Receiver<Frame>,
+    bytes: Arc<AtomicUsize>,
+}
+
+/// A connection's queue from a game, of at most `frames` frames and `limit` bytes.
+pub(crate) fn outbox(frames: usize, limit: usize) -> (Outbox, FromGame) {
+    let (to, from) = mpsc::channel(frames);
+    let bytes = Arc::new(AtomicUsize::new(0));
+    let from = FromGame {
+        from,
+        bytes: Arc::clone(&bytes),
+    };
+    (Outbox { to, bytes, limit }, from)
+}
+
+impl Outbox {
+    /// Queues `frame` if the queue has room for it in frames and in bytes; `false` if it has not
+    /// (the game then drops the connection). A queue whose task is gone takes it unseen.
+    pub(crate) fn offer(&self, frame: Frame) -> bool {
+        let len = frame.text.len();
+        if self.bytes.load(Ordering::Relaxed).saturating_add(len) > self.limit {
+            return false;
+        }
+        self.bytes.fetch_add(len, Ordering::Relaxed);
+        match self.to.try_send(frame) {
+            Ok(()) => true,
+            Err(e) => {
+                self.bytes.fetch_sub(len, Ordering::Relaxed);
+                matches!(e, mpsc::error::TrySendError::Closed(_))
+            }
+        }
+    }
+
+    /// The bytes queued (tests).
+    #[cfg(test)]
+    pub(crate) fn queued(&self) -> usize {
+        self.bytes.load(Ordering::Relaxed)
+    }
+
+    /// Queues the connection's last frame from the game (a goodbye, small) whatever the bytes
+    /// queued; a full queue misses it.
+    pub(crate) fn last(&self, frame: Frame) {
+        let len = frame.text.len();
+        self.bytes.fetch_add(len, Ordering::Relaxed);
+        if self.to.try_send(frame).is_err() {
+            self.bytes.fetch_sub(len, Ordering::Relaxed);
+        }
+    }
+}
+
+impl FromGame {
+    /// The next frame; `None` once the game dropped the queue and it is empty.
+    pub(crate) async fn recv(&mut self) -> Option<Frame> {
+        let frame = self.from.recv().await?;
+        self.bytes.fetch_sub(frame.text.len(), Ordering::Relaxed);
+        Some(frame)
+    }
+}
+
 /// What a connection task tells a game.
 #[derive(Debug)]
 pub(crate) enum ToGame {
@@ -65,7 +138,7 @@ pub(crate) enum ToGame {
         /// The connection.
         conn: ConnId,
         /// Its outbound queue for this game.
-        to: mpsc::Sender<Frame>,
+        to: Outbox,
     },
     /// A message the connection's hello gate let through.
     Message {
@@ -264,6 +337,7 @@ impl Prepared {
             checkpoint_every: server.checkpoint_every,
             shadow: server.shadow_instance,
             spectators: limits.spectators_per_game,
+            record_bytes: limits.record_bytes,
             watchable,
         };
         let (bot_seed, replay_path) = (os_u64()?, replay_path(&server.data, &offer.id, game)?);
@@ -324,6 +398,7 @@ impl Prepared {
             checkpoint_every: replay.checkpoint_every,
             shadow: server.shadow_instance,
             spectators: limits.spectators_per_game,
+            record_bytes: limits.record_bytes,
             // A game restores only if it started, and its entries hold the setting it started
             // with (`Entry::Spectators`).
             watchable: true,
@@ -606,15 +681,11 @@ fn resume<'r>(
 }
 
 /// Every connection in `conns` but those in `closed` hears `reason`, its last frame from the game.
-fn close_all(
-    conns: &BTreeMap<ConnId, mpsc::Sender<Frame>>,
-    closed: &[ConnId],
-    reason: GoodbyeReason,
-) {
+fn close_all(conns: &BTreeMap<ConnId, Outbox>, closed: &[ConnId], reason: GoodbyeReason) {
     let text = codec::encode_text(&ServerMessage::Goodbye { reason });
     for (conn, to) in conns {
         if !closed.contains(conn) {
-            let _ = to.try_send(Frame {
+            to.last(Frame {
                 text: text.clone(),
                 close: true,
                 left: None,
@@ -625,7 +696,7 @@ fn close_all(
 
 /// The journal stopped: every connection hears the server shuts down (for this game), and the game
 /// leaves the lobby; its journal stays for the next start.
-fn stop(conns: &BTreeMap<ConnId, mpsc::Sender<Frame>>, registry: &Shared, game: u32) {
+fn stop(conns: &BTreeMap<ConnId, Outbox>, registry: &Shared, game: u32) {
     close_all(conns, &[], GoodbyeReason::Shutdown);
     lock(registry).leave(game);
 }
@@ -637,7 +708,7 @@ fn turn_away(inbox: &mut mpsc::Receiver<ToGame>, reason: GoodbyeReason) {
     let text = codec::encode_text(&ServerMessage::Goodbye { reason });
     while let Ok(event) = inbox.try_recv() {
         if let ToGame::Open { to, .. } = event {
-            let _ = to.try_send(Frame {
+            to.last(Frame {
                 text: text.clone(),
                 close: true,
                 left: None,
@@ -646,11 +717,11 @@ fn turn_away(inbox: &mut mpsc::Receiver<ToGame>, reason: GoodbyeReason) {
     }
 }
 
-/// Queues a frame for its connection, with its mark `left` ([`Frame::left`], E16 M2 T5b). A full
-/// queue drops the connection: the game forgets it, and its task, finding the queue closed, says
-/// `TooSlow` (ADR-0018 point 3).
+/// Queues a frame for its connection, with its mark `left` ([`Frame::left`], E16 M2 T5b). A queue
+/// full in frames or in bytes (E16 M2 T5c) drops the connection: the game forgets it, and its
+/// task, finding the queue closed, says `TooSlow` (ADR-0018 point 3).
 pub(crate) fn deliver(
-    conns: &mut BTreeMap<ConnId, mpsc::Sender<Frame>>,
+    conns: &mut BTreeMap<ConnId, Outbox>,
     session: &mut Session<'_>,
     outbound: Outbound,
     left: Option<u64>,
@@ -663,7 +734,7 @@ pub(crate) fn deliver(
         close: outbound.close,
         left,
     };
-    if let Err(mpsc::error::TrySendError::Full(_)) = to.try_send(frame) {
+    if !to.offer(frame) {
         conns.remove(&outbound.to);
         session.disconnected(outbound.to);
     }
@@ -804,8 +875,12 @@ fn unhashed(error: &ReplayError) -> String {
 mod tests {
     use super::*;
 
-    #[test]
-    fn a_full_queue_drops_its_connection_and_frees_the_seat() {
+    /// A game whose attacker joins over a queue of `frames` frames and of the bytes `limit` gives
+    /// for the join's frames; the queue must hold `Joined` but not the `Snapshot` after it.
+    fn a_full_queue_drops_its_connection_and_frees_the_seat(
+        frames: usize,
+        limit: impl Fn(&[Outbound]) -> usize,
+    ) {
         let (r, setup) = h3_pack::synthetic(h3_pack::SYNTHETIC_DUEL).unwrap();
         let players = ["a", "b"].map(|t| SeatKind::Player {
             token: String::from(t),
@@ -818,10 +893,9 @@ mod tests {
             shadow: false,
             spectators: 0,
             watchable: true,
+            record_bytes: 1 << 20,
         };
         let mut session = Session::new(&r, config, players).unwrap();
-        let (to, mut queue) = mpsc::channel(1);
-        let mut conns = BTreeMap::from([(ConnId(1), to)]);
         let join = |token: Option<&str>| ClientMessage::Join {
             game: 1,
             seat: Seat::Attacker,
@@ -830,11 +904,13 @@ mod tests {
         let mut out = Vec::new();
         session.handle(ConnId(1), join(None), &mut out);
         assert_eq!(out.len(), 2, "Joined and Snapshot");
+        let (to, mut queue) = outbox(frames, limit(&out));
+        let mut conns = BTreeMap::from([(ConnId(1), to)]);
         for outbound in out.drain(..) {
             deliver(&mut conns, &mut session, outbound, None);
         }
         assert!(conns.is_empty(), "the snapshot found the queue full");
-        let joined = queue.try_recv().unwrap();
+        let joined = queue.from.try_recv().unwrap();
         assert!(matches!(
             codec::decode_server(joined.text.as_bytes(), usize::MAX),
             Ok(ServerMessage::Joined { .. })
@@ -849,5 +925,39 @@ mod tests {
             codec::decode_server(out[0].frame.as_bytes(), usize::MAX),
             Ok(ServerMessage::Joined { .. })
         ));
+    }
+
+    #[test]
+    fn a_queue_full_in_frames_drops_its_connection() {
+        a_full_queue_drops_its_connection_and_frees_the_seat(1, |_| usize::MAX);
+    }
+
+    /// E16 M2 T5c.
+    #[test]
+    fn a_queue_full_in_bytes_drops_its_connection() {
+        a_full_queue_drops_its_connection_and_frees_the_seat(64, |out| out[0].frame.len());
+    }
+
+    /// E16 M2 T5c: the bytes a frame holds are counted while it is queued; a goodbye is queued
+    /// whatever the bytes; a frame the closed queue takes is counted nowhere.
+    #[tokio::test]
+    async fn a_queue_counts_the_bytes_it_holds() {
+        let frame = |text: &str| Frame {
+            text: String::from(text),
+            close: false,
+            left: None,
+        };
+        let (to, mut from) = outbox(8, 10);
+        assert!(to.offer(frame("abcdef")) && to.queued() == 6);
+        assert!(!to.offer(frame("ghijk")), "11 bytes");
+        assert!(to.offer(frame("ghij")) && to.queued() == 10);
+        to.last(frame("goodbye"));
+        assert_eq!(to.queued(), 17);
+        assert_eq!(from.recv().await.unwrap().text, "abcdef");
+        assert_eq!(to.queued(), 11);
+        let (to, from) = outbox(8, 10);
+        drop(from);
+        assert!(to.offer(frame("abc")), "a queue whose task is gone");
+        assert_eq!(to.queued(), 0);
     }
 }

@@ -1,8 +1,8 @@
 # E16 — Server: protocol, hosting, lobbies and ladders
 
 Status: **in progress** (refined 2026-10-08/09; M0 done 2026-10-10: ADR-0018 accepted, the
-crate skeletons; M1 done 2026-10-10, its checkpoint passed 2026-10-11 (SRV-Q12); M2 T1 to T5b
-done 2026-10-11, T5c next). Decisions: [ADR-0018](../adr/0018-server-and-protocol.md) (protocol
+crate skeletons; M1 done 2026-10-10, its checkpoint passed 2026-10-11 (SRV-Q12); M2 T1 to T5c
+done 2026-10-11, T5d next). Decisions: [ADR-0018](../adr/0018-server-and-protocol.md) (protocol
 and hosting); ADR drafts `docs/lanes/server/adr-drafts/identity-and-ladders.md` and
 `discovery.md`. Working detail (messages, flows, journals, the ladder sketch):
 `docs/epics/E16-design.md`. Done tasks in full: `docs/epics/E16-log.md`. Lane: server (`docs/lanes/server/HANDOFF.md`).
@@ -291,8 +291,11 @@ Cut at the M1 checkpoint (SRV-Q12); the tasks in full: `docs/lanes/server/QUEUE.
   connections (`[limits] messages_per_address`), WebSocket pings counted, a deadline for the hello
   and one for being in a game (`hello_timeout_ms`, `lobby_timeout_ms`), a refused join leaves the
   game (`Session::holds`); no wire change.
-- **T5c** memory bounded in bytes; **T5d** the fuzz harness, the replay download and M2's closure
-  (T5 split on 2026-10-11, T5b again the same day; `docs/lanes/server/QUEUE.md`).
+- **T5c Memory bounded in bytes** (done 2026-10-11; `E16-log.md`): a viewer's record keeps its
+  latest messages within `[limits] record_bytes` (the header's `first`), the outbound queue counts
+  its bytes (`outbound_bytes`); wire version 10, record format 2.
+- **T5d** the fuzz harness, the replay download and M2's closure (T5 split on 2026-10-11, T5b
+  again the same day; `docs/lanes/server/QUEUE.md`).
 
 ## Review list for the M2 checkpoint
 
@@ -372,6 +375,13 @@ Choices queued under the autonomy contract (details in `E16-log.md`):
   Not built: a separate rate for automated seats (T3's note): an operator cannot know a client is
   an agent before accounts, so it waits for M3's bot accounts; until then an operator raises
   `messages_per_second` and `messages_per_address`.
+- T5c: the record as a window of the latest messages (the oldest go, the newest always stays,
+  numbering goes on; `RecordHeader::first`, format 2, wire version 10) rather than refusing
+  what would grow it; the bounds 512 KiB per record and 2 MiB per outbound queue, a record to fit
+  twice in a queue (its frame escapes its text once more); the bytes counted by the game as it
+  queues and by the task as it takes out, a goodbye queued whatever the bytes. Not built as its
+  own rule: one `FetchRecord` in flight. The queue's bytes bound what queued records hold, and a
+  client that asks for them faster than it reads is dropped as `TooSlow`.
 
 ## Review list for the M1 checkpoint (passed 2026-10-11)
 
