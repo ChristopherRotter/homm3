@@ -4,20 +4,20 @@ The server lane's living state; read after the global `docs/HANDOFF.md`. Format 
 
 ## Current state
 
-- **M1 closed (2026-10-11, SRV-Q12). M2 done (2026-10-11):** T1–T5d merged (#67 … #93); T5e (M2's closure: exit criteria, the client lane's note, the inbox placed, the reviewer agent and its fixes) on `claude/epic-bell-ot2nsa`. **Next: the user's M2 checkpoint (SRV-Q16)**, then M3's refinement (`QUEUE.md`); wire 11.
+- **M1 closed (2026-10-11, SRV-Q12). M2 closed (2026-10-11, SRV-Q16):** T1–T5e merged (#67 … #96). **M3 refined (2026-10-11, SRV-Q17):** ADR-0019 accepted (a permanent login name that salts the key, a changeable display name, `ed25519-dalek` and `argon2`, anonymous play by configuration, any seated account opts out of its replay's listing; points 4–9 direction for M4); M3 cut into T1–T5 (`QUEUE.md`). **Next: M3 T1**; wire 11.
 - **For M4** (SRV-Q13, answered): ranked games one at a time per player, a pause only by agreement, its length negotiated within the ladder's bounds, the absent player forfeits at the due time; the reading of "one at a time" is confirmed at M4's refinement.
-- **Cross-lane on this branch** (the user, 2026-10-11): the client lane's inbox line; `06-security.md` and the global HANDOFF's server row in a commit of their own. The pull request carries the label `cross-lane`.
+- **Shared on this branch** (the user, 2026-10-11): ADR-0019 moved from the drafts with its index row, and the global HANDOFF's server row, in a commit of their own; the pull request carries `cross-lane`.
 - **ADR-0018 point 5 as amended:** the mapping's matches over the engine's enums are exhaustive, and since T4b its patterns over the observation's structs too; a new battle variant or observation field fails `h3-protocol`'s build until mapped (global HANDOFF trap).
 - **The 100 % gate** covers `h3-protocol` (logic); `h3-server` is an adapter outside it, tested end to end.
 - **Versions** (`docs/08-work-process.md`): `PROTOCOL_VERSION` (`h3-protocol`, 11 since M2 T5d's archive; 10 was M2 T5c's `RecordHeader::first`; bumped on every wire change), `RECORD_FORMAT_VERSION` (`h3-protocol`, 2 since M2 T5c), `JOURNAL_FORMAT_VERSION` (`h3-server`, 3 since M2 T4c's spectator setting; 2 was M2 T3's pause lines; a journal of another format is void at start).
-- The lane owns (`lanes.toml`) `h3-protocol`, `h3-server`, `benches/server/` and E16's files; the workspace files stay shared. **Checkpoints** per milestone, under the autonomy contract below; a fresh reviewer agent checks each milestone before the user does. The identity and discovery ADR drafts are decided at the M3 refinement.
+- The lane owns (`lanes.toml`) `h3-protocol`, `h3-server`, `benches/server/` and E16's files; the workspace files stay shared. **Checkpoints** per milestone, under the autonomy contract below; a fresh reviewer agent checks each milestone before the user does. ADR-0019 (identity) was accepted at the M3 refinement; the discovery draft is decided at M6's.
 - **Ids:** questions `SRV-Q<n>`, quirks `SRV-QUIRK-<n>`, stubs `SRV-STUB-<n>`. ADR drafts go to `docs/lanes/server/adr-drafts/` and get a number when the user accepts them. Branches: `server/<task>`.
 
 ## Autonomy contract (confirmed by the user, 2026-10-09)
 
 - **Agent decides, marked provisional:** the inner structure of the server crates, names, test layout, error texts, log format; anything a later task can change without touching another crate. Mark it `provisional` (code comment or epic log).
 - **Queue for the milestone review:** choices with a lasting cost that stay inside the lane: a light dependency, a message shape inside an accepted ADR, a configuration format. List them in the milestone's review list (epic file) and go on.
-- **Stop the line:** seams and contracts (`h3-contracts`, the engine API the server calls), heavy dependencies (beyond the decided `tokio` features and `tokio-tungstenite`: another runtime, an HTTP framework, a TLS stack, the crypto crates, a store), licence questions, changes to the security model (ADR-0008), anything touching another lane's paths. Write the question (`SRV-Q<n>`), stop that task and take the next independent one.
+- **Stop the line:** seams and contracts (`h3-contracts`, the engine API the server calls), heavy dependencies (beyond the decided `tokio` features, `tokio-tungstenite`, `ed25519-dalek` and `argon2` (SRV-Q17): another runtime, an HTTP framework, a TLS stack, other crypto crates, a store), licence questions, changes to the security model (ADR-0008), anything touching another lane's paths. Write the question (`SRV-Q<n>`), stop that task and take the next independent one.
 
 ## Standing traps
 
@@ -45,14 +45,10 @@ The server lane's living state; read after the global `docs/HANDOFF.md`. Format 
 
 ## Recent sessions
 
-### 2026-10-11 — M2 T5e, M2's closure
+### 2026-10-11 — M2 T5e, M2's checkpoint, M3's refinement
 
-#93 had merged; the branch restarted from `master`. Exit criteria written, the client lane's note filed (cross-lane, the user), the inbox placed (M3, M4). The reviewer agent: 1 major (file I/O under the registry's lock) and 5 minors fixed, 4 minors in the inbox (`E16-log.md`, M2 T5e). Checkpoint: SRV-Q16.
+#93 had merged; the branch restarted from `master`. Exit criteria written, the client lane's note filed (cross-lane, the user), the inbox placed (M3, M4). The reviewer agent: 1 major (file I/O under the registry's lock) and 5 minors fixed, 4 minors in the inbox (`E16-log.md`, M2 T5e). #96 merged; the user passed M2's checkpoint (SRV-Q16) and refined M3 in the same session (SRV-Q17): ADR-0019 accepted, M3 cut (`QUEUE.md`). Found while refining: the draft salted the key with a renamable name, hence the two names.
 
 ### 2026-10-11 — M2 T5d, mutation tests and the public archive
 
 #88 had merged; the branch restarted from `master`. The user answered SRV-Q14 (mutation tests now) and SRV-Q15 (finished replays public). Built T5d (`docs/epics/E16-log.md`, M2 T5d): `tests/mutation.rs`; `archive.rs` with `ListReplays` and `FetchArchived` (wire 11), a game closed to spectators archived unlisted, `replays_kept`. T5d split again: T5e is M2's closure. Review list in the epic file.
-
-### 2026-10-11 — M2 T5c, memory bounded in bytes
-
-#86 had merged; the branch restarted from `master`. Built T5c (`docs/epics/E16-log.md`, M2 T5c): the record as a window of the latest messages (`RecordHeader::first`, wire 10, record format 2), `game::Outbox` counting a queue's bytes; one `FetchRecord` in flight left to the queue's bound; a battle's missing round limit noted (inbox). Review list in the epic file.

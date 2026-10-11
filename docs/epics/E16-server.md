@@ -2,9 +2,10 @@
 
 Status: **in progress** (refined 2026-10-08/09; M0 done 2026-10-10: ADR-0018 accepted, the
 crate skeletons; M1 done 2026-10-10, its checkpoint passed 2026-10-11 (SRV-Q12); M2 done
-2026-10-11 (T1 to T5e), its checkpoint next: SRV-Q16). Decisions: [ADR-0018](../adr/0018-server-and-protocol.md) (protocol
-and hosting); ADR drafts `docs/lanes/server/adr-drafts/identity-and-ladders.md` and
-`discovery.md`. Working detail (messages, flows, journals, the ladder sketch):
+2026-10-11 (T1 to T5e), its checkpoint passed the same day (SRV-Q16); M3 refined 2026-10-11
+(SRV-Q17), T1 next). Decisions: [ADR-0018](../adr/0018-server-and-protocol.md) (protocol
+and hosting); [ADR-0019](../adr/0019-identity-and-ladders.md) (identity and ladders, accepted at the M3
+refinement); ADR draft `discovery.md`. Working detail (messages, flows, journals, the ladder sketch):
 `docs/epics/E16-design.md`. Done tasks in full: `docs/epics/E16-log.md`. Lane: server (`docs/lanes/server/HANDOFF.md`).
 
 **How the drafts become decisions.** Each ADR draft stays "Proposed" until the milestone that
@@ -306,6 +307,43 @@ Cut at the M1 checkpoint (SRV-Q12); the tasks in full: `docs/lanes/server/QUEUE.
   journal text in the log, the replay written whole, a panicking game thread leaves the lobby; the
   rest in the inbox.
 
+## M3 tasks
+
+Cut at the M3 refinement (2026-10-11, SRV-Q17); the tasks in full: `docs/lanes/server/QUEUE.md`.
+ADR-0019 (accepted at the refinement; points 1 and 2): a permanent
+login name that salts the key and a changeable display name, the server's id in the signed
+login, `ed25519-dalek` and `argon2`, anonymous play by configuration, any seated account opting
+out of its replay's listing.
+
+- **T1 The login on the wire, sans-I/O** (`h3-protocol`): the messages, the hello gate's login
+  step (the host gives the challenge and checks the signature), the names' rules.
+- **T2a The Authenticator and the player log** (`h3-server`): signatures checked, registration
+  and login, `<data>/players.log`, the derivation in the test client, `[server] public_url` and
+  `anonymous`.
+- **T2b Re-keying, renames, the listing preference, the operator's rebind.**
+- **T3 Seats bound to accounts**: a seat taken and re-taken by account, the journal's account,
+  the lobby's display names, the replay's listing by the seated accounts.
+- **T4a A game's bounds**: the commands-per-game limit (void beyond it), a waiting game whose
+  seats are all empty leaves.
+- **T4b Behind a reverse proxy**: the forwarded address from trusted proxies, limits per IPv6
+  prefix, the documented setup with TLS.
+- **T5 Closure**: `06-security.md`'s accounts, the client lane's note (the derivation, the
+  server's id), the reviewer agent, the user's checkpoint.
+
+## Exit criteria (M3)
+
+The full `cargo xtask verify` green in CI with `h3-protocol` under the 100 % gate, and shown in
+tests over loopback: a client registers and logs in with the key its login name and password
+derive (a test vector); a login signed for another server's id, with another connection's
+challenge or by another key is refused; a seat taken by an account is re-taken by a new
+connection logged in as it, without a token, also after a restart; a re-keyed account logs in
+with its new key only; a display name changes and stays unique; anonymous play as configured;
+a game beyond its command limit is void; a waiting game without a held seat leaves; behind a
+trusted proxy the limits count the client's address. And: `06-security.md` carries the
+accounts; the reverse-proxy setup is documented; the client lane's inbox has the login; a fresh
+reviewer agent's major findings are fixed; the lane HANDOFF, the epic log and `QUEUE.md` are
+current.
+
 ## Exit criteria (M2)
 
 The full `cargo xtask verify` green in CI with `h3-protocol` under the 100 % gate, and shown in
@@ -340,7 +378,7 @@ restart does to a viewer's numbers and record; the inbox's M2 items are decided;
 agent's major findings are fixed or recorded with the user's decision; the lane HANDOFF, the epic
 log and `QUEUE.md` are current.
 
-## Review list for the M2 checkpoint
+## Review list for the M2 checkpoint (passed 2026-10-11, SRV-Q16)
 
 Choices queued under the autonomy contract (details in `E16-log.md`):
 
