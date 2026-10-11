@@ -128,6 +128,7 @@ fn the_query_searches_only_as_far_as_the_points_go() {
             hero_at(2, 0, p(0, 1), &[PEASANT]),
         ],
     );
+    state.explore_all();
     // Twelve steps leave 100: two tiles at most (the cheapest step costs 50).
     walk(&mut state, &rules, 1, (1..=12).map(|x| p(x, 0)).collect()).unwrap();
     let reach = reach(&state, &rules, 1);
@@ -209,6 +210,29 @@ fn around(state: &AdventureState, at: Pos) -> Vec<Pos> {
             Some(Pos::new(x, y, at.level)).filter(|&pos| state.map().tile(pos).is_some())
         })
         .collect()
+}
+
+// covers: ADV-MOV-008
+#[test]
+fn the_query_keeps_to_the_explored_tiles() {
+    let rules = movement_rules(false);
+    let mut state = world_state(
+        &rules,
+        &["gggggggggggggggg"],
+        vec![hero_at(1, 0, p(0, 0), &[PEASANT])],
+    );
+    // 1300 points pay thirteen steps, but only (1, 0) to (5, 0) are explored.
+    let tiles: Vec<Pos> = reach(&state, &rules, 1)
+        .tiles()
+        .map(|(pos, _)| pos)
+        .collect();
+    assert_eq!(tiles, (1..=5).map(|x| p(x, 0)).collect::<Vec<_>>());
+    assert_eq!(reach(&state, &rules, 1).points_left(p(6, 0)), None);
+    // Standing on (5, 0), the hero has explored up to (10, 0).
+    walk(&mut state, &rules, 1, (1..=5).map(|x| p(x, 0)).collect()).unwrap();
+    let reach = reach(&state, &rules, 1);
+    assert_eq!(reach.points_left(p(10, 0)), Some(300));
+    assert_eq!(reach.points_left(p(11, 0)), None);
 }
 
 proptest! {

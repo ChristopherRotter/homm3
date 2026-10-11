@@ -353,6 +353,22 @@ fn one_pack_provides_valid_parameters() {
             "a starting_stack_chances entry is above 100"
         ))
     );
+    let players = |players: u8| {
+        AdventureRuleset::compile(
+            &core(),
+            &edit(|p| {
+                pack(p, "t").params.as_mut().unwrap().max_players = NonZeroU8::new(players).unwrap()
+            }),
+        )
+        .map(|part| part.params().max_players())
+    };
+    assert_eq!(
+        players(MAX_PLAYERS + 1),
+        Err(AdventureCompileError::InvalidParams(
+            "max_players is above 8"
+        ))
+    );
+    assert_eq!(players(MAX_PLAYERS), Ok(MAX_PLAYERS));
     // Any chance up to 100 compiles, and no chances at all: only the first stack comes.
     assert_eq!(chances(vec![0, 100]), Ok(vec![0, 100]));
     assert_eq!(chances(vec![]), Ok(vec![]));

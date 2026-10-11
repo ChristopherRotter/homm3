@@ -90,9 +90,15 @@ impl Reach {
                 let Some(next) = reach.neighbour(slot, dx, dy) else {
                     continue;
                 };
-                let to = map.at(reach.pos(next));
-                // The same tile checks as MoveHero's (ADV-MOV-007, ADR-0016 point 4).
-                if occupied[next] || !enterable_terrain(part, &to) || to.blocked || to.visitable {
+                let pos = reach.pos(next);
+                let to = map.at(pos);
+                // The same tile checks as MoveHero's (ADV-MOV-007, ADV-MOV-008, ADR-0016 point 4).
+                if !state.is_explored(hero.owner, pos)
+                    || occupied[next]
+                    || !enterable_terrain(part, &to)
+                    || to.blocked
+                    || to.visitable
+                {
                     continue;
                 }
                 let Some(left) = points.checked_sub(pricing.step(&from, &to, dir % 2 == 1, points))
@@ -174,8 +180,9 @@ impl Reach {
 }
 
 impl AdventureState {
-    /// The tiles `hero` can reach today, if it is on the map (see [`Reach`]). The caller decides
-    /// whose hero it may ask about; the explored tiles (ADV-MOV-008) come with fog of war (T8).
+    /// The tiles `hero` can reach today over the tiles its owner has explored (ADV-MOV-008), if it
+    /// is on the map (see [`Reach`]). The caller decides whose hero it may ask about.
+    // rule: ADV-MOV-008
     pub fn reach(&self, core: &Ruleset, part: &AdventureRuleset, hero: HeroId) -> Option<Reach> {
         self.hero(hero)
             .map(|hero| Reach::search(self, core, part, hero))

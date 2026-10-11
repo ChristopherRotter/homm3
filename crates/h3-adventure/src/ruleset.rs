@@ -25,6 +25,10 @@ use crate::ADVENTURE_RULESET_HASH_VERSION;
 /// Most entries of the land movement table: one per speed a `u8` can hold.
 pub const MAX_LAND_POINTS: usize = 256;
 
+/// The highest bound a part may set on a game's players: the original's eight colours, and the
+/// players an event's [`crate::Viewers`] holds (E08 T8a).
+pub const MAX_PLAYERS: u8 = 8;
+
 /// How a hero may cross a terrain (ADV-MOV-007), with the straight cost of a step where it may
 /// (ADV-MOV-003).
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -96,7 +100,8 @@ pub struct AdventureParamsDef {
     pub max_map_size: NonZeroU16,
     /// The most levels of a map (surface and underground).
     pub max_levels: NonZeroU8,
-    /// The most players of a game; the adventure keeps a layer per player (fog of war).
+    /// The most players of a game, at most [`MAX_PLAYERS`]; the adventure keeps a layer per
+    /// player (fog of war).
     pub max_players: NonZeroU8,
     /// The slots of a hero's army.
     pub army_slots: NonZeroU8,
@@ -589,6 +594,8 @@ fn validate_params(def: AdventureParamsDef) -> Result<AdventureParams, Adventure
         Some("a land_points entry is 0")
     } else if def.starting_stack_chances.iter().any(|&c| c > 100) {
         Some("a starting_stack_chances entry is above 100")
+    } else if def.max_players.get() > MAX_PLAYERS {
+        Some("max_players is above 8")
     } else {
         None
     };

@@ -182,11 +182,18 @@ where to read, not facts.
 - One of the eight neighbouring tiles on the same level, inside the map; never rock; water
   only by boat (not in increment 1); never a blocked tile of an object. Visiting: ADR draft
   "adventure state", point 4.
-- **Only explored tiles.** VCMI's pathfinder treats an unexplored tile as blocked
-  (`lib/pathfinder/PathfinderUtil.h: evaluateAccessibility`). The original appears to offer no
-  path into the shroud; the user's look at a map (A-1, question 4) confirms it. Then the legal
-  moves never depend on hidden tiles, and the reachable-tiles query and the action mask leak
-  nothing.
+- **Only explored tiles** (ADV-MOV-008, E08 T8a). VCMI's pathfinder treats an unexplored tile
+  as blocked (`lib/pathfinder/PathfinderUtil.h: evaluateAccessibility`). The user confirmed it
+  in SoD (2026-10-11, A-1 question 4): no path onto a dark tile, even an empty one. *Read in
+  T8a:* the pathfinder's expansion (0x4B2300, site 0x4B25D4) tests a neighbour's vision word
+  (0x4F79B0) against the current player's bit (0x69CCC4): an unexplored neighbour is
+  inaccessible for a human player (0x4BADA0, the player record's +0xE2), unless the search's mode
+  argument is 3 (the mouse's search 0x4194A0 passes 0; mode 3 not read). For a computer player it
+  is accessible from an explored tile (one step into the shroud), or anywhere while the player
+  record's +0x3E is above 0 (not read): the computer player's own path, not a rule (the engine
+  has no computer players). The fringe's tiles are unexplored, so they are not entered either.
+  Then the legal moves never depend on hidden tiles, and the reachable-tiles query and the action
+  mask leak nothing.
 - Tiles are revealed after each step, so a long move can open new ground. A path is still
   validated against the tiles explored when the command is given (the ADR draft: validated step
   by step, rejected whole).
@@ -197,14 +204,28 @@ where to read, not facts.
   (`original-data`: `skill_scouting`, i32 5, 6, 7, 8; VCMI `baseScoutingRange` 5; the wiki's
   SoD values +1, +2, +3; HotA uses +1, +3, +5). Artifacts add +1 each (Speculum, Spyglass), and
   the Scouting specialty adds +1 every six levels: *(inc. 3)*.
-- **Shape:** VCMI reveals a tile when `round(√(dx² + dy²)) ≤ r` on the same level
+- **Radius, read in E08 T8a** (CR-3, 0x4E4070): `skill_scouting` at the hero's Scouting level
+  (+0xCC); with Scouting and a Scouting specialty the radius times 1 + 0.05 × the hero's level
+  (f32, truncated); +1 for each of the artifacts 52 (Speculum) and 53 (Spyglass), worn or in a
+  worn combination. The specialty is a percentage, not the "+1 every six levels" above: checked
+  against the wiki and VCMI when the adventure profile comes (increment 3).
+- **Shape (ADV-FOG-002):** VCMI reveals a tile when `round(√(dx² + dy²)) ≤ r` on the same level
   (`lib/callback/CGameInfoCallback.cpp: getTilesInRange`, `DIST_2D`). In integers that is
-  `dx² + dy² ≤ r² + r` (r = 5: up to 30). The original's shape is not read: dispute **F-1**.
-- **When:** at the start of the game, around every object a player owns (vcmi
+  `dx² + dy² ≤ r² + r` (r = 5: up to 30). *Read in E08 T8a (F-1 settled):* the original's
+  reveal (0x49D160) tests `sqrt(dx² + dy²) ≤ r + 0.5` in f64 (0x617B94 is the C library's
+  `sqrt`), on the map and the level: the same integer test, since dx² + dy² is an integer and
+  (r + ½)² = r² + r + ¼. It sets the bit of every player of the revealer's team (the team bytes at
+  game +0x1F879) in each tile's vision word (one bit per player, array 0x6989F8): allies share
+  the map *(E10)*.
+- **When (ADV-FOG-003):** at the start of the game, around every object a player owns (vcmi
   `CGameState::initFogOfWar`), and after each step of a move around the hero's new tile (vcmi
-  `CGameHandler::moveHero`). Increment 1 models no owned objects, so a game opens with only its
-  heroes' surroundings explored. Towns and mines add theirs once they are owned (increment 2 or
-  later): a recorded simplification, not a rule.
+  `CGameHandler::moveHero`). *Read in E08 T8a:* the move's step (0x4805E0) reveals around the
+  step's destination before the hero's position changes (0x48106B); a placed hero's setup
+  (0x486590) reveals around it (0x486E25); the new day (0x4C7FE0) calls 0x4C7C50, which reveals
+  around every owned hero (and further owned objects, not read): nothing new while no rule hides a
+  tile again. Increment 1 models no owned objects, so a game opens with only its heroes'
+  surroundings explored. Towns and mines add theirs once they are owned (increment 2 or later): a
+  recorded simplification, not a rule.
 - **Explored stays explored, and shows live content.** VCMI keeps one explored bit per tile and
   team and shows the current content of every explored tile. Tiles are hidden again only by
   darkness effects such as the Necropolis' Cover of Darkness (vcmi `CGameHandler`, new day:
@@ -264,7 +285,7 @@ clean behaviour.
 
 | Id | Title | Impact | Suggested class | Confidence it exists in SoD | Confirmation |
 |---|---|---|---|---|---|
-| A-1 | The fog's fringe shows hidden tiles' terrain and the object sprites drawn into them | information (what a player sees) | fix-optional (faithful shows, strict-fixed shows terrain, roads and rivers only; E08 decision 7) | medium (the user's earlier observation; VCMI's pathfinder note: "Objects are usually visible on FoW border anyway") | the user looks at a map (below) |
+| A-1 | The fog's fringe shows hidden tiles' terrain and the object sprites drawn into them | information (what a player sees) | fix-optional (faithful shows, strict-fixed shows terrain, roads and rivers only; E08 decision 7) | **confirmed** (the user in SoD, 2026-10-11: terrain, objects and creatures show on the half-dark border; no path onto a dark tile; `ADV-QUIRK-1`) | done; the flag with E08 T8b |
 | A-2 | The diagonal exception ignores roads in its check but not in the cost | gameplay-altering (small): an extra cheap road step at the end of a day | fix-optional (the user, 2026-10-11) | **confirmed** (E08 T7a: CR-1 and a second reading; `ADV-QUIRK-2`) | done |
 | A-3 | The diagonal exception "forgets" that a native army has no terrain penalty: it compares with the penalised straight cost | gameplay-altering (small): native swamp and snow armies lose the last diagonal | fix-optional (the user, 2026-10-11) | **confirmed** (E08 T7a: CR-1 and a second reading; `ADV-QUIRK-3`) | done |
 | A-4 | Neutral stacks before the first faction stack keep the army's native terrain | gameplay-altering (small): slot order decides the native bonus | fix-optional (the user, 2026-10-11) | **confirmed** (E08 T7b: 0x44C590 and a second reading; `ADV-QUIRK-4`) | done |
@@ -279,6 +300,12 @@ half-dark border tiles. Answer three questions:
 
 A screenshot is not needed; the four answers are enough. Q30's rule then makes the candidate
 `ADV-QUIRK-1` with the class you choose.
+
+**The user's answers (SoD, 2026-10-11):** (1) terrain is visible; (2) objects are visible;
+(3) creatures are visible; (4) no path is offered onto a dark tile, even an empty one. The
+candidate is confirmed as `ADV-QUIRK-1` with the suggested class (Q30's rule: the user may
+object at the checkpoint); (4) is ADV-MOV-008, also read in the code (§1.4). Not asked: a hero
+standing on a fringe tile (an object like the others, presumably; T8b).
 
 ## 5. Simultaneous turns (captured for a later decision, E08 decision 8)
 
@@ -305,14 +332,15 @@ contact rule, with HD's day limits as parameters.
 | D-2 | Stepping off a road: the destination's terrain or the terrain under the road | wiki vs VCMI; read in T7a: the terrain under the road (VCMI's side) | T7 | read (§1.2); the user chose the reading (ADV-Q3, 2026-10-11) |
 | D-3 | Does a step that leaves fewer points than its straight cost take all the points | VCMI only; read in T7a: the points drop to 0 below the cheapest next step instead | T7 | read (§1.3); a conflict with VCMI: the user chose the reading (ADV-Q3, 2026-10-11) |
 | D-4 | Points for speeds 0–2 | wiki vs VCMI; no army creature is that slow | T4 (data only) | settled in T4: `movement.txt` has the wiki's row (§1.1) |
-| F-1 | Shape of the revealed area | VCMI only | T8 | CR-3 |
+| F-1 | Shape of the revealed area | VCMI; read in E08 T8a: the same disk | T8 | settled: read (§2), VCMI agrees (ADV-Q5) |
 
 Code readings (Q57: preferred to experiments when a reading can settle the point). Each is
 queued in the task that needs it, and each quirk then needs a second look:
 - **CR-1** the step cost: H3API `H3Hero::GetMovementCost` (0x4B18C0); D-2, D-3, A-2, A-3.
 - **CR-2** the day's points: H3API `H3Hero::CalcMaxMovement` (0x4E4D90) and `MaxLandMovement`
   (0x4E4990) with their callers; the speed table, which speed counts *(inc. 3)*, D-1, D-4.
-- **CR-3** the reveal: H3API `H3Hero::GetScoutingRadius` (0x4E4070) and its callers; F-1.
+- **CR-3** the reveal: H3API `H3Hero::GetScoutingRadius` (0x4E4070) and its callers; F-1. Read
+  in E08 T8a (§2, §1.4).
 
 ## 7. Proposed rule ids (increment 1)
 
@@ -328,7 +356,7 @@ Ids are proposals; the implementing task writes the entries.
 | ADV-MOV-005 | A diagonal step costs the straight cost × √2, rounded down | T7 | — |
 | ADV-MOV-006 | A step needs its full cost; the diagonal exception | T7 | D-3, A-2, A-3 |
 | ADV-MOV-007 | Steps go to one of eight neighbours on the same level, never onto rock, water (no boat) or a blocked tile | T7 | — |
-| ADV-MOV-008 | A path uses explored tiles only | T7 | — |
+| ADV-MOV-008 | A path uses explored tiles only | T8a | — |
 | ADV-FOG-001 | The scouting radius of a hero (5; Scouting by level, data) | T4, T8 | — |
 | ADV-FOG-002 | The shape of a revealed area | T8 | F-1 |
 | ADV-FOG-003 | Tiles are revealed at the start of a game and after each step of a move | T8 | — |
