@@ -8,7 +8,7 @@ use std::time::Duration;
 use h3_kernel::Rng;
 use h3_protocol::wire::{
     ClientMessage, Command, GameInfo, GoodbyeReason, Phase, Query, RecordHeader, Refusal,
-    RejectCode, Seat, ServerMessage,
+    RejectCode, ReplayInfo, Seat, ServerMessage,
 };
 use tokio_tungstenite::tungstenite::Message;
 
@@ -998,6 +998,121 @@ async fn a_stopped_server_restores_its_games_at_its_next_start() {
     assert!(matches!(seen.last(), Some(ServerMessage::GameEnded { .. })));
 }
 
+/// The archive's page from its `from`-th newest replay: how many it holds, and the page.
+async fn archive_page(running: &Running, from: u32) -> (u32, Vec<ReplayInfo>) {
+    let mut client = greeted(running).await;
+    let list = ClientMessage::ListReplays { seq: 5, from };
+    client.send(&list).await.unwrap();
+    let Some(ServerMessage::Replays {
+        seq: 5,
+        total,
+        replays,
+    }) = client.recv().await
+    else {
+        panic!("no page")
+    };
+    client.close().await;
+    (total, replays)
+}
+
+/// What a client in no game gets for `FetchArchived { replay: id }`.
+async fn fetched_archived(running: &Running, id: &str) -> Option<ServerMessage> {
+    let mut client = greeted(running).await;
+    let fetch = ClientMessage::FetchArchived {
+        seq: 6,
+        replay: id.to_owned(),
+    };
+    client.send(&fetch).await.unwrap();
+    client.recv().await
+}
+
+/// E16 M2 T5d (SRV-Q15): a finished game's replay is public: any client lists the archive and
+/// downloads a replay from it without joining a game; a game its host closed to spectators is
+/// archived unlisted; beyond `replays_kept` the oldest go; a restart reads the archive back.
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn finished_games_are_archived_for_anyone_to_download() {
+    let limits = Limits {
+        replays_kept: 2,
+        ..fast()
+    };
+    let config = config(limits);
+    let running = start(&config).await.unwrap();
+    let mut games = Vec::new();
+    for (seed, open) in [(1, true), (2, false), (3, true), (4, true)] {
+        let (client, game) = if open {
+            let (client, game, _) = created(&running, "bot", Seat::Attacker).await;
+            (client, game)
+        } else {
+            created_closed(&running, "bot", Seat::Attacker).await
+        };
+        let (client, _) = tokio::time::timeout(GAME_TIME, play(client, seed))
+            .await
+            .unwrap();
+        client.close().await;
+        games.push(game);
+    }
+    // The replay joins the archive just after the end is told.
+    let mut attempts = 0;
+    let (total, replays) = loop {
+        let (total, replays) = archive_page(&running, 0).await;
+        if replays.first().is_some_and(|r| r.game == games[3]) {
+            break (total, replays);
+        }
+        attempts += 1;
+        assert!(attempts < 250, "the last game is never archived");
+        tokio::time::sleep(Duration::from_millis(20)).await;
+    };
+    // The two newest open games, newest first; the oldest went, file and all.
+    assert_eq!(total, 2);
+    let listed: Vec<u32> = replays.iter().map(|r| r.game).collect();
+    assert_eq!(listed, [games[3], games[2]]);
+    assert!(replays.iter().all(|r| r.offer == "bot"));
+    let replays_dir = config.server.data.join("replays");
+    let file = |id: &str| replays_dir.join(format!("{id}.toml"));
+    assert!(
+        !replay_file_exists(&replays_dir, games[0]),
+        "the oldest went"
+    );
+    assert!(
+        replay_file_exists(&replays_dir.join("closed"), games[1]),
+        "the closed game's replay is kept apart, unlisted"
+    );
+    // A page further on; past the end, none.
+    assert_eq!(archive_page(&running, 1).await.1, replays[1..]);
+    assert_eq!(archive_page(&running, 5).await, (2, vec![]));
+    // Anyone downloads a listed replay, which verifies.
+    let newest = &replays[0].id;
+    let Some(ServerMessage::Replay {
+        n: 0,
+        seq: 6,
+        replay,
+    }) = fetched_archived(&running, newest).await
+    else {
+        panic!("no replay")
+    };
+    assert_eq!(replay, std::fs::read_to_string(file(newest)).unwrap());
+    assert!(h3_cli::verify_file(&file(newest), &config.content.packs).is_ok());
+    let no_such = Some(ServerMessage::Refused {
+        reason: Refusal::NoSuchReplay,
+    });
+    for id in ["closed", "../journal", "bot-game1-0", ""] {
+        assert_eq!(fetched_archived(&running, id).await, no_such, "{id}");
+    }
+    // A restart reads the archive back, in the same order.
+    running.shutdown().await;
+    let again = start(&config).await.unwrap();
+    assert_eq!(archive_page(&again, 0).await, (total, replays));
+}
+
+/// Whether `dir` holds a replay of game `game`.
+fn replay_file_exists(dir: &Path, game: u32) -> bool {
+    let marker = format!("-game{game}-");
+    std::fs::read_dir(dir)
+        .into_iter()
+        .flatten()
+        .any(|entry| entry.is_ok_and(|e| e.path().to_string_lossy().contains(&marker)))
+}
+
 /// Waits until the lobby lists game `game` in `phase`, or no more (`None`).
 async fn listed_as(running: &Running, game: u32, phase: Option<Phase>) {
     let mut attempts = 0;
@@ -1448,6 +1563,12 @@ fn configurations_are_checked() {
         let error = refused(&text).unwrap_err();
         assert!(error.0.contains("outside"), "{limit}: {error}");
     }
+    assert!(
+        refused(&format!("{offer}[limits]\nreplays_kept = 0"))
+            .unwrap_err()
+            .0
+            .contains("outside")
+    );
     let doubled = refused(&format!("{offer}[limits]\nrecord_bytes = 1048576")).unwrap_err();
     assert!(doubled.0.contains("fit twice"), "{doubled}");
     let watched = refused(&format!("{offer}[limits]\nspectators_per_game = 0")).unwrap();

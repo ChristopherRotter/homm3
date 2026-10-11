@@ -1088,6 +1088,22 @@ pub enum ClientMessage {
         /// Whether the game takes spectators.
         open: bool,
     },
+    /// List the server's archive of finished games (E16 M2 T5d, SRV-Q15): a page of its replays,
+    /// newest first, from the `from`-th; answered `Replays`. Needs no game.
+    ListReplays {
+        /// The client's sequence number.
+        seq: u32,
+        /// How many of the newest to skip.
+        from: u32,
+    },
+    /// Download a replay of the archive by its id (E16 M2 T5d): answered `Replay` (numbered 0), or
+    /// `Refused { NoSuchReplay }`. Needs no game.
+    FetchArchived {
+        /// The client's sequence number.
+        seq: u32,
+        /// The replay's id, as `Replays` lists it.
+        replay: String,
+    },
 }
 
 /// Why a join or a game's creation was refused; the connection stays open.
@@ -1110,6 +1126,8 @@ pub enum Refusal {
     TooManyGames,
     /// The server is draining (E16 M2 T5a): it takes no new game while the open ones finish.
     Draining,
+    /// The archive holds no replay under this id (E16 M2 T5d), or no more.
+    NoSuchReplay,
 }
 
 /// Why the server closes the connection.
@@ -1287,6 +1305,27 @@ pub enum ServerMessage {
         /// Whether the game takes spectators.
         open: bool,
     },
+    /// A page of the archive (E16 M2 T5d): `ListReplays`'s answer, newest first.
+    Replays {
+        /// The client's sequence number.
+        seq: u32,
+        /// How many replays the archive holds.
+        total: u32,
+        /// The page.
+        replays: Vec<ReplayInfo>,
+    },
+}
+
+/// One finished game in the archive (E16 M2 T5d).
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct ReplayInfo {
+    /// Its id, as `FetchArchived` names it.
+    pub id: String,
+    /// The offer the game was created from.
+    pub offer: String,
+    /// The game's id while it ran (ids may repeat across restarts; the replay's id does not).
+    pub game: u32,
 }
 
 /// The first line of a record (the `Record` message; `docs/epics/E16-design.md` §6): what the

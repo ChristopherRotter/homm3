@@ -289,6 +289,14 @@ impl Link {
                 close: false,
                 left: None,
             }),
+            ClientMessage::ListReplays { seq, from } => Routed::Reply(Frame {
+                text: lock(&self.registry).replays(seq, from),
+                close: false,
+                left: None,
+            }),
+            ClientMessage::FetchArchived { seq, replay } => {
+                Routed::Reply(archived(&self.registry, seq, &replay).await)
+            }
             ClientMessage::CreateGame {
                 seq,
                 offer,
@@ -385,6 +393,24 @@ impl Link {
     }
 }
 
+/// The answer to `FetchArchived` (E16 M2 T5d): the archive's replay `id` read from its file off
+/// the connection's task, or `Refused { NoSuchReplay }` for an id the archive does not list (the
+/// file is never named by the client) or a file gone meanwhile.
+async fn archived(registry: &Shared, seq: u32, id: &str) -> Frame {
+    let Some(path) = lock(registry).replay(id) else {
+        return refused(Refusal::NoSuchReplay);
+    };
+    let read = tokio::task::spawn_blocking(move || std::fs::read_to_string(path)).await;
+    match read {
+        Ok(Ok(replay)) => Frame {
+            text: codec::encode_text(&ServerMessage::Replay { n: 0, seq, replay }),
+            close: false,
+            left: None,
+        },
+        _ => refused(Refusal::NoSuchReplay),
+    }
+}
+
 /// `Refused` for a lobby's or a join's refusal; the connection stays open.
 fn refused(reason: Refusal) -> Frame {
     Frame {
@@ -406,7 +432,9 @@ fn unbound(message: &ClientMessage) -> Frame {
         | ClientMessage::Pause { seq }
         | ClientMessage::SetSpectators { seq, .. }
         | ClientMessage::ListGames { seq }
-        | ClientMessage::CreateGame { seq, .. } => *seq,
+        | ClientMessage::CreateGame { seq, .. }
+        | ClientMessage::ListReplays { seq, .. }
+        | ClientMessage::FetchArchived { seq, .. } => *seq,
         ClientMessage::Hello { .. } | ClientMessage::Ping { .. } | ClientMessage::Join { .. } => 0,
     };
     Frame {

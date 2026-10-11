@@ -97,6 +97,11 @@ pub(super) fn client_messages() -> Vec<ClientMessage> {
             seq: 15,
             open: true,
         },
+        ClientMessage::ListReplays { seq: 16, from: 50 },
+        ClientMessage::FetchArchived {
+            seq: 17,
+            replay: "duel-game3-00000000000000ff".to_string(),
+        },
     ];
     out.extend(
         commands()
@@ -238,6 +243,18 @@ pub(super) fn server_messages() -> Vec<ServerMessage> {
             n: 12,
             seq: 15,
             open: false,
+        },
+        ServerMessage::Replays {
+            seq: 16,
+            total: 51,
+            replays: vec![ReplayInfo {
+                id: "duel-game3-00000000000000ff".to_string(),
+                offer: "duel".to_string(),
+                game: 3,
+            }],
+        },
+        ServerMessage::Refused {
+            reason: Refusal::NoSuchReplay,
         },
     ];
     out.extend(
