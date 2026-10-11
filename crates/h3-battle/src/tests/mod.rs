@@ -22,6 +22,7 @@ mod magic;
 mod mana;
 mod mines;
 mod morale;
+mod observe;
 mod obstacles;
 mod opening;
 mod pits;

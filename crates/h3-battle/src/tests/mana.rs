@@ -159,6 +159,11 @@ fn the_armies_change_the_spell_cost() {
     );
     assert_eq!(s.heroes[0].unwrap().magic.cost_change, -5);
     assert_eq!(cost(&s, &r, 2), 1);
+    // Public through the armies: both sides' observations show it (E04b T9a).
+    assert_eq!(
+        crate::observe(&s, &r, BattleSide::Defender).cost_change,
+        [-5, 0]
+    );
     // A spell that costs nothing stays free (Titan's Lightning Bolt).
     let mut free = r.spell(spell(&r, "bolt")).unwrap().clone();
     free.cost = [0; 4];

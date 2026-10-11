@@ -259,6 +259,14 @@ const fn scale(single: bool) -> u64 {
     }
 }
 
+/// A hero's [`HeroMagic::resistance`] in basis points, truncated (observations, BAT-Q26): at
+/// most [`FULL_BP`], as the resistance is.
+pub(crate) fn resistance_bp(ruleset: &Ruleset, resistance: u64) -> u32 {
+    let one = scale(ruleset.quirks().is_enabled(SINGLE_PRECISION_RATES));
+    let bp = mul_div_floor(resistance.min(one), u64::from(FULL_BP), one).unwrap_or(0);
+    u32::try_from(bp).unwrap_or(0)
+}
+
 /// The rate `bp` (basis points) at the [`scale`]: exact, or its single-precision value.
 fn rate(single: bool, bp: u16) -> u64 {
     if single {
@@ -319,15 +327,15 @@ pub(crate) struct HeroMagic {
 /// Most opening spells of one hero (BAT-MAG-068): Armor of the Damned has four.
 pub const MAX_OPENING_SPELLS: usize = 8;
 
-/// One opening spell of a hero (BAT-MAG-068).
+/// One opening spell of a hero (BAT-MAG-068; private to its side until cast, BAT-Q26).
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
-pub(crate) struct Opening {
+pub struct Opening {
     /// The spell.
-    pub(crate) spell: SpellId,
+    pub spell: SpellId,
     /// Its mastery.
-    pub(crate) mastery: u8,
+    pub mastery: u8,
     /// Its power, the duration of its effects.
-    pub(crate) power: u16,
+    pub power: u16,
 }
 
 impl CanonicalHash for Opening {
@@ -365,16 +373,17 @@ impl MagicLimits {
     }
 }
 
-/// What a hero adds to the immunity of the stacks it controls (E04b T8b2).
+/// What a hero adds to the immunity of the stacks it controls (E04b T8b2; private to its side,
+/// BAT-Q26).
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
-pub(crate) struct Defences {
+pub struct Defences {
     /// The spells they are never affected by: its `SpellImmunity` effects (BAT-MAG-063).
-    pub(crate) spells: SpellSet,
+    pub spells: SpellSet,
     /// The highest level of the spells they are never affected by, Dispel excepted: the largest
     /// of its `SpellLevelImmunity` effects (BAT-MAG-064).
-    pub(crate) up_to_level: Option<u8>,
+    pub up_to_level: Option<u8>,
     /// Whether they are immune to mind spells: a `MindImmunity` effect (BAT-MAG-065).
-    pub(crate) mind: bool,
+    pub mind: bool,
 }
 
 impl HeroMagic {
