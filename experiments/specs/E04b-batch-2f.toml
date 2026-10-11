@@ -1,0 +1,349 @@
+# Experiment batch 2f (E04b, after T9b; the user, BAT-Q27): increment 17's opening-spell candidates
+# (BAT-Q23: when a side's opening spells go, and under the Orb of Inhibition; BAT-MAG-068), T8b's
+# three leftovers (the Dragon Father against its hero's own spells, a Pendant against a creature's
+# Blind, a hypnotized stack and its owner's Pendant; BAT-MAG-063, BAT-MAG-064) and BAT-Q24's
+# learning after the battle (who learns Eagle Eye's picks: a spell book, Wisdom; for the adventure
+# lane). Batch 2e's weak results stand (BAT-Q27); a first stack frozen by bad morale (at most
+# 12.5 % a battle) and Eagle Eye's float truncation (statistical) are left out.
+# Build: see docs/experiments/README.md. Predictions are for the agent who evaluates the results;
+# the template never shows them. "The engine" is the battle at the T9b branch (faithful profile,
+# the harvested SoD packs; AD and HP checked by a throwaway run of these setups); "the code" is the
+# reading in docs/formats/installation.md §7.23 and §7.24.
+#
+# Played with plain HD (HD+ off). Heroes at level 1 with resource or map-skill specialties;
+# casters get a Spell Book and only the listed spells; no skills except where listed; every caster
+# starts with full mana, 10 x knowledge. Terrain grass; a battlefield's obstacles come from the map
+# tile (the game's choice): walk around them. The probability lines assume the chances of the wiki
+# and the code: Eagle Eye 50 % at Advanced, the Unicorns' Blind 20 %.
+
+[map]
+name = "E04b batch 2f"
+description = "Engine-generated experiment map (E04b, batch 2f). Play it in hot seat with Red and Blue as human players and follow the results template."
+size = 36
+terrain = "grass"
+instructions = [
+    "Copy `E04b-batch-2f.h3m` into `D:\\Heroes3\\HoMM 3 Complete\\Maps`.",
+    "Use the HD launcher with plain HD (HD+ off).",
+    "Start the map in hot seat: *New Game → Multiplayer → Hot Seat*, two players, Red and Blue both human. In every battle you control both sides. Save right away.",
+    "On day 1, play Red's encounters in any order: each Red hero attacks the Blue hero next to it. EL, EB and EW are long (5 to 10 rounds in which only Blue's hero casts); after them, look into the Red hero's spell book on the adventure map as the encounter says.",
+    "In battle, switch on the hex grid in the combat options (the button at the bottom left). The combat log at the bottom shows each strike's and each spell's damage, kills and special effects (scroll it with its arrow); right-click a stack to see its numbers and its active spells. Unless an encounter says otherwise, a stack that is not needed Defends, and a stack that gets an extra turn from good morale Defends.",
+    "To try a spell's cursor without casting: choose the spell in the book, move the cursor over the stack and cancel (right-click or Esc). The normal spell cursor means allowed, the crossed-out cursor refused.",
+    "Fill in this file (anything unexpected goes into the last line of an encounter) and keep it in the repo.",
+]
+
+# --- The opening spells (BAT-MAG-068, BAT-Q23) ----------------------------------------------------
+
+[[encounter]]
+id = "AD"
+title = "Armor of the Damned: when the defender's opening spells go"
+questions = ["BAT-MAG-068", "BAT-Q23"]
+procedure = [
+    "Attack the Blue hero. Before anyone acts in round 1, right-click Red's Silver Pegasi and Wolf Raiders: which spells are active on them (none, or some of Slow, Curse, Weakness, Misfortune)? Does the log already mention Armor of the Damned's spells?",
+    "The first turn should be the Silver Pegasi's. (If Blue's Royal Griffins act first, write it down, let them Defend, and go on at the Pegasi's turn.) At the Pegasi's turn, cast Blind (spell book) at Blue's Royal Griffins; then the Pegasi Defend.",
+    "The Royal Griffins lose their turn (blind). Next should be Red's Wolf Raiders: right-click them: which spells are active now? Has the log mentioned Armor of the Damned's spells since Blind? The Wolf Raiders Defend.",
+    "Blue's Pikemen's turn: does the log now show the four spells (Slow, Curse, Weakness, Misfortune)? Right-click the Wolf Raiders and the Pegasi again. The Pikemen Defend. Finish the battle as you like.",
+]
+predictions = """
+- Every source: Armor of the Damned casts Expert Slow, Curse, Weakness and Misfortune at Red's
+  stacks once, power 50 (BAT-MAG-068, HER-BAT-017).
+- The timing (the engine after the code, 0x465330, and the wiki: "once an allied creature is able
+  to take its turn"): at the first activation of a Blue stack that takes its turn. The blinded
+  Griffins are passed over, so the spells go at the **Pikemen's** turn: the Pegasi (step 1) and
+  the Wolf Raiders (step 3) show **no** spell before it; after it both show all four. Order: Pegasi
+  (12), Griffins (9, blind), Wolf Raiders (8), Pikemen (4). The engine's run of this setup: no
+  opening event until the Pikemen's turn starts, then the four spells on both Red stacks.
+- VCMI 1.7.5: both sides' opening spells at the end of the tactics phase, before round 1: all four
+  spells already in step 1 (the slowed Pegasi may then act after the Griffins).
+- A cast at the Griffins' lost turn (neither source): the Wolf Raiders show the spells in step 3.
+"""
+[encounter.hero]
+type = "Caitlin"
+specialty = "resource gold"
+primary = [0, 0, 2, 1]
+army = [["Silver Pegasus", 5], ["Wolf Raider", 10]]
+artifacts = { "spell book" = "Spell Book" }
+spells = ["Blind"]
+[encounter.opponent.hero]
+name = "ADb"
+type = "Jenova"
+specialty = "resource gold"
+primary = [0, 0, 1, 1]
+army = [["Royal Griffin", 5], ["Pikeman", 20]]
+artifacts = { "torso" = "Armor of the Damned" }
+[[encounter.record]]
+field = "step 1: spells on the Pegasi / the Wolf Raiders before round 1; the log"
+[[encounter.record]]
+field = "step 2: who acted first in round 1"
+[[encounter.record]]
+field = "step 3: spells on the Wolf Raiders at their turn; did the log show Armor of the Damned's spells before it (when)?"
+[[encounter.record]]
+field = "step 4: the log at the Pikemen's turn; spells on the Wolf Raiders and the Pegasi afterwards"
+[[encounter.record]]
+field = "anything odd"
+
+[[encounter]]
+id = "AO"
+title = "Armor of the Damned under the Orb of Inhibition"
+questions = ["BAT-MAG-068", "BAT-MAG-061", "BAT-Q23"]
+procedure = [
+    "Attack the Blue hero. Round 1, Red's Swordsmen act first: click the spell book button: does the book open, or does a message come (what does it say)? Right-click the Swordsmen: any active spells? The Swordsmen Defend.",
+    "Blue's Pikemen's turn: does the log show Armor of the Damned's spells (Slow, Curse, Weakness, Misfortune)? Right-click the Swordsmen. The Pikemen Defend. Finish the battle as you like.",
+]
+predictions = """
+- The book: refused with the Orb's message (BAT-MAG-061; every source).
+- The opening spells: **cast** at the Pikemen's first turn, all four on the Swordsmen (the code:
+  the opening's cast, caster kind 2, asks no Orb of Inhibition, anti-magic garrison or Cursed
+  Ground; the wiki: Armor of the Damned also works in anti-magic garrisons; VCMI; the engine,
+  BAT-MAG-068). Not cast: a difference from every source.
+"""
+[encounter.hero]
+type = "Rissa"
+specialty = "resource mercury"
+primary = [0, 0, 1, 1]
+army = [["Swordsman", 10]]
+artifacts = { "spell book" = "Spell Book", "misc 1" = "Orb of Inhibition" }
+spells = ["Bless"]
+[encounter.opponent.hero]
+name = "AOb"
+type = "Octavia"
+specialty = "resource gold"
+primary = [0, 0, 1, 1]
+army = [["Pikeman", 10]]
+artifacts = { "torso" = "Armor of the Damned" }
+[[encounter.record]]
+field = "the spell book: opens / message (its text)"
+[[encounter.record]]
+field = "the Pikemen's turn: the log; spells on the Swordsmen afterwards"
+[[encounter.record]]
+field = "anything odd"
+
+# --- Eagle Eye: who learns after the battle (BAT-Q24, for the adventure lane) --------------------
+
+[[encounter]]
+id = "EL"
+title = "Eagle Eye: a won battle without Wisdom (a level-1 and a level-3 spell)"
+questions = ["BAT-Q24", "BAT-MAG-069", "HER-SPL-004"]
+procedure = [
+    "Attack the Blue hero. Rounds 1 to 10: at the Pikemen's turn Blue's hero casts at its own Pikemen, Bless in rounds 1, 3, 5, 7 and 9 and Air Shield in rounds 2, 4, 6, 8 and 10; every stack Defends (the Marksmen do not shoot yet).",
+    "From round 11 the Marksmen shoot the Pikemen until Red wins. Does a message after the battle mention Eagle Eye or a learned spell (its text)?",
+    "On the adventure map, open Calid's spell book: which spells are in it?",
+]
+predictions = """
+- Bless (level 1): **learned** (the code, the wiki and VCMI: the winner learns; Advanced Eagle Eye
+  picks it with 50 % at each cast, 97 % in five casts).
+- Air Shield (level 3): **not learned** (the code, 0x469FE0: level at most Wisdom + 2 = 2; the wiki:
+  "must have the appropriate level of Wisdom"). VCMI: learned (no Wisdom test; 97 %). Eagle Eye
+  itself allows it (Advanced: levels up to 3); EW is the control with Basic Wisdom.
+- The engine reports the picks only (HeroOutcome.learned, BAT-MAG-069); who learns is BAT-Q24's.
+"""
+[encounter.hero]
+type = "Calid"
+specialty = "resource sulfur"
+primary = [0, 0, 1, 1]
+skills = [["Eagle Eye", 2]]
+army = [["Marksman", 20]]
+artifacts = { "spell book" = "Spell Book" }
+[encounter.opponent.hero]
+name = "ELb"
+type = "Clavius"
+specialty = "resource gold"
+primary = [0, 0, 1, 9]
+army = [["Pikeman", 10]]
+artifacts = { "spell book" = "Spell Book" }
+spells = ["Bless", "Air Shield"]
+[[encounter.record]]
+field = "Blue's casts: how many Bless, how many Air Shield"
+[[encounter.record]]
+field = "the message after the battle (its text, or none)"
+[[encounter.record]]
+field = "Calid's spell book afterwards"
+[[encounter.record]]
+field = "anything odd"
+
+[[encounter]]
+id = "EB"
+title = "Eagle Eye: a won battle with the spell book in the backpack"
+questions = ["BAT-Q24", "BAT-MAG-069"]
+procedure = [
+    "Before the battle, open Nagash's hero screen: the Spell Book is in the backpack, not worn; leave it there.",
+    "Attack the Blue hero. Rounds 1 to 6: at the Pikemen's turn Blue's hero casts Bless at its Pikemen; every stack Defends.",
+    "From round 7 the Marksmen shoot the Pikemen until Red wins. Does a message after the battle mention Eagle Eye or a learned spell (its text)?",
+    "On the adventure map, open Nagash's hero screen, move the Spell Book from the backpack into its slot and open it: which spells are in it?",
+]
+predictions = """
+- **Nothing learned** (the code, 0x469FE0: only a winner wearing a Spell Book, artifact 0, learns).
+- VCMI: Bless learned (no book test; 98 % in six casts at 50 %). The wiki is silent on the book.
+- Nagash has Basic Wisdom, so Bless's level is no obstacle under any reading.
+"""
+[encounter.hero]
+type = "Nagash"
+specialty = "resource gold"
+primary = [0, 0, 1, 1]
+skills = [["Eagle Eye", 2], ["Wisdom", 1]]
+army = [["Marksman", 20]]
+backpack = ["Spell Book"]
+[encounter.opponent.hero]
+name = "EBb"
+type = "Damacon"
+specialty = "resource gold"
+primary = [0, 0, 1, 3]
+army = [["Pikeman", 10]]
+artifacts = { "spell book" = "Spell Book" }
+spells = ["Bless"]
+[[encounter.record]]
+field = "before the battle: the Spell Book in the backpack (yes/no)"
+[[encounter.record]]
+field = "Blue's Bless casts (how many)"
+[[encounter.record]]
+field = "the message after the battle (its text, or none)"
+[[encounter.record]]
+field = "the spell book once worn: its spells"
+[[encounter.record]]
+field = "anything odd"
+
+[[encounter]]
+id = "EW"
+title = "Eagle Eye: a won battle with Basic Wisdom (a level-3 spell)"
+questions = ["BAT-Q24", "BAT-MAG-069"]
+procedure = [
+    "Attack the Blue hero. Rounds 1 to 5: at the Pikemen's turn Blue's hero casts Air Shield at its Pikemen; every stack Defends.",
+    "From round 6 the Marksmen shoot the Pikemen until Red wins. Does a message after the battle mention Eagle Eye or a learned spell (its text)?",
+    "On the adventure map, open Sephinroth's spell book: which spells are in it?",
+]
+predictions = """
+- Air Shield **learned** (every source: Advanced Eagle Eye allows level 3, Basic Wisdom lets the
+  winner learn up to level 3; 97 % in five casts). The control for EL.
+"""
+[encounter.hero]
+type = "Sephinroth"
+specialty = "resource crystal"
+primary = [0, 0, 1, 1]
+skills = [["Eagle Eye", 2], ["Wisdom", 1]]
+army = [["Marksman", 20]]
+artifacts = { "spell book" = "Spell Book" }
+[encounter.opponent.hero]
+name = "EWb"
+type = "Saurug"
+specialty = "resource gems"
+primary = [0, 0, 1, 6]
+army = [["Pikeman", 10]]
+artifacts = { "spell book" = "Spell Book" }
+spells = ["Air Shield"]
+[[encounter.record]]
+field = "Blue's Air Shield casts (how many)"
+[[encounter.record]]
+field = "the message after the battle (its text, or none)"
+[[encounter.record]]
+field = "Sephinroth's spell book afterwards"
+[[encounter.record]]
+field = "anything odd"
+
+# --- T8b's leftovers: the defences (BAT-MAG-063, BAT-MAG-064) -----------------------------------
+
+[[encounter]]
+id = "DF"
+title = "Power of the Dragon Father: the hero's own spells and the enemy's"
+questions = ["BAT-MAG-064"]
+procedure = [
+    "Attack the Blue hero. Round 1, Red's first turn: try these cursors and cancel each (allowed or refused): Bless on Red's Pikemen and on Red's Archers; Magic Mirror on Red's Pikemen. Red's stacks Defend.",
+    "Blue's Peasants' turn: Blue's hero tries Slow on Red's Pikemen and on Red's Archers (cancel). Finish the battle as you like.",
+]
+predictions = """
+- Bless (level 1) **refused** at Red's own stacks: Power of the Dragon Father covers spells of
+  levels 1 to 4 whatever their polarity, its own hero's too (BAT-MAG-064; the code, the wiki and
+  VCMI agree, BAT-Q21's comparison).
+- Magic Mirror (level 5) allowed (the control).
+- Blue's Slow (level 1) refused at Red's stacks.
+"""
+[encounter.hero]
+type = "Gelare"
+specialty = "resource gold"
+primary = [0, 0, 1, 3]
+army = [["Pikeman", 10], ["Archer", 5]]
+artifacts = { "spell book" = "Spell Book", "torso" = "Power of the Dragon Father" }
+spells = ["Bless", "Magic Mirror"]
+[encounter.opponent.hero]
+name = "DFb"
+type = "Grindan"
+specialty = "resource gold"
+primary = [0, 0, 1, 1]
+army = [["Peasant", 20]]
+artifacts = { "spell book" = "Spell Book" }
+spells = ["Slow"]
+[[encounter.record]]
+table = ["cursor", "allowed or refused"]
+rows = 5
+[[encounter.record]]
+field = "anything odd"
+
+[[encounter]]
+id = "PS"
+title = "Pendant of Second Sight against the Unicorns' Blind"
+questions = ["BAT-MAG-063"]
+procedure = [
+    "Attack the Blue hero. Round 1: Red's six Unicorn stacks walk as far as they can towards Blue's Pikemen without attacking; the Pikemen walk three or four hexes towards them and Defend.",
+    "Rounds 2 to 4: each Unicorn stack that can reach the Pikemen attacks them (the Pikemen retaliate once a round and otherwise Defend). After each attack, did the log say the Pikemen are blinded? Count the attacks. Finish the battle as you like.",
+]
+predictions = """
+- The Pikemen are **never** blinded: the Pendant of Second Sight bars Blind from its hero's stacks,
+  the Unicorns' strike Blind too (BAT-MAG-063; the code; the wiki's Pendant). Without it about one
+  attack in five blinds (none in 15 attacks: 3.5 %).
+"""
+[encounter.hero]
+type = "Aine"
+specialty = "resource gold"
+primary = [0, 10, 1, 1]
+army = [["Unicorn", 1], ["Unicorn", 1], ["Unicorn", 1], ["Unicorn", 1], ["Unicorn", 1], ["Unicorn", 1]]
+[encounter.opponent.hero]
+name = "PSb"
+type = "Sylvia"
+specialty = "skill Navigation"
+primary = [0, 10, 1, 1]
+army = [["Pikeman", 100]]
+artifacts = { "neck" = "Pendant of Second Sight" }
+[[encounter.record]]
+field = "Unicorn attacks on the Pikemen (how many)"
+[[encounter.record]]
+field = "the Pikemen blinded (how often; the log line)"
+[[encounter.record]]
+field = "anything odd"
+
+[[encounter]]
+id = "HP"
+title = "A hypnotized stack and its owner's Pendant of Life"
+questions = ["BAT-MAG-063"]
+procedure = [
+    "Attack the Blue hero. Round 1, Red's Swordsmen act first: Kyrre casts Hypnotize at Blue's Pikemen; the Swordsmen Defend. The Pikemen (now Red's) Defend; Blue's Archers Defend.",
+    "Round 2, the Swordsmen's turn: Kyrre casts Death Ripple. Which stacks did the log show taking damage, and how many of each died? Finish the battle as you like.",
+]
+predictions = """
+- Hypnotize takes the Pikemen (100 hit points, limit 5 x 25 + 10 = 135).
+- Death Ripple (35 damage a stack): **the hypnotized Pikemen take it** (3 die) and the Swordsmen too
+  (1 dies); Blue's Archers are spared by Voy's Pendant of Life. A stack's spell defences are its
+  controlling hero's, and a hypnotized stack's controller is the hypnotizing side (BAT-MAG-063;
+  the code reading, installation.md §7.23); the engine's run of this setup damages stacks 0 and 1,
+  not 2.
+- The other reading (a hero's defences go to the stacks it owns; VCMI gives the hero's bonuses to
+  its army, not checked for hypnotized stacks): the Pikemen spared too.
+"""
+[encounter.hero]
+type = "Kyrre"
+specialty = "skill Logistics"
+primary = [0, 0, 5, 3]
+army = [["Swordsman", 10]]
+artifacts = { "spell book" = "Spell Book" }
+spells = ["Hypnotize", "Death Ripple"]
+[encounter.opponent.hero]
+name = "HPb"
+type = "Voy"
+specialty = "skill Navigation"
+primary = [0, 0, 1, 1]
+army = [["Pikeman", 10], ["Archer", 5]]
+artifacts = { "neck" = "Pendant of Life" }
+[[encounter.record]]
+field = "Hypnotize on the Pikemen (yes/no)"
+[[encounter.record]]
+table = ["stack", "Death Ripple damage", "died"]
+rows = 3
+[[encounter.record]]
+field = "anything odd"

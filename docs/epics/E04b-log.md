@@ -2075,3 +2075,24 @@ records how and why the tasks went.
   (the planes and stacks are mostly rewritten zeros); the batch API may encode less often or
   only what changed. `state_hash` (4.3 µs at 6.3 KB) suits checkpoints, not per-node hashing in
   a search.
+
+### T10: batch 2f staged (2026-10-11, increment 20)
+
+- **The user (BAT-Q27):** increment 17's opening-spell candidates, T8b's three leftovers and
+  BAT-Q24's learning; batch 2e's weak points not repeated. Left out: a first stack frozen by bad
+  morale (at most 12.5 % a battle, and no save in battle) and Eagle Eye's 43 % against 44 %
+  (statistical); a blinded first stack shows the same rule deterministically (AD).
+- **Encounters** (`experiments/specs/E04b-batch-2f.toml`, the template
+  `experiments/results/E04b-batch-2f.md`): AD (Armor of the Damned with the defender's first stack
+  blinded: the code and the wiki cast at the next stack's turn, VCMI before round 1), AO (the
+  same under the Orb of Inhibition: cast, every source), EL, EB, EW (Eagle Eye's learning after a
+  won battle: a level-3 spell without Wisdom, a spell book in the backpack, Basic Wisdom as the
+  control; the code against VCMI on both, the wiki with the code on Wisdom), DF (Power of the
+  Dragon Father against its hero's Bless; Magic Mirror the control), PS (the Pendant of Second
+  Sight against six Unicorns' strikes for three rounds), HP (Death Ripple at a hypnotized stack
+  whose owner wears the Pendant of Life: the controller's defences count, so it is hit). The
+  engine's predictions for AD and HP come from a throwaway run of the same setups on the
+  harvested packs: the opening event at the Pikemen's turn; Death Ripple hits stacks 0 and 1, not
+  the Archers. A first design for HP (the owner's Blind at its hypnotized stack) could not tell
+  the readings apart: the engine never offers a hero's negative spell at its own hypnotized stack.
+- **Tooling:** the spec's hero gains `backpack` (artifacts carried, not worn; EB's Spell Book).
