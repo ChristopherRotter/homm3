@@ -27,8 +27,9 @@ from inputs to outputs, with sockets, clock and files outside.
 3. **`tokio` for the connections, an OS thread per game** (SRV-Q5). A task per connection waits on
    socket, outbound queue and idle timer; each game's engine runs single-threaded on its own OS
    thread, never on the runtime's workers; channels are bounded, a connection whose outbound queue
-   is full is dropped. Features `rt-multi-thread`, `net`, `time`, `sync`, `macros` only. The
-   transport is one internal trait; the session core knows no runtime.
+   is full is dropped. Features `rt-multi-thread`, `net`, `time`, `sync`, `macros` and, for the
+   graceful shutdown, `signal` (SRV-Q12 (c), amended at E16 M2 T5a) only. The transport is one
+   internal trait; the session core knows no runtime.
 4. **JSON in serde's default, externally tagged enum form** (`{"Move":{...}}`): struct variants,
    `deny_unknown_fields`, no `tag`, `untagged` or `flatten`, so the same types encode in a
    non-self-describing format (`postcard`, negotiable later). Integers only; 64-bit values as
