@@ -1,11 +1,13 @@
 //! Tests of the reader: the round trip of every model a version can hold, truncation, arbitrary
 //! bytes, each typed error and limit, the gzip layer, and the experiment writer's maps; the
-//! import in `import.rs`; random play on imported maps through `h3-game` in `play.rs` (E08 T8b2a).
+//! import in `import.rs`; random play on imported maps through `h3-game` in `play.rs` (E08 T8b2a),
+//! what a viewer may learn there in `view.rs` (E08 T8b2b).
 
 mod encode;
 mod import;
 mod play;
 mod strategy;
+mod view;
 
 use proptest::prelude::*;
 
