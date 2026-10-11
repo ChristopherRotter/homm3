@@ -19,8 +19,8 @@ use crate::codec::decode_server;
 use crate::map;
 use crate::session::{Bot, ConnId, GameConfig, Outbound, SeatKind, Session};
 use crate::wire::{
-    ClientMessage, Command, GoodbyeReason, Outcome, Query, RecordHeader, Refusal, RejectCode, Seat,
-    ServerMessage, Target,
+    ClientMessage, Command, GoodbyeReason, Outcome, Phase, Query, RecordHeader, Refusal,
+    RejectCode, Seat, ServerMessage, Target,
 };
 
 const A: ConnId = ConnId(1);
@@ -654,6 +654,51 @@ fn the_manifest_names_what_the_replay_header_names() {
     assert_eq!(m.battle_state_hash_version, h.battle_state_hash_version);
     assert_eq!(m.field, map::field(&r));
     assert_eq!(m.keys, map::key_tables(&r));
+    // An offer names what the manifest names, before anyone joins.
+    let offer = map::offer("pvp", "full", &r, vec![Seat::Defender]);
+    let m = map::manifest(&r);
+    assert_eq!(
+        (offer.id.as_str(), offer.scenario.as_str()),
+        ("pvp", "full")
+    );
+    assert_eq!(
+        (offer.packs, offer.profile, offer.ruleset_hash),
+        (m.packs, m.profile, m.ruleset_hash)
+    );
+    assert_eq!(offer.bots, [Seat::Defender]);
+}
+
+#[test]
+fn the_lobby_hears_where_the_game_is() {
+    let r = ruleset();
+    let mut s = host(&r, 5, players());
+    assert_eq!(s.phase(), Phase::Waiting);
+    assert_eq!(s.open_seats(), [Seat::Attacker, Seat::Defender]);
+    // The lobby's messages are not the game's.
+    for message in [
+        ClientMessage::ListGames { seq: 1 },
+        ClientMessage::CreateGame {
+            seq: 2,
+            offer: "pvp".to_string(),
+            seat: Seat::Attacker,
+        },
+    ] {
+        assert!(send(&mut s, A, message).is_empty());
+    }
+    join(&mut s, A, Seat::Attacker, None);
+    assert_eq!(s.open_seats(), [Seat::Defender]);
+    // A seat whose holder left needs its token: it is not open again.
+    s.disconnected(A);
+    assert_eq!(s.open_seats(), [Seat::Defender]);
+    let out = join(&mut s, A, Seat::Attacker, Some(TOKENS[0]));
+    let out = [out, join(&mut s, B, Seat::Defender, None)].concat();
+    assert_eq!((s.phase(), s.open_seats()), (Phase::Running, vec![]));
+    play(&mut s, out, &mut Rng::from_seed(3), 400);
+    assert_eq!(s.phase(), Phase::Over);
+    // A bot's seat is never open.
+    let [_, defender] = players();
+    let bot = host(&r, 5, [random_bot(1), defender]);
+    assert_eq!(bot.open_seats(), [Seat::Defender]);
 }
 
 #[test]
