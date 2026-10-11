@@ -26,8 +26,8 @@ use super::support::{CREATURES, Rate, hero, masteries, ruleset_with};
 use crate::event::StrikeFlags;
 use crate::{
     BattleState, CastTarget, CastTargets, Command, Event, EventKind, Hex, LegalCommands, SpellSet,
-    StackId, apply, cast_targets, castable_spells, creature_cast_targets, legal_commands, observe,
-    project, second_targets,
+    StackId, Viewer, apply, cast_targets, castable_spells, creature_cast_targets, legal_commands,
+    observe, observe_as, project, project_as, second_targets,
 };
 
 /// The test ruleset with frequent good and bad morale and luck (a 4-sided die) and the quirk
@@ -625,9 +625,10 @@ proptest! {
     }
 
     /// Observation hygiene (ADR-0013 point 9): hidden information does not show. The RNG shows
-    /// to neither side; the private part of a side's hero (Tactics level, damage bonuses, how
-    /// its war machines work, surrender discount, funds) only to that side, and so does the spell
-    /// its random caster drew (ADR-0014 point 8, BAT-MAG-049).
+    /// to neither side nor a spectator; the private part of a side's hero (Tactics level, damage
+    /// bonuses, how its war machines work, surrender discount, funds, its hidden magic: BAT-Q26)
+    /// only to that side, and so does the spell its random caster drew (ADR-0014 point 8,
+    /// BAT-MAG-049); a spectator sees neither side's (SRV-Q4).
     #[test]
     fn observations_do_not_depend_on_hidden_state(
         (att, def, obstacles, seed, steps) in arb_game(),
@@ -635,14 +636,17 @@ proptest! {
         damage: [u16; 2],
         (reduction, chance, discount) in (0u16..=10_000, 0u16..=10_000, 0u16..=10_000),
         (shots, heal, funds) in (1u8..=3, any::<u32>(), any::<u32>()),
+        (rounds, level, eagle) in (any::<u16>(), 1u8..=5, any::<u8>()),
     ) {
         let r = lively();
         let (state, _, _) = play(&r, &make_setup(&r, &att, &def, &obstacles, seed), seed, &steps);
+        let spectator = observe_as(&state, &r, Viewer::Spectator);
         let mut twin = state.clone();
         twin.rng = Rng::from_seed(other_seed);
         for viewer in BattleSide::BOTH {
             prop_assert_eq!(observe(&state, &r, viewer), observe(&twin, &r, viewer));
         }
+        prop_assert_eq!(&spectator, &observe_as(&twin, &r, Viewer::Spectator));
         for side in BattleSide::BOTH {
             let mut twin = state.clone();
             for hero in twin.heroes[side.index()].iter_mut() {
@@ -660,6 +664,27 @@ proptest! {
                 hero.magic.book = SpellSet::default();
                 hero.magic.masteries = crate::magic::Masteries::of(&masteries(&r, [3; 4]));
                 hero.magic.bonuses.all = Rate::bp(discount.into());
+                // The hidden magic (BAT-Q26): the rules read the limits and the defences through
+                // `BattleState::limits`, derived at the start, which the twin keeps.
+                let m = &mut hero.magic;
+                m.resistance = u64::from(reduction);
+                m.duration_bonus = rounds;
+                m.no_casting = !m.no_casting;
+                m.level_limit = level;
+                m.defences.up_to_level = Some(level);
+                m.defences.mind = !m.defences.mind;
+                m.negates = !m.negates;
+                m.opening_due = !m.opening_due;
+                m.eagle_chance = eagle;
+                m.eagle_spells = SpellSet::default();
+                m.learned.insert(SpellId::from_raw(u16::from(level)));
+                m.defences.spells.insert(SpellId::from_raw(u16::from(level)));
+                if m.opening.is_empty() {
+                    let opening = crate::Opening { spell: SpellId::from_raw(0), mastery: 3, power: rounds };
+                    m.opening.push(opening).unwrap();
+                } else {
+                    m.opening.clear();
+                }
             }
             // covers: BAT-MAG-049
             twin.casts.drawn = twin.casts.drawn.map(|(s, spell)| {
@@ -668,7 +693,17 @@ proptest! {
             });
             let viewer = side.opponent();
             prop_assert_eq!(observe(&state, &r, viewer), observe(&twin, &r, viewer));
+            prop_assert_eq!(&spectator, &observe_as(&twin, &r, Viewer::Spectator));
         }
+        // What a spectator sees is what both sides see: a side's view without its private part
+        // and its own hidden obstacles the other side does not see (SRV-Q4).
+        let mut seat = observe(&state, &r, BattleSide::Attacker);
+        seat.spectator = true;
+        seat.own_hero = None;
+        seat.drawn = None;
+        seat.cast_candidates = [0; crate::STACK_CAPACITY];
+        seat.spell_obstacles.retain(|o| o.revealed);
+        prop_assert_eq!(&spectator, &seat);
     }
 
     /// Observation hygiene for hidden obstacles (ADR-0014 point 7, BAT-MAG-031): what a side
@@ -705,6 +740,22 @@ proptest! {
             let placed = (id, kind, &shape);
             crate::obstacles::place(&mut state, placed, side, (&hex, 40), &mut Vec::new());
         }
+        // Observations find the natural obstacle on a hex as Remove Obstacle does (BAT-MAG-034).
+        let seen = observe(&state, &r, BattleSide::Attacker);
+        for hex in (0..=u8::MAX).map(Hex) {
+            prop_assert_eq!(seen.removable_at(hex), state.natural.removable_at(hex));
+        }
+        // A spectator sees only the hidden obstacles both sides see (SRV-Q4).
+        let mut twin = state.clone();
+        let both: Vec<_> = crate::obstacles::seen_by(&state, BattleSide::Attacker)
+            .into_iter()
+            .filter(|o| crate::obstacles::seen_by(&state, BattleSide::Defender).contains(o))
+            .collect();
+        twin.spell_obstacles.retain(|o| both.contains(o));
+        prop_assert_eq!(
+            observe_as(&state, &r, Viewer::Spectator),
+            observe_as(&twin, &r, Viewer::Spectator)
+        );
         for viewer in BattleSide::BOTH {
             let mut twin = state.clone();
             let seen: Vec<_> = crate::obstacles::seen_by(&state, viewer);
@@ -761,6 +812,16 @@ proptest! {
                     continue;
                 }
                 prop_assert_eq!(told(&ex), told(&ey));
+                // A spectator is told the public events only (SRV-Q4).
+                let public = |events: &[Event]| -> Vec<Event> {
+                    events.iter().filter_map(|e| project_as(e, Viewer::Spectator)).collect()
+                };
+                let shown: Vec<Event> = ex
+                    .iter()
+                    .filter(|e| e.visibility == crate::Visibility::Public)
+                    .copied()
+                    .collect();
+                prop_assert_eq!(public(&ex), shown);
                 prop_assert_eq!(observe(&x, &r, viewer), observe(&y, &r, viewer));
             }
         }

@@ -139,6 +139,11 @@ impl NaturalObstacles {
         self.blocked
     }
 
+    /// The hexes a removal cleared (observations, BAT-MAG-034).
+    pub(crate) const fn cleared(&self) -> HexSet {
+        self.cleared
+    }
+
     /// The anchor hexes that belong to their obstacles (quirk BAT-QUIRK-3; none without it).
     pub(crate) const fn anchors(&self) -> HexSet {
         self.anchors

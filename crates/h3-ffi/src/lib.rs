@@ -48,8 +48,10 @@ use h3_sim::{
 /// T7b4): observation encoding v11 (two globals: the round starts since each side's periodic
 /// casters cast; `h3_observation_len` grows); no function changes. v16 (E04b T8a): observation
 /// encoding v12 (the spell book's features carry the masteries, the school masteries are gone;
-/// `h3_observation_len` shrinks); no function changes.
-pub const H3_ABI_VERSION: u32 = 16;
+/// `h3_observation_len` shrinks); no function changes. v17 (E04b T9a): observation encoding v13
+/// (complete: the battlefield planes, the hero's private part once with its hidden magic, the
+/// new globals and per-stack features; `h3_observation_len` grows); no function changes.
+pub const H3_ABI_VERSION: u32 = 17;
 
 /// `H3StepResult.result`: the battle is not decided (still running, or truncated).
 pub const H3_RESULT_NONE: i32 = -1;
@@ -545,7 +547,7 @@ mod tests {
 
     #[test]
     fn abi_smoke_create_step_destroy() {
-        assert_eq!(h3_abi_version(), 16);
+        assert_eq!(h3_abi_version(), 17);
         assert_eq!(h3_action_count() as usize, ACTION_COUNT);
         assert_eq!(h3_spell_count() as usize, SPELL_COUNT);
         assert_eq!(h3_target_count() as usize, TARGET_COUNT);

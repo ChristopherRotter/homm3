@@ -262,7 +262,24 @@ fn visibility(state: &BattleState, o: &SpellObstacle) -> Visibility {
     }
 }
 
+/// The spell obstacles `viewer` sees, in the order they were placed, as observations show them
+/// (BAT-MAG-031): with `revealed` set when the other side of the obstacle's sees it now. A
+/// spectator (`None`) sees those both sides see.
+pub(crate) fn observed(state: &BattleState, viewer: Option<BattleSide>) -> Vec<SpellObstacle> {
+    state
+        .spell_obstacles
+        .list
+        .iter()
+        .map(|o| SpellObstacle {
+            revealed: sees(state, o.side.opponent(), o),
+            ..*o
+        })
+        .filter(|o| viewer.map_or(o.revealed, |viewer| o.side == viewer || o.revealed))
+        .collect()
+}
+
 /// The spell obstacles `viewer` sees, in the order they were placed (BAT-MAG-031).
+#[cfg(test)]
 pub(crate) fn seen_by(state: &BattleState, viewer: BattleSide) -> Vec<SpellObstacle> {
     state
         .spell_obstacles

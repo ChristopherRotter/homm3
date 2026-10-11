@@ -16,10 +16,12 @@ use h3_contracts::{
     BallistaControl, BattleEffect, BattleHero, BattleSide, DamageBonuses, MAX_BATTLE_EFFECTS, Rate,
     StatOp, TentControl,
 };
-use h3_kernel::{CanonicalHash, StateHasher};
+use h3_kernel::{CanonicalHash, FixedVec, StateHasher};
 
 use crate::error::{HeroError, SetupError};
-use crate::magic::{HeroMagic, Masteries, SpellBonuses, SpellSet};
+use crate::magic::{
+    Defences, HeroMagic, MAX_OPENING_SPELLS, Masteries, Opening, SpellBonuses, SpellSet,
+};
 use crate::state::StackTraits;
 
 /// What both sides see of a side's hero (ADR-0013 point 9, ADR-0014 point 8): identity, primary
@@ -53,7 +55,10 @@ pub struct HeroView {
 
 /// What only the hero's own side sees of it (ADR-0013 point 9, ADR-0014 point 8;
 /// `Observation::own_hero`): the values of its skills, its surrender discount, its funds and the
-/// price of its surrender, its spell book, spell masteries and spell bonuses.
+/// price of its surrender, its spell book, spell masteries and spell bonuses, and its hidden
+/// magic (BAT-Q26): its casting limits, its stacks' resistance and spell defences, the
+/// negation of immunities, its opening spells and its Eagle Eye. The other side learns the
+/// limits and defences only from the casts it may not make.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct OwnHeroView {
     /// Tactics level, 0..=3 (BAT-TAC-001).
@@ -78,6 +83,31 @@ pub struct OwnHeroView {
     pub masteries: Masteries,
     /// Its spell-damage bonuses (BAT-MAG-004).
     pub spell_bonuses: SpellBonuses,
+    /// The resistance of its side's stacks to hostile spells, basis points (BAT-MAG-008;
+    /// truncated from the single-precision value under quirk Q-0005).
+    pub magic_resistance_bp: u32,
+    /// Rounds added to the duration of its timed spells (HER-BAT-014).
+    pub duration_bonus: u16,
+    /// It forbids every cast in the battle (BAT-MAG-061; the Orb of Inhibition).
+    pub no_casting: bool,
+    /// The highest spell level it allows in the battle, if it limits them (BAT-MAG-062;
+    /// Recanter's Cloak).
+    pub level_limit: Option<u8>,
+    /// What it adds to the immunity of the stacks it controls (BAT-MAG-063 to BAT-MAG-065).
+    pub defences: Defences,
+    /// It negates immunities and resistance (BAT-MAG-066; the Orb of Vulnerability).
+    pub negates: bool,
+    /// Its opening spells, in their order (BAT-MAG-068).
+    pub opening: FixedVec<Opening, MAX_OPENING_SPELLS>,
+    /// Whether its side's first activation, when it casts them, is still to come (BAT-MAG-068).
+    pub opening_due: bool,
+    /// Its Eagle Eye's chance to pick a spell at a cast of the enemy hero, percent (BAT-MAG-069;
+    /// 0 without the skill).
+    pub eagle_chance: u8,
+    /// The spells its Eagle Eye may pick (BAT-MAG-069).
+    pub eagle_spells: SpellSet,
+    /// The spells its Eagle Eye picked so far (BAT-MAG-069; the outcome's `learned`).
+    pub learned: SpellSet,
 }
 
 /// The part of a side's hero the battle keeps in its state. Later tasks add what their rules

@@ -190,6 +190,17 @@ fn the_private_part_of_a_hero_shows_only_to_its_side() {
             spell_book: crate::SpellSet::default(),
             masteries: crate::Masteries::default(),
             spell_bonuses: crate::SpellBonuses::default(),
+            magic_resistance_bp: 0,
+            duration_bonus: 0,
+            no_casting: false,
+            level_limit: None,
+            defences: crate::Defences::default(),
+            negates: false,
+            opening: h3_kernel::FixedVec::default(),
+            opening_due: false,
+            eagle_chance: 0,
+            eagle_spells: crate::SpellSet::default(),
+            learned: crate::SpellSet::default(),
         })
     );
     let own = defender.own_hero.unwrap();
@@ -200,6 +211,17 @@ fn the_private_part_of_a_hero_shows_only_to_its_side() {
     let lone = BattleState::new(&r, &with_heroes(&r, [Some(hero(&r)), None]), 1).unwrap();
     assert!(observe(&lone, &r, BattleSide::Attacker).own_hero.is_some());
     assert_eq!(observe(&lone, &r, BattleSide::Defender).own_hero, None);
+    // A spectator sees both public parts and no private one (SRV-Q4).
+    let spectator = crate::observe_as(&s, &r, crate::Viewer::Spectator);
+    assert_eq!(
+        (spectator.heroes, spectator.own_hero),
+        (attacker.heroes, None)
+    );
+    assert_eq!(
+        (spectator.viewer, spectator.spectator),
+        (BattleSide::Attacker, true)
+    );
+    assert_eq!(spectator.surrender_possible, [true, true]);
 }
 
 // covers: BAT-HER-001

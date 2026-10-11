@@ -1976,3 +1976,48 @@ records how and why the tasks went.
 - **Docs:** observation sources for BAT-MAG-061, 062, 064, 066, 067; `installation.md` §7.23;
   the answered BAT-Q21 and BAT-Q22; `packs/README.md` (`ignores_magic_block`). Candidates for a
   later batch: the weak points with long rounds instead of reloads, besides increment 17's.
+
+### T9a: the observation's completeness and the spectator viewer (2026-10-11, increment 19)
+
+- **The user (BAT-Q26):** increment 19 = T9a with SRV-Q4's spectator viewer, added without
+  breaking `h3-protocol`; per-hex planes for the battlefield; a hero's hidden magic private to its
+  side (the agent had recommended the battle-wide limits public); one `cross-lane` pull request.
+- **The audit** (every field of `BattleState`, its hero records and side tables, against the
+  structured `Observation` and the flat encoding v12): missing from both were the wait phase,
+  the clone links, the summons' bound creature, the temporary raises and the corpses' order,
+  Bind's binders, Poison's tenths with the start hit points, the hexes a removal cleared (so
+  `removable_at` could not be computed), the heroes' cost change and the whole hidden magic
+  (resistance, duration bonus, limits, defences, negation, opening spells, Eagle Eye); missing
+  only from the flat encoding were the battlefield (natural obstacles, anchors, removable ones,
+  every spell obstacle), the terrain, the last side to act, the hero's spell bonuses, the
+  masteries of spells outside the book (BAT-QUIRK-5), the start count, the turn-started flag,
+  the raised and native traits, the materialised effect values beyond the attack (protections,
+  Slayer, Fire Shield, Frenzy, Anti-Magic, Magic Mirror, the statuses: more than the eight
+  effect slots can carry) and each effect's mastery. Left out on purpose: the RNG, the
+  outcome's bookkeeping (a vanished clone's creatures, a paid surrender's price), the summon
+  templates (what a cast would create; its result is public) and the battle-wide `limits`
+  (derived from the heroes, private by BAT-Q26).
+- **`h3_battle`:** `Observation` gains `spectator`, `wait_phase`, `clone_links`, `summoned`,
+  `temporary`, `corpses`, `binders`, `poison`, `start_hp`, `obstacles_cleared` (with
+  `Observation::removable_at`, BAT-MAG-034) and `cost_change`; a spell obstacle's `revealed`
+  there tells whether the other side sees it now (natives included). `OwnHeroView` gains the
+  hidden magic; `Defences` and `Opening` are public. `Viewer { Side, Spectator }`, `observe_as`
+  and `project_as`; `observe` and `project` delegate (`h3-protocol` unchanged). A spectator's
+  observation is the attacker's seat without either private part, the drawn spell, the cast
+  candidates or the obstacles only one side sees; it is told the public events.
+- **Encoding v13** (`h3_sim::observation`, 8308 floats, was 2792): 20 globals; 13 public hero
+  features each; the viewer's private part once (64 values: the old ten, the spell bonuses, the
+  hidden magic, four spell-bonus and eight opening slots; then book, mastery, immunity and Eagle
+  Eye vectors of 128); 14 battlefield planes of 255 (one value per hex index, as the action
+  encoding's hex targets: blocked, anchor, removable index + 1; per side and kind the rounds
+  left, −1 for the whole battle, and the value; the viewer's obstacles the opponent sees); 98
+  features per stack (47 values, 27 effect values, eight effect triples with the mastery). A
+  side has at most one spell obstacle on a hex (`obstacles::free` and the random draw skip what
+  the side sees), so the per-side planes are lossless; Bind's binders take two features of 21
+  bits each (exact in `f32`). C ABI v17 (ADR-0011 also records v16, which T8a had left out).
+- **Tests:** `tests/observe.rs` (per-stack bookkeeping, the hidden magic to its side only, the
+  spectator), observation asserts in the clone, summon and cost tests; the hygiene properties:
+  the hidden magic varied in the twin, a spectator unchanged by the RNG, either private part,
+  the drawn spell and the obstacles only one side sees, and equal to a side's view stripped of
+  its private part; `removable_at` against the state's in every generated game; `h3-sim`'s
+  encoding tests per block.

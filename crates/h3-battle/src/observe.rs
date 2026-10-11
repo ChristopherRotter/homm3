@@ -6,29 +6,57 @@
 //! the other side's hidden spell obstacles the viewer does not see (ADR-0014 point 7,
 //! BAT-MAG-031) and the spell a random caster the viewer does not control drew (ADR-0014 point 8,
 //! BAT-MAG-049). The viewer's own hero's private part is shown to the viewer ([`OwnHeroView`]):
-//! its spell book, masteries and spell bonuses among them (ADR-0014 point 8). Timed effects on
-//! stacks are public.
+//! its spell book, masteries and spell bonuses among them (ADR-0014 point 8), and its hidden
+//! magic, which the other side infers only from the casts it may not make (BAT-Q26). Timed
+//! effects on stacks are public.
+//!
+//! A spectator ([`Viewer::Spectator`], SRV-Q4) sees what is public to both sides: neither hero's
+//! private part, no drawn spell, no cast candidates, and only the spell obstacles both sides
+//! see; it is told only the public events. Its observation is seen from the attacker's seat.
+//!
+//! The observation is complete (E04b T9a): everything of the state a rule reads that the viewer
+//! may know is in it, directly or through the ruleset's data. The RNG, the outcome's bookkeeping
+//! (the creatures a vanished clone took along, a surrender's price once paid) and the templates
+//! of the stacks a side's spells would create are not.
 
 use alloc::vec::Vec;
 
-use h3_content::Ruleset;
+use h3_content::{CreatureTypeId, Ruleset};
 use h3_contracts::{BattleResult, BattleSide};
 use h3_kernel::FixedVec;
 
 use crate::effects::ActiveEffect;
 use crate::event::{Event, Visibility};
-use crate::geometry::HexSet;
-use crate::hero::{HeroView, OwnHeroView};
+use crate::geometry::{Hex, HexSet};
+use crate::hero::{HeroRecord, HeroView, OwnHeroView};
+use crate::magic::resistance_bp;
 use crate::natural::{MAX_REMOVABLE_OBSTACLES, RemovableObstacle};
 use crate::obstacles::{self, SpellObstacle};
 use crate::state::{BattleState, STACK_CAPACITY, Stack, StackId};
 use crate::tactics::TacticsPhase;
 
-/// What one side may know about a battle.
+/// Who an observation or an event's projection is for (SRV-Q4).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Viewer {
+    /// One side: what it may know.
+    Side(BattleSide),
+    /// A spectator: what is public to both sides.
+    Spectator,
+}
+
+impl From<BattleSide> for Viewer {
+    fn from(side: BattleSide) -> Self {
+        Self::Side(side)
+    }
+}
+
+/// What one side, or a spectator, may know about a battle.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Observation {
-    /// The side this observation is for.
+    /// The side this observation is for; the attacker for a spectator's.
     pub viewer: BattleSide,
+    /// A spectator's observation ([`Viewer::Spectator`]): no side's private part.
+    pub spectator: bool,
     /// Current round (0 during the tactics phase).
     pub round: u16,
     /// The running tactics phase: its side and zone (public, ADR-0013 point 9).
@@ -38,6 +66,8 @@ pub struct Observation {
     /// Whether each side may surrender at all (BAT-FLE-002; public, ADR-0013 point 9), indexed
     /// by [`BattleSide::index`]. Whether the viewer can pay is in [`own_hero`](Self::own_hero).
     pub surrender_possible: [bool; 2],
+    /// The round's wait phase has begun: only stacks that waited are left to act (public).
+    pub wait_phase: bool,
     /// The stack whose turn it is.
     pub active: Option<StackId>,
     /// Side of the last stack that took a turn.
@@ -48,6 +78,28 @@ pub struct Observation {
     pub stacks: FixedVec<Stack, STACK_CAPACITY>,
     /// The rounds left of each clone, by stack id (0: not a clone; public, BAT-MAG-038).
     pub clone_rounds: [u16; STACK_CAPACITY],
+    /// Per stack, by stack id: for a clone its original, for a stack with a living clone that
+    /// clone; under quirk BAT-QUIRK-7 a crowded original that became its own clone links to
+    /// itself (public, BAT-MAG-038).
+    pub clone_links: [Option<StackId>; STACK_CAPACITY],
+    /// Per side, by [`BattleSide::index`], the creature its Summon Elemental casts are bound to
+    /// once it cast one (public: every cast is; BAT-MAG-039).
+    pub summoned: [Option<CreatureTypeId>; 2],
+    /// Per stack, by stack id, the creatures raised for this battle only (public, BAT-MAG-035).
+    pub temporary: [u32; STACK_CAPACITY],
+    /// Per stack, by stack id, its corpse: 0 while it lives or until its death is marked, then the
+    /// order of its death among the battle's corpses, [`NO_CORPSE`](crate::NO_CORPSE) if it left
+    /// none (public, BAT-MAG-035, BAT-MAG-036).
+    pub corpses: [u16; STACK_CAPACITY],
+    /// Per stack, by stack id, its binders: the stacks whose strike bound it, a bit per stack id
+    /// (public, BAT-MAG-045).
+    pub binders: [u64; STACK_CAPACITY],
+    /// Per stack, by stack id, the tenths of its hit points Poison took for good (public,
+    /// BAT-MAG-044).
+    pub poison: [u8; STACK_CAPACITY],
+    /// Per stack, by stack id, its hit points per creature at the start if Poison or Age changed
+    /// them, else 0 (public, BAT-MAG-044).
+    pub start_hp: [u32; STACK_CAPACITY],
     /// The casts each stack has left, by stack id (public: every cast is; BAT-MAG-048).
     pub casts_left: [u8; STACK_CAPACITY],
     /// The spell the active stack drew at its activation, if it is a random caster the viewer
@@ -66,9 +118,15 @@ pub struct Observation {
     pub removable_obstacles: FixedVec<RemovableObstacle, MAX_REMOVABLE_OBSTACLES>,
     /// The anchor hexes that belong to their obstacles (quirk BAT-QUIRK-3; public, BAT-GEO-003).
     pub obstacle_anchors: HexSet,
+    /// The hexes a removal of a natural obstacle cleared: they lead to no obstacle any more
+    /// (public, BAT-MAG-034).
+    pub obstacles_cleared: HexSet,
     /// The heroes leading the sides, their public part (identity, primary skills, mana, the war
     /// machines they command; ADR-0013 point 9), indexed by [`BattleSide::index`].
     pub heroes: [Option<HeroView>; 2],
+    /// The change of each side's hero's spell costs from the creatures in the armies, indexed by
+    /// [`BattleSide::index`] (BAT-MAG-054; public through the armies; 0 without a hero).
+    pub cost_change: [i8; 2],
     /// The private part of the viewer's own hero, if the viewer is led by one.
     pub own_hero: Option<OwnHeroView>,
     /// The battlefield's terrain (public).
@@ -76,62 +134,132 @@ pub struct Observation {
     /// The timed effects on stacks, by stack and spell (public; BAT-MAG-009).
     pub effects: Vec<ActiveEffect>,
     /// The spell obstacles the viewer sees, in the order they were placed (BAT-MAG-027; Force
-    /// Field and Fire Wall are public, a hidden one only when the viewer sees it, BAT-MAG-031).
+    /// Field and Fire Wall are public, a hidden one only when the viewer sees it, BAT-MAG-031); a
+    /// spectator's, those both sides see. Here `revealed` tells whether the other side of the
+    /// obstacle's sees it now (its natives included, BAT-MAG-031).
     pub spell_obstacles: Vec<SpellObstacle>,
+}
+
+impl Observation {
+    /// The index in [`removable_obstacles`](Self::removable_obstacles) of the natural obstacle
+    /// Remove Obstacle finds on `hex` (BAT-MAG-034): of those that block it or have it as their
+    /// anchor (quirk BAT-QUIRK-3), the one placed last; none on a hex a removal cleared.
+    pub fn removable_at(&self, hex: Hex) -> Option<usize> {
+        if self.obstacles_cleared.contains(hex) {
+            return None;
+        }
+        self.removable_obstacles.iter().rposition(|o| {
+            o.hexes().contains(&hex) || (o.anchor() == hex && self.obstacle_anchors.contains(hex))
+        })
+    }
 }
 
 /// The observation of `state` for `viewer`. `ruleset` must be the one the battle was built
 /// with (as for [`apply`](crate::apply)); the surrender rules read it.
 pub fn observe(state: &BattleState, ruleset: &Ruleset, viewer: BattleSide) -> Observation {
+    observe_as(state, ruleset, Viewer::Side(viewer))
+}
+
+/// The observation of `state` for `viewer`, a side or a spectator (SRV-Q4); see [`observe`].
+pub fn observe_as(state: &BattleState, ruleset: &Ruleset, viewer: Viewer) -> Observation {
+    let side = match viewer {
+        Viewer::Side(side) => Some(side),
+        Viewer::Spectator => None,
+    };
+    let seat = side.unwrap_or(BattleSide::Attacker);
     Observation {
-        viewer,
+        viewer: seat,
+        spectator: side.is_none(),
         round: state.round,
         tactics: state.tactics,
         may_retreat: BattleSide::BOTH.map(|side| state.may_retreat(side)),
         surrender_possible: BattleSide::BOTH.map(|side| state.surrender_possible(ruleset, side)),
+        wait_phase: state.wait_phase,
         active: state.active,
         last_side_acted: state.last_side_acted,
         result: state.result,
         stacks: state.stacks,
         clone_rounds: state.created.rounds,
+        clone_links: state.created.links(),
+        summoned: state.created.summoned(),
+        temporary: state.raised.temporary,
+        corpses: state.raised.corpse,
+        binders: state.binds.by,
+        poison: state.vitality.poison,
+        start_hp: state.vitality.base,
         casts_left: state.casts.left,
         // rule: BAT-MAG-049
         drawn: state
             .casts
             .drawn
-            .filter(|&(s, _)| state.active == Some(s) && state.at(s).controller() == viewer)
+            .filter(|&(s, _)| state.active == Some(s) && Some(state.at(s).controller()) == side)
             .map(|(_, spell)| spell),
         // rule: BAT-MAG-050
-        cast_candidates: crate::casters::candidates(state, ruleset, viewer),
+        cast_candidates: side.map_or([0; STACK_CAPACITY], |side| {
+            crate::casters::candidates(state, ruleset, side)
+        }),
         periodic_rounds: state.casts.periodic,
         obstacles: state.obstacles(),
         removable_obstacles: state.natural.removable_list(),
         obstacle_anchors: state.natural.anchors(),
+        obstacles_cleared: state.natural.cleared(),
         heroes: BattleSide::BOTH.map(|side| state.hero(side)),
-        own_hero: state.heroes[viewer.index()].map(|h| OwnHeroView {
-            tactics: h.tactics,
-            damage: h.damage,
-            ballista: h.ballista,
-            tent: h.tent,
-            surrender_discount_bp: h.surrender_discount_bp,
-            funds: h.funds,
-            surrender_price: state.surrender_price(ruleset, viewer),
-            spell_book: h.magic.book,
-            masteries: h.magic.masteries,
-            spell_bonuses: h.magic.bonuses,
-        }),
+        cost_change: BattleSide::BOTH
+            .map(|side| state.heroes[side.index()].map_or(0, |h| h.magic.cost_change)),
+        own_hero: side
+            .and_then(|side| state.heroes[side.index()])
+            .map(|h| own_hero(state, ruleset, &h, seat)),
         terrain: state.terrain,
         effects: state.effects().to_vec(),
         // rule: BAT-MAG-031
-        spell_obstacles: obstacles::seen_by(state, viewer),
+        spell_obstacles: obstacles::observed(state, side),
+    }
+}
+
+/// The private part of `side`'s hero `h` (ADR-0013 point 9, ADR-0014 point 8, BAT-Q26).
+fn own_hero(
+    state: &BattleState,
+    ruleset: &Ruleset,
+    h: &HeroRecord,
+    side: BattleSide,
+) -> OwnHeroView {
+    let m = &h.magic;
+    OwnHeroView {
+        tactics: h.tactics,
+        damage: h.damage,
+        ballista: h.ballista,
+        tent: h.tent,
+        surrender_discount_bp: h.surrender_discount_bp,
+        funds: h.funds,
+        surrender_price: state.surrender_price(ruleset, side),
+        spell_book: m.book,
+        masteries: m.masteries,
+        spell_bonuses: m.bonuses,
+        magic_resistance_bp: resistance_bp(ruleset, m.resistance),
+        duration_bonus: m.duration_bonus,
+        no_casting: m.no_casting,
+        level_limit: (m.level_limit != u8::MAX).then_some(m.level_limit),
+        defences: m.defences,
+        negates: m.negates,
+        opening: m.opening,
+        opening_due: m.opening_due,
+        eagle_chance: m.eagle_chance,
+        eagle_spells: m.eagle_spells,
+        learned: m.learned,
     }
 }
 
 /// The event as `viewer` may see it, or `None` if it is hidden from them.
 pub fn project(event: &Event, viewer: BattleSide) -> Option<Event> {
-    match event.visibility {
-        Visibility::Public => Some(*event),
-        Visibility::Side(side) if side == viewer => Some(*event),
-        Visibility::Side(_) => None,
+    project_as(event, Viewer::Side(viewer))
+}
+
+/// The event as `viewer`, a side or a spectator, may see it, or `None` if it is hidden from them:
+/// a spectator sees the public events only (SRV-Q4).
+pub fn project_as(event: &Event, viewer: Viewer) -> Option<Event> {
+    match (event.visibility, viewer) {
+        (Visibility::Public, _) => Some(*event),
+        (Visibility::Side(side), Viewer::Side(viewer)) if side == viewer => Some(*event),
+        (Visibility::Side(_), _) => None,
     }
 }
