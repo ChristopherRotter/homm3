@@ -117,6 +117,18 @@ impl Viewers {
     pub const fn bits(self) -> u8 {
         self.0
     }
+
+    /// The players in this set or in `other`.
+    #[must_use]
+    pub const fn union(self, other: Self) -> Self {
+        Self(self.0 | other.0)
+    }
+
+    /// The players in both this set and `other`.
+    #[must_use]
+    pub const fn intersection(self, other: Self) -> Self {
+        Self(self.0 & other.0)
+    }
 }
 
 /// The bit of `player` in [`Viewers`], none for an id of eight or more.
@@ -140,15 +152,25 @@ pub struct AdventureEvent {
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum AdventureEventKind {
     /// A hero made one step of a move (one event per step: the fog changes during a move, so a
-    /// viewer learns of the steps it can see, ADR-0016 point 6). Seen by the hero's owner and by
-    /// every player that has explored the tile it leaves or the tile it enters (ADV-FOG-004).
+    /// viewer learns of the steps it can see, ADR-0016 point 6). Seen by the players that see the
+    /// hero on the tile it leaves or on the tile it enters: its owner, every player that has
+    /// explored the tile, and under `ADV-QUIRK-1` every player with the tile on its fringe
+    /// (ADV-FOG-004, ADV-FOG-005). A player that sees the hero on one of the two tiles only is
+    /// told that one only: the other is `None` in its projection (the hero comes into sight, or
+    /// goes out of it).
     HeroStepped {
         /// The hero.
         hero: HeroId,
-        /// The tile it left.
-        from: Pos,
-        /// The tile it entered.
-        to: Pos,
+        /// The tile it left (always given when emitted; `None` in a projection for a viewer that
+        /// does not see the hero there).
+        from: Option<Pos>,
+        /// The tile it entered (likewise).
+        to: Option<Pos>,
+        /// The players that see the hero on the tile it left (the viewer alone, or none, in a
+        /// projection).
+        seen_from: Viewers,
+        /// The players that see the hero on the tile it entered (likewise).
+        seen_to: Viewers,
     },
 }
 

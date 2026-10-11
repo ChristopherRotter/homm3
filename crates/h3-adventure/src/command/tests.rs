@@ -71,13 +71,16 @@ fn a_move_pays_each_step_and_emits_one_event_per_step() {
     );
     assert_ne!(state.state_hash(), before);
     // Only red has a hero: only red sees the steps (ADV-FOG-004).
+    let red = Viewers::NONE.with(RED);
     let stepped = |from, to| AdventureEvent {
         kind: AdventureEventKind::HeroStepped {
             hero: HeroId::new(1),
-            from,
-            to,
+            from: Some(from),
+            to: Some(to),
+            seen_from: red,
+            seen_to: red,
         },
-        seen_by: Viewers::NONE.with(RED),
+        seen_by: red,
     };
     assert_eq!(
         events,

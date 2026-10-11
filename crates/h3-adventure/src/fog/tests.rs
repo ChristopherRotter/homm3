@@ -1,10 +1,12 @@
 //! Tests of the reveal's shape (ADV-FOG-002, E08 T8a): the disk of the original's and VCMI's test,
-//! clipped to the map and its level, against a tile-by-tile model.
+//! clipped to the map and its level, against a tile-by-tile model; the fringe and the sight's
+//! planes (ADV-FOG-005, T8b1) against a tile-by-tile model.
 
 extern crate std;
 
 use std::vec::Vec;
 
+use proptest::collection::vec as prop_vec;
 use proptest::prelude::{prop_assert_eq, proptest};
 
 use super::*;
@@ -107,5 +109,104 @@ proptest! {
         let mut grid: BitGrid = BitGrid::new(width, height, levels);
         reveal(&mut grid, p(x, y, level), radius);
         prop_assert_eq!(set_tiles(&grid), model(&grid, p(x, y, level), radius));
+    }
+}
+
+/// Whether `pos` is on the fringe of `grid`, tile by tile: on the map, not explored, and one of
+/// the tiles with |dx| ≤ 1 and |dy| ≤ 1 on its level explored.
+fn fringe_model(grid: &BitGrid, pos: Pos) -> bool {
+    let explored = |x: i32, y: i32| {
+        x >= 0 && y >= 0 && grid.get(p(x.try_into().unwrap(), y.try_into().unwrap(), pos.level))
+    };
+    let (x, y) = (i32::from(pos.x), i32::from(pos.y));
+    pos.x < grid.width()
+        && pos.y < grid.height()
+        && pos.level < grid.levels()
+        && !grid.get(pos)
+        && (-1..=1).any(|dy| (-1..=1).any(|dx| explored(x + dx, y + dy)))
+}
+
+/// Whether the plane `words` of a sight with `stride` words a row has the tile at `pos`.
+fn plane_has(words: &[u64], stride: usize, height: u16, pos: Pos) -> bool {
+    let row = usize::from(pos.level) * usize::from(height) + usize::from(pos.y);
+    words[row * stride + usize::from(pos.x / 64)] >> (pos.x % 64) & 1 == 1
+}
+
+/// Checks a grid's sight and its fringe test against the models, tile by tile; every bit past
+/// the width is clear.
+fn check_sight(grid: &BitGrid) {
+    let sight = Sight::of(grid);
+    let (width, height) = (grid.width(), grid.height());
+    assert_eq!(sight.stride, usize::from(width.div_ceil(64)));
+    let words = sight.stride * usize::from(height) * usize::from(grid.levels());
+    assert_eq!((sight.explored.len(), sight.fringe.len()), (words, words));
+    let columns = u16::try_from(sight.stride * 64).unwrap();
+    for level in 0..grid.levels() {
+        for y in 0..height {
+            for x in 0..columns {
+                let pos = p(x, y, level);
+                let explored = plane_has(&sight.explored, sight.stride, height, pos);
+                let fringe = plane_has(&sight.fringe, sight.stride, height, pos);
+                assert_eq!(explored, grid.get(pos), "explored {pos:?}");
+                assert_eq!(fringe, fringe_model(grid, pos), "fringe {pos:?}");
+                if x < width {
+                    assert_eq!(on_fringe(grid, pos), fringe, "on_fringe {pos:?}");
+                }
+            }
+        }
+    }
+}
+
+// covers: ADV-FOG-005
+#[test]
+fn the_fringe_rings_a_disk_and_follows_the_map_edges() {
+    // A radius-5 disk in the middle: the fringe is the hidden tiles touching it, diagonals
+    // included. The disk's corner rows end at |dx| = 2, so (13, 4), outside the disk's top row,
+    // touches (12, 5) diagonally.
+    let mut grid: BitGrid = BitGrid::new(30, 30, 2);
+    reveal(&mut grid, p(10, 10, 1), 5);
+    assert!(on_fringe(&grid, p(13, 4, 1)) && on_fringe(&grid, p(10, 4, 1)));
+    assert!(!on_fringe(&grid, p(14, 4, 1)) && !on_fringe(&grid, p(10, 3, 1)));
+    assert!(!on_fringe(&grid, p(10, 10, 1)) && !on_fringe(&grid, p(10, 4, 0)));
+    check_sight(&grid);
+    // Disks across the corners and the edges of a map wider than a word, on both levels.
+    let mut grid: BitGrid = BitGrid::new(130, 20, 2);
+    for (x, y, level) in [
+        (0, 0, 0),
+        (63, 10, 0),
+        (64, 19, 1),
+        (129, 5, 1),
+        (127, 0, 0),
+    ] {
+        reveal(&mut grid, p(x, y, level), 2);
+    }
+    assert!(on_fringe(&grid, p(66, 10, 0)) && on_fringe(&grid, p(61, 8, 0)));
+    check_sight(&grid);
+    // A map exactly two words wide; one with nothing explored.
+    let mut grid: BitGrid = BitGrid::new(128, 3, 1);
+    reveal(&mut grid, p(127, 1, 0), 1);
+    grid.set(p(0, 0, 0), true);
+    check_sight(&grid);
+    check_sight(&BitGrid::new(5, 5, 1));
+}
+
+proptest! {
+    // covers: ADV-FOG-005
+    #[test]
+    fn the_sight_matches_the_tile_by_tile_model(
+        width in 1u16..150,
+        height in 1u16..12,
+        levels in 1u8..3,
+        reveals in prop_vec((0u16..160, 0u16..14, 0u8..3, 0u8..4), 0..6),
+        single in prop_vec((0u16..160, 0u16..14, 0u8..3), 0..6),
+    ) {
+        let mut grid: BitGrid = BitGrid::new(width, height, levels);
+        for (x, y, level, radius) in reveals {
+            reveal(&mut grid, p(x, y, level), radius);
+        }
+        for (x, y, level) in single {
+            grid.set(p(x, y, level), true);
+        }
+        check_sight(&grid);
     }
 }
