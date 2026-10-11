@@ -11,7 +11,7 @@ Epic: `docs/epics/E16-server.md` (in progress; M0 and M1 done 2026-10-10, ADR-00
 - **Scope:** `h3-protocol`: `Welcome` gains the server's id and the connection's challenge (given by the host); `Login { login, public_key, signature, display }` answered `LoggedIn { display }` or a refusal; `Rekey`, `Rename`, the account's listing preference (their handling comes in T2b); keys, signatures and challenges as hex strings. The hello gate's login step, sans-I/O: the gate hands the host the login to check (the `Authenticator` seam is `h3-server`'s, T2a) and is told the outcome; a login before the hello, a second login, a malformed key or signature refused. The rules of a login name (3–20 of `a–z 0–9 _ -`, lowercase) and of a display name (provisional), as pure functions. `E16-design.md` §10 is the reference.
 - **Acceptance:** the Definition of Done; `h3-protocol` 100 % covered; the round trips and JSON forms of the new messages; properties: a connection is logged in only after the host's yes, a refused login changes nothing; `PROTOCOL_VERSION` bumped.
 - **Depends on:** the M3 refinement (SRV-Q17).
-- **Status:** ready.
+- **Status:** in progress (`claude/epic-bell-ot2nsa`, 2026-10-11 20:00 UTC).
 
 ### E16 M3 T2a — The Authenticator and the player log
 
