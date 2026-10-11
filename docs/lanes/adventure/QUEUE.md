@@ -4,19 +4,25 @@ Pre-refined tasks of the adventure lane, in order, then the inbox of discovered 
 
 ## Tasks
 
-Epic: `docs/epics/E08-adventure-map.md` (refined 2026-10-08, reviewed with the user the same day; decisions 1–12 there; done tasks in `E08-log.md`). Increment 1 = T1a, T1b, T2–T10, with a checkpoint with the user at T1a (done: ADR-0015–0017), after T3 (done, 2026-10-10) and at T10. T1a, T1b, T2, T3, T4, T5a, T5b, T6a, T6b, T7a, T7b, T8a and T8b1 are done; the import moved from T3 to T5 and T6 (user, 2026-10-10). Refined into the entries below at the T3 checkpoint (2026-10-10): the user takes one or two tasks per round, each round ends at a checkpoint (the round after T3: T4 alone; after T4: T5a and T6a; after T5a/T6a: T6b and T7a; after T6b/T7a: T7b and T5b; after T7b/T5b: T8a alone, T8 split into T8a and T8b; after T8a: T8b1 alone, T8b split into T8b1 and T8b2). Every entry's acceptance includes the Definition of Done (`docs/05-testing.md`).
+Epic: `docs/epics/E08-adventure-map.md` (refined 2026-10-08, reviewed with the user the same day; decisions 1–12 there; done tasks in `E08-log.md`). Increment 1 = T1a, T1b, T2–T10, with a checkpoint with the user at T1a (done: ADR-0015–0017), after T3 (done, 2026-10-10) and at T10. T1a, T1b, T2, T3, T4, T5a, T5b, T6a, T6b, T7a, T7b, T8a and T8b1 are done; the import moved from T3 to T5 and T6 (user, 2026-10-10). Refined into the entries below at the T3 checkpoint (2026-10-10): the user takes one or two tasks per round, each round ends at a checkpoint (the round after T3: T4 alone; after T4: T5a and T6a; after T5a/T6a: T6b and T7a; after T6b/T7a: T7b and T5b; after T7b/T5b: T8a alone, T8 split into T8a and T8b; after T8a: T8b1 alone, T8b split into T8b1 and T8b2; after T8b1: T8b2a alone, T8b2 split into T8b2a, what a command may do, and T8b2b, what a viewer may learn). Every entry's acceptance includes the Definition of Done (`docs/05-testing.md`).
 
-### E08 T8b2 — Legal commands and the property tests
+### E08 T8b2a — Legal commands and the commands' property tests
 
-- **Scope:** `legal_commands` in `h3-game` (the game's: `EndTurn` while the player acts, and `MoveHero` for each of its heroes to each tile of the reachable-tiles query, the path from `Reach`; nothing for a player whose turn is not running), sharing the turn check with `apply` (ADR-0017's consequence); the property tests with `MoveHero` and `EndTurn` among the commands, on imported maps (in `h3-map`'s tests, which generate maps with T6a's strategy, import them and play `h3-game`; `h3-map` depends on `h3-game`): atomicity (a rejected command changes nothing and emits nothing), legality consistency (every legal command applies, a sample of illegal ones is rejected), ownership isolation (no command of one player moves another's hero or changes another's explored tiles), observation hygiene (a viewer's observation and projected events do not depend on what it cannot see: the seed, other players' armies, hidden tiles), clone equivalence (a fork and its parent evolve identically), determinism (the same commands give the same states, events and hashes); the observation's consistency with the events (a viewer's hero list moves as the projected steps say).
+- **Scope:** `legal_commands` in `h3-game` (the game's: `EndTurn` while the player acts, and `MoveHero` for each of its heroes to each tile of the reachable-tiles query, the path from `Reach`; nothing for a player whose turn is not running), sharing the turn check with `apply` (ADR-0017's consequence); a strategy for playable maps (generated, imported, heroes of several players) and a random-play driver in `h3-map`'s tests (`h3-map` depends on `h3-game`), with `MoveHero` and `EndTurn` among the commands; the properties of what a command may do: atomicity (a rejected command changes nothing and emits nothing), legality consistency (every legal command applies, a sample of illegal ones is rejected), ownership isolation (no command of one player moves another's hero or changes another's explored tiles), clone equivalence (a fork and its parent evolve identically), determinism (the same commands give the same states, events and hashes).
 - **Acceptance:** the property tests pass on imported maps; `legal_commands` is property-tested against `apply`.
-- **Depends on:** T8b1 (done). **Status:** ready.
+- **Depends on:** T8b1 (done). **Status:** in progress (`adventure/e08-t8b2a`, 2026-10-11T17:00Z).
+
+### E08 T8b2b — The observation's property tests
+
+- **Scope:** on T8b2a's playable maps and driver, the properties of what a viewer may learn: observation hygiene (a viewer's observation and projected events do not depend on what it cannot see: the seed, other players' armies and points, hidden tiles), the observation's consistency with the events (a viewer's hero list moves as the projected steps say).
+- **Acceptance:** the property tests pass on imported maps.
+- **Depends on:** T8b2a. **Status:** waiting (T8b2a).
 
 ### E08 T9 — Env, CLI, gates
 
 - **Scope:** `AdventureEnv` (reset, step, mask, fork, hash; the action a destination among the reachable tiles), a random agent, the CLI's run, replay verify and bench, golden replays naming their map by content hash, path and `MAP_IMPORT_VERSION` (ADV-Q2), the benchmark workloads and their baselines (decision 11: random play, pathfinding, and the fork cost moved here from T5b), the CLI wiring in battle-owned `crates/h3-cli` files (`Cargo.toml`, the dispatch: a `cross-lane` change with the user's consent).
 - **Acceptance:** the replays pass the determinism matrix; the +2 % gate has a baseline.
-- **Depends on:** T8b2; the editor maps as committed fixtures (Inbox). **Status:** waiting (T8b2).
+- **Depends on:** T8b2b; the editor maps as committed fixtures (Inbox; the user asked at the T8b2a start why an agent cannot make them: a generated map for the replays is offered for the checkpoint). **Status:** waiting (T8b2b).
 
 ### E08 T10 — Closure
 
