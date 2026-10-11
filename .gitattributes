@@ -1,3 +1,5 @@
 # Keep LF everywhere so fixtures, packs and docs are byte-identical on every platform.
 * text=auto eol=lf
 *.bundle binary
+# Map files are named by the hash of their bytes (replays, ADV-Q2): never converted.
+*.h3m binary

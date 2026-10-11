@@ -131,10 +131,10 @@ An *extension* (AB, SoD, later WoG/HotA) is a **content pack** (Tier 1–3 data)
 
   | Measure | Duel | XL | Target / threshold |
   |---|---|---|---|
-  | Random legal play, one step: agent + reachable-tiles queries + `apply` (`--workload play`) | ≈ 14.1 k steps/s (≈ 71 µs, ≈ 745 k Ir) | ≈ 5.5 k steps/s (≈ 183 µs, ≈ 1.6 M Ir) | ≥ 10 k steps/s/core on the duel (met); **gate +2 %**: `random-play-duel-36`, 510 319 658 Ir for 685 steps |
+  | Random legal play, one step: agent + reachable-tiles queries + `apply` (`--workload play`) | ≈ 14.1 k steps/s (≈ 71 µs, ≈ 745 k Ir) | ≈ 5.5 k steps/s (≈ 183 µs, ≈ 1.6 M Ir) | ≥ 10 k steps/s/core on the duel (met); **gate +2 %**: `random-play-duel-36`, 510 210 757 Ir for 685 steps |
   | + the acting player's observation before each step (`--observe 1`) | +15 µs | +99 µs | — (cached static planes with E13's encoding) |
   | + the entry and tile masks before each step (`--masks 1`) | +70 µs (×2.0) | +131 µs (×1.7) | — (the env keeps the current state's queries with E05's batch API) |
-  | One reachable-tiles query (`--workload reach`) | ≈ 27 µs (≈ 263 k Ir) | ≈ 33 µs (≈ 342 k Ir) | < 50 µs on XL (met); **gate +2 %**: `reach-xl-144`, 657 378 985 Ir for 1 920 queries |
+  | One reachable-tiles query (`--workload reach`) | ≈ 27 µs (≈ 263 k Ir) | ≈ 33 µs (≈ 342 k Ir) | < 50 µs on XL (met); **gate +2 %**: `reach-xl-144`, 657 381 227 Ir for 1 920 queries |
   | `AdventureEnv::fork` (`--workload fork`) | ≈ 0.22 µs (≈ 2 200 Ir, 4 heroes) | ≈ 0.37 µs (≈ 3 400 Ir, 8 heroes) | < 1 µs on every map, growing with the heroes, not the tiles (met: each hero's army is a `Vec`); **gate +2 %**: `fork-xl-144`, 343 600 056 Ir for 100 000 forks |
   | `GameState` / `AdventureEnv` size | 168 / 200 bytes | same | — |
 
