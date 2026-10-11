@@ -4,8 +4,9 @@
 //! another: players, turns and the calendar belong to `h3-game`, which drives this context.
 //!
 //! So far: the ruleset part ([`AdventureRuleset`], E08 T4), the setup ([`AdventureSetup`]) and
-//! the state with its static map ([`AdventureState`], T5a). The persistent grids arrive in T5b,
-//! movement in T7, fog of war and the projection in T8. Pointer identity (`ptr_eq`, `as_ptr`) is
+//! the state with its static map ([`AdventureState`], T5a), a day's movement points and the
+//! start-of-turn step (T6b). The persistent grids arrive in T5b, moves in T7, fog of war and the
+//! projection in T8. Pointer identity (`ptr_eq`, `as_ptr`) is
 //! allowed only in the persistent module `src/persistent.rs` (`arch.toml`, ADR-0016 point 2).
 //!
 //! Logic crate: pure, deterministic, `no_std` + `alloc` (ADR-0003, ADR-0005). The lint header
@@ -28,6 +29,7 @@
 
 extern crate alloc;
 
+mod movement;
 mod ruleset;
 mod setup;
 mod state;
@@ -35,6 +37,7 @@ mod state;
 #[cfg(test)]
 mod testing;
 
+pub use movement::day_points;
 pub use ruleset::{
     AdventureCompileError, AdventurePack, AdventureParams, AdventureParamsDef, AdventureRuleset,
     MAX_LAND_POINTS, Passage, RiverDef, RiverId, RiverKind, RoadDef, RoadId, RoadKind,
@@ -48,9 +51,11 @@ pub use state::{AdventureState, HeroOnMap, MapObject, StaticMap, StaticTile};
 
 /// Version of the adventure state's canonical hash encoding (`docs/08-work-process.md`,
 /// "Versions"; owned by the adventure lane). Bump it with any change to what the hash covers.
-/// v1 (E08 T5a): the first encoding ([`AdventureState`]'s `CanonicalHash`).
-pub const ADVENTURE_STATE_HASH_VERSION: u32 = 1;
+/// v1 (E08 T5a): the first encoding ([`AdventureState`]'s `CanonicalHash`). v2 (E08 T6b): a
+/// hero's movement points.
+pub const ADVENTURE_STATE_HASH_VERSION: u32 = 2;
 
 /// Version of the adventure ruleset part's canonical hash encoding (ADR-0015 point 2; owned by the
-/// adventure lane). v2 (E08 T5a): the setup bounds and the army slots.
-pub const ADVENTURE_RULESET_HASH_VERSION: u32 = 2;
+/// adventure lane). v2 (E08 T5a): the setup bounds and the army slots. v3 (E08 T6b): the starting
+/// stack chances.
+pub const ADVENTURE_RULESET_HASH_VERSION: u32 = 3;

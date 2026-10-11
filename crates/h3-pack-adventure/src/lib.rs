@@ -16,6 +16,8 @@
 //! max_levels = 2                   # its levels and the players of a game
 //! max_players = 8
 //! army_slots = 7                   # the slots of a hero's army
+//! starting_stack_chances = [88, 25] # percent for the 2nd, 3rd... starting slot of a hero's
+//!                                  # starting army; the 1st always (GAM-SET-001, E08 T6b)
 //!
 //! [[terrain]]                      # every core terrain needs one entry, from any pack of
 //! terrain = "grass"                # its closure; `name` means `<own pack>:name`
@@ -131,6 +133,7 @@ struct ParamsDto {
     max_levels: NonZeroU8,
     max_players: NonZeroU8,
     army_slots: NonZeroU8,
+    starting_stack_chances: Vec<u8>,
 }
 
 #[derive(Deserialize, Default, Clone, Copy)]
@@ -233,6 +236,7 @@ pub fn parse_adventure(
             max_levels: p.max_levels,
             max_players: p.max_players,
             army_slots: p.army_slots,
+            starting_stack_chances: p.starting_stack_chances,
         }),
         ..AdventurePack::new(manifest.clone())
     })

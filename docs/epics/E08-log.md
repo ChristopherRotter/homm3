@@ -252,3 +252,49 @@ placeholder that T6b draws, over an `Unsupported` error.
   (content, not sharing; the order of heroes and stacks in a setup does not matter), the code
   tables against the packs, and parse, import and validation together on arbitrary bytes and on
   the reader's model strategy with damaged encodings.
+
+### Checkpoint after T5a/T6a and T6b + T7a (2026-10-10, `adventure/e08-t6b-t7a`)
+
+At the checkpoint the user took T6b with T7's code reading (T7a) as this round, so the round ends
+at the classification of A-2 and A-3, and moved T5b's gated fork benchmark to T9: T5b measures
+with callgrind on an adventure-owned example, because the `h3` binary's dispatch and its
+`Cargo.toml` are battle-owned (T9 wires the CLI's adventure commands anyway).
+
+- **T6b readings** (survey §1.1, §3.1; map entries). *When the points are set (CR-2's callers,
+  ADV-Q4):* the End Turn handler 0x409A70 calls the next-player step 0x4C6FE0, which calls the
+  new day 0x4C7FE0 after the day's last player and then sets the new current player's heroes'
+  maximum and current points (+0x49, +0x4D; on the map, in its tavern, in its towns); the new day
+  sets none within two calls. The wiki and VCMI say the day's start: a conflict of sources; the
+  user chose the reading until a confirmation experiment (ADV-Q4, kept open). *The starting
+  army (0x4C9730, GAM-SET-001):* the first stack always, a roll of 1–100 at most 88 for the
+  second slot (a war machine there becomes its artifact), a new roll at most 25 for the third;
+  the wiki has the same chances per slot and 100 % for the nine war machines; VCMI one roll for
+  all slots. The user expected the war machine to be guaranteed; it is not on the map hero
+  before increment 3, so the round builds the stacks as read (the user, interim) and leaves the
+  war machine's chance open (ADV-Q6). *Turn order:* the original plays human players before
+  computer players each day (VCMI too); inbox.
+- **T6b build.** `h3_game::GameState::new(rules, setup, seed)`: the starting armies drawn from the
+  setup stream in hero order (the slots read as the first stack, the war machines, the other
+  stacks; the chances `starting_stack_chances = [88, 25]` in the adventure part, ruleset hash
+  v3); the game's own check that a hero type's stacks fit the army's slots (so validity never
+  depends on the draw; `GameSetup::validate` builds with seed 0); a stream per player and the
+  game's stream; sequential turn groups; day 1; the first group's turn started. `apply(state,
+  rules, Actor::Player(p), GameCommand::EndTurn, sink)`: `NotYourTurn`/`UnknownPlayer` leave the
+  state untouched; a group ends when every player in it has ended its turn; after the last group
+  the day advances. Events `TurnEnded`, `DayStarted`, `TurnStarted` (public facts). Game state
+  hash v1. `h3-adventure`: `HeroOnMap.movement`, `day_points` (ADV-MOV-001), `start_turn`
+  (ADV-MOV-002), state hash v2. Rules GAM-SET-001, GAM-TRN-001, GAM-TRN-002, GAM-CAL-001 (new
+  catalog `game.toml`), ADV-MOV-001/002 implemented. Tests: the draw's chances and slot layout,
+  4000 seeds against the read rates (the third stack without the second about 3 %), the turns
+  and a group of two (a test-only schedule), the rejections, the hash, a property test of
+  `EndTurn` atomicity and determinism; the shipped packs keep the draw's slot layout (nine war
+  machines, all second of three). Weeks and months wait for the first rule that reads them.
+- **T7a reading (CR-1, ADV-Q3; survey §1.2–1.3).** 0x4B18C0 → 0x4B1740: only the source tile
+  prices a step (its road's cost when both tiles have one, else 100 when native, else its terrain's
+  by Pathfinding); D-2 goes VCMI's way, against the wiki. The diagonal compares the points left
+  with the plain terrain cost T: below T unaffordable, from T to below T·√2 the straight cost,
+  above trunc(cost·√2); A-2 and A-3 exist as the wiki says, confirmed by an independent re-read by
+  a fresh agent (ledger `ADV-QUIRK-2`, `-3`, fix-optional pending the user). After each step the
+  points drop to 0 when fewer than the cheapest straight step from the new tile remain (0x4B1880;
+  D-3: not VCMI's rule). The f32 √2 truncated equals `isqrt(2·cost²)` for every cost below 5741.
+  Decisions for the user in ADV-Q3; T7b builds on them.

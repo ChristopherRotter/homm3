@@ -1,0 +1,90 @@
+# Game rules (context `game`, crate `h3-game`): players, turns, the calendar and the setup's random
+# placeholders (ADR-0017; E08). Format: docs/04-rules-and-sources.md §3. Survey:
+# docs/rules/surveys/E08-adventure-core.md §3 (the survey's `GAME-` ids became `GAM-`, E08 T2).
+
+[[rule]]
+id       = "GAM-SET-001"
+title    = "The starting army of a hero without stacks of its own"
+context  = "game"
+status   = "implemented"
+summary  = "A hero the setup gives no stacks gets its hero type's starting army when the game is built, drawn from the setup stream: the first starting slot's stack always, the second slot's when a roll of 1-100 is at most 88, the third's when a second roll is at most 25 (chances as data), each count drawn between its bounds; the given stacks take the army's slots from 0 in order. A war machine takes its starting slot (always the second in the original's hero table, between the first stack and the others) and is rolled like a stack, but gives no stack; whether it is guaranteed, and the war machine itself on the map hero, are open until increment 3 (ADV-Q6). A hero type whose stacks do not fit the army is rejected at setup. The two rolls are independent (the code reading), so about 3 % of armies have the third stack without the second; VCMI uses one roll for both (ADV-Q6). E08 T6b: `h3_game::GameState::new`."
+numeric  = "integer"
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (E08 T6b; survey §3.1): 0x4C9730 (a hero id, an unused argument, a one-creature flag), called with the flag clear by 0x486590 (from 0x487290; it fills a hero from the map's hero record, inferred from what it reads) when the hero has no creatures after its custom army: clears the seven slots, sets slot 0 to the hero table's first type (0x679DD0 + 0x24) and a count by random_between(low, high) from +0x44; then random_between(1, 100) <= 88 gives the second type (+0x28) with its count from +0x4C, or for the Ballista (146) and the First Aid Tent (147) the war-machine artifact (4, 6) and no stack; then a new random_between(1, 100) <= 25 gives the third type (+0x2C) with its count from +0x54 in the next free slot. With the flag set (by the callers 0x4C86A0 and 0x4D9EC0, not read) only one creature of the first stack comes. The hero table holds the war machines of the nine heroes that have one in the second of three slots"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "wiki"
+  ref        = "Template:HeroNew: the second slot's chance defaults to 88 %, the third's to 25 % for SoD (100 % in HotA); the hero pages of the nine heroes with a war machine set the second slot's chance to 100 % (for example Christian: Pikeman 10-20, Ballista (100 %), Griffin 2-3)"
+  url        = "https://heroes.thelazy.net/index.php?title=Template:HeroNew&action=raw"
+  retrieved  = "2026-10-10"
+  confidence = "medium"
+  note       = "Agrees on the stacks' chances; says nothing about whether the rolls are independent; disagrees with the code reading on the war machine (100 % against 88 %; ADV-Q6, increment 3)."
+
+  [[rule.source]]
+  kind       = "vcmi"
+  ref        = "lib/mapObjects/CGHeroInstance.cpp initArmy: one roll of 1-100 against startingStackChances [100, 88, 25] (config/gameConfig.json) for every slot, a war machine slot gives its artifact and shifts the later stacks down"
+  url        = "https://github.com/vcmi/vcmi/blob/1.7.5/lib/mapObjects/CGHeroInstance.cpp"
+  retrieved  = "2026-10-10"
+  confidence = "medium"
+  note       = "Agrees on the chances, the war machine's 88 % and the shift; disagrees on the rolls: one roll means the third stack never comes without the second (ADV-Q6)."
+
+[[rule]]
+id       = "GAM-TRN-001"
+title    = "Players act one at a time in colour order"
+context  = "game"
+status   = "implemented"
+summary  = "A day is a schedule of turn groups (ADR-0017 point 3); sequential play, the only schedule of increment 1, is one player per group in the game's player order, which is the colour order (red first). A group's turn starts with each context's start-of-turn step for its players. The original plays every human player before every computer player (0x4C6FE0 walks the players with the same human flag first; VCMI's TurnOrderProcessor puts humans first too); the engine has no such distinction yet (inbox). E08 T6b."
+numeric  = "integer"
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (E08 T6b): the next-player step 0x4C6FE0 steps the current player 0x69CCA8 up through the eight colours, skipping dead players (game +0x1F636) and those whose human flag (player +0xE2) differs from the player who just played; at the end of the colours it switches the flag and starts again from red"
+  confidence = "medium"
+
+  [[rule.source]]
+  kind       = "vcmi"
+  ref        = "server/processors/TurnOrderProcessor.cpp: players act by colour, humans before computers (mustActBefore)"
+  url        = "https://github.com/vcmi/vcmi/blob/1.7.5/server/processors/TurnOrderProcessor.cpp"
+  retrieved  = "2026-10-10"
+  confidence = "medium"
+
+[[rule]]
+id       = "GAM-TRN-002"
+title    = "A group's turn ends when each of its players has ended its turn"
+context  = "game"
+status   = "implemented"
+summary  = "`EndTurn` ends the turn of a player whose turn is running (anything else is rejected and changes nothing). When every player of the running group has ended its turn the next group's turn starts; after the last group the day advances (GAM-CAL-001), then each context's start-of-day step runs (none has a rule there in increment 1), then the first group's turn starts. Building the game starts the first group's turn on day 1. E08 T6b."
+numeric  = "integer"
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (E08 T6b): 0x4C6FE0 calls the new day 0x4C7FE0 when the last player of the day has played, then starts the next player's turn"
+  confidence = "medium"
+
+  [[rule.source]]
+  kind       = "design"
+  ref        = "ADR-0017 point 3 (turn groups) and point 1 (a rejected command changes nothing)"
+  confidence = "high"
+
+[[rule]]
+id       = "GAM-CAL-001"
+title    = "The calendar counts days from 1"
+context  = "game"
+status   = "implemented"
+summary  = "A game starts on day 1, and each day advance adds one. Weeks of seven days and months of four come with the first rule that reads them (week events, increment 4). E08 T6b."
+numeric  = "integer"
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (E08 T6b): the new day 0x4C7FE0 increments the first word of H3API's `date` (game +0x1F63E; the words at +0x1F640 and +0x1F642 not read, the game's start sets +0x1F640 to 1 at 0x4C00B1)"
+  confidence = "medium"
+
+  [[rule.source]]
+  kind       = "wiki"
+  ref        = "Time - Heroes 3 wiki: weeks have seven days, months four weeks"
+  url        = "https://heroes.thelazy.net/index.php/Time"
+  retrieved  = "2026-10-10"
+  confidence = "medium"

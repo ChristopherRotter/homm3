@@ -9,6 +9,7 @@ max_map_size = 16
 max_levels = 2
 max_players = 4
 army_slots = 5
+starting_stack_chances = [80, 20]
 
 [[terrain]]
 terrain = "meadow"

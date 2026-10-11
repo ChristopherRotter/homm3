@@ -52,7 +52,17 @@ where to read, not facts.
   trick: give a hero fast creatures before the day ends, take the slow ones back after it
   starts. Whether the original computes it at the start of the day or at the start of each
   player's turn shows only when another player's actions change a hero's army in between:
-  dispute **D-1**.
+  dispute **D-1**. **Read in E08 T6b (CR-2's callers):** the original sets them at the start
+  of the owner's *turn*. The End Turn handler `0x409A70` (after its confirmation box) calls the
+  next-player step `0x4C6FE0`; that steps the current player `0x69CCA8` on, calls the new day
+  `0x4C7FE0` when the day's last player has played, and then sets maximum (+0x49) and current
+  (+0x4D) points to `0x4E4D90`'s value for the new current player's heroes on the map, its two
+  tavern heroes and the heroes in its towns. The new day sets no movement itself, nor do the
+  functions it calls or theirs. `0x4F4C00` does the same for the network game's hand-over (a
+  branch the reading policy leaves aside); a placed hero gets its points at setup
+  (`0x486590`). Not read: the computer player's own turn loop beyond the call into `0x4C6FE0`.
+  The wiki and VCMI disagree, so this is a conflict of sources: the user chose the reading until
+  a confirmation experiment settles it (ADV-Q4, ADV-MOV-002).
 - **No carry-over:** unused points "cannot be stored or preserved over to next day" (wiki). VCMI
   sets every hero to its limit at the change of day.
 - On water a hero always has 1500 (wiki, vcmi `movementPointsSea`); water is not in
@@ -89,6 +99,23 @@ where to read, not facts.
   212, 247 for terrain and 106, 91, 70 for roads. VCMI computes `static_cast<int>(cost * M_SQRT2)`
   and gets the same numbers. In integers the rule is exactly `isqrt(2 · cost²)`, so no float is
   needed (ADR-0003).
+- **Read in E08 T7a (CR-1).** The step's price comes from `0x4B1740`, called by the step wrapper
+  `0x4B18C0` (H3API `GetMovementCost`) with the source tile, the direction (odd = diagonal,
+  `0x678150`), the points left, the Pathfinding level, the destination's road byte, the fly and
+  water-walk levels, the army's native terrain and whether it holds Nomads. Only the *source*
+  tile's terrain prices a step; the destination counts only through its road byte: the road cost
+  (`0x63E510` rows 10–12 via `0x63E5E0`: 75, 65, 50, flat over Pathfinding) when both tiles have
+  a road; else 100 when the source terrain is the army's native terrain and the tile is not
+  Cursed Ground (object 21); else the terrain's cost by Pathfinding level (`0x63E510`, four per
+  terrain: the packs' costs without Pathfinding). **D-2 settled for VCMI's side:** stepping off a
+  road costs the terrain under the road; the wiki's "terrain tile" for a road-to-terrain step
+  disagrees (ADV-Q3). Also there, for later increments: Nomads make sand count as dirt,
+  Favorable Winds (object 225) take a third off on water, water walking and flying replace the
+  cost (`0x6778AC`: 140, 140, 120, 100 by level).
+- **The diagonal factor** is the f32 1.41421354 (`0x63E5F0`), applied on the x87 and truncated
+  (`crt_ftol`). For every straight cost below 5741 that equals `isqrt(2 · cost²)` exactly
+  (checked for 1 to 100 000: the first cost where they part is 5741), so the integer rule holds
+  for all of the original's costs.
 
 ### 1.3 Too few points: the last step and the diagonal exception
 
@@ -105,6 +132,24 @@ where to read, not facts.
   such rule. It matters when a cheaper step could follow, for example sand onto a road with 200
   points: 50 points are left, enough for a cobblestone step by the wiki, none by VCMI. Dispute
   **D-3**.
+- **Read in E08 T7a (CR-1).** *The exception* (`0x4B1740` from 0x4B181A; confirmed by an
+  independent second reading): for a diagonal the points left are compared with T, the source
+  tile's plain terrain cost by Pathfinding, without the road cost and without the native 100.
+  Points below T: the step costs trunc(straight × √2) (unaffordable). T ≤ points < T × √2: it
+  costs its *straight* cost (roads and native terrain included). Points ≥ T × √2: trunc(straight
+  × √2). So A-2 and A-3 exist as the wiki describes them (`ADV-QUIRK-2`, `ADV-QUIRK-3`, class
+  fix-optional as suggested, pending the user's checkpoint). The exception does not charge the
+  remaining points; the rule below then usually zeroes them. *After each step* (the hero's move
+  `0x4805E0`, 0x481182): the points left are set to 0 when they are fewer than the cheapest
+  straight step from the new tile (`0x4B1880`: its road's cost if it has a road, else 100, the
+  terrain's cost on Cursed Ground). No affordable step is lost by it in increment 1 (every step
+  from a tile costs at least that much), but the points left differ from the wiki's and from
+  VCMI's (VCMI zeroes below the step's own straight cost, which in the example above forbids the
+  road step the original allows): **D-3 is a conflict of sources** (reading against VCMI, the
+  wiki silent; ADV-Q3). *A step the hero cannot pay* stops its move and sets its points to 0
+  (0x480864): a path longer than the day's points wastes what is left at its end; MoveHero takes
+  only paths payable today, so this needs no rule in increment 1. Not read: the pathfinder that
+  shows the day's reach (`0x418DD0` only around its call).
 
 ### 1.4 Where a hero may step
 
@@ -151,8 +196,39 @@ where to read, not facts.
   advances and movement points are reset (1.1). Later increments add mana, income, and on a new
   week growth and the week's creature. A week has 7 days and a month 4 weeks (vcmi
   `GENERAL_DAYS_PER_WEEK`, `GENERAL_WEEKS_PER_MONTH`, as parameters).
-- **Hooks (ADR draft "game orchestration", point 3):** in increment 1 every rule runs at the
-  start of the day; no rule needs the start of a turn unless D-1 moves the movement points there.
+- **Hooks (ADR-0017 point 3):** D-1 moved the movement points to the start of each player's
+  turn (E08 T6b, the reading above), so in increment 1 the start of a turn has one rule
+  (ADV-MOV-002) and the start of a day none.
+- **Humans first (read in E08 T6b):** `0x4C6FE0` walks the colours once for the players whose
+  human flag (player +0xE2) is set and once for the others, and calls the new day after the
+  second walk: the original, like VCMI, plays every human before every computer each day. The
+  engine has no human/computer distinction (an inbox item for the turn-group work).
+
+### 3.1 The starting army (GAM-SET-001; read in E08 T6b)
+
+A hero the map gives no stacks gets its type's starting army. `0x4C9730` (called with its
+one-creature flag clear by `0x486590`, which fills a hero from the map's record, when the hero
+has no creatures afterwards) clears the seven slots, then:
+
+1. slot 0: the hero table's first type (`0x679DD0` + 0x24) and a count drawn between the first
+   bounds (+0x44, +0x48, filled from `HOTRAITS.TXT`);
+2. a roll of 1–100; at most 88 gives the second type (+0x28): the Ballista (146) and the First
+   Aid Tent (147) become the artifacts 4 and 6 and take no slot, any other creature takes slot 1
+   with a count from +0x4C, +0x50;
+3. a *new* roll of 1–100; at most 25 gives the third type (+0x2C) in the next free slot (1 when
+   the second gave no stack) with a count from +0x54, +0x58.
+
+With the flag set (callers `0x4C86A0`, `0x4D9EC0`, not read) only one creature of the first
+stack comes. A campaign case swaps hero 45's record for hero 96's. The nine heroes with a war
+machine have it in the second of their three slots (the table; `installation.md` §7.1 says the
+third, a slip). Sources: the wiki's hero template has 88 % and 25 % for SoD and 100 % for the
+war machine of those nine heroes; VCMI (`CGHeroInstance::initArmy`, `startingStackChances
+[100, 88, 25]`) uses *one* roll for every slot, so its third stack never comes without the
+second, and gives the war machine at 88 %. Conflicts of sources (ADV-Q6): the rolls'
+independence (reading against VCMI; the wiki is silent) and the war machine's chance (reading
+and VCMI against the wiki and the user's understanding). The engine draws the stacks as the
+reading has them (the user, 2026-10-10); war machines are not on the map hero before
+increment 3.
 
 ## 4. Quirk candidates: for the user to classify
 
@@ -163,8 +239,8 @@ clean behaviour.
 | Id | Title | Impact | Suggested class | Confidence it exists in SoD | Confirmation |
 |---|---|---|---|---|---|
 | A-1 | The fog's fringe shows hidden tiles' terrain and the object sprites drawn into them | information (what a player sees) | fix-optional (faithful shows, strict-fixed shows terrain, roads and rivers only; E08 decision 7) | medium (the user's earlier observation; VCMI's pathfinder note: "Objects are usually visible on FoW border anyway") | the user looks at a map (below) |
-| A-2 | The diagonal exception ignores roads in its check but not in the cost | gameplay-altering (small): an extra cheap road step at the end of a day | fix-optional | medium (wiki Movement) | code reading CR-1 and a second look |
-| A-3 | The diagonal exception "forgets" that a native army has no terrain penalty: it compares with the penalised straight cost | gameplay-altering (small): native swamp and snow armies lose the last diagonal | fix-optional | medium (wiki Movement) | code reading CR-1 and a second look |
+| A-2 | The diagonal exception ignores roads in its check but not in the cost | gameplay-altering (small): an extra cheap road step at the end of a day | fix-optional | **confirmed** (E08 T7a: CR-1 and a second reading; `ADV-QUIRK-2`) | done |
+| A-3 | The diagonal exception "forgets" that a native army has no terrain penalty: it compares with the penalised straight cost | gameplay-altering (small): native swamp and snow armies lose the last diagonal | fix-optional | **confirmed** (E08 T7a: CR-1 and a second reading; `ADV-QUIRK-3`) | done |
 
 **Checking A-1 (for the user).** In a game (SoD), move a hero next to the edge of the shroud
 near an object you have not seen yet, such as a mine, a creature or a tree. Look at the
@@ -198,9 +274,9 @@ contact rule, with HD's day limits as parameters.
 
 | Id | Question | Sources | Needed by | Settle by |
 |---|---|---|---|---|
-| D-1 | Movement points: at the start of the day for all players, or at the start of each player's turn | wiki and VCMI say start of day; the original's call site is not read | T6/T7 (which hook) | CR-2 |
-| D-2 | Stepping off a road: the destination's terrain or the terrain under the road | wiki vs VCMI | T7 | CR-1 |
-| D-3 | Does a step that leaves fewer points than its straight cost take all the points | VCMI only | T7 | CR-1 |
+| D-1 | Movement points: at the start of the day for all players, or at the start of each player's turn | wiki and VCMI say start of day; the original's call sites (read in T6b) say start of the owner's turn | T6/T7 (which hook) | read in T6b (§1.1); the user chose the reading until an experiment confirms it (ADV-Q4) |
+| D-2 | Stepping off a road: the destination's terrain or the terrain under the road | wiki vs VCMI; read in T7a: the terrain under the road (VCMI's side) | T7 | read (§1.2); the user confirms at the T7a checkpoint (ADV-Q3) |
+| D-3 | Does a step that leaves fewer points than its straight cost take all the points | VCMI only; read in T7a: the points drop to 0 below the cheapest next step instead | T7 | read (§1.3); a conflict with VCMI, the user decides (ADV-Q3) |
 | D-4 | Points for speeds 0–2 | wiki vs VCMI; no army creature is that slow | T4 (data only) | settled in T4: `movement.txt` has the wiki's row (§1.1) |
 | F-1 | Shape of the revealed area | VCMI only | T8 | CR-3 |
 

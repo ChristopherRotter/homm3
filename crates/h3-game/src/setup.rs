@@ -3,14 +3,16 @@
 //! players, the heroes' types and starting armies) and hands the adventure context its setup,
 //! which the context validates with the checks its commands use.
 
+use alloc::vec;
 use alloc::vec::Vec;
 use core::fmt;
 
-use h3_adventure::{AdventureSetup, AdventureState, HeroSetup, MapSetup, Pos, SetupError};
-use h3_content::{HeroType, HeroTypeId};
+use h3_adventure::{AdventureSetup, HeroSetup, MapSetup, Pos, SetupError};
+use h3_content::{HeroType, HeroTypeId, StartingStack};
 use h3_contracts::{ArmyStack, HeroId, PlayerId};
+use h3_kernel::Rng;
 
-use crate::GameRuleset;
+use crate::{GameRuleset, GameState};
 
 /// A player of the game.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -66,8 +68,8 @@ pub enum GameSetupError {
     Heroes(usize),
     /// The hero's type is not part of the ruleset.
     UnknownHeroType(HeroId),
-    /// The hero takes its type's starting army, which has no stacks (the core checks each
-    /// stack's counts).
+    /// The hero takes its type's starting army, which has no stacks or more stacks than the
+    /// army's slots (the core checks each stack's counts).
     StartingArmy(HeroId),
     /// The adventure context rejects its part.
     Adventure(SetupError),
@@ -83,7 +85,11 @@ impl fmt::Display for GameSetupError {
                 write!(f, "hero {} has an unknown hero type", hero.raw())
             }
             Self::StartingArmy(hero) => {
-                write!(f, "hero {}'s starting army has no stacks", hero.raw())
+                write!(
+                    f,
+                    "hero {}'s starting army does not fit an army",
+                    hero.raw()
+                )
             }
             Self::Adventure(error) => write!(f, "adventure: {error}"),
         }
@@ -95,34 +101,32 @@ impl core::error::Error for GameSetupError {}
 impl GameSetup {
     /// Checks the setup: the game's part (players in colour order within the ruleset's players,
     /// known hero types, starting armies that can be drawn), then the adventure context's part
-    /// with its own checks. A starting army is checked as its hero type's whole starting army at
-    /// the lowest counts, in slots from 0: every draw takes stacks from its front at counts
-    /// between their bounds (VCMI `CGHeroInstance::initArmy`; the draw's rule comes with T6b),
-    /// so each draw is valid exactly when this army is.
+    /// with its own checks. It builds the game as [`GameState::new`] does: whether a setup is
+    /// valid does not depend on the seed, since every starting army it can draw is valid when its
+    /// hero type's army has a first stack and no more stacks than the army's slots (the core
+    /// checks each stack's counts).
     ///
     /// # Errors
     ///
     /// The first [`GameSetupError`] found, in that order.
     pub fn validate(&self, rules: &GameRuleset) -> Result<(), GameSetupError> {
-        self.adventure_setup(rules)
-            .and_then(|setup| {
-                AdventureState::new(rules.core(), rules.adventure(), &setup)
-                    .map_err(GameSetupError::Adventure)
-            })
-            .map(drop)
+        GameState::new(rules, self, 0).map(drop)
     }
 
-    /// The adventure context's setup, with each starting army stood in for as
-    /// [`Self::validate`] says.
-    fn adventure_setup(&self, rules: &GameRuleset) -> Result<AdventureSetup, GameSetupError> {
+    /// The adventure context's setup, with each starting army drawn from `draws` in hero order.
+    pub(crate) fn adventure_setup(
+        &self,
+        rules: &GameRuleset,
+        draws: &mut Rng,
+    ) -> Result<AdventureSetup, GameSetupError> {
         let count = self.players.len();
         let players = u8::try_from(count).map_err(|_| GameSetupError::Players(count))?;
-        let max = rules.adventure().params().max_players();
+        let params = rules.adventure().params();
         for (index, player) in self.players.iter().enumerate() {
             let after_previous = index
                 .checked_sub(1)
                 .is_none_or(|previous| self.players[previous].colour < player.colour);
-            if !(after_previous && player.colour < max) {
+            if !(after_previous && player.colour < params.max_players()) {
                 return Err(GameSetupError::Colour(index));
             }
         }
@@ -141,7 +145,14 @@ impl GameSetup {
                     .ok_or(GameSetupError::UnknownHeroType(id))?;
                 let army = match &hero.army {
                     HeroArmy::Custom(stacks) => stacks.clone(),
-                    HeroArmy::Starting => starting_army(hero_type, id)?,
+                    HeroArmy::Starting => {
+                        let first = hero_type
+                            .army
+                            .split_first()
+                            .filter(|_| hero_type.army.len() <= usize::from(params.army_slots()))
+                            .ok_or(GameSetupError::StartingArmy(id))?;
+                        draw_starting_army(first, hero_type, params.starting_stack_chances(), draws)
+                    }
                 };
                 Ok(HeroSetup {
                     id,
@@ -159,19 +170,44 @@ impl GameSetup {
     }
 }
 
-/// The hero type's whole starting army at its lowest counts, slots from 0.
-fn starting_army(hero_type: &HeroType, hero: HeroId) -> Result<Vec<ArmyStack>, GameSetupError> {
-    let stacks = &hero_type.army;
-    if stacks.is_empty() {
-        return Err(GameSetupError::StartingArmy(hero));
-    }
-    Ok(stacks
+/// Draws a hero's starting army from its type's starting slots (GAM-SET-001): the first slot's
+/// stack always; each later slot with its chance, a roll of 1 to 100 at most the chance, slots
+/// past the chances never. The given stacks take the army's slots from 0 in order, each with a
+/// count drawn between its bounds. The original's starting slots are the first stack, the war
+/// machines, then the other stacks (its hero table has every war machine in the second of three
+/// slots; the packs keep the war machines apart, `HeroType::war_machines`). A war machine's slot
+/// is rolled like the others but gives no stack; the war machine itself is not modelled on the
+/// map yet (ADV-Q6). Draws in the original's order (0x4C9730): the first count, then per later
+/// slot its roll and, when given, its count.
+// rule: GAM-SET-001
+fn draw_starting_army(
+    (first, rest): (&StartingStack, &[StartingStack]),
+    hero_type: &HeroType,
+    chances: &[u8],
+    rng: &mut Rng,
+) -> Vec<ArmyStack> {
+    let mut army = vec![draw_stack(0, first, rng)];
+    let later = hero_type
+        .war_machines
         .iter()
-        .zip(0..=u8::MAX)
-        .map(|(s, slot)| ArmyStack {
-            slot,
-            creature: s.creature,
-            count: u32::from(s.count[0]),
-        })
-        .collect())
+        .map(|_| None)
+        .chain(rest.iter().map(Some));
+    for (slot, &chance) in later.zip(chances) {
+        let given = rng.range_inclusive(1, 100) <= u32::from(chance);
+        if let Some(stack) = slot.filter(|_| given) {
+            let next = u8::try_from(army.len()).unwrap_or(u8::MAX);
+            army.push(draw_stack(next, stack, rng));
+        }
+    }
+    army
+}
+
+/// One stack of a starting army in army slot `slot`, its count drawn between its bounds.
+fn draw_stack(slot: u8, stack: &StartingStack, rng: &mut Rng) -> ArmyStack {
+    let [low, high] = stack.count;
+    ArmyStack {
+        slot,
+        creature: stack.creature,
+        count: rng.range_inclusive(u32::from(low), u32::from(high)),
+    }
 }

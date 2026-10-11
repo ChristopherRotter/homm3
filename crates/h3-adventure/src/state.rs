@@ -14,6 +14,7 @@ use h3_kernel::hash::hash_of;
 use h3_kernel::{CanonicalHash, StateHasher};
 
 use crate::ADVENTURE_STATE_HASH_VERSION;
+use crate::movement::day_points;
 use crate::ruleset::{AdventureRuleset, Passage, RiverId, RoadId};
 use crate::setup::{
     AdventureSetup, ArmyError, HeroSetup, MapSetup, ObjectKind, ObjectSetup, Pos, SetupError,
@@ -227,8 +228,8 @@ impl CanonicalHash for Pos {
     }
 }
 
-/// A hero on the adventure map (ADR-0016 point 3): its id, owner, tile and army. The hero's
-/// details stay in `h3-heroes`, kept by `h3-game`.
+/// A hero on the adventure map (ADR-0016 point 3): its id, owner, tile, army and movement points.
+/// The hero's details stay in `h3-heroes`, kept by `h3-game`.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct HeroOnMap {
     /// The hero.
@@ -239,6 +240,8 @@ pub struct HeroOnMap {
     pub pos: Pos,
     /// Its army, by slot.
     pub army: Vec<ArmyStack>,
+    /// The movement points it has left today.
+    pub movement: u32,
 }
 
 /// The adventure context's state.
@@ -277,7 +280,9 @@ impl AdventureState {
         Ok(state)
     }
 
-    /// Checks and places one hero of the setup.
+    /// Checks and places one hero of the setup, with the day's movement points for its army
+    /// (the original computes them when it sets a placed hero up, 0x486590; its owner's turn
+    /// sets them again, [`Self::start_turn`]).
     fn place(
         &mut self,
         core: &Ruleset,
@@ -299,6 +304,7 @@ impl AdventureState {
             hero: hero.id,
             error,
         })?;
+        let movement = day_points(core, part, &army);
         self.heroes.insert(
             at,
             HeroOnMap {
@@ -306,9 +312,19 @@ impl AdventureState {
                 owner: hero.owner,
                 pos: hero.pos,
                 army,
+                movement,
             },
         );
         Ok(())
+    }
+
+    /// The start of `player`'s turn (ADR-0017 point 3), a step only the game triggers: each of
+    /// its heroes gets the day's movement points for its army; what was left is lost.
+    // rule: ADV-MOV-002
+    pub fn start_turn(&mut self, core: &Ruleset, part: &AdventureRuleset, player: PlayerId) {
+        for hero in self.heroes.iter_mut().filter(|h| h.owner == player) {
+            hero.movement = day_points(core, part, &hero.army);
+        }
     }
 
     /// Whether a hero may stand on `pos` (ADV-MAP-001): a tile of the map whose terrain is
@@ -365,8 +381,9 @@ impl AdventureState {
 }
 
 impl CanonicalHash for AdventureState {
-    /// Encoding v1 (E08 T5a): version; the static map's content hash; the number of players;
-    /// the heroes by id (id, owner, tile, the army's stacks by slot: slot, creature, count).
+    /// Encoding v2 (E08 T6b; v1 was T5a's): version; the static map's content hash; the number
+    /// of players; the heroes by id (id, owner, tile, the army's stacks by slot: slot, creature,
+    /// count; since v2 the movement points left).
     fn hash_into(&self, h: &mut StateHasher) {
         h.write_u32(ADVENTURE_STATE_HASH_VERSION);
         h.write_u64(self.map.content_hash());
@@ -382,6 +399,7 @@ impl CanonicalHash for AdventureState {
                 stack.creature.hash_into(h);
                 h.write_u32(stack.count);
             }
+            h.write_u32(hero.movement);
         }
     }
 }
