@@ -1923,7 +1923,8 @@ records how and why the tasks went.
 - **Compiler** (`h3-content`): the profile is resolved before the packs; `applies` admits an
   ungated override always and a gated one when its registered `quirk.content` flag is off
   (`CompileError::NotADataQuirk` otherwise). A creature patch goes onto a copy, so a gated
-  override is resolved and checked in every profile and kept only where it applies; the new
+  override's target and references are resolved in every profile, and it is kept (then validated
+  with its entity) only where it applies; the new
   `HeroOverride` (`HeroPatch.specialty`) works the same way, after the pack's heroes (its closure
   includes the pack itself). Registry: `quirk.content.roland_crusader_specialty` (17, Q-0006) and
   `quirk.content.elemental_levels` (18, BAT-QUIRK-19), with constants for tests only. The ruleset
@@ -1942,3 +1943,12 @@ records how and why the tasks went.
   with and without SoD) and `the_profiles_differ_exactly_by_the_quirk_flags` (19 flags), so E04b
   exit criterion 3's data part holds. Catalog: BAT-MAG-004 and BAT-MAG-020 name BAT-QUIRK-19,
   HER-BAT-008 the fixed Q-0006.
+- **Review** (independent, read-only): no bug. Done: the comments and `packs/README.md` say what
+  runs in every profile (a gated override's target and references; its values are validated
+  with the entity where it applies, and the harvester compiles both profiles); each harvester
+  specialty fix must meet exactly one specialist (Lord Haart's name is shared); tests for a
+  discarded patch's stats and abilities and for the load order of gated and ungated overrides.
+  Left: profile errors now come before content errors (nothing relied on the old order).
+- **Measurements:** the golden replays and `bench-check` unchanged (the synthetic packs have no
+  data quirks, their ruleset hashes stay); the coverage gate green after `cargo llvm-cov clean`
+  (stale profiles had reported doc-comment lines).

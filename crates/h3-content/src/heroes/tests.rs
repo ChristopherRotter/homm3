@@ -1531,6 +1531,11 @@ fn data_quirk_packs() -> [ContentPack; 2] {
         fixes: Some("quirk.content.levels".into()),
         patch: crate::CreaturePatch {
             level: Some(5),
+            attack: Some(9),
+            abilities: Some(vec![crate::AbilityDef::Hate {
+                target: key("t:peasant"),
+                percent: 50,
+            }]),
             ..Default::default()
         },
     });
@@ -1558,9 +1563,13 @@ fn gated_overrides_apply_only_where_the_profile_fixes_the_quirk() {
     let orrin = faithful.hero_type_by_key("t:orrin").unwrap();
     // `faithful` keeps the original's values: the gated overrides change nothing.
     assert_eq!(faithful.creature_info(farmer), plain.creature_info(farmer));
+    assert_eq!(faithful.creature(farmer), plain.creature(farmer));
+    assert_eq!(faithful.abilities(farmer), plain.abilities(farmer));
     assert_eq!(faithful.hero_type(orrin), plain.hero_type(orrin));
     // `fixed` turns both flags off (the specialty's by leaving it out): both overrides apply.
     assert_eq!(fixed.creature_info(farmer).unwrap().level, 5);
+    assert_eq!(fixed.creature(farmer).unwrap().attack, 9);
+    assert_eq!(fixed.abilities(farmer).len(), 1);
     assert!(matches!(
         fixed.hero_type(orrin).unwrap().specialty.as_slice(),
         [HeroEffect::CreatureStat { .. }]
@@ -1634,4 +1643,42 @@ fn gated_overrides_are_checked_in_every_profile() {
         change(&mut x);
         assert_eq!(compile_data(&[t, x], "t:faithful").unwrap_err(), err);
     }
+}
+
+#[test]
+fn gated_and_ungated_overrides_apply_in_load_order() {
+    let level = |packs: &[ContentPack], profile: &str| {
+        let r = compile_data(packs, profile).unwrap();
+        r.creature_info(r.creature_by_key("t:farmer").unwrap())
+            .unwrap()
+            .level
+    };
+    let later = |fixes: Option<&str>, level: u8| {
+        let mut y = ContentPack::new(manifest("y", &["x"]));
+        y.creature_overrides.push(crate::CreatureOverride {
+            target: key("t:farmer"),
+            fixes: fixes.map(Into::into),
+            patch: crate::CreaturePatch {
+                level: Some(level),
+                ..Default::default()
+            },
+        });
+        y
+    };
+    // x's gated level 5, then y's ungated 6: y's wins in both profiles.
+    let [t, x] = data_quirk_packs();
+    let packs = [t, x, later(None, 6)];
+    assert_eq!(
+        (level(&packs, "t:faithful"), level(&packs, "t:fixed")),
+        (6, 6)
+    );
+    // x's ungated level 6, then y's gated 5: y's only where it applies.
+    let [t, mut x] = data_quirk_packs();
+    x.creature_overrides[0].fixes = None;
+    x.creature_overrides[0].patch.level = Some(6);
+    let packs = [t, x, later(Some("quirk.content.levels"), 5)];
+    assert_eq!(
+        (level(&packs, "t:faithful"), level(&packs, "t:fixed")),
+        (6, 5)
+    );
 }

@@ -1476,6 +1476,6 @@ fn data_quirk_fixes_are_checked() {
         "hero = \"Hero 1\"",
         "hero = \"Hero 2\"",
         &none,
-        "a data quirk's specialty fix names no creature specialist",
+        "a data quirk's specialty fix must meet exactly one creature specialist",
     );
 }

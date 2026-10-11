@@ -1122,7 +1122,7 @@ pub fn harvest_heroes(
     let mut unmodelled: BTreeMap<&str, usize> = BTreeMap::new();
     let mut fixed_used = 0;
     let specialty_fixes = &gap.data_quirks.specialty_creature;
-    let mut specialty_fixes_used = 0;
+    let mut specialty_fixes_used = vec![0usize; specialty_fixes.len()];
     let mut pending = Vec::new();
     for (id, ((row, rec), spec)) in hero_rows
         .iter()
@@ -1256,7 +1256,11 @@ pub fn harvest_heroes(
                 effects.push(specialty(spec.id)?);
                 // A data quirk (E04b T8e; ADR-0007): the record names the wrong creature; an
                 // override gated by the quirk's flag names the right one.
-                for fix in specialty_fixes.iter().filter(|f| f.hero == name) {
+                for (fix, used) in specialty_fixes
+                    .iter()
+                    .zip(specialty_fixes_used.iter_mut())
+                    .filter(|(f, _)| f.hero == name)
+                {
                     let (fixed, _) = ctx
                         .creatures
                         .iter()
@@ -1276,7 +1280,7 @@ pub fn harvest_heroes(
                         fix.flag,
                         effect_list(&[specialty(fixed)?])
                     ));
-                    specialty_fixes_used += 1;
+                    *used += 1;
                 }
             }
             3 => {
@@ -1347,8 +1351,11 @@ pub fn harvest_heroes(
             text.push_str(&o);
         }
     }
-    if specialty_fixes_used != specialty_fixes.len() {
-        return Err("gapfill: a data quirk's specialty fix names no creature specialist".into());
+    if specialty_fixes_used.iter().any(|&n| n != 1) {
+        return Err(
+            "gapfill: a data quirk's specialty fix must meet exactly one creature specialist"
+                .into(),
+        );
     }
     if fixed_used != gap.heroes.spell_specialty.fixed.len() {
         return Err("gapfill: a fixed spell specialty names no spell specialist".into());

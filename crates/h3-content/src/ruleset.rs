@@ -633,8 +633,9 @@ impl Ruleset {
                 }
                 let apply = applies(o.fixes.as_deref(), registry, quirks)?;
                 // Handles come from `creature_index`, which only holds pushed positions, so the
-                // lookup always succeeds. The patch goes onto a copy: a gated override is checked
-                // in every profile and kept only where it applies.
+                // lookup always succeeds. The patch goes onto a copy: a gated override's references
+                // are resolved in every profile, and it is kept (and then validated with the
+                // creature) only where it applies.
                 let i = handle.index();
                 creatures
                     .get_mut(i)

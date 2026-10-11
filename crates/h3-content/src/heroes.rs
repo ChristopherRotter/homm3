@@ -557,9 +557,9 @@ impl HeroContent {
         Ok(())
     }
 
-    /// Applies the pack's hero overrides to hero types of its closure (E04b T8e). A gated one is
-    /// checked in every profile and applied only where `applies` says so (ADR-0007, amendment
-    /// E04b T8e).
+    /// Applies the pack's hero overrides to hero types of its closure (E04b T8e). A gated one's
+    /// target and references are resolved in every profile; it is applied (and then validated
+    /// with the hero) only where `applies` says so (ADR-0007, amendment E04b T8e).
     pub(crate) fn add_overrides(
         &mut self,
         pack: &ContentPack,

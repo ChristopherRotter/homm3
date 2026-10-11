@@ -104,8 +104,9 @@ resource may appear once.
 
 **Data quirks** (format v34, E04b T8e; ADR-0007, amendment E04b T8e): an override with
 `fixes = "quirk.content.<name>"` fixes a quirk in the data. The entity keeps the original's
-value; the override is checked in every profile and applied only in profiles that turn the flag
-off (`strict-fixed`). The flag must be a registered `quirk.content` flag
+value; the override's target and references are resolved in every profile, and it is applied
+(then validated with its entity) only in profiles that turn the flag off (`strict-fixed`; the
+harvester compiles its packs in both profiles). The flag must be a registered `quirk.content` flag
 (`CompileError::NotADataQuirk`). `[[hero_override]]` changes a hero type of the closure, the
 pack's own included: `target` (a full key), optional `fixes`, and `specialty` (replaces the whole
 list). The harvested `ab` pack fixes Roland's specialty (Q-0006) and the Ice, Magma and Energy
