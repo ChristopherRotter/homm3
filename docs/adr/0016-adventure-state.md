@@ -104,3 +104,6 @@ left open whether objects are a closed enum or data-driven primitives. No logic 
 ## Revision history
 
 - 2026-10-10: Accepted (E08 T1a draft; the T1b survey's findings on fog folded into point 5).
+- 2026-10-11: point 1: the leaf size, measured against a flat per-player copy (E08 T5b,
+  `02-architecture.md` §8): 32 × 32 tiles (the user). Full leaves share one leaf held by the
+  grid, empty leaves are none.
