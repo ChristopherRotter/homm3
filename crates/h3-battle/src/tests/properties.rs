@@ -5,15 +5,16 @@
 //! Battles are generated from random armies; each step either plays a random legal command or
 //! throws an arbitrary (usually invalid) command at the engine, possibly from the wrong actor.
 
+use std::num::NonZeroU32;
 use std::vec::Vec;
 
 use h3_content::{
     Affects, CreatureFlag, CreatureSelector, CreatureStat, Formation, ObstacleKind, Ruleset,
-    SpellId, SpellScope,
+    SINGLE_PRECISION_RATES, SchoolId, SpellCategory, SpellId, SpellScope,
 };
 use h3_contracts::{
     Army, ArmyStack, BallistaControl, BattleEffect, BattleHero, BattleSetup, BattleSide,
-    DamageBonuses, StackOrigin, StackRecord, StatOp, TentControl,
+    DamageBonuses, EagleEye, StackOrigin, StackRecord, StatOp, TentControl,
 };
 use h3_kernel::Rng;
 use proptest::collection::{btree_map, vec};
@@ -1183,4 +1184,330 @@ proptest! {
         }
         prop_assert_eq!(state.outcome().is_some(), state.is_over());
     }
+}
+
+/// One of `items`, uniformly.
+fn one_of<T: Copy>(rng: &mut Rng, items: &[T]) -> T {
+    items[rng.below(items.len() as u32) as usize]
+}
+
+/// A rate of an extreme casting hero: any basis points and, one time in three, a
+/// single-precision value of its own with any bit pattern (infinities, NaNs and negative values
+/// among them: with quirk Q-0005 the battle reads it, OPEN-QUESTIONS Q45).
+fn extreme_rate(rng: &mut Rng) -> Rate {
+    let bp = match rng.below(6) {
+        0 => 0,
+        1 => 500,
+        2 => 65_535,
+        3 => u32::MAX,
+        4 => rng.below(100_000),
+        _ => rng.next_u32(),
+    };
+    let single = match rng.below(6) {
+        0 => NonZeroU32::new(rng.next_u32()),
+        1 => NonZeroU32::new(one_of(
+            rng,
+            &[0x7f80_0000, 0x7fc0_0000, 0xff80_0000, 1, 0x7f7f_ffff],
+        )),
+        _ => None,
+    };
+    Rate { bp, single }
+}
+
+/// A sound casting hero with values no real hero could have (BAT-HER-001): any primary skills,
+/// mana and damage bonuses, a book of the hero spells of the test ruleset with any masteries,
+/// sometimes Eagle Eye, and up to 40 effects of every kind but `NoRetreat` and the alignment
+/// groups, the magic ones (E04b) with extreme rates, levels and powers.
+///
+/// `exact`: the ruleset's rates are exact. With quirk Q-0005 each spell damage bonus of every
+/// spell or of a school is a real hero's (at most 50 %, no single-precision value of its own;
+/// they add up): huge ones overflow `magic::spell_damage` (E04b T11b review, finding
+/// F-robust-3); widen them once it saturates.
+fn extreme_caster(r: &Ruleset, rng: &mut Rng, exact: bool) -> BattleHero {
+    let spells: Vec<SpellId> = (0..r.spells().len())
+        .filter_map(SpellId::from_index)
+        .collect();
+    let hero_spells: Vec<SpellId> = spells
+        .iter()
+        .copied()
+        .filter(|&s| {
+            r.spell(s)
+                .is_some_and(|t| t.category != SpellCategory::Ability)
+        })
+        .collect();
+    let openings: Vec<(SpellId, u8)> = spells
+        .iter()
+        .flat_map(|&id| (0..=3).map(move |mastery| (id, mastery)))
+        .filter(|&(id, mastery)| {
+            r.spell(id)
+                .is_some_and(|t| crate::magic::opens_with(r, t, mastery))
+        })
+        .collect();
+    let mut h = hero(r);
+    [h.attack, h.defense, h.power, h.knowledge] =
+        [0; 4].map(|_| one_of(rng, &[0, 1, 7, 30, 99, 255]));
+    h.tactics = one_of(rng, &[0, 0, 0, 0, 1, 2, 3]);
+    h.damage = DamageBonuses {
+        ranged: extreme_rate(rng),
+        melee: extreme_rate(rng),
+        reduction: Rate::bp(rng.below(10_001)),
+    };
+    if rng.below(3) == 0 {
+        h.war_machines.ballista = Some(BallistaControl {
+            shots: one_of(rng, &[1, 2, 255]),
+            double_damage_chance_bp: one_of(rng, &[0, 5000, 10_000]),
+        });
+    }
+    if rng.below(3) == 0 {
+        h.war_machines.tent = Some(TentControl {
+            heal_bonus: extreme_rate(rng),
+        });
+    }
+    h.surrender_discount_bp = one_of(rng, &[0, 2000, 10_000]);
+    // One book in eight lacks half its spells; the masteries cover the abilities too.
+    let all = rng.below(8) != 0;
+    h.magic.spell_book = Some(
+        hero_spells
+            .iter()
+            .copied()
+            .filter(|_| all || rng.below(2) == 0)
+            .collect(),
+    );
+    h.magic.masteries = spells
+        .iter()
+        .filter_map(|&s| {
+            let mastery = u8::try_from(rng.below(4)).unwrap();
+            (mastery > 0).then_some((s, mastery))
+        })
+        .collect();
+    h.magic.mana = one_of(rng, &[3, 20, 200, 5000, u16::MAX]);
+    h.magic.max_mana = one_of(rng, &[0, 10, 500, u16::MAX]);
+    if rng.below(3) == 0 {
+        h.magic.eagle_eye = Some(EagleEye {
+            chance: Rate::bp(rng.below(10_001)),
+            spells: hero_spells
+                .iter()
+                .copied()
+                .filter(|_| rng.below(2) == 0)
+                .collect(),
+        });
+    }
+    let multiplying = |rng: &mut Rng| {
+        if exact {
+            extreme_rate(rng)
+        } else {
+            Rate::bp(one_of(rng, &[0, 500, 1500, 5000]))
+        }
+    };
+    let level = |rng: &mut Rng| one_of(rng, &[0u8, 1, 2, 3, 4, 5, 6, 100, 255]);
+    // The spells with bonuses of their own (at most `MAX_SPELL_BONUSES`).
+    let own: Vec<SpellId> = (0..crate::MAX_SPELL_BONUSES)
+        .map(|_| one_of(rng, &spells))
+        .collect();
+    let mut opened = 0;
+    h.effects.clear();
+    for _ in 0..rng.below(41) {
+        let effect = match rng.below(20) {
+            0 | 1 => BattleEffect::SpellDamage {
+                scope: SpellScope::All,
+                rate: multiplying(rng),
+            },
+            2 | 3 => BattleEffect::SpellDamage {
+                scope: SpellScope::School(
+                    SchoolId::from_index(rng.below(r.spell_schools().len() as u32) as usize)
+                        .unwrap(),
+                ),
+                rate: multiplying(rng),
+            },
+            4 => BattleEffect::SpellDamage {
+                scope: SpellScope::Spell(one_of(rng, &own)),
+                rate: extreme_rate(rng),
+            },
+            5 | 6 => BattleEffect::SpellSpecialty {
+                spell: one_of(rng, &own),
+                bp_per_level: one_of(rng, &[0, 1, 300, 500, 10_000, u16::MAX]),
+                level: one_of(rng, &[0, 1, 5, 30, 74, 255]),
+            },
+            7 | 8 => BattleEffect::MagicResistance {
+                rate: extreme_rate(rng),
+            },
+            9 => BattleEffect::SpellDuration {
+                rounds: one_of(rng, &[0, 1, 3, 56, 255]),
+            },
+            // Rare: with it no hero casts (BAT-MAG-061).
+            10 if rng.below(25) == 0 => BattleEffect::NoCasting,
+            10 => BattleEffect::SpellLevelLimit {
+                max_level: level(rng),
+            },
+            11 => BattleEffect::SpellImmunity {
+                spell: one_of(rng, &spells),
+            },
+            12 if rng.below(3) == 0 => BattleEffect::SpellLevelImmunity {
+                max_level: level(rng),
+            },
+            12 => BattleEffect::MindImmunity,
+            13 => BattleEffect::NegateImmunities,
+            14 | 15 if opened < crate::MAX_OPENING_SPELLS => {
+                opened += 1;
+                let (spell, mastery) = one_of(rng, &openings);
+                BattleEffect::OpeningSpell {
+                    spell,
+                    mastery,
+                    power: one_of(rng, &[1, 2, 8, 255, 256, 30_000, u16::MAX]),
+                }
+            }
+            _ => extreme_effect(
+                r,
+                &(
+                    u8::try_from(rng.below(10)).unwrap(),
+                    u8::try_from(rng.below(3)).unwrap(),
+                    rng.below(64) as usize,
+                    u8::try_from(rng.below(256)).unwrap(),
+                    one_of(rng, &[i16::MIN, -100, -1, 0, 1, 10, 1000, i16::MAX]),
+                    u8::try_from(rng.below(3)).unwrap(),
+                ),
+            ),
+        };
+        h.effects.push(effect);
+    }
+    h
+}
+
+/// Plays `state` on for at most 400 steps with commands the battle lists: half the time the
+/// hero's cast if a spell is castable (a spell of `castable_spells` at one of its `cast_targets`
+/// and `second_targets`: each list has an entry for a castable spell, BAT-MAG-001), else often
+/// the active stack's cast if it has a target (BAT-MAG-048), else a legal command (a strike one
+/// time in four; with `leave` the commands that leave the battle too). Every command is accepted.
+/// Returns the numbers of the heroes' and the stacks' casts.
+fn play_casting(state: &mut BattleState, r: &Ruleset, seed: u64, leave: bool) -> (u32, u32) {
+    let mut agent = Rng::for_stream(seed, h3_kernel::StreamId::AGENT);
+    let mut legal = LegalCommands::new();
+    let mut targets = CastTargets::new();
+    let mut seconds = CastTargets::new();
+    let mut casts = (0, 0);
+    for _ in 0..400 {
+        let Some(side) = state.side_to_act() else {
+            break;
+        };
+        let spells: Vec<SpellId> = castable_spells(state, r, side).iter().collect();
+        creature_cast_targets(state, r, side, &mut targets);
+        let roll = agent.below(100);
+        let cmd = if !spells.is_empty() && roll < 50 {
+            let spell = one_of(&mut agent, &spells);
+            cast_targets(state, r, side, spell, &mut targets);
+            assert!(!targets.is_empty(), "castable {spell:?} without a target");
+            let target = one_of(&mut agent, targets.as_slice());
+            second_targets(state, r, side, (spell, target), &mut seconds);
+            assert!(
+                !seconds.is_empty(),
+                "{spell:?} at {target:?} without a second target"
+            );
+            casts.0 += 1;
+            Command::Cast {
+                spell,
+                target,
+                second: one_of(&mut agent, seconds.as_slice()),
+            }
+        } else if !targets.is_empty() && roll < 85 {
+            casts.1 += 1;
+            Command::CreatureCast {
+                target: one_of(&mut agent, targets.as_slice()),
+            }
+        } else {
+            legal_commands(state, r, side, &mut legal);
+            let allowed = |c: &&Command| leave || !c.leaves_battle();
+            let attacks: Vec<Command> = legal
+                .iter()
+                .filter(allowed)
+                .copied()
+                .filter(|c| matches!(c, Command::Attack { .. } | Command::Shoot { .. }))
+                .collect();
+            // Mostly no strike, so that the battles last and the casts are many.
+            let pool: Vec<Command> = if attacks.is_empty() || agent.below(4) != 0 {
+                legal.iter().filter(allowed).copied().collect()
+            } else {
+                attacks
+            };
+            one_of(&mut agent, &pool)
+        };
+        apply(state, r, side, cmd, &mut crate::NoopSink)
+            .unwrap_or_else(|e| panic!("seed {seed}: the listed {cmd:?} is rejected: {e:?}"));
+    }
+    casts
+}
+
+// covers: BAT-HER-001, BAT-MAG-001, BAT-MAG-003, BAT-MAG-048
+/// Robustness (E04b T11b review): battles led on both sides by sound casting heroes with extreme
+/// values (BAT-HER-001 accepts them) start and play with the heroes' and the stacks' casts among
+/// the commands, every listed command accepted, under exact rates (armies of up to `u32::MAX`
+/// creatures) and under the original's quirks (single-precision rates, Q-0005); no arithmetic
+/// overflows; an outcome when over. Fixed seeds: a failure reproduces.
+///
+/// Two findings of that review bound it, to be widened once they are fixed: with quirk Q-0005
+/// the armies (at most 200 000 creatures a stack) and the spell damage bonuses stay below what
+/// overflows `magic::spell_damage` (F-robust-3, also through a Fire Shield's reflection of a
+/// huge strike), and the natural obstacles are anchored on their own hex, so that no removal
+/// leaves another without a hex (F-robust-2).
+#[test]
+fn extreme_casting_heroes_play_without_failures() {
+    let pool = army_creatures();
+    // The creatures that cast on command or raise (BAT-MAG-048 to BAT-MAG-052).
+    let casters: Vec<u8> = pool
+        .iter()
+        .copied()
+        .filter(|&c| {
+            CREATURES[usize::from(c)]
+                .7
+                .iter()
+                .any(|t| t.contains("spell_caster") || t.contains("raiser"))
+        })
+        .collect();
+    let mut casts = (0, 0);
+    for profile in ["t:quirky", "t:original"] {
+        let r = lively_with(profile);
+        let exact = !r.quirks().is_enabled(SINGLE_PRECISION_RATES);
+        for seed in 0..100u64 {
+            let mut rng = Rng::from_seed(seed);
+            let army = |rng: &mut Rng| -> ArmySpec {
+                let mut slots: Vec<u8> = (0..7).collect();
+                (0..=rng.below(7))
+                    .map(|_| {
+                        let slot = slots.remove(rng.below(slots.len() as u32) as usize);
+                        let count = match rng.below(4) {
+                            0 => 1 + rng.below(100),
+                            1 => 60_000 + rng.below(140_000),
+                            2 if exact => 1 + rng.below(u32::MAX),
+                            3 if exact => u32::MAX,
+                            _ => 1 + rng.below(1000),
+                        };
+                        let creature = if rng.below(3) == 0 {
+                            one_of(rng, &casters)
+                        } else {
+                            one_of(rng, &pool)
+                        };
+                        (slot, creature, count)
+                    })
+                    .collect()
+            };
+            let (att, def) = (army(&mut rng), army(&mut rng));
+            let mut setup = make_setup(&r, &att, &def, &[], rng.next_u64());
+            // Up to four one-hex obstacles between the armies, each anchored on its own hex.
+            setup.obstacles = pieces(&[58, 76, 94, 112][..rng.below(5) as usize]);
+            setup.heroes = [
+                Some(extreme_caster(&r, &mut rng, exact)),
+                (rng.below(8) != 0).then(|| extreme_caster(&r, &mut rng, exact)),
+            ];
+            setup.funds = [rng.next_u32(), one_of(&mut rng, &[0, 1000, u32::MAX])];
+            let mut state = BattleState::new(&r, &setup, seed).unwrap();
+            // One game in eight may leave the battle.
+            let (hero, stack) = play_casting(&mut state, &r, seed, seed % 8 == 7);
+            casts = (casts.0 + hero, casts.1 + stack);
+            for side in BattleSide::BOTH {
+                let _ = observe(&state, &r, side);
+            }
+            assert_eq!(state.outcome().is_some(), state.is_over());
+        }
+    }
+    // The battles did cast (about a thousand casts of the heroes and four hundred of the stacks).
+    assert!(casts.0 > 500 && casts.1 > 200, "{casts:?}");
 }
