@@ -142,6 +142,61 @@ fn a_side_may_retreat_in_its_tactics_phase() {
     assert_eq!((state.tactics(), state.round()), (None, 0));
 }
 
+/// E04b T11b review (F-sec-3): in the tactics phase too, Retreat and Surrender act for the
+/// trusted actor, the side that commands the active stack, never for the stack's owner (they
+/// took the stack's side there). No stack is another side's in the phase today (no spell is
+/// cast before it), so the stack is hypnotized by hand.
+// covers: BAT-FLE-001, BAT-FLE-002, BAT-MAG-026
+#[test]
+fn in_a_tactics_phase_too_a_side_leaves_only_for_itself() {
+    use crate::{NoopSink, Status, apply};
+    let r = ruleset();
+    let mut tactician = hero(&r);
+    tactician.tactics = 2;
+    // The attacker's stack is active in the attacker's tactics phase and under the defender's
+    // control; both sides could pay a surrender.
+    let hypnotized = |defender: Option<h3_contracts::BattleHero>| {
+        let s = BattleSetup {
+            heroes: [Some(tactician.clone()), defender],
+            funds: [1_000_000; 2],
+            ..setup(&r, &[(0, "fixed", 5)], &[(0, "fixed", 5)])
+        };
+        let mut state = BattleState::new(&r, &s, 1).unwrap();
+        assert!(state.tactics().is_some());
+        let stack = &mut state.stacks.as_mut_slice()[0];
+        stack.spells.status = stack.spells.status.with(Status::HYPNOTIZED, true);
+        assert_eq!(state.side_to_act(), Some(Defender));
+        state
+    };
+    // A defender led by a hero leaves for itself, as its legal commands say; the owner of the
+    // stack is not the actor.
+    let state = hypnotized(Some(hero(&r)));
+    for (command, result) in [
+        (Command::Retreat, BattleResult::Retreat(Defender)),
+        (Command::Surrender, BattleResult::Surrender(Defender)),
+    ] {
+        let mut s = state.clone();
+        assert!(legal(&s, &r, Defender).contains(&command));
+        assert_eq!(
+            apply(&mut s, &r, Attacker, command, &mut NoopSink),
+            Err(CommandError::NotYourTurn)
+        );
+        act(&mut s, &r, command).unwrap();
+        assert_eq!(s.result(), Some(result));
+    }
+    // A defender without a hero may not leave, and cannot make the stack's owner leave.
+    let mut state = hypnotized(None);
+    let before = state.clone();
+    for (command, error) in [
+        (Command::Retreat, CommandError::CannotRetreat),
+        (Command::Surrender, CommandError::CannotSurrender),
+    ] {
+        assert!(!legal(&state, &r, Defender).contains(&command));
+        assert_eq!(act(&mut state, &r, command), Err(error));
+    }
+    assert_eq!(state, before);
+}
+
 /// Batch 1b R4: a hero with 7 Pikemen, a Pixie and a Ballista against a hero with Pikemen; the
 /// attacker has `funds`.
 fn r4(r: &h3_content::Ruleset, funds: u32) -> BattleState {
