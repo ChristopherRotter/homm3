@@ -2021,3 +2021,49 @@ records how and why the tasks went.
   the drawn spell and the obstacles only one side sees, and equal to a side's view stripped of
   its private part; `removable_at` against the state's in every generated game; `h3-sim`'s
   encoding tests per block.
+
+### T9b: the casting workload and the measurements (2026-10-11, increment 20)
+
+- **The user (BAT-Q27):** increment 20 = T9b, then batch 2f staged (increment 17's opening-spell
+  candidates, T8b's leftovers, BAT-Q24's learning); batch 2e's weak results decisive unless the
+  usual sources agree against them. None do (BAT-Q21's comparison): the engine stays as it is.
+- **Workload** (`packs/synthetic/scenarios/full.toml`): the heroes gain the hero-side magic of T8
+  that no rollout exercised. Brea: an opening Hasten at Expert (power 3), a Pendant against
+  Spark, Basic Eagle Eye (40 %, eleven of Corwin's spells up to level 2) and six spells at
+  Advanced (Spark, Cinders, Haze, which turns mass, Charm, Scorch, Snare). Corwin: an opening
+  Drag and Bane at Expert (power 2), 10 % resistance, a Pendant against Cinders and Advanced
+  Eagle Eye (50 %, fourteen of Brea's spells up to level 3). Left out on purpose, as each would
+  silence much of the workload (unit and property tests cover them): the Orb of Inhibition (no
+  casts at all), Recanter's Cloak (no spell above level 2), the Dragon Father (Corwin's own
+  spells up to level 4 at his stacks), the Badge of Courage (Brea's Charm and Haze at Corwin's
+  stacks), the Orb of Vulnerability (it lifts every resistance in the battle). **Resistance on
+  Corwin, not Brea:** on Brea's stacks it draws on Corwin's opening spells, a public roll before
+  the first cast, and `h3-protocol`'s hygiene tests (`hidden_cast`) compare the other viewer's
+  frames up to that cast across two seeds (a standing trap now).
+- **Balance:** Corwin wins almost every random battle: 6 attacker victories in 2 399 agent seeds
+  (the old scenario: none in 199); the workload's armies, not a rule.
+- **Tests:** `h3-pack`'s `scenario_heroes` and `h3-sim`'s hero encoding test (each side's
+  resistance, opening spells, Eagle Eye and Pendant in its own private part) follow the
+  scenario; the hidden-magic layout test starts from no hidden magic.
+- **Replays:** the five `full-s3-a*` replays get new agent seeds (fixtures README): 1367 (an
+  attacker victory), 955 (a redirect), 1766 (a sacrifice, a clone vanishing, the Fiends' raise),
+  303 (created stacks, Blink, mines) and 804 (twenty mines or pits, Eagle Eye's picks); every
+  full replay has the three opening spells and both heroes' picks. `duel-s1` and `skirmish-s7`
+  unchanged. Replay format, state hash, encodings and C ABI unchanged (no engine change).
+- **Measurements** (cloud sandbox, 2 vCPU, release, one core; `h3 bench --observe 1` and the
+  criterion benches `observe` and `observe + encode` are new):
+
+  | Measure | T9b |
+  |---|---|
+  | `h3 bench --games 2000` (random legal play) | ≈ 105 k steps/s (three runs 104.8–106.6 k; the old workload on the same binary 100–112 k) |
+  | the same with the observation encoded before each step (`--observe 1`, 1 000 games) | ≈ 70 k steps/s (72.0 k, 69.6 k): ≈ 4.3 µs per step for the encoding |
+  | criterion `legal_commands` / `step` / `BattleEnv` step via mask | 3.16 µs / 5.31 µs / 2.40 µs |
+  | criterion `observe` / `observe + encode` (8 308 floats) | 0.97 µs / 3.47 µs |
+  | `BattleState` size / clone; `BattleEnv` size / fork | 6 464 bytes / ≈ 0.67 µs (≈ 0.10 µs per KB); 6 496 bytes / ≈ 2.25 µs |
+  | `state_hash` | ≈ 4.27 µs |
+  | `bench-check` `random-rollouts-full` | 569.96 M Ir for 7 328 steps (77.8 k Ir/step; was 576.70 M for 7 607, 75.8 k): +2.6 % per step from the workload alone; re-baselined |
+
+  Exit criterion 5 met. **For E05:** the full flat observation costs about a third of a step
+  (the planes and stacks are mostly rewritten zeros); the batch API may encode less often or
+  only what changed. `state_hash` (4.3 µs at 6.3 KB) suits checkpoints, not per-node hashing in
+  a search.

@@ -4,11 +4,11 @@ The battle lane's living state; read after the global `docs/HANDOFF.md`. Format 
 
 ## Current state
 
-- **Branch:** `battle/e04b-t9a`, one `cross-lane` pull request (BAT-Q26). Work on `battle/<task>` branches from `master`, merged at its checkpoint; HANDOFF content goes here.
-- **E04b increment 19 (the user, BAT-Q26): T9a (the observation's completeness) with SRV-Q4's spectator viewer; done.** Sandbox: `docs/08-work-process.md`, "Cloud sandbox".
-- **Done:** survey `docs/rules/surveys/E04b-magic.md` (§12–§15), ADR-0014 accepted (point 5 amended, Q47), design note `docs/epics/E04b-design.md`. T1–T9a (the epic file lists each with its rules): every battle spell, creature magic, casters, mana creatures, defences, the rebirth and Fear, the hero's spells and masteries in the Heroes context, the casting limits and spell defences, the per-spell conditions, the opening spells and Eagle Eye, the data quirks, a complete observation with a spectator viewer (BAT-MAG-001 to 069, HER-SPL-002 to 004, HER-BAT-015 to 017; Q-0006 to Q-0012, BAT-QUIRK-1 to 19), all after the executable's code (`installation.md` §7.8–§7.24). **Physical damage follows the executable's three truncated stages** under Q-0005 (Q50, BAT-DMG-002, `h3_kernel::arith::X87` at 53 bits).
+- **Branch:** `battle/e04b-t9b` (BAT-Q27). Work on `battle/<task>` branches from `master`, merged at its checkpoint; HANDOFF content goes here.
+- **E04b increment 20 (the user, BAT-Q27): T9b (the casting workload, the measurements) done; batch 2f staged next.** Sandbox: `docs/08-work-process.md`, "Cloud sandbox".
+- **Done:** survey `docs/rules/surveys/E04b-magic.md` (§12–§15), ADR-0014 accepted (point 5 amended, Q47), design note `docs/epics/E04b-design.md`. T1–T9 (the epic file lists each with its rules): every battle spell, creature magic, casters, mana creatures, defences, the rebirth and Fear, the hero's spells and masteries in the Heroes context, the casting limits and spell defences, the per-spell conditions, the opening spells and Eagle Eye, the data quirks, a complete observation with a spectator viewer, the casting workload (BAT-MAG-001 to 069, HER-SPL-002 to 004, HER-BAT-015 to 017; Q-0006 to Q-0012, BAT-QUIRK-1 to 19), all after the executable's code (`installation.md` §7.8–§7.24). **Physical damage follows the executable's three truncated stages** under Q-0005 (Q50, BAT-DMG-002, `h3_kernel::arith::X87` at 53 bits).
 - **Hero rates** cross the seam as `h3_contracts::Rate` (basis points plus, under Q-0005, the original's single-precision value as an f32 bit pattern where it differs; Q45 (b), T3c2).
-- **Next:** T9b (the casting workload, golden replays, `bench-check`, state size, clone cost, the encoding's cost), T10 (a batch with increment 17's candidates and 2e's weak points), T11. BAT-Q24 (who learns Eagle Eye's picks) waits for the adventure lane.
+- **Next:** batch 2f staged (T10: increment 17's opening-spell candidates, T8b's leftovers, BAT-Q24's learning; 2e's weak results decisive, BAT-Q27), then its fold-in and T11. BAT-Q24 (who learns Eagle Eye's picks) waits for the adventure lane.
 - **Open for later tasks:** Q43 (sprite offset, keep the approximation); BAT-QUIRK-17's later variant (rebirth right after a sacrifice, BAT-Q18); bad morale's `WAITED` gate (T7c3 review); T4a's and T4c's loose ends (all in `QUEUE.md`, "Inbox").
 - **Versions (battle owns them):** state hash v41, ruleset hash v42, replay format v21, action encoding v11, C ABI v17, observation encoding v13; pack format v34. New ids: `BAT-Q<n>`, `BAT-QUIRK-<n>`, `BAT-STUB-<n>` (old ids stay).
 - **Ownership:** `h3-content` and `h3-pack` stay with battle until further notice (user, 2026-10-07); `h3-kernel` and `h3-contracts` are shared, so a seam change is its own `shared/` pull request, merged before the battle change that uses it.
@@ -37,12 +37,13 @@ The battle lane's living state; read after the global `docs/HANDOFF.md`. Format 
 - Rule code reads abilities via `ruleset.abilities(creature)`; per-attack booleans are `StackTraits` bits set at setup. `Stack.spells` holds the spells' values only: a creature's `innate_spell` is read where the original reads the creature (`magic::mirror_chance`, `magic::reflection`), not by Hypnotize, Dispel or usefulness tests. Two `skill_specialty` effects in one specialty are rejected.
 
 - The observation is complete since T9a: a new state field a rule reads goes into `observe_as` (public, own part or neither: ADR-0014 point 8), the flat encoding (version and ABI bump) and the hygiene property.
+- `h3-protocol`'s hygiene tests compare a viewer's frames across seeds on the `full` scenario up to the first hidden cast: no public random draw may come before it (resistance on Brea's stacks did, T9b).
 
 **Fixtures and benchmarks**
 - Golden replays and the `benches/battle/` baselines change with behavior, the synthetic pack, an encoding or the toolchain: regenerate deliberately (`fixtures/README.md`, `cargo xtask bench-check --update --workload random-rollouts-full`) and give the reason in the commit.
 - A field added to `Stack` costs Ir wherever stacks are walked (+0.6 % for 8 bytes in T6a): keep per-stack data the hot paths do not read beside the stacks (`BattleState.raised`, `.created`).
 - A stack can now die from another's death (a clone with its original, BAT-MAG-038): loops over targets fixed before damage skip dead stacks, and every path that kills calls `created::died` (`effects::damaged` after damage, the death stare, the sacrifice; it also releases binds).
-- Code added to `movement::reachable_within` can push `fits` out of line (+1 % Ir in T5c1; it is `#[inline]` and tests head and tail without the footprint iterator since T6b, −11 %): compare per-function profiles (`callgrind_annotate --inclusive=no`) of the old and new binaries on the old workload.
+- Code added to `movement::reachable_within` can push `fits` out of line (T5c1, T6b): compare per-function profiles (`callgrind_annotate --inclusive=no`) of the old and new binaries on the old workload.
 - The random agent and `legal_mask` ask for the active stack's cast at every step: keep `casters::ready` a cheap early exit (casts left first; the targets' buffer only for a caster cost +2 % Ir in T7b1).
 - Before re-baselining, compare `h3 bench --games 20` step counts (a shorter workload looks like a speed-up; build the old commit in a `git worktree` with its own target dir; `git stash` keeps untracked files). The geometry hot path moves with unrelated codegen: compare per-function callgrind profiles (`--toggle-collect='*random_rollout*'`, read the out file's `summary:` line; run `h3 bench` where `packs/` resolves).
 
@@ -55,14 +56,14 @@ The battle lane's living state; read after the global `docs/HANDOFF.md`. Format 
 
 ## Recent sessions
 
+### 2026-10-11 (fiftieth) — E04b increment 20: T9b
+
+The user (BAT-Q27): T9b, then batch 2f; batch 2e's weak results decisive. The `full` heroes gained opening spells, Eagle Eye, resistance, Pendants and Advanced spells; replays re-seeded, `bench-check` re-baselined; ≈ 105 k steps/s, ≈ 70 k with `--observe 1`. Detail: `docs/epics/E04b-log.md`.
+
 ### 2026-10-11 (forty-ninth) — E04b increment 19: T9a and the spectator viewer
 
-The user (BAT-Q26): T9a with SRV-Q4's spectator viewer, per-hex planes, a hero's hidden magic private to its side, one `cross-lane` PR (ADR-0011's ABI lines, ADR-0014 point 8). `Observation` complete (audit in the log), `Viewer`, `observe_as`, `project_as`; encoding v13, C ABI v17; state hash and replays unchanged. Detail: `docs/epics/E04b-log.md`.
+The user (BAT-Q26): T9a with SRV-Q4's spectator viewer, per-hex planes, a hero's hidden magic private to its side. `Observation` complete, `observe_as`, `project_as`; encoding v13, C ABI v17. Detail: `docs/epics/E04b-log.md`.
 
 ### 2026-10-10/11 (forty-eighth) — E04b increment 18: T8e
 
-The user (BAT-Q25): T8e alone, S-05 fix-optional (BAT-QUIRK-19); ADR-0007 amended (#64). Gated overrides, pack v34, two `quirk.content` flags. Detail: `docs/epics/E04b-log.md`.
-
-### 2026-10-10 (forty-seventh) — E04b increment 17: T8c and T8d
-
-The user (BAT-Q23): T8c with T8d, one `cross-lane` PR; the opening's timing after the code and the wiki; BAT-Q24 left to the adventure lane. `HeroOutcome.learned` replaces `spells_cast`. Detail: `docs/epics/E04b-log.md`.
+The user (BAT-Q25): T8e alone, S-05 fix-optional (BAT-QUIRK-19); ADR-0007 amended (#64). Gated overrides, pack v34. Detail: `docs/epics/E04b-log.md`.
