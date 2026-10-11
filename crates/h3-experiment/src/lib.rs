@@ -150,6 +150,10 @@ pub struct HeroSpec {
     /// unless listed).
     #[serde(default)]
     pub artifacts: BTreeMap<String, String>,
+    /// Artifacts in the backpack by name, not worn (E04b batch 2f: a Spell Book carried but not
+    /// worn).
+    #[serde(default)]
+    pub backpack: Vec<String>,
     /// Spells in the spell book by `SPTRAITS.TXT` name; replaces the hero type's and needs a
     /// worn `spell book`. The hero starts with full mana (10 × knowledge without Intelligence).
     #[serde(default)]
@@ -424,6 +428,14 @@ fn hero(
         }
         worn[slot] = Some(id as u16);
     }
+    let backpack = h
+        .backpack
+        .iter()
+        .map(|artifact| {
+            let names: Vec<String> = tables.artifacts.iter().map(|a| a.name.clone()).collect();
+            Ok(lookup(&names, artifact, "artifact")? as u16)
+        })
+        .collect::<Result<Vec<_>, String>>()?;
     if !h.spells.is_empty() && !h.artifacts.contains_key(SPELL_BOOK_SLOT) {
         return Err(format!("spells need a worn `{SPELL_BOOK_SLOT}`"));
     }
@@ -445,10 +457,7 @@ fn hero(
         skills: Some(skills),
         army: Some(army),
         tight_formation: h.tight,
-        artifacts: Some(HeroArtifacts {
-            worn,
-            backpack: Vec::new(),
-        }),
+        artifacts: Some(HeroArtifacts { worn, backpack }),
         spells: Some(spells),
         primary: Some(h.primary),
     })
@@ -488,6 +497,13 @@ fn hero_summary(h: &HeroSpec, hero: &Hero, tables: &Tables) -> String {
         .artifacts
         .iter()
         .map(|(slot, a)| format!("{a} ({slot})"))
+        .collect::<Vec<_>>()
+        .join(", ");
+    let carried = h.backpack.iter().map(|a| format!("{a} (backpack)"));
+    artifacts = (!artifacts.is_empty())
+        .then_some(artifacts)
+        .into_iter()
+        .chain(carried)
         .collect::<Vec<_>>()
         .join(", ");
     if artifacts.is_empty() {
@@ -637,6 +653,7 @@ mod tests {
         specialty = "skill Archery"
         primary = [0, 0, 0, 0]
         army = [["Pikeman", 1]]
+        backpack = ["Spell Book"]
         [encounter.opponent.hero]
         type = 2
         specialty = "creature Archangel"
@@ -676,6 +693,20 @@ mod tests {
             panic!("blue hero")
         };
         assert_eq!((blue.owner, blue.hero_type, blue.tile), (1, 2, (10, 3)));
+        let MapObject::Hero(orrin) = &map.objects[2] else {
+            panic!("B1's hero third")
+        };
+        let carried = orrin.artifacts.as_ref().expect("artifacts");
+        let book = tables()
+            .artifacts
+            .iter()
+            .position(|a| a.name == "Spell Book")
+            .expect("book") as u16;
+        assert_eq!(
+            (carried.worn, carried.backpack.clone()),
+            ([None; ARTIFACT_SLOTS], vec![book])
+        );
+        assert!(text.contains("; Spell Book (backpack); no spells;"));
         assert!(map.players[1].is_some());
         let MapObject::Hero(mage) = &map.objects[4] else {
             panic!("spell caster")
@@ -708,6 +739,7 @@ mod tests {
         assert!(fails("count = 10", "count = 0").contains("at least one"));
         assert!(fails("\"Spell 69\"", "\"Spell 70\"").contains("not a hero spell"));
         assert!(fails("\"Spell 69\"", "\"Spell 99\"").contains("unknown spell"));
+        assert!(fails("backpack = [\"Spell Book\"]", "backpack = [\"Tome\"]").contains("unknown"));
         let no_book = fails("artifacts = { \"spell book\" = \"Spell Book\" }", "");
         assert!(no_book.contains("need a worn"));
     }
