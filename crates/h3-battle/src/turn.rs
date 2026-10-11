@@ -66,8 +66,10 @@ pub(crate) fn next_active(state: &BattleState) -> Option<StackId> {
 /// cast rise (BAT-MAG-053); resets retaliation (with Counterstrike's extra ones, BAT-MAG-015),
 /// wait, morale, started and acted flags (the Defend bonus lasts until the stack's next
 /// activation, BAT-TRN-004) and the heroes' casts (BAT-MAG-001); then the timed effects lose a
-/// round or end (BAT-MAG-010), the clones lose a round or vanish (BAT-MAG-038; never their side's
-/// last stack: a clone's original lives), then the spell obstacles (BAT-MAG-027).
+/// round or end (BAT-MAG-010), the clones lose a round or vanish (BAT-MAG-038), then the spell
+/// obstacles (BAT-MAG-027). A clone's original lives, but with quirk BAT-QUIRK-7 a stack that
+/// became its own clone can vanish as its side's last one: the battle's end is checked after the
+/// clones (BAT-END-001; the original asks for the winner after every action, 0x479BDC).
 // rule: BAT-TRN-003, BAT-MAG-001
 pub(crate) fn start_round<S: Sink>(state: &mut BattleState, ruleset: &Ruleset, sink: &mut S) {
     state.round = state.round.saturating_add(1);
@@ -92,6 +94,8 @@ pub(crate) fn start_round<S: Sink>(state: &mut BattleState, ruleset: &Ruleset, s
     effects::count_down(state, ruleset, sink);
     // rule: BAT-MAG-038
     crate::created::count_down(state, ruleset, sink);
+    // rule: BAT-END-001
+    crate::combat::check_end(state, sink);
     obstacles::count_down(state, sink);
 }
 
@@ -174,11 +178,12 @@ fn morale_turn<S: Sink>(
     true
 }
 
-/// The next stack to act, starting a new round if every living stack has acted.
+/// The next stack to act, starting a new round if every living stack has acted; none once the
+/// round's start ended the battle (a side's last stack vanished, BAT-MAG-038).
 fn pick<S: Sink>(state: &mut BattleState, ruleset: &Ruleset, sink: &mut S) -> Option<StackId> {
     next_active(state).or_else(|| {
         start_round(state, ruleset, sink);
-        next_active(state)
+        next_active(state).filter(|_| state.result.is_none())
     })
 }
 

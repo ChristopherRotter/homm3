@@ -298,15 +298,16 @@ fn with_quirk_bat_quirk_7_a_crowded_original_becomes_its_own_clone() {
     hurt(&mut s, &r, 0, health);
     assert_eq!(s.stacks()[0].count, 2);
     // Its rounds run out: it vanishes with its two creatures, without a corpse, and the battle
-    // ends with the attacker's army gone; the outcome reports it as created, with the creature
+    // ends with the attacker's army gone (at that round start: E04b T11b review, F-r4a-3; this
+    // test called `check_end` by hand); the outcome reports it as created, with the creature
     // it lost and the two it vanished with.
     let mut events = Vec::new();
     for _ in 0..3 {
+        assert!(!s.is_over());
         crate::turn::start_round(&mut s, &r, &mut events);
     }
     assert_eq!(vanished(&events), vec![(0, 2)]);
     assert_eq!((s.stacks()[0].count, s.corpse(StackId(0))), (0, NO_CORPSE));
-    crate::combat::check_end(&mut s, &mut events);
     let outcome = s.outcome().unwrap();
     assert_eq!(outcome.result, BattleResult::Victory(BattleSide::Defender));
     let ogre = r.creature_by_key("t:ogre").unwrap();
@@ -320,6 +321,50 @@ fn with_quirk_bat_quirk_7_a_crowded_original_becomes_its_own_clone() {
         }]
     );
     assert!(outcome.survivors[0].stacks.is_empty());
+}
+
+/// E04b T11b review (F-r4a-3): with quirk BAT-QUIRK-7 a stack that became its own clone can be
+/// its side's last one when its rounds run out at a round's start. The battle ends there, as the
+/// original asks for the winner after every action whatever its kind (the reviewer's reading of
+/// its action dispatcher, 0x479BDC); it used to go on for ever with only the other side to act.
+// covers: BAT-END-001, BAT-MAG-038, BAT-TRN-003
+#[test]
+fn the_battle_ends_when_a_round_start_takes_a_sides_last_stack() {
+    let r = ruleset_with("t:clone_on_original", |_| {});
+    // The attacker's only stack, and one serf of the defender without a hero.
+    let mut s = walled(&r, 3, None);
+    let events = cast(&mut s, &r, "copy", stack(0)).unwrap();
+    assert_eq!(turned(&events), vec![(0, 3)]);
+    // Both stacks defend, round after round.
+    let mut events = Vec::new();
+    for _ in 0..12 {
+        if s.is_over() {
+            break;
+        }
+        events.extend(act(&mut s, &r, Command::Defend).unwrap());
+    }
+    // The ogres vanish at the third round start after the cast, and with them the attacker's
+    // army: the defender wins there and then, and no stack is active.
+    assert_eq!(vanished(&events), vec![(0, 3)]);
+    assert_eq!(
+        s.result(),
+        Some(BattleResult::Victory(BattleSide::Defender))
+    );
+    assert_eq!((s.round(), s.active()), (4, None));
+    let last: Vec<EventKind> = events.iter().rev().take(3).rev().map(|e| e.kind).collect();
+    assert_eq!(
+        last,
+        [
+            EventKind::RoundStarted { round: 4 },
+            EventKind::Vanished {
+                stack: StackId(0),
+                creatures: 3
+            },
+            EventKind::BattleEnded {
+                result: BattleResult::Victory(BattleSide::Defender)
+            },
+        ]
+    );
 }
 
 // covers: BAT-MAG-038
