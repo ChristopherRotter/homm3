@@ -14,10 +14,13 @@ packs = "../../packs"
 
 [limits]
 max_frame = 4096
-messages_per_second = 20
+messages_per_second = 20         # per connection; WebSocket pings count too
+messages_per_address = 40        # per second, across one address's connections
 connections = 64
 connections_per_address = 8
-idle_timeout_ms = 300000
+idle_timeout_ms = 300000         # no message this long closes a connection
+hello_timeout_ms = 10000         # no hello this long after the handshake closes it
+lobby_timeout_ms = 60000         # in no game this long after the hello closes it
 outbound_queue = 256
 games = 16
 games_per_address = 2

@@ -112,7 +112,8 @@ packs directory: a scenario names its packs and profile), `[limits]` (M1's six a
 `games_per_address`), one `[[offer]]` per game configuration (`id`, `scenario`, `profile`,
 `bots`); the replay goes to `<data>/replays/<offer>-game<id>-<random>.toml`; `shadow_instance`
 in `[server]` since M2 T3, `spectators_per_game` in `[limits]` since M2 T4, `empty_game_ms` and
-`paused_game_ms` since M2 T5a. Still to come:
+`paused_game_ms` since M2 T5a, `messages_per_address`, `hello_timeout_ms` and `lobby_timeout_ms`
+since M2 T5b. Still to come:
 
 ```
 [server]      anonymous = true                                       # M3

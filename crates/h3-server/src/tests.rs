@@ -25,6 +25,7 @@ fn root() -> PathBuf {
 fn fast() -> Limits {
     Limits {
         messages_per_second: 100_000,
+        messages_per_address: 100_000,
         ..Limits::default()
     }
 }
@@ -1124,6 +1125,161 @@ async fn an_idle_client_is_cut_off() {
     assert_eq!(goodbye(&mut c).await, GoodbyeReason::IdleTimeout);
 }
 
+/// Pongs, until the goodbye: its reason and how many pongs came before it.
+async fn pongs_until_goodbye(client: &mut Client) -> (usize, GoodbyeReason) {
+    let mut pongs = 0;
+    loop {
+        match client.recv().await {
+            Some(ServerMessage::Pong { .. }) => pongs += 1,
+            Some(ServerMessage::Goodbye { reason }) => return (pongs, reason),
+            other => panic!("{other:?}"),
+        }
+    }
+}
+
+/// E16 M2 T5b: WebSocket pings count in a connection's rate, and an address's connections share
+/// one rate besides their own.
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn pings_count_in_the_rate_and_an_address_shares_one() {
+    let limits = Limits {
+        messages_per_second: 5,
+        ..Limits::default()
+    };
+    let running = start(&config(limits)).await.unwrap();
+    let mut c = greeted(&running).await;
+    for _ in 0..20 {
+        if c.send_raw(Message::Ping(vec![1].into())).await.is_err() {
+            break;
+        }
+    }
+    assert_eq!(goodbye(&mut c).await, GoodbyeReason::RateLimited);
+    let limits = Limits {
+        messages_per_second: 100,
+        messages_per_address: 6,
+        ..Limits::default()
+    };
+    let running = start(&config(limits)).await.unwrap();
+    let (mut calm, mut flood) = (greeted(&running).await, greeted(&running).await);
+    for nonce in 0..20 {
+        if flood.send(&ClientMessage::Ping { nonce }).await.is_err() {
+            break;
+        }
+    }
+    let (pongs, reason) = pongs_until_goodbye(&mut flood).await;
+    assert_eq!(reason, GoodbyeReason::RateLimited);
+    assert!(
+        pongs < 20,
+        "within its own rate, beyond its address's: {pongs}"
+    );
+    // The other connection of the address goes on in the next second.
+    tokio::time::sleep(Duration::from_millis(1_100)).await;
+    calm.send(&ClientMessage::Ping { nonce: 7 }).await.unwrap();
+    assert_eq!(calm.recv().await, Some(ServerMessage::Pong { nonce: 7 }));
+}
+
+/// E16 M2 T5b: a connection that says no hello, or that is in no game, holds its place only for a
+/// moment; one in a game is not timed.
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn a_connection_without_a_hello_or_a_game_is_cut_off() {
+    let limits = Limits {
+        hello_timeout_ms: 200,
+        lobby_timeout_ms: 400,
+        ..Limits::default()
+    };
+    let running = start(&config(limits)).await.unwrap();
+    let mut silent = Client::connect(running.address).await.unwrap();
+    assert_eq!(goodbye(&mut silent).await, GoodbyeReason::IdleTimeout);
+    let (mut seated, _, _) = created(&running, "pvp", Seat::Attacker).await;
+    let mut browsing = greeted(&running).await;
+    let mut lists = 0;
+    let reason = loop {
+        browsing
+            .send(&ClientMessage::ListGames { seq: 1 })
+            .await
+            .unwrap();
+        match browsing.recv().await {
+            Some(ServerMessage::Games { .. }) => lists += 1,
+            Some(ServerMessage::Goodbye { reason }) => break reason,
+            other => panic!("{other:?}"),
+        }
+        assert!(lists < 100, "never cut off");
+        tokio::time::sleep(Duration::from_millis(20)).await;
+    };
+    assert_eq!(reason, GoodbyeReason::IdleTimeout, "messages do not help");
+    // The creator, in its game all along, still is.
+    seated
+        .send(&ClientMessage::ListGames { seq: 2 })
+        .await
+        .unwrap();
+    assert!(matches!(
+        seated.recv().await,
+        Some(ServerMessage::Games { seq: 2, .. })
+    ));
+}
+
+/// E16 M2 T5b (the M2 T1 inbox): a connection whose join a game refused is in that game no more:
+/// it does not keep a waiting game listed after its creator left, and the lobby's deadline holds
+/// for it. A join it sent before it heard the refusal still counts.
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn a_refused_join_leaves_the_game() {
+    let limits = Limits {
+        lobby_timeout_ms: 500,
+        ..fast()
+    };
+    let running = start(&config(limits)).await.unwrap();
+    let (creator, game, _) = created(&running, "pvp", Seat::Attacker).await;
+    let mut late = greeted(&running).await;
+    late.join(game, Seat::Attacker, None).await.unwrap();
+    assert_eq!(
+        late.recv().await,
+        Some(ServerMessage::Refused {
+            reason: Refusal::SeatTaken
+        })
+    );
+    creator.close().await;
+    let mut attempts = 0;
+    while !listed(&running).await.is_empty() {
+        attempts += 1;
+        assert!(attempts < 250, "the refused connection keeps the game");
+        tokio::time::sleep(Duration::from_millis(20)).await;
+    }
+    assert_eq!(goodbye(&mut late).await, GoodbyeReason::IdleTimeout);
+    // Two joins at once: the first refused, the second takes the seat it asked for.
+    let (creator, game, _) = created(&running, "pvp", Seat::Attacker).await;
+    let mut eager = greeted(&running).await;
+    eager.join(game, Seat::Attacker, None).await.unwrap();
+    eager.join(game, Seat::Defender, None).await.unwrap();
+    assert!(matches!(
+        eager.recv().await,
+        Some(ServerMessage::Refused {
+            reason: Refusal::SeatTaken
+        })
+    ));
+    joined(&mut eager).await;
+    tokio::time::sleep(Duration::from_millis(700)).await;
+    assert!(
+        listed(&running)
+            .await
+            .iter()
+            .any(|g| g.game == game && g.phase == Phase::Running),
+        "both seats held"
+    );
+    eager
+        .send(&ClientMessage::ListGames { seq: 4 })
+        .await
+        .unwrap();
+    let after = loop {
+        match eager.recv().await {
+            Some(ServerMessage::Games { seq, .. }) => break seq,
+            Some(ServerMessage::Goodbye { reason }) => panic!("{reason:?}"),
+            Some(_) => {}
+            None => panic!("closed"),
+        }
+    };
+    assert_eq!(after, 4, "in its game past the lobby's deadline");
+    drop(creator);
+}
+
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn connections_beyond_the_limit_are_refused_until_one_closes() {
     let limits = Limits {
@@ -1228,10 +1384,13 @@ fn configurations_are_checked() {
         "max_frame = 0",
         "max_frame = 2000000",
         "messages_per_second = 0",
+        "messages_per_address = 0",
         "connections = 0",
         "connections_per_address = 0",
         "idle_timeout_ms = 0",
         "idle_timeout_ms = 9223372036854775807",
+        "hello_timeout_ms = 0",
+        "lobby_timeout_ms = 86400001",
         "outbound_queue = 0",
         "outbound_queue = 4000000",
         "games = 0",

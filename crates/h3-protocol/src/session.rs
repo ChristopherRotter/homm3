@@ -534,6 +534,12 @@ impl<'r> Session<'r> {
         self.seats.iter().any(|seat| seat.holder.is_some())
     }
 
+    /// Whether connection `conn` holds a seat or watches (E16 M2 T5b): one that does neither after
+    /// its join, a refused one, is in the game no more, and the host lets it go.
+    pub fn holds(&self, conn: ConnId) -> bool {
+        self.seat_of(conn).is_some() || self.watcher(conn).is_some()
+    }
+
     /// Pauses the running game for the host when none of its seats is held (E16 M2 T5a: the
     /// deadline of an abandoned game), as its host's `Pause` would; `false`, and nothing changes,
     /// if the game does not run or a seat is held. Its spectators hear `Goodbye { Paused }`.

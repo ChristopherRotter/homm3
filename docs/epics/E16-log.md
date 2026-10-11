@@ -547,3 +547,38 @@ how and why the work went.
   start and plays to its end; an abandoned game pauses (its spectator told) and goes void at its
   deadlines; the configuration's new bounds. The binary, run by hand: SIGTERM drains, stops,
   exits 0.
+
+### M2 T5b — The connection's bounds (2026-10-11)
+
+- **The start.** #83 (T5a) was merged; the branch restarted from `master` (the scoped verify had
+  no failing step but the example configuration's test, which read an edit made while it ran).
+  The user asked about ranked games (one at a time, a pause only by agreement, the paused game's
+  deadline): recorded as SRV-Q13 for M4, the ladder ADR draft's point 8 amended. T5b as queued
+  held two tasks' worth again; split into T5b (this: the connection's bounds) and T5c (memory
+  in bytes); the old T5c is T5d.
+- **The session core** (`h3-protocol`, logic, 100 %): `Session::holds` (a connection holds a seat
+  or watches). No wire change: `PROTOCOL_VERSION` stays 9.
+- **The server** (*provisional*; `net.rs`, `game.rs`): `[limits] messages_per_address` (40 a second
+  across one address's connections, counted with the connection's own rate in its counted place;
+  the message beyond it closes its connection, `RateLimited`); WebSocket control frames (pings,
+  unasked pongs) arrive as `Incoming::Control` and count in both rates without keeping the
+  connection from idling; `hello_timeout_ms` (10 s from the handshake) and `lobby_timeout_ms`
+  (60 s in no game, from the hello or from leaving one), both `Goodbye { IdleTimeout }`. A
+  refused join: the game counts each connection's messages; when a connection holds nothing after
+  its `k`-th message, the last frame of the answer carries `Frame::left = Some(k)`, and the
+  connection's task leaves the game (the registry's count and `ToGame::Closed`) only if it passed
+  the game exactly `k` messages, so a second join sent before the first one's refusal keeps the
+  seat it takes.
+- **Not built** (*queued for the M2 review*): a separate rate for automated seats (T3's note): no
+  client can be known as an agent before accounts; M3's bot accounts carry it.
+- **Tests** (h3-protocol 57, h3-server 35): the session's `holds` (a seat, a watch, a refused join,
+  after a disconnect); units over the fake transport: a refusal marked after the last message
+  leaves the game, one marked after an earlier message does not (checked by a mutation that
+  ignores the count); the address's rate shared by two places, another address apart; end to
+  end: pings cut off a connection at its rate, an address's second connection is cut off by the
+  shared rate while the first goes on in the next second, a connection without a hello and one
+  that only lists games are cut off at their deadlines while a seated one is not, a refused
+  connection no longer keeps a waiting game listed and meets the lobby's deadline, two joins at
+  once take the second seat and keep it; the configuration's new bounds. Mutations that skip the
+  address's rate, that let pings pass the rate or that never leave after a refusal each fail a
+  test.
