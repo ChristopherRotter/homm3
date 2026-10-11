@@ -4,8 +4,8 @@ The server lane's living state; read after the global `docs/HANDOFF.md`. Format 
 
 ## Current state
 
-- **M1 closed (2026-10-11, SRV-Q12). M2 T1–T4 merged (#67, #71, #72, #76); M2 T4b done (2026-10-11)** on `claude/modest-turing-ttgjo8`: the observation's fields E04b T9a added on the wire, every engine field mapped or left out by name (wire 7). **Next: M2 T4c** (`QUEUE.md`): the host's spectator setting (the user asked for it; two questions for the user at its start); then T5. Review list for the M2 checkpoint: the epic file.
-- **Shared changes on this branch** (the global HANDOFF's server row and its trap on the engine's fields): a separate commit; the pull request needs the label `cross-lane` (asked of the user for T4b, as given for T2–T4).
+- **M1 closed (2026-10-11, SRV-Q12). M2 T1–T4 merged (#67, #71, #72, #76); M2 T4b done (2026-10-11)** on `claude/modest-turing-ttgjo8`: the observation's fields E04b T9a added on the wire, every engine field mapped or left out by name (wire 7). **Next: M2 T4c** (`QUEUE.md`): the host's spectator setting (the user asked for it and answered its two questions: before the start only, open by default); then T5. Review list for the M2 checkpoint: the epic file.
+- **Shared changes on this branch** (the global HANDOFF's server row and its trap on the engine's fields): a separate commit; the pull request carries the label `cross-lane` (the user, 2026-10-11, as for T2–T4).
 - **ADR-0018 point 5 as amended:** the mapping's matches over the engine's enums are exhaustive, and since T4b its patterns over the observation's structs too; a new battle variant or observation field fails `h3-protocol`'s build until mapped (global HANDOFF trap).
 - **The 100 % gate** covers `h3-protocol` (logic); `h3-server` is an adapter outside it, tested end to end.
 - **Versions** (`docs/08-work-process.md`): `PROTOCOL_VERSION` (`h3-protocol`, 7 since M2 T4b's observation fields; 6 was M2 T4's spectators; bumped on every wire change), `RECORD_FORMAT_VERSION` (`h3-protocol`, 1), `JOURNAL_FORMAT_VERSION` (`h3-server`, 2 since M2 T3's pause lines; a journal of another format is void at start).
