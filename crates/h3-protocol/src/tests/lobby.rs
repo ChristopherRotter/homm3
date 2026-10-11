@@ -119,3 +119,32 @@ fn creations_are_refused_with_their_reason() {
         "an over game stays listed until it is removed"
     );
 }
+
+#[test]
+fn restored_games_are_listed_again_and_counted() {
+    let mut lobby = lobby(3, 1);
+    let restored = |game| GameInfo {
+        game,
+        offer: "pvp".to_string(),
+        phase: Phase::Running,
+        open: vec![],
+    };
+    // Beyond the origin's limit, which the games were within when they were created.
+    lobby.reopen(1, restored(7));
+    lobby.reopen(1, restored(3));
+    lobby.reopen(2, restored(5));
+    assert_eq!(games(&lobby), [restored(3), restored(5), restored(7)]);
+    assert_eq!(
+        lobby.create(3, "pvp", Seat::Attacker),
+        Err(Refusal::TooManyGames),
+        "they count in total"
+    );
+    lobby.remove(7);
+    assert_eq!(
+        lobby.create(1, "pvp", Seat::Attacker),
+        Err(Refusal::TooManyGames),
+        "and for their origin"
+    );
+    // Ids continue after the highest restored one.
+    assert_eq!(lobby.create(3, "pvp", Seat::Attacker), Ok((8, 0)));
+}

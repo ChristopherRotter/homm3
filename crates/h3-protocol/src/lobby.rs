@@ -5,7 +5,8 @@
 //!
 //! Provisional (E16 M2 T1): game ids counted from 1 and never reused; the limits count the games
 //! that are not over, in total and per origin (the host's notion of where a request came from: a
-//! client's address); a game stays listed until the host removes it.
+//! client's address); a game stays listed until the host removes it; a restored game is listed
+//! again without the limits' check (M2 T2).
 
 use alloc::collections::BTreeMap;
 use alloc::vec::Vec;
@@ -103,6 +104,14 @@ impl<O: Ord> Lobby<O> {
             entry.info.phase = phase;
             entry.info.open = open;
         }
+    }
+
+    /// Lists again a game a restart restored from its journal (E16 M2 T2), as `origin` created it;
+    /// the ids handed out after it are higher. It is not checked against the limits (it was within
+    /// them when it was created) and counts for every creation after.
+    pub fn reopen(&mut self, origin: O, info: GameInfo) {
+        self.last = self.last.max(info.game);
+        self.games.insert(info.game, Entry { origin, info });
     }
 
     /// Game `game` is gone.
