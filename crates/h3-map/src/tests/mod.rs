@@ -1,8 +1,10 @@
 //! Tests of the reader: the round trip of every model a version can hold, truncation, arbitrary
-//! bytes, each typed error and limit, the gzip layer, and the experiment writer's maps.
+//! bytes, each typed error and limit, the gzip layer, and the experiment writer's maps; the
+//! import in `import.rs`; random play on imported maps through `h3-game` in `play.rs` (E08 T8b2a).
 
 mod encode;
 mod import;
+mod play;
 mod strategy;
 
 use proptest::prelude::*;
