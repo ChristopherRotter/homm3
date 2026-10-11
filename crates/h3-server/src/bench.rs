@@ -18,7 +18,9 @@ use h3_protocol::session::{ConnId, GameConfig, Outbound, SeatKind, Session};
 use h3_protocol::wire::{ClientMessage, Command, Seat, ServerMessage};
 
 use crate::Error;
-use crate::game::GAME_ID;
+
+/// The hosted game's id.
+const GAME_ID: u32 = 1;
 
 /// The two scripted clients, attacker and defender.
 const CONNS: [ConnId; 2] = [ConnId(1), ConnId(2)];
