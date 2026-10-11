@@ -1,8 +1,8 @@
 # E16 — Server: protocol, hosting, lobbies and ladders
 
 Status: **in progress** (refined 2026-10-08/09; M0 done 2026-10-10: ADR-0018 accepted, the
-crate skeletons; M1 done 2026-10-10, its checkpoint passed 2026-10-11 (SRV-Q12); M2 T1 to T5c
-done 2026-10-11, T5d next). Decisions: [ADR-0018](../adr/0018-server-and-protocol.md) (protocol
+crate skeletons; M1 done 2026-10-10, its checkpoint passed 2026-10-11 (SRV-Q12); M2 T1 to T5d
+done 2026-10-11, T5e next: M2's closure). Decisions: [ADR-0018](../adr/0018-server-and-protocol.md) (protocol
 and hosting); ADR drafts `docs/lanes/server/adr-drafts/identity-and-ladders.md` and
 `discovery.md`. Working detail (messages, flows, journals, the ladder sketch):
 `docs/epics/E16-design.md`. Done tasks in full: `docs/epics/E16-log.md`. Lane: server (`docs/lanes/server/HANDOFF.md`).
@@ -294,8 +294,13 @@ Cut at the M1 checkpoint (SRV-Q12); the tasks in full: `docs/lanes/server/QUEUE.
 - **T5c Memory bounded in bytes** (done 2026-10-11; `E16-log.md`): a viewer's record keeps its
   latest messages within `[limits] record_bytes` (the header's `first`), the outbound queue counts
   its bytes (`outbound_bytes`); wire version 10, record format 2.
-- **T5d** the fuzz harness, the replay download and M2's closure (T5 split on 2026-10-11, T5b
-  again the same day; `docs/lanes/server/QUEUE.md`).
+- **T5d The decoder's mutation tests, the public archive of finished games** (done 2026-10-11;
+  `E16-log.md`; SRV-Q14, SRV-Q15): mutated valid messages never make the decoders or a running
+  session panic; any client lists finished games' replays and downloads one (`ListReplays`,
+  `FetchArchived`), a game closed to spectators archived unlisted, `[limits] replays_kept`; wire
+  version 11; ADR-0018 points 8 and 9 amended.
+- **T5e** M2's closure (T5 split on 2026-10-11, T5b and T5d again the same day;
+  `docs/lanes/server/QUEUE.md`).
 
 ## Review list for the M2 checkpoint
 
@@ -382,6 +387,16 @@ Choices queued under the autonomy contract (details in `E16-log.md`):
   queues and by the task as it takes out, a goodbye queued whatever the bytes. Not built as its
   own rule: one `FetchRecord` in flight. The queue's bytes bound what queued records hold, and a
   client that asks for them faster than it reads is dropped as `TooSlow`.
+- T5d: the mutations (a flipped byte, a cut, an insertion, a repeat, a splice of two messages, a
+  number or a string replaced by a plausible or an extreme one) as proptests in `h3-protocol`,
+  no fuzzing dependency (SRV-Q14). The archive's messages (`ListReplays { seq, from }` answered
+  `Replays { seq, total, replays }`, 50 a page, newest first; `FetchArchived { seq, replay }`
+  answered `Replay` numbered 0 or `Refused { NoSuchReplay }`), served by the connection's task
+  without a game; the replay's id is its file's stem (offer, game, a random suffix: unique across
+  restarts); the opt-out is the host's spectator setting as the game started, whatever the
+  server's spectator limit (an unlisted replay in `<data>/replays/closed/`); `replays_kept` (10
+  000 in each part), the oldest file deleted, also at a start with a lower bound; the order the
+  files' last writes.
 
 ## Review list for the M1 checkpoint (passed 2026-10-11)
 
