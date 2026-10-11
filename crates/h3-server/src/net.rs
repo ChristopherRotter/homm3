@@ -3,6 +3,11 @@
 //! (`h3_protocol::connection`) and the lobby's messages are the task's; a game's messages go to
 //! the thread of the game the connection is bound to (E16 M2 T1). When the server stops (E16 M2
 //! T5a), the listener accepts no more and every connection hears `Goodbye { Shutdown }`.
+//!
+//! The connection's bounds (E16 M2 T5b): its messages per second, and those of its address across
+//! all its connections, WebSocket pings included; the idle timeout; a deadline for the hello, then
+//! one for being in a game (a connection in the lobby holds a counted place). A join the game
+//! refused leaves the game, as if the connection had never joined.
 
 use std::collections::BTreeMap;
 use std::future::Future;
@@ -33,6 +38,9 @@ pub(crate) enum Incoming {
     Text(String),
     /// One binary message (not this protocol).
     Binary,
+    /// A WebSocket control frame, a ping or a pong: no message, but counted in the rate (E16 M2
+    /// T5b).
+    Control,
 }
 
 /// One connection's messages, whatever carries them (ADR-0018 point 3: WebSocket now; another
@@ -48,13 +56,11 @@ pub(crate) trait Transport: Send {
 
 impl Transport for WebSocketStream<TcpStream> {
     async fn recv(&mut self) -> Option<Incoming> {
-        loop {
-            match self.next().await? {
-                Ok(Message::Text(text)) => return Some(Incoming::Text(text.as_str().to_owned())),
-                Ok(Message::Binary(_)) => return Some(Incoming::Binary),
-                Ok(Message::Ping(_) | Message::Pong(_) | Message::Frame(_)) => {}
-                Ok(Message::Close(_)) | Err(_) => return None,
-            }
+        match self.next().await? {
+            Ok(Message::Text(text)) => Some(Incoming::Text(text.as_str().to_owned())),
+            Ok(Message::Binary(_)) => Some(Incoming::Binary),
+            Ok(Message::Ping(_) | Message::Pong(_) | Message::Frame(_)) => Some(Incoming::Control),
+            Ok(Message::Close(_)) | Err(_) => None,
         }
     }
 
@@ -85,7 +91,7 @@ fn websocket_config(limits: &Limits) -> WebSocketConfig {
         .max_frame_size(Some(cap))
 }
 
-/// Messages per second of one connection.
+/// Messages per second of one connection, or of one address (E16 M2 T5b).
 #[derive(Debug)]
 struct Rate {
     /// The limit.
@@ -116,12 +122,15 @@ impl Rate {
     }
 }
 
-/// The game a connection is bound to (E16 M2 T1): its inbox and the connection's queue for it.
+/// The game a connection is bound to (E16 M2 T1): its inbox and the connection's queue for it, and
+/// how many messages the connection passed it (E16 M2 T5b: a refused join's frame names its
+/// number).
 #[derive(Debug)]
 struct Bound {
     game: u32,
     to_game: mpsc::Sender<ToGame>,
     from_game: mpsc::Receiver<Frame>,
+    passed: u64,
 }
 
 /// What the connection's task waits for.
@@ -130,7 +139,7 @@ enum Wake {
     Client(Option<Incoming>),
     /// The bound game sent a frame, or dropped the queue (`None`: too slow).
     Game(Option<Frame>),
-    /// The idle timeout passed.
+    /// The idle timeout passed, or the deadline for the hello or for a game (E16 M2 T5b).
     Idle,
     /// The server stops (E16 M2 T5a).
     Stop,
@@ -140,6 +149,14 @@ enum Wake {
 pub(crate) async fn stopped(stop: &mut watch::Receiver<bool>) {
     if stop.wait_for(|&stopping| stopping).await.is_err() {
         std::future::pending::<()>().await;
+    }
+}
+
+/// Resolves at `deadline`; never without one.
+async fn until(deadline: Option<Instant>) {
+    match deadline {
+        Some(deadline) => sleep_until(deadline).await,
+        None => std::future::pending().await,
     }
 }
 
@@ -154,55 +171,81 @@ async fn from_game(bound: &mut Option<Bound>) -> Option<Frame> {
 /// One connection's task: reads frames through the hello gate, answers the lobby's messages and
 /// passes the game's to the game it is bound to, writes the game's frames out, until either side
 /// closes. A message within the idle timeout keeps it open; more messages per second than the
-/// limit, a frame that does not decode, a full outbound queue (the game drops the queue), a
-/// write that stalls for the idle timeout or the server's stop (`stop`) close it.
+/// limits (the connection's and its address's in `place`; WebSocket pings count), a frame that does
+/// not decode, no hello within its timeout or no game within the lobby's timeout after it (or
+/// after a refused join), a full outbound queue (the game drops the queue), a write that stalls
+/// for the idle timeout or the server's stop (`stop`) close it.
 pub(crate) async fn serve<T: Transport>(
     mut transport: T,
     conn: ConnId,
-    origin: IpAddr,
+    place: Place,
     registry: Shared,
     limits: Limits,
     server: Arc<str>,
     mut stop: watch::Receiver<bool>,
 ) {
     let idle = Duration::from_millis(limits.idle_timeout_ms);
+    let lobby = Duration::from_millis(limits.lobby_timeout_ms);
     let mut deadline = Instant::now() + idle;
+    // The deadline to be in a game: the hello's first, then the lobby's (E16 M2 T5b).
+    let mut unjoined = Some(Instant::now() + Duration::from_millis(limits.hello_timeout_ms));
     let mut gate = Connection::new(limits.max_frame);
     let mut rate = Rate::new(limits.messages_per_second);
     let mut link = Link {
         conn,
-        origin,
+        origin: place.address,
         registry,
         queue: limits.outbound_queue.max(1),
         bound: None,
     };
     loop {
+        unjoined = match (&link.bound, unjoined) {
+            (Some(_), _) => None,
+            (None, None) => Some(Instant::now() + lobby),
+            (None, kept) => kept,
+        };
         let wake = tokio::select! {
             incoming = transport.recv() => Wake::Client(incoming),
             frame = from_game(&mut link.bound) => Wake::Game(frame),
             () = sleep_until(deadline) => Wake::Idle,
+            () = until(unjoined) => Wake::Idle,
             () = stopped(&mut stop) => Wake::Stop,
         };
+        let now = Instant::now();
         let frame = match wake {
             Wake::Client(None) => break,
-            Wake::Client(Some(incoming)) => {
-                deadline = Instant::now() + idle;
-                match incoming {
-                    Incoming::Binary => goodbye(GoodbyeReason::Malformed),
-                    Incoming::Text(_) if !rate.admit(Instant::now()) => {
-                        goodbye(GoodbyeReason::RateLimited)
-                    }
-                    Incoming::Text(text) => match gate.receive(text.as_bytes(), &server) {
-                        Received::Game(message) => match link.route(message).await {
-                            Routed::Reply(frame) => frame,
-                            Routed::Passed => continue,
-                            Routed::GameGone => break,
-                        },
-                        Received::Reply { frame, close } => Frame { text: frame, close },
+            Wake::Client(Some(_)) if !(rate.admit(now) && place.admit(now)) => {
+                goodbye(GoodbyeReason::RateLimited)
+            }
+            Wake::Client(Some(Incoming::Control)) => continue,
+            Wake::Client(Some(Incoming::Binary)) => goodbye(GoodbyeReason::Malformed),
+            Wake::Client(Some(Incoming::Text(text))) => {
+                deadline = now + idle;
+                let greeted = gate.greeted();
+                let received = gate.receive(text.as_bytes(), &server);
+                if !greeted && gate.greeted() {
+                    unjoined = Some(now + lobby);
+                }
+                match received {
+                    Received::Game(message) => match link.route(message).await {
+                        Routed::Reply(frame) => frame,
+                        Routed::Passed => continue,
+                        Routed::GameGone => break,
+                    },
+                    Received::Reply { frame, close } => Frame {
+                        text: frame,
+                        close,
+                        left: None,
                     },
                 }
             }
-            Wake::Game(frame) => frame.unwrap_or_else(|| goodbye(GoodbyeReason::TooSlow)),
+            Wake::Game(Some(frame)) => {
+                if frame.left.is_some() && frame.left == link.bound.as_ref().map(|b| b.passed) {
+                    link.unbind().await;
+                }
+                frame
+            }
+            Wake::Game(None) => goodbye(GoodbyeReason::TooSlow),
             Wake::Idle => goodbye(GoodbyeReason::IdleTimeout),
             Wake::Stop => goodbye(GoodbyeReason::Shutdown),
         };
@@ -244,6 +287,7 @@ impl Link {
             ClientMessage::ListGames { seq } => Routed::Reply(Frame {
                 text: lock(&self.registry).list(seq),
                 close: false,
+                left: None,
             }),
             ClientMessage::CreateGame {
                 seq,
@@ -275,11 +319,12 @@ impl Link {
                     Ok(to_game) => self.switch(game, to_game, message, None).await,
                 }
             }
-            message => match &self.bound {
+            message => match &mut self.bound {
                 Some(bound) => {
                     let conn = self.conn;
-                    let passed = bound.to_game.send(ToGame::Message { conn, message }).await;
-                    if passed.is_ok() {
+                    bound.passed += 1;
+                    let sent = bound.to_game.send(ToGame::Message { conn, message }).await;
+                    if sent.is_ok() {
                         Routed::Passed
                     } else {
                         Routed::GameGone
@@ -318,11 +363,13 @@ impl Link {
             game,
             to_game,
             from_game,
+            passed: 1,
         });
         match first {
             Some(message) => Routed::Reply(Frame {
                 text: codec::encode_text(&message),
                 close: false,
+                left: None,
             }),
             None => Routed::Passed,
         }
@@ -343,6 +390,7 @@ fn refused(reason: Refusal) -> Frame {
     Frame {
         text: codec::encode_text(&ServerMessage::Refused { reason }),
         close: false,
+        left: None,
     }
 }
 
@@ -368,6 +416,7 @@ fn unbound(message: &ClientMessage) -> Frame {
             code: RejectCode::NotSeated,
         }),
         close: false,
+        left: None,
     }
 }
 
@@ -376,19 +425,27 @@ fn goodbye(reason: GoodbyeReason) -> Frame {
     Frame {
         text: codec::encode_text(&ServerMessage::Goodbye { reason }),
         close: true,
+        left: None,
     }
+}
+
+/// One address's open connections and their messages per second (E16 M2 T5b).
+#[derive(Debug)]
+struct Address {
+    connections: usize,
+    rate: Rate,
 }
 
 /// The open connections, in total and per address.
 #[derive(Debug, Default)]
 struct Counts {
     total: usize,
-    by_address: BTreeMap<IpAddr, usize>,
+    by_address: BTreeMap<IpAddr, Address>,
 }
 
 /// A counted connection; dropping it releases its place.
 #[derive(Debug)]
-struct Place {
+pub(crate) struct Place {
     counts: Arc<Mutex<Counts>>,
     address: IpAddr,
 }
@@ -397,16 +454,31 @@ impl Place {
     /// A place for a connection from `address`, if the limits leave one.
     fn take(counts: &Arc<Mutex<Counts>>, address: IpAddr, limits: &Limits) -> Option<Self> {
         let mut c = counts.lock().unwrap_or_else(PoisonError::into_inner);
-        let here = c.by_address.get(&address).copied().unwrap_or(0);
+        let here = c.by_address.get(&address).map_or(0, |a| a.connections);
         if c.total >= limits.connections || here >= limits.connections_per_address {
             return None;
         }
         c.total += 1;
-        c.by_address.insert(address, here + 1);
+        let rate = || Rate::new(limits.messages_per_address);
+        let entry = c.by_address.entry(address);
+        entry
+            .or_insert_with(|| Address {
+                connections: 0,
+                rate: rate(),
+            })
+            .connections += 1;
         Some(Self {
             counts: Arc::clone(counts),
             address,
         })
+    }
+
+    /// Counts a message of the address at `now`; `false` beyond its limit (E16 M2 T5b).
+    fn admit(&self, now: Instant) -> bool {
+        let mut c = self.counts.lock().unwrap_or_else(PoisonError::into_inner);
+        c.by_address
+            .get_mut(&self.address)
+            .is_some_and(|a| a.rate.admit(now))
     }
 }
 
@@ -414,9 +486,9 @@ impl Drop for Place {
     fn drop(&mut self) {
         let mut c = self.counts.lock().unwrap_or_else(PoisonError::into_inner);
         c.total = c.total.saturating_sub(1);
-        if let Some(n) = c.by_address.get_mut(&self.address) {
-            *n = n.saturating_sub(1);
-            if *n == 0 {
+        if let Some(a) = c.by_address.get_mut(&self.address) {
+            a.connections = a.connections.saturating_sub(1);
+            if a.connections == 0 {
                 c.by_address.remove(&self.address);
             }
         }
@@ -455,9 +527,8 @@ pub(crate) async fn listen(
             let handshake = tokio_tungstenite::accept_async_with_config(stream, Some(config));
             let idle = Duration::from_millis(limits.idle_timeout_ms);
             if let Ok(Ok(socket)) = timeout(idle, handshake).await {
-                serve(socket, conn, peer.ip(), registry, limits, server, stop).await;
+                serve(socket, conn, place, registry, limits, server, stop).await;
             }
-            drop(place);
         });
     }
     // Stopped: no new connection; the open ones close, each after its goodbye, within a grace.
@@ -475,6 +546,8 @@ const SHUTDOWN_GRACE: Duration = Duration::from_secs(3);
 
 #[cfg(test)]
 mod tests {
+    use h3_protocol::wire::{Phase, Seat};
+
     use super::*;
     use crate::registry::Registry;
 
@@ -497,75 +570,158 @@ mod tests {
         async fn close(&mut self) {}
     }
 
-    #[tokio::test]
-    async fn a_connection_whose_queue_the_game_dropped_is_too_slow() {
-        let (client, inbound) = mpsc::unbounded_channel();
-        let (outbound, mut sent) = mpsc::unbounded_channel();
-        let (game, mut inbox) = mpsc::channel(8);
-        let limits = Limits {
-            games: 1,
-            games_per_address: 1,
-            ..Limits::default()
-        };
-        let mut registry = Registry::new(vec![], &limits, crate::config::Server::default());
-        registry.host(7, game);
-        let registry = Arc::new(Mutex::new(registry));
-        let fake = Fake { inbound, outbound };
-        let origin = IpAddr::from([127, 0, 0, 1]);
-        let task = tokio::spawn(serve(
-            fake,
-            ConnId(4),
-            origin,
-            Arc::clone(&registry),
-            Limits::default(),
-            "s".into(),
-            watch::channel(false).1,
-        ));
-        for message in [
-            ClientMessage::Hello {
+    /// A connection's task over a fake transport, with game 7 hosted in its registry.
+    struct Rig {
+        /// What the client sends.
+        client: mpsc::UnboundedSender<Incoming>,
+        /// What the task sent the client.
+        sent: mpsc::UnboundedReceiver<String>,
+        /// What the task told game 7.
+        inbox: mpsc::Receiver<ToGame>,
+        registry: Shared,
+        task: tokio::task::JoinHandle<()>,
+    }
+
+    impl Rig {
+        fn new() -> Self {
+            let (client, inbound) = mpsc::unbounded_channel();
+            let (outbound, sent) = mpsc::unbounded_channel();
+            let (game, inbox) = mpsc::channel(8);
+            let limits = Limits {
+                games: 1,
+                games_per_address: 1,
+                ..Limits::default()
+            };
+            let mut registry = Registry::new(vec![], &limits, crate::config::Server::default());
+            registry.host(7, game);
+            let registry = Arc::new(Mutex::new(registry));
+            let counts = Arc::new(Mutex::new(Counts::default()));
+            let place = Place::take(&counts, [127, 0, 0, 1].into(), &limits).unwrap();
+            let task = tokio::spawn(serve(
+                Fake { inbound, outbound },
+                ConnId(4),
+                place,
+                Arc::clone(&registry),
+                limits,
+                "s".into(),
+                watch::channel(false).1,
+            ));
+            Self {
+                client,
+                sent,
+                inbox,
+                registry,
+                task,
+            }
+        }
+
+        /// The client sends `message`.
+        fn says(&self, message: &ClientMessage) {
+            let text = codec::encode_text(message);
+            self.client.send(Incoming::Text(text)).unwrap();
+        }
+
+        /// The next frame the task sent the client, within a moment.
+        async fn next(&mut self) -> Option<String> {
+            timeout(Duration::from_secs(5), self.sent.recv())
+                .await
+                .ok()?
+        }
+
+        /// The next thing the task told the game, within a moment.
+        async fn told(&mut self) -> Option<ToGame> {
+            timeout(Duration::from_secs(5), self.inbox.recv())
+                .await
+                .ok()?
+        }
+
+        /// The client's hello and its join of game 7's `seat`: the game's queue to the client.
+        async fn joined(&mut self, seat: Seat) -> mpsc::Sender<Frame> {
+            self.says(&ClientMessage::Hello {
                 protocol: h3_protocol::PROTOCOL_VERSION,
                 client: String::new(),
                 name: String::new(),
-            },
-            ClientMessage::Join {
-                game: 7,
-                seat: h3_protocol::wire::Seat::Attacker,
-                token: None,
-            },
-        ] {
-            client
-                .send(Incoming::Text(codec::encode_text(&message)))
-                .unwrap();
+            });
+            self.says(&join(seat));
+            assert!(self.next().await.unwrap().contains("Welcome"));
+            let Some(ToGame::Open { conn, to }) = self.told().await else {
+                panic!("no open")
+            };
+            assert_eq!(conn, ConnId(4));
+            assert!(matches!(
+                self.told().await,
+                Some(ToGame::Message {
+                    message: ClientMessage::Join { game: 7, .. },
+                    ..
+                })
+            ));
+            to
         }
-        assert!(sent.recv().await.unwrap().contains("Welcome"));
-        let Some(ToGame::Open { conn, to }) = inbox.recv().await else {
-            panic!("no open")
-        };
-        assert_eq!(conn, ConnId(4));
-        assert!(matches!(
-            inbox.recv().await,
-            Some(ToGame::Message {
-                message: ClientMessage::Join { game: 7, .. },
-                ..
-            })
-        ));
-        to.send(Frame {
-            text: String::from("first"),
+    }
+
+    /// A join of game 7's `seat`.
+    fn join(seat: Seat) -> ClientMessage {
+        ClientMessage::Join {
+            game: 7,
+            seat,
+            token: None,
+        }
+    }
+
+    /// A frame from the game, `left` after the connection's `k`-th message if `Some(k)`.
+    fn frame(text: &str, left: Option<u64>) -> Frame {
+        Frame {
+            text: String::from(text),
             close: false,
-        })
-        .await
-        .unwrap();
+            left,
+        }
+    }
+
+    #[tokio::test]
+    async fn a_connection_whose_queue_the_game_dropped_is_too_slow() {
+        let mut rig = Rig::new();
+        let to = rig.joined(Seat::Attacker).await;
+        to.send(frame("first", None)).await.unwrap();
         drop(to);
-        assert_eq!(sent.recv().await.as_deref(), Some("first"));
+        assert_eq!(rig.next().await.as_deref(), Some("first"));
         let too_slow = goodbye(GoodbyeReason::TooSlow).text;
-        assert_eq!(sent.recv().await, Some(too_slow));
+        assert_eq!(rig.next().await, Some(too_slow));
         assert!(matches!(
-            inbox.recv().await,
+            rig.told().await,
             Some(ToGame::Closed { conn: ConnId(4) })
         ));
-        task.await.unwrap();
+        rig.task.await.unwrap();
         // The connection left the game it was bound to.
-        assert!(lock(&registry).close_if_idle(7, h3_protocol::wire::Phase::Waiting));
+        assert!(lock(&rig.registry).close_if_idle(7, Phase::Waiting));
+    }
+
+    /// E16 M2 T5b: a frame marked `left` after the connection's last message to the game makes it
+    /// leave the game; one marked after an earlier message does not (a join that followed may
+    /// have taken a seat).
+    #[tokio::test]
+    async fn a_refused_join_leaves_the_game_unless_another_message_followed() {
+        let mut rig = Rig::new();
+        let to = rig.joined(Seat::Attacker).await;
+        // A second join, passed before the game's answer to the first.
+        rig.says(&join(Seat::Defender));
+        assert!(matches!(rig.told().await, Some(ToGame::Message { .. })));
+        to.send(frame("refused", Some(1))).await.unwrap();
+        to.send(frame("joined", None)).await.unwrap();
+        assert_eq!(rig.next().await.as_deref(), Some("refused"));
+        assert_eq!(
+            rig.next().await.as_deref(),
+            Some("joined"),
+            "still in the game"
+        );
+        rig.says(&join(Seat::Attacker));
+        assert!(matches!(rig.told().await, Some(ToGame::Message { .. })));
+        to.send(frame("refused", Some(3))).await.unwrap();
+        assert_eq!(rig.next().await.as_deref(), Some("refused"));
+        assert!(matches!(
+            rig.told().await,
+            Some(ToGame::Closed { conn: ConnId(4) })
+        ));
+        assert!(lock(&rig.registry).close_if_idle(7, Phase::Waiting));
     }
 
     #[test]
@@ -596,6 +752,14 @@ mod tests {
         assert!(Place::take(&counts, a, &limits).is_none(), "per address");
         let third = Place::take(&counts, b, &limits).unwrap();
         assert!(Place::take(&counts, b, &limits).is_none(), "in total");
+        // The address's connections share its rate (E16 M2 T5b); another address has its own.
+        let now = Instant::now();
+        let shared = (0..limits.messages_per_address).all(|i| {
+            let place = if i % 2 == 0 { &first } else { &second };
+            place.admit(now)
+        });
+        assert!(shared && !first.admit(now) && !second.admit(now));
+        assert!(third.admit(now));
         drop(first);
         assert!(Place::take(&counts, a, &limits).is_some());
         drop((second, third));

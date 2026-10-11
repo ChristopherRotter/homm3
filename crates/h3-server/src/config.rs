@@ -13,9 +13,12 @@
 //! [limits]                           # every field optional, defaults below
 //! max_frame = 4096                   # bytes per client message
 //! messages_per_second = 20           # per connection
+//! messages_per_address = 40          # per second, across one address's connections
 //! connections = 64                   # in total
 //! connections_per_address = 8
 //! idle_timeout_ms = 300000           # no message within it closes the connection
+//! hello_timeout_ms = 10000           # no hello within it closes the connection
+//! lobby_timeout_ms = 60000           # in no game for this long closes the connection
 //! outbound_queue = 256               # frames waiting for a slow client; full drops it
 //! games = 16                         # games not over, in total
 //! games_per_address = 2              # games not over, created from one address
@@ -129,14 +132,22 @@ const YEAR_MS: u64 = 365 * 24 * 3_600_000;
 pub struct Limits {
     /// The largest client message, in bytes.
     pub max_frame: usize,
-    /// Messages per second per connection; more closes it.
+    /// Messages per second per connection; more closes it. WebSocket pings count too.
     pub messages_per_second: u32,
+    /// Messages per second across the connections of one address (E16 M2 T5b); the message
+    /// beyond it closes its connection.
+    pub messages_per_address: u32,
     /// Connections in total.
     pub connections: usize,
     /// Connections per remote address.
     pub connections_per_address: usize,
     /// No message within this many milliseconds closes a connection.
     pub idle_timeout_ms: u64,
+    /// No hello within this many milliseconds of the handshake closes a connection (E16 M2 T5b).
+    pub hello_timeout_ms: u64,
+    /// A connection in no game for this many milliseconds after its hello, or after it left one
+    /// (a refused join), is closed (E16 M2 T5b).
+    pub lobby_timeout_ms: u64,
     /// Frames waiting for a connection; a full queue drops it.
     pub outbound_queue: usize,
     /// Games not over, in total.
@@ -157,9 +168,12 @@ impl Default for Limits {
         Self {
             max_frame: DEFAULT_MAX_CLIENT_FRAME,
             messages_per_second: 20,
+            messages_per_address: 40,
             connections: 64,
             connections_per_address: 8,
             idle_timeout_ms: 300_000,
+            hello_timeout_ms: 10_000,
+            lobby_timeout_ms: 60_000,
             outbound_queue: 256,
             games: 16,
             games_per_address: 2,
@@ -172,8 +186,8 @@ impl Default for Limits {
 
 impl Limits {
     /// Checks every bound against its range: none is 0 but the spectators and the deadlines of
-    /// abandoned games (0: none), a frame holds a hello, and the idle timeout, the deadlines and
-    /// the queue stay where the clock's and the channel's arithmetic hold; a game is a thread.
+    /// abandoned games (0: none), a frame holds a hello, and the timeouts, the deadlines and the
+    /// queue stay where the clock's and the channel's arithmetic hold; a game is a thread.
     fn check(&self) -> Result<(), Error> {
         let wide = |n: usize| u64::try_from(n).unwrap_or(u64::MAX);
         let bounds = [
@@ -181,6 +195,12 @@ impl Limits {
             (
                 "messages_per_second",
                 u64::from(self.messages_per_second),
+                1,
+                u64::MAX,
+            ),
+            (
+                "messages_per_address",
+                u64::from(self.messages_per_address),
                 1,
                 u64::MAX,
             ),
@@ -192,6 +212,8 @@ impl Limits {
                 u64::MAX,
             ),
             ("idle_timeout_ms", self.idle_timeout_ms, 100, 86_400_000),
+            ("hello_timeout_ms", self.hello_timeout_ms, 100, 86_400_000),
+            ("lobby_timeout_ms", self.lobby_timeout_ms, 100, 86_400_000),
             ("outbound_queue", wide(self.outbound_queue), 1, 1 << 20),
             ("games", wide(self.games), 1, 4096),
             ("games_per_address", wide(self.games_per_address), 1, 4096),

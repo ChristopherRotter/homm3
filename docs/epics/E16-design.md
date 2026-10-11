@@ -112,7 +112,8 @@ packs directory: a scenario names its packs and profile), `[limits]` (M1's six a
 `games_per_address`), one `[[offer]]` per game configuration (`id`, `scenario`, `profile`,
 `bots`); the replay goes to `<data>/replays/<offer>-game<id>-<random>.toml`; `shadow_instance`
 in `[server]` since M2 T3, `spectators_per_game` in `[limits]` since M2 T4, `empty_game_ms` and
-`paused_game_ms` since M2 T5a. Still to come:
+`paused_game_ms` since M2 T5a, `messages_per_address`, `hello_timeout_ms` and `lobby_timeout_ms`
+since M2 T5b. Still to come:
 
 ```
 [server]      anonymous = true                                       # M3
@@ -156,7 +157,9 @@ contains seeds, tokens, nonces or signatures.
   decliner leaves the queue and the other stays at the front.
 - The game: a scenario from the pool, sides assigned at random, both seats bound to the
   players' accounts; a disconnect gives a grace period (configured), after which the absent
-  player forfeits.
+  player forfeits. A pause only by both players' agreement; one ranked game per player at a
+  time, a paused one included; the pause's length proposed within the ladder's bounds and
+  agreed, and at its due time the absent player forfeits (the user, 2026-10-11, SRV-Q13).
 - Rating: Glicko-2 with the published defaults (rating 1500, deviation 350, volatility 0.06,
   system constant 0.5), one rating period per game end, applied in the order games end; a draw
   is a half point. Only a game whose journal verified (§8) and whose seats were held by their

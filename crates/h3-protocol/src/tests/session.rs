@@ -1348,6 +1348,29 @@ fn the_host_suspends_a_running_game_whose_seats_are_empty() {
     assert_eq!(s.phase(), Phase::Running);
 }
 
+#[test]
+fn a_connection_holds_its_seat_or_its_watch_and_nothing_after_a_refused_join() {
+    let r = ruleset();
+    let (c, d) = (ConnId(5), ConnId(6));
+    let mut s = host(&r, 5, players());
+    assert!(!s.holds(A));
+    join(&mut s, A, Seat::Attacker, None);
+    join(&mut s, c, Seat::Spectator, None);
+    assert!(s.holds(A) && s.holds(c));
+    // The attacker's seat is taken: the join is refused, and the connection holds nothing.
+    let refused = join(&mut s, d, Seat::Attacker, None);
+    assert!(matches!(
+        to(&refused, d)[..],
+        [ServerMessage::Refused {
+            reason: Refusal::SeatTaken
+        }]
+    ));
+    assert!(!s.holds(d));
+    s.disconnected(c);
+    s.disconnected(A);
+    assert!(!s.holds(c) && !s.holds(A));
+}
+
 /// Game 1 of the `full` scenario with `seed` and a shadow instance.
 fn shadowed(seed: u64) -> GameConfig {
     GameConfig {
