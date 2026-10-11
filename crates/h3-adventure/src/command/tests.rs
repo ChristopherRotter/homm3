@@ -416,17 +416,12 @@ fn a_step_is_seen_by_its_owner_and_by_the_players_that_explored_its_tiles() {
     // The steps onto (1, 0) to (4, 0) are on tiles blue has not explored; the step onto (5, 0)
     // enters one it has.
     assert_eq!(seen, [red, red, red, red, both]);
-    // Leaving a tile blue has explored is seen too, onto a tile it has not explored as well.
-    move_hero(
-        &mut state,
-        &rules,
-        BLUE,
-        2,
-        &[p(9, 0), p(8, 0), p(7, 0), p(6, 0)],
-    )
-    .unwrap();
-    let back = move_hero(&mut state, &rules, RED, 1, &[p(4, 0)]).unwrap();
-    assert_eq!(back[0].seen_by, both);
+    // Leaving a tile blue has explored is seen too, onto one it has not: back from (5, 0) to
+    // (4, 0). Then from (4, 0) to (3, 0), neither of which blue has explored: red only.
+    let back = move_hero(&mut state, &rules, RED, 1, &[p(4, 0), p(3, 0)]).unwrap();
+    let seen: Vec<Viewers> = back.iter().map(|event| event.seen_by).collect();
+    assert_eq!(seen, [both, red]);
+    assert!(state.is_explored(BLUE, p(5, 0)) && !state.is_explored(BLUE, p(4, 0)));
 }
 
 #[test]

@@ -365,7 +365,7 @@ fn one_pack_provides_valid_parameters() {
     assert_eq!(
         players(MAX_PLAYERS + 1),
         Err(AdventureCompileError::InvalidParams(
-            "max_players is above 8"
+            "max_players is above MAX_PLAYERS"
         ))
     );
     assert_eq!(players(MAX_PLAYERS), Ok(MAX_PLAYERS));

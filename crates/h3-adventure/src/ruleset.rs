@@ -595,7 +595,7 @@ fn validate_params(def: AdventureParamsDef) -> Result<AdventureParams, Adventure
     } else if def.starting_stack_chances.iter().any(|&c| c > 100) {
         Some("a starting_stack_chances entry is above 100")
     } else if def.max_players.get() > MAX_PLAYERS {
-        Some("max_players is above 8")
+        Some("max_players is above MAX_PLAYERS")
     } else {
         None
     };
