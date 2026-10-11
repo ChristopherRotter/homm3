@@ -102,6 +102,34 @@ pub(super) fn client_messages() -> Vec<ClientMessage> {
             seq: 17,
             replay: "duel-game3-00000000000000ff".to_string(),
         },
+        ClientMessage::Login {
+            seq: 18,
+            login: "ann".to_string(),
+            key: "11".repeat(32),
+            signature: "22".repeat(64),
+            display: None,
+        },
+        ClientMessage::Login {
+            seq: 19,
+            login: "ann_1".to_string(),
+            key: "11".repeat(32),
+            signature: "22".repeat(64),
+            display: Some("Ann Smith".to_string()),
+        },
+        ClientMessage::Rekey {
+            seq: 20,
+            key: "33".repeat(32),
+            by_old: "44".repeat(64),
+            by_new: "55".repeat(64),
+        },
+        ClientMessage::Rename {
+            seq: 21,
+            display: "Ann B".to_string(),
+        },
+        ClientMessage::SetListed {
+            seq: 22,
+            listed: false,
+        },
     ];
     out.extend(
         commands()
@@ -139,6 +167,13 @@ pub(super) fn server_messages() -> Vec<ServerMessage> {
         ServerMessage::Welcome {
             protocol: PROTOCOL_VERSION,
             server: "h3-server 0.1.0".to_string(),
+            id: "wss://h3.example.org".to_string(),
+            challenge: "07".repeat(32),
+        },
+        ServerMessage::Account {
+            seq: 18,
+            display: "Ann Smith".to_string(),
+            listed: true,
         },
         ServerMessage::Joined {
             game: 1,
@@ -274,6 +309,11 @@ pub(super) fn server_messages() -> Vec<ServerMessage> {
             Refusal::NoSuchOffer,
             Refusal::TooManyGames,
             Refusal::Draining,
+            Refusal::BadLogin,
+            Refusal::BadName,
+            Refusal::NameTaken,
+            Refusal::NotLoggedIn,
+            Refusal::AlreadyLoggedIn,
         ]
         .map(|reason| ServerMessage::Refused { reason }),
     );
@@ -375,6 +415,17 @@ fn the_json_is_serdes_default_enum_form() {
     assert_eq!(
         serde_json::to_string(&info).unwrap(),
         r#"{"game":3,"offer":"duel","phase":"Running","open":[],"spectators":true}"#
+    );
+    // E16 M3 T1: a login, keys and signatures as hex.
+    assert_eq!(
+        text(&ClientMessage::Login {
+            seq: 1,
+            login: "ann".to_string(),
+            key: "ab".to_string(),
+            signature: "cd".to_string(),
+            display: None,
+        }),
+        r#"{"Login":{"seq":1,"login":"ann","key":"ab","signature":"cd","display":null}}"#
     );
 }
 

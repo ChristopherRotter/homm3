@@ -476,8 +476,8 @@ impl<'r> Session<'r> {
     }
 
     /// Handles what connection `conn` sent after its hello; the frames to send go to `out`. The
-    /// hello and the ping are the connection's ([`crate::connection`]), the lobby's messages the
-    /// host's ([`crate::lobby`]); they are ignored here.
+    /// hello, the ping and the account's requests are the connection's ([`crate::connection`]),
+    /// the lobby's messages the host's ([`crate::lobby`]); they are ignored here.
     pub fn handle(&mut self, conn: ConnId, message: ClientMessage, out: &mut Vec<Outbound>) {
         match message {
             ClientMessage::Join { game, seat, token } => self.join(conn, (game, seat), token, out),
@@ -491,9 +491,14 @@ impl<'r> Session<'r> {
                 self.disconnected(conn);
                 out.push(goodbye(conn, GoodbyeReason::Left));
             }
-            // The connection's and the lobby's (`crate::lobby`), not the game's.
+            // The connection's (`crate::connection`: the hello, the ping, the account's) and the
+            // lobby's (`crate::lobby`), not the game's.
             ClientMessage::Hello { .. }
             | ClientMessage::Ping { .. }
+            | ClientMessage::Login { .. }
+            | ClientMessage::Rekey { .. }
+            | ClientMessage::Rename { .. }
+            | ClientMessage::SetListed { .. }
             | ClientMessage::ListGames { .. }
             | ClientMessage::CreateGame { .. }
             | ClientMessage::ListReplays { .. }

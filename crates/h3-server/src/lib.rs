@@ -137,7 +137,11 @@ pub async fn start(config: &Config) -> Result<Running, Error> {
     let address = listener
         .local_addr()
         .map_err(|e| Error(format!("bind {}: {e}", config.server.bind)))?;
-    let server: Arc<str> = Arc::from(server_name());
+    // The server's id: the address it listens on until `[server] public_url` (E16 M3 T2a).
+    let server = Arc::new(net::Identity {
+        program: server_name(),
+        id: format!("ws://{address}"),
+    });
     let (stop, stopping) = watch::channel(false);
     let sweeper = tokio::spawn(registry::sweep_every(Arc::clone(&registry), config.limits));
     let shared = Arc::clone(&registry);

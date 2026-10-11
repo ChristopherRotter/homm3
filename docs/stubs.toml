@@ -23,4 +23,10 @@ epic   = "E08"
 
 # --- server (SRV-STUB-<n>) ---
 
+[[stub]]
+id     = "SRV-STUB-1"
+where  = "crates/h3-server/src/net.rs::serve"
+reason = "The wire and the hello gate carry logins since E16 M3 T1, but the server checks none yet: every account's request is refused `BadLogin` until the Authenticator and the player log (E16 M3 T2a)"
+epic   = "E16"
+
 # --- client (CLT-STUB-<n>) ---

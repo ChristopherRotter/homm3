@@ -19,7 +19,7 @@ use super::full;
 use super::wire::{client_messages, server_messages};
 use crate::PROTOCOL_VERSION;
 use crate::codec::{DEFAULT_MAX_CLIENT_FRAME, decode_client, decode_server, encode};
-use crate::connection::{Connection, Received};
+use crate::connection::{Connection, Host, Received};
 use crate::session::{ConnId, GameConfig, SeatKind, Session};
 use crate::wire::{ClientMessage, Seat};
 
@@ -234,14 +234,26 @@ fn check(frame: &[u8]) -> Result<(), TestCaseError> {
         prop_assert_eq!(decode_server(&encode(&message), usize::MAX), Ok(message));
     }
     // Through the hello gate into a running game, as the host passes it.
-    let mut gate = Connection::new(DEFAULT_MAX_CLIENT_FRAME);
+    let mut gate = Connection::new(
+        DEFAULT_MAX_CLIENT_FRAME,
+        [7; 32],
+        frame.len().is_multiple_of(2),
+    );
     let hello = ClientMessage::Hello {
         protocol: PROTOCOL_VERSION,
         client: String::new(),
         name: String::new(),
     };
-    gate.receive(&encode(&hello), "s");
-    if let Received::Game(message) = gate.receive(frame, "s") {
+    let host = Host {
+        program: "s",
+        id: "ws://s",
+    };
+    gate.receive(&encode(&hello), &host);
+    // A third of the frames reach a logged-in gate (E16 M3 T1), the account's requests too.
+    if frame.len().is_multiple_of(3) {
+        gate.logged_in(String::from("ann"));
+    }
+    if let Received::Game(message) = gate.receive(frame, &host) {
         let mut session = running();
         let mut out = Vec::new();
         session.handle(ConnId(1), message, &mut out);

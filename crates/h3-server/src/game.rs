@@ -33,6 +33,7 @@ use h3_battle::{BattleSide, BattleState, LegalCommands};
 use h3_content::Ruleset;
 use h3_contracts::BattleSetup;
 use h3_kernel::{Rng, StreamId};
+use h3_protocol::account::CHALLENGE_BYTES;
 use h3_protocol::session::{Bot, ConnId, Entry, GameConfig, Journal, Outbound, SeatKind, Session};
 use h3_protocol::wire::{self, ClientMessage, GameInfo, GoodbyeReason, Phase, Seat, ServerMessage};
 use h3_protocol::{codec, map};
@@ -168,6 +169,13 @@ pub(crate) enum ToGame {
 /// 64 bits of OS randomness (ADR-0018 point 8).
 pub(crate) fn os_u64() -> Result<u64, Error> {
     getrandom::u64().map_err(|e| Error(format!("OS randomness: {e}")))
+}
+
+/// A connection's challenge for a login (E16 M3 T1): 256 bits of OS randomness.
+pub(crate) fn challenge() -> Result<[u8; CHALLENGE_BYTES], Error> {
+    let mut bytes = [0u8; CHALLENGE_BYTES];
+    getrandom::fill(&mut bytes).map_err(|e| Error(format!("OS randomness: {e}")))?;
+    Ok(bytes)
 }
 
 /// A seat token: 128 bits of OS randomness as 32 hex digits (ADR-0018 point 6).
