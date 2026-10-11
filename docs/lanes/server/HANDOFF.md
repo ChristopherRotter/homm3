@@ -5,8 +5,8 @@ The server lane's living state; read after the global `docs/HANDOFF.md`. Format 
 ## Current state
 
 - **M1 closed (2026-10-11, SRV-Q12). M2 T1–T5a merged (#67, #71, #72, #76, #78, #79, #83); M2 T5b done (2026-10-11)** on `claude/server-hardening-fuzz-kxo4z4`: a rate per address, pings counted, the hello's and the lobby's deadlines, a refused join leaves the game; wire still 9. T5b was split again: **next M2 T5c** (`QUEUE.md`): memory bounded in bytes; then T5d, M2's closure and checkpoint. Review list for the M2 checkpoint: the epic file.
-- **Open for the user: SRV-Q13** (ranked games: one at a time, a pause only by agreement, the paused game's deadline; for M4's refinement). Not blocking M2.
-- **Shared changes on this branch** (06-security.md's bounds, the global HANDOFF's server row, a commit of their own): the pull request needs the label `cross-lane`, the user's consent asked.
+- **SRV-Q13 answered (for M4):** ranked games one at a time per player, a pause only by agreement, its length negotiated within the ladder's bounds, the absent player forfeits at the due time; the reading of "one at a time" is confirmed at M4's refinement.
+- **Shared changes on this branch** (06-security.md's bounds, the global HANDOFF's server row, a commit of their own): the pull request carries the label `cross-lane` (the user, 2026-10-11).
 - **ADR-0018 point 5 as amended:** the mapping's matches over the engine's enums are exhaustive, and since T4b its patterns over the observation's structs too; a new battle variant or observation field fails `h3-protocol`'s build until mapped (global HANDOFF trap).
 - **The 100 % gate** covers `h3-protocol` (logic); `h3-server` is an adapter outside it, tested end to end.
 - **Versions** (`docs/08-work-process.md`): `PROTOCOL_VERSION` (`h3-protocol`, 9 since M2 T5a's `Draining`; 8 was M2 T4c's spectator setting; bumped on every wire change), `RECORD_FORMAT_VERSION` (`h3-protocol`, 1), `JOURNAL_FORMAT_VERSION` (`h3-server`, 3 since M2 T4c's spectator setting; 2 was M2 T3's pause lines; a journal of another format is void at start).
@@ -43,7 +43,7 @@ The server lane's living state; read after the global `docs/HANDOFF.md`. Format 
 
 ### 2026-10-11 — M2 T5b, the connection's bounds
 
-#83 had merged; the branch restarted from `master`. The user asked about ranked games: SRV-Q13 (weighed; for M4), the ladder draft's point 8 amended. Split T5b into T5b and T5c (memory), the old T5c now T5d. Built T5b (`docs/epics/E16-log.md`, M2 T5b): `messages_per_address`, pings in the rate, `hello_timeout_ms` and `lobby_timeout_ms`, `Frame::left` with the message count; the automated seats' rate deferred to M3. Review list in the epic file.
+#83 had merged; the branch restarted from `master`. The user asked about ranked games: SRV-Q13, weighed and answered (for M4), the ladder draft's point 8 amended. Split T5b into T5b and T5c (memory), the old T5c now T5d. Built T5b (`docs/epics/E16-log.md`, M2 T5b): `messages_per_address`, pings in the rate, `hello_timeout_ms` and `lobby_timeout_ms`, `Frame::left` with the message count; the automated seats' rate deferred to M3. Review list in the epic file.
 
 ### 2026-10-11 — M2 T5a, shutdown, drain and deadlines
 

@@ -60,10 +60,11 @@ database system to install.
    game has no host and pauses only when both players agree (one proposes, the other accepts)
    and within the ladder's limit, else the absent player forfeits. A player whose ranked game
    on the server is not over starts no other ranked game there (both rules the user's,
-   2026-10-11). The paused ranked game's deadline and what happens at it: SRV-Q13, decided at
-   M4's refinement. A paused game is unloaded and listed as resumable for its participants; it
-   resumes from its journal when every seat is taken again (by account on a ladder, by token
-   otherwise).
+   2026-10-11). The pause's length is proposed within the ladder's bounds and agreed; at its due
+   time the disconnect grace runs, and a player not back forfeits (both absent: void, a no-show
+   each; the user, SRV-Q13). A paused game is unloaded and listed as resumable for its
+   participants; it resumes from its journal when every seat is taken again (by account on a
+   ladder, by token otherwise).
 9. **Bots on ladders.** A server may enter its own bot seats (a scripted or trained agent)
    under a bot account, flagged as such on the leaderboard: the AI plays people, and their
    games become records.

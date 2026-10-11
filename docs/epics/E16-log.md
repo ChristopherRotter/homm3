@@ -553,7 +553,8 @@ how and why the work went.
 - **The start.** #83 (T5a) was merged; the branch restarted from `master` (the scoped verify had
   no failing step but the example configuration's test, which read an edit made while it ran).
   The user asked about ranked games (one at a time, a pause only by agreement, the paused game's
-  deadline): recorded as SRV-Q13 for M4, the ladder ADR draft's point 8 amended. T5b as queued
+  deadline): weighed as SRV-Q13 and answered (the absent player forfeits; the pause's length
+  negotiated within the ladder's bounds), for M4; the ladder ADR draft's point 8 amended. T5b as queued
   held two tasks' worth again; split into T5b (this: the connection's bounds) and T5c (memory
   in bytes); the old T5c is T5d.
 - **The session core** (`h3-protocol`, logic, 100 %): `Session::holds` (a connection holds a seat
