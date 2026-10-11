@@ -4,21 +4,14 @@ Pre-refined tasks of the server lane, in order, then the inbox of discovered wor
 
 ## Tasks
 
-Epic: `docs/epics/E16-server.md` (in progress; M0 and M1 done 2026-10-10, ADR-0018). M1's checkpoint passed (SRV-Q12, 2026-10-11): M2 as cut below, each task about half a context (T1 done 2026-10-11); `signal` is added for T5, the journal keeps the token itself (T2). Work under the autonomy contract (`HANDOFF.md`).
-
-### E16 M2 T2 — The write-ahead journal and restore
-
-- **Scope:** `JOURNAL_FORMAT_VERSION` 1 and the journal file per game (`E16-design.md` §7): header, seed, setup, seats, one line per accepted command, the checkpoint hashes; each command line synced before its `Accepted` leaves (the session core hands the host the new journal lines with the frames, the host writes before it sends); restore at start (the header checked against the engine and content, the commands re-run, the games reopened with their seats empty); the seats' tokens across a restart (the token itself in the journal, the data directory's permissions documented; SRV-Q12 (d), the user), and an operator's copy of them, so that a seat whose `Joined` was lost can be re-taken (the M1 review); the replay as the finished journal.
-- **Acceptance:** an end-to-end test stops the server mid-battle and restarts it; the game resumes with the same state hash and the replay verifies; a journal of another engine or content identity ends its game void.
-- **Depends on:** T1 (done 2026-10-11).
-- **Status:** ready.
+Epic: `docs/epics/E16-server.md` (in progress; M0 and M1 done 2026-10-10, ADR-0018). M1's checkpoint passed (SRV-Q12, 2026-10-11): M2 as cut below, each task about half a context (T1 and T2 done 2026-10-11); `signal` is added for T5, the journal keeps the token itself (T2). Work under the autonomy contract (`HANDOFF.md`).
 
 ### E16 M2 T3 — Verification, pause and resume
 
 - **Scope:** every finished game re-run against its hashes before its replay is published (a mismatch marks it corrupt: void, the diagnosis kept, a log line); the ruleset hash recomputed from memory at the end; the shadow-instance option (off by default, `E16-design.md` §8); `Pause` and `Resume` for unranked games (the host or all seats), a paused game as a journal without an engine.
 - **Acceptance:** a corrupted journal is caught (tests flip a command and a hash); pause, restart, resume.
-- **Depends on:** T2.
-- **Status:** ready once T2 is done.
+- **Depends on:** T2 (done 2026-10-11): `Session::restore` and the journal (`E16-log.md`, M2 T2) are what pause and resume build on.
+- **Status:** ready.
 
 ### E16 M2 T4 — Spectators
 
@@ -30,9 +23,11 @@ Epic: `docs/epics/E16-server.md` (in progress; M0 and M1 done 2026-10-10, ADR-00
 
 - **Scope:** graceful shutdown on a signal (`tokio`'s `signal` feature, SRV-Q12 (c), the user: ADR-0018 point 3 amended in a `shared/` change first) and a drain mode that refuses new games; the rate limits hardened (per address across its connections; a separate limit for automated seats, T3's note); from the M1 review: memory bounded in bytes (a viewer's record, which `FetchRecord` sends whole and which grows with every query and rejection; the outbound queue; one `FetchRecord` in flight), a short deadline for the hello and the join (a connection that never joins holds its place until its idle timeout), WebSocket pings counted in the rate; the fuzz harness on the decoder (`cargo-fuzz`, `05-testing.md`); the replay download of finished games; the client's content check (`E16-design.md` §3) handed to the client lane (an inbox line in its `QUEUE.md`); the workload updated if the session core changed; the reviewer agent; the user's M2 checkpoint.
 - **Acceptance:** M2's exit (epic file, to be written at the checkpoint).
-- **Depends on:** T1–T4.
+- **Depends on:** T1–T4 (T1, T2 done).
 - **Status:** ready once T1–T4 are done.
 
 ## Inbox
 
 - 2026-10-11 (M2 T1): a connection whose join a game refused stays bound to it, and keeps a waiting game listed until it leaves or idles out; unbind on a refusal (the game would tell the task) with T5's hardening.
+- 2026-10-11 (M2 T2): after a restore a viewer's numbers and record start afresh (they are not journaled), so a record fetched after a restart begins at the re-take; keep the records across a restart (`server-data/records/`, design note §9) or document it for the client lane, with T5.
+- 2026-10-11 (M2 T2): the ids of games that ended or went void may be handed out again after a restart (the lobby continues after the restored games only); a client that re-joins an old id with its token gets `BadToken`. Persist the last id (a line in the data directory) if the ladders (M4) need ids unique for a server's life.

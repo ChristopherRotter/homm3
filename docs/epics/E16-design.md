@@ -67,20 +67,10 @@ only and a visible note. The server never reads anything from this check.
 
 ## 7. Journals: restore, pause, resume, upgrades (M2)
 
-- **Content.** A journal file per game: the replay header (packs, profile, ruleset hash,
-  engine and algorithm versions), the game seed, the setup, the seats (account ids or token
-  hashes), then one line per accepted command with its side, and every N commands a line with
-  the live state's hash. Finalized, it is the replay (`h3_sim::Replay`); the CLI's verifier
-  reads it.
-- **Write-ahead.** The command line is appended and synced before `Accepted` is sent. A crash
-  between apply and sync loses at most that command: on restore the client sees the state
-  before it and may resend (its `seq` tells it which).
-- **Restore at start.** For every open journal the server checks the header against its own
-  engine and content (`ReplayHeader::check`), re-runs the commands through a fresh engine
-  instance with a no-op sink, compares the recorded hashes on the way, and reopens the game
-  with its seats empty; participants rejoin by account or token and get a `Snapshot`. A header
-  that does not match, or a hash that does not, closes the game as void: its replay stays
-  available, no rating changes.
+- **Content, write-ahead, restore at start** are code since M2 T2 (`h3-server/src/journal.rs`,
+  `registry::restore`; `Session::restore` in `h3-protocol`; the record in `E16-log.md`): a journal
+  per game in `<data>/games/`, its entries synced before the frames that depend on them, re-run
+  at start, a journal that does not match or re-run moved to `<data>/void/`.
 - **Pause and resume.** A paused game is a journal without a running engine; `Resume` by its
   participants restores it as above. Unranked: the host or all seats may pause; ranked: both
   players agree, within the ladder's limit.
@@ -127,7 +117,8 @@ packs directory: a scenario names its packs and profile), `[limits]` (M1's six a
 [[ladder]]    id = "battle-arena"  scenario_pool = ["…"]  season = 1  pause = false  # M4
 ```
 
-`server-data/games/<game>.journal` (open) and `server-data/replays/<game>.toml` (finished),
+The journals (`<data>/games/<game>.journal`, open games), the replays (`<data>/replays/`,
+finished) and `<data>/void/` are code since M2 T2. Still to come:
 `server-data/records/<game>/<viewer>.jsonl`, `server-data/players.jsonl`,
 `server-data/ladders/<id>/results.jsonl` (M3, M4), snapshots beside the logs. The log never
 contains seeds, tokens, nonces or signatures.
