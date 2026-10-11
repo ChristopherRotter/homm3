@@ -38,13 +38,16 @@ counter echoed in acknowledgements. Neither reveals anything about other viewers
 
 All eight steps are code since M1 T3: steps 3 to 8 in `h3-protocol` (`connection.rs`,
 `session.rs`; the record's format there and in `wire.rs`), the host's parts (sockets, the OS
-seeds and tokens, the replay file) in `h3-server` (`game.rs`, `net.rs`).
+seeds and tokens, the replay file) in `h3-server` (`game.rs`, `net.rs`); the spectators of steps
+4 and 7 since M2 T4 (the battle's spectator viewer; `E16-log.md`).
 
 ## 2. Message catalogue (M2–M4 additions)
 
 The M1 messages, the manifest, the observation and the events are code since M1 T1
 (`crates/h3-protocol/src/wire.rs`, in the same form: struct variants in serde's default
-enum form). Later milestones add:
+enum form). Since M2 T4b the observation carries every field of the engine's observation, or
+the mapping names it as left out and why (`map/mod.rs`: a pattern per engine type, so a new
+field fails the build until it is mapped). Later milestones add:
 
 Client to server: M2: `ListGames { seq }` and `CreateGame { seq, offer, seat }` (code since M2
 T1: a game is created from one of the server's offers and its creator takes `seat` in it at
@@ -100,7 +103,7 @@ The configuration is code since M2 T1 (`crates/h3-server/src/config.rs`, the exa
 packs directory: a scenario names its packs and profile), `[limits]` (M1's six and `games`,
 `games_per_address`), one `[[offer]]` per game configuration (`id`, `scenario`, `profile`,
 `bots`); the replay goes to `<data>/replays/<offer>-game<id>-<random>.toml`; `shadow_instance`
-in `[server]` since M2 T3. Still to come:
+in `[server]` since M2 T3, `spectators_per_game` in `[limits]` since M2 T4. Still to come:
 
 ```
 [server]      anonymous = true                                       # M3

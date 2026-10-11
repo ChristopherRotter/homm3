@@ -140,6 +140,8 @@ pub struct Limits {
     pub games: usize,
     /// Games not over, created from one address.
     pub games_per_address: usize,
+    /// Spectators watching one game at once (E16 M2 T4; 0: none).
+    pub spectators_per_game: usize,
 }
 
 impl Default for Limits {
@@ -153,13 +155,15 @@ impl Default for Limits {
             outbound_queue: 256,
             games: 16,
             games_per_address: 2,
+            spectators_per_game: 8,
         }
     }
 }
 
 impl Limits {
-    /// Checks every bound against its range: none is 0, a frame holds a hello, and the idle timeout
-    /// and the queue stay where the clock's and the channel's arithmetic hold; a game is a thread.
+    /// Checks every bound against its range: none is 0 but the spectators, a frame holds a hello,
+    /// and the idle timeout and the queue stay where the clock's and the channel's arithmetic
+    /// hold; a game is a thread.
     fn check(&self) -> Result<(), Error> {
         let wide = |n: usize| u64::try_from(n).unwrap_or(u64::MAX);
         let bounds = [
@@ -181,6 +185,12 @@ impl Limits {
             ("outbound_queue", wide(self.outbound_queue), 1, 1 << 20),
             ("games", wide(self.games), 1, 4096),
             ("games_per_address", wide(self.games_per_address), 1, 4096),
+            (
+                "spectators_per_game",
+                wide(self.spectators_per_game),
+                0,
+                1024,
+            ),
         ];
         for (name, value, min, max) in bounds {
             if !(min..=max).contains(&value) {

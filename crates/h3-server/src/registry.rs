@@ -56,21 +56,28 @@ pub(crate) struct Registry {
     offers: Vec<Arc<Offer>>,
     games: BTreeMap<u32, Hosted>,
     server: config::Server,
+    /// How many spectators each game takes (E16 M2 T4).
+    spectators: usize,
 }
 
 impl Registry {
-    /// A registry of `offers` and no games.
+    /// A registry of `offers` within `limits`, and no games.
     pub(crate) fn new(
         offers: Vec<Arc<Offer>>,
-        limits: lobby::Limits,
+        limits: &config::Limits,
         server: config::Server,
     ) -> Self {
         let infos = offers.iter().map(|o| o.info.clone()).collect();
+        let games = lobby::Limits {
+            games: limits.games,
+            games_per_origin: limits.games_per_address,
+        };
         Self {
-            lobby: Lobby::new(infos, limits),
+            lobby: Lobby::new(infos, games),
             offers,
             games: BTreeMap::new(),
             server,
+            spectators: limits.spectators_per_game,
         }
     }
 
@@ -142,7 +149,7 @@ pub(crate) fn create(
     let (game, index) = registry.lobby.create(origin, offer, seat)?;
     let offer = Arc::clone(&registry.offers[index]);
     let (to, inbox) = mpsc::channel(GAME_INBOX);
-    let started = Prepared::new(offer, game, origin, &registry.server)
+    let started = Prepared::new(offer, game, origin, (&registry.server, registry.spectators))
         .and_then(|prepared| prepared.spawn(inbox, Arc::clone(shared)));
     if let Err(e) = started {
         eprintln!("h3-server: game {game} not created: {e}");
@@ -197,7 +204,8 @@ pub(crate) fn bind(
             .find(|o| o.id == read.start.offer)
             .cloned()
             .ok_or_else(|| format!("the server offers no `{}` now", read.start.offer))?;
-        Prepared::restored(offer, &path, read, &registry.server, None)
+        let host = (&registry.server, registry.spectators);
+        Prepared::restored(offer, &path, read, host, None)
     });
     let prepared = match prepared {
         Ok(prepared) => prepared,
@@ -255,7 +263,8 @@ pub(crate) async fn restore(shared: &Shared) -> Result<(), Error> {
                 .find(|o| o.id == read.start.offer)
                 .cloned()
                 .ok_or_else(|| format!("the server offers no `{}` now", read.start.offer))?;
-            Prepared::restored(offer, &path, read, &registry.server, Some((to, done)))
+            let host = (&registry.server, registry.spectators);
+            Prepared::restored(offer, &path, read, host, Some((to, done)))
         });
         match prepared {
             Ok(prepared) => {

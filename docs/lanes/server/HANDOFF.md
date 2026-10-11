@@ -4,11 +4,11 @@ The server lane's living state; read after the global `docs/HANDOFF.md`. Format 
 
 ## Current state
 
-- **M1 closed (2026-10-11, SRV-Q12). M2 T1 (#67) and T2 (#71) merged; M2 T3 done (2026-10-11)** on `claude/gifted-goodall-kjo7yi`: every finished game verified from its journal on disk before its replay is published (void otherwise), the ruleset hash recomputed, the shadow-instance option, `Pause` by the host and resume by a seat's join with its token (wire 5, journal format 2). **Next:** T4 waits for the battle lane's spectator viewer, so **M2 T5** (`QUEUE.md`), then T4 when it can. Review list for the M2 checkpoint: the epic file.
-- **Shared changes on this branch** (the global HANDOFF's server row, `06-security.md`'s hosted games): a separate commit; the pull request carries the label `cross-lane` (the user, 2026-10-11, again for T3).
-- **ADR-0018 point 5 as amended:** the mapping's matches over the engine's enums are exhaustive; a new battle variant fails `h3-protocol`'s build until mapped (global HANDOFF trap).
+- **M1 closed (2026-10-11, SRV-Q12). M2 T1–T4 merged (#67, #71, #72, #76); M2 T4b done (2026-10-11)** on `claude/modest-turing-ttgjo8`: the observation's fields E04b T9a added on the wire, every engine field mapped or left out by name (wire 7). **Next: M2 T4c** (`QUEUE.md`): the host's spectator setting (the user asked for it and answered its two questions: before the start only, open by default); then T5. Review list for the M2 checkpoint: the epic file.
+- **Shared changes on this branch** (the global HANDOFF's server row and its trap on the engine's fields): a separate commit; the pull request carries the label `cross-lane` (the user, 2026-10-11, as for T2–T4).
+- **ADR-0018 point 5 as amended:** the mapping's matches over the engine's enums are exhaustive, and since T4b its patterns over the observation's structs too; a new battle variant or observation field fails `h3-protocol`'s build until mapped (global HANDOFF trap).
 - **The 100 % gate** covers `h3-protocol` (logic); `h3-server` is an adapter outside it, tested end to end.
-- **Versions** (`docs/08-work-process.md`): `PROTOCOL_VERSION` (`h3-protocol`, 5 since M2 T3's pause; 4 was M2 T1's lobby; bumped on every wire change), `RECORD_FORMAT_VERSION` (`h3-protocol`, 1), `JOURNAL_FORMAT_VERSION` (`h3-server`, 2 since M2 T3's pause lines; a journal of another format is void at start).
+- **Versions** (`docs/08-work-process.md`): `PROTOCOL_VERSION` (`h3-protocol`, 7 since M2 T4b's observation fields; 6 was M2 T4's spectators; bumped on every wire change), `RECORD_FORMAT_VERSION` (`h3-protocol`, 1), `JOURNAL_FORMAT_VERSION` (`h3-server`, 2 since M2 T3's pause lines; a journal of another format is void at start).
 - The lane owns (`lanes.toml`) `h3-protocol`, `h3-server`, `benches/server/` and E16's files; the workspace files stay shared. **Checkpoints** per milestone, under the autonomy contract below; a fresh reviewer agent checks each milestone before the user does. The identity and discovery ADR drafts are decided at the M3 refinement.
 - **Ids:** questions `SRV-Q<n>`, quirks `SRV-QUIRK-<n>`, stubs `SRV-STUB-<n>`. ADR drafts go to `docs/lanes/server/adr-drafts/` and get a number when the user accepts them. Branches: `server/<task>`.
 
@@ -31,19 +31,20 @@ The server lane's living state; read after the global `docs/HANDOFF.md`. Format 
 - A socket closed over unread data is reset, and the reset makes the peer drop what it has not read yet (a `Goodbye`): the transport's close reads on for the peer's close (`net.rs`, `LINGER`). The flooding test catches a regression only in most runs, not all.
 - A journal's line holds tokens: errors from reading one name the line and column, never its text (serde_json's messages quote values); a log line never carries a hash either (`journal.rs`).
 - Write-ahead order in a game's thread: drain the session's entries and sync them before `deliver`; anything new that changes what a restart must redo needs an `Entry`, or the restore diverges from what clients were told (T3's resume is one: `Entry::Resumed`).
+- The observation's mapping (`map/mod.rs`) names every field of the engine's types in patterns, without `..`: a field left out gets `name: _` under a comment with its reason. A field read through a method (`s.attack_now`) still needs its pattern entry.
 - A paused game has no thread: the registry's `Hosted::Paused` holds its tokens, and `registry::bind` restores it for a join. A game's thread ignores `ToGame::Open` (nothing changed until the join), or a resuming game, still paused, would pause again before its join.
 - **The workload is lane-only and follows `master`:** 55 % of its count is the battle engine, so battle changes move it and the full verify (CI) does not measure it. At each session's start `verify --scope server` measures it; a drift there came from `master`: re-baseline (`cargo xtask bench-check --update --workload session-random-play-full`) and name the range in the commit. Measure only with the file's arguments (they shift the heap `malloc` walks).
 
 ## Recent sessions
 
+### 2026-10-11 — M2 T4b, the observation's completeness
+
+#76 had merged; the branch restarted from `master` (the scoped verify had no failing step but coverage, whose LLVM paths were not set; the workload −0.39 %). The user asked whether a host can turn spectators off: no, only the operator for every game; queued as T4c. Built T4b (`docs/epics/E16-log.md`, M2 T4b): the new fields per stack, per side and on the own hero; the effects' values; patterns over every engine struct of the observation. Review list in the epic file.
+
+### 2026-10-11 — M2 T4, spectators
+
+#72 had merged, and the battle lane's spectator viewer (#74) with it; the branch restarted from `master`. Built T4 (`docs/epics/E16-log.md`, M2 T4): a spectator per connection as its own viewer, the spectator's snapshot and public events, numbered `NotSeated` rejections, its record, the limit; the hygiene properties over spectators' bytes. The battle lane's note on the observation's new fields became T4b. Review list in the epic file.
+
 ### 2026-10-11 — M2 T3, verification, pause and resume
 
 #71 had merged; the branch started from `master` (the scoped verify had no failing step). Built T3 (`docs/epics/E16-log.md`, M2 T3): the end-of-game verification reads the journal back from disk, so a journal changed on disk is caught too; the shadow instance in the session core; pause by the host, a paused game kept by the registry with its tokens, a join with a token restoring it; the resume journaled (`Resumed`, found by the property test). Review list in the epic file.
-
-### 2026-10-11 — M2 T2, the journal
-
-#67 had merged; the branch started from `master` (the workload −0.10 %). Built T2 (`docs/epics/E16-log.md`, M2 T2): the session core hands the host `Entry`s, which the game's thread syncs before it sends a call's frames; `Session::restore` re-runs them (the re-run's entries must extend the journal's; a cut journal is completed); a JSON-lines journal per game with the tokens and the replay's TOML in its first line; restore at start before listening, void journals moved aside. An end-to-end test copies the data directory mid-battle and resumes on a second server. Review list in the epic file.
-
-### 2026-10-11 — M2 T1, many games
-
-The user merged #61 and asked for the next increment: SRV-Q12 answered, the branch restarted from `master` (the workload −0.12 % after the battle lane's T8c, no re-baseline). Built T1 (`docs/epics/E16-log.md`, M2 T1): the lobby's messages (wire 4), the sans-I/O lobby, offers, the registry and a thread per game. A game's leaving is decided under the registry's lock with the bindings, not by its own connection list (that would race a join). Review list in the epic file.

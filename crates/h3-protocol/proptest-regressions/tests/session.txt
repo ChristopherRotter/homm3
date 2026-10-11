@@ -1,0 +1,7 @@
+# Seeds for failure cases proptest has generated in the past. It is
+# automatically read and these particular cases re-run before any
+# novel cases are generated.
+#
+# It is recommended to check this file in to source control so that
+# everyone who runs the test benefits from these saved cases.
+cc 12d529cc1e667d0f0f1005845918cf6c0c750fa9d0496118a1522d7d95d4622b # shrinks to acts = [(1, Join(Spectator, None))]

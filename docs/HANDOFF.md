@@ -7,17 +7,17 @@ Every session reads this file first, then its lane's `docs/lanes/<lane>/HANDOFF.
 | Lane | Owns (`lanes.toml`) | State | Files |
 |---|---|---|---|
 | battle | `h3-battle`, `h3-heroes`, `h3-content`, `h3-pack`, `h3-sim`, `h3-ffi`, `h3-cli`, the formats/tools crates, packs, fixtures, experiments | active: E04b inc. 19 = T9a + spectator viewer (`observe_as`); next T9b | [HANDOFF](lanes/battle/HANDOFF.md), [QUEUE](lanes/battle/QUEUE.md) |
-| adventure | `h3-adventure`, `h3-game`, `h3-map`, `h3-pack-adventure`; `src/adventure/` in `h3-sim` and `h3-cli`, `fixtures/replays/adventure/`, `docs/formats/h3m.md` | active: E08 increment 1 (T1–T7b done; next the user's checkpoint, then T8) | [HANDOFF](lanes/adventure/HANDOFF.md), [QUEUE](lanes/adventure/QUEUE.md) |
-| server | `h3-protocol`, `h3-server` | active: E16 M2: T3 done, T5 next (T4 waits) | [HANDOFF](lanes/server/HANDOFF.md), [QUEUE](lanes/server/QUEUE.md) |
+| adventure | `h3-adventure`, `h3-game`, `h3-map`, `h3-pack-adventure`; `src/adventure/` in `h3-sim` and `h3-cli`, `fixtures/replays/adventure/`, `docs/formats/h3m.md` | active: E08 increment 1 (T1–T8a done; next the user's checkpoint, then T8b) | [HANDOFF](lanes/adventure/HANDOFF.md), [QUEUE](lanes/adventure/QUEUE.md) |
+| server | `h3-protocol`, `h3-server` | active: E16 M2: T4b done, T4c next | [HANDOFF](lanes/server/HANDOFF.md), [QUEUE](lanes/server/QUEUE.md) |
 | client | `clients/` (own Cargo workspace) | waits for the user's asset notes | [HANDOFF](lanes/client/HANDOFF.md), [QUEUE](lanes/client/QUEUE.md) |
 
 Shared (own pull request, merged first): `h3-kernel`, `h3-contracts`, workspace and gate files (`Cargo.toml`, `arch.toml`, `lanes.toml`, `xtask`, CI), ADRs, process docs, `BACKLOG.md`, this file. Common (any lane): `OPEN-QUESTIONS.md` and `docs/stubs.toml` (one block per lane), `Cargo.lock`, `docs/exe/map.toml` and `structs.toml` (one line per entry).
 
-- **GitHub and CI:** `ChristopherRotter/homm3` (private, free plan: Actions minutes are scarce). `.github/workflows/ci.yml` runs `check-lane` and the full `cargo xtask verify` on Linux for pull requests and `master`, but never twice for the same code (code fingerprint, `05-testing.md` "CI"), and weekly `cargo deny check advisories`. Changes reach `master` by pull request only; **open a pull request only when its branch is ready for merging**.
+- **GitHub and CI:** `ChristopherRotter/homm3` (private, free plan: Actions minutes are scarce). `ci.yml` runs `check-lane` and the full `cargo xtask verify` on Linux for pull requests and `master`, but never twice for the same code (code fingerprint, `05-testing.md` "CI"), and weekly `cargo deny check advisories`. Changes reach `master` by pull request only; **open a pull request only when its branch is ready for merging**.
 
 ## Traps for every lane
 
-- **Battle enums on the wire** (ADR-0018 point 5): a new `Command`, `EventKind`, `CommandError`, `CastTarget`, `DamageRoll` or `ObstacleKind` variant breaks `h3-protocol`'s build until mapped there (same PR with `cross-lane`, or server lane first).
+- **Battle types on the wire** (ADR-0018 point 5): a new `Command`, `EventKind`, `CommandError`, `CastTarget`, `DamageRoll` or `ObstacleKind` variant, or a field of `Observation`'s structs, breaks `h3-protocol`'s build until mapped (same PR, `cross-lane`, or server lane first).
 - **Hero-level properties** (a hero's available spells, a spell's mastery) are derived once in `h3-heroes` (ADR-0013 point 2, BAT-Q19): the adventure map calls the same functions, never a copy.
 
 **Sandbox and sync**

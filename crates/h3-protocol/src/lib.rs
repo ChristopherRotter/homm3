@@ -43,7 +43,7 @@ pub mod wire;
 
 /// The version of the wire protocol: sent in the hello and bumped on every change of the messages
 /// or their encoding (ADR-0018 point 4). Before 1.0 a server accepts exactly its own version.
-pub const PROTOCOL_VERSION: u32 = 5;
+pub const PROTOCOL_VERSION: u32 = 7;
 
 /// The version of the record's format (`wire::RecordHeader`, the `Record` message): bumped when
 /// its layout changes.

@@ -465,11 +465,12 @@ mod tests {
         let (client, inbound) = mpsc::unbounded_channel();
         let (outbound, mut sent) = mpsc::unbounded_channel();
         let (game, mut inbox) = mpsc::channel(8);
-        let limits = h3_protocol::lobby::Limits {
+        let limits = Limits {
             games: 1,
-            games_per_origin: 1,
+            games_per_address: 1,
+            ..Limits::default()
         };
-        let mut registry = Registry::new(vec![], limits, crate::config::Server::default());
+        let mut registry = Registry::new(vec![], &limits, crate::config::Server::default());
         registry.host(7, game);
         let registry = Arc::new(Mutex::new(registry));
         let fake = Fake { inbound, outbound };
