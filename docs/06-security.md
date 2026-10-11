@@ -29,6 +29,18 @@ untrusted files  ──bytes──▶ [formats adapter: validates, bounds, conve
 - **Side channels to consider:** RNG seed/stream state must not reach clients (it predicts rolls); saves and replays are exported *per viewer* (redacted) unless the requester is authorized (e.g., post-game); state hashes must not be computed over, or exposed in a form that leaks, hidden data; error messages must not reveal hidden facts ("no such hidden object at tile X" vs. "invalid").
 - **Hotseat** hiding is UI-level and out of scope for the core.
 
+### What a viewer may know: the adventure map (E08)
+
+The list the adventure epic owns (ADR-0016 points 5 and 6, ADR-0017 point 5); `h3_game::observe` and `project` implement it (E08 T8b1), the property tests of E08 T8b2 check it. A player viewer:
+
+- **Public facts:** the map's size and levels, the day, the turn group whose turn is running and which of its players still act, each player's colour; the ruleset (its profile included).
+- **Its own:** its explored tiles and their fringe (the hidden tiles touching an explored one, ADV-FOG-005), and its heroes in full: tile, army, movement points left.
+- **Explored tiles** show their current content (ADV-FOG-004): terrain, road, river, what objects cover there (blocked and visitable tiles), and the heroes standing there.
+- **The fringe** shows terrain, roads and rivers. Under `ADV-QUIRK-1` (the `faithful` profile) it also shows what objects cover there and the heroes standing there: an object's appearance is public there while its contents stay hidden (increment 1's objects have none; contents come with increment 2's objects).
+- **Another player's hero**, where the viewer sees its tile: its tile, owner and identity, never its army or movement points (ADV-FOG-006; what the original's right-click view shows comes with the battle seam).
+- **Events:** a hero's step is told to its owner and to the players who see the hero on the tile it leaves or enters, so the viewer learns of a move only where it can see it; a projected event names the viewer alone, since the full set of its viewers would tell which tiles other players explored. A move is refused onto an unexplored tile before anything else about that tile is checked (ADV-MOV-008), so a rejection says nothing about a hidden tile.
+- **Never:** any other tile, other players' explored tiles, the master seed, the streams, the state hash. A viewer that is not a player of the game sees the public facts and no tile.
+
 ## Denial of service and resource limits
 
 - Bounded command size and count per turn; bounded work per command (path search limits, list lengths).
