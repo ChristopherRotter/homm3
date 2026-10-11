@@ -7,7 +7,7 @@
 3. **Determinism replay tests** — recorded games (seed + commands) replay to identical events and state hashes; golden hashes compared per platform in CI (Linux, Windows; WASM once it exists), in debug and release, with and without `target-cpu=native` (ADR-0003). Any rule using floats or transcendentals adds a fixture exercising it, plus test vectors for `kernel::num` functions.
 4. **Conformance tests** — worked examples from sources; oracle comparisons (ADR-0009); original-data tests (local only, `--with-original-data`).
 5. **Statistical tests** — distributions of random mechanics across many seeds.
-6. **Fuzzing** (`cargo-fuzz`) — all parsers of untrusted input (map, archive, save, network/command decoding) and the command validator.
+6. **Fuzzing** (`cargo-fuzz`) — all parsers of untrusted input (map, archive, save, network/command decoding) and the command validator. Not set up yet: it needs a nightly toolchain and `libfuzzer-sys` (NCSA, not in `deny.toml`'s list), so it waits until a deep parser (maps, archives) wants coverage guidance. Meanwhile the network decoder has mutation tests on the stable toolchain (E16 M2 T5d, SRV-Q14: valid messages mutated in their bytes and values, `h3-protocol`'s `tests/mutation.rs`).
 7. **Mutation testing** (`cargo-mutants`) — periodic (not per-commit) on core crates; surviving mutants are triaged; a threshold is calibrated after the walking skeleton.
 8. **Benchmarks** — `criterion` (local wall time) and an instruction-count tool for deterministic CI regression checks.
 9. **Acceptance tests (BDD)** — later; Gherkin features under `features/`, each scenario referencing rule IDs. Not specified further now.
