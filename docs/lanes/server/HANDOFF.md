@@ -4,8 +4,7 @@ The server lane's living state; read after the global `docs/HANDOFF.md`. Format 
 
 ## Current state
 
-- **M1 done (2026-10-10), the user's checkpoint open** (SRV-Q12: the user reviews the list and the M2 cut; `signal` and the token in the journal are decided): T1–T3 merged; T4 on `claude/upbeat-babbage-8bcd7n`: the lane-only workload `session-random-play-full` (`h3-server-bench`, 273 M instructions in `serve_frame`), `docs/06-security.md`'s "Hosted games", the global HANDOFF's server row, the reviewer agent. The checkpoint decides the review list (epic file), the proposed M2 cut (`QUEUE.md`) and two stop-the-line items (the `signal` feature, tokens across a restart).
-- **Shared changes on this branch** (`xtask` bench-check: a workload's own binary and `lane_only`; `06-security.md`; the global row; `benches/README.md`): the session could push one branch only, so they are separate commits on it, and the pull request carries the label `cross-lane` (the user, 2026-10-10).
+- **M1 closed (2026-10-11, SRV-Q12; #61 merged). M2 T1 in progress** on `claude/upbeat-babbage-8bcd7n`: many games on one server (wire protocol 4: `ListGames`/`Games`, `CreateGame`/`GameCreated`; a sans-I/O `lobby` in `h3-protocol`; offers in a sectioned configuration, a registry and a thread per game in `h3-server`). Done: nothing yet. Next: the wire and the lobby, then the server.
 - **ADR-0018 point 5 as amended:** the mapping's matches over the engine's enums are exhaustive; a new battle variant fails `h3-protocol`'s build until mapped (global HANDOFF trap).
 - **The 100 % gate** covers `h3-protocol` (logic); `h3-server` is an adapter outside it, tested end to end.
 - **Versions** (`docs/08-work-process.md`): `PROTOCOL_VERSION` (`h3-protocol`, 3 since the battle lane's `OpeningSpell` event, BAT-MAG-068; bumped on every wire change), `RECORD_FORMAT_VERSION` (`h3-protocol`, 1), `JOURNAL_FORMAT_VERSION` (`h3-server`, M2).
