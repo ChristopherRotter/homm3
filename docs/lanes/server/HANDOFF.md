@@ -5,7 +5,7 @@ The server lane's living state; read after the global `docs/HANDOFF.md`. Format 
 ## Current state
 
 - **M1 closed (2026-10-11, SRV-Q12). M2 T1–T3 merged (#67, #71, #72); M2 T4 done (2026-10-11)** on `claude/gifted-goodall-kjo7yi`: spectators with the battle's spectator viewer (E04b T9a), up to `[limits] spectators_per_game`, each a viewer of its own (wire 6). **Next: M2 T4b** (`QUEUE.md`): the observation's fields T9a added, on the wire; then T5. Review list for the M2 checkpoint: the epic file.
-- **Shared changes on this branch** (the global HANDOFF's server row, `06-security.md`'s projection bullet): a separate commit; the pull request needs the label `cross-lane` with the user's consent, as for T2 and T3.
+- **Shared changes on this branch** (the global HANDOFF's server row, `06-security.md`'s projection bullet): a separate commit; the pull request carries the label `cross-lane` (the user, 2026-10-11, as for T2 and T3).
 - **ADR-0018 point 5 as amended:** the mapping's matches over the engine's enums are exhaustive; a new battle variant fails `h3-protocol`'s build until mapped (global HANDOFF trap).
 - **The 100 % gate** covers `h3-protocol` (logic); `h3-server` is an adapter outside it, tested end to end.
 - **Versions** (`docs/08-work-process.md`): `PROTOCOL_VERSION` (`h3-protocol`, 6 since M2 T4's spectators; 5 was M2 T3's pause; bumped on every wire change), `RECORD_FORMAT_VERSION` (`h3-protocol`, 1), `JOURNAL_FORMAT_VERSION` (`h3-server`, 2 since M2 T3's pause lines; a journal of another format is void at start).
