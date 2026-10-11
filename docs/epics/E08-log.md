@@ -389,3 +389,53 @@ fix-optional) and, during T7b, classified a new quirk and allowed the quirk flag
   Taken back to the user (ADR-0016): **32 × 32 leaves** (the user, 2026-10-11), the default.
   For T8: build observation planes word by word, not tile by tile, and batch a reveal's rows per
   leaf (one copy-on-write check per leaf).
+
+### Checkpoint after T7b/T5b and T8a (2026-10-11, `adventure/e08-t8a`)
+
+The user merged T7b/T5b (#69, #70), kept the query's one path per tile (the original's way; no
+exact search), answered A-1 in SoD (terrain, objects and creatures show on the fog's half-dark
+border; no path onto a dark tile, even an empty one) and took **T8a alone** of T8's split
+(T8a the reveal, T8b the projection). A-1 is confirmed as `ADV-QUIRK-1`, class fix-optional as
+the survey suggested (Q30's rule; the user may object at this checkpoint); its flag comes with
+T8b.
+
+- **T8a readings** (CR-3, survey §2 and §1.4; map entries). *The radius* (0x4E4070, H3API's
+  name confirmed): `skill_scouting` at the Scouting level; with Scouting and a Scouting specialty
+  × (1 + 0.05 × level) in f32, truncated; +1 each for Speculum (52) and Spyglass (53), worn or in
+  a worn combination. *The reveal* (0x49D160): the tiles of the map and level with
+  `sqrt(dx² + dy²) ≤ r + 0.5` (f64; 0x617B94 is `sqrt`), the bits of every player of the
+  revealer's team in each tile's vision word (u16 per tile at 0x6989F8, low byte one bit per
+  colour): VCMI's disk `dx² + dy² ≤ r² + r` exactly (ADV-Q5 settled). *When:* the move's step
+  reveals around its destination before the hero's position changes (0x48106B), a placed hero's
+  setup around the hero (0x486E25), the new day around every owned hero and further owned objects
+  (0x4C7C50, the hero loop read). *The pathfinder:* the expansion tests a neighbour's bit against
+  the current player's (0x69CCC4, written with the current player): unexplored is inaccessible
+  for a human player (0x4BADA0, record +0xE2) unless the search's mode argument is 3 (the
+  mouse's search passes 0; 3 not read); a computer player may step one tile in from an explored
+  tile, or anywhere while its record's +0x3E is above 0 (not read). Not read: what the reveal's
+  helper call and last argument do (a changed tile is queued; a call after the loop).
+- **T8a build.** `h3-adventure`: `fog::reveal` (a disk row by row, one `BitGrid::set_run` per
+  row, integer `isqrt`; ADV-FOG-002); `AdventureState` keeps one `BitGrid` of explored tiles per
+  player (`explored`, `is_explored`), each hero reveals around itself to its owner after the
+  setup is checked (ADV-FOG-001, -003); `MoveHero` checks each step's tile for being explored
+  (the tiles explored when the command is given) after the neighbour test and before every other
+  tile test, a tile off the map still `Blocked { Outside }`: `AdventureCommandError::Unexplored`
+  (ADV-MOV-008); after the move each step reveals around its tile and emits its event;
+  `AdventureEvent` is now `{ kind: AdventureEventKind, seen_by: Viewers }` (as the battle's
+  `Event`), `Viewers` a set of up to eight players, a step seen by its owner and by every player
+  that explored the tile it leaves or enters (ADV-FOG-004); `Reach` skips unexplored tiles;
+  `MAX_PLAYERS` = 8 bounds the part's `max_players` (a compile error above). State hash v3 (the
+  explored layers). `h3-game`: the move's test sees both players (a 4 × 4 map). Tests: the
+  shape against a tile-by-tile model (fixed cases and a property over map sizes, centres off the
+  map, levels and radii 0–11; 97 tiles at radius 5), the start's and each step's reveals, a path
+  past the explored tiles refused whole though its first steps would reveal them, the explored
+  test before the rock test, the steps' viewers, the query's limit at the explored edge, the hash.
+  The query's property on random maps now runs with fog on both sides. A test-only
+  `explore_all` keeps two pricing tests whose paths run past radius 5. The ten shipped maps that
+  import whole still build (`examples/original_data.rs`).
+- **Deviation:** the queue's scope said "batched per leaf"; the reveal writes one run per row
+  (T5b's measured path, about 2 400 instructions at radius 5 on 144 × 144). A per-leaf batch is
+  an API on `BitGrid`; T9's benchmark decides whether a step's reveal is worth it (inbox).
+- **For T8b:** a hero on a fringe tile was not asked (an object like the others, presumably);
+  `viewers` then adds the fringe under `ADV-QUIRK-1` in `faithful`; the observation reads the
+  grids word by word.

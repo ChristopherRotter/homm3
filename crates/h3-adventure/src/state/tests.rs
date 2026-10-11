@@ -467,4 +467,15 @@ fn the_hash_sees_content_not_sharing() {
     let mut moved = base.clone();
     moved.heroes[1].movement -= 1;
     assert_ne!(moved.state_hash(), base.state_hash());
+    // So are the explored tiles (v3): the heroes explored all of level 0, none of level 1.
+    let underground = Pos::new(1, 1, 1);
+    assert!(base.is_explored(PlayerId::new(0), Pos::new(3, 2, 0)));
+    assert!(!base.is_explored(PlayerId::new(0), underground));
+    let mut seen = base.clone();
+    seen.explored[0].set(underground, true);
+    assert_ne!(seen.state_hash(), base.state_hash());
+    assert_ne!(seen, base);
+    let mut seen_by_blue = base.clone();
+    seen_by_blue.explored[1].set(underground, true);
+    assert_ne!(seen_by_blue.state_hash(), seen.state_hash());
 }

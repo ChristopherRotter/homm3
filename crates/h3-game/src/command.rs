@@ -52,7 +52,7 @@ impl fmt::Display for GameCommandError {
 impl core::error::Error for GameCommandError {}
 
 /// What happened in the game. The game's own events are public facts: whose turn it is and the
-/// day; T8 adds the visibility of the contexts' events.
+/// day; an adventure event carries the players who may see it (E08 T8a).
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum GameEvent {
     /// A player ended its turn.
