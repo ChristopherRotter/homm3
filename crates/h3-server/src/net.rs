@@ -8,6 +8,11 @@
 //! all its connections, WebSocket pings included; the idle timeout; a deadline for the hello, then
 //! one for being in a game (a connection in the lobby holds a counted place). A join the game
 //! refused leaves the game, as if the connection had never joined.
+//!
+//! The login (E16 M3 T2a): an account's request is answered off the task ([`Accounts`]: the
+//! signatures, the player log's sync). Failed logins count per address, also across its
+//! connections' lifetimes: beyond `failed_logins_per_address` a minute, a login closes its
+//! connection `RateLimited`, as does any login from the address until the minute is over.
 
 use std::collections::BTreeMap;
 use std::future::Future;
@@ -17,7 +22,7 @@ use std::time::Duration;
 
 use futures_util::{SinkExt, StreamExt};
 use h3_protocol::codec;
-use h3_protocol::connection::{Connection, Host, Received};
+use h3_protocol::connection::{AccountRequest, Connection, Host, Received};
 use h3_protocol::session::ConnId;
 use h3_protocol::wire::{ClientMessage, GoodbyeReason, Refusal, RejectCode, ServerMessage};
 use tokio::net::{TcpListener, TcpStream};
@@ -27,6 +32,7 @@ use tokio_tungstenite::WebSocketStream;
 use tokio_tungstenite::tungstenite::Message;
 use tokio_tungstenite::tungstenite::protocol::WebSocketConfig;
 
+use crate::accounts::Accounts;
 use crate::config::Limits;
 use crate::game::{self, Frame, FromGame, ToGame};
 use crate::registry::{self, Opening, Shared, lock};
@@ -91,36 +97,59 @@ fn websocket_config(limits: &Limits) -> WebSocketConfig {
         .max_frame_size(Some(cap))
 }
 
-/// Messages per second of one connection, or of one address (E16 M2 T5b).
+/// Messages per second of one connection, or of one address (E16 M2 T5b); an address's failed
+/// logins a minute (E16 M3 T2a).
 #[derive(Debug)]
 struct Rate {
     /// The limit.
     limit: u32,
-    /// Where the current second started.
+    /// How long a window lasts.
+    window: Duration,
+    /// Where the current window started.
     since: Instant,
-    /// Messages in it.
+    /// Events in it.
     count: u32,
 }
 
 impl Rate {
+    /// A limit a second.
     fn new(limit: u32) -> Self {
+        Self::per(limit, Duration::from_secs(1))
+    }
+
+    /// A limit per `window`.
+    fn per(limit: u32, window: Duration) -> Self {
         Self {
             limit,
+            window,
             since: Instant::now(),
             count: 0,
         }
     }
 
-    /// Counts a message at `now`; `false` beyond the limit.
+    /// Whether the window that holds `now` is over.
+    fn over(&self, now: Instant) -> bool {
+        now.duration_since(self.since) >= self.window
+    }
+
+    /// Counts an event at `now`; `false` beyond the limit.
     fn admit(&mut self, now: Instant) -> bool {
-        if now.duration_since(self.since) >= Duration::from_secs(1) {
+        if self.over(now) {
             self.since = now;
             self.count = 0;
         }
         self.count = self.count.saturating_add(1);
         self.count <= self.limit
     }
+
+    /// Whether the limit is reached at `now`: the next event would be beyond it.
+    fn full(&self, now: Instant) -> bool {
+        !self.over(now) && self.count >= self.limit
+    }
 }
+
+/// The window of an address's failed logins (E16 M3 T2a).
+const FAILED_LOGINS_WINDOW: Duration = Duration::from_secs(60);
 
 /// The game a connection is bound to (E16 M2 T1): its inbox and the connection's queue for it, and
 /// how many messages the connection passed it (E16 M2 T5b: a refused join's frame names its
@@ -168,14 +197,18 @@ async fn from_game(bound: &mut Option<Bound>) -> Option<Frame> {
     }
 }
 
-/// The server as its welcome names it (E16 M3 T1): the program and the server's id, the address
-/// its clients dial.
+/// What every connection's task shares (E16 M3): the server as its welcome names it, whether it
+/// takes anonymous players, its accounts.
 #[derive(Debug)]
-pub(crate) struct Identity {
+pub(crate) struct Service {
     /// The program's name and version.
     pub program: String,
-    /// The server's id.
+    /// The server's id: the address its clients dial, which a login signs.
     pub id: String,
+    /// Whether a connection may join or create a game without logging in (E16 M3 T2a).
+    pub anonymous: bool,
+    /// The accounts (E16 M3 T2a).
+    pub accounts: Accounts,
 }
 
 /// One connection's task: reads frames through the hello gate, answers the lobby's messages and
@@ -192,7 +225,7 @@ pub(crate) async fn serve<T: Transport>(
     place: Place,
     registry: Shared,
     limits: Limits,
-    server: Arc<Identity>,
+    server: Arc<Service>,
     mut stop: watch::Receiver<bool>,
 ) {
     // The login's challenge (E16 M3 T1): OS randomness, or no connection.
@@ -209,7 +242,7 @@ pub(crate) async fn serve<T: Transport>(
     let mut deadline = Instant::now() + idle;
     // The deadline to be in a game: the hello's first, then the lobby's (E16 M2 T5b).
     let mut unjoined = Some(Instant::now() + Duration::from_millis(limits.hello_timeout_ms));
-    let mut gate = Connection::new(limits.max_frame, challenge, true);
+    let mut gate = Connection::new(limits.max_frame, challenge, server.anonymous);
     let mut rate = Rate::new(limits.messages_per_second);
     let mut link = Link {
         conn,
@@ -259,8 +292,9 @@ pub(crate) async fn serve<T: Transport>(
                         left: None,
                         held: false,
                     },
-                    // stub: SRV-STUB-1 (logins are checked from E16 M3 T2a; until then none holds).
-                    Received::Account(_) => refused(Refusal::BadLogin),
+                    Received::Account(request) => {
+                        account(&server, &mut gate, &place, request).await
+                    }
                 }
             }
             Wake::Game(Some(frame)) => {
@@ -283,6 +317,50 @@ pub(crate) async fn serve<T: Transport>(
     }
     link.unbind().await;
     transport.close().await;
+}
+
+/// Answers an account's request (E16 M3 T2a) off the connection's task: the answer, or the
+/// connection's goodbye when its address failed too many logins.
+async fn account(
+    server: &Arc<Service>,
+    gate: &mut Connection,
+    place: &Place,
+    request: AccountRequest,
+) -> Frame {
+    let (seq, login) = match &request {
+        AccountRequest::Login { seq, login, .. } => (*seq, Some(login.clone())),
+        AccountRequest::Rekey { seq, .. }
+        | AccountRequest::Rename { seq, .. }
+        | AccountRequest::SetListed { seq, .. } => (*seq, None),
+    };
+    if login.is_some() && place.barred(Instant::now()) {
+        return goodbye(GoodbyeReason::RateLimited);
+    }
+    let shared = Arc::clone(server);
+    let answer = tokio::task::spawn_blocking(move || shared.accounts.answer(request))
+        .await
+        .unwrap_or(Err(Refusal::BadLogin));
+    match answer {
+        Ok(account) => {
+            if let Some(login) = login {
+                gate.logged_in(login);
+            }
+            Frame {
+                text: codec::encode_text(&ServerMessage::Account {
+                    seq,
+                    display: account.display,
+                    listed: account.listed,
+                }),
+                close: false,
+                left: None,
+                held: false,
+            }
+        }
+        Err(Refusal::BadLogin) if login.is_some() && !place.failed(Instant::now()) => {
+            goodbye(GoodbyeReason::RateLimited)
+        }
+        Err(reason) => refused(reason),
+    }
 }
 
 /// What became of a message for the lobby or a game.
@@ -512,11 +590,13 @@ struct Address {
     rate: Rate,
 }
 
-/// The open connections, in total and per address.
+/// The open connections, in total and per address; the addresses' failed logins (E16 M3 T2a),
+/// kept beyond their connections for the window.
 #[derive(Debug, Default)]
 struct Counts {
     total: usize,
     by_address: BTreeMap<IpAddr, Address>,
+    failures: BTreeMap<IpAddr, Rate>,
 }
 
 /// A counted connection; dropping it releases its place.
@@ -524,6 +604,8 @@ struct Counts {
 pub(crate) struct Place {
     counts: Arc<Mutex<Counts>>,
     address: IpAddr,
+    /// The address's failed logins a minute.
+    failed_logins: u32,
 }
 
 impl Place {
@@ -546,7 +628,26 @@ impl Place {
         Some(Self {
             counts: Arc::clone(counts),
             address,
+            failed_logins: limits.failed_logins_per_address,
         })
+    }
+
+    /// Whether the address failed its logins of the minute at `now` (E16 M3 T2a).
+    fn barred(&self, now: Instant) -> bool {
+        let c = self.counts.lock().unwrap_or_else(PoisonError::into_inner);
+        c.failures.get(&self.address).is_some_and(|r| r.full(now))
+    }
+
+    /// Counts a failed login of the address at `now`; `false` beyond its limit (E16 M3 T2a). The
+    /// addresses whose minute is over are forgotten.
+    fn failed(&self, now: Instant) -> bool {
+        let mut c = self.counts.lock().unwrap_or_else(PoisonError::into_inner);
+        c.failures.retain(|_, rate| !rate.over(now));
+        let limit = self.failed_logins;
+        c.failures
+            .entry(self.address)
+            .or_insert_with(|| Rate::per(limit, FAILED_LOGINS_WINDOW))
+            .admit(now)
     }
 
     /// Counts a message of the address at `now`; `false` beyond its limit (E16 M2 T5b).
@@ -578,7 +679,7 @@ pub(crate) async fn listen(
     listener: TcpListener,
     registry: Shared,
     limits: Limits,
-    server: Arc<Identity>,
+    server: Arc<Service>,
     mut stop: watch::Receiver<bool>,
 ) {
     let counts = Arc::new(Mutex::new(Counts::default()));
@@ -679,9 +780,16 @@ mod tests {
                 place,
                 Arc::clone(&registry),
                 limits,
-                Arc::new(Identity {
+                Arc::new(Service {
                     program: String::from("s"),
                     id: String::from("ws://s"),
+                    anonymous: true,
+                    accounts: Accounts::open(
+                        &std::env::temp_dir()
+                            .join(format!("h3-net-{:016x}", game::os_u64().unwrap())),
+                        Box::new(crate::accounts::Ed25519),
+                    )
+                    .unwrap(),
                 }),
                 watch::channel(false).1,
             ));

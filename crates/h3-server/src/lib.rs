@@ -10,6 +10,8 @@
 //! - `registry`: the lobby and the games' inboxes, shared by the tasks and the games' threads;
 //!   the restore at start; the sweep of abandoned games;
 //! - `net`: the listener and a `tokio` task per connection, behind the transport trait;
+//! - `accounts`: the logins, checked by the `Authenticator` (Ed25519), and `players`, the player
+//!   log they are kept in (M3 T2a);
 //! - [`client`]: a headless client for tests and tools;
 //! - [`bench`]: the session core's workload (`benches/server/`).
 //!
@@ -25,6 +27,7 @@ use tokio::net::TcpListener;
 use tokio::sync::watch;
 use tokio::task::JoinHandle;
 
+mod accounts;
 mod archive;
 pub mod bench;
 pub mod client;
@@ -32,6 +35,7 @@ pub mod config;
 pub mod game;
 mod journal;
 mod net;
+mod players;
 mod registry;
 
 #[cfg(test)]
@@ -116,9 +120,11 @@ pub fn server_name() -> String {
     format!("h3-server {}", env!("CARGO_PKG_VERSION"))
 }
 
-/// Compiles the offers, restores the games the data directory's journals hold, and listens: call
-/// from a `tokio` runtime. Games are created by clients (`CreateGame`), each on its own thread.
+/// Compiles the offers, reads the accounts back, restores the games the data directory's journals
+/// hold, and listens: call from a `tokio` runtime. Games are created by clients (`CreateGame`),
+/// each on its own thread.
 pub async fn start(config: &Config) -> Result<Running, Error> {
+    let accounts = accounts::Accounts::open(&config.server.data, Box::new(accounts::Ed25519))?;
     let offers = config
         .offers
         .iter()
@@ -137,10 +143,16 @@ pub async fn start(config: &Config) -> Result<Running, Error> {
     let address = listener
         .local_addr()
         .map_err(|e| Error(format!("bind {}: {e}", config.server.bind)))?;
-    // The server's id: the address it listens on until `[server] public_url` (E16 M3 T2a).
-    let server = Arc::new(net::Identity {
+    // The server's id: its public URL, else the address it listens on (E16 M3 T2a).
+    let server = Arc::new(net::Service {
         program: server_name(),
-        id: format!("ws://{address}"),
+        id: config
+            .server
+            .public_url
+            .clone()
+            .unwrap_or_else(|| format!("ws://{address}")),
+        anonymous: config.server.anonymous,
+        accounts,
     });
     let (stop, stopping) = watch::channel(false);
     let sweeper = tokio::spawn(registry::sweep_every(Arc::clone(&registry), config.limits));
