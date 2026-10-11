@@ -241,6 +241,32 @@ fn a_reborn_phoenix_comes_back_without_the_effects_it_died_with() {
     assert!(s.effects().is_empty());
 }
 
+// covers: BAT-MAG-059, BAT-MAG-044
+#[test]
+fn an_aged_phoenix_comes_back_whole() {
+    let r = ruleset();
+    let mut s = battle(&r, &[(0, "fixed", 1)], &[(0, "phoenix", 10)], 1);
+    // Age halves the ten phoenixes' 10 hit points; they die aged.
+    let id = spell(&r, "wither");
+    let cast = effects::TimedCast {
+        id,
+        spell: r.spell(id).unwrap(),
+        mastery: 0,
+        rounds: 3,
+        own: crate::magic::SpellBonus::default(),
+    };
+    effects::apply(&mut s, &r, cast, StackId(1), &mut Vec::<Event>::new());
+    assert_eq!(s.stacks()[1].max_hp, 5);
+    kill(&mut s, &r, 1);
+    let mut events = Vec::new();
+    rebirths(&mut s, &r, &mut events);
+    // The death ended Age before the rebirth counted the hit points (review r5b F-1, r4b F-2):
+    // ten div 5 come back with their full 10 hit points each, not one.
+    let phoenix = s.stacks()[1];
+    assert_eq!((phoenix.count, phoenix.max_hp, phoenix.top_hp), (2, 10, 10));
+    assert_eq!(reborn(&events), vec![(1, 2)]);
+}
+
 // covers: BAT-MAG-059, BAT-MAG-004
 #[test]
 fn an_active_phoenix_its_heros_spell_killed_comes_back_having_acted() {

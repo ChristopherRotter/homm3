@@ -310,7 +310,7 @@ pub(crate) fn rebirths<S: Sink>(state: &mut BattleState, ruleset: &Ruleset, sink
                 _ => None,
             })
             .unwrap_or(1);
-        let (start, health) = (stack.base_count, u64::from(stack.max_hp));
+        let start = stack.base_count;
         crate::casters::spend(state, s);
         let drawn = (0..start % divisor)
             .filter(|_| state.rng.below(divisor) == 0)
@@ -321,8 +321,11 @@ pub(crate) fn rebirths<S: Sink>(state: &mut BattleState, ruleset: &Ruleset, sink
         }
         state.at_mut(s).flags.set(StackFlags::ACTED, true);
         // Its effects end at its death (the original's 0x444120); the command's end has not
-        // removed them yet.
+        // removed them yet. The health is read after that, as the original's check reads it
+        // after the death routine (0x46959E): Age's end gave the hit points back (BAT-MAG-044),
+        // so an aged Phoenix comes back whole.
         crate::effects::remove_dead(state, ruleset);
+        let health = u64::from(state.at(s).max_hp);
         let (_, creatures) = revive(state, ruleset, s, u64::from(creatures) * health);
         sink.emit(Event::public(EventKind::Reborn {
             stack: s,
