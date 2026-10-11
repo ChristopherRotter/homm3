@@ -24,6 +24,11 @@
 //!   lobby by their display names as they stand whenever a seat's account changes (a rename shows
 //!   at the next one, *provisional*), and a finished game is listed only if its host left it open
 //!   to spectators and every seat's account lets its replays be listed.
+//! - **A game's bounds** (E16 M3 T4a). A game that reached `[limits] commands_per_game` commands
+//!   without an end is void: its connections hear `Goodbye { CommandLimit }`, it leaves the lobby
+//!   and its journal moves to `<data>/void/`, with no replay (a restored one too). A game that
+//!   waits for its players and none of whose seats is held any more leaves, whoever watches it:
+//!   its spectators hear `Goodbye { Abandoned }`.
 
 use std::collections::BTreeMap;
 use std::fs;
@@ -282,6 +287,8 @@ pub(crate) struct Prepared {
     data: PathBuf,
     /// How long its seats may all stay empty while it runs before it pauses (E16 M2 T5a).
     empty_game: Option<Duration>,
+    /// The commands it may hold (E16 M3 T4a): reaching them without an end voids it.
+    commands: usize,
     /// The server's accounts (E16 M3 T3).
     accounts: Arc<Accounts>,
     /// A new game or a restored one.
@@ -308,6 +315,11 @@ struct Restored {
     /// dropped when the re-run is done, however it went (the server listens after every one).
     /// `None` for a paused game a join resumes: the registry hosts it already (E16 M2 T3).
     listing: Option<(mpsc::Sender<ToGame>, oneshot::Sender<()>)>,
+}
+
+/// The commands a game may hold (E16 M3 T4a).
+fn commands(limits: &config::Limits) -> usize {
+    usize::try_from(limits.commands_per_game).unwrap_or(usize::MAX)
 }
 
 /// A deadline of `ms` milliseconds; none for 0 (E16 M2 T5a).
@@ -391,6 +403,7 @@ impl Prepared {
             replay_path,
             data: server.data.clone(),
             empty_game: deadline(limits.empty_game_ms),
+            commands: commands(limits),
             accounts,
             begin: Begin::New(journal),
         })
@@ -445,6 +458,7 @@ impl Prepared {
             replay_path,
             data: server.data.clone(),
             empty_game: deadline(limits.empty_game_ms),
+            commands: commands(limits),
             accounts,
             begin: Begin::Restored(Restored {
                 path: path.to_path_buf(),
@@ -479,6 +493,7 @@ impl Prepared {
             replay_path,
             data,
             empty_game,
+            commands,
             accounts,
             begin,
         } = self;
@@ -521,6 +536,12 @@ impl Prepared {
             }
         };
         let mut journal = Some(journal);
+        // Its last command reached the limit, and it is not over (E16 M3 T4a).
+        let past = |s: &Session<'_>| s.result().is_none() && s.journal().commands.len() >= commands;
+        if past(&session) {
+            let host = (data.as_path(), registry);
+            return too_long(game, (&BTreeMap::new(), &[]), journal, host, &mut inbox);
+        }
         let mut conns = BTreeMap::new();
         // How many messages each connection passed the game (E16 M2 T5b).
         let mut passed: BTreeMap<ConnId, u64> = BTreeMap::new();
@@ -602,6 +623,21 @@ impl Prepared {
                 lock(registry).pause(game, (tokens, owned(session.accounts())));
                 turn_away(&mut inbox, GoodbyeReason::Paused);
                 return eprintln!("h3-server: game {game} paused");
+            }
+            if past(&session) {
+                let host = (data.as_path(), registry);
+                return too_long(game, (&conns, &closed), journal, host, &mut inbox);
+            }
+            if session.phase() == Phase::Waiting && !session.seated() {
+                // Its spectators hear it; a connection whose join it refused leaves on its own.
+                let mut skip = closed;
+                skip.extend(conns.keys().copied().filter(|&conn| !session.holds(conn)));
+                close_all(&conns, &skip, GoodbyeReason::Abandoned);
+                lock(registry).leave(game);
+                // Outside the registry's lock (E16 M2 T5e): a removal is file I/O.
+                journal.into_iter().for_each(Writer::remove);
+                turn_away(&mut inbox, GoodbyeReason::Abandoned);
+                return eprintln!("h3-server: game {game} abandoned before it started");
             }
             if session.result().is_some()
                 && let Some(journal) = journal.take()
@@ -797,6 +833,28 @@ fn close_all(conns: &BTreeMap<ConnId, Outbox>, closed: &[ConnId], reason: Goodby
             });
         }
     }
+}
+
+/// Game `game` reached the server's limit of commands without an end (E16 M3 T4a): it is void.
+/// Every connection in `conns` but those in `closed` hears it, the game leaves the lobby, its
+/// journal moves to `<data>/void/` (no replay is written), and the connections on their way hear
+/// it too.
+fn too_long(
+    game: u32,
+    (conns, closed): (&BTreeMap<ConnId, Outbox>, &[ConnId]),
+    journal: Option<Writer>,
+    (data, registry): (&Path, &Shared),
+    inbox: &mut mpsc::Receiver<ToGame>,
+) {
+    close_all(conns, closed, GoodbyeReason::CommandLimit);
+    lock(registry).leave(game);
+    if let Some(journal) = journal {
+        let path = journal.path().to_path_buf();
+        drop(journal);
+        let why = "it reached the server's limit of commands without an end";
+        journal::void(data, &path, &game.to_string(), why);
+    }
+    turn_away(inbox, GoodbyeReason::CommandLimit);
 }
 
 /// The journal stopped: every connection hears the server shuts down (for this game), and the game

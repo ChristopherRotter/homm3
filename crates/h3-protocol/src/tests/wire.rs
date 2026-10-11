@@ -336,6 +336,8 @@ pub(super) fn server_messages() -> Vec<ServerMessage> {
             GoodbyeReason::Paused,
             GoodbyeReason::SpectatorsClosed,
             GoodbyeReason::Rekeyed,
+            GoodbyeReason::CommandLimit,
+            GoodbyeReason::Abandoned,
         ]
         .map(|reason| ServerMessage::Goodbye { reason }),
     );

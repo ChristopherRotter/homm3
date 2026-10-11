@@ -19,6 +19,7 @@ use crate::config::{BotSeat, Config, Content, Limits, Offer, Server};
 use crate::{Running, bench, game, registry, start};
 
 mod accounts;
+mod bounds;
 mod seats;
 
 fn root() -> PathBuf {
@@ -1626,6 +1627,8 @@ fn configurations_are_checked() {
         "empty_game_ms = 31536000001",
         "paused_game_ms = 31536000001",
         "failed_logins_per_address = 0",
+        "commands_per_game = 0",
+        "commands_per_game = 1000001",
     ] {
         let text = format!("{offer}[limits]\n{limit}");
         let error = refused(&text).unwrap_err();
@@ -1639,6 +1642,9 @@ fn configurations_are_checked() {
     );
     let doubled = refused(&format!("{offer}[limits]\nrecord_bytes = 1048576")).unwrap_err();
     assert!(doubled.0.contains("fit twice"), "{doubled}");
+    // A replay of the longest game fits in the outbound queue (E16 M3 T4a).
+    let long = refused(&format!("{offer}[limits]\ncommands_per_game = 20000")).unwrap_err();
+    assert!(long.0.contains("its replay"), "{long}");
     // The server's id is a WebSocket address (E16 M3 T2a).
     for url in [
         "",

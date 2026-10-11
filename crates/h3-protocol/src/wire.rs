@@ -1231,6 +1231,12 @@ pub enum GoodbyeReason {
     /// The account re-keyed on another connection (E16 M3 T3): a connection logged in with its
     /// former key closes; the player logs in again with the new one.
     Rekeyed,
+    /// The game reached the server's limit of commands without an end (E16 M3 T4a): it is void,
+    /// with no result and no replay.
+    CommandLimit,
+    /// The game had not started and none of its seats is held any more (E16 M3 T4a): it is gone,
+    /// and its spectators with it.
+    Abandoned,
 }
 
 /// A message from the server. `n` counts the messages a viewer received from its game, so a gap
