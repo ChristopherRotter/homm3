@@ -102,18 +102,19 @@ An *extension* (AB, SoD, later WoG/HotA) is a **content pack** (Tier 1–3 data)
 - Hot-path rules: no allocation in `apply`/`legal_commands` for battle; preallocated/fixed-capacity structures; dense handles instead of strings/maps; branch-light integer math.
 - Tracing/explain mode is a generic `Sink`/`Trace` parameter monomorphized to a no-op when unused.
 - Logic is single-threaded per game instance and `Send`; parallelism comes from running many instances.
-- **Targets (measured in E01, 2026-09-30)** — hardware: cloud vCPU, Intel Xeon @ 2.80 GHz, 1 core used; release profile; synthetic `full` scenario (7 stacks per side):
+- **Targets (measured in E01, 2026-09-30, and again at E04b T9b, 2026-10-11, on the casting workload: heroes with every kind of spell, creature magic, opening spells, Eagle Eye)** — hardware: cloud vCPU, Intel Xeon @ 2.80 GHz, 1 core used; release profile; synthetic `full` scenario (7 stacks per side):
 
-  | Measure | Result | Target / threshold |
-  |---|---|---|
-  | Random legal play, `legal_commands` + agent pick + `apply` (`h3 bench --games 2000`) | ≈ 245 k steps/s (≈ 4.1 µs/step) | ≥ 100 k steps/s/core (met) |
-  | criterion `step = legal_commands + pick + apply` (mid-game states) | 4.7 µs | — |
-  | criterion `legal_commands` alone | 2.6 µs | — |
-  | criterion `BattleEnv` step via action mask (mask 449 actions + decode + apply) | 6.8 µs | — |
-  | `BattleState` size / clone | 944 bytes / ≈ 90 ns (≈ 95 ns per KB) | clone ≪ 1 µs per KB (met) |
-  | `BattleEnv::fork` (clone + two `Arc` increments) | ≈ 260 ns | — |
-  | `state_hash` (FNV-1a over the canonical encoding) | ≈ 0.5 µs | fine for per-N-step checkpoints; revisit if search needs per-node hashing |
-  | Instruction count, `random-rollouts-full` workload | 387 614 575 Ir for 10 402 steps (≈ 37 k Ir/step) | **regression gate: +2 %** (`benches/battle/random-rollouts-full.toml`) |
+  | Measure | E01 | E04b T9b | Target / threshold |
+  |---|---|---|---|
+  | Random legal play, `legal_commands` + agent pick + `apply` (`h3 bench --games 2000`) | ≈ 245 k steps/s (≈ 4.1 µs/step) | ≈ 104 k steps/s (≈ 9.6 µs/step); ≈ 69 k with the flat observation encoded before each step (`--observe 1`) | ≥ 100 k steps/s/core (met) |
+  | criterion `step = legal_commands + pick + apply` (mid-game states) | 4.7 µs | 5.3 µs | — |
+  | criterion `legal_commands` alone | 2.6 µs | 3.2 µs | — |
+  | criterion `BattleEnv` step via action mask (mask 449 actions + decode + apply) | 6.8 µs | 2.4 µs (from a fresh reset) | — |
+  | criterion `observe` / `observe` + flat encoding (8 308 floats, encoding v13) | — | 1.0 µs / 3.5 µs | — |
+  | `BattleState` size / clone | 944 bytes / ≈ 90 ns (≈ 95 ns per KB) | 6 464 bytes / ≈ 0.67 µs (≈ 0.10 µs per KB) | clone ≪ 1 µs per KB (met) |
+  | `BattleEnv::fork` (clone + two `Arc` increments) | ≈ 260 ns | ≈ 2.25 µs | — |
+  | `state_hash` (FNV-1a over the canonical encoding) | ≈ 0.5 µs | ≈ 4.3 µs | fine for per-N-step checkpoints; revisit if search needs per-node hashing |
+  | Instruction count, `random-rollouts-full` workload | 387 614 575 Ir for 10 402 steps (≈ 37 k Ir/step) | 571 597 279 Ir for 7 388 steps (≈ 77 k Ir/step) | **regression gate: +2 %** (`benches/battle/random-rollouts-full.toml`) |
 
   Wall-time numbers are indicative (shared cloud CPU, ±5 %); the deterministic gate is the instruction count. Re-measure on the user's Ryzen when convenient.
 - **Adventure layers (measured in E08 T5b, 2026-10-11)**: a player's explored layer as a persistent grid (`h3_adventure::BitGrid`, ADR-0016 point 1) against a flat bitset copied by each fork, callgrind instructions per operation with twenty revealed disks (`crates/h3-adventure/examples/grid_bench.rs`; all leaf sizes in `E08-log.md`):

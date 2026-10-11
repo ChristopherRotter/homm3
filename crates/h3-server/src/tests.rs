@@ -937,6 +937,121 @@ async fn a_paused_game_resumes_with_a_seats_token_also_after_a_restart() {
 }
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn a_draining_server_refuses_new_games_and_stops_once_none_runs() {
+    let config = config(fast());
+    let running = start(&config).await.unwrap();
+    let (mut waiting, waiting_game, _) = created(&running, "pvp", Seat::Attacker).await;
+    let (a, _, _) = created(&running, "bot", Seat::Attacker).await;
+    assert_eq!(running.in_play(), 2);
+    running.drain();
+    // The waiting game ends, its journal with it; no game is created any more.
+    assert_eq!(goodbye(&mut waiting).await, GoodbyeReason::Shutdown);
+    let mut late = greeted(&running).await;
+    late.create("pvp", Seat::Attacker).await.unwrap();
+    assert_eq!(
+        late.recv().await,
+        Some(ServerMessage::Refused {
+            reason: Refusal::Draining
+        })
+    );
+    assert!(!journal_file(&config.server.data, waiting_game).exists());
+    // The running game plays on; once it is over the server is drained.
+    let undrained = tokio::time::timeout(Duration::from_millis(100), running.drained()).await;
+    assert!(undrained.is_err(), "a game runs");
+    let (mut a, _) = tokio::time::timeout(GAME_TIME, play(a, 3)).await.unwrap();
+    tokio::time::timeout(GAME_TIME, running.drained())
+        .await
+        .unwrap();
+    // Stopped, the connections hear it and no new one is taken.
+    let address = running.address;
+    running.shutdown().await;
+    assert_eq!(goodbye(&mut a).await, GoodbyeReason::Shutdown);
+    assert_eq!(goodbye(&mut late).await, GoodbyeReason::Shutdown);
+    assert!(Client::connect(address).await.is_err());
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn a_stopped_server_restores_its_games_at_its_next_start() {
+    let config = config(fast());
+    let running = start(&config).await.unwrap();
+    let (mut a, game, token) = created(&running, "bot", Seat::Attacker).await;
+    let seen = play_turns(&mut a, 5, 2).await;
+    assert!(matches!(seen.last(), Some(ServerMessage::YourTurn { .. })));
+    running.shutdown().await;
+    assert_eq!(goodbye(&mut a).await, GoodbyeReason::Shutdown);
+    assert!(journal_file(&config.server.data, game).exists());
+    // The next start on the same data directory has the game back, at the same turn.
+    let again = start(&config).await.unwrap();
+    assert_eq!(listed(&again).await[0].phase, Phase::Running);
+    let (mut back, after) = retaken(&again, game, Seat::Attacker, &token).await;
+    let Some(ServerMessage::YourTurn { legal, .. }) = after.last() else {
+        panic!("{after:?}")
+    };
+    let command = bench::choose(legal, &mut Rng::from_seed(6)).unwrap();
+    back.send(&ClientMessage::Command { seq: 1, command })
+        .await
+        .unwrap();
+    let (_, seen) = tokio::time::timeout(GAME_TIME, play(back, 7))
+        .await
+        .unwrap();
+    assert!(matches!(seen.last(), Some(ServerMessage::GameEnded { .. })));
+}
+
+/// Waits until the lobby lists game `game` in `phase`, or no more (`None`).
+async fn listed_as(running: &Running, game: u32, phase: Option<Phase>) {
+    let mut attempts = 0;
+    while listed(running)
+        .await
+        .iter()
+        .find(|g| g.game == game)
+        .map(|g| g.phase)
+        != phase
+    {
+        attempts += 1;
+        assert!(attempts < 250, "game {game} is never {phase:?}");
+        tokio::time::sleep(Duration::from_millis(20)).await;
+    }
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn an_abandoned_game_pauses_then_goes_void_at_its_deadlines() {
+    let limits = Limits {
+        empty_game_ms: 200,
+        paused_game_ms: 400,
+        ..fast()
+    };
+    let config = config(limits);
+    let running = start(&config).await.unwrap();
+    let (a, game, _) = created(&running, "bot", Seat::Attacker).await;
+    let (mut watcher, _) = (greeted(&running).await, ());
+    watcher.join(game, Seat::Spectator, None).await.unwrap();
+    // Its player gone, the running game pauses at its deadline: the spectator hears it.
+    a.close().await;
+    listed_as(&running, game, Some(Phase::Paused)).await;
+    assert!(matches!(
+        watcher.recv().await,
+        Some(ServerMessage::Joined { .. })
+    ));
+    assert!(matches!(
+        watcher.recv().await,
+        Some(ServerMessage::Snapshot { .. })
+    ));
+    assert_eq!(goodbye(&mut watcher).await, GoodbyeReason::Paused);
+    // Paused, nobody resumes it: it goes void, its journal moved aside.
+    listed_as(&running, game, None).await;
+    assert!(!journal_file(&config.server.data, game).exists());
+    let void: Vec<_> = std::fs::read_dir(config.server.data.join("void"))
+        .unwrap()
+        .map(|e| e.unwrap().file_name().to_string_lossy().into_owned())
+        .collect();
+    assert!(
+        void.iter()
+            .any(|name| name.starts_with(&format!("{game}-"))),
+        "{void:?}"
+    );
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn malformed_oversized_and_out_of_place_frames_close_the_connection() {
     let running = start(&config(Limits::default())).await.unwrap();
     // Before the hello, only the hello.
@@ -1123,6 +1238,8 @@ fn configurations_are_checked() {
         "games = 5000",
         "games_per_address = 0",
         "spectators_per_game = 1025",
+        "empty_game_ms = 31536000001",
+        "paused_game_ms = 31536000001",
     ] {
         let text = format!("{offer}[limits]\n{limit}");
         let error = refused(&text).unwrap_err();

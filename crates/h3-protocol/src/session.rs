@@ -528,6 +528,23 @@ impl<'r> Session<'r> {
             .collect()
     }
 
+    /// Whether a connection holds a seat (E16 M2 T5a): the host times a running game whose seats
+    /// all stay empty.
+    pub fn seated(&self) -> bool {
+        self.seats.iter().any(|seat| seat.holder.is_some())
+    }
+
+    /// Pauses the running game for the host when none of its seats is held (E16 M2 T5a: the
+    /// deadline of an abandoned game), as its host's `Pause` would; `false`, and nothing changes,
+    /// if the game does not run or a seat is held. Its spectators hear `Goodbye { Paused }`.
+    pub fn suspend(&mut self, out: &mut Vec<Outbound>) -> bool {
+        if self.phase() != Phase::Running || self.seated() {
+            return false;
+        }
+        self.halt(out);
+        true
+    }
+
     /// Whether the game takes spectators now, for the lobby's list (E16 M2 T4c): its host's
     /// setting, a limit above 0, and not paused (a paused game takes none).
     pub const fn takes_spectators(&self) -> bool {
@@ -744,6 +761,11 @@ impl<'r> Session<'r> {
             }
             return self.spectate(|n| ServerMessage::PauseAsked { n, seat }, out);
         }
+        self.halt(out);
+    }
+
+    /// Pauses the game: an entry, and every holder and spectator hears `Goodbye { Paused }`.
+    fn halt(&mut self, out: &mut Vec<Outbound>) {
         self.paused = true;
         self.entries.push(Entry::Paused);
         for held in &mut self.seats {

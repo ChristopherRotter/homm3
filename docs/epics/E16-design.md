@@ -80,11 +80,15 @@ only and a visible note. The server never reads anything from this check.
   per game in `<data>/games/`, its entries synced before the frames that depend on them, re-run
   at start, a journal that does not match or re-run moved to `<data>/void/`.
 - **Pause and resume** are code since M2 T3 (the record in `E16-log.md`): unranked, the host's
-  `Pause` pauses, a paused game is its journal, a seat's join with its token restores it. Still
-  to come: ranked, both players agree, within the ladder's limit (M4); a paused game's deadline
-  (`pause_hours`, M2 T5).
+  `Pause` pauses, a paused game is its journal, a seat's join with its token restores it. Since
+  M2 T5a a running game whose seats all stay empty for `[limits] empty_game_ms` pauses, and a
+  paused game nobody resumes within `paused_game_ms` is void. Still to come: ranked, both players
+  agree, within the ladder's limit (M4).
 - **Upgrades.** A drain mode refuses new games and lets open ones finish; the operator then
-  upgrades. Games left open across an upgrade whose engine or content identity changed are
+  upgrades. Code since M2 T5a: the first SIGINT or SIGTERM drains (`Refused { Draining }` for a
+  creation, a waiting game ends, running and paused ones go on), the server stops once none
+  waits or runs, a second signal stops it at once; stopped, the connections hear
+  `Goodbye { Shutdown }` and the journals stay for the next start. Games left open across an upgrade whose engine or content identity changed are
   void. When state saves exist (ADR-0004 point 9, an adventure-lane topic for long games), a
   snapshot every M commands can shorten restores; the journal stays the source of truth.
 
@@ -107,11 +111,11 @@ The configuration is code since M2 T1 (`crates/h3-server/src/config.rs`, the exa
 packs directory: a scenario names its packs and profile), `[limits]` (M1's six and `games`,
 `games_per_address`), one `[[offer]]` per game configuration (`id`, `scenario`, `profile`,
 `bots`); the replay goes to `<data>/replays/<offer>-game<id>-<random>.toml`; `shadow_instance`
-in `[server]` since M2 T3, `spectators_per_game` in `[limits]` since M2 T4. Still to come:
+in `[server]` since M2 T3, `spectators_per_game` in `[limits]` since M2 T4, `empty_game_ms` and
+`paused_game_ms` since M2 T5a. Still to come:
 
 ```
 [server]      anonymous = true                                       # M3
-[limits]      pause_hours = 72                                       # M2 T5
 [[ladder]]    id = "battle-arena"  scenario_pool = ["…"]  season = 1  pause = false  # M4
 ```
 

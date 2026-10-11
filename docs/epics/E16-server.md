@@ -1,8 +1,8 @@
 # E16 — Server: protocol, hosting, lobbies and ladders
 
 Status: **in progress** (refined 2026-10-08/09; M0 done 2026-10-10: ADR-0018 accepted, the
-crate skeletons; M1 done 2026-10-10, its checkpoint passed 2026-10-11 (SRV-Q12); M2 T1 to T4c
-done 2026-10-11, T5 next). Decisions: [ADR-0018](../adr/0018-server-and-protocol.md) (protocol
+crate skeletons; M1 done 2026-10-10, its checkpoint passed 2026-10-11 (SRV-Q12); M2 T1 to T5a
+done 2026-10-11, T5b next). Decisions: [ADR-0018](../adr/0018-server-and-protocol.md) (protocol
 and hosting); ADR drafts `docs/lanes/server/adr-drafts/identity-and-ladders.md` and
 `discovery.md`. Working detail (messages, flows, journals, the ladder sketch):
 `docs/epics/E16-design.md`. Done tasks in full: `docs/epics/E16-log.md`. Lane: server (`docs/lanes/server/HANDOFF.md`).
@@ -282,7 +282,13 @@ Cut at the M1 checkpoint (SRV-Q12); the tasks in full: `docs/lanes/server/QUEUE.
   `CreateGame`'s `spectators` (open when left out), the host's `SetSpectators` until the start
   (closing ends the watch), `GameInfo::spectators`, the setting journaled (wire version 8,
   journal format 3).
-- **T5** shutdown, drain, hardening and closure.
+- **T5a Shutdown, drain, the deadlines of abandoned games** (done 2026-10-11; `E16-log.md`): the
+  first signal drains (no new game, a waiting one ends, the server stops once none waits or
+  runs), a second stops at once, the journals kept; a running game whose seats all stay empty
+  pauses, a paused one nobody resumes is void (`[limits] empty_game_ms`, `paused_game_ms`);
+  `tokio`'s `signal` (ADR-0018 point 3 amended); wire version 9 (`Refused { Draining }`).
+- **T5b** hardening; **T5c** the fuzz harness, the replay download and M2's closure (T5 split on
+  2026-10-11, `docs/lanes/server/QUEUE.md`).
 
 ## Review list for the M2 checkpoint
 
@@ -343,6 +349,15 @@ Choices queued under the autonomy contract (details in `E16-log.md`):
   other seat is not told of a change (in a two-seat battle it can join only a waiting game, which
   starts then; the lobby showed it the setting). Not built: an offer's own setting for the
   ladders' games, which have no host (M4).
+- T5a: the signals (the first SIGINT or SIGTERM drains, a second stops; no drain without a
+  signal, no other trigger); a drain ends waiting games (`Goodbye { Shutdown }`, their journals
+  removed) and lets paused ones resume; `Refusal::Draining`; a stopped game's journal stays (a
+  waiting one's goes), its connections hear `Goodbye { Shutdown }`; the deadlines in milliseconds
+  like `idle_timeout_ms` (defaults 30 minutes and 72 hours, 0 for none, at most a year), the
+  sweep every quarter of the shortest (10 ms to a minute); an abandoned running game pauses
+  as if its host paused it (its spectators hear `Goodbye { Paused }`), an abandoned paused one
+  goes to `<data>/void/` with the reason; after a restart a paused game's clock counts from its
+  journal's last write.
 
 ## Review list for the M1 checkpoint (passed 2026-10-11)
 

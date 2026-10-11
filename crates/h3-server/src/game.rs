@@ -12,6 +12,10 @@
 //!   journal moves to `<data>/void/` and the replay as played goes beside it with the diagnosis.
 //! - **Pause** (E16 M2 T3). A game its host paused closes its connections and ends its thread; the
 //!   registry keeps it listed as paused, and a seat's join with its token restores it.
+//! - **The server's life** (E16 M2 T5a). A running game whose seats all stayed empty for
+//!   `[limits] empty_game_ms` pauses at the registry's next tick, as if its host had paused it; a
+//!   drain ends a game that waits for its players; a stop ends every game, its journal kept for
+//!   the next start (one that never started leaves none).
 
 use std::collections::BTreeMap;
 use std::fs;
@@ -19,6 +23,7 @@ use std::net::IpAddr;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use std::thread;
+use std::time::Duration;
 
 use h3_battle::{BattleSide, BattleState, LegalCommands};
 use h3_content::Ruleset;
@@ -29,6 +34,7 @@ use h3_protocol::wire::{self, ClientMessage, GameInfo, GoodbyeReason, Phase, Sea
 use h3_protocol::{codec, map};
 use h3_sim::{Replay, ReplayError, ReplayHeader};
 use tokio::sync::{mpsc, oneshot};
+use tokio::time::Instant;
 
 use crate::Error;
 use crate::config::{self, BotSeat};
@@ -66,6 +72,13 @@ pub(crate) enum ToGame {
         /// The connection.
         conn: ConnId,
     },
+    /// The registry's sweep (E16 M2 T5a): a running game whose seats stayed empty long enough
+    /// pauses.
+    Tick,
+    /// The server drains (E16 M2 T5a): a game that waits for its players ends.
+    Drain,
+    /// The server stops (E16 M2 T5a): the game ends, its connections hear it, its journal stays.
+    Stop,
 }
 
 /// 64 bits of OS randomness (ADR-0018 point 8).
@@ -165,6 +178,8 @@ pub(crate) struct Prepared {
     replay_path: PathBuf,
     /// The data directory.
     data: PathBuf,
+    /// How long its seats may all stay empty while it runs before it pauses (E16 M2 T5a).
+    empty_game: Option<Duration>,
     /// A new game or a restored one.
     begin: Begin,
 }
@@ -191,6 +206,11 @@ struct Restored {
     listing: Option<(mpsc::Sender<ToGame>, oneshot::Sender<()>)>,
 }
 
+/// A deadline of `ms` milliseconds; none for 0 (E16 M2 T5a).
+pub(crate) fn deadline(ms: u64) -> Option<Duration> {
+    (ms > 0).then(|| Duration::from_millis(ms))
+}
+
 /// Where game `game`'s replay goes in the data directory `data`: a random part keeps the name of a
 /// game id that a restart hands out again from another game's file.
 fn replay_path(data: &Path, offer: &str, game: u32) -> Result<PathBuf, Error> {
@@ -210,7 +230,7 @@ impl Prepared {
         offer: Arc<Offer>,
         game: u32,
         origin: IpAddr,
-        (server, spectators): (&config::Server, usize),
+        (server, limits): (&config::Server, &config::Limits),
         watchable: bool,
     ) -> Result<Self, Error> {
         let mut setup = offer.setup.clone();
@@ -236,7 +256,7 @@ impl Prepared {
             seed,
             checkpoint_every: server.checkpoint_every,
             shadow: server.shadow_instance,
-            spectators,
+            spectators: limits.spectators_per_game,
             watchable,
         };
         let (bot_seed, replay_path) = (os_u64()?, replay_path(&server.data, &offer.id, game)?);
@@ -265,6 +285,7 @@ impl Prepared {
             bot_seed,
             replay_path,
             data: server.data.clone(),
+            empty_game: deadline(limits.empty_game_ms),
             begin: Begin::New(journal),
         })
     }
@@ -278,7 +299,7 @@ impl Prepared {
         offer: Arc<Offer>,
         path: &Path,
         read: journal::Read,
-        (server, spectators): (&config::Server, usize),
+        (server, limits): (&config::Server, &config::Limits),
         listing: Option<(mpsc::Sender<ToGame>, oneshot::Sender<()>)>,
     ) -> Result<Self, String> {
         let doc = h3_cli::ReplayDoc::parse(&read.start.replay).map_err(|e| e.to_string())?;
@@ -295,7 +316,7 @@ impl Prepared {
             seed: replay.seed,
             checkpoint_every: replay.checkpoint_every,
             shadow: server.shadow_instance,
-            spectators,
+            spectators: limits.spectators_per_game,
             // A game restores only if it started, and its entries hold the setting it started
             // with (`Entry::Spectators`).
             watchable: true,
@@ -311,6 +332,7 @@ impl Prepared {
             bot_seed,
             replay_path,
             data: server.data.clone(),
+            empty_game: deadline(limits.empty_game_ms),
             begin: Begin::Restored(Restored {
                 path: path.to_path_buf(),
                 read,
@@ -348,6 +370,7 @@ impl Prepared {
             bot_seed,
             replay_path,
             data,
+            empty_game,
             begin,
         } = self;
         let game = config.game;
@@ -393,6 +416,7 @@ impl Prepared {
         let mut out = Vec::new();
         let status = |s: &Session<'_>| (s.phase(), s.open_seats(), s.takes_spectators());
         let mut reported = status(&session);
+        let mut empty_since = (!session.seated()).then(Instant::now);
         while let Some(event) = inbox.blocking_recv() {
             match event {
                 // Nothing changes for the session until the connection's join.
@@ -405,7 +429,32 @@ impl Prepared {
                     conns.remove(&conn);
                     session.disconnected(conn);
                 }
+                ToGame::Tick => {
+                    let due = empty_game
+                        .zip(empty_since)
+                        .is_some_and(|(after, since)| since.elapsed() >= after);
+                    if !(due && session.suspend(&mut out)) {
+                        continue;
+                    }
+                    eprintln!("h3-server: game {game}: its seats stayed empty");
+                }
+                ToGame::Drain if session.started() => continue,
+                ToGame::Drain | ToGame::Stop => {
+                    close_all(&conns, &[], GoodbyeReason::Shutdown);
+                    if !session.started()
+                        && let Some(journal) = journal.take()
+                    {
+                        journal.remove();
+                    }
+                    lock(registry).leave(game);
+                    return turn_away(&mut inbox, GoodbyeReason::Shutdown);
+                }
             }
+            empty_since = if session.seated() {
+                None
+            } else {
+                empty_since.or_else(|| Some(Instant::now()))
+            };
             let entries = session.drain_entries();
             let written = journal.as_mut().map_or(Ok(()), |j| j.append(entries));
             if let Err(e) = written {
@@ -472,6 +521,14 @@ fn resume<'r>(
     } = restored;
     let game = config.game;
     let gone = || lock(registry).leave(game);
+    // A paused game's deadline counts from its pause, the journal's last write (E16 M2 T5a).
+    let paused_for = fs::metadata(&path)
+        .and_then(|m| m.modified())
+        .ok()
+        .and_then(|written| written.elapsed().ok())
+        .unwrap_or_default();
+    let now = Instant::now();
+    let since = now.checked_sub(paused_for).unwrap_or(now);
     let mut session = match Session::restore(&offer.ruleset, config, seats, &read.entries) {
         Ok(session) => session,
         Err(e) => {
@@ -514,6 +571,7 @@ fn resume<'r>(
     let hosted = if paused {
         Hosted::Paused {
             tokens: tokens.clone(),
+            since,
         }
     } else {
         Hosted::Live { to, bound: 0 }
