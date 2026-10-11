@@ -4,12 +4,12 @@ The server lane's living state; read after the global `docs/HANDOFF.md`. Format 
 
 ## Current state
 
-- **M1 closed (2026-10-11, SRV-Q12). M2 T1–T5a merged (#67, #71, #72, #76, #78, #79, #83); M2 T5b done (2026-10-11)** on `claude/server-hardening-fuzz-kxo4z4`: a rate per address, pings counted, the hello's and the lobby's deadlines, a refused join leaves the game; wire still 9. T5b was split again: **next M2 T5c** (`QUEUE.md`): memory bounded in bytes; then T5d, M2's closure and checkpoint. Review list for the M2 checkpoint: the epic file.
+- **M1 closed (2026-10-11, SRV-Q12). M2 T1–T5b merged (#67, #71, #72, #76, #78, #79, #83, #86); M2 T5c done (2026-10-11)** on `claude/server-hardening-fuzz-kxo4z4`: a viewer's record keeps its latest messages within `record_bytes`, the outbound queue counts its bytes (`outbound_bytes`); wire 10, record format 2. **Next: M2 T5d** (`QUEUE.md`): the fuzz harness, the replay download, M2's closure and checkpoint. Review list for the M2 checkpoint: the epic file.
 - **SRV-Q13 answered (for M4):** ranked games one at a time per player, a pause only by agreement, its length negotiated within the ladder's bounds, the absent player forfeits at the due time; the reading of "one at a time" is confirmed at M4's refinement.
-- **Shared changes on this branch** (06-security.md's bounds, the global HANDOFF's server row, a commit of their own): the pull request carries the label `cross-lane` (the user, 2026-10-11).
+- **Shared changes on this branch** (06-security.md's bounds, the global HANDOFF's server row, a commit of their own): the pull request needs the label `cross-lane`, the user's consent asked.
 - **ADR-0018 point 5 as amended:** the mapping's matches over the engine's enums are exhaustive, and since T4b its patterns over the observation's structs too; a new battle variant or observation field fails `h3-protocol`'s build until mapped (global HANDOFF trap).
 - **The 100 % gate** covers `h3-protocol` (logic); `h3-server` is an adapter outside it, tested end to end.
-- **Versions** (`docs/08-work-process.md`): `PROTOCOL_VERSION` (`h3-protocol`, 9 since M2 T5a's `Draining`; 8 was M2 T4c's spectator setting; bumped on every wire change), `RECORD_FORMAT_VERSION` (`h3-protocol`, 1), `JOURNAL_FORMAT_VERSION` (`h3-server`, 3 since M2 T4c's spectator setting; 2 was M2 T3's pause lines; a journal of another format is void at start).
+- **Versions** (`docs/08-work-process.md`): `PROTOCOL_VERSION` (`h3-protocol`, 10 since M2 T5c's `RecordHeader::first`; 9 was M2 T5a's `Draining`; bumped on every wire change), `RECORD_FORMAT_VERSION` (`h3-protocol`, 2 since M2 T5c), `JOURNAL_FORMAT_VERSION` (`h3-server`, 3 since M2 T4c's spectator setting; 2 was M2 T3's pause lines; a journal of another format is void at start).
 - The lane owns (`lanes.toml`) `h3-protocol`, `h3-server`, `benches/server/` and E16's files; the workspace files stay shared. **Checkpoints** per milestone, under the autonomy contract below; a fresh reviewer agent checks each milestone before the user does. The identity and discovery ADR drafts are decided at the M3 refinement.
 - **Ids:** questions `SRV-Q<n>`, quirks `SRV-QUIRK-<n>`, stubs `SRV-STUB-<n>`. ADR drafts go to `docs/lanes/server/adr-drafts/` and get a number when the user accepts them. Branches: `server/<task>`.
 
@@ -32,6 +32,7 @@ The server lane's living state; read after the global `docs/HANDOFF.md`. Format 
 - A game leaves the lobby only under the registry's lock, after its bound connections are counted down (`registry.rs`): deciding by the game's own connection list races a join that is already queued.
 - A socket closed over unread data is reset, and the reset makes the peer drop what it has not read yet (a `Goodbye`): the transport's close reads on for the peer's close (`net.rs`, `LINGER`). The flooding test catches a regression only in most runs, not all.
 - A journal's line holds tokens: errors from reading one name the line and column, never its text (serde_json's messages quote values); a log line never carries a hash either (`journal.rs`).
+- A game's frames go through `game::Outbox` (`offer`, or `last` for a goodbye), never a bare channel: the connection's task subtracts every frame's bytes as it takes it out, so a frame queued around the count wraps it, and the queue then refuses every frame.
 - Write-ahead order in a game's thread: drain the session's entries and sync them before `deliver`; anything new that changes what a restart must redo needs an `Entry`, or the restore diverges from what clients were told (T3's resume is one: `Entry::Resumed`).
 - The observation's mapping (`map/mod.rs`) names every field of the engine's types in patterns, without `..`: a field left out gets `name: _` under a comment with its reason. A field read through a method (`s.attack_now`) still needs its pattern entry.
 - The workspace's clippy bans `std::time::Instant` and `SystemTime` in every crate: the server uses `tokio::time::Instant`, and a file's age is `fs::metadata(p)?.modified()?.elapsed()` (a `Duration`, no type named).
@@ -41,14 +42,10 @@ The server lane's living state; read after the global `docs/HANDOFF.md`. Format 
 
 ## Recent sessions
 
+### 2026-10-11 — M2 T5c, memory bounded in bytes
+
+#86 had merged; the branch restarted from `master`. Built T5c (`docs/epics/E16-log.md`, M2 T5c): the record as a window of the latest messages (`RecordHeader::first`, wire 10, record format 2), `game::Outbox` counting a queue's bytes; one `FetchRecord` in flight left to the queue's bound; a battle's missing round limit noted (inbox). Review list in the epic file.
+
 ### 2026-10-11 — M2 T5b, the connection's bounds
 
 #83 had merged; the branch restarted from `master`. The user asked about ranked games: SRV-Q13, weighed and answered (for M4), the ladder draft's point 8 amended. Split T5b into T5b and T5c (memory), the old T5c now T5d. Built T5b (`docs/epics/E16-log.md`, M2 T5b): `messages_per_address`, pings in the rate, `hello_timeout_ms` and `lobby_timeout_ms`, `Frame::left` with the message count; the automated seats' rate deferred to M3. Review list in the epic file.
-
-### 2026-10-11 — M2 T5a, shutdown, drain and deadlines
-
-#79 had merged; the branch restarted from `master`. Split T5 into T5a–T5c (`QUEUE.md`). Built T5a (`docs/epics/E16-log.md`, M2 T5a): `tokio`'s `signal` (ADR-0018 point 3, shared commit); the first signal drains, a second stops; a stop as a `watch` for the connections and a message to every game's thread; the deadlines of abandoned games swept by a task. Review list in the epic file.
-
-### 2026-10-11 — M2 T4c, the host's spectator setting
-
-#78 had merged; the branch restarted from `master`. The user asked for T4c and answered its questions (before the start only; open by default). Built T4c (`docs/epics/E16-log.md`, M2 T4c): the creator's choice at `CreateGame`, the host's `SetSpectators` until the start, the lobby's `spectators`, the setting journaled once, as the game started (a host's toggles before it write nothing). Review list in the epic file.
