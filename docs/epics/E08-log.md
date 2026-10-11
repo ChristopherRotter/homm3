@@ -507,8 +507,10 @@ observation against the events) the next. The user asked why an agent cannot mak
 editor maps T9 waits for: the agent explained (they are worth having because the original editor
 wrote their bytes; a map our writer makes only tests the reader against itself; driving the
 editor through screenshots costs many tokens and runs from the installation that must stay
-untouched) and offered a generated map for T9's replays, the editor maps then only reader
-fixtures for CI; the user decides at the checkpoint.
+untouched) and offered a generated map for T9's replays. The user then dropped the editor maps
+(too little gain for the time; reconsider only if a bug shows up they would have caught): T9's
+replays play a map T8b2a's `lay_out` generates, written once by a test and committed; the shipped
+maps stay the reader's test, locally.
 
 - **`legal_commands`** (`h3-game`, `legal.rs`; `h3_game::legal_commands(state, rules, actor)`):
   `EndTurn`, then for each of the actor's heroes by id a `MoveHero` to each tile of the
