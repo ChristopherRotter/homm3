@@ -77,6 +77,7 @@ pub const REGISTRY: QuirkRegistry = QuirkRegistry::new(&[
     "quirk.adventure.diagonal_check_ignores_roads",
     "quirk.adventure.diagonal_check_ignores_native",
     "quirk.adventure.native_skips_leading_neutrals",
+    "quirk.adventure.fringe_shows_objects",
 ]);
 
 /// Q-0003: creatures of a side without a hero never get lucky strikes (BAT-LCK-002).
@@ -185,6 +186,11 @@ pub const DIAGONAL_CHECK_IGNORES_NATIVE: QuirkFlag = QuirkFlag(20);
 /// stack (ADV-MOV-004; code 0x44C590). Off: a neutral stack anywhere leaves the army without one.
 pub const NATIVE_SKIPS_LEADING_NEUTRALS: QuirkFlag = QuirkFlag(21);
 
+/// ADV-QUIRK-1: the fog's fringe, the hidden tiles touching an explored one, shows what objects
+/// cover there and the heroes standing there, besides its terrain, roads and rivers (ADV-FOG-005;
+/// the user's look in SoD, 2026-10-11). Off: the fringe shows terrain, roads and rivers only.
+pub const FRINGE_SHOWS_OBJECTS: QuirkFlag = QuirkFlag(22);
+
 /// The prefix of the flags of data quirks: a gated override names one of them (`fixes`), and
 /// rule code never reads them (ADR-0007, amendment E04b T8e).
 pub const DATA_QUIRK_PREFIX: &str = "quirk.content.";
@@ -227,7 +233,11 @@ mod tests {
 
     #[test]
     fn registry_lookup_and_bitset() {
-        assert_eq!(REGISTRY.len(), 22);
+        assert_eq!(REGISTRY.len(), 23);
+        assert_eq!(
+            REGISTRY.lookup("quirk.adventure.fringe_shows_objects"),
+            Some(FRINGE_SHOWS_OBJECTS)
+        );
         assert_eq!(
             REGISTRY.lookup("quirk.adventure.diagonal_check_ignores_roads"),
             Some(DIAGONAL_CHECK_IGNORES_ROADS)

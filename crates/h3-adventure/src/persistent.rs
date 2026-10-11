@@ -168,6 +168,31 @@ impl<const WORDS: usize> BitGrid<WORDS> {
             .sum()
     }
 
+    /// Writes the row `y` of level `level` into `out`, the tile of column `x` as bit `x % 64` of
+    /// word `x / 64` (the observation's planes, E08 T8b1): one masked word per leaf the row
+    /// crosses, whatever the leaf size. The row must be on the grid and `out` hold at least
+    /// `width.div_ceil(64)` words; its words past the row's are left as they are.
+    pub(crate) fn read_row(&self, level: u8, y: u16, out: &mut [u64]) {
+        let side = Self::SIDE;
+        let row = (usize::from(level) * usize::from(self.down) + usize::from(y / side))
+            * usize::from(self.across);
+        let first = usize::from(y % side) * usize::from(side);
+        let (word, shift) = (first / 64, first % 64);
+        let mask = u64::MAX >> (64 - u32::from(side));
+        out[..usize::from(self.width.div_ceil(64))].fill(0);
+        for (column, leaf) in self.table[row..row + usize::from(self.across)]
+            .iter()
+            .enumerate()
+        {
+            let bits = leaf
+                .as_ref()
+                .map_or(0, |words| (words[word] >> shift) & mask);
+            // `side` divides 64 or is 64: a leaf's row never straddles two words of `out`.
+            let at = column * usize::from(side);
+            out[at / 64] |= bits << (at % 64);
+        }
+    }
+
     /// The words of the leaf at `index` (zeros for none).
     fn words(&self, index: usize) -> [u64; WORDS] {
         self.table[index].as_deref().copied().unwrap_or([0; WORDS])

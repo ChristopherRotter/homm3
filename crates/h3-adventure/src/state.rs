@@ -1,14 +1,14 @@
 //! The adventure state (ADR-0016, E08 T5a): the static map, one block behind an `Arc` that every
 //! fork shares and nothing writes after setup, the small hot parts in plain arrays (the heroes on
 //! the map with their armies), and each player's explored tiles as a persistent grid (T8a, on
-//! T5b's [`BitGrid`]). Nothing sees the sharing: equality, `Clone`, `Debug` and the canonical hash
+//! T5b's [`BitGrid`]); what a player sees of it is the observation's (`observe.rs`, T8b1). Nothing sees the sharing: equality, `Clone`, `Debug` and the canonical hash
 //! see content only (ADR-0016 point 2).
 
 use alloc::sync::Arc;
 use alloc::vec;
 use alloc::vec::Vec;
 
-use h3_content::{Ruleset, TerrainId};
+use h3_content::{FRINGE_SHOWS_OBJECTS, Ruleset, TerrainId};
 use h3_contracts::{ArmyStack, HeroId, PlayerId};
 use h3_kernel::hash::hash_of;
 use h3_kernel::{CanonicalHash, StateHasher};
@@ -17,7 +17,7 @@ use crate::ADVENTURE_STATE_HASH_VERSION;
 use crate::command::{
     AdventureCommand, AdventureCommandError, AdventureEvent, AdventureEventKind, Sink, Viewers,
 };
-use crate::fog::reveal;
+use crate::fog::{on_fringe, reveal};
 use crate::movement::{Pricing, day_points, direction};
 use crate::persistent::BitGrid;
 use crate::ruleset::{AdventureRuleset, Passage, RiverId, RoadId};
@@ -433,8 +433,8 @@ impl AdventureState {
     /// `MoveHero`: the whole path is checked and priced first (ADV-MOV-003 to ADV-MOV-008, on the
     /// tiles the player has explored when it gives the command), then the hero stands on its last
     /// tile with the points left; each step reveals the tiles around the tile it enters
-    /// (ADV-FOG-003) and emits its event, seen by the players that see either of its tiles
-    /// (ADV-FOG-004).
+    /// (ADV-FOG-003) and emits its event, seen by the players that see the hero on either of its
+    /// tiles (ADV-FOG-004, ADV-FOG-005).
     // rule: ADV-MOV-006, ADV-MOV-007, ADV-FOG-003
     fn move_hero<S: Sink>(
         &mut self,
@@ -478,22 +478,28 @@ impl AdventureState {
             reveal(&mut self.explored[usize::from(player.raw())], to, radius);
             sink.emit(AdventureEvent {
                 kind: AdventureEventKind::HeroStepped { hero: id, from, to },
-                seen_by: self.viewers(player, &[from, to]),
+                seen_by: self.viewers(core, player, &[from, to]),
             });
             from = to;
         }
         Ok(())
     }
 
-    /// Who sees something happen on `tiles` (ADV-FOG-004): `owner`, and every player that has
-    /// explored one of the tiles. The fringe's share under `ADV-QUIRK-1` comes with the
-    /// projection (T8b).
-    // rule: ADV-FOG-004
-    fn viewers(&self, owner: PlayerId, tiles: &[Pos]) -> Viewers {
+    /// Who sees a hero do something on `tiles`, tiles of the map (ADV-FOG-004, ADV-FOG-005):
+    /// `owner`, every player that has explored one of the tiles and, under `ADV-QUIRK-1`, every
+    /// player with one of them on its fringe, where it sees heroes too (the user, 2026-10-11).
+    // rule: ADV-FOG-004, ADV-FOG-005
+    fn viewers(&self, core: &Ruleset, owner: PlayerId, tiles: &[Pos]) -> Viewers {
+        let fringe = core.quirks().is_enabled(FRINGE_SHOWS_OBJECTS);
         self.explored
             .iter()
             .zip((0..self.players).map(PlayerId::new))
-            .filter(|(grid, player)| *player == owner || tiles.iter().any(|&pos| grid.get(pos)))
+            .filter(|(grid, player)| {
+                *player == owner
+                    || tiles
+                        .iter()
+                        .any(|&pos| grid.get(pos) || (fringe && on_fringe(grid, pos)))
+            })
             .fold(Viewers::NONE, |viewers, (_, player)| viewers.with(player))
     }
 
