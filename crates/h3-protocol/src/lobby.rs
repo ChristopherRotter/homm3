@@ -60,7 +60,7 @@ impl<O: Ord> Lobby<O> {
 
     /// Creates a game of the offer `offer` for `origin`, whose creator takes `seat`: the game's id
     /// and the offer's index, or why not. A spectator creates nothing; an offer the server does
-    /// not have, or a full server or origin, is refused.
+    /// not have, a seat its bot plays, or a full server or origin, is refused.
     pub fn create(&mut self, origin: O, offer: &str, seat: Seat) -> Result<(u32, usize), Refusal> {
         if seat == Seat::Spectator {
             return Err(Refusal::NoSpectators);
@@ -71,6 +71,9 @@ impl<O: Ord> Lobby<O> {
             .enumerate()
             .find(|(_, o)| o.id == offer)
             .ok_or(Refusal::NoSuchOffer)?;
+        if found.bots.contains(&seat) {
+            return Err(Refusal::SeatTaken);
+        }
         let open = self.games.values().filter(|e| e.info.phase != Phase::Over);
         let (total, here) = open.fold((0, 0), |(total, here), e| {
             (total + 1, here + usize::from(e.origin == origin))

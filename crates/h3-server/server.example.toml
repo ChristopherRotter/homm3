@@ -1,14 +1,15 @@
-# An example configuration for `h3-server` (E16 M1; the format: `crates/h3-server/src/config.rs`).
+# An example configuration for `h3-server` (E16 M2; the format: `crates/h3-server/src/config.rs`).
 # Relative paths are taken from this file's directory. Run from the repository's root:
 #
 #   cargo run -p h3-server -- crates/h3-server/server.example.toml
 
+[server]
 bind = "127.0.0.1:7878"        # loopback; the internet only behind a TLS proxy (ADR-0018 point 2)
-packs = "../../packs"
-scenario = "../../packs/synthetic/scenarios/full.toml"
-bots = ["defender"]            # the server's random bot plays the defender
 data = "../../target/h3-server"
 checkpoint_every = 25
+
+[content]
+packs = "../../packs"
 
 [limits]
 max_frame = 4096
@@ -17,3 +18,15 @@ connections = 64
 connections_per_address = 8
 idle_timeout_ms = 300000
 outbound_queue = 256
+games = 16
+games_per_address = 2
+
+# What clients may create games from (`CreateGame { offer }`).
+[[offer]]
+id = "full"
+scenario = "../../packs/synthetic/scenarios/full.toml"
+
+[[offer]]
+id = "duel-bot"
+scenario = "../../packs/synthetic/scenarios/duel.toml"
+bots = ["defender"]            # the server's random bot plays the defender

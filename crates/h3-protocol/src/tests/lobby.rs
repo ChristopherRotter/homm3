@@ -91,6 +91,11 @@ fn creations_are_refused_with_their_reason() {
         lobby.create(1, "nothing", Seat::Attacker),
         Err(Refusal::NoSuchOffer)
     );
+    assert_eq!(
+        lobby.create(1, "bot", Seat::Defender),
+        Err(Refusal::SeatTaken),
+        "the bot's seat"
+    );
     assert_eq!(lobby.create(1, "pvp", Seat::Attacker), Ok((1, 0)));
     assert_eq!(lobby.create(1, "pvp", Seat::Attacker), Ok((2, 0)));
     // The origin's limit.
@@ -108,7 +113,7 @@ fn creations_are_refused_with_their_reason() {
     lobby.update(1, Phase::Over, vec![]);
     assert_eq!(lobby.create(1, "pvp", Seat::Attacker), Ok((4, 0)));
     lobby.remove(2);
-    assert_eq!(lobby.create(3, "bot", Seat::Defender), Ok((5, 1)));
+    assert_eq!(lobby.create(3, "bot", Seat::Attacker), Ok((5, 1)));
     assert!(
         lobby.contains(1),
         "an over game stays listed until it is removed"
