@@ -770,4 +770,5 @@ how and why the work went.
   without anonymous play creations and joins wait for the login, the lists do not; failed logins
   beyond the limit close the connection and bar the address's next one, requests of the wrong form
   do not count; the player log's reading (a torn line, five bad logs, a failed write); Ed25519's
-  strictness; the configuration's new fields.
+  strictness; the configuration's new fields. The workload as at T1 (296 420 974 Ir, +0.14 %
+  against its baseline; no login in it).
