@@ -7,10 +7,10 @@ use std::hint::black_box;
 use std::sync::Arc;
 
 use criterion::{BatchSize, Criterion, criterion_group, criterion_main};
-use h3_battle::{BattleState, Command, LegalCommands, NoopSink, apply, legal_commands};
+use h3_battle::{BattleState, Command, LegalCommands, NoopSink, apply, legal_commands, observe};
 use h3_kernel::{Rng, StreamId};
 use h3_sim::action::HERO_CAST;
-use h3_sim::{ACTION_COUNT, Action, BattleEnv};
+use h3_sim::{ACTION_COUNT, Action, BattleEnv, OBSERVATION_LEN, observation};
 
 fn mid_game_states() -> (Arc<h3_content::Ruleset>, Vec<BattleState>) {
     let (ruleset, setup) = h3_pack::synthetic(h3_pack::SYNTHETIC_FULL).unwrap();
@@ -63,6 +63,30 @@ fn benches(c: &mut Criterion) {
     c.bench_function("clone BattleState", |b| {
         let s = &states[0];
         b.iter(|| black_box(black_box(s).clone()))
+    });
+
+    // The agent's view of a step (E04b T9b): the structured observation of the side to act, then
+    // the flat encoding an RL agent reads (encoding v13, OBSERVATION_LEN floats).
+    c.bench_function("observe (side to act, mid-game)", |b| {
+        let mut i = 0;
+        b.iter(|| {
+            let s = &states[i % states.len()];
+            i += 1;
+            black_box(observe(black_box(s), &ruleset, s.side_to_act().unwrap()))
+        })
+    });
+
+    c.bench_function("observe + encode (side to act, mid-game)", |b| {
+        let width = ruleset.battle().field.width;
+        let mut out = vec![0.0f32; OBSERVATION_LEN];
+        let mut i = 0;
+        b.iter(|| {
+            let s = &states[i % states.len()];
+            i += 1;
+            let obs = observe(black_box(s), &ruleset, s.side_to_act().unwrap());
+            observation::encode(&obs, width, &mut out).unwrap();
+            black_box(out[0])
+        })
     });
 
     c.bench_function("state_hash", |b| {

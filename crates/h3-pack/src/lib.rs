@@ -3272,7 +3272,10 @@ mod tests {
             .map(|k| ruleset.spell_by_key(&format!("synthetic:{k}")).unwrap())
             .to_vec(),
         );
-        // Basic Storm magic: every book spell but the stone ones (blight, revive) at Basic.
+        // Basic Storm magic: every book spell but the stone ones (blight, revive) at Basic, six
+        // at Advanced (E04b T9b).
+        let advanced = ["spark", "cinders", "haze", "charm", "scorch", "snare"]
+            .map(|k| format!("synthetic:{k}"));
         expected.magic.masteries = expected
             .magic
             .spell_book
@@ -3282,7 +3285,17 @@ mod tests {
                 let key = ruleset.spell(s).unwrap().key.as_str();
                 key != "synthetic:blight" && key != "synthetic:revive"
             })
-            .map(|&s| (s, 1))
+            .map(|&s| {
+                let key = ruleset.spell(s).unwrap().key.as_str();
+                (
+                    s,
+                    if advanced.iter().any(|a| a == key) {
+                        2
+                    } else {
+                        1
+                    },
+                )
+            })
             .collect();
         expected.magic.masteries.sort_unstable_by_key(|&(s, _)| s);
         expected.damage = DamageBonuses {
@@ -3311,7 +3324,25 @@ mod tests {
                 bp_per_level: 300,
                 level: 6,
             },
+            // The casting workload (E04b T9b): a Pendant, an opening spell.
+            BattleEffect::SpellImmunity {
+                spell: ruleset.spell_by_key("synthetic:spark").unwrap(),
+            },
+            BattleEffect::OpeningSpell {
+                spell: ruleset.spell_by_key("synthetic:hasten").unwrap(),
+                mastery: 3,
+                power: 3,
+            },
         ];
+        expected.magic.eagle_eye = Some(EagleEye {
+            chance: Rate::bp(4000),
+            spells: [
+                "boon", "bane", "hallow", "purge", "gloom", "corrode", "aegis", "rage", "dazzle",
+                "mire", "uproot",
+            ]
+            .map(|k| ruleset.spell_by_key(&format!("synthetic:{k}")).unwrap())
+            .to_vec(),
+        });
         assert_eq!(setup.heroes[0], Some(expected.clone()));
         // The defender's Corwin (E04a T11c): Gunnery, a 10 % discount, nine stack effects, a
         // spell duration bonus (E04b T3a) and a spell specialty (T3c), written and read back
@@ -3323,9 +3354,34 @@ mod tests {
         );
         assert_eq!(
             (corwin.surrender_discount_bp, corwin.effects.len()),
-            (1000, 11)
+            (1000, 15)
         );
         assert_eq!(corwin.effects[9], BattleEffect::SpellDuration { rounds: 2 });
+        assert!(matches!(
+            corwin.effects[11..],
+            [
+                BattleEffect::MagicResistance { .. },
+                BattleEffect::SpellImmunity { .. },
+                BattleEffect::OpeningSpell {
+                    mastery: 3,
+                    power: 2,
+                    ..
+                },
+                BattleEffect::OpeningSpell {
+                    mastery: 3,
+                    power: 2,
+                    ..
+                },
+            ]
+        ));
+        assert_eq!(
+            corwin
+                .magic
+                .eagle_eye
+                .as_ref()
+                .map(|e| (e.chance, e.spells.len())),
+            Some((Rate::bp(5000), 14))
+        );
         assert_eq!(corwin.war_machines.ballista, expected.war_machines.ballista);
         assert_eq!(
             &HeroEntry::of(corwin, &ruleset)
