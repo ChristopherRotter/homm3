@@ -425,7 +425,7 @@ fn slow_rounds_down_and_leaves_at_least_one() {
 
 // covers: BAT-MAG-011
 #[test]
-fn morale_and_luck_spells_apply_between_the_clamp_and_the_minimums() {
+fn morale_and_luck_spells_join_the_sum_before_the_minimums() {
     let r = ruleset();
     let mut h = adept(&r, &["fortune", "mirth"], 3);
     h.effects = std::vec![
@@ -450,15 +450,77 @@ fn morale_and_luck_spells_apply_between_the_clamp_and_the_minimums() {
     // Luck −2 + Fortune 2 at Expert: 0; the halfling keeps its minimum 1.
     act(&mut s, &r, cast(&r, "fortune", CastTarget::None)).unwrap();
     assert_eq!((s.stacks()[0].luck, s.stacks()[1].luck), (0, 1));
-    // Morale 4 is clamped to 3 before Sorrow's −1: 2.
+    // Morale 4 with Sorrow's −1: 3. (This pinned 2, a clamp to 3 before the spell that the
+    // original does not make: review r2a F-1.)
     activate(&mut s, 2);
     act(&mut s, &r, cast(&r, "sorrow", stack(0))).unwrap();
-    assert_eq!(s.stacks()[0].morale, 2);
+    assert_eq!(s.stacks()[0].morale, 3);
     // The other side's Misfortune on its own enemy brings the halfling's luck to its minimum.
     new_round(&mut s, &r);
     activate(&mut s, 2);
     act(&mut s, &r, cast(&r, "misfortune", stack(1))).unwrap();
     assert_eq!(s.stacks()[1].luck, 1);
+}
+
+// covers: BAT-MAG-011, BAT-MOR-001, BAT-MOR-003, BAT-LCK-001, BAT-LCK-002
+#[test]
+fn morale_and_luck_beyond_the_range_absorb_the_spells_and_are_clamped_once() {
+    // Good morale and luck come at +3 only, and then always: the rolls show the value they read.
+    let r = ruleset_with("t:faithful", |b| {
+        b.morale_dice = 255;
+        b.luck_dice = 1;
+        b.good_morale_chances = std::vec![0, 0, 255];
+        b.good_luck_chances = std::vec![0, 0, 1];
+    });
+    // The attacker's hero changes its stacks' morale by `morale` and gives them luck +5; its
+    // one alignment adds 1 to the morale.
+    let start = |morale: i8| {
+        let mut h = adept(&r, &["mirth"], 3);
+        h.effects = std::vec![
+            BattleEffect::Morale {
+                amount: morale,
+                affects: Affects::Own,
+            },
+            BattleEffect::Luck {
+                amount: 5,
+                affects: Affects::Own,
+            },
+        ];
+        let mut foe = adept(&r, &["sorrow", "misfortune"], 3);
+        foe.effects = std::vec![];
+        let (ours, theirs) = ([("fixed", 5, 3, 5)], [("fixed", 5, 4, 5)]);
+        arena(&r, [Some(h), Some(foe)], &ours, &theirs, 1)
+    };
+    // Base morale 4 + 1 = 5 with Expert Sorrow's −2: 3. The original clamps the sum once,
+    // where it rolls (review r2a F-1); clamped before the spell it came to 3 − 2 = 1.
+    let mut s = start(4);
+    activate(&mut s, 1);
+    act(&mut s, &r, cast(&r, "sorrow", CastTarget::None)).unwrap();
+    assert_eq!(s.stacks()[0].morale, 3);
+    // Base luck 5 with Expert Misfortune's −2: 3, not 1.
+    new_round(&mut s, &r);
+    activate(&mut s, 1);
+    act(&mut s, &r, cast(&r, "misfortune", CastTarget::None)).unwrap();
+    assert_eq!(s.stacks()[0].luck, 3);
+    // The observation shows the clamped values, and the rolls read them: a lucky strike, then
+    // another turn.
+    let seen = observe(&s, &r, BattleSide::Defender).stacks.as_slice()[0];
+    assert_eq!((seen.morale, seen.luck), (3, 3));
+    activate(&mut s, 0);
+    let from = s.stacks()[0].hex;
+    let target = StackId(1);
+    let events = act(&mut s, &r, Command::Attack { target, from }).unwrap();
+    let lucky = |e: &Event| {
+        matches!(e.kind, EventKind::Struck { attacker: StackId(0), flags, .. }
+            if flags.contains(crate::event::StrikeFlags::LUCKY))
+    };
+    assert!(events.iter().any(lucky));
+    let again = EventKind::GoodMorale { stack: StackId(0) };
+    assert!(events.iter().any(|e| e.kind == again));
+    // Base morale −6 + 1 = −5 with Expert Mirth's +2: −3, not −3 + 2 = −1.
+    let mut s = start(-6);
+    act(&mut s, &r, cast(&r, "mirth", CastTarget::None)).unwrap();
+    assert_eq!(s.stacks()[0].morale, -3);
 }
 
 // covers: BAT-MAG-009
