@@ -4,7 +4,7 @@ The battle lane's living state; read after the global `docs/HANDOFF.md`. Format 
 
 ## Current state
 
-- **Branch:** `battle/e04b-t8e`, one pull request (after the `shared/` #64, ADR-0007's amendment). Work on `battle/<task>` branches from `master`, merged at its checkpoint; HANDOFF content goes here.
+- **Branch:** `battle/e04b-t9a`, one `cross-lane` pull request (BAT-Q26). Work on `battle/<task>` branches from `master`, merged at its checkpoint; HANDOFF content goes here.
 - **E04b increment 18 (the user, BAT-Q25): T8e (the data quirks Q-0006 and BAT-QUIRK-19 through gated overrides); done; T8 complete. Batch 2e folded in.** Sandbox: `docs/08-work-process.md`, "Cloud sandbox".
 - **Done:** survey `docs/rules/surveys/E04b-magic.md` (§12–§15), ADR-0014 accepted (point 5 amended, Q47), design note `docs/epics/E04b-design.md`. T1–T8e (the epic file lists each with its rules): every battle spell but the T8 long tail's T8e, creature magic, casters, mana creatures, defences, the rebirth and Fear, the hero's spells and masteries in the Heroes context, the casting limits and spell defences, the per-spell conditions, the opening spells and Eagle Eye, the data quirks (BAT-MAG-001 to 069, HER-SPL-002 to 004, HER-BAT-015 to 017; Q-0006 to Q-0012, BAT-QUIRK-1 to 19), all after the executable's code (`installation.md` §7.8–§7.24). **Physical damage follows the executable's three truncated stages** under Q-0005 (Q50, BAT-DMG-002, `h3_kernel::arith::X87` at 53 bits).
 - **Hero rates** cross the seam as `h3_contracts::Rate` (basis points plus, under Q-0005, the original's single-precision value as an f32 bit pattern where it differs; Q45 (b), T3c2).
@@ -53,6 +53,10 @@ The battle lane's living state; read after the global `docs/HANDOFF.md`. Format 
 
 ## Recent sessions
 
+### 2026-10-11 (forty-ninth) — E04b increment 19: T9a and the spectator viewer (in progress)
+
+The user (BAT-Q26): T9a with SRV-Q4's spectator viewer; per-hex planes; a hero's hidden magic private to its side; one `cross-lane` PR. Branch `battle/e04b-t9a`. In progress: the audit of the state against the observation, then `h3_battle::observe` (new fields, `Viewer`), then the flat encoding v13 (ABI v17).
+
 ### 2026-10-10/11 (forty-eighth) — E04b increment 18: T8e
 
 The user (BAT-Q25): T8e alone, S-05 fix-optional (BAT-QUIRK-19); the ADR-0007 amendment accepted as drafted (#64). Gated overrides, `[[hero_override]]`, pack v34; two `quirk.content` flags; ruleset hash v42 kept. Detail: `docs/epics/E04b-log.md`.
@@ -60,7 +64,3 @@ The user (BAT-Q25): T8e alone, S-05 fix-optional (BAT-QUIRK-19); the ADR-0007 am
 ### 2026-10-10 (forty-seventh) — E04b increment 17: T8c and T8d
 
 The user (BAT-Q23): T8c with T8d, one `cross-lane` PR; the code and the wiki on the opening's timing (VCMI: before round 1); BAT-Q24 (the learning after the battle) left to the adventure lane. §7.24; pack v33, state hash v41, ruleset hash v42, replay format v21, `HeroOutcome.learned` replaces `spells_cast`. Detail: `docs/epics/E04b-log.md`.
-
-### 2026-10-10 (forty-sixth) — E04b increment 16: T8b3, batch 2e, the coverage flake
-
-The user (BAT-Q22): T8b3 with batch 2e and the flake's tests; the code on the three conflicts with VCMI. Pack v32 (`needs_damage`), ruleset hash v41, BAT-MAG-067; batch 2e staged (six encounters); twelve property-only regions given fixed tests. Detail: `docs/epics/E04b-log.md`.
