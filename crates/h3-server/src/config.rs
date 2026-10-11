@@ -4,7 +4,7 @@
 //! ```toml
 //! [server]                           # every field optional, defaults below
 //! bind = "127.0.0.1:7878"            # loopback by default; the internet only behind a TLS proxy
-//! data = "data"                      # the replays go to <data>/replays/
+//! data = "data"                      # journals, replays (below); the server's user only
 //! checkpoint_every = 25              # a state hash in the journal every this many commands
 //!
 //! [content]
@@ -26,6 +26,12 @@
 //! profile = "synthetic:faithful"     # optional: overrides the scenario's profile
 //! bots = ["defender"]                # the seats the server's bot plays (none by default)
 //! ```
+//!
+//! The data directory holds `games/<game>.journal` for every game that is not over (its seed and
+//! its seats' tokens: the operator's copy of them; E16 M2 T2), `replays/` for the finished games
+//! and `void/` for the journals a start could not restore. It must be readable by the server's
+//! user only: on Unix the server creates `games/` and `void/` owner-only and the journals
+//! owner-read-write.
 //!
 //! Provisional (E16 M1 and M2 reviews): the format and the defaults.
 
@@ -70,7 +76,7 @@ pub struct Config {
 pub struct Server {
     /// The address to listen on.
     pub bind: String,
-    /// The data directory: replays go to `<data>/replays/`.
+    /// The data directory: the games' journals, the replays, the void journals.
     pub data: PathBuf,
     /// A state hash in the journal after every this many commands (0: none).
     pub checkpoint_every: u32,

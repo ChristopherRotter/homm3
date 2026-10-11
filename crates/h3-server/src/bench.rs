@@ -128,6 +128,8 @@ pub fn play_game(
             &frame,
             &mut out,
         );
+        // The host journals them (E16 M2 T2): file work, outside the count.
+        session.drain_entries();
         totals.frames_in += 1;
         totals.frames_out += out.len() as u64;
         totals.bytes_out += out.iter().map(|o| o.frame.len() as u64).sum::<u64>();

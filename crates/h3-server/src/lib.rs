@@ -4,8 +4,11 @@
 //!
 //! - [`config`]: the TOML configuration (server, content, limits, the offers);
 //! - [`game`]: the offers, compiled at start; a game prepared from an offer with secrets from the
-//!   OS, run on its own OS thread; the replay written as the CLI's file at the end;
+//!   OS, or restored from its journal, run on its own OS thread; the replay written as the CLI's
+//!   file at the end;
+//! - `journal`: each game's write-ahead journal in the data directory (M2 T2);
 //! - `registry`: the lobby and the games' inboxes, shared by the tasks and the games' threads;
+//!   the restore at start;
 //! - `net`: the listener and a `tokio` task per connection, behind the transport trait;
 //! - [`client`]: a headless client for tests and tools;
 //! - [`bench`]: the session core's workload (`benches/server/`).
@@ -24,6 +27,7 @@ pub mod bench;
 pub mod client;
 pub mod config;
 pub mod game;
+mod journal;
 mod net;
 mod registry;
 
@@ -31,6 +35,7 @@ mod registry;
 mod tests;
 
 pub use config::{BotSeat, Config, Limits};
+pub use journal::JOURNAL_FORMAT_VERSION;
 use registry::Registry;
 
 /// Why the server does not start.
@@ -59,8 +64,8 @@ pub fn server_name() -> String {
     format!("h3-server {}", env!("CARGO_PKG_VERSION"))
 }
 
-/// Compiles the offers and listens: call from a `tokio` runtime. Games are created by clients
-/// (`CreateGame`), each on its own thread.
+/// Compiles the offers, restores the games the data directory's journals hold, and listens: call
+/// from a `tokio` runtime. Games are created by clients (`CreateGame`), each on its own thread.
 pub async fn start(config: &Config) -> Result<Running, Error> {
     let offers = config
         .offers
@@ -71,7 +76,12 @@ pub async fn start(config: &Config) -> Result<Running, Error> {
         games: config.limits.games,
         games_per_origin: config.limits.games_per_address,
     };
-    let registry = Registry::new(offers, limits, config.server.clone());
+    let registry = Arc::new(Mutex::new(Registry::new(
+        offers,
+        limits,
+        config.server.clone(),
+    )));
+    registry::restore(&registry).await?;
     let listener = TcpListener::bind(&config.server.bind)
         .await
         .map_err(|e| Error(format!("bind {}: {e}", config.server.bind)))?;
@@ -79,7 +89,6 @@ pub async fn start(config: &Config) -> Result<Running, Error> {
         .local_addr()
         .map_err(|e| Error(format!("bind {}: {e}", config.server.bind)))?;
     let server: Arc<str> = Arc::from(server_name());
-    let registry = Arc::new(Mutex::new(registry));
     let listener = tokio::spawn(net::listen(listener, registry, config.limits, server));
     Ok(Running { address, listener })
 }
