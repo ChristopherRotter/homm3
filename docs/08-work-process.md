@@ -37,8 +37,10 @@ the catalog, quirks in the ledgers, decisions in ADRs, formats in `packs/README.
 `docs/formats/`, history in git. Each lane has a reading list in `AGENTS.md` ("Lanes").
 
 - **The global `docs/HANDOFF.md`** is the lane index plus the traps that apply to every lane
-  (sandbox and sync, sources, coverage and lints). It has no session entries. `cargo xtask
-  check-docs` fails above 6 000 bytes. It is a shared path.
+  (sandbox and sync, sources, coverage and lints). It has no session entries and no lane's state:
+  a lane's progress lives in its own HANDOFF only, so a lane changes the global one only for a
+  trap of every lane (user, 2026-10-11: rows every lane rewrote made most merge conflicts).
+  `cargo xtask check-docs` fails above 6 000 bytes. It is a shared path.
 - **A lane's `docs/lanes/<lane>/HANDOFF.md`** has four parts: a short intro; `## Current state`
   (branch, the epic's position and next step, decisions waiting for the user, the versions the
   lane owns; rewritten each session); `## Standing traps` (grouped bullets that still apply to the
@@ -53,7 +55,9 @@ the catalog, quirks in the ledgers, decisions in ADRs, formats in `packs/README.
   freely", measurements) goes into the epic's log, `docs/epics/<epic>-log.md`, which is read only
   when a task builds on it. The design note is pruned as before (`docs/adr/README.md`).
 - **OPEN-QUESTIONS.md:** sessions read the "Open" section; an answered entry only when a doc
-  points to it.
+  points to it. Both sections have one block per lane (and one for the numbered questions): a
+  lane adds an open question at the end of its block in "Open" and an answered one at the top
+  of its block in "Answered", so lanes working at once never edit the same lines.
 - **`verify --summary`** keeps the gate's output out of the context: one line per gate plus the
   end of the first failure; the full log goes to `<target>/verify/verify.log`.
 
@@ -222,7 +226,7 @@ See `AGENTS.md` for the list. Protocol:
 
 1. Write the question in `OPEN-QUESTIONS.md` with a lane id (`ADV-Q1`): context, options, consequences of each, your recommendation, what is blocked.
 2. If the user is present, ask interactively (short, concrete, with options). If not, finish the safe work, record the state in HANDOFF, and stop.
-3. When answered: record the decision (ADR for architecture-level; note in the relevant doc otherwise), remove/mark the question answered.
+3. When answered: record the decision (ADR for architecture-level; note in the relevant doc otherwise), and move the question to the top of its lane's block under "Answered".
 
 ## ADRs
 
