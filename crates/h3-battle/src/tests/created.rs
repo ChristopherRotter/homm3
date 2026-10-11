@@ -587,6 +587,51 @@ fn a_side_creates_stacks_below_the_limit_and_reuses_dead_created_ones() {
     assert!(!castable_spells(&s, &r, BattleSide::Attacker).contains(spell(&r, "sprites")));
 }
 
+// covers: BAT-MAG-037, BAT-MAG-010
+#[test]
+fn a_reused_record_starts_without_the_dead_stacks_permanent_effects() {
+    let r = ruleset();
+    let mut s = arena(
+        &r,
+        [Some(creator(&r, 1, 1)), None],
+        &[("serf", 10, 5, 5)],
+        &[("serf", 1, 14, 5)],
+        1,
+    );
+    let sprites = |s: &mut BattleState| {
+        s.heroes[0].as_mut().unwrap().view.mana = 100;
+        created(&cast(s, &r, "sprites", CastTarget::None).unwrap())[0].0
+    };
+    assert_eq!(sprites(&mut s), 2);
+    // An Expert Disrupting Ray (for the rest of the battle) and a Haste on the summoned stack.
+    for name in ["ray", "haste"] {
+        let id = spell(&r, name);
+        let timed = effects::TimedCast {
+            id,
+            spell: r.spell(id).unwrap(),
+            mastery: 3,
+            rounds: 5,
+            own: crate::magic::SpellBonus::default(),
+        };
+        effects::apply(&mut s, &r, timed, StackId(2), &mut Vec::<Event>::new());
+    }
+    let whole = s.stacks()[2].defense_now() + 5;
+    assert_eq!(whole, i32::from(s.stacks()[2].defense));
+    // It dies and keeps the ray as a dead stack (BAT-MAG-010) ...
+    hurt(&mut s, &r, 2, 1000);
+    effects::remove_dead(&mut s, &r);
+    mark_corpses(&mut s);
+    let rays = |s: &BattleState| s.effects.of(StackId(2)).len();
+    assert_eq!((rays(&s), s.stacks()[2].defense_now()), (1, whole - 5));
+    // ... but the stack that takes its record is set up from scratch (the original's 0x47A100).
+    assert_eq!(sprites(&mut s), 2);
+    let new = s.stacks()[2];
+    assert_eq!((rays(&s), new.defense_now()), (0, whole));
+    assert_eq!(new.spells, effects::SpellValues::new(new.speed));
+    effects::recompute(&mut s, &r, StackId(2));
+    assert_eq!(s.stacks()[2], new);
+}
+
 // covers: BAT-MAG-037, BAT-END-001, BAT-END-002
 #[test]
 fn a_side_left_with_only_created_stacks_does_not_win() {

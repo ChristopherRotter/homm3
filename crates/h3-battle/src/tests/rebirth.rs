@@ -267,6 +267,41 @@ fn an_aged_phoenix_comes_back_whole() {
     assert_eq!(reborn(&events), vec![(1, 2)]);
 }
 
+// covers: BAT-MAG-059, BAT-MAG-010
+#[test]
+fn a_reborn_phoenix_keeps_the_permanent_effects_it_died_with() {
+    let r = ruleset();
+    let mut s = battle(&r, &[(0, "fixed", 1)], &[(0, "phoenix", 10)], 1);
+    // Two Expert Disrupting Rays (−5 each, for the rest of the battle) and a Haste; then the
+    // phoenixes die.
+    for name in ["ray", "ray", "haste"] {
+        let id = spell(&r, name);
+        let cast = effects::TimedCast {
+            id,
+            spell: r.spell(id).unwrap(),
+            mastery: 3,
+            rounds: 5,
+            own: crate::magic::SpellBonus::default(),
+        };
+        effects::apply(&mut s, &r, cast, StackId(1), &mut Vec::<Event>::new());
+    }
+    let (defense, speed) = (i32::from(s.stacks()[1].defense), s.stacks()[1].speed);
+    assert_eq!(s.stacks()[1].defense_now(), defense - 10);
+    kill(&mut s, &r, 1);
+    let mut events = Vec::new();
+    rebirths(&mut s, &r, &mut events);
+    assert_eq!(reborn(&events), vec![(1, 2)]);
+    // The death ended Haste; the rays stay through the death and the rebirth (review r5b F-2:
+    // the original's death and raise never give the defense back).
+    let phoenix = s.stacks()[1];
+    assert_eq!(
+        (phoenix.defense_now(), phoenix.speed_now()),
+        (defense - 10, speed)
+    );
+    let left: Vec<_> = s.effects().iter().map(|e| (e.spell, e.rounds)).collect();
+    assert_eq!(left, vec![(spell(&r, "ray"), None)]);
+}
+
 // covers: BAT-MAG-059, BAT-MAG-004
 #[test]
 fn an_active_phoenix_its_heros_spell_killed_comes_back_having_acted() {

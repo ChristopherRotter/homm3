@@ -582,22 +582,21 @@ proptest! {
                     }
                 }
             }
-            // The effect list (ADR-0014 point 5): sorted by stack and spell, each once, on
-            // living stacks only, timed spells only, never at 0 rounds; each stack's values are
-            // those of its entries (BAT-MAG-009 to 011).
+            // The effect list (ADR-0014 point 5): sorted by stack and spell, each once, timed
+            // spells only, never at 0 rounds, on living stacks and, those without a duration, on
+            // the dead stacks that died with them (BAT-MAG-010; review r2a F-3); each stack's
+            // values are those of its entries, a dead stack's too (BAT-MAG-009 to 011).
             let effects = state.effects();
             prop_assert!(effects.windows(2).all(|w| (w[0].stack, w[0].spell) < (w[1].stack, w[1].spell)));
             for e in effects {
-                prop_assert!(state.stacks()[e.stack.index()].is_alive());
+                prop_assert!(state.stacks()[e.stack.index()].is_alive() || e.rounds.is_none());
                 prop_assert!(e.rounds != Some(0));
                 prop_assert!(r.spell(e.spell).unwrap().magic.is_timed());
             }
             for i in 0..state.stacks().len() {
                 let mut fresh = state.clone();
                 crate::effects::recompute(&mut fresh, &r, StackId(u8::try_from(i).unwrap()));
-                if state.stacks()[i].is_alive() {
-                    prop_assert_eq!(fresh.stacks()[i].spells, state.stacks()[i].spells);
-                }
+                prop_assert_eq!(fresh.stacks()[i].spells, state.stacks()[i].spells);
             }
             // A battle that is over has no active stack, and vice versa.
             prop_assert_eq!(state.is_over(), state.active().is_none());

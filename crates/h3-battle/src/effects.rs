@@ -919,26 +919,36 @@ pub(crate) fn own_turn<S: Sink>(
     }
 }
 
-/// Removes the effects of dead stacks (BAT-MAG-010: a stack that dies loses its effects) and
-/// recomputes what they changed, as the original's death routine ends every active spell
-/// (0x444120, `installation.md` §7.9): Age's hit points come back before a raise counts them,
-/// Poison's lost tenths stay (BAT-MAG-044).
+/// Removes the timed effects of dead stacks (BAT-MAG-010: a stack that dies loses its effects
+/// with a duration) and recomputes what they changed, as the original's death routine ends every
+/// spell with a duration (0x444120, `installation.md` §7.9): Age's hit points come back before a
+/// raise counts them, Poison's lost tenths stay (BAT-MAG-044). A permanent effect stays on the
+/// dead stack: the original's end routine refuses Disrupting Ray (0x444510 returns at once for
+/// it), Acid Breath only lowers the defense, and neither the death nor a raise gives the defense
+/// back, so a stack that is raised or reborn comes back with it (BAT-MAG-035, BAT-MAG-059).
 pub(crate) fn remove_dead(state: &mut BattleState, ruleset: &Ruleset) {
     if state.effects.0.is_empty() {
         return;
     }
     let stacks = state.stacks.as_slice();
-    let mut dead = 0u64;
+    let mut ended = 0u64;
     state.effects.0.retain(|e| {
-        let alive = stacks.get(e.stack.index()).is_some_and(Stack::is_alive);
-        if !alive {
-            dead |= 1 << e.stack.0;
+        let stays = e.rounds.is_none() || stacks.get(e.stack.index()).is_some_and(Stack::is_alive);
+        if !stays {
+            ended |= 1 << e.stack.0;
         }
-        alive
+        stays
     });
-    while dead != 0 {
-        let s = StackId(u8::try_from(dead.trailing_zeros()).unwrap_or(u8::MAX));
-        dead &= dead - 1;
+    while ended != 0 {
+        let s = StackId(u8::try_from(ended.trailing_zeros()).unwrap_or(u8::MAX));
+        ended &= ended - 1;
         recompute(state, ruleset, s);
     }
+}
+
+/// Removes every effect of stack `s`, the permanent ones too, unreported: its record is set up
+/// anew for a stack the battle creates (BAT-MAG-037; the original's 0x47A100 sets a reused record
+/// up from scratch). The caller replaces the stack with its values.
+pub(crate) fn forget(state: &mut BattleState, s: StackId) {
+    state.effects.0.retain(|e| e.stack != s);
 }

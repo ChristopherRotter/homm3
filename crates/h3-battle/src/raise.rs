@@ -112,7 +112,8 @@ pub(crate) fn test_for<'r>(
 /// side (its own, whoever controls it) with fewer creatures than at the battle's start, which the
 /// test's spell can affect (the battle's spell level limit, BAT-MAG-062: an Archangel's
 /// Resurrection test too; its conditions and immunities; Anti-Magic on a living stack: a dead
-/// one's effects ended at its death), and whose creature's health the raised hit points reach.
+/// one's timed effects ended at its death), and whose creature's health the raised hit points
+/// reach.
 fn eligible(
     state: &BattleState,
     ruleset: &Ruleset,
@@ -239,8 +240,10 @@ pub(crate) fn victim(
 
 /// Raises stack `s` by `hit_points` (BAT-MAG-035): its total health grows up to its count at the
 /// battle's start (the top creature first); `temporary` creatures count for this battle only. A
-/// dead stack comes back on its hexes with no effects (they ended at its death) and keeps its
-/// flags for the round (the original's raise 0x5A7560 clears only its dead bit).
+/// dead stack comes back on its hexes without its timed effects (they ended at its death), with
+/// the permanent ones it died with (BAT-MAG-010: Disrupting Ray's and Acid Breath's defense loss
+/// stays), and keeps its flags for the round (the original's raise 0x5A7560 clears only its dead
+/// bit and writes no defense).
 pub(crate) fn raise<S: Sink>(
     state: &mut BattleState,
     ruleset: &Ruleset,
@@ -263,9 +266,9 @@ pub(crate) fn raise<S: Sink>(
 }
 
 /// Raises stack `s` by `hit_points` for good (the original's 0x5A7560): a dead stack comes back
-/// on its hexes, leaves the corpses and gets its effects recomputed (none: they ended at its
-/// death, by the end of the command it died in at the latest). Returns the hit points regained
-/// and the creatures brought back.
+/// on its hexes, leaves the corpses and gets its values recomputed from the effects it kept (the
+/// permanent ones: the timed ones ended at its death, by the end of the command it died in at
+/// the latest; BAT-MAG-010). Returns the hit points regained and the creatures brought back.
 fn revive(state: &mut BattleState, ruleset: &Ruleset, s: StackId, hit_points: u64) -> (u64, u32) {
     let was_dead = !state.at(s).is_alive();
     let raised = resurrect(state.at_mut(s), hit_points);
@@ -281,7 +284,8 @@ fn revive(state: &mut BattleState, ruleset: &Ruleset, s: StackId, hit_points: u6
 /// damage, `installation.md` §7.21), before the battle's end is checked: every stack of either
 /// side that died in this action (no corpse marked yet), in stack order, with the ability
 /// `rebirth` and a cast left that is not a clone uses one cast and comes back for good, without
-/// the effects it died with, with its count at the battle's start div the ability's divisor, plus
+/// the timed effects it died with (a permanent one stays, BAT-MAG-010), at its health without
+/// Age, with its count at the battle's start div the ability's divisor, plus
 /// one for each of the count mod the divisor others with a 1-in-divisor chance, and it has acted
 /// this round. None comes back if none is drawn. A sacrificed stack left no corpse and is never
 /// reborn (BAT-QUIRK-17: the original, which checks after every damaging action but not after
@@ -320,8 +324,8 @@ pub(crate) fn rebirths<S: Sink>(state: &mut BattleState, ruleset: &Ruleset, sink
             continue;
         }
         state.at_mut(s).flags.set(StackFlags::ACTED, true);
-        // Its effects end at its death (the original's 0x444120); the command's end has not
-        // removed them yet. The health is read after that, as the original's check reads it
+        // Its timed effects end at its death (the original's 0x444120); the command's end has
+        // not removed them yet. The health is read after that, as the original's check reads it
         // after the death routine (0x46959E): Age's end gave the hit points back (BAT-MAG-044),
         // so an aged Phoenix comes back whole.
         crate::effects::remove_dead(state, ruleset);

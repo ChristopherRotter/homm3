@@ -202,6 +202,54 @@ fn a_dead_stack_comes_back_on_its_hexes_without_effects_and_keeps_its_round() {
     assert_eq!(s.active(), Some(StackId(0)));
 }
 
+// covers: BAT-MAG-035, BAT-MAG-010, BAT-MAG-009
+#[test]
+fn a_raised_stack_keeps_the_permanent_effects_it_died_with() {
+    let r = ruleset();
+    let mut s = arena(
+        &r,
+        [Some(raiser(&r, 3, 0)), None],
+        &[("fixed", 1, 2, 3), ("serf", 4, 5, 5)],
+        &[("serf", 1, 14, 5)],
+        1,
+    );
+    // An Expert Disrupting Ray (−5 for the rest of the battle) and a Haste on the serfs.
+    for (name, mastery) in [("ray", 3), ("haste", 1)] {
+        let id = spell(&r, name);
+        let timed = TimedCast {
+            id,
+            spell: r.spell(id).unwrap(),
+            mastery,
+            rounds: 5,
+            own: crate::magic::SpellBonus::default(),
+        };
+        effects::apply(&mut s, &r, timed, StackId(1), &mut Vec::<Event>::new());
+    }
+    let lowered = i32::from(s.stacks()[1].defense) - 5;
+    assert_eq!(s.stacks()[1].defense_now(), lowered);
+    kill(&mut s, &r, 1);
+    // The death ended Haste, not the ray (review r2a F-3, r5b F-2: the original's end routine
+    // refuses Disrupting Ray, and neither its death nor its raise gives the defense back).
+    let ray = vec![(spell(&r, "ray"), None, -5)];
+    let entries = |s: &BattleState| -> Vec<_> {
+        let of = s.effects.of(StackId(1)).iter();
+        of.map(|e| (e.spell, e.rounds, e.defense)).collect()
+    };
+    assert_eq!(entries(&s), ray);
+    assert_eq!(s.stacks()[1].defense_now(), lowered);
+    // The ray's entry is public while the stack is dead, as it is on a living one.
+    let seen = crate::observe(&s, &r, BattleSide::Defender).effects;
+    assert_eq!(seen.len(), 1);
+    let events = cast(&mut s, &r, "rise", (stack(1), CastTarget::None)).unwrap();
+    assert_eq!(raised(&events), vec![(1, 40, 4, false)]);
+    let serfs = s.stacks()[1];
+    assert_eq!(entries(&s), ray);
+    assert_eq!(
+        (serfs.defense_now(), serfs.spells.speed),
+        (lowered, serfs.speed)
+    );
+}
+
 // covers: BAT-MAG-035
 #[test]
 fn a_corpse_is_raised_only_from_a_free_hex_and_from_the_top() {

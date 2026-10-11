@@ -968,6 +968,29 @@ fn acid_breath_lowers_the_defense_by_three_for_the_battle_down_to_0() {
     );
 }
 
+// covers: BAT-MAG-046, BAT-MAG-010, BAT-MAG-035
+#[test]
+fn acid_breath_stays_on_a_stack_that_dies_and_is_raised() {
+    let r = ruleset();
+    let mut s = duel(&r, "corroder", "serf", 1);
+    hit(&mut s, &r, 1, (7, 5));
+    assert_eq!(s.at(StackId(1)).defense_now(), 7);
+    // The serfs die: the end of the command ends a dead stack's timed effects, and the breath
+    // is none (review r4b F-1: the original's death gives no defense back, nor does a raise).
+    let total = s.at(StackId(1)).total_hp();
+    crate::damage::apply_damage(s.at_mut(StackId(1)), total);
+    crate::effects::damaged(&mut s, &r, StackId(1), &mut Vec::<Event>::new());
+    crate::effects::remove_dead(&mut s, &r);
+    crate::raise::mark_corpses(&mut s);
+    assert_eq!(on(&s, &r, 1), vec![(String::from("acid"), None, 3)]);
+    assert_eq!(s.at(StackId(1)).defense_now(), 7);
+    let raise = (StackId(1), 20);
+    crate::raise::raise(&mut s, &r, raise, false, &mut Vec::<Event>::new());
+    let serfs = s.at(StackId(1));
+    assert_eq!((serfs.count, serfs.defense_now()), (2, 7));
+    assert_eq!(on(&s, &r, 1), vec![(String::from("acid"), None, 3)]);
+}
+
 // covers: BAT-MAG-047
 #[test]
 fn the_extra_damage_is_a_share_of_one_roll_per_creature_after_the_breath() {

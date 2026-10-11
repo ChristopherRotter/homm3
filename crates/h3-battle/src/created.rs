@@ -405,13 +405,15 @@ pub(crate) fn summon<S: Sink>(
 /// its side's first dead created stack, else in a new one; morale and luck as its side's stacks
 /// have them. Returns its id.
 fn add(state: &mut BattleState, ruleset: &Ruleset, stack: Stack) -> StackId {
-    // A dead stack's effects are gone after every command; a reused slot starts without them.
-    effects::remove_dead(state, ruleset);
     let reused = (0u8..)
         .zip(state.stacks.iter())
         .find(|(_, s)| s.side == stack.side && s.is_created() && !s.is_alive())
         .map(|(i, _)| StackId(i));
     let id = if let Some(id) = reused {
+        // A reused record is set up from scratch (the original's 0x47A100): nothing of the dead
+        // stack's effects stays, neither the timed ones the command's end has not removed yet nor
+        // the permanent ones a dead stack keeps (BAT-MAG-010).
+        effects::forget(state, id);
         *state.at_mut(id) = stack;
         id
     } else {

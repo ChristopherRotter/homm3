@@ -119,7 +119,7 @@ pub(crate) fn end<S: Sink>(state: &mut BattleState, ruleset: &Ruleset, s: StackI
 }
 
 /// After stack `s` died (the original's 0x444120 calls 0x43EE10): the stacks it binds are
-/// released, and it is no longer under Bind (a dead stack loses its effects, BAT-MAG-010).
+/// released, and it is no longer under Bind (a dead stack loses its timed effects, BAT-MAG-010).
 pub(crate) fn died<S: Sink>(state: &mut BattleState, ruleset: &Ruleset, s: StackId, sink: &mut S) {
     release(state, ruleset, s, sink);
     materialize(state, s, false);
