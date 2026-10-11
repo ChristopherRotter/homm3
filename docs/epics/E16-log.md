@@ -854,3 +854,28 @@ how and why the work went.
   `crashed()` copies the player log too. The suite ran three times without a failure.
 - **Not done here**: ADR-0018 point 8's text still names only the host's setting (ADR-0019 point
   2 carries the decision); its amendment joins `06-security.md`'s accounts in T5's shared change.
+
+### M3 T4a — A game's bounds (2026-10-11)
+
+- **The command limit** (*provisional*): `[limits] commands_per_game` (default 10 000, 1 to 1 000
+  000). The configuration refuses a limit whose longest replay would not fit `outbound_bytes`
+  (`REPLAY_BYTES_PER_COMMAND` 160: a command's line of at most 48 bytes and a checkpoint's of at
+  most 32, doubled for the frame's JSON escapes; `REPLAY_HEAD_BYTES` 64 KiB for the rest): the
+  default's bound is 1.6 MB of the 2 MiB. A game whose journal holds that many commands and that is
+  not over is void after the step that reached it: its connections hear `Goodbye { CommandLimit
+  }` after that step's frames, it leaves the lobby, its journal moves to `<data>/void/`, no replay
+  is written, and connections on their way to it hear the goodbye too. The bots' answers within
+  the step may take it a few commands past the limit; the check is the game thread's, not the
+  session core's. A game restored past the limit (a crash after the step's sync, or a lowered
+  limit) is void the same way at its start; a paused one when it resumes. The archived replay's
+  size is now bounded by the limit too.
+- **A waiting game without a held seat leaves** (the M2 review's item): after a step in which a
+  waiting game holds no seat (its creator left), it leaves the lobby even while spectators are
+  bound to it; they hear `Goodbye { Abandoned }`, a connection whose join it refused leaves on its
+  own, connections on their way hear the goodbye, its journal goes (it never started).
+- **The wire**: `GoodbyeReason::CommandLimit` and `Abandoned`; the version stays 13 within this
+  pull request (T3's).
+- **Tests** (`h3-server` 62, +3, `tests/bounds.rs`; the configuration test +3 cases): a bot game
+  with a limit of 6 is void (the player and a spectator told, no end, not listed, the journal void,
+  no replay); a game restored past a lowered limit is void at the start; a waiting game whose
+  creator left with a spectator watching leaves (the spectator told, nothing void).

@@ -119,7 +119,7 @@ in `[server]` since M2 T3, `spectators_per_game` in `[limits]` since M2 T4, `emp
 `paused_game_ms` since M2 T5a, `messages_per_address`, `hello_timeout_ms` and `lobby_timeout_ms`
 since M2 T5b, `outbound_bytes` and `record_bytes` since M2 T5c, `replays_kept` since M2 T5d,
 `public_url` and `anonymous` in `[server]` and `failed_logins_per_address` in `[limits]` since M3
-T2a. Still to come:
+T2a, `commands_per_game` (a game reaching it without an end is void) since M3 T4a. Still to come:
 
 ```
 [[ladder]]    id = "battle-arena"  scenario_pool = ["…"]  season = 1  pause = false  # M4

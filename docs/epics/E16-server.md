@@ -331,8 +331,10 @@ out of its replay's listing.
   and after a restart (journal format 4); the lobby's display names (`GameInfo::seated`); the
   replay listed by the seated accounts' preferences; a re-key closes the account's other
   connections (`Rekeyed`); wire version 13.
-- **T4a A game's bounds**: the commands-per-game limit (void beyond it), a waiting game whose
-  seats are all empty leaves.
+- **T4a A game's bounds** (done 2026-10-11; `E16-log.md`): `[limits] commands_per_game` (a game
+  reaching it without an end void, `Goodbye { CommandLimit }`; its replay sized to fit
+  `outbound_bytes`); a waiting game without a held seat leaves, its spectators told
+  (`Abandoned`).
 - **T4b Behind a reverse proxy**: the forwarded address from trusted proxies, limits per IPv6
   prefix, the documented setup with TLS.
 - **T5 Closure**: `06-security.md`'s accounts, the client lane's note (the derivation, the
@@ -425,6 +427,11 @@ Choices queued under the autonomy contract (details in `E16-log.md`):
   seats unnamed), its names as they stand at the seats' last change (a rename shows later); an
   account the player log does not know keeps a replay unlisted; the replay's listing decided when
   the game ends; `GoodbyeReason::Rekeyed` and the connections by account (`Service::sessions`).
+- T4a: `commands_per_game` (10 000) and the replay's size estimate (160 bytes a command, 64 KiB
+  besides) the configuration checks against `outbound_bytes`; the limit checked by the game's
+  thread after each step (a few bot commands past it possible); void at the limit (no draw, no
+  replay), `Goodbye { CommandLimit }` and `Abandoned`; a waiting game without a held seat leaves at
+  once, as one without connections did.
 
 ## Review list for the M2 checkpoint (passed 2026-10-11, SRV-Q16)
 
