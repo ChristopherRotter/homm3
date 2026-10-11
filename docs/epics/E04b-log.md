@@ -2067,7 +2067,11 @@ records how and why the tasks went.
   | `state_hash` | ≈ 4.27 µs |
   | `bench-check` `random-rollouts-full` | 571.60 M Ir for 7 388 steps (77.4 k Ir/step; was 576.70 M for 7 607, 75.8 k): +2.1 % per step from the workload alone; re-baselined |
 
-  Exit criterion 5 met, with a thin margin in this sandbox (one run of three below 100 k). **For E05:** the full flat observation costs about a third of a step
+  Exit criterion 5 met, with a thin margin in this sandbox (one run of three below 100 k).
+- **Cross-lane** (the user; the server lane's M2 T4b merged meanwhile): its mapping test pushes
+  an opening spell onto the `full` attacker's and expects one, so it clears Brea's first; its
+  lane-only `session-random-play-full` plays the scenario: 296.00 M Ir (+7.31 %), re-baselined.
+  The pull request is labelled `cross-lane`. **For E05:** the full flat observation costs about a third of a step
   (the planes and stacks are mostly rewritten zeros); the batch API may encode less often or
   only what changed. `state_hash` (4.3 µs at 6.3 KB) suits checkpoints, not per-node hashing in
   a search.

@@ -4,7 +4,7 @@ The battle lane's living state; read after the global `docs/HANDOFF.md`. Format 
 
 ## Current state
 
-- **Branch:** `battle/e04b-t9b` (BAT-Q27). Work on `battle/<task>` branches from `master`, merged at its checkpoint; HANDOFF content goes here.
+- **Branch:** `battle/e04b-t9b`, one `cross-lane` pull request (BAT-Q27). Work on `battle/<task>` branches from `master`, merged at its checkpoint; HANDOFF content goes here.
 - **E04b increment 20 (the user, BAT-Q27): T9b (the casting workload, the measurements) done; batch 2f staged next.** Sandbox: `docs/08-work-process.md`, "Cloud sandbox".
 - **Done:** survey `docs/rules/surveys/E04b-magic.md` (§12–§15), ADR-0014 accepted (point 5 amended, Q47), design note `docs/epics/E04b-design.md`. T1–T9 (the epic file lists each with its rules): every battle spell, creature magic, casters, mana creatures, defences, the rebirth and Fear, the hero's spells and masteries in the Heroes context, the casting limits and spell defences, the per-spell conditions, the opening spells and Eagle Eye, the data quirks, a complete observation with a spectator viewer, the casting workload (BAT-MAG-001 to 069, HER-SPL-002 to 004, HER-BAT-015 to 017; Q-0006 to Q-0012, BAT-QUIRK-1 to 19), all after the executable's code (`installation.md` §7.8–§7.24). **Physical damage follows the executable's three truncated stages** under Q-0005 (Q50, BAT-DMG-002, `h3_kernel::arith::X87` at 53 bits).
 - **Hero rates** cross the seam as `h3_contracts::Rate` (basis points plus, under Q-0005, the original's single-precision value as an f32 bit pattern where it differs; Q45 (b), T3c2).
