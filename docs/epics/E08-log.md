@@ -439,3 +439,61 @@ T8b.
 - **For T8b:** a hero on a fringe tile was not asked (an object like the others, presumably);
   `viewers` then adds the fringe under `ADV-QUIRK-1` in `faithful`; the observation reads the
   grids word by word.
+
+### Checkpoint after T8a and T8b1 (2026-10-11, `adventure/e08-t8b1`)
+
+The user merged T8a (#75, #77), raised no objection to `ADV-QUIRK-1`'s class (fix-optional), and
+split T8b at the agent's proposal: **T8b1** (what a player sees: the fringe, `observe`,
+`project`, the viewer knowledge list) this round, **T8b2** (`legal_commands` and the property
+tests) the next. Two answers for T8b1: a hero on a fringe tile shows as creatures do (under the
+flag; not looked at in SoD); of another player's hero a player sees its tile, owner and identity,
+its army and movement points stay private until the original's right-click view is surveyed
+(increment 3, with the battle seam).
+
+- **The flag** (a `cross-lane` change, as T7b's): `quirk.adventure.fringe_shows_objects`
+  (`h3_content::FRINGE_SHOWS_OBJECTS`, index 22), on in the base pack's `faithful`, off in
+  `strict-fixed` (`packs/base/pack.toml` and the harvester's profile text).
+- **The fringe** (ADV-FOG-005, `fog.rs`): the tiles not explored with an explored one among the
+  eight around them on their level. `on_fringe` tests one tile (nine reads); `Sight::of` builds
+  the explored and fringe planes word by word: each grid row read once (`BitGrid::read_row`, one
+  masked word per leaf the row crosses, any leaf size), the fringe as the explored rows above,
+  at and below or-ed, spread one column either way with the carries between words, less the
+  explored tiles, masked to the width. Both checked against a tile-by-tile model (fixed cases
+  across words and edges, a property over widths 1–149 and two levels); `read_row` against the
+  flat model for the four leaf sizes.
+- **The steps' viewers** add, under the flag, every player with the step's tile left or entered
+  on its fringe (it sees heroes there).
+- **The observation** (`observe.rs`, `AdventureState::observe(core, viewer)`): the map's size,
+  the explored and fringe planes (rows of `stride` words, bit `x % 64` of word `x / 64`), one
+  `TileView` per tile (`Hidden`; `Ground` with terrain, road and river on the fringe without the
+  flag; `Seen` with the static tile, what objects cover there included, on explored tiles and on
+  the fringe under the flag), and the heroes the viewer sees by id (`HeroView`: tile, owner, id;
+  `own` with army and points for its own). A viewer that is not a player of the game sees no tile
+  and no hero. The tile views are built tile by tile from the planes (a branch per tile, no grid
+  read); T9's benchmark measures `observe`.
+- **The projection:** `AdventureEvent::project(viewer)` gives the event to the players who see it
+  with the viewers reduced to the viewer alone (the full set would tell which tiles other players
+  explored). `HeroStepped` now carries `from` and `to` as options with the players that see the
+  hero on each (`seen_from`, `seen_to`; `seen_by` their union): a player that sees the hero on
+  one tile only is told that one, the other `None` (the review found that T8a's event gave a
+  player told of a step both tiles, a hidden one included). `h3-game`: `Viewer::Player`, `observe` (the day, each player's colour and whether it
+  acts, the turn group, the adventure observation) and `project` (the game's own events public).
+  The spectator viewer comes when the server needs it (additive, as the battle's).
+- **Tests:** the planes and tile views against the model under both profiles (also on a map of
+  70 columns and two levels), the heroes a player
+  sees (fringe under the flag only, another player's without army or points), a viewer that is
+  not a player, hidden state that never changes red's observation (a hidden tile's terrain, road
+  or object, a hidden hero and so another explored layer, a seen hero's army), a fringe object
+  that changes it under the flag only, steps onto and off the fringe seen under the flag only
+  and what each is told, the projection; in `h3-game` the public facts, an observation equal for 40 seeds where the seed draws
+  only what the viewer cannot see, the events' projection.
+- **Docs:** ADV-FOG-005 and -006 in the catalog (ADV-FOG-004 updated), `ADV-QUIRK-1`'s flag and
+  regression test, the survey's A-1 row; the viewer knowledge list in `docs/06-security.md` (a
+  `shared/` pull request).
+- **Review** (an independent agent): no bit or carry error; the one-ended step (fixed above), two
+  test gaps (a map past one word with two levels, a step off the fringe; added). Not taken:
+  `#[non_exhaustive]` on `Viewer` (a downstream wildcard arm would be dead code under the
+  coverage gate; the spectator variant is added with its users, as ADR-0017 says).
+- **Not done here:** `legal_commands` and the property tests (T8b2). Open: the fringe's eight
+  neighbours are ADR-0016's "touching", not a reading of how the original draws the border
+  (inbox).

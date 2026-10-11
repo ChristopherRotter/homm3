@@ -8,8 +8,10 @@
 //! start-of-turn step (T6b), the price of a step, `MoveHero` ([`AdventureCommand`]) and the
 //! reachable-tiles query ([`Reach`], T7b), the persistent grid ([`BitGrid`], T5b), each player's
 //! explored tiles with the reveals, movement on explored tiles only and the events' viewers
-//! ([`Viewers`], T8a). The projection comes with T8b. Pointer identity (`ptr_eq`, `as_ptr`) is
-//! allowed only in the persistent module `src/persistent.rs` (`arch.toml`, ADR-0016 point 2).
+//! ([`Viewers`], T8a), the fringe under `ADV-QUIRK-1`, the observation per player
+//! ([`AdventureObservation`]) and the events' projection ([`AdventureEvent::project`], T8b1).
+//! Pointer identity (`ptr_eq`, `as_ptr`) is allowed only in the persistent module
+//! `src/persistent.rs` (`arch.toml`, ADR-0016 point 2).
 //!
 //! Logic crate: pure, deterministic, `no_std` + `alloc` (ADR-0003, ADR-0005). The lint header
 //! below is required and checked by `cargo xtask check-arch`.
@@ -34,6 +36,7 @@ extern crate alloc;
 mod command;
 mod fog;
 mod movement;
+mod observe;
 mod persistent;
 mod reach;
 mod ruleset;
@@ -47,6 +50,7 @@ pub use command::{
     AdventureCommand, AdventureCommandError, AdventureEvent, AdventureEventKind, Sink, Viewers,
 };
 pub use movement::{day_points, diagonal_cost, native_terrain};
+pub use observe::{AdventureObservation, HeroView, OwnHeroView, TileView};
 pub use persistent::BitGrid;
 pub use reach::Reach;
 pub use ruleset::{

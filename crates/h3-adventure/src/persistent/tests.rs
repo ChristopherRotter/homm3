@@ -264,6 +264,43 @@ proptest! {
     }
 }
 
+proptest! {
+    /// A row reads as its tiles (E08 T8b1, the observation's planes): bit `x % 64` of word
+    /// `x / 64` is the tile of column `x`, bits past the width are clear, and the words after the
+    /// row's are left as they were, for each leaf size.
+    #[test]
+    fn a_row_reads_as_its_tiles(
+        width in 1u16..200,
+        height in 1u16..41,
+        base in ops(),
+    ) {
+        fn check<const W: usize>(width: u16, height: u16, base: &[Op]) -> Result<(), proptest::test_runner::TestCaseError> {
+            let mut grid: BitGrid<W> = BitGrid::new(width, height, 2);
+            let mut model = std::vec![false; usize::from(width) * usize::from(height) * 2];
+            let wide: Vec<Op> = base.iter().map(|&(x, y, level, len, on)| (x * 2, y, level, len * 2, on)).collect();
+            apply_ops(&mut grid, &mut model, &wide);
+            let stride = usize::from(width.div_ceil(64));
+            for level in 0..2 {
+                for y in 0..height {
+                    let mut out = std::vec![u64::MAX; stride + 1];
+                    grid.read_row(level, y, &mut out);
+                    prop_assert_eq!(out[stride], u64::MAX);
+                    for x in 0..u16::try_from(stride * 64).unwrap() {
+                        let bit = out[usize::from(x / 64)] >> (x % 64) & 1 == 1;
+                        let tile = x < width && model[model_index(width, height, p(x, y, level))];
+                        prop_assert_eq!(bit, tile);
+                    }
+                }
+            }
+            Ok(())
+        }
+        check::<1>(width, height, &base)?;
+        check::<4>(width, height, &base)?;
+        check::<16>(width, height, &base)?;
+        check::<64>(width, height, &base)?;
+    }
+}
+
 #[test]
 fn a_run_on_the_widest_grid_does_not_overflow() {
     // The last leaf boundary of a 65 520-tile row is 65 536, past `u16`: it saturates.

@@ -39,16 +39,19 @@ fn a_move_goes_to_the_adventure_in_the_players_turn() {
     let mut state = GameState::new(&rules, &setup(), 7).unwrap();
     let (from, to) = (Pos::new(0, 0, 0), Pos::new(1, 0, 0));
     let events = play(&mut state, &rules, RED, move_hero(0, &[to])).unwrap();
+    // The map is 4 × 4: both heroes' scouting explored all of it at the start.
+    let both = Viewers::NONE.with(RED).with(BLUE);
     assert_eq!(
         events,
         vec![GameEvent::Adventure(AdventureEvent {
             kind: AdventureEventKind::HeroStepped {
                 hero: HeroId::new(0),
-                from,
-                to,
+                from: Some(from),
+                to: Some(to),
+                seen_from: both,
+                seen_to: both,
             },
-            // The map is 4 × 4: both heroes' scouting explored all of it at the start.
-            seen_by: Viewers::NONE.with(RED).with(BLUE),
+            seen_by: both,
         })]
     );
     assert_eq!(state.adventure().hero(HeroId::new(0)).unwrap().pos, to);
