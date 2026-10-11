@@ -2119,3 +2119,63 @@ records how and why the tasks went.
 - **Notes from the user:** a stack moves or Defends in a turn, not both (PS's procedure asked for
   both; a trap in `docs/experiments/README.md` now); the game offered PSb's level-up in Red's turn
   (hot seat, nothing for the engine). T10 complete.
+
+### T11a: the fold-in and the exit-criteria audit (2026-10-11, increment 21)
+
+- **The cut (the user):** T11 in three parts as E04a's T12: T11a the fold-in and the audit
+  (this), T11b the independent review in a fresh session (probably two: the hero spells
+  BAT-MAG-001 to 039 with HER-*, then creature magic and the limits, 040 to 069), T11c the
+  closure (status, BACKLOG and ADR-0014's working-detail line in a `shared/` pull request, the
+  design note deleted, the user's Windows run). BAT-Q24 answered as the code (batch 2f); the
+  T7c3 review's bad-morale gap fixed here.
+- **Bad morale in the wait phase** (BAT-MOR-004): skipped for the whole phase (`state.wait_phase`,
+  the original's +0x13DE4 at 0x465283), not by the stack's own Wait flag (VCMI's test): a stack
+  whose blindness ends in the wait phase acts without the check. Test
+  `a_stack_that_sees_again_in_the_wait_phase_does_not_freeze` (fails with the old gate).
+- **Fixture** `crates/h3-pack/tests/harvested_spell_damage.rs` on the harvested packs, heroes
+  derived in the Heroes context: batch 2a R4 (Alagar: 119, 115, 17, 230; the Gold Dragon refused)
+  and R5 (Octavia: 173, 25), R3's aims (Implosion refused at the Ballista; Fireball at an empty hex
+  and at the Efreeti, who are spared); exit criterion 2's guard (every combat spell but Earthquake
+  has effects; the ability spells without any are Death Cloud, the Thunderbirds' bolt and Death
+  Stare, which BAT-RNG-004, BAT-MAG-041 and BAT-DMG-009 carry out).
+- **Catalog:** 22 rules `verified` (their observation matched, as each fold-in recorded, and a
+  test reproduces it): BAT-MAG-001 (2a R6: `no_casting_in_the_tactics_phase_but_during_a_commanded_war_machines_turn`,
+  `a_hero_casts_once_per_round_and_its_stack_still_acts`), 003 to 005 (2a R1, R3 to R5: the new
+  fixture, `spells.rs`), 006 (2a R1, R2: `chain_lightning_jumps_to_the_nearest_stack_on_the_screen`
+  with R1's 88 and 84 pixels), 007 (2a R3: `a_stack_aimed_at_that_resists_stops_a_stack_spell_but_not_an_area_spell`),
+  025 to 028 and 034 (2c B1, H1, C1, F1, A1, A2: `control.rs`, `obstacles.rs`, `remove.rs`), 035
+  to 039 (2d RA1 to RA4, CL1, CL2, SU: `raise.rs`, `created.rs`), 054 and 055 (2a R6:
+  `batch_2a_r6_spell_costs_and_the_familiars_channel`), 061, 062, 066, 067 (2e OI, RC, OV, UA, WM:
+  `limits.rs`, `hero_defences.rs`, `harvested_defences`, `harvested_spell_conditions`; RC's Stone
+  Gaze and UA's aura are batch 2e's weak results, decisive by BAT-Q27). BAT-MAG-069 stays
+  `implemented` (Eagle Eye's chance was not measured). Unobserved parts stay as the rules state
+  them (Q43's sprite offset; the spells' own bonuses of Ciele and Luna; mass versions).
+- **Stale summaries:** the "not yet" clauses of BAT-MAG-004, 016, 020, 023 to 027, 048 to 054 and
+  HER-BAT-001 named tasks since done (the Pendants, the Sphere, the Orb of Inhibition, the
+  Faerie Dragons' mirror, the anchors, Armageddon's Blade's cost through its mastery): rewritten
+  with the rules that hold them; what remains points to E04c. BAT-MAG-069 and `installation.md`
+  §7.24 name BAT-Q24's answer.
+- **Exit criteria:** (2) the 70 battle spells in scope are each named by a rule, the guard test
+  above, the E04b ability kinds cite their rules in `h3_content::ability`; disputed rules rest on a
+  code reading confirmed by an observation or carry their experiment (Q43). (3) The battle
+  ledger's 19 flags are exactly the battle part of `h3_content::REGISTRY`;
+  `the_profiles_differ_exactly_by_the_quirk_flags` and `the_data_quirks_are_fixed_in_strict_fixed`;
+  S-14 and S-20 fixed with regression tests; every ledger test name exists (BAT-QUIRK-15's
+  corrected: `a_dead_pegasus_still_raises_the_cost`; a created stack cannot count, the cost reads
+  `BattleSetup`'s armies). (4) The properties hold casts in the legality check (`cast_targets`),
+  mana spent only by casts once per round and side, the hygiene of the hidden magic and hidden
+  obstacles, outcomes accounting for created stacks. (5) Done in T9b. (6) Batches 2a to 2f played;
+  fixtures for 2a (R3 to R6) and 2b. (7) Open: CI on the pull request and the user's Windows run,
+  both with `--with-original-data`, at T11c.
+- **Survey quirks S-09 to S-21** (`docs/rules/surveys/E04-quirks.md`, each settled there): S-09
+  the rule (no flag), S-10 Q-0011, S-11 unconfirmed (the engine's own pathfinding, Q53), S-12
+  BAT-QUIRK-13, S-13 Q-0012, S-14 fixed in every profile, S-15 settled by the code (Dispel tests
+  no immunity; Sacrifice BAT-QUIRK-5), S-16 Q-0009, S-17 data in every profile (its confirmation,
+  Q54, now noted there), S-18 not reproducible in SoD, S-19 Q-0007, S-20 BAT-QUIRK-6, S-21 cannot
+  occur in SoD.
+- **The queue's inbox** (28.9 to 11 KB): E04b's per-task loose ends replaced by one item by
+  destination (E04c, E05, E08–E10, battle without a task); their experiment candidates moved to
+  `docs/experiments/README.md`. Done parts dropped (the server lane maps T9a's fields; the
+  binders, the hex planes and the masteries are observed).
+- **Not done here:** `E04b-design.md` (no section open) is deleted at the closure, T11c, with
+  ADR-0014's line that links it (a shared path).
