@@ -5,8 +5,9 @@
 //!
 //! So far: the ruleset part ([`AdventureRuleset`], E08 T4), the setup ([`AdventureSetup`]) and
 //! the state with its static map ([`AdventureState`], T5a), a day's movement points and the
-//! start-of-turn step (T6b). The persistent grids arrive in T5b, moves in T7, fog of war and the
-//! projection in T8. Pointer identity (`ptr_eq`, `as_ptr`) is
+//! start-of-turn step (T6b), the price of a step, `MoveHero` ([`AdventureCommand`]) and the
+//! reachable-tiles query ([`Reach`], T7b), the persistent grid ([`BitGrid`], T5b). Fog of war and
+//! the projection come with T8. Pointer identity (`ptr_eq`, `as_ptr`) is
 //! allowed only in the persistent module `src/persistent.rs` (`arch.toml`, ADR-0016 point 2).
 //!
 //! Logic crate: pure, deterministic, `no_std` + `alloc` (ADR-0003, ADR-0005). The lint header
@@ -29,7 +30,10 @@
 
 extern crate alloc;
 
+mod command;
 mod movement;
+mod persistent;
+mod reach;
 mod ruleset;
 mod setup;
 mod state;
@@ -37,7 +41,10 @@ mod state;
 #[cfg(test)]
 mod testing;
 
-pub use movement::day_points;
+pub use command::{AdventureCommand, AdventureCommandError, AdventureEvent, Sink};
+pub use movement::{day_points, diagonal_cost, native_terrain};
+pub use persistent::BitGrid;
+pub use reach::Reach;
 pub use ruleset::{
     AdventureCompileError, AdventurePack, AdventureParams, AdventureParamsDef, AdventureRuleset,
     MAX_LAND_POINTS, Passage, RiverDef, RiverId, RiverKind, RoadDef, RoadId, RoadKind,

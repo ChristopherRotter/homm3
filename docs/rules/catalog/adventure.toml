@@ -65,9 +65,15 @@ numeric  = "integer"
 id       = "ADV-MOV-003"
 title    = "The straight cost of a step"
 context  = "adventure"
-status   = "specified"
-summary  = "A straight step costs the terrain's cost (data: dirt 100, sand 150, grass 100, snow 150, swamp 175, rough 125, subterranean 100, lava 100; water 100 by boat) or, along a road, the road's cost (data: dirt road 75, gravel road 65, cobblestone road 50). Rivers change no cost. Which tile prices a step that leaves or joins a road is dispute D-2 (ADV-Q3), settled by the code reading CR-1 in T7."
+status   = "implemented"
+summary  = "A straight step costs the source tile's terrain cost (data: dirt 100, sand 150, grass 100, snow 150, swamp 175, rough 125, subterranean 100, lava 100; water 100 by boat) or, when both tiles have a road, the source tile's road's cost (data: dirt road 75, gravel road 65, cobblestone road 50). Only the source tile prices a step: stepping off a road onto swamp from a road on grass costs grass's 100 (D-2: the code reading and VCMI; the wiki's destination terrain not taken, the user, ADV-Q3, 2026-10-11). Rivers change no cost. E08 T7b: `Pricing::step`, through `MoveHero` and the reachable-tiles query."
 numeric  = "integer"
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (E08 T7a, CR-1; survey §1.2): 0x4B18C0 (H3API GetMovementCost) calls 0x4B1740 with the source tile, the direction (0x678150), the points left and the destination's road byte; the price comes from the source tile alone: the source road's row of 0x63E510 (0x63E5E0: 75, 65, 50) when both tiles have a road, else 100 when the source terrain is the army's native terrain (not on Cursed Ground), else the source terrain's cost"
+  confidence = "high"
+  note       = "Read twice (T7a); D-2, the wiki's destination terrain for a road-to-terrain step, is decided for the reading and VCMI (the user, ADV-Q3, 2026-10-11)."
 
   [[rule.source]]
   kind       = "wiki"
@@ -88,9 +94,16 @@ numeric  = "integer"
 id       = "ADV-MOV-004"
 title    = "Native terrain removes the penalty"
 context  = "adventure"
-status   = "specified"
-summary  = "When every creature in the army is native to the terrain (its faction's native terrain; neutral creatures are native nowhere), a step on that terrain costs the native cost (data: 100) instead of the terrain's cost. Nomads' sand ability comes with creature abilities (increment 3)."
+status   = "implemented"
+summary  = "An army is native to a terrain when every creature's faction has it as native terrain (neutral creatures, and factions without one, have none); a step from that terrain without a road costs the native cost (data: 100) instead of the terrain's. Under ADV-QUIRK-4 (faithful) the original's walk: stacks without a native terrain in slots before the first that has one are skipped, so [Peasants, Pikemen] is native to grass but [Pikemen, Peasants] is not. Nomads' sand ability (increment 3) and Cursed Ground (with objects) come later. E08 T7b: `native_terrain`, `Pricing`."
 numeric  = "integer"
+quirks   = ["ADV-QUIRK-4"]
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (E08 T7b; survey §1.2): 0x44C590, called by 0x4B18C0, walks the seven slots, each creature's faction's native terrain from 0x643698 (a neutral creature reads -1 before the table); the first value sets the result unless it is -1, a later one that differs gives -1; 0x4B1740 then prices a step from that terrain at 100"
+  confidence = "high"
+  note       = "Confirmed by an independent second reading (2026-10-11); the slot-order effect is ADV-QUIRK-4."
 
   [[rule.source]]
   kind       = "wiki"
@@ -105,14 +118,77 @@ numeric  = "integer"
   url        = "https://github.com/vcmi/vcmi/blob/1.7.5/lib/mapObjects/CGHeroInstance.cpp"
   retrieved  = "2026-10-09"
   confidence = "high"
+  note       = "Re-read 2026-10-11: a neutral stack anywhere leaves the army without a native terrain, the strict-fixed behaviour of ADV-QUIRK-4."
+
+[[rule]]
+id       = "ADV-MOV-005"
+title    = "A diagonal step"
+context  = "adventure"
+status   = "implemented"
+summary  = "A diagonal step costs its straight cost (ADV-MOV-003, ADV-MOV-004) times √2, rounded down: in integers isqrt(2 · cost²) (141, 176, 212, 247 on terrain; 106, 91, 70 on roads), unless the diagonal exception applies (ADV-MOV-006). E08 T7b: `diagonal_cost`."
+numeric  = "integer"
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (E08 T7a; survey §1.2): 0x4B1740 multiplies the straight cost by the f32 1.41421354 at 0x63E5F0 on the x87 and truncates (crt_ftol); that equals isqrt(2 · cost²) for every cost below 5741"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "wiki"
+  ref        = "Movement - Heroes 3 wiki: the diagonal costs 141, 176, 212, 247 for terrain and 106, 91, 70 for roads"
+  url        = "https://heroes.thelazy.net/index.php/Movement"
+  retrieved  = "2026-10-09"
+  confidence = "medium"
+
+  [[rule.source]]
+  kind       = "vcmi"
+  ref        = "CPathfinderHelper::getMovementCost: static_cast<int>(cost * M_SQRT2) for a diagonal"
+  url        = "https://github.com/vcmi/vcmi/blob/1.7.5/lib/pathfinder/CPathfinder.cpp"
+  retrieved  = "2026-10-09"
+  confidence = "high"
+
+[[rule]]
+id       = "ADV-MOV-006"
+title    = "A step needs its price; the diagonal exception; the points left"
+context  = "adventure"
+status   = "implemented"
+summary  = "A step is made only with at least its price in points left; MoveHero takes only paths payable today and rejects one with a step it cannot pay (the original stops there and loses the rest). The diagonal exception: with points from a check cost C up to ⌊C × √2⌋ (inclusive) a diagonal costs only its straight cost; C is the step's own straight cost, or under ADV-QUIRK-2 without the road and under ADV-QUIRK-3 without the native cost (the original compares with the source terrain's plain cost). After each step the points left drop to 0 when fewer remain than the cheapest straight step from the new tile: its road's cost, else the native cost (D-3: the code reading; VCMI's rule, below the step's own straight cost, not taken: the user, ADV-Q3, 2026-10-11). E08 T7b: `Pricing::step`, `Pricing::left_after`, `MoveHero`."
+numeric  = "integer"
+quirks   = ["ADV-QUIRK-2", "ADV-QUIRK-3"]
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (E08 T7a, re-read in T7b; survey §1.3): 0x4B1740 from 0x4B181A compares the points left with T, the source terrain's cost from 0x63E510 (no road, no native 100): below T the diagonal costs trunc(straight × 1.41421354); from T while T × 1.41421354 (x87) exceeds the points the straight cost; else the full diagonal. The move 0x4805E0 sets the points to 0 after a step when fewer than 0x4B1880's cheapest step from the new tile remain (0x481182), and stops a move at a step it cannot pay (0x480864)"
+  confidence = "high"
+  note       = "The exception's two bugs confirmed by an independent second reading (2026-10-10): ADV-QUIRK-2 and -3, fix-optional (the user, 2026-10-11)."
+
+  [[rule.source]]
+  kind       = "wiki"
+  ref        = "Movement - Heroes 3 wiki: a hero cannot move with too few points for the next square; the diagonal exception, 'one notable, complex and buggy exception', and its two bugs"
+  url        = "https://heroes.thelazy.net/index.php/Movement"
+  retrieved  = "2026-10-09"
+  confidence = "medium"
+
+  [[rule.source]]
+  kind       = "vcmi"
+  ref        = "CPathfinderHelper::getMovementCost: the clean exception (compared with the step's own straight cost; it takes every remaining point) and checkLast (the points left drop to 0 below the step's own straight cost)"
+  url        = "https://github.com/vcmi/vcmi/blob/1.7.5/lib/pathfinder/CPathfinder.cpp"
+  retrieved  = "2026-10-09"
+  confidence = "high"
+  note       = "Agrees on the clean exception's check, not on its charge or its last-step rule (D-3)."
 
 [[rule]]
 id       = "ADV-MOV-007"
 title    = "Where a hero may step"
 context  = "adventure"
-status   = "specified"
-summary  = "A hero steps to one of the eight neighbouring tiles on the same level inside the map. Each terrain has a passage (data): land terrains are walked, water only by boat (not before boats exist), rock never. A blocked tile of an object is never entered. E08 T4: the passages; T7: the rule."
+status   = "implemented"
+summary  = "A hero steps to one of the eight neighbouring tiles on the same level inside the map, onto a tile it may stand on (ADV-MAP-001): land terrain (water only by boat, not before boats exist; rock never), no object's blocked tile, no other hero. In increment 1 an object's visitable tile is not entered either (a visit ends a move and comes with increment 2, ADR-0016 point 4). A hero's own tile is always left, a town's gate too. E08 T4: the passages; T7b: `MoveHero` and the reachable-tiles query."
 numeric  = "integer"
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (E08 T7a): the eight steps clockwise from up at 0x678150, used by 0x4B18C0 to find a step's destination"
+  confidence = "medium"
 
   [[rule.source]]
   kind       = "vcmi"

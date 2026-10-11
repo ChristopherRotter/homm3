@@ -96,14 +96,8 @@ impl GameState {
         player: PlayerId,
         sink: &mut S,
     ) -> Result<(), GameCommandError> {
-        let state = self
-            .players
-            .get_mut(player.index())
-            .ok_or(GameCommandError::UnknownPlayer(player))?;
-        if !state.acting {
-            return Err(GameCommandError::NotYourTurn(player));
-        }
-        state.acting = false;
+        self.check_acting(player)?;
+        self.players[player.index()].acting = false;
         sink.emit(GameEvent::TurnEnded { player });
         if self.players.iter().any(|p| p.acting) {
             return Ok(());
@@ -114,6 +108,19 @@ impl GameState {
             self.advance_day(sink);
         }
         self.start_group(rules, sink);
+        Ok(())
+    }
+
+    /// Checks that `player` is a player of the game whose turn is running (the game's part of
+    /// every player command, ADR-0017 point 1).
+    pub(crate) fn check_acting(&self, player: PlayerId) -> Result<(), GameCommandError> {
+        let state = self
+            .players
+            .get(player.index())
+            .ok_or(GameCommandError::UnknownPlayer(player))?;
+        if !state.acting {
+            return Err(GameCommandError::NotYourTurn(player));
+        }
         Ok(())
     }
 
@@ -166,6 +173,11 @@ impl GameState {
     /// The adventure context's state.
     pub const fn adventure(&self) -> &AdventureState {
         &self.adventure
+    }
+
+    /// The adventure context's state, for the commands routed to it.
+    pub(crate) const fn adventure_mut(&mut self) -> &mut AdventureState {
+        &mut self.adventure
     }
 
     /// The canonical state hash (ADR-0003 point 12): content only. It covers the seed and the

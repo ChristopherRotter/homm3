@@ -1,10 +1,15 @@
-//! Tests of a day's movement points (E08 T6b).
+//! Tests of a day's movement points (E08 T6b), the army's native terrain and the price of a step
+//! (T7b), each from its source (survey `E08-adventure-core.md` §1.2–1.3).
 
 use h3_content::CreatureTypeId;
 use h3_contracts::ArmyStack;
 
 use super::*;
-use crate::testing::rules;
+use crate::ruleset::RoadId;
+use crate::testing::{
+    COBBLE_ROAD, DIRT_ROAD, GNOLL, GRASS, PEASANT, PIKEMAN, ROCK, SAND, SEA, SWAMP, WOLF, army,
+    movement_rules, rules,
+};
 
 const IMP: CreatureTypeId = CreatureTypeId::from_raw(0);
 const GOG: CreatureTypeId = CreatureTypeId::from_raw(1);
@@ -33,4 +38,252 @@ fn the_slowest_creature_picks_the_land_tables_entry() {
     assert_eq!(day_points(&core, &part, &[]), 1500);
     let ghost = stack(2, CreatureTypeId::from_raw(9));
     assert_eq!(day_points(&core, &part, &[ghost, stack(0, IMP)]), 1500);
+}
+
+fn tile(terrain: TerrainId, road: Option<RoadId>) -> StaticTile {
+    StaticTile {
+        terrain,
+        road,
+        river: None,
+        blocked: false,
+        visitable: false,
+    }
+}
+
+// covers: ADV-MOV-004
+#[test]
+fn an_army_is_native_where_every_stack_is() {
+    for faithful in [false, true] {
+        let (core, _) = movement_rules(faithful);
+        let native = |creatures: &[CreatureTypeId]| native_terrain(&core, &army(creatures));
+        assert_eq!(native(&[PIKEMAN]), Some(GRASS));
+        assert_eq!(native(&[PIKEMAN, PIKEMAN]), Some(GRASS));
+        assert_eq!(native(&[GNOLL]), Some(SWAMP));
+        // Two native terrains, or none at all.
+        assert_eq!(native(&[PIKEMAN, GNOLL]), None);
+        assert_eq!(native(&[]), None);
+        assert_eq!(native(&[PEASANT]), None);
+        assert_eq!(native(&[WOLF]), None);
+        // A neutral stack after a faction stack cancels it in both profiles.
+        assert_eq!(native(&[PIKEMAN, PEASANT]), None);
+        assert_eq!(native(&[PEASANT, PIKEMAN, PEASANT]), None);
+        // An unknown creature counts as neutral.
+        let ghost = CreatureTypeId::from_raw(9);
+        assert_eq!(native(&[PIKEMAN, ghost]), None);
+    }
+}
+
+// covers: ADV-MOV-004
+#[test]
+fn leading_neutral_stacks_keep_the_native_terrain_under_the_quirk() {
+    // ADV-QUIRK-4 (0x44C590): the slots in order, stacks without a native terrain before the
+    // first faction stack skipped.
+    let (faithful, _) = movement_rules(true);
+    let (strict, _) = movement_rules(false);
+    for creatures in [&[PEASANT, PIKEMAN][..], &[PEASANT, WOLF, PIKEMAN, PIKEMAN]] {
+        assert_eq!(native_terrain(&faithful, &army(creatures)), Some(GRASS));
+        assert_eq!(native_terrain(&strict, &army(creatures)), None);
+    }
+    assert_eq!(native_terrain(&faithful, &army(&[PEASANT, PEASANT])), None);
+}
+
+// covers: ADV-MOV-005
+#[test]
+fn a_diagonal_costs_the_straight_cost_times_root_two_rounded_down() {
+    // The wiki's and VCMI's diagonal costs for the terrains and roads.
+    for (straight, diagonal) in [
+        (100, 141),
+        (125, 176),
+        (150, 212),
+        (175, 247),
+        (75, 106),
+        (65, 91),
+        (50, 70),
+    ] {
+        assert_eq!(diagonal_cost(straight), diagonal);
+    }
+    assert_eq!(diagonal_cost(0), 0);
+    // Costs are at most u16::MAX.
+    assert_eq!(diagonal_cost(u32::MAX), diagonal_cost(u32::from(u16::MAX)));
+    assert_eq!(diagonal_cost(u32::from(u16::MAX)), 92_680);
+}
+
+// covers: ADV-MOV-007
+#[test]
+fn a_step_goes_to_one_of_the_eight_tiles_around_on_the_same_level() {
+    let at = Pos::new(5, 5, 0);
+    let around = [
+        (5, 4),
+        (6, 4),
+        (6, 5),
+        (6, 6),
+        (5, 6),
+        (4, 6),
+        (4, 5),
+        (4, 4),
+    ];
+    for (dir, (x, y)) in around.into_iter().enumerate() {
+        assert_eq!(direction(at, Pos::new(x, y, 0)), Some(dir));
+    }
+    assert_eq!(direction(at, at), None);
+    assert_eq!(direction(at, Pos::new(7, 5, 0)), None);
+    assert_eq!(direction(at, Pos::new(5, 4, 1)), None);
+    assert_eq!(direction(Pos::new(0, 0, 0), Pos::new(u16::MAX, 0, 0)), None);
+}
+
+// covers: ADV-MOV-003
+#[test]
+fn only_the_source_tile_prices_a_straight_step() {
+    let (core, part) = movement_rules(false);
+    let pricing = Pricing::new(&core, &part, &army(&[PEASANT]));
+    let price = |from: StaticTile, to: StaticTile| pricing.step(&from, &to, false, 1500);
+    let (grass, sand, swamp) = (tile(GRASS, None), tile(SAND, None), tile(SWAMP, None));
+    assert_eq!(price(grass, grass), 100);
+    assert_eq!(price(sand, grass), 150);
+    assert_eq!(price(grass, swamp), 100);
+    assert_eq!(price(swamp, sand), 175);
+    // Along a road (both tiles have one) the source's road prices it.
+    let (dirt, cobble) = (tile(GRASS, Some(DIRT_ROAD)), tile(SAND, Some(COBBLE_ROAD)));
+    assert_eq!(price(dirt, cobble), 75);
+    assert_eq!(price(cobble, dirt), 50);
+    // Off a road: the terrain under the road (D-2, the code reading and VCMI; not the wiki's
+    // destination terrain), 100 from a road on grass onto swamp.
+    assert_eq!(price(dirt, swamp), 100);
+    assert_eq!(price(cobble, grass), 150);
+    // Onto a road: the source terrain.
+    assert_eq!(price(swamp, cobble), 175);
+    // Water prices by its own cost (by boat, after increment 1); a tile no hero stands on as the
+    // dearest cost.
+    assert_eq!(price(tile(SEA, None), grass), 100);
+    assert_eq!(price(tile(ROCK, None), grass), u32::from(u16::MAX));
+    assert_eq!(
+        price(tile(TerrainId::from_raw(99), None), grass),
+        u32::from(u16::MAX)
+    );
+}
+
+// covers: ADV-MOV-004
+#[test]
+fn a_native_army_steps_from_its_terrain_at_the_native_cost() {
+    let (core, part) = movement_rules(false);
+    let swamp = tile(SWAMP, None);
+    let grass = tile(GRASS, None);
+    let gnolls = Pricing::new(&core, &part, &army(&[GNOLL, GNOLL]));
+    assert_eq!(gnolls.step(&swamp, &grass, false, 1500), 100);
+    assert_eq!(gnolls.step(&swamp, &grass, true, 1500), 141);
+    // Grass is not theirs: its own cost, which is 100 too; pikemen pay swamp's.
+    assert_eq!(gnolls.step(&grass, &swamp, false, 1500), 100);
+    let pikemen = Pricing::new(&core, &part, &army(&[PIKEMAN]));
+    assert_eq!(pikemen.step(&swamp, &grass, false, 1500), 175);
+    // A road still prices a road step.
+    let road = tile(SWAMP, Some(DIRT_ROAD));
+    assert_eq!(gnolls.step(&road, &road, false, 1500), 75);
+}
+
+// covers: ADV-MOV-005, ADV-MOV-006
+#[test]
+fn the_diagonal_exception_charges_the_straight_cost_up_to_its_bound() {
+    // Grass, no road, no native army: the check is 100 in both profiles. With 100 to 141
+    // points (the bound is ⌊100 × √2⌋, inclusive: 0x4B1740's x87 compare) the diagonal costs
+    // 100; below, or above, 141.
+    for faithful in [false, true] {
+        let (core, part) = movement_rules(faithful);
+        let pricing = Pricing::new(&core, &part, &army(&[PEASANT]));
+        let grass = tile(GRASS, None);
+        let price = |points| pricing.step(&grass, &grass, true, points);
+        assert_eq!(price(99), 141);
+        assert_eq!(price(100), 100);
+        assert_eq!(price(141), 100);
+        assert_eq!(price(142), 141);
+        assert_eq!(price(1500), 141);
+        // A straight step never takes the exception.
+        assert_eq!(pricing.step(&grass, &grass, false, 120), 100);
+    }
+}
+
+// covers: ADV-MOV-006
+#[test]
+fn the_exceptions_check_ignores_roads_under_adv_quirk_2() {
+    // A diagonal cobblestone-road step over grass: straight 50, diagonal 70. Clean, the check is
+    // the step's own 50 (exception from 50 to 70 points); the original checks grass's 100
+    // (exception from 100 to 141).
+    let road = tile(GRASS, Some(COBBLE_ROAD));
+    let (core, part) = movement_rules(false);
+    let strict = Pricing::new(&core, &part, &army(&[PEASANT]));
+    let (core, part) = movement_rules(true);
+    let faithful = Pricing::new(&core, &part, &army(&[PEASANT]));
+    for (points, clean, original) in [
+        (60, 50, 70),
+        (70, 50, 70),
+        (71, 70, 70),
+        (120, 70, 50),
+        (141, 70, 50),
+        (142, 70, 70),
+    ] {
+        assert_eq!(strict.step(&road, &road, true, points), clean, "{points}");
+        assert_eq!(
+            faithful.step(&road, &road, true, points),
+            original,
+            "{points}"
+        );
+    }
+}
+
+// covers: ADV-MOV-006
+#[test]
+fn the_exceptions_check_ignores_the_native_cost_under_adv_quirk_3() {
+    // Gnolls on swamp: a straight step costs the native 100, a diagonal 141. Clean, the check is
+    // 100 (exception from 100 to 141 points); the original checks swamp's 175, so with 100 to
+    // 174 points the diagonal costs 141, and from 175 to 247 only 100.
+    let swamp = tile(SWAMP, None);
+    let (core, part) = movement_rules(false);
+    let strict = Pricing::new(&core, &part, &army(&[GNOLL]));
+    let (core, part) = movement_rules(true);
+    let faithful = Pricing::new(&core, &part, &army(&[GNOLL]));
+    for (points, clean, original) in [
+        (120, 100, 141),
+        (141, 100, 141),
+        (160, 141, 141),
+        (175, 141, 100),
+        (247, 141, 100),
+        (248, 141, 141),
+    ] {
+        assert_eq!(strict.step(&swamp, &swamp, true, points), clean, "{points}");
+        assert_eq!(
+            faithful.step(&swamp, &swamp, true, points),
+            original,
+            "{points}"
+        );
+    }
+}
+
+// covers: ADV-MOV-006
+#[test]
+fn points_below_the_cheapest_next_step_are_lost() {
+    // D-3 (0x4B1880 after each step): the cheapest straight step from the new tile is its road's
+    // cost, else the native cost, whatever its terrain.
+    let (core, part) = movement_rules(true);
+    let pricing = Pricing::new(&core, &part, &army(&[PEASANT]));
+    let swamp = tile(SWAMP, None);
+    assert_eq!(pricing.left_after(&swamp, 99), 0);
+    assert_eq!(pricing.left_after(&swamp, 100), 100);
+    let cobble = tile(SAND, Some(COBBLE_ROAD));
+    assert_eq!(pricing.left_after(&cobble, 49), 0);
+    assert_eq!(pricing.left_after(&cobble, 50), 50);
+    let dirt = tile(GRASS, Some(DIRT_ROAD));
+    assert_eq!(pricing.left_after(&dirt, 74), 0);
+    // The example of ADV-Q3: sand onto a cobblestone road with 200 points leaves 50, which pay
+    // one more road step (VCMI would leave 0).
+    let sand = tile(SAND, None);
+    let cost = pricing.step(&sand, &cobble, false, 200);
+    assert_eq!(pricing.left_after(&cobble, 200 - cost), 50);
+}
+
+#[test]
+fn no_step_costs_less_than_the_cheapest_straight_step() {
+    let (core, part) = movement_rules(true);
+    assert_eq!(Pricing::new(&core, &part, &army(&[PEASANT])).cheapest(), 50);
+    // The other test rules' cheapest step is their road's.
+    let (core, part) = rules();
+    assert_eq!(Pricing::new(&core, &part, &[]).cheapest(), 75);
 }

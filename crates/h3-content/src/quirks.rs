@@ -74,6 +74,9 @@ pub const REGISTRY: QuirkRegistry = QuirkRegistry::new(&[
     "quirk.battle.periodic_first_stack",
     "quirk.content.roland_crusader_specialty",
     "quirk.content.elemental_levels",
+    "quirk.adventure.diagonal_check_ignores_roads",
+    "quirk.adventure.diagonal_check_ignores_native",
+    "quirk.adventure.native_skips_leading_neutrals",
 ]);
 
 /// Q-0003: creatures of a side without a hero never get lucky strikes (BAT-LCK-002).
@@ -168,6 +171,20 @@ pub const ROLAND_CRUSADER_SPECIALTY: QuirkFlag = QuirkFlag(17);
 /// Read by the compiler only.
 pub const ELEMENTAL_LEVELS: QuirkFlag = QuirkFlag(18);
 
+/// ADV-QUIRK-2: the diagonal exception compares the hero's points left with the source tile's
+/// terrain cost even on a road, though the step it prices then costs the road's (ADV-MOV-006;
+/// code 0x4B1740). Off: with the road's cost when both tiles have a road.
+pub const DIAGONAL_CHECK_IGNORES_ROADS: QuirkFlag = QuirkFlag(19);
+
+/// ADV-QUIRK-3: the diagonal exception compares the hero's points left with the terrain's
+/// penalised cost even for an army native to it (ADV-MOV-006; code 0x4B1740). Off: with the
+/// native cost.
+pub const DIAGONAL_CHECK_IGNORES_NATIVE: QuirkFlag = QuirkFlag(20);
+
+/// ADV-QUIRK-4: an army's native terrain skips neutral stacks in slots before its first faction
+/// stack (ADV-MOV-004; code 0x44C590). Off: a neutral stack anywhere leaves the army without one.
+pub const NATIVE_SKIPS_LEADING_NEUTRALS: QuirkFlag = QuirkFlag(21);
+
 /// The prefix of the flags of data quirks: a gated override names one of them (`fixes`), and
 /// rule code never reads them (ADR-0007, amendment E04b T8e).
 pub const DATA_QUIRK_PREFIX: &str = "quirk.content.";
@@ -210,7 +227,19 @@ mod tests {
 
     #[test]
     fn registry_lookup_and_bitset() {
-        assert_eq!(REGISTRY.len(), 19);
+        assert_eq!(REGISTRY.len(), 22);
+        assert_eq!(
+            REGISTRY.lookup("quirk.adventure.diagonal_check_ignores_roads"),
+            Some(DIAGONAL_CHECK_IGNORES_ROADS)
+        );
+        assert_eq!(
+            REGISTRY.lookup("quirk.adventure.diagonal_check_ignores_native"),
+            Some(DIAGONAL_CHECK_IGNORES_NATIVE)
+        );
+        assert_eq!(
+            REGISTRY.lookup("quirk.adventure.native_skips_leading_neutrals"),
+            Some(NATIVE_SKIPS_LEADING_NEUTRALS)
+        );
         assert_eq!(
             REGISTRY.lookup("quirk.content.roland_crusader_specialty"),
             Some(ROLAND_CRUSADER_SPECIALTY)

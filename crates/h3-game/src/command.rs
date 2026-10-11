@@ -1,10 +1,11 @@
 //! The whole game's entry point (ADR-0017 point 1, ADR-0004): actors, the game's commands, its
 //! events and their sink. A game command wraps a context's command or is the game's own; the game
-//! checks turn and phase, the context its rules (E08 T6b: `EndTurn`; the adventure's `MoveHero`
-//! comes with T7, `legal_commands`, `observe` and `project` with T8).
+//! checks turn and phase, the context its rules (E08 T6b: `EndTurn`; T7b: the adventure's
+//! `MoveHero`; `legal_commands`, `observe` and `project` come with T8).
 
 use core::fmt;
 
+use h3_adventure::{AdventureCommand, AdventureCommandError, AdventureEvent};
 use h3_contracts::PlayerId;
 
 use crate::{GameRuleset, GameState};
@@ -19,10 +20,12 @@ pub enum Actor {
 }
 
 /// A command to the whole game.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum GameCommand {
     /// Ends the actor's turn.
     EndTurn,
+    /// A command to the adventure context, given in the actor's turn.
+    Adventure(AdventureCommand),
 }
 
 /// Why a command was rejected; a rejected command changes nothing.
@@ -32,6 +35,8 @@ pub enum GameCommandError {
     UnknownPlayer(PlayerId),
     /// The actor's turn is not running.
     NotYourTurn(PlayerId),
+    /// The adventure context rejected the command.
+    Adventure(AdventureCommandError),
 }
 
 impl fmt::Display for GameCommandError {
@@ -39,14 +44,15 @@ impl fmt::Display for GameCommandError {
         match self {
             Self::UnknownPlayer(p) => write!(f, "player {} is not in the game", p.raw()),
             Self::NotYourTurn(p) => write!(f, "it is not player {}'s turn", p.raw()),
+            Self::Adventure(error) => write!(f, "{error}"),
         }
     }
 }
 
 impl core::error::Error for GameCommandError {}
 
-/// What happened in the game. Every event so far is a public fact: whose turn it is and the day
-/// (T8 adds the visibility of the contexts' events).
+/// What happened in the game. The game's own events are public facts: whose turn it is and the
+/// day; T8 adds the visibility of the contexts' events.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum GameEvent {
     /// A player ended its turn.
@@ -64,6 +70,8 @@ pub enum GameEvent {
         /// The player.
         player: PlayerId,
     },
+    /// Something happened on the adventure map.
+    Adventure(AdventureEvent),
 }
 
 /// Receiver of the game's events.
@@ -87,6 +95,15 @@ impl Sink for alloc::vec::Vec<GameEvent> {
     }
 }
 
+/// The adventure context's sink inside a game's: its events become game events.
+struct AdventureSink<'a, S>(&'a mut S);
+
+impl<S: Sink> h3_adventure::Sink for AdventureSink<'_, S> {
+    fn emit(&mut self, event: AdventureEvent) {
+        self.0.emit(GameEvent::Adventure(event));
+    }
+}
+
 /// Applies a command of `actor` to the game (ADR-0017 point 1): validated against the state and
 /// the trusted actor, then applied; the events go to `sink`.
 ///
@@ -103,5 +120,18 @@ pub fn apply<S: Sink>(
     let Actor::Player(player) = actor;
     match command {
         GameCommand::EndTurn => state.end_turn(rules, player, sink),
+        GameCommand::Adventure(command) => {
+            state.check_acting(player)?;
+            state
+                .adventure_mut()
+                .apply(
+                    rules.core(),
+                    rules.adventure(),
+                    player,
+                    &command,
+                    &mut AdventureSink(sink),
+                )
+                .map_err(GameCommandError::Adventure)
+        }
     }
 }

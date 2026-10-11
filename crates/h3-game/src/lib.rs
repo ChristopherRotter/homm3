@@ -7,8 +7,8 @@
 //!
 //! So far: the game's rules ([`GameRuleset`]) and setup ([`GameSetup`]) with its validation
 //! (E08 T6a); the state ([`GameState`]) with the starting armies' draw, the players' streams,
-//! sequential turns, the calendar, and [`apply`] with `EndTurn` (T6b). The adventure's commands
-//! come with T7, `legal_commands`, `observe` and `project` with T8.
+//! sequential turns, the calendar, and [`apply`] with `EndTurn` (T6b); the adventure's commands
+//! (`MoveHero`, T7b). `legal_commands`, `observe` and `project` come with T8.
 //!
 //! Logic crate: pure, deterministic, `no_std` + `alloc` (ADR-0003, ADR-0005). The lint header
 //! below is required and checked by `cargo xtask check-arch`.

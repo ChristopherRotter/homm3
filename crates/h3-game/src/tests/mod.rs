@@ -3,6 +3,7 @@
 //! takes no pack adapter as a dev-dependency); the core still needs battle parameters until the
 //! content split (ADR-0015 point 3).
 
+mod moves;
 mod state;
 
 extern crate std;

@@ -298,3 +298,94 @@ with callgrind on an adventure-owned example, because the `h3` binary's dispatch
   points drop to 0 when fewer than the cheapest straight step from the new tile remain (0x4B1880;
   D-3: not VCMI's rule). The f32 √2 truncated equals `isqrt(2·cost²)` for every cost below 5741.
   Decisions for the user in ADV-Q3; T7b builds on them.
+
+### Checkpoint after T6b/T7a and T7b + T5b (2026-10-11, `adventure/e08-t7b-t5b`)
+
+At the checkpoint the user took T7b and T5b as one round (T7b first), decided ADV-Q3 (D-2: the
+source tile prices a step, the reading and VCMI; D-3: the original's last-step rule; A-2 and A-3
+fix-optional) and, during T7b, classified a new quirk and allowed the quirk flags as a
+`cross-lane` change in this round's pull request (`h3_content`'s registry, the harvester's and
+`packs/base/pack.toml`'s profiles are battle-owned).
+
+- **T7b readings.** *The exception's bound* (0x4B1740 from 0x4B181A, re-read): the points and T
+  go to f32 exactly and T × 1.41421354 (x87, 53 bits, exact for these sizes and never an integer)
+  is compared with the points, so the straight cost applies for T ≤ points ≤ `isqrt(2·T²)`
+  (141 points on grass: the diagonal costs 100). The clean check keeps that bound and charge and
+  only takes the step's own straight cost for T (VCMI takes every remaining point and stops one
+  lower). *The army's native terrain* (0x44C590, called by 0x4B18C0): the slots in order, each
+  creature's faction's terrain from 0x643698, a neutral creature reading the -1 before the table,
+  which is also "none yet": neutral stacks before the first faction stack are skipped, any later
+  difference gives none. The wiki ("all the creatures") and VCMI 1.7.5 (`getNativeTerrain`, any
+  neutral stack: none) differ; a fresh agent's independent re-read agreed exactly: `ADV-QUIRK-4`,
+  fix-optional (the user). The four elementals count as neutral there while a game flag is clear
+  (RoE content); the packs already have them neutral in `base`, Conflux in `ab`.
+- **T7b build.** `h3_content`: flags 19–21 `quirk.adventure.diagonal_check_ignores_roads`,
+  `diagonal_check_ignores_native`, `native_skips_leading_neutrals` (on in `faithful`, off in
+  `strict-fixed`; after the battle lane's T8e, which took 17 and 18 and merged first).
+  `h3-adventure`: `native_terrain` (ADV-MOV-004), `diagonal_cost` (ADV-MOV-005, `isqrt`), `Pricing` (the step's price from the source tile alone, the exception's check under
+  the two flags, the points left zeroed below the cheapest straight step from the new tile:
+  ADV-MOV-003, -006), `AdventureCommand::MoveHero` (`AdventureState::apply`: the hero must be the
+  player's, one error for unknown or foreign heroes; each step to a neighbour on the level, onto a
+  tile the hero may stand on, in increment 1 not an object's visitable tile; priced at the points
+  left; the whole path checked before anything changes; one `HeroStepped` event per step;
+  ADV-MOV-007), and `Reach` (`AdventureState::reach`: Dijkstra by points left over a window as
+  far as the cheapest step allows, one path per tile, ties to the first found in tile and
+  direction order, the original's clockwise directions 0x678150). `h3-game`:
+  `GameCommand::Adventure` after the turn check, `GameCommandError::Adventure`,
+  `GameEvent::Adventure`. No hash version changes (no new state). Tests: each step rule from its
+  source, the exception's bounds in both profiles, D-3's example from ADV-Q3, MoveHero's
+  rejections leaving the state equal, the query's points, paths and window, a later better path
+  replacing the first, and a property on random maps, armies and profiles (every reported path is
+  accepted with the reported points; an accepted one-step move lands on a reported tile with at
+  most its points; rejected moves change nothing), stressed with 20 000 cases. A first version of
+  the property also claimed that a rejected one-step move's tile is never reported: false, a tile
+  next to the hero may be reachable only around a corner (from a swamp road over the next road
+  tile with 162 points); the regression seed stays in `proptest-regressions/`.
+- **The query's limit** (followed up the same day at the user's request: review, measurements,
+  the original's pathfinder). Dijkstra's, like A*, is exact when more points on a tile are never
+  worse later; the diagonal exception breaks that (a diagonal from swamp costs 175 with 175–247
+  points, 247 with more: 257 points on the swamp leave 10 after it, 245 leave 70). *Review:* with
+  the exception switched off (everything else as built) the query matched an exhaustive search
+  over (tile, points) exactly on 1 152 queries of random 16 × 16 maps (~124 000 tiles, both
+  profiles), so the search is right and the exception alone causes the differences. *With it*
+  (random 16 × 16 maps, up to four moves along reported paths each): faithful, 60 of 572 queries
+  differ, 4 of 64 713 reachable tiles not reported (each reachable only with 0 points left), 117
+  reported with fewer points than possible (on average 12.9); strict-fixed, 6 of 581 queries, 3
+  of 64 203 tiles missed, 9 short (49.4 on average). The exhaustive search explored ~45 000 states
+  per query against ~110 tiles (≈ 26 ms against microseconds): too slow for the env's mask.
+  Regression test `more_points_on_a_tile_can_leave_fewer_after_the_next_diagonal` (strict-fixed:
+  the query's path leaves 0, a path over sand 70). *The original* (0x4194A0 → 0x56B440, 0x4B2300,
+  0x4B1A70; survey §1.3): one node per tile, each step priced at the node's points left, a node
+  replaced only by a strictly better one: the same limit, so the path the game shows can leave
+  fewer points than one clicked step by step. MoveHero accepts every payable path.
+- **T5b build and measurements.** `BitGrid<WORDS>` (`src/persistent.rs`): an `Arc` table of
+  `Arc` leaves of `64 × WORDS` tiles, an empty leaf none and a full one the grid's shared full
+  leaf (one stored form per content); `get`, `set`, `set_run` (a row of a leaf is one masked
+  word); equality, `Debug` and the hash see content only (the leaf size is part of the hash
+  encoding). Properties: a write through a fork reaches neither parent nor sibling, and equal
+  content compares and hashes equal, for 8×8 to 64×64 leaves (20 000 cases). `examples/
+  grid_bench.rs` under callgrind, per operation on one player's layer with twenty revealed disks
+  (instructions; flat = one bitset of the map copied by each fork):
+
+  | 144×144×2 | flat | 8×8 | 16×16 | 32×32 | 64×64 |
+  |---|---|---|---|---|---|
+  | fork | 906 | 22 | 22 | 22 | 22 |
+  | fork + first write | 955 | 11 498 | 3 585 | 1 550 | 1 052 |
+  | reveal r 5 by rows | 1 194 | 3 889 | 2 824 | 2 443 | 2 190 |
+  | reveal r 5 by tiles | 2 696 | 11 874 | 11 444 | 11 252 | 10 620 |
+  | read every tile | 1 329 426 | 1 334 326 | 1 394 230 | 1 500 214 | 1 556 116 |
+  | 1000 scattered reads | 61 009 | 58 081 | 61 625 | 65 318 | 63 439 |
+
+  | 36×36 | flat | 8×8 | 16×16 | 32×32 | 64×64 |
+  |---|---|---|---|---|---|
+  | fork | 209 | 22 | 22 | 22 | 22 |
+  | fork + first write | 258 | 1 128 | 808 | 722 | 725 |
+  | reveal r 5 by rows | 1 165 | 2 167 | 1 947 | 1 814 | 1 627 |
+  | read every tile | 41 772 | 52 322 | 52 469 | 52 469 | 49 696 |
+  | 1000 scattered reads | 61 009 | 66 007 | 71 007 | 71 007 | 64 007 |
+
+  The first write after a fork copies the table (one reference increment per leaf), so small
+  leaves pay on large maps; the grid loses 5–25 % on per-tile reads and about half on a reveal.
+  Taken back to the user (ADR-0016): **32 × 32 leaves** (the user, 2026-10-11), the default.
+  For T8: build observation planes word by word, not tile by tile, and batch a reveal's rows per
+  leaf (one copy-on-write check per leaf).
