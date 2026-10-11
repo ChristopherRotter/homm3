@@ -204,12 +204,14 @@ impl Prepared {
     /// Draws game `game`'s secrets from the OS (ADR-0018 point 8): the battle's seed; the
     /// obstacles from a separate seed that is then forgotten, so that the layout every viewer sees
     /// tells nothing about the battle's seed; a token per player seat; the bot's seed. Checks that
-    /// the battle starts, then creates the game's journal (E16 M2 T2) for its creator at `origin`.
+    /// the battle starts, then creates the game's journal (E16 M2 T2) for its creator at `origin`,
+    /// who chose whether it takes spectators (`watchable`, E16 M2 T4c).
     pub(crate) fn new(
         offer: Arc<Offer>,
         game: u32,
         origin: IpAddr,
         (server, spectators): (&config::Server, usize),
+        watchable: bool,
     ) -> Result<Self, Error> {
         let mut setup = offer.setup.clone();
         if let (true, Some(terrain)) = (offer.random_obstacles, setup.terrain) {
@@ -235,6 +237,7 @@ impl Prepared {
             checkpoint_every: server.checkpoint_every,
             shadow: server.shadow_instance,
             spectators,
+            watchable,
         };
         let (bot_seed, replay_path) = (os_u64()?, replay_path(&server.data, &offer.id, game)?);
         let begun = Journal {
@@ -293,6 +296,9 @@ impl Prepared {
             checkpoint_every: replay.checkpoint_every,
             shadow: server.shadow_instance,
             spectators,
+            // A game restores only if it started, and its entries hold the setting it started
+            // with (`Entry::Spectators`).
+            watchable: true,
         };
         let secrets =
             os_u64().and_then(|seed| Ok((seed, replay_path(&server.data, &offer.id, game)?)));
@@ -385,7 +391,8 @@ impl Prepared {
         let mut journal = Some(journal);
         let mut conns = BTreeMap::new();
         let mut out = Vec::new();
-        let mut reported = (session.phase(), session.open_seats());
+        let status = |s: &Session<'_>| (s.phase(), s.open_seats(), s.takes_spectators());
+        let mut reported = status(&session);
         while let Some(event) = inbox.blocking_recv() {
             match event {
                 // Nothing changes for the session until the connection's join.
@@ -429,10 +436,10 @@ impl Prepared {
                     None => session.withhold_replay(),
                 }
             }
-            let now = (session.phase(), session.open_seats());
+            let now = status(&session);
             let mut registry = lock(registry);
             if now != reported {
-                registry.report(game, now.0, now.1.clone());
+                registry.report(game, now.clone());
                 reported = now;
             }
             if registry.close_if_idle(game, reported.0) {
@@ -501,6 +508,7 @@ fn resume<'r>(
         offer: offer.id.clone(),
         phase: session.phase(),
         open: session.open_seats(),
+        spectators: session.takes_spectators(),
     };
     let paused = session.paused();
     let hosted = if paused {
@@ -684,7 +692,11 @@ fn verify(
         match entry {
             Entry::Command(side, command) => replay.commands.push((side, command)),
             Entry::Checkpoint(hash) => replay.checkpoints.push(hash),
-            Entry::Taken(_) | Entry::Started | Entry::Paused | Entry::Resumed => {}
+            Entry::Taken(_)
+            | Entry::Started
+            | Entry::Paused
+            | Entry::Resumed
+            | Entry::Spectators(_) => {}
         }
     }
     replay.final_hash = session.state_hash();
@@ -723,6 +735,7 @@ mod tests {
             checkpoint_every: 0,
             shadow: false,
             spectators: 0,
+            watchable: true,
         };
         let mut session = Session::new(&r, config, players).unwrap();
         let (to, mut queue) = mpsc::channel(1);

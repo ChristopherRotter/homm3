@@ -21,7 +21,7 @@ idle_timeout_ms = 300000
 outbound_queue = 256
 games = 16
 games_per_address = 2
-spectators_per_game = 8         # 0: no spectators
+spectators_per_game = 8         # 0: no spectators; a game's host may close it to them
 
 # What clients may create games from (`CreateGame { offer }`).
 [[offer]]

@@ -1,8 +1,8 @@
 # E16 — Server: protocol, hosting, lobbies and ladders
 
 Status: **in progress** (refined 2026-10-08/09; M0 done 2026-10-10: ADR-0018 accepted, the
-crate skeletons; M1 done 2026-10-10, its checkpoint passed 2026-10-11 (SRV-Q12); M2 T1 to T4b
-done 2026-10-11, T4c next). Decisions: [ADR-0018](../adr/0018-server-and-protocol.md) (protocol
+crate skeletons; M1 done 2026-10-10, its checkpoint passed 2026-10-11 (SRV-Q12); M2 T1 to T4c
+done 2026-10-11, T5 next). Decisions: [ADR-0018](../adr/0018-server-and-protocol.md) (protocol
 and hosting); ADR drafts `docs/lanes/server/adr-drafts/identity-and-ladders.md` and
 `discovery.md`. Working detail (messages, flows, journals, the ladder sketch):
 `docs/epics/E16-design.md`. Done tasks in full: `docs/epics/E16-log.md`. Lane: server (`docs/lanes/server/HANDOFF.md`).
@@ -278,8 +278,11 @@ Cut at the M1 checkpoint (SRV-Q12); the tasks in full: `docs/lanes/server/QUEUE.
   cleared hexes, the own hero's hidden magic), the effects' values; every field of the engine's
   observation and its parts named in a pattern, so a new one fails the build until it is mapped or
   left out with its reason (wire version 7).
-- **T4c** the host's spectator setting (the user, 2026-10-11); **T5** shutdown, drain, hardening
-  and closure.
+- **T4c The host's spectator setting** (done 2026-10-11; `E16-log.md`; the user asked for it):
+  `CreateGame`'s `spectators` (open when left out), the host's `SetSpectators` until the start
+  (closing ends the watch), `GameInfo::spectators`, the setting journaled (wire version 8,
+  journal format 3).
+- **T5** shutdown, drain, hardening and closure.
 
 ## Review list for the M2 checkpoint
 
@@ -332,6 +335,14 @@ Choices queued under the autonomy contract (details in `E16-log.md`):
   masteries and values); the completeness as patterns in the mapping, a build failure like a new
   variant's (the queue asked for a test); `h3-contracts` a normal dependency of `h3-protocol`
   (an edge `arch.toml` allowed already).
+- T4c: the messages (`CreateGame`'s optional `spectators`; `SetSpectators { seq, open }` answered
+  `SpectatorsSet { n, seq, open }`, numbered to the host's seat; the reject codes `NotHost` and
+  `AlreadyStarted`; `Goodbye { SpectatorsClosed }` for the spectators a closing ends;
+  `GameInfo::spectators`, false for a paused game and on a server without spectators); the
+  setting journaled once, as the game started (a `Spectators` line before `Started`, format 3); the
+  other seat is not told of a change (in a two-seat battle it can join only a waiting game, which
+  starts then; the lobby showed it the setting). Not built: an offer's own setting for the
+  ladders' games, which have no host (M4).
 
 ## Review list for the M1 checkpoint (passed 2026-10-11)
 

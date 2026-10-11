@@ -204,6 +204,10 @@ pub enum RejectCode {
     /// The game's journal did not re-run to the game as played: its replay is withheld (E16 M2
     /// T3).
     Unverified,
+    /// Only the game's host may do this (E16 M2 T4c).
+    NotHost,
+    /// The game has started: its configuration is fixed (E16 M2 T4c).
+    AlreadyStarted,
 }
 
 /// The flags of a strike.
@@ -975,6 +979,9 @@ pub struct GameInfo {
     pub phase: Phase,
     /// The seats a newcomer may take without a token.
     pub open: Vec<Seat>,
+    /// Whether it takes spectators (E16 M2 T4c): its host's setting, on a server that takes them
+    /// at all; a game watched by as many as the server allows refuses more.
+    pub spectators: bool,
 }
 
 /// A question about the battle that only the server's rules answer (ADR-0018 point 10).
@@ -1022,6 +1029,10 @@ pub enum ClientMessage {
         offer: String,
         /// The seat the creator takes.
         seat: Seat,
+        /// Whether the game takes spectators (E16 M2 T4c); `None`, or left out: it does. Its host
+        /// may change it until the game starts (`SetSpectators`).
+        #[serde(default)]
+        spectators: Option<bool>,
     },
     /// Take a seat in a game, or re-take it with its token after a disconnect.
     Join {
@@ -1069,6 +1080,14 @@ pub enum ClientMessage {
         /// The client's sequence number.
         seq: u32,
     },
+    /// Open the game to spectators, or close it (E16 M2 T4c): the host's, until the game starts;
+    /// closing it ends the spectators' watch. The answer is `SpectatorsSet`, or `Rejected`.
+    SetSpectators {
+        /// The client's sequence number.
+        seq: u32,
+        /// Whether the game takes spectators.
+        open: bool,
+    },
 }
 
 /// Why a join or a game's creation was refused; the connection stays open.
@@ -1114,6 +1133,8 @@ pub enum GoodbyeReason {
     Shutdown,
     /// The game paused (E16 M2 T3); a seat's player resumes it by joining with the token.
     Paused,
+    /// The host closed the game to spectators (E16 M2 T4c).
+    SpectatorsClosed,
 }
 
 /// A message from the server. `n` counts the messages a viewer received from its game, so a gap
@@ -1253,6 +1274,15 @@ pub enum ServerMessage {
         n: u32,
         /// The seat that asked.
         seat: Seat,
+    },
+    /// The host's `SetSpectators` is done (E16 M2 T4c): whether the game takes spectators now.
+    SpectatorsSet {
+        /// The viewer's message number.
+        n: u32,
+        /// The request's sequence number.
+        seq: u32,
+        /// Whether the game takes spectators.
+        open: bool,
     },
 }
 
