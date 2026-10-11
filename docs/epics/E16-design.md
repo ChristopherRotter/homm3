@@ -125,7 +125,8 @@ T2a. Still to come:
 ```
 
 The journals (`<data>/games/<game>.journal`, open games), the replays (`<data>/replays/`,
-finished) and `<data>/void/` are code since M2 T2, `<data>/players.log` since M3 T2a. Still to
+finished) and `<data>/void/` are code since M2 T2, `<data>/players.log` since M3 T2a, `<data>/lock`
+(held by a running server and by the operator's `rebind`) since M3 T2b. Still to
 come: `server-data/records/<game>/<viewer>.jsonl`, `server-data/ladders/<id>/results.jsonl`
 (M4), snapshots beside the logs. The log never
 contains seeds, tokens, nonces or signatures.
@@ -166,21 +167,30 @@ contains seeds, tokens, nonces or signatures.
   connection `RateLimited`, as does any login from the address until the minute is over. Without
   a login a connection plays anonymously where `[server] anonymous` (default true)
   allows, with seat tokens as in M2; otherwise `Join` and `CreateGame` wait for the login.
-- **Re-keying.** After a password change the client keeps the old key until each server it
-  knows has accepted `Rekey { new_public_key, signature_by_old, signature_by_new }` at the
-  next login; the server rebinds the account. A forgotten password is a lost account; the
-  operator's admin command can rebind a login name to a new key by hand.
+- **Re-keying** (built in M3 T2b). After a password change the client keeps the old key until
+  each server it knows has accepted `Rekey { seq, key, by_old, by_new }` at the next login: both
+  keys sign `account::rekey_message` (the server's id, the connection's challenge, the login name,
+  the new key); the server rebinds the account, and from then on only the new key logs in (its
+  connections logged in already stay so). A re-key to the key it has changes nothing. A forgotten
+  password is a lost account, unless the operator binds the login name to the key of the player's
+  new password: `h3-server rebind <config.toml> <login> <public-key>` (*provisional*) while the
+  server is stopped (`<data>/lock`: a running server holds it, and the command refuses), checked
+  as an Ed25519 key, a `Rebound` line.
+- **Renames and the preference** (M3 T2b). `Rename` takes a display name no other account has,
+  ignoring case (one's own in another case is free; else `NameTaken`); `SetListed` sets
+  `listed`. Each answered `Account`; a request that changes nothing writes no line.
 - **Privacy.** A public key and a login name are shown to their owner only (a fingerprint in the
   client); other clients see display names. Anonymous connections may never queue for a ladder.
 - **A replay's listing (the user, SRV-Q17).** An account's preference (`listed`, default true);
   a finished game is listed only if its host left it open to spectators and no seated account
   opted out, else archived unlisted.
-- **The player log** (M3 T2a). `<data>/players.log`, JSON lines (`Registered { login, key,
-  display }`; M3 T2b: re-keyed, renamed, a preference changed), owner-read-write, each synced
-  before its answer, read back at start: a torn last line is dropped and cut, any other line that
-  does not read or contradicts the lines before it stops the start (the error names the line,
-  never its text). After a failed write nothing more is written and registrations are refused;
-  known accounts still log in. Snapshots once a start takes too long.
+- **The player log** (M3 T2a, T2b). `<data>/players.log`, JSON lines (`Registered { login, key,
+  display }`, `Rekeyed { login, key }`, `Rebound { login, key }`, `Renamed { login, display }`,
+  `Listed { login, listed }`), each checked against the accounts as they stand, owner-read-write,
+  each synced before its answer, read back at start: a torn last line is dropped and cut, any
+  other line that does not read or contradicts the lines before it stops the start (the error
+  names the line, never its text). After a failed write nothing more is written and changes are
+  refused; the accounts as they stand still log in. Snapshots once a start takes too long.
 
 ## 11. Ladders and matchmaking (M4)
 

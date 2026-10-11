@@ -323,7 +323,9 @@ out of its replay's listing.
   checked (Ed25519, strict), registration and login, `<data>/players.log`, the derivation and its
   test vector in the test client, `[server] public_url` and `anonymous`, failed logins limited
   per address; re-keys, renames and the preference refused until T2b (SRV-STUB-2).
-- **T2b Re-keying, renames, the listing preference, the operator's rebind.**
+- **T2b Re-keying, renames, the listing preference, the operator's rebind** (done 2026-10-11;
+  `E16-log.md`): the three requests answered, each a line in the player log; `h3-server rebind`
+  while the server is stopped, `<data>/lock` keeping one server or command at a time.
 - **T3 Seats bound to accounts**: a seat taken and re-taken by account, the journal's account,
   the lobby's display names, the replay's listing by the seated accounts.
 - **T4a A game's bounds**: the commands-per-game limit (void beyond it), a waiting game whose
@@ -406,6 +408,13 @@ Choices queued under the autonomy contract (details in `E16-log.md`):
   off the connection's task (`spawn_blocking`, the player log under its own lock); `argon2` a
   normal dependency of `h3-server` for its `client` module (tools may log in); the shared lines
   for the two crates (`Cargo.toml`, `arch.toml`) in a commit of their own on the lane's branch.
+- T2b: the player log's lines as typed events (`Rekeyed`, `Rebound` apart from `Rekeyed` for the
+  operator's audit, `Renamed`, `Listed`), checked against the accounts on reading and before
+  writing; a request that changes nothing answered without a line; a re-key's connections logged
+  in already stay so; a failed re-key not counted as a failed login; `h3-server rebind
+  <config.toml> <login> <public-key>` (the key checked as an Ed25519 key that is not weak);
+  `<data>/lock` (`File::try_lock`), held by a running server for its life and by the command, so
+  a second server on the same data directory does not start either.
 
 ## Review list for the M2 checkpoint (passed 2026-10-11, SRV-Q16)
 

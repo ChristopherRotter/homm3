@@ -38,9 +38,10 @@
 //!
 //! The data directory holds `games/<game>.journal` for every game that is not over (its seed and
 //! its seats' tokens: the operator's copy of them; E16 M2 T2), `replays/` for the finished games
-//! and `void/` for the journals a start could not restore, and `players.log`, the accounts (E16 M3
-//! T2a). It must be readable by the server's user only: on Unix the server creates the directories
-//! owner-only and the journals and the player log owner-read-write.
+//! and `void/` for the journals a start could not restore, `players.log`, the accounts (E16 M3
+//! T2a), and `lock`, which a running server holds (E16 M3 T2b: one server, or the operator's
+//! `rebind`, at a time). It must be readable by the server's user only: on Unix the server creates
+//! the directories owner-only and its files owner-read-write.
 //!
 //! Provisional (E16 M1 and M2 reviews): the format and the defaults.
 

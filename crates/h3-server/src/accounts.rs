@@ -1,6 +1,6 @@
-//! Accounts (E16 M3 T2a; ADR-0019 point 1; `E16-design.md` §10). A login is a signature by the
-//! account's key over the bytes the hello gate names (`h3_protocol::account::login_message`: the
-//! server's id, the connection's challenge, the names), so it holds on this connection of this
+//! Accounts (E16 M3 T2a, T2b; ADR-0019 point 1; `E16-design.md` §10). A login is a signature by
+//! the account's key over the bytes the hello gate names (`h3_protocol::account::login_message`:
+//! the server's id, the connection's challenge, the names), so it holds on this connection of this
 //! server only. The [`Authenticator`] checks signatures; the player log holds the accounts.
 //!
 //! - A new key with a free login name and a free display name registers; a known login name with
@@ -8,12 +8,16 @@
 //! - A signature that does not hold, a known login name with another key, and an unknown one
 //!   without a display name are refused alike (`BadLogin`): a refusal does not say which. A
 //!   registration whose display name is taken, ignoring case, is refused `NameTaken`.
-//! - A registration's line is synced before its answer: an account the server answered survives
-//!   a crash. A log that cannot be written refuses registrations (`BadLogin`, the reason on
-//!   standard error); the accounts already registered still log in.
+//! - A logged-in account (E16 M3 T2b) re-keys with both keys' signatures over
+//!   `h3_protocol::account::rekey_message` (else `BadLogin`): from then on only the new key logs
+//!   in; its connections logged in already stay so. It renames itself to a display name no other
+//!   account has, ignoring case (else `NameTaken`), and sets its listing preference.
+//! - Each change's line is synced before its answer: a change the server answered survives a
+//!   crash; a request that changes nothing writes none. A log that cannot be written refuses the
+//!   changes (`BadLogin`, the reason on standard error); the accounts as they stand still log in.
 //!
-//! Provisional (E16 M3 T2a): the module layout; a display name sent with the login of a known
-//! account is ignored.
+//! Provisional (E16 M3 T2a, T2b): the module layout; a display name sent with the login of a known
+//! account is ignored; a failed re-key does not count as a failed login.
 
 use std::fmt;
 use std::path::Path;
@@ -25,7 +29,7 @@ use h3_protocol::connection::AccountRequest;
 use h3_protocol::wire::Refusal;
 
 use crate::Error;
-use crate::players::{Account, Players};
+use crate::players::{Account, Event, Hex, Players};
 
 /// What checks an account's signatures (ADR-0019 point 1: the one seam of the scheme).
 pub(crate) trait Authenticator: Send + Sync + fmt::Debug {
@@ -36,6 +40,10 @@ pub(crate) trait Authenticator: Send + Sync + fmt::Debug {
         message: &[u8],
         signature: &[u8; SIGNATURE_BYTES],
     ) -> bool;
+
+    /// Whether a signature by `key` can hold at all (the operator's rebind checks the key it is
+    /// given, E16 M3 T2b).
+    fn accepts(&self, key: &[u8; KEY_BYTES]) -> bool;
 }
 
 /// Ed25519 (`ed25519-dalek`), strict: a key of small order or a signature that is not canonical
@@ -54,6 +62,10 @@ impl Authenticator for Ed25519 {
             key.verify_strict(message, &Signature::from_bytes(signature))
                 .is_ok()
         })
+    }
+
+    fn accepts(&self, key: &[u8; KEY_BYTES]) -> bool {
+        VerifyingKey::from_bytes(key).is_ok_and(|key| !key.is_weak())
     }
 }
 
@@ -85,11 +97,22 @@ impl Accounts {
                 signed,
                 ..
             } => self.login(&login, &key, &signature, display.as_deref(), &signed),
-            // stub: SRV-STUB-2 (re-keys, renames and the listing preference from E16 M3 T2b).
-            AccountRequest::Rekey { .. }
-            | AccountRequest::Rename { .. }
-            | AccountRequest::SetListed { .. } => Err(Refusal::BadLogin),
+            AccountRequest::Rekey {
+                login,
+                key,
+                by_old,
+                by_new,
+                signed,
+                ..
+            } => self.rekey(login, &key, (&by_old, &by_new), &signed),
+            AccountRequest::Rename { login, display, .. } => self.rename(login, display),
+            AccountRequest::SetListed { login, listed, .. } => self.set_listed(login, listed),
         }
+    }
+
+    /// The player log, locked.
+    fn players(&self) -> std::sync::MutexGuard<'_, Players> {
+        self.players.lock().unwrap_or_else(PoisonError::into_inner)
     }
 
     /// A login as `login` by `key`, or its registration as `display`.
@@ -104,7 +127,7 @@ impl Accounts {
         if !self.authenticator.verify(key, signed, signature) {
             return Err(Refusal::BadLogin);
         }
-        let mut players = self.players.lock().unwrap_or_else(PoisonError::into_inner);
+        let mut players = self.players();
         if let Some(account) = players.get(login) {
             return if account.key == *key {
                 Ok(account.clone())
@@ -115,14 +138,72 @@ impl Accounts {
         let Some(display) = display else {
             return Err(Refusal::BadLogin);
         };
-        if players.display_taken(display) {
+        if !players.display_free(display, login) {
             return Err(Refusal::NameTaken);
         }
-        players.register(login, *key, display).map_err(|e| {
-            eprintln!("h3-server: the player log: {e}; registrations are refused");
-            Refusal::BadLogin
-        })
+        record(
+            &mut players,
+            Event::Registered {
+                login: login.to_owned(),
+                key: Hex(*key),
+                display: display.to_owned(),
+            },
+        )
     }
+
+    /// The logged-in account `login` re-keys to `key`, signed by its key so far and by `key`.
+    fn rekey(
+        &self,
+        login: String,
+        key: &[u8; KEY_BYTES],
+        (by_old, by_new): (&[u8; SIGNATURE_BYTES], &[u8; SIGNATURE_BYTES]),
+        signed: &[u8],
+    ) -> Result<Account, Refusal> {
+        if !self.authenticator.verify(key, signed, by_new) {
+            return Err(Refusal::BadLogin);
+        }
+        let mut players = self.players();
+        let account = players.get(&login).cloned().ok_or(Refusal::BadLogin)?;
+        if !self.authenticator.verify(&account.key, signed, by_old) {
+            return Err(Refusal::BadLogin);
+        }
+        if account.key == *key {
+            return Ok(account);
+        }
+        let key = Hex(*key);
+        record(&mut players, Event::Rekeyed { login, key })
+    }
+
+    /// The logged-in account `login` takes the display name `display`.
+    fn rename(&self, login: String, display: String) -> Result<Account, Refusal> {
+        let mut players = self.players();
+        let account = players.get(&login).cloned().ok_or(Refusal::BadLogin)?;
+        if !players.display_free(&display, &login) {
+            return Err(Refusal::NameTaken);
+        }
+        if account.display == display {
+            return Ok(account);
+        }
+        record(&mut players, Event::Renamed { login, display })
+    }
+
+    /// The logged-in account `login` sets whether its finished games' replays may be listed.
+    fn set_listed(&self, login: String, listed: bool) -> Result<Account, Refusal> {
+        let mut players = self.players();
+        let account = players.get(&login).cloned().ok_or(Refusal::BadLogin)?;
+        if account.listed == listed {
+            return Ok(account);
+        }
+        record(&mut players, Event::Listed { login, listed })
+    }
+}
+
+/// Records `event` in the player log; a log that cannot be written refuses it.
+fn record(players: &mut Players, event: Event) -> Result<Account, Refusal> {
+    players.record(event).map_err(|e| {
+        eprintln!("h3-server: the player log: {e}; the change is refused");
+        Refusal::BadLogin
+    })
 }
 
 #[cfg(test)]

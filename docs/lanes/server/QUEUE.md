@@ -4,21 +4,14 @@ Pre-refined tasks of the server lane, in order, then the inbox of discovered wor
 
 ## Tasks
 
-Epic: `docs/epics/E16-server.md` (in progress; M0 and M1 done 2026-10-10, ADR-0018; M2 done 2026-10-11, its checkpoint passed, SRV-Q16). M3 refined 2026-10-11 (SRV-Q17): ADR-0019, accepted at the refinement (points 1 and 2 for M3; the design note §10), cut below, each task about half a context; T1 done 2026-10-11 (the login on the wire, wire 12); T2a done 2026-10-11 (logins checked, the player log). Work under the autonomy contract (`HANDOFF.md`). Each wire change bumps `PROTOCOL_VERSION`.
-
-### E16 M3 T2b — Re-keying, renames, the listing preference, the operator's rebind
-
-- **Scope:** `Rekey` (signed by the old and the new key) rebinds the account; `Rename` changes the display name (unique on the server, ignoring case); the account's `listed` preference; each a line in the player log. The operator's rebind of a login name to a new key (a subcommand of the server's binary that appends to the player log while the server is stopped, *provisional*).
-- **Acceptance:** the Definition of Done; end to end: after a re-key only the new key logs in, also after a restart; a taken display name refused; the rebind.
-- **Depends on:** T2a (done 2026-10-11): `accounts::Accounts::answer` refuses the three requests (SRV-STUB-2, to remove); the player log's `Line` takes the new events.
-- **Status:** ready.
+Epic: `docs/epics/E16-server.md` (in progress; M0 and M1 done 2026-10-10, ADR-0018; M2 done 2026-10-11, its checkpoint passed, SRV-Q16). M3 refined 2026-10-11 (SRV-Q17): ADR-0019, accepted at the refinement (points 1 and 2 for M3; the design note §10), cut below, each task about half a context; T1 done 2026-10-11 (the login on the wire, wire 12); T2a done 2026-10-11 (logins checked, the player log); T2b done 2026-10-11 (re-keys, renames, the preference, the operator's rebind). Work under the autonomy contract (`HANDOFF.md`). Each wire change bumps `PROTOCOL_VERSION`.
 
 ### E16 M3 T3 — Seats bound to accounts
 
 - **Scope:** a logged-in connection's seat belongs to its account: re-taken by any connection logged in as it, without a token; an anonymous seat keeps its token. The journal names a seat's account (`JOURNAL_FORMAT_VERSION` 4); a restore binds the seats again. The lobby shows the seated display names. A finished game's replay is listed only if its host left it open and no seated account opted out (ADR-0018 point 8 amended in a shared change). Reconnect by account after a drop or a restart.
 - **Acceptance:** the Definition of Done; end to end: a seat re-taken by account from a new connection and after a restart; another account refused; the replay's listing by preference.
-- **Depends on:** T2b.
-- **Status:** ready once T2b is done.
+- **Depends on:** T2b (done 2026-10-11): an account's `listed` is in `players::Account`; the crash tests' `crashed()` copies only the journals (copy `players.log` too once seats name accounts).
+- **Status:** ready.
 
 ### E16 M3 T4a — A game's bounds
 
@@ -48,4 +41,5 @@ Epic: `docs/epics/E16-server.md` (in progress; M0 and M1 done 2026-10-10, ADR-00
 - 2026-10-11 (M2 T5b; **M4**, with the bot accounts on ladders): a separate rate for automated seats (T3's note): an operator raises `messages_per_second` and `messages_per_address` meanwhile.
 - 2026-10-11 (the user, SRV-Q13; **M4's refinement**): ranked games one at a time per player (confirm the reading), a pause only by agreement, its length negotiated within the ladder's bounds, the absent player forfeits at the due time.
 - 2026-10-11 (M2 T5e's review; **M4**, with the pause by agreement): a seat that is not the host can repeat `Pause`, and each `PauseAsked` fills every viewer's record window: one ask per seat until the game moves on.
+- 2026-10-11 (M3 T2b; **T3**, which tracks connections by account): after a re-key the account's other connections, logged in with the old key, stay logged in until they close: a player who re-keys after a leaked password keeps an attacker's open session alive. Close them (a goodbye reason) once the registry knows an account's connections.
 - 2026-10-11 (M2 T5e's review; **later**): the registry's `Drain`, `Stop` and `Tick` are `try_send`s, lost when a game's inbox (1 024) is full; a lost `Drain` leaves the drain waiting until the second signal.

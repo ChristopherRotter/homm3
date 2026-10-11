@@ -10,8 +10,9 @@
 //! - `registry`: the lobby and the games' inboxes, shared by the tasks and the games' threads;
 //!   the restore at start; the sweep of abandoned games;
 //! - `net`: the listener and a `tokio` task per connection, behind the transport trait;
-//! - `accounts`: the logins, checked by the `Authenticator` (Ed25519), and `players`, the player
-//!   log they are kept in (M3 T2a);
+//! - `accounts`: the logins, re-keys, renames and listing preferences, checked by the
+//!   `Authenticator` (Ed25519), and `players`, the player log they are kept in (M3 T2a, T2b);
+//!   [`rebind`], the operator's;
 //! - [`client`]: a headless client for tests and tools;
 //! - [`bench`]: the session core's workload (`benches/server/`).
 //!
@@ -19,7 +20,9 @@
 //! on standard error.
 
 use std::fmt;
+use std::fs::{File, OpenOptions, TryLockError};
 use std::net::SocketAddr;
+use std::path::Path;
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
 
@@ -70,6 +73,8 @@ pub struct Running {
     stop: watch::Sender<bool>,
     /// The sweep of abandoned games (E16 M2 T5a).
     sweeper: JoinHandle<()>,
+    /// The data directory's lock (E16 M3 T2b), held until the server stopped.
+    _lock: File,
 }
 
 /// How often a draining or stopping server looks at its games.
@@ -124,6 +129,7 @@ pub fn server_name() -> String {
 /// hold, and listens: call from a `tokio` runtime. Games are created by clients (`CreateGame`),
 /// each on its own thread.
 pub async fn start(config: &Config) -> Result<Running, Error> {
+    let lock = lock(&config.server.data)?;
     let accounts = accounts::Accounts::open(&config.server.data, Box::new(accounts::Ed25519))?;
     let offers = config
         .offers
@@ -170,5 +176,54 @@ pub async fn start(config: &Config) -> Result<Running, Error> {
         registry,
         stop,
         sweeper,
+        _lock: lock,
     })
+}
+
+/// Takes the data directory's lock (E16 M3 T2b): one server, or one operator's command, at a time
+/// on a data directory. Released when the file closes, also when the process dies.
+fn lock(data: &Path) -> Result<File, Error> {
+    let path = data.join("lock");
+    let shown = |e: &dyn fmt::Display| Error(format!("{}: {e}", path.display()));
+    journal::create_dir(data).map_err(|e| shown(&e))?;
+    let mut options = OpenOptions::new();
+    options.write(true).create(true).truncate(false);
+    #[cfg(unix)]
+    std::os::unix::fs::OpenOptionsExt::mode(&mut options, 0o600);
+    let file = options.open(&path).map_err(|e| shown(&e))?;
+    match file.try_lock() {
+        Ok(()) => Ok(file),
+        Err(TryLockError::WouldBlock) => {
+            Err(shown(&"the data directory is in use: a server runs on it"))
+        }
+        Err(TryLockError::Error(e)) => Err(shown(&e)),
+    }
+}
+
+/// The operator binds the account `login` to the public key `key` (64 hex digits) while no server
+/// runs on the configuration's data directory (E16 M3 T2b; ADR-0019 point 1): after a forgotten
+/// password, the key of the player's new one. From the next start only that key logs in. Its line
+/// in the player log is `Rebound`. The account's display name.
+pub fn rebind(config: &Config, login: &str, key: &str) -> Result<String, Error> {
+    use accounts::Authenticator;
+    let key = h3_protocol::account::from_hex(key)
+        .filter(|key| accounts::Ed25519.accepts(key))
+        .ok_or_else(|| {
+            Error(String::from(
+                "not a public key: 64 lowercase hex digits of an Ed25519 key",
+            ))
+        })?;
+    let _lock = lock(&config.server.data)?;
+    let mut players = players::Players::open(&config.server.data).map_err(Error)?;
+    if players.get(login).is_none() {
+        return Err(Error(format!("no account `{login}`")));
+    }
+    let event = players::Event::Rebound {
+        login: login.to_owned(),
+        key: players::Hex(key),
+    };
+    players
+        .record(event)
+        .map(|account| account.display)
+        .map_err(|e| Error(format!("the player log: {e}")))
 }
