@@ -86,7 +86,7 @@ fn a_leaf_is_stored_in_one_form() {
 #[test]
 fn a_run_sets_or_clears_a_row_across_leaves() {
     let mut grid: BitGrid<1> = BitGrid::new(20, 10, 2);
-    // From column 5 to 17 of row 3: three leaves, the last cut by the map's edge at 20.
+    // From column 5 to 17 of row 3: three leaves (columns 5–7, 8–15, 16–17).
     grid.set_run(p(5, 3, 1), 13, true);
     assert_eq!(grid.count(), 13);
     assert!((5..18).all(|x| grid.get(p(x, 3, 1))));
@@ -262,4 +262,13 @@ proptest! {
         check::<16>(width, height, &base, &first, &second)?;
         check::<64>(width, height, &base, &first, &second)?;
     }
+}
+
+#[test]
+fn a_run_on_the_widest_grid_does_not_overflow() {
+    // The last leaf boundary of a 65 520-tile row is 65 536, past `u16`: it saturates.
+    let mut grid: BitGrid = BitGrid::new(65_520, 1, 1);
+    grid.set_run(p(65_510, 0, 0), 20, true);
+    assert_eq!(grid.count(), 10);
+    assert!(grid.get(p(65_519, 0, 0)));
 }

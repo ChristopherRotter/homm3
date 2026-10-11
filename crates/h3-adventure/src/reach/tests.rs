@@ -41,9 +41,12 @@ fn walk(
         hero: HeroId::new(hero),
         path,
     };
-    state
-        .apply(&rules.0, &rules.1, RED, &command, &mut events)
-        .map(|()| events)
+    let result = state.apply(&rules.0, &rules.1, RED, &command, &mut events);
+    assert!(
+        result.is_ok() || events.is_empty(),
+        "a rejected move emitted events"
+    );
+    result.map(|()| events)
 }
 
 // covers: ADV-MOV-003, ADV-MOV-005, ADV-MOV-007

@@ -22,7 +22,12 @@ fn play(
     command: GameCommand,
 ) -> Result<Vec<GameEvent>, GameCommandError> {
     let mut events = Vec::new();
-    apply(state, rules, Actor::Player(player), command, &mut events).map(|()| events)
+    let result = apply(state, rules, Actor::Player(player), command, &mut events);
+    assert!(
+        result.is_ok() || events.is_empty(),
+        "a rejected command emitted events"
+    );
+    result.map(|()| events)
 }
 
 // covers: ADV-MOV-007

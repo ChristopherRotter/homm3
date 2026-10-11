@@ -115,7 +115,7 @@ impl<const WORDS: usize> BitGrid<WORDS> {
         let mut x = start.x;
         while x < end {
             let column = x / side;
-            let to = end.min((column + 1) * side);
+            let to = end.min(column.saturating_add(1).saturating_mul(side));
             let bits = u32::from(to - x);
             let mask = (u64::MAX >> (64 - bits)) << (shift + u32::from(x % side));
             let leaf = row * usize::from(self.across) + usize::from(column);
