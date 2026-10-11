@@ -567,3 +567,71 @@ maps stay the reader's test, locally.
   decision 9 says ownership isolation covers the players' streams; no command draws yet and the
   streams have no accessor (inbox).
 - **Not done here:** observation hygiene and the observation against the events (T8b2b).
+
+### Checkpoint after T8b2a and T8b2b + T9a (2026-10-11, `adventure/e08-t8b2b-t9a`)
+
+The user merged T8b2a (#89, #90) and asked for a couple of tasks per round with the seam
+confirmed first. The agent proposed, and the user took, **T8b2b** with **T9a**: T9 split into
+T9a (the env) and T9b (the CLI, the replays and the benchmark gate, next round). The user allowed
+the two battle-owned lines `h3-sim` needs (its `Cargo.toml` and `lib.rs`) as a `cross-lane`
+change, and chose `h3_game`'s view as the env's observation for now (a flat encoding waits for
+E13's macro-actions).
+
+- **Observation hygiene** (`h3-map`'s `tests/view.rs`, 48 cases, both profiles): a game on a
+  playable map and a second one that differs only in what one viewer never sees: another seed,
+  other armies for the other players' heroes (so other points, natives and starting armies),
+  other terrain, roads and rivers on tiles it never sees, blockers removed or added and other
+  players' heroes moved where it never sees what stands. "Never sees" comes from its explored
+  tiles at the end of the first game by the rules (ADV-FOG-004, -005: a tile next to an explored
+  one shows its ground, and its objects and heroes only under `ADV-QUIRK-1`), not from the
+  observation under test: a first version took it from the observation and missed a mutation
+  that showed objects on the fringe in `strict-fixed`. The viewer's own heroes get armies of
+  their own (a starting army is drawn from the seed, also for a hero whose slots are all empty).
+  Played in lockstep with the same commands, the two games show the viewer the same observation,
+  legal commands and legal moves of every hero it sees, give its own commands the same result
+  and tell it the same projected events, as long as the other players' commands are accepted in
+  both or rejected in both (a move one hero can pay and its double cannot ends where the viewer
+  may see it). Over 200 cases about four steps in five were compared, the viewer's own commands
+  applied about a thousand times and it was told other players' steps in two cases in three.
+- **The observation against the events** (`views_move_as_the_events_say`, 48 cases): for every
+  player at every step, its view after a command is its view before with the projected events
+  applied as a client would: the day and the acting flags follow `DayStarted`, `TurnEnded` and
+  `TurnStarted`; a projected step names the viewer alone, its `seen_from`/`seen_to` match the
+  tiles it tells and it tells at least one; the tile a hero leaves is where the viewer last saw
+  it, an untold tile entered takes it out of sight; a hero shows untold only after the viewer's
+  own command and only on a tile it did not see before; a tile's view only deepens (hidden,
+  ground, everything) and keeps what it showed; the explored and fringe planes change only by
+  the viewer's own command. Mutations each test caught: other heroes' armies shown (hygiene),
+  a step's tiles not filtered (consistency), objects on the fringe in `strict-fixed` (both),
+  every hero shown (both), the query over unexplored tiles (hygiene).
+- **`AdventureEnv`** (`h3-sim`'s `src/adventure/`, ADR-0017 point 8): built from a game
+  ruleset, a shared `GameSetup` and a seed with a day limit (`max_days`, 0 none; done and
+  truncated once day `max_days + 1` starts: increment 1 has no victory, so no reward either);
+  `reset`, `to_move` (the turn group's players still acting, none once done), `legal_mask`,
+  `tile_mask`, `step` and `step_with` (the unprojected events to a sink), `fork` (a clone:
+  shared rules and setup, the state's persistent parts), `state_hash`, `observation`
+  (`h3_game::observe`). A step decodes the action, applies its command through `h3_game::apply`
+  for the trusted player and leaves the env unchanged when it is refused (`InvalidAction`,
+  `Rejected`, `EpisodeOver`).
+- **The action encoding**, version 1 (`ACTION_ENCODING_VERSION`), factorized as the battle's
+  casts: entry 0 `EndTurn` (tile head 0), entry `1 + s` the move of the player's hero in slot `s`
+  (its heroes by id, eight slots: the original's most heroes per player on the map) to the tile
+  in the tile head, `(level × height + row) × width + column` (the observation's order). The
+  masks are conditioned on the entry; a move's tiles are the hero's `legal_moves` but its own
+  tile, and its command takes the query's path. Decoding needs no turn check (a move of another
+  turn is `apply`'s `NotYourTurn`).
+- **The random agent** (`rollout.rs`): a uniform legal entry, then a uniform tile of the hero's
+  reach, from the AGENT stream; `random_rollout` never inlined (T9b's workload counts inside it).
+- **The duel map** (`fixtures/maps/e08-duel-36.h3m`, 756 bytes): decision 11's map, SoD, 36 × 36
+  with an underground, red and blue with two heroes each (one per level, their types' starting
+  armies), terrain in 6 × 6 patches of every land terrain with some water and rock, a road per
+  level, rivers on some patches, 72 blockers; laid out by T8b2a's `lay_out` from a plan of a
+  fixed SplitMix64 generator (`tests/fixtures.rs`, whose test reads the committed file, checks
+  it is still its plan's map and imports it; `H3_WRITE_FIXTURES=1` rewrites it).
+- **The env's tests** (on the duel map): the start (red to move, its two heroes free, blue's
+  masks empty); the encoding's arithmetic; random play of legal and arbitrary actions of any
+  player in both profiles (16 cases of up to 60 steps): for every player each entry is legal
+  exactly when its tile mask has a tile, a move's tiles are the hero's legal moves and decode to
+  the query's paths, a legal action is accepted and does what `apply` does with its command, an
+  accepted one was legal, a refused one leaves hash and step count and emits nothing, with the
+  error `apply` gives; forks (12 cases); determinism, the day limit and `reset`.
