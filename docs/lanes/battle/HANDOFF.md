@@ -4,11 +4,11 @@ The battle lane's living state; read after the global `docs/HANDOFF.md`. Format 
 
 ## Current state
 
-- **Branch:** `battle/e04b-t11a`. Work on `battle/<task>` branches from `master`, merged at its checkpoint; HANDOFF content goes here.
+- **Branch:** `battle/e04b-t11b`. Work on `battle/<task>` branches from `master`, merged at its checkpoint; HANDOFF content goes here.
 - **E04b increment 21 (the user): T11 in three parts; T11a done** (the fold-in and the exit-criteria audit: bad morale skipped for the whole wait phase, BAT-Q24 answered, 22 rules verified, the inbox by destination). Sandbox: `docs/08-work-process.md`, "Cloud sandbox".
 - **Done:** survey `docs/rules/surveys/E04b-magic.md` (§12–§15), ADR-0014 accepted (point 5 amended, Q47), design note `docs/epics/E04b-design.md`. T1–T10 (the epic file lists each with its rules): every battle spell, creature magic, the hero's spells and masteries in the Heroes context, limits and defences, the opening spells and Eagle Eye, the data quirks, a complete observation, the casting workload, batches 2a–2f (BAT-MAG-001 to 069, HER-SPL-002 to 004, HER-BAT-015 to 017; Q-0006 to Q-0012, BAT-QUIRK-1 to 19), all after the executable's code (`installation.md` §7.8–§7.24). **Physical damage follows the executable's three truncated stages** under Q-0005 (Q50, BAT-DMG-002, `h3_kernel::arith::X87` at 53 bits).
 - **Hero rates** cross the seam as `h3_contracts::Rate` (basis points plus, under Q-0005, the original's single-precision value as an f32 bit pattern where it differs; Q45 (b), T3c2).
-- **Next:** T11b, the independent review in a fresh session (probably two sessions: BAT-MAG-001 to 039 with HER-*, then 040 to 069; the epic file's T11), then T11c (the closure).
+- **In progress** (`battle/e04b-t11b`, 2026-10-11 19:55 UTC, fifty-second session): T11b, the independent review by fresh reviewer agents (nothing folded in yet; their reports are in the session's scratch folder), then T11c (the closure).
 - **Open for later tasks:** E04b's loose ends by destination (E04c, E05, E08–E10, battle without a task) in `QUEUE.md`'s inbox (T11a); Q43 (sprite offset, keep the approximation).
 - **Versions (battle owns them):** state hash v41, ruleset hash v42, replay format v21, action encoding v11, C ABI v17, observation encoding v13; pack format v34. New ids: `BAT-Q<n>`, `BAT-QUIRK-<n>`, `BAT-STUB-<n>` (old ids stay).
 - **Ownership:** `h3-content` and `h3-pack` stay with battle until further notice (user, 2026-10-07); `h3-kernel` and `h3-contracts` are shared, so a seam change is its own `shared/` pull request, merged before the battle change that uses it.
