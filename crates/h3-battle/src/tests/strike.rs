@@ -362,6 +362,65 @@ fn a_thunderbolt_deals_its_damage_per_creature_as_the_spell_without_a_hero() {
     assert!(bolts.contains(&true) && bolts.contains(&false));
 }
 
+/// E04b T11b review (F-r4b-strike-magic-8 part a): a bolt whose damage comes to 0 does nothing,
+/// as the extra damage of BAT-MAG-047: no report and nothing that damage ends (the original
+/// leaves when the spell's damage on the target is not above 0, the reviewer's reading at
+/// 0x4411FD). One Thunderbird against Diamond Golems: a twentieth of 10.
+// covers: BAT-MAG-041
+#[test]
+fn a_thunderbolt_of_no_damage_does_nothing() {
+    use h3_content::{AbilityDef, ContentKey};
+    let one = |r: &Ruleset, striker: &'static str, target: &'static str| {
+        arena(
+            r,
+            [None, None],
+            &[(striker, 1, 7, 5)],
+            &[(target, 10, 8, 5)],
+            1,
+        )
+    };
+    let r = ruleset();
+    // One stormbird: 10 as `t:bolt`, of which `diamond` takes a twentieth, rounded down.
+    let mut s = one(&r, "stormbird", "diamond");
+    let events = hit(&mut s, &r, 1, (7, 5));
+    assert_eq!(strikes(&events), vec![(0, 1), (1, 0)]);
+    assert_eq!(strike_spells(&r, &events), vec![]);
+    assert_eq!(spell_damage(&events), vec![]);
+    // A quarter of it (`golem`: 2) is dealt and reported.
+    let mut s = one(&r, "stormbird", "golem");
+    let events = hit(&mut s, &r, 1, (7, 5));
+    assert_eq!(spell_damage(&events), vec![(1, 10, 2, 0)]);
+    assert_eq!(strike_spells(&r, &events).len(), 1);
+    // Nor does it end what damage ends: a strike that blinds and then bolts leaves the target
+    // blind (it used to wake it at once).
+    let key = |name: &str| ContentKey::new("t", name).unwrap();
+    let r = ruleset_from(
+        "t:faithful",
+        |_| {},
+        |pack| {
+            let blinder = pack.creatures.iter_mut().find(|c| c.key == key("blinder"));
+            let bolt = AbilityDef::SpellDamageAfterStrike {
+                spell: key("bolt"),
+                chance_percent: 100,
+                per_creature: 10,
+            };
+            blinder.unwrap().info.abilities.push(bolt);
+        },
+    );
+    let mut s = one(&r, "blinder", "diamond");
+    let events = hit(&mut s, &r, 1, (7, 5));
+    assert_eq!(
+        strike_spells(&r, &events),
+        vec![(0, 1, String::from("blind"))]
+    );
+    assert_eq!(spell_damage(&events), vec![]);
+    assert!(s.stacks()[1].spells.status.contains(Status::NO_TURNS));
+    // With damage the same strike's bolt ends the Blind it brought.
+    let mut s = one(&r, "blinder", "golem");
+    hit(&mut s, &r, 1, (7, 5));
+    assert!(!s.stacks()[1].spells.status.contains(Status::NO_TURNS));
+}
+
 // ---------------------------------------------------------------- BAT-MAG-043, BAT-MAG-044
 
 /// Starts a new round.
