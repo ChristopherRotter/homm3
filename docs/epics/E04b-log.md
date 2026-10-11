@@ -1952,3 +1952,27 @@ records how and why the tasks went.
 - **Measurements:** the golden replays and `bench-check` unchanged (the synthetic packs have no
   data quirks, their ruleset hashes stay); the coverage gate green after `cargo llvm-cov clean`
   (stale profiles had reported doc-comment lines).
+
+### Batch 2e folded in (2026-10-11, increment 18)
+
+- **Played** by the user in SoD with plain HD (`experiments/results/E04b-batch-2e.md`, committed
+  from the user's folder). The game cannot be saved during a battle, so the encounters that
+  planned in-battle saves (OV's 12, UA's 4 casts, RC's 18 attacks) were replayed from the start
+  or cut short (RC: 8 attacks); a trap in `docs/experiments/README.md` now.
+- **BAT-Q22** (WM, OV): all three points as the code reads: Bless and Curse at the Ballista
+  (shown after the cast), Mirth and Sorrow refused at golems and elementals under the Orb of
+  Vulnerability, Fortune, Misfortune and Slayer refused at the Tent and the Ammo Cart. OV's Sorrow
+  line lists three answers for four targets (Stone Golems, Air Elementals refused; Giants
+  allowed; the Gnolls' missing), which changes nothing.
+- **BAT-Q21:** point 1 against the engine: the Orb of Inhibition stops the Faerie Dragons (no
+  spell cursor in rounds 1 and 2), as the code reads, against the wiki and VCMI. The gap-fill
+  drops the Faerie Dragon's `ignores_magic_block` (the ability stays in the format, no harvested
+  creature has it). Point 2 as the engine: under the Orb of Vulnerability Expert Slow slowed all
+  three stacks beside the Unicorns in four casts (7 % with the aura's 20 % kept), against the
+  reading of 0x5A8090. Points 3–5 as the engine (the code): Troglodytes refuse Blind and
+  Gargoyles were never poisoned (12 attacks) under the Orb of Vulnerability; the Cloak bars the
+  Archangel's resurrection and, weakly, the Stone Gaze (0 of 8); the Dragon Father, weakly, the
+  bolt (0 of 3) and Poison (0 of 4), the Death Stare killing as the control.
+- **Docs:** observation sources for BAT-MAG-061, 062, 064, 066, 067; `installation.md` §7.23;
+  the answered BAT-Q21 and BAT-Q22; `packs/README.md` (`ignores_magic_block`). Candidates for a
+  later batch: the weak points with long rounds instead of reloads, besides increment 17's.

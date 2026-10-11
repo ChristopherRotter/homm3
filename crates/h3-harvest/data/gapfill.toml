@@ -1463,13 +1463,9 @@ creature = "Faerie Dragon"
 abilities = [{ kind = "innate_spell", spell = "base:magic_mirror", value = 20 }]
 sources = ["exe-creature-defences"]
 
-# The Faerie Dragon's casts ignore the Orb of Inhibition (and the anti-magic garrison, E04c) after
-# the wiki and VCMI; the code reading refuses them (0x4476C0, 0x421280). Until an experiment settles
-# it (the user, BAT-Q21; pack format v31).
-[[creature_abilities]]
-creature = "Faerie Dragon"
-abilities = [{ kind = "ignores_magic_block" }]
-sources = ["wiki-faerie-dragon", "vcmi-cast-block"]
+# The Faerie Dragon's casts do not ignore the Orb of Inhibition: batch 2e (OI) observed the code
+# reading (0x4476C0, 0x421280) against the wiki and VCMI, so no creature has `ignores_magic_block`
+# (BAT-Q21, BAT-MAG-061).
 
 [[creature_abilities]]
 creature = "Efreet Sultan"
@@ -1685,20 +1681,6 @@ kind = "vcmi"
 ref = "lib/mapping/MapFeaturesH3M.cpp: 127 artifacts in RoE, +2 in AB (Armageddon's Blade, Vial of Dragon Blood), +15 in SoD (combinations and three unfinished ones); 18 slots before SoD, 19 with it"
 url = "https://github.com/vcmi/vcmi/blob/1.7.5/lib/mapping/MapFeaturesH3M.cpp#L55-L107"
 retrieved = "2026-10-03"
-
-[[source]]
-id = "wiki-faerie-dragon"
-kind = "wiki"
-ref = "Faerie Dragon - Heroes 3 wiki, spellcaster notes: 'Faerie Dragons are unaffected by the Orb of Inhibition and Anti-Magic Garrisons'; on Cursed Ground they cast every spell, for no damage"
-url = "https://heroes.thelazy.net/index.php/Faerie_Dragon"
-retrieved = "2026-10-10"
-
-[[source]]
-id = "vcmi-cast-block"
-kind = "vcmi"
-ref = "lib/battle/CBattleInfoCallback.cpp (1.7.5) battleCanCastSpell: BLOCK_ALL_MAGIC (the Orb of Inhibition, battle-wide) is tested for a hero's cast only; creature casts are never blocked by it"
-url = "https://github.com/vcmi/vcmi/blob/1.7.5/lib/battle/CBattleInfoCallback.cpp"
-retrieved = "2026-10-10"
 
 [[source]]
 id = "wiki-artifact-list"

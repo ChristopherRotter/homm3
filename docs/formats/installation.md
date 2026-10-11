@@ -1670,6 +1670,16 @@ Misfortune and Slayer at the Tent and the Ammo Cart (VCMI: cast, no effect; the 
 The engine follows this reading on all three until batch 2e (the user, BAT-Q22). The rendered table
 also lists the Troglodytes' Blind among the immunities the Orb keeps (BAT-Q21 point 3).
 
+**Batch 2e** (the user, 2026-10-11, SoD with plain HD; `experiments/results/E04b-batch-2e.md`)
+observed this reading on BAT-Q22's three points (WM, OV) and on BAT-Q21's points 1, 3, 4 and 5: the
+Orb of Inhibition stops the Faerie Dragons (OI: no spell cursor in two rounds), the Troglodytes keep
+Blind and the Gargoyles Poison under the Orb of Vulnerability (OV: 0 of 12 attacks), the Cloak bars
+the Archangel (RC) and, weakly, the Medusas' Stone Gaze (0 of 8) and the Dragon Father the bolt and
+Poison (DF: 0 of 3 and 0 of 4). On point 2 it observed the wiki and VCMI: under the Orb of
+Vulnerability no stack beside the Unicorns resisted Expert Slow (UA: 12 of 12 slowed; 7 % to see
+that with the aura's × 0.8 kept), so this reading's aura in 0x5A8090 is either skipped on a path not
+read or the factor is applied elsewhere; the engine keeps the aura lifted.
+
 ### 7.24 Code reading: the opening spells and Eagle Eye (E04b T8c, T8d, 2026-10-10)
 
 Read for E04b increment 17 (BAT-Q23). Both are casts the hero does not choose: the opening spells

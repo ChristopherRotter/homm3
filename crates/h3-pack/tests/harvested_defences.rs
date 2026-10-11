@@ -186,10 +186,11 @@ fn the_artifacts_give_the_originals_defences() {
     ] {
         assert_eq!(only(pendant)[1..], [immune(spell_key)], "{pendant}");
     }
-    // The Faerie Dragon ignores the Orb of Inhibition (the wiki and VCMI; BAT-Q21).
+    // The Orb of Inhibition stops the Faerie Dragon too (the code reading, observed in batch 2e
+    // OI against the wiki and VCMI; BAT-Q21).
     let dragon = r.creature_by_key("ab:faerie_dragon").unwrap();
     assert!(
-        r.abilities(dragon)
+        !r.abilities(dragon)
             .contains(&h3_content::Ability::IgnoresMagicBlock)
     );
     // The casting limits (HER-BAT-015) and the Dragon Father's levels.
