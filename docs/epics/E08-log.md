@@ -342,12 +342,23 @@ fix-optional) and, during T7b, classified a new quirk and allowed the quirk flag
   the property also claimed that a rejected one-step move's tile is never reported: false, a tile
   next to the hero may be reachable only around a corner (from a swamp road over the next road
   tile with 162 points); the regression seed stays in `proptest-regressions/`.
-- **The query's limit.** A step's price depends on the points left (the exception) and the
-  points left after it drop to 0 below the cheapest next step, so a path that reaches a tile on
-  the way with fewer points can, rarely and only within the last ~250 points of a day, end with
-  more or reach a tile the search does not (an exact search keeps every points value per tile, too
-  slow for the env's mask). Like VCMI's pathfinder the query keeps one path per tile; MoveHero
-  accepts every payable path.
+- **The query's limit** (followed up the same day at the user's request: review, measurements,
+  the original's pathfinder). Dijkstra's, like A*, is exact when more points on a tile are never
+  worse later; the diagonal exception breaks that (a diagonal from swamp costs 175 with 175–247
+  points, 247 with more: 257 points on the swamp leave 10 after it, 245 leave 70). *Review:* with
+  the exception switched off (everything else as built) the query matched an exhaustive search
+  over (tile, points) exactly on 1 152 queries of random 16 × 16 maps (~124 000 tiles, both
+  profiles), so the search is right and the exception alone causes the differences. *With it*
+  (random 16 × 16 maps, up to four moves along reported paths each): faithful, 60 of 572 queries
+  differ, 4 of 64 713 reachable tiles not reported (each reachable only with 0 points left), 117
+  reported with fewer points than possible (on average 12.9); strict-fixed, 6 of 581 queries, 3
+  of 64 203 tiles missed, 9 short (49.4 on average). The exhaustive search explored ~45 000 states
+  per query against ~110 tiles (≈ 26 ms against microseconds): too slow for the env's mask.
+  Regression test `more_points_on_a_tile_can_leave_fewer_after_the_next_diagonal` (strict-fixed:
+  the query's path leaves 0, a path over sand 70). *The original* (0x4194A0 → 0x56B440, 0x4B2300,
+  0x4B1A70; survey §1.3): one node per tile, each step priced at the node's points left, a node
+  replaced only by a strictly better one: the same limit, so the path the game shows can leave
+  fewer points than one clicked step by step. MoveHero accepts every payable path.
 - **T5b build and measurements.** `BitGrid<WORDS>` (`src/persistent.rs`): an `Arc` table of
   `Arc` leaves of `64 × WORDS` tiles, an empty leaf none and a full one the grid's shared full
   leaf (one stored form per content); `get`, `set`, `set_run` (a row of a leaf is one masked

@@ -25,7 +25,7 @@ Epic: `docs/epics/E08-adventure-map.md` (refined 2026-10-08, reviewed with the u
 
 ## Inbox
 
-- 2026-10-11 (T7b): `Reach` keeps one path per tile (Dijkstra by points left); within the last ~250 points of a day a path through a tile with fewer points can end better or reach a tile the search misses (the diagonal exception, the D-3 zeroing). If the env or the AI needs the exact reach, a search over (tile, points) for the low-points band only (log, T7b).
+- 2026-10-11 (T7b follow-up): `Reach` keeps one path per tile, as the original's pathfinder (0x56B440) and VCMI's do; the diagonal exception makes that inexact in rare end-of-day cases (log: 0.18 % of tiles short by ~13 points in faithful). An exact query is a search over (tile, points), ~1000× slower: only if the user wants it (asked 2026-10-11).
 - 2026-10-11 (T7b): the step's price leaves out Pathfinding, Nomads, flying, water walking, Favorable Winds and Cursed Ground (0x4B1740 has them): increment 3 with the adventure profile, Cursed Ground with objects.
 - 2026-10-11 (T5b): `examples/grid_bench.rs` is the fork-cost measurement; T9's gated workload in `benches/adventure/` can run it (or the env's fork) under `bench-check`.
 - 2026-10-10 (T6b review): building a game emits no events (the first `TurnStarted` goes to a `NoopSink`): T8/T9 decide whether a replay or a client's event stream needs a start event, or reads the start from `observe`. `GameState` keeps no hero types yet: the game's store of heroes (hero details) comes with `h3-heroes` in increment 3.

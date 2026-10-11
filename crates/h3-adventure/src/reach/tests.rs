@@ -142,6 +142,35 @@ fn the_query_searches_only_as_far_as_the_points_go() {
     assert_eq!(reach.points_left(p(14, 0)), None);
 }
 
+// covers: ADV-MOV-006
+#[test]
+fn more_points_on_a_tile_can_leave_fewer_after_the_next_diagonal() {
+    // Strict-fixed: the clean diagonal exception alone. Peasants and gnolls have no native
+    // terrain; 598 points on the grass at (4, 1).
+    let rules = movement_rules(false);
+    let mut state = world_state(
+        &rules,
+        &["GdwSS", "sgdgg", "GWGsS", "#wws#", "#Wsws"],
+        vec![hero_at(1, 0, p(4, 1), &[PEASANT, GNOLL])],
+    );
+    state.set_movement(HeroId::new(1), 598);
+    let reach = reach(&state, &rules, 1);
+    // The query keeps the most points on the swamp at (2, 3): 257, over grass and the grass road
+    // (100 + 141 + 100). From there the diagonal onto the road at (1, 4) costs the full 247 (257 is
+    // above ⌊175 × √2⌋ = 247): 10 left, below the road's 50, so none.
+    assert_eq!(reach.points_left(p(2, 3)), Some(257));
+    assert_eq!(
+        reach.path(p(1, 4)),
+        Some(vec![p(3, 1), p(2, 2), p(2, 3), p(1, 4)])
+    );
+    assert_eq!(reach.points_left(p(1, 4)), Some(0));
+    // Over the sand (141 + 212) the swamp is reached with 245, inside the exception's band (175 to
+    // 247): the same diagonal costs 175 and leaves 70, one more road step.
+    let mut moved = state.clone();
+    walk(&mut moved, &rules, 1, vec![p(3, 2), p(2, 3), p(1, 4)]).unwrap();
+    assert_eq!(moved.hero(HeroId::new(1)).unwrap().movement, 70);
+}
+
 #[test]
 fn the_query_stays_on_the_heros_level() {
     let rules = movement_rules(false);

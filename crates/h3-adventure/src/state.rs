@@ -552,6 +552,17 @@ fn check_army(
     Ok(slots.into_iter().flatten().collect())
 }
 
+#[cfg(test)]
+impl AdventureState {
+    /// Sets a hero's movement points (tests that need a given number of points).
+    pub(crate) fn set_movement(&mut self, hero: HeroId, points: u32) {
+        self.heroes
+            .iter_mut()
+            .filter(|h| h.id == hero)
+            .for_each(|h| h.movement = points);
+    }
+}
+
 /// Whether a hero walks onto a tile's terrain: land (ADV-MAP-001, ADV-MOV-007; water needs a boat,
 /// rock is never entered).
 pub(crate) fn enterable_terrain(part: &AdventureRuleset, tile: &StaticTile) -> bool {

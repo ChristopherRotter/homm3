@@ -4,12 +4,16 @@
 //!
 //! The search is Dijkstra's by points left, the most first: each step is priced at the points the
 //! search has for its source tile, the most it found (ties keep the path found first, in the
-//! order of tiles and of [`DIRECTIONS`]). A step's price depends on the points left (the diagonal
-//! exception, ADV-MOV-006) and the points left after it drop to 0 below the cheapest next step,
-//! so a path that reaches a tile on the way with fewer points can, rarely and only within the
-//! last ~250 points of a day, end with more, or reach a tile the search does not: like VCMI's
-//! pathfinder (one node per tile), the query keeps one path per tile. Every path it reports is one
-//! `MoveHero` accepts, and it reports every tile one step away (property-tested).
+//! order of tiles and of [`DIRECTIONS`]). It keeps one path per tile, as the original's pathfinder
+//! does (0x56B440: one node per tile, each step priced at the node's points left, a node replaced
+//! only by a strictly better one) and VCMI's. That is exact only while more points on a tile are
+//! never worse, which the diagonal exception (ADV-MOV-006) breaks: a diagonal from swamp costs 175
+//! with 175 to 247 points but 247 with more, so 257 points on the swamp leave 10 after it and 245
+//! leave 70. Then a path that reaches a tile on the way with fewer points can end with more, or
+//! reach a tile the search does not (rare, within the last ~250 points of a day; measured in
+//! `E08-log.md`). Without the exception the search matches an exhaustive one exactly. Every path
+//! it reports is one `MoveHero` accepts, and it reports every tile one step away
+//! (property-tested); a client may send any other payable path.
 
 use alloc::collections::BinaryHeap;
 use alloc::vec;

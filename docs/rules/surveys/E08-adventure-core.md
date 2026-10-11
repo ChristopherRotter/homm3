@@ -162,8 +162,20 @@ where to read, not facts.
   road step the original allows): **D-3 is a conflict of sources** (reading against VCMI, the
   wiki silent; ADV-Q3: the user chose the reading, 2026-10-11). *A step the hero cannot pay* stops its move and sets its points to 0
   (0x480864): a path longer than the day's points wastes what is left at its end; MoveHero takes
-  only paths payable today, so this needs no rule in increment 1. Not read: the pathfinder that
-  shows the day's reach (`0x418DD0` only around its call).
+  only paths payable today, so this needs no rule in increment 1.
+- **The original's pathfinder** (read 2026-10-11, after T7b; the user asked whether a query can
+  miss the best path). `0x4194A0` (H3API `MovementCalculationsMouse`) starts `0x56B440` with the
+  hero's current points (+0x4D). The search keeps **one node per tile** (H3Pathfinder +0x24,
+  30-byte nodes), pops the cheapest node of its open list and expands it (`0x4B2300`) in the
+  eight directions, pricing each step with `0x4B1740` at the points left on the node (start points
+  minus the node's cost +0x18, 0x56BB62); `0x4B1A70` replaces a neighbour's node only when the new
+  one is strictly better (turn, then cost). The D-3 drop to 0 is not applied there (only in the
+  move), which changes no reachable tile in increment 1. So the original, like VCMI and our
+  `Reach`, is not exact when a step's price depends on the points left: with the diagonal
+  exception, reaching a tile with more points can make the next diagonal dearer (257 points on
+  swamp pay 247 for a diagonal, 245 pay 175), and the one-node search keeps the more. The path it
+  shows can then leave fewer points than a path the player clicks step by step (example and
+  measurements in `E08-log.md`, T7b follow-up).
 
 ### 1.4 Where a hero may step
 
