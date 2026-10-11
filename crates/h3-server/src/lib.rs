@@ -130,7 +130,10 @@ pub fn server_name() -> String {
 /// each on its own thread.
 pub async fn start(config: &Config) -> Result<Running, Error> {
     let lock = lock(&config.server.data)?;
-    let accounts = accounts::Accounts::open(&config.server.data, Box::new(accounts::Ed25519))?;
+    let accounts = Arc::new(accounts::Accounts::open(
+        &config.server.data,
+        Box::new(accounts::Ed25519),
+    )?);
     let offers = config
         .offers
         .iter()
@@ -140,6 +143,7 @@ pub async fn start(config: &Config) -> Result<Running, Error> {
         offers,
         &config.limits,
         config.server.clone(),
+        Arc::clone(&accounts),
     )));
     registry::lock(&registry).load_archive();
     registry::restore(&registry).await?;
@@ -159,6 +163,7 @@ pub async fn start(config: &Config) -> Result<Running, Error> {
             .unwrap_or_else(|| format!("ws://{address}")),
         anonymous: config.server.anonymous,
         accounts,
+        sessions: Mutex::default(),
     });
     let (stop, stopping) = watch::channel(false);
     let sweeper = tokio::spawn(registry::sweep_every(Arc::clone(&registry), config.limits));

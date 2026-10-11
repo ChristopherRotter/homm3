@@ -13,6 +13,11 @@
 //! signatures, the player log's sync). Failed logins count per address, also across its
 //! connections' lifetimes: beyond `failed_logins_per_address` a minute, a login closes its
 //! connection `RateLimited`, as does any login from the address until the minute is over.
+//!
+//! Accounts in games (E16 M3 T3): a connection opens a game with the account it is logged in as.
+//! The server knows each account's logged-in connections: once one re-keyed the account, the
+//! others, logged in with the key it had, close (`Goodbye { Rekeyed }`), so a session opened with
+//! a leaked password does not outlive the re-key.
 
 use std::collections::BTreeMap;
 use std::future::Future;
@@ -26,7 +31,7 @@ use h3_protocol::connection::{AccountRequest, Connection, Host, Received};
 use h3_protocol::session::ConnId;
 use h3_protocol::wire::{ClientMessage, GoodbyeReason, Refusal, RejectCode, ServerMessage};
 use tokio::net::{TcpListener, TcpStream};
-use tokio::sync::{mpsc, watch};
+use tokio::sync::{Notify, mpsc, watch};
 use tokio::time::{Instant, sleep_until, timeout};
 use tokio_tungstenite::WebSocketStream;
 use tokio_tungstenite::tungstenite::Message;
@@ -172,6 +177,8 @@ enum Wake {
     Idle,
     /// The server stops (E16 M2 T5a).
     Stop,
+    /// The connection's account re-keyed on another connection (E16 M3 T3).
+    Rekeyed,
 }
 
 /// Resolves once the server stops (E16 M2 T5a); never if the signal's sender is gone unset.
@@ -208,7 +215,29 @@ pub(crate) struct Service {
     /// Whether a connection may join or create a game without logging in (E16 M3 T2a).
     pub anonymous: bool,
     /// The accounts (E16 M3 T2a).
-    pub accounts: Accounts,
+    pub accounts: Arc<Accounts>,
+    /// The logged-in connections by account, each with what closes it when another connection
+    /// re-keys the account (E16 M3 T3).
+    pub sessions: Mutex<BTreeMap<(String, ConnId), Arc<Notify>>>,
+}
+
+impl Service {
+    /// The account's logged-in connections, locked.
+    fn sessions(&self) -> std::sync::MutexGuard<'_, BTreeMap<(String, ConnId), Arc<Notify>>> {
+        self.sessions.lock().unwrap_or_else(PoisonError::into_inner)
+    }
+
+    /// Every connection logged in as `login` but `conn` closes (E16 M3 T3): the account re-keyed.
+    fn rekeyed(&self, login: &str, conn: ConnId) {
+        let sessions = self.sessions();
+        let from = (login.to_owned(), ConnId(0));
+        let to = (login.to_owned(), ConnId(u64::MAX));
+        for ((_, other), rekeyed) in sessions.range(from..=to) {
+            if *other != conn {
+                rekeyed.notify_one();
+            }
+        }
+    }
 }
 
 /// One connection's task: reads frames through the hello gate, answers the lobby's messages and
@@ -243,6 +272,8 @@ pub(crate) async fn serve<T: Transport>(
     // The deadline to be in a game: the hello's first, then the lobby's (E16 M2 T5b).
     let mut unjoined = Some(Instant::now() + Duration::from_millis(limits.hello_timeout_ms));
     let mut gate = Connection::new(limits.max_frame, challenge, server.anonymous);
+    // Notified when another connection re-keys the account this one logs in as (E16 M3 T3).
+    let rekeyed = Arc::new(Notify::new());
     let mut rate = Rate::new(limits.messages_per_second);
     let mut link = Link {
         conn,
@@ -264,6 +295,7 @@ pub(crate) async fn serve<T: Transport>(
             () = sleep_until(deadline) => Wake::Idle,
             () = until(lobby_due) => Wake::Idle,
             () = stopped(&mut stop) => Wake::Stop,
+            () = rekeyed.notified() => Wake::Rekeyed,
         };
         let now = Instant::now();
         let frame = match wake {
@@ -281,7 +313,7 @@ pub(crate) async fn serve<T: Transport>(
                     unjoined = Some(now + lobby);
                 }
                 match received {
-                    Received::Game(message) => match link.route(message).await {
+                    Received::Game(message) => match link.route(message, gate.account()).await {
                         Routed::Reply(frame) => frame,
                         Routed::Passed => continue,
                         Routed::GameGone => break,
@@ -293,7 +325,8 @@ pub(crate) async fn serve<T: Transport>(
                         held: false,
                     },
                     Received::Account(request) => {
-                        account(&server, &mut gate, &place, request).await
+                        let at = (&place, conn, &rekeyed);
+                        account(&server, &mut gate, at, request).await
                     }
                 }
             }
@@ -309,6 +342,7 @@ pub(crate) async fn serve<T: Transport>(
             Wake::Game(None) => goodbye(GoodbyeReason::TooSlow),
             Wake::Idle => goodbye(GoodbyeReason::IdleTimeout),
             Wake::Stop => goodbye(GoodbyeReason::Shutdown),
+            Wake::Rekeyed => goodbye(GoodbyeReason::Rekeyed),
         };
         let sent = timeout(idle, transport.send(frame.text)).await;
         if frame.close || !matches!(sent, Ok(true)) {
@@ -316,15 +350,20 @@ pub(crate) async fn serve<T: Transport>(
         }
     }
     link.unbind().await;
+    if let Some(login) = gate.account() {
+        server.sessions().remove(&(login.to_owned(), conn));
+    }
     transport.close().await;
 }
 
 /// Answers an account's request (E16 M3 T2a) off the connection's task: the answer, or the
-/// connection's goodbye when its address failed too many logins.
+/// connection's goodbye when its address failed too many logins. A connection logged in is known
+/// by its account with `rekeyed`, which another connection's re-key of the account notifies; its
+/// own re-key notifies the others (E16 M3 T3).
 async fn account(
     server: &Arc<Service>,
     gate: &mut Connection,
-    place: &Place,
+    (place, conn, rekeyed): (&Place, ConnId, &Arc<Notify>),
     request: AccountRequest,
 ) -> Frame {
     let (seq, login) = match &request {
@@ -336,14 +375,27 @@ async fn account(
     if login.is_some() && place.barred(Instant::now()) {
         return goodbye(GoodbyeReason::RateLimited);
     }
+    // Known by its account before its key is checked: a re-key committed after the check reaches
+    // it (one committed before refuses the key).
+    let session = login.clone().map(|login| (login, conn));
+    if let Some(session) = &session {
+        server
+            .sessions()
+            .insert(session.clone(), Arc::clone(rekeyed));
+    }
     let shared = Arc::clone(server);
     let answer = tokio::task::spawn_blocking(move || shared.accounts.answer(request))
         .await
         .unwrap_or(Err(Refusal::BadLogin));
+    if let (Err(_), Some(session)) = (&answer, &session) {
+        server.sessions().remove(session);
+    }
     match answer {
-        Ok(account) => {
+        Ok((account, changed)) => {
             if let Some(login) = login {
                 gate.logged_in(login);
+            } else if let (true, Some(login)) = (changed, gate.account()) {
+                server.rekeyed(login, conn);
             }
             Frame {
                 text: codec::encode_text(&ServerMessage::Account {
@@ -386,8 +438,10 @@ struct Link {
 impl Link {
     /// Answers a lobby message, or passes a game message to the game it names or is bound to. A
     /// connection is in at most one game: joining or creating another leaves the first, as a
-    /// disconnect would (its seat waits for its token).
-    async fn route(&mut self, message: ClientMessage) -> Routed {
+    /// disconnect would (its seat waits for its token or its account). It opens a game logged in
+    /// as `login` (E16 M3 T3).
+    async fn route(&mut self, message: ClientMessage, login: Option<&str>) -> Routed {
+        let login = login.map(str::to_owned);
         match message {
             ClientMessage::ListGames { seq } => Routed::Reply(Frame {
                 text: lock(&self.registry).list(seq),
@@ -413,7 +467,8 @@ impl Link {
                 let watchable = spectators.unwrap_or(true);
                 let (to, from_game) = game::outbox(self.queue.0, self.queue.1);
                 let asked = (offer.as_str(), seat, watchable);
-                match registry::create(&self.registry, self.origin, asked, (self.conn, to)) {
+                let creator = (self.conn, to, login);
+                match registry::create(&self.registry, self.origin, asked, creator) {
                     Err(reason) => Routed::Reply(refused(reason)),
                     Ok((game, to_game)) => {
                         let created = ServerMessage::GameCreated { seq, game };
@@ -432,6 +487,7 @@ impl Link {
                 let opening = Opening {
                     conn: self.conn,
                     to,
+                    login,
                     join: message,
                 };
                 let asked = (game, seat, token.as_deref());
@@ -470,8 +526,14 @@ impl Link {
         first: Option<ServerMessage>,
     ) -> Routed {
         self.unbind().await;
-        if let Some(Opening { conn, to, join }) = opening {
-            let opened = to_game.send(ToGame::Open { conn, to }).await.is_ok()
+        if let Some(Opening {
+            conn,
+            to,
+            login,
+            join,
+        }) = opening
+        {
+            let opened = to_game.send(ToGame::Open { conn, to, login }).await.is_ok()
                 && to_game
                     .send(ToGame::Message {
                         conn,
@@ -769,7 +831,15 @@ mod tests {
                 games_per_address: 1,
                 ..Limits::default()
             };
-            let mut registry = Registry::new(vec![], &limits, crate::config::Server::default());
+            let accounts = Arc::new(
+                Accounts::open(
+                    &std::env::temp_dir().join(format!("h3-net-{:016x}", game::os_u64().unwrap())),
+                    Box::new(crate::accounts::Ed25519),
+                )
+                .unwrap(),
+            );
+            let server = crate::config::Server::default();
+            let mut registry = Registry::new(vec![], &limits, server, Arc::clone(&accounts));
             registry.host(7, game);
             let registry = Arc::new(Mutex::new(registry));
             let counts = Arc::new(Mutex::new(Counts::default()));
@@ -784,12 +854,8 @@ mod tests {
                     program: String::from("s"),
                     id: String::from("ws://s"),
                     anonymous: true,
-                    accounts: Accounts::open(
-                        &std::env::temp_dir()
-                            .join(format!("h3-net-{:016x}", game::os_u64().unwrap())),
-                        Box::new(crate::accounts::Ed25519),
-                    )
-                    .unwrap(),
+                    accounts,
+                    sessions: Mutex::default(),
                 }),
                 watch::channel(false).1,
             ));
@@ -831,10 +897,10 @@ mod tests {
             });
             self.says(&join(seat));
             assert!(self.next().await.unwrap().contains("Welcome"));
-            let Some(ToGame::Open { conn, to }) = self.told().await else {
+            let Some(ToGame::Open { conn, to, login }) = self.told().await else {
                 panic!("no open")
             };
-            assert_eq!(conn, ConnId(4));
+            assert_eq!((conn, login), (ConnId(4), None));
             assert!(matches!(
                 self.told().await,
                 Some(ToGame::Message {

@@ -931,7 +931,7 @@ fn a_journal_cut_short_is_completed() {
     let (last, cut) = entries.split_last().unwrap();
     assert!(matches!(last, Entry::Checkpoint(_)));
     let mut restored = Session::restore(&r, config(5), players(), cut).unwrap();
-    assert_eq!(drained(&mut restored), [*last]);
+    assert_eq!(drained(&mut restored), [last.clone()]);
     // Cut before the bot's answer: the restore lets the bot act.
     let bot = || [players().into_iter().next().unwrap(), random_bot(3)];
     let mut s = host(&r, 8, bot());
@@ -979,6 +979,119 @@ fn a_waiting_game_restores_its_taken_seats() {
             Entry::Spectators(true),
             Entry::Started,
         ]
+    );
+}
+
+/// The token `conn`'s `Joined` in `out` carries, or why its join was refused.
+fn joined_token(out: &[Outbound], conn: ConnId) -> Result<Option<String>, Refusal> {
+    match to(out, conn).into_iter().next() {
+        Some(ServerMessage::Joined { token, .. }) => Ok(token),
+        Some(ServerMessage::Refused { reason }) => Err(reason),
+        other => panic!("{other:?}"),
+    }
+}
+
+#[test]
+fn a_logged_in_connections_seat_belongs_to_its_account() {
+    let r = ruleset();
+    let (c, d, e, f) = (ConnId(3), ConnId(4), ConnId(5), ConnId(6));
+    let mut s = host(&r, 5, players());
+    // The attacker's seat is taken logged in: it is the account's, and no token is handed out.
+    s.logged_in(A, "alice".to_string());
+    assert_eq!(
+        joined_token(&join(&mut s, A, Seat::Attacker, None), A),
+        Ok(None)
+    );
+    assert_eq!(
+        joined_token(&join(&mut s, B, Seat::Defender, None), B),
+        Ok(Some(TOKENS[1].to_string())),
+        "an anonymous seat keeps its token"
+    );
+    assert!(s.started());
+    assert_eq!(s.accounts(), [Some("alice"), None]);
+    let mut entries = drained(&mut s);
+    assert_eq!(
+        entries[..2],
+        [
+            Entry::TakenBy(BattleSide::Attacker, "alice".to_string()),
+            Entry::Taken(BattleSide::Defender),
+        ]
+    );
+    // No token takes the account's seat, nor another account.
+    s.disconnected(A);
+    let refused = |s: &mut Session<'_>, conn, seat, token| {
+        joined_token(&join(s, conn, seat, token), conn).unwrap_err()
+    };
+    assert_eq!(
+        refused(&mut s, c, Seat::Attacker, Some(TOKENS[0])),
+        Refusal::SeatTaken
+    );
+    assert_eq!(refused(&mut s, c, Seat::Attacker, None), Refusal::SeatTaken);
+    s.logged_in(d, "bob".to_string());
+    assert_eq!(refused(&mut s, d, Seat::Attacker, None), Refusal::SeatTaken);
+    // Any connection logged in as the account re-takes it, replacing one that holds it.
+    s.logged_in(e, "alice".to_string());
+    assert_eq!(
+        joined_token(&join(&mut s, e, Seat::Attacker, None), e),
+        Ok(None)
+    );
+    s.logged_in(f, "alice".to_string());
+    let out = join(&mut s, f, Seat::Attacker, Some("wrong"));
+    assert_eq!(joined_token(&out, f), Ok(None), "its token does not matter");
+    assert!(matches!(
+        to(&out, e)[..],
+        [ServerMessage::Goodbye {
+            reason: GoodbyeReason::Replaced
+        }]
+    ));
+    // The anonymous seat stays the token's, also for a logged-in connection.
+    assert_eq!(refused(&mut s, d, Seat::Defender, None), Refusal::SeatTaken);
+    assert_eq!(
+        joined_token(&join(&mut s, d, Seat::Defender, Some(TOKENS[1])), d),
+        Ok(Some(TOKENS[1].to_string()))
+    );
+    assert_eq!(s.accounts(), [Some("alice"), None]);
+    // A connection's login ends with it.
+    s.disconnected(f);
+    assert_eq!(refused(&mut s, f, Seat::Attacker, None), Refusal::SeatTaken);
+    // A restore binds the seats again.
+    entries.extend(drained(&mut s));
+    let mut restored = Session::restore(&r, config(5), players(), &entries).unwrap();
+    assert_eq!(restored.accounts(), [Some("alice"), None]);
+    restored.logged_in(A, "alice".to_string());
+    assert_eq!(
+        joined_token(&join(&mut restored, A, Seat::Attacker, None), A),
+        Ok(None)
+    );
+    assert_eq!(
+        refused(&mut restored, B, Seat::Attacker, Some(TOKENS[0])),
+        Refusal::SeatTaken
+    );
+}
+
+#[test]
+fn an_accounts_seat_is_its_accounts_alone() {
+    use crate::session::refusal;
+    let (token, alice) = (TOKENS[0], Some("alice"));
+    // A seat that belongs to an account: its account, whatever the token.
+    assert_eq!(refusal((token, true, alice), None, alice), None);
+    assert_eq!(refusal((token, true, alice), Some("x"), alice), None);
+    for login in [None, Some("bob")] {
+        assert_eq!(
+            refusal((token, true, alice), Some(token), login),
+            Some(Refusal::SeatTaken)
+        );
+    }
+    // Another: without a token only the first time, else with its token.
+    assert_eq!(refusal((token, false, None), None, alice), None);
+    assert_eq!(
+        refusal((token, true, None), None, alice),
+        Some(Refusal::SeatTaken)
+    );
+    assert_eq!(refusal((token, true, None), Some(token), None), None);
+    assert_eq!(
+        refusal((token, false, None), Some("x"), None),
+        Some(Refusal::BadToken)
     );
 }
 

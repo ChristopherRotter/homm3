@@ -8,6 +8,11 @@
 //!   seat's side, never with anything the client wrote (ADR-0018 point 6). A seat is taken
 //!   without a token only the first time, and re-taken after a disconnect with its token; a
 //!   re-take replaces a connection that still holds it.
+//! - **Accounts** (E16 M3 T3, ADR-0019 point 1). The host says which account a connection is
+//!   logged in as ([`Session::logged_in`]). A seat such a connection takes belongs to its account:
+//!   any connection logged in as it re-takes the seat, with no token, and no token takes it
+//!   ([`refusal`]); its `Joined` carries none. A seat an anonymous connection takes keeps its
+//!   token.
 //! - **The loop.** The game starts when every seat is held (a bot's always is). A command is
 //!   validated and applied by the engine; a rejected one changes neither the battle nor the
 //!   log. An accepted one is acknowledged to its seat (`Accepted`, echoed), then every viewer gets
@@ -49,12 +54,12 @@
 //!   are rebuilt from the journal, which is the truth, and the command applied again
 //!   ([`Session::drain_mismatches`]).
 //!
-//! Provisional (E16 M1 T2, M2 T2–T4): the names, the connection numbering, frames as text, the
-//! record's layout, the entries, who pauses, a spectator's numbered rejections (the epic's review
-//! list).
+//! Provisional (E16 M1 T2, M2 T2–T4, M3 T3): the names, the connection numbering, frames as text,
+//! the record's layout, the entries, who pauses, a spectator's numbered rejections, a seat's account
+//! fixed when it is first taken, one account in both seats allowed (the epic's review list).
 
 use alloc::boxed::Box;
-use alloc::collections::VecDeque;
+use alloc::collections::{BTreeMap, VecDeque};
 use alloc::string::String;
 use alloc::vec::Vec;
 use core::fmt;
@@ -178,10 +183,13 @@ impl Journal {
 
 /// One entry of the journal the host keeps on disk (E16 M2 T2), in the order the session made
 /// them: what a restart redoes ([`Session::restore`]). Private to the server, as the journal is.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Entry {
     /// The seat of the side was taken: its token was handed out, so it is re-taken only with it.
     Taken(BattleSide),
+    /// The seat of the side was taken by a connection logged in as the account with this login
+    /// name (E16 M3 T3): it belongs to the account, which alone re-takes it.
+    TakenBy(BattleSide, String),
     /// Every seat was held at once: the game started.
     Started,
     /// The engine accepted the command from the side.
@@ -298,6 +306,9 @@ struct SeatState {
     kind: SeatKind,
     /// Whether its token was handed out (the seat was taken once).
     issued: bool,
+    /// The login name of the account it belongs to (E16 M3 T3): the account of the connection that
+    /// took it first, if that one was logged in.
+    account: Option<String>,
     /// The connection that holds it.
     holder: Option<ConnId>,
     /// The side as a viewer.
@@ -367,6 +378,8 @@ pub struct Session<'r> {
     watchable: bool,
     /// The most a viewer's record holds, in bytes (E16 M2 T5c).
     record_bytes: usize,
+    /// The login names of the logged-in connections, as the host said (E16 M3 T3).
+    logins: BTreeMap<ConnId, String>,
 }
 
 impl<'r> Session<'r> {
@@ -381,6 +394,7 @@ impl<'r> Session<'r> {
         let seats = seats.map(|kind| SeatState {
             kind,
             issued: false,
+            account: None,
             holder: None,
             viewer: Viewer::new(config.record_bytes),
         });
@@ -414,6 +428,7 @@ impl<'r> Session<'r> {
             watchers_limit: config.spectators,
             watchable: config.watchable,
             record_bytes: config.record_bytes,
+            logins: BTreeMap::new(),
         })
     }
 
@@ -433,24 +448,21 @@ impl<'r> Session<'r> {
         entries: &[Entry],
     ) -> Result<Self, RestoreError> {
         let mut session = Self::new(ruleset, config, seats).map_err(RestoreError::Setup)?;
-        for (at, &entry) in entries.iter().enumerate() {
-            match entry {
-                Entry::Taken(side) => {
-                    session.seats[side.index()].issued = true;
-                    session.host.get_or_insert(side);
-                    session.entries.push(entry);
-                }
+        for (at, entry) in entries.iter().enumerate() {
+            match *entry {
+                Entry::Taken(side) => session.taken(side, None),
+                Entry::TakenBy(side, ref login) => session.taken(side, Some(login.clone())),
                 Entry::Started => {
                     session.started = true;
-                    session.entries.push(entry);
+                    session.entries.push(Entry::Started);
                 }
                 Entry::Paused | Entry::Resumed => {
-                    session.paused = entry == Entry::Paused;
-                    session.entries.push(entry);
+                    session.paused = *entry == Entry::Paused;
+                    session.entries.push(entry.clone());
                 }
                 Entry::Spectators(open) => {
                     session.watchable = open;
-                    session.entries.push(entry);
+                    session.entries.push(Entry::Spectators(open));
                 }
                 Entry::Command(side, command) => {
                     session
@@ -506,13 +518,27 @@ impl<'r> Session<'r> {
         }
     }
 
-    /// The connection `conn` is gone: its seat waits for a re-take with the token; a spectator
-    /// stops watching.
+    /// The host's word that connection `conn` is logged in as the account `login` (E16 M3 T3): a
+    /// seat it takes belongs to the account, and it re-takes the account's seats. Call it before
+    /// the connection's join; it changes nothing else.
+    pub fn logged_in(&mut self, conn: ConnId, login: String) {
+        self.logins.insert(conn, login);
+    }
+
+    /// The connection `conn` is gone: its seat waits for a re-take with the token, or by its
+    /// account; a spectator stops watching.
     pub fn disconnected(&mut self, conn: ConnId) {
         for seat in &mut self.seats {
             seat.holder = seat.holder.filter(|&holder| holder != conn);
         }
         self.watchers.retain(|w| w.conn != conn);
+        self.logins.remove(&conn);
+    }
+
+    /// The login names of the accounts the attacker's and the defender's seat belong to (E16 M3
+    /// T3): the host names them in the lobby, and their preferences decide the replay's listing.
+    pub fn accounts(&self) -> [Option<&str>; 2] {
+        self.seats.each_ref().map(|seat| seat.account.as_deref())
     }
 
     /// The battle's result, once it is over: then the host renders the journal as the replay
@@ -659,26 +685,23 @@ impl<'r> Session<'r> {
             Seat::Defender => BattleSide::Defender,
             Seat::Spectator => return self.watch(conn, out),
         };
+        let login = self.logins.get(&conn).cloned();
         let held = &mut self.seats[side.index()];
         let SeatKind::Player { token: expected } = &held.kind else {
             return out.push(refused(conn, Refusal::SeatTaken));
         };
-        let refusal = match token {
-            Some(given) if !same_token(expected, &given) => Some(Refusal::BadToken),
-            None if held.issued => Some(Refusal::SeatTaken),
-            _ => None,
-        };
-        if let Some(reason) = refusal {
+        let claim = (expected.as_str(), held.issued, held.account.as_deref());
+        if let Some(reason) = refusal(claim, token.as_deref(), login.as_deref()) {
             return out.push(refused(conn, reason));
         }
-        let token = Some(expected.clone());
-        let taken = !core::mem::replace(&mut held.issued, true);
+        // An account's seat is re-taken by the account, so its token is never handed out.
+        let mine = held.account.is_some() || (!held.issued && login.is_some());
+        let token = (!mine).then(|| expected.clone());
         if let Some(old) = held.holder.replace(conn) {
             out.push(goodbye(old, GoodbyeReason::Replaced));
         }
-        if taken {
-            self.host.get_or_insert(side);
-            self.entries.push(Entry::Taken(side));
+        if !held.issued {
+            self.taken(side, login);
         }
         if core::mem::take(&mut self.paused) {
             self.entries.push(Entry::Resumed);
@@ -702,6 +725,20 @@ impl<'r> Session<'r> {
         } else if self.started && self.state.side_to_act() == Some(side) {
             self.your_turn(side, out);
         }
+    }
+
+    /// The seat of `side` was taken the first time, by a connection logged in as `login` if any:
+    /// its token handed out, or it belongs to the account (E16 M3 T3); the first seat taken is the
+    /// host's.
+    fn taken(&mut self, side: BattleSide, login: Option<String>) {
+        let seat = &mut self.seats[side.index()];
+        seat.issued = true;
+        seat.account.clone_from(&login);
+        self.host.get_or_insert(side);
+        self.entries.push(match login {
+            Some(login) => Entry::TakenBy(side, login),
+            None => Entry::Taken(side),
+        });
     }
 
     /// `Join` as a spectator (E16 M2 T4): in a game that takes spectators (T4c), within its
@@ -1047,6 +1084,23 @@ pub fn same_token(expected: &str, given: &str) -> bool {
             .zip(given.bytes())
             .fold(0, |diff, (a, b)| diff | (a ^ b))
             == 0
+}
+
+/// Why a connection logged in as `login` (or anonymous) may not take a player's seat with
+/// `token`, or `None` if it may (E16 M3 T3): `claim` is the seat's token, whether it was handed
+/// out, and the account the seat belongs to. An account's seat is its account's alone, whatever
+/// the token; another seat is taken without a token the first time and re-taken with its token.
+/// The host checks a paused game's seats with it before it restores the game.
+pub fn refusal(
+    (expected, issued, account): (&str, bool, Option<&str>),
+    token: Option<&str>,
+    login: Option<&str>,
+) -> Option<Refusal> {
+    match (account, token) {
+        (Some(account), _) => (login != Some(account)).then_some(Refusal::SeatTaken),
+        (None, Some(given)) => (!same_token(expected, given)).then_some(Refusal::BadToken),
+        (None, None) => issued.then_some(Refusal::SeatTaken),
+    }
 }
 
 /// An unnumbered message for `conn`.

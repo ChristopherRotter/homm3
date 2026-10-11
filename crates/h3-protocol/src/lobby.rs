@@ -1,7 +1,8 @@
 //! The lobby (E16 M2 T1): the server's offers and its hosted games, sans I/O. The host keeps one
 //! per server: it answers `ListGames`, creates a game for `CreateGame` within the limits, and
 //! hears from each game's session where the game is ([`crate::session::Session::phase`],
-//! `open_seats` and `takes_spectators`). The games themselves run in their own sessions.
+//! `open_seats` and `takes_spectators`) and, from the host, the display names of the accounts its
+//! seats belong to (E16 M3 T3). The games themselves run in their own sessions.
 //!
 //! Provisional (E16 M2 T1): game ids counted from 1 and never reused; the limits count the games
 //! that are not over, in total and per origin (the host's notion of where a request came from: a
@@ -11,7 +12,7 @@
 use alloc::collections::BTreeMap;
 use alloc::vec::Vec;
 
-use crate::wire::{GameInfo, Offer, Phase, Refusal, Seat, ServerMessage};
+use crate::wire::{GameInfo, Offer, Phase, Refusal, Seat, Seated, ServerMessage};
 
 /// How many games may be open (not over) at once.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -120,6 +121,7 @@ impl<O: Ord> Lobby<O> {
                 .filter(|s| !found.bots.contains(s))
                 .collect(),
             spectators,
+            seated: Vec::new(),
         };
         self.games.insert(game, Entry { origin, info });
         Ok((game, index))
@@ -132,6 +134,14 @@ impl<O: Ord> Lobby<O> {
             entry.info.phase = phase;
             entry.info.open = open;
             entry.info.spectators = spectators;
+        }
+    }
+
+    /// The seats of game `game` that belong to accounts, with the accounts' display names (E16 M3
+    /// T3), as the host knows them.
+    pub fn seat(&mut self, game: u32, seated: Vec<Seated>) {
+        if let Some(entry) = self.games.get_mut(&game) {
+            entry.info.seated = seated;
         }
     }
 
