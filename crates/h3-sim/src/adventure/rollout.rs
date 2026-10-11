@@ -19,8 +19,10 @@ pub struct RolloutResult {
 }
 
 /// Plays every player with uniformly random legal actions ([`choose`]) until the episode ends,
-/// or after `max_steps` steps when `max_steps > 0`. The agent's randomness comes from the AGENT
-/// stream of `agent_seed`, so it never perturbs the game's own streams.
+/// or after `max_steps` steps when `max_steps > 0`. Increment 1's games end only by the env's day
+/// limit: with neither a day limit nor `max_steps` the rollout never returns. The agent's
+/// randomness comes from the AGENT stream of `agent_seed`, so it never perturbs the game's own
+/// streams.
 ///
 /// Never inlined: T9b's `bench-check` workload counts the instructions inside this function.
 #[inline(never)]
@@ -35,8 +37,9 @@ pub fn random_rollout(env: &mut AdventureEnv, agent_seed: u64, max_steps: u32) -
             break;
         }
         let action = choose(env, player, &mut rng);
+        let result = env.step(player, action);
         // A legal action is always accepted (`tests.rs`).
-        let _ = env.step(player, action);
+        debug_assert!(result.is_ok(), "{action:?} of {player:?}: {result:?}");
         steps += 1;
     }
     RolloutResult {

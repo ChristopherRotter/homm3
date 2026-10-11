@@ -19,6 +19,7 @@ Epic: `docs/epics/E08-adventure-map.md` (refined 2026-10-08, reviewed with the u
 
 ## Inbox
 
+- 2026-10-11 (T9a review): `benches/battle/random-rollouts-full.toml` collects `*random_rollout*`, which now also names `h3_sim::adventure::random_rollout`: T9b's workload collects a qualified pattern (`*adventure*random_rollout*`), and the battle lane may tighten its own (tell it).
 - 2026-10-11 (T9a): the env's `legal_mask` and `tile_mask` each run the hero's reachable-tiles query, so an agent asking both pays two searches per hero and step (the random agent one): T9b's benchmark decides whether the env keeps the queries of the current state.
 - 2026-10-11 (T9a): a player's hero slots are its heroes by id, the first eight; they shift when a hero of a lower id joins or leaves (recruiting, defeat: increments 3 and later). Stable slots (a slot table in the game, as the original's hero list) when an agent needs them (E13), with an encoding version bump.
 - 2026-10-11 (T9a, the user): the env's observation is `h3_game`'s view; a flat, versioned encoding comes with E13's macro-actions (or E05's batch API). Episodes end only by the day limit and carry no reward until victory and defeat exist (E10).

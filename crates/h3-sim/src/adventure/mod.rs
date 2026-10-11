@@ -3,8 +3,9 @@
 //! (turns, days and each player's view), with the adventure lane's own action encoding. This
 //! sub-path is the adventure lane's until the AI lane takes `h3-sim` (E05).
 //!
-//! * [`AdventureEnv`]: reset (a game setup, a seed), step, masks, fork, state hash, a player's
-//!   observation (`h3_game`'s view as it is: a flat encoding waits for E13's macro-actions).
+//! * [`AdventureEnv`]: built from a game setup and a seed with a day limit; reset (a seed), step,
+//!   masks, fork, state hash, a player's observation (`h3_game`'s view as it is: a flat encoding
+//!   waits for E13's macro-actions).
 //! * [`action`]: the factorized action (an entry and a destination tile) and its masks, built from
 //!   the reachable-tiles query (provisional until E13's macro-actions).
 //! * [`rollout`]: the uniformly random legal agent.

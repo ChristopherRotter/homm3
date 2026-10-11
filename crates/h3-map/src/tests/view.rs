@@ -268,7 +268,8 @@ fn depth(view: &TileView) -> u8 {
 }
 
 /// The observation's consistency with the events: `after` is `before` with what `viewer` was
-/// `told` applied as a client would. The day and whose turn it is follow the game's events; the
+/// `told` applied as a client would. The day, the acting players and the turn group follow the
+/// game's events; the
 /// heroes it sees move as the projected steps say (a step names the viewer alone and tells at
 /// least one tile; a step's tile it leaves is where the viewer last saw the hero, a step it is
 /// not told the tile entered takes the hero out of its sight); a hero shows without a step only
@@ -282,6 +283,9 @@ fn check_told(
 ) -> Result<(), TestCaseError> {
     let mut day = before.day;
     let mut acting: Vec<bool> = before.players.iter().map(|p| p.acting).collect();
+    // The turn group: the players whose turns start after the last turn that ended, if any did.
+    let mut group = before.turn_group.clone();
+    let mut started = false;
     let mut heroes: Vec<(HeroId, TilePos)> = before
         .adventure
         .heroes
@@ -292,8 +296,18 @@ fn check_told(
     for event in told {
         match *event {
             GameEvent::DayStarted { day: started } => day = started,
-            GameEvent::TurnEnded { player } => acting[usize::from(player.raw())] = false,
-            GameEvent::TurnStarted { player } => acting[usize::from(player.raw())] = true,
+            GameEvent::TurnEnded { player } => {
+                acting[usize::from(player.raw())] = false;
+                started = false;
+            }
+            GameEvent::TurnStarted { player } => {
+                acting[usize::from(player.raw())] = true;
+                if !started {
+                    group.clear();
+                    started = true;
+                }
+                group.push(player);
+            }
             GameEvent::Adventure(AdventureEvent {
                 kind:
                     AdventureEventKind::HeroStepped {
@@ -331,6 +345,7 @@ fn check_told(
     prop_assert_eq!(after.day, day);
     let now: Vec<bool> = after.players.iter().map(|p| p.acting).collect();
     prop_assert_eq!(now, acting);
+    prop_assert_eq!(&after.turn_group, &group);
     for &(id, pos) in &heroes {
         prop_assert_eq!(after.adventure.hero(id).map(|h| h.pos), Some(pos));
     }
@@ -464,4 +479,67 @@ proptest! {
             }
         }
     }
+}
+
+/// [`vary`] changes what it may and nothing else: with every tile unseen, each kind of change
+/// shows on a known plan; with none, only the other players' armies change.
+#[test]
+fn vary_changes_what_the_viewer_never_sees_only() {
+    let plan = super::play::Plan {
+        version: crate::model::Version::Sod,
+        side: 8,
+        two_levels: false,
+        tiles: vec![(0, 0, 0); 64],
+        players: vec![(0, true), (1, true)],
+        heroes: vec![((1, 1, 0), None), ((6, 6, 0), None)],
+        hero_types: 0,
+        blockers: vec![((4, 1, 0), 0), ((1, 5, 0), 1)],
+    };
+    let m = lay_out(&plan);
+    let unseen = Unseen {
+        seed: None,
+        armies: vec![Some(Some(vec![Some((10, 3))]))],
+        tiles: vec![Some((4, 1, 2)); 64],
+        removed: vec![true],
+        added: vec![((3, 6, 0), 0)],
+        moved: vec![Some((6, 2, 0))],
+    };
+    let other = vary(&m, 0, &unseen, |_| true, |_| true);
+    // Every tile is swamp with a road and a river but the heroes', which stay land as swamp is.
+    assert!(
+        other
+            .terrain
+            .tiles
+            .iter()
+            .all(|t| (t.terrain, t.road, t.river) == (4, 1, 2))
+    );
+    let blockers = |m: &RawMap| -> Vec<(u8, u8, u32)> {
+        m.objects
+            .iter()
+            .filter(|o| o.template != HERO_TEMPLATE)
+            .map(|o| (o.pos.x, o.pos.y, o.template))
+            .collect()
+    };
+    assert_eq!(blockers(&m), [(4, 1, 1), (1, 5, 2)]);
+    assert_eq!(blockers(&other), [(3, 6, 1)]);
+    let mut seen = other.clone();
+    let mine: Vec<_> = heroes(&mut seen)
+        .map(|(owner, army)| (owner, army.clone()))
+        .collect();
+    assert_eq!(mine[0], (0, None));
+    assert_eq!(mine[1], (1, Some(stacks(&[Some((10, 3))]))));
+    let tiles: Vec<Spot> = other
+        .objects
+        .iter()
+        .filter(|o| o.template == HERO_TEMPLATE)
+        .map(standing_on)
+        .collect();
+    assert_eq!(tiles, [(1, 1, 0), (6, 2, 0)]);
+    // Nothing unseen: only the other player's army changes (armies never show).
+    let same = vary(&m, 0, &unseen, |_| false, |_| false);
+    assert_eq!(same.terrain.tiles, m.terrain.tiles);
+    assert_eq!(blockers(&same), blockers(&m));
+    let mut kept = same.clone();
+    let armies: Vec<_> = heroes(&mut kept).map(|(_, army)| army.clone()).collect();
+    assert_eq!(armies, [None, Some(stacks(&[Some((10, 3))]))]);
 }

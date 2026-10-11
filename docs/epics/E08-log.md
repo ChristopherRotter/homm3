@@ -595,15 +595,17 @@ E13's macro-actions).
   applied about a thousand times and it was told other players' steps in two cases in three.
 - **The observation against the events** (`views_move_as_the_events_say`, 48 cases): for every
   player at every step, its view after a command is its view before with the projected events
-  applied as a client would: the day and the acting flags follow `DayStarted`, `TurnEnded` and
-  `TurnStarted`; a projected step names the viewer alone, its `seen_from`/`seen_to` match the
+  applied as a client would: the day, the acting flags and the turn group follow `DayStarted`,
+  `TurnEnded` and `TurnStarted`; a projected step names the viewer alone, its `seen_from`/`seen_to` match the
   tiles it tells and it tells at least one; the tile a hero leaves is where the viewer last saw
   it, an untold tile entered takes it out of sight; a hero shows untold only after the viewer's
   own command and only on a tile it did not see before; a tile's view only deepens (hidden,
   ground, everything) and keeps what it showed; the explored and fringe planes change only by
   the viewer's own command. Mutations each test caught: other heroes' armies shown (hygiene),
   a step's tiles not filtered (consistency), objects on the fringe in `strict-fixed` (both),
-  every hero shown (both), the query over unexplored tiles (hygiene).
+  every hero shown (both), the query over unexplored tiles (hygiene). A unit test checks that the
+  variation changes each kind of thing where the viewer never sees and only the armies where it
+  sees everything.
 - **`AdventureEnv`** (`h3-sim`'s `src/adventure/`, ADR-0017 point 8): built from a game
   ruleset, a shared `GameSetup` and a seed with a day limit (`max_days`, 0 none; done and
   truncated once day `max_days + 1` starts: increment 1 has no victory, so no reward either);
@@ -630,8 +632,17 @@ E13's macro-actions).
   it is still its plan's map and imports it; `H3_WRITE_FIXTURES=1` rewrites it).
 - **The env's tests** (on the duel map): the start (red to move, its two heroes free, blue's
   masks empty); the encoding's arithmetic; random play of legal and arbitrary actions of any
-  player in both profiles (16 cases of up to 60 steps): for every player each entry is legal
-  exactly when its tile mask has a tile, a move's tiles are the hero's legal moves and decode to
-  the query's paths, a legal action is accepted and does what `apply` does with its command, an
-  accepted one was legal, a refused one leaves hash and step count and emits nothing, with the
-  error `apply` gives; forks (12 cases); determinism, the day limit and `reset`.
+  player in both profiles (16 cases of up to 59 steps): for every player each entry is legal
+  exactly when its tile mask has a tile, a move's tiles are the hero's legal moves and a sample
+  of them decodes to the query's paths (that every such path applies is T8b2a's property); the
+  action played is accepted when legal and does what `apply` does with its command, an accepted
+  one was legal, a refused one leaves hash and step count and emits nothing, with the error
+  `apply` gives; forks (12 cases); determinism, the day limit and `reset`. `random_rollout`
+  asserts in debug builds that each of its steps is accepted; without a day limit it needs a step
+  limit.
+- **Review** (an independent agent): no bug in the env; found and fixed: the fork test drew a
+  rollout without a step or day limit in about one run in seven (it never ended); the turn group
+  was not checked against the events; nothing showed that the variation changes anything (the
+  unit test above); the module doc said `reset` takes a setup. Noted for T9b: the battle
+  workload's `collect = "*random_rollout*"` matches the adventure's `random_rollout` too (both
+  in `h3_sim`): the adventure workload needs a qualified pattern (inbox).

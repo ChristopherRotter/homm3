@@ -245,7 +245,7 @@ proptest! {
     /// Clone equivalence: a fork playing on leaves its parent as it was, and a fork and its
     /// parent evolve identically under the same agent.
     #[test]
-    fn forks_evolve_as_their_parent(seed in any::<u64>(), agent in any::<u64>(), prefix in 0u32..80) {
+    fn forks_evolve_as_their_parent(seed in any::<u64>(), agent in any::<u64>(), prefix in 1u32..80) {
         let mut parent = env(seed, 0);
         random_rollout(&mut parent, agent, prefix);
         let hash = parent.state_hash();
