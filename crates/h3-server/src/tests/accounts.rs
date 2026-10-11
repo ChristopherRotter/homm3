@@ -209,3 +209,178 @@ async fn failed_logins_close_an_addresss_connections_beyond_their_limit() {
     client.close().await;
     running.shutdown().await;
 }
+
+/// The answer to a request about an account that opted out of the listing.
+fn unlisted(seq: u32, display: &str) -> Option<ServerMessage> {
+    Some(ServerMessage::Account {
+        seq,
+        display: display.to_owned(),
+        listed: false,
+    })
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn a_rekeyed_account_logs_in_with_its_new_key_only_also_after_a_restart() {
+    let config = config(fast());
+    let running = start(&config).await.unwrap();
+    let (old, new) = (key(1), key(2));
+    let mut client = greeted(&running).await;
+    // Before a login there is no account to re-key.
+    let early = client.rekey(1, "alice", &old, &new).await.unwrap();
+    assert_eq!(early, refusal(Refusal::NotLoggedIn));
+    let registered = client.login(2, "alice", &old, Some("Alice")).await;
+    assert_eq!(registered.unwrap(), account(2, "Alice"));
+    // Signed by a key that is not the account's, or for another connection: refused.
+    let wrong = client.rekey(3, "alice", &key(3), &new).await.unwrap();
+    assert_eq!(wrong, refusal(Refusal::BadLogin));
+    let (id, _) = client.welcome().map(|(i, c)| (i.to_owned(), *c)).unwrap();
+    let signed =
+        account::rekey_message(&id, &[9; account::CHALLENGE_BYTES], "alice", &new.public());
+    let elsewhere = ClientMessage::Rekey {
+        seq: 4,
+        key: account::to_hex(&new.public()),
+        by_old: account::to_hex(&old.sign(&signed)),
+        by_new: account::to_hex(&new.sign(&signed)),
+    };
+    client.send(&elsewhere).await.unwrap();
+    assert_eq!(client.recv().await, refusal(Refusal::BadLogin));
+    let rekeyed = client.rekey(5, "alice", &old, &new).await.unwrap();
+    assert_eq!(rekeyed, account(5, "Alice"));
+    // The same key again changes nothing and writes no line.
+    let again = client.rekey(6, "alice", &new, &new).await.unwrap();
+    assert_eq!(again, account(6, "Alice"));
+    let mut other = greeted(&running).await;
+    let by_old = other.login(1, "alice", &old, None).await.unwrap();
+    assert_eq!(by_old, refusal(Refusal::BadLogin));
+    let by_new = other.login(2, "alice", &new, None).await.unwrap();
+    assert_eq!(by_new, account(2, "Alice"));
+    for c in [client, other] {
+        c.close().await;
+    }
+    running.shutdown().await;
+    let log = std::fs::read_to_string(config.server.data.join("players.log")).unwrap();
+    assert_eq!(log.lines().count(), 2, "{log}");
+    let again = start(&config).await.unwrap();
+    let mut client = greeted(&again).await;
+    let by_old = client.login(1, "alice", &old, None).await.unwrap();
+    assert_eq!(by_old, refusal(Refusal::BadLogin));
+    let by_new = client.login(2, "alice", &new, None).await.unwrap();
+    assert_eq!(by_new, account(2, "Alice"));
+    client.close().await;
+    again.shutdown().await;
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn display_names_stay_unique_and_the_preference_is_kept() {
+    let config = config(fast());
+    let running = start(&config).await.unwrap();
+    let mut alice = greeted(&running).await;
+    let early = alice.rename(1, "Alice").await.unwrap();
+    assert_eq!(early, refusal(Refusal::NotLoggedIn));
+    let early = alice.set_listed(1, false).await.unwrap();
+    assert_eq!(early, refusal(Refusal::NotLoggedIn));
+    assert_eq!(
+        alice
+            .login(2, "alice", &key(1), Some("Alice"))
+            .await
+            .unwrap(),
+        account(2, "Alice")
+    );
+    let mut bob = greeted(&running).await;
+    assert_eq!(
+        bob.login(1, "bob", &key(2), Some("Bob")).await.unwrap(),
+        account(1, "Bob")
+    );
+    // Another account's name, in any case, is taken; one's own in another case is not.
+    assert_eq!(
+        bob.rename(2, "ALICE").await.unwrap(),
+        refusal(Refusal::NameTaken)
+    );
+    assert_eq!(alice.rename(3, "aLiCe").await.unwrap(), account(3, "aLiCe"));
+    assert_eq!(
+        alice.rename(4, "Liddell").await.unwrap(),
+        account(4, "Liddell")
+    );
+    // The old name is free again; a name that breaks the rules never reaches the server's check.
+    assert_eq!(bob.rename(3, "Alice").await.unwrap(), account(3, "Alice"));
+    assert_eq!(
+        bob.rename(4, " x").await.unwrap(),
+        refusal(Refusal::BadName)
+    );
+    assert_eq!(
+        alice.set_listed(5, false).await.unwrap(),
+        unlisted(5, "Liddell")
+    );
+    assert_eq!(
+        alice.set_listed(6, false).await.unwrap(),
+        unlisted(6, "Liddell")
+    );
+    for c in [alice, bob] {
+        c.close().await;
+    }
+    running.shutdown().await;
+    let again = start(&config).await.unwrap();
+    let mut alice = greeted(&again).await;
+    let back = alice.login(1, "alice", &key(1), None).await.unwrap();
+    assert_eq!(back, unlisted(1, "Liddell"));
+    let mut carol = greeted(&again).await;
+    let taken = carol
+        .login(1, "carol", &key(3), Some("alice"))
+        .await
+        .unwrap();
+    assert_eq!(taken, refusal(Refusal::NameTaken), "bob holds it now");
+    for c in [alice, carol] {
+        c.close().await;
+    }
+    again.shutdown().await;
+    let log = std::fs::read_to_string(config.server.data.join("players.log")).unwrap();
+    assert_eq!(
+        log.lines().count(),
+        6,
+        "two registrations, three renames, one preference: {log}"
+    );
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn the_operator_rebinds_an_account_while_the_server_is_stopped() {
+    let config = config(fast());
+    let running = start(&config).await.unwrap();
+    let mut client = greeted(&running).await;
+    let registered = client.login(1, "alice", &key(1), Some("Alice")).await;
+    assert_eq!(registered.unwrap(), account(1, "Alice"));
+    client.close().await;
+    let new = account::to_hex(&key(2).public());
+    // One server or one operator's command at a time on a data directory.
+    let busy = crate::rebind(&config, "alice", &new).unwrap_err();
+    assert!(busy.0.contains("in use"), "{busy}");
+    let second = start(&config).await.unwrap_err();
+    assert!(second.0.contains("in use"), "{second}");
+    running.shutdown().await;
+    let refused = [
+        ("bob", new.as_str(), "no account"),
+        ("alice", "00", "not a public key"),
+        // The identity point: a key no signature holds for.
+        (
+            "alice",
+            &format!("01{}", "00".repeat(31)),
+            "not a public key",
+        ),
+    ];
+    for (login, key, why) in refused {
+        let error = crate::rebind(&config, login, key).unwrap_err();
+        assert!(error.0.contains(why), "{login} {key}: {error}");
+    }
+    assert_eq!(crate::rebind(&config, "alice", &new).unwrap(), "Alice");
+    let log = std::fs::read_to_string(config.server.data.join("players.log")).unwrap();
+    assert!(log.ends_with(&format!(
+        "{{\"Rebound\":{{\"login\":\"alice\",\"key\":\"{new}\"}}}}\n"
+    )));
+    let again = start(&config).await.unwrap();
+    let mut client = greeted(&again).await;
+    let by_old = client.login(1, "alice", &key(1), None).await.unwrap();
+    assert_eq!(by_old, refusal(Refusal::BadLogin));
+    let by_new = client.login(2, "alice", &key(2), None).await.unwrap();
+    assert_eq!(by_new, account(2, "Alice"));
+    client.close().await;
+    again.shutdown().await;
+}

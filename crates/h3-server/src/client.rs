@@ -169,6 +169,54 @@ impl Client {
         .await
     }
 
+    /// Re-keys the logged-in account `login` from `old` to `new` (E16 M3 T2b): both sign the
+    /// welcome's server id and challenge, the login name and the new key; the server's answer.
+    pub async fn rekey(
+        &mut self,
+        seq: u32,
+        login: &str,
+        old: &Key,
+        new: &Key,
+    ) -> Result<Option<ServerMessage>, Error> {
+        let (id, challenge) = self
+            .welcome()
+            .ok_or_else(|| Error(String::from("re-key before the welcome")))?;
+        let signed = account::rekey_message(id, challenge, login, &new.public());
+        self.send(&ClientMessage::Rekey {
+            seq,
+            key: account::to_hex(&new.public()),
+            by_old: account::to_hex(&old.sign(&signed)),
+            by_new: account::to_hex(&new.sign(&signed)),
+        })
+        .await?;
+        Ok(self.recv().await)
+    }
+
+    /// Renames the logged-in account to `display` (E16 M3 T2b); the server's answer.
+    pub async fn rename(
+        &mut self,
+        seq: u32,
+        display: &str,
+    ) -> Result<Option<ServerMessage>, Error> {
+        self.send(&ClientMessage::Rename {
+            seq,
+            display: display.to_owned(),
+        })
+        .await?;
+        Ok(self.recv().await)
+    }
+
+    /// Sets whether the logged-in account's finished games' replays may be listed (E16 M3 T2b);
+    /// the server's answer.
+    pub async fn set_listed(
+        &mut self,
+        seq: u32,
+        listed: bool,
+    ) -> Result<Option<ServerMessage>, Error> {
+        self.send(&ClientMessage::SetListed { seq, listed }).await?;
+        Ok(self.recv().await)
+    }
+
     /// Closes the connection.
     pub async fn close(mut self) {
         let _ = self.socket.close(None).await;

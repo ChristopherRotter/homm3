@@ -1,32 +1,67 @@
 //! `h3-server <config.toml>`: hosts the configured battles for untrusted clients over WebSocket
 //! (E16, ADR-0018); the configuration's format is in `h3_server::config`.
 //!
+//! `h3-server rebind <config.toml> <login> <public-key>`: the operator binds an account to a new
+//! key while the server is stopped (E16 M3 T2b, `h3_server::rebind`). Provisional: the command.
+//!
 //! Stopping (E16 M2 T5a): the first SIGINT (Ctrl-C) or SIGTERM drains the server: no new game,
 //! the waiting ones end, the running ones play on; once none runs, it stops. A second signal
 //! stops it at once. Stopped, every connection hears `Goodbye { Shutdown }` and the journals
 //! stay: the running and the paused games restore at the next start. Provisional: the signals.
 
+use std::ffi::OsString;
 use std::path::PathBuf;
 use std::process::ExitCode;
 
 use h3_server::{Config, start};
 
 fn main() -> ExitCode {
-    let mut args = std::env::args_os().skip(1);
-    let (Some(path), None) = (args.next(), args.next()) else {
-        eprintln!(
-            "usage: h3-server <config.toml>\n{} (protocol {})",
-            h3_server::server_name(),
-            h3_protocol::PROTOCOL_VERSION
-        );
-        return ExitCode::from(2);
-    };
-    let config = match Config::load(&PathBuf::from(path)) {
-        Ok(config) => config,
-        Err(e) => {
-            eprintln!("h3-server: {e}");
-            return ExitCode::FAILURE;
+    let args: Vec<OsString> = std::env::args_os().skip(1).collect();
+    match &args[..] {
+        [path] => serve(path),
+        [command, path, login, key] if command == "rebind" => rebind(path, login, key),
+        _ => {
+            eprintln!(
+                "usage: h3-server <config.toml>\n       h3-server rebind <config.toml> <login> <public-key>\n{} (protocol {})",
+                h3_server::server_name(),
+                h3_protocol::PROTOCOL_VERSION
+            );
+            ExitCode::from(2)
         }
+    }
+}
+
+/// The configuration at `path`, or why not (on standard error).
+fn load(path: &OsString) -> Option<Config> {
+    Config::load(&PathBuf::from(path))
+        .map_err(|e| eprintln!("h3-server: {e}"))
+        .ok()
+}
+
+/// The operator's rebind (E16 M3 T2b).
+fn rebind(path: &OsString, login: &OsString, key: &OsString) -> ExitCode {
+    let Some(config) = load(path) else {
+        return ExitCode::FAILURE;
+    };
+    let (login, key) = (login.to_string_lossy(), key.to_string_lossy());
+    match h3_server::rebind(&config, &login, &key) {
+        Ok(display) => {
+            eprintln!(
+                "h3-server: `{login}` ({display}) is bound to the new key: from the next start only it logs in"
+            );
+            ExitCode::SUCCESS
+        }
+        Err(e) => {
+            eprintln!("h3-server: rebind: {e}");
+            ExitCode::FAILURE
+        }
+    }
+}
+
+/// Runs the server until it is stopped.
+fn serve(path: &OsString) -> ExitCode {
+    let Some(config) = load(path) else {
+        return ExitCode::FAILURE;
     };
     let runtime = match tokio::runtime::Builder::new_multi_thread()
         .enable_all()

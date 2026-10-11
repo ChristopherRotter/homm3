@@ -1,11 +1,11 @@
-//! The player log (E16 M3 T2a; ADR-0019 point 7; `E16-design.md` §10): `<data>/players.log`, one
-//! JSON document per line, each an event of an account: registered (E16 M3 T2b adds re-keyed,
-//! renamed and the listing preference). The accounts are read back into memory at start; a last
-//! line a crash cut short is dropped. Each line is synced before the request it records is
-//! answered. The log holds login names, display names and public keys: nothing a login can be
-//! forged from; on Unix it is owner-read-write, as the journals are.
+//! The player log (E16 M3 T2a, T2b; ADR-0019 point 7; `E16-design.md` §10): `<data>/players.log`,
+//! one JSON document per line, each an [`Event`] of an account: registered, re-keyed by itself or
+//! rebound by the operator, renamed, its listing preference. The accounts are read back into
+//! memory at start; a last line a crash cut short is dropped. Each line is synced before the
+//! request it records is answered. The log holds login names, display names and public keys:
+//! nothing a login can be forged from; on Unix it is owner-read-write, as the journals are.
 //!
-//! Provisional (E16 M3 T2a): the layout, the names.
+//! Provisional (E16 M3 T2a, T2b): the layout, the names.
 
 use std::collections::BTreeMap;
 use std::fs::{self, File, OpenOptions};
@@ -24,20 +24,60 @@ pub(crate) struct Account {
     pub key: [u8; KEY_BYTES],
     /// Its display name.
     pub display: String,
-    /// Whether the replays of its finished games may be listed (E16 M3 T2b changes it).
+    /// Whether the replays of its finished games may be listed.
     pub listed: bool,
 }
 
-/// One line of the log.
+/// A public key in a line: hex in the log, bytes in memory.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(try_from = "String", into = "String")]
+pub(crate) struct Hex(pub [u8; KEY_BYTES]);
+
+impl TryFrom<String> for Hex {
+    type Error = &'static str;
+
+    fn try_from(hex: String) -> Result<Self, Self::Error> {
+        account::from_hex(&hex).map(Self).ok_or("not a key")
+    }
+}
+
+impl From<Hex> for String {
+    fn from(key: Hex) -> Self {
+        account::to_hex(&key.0)
+    }
+}
+
+/// An event of an account: one line of the log.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
-enum Line {
-    /// A new account: its login name, its public key in hex and its display name.
+pub(crate) enum Event {
+    /// A new account (E16 M3 T2a).
     Registered {
         login: String,
-        key: String,
+        key: Hex,
         display: String,
     },
+    /// The account re-keyed itself, signed by both keys (E16 M3 T2b).
+    Rekeyed { login: String, key: Hex },
+    /// The operator bound the account to a new key, the server stopped (E16 M3 T2b).
+    Rebound { login: String, key: Hex },
+    /// A new display name (E16 M3 T2b).
+    Renamed { login: String, display: String },
+    /// Whether the replays of the account's finished games may be listed (E16 M3 T2b).
+    Listed { login: String, listed: bool },
+}
+
+impl Event {
+    /// The login name of the account it is about.
+    fn login(&self) -> &str {
+        match self {
+            Self::Registered { login, .. }
+            | Self::Rekeyed { login, .. }
+            | Self::Rebound { login, .. }
+            | Self::Renamed { login, .. }
+            | Self::Listed { login, .. } => login,
+        }
+    }
 }
 
 /// The accounts, and the log they are read from and written to.
@@ -83,8 +123,13 @@ impl Players {
             file: None,
         };
         for (i, line) in text[..complete].lines().enumerate() {
-            players
-                .apply(line)
+            let event = serde_json::from_str::<Event>(line).map_err(|e| journal::json(&e));
+            event
+                .and_then(|event| {
+                    players.check(&event)?;
+                    players.update(event);
+                    Ok(())
+                })
                 .map_err(|e| format!("{} line {}: {e}", path.display(), i + 1))?;
         }
         if complete < text.len() {
@@ -97,39 +142,75 @@ impl Players {
         Ok(players)
     }
 
-    /// Applies one line read back.
-    fn apply(&mut self, line: &str) -> Result<(), String> {
-        let line: Line = serde_json::from_str(line).map_err(|e| journal::json(&e))?;
-        match line {
-            Line::Registered {
-                login,
-                key,
-                display,
-            } => {
-                let key = account::from_hex(&key).ok_or("not a key")?;
-                if !account::is_login_name(&login) || !account::is_display_name(&display) {
-                    return Err(String::from("not a name"));
+    /// Whether `event` follows from the accounts as they stand.
+    fn check(&self, event: &Event) -> Result<(), String> {
+        let known = self.accounts.contains_key(event.login());
+        let fail = |why: &str| Err(String::from(why));
+        match event {
+            Event::Registered { login, display, .. } => {
+                if !account::is_login_name(login) || !account::is_display_name(display) {
+                    return fail("not a name");
                 }
-                if self.accounts.contains_key(&login) || self.display_taken(&display) {
-                    return Err(String::from("a name registered before"));
+                if known || !self.display_free(display, login) {
+                    return fail("a name registered before");
                 }
-                self.insert(login, key, display);
             }
+            Event::Renamed { login, display } => {
+                if !account::is_display_name(display) {
+                    return fail("not a name");
+                }
+                if !known {
+                    return fail("no such account");
+                }
+                if !self.display_free(display, login) {
+                    return fail("a name registered before");
+                }
+            }
+            Event::Rekeyed { .. } | Event::Rebound { .. } | Event::Listed { .. } if !known => {
+                return fail("no such account");
+            }
+            Event::Rekeyed { .. } | Event::Rebound { .. } | Event::Listed { .. } => {}
         }
         Ok(())
     }
 
-    /// Adds an account to the tables.
-    fn insert(&mut self, login: String, key: [u8; KEY_BYTES], display: String) -> Account {
-        self.displays
-            .insert(account::display_key(&display), login.clone());
-        let account = Account {
-            key,
-            display,
-            listed: true,
-        };
-        self.accounts.insert(login, account.clone());
-        account
+    /// Applies a checked event to the tables.
+    fn update(&mut self, event: Event) {
+        match event {
+            Event::Registered {
+                login,
+                key,
+                display,
+            } => {
+                self.displays
+                    .insert(account::display_key(&display), login.clone());
+                let account = Account {
+                    key: key.0,
+                    display,
+                    listed: true,
+                };
+                self.accounts.insert(login, account);
+            }
+            Event::Rekeyed { login, key } | Event::Rebound { login, key } => {
+                if let Some(account) = self.accounts.get_mut(&login) {
+                    account.key = key.0;
+                }
+            }
+            Event::Renamed { login, display } => {
+                if let Some(account) = self.accounts.get_mut(&login) {
+                    self.displays
+                        .remove(&account::display_key(&account.display));
+                    self.displays
+                        .insert(account::display_key(&display), login.clone());
+                    account.display = display;
+                }
+            }
+            Event::Listed { login, listed } => {
+                if let Some(account) = self.accounts.get_mut(&login) {
+                    account.listed = listed;
+                }
+            }
+        }
     }
 
     /// The account of login name `login`.
@@ -137,34 +218,32 @@ impl Players {
         self.accounts.get(login)
     }
 
-    /// Whether an account has the display name `display`, ignoring case.
-    pub(crate) fn display_taken(&self, display: &str) -> bool {
-        self.displays.contains_key(&account::display_key(display))
+    /// Whether the display name `display` is free, ignoring case, or the account `login`'s.
+    pub(crate) fn display_free(&self, display: &str, login: &str) -> bool {
+        self.displays
+            .get(&account::display_key(display))
+            .is_none_or(|holder| holder == login)
     }
 
-    /// Registers the account `login` with `key` and `display`, both free (the caller checked): its
-    /// line is written and synced first.
-    pub(crate) fn register(
-        &mut self,
-        login: &str,
-        key: [u8; KEY_BYTES],
-        display: &str,
-    ) -> io::Result<Account> {
-        self.append(&Line::Registered {
-            login: login.to_owned(),
-            key: account::to_hex(&key),
-            display: display.to_owned(),
-        })?;
-        Ok(self.insert(login.to_owned(), key, display.to_owned()))
+    /// Records `event`, which the caller checked against the accounts: its line is written and
+    /// synced first; the account as it then stands.
+    pub(crate) fn record(&mut self, event: Event) -> io::Result<Account> {
+        self.check(&event).map_err(io::Error::other)?;
+        self.append(&event)?;
+        let login = event.login().to_owned();
+        self.update(event);
+        self.get(&login)
+            .cloned()
+            .ok_or_else(|| io::Error::other("no such account"))
     }
 
-    /// Writes `line` and syncs it; after a failure nothing more is written.
-    fn append(&mut self, line: &Line) -> io::Result<()> {
+    /// Writes `event`'s line and syncs it; after a failure nothing more is written.
+    fn append(&mut self, event: &Event) -> io::Result<()> {
         let file = self
             .file
             .as_mut()
             .ok_or_else(|| io::Error::other("a write failed before"))?;
-        let mut text = serde_json::to_string(line).map_err(io::Error::other)?;
+        let mut text = serde_json::to_string(event).map_err(io::Error::other)?;
         text.push('\n');
         let written = file
             .write_all(text.as_bytes())
@@ -185,14 +264,25 @@ mod tests {
         std::env::temp_dir().join(format!("h3-players-{random:016x}"))
     }
 
+    fn registered(login: &str, key: u8, display: &str) -> Event {
+        Event::Registered {
+            login: login.to_owned(),
+            key: Hex([key; KEY_BYTES]),
+            display: display.to_owned(),
+        }
+    }
+
     #[test]
     fn the_accounts_are_read_back_and_a_torn_line_is_dropped() {
         let data = data();
         let mut players = Players::open(&data).unwrap();
         assert_eq!(players.get("alice"), None);
-        let alice = players.register("alice", [1; 32], "Alice").unwrap();
-        players.register("bob", [2; 32], "Bob the Second").unwrap();
-        assert!(players.display_taken("ALICE") && !players.display_taken("Carol"));
+        let alice = players.record(registered("alice", 1, "Alice")).unwrap();
+        players
+            .record(registered("bob", 2, "Bob the Second"))
+            .unwrap();
+        assert!(!players.display_free("ALICE", "bob") && players.display_free("Carol", "bob"));
+        assert!(players.display_free("ALICE", "alice"), "its own");
         drop(players);
         let text = fs::read_to_string(path(&data)).unwrap();
         let first = format!(
@@ -213,10 +303,66 @@ mod tests {
         assert_eq!(players.get("alice"), Some(&alice));
         assert_eq!(players.get("bob").map(|a| a.key), Some([2; 32]));
         assert_eq!(fs::read_to_string(path(&data)).unwrap(), text);
-        players.register("carol", [3; 32], "Carol").unwrap();
+        players.record(registered("carol", 3, "Carol")).unwrap();
         drop(players);
         let players = Players::open(&data).unwrap();
-        assert!(players.display_taken("carol"));
+        assert!(!players.display_free("carol", "alice"));
+        fs::remove_dir_all(&data).unwrap();
+    }
+
+    #[test]
+    fn re_keys_rebinds_renames_and_the_preference_are_read_back() {
+        let data = data();
+        let mut players = Players::open(&data).unwrap();
+        players.record(registered("alice", 1, "Alice")).unwrap();
+        players.record(registered("bob", 2, "Bob")).unwrap();
+        let login = || String::from("alice");
+        let rekeyed = players.record(Event::Rekeyed {
+            login: login(),
+            key: Hex([3; KEY_BYTES]),
+        });
+        assert_eq!(rekeyed.unwrap().key, [3; KEY_BYTES]);
+        let rebound = players.record(Event::Rebound {
+            login: login(),
+            key: Hex([4; KEY_BYTES]),
+        });
+        assert_eq!(rebound.unwrap().key, [4; KEY_BYTES]);
+        // Its own name in another case, then a new one: the old one is free again.
+        for display in ["ALICE", "Alice Liddell"] {
+            let renamed = players.record(Event::Renamed {
+                login: login(),
+                display: display.to_owned(),
+            });
+            assert_eq!(renamed.unwrap().display, display);
+        }
+        assert!(players.display_free("alice", "bob"));
+        let listed = players.record(Event::Listed {
+            login: login(),
+            listed: false,
+        });
+        assert!(!listed.unwrap().listed);
+        let taken = players.record(Event::Renamed {
+            login: String::from("bob"),
+            display: String::from("alice liddell"),
+        });
+        assert_eq!(taken.unwrap_err().to_string(), "a name registered before");
+        let unknown = players.record(Event::Listed {
+            login: String::from("carol"),
+            listed: true,
+        });
+        assert_eq!(unknown.unwrap_err().to_string(), "no such account");
+        let alice = players.get("alice").cloned();
+        drop(players);
+        let players = Players::open(&data).unwrap();
+        assert_eq!(players.get("alice").cloned(), alice);
+        assert_eq!(
+            alice.map(|a| (a.key, a.display, a.listed)),
+            Some(([4; KEY_BYTES], String::from("Alice Liddell"), false))
+        );
+        let text = fs::read_to_string(path(&data)).unwrap();
+        assert_eq!(text.lines().count(), 7, "two refused, not written: {text}");
+        assert!(text.contains("{\"Rebound\":{\"login\":\"alice\",\"key\":\"0404"));
+        assert!(text.ends_with("{\"Listed\":{\"login\":\"alice\",\"listed\":false}}\n"));
         fs::remove_dir_all(&data).unwrap();
     }
 
@@ -229,7 +375,7 @@ mod tests {
         let cases = [
             (format!("{alice}{{\"Registered\":{{}}}}\n"), "line 2: Data"),
             (alice.replace("alice", "Alice"), "line 1: not a name"),
-            (alice.replace("\"01", "\"zz"), "line 1: not a key"),
+            (alice.replace("\"01", "\"zz"), "line 1: Data"),
             (
                 format!("{alice}{alice}"),
                 "line 2: a name registered before",
@@ -241,13 +387,21 @@ mod tests {
                 ),
                 "line 2: a name registered before",
             ),
+            (
+                format!("{alice}{{\"Listed\":{{\"login\":\"bob\",\"listed\":true}}}}\n"),
+                "line 2: no such account",
+            ),
+            (
+                format!("{alice}{{\"Renamed\":{{\"login\":\"alice\",\"display\":\" A\"}}}}\n"),
+                "line 2: not a name",
+            ),
         ];
         for (text, expected) in cases {
             let data = data();
             journal::create_dir(&data).unwrap();
             fs::write(path(&data), &text).unwrap();
             let error = Players::open(&data).unwrap_err();
-            assert!(error.contains(expected), "{error}");
+            assert!(error.contains(expected), "{expected}: {error}");
             assert!(!error.contains("Alice"), "never the line's text: {error}");
             fs::remove_dir_all(&data).unwrap();
         }
@@ -259,9 +413,9 @@ mod tests {
         let mut players = Players::open(&data).unwrap();
         // A file opened for reading only: the write fails.
         players.file = Some(File::open(path(&data)).unwrap());
-        assert!(players.register("alice", [1; 32], "Alice").is_err());
+        assert!(players.record(registered("alice", 1, "Alice")).is_err());
         assert!(players.file.is_none() && players.get("alice").is_none());
-        let again = players.register("alice", [1; 32], "Alice").unwrap_err();
+        let again = players.record(registered("alice", 1, "Alice")).unwrap_err();
         assert_eq!(again.to_string(), "a write failed before");
         fs::remove_dir_all(&data).unwrap();
     }
