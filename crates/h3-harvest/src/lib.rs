@@ -772,6 +772,33 @@ pub fn harvest(inputs: &Inputs, gap: &GapFill) -> Result<Harvest, String> {
                 .is_some_and(|l| l.iter().any(|&u| pack_of(u) == "ab"))
     };
 
+    // Data quirks (E04b T8e; ADR-0007): an upgrade the executable gives another level than its
+    // base creature keeps it, and an override gated by the quirk's flag gives it the base's.
+    let mut level_fixes: BTreeMap<&str, String> = BTreeMap::new();
+    for fix in &gap.data_quirks.base_level {
+        for name in &fix.creatures {
+            let id = by_name(name)?;
+            let level = |i: usize| creatures.iter().find(|c| c.id == i).map(|c| c.level);
+            let base = upgrades
+                .iter()
+                .find(|(_, list)| list.contains(&id))
+                .map(|(&b, _)| b)
+                .ok_or_else(|| format!("gapfill: data quirk: `{name}` is no upgrade"))?;
+            let (own, fixed) = (level(id), level(base));
+            let fixed = fixed
+                .filter(|&l| Some(l) != own)
+                .ok_or_else(|| format!("gapfill: data quirk: `{name}` has its base's level"))?;
+            let pack = pack_of(id);
+            let _ = write!(
+                level_fixes.entry(pack).or_default(),
+                "\n[[creature_override]]\ntarget = \"{pack}:{}\"  # {name}, BAT-QUIRK-19\n\
+                 fixes = \"{}\"\nlevel = {fixed}\n",
+                creature_refs[&id].key,
+                fix.flag
+            );
+        }
+    }
+
     let header = |id: &str, depends: &[&str], what: &str| {
         let mut s = String::new();
         let _ = writeln!(
@@ -853,6 +880,7 @@ pub fn harvest(inputs: &Inputs, gap: &GapFill) -> Result<Harvest, String> {
             &upgrade_list(c.id, "base", false),
         );
     }
+    base.push_str(level_fixes.get("base").map_or("", String::as_str));
     base.push_str(&hero_packs.base);
     base.push_str(&artifact_packs.base);
     base.push_str(&obstacles);
@@ -876,7 +904,9 @@ pub fn harvest(inputs: &Inputs, gap: &GapFill) -> Result<Harvest, String> {
          \"quirk.battle.sacrifice_tests_as_resurrection\" = true, \
          \"quirk.battle.creature_mirror_untested\" = true, \
          \"quirk.battle.clone_on_its_original\" = true, \
-         \"quirk.battle.periodic_first_stack\" = true }    # Q-0003, Q-0005, Q-0004, Q-0007, Q-0008, Q-0009, Q-0010, Q-0011, Q-0012, BAT-QUIRK-1 to BAT-QUIRK-5, BAT-QUIRK-7, BAT-QUIRK-9, BAT-QUIRK-13\n",
+         \"quirk.battle.periodic_first_stack\" = true, \
+         \"quirk.content.roland_crusader_specialty\" = true, \
+         \"quirk.content.elemental_levels\" = true }    # Q-0003, Q-0005, Q-0004, Q-0006, Q-0007, Q-0008, Q-0009, Q-0010, Q-0011, Q-0012, BAT-QUIRK-1 to BAT-QUIRK-5, BAT-QUIRK-7, BAT-QUIRK-9, BAT-QUIRK-13, BAT-QUIRK-19\n",
     );
     base.push_str(
         "\n[[profile]]\nid = \"strict-fixed\"    # all quirks fixed\n\
@@ -896,7 +926,9 @@ pub fn harvest(inputs: &Inputs, gap: &GapFill) -> Result<Harvest, String> {
          \"quirk.battle.sacrifice_tests_as_resurrection\" = false, \
          \"quirk.battle.creature_mirror_untested\" = false, \
          \"quirk.battle.clone_on_its_original\" = false, \
-         \"quirk.battle.periodic_first_stack\" = false }   # Q-0003, Q-0005, Q-0004, Q-0007, Q-0008, Q-0009, Q-0010, Q-0011, Q-0012, BAT-QUIRK-1 to BAT-QUIRK-5, BAT-QUIRK-7, BAT-QUIRK-9, BAT-QUIRK-13\n",
+         \"quirk.battle.periodic_first_stack\" = false, \
+         \"quirk.content.roland_crusader_specialty\" = false, \
+         \"quirk.content.elemental_levels\" = false }   # Q-0003, Q-0005, Q-0004, Q-0006, Q-0007, Q-0008, Q-0009, Q-0010, Q-0011, Q-0012, BAT-QUIRK-1 to BAT-QUIRK-5, BAT-QUIRK-7, BAT-QUIRK-9, BAT-QUIRK-13, BAT-QUIRK-19\n",
     );
 
     // ab
@@ -938,6 +970,7 @@ pub fn harvest(inputs: &Inputs, gap: &GapFill) -> Result<Harvest, String> {
             let _ = writeln!(ab, "upgrades = [{}]", list.join(", "));
         }
     }
+    ab.push_str(level_fixes.get("ab").map_or("", String::as_str));
     ab.push_str(&hero_packs.ab);
     ab.push_str(&artifact_packs.ab);
 
@@ -966,8 +999,10 @@ pub fn harvest(inputs: &Inputs, gap: &GapFill) -> Result<Harvest, String> {
     let profile = "base:faithful";
     for set in [&[&base][..], &[&base, &ab], &[&base, &ab, &sod]] {
         let texts: Vec<&str> = set.iter().map(|s| s.as_str()).collect();
-        h3_pack::compile(&texts, profile)
-            .map_err(|e| format!("generated packs do not compile: {e}"))?;
+        for p in [profile, "base:strict-fixed"] {
+            h3_pack::compile(&texts, p)
+                .map_err(|e| format!("generated packs do not compile ({p}): {e}"))?;
+        }
     }
     if h3_pack::compile(&[&base, &sod], profile).is_ok() {
         return Err("generated sod pack compiles without ab".into());

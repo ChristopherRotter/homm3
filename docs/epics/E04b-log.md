@@ -1908,3 +1908,47 @@ records how and why the tasks went.
   spell. Left: the scenarios' heroes have no opening spells or Eagle Eye yet (T9's workload).
 - **Measurements:** golden replays re-recorded (state hash v41, ruleset hash v42, replay format
   v21; their commands unchanged); `bench-check` within its baseline (no re-baseline).
+
+### Increment 18: T8e, the data quirks through gated overrides (2026-10-10 to 2026-10-11)
+
+- **Start:** #59 and #60 (increment 17) merged, CI green on `master` (e8e480c); the sandbox's
+  full verify with the original data green on 39b52da. Batch 2e not played yet. The user's cut
+  (BAT-Q25): T8e alone, the ADR-0007 amendment as a draft first; S-05 classified fix-optional
+  (BAT-QUIRK-19). T9 proposed next, in two parts (observation completeness, measurements).
+- **ADR:** the draft (battle `adr-drafts/`) accepted as written on 2026-10-11 and moved into
+  ADR-0007 by #64 (`shared/`), with one line in ADR-0006 and one sentence in
+  `04-rules-and-sources.md` §4: data quirks get `quirk.content.<name>` flags in the registry;
+  the pack keeps the original's value; an override with `fixes = "<flag>"` carries the fix and
+  applies only where the profile turns the flag off; rule code never reads a `content` flag.
+- **Compiler** (`h3-content`): the profile is resolved before the packs; `applies` admits an
+  ungated override always and a gated one when its registered `quirk.content` flag is off
+  (`CompileError::NotADataQuirk` otherwise). A creature patch goes onto a copy, so a gated
+  override's target and references are resolved in every profile, and it is kept (then validated
+  with its entity) only where it applies; the new
+  `HeroOverride` (`HeroPatch.specialty`) works the same way, after the pack's heroes (its closure
+  includes the pack itself). Registry: `quirk.content.roland_crusader_specialty` (17, Q-0006) and
+  `quirk.content.elemental_levels` (18, BAT-QUIRK-19), with constants for tests only. The ruleset
+  hash's encoding is unchanged (v42): the compiled data and the quirk bits were hashed already.
+- **Packs** (format v34, `h3-pack`): `fixes` on `[[creature_override]]`, `[[hero_override]]`
+  with `target`, `fixes`, `specialty`. The harvester's gap-fill `data_quirks.base_level` (the
+  three elementals: the override gives each its base creature's level from the upgrade pairs,
+  refusing a creature that is no upgrade or already has it) and `data_quirks.specialty_creature`
+  (Roland: the Swordsman, refusing the record's own creature; every entry must meet a creature
+  specialist); both flags in both harvested profiles; the generated packs are compiled in both
+  profiles. `ab` gains three gated creature overrides and Roland's gated hero override.
+- **Tests:** the compiler's gate in both profiles, every check in `faithful` too, the ungated
+  hero override; the pack syntax; the harvester's output and its four refusals; with the
+  harvested packs, `the_data_quirks_are_fixed_in_strict_fixed` (levels 4/3/5 against 3/5/4,
+  Roland's specialty the Crusader against the Swordsman and his battle effects equal to Sorsha's,
+  with and without SoD) and `the_profiles_differ_exactly_by_the_quirk_flags` (19 flags), so E04b
+  exit criterion 3's data part holds. Catalog: BAT-MAG-004 and BAT-MAG-020 name BAT-QUIRK-19,
+  HER-BAT-008 the fixed Q-0006.
+- **Review** (independent, read-only): no bug. Done: the comments and `packs/README.md` say what
+  runs in every profile (a gated override's target and references; its values are validated
+  with the entity where it applies, and the harvester compiles both profiles); each harvester
+  specialty fix must meet exactly one specialist (Lord Haart's name is shared); tests for a
+  discarded patch's stats and abilities and for the load order of gated and ungated overrides.
+  Left: profile errors now come before content errors (nothing relied on the old order).
+- **Measurements:** the golden replays and `bench-check` unchanged (the synthetic packs have no
+  data quirks, their ruleset hashes stay); the coverage gate green after `cargo llvm-cov clean`
+  (stale profiles had reported doc-comment lines).

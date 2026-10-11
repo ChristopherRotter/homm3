@@ -102,6 +102,28 @@ resource may appear once.
 **Overrides** are applied in load order after the target was defined; list fields (`cost`,
 `flags`) are replaced as a whole. The patched creature is validated like a definition.
 
+**Data quirks** (format v34, E04b T8e; ADR-0007, amendment E04b T8e): an override with
+`fixes = "quirk.content.<name>"` fixes a quirk in the data. The entity keeps the original's
+value; the override's target and references are resolved in every profile, and it is applied
+(then validated with its entity) only in profiles that turn the flag off (`strict-fixed`; the
+harvester compiles its packs in both profiles). The flag must be a registered `quirk.content` flag
+(`CompileError::NotADataQuirk`). `[[hero_override]]` changes a hero type of the closure, the
+pack's own included: `target` (a full key), optional `fixes`, and `specialty` (replaces the whole
+list). The harvested `ab` pack fixes Roland's specialty (Q-0006) and the Ice, Magma and Energy
+Elementals' levels (BAT-QUIRK-19) so:
+
+```toml
+[[creature_override]]
+target = "ab:ice_elemental"
+fixes = "quirk.content.elemental_levels"
+level = 3
+
+[[hero_override]]
+target = "ab:roland"
+fixes = "quirk.content.roland_crusader_specialty"
+specialty = [{ kind = "creature_specialty", creature = "base:swordsman", bp_per_step = 500, speed = 1 }]
+```
+
 **Creature flags** (`h3_content::CreatureFlag`, mirroring the executable's flag bits,
 `docs/formats/installation.md` §5): `two_hex`, `flying`, `shooter`, `breath_attack`, `alive`,
 `catapult`, `war_machine`, `king_1`, `king_2`, `king_3`, `mind_immune`, `no_melee_penalty`,
@@ -659,7 +681,8 @@ gap-fill file (`[heroes.params]`: 0/0/1/1, 99, 64).
 **Profiles** (`[[profile]]` with `quirks = { "quirk.<context>.<name>" = true | false }`; unlisted
 flags are off): the registered flags are in `h3_content::REGISTRY` and the quirks ledger
 (`docs/rules/quirks-ledger.md`); the packs' `faithful` profiles turn Q-0003 and Q-0005 on,
-`strict-fixed` off. Profile-level Tier-2 overrides are not implemented yet (backlog).
+`strict-fixed` off (since E04b T8e also the data quirks' `quirk.content` flags, which only gated
+overrides read). Profile-level Tier-2 parameters are not implemented yet (backlog).
 
 The compiled ruleset's canonical hash (encoding v15, `RULESET_HASH_VERSION`) covers packs,
 profile, quirks, resources, terrains, factions, obstacles, all creature fields including abilities

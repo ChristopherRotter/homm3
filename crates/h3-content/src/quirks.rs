@@ -72,6 +72,8 @@ pub const REGISTRY: QuirkRegistry = QuirkRegistry::new(&[
     "quirk.battle.creature_mirror_untested",
     "quirk.battle.clone_on_its_original",
     "quirk.battle.periodic_first_stack",
+    "quirk.content.roland_crusader_specialty",
+    "quirk.content.elemental_levels",
 ]);
 
 /// Q-0003: creatures of a side without a hero never get lucky strikes (BAT-LCK-002).
@@ -156,6 +158,20 @@ pub const CLONE_ON_ITS_ORIGINAL: QuirkFlag = QuirkFlag(15);
 /// every spell aimed at its side. Off: a spell counts when it is useful on any stack of that side.
 pub const PERIODIC_FIRST_STACK: QuirkFlag = QuirkFlag(16);
 
+/// Q-0006 (data): Roland's specialty names the Crusader, so it raises only Crusaders (the
+/// executable's specialty table). Off: a gated override names the Swordsman, which raises both.
+/// Read by the compiler only, as every `quirk.content` flag (ADR-0007, amendment E04b T8e).
+pub const ROLAND_CRUSADER_SPECIALTY: QuirkFlag = QuirkFlag(17);
+
+/// BAT-QUIRK-19 (data, survey S-05): the Ice, Magma and Energy Elementals have the executable's
+/// levels 4, 3 and 5. Off: a gated override gives each its base creature's level, 3, 5 and 4.
+/// Read by the compiler only.
+pub const ELEMENTAL_LEVELS: QuirkFlag = QuirkFlag(18);
+
+/// The prefix of the flags of data quirks: a gated override names one of them (`fixes`), and
+/// rule code never reads them (ADR-0007, amendment E04b T8e).
+pub const DATA_QUIRK_PREFIX: &str = "quirk.content.";
+
 /// The set of enabled quirk flags of a ruleset.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub struct Quirks {
@@ -194,7 +210,15 @@ mod tests {
 
     #[test]
     fn registry_lookup_and_bitset() {
-        assert_eq!(REGISTRY.len(), 17);
+        assert_eq!(REGISTRY.len(), 19);
+        assert_eq!(
+            REGISTRY.lookup("quirk.content.roland_crusader_specialty"),
+            Some(ROLAND_CRUSADER_SPECIALTY)
+        );
+        assert_eq!(
+            REGISTRY.lookup("quirk.content.elemental_levels"),
+            Some(ELEMENTAL_LEVELS)
+        );
         assert_eq!(
             REGISTRY.lookup("quirk.battle.periodic_first_stack"),
             Some(PERIODIC_FIRST_STACK)

@@ -532,6 +532,21 @@ level = 3
 abilities = [{ kind = "hate", creature = "base:fire_elemental", percent = 100 }, { kind = "hate", creature = "energy_elemental", percent = 100 }, { kind = "spell_immunity", spell = "base:ice_bolt" }, { kind = "spell_immunity", spell = "base:frost_ring" }, { kind = "spell_vulnerability", percent = 100, spell = "base:fireball" }, { kind = "spell_vulnerability", percent = 100, spell = "base:inferno" }, { kind = "spell_vulnerability", percent = 100, spell = "base:armageddon" }]
 upgrades = ["ice_elemental"]
 
+[[creature_override]]
+target = "ab:ice_elemental"  # Ice Elemental, BAT-QUIRK-19
+fixes = "quirk.content.elemental_levels"
+level = 3
+
+[[creature_override]]
+target = "ab:magma_elemental"  # Magma Elemental, BAT-QUIRK-19
+fixes = "quirk.content.elemental_levels"
+level = 5
+
+[[creature_override]]
+target = "ab:energy_elemental"  # Energy Elemental, BAT-QUIRK-19
+fixes = "quirk.content.elemental_levels"
+level = 4
+
 [[hero_class]]
 id = "planeswalker"
 name = "Planeswalker"
@@ -766,6 +781,11 @@ class = "base:knight"
 skills = [{ skill = "base:leadership", level = 1 }, { skill = "base:armorer", level = 1 }]
 army = [{ creature = "base:pikeman", count = [10, 20] }, { creature = "base:archer", count = [4, 7] }, { creature = "base:griffin", count = [2, 3] }]
 specialty = [{ kind = "creature_specialty", creature = "base:crusader", bp_per_step = 500, speed = 1 }]
+
+[[hero_override]]
+target = "ab:roland"  # Q-0006
+fixes = "quirk.content.roland_crusader_specialty"
+specialty = [{ kind = "creature_specialty", creature = "base:swordsman", bp_per_step = 500, speed = 1 }]
 
 [[hero]]
 id = "mutare_drake"  # original id 153
