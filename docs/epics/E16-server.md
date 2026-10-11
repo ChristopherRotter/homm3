@@ -335,8 +335,9 @@ out of its replay's listing.
   reaching it without an end void, `Goodbye { CommandLimit }`; its replay sized to fit
   `outbound_bytes`); a waiting game without a held seat leaves, its spectators told
   (`Abandoned`).
-- **T4b Behind a reverse proxy**: the forwarded address from trusted proxies, limits per IPv6
-  prefix, the documented setup with TLS.
+- **T4b Behind a reverse proxy** (done 2026-10-11; `E16-log.md`): `[server] trusted_proxies`
+  (the client the last `X-Forwarded-For` entry names), every limit per address by IPv6 /64, the
+  operator's setup with TLS (`crates/h3-server/README.md`).
 - **T5 Closure**: `06-security.md`'s accounts, the client lane's note (the derivation, the
   server's id), the reviewer agent, the user's checkpoint.
 
@@ -432,6 +433,10 @@ Choices queued under the autonomy contract (details in `E16-log.md`):
   thread after each step (a few bot commands past it possible); void at the limit (no draw, no
   replay), `Goodbye { CommandLimit }` and `Abandoned`; a waiting game without a held seat leaves at
   once, as one without connections did.
+- T4b: `trusted_proxies` as exact addresses (no ranges); `X-Forwarded-For` alone, its last entry
+  (not RFC 7239's `Forwarded`); a proxied connection counted in the total only until its
+  handshake; the proxy's own address without a header that reads; the /64 for every limit per
+  address, the lobby's included; the operator's page as the crate's README.
 
 ## Review list for the M2 checkpoint (passed 2026-10-11, SRV-Q16)
 

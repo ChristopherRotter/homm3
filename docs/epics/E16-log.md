@@ -879,3 +879,27 @@ how and why the work went.
   with a limit of 6 is void (the player and a spectator told, no end, not listed, the journal void,
   no replay); a game restored past a lowered limit is void at the start; a waiting game whose
   creator left with a spectator watching leaves (the spectator told, nothing void).
+
+### M3 T4b — Behind a reverse proxy (2026-10-11)
+
+- **Trusted proxies** (*provisional*): `[server] trusted_proxies` (addresses, none by default,
+  compared after `to_canonical`). A connection from one of them holds a place in the total only
+  (`Place::proxied`) until its handshake; the handshake's callback (`Forwarded`, tungstenite's
+  `Callback`) reads the last entry of the last `X-Forwarded-For` header (the address the proxy
+  itself saw; a client cannot forge it through a proxy that sets or appends the header), then the
+  connection takes its place as that client, or as the proxy without a header that reads; a
+  client without a place is closed after the handshake (a direct one before it). The standard
+  `Forwarded` header is not read. A forwarded header from any other peer is ignored.
+- **IPv6 by prefix**: every limit per address (connections, messages, failed logins, the lobby's
+  games, the journal's origin) counts an IPv6 address by its /64 (`net::counted`), an IPv4-mapped
+  one as its IPv4 address.
+- **The operator's setup**: `crates/h3-server/README.md` (running, the data directory, the
+  signals, `rebind`; on the internet: loopback, `public_url`, `trusted_proxies`, the proxy's
+  WebSocket upgrade, header and idle timeout, with nginx and Caddy examples);
+  `server.example.toml` names the field.
+- **The client**: `Client::connect_forwarded(address, forwarded)` sends the header as a proxy
+  does.
+- **Tests** (`h3-server` 66, +4): two clients behind a trusted proxy each take their place with
+  one connection per address, the last entry counts, an IPv6 client by its /64, the proxy itself
+  without a header, a freed place taken again; behind an untrusted peer the header is ignored;
+  `counted` and `forwarded_for` (several entries and headers, none, garbage) unit-tested.

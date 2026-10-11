@@ -4,21 +4,14 @@ Pre-refined tasks of the server lane, in order, then the inbox of discovered wor
 
 ## Tasks
 
-Epic: `docs/epics/E16-server.md` (in progress; M0 and M1 done 2026-10-10, ADR-0018; M2 done 2026-10-11, its checkpoint passed, SRV-Q16). M3 refined 2026-10-11 (SRV-Q17): ADR-0019, accepted at the refinement (points 1 and 2 for M3; the design note §10), cut below, each task about half a context; T1 done 2026-10-11 (the login on the wire, wire 12); T2a done 2026-10-11 (logins checked, the player log); T2b done 2026-10-11 (re-keys, renames, the preference, the operator's rebind); T3 done 2026-10-11 (seats bound to accounts, wire 13, journal format 4); T4a done 2026-10-11 (the command limit, a waiting game without a held seat leaves). Work under the autonomy contract (`HANDOFF.md`). Each wire change bumps `PROTOCOL_VERSION`.
-
-### E16 M3 T4b — Behind a reverse proxy
-
-- **Scope:** `[server] trusted_proxies`: a connection from one of them is counted by the client's address its forwarded header names (the WebSocket handshake's `X-Forwarded-For`, its last entry; *provisional*); the per-address limits by IPv6 /64 prefix; the documented setup (a TLS-terminating reverse proxy in front of the server, an example configuration, `public_url`). The M2 inbox's item.
-- **Acceptance:** the Definition of Done; end to end: two clients behind a trusted proxy count as their own addresses, a forwarded header from an untrusted peer is ignored; the setup in the server's docs.
-- **Depends on:** T2a (done 2026-10-11; `public_url`).
-- **Status:** ready.
+Epic: `docs/epics/E16-server.md` (in progress; M0 and M1 done 2026-10-10, ADR-0018; M2 done 2026-10-11, its checkpoint passed, SRV-Q16). M3 refined 2026-10-11 (SRV-Q17): ADR-0019, accepted at the refinement (points 1 and 2 for M3; the design note §10), cut below, each task about half a context; T1 done 2026-10-11 (the login on the wire, wire 12); T2a done 2026-10-11 (logins checked, the player log); T2b done 2026-10-11 (re-keys, renames, the preference, the operator's rebind); T3 done 2026-10-11 (seats bound to accounts, wire 13, journal format 4); T4a done 2026-10-11 (the command limit, a waiting game without a held seat leaves); T4b done 2026-10-11 (trusted proxies, limits by IPv6 /64, the operator's README). Work under the autonomy contract (`HANDOFF.md`). Each wire change bumps `PROTOCOL_VERSION`.
 
 ### E16 M3 T5 — M3's closure
 
-- **Scope:** `06-security.md`'s accounts and ADR-0018 point 8 amended for the replay's listing by the seated accounts (ADR-0019 point 2; built in T3), and its "Not covered yet" brought up to date (the command limit bounds a game and its archived replay; a waiting game with a held seat still has no deadline), one shared change; the client lane's note (the derivation and its test vector, checking the server's id before signing, caching the key; the seats by account: no token in an account's `Joined`, `GameInfo::seated`, `Goodbye { Rekeyed }`, `CommandLimit`, `Abandoned`; an inbox line, cross-lane); M3's exit criteria checked; a fresh reviewer agent over M3; the user's checkpoint.
+- **Scope:** `06-security.md`'s accounts and ADR-0018 point 8 amended for the replay's listing by the seated accounts (ADR-0019 point 2; built in T3), and its "Not covered yet" brought up to date (the command limit bounds a game and its archived replay; behind a trusted proxy the limits count the client, an IPv6 host by its /64; a waiting game with a held seat still has no deadline), one shared change; the client lane's note (the derivation and its test vector, checking the server's id before signing, caching the key; the seats by account: no token in an account's `Joined`, `GameInfo::seated`, `Goodbye { Rekeyed }`, `CommandLimit`, `Abandoned`; an inbox line, cross-lane); M3's exit criteria checked; a fresh reviewer agent over M3; the user's checkpoint.
 - **Acceptance:** M3's exit (epic file).
-- **Depends on:** T1–T4b.
-- **Status:** waiting (T1–T4b).
+- **Depends on:** T1–T4b (all done 2026-10-11).
+- **Status:** ready.
 
 ## Inbox
 
