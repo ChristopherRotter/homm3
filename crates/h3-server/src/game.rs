@@ -16,6 +16,9 @@
 //!   `[limits] empty_game_ms` pauses at the registry's next tick, as if its host had paused it; a
 //!   drain ends a game that waits for its players; a stop ends every game, its journal kept for
 //!   the next start (one that never started leaves none).
+//! - **A refused join** (E16 M2 T5b). A connection that holds nothing after its message (a join the
+//!   session refused) is told so with the answer, and its task leaves the game: it neither keeps
+//!   a waiting game listed nor escapes the lobby's deadline.
 
 use std::collections::BTreeMap;
 use std::fs;
@@ -48,6 +51,10 @@ pub(crate) struct Frame {
     pub text: String,
     /// Whether the connection closes after it.
     pub close: bool,
+    /// `Some(k)` on the last frame of the game's answer to a connection's `k`-th message when the
+    /// connection, after it, holds no seat and does not watch (a refused join, E16 M2 T5b): its
+    /// task then leaves the game, unless it passed it another message since.
+    pub left: Option<u64>,
 }
 
 /// What a connection task tells a game.
@@ -413,20 +420,29 @@ impl Prepared {
         };
         let mut journal = Some(journal);
         let mut conns = BTreeMap::new();
+        // How many messages each connection passed the game (E16 M2 T5b).
+        let mut passed: BTreeMap<ConnId, u64> = BTreeMap::new();
         let mut out = Vec::new();
         let status = |s: &Session<'_>| (s.phase(), s.open_seats(), s.takes_spectators());
         let mut reported = status(&session);
         let mut empty_since = (!session.seated()).then(Instant::now);
         while let Some(event) = inbox.blocking_recv() {
+            let mut left = None;
             match event {
                 // Nothing changes for the session until the connection's join.
                 ToGame::Open { conn, to } => {
                     conns.insert(conn, to);
                     continue;
                 }
-                ToGame::Message { conn, message } => session.handle(conn, message, &mut out),
+                ToGame::Message { conn, message } => {
+                    let k = passed.entry(conn).or_default();
+                    *k += 1;
+                    session.handle(conn, message, &mut out);
+                    left = (!session.holds(conn)).then_some((conn, *k));
+                }
                 ToGame::Closed { conn } => {
                     conns.remove(&conn);
+                    passed.remove(&conn);
                     session.disconnected(conn);
                 }
                 ToGame::Tick => {
@@ -468,8 +484,11 @@ impl Prepared {
                 );
             }
             let closed: Vec<ConnId> = out.iter().filter(|o| o.close).map(|o| o.to).collect();
-            for outbound in out.drain(..) {
-                deliver(&mut conns, &mut session, outbound);
+            let last =
+                left.and_then(|(conn, k)| Some((out.iter().rposition(|o| o.to == conn)?, k)));
+            for (i, outbound) in out.drain(..).enumerate() {
+                let left = last.filter(|&(at, _)| at == i).map(|(_, k)| k);
+                deliver(&mut conns, &mut session, outbound, left);
             }
             if session.paused() {
                 close_all(&conns, &closed, GoodbyeReason::Paused);
@@ -598,6 +617,7 @@ fn close_all(
             let _ = to.try_send(Frame {
                 text: text.clone(),
                 close: true,
+                left: None,
             });
         }
     }
@@ -620,17 +640,20 @@ fn turn_away(inbox: &mut mpsc::Receiver<ToGame>, reason: GoodbyeReason) {
             let _ = to.try_send(Frame {
                 text: text.clone(),
                 close: true,
+                left: None,
             });
         }
     }
 }
 
-/// Queues a frame for its connection. A full queue drops the connection: the game forgets it,
-/// and its task, finding the queue closed, says `TooSlow` (ADR-0018 point 3).
+/// Queues a frame for its connection, with its mark `left` ([`Frame::left`], E16 M2 T5b). A full
+/// queue drops the connection: the game forgets it, and its task, finding the queue closed, says
+/// `TooSlow` (ADR-0018 point 3).
 pub(crate) fn deliver(
     conns: &mut BTreeMap<ConnId, mpsc::Sender<Frame>>,
     session: &mut Session<'_>,
     outbound: Outbound,
+    left: Option<u64>,
 ) {
     let Some(to) = conns.get(&outbound.to) else {
         return;
@@ -638,6 +661,7 @@ pub(crate) fn deliver(
     let frame = Frame {
         text: outbound.frame,
         close: outbound.close,
+        left,
     };
     if let Err(mpsc::error::TrySendError::Full(_)) = to.try_send(frame) {
         conns.remove(&outbound.to);
@@ -807,7 +831,7 @@ mod tests {
         session.handle(ConnId(1), join(None), &mut out);
         assert_eq!(out.len(), 2, "Joined and Snapshot");
         for outbound in out.drain(..) {
-            deliver(&mut conns, &mut session, outbound);
+            deliver(&mut conns, &mut session, outbound, None);
         }
         assert!(conns.is_empty(), "the snapshot found the queue full");
         let joined = queue.try_recv().unwrap();
@@ -818,7 +842,7 @@ mod tests {
         // A frame for a connection the game forgot goes nowhere.
         session.handle(ConnId(1), join(None), &mut out);
         let refused = out.pop().unwrap();
-        deliver(&mut conns, &mut session, refused);
+        deliver(&mut conns, &mut session, refused, None);
         // The seat waits for its token.
         session.handle(ConnId(2), join(Some("a")), &mut out);
         assert!(matches!(

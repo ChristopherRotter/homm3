@@ -1,8 +1,8 @@
 # E16 — Server: protocol, hosting, lobbies and ladders
 
 Status: **in progress** (refined 2026-10-08/09; M0 done 2026-10-10: ADR-0018 accepted, the
-crate skeletons; M1 done 2026-10-10, its checkpoint passed 2026-10-11 (SRV-Q12); M2 T1 to T5a
-done 2026-10-11, T5b next). Decisions: [ADR-0018](../adr/0018-server-and-protocol.md) (protocol
+crate skeletons; M1 done 2026-10-10, its checkpoint passed 2026-10-11 (SRV-Q12); M2 T1 to T5b
+done 2026-10-11, T5c next). Decisions: [ADR-0018](../adr/0018-server-and-protocol.md) (protocol
 and hosting); ADR drafts `docs/lanes/server/adr-drafts/identity-and-ladders.md` and
 `discovery.md`. Working detail (messages, flows, journals, the ladder sketch):
 `docs/epics/E16-design.md`. Done tasks in full: `docs/epics/E16-log.md`. Lane: server (`docs/lanes/server/HANDOFF.md`).
@@ -287,8 +287,12 @@ Cut at the M1 checkpoint (SRV-Q12); the tasks in full: `docs/lanes/server/QUEUE.
   runs), a second stops at once, the journals kept; a running game whose seats all stay empty
   pauses, a paused one nobody resumes is void (`[limits] empty_game_ms`, `paused_game_ms`);
   `tokio`'s `signal` (ADR-0018 point 3 amended); wire version 9 (`Refused { Draining }`).
-- **T5b** hardening; **T5c** the fuzz harness, the replay download and M2's closure (T5 split on
-  2026-10-11, `docs/lanes/server/QUEUE.md`).
+- **T5b The connection's bounds** (done 2026-10-11; `E16-log.md`): a rate per address across its
+  connections (`[limits] messages_per_address`), WebSocket pings counted, a deadline for the hello
+  and one for being in a game (`hello_timeout_ms`, `lobby_timeout_ms`), a refused join leaves the
+  game (`Session::holds`); no wire change.
+- **T5c** memory bounded in bytes; **T5d** the fuzz harness, the replay download and M2's closure
+  (T5 split on 2026-10-11, T5b again the same day; `docs/lanes/server/QUEUE.md`).
 
 ## Review list for the M2 checkpoint
 
@@ -358,6 +362,16 @@ Choices queued under the autonomy contract (details in `E16-log.md`):
   as if its host paused it (its spectators hear `Goodbye { Paused }`), an abandoned paused one
   goes to `<data>/void/` with the reason; after a restart a paused game's clock counts from its
   journal's last write.
+- T5b: the address's rate (40 a second by default, twice a connection's) closes the connection
+  whose message passes it (`RateLimited`), and starts afresh once the address has no connection;
+  every WebSocket control frame counts (a ping, an unasked pong), none keeps the connection from
+  idling; the two deadlines (10 s for the hello from the handshake, 60 s in no game from the hello
+  or from leaving a game) say `Goodbye { IdleTimeout }` (no new reason, no wire change); a game's
+  answer marks the connection's message after which it holds nothing (`Frame::left`), and the task
+  leaves only if it passed the game no later message (a pipelined second join may take a seat).
+  Not built: a separate rate for automated seats (T3's note): an operator cannot know a client is
+  an agent before accounts, so it waits for M3's bot accounts; until then an operator raises
+  `messages_per_second` and `messages_per_address`.
 
 ## Review list for the M1 checkpoint (passed 2026-10-11)
 
