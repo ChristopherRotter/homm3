@@ -302,6 +302,40 @@ Cut at the M1 checkpoint (SRV-Q12); the tasks in full: `docs/lanes/server/QUEUE.
 - **T5e** M2's closure (T5 split on 2026-10-11, T5b and T5d again the same day;
   `docs/lanes/server/QUEUE.md`).
 
+## Exit criteria (M2)
+
+The full `cargo xtask verify` green in CI with `h3-protocol` under the 100 % gate, and shown in
+tests, over loopback where the server is involved:
+
+- many games on one server through the lobby: listed with their offers before joining, created
+  only from the server's offers, joined and played at once, within the limits per address and in
+  total;
+- the write-ahead journal: a game stopped mid-battle restores at the next start to what its
+  players were told and plays on to a replay that verifies; a journal of other content, of a
+  missing offer or that does not re-run restores nothing and is kept aside, void;
+- every finished game re-run from its journal on disk before its replay is published, a game that
+  does not verify void (`Unverified`); the shadow instance finds and repairs a divergence before
+  anything is sent;
+- the host's pause, the resume by a seat's token (also after a restart), the deadlines that pause
+  an abandoned running game and void an abandoned paused one;
+- spectators through the battle's spectator viewer, within the host's setting and the server's
+  limit, seeing nothing a seat's viewer hides;
+- a first signal drains and a second stops, the journals kept;
+- the connection's bounds: the frame size, the rates per connection and per address with the
+  WebSocket pings, the connections, the deadlines for the hello, the lobby and idling, the
+  outbound queue and the record in bytes;
+- the archive: finished, verified games listed and downloaded without a game, by ids it names,
+  unlisted when closed to spectators, at most `replays_kept`, read back at a start;
+- M1's security properties (identity, rejection, projection, secrets) held over the lobby,
+  restored games and spectators; the decoders and a running session never panic on mutated valid
+  messages.
+
+And: `docs/06-security.md` carries M2's guarantees and names what is not covered yet; the
+workload has a current baseline; the client lane's inbox has the content check and what a
+restart does to a viewer's numbers and record; the inbox's M2 items are decided; a fresh reviewer
+agent's major findings are fixed or recorded with the user's decision; the lane HANDOFF, the epic
+log and `QUEUE.md` are current.
+
 ## Review list for the M2 checkpoint
 
 Choices queued under the autonomy contract (details in `E16-log.md`):
