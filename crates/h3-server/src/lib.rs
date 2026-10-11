@@ -6,7 +6,8 @@
 //! - [`game`]: the game, prepared from the configuration with secrets from the OS, run on its own
 //!   OS thread; the replay written as the CLI's file at the end;
 //! - `net`: the listener and a `tokio` task per connection, behind the transport trait;
-//! - [`client`]: a headless client for tests and tools.
+//! - [`client`]: a headless client for tests and tools;
+//! - [`bench`]: the session core's workload (`benches/server/`).
 //!
 //! Provisional (E16 M1 review): the module layout, the thread and channel layout, the log lines
 //! on standard error.
@@ -19,6 +20,7 @@ use std::sync::Arc;
 use tokio::net::TcpListener;
 use tokio::sync::mpsc;
 
+pub mod bench;
 pub mod client;
 pub mod config;
 pub mod game;
@@ -52,7 +54,8 @@ pub struct Running {
     /// Where the replay goes at the end of the game.
     pub replay_path: PathBuf,
     /// The players' seat tokens (attacker, defender; `None` for the bot's). The server hands a
-    /// token to the first connection that takes the seat; an operator may give it out instead.
+    /// token to the first connection that takes the seat; a caller of the library may give it out
+    /// instead (the binary shows it to no one: an operator's copy comes with E16 M2's journal).
     pub tokens: [Option<String>; 2],
     /// The accepting task.
     pub listener: tokio::task::JoinHandle<()>,

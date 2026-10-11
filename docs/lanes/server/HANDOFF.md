@@ -4,11 +4,10 @@ The server lane's living state; read after the global `docs/HANDOFF.md`. Format 
 
 ## Current state
 
-- **M0, M1 T1 and T2 merged; M1 T3 done (2026-10-10)** on `claude/brave-mccarthy-76vqzl`, pull request next: `h3-server` hosts the configured battle (`h3-server <config.toml>`; `server.example.toml`): OS seeds and tokens, the game on its own thread, a `tokio` task per WebSocket connection, the random bot, the replay file, end-to-end tests over loopback with the headless client. **Next: M1 T4** (`QUEUE.md`): the workload, `06-security.md` and the global HANDOFF's row in a `shared/` pull request, the reviewer agent and the user's checkpoint.
+- **M1 done (2026-10-10), the user's checkpoint open** (SRV-Q12: the user reviews the list and the M2 cut; `signal` and the token in the journal are decided): T1–T3 merged; T4 on `claude/upbeat-babbage-8bcd7n`: the lane-only workload `session-random-play-full` (`h3-server-bench`, 273 M instructions in `serve_frame`), `docs/06-security.md`'s "Hosted games", the global HANDOFF's server row, the reviewer agent. The checkpoint decides the review list (epic file), the proposed M2 cut (`QUEUE.md`) and two stop-the-line items (the `signal` feature, tokens across a restart).
+- **Shared changes on this branch** (`xtask` bench-check: a workload's own binary and `lane_only`; `06-security.md`; the global row; `benches/README.md`): the session could push one branch only, so they are separate commits on it, and the pull request carries the label `cross-lane` (the user, 2026-10-10).
 - **ADR-0018 point 5 as amended:** the mapping's matches over the engine's enums are exhaustive; a new battle variant fails `h3-protocol`'s build until mapped (global HANDOFF trap).
-- **The global HANDOFF's server row** still says "T2 next": a shared file, refreshed with T4's `shared/` pull request (`QUEUE.md`).
 - **The 100 % gate** covers `h3-protocol` (logic); `h3-server` is an adapter outside it, tested end to end.
-- **Prepared by M0:** `arch.toml` allows every edge M1 needs (`h3-server` → `h3-cli`, `tokio`, `tokio-tungstenite`, `futures-util`, `getrandom`, `toml`, `serde_json`; `cargo deny` checked them); the crates declare a dependency when they use it. Review list for the M1 checkpoint: the epic file.
 - **Versions** (`docs/08-work-process.md`): `PROTOCOL_VERSION` (`h3-protocol`, 3 since the battle lane's `OpeningSpell` event, BAT-MAG-068; bumped on every wire change), `RECORD_FORMAT_VERSION` (`h3-protocol`, 1), `JOURNAL_FORMAT_VERSION` (`h3-server`, M2).
 - The lane owns (`lanes.toml`) `h3-protocol`, `h3-server`, `benches/server/` and E16's files; the workspace files stay shared. **Checkpoints** per milestone, under the autonomy contract below; a fresh reviewer agent checks each milestone before the user does. The identity and discovery ADR drafts are decided at the M3 refinement.
 - **Ids:** questions `SRV-Q<n>`, quirks `SRV-QUIRK-<n>`, stubs `SRV-STUB-<n>`. ADR drafts go to `docs/lanes/server/adr-drafts/` and get a number when the user accepts them. Branches: `server/<task>`.
@@ -29,8 +28,13 @@ The server lane's living state; read after the global `docs/HANDOFF.md`. Format 
 - A test client that picks uniformly among the legal commands rarely ends a battle of the `full` scenario (mostly moves; the defender's stacks regenerate): pick among the strikes when there are any (`tests/session.rs`, `play`).
 - Automated clients answer every turn at once and exceed the default 20 messages per second: end-to-end tests that play raise the limit (`tests.rs`, `fast()`).
 - A socket closed over unread data is reset, and the reset makes the peer drop what it has not read yet (a `Goodbye`): the transport's close reads on for the peer's close (`net.rs`, `LINGER`). The flooding test catches a regression only in most runs, not all.
+- **The workload is lane-only and follows `master`:** 55 % of its count is the battle engine, so battle changes move it and the full verify (CI) does not measure it. At each session's start `verify --scope server` measures it; a drift there came from `master`: re-baseline (`cargo xtask bench-check --update --workload session-random-play-full`) and name the range in the commit. Measure only with the file's arguments (they shift the heap `malloc` walks).
 
 ## Recent sessions
+
+### 2026-10-10 — M1 T4, closure
+
+T3 had merged; the branch started from `master`. Built the workload (`docs/epics/E16-log.md`, T4); its profile showed the count is 55 % battle engine, so a full-verify gate would fail battle pull requests on a server file: made it lane-only (a shared `xtask` change). `06-security.md`'s "Hosted games" closes the queue's E03 T9 inbox item. The reviewer agent found 2 major and 7 minor issues: the unbounded close (fixed, with an end-to-end test that fails without the fix), the limits' ranges, three doc claims and four missing tests (fixed); memory bounded in bytes and the handshake's hold went to M2 T5 (the epic log). The M2 cut is proposed in `QUEUE.md`; SRV-Q12 asks the checkpoint.
 
 ### 2026-10-10 — M1 T3, the server binary
 
@@ -39,7 +43,3 @@ T2 had merged; the branch restarted from `master` (CI green on T2's pull request
 ### 2026-10-10 — M1 T2, the session core
 
 #54 (T1) had merged; the branch started from `master`, whose baseline verify was green. Built T2 (`docs/epics/E16-log.md`, T2). The session needed to refuse a replay before the end and to answer a fetch from a connection without a seat, so the fetches got `seq` and the reject codes `NotOver` (wire version 2, queued for the review with the record format, the start rule and the bot fallback). The hygiene property over the wire is checked by a mutation (events projected for the wrong viewer fail it). 21 new tests; `verify --scope server` with no failing step.
-
-### 2026-10-10 — M1 T1, messages and codec
-
-After M0 merged, restarted the branch from `master` and built T1 (`docs/epics/E16-log.md`, T1). The ADR's wildcard arms to `Other` were measured as uncovered regions that need a coverage exclusion; the user chose exhaustive matches instead, so point 5 was amended (revision history), the global HANDOFF got the trap (its "Phase 0" history line made room) and the `Unsupported`/`Other` wire variants were removed. Design note §2–§5 pruned (now code), §1 aligned with the code (the manifest in `Joined`, `Refused`). 18 tests; `verify --scope server` with no failing step.

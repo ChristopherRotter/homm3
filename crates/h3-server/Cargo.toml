@@ -14,6 +14,11 @@ path = "src/lib.rs"
 name = "h3-server"
 path = "src/main.rs"
 
+# The session core's workload (`benches/server/`, `cargo xtask bench-check`).
+[[bin]]
+name = "h3-server-bench"
+path = "src/bin/h3-server-bench.rs"
+
 [dependencies]
 h3-kernel.workspace = true
 h3-content.workspace = true

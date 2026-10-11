@@ -8,7 +8,7 @@ Every session reads this file first, then its lane's `docs/lanes/<lane>/HANDOFF.
 |---|---|---|---|
 | battle | `h3-battle`, `h3-heroes`, `h3-content`, `h3-pack`, `h3-sim`, `h3-ffi`, `h3-cli`, the formats/tools crates, packs, fixtures, experiments | active: E04b, increment 17 = T8c, T8d (BAT-Q23); batch 2e staged; then T8e | [HANDOFF](lanes/battle/HANDOFF.md), [QUEUE](lanes/battle/QUEUE.md) |
 | adventure | `h3-adventure`, `h3-game`, `h3-map`, `h3-pack-adventure`; `src/adventure/` in `h3-sim` and `h3-cli`, `fixtures/replays/adventure/`, `docs/formats/h3m.md` | active: E08 increment 1 (T1–T7a done; next the user's checkpoint, then T7b/T5b) | [HANDOFF](lanes/adventure/HANDOFF.md), [QUEUE](lanes/adventure/QUEUE.md) |
-| server | `h3-protocol`, `h3-server` | active: E16 M1 (ADR-0018); T2 next | [HANDOFF](lanes/server/HANDOFF.md), [QUEUE](lanes/server/QUEUE.md) |
+| server | `h3-protocol`, `h3-server` | active: E16 M1 done, checkpoint next | [HANDOFF](lanes/server/HANDOFF.md), [QUEUE](lanes/server/QUEUE.md) |
 | client | `clients/` (own Cargo workspace) | waits for the user's asset notes | [HANDOFF](lanes/client/HANDOFF.md), [QUEUE](lanes/client/QUEUE.md) |
 
 Shared (own pull request, merged first): `h3-kernel`, `h3-contracts`, workspace and gate files (`Cargo.toml`, `arch.toml`, `lanes.toml`, `xtask`, CI), ADRs, process docs, `BACKLOG.md`, this file. Common (any lane): `OPEN-QUESTIONS.md` and `docs/stubs.toml` (one block per lane), `Cargo.lock`, `docs/exe/map.toml` and `structs.toml` (one line per entry).

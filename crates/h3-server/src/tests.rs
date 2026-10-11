@@ -11,7 +11,7 @@ use tokio_tungstenite::tungstenite::Message;
 
 use crate::client::Client;
 use crate::config::{BotSeat, Config, Limits};
-use crate::{Running, game, start};
+use crate::{Running, bench, game, start};
 
 fn root() -> PathBuf {
     PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../..")
@@ -80,21 +80,7 @@ async fn play(mut client: Client, seed: u64) -> (Client, Vec<ServerMessage>) {
     let mut seq = 0;
     while let Some(message) = client.recv().await {
         if let ServerMessage::YourTurn { legal, .. } = &message {
-            let strikes: Vec<Command> = legal
-                .iter()
-                .copied()
-                .filter(|c| matches!(c, Command::Attack { .. } | Command::Shoot { .. }))
-                .collect();
-            let choices: Vec<Command> = if strikes.is_empty() {
-                legal
-                    .iter()
-                    .copied()
-                    .filter(|c| !matches!(c, Command::Retreat {} | Command::Surrender {}))
-                    .collect()
-            } else {
-                strikes
-            };
-            let command = choices[rng.below(u32::try_from(choices.len()).unwrap()) as usize];
+            let command = bench::choose(legal, &mut rng).unwrap();
             seq += 1;
             client
                 .send(&ClientMessage::Command { seq, command })
@@ -299,6 +285,43 @@ async fn connections_beyond_the_limit_are_refused_until_one_closes() {
     }
 }
 
+/// A client that stops reading loses its connection and its place, even while it never reads the
+/// close (the M1 review: the close frame's write waited forever on a full socket).
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn a_client_that_stops_reading_is_dropped_and_its_place_freed() {
+    let limits = Limits {
+        connections_per_address: 1,
+        idle_timeout_ms: 1_000,
+        ..fast()
+    };
+    let running = start(&config("full.toml", vec![], limits)).await.unwrap();
+    let (mut stalled, _) = seated(&running, Seat::Attacker).await;
+    // Records, never read, until the socket is full: the server's write stalls, then its reads,
+    // and the game drops the connection whose queue fills meanwhile.
+    for seq in 1..=20_000 {
+        let fetch = ClientMessage::FetchRecord { seq };
+        let sent = tokio::time::timeout(Duration::from_secs(1), stalled.send(&fetch)).await;
+        if !matches!(sent, Ok(Ok(()))) {
+            break;
+        }
+    }
+    let mut attempts = 0;
+    loop {
+        if let Ok(mut client) = Client::connect(running.address).await
+            && matches!(
+                client.hello("test").await,
+                Ok(Some(ServerMessage::Welcome { .. }))
+            )
+        {
+            break;
+        }
+        attempts += 1;
+        assert!(attempts < 500, "the place is never released");
+        tokio::time::sleep(Duration::from_millis(20)).await;
+    }
+    drop(stalled);
+}
+
 #[test]
 fn the_example_configuration_loads() {
     let path = root().join("crates/h3-server/server.example.toml");
@@ -318,6 +341,21 @@ fn configurations_are_checked() {
     assert_eq!(minimal.data, base.join("data"));
     assert_eq!((minimal.checkpoint_every, minimal.bots.len()), (25, 0));
     assert!(Config::parse("packs = \"p\"\nscenario = \"s\"\nport = 1", &base).is_err());
+    for limit in [
+        "max_frame = 0",
+        "max_frame = 2000000",
+        "messages_per_second = 0",
+        "connections = 0",
+        "connections_per_address = 0",
+        "idle_timeout_ms = 0",
+        "idle_timeout_ms = 9223372036854775807",
+        "outbound_queue = 0",
+        "outbound_queue = 4000000",
+    ] {
+        let text = format!("packs = \"p\"\nscenario = \"s\"\n[limits]\n{limit}");
+        let refused = Config::parse(&text, &base).unwrap_err();
+        assert!(refused.0.contains("outside"), "{limit}: {refused}");
+    }
     assert!(Config::load(&base.join("no-such-file.toml")).is_err());
     let both = config(
         "full.toml",
@@ -343,4 +381,41 @@ fn tokens_are_128_bits_of_os_randomness() {
     assert_eq!(a.len(), 32);
     assert!(a.bytes().all(|c| c.is_ascii_hexdigit()));
     assert_ne!(a, b);
+}
+
+#[test]
+fn the_workload_plays_hosted_battles_to_their_end() {
+    let (_, ruleset, setup) = h3_cli::load_scenario(
+        &root().join("packs/synthetic/scenarios/full.toml"),
+        &root().join("packs"),
+        1,
+    )
+    .unwrap();
+    let totals = bench::run(&ruleset, &setup, 1, 2, 5_000).unwrap();
+    assert_eq!((totals.games, totals.ended), (2, 2));
+    // Two hellos and two joins, then one command per turn; every command is answered.
+    assert!(totals.frames_in > 4 && totals.frames_out > totals.frames_in);
+    assert!(totals.bytes_out > totals.frames_out);
+    assert_eq!(
+        bench::run(&ruleset, &setup, 1, 2, 5_000).unwrap(),
+        totals,
+        "deterministic"
+    );
+    let cut = bench::run(&ruleset, &setup, 1, 1, 3).unwrap();
+    assert_eq!(
+        (cut.ended, cut.frames_in),
+        (0, 7),
+        "the command limit holds"
+    );
+}
+
+#[test]
+fn the_scripted_client_strikes_when_it_can() {
+    let mut rng = Rng::from_seed(1);
+    let attack = Command::Attack { target: 3, from: 9 };
+    let legal = [Command::Defend {}, attack, Command::Retreat {}];
+    assert_eq!(bench::choose(&legal, &mut rng), Some(attack));
+    let stay = [Command::Retreat {}, Command::Surrender {}, Command::Wait {}];
+    assert_eq!(bench::choose(&stay, &mut rng), Some(Command::Wait {}));
+    assert_eq!(bench::choose(&[Command::Retreat {}], &mut rng), None);
 }

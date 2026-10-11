@@ -1,7 +1,7 @@
 # E16 — Server: protocol, hosting, lobbies and ladders
 
 Status: **in progress** (refined 2026-10-08/09; M0 done 2026-10-10: ADR-0018 accepted, the
-crate skeletons; M1 T1 to T3 done 2026-10-10, T4 next). Decisions: [ADR-0018](../adr/0018-server-and-protocol.md) (protocol
+crate skeletons; M1 T1 to T4 done 2026-10-10, the M1 checkpoint next). Decisions: [ADR-0018](../adr/0018-server-and-protocol.md) (protocol
 and hosting); ADR drafts `docs/lanes/server/adr-drafts/identity-and-ladders.md` and
 `discovery.md`. Working detail (messages, flows, journals, the ladder sketch):
 `docs/epics/E16-design.md`. Done tasks in full: `docs/epics/E16-log.md`. Lane: server (`docs/lanes/server/HANDOFF.md`).
@@ -247,10 +247,10 @@ M0 starts now, while E04b finishes (SRV-Q7).
   battle (TOML configuration, OS seeds and tokens, a thread for the game, a `tokio` task per
   connection behind the transport trait, the random bot, the replay file); end-to-end tests over
   loopback with the headless client; the replays it writes verify with `h3 verify`.
-- **T4 Closure.** The `benches/server/` workload (random play through the session core:
-  decode, validate, project, encode) with its baseline; the `docs/06-security.md` additions
-  (shared PR); the lane HANDOFF and the epic log; the reviewer agent; the checkpoint and the
-  cut of M2.
+- **T4 Closure** (done 2026-10-10; `E16-log.md`): the lane-only workload
+  `session-random-play-full` (scripted clients through the session core, 273 M instructions);
+  `docs/06-security.md`'s "Hosted games"; the reviewer agent; the proposed cut of M2
+  (`docs/lanes/server/QUEUE.md`), decided at the checkpoint.
 
 ## Review list for the M1 checkpoint
 
@@ -276,6 +276,11 @@ Choices queued under the autonomy contract (details in `E16-log.md`):
   channel layout (a game inbox of 1 024, `try_send` into per-connection queues); idle meaning no
   message from the client; the lingering close; the replay file's name; `getrandom` 0.3 beside
   the 0.4 that `tungstenite` brings (a `cargo deny` warning).
+- T4: the workload's shape (`serve_frame` counted, scripted clients that strike when they can,
+  20 games of `full`); **lane-only workloads** (a shared `xtask` change: the server's count is
+  55 % battle engine and follows the battle lane's packs, so the full verify does not measure
+  it; the server lane re-baselines a drift at its sessions' start); the shared changes ride
+  this branch's pull request with the label `cross-lane` (the user, 2026-10-10).
 
 ## Exit criteria (M1)
 

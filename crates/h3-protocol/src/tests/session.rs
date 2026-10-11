@@ -3,6 +3,7 @@
 //! see, and the journal is the replay.
 
 use std::boxed::Box;
+use std::format;
 use std::string::{String, ToString};
 use std::vec;
 use std::vec::Vec;
@@ -450,6 +451,19 @@ fn a_seat_is_retaken_with_its_token_and_the_record_spans_the_gap() {
     );
     assert!(out.iter().any(|o| o.to == back && o.close));
     assert!(matches!(to(&out, again)[0], ServerMessage::Joined { .. }));
+    // The replaced connection is no actor any more.
+    let wait = ClientMessage::Command {
+        seq: 8,
+        command: Command::Wait {},
+    };
+    assert_eq!(
+        to(&send(&mut s, back, wait), back),
+        [ServerMessage::Rejected {
+            n: 0,
+            seq: 8,
+            code: RejectCode::NotSeated
+        }]
+    );
     // Leaving frees the seat for its token.
     let out = send(&mut s, again, ClientMessage::Leave {});
     assert_eq!(
@@ -768,6 +782,93 @@ proptest! {
         prop_assert_eq!(first, second);
     }
 
+    /// The seats and the numbers hold under any messages from any connections (ADR-0018 points
+    /// 6, 7 and 9; the M1 review): a connection gets `Joined` only while it holds no seat, so it
+    /// never holds two; numbered messages reach only a seat's holder, and each is its viewer's
+    /// record line of that number, the lines numbered without a gap; a connection without a seat
+    /// gets only unnumbered replies.
+    #[test]
+    fn seats_and_numbers_hold_under_any_messages(
+        acts in proptest::collection::vec(arb_act(), 0..60),
+    ) {
+        let r = ruleset();
+        let mut s = host(&r, 5, players());
+        let tokens = [TOKENS[0], TOKENS[1], "wrong"];
+        let mut holders: [Option<ConnId>; 2] = [None, None];
+        let mut legal: [Vec<Command>; 2] = [Vec::new(), Vec::new()];
+        let mut numbered: Vec<(usize, u32, String)> = Vec::new();
+        for (seq, (conn, act)) in (1u32..).zip(acts) {
+            let conn = ConnId(conn);
+            let held = holders.iter().position(|&h| h == Some(conn));
+            let message = match act {
+                Act::Join(seat, token) => ClientMessage::Join {
+                    game: 1,
+                    seat,
+                    token: token.map(|t| tokens[t].to_string()),
+                },
+                Act::Leave => ClientMessage::Leave {},
+                Act::Disconnect => {
+                    s.disconnected(conn);
+                    holders = holders.map(|h| h.filter(|&h| h != conn));
+                    continue;
+                }
+                Act::Query(spell) => ClientMessage::Query {
+                    seq,
+                    query: Query::CastTargets { spell },
+                },
+                Act::FetchRecord => ClientMessage::FetchRecord { seq },
+                Act::FetchReplay => ClientMessage::FetchReplay { seq },
+                Act::Play(k) => match held.map(|i| &legal[i]).filter(|l| !l.is_empty()) {
+                    Some(list) => ClientMessage::Command {
+                        seq,
+                        command: list[k % list.len()],
+                    },
+                    None => continue,
+                },
+                Act::Command(command) => ClientMessage::Command { seq, command },
+            };
+            for o in send(&mut s, conn, message) {
+                let m = decode(&o.frame);
+                let at = holders.iter().position(|&h| h == Some(o.to));
+                match (&m, number(&m)) {
+                    (ServerMessage::Joined { seat, .. }, _) => {
+                        prop_assert_eq!(at, None, "Joined only without a seat");
+                        holders[usize::from(*seat != Seat::Attacker)] = Some(o.to);
+                    }
+                    (ServerMessage::Goodbye { .. }, _) => {
+                        holders = holders.map(|h| h.filter(|&h| h != o.to));
+                    }
+                    (_, Some(0)) => prop_assert_eq!(at, None, "number 0 only without a seat"),
+                    (_, Some(n)) => {
+                        prop_assert!(at.is_some(), "numbered to no holder: {:?}", m);
+                        let i = at.unwrap_or_default();
+                        if let ServerMessage::YourTurn { legal: list, .. } = &m {
+                            legal[i].clone_from(list);
+                        }
+                        numbered.push((i, n, o.frame.clone()));
+                    }
+                    (_, None) => {}
+                }
+            }
+        }
+        for (i, seat) in [Seat::Attacker, Seat::Defender].into_iter().enumerate() {
+            let conn = ConnId(10 + i as u64);
+            join(&mut s, conn, seat, Some(TOKENS[i]));
+            let fetched = to(&send(&mut s, conn, ClientMessage::FetchRecord { seq: 0 }), conn);
+            let Some(ServerMessage::Record { record, n, .. }) = fetched.first() else {
+                return Err(TestCaseError::fail(format!("{fetched:?}")));
+            };
+            let lines: Vec<&str> = record.lines().skip(1).collect();
+            prop_assert_eq!(lines.len(), *n as usize);
+            for (k, line) in lines.iter().enumerate() {
+                prop_assert_eq!(number(&decode(line)), Some(k as u32 + 1));
+            }
+            for (_, n, frame) in numbered.iter().filter(|(j, ..)| *j == i) {
+                prop_assert_eq!(lines[*n as usize - 1], frame.as_str());
+            }
+        }
+    }
+
     /// A command from either seat at any point either is accepted and journaled, or is rejected
     /// and changes neither the battle nor the journal, and the other seat hears nothing of it;
     /// the seat not to act is always told it is not its turn.
@@ -804,6 +905,65 @@ proptest! {
             }
             other => prop_assert!(false, "{:?}", other),
         }
+    }
+}
+
+/// What a connection does in `seats_and_numbers_hold_under_any_messages`.
+#[derive(Debug, Clone)]
+enum Act {
+    /// `Join` a seat with no token, the attacker's (0), the defender's (1) or a wrong one (2).
+    Join(Seat, Option<usize>),
+    Leave,
+    /// The connection is gone (the host calls `disconnected`).
+    Disconnect,
+    Query(u16),
+    FetchRecord,
+    FetchReplay,
+    /// The `k`-th legal command of the last turn the connection's seat was given.
+    Play(usize),
+    Command(Command),
+}
+
+/// An act of one of four connections.
+fn arb_act() -> impl Strategy<Value = (u64, Act)> {
+    let seat = prop_oneof![
+        Just(Seat::Attacker),
+        Just(Seat::Defender),
+        Just(Seat::Spectator)
+    ];
+    let act = prop_oneof![
+        3 => (seat, proptest::option::of(0usize..3)).prop_map(|(seat, t)| Act::Join(seat, t)),
+        1 => Just(Act::Leave),
+        1 => Just(Act::Disconnect),
+        1 => (0u16..60).prop_map(Act::Query),
+        1 => Just(Act::FetchRecord),
+        1 => Just(Act::FetchReplay),
+        6 => any::<usize>().prop_map(Act::Play),
+        2 => arb_command().prop_map(Act::Command),
+    ];
+    (1u64..=4, act)
+}
+
+#[test]
+fn a_seats_token_reaches_only_its_holder() {
+    let r = ruleset();
+    let mut s = host(&r, 5, players());
+    let out = started(&mut s);
+    let out = play(&mut s, out, &mut Rng::from_seed(3), 400);
+    assert!(s.result().is_some());
+    for (conn, own, other) in [(A, TOKENS[0], TOKENS[1]), (B, TOKENS[1], TOKENS[0])] {
+        let mut seen = frames(&out, conn);
+        let fetched = send(&mut s, conn, ClientMessage::FetchRecord { seq: 900 });
+        seen.extend(fetched.into_iter().map(|o| o.frame));
+        assert!(
+            seen.iter().all(|f| !f.contains(other)),
+            "the other seat's token"
+        );
+        assert_eq!(
+            seen.iter().filter(|f| f.contains(own)).count(),
+            1,
+            "its own only in Joined"
+        );
     }
 }
 

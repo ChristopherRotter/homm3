@@ -60,7 +60,9 @@ impl Transport for WebSocketStream<TcpStream> {
     }
 
     async fn close(&mut self) {
-        let _ = WebSocketStream::close(self, None).await;
+        // The close frame's write is bounded too: a peer that stops reading would hold the task,
+        // and its counted place, forever (the M1 review).
+        let _ = timeout(LINGER, WebSocketStream::close(self, None)).await;
         // Read on until the peer's close, for a moment: a socket closed over unread data is reset,
         // and the reset makes the peer drop what it has not read yet, the goodbye with it.
         let drain = async { while let Some(Ok(_)) = self.next().await {} };
