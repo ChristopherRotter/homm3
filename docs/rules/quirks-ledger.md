@@ -96,9 +96,9 @@ Classes: `exploit-fix` (always fixed, never toggleable) · `preserve` (accepted,
 - Impact: gameplay-altering (a campaign hero)
 - Community status: on the wiki (Swordsman, Hero specialty pages; Catherine mis-attributed), fixed in Horn of the Abyss
 - Sources: observation, `experiments/results/E04a-batch-1a.md` B4–B6 (SoD 4.0 Complete, 2026-10-03); original-data, the specialty table (`docs/formats/installation.md` §7.2); wiki, Hero specialty (https://heroes.thelazy.net/index.php/Hero_specialty, retrieved 2026-10-03)
-- Flag: none yet; a quirk in data, so it needs the same mechanism as the elementals' levels (survey S-05): a per-profile data override (profile-level Tier-2 overrides, deferred by ADR-0006), built with E04b (user, OPEN-QUESTIONS Q35). Until then the packs hold the executable's value (faithful).
-- Defaults: faithful = on (Crusader), strict-fixed = off (Swordsman), effective once the override exists (E04b); until then both profiles keep the Crusader, the one difference of the profiles not yet built (E04a exit criterion 3)
-- Regression test: `crates/h3-pack/src/lib.rs`, `harvested_hero_effects_reproduce_the_experiments` (B4–B6 with the harvested packs; E04a T10a)
+- Flag: `quirk.content.roland_crusader_specialty`, a data quirk (ADR-0007, amendment E04b T8e): the `ab` pack keeps the executable's Crusader and a `[[hero_override]]` gated by the flag names the Swordsman (E04b T8e, BAT-Q25; the harvester's gap-fill `data_quirks.specialty_creature`)
+- Defaults: faithful = on (Crusader), strict-fixed = off (Swordsman)
+- Regression test: `crates/h3-pack/src/lib.rs`, `harvested_hero_effects_reproduce_the_experiments` (B4–B6 with the harvested packs; E04a T10a) and `the_data_quirks_are_fixed_in_strict_fixed` (E04b T8e)
 - Decided by / date: suggested class S-03, confirmed by experiment batch 1a, 2026-10-03
 
 ### Q-0007 — A spell of several schools meets the first protection, not the strongest
@@ -407,3 +407,16 @@ Classes: `exploit-fix` (always fixed, never toggleable) · `preserve` (accepted,
 - Defaults: n/a
 - Regression test: `crates/h3-battle/src/tests/fear.rs`, `a_hypnotized_azure_frightens_the_side_that_controls_it`
 - Decided by / date: user, 2026-10-09 (E04b T7c3, BAT-Q18)
+
+### BAT-QUIRK-19 — The Ice, Magma and Energy Elementals have the wrong level (E04b T8e)
+- Class: fix-optional (survey S-05; user, 2026-10-10, BAT-Q25)
+- Context / rules affected: content (creature levels); BAT-MAG-004 and BAT-MAG-020 (a spell specialist's bonus by the target's creature level), later every level-based rule of the adventure (growth, random monsters)
+- Original behavior: the executable's creature table gives the Ice Elemental level 4, the Magma Elemental level 3 and the Energy Elemental level 5, where each upgrade has its base creature's level (Water 3, Earth 5, Fire 4); the Storm Elemental is right. Level-based calculations use these levels.
+- Intended/expected behavior: each upgrade has its base creature's level, 3, 5 and 4 (fixed in Horn of the Abyss).
+- Impact: gameplay-altering (small)
+- Community status: on the wiki (the Ice, Magma and Energy Elemental pages), fixed in Horn of the Abyss
+- Sources: original-data, the executable's creature table (`docs/formats/installation.md` §5); wiki, Ice Elemental (https://heroes.thelazy.net/index.php/Ice_Elemental, retrieved 2026-10-03) and the Energy and Magma Elemental pages; survey `docs/rules/surveys/E04-quirks.md` S-05
+- Flag: `quirk.content.elemental_levels`, a data quirk (ADR-0007, amendment E04b T8e): the `ab` pack keeps the executable's levels and three `[[creature_override]]` entries gated by the flag give the base creatures' (the harvester's gap-fill `data_quirks.base_level`)
+- Defaults: faithful = on (4, 3, 5), strict-fixed = off (3, 5, 4)
+- Regression test: `crates/h3-pack/src/lib.rs`, `the_data_quirks_are_fixed_in_strict_fixed`
+- Decided by / date: user, 2026-10-10 (E04b T8e, BAT-Q25)

@@ -41,6 +41,48 @@ pub struct GapFill {
     /// What spells do in battle beyond the executable's flags (E04b T2a).
     #[serde(default)]
     pub spells: Spells,
+    /// Data quirks and their fixes (E04b T8e).
+    #[serde(default)]
+    pub data_quirks: DataQuirks,
+}
+
+/// Data quirks (E04b T8e; ADR-0007, amendment E04b T8e): the packs keep the executable's value,
+/// and an override gated by the quirk's flag carries the fix.
+#[derive(Debug, Default, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct DataQuirks {
+    /// Upgrades that get their base creature's level.
+    #[serde(default)]
+    pub base_level: Vec<BaseLevelFix>,
+    /// Creature specialists whose specialty names another creature.
+    #[serde(default)]
+    pub specialty_creature: Vec<SpecialtyCreatureFix>,
+}
+
+/// Upgrades whose level in the executable differs from their base creature's (BAT-QUIRK-19).
+#[derive(Debug, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct BaseLevelFix {
+    /// The quirk's flag (`quirk.content.<name>`).
+    pub flag: String,
+    /// The upgrades, by singular name.
+    pub creatures: Vec<String>,
+    /// Source ids.
+    pub sources: Vec<String>,
+}
+
+/// A creature specialist whose record names the wrong creature (Q-0006).
+#[derive(Debug, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct SpecialtyCreatureFix {
+    /// The quirk's flag (`quirk.content.<name>`).
+    pub flag: String,
+    /// The hero, by name.
+    pub hero: String,
+    /// The creature the fixed specialty names, by singular name.
+    pub creature: String,
+    /// Source ids.
+    pub sources: Vec<String>,
 }
 
 /// Spell facts the executable's spell table does not hold (E04b T2a).
@@ -735,7 +777,14 @@ impl GapFill {
                 .chain(g.spells.summon.iter().flat_map(|t| &t.sources))
                 .chain(g.spells.specialist.iter().flat_map(|t| &t.sources))
                 .chain(g.spells.useful.iter().flat_map(|t| &t.sources))
-                .chain(&g.spells.protection_sources);
+                .chain(&g.spells.protection_sources)
+                .chain(g.data_quirks.base_level.iter().flat_map(|f| &f.sources))
+                .chain(
+                    g.data_quirks
+                        .specialty_creature
+                        .iter()
+                        .flat_map(|f| &f.sources),
+                );
         for r in refs {
             if !ids.contains(r.as_str()) {
                 return Err(format!("gapfill: unknown source `{r}`"));
