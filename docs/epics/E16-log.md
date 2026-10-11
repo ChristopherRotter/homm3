@@ -294,8 +294,8 @@ how and why the work went.
   randomness fails after the lobby's checks is logged and refused as `TooManyGames`.
 - **Known, for later tasks:** a running game nobody returns to stays (T3's pause and T5's
   hardening); a connection whose join a game refused stays bound to it, keeping a waiting game
-  listed until it leaves or idles out; `06-security.md`'s bounds and the global HANDOFF's
-  server row are shared and still say M1 (for a `shared/` change).
+  listed until it leaves or idles out. `06-security.md`'s bounds and the global HANDOFF's server
+  row are updated in a separate commit; the pull request carries `cross-lane` (the user).
 - **Tests** (h3-protocol 44, h3-server 19; the scoped verify with no failing step, the workload −0.10 %): the new messages round-trip, their JSON forms; the
   lobby's creation, limits, refusals, updates and removal; the session's phase and open seats;
   over loopback, two games played at once with both replays verifying, then gone once their
