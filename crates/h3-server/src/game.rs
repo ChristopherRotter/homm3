@@ -40,10 +40,10 @@ use h3_sim::{Replay, ReplayError, ReplayHeader};
 use tokio::sync::{mpsc, oneshot};
 use tokio::time::Instant;
 
-use crate::Error;
 use crate::config::{self, BotSeat};
 use crate::journal::{self, JOURNAL_FORMAT_VERSION, Start, Writer};
 use crate::registry::{Hosted, Shared, lock};
+use crate::{Error, archive};
 
 /// A frame for a connection task.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -470,7 +470,7 @@ impl Prepared {
         let over = |session: &Session<'_>, journal: Writer| {
             finish(
                 (&offer.ruleset, &scenario, &replay_path, &data),
-                game,
+                (game, registry),
                 session,
                 journal,
             )
@@ -771,21 +771,23 @@ fn replay_text(
 /// replay's text for the participants, or `None`: withheld.
 fn finish(
     (ruleset, scenario, path, data): (&Ruleset, &str, &Path, &Path),
-    game: u32,
+    (game, registry): (u32, &Shared),
     session: &Session<'_>,
     journal: Writer,
 ) -> Option<String> {
     let journal_path = journal.path().to_path_buf();
     let (diagnosis, why) = match verify(ruleset, &journal_path, session) {
         Ok(text) => {
-            let written = path
-                .parent()
-                .map_or(Ok(()), fs::create_dir_all)
-                .and_then(|()| fs::write(path, &text));
+            // The archive (E16 M2 T5d): listed if its host left it open to spectators.
+            let listed = session.watchable();
+            let dir = archive::dir(data, listed);
+            let path = dir.join(path.file_name().unwrap_or_default());
+            let written = fs::create_dir_all(&dir).and_then(|()| fs::write(&path, &text));
             match written {
                 Ok(()) => {
                     eprintln!("h3-server: game {game} over, replay {}", path.display());
                     journal.remove();
+                    lock(registry).archived(path, listed);
                 }
                 Err(e) => eprintln!("h3-server: replay {}: {e}", path.display()),
             }

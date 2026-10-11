@@ -612,3 +612,31 @@ how and why the work went.
   off what it takes out; end to end, a client's record through the server stays within its
   bound; the configuration's new bounds and the record-fits-twice rule. A mutation that never
   trims the record fails the session's and the end-to-end test.
+
+### M2 T5d — The decoder's mutation tests, the public archive (2026-10-11)
+
+- **The start.** #88 (T5c) was merged; the branch restarted from `master` (its CI green). The
+  user answered SRV-Q14 (mutation tests now, `cargo-fuzz` later) and SRV-Q15 (finished games'
+  replays public). T5d as queued held the closure too; split into T5d (this) and T5e (M2's
+  closure).
+- **Mutation tests** (`h3-protocol/src/tests/mutation.rs`): every sample message of the wire tests,
+  encoded, mutated one to three times; the decoders never panic, what still decodes (client or
+  server) encodes back to the same message, and a client message the hello gate passes is handled
+  by a running game of the `full` scenario. A second property replaces only values in client
+  frames (plausible ids and hexes, extremes, odd strings), so about one frame in six still decodes
+  and reaches the session (one in two hundred with every mutation). `PROPTEST_CASES=100000`
+  for a longer run.
+- **The wire, version 11** (*queued for the M2 review*): `ListReplays`, `FetchArchived`,
+  `Replays`, `ReplayInfo { id, offer, game }`, `Refusal::NoSuchReplay`; `Replay` numbered 0 for
+  an archived one. **The session core:** `Session::watchable` (the host's setting itself).
+- **The server** (*provisional*; `archive.rs`): the archive in the registry, read back at start
+  (before the restore, which may finish a game) from `<data>/replays/` (listed) and
+  `<data>/replays/closed/` (a game closed to spectators), oldest first by their last write; a
+  verified game's replay goes to the one its setting names and joins the archive; beyond
+  `[limits] replays_kept` the oldest file goes. `FetchArchived` looks the id up in the archive
+  (never a path from the client) and reads the file off the task (`spawn_blocking`).
+- **Tests** (h3-protocol 61, h3-server 40): the mutation properties and each mutation's effect;
+  a replay's name parsed into its info, others refused; end to end: four games against the bot
+  (one closed), the two newest open ones listed newest first, the oldest file gone, the closed
+  one kept apart; a later page and one past the end; a client in no game downloads the newest,
+  which is the file and verifies; ids not listed refused; a restart lists the same; the new bound.

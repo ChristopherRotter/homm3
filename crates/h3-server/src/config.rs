@@ -22,6 +22,7 @@
 //! outbound_queue = 256               # frames waiting for a slow client; full drops it
 //! outbound_bytes = 2097152           # bytes waiting for a slow client; full drops it
 //! record_bytes = 524288              # a viewer's record: its latest messages within this
+//! replays_kept = 10000               # finished games' replays kept, listed and closed each
 //! games = 16                         # games not over, in total
 //! games_per_address = 2              # games not over, created from one address
 //!
@@ -156,6 +157,9 @@ pub struct Limits {
     pub outbound_bytes: usize,
     /// The most a viewer's record holds, in bytes (E16 M2 T5c): its oldest messages go first.
     pub record_bytes: usize,
+    /// Finished games' replays kept in the archive (E16 M2 T5d), the listed and the closed ones
+    /// each: beyond, the oldest go.
+    pub replays_kept: usize,
     /// Games not over, in total.
     pub games: usize,
     /// Games not over, created from one address.
@@ -183,6 +187,7 @@ impl Default for Limits {
             outbound_queue: 256,
             outbound_bytes: 2 << 20,
             record_bytes: 512 << 10,
+            replays_kept: 10_000,
             games: 16,
             games_per_address: 2,
             spectators_per_game: 8,
@@ -231,6 +236,7 @@ impl Limits {
                 1 << 30,
             ),
             ("record_bytes", wide(self.record_bytes), 4 << 10, 256 << 20),
+            ("replays_kept", wide(self.replays_kept), 1, 10_000_000),
             ("games", wide(self.games), 1, 4096),
             ("games_per_address", wide(self.games_per_address), 1, 4096),
             (

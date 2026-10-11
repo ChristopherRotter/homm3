@@ -25,6 +25,7 @@ use tokio::net::TcpListener;
 use tokio::sync::watch;
 use tokio::task::JoinHandle;
 
+mod archive;
 pub mod bench;
 pub mod client;
 pub mod config;
@@ -128,6 +129,7 @@ pub async fn start(config: &Config) -> Result<Running, Error> {
         &config.limits,
         config.server.clone(),
     )));
+    registry::lock(&registry).load_archive();
     registry::restore(&registry).await?;
     let listener = TcpListener::bind(&config.server.bind)
         .await

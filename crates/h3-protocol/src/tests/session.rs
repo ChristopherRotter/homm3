@@ -719,6 +719,11 @@ fn the_lobby_hears_where_the_game_is() {
             seat: Seat::Attacker,
             spectators: None,
         },
+        ClientMessage::ListReplays { seq: 3, from: 0 },
+        ClientMessage::FetchArchived {
+            seq: 4,
+            replay: "pvp-game1-0".to_string(),
+        },
     ] {
         assert!(send(&mut s, A, message).is_empty());
     }
@@ -1204,7 +1209,7 @@ fn the_host_opens_and_closes_its_game_to_spectators_until_it_starts() {
     let mut entries = drained(&mut s);
     join(&mut s, A, Seat::Attacker, None);
     join(&mut s, c, Seat::Spectator, None);
-    assert!(s.takes_spectators());
+    assert!(s.takes_spectators() && s.watchable());
     // Closing ends the spectators' watch and refuses the next ones; it is an entry.
     let closed = send(&mut s, A, set(1, false));
     assert_eq!(
@@ -1227,7 +1232,7 @@ fn the_host_opens_and_closes_its_game_to_spectators_until_it_starts() {
         [Entry::Taken(BattleSide::Attacker)],
         "a change before the start is no entry"
     );
-    assert!(!s.takes_spectators());
+    assert!(!s.takes_spectators() && !s.watchable());
     let refused = [ServerMessage::Refused {
         reason: Refusal::NoSpectators,
     }];

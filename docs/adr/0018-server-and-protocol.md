@@ -50,11 +50,16 @@ from inputs to outputs, with sockets, clock and files outside.
 8. **Hidden information** (into `docs/06-security.md` in M1): the game seed is 64 bits of OS
    randomness, never derived from or revealed by anything a client sees; random obstacles come
    from a separate throwaway seed and enter the setup as pieces; seeds, RNG state, state hashes and
-   tokens never reach a client or a log; the replay (ADR-0004 point 9) reaches the participants
-   only after the game; before, a viewer may fetch its *record* (its own message log).
+   tokens never reach a client or a log; the replay (ADR-0004 point 9) reaches no one before the
+   game ends; before, a viewer may fetch its *record* (its own message log). *Amended 2026-10-11
+   (SRV-Q15, E16 M2 T5d):* once a game ended and verified, its replay is public: any client lists
+   the server's archive and downloads it without a game; a game whose host closed it to spectators
+   is archived unlisted, for the operator.
 9. **Bounds, all configured:** frame size, messages per second per connection, one command in
    flight per seat, connections in total and per address, idle timeout. Decoder and session core
-   are property-tested on arbitrary input, fuzzed once the harness exists (`05-testing.md`).
+   are property-tested on arbitrary input and on mutated valid messages (*amended 2026-10-11*,
+   SRV-Q14: mutation tests on the stable toolchain; a coverage-guided fuzzer, `05-testing.md`,
+   when a deeper parser needs one).
 10. **One ruleset per game: the server's.** Clients run no rules in a hosted game. The *manifest*
     sent at join names the content (the replay header's fields) and carries the handle-to-key
     tables; a client previews with its own ruleset only when its hash equals the manifest's. The

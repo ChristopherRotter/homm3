@@ -495,7 +495,9 @@ impl<'r> Session<'r> {
             ClientMessage::Hello { .. }
             | ClientMessage::Ping { .. }
             | ClientMessage::ListGames { .. }
-            | ClientMessage::CreateGame { .. } => {}
+            | ClientMessage::CreateGame { .. }
+            | ClientMessage::ListReplays { .. }
+            | ClientMessage::FetchArchived { .. } => {}
         }
     }
 
@@ -582,6 +584,12 @@ impl<'r> Session<'r> {
         }
         self.halt(out);
         true
+    }
+
+    /// Whether the game's host left it open to spectators (E16 M2 T4c): the setting itself, whatever
+    /// the server's limit. A finished game that was is archived publicly (E16 M2 T5d).
+    pub const fn watchable(&self) -> bool {
+        self.watchable
     }
 
     /// Whether the game takes spectators now, for the lobby's list (E16 M2 T4c): its host's

@@ -41,7 +41,8 @@ pub(super) fn commands() -> Vec<Command> {
     ]
 }
 
-fn client_messages() -> Vec<ClientMessage> {
+/// One of every client message (several of some).
+pub(super) fn client_messages() -> Vec<ClientMessage> {
     let mut out = vec![
         ClientMessage::Hello {
             protocol: PROTOCOL_VERSION,
@@ -96,6 +97,11 @@ fn client_messages() -> Vec<ClientMessage> {
             seq: 15,
             open: true,
         },
+        ClientMessage::ListReplays { seq: 16, from: 50 },
+        ClientMessage::FetchArchived {
+            seq: 17,
+            replay: "duel-game3-00000000000000ff".to_string(),
+        },
     ];
     out.extend(
         commands()
@@ -105,7 +111,8 @@ fn client_messages() -> Vec<ClientMessage> {
     out
 }
 
-fn server_messages() -> Vec<ServerMessage> {
+/// One of every server message (several of some).
+pub(super) fn server_messages() -> Vec<ServerMessage> {
     let (ruleset, state) = battle();
     let manifest = Manifest {
         protocol: PROTOCOL_VERSION,
@@ -236,6 +243,18 @@ fn server_messages() -> Vec<ServerMessage> {
             n: 12,
             seq: 15,
             open: false,
+        },
+        ServerMessage::Replays {
+            seq: 16,
+            total: 51,
+            replays: vec![ReplayInfo {
+                id: "duel-game3-00000000000000ff".to_string(),
+                offer: "duel".to_string(),
+                game: 3,
+            }],
+        },
+        ServerMessage::Refused {
+            reason: Refusal::NoSuchReplay,
         },
     ];
     out.extend(

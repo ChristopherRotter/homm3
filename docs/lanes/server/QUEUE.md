@@ -4,15 +4,15 @@ Pre-refined tasks of the server lane, in order, then the inbox of discovered wor
 
 ## Tasks
 
-Epic: `docs/epics/E16-server.md` (in progress; M0 and M1 done 2026-10-10, ADR-0018). M1's checkpoint passed (SRV-Q12, 2026-10-11): M2 as cut below, each task about half a context (T1–T5c done 2026-10-11); `signal` is added for T5, the journal keeps the token itself (T2). Work under the autonomy contract (`HANDOFF.md`).
+Epic: `docs/epics/E16-server.md` (in progress; M0 and M1 done 2026-10-10, ADR-0018). M1's checkpoint passed (SRV-Q12, 2026-10-11): M2 as cut below, each task about half a context (T1–T5d done 2026-10-11); `signal` is added for T5, the journal keeps the token itself (T2). Work under the autonomy contract (`HANDOFF.md`).
 
-T5 as cut at M1's checkpoint was more than one task; split on 2026-10-11 (the agent, under the autonomy contract) into T5a–T5c, and T5b again the same day into T5b and T5c (both done), the old T5c becoming T5d.
+T5 as cut at M1's checkpoint was more than one task; split on 2026-10-11 (the agent, under the autonomy contract) into T5a–T5c, and T5b again the same day into T5b and T5c, the old T5c becoming T5d, and T5d into T5d and T5e (M2's closure); T5a–T5d done.
 
-### E16 M2 T5d — The fuzz harness, the replay download; M2's closure
+### E16 M2 T5e — M2's closure
 
-- **Scope:** the fuzz harness on the decoder (`cargo-fuzz`, `05-testing.md`); the replay download of finished games; the client's content check (`E16-design.md` §3) handed to the client lane (an inbox line in its `QUEUE.md`); the inbox's open M2 items decided (kept for later or built); M2's exit criteria written; the reviewer agent; the user's M2 checkpoint.
+- **Scope:** the client's content check (`E16-design.md` §3) handed to the client lane (an inbox line in its `QUEUE.md`); the inbox's open M2 items decided (kept for later or built); M2's exit criteria written in the epic file; the reviewer agent over M2; the user's M2 checkpoint (the review list in the epic file).
 - **Acceptance:** M2's exit (epic file, written in this task).
-- **Depends on:** T5c (done 2026-10-11).
+- **Depends on:** T5d (done 2026-10-11).
 - **Status:** ready.
 
 ## Inbox

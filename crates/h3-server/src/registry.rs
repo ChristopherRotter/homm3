@@ -29,6 +29,7 @@ use h3_protocol::{codec, session};
 use tokio::sync::{mpsc, oneshot};
 use tokio::time::Instant;
 
+use crate::archive::Archive;
 use crate::game::{Offer, Prepared, ToGame};
 use crate::{Error, config, journal};
 
@@ -69,6 +70,8 @@ pub(crate) struct Registry {
     /// The server's bounds: how many spectators each game takes (E16 M2 T4), the deadlines of
     /// abandoned games (E16 M2 T5a).
     limits: config::Limits,
+    /// The finished games' replays (E16 M2 T5d).
+    archive: Archive,
 }
 
 impl Registry {
@@ -89,7 +92,34 @@ impl Registry {
             games: BTreeMap::new(),
             server,
             limits: *limits,
+            archive: Archive::default(),
         }
+    }
+
+    /// Reads the archive back from the data directory (E16 M2 T5d; at start, before the restore,
+    /// which may finish a game).
+    pub(crate) fn load_archive(&mut self) {
+        self.archive = Archive::load(&self.server.data, self.limits.replays_kept);
+    }
+
+    /// The replay just written to `path` joins the archive, listed or not (E16 M2 T5d).
+    pub(crate) fn archived(&mut self, path: PathBuf, listed: bool) {
+        self.archive.add(path, listed);
+    }
+
+    /// The answer to `ListReplays`, as a frame's text (E16 M2 T5d).
+    pub(crate) fn replays(&self, seq: u32, from: u32) -> String {
+        let (total, replays) = self.archive.page(from);
+        codec::encode_text(&h3_protocol::wire::ServerMessage::Replays {
+            seq,
+            total,
+            replays,
+        })
+    }
+
+    /// The file of the listed replay `id` (E16 M2 T5d).
+    pub(crate) fn replay(&self, id: &str) -> Option<PathBuf> {
+        self.archive.path(id)
     }
 
     /// The server drains (E16 M2 T5a): the lobby refuses new games, and every game's thread hears
