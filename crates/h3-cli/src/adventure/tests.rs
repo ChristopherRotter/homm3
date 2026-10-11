@@ -115,8 +115,31 @@ fn a_recorded_game_round_trips_through_its_file_and_verifies() {
     assert!(matches!(e, AdventureCliError::Io(..)), "{e}");
     std::fs::create_dir_all(dir.join("fixtures/maps")).unwrap();
     std::fs::write(dir.join(DUEL), b"not a map").unwrap();
+    // Another file is refused by its hash before it is parsed; read for a run, it does not parse.
     let e = verify_file(&file, &root().join("packs"), &dir).unwrap_err();
+    assert!(
+        matches!(
+            e,
+            AdventureCliError::Replay(ReplayError::Incompatible("map.hash"))
+        ),
+        "{e}"
+    );
+    let e = run_random(&root().join("packs"), &dir, &options(1)).unwrap_err();
     assert!(matches!(e, AdventureCliError::Map(..)), "{e}");
+    // A file over the reader's limit is refused before it is read (a sparse file).
+    let big = std::fs::File::create(dir.join(DUEL)).unwrap();
+    let max = h3_map::Limits::default().max_file_bytes;
+    big.set_len(u64::try_from(max).unwrap() + 1).unwrap();
+    let e = verify_file(&file, &root().join("packs"), &dir).unwrap_err();
+    assert!(e.to_string().contains("over the limit"), "{e}");
+    // A link below the root that leads outside it is refused.
+    #[cfg(unix)]
+    {
+        std::fs::remove_file(dir.join(DUEL)).unwrap();
+        std::os::unix::fs::symlink(root().join(DUEL), dir.join(DUEL)).unwrap();
+        let e = verify_file(&file, &root().join("packs"), &dir).unwrap_err();
+        assert!(e.to_string().contains("leads outside"), "{e}");
+    }
     std::fs::remove_dir_all(&dir).unwrap();
 }
 

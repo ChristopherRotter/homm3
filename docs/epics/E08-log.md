@@ -699,7 +699,7 @@ its own arguments (the battle's `Args` stays private to `main.rs`).
   The generator became `patchwork(side, mix, blockers)`; the duel's draws and bytes are
   unchanged (its replays name it by hash).
 - **Gated workloads** (`benches/adventure/`, callgrind Ir, +2 %): `random-play-duel-36` (5 games
-  of 28 days) 510 319 658; `reach-xl-144` (2 games of 28 days, 1 920 queries) 657 378 985;
+  of 28 days) 510 210 757; `reach-xl-144` (2 games of 28 days, 1 920 queries) 657 381 227;
   `fork-xl-144` (100 000 forks after 7 days) 343 600 056. The adventure's pattern is qualified
   (`*adventure*random_rollout*`); the battle's `*random_rollout*` is unaffected (its run never
   calls the adventure's), so tightening it is hygiene only.
@@ -728,3 +728,16 @@ its own arguments (the battle's `Args` stays private to `main.rs`).
     5 % of a step):
     optimizing it is the first lever (inbox).
   - Forks grow with the heroes (each hero's army is a `Vec`), not with the map: decision 6 holds.
+- **Review** (an independent agent, reading the diff): no bug in record or verify; checkpoint
+  math, refused steps, malformed input, determinism, the collect patterns and the duel map's
+  bytes checked. Fixed: a plain env step cloned its command (now only `step_decoded` does;
+  baselines re-taken, −0.02 %); `verify_file` read and parsed the map before comparing its hash,
+  with no size cap and no check that a link under the root stays below it (now: canonical path
+  inside the root, the reader's size limit before reading, the hash before parsing; tested,
+  the link case on Unix); `record_random` cut a record short on a refused action in release
+  builds and looped forever without a limit (now `RecordError::Refused` and `NoLimit`); no test
+  refused a command of the player's own through `step_command` (now: an empty path, a far step,
+  the hero's own tile, another player's turn, after the episode: hash, step count and events
+  unchanged); `patchwork` asserts whole patches; `*.h3m binary` in `.gitattributes` (shared PR:
+  a map is named by its bytes' hash). Kept: `verify` does not know an env's day limit, since a
+  replay certifies game commands (a server's log has none).

@@ -502,3 +502,71 @@ fn a_path_of_the_players_own_choice_steps_and_replays() {
 fn neighbours(a: h3_adventure::Pos, b: h3_adventure::Pos) -> bool {
     a.level == b.level && a != b && a.x.abs_diff(b.x) <= 1 && a.y.abs_diff(b.y) <= 1
 }
+
+/// A refused command of the player's own leaves the env as it was and emits nothing; after the
+/// episode no command steps.
+#[test]
+fn a_refused_command_changes_nothing() {
+    #[derive(Default)]
+    struct Count(usize);
+    impl h3_game::Sink for Count {
+        fn emit(&mut self, _: h3_game::GameEvent) {
+            self.0 += 1;
+        }
+    }
+    let mut e = env(1, 1);
+    let player = acting(&e);
+    let hero = hero_in_slot(e.state(), player, 0).unwrap();
+    let at = e.state().adventure().hero(hero).unwrap().pos;
+    let far = h3_adventure::Pos::new(at.x + 3, at.y, at.level);
+    let (hash, steps) = (e.state_hash(), e.steps());
+    for path in [Vec::new(), vec![far], vec![at]] {
+        let mut sink = Count::default();
+        let move_hero = GameCommand::Adventure(AdventureCommand::MoveHero { hero, path });
+        let refused = e.step_command(player, move_hero, &mut sink);
+        assert!(
+            matches!(refused, Err(StepError::Rejected(_))),
+            "{refused:?}"
+        );
+        assert_eq!((e.state_hash(), e.steps(), sink.0), (hash, steps, 0));
+    }
+    let other = PlayerId::new(1 - player.raw());
+    let mut sink = Count::default();
+    assert_eq!(
+        e.step_command(other, GameCommand::EndTurn, &mut sink),
+        Err(StepError::Rejected(GameCommandError::NotYourTurn(other)))
+    );
+    assert_eq!((e.state_hash(), sink.0), (hash, 0));
+    random_rollout(&mut e, 3, 0);
+    assert!(e.is_done());
+    let hash = e.state_hash();
+    assert_eq!(
+        e.step_command(PlayerId::new(0), GameCommand::EndTurn, &mut sink),
+        Err(StepError::EpisodeOver)
+    );
+    assert_eq!((e.state_hash(), sink.0), (hash, 0));
+}
+
+#[test]
+fn a_record_needs_a_limit() {
+    let options = replay::RecordOptions {
+        seed: 1,
+        agent_seed: 1,
+        max_days: 0,
+        max_steps: 0,
+        checkpoint_every: 0,
+    };
+    let none =
+        replay::Replay::record_random(&FAITHFUL, Arc::clone(&DUEL_SETUP), duel_map(), options);
+    assert_eq!(none, Err(replay::RecordError::NoLimit));
+    for e in [
+        replay::RecordError::NoLimit,
+        replay::RecordError::Setup(h3_game::GameSetupError::Players(9)),
+        replay::RecordError::Refused {
+            step: 3,
+            error: StepError::InvalidAction,
+        },
+    ] {
+        assert!(!e.to_string().is_empty());
+    }
+}

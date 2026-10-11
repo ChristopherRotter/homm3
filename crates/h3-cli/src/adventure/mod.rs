@@ -50,7 +50,7 @@ use h3_adventure::{AdventureCommand, Pos};
 use h3_contracts::{HeroId, PlayerId};
 use h3_game::{GameCommand, GameRuleset, GameSetup};
 use h3_sim::adventure::replay::{
-    MapRef, RecordOptions, Replay, ReplayError, ReplayHeader, map_content_hash,
+    MapRef, RecordError, RecordOptions, Replay, ReplayError, ReplayHeader, map_content_hash,
 };
 use serde::{Deserialize, Serialize};
 
@@ -75,6 +75,8 @@ pub enum AdventureCliError {
     Replay(ReplayError),
     /// The setup does not start a game.
     Setup(h3_game::GameSetupError),
+    /// A game could not be recorded.
+    Record(RecordError),
 }
 
 impl fmt::Display for AdventureCliError {
@@ -85,6 +87,7 @@ impl fmt::Display for AdventureCliError {
             Self::Format(e) => write!(f, "replay format: {e}"),
             Self::Replay(e) => write!(f, "{e}"),
             Self::Setup(e) => write!(f, "setup: {e}"),
+            Self::Record(e) => write!(f, "record: {e}"),
         }
     }
 }
@@ -148,25 +151,63 @@ fn check_map_path(path: &str) -> Result<()> {
     }
 }
 
-/// Reads the map at `path` (relative to `root`) and imports it with `rules`: how a replay names
-/// it, and the game's setup.
+/// A map file below `root`: its bytes and how a replay names it. The path must be relative and
+/// stay below `root` once links are resolved, and the file within `h3-map`'s size limit, checked
+/// before it is read (a replay file is untrusted input).
 ///
 /// # Errors
 ///
-/// A path that is not relative, an unreadable file, or the map's read or import error.
-pub fn load_map(root: &Path, path: &str, rules: &GameRuleset) -> Result<(MapRef, GameSetup)> {
+/// A path that is not relative or leaves `root`, an unreadable or too large file.
+pub fn read_map(root: &Path, path: &str) -> Result<(Vec<u8>, MapRef)> {
     check_map_path(path)?;
-    let file = root.join(path);
+    let joined = root.join(path);
+    let canonical = |p: &Path| {
+        p.canonicalize()
+            .map_err(|e| AdventureCliError::Io(p.to_path_buf(), e))
+    };
+    let file = canonical(&joined)?;
+    if !file.starts_with(canonical(root)?) {
+        return Err(AdventureCliError::Format(format!(
+            "map path `{path}` leads outside {}",
+            root.display()
+        )));
+    }
+    let max = h3_map::Limits::default().max_file_bytes;
+    let size = std::fs::metadata(&file)
+        .map_err(|e| AdventureCliError::Io(file.clone(), e))?
+        .len();
+    if usize::try_from(size).map_or(true, |size| size > max) {
+        return Err(AdventureCliError::Map(
+            joined,
+            format!("{size} bytes, over the limit of {max}"),
+        ));
+    }
     let bytes = read_bytes(&file)?;
-    let map_error = |e: String| AdventureCliError::Map(file.clone(), e);
-    let raw =
-        h3_map::read(&bytes, &h3_map::Limits::default()).map_err(|e| map_error(e.to_string()))?;
-    let setup = h3_map::import(&raw, rules).map_err(|e| map_error(e.to_string()))?;
     let map = MapRef {
         path: path.to_owned(),
         content_hash: map_content_hash(&bytes),
         import_version: h3_map::MAP_IMPORT_VERSION,
     };
+    Ok((bytes, map))
+}
+
+/// Reads a map file's bytes ([`read_map`]) and imports them with `rules`.
+fn import_map(root: &Path, path: &str, bytes: &[u8], rules: &GameRuleset) -> Result<GameSetup> {
+    let map_error = |e: String| AdventureCliError::Map(root.join(path), e);
+    let raw =
+        h3_map::read(bytes, &h3_map::Limits::default()).map_err(|e| map_error(e.to_string()))?;
+    h3_map::import(&raw, rules).map_err(|e| map_error(e.to_string()))
+}
+
+/// Reads the map at `path` (relative to `root`, [`read_map`]) and imports it with `rules`: how a
+/// replay names it, and the game's setup.
+///
+/// # Errors
+///
+/// [`read_map`]'s errors, or the map's read or import error.
+pub fn load_map(root: &Path, path: &str, rules: &GameRuleset) -> Result<(MapRef, GameSetup)> {
+    let (bytes, map) = read_map(root, path)?;
+    let setup = import_map(root, path, &bytes, rules)?;
     Ok((map, setup))
 }
 
@@ -413,7 +454,15 @@ pub fn verify_file(path: &Path, packs_dir: &Path, root: &Path) -> Result<Verifie
         .header
         .check(&rules)
         .map_err(AdventureCliError::Replay)?;
-    let (map, setup) = load_map(root, &replay.map.path, &rules)?;
+    // The map by its hash before its bytes are parsed: an untrusted file is read only when it is
+    // the one the replay names.
+    let (bytes, map) = read_map(root, &replay.map.path)?;
+    if map.content_hash != replay.map.content_hash {
+        return Err(AdventureCliError::Replay(ReplayError::Incompatible(
+            "map.hash",
+        )));
+    }
+    let setup = import_map(root, &replay.map.path, &bytes, &rules)?;
     replay
         .verify(&rules, &map, &setup)
         .map_err(AdventureCliError::Replay)?;
@@ -446,7 +495,7 @@ pub fn run_random(packs_dir: &Path, root: &Path, options: &RunOptions) -> Result
     let rules = load_rules(packs_dir, &ids, &options.profile)?;
     let (map, setup) = load_map(root, &options.map, &rules)?;
     let replay = Replay::record_random(&rules, Arc::new(setup), map, options.record)
-        .map_err(AdventureCliError::Setup)?;
+        .map_err(AdventureCliError::Record)?;
     let text = replay_to_toml(&replay)?;
     Ok((replay, text))
 }

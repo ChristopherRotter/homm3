@@ -39,6 +39,7 @@ type Codes = (u8, u8, u8);
 /// some patches, and `count` blockers, for a two-level map of `side` tiles, all drawn from `mix`
 /// in this order (`e08-duel-36.h3m`'s draws: changing the order changes the committed maps).
 fn patchwork(side: u8, mix: &mut Mix, count: usize) -> (Vec<Codes>, Vec<(Spot, usize)>) {
+    assert_eq!(side % 6, 0, "whole patches only");
     let per_row = usize::from(side / 6);
     let patches: Vec<(u8, u8)> = (0..2 * per_row * per_row)
         .map(|_| {

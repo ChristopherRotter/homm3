@@ -20,7 +20,7 @@ use h3_kernel::hash::{HASH_ALGORITHM, HASH_VERSION, StateHasher};
 use h3_kernel::rng::{RNG_ALGORITHM, RNG_VERSION};
 use h3_kernel::{Rng, StreamId};
 
-use super::env::AdventureEnv;
+use super::env::{AdventureEnv, StepError};
 use super::rollout::choose;
 
 /// Version of the adventure replay model (bump when fields change meaning). Owned by the
@@ -215,6 +215,36 @@ impl fmt::Display for ReplayError {
 
 impl std::error::Error for ReplayError {}
 
+/// Why [`Replay::record_random`] recorded nothing.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum RecordError {
+    /// The setup does not start a game.
+    Setup(GameSetupError),
+    /// Neither a day limit nor a step limit: increment 1's games never end on their own.
+    NoLimit,
+    /// The game refused the agent's legal action (a bug: never a truncated record).
+    Refused {
+        /// Commands recorded before it.
+        step: usize,
+        /// Why.
+        error: StepError,
+    },
+}
+
+impl fmt::Display for RecordError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::Setup(e) => write!(f, "setup: {e}"),
+            Self::NoLimit => f.write_str("a game ends only by a limit: give a day or step limit"),
+            Self::Refused { step, error } => {
+                write!(f, "the random agent's action {step} was refused: {error}")
+            }
+        }
+    }
+}
+
+impl std::error::Error for RecordError {}
+
 /// What [`Replay::record_random`] plays.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct RecordOptions {
@@ -237,14 +267,18 @@ impl Replay {
     ///
     /// # Errors
     ///
-    /// The setup's [`GameSetupError`].
+    /// A [`RecordError`]: the setup's, no limit, or a refused action.
     pub fn record_random(
         rules: &GameRuleset,
         setup: Arc<GameSetup>,
         map: MapRef,
         options: RecordOptions,
-    ) -> Result<Self, GameSetupError> {
-        let mut env = AdventureEnv::new(rules.clone(), setup, options.seed, options.max_days)?;
+    ) -> Result<Self, RecordError> {
+        if options.max_days == 0 && options.max_steps == 0 {
+            return Err(RecordError::NoLimit);
+        }
+        let mut env = AdventureEnv::new(rules.clone(), setup, options.seed, options.max_days)
+            .map_err(RecordError::Setup)?;
         let mut rng = Rng::for_stream(options.agent_seed, StreamId::AGENT);
         let (mut commands, mut checkpoints) = (Vec::new(), Vec::new());
         loop {
@@ -255,12 +289,13 @@ impl Replay {
                 break;
             }
             let action = choose(&env, player, &mut rng);
-            // A legal action is always accepted (`tests.rs`); a refusal would end the record.
-            let stepped = env.step_decoded(player, action, &mut NoopSink);
-            debug_assert!(stepped.is_ok(), "{action:?} of {player:?}: {stepped:?}");
-            let Ok((_, command)) = stepped else {
-                break;
-            };
+            // A legal action is always accepted (`tests.rs`): a refusal is a bug, reported.
+            let (_, command) =
+                env.step_decoded(player, action, &mut NoopSink)
+                    .map_err(|error| RecordError::Refused {
+                        step: commands.len(),
+                        error,
+                    })?;
             commands.push((player, command));
             let every = options.checkpoint_every as usize;
             if every != 0 && commands.len() % every == 0 {

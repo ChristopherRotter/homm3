@@ -152,12 +152,13 @@ impl AdventureEnv {
         action: Action,
         sink: &mut S,
     ) -> Result<StepResult, StepError> {
-        self.step_decoded(player, action, sink)
-            .map(|(result, _)| result)
+        let command = self.decode(player, action)?;
+        self.step_command(player, command, sink)
     }
 
     /// Like [`step_with`](Self::step_with), also returning the game command the action decoded to
-    /// (what a replay records, E08 T9b): one reachable-tiles query, as a step.
+    /// (what a replay records, E08 T9b): one reachable-tiles query, as a step; the command is
+    /// cloned for the caller, which a plain step does not pay.
     ///
     /// # Errors
     ///
@@ -168,13 +169,17 @@ impl AdventureEnv {
         action: Action,
         sink: &mut S,
     ) -> Result<(StepResult, GameCommand), StepError> {
+        let command = self.decode(player, action)?;
+        let result = self.step_command(player, command.clone(), sink)?;
+        Ok((result, command))
+    }
+
+    /// The command `action` decodes to for `player`, unless the episode is over.
+    fn decode(&self, player: PlayerId, action: Action) -> Result<GameCommand, StepError> {
         if self.is_done() {
             return Err(StepError::EpisodeOver);
         }
-        let command = action::decode(&self.state, &self.rules, player, action)
-            .ok_or(StepError::InvalidAction)?;
-        let result = self.step_command(player, command.clone(), sink)?;
-        Ok((result, command))
+        action::decode(&self.state, &self.rules, player, action).ok_or(StepError::InvalidAction)
     }
 
     /// Plays a game command for `player` as a step: a path of the player's own choice, which an
