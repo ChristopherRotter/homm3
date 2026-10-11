@@ -678,6 +678,10 @@ fn error_messages() {
             },
             "profile `a:p` sets unknown quirk flag `f`",
         ),
+        (
+            CompileError::NotADataQuirk("quirk.battle.x".into()),
+            "an override fixes `quirk.battle.x`, which is no registered data quirk flag",
+        ),
     ];
     for (err, text) in cases {
         assert_eq!(err.to_string(), text);
@@ -968,6 +972,7 @@ fn overriding(target: &str, patch: CreaturePatch) -> ContentPack {
     p.resources.push(resource("ext:gems"));
     p.creature_overrides.push(CreatureOverride {
         target: key(target),
+        fixes: None,
         patch,
     });
     p

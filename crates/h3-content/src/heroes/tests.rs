@@ -1395,6 +1395,7 @@ fn upgrades_are_checked_and_overridable() {
     // An override replaces the list; unknown targets are errors.
     let mut ext = ContentPack::new(manifest("x", &["t"]));
     ext.creature_overrides.push(crate::CreatureOverride {
+        fixes: None,
         target: key("t:farmer"),
         patch: crate::CreaturePatch {
             upgrades: Some(vec![key("t:peasant")]),
@@ -1422,6 +1423,7 @@ fn a_later_override_can_invalidate_a_hero() {
     // `t:cart` stops being a war machine: the hero's war machine is no longer valid.
     let mut ext = ContentPack::new(manifest("x", &["t"]));
     ext.creature_overrides.push(crate::CreatureOverride {
+        fixes: None,
         target: key("t:cart"),
         patch: crate::CreaturePatch {
             flags: Some(vec![]),
@@ -1496,4 +1498,140 @@ fn hero_params_are_optional_unique_and_checked() {
         compile(&[p, ext]).unwrap_err(),
         CompileError::DuplicateHeroParams("x".into())
     );
+}
+
+// ---- E04b T8e: data quirks through gated overrides (ADR-0007, amendment E04b T8e) ----
+
+const DATA_REGISTRY: crate::QuirkRegistry = crate::QuirkRegistry::new(&[
+    "quirk.battle.x",
+    "quirk.content.levels",
+    "quirk.content.specialty",
+]);
+
+/// The test pack with a `faithful` profile that keeps both data quirks and a `fixed` one that
+/// fixes them, and a pack `x` whose overrides fix them.
+fn data_quirk_packs() -> [ContentPack; 2] {
+    let mut t = pack();
+    t.profiles = vec![
+        ProfileDef {
+            key: key("t:faithful"),
+            quirks: vec![
+                ("quirk.content.levels".into(), true),
+                ("quirk.content.specialty".into(), true),
+            ],
+        },
+        ProfileDef {
+            key: key("t:fixed"),
+            quirks: vec![("quirk.content.levels".into(), false)],
+        },
+    ];
+    let mut x = ContentPack::new(manifest("x", &["t"]));
+    x.creature_overrides.push(crate::CreatureOverride {
+        target: key("t:farmer"),
+        fixes: Some("quirk.content.levels".into()),
+        patch: crate::CreaturePatch {
+            level: Some(5),
+            ..Default::default()
+        },
+    });
+    x.hero_overrides.push(crate::HeroOverride {
+        target: key("t:orrin"),
+        fixes: Some("quirk.content.specialty".into()),
+        patch: crate::HeroPatch {
+            specialty: Some(vec![creature_stat("t:farmer")]),
+        },
+    });
+    [t, x]
+}
+
+fn compile_data(packs: &[ContentPack], profile: &str) -> Result<Ruleset, CompileError> {
+    Ruleset::compile_with(packs, profile, &DATA_REGISTRY)
+}
+
+#[test]
+fn gated_overrides_apply_only_where_the_profile_fixes_the_quirk() {
+    let packs = data_quirk_packs();
+    let faithful = compile_data(&packs, "t:faithful").unwrap();
+    let fixed = compile_data(&packs, "t:fixed").unwrap();
+    let plain = compile_data(&packs[..1], "t:faithful").unwrap();
+    let farmer = faithful.creature_by_key("t:farmer").unwrap();
+    let orrin = faithful.hero_type_by_key("t:orrin").unwrap();
+    // `faithful` keeps the original's values: the gated overrides change nothing.
+    assert_eq!(faithful.creature_info(farmer), plain.creature_info(farmer));
+    assert_eq!(faithful.hero_type(orrin), plain.hero_type(orrin));
+    // `fixed` turns both flags off (the specialty's by leaving it out): both overrides apply.
+    assert_eq!(fixed.creature_info(farmer).unwrap().level, 5);
+    assert!(matches!(
+        fixed.hero_type(orrin).unwrap().specialty.as_slice(),
+        [HeroEffect::CreatureStat { .. }]
+    ));
+    assert_ne!(faithful.content_hash(), fixed.content_hash());
+}
+
+#[test]
+fn a_hero_override_without_a_gate_applies_in_every_profile() {
+    let [t, mut x] = data_quirk_packs();
+    x.creature_overrides.clear();
+    x.hero_overrides[0].fixes = None;
+    let r = compile_data(&[t.clone(), x.clone()], "t:faithful").unwrap();
+    let orrin = r.hero_type_by_key("t:orrin").unwrap();
+    assert!(matches!(
+        r.hero_type(orrin).unwrap().specialty.as_slice(),
+        [HeroEffect::CreatureStat { .. }]
+    ));
+    // A patch without a specialty keeps the hero's.
+    x.hero_overrides[0].patch.specialty = None;
+    let r = compile_data(&[t.clone(), x], "t:faithful").unwrap();
+    let plain = compile_data(&[t], "t:faithful").unwrap();
+    assert_eq!(r.hero_type(orrin), plain.hero_type(orrin));
+}
+
+#[test]
+fn gated_overrides_are_checked_in_every_profile() {
+    let not_data = |flag: &str| CompileError::NotADataQuirk(flag.into());
+    let cases: Vec<Case> = vec![
+        // The gate must name a registered data quirk flag, not a behaviour flag.
+        (
+            |x| x.creature_overrides[0].fixes = Some("quirk.content.nope".into()),
+            not_data("quirk.content.nope"),
+        ),
+        (
+            |x| x.hero_overrides[0].fixes = Some("quirk.battle.x".into()),
+            not_data("quirk.battle.x"),
+        ),
+        // A patch that does not apply in `faithful` is still resolved there.
+        (
+            |x| x.creature_overrides[0].patch.upgrades = Some(vec![key("t:nope")]),
+            CompileError::UnknownReference {
+                kind: "creature",
+                key: "t:nope".into(),
+            },
+        ),
+        (
+            |x| x.hero_overrides[0].patch.specialty = Some(vec![creature_stat("t:nope")]),
+            CompileError::UnknownReference {
+                kind: "creature",
+                key: "t:nope".into(),
+            },
+        ),
+        (
+            |x| x.hero_overrides[0].target = key("t:nobody"),
+            CompileError::UnknownReference {
+                kind: "hero type",
+                key: "t:nobody".into(),
+            },
+        ),
+        (
+            |x| x.hero_overrides[0].target = key("y:orrin"),
+            CompileError::ReferenceOutsideDependencies {
+                key: "y:orrin".into(),
+                pack: "x".into(),
+            },
+        ),
+    ];
+    for (change, err) in cases {
+        let [t, mut x] = data_quirk_packs();
+        change(&mut x);
+        assert_eq!(compile_data(&[t, x], "t:faithful").unwrap_err(), err);
+    }
 }

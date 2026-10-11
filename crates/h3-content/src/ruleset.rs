@@ -18,7 +18,7 @@ use crate::heroes::{
 };
 use crate::key::{ContentKey, is_valid_part};
 use crate::pack::{BattleParamsDef, ContentPack, CreaturePatch};
-use crate::quirks::{QuirkRegistry, Quirks, REGISTRY};
+use crate::quirks::{DATA_QUIRK_PREFIX, QuirkRegistry, Quirks, REGISTRY};
 use crate::spell::{SpellEffect, SpellTarget, TimedChange};
 
 /// Engine limit for army slots per side (the original uses 7, a ruleset parameter). The battle
@@ -404,6 +404,23 @@ fn abilities(
         .collect()
 }
 
+/// Whether an override applies with the profile's `quirks`: an ungated one (`fixes` `None`)
+/// always, a gated one only when the profile turns its flag off. A gated override must name a
+/// registered data quirk flag (ADR-0007, amendment E04b T8e).
+fn applies(
+    fixes: Option<&str>,
+    registry: &QuirkRegistry,
+    quirks: Quirks,
+) -> Result<bool, CompileError> {
+    fixes.map_or(Ok(true), |name| {
+        registry
+            .lookup(name)
+            .filter(|_| name.starts_with(DATA_QUIRK_PREFIX))
+            .map(|flag| !quirks.is_enabled(flag))
+            .ok_or_else(|| CompileError::NotADataQuirk(String::from(name)))
+    })
+}
+
 /// Resolves an upgrade list against the creatures compiled so far.
 fn upgrades(
     keys: &[ContentKey],
@@ -445,6 +462,31 @@ impl Ruleset {
             .iter()
             .map(|p| (p.manifest.id.clone(), p.manifest.version.clone()))
             .collect();
+
+        // The profile comes first: gated overrides apply by its data quirk flags (ADR-0007,
+        // amendment E04b T8e).
+        let mut profiles = BTreeMap::new();
+        for pack in &order {
+            for p in &pack.profiles {
+                check_namespace(&p.key, &pack.manifest.id)?;
+                if profiles.insert(p.key.as_str(), p).is_some() {
+                    return Err(CompileError::DuplicateKey(String::from(p.key.as_str())));
+                }
+            }
+        }
+        let selected = profiles
+            .get(profile)
+            .ok_or_else(|| CompileError::UnknownProfile(String::from(profile)))?;
+        let mut quirks = Quirks::default();
+        for (flag, on) in &selected.quirks {
+            let f = registry
+                .lookup(flag)
+                .ok_or_else(|| CompileError::UnknownQuirk {
+                    profile: String::from(profile),
+                    flag: flag.clone(),
+                })?;
+            quirks = quirks.with(f, *on);
+        }
 
         let mut resources: Vec<ResourceInfo> = Vec::new();
         let mut resource_index = BTreeMap::new();
@@ -558,6 +600,7 @@ impl Ruleset {
                 creatures: &creature_index,
             };
             hero.add_pack(pack, &refs)?;
+            hero.add_overrides(pack, &refs, |fixes| applies(fixes, registry, quirks))?;
             let index = AbilityIndex {
                 creatures: &creature_index,
                 spells: &hero.spells.index,
@@ -588,20 +631,27 @@ impl Ruleset {
                         pack: id.clone(),
                     });
                 }
+                let apply = applies(o.fixes.as_deref(), registry, quirks)?;
                 // Handles come from `creature_index`, which only holds pushed positions, so the
-                // lookup always succeeds.
+                // lookup always succeeds. The patch goes onto a copy: a gated override is checked
+                // in every profile and kept only where it applies.
                 let i = handle.index();
                 creatures
                     .get_mut(i)
                     .zip(creature_info.get_mut(i))
                     .zip(creature_abilities.get_mut(i))
                     .map(|((stats, info), abils)| {
+                        let (mut s, mut n, mut a) = (*stats, info.clone(), abils.clone());
                         let target = Target {
-                            stats,
-                            info,
-                            abilities: abils,
+                            stats: &mut s,
+                            info: &mut n,
+                            abilities: &mut a,
                         };
-                        apply_patch(&o.patch, target, &scope, &index)
+                        apply_patch(&o.patch, target, &scope, &index)?;
+                        if apply {
+                            (*stats, *info, *abils) = (s, n, a);
+                        }
+                        Ok(())
                     })
                     .transpose()?;
             }
@@ -647,15 +697,6 @@ impl Ruleset {
             validate_obstacle(o, &battle)?;
         }
 
-        let mut profiles = BTreeMap::new();
-        for pack in &order {
-            for p in &pack.profiles {
-                check_namespace(&p.key, &pack.manifest.id)?;
-                if profiles.insert(p.key.as_str(), p).is_some() {
-                    return Err(CompileError::DuplicateKey(String::from(p.key.as_str())));
-                }
-            }
-        }
         // Battle modifier pools are sized by the number of distinct aura values (ADR-0012 §3).
         let auras: BTreeSet<u32> = creature_abilities
             .iter()
@@ -665,20 +706,6 @@ impl Ruleset {
         if auras.len() > MAX_AURA_VALUES {
             return Err(CompileError::TooManyEntries("distinct aura"));
         }
-        let selected = profiles
-            .get(profile)
-            .ok_or_else(|| CompileError::UnknownProfile(String::from(profile)))?;
-        let mut quirks = Quirks::default();
-        for (flag, on) in &selected.quirks {
-            let f = registry
-                .lookup(flag)
-                .ok_or_else(|| CompileError::UnknownQuirk {
-                    profile: String::from(profile),
-                    flag: flag.clone(),
-                })?;
-            quirks = quirks.with(f, *on);
-        }
-
         let mut ruleset = Self {
             packs: pack_ids,
             profile: selected.key.clone(),

@@ -90,6 +90,9 @@ pub enum CompileError {
         /// The flag name.
         flag: String,
     },
+    /// An override fixes a flag that is not a registered data quirk (`quirk.content.<name>`,
+    /// ADR-0007, amendment E04b T8e).
+    NotADataQuirk(String),
 }
 
 impl fmt::Display for CompileError {
@@ -133,6 +136,12 @@ impl fmt::Display for CompileError {
             Self::UnknownProfile(key) => write!(f, "unknown profile `{key}`"),
             Self::UnknownQuirk { profile, flag } => {
                 write!(f, "profile `{profile}` sets unknown quirk flag `{flag}`")
+            }
+            Self::NotADataQuirk(flag) => {
+                write!(
+                    f,
+                    "an override fixes `{flag}`, which is no registered data quirk flag"
+                )
             }
         }
     }
