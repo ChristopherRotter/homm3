@@ -4,11 +4,11 @@ The battle lane's living state; read after the global `docs/HANDOFF.md`. Format 
 
 ## Current state
 
-- **Branch:** `battle/e04b-batch-2f` (BAT-Q27; T9b merged as #84). Work on `battle/<task>` branches from `master`, merged at its checkpoint; HANDOFF content goes here.
-- **E04b increment 20 (the user, BAT-Q27): T9b (the casting workload, the measurements) done; batch 2f staged**. Sandbox: `docs/08-work-process.md`, "Cloud sandbox".
+- **Branch:** `battle/e04b-batch-2f-results` (the user's results, the fold-in). Work on `battle/<task>` branches from `master`, merged at its checkpoint; HANDOFF content goes here.
+- **E04b increment 20 (the user, BAT-Q27): T9b (#84) and batch 2f (#85, folded in) done; T10 complete.** Sandbox: `docs/08-work-process.md`, "Cloud sandbox".
 - **Done:** survey `docs/rules/surveys/E04b-magic.md` (§12–§15), ADR-0014 accepted (point 5 amended, Q47), design note `docs/epics/E04b-design.md`. T1–T9 (the epic file lists each with its rules): every battle spell, creature magic, casters, mana creatures, defences, the rebirth and Fear, the hero's spells and masteries in the Heroes context, the casting limits and spell defences, the per-spell conditions, the opening spells and Eagle Eye, the data quirks, a complete observation with a spectator viewer, the casting workload (BAT-MAG-001 to 069, HER-SPL-002 to 004, HER-BAT-015 to 017; Q-0006 to Q-0012, BAT-QUIRK-1 to 19), all after the executable's code (`installation.md` §7.8–§7.24). **Physical damage follows the executable's three truncated stages** under Q-0005 (Q50, BAT-DMG-002, `h3_kernel::arith::X87` at 53 bits).
 - **Hero rates** cross the seam as `h3_contracts::Rate` (basis points plus, under Q-0005, the original's single-precision value as an f32 bit pattern where it differs; Q45 (b), T3c2).
-- **Next:** the user plays batch 2f (`experiments/results/E04b-batch-2f.md`); then its fold-in (closes T10) and T11. BAT-Q24 (who learns Eagle Eye's picks) waits for the adventure lane.
+- **Next:** T11 (closure: fold-in, an independent review in a fresh session, docs). BAT-Q24 (who learns Eagle Eye's picks) waits for the adventure lane.
 - **Open for later tasks:** Q43 (sprite offset, keep the approximation); BAT-QUIRK-17's later variant (rebirth right after a sacrifice, BAT-Q18); bad morale's `WAITED` gate (T7c3 review); T4a's and T4c's loose ends (all in `QUEUE.md`, "Inbox").
 - **Versions (battle owns them):** state hash v41, ruleset hash v42, replay format v21, action encoding v11, C ABI v17, observation encoding v13; pack format v34. New ids: `BAT-Q<n>`, `BAT-QUIRK-<n>`, `BAT-STUB-<n>` (old ids stay).
 - **Ownership:** `h3-content` and `h3-pack` stay with battle until further notice (user, 2026-10-07); `h3-kernel` and `h3-contracts` are shared, so a seam change is its own `shared/` pull request, merged before the battle change that uses it.
@@ -58,7 +58,7 @@ The battle lane's living state; read after the global `docs/HANDOFF.md`. Format 
 
 ### 2026-10-11 (fiftieth) — E04b increment 20: T9b
 
-The user (BAT-Q27): T9b, then batch 2f; 2e's weak results decisive. The `full` heroes got T8's magic; replays re-seeded, `bench-check` re-baselined; ≈ 104 k steps/s, ≈ 69 k with `--observe 1`. Batch 2f staged (8 encounters). Detail: `docs/epics/E04b-log.md`.
+The user (BAT-Q27): T9b, then batch 2f; 2e's weak results decisive. The `full` heroes got T8's magic; replays re-seeded, `bench-check` re-baselined; ≈ 104 k steps/s, ≈ 69 k with `--observe 1`. Batch 2f staged and folded in: all as the engine and the code. Detail: `docs/epics/E04b-log.md`.
 
 ### 2026-10-11 (forty-ninth) — E04b increment 19: T9a and the spectator viewer
 

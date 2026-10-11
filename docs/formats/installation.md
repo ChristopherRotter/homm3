@@ -1759,3 +1759,10 @@ the end of the tactics phase, before round 1 (attacker first); it rolls Eagle Ey
 over the loser's recorded hero casts (one roll per cast: the same odds), for a winner with units
 left, without a book or Wisdom test. The engine follows the code and the wiki on the timing until
 an experiment confirms it (BAT-Q23); the learning after the battle is open (BAT-Q24).
+
+**Batch 2f** (the user, 2026-10-11, SoD with plain HD; `experiments/results/E04b-batch-2f.md`)
+observed this reading: Armor of the Damned cast its four spells at the defender's first stack that
+took its turn, its blinded first stack passed over (AD), and under an Orb of Inhibition (AO); a
+winner learned only with a worn Spell Book (EB: none from the backpack) and only up to Wisdom + 2
+(EL: Bless, not Air Shield, without Wisdom; EW: Air Shield with Basic Wisdom), as 0x469FE0 reads.
+The message after the battle names every pick, the unlearned ones too.
