@@ -423,3 +423,33 @@ how and why the work went.
   the diagnosis in the void directory); a game paused by its host is listed paused, refuses joins
   without its token, is still paused on a second server started on a copy of the data directory,
   and resumes where it paused on both, its replay verifying at the end.
+
+### M2 T4 — Spectators (2026-10-11)
+
+- **The start.** #72 (T3) was merged and the battle lane's spectator viewer with it (#74, E04b
+  T9a: `h3_battle::Viewer`, `observe_as`, `project_as`); the branch started from `master`. The
+  same note listed the observation's new fields the wire does not map: queued as T4b.
+- **The wire, version 6** (*queued for the M2 review*): `Observation::spectator`; `Refusal::
+  NoSpectators` now means the game takes no more (its limit), or none (a creation, a paused game).
+  The mapping's `observe` and `events` take a viewer (`impl Into<h3_battle::Viewer>`, so a side
+  still fits).
+- **The session core** (`h3-protocol`, logic, 100 %): `GameConfig::spectators`, the limit; a
+  `Join` as a spectator, within it, gets `Joined` without a token and the spectator's snapshot; it
+  is a viewer of its own (`Watcher`: its connection, numbers and record) in the order of joining.
+  It gets the public events of every command, `GameEnded`, `PauseAsked`, and on a pause
+  `Goodbye { Paused }`; never a turn. Its `Command`, `Query`, `FetchReplay` and `Pause` are
+  rejected `NotSeated`, numbered and recorded; its `FetchRecord` is its record since it joined,
+  the header's seat `Spectator`. A connection that holds a seat or watches is `AlreadyJoined`.
+  `Leave` and a disconnect end its watch. Nothing of a spectator is journaled. The viewers' send
+  is one `Viewer::post`, shared by seats and spectators.
+- **The server** (*provisional*): `[limits] spectators_per_game` (8; 0 to 1024, 0 for none), given
+  to each game by the registry (`Registry::new` takes the configuration's limits). A paused game
+  refuses spectators before it is restored (T3).
+- **Tests** (h3-protocol 53, h3-server 27; the scoped verify with no failing step, the workload
+  −0.39 %, mostly the battle lane's T9a): a late spectator's snapshot (`spectator`, no own
+  hero), the events and no turn, its numbered rejections and record, `PauseAsked`, the limit and a
+  freed place, the pause's goodbye, the end; the joins' refusals with spectators; the hidden
+  obstacles' property now also over two spectators' bytes (one from the start, one after the
+  cast); the seats-and-numbers property with spectators as viewers (no token, no turn, records
+  numbered without gaps, the header's seat). Over loopback: a spectator watches a game against the
+  bot to its end within a limit of one, a second is refused, its `FetchReplay` is `NotSeated`.

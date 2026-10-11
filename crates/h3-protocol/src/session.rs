@@ -18,6 +18,12 @@
 //!   log of every numbered message it was sent (also while no connection holds the seat).
 //!   `Replay` and `Record` answers carry the last number and are not recorded. Everything a viewer
 //!   gets is projected for it by construction ([`crate::map`]).
+//! - **Spectators** (E16 M2 T4). A connection that joins as a spectator, up to the game's limit
+//!   ([`GameConfig::spectators`]), is a viewer of its own for as long as it watches: the battle's
+//!   spectator viewer (SRV-Q4) gives its snapshot and its events, what is public to both sides;
+//!   it gets every viewer's messages (`Events`, `GameEnded`, `PauseAsked`), never a turn, a
+//!   token or the replay, and whatever it sends for a seat is rejected `NotSeated`. Nothing of
+//!   it is journaled: after a disconnect or a restart it joins again, numbered afresh.
 //! - **The journal.** The seed, the setup, the accepted commands with their sides and a state
 //!   hash every `checkpoint_every` commands: the replay in progress (ADR-0018 point 12). The host
 //!   renders it as the replay file at the end ([`Session::publish_replay`]).
@@ -38,8 +44,9 @@
 //!   are rebuilt from the journal, which is the truth, and the command applied again
 //!   ([`Session::drain_mismatches`]).
 //!
-//! Provisional (E16 M1 T2, M2 T2, T3): the names, the connection numbering, frames as text, the
-//! record's layout, the entries, who pauses (the epic's review list).
+//! Provisional (E16 M1 T2, M2 T2–T4): the names, the connection numbering, frames as text, the
+//! record's layout, the entries, who pauses, a spectator's numbered rejections (the epic's review
+//! list).
 
 use alloc::boxed::Box;
 use alloc::string::String;
@@ -115,6 +122,8 @@ pub struct GameConfig {
     pub checkpoint_every: u32,
     /// Whether a shadow instance checks the live battle after every command (E16 M2 T3).
     pub shadow: bool,
+    /// How many spectators may watch at once (E16 M2 T4; 0: none).
+    pub spectators: usize,
 }
 
 /// The journal: everything the replay needs except its header (ADR-0018 point 12). Private to the
@@ -201,6 +210,45 @@ struct Viewer {
     record: Vec<String>,
 }
 
+impl Viewer {
+    /// Sends the viewer its next numbered message and records it; the frame goes out only if a
+    /// connection `to` is there.
+    fn post(
+        &mut self,
+        to: Option<ConnId>,
+        message: impl FnOnce(u32) -> ServerMessage,
+        out: &mut Vec<Outbound>,
+    ) {
+        self.n = self.n.saturating_add(1);
+        let frame = codec::encode_text(&message(self.n));
+        if let Some(to) = to {
+            out.push(Outbound {
+                to,
+                frame: frame.clone(),
+                close: false,
+            });
+        }
+        self.record.push(frame);
+    }
+
+    /// Its record: the header line, then one line per numbered message.
+    fn record(&self, header: &RecordHeader) -> String {
+        let mut record = codec::encode_text(header);
+        for line in &self.record {
+            record.push('\n');
+            record.push_str(line);
+        }
+        record
+    }
+}
+
+/// A spectator (E16 M2 T4): its connection and itself as a viewer.
+#[derive(Debug)]
+struct Watcher {
+    conn: ConnId,
+    viewer: Viewer,
+}
+
 /// A side's seat.
 #[derive(Debug)]
 struct SeatState {
@@ -269,6 +317,10 @@ pub struct Session<'r> {
     shadow: Option<Box<Shadow>>,
     /// The steps at which the shadow instance disagreed, not drained yet.
     mismatches: Vec<usize>,
+    /// The spectators, in the order they joined (E16 M2 T4).
+    watchers: Vec<Watcher>,
+    /// How many may watch at once.
+    watchers_limit: usize,
 }
 
 impl<'r> Session<'r> {
@@ -312,6 +364,8 @@ impl<'r> Session<'r> {
             paused: false,
             shadow,
             mismatches: Vec::new(),
+            watchers: Vec::new(),
+            watchers_limit: config.spectators,
         })
     }
 
@@ -392,11 +446,13 @@ impl<'r> Session<'r> {
         }
     }
 
-    /// The connection `conn` is gone: its seat waits for a re-take with the token.
+    /// The connection `conn` is gone: its seat waits for a re-take with the token; a spectator
+    /// stops watching.
     pub fn disconnected(&mut self, conn: ConnId) {
         for seat in &mut self.seats {
             seat.holder = seat.holder.filter(|&holder| holder != conn);
         }
+        self.watchers.retain(|w| w.conn != conn);
     }
 
     /// The battle's result, once it is over: then the host renders the journal as the replay
@@ -489,7 +545,7 @@ impl<'r> Session<'r> {
         shadows.for_each(|shadow| shadow.state = state.clone());
     }
 
-    /// `Join`: takes or re-takes a seat.
+    /// `Join`: takes or re-takes a seat, or watches.
     fn join(
         &mut self,
         conn: ConnId,
@@ -500,14 +556,14 @@ impl<'r> Session<'r> {
         if game != self.game {
             return out.push(refused(conn, Refusal::NoSuchGame));
         }
+        if self.seat_of(conn).is_some() || self.watcher(conn).is_some() {
+            return out.push(refused(conn, Refusal::AlreadyJoined));
+        }
         let side = match seat {
             Seat::Attacker => BattleSide::Attacker,
             Seat::Defender => BattleSide::Defender,
-            Seat::Spectator => return out.push(refused(conn, Refusal::NoSpectators)),
+            Seat::Spectator => return self.watch(conn, out),
         };
-        if self.seat_of(conn).is_some() {
-            return out.push(refused(conn, Refusal::AlreadyJoined));
-        }
         let held = &mut self.seats[side.index()];
         let SeatKind::Player { token: expected } = &held.kind else {
             return out.push(refused(conn, Refusal::SeatTaken));
@@ -552,10 +608,34 @@ impl<'r> Session<'r> {
         }
     }
 
+    /// `Join` as a spectator (E16 M2 T4): within the game's limit, the spectator's snapshot.
+    fn watch(&mut self, conn: ConnId, out: &mut Vec<Outbound>) {
+        if self.watchers.len() >= self.watchers_limit {
+            return out.push(refused(conn, Refusal::NoSpectators));
+        }
+        out.push(reply(
+            conn,
+            &ServerMessage::Joined {
+                game: self.game,
+                seat: Seat::Spectator,
+                token: None,
+                manifest: self.manifest.clone(),
+            },
+        ));
+        let observation = map::observe(&self.state, self.ruleset, h3_battle::Viewer::Spectator);
+        let mut viewer = Viewer::default();
+        viewer.post(
+            Some(conn),
+            |n| ServerMessage::Snapshot { n, observation },
+            out,
+        );
+        self.watchers.push(Watcher { conn, viewer });
+    }
+
     /// `Command`: the seat's command, applied with the seat's side.
     fn command(&mut self, conn: ConnId, seq: u32, command: Command, out: &mut Vec<Outbound>) {
         let Some(side) = self.seat_of(conn) else {
-            return out.push(unseated(conn, seq));
+            return self.not_seated(conn, seq, out);
         };
         if !self.started {
             return self.reject(side, seq, RejectCode::NotStarted, out);
@@ -583,7 +663,7 @@ impl<'r> Session<'r> {
     /// `Query`: what the server's rules allow the seat now.
     fn query(&mut self, conn: ConnId, seq: u32, query: Query, out: &mut Vec<Outbound>) {
         let Some(side) = self.seat_of(conn) else {
-            return out.push(unseated(conn, seq));
+            return self.not_seated(conn, seq, out);
         };
         let targets = map::query(&self.state, self.ruleset, side, query);
         self.send(
@@ -596,7 +676,7 @@ impl<'r> Session<'r> {
     /// `FetchReplay`: the replay, for a seat once the game is over.
     fn fetch_replay(&mut self, conn: ConnId, seq: u32, out: &mut Vec<Outbound>) {
         let Some(side) = self.seat_of(conn) else {
-            return out.push(unseated(conn, seq));
+            return self.not_seated(conn, seq, out);
         };
         let published = if self.state.is_over() {
             &self.replay
@@ -616,7 +696,7 @@ impl<'r> Session<'r> {
     /// `Pause`: the host's ask pauses a running game; another seat's is told to every viewer.
     fn pause(&mut self, conn: ConnId, seq: u32, out: &mut Vec<Outbound>) {
         let Some(side) = self.seat_of(conn) else {
-            return out.push(unseated(conn, seq));
+            return self.not_seated(conn, seq, out);
         };
         let code = match self.phase() {
             Phase::Running => None,
@@ -630,11 +710,11 @@ impl<'r> Session<'r> {
         // The host or every seat may pause (`E16-design.md` §7); the host holds one of the two
         // seats, so its ask decides, and another seat's is for the host to hear.
         if self.host != Some(side) {
+            let seat = seat(side);
             for viewer in BattleSide::BOTH {
-                let seat = seat(side);
                 self.send(viewer, |n| ServerMessage::PauseAsked { n, seat }, out);
             }
-            return;
+            return self.spectate(|n| ServerMessage::PauseAsked { n, seat }, out);
         }
         self.paused = true;
         self.entries.push(Entry::Paused);
@@ -643,26 +723,26 @@ impl<'r> Session<'r> {
                 out.push(goodbye(holder, GoodbyeReason::Paused));
             }
         }
+        for watcher in self.watchers.drain(..) {
+            out.push(goodbye(watcher.conn, GoodbyeReason::Paused));
+        }
     }
 
-    /// `FetchRecord`: the seat's record, its header line and then one line per numbered message.
+    /// `FetchRecord`: the viewer's record, its header line and then one line per numbered message;
+    /// a spectator's since it joined.
     fn fetch_record(&mut self, conn: ConnId, seq: u32, out: &mut Vec<Outbound>) {
-        let Some(side) = self.seat_of(conn) else {
-            return out.push(unseated(conn, seq));
+        let (seat, viewer) = match (self.seat_of(conn), self.watcher(conn)) {
+            (Some(side), _) => (seat(side), &self.seats[side.index()].viewer),
+            (None, Some(watcher)) => (Seat::Spectator, &watcher.viewer),
+            (None, None) => return out.push(unseated(conn, seq)),
         };
         let header = RecordHeader {
             format: RECORD_FORMAT_VERSION,
             game: self.game,
-            seat: seat(side),
+            seat,
             manifest: self.manifest.clone(),
         };
-        let viewer = &self.seats[side.index()].viewer;
-        let mut record = codec::encode_text(&header);
-        for line in &viewer.record {
-            record.push('\n');
-            record.push_str(line);
-        }
-        let n = viewer.n;
+        let (n, record) = (viewer.n, viewer.record(&header));
         out.push(reply(conn, &ServerMessage::Record { n, seq, record }));
     }
 
@@ -702,11 +782,21 @@ impl<'r> Session<'r> {
         Ok(events)
     }
 
-    /// Every viewer gets `events` as it may see them.
+    /// Every viewer gets `events` as it may see them; the spectators what is public.
     fn tell(&mut self, events: &[h3_battle::Event], out: &mut Vec<Outbound>) {
         for viewer in BattleSide::BOTH {
             let events = map::events(events, viewer);
             self.send(viewer, |n| ServerMessage::Events { n, events }, out);
+        }
+        if !self.watchers.is_empty() {
+            let events = map::events(events, h3_battle::Viewer::Spectator);
+            self.spectate(
+                |n| ServerMessage::Events {
+                    n,
+                    events: events.clone(),
+                },
+                out,
+            );
         }
     }
 
@@ -722,6 +812,7 @@ impl<'r> Session<'r> {
                 for viewer in BattleSide::BOTH {
                     self.send(viewer, |n| ServerMessage::GameEnded { n, result }, out);
                 }
+                self.spectate(|n| ServerMessage::GameEnded { n, result }, out);
             }
         }
     }
@@ -774,16 +865,28 @@ impl<'r> Session<'r> {
         out: &mut Vec<Outbound>,
     ) {
         let seat = &mut self.seats[side.index()];
-        seat.viewer.n = seat.viewer.n.saturating_add(1);
-        let frame = codec::encode_text(&message(seat.viewer.n));
-        if let Some(to) = seat.holder {
-            out.push(Outbound {
-                to,
-                frame: frame.clone(),
-                close: false,
-            });
+        seat.viewer.post(seat.holder, message, out);
+    }
+
+    /// Sends every spectator its next numbered message (E16 M2 T4).
+    fn spectate(&mut self, message: impl Fn(u32) -> ServerMessage, out: &mut Vec<Outbound>) {
+        for watcher in &mut self.watchers {
+            watcher.viewer.post(Some(watcher.conn), &message, out);
         }
-        seat.viewer.record.push(frame);
+    }
+
+    /// `Rejected { NotSeated }` for a connection that holds no seat: numbered and recorded for a
+    /// spectator, a viewer; numbered 0 for a connection in no seat and not watching, no viewer.
+    fn not_seated(&mut self, conn: ConnId, seq: u32, out: &mut Vec<Outbound>) {
+        let code = RejectCode::NotSeated;
+        match self.watchers.iter_mut().find(|w| w.conn == conn) {
+            Some(w) => w.viewer.post(
+                Some(conn),
+                |n| ServerMessage::Rejected { n, seq, code },
+                out,
+            ),
+            None => out.push(unseated(conn, seq)),
+        }
     }
 
     /// The side whose seat `conn` holds.
@@ -791,6 +894,11 @@ impl<'r> Session<'r> {
         BattleSide::BOTH
             .into_iter()
             .find(|side| self.seats[side.index()].holder == Some(conn))
+    }
+
+    /// The spectator `conn` is, if it watches.
+    fn watcher(&self, conn: ConnId) -> Option<&Watcher> {
+        self.watchers.iter().find(|w| w.conn == conn)
     }
 }
 

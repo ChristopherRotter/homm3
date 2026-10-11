@@ -242,6 +242,70 @@ async fn a_client_plays_the_bot_on_a_field_of_random_obstacles() {
 }
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn spectators_watch_a_hosted_game_within_its_limit() {
+    let limits = Limits {
+        spectators_per_game: 1,
+        ..fast()
+    };
+    let running = start(&config(limits)).await.unwrap();
+    let (a, game, _) = created(&running, "bot", Seat::Attacker).await;
+    let mut watcher = greeted(&running).await;
+    watcher.join(game, Seat::Spectator, None).await.unwrap();
+    assert!(matches!(
+        watcher.recv().await,
+        Some(ServerMessage::Joined {
+            seat: Seat::Spectator,
+            token: None,
+            ..
+        })
+    ));
+    let Some(ServerMessage::Snapshot { observation, .. }) = watcher.recv().await else {
+        panic!("no snapshot")
+    };
+    assert!(observation.spectator && observation.own_hero.is_none());
+    // One spectator is the limit here.
+    let mut late = greeted(&running).await;
+    late.join(game, Seat::Spectator, None).await.unwrap();
+    assert_eq!(
+        late.recv().await,
+        Some(ServerMessage::Refused {
+            reason: Refusal::NoSpectators
+        })
+    );
+    // The spectator sees the game to its end, never a turn, and gets no replay.
+    let (_, seen) = tokio::time::timeout(GAME_TIME, play(a, 3)).await.unwrap();
+    let ended = end(&seen);
+    let mut watched = Vec::new();
+    while let Some(message) = tokio::time::timeout(GAME_TIME, watcher.recv())
+        .await
+        .unwrap()
+    {
+        let over = matches!(message, ServerMessage::GameEnded { .. });
+        watched.push(message);
+        if over {
+            break;
+        }
+    }
+    assert_eq!(end(&watched), ended);
+    assert!(watched.iter().all(|m| matches!(
+        m,
+        ServerMessage::Events { .. } | ServerMessage::GameEnded { .. }
+    )));
+    watcher
+        .send(&ClientMessage::FetchReplay { seq: 9 })
+        .await
+        .unwrap();
+    assert!(matches!(
+        watcher.recv().await,
+        Some(ServerMessage::Rejected {
+            seq: 9,
+            code: RejectCode::NotSeated,
+            ..
+        })
+    ));
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn two_games_are_played_at_once() {
     let config = config(fast());
     let running = start(&config).await.unwrap();
@@ -948,11 +1012,14 @@ fn configurations_are_checked() {
         "games = 0",
         "games = 5000",
         "games_per_address = 0",
+        "spectators_per_game = 1025",
     ] {
         let text = format!("{offer}[limits]\n{limit}");
         let error = refused(&text).unwrap_err();
         assert!(error.0.contains("outside"), "{limit}: {error}");
     }
+    let watched = refused(&format!("{offer}[limits]\nspectators_per_game = 0")).unwrap();
+    assert_eq!(watched.limits.spectators_per_game, 0, "no spectators");
     assert!(Config::load(&base.join("no-such-file.toml")).is_err());
     // An offer whose scenario or profile does not load stops the start.
     let scenarios = base.join("packs/synthetic/scenarios");

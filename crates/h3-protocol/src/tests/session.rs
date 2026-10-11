@@ -3,6 +3,7 @@
 //! see, and the journal is the replay.
 
 use std::boxed::Box;
+use std::collections::BTreeMap;
 use std::format;
 use std::string::{String, ToString};
 use std::vec;
@@ -79,6 +80,7 @@ fn config(seed: u64) -> GameConfig {
         seed,
         checkpoint_every: 10,
         shadow: false,
+        spectators: 2,
     }
 }
 
@@ -373,10 +375,31 @@ fn joins_are_refused_with_their_reason() {
         },
     );
     assert_eq!(refused(wrong_game, A), Refusal::NoSuchGame);
+    // Spectators up to the game's limit (two here); a spectator takes no seat.
+    for conn in [ConnId(5), ConnId(6)] {
+        assert!(matches!(
+            to(&join(&mut s, conn, Seat::Spectator, None), conn)[..],
+            [
+                ServerMessage::Joined {
+                    seat: Seat::Spectator,
+                    token: None,
+                    ..
+                },
+                ServerMessage::Snapshot { n: 1, .. }
+            ]
+        ));
+    }
+    let late = ConnId(7);
     assert_eq!(
-        refused(join(&mut s, A, Seat::Spectator, None), A),
+        refused(join(&mut s, late, Seat::Spectator, None), late),
         Refusal::NoSpectators
     );
+    for seat in [Seat::Defender, Seat::Spectator] {
+        assert_eq!(
+            refused(join(&mut s, ConnId(5), seat, None), ConnId(5)),
+            Refusal::AlreadyJoined
+        );
+    }
     assert_eq!(
         refused(join(&mut s, A, Seat::Attacker, None), A),
         Refusal::SeatTaken,
@@ -721,6 +744,7 @@ fn journals_without_checkpoints_verify() {
         seed: 3,
         checkpoint_every: 0,
         shadow: false,
+        spectators: 2,
     };
     let mut s = Session::new(&r, config, players()).unwrap();
     let out = started(&mut s);
@@ -740,6 +764,7 @@ fn a_setup_the_engine_refuses_hosts_no_game() {
         seed: 3,
         checkpoint_every: 0,
         shadow: false,
+        spectators: 2,
     };
     assert!(Session::new(&r, config.clone(), players()).is_err());
     assert!(matches!(
@@ -1040,6 +1065,115 @@ fn a_pause_is_refused_outside_a_running_game() {
     ));
 }
 
+#[test]
+fn a_spectator_watches_what_is_public_and_never_acts() {
+    let r = ruleset();
+    let mut s = host(&r, 5, players());
+    let out = started(&mut s);
+    let out = play(&mut s, out, &mut Rng::from_seed(9), 12);
+    // A spectator who comes late gets the spectator's snapshot, no token.
+    let c = ConnId(5);
+    match &to(&join(&mut s, c, Seat::Spectator, None), c)[..] {
+        [
+            ServerMessage::Joined {
+                seat: Seat::Spectator,
+                token: None,
+                ..
+            },
+            ServerMessage::Snapshot { n: 1, observation },
+        ] => assert!(observation.spectator && observation.own_hero.is_none()),
+        other => panic!("{other:?}"),
+    }
+    // The events, never a turn.
+    let (actor, command) = staying(&out);
+    let next = send(&mut s, actor, ClientMessage::Command { seq: 90, command });
+    let watched = to(&next, c);
+    assert!(matches!(watched[0], ServerMessage::Events { n: 2, .. }));
+    assert!(
+        watched
+            .iter()
+            .all(|m| matches!(m, ServerMessage::Events { .. }))
+    );
+    // What it sends for a seat is rejected, numbered: it is a viewer.
+    let asks = [
+        ClientMessage::Command {
+            seq: 1,
+            command: Command::Wait {},
+        },
+        ClientMessage::Query {
+            seq: 2,
+            query: Query::CastTargets { spell: 0 },
+        },
+        ClientMessage::FetchReplay { seq: 3 },
+        ClientMessage::Pause { seq: 4 },
+    ];
+    let mut n = u32::try_from(watched.len()).unwrap() + 1;
+    for (message, seq) in asks.into_iter().zip(1..) {
+        n += 1;
+        let code = RejectCode::NotSeated;
+        assert_eq!(
+            to(&send(&mut s, c, message), c),
+            [ServerMessage::Rejected { n, seq, code }]
+        );
+    }
+    let fetched = to(&send(&mut s, c, ClientMessage::FetchRecord { seq: 5 }), c);
+    let [
+        ServerMessage::Record {
+            n: last, record, ..
+        },
+    ] = &fetched[..]
+    else {
+        panic!("{fetched:?}")
+    };
+    let header: RecordHeader = serde_json::from_str(record.lines().next().unwrap()).unwrap();
+    assert_eq!((header.seat, *last), (Seat::Spectator, n));
+    assert_eq!(record.lines().count(), n as usize + 1);
+    // Another seat's ask to pause reaches it; up to the limit of two, a place is freed by a
+    // leave; the host's pause closes it.
+    let asked = send(&mut s, B, ClientMessage::Pause { seq: 6 });
+    assert!(matches!(
+        to(&asked, c)[..],
+        [ServerMessage::PauseAsked {
+            seat: Seat::Defender,
+            ..
+        }]
+    ));
+    let (d, e) = (ConnId(6), ConnId(7));
+    join(&mut s, d, Seat::Spectator, None);
+    let full = to(&join(&mut s, e, Seat::Spectator, None), e);
+    assert!(matches!(
+        full[..],
+        [ServerMessage::Refused {
+            reason: Refusal::NoSpectators
+        }]
+    ));
+    send(&mut s, c, ClientMessage::Leave {});
+    join(&mut s, e, Seat::Spectator, None);
+    let paused = send(&mut s, A, ClientMessage::Pause { seq: 7 });
+    for conn in [d, e] {
+        assert_eq!(
+            to(&paused, conn),
+            [ServerMessage::Goodbye {
+                reason: GoodbyeReason::Paused
+            }]
+        );
+    }
+    assert_eq!(
+        drained(&mut s).last(),
+        Some(&Entry::Paused),
+        "nothing of them"
+    );
+    // A spectator sees the end.
+    let mut s = host(&r, 5, players());
+    let mut out = join(&mut s, c, Seat::Spectator, None);
+    out.extend(started(&mut s));
+    let out = play(&mut s, out, &mut Rng::from_seed(3), 400);
+    assert!(matches!(
+        to(&out, c).last(),
+        Some(ServerMessage::GameEnded { .. })
+    ));
+}
+
 /// Game 1 of the `full` scenario with `seed` and a shadow instance.
 fn shadowed(seed: u64) -> GameConfig {
     GameConfig {
@@ -1136,12 +1270,26 @@ fn hidden_spell(r: &Ruleset, side: BattleSide) -> u16 {
     r.spell_by_key(key).map(SpellId::raw).unwrap()
 }
 
-/// Both players join a game with `seed`; the tactics phase ends; the side to act then places its
-/// hero's hidden obstacles; the other side's connection drops and comes back. Every frame of the
-/// caster and of the other side, and the caster.
-fn hidden_cast(r: &Ruleset, seed: u64) -> (Vec<String>, Vec<String>, BattleSide) {
+/// What each viewer of [`hidden_cast`] received.
+struct Seen {
+    /// The caster's frames.
+    caster: Vec<String>,
+    /// The other side's, across its drop and return.
+    other: Vec<String>,
+    /// A spectator's from the start, then a spectator's who joined after the cast.
+    spectators: Vec<String>,
+    /// The caster's side.
+    side: BattleSide,
+}
+
+/// A spectator watches, then both players join a game with `seed`; the tactics phase ends; the
+/// side to act then places its hero's hidden obstacles; the other side's connection drops and
+/// comes back, and another spectator joins. Every frame of each viewer.
+fn hidden_cast(r: &Ruleset, seed: u64) -> Seen {
     let mut s = host(r, seed, players());
-    let mut all = started(&mut s);
+    let (early, late) = (ConnId(8), ConnId(9));
+    let mut all = join(&mut s, early, Seat::Spectator, None);
+    all.extend(started(&mut s));
     let (conn, legal) = turn(&all).unwrap();
     if legal.contains(&Command::EndTactics {}) {
         all.extend(send(
@@ -1186,46 +1334,61 @@ fn hidden_cast(r: &Ruleset, seed: u64) -> (Vec<String>, Vec<String>, BattleSide)
     };
     s.disconnected(viewer);
     let back = join(&mut s, ConnId(7), seat, Some(token));
-    let mut seen = frames(&all, viewer);
-    seen.extend(frames(&back, ConnId(7)));
-    (frames(&all, caster), seen, side)
+    let mut other = frames(&all, viewer);
+    other.extend(frames(&back, ConnId(7)));
+    let mut spectators = frames(&all, early);
+    spectators.extend(frames(&join(&mut s, late, Seat::Spectator, None), late));
+    Seen {
+        caster: frames(&all, caster),
+        other,
+        spectators,
+        side,
+    }
 }
 
 #[test]
 fn a_hidden_quicksand_leaves_the_other_viewers_bytes_unchanged() {
     let r = ruleset();
-    let (caster_a, viewer_a, side) = hidden_cast(&r, 11);
-    let (caster_b, viewer_b, _) = hidden_cast(&r, 12);
+    let (a, b) = (hidden_cast(&r, 11), hidden_cast(&r, 12));
     assert_eq!(
-        side,
+        a.side,
         BattleSide::Defender,
         "the defender places a Quicksand"
     );
     assert_ne!(
-        caster_a, caster_b,
+        a.caster, b.caster,
         "the pits lie elsewhere, as the caster sees"
     );
-    assert_eq!(viewer_a, viewer_b);
+    assert_eq!(a.other, b.other);
+    assert_eq!(a.spectators, b.spectators, "spectators see neither");
+    let snapshot = |frame: &String| match decode(frame) {
+        ServerMessage::Snapshot { observation, .. } => Some(observation),
+        _ => None,
+    };
+    let watched: Vec<_> = a.spectators.iter().filter_map(snapshot).collect();
+    assert_eq!(watched.len(), 2);
+    assert!(watched.iter().all(|o| o.spectator && o.own_hero.is_none()));
 }
 
 proptest! {
     #![proptest_config(ProptestConfig::with_cases(64))]
 
     /// Observation hygiene over the wire (ADR-0018 point 7): wherever the opponent's hidden
-    /// obstacles lie, the other viewer receives the same bytes.
+    /// obstacles lie, the other viewer and the spectators receive the same bytes.
     #[test]
     fn hidden_obstacles_never_reach_the_other_viewers_bytes(seeds: [u64; 2]) {
         let r = ruleset();
-        let (_, first, _) = hidden_cast(&r, seeds[0]);
-        let (_, second, _) = hidden_cast(&r, seeds[1]);
-        prop_assert_eq!(first, second);
+        let (first, second) = (hidden_cast(&r, seeds[0]), hidden_cast(&r, seeds[1]));
+        prop_assert_eq!(first.other, second.other);
+        prop_assert_eq!(first.spectators, second.spectators);
     }
 
     /// The seats and the numbers hold under any messages from any connections (ADR-0018 points
-    /// 6, 7 and 9; the M1 review): a connection gets `Joined` only while it holds no seat, so it
-    /// never holds two; numbered messages reach only a seat's holder, and each is its viewer's
-    /// record line of that number, the lines numbered without a gap; a connection without a seat
-    /// gets only unnumbered replies.
+    /// 6, 7 and 9; the M1 review; spectators since E16 M2 T4): a connection gets `Joined` only
+    /// while it holds no seat and watches nothing, so it is never two viewers; a spectator gets no
+    /// token and never a turn; numbered messages reach only a viewer's connection, and each is
+    /// that viewer's record line of that number, the lines numbered without a gap; any other
+    /// connection gets only unnumbered replies.
     #[test]
     fn seats_and_numbers_hold_under_any_messages(
         acts in proptest::collection::vec(arb_act(), 0..60),
@@ -1234,6 +1397,9 @@ proptest! {
         let mut s = host(&r, 5, players());
         let tokens = [TOKENS[0], TOKENS[1], "wrong"];
         let mut holders: [Option<ConnId>; 2] = [None, None];
+        // A spectator's viewer, numbered from 2 at each join (its record starts afresh).
+        let mut watchers: BTreeMap<ConnId, usize> = BTreeMap::new();
+        let mut next = 2;
         let mut legal: [Vec<Command>; 2] = [Vec::new(), Vec::new()];
         let mut numbered: Vec<(usize, u32, String)> = Vec::new();
         let mut entries = Vec::new();
@@ -1250,6 +1416,7 @@ proptest! {
                 Act::Disconnect => {
                     s.disconnected(conn);
                     holders = holders.map(|h| h.filter(|&h| h != conn));
+                    watchers.remove(&conn);
                     continue;
                 }
                 Act::Query(spell) => ClientMessage::Query {
@@ -1270,20 +1437,31 @@ proptest! {
             };
             for o in send(&mut s, conn, message) {
                 let m = decode(&o.frame);
-                let at = holders.iter().position(|&h| h == Some(o.to));
+                let viewer = holders
+                    .iter()
+                    .position(|&h| h == Some(o.to))
+                    .or_else(|| watchers.get(&o.to).copied());
                 match (&m, number(&m)) {
-                    (ServerMessage::Joined { seat, .. }, _) => {
-                        prop_assert_eq!(at, None, "Joined only without a seat");
-                        holders[usize::from(*seat != Seat::Attacker)] = Some(o.to);
+                    (ServerMessage::Joined { seat, token, .. }, _) => {
+                        prop_assert_eq!(viewer, None, "Joined only to no viewer");
+                        if *seat == Seat::Spectator {
+                            prop_assert_eq!(token, &None);
+                            watchers.insert(o.to, next);
+                            next += 1;
+                        } else {
+                            holders[usize::from(*seat != Seat::Attacker)] = Some(o.to);
+                        }
                     }
                     (ServerMessage::Goodbye { .. }, _) => {
                         holders = holders.map(|h| h.filter(|&h| h != o.to));
+                        watchers.remove(&o.to);
                     }
-                    (_, Some(0)) => prop_assert_eq!(at, None, "number 0 only without a seat"),
+                    (_, Some(0)) => prop_assert_eq!(viewer, None, "number 0 only to no viewer"),
                     (_, Some(n)) => {
-                        prop_assert!(at.is_some(), "numbered to no holder: {:?}", m);
-                        let i = at.unwrap_or_default();
+                        prop_assert!(viewer.is_some(), "numbered to no viewer: {:?}", m);
+                        let i = viewer.unwrap_or_default();
                         if let ServerMessage::YourTurn { legal: list, .. } = &m {
+                            prop_assert!(i < 2, "a spectator's turn");
                             legal[i].clone_from(list);
                         }
                         numbered.push((i, n, o.frame.clone()));
@@ -1301,14 +1479,26 @@ proptest! {
         prop_assert_eq!(restored.journal(), s.journal());
         prop_assert_eq!(restored.phase(), s.phase());
         prop_assert_eq!(restored.open_seats(), s.open_seats());
+        // Each viewer's record: the spectators' first, then the seats', re-taken.
+        let mut records: Vec<(ConnId, usize, Seat)> = watchers
+            .iter()
+            .map(|(&conn, &i)| (conn, i, Seat::Spectator))
+            .collect();
         for (i, seat) in [Seat::Attacker, Seat::Defender].into_iter().enumerate() {
             let conn = ConnId(10 + i as u64);
             join(&mut s, conn, seat, Some(TOKENS[i]));
+            records.push((conn, i, seat));
+        }
+        for (conn, i, seat) in records {
             let fetched = to(&send(&mut s, conn, ClientMessage::FetchRecord { seq: 0 }), conn);
             let Some(ServerMessage::Record { record, n, .. }) = fetched.first() else {
                 return Err(TestCaseError::fail(format!("{fetched:?}")));
             };
-            let lines: Vec<&str> = record.lines().skip(1).collect();
+            let mut lines = record.lines();
+            let header: RecordHeader = serde_json::from_str(lines.next().unwrap_or_default())
+                .map_err(|e| TestCaseError::fail(format!("{e}")))?;
+            prop_assert_eq!(header.seat, seat);
+            let lines: Vec<&str> = lines.collect();
             prop_assert_eq!(lines.len(), *n as usize);
             for (k, line) in lines.iter().enumerate() {
                 prop_assert_eq!(number(&decode(line)), Some(k as u32 + 1));

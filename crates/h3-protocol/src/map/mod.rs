@@ -15,7 +15,7 @@ use alloc::vec::Vec;
 use h3_battle::{
     BATTLE_STATE_HASH_VERSION, BattleResult, BattleSide, BattleState, CastTarget, CastTargets,
     HeroView, Hex, HexSet, LegalCommands, OwnHeroView, StackFlags, StackId, StackTraits,
-    StrikeFlags,
+    StrikeFlags, Viewer,
 };
 use h3_content::{CreatureTypeId, Ruleset, SpellId};
 use h3_kernel::hash::{HASH_ALGORITHM, HASH_VERSION};
@@ -124,16 +124,18 @@ pub fn command_to_engine(command: Command) -> h3_battle::Command {
     }
 }
 
-/// The battle as `viewer` sees it, on the wire.
-pub fn observe(state: &BattleState, ruleset: &Ruleset, viewer: BattleSide) -> Observation {
-    observation(&h3_battle::observe(state, ruleset, viewer))
+/// The battle as `viewer`, a side or a spectator (E16 M2 T4), sees it, on the wire.
+pub fn observe(state: &BattleState, ruleset: &Ruleset, viewer: impl Into<Viewer>) -> Observation {
+    observation(&h3_battle::observe_as(state, ruleset, viewer.into()))
 }
 
-/// The events `viewer` may see, in order, on the wire; the others are dropped.
-pub fn events(events: &[h3_battle::Event], viewer: BattleSide) -> Vec<Event> {
+/// The events `viewer`, a side or a spectator, may see, in order, on the wire; the others are
+/// dropped.
+pub fn events(events: &[h3_battle::Event], viewer: impl Into<Viewer>) -> Vec<Event> {
+    let viewer = viewer.into();
     events
         .iter()
-        .filter_map(|e| h3_battle::project(e, viewer))
+        .filter_map(|e| h3_battle::project_as(e, viewer))
         .map(|e| from_engine::event(&e.kind))
         .collect()
 }
@@ -269,6 +271,7 @@ pub(crate) fn observation(o: &h3_battle::Observation) -> Observation {
     };
     Observation {
         viewer: side(o.viewer),
+        spectator: o.spectator,
         round: o.round,
         tactics: o.tactics.map(|t| Tactics {
             side: side(t.side),

@@ -209,7 +209,7 @@ impl Prepared {
         offer: Arc<Offer>,
         game: u32,
         origin: IpAddr,
-        server: &config::Server,
+        (server, spectators): (&config::Server, usize),
     ) -> Result<Self, Error> {
         let mut setup = offer.setup.clone();
         if let (true, Some(terrain)) = (offer.random_obstacles, setup.terrain) {
@@ -234,6 +234,7 @@ impl Prepared {
             seed,
             checkpoint_every: server.checkpoint_every,
             shadow: server.shadow_instance,
+            spectators,
         };
         let (bot_seed, replay_path) = (os_u64()?, replay_path(&server.data, &offer.id, game)?);
         let begun = Journal {
@@ -274,7 +275,7 @@ impl Prepared {
         offer: Arc<Offer>,
         path: &Path,
         read: journal::Read,
-        server: &config::Server,
+        (server, spectators): (&config::Server, usize),
         listing: Option<(mpsc::Sender<ToGame>, oneshot::Sender<()>)>,
     ) -> Result<Self, String> {
         let doc = h3_cli::ReplayDoc::parse(&read.start.replay).map_err(|e| e.to_string())?;
@@ -291,6 +292,7 @@ impl Prepared {
             seed: replay.seed,
             checkpoint_every: replay.checkpoint_every,
             shadow: server.shadow_instance,
+            spectators,
         };
         let secrets =
             os_u64().and_then(|seed| Ok((seed, replay_path(&server.data, &offer.id, game)?)));
@@ -720,6 +722,7 @@ mod tests {
             seed: 1,
             checkpoint_every: 0,
             shadow: false,
+            spectators: 0,
         };
         let mut session = Session::new(&r, config, players).unwrap();
         let (to, mut queue) = mpsc::channel(1);
