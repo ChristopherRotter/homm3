@@ -5,7 +5,7 @@ The server lane's living state; read after the global `docs/HANDOFF.md`. Format 
 ## Current state
 
 - **M1 closed (2026-10-11, SRV-Q12). M2 T1–T4b merged (#67, #71, #72, #76, #78); M2 T4c done (2026-10-11)** on `claude/modest-turing-ttgjo8`: the host's spectator setting (`CreateGame`'s `spectators`, `SetSpectators` until the start, the lobby shows it; wire 8, journal format 3). **Next: M2 T5** (`QUEUE.md`): shutdown, drain, hardening, the M2 closure and checkpoint. Review list for the M2 checkpoint: the epic file.
-- **Shared changes on this branch** (the global HANDOFF's server row and its trap on the engine's fields): a separate commit; the pull request needs the label `cross-lane` (asked of the user for T4c, as given for T2–T4b).
+- **Shared changes on this branch** (the global HANDOFF's server row and its trap on the engine's fields): a separate commit; the pull request carries the label `cross-lane` (the user, 2026-10-11, as for T2–T4b).
 - **ADR-0018 point 5 as amended:** the mapping's matches over the engine's enums are exhaustive, and since T4b its patterns over the observation's structs too; a new battle variant or observation field fails `h3-protocol`'s build until mapped (global HANDOFF trap).
 - **The 100 % gate** covers `h3-protocol` (logic); `h3-server` is an adapter outside it, tested end to end.
 - **Versions** (`docs/08-work-process.md`): `PROTOCOL_VERSION` (`h3-protocol`, 8 since M2 T4c's spectator setting; 7 was M2 T4b's observation fields; bumped on every wire change), `RECORD_FORMAT_VERSION` (`h3-protocol`, 1), `JOURNAL_FORMAT_VERSION` (`h3-server`, 3 since M2 T4c's spectator setting; 2 was M2 T3's pause lines; a journal of another format is void at start).
