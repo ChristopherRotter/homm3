@@ -326,8 +326,11 @@ out of its replay's listing.
 - **T2b Re-keying, renames, the listing preference, the operator's rebind** (done 2026-10-11;
   `E16-log.md`): the three requests answered, each a line in the player log; `h3-server rebind`
   while the server is stopped, `<data>/lock` keeping one server or command at a time.
-- **T3 Seats bound to accounts**: a seat taken and re-taken by account, the journal's account,
-  the lobby's display names, the replay's listing by the seated accounts.
+- **T3 Seats bound to accounts** (done 2026-10-11; `E16-log.md`): a seat a logged-in connection
+  takes is its account's, re-taken by it alone without a token (`session::refusal`), also paused
+  and after a restart (journal format 4); the lobby's display names (`GameInfo::seated`); the
+  replay listed by the seated accounts' preferences; a re-key closes the account's other
+  connections (`Rekeyed`); wire version 13.
 - **T4a A game's bounds**: the commands-per-game limit (void beyond it), a waiting game whose
   seats are all empty leaves.
 - **T4b Behind a reverse proxy**: the forwarded address from trusted proxies, limits per IPv6
@@ -415,6 +418,13 @@ Choices queued under the autonomy contract (details in `E16-log.md`):
   <config.toml> <login> <public-key>` (the key checked as an Ed25519 key that is not weak);
   `<data>/lock` (`File::try_lock`), held by a running server for its life and by the command, so
   a second server on the same data directory does not start either.
+- T3: an account's seat taken by no token (`SeatTaken`, no new refusal) and its `Joined` without
+  one; the seat's account fixed at its first take (a login after opening the game does not bind
+  it); one account in both seats allowed; `Entry::TakenBy` beside `Entry::Taken`, the journal's
+  `Taken { side, account }`; `GameInfo::seated` (`Seated { seat, display }`, anonymous and bot
+  seats unnamed), its names as they stand at the seats' last change (a rename shows later); an
+  account the player log does not know keeps a replay unlisted; the replay's listing decided when
+  the game ends; `GoodbyeReason::Rekeyed` and the connections by account (`Service::sessions`).
 
 ## Review list for the M2 checkpoint (passed 2026-10-11, SRV-Q16)
 

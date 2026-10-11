@@ -10,11 +10,11 @@
 //!   registration whose display name is taken, ignoring case, is refused `NameTaken`.
 //! - A logged-in account (E16 M3 T2b) re-keys with both keys' signatures over
 //!   `h3_protocol::account::rekey_message` (else `BadLogin`): from then on only the new key logs
-//!   in; its connections logged in already stay so. It renames itself to a display name no other
+//!   in. A re-key that changed the key says so, and the account's other connections, logged in
+//!   with the key it had, close (`net`, E16 M3 T3). It renames itself to a display name no other
 //!   account has, ignoring case (else `NameTaken`), and sets its listing preference.
 //! - Each change's line is synced before its answer: a change the server answered survives a
-//!   crash; a request that changes nothing writes none. A re-key that changed the key says so: the
-//!   account's other connections, logged in with the key it had, then close (E16 M3 T3). A log that cannot be written refuses the
+//!   crash; a request that changes nothing writes none. A log that cannot be written refuses the
 //!   changes (`BadLogin`, the reason on standard error); the accounts as they stand still log in.
 //!
 //! Provisional (E16 M3 T2a, T2b): the module layout; a display name sent with the login of a known

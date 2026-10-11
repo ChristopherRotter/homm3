@@ -931,7 +931,7 @@ fn a_journal_cut_short_is_completed() {
     let (last, cut) = entries.split_last().unwrap();
     assert!(matches!(last, Entry::Checkpoint(_)));
     let mut restored = Session::restore(&r, config(5), players(), cut).unwrap();
-    assert_eq!(drained(&mut restored), [last.clone()]);
+    assert_eq!(drained(&mut restored), std::slice::from_ref(last));
     // Cut before the bot's answer: the restore lets the bot act.
     let bot = || [players().into_iter().next().unwrap(), random_bot(3)];
     let mut s = host(&r, 8, bot());

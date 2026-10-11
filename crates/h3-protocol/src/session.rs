@@ -55,8 +55,9 @@
 //!   ([`Session::drain_mismatches`]).
 //!
 //! Provisional (E16 M1 T2, M2 T2–T4, M3 T3): the names, the connection numbering, frames as text,
-//! the record's layout, the entries, who pauses, a spectator's numbered rejections, a seat's account
-//! fixed when it is first taken, one account in both seats allowed (the epic's review list).
+//! the record's layout, the entries, who pauses, a spectator's numbered rejections, a seat's
+//! account fixed when it is first taken, one account in both seats allowed (the epic's review
+//! list).
 
 use alloc::boxed::Box;
 use alloc::collections::{BTreeMap, VecDeque};

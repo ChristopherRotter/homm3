@@ -302,8 +302,8 @@ impl Opening {
 
 /// Creates a game of `offer` for a client at `origin`, whose creator takes `seat` and chose
 /// whether it takes spectators (`watchable`, E16 M2 T4c), and binds the creator (`conn`, its queue
-/// `to`, its account's `login`) to it: the game's id and inbox, or why not. The creator's join is the game's first
-/// message; the game draws its secrets and creates its journal on its own thread
+/// `to`, its account's `login`) to it: the game's id and inbox, or why not. The creator's join is
+/// the game's first message; the game draws its secrets and creates its journal on its own thread
 /// ([`game::launch`]), so no file is written under the lock (E16 M2 T5e).
 pub(crate) fn create(
     shared: &Shared,

@@ -83,7 +83,8 @@ only and a visible note. The server never reads anything from this check.
   per game in `<data>/games/`, its entries synced before the frames that depend on them, re-run
   at start, a journal that does not match or re-run moved to `<data>/void/`.
 - **Pause and resume** are code since M2 T3 (the record in `E16-log.md`): unranked, the host's
-  `Pause` pauses, a paused game is its journal, a seat's join with its token restores it. Since
+  `Pause` pauses, a paused game is its journal, a seat's join with its token restores it (or as
+  the seat's account, M3 T3). Since
   M2 T5a a running game whose seats all stay empty for `[limits] empty_game_ms` pauses, and a
   paused game nobody resumes within `paused_game_ms` is void. Still to come: ranked, both players
   agree, within the ladder's limit (M4).
@@ -171,8 +172,8 @@ contains seeds, tokens, nonces or signatures.
   each server it knows has accepted `Rekey { seq, key, by_old, by_new }` at the next login: both
   keys sign `account::rekey_message` (the server's id, the connection's challenge, the login name,
   the new key); the server rebinds the account, and from then on only the new key logs in (its
-  connections logged in already stay so). A re-key to the key it has changes nothing. A forgotten
-  password is a lost account, unless the operator binds the login name to the key of the player's
+  other connections, logged in with the old key, close `Goodbye { Rekeyed }`, since M3 T3). A
+  re-key to the key it has changes nothing. A forgotten password is a lost account, unless the operator binds the login name to the key of the player's
   new password: `h3-server rebind <config.toml> <login> <public-key>` (*provisional*) while the
   server is stopped (`<data>/lock`: a running server holds it, and the command refuses), checked
   as an Ed25519 key, a `Rebound` line.
@@ -181,9 +182,15 @@ contains seeds, tokens, nonces or signatures.
   `listed`. Each answered `Account`; a request that changes nothing writes no line.
 - **Privacy.** A public key and a login name are shown to their owner only (a fingerprint in the
   client); other clients see display names. Anonymous connections may never queue for a ladder.
-- **A replay's listing (the user, SRV-Q17).** An account's preference (`listed`, default true);
-  a finished game is listed only if its host left it open to spectators and no seated account
-  opted out, else archived unlisted.
+- **Seats bound to accounts** (built in M3 T3). A connection opens a game with the account it is
+  logged in as. A seat it takes the first time belongs to the account: any connection logged in
+  as it re-takes the seat without a token (after a drop, to resume a paused game, after a
+  restart), no token and no other account takes it (`SeatTaken`), and its `Joined` carries no
+  token; a seat taken anonymously keeps its token. The journal's `Taken` line names the account
+  (format 4). The lobby names the seats' accounts by display name (`GameInfo::seated`).
+- **A replay's listing (the user, SRV-Q17; built in M3 T3).** An account's preference (`listed`,
+  default true); a finished game is listed only if its host left it open to spectators and no
+  seated account opted out when it ended, else archived unlisted.
 - **The player log** (M3 T2a, T2b). `<data>/players.log`, JSON lines (`Registered { login, key,
   display }`, `Rekeyed { login, key }`, `Rebound { login, key }`, `Renamed { login, display }`,
   `Listed { login, listed }`), each checked against the accounts as they stand, owner-read-write,

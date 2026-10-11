@@ -806,3 +806,51 @@ how and why the work went.
   logs in after the start; the player log's events read back, a taken name and an unknown
   account refused unwritten, two more bad logs. The command smoke-tested by hand (usage, a bad
   key, an unknown account).
+
+### M3 T3 — Seats bound to accounts (2026-10-11)
+
+- **The start.** #102 (M3 T2b) had merged; the branch restarted from `master`. The baseline
+  `verify --scope server` passed from a worktree of `master` (bench-check without drift).
+- **The session core** (`h3-protocol`, *provisional*): the host's `Session::logged_in(conn,
+  login)` before a connection's join (forgotten at its disconnect). A seat taken the first time by
+  a logged-in connection belongs to the account (`SeatState::account`, the entry
+  `Entry::TakenBy(side, login)`; `Entry` lost `Copy`); one taken anonymously stays the token's
+  (`Entry::Taken`). Who may take a seat is one public function, `session::refusal((token, issued,
+  account), token, login)`, which the registry also applies to a paused game's seats: an account's
+  seat is its account's alone whatever the token (else `SeatTaken`, no new refusal); another seat
+  is taken without a token the first time and re-taken with it. An account's `Joined` carries no
+  token (the journal's first line still holds one per player seat, which takes nothing).
+  `Session::accounts()` names the seats' accounts. The account is fixed at the first take: a
+  connection that logs in after it opened a game plays that game as it opened it; one account may
+  hold both seats (playing oneself from two devices).
+- **The wire** (version 13): `GameInfo::seated` (`Seated { seat, display }`: the seats that belong
+  to accounts, by display name; anonymous and bot seats unnamed), `GoodbyeReason::Rekeyed`; the
+  docs of `Join`, `Joined`, `SeatTaken`, `Replaced`, `Phase::Paused`. `Lobby::seat(game, seated)`.
+- **The journal** (format 4): `Taken { side, account }`, the account left out for an anonymous
+  seat; a format-3 journal is void at start, as every older format is.
+- **The server**: `ToGame::Open` and `registry::Opening` carry the connection's login (the gate's,
+  when the task routes the join or the creation); the registry holds the `Arc<Accounts>`
+  (`Service` shares it), a paused game the seats' accounts (`Hosted::Paused::accounts`). A game's
+  thread names its seats in the lobby whenever their accounts change (`game::seated`, display
+  names as they stand, looked up on the game's thread outside the registry's lock; a rename shows
+  at the next change, *provisional*); a restored game is listed with them. `finish` lists a
+  replay only if the host left the game open and every seat's account lets it (an account the log
+  does not know cannot).
+- **A re-key closes the account's other connections** (the T2b inbox item): `Service::sessions`
+  maps (login, connection) to a `Notify`; a connection is entered before its login's key is
+  checked (removed if refused), so a re-key committed after the check reaches it; a re-key that
+  changed the key (`Accounts::answer` says so) notifies the account's other connections, which
+  close `Goodbye { Rekeyed }`; a re-key to the same key closes nothing.
+- **Tests**: `h3-protocol` 70 (+2): an account's seat re-taken by its account (replacing a holder,
+  any token), refused to another account, an anonymous connection and the token; an anonymous
+  seat's token for a logged-in connection; a login forgotten at the disconnect; the seats bound
+  again by a restore; `refusal`'s cases; the lobby's names; the wire's new field and reason.
+  `h3-server` 59 (+3, `tests/seats.rs`): a seat re-taken by its account after a drop, replaced,
+  paused and resumed by the account, after a crash (the journal and the player log), and refused
+  to another account, a stranger and the journal's token, then played to a replay that verifies
+  and is listed; the lobby names an account's seat and not an anonymous one; an opted-out account's
+  replay archived unlisted, listed after it opted in; a re-key closes the account's other
+  connection, the re-keying one and other accounts stay, a re-key to the same key closes nothing.
+  `crashed()` copies the player log too. The suite ran three times without a failure.
+- **Not done here**: ADR-0018 point 8's text still names only the host's setting (ADR-0019 point
+  2 carries the decision); its amendment joins `06-security.md`'s accounts in T5's shared change.
