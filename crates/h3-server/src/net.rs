@@ -232,8 +232,14 @@ impl Link {
                 text: lock(&self.registry).list(seq),
                 close: false,
             }),
-            ClientMessage::CreateGame { seq, offer, seat } => {
-                match registry::create(&self.registry, self.origin, &offer, seat) {
+            ClientMessage::CreateGame {
+                seq,
+                offer,
+                seat,
+                spectators,
+            } => {
+                let watchable = spectators.unwrap_or(true);
+                match registry::create(&self.registry, self.origin, &offer, seat, watchable) {
                     Err(reason) => Routed::Reply(refused(reason)),
                     Ok((game, to_game)) => {
                         let join = ClientMessage::Join {
@@ -337,6 +343,7 @@ fn unbound(message: &ClientMessage) -> Frame {
         | ClientMessage::FetchReplay { seq }
         | ClientMessage::FetchRecord { seq }
         | ClientMessage::Pause { seq }
+        | ClientMessage::SetSpectators { seq, .. }
         | ClientMessage::ListGames { seq }
         | ClientMessage::CreateGame { seq, .. } => *seq,
         ClientMessage::Hello { .. } | ClientMessage::Ping { .. } | ClientMessage::Join { .. } => 0,

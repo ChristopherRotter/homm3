@@ -45,8 +45,8 @@ fn games(lobby: &Lobby<u8>) -> Vec<GameInfo> {
 fn games_are_created_from_offers_and_listed() {
     let mut lobby = lobby(8, 8);
     assert!(games(&lobby).is_empty());
-    assert_eq!(lobby.create(1, "pvp", Seat::Attacker), Ok((1, 0)));
-    assert_eq!(lobby.create(2, "bot", Seat::Attacker), Ok((2, 1)));
+    assert_eq!(lobby.create(1, "pvp", Seat::Attacker, true), Ok((1, 0)));
+    assert_eq!(lobby.create(2, "bot", Seat::Attacker, false), Ok((2, 1)));
     assert_eq!(
         games(&lobby),
         [
@@ -55,20 +55,26 @@ fn games_are_created_from_offers_and_listed() {
                 offer: "pvp".to_string(),
                 phase: Phase::Waiting,
                 open: vec![Seat::Attacker, Seat::Defender],
+                spectators: true,
             },
             GameInfo {
                 game: 2,
                 offer: "bot".to_string(),
                 phase: Phase::Waiting,
                 open: vec![Seat::Attacker],
+                spectators: false,
             },
         ]
     );
     assert!(lobby.contains(1) && lobby.contains(2) && !lobby.contains(3));
     // The games report where they are.
-    lobby.update(1, Phase::Running, vec![]);
-    lobby.update(9, Phase::Over, vec![]);
-    assert_eq!(games(&lobby)[0].phase, Phase::Running);
+    lobby.update(1, (Phase::Running, vec![], false));
+    lobby.update(9, (Phase::Over, vec![], true));
+    assert_eq!(
+        (games(&lobby)[0].phase, games(&lobby)[0].spectators),
+        (Phase::Running, false),
+        "a game reports whether it takes spectators too"
+    );
     assert_eq!(
         games(&lobby).len(),
         2,
@@ -77,43 +83,43 @@ fn games_are_created_from_offers_and_listed() {
     // A removed game leaves the list; ids are never reused.
     lobby.remove(1);
     assert!(!lobby.contains(1));
-    assert_eq!(lobby.create(1, "pvp", Seat::Defender), Ok((3, 0)));
+    assert_eq!(lobby.create(1, "pvp", Seat::Defender, true), Ok((3, 0)));
 }
 
 #[test]
 fn creations_are_refused_with_their_reason() {
     let mut lobby = lobby(3, 2);
     assert_eq!(
-        lobby.create(1, "pvp", Seat::Spectator),
+        lobby.create(1, "pvp", Seat::Spectator, true),
         Err(Refusal::NoSpectators)
     );
     assert_eq!(
-        lobby.create(1, "nothing", Seat::Attacker),
+        lobby.create(1, "nothing", Seat::Attacker, true),
         Err(Refusal::NoSuchOffer)
     );
     assert_eq!(
-        lobby.create(1, "bot", Seat::Defender),
+        lobby.create(1, "bot", Seat::Defender, true),
         Err(Refusal::SeatTaken),
         "the bot's seat"
     );
-    assert_eq!(lobby.create(1, "pvp", Seat::Attacker), Ok((1, 0)));
-    assert_eq!(lobby.create(1, "pvp", Seat::Attacker), Ok((2, 0)));
+    assert_eq!(lobby.create(1, "pvp", Seat::Attacker, true), Ok((1, 0)));
+    assert_eq!(lobby.create(1, "pvp", Seat::Attacker, true), Ok((2, 0)));
     // The origin's limit.
     assert_eq!(
-        lobby.create(1, "pvp", Seat::Attacker),
+        lobby.create(1, "pvp", Seat::Attacker, true),
         Err(Refusal::TooManyGames)
     );
     // The total's.
-    assert_eq!(lobby.create(2, "bot", Seat::Attacker), Ok((3, 1)));
+    assert_eq!(lobby.create(2, "bot", Seat::Attacker, true), Ok((3, 1)));
     assert_eq!(
-        lobby.create(3, "bot", Seat::Attacker),
+        lobby.create(3, "bot", Seat::Attacker, true),
         Err(Refusal::TooManyGames)
     );
     // A game that is over counts no more; one that is removed neither.
-    lobby.update(1, Phase::Over, vec![]);
-    assert_eq!(lobby.create(1, "pvp", Seat::Attacker), Ok((4, 0)));
+    lobby.update(1, (Phase::Over, vec![], true));
+    assert_eq!(lobby.create(1, "pvp", Seat::Attacker, true), Ok((4, 0)));
     lobby.remove(2);
-    assert_eq!(lobby.create(3, "bot", Seat::Attacker), Ok((5, 1)));
+    assert_eq!(lobby.create(3, "bot", Seat::Attacker, true), Ok((5, 1)));
     assert!(
         lobby.contains(1),
         "an over game stays listed until it is removed"
@@ -128,6 +134,7 @@ fn restored_games_are_listed_again_and_counted() {
         offer: "pvp".to_string(),
         phase: Phase::Running,
         open: vec![],
+        spectators: true,
     };
     // Beyond the origin's limit, which the games were within when they were created.
     lobby.reopen(1, restored(7));
@@ -135,16 +142,16 @@ fn restored_games_are_listed_again_and_counted() {
     lobby.reopen(2, restored(5));
     assert_eq!(games(&lobby), [restored(3), restored(5), restored(7)]);
     assert_eq!(
-        lobby.create(3, "pvp", Seat::Attacker),
+        lobby.create(3, "pvp", Seat::Attacker, true),
         Err(Refusal::TooManyGames),
         "they count in total"
     );
     lobby.remove(7);
     assert_eq!(
-        lobby.create(1, "pvp", Seat::Attacker),
+        lobby.create(1, "pvp", Seat::Attacker, true),
         Err(Refusal::TooManyGames),
         "and for their origin"
     );
     // Ids continue after the highest restored one.
-    assert_eq!(lobby.create(3, "pvp", Seat::Attacker), Ok((8, 0)));
+    assert_eq!(lobby.create(3, "pvp", Seat::Attacker, true), Ok((8, 0)));
 }

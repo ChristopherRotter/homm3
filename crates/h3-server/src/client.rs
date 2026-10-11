@@ -82,6 +82,7 @@ impl Client {
             seq: 0,
             offer: offer.to_owned(),
             seat,
+            spectators: None,
         })
         .await
     }

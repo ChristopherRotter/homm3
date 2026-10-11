@@ -81,6 +81,7 @@ fn config(seed: u64) -> GameConfig {
         checkpoint_every: 10,
         shadow: false,
         spectators: 2,
+        watchable: true,
     }
 }
 
@@ -714,6 +715,7 @@ fn the_lobby_hears_where_the_game_is() {
             seq: 2,
             offer: "pvp".to_string(),
             seat: Seat::Attacker,
+            spectators: None,
         },
     ] {
         assert!(send(&mut s, A, message).is_empty());
@@ -745,6 +747,7 @@ fn journals_without_checkpoints_verify() {
         checkpoint_every: 0,
         shadow: false,
         spectators: 2,
+        watchable: true,
     };
     let mut s = Session::new(&r, config, players()).unwrap();
     let out = started(&mut s);
@@ -765,6 +768,7 @@ fn a_setup_the_engine_refuses_hosts_no_game() {
         checkpoint_every: 0,
         shadow: false,
         spectators: 2,
+        watchable: true,
     };
     assert!(Session::new(&r, config.clone(), players()).is_err());
     assert!(matches!(
@@ -783,9 +787,17 @@ fn journaled(r: &Ruleset, commands: u32) -> (Session<'_>, Vec<Entry>) {
     out.extend(join(&mut s, B, Seat::Defender, None));
     assert_eq!(
         drained(&mut s),
-        [Entry::Taken(BattleSide::Defender), Entry::Started]
+        [
+            Entry::Taken(BattleSide::Defender),
+            Entry::Spectators(true),
+            Entry::Started,
+        ]
     );
-    entries.extend([Entry::Taken(BattleSide::Defender), Entry::Started]);
+    entries.extend([
+        Entry::Taken(BattleSide::Defender),
+        Entry::Spectators(true),
+        Entry::Started,
+    ]);
     play(&mut s, out, &mut Rng::from_seed(9), commands);
     entries.extend(drained(&mut s));
     (s, entries)
@@ -800,6 +812,7 @@ fn the_entries_are_the_journal_and_restore_the_game() {
     let mut expected = vec![
         Entry::Taken(BattleSide::Attacker),
         Entry::Taken(BattleSide::Defender),
+        Entry::Spectators(true),
         Entry::Started,
     ];
     let mut checkpoints = journal.checkpoints.iter();
@@ -952,7 +965,11 @@ fn a_waiting_game_restores_its_taken_seats() {
     assert!(s.started());
     assert_eq!(
         drained(&mut s),
-        [Entry::Taken(BattleSide::Defender), Entry::Started]
+        [
+            Entry::Taken(BattleSide::Defender),
+            Entry::Spectators(true),
+            Entry::Started,
+        ]
     );
 }
 
@@ -1174,6 +1191,133 @@ fn a_spectator_watches_what_is_public_and_never_acts() {
     ));
 }
 
+#[test]
+fn the_host_opens_and_closes_its_game_to_spectators_until_it_starts() {
+    let r = ruleset();
+    let set = |seq, open| ClientMessage::SetSpectators { seq, open };
+    let (c, d) = (ConnId(5), ConnId(6));
+    let mut s = host(&r, 5, players());
+    let mut entries = drained(&mut s);
+    join(&mut s, A, Seat::Attacker, None);
+    join(&mut s, c, Seat::Spectator, None);
+    assert!(s.takes_spectators());
+    // Closing ends the spectators' watch and refuses the next ones; it is an entry.
+    let closed = send(&mut s, A, set(1, false));
+    assert_eq!(
+        to(&closed, c),
+        [ServerMessage::Goodbye {
+            reason: GoodbyeReason::SpectatorsClosed
+        }]
+    );
+    assert!(matches!(
+        to(&closed, A)[..],
+        [ServerMessage::SpectatorsSet {
+            seq: 1,
+            open: false,
+            ..
+        }]
+    ));
+    entries.extend(drained(&mut s));
+    assert_eq!(
+        entries,
+        [Entry::Taken(BattleSide::Attacker)],
+        "a change before the start is no entry"
+    );
+    assert!(!s.takes_spectators());
+    let refused = [ServerMessage::Refused {
+        reason: Refusal::NoSpectators,
+    }];
+    assert_eq!(to(&join(&mut s, d, Seat::Spectator, None), d), refused);
+    // The same setting again is answered.
+    let again = send(&mut s, A, set(2, false));
+    assert!(matches!(
+        to(&again, A)[..],
+        [ServerMessage::SpectatorsSet {
+            seq: 2,
+            open: false,
+            ..
+        }]
+    ));
+    // Opened again, the game takes them.
+    send(&mut s, A, set(3, true));
+    assert!(matches!(
+        to(&join(&mut s, d, Seat::Spectator, None), d)[0],
+        ServerMessage::Joined { .. }
+    ));
+    // A spectator holds no seat.
+    assert!(matches!(
+        to(&send(&mut s, d, set(4, false)), d)[..],
+        [ServerMessage::Rejected {
+            seq: 4,
+            code: RejectCode::NotSeated,
+            ..
+        }]
+    ));
+    // Closed before the start; then the configuration is fixed.
+    send(&mut s, A, set(5, false));
+    join(&mut s, B, Seat::Defender, None);
+    entries.extend(drained(&mut s));
+    assert_eq!(s.phase(), Phase::Running);
+    assert_eq!(
+        entries,
+        [
+            Entry::Taken(BattleSide::Attacker),
+            Entry::Taken(BattleSide::Defender),
+            Entry::Spectators(false),
+            Entry::Started,
+        ],
+        "the setting the game started with is an entry"
+    );
+    for (conn, seq) in [(A, 6), (B, 7)] {
+        assert!(matches!(
+            to(&send(&mut s, conn, set(seq, true)), conn)[..],
+            [ServerMessage::Rejected {
+                code: RejectCode::AlreadyStarted,
+                ..
+            }]
+        ));
+    }
+    assert!(!s.takes_spectators());
+    // A restart restores the setting from the entries.
+    let restored = Session::restore(&r, config(5), players(), &entries).unwrap();
+    assert!(!restored.takes_spectators());
+    // A newcomer in the other seat of a waiting game whose host left is not the host.
+    let mut s = host(&r, 5, players());
+    join(&mut s, A, Seat::Attacker, None);
+    s.disconnected(A);
+    join(&mut s, B, Seat::Defender, None);
+    assert_eq!(s.phase(), Phase::Waiting);
+    assert!(matches!(
+        to(&send(&mut s, B, set(8, false)), B)[..],
+        [ServerMessage::Rejected {
+            seq: 8,
+            code: RejectCode::NotHost,
+            ..
+        }]
+    ));
+    // A game created closed, one on a server without spectators and a paused one take none.
+    let closed = GameConfig {
+        watchable: false,
+        ..config(5)
+    };
+    let mut s = Session::new(&r, closed, players()).unwrap();
+    assert!(!s.takes_spectators());
+    assert_eq!(to(&join(&mut s, c, Seat::Spectator, None), c), refused);
+    let none = GameConfig {
+        spectators: 0,
+        ..config(5)
+    };
+    assert!(
+        !Session::new(&r, none, players())
+            .unwrap()
+            .takes_spectators()
+    );
+    let mut s = host(&r, 5, players());
+    started(&mut s);
+    send(&mut s, A, ClientMessage::Pause { seq: 9 });
+    assert!(s.paused() && !s.takes_spectators());
+}
+
 /// Game 1 of the `full` scenario with `seed` and a shadow instance.
 fn shadowed(seed: u64) -> GameConfig {
     GameConfig {
@@ -1240,6 +1384,7 @@ fn the_shadow_instance_rebuilds_a_faulty_battle_from_the_journal() {
     let mut entries = vec![
         Entry::Taken(BattleSide::Attacker),
         Entry::Taken(BattleSide::Defender),
+        Entry::Spectators(true),
         Entry::Started,
     ];
     entries.extend(

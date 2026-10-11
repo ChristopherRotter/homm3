@@ -488,3 +488,29 @@ how and why the work went.
   re-baselined at 275 849 212): the mapping test gives every new field a distinctive value and finds it on the wire; the
   hygiene properties unchanged (the new hero fields ride in `own_hero`, which only the hero's side
   gets).
+
+### M2 T4c — The host's spectator setting (2026-10-11)
+
+- **The start.** #78 (T4b) was merged; the branch restarted from `master` (the code the T4b
+  session verified). The user asked for the task and answered its two questions: the host changes
+  the setting only before the start; a new game takes spectators unless its creator says otherwise.
+- **The wire, version 8** (*queued for the M2 review*): `CreateGame`'s `spectators: Option<bool>`
+  (`#[serde(default)]`: left out, or `None`, the game takes them); `SetSpectators { seq, open }`,
+  answered `SpectatorsSet { n, seq, open }` (numbered, the host's seat) or `Rejected` (`NotSeated`,
+  the new `NotHost` and `AlreadyStarted`); `Goodbye { SpectatorsClosed }` for each spectator a
+  closing ends; `GameInfo::spectators`: the host's setting on a server whose limit is above 0,
+  false while paused.
+- **The session core** (`h3-protocol`, logic, 100 %): `GameConfig::watchable`, the creator's
+  choice; `SetSpectators` from the host before the start sets it, closing drains the spectators;
+  a spectator's `Join` is refused `NoSpectators` while closed; `Session::takes_spectators` for
+  the lobby. **The setting is an entry once, at the start** (`Entry::Spectators` just before
+  `Started`), not at each change: a game that never started is not restored, so only the
+  setting it started with must last, and a toggling host cannot grow the journal or make the
+  server sync a line per message (the first draft journaled every change; caught in the
+  session's own review). `Session::restore` re-runs the entry. The lobby's `create` and `update`
+  carry the listed value.
+- **The server** (*provisional*): `net.rs` passes the creator's choice (left out: open) to the
+  registry, which lists it within the server's limit; the journal's `Spectators { open }` line
+  (`JOURNAL_FORMAT_VERSION` 3: a format-2 journal is void after the upgrade); a restored game
+  takes its setting from that line; the game's thread reports the setting with its phase and
+  seats. Not built: an offer's own setting (M4's ladders, whose games have no host).
