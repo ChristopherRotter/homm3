@@ -1121,6 +1121,9 @@ pub fn harvest_heroes(
     }
     let mut unmodelled: BTreeMap<&str, usize> = BTreeMap::new();
     let mut fixed_used = 0;
+    let specialty_fixes = &gap.data_quirks.specialty_creature;
+    let mut specialty_fixes_used = vec![0usize; specialty_fixes.len()];
+    let mut pending = Vec::new();
     for (id, ((row, rec), spec)) in hero_rows
         .iter()
         .zip(&exe.heroes)
@@ -1230,24 +1233,55 @@ pub fn harvest_heroes(
                 ],
             )),
             1 => {
-                let c = usize::try_from(spec.id)
-                    .ok()
-                    .and_then(|i| ctx.creatures.get(&i))
-                    .ok_or_else(|| format!("{what}: specialty creature {}", spec.id))?;
                 let cs = &gap.heroes.creature_specialty;
-                let speed = if c.war_machine {
-                    cs.war_machine_speed
-                } else {
-                    cs.speed
+                let specialty = |id: i32| -> Result<String, String> {
+                    let c = usize::try_from(id)
+                        .ok()
+                        .and_then(|i| ctx.creatures.get(&i))
+                        .ok_or_else(|| format!("{what}: specialty creature {id}"))?;
+                    let speed = if c.war_machine {
+                        cs.war_machine_speed
+                    } else {
+                        cs.speed
+                    };
+                    Ok(inline(
+                        "creature_specialty",
+                        &[
+                            ("creature", quote(&creature(id, pack, &what)?)),
+                            ("bp_per_step", cs.bp_per_step.to_string()),
+                            ("speed", speed.to_string()),
+                        ],
+                    ))
                 };
-                effects.push(inline(
-                    "creature_specialty",
-                    &[
-                        ("creature", quote(&creature(spec.id, pack, &what)?)),
-                        ("bp_per_step", cs.bp_per_step.to_string()),
-                        ("speed", speed.to_string()),
-                    ],
-                ));
+                effects.push(specialty(spec.id)?);
+                // A data quirk (E04b T8e; ADR-0007): the record names the wrong creature; an
+                // override gated by the quirk's flag names the right one.
+                for (fix, used) in specialty_fixes
+                    .iter()
+                    .zip(specialty_fixes_used.iter_mut())
+                    .filter(|(f, _)| f.hero == name)
+                {
+                    let (fixed, _) = ctx
+                        .creatures
+                        .iter()
+                        .find(|&(&i, r)| {
+                            r.name == fix.creature && usize::try_from(spec.id) != Ok(i)
+                        })
+                        .ok_or_else(|| {
+                            format!(
+                                "gapfill: data quirk: {what} with creature `{}`",
+                                fix.creature
+                            )
+                        })?;
+                    let fixed = i32::try_from(*fixed).map_err(|_| "creature id".to_owned())?;
+                    pending.push(format!(
+                        "\n[[hero_override]]\ntarget = \"{pack}:{key}\"  # Q-0006\n\
+                         fixes = \"{}\"\nspecialty = {}\n",
+                        fix.flag,
+                        effect_list(&[specialty(fixed)?])
+                    ));
+                    *used += 1;
+                }
             }
             3 => {
                 let spell = quote(&spell_ref(spec.id, pack, &what)?);
@@ -1313,6 +1347,15 @@ pub fn harvest_heroes(
         if !effects.is_empty() {
             let _ = writeln!(text, "specialty = {}", effect_list(&effects));
         }
+        for o in pending.drain(..) {
+            text.push_str(&o);
+        }
+    }
+    if specialty_fixes_used.iter().any(|&n| n != 1) {
+        return Err(
+            "gapfill: a data quirk's specialty fix must meet exactly one creature specialist"
+                .into(),
+        );
     }
     if fixed_used != gap.heroes.spell_specialty.fixed.len() {
         return Err("gapfill: a fixed spell specialty names no spell specialist".into());

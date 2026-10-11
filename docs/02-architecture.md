@@ -116,6 +116,16 @@ An *extension* (AB, SoD, later WoG/HotA) is a **content pack** (Tier 1–3 data)
   | Instruction count, `random-rollouts-full` workload | 387 614 575 Ir for 10 402 steps (≈ 37 k Ir/step) | **regression gate: +2 %** (`benches/battle/random-rollouts-full.toml`) |
 
   Wall-time numbers are indicative (shared cloud CPU, ±5 %); the deterministic gate is the instruction count. Re-measure on the user's Ryzen when convenient.
+- **Adventure layers (measured in E08 T5b, 2026-10-11)**: a player's explored layer as a persistent grid (`h3_adventure::BitGrid`, ADR-0016 point 1) against a flat bitset copied by each fork, callgrind instructions per operation with twenty revealed disks (`crates/h3-adventure/examples/grid_bench.rs`; all leaf sizes in `E08-log.md`):
+
+  | Operation | 36×36 flat | 36×36 grid | 144×144×2 flat | 144×144×2 grid |
+  |---|---|---|---|---|
+  | fork | 209 | 22 | 906 | 22 |
+  | fork + first write (bytes copied at 144: 5 184 flat, 528 grid) | 258 | 722 | 955 | 1 550 |
+  | reveal of radius 5, row by row | 1 165 | 1 814 | 1 194 | 2 443 |
+  | read every tile | 41 772 | 52 469 | 1 329 426 | 1 500 214 |
+
+  Chosen: 32 × 32 leaves (the user): a fork costs the same on every map, a write copies the table and one 128-byte leaf; per-tile reads lose 13–25 %, so observation planes are built word by word (T8). The gated fork workload comes with E08 T9.
 - Benchmarks: `criterion` for local wall time (`cargo xtask bench`), plus instruction counts under valgrind/callgrind for the deterministic regression gate (`cargo xtask bench-check`, Linux only; counts are compared only for the toolchain and target recorded in the baseline). Chosen over `iai-callgrind` to avoid a runner binary that must match the library version; see ADR-0002.
 
 ## 9. Portability

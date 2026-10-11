@@ -1919,6 +1919,7 @@ title    = "Damage of a damage spell"
 context  = "battle"
 status   = "implemented"
 summary  = "A damage spell's value is power × power factor + effect[mastery] (the hero's spell power, the spell's row; BAT-MAG-002). Its damage to a stack follows the original's order (installation.md §7.8): first the caster's bonuses, v × (1 + the best bonus among the spell's schools) (the Orbs, +50 %) × (1 + the every-spell bonus) (Sorcery), the product kept fractional and rounded down once to t; then t + this spell's own bonus of t rounded down (Ciele +50 %, Luna +100 %) + a spell specialist's ⌈per-level rate × (hero level div the stack's creature level, at least 1) × t⌉ (3 % per level in SoD; HER-BAT-012); then the target creature's: × 2 from a spell it is vulnerable to (spell_vulnerability; the elementals) and × (100 − p) / 100 from a spell damage reduction of p % (the Golems: 50, 75, 85, 95), each rounded down. Rates are exact, or single precision under quirk Q-0005 (Sorcery's 5/10/15 %). VCMI applies the target's reductions first and rounds after every factor (dispute M-6 settled by code reading; X-1). The damage kills like physical damage (BAT-DMG-003; no luck, morale or retaliation) and is reported as a public SpellDamage event; the battle ends at once if a side has no living stacks left (BAT-END-001/002). Protection spells on the target join in E04b T3."
+quirks   = ["BAT-QUIRK-19"]
 numeric  = "integer"
 
   [[rule.source]]
@@ -2334,6 +2335,7 @@ title    = "Spell specialists"
 context  = "battle"
 status   = "implemented"
 summary  = "A hero whose specialty is a spell (BattleEffect::SpellSpecialty: the growth per level, 3 % in the original, and the hero's level) adds a bonus to the spell's value t on a stack: by the spell's own rule if it has one (pack field specialist): by the stack's creature level 1 to 7 (Bloodlust, Precision, Weakness, Stone Skin, Prayer, Haste: 3, 3, 2, 2, 1, 1, 0; Slayer: 4, 3, 2, 1, 0, 0, 0), a fixed amount (Disrupting Ray: 2) or what makes the value a total (Fortune: luck 3 at every mastery); otherwise ⌈per level × (hero level div creature level) × t⌉, the levels divided in whole numbers first. Where it applies: a timed spell with a rule of its own adds it to its value at the cast, from the casting hero, by the target's level (before Weakness's cut to the attack; Disrupting Ray takes it as well, the defense still at least 0); Slayer's counts at each strike against a creature Slayer counts against, from the hero of the striker's side, by the striker's level, on Slayer's 8; Bless's scaled bonus of a blessed striker's base damage b joins the first damage stage right after Offense or Archery, from the hero of the striker's side, by the striker's level, in both roundings (BAT-DMG-002; Fire Shield's base includes it); Cure heals its value plus the scaled bonus by the target's level; the damage spells as in BAT-MAG-004. Without a specialty in the spell, or for a creature's cast, nothing; the other timed spells (Bless's value, Curse, Mirth, Sorrow, Misfortune, Slow, the protections, Counterstrike, Fire Shield, Frenzy) get nothing at the cast. Not yet: a hypnotized stack's controller as the hero (E04b T4), the raising spells (T6), Hypnotize's hit-point limit (T4)."
+quirks   = ["BAT-QUIRK-19"]
 numeric  = "integer"
 
   [[rule.source]]
@@ -3188,7 +3190,7 @@ id       = "BAT-MAG-061"
 title    = "No casting (the Orb of Inhibition)"
 context  = "battle"
 status   = "implemented"
-summary  = "While a hero in the battle has a NoCasting effect (either side's; the Orb of Inhibition, HER-BAT-015) neither side casts: a hero's spell is refused (CastingForbidden, after the round's cast check), no creature casts or raises as its action (CannotCast; the Archangel, the Pit Lord), no periodic cast happens (the Enchanters: their side's count stays). A random caster still draws its spell at its activation (BAT-MAG-049; the original's draw does not ask) but may not cast it, unless its creature has `ignores_magic_block`: the Faerie Dragon, after the wiki and VCMI, which the code reading contradicts (the user, BAT-Q21: until an experiment settles it). The strike's creature magic (BAT-MAG-040 to BAT-MAG-047) is no cast and stays."
+summary  = "While a hero in the battle has a NoCasting effect (either side's; the Orb of Inhibition, HER-BAT-015) neither side casts: a hero's spell is refused (CastingForbidden, after the round's cast check), no creature casts or raises as its action (CannotCast; the Archangel, the Pit Lord), no periodic cast happens (the Enchanters: their side's count stays). A random caster still draws its spell at its activation (BAT-MAG-049; the original's draw does not ask) but may not cast it, unless its creature has `ignores_magic_block` (none in the harvested packs): the Faerie Dragon is stopped too, as the code reads and batch 2e observed, against the wiki and VCMI (BAT-Q21). The strike's creature magic (BAT-MAG-040 to BAT-MAG-047) is no cast and stays."
 numeric  = "integer"
 
   [[rule.source]]
@@ -3209,6 +3211,12 @@ numeric  = "integer"
   url        = "https://github.com/vcmi/vcmi/blob/1.7.5/lib/battle/CBattleInfoCallback.cpp"
   retrieved  = "2026-10-10"
   confidence = "medium"
+
+  [[rule.source]]
+  kind       = "observation"
+  ref        = "experiments/results/E04b-batch-2e.md OI (SoD 4.0 Complete, plain HD, 2026-10-11): with the Orb of Inhibition worn by Red's hero, its spell book refuses with the artifact's message, and neither the Faerie Dragons (rounds 1 and 2) nor the Ogre Magi get a spell cursor over a target"
+  retrieved  = "2026-10-11"
+  confidence = "high"
 
 [[rule]]
 id       = "BAT-MAG-062"
@@ -3235,6 +3243,12 @@ numeric  = "integer"
   ref        = "config/artifacts.json recantersCloak: BLOCK_MAGIC_ABOVE 2, battle-wide; lib/spells/BattleSpellMechanics.cpp: every caster's spell above it is refused ('blocks also passive casting'), creature abilities not checked (a TODO; BAT-Q21)"
   url        = "https://github.com/vcmi/vcmi/blob/1.7.5/lib/spells/BattleSpellMechanics.cpp"
   retrieved  = "2026-10-10"
+  confidence = "medium"
+
+  [[rule.source]]
+  kind       = "observation"
+  ref        = "experiments/results/E04b-batch-2e.md RC (SoD 4.0 Complete, plain HD, 2026-10-11): against Recanter's Cloak the Archangel gets no resurrection cursor over its dead Peasants, and 8 melee attacks of Medusa Queens petrify no Pikeman (20 % each without the Cloak: 17 % to see none; the game cannot be saved in battle, so the batch's 18 attacks were not reached)"
+  retrieved  = "2026-10-11"
   confidence = "medium"
 
 [[rule]]
@@ -3284,6 +3298,12 @@ numeric  = "integer"
   retrieved  = "2026-10-10"
   confidence = "medium"
 
+  [[rule.source]]
+  kind       = "observation"
+  ref        = "experiments/results/E04b-batch-2e.md DF (SoD 4.0 Complete, plain HD, 2026-10-11): against Power of the Dragon Father the Mighty Gorgons' Death Stare kills (the control), while 3 Thunderbird attacks give no bolt and 4 Wyvern Monarch attacks no Poison (weak: 12 % to see neither without the immunity)"
+  retrieved  = "2026-10-11"
+  confidence = "medium"
+
 [[rule]]
 id       = "BAT-MAG-065"
 title    = "A hero's mind immunity (Badge of Courage)"
@@ -3309,7 +3329,7 @@ id       = "BAT-MAG-066"
 title    = "Negated immunities (the Orb of Vulnerability)"
 context  = "battle"
 status   = "implemented"
-summary  = "When the caster's side's hero or the hero controlling the stack has a NegateImmunities effect (HER-BAT-016; the Orb of Vulnerability), a spell affects the stack without the creature's mind immunity, the hero's (BAT-MAG-065), the level, school and spell immunities of its abilities (BAT-MAG-005) and with its whole share: no creature or hero magic resistance (BAT-MAG-008). The Unicorns' aura is lifted too, after the wiki and VCMI, which the code reading contradicts (the user, BAT-Q21: until an experiment settles it). Still apply: the spell level limit (BAT-MAG-062), the heroes' immunities (BAT-MAG-063, BAT-MAG-064), the spell's conditions, the creatures' absolute immunities (Troglodytes against Blind and Stone Gaze, Gargoyles against Poison; the code reading, which VCMI contradicts: BAT-Q21) and Anti-Magic (BAT-MAG-021). An enemy's negation does not count for a side's spells at its own stacks."
+summary  = "When the caster's side's hero or the hero controlling the stack has a NegateImmunities effect (HER-BAT-016; the Orb of Vulnerability), a spell affects the stack without the creature's mind immunity, the hero's (BAT-MAG-065), the level, school and spell immunities of its abilities (BAT-MAG-005) and with its whole share: no creature or hero magic resistance (BAT-MAG-008). The Unicorns' aura is lifted too, after the wiki and VCMI and as batch 2e observed (12 of 12 rolls beside Unicorns slowed), which the code reading contradicts (BAT-Q21). Still apply: the spell level limit (BAT-MAG-062), the heroes' immunities (BAT-MAG-063, BAT-MAG-064), the spell's conditions, the creatures' absolute immunities (Troglodytes against Blind and Stone Gaze, Gargoyles against Poison; the code reading and the wiki's table, observed in batch 2e, which VCMI contradicts: BAT-Q21) and Anti-Magic (BAT-MAG-021). An enemy's negation does not count for a side's spells at its own stacks."
 numeric  = "integer"
 
   [[rule.source]]
@@ -3331,13 +3351,18 @@ numeric  = "integer"
   retrieved  = "2026-10-10"
   confidence = "medium"
 
+  [[rule.source]]
+  kind       = "observation"
+  ref        = "experiments/results/E04b-batch-2e.md OV, UA (SoD 4.0 Complete, plain HD, 2026-10-11): under the Orb of Vulnerability Blind is refused at Troglodytes and allowed at Air Elementals and Gnolls; 12 Wyvern Monarch attacks never poison Stone Gargoyles (30 % each otherwise); Expert Slow cast four times slows each of the three stacks next to the Unicorns every time (12 rolls; with the aura's 20 % kept, 7 % to see no resist)"
+  retrieved  = "2026-10-11"
+  confidence = "high"
 
 [[rule]]
 id       = "BAT-MAG-067"
 title    = "The per-spell target conditions of the creature test (Bless, Curse, Precision, Mirth, Sorrow, Fortune, Misfortune, Slayer)"
 context  = "battle"
 status   = "implemented"
-summary  = "Bless and Curse never affect an undead stack or one whose creature's maximum damage is 0 (the First Aid Tent, the Ammo Cart; the Ballista is affected); Precision affects only a creature with flag shooter; Mirth and Sorrow never affect a creature with flag no_morale (undead, golems, elementals, war machines); Fortune, Misfortune and Slayer never affect a creature whose maximum damage is 0. These are spell conditions (SpellMagic.conditions: excludes, requires, needs_damage on the creature type's maximum damage), absolute: no negation lifts them (BAT-MAG-066), as the original tests them before the Orb of Vulnerability. They hold for every caster, the strike's spells (the Black Knights' Curse) and the drawn spells of the casting creatures too. Where VCMI differs (the Ballista under Bless and Curse, golems and elementals under the Orb for Mirth and Sorrow, the Tent and the Ammo Cart for Fortune, Misfortune and Slayer) the engine follows the reading (BAT-Q22), each an experiment candidate of batch 2e."
+summary  = "Bless and Curse never affect an undead stack or one whose creature's maximum damage is 0 (the First Aid Tent, the Ammo Cart; the Ballista is affected); Precision affects only a creature with flag shooter; Mirth and Sorrow never affect a creature with flag no_morale (undead, golems, elementals, war machines); Fortune, Misfortune and Slayer never affect a creature whose maximum damage is 0. These are spell conditions (SpellMagic.conditions: excludes, requires, needs_damage on the creature type's maximum damage), absolute: no negation lifts them (BAT-MAG-066), as the original tests them before the Orb of Vulnerability. They hold for every caster, the strike's spells (the Black Knights' Curse) and the drawn spells of the casting creatures too. Where VCMI differs (the Ballista under Bless and Curse, golems and elementals under the Orb for Mirth and Sorrow, the Tent and the Ammo Cart for Fortune, Misfortune and Slayer) the engine follows the reading (BAT-Q22), which batch 2e observed on all three."
 numeric  = "integer"
 
   [[rule.source]]
@@ -3358,6 +3383,12 @@ numeric  = "integer"
   url        = "https://github.com/vcmi/vcmi/blob/1.7.5/config/spells/timed.json"
   retrieved  = "2026-10-10"
   confidence = "medium"
+
+  [[rule.source]]
+  kind       = "observation"
+  ref        = "experiments/results/E04b-batch-2e.md WM, OV (SoD 4.0 Complete, plain HD, 2026-10-11): Bless, Fortune, Slayer, Curse and Misfortune are allowed at the Ballista and refused at the Ammo Cart and the First Aid Tent, Bless refused at Skeletons, Precision allowed at the Ballista and refused at Pikemen, Bless shown on the Ballista after the cast; under the Orb of Vulnerability Sorrow is refused at Stone Golems and Air Elementals and Mirth at Iron Golems"
+  retrieved  = "2026-10-11"
+  confidence = "high"
 
 [[rule]]
 id       = "BAT-MAG-068"

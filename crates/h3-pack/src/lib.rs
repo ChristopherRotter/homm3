@@ -14,12 +14,13 @@ use h3_content::{
     ArtifactSlotOverride, AuraTarget, BattleParamsDef, CompileError, ContentKey, ContentPack,
     CreatureDef, CreatureFlag, CreatureFlags, CreatureInfoDef, CreatureOverride, CreaturePatch,
     CreatureSelector, CreatureStat, CreatureTypeId, EffectDuration, EffectEnd, FactionDef,
-    Formation, HeroClassDef, HeroEffect, HeroEffectDef, HeroParamsDef, HeroTypeDef, HexStep,
-    KeyError, MASTERY_NAMES, MAX_ALIGNMENT_FACTIONS, ObstacleDef, ObstacleKind, ObstacleShape,
-    PackManifest, ProfileDef, ResourceDef, Ruleset, SPECIALIST_LEVELS, SchoolId, SecondarySkillDef,
-    SpecialistBonus, SpellArea, SpellCategory, SpellChain, SpellDef, SpellEffect, SpellGrant,
-    SpellId, SpellMagic, SpellPolarity, SpellSchoolDef, SpellScope, SpellTarget, StartingStackDef,
-    SurrenderDef, TargetConditions, TargetSide, TerrainDef, TimedChange, Usefulness,
+    Formation, HeroClassDef, HeroEffect, HeroEffectDef, HeroOverride, HeroParamsDef, HeroPatch,
+    HeroTypeDef, HexStep, KeyError, MASTERY_NAMES, MAX_ALIGNMENT_FACTIONS, ObstacleDef,
+    ObstacleKind, ObstacleShape, PackManifest, ProfileDef, ResourceDef, Ruleset, SPECIALIST_LEVELS,
+    SchoolId, SecondarySkillDef, SpecialistBonus, SpellArea, SpellCategory, SpellChain, SpellDef,
+    SpellEffect, SpellGrant, SpellId, SpellMagic, SpellPolarity, SpellSchoolDef, SpellScope,
+    SpellTarget, StartingStackDef, SurrenderDef, TargetConditions, TargetSide, TerrainDef,
+    TimedChange, Usefulness,
 };
 use h3_contracts::{
     Army, ArmyStack, BallistaControl, BattleEffect, BattleHero, BattleSetup, BattleSide,
@@ -126,6 +127,8 @@ struct PackFile {
     hero_class: Vec<HeroClassDto>,
     #[serde(default)]
     hero: Vec<HeroDto>,
+    #[serde(default)]
+    hero_override: Vec<HeroOverrideDto>,
     #[serde(default)]
     artifact_slot: Vec<ArtifactSlotDto>,
     #[serde(default)]
@@ -613,11 +616,13 @@ fn default_level() -> u8 {
 }
 
 /// `[[creature_override]]`: every field but `target` is optional. `faction = ""` makes the
-/// creature neutral.
+/// creature neutral. Since pack format v34 (E04b T8e) `fixes` names the data quirk flag the
+/// override fixes: it is applied only in profiles that turn the flag off (ADR-0007).
 #[derive(Deserialize)]
 #[serde(deny_unknown_fields)]
 struct OverrideDto {
     target: String,
+    fixes: Option<String>,
     attack: Option<u16>,
     defense: Option<u16>,
     damage: Option<[u16; 2]>,
@@ -1070,6 +1075,16 @@ struct HeroDto {
     war_machines: Vec<String>,
     #[serde(default)]
     specialty: Vec<EffectDto>,
+}
+
+/// `[[hero_override]]` (pack format v34, E04b T8e): a hero type of the closure gets a new
+/// specialty (the whole list), gated by `fixes` as a creature override.
+#[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
+struct HeroOverrideDto {
+    target: String,
+    fixes: Option<String>,
+    specialty: Option<Vec<EffectDto>>,
 }
 
 #[derive(Deserialize)]
@@ -1692,6 +1707,7 @@ pub fn parse_pack(text: &str) -> Result<ContentPack, PackError> {
                 .transpose()?;
             Ok(CreatureOverride {
                 target: ContentKey::parse(&o.target)?,
+                fixes: o.fixes,
                 patch: CreaturePatch {
                     attack: o.attack,
                     defense: o.defense,
@@ -1833,6 +1849,19 @@ pub fn parse_pack(text: &str) -> Result<ContentPack, PackError> {
             })
         })
         .collect::<Result<Vec<_>, PackError>>()?;
+    let hero_overrides = file
+        .hero_override
+        .into_iter()
+        .map(|o| {
+            Ok(HeroOverride {
+                target: ContentKey::parse(&o.target)?,
+                fixes: o.fixes,
+                patch: HeroPatch {
+                    specialty: o.specialty.map(|e| effects(&pack_id, e)).transpose()?,
+                },
+            })
+        })
+        .collect::<Result<Vec<_>, PackError>>()?;
     let artifact_slots = file
         .artifact_slot
         .into_iter()
@@ -1946,6 +1975,7 @@ pub fn parse_pack(text: &str) -> Result<ContentPack, PackError> {
         skills,
         hero_classes,
         heroes,
+        hero_overrides,
         artifact_slots,
         artifact_slot_overrides,
         artifacts,
@@ -3980,6 +4010,62 @@ mod tests {
     }
 
     #[test]
+    fn gated_override_syntax() {
+        // Pack format v34 (E04b T8e, ADR-0007): `fixes` gates a creature or hero override by a
+        // data quirk flag; it applies only in profiles that turn the flag off.
+        let keeps = SYNTHETIC_PACK.replace(
+            "\"quirk.battle.periodic_first_stack\" = true }",
+            "\"quirk.battle.periodic_first_stack\" = true, \
+             \"quirk.content.elemental_levels\" = true, \
+             \"quirk.content.roland_crusader_specialty\" = true }",
+        );
+        assert_ne!(keeps, SYNTHETIC_PACK);
+        let ext = std::format!(
+            "{SYNTHETIC_EXT_PACK}\n[[creature_override]]\ntarget = \"synthetic:spearman\"\n\
+             fixes = \"quirk.content.elemental_levels\"\nlevel = 7\n\n[[hero_override]]\n\
+             target = \"synthetic:brea\"\nfixes = \"quirk.content.roland_crusader_specialty\"\n\
+             specialty = [{{ kind = \"creature_specialty\", creature = \"synthetic:wisp\", \
+             bp_per_step = 500, speed = 1 }}]\n"
+        );
+        let faithful = compile(&[&keeps, &ext], "synthetic:faithful").unwrap();
+        let fixed = compile(&[&keeps, &ext], "synthetic:strict-fixed").unwrap();
+        let spearman = fixed.creature_by_key("synthetic:spearman").unwrap();
+        let level = |r: &Ruleset| r.creature_info(spearman).unwrap().level;
+        assert_eq!((level(&faithful), level(&fixed)), (1, 7));
+        let brea = fixed.hero_type_by_key("synthetic:brea").unwrap();
+        let specialty = |r: &Ruleset, c: &str| {
+            (
+                r.hero_type(brea).unwrap().specialty.clone(),
+                std::vec![HeroEffect::CreatureSpecialty {
+                    creature: r.creature_by_key(c).unwrap(),
+                    bp_per_step: 500,
+                    speed: 1,
+                }],
+            )
+        };
+        // `faithful` keeps the pack's specialty, `strict-fixed` takes the override's.
+        let (got, want) = specialty(&faithful, "synthetic:brute");
+        assert_eq!(got, want);
+        let (got, want) = specialty(&fixed, "synthetic:wisp");
+        assert_eq!(got, want);
+        // The gate names a data quirk flag; the target is a full key.
+        let behaviour = ext.replace(
+            "fixes = \"quirk.content.elemental_levels\"",
+            "fixes = \"quirk.battle.obstacle_anchors\"",
+        );
+        assert!(matches!(
+            compile(&[&keeps, &behaviour], "synthetic:faithful"),
+            Err(PackError::Compile(CompileError::NotADataQuirk(_)))
+        ));
+        let bad_target = ext.replace("target = \"synthetic:brea\"", "target = \"brea\"");
+        assert_ne!(bad_target, ext);
+        assert!(matches!(parse_pack(&bad_target), Err(PackError::Key(_))));
+        let bad_effect = ext.replace("creature = \"synthetic:wisp\"", "creature = \"A:b\"");
+        assert_ne!(bad_effect, ext);
+        assert!(matches!(parse_pack(&bad_effect), Err(PackError::Key(_))));
+    }
+
+    #[test]
     fn ability_syntax() {
         use h3_content::{Ability, AreaShot, AuraTarget};
         // Every kind with its parameters; references follow the usual rules.
@@ -4420,13 +4506,68 @@ mod tests {
     // covers: HER-BAT-008, HER-BAT-009, HER-BAT-010, BAT-HER-005, BAT-HER-006, BAT-HER-007
     /// E04a exit criterion 3: with the harvested packs `faithful` turns every registered quirk
     /// flag on and `strict-fixed` every one off, so the two profiles differ exactly by the quirks
-    /// of the ledger that have a flag (Q-0006 gets its data override with E04b, Q35).
+    /// of the ledger that have a flag, the data quirks' included (E04b T8e).
     #[test]
     fn the_profiles_differ_exactly_by_the_quirk_flags() {
         let all = (1u64 << h3_content::REGISTRY.len()) - 1;
         for (profile, bits) in [("base:faithful", all), ("base:strict-fixed", 0)] {
             let r = compile(&[SOD_PACK, AB_PACK, BASE_PACK], profile).unwrap();
             assert_eq!(r.quirks().bits(), bits, "{profile}");
+        }
+    }
+
+    // covers: HER-BAT-008
+    /// E04b T8e (ADR-0007, amendment E04b T8e): the data quirks keep the executable's values in
+    /// `faithful`; their gated overrides fix them in `strict-fixed`. Roland's specialty names the
+    /// Swordsman there, as Sorsha's (Q-0006), and the Ice, Magma and Energy Elementals have their
+    /// base creatures' levels (BAT-QUIRK-19), with and without SoD.
+    #[test]
+    fn the_data_quirks_are_fixed_in_strict_fixed() {
+        use h3_heroes::{HeroDetails, derive_battle_hero};
+        let elementals = [
+            "ab:ice_elemental",
+            "ab:magma_elemental",
+            "ab:energy_elemental",
+        ];
+        let effects = |r: &Ruleset, hero: &str| {
+            let details = HeroDetails {
+                hero_type: r.hero_type_by_key(hero).unwrap(),
+                level: 4,
+                experience: 0,
+                primary: [0, 0, 1, 1],
+                skills: vec![],
+                worn: vec![],
+                backpack: vec![],
+                spells: vec![],
+                mana: 0,
+            };
+            derive_battle_hero(&details, r).unwrap().effects
+        };
+        for packs in [&[SOD_PACK, AB_PACK, BASE_PACK][..], &[AB_PACK, BASE_PACK]] {
+            for (profile, levels, crusader, like_sorsha) in [
+                ("base:faithful", [4, 3, 5], "base:crusader", false),
+                ("base:strict-fixed", [3, 5, 4], "base:swordsman", true),
+            ] {
+                let r = compile(packs, profile).unwrap();
+                let level = |k| {
+                    r.creature_info(r.creature_by_key(k).unwrap())
+                        .unwrap()
+                        .level
+                };
+                assert_eq!(elementals.map(level), levels, "{profile}");
+                let roland = r.hero_type_by_key("ab:roland").unwrap();
+                assert_eq!(
+                    r.hero_type(roland).unwrap().specialty,
+                    [HeroEffect::CreatureSpecialty {
+                        creature: r.creature_by_key(crusader).unwrap(),
+                        bp_per_step: 500,
+                        speed: 1,
+                    }],
+                    "{profile}"
+                );
+                let same = effects(&r, "ab:roland") == effects(&r, "base:sorsha");
+                assert_eq!(same, like_sorsha, "{profile}");
+            }
         }
     }
 
