@@ -110,6 +110,7 @@ pub fn play_game(
         seed,
         checkpoint_every: 25,
         shadow: false,
+        spectators: 0,
     };
     let seats = ["bench-attacker", "bench-defender"].map(|token| SeatKind::Player {
         token: token.to_owned(),

@@ -20,7 +20,6 @@ use std::fmt;
 use std::net::SocketAddr;
 use std::sync::{Arc, Mutex};
 
-use h3_protocol::lobby;
 use tokio::net::TcpListener;
 
 pub mod bench;
@@ -72,13 +71,9 @@ pub async fn start(config: &Config) -> Result<Running, Error> {
         .iter()
         .map(|offer| game::Offer::load(offer, &config.content.packs).map(Arc::new))
         .collect::<Result<Vec<_>, _>>()?;
-    let limits = lobby::Limits {
-        games: config.limits.games,
-        games_per_origin: config.limits.games_per_address,
-    };
     let registry = Arc::new(Mutex::new(Registry::new(
         offers,
-        limits,
+        &config.limits,
         config.server.clone(),
     )));
     registry::restore(&registry).await?;

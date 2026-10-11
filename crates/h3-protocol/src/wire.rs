@@ -59,7 +59,8 @@ pub enum Seat {
     Attacker,
     /// The defender's seat.
     Defender,
-    /// A spectator (no seat; from M2, with the battle's spectator viewer, SRV-Q4).
+    /// A spectator: no seat, what is public to both sides (E16 M2 T4, the battle's spectator
+    /// viewer, SRV-Q4).
     Spectator,
 }
 
@@ -700,12 +701,16 @@ pub struct SpellObstacle {
     pub revealed: bool,
 }
 
-/// The battle as one viewer sees it (`h3_battle::observe`, ADR-0018 point 7).
+/// The battle as one viewer, a side or a spectator, sees it (`h3_battle::observe_as`, ADR-0018
+/// point 7).
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct Observation {
-    /// The side this observation is for.
+    /// The side this observation is for; the attacker for a spectator's.
     pub viewer: Side,
+    /// A spectator's observation (E16 M2 T4): what is public to both sides, no side's private
+    /// part.
+    pub spectator: bool,
     /// The round (0 in the tactics phase).
     pub round: u16,
     /// The running tactics phase.
@@ -966,7 +971,8 @@ pub enum Refusal {
     BadToken,
     /// The connection is in a game already.
     AlreadyJoined,
-    /// The server does not take spectators yet.
+    /// The game takes no more spectators (its limit), or none here: a game's creation, a paused
+    /// game.
     NoSpectators,
     /// The server offers nothing under this id.
     NoSuchOffer,
