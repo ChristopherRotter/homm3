@@ -39,7 +39,7 @@ fn file_mask(tiles: &[(u8, u8)]) -> [u8; 6] {
 }
 
 /// A template of `class` blocking `blocked` and visited from `visitable`.
-fn template(class: u32, blocked: &[(u8, u8)], visitable: &[(u8, u8)]) -> Template {
+pub(super) fn template(class: u32, blocked: &[(u8, u8)], visitable: &[(u8, u8)]) -> Template {
     Template {
         def: Text(b"obj.def".to_vec()),
         passable: file_mask(blocked).map(|b| !b),
@@ -49,7 +49,7 @@ fn template(class: u32, blocked: &[(u8, u8)], visitable: &[(u8, u8)]) -> Templat
     }
 }
 
-fn object(x: u8, y: u8, template: u32, body: Body) -> Object {
+pub(super) fn object(x: u8, y: u8, template: u32, body: Body) -> Object {
     Object {
         pos: Pos { x, y, z: 0 },
         template,

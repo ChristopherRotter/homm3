@@ -1,8 +1,8 @@
 //! The whole game's entry point (ADR-0017 point 1, ADR-0004): actors, the game's commands, its
 //! events and their sink. A game command wraps a context's command or is the game's own; the game
 //! checks turn and phase, the context its rules (E08 T6b: `EndTurn`; T7b: the adventure's
-//! `MoveHero`; `observe` and `project` are in `observe.rs`, T8b1; `legal_commands` comes with
-//! T8b2).
+//! `MoveHero`; `observe` and `project` are in `observe.rs`, T8b1; `legal_commands` in
+//! `legal.rs`, T8b2a).
 
 use core::fmt;
 
