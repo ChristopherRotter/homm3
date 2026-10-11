@@ -204,6 +204,10 @@ pub enum RejectCode {
     /// The game's journal did not re-run to the game as played: its replay is withheld (E16 M2
     /// T3).
     Unverified,
+    /// Only the game's host may do this (E16 M2 T4c).
+    NotHost,
+    /// The game has started: its configuration is fixed (E16 M2 T4c).
+    AlreadyStarted,
 }
 
 /// The flags of a strike.
@@ -474,7 +478,9 @@ pub enum DamageRoll {
     },
 }
 
-/// A timed effect on a stack.
+/// A timed effect on a stack. What the stack's effects change together (its protections, its
+/// status, …) follows from its effects and the spells' data (BAT-MAG-011); the values a client
+/// shows without the rules are on the stack.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct Effect {
@@ -482,6 +488,16 @@ pub struct Effect {
     pub spell: u16,
     /// Rounds left; `None` for the rest of the battle.
     pub rounds: Option<u16>,
+    /// The first cast's mastery (0 none to 3 expert).
+    pub mastery: u8,
+    /// The spell's effect at that mastery.
+    pub value: u16,
+    /// What it added to the stack's attack (negative: took from it).
+    pub attack: i16,
+    /// What it added to the stack's defense.
+    pub defense: i16,
+    /// What it added to the stack's speed.
+    pub speed: i16,
 }
 
 /// One stack as its viewer sees it (the public stack values; the sim's observation encoding in
@@ -505,6 +521,8 @@ pub struct Stack {
     pub alive: bool,
     /// Creatures in it.
     pub count: u32,
+    /// Creatures at the battle's start, or when the battle created it (the resurrection limit).
+    pub base_count: u32,
     /// The top creature's hit points.
     pub top_hp: u32,
     /// A creature's full hit points.
@@ -519,12 +537,14 @@ pub struct Stack {
     pub damage_max: u16,
     /// Speed now, with the timed effects.
     pub speed: u8,
-    /// Morale.
+    /// Morale, before what its timed effects change (Mirth, Sorrow: in `effects`).
     pub morale: i8,
-    /// Luck.
+    /// Luck, before what its timed effects change (Fortune, Misfortune: in `effects`).
     pub luck: i8,
     /// Shots left.
     pub shots: u16,
+    /// Retaliations per round (255: unlimited).
+    pub retaliations: u8,
     /// Retaliations left this round (255: unlimited).
     pub retaliations_left: u8,
     /// Hit points regenerated at its turn's start.
@@ -539,6 +559,8 @@ pub struct Stack {
     pub defending: bool,
     /// It had good morale this round.
     pub had_morale: bool,
+    /// Its turn has started this round.
+    pub started: bool,
     /// It takes two hexes.
     pub two_hex: bool,
     /// It flies.
@@ -551,12 +573,30 @@ pub struct Stack {
     pub no_distance_penalty: bool,
     /// It shoots while an enemy stands next to it.
     pub shoots_when_adjacent: bool,
+    /// It fights on its native terrain.
+    pub native: bool,
     /// It was created in the battle.
     pub created: bool,
     /// It is a clone.
     pub clone: bool,
+    /// It was raised from a corpse in the battle (a Pit Lord's Demons).
+    pub raised: bool,
     /// A clone's rounds left (0: not a clone).
     pub clone_rounds: u16,
+    /// For a clone its original, for a stack with a living clone that clone; a crowded original
+    /// that became its own clone links to itself (quirk BAT-QUIRK-7).
+    pub clone_link: Option<u8>,
+    /// Its creatures raised for this battle only.
+    pub temporary: u32,
+    /// Its corpse: 0 while it lives or until its death is marked, then the order of its death
+    /// among the battle's corpses; 65 535 if it left none.
+    pub corpse: u16,
+    /// The stacks whose strike bound it, by id, ascending.
+    pub bound_by: Vec<u8>,
+    /// The tenths of its hit points Poison took for good.
+    pub poison: u8,
+    /// A creature's hit points at the battle's start if Poison or Age changed them (0: unchanged).
+    pub start_hp: u32,
     /// Its casts left.
     pub casts_left: u8,
     /// How many spells the active stack's cast could draw for it (its viewer's helpful caster).
@@ -621,7 +661,46 @@ pub struct BookSpell {
     pub mastery: u8,
 }
 
-/// The private part of the viewer's own hero (ADR-0013 point 9).
+/// A single spell's damage bonus of a hero (a specialty).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct SpellBonus {
+    /// The spell's handle.
+    pub spell: u16,
+    /// More damage from the spell, in basis points.
+    pub damage_bp: u32,
+    /// A specialty's growth per hero level, in basis points.
+    pub per_level_bp: u32,
+    /// The hero's level for the specialty.
+    pub level: u8,
+}
+
+/// What a hero adds to the immunity of the stacks it controls.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct Defences {
+    /// The spells they are never affected by, by handle.
+    pub spells: Vec<u16>,
+    /// The highest level of the spells they are never affected by (Dispel excepted).
+    pub up_to_level: Option<u8>,
+    /// They are immune to mind spells.
+    pub mind: bool,
+}
+
+/// A spell a hero casts at its side's first activation.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct OpeningSpell {
+    /// The spell's handle.
+    pub spell: u16,
+    /// Its mastery (0 none to 3 expert).
+    pub mastery: u8,
+    /// Its power, the duration of its effects.
+    pub power: u16,
+}
+
+/// The private part of the viewer's own hero (ADR-0013 point 9), its hidden magic among it
+/// (BAT-Q26).
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct OwnHero {
@@ -645,6 +724,34 @@ pub struct OwnHero {
     pub surrender_price: Option<u32>,
     /// Its spell book with the masteries, by spell handle.
     pub spell_book: Vec<BookSpell>,
+    /// More damage from every spell, in basis points.
+    pub spell_damage_bp: u32,
+    /// More damage from the spells of each school, in basis points, by school handle.
+    pub school_damage_bp: Vec<u32>,
+    /// The damage bonuses of single spells.
+    pub spell_bonuses: Vec<SpellBonus>,
+    /// The resistance of its side's stacks to hostile spells, in basis points.
+    pub magic_resistance_bp: u32,
+    /// Rounds added to the duration of its timed spells.
+    pub duration_bonus: u16,
+    /// It forbids every cast in the battle.
+    pub no_casting: bool,
+    /// The highest spell level it allows in the battle, if it limits them.
+    pub level_limit: Option<u8>,
+    /// What it adds to the immunity of the stacks it controls.
+    pub defences: Defences,
+    /// It negates immunities and resistance.
+    pub negates: bool,
+    /// Its opening spells, in their order.
+    pub opening: Vec<OpeningSpell>,
+    /// Its side's first activation, when it casts them, is still to come.
+    pub opening_due: bool,
+    /// Its Eagle Eye's chance to pick a spell at a cast of the enemy hero, in percent.
+    pub eagle_chance: u8,
+    /// The spells its Eagle Eye may pick, by handle.
+    pub eagle_spells: Vec<u16>,
+    /// The spells its Eagle Eye picked so far, by handle.
+    pub learned: Vec<u16>,
 }
 
 /// One side's public state.
@@ -657,6 +764,10 @@ pub struct SideView {
     pub may_surrender: bool,
     /// Round starts since its periodic casters cast (at most 255).
     pub periodic_rounds: u8,
+    /// The creature's handle its Summon Elemental casts are bound to, once it cast one.
+    pub summoned: Option<u16>,
+    /// The change of its hero's spell costs from the creatures in the armies (0 without a hero).
+    pub cost_change: i8,
     /// Its hero's public part, if a hero leads it.
     pub hero: Option<Hero>,
 }
@@ -715,6 +826,8 @@ pub struct Observation {
     pub round: u16,
     /// The running tactics phase.
     pub tactics: Option<Tactics>,
+    /// The round's wait phase has begun: only stacks that waited are left to act.
+    pub wait_phase: bool,
     /// The stack whose turn it is.
     pub active: Option<u8>,
     /// The side of the last stack that took a turn.
@@ -737,6 +850,8 @@ pub struct Observation {
     pub obstacle_anchors: Vec<u8>,
     /// The natural obstacles a spell can remove.
     pub removable_obstacles: Vec<RemovableObstacle>,
+    /// The hexes a removal of a natural obstacle cleared: they lead to no obstacle any more.
+    pub obstacles_cleared: Vec<u8>,
     /// The spell obstacles the viewer sees, in the order they were placed.
     pub spell_obstacles: Vec<SpellObstacle>,
 }
@@ -864,6 +979,9 @@ pub struct GameInfo {
     pub phase: Phase,
     /// The seats a newcomer may take without a token.
     pub open: Vec<Seat>,
+    /// Whether it takes spectators (E16 M2 T4c): its host's setting, on a server that takes them
+    /// at all; a game watched by as many as the server allows refuses more.
+    pub spectators: bool,
 }
 
 /// A question about the battle that only the server's rules answer (ADR-0018 point 10).
@@ -911,6 +1029,10 @@ pub enum ClientMessage {
         offer: String,
         /// The seat the creator takes.
         seat: Seat,
+        /// Whether the game takes spectators (E16 M2 T4c); `None`, or left out: it does. Its host
+        /// may change it until the game starts (`SetSpectators`).
+        #[serde(default)]
+        spectators: Option<bool>,
     },
     /// Take a seat in a game, or re-take it with its token after a disconnect.
     Join {
@@ -958,6 +1080,14 @@ pub enum ClientMessage {
         /// The client's sequence number.
         seq: u32,
     },
+    /// Open the game to spectators, or close it (E16 M2 T4c): the host's, until the game starts;
+    /// closing it ends the spectators' watch. The answer is `SpectatorsSet`, or `Rejected`.
+    SetSpectators {
+        /// The client's sequence number.
+        seq: u32,
+        /// Whether the game takes spectators.
+        open: bool,
+    },
 }
 
 /// Why a join or a game's creation was refused; the connection stays open.
@@ -1003,6 +1133,8 @@ pub enum GoodbyeReason {
     Shutdown,
     /// The game paused (E16 M2 T3); a seat's player resumes it by joining with the token.
     Paused,
+    /// The host closed the game to spectators (E16 M2 T4c).
+    SpectatorsClosed,
 }
 
 /// A message from the server. `n` counts the messages a viewer received from its game, so a gap
@@ -1142,6 +1274,15 @@ pub enum ServerMessage {
         n: u32,
         /// The seat that asked.
         seat: Seat,
+    },
+    /// The host's `SetSpectators` is done (E16 M2 T4c): whether the game takes spectators now.
+    SpectatorsSet {
+        /// The viewer's message number.
+        n: u32,
+        /// The request's sequence number.
+        seq: u32,
+        /// Whether the game takes spectators.
+        open: bool,
     },
 }
 

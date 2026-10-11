@@ -45,18 +45,24 @@ seeds and tokens, the replay file) in `h3-server` (`game.rs`, `net.rs`); the spe
 
 The M1 messages, the manifest, the observation and the events are code since M1 T1
 (`crates/h3-protocol/src/wire.rs`, in the same form: struct variants in serde's default
-enum form). Later milestones add:
+enum form). Since M2 T4b the observation carries every field of the engine's observation, or
+the mapping names it as left out and why (`map/mod.rs`: a pattern per engine type, so a new
+field fails the build until it is mapped). Later milestones add:
 
-Client to server: M2: `ListGames { seq }` and `CreateGame { seq, offer, seat }` (code since M2
-T1: a game is created from one of the server's offers and its creator takes `seat` in it at
-once), `Pause { seq }` (code since M2 T3; no `Resume`: a seat's `Join` with its token resumes).
+Client to server: M2: `ListGames { seq }` and `CreateGame { seq, offer, seat, spectators }`
+(code since M2 T1: a game is created from one of the server's offers and its creator takes
+`seat` in it at once; `spectators` since T4c, open when left out), `Pause { seq }` (code since
+M2 T3; no `Resume`: a seat's `Join` with its token resumes), `SetSpectators { seq, open }` (code
+since M2 T4c: the host's, until the game starts).
 M3: `Login { public_key, signature, name }`, `Rekey { new_public_key, signatures }`. M4:
 `Queue { ladder }`, `Dequeue`, `AcceptMatch`, `Leaderboard { ladder, page }`,
 `MyRating { ladder }`.
 
 Server to client: M2: `Games { seq, offers, games }` and `GameCreated { seq, game }` (code since
 M2 T1; the refusals `NoSuchOffer` and `TooManyGames`), `PauseAsked { n, seat }` and
-`Goodbye { Paused }` (code since M2 T3, instead of `Paused` and `Resumed`). No `StartGame`: a
+`Goodbye { Paused }` (code since M2 T3, instead of `Paused` and `Resumed`), `SpectatorsSet { n,
+seq, open }`, `Goodbye { SpectatorsClosed }`, the reject codes `NotHost` and `AlreadyStarted`
+and `GameInfo::spectators` (code since M2 T4c). No `StartGame`: a
 game starts when every seat is held at once (M1 T2's rule). M3:
 `Challenge { nonce }`, `LoggedIn { player }`. M4: `Queued`, `MatchFound { game, seat,
 deadline }`, `LeaderboardPage`, `Rating`.

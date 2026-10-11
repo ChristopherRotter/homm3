@@ -305,6 +305,112 @@ async fn spectators_watch_a_hosted_game_within_its_limit() {
     ));
 }
 
+/// A client that created a game of `offer` closed to spectators and took `seat` in it.
+async fn created_closed(running: &Running, offer: &str, seat: Seat) -> (Client, u32) {
+    let mut client = greeted(running).await;
+    let create = ClientMessage::CreateGame {
+        seq: 1,
+        offer: offer.to_owned(),
+        seat,
+        spectators: Some(false),
+    };
+    client.send(&create).await.unwrap();
+    let created = client.recv().await;
+    let Some(ServerMessage::GameCreated { game, .. }) = created else {
+        panic!("{created:?}")
+    };
+    joined(&mut client).await;
+    (client, game)
+}
+
+/// Waits until the lobby lists game `game` as taking spectators or not.
+async fn listed_watchable(running: &Running, game: u32, spectators: bool) {
+    let mut attempts = 0;
+    while !listed(running)
+        .await
+        .iter()
+        .any(|g| g.game == game && g.spectators == spectators)
+    {
+        attempts += 1;
+        assert!(attempts < 250, "game {game} is never listed so");
+        tokio::time::sleep(Duration::from_millis(20)).await;
+    }
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn the_host_opens_and_closes_its_game_to_spectators_before_it_starts() {
+    let config = config(fast());
+    let running = start(&config).await.unwrap();
+    let (mut host, game) = created_closed(&running, "pvp", Seat::Attacker).await;
+    listed_watchable(&running, game, false).await;
+    let refused = Some(ServerMessage::Refused {
+        reason: Refusal::NoSpectators,
+    });
+    let mut watcher = greeted(&running).await;
+    watcher.join(game, Seat::Spectator, None).await.unwrap();
+    assert_eq!(watcher.recv().await, refused);
+    // Opened, the game takes the spectator; closed again, its watch ends.
+    let set = |seq, open| ClientMessage::SetSpectators { seq, open };
+    host.send(&set(2, true)).await.unwrap();
+    assert!(matches!(
+        host.recv().await,
+        Some(ServerMessage::SpectatorsSet {
+            seq: 2,
+            open: true,
+            ..
+        })
+    ));
+    listed_watchable(&running, game, true).await;
+    watcher.join(game, Seat::Spectator, None).await.unwrap();
+    assert!(matches!(
+        watcher.recv().await,
+        Some(ServerMessage::Joined { .. })
+    ));
+    host.send(&set(3, false)).await.unwrap();
+    assert!(matches!(
+        host.recv().await,
+        Some(ServerMessage::SpectatorsSet { open: false, .. })
+    ));
+    assert!(matches!(
+        watcher.recv().await,
+        Some(ServerMessage::Snapshot { .. })
+    ));
+    assert_eq!(goodbye(&mut watcher).await, GoodbyeReason::SpectatorsClosed);
+    // Opened again, then the second player starts the game: the setting is fixed.
+    host.send(&set(4, true)).await.unwrap();
+    let (_defender, _) = seated(&running, game, Seat::Defender).await;
+    host.send(&set(5, false)).await.unwrap();
+    loop {
+        match host.recv().await {
+            Some(ServerMessage::Rejected { seq: 5, code, .. }) => {
+                break assert_eq!(code, RejectCode::AlreadyStarted);
+            }
+            Some(_) => {}
+            None => panic!("no answer"),
+        }
+    }
+    // A game against the bot, created closed, starts at once.
+    let (_against_bot, bot_game) = created_closed(&running, "bot", Seat::Attacker).await;
+    // After a restart each game takes spectators as it started: its journal holds the setting.
+    let restarted = Config {
+        server: Server {
+            data: crashed(&config.server.data),
+            ..config.server.clone()
+        },
+        ..config.clone()
+    };
+    let again = start(&restarted).await.unwrap();
+    let watchable: Vec<_> = listed(&again)
+        .await
+        .iter()
+        .map(|g| (g.game, g.spectators))
+        .collect();
+    assert_eq!(watchable, [(game, true), (bot_game, false)]);
+    let mut late = greeted(&again).await;
+    late.join(bot_game, Seat::Spectator, None).await.unwrap();
+    assert_eq!(late.recv().await, refused);
+}
+
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn two_games_are_played_at_once() {
     let config = config(fast());
@@ -376,6 +482,7 @@ async fn the_lobby_refuses_with_its_reason_and_frees_a_waiting_game() {
             offer: String::from("pvp"),
             phase: Phase::Waiting,
             open: vec![Seat::Defender],
+            spectators: true,
         }]
     );
     let mut c = greeted(&running).await;
@@ -387,6 +494,7 @@ async fn the_lobby_refuses_with_its_reason_and_frees_a_waiting_game() {
         seq: 1,
         offer: offer.to_owned(),
         seat,
+        spectators: None,
     };
     for (message, reason) in [
         (create("pvp", Seat::Attacker), Refusal::TooManyGames),
@@ -568,6 +676,7 @@ async fn a_game_stopped_mid_battle_resumes_after_a_restart_and_its_replay_verifi
             offer: String::from("bot"),
             phase: Phase::Running,
             open: vec![],
+            spectators: true,
         }],
         "the game is back, its seats taken"
     );
@@ -785,6 +894,7 @@ async fn a_paused_game_resumes_with_a_seats_token_also_after_a_restart() {
         offer: String::from("bot"),
         phase: Phase::Paused,
         open: vec![],
+        spectators: false,
     };
     let mut attempts = 0;
     while listed(&running).await != [paused.clone()] {
