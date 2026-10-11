@@ -268,8 +268,12 @@ Cut at the M1 checkpoint (SRV-Q12); the tasks in full: `docs/lanes/server/QUEUE.
   read back and re-run before its replay is published (void otherwise, `Unverified`), the ruleset
   hash recomputed from memory; the shadow-instance option; `Pause` by the host, a paused game as
   its journal, resumed by a seat's join with its token (wire version 5, journal format 2).
-- **T4** spectators (waits for the battle's spectator viewer); **T5** shutdown, drain, hardening
-  and closure.
+- **T4 Spectators** (done 2026-10-11; `E16-log.md`): `Join` as a spectator, up to
+  `[limits] spectators_per_game`, with the battle's spectator viewer (`observe_as`, `project_as`):
+  its snapshot, the public events, its own numbers and record; the observation's `spectator` flag
+  (wire version 6).
+- **T4b** the observation's completeness on the wire (the fields E04b T9a added); **T5**
+  shutdown, drain, hardening and closure.
 
 ## Review list for the M2 checkpoint
 
@@ -307,6 +311,13 @@ Choices queued under the autonomy contract (details in `E16-log.md`):
   its deadline (`pause_hours`) moves to T5 with the deadline of a game nobody returns to. The
   shadow instance's repair is silent for the players (the command is re-applied to the rebuilt
   battle before anything is sent), a log line names the step.
+- T4: a spectator is a viewer per connection, numbered from its join, its record since then;
+  nothing of it is journaled (after a drop or a restart it joins again); its messages for a seat
+  are rejected `NotSeated` *numbered* (it is a viewer, unlike a connection in no game); it gets
+  `PauseAsked` and `Goodbye { Paused }` like the seats, and a paused game takes no spectator (the
+  registry refuses before it restores); the limit `[limits] spectators_per_game` (8, 0 for none,
+  at most 1024) refused as `NoSpectators` (its meaning widened: no more spectators); spectators
+  count against the connection limits only. The wire: `Observation::spectator` (version 6).
 
 ## Review list for the M1 checkpoint (passed 2026-10-11)
 
