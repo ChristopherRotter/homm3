@@ -25,7 +25,8 @@ Epic: `docs/epics/E08-adventure-map.md` (refined 2026-10-08, reviewed with the u
 
 ## Inbox
 
-- 2026-10-11 (T8b2a): `legal_commands` lists one `MoveHero` per reachable tile, the query's path; `apply` also accepts other payable paths. T9's env takes a destination as its action (ADR-0017 point 8), so the mask is the listed destinations; a client sending its own path stays valid.
+- 2026-10-11 (T8b2a): moves are not listed one by one (the user): `h3_game::legal_moves` gives a hero's `Reach`. T9's env builds its mask from it (a bit per tile and hero; ADR-0017 point 8) and the path only for the action taken.
+- 2026-10-11 (T8b2a, the user): clients compute their own paths and `apply` validates them. For the client and server lanes: the pathfinder on a player's observation instead of the state (moves go to explored tiles only, where the observation shows all the query reads: terrain, roads, objects, visible heroes, the own hero's army and points), or a server query for the reach of the player's own hero.
 - 2026-10-11 (T8b2a review): ownership isolation does not cover the players' RNG streams yet (decision 9): no command draws and `GameState` shows no stream. When the first command draws (increment 2's pickups), give the play test a view of each player's stream position (an accessor on `GameState` it can read, or a hash per stream) and check that another player's command leaves it.
 - 2026-10-11 (T8b2a): the play properties (`crates/h3-map/src/tests/play.rs`) take about 6 s for 3 × 48 cases in a debug build. `Plan` and `lay_out` are test code: a generated replay map for T9 would be written once by a test and committed.
 

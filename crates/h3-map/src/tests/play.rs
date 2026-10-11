@@ -1,8 +1,8 @@
 //! Random play on imported maps (E08 T8b2a): a strategy for playable maps (generated, written,
 //! read back and imported, heroes of several players) and a random-play driver through
 //! `h3-game`, with the properties of what a command may do (`docs/05-testing.md`): atomicity,
-//! legality consistency, ownership isolation, clone equivalence and determinism. What a viewer
-//! may learn is T8b2b's.
+//! legality consistency (`legal_commands`, and `legal_moves` per hero), ownership isolation,
+//! clone equivalence and determinism. What a viewer may learn is T8b2b's.
 
 use std::sync::{Arc, LazyLock};
 
@@ -10,7 +10,7 @@ use h3_adventure::{AdventureCommand, Pos as TilePos, Reach};
 use h3_contracts::{HeroId, PlayerId};
 use h3_game::{
     Actor, GameCommand, GameCommandError, GameEvent, GameRuleset, GameState, Sink, apply,
-    legal_commands,
+    legal_commands, legal_moves,
 };
 use h3_pack_adventure::{ORIGINAL_PACKS, compile};
 use proptest::collection::vec;
@@ -256,7 +256,7 @@ fn toward(pos: TilePos, direction: u8) -> TilePos {
 /// One step of random play, resolved against the state it is played on.
 #[derive(Debug, Clone)]
 enum Step {
-    /// The acting player's `n`-th legal command, modulo their number.
+    /// The acting player's `n`-th option ([`options`]), modulo their number.
     Legal(u16),
     /// The acting player ends its turn.
     EndTurn,
@@ -385,7 +385,23 @@ fn acting(state: &GameState) -> PlayerId {
     state.turn_group()[0]
 }
 
-/// A step's actor and command, given the acting player's legal commands.
+/// The commands the driver picks from: the acting player's legal commands, then each of its legal
+/// moves with the query's path, by hero and row by row. The game does not list moves one by one
+/// (a hero with many points reaches thousands of tiles); the small maps here allow it.
+fn options(state: &GameState, rules: &GameRuleset) -> Vec<GameCommand> {
+    let actor = Actor::Player(acting(state));
+    let mut options = legal_commands(state, rules, actor);
+    for hero in state.adventure().heroes() {
+        if let Some(moves) = legal_moves(state, rules, actor, hero.id) {
+            for (to, _) in moves.tiles() {
+                options.push(move_hero(hero.id, moves.path(to).unwrap()));
+            }
+        }
+    }
+    options
+}
+
+/// A step's actor and command, given the acting player's [`options`].
 fn resolve(state: &GameState, legal: &[GameCommand], step: &Step) -> (PlayerId, GameCommand) {
     let actor = acting(state);
     let players = u8::try_from(state.players()).unwrap();
@@ -481,8 +497,8 @@ fn advance<S: Sink>(
     step: &Step,
     sink: &mut S,
 ) -> Result<(), GameCommandError> {
-    let legal = legal_commands(state, rules, Actor::Player(acting(state)));
-    let (actor, command) = resolve(state, &legal, step);
+    let options = options(state, rules);
+    let (actor, command) = resolve(state, &options, step);
     apply(state, rules, Actor::Player(actor), command, sink)
 }
 
@@ -526,9 +542,10 @@ fn reach_of(reaches: &[(HeroId, Reach)], hero: HeroId) -> &Reach {
     &reaches.iter().find(|(id, _)| *id == hero).unwrap().1
 }
 
-/// Legality consistency, before a step: only the acting player has legal commands, `EndTurn`
-/// first; every listed move is the acting player's, applies, and leaves the hero on its last tile
-/// with the points the query reports there, one event per step.
+/// Legality consistency, before a step: only the acting player has legal commands, `EndTurn`;
+/// its legal moves are the query of each of its own heroes and nobody has any for another
+/// player's; every option's move applies and leaves the hero on its last tile with the points the
+/// query reports there, one event per step.
 fn check_legal(
     state: &GameState,
     rules: &GameRuleset,
@@ -538,21 +555,20 @@ fn check_legal(
     let actor = acting(state);
     for player in (0..=state.players()).map(|p| PlayerId::new(u8::try_from(p).unwrap())) {
         let listed = legal_commands(state, rules, Actor::Player(player));
-        prop_assert_eq!(listed.is_empty(), player != actor);
+        let expected = if player == actor {
+            vec![GameCommand::EndTurn]
+        } else {
+            Vec::new()
+        };
+        prop_assert_eq!(listed, expected);
+        for (hero, reach) in reaches {
+            let moves = legal_moves(state, rules, Actor::Player(player), *hero);
+            let own =
+                player == actor && state.adventure().hero(*hero).map(|h| h.owner) == Some(actor);
+            prop_assert_eq!(moves.as_ref(), own.then_some(reach));
+        }
     }
     prop_assert_eq!(legal.first(), Some(&GameCommand::EndTurn));
-    // The moves are the acting player's heroes' reachable tiles, by hero and row by row.
-    let listed: Vec<(HeroId, TilePos)> = legal[1..]
-        .iter()
-        .filter_map(as_move)
-        .map(|(hero, path)| (hero, *path.last().unwrap()))
-        .collect();
-    let reachable: Vec<(HeroId, TilePos)> = reaches
-        .iter()
-        .filter(|(hero, _)| state.adventure().hero(*hero).map(|h| h.owner) == Some(actor))
-        .flat_map(|(hero, reach)| reach.tiles().map(|(pos, _)| (*hero, pos)))
-        .collect();
-    prop_assert_eq!(listed, reachable);
     for command in &legal[1..] {
         let (hero, path) = as_move(command).ok_or_else(|| fail(format!("{command:?}")))?;
         prop_assert_eq!(state.adventure().hero(hero).map(|h| h.owner), Some(actor));
@@ -575,27 +591,19 @@ fn check_legal(
     Ok(())
 }
 
-/// Legality consistency for a command `apply` accepted although it is not listed: a move of the
-/// actor's own hero along another path the hero can pay. A one-step move's tile is listed, with at
-/// least the points the move left (every tile one step away is listed).
+/// Legality consistency for a command `apply` accepted although it is not an option: a move of
+/// the actor's own hero along another path the hero can pay. A one-step move's tile is among its
+/// legal moves, with at least the points the move left (every tile one step away is).
 fn check_unlisted(
     (before, after): (&GameState, &GameState),
     actor: PlayerId,
     command: &GameCommand,
-    legal: &[GameCommand],
     reaches: &[(HeroId, Reach)],
 ) -> Result<(), TestCaseError> {
     let (hero, path) =
         as_move(command).ok_or_else(|| fail(format!("unlisted {command:?} accepted")))?;
     prop_assert_eq!(before.adventure().hero(hero).map(|h| h.owner), Some(actor));
     if let [to] = path {
-        let goes_to =
-            |c: &GameCommand| as_move(c).is_some_and(|(h, p)| h == hero && p.last() == Some(to));
-        prop_assert!(
-            legal.iter().any(goes_to),
-            "{:?}'s tile is not listed",
-            command
-        );
         let left = after.adventure().hero(hero).unwrap().movement;
         let best = reach_of(reaches, hero).points_left(*to);
         prop_assert!(
@@ -653,8 +661,7 @@ proptest! {
         let rules = if strict { &*STRICT } else { &*FAITHFUL };
         let mut state = start(&plan, rules, seed);
         for step in &steps {
-            let actor = acting(&state);
-            let legal = legal_commands(&state, rules, Actor::Player(actor));
+            let legal = options(&state, rules);
             let reaches = reaches(&state, rules);
             check_legal(&state, rules, &legal, &reaches)?;
             let (actor, command) = resolve(&state, &legal, step);
@@ -673,7 +680,7 @@ proptest! {
             }
             prop_assert_eq!(actor, acting(&before));
             if !listed {
-                check_unlisted((&before, &state), actor, &command, &legal, &reaches)?;
+                check_unlisted((&before, &state), actor, &command, &reaches)?;
             }
             if let Some((hero, path)) = as_move(&command) {
                 prop_assert_eq!(events.len(), path.len());

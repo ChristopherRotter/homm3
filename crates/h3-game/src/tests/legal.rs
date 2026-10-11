@@ -1,5 +1,6 @@
-//! Tests of the legal commands (E08 T8b2a): who has any, their order, and that each applies with
-//! the points the reachable-tiles query reports.
+//! Tests of the legal commands and moves (E08 T8b2a): who has any, that the moves are the
+//! reachable-tiles query of the actor's own heroes, and that each move applies with the points
+//! the query reports.
 
 use h3_adventure::AdventureCommand;
 
@@ -7,14 +8,6 @@ use super::*;
 
 const RED: PlayerId = PlayerId::new(0);
 const BLUE: PlayerId = PlayerId::new(1);
-
-/// The hero and the path of a listed move.
-fn as_move(command: &GameCommand) -> (HeroId, &[Pos]) {
-    let GameCommand::Adventure(AdventureCommand::MoveHero { hero, path }) = command else {
-        panic!("not a move: {command:?}");
-    };
-    (*hero, path)
-}
 
 /// The tiles of the 4 × 4 map but `skip`, row by row.
 fn tiles_but(skip: &[Pos]) -> Vec<Pos> {
@@ -25,56 +18,56 @@ fn tiles_but(skip: &[Pos]) -> Vec<Pos> {
 }
 
 #[test]
-fn the_acting_player_may_end_its_turn_or_move_a_hero_to_each_reachable_tile() {
+fn the_acting_player_may_end_its_turn_or_move_its_hero_to_each_reachable_tile() {
     let rules = rules();
     let state = GameState::new(&rules, &setup(), 7).unwrap();
-    let legal = legal_commands(&state, &rules, Actor::Player(RED));
-    assert_eq!(legal[0], GameCommand::EndTurn);
-    // Red's hero on (0, 0) reaches every tile but its own, blue's hero's and the rock's, row by
-    // row, along the query's paths.
-    let (red, rock) = (Pos::new(0, 0, 0), Pos::new(3, 3, 0));
-    let reach = state
+    let actor = Actor::Player(RED);
+    assert_eq!(
+        legal_commands(&state, &rules, actor),
+        [GameCommand::EndTurn]
+    );
+    // Red's hero on (0, 0) reaches every tile but its own, blue's hero's and the rock's.
+    let hero = HeroId::new(0);
+    let moves = legal_moves(&state, &rules, actor, hero).unwrap();
+    let query = state
         .adventure()
-        .reach(rules.core(), rules.adventure(), HeroId::new(0))
-        .unwrap();
-    let moves: Vec<(HeroId, &[Pos])> = legal[1..].iter().map(as_move).collect();
-    let to: Vec<Pos> = moves
-        .iter()
-        .map(|(_, path)| *path.last().unwrap())
-        .collect();
-    assert_eq!(to, tiles_but(&[red, Pos::new(2, 2, 0), rock]));
-    for (command, &(hero, path)) in legal[1..].iter().zip(&moves) {
-        assert_eq!(hero, HeroId::new(0));
-        let to = *path.last().unwrap();
-        assert_eq!(reach.path(to).as_deref(), Some(path));
-        // Each applies and leaves the points the query reports.
+        .reach(rules.core(), rules.adventure(), hero);
+    assert_eq!(Some(&moves), query.as_ref());
+    let to: Vec<Pos> = moves.tiles().map(|(pos, _)| pos).collect();
+    let skip = [Pos::new(0, 0, 0), Pos::new(2, 2, 0), Pos::new(3, 3, 0)];
+    assert_eq!(to, tiles_but(&skip));
+    // Each path applies and leaves the points the query reports.
+    for (to, left) in moves.tiles() {
+        let path = moves.path(to).unwrap();
+        let command = GameCommand::Adventure(AdventureCommand::MoveHero { hero, path });
         let mut moved = state.clone();
-        let actor = Actor::Player(RED);
-        apply(&mut moved, &rules, actor, command.clone(), &mut NoopSink).unwrap();
+        apply(&mut moved, &rules, actor, command, &mut NoopSink).unwrap();
         let hero = moved.adventure().hero(hero).unwrap();
-        assert_eq!((hero.pos, Some(hero.movement)), (to, reach.points_left(to)));
+        assert_eq!((hero.pos, hero.movement), (to, left));
     }
 }
 
 #[test]
-fn a_player_whose_turn_is_not_running_has_none() {
+fn a_player_has_nothing_outside_its_turn_nor_another_players_hero() {
     let rules = rules();
     let mut state = GameState::new(&rules, &setup(), 7).unwrap();
-    let legal = |state: &GameState, player| legal_commands(state, &rules, Actor::Player(player));
-    assert_eq!(legal(&state, BLUE), []);
-    assert_eq!(legal(&state, PlayerId::new(4)), []);
-    let end = GameCommand::EndTurn;
-    apply(&mut state, &rules, Actor::Player(RED), end, &mut NoopSink).unwrap();
-    assert_eq!(legal(&state, RED), []);
-    // In blue's turn: its own hero's moves only, around red's hero on (0, 0).
-    let blue = legal(&state, BLUE);
-    assert_eq!(blue[0], GameCommand::EndTurn);
-    let moves: Vec<(HeroId, &[Pos])> = blue[1..].iter().map(as_move).collect();
-    assert!(moves.iter().all(|&(hero, _)| hero == HeroId::new(1)));
-    let to: Vec<Pos> = moves
-        .iter()
-        .map(|(_, path)| *path.last().unwrap())
-        .collect();
+    let (red, blue) = (Actor::Player(RED), Actor::Player(BLUE));
+    let (red_hero, blue_hero) = (HeroId::new(0), HeroId::new(1));
+    assert_eq!(legal_commands(&state, &rules, blue), []);
+    assert_eq!(
+        legal_commands(&state, &rules, Actor::Player(PlayerId::new(4))),
+        []
+    );
+    assert_eq!(legal_moves(&state, &rules, blue, blue_hero), None);
+    assert_eq!(legal_moves(&state, &rules, red, blue_hero), None);
+    assert_eq!(legal_moves(&state, &rules, red, HeroId::new(9)), None);
+    apply(&mut state, &rules, red, GameCommand::EndTurn, &mut NoopSink).unwrap();
+    assert_eq!(legal_commands(&state, &rules, red), []);
+    assert_eq!(legal_moves(&state, &rules, red, red_hero), None);
+    // In blue's turn: its own hero's moves, around red's hero on (0, 0).
+    assert_eq!(legal_commands(&state, &rules, blue), [GameCommand::EndTurn]);
+    let moves = legal_moves(&state, &rules, blue, blue_hero).unwrap();
+    let to: Vec<Pos> = moves.tiles().map(|(pos, _)| pos).collect();
     let skip = [Pos::new(0, 0, 0), Pos::new(2, 2, 0), Pos::new(3, 3, 0)];
     assert_eq!(to, tiles_but(&skip));
 }
