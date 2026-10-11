@@ -58,7 +58,8 @@
 //! spells the active stack's cast could draw for it, creatures at the start (the resurrection
 //! limit), its turn has started this round, raised from a corpse, native, creatures raised for
 //! this battle only, its corpse (0 none yet, −1 none left, else the order of its death), the
-//! stack linked to it as id + 1 (a clone's original, its living clone; 0 none), its binders as
+//! stack linked to it as id + 1 (a clone's original, its living clone, itself for an original
+//! that became its own clone under BAT-QUIRK-7; 0 none), its binders as
 //! bits of stack ids 0–20 and 21–41, the tenths Poison took, its hit points per creature at the
 //! start if Poison or Age changed them (0 otherwise)]` (no distance penalty, shoots when
 //! adjacent and regeneration can come from the side's hero, BAT-HER-006; created stacks and

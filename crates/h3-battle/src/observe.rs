@@ -79,7 +79,8 @@ pub struct Observation {
     /// The rounds left of each clone, by stack id (0: not a clone; public, BAT-MAG-038).
     pub clone_rounds: [u16; STACK_CAPACITY],
     /// Per stack, by stack id: for a clone its original, for a stack with a living clone that
-    /// clone (public, BAT-MAG-038).
+    /// clone; under quirk BAT-QUIRK-7 a crowded original that became its own clone links to
+    /// itself (public, BAT-MAG-038).
     pub clone_links: [Option<StackId>; STACK_CAPACITY],
     /// Per side, by [`BattleSide::index`], the creature its Summon Elemental casts are bound to
     /// once it cast one (public: every cast is; BAT-MAG-039).

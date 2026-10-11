@@ -677,7 +677,14 @@ proptest! {
                 m.opening_due = !m.opening_due;
                 m.eagle_chance = eagle;
                 m.eagle_spells = SpellSet::default();
-                m.learned = m.eagle_spells;
+                m.learned.insert(SpellId::from_raw(u16::from(level)));
+                m.defences.spells.insert(SpellId::from_raw(u16::from(level)));
+                if m.opening.is_empty() {
+                    let opening = crate::Opening { spell: SpellId::from_raw(0), mastery: 3, power: rounds };
+                    m.opening.push(opening).unwrap();
+                } else {
+                    m.opening.clear();
+                }
             }
             // covers: BAT-MAG-049
             twin.casts.drawn = twin.casts.drawn.map(|(s, spell)| {
