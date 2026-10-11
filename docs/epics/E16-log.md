@@ -903,3 +903,36 @@ how and why the work went.
   one connection per address, the last entry counts, an IPv6 client by its /64, the proxy itself
   without a header, a freed place taken again; behind an untrusted peer the header is ignored;
   `counted` and `forwarded_for` (several entries and headers, none, garbage) unit-tested.
+
+### M3's reviewer agent (2026-10-11, before T5)
+
+- **The review** (T5's item, run before this pull request so that its fixes ride it): a fresh,
+  read-only agent over everything M3 changed in the two crates (`eb52954^1..`); 1 major, 5
+  minor. Nothing found in: acting as another account, taking an account's seat with a token,
+  forging an address through the proxy path, leaking tokens, keys or seeds, leaking counts,
+  lost wakeups, the registry's lock rules, the format-4 restore, panics from client input.
+- **Fixed** (*provisional* in their shape):
+  - (major) **Account changes had no limit**: registrations, re-keys, renames and preferences
+    each sync a line under the player log's lock, which every login waits on; one address could
+    grow the log, its memory and the start without bound. Now `[limits]
+    account_changes_per_address` (20 an hour, beyond the connections' lifetimes) counts every
+    request that may write a line (a login naming a display name included); the one beyond
+    closes its connection `RateLimited`; a login without a change still passes.
+  - **The re-key's kick before anything else**: a connection's next client message is handled
+    only after its kick is taken (`kicked`, a `Notify` permit taken without waiting): an old-key
+    session's pipelined join or rename does not slip in. `Service::sessions` keeps the key each
+    connection logged in with: only those with another key than the new one are kicked (a login
+    with the new key racing the re-key stays), the re-keying one's key is updated; a failed login
+    drops a signal a re-key gave it meanwhile.
+  - **A refused change's line cut off again** (`players::append`): a write or sync that failed
+    truncates the log back to its length before the line (and syncs) where the file allows, so a
+    whole line the server refused does not come back at the next start.
+  - **An abandoned waiting game tells every connection** (a joiner whose join is still on its
+    way heard `TooSlow`); one whose join it refused leaves at its refusal and never reads it.
+  - **A warning at start** without `public_url` when the server listens on an unspecified address
+    or behind trusted proxies: logins sign an address no client dials.
+- **Left** (the inbox): the player log's readers (logins, the games' lookups) still wait behind a
+  write's sync, now bounded by the rate; a rename an old-key session sent before the re-key's
+  commit, while its answer is off the task, can still land.
+- **Tests** (`h3-server` 67, +1): an address's account changes beyond the limit close its
+  connection, a registration too, a plain login passes; the configuration's range.

@@ -48,7 +48,7 @@ The server lane's living state; read after the global `docs/HANDOFF.md`. Format 
 
 ### 2026-10-11 — M3 T3, T4a, T4b
 
-#102 had merged; the branch restarted from `master`. Built T3 (seats bound to accounts; the T2b inbox item: a re-key closes the account's other connections), T4a (the command limit; a waiting game without a held seat leaves) and T4b (trusted proxies, IPv6 /64) in one pull request, wire 13 for all (`E16-log.md`). ADR-0018 point 8's amendment and `06-security.md` wait for T5's shared change. No shared change.
+#102 had merged; the branch restarted from `master`. T3 (seats by account; a re-key closes the account's other connections), T4a, T4b and M3's reviewer (1 major, 5 minor, fixed) in one pull request, wire 13 (`E16-log.md`). ADR-0018 point 8 and `06-security.md` wait for T5's shared change.
 
 ### 2026-10-11 — M3 T2b, re-keys, renames, the preference, the rebind
 

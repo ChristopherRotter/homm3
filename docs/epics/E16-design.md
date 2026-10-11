@@ -167,7 +167,10 @@ contains seeds, tokens, nonces or signatures.
   `Authenticator` checks the signature, Ed25519 in strict mode (a small-order key or a
   non-canonical signature never holds). Failed logins count per address, beyond its connections'
   lifetimes: beyond `[limits] failed_logins_per_address` a minute (10), a login closes its
-  connection `RateLimited`, as does any login from the address until the minute is over. Without
+  connection `RateLimited`, as does any login from the address until the minute is over. The
+  requests that may write the player log (a registration, a re-key, a rename, a preference)
+  count per address too: beyond `[limits] account_changes_per_address` an hour (20), one closes
+  its connection `RateLimited` (M3's review). Without
   a login a connection plays anonymously where `[server] anonymous` (default true)
   allows, with seat tokens as in M2; otherwise `Join` and `CreateGame` wait for the login.
 - **Re-keying** (built in M3 T2b). After a password change the client keeps the old key until

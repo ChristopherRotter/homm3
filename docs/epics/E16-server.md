@@ -437,6 +437,10 @@ Choices queued under the autonomy contract (details in `E16-log.md`):
   (not RFC 7239's `Forwarded`); a proxied connection counted in the total only until its
   handshake; the proxy's own address without a header that reads; the /64 for every limit per
   address, the lobby's included; the operator's page as the crate's README.
+- M3's reviewer (run before T5): `account_changes_per_address` (20 an hour; every request that
+  may write the player log, closing its connection beyond); the re-key's kick taken before a
+  client message and only for another key; a refused line truncated off the log; a warning
+  without `public_url` on an unspecified address or behind proxies.
 
 ## Review list for the M2 checkpoint (passed 2026-10-11, SRV-Q16)
 
