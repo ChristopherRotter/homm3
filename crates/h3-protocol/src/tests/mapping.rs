@@ -7,8 +7,9 @@ use std::vec::Vec;
 
 use h3_battle::{
     ActiveEffect, BattleResult, BattleSide, BattleState, CastTarget, CommandError,
-    DamageRoll as EngineRoll, Event as EngineEvent, EventKind as K, Hex, HexSet, NoopSink,
-    SpellObstacle as EngineObstacle, StackId, StrikeFlags, TacticsPhase, Visibility,
+    DamageRoll as EngineRoll, Event as EngineEvent, EventKind as K, Hex, HexSet, NoopSink, Opening,
+    SpellObstacle as EngineObstacle, SpellSet, StackFlags, StackId, StackTraits, StrikeFlags,
+    TacticsPhase, Visibility,
 };
 use h3_content::{CreatureTypeId, ObstacleKind as EngineKind, SpellId, TerrainId};
 use h3_contracts::{BallistaControl, Obstacle, Rate, TentControl};
@@ -486,15 +487,31 @@ fn every_part_of_an_observation_is_mapped() {
     o.result = Some(BattleResult::Draw);
     o.drawn = Some(spell);
     o.terrain = Some(TerrainId::from_raw(1));
+    o.wait_phase = true;
+    o.summoned[1] = Some(CreatureTypeId::from_raw(7));
+    o.cost_change = [-2, 1];
+    o.obstacles_cleared = hex_set(&[40]);
+    o.clone_links[0] = Some(StackId(1));
+    o.temporary[0] = 5;
+    o.corpses[1] = 2;
+    o.binders[0] = (1 << 1) | (1 << 40);
+    o.poison[0] = 3;
+    o.start_hp[0] = 25;
+    let s0 = &mut o.stacks.as_mut_slice()[0];
+    s0.flags.set(StackFlags::STARTED, true);
+    s0.traits = s0
+        .traits
+        .with(StackTraits::NATIVE, true)
+        .with(StackTraits::RAISED, true);
     o.effects.push(ActiveEffect {
         stack: StackId(0),
         spell,
         rounds: None,
-        value: 0,
-        mastery: 0,
-        attack: 0,
-        defense: 0,
-        speed: 0,
+        value: 3,
+        mastery: 2,
+        attack: 4,
+        defense: -1,
+        speed: 2,
     });
     o.spell_obstacles.push(EngineObstacle {
         spell,
@@ -513,7 +530,62 @@ fn every_part_of_an_observation_is_mapped() {
     own.tent = Some(TentControl {
         heal_bonus: Rate::bp(2500),
     });
+    let mut set = SpellSet::default();
+    set.insert(spell);
+    own.spell_bonuses.all = Rate::bp(1000);
+    own.spell_bonuses.school[2] = Rate::bp(500);
+    own.spell_bonuses
+        .spells
+        .push(h3_battle::SpellBonus {
+            spell,
+            damage_bp: 300,
+            per_level_bp: 3,
+            level: 10,
+        })
+        .unwrap();
+    own.magic_resistance_bp = 2000;
+    own.duration_bonus = 2;
+    own.no_casting = true;
+    own.level_limit = Some(3);
+    own.defences = h3_battle::Defences {
+        spells: set,
+        up_to_level: Some(2),
+        mind: true,
+    };
+    own.negates = true;
+    own.opening
+        .push(Opening {
+            spell,
+            mastery: 3,
+            power: 5,
+        })
+        .unwrap();
+    own.opening_due = true;
+    own.eagle_chance = 40;
+    own.eagle_spells = set;
+    own.learned = set;
     let w = map::observation(&o);
+    assert!(w.wait_phase);
+    assert_eq!(w.obstacles_cleared, vec![40]);
+    assert_eq!(
+        w.sides.map(|s| (s.summoned, s.cost_change)),
+        [(None, -2), (Some(7), 1)]
+    );
+    let (engine, w0) = (&o.stacks.as_slice()[0], &w.stacks[0]);
+    assert_eq!(
+        (w0.base_count, w0.retaliations),
+        (engine.base_count, engine.retaliations)
+    );
+    assert!(w0.started && w0.native && w0.raised);
+    assert!(!w.stacks[1].started && !w.stacks[1].native && !w.stacks[1].raised);
+    assert_eq!(
+        (w0.clone_link, w0.temporary, w0.poison, w0.start_hp),
+        (Some(1), 5, 3, 25)
+    );
+    assert_eq!(w0.bound_by, vec![1, 40]);
+    assert_eq!((w0.corpse, w.stacks[1].corpse), (0, 2));
+    assert_eq!(w.stacks[1].clone_link, None);
+    assert!(w.stacks[1].bound_by.is_empty());
     assert_eq!(
         w.tactics,
         Some(Tactics {
@@ -527,7 +599,12 @@ fn every_part_of_an_observation_is_mapped() {
         w.stacks[0].effects,
         vec![Effect {
             spell: 4,
-            rounds: None
+            rounds: None,
+            mastery: 2,
+            value: 3,
+            attack: 4,
+            defense: -1,
+            speed: 2,
         }]
     );
     assert!(w.stacks[1].effects.is_empty());
@@ -553,6 +630,40 @@ fn every_part_of_an_observation_is_mapped() {
         })
     );
     assert_eq!(own.tent_heal_bonus_bp, Some(2500));
+    assert_eq!(own.spell_damage_bp, 1000);
+    assert_eq!(own.school_damage_bp, vec![0, 0, 500, 0]);
+    assert_eq!(
+        own.spell_bonuses.last(),
+        Some(&SpellBonus {
+            spell: 4,
+            damage_bp: 300,
+            per_level_bp: 3,
+            level: 10,
+        })
+    );
+    assert_eq!(
+        (own.magic_resistance_bp, own.duration_bonus, own.level_limit),
+        (2000, 2, Some(3))
+    );
+    assert!(own.no_casting && own.negates && own.opening_due);
+    assert_eq!(
+        own.defences,
+        Defences {
+            spells: vec![4],
+            up_to_level: Some(2),
+            mind: true,
+        }
+    );
+    assert_eq!(
+        own.opening,
+        vec![OpeningSpell {
+            spell: 4,
+            mastery: 3,
+            power: 5,
+        }]
+    );
+    assert_eq!(own.eagle_chance, 40);
+    assert_eq!((own.eagle_spells, own.learned), (vec![4], vec![4]));
 }
 
 #[test]

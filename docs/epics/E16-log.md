@@ -453,3 +453,38 @@ how and why the work went.
   cast); the seats-and-numbers property with spectators as viewers (no token, no turn, records
   numbered without gaps, the header's seat). Over loopback: a spectator watches a game against the
   bot to its end within a limit of one, a second is refused, its `FetchReplay` is `NotSeated`.
+
+### M2 T4b — The observation's completeness on the wire (2026-10-11)
+
+- **The start.** #76 (T4) was merged; the branch restarted from `master` (the scoped verify on a
+  clean worktree had no failing step but coverage, whose LLVM paths were not set; the workload
+  −0.39 %). The user asked whether a host can turn spectators off: only the operator can, for
+  every game (`[limits] spectators_per_game`); queued as T4c.
+- **The wire, version 7** (*queued for the M2 review*): on `Observation` the wait phase and the
+  hexes a removal cleared; on `SideView` the creature its Summon Elemental casts are bound to and
+  its hero's spell-cost change; on `Stack` the base count, the retaliations per round, the flags
+  `started`, `native` and `raised`, and the values the engine keeps per stack beside it (the clone
+  link, the temporary creatures, the corpse's order, the binders as stack ids, Poison's tenths,
+  the start hit points); on `Effect` its mastery, value and its shares of attack, defense and
+  speed; on `OwnHero` the hidden magic (BAT-Q26): the spell damage bonuses (all, per school, per
+  spell), the magic resistance, the duration bonus, `no_casting`, the level limit, the defences,
+  `negates`, the opening spells and whether they are due, Eagle Eye's chance, spells and what it
+  learned. Spell sets travel as handles, rates as basis points.
+- **The completeness** (`map/mod.rs`): every engine struct the observation is made of
+  (`Observation`, `Stack`, `SpellValues`, `ActiveEffect`, `SpellObstacle`, `TacticsPhase`,
+  `HeroView`, `OwnHeroView`, the hero's damage, Ballista, tent, spell bonuses, defences and
+  opening spells, `Rate`) is named in a pattern without `..`: a new field fails the build until it
+  is mapped or bound to `_` under its reason, as a new variant does (ADR-0018 point 5 as
+  amended); the queue asked for a test, the build is the earlier and surer check. Left out on
+  purpose: a rate's single-precision value (the rules' arithmetic, quirk Q-0005); a stack's base
+  attack, defense and speed (the values now are on the wire, the effects' shares with the
+  effects); the values the stack's effects materialise (protections, slayer, fire shield, frenzy,
+  spell immunity, mirror, status, the morale and luck changes; BAT-MAG-011), which follow from the
+  effects with the spells' data; the traits other than the named ones (the creature's data). The
+  removable obstacles' fields are private: read through their accessors. `h3-contracts` moved to
+  `h3-protocol`'s dependencies for the hero's types (an edge `arch.toml` allowed already).
+- **Tests** (h3-protocol 53, h3-server 27; the scoped verify with no failing step, coverage
+  100 %; the workload +1.00 % against −0.39 % on `master`, the larger snapshots' encoding:
+  re-baselined at 275 849 212): the mapping test gives every new field a distinctive value and finds it on the wire; the
+  hygiene properties unchanged (the new hero fields ride in `own_hero`, which only the hero's side
+  gets).

@@ -45,7 +45,9 @@ seeds and tokens, the replay file) in `h3-server` (`game.rs`, `net.rs`); the spe
 
 The M1 messages, the manifest, the observation and the events are code since M1 T1
 (`crates/h3-protocol/src/wire.rs`, in the same form: struct variants in serde's default
-enum form). Later milestones add:
+enum form). Since M2 T4b the observation carries every field of the engine's observation, or
+the mapping names it as left out and why (`map/mod.rs`: a pattern per engine type, so a new
+field fails the build until it is mapped). Later milestones add:
 
 Client to server: M2: `ListGames { seq }` and `CreateGame { seq, offer, seat }` (code since M2
 T1: a game is created from one of the server's offers and its creator takes `seat` in it at
