@@ -497,3 +497,73 @@ its army and movement points stay private until the original's right-click view 
 - **Not done here:** `legal_commands` and the property tests (T8b2). Open: the fringe's eight
   neighbours are ADR-0016's "touching", not a reading of how the original draws the border
   (inbox).
+
+### Checkpoint after T8b1 and T8b2a (2026-10-11, `adventure/e08-t8b2a`)
+
+The user merged T8b1 (#81, #82) and asked for smaller rounds as the work grows. T8b2 was split
+at the agent's proposal: **T8b2a** (`legal_commands` and the properties of what a command may do)
+this round, **T8b2b** (the properties of what a viewer may learn: observation hygiene, the
+observation against the events) the next. The user asked why an agent cannot make the three
+editor maps T9 waits for: the agent explained (they are worth having because the original editor
+wrote their bytes; a map our writer makes only tests the reader against itself; driving the
+editor through screenshots costs many tokens and runs from the installation that must stay
+untouched) and offered a generated map for T9's replays. The user then dropped the editor maps
+(too little gain for the time; reconsider only if a bug shows up they would have caught): T9's
+replays play a map T8b2a's `lay_out` generates, written once by a test and committed; the shipped
+maps stay the reader's test, locally.
+
+- **The legal commands and moves** (`h3-game`, `legal.rs`): `legal_commands(state, rules,
+  actor)` lists `EndTurn`; `legal_moves(state, rules, actor, hero)` gives a hero's moves as its
+  reachable-tiles query (`Reach`: the points left on each tile, the path built for the one tile
+  chosen). Both empty outside the actor's turn, through `apply`'s own turn check
+  (`check_acting`); `legal_moves` also for another player's hero. The first version listed one
+  `MoveHero` per reachable tile with its path; the user asked whether that is not excessive (a
+  hero with 3000 points, on roads at 50 a step, reaches tiles 60 steps away: thousands of
+  commands per hero and call, each with a path of dozens of tiles, which the env would pay at
+  every step and a server should never send). Reworked in the same pull request, as the battle
+  gives casts by their targets (ADR-0014 point 9): the moves are factorized, the env's mask is
+  the query's tiles (ADR-0017 point 8: the action is a destination, the env builds the path),
+  and a client computes its own paths: `apply` checks every step of any path against the state
+  and the actor (ADV-MOV-007, ADV-MOV-008) and rejects it whole. The query keeps one path per
+  tile, so `apply` also accepts other payable paths (one back to the hero's tile, or one the
+  query does not keep, `Reach`'s doc). Unit tests on the 4 × 4 map: the moves are the query,
+  each path applies with its points, nothing outside the turn or for another player's hero.
+- **Playable maps** (`h3-map`'s `tests/play.rs`): a `Plan` (version, side 5–16, one or two
+  levels, mostly land with a twentieth each water and rock, roads and rivers, two to four colours,
+  two to six heroes with distinct types and custom or starting armies of base creatures, up to
+  eight blockers of three shapes, one visited from a tile outside its blocked ones) laid out as a
+  raw map (heroes on distinct land tiles, owners round the players, blockers covering a hero's
+  tile left out), written by the test encoder, read back and imported, so every case plays an
+  imported file. At the end of a case players have explored a third to all of their map.
+- **The driver:** steps resolved against the state: the acting player's `n`-th option (its legal
+  commands, then each legal move with the query's path: the test lists moves one by one on its
+  small maps, the game does not), an
+  `EndTurn`, a legal move edited (last step dropped, one more step, one more step onto a hidden
+  tile, a step turned, another hero, another player), or a free command (`EndTurn` or a move by
+  the acting player, a player of the game or one past them; walks in given directions with a
+  jump anywhere, or a straight line to a tile across explored and hidden tiles; the hero the
+  actor's own or any id up to one past the heroes). Over 48 cases of up to 40 steps about three
+  in four commands apply (a quarter of them `EndTurn`; a day passes about once per case) and
+  every rejection kind occurs.
+- **The properties** (48 cases each, both profiles in the first): at every step only the acting
+  player has legal commands (`EndTurn`) and legal moves, which are the query of each of its own
+  heroes and none for another player's; every move to a tile of the query along its path applies
+  and leaves the hero on that tile with the query's points, one event per step (legality
+  consistency); a rejected
+  command changes neither the state nor its hash and emits nothing, and was not listed
+  (atomicity); an accepted command was the acting player's, an unlisted accepted one is a move of
+  its own hero, and an unlisted one-step move goes to a listed tile with at most the query's
+  points; a command moves no other player's hero, changes no other player's army or explored
+  tiles, and changes another player's heroes' points only when its turn starts (ownership
+  isolation); a fork playing other commands leaves its parent's hash and content as a fresh replay
+  of the prefix has them, and a fork and its parent evolve identically (clone equivalence); two
+  plays of the same file, seed and steps give the same states, events and hashes, and the laid
+  out map survives the encoder and reader unchanged (determinism).
+- **Review** (an independent agent): no bug; taken: the fork test drew an empty suffix in about
+  half its cases (the split is now an index into at least one step), the legal moves are
+  compared with the query and an unlisted one-step move's tile looked up in it, the
+  isolation check compares the hero counts before zipping, the edit onto a hidden tile tries all
+  eight directions, the determinism test plays the second run on rules compiled again. Deferred:
+  decision 9 says ownership isolation covers the players' streams; no command draws yet and the
+  streams have no accessor (inbox).
+- **Not done here:** observation hygiene and the observation against the events (T8b2b).
