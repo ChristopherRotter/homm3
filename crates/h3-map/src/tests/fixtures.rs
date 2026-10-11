@@ -1,5 +1,5 @@
 //! The generated maps committed under `fixtures/maps/` (E08 T9a): `h3-sim`'s adventure
-//! environment plays them in its tests, and T9b's golden replays and benchmarks will. Each is laid
+//! environment plays them in its tests, T9b's golden replays and benchmarks too. Each is laid
 //! out by T8b2a's [`lay_out`] from a plan built here with a fixed generator (not proptest's, so
 //! that the plan depends on this file alone), written as the game stores maps (gzip). The test
 //! checks that the committed file reads to the same map and imports; it rewrites the file when
@@ -9,7 +9,7 @@
 use std::path::PathBuf;
 
 use super::gzip_with;
-use super::play::{FAITHFUL, Plan, lay_out};
+use super::play::{FAITHFUL, Plan, Spot, lay_out};
 use crate::model::Version;
 use crate::{Limits, import, read};
 
@@ -31,14 +31,16 @@ impl Mix {
     }
 }
 
-/// `e08-duel-36.h3m`: decision 11's random-play map. SoD, 36 × 36 with an underground, red and
-/// blue with two heroes each (one on each level, red's in the west, blue's in the east; their
-/// types' starting armies), terrain in patches of 6 × 6 tiles (all eight land terrains, some
-/// water and rock), a road across each level, rivers on some patches, 72 blockers.
-fn duel() -> Plan {
-    const SIDE: u8 = 36;
-    let mut mix = Mix(36);
-    let patches: Vec<(u8, u8)> = (0..2 * 6 * 6)
+/// A tile's terrain, road and river codes.
+type Codes = (u8, u8, u8);
+
+/// Terrain in patches of 6 × 6 tiles (all eight land terrains, some water and rock), a road
+/// across each level (the middle row on the surface, the middle column underground), rivers on
+/// some patches, and `count` blockers, for a two-level map of `side` tiles, all drawn from `mix`
+/// in this order (`e08-duel-36.h3m`'s draws: changing the order changes the committed maps).
+fn patchwork(side: u8, mix: &mut Mix, count: usize) -> (Vec<Codes>, Vec<(Spot, usize)>) {
+    let per_row = usize::from(side / 6);
+    let patches: Vec<(u8, u8)> = (0..2 * per_row * per_row)
         .map(|_| {
             let terrain = match mix.below(12) {
                 10 => 8,
@@ -53,14 +55,15 @@ fn duel() -> Plan {
             (terrain, river)
         })
         .collect();
+    let middle = side / 2 - 1;
     let mut tiles = Vec::new();
     for z in 0..2u8 {
-        for y in 0..SIDE {
-            for x in 0..SIDE {
-                let patch = (usize::from(z) * 6 + usize::from(y / 6)) * 6 + usize::from(x / 6);
+        for y in 0..side {
+            for x in 0..side {
+                let patch =
+                    (usize::from(z) * per_row + usize::from(y / 6)) * per_row + usize::from(x / 6);
                 let (terrain, river) = patches[patch];
-                // A road across the level: row 17 on the surface, column 17 underground.
-                let road = if (z == 0 && y == 17) || (z == 1 && x == 17) {
+                let road = if (z == 0 && y == middle) || (z == 1 && x == middle) {
                     1 + z
                 } else {
                     0
@@ -70,15 +73,23 @@ fn duel() -> Plan {
             }
         }
     }
-    let blockers = (0..72)
+    let blockers = (0..count)
         .map(|_| {
-            let anchor = (mix.below(SIDE), mix.below(SIDE), mix.below(2));
+            let anchor = (mix.below(side), mix.below(side), mix.below(2));
             (anchor, usize::from(mix.below(3)))
         })
         .collect();
+    (tiles, blockers)
+}
+
+/// `e08-duel-36.h3m`: decision 11's random-play map. SoD, 36 × 36 with an underground, red and
+/// blue with two heroes each (one on each level, red's in the west, blue's in the east; their
+/// types' starting armies), [`patchwork`] terrain, 72 blockers.
+fn duel() -> Plan {
+    let (tiles, blockers) = patchwork(36, &mut Mix(36), 72);
     Plan {
         version: Version::Sod,
-        side: SIDE,
+        side: 36,
         two_levels: true,
         tiles,
         players: vec![(0, true), (1, true)],
@@ -94,11 +105,39 @@ fn duel() -> Plan {
     }
 }
 
+/// `e08-xl-144.h3m`: decision 11's pathfinding and fork map (E08 T9b). SoD, 144 × 144 with an
+/// underground (the largest map, 41 472 tiles), red and blue with four heroes each (two on each
+/// level, red's in the west, blue's in the east), [`patchwork`] terrain, 1 152 blockers (the
+/// duel's density).
+fn xl() -> Plan {
+    let (tiles, blockers) = patchwork(144, &mut Mix(144), 72 * 16);
+    Plan {
+        version: Version::Sod,
+        side: 144,
+        two_levels: true,
+        tiles,
+        players: vec![(0, true), (1, true)],
+        // Owners go round the players: red, blue, red, blue, …
+        heroes: vec![
+            ((10, 10, 0), None),
+            ((133, 133, 0), None),
+            ((10, 130, 0), None),
+            ((133, 13, 0), None),
+            ((12, 72, 1), None),
+            ((131, 72, 1), None),
+            ((70, 20, 1), None),
+            ((73, 123, 1), None),
+        ],
+        hero_types: 5,
+        blockers,
+    }
+}
+
 /// A committed generated map: its file name and plan.
 type Fixture = (&'static str, fn() -> Plan);
 
 /// The committed generated maps.
-const FIXTURES: [Fixture; 1] = [("e08-duel-36.h3m", duel)];
+const FIXTURES: [Fixture; 2] = [("e08-duel-36.h3m", duel), ("e08-xl-144.h3m", xl)];
 
 #[test]
 fn generated_maps_are_committed_as_generated() {
@@ -117,6 +156,6 @@ fn generated_maps_are_committed_as_generated() {
             "{name} is not its plan's map: H3_WRITE_FIXTURES=1 rewrites it"
         );
         let setup = import(&read, &FAITHFUL).unwrap();
-        assert_eq!(setup.heroes.len(), 4, "{name}");
+        assert_eq!(setup.heroes.len(), plan().heroes.len(), "{name}");
     }
 }

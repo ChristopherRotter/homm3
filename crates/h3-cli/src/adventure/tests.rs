@@ -209,3 +209,80 @@ fn the_command_line_runs_and_verifies() {
     }
     std::fs::remove_dir_all(&dir).unwrap();
 }
+
+#[test]
+fn the_benchmark_workloads_run_and_count_what_they_say() {
+    let bench = |workload, observe, masks| {
+        bench::run(
+            &root().join("packs"),
+            &root(),
+            &bench::BenchOptions {
+                map: DUEL.to_owned(),
+                profile: DEFAULT_PROFILE.to_owned(),
+                workload,
+                games: 2,
+                days: 2,
+                seed: 1,
+                forks: 7,
+                observe,
+                masks,
+            },
+        )
+        .unwrap()
+    };
+    let play = bench(bench::Workload::Play, false, false);
+    assert_eq!(play.operations, play.steps);
+    assert!(play.steps > 4);
+    // What an agent reads does not change the game: the same steps.
+    assert_eq!(bench(bench::Workload::Play, true, true).steps, play.steps);
+    let reach = bench(bench::Workload::Reach, false, false);
+    assert_eq!(reach.steps, play.steps);
+    // The duel's players have two heroes each.
+    assert_eq!(reach.operations, 2 * reach.steps);
+    let fork = bench(bench::Workload::Fork, false, false);
+    assert_eq!((fork.operations, fork.steps), (14, play.steps));
+    let dir = root().display().to_string();
+    let packs = format!("{dir}/packs");
+    let args = |words: &[&str]| words.iter().map(|w| (*w).to_owned()).collect::<Vec<_>>();
+    for workload in ["play", "reach", "fork"] {
+        cli::main(&args(&[
+            "bench",
+            "--map",
+            DUEL,
+            "--root",
+            &dir,
+            "--packs-dir",
+            &packs,
+            "--workload",
+            workload,
+            "--games",
+            "1",
+            "--days",
+            "1",
+            "--forks",
+            "3",
+            "--observe",
+            "1",
+            "--masks",
+            "1",
+        ]))
+        .unwrap();
+    }
+    for bad in [
+        args(&["bench"]),
+        args(&["bench", "--map", DUEL, "--workload", "walk"]),
+        args(&["bench", "--map", DUEL, "--days", "0"]),
+        args(&["bench", "--map", DUEL, "--speed", "1"]),
+        args(&[
+            "bench",
+            "--map",
+            "../x.h3m",
+            "--root",
+            &dir,
+            "--packs-dir",
+            &packs,
+        ]),
+    ] {
+        assert!(cli::main(&bad).is_err(), "{bad:?}");
+    }
+}

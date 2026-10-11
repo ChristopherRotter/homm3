@@ -39,6 +39,7 @@
 
 #![allow(clippy::disallowed_types, clippy::disallowed_methods)]
 
+pub mod bench;
 pub mod cli;
 
 use std::fmt;

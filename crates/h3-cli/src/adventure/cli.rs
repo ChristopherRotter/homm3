@@ -6,6 +6,9 @@
 //!                  [--seed N] [--agent-seed N] [--days N] [--max-steps N]
 //!                  [--checkpoint-every N] [--record <out.toml>]
 //! h3 adventure verify [--packs-dir packs] [--root .] <replay.toml>...
+//! h3 adventure bench --map <file.h3m> [--workload play|reach|fork] [--packs-dir packs] [--root .]
+//!                    [--profile base:faithful] [--games N] [--days N] [--seed N] [--forks N]
+//!                    [--observe 0|1] [--masks 0|1]
 //! ```
 //!
 //! `--root` is the directory map paths are relative to (the repository's root for the fixtures);
@@ -15,6 +18,7 @@ use std::path::PathBuf;
 
 use h3_sim::adventure::replay::RecordOptions;
 
+use super::bench::{BenchOptions, Workload};
 use super::{DEFAULT_PROFILE, RunOptions, run_random, verify_file};
 
 /// The adventure commands' usage.
@@ -22,7 +26,10 @@ pub const USAGE: &str = "usage:
   h3 adventure run --map <file.h3m> [--packs-dir packs] [--root .] [--profile base:faithful]
                    [--seed N] [--agent-seed N] [--days N] [--max-steps N]
                    [--checkpoint-every N] [--record <out.toml>]
-  h3 adventure verify [--packs-dir packs] [--root .] <replay.toml>...";
+  h3 adventure verify [--packs-dir packs] [--root .] <replay.toml>...
+  h3 adventure bench --map <file.h3m> [--workload play|reach|fork] [--packs-dir packs] [--root .]
+                     [--profile base:faithful] [--games N] [--days N] [--seed N] [--forks N]
+                     [--observe 0|1] [--masks 0|1]";
 
 /// Parsed arguments: `--name value` options and positional words.
 struct Args {
@@ -92,6 +99,7 @@ pub fn main(raw: &[String]) -> Result<(), String> {
     match command.as_str() {
         "run" => run(&args),
         "verify" => verify(&args),
+        "bench" => bench(&args),
         _ => Err(format!("unknown adventure command `{command}`\n{USAGE}")),
     }
 }
@@ -163,4 +171,81 @@ fn verify(args: &Args) -> Result<(), String> {
     } else {
         Err(format!("{failed} replay(s) failed to verify"))
     }
+}
+
+fn bench(args: &Args) -> Result<(), String> {
+    args.check_known(&[
+        "map",
+        "workload",
+        "packs-dir",
+        "root",
+        "profile",
+        "games",
+        "days",
+        "seed",
+        "forks",
+        "observe",
+        "masks",
+    ])?;
+    let workload = match args.get("workload").unwrap_or("play") {
+        "play" => Workload::Play,
+        "reach" => Workload::Reach,
+        "fork" => Workload::Fork,
+        other => return Err(format!("--workload: `{other}` is not play, reach or fork")),
+    };
+    let options = BenchOptions {
+        map: args.get("map").ok_or("--map is required")?.to_owned(),
+        profile: args.get("profile").unwrap_or(DEFAULT_PROFILE).to_owned(),
+        workload,
+        games: args.num("games", 10)?,
+        days: args.num("days", 28)?,
+        seed: args.num("seed", 1)?,
+        forks: args.num("forks", 10_000)?,
+        observe: args.num("observe", 0u8)? != 0,
+        masks: args.num("masks", 0u8)? != 0,
+    };
+    if options.days == 0 {
+        return Err("a game ends only by its day limit: --days must be above 0".to_owned());
+    }
+    let r = super::bench::run(
+        &args.path("packs-dir", "packs"),
+        &args.path("root", "."),
+        &options,
+    )
+    .map_err(|e| e.to_string())?;
+    let what = match workload {
+        Workload::Play => "steps",
+        Workload::Reach => "queries",
+        Workload::Fork => "forks",
+    };
+    let counted = if workload == Workload::Play {
+        String::new()
+    } else {
+        format!(", {what}: {}", r.operations)
+    };
+    println!(
+        "games: {}, steps: {}{counted}, time: {:.3}s",
+        options.games, r.steps, r.seconds
+    );
+    println!(
+        "size of GameState: {} bytes, AdventureEnv: {} bytes",
+        size_of::<h3_game::GameState>(),
+        size_of::<h3_sim::adventure::AdventureEnv>()
+    );
+    let per_second = r.operations as f64 / r.seconds;
+    println!(
+        "{what}/s: {per_second:.0} ({:.2} µs each){}{}",
+        1e6 / per_second,
+        if options.observe {
+            ", observation before each step"
+        } else {
+            ""
+        },
+        if options.masks {
+            ", masks before each step"
+        } else {
+            ""
+        },
+    );
+    Ok(())
 }
