@@ -4,21 +4,14 @@ Pre-refined tasks of the server lane, in order, then the inbox of discovered wor
 
 ## Tasks
 
-Epic: `docs/epics/E16-server.md` (in progress; M0 and M1 done 2026-10-10, ADR-0018; M2 done 2026-10-11, its checkpoint passed, SRV-Q16). M3 refined 2026-10-11 (SRV-Q17): ADR-0019, accepted at the refinement (points 1 and 2 for M3; the design note §10), cut below, each task about half a context; T1 done 2026-10-11 (the login on the wire, wire 12). Work under the autonomy contract (`HANDOFF.md`). Each wire change bumps `PROTOCOL_VERSION`.
-
-### E16 M3 T2a — The Authenticator and the player log
-
-- **Scope:** `h3-server`: `ed25519-dalek` (3) behind an `Authenticator` trait: the signature checked over `"h3-login-v1"`, `[server] public_url` and the connection's challenge (32 bytes of OS randomness); a new key with a free login name and a free display name registers, a known pair logs in, anything else is refused alike; failed logins count against the address's rate. `<data>/players.log` (JSON lines, owner-only, synced before the answer, read back at start, a torn line dropped). `[server] anonymous` (default true): without it, a connection must log in before it joins or creates a game. The test client derives its key with `argon2` (0.6; `E16-design.md` §10) and a test vector fixes the derivation. `deny.toml` passes with the new crates.
-- **Acceptance:** the Definition of Done; end to end: registration, login, a restart keeps the account, a login signed for another `public_url`, with another connection's challenge or by another key refused, anonymous play on and off.
-- **Depends on:** T1 (done 2026-10-11): the gate hands the host `Received::Account`; `net::serve` refuses it today (SRV-STUB-1, to remove).
-- **Status:** ready.
+Epic: `docs/epics/E16-server.md` (in progress; M0 and M1 done 2026-10-10, ADR-0018; M2 done 2026-10-11, its checkpoint passed, SRV-Q16). M3 refined 2026-10-11 (SRV-Q17): ADR-0019, accepted at the refinement (points 1 and 2 for M3; the design note §10), cut below, each task about half a context; T1 done 2026-10-11 (the login on the wire, wire 12); T2a done 2026-10-11 (logins checked, the player log). Work under the autonomy contract (`HANDOFF.md`). Each wire change bumps `PROTOCOL_VERSION`.
 
 ### E16 M3 T2b — Re-keying, renames, the listing preference, the operator's rebind
 
 - **Scope:** `Rekey` (signed by the old and the new key) rebinds the account; `Rename` changes the display name (unique on the server, ignoring case); the account's `listed` preference; each a line in the player log. The operator's rebind of a login name to a new key (a subcommand of the server's binary that appends to the player log while the server is stopped, *provisional*).
 - **Acceptance:** the Definition of Done; end to end: after a re-key only the new key logs in, also after a restart; a taken display name refused; the rebind.
-- **Depends on:** T2a.
-- **Status:** ready once T2a is done.
+- **Depends on:** T2a (done 2026-10-11): `accounts::Accounts::answer` refuses the three requests (SRV-STUB-2, to remove); the player log's `Line` takes the new events.
+- **Status:** ready.
 
 ### E16 M3 T3 — Seats bound to accounts
 
@@ -38,8 +31,8 @@ Epic: `docs/epics/E16-server.md` (in progress; M0 and M1 done 2026-10-10, ADR-00
 
 - **Scope:** `[server] trusted_proxies`: a connection from one of them is counted by the client's address its forwarded header names (the WebSocket handshake's `X-Forwarded-For`, its last entry; *provisional*); the per-address limits by IPv6 /64 prefix; the documented setup (a TLS-terminating reverse proxy in front of the server, an example configuration, `public_url`). The M2 inbox's item.
 - **Acceptance:** the Definition of Done; end to end: two clients behind a trusted proxy count as their own addresses, a forwarded header from an untrusted peer is ignored; the setup in the server's docs.
-- **Depends on:** T2a (`public_url`).
-- **Status:** ready once T2a is done.
+- **Depends on:** T2a (done 2026-10-11; `public_url`).
+- **Status:** ready.
 
 ### E16 M3 T5 — M3's closure
 

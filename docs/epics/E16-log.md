@@ -726,3 +726,48 @@ how and why the work went.
   reaches the host with another account's request; the names' and hex rules; the signed bytes'
   layout; the new messages in the wire samples (round trips, the mutation tests), `Login`'s
   JSON; a third of the mutated frames reach a logged-in gate.
+
+### M3 T2a — The Authenticator and the player log (2026-10-11)
+
+- **The start.** #99 (M3 T1) and #100 had merged; the branch started from `master`, whose scoped
+  verify passed (the workload without drift).
+- **The crates** (the user, SRV-Q17): `ed25519-dalek` 3.0 (default features) and `argon2` 0.6
+  (`alloc`, `zeroize`; without `password-hash`); 15 new crates built, all BSD-3-Clause or MIT OR
+  Apache-2.0; `cargo deny check` passes (the duplicates it warns of were on `master`). The
+  workspace's entries and `arch.toml` are shared: a commit of their own on the lane's branch.
+- **`accounts`** (*provisional*): the `Authenticator` trait checks a signature
+  (`verify(key, message, signature)`); `Ed25519` uses `verify_strict` (a small-order key or a
+  non-canonical signature never holds; a test forges the identity key's signature that a lax check
+  accepts). `Accounts::answer` takes the gate's `AccountRequest`: the signature first, then the
+  player log under its own lock: a known login name with its key logs in (a display name it names
+  is ignored), with another key `BadLogin`; an unknown one registers if it names a free display
+  name (`NameTaken` otherwise), `BadLogin` without one. Re-keys, renames and the preference are
+  refused `BadLogin` until T2b (SRV-STUB-2; SRV-STUB-1 removed).
+- **`players`** (*provisional*): `<data>/players.log`, `{"Registered":{"login","key","display"}}`
+  per line, owner-read-write, synced before the answer, the directory synced when the file is new;
+  read back at start: a torn last line dropped and cut, a line that does not read, names that break
+  the rules, a bad key or a name registered before stop the start, the error naming the line only.
+  After a failed write nothing more is written (a torn line stays last) and registrations are
+  refused; known accounts still log in.
+- **`net`**: the connection's task answers an account's request through `spawn_blocking`, then
+  `Connection::logged_in` on a login's yes; `Service` (was `Identity`) carries the program, the id,
+  `anonymous` and the accounts. Failed logins (the host's `BadLogin`, not a request of the wrong
+  form) count per address in a minute's window kept beyond the address's connections; beyond
+  `[limits] failed_logins_per_address` (10), and for any login while the address is at it, the
+  connection closes `RateLimited`; the address's other requests pass. `Rate` gained its window.
+- **The configuration**: `[server] public_url` (the server's id; `ws://` or `wss://`, then 1–200
+  visible ASCII characters; without it `ws://` and the bound address) and `anonymous` (default
+  true); `[limits] failed_logins_per_address`; the example file.
+- **The client**: `client::Key` (`derive`: Argon2id 64 MiB, 3 passes, 1 lane, version 0x13, salt
+  `h3-account-v1:<login>`, then the Ed25519 key of the seed; `from_seed`, `public`, `sign`);
+  `Client::welcome` and `Client::login` (signs the welcome's id and challenge). The test vector
+  (`E16-design.md` §10) was computed independently with Python's `argon2-cffi` and PyNaCl, and
+  `Key::derive` matches it.
+- **Tests** (h3-server 52, +9): the test vector; registration, login on a new connection, a
+  taken display name in another case, `AlreadyLoggedIn`, the accounts after a restart and the
+  log's two lines; logins signed for another `public_url`, with another connection's challenge,
+  by another key for the account's key, and by another account's key refused, changing nothing;
+  without anonymous play creations and joins wait for the login, the lists do not; failed logins
+  beyond the limit close the connection and bar the address's next one, requests of the wrong form
+  do not count; the player log's reading (a torn line, five bad logs, a failed write); Ed25519's
+  strictness; the configuration's new fields.
