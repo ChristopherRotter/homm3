@@ -41,7 +41,8 @@ pub(super) fn commands() -> Vec<Command> {
     ]
 }
 
-fn client_messages() -> Vec<ClientMessage> {
+/// One of every client message (several of some).
+pub(super) fn client_messages() -> Vec<ClientMessage> {
     let mut out = vec![
         ClientMessage::Hello {
             protocol: PROTOCOL_VERSION,
@@ -105,7 +106,8 @@ fn client_messages() -> Vec<ClientMessage> {
     out
 }
 
-fn server_messages() -> Vec<ServerMessage> {
+/// One of every server message (several of some).
+pub(super) fn server_messages() -> Vec<ServerMessage> {
     let (ruleset, state) = battle();
     let manifest = Manifest {
         protocol: PROTOCOL_VERSION,
