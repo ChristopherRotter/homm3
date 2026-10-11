@@ -4,19 +4,19 @@ Pre-refined tasks of the adventure lane, in order, then the inbox of discovered 
 
 ## Tasks
 
-Epic: `docs/epics/E08-adventure-map.md` (refined 2026-10-08, reviewed with the user the same day; decisions 1–12 there; done tasks in `E08-log.md`). Increment 1 = T1a, T1b, T2–T10, with a checkpoint with the user at T1a (done: ADR-0015–0017), after T3 (done, 2026-10-10) and at T10. T1a, T1b, T2, T3, T4, T5a, T5b, T6a, T6b, T7a and T7b are done; the import moved from T3 to T5 and T6 (user, 2026-10-10). Refined into the entries below at the T3 checkpoint (2026-10-10): the user takes one or two tasks per round, each round ends at a checkpoint (the round after T3: T4 alone; after T4: T5a and T6a; after T5a/T6a: T6b and T7a; after T6b/T7a: T7b and T5b). Every entry's acceptance includes the Definition of Done (`docs/05-testing.md`).
+Epic: `docs/epics/E08-adventure-map.md` (refined 2026-10-08, reviewed with the user the same day; decisions 1–12 there; done tasks in `E08-log.md`). Increment 1 = T1a, T1b, T2–T10, with a checkpoint with the user at T1a (done: ADR-0015–0017), after T3 (done, 2026-10-10) and at T10. T1a, T1b, T2, T3, T4, T5a, T5b, T6a, T6b, T7a, T7b and T8a are done; the import moved from T3 to T5 and T6 (user, 2026-10-10). Refined into the entries below at the T3 checkpoint (2026-10-10): the user takes one or two tasks per round, each round ends at a checkpoint (the round after T3: T4 alone; after T4: T5a and T6a; after T5a/T6a: T6b and T7a; after T6b/T7a: T7b and T5b; after T7b/T5b: T8a alone, T8 split into T8a and T8b). Every entry's acceptance includes the Definition of Done (`docs/05-testing.md`).
 
-### E08 T8 — Fog of war and projection
+### E08 T8b — The projection
 
-- **Scope:** first CR-3 (`ADV-Q5`); reveal by scouting radius on `BitGrid` (one explored layer per player in `AdventureState`, a state hash version bump; reveal a disk row by row with `set_run`, batched per leaf), the fringe quirk `ADV-QUIRK-1` if confirmed (A-1), ADV-MOV-008 (`MoveHero` and `Reach` on explored tiles only), events with their visibility (`HeroStepped` per step), `observe` (planes built word by word from the grid, not tile by tile) and `legal_commands`, the viewer knowledge list in `docs/06-security.md`, the property tests (atomicity, legality consistency, ownership isolation, observation hygiene, clone equivalence, determinism) with `MoveHero` among the commands.
+- **Scope:** the fringe (the hidden tiles touching an explored tile) under `ADV-QUIRK-1`: its flag in `h3_content`'s registry and the base pack's profiles (a `cross-lane` change, as T7b's flags; on in `faithful`: terrain, roads, rivers and object appearance on the fringe; off in `strict-fixed`: terrain, roads and rivers only), ADV-FOG-005, the steps' viewers extended to the fringe under the flag; `observe` per viewer (planes built word by word from the grids, not tile by tile) and `project` for events, `legal_commands` (the game's, with `MoveHero` to the reachable tiles), the viewer knowledge list in `docs/06-security.md` (a small `shared/` pull request; the fringe case of a public appearance with hidden contents), the property tests (atomicity, legality consistency, ownership isolation, observation hygiene, clone equivalence, determinism) with `MoveHero` among the commands.
 - **Acceptance:** the seven property tests pass on imported maps.
-- **Depends on:** T5b, T7b (done); the user's four answers on the fringe (A-1). **Status:** waiting (A-1).
+- **Depends on:** T8a (done). Ask the user whether a hero on a fringe tile shows (not asked with A-1). **Status:** ready.
 
 ### E08 T9 — Env, CLI, gates
 
 - **Scope:** `AdventureEnv` (reset, step, mask, fork, hash; the action a destination among the reachable tiles), a random agent, the CLI's run, replay verify and bench, golden replays naming their map by content hash, path and `MAP_IMPORT_VERSION` (ADV-Q2), the benchmark workloads and their baselines (decision 11: random play, pathfinding, and the fork cost moved here from T5b), the CLI wiring in battle-owned `crates/h3-cli` files (`Cargo.toml`, the dispatch: a `cross-lane` change with the user's consent).
 - **Acceptance:** the replays pass the determinism matrix; the +2 % gate has a baseline.
-- **Depends on:** T8; the editor maps as committed fixtures (Inbox). **Status:** waiting (T8).
+- **Depends on:** T8b; the editor maps as committed fixtures (Inbox). **Status:** waiting (T8b).
 
 ### E08 T10 — Closure
 
@@ -25,7 +25,9 @@ Epic: `docs/epics/E08-adventure-map.md` (refined 2026-10-08, reviewed with the u
 
 ## Inbox
 
-- 2026-10-11 (T7b follow-up): `Reach` keeps one path per tile, as the original's pathfinder (0x56B440) and VCMI's do; the diagonal exception makes that inexact in rare end-of-day cases (log: 0.18 % of tiles short by ~13 points in faithful). An exact query is a search over (tile, points), ~1000× slower: only if the user wants it (asked 2026-10-11).
+- 2026-10-11 (T8a): a step's reveal writes one `set_run` per row (about 2 400 instructions at radius 5, T5b's measurement), and every step of a move reveals: T9's benchmark decides whether a per-leaf batch on `BitGrid` (one copy-on-write check per leaf) is worth its API.
+- 2026-10-11 (T8a): the Scouting specialty multiplies the radius by 1 + 0.05 × level (0x4E4070, truncated), not "+1 every six levels" (survey §2): compare with the wiki and VCMI with the adventure profile (increment 3).
+- 2026-10-11 (T8a): the original's reveal sets the bits of every player of the revealer's team (allies share the map; VCMI too): with teams (E10). The new day reveals again around everything a player owns (0x4C7C50): with the first rule that hides tiles (Cover of Darkness, towns).
 - 2026-10-11 (T7b): the step's price leaves out Pathfinding, Nomads, flying, water walking, Favorable Winds and Cursed Ground (0x4B1740 has them): increment 3 with the adventure profile, Cursed Ground with objects.
 - 2026-10-11 (T5b): `examples/grid_bench.rs` is the fork-cost measurement; T9's gated workload in `benches/adventure/` can run it (or the env's fork) under `bench-check`.
 - 2026-10-10 (T6b review): building a game emits no events (the first `TurnStarted` goes to a `NoopSink`): T8/T9 decide whether a replay or a client's event stream needs a start event, or reads the start from `observe`. `GameState` keeps no hero types yet: the game's store of heroes (hero details) comes with `h3-heroes` in increment 3.

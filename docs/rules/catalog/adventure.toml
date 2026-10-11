@@ -205,16 +205,41 @@ numeric  = "integer"
   confidence = "medium"
 
 [[rule]]
-id       = "ADV-FOG-001"
-title    = "The scouting radius of a hero"
+id       = "ADV-MOV-008"
+title    = "A path uses explored tiles only"
 context  = "adventure"
-status   = "specified"
-summary  = "A hero reveals the tiles within its scouting radius (data: 5 without bonuses). Scouting (6, 7, 8 by level), artifacts and the Scouting specialty come with the adventure profile (increment 3). E08 T4: the base radius; T8: the reveal (ADV-FOG-002)."
+status   = "implemented"
+summary  = "A hero steps only onto tiles its owner has explored, an empty one included; the fringe's tiles are unexplored. `MoveHero` checks every step against the tiles explored when the command is given (the reveals of its own steps do not open the rest of its path) and tests a step's tile for being explored before anything else about it, so a rejection tells nothing about a hidden tile; the reachable-tiles query keeps to explored tiles too. The original lets a computer player step one tile into the unexplored (or anywhere at some setting); the engine has no computer players: every player follows the human player's rule. E08 T8a."
 numeric  = "integer"
 
   [[rule.source]]
   kind       = "original-data"
-  ref        = "Heroes3.exe skill_scouting (0x63E9D8): i32 5, 6, 7, 8 for no, Basic, Advanced and Expert Scouting (installation.md §7.4)"
+  ref        = "Heroes3.exe code reading (E08 T8a): pathfinder_expand (0x4B2300) marks a neighbour whose explored bit the current player lacks inaccessible for a human player (site 0x4B25D4, player_is_human 0x4BADA0); the mouse's search (0x4194A0) passes the mode that keeps this test (survey E08-adventure-core.md §1.4)"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "observation"
+  ref        = "The user, SoD (2026-10-11, A-1 question 4): no path is offered onto a dark tile, even an empty one"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "vcmi"
+  ref        = "lib/pathfinder/PathfinderUtil.h evaluateAccessibility: a tile the player's team has not explored (!fow[pos]) is BLOCKED"
+  url        = "https://github.com/vcmi/vcmi/blob/1.7.5/lib/pathfinder/PathfinderUtil.h"
+  retrieved  = "2026-10-11"
+  confidence = "high"
+
+[[rule]]
+id       = "ADV-FOG-001"
+title    = "The scouting radius of a hero"
+context  = "adventure"
+status   = "implemented"
+summary  = "A hero reveals the tiles within its scouting radius (data: 5 without bonuses). Scouting (6, 7, 8 by level), artifacts (Speculum and Spyglass, +1 each) and the Scouting specialty come with the adventure profile (increment 3). E08 T4: the base radius; T8a: the reveals use it (ADV-FOG-002, ADV-FOG-003)."
+numeric  = "integer"
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe skill_scouting (0x63E9D8): i32 5, 6, 7, 8 for no, Basic, Advanced and Expert Scouting (installation.md §7.4); code reading (E08 T8a) of hero_scouting_radius (0x4E4070): the table at the hero's Scouting level, the specialty's factor, +1 per artifact (survey E08-adventure-core.md §2)"
   confidence = "high"
 
   [[rule.source]]
@@ -222,6 +247,66 @@ numeric  = "integer"
   ref        = "config/gameConfig.json baseScoutingRange 5"
   url        = "https://github.com/vcmi/vcmi/blob/1.7.5/config/gameConfig.json"
   retrieved  = "2026-10-10"
+  confidence = "high"
+
+[[rule]]
+id       = "ADV-FOG-002"
+title    = "The shape of a revealed area"
+context  = "adventure"
+status   = "implemented"
+summary  = "A reveal of radius r around a tile explores the tiles on its level, on the map, with dx² + dy² ≤ r² + r: a disk of 97 tiles for r = 5 (rows of 5, 7, 9, 11, 11, 11, 11, 11, 9, 7, 5). The original tests √(dx² + dy²) ≤ r + 0.5 and VCMI round(√(dx² + dy²)) ≤ r; both are this integer test. The original also reveals for every player of the revealer's team (teams: E10). E08 T8a (F-1 settled, ADV-Q5)."
+numeric  = "integer"
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (E08 T8a): reveal_disk (0x49D160) compares crt_sqrt(dx² + dy²) with the radius + 0.5 as f64, within the map's bounds (survey E08-adventure-core.md §2)"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "vcmi"
+  ref        = "lib/callback/CGameInfoCallback.cpp getTilesInRange with int3::DIST_2D, std::round(dist2d) <= radius (lib/int3.h)"
+  url        = "https://github.com/vcmi/vcmi/blob/1.7.5/lib/callback/CGameInfoCallback.cpp"
+  retrieved  = "2026-10-11"
+  confidence = "high"
+
+[[rule]]
+id       = "ADV-FOG-003"
+title    = "When tiles are revealed"
+context  = "adventure"
+status   = "implemented"
+summary  = "At the start of a game each hero reveals the tiles around its tile to its owner, and each step of a move reveals the tiles around the tile it enters, for the radius of ADV-FOG-001 (shape ADV-FOG-002). Increment 1 has no owned objects, so a game opens with only the heroes' surroundings explored (towns and mines add theirs once owned: a recorded simplification). The original also reveals around everything a player owns at each new day (0x4C7C50), which adds nothing while no rule hides a tile again (Cover of Darkness, with towns). E08 T8a."
+numeric  = "integer"
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (E08 T8a): hero_move_step (0x4805E0) calls reveal_disk at the step's destination before the hero's position changes (0x48106B); a placed hero's setup (0x486590) reveals around it (0x486E25); reveal_owned (0x4C7C50) around every owned hero at a new day (survey E08-adventure-core.md §2)"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "vcmi"
+  ref        = "lib/gameState/CGameState.cpp initFogOfWar (around owned objects at the start); server/CGameHandler.cpp moveHero (the tiles around the new position, TryMoveHero::fowRevealed)"
+  url        = "https://github.com/vcmi/vcmi/blob/1.7.5/server/CGameHandler.cpp"
+  retrieved  = "2026-10-11"
+  confidence = "high"
+
+[[rule]]
+id       = "ADV-FOG-004"
+title    = "Explored tiles stay explored and show what happens on them"
+context  = "adventure"
+status   = "implemented"
+summary  = "A tile once explored stays explored (no rule clears one in increment 1) and shows its current content to the player, with no memory of what was there before: a hero's step is seen by its owner and by every player that has explored the tile it leaves or the tile it enters (each step's event carries those players, ADR-0016 point 6). What a viewer sees of a hidden tile next to an explored one (the fringe, ADV-QUIRK-1) and the observation come with E08 T8b. E08 T8a: the explored layers and the steps' viewers."
+numeric  = "integer"
+
+  [[rule.source]]
+  kind       = "vcmi"
+  ref        = "lib/gameState/CGameState.cpp isVisibleFor: an object is visible to a player that has explored one of its tiles; CGameInfoCallback::getObj hides the others (one explored bit per tile and team, TeamState::fogOfWarMap)"
+  url        = "https://github.com/vcmi/vcmi/blob/1.7.5/lib/gameState/CGameState.cpp"
+  retrieved  = "2026-10-11"
+  confidence = "medium"
+
+  [[rule.source]]
+  kind       = "design"
+  ref        = "ADR-0016 points 5 and 6: one explored layer per player, no line-of-sight memory; an event's visibility resolved when it is emitted, a move per step"
   confidence = "high"
 
 [[rule]]

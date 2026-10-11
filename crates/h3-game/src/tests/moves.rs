@@ -1,7 +1,9 @@
 //! Tests of the adventure's commands through the game (E08 T7b): the game checks the turn, the
 //! adventure the rest; its events become game events.
 
-use h3_adventure::{AdventureCommand, AdventureCommandError, AdventureEvent};
+use h3_adventure::{
+    AdventureCommand, AdventureCommandError, AdventureEvent, AdventureEventKind, Viewers,
+};
 
 use super::*;
 
@@ -39,10 +41,14 @@ fn a_move_goes_to_the_adventure_in_the_players_turn() {
     let events = play(&mut state, &rules, RED, move_hero(0, &[to])).unwrap();
     assert_eq!(
         events,
-        vec![GameEvent::Adventure(AdventureEvent::HeroStepped {
-            hero: HeroId::new(0),
-            from,
-            to,
+        vec![GameEvent::Adventure(AdventureEvent {
+            kind: AdventureEventKind::HeroStepped {
+                hero: HeroId::new(0),
+                from,
+                to,
+            },
+            // The map is 4 × 4: both heroes' scouting explored all of it at the start.
+            seen_by: Viewers::NONE.with(RED).with(BLUE),
         })]
     );
     assert_eq!(state.adventure().hero(HeroId::new(0)).unwrap().pos, to);
