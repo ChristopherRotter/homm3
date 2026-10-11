@@ -1,6 +1,6 @@
 [package]
 name = "h3-sim"
-description = "Adapter: reinforcement-learning simulation environments (BattleEnv), action/observation encodings, replays."
+description = "Adapter: reinforcement-learning simulation environments (BattleEnv, AdventureEnv), action/observation encodings, replays."
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true
@@ -12,9 +12,13 @@ h3-kernel.workspace = true
 h3-content.workspace = true
 h3-contracts.workspace = true
 h3-battle.workspace = true
+h3-adventure.workspace = true
+h3-game.workspace = true
 
 [dev-dependencies]
 h3-pack.workspace = true
+h3-map.workspace = true
+h3-pack-adventure.workspace = true
 proptest.workspace = true
 criterion.workspace = true
 

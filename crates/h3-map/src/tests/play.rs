@@ -2,7 +2,8 @@
 //! read back and imported, heroes of several players) and a random-play driver through
 //! `h3-game`, with the properties of what a command may do (`docs/05-testing.md`): atomicity,
 //! legality consistency (`legal_commands`, and `legal_moves` per hero), ownership isolation,
-//! clone equivalence and determinism. What a viewer may learn is T8b2b's.
+//! clone equivalence and determinism. What a viewer may learn is T8b2b's ([`super::view`]), on the
+//! same maps and driver.
 
 use std::sync::{Arc, LazyLock};
 
@@ -31,8 +32,8 @@ fn rules(profile: &str) -> GameRuleset {
     GameRuleset::new(Arc::new(core), Arc::new(part)).unwrap()
 }
 
-static FAITHFUL: LazyLock<GameRuleset> = LazyLock::new(|| rules("base:faithful"));
-static STRICT: LazyLock<GameRuleset> = LazyLock::new(|| rules("base:strict-fixed"));
+pub(super) static FAITHFUL: LazyLock<GameRuleset> = LazyLock::new(|| rules("base:faithful"));
+pub(super) static STRICT: LazyLock<GameRuleset> = LazyLock::new(|| rules("base:strict-fixed"));
 /// The faithful rules compiled a second time, for the determinism test.
 static FAITHFUL_AGAIN: LazyLock<GameRuleset> = LazyLock::new(|| rules("base:faithful"));
 
@@ -43,44 +44,44 @@ const MAX_SIDE: u8 = 16;
 
 /// The hero template (the editor's: blocked and visited one column left of the anchor), then the
 /// blockers': one tile; two tiles, visited on the left; three tiles around a visited corner.
-const HERO_TEMPLATE: u32 = 0;
-const BLOCKERS: [(Mask, Mask); 3] = [
+pub(super) const HERO_TEMPLATE: u32 = 0;
+pub(super) const BLOCKERS: [(Mask, Mask); 3] = [
     (&[(0, 0)], &[]),
     (&[(0, 0), (1, 0)], &[(1, 0)]),
     (&[(1, 0), (0, 1), (1, 1)], &[(0, 0)]),
 ];
 /// Blockers' object class: any the import keeps as a blocker (not a hero or a town).
-const BLOCKER_CLASS: u32 = 124;
+pub(super) const BLOCKER_CLASS: u32 = 124;
 
 /// A template mask's tiles, as `(column, row)` left of and above the anchor.
-type Mask = &'static [(u8, u8)];
+pub(super) type Mask = &'static [(u8, u8)];
 /// A tile as column, row and level.
-type Spot = (u8, u8, u8);
+pub(super) type Spot = (u8, u8, u8);
 /// An army's seven slots as creature code and count (none: the hero type's starting army).
-type Slots = Option<Vec<Option<(u16, u16)>>>;
+pub(super) type Slots = Option<Vec<Option<(u16, u16)>>>;
 
 /// A playable map before it is laid out: what the strategy draws.
 #[derive(Debug, Clone)]
-struct Plan {
-    version: Version,
-    side: u8,
-    two_levels: bool,
+pub(super) struct Plan {
+    pub(super) version: Version,
+    pub(super) side: u8,
+    pub(super) two_levels: bool,
     /// Terrain, road and river codes for as many tiles as the largest map has, row by row and
     /// level by level; the map takes the first ones.
-    tiles: Vec<(u8, u8, u8)>,
+    pub(super) tiles: Vec<(u8, u8, u8)>,
     /// The playing colours in order, and whether a human may play each.
-    players: Vec<(u8, bool)>,
+    pub(super) players: Vec<(u8, bool)>,
     /// Each hero's tile (modulo the map) and army slots (none: its type's starting army); owners
     /// go round the players.
-    heroes: Vec<(Spot, Slots)>,
+    pub(super) heroes: Vec<(Spot, Slots)>,
     /// Added to each hero's index times 7 (coprime to 128), so the heroes' types differ.
-    hero_types: u8,
+    pub(super) hero_types: u8,
     /// Each blocker's anchor (modulo the map) and template.
-    blockers: Vec<(Spot, usize)>,
+    pub(super) blockers: Vec<(Spot, usize)>,
 }
 
 /// Terrain, road and river codes: mostly land, some water and rock (codes 8 and 9).
-fn tile() -> impl Strategy<Value = (u8, u8, u8)> {
+pub(super) fn tile() -> impl Strategy<Value = (u8, u8, u8)> {
     (
         prop_oneof![20 => 0u8..=7, 1 => Just(8u8), 1 => Just(9u8)],
         prop_oneof![3 => Just(0u8), 1 => 1u8..=3],
@@ -88,18 +89,23 @@ fn tile() -> impl Strategy<Value = (u8, u8, u8)> {
     )
 }
 
-/// An army of seven slots, some empty, of the base game's creatures (no war machines).
-fn army() -> impl Strategy<Value = Slots> {
+/// Seven army slots, some empty, of the base game's creatures (no war machines).
+pub(super) fn slots() -> impl Strategy<Value = Vec<Option<(u16, u16)>>> {
     let creatures: Vec<u16> = codes::CREATURES
         .iter()
         .map(|&(code, _)| code)
         .filter(|&code| code <= 117)
         .collect();
     let stack = (proptest::sample::select(creatures), 1u16..=40);
-    proptest::option::of(vec(proptest::option::weighted(0.4, stack), 7))
+    vec(proptest::option::weighted(0.4, stack), 7)
 }
 
-fn plan() -> impl Strategy<Value = Plan> {
+/// An army of its own (seven slots, [`slots`]) or none (the hero type's starting army).
+pub(super) fn army() -> impl Strategy<Value = Slots> {
+    proptest::option::of(slots())
+}
+
+pub(super) fn plan() -> impl Strategy<Value = Plan> {
     let tiles = 2 * usize::from(MAX_SIDE) * usize::from(MAX_SIDE);
     (
         version(),
@@ -130,7 +136,7 @@ fn plan() -> impl Strategy<Value = Plan> {
 
 /// The plan as a raw map of its version: the heroes on distinct land tiles, owners round the
 /// players, the blockers that would cover a hero's tile left out.
-fn lay_out(plan: &Plan) -> RawMap {
+pub(super) fn lay_out(plan: &Plan) -> RawMap {
     let v = plan.version;
     let side = plan.side;
     let levels = 1 + u8::from(plan.two_levels);
@@ -225,7 +231,12 @@ fn lay_out(plan: &Plan) -> RawMap {
 
 /// The plan's map written, read back and imported, and a game started on it with `seed`.
 fn start(plan: &Plan, rules: &GameRuleset, seed: u64) -> GameState {
-    let m = parse(&encode(&lay_out(plan)), &Limits::default()).unwrap();
+    start_on(&lay_out(plan), rules, seed)
+}
+
+/// The map written, read back and imported, and a game started on it with `seed`.
+pub(super) fn start_on(m: &RawMap, rules: &GameRuleset, seed: u64) -> GameState {
+    let m = parse(&encode(m), &Limits::default()).unwrap();
     let setup = import(&m, rules).unwrap();
     GameState::new(rules, &setup, seed).unwrap()
 }
@@ -255,7 +266,7 @@ fn toward(pos: TilePos, direction: u8) -> TilePos {
 
 /// One step of random play, resolved against the state it is played on.
 #[derive(Debug, Clone)]
-enum Step {
+pub(super) enum Step {
     /// The acting player's `n`-th option ([`options`]), modulo their number.
     Legal(u16),
     /// The acting player ends its turn.
@@ -269,7 +280,7 @@ enum Step {
 }
 
 #[derive(Debug, Clone)]
-enum Edit {
+pub(super) enum Edit {
     /// Without its last step.
     DropLast,
     /// With one more step, in this direction.
@@ -287,7 +298,7 @@ enum Edit {
 }
 
 #[derive(Debug, Clone)]
-enum Free {
+pub(super) enum Free {
     EndTurn,
     /// The hero walks from its tile (or the map's corner) in these directions; the jump puts a
     /// tile anywhere at a step's index.
@@ -307,7 +318,7 @@ enum Free {
 /// A hero of an arbitrary command: the `n`-th of the actor's own (modulo their number; hero 0 if
 /// it has none), or the hero with id `n` modulo the heroes and one more.
 #[derive(Debug, Clone, Copy)]
-struct Who {
+pub(super) struct Who {
     own: bool,
     n: u8,
 }
@@ -335,7 +346,7 @@ fn who() -> impl Strategy<Value = Who> {
     (any::<bool>(), any::<u8>()).prop_map(|(own, n)| Who { own, n })
 }
 
-fn step() -> impl Strategy<Value = Step> {
+pub(super) fn step() -> impl Strategy<Value = Step> {
     let edit = prop_oneof![
         Just(Edit::DropLast),
         any::<u8>().prop_map(Edit::Extend),
@@ -381,14 +392,14 @@ fn as_move(command: &GameCommand) -> Option<(HeroId, &[TilePos])> {
 }
 
 /// The player whose turn is running (sequential play: one at a time).
-fn acting(state: &GameState) -> PlayerId {
+pub(super) fn acting(state: &GameState) -> PlayerId {
     state.turn_group()[0]
 }
 
 /// The commands the driver picks from: the acting player's legal commands, then each of its legal
 /// moves with the query's path, by hero and row by row. The game does not list moves one by one
 /// (a hero with many points reaches thousands of tiles); the small maps here allow it.
-fn options(state: &GameState, rules: &GameRuleset) -> Vec<GameCommand> {
+pub(super) fn options(state: &GameState, rules: &GameRuleset) -> Vec<GameCommand> {
     let actor = Actor::Player(acting(state));
     let mut options = legal_commands(state, rules, actor);
     for hero in state.adventure().heroes() {
@@ -402,7 +413,11 @@ fn options(state: &GameState, rules: &GameRuleset) -> Vec<GameCommand> {
 }
 
 /// A step's actor and command, given the acting player's [`options`].
-fn resolve(state: &GameState, legal: &[GameCommand], step: &Step) -> (PlayerId, GameCommand) {
+pub(super) fn resolve(
+    state: &GameState,
+    legal: &[GameCommand],
+    step: &Step,
+) -> (PlayerId, GameCommand) {
     let actor = acting(state);
     let players = u8::try_from(state.players()).unwrap();
     let heroes = u16::try_from(state.adventure().heroes().len()).unwrap();
@@ -491,7 +506,7 @@ fn resolve(state: &GameState, legal: &[GameCommand], step: &Step) -> (PlayerId, 
 }
 
 /// Plays `step` on `state`: resolved, then applied; the events go to `sink`.
-fn advance<S: Sink>(
+pub(super) fn advance<S: Sink>(
     state: &mut GameState,
     rules: &GameRuleset,
     step: &Step,
