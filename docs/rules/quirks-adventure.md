@@ -9,27 +9,40 @@ A candidate becomes an entry here only once it is confirmed for SoD (by an exper
 `ADV-QUIRK-1` stays reserved for the fog's fringe (candidate A-1, `docs/rules/surveys/E08-adventure-core.md` §4) until it is confirmed.
 
 ### ADV-QUIRK-2 — The diagonal exception ignores roads in its check but not in its cost
-- Class: fix-optional (suggested in the survey, candidate A-2; stands unless the user objects at the T6b/T7a checkpoint)
+- Class: fix-optional (the user, 2026-10-11, ADV-Q3)
 - Context / rules affected: adventure, ADV-MOV-006 (T7b)
 - Original behavior: a diagonal step's cost depends on the hero's points left, compared with the source tile's plain terrain cost T (with Pathfinding), not with the step's own straight cost: with T ≤ points < T × √2 the diagonal costs only its straight cost, with points ≥ T × √2 it costs trunc(straight × √2). On a road the straight cost is the road's (50–75), so a road diagonal costs the road's straight cost with 100–141 points on grass but 70–106 with more, and the points left may still pay further road steps.
 - Intended/expected behavior: the check compares with the step's own straight cost (VCMI `CPathfinderHelper::getMovementCost`), so the exception only helps when a full diagonal is unaffordable.
 - Impact: gameplay-altering (small): an extra cheap road step at the end of a day.
 - Community status: documented on the wiki (Movement, "one notable, complex and buggy exception").
 - Sources: code reading 0x4B1740 (E08 T7a; `docs/rules/surveys/E08-adventure-core.md` §1.3), confirmed by an independent second reading (a fresh agent, 2026-10-10); wiki Movement (https://heroes.thelazy.net/index.php/Movement).
-- Flag: named when T7b implements it (`quirk.adventure.<name>`)
+- Flag: `quirk.adventure.diagonal_check_ignores_roads`
 - Defaults: faithful = on, strict-fixed = off
-- Regression test: T7b
-- Decided by / date: confirmed 2026-10-10 (E08 T7a); class pending the user's checkpoint
+- Regression test: `crates/h3-adventure/src/movement/tests.rs` (E08 T7b)
+- Decided by / date: confirmed 2026-10-10 (E08 T7a); classified by the user 2026-10-11
 
 ### ADV-QUIRK-3 — The diagonal exception forgets a native army's missing penalty
-- Class: fix-optional (suggested in the survey, candidate A-3; stands unless the user objects at the T6b/T7a checkpoint)
+- Class: fix-optional (the user, 2026-10-11, ADV-Q3)
 - Context / rules affected: adventure, ADV-MOV-004, ADV-MOV-006 (T7b)
 - Original behavior: the exception's check uses the terrain's penalised cost T even when the whole army is native and the straight step costs 100; a native army on swamp (T = 175) with 100–140 points cannot make a diagonal step, which a clean check (against 100) would allow at the straight cost.
 - Intended/expected behavior: the check compares with the step's own straight cost, native terrain included (VCMI).
 - Impact: gameplay-altering (small): native swamp, snow, sand and rough armies lose the last diagonal of a day.
 - Community status: documented on the wiki (Movement).
 - Sources: as ADV-QUIRK-2.
-- Flag: named when T7b implements it
+- Flag: `quirk.adventure.diagonal_check_ignores_native`
 - Defaults: faithful = on, strict-fixed = off
-- Regression test: T7b
-- Decided by / date: confirmed 2026-10-10 (E08 T7a); class pending the user's checkpoint
+- Regression test: `crates/h3-adventure/src/movement/tests.rs` (E08 T7b)
+- Decided by / date: confirmed 2026-10-10 (E08 T7a); classified by the user 2026-10-11
+
+### ADV-QUIRK-4 — Neutral stacks before the first faction stack keep the native terrain
+- Class: fix-optional (the user, 2026-10-11, ADV-Q3)
+- Context / rules affected: adventure, ADV-MOV-004 (and the diagonal exception's check, ADV-MOV-006)
+- Original behavior: the army's native terrain (0x44C590) walks the seven slots in order; each creature's native terrain is its faction's (0x643698), and a neutral creature reads the entry before the table, -1, which is also the "none yet" marker. So neutral stacks in slots before the first faction stack are skipped, and the first faction stack sets the terrain; any later stack whose terrain differs, a neutral one included, makes it none. [Peasants, Pikemen] walks grass at the native cost, [Pikemen, Peasants] does not.
+- Intended/expected behavior: the penalty goes only when every creature is native (wiki Movement); a neutral stack anywhere cancels it (VCMI 1.7.5 `CGHeroInstance::getNativeTerrain`, neutral creatures native nowhere).
+- Impact: gameplay-altering (small): the order of the slots decides a whole army's movement on its native terrain.
+- Community status: not on the wiki's Movement page; VCMI does the clean rule.
+- Sources: code reading 0x44C590 (E08 T7b; survey §1.2), confirmed by an independent second reading (a fresh agent, 2026-10-11); wiki Movement (https://heroes.thelazy.net/index.php/Movement); VCMI 1.7.5 `lib/mapObjects/CGHeroInstance.cpp` and `config/factions/neutral.json`.
+- Flag: `quirk.adventure.native_skips_leading_neutrals`
+- Defaults: faithful = on, strict-fixed = off
+- Regression test: `crates/h3-adventure/src/movement/tests.rs` (E08 T7b)
+- Decided by / date: confirmed and classified 2026-10-11 (the user, E08 T7b)

@@ -200,6 +200,9 @@ pub enum RejectCode {
     NotStarted,
     /// The game is not over (the replay comes after it).
     NotOver,
+    /// The game's journal did not re-run to the game as played: its replay is withheld (E16 M2
+    /// T3).
+    Unverified,
 }
 
 /// The flags of a strike.
@@ -840,6 +843,8 @@ pub enum Phase {
     Running,
     /// Over.
     Over,
+    /// Paused (E16 M2 T3): a seat's player resumes it by joining with the seat's token.
+    Paused,
 }
 
 /// One hosted game in the lobby's list.
@@ -942,6 +947,12 @@ pub enum ClientMessage {
         /// Echoed in the pong.
         nonce: u32,
     },
+    /// Ask to pause the running game (E16 M2 T3): the host's ask (the seat its creator took)
+    /// pauses it, another seat's is told to every viewer (`PauseAsked`).
+    Pause {
+        /// The client's sequence number.
+        seq: u32,
+    },
 }
 
 /// Why a join or a game's creation was refused; the connection stays open.
@@ -984,6 +995,8 @@ pub enum GoodbyeReason {
     Replaced,
     /// The server shuts down.
     Shutdown,
+    /// The game paused (E16 M2 T3); a seat's player resumes it by joining with the token.
+    Paused,
 }
 
 /// A message from the server. `n` counts the messages a viewer received from its game, so a gap
@@ -1116,6 +1129,13 @@ pub enum ServerMessage {
         seq: u32,
         /// The new game's id.
         game: u32,
+    },
+    /// A seat asked to pause the game (E16 M2 T3); the host's ask pauses it.
+    PauseAsked {
+        /// The viewer's message number.
+        n: u32,
+        /// The seat that asked.
+        seat: Seat,
     },
 }
 

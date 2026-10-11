@@ -94,7 +94,16 @@ where to read, not facts.
   Neutral creatures are native nowhere (vcmi `config/factions/neutral.json`), so one neutral
   stack removes the bonus. A faction's native terrain is original data (`faction_native_terrain`)
   and already in the packs. Nomads remove the sand penalty for the whole army; that is a creature
-  ability, *(inc. 3)*.
+  ability, *(inc. 3)*. **Read in E08 T7b** (0x44C590, called by 0x4B18C0; confirmed by an
+  independent second reading): the original walks the army's seven slots in order and takes
+  each creature's faction's native terrain (0x643698); a neutral creature reads the entry before
+  the table, -1, which is also the "none yet" marker. So neutral stacks *before* the first
+  faction stack are skipped, the first faction stack sets the terrain, and any later stack that
+  differs, a neutral one included, makes it none: candidate **A-4**, against the wiki's "all the
+  creatures" and VCMI 1.7.5 (any neutral stack cancels it). Confirmed and classified at once
+  (the user, 2026-10-11): `ADV-QUIRK-4`, fix-optional. The four elementals count as neutral
+  there when a game flag is clear (RoE content); the packs already make them neutral in `base`
+  and Conflux in `ab`.
 - **Diagonal steps** cost the straight cost × √2, rounded down. The wiki's table lists 141, 176,
   212, 247 for terrain and 106, 91, 70 for roads. VCMI computes `static_cast<int>(cost * M_SQRT2)`
   and gets the same numbers. In integers the rule is exactly `isqrt(2 · cost²)`, so no float is
@@ -109,7 +118,7 @@ where to read, not facts.
   Cursed Ground (object 21); else the terrain's cost by Pathfinding level (`0x63E510`, four per
   terrain: the packs' costs without Pathfinding). **D-2 settled for VCMI's side:** stepping off a
   road costs the terrain under the road; the wiki's "terrain tile" for a road-to-terrain step
-  disagrees (ADV-Q3). Also there, for later increments: Nomads make sand count as dirt,
+  disagrees (ADV-Q3; the user chose the reading, 2026-10-11). Also there, for later increments: Nomads make sand count as dirt,
   Favorable Winds (object 225) take a third off on water, water walking and flying replace the
   cost (`0x6778AC`: 140, 140, 120, 100 by level).
 - **The diagonal factor** is the f32 1.41421354 (`0x63E5F0`), applied on the x87 and truncated
@@ -135,9 +144,14 @@ where to read, not facts.
 - **Read in E08 T7a (CR-1).** *The exception* (`0x4B1740` from 0x4B181A; confirmed by an
   independent second reading): for a diagonal the points left are compared with T, the source
   tile's plain terrain cost by Pathfinding, without the road cost and without the native 100.
-  Points below T: the step costs trunc(straight × √2) (unaffordable). T ≤ points < T × √2: it
+  Points below T: the step costs trunc(straight × √2). T ≤ points < T × √2: it
   costs its *straight* cost (roads and native terrain included). Points ≥ T × √2: trunc(straight
-  × √2). So A-2 and A-3 exist as the wiki describes them (`ADV-QUIRK-2`, `ADV-QUIRK-3`, class
+  × √2). *The bound, exactly* (re-read in T7b): T and the points go to f32 exactly, T × 1.41421354
+  is formed at the x87's 53 bits (exact for these sizes, never an integer) and compared with the
+  points, so the straight cost applies for T ≤ points ≤ trunc(T × √2) = `isqrt(2·T²)`: with 141
+  points on grass the diagonal costs 100. The clean check (both quirks off) keeps that bound and
+  that charge and only replaces T by the step's own straight cost; VCMI charges every remaining
+  point instead and stops one point lower (points < trunc(straight × √2)). So A-2 and A-3 exist as the wiki describes them (`ADV-QUIRK-2`, `ADV-QUIRK-3`, class
   fix-optional as suggested, pending the user's checkpoint). The exception does not charge the
   remaining points; the rule below then usually zeroes them. *After each step* (the hero's move
   `0x4805E0`, 0x481182): the points left are set to 0 when they are fewer than the cheapest
@@ -146,10 +160,22 @@ where to read, not facts.
   from a tile costs at least that much), but the points left differ from the wiki's and from
   VCMI's (VCMI zeroes below the step's own straight cost, which in the example above forbids the
   road step the original allows): **D-3 is a conflict of sources** (reading against VCMI, the
-  wiki silent; ADV-Q3). *A step the hero cannot pay* stops its move and sets its points to 0
+  wiki silent; ADV-Q3: the user chose the reading, 2026-10-11). *A step the hero cannot pay* stops its move and sets its points to 0
   (0x480864): a path longer than the day's points wastes what is left at its end; MoveHero takes
-  only paths payable today, so this needs no rule in increment 1. Not read: the pathfinder that
-  shows the day's reach (`0x418DD0` only around its call).
+  only paths payable today, so this needs no rule in increment 1.
+- **The original's pathfinder** (read 2026-10-11, after T7b; the user asked whether a query can
+  miss the best path). `0x4194A0` (H3API `MovementCalculationsMouse`) starts `0x56B440` with the
+  hero's current points (+0x4D). The search keeps **one node per tile** (H3Pathfinder +0x24,
+  30-byte nodes), pops the cheapest node of its open list and expands it (`0x4B2300`) in the
+  eight directions, pricing each step with `0x4B1740` at the points left on the node (start points
+  minus the node's cost +0x18, 0x56BB62); `0x4B1A70` replaces a neighbour's node only when the new
+  one is strictly better (turn, then cost). The D-3 drop to 0 is not applied there (only in the
+  move), which changes no reachable tile in increment 1. So the original, like VCMI and our
+  `Reach`, is not exact when a step's price depends on the points left: with the diagonal
+  exception, reaching a tile with more points can make the next diagonal dearer (257 points on
+  swamp pay 247 for a diagonal, 245 pay 175), and the one-node search keeps the more. The path it
+  shows can then leave fewer points than a path the player clicks step by step (example and
+  measurements in `E08-log.md`, T7b follow-up).
 
 ### 1.4 Where a hero may step
 
@@ -239,8 +265,9 @@ clean behaviour.
 | Id | Title | Impact | Suggested class | Confidence it exists in SoD | Confirmation |
 |---|---|---|---|---|---|
 | A-1 | The fog's fringe shows hidden tiles' terrain and the object sprites drawn into them | information (what a player sees) | fix-optional (faithful shows, strict-fixed shows terrain, roads and rivers only; E08 decision 7) | medium (the user's earlier observation; VCMI's pathfinder note: "Objects are usually visible on FoW border anyway") | the user looks at a map (below) |
-| A-2 | The diagonal exception ignores roads in its check but not in the cost | gameplay-altering (small): an extra cheap road step at the end of a day | fix-optional | **confirmed** (E08 T7a: CR-1 and a second reading; `ADV-QUIRK-2`) | done |
-| A-3 | The diagonal exception "forgets" that a native army has no terrain penalty: it compares with the penalised straight cost | gameplay-altering (small): native swamp and snow armies lose the last diagonal | fix-optional | **confirmed** (E08 T7a: CR-1 and a second reading; `ADV-QUIRK-3`) | done |
+| A-2 | The diagonal exception ignores roads in its check but not in the cost | gameplay-altering (small): an extra cheap road step at the end of a day | fix-optional (the user, 2026-10-11) | **confirmed** (E08 T7a: CR-1 and a second reading; `ADV-QUIRK-2`) | done |
+| A-3 | The diagonal exception "forgets" that a native army has no terrain penalty: it compares with the penalised straight cost | gameplay-altering (small): native swamp and snow armies lose the last diagonal | fix-optional (the user, 2026-10-11) | **confirmed** (E08 T7a: CR-1 and a second reading; `ADV-QUIRK-3`) | done |
+| A-4 | Neutral stacks before the first faction stack keep the army's native terrain | gameplay-altering (small): slot order decides the native bonus | fix-optional (the user, 2026-10-11) | **confirmed** (E08 T7b: 0x44C590 and a second reading; `ADV-QUIRK-4`) | done |
 
 **Checking A-1 (for the user).** In a game (SoD), move a hero next to the edge of the shroud
 near an object you have not seen yet, such as a mine, a creature or a tree. Look at the
@@ -275,8 +302,8 @@ contact rule, with HD's day limits as parameters.
 | Id | Question | Sources | Needed by | Settle by |
 |---|---|---|---|---|
 | D-1 | Movement points: at the start of the day for all players, or at the start of each player's turn | wiki and VCMI say start of day; the original's call sites (read in T6b) say start of the owner's turn | T6/T7 (which hook) | read in T6b (§1.1); the user chose the reading until an experiment confirms it (ADV-Q4) |
-| D-2 | Stepping off a road: the destination's terrain or the terrain under the road | wiki vs VCMI; read in T7a: the terrain under the road (VCMI's side) | T7 | read (§1.2); the user confirms at the T7a checkpoint (ADV-Q3) |
-| D-3 | Does a step that leaves fewer points than its straight cost take all the points | VCMI only; read in T7a: the points drop to 0 below the cheapest next step instead | T7 | read (§1.3); a conflict with VCMI, the user decides (ADV-Q3) |
+| D-2 | Stepping off a road: the destination's terrain or the terrain under the road | wiki vs VCMI; read in T7a: the terrain under the road (VCMI's side) | T7 | read (§1.2); the user chose the reading (ADV-Q3, 2026-10-11) |
+| D-3 | Does a step that leaves fewer points than its straight cost take all the points | VCMI only; read in T7a: the points drop to 0 below the cheapest next step instead | T7 | read (§1.3); a conflict with VCMI: the user chose the reading (ADV-Q3, 2026-10-11) |
 | D-4 | Points for speeds 0–2 | wiki vs VCMI; no army creature is that slow | T4 (data only) | settled in T4: `movement.txt` has the wiki's row (§1.1) |
 | F-1 | Shape of the revealed area | VCMI only | T8 | CR-3 |
 

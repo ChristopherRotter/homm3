@@ -15,7 +15,7 @@ use proptest::prelude::*;
 
 use super::full;
 use crate::RECORD_FORMAT_VERSION;
-use crate::codec::decode_server;
+use crate::codec::{self, decode_server};
 use crate::map;
 use crate::session::{Bot, ConnId, Entry, GameConfig, Outbound, RestoreError, SeatKind, Session};
 use crate::wire::{
@@ -78,6 +78,7 @@ fn config(seed: u64) -> GameConfig {
         setup: full().1,
         seed,
         checkpoint_every: 10,
+        shadow: false,
     }
 }
 
@@ -144,7 +145,8 @@ fn number(message: &ServerMessage) -> Option<u32> {
         | ServerMessage::Rejected { n, .. }
         | ServerMessage::QueryResult { n, .. }
         | ServerMessage::Events { n, .. }
-        | ServerMessage::GameEnded { n, .. } => Some(*n),
+        | ServerMessage::GameEnded { n, .. }
+        | ServerMessage::PauseAsked { n, .. } => Some(*n),
         _ => None,
     }
 }
@@ -718,6 +720,7 @@ fn journals_without_checkpoints_verify() {
         setup,
         seed: 3,
         checkpoint_every: 0,
+        shadow: false,
     };
     let mut s = Session::new(&r, config, players()).unwrap();
     let out = started(&mut s);
@@ -736,6 +739,7 @@ fn a_setup_the_engine_refuses_hosts_no_game() {
         setup,
         seed: 3,
         checkpoint_every: 0,
+        shadow: false,
     };
     assert!(Session::new(&r, config.clone(), players()).is_err());
     assert!(matches!(
@@ -927,6 +931,201 @@ fn a_waiting_game_restores_its_taken_seats() {
     );
 }
 
+#[test]
+fn the_host_pauses_and_a_seat_resumes_with_its_token() {
+    let r = ruleset();
+    let (mut s, mut entries) = journaled(&r, 12);
+    // The other seat's ask is told to every viewer; the game goes on.
+    let asked = send(&mut s, B, ClientMessage::Pause { seq: 3 });
+    for conn in [A, B] {
+        assert!(matches!(
+            to(&asked, conn)[..],
+            [ServerMessage::PauseAsked {
+                seat: Seat::Defender,
+                ..
+            }]
+        ));
+    }
+    assert_eq!((drained(&mut s), s.paused()), (vec![], false));
+    // The host's (the attacker took its seat first) pauses it; each holder hears it.
+    s.disconnected(B);
+    let paused = send(&mut s, A, ClientMessage::Pause { seq: 4 });
+    assert_eq!(
+        paused,
+        [Outbound {
+            to: A,
+            frame: codec::encode_text(&ServerMessage::Goodbye {
+                reason: GoodbyeReason::Paused
+            }),
+            close: true,
+        }]
+    );
+    assert_eq!((s.paused(), s.phase()), (true, Phase::Paused));
+    let pause = drained(&mut s);
+    assert_eq!(pause, [Entry::Paused]);
+    entries.extend(pause);
+    // The journal restores the paused game; a join with a seat's token resumes it.
+    let mut restored = Session::restore(&r, config(5), players(), &entries).unwrap();
+    assert_eq!(
+        (restored.paused(), restored.phase(), restored.state_hash()),
+        (true, Phase::Paused, s.state_hash())
+    );
+    assert!(matches!(
+        to(&join(&mut restored, B, Seat::Defender, None), B)[..],
+        [ServerMessage::Refused {
+            reason: Refusal::SeatTaken
+        }]
+    ));
+    assert!(restored.paused(), "a refused join resumes nothing");
+    let back = to(&join(&mut restored, B, Seat::Defender, Some(TOKENS[1])), B);
+    assert!(matches!(
+        back[..2],
+        [ServerMessage::Joined { .. }, ServerMessage::Snapshot { .. }]
+    ));
+    assert_eq!(
+        (restored.paused(), restored.phase()),
+        (false, Phase::Running)
+    );
+    let resumed = drained(&mut restored);
+    assert_eq!(resumed, [Entry::Resumed]);
+    entries.extend(resumed);
+    let again = Session::restore(&r, config(5), players(), &entries).unwrap();
+    assert_eq!((again.paused(), again.phase()), (false, Phase::Running));
+}
+
+#[test]
+fn a_pause_is_refused_outside_a_running_game() {
+    let r = ruleset();
+    let mut s = host(&r, 5, players());
+    let pause =
+        |s: &mut Session<'_>, conn, seq| to(&send(s, conn, ClientMessage::Pause { seq }), conn);
+    assert_eq!(
+        pause(&mut s, A, 1),
+        [ServerMessage::Rejected {
+            n: 0,
+            seq: 1,
+            code: RejectCode::NotSeated
+        }]
+    );
+    join(&mut s, A, Seat::Attacker, None);
+    assert!(matches!(
+        pause(&mut s, A, 2)[..],
+        [ServerMessage::Rejected {
+            seq: 2,
+            code: RejectCode::NotStarted,
+            ..
+        }]
+    ));
+    let out = join(&mut s, B, Seat::Defender, None);
+    play(&mut s, out, &mut Rng::from_seed(3), 400);
+    assert!(s.result().is_some());
+    assert!(matches!(
+        pause(&mut s, A, 3)[..],
+        [ServerMessage::Rejected {
+            seq: 3,
+            code: RejectCode::BattleOver,
+            ..
+        }]
+    ));
+    assert!(!drained(&mut s).contains(&Entry::Paused));
+    // A game that did not verify withholds its replay.
+    s.withhold_replay();
+    assert!(matches!(
+        to(&send(&mut s, B, ClientMessage::FetchReplay { seq: 4 }), B)[..],
+        [ServerMessage::Rejected {
+            seq: 4,
+            code: RejectCode::Unverified,
+            ..
+        }]
+    ));
+}
+
+/// Game 1 of the `full` scenario with `seed` and a shadow instance.
+fn shadowed(seed: u64) -> GameConfig {
+    GameConfig {
+        shadow: true,
+        ..config(seed)
+    }
+}
+
+/// `command` from `conn` to both sessions, which must send the same and be in the same state
+/// after it: what they sent.
+fn both(
+    live: &mut Session<'_>,
+    plain: &mut Session<'_>,
+    conn: ConnId,
+    command: Command,
+) -> Vec<Outbound> {
+    let message = ClientMessage::Command { seq: 50, command };
+    let sent = send(live, conn, message.clone());
+    assert_eq!(sent, send(plain, conn, message));
+    assert_eq!(live.journal(), plain.journal());
+    assert_eq!(live.state_hash(), plain.state_hash());
+    sent
+}
+
+/// The seat told to act in `out`, with a legal command that stays in the battle.
+fn staying(out: &[Outbound]) -> (ConnId, Command) {
+    let (conn, legal) = turn(out).unwrap();
+    let command = legal
+        .into_iter()
+        .find(|c| !matches!(c, Command::Retreat {} | Command::Surrender {}))
+        .unwrap();
+    (conn, command)
+}
+
+#[test]
+fn the_shadow_instance_rebuilds_a_faulty_battle_from_the_journal() {
+    let r = ruleset();
+    // With the shadow instance, a game plays as without.
+    let mut plain = host(&r, 5, players());
+    let out = started(&mut plain);
+    play(&mut plain, out, &mut Rng::from_seed(9), 30);
+    let mut s = Session::new(&r, shadowed(5), players()).unwrap();
+    let out = started(&mut s);
+    let out = play(&mut s, out, &mut Rng::from_seed(9), 30);
+    assert_eq!(s.journal(), plain.journal());
+    // A command from the seat not to act is rejected by both battles alike.
+    let (actor, command) = staying(&out);
+    let other = if actor == A { B } else { A };
+    both(&mut s, &mut plain, other, Command::Wait {});
+    assert_eq!(s.drain_mismatches().count(), 0);
+    // A fault in the live battle: the next command finds it, both battles are rebuilt from the
+    // journal and the command is applied to the truth; the viewers notice nothing.
+    let elsewhere = |seed| BattleState::new(&r, &config(5).setup, seed).unwrap();
+    s.corrupt(elsewhere(6));
+    let sent = both(&mut s, &mut plain, actor, command);
+    let step = s.journal().commands.len();
+    assert_eq!(s.drain_mismatches().collect::<Vec<_>>(), [step]);
+    // A fault in the shadow instance: found and rebuilt the same way.
+    let (actor, command) = staying(&sent);
+    s.corrupt_shadow(&elsewhere(7));
+    both(&mut s, &mut plain, actor, command);
+    assert_eq!(s.drain_mismatches().collect::<Vec<_>>(), [step + 1]);
+    // The restore re-runs through both battles.
+    let mut entries = vec![
+        Entry::Taken(BattleSide::Attacker),
+        Entry::Taken(BattleSide::Defender),
+        Entry::Started,
+    ];
+    entries.extend(
+        s.journal()
+            .commands
+            .iter()
+            .map(|&(side, c)| Entry::Command(side, c)),
+    );
+    let restored = Session::restore(
+        &r,
+        GameConfig {
+            checkpoint_every: 0,
+            ..shadowed(5)
+        },
+        players(),
+        &entries,
+    );
+    assert_eq!(restored.unwrap().state_hash(), s.state_hash());
+}
+
 /// The hidden obstacles' spell of the defender's hero (a Quicksand) and of the attacker's (a Land
 /// Mine), by side.
 fn hidden_spell(r: &Ruleset, side: BattleSide) -> u16 {
@@ -1059,6 +1258,7 @@ proptest! {
                 },
                 Act::FetchRecord => ClientMessage::FetchRecord { seq },
                 Act::FetchReplay => ClientMessage::FetchReplay { seq },
+                Act::Pause => ClientMessage::Pause { seq },
                 Act::Play(k) => match held.map(|i| &legal[i]).filter(|l| !l.is_empty()) {
                     Some(list) => ClientMessage::Command {
                         seq,
@@ -1172,6 +1372,7 @@ enum Act {
     Query(u16),
     FetchRecord,
     FetchReplay,
+    Pause,
     /// The `k`-th legal command of the last turn the connection's seat was given.
     Play(usize),
     Command(Command),
@@ -1191,6 +1392,7 @@ fn arb_act() -> impl Strategy<Value = (u64, Act)> {
         1 => (0u16..60).prop_map(Act::Query),
         1 => Just(Act::FetchRecord),
         1 => Just(Act::FetchReplay),
+        1 => Just(Act::Pause),
         6 => any::<usize>().prop_map(Act::Play),
         2 => arb_command().prop_map(Act::Command),
     ];

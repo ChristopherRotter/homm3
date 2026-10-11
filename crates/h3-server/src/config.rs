@@ -80,6 +80,9 @@ pub struct Server {
     pub data: PathBuf,
     /// A state hash in the journal after every this many commands (0: none).
     pub checkpoint_every: u32,
+    /// Whether every game runs a shadow instance that checks its battle after every command
+    /// (E16 M2 T3, `E16-design.md` §8).
+    pub shadow_instance: bool,
 }
 
 impl Default for Server {
@@ -88,6 +91,7 @@ impl Default for Server {
             bind: String::from("127.0.0.1:7878"),
             data: PathBuf::from("data"),
             checkpoint_every: 25,
+            shadow_instance: false,
         }
     }
 }
