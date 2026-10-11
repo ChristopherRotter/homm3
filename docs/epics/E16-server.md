@@ -1,8 +1,8 @@
 # E16 — Server: protocol, hosting, lobbies and ladders
 
 Status: **in progress** (refined 2026-10-08/09; M0 done 2026-10-10: ADR-0018 accepted, the
-crate skeletons; M1 done 2026-10-10, its checkpoint passed 2026-10-11 (SRV-Q12); M2 T1 to T5d
-done 2026-10-11, T5e next: M2's closure). Decisions: [ADR-0018](../adr/0018-server-and-protocol.md) (protocol
+crate skeletons; M1 done 2026-10-10, its checkpoint passed 2026-10-11 (SRV-Q12); M2 done
+2026-10-11 (T1 to T5e), its checkpoint next: SRV-Q16). Decisions: [ADR-0018](../adr/0018-server-and-protocol.md) (protocol
 and hosting); ADR drafts `docs/lanes/server/adr-drafts/identity-and-ladders.md` and
 `discovery.md`. Working detail (messages, flows, journals, the ladder sketch):
 `docs/epics/E16-design.md`. Done tasks in full: `docs/epics/E16-log.md`. Lane: server (`docs/lanes/server/HANDOFF.md`).
@@ -299,8 +299,12 @@ Cut at the M1 checkpoint (SRV-Q12); the tasks in full: `docs/lanes/server/QUEUE.
   session panic; any client lists finished games' replays and downloads one (`ListReplays`,
   `FetchArchived`), a game closed to spectators archived unlisted, `[limits] replays_kept`; wire
   version 11; ADR-0018 points 8 and 9 amended.
-- **T5e** M2's closure (T5 split on 2026-10-11, T5b and T5d again the same day;
-  `docs/lanes/server/QUEUE.md`).
+- **T5e M2's closure** (done 2026-10-11; `E16-log.md`): the exit criteria below; the client
+  lane's note (the content check, a viewer after a restart); the inbox placed; the reviewer agent
+  (1 major, 8 minor): no file I/O under the registry's lock, a new or resumed game's own join
+  first, a refused join keeps the lobby's deadline, a paused game's deadline across restarts, no
+  journal text in the log, the replay written whole, a panicking game thread leaves the lobby; the
+  rest in the inbox.
 
 ## Exit criteria (M2)
 
@@ -431,6 +435,16 @@ Choices queued under the autonomy contract (details in `E16-log.md`):
   server's spectator limit (an unlisted replay in `<data>/replays/closed/`); `replays_kept` (10
   000 in each part), the oldest file deleted, also at a start with a lower bound; the order the
   files' last writes.
+- T5e: the inbox's placement (`QUEUE.md`: the commands-per-game limit in M3, before the internet,
+  rather than now; ids and the verification before `GameEnded` in M4; a viewer's record across a
+  restart documented for the client lane, not kept). The review's fixes: a game prepares on its
+  own thread (`game::launch`), so it is listed before its journal exists; a creation whose secrets
+  or journal fail, and a resume whose journal no longer reads, end with `Goodbye { Shutdown }` (no
+  new wire reason); `Frame::held` for the lobby's deadline; `.part` files for replays. Left for
+  the checkpoint (inbox): a waiting game's deadline, the archived replay's bytes, repeated
+  `PauseAsked`, the per-address limits behind a proxy, lost `Drain` and `Tick`. **For the user:** a
+  finished game's replay is public unless its host closed it to spectators; the other seat has no
+  say (M3's accounts could give it one).
 
 ## Review list for the M1 checkpoint (passed 2026-10-11)
 

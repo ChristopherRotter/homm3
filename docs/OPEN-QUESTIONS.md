@@ -54,7 +54,9 @@ Survey §3.1, GAM-SET-001. **The code reading** (0x4C9730): the second starting 
 
 ### Server lane (`SRV-Q<n>`)
 
-(no open questions)
+#### SRV-Q16 — The M2 checkpoint: the review list, the inbox's placement, the next step
+
+M2 is built (E16 M2 T1–T5e, `docs/epics/E16-log.md`) and meets its exit criteria (epic file). The fresh reviewer agent found 1 major and 8 minor defects; the major and five minors are fixed in T5e, the rest placed in the inbox. The checkpoint decides (a) the choices on the epic's review list for M2 (T1–T5e); (b) the inbox's placement (`docs/lanes/server/QUEUE.md`): the commands-per-game limit, which also bounds a replay's size, in M3 before the server faces the internet (options: now, as a T5f before M2 closes; in M3; in M4 with the ladders); a waiting game's deadline and the per-address limits behind a reverse proxy in M3; ids unique for a server's life, the verification before `GameEnded` and repeated `PauseAsked` in M4; a viewer's record across a restart documented for the client lane, not kept; (c) whether a finished game's replay may stay public on its host's setting alone (the other seat has no say until accounts; options: as built; the archive only when both seats left it open, an M3 change); (d) the next step: M3's refinement (the identity ADR's M3 part and M3's cut; a session with the user). **Recommendation:** accept the review list; the inbox as placed; (c) as built until M3's accounts, revisited at M3's refinement; M3's refinement next.
 
 ### Client lane (`CLT-Q<n>`)
 
