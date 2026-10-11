@@ -164,6 +164,9 @@ pub async fn start(config: &Config) -> Result<Running, Error> {
         anonymous: config.server.anonymous,
         accounts,
         sessions: Mutex::default(),
+        proxies: (config.server.trusted_proxies.iter())
+            .map(|proxy| proxy.to_canonical())
+            .collect(),
     });
     let (stop, stopping) = watch::channel(false);
     let sweeper = tokio::spawn(registry::sweep_every(Arc::clone(&registry), config.limits));

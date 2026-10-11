@@ -8,6 +8,7 @@
 //! checkpoint_every = 25              # a state hash in the journal every this many commands
 //! public_url = "wss://example.org"   # the server's id, which logins sign: what clients dial
 //! anonymous = true                   # whether a game may be joined or created without a login
+//! trusted_proxies = ["127.0.0.1"]    # reverse proxies whose X-Forwarded-For names the client
 //!
 //! [content]
 //! packs = "../packs"                 # the packs directory
@@ -47,6 +48,7 @@
 //! Provisional (E16 M1 and M2 reviews): the format and the defaults.
 
 use std::fs;
+use std::net::IpAddr;
 use std::path::{Path, PathBuf};
 
 use h3_protocol::codec::DEFAULT_MAX_CLIENT_FRAME;
@@ -100,6 +102,9 @@ pub struct Server {
     /// Whether a connection may join or create a game without logging in (E16 M3 T2a), with seat
     /// tokens as in M2.
     pub anonymous: bool,
+    /// The reverse proxies in front of the server (E16 M3 T4b): a connection from one of them
+    /// counts as the client its handshake's `X-Forwarded-For` names. None by default.
+    pub trusted_proxies: Vec<IpAddr>,
 }
 
 impl Default for Server {
@@ -111,6 +116,7 @@ impl Default for Server {
             shadow_instance: false,
             public_url: None,
             anonymous: true,
+            trusted_proxies: Vec::new(),
         }
     }
 }

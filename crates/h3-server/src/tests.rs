@@ -20,6 +20,7 @@ use crate::{Running, bench, game, registry, start};
 
 mod accounts;
 mod bounds;
+mod proxy;
 mod seats;
 
 fn root() -> PathBuf {
@@ -52,6 +53,7 @@ fn config(limits: Limits) -> Config {
             shadow_instance: false,
             public_url: None,
             anonymous: true,
+            trusted_proxies: vec![],
         },
         content: Content {
             packs: root().join("packs"),

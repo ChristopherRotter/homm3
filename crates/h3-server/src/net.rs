@@ -14,6 +14,12 @@
 //! connections' lifetimes: beyond `failed_logins_per_address` a minute, a login closes its
 //! connection `RateLimited`, as does any login from the address until the minute is over.
 //!
+//! Behind a reverse proxy (E16 M3 T4b): a connection from one of `[server] trusted_proxies`
+//! counts, after its handshake, as the client the last entry of its `X-Forwarded-For` header
+//! names (*provisional*: that header alone, its last entry); until then it holds a place in the
+//! total only. A forwarded header from any other peer is ignored. Every limit per address counts
+//! an IPv6 address by its /64 prefix, the block one host usually has ([`counted`]).
+//!
 //! Accounts in games (E16 M3 T3): a connection opens a game with the account it is logged in as.
 //! The server knows each account's logged-in connections: once one re-keyed the account, the
 //! others, logged in with the key it had, close (`Goodbye { Rekeyed }`), so a session opened with
@@ -21,7 +27,7 @@
 
 use std::collections::BTreeMap;
 use std::future::Future;
-use std::net::IpAddr;
+use std::net::{IpAddr, Ipv6Addr};
 use std::sync::{Arc, Mutex, PoisonError};
 use std::time::Duration;
 
@@ -35,6 +41,9 @@ use tokio::sync::{Notify, mpsc, watch};
 use tokio::time::{Instant, sleep_until, timeout};
 use tokio_tungstenite::WebSocketStream;
 use tokio_tungstenite::tungstenite::Message;
+use tokio_tungstenite::tungstenite::handshake::server::{
+    Callback, ErrorResponse, Request, Response,
+};
 use tokio_tungstenite::tungstenite::protocol::WebSocketConfig;
 
 use crate::accounts::Accounts;
@@ -219,6 +228,8 @@ pub(crate) struct Service {
     /// The logged-in connections by account, each with what closes it when another connection
     /// re-keys the account (E16 M3 T3).
     pub sessions: Mutex<BTreeMap<(String, ConnId), Arc<Notify>>>,
+    /// The reverse proxies whose forwarded header names the client (E16 M3 T4b).
+    pub proxies: Vec<IpAddr>,
 }
 
 impl Service {
@@ -661,18 +672,61 @@ struct Counts {
     failures: BTreeMap<IpAddr, Rate>,
 }
 
+/// The address a connection counts as in the limits per address (E16 M3 T4b): an IPv4 address
+/// itself, also one mapped into IPv6; an IPv6 address its /64 prefix, the block one host usually
+/// has, so that a host does not escape the limits by changing its interface identifier.
+pub(crate) fn counted(address: IpAddr) -> IpAddr {
+    match address.to_canonical() {
+        IpAddr::V6(v6) => IpAddr::V6(Ipv6Addr::from(u128::from(v6) & !u128::from(u64::MAX))),
+        v4 => v4,
+    }
+}
+
+/// The client's address a trusted proxy names in the handshake (E16 M3 T4b): the last entry of
+/// its last `X-Forwarded-For` header, the address the proxy itself saw; none if it does not read.
+fn forwarded_for(request: &Request) -> Option<IpAddr> {
+    let header = request
+        .headers()
+        .get_all("x-forwarded-for")
+        .iter()
+        .next_back()?;
+    let last = header.to_str().ok()?.rsplit(',').next()?.trim();
+    last.parse::<IpAddr>().ok()
+}
+
+/// What a handshake keeps of its request (E16 M3 T4b): the client a trusted proxy names.
+struct Forwarded {
+    /// Whether the peer is a trusted proxy: only then is the header read.
+    proxied: bool,
+    /// The client it names.
+    client: Arc<Mutex<Option<IpAddr>>>,
+}
+
+impl Callback for Forwarded {
+    fn on_request(self, request: &Request, response: Response) -> Result<Response, ErrorResponse> {
+        if self.proxied {
+            *self.client.lock().unwrap_or_else(PoisonError::into_inner) = forwarded_for(request);
+        }
+        Ok(response)
+    }
+}
+
 /// A counted connection; dropping it releases its place.
 #[derive(Debug)]
 pub(crate) struct Place {
     counts: Arc<Mutex<Counts>>,
     address: IpAddr,
+    /// Whether it counts for its address too, or in the total only (E16 M3 T4b: a trusted proxy's
+    /// connection before its handshake names the client).
+    per_address: bool,
     /// The address's failed logins a minute.
     failed_logins: u32,
 }
 
 impl Place {
-    /// A place for a connection from `address`, if the limits leave one.
+    /// A place for a connection from `address` (as [`counted`]), if the limits leave one.
     fn take(counts: &Arc<Mutex<Counts>>, address: IpAddr, limits: &Limits) -> Option<Self> {
+        let address = counted(address);
         let mut c = counts.lock().unwrap_or_else(PoisonError::into_inner);
         let here = c.by_address.get(&address).map_or(0, |a| a.connections);
         if c.total >= limits.connections || here >= limits.connections_per_address {
@@ -690,6 +744,23 @@ impl Place {
         Some(Self {
             counts: Arc::clone(counts),
             address,
+            per_address: true,
+            failed_logins: limits.failed_logins_per_address,
+        })
+    }
+
+    /// A place in the total only for a connection from the trusted proxy `proxy` (E16 M3 T4b),
+    /// until its handshake names the client, if the limit leaves one.
+    fn proxied(counts: &Arc<Mutex<Counts>>, proxy: IpAddr, limits: &Limits) -> Option<Self> {
+        let mut c = counts.lock().unwrap_or_else(PoisonError::into_inner);
+        if c.total >= limits.connections {
+            return None;
+        }
+        c.total += 1;
+        Some(Self {
+            counts: Arc::clone(counts),
+            address: proxy,
+            per_address: false,
             failed_logins: limits.failed_logins_per_address,
         })
     }
@@ -725,6 +796,9 @@ impl Drop for Place {
     fn drop(&mut self) {
         let mut c = self.counts.lock().unwrap_or_else(PoisonError::into_inner);
         c.total = c.total.saturating_sub(1);
+        if !self.per_address {
+            return;
+        }
         if let Some(a) = c.by_address.get_mut(&self.address) {
             a.connections = a.connections.saturating_sub(1);
             if a.connections == 0 {
@@ -735,8 +809,10 @@ impl Drop for Place {
 }
 
 /// Accepts connections until the server stops (`stop`, E16 M2 T5a): a connection beyond the
-/// limits is closed at once, every other one gets its WebSocket handshake and its task. Once
-/// stopped, it waits for the open connections to close, for a grace.
+/// limits is closed at once, every other one gets its WebSocket handshake and its task. A trusted
+/// proxy's connection is counted by its client's address after the handshake, and closed then if
+/// that address has no place (E16 M3 T4b). Once stopped, it waits for the open connections to
+/// close, for a grace.
 pub(crate) async fn listen(
     listener: TcpListener,
     registry: Shared,
@@ -754,20 +830,45 @@ pub(crate) async fn listen(
         let Ok((stream, peer)) = accepted else {
             continue;
         };
-        let Some(place) = Place::take(&counts, peer.ip(), &limits) else {
+        let peer = peer.ip().to_canonical();
+        let proxied = server.proxies.contains(&peer);
+        let place = if proxied {
+            Place::proxied(&counts, peer, &limits)
+        } else {
+            Place::take(&counts, peer, &limits)
+        };
+        let Some(place) = place else {
             drop(stream);
             continue;
         };
         next += 1;
         let conn = ConnId(next);
         let (registry, server, stop) = (Arc::clone(&registry), Arc::clone(&server), stop.clone());
+        let counts = Arc::clone(&counts);
         tokio::spawn(async move {
             let config = websocket_config(&limits);
-            let handshake = tokio_tungstenite::accept_async_with_config(stream, Some(config));
+            let client = Arc::new(Mutex::new(None));
+            let read = Forwarded {
+                proxied,
+                client: Arc::clone(&client),
+            };
+            let handshake =
+                tokio_tungstenite::accept_hdr_async_with_config(stream, read, Some(config));
             let idle = Duration::from_millis(limits.idle_timeout_ms);
-            if let Ok(Ok(socket)) = timeout(idle, handshake).await {
-                serve(socket, conn, place, registry, limits, server, stop).await;
-            }
+            let Ok(Ok(mut socket)) = timeout(idle, handshake).await else {
+                return;
+            };
+            let place = if proxied {
+                let client = client.lock().unwrap_or_else(PoisonError::into_inner).take();
+                drop(place);
+                match Place::take(&counts, client.unwrap_or(peer), &limits) {
+                    Some(place) => place,
+                    None => return Transport::close(&mut socket).await,
+                }
+            } else {
+                place
+            };
+            serve(socket, conn, place, registry, limits, server, stop).await;
         });
     }
     // Stopped: no new connection; the open ones close, each after its goodbye, within a grace.
@@ -789,6 +890,31 @@ mod tests {
 
     use super::*;
     use crate::registry::Registry;
+
+    #[test]
+    fn an_address_counts_by_its_ipv6_prefix() {
+        let ip = |text: &str| text.parse::<IpAddr>().unwrap();
+        assert_eq!(counted(ip("203.0.113.9")), ip("203.0.113.9"));
+        assert_eq!(counted(ip("::ffff:203.0.113.9")), ip("203.0.113.9"));
+        assert_eq!(counted(ip("2001:db8:1:2:3:4:5:6")), ip("2001:db8:1:2::"));
+    }
+
+    #[test]
+    fn a_proxys_header_names_the_client_by_its_last_entry() {
+        let forwarded = |headers: &[&str]| {
+            let mut request = Request::builder();
+            for value in headers {
+                request = request.header("X-Forwarded-For", *value);
+            }
+            forwarded_for(&request.body(()).unwrap())
+        };
+        let ip = |text: &str| Some(text.parse::<IpAddr>().unwrap());
+        assert_eq!(forwarded(&["203.0.113.1"]), ip("203.0.113.1"));
+        assert_eq!(forwarded(&["10.0.0.1, 203.0.113.1 "]), ip("203.0.113.1"));
+        assert_eq!(forwarded(&["10.0.0.1", "2001:db8::1"]), ip("2001:db8::1"));
+        assert_eq!(forwarded(&[]), None);
+        assert_eq!(forwarded(&["203.0.113.1, unknown"]), None);
+    }
 
     /// A transport over channels.
     #[derive(Debug)]
@@ -856,6 +982,7 @@ mod tests {
                     anonymous: true,
                     accounts,
                     sessions: Mutex::default(),
+                    proxies: Vec::new(),
                 }),
                 watch::channel(false).1,
             ));
