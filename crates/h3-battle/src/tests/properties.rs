@@ -2156,10 +2156,12 @@ fn extreme_caster(r: &Ruleset, rng: &mut Rng) -> BattleHero {
 
 /// Plays `state` on for at most 400 steps with commands the battle lists: half the time the
 /// hero's cast if a spell is castable (a spell of `castable_spells` at one of its `cast_targets`
-/// and `second_targets`: each list has an entry for a castable spell, BAT-MAG-001), else often
-/// the active stack's cast if it has a target (BAT-MAG-048), else a legal command (a strike one
-/// time in four; with `leave` the commands that leave the battle too). Every command is accepted.
-/// Returns the numbers of the heroes' and the stacks' casts.
+/// and `second_targets`: each list has an entry for a castable spell, BAT-MAG-001; one cast in
+/// four removes a natural obstacle while that is castable, so that removals do leave obstacles
+/// no hex leads to: BAT-MAG-034, BAT-QUIRK-3), else often the active stack's cast if it has a
+/// target (BAT-MAG-048), else a legal command (a strike one time in four; with `leave` the
+/// commands that leave the battle too). Every command is accepted. Returns the numbers of the
+/// heroes' and the stacks' casts.
 fn play_casting(state: &mut BattleState, r: &Ruleset, seed: u64, leave: bool) -> (u32, u32) {
     let mut agent = Rng::for_stream(seed, h3_kernel::StreamId::AGENT);
     let mut legal = LegalCommands::new();
@@ -2174,7 +2176,11 @@ fn play_casting(state: &mut BattleState, r: &Ruleset, seed: u64, leave: bool) ->
         creature_cast_targets(state, r, side, &mut targets);
         let roll = agent.below(100);
         let cmd = if !spells.is_empty() && roll < 50 {
-            let spell = one_of(&mut agent, &spells);
+            let removes = |s: &SpellId| r.spell(*s).is_some_and(|t| t.magic.removes_obstacles());
+            let remover = spells.iter().copied().find(removes);
+            let spell = remover
+                .filter(|_| agent.below(4) == 0)
+                .unwrap_or_else(|| one_of(&mut agent, &spells));
             cast_targets(state, r, side, spell, &mut targets);
             assert!(!targets.is_empty(), "castable {spell:?} without a target");
             let target = one_of(&mut agent, targets.as_slice());
@@ -2217,18 +2223,21 @@ fn play_casting(state: &mut BattleState, r: &Ruleset, seed: u64, leave: bool) ->
     casts
 }
 
-// covers: BAT-HER-001, BAT-MAG-001, BAT-MAG-003, BAT-MAG-048
+// covers: BAT-HER-001, BAT-MAG-001, BAT-MAG-003, BAT-MAG-034, BAT-MAG-048
 /// Robustness (E04b T11b review): battles led on both sides by sound casting heroes with extreme
 /// values (BAT-HER-001 accepts them) start and play with the heroes' and the stacks' casts among
 /// the commands, every listed command accepted, with armies of up to `u32::MAX` creatures, under
-/// exact rates and under the original's quirks (single-precision rates, Q-0005); no arithmetic
-/// overflows; an outcome when over. Fixed seeds: a failure reproduces.
+/// exact rates with anchored obstacles (BAT-QUIRK-3) and under the original's quirks
+/// (single-precision rates, Q-0005); no arithmetic overflows; an outcome when over. Fixed seeds:
+/// a failure reproduces.
 ///
-/// Two findings of that review bounded it. The spell damage saturates now (F-robust-3, also
-/// through a Fire Shield's reflection of a huge strike), so the armies and the spell damage
-/// bonuses are the same in both profiles. One still bounds it, to be widened once it is fixed:
-/// the natural obstacles are anchored on their own hex, so that no removal
-/// leaves another without a hex (F-robust-2).
+/// Two findings of that review bounded it; both are fixed and the bounds are gone. The spell
+/// damage saturates (F-robust-3, also through a Fire Shield's reflection of a huge strike), so
+/// the armies and the spell damage bonuses are the same in both profiles. Remove Obstacle is
+/// castable only while a hex leads to an obstacle (F-robust-2), so the natural obstacles are of
+/// every kind of [`pieces`], some side by side: with quirk BAT-QUIRK-3 the removal of one that
+/// is anchored on its neighbour's hex leaves that neighbour without a hex that leads to it
+/// (BAT-MAG-034).
 #[test]
 fn extreme_casting_heroes_play_without_failures() {
     let pool = army_creatures();
@@ -2244,8 +2253,9 @@ fn extreme_casting_heroes_play_without_failures() {
         })
         .collect();
     let mut casts = (0, 0);
-    for profile in ["t:quirky", "t:original"] {
-        let r = lively_with(profile);
+    // Exact rates with quirk Q-0003, as `lively`, and anchors; the original's rates.
+    let anchored = lively_mix(&["no_luck_without_hero", "obstacle_anchors"]);
+    for r in [anchored, lively_with("t:original")] {
         for seed in 0..100u64 {
             let mut rng = Rng::from_seed(seed);
             let army = |rng: &mut Rng| -> ArmySpec {
@@ -2270,8 +2280,14 @@ fn extreme_casting_heroes_play_without_failures() {
             };
             let (att, def) = (army(&mut rng), army(&mut rng));
             let mut setup = make_setup(&r, &att, &def, &[], rng.next_u64());
-            // Up to four one-hex obstacles between the armies, each anchored on its own hex.
-            setup.obstacles = pieces(&[58, 76, 94, 112][..rng.below(5) as usize]);
+            // One-hex obstacles between the armies, each in half the battles: three pairs side
+            // by side, the right one anchored on the left one's hex, one without an anchor
+            // (78), one alone.
+            let hexes: Vec<u8> = [58, 59, 76, 77, 78, 94, 95, 112]
+                .into_iter()
+                .filter(|_| rng.below(2) == 0)
+                .collect();
+            setup.obstacles = pieces(&hexes);
             setup.heroes = [
                 Some(extreme_caster(&r, &mut rng)),
                 (rng.below(8) != 0).then(|| extreme_caster(&r, &mut rng)),
