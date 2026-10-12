@@ -9,6 +9,8 @@
 //! changed. The bots (E16 M4 T5): a lone player plays one after the wait, told so (T5b), rated,
 //! flagged; a player who opted out (T5b) waits on. The pause by agreement (E16 M4 T6): declined,
 //! agreed and resumed in time, a player not back after its due time forfeits, neither back: void.
+//! M4's exit (E16 M4 T7): two players queue, accept and play a rated battle through a restart,
+//! their ratings the same after another.
 
 use h3_protocol::wire::{LadderInfo, LeaderboardRow, Outcome, Points, Seated, Side, UnqueueReason};
 
@@ -806,6 +808,72 @@ async fn a_played_game_is_rated_and_the_ratings_hold_across_a_restart() {
     assert_eq!(log.lines().count(), 2, "the season and the game: {log}");
     assert!(log.contains(&format!("\"game\":{first},")), "{log}");
     again.shutdown().await;
+    std::fs::remove_dir_all(&config.server.data).unwrap();
+}
+
+/// `client` answers its turns until it heard `commands` commands applied, its own or the other
+/// seat's (an `Events` each), and stops there: both seats of a game stop after the same command.
+async fn plays_until(client: &mut Client, seed: u64, commands: usize) {
+    let mut rng = Rng::from_seed(seed);
+    let (mut heard, mut seq) = (0, 0);
+    while heard < commands {
+        match client.recv().await {
+            Some(ServerMessage::YourTurn { legal, .. }) => {
+                let command = bench::choose(&legal, &mut rng).unwrap();
+                seq += 1;
+                let command = ClientMessage::Command { seq, command };
+                client.send(&command).await.unwrap();
+            }
+            Some(ServerMessage::Events { .. }) => heard += 1,
+            Some(_) => {}
+            None => panic!("closed after {heard} commands"),
+        }
+    }
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn two_players_queue_accept_and_play_a_rated_battle_through_a_restart() {
+    // E16 M4 T7: M4's exit criteria, end to end.
+    let config = laddered(60_000);
+    let running = start(&config).await.unwrap();
+    let ([mut ann, mut bob], game, [ann_seat, bob_seat]) = seated_match(&running).await;
+    // A command each, and the server stops mid-battle: the duel's stacks start out of each
+    // other's reach, and one strike cannot end it.
+    tokio::join!(plays_until(&mut ann, 5, 2), plays_until(&mut bob, 6, 2));
+    running.shutdown().await;
+    // The server starts again: the match is back with its ladder, the players re-take their
+    // seats by account and play on to the end.
+    let again = start(&config).await.unwrap();
+    let info = listed(&again).await.into_iter().find(|g| g.game == game);
+    let info = info.map(|g| (g.ladder, g.phase));
+    assert_eq!(info, Some((Some(String::from("arena")), Phase::Running)));
+    let (mut ann, mut bob) = (
+        player(&again, "ann", 1).await,
+        player(&again, "bob", 2).await,
+    );
+    takes(&mut ann, game, ann_seat).await;
+    takes(&mut bob, game, bob_seat).await;
+    let ((mut ann, ann_saw), (mut bob, bob_saw)) = tokio::join!(play(ann, 7), play(bob, 8));
+    let result = end(&ann_saw);
+    assert_eq!(result, end(&bob_saw));
+    // Rated as Glicko-2 rates the game between new accounts (a game that did not verify is
+    // unrated: `score` refuses it).
+    let new = Rating::default();
+    let (ann_after, bob_after) = rating::game(new, new, score(result, side(ann_seat)));
+    assert_eq!(rating(&mut ann).await, (points(new), points(ann_after)));
+    assert_eq!(rating(&mut bob).await, (points(new), points(bob_after)));
+    let row = |running: &Running, login| running.standing("arena", 1, login).unwrap();
+    let rows = [row(&again, "ann"), row(&again, "bob")];
+    assert_eq!(
+        rows.map(|r| (r.rating, r.games)),
+        [(ann_after, 1), (bob_after, 1)]
+    );
+    // Another restart: the same ratings, the game no longer listed.
+    again.shutdown().await;
+    let third = start(&config).await.unwrap();
+    assert_eq!([row(&third, "ann"), row(&third, "bob")], rows);
+    listed_as(&third, game, None).await;
+    third.shutdown().await;
     std::fs::remove_dir_all(&config.server.data).unwrap();
 }
 
