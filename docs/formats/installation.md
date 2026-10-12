@@ -842,7 +842,9 @@ hypnotized stack's aura; it differs for hypnotized Unicorns (they go on protecti
 side), for a hypnotized shooter (blocked by the stacks of the side that controls it:
 `battleIsUnitBlocked` compares initial owners, and counts Berserk only on the shooter itself) and
 for multi-headed strikes (`getAttackedCreatures` compares both owners through hypnosis and has no
-Berserk term).
+Berserk term). On these three relations and on Berserk's term the engine follows this reading,
+not VCMI; the conflict is on record in BAT-Q28 and in the VCMI sources of BAT-MAG-025,
+BAT-MAG-026, BAT-RNG-001 and BAT-ATK-003.
 
 ### 7.15 Code reading: battlefield objects, Force Field, Fire Wall, Teleport, Remove Obstacle (E04b T5a/T5b, 2026-10-07)
 
