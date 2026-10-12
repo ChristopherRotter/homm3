@@ -176,7 +176,8 @@ impl Status {
     /// One of its effects ends when it takes damage (Blind, BAT-MAG-024; Stone Gaze, Paralyze,
     /// BAT-MAG-043).
     pub const DAMAGE_ENDS: Self = Self(1 << 3);
-    /// Its turns are automatic and every other stack is its enemy (Berserk, BAT-MAG-025).
+    /// Its turns are automatic and take any other stack; next to a stack it counts as an enemy
+    /// (Berserk, BAT-MAG-025).
     pub const BERSERK: Self = Self(1 << 4);
     /// The other side controls it (Hypnotize, BAT-MAG-026).
     pub const HYPNOTIZED: Self = Self(1 << 5);
@@ -658,12 +659,10 @@ pub(crate) fn retaliation_share(state: &BattleState, ruleset: &Ruleset, s: Stack
 }
 
 /// Whether a timed `change` makes the stack lose its turns (BAT-MAG-024, BAT-MAG-043): a spell
-/// after a strike with one stops the struck stack's retaliation (BAT-MAG-040).
+/// after a strike with one stops the struck stack's retaliation (BAT-MAG-040). The content's
+/// list, which the compiler keeps from lasting the whole battle.
 pub(crate) const fn stops_turns(change: TimedChange) -> bool {
-    matches!(
-        change,
-        TimedChange::Blind | TimedChange::Petrify | TimedChange::Paralyze
-    )
+    change.takes_turns()
 }
 
 /// Recomputes the [`SpellValues`] of stack `s` from its entries (BAT-MAG-011): the sums of what
@@ -825,7 +824,8 @@ fn on_own_turn(ruleset: &Ruleset, spell: SpellId) -> bool {
 /// either ends (its last round has passed) or loses a round; permanent effects stay, and those
 /// counted at the stack's own turn wait for it ([`own_turn`]). Then Poison, where it still
 /// lasts, takes another tenth (BAT-MAG-044; the original's 0x447120), reported when the hit
-/// points fell.
+/// points fell below what they were once the ended effects were given back (an Age that ends
+/// at the same round start ends first, as in the original's countdown).
 // rule: BAT-MAG-010
 pub(crate) fn count_down<S: Sink>(state: &mut BattleState, ruleset: &Ruleset, sink: &mut S) {
     if state.effects.0.is_empty() {
@@ -870,6 +870,11 @@ pub(crate) fn count_down<S: Sink>(state: &mut BattleState, ruleset: &Ruleset, si
     }
     for (index, (&c, &p)) in changed.iter().zip(&poisoned).enumerate() {
         let id = StackId(u8::try_from(index).unwrap_or(u8::MAX));
+        // What ended is given back before Poison's tenth is compared (the original recomputes
+        // the hit points at Age's end, in the countdown, and compares with that value).
+        if c {
+            recompute(state, ruleset, id);
+        }
         if p {
             let before = state.at(id).max_hp;
             vitality::poison(state, id);
@@ -881,8 +886,6 @@ pub(crate) fn count_down<S: Sink>(state: &mut BattleState, ruleset: &Ruleset, si
                     hit_points,
                 }));
             }
-        } else if c {
-            recompute(state, ruleset, id);
         }
     }
 }
@@ -920,26 +923,36 @@ pub(crate) fn own_turn<S: Sink>(
     }
 }
 
-/// Removes the effects of dead stacks (BAT-MAG-010: a stack that dies loses its effects) and
-/// recomputes what they changed, as the original's death routine ends every active spell
-/// (0x444120, `installation.md` §7.9): Age's hit points come back before a raise counts them,
-/// Poison's lost tenths stay (BAT-MAG-044).
+/// Removes the timed effects of dead stacks (BAT-MAG-010: a stack that dies loses its effects
+/// with a duration) and recomputes what they changed, as the original's death routine ends every
+/// spell with a duration (0x444120, `installation.md` §7.9): Age's hit points come back before a
+/// raise counts them, Poison's lost tenths stay (BAT-MAG-044). A permanent effect stays on the
+/// dead stack: the original's end routine refuses Disrupting Ray (0x444510 returns at once for
+/// it), Acid Breath only lowers the defense, and neither the death nor a raise gives the defense
+/// back, so a stack that is raised or reborn comes back with it (BAT-MAG-035, BAT-MAG-059).
 pub(crate) fn remove_dead(state: &mut BattleState, ruleset: &Ruleset) {
     if state.effects.0.is_empty() {
         return;
     }
     let stacks = state.stacks.as_slice();
-    let mut dead = 0u64;
+    let mut ended = 0u64;
     state.effects.0.retain(|e| {
-        let alive = stacks.get(e.stack.index()).is_some_and(Stack::is_alive);
-        if !alive {
-            dead |= 1 << e.stack.0;
+        let stays = e.rounds.is_none() || stacks.get(e.stack.index()).is_some_and(Stack::is_alive);
+        if !stays {
+            ended |= 1 << e.stack.0;
         }
-        alive
+        stays
     });
-    while dead != 0 {
-        let s = StackId(u8::try_from(dead.trailing_zeros()).unwrap_or(u8::MAX));
-        dead &= dead - 1;
+    while ended != 0 {
+        let s = StackId(u8::try_from(ended.trailing_zeros()).unwrap_or(u8::MAX));
+        ended &= ended - 1;
         recompute(state, ruleset, s);
     }
+}
+
+/// Removes every effect of stack `s`, the permanent ones too, unreported: its record is set up
+/// anew for a stack the battle creates (BAT-MAG-037; the original's 0x47A100 sets a reused record
+/// up from scratch). The caller replaces the stack with its values.
+pub(crate) fn forget(state: &mut BattleState, s: StackId) {
+    state.effects.0.retain(|e| e.stack != s);
 }

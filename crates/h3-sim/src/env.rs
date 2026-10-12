@@ -216,10 +216,17 @@ impl BattleEnv {
         }
     }
 
-    /// Plays action `action` for `actor` (the trusted identity of the agent issuing it).
+    /// Plays action `action` for `actor` (the trusted identity of the agent issuing it). A side
+    /// that is not to move is refused as the battle refuses it
+    /// ([`CommandError::NotYourTurn`]) before its action is decoded: decoding reads what only
+    /// the side to move may know (the active stack's drawn spell, ADR-0014 point 8), and the kind
+    /// of refusal must not tell it.
     pub fn step(&mut self, actor: BattleSide, action: Action) -> Result<StepResult, StepError> {
-        if self.is_done() {
+        let Some(side) = self.to_move() else {
             return Err(StepError::EpisodeOver);
+        };
+        if side != actor {
+            return Err(StepError::Rejected(CommandError::NotYourTurn));
         }
         let command =
             action::decode(&self.state, &self.ruleset, action).ok_or(StepError::InvalidAction)?;
@@ -364,6 +371,66 @@ mod tests {
             StepError::Rejected(CommandError::NotYourTurn).to_string(),
             "rejected: it is not your turn"
         );
+    }
+
+    /// E04b T11b review (F-sec-2): the side that is not to move is refused before its action
+    /// is decoded. Decoding a stack's cast compares the action's spell with the active stack's
+    /// (a random caster's drawn spell, which only its controller may know, ADR-0014 point 8), so
+    /// the kind of refusal told the other side that spell: `Rejected` for it, `InvalidAction`
+    /// for every other.
+    // covers: BAT-MAG-049
+    #[test]
+    fn a_step_out_of_turn_is_refused_whatever_the_action() {
+        use crate::action::{CREATURE_CAST, END_TACTICS};
+        let (r, setup) = h3_pack::synthetic(h3_pack::SYNTHETIC_FULL).unwrap();
+        let mut env = BattleEnv::new(Arc::new(r), Arc::new(setup), 3, 0).unwrap();
+        // Everybody defends until a random caster (the Drakes) awaits its side's command.
+        let controller = loop {
+            let side = env.to_move().unwrap();
+            if env.observation(side).drawn.is_some() {
+                break side;
+            }
+            let entry = if env.state().tactics().is_some() {
+                END_TACTICS
+            } else {
+                1
+            };
+            env.step(side, Action::entry(entry)).unwrap();
+        };
+        let other = controller.opponent();
+        assert_eq!(env.observation(other).drawn, None);
+        let before = env.state_hash();
+        let cast = |spell| Action {
+            entry: CREATURE_CAST as u32,
+            spell,
+            target: 0,
+            second: 0,
+        };
+        // The other side probes every spell: one answer.
+        for spell in 0..SPELL_COUNT as u16 {
+            assert_eq!(
+                env.step(other, cast(spell)),
+                Err(StepError::Rejected(CommandError::NotYourTurn)),
+                "{spell}"
+            );
+        }
+        // Nor is an action that names no command decoded for it.
+        assert_eq!(
+            env.step(other, Action::entry(ACTION_COUNT + 1)),
+            Err(StepError::Rejected(CommandError::NotYourTurn))
+        );
+        // The controller's own actions are decoded as before: only the drawn spell names its
+        // stack's cast (which needs a target: rejected, not invalid).
+        let drawn = env.observation(controller).drawn.unwrap().raw();
+        for spell in 0..SPELL_COUNT as u16 {
+            let refused = env.step(controller, cast(spell)).unwrap_err();
+            assert_eq!(
+                matches!(refused, StepError::Rejected(_)),
+                spell == drawn,
+                "{spell}: {refused}"
+            );
+        }
+        assert_eq!(env.state_hash(), before, "refused steps change nothing");
     }
 
     #[test]

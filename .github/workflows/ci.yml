@@ -6,7 +6,7 @@
 # 2026-10-08), so CI verifies each state of the code once (docs/05-testing.md, "CI"):
 #
 # - The code fingerprint hashes every tracked file except `docs/`, `experiments/`, `clients/` (its
-#   own workspace; a client job gets its own fingerprint) and `*.md`: no heavy gate (fmt, clippy,
+#   own workspace and job, `clients.yml`) and `*.md`: no heavy gate (fmt, clippy,
 #   deny, test, coverage, determinism, ffi-smoke, bench-check) reads those. A successful run records
 #   it as the commit status `verified (<os>)`, description `code <fingerprint>`, on the commit it
 #   checked (a pull request's head). A run that finds its fingerprint on the pull request's head

@@ -34,7 +34,8 @@ type Targets = [bool; STACK_CAPACITY];
 const NO_TARGETS: Targets = [false; STACK_CAPACITY];
 
 /// Whether stack `id` is next to a living enemy (its footprint touches one; enemies as
-/// BAT-MAG-025/026 have them), which keeps a shooter from shooting (BAT-RNG-001).
+/// [`Stack::is_hostile_to`] has them, BAT-MAG-025/026: a berserk neighbour of any side, a stack
+/// of the side its controller fights), which keeps a shooter from shooting (BAT-RNG-001).
 pub(crate) fn is_blocked(state: &BattleState, field: Field, id: StackId) -> bool {
     let me = state.at(id);
     let fp = me.footprint(field);
@@ -243,7 +244,10 @@ fn strike_inputs(
     let mut attack = striker.attack_now(ranged);
     // rule: BAT-MAG-014
     if slays(ruleset, striker.spells.slayer.1, victim) {
-        attack += i32::from(striker.spells.slayer.0) + slayer_bonus;
+        // The specialist's bonus may fill the `i32` range (E04b T11b review): saturate.
+        attack = attack
+            .saturating_add(striker.spells.slayer.0.into())
+            .saturating_add(slayer_bonus);
     }
     // rule: BAT-MAG-019
     if striker.spells.frenzy > 0 {
@@ -606,8 +610,9 @@ fn death_stare<S: Sink>(
 /// current positions: every adjacent enemy for creatures that attack all adjacent enemies; for
 /// three-headed attacks, enemies on the two hexes beside the attacked hex towards the attacker;
 /// for breath attacks, any stack on the hex behind the attacked hex. Never the target or the
-/// attacker itself; enemies as BAT-MAG-025/026 have them (a berserk Hydra strikes every
-/// adjacent stack).
+/// attacker itself; enemies as [`Stack::is_hostile_to`] has them (BAT-MAG-025/026: a berserk
+/// Hydra strikes every adjacent stack, any Hydra a berserk one and a hypnotized stack of the
+/// side its controller fights).
 // rule: BAT-ATK-003
 fn melee_secondaries(
     state: &BattleState,
@@ -699,9 +704,9 @@ fn pattern_hexes(field: Field, me: &Stack, fp: Footprint, victim: Footprint) -> 
 /// or none if the target was blind, BAT-MAG-024; none if the attack's spells stopped its turns,
 /// BAT-MAG-040), for creatures that strike twice a second attack unless the attacker now loses
 /// its turns (BAT-ATK-002), the return to `start` of creatures that strike and return unless the
-/// attacker now loses its turns or is bound (BAT-ATK-004, BAT-MAG-045), the end of the attacker's
-/// Berserk (BAT-MAG-025), the rebirths (BAT-MAG-059), then the end-of-battle check
-/// (BAT-END-001).
+/// attacker now loses its turns or is bound (BAT-ATK-004, BAT-MAG-045; a move that enters the
+/// hexes it lands on, BAT-MAG-028, BAT-MAG-033), the end of the attacker's Berserk
+/// (BAT-MAG-025), the rebirths (BAT-MAG-059), then the end-of-battle check (BAT-END-001).
 pub(crate) fn melee<S: Sink>(
     state: &mut BattleState,
     ruleset: &Ruleset,
@@ -759,13 +764,11 @@ pub(crate) fn melee<S: Sink>(
         && !me.spells.status.contains(Status::NO_TURNS)
         && !binds::is_bound(state, attacker)
     {
+        // The return is a move like any other and enters the hexes it lands on (the original's
+        // move handler, 0x445950: Fire Wall, then Land Mine); the battle's end waits for the
+        // end of this action.
         let from = me.hex;
-        state.at_mut(attacker).hex = start;
-        sink.emit(Event::public(EventKind::Moved {
-            stack: attacker,
-            from,
-            to: start,
-        }));
+        crate::obstacles::travel_back(state, ruleset, attacker, (from, start), sink);
     }
     effects::attacked(state, ruleset, attacker, sink);
     // rule: BAT-MAG-059
@@ -821,10 +824,12 @@ fn retaliate<S: Sink>(
 
 /// A shot at `target`, aimed at its hex `at`: one ranged attack per shot (two for shooters that
 /// strike twice, the commanded Ballista's `shots`, BAT-WAR-006; further shots as long as the
-/// target lives and shots are left), each using a shot (none below 0, quirk Q-0004; the
-/// controller's Ammo Cart supplies them); area shots also strike every other living stack around
-/// `at` that the area does not spare (BAT-RNG-004). Shots are not retaliated. Then the end of the
-/// shooter's Berserk (BAT-MAG-025), the rebirths (BAT-MAG-059) and the end-of-battle check.
+/// target lives and shots are left), each using a shot (none below 0, quirk Q-0004; the Ammo
+/// Cart of the shooter's own side supplies them, also while the other side controls the shooter:
+/// the original asks the hero of the shooter's own side, 0x43F9E1); area shots also strike every
+/// other living stack around `at` that the area does not spare (BAT-RNG-004). Shots are not
+/// retaliated. Then the end of the shooter's Berserk (BAT-MAG-025), the rebirths (BAT-MAG-059)
+/// and the end-of-battle check.
 // rule: BAT-RNG-001
 pub(crate) fn shoot<S: Sink>(
     state: &mut BattleState,
@@ -844,7 +849,7 @@ pub(crate) fn shoot<S: Sink>(
         if i > 0 && (!state.at(target).is_alive() || !has_ammunition(state.at(shooter))) {
             break;
         }
-        if !ammo_supplied(state, state.at(shooter).controller()) {
+        if !ammo_supplied(state, state.at(shooter).side) {
             let s = state.at_mut(shooter);
             s.shots = s.shots.saturating_sub(1);
         }

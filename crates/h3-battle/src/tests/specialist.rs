@@ -3,14 +3,14 @@
 
 use std::vec::Vec;
 
-use h3_content::Ruleset;
+use h3_content::{ContentKey, Ruleset};
 use h3_contracts::{BattleEffect, BattleHero};
 
 use super::spells::{arena, cast, mage, spell, stack};
 use super::support::*;
 use crate::effects::TimedCast;
 use crate::magic::SpellBonus;
-use crate::{BattleState, Event, StackId};
+use crate::{BattleState, Command, Event, StackId};
 
 /// The specialty in `name` of a hero at `level` (3 % per level, as every original one).
 fn specialty(r: &Ruleset, name: &str, level: u8) -> BattleEffect {
@@ -207,6 +207,52 @@ fn a_slayer_specialist_adds_attack_by_the_strikers_level_at_the_strike() {
     );
     act(&mut s, &r, cast(&r, "slayer", stack(0))).unwrap();
     assert_eq!(s.stacks()[0].spells.slayer, (8, 0));
+}
+
+/// E04b T11b review (F-robust-6, F-r2b-stack-spells-7 point 1): the specialist's bonus to
+/// Slayer, cut to the `i32` range, is added to the attack without overflow. It takes a pack whose
+/// Slayer has a large value and no rule of its own (the bonus then grows with the hero's level)
+/// and the largest specialty a sound hero can carry.
+// covers: BAT-MAG-020, BAT-MAG-014
+#[test]
+fn a_huge_slayer_specialty_does_not_overflow_the_attack() {
+    let r = ruleset_from(
+        "t:faithful",
+        |_| {},
+        |pack| {
+            let slayer = ContentKey::new("t", "slayer").unwrap();
+            let def = pack.spells.iter_mut().find(|s| s.key == slayer).unwrap();
+            def.effect = [30_000; 4];
+            def.magic.specialist = None;
+        },
+    );
+    let mut hero = mage(&r, &["slayer"]);
+    hero.magic.mana = 100;
+    hero.effects = std::vec![
+        BattleEffect::SpellSpecialty {
+            spell: spell(&r, "slayer"),
+            bp_per_level: u16::MAX,
+            level: 255,
+        };
+        64
+    ];
+    // The attack bonus is at its cap of 300 %: four times the Archers' 20–30.
+    assert_eq!(shot_after(&r, hero.clone(), "slayer", "lord"), (80, 120));
+    // The shot itself, as a command.
+    let mut s = arena(
+        &r,
+        [Some(hero), None],
+        &[("archer", 10, 3, 5)],
+        &[("lord", 1, 8, 2)],
+        1,
+    );
+    act(&mut s, &r, cast(&r, "slayer", stack(0))).unwrap();
+    let shot = Command::Shoot {
+        target: StackId(1),
+        at: s.stacks()[1].hex,
+    };
+    act(&mut s, &r, shot).unwrap();
+    assert!(!s.stacks()[1].is_alive());
 }
 
 // covers: BAT-MAG-020, BAT-DMG-002

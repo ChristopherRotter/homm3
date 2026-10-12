@@ -408,13 +408,13 @@ checkpoints = [
     "0xef948611c811ad03",
     "0x83a34e8327ac8ccf",
     "0x8c6abc66b80d9f1a",
-    "0x85ec071132ae587d",
-    "0x0f836c8aed39cf75",
-    "0x2990e719175b3e79",
-    "0x56a585d81c5d4c16",
-    "0x1652385312848577",
-    "0x8d20a2c34763668f",
-    "0x0ae01869b256f12c",
+    "0x23dedf074c14a70b",
+    "0x6b8a78f62d70e5c3",
+    "0xee6bd7aecc6edd2f",
+    "0x4fa02a536e343ab8",
+    "0x510ccf33366e5a07",
+    "0x88250102d1532517",
+    "0xc89ff7b6edd2f518",
 ]
 
 [replay]
@@ -427,7 +427,7 @@ packs = [[
     "0.1.0",
 ]]
 profile = "synthetic:faithful"
-ruleset_hash = "0xca39e2af5fabd024"
+ruleset_hash = "0xf365519700129800"
 rng = "xoshiro256starstar+splitmix64"
 rng_version = 1
 hash = "fnv1a64-le"
@@ -479,4 +479,4 @@ count = 15
 
 [result]
 winner = "defender"
-final_hash = "0xf9654fd75216424f"
+final_hash = "0x235fe240cadeb27c"

@@ -539,6 +539,94 @@ fn a_drawn_area_spell_is_aimed_at_a_hex_of_a_stack_and_may_hit_the_caster() {
     assert_eq!(s.casts_left(StackId(0)), 1);
 }
 
+/// The stacks `events` report as resisting, in order.
+fn resisting(events: &[Event]) -> Vec<u8> {
+    events
+        .iter()
+        .filter_map(|e| match e.kind {
+            EventKind::SpellResisted { target } => Some(target.0),
+            _ => None,
+        })
+        .collect()
+}
+
+// covers: BAT-MAG-049, BAT-MAG-048, BAT-MAG-008
+#[test]
+fn every_stack_in_a_creatures_area_rolls_for_resistance() {
+    // E04b T11b review (r5a F-7): a creature's area spell is aimed at a hex, so it has no stack
+    // "it is aimed at" that would not roll: the dwarves (20 %) on the aimed hex resist a fifth
+    // of 200 casts, as the dwarves beside it do; `fixed` on the other side never resists. One
+    // novaling at Advanced: 5 × 10 + 20.
+    let r = ruleset();
+    let mut resisted = [0u32; 2];
+    for seed in 0..200 {
+        let mut s = arena(
+            &r,
+            [None, None],
+            &[("novaling", 1, 3, 5)],
+            &[
+                ("dwarf", 30, 13, 5),
+                ("dwarf", 30, 14, 5),
+                ("fixed", 30, 12, 5),
+            ],
+            seed,
+        );
+        drawing(&mut s, &r, 0);
+        let target = CastTarget::Hex(at(&r, 13, 5));
+        let events = act(&mut s, &r, Command::CreatureCast { target }).unwrap();
+        let (resists, struck) = (resisting(&events), damage(&events));
+        for dwarves in [1, 2] {
+            let resisted_it = resists.contains(&dwarves);
+            assert_ne!(resisted_it, struck.contains(&(dwarves, 70, 70)), "{seed}");
+            resisted[usize::from(dwarves - 1)] += u32::from(resisted_it);
+        }
+        assert!(
+            struck.contains(&(3, 70, 70)) && !resists.contains(&3),
+            "{seed}"
+        );
+    }
+    assert!(
+        resisted.iter().all(|n| (20..=60).contains(n)),
+        "{resisted:?}"
+    );
+}
+
+// covers: BAT-MAG-049, BAT-MAG-048, BAT-MAG-006
+#[test]
+fn a_creatures_chain_strikes_its_first_stack_without_a_roll_and_rolls_at_every_jump() {
+    // E04b T11b review (r5a F-7): the dwarves a chainling's chain is aimed at never resist it
+    // (a hero's chain would be resisted as a whole a fifth of the time, BAT-MAG-006); the dwarves
+    // next to them, the nearest stack, roll when the chain looks for its next stack and are
+    // passed over a fifth of 200 times: the chain then jumps to `fixed`, two rows up. One
+    // chainling at Advanced: 5 × 10 + 20, halved at each jump.
+    let r = ruleset();
+    let mut passed_over = 0;
+    for seed in 0..200 {
+        let mut s = arena(
+            &r,
+            [None, None],
+            &[("chainling", 1, 3, 5)],
+            &[
+                ("dwarf", 30, 13, 5),
+                ("dwarf", 30, 13, 6),
+                ("fixed", 30, 13, 3),
+            ],
+            seed,
+        );
+        drawing(&mut s, &r, 0);
+        let events = act(&mut s, &r, at_stack(1)).unwrap();
+        let struck = damage(&events);
+        assert_eq!(struck.first(), Some(&(1, 70, 70)), "{seed}");
+        assert!(!resisting(&events).contains(&1), "{seed}");
+        match struck.get(1) {
+            Some((2, 35, 35)) => {}
+            Some((3, 35, 35)) => passed_over += 1,
+            other => panic!("{seed}: {other:?}"),
+        }
+    }
+    assert!((20..=60).contains(&passed_over), "{passed_over}");
+}
+
 // covers: BAT-MAG-049, BAT-MAG-004
 #[test]
 fn a_random_casters_power_is_its_creatures_times_its_power_per_creature() {
@@ -645,61 +733,78 @@ fn a_random_caster_draws_again_after_good_morale_and_after_waiting() {
     assert!(!drawn(&told));
 }
 
-// covers: BAT-MAG-049, BAT-MAG-022
+/// Whether a Magic Mirror sent a spell away or a stack resisted one in `events`.
+fn sent_away_or_resisted(events: &[Event]) -> bool {
+    events.iter().any(|e| {
+        matches!(
+            e.kind,
+            EventKind::SpellRedirected { .. } | EventKind::SpellResisted { .. }
+        )
+    })
+}
+
+// covers: BAT-MAG-049, BAT-MAG-048, BAT-MAG-022
 #[test]
-fn a_mirrored_random_cast_is_untested_with_quirk_bat_quirk_9() {
-    for (profile, untested) in [("t:faithful", false), ("t:mirrored", true)] {
+fn a_magic_mirror_never_sends_a_creatures_spell_away() {
+    // E04b T11b review (r5a F-1; the user, BAT-Q29): the original hands a mirror's redirect to a
+    // hero's cast alone (`installation.md` §7.21), so a stack's spell always meets the stack it
+    // is aimed at, in every profile. The engine sent it to a stack of the caster's side, which
+    // took it untested under the flag of BAT-QUIRK-9 (retired). The aimed stack has an Expert
+    // mirror (100 %): a hero's spell would never reach it.
+    for profile in ["t:faithful", "t:original"] {
         let r = ruleset_with(profile, |_| {});
-        // Where the mirror sends the bolt: to the caster itself or to its own immune wyrm, or
-        // its own dwarves (20 % resistance).
-        let mut outcomes = std::collections::BTreeSet::new();
-        for (own, seed) in [("wyrm", 0..30), ("dwarf", 30..90)]
-            .into_iter()
-            .flat_map(|(own, seeds)| seeds.map(move |seed| (own, seed)))
-        {
+        for seed in 0..20 {
+            // A random caster's bolt, beside its own wyrm (immune to level 1) or dwarves (20 %
+            // resistance): one boltling at Advanced, 5 × 10 + 20 on the aimed stack.
+            for own in ["wyrm", "dwarf"] {
+                let mut s = arena(
+                    &r,
+                    [None, None],
+                    &[("boltling", 1, 3, 5), (own, 3, 3, 7)],
+                    &[("fixed", 30, 13, 5)],
+                    seed,
+                );
+                give(&mut s, &r, (2, "mirror"), 3);
+                drawing(&mut s, &r, 0);
+                let events = act(&mut s, &r, at_stack(2)).unwrap();
+                assert!(!sent_away_or_resisted(&events), "{profile} {own} {seed}");
+                assert_eq!(damage(&events), vec![(2, 70, 70)], "{profile} {own} {seed}");
+            }
+            // Its chain starts at the aimed stack and jumps on from there.
             let mut s = arena(
                 &r,
                 [None, None],
-                &[("boltling", 1, 3, 5), (own, 3, 3, 7)],
-                &[("fixed", 3, 13, 5)],
+                &[("chainling", 1, 3, 5)],
+                &[("fixed", 30, 13, 5), ("fixed", 30, 13, 6)],
                 seed,
             );
-            give(&mut s, &r, (2, "mirror"), 3);
+            give(&mut s, &r, (1, "mirror"), 3);
             drawing(&mut s, &r, 0);
-            let events = act(&mut s, &r, at_stack(2)).unwrap();
-            let to = events
-                .iter()
-                .find_map(|e| match e.kind {
-                    EventKind::SpellRedirected { from, to } => {
-                        assert_eq!(from, StackId(2));
-                        Some(to.0)
-                    }
-                    _ => None,
-                })
-                .unwrap();
-            let resisted = events.iter().any(|e| {
-                e.kind
-                    == EventKind::SpellResisted {
-                        target: StackId(to),
-                    }
-            });
-            let hit = !damage(&events).is_empty();
-            assert_ne!(resisted, hit, "{profile} {own} {seed}");
-            match (to, own) {
-                // The caster is not immune and has no resistance.
-                (0, _) => assert!(hit),
-                // Immune: hit only without a test.
-                (_, "wyrm") => assert_eq!(hit, untested, "{profile} {seed}"),
-                // Resistance: never resisted without a test.
-                _ => assert!(hit || !untested, "{profile} {seed}"),
-            }
-            outcomes.insert((to, own, hit));
+            let events = act(&mut s, &r, at_stack(1)).unwrap();
+            assert!(!sent_away_or_resisted(&events), "{profile} {seed}");
+            assert_eq!(
+                damage(&events)[..2],
+                [(1, 70, 70), (2, 35, 35)],
+                "{profile} {seed}"
+            );
+            // A caster's own spell (BAT-MAG-048): Weaken at Basic, power 4, on the aimed dwarves,
+            // who do not roll.
+            let mut s = arena(
+                &r,
+                [None, None],
+                &[("warlock", 5, 2, 3)],
+                &[("dwarf", 5, 13, 5)],
+                seed,
+            );
+            give(&mut s, &r, (1, "mirror"), 3);
+            let events = act(&mut s, &r, at_stack(1)).unwrap();
+            assert!(!sent_away_or_resisted(&events), "{profile} {seed}");
+            assert_eq!(
+                applied(&events),
+                vec![(1, spell(&r, "weaken"), Some(4))],
+                "{profile} {seed}"
+            );
         }
-        // Both stacks were chosen; without the quirk the dwarves sometimes resisted.
-        assert!(outcomes.contains(&(0, "wyrm", true)));
-        assert!(outcomes.contains(&(1, "wyrm", untested)));
-        assert!(outcomes.contains(&(1, "dwarf", true)));
-        assert_eq!(outcomes.contains(&(1, "dwarf", false)), !untested);
     }
 }
 
@@ -847,6 +952,29 @@ fn a_spell_is_useful_as_the_originals_test_says() {
     assert!(is_useful(&s, &r, "cure", 1));
     // No king among the enemies.
     assert!(!is_useful(&s, &r, "slayer", 1));
+}
+
+// covers: BAT-MAG-021, BAT-MAG-050
+#[test]
+fn anti_magic_is_never_useful_on_a_clone() {
+    let r = ruleset();
+    // The enemy hero's spell book makes Anti-Magic useful (BAT-MAG-050).
+    let mut s = arena(
+        &r,
+        [None, Some(mage(&r, &["bolt"]))],
+        &[("jinn", 2, 3, 5), ("serf", 3, 3, 7)],
+        &[("fixed", 3, 13, 5)],
+        1,
+    );
+    crate::created::clone(&mut s, &r, (StackId(1), 3), &mut Vec::<Event>::new());
+    let clone = s.stacks()[3];
+    assert!(clone.has(crate::state::StackTraits::CLONE) && clone.side == BattleSide::Attacker);
+    assert!(is_useful(&s, &r, "antimagic", 1));
+    // The original's effect test gives 0 for Anti-Magic on a clone whoever casts (0x5A8090's
+    // case of spell 34): it is never useful there and never drawn. (The clone test sat in the
+    // hero's aim alone: review r2b F-3.) Any other spell is.
+    assert!(!is_useful(&s, &r, "antimagic", 3));
+    assert!(is_useful(&s, &r, "bless", 3) && is_useful(&s, &r, "airward", 3));
 }
 
 // covers: BAT-MAG-050

@@ -159,6 +159,26 @@ fn resurrection_from_advanced_raises_for_good_and_needs_one_creatures_health() {
         cast(&mut s, &r, "rise", (stack(0), CastTarget::None)),
         Err(CommandError::InvalidSpellTarget)
     );
+    // Hit points equal to the health reach it (the original compares with "at most", 0x5A850C;
+    // E04b T11b review, r4a F-10): power 0 at Basic raises 40, an ogre's health; with one hit
+    // point of health more the stack is no target.
+    let mut weak = raiser(&r, 1, 0);
+    weak.power = 0;
+    let mut s = arena(
+        &r,
+        [Some(weak), None],
+        &[("ogre", 2, 2, 3), ("ogre", 2, 2, 7)],
+        &[("serf", 1, 14, 5)],
+        1,
+    );
+    for ogres in &mut s.stacks.as_mut_slice()[..2] {
+        ogres.count = 1;
+    }
+    s.stacks.as_mut_slice()[1].max_hp = 41;
+    assert_eq!(targets(&s, &r, "rise"), vec![0]);
+    let events = cast(&mut s, &r, "rise", (stack(0), CastTarget::None)).unwrap();
+    assert_eq!(raised(&events), vec![(0, 40, 1, true)]);
+    assert_eq!(s.stacks()[0].count, 2);
 }
 
 // covers: BAT-MAG-035, BAT-MAG-010
@@ -200,6 +220,54 @@ fn a_dead_stack_comes_back_on_its_hexes_without_effects_and_keeps_its_round() {
     assert!(serfs.flags.contains(crate::StackFlags::ACTED));
     // The active stack kept its turn.
     assert_eq!(s.active(), Some(StackId(0)));
+}
+
+// covers: BAT-MAG-035, BAT-MAG-010, BAT-MAG-009
+#[test]
+fn a_raised_stack_keeps_the_permanent_effects_it_died_with() {
+    let r = ruleset();
+    let mut s = arena(
+        &r,
+        [Some(raiser(&r, 3, 0)), None],
+        &[("fixed", 1, 2, 3), ("serf", 4, 5, 5)],
+        &[("serf", 1, 14, 5)],
+        1,
+    );
+    // An Expert Disrupting Ray (−5 for the rest of the battle) and a Haste on the serfs.
+    for (name, mastery) in [("ray", 3), ("haste", 1)] {
+        let id = spell(&r, name);
+        let timed = TimedCast {
+            id,
+            spell: r.spell(id).unwrap(),
+            mastery,
+            rounds: 5,
+            own: crate::magic::SpellBonus::default(),
+        };
+        effects::apply(&mut s, &r, timed, StackId(1), &mut Vec::<Event>::new());
+    }
+    let lowered = i32::from(s.stacks()[1].defense) - 5;
+    assert_eq!(s.stacks()[1].defense_now(), lowered);
+    kill(&mut s, &r, 1);
+    // The death ended Haste, not the ray (review r2a F-3, r5b F-2: the original's end routine
+    // refuses Disrupting Ray, and neither its death nor its raise gives the defense back).
+    let ray = vec![(spell(&r, "ray"), None, -5)];
+    let entries = |s: &BattleState| -> Vec<_> {
+        let of = s.effects.of(StackId(1)).iter();
+        of.map(|e| (e.spell, e.rounds, e.defense)).collect()
+    };
+    assert_eq!(entries(&s), ray);
+    assert_eq!(s.stacks()[1].defense_now(), lowered);
+    // The ray's entry is public while the stack is dead, as it is on a living one.
+    let seen = crate::observe(&s, &r, BattleSide::Defender).effects;
+    assert_eq!(seen.len(), 1);
+    let events = cast(&mut s, &r, "rise", (stack(1), CastTarget::None)).unwrap();
+    assert_eq!(raised(&events), vec![(1, 40, 4, false)]);
+    let serfs = s.stacks()[1];
+    assert_eq!(entries(&s), ray);
+    assert_eq!(
+        (serfs.defense_now(), serfs.spells.speed),
+        (lowered, serfs.speed)
+    );
 }
 
 // covers: BAT-MAG-035
@@ -391,6 +459,59 @@ fn with_bat_quirk_5_sacrifice_tests_its_target_as_resurrection() {
     let mut t = s.clone();
     set_masteries(&mut t, 0, &r, [0, 1, 0, 0]);
     assert_eq!(targets(&t, &plain, "offering"), vec![1, 2]);
+}
+
+// covers: BAT-MAG-036
+#[test]
+fn with_bat_quirk_5_the_raised_stack_passes_sacrifices_own_test_too() {
+    let r = ruleset_with("t:sacrifice", |_| {});
+    // Expert air: Resurrection's 3 × 50 + 160 = 310 hit points reach every creature here.
+    let mut hero = mage(&r, &["rise", "offering", "serfs"]);
+    hero.magic.masteries = masteries(&r, [3, 1, 0, 0]);
+    hero.magic.mana = 200;
+    let mut s = arena(
+        &r,
+        [Some(hero), None],
+        &[
+            ("fixed", 1, 2, 1),
+            ("ember", 3, 5, 5),
+            ("serf", 5, 7, 5),
+            ("serf", 5, 9, 5),
+        ],
+        &[("serf", 1, 14, 5)],
+        1,
+    );
+    s.stacks.as_mut_slice()[1].count = 1;
+    s.stacks.as_mut_slice()[2].count = 4;
+    // The embers (living, immune to the fire school) pass Resurrection's test, by which the
+    // original finds the stack; it then asks Sacrifice's own test of the stack it found (the
+    // target test 0x5A39C0 calls 0x5A8090 for the spell itself), and a fire spell does not
+    // affect them. (With the quirk only Resurrection's test was asked: review r4a F-1.)
+    assert_eq!(targets(&s, &r, "rise"), vec![1, 2]);
+    assert_eq!(targets(&s, &r, "offering"), vec![2]);
+    assert_eq!(
+        cast(&mut s, &r, "offering", (stack(1), stack(3))),
+        Err(CommandError::InvalidSpellTarget)
+    );
+    // The stack is found by Resurrection's test alone: dead embers on top of dead serfs are
+    // found and then refused, and the serfs below them are not looked at.
+    kill(&mut s, &r, 2);
+    place(&mut s, &r, 1, 7, 5);
+    kill(&mut s, &r, 1);
+    assert_eq!(targets(&s, &r, "rise"), vec![1]);
+    assert_eq!(targets(&s, &r, "offering"), Vec::<u8>::new());
+    // Without the quirk Sacrifice's own test alone picks the corpse: the serfs.
+    let plain = ruleset();
+    assert_eq!(targets(&s, &plain, "offering"), vec![2]);
+    // Nor is a stack the battle created a target (the original's flag `0x400000`), though
+    // Resurrection restores it: six summoned serfs, four of them lost.
+    cast(&mut s, &r, "serfs", (CastTarget::None, CastTarget::None)).unwrap();
+    s.heroes[0].as_mut().unwrap().view.casts = 0;
+    assert!(s.stacks()[5].is_created());
+    assert_eq!((s.stacks()[5].count, s.stacks()[5].base_count), (6, 6));
+    s.stacks.as_mut_slice()[5].count = 2;
+    assert_eq!(targets(&s, &r, "rise"), vec![1, 5]);
+    assert_eq!(targets(&s, &r, "offering"), Vec::<u8>::new());
 }
 
 // covers: BAT-MAG-001

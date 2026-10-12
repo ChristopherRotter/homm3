@@ -2179,3 +2179,150 @@ records how and why the tasks went.
   binders, the hex planes and the masteries are observed).
 - **Not done here:** `E04b-design.md` (no section open) is deleted at the closure, T11c, with
   ADR-0014's line that links it (a shared path).
+
+### T11b: the independent review and its fold-in (2026-10-11 to 2026-10-12, increment 21)
+
+- **How it ran (the user: review and closure in one session, with agents as needed):** fresh
+  reviewer agents, one per slice, each with the slice's catalog entries, the code, the executable
+  (the reading tool) and VCMI 1.7.5 on disk, without wiki access: r1 the casting core
+  (BAT-MAG-001 to 008, the HER rules), r2a timed effects, r2b the stack spells, r3 control and
+  battlefield spells, r4a life and created stacks, r4b the strike's magic, r5a the casting
+  creatures, r5b mana and the creature defences, r6 limits, hero defences and the opening spells;
+  a robustness review (a stress harness over random battles in every profile, fuzzed packs and
+  commands) and a security review (ADR-0004 and ADR-0008, hidden information, the sim and the
+  C ABI). **87 findings.** Fix workers folded them in, each fix test first, in two rounds; docs
+  workers wrote the rule texts and recorded the readings the engine does not follow; a separate
+  agent then read all 24 fixes against their findings (none does something else than its finding
+  asks; its doubts are in the queue's inbox). The reports, the briefs and the workers' notes are
+  on the branch `battle/e04b-t11b-review-reports` (a backup, not merged). The sandbox restarted
+  once in mid-run; the work resumed from the pushed branches and the notes.
+- **Round 1, list A (robustness, security, relations):** the automatic Ballista reads only the
+  pits both sides see (BAT-WAR-002; the hygiene property had failed in 1.2 % of runs); Remove
+  Obstacle is castable only while a hex leads to an obstacle (BAT-MAG-034); Slayer's specialist
+  bonus saturates; a pack cannot take every stack's turns away for ever, and an obstacle type
+  blocks at most eight hexes (both refused by the compiler: a command that never returned, a
+  panic); the battle ends when a round start takes a side's last stack (BAT-END-001,
+  BAT-QUIRK-7); in the tactics phase Retreat and Surrender act for the trusted actor
+  (BAT-FLE-001); the sim's `step` refuses the wrong side before it decodes the action (it told
+  the other side a Faerie Dragon's drawn spell); a strike's damage spell of no damage does
+  nothing (BAT-MAG-041); **the relations to hypnotized and berserk stacks** go by the acting
+  stack's controller and the other stack's own side, as the original's enemy test 0x442880
+  (BAT-MAG-025, 026, BAT-RNG-001, BAT-ATK-003, the war machines: who may attack, shoot, block,
+  be healed, be protected by Unicorns); Expert Dispel reaches hypnotized stacks in every profile
+  (BAT-MAG-016, Q-0012).
+- **Round 1, list B (the readings):** an aged Phoenix is reborn whole (BAT-MAG-059); a dead stack
+  keeps its permanent effects through death and a raise (Disrupting Ray, Acid Breath, Poison,
+  Age, Bind; BAT-MAG-010, 035); Poison is reported when Age ends at the same round start;
+  morale and luck are clamped once, at the roll, so a base beyond ±3 absorbs a spell
+  (BAT-MAG-011); under Q-0005 the Behemoths' reduction truncates the defense left, not the
+  share taken (BAT-DMG-006: defense 10 counts as 5, not 6; **the user's decision on Q19 of
+  2026-10-07 had been taken on the misreading**; `strict-fixed` is unchanged); under Q-0005 the
+  spell damage follows the original's single-precision stores and saturates (BAT-MAG-004: a
+  Sorcery specialist's 58 against 57; no `u128` overflow); with BAT-QUIRK-5 Sacrifice's raised
+  stack passes Sacrifice's own test too (BAT-MAG-036); no Anti-Magic on a clone, whoever casts
+  (BAT-MAG-021); the Harpies' return is a move that lands on its hexes, and the battle's end is
+  tested once after it (BAT-ATK-004); a clone of a raised stack is not "raised" (BAT-MAG-038).
+- **Round 2, list C (the reading alone, the wiki and VCMI silent):** a battle-wide spell or a
+  mass version is cast only if it would affect some stack, refused before mana or the round's
+  cast is spent; a hypnotized stack the mass version passes over counts, as the original's test
+  reads it (BAT-MAG-003); pits and mines avoid living stacks and corpses, not a dead stack that
+  left none (BAT-MAG-032); a created stack whose rounds ran out keeps its record, so no later
+  stack takes its id and it counts towards the side's limit (BAT-MAG-037, 052; BAT-QUIRK-11,
+  12). **The read of the fixes found** that this last fix makes a rule read `Created::vanished`,
+  which the observation does not show: BAT-STUB-1 and BAT-Q35.
+- **Two quirk flags retired (the user, 2026-10-12, BAT-Q29 and BAT-Q30):** the re-reads show that
+  neither quirk exists in the original. Magic Mirror never redirects a creature's spell (the
+  executable, VCMI and the wiki agree): only a hero's spell is sent away, in every profile
+  (BAT-MAG-022, 049, 057). The original offers no attack from a pit the stack's side sees: such
+  an attack is neither listed nor accepted in any profile (BAT-MAG-032, 025). Their registry
+  positions 10 and 14 stay reserved (ADR-0007: index = position), a profile that names either
+  does not compile, `QuirkRegistry::flags()` lists the flags that exist; the ledger keeps both
+  entries as "considered, not a quirk". No version changed (adding a flag never bumped one);
+  the faithful profiles have new ruleset hashes (`synthetic:faithful` 0xf365519700129800,
+  `base:faithful` 0xbff0f037828b990a), so the two faithful adventure replays name the new hash
+  in their header (their games are unchanged; a `cross-lane` line each). **BAT-Q31 (the user):**
+  a berserk stack's automatic turn goes on following its own side's hidden pits, as the
+  original's; noted in the ledger beside BAT-QUIRK-4.
+- **Tests the review asked for (no engine change; each passed on the engine as it was):** batch
+  2a R1, R2 and R6's Ballista turn, 2b R3's 60, 2c F1, F2 and H1, 2d RA2, CL1 and SU replayed on
+  the harvested packs with their numbers; Eagle Eye's chance under Q-0005 (64 against 65, 43
+  against 44: the reviewer's unrun numbers are the engine's); the boundaries (mana equal to the
+  cost, Hypnotize and the raises at their limits, Clone's place skips, the summon's row and "no
+  place"); Frenzy's count for a stack that waits; a mirror's draw among war machines; Q-0005's
+  Poison and Age in a battle; a shot at a petrified stack; Bind's end; resistance in a
+  creature's area spell and along its chain; the opening spells after a freeze and before the
+  Enchanters; a strike's spell under the negation of immunities.
+- **Properties (the security review's gap: they never played what E04b made matter):** the
+  generators cast Berserk, Hypnotize and Blind, give heroes the hidden magic of BAT-MAG-061 to
+  069 and draw every profile of the hidden obstacles; the assertions are restated by controller
+  and trusted actor (who has commands, who strikes whom, a berserk stack acts or passes and its
+  own attack ends its Berserk, good morale), the events tell every change of the effect list,
+  the heroes' limits and immunities are held against each command's events, the battle's end is
+  an invariant (with BAT-QUIRK-7 in half the games), and twin games show that Eagle Eye and
+  unopened spells do not show. Two old assertions were wrong and are restated (two rebirths in
+  one command; a stack that became its own clone has rounds without being a clone). Each
+  changed property ran 20 times and once with ten times its cases; the restated assertions were
+  checked against deliberate defects in the engine (none committed). Berserk stays out of
+  `hidden_obstacles_do_not_show` (BAT-Q31). Seen on the way: a stack blinded while it awaits a
+  command keeps that turn, in the engine and in the original (BAT-MAG-024 says so now), and a
+  side reads the other hero's casting limits and negation off its own helpful caster's
+  `cast_candidates` without issuing a command (the class BAT-Q26 allows).
+- **Docs:** the rule texts, the ledger and `installation.md` for every fix; the doc findings
+  (wrong or missing VCMI sources on some thirty rules, each opened in VCMI 1.7.5; the delivered
+  rules stated in the present; BAT-QUIRK-20 and 21 for the two original bugs the engine leaves
+  out); 19 dated "Review re-read" paragraphs in `installation.md` §7.8 to §7.23 for the readings
+  the engine does not follow, each deciding address opened again by the docs worker (all held;
+  three were sharpened); 15 new map entries. **Open questions:** BAT-Q28 (twelve readings
+  against VCMI or the wiki, and the list of points where the engine follows the reading and
+  VCMI differs), BAT-Q32 (the Faerie Dragon's F key), BAT-Q33 (who commands a side: a computer
+  side's bad morale), BAT-Q34 (is BAT-QUIRK-1 a quirk), BAT-Q35 (the observation and fix C3);
+  survey candidates S-23 to S-27; one experiment batch (2g) and 49 wiki checks in
+  `docs/experiments/README.md`.
+- **Fixtures and measurements:** seven of the eight golden replays no longer verified; all are
+  recorded again with their seeds, and `full-s3-a955` (which lost its mirrored spell) is
+  replaced by `full-s3-a242`. `random-rollouts-full` re-baselined on the changed games: 7 633
+  steps for 7 388, +3.3 % Ir per step, about 106 k steps/s in release on the sandbox (exit
+  criterion 5's 100 k holds); no per-function profile was compared (queue).
+- **The review's limits** (what it did not read or run): no wiki access (one page fetched at the
+  fold-in; the checks are listed, and the wiki can be read from a session); the readings were
+  not compared with an observation (batch 2g); the reviewers ran no cargo (their test sketches
+  were run by the fix workers); helper routines were taken as the map describes them (each
+  report lists its own: the pathfinder's costs and tie order, a berserk stack's walk to a far
+  target, the turn order's tie-break, the specialist bonus); the spell book's dialog and its
+  cost test, the computer player's paths, network, hidden and tactics-phase callers; sieges,
+  Cursed Ground, Magic Plains, the anti-magic garrison (E04c); the server, protocol and client
+  crates beyond the battle's types; battles beyond 450 commands. A shared target directory let
+  two docs workers' `xtask` checks read each other's worktree (xtask takes the workspace root
+  from its build): `check-exe-map` failed on the joined branch for an address the queue cited,
+  fixed with a map entry (0x467130).
+
+### T11c: the closure (2026-10-12, increment 21)
+
+- **Shared first** (`shared/e04b-closure`): BACKLOG (E04b done), ADR-0014's working-detail line
+  and point 6's wording, ADR-0007's amendment on retiring a flag, `docs/04-rules-and-sources.md`
+  §4 (quirks that are the rule in every profile by decision; retired entries), `docs/06-security.md`
+  ("Not covered yet": a battle's hidden draws share the public rolls' generator), the global
+  HANDOFF's trap on target directories.
+- **The design note at closure:** `E04b-design.md` held no open section; each had been deleted by
+  the task that implemented it (T2's casting core, T3's effect list, T5's battlefield objects,
+  T6's raising and created stacks, T7's creature magic). The file is deleted. The working detail
+  is in the code documentation (`h3_battle`'s `magic`, `effects`, `obstacles`, `natural`, `raise`,
+  `created`, `casters` and `mana`; `h3_content`; `h3_heroes`), the rule catalog (BAT-MAG-001 to
+  069, HER-SPL-002 to 004, HER-BAT-011 to 017) and `packs/README.md`.
+- **Exit criteria:** 1, 5 and 6 were done earlier. 2 to 4 hold: T11a's audit stands, the review
+  widened the properties of 4 and left its disputed readings as questions with their experiments
+  (BAT-Q28, BAT-Q32 to BAT-Q35; batch 2g). 7: Linux green in the cloud sandbox with the original
+  data, before and after `master` was merged into the review's branch (all 15 steps); CI could
+  not run (GitHub refused the account's Actions jobs: its billing or spending limit).
+- **The Windows run (the user, 2026-10-12, the review's branch with that day's `master`):** the
+  workspace's verify failed in `h3-server` only, code the server lane had merged that day:
+  clippy on `unused variable: new` (`journal.rs:188`, read only under `cfg(unix)`), and the
+  tests `ladders::tests::rated_games_are_read_back_bit_for_bit` and
+  `players::tests::the_accounts_are_read_back_and_a_torn_line_is_dropped` (by this session's
+  reading, not run on Windows: `open_log` cuts a torn last line with `set_len` on a handle
+  opened for appending, which Windows refuses). E04b changed no file of that crate. **The user:**
+  pass it on to the server lane (its queue's inbox, in the closure's pull request) and close
+  E04b with the battle scope taken as passing on Windows; no scoped Windows run was recorded.
+- **What later epics inherit:** the queue's inbox by destination (E04c, E05, E08 to E10, battle
+  work without a task, the server lane's points); BAT-STUB-1 (the observation's mark for a
+  created stack that ran out of rounds) for the next observation-encoding bump.

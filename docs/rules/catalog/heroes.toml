@@ -154,6 +154,7 @@ title    = "Eagle Eye: its chance and the spells it may learn"
 context  = "heroes"
 status   = "implemented"
 summary  = "A hero's Eagle Eye (BattleMagic.eagle_eye) comes from the eagle_eye effects of its sources (HER-BAT-004's order: the skill's, grown by an Eagle Eye specialty by 5 % of itself per hero level, then each artifact type once, which need the skill): the chance is their sum, at most 10 000 basis points, with quirk Q-0005 the original's single-precision sum (as HER-BAT-004); the spells it may learn are the combat spells the hero has not learned (HeroDetails.spells; a spell an artifact or a scroll gives is not learned) of a level at most the largest max_level (the skill's level + 1: 2, 3, 4). None without a max_level (no skill: the artifacts add nothing). The battle rolls it (BAT-MAG-069)."
+quirks   = ["Q-0005"]
 numeric  = "integer"
 
   [[rule.source]]

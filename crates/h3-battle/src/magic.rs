@@ -17,10 +17,10 @@
 use core::num::NonZeroU32;
 
 use h3_content::{
-    Ability, CREATURE_MIRROR_UNTESTED, CreatureFlag, CreatureTypeId, EARLY_MASS_VERSION,
-    FIRST_PROTECTION, FULL_BP, MASS_CURE_SKIPS_HYPNOTIZED, MAX_FIELD_HEXES, MAX_SPELL_SCHOOLS,
-    MAX_SPELLS, Ruleset, SINGLE_PRECISION_RATES, SpecialistBonus, Spell, SpellCategory,
-    SpellEffect, SpellId, SpellPolarity, SpellScope, SpellTarget, TargetSide, TimedChange,
+    Ability, CreatureFlag, CreatureTypeId, EARLY_MASS_VERSION, FIRST_PROTECTION, FULL_BP,
+    MASS_CURE_SKIPS_HYPNOTIZED, MAX_FIELD_HEXES, MAX_SPELL_SCHOOLS, MAX_SPELLS, Ruleset,
+    SINGLE_PRECISION_RATES, SpecialistBonus, Spell, SpellCategory, SpellEffect, SpellId,
+    SpellPolarity, SpellScope, SpellTarget, TargetSide, TimedChange,
 };
 use h3_contracts::{BattleEffect, BattleHero, BattleSide, Rate};
 use h3_kernel::arith::{
@@ -751,7 +751,10 @@ pub(crate) fn kept_off(stack: &Stack, spell: &Spell) -> bool {
 /// Whether a spell of `caster`'s side can affect the living stack `s` at all, wherever the caster
 /// stands (BAT-MAG-005, BAT-MAG-021, BAT-MAG-062): the battle's spell level limit does not bar
 /// the spell, its creature meets the spell's conditions and immunities with the heroes' part
-/// ([`Guard`]), and Anti-Magic does not keep the spell off it.
+/// ([`Guard`]), Anti-Magic does not keep the spell off it, and it is no clone if the spell
+/// makes its stacks immune to spells (Anti-Magic itself: whoever casts, a hero or a stack that
+/// draws its spell; the original's effect test 0x5A8090 has the clone test in the spell's own
+/// case, `installation.md` §7.13).
 pub(crate) fn affects_stack(
     state: &BattleState,
     ruleset: &Ruleset,
@@ -764,6 +767,8 @@ pub(crate) fn affects_stack(
         && !barred(state, spell.1)
         && affects(ruleset, spell, stack.creature, Guard::of(state, caster, s))
         && !kept_off(stack, spell.1)
+        // rule: BAT-MAG-021
+        && !(stack.has(StackTraits::CLONE) && grants_immunity(spell.1))
 }
 
 /// Whether `side`'s cast of `spell` at `mastery` may reach stack `s` (BAT-MAG-003,
@@ -848,9 +853,12 @@ fn admits(
 }
 
 /// Whether the mass version of `spell` at `mastery` passes over stack `s` because it is
-/// hypnotized (BAT-MAG-026; the original's mass handler 0x5A66D0 and Expert Cure's loop skip
-/// them, `installation.md` §7.14): with quirk Q-0012 every mass version does, without it those
-/// whose dispel does not end the stack's Hypnotize (Cure's does).
+/// hypnotized (BAT-MAG-026, `installation.md` §7.14). The original's mass handler of the timed
+/// spells (0x5A66D0) and Expert Cure's loop skip hypnotized stacks; Dispel's own loop over both
+/// sides' stacks (from 0x5A160F) reads no Hypnotize. So the mass version of a spell that only
+/// dispels (Dispel) never does (BAT-MAG-016; E04b T11b review); of the others, with quirk Q-0012
+/// every one does, without it those whose dispel does not end the stack's Hypnotize (Cure's
+/// does).
 fn skips_hypnotized(
     state: &BattleState,
     ruleset: &Ruleset,
@@ -859,7 +867,8 @@ fn skips_hypnotized(
 ) -> bool {
     let mass = spell.magic.target == SpellTarget::Stack
         && target_at(ruleset, spell, mastery) == SpellTarget::None;
-    if !mass {
+    // rule: BAT-MAG-016
+    if !mass || spell.magic.effects == [SpellEffect::Dispel] {
         return false;
     }
     let hypnosis = SpellEffect::Timed(TimedChange::Hypnotize);
@@ -888,8 +897,8 @@ fn aimable(
 }
 
 /// The part of the original's target test beyond a stack's reach (BAT-MAG-003): an active timed
-/// effect if `spell` needs one (Dispel), and a share left after resistance above zero for a
-/// spell that is not positive and does not ignore immunity.
+/// effect if `spell` needs one (Dispel), and a chance above zero to be affected
+/// ([`has_chance`]).
 fn accepts(
     state: &BattleState,
     ruleset: &Ruleset,
@@ -897,11 +906,25 @@ fn accepts(
     spell: SpellRef<'_>,
     s: StackId,
 ) -> bool {
-    let magic = &spell.1.magic;
-    (!magic.needs_effect || !state.effects.of(s).is_empty())
-        && (spell.1.polarity == SpellPolarity::Positive
-            || magic.ignores_immunity
-            || may_affect(state, ruleset, side, s))
+    (!spell.1.magic.needs_effect || !state.effects.of(s).is_empty())
+        && has_chance(state, ruleset, side, spell.1, s)
+}
+
+/// Whether `side`'s cast of `spell` has a chance above zero to affect stack `s`, which it can
+/// affect (BAT-MAG-003, BAT-MAG-008; the original's factor above 0, `installation.md` §7.8):
+/// always for a positive spell and for one that ignores immunity (Dispel), else if the share
+/// left after resistance and auras is above zero ([`may_affect`]). A stack that can only resist
+/// by a roll has one; a stack that always resists has none.
+fn has_chance(
+    state: &BattleState,
+    ruleset: &Ruleset,
+    side: BattleSide,
+    spell: &Spell,
+    s: StackId,
+) -> bool {
+    spell.polarity == SpellPolarity::Positive
+        || spell.magic.ignores_immunity
+        || may_affect(state, ruleset, side, s)
 }
 
 /// Whether the battle can cast `spell` at `mastery` as an opening spell (BAT-MAG-068, checked
@@ -1071,8 +1094,8 @@ fn raise_test<'r>(
     })
 }
 
-/// Whether `spell` makes its stacks immune to spells (Anti-Magic): no clone takes it (BAT-MAG-021;
-/// the original's 0x5A8090, `installation.md` §7.13).
+/// Whether `spell` makes its stacks immune to spells (Anti-Magic): no clone takes it
+/// ([`affects_stack`], BAT-MAG-021; the original's 0x5A8090, `installation.md` §7.13).
 fn grants_immunity(spell: &Spell) -> bool {
     spell
         .magic
@@ -1081,9 +1104,9 @@ fn grants_immunity(spell: &Spell) -> bool {
 }
 
 /// Whether `side`'s cast of the stack spell `spell` at `mastery`, whose [`raise_test`] is `raise`,
-/// may be aimed at stack `s`: one of [`aimable`], for Clone also [`created::clonable`]
-/// (BAT-MAG-038), for Anti-Magic no clone (BAT-MAG-021), or for a spell that raises creatures one
-/// of [`raise::raisable`] (BAT-MAG-035, BAT-MAG-036), dead stacks included.
+/// may be aimed at stack `s`: one of [`aimable`] (for Anti-Magic no clone, BAT-MAG-021), for
+/// Clone also [`created::clonable`] (BAT-MAG-038), or for a spell that raises creatures one of
+/// [`raise::raisable`] (BAT-MAG-035, BAT-MAG-036), dead stacks included.
 fn stack_target(
     state: &BattleState,
     ruleset: &Ruleset,
@@ -1099,8 +1122,6 @@ fn stack_target(
                 // rule: BAT-MAG-038
                 && (!spell.1.magic.clones()
                     || created::clonable(state, ruleset, side, (spell.1, mastery), s))
-                // rule: BAT-MAG-021
-                && !(state.at(s).has(StackTraits::CLONE) && grants_immunity(spell.1))
         }
     }
 }
@@ -1641,7 +1662,15 @@ fn has_target(
 /// while the side may summon its creature (BAT-MAG-039), an obstacle spell of a random shape
 /// whether or not a hex is free (BAT-MAG-032) but mines not while the other side's natives would
 /// see them (BAT-MAG-033), any other (a battle-wide spell, a mass version from the spell's mass
-/// mastery) if it reaches a stack.
+/// mastery) if it would affect some stack: a stack in its reach with a chance above zero to be
+/// affected ([`has_chance`]; one that always resists does not count). The original's book asks
+/// its target test of every hex before anything is paid and refuses the spell when no stack
+/// passes (0x59ED5A to 0x59EE03 with the factor of 0x5A39C0; E04b T11b review). That test reads
+/// a stack's Hypnotize only for the hero that controls it, so the hypnotized stacks a mass
+/// version passes over count here ([`in_reach`]): with no other stack the cast is paid for and
+/// reaches nobody. A stack with no active effect counts for the mass version of a spell that
+/// needs one when it is aimed (Expert Dispel: the original asks for an active spell below
+/// Expert only, BAT-MAG-016).
 fn no_target(
     state: &BattleState,
     ruleset: &Ruleset,
@@ -1654,7 +1683,13 @@ fn no_target(
     }
     // rule: BAT-MAG-032
     spell.1.magic.obstacle_kind().map_or_else(
-        || stack_ids(state).any(|s| reachable(state, ruleset, side, (spell, mastery), s)),
+        || {
+            // rule: BAT-MAG-003
+            stack_ids(state).any(|s| {
+                in_reach(state, ruleset, side, (spell, mastery), s)
+                    && has_chance(state, ruleset, side, spell.1, s)
+            })
+        },
         |kind| obstacles::may_place(state, side, kind),
     )
 }
@@ -1684,40 +1719,27 @@ fn grow(value: u64, bp: u64) -> u64 {
     mul_div_floor(value, 10_000 + bp, 10_000).unwrap_or(u64::MAX)
 }
 
-/// The damage of `cast` with the value `value` on a stack of `creature` with the school
+/// The damage of `spell` with the value `value` on a stack of `creature` with the school
 /// protections `protection` (BAT-MAG-004) after the caster's bonuses and after the target's
 /// extra damage or reduction and protection, in the original's order (`installation.md` §7.8):
-/// the caster's bonuses (× (1 + the best Orb among the spell's schools) × (1 + Sorcery), kept
-/// fractional and rounded down once; then the spell's own bonus of that, rounded down, and a
-/// specialist's bonus of that, [`specialist_bonus`]), then the target's (one
-/// spell's extra damage, rounded down; the spell damage reduction, rounded down; one protection,
-/// [`protected`]). The rates are exact, or single precision with quirk Q-0005.
+/// the bonuses of the caster's hero `hero` ([`caster_stage`]; none without a hero: the original
+/// runs that stage on the hero only, 0x5A78E0), then the target's (one spell's extra damage,
+/// rounded down; the spell damage reduction, rounded down; one protection, [`protected`]). The
+/// rates are exact, or single precision with quirk Q-0005. Saturates.
 // rule: BAT-MAG-004
 pub(crate) fn spell_damage(
     ruleset: &Ruleset,
-    ((id, spell), b): (SpellRef<'_>, &SpellBonuses),
+    (spell, hero): (SpellRef<'_>, Option<&SpellBonuses>),
     value: u64,
     (creature, protection): (CreatureTypeId, &[u8; MAX_SPELL_SCHOOLS]),
 ) -> (u64, u64) {
-    let single = ruleset.quirks().is_enabled(SINGLE_PRECISION_RATES);
-    let one = u128::from(scale(single));
-    let school = spell
-        .schools
-        .iter()
-        .map(|l| hero_rate(single, b.school[l.index().min(MAX_SPELL_SCHOOLS - 1)]))
-        .max()
-        .unwrap_or(0);
-    let factor = (one + u128::from(school)) * (one + u128::from(hero_rate(single, b.all)));
-    let t = u64::try_from(u128::from(value) * factor / (one * one)).unwrap_or(u64::MAX);
-    let own = b.spell(id);
-    let specialty = specialist_bonus(ruleset, spell, own, creature, t);
-    let fixed = u128::from(t) * u128::from(own.damage_bp) / u128::from(FULL_BP);
-    let caster =
-        u64::try_from(u128::from(t.saturating_add_signed(specialty)) + fixed).unwrap_or(u64::MAX);
+    let caster = hero.map_or(value, |b| {
+        caster_stage(ruleset, (spell, b), value, creature)
+    });
     let mut damage = caster;
     for ability in ruleset.abilities(creature) {
         match *ability {
-            Ability::SpellVulnerability { spell, percent } if spell == id => {
+            Ability::SpellVulnerability { spell: s, percent } if s == spell.0 => {
                 damage = grow(damage, u64::from(percent) * 100);
             }
             Ability::SpellDamageReduction { percent } => {
@@ -1726,7 +1748,64 @@ pub(crate) fn spell_damage(
             _ => {}
         }
     }
-    (caster, protected(ruleset, spell, damage, protection))
+    (caster, protected(ruleset, spell.1, damage, protection))
+}
+
+/// The value `value` of a damage spell after the bonuses `b` of its caster's hero, on a stack of
+/// `creature` (BAT-MAG-004; the original's 0x4E5760, `installation.md` §7.8 step 1): × (1 + the
+/// best Orb among the spell's schools) × (1 + Sorcery), then the spell's own bonus (a share,
+/// rounded down) and a specialist's ([`specialist_bonus`]), both of the product's whole part.
+///
+/// With exact rates the product is kept fractional and rounded down once, and the bonuses are
+/// added to it. With quirk Q-0005 the executable's arithmetic is followed: it keeps the value
+/// as a single-precision number, so the value, its product with the Orb's factor and that one's
+/// with Sorcery's are each stored as an `f32` (rounded to 24 bits, to nearest: 57.99999982
+/// becomes 58), the bonuses of the last product's whole part are added to the stored product
+/// itself, and only that sum, stored as an `f32` once more, is rounded down. Saturates for any
+/// value and any rates.
+// rule: BAT-MAG-004
+fn caster_stage(
+    ruleset: &Ruleset,
+    ((id, spell), b): (SpellRef<'_>, &SpellBonuses),
+    value: u64,
+    creature: CreatureTypeId,
+) -> u64 {
+    let single = ruleset.quirks().is_enabled(SINGLE_PRECISION_RATES);
+    let school = spell
+        .schools
+        .iter()
+        .map(|l| hero_rate(single, b.school[l.index().min(MAX_SPELL_SCHOOLS - 1)]))
+        .max()
+        .unwrap_or(0);
+    let all = hero_rate(single, b.all);
+    let own = b.spell(id);
+    // The specialist's bonus (it may lower a value) and the spell's own, below 2^96, of `t`.
+    let bonuses = |t: u64| {
+        let fixed = u128::from(t) * u128::from(own.damage_bp) / u128::from(FULL_BP);
+        (specialist_bonus(ruleset, spell, own, creature, t), fixed)
+    };
+    if single {
+        let stored = |v: X87| v.round(SINGLE_BITS);
+        let v = stored(X87::int(value));
+        let v = stored(v.times(X87::ONE.plus(X87::fixed(school))));
+        let v = stored(X87::ONE.plus(X87::fixed(all)).times(v));
+        let (specialty, fixed) = bonuses(v.trunc());
+        // One whole number, as the original's routine returns it, loaded and stored as an
+        // `f32`: what it adds and what it takes (one of the two is 0; never more than `t`).
+        let bonus = i128::from(specialty).saturating_add_unsigned(fixed);
+        let part = |n: i128| stored(X87::int(u64::try_from(n.max(0)).unwrap_or(u64::MAX)));
+        stored(v.plus(part(bonus)).minus(part(-bonus))).trunc()
+    } else {
+        let one = u128::from(FULL_BP);
+        // Below 2^65: a rate is at most `u32::MAX` basis points.
+        let factor = (one + u128::from(school)) * (one + u128::from(all));
+        // A product beyond `u128` is a quotient beyond `u64`.
+        let t = u128::from(value).checked_mul(factor).map_or(u64::MAX, |p| {
+            u64::try_from(p / (one * one)).unwrap_or(u64::MAX)
+        });
+        let (specialty, fixed) = bonuses(t);
+        u64::try_from(u128::from(t.saturating_add_signed(specialty)) + fixed).unwrap_or(u64::MAX)
+    }
 }
 
 /// A hero's specialty in a spell, for its casts or effects on one stack (BAT-MAG-020; the
@@ -1835,12 +1914,12 @@ pub(crate) fn reflection(
         mul_div_floor(first, u64::from(percent), 100).unwrap_or(u64::MAX)
     };
     let side = state.at(target).controller();
-    let bonuses = state.heroes[side.index()]
+    let hero = state.heroes[side.index()]
         .as_ref()
-        .map_or_else(SpellBonuses::default, |h| h.magic.bonuses);
+        .map(|h| &h.magic.bonuses);
     spell_damage(
         ruleset,
-        ((id, spell), &bonuses),
+        ((id, spell), hero),
         value,
         (striker.creature, &striker.spells.school_protection),
     )
@@ -1927,17 +2006,19 @@ fn percent_rate(single: bool, percent: u8) -> u64 {
     rate(single, u16::from(100 - percent.min(100)) * 100)
 }
 
-/// The strongest magic resistance aura of a living allied stack (of the same controller,
-/// BAT-MAG-026) adjacent to stack `s`, percent (BAT-MAG-008).
+/// The strongest magic resistance aura of a living stack adjacent to stack `s` whose controller
+/// is `s`'s own side, percent (BAT-MAG-008, BAT-MAG-026; the original's aura lists compare the
+/// Unicorn's side through its Hypnotize with the other stack's own side, 0x43EA70): a hypnotized
+/// stack keeps its side's aura, hypnotized Unicorns protect the side that commands them.
 fn aura(state: &BattleState, ruleset: &Ruleset, s: StackId) -> Option<u8> {
     let field = Field::new(ruleset.battle().field);
     let stack = state.at(s);
     let footprint = stack.footprint(field);
-    let controller = stack.controller();
+    let side = stack.side;
     stack_ids(state)
         .filter(|&n| n != s)
         .map(|n| state.at(n))
-        .filter(|n| n.is_alive() && n.controller() == controller)
+        .filter(|n| n.is_alive() && n.controller() == side)
         .filter_map(|n| {
             let percent = ruleset
                 .abilities(n.creature)
@@ -2012,7 +2093,9 @@ fn affect<S: Sink>(
     if cast.spell.magic.effects.contains(&SpellEffect::Damage) {
         let target = state.at(s);
         let protection = target.spells.school_protection;
-        let caster_ref = ((cast.id, cast.spell), &cast.bonuses);
+        // A stack casts without a hero (BAT-MAG-048).
+        let hero = cast.by.is_none().then_some(&cast.bonuses);
+        let caster_ref = ((cast.id, cast.spell), hero);
         let (caster, damage) =
             spell_damage(ruleset, caster_ref, value, (target.creature, &protection));
         let kills = apply_damage(state.at_mut(s), damage);
@@ -2145,12 +2228,13 @@ pub(crate) fn mirror_chance(ruleset: &Ruleset, stack: &Stack) -> u8 {
     stack.spells.mirror.max(innate)
 }
 
-/// Where `cast`, aimed at stack `s`, goes (BAT-MAG-022): with Magic Mirror active on an enemy
-/// stack, or its creature's own (BAT-MAG-057), a draw below its chance sends the spell to a
-/// living stack of the caster's side drawn with equal chances, and a `SpellRedirected` event
+/// Where a hero's `cast`, aimed at stack `s`, goes (BAT-MAG-022): with Magic Mirror active on an
+/// enemy stack, or its creature's own (BAT-MAG-057), a draw below its chance sends the spell to
+/// a living stack of the caster's side drawn with equal chances, and a `SpellRedirected` event
 /// reports it; otherwise it stays (`None`). A spell that ignores immunity (Dispel) is never sent
-/// away. A creature's cast is sent away alike (BAT-MAG-049). (The original draws its chance for
-/// every cast at an enemy stack and leaves out arrow towers, E04c; `installation.md` §7.13.)
+/// away. Not asked for a creature's cast, which is never sent away ([`reach_stacks`],
+/// BAT-MAG-049). (The original draws its chance for every hero's cast at an enemy stack and
+/// leaves out arrow towers, E04c; `installation.md` §7.13.)
 // rule: BAT-MAG-022
 fn mirror<S: Sink>(
     state: &mut BattleState,
@@ -2319,8 +2403,8 @@ fn take_effect<S: Sink>(state: &mut BattleState, ruleset: &Ruleset, cast: &Cast<
 }
 
 /// The stacks a cast that does not raise creatures reaches, and its effects on them (BAT-MAG-004
-/// to BAT-MAG-009, BAT-MAG-022, BAT-MAG-029): its target stack, mirrored and rolling first, its
-/// chain, Teleport's move, or the stacks of its area or of the battle.
+/// to BAT-MAG-009, BAT-MAG-022, BAT-MAG-029): its target stack, for a hero's cast mirrored and
+/// rolling first, its chain, Teleport's move, or the stacks of its area or of the battle.
 fn reach_stacks<S: Sink>(
     state: &mut BattleState,
     ruleset: &Ruleset,
@@ -2328,26 +2412,23 @@ fn reach_stacks<S: Sink>(
     sink: &mut S,
 ) {
     let spell = (cast.id, cast.spell);
-    let (target, mirrored) = match cast.target {
-        CastTarget::Stack(s) => {
-            let to = mirror(state, ruleset, cast, s, sink);
-            (CastTarget::Stack(to.unwrap_or(s)), to.is_some())
+    // Only a hero's spell is ever sent away by a Magic Mirror (BAT-MAG-022): a creature's cast
+    // always meets the stack it is aimed at (the original hands the redirect to a hero's cast
+    // alone, 0x479036 against 0x47936E, `installation.md` §7.21; so does VCMI's `isReflected`).
+    // rule: BAT-MAG-049
+    let target = match cast.target {
+        CastTarget::Stack(s) if cast.by.is_none() => {
+            CastTarget::Stack(mirror(state, ruleset, cast, s, sink).unwrap_or(s))
         }
-        other => (other, false),
+        other => other,
     };
     // The stack a hero's stack spell is aimed at rolls first: if it resists, the whole spell does
-    // (BAT-MAG-006, BAT-MAG-008); a creature's cast has no such roll (BAT-MAG-048, the original's
-    // 0x5A02EA); a stack a Magic Mirror sent the spell to that it cannot affect resists
-    // (BAT-MAG-022). A creature's spell sent away is tested and rolls alike, but with quirk
-    // BAT-QUIRK-9 it is not tested at all (the original tests no stack of a creature's cast,
-    // BAT-MAG-049). An area spell has no such roll: every stack in its area rolls once
-    // (BAT-MAG-007; batch 2a R3).
-    // rule: BAT-MAG-049
-    let untested =
-        mirrored && cast.by.is_some() && ruleset.quirks().is_enabled(CREATURE_MIRROR_UNTESTED);
-    let rolls = cast.by.is_none() || mirrored;
+    // (BAT-MAG-006, BAT-MAG-008); a stack a Magic Mirror sent the spell to rolls alike, and
+    // resists if the spell cannot affect it (BAT-MAG-022). A creature's cast has no such roll
+    // (BAT-MAG-048, the original's 0x5A02EA). An area spell has none either: every stack in its
+    // area rolls once (BAT-MAG-007; batch 2a R3).
+    let rolls = cast.by.is_none();
     if let CastTarget::Stack(s) = target
-        && !untested
         && (!affects_stack(state, ruleset, cast.side, spell, s)
             || !admits(state, ruleset, cast.side, (spell, cast.mastery), s)
             || (rolls && resists(state, ruleset, cast.side, cast.spell, s)))
@@ -2454,14 +2535,14 @@ pub(crate) fn burn<S: Sink>(
     let Some(spell) = found else {
         return;
     };
-    let bonuses = state.heroes[fire.side.index()]
+    let hero = state.heroes[fire.side.index()]
         .as_ref()
-        .map_or_else(SpellBonuses::default, |h| h.magic.bonuses);
+        .map(|h| &h.magic.bonuses);
     let target = state.at(s);
     let protection = target.spells.school_protection;
     let (caster, damage) = spell_damage(
         ruleset,
-        ((fire.spell, spell), &bonuses),
+        ((fire.spell, spell), hero),
         fire.value,
         (target.creature, &protection),
     );
