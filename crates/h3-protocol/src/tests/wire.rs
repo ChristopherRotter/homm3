@@ -296,10 +296,19 @@ pub(super) fn server_messages() -> Vec<ServerMessage> {
                     phase: Phase::Waiting,
                     open: vec![Seat::Attacker],
                     spectators: true,
-                    seated: vec![Seated {
-                        seat: Seat::Defender,
-                        display: "Alice".to_string(),
-                    }],
+                    seated: vec![
+                        Seated {
+                            seat: Seat::Defender,
+                            display: "Alice".to_string(),
+                            bot: false,
+                        },
+                        // E16 M4 T5: a bot account's seat.
+                        Seated {
+                            seat: Seat::Attacker,
+                            display: "Randy".to_string(),
+                            bot: true,
+                        },
+                    ],
                     ladder: None,
                 },
                 GameInfo {
@@ -436,6 +445,7 @@ pub(super) fn server_messages() -> Vec<ServerMessage> {
                 name: "The Arena".to_string(),
                 season: 2,
                 waiting: 3,
+                bots: vec!["Randy".to_string()],
             }],
         },
         ServerMessage::Queued {
@@ -562,12 +572,13 @@ fn the_json_is_serdes_default_enum_form() {
         seated: vec![Seated {
             seat: Seat::Attacker,
             display: "Alice".to_string(),
+            bot: false,
         }],
         ladder: Some("arena".to_string()),
     };
     assert_eq!(
         serde_json::to_string(&info).unwrap(),
-        r#"{"game":3,"offer":"duel","phase":"Running","open":[],"spectators":true,"seated":[{"seat":"Attacker","display":"Alice"}],"ladder":"arena"}"#
+        r#"{"game":3,"offer":"duel","phase":"Running","open":[],"spectators":true,"seated":[{"seat":"Attacker","display":"Alice","bot":false}],"ladder":"arena"}"#
     );
     // E16 M4 T2: the ladders' messages.
     assert_eq!(

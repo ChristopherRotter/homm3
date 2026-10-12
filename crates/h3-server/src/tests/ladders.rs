@@ -6,13 +6,13 @@
 //! and forfeits (E16 M4 T3a): no host; a player back within the grace plays on; beyond the grace,
 //! or the total in several drops, a forfeit, whose replay verifies; both away, void; the time away
 //! across a restart. The leaderboards (E16 M4 T4): pages by season, one's own row, a display name
-//! changed.
+//! changed. The bots (E16 M4 T5): a lone player plays one after the wait, rated, flagged.
 
-use h3_protocol::wire::{LadderInfo, LeaderboardRow, Outcome, Points, Side, UnqueueReason};
+use h3_protocol::wire::{LadderInfo, LeaderboardRow, Outcome, Points, Seated, Side, UnqueueReason};
 
 use super::*;
 use crate::client::Key;
-use crate::config::Ladder;
+use crate::config::{BotKind, Ladder, LadderBot};
 use crate::ladders::points;
 use crate::rating::{self, Rating, Score};
 
@@ -87,6 +87,74 @@ fn ladders_are_configured_and_checked() {
     );
     let error = Config::parse(&named, &base).unwrap_err().0;
     assert!(error.contains("names its pool's scenarios so"), "{error}");
+    // E16 M4 T5: the ladder's bots.
+    assert_eq!(
+        (defaults.bots.clone(), defaults.bot_after_ms),
+        (vec![], 60_000)
+    );
+    let bot = |login: &str, display: &str| {
+        format!("[[ladder.bot]]\nlogin = \"{login}\"\ndisplay = \"{display}\"\n")
+    };
+    let botted = parse(&format!(
+        "{ladder}bot_after_ms = 0\n{}",
+        bot("randy", "Randy")
+    ));
+    let botted = botted.unwrap();
+    assert_eq!(
+        (
+            botted.ladders[0].bots.clone(),
+            botted.ladders[0].bot_after_ms
+        ),
+        (
+            vec![LadderBot {
+                login: String::from("randy"),
+                display: String::from("Randy"),
+                kind: BotKind::Random,
+            }],
+            0
+        )
+    );
+    let pit = ladder.replace("arena", "pit");
+    for (text, expected) in [
+        (
+            format!("{ladder}{}", bot("Randy", "Randy")),
+            "bot `Randy`: not a name",
+        ),
+        (
+            format!("{ladder}{}", bot("randy", " R")),
+            "bot `randy`: not a name",
+        ),
+        (
+            format!("{ladder}{}{}", bot("randy", "Randy"), bot("randy", "Randy")),
+            "bot `randy`: listed twice",
+        ),
+        (
+            format!(
+                "{ladder}{}{pit}{}",
+                bot("randy", "Randy"),
+                bot("randy", "Rand")
+            ),
+            "ladder `pit`: bot `randy` differs",
+        ),
+        (
+            format!("{ladder}{}kind = \"smart\"\n", bot("randy", "Randy")),
+            "unknown variant",
+        ),
+        (
+            format!("{ladder}bot_after_ms = 31536000001"),
+            "bot_after_ms",
+        ),
+    ] {
+        let error = refused(&text);
+        assert!(error.contains(expected), "{expected}: {error}");
+    }
+    // The same bot on two ladders, the same account on each.
+    let shared = format!(
+        "{ladder}{}{pit}{}",
+        bot("randy", "Randy"),
+        bot("randy", "Randy")
+    );
+    assert_eq!(parse(&shared).unwrap().ladders.len(), 2);
     let paused = parse(&format!("{ladder}pauses = 2\npause_ms = 600000")).unwrap();
     assert_eq!(
         (paused.ladders[0].pauses, paused.ladders[0].pause_ms),
@@ -252,6 +320,7 @@ async fn two_players_queue_accept_and_play_their_match() {
         name: String::from("Arena"),
         season: 1,
         waiting: 0,
+        bots: vec![],
     };
     assert_eq!(
         ladders,
@@ -306,6 +375,20 @@ async fn two_players_queue_accept_and_play_their_match() {
     assert_eq!(cid.recv().await, refused(Refusal::SeatTaken));
     takes(&mut ann, game, ann_seat).await;
     takes(&mut bob, game, bob_seat).await;
+    // The lobby names both seats' accounts, as it did from the game's start (E16 M4 T5).
+    let seated = (listed(&running).await.into_iter())
+        .find(|g| g.game == game)
+        .map(|g| g.seated);
+    let named = |seat, display: &str| Seated {
+        seat,
+        display: display.to_string(),
+        bot: false,
+    };
+    let mut expected = vec![named(ann_seat, "Ann"), named(bob_seat, "Bob")];
+    if bob_seat == Seat::Attacker {
+        expected.reverse();
+    }
+    assert_eq!(seated, Some(expected));
     let ((mut ann, ann_saw), (_, bob_saw)) = tokio::join!(play(ann, 5), play(bob, 6));
     for saw in [ann_saw, bob_saw] {
         assert!(matches!(saw.last(), Some(ServerMessage::GameEnded { .. })));
@@ -905,5 +988,133 @@ async fn the_leaderboard_pages_by_season_and_shows_ones_own_row() {
         page(14, 1, 2, vec![ann_row, rows[1].clone()])
     );
     again.shutdown().await;
+    std::fs::remove_dir_all(&config.server.data).unwrap();
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn a_lone_player_plays_the_ladders_bot_after_the_wait_rated_and_flagged() {
+    // E16 M4 T5: Randy, the ladder's bot, plays whoever waited 1.5 s without a match.
+    let mut config = laddered(60_000);
+    let randy = |display: &str| LadderBot {
+        login: String::from("randy"),
+        display: display.to_string(),
+        kind: BotKind::Random,
+    };
+    config.ladders[0].bots = vec![randy("Randy")];
+    config.ladders[0].bot_after_ms = 1_500;
+    let running = start(&config).await.unwrap();
+    let mut ann = player(&running, "ann", 1).await;
+    let ladders = ask(&mut ann, ClientMessage::ListLadders { seq: 4 }).await;
+    let Some(ServerMessage::Ladders { ladders, .. }) = ladders else {
+        panic!("{ladders:?}")
+    };
+    assert_eq!(ladders[0].bots, ["Randy"]);
+    // No one logs in as the bot, nor takes its name.
+    let mut other = greeted(&running).await;
+    let taken = other
+        .login(1, "randy", &Key::from_seed([9; 32]), Some("Randy Two"))
+        .await
+        .unwrap();
+    assert_eq!(taken, refused(Refusal::BadLogin));
+    let mut other = greeted(&running).await;
+    let taken = other
+        .login(1, "rand", &Key::from_seed([9; 32]), Some("RANDY"))
+        .await
+        .unwrap();
+    assert_eq!(taken, refused(Refusal::NameTaken));
+    // Ann waits alone: after the wait she is matched with Randy, who accepted already.
+    let waited = tokio::time::Instant::now();
+    assert_eq!(ask(&mut ann, queue("arena")).await, queued());
+    assert_eq!(ann.recv().await, found());
+    assert!(
+        waited.elapsed() >= Duration::from_millis(1_500),
+        "{:?}",
+        waited.elapsed()
+    );
+    let ready = ask(&mut ann, ClientMessage::AcceptMatch { seq: 3 }).await;
+    let Some(ServerMessage::MatchReady { game, seat, .. }) = ready else {
+        panic!("{ready:?}")
+    };
+    takes(&mut ann, game, seat).await;
+    // The lobby names the bot's seat, flagged.
+    let other_seat = match seat {
+        Seat::Attacker => Seat::Defender,
+        _ => Seat::Attacker,
+    };
+    let info = listed(&running).await.into_iter().find(|g| g.game == game);
+    let seated = info.map(|g| g.seated);
+    assert_eq!(
+        seated
+            .as_deref()
+            .map(|seated| seated.iter().find(|s| s.bot).cloned()),
+        Some(Some(Seated {
+            seat: other_seat,
+            display: String::from("Randy"),
+            bot: true,
+        }))
+    );
+    // The server's bot plays its seat to the end; the game is rated for both accounts.
+    let (mut ann, saw) = tokio::time::timeout(GAME_TIME, play(ann, 5)).await.unwrap();
+    let result = end(&saw);
+    let new = Rating::default();
+    let (ann_after, randy_after) = rating::game(new, new, score(result, side(seat)));
+    assert_eq!(rating(&mut ann).await, (points(new), points(ann_after)));
+    let row = |login| {
+        running
+            .standing("arena", 1, login)
+            .map(|s| (s.rating, s.games))
+    };
+    assert_eq!(
+        (row("ann"), row("randy")),
+        (Some((ann_after, 1)), Some((randy_after, 1)))
+    );
+    // Its row on the leaderboard is flagged.
+    let board = ClientMessage::Leaderboard {
+        seq: 6,
+        ladder: String::from("arena"),
+        season: None,
+        page: 0,
+    };
+    let page = ask(&mut ann, board.clone()).await;
+    let Some(ServerMessage::LeaderboardPage { rows, .. }) = page else {
+        panic!("{page:?}")
+    };
+    let flags: Vec<(&str, bool)> = rows.iter().map(|r| (r.display.as_str(), r.bot)).collect();
+    assert!(
+        flags.contains(&("Randy", true)) && flags.contains(&("Ann", false)),
+        "{flags:?}"
+    );
+    running.shutdown().await;
+    // The configuration renames the bot: its account is renamed at the next start, not added.
+    let mut renamed = config.clone();
+    renamed.ladders[0].bots = vec![randy("Randy Bot")];
+    let again = start(&renamed).await.unwrap();
+    let mut ann = player(&again, "ann", 1).await;
+    let page = ask(&mut ann, board).await;
+    let Some(ServerMessage::LeaderboardPage { rows, .. }) = page else {
+        panic!("{page:?}")
+    };
+    assert!(
+        rows.iter().any(|r| r.display == "Randy Bot" && r.bot),
+        "{rows:?}"
+    );
+    again.shutdown().await;
+    let log = std::fs::read_to_string(config.server.data.join("players.log")).unwrap();
+    assert_eq!(
+        (
+            log.matches("\"Bot\"").count(),
+            log.matches("\"Renamed\"").count()
+        ),
+        (1, 1),
+        "{log}"
+    );
+    // A bot named as a player's account stops the start.
+    let mut clash = config.clone();
+    clash.ladders[0].bots = vec![LadderBot {
+        login: String::from("ann"),
+        ..randy("Annie")
+    }];
+    let error = start(&clash).await.unwrap_err();
+    assert!(error.0.contains("bot `ann`: a player's account"), "{error}");
     std::fs::remove_dir_all(&config.server.data).unwrap();
 }

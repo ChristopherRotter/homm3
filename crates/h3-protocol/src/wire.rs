@@ -988,6 +988,8 @@ pub struct Seated {
     pub seat: Seat,
     /// The account's display name.
     pub display: String,
+    /// Whether the account is one of the server's bots (E16 M4 T5): its bot plays the seat.
+    pub bot: bool,
 }
 
 /// One hosted game in the lobby's list.
@@ -1024,6 +1026,9 @@ pub struct LadderInfo {
     pub season: u32,
     /// How many players wait in its queue, matched or not.
     pub waiting: u32,
+    /// The display names of the server's bots that play on it (E16 M4 T5): a player who waited
+    /// long enough without a match plays one of them.
+    pub bots: Vec<String>,
 }
 
 /// An account's rating on a ladder as the wire carries it (E16 M4 T3b): Glicko-2's rating and

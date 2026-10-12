@@ -305,6 +305,11 @@ impl Offer {
             grace: None,
         })
     }
+
+    /// The seats the server's bot plays in a game a client creates, the attacker's first.
+    pub(crate) fn bot_seats(&self) -> [bool; 2] {
+        [BotSeat::Attacker, BotSeat::Defender].map(|seat| self.bots.contains(&seat))
+    }
 }
 
 /// A game ready to run: its offer, its battle and its secrets, and how its thread begins.
@@ -386,15 +391,16 @@ fn replay_path(data: &Path, offer: &str, game: u32) -> Result<PathBuf, Error> {
 impl Prepared {
     /// Draws game `game`'s secrets from the OS (ADR-0018 point 8): the battle's seed; the
     /// obstacles from a separate seed that is then forgotten, so that the layout every viewer sees
-    /// tells nothing about the battle's seed; a token per player seat; the bot's seed. Checks that
-    /// the battle starts, then creates the game's journal (E16 M2 T2) for its creator at `origin`,
-    /// who chose whether it takes spectators (`watchable`, E16 M2 T4c).
+    /// tells nothing about the battle's seed; a token per player seat (`bots` names the seats the
+    /// server's bot plays, the attacker's first: the offer's, or a ladder bot's, E16 M4 T5); the
+    /// bot's seed. Checks that the battle starts, then creates the game's journal (E16 M2 T2) for
+    /// its creator at `origin`, who chose whether it takes spectators (`watchable`, E16 M2 T4c).
     pub(crate) fn new(
         offer: Arc<Offer>,
         game: u32,
         origin: IpAddr,
         (server, limits, stores): (&config::Server, &config::Limits, Stores),
-        watchable: bool,
+        (watchable, bots): (bool, [bool; 2]),
     ) -> Result<Self, Error> {
         let mut setup = offer.setup.clone();
         if let (true, Some(terrain)) = (offer.random_obstacles, setup.terrain) {
@@ -405,11 +411,8 @@ impl Prepared {
         BattleState::new(&offer.ruleset, &setup, seed)
             .map_err(|e| Error(format!("offer `{}`, game {game}: {e}", offer.id)))?;
         let mut tokens = [None, None];
-        for (side, slot) in [BotSeat::Attacker, BotSeat::Defender]
-            .into_iter()
-            .zip(&mut tokens)
-        {
-            if !offer.bots.contains(&side) {
+        for (bot, slot) in bots.into_iter().zip(&mut tokens) {
+            if !bot {
                 *slot = Some(token()?);
             }
         }
@@ -612,6 +615,12 @@ impl Prepared {
         if matched && let Err(e) = journal.append(session.drain_entries()) {
             eprintln!("h3-server: game {game}: the journal does not write ({e}): it stops");
             return stop(&BTreeMap::new(), registry, game);
+        }
+        // The lobby names a match's accounts from the start, a bot's flagged (E16 M4 T5): they
+        // change no more, so the loop below would not (the accounts' lock outside the registry's).
+        if matched {
+            let named = seated(&session, &stores.accounts);
+            lock(registry).seat(game, named);
         }
         let mut journal = Some(journal);
         // Its last command reached the limit, and it is not over (E16 M3 T4a).
@@ -868,12 +877,18 @@ fn owned(accounts: [Option<&str>; 2]) -> [Option<String>; 2] {
 }
 
 /// The seats of `session` that belong to accounts, with the accounts' display names as they stand
-/// (E16 M3 T3). Blocks on the player log: never under the registry's lock.
+/// (E16 M3 T3), a bot's flagged (E16 M4 T5). Blocks on the player log: never under the
+/// registry's lock.
 fn seated(session: &Session<'_>, accounts: &Accounts) -> Vec<Seated> {
     let seats = [Seat::Attacker, Seat::Defender].into_iter();
     let named = seats.zip(session.accounts()).filter_map(|(seat, login)| {
-        let display = accounts.get(login?)?.display;
-        Some(Seated { seat, display })
+        let account = accounts.get(login?)?;
+        let bot = account.is_bot();
+        Some(Seated {
+            seat,
+            display: account.display,
+            bot,
+        })
     });
     named.collect()
 }
