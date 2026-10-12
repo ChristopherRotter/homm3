@@ -998,11 +998,14 @@ already current).
   own). Ruleset-part hash v5. The base pack's ten rows from the code reading, VCMI and the wiki
   (a test pins them; the first draft had ore at the rare amount: "wood, ore" in the survey's table
   is both).
-- **Treasury** (GAM-RES-001; `h3_game::Treasury`): amounts by resource, never negative, capped
-  at `MAX_GAIN` (2³¹ − 1; `A-5` fixed). `GameSetup.difficulty` (`DEFAULT_DIFFICULTY` = 1, normal;
+- **Treasury** (GAM-RES-001; `GameState::treasury(player)`, a slice by resource): never
+  negative, capped at `MAX_GAIN` (2³¹ − 1; `A-5` fixed). Every player's in one block behind an
+  `Arc` (`treasury.rs`, crate-private `Treasuries`): a block per player cost a fork an allocation
+  per player (+13.6 % on `fork-xl-144`), the shared block costs it a reference count (+1.0 %); a
+  gain copies it once. `GameSetup.difficulty` (`DEFAULT_DIFFICULTY` = 1, normal;
   `GameSetupError::Difficulty`, checked first); every player gets the human row (decision 16).
-  Game state hash v2 (each player's treasury). `GameObservation.treasury`: the viewer's own,
-  empty for a viewer not in the game.
+  Game state hash v2 (the treasuries); `GameState` 168 → 192 bytes. `GameObservation.treasury`:
+  the viewer's own, empty for a viewer not in the game.
 - **Import** (`MAP_IMPORT_VERSION` 3, `h3m.md`): the setup's difficulty is the default; the
   header's difficulty byte is the map's rating.
 - Golden replays re-recorded (hashes only; the commands unchanged).
@@ -1033,4 +1036,16 @@ already current).
   fixed tests for a pile, a fire, a visit from the hero's tile, the drop to 0, `PastVisit`, the
   untyped and not-yet-built tiles, a gain through the game and the cap. Random play visits a few
   pickups per run of 48 cases (counted once).
-- Golden replays unchanged (the duel map has no pickups).
+- Golden replays re-recorded again for the treasuries' place in the hash (the shared block); the
+  commands unchanged (the duel map has no pickups).
+- **Measured** (`bench-check`, valgrind): after the treasury block, the query still cost +4.3 %
+  and random play +4.6 %. A profile against `master` showed `Reach::search` +1.6 % (the visit
+  test; a bit per tile, `StaticMap::visited_from`, now turns a blocker's visitable tile down
+  before the per-tile lookup) and `diagonal_cost` +14 % because `isqrt` was no longer inlined
+  into it (16 codegen units, thin LTO: an artifact of the partition). `diagonal_cost` is now
+  ⌊straight · ⌊√2 · 2⁶⁴⌋ / 2⁶⁴⌋, one 128-bit multiplication, equal to `isqrt(2 · straight²)` for
+  every cost up to `u16::MAX` (an exhaustive test): results unchanged, and the query and random
+  play run 13.8 % fewer instructions than before T13. Re-baselined: `reach-xl-144` 657 381 227 →
+  566 626 021 Ir, `random-play-duel-36` 510 210 757 → 439 577 005 Ir; `fork-xl-144` +1.0 %
+  (343 600 056 → 347 100 056, under the gate, not re-baselined). `docs/02-architecture.md` §8's
+  numbers follow in #125 (a shared path).
