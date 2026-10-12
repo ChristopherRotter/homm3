@@ -4,7 +4,7 @@ Pre-refined tasks of the server lane, in order, then the inbox of discovered wor
 
 ## Tasks
 
-Epic: `docs/epics/E16-server.md` (in progress; M0 and M1 done 2026-10-10, ADR-0018; M2 done 2026-10-11, SRV-Q16; M3 done 2026-10-12, its checkpoint passed, SRV-Q18). M4 refined 2026-10-12 (SRV-Q19): ADR-0019 points 4–9 decided; the working detail in `E16-design.md` §11; cut below, each task about half a context, the inbox's M4 items folded in; T1 done 2026-10-12 (`[[ladder]]`, `rating`, the results log); T2 done 2026-10-12 (the queues, the match's game, wire 14; `E16-log.md`); T3a done 2026-10-12 (no host, the grace, forfeits and no-shows, journal format 5, wire 15); T3b done 2026-10-12 (verified before the end, rated and logged, `Rating`, `<data>/next-game`, wire 16). Work under the autonomy contract (`HANDOFF.md`). Each wire change bumps `PROTOCOL_VERSION`, each journal change `JOURNAL_FORMAT_VERSION`.
+Epic: `docs/epics/E16-server.md` (in progress; M0 and M1 done 2026-10-10, ADR-0018; M2 done 2026-10-11, SRV-Q16; M3 done 2026-10-12, its checkpoint passed, SRV-Q18). M4 refined 2026-10-12 (SRV-Q19): ADR-0019 points 4–9 decided; the working detail in `E16-design.md` §11; cut below, each task about half a context, the inbox's M4 items folded in; T1 done 2026-10-12 (`[[ladder]]`, `rating`, the results log); T2 done 2026-10-12 (the queues, the match's game, wire 14; `E16-log.md`); T3a done 2026-10-12 (no host, the grace, forfeits and no-shows, journal format 5, wire 15); T3b done 2026-10-12 (verified before the end, rated and logged, `Rating`, `<data>/next-game`, wire 16). SRV-Q20 done 2026-10-12 (server-side pings; the user). Work under the autonomy contract (`HANDOFF.md`). Each wire change bumps `PROTOCOL_VERSION`, each journal change `JOURNAL_FORMAT_VERSION`.
 
 ### E16 M4 T4 — Leaderboards
 
@@ -29,14 +29,13 @@ Epic: `docs/epics/E16-server.md` (in progress; M0 and M1 done 2026-10-10, ADR-00
 
 ### E16 M4 T7 — M4's closure
 
-- **Scope:** the end-to-end test of the exit criteria (two clients queue and play a rated battle through a restart); `06-security.md`'s ladders (a shared change); the client lane's note (the ladder's messages, the accept step, reconnecting by account, the forfeit; an inbox line, cross-lane); M4's exit criteria checked; a fresh reviewer agent over M4; the user's checkpoint.
+- **Scope:** the end-to-end test of the exit criteria (two clients queue and play a rated battle through a restart); `06-security.md`'s ladders and the server's pings (SRV-Q20; a shared change); the client lane's note (the ladder's messages, the accept step, reconnecting by account, the forfeit; an inbox line, cross-lane); M4's exit criteria checked; a fresh reviewer agent over M4; the user's checkpoint.
 - **Acceptance:** M4's exit (epic file).
 - **Depends on:** T1–T6.
 - **Status:** waiting (T1–T6).
 
 ## Inbox
 
-- 2026-10-12 (M4 T3a, the user; **SRV-Q20**, open): eager disconnect detection by server-side pings, wanted eventually; until then a silent drop's grace starts after the idle timeout, and a server-side outage can void ranked games or, with a total nearly spent, cost one a forfeit. Ratings are live since T3b: an outage now can cost a rated loss; settle before M4's closure (T7) if possible.
 - 2026-10-12 (the user, SRV-Q19; **M5**): the turn timer against a connected player who stalls is a game rule (`h3-game`; E08 decision 8's system commands for turn timers); until then a ranked battle can be stalled (the epic's risks).
 - 2026-10-11 (M2 T5b; **later**, M4's refinement: the server's own bots send no messages): a separate rate for automated clients: an operator raises `messages_per_second` and `messages_per_address` meanwhile.
 - 2026-10-11 (M3's review; **later**): the player log's readers (every login, the games' lookups of display names and preferences) wait behind a write's sync under its one lock; `account_changes_per_address` bounds the writes. Split the lock (a read lock for the accounts, the file's own for the writes) if logins stall under load. And a rename an old-key session sent before a re-key's commit can still land while its answer is off the task: refuse account requests whose connection's key is no longer the account's.

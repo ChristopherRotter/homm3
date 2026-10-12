@@ -264,7 +264,8 @@ below are the tasks' starting point, *provisional* until M4's review.
   its players from another match there.
 - **Disconnects and forfeits** (code since M4 T3a: `Session::elapse`, the host's clock moved by
   every message, closed connection and tick of the sweep, whose period counts the ladders'
-  grace). A seat whose connections are all gone is absent: beyond
+  grace). A seat whose connections are all gone is absent (a connection dropped without a close
+  is gone once it answers no ping for `[limits] ping_timeout_ms`, SRV-Q20): beyond
   `grace_ms` in one stretch, or `grace_total_ms` over the game, its player forfeits (a loss;
   both absent: void, `NoShow`, no rating changes). A game not yet started counts the same way
   from its creation. The journal keeps each finished stretch (`Entry::Absent(side, ms)`) and the

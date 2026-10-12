@@ -4,7 +4,7 @@ The server lane's living state; read after the global `docs/HANDOFF.md`. Format 
 
 ## Current state
 
-- **M1–M3 closed** (SRV-Q12, SRV-Q16, SRV-Q18). **M4 refined (2026-10-12, SRV-Q19):** ADR-0019 points 4–9 decided; the detail in `E16-design.md` §11; the tasks in `QUEUE.md`; no turn timer in M4 (a game rule, M5). **M4 T1 (#106), T2 (#108), T3a (#109) and T3b done** (T3b: verified before the end, rated and logged, `Rating`, `<data>/next-game`; wire 16; no stub left). **Next: M4 T4, T5 or T6** (all ready); SRV-Q20 (pings) matters now: results are rated.
+- **M1–M3 closed** (SRV-Q12, SRV-Q16, SRV-Q18). **M4 refined (2026-10-12, SRV-Q19):** ADR-0019 points 4–9 decided; the detail in `E16-design.md` §11; the tasks in `QUEUE.md`; no turn timer in M4 (a game rule, M5). **M4 T1 (#106), T2 (#108), T3a (#109), T3b (#111) and SRV-Q20 done** (T3b: verified before the end, rated and logged, `Rating`, `<data>/next-game`; wire 16; SRV-Q20: server-side pings). **Next: M4 T4, T5 or T6** (all ready).
 - **ADR-0018 point 5 as amended:** the mapping's matches over the engine's enums are exhaustive, and since T4b its patterns over the observation's structs too; a new battle variant or observation field fails `h3-protocol`'s build until mapped (global HANDOFF trap).
 - **The 100 % gate** covers `h3-protocol` (logic); `h3-server` is an adapter outside it, tested end to end.
 - **Versions** (`docs/08-work-process.md`): `PROTOCOL_VERSION` (`h3-protocol`, 16 since M4 T3b's `Rating`; bumped on every wire change), `RECORD_FORMAT_VERSION` (`h3-protocol`, 2 since M2 T5c), `JOURNAL_FORMAT_VERSION` (`h3-server`, 5 since M4 T3a's `Ranked`, `Absent`, `Forfeit`; a journal of another format is void at start).
@@ -23,8 +23,9 @@ The server lane's living state; read after the global `docs/HANDOFF.md`. Format 
 - `postcard` (and any format that is not self-describing) cannot decode `#[serde(tag = ...)]`, `untagged` or `flatten`: keep the wire types in serde's default enum form (SRV-Q5).
 - A 64-bit integer on the wire travels as a string (JavaScript clients lose precision above 2^53).
 - A wildcard arm after every variant of an enum still counts as one uncovered region (llvm-cov), and `#[coverage(off)]` is unstable: no fallback arms in `h3-protocol` (ADR-0018 point 5 as amended).
-- `prop_assert!(matches!(x, P { .. }))` without a message fails to compile: the macro formats the condition's text and reads `{ .. }` as a format argument; pass a message.
+- `prop_assert!(matches!(x, P { .. }))` needs a message: the macro reads `{ .. }` as a format argument.
 - A test client that picks uniformly among the legal commands rarely ends a battle of the `full` scenario (mostly moves; the defender's stacks regenerate): pick among the strikes when there are any (`tests/session.rs`, `play`).
+- A test `Client` answers pings only while it reads: one unread beyond `ping_timeout_ms` is dropped, and its late pong draws a reset that drops its unread frames.
 - Automated clients answer every turn at once and exceed the default 20 messages per second and the address's 40: end-to-end tests that play raise both (`tests.rs`, `fast()`).
 - A frame the game marks `left` is acted on only if the task passed the game exactly that many messages (`Bound::passed`): a join pipelined behind a refused one may take a seat, and leaving then would drop its `Joined` and the seat's token.
 - A game leaves the lobby only under the registry's lock, after its bound connections are counted down (`registry.rs`): deciding by the game's own connection list races a join that is already queued.
@@ -50,14 +51,14 @@ The server lane's living state; read after the global `docs/HANDOFF.md`. Format 
 
 ## Recent sessions
 
+### 2026-10-12 — SRV-Q20, the server's pings
+
+#111 merged; the user chose (a). Built (`E16-log.md`): `ping_every_ms`, `ping_timeout_ms`; no wire change.
+
 ### 2026-10-12 — M4 T3b, the rated end
 
-#109 had merged; the start's verify green. Built T3b (`E16-log.md`): the held end, `Unverified`, `Rating`, `Ladders::rate`, `GameIds`; wire 16. Choices on the review list.
+#109 had merged. Built T3b (`E16-log.md`): the held end, `Rating`, `Ladders::rate`, `GameIds`; wire 16.
 
 ### 2026-10-12 — M4 T3a, a ranked game's seats and forfeits
 
-#108 had merged. Built T3a (`E16-log.md`): the clock and grace, forfeits and no-shows; journal 5, wire 15.
-
-### 2026-10-12 — M4 T2, the queue and the match
-
-#106 had merged. Built T2 (`E16-log.md`): the queues and matches, wire 14.
+#108 had merged. Built T3a: the grace, forfeits; journal 5, wire 15.
