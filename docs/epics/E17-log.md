@@ -123,3 +123,25 @@ pull request. Findings in [`E17-design.md`](E17-design.md) §1–2.
   `h3_assets::build` as public API.
 - Gates: `clients/scripts/check.sh` passes (fmt, clippy, tests, deny, 100 % lines and regions of
   the pure libraries, CI paths); CI could not run (billing).
+
+### M1 T1 — Code reading: archives, screen format, keyed colours (2026-10-12)
+
+One session with T6 (the user present; they chose T1, then T6). Branch
+`client/e17-m1-t1-code-reading`, a docs-only pull request. Findings in
+[`E17-design.md`](E17-design.md) §3; 35 entries in `docs/exe/map.toml`.
+
+- **Path.** From H3API's guesses (`H3Lod::FindFileInLod`, `H3LoadedDef::Load`,
+  `H3BasePalette565::InitiateFromPalette888`, `H3DefFrame::DrawToPcx16`) to their callers: the
+  loaders' search lists, the edition row, the archive slots; from the palette conversion to the
+  DirectDraw setup that hands it the masks; from the battle's redraw (H3API's
+  `H3CombatManager::RefreshCreatures`) to the stack's draw and its frame drawer, then the other
+  drawers by their wrappers. Each drawer's runs read through its switch tables (`exe.py switch`).
+- **Checked against the files** with throwaway scripts (not committed): the four directories are
+  sorted by lower-cased name; each kind lives in one family of archives; per DEF type the
+  encodings and the keyed indices used; the runs of index ≥ 8 (`Cnomad.def`'s 42 of index 8).
+- **VCMI 1.7.5** compared: the archive order (`config/filesystem.json`), the keyed colours as
+  alpha (`client/renderSDL/ScalableImage.cpp`).
+- **Not read** (§3.5): three drawers, the PCX drawer, the outline colour's index (T5),
+  DDrawCompat (licence first).
+- Gates: `scripts/exe.py check` and `cargo xtask check-exe-map` (every cited address covered),
+  `check-docs`.

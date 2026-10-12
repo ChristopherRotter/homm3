@@ -1,11 +1,11 @@
 # E17 — Clients and asset pipeline
 
-Status: **in progress**: M0 done (2026-10-12); M1 under way (T2 and T3 done 2026-10-12). Refined 2026-10-12 (E17a, the asset notes,
+Status: **in progress**: M0 done (2026-10-12); M1 under way (T1, T2 and T3 done 2026-10-12). Refined 2026-10-12 (E17a, the asset notes,
 done the same day). Decisions: [ADR-0020](../adr/0020-clients.md) (accepted at the M0 checkpoint,
 point 7 rewritten there). Working detail (code readings, formats, layouts): `docs/epics/E17-design.md`,
 created by the first task that has detail to record; done tasks in full:
 [`E17-log.md`](E17-log.md). Lane: client (`docs/lanes/client/HANDOFF.md`; the user's asset notes
-are there). Next: M1 T1 (the code reading; T4–T6 wait for it).
+are there). Next: M1 T6 (the compositor), then T4 and T5.
 
 ## Goal
 
@@ -87,6 +87,9 @@ autonomy contract (lane HANDOFF) says what the agent decides alone in between.
 - **T2 + T3 done 2026-10-12** ([log](E17-log.md#m1-t2--t3--the-decoders-and-the-inventory-2026-10-12),
   [design §1–2](E17-design.md)): the PAL, PCX, DEF and MSK decoders; the gate decodes every entry
   of the user's four LODs (none fails) and writes the inventory report.
+- **T1 done 2026-10-12** ([log](E17-log.md#m1-t1--code-reading-archives-screen-format-keyed-colours-2026-10-12),
+  [design §3](E17-design.md)): the base archives win; the screen is 16-bit, palettes truncated to
+  it; shadows halve or quarter the 16-bit pixel below, compounding; runs of index ≥ 8 skipped.
 
 ### M2 — the battle replay viewer
 
@@ -114,14 +117,14 @@ notes), HD layouts, the adventure map and the full game viewer, video.
 
 | Item | Where |
 |---|---|
-| 1. Archive precedence (SoD against AB), name lookup | M1 T1 |
-| 2. The off-colour pixels; the screen format | M1 T1 |
+| 1. Archive precedence (SoD against AB), name lookup | M1 T1 (done: design §3.1) |
+| 2. The off-colour pixels; the screen format | M1 T1 (done: design §3.2) |
 | 3. Licences of MMArchive and homm3-unpacker before reading their code | stop the line: a question first, when a task wants them |
 | 4. The video archives | later |
 | 5. Capturing the original | M3 (agreed: a copy under `original-data/`, computer use) |
 | 6. Per-expansion content and the ruleset profiles | M1 T4 |
 | 7. The HD patch as a source of fixes and for HD | M3, later |
-| 8. Shadows and the other keyed colours | M1 T1 |
+| 8. Shadows and the other keyed colours | M1 T1 (done: design §3.3) |
 | 9. The adventure map's object draw order (the user: neither they nor VCMI got it exactly right) | a code reading when the adventure map viewer is refined; M1 T5 reads only the battle's |
 
 ## Risks and known gaps
