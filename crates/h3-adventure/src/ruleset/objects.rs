@@ -107,12 +107,24 @@ pub enum ObjectKind {
 impl ObjectKind {
     /// Whether a visit of this kind is built (ADR-0016 point 4; ADV-OBJ-003): the one place a
     /// task that builds a kind's visit extends. A step onto the visitable tile of an object whose
-    /// visit is not built is rejected (`Visit`). E08 T13b: the pickups; T14a: the Cartographer,
-    /// entered with no effect until T14b's offer; T15: the observatories, tents, guards and gates.
+    /// visit is not built is rejected (`Visit`). E08 T13b: the pickups; T14a and T14b: the
+    /// Cartographer, entered, with its offer; T15: the observatories, tents, guards and gates.
     pub(crate) const fn visit_built(&self) -> bool {
         matches!(self, Self::Pickup(_) | Self::RevealTerrain { .. })
     }
+
+    /// The terrains and price of a [`Self::RevealTerrain`] (a Cartographer, ADV-VIS-001); none
+    /// for every other kind.
+    pub(crate) fn reveal_terrain(&self) -> Option<TerrainReveal<'_>> {
+        match self {
+            Self::RevealTerrain { terrains, price } => Some((terrains, price)),
+            _ => None,
+        }
+    }
 }
+
+/// A Cartographer's terrains and price ([`ObjectKind::reveal_terrain`]).
+pub(crate) type TerrainReveal<'a> = (&'a [TerrainId], &'a [(ResourceId, u32)]);
 
 /// A compiled object type (ADV-OBJ-002).
 #[derive(Debug, Clone, PartialEq, Eq)]

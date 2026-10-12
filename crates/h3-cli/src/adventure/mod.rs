@@ -8,6 +8,7 @@
 //! commands = [                        # the game commands in order, with the acting player:
 //!     "0 move 1 5,7,0 6,8,0",         #   `<player> move <hero> <x>,<y>,<level> …` (the path
 //!     "0 end-turn",                   #   without the hero's own tile), `<player> end-turn`
+//!     "1 accept",                     #   `<player> accept` or `decline`: an answer (E08 T14b)
 //! ]
 //! checkpoints = ["0x…"]               # state hash after every `checkpoint_every` commands
 //!
@@ -48,7 +49,7 @@ use std::sync::Arc;
 
 use h3_adventure::{AdventureCommand, Pos};
 use h3_contracts::{HeroId, PlayerId};
-use h3_game::{GameCommand, GameRuleset, GameSetup};
+use h3_game::{Answer, GameCommand, GameRuleset, GameSetup};
 use h3_sim::adventure::replay::{
     MapRef, RecordError, RecordOptions, Replay, ReplayError, ReplayHeader, map_content_hash,
 };
@@ -225,6 +226,10 @@ fn parse_hex64(s: &str) -> Result<u64> {
 pub fn format_command(player: PlayerId, command: &GameCommand) -> String {
     match command {
         GameCommand::EndTurn => format!("{} end-turn", player.raw()),
+        // E08 T14b: an answer to a pending decision; the format's version follows with the env's
+        // action encoding v2, which first records one.
+        GameCommand::Answer(Answer::Accept) => format!("{} accept", player.raw()),
+        GameCommand::Answer(Answer::Decline) => format!("{} decline", player.raw()),
         GameCommand::Adventure(AdventureCommand::MoveHero { hero, path }) => {
             let mut text = format!("{} move {}", player.raw(), hero.raw());
             for pos in path {
@@ -250,6 +255,8 @@ pub fn parse_command(text: &str) -> Result<(PlayerId, GameCommand)> {
         .ok_or_else(bad)?;
     let command = match words.next() {
         Some("end-turn") => GameCommand::EndTurn,
+        Some("accept") => GameCommand::Answer(Answer::Accept),
+        Some("decline") => GameCommand::Answer(Answer::Decline),
         Some("move") => {
             let hero = words
                 .next()

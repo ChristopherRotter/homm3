@@ -103,6 +103,7 @@ fn duel() -> Plan {
         ],
         hero_types: 3,
         blockers,
+        difficulty: 1,
     }
 }
 
@@ -131,6 +132,7 @@ fn xl() -> Plan {
         ],
         hero_types: 5,
         blockers,
+        difficulty: 1,
     }
 }
 

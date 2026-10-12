@@ -50,6 +50,9 @@ pub struct AdventureObservation {
     pub heroes: Vec<HeroView>,
     /// The typed objects still on the map that the viewer sees, in the map's order (E08 T12b).
     pub objects: Vec<ObjectView>,
+    /// The Cartographer types the viewer has bought, in type order (ADV-VIS-001, E08 T14b);
+    /// other players' purchases never show (ADR-0016 point 6).
+    pub bought: Vec<ObjectTypeId>,
 }
 
 impl AdventureObservation {
@@ -155,8 +158,8 @@ pub struct OwnHeroView {
 impl AdventureState {
     /// What `viewer` may know of the adventure map (ADV-FOG-004 to ADV-FOG-006): its sight's
     /// planes, built word by word from its explored grid, then each tile's view, the heroes and
-    /// the typed objects it sees. A viewer that is not a player of the game sees no tile, no hero
-    /// and no object.
+    /// the typed objects it sees, and the Cartographer types it bought (E08 T14b). A viewer that
+    /// is not a player of the game sees no tile, no hero, no object and no purchase.
     // rule: ADV-FOG-004, ADV-FOG-005, ADV-FOG-006
     pub fn observe(&self, core: &Ruleset, viewer: PlayerId) -> AdventureObservation {
         let map = self.map();
@@ -176,6 +179,7 @@ impl AdventureState {
             tiles: Vec::with_capacity(map.tiles().len()),
             heroes: Vec::new(),
             objects: Vec::new(),
+            bought: self.bought(viewer).collect(),
         };
         let row_tiles = usize::from(width);
         // A tile as it stands now; only a tile an object covered can differ from the static map's.
@@ -270,7 +274,8 @@ impl AdventureEvent {
                     seen_from: seen_from.intersection(alone),
                     seen_to: seen_to.intersection(alone),
                 },
-                AdventureEventKind::ObjectRemoved { .. } => self.kind,
+                AdventureEventKind::ObjectRemoved { .. }
+                | AdventureEventKind::TilesRevealed { .. } => self.kind,
             },
             seen_by: alone,
         })

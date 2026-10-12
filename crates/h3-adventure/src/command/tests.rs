@@ -8,7 +8,7 @@ use std::string::{String, ToString};
 use std::vec;
 use std::vec::Vec;
 
-use h3_content::Ruleset;
+use h3_content::{ResourceId, Ruleset};
 use h3_contracts::{HeroId, PlayerId};
 
 use super::*;
@@ -625,8 +625,9 @@ fn a_step_onto_a_chart_enters_it_and_ends_the_move() {
             .apply(&rules.0, &rules.1, RED, &command, &mut events)
             .unwrap();
         // The hero stands on the chart's tile, both steps paid as steps are; the visit gains and
-        // removes nothing (the offer comes with E08 T14b).
-        assert_eq!(outcome, AdventureOutcome::default());
+        // removes nothing, and offers the chart's type (E08 T14b).
+        assert!(outcome.gains.is_empty());
+        assert!(outcome.offer.is_some());
         assert_eq!(hero(&state, 1), (p(2, 0), 1300 - 200));
         assert!(!state.is_removed(0));
         assert_eq!(events.len(), 2);
@@ -650,6 +651,146 @@ fn a_step_onto_a_chart_enters_it_and_ends_the_move() {
         move_hero(&mut state, &rules, RED, 1, &[p(2, 0)]).unwrap();
         assert_eq!(hero(&state, 1), (p(2, 0), 0));
     }
+}
+
+/// Red's hero 1 at (1, 1) and blue's hero 2 at (14, 1) on two levels of three rows: a chart at
+/// (2, 1) and an open chart at (12, 1) on the first level, grass, sand, sea and rock around.
+fn reveal_world(rules: &(Ruleset, AdventureRuleset)) -> AdventureState {
+    let rows = [
+        "gggggggggggggsss",
+        "ggCggggggggg~cgg",
+        "gggggggggggg##gg",
+        "ssssssssgggggggg",
+        "gg~~~~~~~#####gs",
+        "gggggggggggggggg",
+    ];
+    let heroes = vec![
+        hero_at(1, 0, p(1, 1), &[PEASANT]),
+        hero_at(2, 1, p(14, 1), &[PEASANT]),
+    ];
+    AdventureState::new(&rules.0, &rules.1, &world(&rows, 2, heroes), &mut draws()).unwrap()
+}
+
+/// `player`'s hero `hero` steps onto `to` and back off it to `back`, then onto `to` again: the
+/// outcome of the last step.
+fn enter(
+    state: &mut AdventureState,
+    rules: &(Ruleset, AdventureRuleset),
+    (player, hero): (PlayerId, u16),
+    to: Pos,
+) -> AdventureOutcome {
+    state.set_movement(HeroId::new(hero), 1000);
+    let command = AdventureCommand::MoveHero {
+        hero: HeroId::new(hero),
+        path: vec![to],
+    };
+    state
+        .apply(&rules.0, &rules.1, player, &command, &mut Vec::new())
+        .unwrap()
+}
+
+// covers: ADV-VIS-001
+#[test]
+fn a_chart_offers_its_reveal_once_per_player_and_type() {
+    let rules = movement_rules(false);
+    let mut state = reveal_world(&rules);
+    let gold = ResourceId::from_raw(1);
+    // Entering the chart offers its type for its price.
+    let before = state.clone();
+    let offer = enter(&mut state, &rules, (RED, 1), p(2, 1)).offer.unwrap();
+    assert_eq!(
+        offer,
+        Offer {
+            hero: HeroId::new(1),
+            object_type: CHART,
+            anchor: p(2, 1),
+            price: vec![(gold, 1000)],
+        }
+    );
+    assert!(!state.has_bought(RED, CHART));
+    // Accepted: every grass tile of both levels is explored for red, told to red alone with the
+    // number it had not explored; no other terrain, and nothing for blue.
+    let map = state.map().clone();
+    let grass = |pos: Pos| map.tile(pos).unwrap().terrain == crate::testing::GRASS;
+    let explored = |state: &AdventureState, player| state.explored(player).unwrap().count();
+    let (red, blue) = (explored(&state, RED), explored(&state, BLUE));
+    let tiles: Vec<Pos> = (0..2u8)
+        .flat_map(|level| {
+            (0..3u16).flat_map(move |y| (0..16u16).map(move |x| Pos::new(x, y, level)))
+        })
+        .collect();
+    let new = tiles
+        .iter()
+        .filter(|&&pos| grass(pos) && !state.is_explored(RED, pos))
+        .count();
+    let hidden: Vec<Pos> = tiles
+        .iter()
+        .copied()
+        .filter(|&pos| !grass(pos) && !state.is_explored(RED, pos))
+        .collect();
+    assert!(new > 20 && !hidden.is_empty(), "{new} {hidden:?}");
+    let mut events = Vec::new();
+    state.accept_offer(&rules.1, RED, &offer, &mut events);
+    assert_eq!(
+        events,
+        vec![AdventureEvent {
+            kind: AdventureEventKind::TilesRevealed {
+                object_type: CHART,
+                count: u32::try_from(new).unwrap(),
+            },
+            seen_by: Viewers::NONE.with(RED),
+        }]
+    );
+    assert_eq!(events[0].project(RED), Some(events[0]));
+    assert_eq!(events[0].project(BLUE), None);
+    assert_eq!(explored(&state, RED), red + u32::try_from(new).unwrap());
+    assert!(
+        tiles
+            .iter()
+            .all(|&pos| !grass(pos) || state.is_explored(RED, pos))
+    );
+    assert!(hidden.iter().all(|&pos| !state.is_explored(RED, pos)));
+    assert_eq!(explored(&state, BLUE), blue);
+    assert!(state.has_bought(RED, CHART) && !state.has_bought(BLUE, CHART));
+    assert_eq!(state.bought(RED).collect::<Vec<_>>(), [CHART]);
+    assert_eq!(state.bought(BLUE).count(), 0);
+    // The viewer sees its own purchases only.
+    assert_eq!(state.observe(&rules.0, RED).bought, [CHART]);
+    assert!(state.observe(&rules.0, BLUE).bought.is_empty());
+    assert!(state.observe(&rules.0, PlayerId::new(2)).bought.is_empty());
+    assert_ne!(state.state_hash(), before.state_hash());
+    // Bought: a later visit offers nothing; another type still offers.
+    enter(&mut state, &rules, (RED, 1), p(1, 1));
+    assert_eq!(
+        enter(&mut state, &rules, (RED, 1), p(2, 1)),
+        AdventureOutcome::default()
+    );
+    let open = enter(&mut state, &rules, (BLUE, 2), p(13, 1))
+        .offer
+        .unwrap();
+    assert_eq!((open.object_type, open.anchor), (OPEN_CHART, p(13, 1)));
+    // Blue buys the open chart, then the chart; red's purchase stays its own.
+    state.accept_offer(&rules.1, BLUE, &open, &mut Vec::new());
+    let chart = Offer {
+        hero: HeroId::new(2),
+        ..offer.clone()
+    };
+    state.accept_offer(&rules.1, BLUE, &chart, &mut Vec::new());
+    assert_eq!(state.bought(BLUE).collect::<Vec<_>>(), [CHART, OPEN_CHART]);
+    assert_eq!(state.bought(RED).collect::<Vec<_>>(), [CHART]);
+    assert!(!state.has_bought(RED, OPEN_CHART));
+    // Equal purchases hash equal, whatever their order.
+    let mut other = reveal_world(&rules);
+    other.accept_offer(&rules.1, BLUE, &chart, &mut Vec::new());
+    other.accept_offer(&rules.1, RED, &offer, &mut Vec::new());
+    other.accept_offer(&rules.1, BLUE, &open, &mut Vec::new());
+    let mut moved = reveal_world(&rules);
+    moved.accept_offer(&rules.1, RED, &offer, &mut Vec::new());
+    assert_eq!(other.bought(RED).collect::<Vec<_>>(), [CHART]);
+    assert_ne!(other.state_hash(), moved.state_hash());
+    // A kind other than a Cartographer reveals nothing by terrain.
+    let pile = rules.1.object_type(WOOD_PILE).unwrap();
+    assert_eq!(pile.kind.reveal_terrain(), None);
 }
 
 // covers: ADV-OBJ-004

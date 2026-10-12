@@ -579,8 +579,8 @@ numeric  = "integer"
 id       = "ADV-VIS-001"
 title    = "The Cartographers"
 context  = "adventure"
-status   = "specified"
-summary  = "A Cartographer offers its visitor's owner, once per player and kind, to reveal every tile of its terrains on both levels for 1 000 gold: water; dirt, sand, grass, snow, swamp, rough and lava; subterranean (rock in none). With less gold there is no offer; declining keeps the offer for a later visit (T14). Data: packs/base/adventure.toml (cartographer_*)."
+status   = "implemented"
+summary  = "A Cartographer offers its visitor's owner, once per player and kind, to reveal every tile of its terrains on both levels for 1 000 gold: water; dirt, sand, grass, snow, swamp, rough and lava; subterranean (rock in none). With less gold there is no offer (the owner is told so); declining keeps the offer for a later visit. A kind already bought offers nothing. Data: packs/base/adventure.toml (cartographer_*). E08 T14b: the visit's `Offer` in `AdventureOutcome`, opened as a pending decision by `h3_game` (GAM-DEC-001) or refused (`OfferRefused`); accepted, the price is paid and `AdventureState::accept_offer` explores the kind's terrains for the owner (`TilesRevealed`, the owner alone) and marks the kind bought (a byte of player bits per type, as the original's flags); the owner's observation shows its purchases and open offer. The water Cartographer stands in the water and is unreachable without boats (increment 3)."
 numeric  = "integer"
 
   [[rule.source]]

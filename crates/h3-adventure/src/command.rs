@@ -1,7 +1,7 @@
 //! The adventure context's commands, their errors, outcomes and events (ADR-0017 point 1:
 //! `h3-game` checks turn and phase, then passes a player's command here with the player as actor;
-//! E08 T7b: `MoveHero`; T13b: its visits and their outcome, ADR-0017 point 10). A rejected command
-//! changes nothing and emits nothing. An event carries the players who may see it, resolved when
+//! E08 T7b: `MoveHero`; T13b: its visits and their outcome, ADR-0017 point 10; T14b: the
+//! Cartographer's offer). A rejected command changes nothing and emits nothing. An event carries the players who may see it, resolved when
 //! it is emitted (ADR-0016 point 6; E08 T8a).
 
 use alloc::vec::Vec;
@@ -118,12 +118,34 @@ impl fmt::Display for AdventureCommandError {
 impl core::error::Error for AdventureCommandError {}
 
 /// What an accepted command gives its player beyond the map (ADR-0017 point 10): the resources it
-/// gains, which the game adds to the player's treasury (the context never sees a treasury).
+/// gains, which the game adds to the player's treasury (the context never sees a treasury), and
+/// the offer it opens, which the game opens as a pending decision if the player can pay its price
+/// (E08 T14b).
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct AdventureOutcome {
     /// Each resource gained with its amount, in the order the rule gives them (a campfire's
     /// resource, then its gold).
     pub gains: Vec<(ResourceId, u32)>,
+    /// The offer the command's visit makes its player, if any: a Cartographer's whose type the
+    /// player has not bought (ADV-VIS-001).
+    pub offer: Option<Offer>,
+}
+
+/// An offer a visit makes to its visitor's owner, answered yes or no (ADR-0017 points 6 and 10;
+/// E08 T14b): a Cartographer's reveal of its terrains for its price (ADV-VIS-001). The object is
+/// named as the observation names it, by type and anchor, never by index (ADR-0016 point 6), so
+/// the offer is also what its owner sees of it. Only the context makes offers;
+/// [`crate::AdventureState::accept_offer`] trusts the one it is given.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Offer {
+    /// The hero whose visit made it.
+    pub hero: HeroId,
+    /// The object's type: the kind on offer.
+    pub object_type: ObjectTypeId,
+    /// The object's anchor (the bottom right tile its masks are relative to).
+    pub anchor: Pos,
+    /// The price, by resource in the core's order, each amount at least 1 (the type's).
+    pub price: Vec<(ResourceId, u32)>,
 }
 
 /// The players who may see an event (ADR-0016 point 6): a set of players, resolved when the event
@@ -165,8 +187,9 @@ impl Viewers {
     }
 }
 
-/// The bit of `player` in [`Viewers`], none for an id of eight or more.
-const fn bit(player: PlayerId) -> u8 {
+/// The bit of `player` in [`Viewers`] and in the players who bought a type (E08 T14b), none for an
+/// id of eight or more.
+pub(crate) const fn bit(player: PlayerId) -> u8 {
     match 1u8.checked_shl(player.raw() as u32) {
         Some(bit) => bit,
         None => 0,
@@ -215,6 +238,14 @@ pub enum AdventureEventKind {
         object_type: ObjectTypeId,
         /// The bottom right tile its masks are relative to.
         anchor: Pos,
+    },
+    /// Tiles became explored for a player by an object's reveal (ADV-VIS-001: an accepted
+    /// Cartographer's, E08 T14b). Seen by that player alone, as its explored tiles are.
+    TilesRevealed {
+        /// The revealing object's type: for a Cartographer, the kind its player now has bought.
+        object_type: ObjectTypeId,
+        /// How many tiles the player had not explored before.
+        count: u32,
     },
 }
 

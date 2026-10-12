@@ -26,6 +26,16 @@ fn commands_round_trip_through_their_text() {
     let cases = [
         (PlayerId::new(0), GameCommand::EndTurn, "0 end-turn"),
         (
+            PlayerId::new(2),
+            GameCommand::Answer(Answer::Accept),
+            "2 accept",
+        ),
+        (
+            PlayerId::new(3),
+            GameCommand::Answer(Answer::Decline),
+            "3 decline",
+        ),
+        (
             PlayerId::new(7),
             GameCommand::Adventure(AdventureCommand::MoveHero {
                 hero,
@@ -53,6 +63,7 @@ fn commands_round_trip_through_their_text() {
         "0 jump",
         "0",
         "0 end-turn extra",
+        "0 accept now",
         "0 move",
         "0 move h1",
         "0 move 1 3,4",

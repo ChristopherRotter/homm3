@@ -1,18 +1,18 @@
 //! The whole game's state (ADR-0017, E08 T6b): the players with their RNG streams, the day's
-//! schedule of turn groups, the calendar, the game's own stream and the contexts' states
-//! (the adventure now). Built from a validated [`GameSetup`]; the steps only the game triggers
+//! schedule of turn groups, the calendar, the game's own stream, the treasuries (T13), the pending
+//! decisions (T14b) and the contexts' states (the adventure now). Built from a validated [`GameSetup`]; the steps only the game triggers
 //! (the start of a day, the start of a turn) are infallible, and commands go through
 //! [`crate::apply`].
 
 use alloc::vec::Vec;
 
-use h3_adventure::AdventureState;
+use h3_adventure::{AdventureState, Offer};
 use h3_content::ResourceId;
 use h3_contracts::PlayerId;
 use h3_kernel::hash::hash_of;
 use h3_kernel::{CanonicalHash, Rng, StateHasher, StreamId};
 
-use crate::command::{GameCommandError, GameEvent, NoopSink, Sink};
+use crate::command::{AdventureSink, Answer, GameCommandError, GameEvent, NoopSink, Sink};
 use crate::treasury::Treasuries;
 use crate::{GAME_STATE_HASH_VERSION, GameRuleset, GameSetup, GameSetupError};
 
@@ -27,6 +27,16 @@ struct PlayerState {
     acting: bool,
 }
 
+/// A pending decision (ADR-0017 point 6, GAM-DEC-001): what its owner must answer before
+/// anything else. Increment 2's are offers (ADV-VIS-001).
+#[derive(Debug, Clone, PartialEq, Eq)]
+struct Decision {
+    /// The player who answers it.
+    owner: PlayerId,
+    /// The offer.
+    offer: Offer,
+}
+
 /// The state of a whole game.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct GameState {
@@ -35,6 +45,10 @@ pub struct GameState {
     players: Vec<PlayerState>,
     /// The players' resources (GAM-RES-001, E08 T13), by player id.
     treasuries: Treasuries,
+    /// The open decisions, in opening order (GAM-DEC-001, E08 T14b); a player has at most one in
+    /// increment 2 (no command but its answer runs while it is open). Empty most of the time, so
+    /// a fork copies nothing more.
+    decisions: Vec<Decision>,
     /// The day's schedule: turn groups in order, each the players who act together
     /// (ADR-0017 point 3). Sequential play, the only schedule of increment 1, is one player per
     /// group in player order.
@@ -89,6 +103,7 @@ impl GameState {
         let mut state = Self {
             seed,
             treasuries: Treasuries::new(players.len(), start.human()),
+            decisions: Vec::new(),
             players,
             groups,
             group: 0,
@@ -109,7 +124,7 @@ impl GameState {
         player: PlayerId,
         sink: &mut S,
     ) -> Result<(), GameCommandError> {
-        self.check_acting(player)?;
+        self.check_ready(player)?;
         self.players[player.index()].acting = false;
         sink.emit(GameEvent::TurnEnded { player });
         if self.players.iter().any(|p| p.acting) {
@@ -135,6 +150,111 @@ impl GameState {
             return Err(GameCommandError::NotYourTurn(player));
         }
         Ok(())
+    }
+
+    /// Checks that `player` may give a command other than an answer: its turn is running
+    /// ([`Self::check_acting`]) and it has no open decision, whose answers are then its only legal
+    /// commands (ADR-0017 point 6).
+    // rule: GAM-DEC-001
+    pub(crate) fn check_ready(&self, player: PlayerId) -> Result<(), GameCommandError> {
+        self.check_acting(player)?;
+        if self.decision(player).is_some() {
+            return Err(GameCommandError::DecisionOpen);
+        }
+        Ok(())
+    }
+
+    /// Opens the offer a command of `player` made (ADR-0017 point 10): as a pending decision of
+    /// the player if its treasury can pay the price (GAM-DEC-001), told to it alone; otherwise
+    /// the offer does not open, and the player alone is told so (ADV-VIS-001: the original's
+    /// message).
+    // rule: GAM-DEC-001, ADV-VIS-001
+    pub(crate) fn open<S: Sink>(&mut self, player: PlayerId, offer: Offer, sink: &mut S) {
+        let (hero, object_type, anchor) = (offer.hero, offer.object_type, offer.anchor);
+        if self.treasuries.can_pay(player, &offer.price) {
+            self.decisions.push(Decision {
+                owner: player,
+                offer,
+            });
+            sink.emit(GameEvent::OfferOpened {
+                player,
+                hero,
+                object_type,
+                anchor,
+            });
+        } else {
+            sink.emit(GameEvent::OfferRefused {
+                player,
+                hero,
+                object_type,
+                anchor,
+            });
+        }
+    }
+
+    /// `Answer`: closes `player`'s first open decision (GAM-DEC-001), in its turn or not. Accepted,
+    /// the treasury pays the price and the adventure carries the offer out
+    /// ([`AdventureState::accept_offer`]: the reveal and the purchase, ADV-VIS-001); declined,
+    /// nothing else changes. ADR-0017 point 10's checks at the answer, that the treasury can pay
+    /// and that the offer still stands, cannot fail and are not made: the decision opened only
+    /// when the treasury could pay, and while it is open its owner's only legal commands are its
+    /// answers and no other player's command changes the owner's treasury or purchases
+    /// (ownership isolation), so an accepted answer is never rejected (`h3-map`'s play
+    /// properties check it at every step).
+    ///
+    /// # Errors
+    ///
+    /// `UnknownPlayer`, then `NoDecision`; the state is then unchanged.
+    // rule: GAM-DEC-001
+    pub(crate) fn answer<S: Sink>(
+        &mut self,
+        rules: &GameRuleset,
+        player: PlayerId,
+        answer: Answer,
+        sink: &mut S,
+    ) -> Result<(), GameCommandError> {
+        self.players
+            .get(player.index())
+            .ok_or(GameCommandError::UnknownPlayer(player))?;
+        let at = self
+            .decisions
+            .iter()
+            .position(|d| d.owner == player)
+            .ok_or(GameCommandError::NoDecision)?;
+        let Decision { offer, .. } = self.decisions.remove(at);
+        let accepted = answer == Answer::Accept;
+        sink.emit(GameEvent::OfferAnswered {
+            player,
+            object_type: offer.object_type,
+            anchor: offer.anchor,
+            accepted,
+        });
+        if accepted {
+            for &(resource, amount) in &offer.price {
+                let amount = self.treasuries.pay(player, resource, amount);
+                sink.emit(GameEvent::ResourcePaid {
+                    player,
+                    resource,
+                    amount,
+                });
+            }
+            self.adventure.accept_offer(
+                rules.adventure(),
+                player,
+                &offer,
+                &mut AdventureSink(sink),
+            );
+        }
+        Ok(())
+    }
+
+    /// The offer of `player`'s first open decision, if it has one (GAM-DEC-001; increment 2's
+    /// decisions are offers): what its owner sees of it ([`crate::GameObservation::decision`]).
+    pub fn decision(&self, player: PlayerId) -> Option<&Offer> {
+        self.decisions
+            .iter()
+            .find(|d| d.owner == player)
+            .map(|d| &d.offer)
     }
 
     /// The day advance (ADR-0017 point 3): the calendar, then each context's start-of-day step
@@ -224,10 +344,12 @@ impl GameState {
 }
 
 impl CanonicalHash for GameState {
-    /// Encoding v2 (E08 T13; v1 was T6b's): version; the master seed; the day; the running
-    /// group's index; the schedule (groups as length + player ids); the players (colour, acting,
-    /// stream state); since v2 the treasuries (the resource kinds, then every player's amounts as
-    /// length and entries); the game's stream; the adventure state's hash.
+    /// Encoding v3 (E08 T14b; v1 was T6b's, v2 T13's): version; the master seed; the day; the
+    /// running group's index; the schedule (groups as length + player ids); the players (colour,
+    /// acting, stream state); since v2 the treasuries (the resource kinds, then every player's
+    /// amounts as length and entries); since v3 the open decisions in opening order, as length
+    /// and entries (owner, hero, object type, anchor, the price as length and resource–amount
+    /// pairs); the game's stream; the adventure state's hash.
     fn hash_into(&self, h: &mut StateHasher) {
         h.write_u32(GAME_STATE_HASH_VERSION);
         h.write_u64(self.seed);
@@ -247,6 +369,18 @@ impl CanonicalHash for GameState {
             player.rng.hash_into(h);
         }
         self.treasuries.hash_into(h);
+        h.write_len(self.decisions.len());
+        for Decision { owner, offer } in &self.decisions {
+            h.write_u8(owner.raw());
+            h.write_u16(offer.hero.raw());
+            offer.object_type.hash_into(h);
+            offer.anchor.hash_into(h);
+            h.write_len(offer.price.len());
+            for (resource, amount) in &offer.price {
+                resource.hash_into(h);
+                h.write_u32(*amount);
+            }
+        }
         self.rng.hash_into(h);
         h.write_u64(self.adventure.state_hash());
     }
