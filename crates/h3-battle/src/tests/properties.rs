@@ -15,8 +15,9 @@ use std::num::NonZeroU32;
 use std::vec::Vec;
 
 use h3_content::{
-    Ability, Affects, CreatureFlag, CreatureSelector, CreatureStat, EffectDuration, Formation,
-    ObstacleKind, Ruleset, SchoolId, SpellCategory, SpellId, SpellScope, TimedChange,
+    Ability, Affects, BattleParamsDef, ContentKey, CreatureFlag, CreatureSelector, CreatureStat,
+    EffectDuration, Formation, ObstacleKind, ProfileDef, Ruleset, SchoolId, SpellCategory, SpellId,
+    SpellScope, TimedChange,
 };
 use h3_contracts::{
     Army, ArmyStack, BallistaControl, BattleEffect, BattleHero, BattleSetup, BattleSide,
@@ -29,7 +30,7 @@ use proptest::prelude::{
 };
 use proptest::test_runner::Config;
 
-use super::support::{CREATURES, Rate, hero, masteries, ruleset_with};
+use super::support::{CREATURES, Rate, hero, masteries, ruleset_from, ruleset_with};
 use crate::event::StrikeFlags;
 use crate::{
     BattleState, CastTarget, CastTargets, Command, Event, EventKind, Hex, LegalCommands, SpellSet,
@@ -43,16 +44,34 @@ fn lively() -> Ruleset {
     lively_with("t:quirky")
 }
 
+/// The battle parameters of [`lively`].
+fn enliven(b: &mut BattleParamsDef) {
+    b.morale_dice = 4;
+    b.good_morale_chances = std::vec![1, 2, 3];
+    b.bad_morale_chances = std::vec![1, 2, 3];
+    b.luck_dice = 4;
+    b.good_luck_chances = std::vec![1, 2, 3];
+    // Low enough for the casts of a battle to reach it (BAT-MAG-037).
+    b.side_stack_limit = 12;
+}
+
 /// [`lively`] with the profile `profile`.
 fn lively_with(profile: &str) -> Ruleset {
-    ruleset_with(profile, |b| {
-        b.morale_dice = 4;
-        b.good_morale_chances = std::vec![1, 2, 3];
-        b.bad_morale_chances = std::vec![1, 2, 3];
-        b.luck_dice = 4;
-        b.good_luck_chances = std::vec![1, 2, 3];
-        // Low enough for the casts of a battle to reach it (BAT-MAG-037).
-        b.side_stack_limit = 12;
+    ruleset_with(profile, enliven)
+}
+
+/// [`lively`] with a profile of its own that has the quirks `quirks` (their keys after
+/// `quirk.battle.`) together: the test pack's profiles have one quirk each, a real pack's
+/// several.
+fn lively_mix(quirks: &[&str]) -> Ruleset {
+    ruleset_from("t:mix", enliven, |pack| {
+        pack.profiles.push(ProfileDef {
+            key: ContentKey::new("t", "mix").unwrap(),
+            quirks: quirks
+                .iter()
+                .map(|quirk| (std::format!("quirk.battle.{quirk}"), true))
+                .collect(),
+        });
     })
 }
 
@@ -1358,24 +1377,28 @@ proptest! {
 
     /// Observation hygiene for hidden obstacles (ADR-0014 point 7, BAT-MAG-031): what a side
     /// does not see changes neither its observation nor what it may do (its legal commands,
-    /// castable spells and their targets), with the natives' sight of either profile; nor what
+    /// castable spells and their targets, its active stack's cast and its targets); nor what
     /// its commands report to it while no hidden obstacle shows itself (a pit it runs into, a
     /// mine that goes off: BAT-MAG-032, BAT-MAG-033; a native it raises gives its side sight
-    /// without quirk BAT-QUIRK-1, BAT-MAG-031), casts included: without quirk BAT-QUIRK-4
-    /// a random obstacle spell draws among the hexes its side sees free (BAT-MAG-032), and Remove
-    /// Obstacle finds only what the caster sees (BAT-MAG-034). Anchors (BAT-QUIRK-3) in half the
-    /// games.
+    /// without quirk BAT-QUIRK-1, BAT-MAG-031), its hero's and its stack's casts included:
+    /// without quirk BAT-QUIRK-4 a random obstacle spell draws among the hexes its side sees
+    /// free (BAT-MAG-032), and Remove Obstacle finds only what the caster sees (BAT-MAG-034).
+    /// In five profiles: the natives' sight fixed at the start (BAT-QUIRK-1), attacks from a
+    /// seen pit (BAT-QUIRK-2), anchors (BAT-QUIRK-3), none of the three, and the three together,
+    /// as a pack's faithful profile has them.
     #[test]
     fn hidden_obstacles_do_not_show(
         (att, def, obstacles, seed, steps, hidden) in arb_game(),
-        at_start: bool,
-        anchors: bool,
+        profile in 0usize..5,
         extra in proptest::collection::btree_set((1u8..16, 0u8..11), 0..6),
     ) {
-        let r = match (at_start, anchors) {
-            (true, _) => lively_with("t:sight"),
-            (false, true) => lively_with("t:anchors"),
-            (false, false) => lively_with("t:quirky"),
+        let quirks = ["natives_sight_at_start", "attack_from_seen_pit", "obstacle_anchors"];
+        let r = match profile {
+            0 => lively_with("t:sight"),
+            1 => lively_with("t:pits"),
+            2 => lively_with("t:anchors"),
+            3 => lively_with("t:quirky"),
+            _ => lively_mix(&quirks),
         };
         // The one property without Berserk in the heroes' books (the others play it). A berserk
         // stack's automatic turn is planned with the pits its own side sees, so its walk, which
@@ -1447,6 +1470,12 @@ proptest! {
                     }
                 }
             }
+            // And the active stack's cast at each of its targets (BAT-MAG-048 to BAT-MAG-052).
+            let (mut ta, mut tb) = (CastTargets::new(), CastTargets::new());
+            creature_cast_targets(&state, &r, viewer, &mut ta);
+            creature_cast_targets(&twin, &r, viewer, &mut tb);
+            prop_assert_eq!(ta.as_slice(), tb.as_slice());
+            commands.extend(ta.iter().map(|&target| Command::CreatureCast { target }));
             for &command in &commands {
                 let (mut x, mut y) = (state.clone(), twin.clone());
                 let (mut ex, mut ey) = (Vec::new(), Vec::new());
