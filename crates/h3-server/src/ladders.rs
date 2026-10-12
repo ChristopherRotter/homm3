@@ -9,13 +9,17 @@
 //! back exactly: no rating is computed twice (`rating`). The log holds login names and ratings,
 //! nothing secret; on Unix it is owner-read-write, as the player log is.
 //!
-//! Provisional (E16 M4 T1): the layout, the names, one lock for every ladder; a season starts at
-//! the start of a server whose content changed, and only then.
+//! Each scenario of a ladder's pool is compiled as an offer of its own, `<ladder>.<n>` (`n` from
+//! 1, in the configuration's order; E16 M4 T2): its games' journals and replays name it, and a
+//! restart finds it again. No client creates a game of it: its games are the ladder's matches.
+//!
+//! Provisional (E16 M4 T1, T2): the layout, the names, one lock for every ladder; a season starts
+//! at the start of a server whose content changed, and only then.
 
 use std::collections::BTreeMap;
 use std::fs::File;
 use std::path::{Path, PathBuf};
-use std::sync::{Mutex, MutexGuard, PoisonError};
+use std::sync::{Arc, Mutex, MutexGuard, PoisonError};
 
 use h3_protocol::account;
 use serde::{Deserialize, Serialize};
@@ -190,10 +194,22 @@ fn hash(text: &str) -> Option<u64> {
     u64::from_str_radix(hex, 16).ok()
 }
 
-/// A ladder, compiled at start. Provisional (E16 M4 T1): its pool is compiled and checked, and
-/// kept from T2 on, when matches use it.
+/// A ladder's pool as its matches draw from it (E16 M4 T2).
+#[derive(Debug, Clone)]
+pub(crate) struct Pool {
+    /// Its scenarios, each compiled as an offer of its own (`<ladder>.<n>`).
+    pub offers: Vec<Arc<Offer>>,
+    /// Whether its games take spectators.
+    pub spectators: bool,
+}
+
+/// A ladder, compiled at start.
 #[derive(Debug)]
 struct Ladder {
+    /// Its configuration.
+    config: config::Ladder,
+    /// Its pool.
+    pool: Vec<Arc<Offer>>,
     /// Its results, read back.
     results: Results,
     /// The log, open for appending; `None` once a write failed (as the player log's).
@@ -243,6 +259,42 @@ impl Ladders {
         u32::try_from(seasons).ok()
     }
 
+    /// The ladders as their queues know them (E16 M4 T2).
+    pub(crate) fn queues(&self) -> Vec<h3_protocol::ladder::Ladder> {
+        let ladders = self.lock();
+        (ladders.iter())
+            .map(|(id, ladder)| h3_protocol::ladder::Ladder {
+                id: id.clone(),
+                name: ladder.config.name.clone(),
+                season: u32::try_from(ladder.results.seasons.len()).unwrap_or(u32::MAX),
+                accept_ms: ladder.config.accept_ms,
+            })
+            .collect()
+    }
+
+    /// Each ladder's pool, by the ladder's id (E16 M4 T2).
+    pub(crate) fn pools(&self) -> BTreeMap<String, Pool> {
+        let ladders = self.lock();
+        (ladders.iter())
+            .map(|(id, ladder)| {
+                let pool = Pool {
+                    offers: ladder.pool.clone(),
+                    spectators: ladder.config.spectators,
+                };
+                (id.clone(), pool)
+            })
+            .collect()
+    }
+
+    /// The account `login`'s rating on the ladder `id` as it stands, in whole points (what its
+    /// queue goes by; E16 M4 T2): a new account's for one that has none.
+    pub(crate) fn points(&self, id: &str, login: &str) -> i32 {
+        let ladders = self.lock();
+        let rating = ladders.get(id).map(|l| l.results.rating(login));
+        // A rating is a few thousand points: the cast saturates far from where it would.
+        rating.unwrap_or_default().rating.round() as i32
+    }
+
     /// The account `login`'s row on the ladder `id` in the season `season`, if it played in it.
     pub(crate) fn standing(&self, id: &str, season: u32, login: &str) -> Option<Standing> {
         let ladders = self.lock();
@@ -261,15 +313,20 @@ impl Ladder {
         known: &dyn Fn(&str) -> bool,
     ) -> Result<Self, Error> {
         let at = |e: &dyn std::fmt::Display| Error(format!("ladder `{}`: {e}", config.id));
-        let pool = (config.scenarios.iter())
-            .map(|scenario| {
+        let pool = (config.scenarios.iter().enumerate())
+            .map(|(i, scenario)| {
                 let offer = config::Offer {
-                    id: config.id.clone(),
+                    id: format!("{}.{}", config.id, i + 1),
                     scenario: scenario.clone(),
                     profile: config.profile.clone(),
                     bots: Vec::new(),
                 };
-                Offer::load(&offer, packs)
+                Offer::load(&offer, packs).map(|offer| {
+                    Arc::new(Offer {
+                        ladder: Some(config.id.clone()),
+                        ..offer
+                    })
+                })
             })
             .collect::<Result<Vec<_>, _>>()?;
         let ruleset = pool.first().map(|offer| offer.ruleset.content_hash());
@@ -296,6 +353,8 @@ impl Ladder {
             .map_err(|e| shown(&format!("line {}: {e}", i + 1)))?;
         }
         let mut ladder = Self {
+            config: config.clone(),
+            pool,
             results,
             file: Some(file),
         };

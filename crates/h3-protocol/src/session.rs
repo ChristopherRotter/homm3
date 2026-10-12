@@ -515,7 +515,12 @@ impl<'r> Session<'r> {
             | ClientMessage::ListGames { .. }
             | ClientMessage::CreateGame { .. }
             | ClientMessage::ListReplays { .. }
-            | ClientMessage::FetchArchived { .. } => {}
+            | ClientMessage::FetchArchived { .. }
+            | ClientMessage::ListLadders { .. }
+            | ClientMessage::Queue { .. }
+            | ClientMessage::Dequeue { .. }
+            | ClientMessage::AcceptMatch { .. }
+            | ClientMessage::DeclineMatch { .. } => {}
         }
     }
 
@@ -725,6 +730,17 @@ impl<'r> Session<'r> {
             self.advance(out);
         } else if self.started && self.state.side_to_act() == Some(side) {
             self.your_turn(side, out);
+        }
+    }
+
+    /// The seat of `side` belongs to the account `login` from the start (E16 M4 T2: a match's
+    /// game): no token is handed out for it, and only a connection logged in as the account takes
+    /// it. The first reserved is the game's host, as the first seat taken is (E16 M4 T3a takes the
+    /// host away from a ranked game). Does nothing to a seat taken already or a bot's.
+    pub fn reserve(&mut self, side: BattleSide, login: String) {
+        let seat = &self.seats[side.index()];
+        if !seat.issued && matches!(seat.kind, SeatKind::Player { .. }) {
+            self.taken(side, Some(login));
         }
     }
 

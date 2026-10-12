@@ -2057,3 +2057,60 @@ fn outcomes_reach_every_viewer() {
         ));
     }
 }
+
+#[test]
+fn a_matchs_seats_belong_to_their_accounts_from_the_start() {
+    let r = ruleset();
+    let mut s = host(&r, 21, players());
+    s.reserve(BattleSide::Attacker, "alice".to_string());
+    s.reserve(BattleSide::Defender, "bob".to_string());
+    // A seat reserved already is left as it is.
+    s.reserve(BattleSide::Attacker, "carol".to_string());
+    let reserved = drained(&mut s);
+    assert_eq!(
+        reserved,
+        [
+            Entry::TakenBy(BattleSide::Attacker, "alice".to_string()),
+            Entry::TakenBy(BattleSide::Defender, "bob".to_string()),
+        ]
+    );
+    assert_eq!(s.open_seats(), []);
+    assert_eq!(s.accounts(), [Some("alice"), Some("bob")]);
+    // Neither an anonymous connection, even with the seat's token, nor another account takes them.
+    let refused = join(&mut s, A, Seat::Attacker, Some(TOKENS[0]));
+    assert_eq!(
+        to(&refused, A),
+        [ServerMessage::Refused {
+            reason: Refusal::SeatTaken
+        }]
+    );
+    s.logged_in(A, "bob".to_string());
+    let refused = join(&mut s, A, Seat::Attacker, None);
+    assert!(matches!(
+        to(&refused, A)[..],
+        [ServerMessage::Refused {
+            reason: Refusal::SeatTaken
+        }]
+    ));
+    // Each account takes its own, with no token; the game starts.
+    let bob = join(&mut s, A, Seat::Defender, None);
+    assert!(matches!(
+        to(&bob, A)[0],
+        ServerMessage::Joined {
+            seat: Seat::Defender,
+            token: None,
+            ..
+        }
+    ));
+    s.logged_in(B, "alice".to_string());
+    join(&mut s, B, Seat::Attacker, None);
+    assert_eq!(s.phase(), Phase::Running);
+    // A restart re-binds both from the journal.
+    let restored = Session::restore(&r, config(21), players(), &reserved).unwrap();
+    assert_eq!(restored.accounts(), [Some("alice"), Some("bob")]);
+    // A bot's seat belongs to no account.
+    let [attacker, _] = players();
+    let mut s = host(&r, 21, [attacker, random_bot(3)]);
+    s.reserve(BattleSide::Defender, "bob".to_string());
+    assert_eq!((drained(&mut s), s.accounts()), (vec![], [None, None]));
+}

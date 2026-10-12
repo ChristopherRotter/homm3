@@ -1,8 +1,10 @@
 //! Tests of the wire types, the codec and the mapping (E16 M1 T1), the connection and the session
-//! core (M1 T2), the lobby (M2 T1), the decoder under mutated frames (M2 T5d).
+//! core (M1 T2), the lobby (M2 T1), the decoder under mutated frames (M2 T5d), the ladders' queues
+//! (M4 T2).
 
 mod codec;
 mod connection;
+mod ladder;
 mod lobby;
 mod mapping;
 mod mutation;

@@ -23,4 +23,16 @@ epic   = "E08"
 
 # --- server (SRV-STUB-<n>) ---
 
+[[stub]]
+id     = "SRV-STUB-3"
+where  = "crates/h3-server/src/game.rs::run"
+reason = "A match's game runs as an unranked game whose seats belong to its accounts since E16 M4 T2: its first seat is its host (it may pause it alone), no grace or forfeit bounds a player's absence, and one nobody joins waits until the server stops, until E16 M4 T3a"
+epic   = "E16"
+
+[[stub]]
+id     = "SRV-STUB-4"
+where  = "crates/h3-server/src/registry.rs::report"
+reason = "A match's game ends unrated since E16 M4 T2: no rating changes and no line in the ladder's results log until E16 M4 T3b"
+epic   = "E16"
+
 # --- client (CLT-STUB-<n>) ---

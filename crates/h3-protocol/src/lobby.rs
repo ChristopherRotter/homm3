@@ -10,6 +10,7 @@
 //! again without the limits' check (M2 T2).
 
 use alloc::collections::BTreeMap;
+use alloc::string::String;
 use alloc::vec::Vec;
 
 use crate::wire::{GameInfo, Offer, Phase, Refusal, Seat, Seated, ServerMessage};
@@ -122,9 +123,41 @@ impl<O: Ord> Lobby<O> {
                 .collect(),
             spectators,
             seated: Vec::new(),
+            ladder: None,
         };
         self.games.insert(game, Entry { origin, info });
         Ok((game, index))
+    }
+
+    /// Creates a game of `ladder`'s match (E16 M4 T2) from its pool's `offer`, as `origin` (the
+    /// server's own): its id, or why not. A draining server or a full one is refused; the limit
+    /// per origin does not apply (a match is no client's creation). Its seats belong to the two
+    /// accounts from the start, so none is open.
+    pub fn create_ranked(
+        &mut self,
+        origin: O,
+        (offer, ladder): (&str, &str),
+        spectators: bool,
+    ) -> Result<u32, Refusal> {
+        if self.draining {
+            return Err(Refusal::Draining);
+        }
+        let open = self.games.values().filter(|e| e.info.phase != Phase::Over);
+        let game = (self.last.checked_add(1))
+            .filter(|_| open.count() < self.limits.games)
+            .ok_or(Refusal::TooManyGames)?;
+        self.last = game;
+        let info = GameInfo {
+            game,
+            offer: String::from(offer),
+            phase: Phase::Waiting,
+            open: Vec::new(),
+            spectators,
+            seated: Vec::new(),
+            ladder: Some(String::from(ladder)),
+        };
+        self.games.insert(game, Entry { origin, info });
+        Ok(game)
     }
 
     /// Where game `game` is now, as its session reports it: its phase, its open seats and whether
