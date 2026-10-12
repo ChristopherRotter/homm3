@@ -10,8 +10,37 @@
 
 use h3_kernel::{CanonicalHash, StateHasher};
 
-use h3_content::FULL_BP;
-use h3_content::CreatureFlags;
+use h3_content::{CreatureFlags, FULL_BP};
+
+/// Whether a spell is good or bad for its target (the executable's spell table).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
+pub enum SpellPolarity {
+    /// Helps its target.
+    Positive,
+    /// Neither (summons, battlefield spells, adventure spells).
+    Neutral,
+    /// Harms its target.
+    Negative,
+}
+
+impl SpellPolarity {
+    /// All values, in code order.
+    pub const ALL: [Self; 3] = [Self::Positive, Self::Neutral, Self::Negative];
+
+    /// Pack name.
+    pub const fn name(self) -> &'static str {
+        match self {
+            Self::Positive => "positive",
+            Self::Neutral => "neutral",
+            Self::Negative => "negative",
+        }
+    }
+
+    /// Looks a value up by its pack name.
+    pub fn from_name(name: &str) -> Option<Self> {
+        Self::ALL.into_iter().find(|p| p.name() == name)
+    }
+}
 
 /// Most effects of one spell.
 pub const MAX_SPELL_EFFECTS: usize = 4;

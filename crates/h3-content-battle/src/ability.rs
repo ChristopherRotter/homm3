@@ -14,10 +14,10 @@
 
 use h3_kernel::{CanonicalHash, StateHasher};
 
-use h3_content::CreatureFlag;
-use h3_content::{SchoolId, SpellId};
 use h3_content::ContentKey;
+use h3_content::CreatureFlag;
 use h3_content::CreatureTypeId;
+use h3_content::{SchoolId, SpellId};
 
 /// Which stacks a battle-wide aura affects.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
