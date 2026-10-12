@@ -41,6 +41,12 @@ The list the adventure epic owns (ADR-0016 points 5 and 6, ADR-0017 point 5); `h
 - **Events:** a hero's step is told to its owner and to the players who see the hero on the tile it leaves or enters, so the viewer learns of a move only where it can see it; a viewer that sees the hero on one of the two tiles is told that tile only. A projected event names the viewer alone, since the full set of its viewers would tell which tiles other players explored. A move is refused onto an unexplored tile before anything else about that tile is checked (ADV-MOV-008), so a rejection says nothing about a hidden tile.
 - **Never:** any other tile, other players' explored tiles, the master seed, the streams, the state hash. A viewer that is not a player of the game sees the public facts and no tile.
 
+Increment 2 (objects, the treasury, offers; ADR-0016 points 4–6, ADR-0017 points 1, 6 and 10; survey `rules/surveys/E08-objects.md` §8) adds:
+
+- **Typed objects** are seen whole (type, anchor, masks) once any tile they cover is explored, or on the fringe under `ADV-QUIRK-1` (E08 T12b). The type is public, a random resource's drawn resource included (its picture shows it). Never their contents: a pile's or campfire's amount, a campfire's resource. Objects are listed in map order, never by index: an index counts the objects before it, seen or not.
+- **Its own:** its treasury (E08 T13; other players' treasuries are hidden: the Thieves' Guild comes with towns); its per-object state, the Cartographer kinds bought and the keys held (T14, T15); its open decision, kind and price (T14).
+- **Events:** a pickup tells its owner the gain (the treasury's change); an object leaving the map is told to every player who sees it there, as the observation shows it (T13). A reveal tells the visitor its new explored tiles only (T14, T15). A border guard's removal and a hero on a border gate are public where the tiles are seen (T15). A refused offer (the price not payable) is told to its owner only (T14).
+
 ## Denial of service and resource limits
 
 - Bounded command size and count per turn; bounded work per command (path search limits, list lengths).
