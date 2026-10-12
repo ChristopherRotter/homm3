@@ -3,7 +3,9 @@
 //! the setup. Fails when the reader rejects a map, when a map's static layer does not import and
 //! validate, or when a map that imports fails validation; a map the current increment cannot
 //! represent is counted by its reason (`Unsupported`). Prints what the input bounds were set from
-//! (`docs/formats/h3m.md`, "Input bounds") and the import's counts ("Import").
+//! (`docs/formats/h3m.md`, "Input bounds"), the import's counts ("Import") and the maps with a
+//! tile that is the visitable tile of two or more objects (E08 T14a: which object a step there
+//! visits, ADV-OBJ-003).
 //!
 //! `cargo run -p h3-map --example original_data -- original-data/install`
 //!
@@ -15,17 +17,21 @@ use std::process::ExitCode;
 
 use std::sync::Arc;
 
+use h3_adventure::MapSetup;
 use h3_game::{DEFAULT_DIFFICULTY, GameRuleset, GameSetup, PlayerSetup};
 use h3_map::model::{Artifacts, Body, Player, RawMap, SeerTask, Text, Version};
 use h3_map::{ImportError, Limits, gunzip, import, import_map};
 use h3_pack_adventure::{ORIGINAL_PACKS, compile};
 
-/// The largest value of each bounded quantity over all maps, with the map it came from, and how
-/// many objects of each body kind the maps hold.
+/// The largest value of each bounded quantity over all maps, with the map it came from; how many
+/// objects of each body kind the maps hold; how many tiles objects are visited from; each map
+/// with stacked visitable tiles, with the classes on each such tile in map order.
 #[derive(Default)]
 struct Peaks(
     BTreeMap<&'static str, (usize, String)>,
     BTreeMap<&'static str, usize>,
+    usize,
+    BTreeMap<String, Vec<Vec<u32>>>,
 );
 
 impl Peaks {
@@ -98,6 +104,22 @@ fn main() -> ExitCode {
     }
     let kinds: Vec<String> = peaks.1.iter().map(|(k, n)| format!("{k} {n}")).collect();
     println!("  objects by body: {}", kinds.join(", "));
+    let tiles: usize = peaks.3.values().map(Vec::len).sum();
+    println!(
+        "  maps with a tile visited from two or more objects: {} ({tiles} of {} visitable tiles)",
+        peaks.3.len(),
+        peaks.2
+    );
+    let mut stacks = BTreeMap::<&[u32], usize>::new();
+    for classes in peaks.3.values().flatten() {
+        *stacks.entry(classes).or_default() += 1;
+    }
+    for (classes, n) in &stacks {
+        println!("    classes {classes:?} (map order): {n}");
+    }
+    for (map, tiles) in &peaks.3 {
+        println!("    {map}: {}", tiles.len());
+    }
     println!("h3-map: every static layer imports and validates; the import by outcome:");
     for (outcome, maps) in &imports {
         println!("  {outcome}: {}", maps.len());
@@ -152,6 +174,11 @@ fn check(
     setup
         .validate(rules)
         .map_err(|e| format!("static layer: {e}"))?;
+    let (visitable, stacked) = stacked(&map, &setup.map);
+    peaks.2 += visitable;
+    if !stacked.is_empty() {
+        peaks.3.insert(name.to_owned(), stacked);
+    }
     let outcome = match import(&map, rules) {
         Ok(setup) => {
             setup
@@ -163,6 +190,42 @@ fn check(
         Err(e) => return Err(format!("import: {e}")),
     };
     Ok((map.header.version, outcome))
+}
+
+/// The object classes the static layer leaves out (hero, random hero, hero placeholder), as
+/// `h3_map::import_map` does.
+const HERO_CLASSES: [u32; 3] = [34, 70, 214];
+
+/// How many tiles of the static layer objects are visited from, and each one that is the
+/// visitable tile of two or more objects, with the objects' classes in map order.
+fn stacked(map: &RawMap, setup: &MapSetup) -> (usize, Vec<Vec<u32>>) {
+    let classes = map
+        .objects
+        .iter()
+        .filter_map(|o| {
+            usize::try_from(o.template)
+                .ok()
+                .and_then(|t| map.templates.get(t))
+        })
+        .map(|t| t.class)
+        .filter(|class| !HERO_CLASSES.contains(class));
+    let mut tiles = BTreeMap::<(u8, u16, u16), Vec<u32>>::new();
+    for (object, class) in setup.objects.iter().zip(classes) {
+        let anchor = object.anchor;
+        for (column, row) in object.visitable.offsets() {
+            let x = anchor.x.checked_sub(u16::from(column));
+            let y = anchor.y.checked_sub(u16::from(row));
+            if let (Some(x), Some(y)) = (x, y) {
+                tiles.entry((anchor.level, y, x)).or_default().push(class);
+            }
+        }
+    }
+    let visitable = tiles.len();
+    let stacked = tiles
+        .into_values()
+        .filter(|classes| classes.len() > 1)
+        .collect();
+    (visitable, stacked)
 }
 
 fn note(map: &RawMap, peaks: &mut Peaks, name: &str) {

@@ -15,9 +15,11 @@
 //! it reports is one `MoveHero` accepts, and it reports every tile one step away
 //! (property-tested); a client may send any other payable path.
 //!
-//! A tile a pickup is visited from (E08 T13b, ADV-OBJ-003) is a destination, never a tile on the
-//! way: the search reaches it, with the points the hero keeps after the visit on the tile before,
-//! and goes no further from it.
+//! A tile an object is visited from (ADV-OBJ-003) is a destination, never a tile on the way: the
+//! search reaches it and goes no further from it, with the points the hero keeps after the visit
+//! (a pickup's on the tile before, E08 T13b; a Cartographer's on its tile, T14a). Neither such a
+//! tile of an object not visited from above is reached from the three tiles above it, nor are
+//! those tiles reached from it when the hero stands there (ADV-OBJ-004, T14a).
 
 use alloc::collections::BinaryHeap;
 use alloc::vec;
@@ -25,12 +27,23 @@ use alloc::vec::Vec;
 use core::cmp::Reverse;
 
 use h3_content::Ruleset;
-use h3_contracts::HeroId;
+use h3_contracts::{HeroId, PlayerId};
 
 use crate::movement::{DIRECTIONS, Pricing};
 use crate::ruleset::AdventureRuleset;
 use crate::setup::Pos;
-use crate::state::{AdventureState, HeroOnMap, enterable_terrain};
+use crate::state::{AdventureState, HeroOnMap, StaticMap, enterable_terrain};
+
+/// What a search reads besides its window: the state, the rules, the hero's pricing and owner,
+/// and the window's tiles other heroes stand on.
+struct Search<'s> {
+    state: &'s AdventureState,
+    part: &'s AdventureRuleset,
+    map: &'s StaticMap,
+    pricing: Pricing<'s>,
+    owner: PlayerId,
+    occupied: Vec<bool>,
+}
 
 /// The tiles a hero can reach today ([`AdventureState::reach`]): a window of the map around the
 /// hero, as far as its points can take it, with the points left on each tile reached and the
@@ -82,56 +95,89 @@ impl Reach {
                 occupied[slot] = true;
             }
         }
+        let search = Search {
+            state,
+            part,
+            map,
+            pricing,
+            owner: hero.owner,
+            occupied,
+        };
         reach.points[reach.start] = Some(hero.movement);
-        let mut queue = BinaryHeap::from([(hero.movement, Reverse(reach.start))]);
+        let mut queue = BinaryHeap::new();
+        // ADV-OBJ-004: a hero standing on the tile of an object not visited from above leaves it
+        // toward none of the three tiles above (E08 T14a); the start's own expansion only, so the
+        // search's hot loop has no test for it.
+        let closed = state.closed_above(part, origin);
+        reach.expand::<true>(&search, &mut queue, reach.start, hero.movement, closed);
         while let Some((points, Reverse(slot))) = queue.pop() {
             if reach.points[slot] != Some(points) {
                 continue;
             }
-            let at = reach.pos(slot);
-            let from = map.at(at);
-            for (dir, &(dx, dy)) in DIRECTIONS.iter().enumerate() {
-                let Some(next) = reach.neighbour(slot, dx, dy) else {
-                    continue;
-                };
-                let pos = reach.pos(next);
-                let to = map.at(pos);
-                // The same tile checks as MoveHero's (ADV-MOV-007, ADV-MOV-008, ADR-0016 point 4).
-                if !state.is_explored(hero.owner, pos)
-                    || occupied[next]
-                    || !enterable_terrain(part, &to)
-                {
+            reach.expand::<false>(&search, &mut queue, slot, points, false);
+        }
+        reach
+    }
+
+    /// Relaxes the steps from `slot`, reached with `points` left, in the eight directions; a
+    /// tile reached with more points than before goes on the queue unless a visit ends the path
+    /// there. `START` is the hero's own tile, whose steps up are skipped when `closed`.
+    #[inline(always)]
+    fn expand<const START: bool>(
+        &mut self,
+        search: &Search<'_>,
+        queue: &mut BinaryHeap<(u32, Reverse<usize>)>,
+        slot: usize,
+        points: u32,
+        closed: bool,
+    ) {
+        let (state, part, pricing) = (search.state, search.part, &search.pricing);
+        let at = self.pos(slot);
+        let from = search.map.at(at);
+        for (dir, &(dx, dy)) in DIRECTIONS.iter().enumerate() {
+            if START && closed && dy < 0 {
+                continue;
+            }
+            let Some(next) = self.neighbour(slot, dx, dy) else {
+                continue;
+            };
+            let pos = self.pos(next);
+            let to = search.map.at(pos);
+            // The same tile checks as MoveHero's (ADV-MOV-007, ADV-MOV-008, ADR-0016 point 4).
+            if !state.is_explored(search.owner, pos)
+                || search.occupied[next]
+                || !enterable_terrain(part, &to)
+            {
+                continue;
+            }
+            // What objects still on the map cover there (the occupancy layer): a visit ends
+            // the path (ADV-OBJ-003), a blocked tile, a visit not built yet or one entered from
+            // above against ADV-OBJ-004 stops it.
+            let mut visit = false;
+            if to.blocked || to.visitable {
+                let live = state.live(pos, to);
+                if live.visitable {
+                    match state.visit_at(part, pos) {
+                        Some(v) if v.from_above || dy <= 0 => visit = true,
+                        _ => continue,
+                    }
+                } else if live.blocked {
                     continue;
                 }
-                // What objects still on the map cover there (the occupancy layer): a visit ends
-                // the path (ADV-OBJ-003), a blocked tile or a visit not built yet stops it.
-                let mut visit = false;
-                if to.blocked || to.visitable {
-                    let live = state.live(pos, to);
-                    if live.visitable {
-                        if state.visit_at(part, pos).is_none() {
-                            continue;
-                        }
-                        visit = true;
-                    } else if live.blocked {
-                        continue;
-                    }
-                }
-                let Some(left) = points.checked_sub(pricing.step(&from, &to, dir % 2 == 1, points))
-                else {
-                    continue;
-                };
-                let left = pricing.left_after(&to, left);
-                if reach.points[next].is_none_or(|best| left > best) {
-                    reach.points[next] = Some(left);
-                    reach.via[next] = dir as u8;
-                    if !visit {
-                        queue.push((left, Reverse(next)));
-                    }
+            }
+            let Some(left) = points.checked_sub(pricing.step(&from, &to, dir % 2 == 1, points))
+            else {
+                continue;
+            };
+            let left = pricing.left_after(&to, left);
+            if self.points[next].is_none_or(|best| left > best) {
+                self.points[next] = Some(left);
+                self.via[next] = dir as u8;
+                if !visit {
+                    queue.push((left, Reverse(next)));
                 }
             }
         }
-        reach
     }
 
     /// The window's slot of `pos`, if the window holds it.

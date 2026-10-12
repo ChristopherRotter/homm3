@@ -22,11 +22,11 @@ use crate::command::{
     Sink, Viewers,
 };
 use crate::fog::{on_fringe, reveal};
-use crate::movement::{Pricing, day_points, direction};
+use crate::movement::{DIRECTIONS, Pricing, day_points, direction};
 use crate::persistent::BitGrid;
 use crate::ruleset::{
-    AdventureRuleset, MAX_PICKUP_AMOUNT, ObjectKind, ObjectTypeId, Passage, Pickup, RiverId,
-    RoadId, Visit,
+    AdventureRuleset, MAX_PICKUP_AMOUNT, ObjectKind, ObjectType, ObjectTypeId, Passage, Pickup,
+    RiverId, RoadId, Visit,
 };
 use crate::setup::{
     AdventureSetup, ArmyError, HeroSetup, MapSetup, ObjectSetup, Pos, SetupError, StandError,
@@ -348,7 +348,8 @@ impl StaticMap {
     }
 
     /// The objects visited from `pos`, by index in map order, if a typed one is among them (none
-    /// for a tile only blockers are visited from, or one off the map).
+    /// for a tile only blockers are visited from, or one off the map). A visit concerns the last
+    /// of them still on the map ([`AdventureState::visit_at`], E08 T14a).
     pub fn visited_from(&self, pos: Pos) -> &[usize] {
         self.index(pos)
             .filter(|&index| self.typed_visits[index / 64] >> (index % 64) & 1 == 1)
@@ -397,6 +398,16 @@ impl CanonicalHash for Pos {
         h.write_u16(self.y);
         h.write_u8(self.level);
     }
+}
+
+/// What a step visits (ADV-OBJ-003): the object, by index in the static map, its type, how it
+/// is visited and whether it may be from above (ADV-OBJ-004).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) struct StepVisit {
+    pub(crate) object: usize,
+    pub(crate) object_type: ObjectTypeId,
+    pub(crate) mode: Visit,
+    pub(crate) from_above: bool,
 }
 
 /// A hero on the adventure map (ADR-0016 point 3): its id, owner, tile, army and movement points.
@@ -531,14 +542,20 @@ impl AdventureState {
     /// Whether a hero may stand on `pos` (ADV-MAP-001): a tile of the map whose terrain is
     /// walked on land, which no object blocks unless an object is visited from it, and no other
     /// hero stands on. A visitable tile is allowed even where a mask also blocks it (a hero may
-    /// stand on a town's entrance, which the town's masks mark both ways).
+    /// stand on a town's entrance, which the town's masks mark both ways), unless its object is
+    /// visited from a neighbouring tile: no move ever enters such a tile (ADV-OBJ-003), so a setup
+    /// may not place a hero there either (E08 T14a).
     ///
     /// # Errors
     ///
     /// Why it may not, checked in the order of [`StandError`].
     // rule: ADV-MAP-001
     pub fn check_stand(&self, part: &AdventureRuleset, pos: Pos) -> Result<(), StandError> {
-        self.check_tile(part, pos, None).map(|_| ())
+        self.check_tile(part, pos, None)?;
+        match self.tile_object(part, pos) {
+            Some((_, _, ty)) if ty.visit == Visit::Neighbour => Err(StandError::Visited),
+            _ => Ok(()),
+        }
     }
 
     /// [`Self::check_stand`] for `mover`, which may stand where it already stands; the tile.
@@ -591,9 +608,11 @@ impl AdventureState {
     /// tiles the player has explored when it gives the command), then the hero stands on its last
     /// tile with the points left; each step reveals the tiles around the tile it enters
     /// (ADV-FOG-003) and emits its event, seen by the players that see the hero on either of its
-    /// tiles (ADV-FOG-004, ADV-FOG-005). A step toward a tile a pickup is visited from is the
-    /// path's last (ADV-OBJ-003): it is paid as if taken (ADV-MOV-006's rule included), the hero
-    /// stays on the tile before, and the pickup is visited ([`Self::visit`]).
+    /// tiles (ADV-FOG-004, ADV-FOG-005). A step onto a tile an object is visited from is the
+    /// path's last (ADV-OBJ-003) and visits it ([`Self::visit`]): an entered object's tile (the
+    /// Cartographer's, E08 T14a) the hero steps onto; toward a neighbour-visited object's (a
+    /// pickup's, T13b) the step is paid as if taken (ADV-MOV-006's rule included) and the hero
+    /// stays on the tile before.
     // rule: ADV-MOV-006, ADV-MOV-007, ADV-FOG-003, ADV-OBJ-003
     fn move_hero<S: Sink>(
         &mut self,
@@ -622,20 +641,21 @@ impl AdventureState {
             if visit.is_some() {
                 return Err(AdventureCommandError::PastVisit { step });
             }
-            let diagonal =
-                direction(at, next).ok_or(AdventureCommandError::NotNeighbour { step })? % 2 == 1;
-            let (to, visited) = self.check_step(part, player, id, next, step)?;
-            let cost = pricing.step(&from, &to, diagonal, points);
+            let direction =
+                direction(at, next).ok_or(AdventureCommandError::NotNeighbour { step })?;
+            let (to, visited) = self.check_step(part, player, id, (at, next), direction, step)?;
+            let cost = pricing.step(&from, &to, direction % 2 == 1, points);
             let left = points
                 .checked_sub(cost)
                 .ok_or(AdventureCommandError::TooFewPoints { step, cost, points })?;
             points = pricing.left_after(&to, left);
-            match visited {
-                Some(object) => visit = Some(object),
-                None => (at, from) = (next, to),
+            if visited.is_none_or(|v| v.mode == Visit::Enter) {
+                (at, from) = (next, to);
             }
+            visit = visited;
         }
-        let walked = &path[..path.len() - usize::from(visit.is_some())];
+        let stays = visit.is_some_and(|v| v.mode == Visit::Neighbour);
+        let walked = &path[..path.len() - usize::from(stays)];
         let hero = &mut self.heroes[index];
         hero.pos = at;
         hero.movement = points;
@@ -659,31 +679,37 @@ impl AdventureState {
             });
             from = to;
         }
-        Ok(visit.map_or_else(AdventureOutcome::default, |object| {
-            self.visit(core, object, sink)
+        Ok(visit.map_or_else(AdventureOutcome::default, |visit| {
+            self.visit(core, part, visit, sink)
         }))
     }
 
-    /// A pickup's visit (ADV-PIK-001, ADV-PIK-003): the visitor's owner gains its contents, and
-    /// it leaves the map ([`Self::remove_object`], ADV-OBJ-005), told to the players that see it
-    /// there.
+    /// An object's visit by its kind. A pickup (ADV-PIK-001, ADV-PIK-003): the visitor's owner
+    /// gains its contents, and it leaves the map ([`Self::remove_object`], ADV-OBJ-005), told to
+    /// the players that see it there. The Cartographer: nothing yet (its offer comes with E08
+    /// T14b).
     // rule: ADV-PIK-001, ADV-PIK-003, ADV-OBJ-005
     fn visit<S: Sink>(
         &mut self,
         core: &Ruleset,
-        (index, object_type): (usize, ObjectTypeId),
+        part: &AdventureRuleset,
+        visit: StepVisit,
         sink: &mut S,
     ) -> AdventureOutcome {
-        let object = &self.map.objects()[index];
+        let kind = part.object_type(visit.object_type).map(|ty| &ty.kind);
+        let Some(ObjectKind::Pickup(_)) = kind else {
+            return AdventureOutcome::default();
+        };
+        let object = &self.map.objects()[visit.object];
         let gains = object.contents.clone();
         sink.emit(AdventureEvent {
             kind: AdventureEventKind::ObjectRemoved {
-                object_type,
+                object_type: visit.object_type,
                 anchor: object.anchor,
             },
             seen_by: self.object_viewers(core, object),
         });
-        self.remove_object(index);
+        self.remove_object(visit.object);
         AdventureOutcome { gains }
     }
 
@@ -703,31 +729,49 @@ impl AdventureState {
             .fold(Viewers::NONE, |viewers, (_, player)| viewers.with(player))
     }
 
-    /// The object a step onto `pos` visits, with its type, if its visit is built: the first
-    /// object in map order still on the map that is visited from `pos` (VCMI's `blockingVisit`
-    /// takes the first such object of the tile), if it is a pickup visited from a neighbouring
-    /// tile (E08 T13b; ADR-0016 point 4). The caller has checked that `pos` is visitable as it
-    /// stands now.
-    pub(crate) fn visit_at(
+    /// The object a visit at `pos` concerns, with its type: the last object in map order still on
+    /// the map that is visited from `pos`, if it has a type (E08 T14a; ADV-OBJ-003). The original
+    /// keeps one object per tile (the map tile's class, 0x4FCBD0), the topmost one drawn there that
+    /// is visited from it (0x505610), the objects placed in map order when the map loads
+    /// (0x4FD690, 0x505B20); the step, the visit and the pathfinder's test from above all read
+    /// that one, so a single order serves both visit modes here. VCMI visits the last of the tile
+    /// when it is entered (`visitObjectOnTile`), the first when it is not (`blockingVisit`).
+    fn tile_object<'p>(
         &self,
-        part: &AdventureRuleset,
+        part: &'p AdventureRuleset,
         pos: Pos,
-    ) -> Option<(usize, ObjectTypeId)> {
-        let built = |id: &ObjectTypeId| {
-            part.object_type(*id).is_some_and(|ty| {
-                matches!(
-                    (ty.visit, &ty.kind),
-                    (Visit::Neighbour, ObjectKind::Pickup(_))
-                )
-            })
-        };
-        self.map
+    ) -> Option<(usize, ObjectTypeId, &'p ObjectType)> {
+        let index = self
+            .map
             .visited_from(pos)
             .iter()
+            .rev()
             .copied()
-            .find(|&index| !self.is_removed(index))
-            .and_then(|index| self.map.objects()[index].object_type.map(|id| (index, id)))
-            .filter(|(_, id)| built(id))
+            .find(|&index| !self.is_removed(index))?;
+        let id = self.map.objects()[index].object_type?;
+        part.object_type(id).map(|ty| (index, id, ty))
+    }
+
+    /// What a step onto `pos` visits, if its visit is built ([`ObjectKind::visit_built`]): the
+    /// object of [`Self::tile_object`] and how it is visited. The caller has checked that `pos`
+    /// is visitable as it stands now.
+    pub(crate) fn visit_at(&self, part: &AdventureRuleset, pos: Pos) -> Option<StepVisit> {
+        self.tile_object(part, pos)
+            .filter(|(_, _, ty)| ty.kind.visit_built())
+            .map(|(object, object_type, ty)| StepVisit {
+                object,
+                object_type,
+                mode: ty.visit,
+                from_above: ty.from_above,
+            })
+    }
+
+    /// Whether `pos` is the visitable tile of an object not visited from above (ADV-OBJ-004): a
+    /// walking hero neither steps onto it from, nor leaves it toward, the three tiles above it.
+    // rule: ADV-OBJ-004
+    pub(crate) fn closed_above(&self, part: &AdventureRuleset, pos: Pos) -> bool {
+        self.tile_object(part, pos)
+            .is_some_and(|(_, _, ty)| !ty.from_above)
     }
 
     /// Who sees a hero of `owner` on `pos`, a tile of the map (ADV-FOG-004, ADV-FOG-005, as the
@@ -746,26 +790,38 @@ impl AdventureState {
             .fold(Viewers::NONE, |viewers, (_, player)| viewers.with(player))
     }
 
-    /// Whether `player`'s hero `mover` may step onto `pos`: a tile the player has explored
-    /// (ADV-MOV-008; a tile off the map is not asked about, the map's size being public), then
-    /// one it may stand on (ADV-MOV-007); the tile, and the object the step visits if an object
-    /// is visited from it (ADR-0016 point 4: only a pickup's visit is built, E08 T13b). The
-    /// explored test comes first, so a rejection tells nothing about a hidden tile.
-    // rule: ADV-MOV-007, ADV-MOV-008
+    /// Whether `player`'s hero `mover` may step from `from` onto `pos`, in `direction`: a tile the
+    /// player has explored (ADV-MOV-008; a tile off the map is not asked about, the map's size
+    /// being public), then one it may stand on (ADV-MOV-007), then not onto or off an object's
+    /// tile across its top (ADV-OBJ-004); the tile, and the object the step visits if an object
+    /// is visited from it (ADR-0016 point 4: a pickup's visit since E08 T13b, the Cartographer's
+    /// since T14a). The explored test comes first, so a rejection tells nothing about a hidden
+    /// tile.
+    // rule: ADV-MOV-007, ADV-MOV-008, ADV-OBJ-004
     fn check_step(
         &self,
         part: &AdventureRuleset,
         player: PlayerId,
         mover: HeroId,
-        pos: Pos,
+        (from, pos): (Pos, Pos),
+        direction: usize,
         step: usize,
-    ) -> Result<(StaticTile, Option<(usize, ObjectTypeId)>), AdventureCommandError> {
+    ) -> Result<(StaticTile, Option<StepVisit>), AdventureCommandError> {
         if self.map.tile(pos).is_some() && !self.is_explored(player, pos) {
             return Err(AdventureCommandError::Unexplored { step });
         }
         let tile = self
             .check_tile(part, pos, Some(mover))
             .map_err(|error| AdventureCommandError::Blocked { step, error })?;
+        // A step down enters `pos` from above; a step up leaves `from` across its top.
+        let across = match DIRECTIONS[direction].1 {
+            1 => Some(pos),
+            -1 => Some(from),
+            _ => None,
+        };
+        if across.is_some_and(|at| self.closed_above(part, at)) {
+            return Err(AdventureCommandError::FromAbove { step });
+        }
         if !tile.visitable {
             return Ok((tile, None));
         }

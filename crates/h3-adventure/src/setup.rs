@@ -153,6 +153,9 @@ pub enum StandError {
     Blocked,
     /// Another hero stands there.
     Occupied,
+    /// The tile's object is visited from a neighbouring tile, so no hero stands on it (a setup's
+    /// check only: a move's step toward such a tile visits it, ADV-OBJ-003; E08 T14a).
+    Visited,
 }
 
 impl fmt::Display for StandError {
@@ -162,6 +165,7 @@ impl fmt::Display for StandError {
             Self::Terrain => "the terrain is not walked on land",
             Self::Blocked => "an object blocks the tile",
             Self::Occupied => "another hero stands there",
+            Self::Visited => "the tile's object is visited from a neighbouring tile",
         })
     }
 }

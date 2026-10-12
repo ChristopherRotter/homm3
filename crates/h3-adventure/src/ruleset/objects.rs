@@ -104,6 +104,16 @@ pub enum ObjectKind {
     },
 }
 
+impl ObjectKind {
+    /// Whether a visit of this kind is built (ADR-0016 point 4; ADV-OBJ-003): the one place a
+    /// task that builds a kind's visit extends. A step onto the visitable tile of an object whose
+    /// visit is not built is rejected (`Visit`). E08 T13b: the pickups; T14a: the Cartographer,
+    /// entered with no effect until T14b's offer; T15: the observatories, tents, guards and gates.
+    pub(crate) const fn visit_built(&self) -> bool {
+        matches!(self, Self::Pickup(_) | Self::RevealTerrain { .. })
+    }
+}
+
 /// A compiled object type (ADV-OBJ-002).
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ObjectType {
@@ -113,7 +123,8 @@ pub struct ObjectType {
     pub name: String,
     /// How it is visited.
     pub visit: Visit,
-    /// Whether it may be visited from the three tiles above its visitable tile.
+    /// Whether it may be visited from the three tiles above its visitable tile; when not, a
+    /// walking hero also leaves that tile toward none of them (ADV-OBJ-004).
     pub from_above: bool,
     /// Its behaviour.
     pub kind: ObjectKind,

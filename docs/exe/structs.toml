@@ -278,8 +278,10 @@ fields = [
   { offset = 0x0, name = "word", type = "u32", summary = "the class's data on the object's entrance tile: a pile's amount (low 19 bits) and guards flag (bit 31), a campfire's resource (low 4 bits) and amount (bits 4 up)", confidence = "read", refs = ["rules/surveys/E08-objects.md §3"] },
   { offset = 0x4, name = "terrain", type = "u8", summary = "terrain code 0-9", confidence = "read", refs = ["rules/surveys/E08-objects.md §4"] },
   { offset = 0xD, name = "access", type = "u8", summary = "0x01 cannot be entered, 0x10 an object's entrance (visitable) tile (H3API's names)", confidence = "read", refs = ["rules/surveys/E08-objects.md §2"] },
+  { offset = 0xE, name = "draw_list", type = "vector", summary = "the objects drawn on the tile, bottom to top (4-byte entries: object index u16, footprint cell, layer); 0x505610 takes the tile's object from it", confidence = "read", refs = ["rules/surveys/E08-objects.md §2.5"] },
   { offset = 0x1E, name = "class", type = "i32", summary = "the object class on this tile", confidence = "read", refs = ["rules/surveys/E08-objects.md §2"] },
   { offset = 0x22, name = "subclass", type = "i16", summary = "the object subclass on this tile", confidence = "read", refs = ["rules/surveys/E08-objects.md §2"] },
+  { offset = 0x24, name = "object_index", type = "i16", summary = "the index of the tile's object (the topmost drawn one visited from it; -1 none); its class and subclass are +0x1E and +0x22 (H3API's drawnObjectIndex)", confidence = "read", refs = ["rules/surveys/E08-objects.md §2.5"] },
 ]
 
 [[struct]]

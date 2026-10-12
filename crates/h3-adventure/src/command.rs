@@ -21,7 +21,8 @@ pub enum AdventureCommand {
     /// points left. The path is validated step by step and rejected whole: a step the hero
     /// cannot pay is a rejection, not the original's stop that wastes the rest (survey §1.3).
     /// Its last step may visit an object (ADV-OBJ-003): a step toward a pickup's visitable tile
-    /// visits it from the tile before, which the hero does not leave (E08 T13b).
+    /// visits it from the tile before, which the hero does not leave (E08 T13b); a step onto a
+    /// Cartographer's enters it (T14a).
     MoveHero {
         /// The hero.
         hero: HeroId,
@@ -59,9 +60,15 @@ pub enum AdventureCommandError {
         error: StandError,
     },
     /// A step's tile is one an object is visited from whose visit is not built: a blocker's, or
-    /// an object's other than a pickup (the Cartographer's in E08 T14, the other visitable
-    /// objects' in T15; ADR-0016 point 4).
+    /// an object's other than a pickup or a Cartographer (the other visitable objects' come with
+    /// E08 T15; ADR-0016 point 4).
     Visit {
+        /// The step.
+        step: usize,
+    },
+    /// A step goes down onto the visitable tile of an object not visited from above, or up off
+    /// such a tile (ADV-OBJ-004).
+    FromAbove {
         /// The step.
         step: usize,
     },
@@ -93,6 +100,12 @@ impl fmt::Display for AdventureCommandError {
             Self::Blocked { step, error } => write!(f, "step {step}: {error}"),
             Self::Visit { step } => {
                 write!(f, "step {step} goes to a tile no visit is built for")
+            }
+            Self::FromAbove { step } => {
+                write!(
+                    f,
+                    "step {step} crosses the top of an object's visitable tile"
+                )
             }
             Self::PastVisit { step } => write!(f, "step {step} follows a visit"),
             Self::TooFewPoints { step, cost, points } => {

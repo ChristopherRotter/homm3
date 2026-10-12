@@ -55,15 +55,17 @@ pub(super) const BLOCKERS: [(Mask, Mask); 3] = [
 pub(super) const BLOCKER_CLASS: u32 = 124;
 /// The kinds of objects a plan lays out (E08 T12b): the blocker, then typed objects whose drawn
 /// contents no viewer sees, as class, subclass and a resource body's amount: a wood pile of a
-/// drawn amount, 300 gold, a campfire, a Redwood Observatory, the red Keymaster's tent. No random
-/// resource: its drawn pile type shows.
-pub(super) const KINDS: [(u32, u32, Option<u32>); 6] = [
+/// drawn amount, 300 gold, a campfire, a Redwood Observatory, the red Keymaster's tent and (E08
+/// T14a) a land Cartographer, entered and not from above. No random resource: its drawn pile type
+/// shows.
+pub(super) const KINDS: [(u32, u32, Option<u32>); 7] = [
     (BLOCKER_CLASS, 0, None),
     (79, 0, Some(0)),
     (79, 6, Some(3)),
     (12, 0, None),
     (58, 0, None),
     (10, 2, None),
+    (13, 1, None),
 ];
 /// The objects a plan may lay out: object `i` has the shape `BLOCKERS[i % 3]` and the kind
 /// `KINDS[i / 3]`, and the template `1 + i` (the blockers keep templates 1 to 3).
