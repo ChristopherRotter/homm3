@@ -390,6 +390,10 @@ ranked game per player per ladder, bots exempt; no turn timer in M4 (a game rule
 - **T8 An agreed pause's hold across a restart** (done 2026-10-12, SRV-Q22 (b); `E16-log.md`):
   the hold of a pause resumed early journaled (`Held`) and re-applied at a restore, over at its
   due time; journal format 7, no wire change.
+- **M4's review items** (done 2026-10-12, the user's request; `E16-log.md`): a match that stops
+  with its journal kept keeps its players until the next start; a start re-runs the journals one
+  by one by game id; and from the inbox, a drain or a stop a full inbox missed, a rename racing a
+  re-key.
 
 ## Exit criteria (M4)
 

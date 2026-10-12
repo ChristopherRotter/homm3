@@ -87,7 +87,10 @@ only and a visible note. The server never reads anything from this check.
 - **Content, write-ahead, restore at start** are code since M2 T2 (`h3-server/src/journal.rs`,
   `registry::restore`; `Session::restore` in `h3-protocol`; the record in `E16-log.md`): a journal
   per game in `<data>/games/`, its entries synced before the frames that depend on them, re-run
-  at start, a journal that does not match or re-run moved to `<data>/void/`.
+  at start one after another by game id (since M4's review items: finished, unrated ranked games
+  are rated in that order), a journal that does not match or re-run moved to `<data>/void/`. A
+  game that stops with its journal kept (it no longer writes, its thread panicked) keeps a match's
+  players from another match on its ladder until the next start.
 - **Pause and resume** are code since M2 T3 (the record in `E16-log.md`): unranked, the host's
   `Pause` pauses, a paused game is its journal, a seat's join with its token restores it (or as
   the seat's account, M3 T3). Since
@@ -96,7 +99,8 @@ only and a visible note. The server never reads anything from this check.
   agree, within the ladder's limit (M4 T6, §11).
 - **Upgrades.** A drain mode refuses new games and lets open ones finish; the operator then
   upgrades. Code since M2 T5a: the first SIGINT or SIGTERM drains (`Refused { Draining }` for a
-  creation, a waiting game ends, running and paused ones go on), the server stops once none
+  creation, a waiting game ends, running and paused ones go on; a game whose full inbox missed
+  the signal asks the registry after its next message), the server stops once none
   waits or runs, a second signal stops it at once; stopped, the connections hear
   `Goodbye { Shutdown }` and the journals stay for the next start. Games left open across an upgrade whose engine or content identity changed are
   void. When state saves exist (ADR-0004 point 9, an adventure-lane topic for long games), a
@@ -190,7 +194,9 @@ contains seeds, tokens, nonces or signatures.
   as an Ed25519 key, a `Rebound` line.
 - **Renames and the preference** (M3 T2b). `Rename` takes a display name no other account has,
   ignoring case (one's own in another case is free; else `NameTaken`); `SetListed` sets
-  `listed`. Each answered `Account`; a request that changes nothing writes no line.
+  `listed`. Each answered `Account`; a request that changes nothing writes no line. Either is
+  refused (`BadLogin`) from a connection whose key the account re-keyed from meanwhile (since
+  M4's review items: a rename on its way as a re-key elsewhere commits).
 - **Privacy.** A public key and a login name are shown to their owner only (a fingerprint in the
   client); other clients see display names. Anonymous connections may never queue for a ladder.
 - **Seats bound to accounts** (built in M3 T3). A connection opens a game with the account it is

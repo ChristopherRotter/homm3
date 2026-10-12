@@ -4,7 +4,7 @@ The server lane's living state; read after the global `docs/HANDOFF.md`. Format 
 
 ## Current state
 
-- **M1–M4 closed** (SRV-Q12, SRV-Q16, SRV-Q18, SRV-Q22), M4 T8 too (the hold of a pause resumed early, across a restart). M4's detail: `E16-design.md` §11 (ADR-0019 points 4–9; no turn timer: a game rule, M5). **Next: M6's refinement** (discovery; with the user, `QUEUE.md`).
+- **M1–M4 closed** (SRV-Q12, SRV-Q16, SRV-Q18, SRV-Q22), M4 T8 and four review items too (`E16-log.md`). M4's detail: `E16-design.md` §11 (ADR-0019 points 4–9; no turn timer: a game rule, M5). **Next: M6's refinement** (discovery; with the user, `QUEUE.md`).
 - **ADR-0018 point 5 as amended:** the mapping's matches over the engine's enums are exhaustive, and since T4b its patterns over the observation's structs too; a new battle variant or observation field fails `h3-protocol`'s build until mapped (global HANDOFF trap).
 - **The 100 % gate** covers `h3-protocol` (logic); `h3-server` is an adapter outside it, tested end to end.
 - **Versions** (`docs/08-work-process.md`): `PROTOCOL_VERSION` (`h3-protocol`, 20 since M4 T5b's bot opt-out; bumped on every wire change), `RECORD_FORMAT_VERSION` (`h3-protocol`, 2 since M2 T5c), `JOURNAL_FORMAT_VERSION` (`h3-server`, 7 since M4 T8's `Held`; a journal of another format is void at start).
@@ -23,12 +23,12 @@ The server lane's living state; read after the global `docs/HANDOFF.md`. Format 
 - `postcard` (and any format that is not self-describing) cannot decode `#[serde(tag = ...)]`, `untagged` or `flatten`: keep the wire types in serde's default enum form (SRV-Q5).
 - A 64-bit integer on the wire travels as a string (JavaScript clients lose precision above 2^53).
 - A wildcard arm after every variant of an enum still counts as one uncovered region (llvm-cov), and `#[coverage(off)]` is unstable: no fallback arms in `h3-protocol` (ADR-0018 point 5 as amended).
-- A test client picking uniformly among legal commands rarely ends a `full` battle (mostly moves; stacks regenerate): pick strikes when there are any (`tests/session.rs`, `play`).
+- A test client picking uniformly among legal commands rarely ends a `full` battle: pick strikes when there are any (`tests/session.rs`, `play`).
 - A test `Client` answers pings only while it reads: one unread beyond `ping_timeout_ms` is dropped, and its late pong draws a reset that drops its unread frames.
 - Automated clients exceed the default rates (20 messages/s, 40 per address): end-to-end tests that play raise both (`tests.rs`, `fast()`).
 - A frame the game marks `left` is acted on only if the task passed the game exactly that many messages (`Bound::passed`): a join pipelined behind a refused one may take a seat, and leaving then would drop its `Joined` and the seat's token.
 - A game leaves the lobby only under the registry's lock, after its bound connections are counted down (`registry.rs`): deciding by the game's own connection list races a join that is already queued.
-- A socket closed over unread data is reset, and the reset makes the peer drop what it has not read yet (a `Goodbye`): the transport's close reads on for the peer's close (`net.rs`, `LINGER`); the flooding test catches a regression in most runs only.
+- A socket closed over unread data is reset, and the peer drops what it has not read (a `Goodbye`): the transport's close reads on for the peer's close (`net.rs`, `LINGER`).
 - A journal's line holds tokens: errors from reading one name the line and column, never its text (serde_json's messages quote values); a log line never carries a hash either (`journal.rs`).
 - No file I/O under the registry's lock (T5e): a game creates or reads its journal on its own thread (`game::launch`), and a new or resumed game's own opening is queued under the lock (`registry::Opening::first`) before anything else reaches it.
 - A finished game's replay is written by `game::finish` into the archive's directory its spectator setting names (`archive::dir`) and must then join the registry's archive (`Registry::archived`): a replay written elsewhere is neither listed nor trimmed.
@@ -46,21 +46,21 @@ The server lane's living state; read after the global `docs/HANDOFF.md`. Format 
 - A queued connection hears its queue only through its own channel (`registry::ToConn`, `(text, still queued)`), sent under the registry's lock with `try_send`; a message for a connection that answers nothing (`AcceptMatch` while the other has not) is `Routed::Passed`.
 - A ranked game's time moves only through `Session::elapse`, which the game's thread calls before every message, closed connection and tick (`game::run`): a new event must call it first. A game's end is `Session::over` (a forfeit leaves `result()` empty).
 - A server's bot account has no `key` (T5): a login, a re-key and `rebind` must never match it.
-- A paused journal's last write starts its deadline and an agreed pause's due time: never append to one.
-- A pause's hold returns at a restore from `agreed_pause()` (paused) or `held_pause()` (resumed early: `Held`, ended by `elapse`); `game::resume` re-applies either.
+- A paused journal's last write starts its deadline and an agreed pause's due time: never append to one. A pause's hold returns at a restore from `agreed_pause()` or `held_pause()` (`Held`); `game::resume` re-applies either.
+- A game whose thread ends with its journal kept leaves by `Registry::stopped`, not `leave` (a match keeps its players). A start re-runs journals one by one by id (rating order).
 - A ranked game's end is told only by the host's verdict (`publish_replay`/`withhold_replay`): a new way to end must reach `finish`. A ladder's log names a game once (`<data>/next-game`): never hand out ids below `GameIds::last`.
 - **The workload is lane-only and follows `master`** (55 % battle engine; the full verify does not measure it): `verify --scope server` measures it at each session's start; a drift from `master` is re-baselined (`cargo xtask bench-check --update --workload session-random-play-full`), the range named in the commit. Measure only with the file's arguments (they shift the heap `malloc` walks).
-- Windows refuses `set_len` through an `append(true)` handle: logs open `write(true)` and write at their end (`journal::open_log`). Check with clippy `--target x86_64-pc-windows-gnu` (`rustup target add` works); Wine is no test of it.
+- Windows refuses `set_len` through an `append(true)` handle: logs open `write(true)` and write at their end (`journal::open_log`). Check with clippy `--target x86_64-pc-windows-gnu`; Wine is no test.
 
 ## Recent sessions
 
 ### 2026-10-12 — M4 T8, the pause's hold across a restart
 
-#130, #134 merged. Built T8 (`E16-log.md`): `Held`; journal 7.
+#130, #134 merged. T8 (`E16-log.md`): `Held`, journal 7; then four review items.
 
 ### 2026-10-12 — M4 T7, M4's closure
 
-#124 merged. Built T7 (`E16-log.md`): restart test, 06-security, client note, review fixes; then the logs on Windows.
+#124 merged. T7 (`E16-log.md`): M4's closure; then the logs on Windows.
 
 ### 2026-10-12 — M4 T5b, a player's bot opt-out
 
