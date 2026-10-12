@@ -226,6 +226,8 @@ pub enum SetupError {
     /// The object at this index has an amount its type does not take, or one outside 1 to
     /// [`crate::MAX_PICKUP_AMOUNT`].
     ObjectAmount(usize),
+    /// More objects than the state tracks (32 × 65 535); the number.
+    Objects(usize),
     /// Two heroes share this id.
     DuplicateHero(HeroId),
     /// The hero's owner is not a player of the game.
@@ -271,6 +273,7 @@ impl fmt::Display for SetupError {
             Self::ObjectAmount(object) => {
                 write!(f, "object {object} has an amount its type does not take")
             }
+            Self::Objects(n) => write!(f, "{n} objects are too many"),
             Self::DuplicateHero(hero) => write!(f, "hero {} is placed twice", hero.raw()),
             Self::UnknownOwner(hero) => {
                 write!(f, "hero {}'s owner is not a player", hero.raw())

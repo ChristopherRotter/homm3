@@ -137,11 +137,11 @@ commands = [
     "1 end-turn",
 ]
 checkpoints = [
-    "0xfc76405f0103eb26",
-    "0x6cb46fb999b1e2fc",
-    "0xe2dcbc9b4f3b83d0",
-    "0xccbe39b2ad41fff0",
-    "0xab9a8dd5f1c8b9e6",
+    "0xdb13352e3de45e5f",
+    "0x75c04ed44ebe9b3a",
+    "0x6407f8d6feee68ea",
+    "0x9c27a0c6525a7e56",
+    "0xb9e48733f5b9535c",
 ]
 
 [replay]
@@ -180,4 +180,4 @@ import_version = 2
 
 [result]
 day = 29
-final_hash = "0x51646153a932249c"
+final_hash = "0x168b1ca51d35f851"

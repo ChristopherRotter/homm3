@@ -47,7 +47,8 @@ pub struct GameState {
 impl GameState {
     /// Builds a game from its setup and master seed: the setup's checks
     /// ([`GameSetup::validate`]), its random placeholders resolved from the setup stream (the
-    /// starting armies, GAM-SET-001), a stream per player, sequential play (GAM-TRN-001) on day 1
+    /// starting armies, GAM-SET-001, then the map objects' contents, ADR-0016 point 4), a stream
+    /// per player, sequential play (GAM-TRN-001) on day 1
     /// (GAM-CAL-001), and the first group's turn started, so the first day starts as every later
     /// one (ADR-0017 point 3; no context has a rule at the start of a day yet).
     ///
@@ -57,7 +58,7 @@ impl GameState {
     pub fn new(rules: &GameRuleset, setup: &GameSetup, seed: u64) -> Result<Self, GameSetupError> {
         let mut draws = Rng::for_stream(seed, StreamId::SETUP);
         let part = setup.adventure_setup(rules, &mut draws)?;
-        let adventure = AdventureState::new(rules.core(), rules.adventure(), &part)
+        let adventure = AdventureState::new(rules.core(), rules.adventure(), &part, &mut draws)
             .map_err(GameSetupError::Adventure)?;
         let players: Vec<PlayerState> = setup
             .players

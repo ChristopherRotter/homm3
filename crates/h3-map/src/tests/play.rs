@@ -24,7 +24,7 @@ use super::import::{object, template};
 use super::sample;
 use super::strategy::version;
 use crate::import::codes;
-use crate::model::{Body, HeroBody, RawMap, Stack, Tile, Version};
+use crate::model::{Body, HeroBody, RawMap, Stack, Template, Tile, Version};
 use crate::{Limits, import, parse};
 
 fn rules(profile: &str) -> GameRuleset {
@@ -52,6 +52,21 @@ pub(super) const BLOCKERS: [(Mask, Mask); 3] = [
 ];
 /// Blockers' object class: any the import keeps as a blocker (not a hero or a town).
 pub(super) const BLOCKER_CLASS: u32 = 124;
+/// The kinds of objects a plan lays out (E08 T12b): the blocker, then typed objects whose drawn
+/// contents no viewer sees, as class, subclass and a resource body's amount: a wood pile of a
+/// drawn amount, 300 gold, a campfire, a Redwood Observatory, the red Keymaster's tent. No random
+/// resource: its drawn pile type shows.
+pub(super) const KINDS: [(u32, u32, Option<u32>); 6] = [
+    (BLOCKER_CLASS, 0, None),
+    (79, 0, Some(0)),
+    (79, 6, Some(3)),
+    (12, 0, None),
+    (58, 0, None),
+    (10, 2, None),
+];
+/// The objects a plan may lay out: object `i` has the shape `BLOCKERS[i % 3]` and the kind
+/// `KINDS[i / 3]`, and the template `1 + i` (the blockers keep templates 1 to 3).
+pub(super) const OBJECTS: usize = BLOCKERS.len() * KINDS.len();
 
 /// A template mask's tiles, as `(column, row)` left of and above the anchor.
 pub(super) type Mask = &'static [(u8, u8)];
@@ -76,7 +91,7 @@ pub(super) struct Plan {
     pub(super) heroes: Vec<(Spot, Slots)>,
     /// Added to each hero's index times 7 (coprime to 128), so the heroes' types differ.
     pub(super) hero_types: u8,
-    /// Each blocker's anchor (modulo the map) and template.
+    /// Each object's anchor (modulo the map) and object (shape and kind, [`OBJECTS`]).
     pub(super) blockers: Vec<(Spot, usize)>,
 }
 
@@ -116,7 +131,7 @@ pub(super) fn plan() -> impl Strategy<Value = Plan> {
         vec(any::<bool>(), 4),
         vec((any::<(u8, u8, u8)>(), army()), 2..=6),
         any::<u8>(),
-        vec((any::<(u8, u8, u8)>(), 0..BLOCKERS.len()), 0..=8),
+        vec((any::<(u8, u8, u8)>(), 0..OBJECTS), 0..=8),
     )
         .prop_map(
             |(version, side, two_levels, tiles, colours, humans, heroes, hero_types, blockers)| {
@@ -165,11 +180,16 @@ pub(super) fn lay_out(plan: &Plan) -> RawMap {
         };
     }
     m.templates = vec![template(34, &[(1, 0)], &[(1, 0)])];
-    m.templates.extend(
-        BLOCKERS
-            .iter()
-            .map(|&(blocked, visitable)| template(BLOCKER_CLASS, blocked, visitable)),
-    );
+    // The blockers' templates, and the typed objects' up to the last one the plan uses.
+    let used = plan.blockers.iter().map(|&(_, o)| o + 1).max().unwrap_or(0);
+    m.templates.extend((0..used.max(BLOCKERS.len())).map(|o| {
+        let (blocked, visitable) = BLOCKERS[o % BLOCKERS.len()];
+        let (class, subclass, _) = KINDS[o / BLOCKERS.len()];
+        Template {
+            subclass,
+            ..template(class, blocked, visitable)
+        }
+    }));
     // The first hero on each tile stays; its tile becomes land if it is water or rock.
     let mut heroes: Vec<(Spot, &Slots)> = Vec::new();
     for ((x, y, z), army) in &plan.heroes {
@@ -188,7 +208,7 @@ pub(super) fn lay_out(plan: &Plan) -> RawMap {
     }
     for &((x, y, z), shape) in &plan.blockers {
         let (ax, ay, az) = (x % side, y % side, z % levels);
-        let (blocked, visitable) = BLOCKERS[shape];
+        let (blocked, visitable) = BLOCKERS[shape % BLOCKERS.len()];
         let covers = |&((hx, hy, hz), _): &(Spot, _)| {
             hz == az
                 && blocked.iter().chain(visitable).any(|&(column, row)| {
@@ -197,7 +217,13 @@ pub(super) fn lay_out(plan: &Plan) -> RawMap {
         };
         if !heroes.iter().any(covers) {
             let template = 1 + u32::try_from(shape).unwrap();
-            let mut o = object(ax, ay, template, Body::None);
+            let body = KINDS[shape / BLOCKERS.len()]
+                .2
+                .map_or(Body::None, |amount| Body::Resource {
+                    message: None,
+                    amount,
+                });
+            let mut o = object(ax, ay, template, body);
             o.pos.z = az;
             m.objects.push(o);
         }

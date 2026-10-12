@@ -10,7 +10,9 @@
 //! explored tiles with the reveals, movement on explored tiles only and the events' viewers
 //! ([`Viewers`], T8a), the fringe under `ADV-QUIRK-1`, the observation per player
 //! ([`AdventureObservation`]) and the events' projection ([`AdventureEvent::project`], T8b1),
-//! object types in the ruleset part and the setup ([`ObjectType`], T12a).
+//! object types in the ruleset part and the setup ([`ObjectType`], T12a), the objects' contents
+//! drawn at the build, the objects that left the map and the tiles they freed, and the typed
+//! objects a viewer sees ([`ObjectView`], T12b).
 //! Pointer identity (`ptr_eq`, `as_ptr`) is allowed only in the persistent module
 //! `src/persistent.rs` (`arch.toml`, ADR-0016 point 2).
 //!
@@ -51,7 +53,7 @@ pub use command::{
     AdventureCommand, AdventureCommandError, AdventureEvent, AdventureEventKind, Sink, Viewers,
 };
 pub use movement::{day_points, diagonal_cost, native_terrain};
-pub use observe::{AdventureObservation, HeroView, OwnHeroView, TileView};
+pub use observe::{AdventureObservation, HeroView, ObjectView, OwnHeroView, TileView};
 pub use persistent::BitGrid;
 pub use reach::Reach;
 pub use ruleset::{

@@ -323,7 +323,8 @@ fn each_hero_reveals_its_surroundings_to_its_owner_at_the_start() {
             hero_at(3, 1, blue, &[PEASANT]),
         ],
     );
-    let state = AdventureState::new(&rules.0, &rules.1, &setup).unwrap();
+    let state =
+        AdventureState::new(&rules.0, &rules.1, &setup, &mut crate::testing::draws()).unwrap();
     assert_eq!(state.explored(RED), Some(&disks(16, 2, &[red_a, red_b])));
     assert_eq!(state.explored(BLUE), Some(&disks(16, 2, &[blue])));
     // Radius 5: (2, 7) is 5 below the hero, (2, 8) 6.

@@ -16,16 +16,17 @@ use std::vec;
 use std::vec::Vec;
 
 use alloc::sync::Arc;
-use core::num::{NonZeroU8, NonZeroU16};
+use core::num::{NonZeroU8, NonZeroU16, NonZeroU32};
 
 use h3_adventure::{
-    AdventurePack, AdventureParamsDef, AdventureRuleset, ArmyError, MapSetup, Passage, Pos,
-    SetupError, StandError, TerrainMovementDef, TileSetup,
+    AdventurePack, AdventureParamsDef, AdventureRuleset, ArmyError, MapSetup, ObjectKindDef,
+    ObjectTypeDef, Passage, PickupDef, Pos, SetupError, StandError, TerrainMovementDef, TileSetup,
+    Visit,
 };
 use h3_content::{
     BattleParamsDef, ContentKey, ContentPack, CreatureDef, CreatureInfoDef, CreatureTypeId,
-    FactionDef, HeroClassDef, HeroTypeDef, HeroTypeId, PackManifest, ProfileDef, Ruleset,
-    StartingStackDef, TerrainDef, TerrainId,
+    FactionDef, HeroClassDef, HeroTypeDef, HeroTypeId, PackManifest, ProfileDef, ResourceDef,
+    Ruleset, StartingStackDef, TerrainDef, TerrainId,
 };
 use h3_contracts::{ArmyStack, HeroId, PlayerId};
 
@@ -166,6 +167,10 @@ fn core(extra: bool) -> Ruleset {
                 &["t:cart"],
             ),
         ],
+        resources: vec![ResourceDef {
+            key: key("t:gold"),
+            name: "Gold".into(),
+        }],
         profiles: vec![ProfileDef {
             key: key("t:faithful"),
             quirks: vec![],
@@ -178,7 +183,7 @@ fn core(extra: bool) -> Ruleset {
 
 /// The adventure part for `core`: maps up to 4 × 4 on one level, three players, armies of two
 /// slots, a land table of 1300, 1360, 1430, 1500 for speeds 0 to 3, the original's starting
-/// stack chances.
+/// stack chances, and a gold pile `t:pile` (5 to 10 hundreds).
 fn part(core: &Ruleset) -> AdventureRuleset {
     part_with(core, vec![88, 25], 2)
 }
@@ -197,6 +202,17 @@ fn part_with(core: &Ruleset, chances: Vec<u8>, slots: u8) -> AdventureRuleset {
                 passage: Passage::Impassable,
             },
         ],
+        object_types: vec![ObjectTypeDef {
+            key: key("t:pile"),
+            name: "Pile".into(),
+            visit: Visit::Neighbour,
+            from_above: true,
+            kind: ObjectKindDef::Pickup(PickupDef::Resource {
+                resource: key("t:gold"),
+                amount: [5, 10],
+                multiplier: NonZeroU32::new(100).unwrap(),
+            }),
+        }],
         params: Some(AdventureParamsDef {
             native_cost: cost,
             land_points: vec![1300, 1360, 1430, 1500],

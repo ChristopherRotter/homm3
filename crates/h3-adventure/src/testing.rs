@@ -15,6 +15,7 @@ use h3_content::{
     FactionDef, PackManifest, ProfileDef, ResourceDef, Ruleset, TerrainDef, TerrainId,
 };
 use h3_contracts::{ArmyStack, HeroId, PlayerId};
+use h3_kernel::{Rng, StreamId};
 
 use crate::ruleset::{
     AdventurePack, AdventureParamsDef, AdventureRuleset, ObjectKindDef, ObjectTypeDef,
@@ -22,6 +23,11 @@ use crate::ruleset::{
 };
 use crate::setup::{AdventureSetup, HeroSetup, MapSetup, ObjectSetup, Pos, TileMask, TileSetup};
 use crate::state::AdventureState;
+
+/// The setup stream of seed 0, which the tests build states with.
+pub(crate) fn draws() -> Rng {
+    Rng::for_stream(0, StreamId::SETUP)
+}
 
 pub(crate) fn key(text: &str) -> ContentKey {
     ContentKey::parse(text).unwrap()
@@ -79,7 +85,18 @@ fn creature(k: &str, speed: u8) -> CreatureDef {
     }
 }
 
-/// The object types of [`rules`] (E08 T12a), in handle order.
+/// The resources `t:wood` and `t:gold` of [`rules`] and [`movement_rules`].
+fn resources() -> Vec<ResourceDef> {
+    ["t:wood", "t:gold"]
+        .iter()
+        .map(|k| ResourceDef {
+            key: key(k),
+            name: "Resource".into(),
+        })
+        .collect()
+}
+
+/// The object types of [`rules`] and [`movement_rules`] (E08 T12a), in handle order.
 pub(crate) const WOOD_PILE: ObjectTypeId = ObjectTypeId::from_raw(0);
 pub(crate) const GOLD_PILE: ObjectTypeId = ObjectTypeId::from_raw(1);
 pub(crate) const ANY_PILE: ObjectTypeId = ObjectTypeId::from_raw(2);
@@ -152,13 +169,7 @@ pub(crate) fn rules() -> (Ruleset, AdventureRuleset) {
             })
             .collect(),
         creatures: vec![creature("t:imp", 5), creature("t:gog", 2)],
-        resources: ["t:wood", "t:gold"]
-            .iter()
-            .map(|k| ResourceDef {
-                key: key(k),
-                name: "Resource".into(),
-            })
-            .collect(),
+        resources: resources(),
         profiles: vec![ProfileDef {
             key: key("t:faithful"),
             quirks: vec![],
@@ -234,7 +245,8 @@ fn faction_creature(k: &str, speed: u8, faction: Option<&str>) -> CreatureDef {
 /// ADV-QUIRK-1 to -4 on) or `t:strict` (all off): the terrains grass (100), sand (150), swamp
 /// (175), sea (water) and rock; a dirt road (75) and a cobblestone road (50); the native cost
 /// 100; the creatures above (speeds 4, 4, 3, 6); the land table 1000, 1100, 1200, 1300, 1500 for
-/// speeds 0 to 4; maps up to 16 × 16 on two levels, two players, armies of seven slots.
+/// speeds 0 to 4; maps up to 16 × 16 on two levels, two players, armies of seven slots; the
+/// resources and object types of [`rules`].
 pub(crate) fn movement_rules(faithful: bool) -> (Ruleset, AdventureRuleset) {
     movement_rules_up_to(faithful, 16)
 }
@@ -273,6 +285,7 @@ pub(crate) fn movement_rules_up_to(faithful: bool, size: u16) -> (Ruleset, Adven
             faction_creature("t:peasant", 3, None),
             faction_creature("t:wolf", 6, Some("t:wild")),
         ],
+        resources: resources(),
         profiles: vec![
             ProfileDef {
                 key: key("t:faithful"),
@@ -310,6 +323,7 @@ pub(crate) fn movement_rules_up_to(faithful: bool, size: u16) -> (Ruleset, Adven
             movement("t:rock", Passage::Impassable),
         ],
         roads: vec![road("t:dirt_road", 75), road("t:cobble_road", 50)],
+        object_types: object_types(),
         rivers: vec![RiverDef {
             key: key("t:clear_river"),
             name: "River".into(),
@@ -353,8 +367,16 @@ pub(crate) fn hero_at(id: u16, owner: u8, pos: Pos, creatures: &[CreatureTypeId]
     }
 }
 
-/// The tile and object a character of [`world`] stands for.
-fn tile_of(c: char) -> (TerrainId, Option<RoadId>, Option<(u64, u64)>) {
+/// The tile and object (blocked and visitable masks, object type) a character of [`world`]
+/// stands for.
+#[allow(clippy::type_complexity)]
+fn tile_of(
+    c: char,
+) -> (
+    TerrainId,
+    Option<RoadId>,
+    Option<(u64, u64, Option<ObjectTypeId>)>,
+) {
     match c {
         'G' => (GRASS, Some(COBBLE_ROAD), None),
         'd' => (GRASS, Some(DIRT_ROAD), None),
@@ -364,9 +386,10 @@ fn tile_of(c: char) -> (TerrainId, Option<RoadId>, Option<(u64, u64)>) {
         'W' => (SWAMP, Some(COBBLE_ROAD), None),
         '~' => (SEA, None, None),
         '#' => (ROCK, None, None),
-        'B' => (GRASS, None, Some((1, 0))),
-        'V' => (GRASS, None, Some((0, 1))),
-        'T' => (GRASS, None, Some((1, 1))),
+        'B' => (GRASS, None, Some((1, 0, None))),
+        'V' => (GRASS, None, Some((0, 1, None))),
+        'T' => (GRASS, None, Some((1, 1, None))),
+        'P' => (GRASS, None, Some((1, 1, Some(WOOD_PILE)))),
         _ => (GRASS, None, None),
     }
 }
@@ -374,7 +397,8 @@ fn tile_of(c: char) -> (TerrainId, Option<RoadId>, Option<(u64, u64)>) {
 /// An adventure setup for two players from text rows, one character per tile (level by level,
 /// `levels` levels of equal height): `g` (or any other character) grass, `s` sand, `w` swamp, `~` sea, `#` rock; `G`, `S`,
 /// `W` the same with a cobblestone road, `d` grass with a dirt road; on grass, `B` an object's
-/// blocked tile, `V` its visitable tile, `T` both (a town's gate).
+/// blocked tile, `V` its visitable tile, `T` both (a town's gate), `P` a wood pile blocking and
+/// visited on its tile.
 pub(crate) fn world(rows: &[&str], levels: u8, heroes: Vec<HeroSetup>) -> AdventureSetup {
     let height = rows.len() / usize::from(levels);
     let width = rows[0].chars().count();
@@ -388,7 +412,7 @@ pub(crate) fn world(rows: &[&str], levels: u8, heroes: Vec<HeroSetup>) -> Advent
                 road,
                 river: None,
             });
-            if let Some((blocked, visitable)) = object {
+            if let Some((blocked, visitable, object_type)) = object {
                 objects.push(ObjectSetup {
                     anchor: Pos::new(
                         u16::try_from(x).unwrap(),
@@ -397,7 +421,7 @@ pub(crate) fn world(rows: &[&str], levels: u8, heroes: Vec<HeroSetup>) -> Advent
                     ),
                     blocked: TileMask::from_bits(blocked),
                     visitable: TileMask::from_bits(visitable),
-                    object_type: None,
+                    object_type,
                     amount: None,
                 });
             }
@@ -422,5 +446,5 @@ pub(crate) fn world_state(
     rows: &[&str],
     heroes: Vec<HeroSetup>,
 ) -> AdventureState {
-    AdventureState::new(&rules.0, &rules.1, &world(rows, 1, heroes)).unwrap()
+    AdventureState::new(&rules.0, &rules.1, &world(rows, 1, heroes), &mut draws()).unwrap()
 }

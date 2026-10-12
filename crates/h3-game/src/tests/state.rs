@@ -1,7 +1,9 @@
 //! Tests of the game state (E08 T6b): the starting armies' draw, the players' turns in sequential
 //! play and in a larger turn group, the calendar, `EndTurn` and its rejections, and the hash.
 
+use h3_adventure::{AdventureState, ObjectSetup, TileMask};
 use h3_kernel::hash::hash_of;
+use h3_kernel::{Rng, StreamId};
 use proptest::prelude::{prop_assert, prop_assert_eq, proptest};
 
 use super::*;
@@ -69,6 +71,39 @@ fn building_draws_the_starting_armies_and_keeps_custom_ones() {
     let armies: Vec<Vec<ArmyStack>> = (0..64).map(|seed| drawn(&rules, ORRIN, seed)).collect();
     assert!(armies.iter().any(|a| a.len() == 1) && armies.iter().any(|a| a.len() == 2));
     assert!(armies.iter().any(|a| a[0].count == 2) && armies.iter().any(|a| a[0].count == 5));
+}
+
+// covers: GAM-SET-001, ADV-PIK-001
+#[test]
+fn the_setup_stream_draws_the_objects_contents_after_the_armies() {
+    let rules = rules();
+    let mut setup = setup();
+    setup.map.objects.push(ObjectSetup {
+        anchor: Pos::new(2, 2, 0),
+        blocked: TileMask::default(),
+        visitable: TileMask::from_bits(1),
+        object_type: rules.adventure().object_type_by_key("t:pile"),
+        amount: None,
+    });
+    let mut amounts = Vec::new();
+    for seed in 0..40 {
+        let state = build(&rules, &setup, seed);
+        let mut draws = Rng::for_stream(seed, StreamId::SETUP);
+        let part = setup.adventure_setup(&rules, &mut draws).unwrap();
+        let alone =
+            AdventureState::new(rules.core(), rules.adventure(), &part, &mut draws).unwrap();
+        assert_eq!(state.adventure(), &alone);
+        let [(_, gold)] = state.adventure().map().objects()[0].contents[..] else {
+            panic!("one resource");
+        };
+        amounts.push(gold);
+    }
+    assert!(
+        amounts
+            .iter()
+            .all(|a| (500..=1000).contains(a) && a % 100 == 0)
+    );
+    assert!(amounts.contains(&500) && amounts.contains(&1000));
 }
 
 // covers: GAM-SET-001

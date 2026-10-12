@@ -1,17 +1,19 @@
 //! The adventure state (ADR-0016, E08 T5a): the static map, one block behind an `Arc` that every
-//! fork shares and nothing writes after setup, the small hot parts in plain arrays (the heroes on
-//! the map with their armies), and each player's explored tiles as a persistent grid (T8a, on
-//! T5b's [`BitGrid`]); what a player sees of it is the observation's (`observe.rs`, T8b1). Nothing sees the sharing: equality, `Clone`, `Debug` and the canonical hash
+//! fork shares and nothing writes after setup (since T12b with the objects' random contents drawn
+//! when it is built), the small hot parts in plain arrays (the heroes on the map with their
+//! armies), each player's explored tiles as a persistent grid (T8a, on T5b's [`BitGrid`]) and the
+//! objects that left the map with the tiles they freed (`occupancy.rs`, T12b); what a player sees
+//! of it is the observation's (`observe.rs`, T8b1). Nothing sees the sharing: equality, `Clone`, `Debug` and the canonical hash
 //! see content only (ADR-0016 point 2).
 
 use alloc::sync::Arc;
 use alloc::vec;
 use alloc::vec::Vec;
 
-use h3_content::{FRINGE_SHOWS_OBJECTS, Ruleset, TerrainId};
+use h3_content::{FRINGE_SHOWS_OBJECTS, ResourceId, Ruleset, TerrainId};
 use h3_contracts::{ArmyStack, HeroId, PlayerId};
 use h3_kernel::hash::hash_of;
-use h3_kernel::{CanonicalHash, StateHasher};
+use h3_kernel::{CanonicalHash, Rng, StateHasher};
 
 use crate::ADVENTURE_STATE_HASH_VERSION;
 use crate::command::{
@@ -20,7 +22,9 @@ use crate::command::{
 use crate::fog::{on_fringe, reveal};
 use crate::movement::{Pricing, day_points, direction};
 use crate::persistent::BitGrid;
-use crate::ruleset::{AdventureRuleset, MAX_PICKUP_AMOUNT, ObjectTypeId, Passage, RiverId, RoadId};
+use crate::ruleset::{
+    AdventureRuleset, MAX_PICKUP_AMOUNT, ObjectKind, ObjectTypeId, Passage, Pickup, RiverId, RoadId,
+};
 use crate::setup::{
     AdventureSetup, ArmyError, HeroSetup, MapSetup, ObjectSetup, Pos, SetupError, StandError,
     TileMask,
@@ -52,8 +56,12 @@ impl StaticTile {
     };
 }
 
-/// An object of the static map: its position, footprint and type (ADR-0016 point 4).
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+mod occupancy;
+
+pub(crate) use occupancy::Occupancy;
+
+/// An object of the static map: its position, footprint, type and contents (ADR-0016 point 4).
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct MapObject {
     /// The bottom right tile its masks are relative to.
     pub anchor: Pos,
@@ -61,10 +69,36 @@ pub struct MapObject {
     pub blocked: TileMask,
     /// The tiles a hero visits it from.
     pub visitable: TileMask,
-    /// Its object type; none for a blocker.
+    /// Its object type; none for a blocker. A random resource's is the pile type drawn when the
+    /// game was built (ADV-PIK-002).
     pub object_type: Option<ObjectTypeId>,
-    /// The amount the map fixed, before the type's multiplier.
-    pub amount: Option<u32>,
+    /// What a pickup gives, drawn when the game was built (ADV-PIK-001, ADV-PIK-003): each
+    /// resource with its amount, the type's multiplier applied; empty for every other kind.
+    pub contents: Vec<(ResourceId, u32)>,
+}
+
+impl MapObject {
+    /// Whether the object blocks `pos`, and whether it is visited from `pos`.
+    pub fn covers(&self, pos: Pos) -> (bool, bool) {
+        let column = self.anchor.x.checked_sub(pos.x).map(u8::try_from);
+        let row = self.anchor.y.checked_sub(pos.y).map(u8::try_from);
+        match (column, row) {
+            (Some(Ok(column)), Some(Ok(row))) if self.anchor.level == pos.level => (
+                self.blocked.contains(column, row),
+                self.visitable.contains(column, row),
+            ),
+            _ => (false, false),
+        }
+    }
+
+    /// The tiles of `map` it covers: its blocked and its visitable tiles, row by row (a tile both
+    /// ways once).
+    pub fn tiles<'a>(&self, map: &'a StaticMap) -> impl Iterator<Item = Pos> + use<'a> {
+        let anchor = self.anchor;
+        TileMask::from_bits(self.blocked.bits() | self.visitable.bits())
+            .offsets()
+            .filter_map(move |(column, row)| map.offset_pos(anchor, column, row))
+    }
 }
 
 /// What never changes after setup: dimensions, terrain, roads and rivers per tile, the objects
@@ -81,8 +115,13 @@ pub struct StaticMap {
 
 impl StaticMap {
     /// Builds the static map from its setup, checking the dimensions, the tiles and the objects
-    /// (level, type, amount).
-    fn new(core: &Ruleset, part: &AdventureRuleset, setup: &MapSetup) -> Result<Self, SetupError> {
+    /// (level, type, amount, their number), then draws the objects' random contents from `draws`.
+    fn new(
+        core: &Ruleset,
+        part: &AdventureRuleset,
+        setup: &MapSetup,
+        draws: &mut Rng,
+    ) -> Result<Self, SetupError> {
         let params = part.params();
         let in_bounds = |n: u16| (1..=params.max_map_size()).contains(&n);
         if !(in_bounds(setup.width)
@@ -128,6 +167,9 @@ impl StaticMap {
             objects: Vec::with_capacity(setup.objects.len()),
             hash: 0,
         };
+        if u16::try_from(setup.objects.len().div_ceil(Occupancy::ROW)).is_err() {
+            return Err(SetupError::Objects(setup.objects.len()));
+        }
         for (index, object) in setup.objects.iter().enumerate() {
             if object.anchor.level >= map.levels {
                 return Err(SetupError::ObjectLevel(index));
@@ -149,8 +191,58 @@ impl StaticMap {
             }
             map.place(object);
         }
+        map.resolve(part, &setup.objects, draws);
         map.hash = hash_of(&map);
         Ok(map)
+    }
+
+    /// Draws the objects' random contents (ADR-0016 point 4, ADR-0017 point 4) in the original's
+    /// two walks, each in object order: first each random resource's pile type (ADV-PIK-002: one
+    /// of its types with equal chances), then each pile's amount where the map fixes none and each
+    /// paired pickup's amount and resource (ADV-PIK-001, ADV-PIK-003: the amount first). Piles
+    /// take the map's amount, or the drawn one, times the multiplier.
+    // rule: ADV-PIK-001, ADV-PIK-002, ADV-PIK-003
+    fn resolve(&mut self, part: &AdventureRuleset, setup: &[ObjectSetup], draws: &mut Rng) {
+        let kind = |object: &MapObject| {
+            object
+                .object_type
+                .and_then(|id| part.object_type(id))
+                .map(|ty| &ty.kind)
+        };
+        for object in &mut self.objects {
+            if let Some(ObjectKind::Pickup(Pickup::OneOf(choices))) = kind(object) {
+                object.object_type = pick(choices, draws).copied();
+            }
+        }
+        for (object, placed) in self.objects.iter_mut().zip(setup) {
+            object.contents = match kind(object) {
+                Some(ObjectKind::Pickup(Pickup::Resource {
+                    resource,
+                    amount: [low, high],
+                    multiplier,
+                })) => {
+                    let amount = placed
+                        .amount
+                        .unwrap_or_else(|| draws.range_inclusive(*low, *high));
+                    vec![(*resource, amount.saturating_mul(multiplier.get()))]
+                }
+                Some(ObjectKind::Pickup(Pickup::Paired {
+                    amount: [low, high],
+                    resources,
+                    paired,
+                    multiplier,
+                })) => {
+                    let amount = draws.range_inclusive(*low, *high);
+                    pick(resources, draws).map_or_else(Vec::new, |&resource| {
+                        vec![
+                            (resource, amount),
+                            (*paired, amount.saturating_mul(multiplier.get())),
+                        ]
+                    })
+                }
+                _ => Vec::new(),
+            };
+        }
     }
 
     /// Marks the tiles an object covers; tiles of its footprint off the map are ignored
@@ -172,16 +264,23 @@ impl StaticMap {
             blocked: object.blocked,
             visitable: object.visitable,
             object_type: object.object_type,
-            amount: object.amount,
+            contents: Vec::new(),
         });
     }
 
     /// The index of the tile `column` columns left of and `row` rows above `anchor`, if it is
     /// on the map.
     fn offset(&self, anchor: Pos, column: u8, row: u8) -> Option<usize> {
+        self.offset_pos(anchor, column, row)
+            .and_then(|pos| self.index(pos))
+    }
+
+    /// The tile `column` columns left of and `row` rows above `anchor`, if it is on the map.
+    fn offset_pos(&self, anchor: Pos, column: u8, row: u8) -> Option<Pos> {
         let x = anchor.x.checked_sub(u16::from(column))?;
         let y = anchor.y.checked_sub(u16::from(row))?;
-        self.index(Pos::new(x, y, anchor.level))
+        let pos = Pos::new(x, y, anchor.level);
+        self.index(pos).map(|_| pos)
     }
 
     /// The index of a tile in [`Self::tiles`], if it is on the map.
@@ -237,8 +336,8 @@ impl StaticMap {
 
 impl CanonicalHash for StaticMap {
     /// Width, height, levels; every tile (terrain, road, river); every object (anchor, blocked
-    /// and visitable masks, object type, amount; v4). The per-tile object flags follow from the
-    /// objects.
+    /// and visitable masks; since v4 its object type and contents). The per-tile object flags
+    /// follow from the objects.
     fn hash_into(&self, h: &mut StateHasher) {
         h.write_u16(self.width);
         h.write_u16(self.height);
@@ -255,7 +354,11 @@ impl CanonicalHash for StaticMap {
             h.write_u64(object.blocked.bits());
             h.write_u64(object.visitable.bits());
             object.object_type.hash_into(h);
-            object.amount.hash_into(h);
+            h.write_len(object.contents.len());
+            for (resource, amount) in &object.contents {
+                resource.hash_into(h);
+                h.write_u32(*amount);
+            }
         }
     }
 }
@@ -292,13 +395,18 @@ pub struct AdventureState {
     heroes: Vec<HeroOnMap>,
     /// Each player's explored tiles, by player id (ADR-0016 point 5).
     explored: Vec<BitGrid>,
+    /// The objects that left the map and the tiles they freed (ADR-0016 point 1); none until an
+    /// object leaves, so a fork and a tile's read cost nothing more before (`bench-check`).
+    occupancy: Option<Arc<Occupancy>>,
 }
 
 impl AdventureState {
     /// Builds the state from a setup, checking every invariant commands keep: the map's bounds
-    /// and tiles, the players' bound, and each hero's owner, tile (ADV-MAP-001) and army. The
-    /// heroes are kept by id, their stacks by slot. Each hero reveals the tiles around it to its
-    /// owner (ADV-FOG-003); nothing else is explored.
+    /// and tiles, the objects, the players' bound, and each hero's owner, tile (ADV-MAP-001) and
+    /// army. The objects' random contents are drawn from `draws`, the game's setup stream
+    /// (ADR-0017 point 4); every draw is valid, so whether a setup is valid does not depend on
+    /// them. The heroes are kept by id, their stacks by slot. Each hero reveals the tiles around
+    /// it to its owner (ADV-FOG-003); nothing else is explored, and every object is on the map.
     ///
     /// # Errors
     ///
@@ -307,8 +415,9 @@ impl AdventureState {
         core: &Ruleset,
         part: &AdventureRuleset,
         setup: &AdventureSetup,
+        draws: &mut Rng,
     ) -> Result<Self, SetupError> {
-        let map = StaticMap::new(core, part, &setup.map)?;
+        let map = StaticMap::new(core, part, &setup.map, draws)?;
         if !(1..=part.params().max_players()).contains(&setup.players) {
             return Err(SetupError::Players(setup.players));
         }
@@ -318,6 +427,7 @@ impl AdventureState {
             players: setup.players,
             heroes: Vec::with_capacity(setup.heroes.len()),
             explored: vec![unexplored; usize::from(setup.players)],
+            occupancy: None,
         };
         for hero in &setup.heroes {
             state.place(core, part, hero)?;
@@ -410,7 +520,7 @@ impl AdventureState {
         pos: Pos,
         mover: Option<HeroId>,
     ) -> Result<StaticTile, StandError> {
-        let tile = *self.map.tile(pos).ok_or(StandError::Outside)?;
+        let tile = self.live(pos, *self.map.tile(pos).ok_or(StandError::Outside)?);
         if !enterable_terrain(part, &tile) {
             return Err(StandError::Terrain);
         }
@@ -575,6 +685,45 @@ impl AdventureState {
         self.explored.get(usize::from(player.raw()))
     }
 
+    /// The tile at `pos` as it stands now (ADR-0016 point 1): `tile`, the static map's tile there,
+    /// blocked or visitable only where an object still on the map covers it so.
+    #[inline]
+    pub(crate) fn live(&self, pos: Pos, tile: StaticTile) -> StaticTile {
+        match &self.occupancy {
+            Some(occupancy) => occupancy.live(pos, tile),
+            None => tile,
+        }
+    }
+
+    /// Whether the object at `index` of the static map has left the map (no object has before
+    /// increment 2's visits).
+    pub fn is_removed(&self, index: usize) -> bool {
+        self.occupancy
+            .as_ref()
+            .is_some_and(|occupancy| occupancy.is_removed(index))
+    }
+
+    /// Takes the object at `index` of the static map off the map (ADR-0016 point 1): the tiles it
+    /// covered that no other object still on the map covers so become free; the static map keeps
+    /// its footprint.
+    #[cfg_attr(
+        not(test),
+        expect(
+            dead_code,
+            reason = "E08 T13's visits remove pickups and border guards"
+        )
+    )]
+    pub(crate) fn remove_object(&mut self, index: usize) {
+        if index >= self.map.objects().len() || self.is_removed(index) {
+            return;
+        }
+        let map = &self.map;
+        let occupancy = self
+            .occupancy
+            .get_or_insert_with(|| Arc::new(Occupancy::new(map)));
+        Arc::make_mut(occupancy).remove(map, index);
+    }
+
     /// Whether `player` has explored the tile at `pos` (a tile off the map, or a player not in
     /// the game, has none).
     pub fn is_explored(&self, player: PlayerId, pos: Pos) -> bool {
@@ -597,10 +746,12 @@ impl AdventureState {
 }
 
 impl CanonicalHash for AdventureState {
-    /// Encoding v3 (E08 T8a; v1 was T5a's, v2 T6b's): version; the static map's content hash;
-    /// the number of players; the heroes by id (id, owner, tile, the army's stacks by slot: slot,
-    /// creature, count; since v2 the movement points left); since v3 each player's explored
-    /// tiles, by player id ([`BitGrid`]'s encoding).
+    /// Encoding v4 (E08 T12; v1 was T5a's, v2 T6b's, v3 T8a's): version; the static map's content
+    /// hash (since v4 with the objects' types and contents); the number of players; the heroes by
+    /// id (id, owner, tile, the army's stacks by slot: slot, creature, count; since v2 the
+    /// movement points left); since v3 each player's explored tiles, by player id ([`BitGrid`]'s
+    /// encoding); since v4 the objects that left the map (0 for none, else 1 and [`Occupancy`]'s
+    /// encoding; there is an occupancy only once an object has left).
     fn hash_into(&self, h: &mut StateHasher) {
         h.write_u32(ADVENTURE_STATE_HASH_VERSION);
         h.write_u64(self.map.content_hash());
@@ -621,6 +772,13 @@ impl CanonicalHash for AdventureState {
         h.write_len(self.explored.len());
         for grid in &self.explored {
             grid.hash_into(h);
+        }
+        match &self.occupancy {
+            None => h.write_u8(0),
+            Some(occupancy) => {
+                h.write_u8(1);
+                occupancy.hash_into(h);
+            }
         }
     }
 }
@@ -686,3 +844,10 @@ pub(crate) fn enterable_terrain(part: &AdventureRuleset, tile: &StaticTile) -> b
 
 #[cfg(test)]
 mod tests;
+
+/// One of `choices` with equal chances (`random_between(0, n − 1)` in the original); none for no
+/// choices, which the compiler rules out.
+fn pick<'a, T>(choices: &'a [T], draws: &mut Rng) -> Option<&'a T> {
+    let n = u32::try_from(choices.len()).unwrap_or(u32::MAX);
+    choices.get(usize::try_from(draws.below(n)).unwrap_or(usize::MAX))
+}

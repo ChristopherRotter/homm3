@@ -431,8 +431,8 @@ numeric  = "integer"
 id       = "ADV-PIK-001"
 title    = "Resource piles"
 context  = "adventure"
-status   = "specified"
-summary  = "A resource pile holds one resource: the map's fixed amount or, when it gives none, one drawn at setup between 5 and 10 (wood, ore, gold) or 3 and 6 (mercury, sulfur, crystal, gems), times the type's multiplier (gold 100). A visit gives the visitor's owner the amount and removes the pile (T13). Data: packs/base/adventure.toml (pile_*). D-5: the user took the reading with the wiki over VCMI's 6-10 and 3-5 (ADV-Q10)."
+status   = "implemented"
+summary  = "A resource pile holds one resource: the map's fixed amount or, when it gives none, one drawn at setup between 5 and 10 (wood, ore, gold) or 3 and 6 (mercury, sulfur, crystal, gems), times the type's multiplier (gold 100). A visit gives the visitor's owner the amount and removes the pile (T13). Data: packs/base/adventure.toml (pile_*). E08 T12b: the draw when the game is built (`AdventureState::new`, in the second walk, in object order, from the setup stream after the starting armies), the contents in the static map, hidden from every viewer. D-5: the user took the reading with the wiki over VCMI's 6-10 and 3-5 (ADV-Q10)."
 numeric  = "integer"
 
   [[rule.source]]
@@ -459,8 +459,8 @@ numeric  = "integer"
 id       = "ADV-PIK-002"
 title    = "Random resources"
 context  = "adventure"
-status   = "specified"
-summary  = "A random resource becomes a resource pile of one of the seven resources at setup, with equal chances; its amount is the map's or drawn as the pile's (ADV-PIK-001). Data: packs/base/adventure.toml (random_resource)."
+status   = "implemented"
+summary  = "A random resource becomes a resource pile of one of the seven resources at setup, with equal chances; its amount is the map's or drawn as the pile's (ADV-PIK-001). Data: packs/base/adventure.toml (random_resource). E08 T12b: the first walk of the draws when the game is built, in object order; the drawn pile type shows to a viewer as the object's type."
 numeric  = "integer"
 
   [[rule.source]]
@@ -479,8 +479,8 @@ numeric  = "integer"
 id       = "ADV-PIK-003"
 title    = "Campfires"
 context  = "adventure"
-status   = "specified"
-summary  = "A campfire draws at setup an amount of 4 to 6, then one of wood, mercury, ore, sulfur, crystal and gems with equal chances; a visit gives that many of the resource and 100 times as much gold, and removes the campfire (T13). Data: packs/base/adventure.toml (campfire)."
+status   = "implemented"
+summary  = "A campfire draws at setup an amount of 4 to 6, then one of wood, mercury, ore, sulfur, crystal and gems with equal chances; a visit gives that many of the resource and 100 times as much gold, and removes the campfire (T13). Data: packs/base/adventure.toml (campfire). E08 T12b: the draw when the game is built (the second walk), the contents hidden from every viewer."
 numeric  = "integer"
 
   [[rule.source]]

@@ -945,3 +945,35 @@ A-5 always fixed; the round T12 in two parts, T12a and T12b, one pull request.
   (the commands are unchanged; the record options are in the test's doc comment).
 - The ADR drafts left `adr-drafts/` (applied by #115).
 
+**T12b — objects in the state.**
+- **Contents drawn at the build** (ADV-PIK-001 to -003 `implemented`): `AdventureState::new`
+  takes the setup stream (`h3_game` passes it after drawing the starting armies, GAM-SET-001's
+  order, tested in `h3-game`); the original's two walks in object order: each random resource's
+  pile type (`below(n)`), then each pile's amount where the map fixes none and each paired
+  pickup's amount then resource. `MapObject.contents` (resource, amount × multiplier) replaces
+  T12a's amount; `MapObject` is no longer `Copy`. Every draw is valid, so validity does not depend
+  on the seed. A test replays the draws by hand for 50 seeds.
+- **Removed objects and the occupancy layer** (`src/state/occupancy.rs`, ADR-0016 point 1): a
+  `BitGrid` of removed objects (32 a row; `SetupError::Objects` beyond 32 × 65 535) and two
+  `BitGrid`s of freed tiles (blocked, visitable), held as `Option<Arc<Occupancy>>`, none until an
+  object leaves: a fork costs one reference more at most, and a tile is read through it only
+  where the static tile is marked. `check_tile` (ADV-MAP-001, so `MoveHero`), the reachable-tiles
+  query and the observation's tiles read the live tile. Measured (`bench-check`, valgrind): read
+  on every tile of the query it cost +4.1 % on random play and the query; as built +0.35 % (fork),
+  +0.86 % (random play), +0.91 % (query), under the 2 % gate, so no re-baseline. `AdventureState::remove_object` frees each tile no other object still on the
+  map covers so (tested with overlapping objects); its first caller is T13 (an `expect(dead_code)`
+  outside tests until then). The state hash covers the removed objects (the freed tiles follow).
+- **Observation**: `AdventureObservation.objects`, an `ObjectView` (type, anchor, masks) per typed
+  object still on the map with a covered tile the viewer sees (explored, or the fringe under
+  `ADV-QUIRK-1`), in map order. Not the object's index: it counts the objects before it, seen or
+  not (the hygiene property found that a removal out of sight would shift it). Blockers are
+  left out (the tiles show them).
+- **Play properties** (`h3-map`'s `play.rs`): plans lay out typed objects too (a wood pile of a
+  drawn amount, 300 gold, a campfire, a Redwood Observatory, a Keymaster's tent; no random
+  resource, whose drawn type shows), so atomicity, legality, isolation, hygiene (other seeds draw
+  other contents) and determinism run with them; a fixed test checks a pile and a campfire in sight
+  show the same for 20 seeds whose contents differ. The fixtures' maps are unchanged.
+- The static layer check of the shipped maps builds a one-player game (`GameSetup::validate`),
+  so it draws contents as a game does; still every static layer validates.
+- Golden replays re-recorded again (state hash v4's final encoding); commands unchanged.
+
