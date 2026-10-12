@@ -173,10 +173,18 @@ pub async fn start(config: &Config) -> Result<Running, Error> {
         .iter()
         .map(|offer| game::Offer::load(offer, &config.content.packs).map(Arc::new))
         .collect::<Result<Vec<_>, _>>()?;
+    // Beyond every game the ladders' logs name, should `next-game` be lost (E16 M4 T7).
+    let ids = ids::GameIds::open(&config.server.data)?;
+    (ids.reach(ladders.last_game())).map_err(|e| {
+        Error(format!(
+            "{}: {e}",
+            config.server.data.join("next-game").display()
+        ))
+    })?;
     let stores = game::Stores {
         accounts: Arc::clone(&accounts),
         ladders: Arc::clone(&ladders),
-        ids: Arc::new(ids::GameIds::open(&config.server.data)?),
+        ids: Arc::new(ids),
     };
     let registry = Arc::new(Mutex::new(Registry::new(
         offers,

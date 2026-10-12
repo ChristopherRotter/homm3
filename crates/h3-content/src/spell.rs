@@ -156,8 +156,9 @@ pub enum TimedChange {
     /// polarity; the first cast ends the stack's negative effects below level v (Anti-Magic;
     /// BAT-MAG-021, v10).
     SpellImmunity,
-    /// A single-target spell aimed at the stack from the other side goes, with a chance of v %, to
-    /// a random living stack of the caster's side instead (Magic Mirror; BAT-MAG-022, v10).
+    /// A single-target spell the other side's hero aims at the stack goes, with a chance of v %,
+    /// to a random living stack of the caster's side instead; a creature's spell never does
+    /// (Magic Mirror; BAT-MAG-022, v10).
     MagicMirror,
     /// A shooter counts half its creatures, at least one, for the damage of every strike (melee
     /// and retaliations too: survey S-09, the rule, Q53); from the first cast's Advanced mastery
@@ -167,8 +168,10 @@ pub enum TimedChange {
     /// damage (damage stage 2), not at all at 0 (Blind; BAT-MAG-024, v11). Ends with any damage
     /// when the spell `ends = "damaged"`.
     Blind,
-    /// The stack's turns are automatic: it attacks the nearest other stack; every other stack is
-    /// its enemy and it is every stack's (Berserk; BAT-MAG-025, v12).
+    /// The stack's turns are automatic: it attacks the nearest other stack; next to any stack
+    /// it counts as that stack's enemy and the stack as its (shots are blocked, multi-headed
+    /// strikes reach it), but its own side may not attack or shoot it (Berserk; BAT-MAG-025,
+    /// v12).
     Berserk,
     /// The other side controls the stack: it commands its turns, and the stack fights for it
     /// (Hypnotize; BAT-MAG-026, v12).
@@ -268,6 +271,13 @@ impl TimedChange {
     /// Looks a value up by its pack name.
     pub fn from_name(name: &str) -> Option<Self> {
         Self::ALL.into_iter().find(|c| c.name() == name)
+    }
+
+    /// Whether the change makes the stack lose its turns while it lasts (Blind, Stone Gaze,
+    /// Paralyze; BAT-MAG-024, BAT-MAG-043). Such an effect never lasts the whole battle: the
+    /// compiler refuses it with a permanent duration.
+    pub const fn takes_turns(self) -> bool {
+        matches!(self, Self::Blind | Self::Petrify | Self::Paralyze)
     }
 }
 
@@ -969,6 +979,15 @@ impl SpellMagic {
             Some("duration, ends, cumulative, health_limit and refuses need a timed effect")
         } else if self.duration == EffectDuration::Fixed(0) {
             Some("a fixed duration needs at least 1 round")
+        } else if self.duration == EffectDuration::Permanent
+            && self
+                .effects
+                .iter()
+                .any(|e| e.timed().is_some_and(TimedChange::takes_turns))
+        {
+            // No stack would ever act again once every stack has such an effect: the battle
+            // would go on round after round within one command (E04b T11b review).
+            Some("an effect that takes a stack's turns away cannot be permanent")
         } else if self
             .fixed_mass_from
             .is_some_and(|f| self.mass_from.is_none_or(|m| f <= m) || f > MAX_MASTERY)
@@ -1556,6 +1575,35 @@ mod tests {
                 },
                 true,
                 "at least 1 round",
+            ),
+            // E04b T11b review (F-robust-4): a stack that never gets a turn again.
+            (
+                SpellMagic {
+                    duration: EffectDuration::Permanent,
+                    ..timed(TimedChange::Blind)
+                },
+                true,
+                "cannot be permanent",
+            ),
+            (
+                SpellMagic {
+                    duration: EffectDuration::Permanent,
+                    ..timed(TimedChange::Petrify)
+                },
+                true,
+                "cannot be permanent",
+            ),
+            (
+                SpellMagic {
+                    duration: EffectDuration::Permanent,
+                    effects: vec![
+                        SpellEffect::Timed(TimedChange::DefenseLoss),
+                        SpellEffect::Timed(TimedChange::Paralyze),
+                    ],
+                    ..timed(TimedChange::Paralyze)
+                },
+                true,
+                "cannot be permanent",
             ),
             (
                 SpellMagic {

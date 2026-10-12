@@ -87,6 +87,38 @@ pub(crate) fn reachable_within(
     mover: &Stack,
     range: u8,
 ) -> Reach {
+    // rule: BAT-MAG-032
+    reach(state, field, id, mover, range, || {
+        obstacles::seen_pits(state, mover.controller())
+    })
+}
+
+/// Where `mover` (stack `id`) can move this turn as far as both sides can tell: as
+/// [`reachable`], but a walker stops only at the pits both sides see (BAT-MAG-031). For a choice
+/// the rules make and report to both sides (the automatic Ballista's target, BAT-WAR-002): a
+/// pit hidden from one side must not change it, whichever side's it is.
+// rule: BAT-MAG-031
+pub(crate) fn reachable_in_public(
+    state: &BattleState,
+    field: Field,
+    id: StackId,
+    mover: &Stack,
+) -> Reach {
+    reach(state, field, id, mover, range(state, id, mover), || {
+        obstacles::public_pits(state)
+    })
+}
+
+/// [`reachable_within`] for a walker that stops at the pits `seen` gives (asked only for a
+/// walker). One instance per caller, so the commanded stacks' hot path keeps its code.
+fn reach(
+    state: &BattleState,
+    field: Field,
+    id: StackId,
+    mover: &Stack,
+    range: u8,
+    seen: impl FnOnce() -> HexSet,
+) -> Reach {
     let blocked = state.blocked_for(field, id);
     let mut reach = Reach {
         start: mover.hex,
@@ -105,8 +137,7 @@ pub(crate) fn reachable_within(
         }
         return reach;
     }
-    // rule: BAT-MAG-032
-    let mut pits = obstacles::seen_pits(state, mover.controller());
+    let mut pits = seen();
     if !pits.is_empty() {
         let own = mover
             .footprint(field)

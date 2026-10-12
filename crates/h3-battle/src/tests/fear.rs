@@ -70,7 +70,7 @@ fn fear_freezes_the_other_sides_stacks_but_not_at_the_battles_first_activation()
 #[test]
 fn fear_takes_the_largest_chance_of_the_living_frighteners_outside_the_wait_phase() {
     let r = ruleset();
-    let mut spooked = 0;
+    let (mut scared, mut spooked) = (0, 0);
     for seed in 0..1000 {
         let mut s = battle(
             &r,
@@ -78,7 +78,8 @@ fn fear_takes_the_largest_chance_of_the_living_frighteners_outside_the_wait_phas
             &[(0, "spook", 1), (1, "azure", 1)],
             seed,
         );
-        assert!(frightened(&mut s, &r, StackId(0)));
+        // The azure's 99 %, the larger of the two chances.
+        scared += usize::from(frightened(&mut s, &r, StackId(0)));
         // Outside the normal phase nothing freezes.
         s.wait_phase = true;
         assert!(!frightened(&mut s, &r, StackId(0)));
@@ -90,7 +91,55 @@ fn fear_takes_the_largest_chance_of_the_living_frighteners_outside_the_wait_phas
         s.stacks.as_mut_slice()[1].count = 0;
         assert!(!frightened(&mut s, &r, StackId(0)));
     }
+    assert!((970..1000).contains(&scared), "{scared}");
     assert!((1..30).contains(&spooked), "{spooked}");
+}
+
+/// E04b T11b review (F-robust-4, F-r2b-stack-spells-7 point 2): a pack cannot take every
+/// stack's turns away for ever, which kept one command from returning (`turn::activate` picks
+/// round after round until a stack awaits a command). The reviewer's case was a permanent Blind
+/// on a side's only stack, whose certain Fear froze the other side's only stack at every pick:
+/// neither compiles now, as a certain bad-morale freeze never did (BAT-MOR-004).
+// covers: BAT-MAG-024, BAT-MAG-043, BAT-MAG-060
+#[test]
+fn a_pack_cannot_take_every_turn_away_for_ever() {
+    use h3_content::{AbilityDef, CompileError, ContentKey, EffectDuration};
+    let key = |name: &str| ContentKey::new("t", name).unwrap();
+    // A timed effect that takes a stack's turns away must end.
+    for spell in ["blind", "petrify", "paralysis"] {
+        let refused = try_ruleset_from(
+            "t:faithful",
+            |_| {},
+            |pack| {
+                let def = pack.spells.iter_mut().find(|s| s.key == key(spell));
+                def.unwrap().magic.duration = EffectDuration::Permanent;
+            },
+        );
+        assert_eq!(
+            refused.err(),
+            Some(CompileError::InvalidContent {
+                kind: "spell",
+                key: std::format!("t:{spell}"),
+                reason: "an effect that takes a stack's turns away cannot be permanent",
+            })
+        );
+    }
+    // A fear must leave the other side a chance to act.
+    let refused = try_ruleset_from(
+        "t:faithful",
+        |_| {},
+        |pack| {
+            let azure = pack.creatures.iter_mut().find(|c| c.key == key("azure"));
+            azure.unwrap().info.abilities = vec![AbilityDef::Fear { percent: 100 }];
+        },
+    );
+    assert_eq!(
+        refused.err(),
+        Some(CompileError::InvalidCreature {
+            key: std::string::String::from("t:azure"),
+            reason: "fear percent must be 1..=99",
+        })
+    );
 }
 
 // covers: BAT-MAG-060

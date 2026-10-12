@@ -1,20 +1,25 @@
 //! Batch 2a's direct-damage spells on the harvested SoD packs (E04b T11a, the fold-in; BAT-MAG-003
-//! to BAT-MAG-005): R3 to R5 of `experiments/results/E04b-batch-2a.md` (SoD 4.0 Complete, plain
+//! to BAT-MAG-006): R1 to R5 of `experiments/results/E04b-batch-2a.md` (SoD 4.0 Complete, plain
 //! HD, 2026-10-06) replayed with the heroes the batch used, derived in the Heroes context. Also
 //! E04b exit criterion 2's guard: every combat spell of the packs but Earthquake (E04c) and every
 //! ability spell has effects the battle implements.
 
 use h3_battle::{
-    BattleState, CastTarget, CastTargets, Command, Event, EventKind, StackId, apply, cast_targets,
+    BattleState, CastTarget, CastTargets, Command, Event, EventKind, Field, StackId, apply,
+    cast_targets,
 };
-use h3_content::{Formation, Ruleset, SpellCategory, SpellId};
-use h3_contracts::{Army, ArmyStack, BattleSetup, BattleSide};
+use h3_content::{Formation, HeroTypeId, Ruleset, SchoolId, SpellCategory, SpellId, SpellScope};
+use h3_contracts::{Army, ArmyStack, BattleEffect, BattleHero, BattleSetup, BattleSide, Rate};
 use h3_heroes::{HeroDetails, derive_battle_hero};
 
 fn sod() -> Ruleset {
+    sod_with("base:faithful")
+}
+
+fn sod_with(profile: &str) -> Ruleset {
     h3_pack::compile(
         &[h3_pack::SOD_PACK, h3_pack::AB_PACK, h3_pack::BASE_PACK],
-        "base:faithful",
+        profile,
     )
     .unwrap()
 }
@@ -76,7 +81,16 @@ fn battle(
     defender: &[(&str, u32)],
     machines: &[&str],
 ) -> BattleState {
-    let hero = derive_battle_hero(details, r).unwrap();
+    led(
+        r,
+        derive_battle_hero(details, r).unwrap(),
+        defender,
+        machines,
+    )
+}
+
+/// [`battle`] with the battle hero `hero` as it is.
+fn led(r: &Ruleset, hero: BattleHero, defender: &[(&str, u32)], machines: &[&str]) -> BattleState {
     let setup = BattleSetup {
         attacker: army(r, &[("base:pikeman", 10)]),
         defender: army(r, defender),
@@ -105,6 +119,16 @@ fn battle(
 fn stack_of(s: &BattleState, r: &Ruleset, creature: &str) -> StackId {
     let c = r.creature_by_key(creature).unwrap();
     let i = s.stacks().iter().position(|t| t.creature == c).unwrap();
+    StackId(u8::try_from(i).unwrap())
+}
+
+/// The id of the defender's first stack.
+fn defenders_first(s: &BattleState) -> StackId {
+    let i = s
+        .stacks()
+        .iter()
+        .position(|t| t.side == BattleSide::Defender)
+        .unwrap();
     StackId(u8::try_from(i).unwrap())
 }
 
@@ -186,6 +210,188 @@ fn batch_2a_r4_r5_ice_bolt_damage_in_the_originals_order() {
             "{creature}"
         );
     }
+}
+
+// covers: BAT-MAG-004, HER-BAT-012
+/// E04b T11b review (r1 F-2; from the executable's code at 0x4E5760 and exact rational arithmetic
+/// on its single-precision values, not observed in the game): a Sorcery specialist's grown rate
+/// can lie a hair below its decimal (level 12, Advanced: 0.15999999642), and the product a hair
+/// below a whole number (50 × 1.15999999642 = 57.99999982). The original stores the product as a
+/// single-precision number before it rounds down, and that number is the whole one: the damage
+/// is the exact rates' (the product's floor was one less: 57, 46, 110).
+#[test]
+fn a_sorcery_specialists_product_is_stored_as_a_single_before_it_is_rounded_down() {
+    for profile in ["base:faithful", "base:strict-fixed"] {
+        let r = sod_with(profile);
+        let arrow = spell(&r, "base:magic_arrow");
+        // Sandro with Advanced Sorcery and no magic school: 10 × power + 10, grown by
+        // 10 % × (1 + 5 % × level): 50 × 1.16, 40 × 1.175, 100 × 1.11.
+        for (level, power, damage) in [(12, 4, 58), (15, 3, 47), (2, 9, 111)] {
+            let mut sandro = details(
+                &r,
+                "base:sandro",
+                power,
+                2,
+                false,
+                &[],
+                &["base:magic_arrow"],
+            );
+            sandro.level = level;
+            sandro.skills = vec![(r.skill_by_key("base:sorcery").unwrap(), 2)];
+            let mut s = battle(&r, &sandro, &[("base:pikeman", 100)], &[]);
+            let target = defenders_first(&s);
+            assert_eq!(
+                cast(&mut s, &r, arrow, CastTarget::Stack(target)),
+                [(target.0, damage)],
+                "{profile} level {level}"
+            );
+        }
+    }
+}
+
+// covers: BAT-MAG-004, BAT-HER-001
+/// E04b T11b review (F-robust-3) with the original's spells and the default profile (quirk
+/// Q-0005 on): a hero of power 20 casts Implosion (75 per power + 100 = 1 600) with the largest
+/// spell damage rates the seam carries for every spell and for Earth spells. The battle accepts
+/// the hero and lists the cast; applying it overflowed in the battle's spell damage (a panic).
+/// The damage is the executable's arithmetic on the stored rates (429 496.71875 each), from exact
+/// rational arithmetic; with exact rates it is 1 600 × (1 + 429 496.7295)² rounded down.
+#[test]
+fn implosion_with_huge_spell_damage_rates_does_not_overflow() {
+    for (profile, damage) in [
+        ("base:faithful", 295_149_280_165_888),
+        ("base:strict-fixed", 295_149_279_433_048),
+    ] {
+        let r = sod_with(profile);
+        let implosion = spell(&r, "base:implosion");
+        let earth = r
+            .spell_schools()
+            .iter()
+            .position(|s| s.key.as_str() == "base:earth")
+            .and_then(SchoolId::from_index)
+            .unwrap();
+        let mut hero = BattleHero::new(HeroTypeId::from_index(0).unwrap());
+        hero.power = 20;
+        hero.magic.mana = 100;
+        hero.magic.spell_book = Some(vec![implosion]);
+        let rate = Rate::bp(u32::MAX);
+        hero.effects = vec![
+            BattleEffect::SpellDamage {
+                scope: SpellScope::All,
+                rate,
+            },
+            BattleEffect::SpellDamage {
+                scope: SpellScope::School(earth),
+                rate,
+            },
+        ];
+        let mut s = led(&r, hero, &[("base:pikeman", 10)], &[]);
+        let target = defenders_first(&s);
+        assert!(targets(&s, &r, implosion).contains(&CastTarget::Stack(target)));
+        assert_eq!(
+            cast(&mut s, &r, implosion, CastTarget::Stack(target)),
+            [(target.0, damage)],
+            "{profile}"
+        );
+    }
+}
+
+// covers: BAT-MAG-006, BAT-MAG-003, BAT-TAC-001
+/// Batch 2a R1 and R2 as they were played (E04b T11b review, r1 F-10): a hero of power 1 with 30
+/// spell points and ten Pikemen casts Chain Lightning at the first of three Peasant stacks (100,
+/// 101 and 102), which Blue's hero placed in its tactics phase (Expert Tactics). At no mastery
+/// the chain strikes four stacks with 40 × 1 + 25 = 65, then half each time: 65, 32, 16, 8.
+#[test]
+fn batch_2a_r1_r2_chain_lightning_by_the_screen_distance_and_the_army_slot() {
+    let r = sod();
+    let chain = spell(&r, "base:chain_lightning");
+    let field = Field::new(r.battle().field);
+    // The damage of each stack struck, in order, and every stack's count afterwards: stack 0
+    // the Pikemen, 1 to 3 the Peasants in their army's order, placed on `hexes` (column, row).
+    let play = |red: &str, blue: &str, hexes: [(i32, i32); 3]| {
+        let caster = details(&r, red, 1, 3, false, &[], &["base:chain_lightning"]);
+        let tactician = HeroDetails {
+            hero_type: r.hero_type_by_key(blue).unwrap(),
+            level: 1,
+            experience: 0,
+            primary: [0; 4],
+            skills: vec![(r.skill_by_key("base:tactics").unwrap(), 3)],
+            worn: vec![],
+            backpack: vec![],
+            spells: vec![],
+            mana: 0,
+        };
+        let peasants = [100, 101, 102].map(|count| ("ab:peasant", count));
+        let setup = BattleSetup {
+            attacker: army(&r, &[("base:pikeman", 10)]),
+            defender: army(&r, &peasants),
+            obstacles: vec![],
+            heroes: [&caster, &tactician].map(|d| Some(derive_battle_hero(d, &r).unwrap())),
+            terrain: None,
+            war_machines: [vec![], vec![]],
+            formations: [Formation::Loose; 2],
+            funds: [0; 2],
+        };
+        let mut s = BattleState::new(&r, &setup, 1).unwrap();
+        // Blue's tactics phase: its stacks come in their army's order (equal speeds).
+        assert_eq!(
+            s.tactics().map(|t| (t.side, t.columns)),
+            Some((BattleSide::Defender, 7))
+        );
+        for (id, (x, y)) in (1u8..).zip(hexes) {
+            assert_eq!(s.active(), Some(StackId(id)));
+            let to = field.hex(x, y).unwrap();
+            let place = Command::Move { to };
+            apply(
+                &mut s,
+                &r,
+                BattleSide::Defender,
+                place,
+                &mut Vec::<Event>::new(),
+            )
+            .unwrap();
+        }
+        let end = Command::EndTactics;
+        apply(
+            &mut s,
+            &r,
+            BattleSide::Defender,
+            end,
+            &mut Vec::<Event>::new(),
+        )
+        .unwrap();
+        // Round 1: the Pikemen act before the Peasants. Chain Lightning may be aimed at each
+        // Peasant stack and not at the caster's own Pikemen (R1, round 2).
+        assert_eq!((s.round(), s.active()), (1, Some(StackId(0))));
+        assert_eq!(s.hero(BattleSide::Attacker).unwrap().mana, 30);
+        assert_eq!(
+            targets(&s, &r, chain),
+            [1, 2, 3].map(|id| CastTarget::Stack(StackId(id)))
+        );
+        let struck = cast(&mut s, &r, chain, CastTarget::Stack(StackId(1)));
+        let counts: Vec<u32> = s.stacks().iter().map(|t| t.count).collect();
+        (struck, counts)
+    };
+    // R1: A (the 100) in row 5, B (the 101) two hexes to its left, 88 pixels away, C (the 102)
+    // two rows beneath it, 84 pixels away (the pattern one hex to the left of the plan, as it
+    // was played). The bolt went A, C, B, Pikemen: A 35, C 70, B 85 left, the Pikemen all ten.
+    assert_eq!(
+        play("base:caitlin", "base:nagash", [(11, 4), (9, 4), (11, 6)]),
+        (
+            vec![(1, 65), (3, 32), (2, 16), (0, 8)],
+            vec![10, 35, 85, 70]
+        )
+    );
+    // R2: A (the 100), R (the 101) two hexes to its right and L (the 102) two hexes to its left,
+    // both 88 pixels away (the pattern one hex down-left of the plan, as it was played). The
+    // bolt went A, R, L, Pikemen: the earlier stack of the army first; A 35, R 69, L 86 left.
+    assert_eq!(
+        play("base:jenova", "base:damacon", [(12, 5), (14, 5), (10, 5)]),
+        (
+            vec![(1, 65), (2, 32), (3, 16), (0, 8)],
+            vec![10, 35, 69, 86]
+        )
+    );
 }
 
 // covers: BAT-MAG-003, BAT-MAG-005, BAT-MAG-007

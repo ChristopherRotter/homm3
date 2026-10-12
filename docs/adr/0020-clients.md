@@ -1,12 +1,13 @@
-# ADR-NNNN: Clients — a Rust workspace, a software compositor, per-expansion asset tables
+# ADR-0020: Clients: a Rust workspace, a software compositor, per-expansion asset tables, loading at checkpoints
 
-- Status: Proposed (E17 refinement draft, 2026-10-12; direction agreed by the user the same day;
-  to be accepted at the M0 checkpoint)
-- Date: 2026-10-12
-- Deciders: user + client refinement session
+- Status: Accepted (user, 2026-10-12, the E17 M0 checkpoint; point 7 rewritten at the checkpoint:
+  loading at checkpoints, CLT-Q2)
+- Date: 2026-10-12 (drafted in the E17 refinement the same day)
+- Deciders: user; client lane sessions (E17 refinement, M0)
+- Options and reasoning: [`docs/epics/E17-clients.md`](../epics/E17-clients.md); working detail:
+  `docs/epics/E17-design.md` (created by the first task with detail to record)
 
-<!-- Decisions only. Reasoning and options: docs/epics/E17-clients.md; detail: E17-design.md
-     (created by the first task that has detail to record). -->
+<!-- Decisions only. Reasoning and options: docs/epics/E17-clients.md; detail: E17-design.md. -->
 
 ## Context
 
@@ -53,9 +54,12 @@ loading as fast as the original's and the content configured per expansion, as t
 6. **Asset fixes are data.** Each is a table entry with an id (`CLT-QUIRK-<n>`), a source (a code
    reading or a reference screenshot) and a flag; a client profile selects `faithful` (the
    original's pixels) or `fixed`. No fix exists outside an entry.
-7. **Loading without conversion.** No preprocessing step and no cache on disk: at start the client
-   reads only the LOD directories; an entry is inflated and decoded on first use and kept in
-   memory.
+7. **Loading at checkpoints, without conversion.** No preprocessing step and no cache on disk. At
+   start the client reads only the archives' directories. At each checkpoint (the client opens, a
+   game starts, a battle starts, …) it reads, inflates and decodes, in one batch, every asset the
+   coming screens need, so that nothing is loaded while a screen is shown; each checkpoint's asset
+   set is data (the asset tables). A batch's entries are read by offset through a table-only
+   reader in `h3-formats` (CLT-Q2); until it exists, the adapter reads whole archives.
 8. **One input path.** The viewer plays `h3-protocol` messages: a record file and a live
    connection go through the same code. An engine replay becomes a record by running
    `h3-protocol`'s session in-process.
@@ -68,6 +72,8 @@ loading as fast as the original's and the content configured per expansion, as t
 
 ## Consequences
 
+- Loading costs fall at the checkpoints and scale with what a screen needs (a battle about 3–5
+  MiB of the archives' 212 MiB), not with the installation.
 - Exact pixel diffs against the original are possible, and every visual change is a reviewable
   diff of code or of an asset table.
 - Headless rendering needs no GPU or display, in CI or in a cloud sandbox.
@@ -89,3 +95,7 @@ loading as fast as the original's and the content configured per expansion, as t
   addresses, no per-expansion split, and the fixes would still need a committed file.
 - **Converting the assets once into PNG atlases:** a slow first start and a second copy of the
   truth that can drift from the archives.
+- **Loading at checkpoints from memory-mapped archives** (no engine change; `unsafe`, a crash
+  instead of an error when a file changes, implicit page-fault I/O, no mapping in a browser) or
+  **from archives read whole at start** (212 MiB read and held for the session, no path to the
+  629 MiB video archive): weighed at the M0 checkpoint, the table-only reader chosen.

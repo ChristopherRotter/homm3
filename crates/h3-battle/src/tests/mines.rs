@@ -443,6 +443,41 @@ fn a_stack_standing_on_a_mine_sets_it_off_when_it_acts_there() {
     assert_eq!(triggered, [spell(&r, "firewall"), spell(&r, "landmine")]);
 }
 
+// covers: BAT-ATK-004, BAT-MAG-033
+#[test]
+fn a_stack_that_strikes_and_returns_sets_off_the_mine_it_lands_on() {
+    let r = ruleset();
+    // Harpies placed on the defender's unseen mine without entering it (as Teleport does) fly
+    // off, strike and fly back: the return enters the hex it lands on (review r4b F-3, r3 F-6).
+    let mut s = arena(
+        &r,
+        [None, None],
+        &[("harpy", 20, 6, 5)],
+        &[("fixed", 20, 9, 5)],
+        1,
+    );
+    mines(&mut s, &r, BattleSide::Defender, &[(6, 5)]);
+    let attack = Command::Attack {
+        target: StackId(1),
+        from: at(&r, 8, 5),
+    };
+    let events = act(&mut s, &r, attack).unwrap();
+    assert_eq!(
+        moves(&events),
+        [
+            (0, at(&r, 6, 5), at(&r, 8, 5)),
+            (0, at(&r, 8, 5), at(&r, 6, 5))
+        ]
+    );
+    // Seventeen Harpies come back (three died of the retaliation); the mine's 40 kill four.
+    assert_eq!(blasts(&events), [(0, at(&r, 6, 5), 40, 4)]);
+    assert_eq!(obstacle_events(&events), BOOM);
+    assert_eq!(
+        (all(&s).len(), s.stacks()[0].count, s.result()),
+        (0, 13, None)
+    );
+}
+
 // covers: BAT-MAG-033
 #[test]
 fn a_two_hex_walker_sets_off_a_mine_once() {

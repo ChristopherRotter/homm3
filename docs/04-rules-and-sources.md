@@ -73,6 +73,8 @@ Decision guide:
 3. Otherwise → `fix-optional`, default to fixed in `strict-fixed`, preserved in `faithful`.
 4. Not sure? Ask (AGENTS.md). Do not guess on gameplay-relevant quirks.
 
+**Without a flag, by decision:** the user may decide that a confirmed oddity is simply the rule in every profile; its ledger entry then says "no flag" and `strict-fixed` keeps it (BAT-QUIRK-10, 11, 15 and 18: BAT-Q12, BAT-Q13, BAT-Q15, BAT-Q18). The profiles differ exactly by the quirks that have a flag. **Retired:** when a later reading or observation shows that a flagged quirk does not exist in the original, its flag is retired and the entry stays as "none: considered, not a quirk" (ADR-0007, amendment E04b T11b: BAT-QUIRK-2, BAT-QUIRK-9).
+
 ### Profiles
 
 A **profile** is a named set of quirk flags plus Tier-2 parameters. Initial profiles:

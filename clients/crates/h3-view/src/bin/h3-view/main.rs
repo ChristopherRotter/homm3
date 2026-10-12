@@ -1,0 +1,45 @@
+//! `h3-view`: the client's command line (E17). An adapter: it reads files, measures time and
+//! prints; what it computes comes from the pure crates.
+
+mod gate;
+
+use std::process::ExitCode;
+
+const USAGE: &str = "\
+usage: h3-view <command> [options]
+
+commands:
+  gate [--install <dir>] [--out <dir>]
+          the real-asset gate: opens the four LOD archives of an installation copy, decodes every
+          PCX, PAL, DEF and MSK in them (it fails if one does not decode), and writes every entry
+          with its verdict to <out>/gate/entries.tsv and the inventory (findings, duplicates,
+          names nothing mentions, timings) to <out>/gate/report.md. <dir> defaults to
+          $H3_INSTALL, then to the repository's original-data/install; <out> to clients/out
+          (gitignored). Build with --release for meaningful times (about 3 s, against 30 s).
+  help    show this message
+";
+
+fn main() -> ExitCode {
+    let args: Vec<String> = std::env::args().skip(1).collect();
+    match args.split_first() {
+        None => help(),
+        Some((command, rest)) => match command.as_str() {
+            "help" | "--help" | "-h" => help(),
+            "gate" => match gate::Options::parse(rest) {
+                Ok(options) => gate::run(&options),
+                Err(message) => usage_error(&message),
+            },
+            other => usage_error(&format!("unknown command `{other}`")),
+        },
+    }
+}
+
+fn help() -> ExitCode {
+    print!("{USAGE}");
+    ExitCode::SUCCESS
+}
+
+fn usage_error(message: &str) -> ExitCode {
+    eprint!("h3-view: {message}\n\n{USAGE}");
+    ExitCode::from(2)
+}

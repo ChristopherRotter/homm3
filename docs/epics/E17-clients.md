@@ -1,10 +1,11 @@
 # E17 — Clients and asset pipeline
 
-Status: **refined** (2026-10-12; E17a, the asset notes, done the same day). Decisions: ADR draft
-[`client.md`](../lanes/client/adr-drafts/client.md) (Proposed; accepted at the M0 checkpoint).
-Working detail (code readings, formats, layouts): `docs/epics/E17-design.md`, created by the first
-task that has detail to record; done tasks in full: `docs/epics/E17-log.md`. Lane: client
-(`docs/lanes/client/HANDOFF.md`; the user's asset notes are there). Next: M0 T1.
+Status: **in progress**: M0 done (2026-10-12); M1 under way (T2 and T3 done 2026-10-12). Refined 2026-10-12 (E17a, the asset notes,
+done the same day). Decisions: [ADR-0020](../adr/0020-clients.md) (accepted at the M0 checkpoint,
+point 7 rewritten there). Working detail (code readings, formats, layouts): `docs/epics/E17-design.md`,
+created by the first task that has detail to record; done tasks in full:
+[`E17-log.md`](E17-log.md). Lane: client (`docs/lanes/client/HANDOFF.md`; the user's asset notes
+are there). Next: M1 T1 (the code reading; T4–T6 wait for it).
 
 ## Goal
 
@@ -27,6 +28,11 @@ viewer and playable clients. Everything with graphics, sound, input or a window 
   on the user's machine through computer use. Never from the installation: running the game writes
   into its folder (saves, settings, DDrawCompat's log).
 - **First milestone: M0 + M1** as below: headless, independent of the battle lane, starting now.
+- **Loading at checkpoints** (M0 checkpoint): at start only the archives' directories; at each
+  checkpoint (the client opens, a game starts, a battle starts, …) one batch of every asset the
+  coming screens need, read by offset; nothing loads while a screen is shown. The bytes come from a
+  table-only reader in `h3-formats` (CLT-Q2, the battle lane), chosen over memory-mapped files and
+  whole-archive reads; until it lands the adapter reads whole archives (ADR-0020 point 7).
 
 ## The ideas in plain words
 
@@ -60,7 +66,11 @@ autonomy contract (lane HANDOFF) says what the agent decides alone in between.
   allowlist.
 - The client CI job (a shared change): fmt, clippy, tests, coverage of the pure crates, deny.
 - A local real-asset gate command that finds `original-data/install/`.
-- **Exit:** the job green on a pull request; the ADR draft accepted (numbered by a shared change).
+- **Exit:** the job green on a pull request (while CI cannot run: `clients/scripts/check.sh`
+  locally); the ADR draft accepted (numbered by a shared change).
+- **Done 2026-10-12** ([log](E17-log.md#m0--the-workspace-2026-10-12)): the workspace, the gates
+  (`clients/scripts/check.sh`, the job `clients.yml`), `h3-view gate` (the user's four LODs: 11 981
+  entries, opened in about 0.2 s); ADR-0020 accepted; CLT-Q2 filed.
 
 ### M1 — assets and a battle still
 
@@ -74,6 +84,9 @@ autonomy contract (lane HANDOFF) says what the agent decides alone in between.
   standing on their hexes, facing correctly) from a record's snapshot.
 - **Exit:** the gate passes on the user's files; the still renders; the user compares it with the
   original and agrees (or the differences are listed as M2/M3 items).
+- **T2 + T3 done 2026-10-12** ([log](E17-log.md#m1-t2--t3--the-decoders-and-the-inventory-2026-10-12),
+  [design §1–2](E17-design.md)): the PAL, PCX, DEF and MSK decoders; the gate decodes every entry
+  of the user's four LODs (none fails) and writes the inventory report.
 
 ### M2 — the battle replay viewer
 
@@ -109,6 +122,7 @@ notes), HD layouts, the adventure map and the full game viewer, video.
 | 6. Per-expansion content and the ruleset profiles | M1 T4 |
 | 7. The HD patch as a source of fixes and for HD | M3, later |
 | 8. Shadows and the other keyed colours | M1 T1 |
+| 9. The adventure map's object draw order (the user: neither they nor VCMI got it exactly right) | a code reading when the adventure map viewer is refined; M1 T5 reads only the battle's |
 
 ## Risks and known gaps
 
@@ -120,7 +134,14 @@ notes), HD layouts, the adventure map and the full game viewer, video.
   client and may break it. The client CI job runs when those crates change.
 - **The sandbox needs the user's computer online** for the original files (staged one LOD per
   call).
+- **Checkpoint loading needs an engine change (CLT-Q2).** Until the battle lane's table-only
+  reader lands, the client reads whole archives (212 MiB, about 0.2 s warm).
 
 ## M1 review list
 
 (Filled by the tasks: choices queued for the milestone review under the autonomy contract.)
+
+- `proptest` as a dev-dependency of `h3-assets` (the engine's 1.11.0; T2).
+- `h3_assets::build`, encoders for synthetic assets, as public API of `h3-assets` (T2, T3).
+- The decoders' strictness: exact lengths, an overrunning run is an error (no original file has
+  one; `E17-design.md` §1; T2, T3).

@@ -177,19 +177,20 @@ impl Registry {
     }
 
     /// Connection `conn`, logged in as `login`, asks to wait in `ladder`'s queue, rated `rating`
-    /// (whole points), and hears from it through `to` (E16 M4 T2): the answer's text, and whether
-    /// the connection waits in a queue.
+    /// (whole points), playing a bot or not (`bots`, E16 M4 T5b), and hears from it through `to`
+    /// (E16 M4 T2): the answer's text, and whether the connection waits in a queue.
     pub(crate) fn queue(
         &mut self,
         conn: ConnId,
-        (seq, ladder): (u32, &str),
+        asked: (u32, &str, bool),
         login: Option<&str>,
         (rating, to): (i32, ToConn),
     ) -> (String, bool) {
         let mine = |accounts: &[String; 2]| accounts.iter().any(|a| Some(a.as_str()) == login);
+        let ladder = asked.1;
         let unfinished = (self.ranked.values()).any(|(l, accounts)| l == ladder && mine(accounts));
         let now = self.now();
-        let answer = (self.queues).queue(conn, (seq, ladder), login, (rating, unfinished), now);
+        let answer = (self.queues).queue(conn, asked, login, (rating, unfinished), now);
         self.queued.insert(conn, to);
         (codec::encode_text(&answer), self.queues.holds(conn))
     }
@@ -197,11 +198,11 @@ impl Registry {
     /// Connection `conn` leaves its queue (`Dequeue`), or declines its match (`DeclineMatch`, if
     /// `decline`): the answer's text, and whether the connection waits in a queue.
     pub(crate) fn dequeue(&mut self, conn: ConnId, seq: u32, decline: bool) -> (String, bool) {
-        let mut told = Told::new();
+        let (mut told, now) = (Told::new(), self.now());
         let answer = if decline {
-            self.queues.decline(conn, seq, &mut told)
+            self.queues.decline(conn, (seq, now), &mut told)
         } else {
-            self.queues.dequeue(conn, seq, &mut told)
+            self.queues.dequeue(conn, (seq, now), &mut told)
         };
         self.tell(told);
         (codec::encode_text(&answer), self.queues.holds(conn))
@@ -211,7 +212,8 @@ impl Registry {
     /// again.
     pub(crate) fn closed(&mut self, conn: ConnId) {
         let mut told = Told::new();
-        self.queues.closed(conn, &mut told);
+        let now = self.now();
+        self.queues.closed(conn, now, &mut told);
         self.queued.remove(&conn);
         self.tell(told);
     }
@@ -460,9 +462,16 @@ impl Registry {
         // A match that is over keeps its players from no other (E16 M4 T2); its thread rated its
         // result before (E16 M4 T3b).
         if status.0 == Phase::Over {
-            self.ranked.remove(&game);
+            self.ended(game);
         }
         self.lobby.update(game, status);
+    }
+
+    /// Game `game` is over, a match's rated (E16 M4 T3b): it keeps its players from no other
+    /// match on its ladder. Its thread says so before its players hear the end (E16 M4 T7), so a
+    /// player who queues as soon as it hears it is not refused `InRankedGame`.
+    pub(crate) fn ended(&mut self, game: u32) {
+        self.ranked.remove(&game);
     }
 
     /// The seats of game `game` that belong to accounts, with their display names (E16 M3 T3).
@@ -798,13 +807,16 @@ pub(crate) fn accept(shared: &Shared, conn: ConnId) -> Option<String> {
 }
 
 /// Runs the matcher every [`MATCH_EVERY`] (E16 M4 T2), until the task is aborted; the ladders'
-/// bots rated as `ladders` holds them, read outside the registry's lock (E16 M4 T5).
+/// bots rated as `ladders` holds them, read outside the registry's lock (E16 M4 T5) and off the
+/// task (E16 M4 T7: the ladders' lock waits on a result's sync).
 pub(crate) async fn match_every(shared: Shared, ladders: Arc<Ladders>) {
     let mut tick = tokio::time::interval(MATCH_EVERY);
     tick.set_missed_tick_behavior(tokio::time::MissedTickBehavior::Delay);
     loop {
         tick.tick().await;
-        let bots = ladders.bots();
+        let tables = Arc::clone(&ladders);
+        let bots = tokio::task::spawn_blocking(move || tables.bots());
+        let bots = bots.await.unwrap_or_default();
         lock(&shared).tick_queues(&bots);
     }
 }

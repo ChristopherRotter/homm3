@@ -9,7 +9,7 @@ use h3_kernel::{Rng, StreamId};
 use super::support::*;
 use crate::geometry::Direction;
 use crate::terrain::generate_obstacles;
-use crate::{BattleSetup, BattleState};
+use crate::{BattleSetup, BattleState, MAX_REMOVABLE_HEXES};
 
 fn terrain(r: &Ruleset, name: &str) -> h3_content::TerrainId {
     r.terrain_by_key(&std::format!("t:{name}")).unwrap()
@@ -145,6 +145,57 @@ fn generation_stops_without_obstacles_or_places() {
         assert!(generate(&r, "void", seed).is_empty());
         assert!(generate(&r, "tall", seed).is_empty());
     }
+}
+
+/// E04b T11b review (F-robust-5): the battle accepts every battlefield the generator makes. A
+/// usual obstacle becomes a removable piece, which holds at most [`MAX_REMOVABLE_HEXES`] hexes
+/// (BAT-GEO-003): a type that blocks so many is placed and accepted, one that blocks more does
+/// not compile (it used to compile, and the battle refused the generated battlefield).
+// covers: BAT-GEO-004, BAT-GEO-003
+#[test]
+fn the_battle_accepts_every_generated_battlefield() {
+    use h3_content::{CompileError, ContentKey, ObstacleDef};
+    // A row of `hexes` hexes from its anchor, on the terrain without other obstacles.
+    let with_ridge = |hexes: u8| {
+        try_ruleset_from(
+            "t:faithful",
+            |_| {},
+            |pack| {
+                pack.obstacles.push(ObstacleDef {
+                    key: ContentKey::new("t", "ridge").unwrap(),
+                    terrains: std::vec![ContentKey::new("t", "void").unwrap()],
+                    width: hexes,
+                    height: 1,
+                    blocked: (0..hexes.cast_signed()).map(|dx| (dx, 0)).collect(),
+                    absolute: false,
+                });
+            },
+        )
+    };
+    let most = u8::try_from(MAX_REMOVABLE_HEXES).unwrap();
+    let r = with_ridge(most).unwrap();
+    for seed in 0..20u64 {
+        let obstacles = pieces(&r, "void", seed);
+        assert!(!obstacles.is_empty());
+        assert!(
+            obstacles
+                .iter()
+                .all(|o| o.hexes.len() == MAX_REMOVABLE_HEXES)
+        );
+        let setup = BattleSetup {
+            terrain: Some(terrain(&r, "void")),
+            obstacles,
+            ..setup(&r, &[(0, "fixed", 10)], &[(0, "fixed", 10)])
+        };
+        assert!(BattleState::new(&r, &setup, seed).is_ok(), "{seed}");
+    }
+    assert_eq!(
+        with_ridge(most + 1).err(),
+        Some(CompileError::InvalidObstacle {
+            key: std::string::String::from("t:ridge"),
+            reason: "usual obstacles block at most 8 hexes",
+        })
+    );
 }
 
 // covers: BAT-GEO-004

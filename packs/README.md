@@ -64,7 +64,9 @@ id = "crag"
 terrains = ["meadow"]            # at least one
 width = 3                        # usual obstacles: free hexes to the right of the anchor
 height = 2                       # usual obstacles: rows needed above the anchor
-blocked = [[0, 0], [1, 0], [1, -1]]  # [dx, dy] from the anchor (bottom-left hex, dy <= 0)
+blocked = [[0, 0], [1, 0], [1, -1]]  # [dx, dy] from the anchor (bottom-left hex, dy <= 0); a
+                                 # usual obstacle blocks at most 8 hexes (the battle's
+                                 # removable piece, BAT-GEO-003)
 # absolute = true                # fixed position: `blocked` lists [x, y] hexes of the field
 
 [[creature]]
@@ -160,7 +162,7 @@ errors:
 | `minimum_morale`, `minimum_luck` | `value` | lower bound of its morale/luck (BAT-MOR-001, BAT-LCK-001) |
 | `no_distance_penalty` | — | its shots have no distance penalty (BAT-RNG-002) |
 | `area_shot` | `effect` (`fireball`/`death_cloud`) | its shots also hit the stacks around the target (requires flag `area_attack`; BAT-RNG-004) |
-| `first_aid` | `min_hp`, `max_hp` (1 ≤ min ≤ max) | war machine only (requires flag `war_machine`; First Aid Tent): on its turn heals the top creature of a random hurt allied stack by a uniform `min_hp..=max_hp` (BAT-WAR-003) |
+| `first_aid` | `min_hp`, `max_hp` (1 ≤ min ≤ max) | war machine only (requires flag `war_machine`; First Aid Tent): on its turn heals the top creature of a random hurt stack of its own side (also one the other side controls, BAT-MAG-026) by a uniform `min_hp..=max_hp` (BAT-WAR-003) |
 | `ammo_supply` | — | war machine only (requires flag `war_machine`; Ammo Cart): while it lives its side's shots use no ammunition; it never acts (BAT-WAR-004) |
 | `spell_level_immunity` | `max_level` (1..=5) | spells of this level and below cannot affect it (dragons, Magic Elemental; BAT-MAG-005) |
 | `school_immunity` | `school` | the school's spells cannot affect it (one entry per school; fire immunity; BAT-MAG-005) |
@@ -168,7 +170,7 @@ errors:
 | `spell_vulnerability` | `spell`, `percent` (1..=1000) | +`percent` % damage from the spell (one entry per spell; elementals; BAT-MAG-004) |
 | `spell_damage_reduction` | `percent` (1..=100) | damage from spells × (100 − `percent`) / 100, rounded down (Golems; BAT-MAG-004) |
 | `magic_resistance` | `percent` (1..=100) | the creature lets `100 − percent` % of hostile spells through (Dwarves, Crystal Dragon; BAT-MAG-008) |
-| `magic_resistance_aura` | `percent` (1..=100) | adjacent allied stacks' chance to be affected by a hostile spell × (100 − `percent`) %, the strongest aura once (Unicorns; BAT-MAG-008) |
+| `magic_resistance_aura` | `percent` (1..=100) | the chance of adjacent stacks of the side that controls it (BAT-MAG-026) to be affected by a hostile spell × (100 − `percent`) %, the strongest aura once (Unicorns; BAT-MAG-008) |
 | `spell_after_strike` | `spell`, `chance_percent` (1..=100), `mastery` (0..=3), `rounds` (≥ 1), `living`, `unless_active`, `defended` (v21) (default false) | since v19: after each melee strike casts `spell` (timed or dispel effects only) on the struck stack: the chance drawn (none at 100), the stack alive, of a living creature if `living`, not under the spell if `unless_active`, with a defense above 0 if `defended`, then the spell's test without the side test (none for a spell that `ignores_immunity`; a `bind` spell only once per striker); at `mastery`, lasting `rounds`, without a hero (one entry per spell; Unicorns, Black Knights, the flies, BAT-MAG-040; Dendroids, Rust Dragons, BAT-MAG-045, BAT-MAG-046) |
 | `spell_damage_after_strike` | `spell`, `chance_percent` (1..=100), `per_creature` (≥ 1) | since v19: after each melee strike deals `per_creature` × its creatures damage as `spell` (a damage spell) to the struck stack, after the chance and the spell's test (the Thunderbird; BAT-MAG-041) |
 | `damage_after_strike` | `chance_percent` (1..=100), `percent` (1..=100) | since v21: after each melee strike, on a living struck stack and after the chance, deals `percent` % of one roll of its damage range × its creatures (truncated; nothing if 0), without a test (the Rust Dragon; BAT-MAG-047) |
@@ -186,7 +188,7 @@ errors:
 | `damage_penalty` | `creature`, `percent` (1..=100) | since v28: its strikes deal `percent` % less damage to `creature` (the original's damage stage 2, beside the defense factor; the largest penalty that applies): the Magic Elemental's half against Magic Elementals and Black Dragons (BAT-DMG-010). Several for different creatures |
 | `damage_penalty_by_flag` | `flag` (a creature flag), `percent` (1..=100) | since v28: as `damage_penalty`, against creatures with flag `flag`: the Psychic Elemental's half against mind-immune creatures (BAT-DMG-010). Several for different flags |
 | `rebirth` | `divisor` (≥ 1) | since v29: after the action that killed its stack (a strike, a cast, a mine's or Fire Wall's damage), if the stack has a cast left (its creature's `casts`) and is not a clone (nor a sacrificed one, BAT-QUIRK-17), one cast is used and the stack comes back for good on its hexes, without the effects it died with, with its count at the battle's start div `divisor` creatures, plus one for each of the count mod `divisor` others with a 1-in-`divisor` chance; it counts as having acted this round, and no creature comes back if none is drawn (the cast is used either way): the Phoenix's fifth (BAT-MAG-059) |
-| `fear` | `percent` (1..=100) | since v29: while its stack lives, a stack of the other side (taken from the frightened stack's controller; the frightening stacks count by their real side, BAT-QUIRK-18) that is picked to act outside the round's wait phase, after the bad-morale check and not at the battle's first activation without a tactics phase, is frozen with `percent` % chance (one roll, the largest chance among the side's living stacks with `fear`): it loses its turn and counts as having acted. Creatures without morale and those with `fear` are never frozen: the Azure Dragon's 10 % (BAT-MAG-060) |
+| `fear` | `percent` (1..=99: never certain, so that the frightened side gets to act) | since v29: while its stack lives, a stack of the other side (taken from the frightened stack's controller; the frightening stacks count by their real side, BAT-QUIRK-18) that is picked to act outside the round's wait phase, after the bad-morale check and not at the battle's first activation without a tactics phase, is frozen with `percent` % chance (one roll, the largest chance among the side's living stacks with `fear`): it loses its turn and counts as having acted. Creatures without morale and those with `fear` are never frozen: the Azure Dragon's 10 % (BAT-MAG-060) |
 | `ignores_magic_block` | — | since v31: the creature's casts ignore a hero's `no_casting` (the Orb of Inhibition): no harvested creature has it: batch 2e observed the code reading, under which the Orb stops the Faerie Dragon too, against the wiki and VCMI (BAT-MAG-061, BAT-Q21) |
 
 `creature` references follow the reference rules above (own pack, or `pack:name` in the
@@ -245,7 +247,9 @@ mass = "expert"                    # v5: from this mastery no target, every stac
                                    # mastery without quirk Q-0011, as Forgetfulness's)
 mind = false                       # v5: a mind spell (creatures with flag mind_immune are immune)
 excludes = ["war_machine"]
-duration = "rounds"                # v5: rounds (default: power + duration bonuses) | permanent;
+duration = "rounds"                # v5: rounds (default: power + duration bonuses) | permanent
+                                   # (not with a blind, petrify or paralyze change: a stack must
+                                   # get its turns back);
                                    # v8: own_turn (1 turn on the active stack, else 2, counted at
                                    # the stack's own turn start: Frenzy); v12: fixed, with
                                    # `fixed_rounds = 255` (whatever the power: Berserk)
@@ -470,13 +474,15 @@ taken reflect v % of their first stage onto the striker, BAT-MAG-018), `frenzy` 
 × v %, defense 0 when struck, BAT-MAG-019); since v10, E04b T4a: `spell_immunity` (no spell below
 level v reaches the stack unless it is a creature ability or ignores immunity; the first cast ends
 its negative effects below level v, BAT-MAG-021), `magic_mirror` (a stack spell aimed at it by
-the other side goes with a chance of v % to a random living stack of the caster's side,
+the other side's hero goes with a chance of v % to a random living stack of the caster's side; a
+creature's spell is never sent away,
 BAT-MAG-022); since v11, E04b T4b: `forgetfulness` (a shooter counts half its creatures, at
 least one, on every strike; from the first cast's Advanced mastery it cannot shoot,
 BAT-MAG-023), `blind` (the stack loses its turns; struck in melee while blind it retaliates
 with v % of its damage, not at all at 0, BAT-MAG-024); since v12, E04b T4c: `berserk` (its
-turns are automatic, attacking the nearest stack; every other stack is its enemy,
-BAT-MAG-025), `hypnotize` (the other side controls it, BAT-MAG-026); since v20, E04b T7a2:
+turns are automatic, attacking the nearest stack; next to any stack it counts as an enemy, but
+its own side may not attack it, BAT-MAG-025), `hypnotize` (the other side controls it and may
+attack it, its own side may not, BAT-MAG-026); since v20, E04b T7a2:
 `petrify` (the stack loses its turns, takes half the damage of strikes and does not retaliate),
 `paralyze` (it loses its turns; struck in melee it retaliates with v %, the smaller with Blind's;
 both BAT-MAG-043), `poison` (its hit points per creature fall by a tenth of their start value at
@@ -682,7 +688,12 @@ gap-fill file (`[heroes.params]`: 0/0/1/1, 99, 64).
 flags are off): the registered flags are in `h3_content::REGISTRY` and the quirks ledger
 (`docs/rules/quirks-ledger.md`); the packs' `faithful` profiles turn Q-0003 and Q-0005 on,
 `strict-fixed` off (since E04b T8e also the data quirks' `quirk.content` flags, which only gated
-overrides read). Profile-level Tier-2 parameters are not implemented yet (backlog).
+overrides read). A flag the profile names must be registered (`CompileError::UnknownQuirk`). A
+retired flag is not: its position in the registry stays reserved, its name is gone, and a profile
+that still names it, on or off, does not compile; the pack format's version does not change when
+a flag comes or goes. Retired: `quirk.battle.attack_from_seen_pit` (BAT-QUIRK-2) and
+`quirk.battle.creature_mirror_untested` (BAT-QUIRK-9), both on 2026-10-12.
+Profile-level Tier-2 parameters are not implemented yet (backlog).
 
 The compiled ruleset's canonical hash (encoding v15, `RULESET_HASH_VERSION`) covers packs,
 profile, quirks, resources, terrains, factions, obstacles, all creature fields including abilities

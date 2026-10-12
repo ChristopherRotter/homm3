@@ -1,7 +1,7 @@
 //! Stacks a battle creates (E04b T6b; the original's code, `docs/formats/installation.md` §7.19):
 //! Clone copies a stack of the caster's side for some rounds (BAT-MAG-038), Summon Elemental
-//! summons a stack of the spell's creature (BAT-MAG-039). Both take a dead created stack's slot of
-//! the side or a new one, while the side has fewer stacks than the limit (BAT-MAG-037).
+//! summons a stack of the spell's creature (BAT-MAG-039). Both take the slot of a killed created
+//! stack of the side or a new one, while the side has fewer stacks than the limit (BAT-MAG-037).
 
 use h3_content::{
     CLONE_ON_ITS_ORIGINAL, CreatureTypeId, MAX_FIELD_HEXES, MAX_RAISED_CREATURES,
@@ -95,9 +95,10 @@ fn has_room(state: &BattleState, ruleset: &Ruleset, side: BattleSide) -> bool {
 }
 
 /// Whether a stack of `creature` may rise for `side` from a corpse now (BAT-MAG-052): the side
-/// has its template ([`Created::templates`]), and a dead created stack of the side leaves its
-/// slot, else the side has room for a stack. (The original's 0x47A100 finds no record without a
-/// slot, and the raise 0x5A7390 crashes; the engine refuses the raise, BAT-QUIRK-12.)
+/// has its template ([`Created::templates`]), and a killed created stack of the side leaves its
+/// slot ([`reusable`]), else the side has room for a stack. (The original's 0x47A100 finds no
+/// record without a slot, and the raise 0x5A7390 crashes; the engine refuses the raise,
+/// BAT-QUIRK-12.)
 pub(crate) fn has_slot(
     state: &BattleState,
     ruleset: &Ruleset,
@@ -106,18 +107,31 @@ pub(crate) fn has_slot(
     state.created.templates[side.index()]
         .iter()
         .any(|t| t.creature == creature)
-        && (has_room(state, ruleset, side)
-            || state
-                .stacks
-                .iter()
-                .any(|s| s.side == side && s.is_created() && !s.is_alive()))
+        && (has_room(state, ruleset, side) || reusable(state, side).is_some())
+}
+
+/// The record a new stack of `side` takes over, if any (BAT-MAG-037; the original's 0x47A100:
+/// the first record of the side that is empty or holds a dead summoned stack with no creatures,
+/// `installation.md` §7.19): its first created stack that was killed. A created stack that
+/// vanished when its rounds ran out keeps its creatures in the original (its death leaves the
+/// count, BAT-END-003), so its record stays in use for the rest of the battle: it is passed
+/// over (E04b T11b review).
+// rule: BAT-MAG-037
+fn reusable(state: &BattleState, side: BattleSide) -> Option<StackId> {
+    (0u8..)
+        .zip(state.stacks.iter())
+        .zip(state.created.vanished)
+        .find(|&((_, s), vanished)| {
+            s.side == side && s.is_created() && !s.is_alive() && vanished == 0
+        })
+        .map(|((i, _), _)| StackId(i))
 }
 
 /// A stack of `count` creatures of `creature` rises for `side` from the corpse of stack `corpse`
 /// (BAT-MAG-052; the original's 0x5A7390, `installation.md` §7.21): the corpse is gone, and the
-/// new stack, as `side` would have it at the battle's start, takes a dead created stack's slot or
-/// a new one (BAT-MAG-037) and the corpse's army slot, on the corpse's position (its tail, or its
-/// only hex). It is an army stack of that slot ([`StackTraits::RAISED`]), no created one. The
+/// new stack, as `side` would have it at the battle's start, takes a killed created stack's slot
+/// or a new one (BAT-MAG-037) and the corpse's army slot, on the corpse's position (its tail, or
+/// its only hex). It is an army stack of that slot ([`StackTraits::RAISED`]), no created one. The
 /// side has a slot for it ([`has_slot`]), and its template ([`Created::templates`]: a corpse
 /// raiser of either army raises the creature).
 pub(crate) fn raise_corpse<S: Sink>(
@@ -229,11 +243,12 @@ pub(crate) fn clone<S: Sink>(
         top_hp: max_hp,
         shots,
         retaliations_left: original.retaliations,
+        // A clone of a stack raised from a corpse (BAT-MAG-052) is not one itself.
         traits: original
             .traits
             .with(StackTraits::SUMMONED, true)
             .with(StackTraits::CLONE, true)
-            .with(StackTraits::RAISED, false),
+            .without(StackTraits::RAISED),
         flags: StackFlags::default(),
         spells: SpellValues::new(original.speed),
         ..original
@@ -402,16 +417,14 @@ pub(crate) fn summon<S: Sink>(
 }
 
 /// Puts the created `stack` into the battle (BAT-MAG-037; the original's 0x47A100): in the slot of
-/// its side's first dead created stack, else in a new one; morale and luck as its side's stacks
-/// have them. Returns its id.
+/// its side's first killed created stack ([`reusable`]), else in a new one; morale and luck as
+/// its side's stacks have them. Returns its id.
 fn add(state: &mut BattleState, ruleset: &Ruleset, stack: Stack) -> StackId {
-    // A dead stack's effects are gone after every command; a reused slot starts without them.
-    effects::remove_dead(state, ruleset);
-    let reused = (0u8..)
-        .zip(state.stacks.iter())
-        .find(|(_, s)| s.side == stack.side && s.is_created() && !s.is_alive())
-        .map(|(i, _)| StackId(i));
-    let id = if let Some(id) = reused {
+    let id = if let Some(id) = reusable(state, stack.side) {
+        // A reused record is set up from scratch (the original's 0x47A100): nothing of the dead
+        // stack's effects stays, neither the timed ones the command's end has not removed yet nor
+        // the permanent ones a dead stack keeps (BAT-MAG-010).
+        effects::forget(state, id);
         *state.at_mut(id) = stack;
         id
     } else {

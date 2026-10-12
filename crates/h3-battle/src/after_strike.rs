@@ -19,7 +19,7 @@ use crate::binds;
 use crate::damage::apply_damage;
 use crate::effects::{self, TimedCast};
 use crate::event::{Event, EventKind, Sink};
-use crate::magic::{self, SpellBonus, SpellBonuses};
+use crate::magic::{self, SpellBonus};
 use crate::state::{BattleState, StackId, StackTraits};
 
 /// What a spell after a strike needs of the struck stack besides the spell's test
@@ -214,8 +214,9 @@ fn damage_lands(
 
 /// Deals a damage spell after a strike that landed (BAT-MAG-041): `per_creature` per creature of
 /// the striker's stack as the spell's damage without a hero (the target's extra damage,
-/// reduction and protection, BAT-MAG-004), reported, then what damage ends (BAT-MAG-024,
-/// BAT-MAG-038).
+/// reduction and protection, BAT-MAG-004); none if that is 0 (the original leaves when the
+/// damage is not above 0, 0x4411FD: no report, as [`extra_damage`]). Reported, then what damage
+/// ends (BAT-MAG-024, BAT-MAG-038).
 fn thunderbolt<S: Sink>(
     state: &mut BattleState,
     ruleset: &Ruleset,
@@ -224,20 +225,23 @@ fn thunderbolt<S: Sink>(
     (striker, target): (StackId, StackId),
     sink: &mut S,
 ) {
-    sink.emit(Event::public(EventKind::StrikeSpell {
-        striker,
-        target,
-        spell: id,
-    }));
     let value = u64::from(state.at(striker).count) * u64::from(per_creature);
     let victim = state.at(target);
     let protection = victim.spells.school_protection;
     let (caster, damage) = magic::spell_damage(
         ruleset,
-        ((id, spell), &SpellBonuses::default()),
+        ((id, spell), None),
         value,
         (victim.creature, &protection),
     );
+    if damage == 0 {
+        return;
+    }
+    sink.emit(Event::public(EventKind::StrikeSpell {
+        striker,
+        target,
+        spell: id,
+    }));
     let kills = apply_damage(state.at_mut(target), damage);
     sink.emit(Event::public(EventKind::SpellDamage {
         target,

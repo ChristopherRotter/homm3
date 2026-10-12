@@ -26,7 +26,7 @@ use crate::event::{Event, EventKind, Sink, Visibility};
 use crate::geometry::{Direction, Field, Hex, HexSet};
 use crate::magic;
 use crate::movement;
-use crate::state::{BattleState, StackId, StackTraits, side_code};
+use crate::state::{BattleState, NO_CORPSE, StackId, StackTraits, side_code};
 
 /// Obstacles reserved with the first one and on every fork that has any (ADR-0014 point 5).
 pub const OBSTACLE_CAPACITY: usize = 8;
@@ -303,6 +303,18 @@ pub(crate) fn seen_pits(state: &BattleState, viewer: BattleSide) -> HexSet {
         .fold(HexSet::new(), |set, o| set.union(o.hexes))
 }
 
+/// The hexes of the pits both sides see (BAT-MAG-031): all that a choice the rules make and
+/// report to both sides may read (the automatic Ballista's target, BAT-WAR-002).
+// rule: BAT-MAG-031
+pub(crate) fn public_pits(state: &BattleState) -> HexSet {
+    state
+        .spell_obstacles
+        .list
+        .iter()
+        .filter(|o| o.kind == ObstacleKind::Pit && sees(state, o.side.opponent(), o))
+        .fold(HexSet::new(), |set, o| set.union(o.hexes))
+}
+
 /// The hexes of `shape` cast by `side`'s hero at `mastery` on `target`, in order: the target hex,
 /// then each step's neighbour, mirrored for the defender if the shape says so (BAT-MAG-027);
 /// `None` if one leaves the field.
@@ -362,7 +374,10 @@ pub(crate) fn free(state: &BattleState, field: Field, side: BattleSide, hexes: &
 /// Up to `count` random hexes for `side`'s random obstacles (Quicksand, Land Mine; BAT-MAG-032;
 /// the original's 0x5A0354, `installation.md` §7.16), in the order drawn: each drawn with equal
 /// chances among the hexes not yet drawn that are outside the side columns, without a natural
-/// obstacle, an anchor hex (quirk BAT-QUIRK-3), a spell obstacle and a stack, living or dead. With
+/// obstacle, an anchor hex (quirk BAT-QUIRK-3), a spell obstacle, a living stack and a corpse.
+/// A dead stack that left no corpse (a created stack, a sacrificed one, a corpse the Pit Lords
+/// raised: [`NO_CORPSE`]) keeps no hex free: the original's draw skips a hex with a living stack
+/// or a corpse on it (0x5A03E3 to 0x5A03F3, 0x5A05FB to 0x5A060D; E04b T11b review). With
 /// quirk BAT-QUIRK-4 every spell obstacle counts, the other side's hidden ones too (which tells
 /// the caster where none lies); without it only those `side` sees, and a new one may go over a
 /// hidden one of the other side (Q-0002). The original draws from every hex and skips the
@@ -385,8 +400,11 @@ pub(crate) fn random_hexes(
         .blocked()
         .union(state.natural.anchors())
         .union(spells);
-    for s in state.stacks.iter() {
-        s.footprint(field).hexes().for_each(|h| taken.insert(h));
+    for (s, &corpse) in state.stacks.iter().zip(state.raised.corpse.iter()) {
+        // A stack whose death is not marked yet lies there like a corpse.
+        if s.is_alive() || corpse != NO_CORPSE {
+            s.footprint(field).hexes().for_each(|h| taken.insert(h));
+        }
     }
     let mut candidates = [Hex(0); MAX_FIELD_HEXES];
     let mut n = 0;
@@ -539,8 +557,8 @@ pub(crate) fn removable(
 }
 
 /// Whether [`removable`] holds for some hex (BAT-MAG-034), without testing every hex: a
-/// removable natural obstacle that blocks a hex or, with quirk BAT-QUIRK-3, has its anchor; or a
-/// spell obstacle that `side` sees and `magic` removes at `mastery`.
+/// removable natural obstacle that blocks a hex no removal cleared or, with quirk BAT-QUIRK-3,
+/// still has its anchor; or a spell obstacle that `side` sees and `magic` removes at `mastery`.
 pub(crate) fn any_removable(
     state: &BattleState,
     side: BattleSide,
@@ -618,12 +636,14 @@ fn acts_on(state: &BattleState, ruleset: &Ruleset, s: StackId, hex: Hex) -> bool
 /// Stack `s` enters each of `hexes` in turn, while it lives: on each a Fire Wall burns it
 /// (BAT-MAG-028), then a mine may go off under it (BAT-MAG-033), as the original's 0x46A570
 /// (`installation.md` §7.15, §7.17); a stack either kills may be reborn (BAT-MAG-059), and the
-/// battle may end. Returns whether it still lives.
+/// battle may end: checked here if `ends`, else left to the action this is a part of
+/// ([`travel_back`]). Returns whether it still lives.
 fn enter<S: Sink>(
     state: &mut BattleState,
     ruleset: &Ruleset,
     s: StackId,
     hexes: [Option<Hex>; 2],
+    ends: bool,
     sink: &mut S,
 ) -> bool {
     for hex in hexes.into_iter().flatten() {
@@ -640,12 +660,14 @@ fn enter<S: Sink>(
             // rule: BAT-MAG-059
             crate::raise::rebirths(state, ruleset, sink);
             // Only this stack takes damage: the battle was not over before this burn.
-            check_end(state, sink);
+            if ends {
+                check_end(state, sink);
+            }
         }
         if state.at(s).is_alive()
             && let Some(i) = mine_under(state, ruleset, s, hex)
         {
-            explode(state, ruleset, (s, hex), i, sink);
+            explode(state, ruleset, (s, hex), i, ends, sink);
         }
     }
     state.at(s).is_alive()
@@ -653,13 +675,14 @@ fn enter<S: Sink>(
 
 /// The mine `i` goes off under stack `s` on `hex` (BAT-MAG-033): it is revealed and reported to
 /// both sides, does its spell's damage as a Fire Wall does (BAT-MAG-028) and is gone; the battle
-/// may end.
+/// may end (checked here if `ends`, as in [`enter`]).
 // rule: BAT-MAG-033
 fn explode<S: Sink>(
     state: &mut BattleState,
     ruleset: &Ruleset,
     (s, hex): (StackId, Hex),
     i: usize,
+    ends: bool,
     sink: &mut S,
 ) {
     let mine = state.spell_obstacles.list.remove(i);
@@ -682,7 +705,9 @@ fn explode<S: Sink>(
     // rule: BAT-MAG-059
     crate::raise::rebirths(state, ruleset, sink);
     // Only this stack takes damage: the battle was not over before.
-    check_end(state, sink);
+    if ends {
+        check_end(state, sink);
+    }
 }
 
 /// Moves stack `mover` from `from` to another free position `to` (BAT-MOV-001 to 003), reported
@@ -709,7 +734,32 @@ pub(crate) fn travel<S: Sink>(
         moved(state, mover, (from, to), sink);
         return true;
     }
-    travel_through(state, ruleset, mover, (from, to), sink)
+    travel_through(state, ruleset, mover, (from, to), true, sink)
+}
+
+/// The return of stack `mover` from `from` to the position `to` it started its turn on, after
+/// its strike (BAT-ATK-004): a move like any other ([`travel`]; the original returns through its
+/// move handler, 0x445950, a flight for the Harpies), so the stacks it binds are released
+/// (BAT-MAG-045) and the hexes it lands on, or walks over, burn it (BAT-MAG-028) and blow up
+/// under it (BAT-MAG-033). It is a part of the strike's action: the battle's end is not checked
+/// here but at the end of that action (the original has no check before the return, 0x4789F8),
+/// so a stack whose strike left the other side without stacks still lands.
+// rule: BAT-ATK-004, BAT-MAG-028, BAT-MAG-033
+pub(crate) fn travel_back<S: Sink>(
+    state: &mut BattleState,
+    ruleset: &Ruleset,
+    mover: StackId,
+    (from, to): (Hex, Hex),
+    sink: &mut S,
+) {
+    // rule: BAT-MAG-045
+    crate::binds::release(state, ruleset, mover, sink);
+    let o = &state.spell_obstacles;
+    if o.fire().is_empty() && !o.has_hidden() {
+        moved(state, mover, (from, to), sink);
+    } else {
+        travel_through(state, ruleset, mover, (from, to), false, sink);
+    }
 }
 
 /// Moves stack `mover` from `a` to `b`, reported.
@@ -722,13 +772,15 @@ fn moved<S: Sink>(state: &mut BattleState, mover: StackId, (a, b): (Hex, Hex), s
     }));
 }
 
-/// [`travel`] while a Fire Wall, a pit or a mine lies on the battlefield.
+/// [`travel`] while a Fire Wall, a pit or a mine lies on the battlefield; the battle's end is
+/// checked where the stack is hurt if `ends` ([`enter`]).
 #[inline(never)]
 fn travel_through<S: Sink>(
     state: &mut BattleState,
     ruleset: &Ruleset,
     mover: StackId,
     (from, to): (Hex, Hex),
+    ends: bool,
     sink: &mut S,
 ) -> bool {
     let field = Field::new(ruleset.battle().field);
@@ -779,10 +831,10 @@ fn travel_through<S: Sink>(
                 for hex in in_pit.into_iter().flatten() {
                     stuck(state, mover, hex, sink);
                 }
-                enter(state, ruleset, mover, new, sink);
+                enter(state, ruleset, mover, new, ends, sink);
                 return false;
             }
-            if !enter(state, ruleset, mover, new, sink) {
+            if !enter(state, ruleset, mover, new, ends, sink) {
                 return false;
             }
         }
@@ -848,5 +900,5 @@ fn stand_on<S: Sink>(state: &mut BattleState, ruleset: &Ruleset, s: StackId, sin
     for (slot, hex) in on.iter_mut().zip(footprint.hexes()) {
         *slot = Some(hex);
     }
-    enter(state, ruleset, s, on, sink);
+    enter(state, ruleset, s, on, true, sink);
 }

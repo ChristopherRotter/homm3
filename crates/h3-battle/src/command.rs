@@ -7,7 +7,7 @@
 
 use alloc::boxed::Box;
 
-use h3_content::{ATTACK_FROM_SEEN_PIT, Ruleset, SpellId};
+use h3_content::{Ruleset, SpellId};
 use h3_contracts::{BattleResult, BattleSide};
 
 use crate::casters;
@@ -162,7 +162,8 @@ pub fn validate(
     plan(state, ruleset, actor, command).map(|_| ())
 }
 
-/// The living stack `target`, an enemy of the active stack `mover` (BAT-MAG-025/026).
+/// The living stack `target`, which the active stack `mover` may attack or shoot: a stack of
+/// the side its controller fights ([`Stack::may_attack`], BAT-MAG-025/026).
 fn enemy(
     state: &BattleState,
     (id, mover): (StackId, &Stack),
@@ -171,7 +172,7 @@ fn enemy(
     let Some(victim) = state.stack(target).filter(|s| s.is_alive()) else {
         return Err(CommandError::NoSuchTarget);
     };
-    if target == id || !mover.is_hostile_to(victim) {
+    if target == id || !mover.may_attack(victim) {
         return Err(CommandError::NotAnEnemy);
     }
     Ok(())
@@ -192,7 +193,7 @@ fn plan<'r>(
     }
     let field = Field::new(ruleset.battle().field);
     if let Some(phase) = state.tactics {
-        return plan_tactics(state, ruleset, phase, (id, &mover), command);
+        return plan_tactics(state, ruleset, (phase, actor), (id, &mover), command);
     }
     match command {
         Command::EndTactics => Err(CommandError::NoTacticsPhase),
@@ -261,10 +262,10 @@ fn plan<'r>(
                 0
             } else {
                 let reach = reachable(state, field, id, &mover);
+                // No attack from a position where the walk stops in a seen pit (the original
+                // offers none, `installation.md` §7.16).
                 // rule: BAT-MAG-032
-                let Some(steps) = reach.steps(from).filter(|_| {
-                    !reach.stops_at(from) || ruleset.quirks().is_enabled(ATTACK_FROM_SEEN_PIT)
-                }) else {
+                let Some(steps) = reach.steps(from).filter(|_| !reach.stops_at(from)) else {
                     return Err(CommandError::Unreachable);
                 };
                 steps
@@ -338,13 +339,14 @@ fn surrender(
     }
 }
 
-/// Validates `command` for the active stack `mover` in the tactics phase: a placement in the
-/// zone, Wait (the game's "next creature", always allowed) or `EndTactics`; nothing else.
+/// Validates `command` of `actor` for the active stack `mover` in the tactics phase: a placement
+/// in the zone, Wait (the game's "next creature", always allowed), `EndTactics`, or leaving the
+/// battle, which the actor does for itself as on any turn (BAT-FLE-001/002); nothing else.
 // rule: BAT-TAC-001, BAT-TAC-002
 fn plan_tactics(
     state: &BattleState,
     ruleset: &Ruleset,
-    phase: TacticsPhase,
+    (phase, actor): (TacticsPhase, BattleSide),
     (id, mover): (StackId, &Stack),
     command: Command,
 ) -> Result<Plan<'static>, CommandError> {
@@ -369,8 +371,8 @@ fn plan_tactics(
         }
         Command::Wait => Ok(Plan::Pass { mover: id, phase }),
         Command::EndTactics => Ok(Plan::EndTactics),
-        Command::Retreat => retreat(state, mover.side),
-        Command::Surrender => surrender(state, ruleset, mover.side),
+        Command::Retreat => retreat(state, actor),
+        Command::Surrender => surrender(state, ruleset, actor),
         Command::Attack { .. }
         | Command::Shoot { .. }
         | Command::Defend

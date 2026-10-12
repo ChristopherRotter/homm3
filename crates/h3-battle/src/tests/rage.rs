@@ -7,11 +7,11 @@ use std::vec::Vec;
 use h3_content::{Ruleset, SpellScope};
 use h3_contracts::{BattleEffect, BattleSetup};
 
-use super::spells::spell;
+use super::spells::{mage, spell};
 use super::support::*;
 use crate::damage::frenzied;
 use crate::effects::TimedCast;
-use crate::{BattleState, Command, Event, EventKind, StackId};
+use crate::{BattleState, CastTarget, Command, Event, EventKind, StackId};
 
 /// Gives stack `id` the timed effect of `name` cast at `mastery` for five rounds (Frenzy: by
 /// its own turns).
@@ -248,6 +248,52 @@ fn the_reflection_is_the_shields_spell_damage() {
     assert_eq!(burnt("fixed", true), [(0, 4, 0)]);
 }
 
+// covers: BAT-MAG-018, BAT-MAG-004
+#[test]
+fn a_fire_shield_reflects_a_huge_strike_without_overflow() {
+    use h3_content::{CreatureSelector, CreatureStat};
+    use h3_contracts::{BattleSide, StatOp};
+    // The robustness review's test for F-robust-3 without any spell damage bonus: the value
+    // itself reaches 2^48 when a Fire Shield reflects the damage of a huge strike on a huge
+    // stack (`magic::reflection` passes `first × v %` to `spell_damage`): `u32::MAX` creatures
+    // whose heroes raise their damage and their hit points with sound `StackStat` effects.
+    // With quirk Q-0005 that overflowed `u128` (a panic).
+    let r = ruleset_with("t:single", |_| {});
+    // `sultan`: an innate Fire Shield of 25 %, 100 hit points.
+    let mut start = setup(&r, &[(0, "flyer", u32::MAX)], &[(0, "sultan", u32::MAX)]);
+    let stat = |stat, amount| BattleEffect::StackStat {
+        creatures: CreatureSelector::All,
+        stat,
+        op: StatOp::Add,
+        amount,
+    };
+    let mut striker = hero(&r);
+    striker.attack = 255;
+    striker.damage.melee = Rate::bp(10_000);
+    striker.effects = vec![
+        stat(CreatureStat::Speed, 30),
+        stat(CreatureStat::MinDamage, i16::MAX),
+        stat(CreatureStat::MinDamage, i16::MAX),
+        stat(CreatureStat::MaxDamage, i16::MAX),
+        stat(CreatureStat::MaxDamage, i16::MAX),
+    ];
+    let mut shielded = hero(&r);
+    shielded.effects = vec![stat(CreatureStat::HitPoints, i16::MAX); 40];
+    start.heroes = [Some(striker), Some(shielded)];
+    let mut state = BattleState::new(&r, &start, 1).unwrap();
+    assert_eq!(state.side_to_act(), Some(BattleSide::Attacker));
+    let mut legal = crate::LegalCommands::new();
+    crate::legal_commands(&state, &r, BattleSide::Attacker, &mut legal);
+    let attack = legal
+        .iter()
+        .copied()
+        .find(|c| matches!(c, Command::Attack { .. }))
+        .unwrap();
+    // The listed attack is applied without a panic, and the shield burns the striker.
+    let events = act(&mut state, &r, attack).unwrap();
+    assert_eq!(reflected(&events).len(), 1);
+}
+
 /// The damage of 10 Fixed, frenzied at `mastery` (none: not), on a lone `target`, in
 /// `profile`.
 fn frenzied_strike(profile: &str, mastery: Option<u8>, target: &'static str) -> u64 {
@@ -297,8 +343,92 @@ fn frenzy_against_a_behemoth_counts_its_reduction_with_quirk_q0009() {
     // Q-0009 the Behemoth's reduction lowers the defense added: 10 + 6 = 16 (+30 %: 26).
     assert_eq!(frenzied_strike("t:faithful", Some(1), "behemoth"), 30);
     assert_eq!(frenzied_strike("t:frenzy", Some(1), "behemoth"), 26);
+    // With quirk Q-0005 too the reduction is the executable's (10 − 4.00000006 = 5.99 → 5;
+    // review r2b F-1): 10 + 5 = 15 (+25 %: 25).
+    assert_eq!(frenzied_strike("t:frenzy_single", Some(1), "behemoth"), 25);
     // Other abilities change nothing: 20 against 10.
     assert_eq!(frenzied_strike("t:frenzy", Some(1), "pikeman"), 30);
+}
+
+// covers: BAT-MAG-019
+#[test]
+fn a_frenzied_stack_that_waits_is_counted_once_a_round() {
+    // E04b T11b review (r2b F-6): Frenzy is counted at the stack's first turn start of a round,
+    // not at its turn after waiting, through real commands. A hero without attack and defense
+    // casts it (no mastery: 100 %) on its Nagas, whose strikes are never retaliated: ten of them
+    // (attack 10, defense 10, damage 2) deal a Titan (defense 20) 15, frenzied 20. Ids: 0 the
+    // Nagas beside the Titan, 1 Nagas far away, 2 the Titan (the fastest).
+    let r = ruleset();
+    let start = || {
+        let mut hero = mage(&r, &["frenzy"]);
+        (hero.attack, hero.defense) = (0, 0);
+        let setup = BattleSetup {
+            heroes: [Some(hero), None],
+            ..setup(&r, &[(0, "naga", 10), (1, "naga", 10)], &[(0, "titan", 1)])
+        };
+        let mut s = BattleState::new(&r, &setup, 1).unwrap();
+        for (id, (x, y)) in [(0, (7, 5)), (1, (3, 8)), (2, (8, 5))] {
+            place(&mut s, &r, id, x, y);
+        }
+        s
+    };
+    // Stack `id`, whose turn it is, does `command`.
+    let turn = |s: &mut BattleState, id: u8, command: Command| {
+        assert_eq!(s.active(), Some(StackId(id)));
+        act(s, &r, command).unwrap()
+    };
+    let frenzy = Command::Cast {
+        spell: spell(&r, "frenzy"),
+        target: CastTarget::Stack(StackId(0)),
+        second: CastTarget::None,
+    };
+    let strike = Command::Attack {
+        target: StackId(2),
+        from: at(&r, 7, 5),
+    };
+    // The turns Frenzy has left on stack 0.
+    let left = |s: &BattleState| {
+        s.effects()
+            .iter()
+            .find(|e| e.stack == StackId(0))
+            .map(|e| e.rounds)
+    };
+    // Cast on the active stack: one turn. The Nagas wait and strike in the wait phase, still
+    // frenzied: the turn after waiting takes nothing.
+    let mut s = start();
+    turn(&mut s, 2, Command::Wait);
+    turn(&mut s, 0, frenzy);
+    assert_eq!(left(&s), Some(Some(1)));
+    turn(&mut s, 0, Command::Wait);
+    turn(&mut s, 1, Command::Defend);
+    assert_eq!(strikes(&turn(&mut s, 0, strike)), [(0, 2, 20)]);
+    assert_eq!(left(&s), Some(Some(1)));
+    turn(&mut s, 2, Command::Defend);
+    // Round 2: their first turn start ends it.
+    turn(&mut s, 2, Command::Wait);
+    assert_eq!((s.round(), left(&s)), (2, None));
+    assert_eq!(strikes(&turn(&mut s, 0, strike)), [(0, 2, 15)]);
+    // Cast on a stack that has waited (in the other Nagas' turn): two turns. It strikes frenzied
+    // in the wait phase, which takes nothing, ...
+    let mut s = start();
+    turn(&mut s, 2, Command::Wait);
+    turn(&mut s, 0, Command::Wait);
+    turn(&mut s, 1, frenzy);
+    assert_eq!(left(&s), Some(Some(2)));
+    turn(&mut s, 1, Command::Defend);
+    assert_eq!(strikes(&turn(&mut s, 0, strike)), [(0, 2, 20)]);
+    assert_eq!(left(&s), Some(Some(2)));
+    turn(&mut s, 2, Command::Defend);
+    // ... and again in its next turn, whose start takes one; ...
+    turn(&mut s, 2, Command::Wait);
+    assert_eq!((s.round(), left(&s)), (2, Some(Some(1))));
+    assert_eq!(strikes(&turn(&mut s, 0, strike)), [(0, 2, 20)]);
+    turn(&mut s, 1, Command::Defend);
+    turn(&mut s, 2, Command::Defend);
+    // ... the turn start after that ends it.
+    turn(&mut s, 2, Command::Wait);
+    assert_eq!((s.round(), left(&s)), (3, None));
+    assert_eq!(strikes(&turn(&mut s, 0, strike)), [(0, 2, 15)]);
 }
 
 // covers: BAT-MAG-019

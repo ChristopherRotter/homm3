@@ -528,18 +528,18 @@ checkpoints = [
     "0xf1c9dec510adc75c",
     "0x2b55f35fa8cd6c88",
     "0x459dcad8e8efb31a",
-    "0x5fa9954ea5c8c1a5",
-    "0xe5b05db754f8782f",
-    "0xd48aeacf7e9bf634",
-    "0xd8440fcc2e9cafe9",
-    "0xc9ffbce81a1ef7e7",
-    "0x9918b8af95f24901",
-    "0x4519111a18b9efb5",
-    "0xe0fabfff375f1e31",
-    "0xb210b80f57de4ca6",
-    "0xc6ed05a595c52018",
-    "0xe4720bdbdbfc247a",
-    "0x8f75c3b8f24bff7e",
+    "0x5fed12132bd302cd",
+    "0xebecf93d7df0fdcf",
+    "0xcba297b413e50498",
+    "0x58d70f9773af28c1",
+    "0xe1fd25ad0b683dc3",
+    "0x4351c4bc9e77f13c",
+    "0xaa5a06593a87bad2",
+    "0xcdefcda9e9d83e76",
+    "0x5e07dcfecddb2cef",
+    "0xb7e734b2803bee4b",
+    "0x34ed5b43e337d189",
+    "0xd6c463eef3e95d39",
 ]
 
 [replay]
@@ -552,7 +552,7 @@ packs = [[
     "0.1.0",
 ]]
 profile = "synthetic:faithful"
-ruleset_hash = "0xca39e2af5fabd024"
+ruleset_hash = "0xf365519700129800"
 rng = "xoshiro256starstar+splitmix64"
 rng_version = 1
 hash = "fnv1a64-le"
@@ -926,4 +926,4 @@ count = 4
 
 [result]
 winner = "defender"
-final_hash = "0x3842ce55335d6727"
+final_hash = "0xdf4c3a99b41c4ef0"

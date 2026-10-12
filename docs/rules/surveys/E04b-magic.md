@@ -326,3 +326,89 @@ fixed hit (rounding); Counterstrike on Griffins; Cure on a healthy stack.
 **Experiment candidates for batch 2b:** the x87 precision (4 Angels attacking with one defense
 point against them: 195 at 53 bits, 194 at 64; Q50); Counterstrike's extra round; Shield with
 Basic Armorer on a round value.
+
+## 16. The review's quirk candidates (E04b T11b, 2026-10-12)
+
+The independent review of E04b re-read the executable and met five original oddities that no
+survey lists. By "Confirm before flagging" (`docs/04-rules-and-sources.md` §4) an oddity becomes a
+quirk with a flag only after a second, independent confirmation (an experiment, original data, a
+fresh agent's re-read of the deciding paths, or VCMI's agreement); until then the engine keeps the
+clean behaviour and the candidate waits here with what would confirm it. An `exploit-fix` candidate
+is never implemented: a confirmation only adds its ledger line. The ids continue `E04-quirks.md`
+(S-01 to S-22). The experiments are in `docs/experiments/README.md` ("From the E04b review"); in
+brackets, the review's finding (report, number).
+
+### S-23 — The struck stack retaliates at a striker that the Fire Shield's reflection killed
+- Original (code reading, one reviewer; r2b F-2): before the retaliation the melee routine 0x441CB0
+  tests the struck stack and the strike (0x441DD4–0x441E01), but not whether the attacker still has
+  creatures, as it does before the second strike (0x441EAF). An attacker that died of the
+  reflection is struck back: the blow kills nothing and the struck stack has spent a retaliation.
+- Against it: VCMI 1.7.5 strikes back only at a living attacker
+  (`server/battles/BattleActionProcessor.cpp` L326); the wiki was not checked.
+- Would confirm it: one Archangel with 5 hit points left attacks 20 Efreet Sultans and dies of the
+  reflection; a second stack attacks the Sultans in the same round and is struck back (clean) or
+  not (the reading). Or a second agent's re-read of 0x441DC5–0x441E5F.
+- Suggested **fix-optional** (the reviewer's: a wasted retaliation); the class is the user's
+  (OPEN-QUESTIONS BAT-Q28, row 4).
+- The engine today (clean): no retaliation at a dead stack; the struck stack keeps its retaliation
+  (BAT-RET-001, BAT-MAG-018).
+
+### S-24 — A hero's raise aimed at a two-hex corpse raises the top corpse on that corpse's rear hex
+- Original (code reading, one reviewer; r4a F-5): the handler of Resurrection and Animate Dead
+  (0x5A1907) does not raise the dead stack found on the aimed hex: it takes that stack's position
+  hex, for a two-hex stack its rear hex, searches again from there (0x5A1917–0x5A1928) and raises
+  what this second search returns. So when a later corpse B lies on the rear hex of a two-hex
+  corpse A, a raise aimed at either hex of A brings back B, and A cannot be raised while B lies
+  there. Sacrifice (0x5A1A49) and the Archangel (0x4485BE) raise the stack they found.
+- Other sources: none compared; the reading stands alone.
+- Would confirm it: Wolf Riders die; a Swordsman dies later on their rear hex; Resurrection aimed
+  at the Wolf Riders' front hex: who comes back? Or a second agent's re-read of the handler and
+  its two searches (0x5A3CC0, 0x5A3F50).
+- Suggested **fix-optional** (unintended and mild; whether the community knows it was not
+  searched) (BAT-Q28, row 10).
+- The engine today (clean): the corpse aimed at is raised, through any of its hexes on which no
+  corpse lies above it (BAT-MAG-035).
+
+### S-25 — A side no human commands escapes one bad-morale freeze in four
+- Original (code reading; two reviewers read the same bytes; r5b F-3): after its roll the
+  bad-morale check 0x464B40 gives a side whose byte +0x54A4 is 0 a second roll, `random(1, 4)`,
+  and a 1 lets the stack off (0x464BDB–0x464BF8). The battle's setup (0x4639F0) fills the byte from
+  the side's player and leaves 0 for a side without one. Unsure: what the byte means ("a human
+  commands the side" rests on its setter 0x4CE940 and on H3API's names). Computer players' and
+  neutral stacks would freeze at 6.25, 12.5 and 18.75 %, a human's at 8.3, 16.7 and 25 %.
+- Other sources: VCMI has no such rule (`server/battles/BattleFlowProcessor.cpp` L378–398), nor
+  has the wiki as the catalog quotes it (a wiki check is wanted).
+- Would confirm it: a few hundred activations of neutral stacks at morale −3 (25 % or 18.75 %).
+- Suggested class: none of the three fits well. The second roll looks deliberate, so a confirmed
+  S-25 is a rule of the original, for which the battle must know who commands a side (a seam
+  question, BAT-Q33); as a quirk it would be **preserve**.
+- The engine today: one roll for every side (BAT-MOR-004), the original's rule for a human's side.
+
+### S-26 — An obstacle removed early is removed again when its rounds run out
+- Original (code reading, one reviewer, not observed; the control and battlefield report's "left
+  open"): a removed battlefield object stays in the list with its rounds, and the round start's
+  countdown (0x476162–0x47618F) does not ask whether an object is already removed (Expert Dispel's
+  loop does, 0x5A170F). A Fire Wall or Force Field that Remove Obstacle or Dispel took away early
+  is therefore removed a second time when its rounds run out: whatever was placed on its hexes
+  since loses its hex marks and index (a later obstacle vanishes), and the removal calls through
+  the object's graphic, which the first removal set to 0 (0x466C39: a crash is possible).
+- Would confirm it: the wiki (Remove Obstacle, Dispel, Fire Wall, Force Field: a crash, or a later
+  obstacle vanishing), or one row on a battle that may crash: a Fire Wall removed at once by
+  Expert Dispel, a Force Field cast onto its hexes, then the round in which the Fire Wall would
+  have ended.
+- Suggested **exploit-fix** (a crash or a corrupted battlefield).
+- The engine today: a removed obstacle leaves the state at once; nothing is removed twice
+  (BAT-MAG-030, BAT-MAG-034).
+
+### S-27 — A stack created in the wait phase and blinded before its turn stops the battle
+- Original (code reading, one reviewer: "seems"; the mana and defences report's "left open"): the
+  original runs no turn start (0x446E30) in the wait phase, so the "turn started" byte +0x4F0 is
+  never set for a stack that is first picked there. A stack created in the wait phase (Summon
+  Elemental, Clone) and blinded before its turn then seems to make the pick 0x465080 loop for
+  ever.
+- Would confirm it: a second agent's re-read of the pick's loop for a blind stack in the wait
+  phase, or one row on a battle that may hang: both sides have a stack that waited; in the wait
+  phase one hero summons elementals, then the other hero casts Blind on them before their turn.
+- Suggested **exploit-fix** (a soft-lock).
+- The engine today: does not have it; a blind stack's turn starts and passes in every phase
+  (BAT-TRN-001, BAT-MAG-024).

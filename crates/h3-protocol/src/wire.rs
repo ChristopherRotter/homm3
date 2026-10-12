@@ -1242,6 +1242,10 @@ pub enum ClientMessage {
         seq: u32,
         /// The ladder's id.
         ladder: String,
+        /// Whether the player may be matched with one of the ladder's bots (E16 M4 T5b, SRV-Q21);
+        /// `None`, or left out: it may. `Some(false)`: it waits for a person, however long.
+        #[serde(default)]
+        bots: Option<bool>,
     },
     /// Leave the queue, or decline the match found: answered `Dequeued`, or `Refused`.
     Dequeue {
@@ -1604,6 +1608,8 @@ pub enum ServerMessage {
         ladder: String,
         /// How long the player has to accept, in milliseconds.
         accept_ms: u64,
+        /// Whether the opponent is one of the ladder's bots (E16 M4 T5b, SRV-Q21).
+        bot: bool,
     },
     /// The match will not be played: the other player declined, did not accept in time or went
     /// away (E16 M4 T2). The player waits in the queue again, its waiting time kept.

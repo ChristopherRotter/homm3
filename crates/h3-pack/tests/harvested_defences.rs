@@ -2,10 +2,13 @@
 //! SoD packs (E04b T8b2; HER-BAT-016, BAT-MAG-063 to BAT-MAG-066, BAT-MAG-005): the artifacts give
 //! the original's defences (`docs/formats/installation.md` §7.23), Earth and Magma Elementals
 //! never take the bolt and Air and Storm Elementals take it double (§7.8), and the Troglodytes'
-//! Blind immunity is the one the Orb of Vulnerability leaves.
+//! Blind immunity is the one the Orb of Vulnerability leaves. Since the E04b T11b review also the
+//! Faerie Dragons' own Magic Mirror against a Faerie Dragon's spell (BAT-MAG-057, BAT-MAG-049;
+//! §7.21): it never sends a creature's spell away, in either profile.
 
 use h3_battle::{
     BattleState, CastTarget, CastTargets, Command, Event, EventKind, StackId, apply, cast_targets,
+    creature_cast_targets,
 };
 use h3_content::{Formation, Ruleset, SpellId};
 use h3_contracts::{Army, ArmyStack, BattleEffect, BattleHero, BattleSetup, BattleSide};
@@ -126,6 +129,68 @@ fn the_orb_lifts_the_air_elementals_blind_immunity_but_not_the_troglodytes() {
     let orb = vec![BattleEffect::NegateImmunities];
     let s = battle(&r, caster(&r, &[blind], orb), &defender);
     assert_eq!(targets(&s, &r, blind), [2, 3]);
+}
+
+// covers: BAT-MAG-049, BAT-MAG-057, BAT-MAG-022
+#[test]
+fn a_faerie_dragons_spell_is_never_sent_away_by_the_other_dragons_mirror() {
+    // E04b T11b review (r5a F-1; the user, BAT-Q29): the original hands a Magic Mirror's redirect
+    // to a hero's cast alone (`installation.md` §7.21), so a Faerie Dragon's spell aimed at the
+    // other side's Faerie Dragons (their own mirror: 20 %) always meets them, in the faithful
+    // profile as without quirks. The engine sent one such spell in five to a stack of the
+    // caster's side, untested in `faithful` (the retired flag of BAT-QUIRK-9).
+    for profile in ["base:faithful", "base:strict-fixed"] {
+        let r = h3_pack::compile(
+            &[h3_pack::SOD_PACK, h3_pack::AB_PACK, h3_pack::BASE_PACK],
+            profile,
+        )
+        .unwrap();
+        let dragons = |count| Army {
+            stacks: vec![ArmyStack {
+                slot: 0,
+                creature: r.creature_by_key("ab:faerie_dragon").unwrap(),
+                count,
+            }],
+        };
+        let mut at_the_stack = 0;
+        for seed in 0..80 {
+            let setup = BattleSetup {
+                attacker: dragons(1),
+                defender: dragons(9),
+                obstacles: vec![],
+                heroes: [None, None],
+                terrain: None,
+                war_machines: [vec![], vec![]],
+                formations: [Formation::Loose; 2],
+                funds: [0; 2],
+            };
+            // The attacker's dragon acts first and has drawn its spell.
+            let mut s = BattleState::new(&r, &setup, seed).unwrap();
+            assert_eq!(s.active(), Some(StackId(0)));
+            // Its targets are the other dragons: the stack, or its hexes for an area spell.
+            let mut targets = CastTargets::new();
+            creature_cast_targets(&s, &r, BattleSide::Attacker, &mut targets);
+            let target = targets.as_slice()[0];
+            at_the_stack += u32::from(target == CastTarget::Stack(StackId(1)));
+            let mut events = Vec::new();
+            let cast = Command::CreatureCast { target };
+            apply(&mut s, &r, BattleSide::Attacker, cast, &mut events).unwrap();
+            let sent_away = events
+                .iter()
+                .any(|e| matches!(e.kind, EventKind::SpellRedirected { .. }));
+            assert!(!sent_away, "{profile} {seed}");
+            let struck = events.iter().any(
+                |e| matches!(e.kind, EventKind::SpellDamage { target, .. } if target == StackId(1)),
+            );
+            assert!(struck, "{profile} {seed}");
+        }
+        // 59 of 100 draws are spells aimed at a stack (the bolts, Magic Arrow, Chain Lightning),
+        // the ones a mirror could send away.
+        assert!(
+            (30..=65).contains(&at_the_stack),
+            "{profile}: {at_the_stack}"
+        );
+    }
 }
 
 // covers: HER-BAT-016, HER-BAT-015, BAT-MAG-061

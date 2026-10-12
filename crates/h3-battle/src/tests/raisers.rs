@@ -150,6 +150,37 @@ fn an_archangel_raises_a_corpse_and_needs_the_health_of_one_creature() {
     assert_eq!((s.stacks()[1].count, s.corpse(StackId(1))), (10, 0));
 }
 
+// covers: BAT-MAG-051, BAT-MAG-035
+#[test]
+fn an_archangels_hit_points_equal_to_the_health_reach_it() {
+    // E04b T11b review (r5a F-7): two heralds raise 200 hit points, a seraph's health exactly:
+    // the seraphs that lost one are a target (the original tests "at most", 0x5A850C). A stack of
+    // 201 hit points per creature (set by hand) is none.
+    let r = ruleset();
+    let mut s = arena(
+        &r,
+        [None, None],
+        &[
+            ("herald", 2, 5, 5),
+            ("seraph", 2, 8, 3),
+            ("seraph", 2, 8, 7),
+        ],
+        &[("fixed", 3, 13, 5)],
+        1,
+    );
+    hurt(&mut s, &r, 1, 200);
+    hurt(&mut s, &r, 2, 200);
+    s.stacks.as_mut_slice()[2].max_hp = 201;
+    assert_eq!(targets(&s, &r, BattleSide::Attacker), vec![1]);
+    assert_eq!(
+        act(&mut s, &r, at_stack(2)),
+        Err(CommandError::InvalidSpellTarget)
+    );
+    let events = act(&mut s, &r, at_stack(1)).unwrap();
+    assert_eq!(raised(&events), vec![(1, 1, false)]);
+    assert_eq!(s.stacks()[1].count, 2);
+}
+
 // covers: BAT-MAG-052, BAT-MAG-037, BAT-END-003
 #[test]
 fn a_pit_lord_raises_imps_from_a_corpse_of_its_side_into_its_army_slot() {
@@ -237,6 +268,35 @@ fn a_pit_lord_raises_imps_from_a_corpse_of_its_side_into_its_army_slot() {
     );
 }
 
+// covers: BAT-MAG-038, BAT-MAG-052
+#[test]
+fn a_clone_of_raised_imps_is_not_raised_from_a_corpse() {
+    let r = ruleset();
+    let mut s = arena(
+        &r,
+        [None, None],
+        &[("fiend", 2, 5, 5), ("serf", 8, 8, 3)],
+        &[("fixed", 3, 13, 5)],
+        1,
+    );
+    hurt(&mut s, &r, 1, 1000);
+    act(&mut s, &r, at_stack(1)).unwrap();
+    let imps = s.stacks()[3];
+    assert!(imps.has(StackTraits::RAISED) && !imps.is_created());
+    crate::created::clone(&mut s, &r, (StackId(3), 3), &mut Vec::<Event>::new());
+    // The clone is a stack the battle created, not one raised from a corpse (it kept its
+    // original's trait: review r4a F-8); its other traits are its original's.
+    let clone = s.stacks()[4];
+    assert!(clone.has(StackTraits::CLONE) && clone.is_created());
+    assert!(!clone.has(StackTraits::RAISED));
+    let created = StackTraits::SUMMONED.bits() | StackTraits::CLONE.bits();
+    assert_eq!(
+        clone.traits.bits(),
+        (imps.traits.bits() & !StackTraits::RAISED.bits()) | created
+    );
+    assert!(s.stacks()[3].has(StackTraits::RAISED));
+}
+
 // covers: BAT-MAG-052
 #[test]
 fn a_pit_lord_needs_a_living_creatures_corpse_on_free_hexes_worth_one_creature() {
@@ -316,6 +376,57 @@ fn a_pit_lord_needs_a_slot_for_the_new_stack() {
     let events = act(&mut s, &r, at_stack(1)).unwrap();
     assert_eq!(risen(&events)[0].0, 4);
     assert!(s.stacks()[4].has(StackTraits::RAISED) && !s.stacks()[4].is_created());
+}
+
+/// E04b T11b review (F-r4a-4): the record of a created stack whose rounds ran out is no slot for
+/// a Pit Lord's stack either: the original's stack creation takes only an empty record or a dead
+/// summoned stack with no creatures (0x47A100), and a stack that vanished at the end of its
+/// rounds keeps its count. The engine took any dead created stack's record.
+// covers: BAT-MAG-052, BAT-MAG-037
+#[test]
+fn a_pit_lord_finds_no_slot_in_a_clone_whose_rounds_ran_out() {
+    let r = ruleset_with("t:faithful", |b| b.side_stack_limit = 4);
+    // The fiend, dead serfs and three more serfs with their clone (stack 4): four stacks, the
+    // side's limit.
+    let start = || {
+        let mut hero = mage(&r, &["copy"]);
+        hero.magic.masteries = masteries(&r, [1, 0, 0, 0]);
+        let mut s = arena(
+            &r,
+            [Some(hero), None],
+            &[("fiend", 1, 5, 5), ("serf", 5, 8, 3), ("serf", 3, 8, 7)],
+            &[("fixed", 3, 13, 5)],
+            1,
+        );
+        hurt(&mut s, &r, 1, 1000);
+        let copy = Command::Cast {
+            spell: spell(&r, "copy"),
+            target: stack(2),
+            second: CastTarget::None,
+        };
+        act(&mut s, &r, copy).unwrap();
+        assert!(s.stacks()[4].has(StackTraits::CLONE));
+        assert!(targets(&s, &r, BattleSide::Attacker).is_empty());
+        s
+    };
+    // The clone's rounds run out: its record stays in use, and the fiend still finds no slot.
+    let mut s = start();
+    for _ in 0..3 {
+        crate::turn::start_round(&mut s, &r, &mut Vec::<Event>::new());
+    }
+    activate(&mut s, 0);
+    assert!(!s.stacks()[4].is_alive());
+    assert!(targets(&s, &r, BattleSide::Attacker).is_empty());
+    assert_eq!(
+        act(&mut s, &r, at_stack(1)),
+        Err(CommandError::InvalidSpellTarget)
+    );
+    // A killed clone leaves its record: the imps take it.
+    let mut s = start();
+    hurt(&mut s, &r, 4, 1);
+    assert_eq!(targets(&s, &r, BattleSide::Attacker), vec![1]);
+    let events = act(&mut s, &r, at_stack(1)).unwrap();
+    assert_eq!(risen(&events)[0].0, 4);
 }
 
 // covers: BAT-MAG-052, BAT-MAG-048
