@@ -134,6 +134,13 @@ pub(super) fn client_messages() -> Vec<ClientMessage> {
         ClientMessage::Queue {
             seq: 24,
             ladder: "arena".to_string(),
+            bots: None,
+        },
+        // E16 M4 T5b.
+        ClientMessage::Queue {
+            seq: 24,
+            ladder: "arena".to_string(),
+            bots: Some(false),
         },
         ClientMessage::Dequeue { seq: 25 },
         ClientMessage::AcceptMatch { seq: 26 },
@@ -154,6 +161,15 @@ pub(super) fn client_messages() -> Vec<ClientMessage> {
         ClientMessage::Standing {
             seq: 30,
             ladder: "arena".to_string(),
+        },
+        // E16 M4 T6.
+        ClientMessage::ProposePause {
+            seq: 31,
+            ms: 300_000,
+        },
+        ClientMessage::AnswerPause {
+            seq: 32,
+            accept: true,
         },
     ];
     out.extend(
@@ -296,10 +312,19 @@ pub(super) fn server_messages() -> Vec<ServerMessage> {
                     phase: Phase::Waiting,
                     open: vec![Seat::Attacker],
                     spectators: true,
-                    seated: vec![Seated {
-                        seat: Seat::Defender,
-                        display: "Alice".to_string(),
-                    }],
+                    seated: vec![
+                        Seated {
+                            seat: Seat::Defender,
+                            display: "Alice".to_string(),
+                            bot: false,
+                        },
+                        // E16 M4 T5: a bot account's seat.
+                        Seated {
+                            seat: Seat::Attacker,
+                            display: "Randy".to_string(),
+                            bot: true,
+                        },
+                    ],
                     ladder: None,
                 },
                 GameInfo {
@@ -366,6 +391,19 @@ pub(super) fn server_messages() -> Vec<ServerMessage> {
             deviation: 0,
         },
     });
+    // E16 M4 T6: a pause proposed and answered.
+    out.extend([
+        ServerMessage::PauseProposed {
+            n: 16,
+            seat: Seat::Attacker,
+            ms: 300_000,
+        },
+        ServerMessage::PauseAnswered {
+            n: 17,
+            seat: Seat::Defender,
+            accept: false,
+        },
+    ]);
     // E16 M4 T4: a leaderboard's page, one's own row.
     out.extend([
         ServerMessage::LeaderboardPage {
@@ -398,7 +436,17 @@ pub(super) fn server_messages() -> Vec<ServerMessage> {
         },
     ]);
     out.extend(
-        [RejectCode::NotHost, RejectCode::AlreadyStarted].map(|code| ServerMessage::Rejected {
+        [
+            RejectCode::NotHost,
+            RejectCode::AlreadyStarted,
+            // E16 M4 T6.
+            RejectCode::NotRanked,
+            RejectCode::AlreadyAsked,
+            RejectCode::NoPausesLeft,
+            RejectCode::BadPauseLength,
+            RejectCode::NoProposal,
+        ]
+        .map(|code| ServerMessage::Rejected {
             n: 13,
             seq: 15,
             code,
@@ -436,6 +484,7 @@ pub(super) fn server_messages() -> Vec<ServerMessage> {
                 name: "The Arena".to_string(),
                 season: 2,
                 waiting: 3,
+                bots: vec!["Randy".to_string()],
             }],
         },
         ServerMessage::Queued {
@@ -446,6 +495,7 @@ pub(super) fn server_messages() -> Vec<ServerMessage> {
         ServerMessage::MatchFound {
             ladder: "arena".to_string(),
             accept_ms: 30_000,
+            bot: true,
         },
         ServerMessage::MatchCancelled {},
         ServerMessage::MatchReady {
@@ -562,28 +612,40 @@ fn the_json_is_serdes_default_enum_form() {
         seated: vec![Seated {
             seat: Seat::Attacker,
             display: "Alice".to_string(),
+            bot: false,
         }],
         ladder: Some("arena".to_string()),
     };
     assert_eq!(
         serde_json::to_string(&info).unwrap(),
-        r#"{"game":3,"offer":"duel","phase":"Running","open":[],"spectators":true,"seated":[{"seat":"Attacker","display":"Alice"}],"ladder":"arena"}"#
+        r#"{"game":3,"offer":"duel","phase":"Running","open":[],"spectators":true,"seated":[{"seat":"Attacker","display":"Alice","bot":false}],"ladder":"arena"}"#
     );
     // E16 M4 T2: the ladders' messages.
     assert_eq!(
         text(&ClientMessage::Queue {
             seq: 4,
-            ladder: "arena".to_string()
+            ladder: "arena".to_string(),
+            bots: Some(false)
         }),
-        r#"{"Queue":{"seq":4,"ladder":"arena"}}"#
+        r#"{"Queue":{"seq":4,"ladder":"arena","bots":false}}"#
+    );
+    // E16 M4 T5b: `bots` left out welcomes them.
+    assert_eq!(
+        serde_json::from_str::<ClientMessage>(r#"{"Queue":{"seq":4,"ladder":"arena"}}"#).unwrap(),
+        ClientMessage::Queue {
+            seq: 4,
+            ladder: "arena".to_string(),
+            bots: None
+        }
     );
     let server = |m: &ServerMessage| String::from_utf8(serde_json::to_vec(m).unwrap()).unwrap();
     assert_eq!(
         server(&ServerMessage::MatchFound {
             ladder: "arena".to_string(),
-            accept_ms: 30_000
+            accept_ms: 30_000,
+            bot: false
         }),
-        r#"{"MatchFound":{"ladder":"arena","accept_ms":30000}}"#
+        r#"{"MatchFound":{"ladder":"arena","accept_ms":30000,"bot":false}}"#
     );
     assert_eq!(
         server(&ServerMessage::Unqueued {
@@ -630,6 +692,14 @@ fn the_json_is_serdes_default_enum_form() {
             }
         }),
         r#"{"Rating":{"n":6,"ladder":"arena","before":{"rating":1500,"deviation":350},"after":{"rating":1662,"deviation":290}}}"#
+    );
+    // E16 M4 T6: a proposal's length is a plain number (at most a year: far below 2^53).
+    assert_eq!(
+        text(&ClientMessage::ProposePause {
+            seq: 1,
+            ms: 600_000
+        }),
+        r#"{"ProposePause":{"seq":1,"ms":600000}}"#
     );
     // E16 M4 T4: a leaderboard's page; the season left out is the current one.
     assert_eq!(

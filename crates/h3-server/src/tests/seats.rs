@@ -118,6 +118,7 @@ async fn an_accounts_seat_is_retaken_by_the_account_alone_also_paused_and_after_
     let alices = vec![Seated {
         seat: Seat::Attacker,
         display: String::from("Alice"),
+        bot: false,
     }];
     assert_eq!(
         listing(&running, game).await,
@@ -214,6 +215,7 @@ async fn the_lobby_names_the_accounts_and_their_preference_lists_the_replay() {
     let named = vec![Seated {
         seat: Seat::Attacker,
         display: String::from("Alice"),
+        bot: false,
     }];
     listed_with(&running, game, (Phase::Waiting, named.clone())).await;
     let (anonymous, _) = seated(&running, game, Seat::Defender).await;

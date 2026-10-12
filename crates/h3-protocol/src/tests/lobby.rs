@@ -88,6 +88,7 @@ fn games_are_created_from_offers_and_listed() {
     let alice = vec![Seated {
         seat: Seat::Attacker,
         display: "Alice".to_string(),
+        bot: false,
     }];
     lobby.seat(1, alice.clone());
     lobby.seat(9, alice.clone());

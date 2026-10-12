@@ -4,10 +4,10 @@ The server lane's living state; read after the global `docs/HANDOFF.md`. Format 
 
 ## Current state
 
-- **M1–M3 closed** (SRV-Q12, SRV-Q16, SRV-Q18). **M4 refined (2026-10-12, SRV-Q19):** ADR-0019 points 4–9 decided; the detail in `E16-design.md` §11; the tasks in `QUEUE.md`; no turn timer in M4 (a game rule, M5). **M4 T1 (#106), T2 (#108), T3a (#109), T3b (#111), SRV-Q20 (#112) and T4 done** (T4: leaderboards by season, one's own row; wire 17). **Next: M4 T5 or T6** (both ready), then T7.
+- **M1–M3 closed** (SRV-Q12, SRV-Q16, SRV-Q18). **M4 refined (2026-10-12, SRV-Q19):** ADR-0019 points 4–9 decided; the detail in `E16-design.md` §11; the tasks in `QUEUE.md`; no turn timer in M4 (a game rule, M5). **M4 T1–T6, T5b and SRV-Q20 done** (#106–#120). **Next: M4 T7** (ready; M4's closure).
 - **ADR-0018 point 5 as amended:** the mapping's matches over the engine's enums are exhaustive, and since T4b its patterns over the observation's structs too; a new battle variant or observation field fails `h3-protocol`'s build until mapped (global HANDOFF trap).
 - **The 100 % gate** covers `h3-protocol` (logic); `h3-server` is an adapter outside it, tested end to end.
-- **Versions** (`docs/08-work-process.md`): `PROTOCOL_VERSION` (`h3-protocol`, 17 since M4 T4's leaderboards; bumped on every wire change), `RECORD_FORMAT_VERSION` (`h3-protocol`, 2 since M2 T5c), `JOURNAL_FORMAT_VERSION` (`h3-server`, 5 since M4 T3a's `Ranked`, `Absent`, `Forfeit`; a journal of another format is void at start).
+- **Versions** (`docs/08-work-process.md`): `PROTOCOL_VERSION` (`h3-protocol`, 20 since M4 T5b's bot opt-out; bumped on every wire change), `RECORD_FORMAT_VERSION` (`h3-protocol`, 2 since M2 T5c), `JOURNAL_FORMAT_VERSION` (`h3-server`, 6 since M4 T6's `PauseAgreed`; a journal of another format is void at start).
 - The lane owns (`lanes.toml`) `h3-protocol`, `h3-server`, `benches/server/` and E16's files; the workspace files stay shared. **Checkpoints** per milestone, under the autonomy contract below; a fresh reviewer agent checks each milestone before the user does. ADR-0019 (identity) was accepted at the M3 refinement; the discovery draft is decided at M6's.
 - **Ids:** questions `SRV-Q<n>`, quirks `SRV-QUIRK-<n>`, stubs `SRV-STUB-<n>`. ADR drafts go to `docs/lanes/server/adr-drafts/` and get a number when the user accepts them. Branches: `server/<task>`.
 
@@ -46,19 +46,21 @@ The server lane's living state; read after the global `docs/HANDOFF.md`. Format 
 - `f64::exp` and `ln` are banned workspace-wide (ADR-0003 §3): Glicko-2 calls them behind a local `allow` (`rating.rs`); a rating is written to the ladder's log and read back, never recomputed.
 - A queued connection hears its queue only through its own channel (`registry::ToConn`, `(text, still queued)`), sent under the registry's lock with `try_send`; a message for a connection that answers nothing (`AcceptMatch` while the other has not) is `Routed::Passed`.
 - A ranked game's time moves only through `Session::elapse`, which the game's thread calls before every message, closed connection and tick (`game::run`): a new event must call it first. A game's end is `Session::over` (a forfeit leaves `result()` empty).
+- A server's bot account has no `key` (T5): a login, a re-key and `rebind` must never match it.
+- A paused journal's last write starts its deadline and an agreed pause's due time: never append to one.
 - A ranked game's end is told only by the host's verdict (`publish_replay`/`withhold_replay`): a new way for one to end must reach `finish`. A ladder's log names a game once (by id; `<data>/next-game`): never hand out ids below `GameIds::last`.
 - **The workload is lane-only and follows `master`:** 55 % of its count is the battle engine, so battle changes move it and the full verify (CI) does not measure it. At each session's start `verify --scope server` measures it; a drift there came from `master`: re-baseline (`cargo xtask bench-check --update --workload session-random-play-full`) and name the range in the commit. Measure only with the file's arguments (they shift the heap `malloc` walks).
 
 ## Recent sessions
 
-### 2026-10-12 — M4 T4, leaderboards
+### 2026-10-12 — M4 T5b, a player's bot opt-out
 
-#112 had merged. Built T4 (`E16-log.md`): pages by season, one's own row; wire 17.
+#120 merged. Built T5b (`E16-log.md`): `Queue::bots`, `MatchFound::bot`; wire 20.
 
-### 2026-10-12 — SRV-Q20, the server's pings
+### 2026-10-12 — M4 T6, the pause by agreement
 
-#111 merged; the user chose (a). Built (`E16-log.md`): `ping_every_ms`, `ping_timeout_ms`; no wire change.
+#118 merged. Built T6 (`E16-log.md`); SRV-Q21 → T5b; wire 19, journal 6.
 
-### 2026-10-12 — M4 T3b, the rated end
+### 2026-10-12 — M4 T5, bots on ladders
 
-#109 had merged. Built T3b (`E16-log.md`): the held end, `Rating`, `Ladders::rate`, `GameIds`; wire 16.
+#114 merged. Built T5 (`E16-log.md`): `[[ladder.bot]]`, bot accounts; wire 18.

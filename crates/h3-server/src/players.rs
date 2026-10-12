@@ -1,6 +1,7 @@
 //! The player log (E16 M3 T2a, T2b; ADR-0019 point 7; `E16-design.md` §10): `<data>/players.log`,
 //! one JSON document per line, each an [`Event`] of an account: registered, re-keyed by itself or
-//! rebound by the operator, renamed, its listing preference. The accounts are read back into
+//! rebound by the operator, renamed, its listing preference; or a bot account the configuration
+//! names, which has no key and never logs in (E16 M4 T5). The accounts are read back into
 //! memory at start; a last line a crash cut short is dropped. Each line is synced before the
 //! request it records is answered. The log holds login names, display names and public keys:
 //! nothing a login can be forged from; on Unix it is owner-read-write, as the journals are.
@@ -20,12 +21,19 @@ use crate::journal;
 /// An account as the server holds it.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) struct Account {
-    /// Its public key.
-    pub key: [u8; KEY_BYTES],
+    /// Its public key; `None` for one of the server's bots (E16 M4 T5), which never logs in.
+    pub key: Option<[u8; KEY_BYTES]>,
     /// Its display name.
     pub display: String,
     /// Whether the replays of its finished games may be listed.
     pub listed: bool,
+}
+
+impl Account {
+    /// Whether it is one of the server's bots (E16 M4 T5).
+    pub(crate) const fn is_bot(&self) -> bool {
+        self.key.is_none()
+    }
 }
 
 /// A public key in a line: hex in the log, bytes in memory.
@@ -65,6 +73,8 @@ pub(crate) enum Event {
     Renamed { login: String, display: String },
     /// Whether the replays of the account's finished games may be listed (E16 M3 T2b).
     Listed { login: String, listed: bool },
+    /// A bot account of the server's (E16 M4 T5): no key, it never logs in.
+    Bot { login: String, display: String },
 }
 
 impl Event {
@@ -75,7 +85,8 @@ impl Event {
             | Self::Rekeyed { login, .. }
             | Self::Rebound { login, .. }
             | Self::Renamed { login, .. }
-            | Self::Listed { login, .. } => login,
+            | Self::Listed { login, .. }
+            | Self::Bot { login, .. } => login,
         }
     }
 }
@@ -130,7 +141,7 @@ impl Players {
         let known = self.accounts.contains_key(event.login());
         let fail = |why: &str| Err(String::from(why));
         match event {
-            Event::Registered { login, display, .. } => {
+            Event::Registered { login, display, .. } | Event::Bot { login, display } => {
                 if !account::is_login_name(login) || !account::is_display_name(display) {
                     return fail("not a name");
                 }
@@ -152,6 +163,12 @@ impl Players {
             Event::Rekeyed { .. } | Event::Rebound { .. } | Event::Listed { .. } if !known => {
                 return fail("no such account");
             }
+            // A bot's account has no key to change (E16 M4 T5).
+            Event::Rekeyed { login, .. } | Event::Rebound { login, .. }
+                if self.get(login).is_some_and(Account::is_bot) =>
+            {
+                return fail("a bot's account");
+            }
             Event::Rekeyed { .. } | Event::Rebound { .. } | Event::Listed { .. } => {}
         }
         Ok(())
@@ -164,19 +181,11 @@ impl Players {
                 login,
                 key,
                 display,
-            } => {
-                self.displays
-                    .insert(account::display_key(&display), login.clone());
-                let account = Account {
-                    key: key.0,
-                    display,
-                    listed: true,
-                };
-                self.accounts.insert(login, account);
-            }
+            } => self.insert(login, Some(key.0), display),
+            Event::Bot { login, display } => self.insert(login, None, display),
             Event::Rekeyed { login, key } | Event::Rebound { login, key } => {
                 if let Some(account) = self.accounts.get_mut(&login) {
-                    account.key = key.0;
+                    account.key = Some(key.0);
                 }
             }
             Event::Renamed { login, display } => {
@@ -194,6 +203,18 @@ impl Players {
                 }
             }
         }
+    }
+
+    /// A new account, `key`'s (`None`: a bot's), named `display`.
+    fn insert(&mut self, login: String, key: Option<[u8; KEY_BYTES]>, display: String) {
+        self.displays
+            .insert(account::display_key(&display), login.clone());
+        let account = Account {
+            key,
+            display,
+            listed: true,
+        };
+        self.accounts.insert(login, account);
     }
 
     /// The account of login name `login`.
@@ -276,7 +297,7 @@ mod tests {
         file.write_all(b"{\"Registered\":{\"login\":\"car").unwrap();
         let mut players = Players::open(&data).unwrap();
         assert_eq!(players.get("alice"), Some(&alice));
-        assert_eq!(players.get("bob").map(|a| a.key), Some([2; 32]));
+        assert_eq!(players.get("bob").map(|a| a.key), Some(Some([2; 32])));
         assert_eq!(fs::read_to_string(path(&data)).unwrap(), text);
         players.record(registered("carol", 3, "Carol")).unwrap();
         drop(players);
@@ -296,12 +317,12 @@ mod tests {
             login: login(),
             key: Hex([3; KEY_BYTES]),
         });
-        assert_eq!(rekeyed.unwrap().key, [3; KEY_BYTES]);
+        assert_eq!(rekeyed.unwrap().key, Some([3; KEY_BYTES]));
         let rebound = players.record(Event::Rebound {
             login: login(),
             key: Hex([4; KEY_BYTES]),
         });
-        assert_eq!(rebound.unwrap().key, [4; KEY_BYTES]);
+        assert_eq!(rebound.unwrap().key, Some([4; KEY_BYTES]));
         // Its own name in another case, then a new one: the old one is free again.
         for display in ["ALICE", "Alice Liddell"] {
             let renamed = players.record(Event::Renamed {
@@ -332,12 +353,65 @@ mod tests {
         assert_eq!(players.get("alice").cloned(), alice);
         assert_eq!(
             alice.map(|a| (a.key, a.display, a.listed)),
-            Some(([4; KEY_BYTES], String::from("Alice Liddell"), false))
+            Some((Some([4; KEY_BYTES]), String::from("Alice Liddell"), false))
         );
         let text = fs::read_to_string(path(&data)).unwrap();
         assert_eq!(text.lines().count(), 7, "two refused, not written: {text}");
         assert!(text.contains("{\"Rebound\":{\"login\":\"alice\",\"key\":\"0404"));
         assert!(text.ends_with("{\"Listed\":{\"login\":\"alice\",\"listed\":false}}\n"));
+        fs::remove_dir_all(&data).unwrap();
+    }
+
+    #[test]
+    fn a_bots_account_has_no_key_and_a_name_as_any_accounts() {
+        // E16 M4 T5.
+        let data = data();
+        let mut players = Players::open(&data).unwrap();
+        players.record(registered("alice", 1, "Alice")).unwrap();
+        let bot = |login: &str, display: &str| Event::Bot {
+            login: login.to_owned(),
+            display: display.to_owned(),
+        };
+        let randy = players.record(bot("randy", "Randy")).unwrap();
+        assert_eq!((randy.key, randy.is_bot()), (None, true));
+        assert!(!players.get("alice").unwrap().is_bot());
+        // Its names are taken as any account's; it renames as any; its key never changes.
+        let error = |result: io::Result<Account>| result.unwrap_err().to_string();
+        assert_eq!(
+            error(players.record(bot("alice", "Alicia"))),
+            "a name registered before"
+        );
+        assert_eq!(
+            error(players.record(bot("stan", "ALICE"))),
+            "a name registered before"
+        );
+        assert_eq!(error(players.record(bot("Stan", "Stan"))), "not a name");
+        let renamed = players.record(Event::Renamed {
+            login: String::from("randy"),
+            display: String::from("Randy Bot"),
+        });
+        assert_eq!(renamed.unwrap().display, "Randy Bot");
+        for event in [
+            Event::Rekeyed {
+                login: String::from("randy"),
+                key: Hex([5; KEY_BYTES]),
+            },
+            Event::Rebound {
+                login: String::from("randy"),
+                key: Hex([5; KEY_BYTES]),
+            },
+        ] {
+            assert_eq!(error(players.record(event)), "a bot's account");
+        }
+        drop(players);
+        let players = Players::open(&data).unwrap();
+        let randy = players.get("randy").unwrap();
+        assert_eq!((randy.key, randy.display.as_str()), (None, "Randy Bot"));
+        let text = fs::read_to_string(path(&data)).unwrap();
+        assert!(
+            text.contains("{\"Bot\":{\"login\":\"randy\",\"display\":\"Randy\"}}\n"),
+            "{text}"
+        );
         fs::remove_dir_all(&data).unwrap();
     }
 

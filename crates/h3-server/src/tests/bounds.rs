@@ -13,8 +13,10 @@ fn voided(data: &Path) -> usize {
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn a_game_past_its_command_limit_is_void() {
+    // One command: the battle's seed comes from the OS, and the stacks start out of each other's
+    // reach, so no first command ends the battle (with 6, a lucky attacker could win first).
     let config = config(Limits {
-        commands_per_game: 6,
+        commands_per_game: 1,
         ..fast()
     });
     let running = start(&config).await.unwrap();

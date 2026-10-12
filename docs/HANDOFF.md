@@ -13,7 +13,7 @@ Read first, then the lane's HANDOFF (`AGENTS.md`): the lane index plus the traps
 
 Shared (own pull request, merged first): `h3-kernel`, `h3-contracts`, workspace and gate files (`Cargo.toml`, `arch.toml`, `lanes.toml`, `xtask`, CI), ADRs, process docs, `BACKLOG.md`, this file. Common (any lane): `OPEN-QUESTIONS.md` and `docs/stubs.toml` (one block per lane), `Cargo.lock`, `docs/exe/map.toml` and `structs.toml` (one line per entry).
 
-- **GitHub and CI:** `ChristopherRotter/homm3` (private, free plan: Actions minutes are scarce). `ci.yml` runs `check-lane` and the full `cargo xtask verify` on Linux for pull requests and `master`, but never twice for the same code nor for a docs-only pull request (`05-testing.md` "CI"), and weekly `cargo deny check advisories`. Changes reach `master` by pull request only; **open a pull request only when its branch is ready for merging**. Each push to an open one runs CI: merge `master` into it only after `master`'s latest run finished.
+- **GitHub and CI:** `ChristopherRotter/homm3` (private, free plan: Actions minutes are scarce; when they or billing run out, runs fail unstarted and the full local verify stands in: CI never blocks work, `05-testing.md` "CI"). `ci.yml` runs `check-lane` and the full `cargo xtask verify` on Linux for pull requests and `master`, but never twice for the same code nor for a docs-only pull request, and weekly `cargo deny check advisories`. Changes reach `master` by pull request only; **open a pull request only when its branch is ready for merging**. Each push to an open one runs CI: merge `master` into it only after `master`'s latest run finished.
 
 ## Traps for every lane
 

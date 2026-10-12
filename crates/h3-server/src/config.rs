@@ -51,6 +51,12 @@
 //! pauses = 0                         # pauses each player may propose in a game
 //! pause_ms = 0                       # the longest pause
 //! spectators = true                  # whether its games take spectators
+//! bot_after_ms = 60000               # a player waiting this long without a match plays a bot
+//!
+//! [[ladder.bot]]                     # one of the server's bots on the ladder (E16 M4 T5)
+//! login = "randy"                    # its account's login name, never logged in
+//! display = "Randy"                  # its display name
+//! kind = "random"                    # which bot plays (the only one so far)
 //! ```
 //!
 //! The data directory holds `games/<game>.journal` for every game that is not over (its seed and
@@ -79,6 +85,30 @@ pub enum BotSeat {
     Attacker,
     /// The defender's seat.
     Defender,
+}
+
+/// Which of the server's bots plays a bot account's seats (E16 M4 T5).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum BotKind {
+    /// The sim's random agent.
+    #[default]
+    Random,
+}
+
+/// One `[[ladder.bot]]` (E16 M4 T5): an account of the server's, which never logs in, whose seats
+/// its bot plays. It waits in the ladder's queue at all times, for a player who waited the
+/// ladder's `bot_after_ms` without a match.
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct LadderBot {
+    /// The account's login name.
+    pub login: String,
+    /// Its display name, unique as any account's.
+    pub display: String,
+    /// Which bot plays.
+    #[serde(default)]
+    pub kind: BotKind,
 }
 
 /// The server's configuration.
@@ -188,6 +218,11 @@ pub struct Ladder {
     pub pause_ms: u64,
     /// Whether its games take spectators (with `[limits] spectators_per_game`).
     pub spectators: bool,
+    /// Its bots (E16 M4 T5; none by default).
+    #[serde(rename = "bot")]
+    pub bots: Vec<LadderBot>,
+    /// How long a player waits without a match before it plays a bot (E16 M4 T5).
+    pub bot_after_ms: u64,
 }
 
 impl Default for Ladder {
@@ -203,6 +238,8 @@ impl Default for Ladder {
             pauses: 0,
             pause_ms: 0,
             spectators: true,
+            bots: Vec::new(),
+            bot_after_ms: 60_000,
         }
     }
 }
@@ -228,6 +265,7 @@ impl Ladder {
             ("grace_total_ms", self.grace_total_ms, 1_000, YEAR_MS),
             ("pauses", u64::from(self.pauses), 0, 100),
             ("pause_ms", self.pause_ms, 0, YEAR_MS),
+            ("bot_after_ms", self.bot_after_ms, 0, YEAR_MS),
         ];
         for (name, value, min, max) in bounds {
             if !(min..=max).contains(&value) {
@@ -236,6 +274,17 @@ impl Ladder {
         }
         if self.pauses > 0 && self.pause_ms == 0 {
             return fail(String::from("pauses without pause_ms"));
+        }
+        // Its bots' names follow an account's rules, each bot once (E16 M4 T5).
+        for (i, bot) in self.bots.iter().enumerate() {
+            if !h3_protocol::account::is_login_name(&bot.login)
+                || !h3_protocol::account::is_display_name(&bot.display)
+            {
+                return fail(format!("bot `{}`: not a name", bot.login));
+            }
+            if self.bots[..i].iter().any(|b| b.login == bot.login) {
+                return fail(format!("bot `{}`: listed twice", bot.login));
+            }
         }
         Ok(())
     }
@@ -509,12 +558,22 @@ impl Config {
     }
 
     /// Each ladder checked; ids distinct (E16 M4 T1); no offer named as a ladder's pool names its
-    /// scenarios (`<ladder>.<n>`, E16 M4 T2).
+    /// scenarios (`<ladder>.<n>`, E16 M4 T2); a bot on several ladders the same account on each
+    /// (E16 M4 T5).
     fn check_ladders(&self) -> Result<(), Error> {
         for (i, ladder) in self.ladders.iter().enumerate() {
             ladder.check()?;
             if self.ladders[..i].iter().any(|l| l.id == ladder.id) {
                 return Err(Error(format!("ladder `{}`: its id is taken", ladder.id)));
+            }
+            let before = self.ladders[..i].iter().flat_map(|l| &l.bots);
+            let other =
+                |bot: &LadderBot| before.clone().any(|b| b.login == bot.login && *b != *bot);
+            if let Some(bot) = ladder.bots.iter().find(|bot| other(bot)) {
+                return Err(Error(format!(
+                    "ladder `{}`: bot `{}` differs from its entry on another ladder",
+                    ladder.id, bot.login
+                )));
             }
             let prefix = format!("{}.", ladder.id);
             if let Some(offer) = self.offers.iter().find(|o| o.id.starts_with(&prefix)) {

@@ -187,7 +187,8 @@ fn the_query_stays_on_the_heros_level() {
             hero_at(2, 1, p(1, 1), &[PEASANT]),
         ],
     );
-    let state = AdventureState::new(&rules.0, &rules.1, &setup).unwrap();
+    let state =
+        AdventureState::new(&rules.0, &rules.1, &setup, &mut crate::testing::draws()).unwrap();
     let reach = reach(&state, &rules, 1);
     assert_eq!(reach.points_left(Pos::new(1, 1, 1)), Some(1159));
     assert_eq!(reach.points_left(p(1, 1)), None);
@@ -303,4 +304,29 @@ proptest! {
             walk(&mut state, &rules, 1, reach.path(pos).unwrap()).unwrap();
         }
     }
+}
+
+// covers: ADV-MOV-007
+#[test]
+fn the_tiles_a_removed_object_frees_are_reached_and_walked() {
+    // A wall of a blocker, a pile and a town-like gate at column 1; the hero at (0, 0).
+    let rules = movement_rules(false);
+    let mut state = world_state(
+        &rules,
+        &["gBg", "gPg", "gTg"],
+        vec![hero_at(1, 0, p(0, 0), &[PEASANT])],
+    );
+    let walled = reach(&state, &rules, 1);
+    for y in 0..3 {
+        assert_eq!(walled.points_left(p(1, y)), None);
+    }
+    assert_eq!(walled.points_left(p(2, 1)), None);
+    assert!(walk(&mut state.clone(), &rules, 1, vec![p(1, 1)]).is_err());
+    // The pile (object 1 in map order) leaves the map: its tile is reached and walked through.
+    state.remove_object(1);
+    let open = reach(&state, &rules, 1);
+    assert!(open.points_left(p(1, 1)).is_some());
+    assert!(open.points_left(p(2, 1)).is_some());
+    assert_eq!(open.points_left(p(1, 0)), None);
+    walk(&mut state, &rules, 1, vec![p(1, 1), p(2, 1)]).unwrap();
 }

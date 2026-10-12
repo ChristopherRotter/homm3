@@ -360,7 +360,7 @@ impl Ladders {
         u32::try_from(seasons).ok()
     }
 
-    /// The ladders as their queues know them (E16 M4 T2).
+    /// The ladders as their queues know them (E16 M4 T2), with their bots as rated now (T5).
     pub(crate) fn queues(&self) -> Vec<h3_protocol::ladder::Ladder> {
         let ladders = self.lock();
         (ladders.iter())
@@ -369,6 +369,28 @@ impl Ladders {
                 name: ladder.config.name.clone(),
                 season: u32::try_from(ladder.results.seasons.len()).unwrap_or(u32::MAX),
                 accept_ms: ladder.config.accept_ms,
+                bots: (ladder.config.bots.iter())
+                    .map(|bot| h3_protocol::ladder::LadderBot {
+                        login: bot.login.clone(),
+                        display: bot.display.clone(),
+                        rating: points(ladder.results.rating(&bot.login)).rating,
+                    })
+                    .collect(),
+                bot_after_ms: ladder.config.bot_after_ms,
+            })
+            .collect()
+    }
+
+    /// Every ladder's bots and their ratings as they stand, in whole points (E16 M4 T5): the
+    /// matcher's turn goes by them.
+    pub(crate) fn bots(&self) -> Vec<(String, String, i32)> {
+        let ladders = self.lock();
+        (ladders.iter())
+            .flat_map(|(id, ladder)| {
+                (ladder.config.bots.iter()).map(|bot| {
+                    let rating = points(ladder.results.rating(&bot.login)).rating;
+                    (id.clone(), bot.login.clone(), rating)
+                })
             })
             .collect()
     }
@@ -519,6 +541,8 @@ impl Ladder {
                         grace: Some(Grace {
                             stretch_ms: config.grace_ms,
                             total_ms: config.grace_total_ms,
+                            pauses: config.pauses,
+                            pause_ms: config.pause_ms,
                         }),
                         ..offer
                     })

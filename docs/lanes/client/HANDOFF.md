@@ -4,20 +4,18 @@ The client lane's living state; read after the global `docs/HANDOFF.md`. Format 
 
 ## Current state
 
-- **Not started.** The lane owns `clients/`: a separate Cargo workspace with its own lockfile, excluded from the engine workspace (`exclude = ["clients"]` in the root `Cargo.toml`), with its own CI job, added by the pull request that creates the workspace (`.github/` is shared). Layout and asset policy: `clients/README.md`.
-- **Next:** the asset-notes session (the user dictates what they know about the assets and their traps, recorded below), then the client refinement (`QUEUE.md`). Branches: `client/<task>`.
-- **Timing:** implementation waits until the battle actions are mostly stable (E04b). Open option, the user decides: the asset and render-to-PNG layer could start earlier, since it does not depend on the battle.
-- The lane needs the user's computer online: the sprite archives are read from the user's installation.
-- **Checkpoints** per milestone, under an autonomy contract agreed in the refinement (the three tiers as in the server lane's draft); a fresh reviewer agent checks each milestone before the user does.
-- **Ids:** questions `CLT-Q<n>`, quirks `CLT-QUIRK-<n>`, stubs `CLT-STUB-<n>`. ADR drafts go to `docs/lanes/client/adr-drafts/` and get a number when the user accepts them.
+- **E17 M0 done (2026-10-12).** The workspace `clients/` builds (`h3-assets`, `h3-render`, `h3-view`; pure `no_std` libraries, adapters in `h3-view`'s binary), its gates are `clients/scripts/check.sh` (the full local check; the CI job `.github/workflows/clients.yml` runs the same), the real-asset gate is `cargo run -p h3-view -- gate` (from `clients/`). ADR-0020 accepted (point 7: loading at checkpoints). Record: `docs/epics/E17-log.md`. **Next: M1 T1 or M1 T2** (both ready; `QUEUE.md`).
+- **Pull requests waiting (2026-10-12), merge in this order:** `shared/ci-outage` (#119) and `shared/adr-0020-clients`, then `client/e17-m0`, then `shared/clients-ci` (its job runs `check.sh`, which the client branch adds).
+- The lane owns `clients/` (its own Cargo workspace, `clients/README.md`), `docs/epics/E17*` and this folder. Branches `client/<task>`. Ids: questions `CLT-Q<n>`, quirks (asset fixes) `CLT-QUIRK-<n>`, stubs `CLT-STUB-<n>`. ADR drafts go to `adr-drafts/` and get a number when the user accepts them.
+- **Checkpoints** per milestone, under the autonomy contract below; a fresh reviewer agent checks each milestone before the user does.
+- The lane needs the user's computer online: the original files are staged from `original-data/install/`, which since 2026-10-12 also holds `Data/{Heroes3,H3ab_ahd}.snd`, `Data/{VIDEO,H3ab_ahd}.vid` and `MP3/` (57 tracks), copied from the installation and verified identical (`docs/formats/installation.md` §2, battle-owned, still lists only the earlier copies). The gate needs `Data/H3sprite.lod` and `Data/H3ab_spr.lod` too, which `scripts/sandbox-setup.sh` does not copy: stage them and copy them into the clone's `original-data/install/Data/`.
+- **Open:** CLT-Q1 (the walk's path, needed by M2); CLT-Q2 (the table-only LOD reader in `h3-formats`, for the battle lane; until it lands the client reads whole archives).
 
-## Agreed (user, 2026-10-06/07)
+## Autonomy contract (agreed by the user, 2026-10-12)
 
-- Rust by default, unless the client refinement finds good arguments against it; the client ADR chooses the renderer.
-- The walking skeleton uses the real assets from the start, no placeholder graphics: a battle replay viewer first, later a full game record/replay.
-- Assets are read from the user's installation at run time and never reach git or CI (ADR-0009). Asset decoding (`clients/crates/h3-assets`: DEF, PCX, palettes, fonts, sound) lives in the client workspace and uses `crates/h3-formats` for LOD (a battle-owned crate until a formats/tools lane opens); the engine core stays free of graphics.
-- Decoders are tested on small synthetic sprites, plus a local real-asset gate.
-- A headless render-to-PNG mode lets agents check visuals themselves; screenshots stay local and gitignored.
+- **Agent decides, marked provisional:** the inner structure of the client crates, names, test layout, CLI flags, caching, debug output; asset fixes whose source is a code reading or a reference frame (each an entry with its id). Mark it `provisional` (code comment or epic log).
+- **Queue for the milestone review:** choices with a lasting cost that stay inside the lane: a light dependency (`png`, an MP3 decoder), the asset tables' and layouts' formats, a visual deviation from the original without a reference. List them in the epic's review list and go on.
+- **Stop the line:** a change to an engine crate or another lane's paths (CLT-Q1 is one), shared paths (CI, `lanes.toml`: a `shared/` PR), heavy dependencies (the window/audio library, a GPU stack, a UI framework, a video codec), licence questions (reading MMArchive's, homm3-unpacker's or DDrawCompat's code included), committing anything taken from the original beyond identifiers and numbers (ADR-0009), anything that would write into the installation. Write the question (`CLT-Q<n>`), stop that task and take the next independent one.
 
 ## Asset notes
 
@@ -40,11 +38,19 @@ The client lane's living state; read after the global `docs/HANDOFF.md`. Format 
 6. Per-expansion content: how it maps to the engine's ruleset profiles.
 7. The HD patch: its notes and content as a source for asset fixes, its resolution handling as a reference for HD.
 8. Shadows and the other keyed colours: what the game does with each reserved palette index when it draws (hypothesis: it darkens the pixel already on screen by a fixed operation rather than blending with an alpha), and what happens where shadows overlap. Read in the exe; tied to item 2.
+9. The adventure map's object draw order (the user, 2026-10-12, at E17 M0): surprisingly complicated; neither the user nor VCMI (at the time) got it exactly right. A code reading should settle it, with reference frames to confirm.
 
 ## Standing traps
 
-(None yet; the global HANDOFF's traps apply.)
+- **CI may be out** (billing, 2026-10-12; `docs/05-testing.md` "When CI cannot run"): run `clients/scripts/check.sh` and record its result in the pull request. It needs `cargo-deny`, `cargo-llvm-cov` and the LLVM tools (in a sandbox, `LLVM_COV=/usr/lib/llvm-20/bin/llvm-cov LLVM_PROFDATA=/usr/lib/llvm-20/bin/llvm-profdata`, as `scripts/sandbox-verify.sh` sets them).
+- The coverage gate reads cargo-llvm-cov's summary; generic code can show false region misses there (the engine reads the merged view, `xtask/src/coverage.rs`): port that before blaming the tests.
+- A new dependency of a pure crate goes into `h3-view/tests/purity.rs`'s allowlist deliberately; a window or audio crate belongs in an adapter crate, not in `h3-view`'s pure library.
+- `winit`, `cpal` and `hound` are Apache-2.0-only, which `deny.toml` rejects (ADR-0009 point 3); so are, through them, Bevy, eframe and `rodio`. Not before the M2 evaluation and the user's licence decision.
+- `ci.yml` ignores `clients/**`; the client's job `clients.yml` watches `clients/` and the engine crates the client builds, which `check.sh` keeps complete ("ci paths").
+- `h3-protocol` depends on `h3-battle`, `h3-content`, `h3-contracts` and `h3-kernel`: a path dependency on it builds those too, and their changes can break the client.
+- Never run the original game from the installation: it writes saves, settings and DDrawCompat's log into its folder. Reference captures use a full copy under `original-data/` (M3).
 
 ## Recent sessions
 
-(None yet.)
+- **2026-10-12, E17 M0 (the user present).** CI was out (billing): the user's rule that CI never blocks work went into the process docs (#119). Built the workspace, `check.sh` and the job, the real-asset gate (the user's four LODs: 11 981 entries, about 0.2 s); a fresh reviewer's twelve findings fixed or recorded. Checkpoint: ADR-0020 accepted, point 7 rewritten to loading at checkpoints; the table-only reader chosen over a memory map and whole reads (CLT-Q2). Four pull requests, merge order above.
+- **2026-10-12, E17a + E17 refinement (the user).** The asset notes dictated and recorded (above). Missing original files copied into `original-data/install/`. Refinement: Rust confirmed; a software compositor; the window/audio library chosen at M2 by an evaluation, GPLv3 for the client allowed if the winner needs it (the user decides then); asset tables per expansion, committed, no executable at run time; reference captures from a copy of the game through computer use; first milestone M0 + M1. ADR draft, epic file, queue, CLT-Q1 written.

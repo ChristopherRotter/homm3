@@ -82,7 +82,7 @@ fn own_army() -> impl Strategy<Value = Vec<Option<(u16, u16)>>> {
 /// The tiles a template anchored at `anchor` covers on the map (blocked and visitable).
 fn covers(anchor: Spot, template: usize, side: u8) -> impl Iterator<Item = Spot> {
     let (ax, ay, az) = anchor;
-    let (blocked, visitable) = BLOCKERS[template];
+    let (blocked, visitable) = BLOCKERS[template % BLOCKERS.len()];
     blocked
         .iter()
         .chain(visitable)
@@ -542,4 +542,55 @@ fn vary_changes_what_the_viewer_never_sees_only() {
     let mut kept = same.clone();
     let armies: Vec<_> = heroes(&mut kept).map(|(_, army)| army.clone()).collect();
     assert_eq!(armies, [None, Some(stacks(&[Some((10, 3))]))]);
+}
+
+// covers: ADV-FOG-004, ADV-PIK-001, ADV-PIK-003
+#[test]
+fn a_typed_object_in_sight_shows_its_type_never_its_drawn_contents() {
+    // Red's hero at (1, 1), with an army of its own, sees a wood pile of a drawn amount (object 3:
+    // shape 0, kind 1) at (3, 1) and a campfire (object 9) at (1, 3); blue's hero is far away.
+    let plan = super::play::Plan {
+        version: crate::model::Version::Sod,
+        side: 16,
+        two_levels: false,
+        tiles: vec![(0, 0, 0); 256],
+        players: vec![(0, true), (1, true)],
+        heroes: vec![
+            (
+                (1, 1, 0),
+                Some(vec![Some((0, 10)), None, None, None, None, None, None]),
+            ),
+            ((14, 14, 0), None),
+        ],
+        hero_types: 0,
+        blockers: vec![((3, 1, 0), 3), ((1, 3, 0), 9)],
+    };
+    let m = lay_out(&plan);
+    let red = PlayerId::new(0);
+    let contents = |seed| -> Vec<Vec<(h3_content::ResourceId, u32)>> {
+        let game = start_on(&m, &FAITHFUL, seed);
+        let objects = game.adventure().map().objects();
+        objects.iter().map(|o| o.contents.clone()).collect()
+    };
+    let view = |seed| {
+        let game = start_on(&m, &FAITHFUL, seed);
+        observe(&game, &FAITHFUL, Viewer::Player(red)).adventure
+    };
+    let base = view(0);
+    assert_eq!(base.objects.len(), 2);
+    let part = FAITHFUL.adventure();
+    assert_eq!(
+        base.objects[0].object_type,
+        part.object_type_by_key("base:pile_wood").unwrap()
+    );
+    assert_eq!(
+        base.objects[1].object_type,
+        part.object_type_by_key("base:campfire").unwrap()
+    );
+    // Some seeds draw other contents; the observation is the same for each.
+    let drawn: Vec<_> = (0..20).map(contents).collect();
+    assert!(drawn.iter().any(|c| *c != drawn[0]));
+    for seed in 0..20 {
+        assert_eq!(view(seed), base, "seed {seed}");
+    }
 }

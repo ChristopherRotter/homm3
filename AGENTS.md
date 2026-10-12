@@ -10,7 +10,7 @@ You are one of many agents working on this over time. No single session finishes
 2. Read `docs/HANDOFF.md` (the lane index and the traps of every lane), then `docs/lanes/<lane>/HANDOFF.md` (the lane's state, traps and last sessions) and your task: the lane's `QUEUE.md` entry, or the epic task the user names.
 3. Read the "Open" section of `docs/OPEN-QUESTIONS.md` (answered entries are history: read one when a doc points to it).
 4. Read your lane's reading list (below): the epic file you are working on (`docs/epics/`; its log `<epic>-log.md` only where a task builds on an earlier one) and, from the ADR index (`docs/adr/README.md`, column "Read when"), only the ADRs that touch your task. ADRs are binding; do not silently deviate. ADRs stay short: decisions only, detail in design notes (rule in the ADR index).
-5. Confirm the starting point is green: CI's latest run on `master` (a push that changes only `docs/`, `experiments/`, `clients/` or `*.md` starts none) or on the pull request you continue, and locally `cargo xtask verify --scope <lane> --summary` with no failing step (a scoped run exits 2 by design; it is never "green") **before** you change anything. In a cloud sandbox, `scripts/sandbox-setup.sh` prepares it (`docs/08-work-process.md`, "Cloud sandbox").
+5. Confirm the starting point is green: CI's latest run on `master` (a push that changes only `docs/`, `experiments/`, `clients/` or `*.md` starts none; a run that never started for lack of minutes or billing does not count, see "Working rules") or on the pull request you continue, and locally `cargo xtask verify --scope <lane> --summary` with no failing step (a scoped run exits 2 by design; it is never "green") **before** you change anything. In a cloud sandbox, `scripts/sandbox-setup.sh` prepares it (`docs/08-work-process.md`, "Cloud sandbox").
 
 ## Non-negotiables
 
@@ -51,14 +51,15 @@ Several agents work in parallel, **one agent at a time per lane** (`docs/08-work
 | battle | the current epic file (`docs/epics/E04b-battle-magic.md`), ADR-0014 | ADR-0003 (numbers), ADR-0012/0013, `docs/04-rules-and-sources.md`, the quirks ledger, `docs/exe/README.md` and `docs/formats/installation.md` §7 (code reading), `docs/experiments/README.md` |
 | adventure | `docs/03-domain.md`, the adventure epic file once refined | `docs/02-architecture.md`, ADR-0003/0004/0005/0006, `docs/04-rules-and-sources.md`, `docs/formats/h3m.md`, `docs/exe/README.md` (code reading) |
 | server | `docs/06-security.md`, ADR-0004, ADR-0008, ADR-0018 | ADR-0011 (encodings), `docs/02-architecture.md`, `h3-sim`'s action and observation encodings |
-| client | `clients/README.md`, ADR-0009, the asset notes in the lane HANDOFF | `docs/formats/installation.md` (archives), `docs/02-architecture.md` |
+| client | `clients/README.md`, ADR-0009, ADR-0020, the asset notes in the lane HANDOFF | `docs/formats/installation.md` (archives), `docs/02-architecture.md` |
 | shared | `docs/02-architecture.md`, `docs/05-testing.md`, `lanes.toml` | the ADRs the change touches |
 
-**Long unattended runs.** A lane runs as a chain of fresh contexts: a thin *runner* session hands each task of the lane's `QUEUE.md` to a fresh *worker* sub-agent and keeps only its short report (`docs/08-work-process.md`, "Queues and long runs": the brief, the report, the `in progress` mark that keeps a second runner out of the lane). Workers run `cargo xtask verify --scope <lane> --summary` and leave the full verify to CI.
+**Long unattended runs.** A lane runs as a chain of fresh contexts: a thin *runner* session hands each task of the lane's `QUEUE.md` to a fresh *worker* sub-agent and keeps only its short report (`docs/08-work-process.md`, "Queues and long runs": the brief, the report, the `in progress` mark that keeps a second runner out of the lane). Workers run `cargo xtask verify --scope <lane> --summary` and leave the full verify to CI (or to the runner, while CI cannot run).
 
 ## Working rules
 
 - Small, coherent commits; keep the main line green. Partial delivery is fine; a red or undocumented repo is not.
+- **CI is limited and may be unavailable** (user, 2026-10-12). Actions minutes are scarce, and when they or the billing run out, runs fail without starting. **CI never blocks work:** for that time nobody relies on it, and the full local `cargo xtask verify` stands in, its result recorded in the pull request (`docs/05-testing.md`, "CI", "When CI cannot run").
 - Incomplete features must be visible: use the stub registry convention in `docs/08-work-process.md` (no silent `todo!()`, no untracked `#[ignore]`).
 - Prefer the smallest design that satisfies the current epic. Do not over-specify the future; do not paint the project into a corner either (see the guardrails in ADR-0006).
 - Keep documentation current in the same change as the code (architecture, rules catalog, quirks ledger, ADRs).
@@ -81,7 +82,7 @@ The user may stop a session at any moment (for example by shutting down the comp
 2. Update `docs/lanes/<lane>/HANDOFF.md`: rewrite "Current state", add one short entry under "Recent sessions" (what you did, decisions, anything half-done) and keep at most three, move lasting traps into "Standing traps" (traps of every lane: note them for a `shared/` change to the global HANDOFF) and prune stale ones. `cargo xtask check-docs` enforces the budgets (`docs/08-work-process.md`, "Keeping the start-of-session reading small").
 3. Update the epic file (a done task gets one line; its full record goes into the epic's log) and the lane's `QUEUE.md` (a done task leaves it; new work goes into its "Inbox"). The status in `docs/BACKLOG.md` changes only when an epic starts or ends, in a `shared/` pull request.
 4. New questions → `docs/OPEN-QUESTIONS.md` with a lane id; new decisions → an ADR draft in the lane folder.
-5. Commit and push. **Open the pull request only when the branch is ready for merging** (steps 1–4 done; user, 2026-10-08), never earlier: every push to an open pull request runs CI, and Actions minutes are scarce (`docs/05-testing.md`, "CI"). Use `docs/pull_request_template.md`; a deliberate cross-lane change gets its label `cross-lane` right away, before any further push. CI must then be green on it (or the failure is documented in the lane HANDOFF with cause and next step); after that, push to it only review fixes and what the user asks for.
+5. Commit and push. **Open the pull request only when the branch is ready for merging** (steps 1–4 done; user, 2026-10-08), never earlier: every push to an open pull request runs CI, and Actions minutes are scarce (`docs/05-testing.md`, "CI"). Use `docs/pull_request_template.md`; a deliberate cross-lane change gets its label `cross-lane` right away, before any further push. CI must then be green on it (or the failure is documented in the lane HANDOFF with cause and next step; while CI cannot run, the full local verify's result in the pull request stands in); after that, push to it only review fixes and what the user asks for.
 
 ## Map of the docs
 

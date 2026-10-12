@@ -617,12 +617,13 @@ impl Link {
                 let own = Asked::Own(login.unwrap_or_default());
                 Routed::Reply(self.leaderboard(seq, ladder, own).await)
             }
-            ClientMessage::Queue { seq, ladder } => {
+            ClientMessage::Queue { seq, ladder, bots } => {
                 // Outside the registry's lock: the ladders have their own.
                 let rating =
                     (login.as_deref()).map_or(0, |login| self.ladders.points(&ladder, login));
                 let to = self.to_me.clone();
-                let asked = (seq, ladder.as_str());
+                // Left out: bots welcome (E16 M4 T5b, SRV-Q21).
+                let asked = (seq, ladder.as_str(), bots.unwrap_or(true));
                 let (answer, waits) =
                     lock(&self.registry).queue(self.conn, asked, login.as_deref(), (rating, to));
                 self.queued = waits;
@@ -757,7 +758,7 @@ impl Link {
             }?;
             let names = players.displays(board.rows.iter().map(|(_, login, _)| login.as_str()));
             let rows = (board.rows.into_iter().zip(names))
-                .map(|((rank, _, row), display)| LeaderboardRow {
+                .map(|((rank, _, row), (display, bot))| LeaderboardRow {
                     rank,
                     display,
                     rating: ladders::points(row.rating),
@@ -765,8 +766,7 @@ impl Link {
                     wins: row.wins,
                     losses: row.losses,
                     draws: row.draws,
-                    // The server's bots come with E16 M4 T5.
-                    bot: false,
+                    bot,
                 })
                 .collect::<Vec<_>>();
             let (season, total) = (board.season, board.total);
@@ -875,7 +875,9 @@ fn unbound(message: &ClientMessage) -> Frame {
         | ClientMessage::AcceptMatch { seq }
         | ClientMessage::DeclineMatch { seq }
         | ClientMessage::Leaderboard { seq, .. }
-        | ClientMessage::Standing { seq, .. } => *seq,
+        | ClientMessage::Standing { seq, .. }
+        | ClientMessage::ProposePause { seq, .. }
+        | ClientMessage::AnswerPause { seq, .. } => *seq,
         ClientMessage::Hello { .. } | ClientMessage::Ping { .. } | ClientMessage::Join { .. } => 0,
     };
     Frame {

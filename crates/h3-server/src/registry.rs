@@ -44,7 +44,7 @@ use tokio::time::Instant;
 
 use crate::archive::Archive;
 use crate::game::{self, Offer, Outbox, Prepared, Stores, ToGame};
-use crate::ladders::Pool;
+use crate::ladders::{Ladders, Pool};
 use crate::{Error, config, journal};
 
 /// A game's inbox: messages waiting for the game's thread.
@@ -75,11 +75,13 @@ pub(crate) enum Hosted {
     },
     /// Paused (E16 M2 T3): its journal, the seats' tokens that resume it (none for the bot's), the
     /// accounts the seats belong to (E16 M3 T3: an account's seat resumes for the account alone),
-    /// and since when (E16 M2 T5a: its deadline).
+    /// since when (E16 M2 T5a: its deadline), and an agreed pause's due time (E16 M4 T6: it wakes
+    /// then, and has no deadline).
     Paused {
         tokens: [Option<String>; 2],
         accounts: [Option<String>; 2],
         since: Instant,
+        due: Option<Instant>,
     },
 }
 
@@ -175,19 +177,20 @@ impl Registry {
     }
 
     /// Connection `conn`, logged in as `login`, asks to wait in `ladder`'s queue, rated `rating`
-    /// (whole points), and hears from it through `to` (E16 M4 T2): the answer's text, and whether
-    /// the connection waits in a queue.
+    /// (whole points), playing a bot or not (`bots`, E16 M4 T5b), and hears from it through `to`
+    /// (E16 M4 T2): the answer's text, and whether the connection waits in a queue.
     pub(crate) fn queue(
         &mut self,
         conn: ConnId,
-        (seq, ladder): (u32, &str),
+        asked: (u32, &str, bool),
         login: Option<&str>,
         (rating, to): (i32, ToConn),
     ) -> (String, bool) {
         let mine = |accounts: &[String; 2]| accounts.iter().any(|a| Some(a.as_str()) == login);
+        let ladder = asked.1;
         let unfinished = (self.ranked.values()).any(|(l, accounts)| l == ladder && mine(accounts));
         let now = self.now();
-        let answer = (self.queues).queue(conn, (seq, ladder), login, (rating, unfinished), now);
+        let answer = (self.queues).queue(conn, asked, login, (rating, unfinished), now);
         self.queued.insert(conn, to);
         (codec::encode_text(&answer), self.queues.holds(conn))
     }
@@ -214,8 +217,12 @@ impl Registry {
         self.tell(told);
     }
 
-    /// The matcher's turn (E16 M4 T2): unanswered matches given up, the waiting paired.
-    pub(crate) fn tick_queues(&mut self) {
+    /// The matcher's turn (E16 M4 T2): unanswered matches given up, the waiting paired; with the
+    /// ladders' bots rated as `bots` says (E16 M4 T5: ladder, login name, whole points).
+    pub(crate) fn tick_queues(&mut self, bots: &[(String, String, i32)]) {
+        for (ladder, login, rating) in bots {
+            self.queues.rate(ladder, login, *rating);
+        }
         let mut told = Told::new();
         self.queues.tick(self.now(), &mut told);
         self.tell(told);
@@ -223,12 +230,13 @@ impl Registry {
 
     /// Creates the game of a match both players accepted (E16 M4 T2): a scenario of its ladder's
     /// pool and the sides at random (OS randomness), both seats its players' accounts from the
-    /// start. The game's id and each player's seat, or why not.
+    /// start; a bot's seat (`bots`, E16 M4 T5) its account's, played by the server's bot. The
+    /// game's id and each player's seat, or why not.
     fn create_match(
         &mut self,
         shared: &Shared,
         ladder: &str,
-        players: [String; 2],
+        (players, bots): ([String; 2], [bool; 2]),
     ) -> Result<(u32, [Seat; 2]), UnqueueReason> {
         let pool = self.pools.get(ladder).cloned();
         let random = game::os_u64().ok();
@@ -241,10 +249,14 @@ impl Registry {
             return Err(UnqueueReason::Full);
         };
         let [first, second] = players;
-        let (accounts, seats) = if random >> 63 == 1 {
-            ([second, first], [Seat::Defender, Seat::Attacker])
+        let (accounts, seats, bots) = if random >> 63 == 1 {
+            (
+                [second, first],
+                [Seat::Defender, Seat::Attacker],
+                [bots[1], bots[0]],
+            )
         } else {
-            ([first, second], [Seat::Attacker, Seat::Defender])
+            ([first, second], [Seat::Attacker, Seat::Defender], bots)
         };
         let listed = pool.spectators && self.limits.spectators_per_game > 0;
         // The server's own: no client's address, and none of the limits per address.
@@ -261,7 +273,8 @@ impl Registry {
         let host = move || (server, limits, stores);
         let prepare = move || {
             let (server, limits, stores) = host();
-            match Prepared::new(offer, game, origin, (&server, &limits, stores), watchable) {
+            let host = (&server, &limits, stores);
+            match Prepared::new(offer, game, origin, host, (watchable, bots)) {
                 Ok(prepared) => Some(prepared.reserved(reserved.map(Some))),
                 Err(e) => {
                     eprintln!("h3-server: game {game} not created: {e}");
@@ -339,9 +352,18 @@ impl Registry {
 
     /// The deadlines of abandoned games at `now` (E16 M2 T5a): every game's thread is ticked (it
     /// pauses a running game whose seats stayed empty), and a paused game nobody resumed within
-    /// `paused_game_ms` is void.
-    pub(crate) fn sweep(&mut self, now: Instant) {
+    /// `paused_game_ms` is void; a game whose agreed pause is over wakes instead (E16 M4 T6).
+    pub(crate) fn sweep(&mut self, shared: &Shared, now: Instant) {
         self.tell_all(|| ToGame::Tick);
+        let woken: Vec<u32> = (self.games.iter())
+            .filter(|(_, hosted)| {
+                matches!(hosted, Hosted::Paused { due: Some(due), .. } if now >= *due)
+            })
+            .map(|(&game, _)| game)
+            .collect();
+        for game in woken {
+            self.wake(shared, game);
+        }
         let Some(limit) = (self.limits.paused_game_ms > 0)
             .then(|| Duration::from_millis(self.limits.paused_game_ms))
         else {
@@ -351,7 +373,7 @@ impl Registry {
             .games
             .iter()
             .filter(|(_, hosted)| {
-                matches!(hosted, Hosted::Paused { since, .. }
+                matches!(hosted, Hosted::Paused { since, due: None, .. }
                     if now.saturating_duration_since(*since) >= limit)
             })
             .map(|(&game, _)| game)
@@ -361,6 +383,52 @@ impl Registry {
             let why = format!("abandoned: paused for {} ms", self.limits.paused_game_ms);
             journal::void(&self.server.data, &path, &game.to_string(), &why);
             self.leave(game);
+        }
+    }
+
+    /// Restores the paused game `game` on its own thread, its agreed pause over (E16 M4 T6): it runs
+    /// on with its players away until they come back or the grace ends it. A game whose thread does
+    /// not start stays paused, for the next sweep.
+    fn wake(&mut self, shared: &Shared, game: u32) {
+        let prepare = self.restorer(game, true);
+        let (to_game, inbox) = mpsc::channel(GAME_INBOX);
+        if let Err(e) = game::launch(game, prepare, inbox, Arc::clone(shared)) {
+            return eprintln!("h3-server: game {game} not woken: {e}");
+        }
+        let hosted = Hosted::Live {
+            to: to_game,
+            bound: 0,
+        };
+        self.games.insert(game, hosted);
+    }
+
+    /// What restores the paused game `game` from its journal on its own thread (E16 M2 T3; woken,
+    /// E16 M4 T6: its agreed pause is over): a journal that no longer restores is void.
+    fn restorer(
+        &self,
+        game: u32,
+        wake: bool,
+    ) -> impl FnOnce() -> Option<Prepared> + Send + 'static {
+        let path = journal::dir(&self.server.data).join(format!("{game}.journal"));
+        let (offers, server, limits) = (self.offers(), self.server.clone(), self.limits);
+        let stores = self.stores.clone();
+        move || {
+            let prepared = journal::read(&path).and_then(|read| {
+                let offer = offers
+                    .iter()
+                    .find(|o| o.id == read.start.offer)
+                    .cloned()
+                    .ok_or_else(|| format!("the server offers no `{}` now", read.start.offer))?;
+                Prepared::restored(offer, &path, read, (&server, &limits, stores), None)
+            });
+            match prepared {
+                Ok(prepared) if wake => Some(prepared.woken()),
+                Ok(prepared) => Some(prepared),
+                Err(why) => {
+                    journal::void(&server.data, &path, &game.to_string(), &why);
+                    None
+                }
+            }
         }
     }
 
@@ -436,18 +504,21 @@ impl Registry {
     }
 
     /// Game `game` paused (E16 M2 T3): its thread ends; `tokens`, and `accounts` for their seats,
-    /// resume it (E16 M3 T3).
+    /// resume it (E16 M3 T3); an agreed pause of `ms` wakes it at its due time (E16 M4 T6).
     pub(crate) fn pause(
         &mut self,
         game: u32,
         (tokens, accounts): ([Option<String>; 2], [Option<String>; 2]),
+        agreed: Option<u64>,
     ) {
         self.lobby.update(game, (Phase::Paused, Vec::new(), false));
         let since = Instant::now();
+        let due = agreed.and_then(|ms| since.checked_add(Duration::from_millis(ms)));
         let paused = Hosted::Paused {
             tokens,
             accounts,
             since,
+            due,
         };
         self.games.insert(game, paused);
     }
@@ -517,14 +588,22 @@ pub(crate) fn create(
     let offer = Arc::clone(&registry.offers[index]);
     let (server, limits) = (registry.server.clone(), registry.limits);
     let stores = registry.stores.clone();
-    let prepare =
-        move || match Prepared::new(offer, game, origin, (&server, &limits, stores), watchable) {
+    let prepare = move || {
+        let bots = offer.bot_seats();
+        match Prepared::new(
+            offer,
+            game,
+            origin,
+            (&server, &limits, stores),
+            (watchable, bots),
+        ) {
             Ok(prepared) => Some(prepared),
             Err(e) => {
                 eprintln!("h3-server: game {game} not created: {e}");
                 None
             }
-        };
+        }
+    };
     let (to_game, inbox) = mpsc::channel(GAME_INBOX);
     let join = ClientMessage::Join {
         game,
@@ -590,26 +669,7 @@ pub(crate) fn bind(
     if let Some(reason) = session::refusal(claim, token, opening.login.as_deref()) {
         return Err(reason);
     }
-    let path = journal::dir(&registry.server.data).join(format!("{game}.journal"));
-    let (offers, server, limits) = (registry.offers(), registry.server.clone(), registry.limits);
-    let stores = registry.stores.clone();
-    let prepare = move || {
-        let prepared = journal::read(&path).and_then(|read| {
-            let offer = offers
-                .iter()
-                .find(|o| o.id == read.start.offer)
-                .cloned()
-                .ok_or_else(|| format!("the server offers no `{}` now", read.start.offer))?;
-            Prepared::restored(offer, &path, read, (&server, &limits, stores), None)
-        });
-        match prepared {
-            Ok(prepared) => Some(prepared),
-            Err(why) => {
-                journal::void(&server.data, &path, &game.to_string(), &why);
-                None
-            }
-        }
-    };
+    let prepare = registry.restorer(game, false);
     let (to_game, inbox) = mpsc::channel(GAME_INBOX);
     opening.first(&to_game);
     if let Err(e) = game::launch(game, prepare, inbox, Arc::clone(shared)) {
@@ -702,7 +762,7 @@ pub(crate) async fn sweep_every(shared: Shared, limits: config::Limits, grace: V
     tick.set_missed_tick_behavior(tokio::time::MissedTickBehavior::Delay);
     loop {
         tick.tick().await;
-        lock(&shared).sweep(Instant::now());
+        lock(&shared).sweep(&shared, Instant::now());
     }
 }
 
@@ -716,30 +776,36 @@ pub(crate) fn accept(shared: &Shared, conn: ConnId) -> Option<String> {
         Ok(None) => return None,
         Ok(Some(matched)) => matched,
     };
+    // A bot has no connection (E16 M4 T5): the server's bot plays its seat.
     let [(a, first), (b, second)] = players;
-    let told = match registry.create_match(shared, &ladder, [first, second]) {
+    let bots = [a.is_none(), b.is_none()];
+    let told = match registry.create_match(shared, &ladder, ([first, second], bots)) {
         Ok((game, seats)) => [a, b]
             .into_iter()
             .zip(seats)
-            .map(|(conn, seat)| {
+            .filter_map(|(conn, seat)| {
                 let ladder = ladder.clone();
-                (conn, ServerMessage::MatchReady { ladder, game, seat })
+                Some((conn?, ServerMessage::MatchReady { ladder, game, seat }))
             })
             .collect(),
         Err(reason) => [a, b]
+            .into_iter()
+            .flatten()
             .map(|conn| (conn, ServerMessage::Unqueued { reason }))
-            .to_vec(),
+            .collect(),
     };
     registry.tell(told);
     None
 }
 
-/// Runs the matcher every [`MATCH_EVERY`] (E16 M4 T2), until the task is aborted.
-pub(crate) async fn match_every(shared: Shared) {
+/// Runs the matcher every [`MATCH_EVERY`] (E16 M4 T2), until the task is aborted; the ladders'
+/// bots rated as `ladders` holds them, read outside the registry's lock (E16 M4 T5).
+pub(crate) async fn match_every(shared: Shared, ladders: Arc<Ladders>) {
     let mut tick = tokio::time::interval(MATCH_EVERY);
     tick.set_missed_tick_behavior(tokio::time::MissedTickBehavior::Delay);
     loop {
         tick.tick().await;
-        lock(&shared).tick_queues();
+        let bots = ladders.bots();
+        lock(&shared).tick_queues(&bots);
     }
 }

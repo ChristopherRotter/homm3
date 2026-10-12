@@ -121,11 +121,11 @@ every one reads to its padding, and every body kind but the hero placeholder occ
 Versions the reader rejects: Heroes Chronicles (`0x1D`), HotA (`0x20`), WoG (`0x33`) and every
 other code.
 
-## Import (E08 T5a, T6a; `MAP_IMPORT_VERSION` 1)
+## Import (E08 T5a, T6a, T12a; `MAP_IMPORT_VERSION` 2)
 
 `h3_map::import` turns a raw map and the game's rules into `h3_game::GameSetup`, which the game
 then validates (ADR-0015 point 4); `import_map` is its static layer. The import maps codes to
-content and draws nothing; it rejects what increment 1 cannot represent with a typed
+content and draws nothing; it rejects what the current increment cannot represent with a typed
 `Unsupported` error and checks no game invariant. A replay names its map by content hash, path and
 `MAP_IMPORT_VERSION` (ADV-Q2): any change to what an import yields bumps it.
 
@@ -134,11 +134,22 @@ content and draws nothing; it rejects what increment 1 cannot represent with a t
   (RoE always does; towns are E09).
 - **Static map:** the side and levels from the terrain block; terrain codes 0–9 → `base:dirt` …
   `base:rock`, roads 1–3 → `base:dirt_road`, `base:gravel_road`, `base:cobblestone_road`, rivers
-  1–4 → `base:clear_river` … `base:lava_river` (0 is none). Every object but the heroes becomes a
-  blocker (ADR-0016 point 4, increment 1) with its template's masks: blocked where the
-  passability bit is clear, visitable where the visitability bit is set (ADV-OBJ-001). An anchor
-  may lie past the right or bottom edge: the shipped maps anchor objects up to 5 columns right and
-  2 rows below it; tiles off the map are ignored.
+  1–4 → `base:clear_river` … `base:lava_river` (0 is none). Every object but the heroes keeps its
+  template's masks: blocked where the passability bit is clear, visitable where the visitability
+  bit is set (ADV-OBJ-001). An anchor may lie past the right or bottom edge: the shipped maps
+  anchor objects up to 5 columns right and 2 rows below it; tiles off the map are ignored.
+- **Object types** (v2, E08 T12a, ADV-OBJ-002; `crates/h3-map/src/import/codes.rs`): class 79
+  by subclass 0–6 → `base:pile_wood`, `_mercury`, `_ore`, `_sulfur`, `_crystal`, `_gems`,
+  `_gold`; 76 → `base:random_resource`; 12 → `base:campfire`; 13 by subclass 0–2 →
+  `base:cartographer_water`, `_land`, `_subterranean`; 58 → `base:redwood_observatory`; 60 →
+  `base:pillar_of_fire`; 10, 9 and 212 by subclass (the key colour: 0 light blue, 1 green, 2 red,
+  3 dark blue, 4 brown, 5 purple, 6 white, 7 black) → `base:keymaster_<colour>`,
+  `base:border_guard_<colour>`, `ab:border_gate_<colour>`. A subclass outside these is an error
+  (`Subclass`); classes 12, 58, 60 and 76 ignore it. A resource body's amount (76, 79) is the
+  pile's fixed amount (0 is none: drawn when the game is built; gold counts in hundreds, the type
+  multiplies), which the setup bounds at 0x7FFFF; its message is presentation. Every other class
+  is a blocker. Unsupported: a pile or random resource with a guards record, even an empty one
+  (battles: increment 3; ADV-Q10, D-6); `import_map` keeps it as a blocker.
 - **Placed heroes** (class 34): owner colour → player (a colour nobody plays is an error), hero
   type by original id → its key (the packs' `# original id`), the tile its template marks
   visitable (the editor's one column left of the position), the army's stacks by slot (creature by
@@ -150,12 +161,13 @@ content and draws nothing; it rejects what increment 1 cannot represent with a t
   Ignored until hero details exist (increment 3, `ADV-STUB-1`): name, portrait, experience,
   skills, artifacts, spells, primary skills, formation, patrol, biography, sex.
 
-The 164 maps of the user's installation (2026-10-10, `crates/h3-map/examples/original_data.rs`):
-every static layer imports and validates; 10 import and validate whole (`Adventures of Jared
-Haret`, `Faeries`, `Knee Deep in the Dead`, `Myth and Legend`, `Pandora's Box `, `Race for
-Ardintinny`, `Tutorial.tut`, `Unholy Quest` and the user's `Untitled` and `experiment`); 129 are
-unsupported for a hero generated at a main town, 22 for a random hero, 3 for a hero standing in a
-town (the first reason found counts).
+The 164 maps of the user's installation (2026-10-12, import v2,
+`crates/h3-map/examples/original_data.rs`): every static layer imports and validates; 9 import and
+validate whole (`Adventures of Jared Haret`, `Faeries`, `Knee Deep in the Dead`, `Pandora's Box `,
+`Race for Ardintinny`, `Tutorial.tut`, `Unholy Quest` and the user's `Untitled` and
+`experiment`); 129 are unsupported for a hero generated at a main town, 18 for a random hero, 5 for
+a guarded resource pile (`Myth and Legend` among them, whole in v1), 3 for a hero standing in a town
+(the first reason found counts: players, the static layer, then the heroes).
 
 ## The subset we write (E04a T2)
 

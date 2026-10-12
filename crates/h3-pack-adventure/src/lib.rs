@@ -32,6 +32,19 @@
 //! [[river]]                        # appearance only
 //! id = "clear_river"
 //! name = "Clear river"
+//!
+//! [[object_type]]                  # E08 T12a; ADR-0016 point 4, ADV-OBJ-002
+//! id = "pile_gold"
+//! name = "Gold"
+//! visit = "neighbour"              # or "enter"
+//! from_above = true                # visitable from the three tiles above
+//! # exactly one kind table; resources, terrains and types: `name` means `<own pack>:name`
+//! pickup = { resource = "gold", amount = [5, 10], multiplier = 100 } # multiplier: 1 if left out
+//! # pickup_one_of = ["pile_wood", "pile_ore"]                       # a type drawn at setup
+//! # pickup_paired = { amount = [4, 6], resources = ["wood"], paired = "gold", multiplier = 100 }
+//! # reveal_terrain = { terrains = ["water"], price = { gold = 1000 } }
+//! # reveal_area = { radius = 20 }
+//! # key_tent = { key = 0 }         # also key_guard, key_gate; keys 0-7
 //! ```
 //!
 //! Costs are at least 1. A pack without the file has an empty adventure part; every enabled pack
@@ -40,9 +53,12 @@
 use std::fmt;
 use std::num::{NonZeroU8, NonZeroU16};
 
+use std::collections::BTreeMap;
+use std::num::NonZeroU32;
+
 use h3_adventure::{
-    AdventureCompileError, AdventurePack, AdventureParamsDef, AdventureRuleset, Passage, RiverDef,
-    RoadDef, TerrainMovementDef,
+    AdventureCompileError, AdventurePack, AdventureParamsDef, AdventureRuleset, ObjectKindDef,
+    ObjectTypeDef, Passage, PickupDef, RiverDef, RoadDef, TerrainMovementDef, Visit,
 };
 use h3_content::{ContentKey, KeyError, PackManifest, Ruleset};
 use h3_pack::PackError;
@@ -70,6 +86,8 @@ pub enum AdventurePackError {
     /// A terrain entry's cost does not fit its passage (land and water need one, impassable
     /// has none); the payload is the terrain as written.
     TerrainCost(String),
+    /// An object type does not have exactly one kind table; the payload is its id as written.
+    ObjectKind(String),
     /// A core pack does not parse, or the core packs do not compile.
     Core(PackError),
     /// The adventure packs do not compile into the adventure part.
@@ -85,6 +103,9 @@ impl fmt::Display for AdventurePackError {
                 f,
                 "terrain `{t}`: land and water need a cost, an impassable terrain has none"
             ),
+            Self::ObjectKind(id) => {
+                write!(f, "object type `{id}` needs exactly one kind table")
+            }
             Self::Core(e) => write!(f, "core packs: {e}"),
             Self::Compile(e) => write!(f, "{e}"),
         }
@@ -121,6 +142,8 @@ struct AdventureFile {
     road: Vec<RoadDto>,
     #[serde(default)]
     river: Vec<RiverDto>,
+    #[serde(default)]
+    object_type: Vec<ObjectTypeDto>,
 }
 
 #[derive(Deserialize)]
@@ -167,6 +190,125 @@ struct RoadDto {
 struct RiverDto {
     id: String,
     name: String,
+}
+
+#[derive(Deserialize, Clone, Copy)]
+#[serde(rename_all = "snake_case")]
+enum VisitDto {
+    Enter,
+    Neighbour,
+}
+
+#[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
+struct ObjectTypeDto {
+    id: String,
+    name: String,
+    visit: VisitDto,
+    from_above: bool,
+    pickup: Option<PickupDto>,
+    pickup_one_of: Option<Vec<String>>,
+    pickup_paired: Option<PairedDto>,
+    reveal_terrain: Option<RevealTerrainDto>,
+    reveal_area: Option<RevealAreaDto>,
+    key_tent: Option<KeyDto>,
+    key_guard: Option<KeyDto>,
+    key_gate: Option<KeyDto>,
+}
+
+#[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
+struct PickupDto {
+    resource: String,
+    amount: [u32; 2],
+    multiplier: Option<NonZeroU32>,
+}
+
+#[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
+struct PairedDto {
+    amount: [u32; 2],
+    resources: Vec<String>,
+    paired: String,
+    multiplier: Option<NonZeroU32>,
+}
+
+#[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
+struct RevealTerrainDto {
+    terrains: Vec<String>,
+    #[serde(default)]
+    price: BTreeMap<String, u32>,
+}
+
+#[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
+struct RevealAreaDto {
+    radius: u8,
+}
+
+#[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
+struct KeyDto {
+    key: u8,
+}
+
+/// An object type's definition: its one kind table with its references resolved.
+fn object_type(pack: &str, t: ObjectTypeDto) -> Result<ObjectTypeDef, AdventurePackError> {
+    let refs = |list: Vec<String>| {
+        list.iter()
+            .map(|r| reference(pack, r))
+            .collect::<Result<Vec<_>, _>>()
+    };
+    let one = NonZeroU32::MIN;
+    let mut kinds = Vec::new();
+    if let Some(p) = t.pickup {
+        kinds.push(ObjectKindDef::Pickup(PickupDef::Resource {
+            resource: reference(pack, &p.resource)?,
+            amount: p.amount,
+            multiplier: p.multiplier.unwrap_or(one),
+        }));
+    }
+    if let Some(list) = t.pickup_one_of {
+        kinds.push(ObjectKindDef::Pickup(PickupDef::OneOf(refs(list)?)));
+    }
+    if let Some(p) = t.pickup_paired {
+        kinds.push(ObjectKindDef::Pickup(PickupDef::Paired {
+            amount: p.amount,
+            resources: refs(p.resources)?,
+            paired: reference(pack, &p.paired)?,
+            multiplier: p.multiplier.unwrap_or(one),
+        }));
+    }
+    if let Some(r) = t.reveal_terrain {
+        kinds.push(ObjectKindDef::RevealTerrain {
+            terrains: refs(r.terrains)?,
+            price: r
+                .price
+                .iter()
+                .map(|(k, &a)| Ok((reference(pack, k)?, a)))
+                .collect::<Result<_, KeyError>>()?,
+        });
+    }
+    kinds.extend(
+        t.reveal_area
+            .map(|r| ObjectKindDef::RevealArea { radius: r.radius }),
+    );
+    kinds.extend(t.key_tent.map(|k| ObjectKindDef::KeyTent { key: k.key }));
+    kinds.extend(t.key_guard.map(|k| ObjectKindDef::KeyGuard { key: k.key }));
+    kinds.extend(t.key_gate.map(|k| ObjectKindDef::KeyGate { key: k.key }));
+    let [kind] = <[ObjectKindDef; 1]>::try_from(kinds)
+        .map_err(|_| AdventurePackError::ObjectKind(t.id.clone()))?;
+    Ok(ObjectTypeDef {
+        key: ContentKey::new(pack, &t.id)?,
+        name: t.name,
+        visit: match t.visit {
+            VisitDto::Enter => Visit::Enter,
+            VisitDto::Neighbour => Visit::Neighbour,
+        },
+        from_above: t.from_above,
+        kind,
+    })
 }
 
 /// Resolves a reference: `name` means `<own pack>:name`, `pack:name` is taken as written.
@@ -224,10 +366,16 @@ pub fn parse_adventure(
             })
         })
         .collect::<Result<_, KeyError>>()?;
+    let object_types = file
+        .object_type
+        .into_iter()
+        .map(|t| object_type(pack, t))
+        .collect::<Result<_, _>>()?;
     Ok(AdventurePack {
         terrains,
         roads,
         rivers,
+        object_types,
         params: file.params.map(|p| AdventureParamsDef {
             native_cost: p.native_cost,
             land_points: p.land_points,
