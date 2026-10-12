@@ -190,8 +190,7 @@ pub enum CommandError {
     /// The hex is not a standable hex of the field.
     InvalidHex,
     /// The hex cannot be reached this turn (too far, occupied or blocked, BAT-MOV-001), or, for
-    /// an attack, the walk there stops in a pit the side sees (BAT-MAG-032, quirk BAT-QUIRK-2
-    /// fixed).
+    /// an attack, the walk there stops in a pit the side sees (BAT-MAG-032).
     Unreachable,
     /// The target stack does not exist or is dead.
     NoSuchTarget,

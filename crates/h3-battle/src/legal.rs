@@ -1,7 +1,7 @@
 //! Legal commands (ADR-0004 §7): the exact set of commands `apply` accepts for an actor, built
 //! from the same reachability and adjacency rules. Consistency with `apply` is property-tested.
 
-use h3_content::{ATTACK_FROM_SEEN_PIT, MAX_FIELD_HEXES, Ruleset};
+use h3_content::{MAX_FIELD_HEXES, Ruleset};
 use h3_contracts::BattleSide;
 use h3_kernel::FixedVec;
 
@@ -58,8 +58,7 @@ pub fn legal_commands(
             }
         }
     } else {
-        let pit_attacks = ruleset.quirks().is_enabled(ATTACK_FROM_SEEN_PIT);
-        turn_commands(state, (field, pit_attacks), (id, &mover), out);
+        turn_commands(state, field, (id, &mover), out);
     }
     // rule: BAT-FLE-001
     if state.may_retreat(actor) {
@@ -74,11 +73,11 @@ pub fn legal_commands(
 /// The commands of the active stack `mover` on its turn, in the order of [`legal_commands`];
 /// its targets are the stacks it may attack ([`Stack::may_attack`], BAT-MAG-025/026: those of
 /// the side its controller fights). A melee attack from a position where the walk stops in a
-/// seen pit is legal only with quirk BAT-QUIRK-2 (`pit_attacks`), as the attack would not happen
-/// (BAT-MAG-032).
+/// seen pit is not listed: the attack would not happen, and the original offers none
+/// (BAT-MAG-032; `installation.md` §7.16).
 fn turn_commands(
     state: &BattleState,
-    (field, pit_attacks): (Field, bool),
+    field: Field,
     (id, mover): (StackId, &Stack),
     out: &mut LegalCommands,
 ) {
@@ -119,9 +118,7 @@ fn turn_commands(
         let positions = field.attack_positions(mover.is_two_hex(), mover.side, fp);
         for from in positions.into_iter().flatten() {
             // rule: BAT-MAG-032
-            if from == mover.hex
-                || (reach.can_move_to(from) && (pit_attacks || !reach.stops_at(from)))
-            {
+            if from == mover.hex || (reach.can_move_to(from) && !reach.stops_at(from)) {
                 let _ = out.push(Command::Attack {
                     target: StackId(tid),
                     from,

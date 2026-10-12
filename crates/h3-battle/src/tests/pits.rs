@@ -1,6 +1,6 @@
 //! Hidden spell obstacles and Quicksand (E04b T5c1): who sees a hidden obstacle (BAT-MAG-031,
-//! quirk BAT-QUIRK-1) and Quicksand's pits, which stop a walker (BAT-MAG-032, quirk BAT-QUIRK-2),
-//! after the original's code (`docs/formats/installation.md` §7.16).
+//! quirk BAT-QUIRK-1) and Quicksand's pits, which stop a walker (BAT-MAG-032), after the
+//! original's code (`docs/formats/installation.md` §7.16).
 
 use std::vec::Vec;
 
@@ -436,9 +436,43 @@ fn a_two_hex_walker_stops_when_its_tail_enters_a_pit() {
 
 // covers: BAT-MAG-032
 #[test]
-fn an_attack_from_a_seen_pit_is_legal_only_with_bat_quirk_2() {
-    for (profile, legal_there) in [("t:faithful", false), ("t:pits", true)] {
+fn an_attack_whose_walk_stops_in_a_seen_pit_is_neither_listed_nor_accepted() {
+    // E04b T11b review (r3 F-4; the user, BAT-Q30): the original offers no attack from a position
+    // with a hex on a pit the stack's side sees (its cursor's attack positions and its
+    // pathfinder's attack marking leave them out, `installation.md` §7.16), so such an attack is
+    // legal in no profile. Under the flag of BAT-QUIRK-2 (retired) the engine listed and
+    // accepted it: the stack walked into the pit and did not strike.
+    for profile in ["t:faithful", "t:sight"] {
         let r = ruleset_with(profile, |_| {});
+        // The attack of stack 0 at stack 1 from `from`, a position within its reach where its
+        // walk stops: not listed, refused, and the state untouched.
+        let refused = |s: &mut BattleState, from: Hex| {
+            let reach =
+                crate::movement::reachable(s, field(&r), StackId(0), s.stack(StackId(0)).unwrap());
+            assert!(reach.can_move_to(from) && reach.stops_at(from), "{profile}");
+            let attack = Command::Attack {
+                target: StackId(1),
+                from,
+            };
+            assert!(!legal(s, &r).iter().any(|c| *c == attack), "{profile}");
+            // Other positions next to the target stay legal, and so does the move into the pit.
+            assert!(legal(s, &r).iter().any(|c| matches!(
+                *c,
+                Command::Attack { target: StackId(1), from: other } if other != from
+            )));
+            assert!(
+                legal(s, &r)
+                    .iter()
+                    .any(|c| *c == Command::Move { to: from })
+            );
+            let before = s.clone();
+            assert_eq!(
+                act(s, &r, attack),
+                Err(CommandError::Unreachable),
+                "{profile}"
+            );
+            assert_eq!(*s, before, "{profile}");
+        };
         let mut s = arena(
             &r,
             [None, None],
@@ -447,25 +481,48 @@ fn an_attack_from_a_seen_pit_is_legal_only_with_bat_quirk_2() {
             1,
         );
         pits(&mut s, &r, BattleSide::Attacker, &[(5, 5)]);
+        refused(&mut s, at(&r, 5, 5));
+        // A two-hex walker: the position whose other hex, its tail, lies on the pit.
+        let mut s = arena(
+            &r,
+            [None, None],
+            &[("wide", 5, 5, 4)],
+            &[("fixed", 5, 8, 5)],
+            1,
+        );
+        pits(&mut s, &r, BattleSide::Attacker, &[(6, 5)]);
+        refused(&mut s, at(&r, 7, 5));
+        // The hexes a stack starts on never stop it: standing in the pit, it attacks from there.
+        let mut s = arena(
+            &r,
+            [None, None],
+            &[("fixed", 5, 5, 5)],
+            &[("fixed", 5, 6, 5)],
+            1,
+        );
+        pits(&mut s, &r, BattleSide::Attacker, &[(5, 5)]);
         let attack = Command::Attack {
             target: StackId(1),
             from: at(&r, 5, 5),
         };
-        assert_eq!(legal(&s, &r).iter().any(|c| *c == attack), legal_there);
-        // Other positions next to the target stay legal.
-        assert!(legal(&s, &r).iter().any(|c| matches!(
-            *c,
-            Command::Attack { target: StackId(1), from } if from != at(&r, 5, 5)
-        )));
-        let got = act(&mut s, &r, attack);
-        if legal_there {
-            // The walk stops in the pit and the attack is skipped (the original's 0x478971).
-            let events = got.unwrap();
-            assert!(!struck(&events));
-            assert_eq!(s.stack(StackId(0)).unwrap().hex, at(&r, 5, 5));
-        } else {
-            assert_eq!(got, Err(CommandError::Unreachable));
-        }
+        assert!(legal(&s, &r).iter().any(|c| *c == attack), "{profile}");
+        assert!(struck(&act(&mut s, &r, attack).unwrap()), "{profile}");
+        // No pit stops a flyer: it lands on the pit and strikes.
+        let mut s = arena(
+            &r,
+            [None, None],
+            &[("flyer", 5, 2, 5)],
+            &[("fixed", 5, 6, 5)],
+            1,
+        );
+        pits(&mut s, &r, BattleSide::Attacker, &[(5, 5)]);
+        assert!(legal(&s, &r).iter().any(|c| *c == attack), "{profile}");
+        let events = act(&mut s, &r, attack).unwrap();
+        assert!(
+            struck(&events) && obstacle_events(&events).is_empty(),
+            "{profile}"
+        );
+        assert_eq!(s.stack(StackId(0)).unwrap().hex, at(&r, 5, 5));
     }
 }
 

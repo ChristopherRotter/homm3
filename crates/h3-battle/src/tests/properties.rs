@@ -1383,21 +1383,20 @@ proptest! {
     /// without quirk BAT-QUIRK-1, BAT-MAG-031), its hero's and its stack's casts included:
     /// without quirk BAT-QUIRK-4 a random obstacle spell draws among the hexes its side sees
     /// free (BAT-MAG-032), and Remove Obstacle finds only what the caster sees (BAT-MAG-034).
-    /// In five profiles: the natives' sight fixed at the start (BAT-QUIRK-1), attacks from a
-    /// seen pit (BAT-QUIRK-2), anchors (BAT-QUIRK-3), none of the three, and the three together,
-    /// as a pack's faithful profile has them.
+    /// In four profiles: the natives' sight fixed at the start (BAT-QUIRK-1), anchors
+    /// (BAT-QUIRK-3), neither of the two, and the two together, as a pack's faithful profile has
+    /// them.
     #[test]
     fn hidden_obstacles_do_not_show(
         (att, def, obstacles, seed, steps, hidden) in arb_game(),
-        profile in 0usize..5,
+        profile in 0usize..4,
         extra in proptest::collection::btree_set((1u8..16, 0u8..11), 0..6),
     ) {
-        let quirks = ["natives_sight_at_start", "attack_from_seen_pit", "obstacle_anchors"];
+        let quirks = ["natives_sight_at_start", "obstacle_anchors"];
         let r = match profile {
             0 => lively_with("t:sight"),
-            1 => lively_with("t:pits"),
-            2 => lively_with("t:anchors"),
-            3 => lively_with("t:quirky"),
+            1 => lively_with("t:anchors"),
+            2 => lively_with("t:quirky"),
             _ => lively_mix(&quirks),
         };
         // The one property without Berserk in the heroes' books (the others play it). A berserk

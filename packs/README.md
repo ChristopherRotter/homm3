@@ -691,7 +691,8 @@ flags are off): the registered flags are in `h3_content::REGISTRY` and the quirk
 overrides read). A flag the profile names must be registered (`CompileError::UnknownQuirk`). A
 retired flag is not: its position in the registry stays reserved, its name is gone, and a profile
 that still names it, on or off, does not compile; the pack format's version does not change when
-a flag comes or goes. Retired: `quirk.battle.creature_mirror_untested` (BAT-QUIRK-9, 2026-10-12).
+a flag comes or goes. Retired: `quirk.battle.attack_from_seen_pit` (BAT-QUIRK-2) and
+`quirk.battle.creature_mirror_untested` (BAT-QUIRK-9), both on 2026-10-12.
 Profile-level Tier-2 parameters are not implemented yet (backlog).
 
 The compiled ruleset's canonical hash (encoding v15, `RULESET_HASH_VERSION`) covers packs,

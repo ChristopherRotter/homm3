@@ -7,7 +7,7 @@
 
 use alloc::boxed::Box;
 
-use h3_content::{ATTACK_FROM_SEEN_PIT, Ruleset, SpellId};
+use h3_content::{Ruleset, SpellId};
 use h3_contracts::{BattleResult, BattleSide};
 
 use crate::casters;
@@ -262,10 +262,10 @@ fn plan<'r>(
                 0
             } else {
                 let reach = reachable(state, field, id, &mover);
+                // No attack from a position where the walk stops in a seen pit (the original
+                // offers none, `installation.md` §7.16).
                 // rule: BAT-MAG-032
-                let Some(steps) = reach.steps(from).filter(|_| {
-                    !reach.stops_at(from) || ruleset.quirks().is_enabled(ATTACK_FROM_SEEN_PIT)
-                }) else {
+                let Some(steps) = reach.steps(from).filter(|_| !reach.stops_at(from)) else {
                     return Err(CommandError::Unreachable);
                 };
                 steps

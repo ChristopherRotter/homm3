@@ -3116,7 +3116,6 @@ mod tests {
              \"quirk.battle.early_mass_version\" = true, \
              \"quirk.battle.mass_cure_skips_hypnotized\" = true, \
              \"quirk.battle.natives_sight_at_start\" = true, \
-             \"quirk.battle.attack_from_seen_pit\" = true, \
              \"quirk.battle.obstacle_anchors\" = true, \
              \"quirk.battle.draws_avoid_hidden\" = true, \
              \"quirk.battle.sacrifice_tests_as_resurrection\" = true, \
@@ -3131,22 +3130,27 @@ mod tests {
             Err(PackError::Compile(_))
         ));
         // A retired flag is no flag any more (ADR-0007): a pack that still sets it, as the packs
-        // did until its retirement, does not compile. BAT-QUIRK-9, retired on 2026-10-12.
-        let retired = "quirk.battle.creature_mirror_untested";
-        let old = SYNTHETIC_PACK.replace(
-            "\"quirk.battle.periodic_first_stack\" = true }",
-            &format!("\"quirk.battle.periodic_first_stack\" = true, \"{retired}\" = true }}"),
-        );
-        let named = (retired.to_owned(), true);
-        assert!(
-            parse_pack(&old).unwrap().profiles[0]
-                .quirks
-                .contains(&named)
-        );
-        assert!(matches!(
-            compile(&[&old], "synthetic:faithful"),
-            Err(PackError::Compile(CompileError::UnknownQuirk { flag, .. })) if flag == retired
-        ));
+        // did until its retirement, does not compile. BAT-QUIRK-2 and BAT-QUIRK-9, retired on
+        // 2026-10-12.
+        for retired in [
+            "quirk.battle.attack_from_seen_pit",
+            "quirk.battle.creature_mirror_untested",
+        ] {
+            let old = SYNTHETIC_PACK.replace(
+                "\"quirk.battle.periodic_first_stack\" = true }",
+                &format!("\"quirk.battle.periodic_first_stack\" = true, \"{retired}\" = true }}"),
+            );
+            let named = (retired.to_owned(), true);
+            assert!(
+                parse_pack(&old).unwrap().profiles[0]
+                    .quirks
+                    .contains(&named)
+            );
+            assert!(matches!(
+                compile(&[&old], "synthetic:faithful"),
+                Err(PackError::Compile(CompileError::UnknownQuirk { flag, .. })) if flag == retired
+            ));
+        }
         let useless = SYNTHETIC_PACK.replace("id = \"spark\"", "id = \"spark\"\nuseful = \"nope\"");
         assert!(matches!(parse_pack(&useless), Err(PackError::Syntax(_))));
         let no_battle = parse_pack("[pack]\nid = \"x\"\nversion = \"1\"\n").unwrap();
@@ -4586,14 +4590,15 @@ mod tests {
     /// E04a exit criterion 3: with the harvested packs `faithful` turns on every quirk flag that
     /// exists and `strict-fixed` none, so the two profiles differ exactly by the quirks of the
     /// ledger that have a flag, the data quirks' included (E04b T8e). The position of a retired
-    /// flag is no flag, and no profile sets its bit: 14 (BAT-QUIRK-9, retired on 2026-10-12).
+    /// flag is no flag, and no profile sets its bit: 10 and 14 (BAT-QUIRK-2 and BAT-QUIRK-9,
+    /// retired on 2026-10-12).
     #[test]
     fn the_profiles_differ_exactly_by_the_quirk_flags() {
         let registry = h3_content::REGISTRY;
         let all = registry
             .flags()
             .fold(0u64, |bits, flag| bits | 1 << flag.index());
-        assert_eq!(all, ((1 << registry.len()) - 1) & !(1 << 14));
+        assert_eq!(all, ((1 << registry.len()) - 1) & !(1 << 10 | 1 << 14));
         for (profile, bits) in [("base:faithful", all), ("base:strict-fixed", 0)] {
             let r = compile(&[SOD_PACK, AB_PACK, BASE_PACK], profile).unwrap();
             assert_eq!(r.quirks().bits(), bits, "{profile}");

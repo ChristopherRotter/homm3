@@ -6,7 +6,7 @@
 //! (`docs/formats/installation.md` §7.14); the engine uses its own reachability instead (survey
 //! S-11 unconfirmed, OPEN-QUESTIONS Q53).
 
-use h3_content::{ATTACK_FROM_SEEN_PIT, Ruleset};
+use h3_content::Ruleset;
 use h3_kernel::FixedVec;
 
 use crate::binds;
@@ -50,7 +50,6 @@ pub(crate) fn berserk<S: Sink>(
         ANY_RANGE
     };
     let reach = reachable_within(state, field, id, &me, range);
-    let pit_attacks = ruleset.quirks().is_enabled(ATTACK_FROM_SEEN_PIT);
     let mut nearest: FixedVec<Choice, STACK_CAPACITY> = FixedVec::new();
     let candidates = (0u8..)
         .zip(state.stacks.iter())
@@ -59,7 +58,7 @@ pub(crate) fn berserk<S: Sink>(
             let choice = if shooting {
                 Some((t.hex, field.distance(me.hex, t.hex)))
             } else {
-                attack_position(field, &me, t, (&reach, pit_attacks))
+                attack_position(field, &me, t, &reach)
             };
             choice.map(|(from, d)| (i, from, d))
         });
@@ -117,14 +116,9 @@ pub(crate) fn berserk<S: Sink>(
 }
 
 /// The position from which `me` attacks `target` with the fewest steps of `reach` (its own
-/// position counts 0), the first in canonical order on ties, and the steps; one where its walk
-/// stops in a seen pit only with quirk BAT-QUIRK-2 (`pit_attacks`, BAT-MAG-032).
-fn attack_position(
-    field: Field,
-    me: &Stack,
-    target: &Stack,
-    (reach, pit_attacks): (&Reach, bool),
-) -> Option<(Hex, u32)> {
+/// position counts 0), the first in canonical order on ties, and the steps; never one where its
+/// walk stops in a pit its side sees, as for a commanded attack (BAT-MAG-032).
+fn attack_position(field: Field, me: &Stack, target: &Stack, reach: &Reach) -> Option<(Hex, u32)> {
     field
         .attack_positions(me.is_two_hex(), me.side, target.footprint(field))
         .into_iter()
@@ -133,7 +127,7 @@ fn attack_position(
             let steps = if p == me.hex {
                 Some(0)
             } else {
-                reach.steps(p).filter(|_| pit_attacks || !reach.stops_at(p))
+                reach.steps(p).filter(|_| !reach.stops_at(p))
             };
             steps.map(|s| (p, u32::from(s)))
         })

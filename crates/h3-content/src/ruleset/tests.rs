@@ -209,8 +209,13 @@ fn quirk_flags_come_from_the_profile() {
     );
     // A retired flag has no name in the engine's registry (ADR-0007: its position stays, its
     // name goes): a profile that still names it, on or off, does not compile, nor does one that
-    // names its entry's empty name. Retired on 2026-10-12: BAT-QUIRK-9 (BAT-Q29).
-    for flag in ["quirk.battle.creature_mirror_untested", ""] {
+    // names its entry's empty name. Retired on 2026-10-12: BAT-QUIRK-2 (BAT-Q30) and BAT-QUIRK-9
+    // (BAT-Q29).
+    for flag in [
+        "quirk.battle.attack_from_seen_pit",
+        "quirk.battle.creature_mirror_untested",
+        "",
+    ] {
         for on in [true, false] {
             let mut pack = base();
             pack.profiles[1].quirks = vec![(flag.into(), on)];

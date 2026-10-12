@@ -103,6 +103,15 @@ fn berserk_now(s: &mut BattleState, r: &Ruleset) -> Vec<Event> {
     events
 }
 
+/// Places a Quicksand pit of `side` on `(x, y)` as its cast would (test setup only).
+fn pit(s: &mut BattleState, r: &Ruleset, side: BattleSide, (x, y): (i32, i32)) {
+    let id = spell(r, "quicksand");
+    let shape = r.spell(id).unwrap().magic.obstacle.clone().unwrap();
+    let placed = (id, h3_content::ObstacleKind::Pit, &shape);
+    let hexes = [at(r, x, y)];
+    crate::obstacles::place(s, placed, side, (&hexes, 0), &mut Vec::<Event>::new());
+}
+
 // covers: BAT-MAG-025
 #[test]
 fn berserk_reaches_both_sides_around_its_hex_and_ends_hypnotize() {
@@ -374,6 +383,53 @@ fn a_berserk_stack_out_of_reach_walks_towards_its_target_or_passes() {
     s.stacks.as_mut_slice()[1].count = 0;
     let events = berserk_now(&mut s, &r);
     assert!(events.contains(&Event::public(EventKind::TurnPassed { stack: StackId(0) })));
+}
+
+// covers: BAT-MAG-025, BAT-MAG-032
+#[test]
+fn a_berserk_stack_does_not_attack_from_a_pit_its_side_sees() {
+    // E04b T11b review (r3 F-4; the user, BAT-Q30): no attack starts from a position where the
+    // walk stops in a pit the stack's side sees, a berserk stack's automatic one neither, in
+    // every profile (under the retired flag of BAT-QUIRK-2 it walked into the pit and did not
+    // strike). Ids: 0 fixed (berserk, the attacker's); 1 slow, three steps away, whose only free
+    // neighbouring hex holds the pit; 2 slow, four steps away (the defender's).
+    for profile in ["t:faithful", "t:sight"] {
+        let r = ruleset_with(profile, |_| {});
+        let battle = |pit_of: BattleSide| {
+            let mut s = arena(
+                &r,
+                [None, None],
+                &[("fixed", 10, 2, 5)],
+                &[("slow", 5, 6, 5), ("slow", 5, 2, 10)],
+                1,
+            );
+            let free = at(&r, 5, 5);
+            let around = field(&r).neighbors(at(&r, 6, 5));
+            for hex in around.into_iter().flatten().filter(|&hex| hex != free) {
+                s.natural.block(hex);
+            }
+            pit(&mut s, &r, pit_of, (5, 5));
+            give(&mut s, &r, (0, "berserk"), 1);
+            s
+        };
+        // Its own side's pit, which it sees: the nearer stack has no position to attack it from,
+        // so it walks to the farther one and attacks it.
+        let mut s = battle(BattleSide::Attacker);
+        let events = berserk_now(&mut s, &r);
+        assert_eq!(strikes(&events).first(), Some(&(0, 2)), "{profile}");
+        assert_ne!(s.stacks()[0].hex, at(&r, 5, 5));
+        // The other side's hidden pit, which it does not see: it goes for the nearer stack, is
+        // stopped in the pit, which shows itself, and does not strike (BAT-MAG-032).
+        let mut s = battle(BattleSide::Defender);
+        let events = berserk_now(&mut s, &r);
+        assert!(strikes(&events).is_empty(), "{profile}");
+        assert_eq!(s.stacks()[0].hex, at(&r, 5, 5));
+        assert!(
+            events
+                .iter()
+                .any(|e| matches!(e.kind, EventKind::ObstacleRevealed { .. }))
+        );
+    }
 }
 
 // covers: BAT-MAG-025

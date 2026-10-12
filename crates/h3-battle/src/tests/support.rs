@@ -1528,10 +1528,6 @@ pub fn try_ruleset_from(
                 quirks: vec![(String::from("quirk.battle.natives_sight_at_start"), true)],
             },
             ProfileDef {
-                key: ContentKey::new("t", "pits").unwrap(),
-                quirks: vec![(String::from("quirk.battle.attack_from_seen_pit"), true)],
-            },
-            ProfileDef {
                 key: ContentKey::new("t", "anchors").unwrap(),
                 quirks: vec![(String::from("quirk.battle.obstacle_anchors"), true)],
             },

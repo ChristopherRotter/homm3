@@ -84,7 +84,10 @@ pub const REGISTRY: QuirkRegistry = QuirkRegistry::new(&[
     "quirk.battle.early_mass_version",
     "quirk.battle.mass_cure_skips_hypnotized",
     "quirk.battle.natives_sight_at_start",
-    "quirk.battle.attack_from_seen_pit",
+    // 10: `quirk.battle.attack_from_seen_pit` (BAT-QUIRK-2), retired on 2026-10-12 (the user,
+    // BAT-Q30): the original offers no attack from a pit the stack's side sees, so there is no
+    // such quirk (`installation.md` §7.16).
+    RETIRED,
     "quirk.battle.obstacle_anchors",
     "quirk.battle.draws_avoid_hidden",
     "quirk.battle.sacrifice_tests_as_resurrection",
@@ -143,10 +146,6 @@ pub const MASS_CURE_SKIPS_HYPNOTIZED: QuirkFlag = QuirkFlag(8);
 /// its native terrain at the battle's start, given to each obstacle when it is placed; natives
 /// that die or appear later change nothing (BAT-MAG-031). Off: while it has a living one.
 pub const NATIVES_SIGHT_AT_START: QuirkFlag = QuirkFlag(9);
-
-/// BAT-QUIRK-2: a walker may be commanded to attack from a pit its side sees; it stops on
-/// entering the pit and the attack is skipped (BAT-MAG-032). Off: such an attack is not legal.
-pub const ATTACK_FROM_SEEN_PIT: QuirkFlag = QuirkFlag(10);
 
 /// BAT-QUIRK-3: a removable natural obstacle's anchor hex is part of it even where the obstacle
 /// does not block it: it takes no Fire Wall, Force Field, pit or mine, and Remove Obstacle aimed at
@@ -324,10 +323,6 @@ mod tests {
             Some(NATIVES_SIGHT_AT_START)
         );
         assert_eq!(
-            REGISTRY.lookup("quirk.battle.attack_from_seen_pit"),
-            Some(ATTACK_FROM_SEEN_PIT)
-        );
-        assert_eq!(
             REGISTRY.lookup("quirk.battle.obstacle_anchors"),
             Some(OBSTACLE_ANCHORS)
         );
@@ -358,20 +353,25 @@ mod tests {
 
     #[test]
     fn a_retired_flag_keeps_its_position_and_has_no_name() {
-        // Position 14 was `quirk.battle.creature_mirror_untested` (BAT-QUIRK-9, retired on
-        // 2026-10-12, BAT-Q29). Neither its old name nor the empty name of its entry finds it.
-        for name in ["quirk.battle.creature_mirror_untested", ""] {
+        // Positions 10 and 14 were `quirk.battle.attack_from_seen_pit` (BAT-QUIRK-2, BAT-Q30)
+        // and `quirk.battle.creature_mirror_untested` (BAT-QUIRK-9, BAT-Q29), both retired on
+        // 2026-10-12. Neither their old names nor the empty name of their entries find them.
+        for name in [
+            "quirk.battle.attack_from_seen_pit",
+            "quirk.battle.creature_mirror_untested",
+            "",
+        ] {
             assert_eq!(REGISTRY.lookup(name), None, "{name:?}");
         }
-        // The position stays taken, so the flags after it keep their indices
+        // The positions stay taken, so the flags after them keep their indices
         // (`registry_lookup_and_bitset`), and the flags that exist are every other position.
         assert_eq!(REGISTRY.len(), 23);
-        assert_eq!(REGISTRY.names[14], RETIRED);
+        assert_eq!([REGISTRY.names[10], REGISTRY.names[14]], [RETIRED; 2]);
         assert!(
             REGISTRY
                 .flags()
                 .map(QuirkFlag::index)
-                .eq((0..23).filter(|i| *i != 14))
+                .eq((0..23).filter(|i| ![10, 14].contains(i)))
         );
         // A registry without retired flags has them all.
         assert!(TEST.flags().map(QuirkFlag::index).eq(0..2));
