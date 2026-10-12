@@ -145,3 +145,35 @@ One session with T6 (the user present; they chose T1, then T6). Branch
   DDrawCompat (licence first).
 - Gates: `scripts/exe.py check` and `cargo xtask check-exe-map` (every cited address covered),
   `check-docs`.
+
+### M1 T6 — The compositor (2026-10-12)
+
+Same session as T1, on `client/e17-m1-compositor` (stacked on T1's branch). The code reading of
+[`E17-design.md`](E17-design.md) §3 turned into code.
+
+- **`h3_render::screen`.** `PixelFormat` (red, green, blue widths, packed red high; `RGB565`,
+  `RGB555`): `pack` truncates as 0x5226D0, the half and quarter masks and the two shadows as
+  0x47C460 builds them, `unpack` widens for display. `Screen`: 16-bit pixels, the size a
+  parameter (at most 16 384 a side).
+- **`h3_render::palette`.** `ScreenPalette` (a palette converted once, as at load);
+  `with_player_colours` replaces indices 224–255 (where the 32 colours come from is T7's).
+- **`h3_render::blit`.** `draw_frame` with a `Drawer` (`Plain { skip_runs, colour }`,
+  `Shadowed { colour }`, `ShadowPass`): the table of design §3.3 per encoding and per run or
+  literal pixel; the frame placed by its canvas's corner, mirrored across its own canvas, clipped
+  to the canvas and the screen. `draw_image`: a PCX opaque (*provisional*: the image drawer is not
+  read). Left out: 0x47C9E0's 50/50 blend (no caller enables it).
+- **`h3_render::png`.** RGB8, filter none, zlib by `miniz_oxide` (already in the lockfile through
+  `h3-formats`), CRC-32 bit by bit; checked against the standard check values.
+- **`h3_assets`.** The drawers tell runs from literal pixels (a literal 6 is a colour, a run of 6
+  a shadow; a run of 8 is skipped), which the flat indices lost: `Frame::runs` marks each pixel,
+  the decoders fill it, `build::frame` follows it, and `build::runs_by_repetition` gives the old
+  encoder's choice for synthetic frames. Literal keyed indices are rare in the user's files (23
+  pixels of 6 and 7 in map objects).
+- **`h3-view sprite`.** One group of a DEF, frame by frame on its canvas, over a PCX, through the
+  shadowed drawer, into `clients/out/sprite/`; DEFs searched in `H3sprite` then `H3ab_spr`, images
+  in `H3bitmap` then `H3ab_bmp` (design §3.1). On the user's files: the pikeman's standing group
+  and the Nomad's (mirrored, shadows on sand, none of its index-8 runs shown), 0.2 s each.
+- *Provisional*: the names, 565 as the default, the PNG's widening, the shadow pass applied to
+  every encoding, opaque images, the sheet's layout.
+- Gates: `clients/scripts/check.sh` passes (fmt, clippy, tests, deny, 100 % lines and regions,
+  CI paths); the real-asset gate still decodes all 11 800 image entries. CI could not run.
