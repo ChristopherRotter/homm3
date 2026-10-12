@@ -38,6 +38,7 @@ The client lane's living state; read after the global `docs/HANDOFF.md`. Format 
 6. Per-expansion content: how it maps to the engine's ruleset profiles.
 7. The HD patch: its notes and content as a source for asset fixes, its resolution handling as a reference for HD.
 8. Shadows and the other keyed colours: what the game does with each reserved palette index when it draws (hypothesis: it darkens the pixel already on screen by a fixed operation rather than blending with an alpha), and what happens where shadows overlap. Read in the exe; tied to item 2.
+9. The adventure map's object draw order (the user, 2026-10-12, at E17 M0): surprisingly complicated; neither the user nor VCMI (at the time) got it exactly right. A code reading should settle it, with reference frames to confirm.
 
 ## Standing traps
 

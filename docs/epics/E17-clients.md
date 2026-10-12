@@ -119,6 +119,7 @@ notes), HD layouts, the adventure map and the full game viewer, video.
 | 6. Per-expansion content and the ruleset profiles | M1 T4 |
 | 7. The HD patch as a source of fixes and for HD | M3, later |
 | 8. Shadows and the other keyed colours | M1 T1 |
+| 9. The adventure map's object draw order (the user: neither they nor VCMI got it exactly right) | a code reading when the adventure map viewer is refined; M1 T5 reads only the battle's |
 
 ## Risks and known gaps
 
