@@ -15,7 +15,7 @@ use h3_contracts::{HeroId, PlayerId};
 use proptest::prelude::{any, prop_assert, prop_assert_eq, proptest};
 
 use super::*;
-use crate::command::{AdventureCommand, AdventureEvent};
+use crate::command::{AdventureCommand, AdventureCommandError, AdventureEvent, AdventureEventKind};
 use crate::movement::DIRECTIONS;
 use crate::testing::{GNOLL, PEASANT, PIKEMAN, WOLF, hero_at, movement_rules, world, world_state};
 
@@ -35,7 +35,7 @@ fn walk(
     rules: &(Ruleset, AdventureRuleset),
     hero: u16,
     path: Vec<Pos>,
-) -> Result<Vec<AdventureEvent>, crate::AdventureCommandError> {
+) -> Result<Vec<AdventureEvent>, AdventureCommandError> {
     let mut events = Vec::new();
     let command = AdventureCommand::MoveHero {
         hero: HeroId::new(hero),
@@ -46,7 +46,7 @@ fn walk(
         result.is_ok() || events.is_empty(),
         "a rejected move emitted events"
     );
-    result.map(|()| events)
+    result.map(|_| events)
 }
 
 // covers: ADV-MOV-003, ADV-MOV-005, ADV-MOV-007
@@ -197,7 +197,7 @@ fn the_query_stays_on_the_heros_level() {
 
 /// The tiles of the property's maps, weighted toward walkable ones.
 const TILES: &[char] = &[
-    'g', 'g', 'g', 'g', 's', 's', 'w', 'w', 'G', 'G', 'S', 'W', 'd', '~', '#', 'B', 'V', 'T',
+    'g', 'g', 'g', 'g', 's', 's', 'w', 'w', 'G', 'G', 'S', 'W', 'd', '~', '#', 'B', 'V', 'T', 'P',
 ];
 const CREATURES: [h3_content::CreatureTypeId; 4] = [PIKEMAN, GNOLL, PEASANT, WOLF];
 
@@ -238,9 +238,10 @@ fn the_query_keeps_to_the_explored_tiles() {
 
 proptest! {
     /// On random maps, armies and profiles, from the hero's tile and after up to three moves
-    /// along reported paths: every reported path is accepted and ends with the reported points;
-    /// the tile of an accepted one-step move is reported with at least the points it leaves; a
-    /// rejected move changes nothing; the query is deterministic.
+    /// along reported paths: every reported path is accepted and ends with the reported points,
+    /// on its last tile or, for a pile's visit, on the tile before; the tile of an accepted
+    /// one-step move is reported with at least the points it leaves; a rejected move changes
+    /// nothing; the query is deterministic.
     #[test]
     fn the_query_and_move_hero_agree(
         cells in proptest::collection::vec(0usize..TILES.len(), 64),
@@ -281,9 +282,17 @@ proptest! {
                 let path = reach.path(pos).unwrap();
                 let mut moved = state.clone();
                 let events = walk(&mut moved, &rules, 1, path.clone());
-                prop_assert_eq!(events.map(|e| e.len()), Ok(path.len()));
+                prop_assert_eq!(events.as_ref().map(Vec::len), Ok(path.len()));
+                let visit = events.unwrap().last().is_some_and(|e| {
+                    matches!(e.kind, AdventureEventKind::ObjectRemoved { .. })
+                });
+                let at = match path.len().checked_sub(2) {
+                    _ if !visit => pos,
+                    Some(before) => path[before],
+                    None => origin,
+                };
                 let hero = moved.hero(HeroId::new(1)).unwrap();
-                prop_assert_eq!((hero.pos, hero.movement), (pos, left));
+                prop_assert_eq!((hero.pos, hero.movement), (at, left));
             }
             for next in around(&state, origin) {
                 let mut moved = state.clone();
@@ -306,7 +315,7 @@ proptest! {
     }
 }
 
-// covers: ADV-MOV-007
+// covers: ADV-MOV-007, ADV-OBJ-003
 #[test]
 fn the_tiles_a_removed_object_frees_are_reached_and_walked() {
     // A wall of a blocker, a pile and a town-like gate at column 1; the hero at (0, 0).
@@ -317,11 +326,17 @@ fn the_tiles_a_removed_object_frees_are_reached_and_walked() {
         vec![hero_at(1, 0, p(0, 0), &[PEASANT])],
     );
     let walled = reach(&state, &rules, 1);
-    for y in 0..3 {
-        assert_eq!(walled.points_left(p(1, y)), None);
-    }
+    // The blocker and the untyped gate stop the search; the pile is a destination, the visit's
+    // (E08 T13b), a diagonal step paid from (0, 0), where the hero stays; nothing past it.
+    assert_eq!(walled.points_left(p(1, 0)), None);
+    assert_eq!(walled.points_left(p(1, 2)), None);
+    assert_eq!(walled.points_left(p(1, 1)), Some(1300 - 141));
+    assert_eq!(walled.path(p(1, 1)), Some(vec![p(1, 1)]));
     assert_eq!(walled.points_left(p(2, 1)), None);
-    assert!(walk(&mut state.clone(), &rules, 1, vec![p(1, 1)]).is_err());
+    assert_eq!(
+        walk(&mut state.clone(), &rules, 1, vec![p(1, 1), p(2, 1)]),
+        Err(AdventureCommandError::PastVisit { step: 1 })
+    );
     // The pile (object 1 in map order) leaves the map: its tile is reached and walked through.
     state.remove_object(1);
     let open = reach(&state, &rules, 1);

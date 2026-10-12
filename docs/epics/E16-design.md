@@ -249,14 +249,20 @@ below are the tasks' starting point, *provisional* until M4's review.
   `MatchFound { ladder, accept_ms, bot }`; both `AcceptMatch` (`MatchReady` then), or the one who
   did not (a `DeclineMatch` or `Dequeue`, the deadline, a closed connection) leaves the queue
   (`Dequeued`, or `Unqueued { Expired }`) and the other waits again with its waiting time
-  (`MatchCancelled`). A drain empties the queues (`Unqueued { Draining }`). The queues live in
+  (`MatchCancelled`). Who gave the match up may queue again at once, but is paired with no one
+  on that ladder for 60 s (`ladder::BARRED_MS`, since M4 T7, *provisional*; M4's review: a
+  player declining again and again kept another from every match). A drain empties the queues
+  (`Unqueued { Draining }`). The queues live in
   memory only: a restart empties them. A queued connection hears its queue through a channel
   of its own, and the lobby's deadline waits while it is queued.
 - **The ranked game** (code since M4 T2 and T3a): created when both
   accept, as the server's own (the limit in total applies, none per address; no room:
   `Unqueued { Full }`), from a scenario of the pool drawn with OS randomness, the sides at
-  random, both seats the accounts' from the start (`Session::reserve`: `Taken` lines naming
-  them, journaled before the players hear `MatchReady`); the clients `Join` it as their seat. A
+  random, both seats the accounts' from the start (`Session::reserve`: `TakenBy` lines naming
+  them, journaled by the game's thread as it opens, before any join reaches it: the players hear
+  `MatchReady` as the game is created, and their joins wait behind its opening; M4's review: a
+  game whose journal cannot be created ends, and its players find it gone); the clients `Join`
+  it as their seat. A
   pool's scenario is an offer of its own, `<ladder>.<n>`, so a restart restores the game as any
   other. Listed with its ladder (`GameInfo::ladder`); while it waits for its players it does not
   leave the lobby, whatever their joins did (its grace ends it). Since T3a: no host (`Pause` and

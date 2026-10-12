@@ -29,6 +29,9 @@ fn a_player_observes_the_public_facts_and_the_map_as_it_sees_it() {
         ]
     );
     assert_eq!(seen.turn_group, [RED]);
+    // Its own treasury (GAM-RES-001), never another player's: the observation has no field for
+    // one.
+    assert_eq!(seen.treasury, [2000]);
     assert_eq!(
         seen.adventure,
         state.adventure().observe(rules.core(), BLUE)
@@ -52,6 +55,7 @@ fn a_player_observes_the_public_facts_and_the_map_as_it_sees_it() {
     let stranger = observe(&state, &rules, Viewer::Player(PlayerId::new(5)));
     assert_eq!((stranger.day, stranger.players.len()), (1, 2));
     assert!(stranger.adventure.heroes.is_empty());
+    assert!(stranger.treasury.is_empty());
 }
 
 #[test]

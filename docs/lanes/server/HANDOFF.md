@@ -4,7 +4,7 @@ The server lane's living state; read after the global `docs/HANDOFF.md`. Format 
 
 ## Current state
 
-- **M1–M3 closed** (SRV-Q12, SRV-Q16, SRV-Q18). **M4 refined (2026-10-12, SRV-Q19):** ADR-0019 points 4–9 decided; the detail in `E16-design.md` §11; the tasks in `QUEUE.md`; no turn timer in M4 (a game rule, M5). **M4 T1–T6, T5b and SRV-Q20 done** (#106–#120). **Next: M4 T7** (ready; M4's closure).
+- **M1–M4 closed** (SRV-Q12, SRV-Q16, SRV-Q18, SRV-Q22). M4's detail: `E16-design.md` §11 (ADR-0019 points 4–9; no turn timer: a game rule, M5). **Next: M4 T8** (the pause's hold across a restart), then M6's refinement.
 - **ADR-0018 point 5 as amended:** the mapping's matches over the engine's enums are exhaustive, and since T4b its patterns over the observation's structs too; a new battle variant or observation field fails `h3-protocol`'s build until mapped (global HANDOFF trap).
 - **The 100 % gate** covers `h3-protocol` (logic); `h3-server` is an adapter outside it, tested end to end.
 - **Versions** (`docs/08-work-process.md`): `PROTOCOL_VERSION` (`h3-protocol`, 20 since M4 T5b's bot opt-out; bumped on every wire change), `RECORD_FORMAT_VERSION` (`h3-protocol`, 2 since M2 T5c), `JOURNAL_FORMAT_VERSION` (`h3-server`, 6 since M4 T6's `PauseAgreed`; a journal of another format is void at start).
@@ -23,7 +23,6 @@ The server lane's living state; read after the global `docs/HANDOFF.md`. Format 
 - `postcard` (and any format that is not self-describing) cannot decode `#[serde(tag = ...)]`, `untagged` or `flatten`: keep the wire types in serde's default enum form (SRV-Q5).
 - A 64-bit integer on the wire travels as a string (JavaScript clients lose precision above 2^53).
 - A wildcard arm after every variant of an enum still counts as one uncovered region (llvm-cov), and `#[coverage(off)]` is unstable: no fallback arms in `h3-protocol` (ADR-0018 point 5 as amended).
-- `prop_assert!(matches!(x, P { .. }))` needs a message: the macro reads `{ .. }` as a format argument.
 - A test client that picks uniformly among the legal commands rarely ends a battle of the `full` scenario (mostly moves; the defender's stacks regenerate): pick among the strikes when there are any (`tests/session.rs`, `play`).
 - A test `Client` answers pings only while it reads: one unread beyond `ping_timeout_ms` is dropped, and its late pong draws a reset that drops its unread frames.
 - Automated clients answer every turn at once and exceed the default 20 messages per second and the address's 40: end-to-end tests that play raise both (`tests.rs`, `fast()`).
@@ -49,18 +48,19 @@ The server lane's living state; read after the global `docs/HANDOFF.md`. Format 
 - A server's bot account has no `key` (T5): a login, a re-key and `rebind` must never match it.
 - A paused journal's last write starts its deadline and an agreed pause's due time: never append to one.
 - A ranked game's end is told only by the host's verdict (`publish_replay`/`withhold_replay`): a new way for one to end must reach `finish`. A ladder's log names a game once (by id; `<data>/next-game`): never hand out ids below `GameIds::last`.
-- **The workload is lane-only and follows `master`:** 55 % of its count is the battle engine, so battle changes move it and the full verify (CI) does not measure it. At each session's start `verify --scope server` measures it; a drift there came from `master`: re-baseline (`cargo xtask bench-check --update --workload session-random-play-full`) and name the range in the commit. Measure only with the file's arguments (they shift the heap `malloc` walks).
+- **The workload is lane-only and follows `master`** (55 % battle engine; the full verify does not measure it): `verify --scope server` measures it at each session's start; a drift from `master` is re-baselined (`cargo xtask bench-check --update --workload session-random-play-full`), the range named in the commit. Measure only with the file's arguments (they shift the heap `malloc` walks).
+- Windows refuses `set_len` through an `append(true)` handle: logs open `write(true)` and write at their end (`journal::open_log`). Check with clippy `--target x86_64-pc-windows-gnu` (`rustup target add` works); Wine is no test of it.
 
 ## Recent sessions
 
+### 2026-10-12 — M4 T7, M4's closure
+
+#124 merged. Built T7 (`E16-log.md`): restart test, 06-security, client note, review fixes. Then the logs on Windows.
+
 ### 2026-10-12 — M4 T5b, a player's bot opt-out
 
-#120 merged. Built T5b (`E16-log.md`): `Queue::bots`, `MatchFound::bot`; wire 20.
+#120 merged. Built T5b (`E16-log.md`): the bot opt-out; wire 20.
 
 ### 2026-10-12 — M4 T6, the pause by agreement
 
-#118 merged. Built T6 (`E16-log.md`); SRV-Q21 → T5b; wire 19, journal 6.
-
-### 2026-10-12 — M4 T5, bots on ladders
-
-#114 merged. Built T5 (`E16-log.md`): `[[ladder.bot]]`, bot accounts; wire 18.
+#118 merged. Built T6 (`E16-log.md`); wire 19, journal 6.

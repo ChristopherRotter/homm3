@@ -13,7 +13,7 @@ use std::fmt;
 use h3_adventure::{MapSetup, ObjectSetup, Pos, TileMask, TileSetup};
 use h3_content::CreatureTypeId;
 use h3_contracts::{ArmyStack, PlayerId};
-use h3_game::{GameHeroSetup, GameRuleset, GameSetup, HeroArmy, PlayerSetup};
+use h3_game::{DEFAULT_DIFFICULTY, GameHeroSetup, GameRuleset, GameSetup, HeroArmy, PlayerSetup};
 
 use crate::model::{Army, Body, HeroBody, Object, RawMap, Template, Version};
 
@@ -168,6 +168,7 @@ pub fn import(map: &RawMap, rules: &GameRuleset) -> Result<GameSetup, ImportErro
     }
     Ok(GameSetup {
         players,
+        difficulty: DEFAULT_DIFFICULTY,
         map: static_map,
         heroes,
     })

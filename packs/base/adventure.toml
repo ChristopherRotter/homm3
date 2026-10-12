@@ -37,6 +37,34 @@ army_slots = 7
 # config/gameConfig.json startingStackChances [100, 88, 25] uses one roll for both (ADV-Q6).
 starting_stack_chances = [88, 25]
 
+# GAM-RES-002 (E08 T13a): the starting resources by the game's difficulty, from 0 (easy) to 4
+# (impossible), a human player's and a computer player's; the engine gives every player the human
+# row (E08 decision 16: no human/computer distinction yet). Code reading (survey
+# docs/rules/surveys/E08-objects.md §7.2): new_game_heroes (0x4C01EE) copies, for each playing
+# colour, a human's row of the chosen difficulty (game +0x1F6D8) from 0x678170 and a computer's
+# from 0x6781FC. VCMI 1.7.5 config/difficulty.json (human, ai; pawn to king) and the wiki
+# (Difficulty level) have the same ten rows. The difficulty is the game's, not the map header's
+# byte (that is the map's rating).
+[[difficulty]]
+human = { wood = 30, ore = 30, mercury = 15, sulfur = 15, crystal = 15, gems = 15, gold = 30000 }
+computer = { wood = 5, ore = 5, mercury = 2, sulfur = 2, crystal = 2, gems = 2, gold = 5000 }
+
+[[difficulty]]
+human = { wood = 20, ore = 20, mercury = 10, sulfur = 10, crystal = 10, gems = 10, gold = 20000 }
+computer = { wood = 10, ore = 10, mercury = 4, sulfur = 4, crystal = 4, gems = 4, gold = 7500 }
+
+[[difficulty]]
+human = { wood = 15, ore = 15, mercury = 7, sulfur = 7, crystal = 7, gems = 7, gold = 15000 }
+computer = { wood = 15, ore = 15, mercury = 7, sulfur = 7, crystal = 7, gems = 7, gold = 10000 }
+
+[[difficulty]]
+human = { wood = 10, ore = 10, mercury = 4, sulfur = 4, crystal = 4, gems = 4, gold = 10000 }
+computer = { wood = 15, ore = 15, mercury = 7, sulfur = 7, crystal = 7, gems = 7, gold = 10000 }
+
+[[difficulty]]
+human = {}
+computer = { wood = 15, ore = 15, mercury = 7, sulfur = 7, crystal = 7, gems = 7, gold = 10000 }
+
 # ADV-MOV-003, ADV-MOV-007: the straight cost of a step on each terrain (the .h3m terrain codes 0-9
 # in this order). Wiki (Movement) and VCMI 1.7.5 config/terrains.json agree. Water is sailed by
 # boat only (VCMI type WATER); rock is never entered (VCMI moveCost -1, type ROCK).

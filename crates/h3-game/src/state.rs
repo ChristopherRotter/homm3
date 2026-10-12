@@ -7,11 +7,13 @@
 use alloc::vec::Vec;
 
 use h3_adventure::AdventureState;
+use h3_content::ResourceId;
 use h3_contracts::PlayerId;
 use h3_kernel::hash::hash_of;
 use h3_kernel::{CanonicalHash, Rng, StateHasher, StreamId};
 
 use crate::command::{GameCommandError, GameEvent, NoopSink, Sink};
+use crate::treasury::Treasuries;
 use crate::{GAME_STATE_HASH_VERSION, GameRuleset, GameSetup, GameSetupError};
 
 /// A player of a running game.
@@ -31,6 +33,8 @@ pub struct GameState {
     /// The master seed (ADR-0017 point 5: server-only, never in an observation).
     seed: u64,
     players: Vec<PlayerState>,
+    /// The players' resources (GAM-RES-001, E08 T13), by player id.
+    treasuries: Treasuries,
     /// The day's schedule: turn groups in order, each the players who act together
     /// (ADR-0017 point 3). Sequential play, the only schedule of increment 1, is one player per
     /// group in player order.
@@ -48,7 +52,8 @@ impl GameState {
     /// Builds a game from its setup and master seed: the setup's checks
     /// ([`GameSetup::validate`]), its random placeholders resolved from the setup stream (the
     /// starting armies, GAM-SET-001, then the map objects' contents, ADR-0016 point 4), a stream
-    /// per player, sequential play (GAM-TRN-001) on day 1
+    /// and the difficulty's human row of starting resources per player (GAM-RES-002), sequential
+    /// play (GAM-TRN-001) on day 1
     /// (GAM-CAL-001), and the first group's turn started, so the first day starts as every later
     /// one (ADR-0017 point 3; no context has a rule at the start of a day yet).
     ///
@@ -56,6 +61,12 @@ impl GameState {
     ///
     /// The first [`GameSetupError`] found, in the order of [`GameSetup::validate`].
     pub fn new(rules: &GameRuleset, setup: &GameSetup, seed: u64) -> Result<Self, GameSetupError> {
+        // rule: GAM-RES-002
+        let start = rules
+            .adventure()
+            .starting_resources()
+            .get(usize::from(setup.difficulty))
+            .ok_or(GameSetupError::Difficulty(setup.difficulty))?;
         let mut draws = Rng::for_stream(seed, StreamId::SETUP);
         let part = setup.adventure_setup(rules, &mut draws)?;
         let adventure = AdventureState::new(rules.core(), rules.adventure(), &part, &mut draws)
@@ -77,6 +88,7 @@ impl GameState {
             .collect();
         let mut state = Self {
             seed,
+            treasuries: Treasuries::new(players.len(), start.human()),
             players,
             groups,
             group: 0,
@@ -171,6 +183,29 @@ impl GameState {
         self.players.get(player.index()).is_some_and(|p| p.acting)
     }
 
+    /// Adds a command's gains to `player`'s treasury (ADR-0017 point 10: the context applied the
+    /// command, and a gain cannot fail), each told to the player alone as the amount it added.
+    pub(crate) fn gain<S: Sink>(
+        &mut self,
+        player: PlayerId,
+        gains: &[(ResourceId, u32)],
+        sink: &mut S,
+    ) {
+        for &(resource, amount) in gains {
+            let amount = self.treasuries.gain(player, resource, amount);
+            sink.emit(GameEvent::ResourceGained {
+                player,
+                resource,
+                amount,
+            });
+        }
+    }
+
+    /// A player's treasury, by resource in the core's order, if the player exists (GAM-RES-001).
+    pub fn treasury(&self, player: PlayerId) -> Option<&[u32]> {
+        self.treasuries.of(player)
+    }
+
     /// The adventure context's state.
     pub const fn adventure(&self) -> &AdventureState {
         &self.adventure
@@ -189,9 +224,10 @@ impl GameState {
 }
 
 impl CanonicalHash for GameState {
-    /// Encoding v1 (E08 T6b): version; the master seed; the day; the running group's index; the
-    /// schedule (groups as length + player ids); the players (colour, acting, stream state); the
-    /// game's stream; the adventure state's hash.
+    /// Encoding v2 (E08 T13; v1 was T6b's): version; the master seed; the day; the running
+    /// group's index; the schedule (groups as length + player ids); the players (colour, acting,
+    /// stream state); since v2 the treasuries (the resource kinds, then every player's amounts as
+    /// length and entries); the game's stream; the adventure state's hash.
     fn hash_into(&self, h: &mut StateHasher) {
         h.write_u32(GAME_STATE_HASH_VERSION);
         h.write_u64(self.seed);
@@ -210,6 +246,7 @@ impl CanonicalHash for GameState {
             h.write_bool(player.acting);
             player.rng.hash_into(h);
         }
+        self.treasuries.hash_into(h);
         self.rng.hash_into(h);
         h.write_u64(self.adventure.state_hash());
     }

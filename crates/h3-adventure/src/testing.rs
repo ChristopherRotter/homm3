@@ -19,7 +19,8 @@ use h3_kernel::{Rng, StreamId};
 
 use crate::ruleset::{
     AdventurePack, AdventureParamsDef, AdventureRuleset, ObjectKindDef, ObjectTypeDef,
-    ObjectTypeId, Passage, PickupDef, RiverDef, RoadDef, RoadId, TerrainMovementDef, Visit,
+    ObjectTypeId, Passage, PickupDef, RiverDef, RoadDef, RoadId, StartingResourcesDef,
+    TerrainMovementDef, Visit,
 };
 use crate::setup::{AdventureSetup, HeroSetup, MapSetup, ObjectSetup, Pos, TileMask, TileSetup};
 use crate::state::AdventureState;
@@ -96,15 +97,24 @@ fn resources() -> Vec<ResourceDef> {
         .collect()
 }
 
+/// The starting resources of [`rules`] and [`movement_rules`] (E08 T13a): one difficulty.
+fn starting_resources() -> Vec<StartingResourcesDef> {
+    vec![StartingResourcesDef {
+        human: vec![(key("t:gold"), 1000)],
+        computer: vec![],
+    }]
+}
+
 /// The object types of [`rules`] and [`movement_rules`] (E08 T12a), in handle order.
 pub(crate) const WOOD_PILE: ObjectTypeId = ObjectTypeId::from_raw(0);
 pub(crate) const GOLD_PILE: ObjectTypeId = ObjectTypeId::from_raw(1);
 pub(crate) const ANY_PILE: ObjectTypeId = ObjectTypeId::from_raw(2);
 pub(crate) const FIRE: ObjectTypeId = ObjectTypeId::from_raw(3);
 pub(crate) const TOWER: ObjectTypeId = ObjectTypeId::from_raw(4);
+pub(crate) const GUARD: ObjectTypeId = ObjectTypeId::from_raw(5);
 
 /// [`rules`]' object types: a wood pile (3–6), a gold pile (5–10 × 100), a random pile of the two,
-/// a fire (2–3 wood and 100 gold per wood) and a tower revealing radius 3.
+/// a fire (2–3 wood and 100 gold per wood), a tower revealing radius 3 and a guard of key 0.
 fn object_types() -> Vec<ObjectTypeDef> {
     let n = |v| NonZeroU32::new(v).unwrap();
     let ty = |k: &str, visit, kind| ObjectTypeDef {
@@ -150,6 +160,11 @@ fn object_types() -> Vec<ObjectTypeDef> {
             "t:tower",
             Visit::Enter,
             ObjectKindDef::RevealArea { radius: 3 },
+        ),
+        ty(
+            "t:guard",
+            Visit::Neighbour,
+            ObjectKindDef::KeyGuard { key: 0 },
         ),
     ]
 }
@@ -209,6 +224,7 @@ pub(crate) fn rules() -> (Ruleset, AdventureRuleset) {
             army_slots: NonZeroU8::new(3).unwrap(),
             starting_stack_chances: vec![88, 25],
         }),
+        starting_resources: starting_resources(),
         ..AdventurePack::new(manifest("t", &[]))
     };
     let part = AdventureRuleset::compile(&core, &[part]).unwrap();
@@ -338,6 +354,7 @@ pub(crate) fn movement_rules_up_to(faithful: bool, size: u16) -> (Ruleset, Adven
             army_slots: NonZeroU8::new(7).unwrap(),
             starting_stack_chances: vec![88, 25],
         }),
+        starting_resources: starting_resources(),
         ..AdventurePack::new(manifest("t", &[]))
     };
     let part = AdventureRuleset::compile(&core, &[part]).unwrap();
@@ -390,6 +407,9 @@ fn tile_of(
         'V' => (GRASS, None, Some((0, 1, None))),
         'T' => (GRASS, None, Some((1, 1, None))),
         'P' => (GRASS, None, Some((1, 1, Some(WOOD_PILE)))),
+        'F' => (GRASS, None, Some((1, 1, Some(FIRE)))),
+        'O' => (GRASS, None, Some((0, 1, Some(TOWER)))),
+        'K' => (GRASS, None, Some((1, 1, Some(GUARD)))),
         _ => (GRASS, None, None),
     }
 }
@@ -398,7 +418,8 @@ fn tile_of(
 /// `levels` levels of equal height): `g` (or any other character) grass, `s` sand, `w` swamp, `~` sea, `#` rock; `G`, `S`,
 /// `W` the same with a cobblestone road, `d` grass with a dirt road; on grass, `B` an object's
 /// blocked tile, `V` its visitable tile, `T` both (a town's gate), `P` a wood pile blocking and
-/// visited on its tile.
+/// visited on its tile, `F` a fire likewise, `O` a tower's visitable tile (entered), `K` a guard
+/// blocking and visited on its tile.
 pub(crate) fn world(rows: &[&str], levels: u8, heroes: Vec<HeroSetup>) -> AdventureSetup {
     let height = rows.len() / usize::from(levels);
     let width = rows[0].chars().count();

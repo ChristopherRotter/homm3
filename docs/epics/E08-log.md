@@ -977,3 +977,75 @@ A-5 always fixed; the round T12 in two parts, T12a and T12b, one pull request.
   so it draws contents as a game does; still every static layer validates.
 - Golden replays re-recorded again (state hash v4's final encoding); commands unchanged.
 
+
+### Checkpoint after T12a + T12b and T13a + T13b: the treasury and pickups (2026-10-12, `adventure/e08-t13`)
+
+The user merged #123 and accepted T12b's two calls (no object index in what a player sees; any
+guards record makes a pile `Unsupported`). The round: T13 in two parts on one pull request, the
+entered visit and ADV-OBJ-004 moved to T14 (building them now would leave a Cartographer,
+observatory or tent entered with no effect, or code no test reaches); the viewer rows of
+`docs/06-security.md` in `shared/e08-inc2-viewer-rows` (#125, docs only; BACKLOG's E08 row was
+already current).
+
+**T13a — treasuries.**
+- **Starting resources** (GAM-RES-002): `[[difficulty]]` in `adventure.toml`, a row per difficulty
+  from 0 (easy), each a human and a computer map of amounts by resource (one left out is 0);
+  exactly one enabled pack gives them (`MissingDifficulties`, `DuplicateDifficulties`,
+  `InvalidDifficulty`: an amount above 2³¹ − 1, a resource twice; at most 256 rows). Compiled in
+  `h3-adventure` (`ruleset/starting.rs`: `StartingResources`, dense by `ResourceId`) beside
+  GAM-SET-001's chances, read by `h3-game` through the part `GameRuleset` bundles (agent's call,
+  change freely: ADR-0017 point 1's "compiled into `GameRuleset`" without a pack part of its
+  own). Ruleset-part hash v5. The base pack's ten rows from the code reading, VCMI and the wiki
+  (a test pins them; the first draft had ore at the rare amount: "wood, ore" in the survey's table
+  is both).
+- **Treasury** (GAM-RES-001; `GameState::treasury(player)`, a slice by resource): never
+  negative, capped at `MAX_GAIN` (2³¹ − 1; `A-5` fixed). Every player's in one block behind an
+  `Arc` (`treasury.rs`, crate-private `Treasuries`): a block per player cost a fork an allocation
+  per player (+13.6 % on `fork-xl-144`), the shared block costs it a reference count (+1.0 %); a
+  gain copies it once. `GameSetup.difficulty` (`DEFAULT_DIFFICULTY` = 1, normal;
+  `GameSetupError::Difficulty`, checked first); every player gets the human row (decision 16).
+  Game state hash v2 (the treasuries); `GameState` 168 → 192 bytes. `GameObservation.treasury`:
+  the viewer's own, empty for a viewer not in the game.
+- **Import** (`MAP_IMPORT_VERSION` 3, `h3m.md`): the setup's difficulty is the default; the
+  header's difficulty byte is the map's rating.
+- Golden replays re-recorded (hashes only; the commands unchanged).
+
+**T13b — neighbour visits and pickups.**
+- **`MoveHero`** (ADV-OBJ-003, the neighbour half): a step onto a live visitable tile looks up
+  the visited object (`StaticMap::visited_from`, a per-tile list built at setup; the first object
+  in map order still on the map, VCMI's `blockingVisit` order; agent's call). A pickup visited
+  from a neighbour: the step is priced as if taken (ADV-MOV-006's drop to 0 from that tile), the
+  hero stays, and the step must be the path's last (`PastVisit`). Any other visitable tile (a
+  blocker's, an entered object's, a guard's) keeps `Visit`, now "no visit is built".
+- **Outcome** (ADR-0017 point 10): `AdventureState::apply` returns `AdventureOutcome { gains }`
+  (the object's contents, in rule order); `h3_game::apply` adds them to the actor's treasury
+  (`Treasury::gain`, saturating) and emits `GameEvent::ResourceGained { player, resource, amount }`
+  per resource with the amount actually added, projected to its owner only.
+- **Removal** (ADV-OBJ-005): `remove_object` is live; `AdventureEventKind::ObjectRemoved
+  { object_type, anchor }`, seen by the players that see the object as the observation shows it
+  (an explored covered tile, or the fringe under `ADV-QUIRK-1`).
+- **Query**: a pickup's tile is a destination with the points kept after the visit, never
+  expanded; the env's tile mask offers it (action encoding unchanged, v1).
+- **Properties** (`h3-map`): moves that end in a visit (the hero on the tile before; one event per
+  tile, the visit's last); conservation of treasuries (each changes by exactly the gains it was
+  told, which come with a removal); isolation over treasuries; the views against the events with
+  removals (a removed object leaves the view only when told; its tiles may thin) and gains. The
+  hygiene property found that a pickup tells its visitor the hidden contents (survey §8): two
+  games of other seeds then tell it other gains, so the comparison stops after the viewer's own
+  pickup (the shrunk case kept as a regression). The query's property runs on worlds with piles;
+  fixed tests for a pile, a fire, a visit from the hero's tile, the drop to 0, `PastVisit`, the
+  untyped and not-yet-built tiles, a gain through the game and the cap. Random play visits a few
+  pickups per run of 48 cases (counted once).
+- Golden replays re-recorded again for the treasuries' place in the hash (the shared block); the
+  commands unchanged (the duel map has no pickups).
+- **Measured** (`bench-check`, valgrind): after the treasury block, the query still cost +4.3 %
+  and random play +4.6 %. A profile against `master` showed `Reach::search` +1.6 % (the visit
+  test; a bit per tile, `StaticMap::visited_from`, now turns a blocker's visitable tile down
+  before the per-tile lookup) and `diagonal_cost` +14 % because `isqrt` was no longer inlined
+  into it (16 codegen units, thin LTO: an artifact of the partition). `diagonal_cost` is now
+  ⌊straight · ⌊√2 · 2⁶⁴⌋ / 2⁶⁴⌋, one 128-bit multiplication, equal to `isqrt(2 · straight²)` for
+  every cost up to `u16::MAX` (an exhaustive test): results unchanged, and the query and random
+  play run 13.8 % fewer instructions than before T13. Re-baselined: `reach-xl-144` 657 381 227 →
+  566 626 021 Ir, `random-play-duel-36` 510 210 757 → 439 577 005 Ir; `fork-xl-144` +1.0 %
+  (343 600 056 → 347 100 056, under the gate, not re-baselined). `docs/02-architecture.md` §8's
+  numbers follow in #125 (a shared path).

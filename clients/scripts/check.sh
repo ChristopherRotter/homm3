@@ -68,7 +68,8 @@ if [ "$coverage" = true ]; then
 fi
 
 # The CI job's path filter must name every engine crate this workspace builds, in both of its
-# lists (push and pull_request), so that a change to one of them runs the job (E17 M0 T2).
+# lists (push and pull_request), so that a change to one of them runs the job (E17 M0 T2). The
+# metadata goes through stdin: as an argument it outgrows the system's limit (E17 M1 T2).
 workflow=../.github/workflows/clients.yml
 step "ci paths"
 if [ -f "$workflow" ]; then
@@ -78,7 +79,7 @@ import json, os, sys
 workflow = open(sys.argv[1]).read()
 root = os.path.realpath("..")
 missing = []
-for p in json.loads(sys.argv[2])["packages"]:
+for p in json.load(sys.stdin)["packages"]:
     if p["source"] is not None:
         continue
     d = os.path.relpath(os.path.dirname(os.path.realpath(p["manifest_path"])), root)
@@ -87,7 +88,7 @@ for p in json.loads(sys.argv[2])["packages"]:
 if missing:
     sys.exit("clients.yml does not watch (in both lists): " + ", ".join(sorted(missing)))
 print("ci paths: ok")
-' "$workflow" "$metadata"
+' "$workflow" <<< "$metadata"
 else
     echo "ci paths: skipped (no .github/workflows/clients.yml)"
 fi

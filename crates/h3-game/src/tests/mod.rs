@@ -20,8 +20,8 @@ use core::num::{NonZeroU8, NonZeroU16, NonZeroU32};
 
 use h3_adventure::{
     AdventurePack, AdventureParamsDef, AdventureRuleset, ArmyError, MapSetup, ObjectKindDef,
-    ObjectTypeDef, Passage, PickupDef, Pos, SetupError, StandError, TerrainMovementDef, TileSetup,
-    Visit,
+    ObjectTypeDef, Passage, PickupDef, Pos, SetupError, StandError, StartingResourcesDef,
+    TerrainMovementDef, TileSetup, Visit,
 };
 use h3_content::{
     BattleParamsDef, ContentKey, ContentPack, CreatureDef, CreatureInfoDef, CreatureTypeId,
@@ -31,6 +31,7 @@ use h3_content::{
 use h3_contracts::{ArmyStack, HeroId, PlayerId};
 
 use super::*;
+use crate::treasury::Treasuries;
 
 fn key(text: &str) -> ContentKey {
     ContentKey::parse(text).unwrap()
@@ -223,6 +224,13 @@ fn part_with(core: &Ruleset, chances: Vec<u8>, slots: u8) -> AdventureRuleset {
             army_slots: NonZeroU8::new(slots).unwrap(),
             starting_stack_chances: chances,
         }),
+        // Difficulty 0 starts with 3 000 gold for a human, 1 with 2 000 (E08 T13a).
+        starting_resources: [3000, 2000]
+            .map(|gold| StartingResourcesDef {
+                human: vec![(key("t:gold"), gold)],
+                computer: vec![(key("t:gold"), 1)],
+            })
+            .to_vec(),
         ..AdventurePack::new(manifest())
     };
     AdventureRuleset::compile(core, &[pack]).unwrap()
@@ -256,6 +264,7 @@ fn setup() -> GameSetup {
     tiles[15].terrain = TerrainId::from_raw(1);
     GameSetup {
         players: vec![PlayerSetup { colour: 0 }, PlayerSetup { colour: 1 }],
+        difficulty: 1,
         map: MapSetup {
             width: 4,
             height: 4,
@@ -301,6 +310,14 @@ fn a_setup_with_custom_and_starting_armies_validates() {
 
 #[test]
 fn the_game_checks_its_part_before_the_adventure() {
+    // The difficulty first: the ruleset has rows 0 and 1.
+    assert_eq!(
+        error(|s| {
+            s.difficulty = 2;
+            s.players.clear();
+        }),
+        GameSetupError::Difficulty(2)
+    );
     let player = PlayerSetup { colour: 0 };
     assert_eq!(
         error(|s| s.players = vec![player; 256]),
@@ -406,6 +423,10 @@ fn the_parts_must_belong_to_the_core() {
 fn the_errors_read_well() {
     let hero = HeroId::new(2);
     let cases: Vec<(GameSetupError, &str)> = vec![
+        (
+            GameSetupError::Difficulty(5),
+            "the ruleset has no difficulty 5",
+        ),
         (GameSetupError::Players(300), "300 players are too many"),
         (
             GameSetupError::Colour(1),

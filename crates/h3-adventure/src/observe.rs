@@ -270,6 +270,7 @@ impl AdventureEvent {
                     seen_from: seen_from.intersection(alone),
                     seen_to: seen_to.intersection(alone),
                 },
+                AdventureEventKind::ObjectRemoved { .. } => self.kind,
             },
             seen_by: alone,
         })

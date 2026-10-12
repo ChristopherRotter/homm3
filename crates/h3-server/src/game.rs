@@ -737,6 +737,8 @@ impl Prepared {
                     }
                     None => session.withhold_replay(&mut out),
                 }
+                // Its players may queue on its ladder again before they hear its end (E16 M4 T7).
+                lock(registry).ended(game);
             }
             let closed: Vec<ConnId> = out.iter().filter(|o| o.close).map(|o| o.to).collect();
             let last =

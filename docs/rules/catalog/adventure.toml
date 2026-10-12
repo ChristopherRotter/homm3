@@ -428,11 +428,52 @@ numeric  = "integer"
   confidence = "high"
 
 [[rule]]
+id       = "ADV-OBJ-003"
+title    = "Visit modes: a step toward a neighbour-visited object visits it from the tile before"
+context  = "adventure"
+status   = "implemented"
+summary  = "A tile an object is visited from ends a path: a step onto it visits the object, and no step follows (`PastVisit`). An object of a type visited from a neighbouring tile (piles, random resources, campfires, border guards; a border gate for a holder without its key) is not entered: the step toward its visitable tile is paid as if taken (ADV-MOV-003's price, and ADV-MOV-006's drop to 0 below the cheapest next step from that tile), the hero stays on its tile, and the visit runs. Which object: the first in map order still on the map that is visited from the tile (VCMI's order; an agent's call while no shipped map is known to stack visitable tiles). E08 T13b builds the neighbour visit for pickups; a step onto any other object's visitable tile (a blocker's, or one whose visit a later task builds) is rejected (`Visit`), and the reachable-tiles query offers a pickup's tile as a destination, never a tile on the way. The entered mode (the hero steps onto the tile; the Cartographer, observatories, tents) comes with E08 T14, together with ADV-OBJ-004."
+numeric  = "integer"
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe code reading (E08 T11a, survey docs/rules/surveys/E08-objects.md §2.1, §2.2): hero_move_step (0x4805E0) sends a step toward a class on the 'cannot be entered' list (0x63AA58; 9, 12, 76, 79) to 0x480240, which stops the move, takes the step's price from the hero's points and sets them to 0 below the cheapest next step, then visits; the hero stays. A visit ends the move (0x481544); only garrisons and a key holder's border gate let a step that is not the last skip it (0x48160A)"
+  confidence = "high"
+
+  [[rule.source]]
+  kind       = "vcmi"
+  ref        = "server/CGameHandler.cpp moveHero: blockingVisit visits the first blocking-visitable object of the tile after charging the step's points (tmh.movePoints), without the drop to 0; lib/pathfinder/PathfindingRules.cpp MovementAfterDestinationRule: a visit ends the path; CGResource::initObj and the campfire mark blockVisit"
+  url        = "https://github.com/vcmi/vcmi/blob/1.7.5/server/CGameHandler.cpp"
+  retrieved  = "2026-10-12"
+  confidence = "high"
+  note       = "Agrees on the mode, the price and the end of the path; the drop to 0 is ADV-Q3's reading (D-3)."
+
+[[rule]]
+id       = "ADV-OBJ-005"
+title    = "A removed object frees its tiles"
+context  = "adventure"
+status   = "implemented"
+summary  = "An object that leaves the map (a picked-up pile, random resource or campfire; a passed border guard in T15) frees its blocked and visitable tiles for everyone, except where another object still on the map covers a tile so; the static map keeps every footprint. The players that see the object there (an explored tile it covers or, under ADV-QUIRK-1, one on the fringe) are told it left, by type and anchor. E08 T12b: the occupancy layer (`AdventureState::remove_object`); T13b: removal by the pickups' visits, the `ObjectRemoved` event."
+numeric  = "integer"
+
+  [[rule.source]]
+  kind       = "original-data"
+  ref        = "Heroes3.exe (survey docs/rules/surveys/E08-objects.md §2.4): the pickups' and the border guard's visits call 0x4AABB0, which removes the object from the map (not read inside); the 'removable' class list 0x63A9D0 holds 9, 12, 76, 79 and 212"
+  confidence = "medium"
+
+  [[rule.source]]
+  kind       = "vcmi"
+  ref        = "server/CGameHandler.cpp removeObject; lib/mapping/CMap.cpp hideObject: the object leaves each tile's visitable and blocking lists, so a tile stays blocked or visitable only by the other objects on it"
+  url        = "https://github.com/vcmi/vcmi/blob/1.7.5/lib/mapping/CMap.cpp"
+  retrieved  = "2026-10-12"
+  confidence = "high"
+
+[[rule]]
 id       = "ADV-PIK-001"
 title    = "Resource piles"
 context  = "adventure"
 status   = "implemented"
-summary  = "A resource pile holds one resource: the map's fixed amount or, when it gives none, one drawn at setup between 5 and 10 (wood, ore, gold) or 3 and 6 (mercury, sulfur, crystal, gems), times the type's multiplier (gold 100). A visit gives the visitor's owner the amount and removes the pile (T13). Data: packs/base/adventure.toml (pile_*). E08 T12b: the draw when the game is built (`AdventureState::new`, in the second walk, in object order, from the setup stream after the starting armies), the contents in the static map, hidden from every viewer. D-5: the user took the reading with the wiki over VCMI's 6-10 and 3-5 (ADV-Q10)."
+summary  = "A resource pile holds one resource: the map's fixed amount or, when it gives none, one drawn at setup between 5 and 10 (wood, ore, gold) or 3 and 6 (mercury, sulfur, crystal, gems), times the type's multiplier (gold 100). A visit gives the visitor's owner the amount and removes the pile (E08 T13b: from the neighbouring tile, ADV-OBJ-003; the gain to the treasury, GAM-RES-001). Data: packs/base/adventure.toml (pile_*). E08 T12b: the draw when the game is built (`AdventureState::new`, in the second walk, in object order, from the setup stream after the starting armies), the contents in the static map, hidden from every viewer. D-5: the user took the reading with the wiki over VCMI's 6-10 and 3-5 (ADV-Q10)."
 numeric  = "integer"
 
   [[rule.source]]
@@ -480,7 +521,7 @@ id       = "ADV-PIK-003"
 title    = "Campfires"
 context  = "adventure"
 status   = "implemented"
-summary  = "A campfire draws at setup an amount of 4 to 6, then one of wood, mercury, ore, sulfur, crystal and gems with equal chances; a visit gives that many of the resource and 100 times as much gold, and removes the campfire (T13). Data: packs/base/adventure.toml (campfire). E08 T12b: the draw when the game is built (the second walk), the contents hidden from every viewer."
+summary  = "A campfire draws at setup an amount of 4 to 6, then one of wood, mercury, ore, sulfur, crystal and gems with equal chances; a visit gives that many of the resource and 100 times as much gold, and removes the campfire (E08 T13b: the resource first, then the gold). Data: packs/base/adventure.toml (campfire). E08 T12b: the draw when the game is built (the second walk), the contents hidden from every viewer."
 numeric  = "integer"
 
   [[rule.source]]

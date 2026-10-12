@@ -16,7 +16,9 @@ use crate::fog::reveal;
 use crate::persistent::BitGrid;
 use crate::ruleset::AdventureRuleset;
 use crate::state::AdventureState;
-use crate::testing::{GNOLL, PEASANT, hero_at, movement_rules, world, world_state};
+use crate::testing::{
+    FIRE, GNOLL, PEASANT, WOOD_PILE, hero_at, movement_rules, world, world_state,
+};
 
 const RED: PlayerId = PlayerId::new(0);
 const BLUE: PlayerId = PlayerId::new(1);
@@ -42,7 +44,7 @@ fn move_hero(
         result.is_ok() || events.is_empty(),
         "a rejected move emitted events"
     );
-    result.map(|()| events)
+    result.map(|_| events)
 }
 
 fn hero(state: &AdventureState, id: u16) -> (Pos, u32) {
@@ -277,8 +279,9 @@ fn errors_display() {
         ),
         (
             E::Visit { step: 0 },
-            "step 0 enters a tile an object is visited from",
+            "step 0 goes to a tile no visit is built for",
         ),
+        (E::PastVisit { step: 2 }, "step 2 follows a visit"),
         (
             E::TooFewPoints {
                 step: 4,
@@ -442,4 +445,135 @@ fn viewers_hold_the_players_of_a_game() {
             .with(PlayerId::new(8))
             .contains(PlayerId::new(8))
     );
+}
+
+/// Red's hero at (0, 0) on a row of grass with `row`'s objects, blue's at (8, 0): blue has
+/// explored the row from (3, 0), so (2, 0) is on its fringe.
+fn visit_world(rules: &(Ruleset, AdventureRuleset), row: &str) -> AdventureState {
+    world_state(
+        rules,
+        &[row, "gggggggggggggggg"],
+        vec![
+            hero_at(1, 0, p(0, 0), &[PEASANT]),
+            hero_at(2, 1, p(8, 0), &[PEASANT]),
+        ],
+    )
+}
+
+// covers: ADV-OBJ-003, ADV-OBJ-005, ADV-PIK-001
+#[test]
+fn a_step_toward_a_pile_visits_it_from_the_tile_before() {
+    for faithful in [true, false] {
+        let rules = movement_rules(faithful);
+        let mut state = visit_world(&rules, "ggPggggggggggggg");
+        let contents = state.map().objects()[0].contents.clone();
+        assert_eq!(contents.len(), 1);
+        let mut events = Vec::new();
+        let command = AdventureCommand::MoveHero {
+            hero: HeroId::new(1),
+            path: vec![p(1, 0), p(2, 0)],
+        };
+        let outcome = state
+            .apply(&rules.0, &rules.1, RED, &command, &mut events)
+            .unwrap();
+        // The owner gains the pile; the hero stays on (1, 0) and pays both steps.
+        assert_eq!(outcome.gains, contents);
+        assert_eq!(hero(&state, 1), (p(1, 0), 1300 - 200));
+        assert!(state.is_removed(0));
+        // One step, then the removal, seen by red and, on its fringe under ADV-QUIRK-1, blue.
+        assert_eq!(events.len(), 2);
+        let seen = if faithful {
+            Viewers::NONE.with(RED).with(BLUE)
+        } else {
+            Viewers::NONE.with(RED)
+        };
+        assert_eq!(
+            events[1],
+            AdventureEvent {
+                kind: AdventureEventKind::ObjectRemoved {
+                    object_type: WOOD_PILE,
+                    anchor: p(2, 0),
+                },
+                seen_by: seen,
+            }
+        );
+        // Blue is told the removal alone, as the observation names the object.
+        let told = events[1].project(BLUE);
+        assert_eq!(told.is_some(), faithful);
+        assert_eq!(
+            told.map(|e| (e.kind, e.seen_by)),
+            faithful.then_some((events[1].kind, Viewers::NONE.with(BLUE)))
+        );
+        // The pile's tile is free now: the hero walks over it.
+        move_hero(&mut state, &rules, RED, 1, &[p(2, 0), p(3, 0)]).unwrap();
+        assert_eq!(hero(&state, 1).0, p(3, 0));
+    }
+}
+
+// covers: ADV-OBJ-003, ADV-PIK-003
+#[test]
+fn a_visit_from_the_hero_s_own_tile_moves_nothing_and_a_fire_gives_two_resources() {
+    let rules = movement_rules(true);
+    let mut state = visit_world(&rules, "gFgggggggggggggg");
+    let contents = state.map().objects()[0].contents.clone();
+    let mut events = Vec::new();
+    let command = AdventureCommand::MoveHero {
+        hero: HeroId::new(1),
+        path: vec![p(1, 0)],
+    };
+    let outcome = state
+        .apply(&rules.0, &rules.1, RED, &command, &mut events)
+        .unwrap();
+    // The fire's wood, then its gold (ADV-PIK-003's order).
+    assert_eq!(outcome.gains, contents);
+    let [(_, wood), (_, gold)] = outcome.gains[..] else {
+        panic!("two resources");
+    };
+    assert_eq!(gold, wood * 100);
+    assert_eq!(hero(&state, 1), (p(0, 0), 1300 - 100));
+    assert_eq!(
+        events,
+        [AdventureEvent {
+            kind: AdventureEventKind::ObjectRemoved {
+                object_type: FIRE,
+                anchor: p(1, 0),
+            },
+            seen_by: Viewers::NONE.with(RED),
+        }]
+    );
+    // The visit's step pays as a step does: points below the cheapest next step are lost
+    // (ADV-MOV-006, as if the hero stood on the fire's tile).
+    let mut state = visit_world(&rules, "gFgggggggggggggg");
+    state.set_movement(HeroId::new(1), 150);
+    move_hero(&mut state, &rules, RED, 1, &[p(1, 0)]).unwrap();
+    assert_eq!(hero(&state, 1), (p(0, 0), 0));
+}
+
+// covers: ADV-OBJ-003
+#[test]
+fn a_visit_ends_the_move_and_only_pickups_are_visited_yet() {
+    let rules = movement_rules(true);
+    let rejected = |row: &str, path: &[Pos]| {
+        let state = visit_world(&rules, row);
+        let mut moved = state.clone();
+        let error = move_hero(&mut moved, &rules, RED, 1, path).unwrap_err();
+        assert_eq!(moved, state);
+        error
+    };
+    assert_eq!(
+        rejected("gPgggggggggggggg", &[p(1, 0), p(2, 0)]),
+        AdventureCommandError::PastVisit { step: 1 }
+    );
+    // A tower and a guard (E08 T15 builds their visits) and two blockers' visitable tiles.
+    for row in [
+        "gOgggggggggggggg",
+        "gKgggggggggggggg",
+        "gVgggggggggggggg",
+        "gTgggggggggggggg",
+    ] {
+        assert_eq!(
+            rejected(row, &[p(0, 1), p(1, 0)]),
+            AdventureCommandError::Visit { step: 1 }
+        );
+    }
 }

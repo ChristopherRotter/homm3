@@ -45,6 +45,12 @@
 //! # reveal_terrain = { terrains = ["water"], price = { gold = 1000 } }
 //! # reveal_area = { radius = 20 }
 //! # key_tent = { key = 0 }         # also key_guard, key_gate; keys 0-7
+//!
+//! [[difficulty]]                   # E08 T13a, GAM-RES-002: the starting resources by the game's
+//!                                  # difficulty, from 0 (easy); exactly one enabled pack gives
+//!                                  # them; resources as above, a resource left out starts at 0
+//! human = { wood = 30, gold = 30000 }
+//! computer = { wood = 5, gold = 5000 }
 //! ```
 //!
 //! Costs are at least 1. A pack without the file has an empty adventure part; every enabled pack
@@ -58,7 +64,8 @@ use std::num::NonZeroU32;
 
 use h3_adventure::{
     AdventureCompileError, AdventurePack, AdventureParamsDef, AdventureRuleset, ObjectKindDef,
-    ObjectTypeDef, Passage, PickupDef, RiverDef, RoadDef, TerrainMovementDef, Visit,
+    ObjectTypeDef, Passage, PickupDef, RiverDef, RoadDef, StartingResourcesDef, TerrainMovementDef,
+    Visit,
 };
 use h3_content::{ContentKey, KeyError, PackManifest, Ruleset};
 use h3_pack::PackError;
@@ -144,6 +151,15 @@ struct AdventureFile {
     river: Vec<RiverDto>,
     #[serde(default)]
     object_type: Vec<ObjectTypeDto>,
+    #[serde(default)]
+    difficulty: Vec<DifficultyDto>,
+}
+
+#[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
+struct DifficultyDto {
+    human: BTreeMap<String, u32>,
+    computer: BTreeMap<String, u32>,
 }
 
 #[derive(Deserialize)]
@@ -371,11 +387,27 @@ pub fn parse_adventure(
         .into_iter()
         .map(|t| object_type(pack, t))
         .collect::<Result<_, _>>()?;
+    let amounts = |row: &BTreeMap<String, u32>| {
+        row.iter()
+            .map(|(k, &a)| Ok((reference(pack, k)?, a)))
+            .collect::<Result<Vec<_>, KeyError>>()
+    };
+    let starting_resources = file
+        .difficulty
+        .iter()
+        .map(|d| {
+            Ok(StartingResourcesDef {
+                human: amounts(&d.human)?,
+                computer: amounts(&d.computer)?,
+            })
+        })
+        .collect::<Result<_, KeyError>>()?;
     Ok(AdventurePack {
         terrains,
         roads,
         rivers,
         object_types,
+        starting_resources,
         params: file.params.map(|p| AdventureParamsDef {
             native_cost: p.native_cost,
             land_points: p.land_points,

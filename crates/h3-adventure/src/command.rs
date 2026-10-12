@@ -1,13 +1,16 @@
-//! The adventure context's commands, their errors and its events (ADR-0017 point 1: `h3-game`
-//! checks turn and phase, then passes a player's command here with the player as actor; E08 T7b:
-//! `MoveHero`). A rejected command changes nothing and emits nothing. An event carries the players
-//! who may see it, resolved when it is emitted (ADR-0016 point 6; E08 T8a).
+//! The adventure context's commands, their errors, outcomes and events (ADR-0017 point 1:
+//! `h3-game` checks turn and phase, then passes a player's command here with the player as actor;
+//! E08 T7b: `MoveHero`; T13b: its visits and their outcome, ADR-0017 point 10). A rejected command
+//! changes nothing and emits nothing. An event carries the players who may see it, resolved when
+//! it is emitted (ADR-0016 point 6; E08 T8a).
 
 use alloc::vec::Vec;
 use core::fmt;
 
+use h3_content::ResourceId;
 use h3_contracts::{HeroId, PlayerId};
 
+use crate::ruleset::ObjectTypeId;
 use crate::setup::{Pos, StandError};
 
 /// A command to the adventure context, issued by a player.
@@ -17,6 +20,8 @@ pub enum AdventureCommand {
     /// tile a neighbour of the one before (the first of the hero's), each step paid from the
     /// points left. The path is validated step by step and rejected whole: a step the hero
     /// cannot pay is a rejection, not the original's stop that wastes the rest (survey §1.3).
+    /// Its last step may visit an object (ADV-OBJ-003): a step toward a pickup's visitable tile
+    /// visits it from the tile before, which the hero does not leave (E08 T13b).
     MoveHero {
         /// The hero.
         hero: HeroId,
@@ -53,10 +58,16 @@ pub enum AdventureCommandError {
         /// Why.
         error: StandError,
     },
-    /// A step's tile is one an object is visited from: a visit ends a move and comes with
-    /// increment 2, so no step enters such a tile yet (ADR-0016 point 4).
+    /// A step's tile is one an object is visited from whose visit is not built: a blocker's, or
+    /// an object's other than a pickup (the Cartographer's in E08 T14, the other visitable
+    /// objects' in T15; ADR-0016 point 4).
     Visit {
         /// The step.
+        step: usize,
+    },
+    /// A step follows a visit: a visit ends the move (ADV-OBJ-003).
+    PastVisit {
+        /// The step after the visit.
         step: usize,
     },
     /// A step costs more than the points left before it (ADV-MOV-006).
@@ -81,8 +92,9 @@ impl fmt::Display for AdventureCommandError {
             Self::Unexplored { step } => write!(f, "step {step} goes to an unexplored tile"),
             Self::Blocked { step, error } => write!(f, "step {step}: {error}"),
             Self::Visit { step } => {
-                write!(f, "step {step} enters a tile an object is visited from")
+                write!(f, "step {step} goes to a tile no visit is built for")
             }
+            Self::PastVisit { step } => write!(f, "step {step} follows a visit"),
             Self::TooFewPoints { step, cost, points } => {
                 write!(f, "step {step} costs {cost} with {points} points left")
             }
@@ -91,6 +103,15 @@ impl fmt::Display for AdventureCommandError {
 }
 
 impl core::error::Error for AdventureCommandError {}
+
+/// What an accepted command gives its player beyond the map (ADR-0017 point 10): the resources it
+/// gains, which the game adds to the player's treasury (the context never sees a treasury).
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+pub struct AdventureOutcome {
+    /// Each resource gained with its amount, in the order the rule gives them (a campfire's
+    /// resource, then its gold).
+    pub gains: Vec<(ResourceId, u32)>,
+}
 
 /// The players who may see an event (ADR-0016 point 6): a set of players, resolved when the event
 /// is emitted with the state at hand, so projecting an event needs no state. A game has at most
@@ -171,6 +192,16 @@ pub enum AdventureEventKind {
         seen_from: Viewers,
         /// The players that see the hero on the tile it entered (likewise).
         seen_to: Viewers,
+    },
+    /// An object left the map (ADV-OBJ-005; a pickup in E08 T13b). Seen by the players that see
+    /// it there, as the observation shows it: those that have explored a tile it covers and,
+    /// under `ADV-QUIRK-1`, those with such a tile on their fringe. Named as the observation
+    /// names it, by type and anchor, never by index (ADR-0016 point 6).
+    ObjectRemoved {
+        /// Its object type.
+        object_type: ObjectTypeId,
+        /// The bottom right tile its masks are relative to.
+        anchor: Pos,
     },
 }
 

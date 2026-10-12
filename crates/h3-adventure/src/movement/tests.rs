@@ -106,6 +106,11 @@ fn a_diagonal_costs_the_straight_cost_times_root_two_rounded_down() {
     // Costs are at most u16::MAX.
     assert_eq!(diagonal_cost(u32::MAX), diagonal_cost(u32::from(u16::MAX)));
     assert_eq!(diagonal_cost(u32::from(u16::MAX)), 92_680);
+    // The fixed-point product is the integer root of 2 · straight² for every cost (E08 T13b).
+    for straight in 0..=u64::from(u16::MAX) {
+        let exact = u32::try_from((2 * straight * straight).isqrt()).unwrap();
+        assert_eq!(diagonal_cost(u32::try_from(straight).unwrap()), exact);
+    }
 }
 
 // covers: ADV-MOV-007

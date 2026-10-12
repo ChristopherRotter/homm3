@@ -4,11 +4,11 @@ The client lane's living state; read after the global `docs/HANDOFF.md`. Format 
 
 ## Current state
 
-- **E17 M0 done (2026-10-12).** The workspace `clients/` builds (`h3-assets`, `h3-render`, `h3-view`; pure `no_std` libraries, adapters in `h3-view`'s binary), its gates are `clients/scripts/check.sh` (the full local check; the CI job `.github/workflows/clients.yml` runs the same), the real-asset gate is `cargo run -p h3-view -- gate` (from `clients/`). ADR-0020 accepted (point 7: loading at checkpoints). Record: `docs/epics/E17-log.md`. **Next: M1 T1 or M1 T2** (both ready; `QUEUE.md`).
-- **Pull requests waiting (2026-10-12), merge in this order:** `shared/ci-outage` (#119) and `shared/adr-0020-clients`, then `client/e17-m0`, then `shared/clients-ci` (its job runs `check.sh`, which the client branch adds).
+- **E17 M0 done, M1 under way (2026-10-12).** The workspace `clients/` (`h3-assets`, `h3-render`, `h3-view`; pure `no_std` libraries, adapters in `h3-view`'s binary), its gates `clients/scripts/check.sh` (the full local check; the CI job `clients.yml` runs the same); ADR-0020 accepted (point 7: loading at checkpoints). M1 T2 + T3: the PAL, PCX, DEF and MSK decoders (`h3_assets`; `h3_assets::build` makes synthetic assets for tests); the real-asset gate `cargo run --release -p h3-view -- gate` (from `clients/`) decodes every entry of the four LODs and writes the inventory to `clients/out/gate/`. M1 T1: the code reading (`E17-design.md` §3: precedence, the 16-bit screen, the drawers and shadows). Records: `docs/epics/E17-log.md`; findings: `docs/epics/E17-design.md`. **Next: M1 T6** (the compositor), then T4, T5.
+- **Pull request waiting (2026-10-12):** `client/e17-m1-t1-code-reading` (T1, docs only). **In progress:** T6 on `client/e17-m1-compositor`.
 - The lane owns `clients/` (its own Cargo workspace, `clients/README.md`), `docs/epics/E17*` and this folder. Branches `client/<task>`. Ids: questions `CLT-Q<n>`, quirks (asset fixes) `CLT-QUIRK-<n>`, stubs `CLT-STUB-<n>`. ADR drafts go to `adr-drafts/` and get a number when the user accepts them.
 - **Checkpoints** per milestone, under the autonomy contract below; a fresh reviewer agent checks each milestone before the user does.
-- The lane needs the user's computer online: the original files are staged from `original-data/install/`, which since 2026-10-12 also holds `Data/{Heroes3,H3ab_ahd}.snd`, `Data/{VIDEO,H3ab_ahd}.vid` and `MP3/` (57 tracks), copied from the installation and verified identical (`docs/formats/installation.md` §2, battle-owned, still lists only the earlier copies). The gate needs `Data/H3sprite.lod` and `Data/H3ab_spr.lod` too, which `scripts/sandbox-setup.sh` does not copy: stage them and copy them into the clone's `original-data/install/Data/`.
+- The lane needs the user's computer online: the original files are staged from `original-data/install/`, which since 2026-10-12 also holds `Data/{Heroes3,H3ab_ahd}.snd`, `Data/{VIDEO,H3ab_ahd}.vid` and `MP3/` (57 tracks), copied from the installation and verified identical (`docs/formats/installation.md` §2, battle-owned, still lists only the earlier copies). The gate needs `Data/H3sprite.lod` and `Data/H3ab_spr.lod` too and reads `h3maped.exe` when present, which `scripts/sandbox-setup.sh` does not copy: stage them and copy them into the clone's `original-data/install/`.
 - **Open:** CLT-Q1 (the walk's path, needed by M2); CLT-Q2 (the table-only LOD reader in `h3-formats`, for the battle lane; until it lands the client reads whole archives).
 
 ## Autonomy contract (agreed by the user, 2026-10-12)
@@ -30,14 +30,14 @@ The client lane's living state; read after the global `docs/HANDOFF.md`. Format 
 - **Wishes:** an agent that observes or drives the original game (a custom MCP or similar), feasibility unknown. Screenshots of a comprehensive, representative set of situations in the original, diffed exactly against our output, so that changes such as offset fixes are deliberate; feasibility to be evaluated. Loading as fast as the original: no long content rebuild, work with the native files as much as possible. Content configured per expansion (RoE, AB, SoD, …), aligned with the gameplay rules' configuration.
 
 **Research items for the refinement:**
-1. Archive precedence (SoD against AB) and name lookup, from the exe.
-2. The off-colour pixels. Hypothesis: the original draws in 16-bit colour, so palette colours are quantised when blitted. Check in the exe; it decides what an exact screenshot diff compares.
+1. Archive precedence and name lookup (done: `E17-design.md` §3.1).
+2. The off-colour pixels (done: 16-bit truncation, §3.2).
 3. The licences of MMArchive and homm3-unpacker before reading their code (licence questions stop the line).
 4. The video archives' containers and codecs (low priority).
 5. Capturing the original: computer use on the user's machine, or a hook in the game; the reference screenshot set; exact diff or tolerance.
 6. Per-expansion content: how it maps to the engine's ruleset profiles.
 7. The HD patch: its notes and content as a source for asset fixes, its resolution handling as a reference for HD.
-8. Shadows and the other keyed colours: what the game does with each reserved palette index when it draws (hypothesis: it darkens the pixel already on screen by a fixed operation rather than blending with an alpha), and what happens where shadows overlap. Read in the exe; tied to item 2.
+8. Shadows and the other keyed colours (done: §3.3).
 9. The adventure map's object draw order (the user, 2026-10-12, at E17 M0): surprisingly complicated; neither the user nor VCMI (at the time) got it exactly right. A code reading should settle it, with reference frames to confirm.
 
 ## Standing traps
@@ -52,5 +52,6 @@ The client lane's living state; read after the global `docs/HANDOFF.md`. Format 
 
 ## Recent sessions
 
-- **2026-10-12, E17 M0 (the user present).** CI was out (billing): the user's rule that CI never blocks work went into the process docs (#119). Built the workspace, `check.sh` and the job, the real-asset gate (the user's four LODs: 11 981 entries, about 0.2 s); a fresh reviewer's twelve findings fixed or recorded. Checkpoint: ADR-0020 accepted, point 7 rewritten to loading at checkpoints; the table-only reader chosen over a memory map and whole reads (CLT-Q2). Four pull requests, merge order above.
-- **2026-10-12, E17a + E17 refinement (the user).** The asset notes dictated and recorded (above). Missing original files copied into `original-data/install/`. Refinement: Rust confirmed; a software compositor; the window/audio library chosen at M2 by an evaluation, GPLv3 for the client allowed if the winner needs it (the user decides then); asset tables per expansion, committed, no executable at run time; reference captures from a copy of the game through computer use; first milestone M0 + M1. ADR draft, epic file, queue, CLT-Q1 written.
+- **2026-10-12, E17 M1 T1 (+ T6, the user present).** #131 found merged. The code reading (`E17-design.md` §3, 35 map entries): row 3 of the search lists, the base archives first; palettes truncated to the 16-bit screen; the drawers' runs by index, shadows as shifts with masks, compounding; runs ≥ 8 skipped (`Cnomad.def`). Then T6.
+- **2026-10-12, E17 M1 T2 + T3 (the user present).** M0's four pull requests found merged. The decoders (DEF: four encodings, the 16-byte frame header of `SGTWMTA`/`SGTWMTB` read as VCMI reads it), `check` and `survey` behind the gate; all 11 800 PCX, PAL, DEF and MSK entries of the user's files decode (inventory: `E17-design.md` §2). `check.sh`'s CI-paths step reads the metadata from stdin (too long as an argument).
+- **2026-10-12, E17 M0 (the user present).** CI out (billing): the rule that CI never blocks work went into the process docs (#119). The workspace, `check.sh` and the job, the real-asset gate; a fresh reviewer's twelve findings fixed or recorded. Checkpoint: ADR-0020 accepted, point 7 (loading at checkpoints); the table-only reader chosen (CLT-Q2).

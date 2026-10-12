@@ -342,6 +342,7 @@ fn a_step_on_the_fringe_is_seen_under_the_quirk() {
             .map(|e| {
                 e.project(BLUE).map(|e| match e.kind {
                     AdventureEventKind::HeroStepped { from, to, .. } => (from, to),
+                    AdventureEventKind::ObjectRemoved { .. } => (None, None),
                 })
             })
             .collect();
@@ -370,8 +371,14 @@ fn a_step_on_the_fringe_is_seen_under_the_quirk() {
         assert_eq!(told, expected);
         // Red, the owner, is told every step whole.
         for event in &events {
-            let AdventureEventKind::HeroStepped { from, to, .. } = event.project(RED).unwrap().kind;
-            assert!(from.is_some() && to.is_some());
+            assert!(matches!(
+                event.project(RED).unwrap().kind,
+                AdventureEventKind::HeroStepped {
+                    from: Some(_),
+                    to: Some(_),
+                    ..
+                }
+            ));
         }
     }
 }
