@@ -12,7 +12,9 @@
 //!   `h3_protocol::account::rekey_message` (else `BadLogin`): from then on only the new key logs
 //!   in. A re-key that changed the key says so, and the account's other connections, logged in
 //!   with the key it had, close (`net`, E16 M3 T3). It renames itself to a display name no other
-//!   account has, ignoring case (else `NameTaken`), and sets its listing preference.
+//!   account has, ignoring case (else `NameTaken`), and sets its listing preference, from a
+//!   connection whose key is still the account's (else `BadLogin`: a re-key elsewhere committed
+//!   while the request was on its way; M3's review).
 //! - Each change's line is synced before its answer: a change the server answered survives a
 //!   crash; a request that changes nothing writes none. A log that cannot be written refuses the
 //!   changes (`BadLogin`, the reason on standard error); the accounts as they stand still log in.
@@ -86,10 +88,14 @@ impl Accounts {
         })
     }
 
-    /// Answers an account's request whose form the hello gate checked: the account as it stands
-    /// and whether its key changed (a re-key), or why not. Blocks on the player log: call it off a
-    /// connection's task.
-    pub(crate) fn answer(&self, request: AccountRequest) -> Result<(Account, bool), Refusal> {
+    /// Answers an account's request whose form the hello gate checked, from a connection logged in
+    /// with the key `by` (none before its login): the account as it stands and whether its key
+    /// changed (a re-key), or why not. Blocks on the player log: call it off a connection's task.
+    pub(crate) fn answer(
+        &self,
+        request: AccountRequest,
+        by: Option<[u8; KEY_BYTES]>,
+    ) -> Result<(Account, bool), Refusal> {
         let unchanged = |account| (account, false);
         match request {
             AccountRequest::Login {
@@ -111,10 +117,10 @@ impl Accounts {
                 ..
             } => self.rekey(login, &key, (&by_old, &by_new), &signed),
             AccountRequest::Rename { login, display, .. } => {
-                self.rename(login, display).map(unchanged)
+                self.rename(login, display, by).map(unchanged)
             }
             AccountRequest::SetListed { login, listed, .. } => {
-                self.set_listed(login, listed).map(unchanged)
+                self.set_listed(login, listed, by).map(unchanged)
             }
         }
     }
@@ -240,10 +246,15 @@ impl Accounts {
         record(&mut players, Event::Rekeyed { login, key }).map(|account| (account, true))
     }
 
-    /// The logged-in account `login` takes the display name `display`.
-    fn rename(&self, login: String, display: String) -> Result<Account, Refusal> {
+    /// The logged-in account `login` takes the display name `display`, asked with the key `by`.
+    fn rename(
+        &self,
+        login: String,
+        display: String,
+        by: Option<[u8; KEY_BYTES]>,
+    ) -> Result<Account, Refusal> {
         let mut players = self.players();
-        let account = players.get(&login).cloned().ok_or(Refusal::BadLogin)?;
+        let account = keyed(&players, &login, by)?;
         if !players.display_free(&display, &login) {
             return Err(Refusal::NameTaken);
         }
@@ -253,15 +264,30 @@ impl Accounts {
         record(&mut players, Event::Renamed { login, display })
     }
 
-    /// The logged-in account `login` sets whether its finished games' replays may be listed.
-    fn set_listed(&self, login: String, listed: bool) -> Result<Account, Refusal> {
+    /// The logged-in account `login` sets whether its finished games' replays may be listed, asked
+    /// with the key `by`.
+    fn set_listed(
+        &self,
+        login: String,
+        listed: bool,
+        by: Option<[u8; KEY_BYTES]>,
+    ) -> Result<Account, Refusal> {
         let mut players = self.players();
-        let account = players.get(&login).cloned().ok_or(Refusal::BadLogin)?;
+        let account = keyed(&players, &login, by)?;
         if account.listed == listed {
             return Ok(account);
         }
         record(&mut players, Event::Listed { login, listed })
     }
+}
+
+/// The account `login` if `by` is its key (a bot's account has none): a connection logged in with
+/// a key the account re-keyed from since changes nothing (M3's review).
+fn keyed(players: &Players, login: &str, by: Option<[u8; KEY_BYTES]>) -> Result<Account, Refusal> {
+    let account = players
+        .get(login)
+        .filter(|a| a.key.is_some() && a.key == by);
+    account.cloned().ok_or(Refusal::BadLogin)
 }
 
 /// Records `event` in the player log; a log that cannot be written refuses it.
@@ -295,5 +321,70 @@ mod tests {
             !Ed25519.verify(&[0xff; KEY_BYTES], b"login", &signature),
             "not a point"
         );
+    }
+
+    #[test]
+    fn a_change_from_a_key_the_account_re_keyed_from_is_refused() {
+        // M3's review: a rename an old-key connection sent may reach the log after a re-key
+        // elsewhere committed; it changes nothing.
+        let data = std::env::temp_dir().join(format!(
+            "h3-accounts-{:016x}",
+            crate::game::os_u64().unwrap()
+        ));
+        let accounts = Accounts::open(&data, Box::new(Ed25519)).unwrap();
+        let (old, new) = (Key::from_seed([1; 32]), Key::from_seed([2; 32]));
+        let signed = b"signed".to_vec();
+        let login = AccountRequest::Login {
+            seq: 1,
+            login: String::from("ann"),
+            key: old.public(),
+            signature: old.sign(&signed),
+            display: Some(String::from("Ann")),
+            signed: signed.clone(),
+        };
+        assert!(accounts.answer(login, None).is_ok());
+        let rekey = AccountRequest::Rekey {
+            seq: 2,
+            login: String::from("ann"),
+            key: new.public(),
+            by_old: old.sign(&signed),
+            by_new: new.sign(&signed),
+            signed,
+        };
+        assert!(matches!(
+            accounts.answer(rekey, Some(old.public())),
+            Ok((_, true))
+        ));
+        let rename = || AccountRequest::Rename {
+            seq: 3,
+            login: String::from("ann"),
+            display: String::from("Annie"),
+        };
+        let listed = || AccountRequest::SetListed {
+            seq: 4,
+            login: String::from("ann"),
+            listed: false,
+        };
+        for by in [Some(old.public()), None] {
+            assert_eq!(
+                accounts.answer(rename(), by).unwrap_err(),
+                Refusal::BadLogin
+            );
+            assert_eq!(
+                accounts.answer(listed(), by).unwrap_err(),
+                Refusal::BadLogin
+            );
+        }
+        assert_eq!(
+            accounts.get("ann").map(|a| (a.display, a.listed)),
+            Some((String::from("Ann"), true))
+        );
+        let renamed = accounts.answer(rename(), Some(new.public())).unwrap().0;
+        let unlisted = accounts.answer(listed(), Some(new.public())).unwrap().0;
+        assert_eq!(
+            (renamed.display.as_str(), unlisted.listed),
+            ("Annie", false)
+        );
+        let _ = std::fs::remove_dir_all(&data);
     }
 }
