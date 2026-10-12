@@ -3,7 +3,9 @@
 - Status: Accepted (user, 2026-10-05; OPEN-QUESTIONS Q42)
 - Date: 2026-10-05
 - Deciders: user; agent session (E04b T1)
-- Working detail: [`docs/epics/E04b-design.md`](../epics/E04b-design.md); sources:
+- Working detail: the code documentation (`h3_battle`, `h3_content`, `h3_heroes`), the rule catalog,
+  `packs/README.md` and [`docs/epics/E04b-log.md`](../epics/E04b-log.md) (the design note
+  `E04b-design.md` was deleted when E04b closed, 2026-10-12); sources:
   [`docs/rules/surveys/E04b-magic.md`](../rules/surveys/E04b-magic.md)
 
 ## Context
@@ -66,7 +68,7 @@ which a spell meets a stack, how stacks appear in a battle, how hidden objects s
    original (`installation.md` §7.7). Clone and Summon Elemental are legal only while the caster's
    side has fewer than 20 stacks (a battle parameter), Summon Elemental only for the side's first
    elemental type. Raising (Resurrection, Animate Dead, Sacrifice) revives a dead stack in its own
-   slot and is not limited. A Pit Lord's Demons are a new stack in a dead created stack's slot or
+   slot and is not limited. A Pit Lord's Demons are a new stack in a killed created stack's slot or
    a new one (refused without either: the original crashes), which takes the army slot of the
    dead stack they rise from. Dead stacks keep their slots and stay addressable. Summoned stacks
    and clones end with the battle, and a side left with only such stacks does not win

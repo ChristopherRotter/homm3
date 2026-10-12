@@ -65,9 +65,26 @@ rule; a profile would become a data patch); a second "level for calculations" fi
 reader must choose, and it does not fix Q-0006); rule code reading the flag (a missed reader goes
 unnoticed).
 
+## Amendment — E04b T11b: retiring a flag (2026-10-12, BAT-Q29, BAT-Q30)
+
+The E04b review re-read the executable on two flagged quirks and found that neither exists in
+the original (`quirk.battle.attack_from_seen_pit`, BAT-QUIRK-2; `quirk.battle.creature_mirror_untested`,
+BAT-QUIRK-9). The user retired both. How a flag is retired:
+
+1. The engine does what the original does, in every profile; the flag leaves the code and every
+   pack's profiles.
+2. Its position in the registry stays reserved as an entry without a name (index = position
+   still holds for every other flag). No profile can set it: a profile that names a retired
+   flag does not compile (`UnknownQuirk`). `QuirkRegistry::flags()` lists the flags that exist.
+3. The ledger keeps the entry under its id with the class "none: considered, not a quirk", the
+   reading that retired it and the retired flag's name; ids are not reused.
+4. No version changes (adding a flag changes none either); the ruleset hashes of the profiles
+   that had the flag on change, so replays recorded in them are recorded again.
+
 ## Revision history
 
 - 2026-09-30: Accepted.
 - 2026-09-30: Amended by E01 (`design` source kind, stricter traceability).
 - 2026-10-01: Amended by E03 T6 (first quirk flag).
 - 2026-10-11: Amended by E04b T8e (data quirks: `content` flags and gated overrides; BAT-Q25).
+- 2026-10-12: Amended by E04b T11b (retiring a flag; BAT-Q29, BAT-Q30).
