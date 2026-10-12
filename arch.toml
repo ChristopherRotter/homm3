@@ -266,7 +266,7 @@ layer = "tool"
 logic = false
 deps = ["h3-formats", "h3-pack"]
 external = ["serde", "toml"]
-dev_deps = ["h3-content"]
+dev_deps = ["h3-content", "h3-content-battle"]
 dev_external = []
 
 # Experiment compiler: spec -> SoD .h3m + results template for the user (E04a T2, Q28). Tool layer.

@@ -520,6 +520,7 @@ name = "h3-harvest"
 version = "0.1.0"
 dependencies = [
  "h3-content",
+ "h3-content-battle",
  "h3-formats",
  "h3-pack",
  "serde",

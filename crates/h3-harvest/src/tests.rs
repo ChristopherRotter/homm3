@@ -824,7 +824,7 @@ fn harvests_hero_content() {
     let look = base.split("id = \"look\"").nth(1).unwrap();
     assert!(!look.split("[[").next().unwrap().contains("effects"));
     let zap = r.spell(r.spell_by_key("base:zap").unwrap()).unwrap();
-    assert_eq!(zap.magic.effects, [h3_content::SpellEffect::Damage]);
+    assert_eq!(zap.magic.effects, [h3_content_battle::SpellEffect::Damage]);
     assert!(base.contains("expert = [{ kind = \"spell_damage\", bp = 1500 }]"));
     assert!(base.contains("expert = [{ kind = \"magic_resistance\", bp = 2000 }]"));
     // Eagle Eye: the table's chance and the skill's level + 1 (installation.md §7.24).

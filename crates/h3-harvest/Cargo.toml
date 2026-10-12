@@ -19,6 +19,7 @@ toml.workspace = true
 
 [dev-dependencies]
 h3-content.workspace = true
+h3-content-battle.workspace = true
 
 [lints]
 workspace = true
