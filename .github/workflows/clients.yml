@@ -1,0 +1,98 @@
+# The client workspace's job (E17 M0 T2; clients/README.md, docs/05-testing.md "CI"): the gates of
+# `clients/scripts/check.sh` (fmt, clippy, tests, cargo-deny, 100 % coverage of the pure crates,
+# this file's path filter) on Linux. `ci.yml` leaves `clients/**` out, and this job runs only when
+# the client workspace, an engine crate it builds or a setting it inherits changes; documentation
+# alone starts no run. One run per push, no matrix (Actions minutes are scarce; when they run out,
+# `clients/scripts/check.sh` run locally stands in, docs/05-testing.md "When CI cannot run").
+#
+# The paths below must name every engine crate the client workspace builds (path dependencies,
+# transitive ones included): `check.sh` fails otherwise ("ci paths"). Keep both lists identical.
+name: Clients
+
+on:
+  push:
+    branches: [master]
+    paths:
+      - "clients/**"
+      - ".github/workflows/clients.yml"
+      - "Cargo.toml"
+      - "rust-toolchain.toml"
+      - "clippy.toml"
+      - "rustfmt.toml"
+      - "crates/h3-formats/**"
+      - "!**.md"
+  pull_request:
+    types: [opened, synchronize, reopened]
+    paths:
+      - "clients/**"
+      - ".github/workflows/clients.yml"
+      - "Cargo.toml"
+      - "rust-toolchain.toml"
+      - "clippy.toml"
+      - "rustfmt.toml"
+      - "crates/h3-formats/**"
+      - "!**.md"
+  workflow_dispatch:
+  schedule:
+    - cron: "37 4 * * 1"
+
+permissions:
+  contents: read
+
+# One run per pull request or branch; a newer push cancels the older run.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event_name == 'schedule' && 'schedule' || github.event_name == 'pull_request' && format('pr-{0}', github.event.pull_request.number) || github.ref }}
+  cancel-in-progress: true
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  check:
+    name: clients (ubuntu-24.04)
+    if: github.event_name != 'schedule'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v7
+
+      # rustup reads the pinned toolchain from the root's rust-toolchain.toml.
+      - name: Toolchain
+        run: |
+          cargo --version
+          rustc --version
+
+      - name: LLVM tools (coverage)
+        run: rustup component add llvm-tools-preview
+
+      - uses: taiki-e/install-action@v2
+        with:
+          tool: cargo-deny,cargo-llvm-cov
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: clients
+          # Only master writes the cache; branches restore it.
+          save-if: ${{ github.ref == 'refs/heads/master' }}
+
+      - name: clients/scripts/check.sh
+        run: clients/scripts/check.sh
+
+  # Weekly: new RustSec advisories for the client's dependencies without a code change.
+  advisories:
+    if: github.event_name == 'schedule'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: taiki-e/install-action@v2
+        with:
+          tool: cargo-deny
+
+      - name: cargo deny check advisories
+        working-directory: clients
+        run: cargo deny --all-features check advisories
