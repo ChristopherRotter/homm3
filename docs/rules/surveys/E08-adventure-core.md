@@ -62,7 +62,9 @@ where to read, not facts.
   branch the reading policy leaves aside); a placed hero gets its points at setup
   (`0x486590`). Not read: the computer player's own turn loop beyond the call into `0x4C6FE0`.
   The wiki and VCMI disagree, so this is a conflict of sources: the user chose the reading until
-  a confirmation experiment settles it (ADV-Q4, ADV-MOV-002).
+  a confirmation experiment settles it (ADV-Q4, ADV-MOV-002). Settled by batch 1a (E08 T10c): a
+  hero that lost its slow stack in the other player's turn has its fast army's points at its
+  owner's turn start, on day 1 and day 2.
 - **No carry-over:** unused points "cannot be stored or preserved over to next day" (wiki). VCMI
   sets every hero to its limit at the change of day.
 - On water a hero always has 1500 (wiki, vcmi `movementPointsSea`); water is not in
@@ -275,7 +277,9 @@ second, and gives the war machine at 88 %. Conflicts of sources (ADV-Q6): the ro
 independence (reading against VCMI; the wiki is silent) and the war machine's chance (reading
 and VCMI against the wiki and the user's understanding). The engine draws the stacks as the
 reading has them (the user, 2026-10-10); war machines are not on the map hero before
-increment 3.
+increment 3. Settled by batch 1b (E08 T10c): a hero with its third stack but not its second
+(VCMI refuted) and a war-machine hero without its war machine (the wiki refuted), as the reading
+has them.
 
 ## 4. Quirk candidates: for the user to classify
 
@@ -329,8 +333,8 @@ contact rule, with HD's day limits as parameters.
 
 | Id | Question | Sources | Needed by | Settle by |
 |---|---|---|---|---|
-| D-1 | Movement points: at the start of the day for all players, or at the start of each player's turn | wiki and VCMI say start of day; the original's call sites (read in T6b) say start of the owner's turn | T6/T7 (which hook) | read in T6b (§1.1); the user chose the reading until an experiment confirms it (ADV-Q4) |
-| D-2 | Stepping off a road: the destination's terrain or the terrain under the road | wiki vs VCMI; read in T7a: the terrain under the road (VCMI's side) | T7 | read (§1.2); the user chose the reading (ADV-Q3, 2026-10-11) |
+| D-1 | Movement points: at the start of the day for all players, or at the start of each player's turn | wiki and VCMI say start of day; the original's call sites (read in T6b) say start of the owner's turn | T6/T7 (which hook) | read in T6b (§1.1); the user chose the reading; confirmed by batch 1a (ADV-Q4, E08 T10c) |
+| D-2 | Stepping off a road: the destination's terrain or the terrain under the road | wiki vs VCMI; read in T7a: the terrain under the road (VCMI's side) | T7 | read (§1.2); the user chose the reading (ADV-Q3, 2026-10-11); confirmed by batch 1a (E08 T10c) |
 | D-3 | Does a step that leaves fewer points than its straight cost take all the points | VCMI only; read in T7a: the points drop to 0 below the cheapest next step instead | T7 | read (§1.3); a conflict with VCMI: the user chose the reading (ADV-Q3, 2026-10-11) |
 | D-4 | Points for speeds 0–2 | wiki vs VCMI; no army creature is that slow | T4 (data only) | settled in T4: `movement.txt` has the wiki's row (§1.1) |
 | F-1 | Shape of the revealed area | VCMI; read in E08 T8a: the same disk | T8 | settled: read (§2), VCMI agrees (ADV-Q5) |

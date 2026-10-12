@@ -8,7 +8,7 @@
 id       = "ADV-MOV-001"
 title    = "Movement points of a day on land"
 context  = "adventure"
-status   = "implemented"
+status   = "verified"
 summary  = "A hero's movement points on land for a day come from the lowest speed among the creatures of its army through the land table (data: 1300, 1360, 1430, 1500, 1560, 1630, 1700, 1760, 1830, 1900, 1960, 2000 for speeds 0 to 11; faster armies take the last entry; the original reads its table up to speed 20, all 2000 from 11, and caps the speed at 20). When they are set: ADV-MOV-002. Bonuses (Logistics, artifacts, Stables, a creature specialty's +1 speed) come with the adventure profile (increment 3); at sea (Navigation) with boats. E08 T4: the table; T6b: `h3_adventure::day_points`."
 numeric  = "integer"
 
@@ -32,12 +32,18 @@ numeric  = "integer"
   confidence = "medium"
   note       = "VCMI gives 1500 below speed 3, against the original's movement.txt and the wiki; no creature that can stand in an army is that slow (dispute D-4, settled by the original data)."
 
+  [[rule.source]]
+  kind       = "observation"
+  ref        = "experiments/results/E08-batch-1a.md C0, Q4a, Q4b (SoD 4.0 Complete, plain HD, 2026-10-12): a hero with 1 Pikeman (speed 4) walks 15 grass steps east and has 1 more marked for the next day (1500-1599 points); a hero with only Angels (speed 12) has 2000 points at the start of its turn"
+  retrieved  = "2026-10-12"
+  confidence = "high"
+
 [[rule]]
 id       = "ADV-MOV-002"
 title    = "When a day's movement points are set"
 context  = "adventure"
-status   = "implemented"
-summary  = "At the start of its owner's turn every hero of that player gets the day's movement points for its army (ADV-MOV-001); points left from the day before are lost. A placed hero gets them when the game is built too. The original sets them at the start of the turn, not at the change of day for everyone as the wiki and VCMI have it; the difference shows only when another player changes the army between the two, which nothing in increment 1 can. The user chose the code reading until the confirmation experiment settles it (ADV-Q4, 2026-10-10). E08 T6b: `AdventureState::start_turn`, run by `h3-game` at each turn group's start (ADR-0017 point 3)."
+status   = "verified"
+summary  = "At the start of its owner's turn every hero of that player gets the day's movement points for its army (ADV-MOV-001); points left from the day before are lost. A placed hero gets them when the game is built too. The original sets them at the start of the turn, not at the change of day for everyone as the wiki and VCMI have it; the difference shows only when another player changes the army between the two (a battle in that player's turn), which nothing in increment 1 can. The user chose the code reading (ADV-Q4, 2026-10-10); batch 1a confirmed it on day 1 and day 2 (E08 T10c), and a change of the army during the owner's own turn leaves the day's points as they are. E08 T6b: `AdventureState::start_turn`, run by `h3-game` at each turn group's start (ADR-0017 point 3)."
 numeric  = "integer"
 
   [[rule.source]]
@@ -61,12 +67,19 @@ numeric  = "integer"
   confidence = "medium"
   note       = "Disagrees with the code reading (ADV-Q4): VCMI resets every player's heroes at the day change."
 
+  [[rule.source]]
+  kind       = "observation"
+  ref        = "experiments/results/E08-batch-1a.md Q4a, Q4b (SoD 4.0 Complete, plain HD, 2026-10-12): Blue's hero with 4 Pikemen and 2 Angels loses the Pikemen in a battle in Red's turn (day 1, and day 2 after a new day) and has 2000 points at the start of Blue's turn (Angels only, speed 12), not 1560 (the Pikemen's speed 4, set at the day's start). The control Q4c was not on the map played (a stale build); the user's statement instead: dismissing or gaining a stack does not change the day's points"
+  retrieved  = "2026-10-12"
+  confidence = "high"
+  note       = "Answers ADV-Q4 for the code reading; refutes the wiki's and VCMI's day start and a first-day special case."
+
 [[rule]]
 id       = "ADV-MOV-003"
 title    = "The straight cost of a step"
 context  = "adventure"
-status   = "implemented"
-summary  = "A straight step costs the source tile's terrain cost (data: dirt 100, sand 150, grass 100, snow 150, swamp 175, rough 125, subterranean 100, lava 100; water 100 by boat) or, when both tiles have a road, the source tile's road's cost (data: dirt road 75, gravel road 65, cobblestone road 50). Only the source tile prices a step: stepping off a road onto swamp from a road on grass costs grass's 100 (D-2: the code reading and VCMI; the wiki's destination terrain not taken, the user, ADV-Q3, 2026-10-11). Rivers change no cost. E08 T7b: `Pricing::step`, through `MoveHero` and the reachable-tiles query."
+status   = "verified"
+summary  = "A straight step costs the source tile's terrain cost (data: dirt 100, sand 150, grass 100, snow 150, swamp 175, rough 125, subterranean 100, lava 100; water 100 by boat) or, when both tiles have a road, the source tile's road's cost (data: dirt road 75, gravel road 65, cobblestone road 50). Only the source tile prices a step: stepping off a road onto swamp from a road on grass costs grass's 100 (D-2: the code reading and VCMI; the wiki's destination terrain not taken, the user, ADV-Q3, 2026-10-11; batch 1a confirmed it both ways, E08 T10c). Rivers change no cost. E08 T7b: `Pricing::step`, through `MoveHero` and the reachable-tiles query."
 numeric  = "integer"
 
   [[rule.source]]
@@ -89,6 +102,13 @@ numeric  = "integer"
   url        = "https://github.com/vcmi/vcmi/blob/1.7.5/config/terrains.json"
   retrieved  = "2026-10-10"
   confidence = "high"
+
+  [[rule.source]]
+  kind       = "observation"
+  ref        = "experiments/results/E08-batch-1a.md D2a, D2b (SoD 4.0 Complete, plain HD, 2026-10-12): a hero with 1 Pikeman (1560 points) on a dirt road's end on grass walks 9 steps east onto swamp (100 + 8 x 175; the wiki's swamp price for the first step gives 8), and on a dirt road's end on swamp 14 steps east onto grass (175 + 13 x 100; the wiki's grass price gives 15)"
+  retrieved  = "2026-10-12"
+  confidence = "high"
+  note       = "Confirms D-2 (ADV-Q3) for the code reading and VCMI."
 
 [[rule]]
 id       = "ADV-MOV-004"
