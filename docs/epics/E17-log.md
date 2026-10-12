@@ -177,3 +177,33 @@ Same session as T1, on `client/e17-m1-compositor` (pull request #136). The code 
   every encoding, opaque images, the sheet's layout.
 - Gates: `clients/scripts/check.sh` passes (fmt, clippy, tests, deny, 100 % lines and regions,
   CI paths); the real-asset gate still decodes all 11 800 image entries. CI could not run.
+
+### M1 T5 — Code reading: the battle screen (2026-10-13)
+
+One session with T4 (the user present; they chose T5, then T4). Branch
+`client/e17-m1-t5-battle-screen`, a docs-only pull request. Findings in
+[`E17-design.md`](E17-design.md) §4; 26 entries added and 3 rewritten in `docs/exe/map.toml`, 39
+fields in `structs.toml`.
+
+- **Path.** From T1's stack drawer 0x43E140 to its callers: the redraw 0x494440 (H3API's
+  `H3CombatManager::Refresh`), which walks the hex records; from the hex records' screen fields
+  (H3API's `H3CombatSquare`) to the routine that fills them (0x4642D0, found by its `add 0x2c`);
+  from the redraw's other draws to the obstacle, hero and picture helpers; from the outline's
+  palette pointer to the startup that loads `game.pal`, and from its rotation to the idle step;
+  from the count box's +0x14C to `cranim.txt`'s loader. The draw order read pass by pass; the siege
+  branches named only.
+- **Checked against the files** with throwaway scripts (not committed): the obstacle type table
+  (91 records) and the absolute one (34) dumped from the executable; obstacle DEFs hold runs of
+  index 0 only; `game.pal`'s ramps; the pictures' sizes (`CmBk*.pcx` 800 × 556, `CmNumWin.pcx`
+  30 × 11, `CCellGrd.pcx` 45 × 52, `CH*.def` 150 × 175).
+- **VCMI 1.7.5** compared (`client/battle/`, `config/obstacles.json`): the hex boxes, the stack's
+  canvas for both facings and the two-hex shift, the count box's four positions, the 36 foreground
+  obstacles and all 91 sizes, the heroes' points agree; it differs in the obstacle `ObRgS03.def`'s
+  y (42 px), in the draw order inside a row (obstacles and count boxes after the stacks) and in the
+  count box's troop-count offset and war machines. Recorded for the M3 reference frames (§4.7).
+- **For T7:** a two-hex stack is anchored at the engine's tail hex (the exe's position is the rear
+  hex, the engine's the head); the background, the absolute obstacle and the layer-1 obstacles come
+  first, then the heroes, then per row the layer-0 obstacles before the row's stacks.
+- **Not read** (§4.7): the grid and shading options, the count box's tint and text, the stack's
+  byte +0x4F1, the palette effects, the siege branches.
+- Gates: `scripts/exe.py check` and `cargo xtask check-exe-map` (every cited address covered).
