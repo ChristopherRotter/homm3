@@ -456,6 +456,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "h3-content-battle"
+version = "0.1.0"
+dependencies = [
+ "h3-content",
+ "h3-kernel",
+ "proptest",
+]
+
+[[package]]
 name = "h3-contracts"
 version = "0.1.0"
 dependencies = [
