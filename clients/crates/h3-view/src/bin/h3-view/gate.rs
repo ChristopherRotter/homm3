@@ -1,4 +1,5 @@
-//! The real-asset gate (E17 M0 T3; extended by M1: every entry decodes, the inventory report). It
+//! The real-asset gate (E17 M0 T3; M1 T2 and T3: every PCX, PAL, DEF and MSK decodes, the
+//! inventory report in `<out>/gate/report.md`, every entry with its verdict in `entries.tsv`). It
 //! runs only where the user's files are (ADR-0009): a copy of the installation, never the
 //! installation itself, which it would only read anyway. It reads whole archives, since
 //! `h3-formats` parses only a whole archive; with the table-only reader (CLT-Q2) it measures the
@@ -11,7 +12,11 @@ use std::path::{Path, PathBuf};
 use std::process::ExitCode;
 use std::time::Duration;
 
-use h3_assets::archive::{self, Inventory};
+use std::collections::{BTreeMap, BTreeSet};
+
+use h3_assets::archive;
+use h3_assets::check::{Decoded, EntryCheck, check_entry};
+use h3_assets::survey::{self, Mention, Mentions};
 use h3_formats::lod::LodArchive;
 
 /// The four LOD archives of the Complete edition, in the order the gate reports them.
@@ -63,15 +68,30 @@ impl Options {
     }
 }
 
-/// One archive, opened.
+/// One archive, read.
 struct Opened {
     name: &'static str,
     path: PathBuf,
-    bytes: u64,
+    bytes: Vec<u8>,
     read: Duration,
-    parse: Duration,
-    inventory: Inventory,
-    listing: String,
+}
+
+/// One entry and what the gate found.
+struct Checked {
+    archive: usize,
+    name: String,
+    tag: u32,
+    size: u32,
+    compressed_size: u32,
+    check: Result<EntryCheck, String>,
+}
+
+/// Wall time per step of the decoding pass.
+#[derive(Default)]
+struct Times {
+    inflate: Duration,
+    decode: Duration,
+    compare: Duration,
 }
 
 pub fn run(options: &Options) -> ExitCode {
@@ -91,54 +111,204 @@ fn gate(options: &Options) -> Result<(), String> {
     for name in ARCHIVES {
         opened.push(open(&data, name)?);
     }
-    print!("{}", report(&options.install, &opened));
-    let listing_path = options.out.join("gate").join("entries.tsv");
-    let mut listing = String::from("archive\tname\ttype\tsize\tcompressed_size\n");
-    for archive in &opened {
-        listing.push_str(&archive.listing);
+    let mut archives = Vec::new();
+    let mut parse_times = Vec::new();
+    for a in &opened {
+        let (archive, parse) = timed(|| LodArchive::parse(&a.bytes));
+        archives.push(archive.map_err(|e| format!("{}: {e:?}", a.path.display()))?);
+        parse_times.push(parse);
     }
-    write(&listing_path, &listing)?;
-    let shown = fs::canonicalize(&listing_path).unwrap_or(listing_path);
-    println!("gate: every entry listed in {}", shown.display());
+    let mut times = Times::default();
+    let mut mentions = Mentions::default();
+    let mut checked = Vec::new();
+    for (i, archive) in archives.iter().enumerate() {
+        for e in archive.entries() {
+            let (bytes, inflate) = timed(|| archive.read(e));
+            times.inflate += inflate;
+            let check = match bytes {
+                Ok(bytes) => {
+                    if archive::extension(&e.name) == "TXT" {
+                        mentions.scan(&bytes);
+                    }
+                    let (check, decode) = timed(|| check_entry(&e.name, e.type_tag, &bytes));
+                    times.decode += decode;
+                    Ok(check)
+                }
+                Err(error) => Err(format!("inflate {error:?}")),
+            };
+            checked.push(Checked {
+                archive: i,
+                name: e.name.clone(),
+                tag: e.type_tag,
+                size: e.size,
+                compressed_size: e.compressed_size,
+                check,
+            });
+        }
+    }
+    // The game's and the map editor's executables: an entry only the editor names is not dead.
+    let mut scanned = vec![String::from("the text tables")];
+    for exe in ["Heroes3.exe", "h3maped.exe"] {
+        match find_ci(&options.install, exe).and_then(fs::read) {
+            Ok(bytes) => {
+                mentions.scan(&bytes);
+                scanned.push(String::from(exe));
+            }
+            Err(e) => scanned.push(format!("not {exe} ({e})")),
+        }
+    }
+    let exe_note = scanned.join(", ");
+    let listings: Vec<Vec<String>> = archives
+        .iter()
+        .map(|a| a.entries().iter().map(|e| e.name.clone()).collect())
+        .collect();
+    let dups = survey::duplicates(&listings);
+    let (same, compare) = timed(|| identical(&archives, &dups));
+    times.compare = compare;
+    let all: BTreeSet<String> = dups
+        .keys()
+        .cloned()
+        .chain(listings.iter().flatten().map(|n| n.to_ascii_uppercase()))
+        .collect();
+
+    let summary = summary(
+        &options.install,
+        &opened,
+        &archives,
+        &parse_times,
+        &checked,
+        &times,
+    );
+    print!("{summary}");
+    let mut listing = String::from(
+        "archive\tname\ttype\tsize\tcompressed_size\tdecoded\tfindings\tmention\tduplicate\n",
+    );
+    for c in &checked {
+        let upper = c.name.to_ascii_uppercase();
+        let duplicate = same
+            .get(&upper)
+            .map_or("-", |&s| if s { "identical" } else { "different" });
+        let _ = writeln!(
+            listing,
+            "{}\t{}\t{}\t{}\t{}\t{}\t{}\t{:?}\t{duplicate}",
+            ARCHIVES[c.archive],
+            c.name,
+            c.tag,
+            c.size,
+            c.compressed_size,
+            decoded_text(&c.check),
+            findings_text(&c.check),
+            mentions.mention(&c.name, &all),
+        );
+    }
+    let gate_dir = options.out.join("gate");
+    write(&gate_dir.join("entries.tsv"), &listing)?;
+    let report = report(&summary, &exe_note, &checked, &mentions, &all, &dups, &same);
+    write(&gate_dir.join("report.md"), &report)?;
+    let shown = fs::canonicalize(&gate_dir).unwrap_or(gate_dir);
+    println!(
+        "gate: every entry listed in {0}/entries.tsv, the inventory in {0}/report.md",
+        shown.display()
+    );
+    let failed = checked
+        .iter()
+        .filter(|c| !matches!(&c.check, Ok(k) if k.decoded.is_ok()))
+        .count();
+    if failed > 0 {
+        return Err(format!(
+            "{failed} entries did not decode (entries.tsv, column `decoded`)"
+        ));
+    }
     Ok(())
 }
 
-/// Reads and parses one archive, timing both.
+/// Reads one archive, timing it.
 fn open(data: &Path, name: &'static str) -> Result<Opened, String> {
     let path = find_ci(data, name).map_err(|e| format!("{}/{name}: {e}", data.display()))?;
     let (bytes, read) = timed(|| fs::read(&path));
     let bytes = bytes.map_err(|e| format!("{}: {e}", path.display()))?;
-    let (archive, parse) = timed(|| LodArchive::parse(&bytes));
-    let archive = archive.map_err(|e| format!("{}: {e:?}", path.display()))?;
-    let mut listing = String::new();
-    for e in archive.entries() {
-        // Writing into a String cannot fail.
-        let _ = writeln!(
-            listing,
-            "{name}\t{}\t{}\t{}\t{}",
-            e.name, e.type_tag, e.size, e.compressed_size
-        );
-    }
     Ok(Opened {
         name,
         path,
-        bytes: u64::try_from(bytes.len()).unwrap_or(u64::MAX),
+        bytes,
         read,
-        parse,
-        inventory: archive::inventory(&archive),
-        listing,
     })
 }
 
-/// The gate's report: one block per archive, then the totals.
-fn report(install: &Path, opened: &[Opened]) -> String {
+/// For each duplicate name, whether every copy has the same bytes.
+fn identical(
+    archives: &[LodArchive<'_>],
+    dups: &BTreeMap<String, Vec<usize>>,
+) -> BTreeMap<String, bool> {
+    let mut copies: BTreeMap<&str, Vec<Option<Vec<u8>>>> = BTreeMap::new();
+    for archive in archives {
+        for e in archive.entries() {
+            if let Some((name, _)) = dups.get_key_value(&e.name.to_ascii_uppercase()) {
+                copies.entry(name).or_default().push(archive.read(e).ok());
+            }
+        }
+    }
+    copies
+        .into_iter()
+        .map(|(name, bytes)| {
+            let same = bytes.windows(2).all(|w| w[0].is_some() && w[0] == w[1]);
+            (name.to_owned(), same)
+        })
+        .collect()
+}
+
+fn decoded_text(check: &Result<EntryCheck, String>) -> String {
+    match check {
+        Err(e) => format!("error {e}"),
+        Ok(c) => match &c.decoded {
+            Err(e) => format!("error {e:?}"),
+            Ok(Decoded::Pcx { width, height, rgb }) => {
+                format!("pcx {}-bit {width}x{height}", if *rgb { 24 } else { 8 })
+            }
+            Ok(Decoded::Pal { chunks }) => format!("pal +{chunks} chunks"),
+            Ok(Decoded::Def {
+                kind,
+                groups,
+                frames,
+                encodings,
+            }) => format!(
+                "def 0x{kind:02X} {groups} groups {frames} frames enc {}/{}/{}/{}",
+                encodings[0], encodings[1], encodings[2], encodings[3]
+            ),
+            Ok(Decoded::Msk { width, height }) => format!("msk {width}x{height}"),
+            Ok(Decoded::Skipped) => String::from("skipped"),
+        },
+    }
+}
+
+fn findings_text(check: &Result<EntryCheck, String>) -> String {
+    match check {
+        Ok(c) if !c.findings.is_empty() => c
+            .findings
+            .iter()
+            .map(|f| format!("{f:?}"))
+            .collect::<Vec<_>>()
+            .join("; "),
+        _ => String::from("-"),
+    }
+}
+
+/// The printed summary: one block per archive, then the decoding pass.
+fn summary(
+    install: &Path,
+    opened: &[Opened],
+    archives: &[LodArchive<'_>],
+    parse_times: &[Duration],
+    checked: &[Checked],
+    times: &Times,
+) -> String {
     let mut out = format!("gate: {}\n", install.display());
     let mut entries = 0u64;
     let mut total = Duration::ZERO;
-    for a in opened {
-        let inv = &a.inventory;
+    for ((a, parsed), &parse) in opened.iter().zip(archives).zip(parse_times) {
+        let inv = archive::inventory(parsed);
         entries += u64::from(inv.total.entries);
-        total += a.read + a.parse;
+        total += a.read + parse;
         let _ = writeln!(
             out,
             "{:<13} kind {:>3}  {:>5} entries ({} compressed, {} MiB unpacked)  {} MiB read in {} ms, \
@@ -148,9 +318,9 @@ fn report(install: &Path, opened: &[Opened]) -> String {
             inv.total.entries,
             inv.total.compressed,
             inv.total.bytes >> 20,
-            a.bytes >> 20,
+            a.bytes.len() >> 20,
             a.read.as_millis(),
-            a.parse.as_millis(),
+            parse.as_millis(),
             a.path.display(),
         );
         let by_ext: Vec<String> = inv
@@ -168,6 +338,201 @@ fn report(install: &Path, opened: &[Opened]) -> String {
         "gate: {} archives, {entries} entries, opened in {} ms",
         opened.len(),
         total.as_millis()
+    );
+    let mut per_ext: BTreeMap<String, (u32, u32, u32)> = BTreeMap::new();
+    for c in checked {
+        let slot = per_ext.entry(archive::extension(&c.name)).or_default();
+        match &c.check {
+            Ok(k) if k.decoded == Ok(Decoded::Skipped) => slot.2 += 1,
+            Ok(k) if k.decoded.is_ok() => slot.0 += 1,
+            _ => slot.1 += 1,
+        }
+    }
+    let line: Vec<String> = per_ext
+        .iter()
+        .filter(|(_, (ok, bad, _))| ok + bad > 0)
+        .map(|(ext, (ok, bad, _))| format!("{ext} {ok} ok, {bad} failed"))
+        .collect();
+    let _ = writeln!(
+        out,
+        "gate: decoded {}; every entry inflated in {} ms, decoded in {} ms; duplicates compared in {} ms",
+        line.join("; "),
+        times.inflate.as_millis(),
+        times.decode.as_millis(),
+        times.compare.as_millis()
+    );
+    out
+}
+
+/// The inventory report (Markdown, local only: it names the user's entries).
+fn report(
+    summary: &str,
+    exe_note: &str,
+    checked: &[Checked],
+    mentions: &Mentions,
+    all: &BTreeSet<String>,
+    dups: &BTreeMap<String, Vec<usize>>,
+    same: &BTreeMap<String, bool>,
+) -> String {
+    let mut out = String::from("# The real-asset gate's inventory (E17 M1 T3)\n\n```\n");
+    out.push_str(summary);
+    out.push_str("```\n\n## Findings\n\n");
+    let mut findings: BTreeMap<String, Vec<String>> = BTreeMap::new();
+    let mut failures = Vec::new();
+    for c in checked {
+        match &c.check {
+            Ok(k) => {
+                for f in &k.findings {
+                    let kind = format!("{f:?}");
+                    let kind = kind.split([' ', '{']).next().unwrap_or_default().to_owned();
+                    findings
+                        .entry(kind)
+                        .or_default()
+                        .push(format!("{}:{} ({f:?})", ARCHIVES[c.archive], c.name));
+                }
+                if let Err(e) = &k.decoded {
+                    failures.push(format!("{}:{} ({e:?})", ARCHIVES[c.archive], c.name));
+                }
+            }
+            Err(e) => failures.push(format!("{}:{} ({e})", ARCHIVES[c.archive], c.name)),
+        }
+    }
+    let _ = writeln!(out, "- Entries that did not decode: {}", failures.len());
+    for f in &failures {
+        let _ = writeln!(out, "  - {f}");
+    }
+    for (kind, list) in &findings {
+        let _ = writeln!(out, "- {kind}: {}", list.len());
+        for item in list.iter().take(40) {
+            let _ = writeln!(out, "  - {item}");
+        }
+    }
+    let mut tags: BTreeMap<(String, u32), u32> = BTreeMap::new();
+    let mut def_kinds: BTreeMap<u32, u32> = BTreeMap::new();
+    let mut encodings = [0u32; 4];
+    for c in checked {
+        *tags
+            .entry((archive::extension(&c.name), c.tag))
+            .or_default() += 1;
+        if let Ok(EntryCheck {
+            decoded: Ok(Decoded::Def {
+                kind, encodings: e, ..
+            }),
+            ..
+        }) = &c.check
+        {
+            *def_kinds.entry(*kind).or_default() += 1;
+            for (sum, n) in encodings.iter_mut().zip(e) {
+                *sum += n;
+            }
+        }
+    }
+    out.push_str("\n## Extensions and type tags\n\n| extension | tag | entries |\n|---|---|---|\n");
+    for ((ext, tag), n) in &tags {
+        let _ = writeln!(out, "| {ext} | {tag} | {n} |");
+    }
+    out.push_str("\nDEF types (header): ");
+    let kinds: Vec<String> = def_kinds
+        .iter()
+        .map(|(k, n)| format!("0x{k:02X} × {n}"))
+        .collect();
+    out.push_str(&kinds.join(", "));
+    let _ = writeln!(
+        out,
+        ".\nDEF frames by encoding (distinct frames): 0 × {}, 1 × {}, 2 × {}, 3 × {}.",
+        encodings[0], encodings[1], encodings[2], encodings[3]
+    );
+    let identical = same.values().filter(|&&s| s).count();
+    let _ = writeln!(
+        out,
+        "\n## Duplicates\n\n{} names appear more than once ({identical} with identical bytes, {} different).\n",
+        dups.len(),
+        dups.len() - identical
+    );
+    let mut pairs: BTreeMap<String, (u32, u32)> = BTreeMap::new();
+    for (name, holders) in dups {
+        let key = holders
+            .iter()
+            .map(|&i| ARCHIVES[i])
+            .collect::<Vec<_>>()
+            .join(" + ");
+        let slot = pairs.entry(key).or_default();
+        if same.get(name) == Some(&true) {
+            slot.0 += 1;
+        } else {
+            slot.1 += 1;
+        }
+    }
+    for (key, (ident, diff)) in &pairs {
+        let _ = writeln!(out, "- {key}: {ident} identical, {diff} different");
+    }
+    out.push_str("\nDifferent copies (the list in entries.tsv, column `duplicate`): ");
+    let different: Vec<&str> = same
+        .iter()
+        .filter(|(_, s)| !**s)
+        .map(|(n, _)| n.as_str())
+        .collect();
+    out.push_str(
+        &different
+            .iter()
+            .take(60)
+            .copied()
+            .collect::<Vec<_>>()
+            .join(", "),
+    );
+    if different.len() > 60 {
+        let _ = write!(out, ", … ({} more)", different.len() - 60);
+    }
+    let _ = writeln!(
+        out,
+        "\n\n## Mentions\n\nScanned: {exe_note}: {} exact names, {} patterns ({}).\n",
+        mentions.exact_count(),
+        mentions.patterns().len(),
+        mentions
+            .patterns()
+            .iter()
+            .cloned()
+            .collect::<Vec<_>>()
+            .join(", ")
+    );
+    let mut by_mention: BTreeMap<(String, String), u32> = BTreeMap::new();
+    let mut unmentioned: BTreeMap<String, Vec<String>> = BTreeMap::new();
+    for name in all {
+        let m = mentions.mention(name, all);
+        let ext = archive::extension(name);
+        *by_mention
+            .entry((ext.clone(), format!("{m:?}")))
+            .or_default() += 1;
+        if m == Mention::None {
+            unmentioned.entry(ext).or_default().push(name.clone());
+        }
+    }
+    out.push_str("| extension | mention | names |\n|---|---|---|\n");
+    for ((ext, m), n) in &by_mention {
+        let _ = writeln!(out, "| {ext} | {m} | {n} |");
+    }
+    out.push_str("\nNot mentioned (candidates for dead entries; names built at run time and data the survey does not read are not covered):\n\n");
+    for (ext, names) in &unmentioned {
+        let _ = writeln!(out, "- {ext} ({}): {}", names.len(), names.join(", "));
+    }
+    let broken: Vec<&String> = all.iter().filter(|n| survey::breaks_pattern(n)).collect();
+    let _ = writeln!(
+        out,
+        "\n## Names\n\n{} distinct names; {} break the 8.3 pattern{}",
+        all.len(),
+        broken.len(),
+        if broken.is_empty() {
+            String::from(".")
+        } else {
+            format!(
+                ": {}",
+                broken
+                    .iter()
+                    .map(|s| s.as_str())
+                    .collect::<Vec<_>>()
+                    .join(", ")
+            )
+        }
     );
     out
 }
@@ -239,26 +604,71 @@ mod tests {
     }
 
     #[test]
-    fn the_gate_opens_a_synthetic_installation() {
+    fn the_gate_checks_a_synthetic_installation() {
+        use h3_assets::build;
+        use h3_assets::def::{Encoding, Frame};
+        use h3_assets::palette::Palette;
+
         let root = std::env::temp_dir().join(format!("h3-view-gate-{}", std::process::id()));
-        let data = root.join("install").join("DATA");
+        let install = root.join("install");
+        let data = install.join("DATA");
         let _ = fs::remove_dir_all(&root);
         fs::create_dir_all(&data).unwrap();
+        let frame = Frame {
+            encoding: Encoding::Rows,
+            full_width: 2,
+            full_height: 1,
+            left: 0,
+            top: 0,
+            width: 2,
+            height: 1,
+            pixels: vec![1, 2],
+            short_header: false,
+        };
+        let def = build::def(
+            0x42,
+            (2, 1),
+            &Palette::default(),
+            &[(0, &[("f", 0)])],
+            &[frame],
+        );
+        let pcx = build::pcx_indexed(1, 1, &[0], &Palette::default());
         for (i, name) in ARCHIVES.iter().enumerate() {
             let lod = build(
                 200,
-                &[("X.DEF", &[1, 2, 3], i % 2 == 0), ("y.pcx", &[], false)],
+                &[
+                    ("X.DEF", &def, i % 2 == 0),
+                    ("y.pcx", &pcx, false),
+                    ("t.txt", b"see y.pcx", true),
+                ],
             );
             fs::write(data.join(name.to_ascii_lowercase()), lod).unwrap();
         }
+        fs::write(install.join("HEROES3.EXE"), b"\0x.def\0").unwrap();
         let options = Options {
-            install: root.join("install"),
+            install,
             out: root.join("out"),
         };
         gate(&options).unwrap();
         let listing = fs::read_to_string(root.join("out/gate/entries.tsv")).unwrap();
-        assert_eq!(listing.lines().count(), 1 + 2 * ARCHIVES.len());
-        assert!(listing.contains("H3ab_spr.lod\ty.pcx\t"));
+        assert_eq!(listing.lines().count(), 1 + 3 * ARCHIVES.len());
+        assert!(listing.contains("H3ab_spr.lod\ty.pcx\t2\t"));
+        assert!(listing.contains("def 0x42 1 groups 1 frames enc 0/1/0/0\tTypeTag"));
+        assert!(listing.contains("\tExact\tidentical"));
+        let report = fs::read_to_string(root.join("out/gate/report.md")).unwrap();
+        assert!(
+            report.contains("3 names appear more than once (3 with identical bytes, 0 different)")
+        );
+        // A broken entry fails the gate; the listing is still written.
+        let lod = build(200, &[("bad.def", &[1, 2, 3], false)]);
+        fs::write(data.join("h3sprite.lod"), lod).unwrap();
+        assert!(
+            gate(&options)
+                .unwrap_err()
+                .contains("1 entries did not decode")
+        );
+        let listing = fs::read_to_string(root.join("out/gate/entries.tsv")).unwrap();
+        assert!(listing.contains("bad.def\t2\t3\t0\terror Truncated"));
         fs::remove_file(data.join("h3sprite.lod")).unwrap();
         assert!(gate(&options).unwrap_err().contains("H3sprite.lod"));
         fs::remove_dir_all(&root).unwrap();

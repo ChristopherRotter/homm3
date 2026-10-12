@@ -4,35 +4,21 @@ Pre-refined tasks of the client lane, in order, then the inbox of discovered wor
 
 ## Tasks
 
-Epic: `docs/epics/E17-clients.md` (M0 done 2026-10-12; ADR-0020). M1 below, each task about half a context. The original files: stage them from the user's `original-data/install/` (one large file per staging call; the user's computer must be online); never from the installation. The client's gates: `clients/scripts/check.sh` (the full local check; CI's job runs the same), the real-asset gate `cargo run -p h3-view -- gate` from `clients/`.
+Epic: `docs/epics/E17-clients.md` (M0 done 2026-10-12; ADR-0020). M1 below (T2 and T3 done 2026-10-12: the decoders, the gate's inventory; `docs/epics/E17-design.md`), each task about half a context. The original files: stage them from the user's `original-data/install/` (one large file per staging call; the user's computer must be online); never from the installation. The client's gates: `clients/scripts/check.sh` (the full local check; CI's job runs the same), the real-asset gate `cargo run -p h3-view -- gate` from `clients/`.
 
 ### E17 M1 T1 — Code reading: archives, screen format, keyed colours
 
-- **Scope:** from `Heroes3.exe` (`docs/exe/README.md`, `scripts/exe.py`; every cited address gets a `map.toml` entry): how the game looks up an entry name across the LODs and which archive wins (research item 1); the screen's pixel format (16-bit? 565 or 555?) and how a palette colour becomes a screen pixel (item 2: the user's off-colour pixels); how a DEF frame's indices are drawn: transparent, shadow (the operation on the pixel below, and where two shadows overlap), selection outline, player colours (item 8); how a 16-bit frame is shown on a 32-bit desktop where it matters for capture. Compare with VCMI where it has an answer. Record in `docs/epics/E17-design.md` (create it).
+- **Scope:** from `Heroes3.exe` (`docs/exe/README.md`, `scripts/exe.py`; every cited address gets a `map.toml` entry): how the game looks up an entry name across the LODs and which archive wins (research item 1); the screen's pixel format (16-bit? 565 or 555?) and how a palette colour becomes a screen pixel (item 2: the user's off-colour pixels); how a DEF frame's indices are drawn: transparent, shadow (the operation on the pixel below, and where two shadows overlap), selection outline, player colours (item 8); how a 16-bit frame is shown on a 32-bit desktop where it matters for capture; the decoders' open points (`E17-design.md` §3: the archive's type against the DEF's, `SGTWMTA`/`SGTWMTB`'s short frame header, `OVSLOT.def`'s canvas, encoding 2's row offsets). Compare with VCMI where it has an answer. Record in `docs/epics/E17-design.md` (§3 onwards).
 - **Acceptance:** each question answered with addresses and our own words, or listed as open with what was tried; no code; the design note under 15 KB.
 - **Depends on:** nothing.
 - **Status:** ready.
-
-### E17 M1 T2 — Palettes and PCX
-
-- **Scope:** `h3-assets`: the palette (`PAL`) and PCX decoders (8-bit indexed with its palette, 24-bit), as pure functions over bytes with bounded reads (no panic on any input: proptests); synthetic test images built in the tests. The gate decodes every PCX and PAL of the four LODs and reports failures.
-- **Acceptance:** the Definition of Done for the pure code (100 %); the gate passes on the user's files.
-- **Depends on:** M0 (done).
-- **Status:** ready.
-
-### E17 M1 T3 — DEF and MSK
-
-- **Scope:** `h3-assets`: the DEF decoder (its type, palette, groups, frames; all four frame encodings; the frame's offset inside its full canvas), MSK; pure, bounded, proptested, synthetic sprites. The gate decodes every DEF and MSK and writes the inventory report to `clients/out/`: duplicates across archives (identical or not), entries no text table or executable string names (candidates for dead entries), names that break the patterns; the time to open everything and to decode all.
-- **Acceptance:** as T2; the report's findings summarised in `E17-design.md`.
-- **Depends on:** T2.
-- **Status:** waiting (T2).
 
 ### E17 M1 T4 — The asset tables
 
 - **Scope:** the tables' format (*queued for the review*): `clients/assets/{base,ab,sod}.toml` in the packs' dependency graph and keys; entries for creatures (key → DEF, its groups as the battle uses them, missile and offsets from `CRANIM.TXT`), battlefield backgrounds (by terrain and special field), obstacles; the fix entry (`CLT-QUIRK-<n>`, its source, its flag; none yet unless found). A harvesting tool in `clients/` (a bin; reads the user's executable and text tables once; the executable's addresses from `docs/exe/`) generates them. Which expansion each entry belongs to: the AB/SoD archives' split and the packs (research item 6). A loader with the tables' dependency rules (as `h3-pack`'s: unknown keys and fields are errors). The gate checks every name against the archives.
 - **Acceptance:** the Definition of Done; the tables load for each expansion selection; every key of the committed packs' creatures, battlefields and obstacles has an entry, or the gap is listed.
-- **Depends on:** T3, T1 (precedence).
-- **Status:** waiting (T3).
+- **Depends on:** T1 (precedence); T3 done.
+- **Status:** waiting (T1).
 
 ### E17 M1 T5 — Code reading: the battle screen
 
@@ -45,8 +31,8 @@ Epic: `docs/epics/E17-clients.md` (M0 done 2026-10-12; ADR-0020). M1 below, each
 
 - **Scope:** `h3-render`: the frame in the screen format T1 found, its size a parameter; blitting an indexed frame with its keyed colours as T1 found (shadow included), player colours, mirroring, clipping; a PNG writer as an adapter (*the `png` crate: queued for the review*). Synthetic tests, 100 %.
 - **Acceptance:** the Definition of Done; a test per keyed colour and for overlapping shadows.
-- **Depends on:** T1, T3.
-- **Status:** waiting (T1, T3).
+- **Depends on:** T1; T3 done.
+- **Status:** waiting (T1).
 
 ### E17 M1 T7 — A battle still
 

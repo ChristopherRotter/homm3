@@ -77,3 +77,49 @@ branch adds, so the job's pull request would go red against a `master` without i
   batch is about 3–5 MiB (a creature DEF about 125 KiB stored; the 25 battle backgrounds 6.9 MiB),
   the adventure objects (`AV*.DEF`, 1 548) 9.3 MiB. Chosen: the table-only reader, filed as CLT-Q2
   for the battle lane; until it lands the adapter reads whole archives.
+
+### M1 T2 + T3 — The decoders and the inventory (2026-10-12)
+
+One session (the user present; they chose T2 + T3 over T1). Branch `client/e17-m1-decoders`, one
+pull request. Findings in [`E17-design.md`](E17-design.md) §1–2.
+
+- **The formats first, from the files.** Before writing code, a throwaway script read the user's
+  LODs: the three PAL files are RIFF palettes; every PCX has exactly the community's layout (24-bit
+  stored blue, green, red: checked by eye on `Ar_Bg.pcx`); every DEF frame decodes with the four
+  known encodings once the 16-byte header of `SGTWMTA`/`SGTWMTB` is recognised (VCMI 1.7.5's
+  `CDefFile::loadFrame` has the same case; without it 740 rows overrun); every MSK has 14 bytes.
+- **T2.** `h3_assets::palette` (`Rgb`, `Palette` from or to 768-byte triples, `decode_pal`),
+  `h3_assets::pcx` (`decode_pcx`: `Pcx::Indexed`, boxed for its palette, or `Pcx::Rgb`); one error
+  type for the crate (`h3_assets::Error`: truncated, trailing bytes, magic, a named field, overrun,
+  too large); a private bounded reader (`read`: every read answers `None` past the end, a header
+  read as one array so that a cut header has a single failure path).
+- **T3.** `h3_assets::def` (`parse_def`: header, palette, groups; `decode_frame` by offset;
+  `Encoding` names the four encodings: `Raw`, `Rows`, `PackedRows`, `PackedBlocks`; `Frame` keeps
+  the canvas, the frame's place in it and whether it had the short header), `h3_assets::msk` (the
+  raw masks; their meaning waits for research item 9). `h3_assets::check` decodes an entry by its
+  extension and reports findings that do not stop decoding (archive type against content, a
+  frame's canvas, a frame outside its canvas, the short header, a failing frame).
+  `h3_assets::survey`: duplicates across archives; the names that text mentions (exact tokens and
+  `printf` patterns with `%c`, `%d`, `%0Nd`, `%s`; a pattern needs three literal characters before
+  its extension; an MSK counts through its DEF); the 8.3 check.
+- **Synthetic assets.** `h3_assets::build` (public, as `h3_formats::lod::build`): encoders for PAL,
+  PCX, MSK, DEF and single frames in all four encodings, for this crate's tests and those of the
+  crates above it (T6, T7). Round trips through the decoders are proptests (random frames in every
+  encoding), as are "never panics" on random and mutated inputs.
+- **The gate.** `h3-view gate` now inflates every entry, scans the text tables, `Heroes3.exe` and
+  `h3maped.exe` (an entry only the editor names is not dead; both optional), decodes every PCX,
+  PAL, DEF and MSK, compares duplicates byte by byte, writes `entries.tsv` (each entry's verdict,
+  findings, mention and duplicate status) and `report.md` (the inventory), and fails if any entry
+  does not decode. On the user's files: DEF 2 912, MSK 1 670, PAL 3, PCX 7 215, none failing;
+  release build about 3 s in all (debug about 30 s).
+- **`check.sh`.** Its CI-paths step passed `cargo metadata`'s JSON as an argument, which outgrew
+  the system's limit once proptest's dependencies joined the lockfile ("Argument list too long");
+  it now goes through stdin.
+- *Provisional* (agent's choices): strict lengths and overruns as errors (`E17-design.md` §1),
+  `def::MAX_SIDE` = 16 384, per-row offsets for encoding 2 (VCMI reads on from the first row; the
+  same on every file), the report's layout, the pattern rule's three literals.
+- **For the review list:** `proptest` as a dev-dependency of `h3-assets` (the engine's version
+  1.11.0 and features, pinned in `clients/Cargo.lock`; test-only, so not in the purity allowlist);
+  `h3_assets::build` as public API.
+- Gates: `clients/scripts/check.sh` passes (fmt, clippy, tests, deny, 100 % lines and regions of
+  the pure libraries, CI paths); CI could not run (billing).
