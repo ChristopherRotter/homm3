@@ -51,11 +51,13 @@ pub(crate) fn mark_corpses(state: &mut BattleState) {
 /// How a cast tests the stack it raises (the original's 0x5A8090 for Resurrection and Animate
 /// Dead, case 0x5A8467): the spell whose conditions, level and immunities apply and, unless the
 /// test has none, the hit points the cast raises, with the caster's bonuses for that spell, which
-/// must reach one creature's health.
+/// must reach one creature's health. A sacrifice that finds its stack by another spell's test
+/// (quirk BAT-QUIRK-5) then asks its `own` of the stack found ([`sacrifice_admits`]).
 #[derive(Clone, Copy)]
 pub(crate) struct RaiseTest<'r> {
     spell: SpellRef<'r>,
     hit_points: Option<(u64, SpellBonus)>,
+    own: Option<SpellRef<'r>>,
 }
 
 /// The test of a stack raiser's raise (BAT-MAG-051; the original's 0x5A3CC0 with its third
@@ -73,12 +75,14 @@ pub(crate) const fn creature_test(spell: SpellRef<'_>, hit_points: u64) -> Raise
                 level: 0,
             },
         )),
+        own: None,
     }
 }
 
 /// The test of `hero`'s cast of `spell` at `mastery` for the stack it raises: the spell's own with
 /// its hit points (BAT-MAG-035); for a sacrifice, with quirk BAT-QUIRK-5 that of the spell it tests
-/// as (Resurrection's, at the hero's mastery in it), else its own without hit points
+/// as (Resurrection's, at the hero's mastery in it), by which the original finds the stack, and
+/// then the sacrifice's own of the stack found; else its own alone, without hit points
 /// (BAT-MAG-036).
 pub(crate) fn test_for<'r>(
     hero: &HeroRecord,
@@ -93,6 +97,7 @@ pub(crate) fn test_for<'r>(
         (true, None) => RaiseTest {
             spell: (id, spell),
             hit_points: None,
+            own: None,
         },
         (true, Some((t, s))) => RaiseTest {
             spell: (t, s),
@@ -100,10 +105,12 @@ pub(crate) fn test_for<'r>(
                 base_value(hero, s, mastery(hero, t)),
                 hero.magic.bonuses.spell(t),
             )),
+            own: Some((id, spell)),
         },
         (false, _) => RaiseTest {
             spell: (id, spell),
             hit_points: Some((base_value(hero, spell, at), hero.magic.bonuses.spell(id))),
+            own: None,
         },
     }
 }
@@ -124,18 +131,45 @@ fn eligible(
     let stack = state.at(s);
     stack.side == side
         && stack.count < stack.base_count
-        && !barred(state, test.spell.1)
-        && affects(
-            ruleset,
-            test.spell,
-            stack.creature,
-            Guard::of(state, side, s),
-        )
-        && !(stack.is_alive() && kept_off(stack, test.spell.1))
+        && can_affect(state, ruleset, side, test.spell, s)
         && test.hit_points.is_none_or(|(value, own)| {
             let bonus = specialist_bonus(ruleset, test.spell.1, own, stack.creature, value);
             u64::from(stack.max_hp) <= value.saturating_add_signed(bonus)
         })
+}
+
+/// Whether `side`'s `spell` can affect stack `s`, living or dead: the battle's spell level limit
+/// (BAT-MAG-062), the spell's conditions and immunities with the heroes' part, and Anti-Magic on
+/// a living stack (a dead one's timed effects ended at its death).
+fn can_affect(
+    state: &BattleState,
+    ruleset: &Ruleset,
+    side: BattleSide,
+    spell: SpellRef<'_>,
+    s: StackId,
+) -> bool {
+    let stack = state.at(s);
+    !barred(state, spell.1)
+        && affects(ruleset, spell, stack.creature, Guard::of(state, side, s))
+        && !(stack.is_alive() && kept_off(stack, spell.1))
+}
+
+/// Whether the sacrifice `own` of `side` takes stack `s`, found by another spell's test, as the
+/// stack it raises (BAT-MAG-036 with quirk BAT-QUIRK-5; the original's target test 0x5A39C0 asks
+/// 0x5A8090 about the spell itself once the stack is found, and for Sacrifice's stack to raise
+/// that is case 0x5A8523 without the controller's test: a living creature, not a stack the
+/// battle created, fewer creatures than at the start, then the general tests, so the spell's own
+/// level and school against immunities and Anti-Magic): a stack the battle did not create that
+/// the spell can affect.
+// rule: BAT-MAG-036
+fn sacrifice_admits(
+    state: &BattleState,
+    ruleset: &Ruleset,
+    side: BattleSide,
+    own: SpellRef<'_>,
+    s: StackId,
+) -> bool {
+    !state.at(s).is_created() && can_affect(state, ruleset, side, own, s)
 }
 
 /// Whether stack `s` is a target of `side`'s raise `test` (BAT-MAG-035; the original finds the
@@ -149,12 +183,19 @@ pub(crate) fn raisable(
     test: RaiseTest<'_>,
     s: StackId,
 ) -> bool {
-    if state.at(s).is_alive() {
-        return eligible(state, ruleset, side, test, s);
-    }
-    on_top(state, ruleset, s, |t| {
-        eligible(state, ruleset, side, test, t)
-    })
+    let found = if state.at(s).is_alive() {
+        eligible(state, ruleset, side, test, s)
+    } else {
+        on_top(state, ruleset, s, |t| {
+            eligible(state, ruleset, side, test, t)
+        })
+    };
+    // The stack is found by the test alone; a sacrifice's own test is asked of the stack found
+    // (a corpse it refuses still covers those below it).
+    found
+        && test
+            .own
+            .is_none_or(|own| sacrifice_admits(state, ruleset, side, own, s))
 }
 
 /// Whether the dead stack `s` is a corpse that `qualifies`, whose hexes hold no living stack and

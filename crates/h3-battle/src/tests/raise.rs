@@ -441,6 +441,59 @@ fn with_bat_quirk_5_sacrifice_tests_its_target_as_resurrection() {
     assert_eq!(targets(&t, &plain, "offering"), vec![1, 2]);
 }
 
+// covers: BAT-MAG-036
+#[test]
+fn with_bat_quirk_5_the_raised_stack_passes_sacrifices_own_test_too() {
+    let r = ruleset_with("t:sacrifice", |_| {});
+    // Expert air: Resurrection's 3 × 50 + 160 = 310 hit points reach every creature here.
+    let mut hero = mage(&r, &["rise", "offering", "serfs"]);
+    hero.magic.masteries = masteries(&r, [3, 1, 0, 0]);
+    hero.magic.mana = 200;
+    let mut s = arena(
+        &r,
+        [Some(hero), None],
+        &[
+            ("fixed", 1, 2, 1),
+            ("ember", 3, 5, 5),
+            ("serf", 5, 7, 5),
+            ("serf", 5, 9, 5),
+        ],
+        &[("serf", 1, 14, 5)],
+        1,
+    );
+    s.stacks.as_mut_slice()[1].count = 1;
+    s.stacks.as_mut_slice()[2].count = 4;
+    // The embers (living, immune to the fire school) pass Resurrection's test, by which the
+    // original finds the stack; it then asks Sacrifice's own test of the stack it found (the
+    // target test 0x5A39C0 calls 0x5A8090 for the spell itself), and a fire spell does not
+    // affect them. (With the quirk only Resurrection's test was asked: review r4a F-1.)
+    assert_eq!(targets(&s, &r, "rise"), vec![1, 2]);
+    assert_eq!(targets(&s, &r, "offering"), vec![2]);
+    assert_eq!(
+        cast(&mut s, &r, "offering", (stack(1), stack(3))),
+        Err(CommandError::InvalidSpellTarget)
+    );
+    // The stack is found by Resurrection's test alone: dead embers on top of dead serfs are
+    // found and then refused, and the serfs below them are not looked at.
+    kill(&mut s, &r, 2);
+    place(&mut s, &r, 1, 7, 5);
+    kill(&mut s, &r, 1);
+    assert_eq!(targets(&s, &r, "rise"), vec![1]);
+    assert_eq!(targets(&s, &r, "offering"), Vec::<u8>::new());
+    // Without the quirk Sacrifice's own test alone picks the corpse: the serfs.
+    let plain = ruleset();
+    assert_eq!(targets(&s, &plain, "offering"), vec![2]);
+    // Nor is a stack the battle created a target (the original's flag `0x400000`), though
+    // Resurrection restores it: six summoned serfs, four of them lost.
+    cast(&mut s, &r, "serfs", (CastTarget::None, CastTarget::None)).unwrap();
+    s.heroes[0].as_mut().unwrap().view.casts = 0;
+    assert!(s.stacks()[5].is_created());
+    assert_eq!((s.stacks()[5].count, s.stacks()[5].base_count), (6, 6));
+    s.stacks.as_mut_slice()[5].count = 2;
+    assert_eq!(targets(&s, &r, "rise"), vec![1, 5]);
+    assert_eq!(targets(&s, &r, "offering"), Vec::<u8>::new());
+}
+
 // covers: BAT-MAG-001
 #[test]
 fn a_cast_that_kills_the_active_stack_ends_its_turn() {
