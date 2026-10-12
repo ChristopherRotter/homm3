@@ -20,8 +20,8 @@ use h3_content::{
     SpellScope, TimedChange,
 };
 use h3_contracts::{
-    Army, ArmyStack, BallistaControl, BattleEffect, BattleHero, BattleSetup, BattleSide,
-    DamageBonuses, EagleEye, StackOrigin, StackRecord, StatOp, TentControl,
+    Army, ArmyStack, BallistaControl, BattleEffect, BattleHero, BattleResult, BattleSetup,
+    BattleSide, DamageBonuses, EagleEye, StackOrigin, StackRecord, StatOp, TentControl,
 };
 use h3_kernel::Rng;
 use proptest::collection::{btree_map, vec};
@@ -91,6 +91,10 @@ enum Step {
     /// BAT-MAG-026) at its `n`-th target, Berserk at a hex a living stack stands on if it may, so
     /// that stacks do go berserk; without a castable one, as `Legal(n)`.
     Control(u16),
+    /// Cast Clone (BAT-MAG-038) at its `n`-th target, a two-hex stack if it may: one in a crowd
+    /// becomes its own clone with quirk BAT-QUIRK-7 ([`crowd`]); without a castable Clone, as
+    /// `Legal(n)`.
+    Clone(u16),
 }
 
 /// The control spells of the test ruleset that a `Control` step casts.
@@ -142,6 +146,7 @@ fn arb_step() -> impl Strategy<Value = Step> {
         2 => (arb_command(), any::<bool>()).prop_map(|(command, wrong_actor)| Step::Arbitrary { command, wrong_actor }),
         2 => any::<u16>().prop_map(Step::Cast),
         1 => any::<u16>().prop_map(Step::Control),
+        1 => any::<u16>().prop_map(Step::Clone),
     ]
 }
 
@@ -544,6 +549,59 @@ fn make_setup(
     }
 }
 
+/// The cast of `side`'s castable `spell` at the `n`-th of its targets that `prefer` accepts, of
+/// all its targets if it accepts none.
+fn aimed(
+    state: &BattleState,
+    r: &Ruleset,
+    (side, spell): (BattleSide, SpellId),
+    n: u16,
+    prefer: impl Fn(&CastTarget) -> bool,
+) -> Command {
+    let mut targets = CastTargets::new();
+    cast_targets(state, r, side, spell, &mut targets);
+    let preferred: Vec<CastTarget> = targets.iter().copied().filter(|t| prefer(t)).collect();
+    let pool = if preferred.is_empty() {
+        targets.as_slice()
+    } else {
+        &preferred
+    };
+    Command::Cast {
+        spell,
+        target: pool[usize::from(n) % pool.len()],
+        second: CastTarget::None,
+    }
+}
+
+/// Walls in a living two-hex stack of `state` that is no war machine (the first whose side has a
+/// hero, else the first):
+/// every free hex up to two hexes from it is blocked, but the one ahead of its head. Clone, cast
+/// at it, then finds no place for a clone before the stack's own hexes, which count as free with
+/// quirk BAT-QUIRK-7: the stack becomes its own clone (BAT-MAG-038).
+fn crowd(state: &mut BattleState, r: &Ruleset) {
+    let field = crate::Field::new(r.battle().field);
+    let wide = |led: bool| {
+        let fits = |s: &&crate::Stack| {
+            let clonable =
+                s.is_alive() && s.is_two_hex() && !s.has(crate::StackTraits::WAR_MACHINE);
+            clonable && (!led || state.hero(s.side).is_some())
+        };
+        state.stacks().iter().find(fits).copied()
+    };
+    let Some(stack) = wide(true).or_else(|| wide(false)) else {
+        return;
+    };
+    let own = stack.footprint(field);
+    let ahead = field.neighbor(own.head, crate::Field::head_direction(stack.side));
+    let taken = state.living_hexes(field);
+    for hex in (0..=u8::MAX).map(Hex).take(field.hex_count()) {
+        let near = own.hexes().any(|h| field.distance(h, hex) <= 2);
+        if near && Some(hex) != ahead && field.is_standable(hex) && !taken.contains(hex) {
+            state.natural.block(hex);
+        }
+    }
+}
+
 /// Resolves a step into `(actor, command)` for the current state. The side to act is the active
 /// stack's controller (BAT-MAG-026): a step that is not from the wrong actor is its command, also
 /// for a stack of the other side that it hypnotized.
@@ -565,24 +623,24 @@ fn resolve(
             let Some(&spell) = controls.get(usize::from(*n) % controls.len().max(1)) else {
                 return resolve(state, r, &Step::Legal(*n), legal);
             };
-            let mut targets = CastTargets::new();
-            cast_targets(state, r, side, spell, &mut targets);
-            let on_stack = |t: &&CastTarget| match t {
+            let on_stack = |t: &CastTarget| match t {
                 CastTarget::Hex(h) => state.stacks().iter().any(|s| s.is_alive() && s.hex == *h),
                 _ => true,
             };
-            let aimed: Vec<CastTarget> = targets.iter().filter(on_stack).copied().collect();
-            let pool = if aimed.is_empty() {
-                targets.as_slice()
-            } else {
-                &aimed
+            (side, aimed(state, r, (side, spell), *n, on_stack))
+        }
+        Step::Clone(n) => {
+            let clone = r.spell_by_key("t:copy");
+            let Some(spell) =
+                clone.filter(|&spell| castable_spells(state, r, side).contains(spell))
+            else {
+                return resolve(state, r, &Step::Legal(*n), legal);
             };
-            let command = Command::Cast {
-                spell,
-                target: pool[usize::from(*n) % pool.len()],
-                second: CastTarget::None,
+            let wide = |t: &CastTarget| {
+                t.stack()
+                    .is_some_and(|id| state.stacks()[id.index()].is_two_hex())
             };
-            (side, command)
+            (side, aimed(state, r, (side, spell), *n, wide))
         }
         Step::Legal(n) => {
             legal_commands(state, r, side, legal);
@@ -707,13 +765,26 @@ proptest! {
     /// Atomicity, legality consistency, ownership isolation and conservation, checked at every
     /// step, by the trusted actor and the active stack's controller: who commands and whose hero
     /// casts (BAT-MAG-026), which turns are automatic (a berserk stack's, BAT-MAG-025; a war
-    /// machine's, BAT-WAR-002), and what a command or such a turn may move and strike.
+    /// machine's, BAT-WAR-002), and what a command or such a turn may move and strike; and the
+    /// battle's end (BAT-END-001, BAT-END-002). Half the games with quirk BAT-QUIRK-7 as well,
+    /// one of their two-hex stacks in a crowd: Clone turns it into its own clone, which may
+    /// vanish as its side's last stack (BAT-MAG-038).
     #[test]
-    fn every_step_preserves_the_invariants((att, def, obstacles, seed, steps, hidden) in arb_game()) {
-        let r = lively();
+    fn every_step_preserves_the_invariants(
+        (att, def, obstacles, seed, steps, hidden) in arb_game(),
+        own_clone: bool,
+    ) {
+        let r = if own_clone {
+            lively_mix(&["no_luck_without_hero", "clone_on_its_original"])
+        } else {
+            lively()
+        };
         let setup = game_setup(&r, (&att, &def, &obstacles), seed, &hidden);
         let limits = Limits::of(&setup);
         let mut state = BattleState::new(&r, &setup, seed).unwrap();
+        if own_clone {
+            crowd(&mut state, &r);
+        }
         let mut legal = LegalCommands::new();
         for (turn, step) in steps.iter().enumerate() {
             let (actor, cmd) = resolve(&state, &r, step, &mut legal);
@@ -801,6 +872,13 @@ proptest! {
                 }
                 Ok(()) => {
                     prop_assert!(cmd_listed, "illegal {cmd:?} accepted");
+                    // A side leaves the battle only by its own command: the trusted actor's
+                    // side, whoever owns the active stack (BAT-FLE-001, BAT-FLE-002).
+                    let left = match state.result() {
+                        Some(BattleResult::Retreat(side) | BattleResult::Surrender(side)) => Some(side),
+                        _ => None,
+                    };
+                    prop_assert_eq!(left, cmd.leaves_battle().then_some(actor));
                     // Mana is spent only by casts, by the spell's cost, at most once per round
                     // and side (BAT-MAG-001, BAT-MAG-002); besides, it comes only from channels
                     // and goes only to drains, as their events report (BAT-MAG-055,
@@ -1132,6 +1210,28 @@ proptest! {
             }
             // A battle that is over has no active stack, and vice versa.
             prop_assert_eq!(state.is_over(), state.active().is_none());
+            // The battle's end (BAT-END-001, BAT-END-002). While it goes on, each side has a
+            // living stack that is no war machine, also after a round's start took one: with
+            // quirk BAT-QUIRK-7 a stack that became its own clone vanishes there, perhaps its
+            // side's last (BAT-MAG-038; review r4a F-3). Once it ended without a side leaving
+            // it, a side has none; the other side has won exactly if a stack of its army lives,
+            // not only stacks created in the battle (BAT-MAG-037).
+            let fights = |side: BattleSide, army: bool| {
+                state.stacks().iter().any(|s| {
+                    s.side == side && s.is_alive() && !s.has(crate::StackTraits::WAR_MACHINE) && !(army && s.is_created())
+                })
+            };
+            let wins = |side: BattleSide| !fights(side.opponent(), false) && fights(side, true);
+            let [attacker, defender] = BattleSide::BOTH.map(wins);
+            match state.result() {
+                None => prop_assert!(BattleSide::BOTH.into_iter().all(|side| fights(side, false))),
+                Some(BattleResult::Victory(side)) => prop_assert!(wins(side)),
+                Some(BattleResult::Draw) => {
+                    prop_assert!(BattleSide::BOTH.into_iter().any(|side| !fights(side, false)));
+                    prop_assert!(!attacker && !defender);
+                }
+                Some(BattleResult::Retreat(_) | BattleResult::Surrender(_)) => {}
+            }
             // Who commands (BAT-MAG-026): a stack's controller is its side, or the other side
             // exactly while a Hypnotize is active on it; the side to act is the active stack's
             // controller; and the stack that awaits a command is not berserk (BAT-MAG-025: a
@@ -1148,10 +1248,14 @@ proptest! {
             prop_assert_eq!(state.side_to_act(), state.active().map(|id| controller_by_rule(&state, &r, id)));
             prop_assert!(state.active().is_none_or(|id| !berserk(&r, &listed, id)));
             // Living stacks never share a hex (BAT-GEO-002; a clone neither, BAT-QUIRK-7); a side
-            // has at most the stack limit of stacks; exactly the living clones have rounds left,
-            // and created stacks leave no corpse (BAT-MAG-037, BAT-MAG-038).
+            // has at most the stack limit of stacks; created stacks leave no corpse
+            // (BAT-MAG-037). Rounds are left to exactly the living clones and, with quirk
+            // BAT-QUIRK-7, the living stacks that became their own clones: created, no clones,
+            // linked to themselves; any other link joins a living clone and its living original
+            // (BAT-MAG-038).
             let field = crate::geometry::Field::new(r.battle().field);
             let mut taken = crate::geometry::HexSet::new();
+            let links = state.created.links();
             for (i, s) in state.stacks().iter().enumerate() {
                 let id = StackId(u8::try_from(i).unwrap());
                 if s.is_alive() {
@@ -1160,8 +1264,15 @@ proptest! {
                         taken.insert(h);
                     }
                 }
-                let clone = s.is_alive() && s.has(crate::StackTraits::CLONE);
-                prop_assert_eq!(clone, state.clone_rounds(id) > 0);
+                let clone = s.has(crate::StackTraits::CLONE);
+                let own = links[i] == Some(id);
+                prop_assert_eq!(s.is_alive() && (clone || own), state.clone_rounds(id) > 0);
+                prop_assert!(!own || (own_clone && s.is_created() && !clone));
+                if let Some(other) = links[i].filter(|_| !own) {
+                    let linked = state.stacks()[other.index()];
+                    prop_assert_eq!(links[other.index()], Some(id));
+                    prop_assert!(s.is_alive() && linked.is_alive() && clone != linked.has(crate::StackTraits::CLONE));
+                }
                 prop_assert!(s.is_alive() || !s.is_created() || state.corpse(id) == crate::NO_CORPSE);
             }
             for side in BattleSide::BOTH {
