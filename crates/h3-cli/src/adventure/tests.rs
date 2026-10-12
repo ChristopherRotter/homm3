@@ -10,6 +10,7 @@ fn options(days: u32) -> RunOptions {
     RunOptions {
         map: DUEL.to_owned(),
         profile: DEFAULT_PROFILE.to_owned(),
+        difficulty: h3_game::DEFAULT_DIFFICULTY,
         record: RecordOptions {
             seed: 4,
             agent_seed: 6,
@@ -154,6 +155,92 @@ fn a_recorded_game_round_trips_through_its_file_and_verifies() {
     std::fs::remove_dir_all(&dir).unwrap();
 }
 
+/// Format v2: the game's difficulty in the header, verified at it; answers round-trip through
+/// the file; a v1 file (no difficulty) reads as normal and is refused by its version; a difficulty
+/// the rules do not have is the setup's error.
+#[test]
+fn the_difficulty_and_the_answers_round_trip_through_the_file() {
+    let (packs, dir) = (root().join("packs"), root());
+    let easy = RunOptions {
+        difficulty: 0,
+        ..options(1)
+    };
+    let (replay, text) = run_random(&packs, &dir, &easy).unwrap();
+    assert_eq!(replay.difficulty, 0);
+    assert!(text.contains("format = 2\n"), "{text}");
+    assert!(text.contains("difficulty = 0\n"), "{text}");
+    let (normal, _) = run_random(&packs, &dir, &options(1)).unwrap();
+    assert_eq!(normal.difficulty, h3_game::DEFAULT_DIFFICULTY);
+    assert_eq!(normal.commands, replay.commands);
+    assert_ne!(normal.final_hash, replay.final_hash);
+    let tmp = std::env::temp_dir().join(format!("h3-adventure-v2-{}", std::process::id()));
+    std::fs::create_dir_all(&tmp).unwrap();
+    let file = tmp.join("r.toml");
+    let verify = |text: &str| {
+        std::fs::write(&file, text).unwrap();
+        verify_file(&file, &packs, &dir)
+    };
+    assert_eq!(verify(&text).unwrap().final_hash, replay.final_hash);
+    // At another difficulty the recorded hashes are another game's.
+    let e = verify(&text.replacen("difficulty = 0", "difficulty = 1", 1)).unwrap_err();
+    assert!(
+        matches!(
+            e,
+            AdventureCliError::Replay(ReplayError::HashMismatch { .. })
+        ),
+        "{e}"
+    );
+    let e = verify(&text.replacen("difficulty = 0", "difficulty = 9", 1)).unwrap_err();
+    assert!(e.to_string().contains("no difficulty 9"), "{e}");
+    let e = verify(&text.replacen("difficulty = 0", "difficulty = 300", 1)).unwrap_err();
+    assert!(matches!(e, AdventureCliError::Format(_)), "{e}");
+    // A v1 file: no difficulty, refused by its version before its map is read.
+    let v1 = text
+        .replacen("format = 2", "format = 1", 1)
+        .replacen("difficulty = 0\n", "", 1);
+    assert_eq!(
+        parse_replay(&v1).unwrap().difficulty,
+        h3_game::DEFAULT_DIFFICULTY
+    );
+    let e = verify(&v1.replacen("e08-duel-36", "nosuch", 1)).unwrap_err();
+    assert!(
+        matches!(
+            e,
+            AdventureCliError::Replay(ReplayError::Incompatible("format_version"))
+        ),
+        "{e}"
+    );
+    std::fs::remove_dir_all(&tmp).unwrap();
+    // Answers round-trip through the file.
+    let mut answered = replay.clone();
+    answered
+        .commands
+        .push((PlayerId::new(1), GameCommand::Answer(Answer::Accept)));
+    answered
+        .commands
+        .push((PlayerId::new(0), GameCommand::Answer(Answer::Decline)));
+    let text = replay_to_toml(&answered).unwrap();
+    assert!(text.contains("\"1 accept\""), "{text}");
+    assert_eq!(parse_replay(&text).unwrap(), answered);
+    // A difficulty the rules do not have is the setup's error.
+    let e = run_random(
+        &packs,
+        &dir,
+        &RunOptions {
+            difficulty: 5,
+            ..options(1)
+        },
+    )
+    .unwrap_err();
+    assert!(
+        matches!(
+            e,
+            AdventureCliError::Record(RecordError::Setup(h3_game::GameSetupError::Difficulty(5)))
+        ),
+        "{e}"
+    );
+}
+
 #[test]
 fn rules_load_from_the_pack_folders_as_the_embedded_packs_compile() {
     let ids: Vec<String> = DEFAULT_PACKS.iter().map(|&s| s.to_owned()).collect();
@@ -199,10 +286,17 @@ fn the_command_line_runs_and_verifies() {
         &packs,
         "--days",
         "1",
+        "--difficulty",
+        "0",
         "--record",
         &out,
     ]))
     .unwrap();
+    assert!(
+        std::fs::read_to_string(&out)
+            .unwrap()
+            .contains("difficulty = 0\n")
+    );
     cli::main(&args(&[
         "verify",
         "--root",
@@ -219,6 +313,19 @@ fn the_command_line_runs_and_verifies() {
         args(&["run", "--map"]),
         args(&["run", "--map", DUEL, "--days", "0"]),
         args(&["run", "--map", DUEL, "--days", "x"]),
+        args(&["run", "--map", DUEL, "--difficulty", "x"]),
+        args(&["run", "--map", DUEL, "--difficulty", "256"]),
+        args(&[
+            "run",
+            "--map",
+            DUEL,
+            "--root",
+            &root,
+            "--packs-dir",
+            &packs,
+            "--difficulty",
+            "5",
+        ]),
         args(&["run", "--map", DUEL, "--speed", "1"]),
         args(&[
             "run",
@@ -253,6 +360,7 @@ fn the_benchmark_workloads_run_and_count_what_they_say() {
             &bench::BenchOptions {
                 map: DUEL.to_owned(),
                 profile: DEFAULT_PROFILE.to_owned(),
+                difficulty: h3_game::DEFAULT_DIFFICULTY,
                 workload,
                 games: 2,
                 days: 2,
@@ -299,6 +407,8 @@ fn the_benchmark_workloads_run_and_count_what_they_say() {
             "1",
             "--masks",
             "1",
+            "--difficulty",
+            "4",
         ]))
         .unwrap();
     }
@@ -306,6 +416,18 @@ fn the_benchmark_workloads_run_and_count_what_they_say() {
         args(&["bench"]),
         args(&["bench", "--map", DUEL, "--workload", "walk"]),
         args(&["bench", "--map", DUEL, "--days", "0"]),
+        args(&["bench", "--map", DUEL, "--difficulty", "x"]),
+        args(&[
+            "bench",
+            "--map",
+            DUEL,
+            "--root",
+            &dir,
+            "--packs-dir",
+            &packs,
+            "--difficulty",
+            "5",
+        ]),
         args(&["bench", "--map", DUEL, "--speed", "1"]),
         args(&[
             "bench",

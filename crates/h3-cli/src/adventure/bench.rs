@@ -44,6 +44,8 @@ pub struct BenchOptions {
     pub map: String,
     /// The profile key.
     pub profile: String,
+    /// The games' difficulty (setup input, checked by the game's build).
+    pub difficulty: u8,
     /// The workload.
     pub workload: Workload,
     /// Games (episodes); game `g` uses seed `seed + g` and agent seed `g`.
@@ -79,7 +81,8 @@ pub struct BenchResult {
 pub fn run(packs_dir: &Path, root: &Path, options: &BenchOptions) -> Result<BenchResult> {
     let ids: Vec<String> = DEFAULT_PACKS.iter().map(|&s| s.to_owned()).collect();
     let rules = load_rules(packs_dir, &ids, &options.profile)?;
-    let (_, setup) = load_map(root, &options.map, &rules)?;
+    let (_, mut setup) = load_map(root, &options.map, &rules)?;
+    setup.difficulty = options.difficulty;
     let mut env = AdventureEnv::new(rules, Arc::new(setup), options.seed, options.days)
         .map_err(super::AdventureCliError::Setup)?;
     let mut result = BenchResult {

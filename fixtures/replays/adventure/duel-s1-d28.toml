@@ -145,9 +145,10 @@ checkpoints = [
 ]
 
 [replay]
-format = 1
+format = 2
 engine = "0.1.0"
 seed = "1"
+difficulty = 1
 packs = [
     [
     "base",
