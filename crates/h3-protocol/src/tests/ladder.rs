@@ -11,7 +11,9 @@ use std::vec::Vec;
 
 use proptest::prelude::*;
 
-use crate::ladder::{Ladder, LadderBot, Matched, Queues, Told, WIDEN_EVERY_MS, WINDOW, window};
+use crate::ladder::{
+    BARRED_MS, Ladder, LadderBot, Matched, Queues, Told, WIDEN_EVERY_MS, WINDOW, window,
+};
 use crate::wire::{LadderInfo, Refusal, ServerMessage, UnqueueReason};
 
 /// The ladder `id`, 10 s to accept, without bots.
@@ -136,12 +138,12 @@ fn an_account_waits_in_one_queue_once_logged_in() {
     // It leaves when it asks, or with its connection; not twice.
     let mut told = Told::new();
     assert_eq!(
-        q.dequeue(1, 7, &mut told),
+        q.dequeue(1, (7, 0), &mut told),
         ServerMessage::Dequeued { seq: 7 }
     );
-    assert_eq!(q.dequeue(1, 8, &mut told), refused(Refusal::NotQueued));
-    q.closed(2, &mut told);
-    q.closed(3, &mut told);
+    assert_eq!(q.dequeue(1, (8, 0), &mut told), refused(Refusal::NotQueued));
+    q.closed(2, 0, &mut told);
+    q.closed(3, 0, &mut told);
     assert_eq!((waiting(&q), told), (vec![0, 0], vec![]));
 }
 
@@ -208,11 +210,11 @@ fn a_decline_an_expiry_or_a_departure_puts_the_other_back() {
     wait(&mut q, 2, ("bob", 1500), "arena", 0);
     q.tick(0, &mut told);
     wait(&mut q, 3, ("cid", 1500), "arena", 5);
-    assert_eq!(q.decline(3, 4, &mut told), refused(Refusal::NoMatch));
+    assert_eq!(q.decline(3, (4, 0), &mut told), refused(Refusal::NoMatch));
     told.clear();
     // Bob declines: he leaves, Ann waits again, ahead of Cid; she and Cid are matched.
     assert_eq!(
-        q.decline(2, 4, &mut told),
+        q.decline(2, (4, 0), &mut told),
         ServerMessage::Dequeued { seq: 4 }
     );
     assert_eq!(told, [(1, ServerMessage::MatchCancelled {})]);
@@ -223,7 +225,7 @@ fn a_decline_an_expiry_or_a_departure_puts_the_other_back() {
     // Cid leaves the match with `Dequeue`: the same.
     told.clear();
     assert_eq!(
-        q.dequeue(3, 5, &mut told),
+        q.dequeue(3, (5, 0), &mut told),
         ServerMessage::Dequeued { seq: 5 }
     );
     assert_eq!(told, [(1, ServerMessage::MatchCancelled {})]);
@@ -233,7 +235,7 @@ fn a_decline_an_expiry_or_a_departure_puts_the_other_back() {
     q.tick(20, &mut told);
     assert_eq!(told.len(), 2);
     told.clear();
-    q.closed(4, &mut told);
+    q.closed(4, 0, &mut told);
     assert_eq!(told, [(1, ServerMessage::MatchCancelled {})]);
     // Ann accepts a match Eve never answers: at the due time Eve is out, Ann waits again.
     wait(&mut q, 5, ("eve", 1500), "arena", 30);
@@ -258,6 +260,51 @@ fn a_decline_an_expiry_or_a_departure_puts_the_other_back() {
     q.tick(20_030, &mut told);
     assert_eq!(told[2..], [(1, expired.clone()), (6, expired)], "{told:?}");
     assert_eq!(waiting(&q), [0, 0]);
+}
+
+#[test]
+fn who_gives_a_match_up_is_paired_with_no_one_for_a_while() {
+    // E16 M4 T7 (M4's review): a player who declines again and again keeps no one from a match.
+    let mut q = queues();
+    let mut told = Told::new();
+    wait(&mut q, 1, ("ann", 1500), "arena", 0);
+    wait(&mut q, 2, ("bob", 1500), "arena", 0);
+    q.tick(0, &mut told);
+    // Ann declines and queues again at once: barred, she waits; Bob plays Cid, who came later.
+    assert_eq!(
+        q.decline(1, (4, 1), &mut told),
+        ServerMessage::Dequeued { seq: 4 }
+    );
+    wait(&mut q, 1, ("ann", 1500), "arena", 1);
+    wait(&mut q, 3, ("cid", 1500), "arena", 2);
+    told.clear();
+    q.tick(2, &mut told);
+    assert_eq!(told, [(2, found("arena")), (3, found("arena"))]);
+    // Cid lets the match expire: he is out and barred too; Bob waits again, alone to be paired.
+    assert_eq!(q.accept(2), Ok(None));
+    told.clear();
+    q.tick(10_002, &mut told);
+    let expired = ServerMessage::Unqueued {
+        reason: UnqueueReason::Expired,
+    };
+    assert_eq!(told, [(2, ServerMessage::MatchCancelled {}), (3, expired)]);
+    wait(&mut q, 3, ("cid", 1500), "arena", 10_002);
+    told.clear();
+    q.tick(1 + BARRED_MS - 1, &mut told);
+    assert_eq!(told, [], "both barred");
+    assert_eq!(waiting(&q), [3, 0]);
+    // Ann's bar passes: she plays Bob. Cid's has not.
+    q.tick(1 + BARRED_MS, &mut told);
+    assert_eq!(told, [(2, found("arena")), (1, found("arena"))]);
+    // Ann gives this one up as well (her connection goes): barred on the arena only.
+    told.clear();
+    q.closed(1, 1 + BARRED_MS, &mut told);
+    assert_eq!(told, [(2, ServerMessage::MatchCancelled {})]);
+    wait(&mut q, 4, ("ann", 1500), "pit", 1 + BARRED_MS);
+    wait(&mut q, 5, ("dee", 1500), "pit", 1 + BARRED_MS);
+    told.clear();
+    q.tick(1 + BARRED_MS, &mut told);
+    assert_eq!(told, [(4, found("pit")), (5, found("pit"))]);
 }
 
 #[test]
@@ -336,7 +383,7 @@ fn a_player_who_waited_long_enough_plays_the_nearest_bot() {
     // Bob declines: he leaves, the bot is told nothing.
     told.clear();
     assert_eq!(
-        q.decline(2, 3, &mut told),
+        q.decline(2, (3, 0), &mut told),
         ServerMessage::Dequeued { seq: 3 }
     );
     assert_eq!((told.clone(), q.waits("stan")), (vec![], false));
@@ -397,7 +444,7 @@ fn a_player_who_opted_out_never_plays_a_bot() {
     // Bob declines: Ann waits again, still for people only.
     told.clear();
     assert_eq!(
-        q.decline(2, 4, &mut told),
+        q.decline(2, (4, 0), &mut told),
         ServerMessage::Dequeued { seq: 4 }
     );
     assert_eq!(told, [(1, ServerMessage::MatchCancelled {})]);
@@ -435,12 +482,30 @@ fn arb_op() -> impl Strategy<Value = Op> {
     ]
 }
 
-/// A waiting connection's rating, when it came, and whether it may play a bot.
+/// A waiting connection's ladder (the arena: `true`), rating, when it came, and whether it may
+/// play a bot.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 struct Player {
+    arena: bool,
     rating: i32,
     since: u64,
     bots: bool,
+}
+
+/// Until when each account is paired with no one on a ladder (the arena: `true`), having given a
+/// match up there (E16 M4 T7).
+type Barred = BTreeMap<(bool, String), u64>;
+
+/// The connection `conn`, `player`, gave its match up at `now`.
+fn bar(barred: &mut Barred, conn: u8, player: Player, now: u64) {
+    barred.insert((player.arena, login(conn)), now + BARRED_MS);
+}
+
+/// Whether the connection `conn`, `player`, may be paired at `now`.
+fn free(barred: &Barred, conn: u8, player: Player, now: u64) -> bool {
+    barred
+        .get(&(player.arena, login(conn)))
+        .is_none_or(|&until| until <= now)
 }
 
 /// Where a connection is, as the messages it heard say.
@@ -458,8 +523,12 @@ fn login(conn: u8) -> String {
 /// Follows what the queues told, in order: a connection back in the queue keeps its waiting time;
 /// a pair found (two `MatchFound` against a person in a row) is two waiting connections of distinct
 /// accounts within the window; a bot found (E16 M4 T5b) is for one waiting connection that did
-/// not opt out.
-fn follow(model: &mut BTreeMap<u8, Where>, told: &Told<u8>, now: u64) -> Result<(), TestCaseError> {
+/// not opt out; no one is paired while barred, and who let a match expire is (E16 M4 T7).
+fn follow(
+    (model, barred): (&mut BTreeMap<u8, Where>, &mut Barred),
+    told: &Told<u8>,
+    now: u64,
+) -> Result<(), TestCaseError> {
     let mut first = None;
     for &(conn, ref message) in told {
         match message {
@@ -471,6 +540,7 @@ fn follow(model: &mut BTreeMap<u8, Where>, told: &Told<u8>, now: u64) -> Result<
                     )));
                 };
                 prop_assert!(player.bots, "{conn} opted out of bots");
+                prop_assert!(free(barred, conn, player, now), "{conn} is barred");
                 model.insert(conn, Where::Matched(player));
             }
             ServerMessage::MatchFound { bot: false, .. } => {
@@ -486,6 +556,8 @@ fn follow(model: &mut BTreeMap<u8, Where>, told: &Told<u8>, now: u64) -> Result<
                     )));
                 };
                 prop_assert_ne!(login(a), login(conn), "an account against itself");
+                prop_assert!(free(barred, a, pa, now), "{a} is barred");
+                prop_assert!(free(barred, conn, pb, now), "{conn} is barred");
                 let waited = now.saturating_sub(pa.since.max(pb.since));
                 prop_assert!(
                     pa.rating.abs_diff(pb.rating) <= window(waited),
@@ -505,7 +577,11 @@ fn follow(model: &mut BTreeMap<u8, Where>, told: &Told<u8>, now: u64) -> Result<
                 model.insert(conn, Where::Waiting(player));
             }
             ServerMessage::Unqueued { .. } => {
-                prop_assert!(model.remove(&conn).is_some(), "{conn} was not waiting");
+                // Only an expiry unqueues here: who did not accept is barred.
+                let Some(Where::Matched(player)) = model.remove(&conn) else {
+                    return Err(TestCaseError::fail(format!("{conn} was not matched")));
+                };
+                bar(barred, conn, player, now);
             }
             _ => {}
         }
@@ -521,7 +597,7 @@ proptest! {
     ) {
         // The arena has bots (E16 M4 T5), the pit none.
         let mut q = with_bots();
-        let mut model = BTreeMap::new();
+        let (mut model, mut barred) = (BTreeMap::new(), Barred::new());
         let mut now = 0;
         for op in ops {
             let mut told = Told::new();
@@ -533,21 +609,25 @@ proptest! {
                     let answer = q.queue(conn, asked, Some(&login), (rating, false), now);
                     if answer == queued(ladder) {
                         prop_assert!(!model.contains_key(&conn));
-                        let player = Player { rating, since: now, bots };
+                        let arena = ladder == "arena";
+                        let player = Player { arena, rating, since: now, bots };
                         model.insert(conn, Where::Waiting(player));
                     }
                 }
                 Op::Dequeue(conn) | Op::Decline(conn) | Op::Closed(conn) => {
                     let answer = match op {
-                        Op::Dequeue(_) => q.dequeue(conn, 1, &mut told),
-                        Op::Decline(_) => q.decline(conn, 1, &mut told),
+                        Op::Dequeue(_) => q.dequeue(conn, (1, now), &mut told),
+                        Op::Decline(_) => q.decline(conn, (1, now), &mut told),
                         _ => {
-                            q.closed(conn, &mut told);
+                            q.closed(conn, now, &mut told);
                             ServerMessage::Dequeued { seq: 1 }
                         }
                     };
-                    if answer == (ServerMessage::Dequeued { seq: 1 }) {
-                        model.remove(&conn);
+                    // Who leaves a match gives it up (E16 M4 T7).
+                    if answer == (ServerMessage::Dequeued { seq: 1 })
+                        && let Some(Where::Matched(player)) = model.remove(&conn)
+                    {
+                        bar(&mut barred, conn, player, now);
                     }
                 }
                 Op::Accept(conn) => {
@@ -566,7 +646,7 @@ proptest! {
                     q.tick(now, &mut told);
                 }
             }
-            follow(&mut model, &told, now)?;
+            follow((&mut model, &mut barred), &told, now)?;
             // The queues and the model agree on who waits, and no account waits twice.
             let ServerMessage::Ladders { ladders, .. } = q.list(0) else { panic!("not a list of ladders") };
             let total: u32 = ladders.iter().map(|l| l.waiting).sum();

@@ -10,7 +10,8 @@
 //! flagged; a player who opted out (T5b) waits on. The pause by agreement (E16 M4 T6): declined,
 //! agreed and resumed in time, a player not back after its due time forfeits, neither back: void.
 //! M4's exit (E16 M4 T7): two players queue, accept and play a rated battle through a restart,
-//! their ratings the same after another.
+//! their ratings the same after another; a player queues again as soon as its game ended; ids
+//! beyond the ladders' logs without `next-game`.
 
 use h3_protocol::wire::{LadderInfo, LeaderboardRow, Outcome, Points, Seated, Side, UnqueueReason};
 
@@ -868,11 +869,18 @@ async fn two_players_queue_accept_and_play_a_rated_battle_through_a_restart() {
         rows.map(|r| (r.rating, r.games)),
         [(ann_after, 1), (bob_after, 1)]
     );
-    // Another restart: the same ratings, the game no longer listed.
+    // Ann queues again as soon as she heard the end (M4's review: the game left the ranked
+    // games before its end was told).
+    assert_eq!(ask(&mut ann, queue("arena")).await, queued());
+    // Another restart, `next-game` lost: the same ratings, the game no longer listed, and the
+    // next game's id still beyond the one the ladder's log names (M4's review).
     again.shutdown().await;
+    std::fs::remove_file(config.server.data.join("next-game")).unwrap();
     let third = start(&config).await.unwrap();
     assert_eq!([row(&third, "ann"), row(&third, "bob")], rows);
     listed_as(&third, game, None).await;
+    let (_, next, _) = created(&third, "pvp", Seat::Attacker).await;
+    assert!(next > game, "{next} after {game}");
     third.shutdown().await;
     std::fs::remove_dir_all(&config.server.data).unwrap();
 }
