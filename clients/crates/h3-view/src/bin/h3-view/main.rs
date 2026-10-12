@@ -2,6 +2,7 @@
 //! prints; what it computes comes from the pure crates.
 
 mod gate;
+mod sprite;
 
 use std::process::ExitCode;
 
@@ -16,6 +17,12 @@ commands:
           names nothing mentions, timings) to <out>/gate/report.md. <dir> defaults to
           $H3_INSTALL, then to the repository's original-data/install; <out> to clients/out
           (gitignored). Build with --release for meaningful times (about 3 s, against 30 s).
+  sprite <name.def> [--group <id>] [--background <name.pcx>] [--mirror] [--install <dir>]
+         [--out <file>]
+          draws every frame of one group of a DEF (the first by default) side by side, each on
+          its canvas, over a PCX or grey, as the battle draws a stack (shadows over what is
+          below), and writes a PNG (default clients/out/sprite/<name>-<group>.png). The base
+          archives are searched before the AB ones, as the game does.
   help    show this message
 ";
 
@@ -27,6 +34,10 @@ fn main() -> ExitCode {
             "help" | "--help" | "-h" => help(),
             "gate" => match gate::Options::parse(rest) {
                 Ok(options) => gate::run(&options),
+                Err(message) => usage_error(&message),
+            },
+            "sprite" => match sprite::Options::parse(rest) {
+                Ok(options) => sprite::run(&options),
                 Err(message) => usage_error(&message),
             },
             other => usage_error(&format!("unknown command `{other}`")),

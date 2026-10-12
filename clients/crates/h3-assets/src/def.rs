@@ -20,11 +20,13 @@
 //! height; the frame fills the canvas. Read as a full header, its width and height are the first
 //! two row offsets, larger than the canvas. A frame of encoding 1 whose width and height both
 //! exceed the canvas's is read with the short header (origin: VCMI 1.7.5,
-//! `client/render/CDefFile.cpp`, `CDefFile::loadFrame`, the "old format defs" case; the game's own
-//! rule awaits a code reading).
+//! `client/render/CDefFile.cpp`, `CDefFile::loadFrame`, the "old format defs" case). The game
+//! would read a 32-byte header there, and nothing names the two files (`docs/epics/E17-design.md`
+//! §3.4).
 
 use alloc::collections::BTreeSet;
 use alloc::string::String;
+use alloc::vec;
 use alloc::vec::Vec;
 
 use crate::Error;
@@ -152,6 +154,11 @@ pub struct Frame {
     pub height: u32,
     /// `width × height` palette indices, row-major, top row first.
     pub pixels: Vec<u8>,
+    /// Per pixel of [`Frame::pixels`], whether it came from a run (an index repeated by the
+    /// encoding) rather than from literal bytes; encoding 0 has no runs. The game's drawers treat
+    /// the two apart: a run of a keyed index (1–7) is a shadow or an outline, a literal one a
+    /// colour, and some drawers skip runs of any other index (`docs/epics/E17-design.md` §3.3).
+    pub runs: Vec<bool>,
     /// Read with the short header (module documentation).
     pub short_header: bool,
 }
@@ -227,8 +234,12 @@ pub fn decode_frame(bytes: &[u8], offset: u32) -> Result<Frame, Error> {
     }
     let data = slice(bytes, at.saturating_add(header), index(size)).ok_or(Error::Truncated)?;
     let (w, h) = (index(width), index(height));
-    let pixels = match encoding {
-        Encoding::Raw => data.get(..w * h).ok_or(Error::Truncated)?.to_vec(),
+    let Pixels { pixels, runs } = match encoding {
+        Encoding::Raw => {
+            let pixels = data.get(..w * h).ok_or(Error::Truncated)?.to_vec();
+            let runs = vec![false; pixels.len()];
+            Pixels { pixels, runs }
+        }
         Encoding::Rows => rows(data, w, h)?,
         Encoding::PackedRows => packed_rows(data, w, h)?,
         Encoding::PackedBlocks => packed_blocks(data, w, h)?,
@@ -242,13 +253,39 @@ pub fn decode_frame(bytes: &[u8], offset: u32) -> Result<Frame, Error> {
         width,
         height,
         pixels,
+        runs,
         short_header,
     })
 }
 
+/// A frame's pixels as the decoders produce them.
+struct Pixels {
+    pixels: Vec<u8>,
+    runs: Vec<bool>,
+}
+
+impl Pixels {
+    fn with_capacity(n: usize) -> Self {
+        Self {
+            pixels: Vec::with_capacity(n),
+            runs: Vec::with_capacity(n),
+        }
+    }
+
+    fn literal(&mut self, bytes: &[u8]) {
+        self.pixels.extend_from_slice(bytes);
+        self.runs.resize(self.pixels.len(), false);
+    }
+
+    fn run(&mut self, index: u8, length: usize) {
+        self.pixels.resize(self.pixels.len() + length, index);
+        self.runs.resize(self.pixels.len(), true);
+    }
+}
+
 /// Encoding 1.
-fn rows(data: &[u8], w: usize, h: usize) -> Result<Vec<u8>, Error> {
-    let mut out = Vec::with_capacity(w * h);
+fn rows(data: &[u8], w: usize, h: usize) -> Result<Pixels, Error> {
+    let mut out = Pixels::with_capacity(w * h);
     for y in 0..h {
         let mut at = index(u32_at(data, 4 * y).ok_or(Error::Truncated)?);
         let mut filled = 0;
@@ -260,10 +297,10 @@ fn rows(data: &[u8], w: usize, h: usize) -> Result<Vec<u8>, Error> {
                 return Err(Error::Overrun);
             }
             if code == 0xFF {
-                out.extend_from_slice(slice(data, at, length).ok_or(Error::Truncated)?);
+                out.literal(slice(data, at, length).ok_or(Error::Truncated)?);
                 at += length;
             } else {
-                out.resize(out.len() + length, code);
+                out.run(code, length);
             }
             filled += length;
         }
@@ -272,8 +309,8 @@ fn rows(data: &[u8], w: usize, h: usize) -> Result<Vec<u8>, Error> {
 }
 
 /// Encoding 2.
-fn packed_rows(data: &[u8], w: usize, h: usize) -> Result<Vec<u8>, Error> {
-    let mut out = Vec::with_capacity(w * h);
+fn packed_rows(data: &[u8], w: usize, h: usize) -> Result<Pixels, Error> {
+    let mut out = Pixels::with_capacity(w * h);
     for y in 0..h {
         let at = u16_at(data, 2 * y).ok_or(Error::Truncated)?;
         packed(data, usize::from(at), w, &mut out)?;
@@ -282,12 +319,12 @@ fn packed_rows(data: &[u8], w: usize, h: usize) -> Result<Vec<u8>, Error> {
 }
 
 /// Encoding 3.
-fn packed_blocks(data: &[u8], w: usize, h: usize) -> Result<Vec<u8>, Error> {
+fn packed_blocks(data: &[u8], w: usize, h: usize) -> Result<Pixels, Error> {
     if !w.is_multiple_of(32) {
         return Err(Error::Field("width"));
     }
     let blocks = w / 32;
-    let mut out = Vec::with_capacity(w * h);
+    let mut out = Pixels::with_capacity(w * h);
     for block in 0..h * blocks {
         let at = u16_at(data, 2 * block).ok_or(Error::Truncated)?;
         packed(data, usize::from(at), 32, &mut out)?;
@@ -296,7 +333,7 @@ fn packed_blocks(data: &[u8], w: usize, h: usize) -> Result<Vec<u8>, Error> {
 }
 
 /// `count` pixels of one-byte runs from `at`.
-fn packed(data: &[u8], mut at: usize, count: usize, out: &mut Vec<u8>) -> Result<(), Error> {
+fn packed(data: &[u8], mut at: usize, count: usize, out: &mut Pixels) -> Result<(), Error> {
     let mut filled = 0;
     while filled < count {
         let run = u8_at(data, at).ok_or(Error::Truncated)?;
@@ -306,10 +343,10 @@ fn packed(data: &[u8], mut at: usize, count: usize, out: &mut Vec<u8>) -> Result
             return Err(Error::Overrun);
         }
         if code == 7 {
-            out.extend_from_slice(slice(data, at, length).ok_or(Error::Truncated)?);
+            out.literal(slice(data, at, length).ok_or(Error::Truncated)?);
             at += length;
         } else {
-            out.resize(out.len() + length, code);
+            out.run(code, length);
         }
         filled += length;
     }

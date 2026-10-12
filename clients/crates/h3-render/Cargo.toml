@@ -9,6 +9,7 @@ publish.workspace = true
 
 [dependencies]
 h3-assets.workspace = true
+miniz_oxide.workspace = true
 
 [lints]
 workspace = true

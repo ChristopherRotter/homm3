@@ -13,6 +13,7 @@ fn frame(encoding: Encoding, width: u32, height: u32, pixels: Vec<u8>) -> Frame 
         top: -2,
         width,
         height,
+        runs: build::runs_by_repetition(encoding, width, &pixels),
         pixels,
         short_header: false,
     }
@@ -192,7 +193,9 @@ fn encoding_1_is_bounded() {
         );
     }
     let ok = handmade(Encoding::Rows, 4, &[4, 0, 0, 0, 0xFF, 1, 1, 2, 5, 1, 0xEE]);
-    assert_eq!(decode_frame(&ok, 0).unwrap().pixels, [1, 2, 5, 5]);
+    let ok = decode_frame(&ok, 0).unwrap();
+    assert_eq!(ok.pixels, [1, 2, 5, 5]);
+    assert_eq!(ok.runs, [false, false, true, true]);
 }
 
 #[test]
@@ -216,7 +219,51 @@ fn encodings_2_and_3_are_bounded() {
         assert_eq!(decode_frame(&bytes, 0), Err(error), "{encoding:?} {data:?}");
     }
     let ok = handmade(Encoding::PackedRows, 4, &[2, 0, 0xE1, 9, 8, 0x41]);
-    assert_eq!(decode_frame(&ok, 0).unwrap().pixels, [9, 8, 2, 2]);
+    let ok = decode_frame(&ok, 0).unwrap();
+    assert_eq!(ok.pixels, [9, 8, 2, 2]);
+    assert_eq!(ok.runs, [false, false, true, true]);
+    let raw = decode_frame(&handmade(Encoding::Raw, 2, &[1, 1]), 0).unwrap();
+    assert_eq!(raw.runs, [false, false]);
+}
+
+#[test]
+fn the_encoder_follows_the_run_marks() {
+    // A marked pixel becomes a run even alone, an unmarked repeat stays literal, and an index the
+    // encoding cannot repeat (0xFF in encoding 1, 7 and up in 2 and 3) stays literal.
+    for (encoding, width, pixels, runs, decoded) in [
+        (
+            Encoding::Rows,
+            5,
+            vec![4, 4, 4, 0xFF, 9],
+            vec![true, false, false, true, true],
+            vec![true, false, false, false, true],
+        ),
+        (
+            Encoding::PackedRows,
+            4,
+            vec![7, 2, 2, 3],
+            vec![true, true, false, true],
+            vec![false, true, false, true],
+        ),
+        (
+            Encoding::PackedBlocks,
+            32,
+            vec![5; 32],
+            vec![true; 32],
+            vec![true; 32],
+        ),
+    ] {
+        let f = Frame {
+            runs,
+            ..frame(encoding, width, 1, pixels)
+        };
+        let back = decode_frame(&build::frame(&f), 0).unwrap();
+        assert_eq!(
+            (back.pixels, back.runs),
+            (f.pixels, decoded),
+            "{encoding:?}"
+        );
+    }
 }
 
 fn any_encoding() -> impl Strategy<Value = Encoding> {

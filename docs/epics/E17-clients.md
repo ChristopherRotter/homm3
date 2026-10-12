@@ -1,11 +1,11 @@
 # E17 — Clients and asset pipeline
 
-Status: **in progress**: M0 done (2026-10-12); M1 under way (T1, T2 and T3 done 2026-10-12). Refined 2026-10-12 (E17a, the asset notes,
+Status: **in progress**: M0 done (2026-10-12); M1 under way (T1, T2, T3 and T6 done 2026-10-12). Refined 2026-10-12 (E17a, the asset notes,
 done the same day). Decisions: [ADR-0020](../adr/0020-clients.md) (accepted at the M0 checkpoint,
 point 7 rewritten there). Working detail (code readings, formats, layouts): `docs/epics/E17-design.md`,
 created by the first task that has detail to record; done tasks in full:
 [`E17-log.md`](E17-log.md). Lane: client (`docs/lanes/client/HANDOFF.md`; the user's asset notes
-are there). Next: M1 T6 (the compositor), then T4 and T5.
+are there). Next: M1 T4 (the asset tables) and T5 (the battle screen), then T7.
 
 ## Goal
 
@@ -90,6 +90,9 @@ autonomy contract (lane HANDOFF) says what the agent decides alone in between.
 - **T1 done 2026-10-12** ([log](E17-log.md#m1-t1--code-reading-archives-screen-format-keyed-colours-2026-10-12),
   [design §3](E17-design.md)): the base archives win; the screen is 16-bit, palettes truncated to
   it; shadows halve or quarter the 16-bit pixel below, compounding; runs of index ≥ 8 skipped.
+- **T6 done 2026-10-12** ([log](E17-log.md#m1-t6--the-compositor-2026-10-12)): `h3-render` draws
+  decoded frames as the executable's drawers do (design §3.3) into a 16-bit screen and encodes it
+  as PNG; `h3-view sprite` shows it on the user's files.
 
 ### M2 — the battle replay viewer
 
@@ -148,3 +151,8 @@ notes), HD layouts, the adventure map and the full game viewer, video.
 - `h3_assets::build`, encoders for synthetic assets, as public API of `h3-assets` (T2, T3).
 - The decoders' strictness: exact lengths, an overrunning run is an error (no original file has
   one; `E17-design.md` §1; T2, T3).
+- `miniz_oxide` (already in the lockfile through `h3-formats`; the engine's version and features)
+  as a dependency of `h3-render` for the PNG encoder, instead of the `png` crate (T6).
+- `h3_assets::def::Frame::runs`, a public field: which pixels came from runs, which the drawers
+  need; the synthetic encoder follows it (T6).
+- A PNG widens each 16-bit channel by repeating its bits; comparisons stay in 565 (T6).

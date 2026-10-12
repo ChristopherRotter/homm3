@@ -194,6 +194,7 @@ mod tests {
             width,
             height: 1,
             pixels: vec![1; usize::try_from(width).unwrap()],
+            runs: vec![false; usize::try_from(width).unwrap()],
             short_header: false,
         }
     }

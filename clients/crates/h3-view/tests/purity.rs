@@ -12,7 +12,7 @@ use std::path::{Path, PathBuf};
 /// the dependencies it may have. A new dependency of a pure crate is added here deliberately.
 const PURE: [(&str, &[&str]); 3] = [
     ("h3-assets", &["h3-formats"]),
-    ("h3-render", &["h3-assets"]),
+    ("h3-render", &["h3-assets", "miniz_oxide"]),
     ("h3-view", &["h3-assets", "h3-formats", "h3-render"]),
 ];
 

@@ -4,7 +4,7 @@ Pre-refined tasks of the client lane, in order, then the inbox of discovered wor
 
 ## Tasks
 
-Epic: `docs/epics/E17-clients.md` (M0 done 2026-10-12; ADR-0020). M1 below (T1, T2 and T3 done 2026-10-12: the code reading, the decoders, the gate's inventory; `docs/epics/E17-design.md`), each task about half a context. The original files: stage them from the user's `original-data/install/` (one large file per staging call; the user's computer must be online); never from the installation. The client's gates: `clients/scripts/check.sh` (the full local check; CI's job runs the same), the real-asset gate `cargo run -p h3-view -- gate` from `clients/`.
+Epic: `docs/epics/E17-clients.md` (M0 done 2026-10-12; ADR-0020). M1 below (T1, T2, T3 and T6 done 2026-10-12: the code reading, the decoders, the gate's inventory, the compositor; `docs/epics/E17-design.md`), each task about half a context. The original files: stage them from the user's `original-data/install/` (one large file per staging call; the user's computer must be online); never from the installation. The client's gates: `clients/scripts/check.sh` (the full local check; CI's job runs the same), the real-asset gate `cargo run -p h3-view -- gate` from `clients/`.
 
 ### E17 M1 T4 — The asset tables
 
@@ -20,19 +20,12 @@ Epic: `docs/epics/E17-clients.md` (M0 done 2026-10-12; ADR-0020). M1 below (T1, 
 - **Depends on:** T1 done (the battle stack's draw call: `E17-design.md` §3.3).
 - **Status:** ready.
 
-### E17 M1 T6 — The compositor
-
-- **Scope:** `h3-render`: the frame in the screen format of `E17-design.md` §3.2 (16-bit, the channel widths a parameter, 565 first), its size a parameter; palettes truncated into it; blitting a decoded frame as the drawers of §3.3 do (the shadowed drawer for encoding 1 with its outline colour, the flag-colour drawer for encoding 3, the shadow pass, the raw drawer; shadows on the 16-bit pixel below, compounding; runs of index ≥ 8 skipped), player colours (indices 224–255), mirroring, clipping against the frame's own canvas; a PNG writer as an adapter (*the `png` crate: queued for the review*). Synthetic tests, 100 %.
-- **Acceptance:** the Definition of Done; a test per keyed colour and for overlapping shadows.
-- **Depends on:** T1 and T3 done.
-- **Status:** ready.
-
 ### E17 M1 T7 — A battle still
 
 - **Scope:** the battle's assets loaded as one checkpoint batch (ADR-0020 point 7: an archive set in the adapter, the directories at start, the batch's entries by offset; whole archives read until CLT-Q2's table-only reader lands); `h3-view render`: from a record's `Snapshot` (an `h3-protocol` message; a small adapter makes one by running `h3-protocol`'s session in-process on a scenario file as `h3 run` takes it, as a spectator) to a PNG in `clients/out/`: the background, obstacles, every stack in its standing frame on its hex, facing its side, with T5's geometry and draw order; layouts as data. Pure scene model (snapshot + tables + time 0 → draw list), adapters for files.
 - **Acceptance:** the Definition of Done; stills for three scenarios (one- and two-hex stacks, obstacles, both sides) rendered from the user's files and sent to the user.
-- **Depends on:** T4, T5, T6.
-- **Status:** waiting (T4–T6).
+- **Depends on:** T4, T5 (T6 done: `h3-render`; `h3-view sprite` shows its use).
+- **Status:** waiting (T4, T5).
 
 ### E17 M1 T8 — M1's closure
 
